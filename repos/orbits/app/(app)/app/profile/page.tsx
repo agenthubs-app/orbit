@@ -1,94 +1,75 @@
-import { redirect } from "next/navigation";
-
-import { auth } from "../../../../auth";
-import { StateView } from "../../../../shared/ui/state-view";
-import { getOrbitServerLanguage, localizeOrbitTree } from "../orbit-language-server";
+import { AccountTopNav } from "../orbit-account-shell";
 import { OrbitReferenceStyles } from "../orbit-reference-styles";
 import { OrbitVisualFreezeRuntime } from "../orbit-visual-freeze-runtime";
+import { loadProfileEditorPage } from "./profile-0918/load-profile-editor-page";
+import { ProfileScreens, type ProfileView } from "./profile-0918/profile-screens";
 import {
-  loadAppProfileRouteViewModel,
-  type AppProfileRouteStateViewModel,
-} from "./compose-app-profile-from-previously-approved-mock-first-capabilities/profile-route-view-model";
-import { profileRouteToOrbitProfileViewModel } from "./compose-app-profile-from-previously-approved-mock-first-capabilities/profile-view-model-adapter";
-import { OrbitRealProfile } from "./orbit-real-profile";
+  normalizeProfileOnboardingNext,
+  profileContinuationPath,
+  profileOnboardingPath,
+} from "./profile-onboarding-navigation";
 
-type ProfileRouteState =
-  | AppProfileRouteStateViewModel
-  | {
-      copy: AppProfileRouteStateViewModel["copy"];
-      evidenceIds: readonly string[];
-      recoveryActions?: readonly AppProfileRouteStateViewModel["recoveryActions"][number][];
-    };
+type AppProfileSearchParams = {
+  next?: string | string[];
+  onboarding?: string | string[];
+  view?: string | string[];
+};
 
-function ProfileRouteStateBoundary({
-  routeState,
-}: {
-  routeState: ProfileRouteState;
-}) {
-  return (
-    <div data-orbit-route="app-profile-route-state">
-      <StateView
-        description={routeState.copy.description}
-        emptyState={routeState.copy.emptyState}
-        evidence={Array.from(routeState.evidenceIds)}
-        eyebrow={routeState.copy.eyebrow}
-        guardrail={routeState.copy.guardrail}
-        nextStep={routeState.copy.nextStep}
-        purpose={routeState.copy.purpose}
-        recoveryActions={(routeState.recoveryActions ?? []).map((action) => ({
-          id: action.id,
-          label: action.label,
-          recoveryCopy: action.recoveryCopy,
-          href: action.href,
-        }))}
-        title={routeState.copy.title}
-      />
-    </div>
-  );
+function firstSearchParam(value: string | string[] | undefined): string | undefined {
+  return Array.isArray(value) ? value[0] : value;
 }
 
-export default async function AppProfilePage() {
-  // 个人资料是登录后的页面:未登录跳登录页,带回跳地址。
-  const session = await auth();
+const PROFILE_VIEWS: readonly ProfileView[] = ["profile", "persona", "basic", "connect"];
 
-  if (!session?.user?.id) {
-    redirect("/app/account/login?next=%2Fapp%2Fprofile");
+function profileViewParam(value: string | undefined): ProfileView | undefined {
+  return PROFILE_VIEWS.find((view) => view === value);
+}
+
+export default async function AppProfilePage({
+  searchParams,
+}: {
+  searchParams?: Promise<AppProfileSearchParams>;
+} = {}) {
+  const resolvedSearchParams = await searchParams;
+  const onboarding = firstSearchParam(resolvedSearchParams?.onboarding) === "1";
+  const onboardingNext = onboarding
+    ? normalizeProfileOnboardingNext(resolvedSearchParams?.next)
+    : undefined;
+  const retryHref = onboardingNext
+    ? profileOnboardingPath(onboardingNext)
+    : "/app/profile";
+  // 未指定 view → ProfileScreens 决定默认屏（onboarding=1 且未完成 → basic，否则 profile）。
+  const view = profileViewParam(firstSearchParam(resolvedSearchParams?.view));
+
+  const page = await loadProfileEditorPage(
+    onboardingNext ? profileContinuationPath(onboardingNext) : "/app/profile",
+    retryHref,
+  );
+
+  if (page.ok === false) {
+    return (
+      <>
+        <OrbitReferenceStyles />
+        <OrbitVisualFreezeRuntime />
+        {page.boundary}
+      </>
+    );
   }
-
-  const routeModel = await loadAppProfileRouteViewModel({
-    displayName:
-      session.user.name?.trim() ||
-      session.user.email?.trim() ||
-      "Orbit member",
-    email: session.user.email,
-    id: session.user.id,
-  });
-  const language =
-    routeModel.state === "success" ? await getOrbitServerLanguage() : null;
 
   return (
     <>
       <OrbitReferenceStyles />
       <OrbitVisualFreezeRuntime />
-      {routeModel.state === "success" ? (
-        <OrbitRealProfile
-          viewModel={localizeOrbitTree(
-            profileRouteToOrbitProfileViewModel(routeModel),
-            language ?? "zh",
-          )}
+      {/* 顶栏样式限定在 [data-orbit-real-page] 祖先下（orbit-reference-styles.tsx），外层容器必须带该属性。 */}
+      <div data-orbit-real-page="profile-0918" data-orbit-route="app-profile-route">
+        <AccountTopNav active="me" />
+        <ProfileScreens
+          onboarding={onboarding}
+          onboardingNext={onboardingNext}
+          view={view}
+          viewModel={page.viewModel}
         />
-      ) : (
-        <ProfileRouteStateBoundary
-          routeState={
-            routeModel.state === "route-state"
-              ? routeModel.routeState
-              : {
-                  copy: routeModel.failure,
-                  evidenceIds: routeModel.failure.evidenceIds,
-                }
-          }
-        />
-      )}
+      </div>
     </>
   );
 }

@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { iorbitChatSurfaceSource } from "./iorbit-chat-surface-source";
 
 const projectRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -12,6 +13,11 @@ const projectRoot = path.resolve(
 function readProjectFile(relativePath: string): string {
   return fs.readFileSync(path.join(projectRoot, relativePath), "utf8");
 }
+
+// iOrbit 任务 1b：纯函数在 `iorbit-model.ts`、对话状态/`ask` 在 `use-agent-chat.ts`，
+// JSX 留在 `orbit-real-agent.tsx`。源码断言按此拆成两半。
+const IORBIT_MODEL_PATH = "app/(app)/app/agent/iorbit-0918/iorbit-model.ts";
+const IORBIT_CHAT_HOOK_PATH = "app/(app)/app/agent/iorbit-0918/use-agent-chat.ts";
 
 async function importProjectModule<TModule>(
   relativePath: string,
@@ -89,35 +95,41 @@ test("/app/agent consumes GET q event-discovery prompts and renders linked event
 
 test("/app/agent maps event artifacts into reason, timing, confidence, and detail-card fields", () => {
   const pageSource = readProjectFile("app/(app)/app/agent/page.tsx");
-  const agentSource = readProjectFile(
-    "app/(app)/app/agent/orbit-real-agent.tsx",
-  );
+  // iOrbit 任务 6a：`orbit-real-agent.tsx` 已删除；对话面的源码断言改读
+  // `iorbit-chat-surface-source.ts` 合并的那一组在售文件（内容同源，换了住处）。
+  const agentSource = iorbitChatSurfaceSource();
 
   assert.match(pageSource, /searchParams/);
   assert.match(pageSource, /loadAppChatRouteViewModel/);
-  assert.match(agentSource, /artifactOfKind\(\s*payload\.data\.artifacts,\s*"event_recommendations"/);
-  assert.match(agentSource, /eventItemsFromArtifact\(eventArtifact\)/);
-  assert.match(agentSource, /artifactMetadataValue\(item, \["开始", "Start"\]\)/);
-  assert.match(agentSource, /score: Number\.isFinite\(score\)/);
-  assert.match(agentSource, /howto: item\.body/);
-  assert.match(agentSource, /reason: item\.reason/);
+  const modelSource = readProjectFile(IORBIT_MODEL_PATH);
+  const chatHookSource = readProjectFile(IORBIT_CHAT_HOOK_PATH);
+
+  assert.match(chatHookSource, /artifactOfKind\(\s*payload\.data\.artifacts,\s*"event_recommendations"/);
+  assert.match(chatHookSource, /eventItemsFromArtifact\(eventArtifact\)/);
+  assert.match(modelSource, /artifactMetadataValue\(item, \["开始", "Start"\]\)/);
+  assert.match(modelSource, /score: Number\.isFinite\(score\)/);
+  assert.match(modelSource, /howto: item\.body/);
+  assert.match(modelSource, /reason: item\.reason/);
   assert.match(agentSource, /function AgentEventRow/);
   assert.match(agentSource, /navigate\(`\/events\/\$\{event\.code\}`\)/);
 });
 
 test("/app/agent keeps client-side deep-link prompts and contextual discovery suggestions", () => {
   const pageSource = readProjectFile("app/(app)/app/agent/page.tsx");
-  const agentSource = readProjectFile(
-    "app/(app)/app/agent/orbit-real-agent.tsx",
-  );
+  // iOrbit 任务 6a：`orbit-real-agent.tsx` 已删除；对话面的源码断言改读
+  // `iorbit-chat-surface-source.ts` 合并的那一组在售文件（内容同源，换了住处）。
+  const agentSource = iorbitChatSurfaceSource();
 
   assert.match(pageSource, /firstSearchParam/);
   assert.match(
     pageSource,
     /typeof first === "string" && first\.trim\(\) \? first\.trim\(\) : null/,
   );
-  assert.match(agentSource, /function currentAgentQuery/);
-  assert.match(agentSource, /new URLSearchParams\(window\.location\.search\)\.get\("q"\)/);
+  assert.match(readProjectFile(IORBIT_MODEL_PATH), /function currentAgentQuery/);
+  assert.match(
+    readProjectFile(IORBIT_MODEL_PATH),
+    /new URLSearchParams\(window\.location\.search\)\.get\("q"\)/,
+  );
   assert.match(agentSource, /viewModel\.suggests\.map/);
   assert.match(agentSource, /onPick\(suggest\.q\)/);
   // The one-line placeholder that named all three discovery intents ("what you

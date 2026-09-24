@@ -26,6 +26,19 @@ test("the nav renders the unified three-segment skeleton", () => {
   assert.ok(shell.includes("orbit-nav-page-title"), "mobile page title");
 });
 
+// 2026-09-18 Orbit_0918 浮岛药丸导航：外层透明吸附条 + 内部 pill，
+// 滚动态由 data-orbit-nav-scrolled 驱动（scrollY > 40），
+// 未登录右侧为 登录 + 立即加入（滚动态才显示），已登录为浅紫首字母头像。
+test("the Orbit_0918 floating pill structure is present", () => {
+  assert.ok(shell.includes("orbit-top-nav-pill"), "pill wrapper inside the header");
+  assert.ok(shell.includes("data-orbit-nav-scrolled"), "scroll-state attribute drives the pill");
+  assert.ok(shell.includes("window.scrollY > 40"), "40px scroll threshold from the design");
+  assert.ok(shell.includes("orbit-nav-join-cta"), "dark join CTA for signed-out visitors");
+  assert.ok(shell.includes("立即加入"), "join CTA copy follows the design");
+  assert.ok(shell.includes("orbit-nav-avatar"), "flat initial avatar for signed-in users");
+  assert.ok(!shell.includes("orbit-brand-sub"), "brand tagline retired from the nav");
+});
+
 test("the agent pill and the flex spacer are gone", () => {
   assert.ok(!shell.includes("orbit-agent-btn"));
   assert.ok(!shell.includes('<div style={{ flex: 1 }} />'));
@@ -63,32 +76,27 @@ test("the mobile hamburger and compact menu layer are present", () => {
   const menuIdx = shell.indexOf("const menuItems");
   const menuBlock = shell.slice(menuIdx, shell.indexOf("];", menuIdx));
   assert.ok(menuBlock.includes('"agent"'), "iOrbit present in the mobile menu");
-  assert.ok(menuBlock.includes('"today"'), "Today present in the mobile menu");
+  assert.ok(!menuBlock.includes('"today"'), "Today/日程 removed from the mobile menu (merged into iOrbit, 2026-09-18)");
   assert.ok(!menuBlock.includes("icon:"), "mobile destinations are text-only");
   assert.ok(shell.includes("OrbitNavMobileAccountLinks"), "session-aware account group present");
   assert.ok(shell.includes("orbit-nav-menu-divider"), "primary and account groups are separated");
 });
 
-// T3 (today-schedule merge): the hamburger used to carry a standalone
-// "schedule" entry (clock icon) alongside "today". Schedule folded into
-// Today (now labeled 日程/Schedule, calendar icon) — the standalone entry
-// must be gone.
-test("the standalone schedule item is gone and the primary order stays canonical", () => {
+// 2026-09-18 用户决定：Calendar/日程 tab 从导航移除，日历能力合入 iOrbit；
+// /today 路由保留但从 iOrbit 内进入，主导航与汉堡菜单都不再出现日程项。
+test("the calendar entry is gone and the primary order stays canonical", () => {
   const menuIdx = shell.indexOf("const menuItems");
   const menuBlock = shell.slice(menuIdx, shell.indexOf("];", menuIdx));
 
   assert.ok(!/key: "schedule"/.test(menuBlock), "no standalone schedule entry in the mobile menu");
+  assert.ok(!/key: "today"/.test(menuBlock), "no today/日程 entry in the mobile menu");
   assert.ok(
     menuBlock.indexOf('key: "agent"') < menuBlock.indexOf('key: "events"'),
     "mobile menu starts with iOrbit",
   );
   assert.ok(
-    menuBlock.indexOf('key: "events"') < menuBlock.indexOf('key: "today"'),
-    "mobile menu keeps 活动/Events before 日程/Schedule",
-  );
-  assert.ok(
-    menuBlock.indexOf('key: "today"') < menuBlock.indexOf('key: "cards"'),
-    "mobile menu keeps 日程/Schedule before 人脉/Contacts",
+    menuBlock.indexOf('key: "events"') < menuBlock.indexOf('key: "cards"'),
+    "mobile menu keeps 活动/Events before 人脉/Contacts",
   );
 });
 
@@ -160,12 +168,45 @@ test("light product chrome does not recolor the starfield navigation", () => {
   );
 });
 
+// iOrbit 任务 5（「审阅修订」25）：actions / plan / strategy 三屏迁到 iOrbit 壳后，
+// 作用域属性不再写在各屏组件里，而是由三屏共用的 `IOrbitScreenFrame` 一处持有
+// （外层 `agent` + 内层 `iorbit-0918`，「审阅修订」2）。断言随之改指那个文件；
+// Today 一侧未动。
 test("the ledger pages carry the real-page scope the nav CSS requires", () => {
+  // 任务 6a：`today/today-page-content.tsx` 已随 `/app/today` 删除。
   for (const file of [
-    "app/(app)/app/today/today-page-content.tsx",
-    "app/(app)/app/contacts/all-actions/page.tsx",
+    "app/(app)/app/agent/iorbit-0918/iorbit-screen-frame.tsx",
+    "app/(app)/app/agent/iorbit-0918/iorbit-shell.tsx",
   ]) {
     const pageSource = readFileSync(join(projectRoot, file), "utf8");
     assert.ok(pageSource.includes("data-orbit-real-page="), file);
+  }
+});
+
+test("the iOrbit sibling screens mount through the shared frame, not their own scope", () => {
+  const frame = readFileSync(
+    join(projectRoot, "app/(app)/app/agent/iorbit-0918/iorbit-screen-frame.tsx"),
+    "utf8",
+  );
+  // 顶栏 CSS 要的是这两层；冻结的 orbit-reference-styles.tsx 的 44 条规则挂在外层。
+  assert.match(frame, /data-orbit-real-page="agent"/);
+  assert.match(frame, /data-orbit-real-page="iorbit-0918"/);
+  assert.ok(
+    frame.indexOf('data-orbit-real-page="agent"') <
+      frame.indexOf('data-orbit-real-page="iorbit-0918"'),
+  );
+  assert.match(frame, /AccountTopNav active="agent"/);
+
+  for (const file of [
+    "app/(app)/app/agent/iorbit-0918/iorbit-actions.tsx",
+    "app/(app)/app/agent/iorbit-0918/iorbit-plan.tsx",
+    "app/(app)/app/agent/iorbit-0918/iorbit-strategy.tsx",
+  ]) {
+    const source = readFileSync(join(projectRoot, file), "utf8");
+    assert.ok(source.includes("IOrbitScreenFrame"), `${file} must mount the shared frame`);
+    assert.ok(
+      !source.includes('data-orbit-real-page='),
+      `${file} must not declare its own page scope`,
+    );
   }
 });

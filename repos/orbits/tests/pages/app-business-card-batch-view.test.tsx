@@ -8,7 +8,7 @@ import type {
   BusinessCardBatchDTO,
   BusinessCardBatchItemDTO,
 } from "../../features/acquisition/business-card-batch-contract";
-import { BusinessCardBatchViewPure, type BusinessCardBatchFixedFields } from "../../app/(app)/app/contacts/new/batch/[id]/business-card-batch-view";
+import { BusinessCardBatchViewPure, type BusinessCardBatchFixedFields } from "../../app/(app)/app/contacts/ingest-v2/business-card-batch-view";
 
 const NOW = "2026-08-26T15:00:00.000Z";
 
@@ -293,7 +293,7 @@ test("a recognized card with a name shows neither the empty notice nor the name 
 // the same height reserved in the flow so nothing below it becomes unreachable.
 test("narrow screens pin the review action row and reserve its height in the flow", () => {
   const source = readFileSync(
-    "app/(app)/app/contacts/new/batch/[id]/business-card-batch-view.tsx",
+    "app/(app)/app/contacts/ingest-v2/business-card-batch-view.tsx",
     "utf8",
   );
   const narrow = [...source.matchAll(/@media \(max-width: 760px\) \{([\s\S]*?)\n\}/g)]
@@ -310,7 +310,7 @@ test("narrow screens pin the review action row and reserve its height in the flo
   assert.ok(!/\.bcb-actions[^{]*\{[^}]*position: sticky/.test(narrow));
   // Above page content, below dropdowns/overlays/modals/toasts.
   assert.match(narrow, /\.bcb-actions-review \{[^}]*z-index: \$\{ORBIT_Z\.sticky\}/);
-  assert.match(source, /import \{ ORBIT_Z \} from "\.\.\/\.\.\/\.\.\/\.\.\/orbit-z"/);
+  assert.match(source, /import \{ ORBIT_Z \} from "\.\.\/\.\.\/orbit-z"/);
   // A fixed bar leaves the flow, so the reserve has to sit at the END of the
   // scrollable content (the shell) — measured: padding inside .bcb-review-form moves
   // the tail down with the extra scroll range and leaves it just as trapped.

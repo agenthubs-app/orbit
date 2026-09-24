@@ -8,6 +8,27 @@ import { Avatar, Icon, gradientFromString } from "../../orbit-reference-primitiv
 import { OrbitAppointmentNegotiation } from "./orbit-appointment-negotiation";
 import { OrbitEncounterCapture } from "./orbit-encounter-capture";
 
+export type EventMatchmakingParticipant = Participant;
+
+/**
+ * Task 5 (Orbit_0918): when the host page supplies `onOpenParticipant`, opening a
+ * card hands the directory participant (plus the pair's contact request) to the
+ * host instead of fetching the legacy detail drawer.
+ */
+export interface EventMatchmakingParticipantOpen {
+  contactRequest: {
+    contactId: string | null;
+    direction: "incoming" | "outgoing";
+    requestId: string;
+    revision: number;
+    status: ContactRequest["status"];
+  } | null;
+  contactRequestsOpen: boolean;
+  me: Participant;
+  participant: Participant;
+  recommendation: Recommendation | null;
+}
+
 type Participant = {
   company: string | null;
   displayName: string;
@@ -463,6 +484,11 @@ function ParticipantDetailPanel({
  */
 export interface EventMatchmakingSummary {
   acceptedContacts: number;
+  /**
+   * Everyone in the published directory except me, with the contact id of an
+   * accepted exchange when one exists (the recap state's 「保持联系」 gate).
+   */
+  people: readonly { company: string | null; contactId: string | null; displayName: string; participantId: string; role: string | null }[];
   recommendationCount: number;
   resultsState: OperationsWorkspace["resultsState"];
   roundOneTable: { seat: string | null; tableNumber: number; theme: string } | null;
@@ -485,13 +511,19 @@ export function OrbitEventMatchmaking({
   authenticated = true,
   contactRequestsOpen = true,
   eventId,
+  onOpenParticipant,
   onWorkspaceSummary,
+  refreshToken = 0,
   registrationOpen = false,
 }: {
   authenticated?: boolean;
   contactRequestsOpen?: boolean;
   eventId: string;
+  /** Orbit_0918 attendee modal hook; undefined keeps the legacy detail drawer. */
+  onOpenParticipant?: (input: EventMatchmakingParticipantOpen) => void;
   onWorkspaceSummary?: (summary: EventMatchmakingSummary | null) => void;
+  /** Bump to reload the workspace after an external write (the host's modals). */
+  refreshToken?: number;
   registrationOpen?: boolean;
 }) {
   const { t } = useOrbitLanguage();
@@ -602,8 +634,23 @@ export function OrbitEventMatchmaking({
       onWorkspaceSummary(null);
       return;
     }
+    const acceptedContactIdByParticipant = new Map<string, string>();
+    for (const request of workspace.contactRequests) {
+      if (request.status !== "accepted" || !request.contactId) continue;
+      const other = request.requesterParticipantId === workspace.me.participantId ? request.targetParticipantId : request.requesterParticipantId;
+      acceptedContactIdByParticipant.set(other, request.contactId);
+    }
     onWorkspaceSummary({
       acceptedContacts: workspace.contactRequests.filter((request) => request.status === "accepted").length,
+      people: workspace.directory
+        .filter((participant) => participant.participantId !== workspace.me.participantId)
+        .map((participant) => ({
+          company: participant.company,
+          contactId: acceptedContactIdByParticipant.get(participant.participantId) ?? null,
+          displayName: participant.displayName,
+          participantId: participant.participantId,
+          role: participant.role,
+        })),
       recommendationCount: workspace.recommendations?.recommendations.length ?? 0,
       resultsState: workspace.resultsState,
       roundOneTable: tableSummaryFor(workspace.roundOneTable, workspace.me.participantId),
@@ -611,7 +658,36 @@ export function OrbitEventMatchmaking({
     });
   }, [onWorkspaceSummary, workspace]);
 
+  useEffect(() => {
+    if (!refreshToken) return;
+    void load().catch((loadError) => setError(loadError instanceof Error ? loadError.message : messageFrom(loadError)));
+  }, [load, refreshToken]);
+
   async function openParticipant(participantId: string) {
+    if (onOpenParticipant && workspace) {
+      const participant = workspace.directory.find((candidate) => candidate.participantId === participantId);
+      if (participant) {
+        const request = workspace.contactRequests.find(
+          (candidate) => candidate.requesterParticipantId === participantId || candidate.targetParticipantId === participantId,
+        ) ?? null;
+        onOpenParticipant({
+          contactRequest: request
+            ? {
+                contactId: request.contactId,
+                direction: request.requesterParticipantId === workspace.me.participantId ? "outgoing" : "incoming",
+                requestId: request.requestId,
+                revision: request.revision,
+                status: request.status,
+              }
+            : null,
+          contactRequestsOpen,
+          me: workspace.me,
+          participant,
+          recommendation: workspace.recommendations?.recommendations.find((candidate) => candidate.targetParticipantId === participantId) ?? null,
+        });
+        return;
+      }
+    }
     setWorking(`detail:${participantId}`);
     setError("");
     try {

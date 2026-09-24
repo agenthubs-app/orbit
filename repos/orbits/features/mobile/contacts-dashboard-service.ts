@@ -14,6 +14,7 @@ import {
   createNetworkDistributionAnalyticsService,
   createOpportunityReminderAnalyticsService,
 } from "../dashboard/service-factory";
+import { withDashboardLiveReadScope } from "../dashboard/storage/dashboard-live-record-provider";
 import { createProfileService } from "../profile/service-factory";
 import { createOrbitAgentChatSessionProvider } from "../orbit-ai/storage/orbit-agent-chat-session-provider-factory";
 import {
@@ -110,7 +111,7 @@ export function createMobileContactsDashboardService(
         distributionsResult,
         profileResult,
         contactsResult,
-      ] = await Promise.all([
+      ] = await withDashboardLiveReadScope(() => Promise.all([
         dependencies.loadAggregate(actorId),
         dependencies.loadSummary(actorId),
         dependencies.loadOpportunities(actorId),
@@ -118,7 +119,7 @@ export function createMobileContactsDashboardService(
         dependencies.loadDistributions(actorId),
         dependencies.loadProfile(actorId),
         dependencies.loadContacts(actorId),
-      ]);
+      ]));
 
       if (!aggregateResult.success) {
         return {

@@ -16,6 +16,7 @@ import {
   buildFullProductFunctionalAuditInventory,
   accessForSurface,
   collectInteractions,
+  collectLineAnchoredRuntimeEvidenceKeys,
   getHistoricalWebRuntimeEvidence,
   lookupWebInteractionRuntimeEvidence,
   lookupWebSurfaceRuntimeEvidence,
@@ -90,12 +91,6 @@ const retiredWebCases = [
     "web-public-organizer-navigation-2026-07-29",
     "web-public-organizer-unknown-slug-boundary-2026-07-29",
   ]],
-  ["web:/app/party", [
-    "web-party-source-context-boundaries-2026-07-29",
-    "web-public-event-detail-lifecycle-2026-07-29",
-  ]],
-  ["web:/app/party/checkin", ["web-party-source-context-boundaries-2026-07-29"]],
-  ["web:/app/party/graph", ["web-party-source-context-boundaries-2026-07-29"]],
 ] as const;
 const retiredGenericSmokeCase = "web-production-route-transport-smoke-2026-07-28";
 
@@ -181,7 +176,7 @@ test("current eligibility blocks smoke only for the three ruled exact routes", (
     const key = `${surfaceId}|source#onclick:open#Open`;
     assert.equal(lookupWebInteractionRuntimeEvidence([key], new Map([[key, record]])), undefined);
   }
-  for (const surfaceId of ["web:/app/events/[id]/register", "web:/app/events-other", "web:/app/party", "mobile:/events"]) {
+  for (const surfaceId of ["web:/app/events/[id]/register", "web:/app/events-other", "web:/app/events/[id]/live", "mobile:/events"]) {
     assert.equal(lookupWebSurfaceRuntimeEvidence(surfaceId, new Map([[surfaceId, record]])), record);
   }
   const unrelated = historicalWebEvidence.surfaces.find(([id]) => id === "web:/app/today");
@@ -391,14 +386,12 @@ test("navigation replay credits only its 27 exact route occurrences", () => {
 
   assert.equal(credited.length, 27);
   assert.equal(settingsSignOut?.conclusion, "runtime-verified-exercised-case");
-  assert.equal(siblingSignOuts.length, 33);
-  const importSignOut = inventory.surfaces
-    .find((surface) => surface.surfaceId === "web:/app/contacts/new/import/[id]")
-    ?.interactions.find((interaction) =>
-      interaction.sourceFile === "repos/orbits/app/(app)/app/orbit-public-shell.tsx" &&
-      interaction.visibleName === "Sign out / 退出登录",
-    );
-  assert.equal(importSignOut?.conclusion, "inventoried-static-only");
+  // iOrbit 任务 6b：兄弟计数 33 → 32。这个数字是「共享壳里有多少个同源退出登录控件」，
+  // 会随路由增删漂移；任务 6a 删了 /app/chat、/app/today、/app/schedule、/app/followups
+  // 四条路由，又因为审计产物先前长期未重生成，同期新增的 /app/events/**、/app/tasks*、
+  // /app/invitations/[token] 等路由这次一并入账，净值为 32。本条真正的回归断言是下面
+  // 「非 /app/settings 的同源控件一律 inventoried-static-only」——计数只是它的分母。
+  assert.equal(siblingSignOuts.length, 32);
   assert.equal(
     siblingSignOuts.every(
       (interaction) => interaction.conclusion === "inventoried-static-only",
@@ -643,27 +636,6 @@ for (const [props, hidden] of [
   });
 }
 
-test("hidden batch file inputs retain handler records and accessible picker triggers", () => {
-  for (const [surfaceId, inputCount] of [
-    ["web:/app/contacts/new/batch2", 1],
-    ["web:/app/contacts/new/batch2/[id]", 2],
-  ] as const) {
-    const surface = inventory.surfaces.find((surface) => surface.surfaceId === surfaceId);
-    assert.ok(surface);
-    const inputs = surface.interactions.filter((interaction) => interaction.tag === "input" && interaction.visibleName === null);
-    assert.equal(inputs.length, inputCount);
-    for (const input of inputs) {
-      assert.equal(input.accessibleNameEvidence, "intentionally-hidden-pointer-target");
-      assert.equal(input.handlers.some((handler) => handler.event === "onchange"), true);
-    }
-    const pickers = surface.interactions.filter((interaction) =>
-      interaction.tag === "button" && interaction.handlers.some((handler) => handler.expression.includes(".click()")),
-    );
-    assert.ok(pickers.length > 0);
-    assert.equal(pickers.every((picker) => picker.visibleName && picker.accessibleNameEvidence === "present-static"), true);
-  }
-});
-
 test("native private route wrappers are static wiring, not runtime authorization evidence", () => {
   for (const surfaceId of ["mobile:/events/[id]/analytics", "mobile:/tasks", "mobile:/tasks/[id]"]) {
     const surface = inventory.surfaces.find((surface) => surface.surfaceId === surfaceId);
@@ -898,30 +870,20 @@ test("memory settings retain their eleven exercised interactions", () => {
   );
 });
 
-test("Today dialog retains its exact exercised close handler", () => {
-  assert.equal(
-    runtimeVerifiedInteractions.some(
-      (interaction) =>
-        interaction.surfaceId === "web:/app/today" &&
-        interaction.sourceFile ===
-          "repos/orbits/app/(app)/app/today/orbit-today-time-spine.tsx" &&
-        interaction.visibleName === "Got it / 知道了" &&
-        interaction.handlers.some(
-          (handler) =>
-            handler.event === "onclick" && handler.expression === "onClose",
-        ),
-    ),
-    true,
-    "Today dialog runtime evidence must survive unrelated source-line shifts",
-  );
-});
+// iOrbit 任务 6a 删除了 /app/today 及 `today/orbit-today-time-spine.tsx`，本条断言的主语
+// （Today 弹窗的「知道了」关闭键）在产品里已不存在，用例随之退役。它守的回归是
+// 「运行时证据必须 handler-bound、不随无关行号漂移失配」，同一条回归今天由下面的
+// 「Agent retry evidence applies only to the current exercised handler」与
+// 「Settings sign-out historical evidence is handler-bound across line shifts」继续覆盖。
 
+// iOrbit 任务 3：重试控件随助手回合搬到 `iorbit-0918/iorbit-chat.tsx`；
+// onClick 表达式逐字保留（计划「审阅修订」8），这里只改文件路径。
 test("Agent retry evidence applies only to the current exercised handler", () => {
   const currentAgentRetryInteraction = runtimeVerifiedInteractions.find(
     (interaction) =>
       interaction.surfaceId === "web:/app/agent" &&
       interaction.sourceFile ===
-        "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx" &&
+        "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-chat.tsx" &&
       interaction.visibleName === "重新提交请求 / Retry request" &&
       interaction.handlers.some(
         (handler) =>
@@ -942,7 +904,7 @@ test("Agent retry evidence applies only to the current exercised handler", () =>
       (interaction) =>
         interaction.surfaceId === "web:/app/agent" &&
         interaction.sourceFile ===
-          "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx" &&
+          "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-chat.tsx" &&
         interaction.visibleName === "重新提交请求 / Retry request" &&
         interaction.handlers.some(
           (handler) =>
@@ -1034,6 +996,10 @@ test("native auth and acquisition runtime cases remain credited", () => {
 });
 
 test("Web home and scheduling runtime cases remain scoped to their exercised routes", () => {
+  // iOrbit 任务 6b：/app/today、/app/followups、/app/schedule、/app/schedule/events/[id]
+  // 四条路由在任务 6a 随对话域归并删除，它们的四条断言没有主语了，删除；其历史用例
+  // 仍留在生成器的 VERIFIED_AUDIT_CASES 里。用例的回归意图（一条 runtime case 只能落在
+  // 它实际跑过的那条路由上，不得外溢到兄弟路由）由下面保留的两条继续覆盖。
   assert.equal(
     inventory.surfaces.find((surface) => surface.surfaceId === "web:/app/home")
       ?.verificationConclusion,
@@ -1045,35 +1011,18 @@ test("Web home and scheduling runtime cases remain scoped to their exercised rou
     )?.verificationConclusion,
     "runtime-partially-verified-web-home-events-filter-and-detail",
   );
-  assert.equal(
-    inventory.surfaces.find((surface) => surface.surfaceId === "web:/app/today")
-      ?.verificationConclusion,
-    "runtime-partially-verified-web-today-meeting-service-boundary",
-  );
-  assert.equal(
-    inventory.surfaces.find(
-      (surface) => surface.surfaceId === "web:/app/dashboard",
-    )?.verificationConclusion,
-    "runtime-partially-verified-web-actor-scoped-relationship-dashboard",
-  );
-  assert.equal(
-    inventory.surfaces.find(
-      (surface) => surface.surfaceId === "web:/app/followups",
-    )?.verificationConclusion,
-    "runtime-partially-verified-web-followups-today-compatibility-route",
-  );
-  assert.equal(
-    inventory.surfaces.find(
-      (surface) => surface.surfaceId === "web:/app/schedule",
-    )?.verificationConclusion,
-    "runtime-partially-verified-web-schedule-today-compatibility-route",
-  );
-  assert.equal(
-    inventory.surfaces.find(
-      (surface) => surface.surfaceId === "web:/app/schedule/events/[id]",
-    )?.verificationConclusion,
-    "runtime-partially-verified-web-schedule-dynamic-event-identity",
-  );
+  for (const retired of [
+    "web:/app/today",
+    "web:/app/followups",
+    "web:/app/schedule",
+    "web:/app/schedule/events/[id]",
+  ]) {
+    assert.equal(
+      inventory.surfaces.some((surface) => surface.surfaceId === retired),
+      false,
+      `${retired} was consolidated into the iOrbit screens and must not reappear`,
+    );
+  }
 });
 
 for (const [surfaceId, verificationConclusion] of [
@@ -1247,24 +1196,18 @@ test("Agent runtime case retains its recorded observations", () => {
   );
 });
 
-test("chat and all-actions retain their recorded observations", () => {
+test("chat is retired and no longer claims a live surface", () => {
+  // iOrbit 任务 6b：/app/chat 在任务 6a 删除（归并进 /app/agent）。原断言「chat 表面保留
+  // 4 条记录观察」没有主语了。记录观察本身按「历史记录不改」的一贯口径留在生成器的
+  // RENDERED_LEAF_OBSERVATIONS 里；这里改为正面钉住「这条路由不得回流」。
   assert.equal(
-    inventory.surfaces.find((surface) => surface.surfaceId === "web:/app/chat")
-      ?.runtimeEvidence.length,
-    4,
-  );
-  assert.equal(
-    inventory.surfaces.find(
-      (surface) => surface.surfaceId === "web:/app/contacts/all-actions",
-    )?.runtimeEvidence.length,
-    3,
+    inventory.surfaces.some((surface) => surface.surfaceId === "web:/app/chat"),
+    false,
   );
 });
 
 for (const [surfaceId, evidenceCount] of [
     ["web:/app/contacts/dashboard", 3],
-    ["web:/app/contacts/graph", 4],
-    ["web:/app/contacts/intros", 6],
     ["web:/app/contacts/pipeline", 3],
   ] as const) {
   test(`relationship runtime observations remain retained: ${surfaceId}`, () => {
@@ -1376,4 +1319,131 @@ test("generated documents and machine inventory share the same denominators", ()
   } finally {
     rmSync(outputRoot, { force: true, recursive: true });
   }
+});
+
+// 逐行锚定的运行时证据键（`<file>:<line>`，可带 `<surfaceId>|` 前缀）是脆的：只要有人在
+// 该文件靠前的位置加一行，键就会落到别的行上，证据被静默丢弃或记到别的控件头上，而
+// `tests/audits` 以前只断言总数，一条也不会跑红。2026-09-24 给 `ProfileBasic` 加一个形参，
+// `profile-basic.tsx` 整体下移 4 行，`/app/profile` 的 runtime-verified 交互由 11 静默掉到 8，
+// 是这条门禁的由来。
+//
+// 下面这批键**今天就已经认领不到任何控件**（源文件还在，但行号早已失配，多数属于换肤批次前
+// 记录、之后被改写的旧屏）。它们是**待偿的存量**，不是可以继续增长的许可：
+// - 新增一条 → 本门禁跑红，逼写键的人当场把行号钉对；
+// - 修好一条 → 也跑红，提示把它从名单里删掉（只能下降）。
+// 源文件已被删除的键由门禁自行归类（retired source），不进这张名单。
+const KNOWN_UNRESOLVED_LINE_ANCHORED_EVIDENCE_KEYS: ReadonlySet<string> = new Set([
+  "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx:1770",
+  "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx:2094",
+  "repos/orbit-app/src/screens/profile/AccountPermissionsScreen.tsx:131",
+  "repos/orbit-app/src/screens/profile/AccountPermissionsScreen.tsx:187",
+  "repos/orbit-app/src/screens/profile/AccountScreen.tsx:210",
+  "repos/orbit-app/src/screens/profile/ProfileScreen.tsx:240",
+  "repos/orbits/app/(app)/app/contacts/business-card-capture-workspace.tsx:386",
+  "repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx:1280",
+  "repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx:1292",
+  "repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx:706",
+  "repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx:754",
+  "repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx:761",
+  "repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx:770",
+  "repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx:776",
+  "repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx:808",
+  "repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx:901",
+  "repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx:973",
+  "web:/app/agent|repos/orbits/app/(app)/app/orbit-public-shell.tsx:127",
+  "web:/app/chat|repos/orbits/shared/ui/state-view.tsx:249",
+  "web:/app/contacts/all-actions|repos/orbits/app/(app)/app/contacts/orbit-crm-sidebar.tsx:68",
+  "web:/app/contacts/dashboard|repos/orbits/app/(app)/app/contacts/orbit-real-cards-dashboard.tsx:285",
+  "web:/app/contacts/graph|repos/orbits/app/(app)/app/contacts/orbit-crm-sidebar.tsx:68",
+  "web:/app/events/[id]|repos/orbits/app/(app)/app/events/[id]/orbit-event-matchmaking.tsx:193",
+  "web:/app/events/[id]|repos/orbits/app/(app)/app/events/[id]/orbit-post-event-followup-capture.tsx:469",
+  "web:/app/o/[slug]|repos/orbits/app/(app)/app/o/orbit-real-organizer-public.tsx:50",
+  "web:/app/o/[slug]|repos/orbits/shared/ui/state-view.tsx:217",
+  "web:/app/o/[slug]|repos/orbits/shared/ui/state-view.tsx:249",
+  "web:/app/party/checkin|repos/orbits/shared/ui/state-view.tsx:217",
+  "web:/app/party/checkin|repos/orbits/shared/ui/state-view.tsx:249",
+  "web:/app/party/graph|repos/orbits/shared/ui/state-view.tsx:217",
+  "web:/app/party/graph|repos/orbits/shared/ui/state-view.tsx:249",
+  "web:/app/party|repos/orbits/shared/ui/state-view.tsx:217",
+  "web:/app/party|repos/orbits/shared/ui/state-view.tsx:249",
+  "web:/app/platform|repos/orbits/shared/ui/state-view.tsx:217",
+  "web:/app/platform|repos/orbits/shared/ui/state-view.tsx:249",
+  "web:/app/settings|repos/orbits/app/(app)/app/settings/orbit-agent-execution-settings.tsx:278",
+  "web:/app/settings|repos/orbits/app/(app)/app/settings/orbit-agent-execution-settings.tsx:288",
+  "web:/app/settings|repos/orbits/app/(app)/app/settings/orbit-agent-execution-settings.tsx:298",
+  "web:/app/settings|repos/orbits/app/(app)/app/settings/orbit-agent-execution-settings.tsx:308",
+  "web:/app/settings|repos/orbits/app/(app)/app/settings/orbit-agent-execution-settings.tsx:328",
+  "web:/app/settings|repos/orbits/app/(app)/app/settings/orbit-agent-execution-settings.tsx:346",
+  "web:/app/settings|repos/orbits/app/(app)/app/settings/orbit-agent-execution-settings.tsx:376",
+  "web:/app/settings|repos/orbits/app/(app)/app/settings/orbit-agent-execution-settings.tsx:397",
+  "web:/app/settings|repos/orbits/app/(app)/app/settings/orbit-agent-execution-settings.tsx:465",
+  "web:/app/settings|repos/orbits/app/(app)/app/settings/orbit-agent-execution-settings.tsx:92",
+]);
+
+test("runtime evidence keys anchored by file:line still resolve to the control they credit", () => {
+  const anchored = collectLineAnchoredRuntimeEvidenceKeys();
+  assert.ok(anchored.length > 0, "expected line-anchored runtime evidence keys to exist");
+
+  const bySurfaceAndLocation = new Map<string, Record<string, unknown>>();
+  const byLocation = new Map<string, Record<string, unknown>[]>();
+  for (const surface of inventory.surfaces) {
+    for (const interaction of surface.interactions ?? []) {
+      const location = `${interaction.sourceFile}:${interaction.line}`;
+      bySurfaceAndLocation.set(`${surface.surfaceId}|${location}`, interaction);
+      const bucket = byLocation.get(location);
+      if (bucket) bucket.push(interaction);
+      else byLocation.set(location, [interaction]);
+    }
+  }
+
+  const newlyUnresolved: string[] = [];
+  const repairedButStillListed: string[] = [];
+  const resolvedToTheWrongControl: string[] = [];
+
+  for (const entry of anchored) {
+    const location = `${entry.sourceFile}:${entry.line}`;
+    const matches = entry.surfaceId
+      ? (bySurfaceAndLocation.get(`${entry.surfaceId}|${location}`) ? [bySurfaceAndLocation.get(`${entry.surfaceId}|${location}`)!] : [])
+      : (byLocation.get(location) ?? []);
+    const listed = KNOWN_UNRESOLVED_LINE_ANCHORED_EVIDENCE_KEYS.has(entry.key);
+
+    if (matches.length === 0) {
+      // 源文件整个被删掉的键（退役路由的历史证据）不算行号漂移，由文件存在性自行归类。
+      if (!existsSync(path.join(WORKSPACE_ROOT, entry.sourceFile))) continue;
+      if (!listed) newlyUnresolved.push(entry.key);
+      continue;
+    }
+
+    if (listed) {
+      repairedButStillListed.push(entry.key);
+      continue;
+    }
+    // 键认领到了控件，就必须认领到**它自己写的那一枚**：清单里的实测结论要真的挂在
+    // 这条交互上。挂不上 = 键漂到了另一枚控件，或者该表面的证据闸门已经不适用了。
+    if (!matches.some((interaction) => interaction.actualResult === entry.actualResult)) {
+      resolvedToTheWrongControl.push(entry.key);
+    }
+  }
+
+  assert.deepEqual(
+    newlyUnresolved,
+    [],
+    "these file:line evidence keys no longer land on any scanned control — repoint them at the " +
+      "current line of the handler they credit (do not add them to the known-unresolved list):\n" +
+      newlyUnresolved.join("\n"),
+  );
+  assert.deepEqual(
+    resolvedToTheWrongControl,
+    [],
+    "these file:line evidence keys now land on a control that is not credited with their recorded " +
+      "actualResult — the key drifted onto a different handler:\n" +
+      resolvedToTheWrongControl.join("\n"),
+  );
+  assert.deepEqual(
+    repairedButStillListed,
+    [],
+    "these keys resolve again — delete them from KNOWN_UNRESOLVED_LINE_ANCHORED_EVIDENCE_KEYS " +
+      "(the list may only shrink):\n" +
+      repairedButStillListed.join("\n"),
+  );
 });

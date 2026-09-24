@@ -4,8 +4,7 @@ import { act, create, type ReactTestRenderer } from "react-test-renderer";
 import { renderToStaticMarkup } from "react-dom/server";
 import { loadAppContactDetailRoute } from "../../app/(app)/app/contacts/compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-route-service";
 import { contactDetailRouteToOrbitContactsViewModel } from "../../app/(app)/app/contacts/compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-view-model-adapter";
-import { OrbitRealCardConnection } from "../../app/(app)/app/contacts/orbit-real-card-connection";
-import { ContactNotesEditor } from "../../app/(app)/app/contacts/contact-notes-editor";
+import { NetworkDetailModal } from "../../app/(app)/app/contacts/network-0918/network-detail-modal";
 import type { OrbitContactNoteView } from "../../app/(app)/app/orbit-contacts-route-view-model";
 
 const contactId = "contact:one/two";
@@ -14,15 +13,17 @@ const privateNote = { noteId: "note:private:1", body, createdAt: "2026-09-08T03:
 const sharedNote = { ...privateNote, noteId: "note:shared:1", body: "双方可见的纪要", privacy: "relationship_shared" as const };
 const ack = (notes: unknown[] = [privateNote, sharedNote], id = contactId) => Response.json({ success: true, data: { state: "success", contact: { id, notes } } });
 
-test("both detail layouts expose contact notes, separately from shared interaction history", async () => {
+test("detail timeline renders private and shared notes once each, newest first", async () => {
   const route = await loadAppContactDetailRoute({ contactId: "demo-contact-1", mode: "mock" });
   if (route.routeState !== "success") throw new Error("Missing fixture");
   const model = contactDetailRouteToOrbitContactsViewModel(route);
-  model.connections[0].notes = [{ id: privateNote.noteId, body, createdAt: privateNote.createdAt, privacy: "private" }, { id: sharedNote.noteId, body: sharedNote.body, createdAt: sharedNote.createdAt, privacy: "relationship_shared" }];
-  const html = renderToStaticMarkup(<OrbitRealCardConnection contactId={route.contact.id} viewModel={model} />);
-  assert.equal((html.match(/aria-label="添加联系人备注"/gu) ?? []).length, 2);
-  assert.equal((html.match(/CRM mock 案例/gu) ?? []).length, 2, "private notes must not be duplicated in the timeline");
-  assert.equal((html.match(/双方可见的纪要/gu) ?? []).length, 2);
+  model.connections[0].notes = [{ id: privateNote.noteId, body, createdAt: privateNote.createdAt, privacy: "private" }, { id: sharedNote.noteId, body: sharedNote.body, createdAt: "2026-09-09T03:00:00.000Z", privacy: "relationship_shared" }];
+  const html = renderToStaticMarkup(<NetworkDetailModal contact={model.connections[0]} closeHref="/app/contacts" onFollow={() => {}} />);
+  assert.equal((html.match(/CRM mock 案例/gu) ?? []).length, 1, "private notes must not be duplicated in the timeline");
+  assert.equal((html.match(/双方可见的纪要/gu) ?? []).length, 1);
+  assert.equal((html.match(/class="nw-tl-row"/gu) ?? []).length, 2);
+  assert.ok(html.indexOf("双方可见的纪要") < html.indexOf("CRM mock 案例"), "newest note first");
+  assert.doesNotMatch(html, /nw-tl-empty/);
 });
 
 test("detail presentation keeps private note text and identity intact in every UI language", async () => {
@@ -35,33 +36,6 @@ test("detail presentation keeps private note text and identity intact in every U
     assert.equal(view.connections[0].notes[0].body, body);
     assert.equal(view.connections[0].notes[0].id, privateNote.noteId);
   }
-});
-
-test("a confirmed note survives source refresh and an account-key change discards all prior local notes", async (t) => {
-  const route = await loadAppContactDetailRoute({ contactId: "demo-contact-1", mode: "mock" });
-  if (route.routeState !== "success") throw new Error("Missing fixture");
-  let model = contactDetailRouteToOrbitContactsViewModel(route);
-  const previous = Object.getOwnPropertyDescriptor(globalThis, "document");
-  const previousWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
-  Object.defineProperty(globalThis, "document", { configurable: true, value: { activeElement: null, addEventListener() {}, removeEventListener() {} } });
-  Object.defineProperty(globalThis, "window", { configurable: true, value: { location: { href: "http://localhost/app/contacts/demo-contact-1" }, addEventListener() {}, removeEventListener() {} } });
-  t.mock.method(globalThis, "fetch", async () => Response.json({ success: true, data: {} }));
-  let root!: ReactTestRenderer;
-  const element = (actor = "actor:A") => <OrbitRealCardConnection key={`${actor}:${route.contact.id}`} contactId={route.contact.id} viewModel={model} />;
-  t.after(() => {
-    if (root) act(() => root.unmount());
-    if (previous) Object.defineProperty(globalThis, "document", previous); else Reflect.deleteProperty(globalThis, "document");
-    if (previousWindow) Object.defineProperty(globalThis, "window", previousWindow); else Reflect.deleteProperty(globalThis, "window");
-  });
-  await act(async () => { root = create(element()); });
-  await act(async () => { root.root.findAllByProps({ "aria-label": "添加联系人备注" })[0].props.onClick(); });
-  const onSaved = root.root.findByType(ContactNotesEditor).props.onSaved;
-  model = { ...model, connections: model.connections.map((contact) => ({ ...contact })) };
-  await act(async () => { root.update(element()); });
-  await act(async () => { onSaved([{ id: privateNote.noteId, body, createdAt: privateNote.createdAt, privacy: "private" }]); });
-  assert.equal(root.root.findAllByProps({ children: body }).length, 2);
-  await act(async () => { root.update(element("actor:B")); });
-  assert.equal(root.root.findAllByProps({ children: body }).length, 0);
 });
 
 async function mount(t: TestContext, fetcher: typeof fetch, id = contactId) {

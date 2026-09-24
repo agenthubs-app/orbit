@@ -1,14 +1,14 @@
 import { randomBytes } from "node:crypto";
 import { fork, type ChildProcess } from "node:child_process";
 import { access, cp, mkdir, mkdtemp, readdir, rm, symlink } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { Pool } from "pg";
 import { createRequire } from "node:module";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
-export const WEB_CWD = "/Users/xzhao/Projects/orbit/.worktrees/remote-sync-20260907/repos/orbits";
-export const APP_CWD = "/Users/xzhao/Projects/orbit/.worktrees/remote-sync-20260907/repos/orbit-app";
+export const WEB_CWD = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
+export const APP_CWD = resolve(WEB_CWD, "../orbit-app");
 export const APP_SCRIPT = `${APP_CWD}/scripts/verify-completion-runtime.ts`;
 export const DATABASE_URL = "postgresql://xzhao@127.0.0.1:5432/orbit_merge_verify_20260907_c45a";
 export const WORKSPACE_ID = "test:remote-sync-20260907";

@@ -13,6 +13,7 @@ import {
 import { createOrbitAiCalendarActionService } from "../../features/orbit-ai/calendar-action-service";
 import { createMockOrbitAgentConversationService } from "../../features/orbit-ai/mock-conversation-service";
 import { syncResult } from "../support/sync-result";
+import { iorbitChatSurfaceSource } from "./iorbit-chat-surface-source";
 
 const projectRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -79,7 +80,7 @@ test("external calendar actions remain reviewable but cannot be confirmed inside
 
   assert.match(html, /data-agent-run-id="run:external-calendar"/);
   assert.match(html, /data-agent-action-id="action:external-calendar"/);
-  assert.match(html, /在 Today 查看/);
+  assert.match(html, /在安排里查看/);
   assert.match(html, /全部安排/);
   assert.doesNotMatch(html, /确认执行/);
 });
@@ -107,8 +108,11 @@ test("to-do artifacts preserve their source link and local calendar safety bound
 
 test("/app/agent composes calendar proposals through the conversation run and action ledger", () => {
   const pageSource = readProjectFile("app/(app)/app/agent/page.tsx");
-  const agentSource = readProjectFile(
-    "app/(app)/app/agent/orbit-real-agent.tsx",
+// iOrbit 任务 6a：`orbit-real-agent.tsx` 已删除；对话面的源码断言改读
+// `iorbit-chat-surface-source.ts` 合并的那一组在售文件（内容同源，只是换了住处）。
+  const agentSource = iorbitChatSurfaceSource();
+  const chatHookSource = readProjectFile(
+    "app/(app)/app/agent/iorbit-0918/use-agent-chat.ts",
   );
   const actionSource = readProjectFile(
     "app/(app)/app/agent/agent-action-status-card.tsx",
@@ -120,10 +124,15 @@ test("/app/agent composes calendar proposals through the conversation run and ac
   assert.match(pageSource, /loadAppChatRouteViewModel/);
   assert.doesNotMatch(pageSource, /calendar-preview/);
   assert.doesNotMatch(pageSource, /app\/api\//);
-  assert.match(agentSource, /payload\.data\.actionIds/);
+  // iOrbit 任务 1b：读 actionIds 的是 hook（`use-agent-chat.ts`），渲染卡片的仍是 JSX。
+  assert.match(chatHookSource, /payload\.data\.actionIds/);
   assert.match(agentSource, /<AgentActionStatusCard/);
   assert.match(actionSource, /riskLevel !== "external"/);
-  assert.match(actionSource, /Review external action details in Today/);
+  assert.match(actionSource, /Review external action details in All arrangements/);
+  // iOrbit 合并前终审 1：回合卡上的两枚跳转都必须落在仍然存在的兄弟屏；
+  // `/today?entry=` 会被 `productHref` 送到已删除的 `/app/today`。
+  assert.match(actionSource, /\/app\/agent\/actions\?entry=/);
+  assert.doesNotMatch(actionSource, /navigate\(\s*`\/today\?/);
   assert.match(actionSource, /\/api\/agent\/ledger\//);
   assert.match(serviceDoc, /live calendar adapter/i);
   assert.match(serviceDoc, /no-side-effect default/i);

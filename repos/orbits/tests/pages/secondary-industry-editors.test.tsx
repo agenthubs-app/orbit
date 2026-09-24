@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { act, create, type ReactTestRenderer } from "react-test-renderer";
-import { OrbitRealProfile } from "../../app/(app)/app/profile/orbit-real-profile";
+// 个人中心 任务 4：渲染用例改指新屏 ProfileScreens（view="basic"，基础资料编辑屏），断言意图不变。
+import { ProfileScreens } from "../../app/(app)/app/profile/profile-0918/profile-screens";
+import type { OrbitProfileEditorViewModel } from "../../app/(app)/app/profile/profile-editor-adapter";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
-import { createStorageProfileProvider } from "../../features/profile/storage/profile-live-record-provider";
+import { createStorageProfileProvider, type LiveProfileProvider } from "../../features/profile/storage/profile-live-record-provider";
 import { createLiveProfileService } from "../../features/profile/live-service";
 import { profileServiceFactory } from "../../features/profile/service-factory";
 import { createProfileRouteHandlers } from "../../app/api/profile/handlers";
@@ -37,9 +39,27 @@ test("Web profile selects a parent and child, verifies a real actor-scoped readb
   const previousWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
   Object.defineProperty(globalThis, "window", { configurable: true, value: { addEventListener() {}, removeEventListener() {} } });
   const store = createMemoryLiveRecordStore<Record<string, unknown>>();
-  const service = createLiveProfileService({ provider: createStorageProfileProvider({ store, workspaceId: "secondary-editor" }) });
+  const storageProvider = createStorageProfileProvider({ store, workspaceId: "secondary-editor" });
+  const provider: LiveProfileProvider = {
+    ...storageProvider,
+    async withProfileMutation(input, actorId, operation) {
+      const result = await operation(storageProvider);
+      return result.success
+        ? { ...result, data: { ...result.data, mutationId: input.mutationId } }
+        : result;
+    },
+  };
+  const service = createLiveProfileService({ provider });
   const resolution = profileServiceFactory.create("mock");
   t.mock.method(profileServiceFactory, "create", () => ({ ...resolution, service }));
+  await service.updateProfile({
+    bio: "Keep this bio",
+    displayName: "Editor A",
+    homeMarket: "Legacy market",
+    industry: "Legacy raw industry",
+    primaryIndustryId: "technology_internet",
+    secondaryIndustryId: "technology_internet.ai_data",
+  }, { actorId: "editor-a" });
   const handlers = createProfileRouteHandlers({ resolveActor: async () => ({ id: "editor-a" }) });
   const writes: Record<string, unknown>[] = [];
   let failReadback = false;
@@ -52,9 +72,10 @@ test("Web profile selects a parent and child, verifies a real actor-scoped readb
   }) as typeof fetch);
   const model = { industries: [], offeringTags: [], seekingTags: [], topics: [], profile: {
     fullName: "Editor A", headline: "", company: "", title: "", industry: "Legacy raw industry", intro: "", bio: "Keep this bio", email: "", wechatName: "", lineId: "", offering: [], seeking: [], topics: [],
-  } };
+    birthDate: null, expectedUpdatedAt: null, hasPersistedProfile: false, onboarding: { policyVersion: 1 as const, status: "incomplete" as const, missingFields: [] },
+  } } satisfies OrbitProfileEditorViewModel;
   let root!: ReactTestRenderer;
-  await act(async () => { root = create(<OrbitRealProfile viewModel={model} />); });
+  await act(async () => { root = create(<ProfileScreens view="basic" viewModel={model} />); });
   t.after(() => {
     act(() => root.unmount());
     if (previousWindow) Object.defineProperty(globalThis, "window", previousWindow); else Reflect.deleteProperty(globalThis, "window");
@@ -69,12 +90,15 @@ test("Web profile selects a parent and child, verifies a real actor-scoped readb
   await submit();
   assert.equal(writes.length, 1);
   assert.equal(writes[0].secondaryIndustryId, "technology_internet.ai_data");
-  assert.equal(writes[0].industry, "Legacy raw industry");
+  assert.equal("industry" in writes[0], false);
+  assert.equal("homeMarket" in writes[0], false);
   const saved = await service.getProfile({ actorId: "editor-a" });
   assert.equal(saved.success, true);
   if (!saved.success) throw new Error("Profile read failed");
   assert.equal(saved.data.profile?.secondaryIndustryId, "technology_internet.ai_data");
   assert.equal(saved.data.profile?.bio, "Keep this bio");
+  assert.equal(saved.data.profile?.industry, "Legacy raw industry");
+  assert.equal(saved.data.profile?.homeMarket, "Legacy market");
   assert.ok(root.root.findAllByProps({ role: "status" }).length);
   await act(async () => { primary().props.onChange({ target: { value: "finance_investment" } }); });
   assert.equal(secondary().props.value, "");
@@ -86,7 +110,7 @@ test("Web profile selects a parent and child, verifies a real actor-scoped readb
   assert.ok(root.root.findAllByProps({ role: "alert" }).length);
   failReadback = false;
   await act(async () => { root.unmount(); });
-  await act(async () => { root = create(<OrbitRealProfile viewModel={model} />); });
+  await act(async () => { root = create(<ProfileScreens view="basic" viewModel={model} />); });
   assert.equal(primary().props.value, "finance_investment");
   assert.equal(secondary().props.value, "finance_investment.banking", "reopening reads the persisted IDs, not the old page projection");
   assert.equal(writes.length, 2, "reopening is read-only");

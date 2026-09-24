@@ -1,0 +1,2005 @@
+{
+  "summary": {
+    "changed_count": 267,
+    "affected_count": 9,
+    "changed_files": 10,
+    "risk_level": "high"
+  },
+  "changed_symbols": [
+    {
+      "id": "TypeAlias:repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx:AdmissionEnvelope",
+      "name": "AdmissionEnvelope",
+      "type": "TypeAlias",
+      "filePath": "repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx:AdmissionEnvelope.data",
+      "name": "data",
+      "type": "Property",
+      "filePath": "repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "TypeAlias:repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx:AdmissionApplicationReceiptExpectation",
+      "name": "AdmissionApplicationReceiptExpectation",
+      "type": "TypeAlias",
+      "filePath": "repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx:AdmissionApplicationReceiptExpectation.actorId",
+      "name": "actorId",
+      "type": "Property",
+      "filePath": "repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx:AdmissionApplicationReceiptExpectation.applicationVersion",
+      "name": "applicationVersion",
+      "type": "Property",
+      "filePath": "repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx:AdmissionApplicationReceiptExpectation.eventId",
+      "name": "eventId",
+      "type": "Property",
+      "filePath": "repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx:AdmissionApplicationReceiptExpectation.status",
+      "name": "status",
+      "type": "Property",
+      "filePath": "repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx:isAdmissionApplicationStatus",
+      "name": "isAdmissionApplicationStatus",
+      "type": "Function",
+      "filePath": "repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx:matchesAdmissionApplicationReceipt",
+      "name": "matchesAdmissionApplicationReceipt",
+      "type": "Function",
+      "filePath": "repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx:EventRegistrationWorkspace",
+      "name": "EventRegistrationWorkspace",
+      "type": "Function",
+      "filePath": "repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx:EventRegistrationWorkspace.readAdmissionApplicationReadback@293:2",
+      "name": "readAdmissionApplicationReadback",
+      "type": "Function",
+      "filePath": "repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx:EventRegistrationWorkspace.runGeneration@533:2",
+      "name": "runGeneration",
+      "type": "Function",
+      "filePath": "repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx:EventRegistrationWorkspace.cancelRegistration@865:2",
+      "name": "cancelRegistration",
+      "type": "Function",
+      "filePath": "repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/app/(app)/app/events/[id]/register/page.tsx:currentRegistrationActor",
+      "name": "currentRegistrationActor",
+      "type": "Function",
+      "filePath": "repos/orbits/app/(app)/app/events/[id]/register/page.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/app/(app)/app/events/[id]/register/page.tsx:currentRegistrationActor.actor@68:15",
+      "name": "actor",
+      "type": "Property",
+      "filePath": "repos/orbits/app/(app)/app/events/[id]/register/page.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/app/(app)/app/events/[id]/register/page.tsx:currentRegistrationActor.requestScoped@68:28",
+      "name": "requestScoped",
+      "type": "Property",
+      "filePath": "repos/orbits/app/(app)/app/events/[id]/register/page.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/app/(app)/app/events/[id]/register/page.tsx:currentRegistrationActor.actor@78:13",
+      "name": "actor",
+      "type": "Property",
+      "filePath": "repos/orbits/app/(app)/app/events/[id]/register/page.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/app/(app)/app/events/[id]/register/page.tsx:currentRegistrationActor.requestScoped@78:20",
+      "name": "requestScoped",
+      "type": "Property",
+      "filePath": "repos/orbits/app/(app)/app/events/[id]/register/page.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Const:repos/orbits/app/api/events/[id]/registration/cancel/route.ts:POST",
+      "name": "POST",
+      "type": "Const",
+      "filePath": "repos/orbits/app/api/events/[id]/registration/cancel/route.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Method:repos/orbits/app/api/events/[id]/registration/cancel/route.ts:POST.resolveActor#0",
+      "name": "resolveActor",
+      "type": "Method",
+      "filePath": "repos/orbits/app/api/events/[id]/registration/cancel/route.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Const:repos/orbits/app/api/events/[id]/registration/route.ts:handlers",
+      "name": "handlers",
+      "type": "Const",
+      "filePath": "repos/orbits/app/api/events/[id]/registration/route.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Method:repos/orbits/app/api/events/[id]/registration/route.ts:handlers.resolveActor#0",
+      "name": "resolveActor",
+      "type": "Method",
+      "filePath": "repos/orbits/app/api/events/[id]/registration/route.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Section:repos/orbits/docs/development/web-2026-09-17/W3/R-REPORT.md:L1:W3-R / R2 报名回执与身份边界",
+      "name": "W3-R / R2 报名回执与身份边界",
+      "type": "Section",
+      "filePath": "repos/orbits/docs/development/web-2026-09-17/W3/R-REPORT.md",
+      "change_type": "touched"
+    },
+    {
+      "id": "Section:repos/orbits/docs/development/web-2026-09-17/W3/R-REPORT.md:L7:根因与最终行为",
+      "name": "根因与最终行为",
+      "type": "Section",
+      "filePath": "repos/orbits/docs/development/web-2026-09-17/W3/R-REPORT.md",
+      "change_type": "touched"
+    },
+    {
+      "id": "Section:repos/orbits/docs/development/web-2026-09-17/W3/R-REPORT.md:L17:产品和测试边界",
+      "name": "产品和测试边界",
+      "type": "Section",
+      "filePath": "repos/orbits/docs/development/web-2026-09-17/W3/R-REPORT.md",
+      "change_type": "touched"
+    },
+    {
+      "id": "Section:repos/orbits/docs/development/web-2026-09-17/W3/R-REPORT.md:L23:反例与证据质量",
+      "name": "反例与证据质量",
+      "type": "Section",
+      "filePath": "repos/orbits/docs/development/web-2026-09-17/W3/R-REPORT.md",
+      "change_type": "touched"
+    },
+    {
+      "id": "Section:repos/orbits/docs/development/web-2026-09-17/W3/R-REPORT.md:L31:实际本地产品路由验证",
+      "name": "实际本地产品路由验证",
+      "type": "Section",
+      "filePath": "repos/orbits/docs/development/web-2026-09-17/W3/R-REPORT.md",
+      "change_type": "touched"
+    },
+    {
+      "id": "Section:repos/orbits/docs/development/web-2026-09-17/W3/R-REPORT.md:L46:GitNexus 与范围审阅",
+      "name": "GitNexus 与范围审阅",
+      "type": "Section",
+      "filePath": "repos/orbits/docs/development/web-2026-09-17/W3/R-REPORT.md",
+      "change_type": "touched"
+    },
+    {
+      "id": "Section:repos/orbits/docs/development/web-2026-09-17/W3/R-REPORT.md:L59:跨端与剩余边界",
+      "name": "跨端与剩余边界",
+      "type": "Section",
+      "filePath": "repos/orbits/docs/development/web-2026-09-17/W3/R-REPORT.md",
+      "change_type": "touched"
+    },
+    {
+      "id": "Section:repos/orbits/docs/development/web-2026-09-17/W3/RECOMMENDATION-DESIGN.md:L1:公开活动与本人目标匹配：后续批次提案",
+      "name": "公开活动与本人目标匹配：后续批次提案",
+      "type": "Section",
+      "filePath": "repos/orbits/docs/development/web-2026-09-17/W3/RECOMMENDATION-DESIGN.md",
+      "change_type": "touched"
+    },
+    {
+      "id": "Section:repos/orbits/docs/development/web-2026-09-17/W3/RECOMMENDATION-DESIGN.md:L7:已确认的产品边界",
+      "name": "已确认的产品边界",
+      "type": "Section",
+      "filePath": "repos/orbits/docs/development/web-2026-09-17/W3/RECOMMENDATION-DESIGN.md",
+      "change_type": "touched"
+    },
+    {
+      "id": "Section:repos/orbits/docs/development/web-2026-09-17/W3/RECOMMENDATION-DESIGN.md:L11:源码事实与复用选择",
+      "name": "源码事实与复用选择",
+      "type": "Section",
+      "filePath": "repos/orbits/docs/development/web-2026-09-17/W3/RECOMMENDATION-DESIGN.md",
+      "change_type": "touched"
+    },
+    {
+      "id": "Section:repos/orbits/docs/development/web-2026-09-17/W3/RECOMMENDATION-DESIGN.md:L21:最小服务及返回模型",
+      "name": "最小服务及返回模型",
+      "type": "Section",
+      "filePath": "repos/orbits/docs/development/web-2026-09-17/W3/RECOMMENDATION-DESIGN.md",
+      "change_type": "touched"
+    },
+    {
+      "id": "Section:repos/orbits/docs/development/web-2026-09-17/W3/RECOMMENDATION-DESIGN.md:L36:已批准的精确文件范围",
+      "name": "已批准的精确文件范围",
+      "type": "Section",
+      "filePath": "repos/orbits/docs/development/web-2026-09-17/W3/RECOMMENDATION-DESIGN.md",
+      "change_type": "touched"
+    },
+    {
+      "id": "Section:repos/orbits/docs/development/web-2026-09-17/W3/RECOMMENDATION-DESIGN.md:L50:必需验证矩阵",
+      "name": "必需验证矩阵",
+      "type": "Section",
+      "filePath": "repos/orbits/docs/development/web-2026-09-17/W3/RECOMMENDATION-DESIGN.md",
+      "change_type": "touched"
+    },
+    {
+      "id": "Const:repos/orbits/tests/api/event-registration-account-scope.test.ts:projectRoot",
+      "name": "projectRoot",
+      "type": "Const",
+      "filePath": "repos/orbits/tests/api/event-registration-account-scope.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Const:repos/orbits/tests/api/event-registration-account-scope.test.ts:testRequire",
+      "name": "testRequire",
+      "type": "Const",
+      "filePath": "repos/orbits/tests/api/event-registration-account-scope.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Const:repos/orbits/tests/api/event-registration-account-scope.test.ts:eventId",
+      "name": "eventId",
+      "type": "Const",
+      "filePath": "repos/orbits/tests/api/event-registration-account-scope.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Const:repos/orbits/tests/api/event-registration-account-scope.test.ts:canonicalActorId",
+      "name": "canonicalActorId",
+      "type": "Const",
+      "filePath": "repos/orbits/tests/api/event-registration-account-scope.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Const:repos/orbits/tests/api/event-registration-account-scope.test.ts:rawSessionActorId",
+      "name": "rawSessionActorId",
+      "type": "Const",
+      "filePath": "repos/orbits/tests/api/event-registration-account-scope.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Const:repos/orbits/tests/api/event-registration-account-scope.test.ts:signingSecret",
+      "name": "signingSecret",
+      "type": "Const",
+      "filePath": "repos/orbits/tests/api/event-registration-account-scope.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Const:repos/orbits/tests/api/event-registration-account-scope.test.ts:graph",
+      "name": "graph",
+      "type": "Const",
+      "filePath": "repos/orbits/tests/api/event-registration-account-scope.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/api/event-registration-account-scope.test.ts:graph.accounts",
+      "name": "accounts",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/api/event-registration-account-scope.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/api/event-registration-account-scope.test.ts:graph.evidenceIds",
+      "name": "evidenceIds",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/api/event-registration-account-scope.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/api/event-registration-account-scope.test.ts:graph.generatedAt",
+      "name": "generatedAt",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/api/event-registration-account-scope.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/api/event-registration-account-scope.test.ts:graph.profiles",
+      "name": "profiles",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/api/event-registration-account-scope.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Const:repos/orbits/tests/api/event-registration-account-scope.test.ts:registrationEvent",
+      "name": "registrationEvent",
+      "type": "Const",
+      "filePath": "repos/orbits/tests/api/event-registration-account-scope.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/api/event-registration-account-scope.test.ts:registrationEvent.aiProviderRequested",
+      "name": "aiProviderRequested",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/api/event-registration-account-scope.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/api/event-registration-account-scope.test.ts:registrationEvent.calendarProviderRequested",
+      "name": "calendarProviderRequested",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/api/event-registration-account-scope.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/api/event-registration-account-scope.test.ts:registrationEvent.calendarSyncRequested",
+      "name": "calendarSyncRequested",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/api/event-registration-account-scope.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/api/event-registration-account-scope.test.ts:registrationEvent.description",
+      "name": "description",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/api/event-registration-account-scope.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/api/event-registration-account-scope.test.ts:registrationEvent.emailProviderRequested",
+      "name": "emailProviderRequested",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/api/event-registration-account-scope.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/api/event-registration-account-scope.test.ts:registrationEvent.endsAt",
+      "name": "endsAt",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/api/event-registration-account-scope.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/api/event-registration-account-scope.test.ts:registrationEvent.evidence",
+      "name": "evidence",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/api/event-registration-account-scope.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/api/event-registration-account-scope.test.ts:registrationEvent.externalNetworkRequested",
+      "name": "externalNetworkRequested",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/api/event-registration-account-scope.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/api/event-registration-account-scope.test.ts:registrationEvent.id",
+      "name": "id",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/api/event-registration-account-scope.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/api/event-registration-account-scope.test.ts:registrationEvent.liveDatabaseWriteExecuted",
+      "name": "liveDatabaseWriteExecuted",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/api/event-registration-account-scope.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/api/event-registration-account-scope.test.ts:registrationEvent.nextAction",
+      "name": "nextAction",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/api/event-registration-account-scope.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/api/event-registration-account-scope.test.ts:registrationEvent.notificationDelivered",
+      "name": "notificationDelivered",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/api/event-registration-account-scope.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/api/event-registration-account-scope.test.ts:registrationEvent.organizerFeedRequested",
+      "name": "organizerFeedRequested",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/api/event-registration-account-scope.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/api/event-registration-account-scope.test.ts:registrationEvent.recommendedPreparation",
+      "name": "recommendedPreparation",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/api/event-registration-account-scope.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/api/event-registration-account-scope.test.ts:registrationEvent.relationshipContext",
+      "name": "relationshipContext",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/api/event-registration-account-scope.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/api/event-registration-account-scope.test.ts:registrationEvent.sourceMetadata",
+      "name": "sourceMetadata",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/api/event-registration-account-scope.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/api/event-registration-account-scope.test.ts:registrationEvent.startsAt",
+      "name": "startsAt",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/api/event-registration-account-scope.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/api/event-registration-account-scope.test.ts:registrationEvent.status",
+      "name": "status",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/api/event-registration-account-scope.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/api/event-registration-account-scope.test.ts:registrationEvent.title",
+      "name": "title",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/api/event-registration-account-scope.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/api/event-registration-account-scope.test.ts:registrationEvent.venue",
+      "name": "venue",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/api/event-registration-account-scope.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/api/event-registration-account-scope.test.ts:signedResponse",
+      "name": "signedResponse",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/api/event-registration-account-scope.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/api/event-registration-account-scope.test.ts:signedResponse.answer@100:4",
+      "name": "answer",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/api/event-registration-account-scope.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/api/event-registration-account-scope.test.ts:signedResponse.questionToken@101:4",
+      "name": "questionToken",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/api/event-registration-account-scope.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/api/event-registration-account-scope.test.ts:signedResponses",
+      "name": "signedResponses",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/api/event-registration-account-scope.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "TypeAlias:repos/orbits/tests/api/event-registration-account-scope.test.ts:RouteOptions",
+      "name": "RouteOptions",
+      "type": "TypeAlias",
+      "filePath": "repos/orbits/tests/api/event-registration-account-scope.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/api/event-registration-account-scope.test.ts:RouteOptions.sessionUserId",
+      "name": "sessionUserId",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/api/event-registration-account-scope.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/api/event-registration-account-scope.test.ts:loadRealRoutes",
+      "name": "loadRealRoutes",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/api/event-registration-account-scope.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/api/event-registration-account-scope.test.ts:loadRealRoutes.now@138:4",
+      "name": "now",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/api/event-registration-account-scope.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/api/event-registration-account-scope.test.ts:loadRealRoutes.cancel@142:4",
+      "name": "cancel",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/api/event-registration-account-scope.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/api/event-registration-account-scope.test.ts:loadRealRoutes.get@146:4",
+      "name": "get",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/api/event-registration-account-scope.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/api/event-registration-account-scope.test.ts:loadRealRoutes.list@150:4",
+      "name": "list",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/api/event-registration-account-scope.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/api/event-registration-account-scope.test.ts:loadRealRoutes.register@154:4",
+      "name": "register",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/api/event-registration-account-scope.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/api/event-registration-account-scope.test.ts:loadRealRoutes.auth@162:6",
+      "name": "auth",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/api/event-registration-account-scope.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/api/event-registration-account-scope.test.ts:loadRealRoutes.auth@162:12.user@165:10",
+      "name": "user",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/api/event-registration-account-scope.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/api/event-registration-account-scope.test.ts:loadRealRoutes.createConfiguredStorageAccountSessionProvider@174:6",
+      "name": "createConfiguredStorageAccountSessionProvider",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/api/event-registration-account-scope.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/api/event-registration-account-scope.test.ts:loadRealRoutes.createConfiguredStorageAccountSessionProvider@174:53.readAccountSessionGraph@175:8",
+      "name": "readAccountSessionGraph",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/api/event-registration-account-scope.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/api/event-registration-account-scope.test.ts:loadRealRoutes.resolveLiveDatabaseConnectionConfig@182:6",
+      "name": "resolveLiveDatabaseConnectionConfig",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/api/event-registration-account-scope.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/api/event-registration-account-scope.test.ts:loadRealRoutes.loadEventForRegistration@187:6",
+      "name": "loadEventForRegistration",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/api/event-registration-account-scope.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/api/event-registration-account-scope.test.ts:loadRealRoutes.readRuntimeEventRegistrationWindow@194:6",
+      "name": "readRuntimeEventRegistrationWindow",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/api/event-registration-account-scope.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/api/event-registration-account-scope.test.ts:loadRealRoutes.readRuntimeEventRegistrationWindow@194:42.availability@196:17",
+      "name": "availability",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/api/event-registration-account-scope.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/api/event-registration-account-scope.test.ts:loadRealRoutes.resolveConfiguredEventAdmissionRegistrationControl@200:6",
+      "name": "resolveConfiguredEventAdmissionRegistrationControl",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/api/event-registration-account-scope.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/api/event-registration-account-scope.test.ts:loadRealRoutes.resolveConfiguredEventAdmissionRegistrationState@204:6",
+      "name": "resolveConfiguredEventAdmissionRegistrationState",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/api/event-registration-account-scope.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/api/event-registration-account-scope.test.ts:loadRealRoutes.resolveConfiguredEventAdmissionRegistrationState@204:56.state@206:17",
+      "name": "state",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/api/event-registration-account-scope.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/api/event-registration-account-scope.test.ts:loadRealRoutes.createConfiguredEventExperienceService@210:6",
+      "name": "createConfiguredEventExperienceService",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/api/event-registration-account-scope.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/api/event-registration-account-scope.test.ts:loadRealRoutes.createConfiguredEventExperienceService@210:46.getPublishedQuestionSet@211:8",
+      "name": "getPublishedQuestionSet",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/api/event-registration-account-scope.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/api/event-registration-account-scope.test.ts:loadRealRoutes.generateEventRegistrationQuestions@215:6",
+      "name": "generateEventRegistrationQuestions",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/api/event-registration-account-scope.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/api/event-registration-account-scope.test.ts:loadRealRoutes.calls@291:11",
+      "name": "calls",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/api/event-registration-account-scope.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/api/event-registration-account-scope.test.ts:loadRealRoutes.cancel@291:18",
+      "name": "cancel",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/api/event-registration-account-scope.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/api/event-registration-account-scope.test.ts:loadRealRoutes.context@291:26",
+      "name": "context",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/api/event-registration-account-scope.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/api/event-registration-account-scope.test.ts:loadRealRoutes.registration@291:81",
+      "name": "registration",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/api/event-registration-account-scope.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/api/event-registration-account-scope.test.ts:loadRealRoutes.serviceInputs@291:95",
+      "name": "serviceInputs",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/api/event-registration-account-scope.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/api/event-registration-account-scope.test.ts:fn@420:103.now@422:4",
+      "name": "now",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/api/event-registration-account-scope.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Const:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:projectRoot",
+      "name": "projectRoot",
+      "type": "Const",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Const:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:testRequire",
+      "name": "testRequire",
+      "type": "Const",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Const:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:eventId",
+      "name": "eventId",
+      "type": "Const",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Const:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:graph",
+      "name": "graph",
+      "type": "Const",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:graph.accounts",
+      "name": "accounts",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:graph.evidenceIds",
+      "name": "evidenceIds",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:graph.generatedAt",
+      "name": "generatedAt",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:graph.profiles",
+      "name": "profiles",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Const:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:actualActorModule",
+      "name": "actualActorModule",
+      "type": "Const",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Const:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:resolveActorIdentity",
+      "name": "resolveActorIdentity",
+      "type": "Const",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:fixtureEvent",
+      "name": "fixtureEvent",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:fixtureEvent.code@55:4",
+      "name": "code",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:fixtureEvent.description@56:4",
+      "name": "description",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:fixtureEvent.endsAt@57:4",
+      "name": "endsAt",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:fixtureEvent.evidence@58:4",
+      "name": "evidence",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:fixtureEvent.id@59:4",
+      "name": "id",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:fixtureEvent.liveDatabaseWriteExecuted@60:4",
+      "name": "liveDatabaseWriteExecuted",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:fixtureEvent.sourceMetadata@61:4",
+      "name": "sourceMetadata",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:fixtureEvent.startsAt@66:4",
+      "name": "startsAt",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:fixtureEvent.status@67:4",
+      "name": "status",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:fixtureEvent.title@68:4",
+      "name": "title",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:fixtureEvent.venue@69:4",
+      "name": "venue",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:fixtureApplication",
+      "name": "fixtureApplication",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:fixtureApplication.actorId@75:4",
+      "name": "actorId",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:fixtureApplication.applicationVersion@76:4",
+      "name": "applicationVersion",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:fixtureApplication.decidedAt@77:4",
+      "name": "decidedAt",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:fixtureApplication.decisionActorId@78:4",
+      "name": "decisionActorId",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:fixtureApplication.eventId@79:4",
+      "name": "eventId",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:fixtureApplication.policyVersion@80:4",
+      "name": "policyVersion",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:fixtureApplication.profilePayload@81:4",
+      "name": "profilePayload",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:fixtureApplication.status@82:4",
+      "name": "status",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:fixtureApplication.submittedAt@83:4",
+      "name": "submittedAt",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:fixtureApplication.updatedAt@84:4",
+      "name": "updatedAt",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:fixturePolicy",
+      "name": "fixturePolicy",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:fixturePolicy.admissionMode@90:4",
+      "name": "admissionMode",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:fixturePolicy.capacity@91:4",
+      "name": "capacity",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:fixturePolicy.eventId@92:4",
+      "name": "eventId",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:fixturePolicy.policyVersion@93:4",
+      "name": "policyVersion",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:fixturePolicy.profileEditDeadlineAt@94:4",
+      "name": "profileEditDeadlineAt",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:fixturePolicy.registrationClosesAt@95:4",
+      "name": "registrationClosesAt",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:fixturePolicy.registrationOpensAt@96:4",
+      "name": "registrationOpensAt",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:fixturePolicy.updatedAt@97:4",
+      "name": "updatedAt",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:fixturePolicy.waitlistEnabled@98:4",
+      "name": "waitlistEnabled",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "TypeAlias:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:RegistrationPageOptions",
+      "name": "RegistrationPageOptions",
+      "type": "TypeAlias",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:RegistrationPageOptions.admissionControlled",
+      "name": "admissionControlled",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:RegistrationPageOptions.outsideRequestScope",
+      "name": "outsideRequestScope",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:RegistrationPageOptions.signedIn",
+      "name": "signedIn",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:RegistrationPageOptions.sessionUserId",
+      "name": "sessionUserId",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:loadRegistrationPage",
+      "name": "loadRegistrationPage",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:loadRegistrationPage.Workspace@115:2",
+      "name": "Workspace",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:loadRegistrationPage.redirect@119:6",
+      "name": "redirect",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:loadRegistrationPage.auth@125:6",
+      "name": "auth",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:loadRegistrationPage.auth@125:12.user@132:10",
+      "name": "user",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:loadRegistrationPage.resolveAuthenticatedApiActorFromSession@141:6",
+      "name": "resolveAuthenticatedApiActorFromSession",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:loadRegistrationPage.normalizeOrbitLanguage@156:6",
+      "name": "normalizeOrbitLanguage",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:loadRegistrationPage.getOrbitServerLanguage@160:6",
+      "name": "getOrbitServerLanguage",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:loadRegistrationPage.localizeOrbitTree@164:6",
+      "name": "localizeOrbitTree",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:loadRegistrationPage.eventTitleForId@167:6",
+      "name": "eventTitleForId",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:loadRegistrationPage.OrbitReferenceStyles@170:6",
+      "name": "OrbitReferenceStyles",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:loadRegistrationPage.OrbitVisualFreezeRuntime@173:6",
+      "name": "OrbitVisualFreezeRuntime",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:loadRegistrationPage.StateView@176:6",
+      "name": "StateView",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:loadRegistrationPage.loadEventForRegistration@179:6",
+      "name": "loadEventForRegistration",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:loadRegistrationPage.localizedEventTitle@183:6",
+      "name": "localizedEventTitle",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:loadRegistrationPage.bilingualSegment@186:6",
+      "name": "bilingualSegment",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:loadRegistrationPage.generateEventRegistrationQuestions@189:6",
+      "name": "generateEventRegistrationQuestions",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:loadRegistrationPage.generateEventRegistrationQuestions@189:42.provenance@193:12",
+      "name": "provenance",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:loadRegistrationPage.generateEventRegistrationQuestions@189:42.questions@201:12",
+      "name": "questions",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:loadRegistrationPage.generateEventRegistrationQuestions@189:42.provenance@214:10",
+      "name": "provenance",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:loadRegistrationPage.generateEventRegistrationQuestions@189:42.questions@222:10",
+      "name": "questions",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:loadRegistrationPage.get@228:8",
+      "name": "get",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:loadRegistrationPage.readRuntimeEventRegistrationWindow@233:6",
+      "name": "readRuntimeEventRegistrationWindow",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:loadRegistrationPage.readRuntimeEventRegistrationWindow@233:42.availability@235:17",
+      "name": "availability",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:loadRegistrationPage.resolveEventRegistrationEligibility@239:6",
+      "name": "resolveEventRegistrationEligibility",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:loadRegistrationPage.createConfiguredEventAdmissionJourneyService@245:6",
+      "name": "createConfiguredEventAdmissionJourneyService",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:loadRegistrationPage.createConfiguredEventAdmissionJourneyService@245:52.getState@246:8",
+      "name": "getState",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:loadRegistrationPage.createConfiguredEventAdmissionJourneyService@245:52.getState@246:18.admissionControlled@249:12",
+      "name": "admissionControlled",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:loadRegistrationPage.createConfiguredEventAdmissionJourneyService@245:52.getState@246:18.application@250:12",
+      "name": "application",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:loadRegistrationPage.createConfiguredEventAdmissionJourneyService@245:52.getState@246:18.eventId@253:12",
+      "name": "eventId",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:loadRegistrationPage.createConfiguredEventAdmissionJourneyService@245:52.getState@246:18.policy@254:12",
+      "name": "policy",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:loadRegistrationPage.signAdaptiveInterviewQuestion@260:6",
+      "name": "signAdaptiveInterviewQuestion",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:loadRegistrationPage.createProfileService@277:6",
+      "name": "createProfileService",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:loadRegistrationPage.createProfileService@277:28.getProfile@278:8",
+      "name": "getProfile",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:loadRegistrationPage.createProfileService@277:28.getProfile@278:20.data@281:12",
+      "name": "data",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:loadRegistrationPage.createProfileService@277:28.getProfile@278:20.success@282:12",
+      "name": "success",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:loadRegistrationPage.eventRegistrationReturnPath@291:6",
+      "name": "eventRegistrationReturnPath",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:loadRegistrationPage.workspaceElement@324:2",
+      "name": "workspaceElement",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:loadRegistrationPage.calls@334:11",
+      "name": "calls",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:loadRegistrationPage.page@334:18",
+      "name": "page",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:loadRegistrationPage.redirected@334:24",
+      "name": "redirected",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx:loadRegistrationPage.workspaceElement@334:36",
+      "name": "workspaceElement",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/app-event-registration-account-scope.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Const:repos/orbits/tests/pages/event-registration-readback.test.tsx:EVENT_ID",
+      "name": "EVENT_ID",
+      "type": "Const",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Const:repos/orbits/tests/pages/event-registration-readback.test.tsx:ACTOR_ID",
+      "name": "ACTOR_ID",
+      "type": "Const",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Const:repos/orbits/tests/pages/event-registration-readback.test.tsx:RAW_SESSION_ACTOR_ID",
+      "name": "RAW_SESSION_ACTOR_ID",
+      "type": "Const",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Const:repos/orbits/tests/pages/event-registration-readback.test.tsx:ACCOUNT_SESSION_GRAPH",
+      "name": "ACCOUNT_SESSION_GRAPH",
+      "type": "Const",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/event-registration-readback.test.tsx:ACCOUNT_SESSION_GRAPH.accounts",
+      "name": "accounts",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/event-registration-readback.test.tsx:ACCOUNT_SESSION_GRAPH.evidenceIds",
+      "name": "evidenceIds",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/event-registration-readback.test.tsx:ACCOUNT_SESSION_GRAPH.generatedAt",
+      "name": "generatedAt",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/event-registration-readback.test.tsx:ACCOUNT_SESSION_GRAPH.profiles",
+      "name": "profiles",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Const:repos/orbits/tests/pages/event-registration-readback.test.tsx:CANONICAL_ACTOR_ID",
+      "name": "CANONICAL_ACTOR_ID",
+      "type": "Const",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/event-registration-readback.test.tsx:signedQuestion",
+      "name": "signedQuestion",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/event-registration-readback.test.tsx:signedQuestion.question@69:4",
+      "name": "question",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/event-registration-readback.test.tsx:signedQuestion.questionToken@81:4",
+      "name": "questionToken",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/event-registration-readback.test.tsx:application",
+      "name": "application",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/event-registration-readback.test.tsx:application.actorId@87:4",
+      "name": "actorId",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/event-registration-readback.test.tsx:application.applicationVersion@88:4",
+      "name": "applicationVersion",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/event-registration-readback.test.tsx:application.decidedAt@89:4",
+      "name": "decidedAt",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/event-registration-readback.test.tsx:application.decisionActorId@90:4",
+      "name": "decisionActorId",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/event-registration-readback.test.tsx:application.eventId@91:4",
+      "name": "eventId",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/event-registration-readback.test.tsx:application.policyVersion@92:4",
+      "name": "policyVersion",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/event-registration-readback.test.tsx:application.profilePayload@93:4",
+      "name": "profilePayload",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/event-registration-readback.test.tsx:application.status@94:4",
+      "name": "status",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/event-registration-readback.test.tsx:application.submittedAt@95:4",
+      "name": "submittedAt",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/event-registration-readback.test.tsx:application.updatedAt@96:4",
+      "name": "updatedAt",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "TypeAlias:repos/orbits/tests/pages/event-registration-readback.test.tsx:PendingRequest",
+      "name": "PendingRequest",
+      "type": "TypeAlias",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/event-registration-readback.test.tsx:PendingRequest.init",
+      "name": "init",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/event-registration-readback.test.tsx:PendingRequest.path",
+      "name": "path",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/event-registration-readback.test.tsx:PendingRequest.reject",
+      "name": "reject",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/event-registration-readback.test.tsx:PendingRequest.resolve",
+      "name": "resolve",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/event-registration-readback.test.tsx:installWindow",
+      "name": "installWindow",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Method:repos/orbits/tests/pages/event-registration-readback.test.tsx:installWindow.addEventListener@113:6#0",
+      "name": "addEventListener",
+      "type": "Method",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Method:repos/orbits/tests/pages/event-registration-readback.test.tsx:installWindow.clearInterval@114:6#0",
+      "name": "clearInterval",
+      "type": "Method",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/event-registration-readback.test.tsx:installWindow.getItem@115:22",
+      "name": "getItem",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Method:repos/orbits/tests/pages/event-registration-readback.test.tsx:installWindow.removeItem@115:43#0",
+      "name": "removeItem",
+      "type": "Method",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Method:repos/orbits/tests/pages/event-registration-readback.test.tsx:installWindow.setItem@115:60#0",
+      "name": "setItem",
+      "type": "Method",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Method:repos/orbits/tests/pages/event-registration-readback.test.tsx:installWindow.removeEventListener@116:6#0",
+      "name": "removeEventListener",
+      "type": "Method",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/event-registration-readback.test.tsx:installWindow.setInterval@117:6",
+      "name": "setInterval",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Method:repos/orbits/tests/pages/event-registration-readback.test.tsx:installWindow.setTimeout@118:6#1",
+      "name": "setTimeout",
+      "type": "Method",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/event-registration-readback.test.tsx:restoreWindow",
+      "name": "restoreWindow",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/event-registration-readback.test.tsx:admissionScreen",
+      "name": "admissionScreen",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "TypeAlias:repos/orbits/tests/pages/event-registration-readback.test.tsx:LegacyReceipt",
+      "name": "LegacyReceipt",
+      "type": "TypeAlias",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/event-registration-readback.test.tsx:legacyRegistration",
+      "name": "legacyRegistration",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/event-registration-readback.test.tsx:legacyRegistration.cancelledAt@186:4",
+      "name": "cancelledAt",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/event-registration-readback.test.tsx:legacyRegistration.eventId@187:4",
+      "name": "eventId",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/event-registration-readback.test.tsx:legacyRegistration.id@188:4",
+      "name": "id",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/event-registration-readback.test.tsx:legacyRegistration.participantProfile@189:4",
+      "name": "participantProfile",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/event-registration-readback.test.tsx:legacyRegistration.participantProfileId@197:4",
+      "name": "participantProfileId",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/event-registration-readback.test.tsx:legacyRegistration.reactivatedAt@198:4",
+      "name": "reactivatedAt",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/event-registration-readback.test.tsx:legacyRegistration.registeredAt@199:4",
+      "name": "registeredAt",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/event-registration-readback.test.tsx:legacyRegistration.sideEffects@200:4",
+      "name": "sideEffects",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/event-registration-readback.test.tsx:legacyRegistration.status@208:4",
+      "name": "status",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/event-registration-readback.test.tsx:legacyRegistration.updatedAt@209:4",
+      "name": "updatedAt",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/event-registration-readback.test.tsx:legacyRegistration.userId@210:4",
+      "name": "userId",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/event-registration-readback.test.tsx:legacyRegistration.mutationReceipt@211:4",
+      "name": "mutationReceipt",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/event-registration-readback.test.tsx:legacyScreen",
+      "name": "legacyScreen",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/event-registration-readback.test.tsx:button",
+      "name": "button",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/event-registration-readback.test.tsx:completeCoreAnswers",
+      "name": "completeCoreAnswers",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/event-registration-readback.test.tsx:personaResponse",
+      "name": "personaResponse",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/event-registration-readback.test.tsx:fn@412:95.respond@417:6",
+      "name": "respond",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/event-registration-readback.test.tsx:fn@412:95.respond@421:6",
+      "name": "respond",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/event-registration-readback.test.tsx:fn@412:95.respond@425:6",
+      "name": "respond",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/event-registration-readback.test.tsx:fn@412:95.respond@429:6",
+      "name": "respond",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/event-registration-readback.test.tsx:fn@412:95.respond@433:6",
+      "name": "respond",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Method:repos/orbits/tests/pages/event-registration-readback.test.tsx:fn@482:111.addEventListener@490:6#0",
+      "name": "addEventListener",
+      "type": "Method",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Method:repos/orbits/tests/pages/event-registration-readback.test.tsx:fn@482:111.clearInterval@491:6#0",
+      "name": "clearInterval",
+      "type": "Method",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/event-registration-readback.test.tsx:fn@482:111.getItem@492:22",
+      "name": "getItem",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Method:repos/orbits/tests/pages/event-registration-readback.test.tsx:fn@482:111.removeItem@492:43#0",
+      "name": "removeItem",
+      "type": "Method",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Method:repos/orbits/tests/pages/event-registration-readback.test.tsx:fn@482:111.setItem@492:60#0",
+      "name": "setItem",
+      "type": "Method",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Method:repos/orbits/tests/pages/event-registration-readback.test.tsx:fn@482:111.removeEventListener@493:6#0",
+      "name": "removeEventListener",
+      "type": "Method",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/event-registration-readback.test.tsx:fn@482:111.setInterval@494:6",
+      "name": "setInterval",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/event-registration-readback.test.tsx:fn@482:111.button@525:4",
+      "name": "button",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/event-registration-readback.test.tsx:fn@924:98.respond@929:6",
+      "name": "respond",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/event-registration-readback.test.tsx:fn@924:98.respond@933:6",
+      "name": "respond",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/event-registration-readback.test.tsx:fn@924:98.respond@937:6",
+      "name": "respond",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/event-registration-readback.test.tsx:fn@924:98.respond@941:6",
+      "name": "respond",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/event-registration-readback.test.tsx:fn@924:98.respond@945:6",
+      "name": "respond",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/event-registration-readback.test.tsx:fn@924:98.respond@949:6",
+      "name": "respond",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/event-registration-readback.test.tsx:fn@924:98.respond@953:6",
+      "name": "respond",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/event-registration-readback.test.tsx:fn@924:98.respond@957:6",
+      "name": "respond",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/event-registration-readback.test.tsx",
+      "change_type": "touched"
+    }
+  ],
+  "affected_processes": [
+    {
+      "id": "proc_68_rungeneration",
+      "name": "RunGeneration → IsAdmissionApplicationStatus",
+      "process_type": "cross_community",
+      "step_count": 4,
+      "changed_steps": [
+        {
+          "symbol": "runGeneration",
+          "step": 1
+        },
+        {
+          "symbol": "readAdmissionApplicationReadback",
+          "step": 2
+        },
+        {
+          "symbol": "matchesAdmissionApplicationReceipt",
+          "step": 3
+        },
+        {
+          "symbol": "isAdmissionApplicationStatus",
+          "step": 4
+        }
+      ]
+    },
+    {
+      "id": "proc_120_rungeneration",
+      "name": "RunGeneration → Copy",
+      "process_type": "cross_community",
+      "step_count": 3,
+      "changed_steps": [
+        {
+          "symbol": "runGeneration",
+          "step": 1
+        },
+        {
+          "symbol": "readAdmissionApplicationReadback",
+          "step": 2
+        }
+      ]
+    },
+    {
+      "id": "proc_184_appeventregistration",
+      "name": "AppEventRegistrationGuidePage → UnexpectedNavigation",
+      "process_type": "cross_community",
+      "step_count": 7,
+      "changed_steps": [
+        {
+          "symbol": "currentRegistrationActor",
+          "step": 2
+        }
+      ]
+    },
+    {
+      "id": "proc_185_appeventregistration",
+      "name": "AppEventRegistrationGuidePage → ReadEnv",
+      "process_type": "cross_community",
+      "step_count": 7,
+      "changed_steps": [
+        {
+          "symbol": "currentRegistrationActor",
+          "step": 2
+        }
+      ]
+    },
+    {
+      "id": "proc_188_appeventregistration",
+      "name": "AppEventRegistrationGuidePage → CreateReadDedupedLiveRecordStore",
+      "process_type": "cross_community",
+      "step_count": 6,
+      "changed_steps": [
+        {
+          "symbol": "currentRegistrationActor",
+          "step": 2
+        }
+      ]
+    },
+    {
+      "id": "proc_189_appeventregistration",
+      "name": "AppEventRegistrationGuidePage → CreatePostgresLiveRecordStore",
+      "process_type": "cross_community",
+      "step_count": 6,
+      "changed_steps": [
+        {
+          "symbol": "currentRegistrationActor",
+          "step": 2
+        }
+      ]
+    },
+    {
+      "id": "proc_199_appeventregistration",
+      "name": "AppEventRegistrationGuidePage → CreateStorageAccountSessionProvider",
+      "process_type": "cross_community",
+      "step_count": 5,
+      "changed_steps": [
+        {
+          "symbol": "currentRegistrationActor",
+          "step": 2
+        }
+      ]
+    },
+    {
+      "id": "proc_208_appeventregistration",
+      "name": "AppEventRegistrationGuidePage → ReadAccountSessionGraph",
+      "process_type": "cross_community",
+      "step_count": 4,
+      "changed_steps": [
+        {
+          "symbol": "currentRegistrationActor",
+          "step": 2
+        }
+      ]
+    },
+    {
+      "id": "proc_538_appeventregistration",
+      "name": "AppEventRegistrationGuidePage → IsFeatureMode",
+      "process_type": "cross_community",
+      "step_count": 5,
+      "changed_steps": [
+        {
+          "symbol": "currentRegistrationActor",
+          "step": 2
+        }
+      ]
+    }
+  ]
+}

@@ -685,24 +685,36 @@ test("default Orbit Agent API resolves Aoba relationship context for product dee
 
 test("/app/agent keeps technical provenance out of the user conversation", () => {
   const pageSource = source("app/(app)/app/agent/page.tsx");
-  const agentSource = source("app/(app)/app/agent/orbit-real-agent.tsx");
+  // iOrbit 任务 6a：`orbit-real-agent.tsx` 已删除。对话面今天分三个文件：
+  // 壳（作用域 / 顶栏 / 视觉隐藏 h1）、对话屏（回合 JSX）、富组件（结果 .panel）。
+  const shellSource = source("app/(app)/app/agent/iorbit-0918/iorbit-shell.tsx");
+  const chatSource = source("app/(app)/app/agent/iorbit-0918/iorbit-chat.tsx");
+  const richSource = source(
+    "app/(app)/app/agent/iorbit-0918/iorbit-rich-components.tsx",
+  );
+  const agentSource = [shellSource, chatSource, richSource].join("\n");
 
-  assert.match(agentSource, /data-orbit-agent-screen-title/);
-  assert.match(agentSource, /<h1/);
-  assert.match(agentSource, /<AccountTopNav active="agent"/);
+  assert.match(shellSource, /data-orbit-agent-screen-title/);
+  assert.match(shellSource, /<h1/);
+  assert.match(shellSource, /<AccountTopNav active="agent"/);
   assert.doesNotMatch(agentSource, /function AgentTopNav/);
   assert.doesNotMatch(agentSource, /function AgentEvidenceSources/);
   assert.doesNotMatch(agentSource, /data-agent-evidence-sources/);
-  assert.match(agentSource, /minWidth:\s*0/);
   // 工作台改版后固定 444px 的结果侧栏没有了，结果改为内联 .panel 渲染
   // （AgentPeopleRow / AgentEventRow / AgentTodoRow）。这里改盯这个容器，
-  // 保证结果仍有专属承载区；聊天历史侧栏仍独立夹取并可拖拽。
-  assert.match(agentSource, /className="panel-body"/);
-  assert.match(agentSource, /HISTORY_SIDEBAR_MAX_WIDTH/);
-  assert.match(agentSource, /cursor: "col-resize"/);
+  // 保证结果仍有专属承载区。
+  assert.match(richSource, /className="panel-body"/);
+  // 任务 4：常驻历史侧栏与拖拽宽度是本计划唯一的能力移除（设计 786–804 无侧栏），
+  // 因此这里改断它**不会**回流，而不是断 resize 常量还在。
+  assert.doesNotMatch(agentSource, /HISTORY_SIDEBAR_MAX_WIDTH/);
+  assert.doesNotMatch(agentSource, /cursor: "col-resize"/);
   assert.doesNotMatch(agentSource, /<AgentOutcomeFeedback/);
-  assert.match(agentSource, /showRunDetails={false}/);
+  assert.match(chatSource, /showRunDetails={false}/);
   assert.doesNotMatch(agentSource, /data-agent-run-details/);
-  assert.match(agentSource, /evidenceRefsFromArtifacts/);
+  // iOrbit 任务 1b：artifact→证据的纯函数搬到 `iorbit-0918/iorbit-model.ts`。
+  assert.match(
+    source("app/(app)/app/agent/iorbit-0918/iorbit-model.ts"),
+    /evidenceRefsFromArtifacts/,
+  );
   assert.match(pageSource, /data-orbit-route="app-agent-route"/);
 });

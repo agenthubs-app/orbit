@@ -25,7 +25,7 @@ async function harness() {
   const providers = new Map<string, ReturnType<typeof createStorageOrbitAgentChatSessionProvider>>();
   const requests = new Map<string, ReturnType<typeof createMemoryOrbitAgentChatRequestStore>>();
   const fixture = {
-    subject: "profile:a", graph, store, calls: 0, actors: [] as string[], providerBodies: [] as string[],
+    subject: "profile:a", graph, store, calls: 0, taskPersistenceCalls: 0, actors: [] as string[], providerBodies: [] as string[],
     provider(actorId: string) {
       let provider = providers.get(actorId);
       if (!provider) {
@@ -69,6 +69,11 @@ async function harness() {
     stdin: { contents: `export { POST } from './app/api/ai/conversations/route'; export { createOrbitAgentChatSessionsHandlers } from './app/api/ai/conversations/sessions/handler'; export { createOrbitAgentChatSessionHandlers } from './app/api/ai/conversations/sessions/[id]/handler';`, resolveDir: root, loader: "ts" },
     bundle: true, platform: "node", format: "cjs", packages: "external", write: false,
     plugins: [{ name: "isolated-readback-boundaries", setup(plugin) {
+      plugin.onResolve({ filter: /transactional-postgres$/ }, args => {
+        const importer = args.importer.slice(root.length + 1);
+        if (["features/tasks/service-factory.ts", "features/notifications/reminder-plan-service-factory.ts"].includes(importer)) return { path: "readback-task-transaction-boundary", namespace: "readback-transaction" };
+      });
+      plugin.onLoad({ filter: /.*/, namespace: "readback-transaction" }, () => ({ contents: prefix + "export function createConfiguredTransactionalPostgresRuntime() { return { workspaceId: 'workspace:readback', client: { async query() { f.taskPersistenceCalls++; throw new Error('Unexpected task SQL'); }, async transaction() { f.taskPersistenceCalls++; throw new Error('Unexpected task transaction'); }, async close() {} } }; }", loader: "ts" }));
       plugin.onLoad({ filter: /\.ts$/ }, args => {
         const source = shims[args.path.slice(root.length + 1)];
         return source ? { contents: prefix + source, loader: "ts" } : undefined;
@@ -104,6 +109,7 @@ test("reliable continuation supplies persisted prior turns even when the client 
     const continued = await h.POST(request({ ...input, clientMessageId: "message:second", requestId: "request:second", expectedMessageRevision: 2, message: "继续讨论" }));
     assert.equal(continued.status, 200);
     assert.equal(h.fixture.calls, 2);
+    assert.equal(h.fixture.taskPersistenceCalls, 0);
     assert.ok(h.fixture.providerBodies[1].includes(input.message), "continuation must read previous user content from its real session store");
     assert.ok(h.fixture.providerBodies[1].includes("确定性回答"), "continuation must include the persisted assistant turn");
   } finally {
@@ -136,6 +142,7 @@ test("conversation POST receipt opens through the canonical actor session GET an
     const replay = await h.POST(request());
     assert.equal((await replay.json()).data.reliableSend.replayed, true);
     assert.equal(h.fixture.calls, 1);
+    assert.equal(h.fixture.taskPersistenceCalls, 0);
     assert.deepEqual(h.fixture.actors, ["account:a", "account:a"]);
     h.fixture.subject = "profile:b";
     const foreign = await h.createOrbitAgentChatSessionHandlers().GET(new Request("https://orbit.local"), { params: Promise.resolve({ id: input.sessionId }) });
@@ -158,6 +165,7 @@ test("conversation POST rejects an authenticated subject without account members
     ));
     assert.equal(sent.status, 401);
     assert.equal(h.fixture.calls, 0);
+    assert.equal(h.fixture.taskPersistenceCalls, 0);
     assert.deepEqual(await h.fixture.provider("profile:unknown").listSessions(), []);
   } finally {
     if (previous === undefined) delete process.env.ORBIT_MODULE_MODE; else process.env.ORBIT_MODULE_MODE = previous;

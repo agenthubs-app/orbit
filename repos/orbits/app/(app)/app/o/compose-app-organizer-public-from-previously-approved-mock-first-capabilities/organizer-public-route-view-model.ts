@@ -9,9 +9,11 @@ import { canonicalPublicOrganizerLabel } from "../../../../../features/events/co
 import type { OrbitLanguage } from "../../orbit-language-core";
 import {
   getOrbitLandingEventView,
-  type OrbitLandingEventView,
 } from "../../orbit-landing-route-view-model";
-import type { OrbitOrganizerPublicViewModel } from "../../orbit-organizer-route-view-model";
+import type {
+  OrbitOrganizerEventView,
+  OrbitOrganizerPublicViewModel,
+} from "../../orbit-organizer-route-view-model";
 
 export interface AppOrganizerPublicRouteInput {
   slug: string;
@@ -318,7 +320,7 @@ function canonicalOrganizerViewModel(input: {
   }
 
   const name = canonicalPublicOrganizerLabel(ownerId);
-  const organizerEvents: OrbitLandingEventView[] = ownerEvents.map((event) => {
+  const organizerEvents: OrbitOrganizerEventView[] = ownerEvents.map((event) => {
     const view = getOrbitLandingEventView({
       event: event.event,
       evidenceSummary:
@@ -333,6 +335,7 @@ function canonicalOrganizerViewModel(input: {
       ...view,
       host: name,
       organizer: name,
+      participantCount: event.participantCount,
       stats: {
         ...view.stats,
         attendees: [],

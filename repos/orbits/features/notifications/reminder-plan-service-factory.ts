@@ -1,48 +1,41 @@
 import { createConfiguredPostgresLiveRecordStore } from "../../shared/storage/configured-live-record-store";
+import { createPostgresLiveRecordStore } from "../../shared/storage/postgres-live-record-store";
 import { createReminderPlanRepository } from "./reminder-plan-repository";
 import { createReminderPlanService, type ReminderTargetAuthorizer } from "./reminder-plan-service";
 import { createReminderPushDeviceGateway } from "./push-device-reminder-adapter";
 import { createPushDeviceService } from "./push-device-service";
-import {createConfiguredTransactionalPostgresRuntime} from '../../shared/storage/transactional-postgres';
+import { createConfiguredTransactionalPostgresRuntime } from '../../shared/storage/transactional-postgres';
 import type { LiveRecordStoreLike } from '../../shared/storage/live-record-store';
 import type { ReminderTargetType } from './reminder-plan-contract';
-import { createPersonalScheduleService } from '../personal-schedule/service';
+import { assertCanonicalReminderTargetOwned, type CanonicalReminderWakePublisher } from "./canonical-reminder-wake";
+import { createCanonicalReminderCommandService, type CanonicalReminderCommandRuntime } from "./canonical-reminder-command-transaction";
+import type { LiveDatabaseEnv } from "../../shared/storage/live-database-config";
 
 export async function assertReminderTargetOwned(input: { store: LiveRecordStoreLike; workspaceId: string; actorId: string; targetId: string; targetType: ReminderTargetType }) {
-  if(input.targetType==='schedule_item'&&input.targetId.includes(':occurrence:')) {
-    if(!/^.+:occurrence:\d{4}-\d{2}-\d{2}$/.test(input.targetId))throw new Error('target not owned');
-    // Authority reads only: no configured runtime/new connection, lock, plan
-    // refresh or mutation is entered while checking ownership.
-    const item=await createPersonalScheduleService({store:input.store,workspaceId:input.workspaceId}).get({actorId:input.actorId,id:input.targetId});
-    if(item.state==='cancelled')throw new Error('target not owned');
-    return;
-  }
-  const candidates = new Set([input.targetId]);
-  if (input.targetType === "schedule_item" && input.targetId.startsWith("schedule:")) candidates.add(input.targetId.slice("schedule:".length));
-  const records = await input.store.listRecords({ limit: "unbounded", userId: input.actorId, workspaceId: input.workspaceId });
-  const owned = records.some((record) => [...candidates].some((id) => record.recordId === id || record.sourceId === id || record.targetId === id || containsId(record.payload, id)));
-  if (!owned) throw new Error("target not owned");
+  return assertCanonicalReminderTargetOwned(input);
 }
 
-function containsId(value: unknown, id: string, depth = 0): boolean {
-  if (depth > 4) return false;
-  if (value === id) return true;
-  if (Array.isArray(value)) return value.some((item) => containsId(item, id, depth + 1));
-  if (!value || typeof value !== "object") return false;
-  return Object.values(value as Record<string, unknown>).some((item) => containsId(item, id, depth + 1));
+export interface ConfiguredReminderPlanServiceOptions {
+  env?: LiveDatabaseEnv;
+  runtime?: CanonicalReminderCommandRuntime;
+  now?: () => string;
+  publisher?: CanonicalReminderWakePublisher;
 }
 
-export function createConfiguredReminderPlanService() {
-  const configured = createConfiguredPostgresLiveRecordStore();
+export function createConfiguredReminderPlanService(options: ConfiguredReminderPlanServiceOptions = {}) {
+  const transactional = options.runtime ?? createConfiguredTransactionalPostgresRuntime({ env: options.env, max: 2 });
+  const configured = options.runtime
+    ? { store: createPostgresLiveRecordStore({ client: options.runtime.client }), workspaceId: options.runtime.workspaceId }
+    : createConfiguredPostgresLiveRecordStore({ env: options.env });
   if (!configured) throw new Error("Reminder plan storage is not configured");
+  if (!transactional || transactional.workspaceId !== configured.workspaceId) throw new Error("Reminder plan transactional storage is not configured");
+  const now = options.now ?? options.runtime?.now ?? (() => new Date().toISOString());
   const targetAuthorizer: ReminderTargetAuthorizer = {
     assertOwned: command => assertReminderTargetOwned({ ...configured, ...command }),
   };
-  return createReminderPlanService({
+  const base = createReminderPlanService({
     withDeliveryGate: async (actorId, operation) => {
-      const runtime = createConfiguredTransactionalPostgresRuntime();
-      if (!runtime || runtime.workspaceId !== configured.workspaceId) throw new Error('Delivery gate unavailable');
-      await runtime.client.transaction(async db => {
+      await transactional.client.transaction(async db => {
         await db.query('select pg_advisory_xact_lock(hashtextextended($1,0))', [JSON.stringify(['notification-delivery-policy', configured.workspaceId, actorId])]);
         await operation();
       });
@@ -51,11 +44,20 @@ export function createConfiguredReminderPlanService() {
       const state = await configured.store.getRecord({ workspaceId: configured.workspaceId, collectionName: 'notificationCutover', recordId: actorId });
       return state?.userId === actorId && (state.payload.enabled === true || state.payload.legacyBlocked === true);
     },
-    now: () => new Date().toISOString(),
+    now,
     pushDevices: createReminderPushDeviceGateway({
       serviceForActor: (actorId) => createPushDeviceService({ actorId }),
     }),
     repository: createReminderPlanRepository({ store: configured.store, workspaceId: configured.workspaceId }),
     targetAuthorizer,
   });
+  const commands = createCanonicalReminderCommandService({
+    runtime: {
+      client: transactional.client,
+      workspaceId: configured.workspaceId,
+      now,
+      publisher: options.publisher ?? options.runtime?.publisher,
+    },
+  });
+  return { ...base, ...commands };
 }

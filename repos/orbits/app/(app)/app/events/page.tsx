@@ -9,9 +9,11 @@ import {
   getOrbitLandingViewModelFromCatalogue,
   type OrbitLandingEventView,
 } from "../orbit-landing-route-view-model";
+import { AccountTopNav } from "../orbit-account-shell";
+import { PublicTopNav } from "../orbit-public-shell";
 import { OrbitReferenceStyles } from "../orbit-reference-styles";
 import { OrbitVisualFreezeRuntime } from "../orbit-visual-freeze-runtime";
-import { OrbitRealExploreClient } from "./orbit-real-explore-client";
+import { EventsList } from "./events-0918/events-list";
 
 function publicListEvent(
   event: OrbitLandingEventView,
@@ -91,12 +93,17 @@ export default async function AppEventsPage({
     language,
   );
 
+  const authenticated = Boolean(session?.user?.id);
+
   return (
     <>
       <OrbitReferenceStyles />
       <OrbitVisualFreezeRuntime />
-      <div data-orbit-route="app-events-public-catalogue">
-        <OrbitRealExploreClient
+      {/* 顶栏样式限定在 [data-orbit-real-page] 祖先下（orbit-reference-styles.tsx），外层容器必须带该属性。
+          公开页：未登录用 PublicTopNav（AccountTopNav 会挂收件箱触发器并请求 /api/notifications → 401）。 */}
+      <div data-orbit-real-page="events-0918" data-orbit-route="app-events-public-catalogue">
+        {authenticated ? <AccountTopNav active="events" /> : <PublicTopNav active="events" />}
+        <EventsList
           initialScope={
             resolvedSearchParams.scope === "registered" ||
             resolvedSearchParams.scope === "upcoming" ||

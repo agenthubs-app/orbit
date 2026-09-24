@@ -236,7 +236,7 @@ function reminderWebHref(href: string | undefined): string {
       if (!decodeURIComponent(href).includes("..")) return `/app${href}`;
     } catch { /* Invalid encoded paths keep the legacy fallback. */ }
   }
-  return "/app/followups";
+  return "/app/agent/plan";
 }
 
 export function toReminderAlerts(
@@ -262,8 +262,8 @@ const proactiveSurfaceHref: Record<string, string> = {
   orbit_ai_chat: "/app/agent",
   events: "/app/events",
   contacts: "/app/contacts",
-  followups: "/app/followups",
-  messages: "/app/chat",
+  followups: "/app/agent/plan",
+  messages: "/app/agent",
 };
 
 // proactive 当前每次返回一条主动 turn；映射成一条提示。

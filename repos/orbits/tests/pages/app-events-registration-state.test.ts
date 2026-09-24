@@ -5,7 +5,7 @@ import {
   eventCardActionKind,
   eventScopeFromValues,
   eventScopeSearchString,
-} from "../../app/(app)/app/events/orbit-real-explore-client";
+} from "../../app/(app)/app/events/explore-model";
 
 test("registered event actions are consistent across lifecycle states", () => {
   assert.equal(eventCardActionKind("upcoming", true), "manage");

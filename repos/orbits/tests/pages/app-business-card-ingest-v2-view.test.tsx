@@ -8,7 +8,7 @@ import type { IngestItemDTO } from "../../features/acquisition/business-card-ing
 import {
   ReviewPane,
   ingestExtractionHasNoFields,
-} from "../../app/(app)/app/contacts/new/batch2/[id]/business-card-ingest-v2-view";
+} from "../../app/(app)/app/contacts/ingest-v2/business-card-ingest-v2-view";
 
 const NOW = "2026-08-26T15:00:00.000Z";
 
@@ -195,7 +195,7 @@ test("a failed card outside manual mode shows no hint and no editor", () => {
 // review row — the batch-level .bci-actions stays in flow.
 test("narrow screens pin the review action row and reserve its height in the flow", () => {
   const source = readFileSync(
-    "app/(app)/app/contacts/new/batch2/[id]/business-card-ingest-v2-view.tsx",
+    "app/(app)/app/contacts/ingest-v2/business-card-ingest-v2-view.tsx",
     "utf8",
   );
   const narrow = [...source.matchAll(/@media \(max-width: 760px\) \{([\s\S]*?)\n\}/g)]
@@ -211,7 +211,7 @@ test("narrow screens pin the review action row and reserve its height in the flo
   assert.ok(!/\.bci-actions[^{]*\{[^}]*position: sticky/.test(narrow));
   // Above page content, below dropdowns/overlays/modals/toasts.
   assert.match(narrow, /\.bci-actions-review \{[^}]*z-index: \$\{ORBIT_Z\.sticky\}/);
-  assert.match(source, /import \{ ORBIT_Z \} from "\.\.\/\.\.\/\.\.\/\.\.\/orbit-z"/);
+  assert.match(source, /import \{ ORBIT_Z \} from "\.\.\/\.\.\/orbit-z"/);
   // The reserve sits at the END of the scrollable content (the shell), not inside the
   // review form — padding inside the form moves the tail down with the extra scroll
   // range and leaves the last elements just as trapped (measured at 375x812).

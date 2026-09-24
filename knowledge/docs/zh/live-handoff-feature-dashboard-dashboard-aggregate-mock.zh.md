@@ -32,11 +32,12 @@
 ## 结构化阅读入口
 
 - 第 1 节：源标题：Dashboard Aggregate Mock Live Handoff
-- 第 2 节：Live 服务 和 Provider Files
-- 第 3 节：源标题：Switch Mechanism
-- 第 4 节：Required Env Vars 和 权限
-- 第 5 节：Privacy 和 Provenance Constraints
-- 第 6 节：Replacement 测试
+- 第 2 节：当前 Bounded Storage 阅读 Slice
+- 第 3 节：Live 服务 和 Provider Files
+- 第 4 节：源标题：Switch Mechanism
+- 第 5 节：Required Env Vars 和 权限
+- 第 6 节：Privacy 和 Provenance Constraints
+- 第 7 节：Replacement 测试
 
 ## 保留的代码与命令证据
 

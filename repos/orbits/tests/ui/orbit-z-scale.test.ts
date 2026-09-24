@@ -77,7 +77,7 @@ test("inline zIndex number literals in app/(app)/app stay within the documented 
   // them (each entry below needs justification in a comment here).
   //
   // Currently empty — the one candidate case (map-pin active/inactive
-  // stacking in events/orbit-real-explore-client.tsx) is instead expressed
+  // stacking in events/events-0918/events-list.tsx) is instead expressed
   // as `ORBIT_Z.raised` / `ORBIT_Z.raised + 10`, so it shows up as a
   // computed expression, not a bare literal, and needs no whitelist entry.
   const WHITELIST_MAX = 2;

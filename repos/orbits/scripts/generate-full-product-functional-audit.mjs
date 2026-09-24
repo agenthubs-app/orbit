@@ -104,7 +104,11 @@ const LIVE_MOBILE_AUTH_RUNTIME_SURFACES = new Set([
   "mobile:/profile",
 ]);
 const HANDLER_BOUND_RUNTIME_EVIDENCE_INTERACTIONS = new Set([
-  "repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx#重新提交请求 / Retry request",
+  // iOrbit 任务 6b：`orbit-real-agent.tsx` 已删除，助手回合的重试控件搬到
+  // `iorbit-0918/iorbit-chat.tsx`，onClick 表达式逐字未变（计划「审阅修订」8）。
+  // 这条仍然必须是 handler-bound：`agent-action-status-card.tsx` 有同名可见文案的
+  // 另一枚控件，松散的 `file#visibleName` 回落键会把两者混在一起。
+  "repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-chat.tsx#重新提交请求 / Retry request",
 ]);
 const LIVE_MOBILE_ADDITIONAL_RUNTIME_SURFACES = new Map([
   [
@@ -1610,97 +1614,68 @@ const LIVE_MOBILE_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
     },
   ],
 ]);
+// 个人中心 task 6 (2026-09-22): the legacy orbit-real-profile.tsx was deleted; keys
+// below point at the equivalent interaction lines of the profile-0918 screens
+// (basic / persona / shell). Seven 2026-07-29 entries had no equivalent in the
+// new screens (Add-tag controls, the three ChipGroup onChange callbacks, Back →
+// /app/home, and the separate mobile form / mobile Save) and were dropped rather
+// than re-attached to unrelated lines. Evidence texts stay the 2026-07-29 record.
 const LIVE_PROFILE_INTERACTION_EVIDENCE = new Map(
   [
     [
-      "repos/orbits/app/(app)/app/profile/orbit-real-profile.tsx:296",
+      "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx:67",
       "Manual entry and structured text extraction each became the pressed fill method and exposed only the controls belonging to that method.",
       "Method selection changed local presentation only and did not write a profile.",
     ],
     [
-      "repos/orbits/app/(app)/app/profile/orbit-real-profile.tsx:323",
+      "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx:70",
       "Scan/import in Import hub opened /app/contacts/new, which truthfully rendered every unconfigured acquisition source as unavailable and performed no upload or contact write.",
       "Navigation only; the profile, contact collection, and acquisition drafts were unchanged.",
     ],
     [
-      "repos/orbits/app/(app)/app/profile/orbit-real-profile.tsx:335",
+      "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx:76",
       "The structured-text field preserved eight explicit Chinese profile lines before extraction.",
       "Typing changed local form state only and did not write a profile.",
     ],
     [
-      "repos/orbits/app/(app)/app/profile/orbit-real-profile.tsx:336",
+      "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx:79",
       "Extract to form first rejected an empty input with 请先粘贴档案文本再提取。; the labeled Chinese input then populated name, company, title, market, relationship goal, two offering tags, and two seeking tags while requiring review before save.",
       "Extraction produced a local draft only; it made no profile write until the separate save action.",
     ],
     [
-      "repos/orbits/app/(app)/app/profile/orbit-real-profile.tsx:362",
+      "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx:131",
       "Every rendered scalar field accepted its audit value; the authenticated email remained readonly and retained audit-permission-1785253354985@example.invalid.",
       "Field edits remained local until save; the readonly email could not be changed by the editor.",
     ],
     [
-      "repos/orbits/app/(app)/app/profile/orbit-real-profile.tsx:400",
+      "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx:163",
       "Bio and opener accepted distinct multi-word Chinese values and updated the business-card preview before save.",
       "Textarea edits remained local until save.",
     ],
     [
-      "repos/orbits/app/(app)/app/profile/orbit-real-profile.tsx:449",
+      "repos/orbits/app/(app)/app/profile/profile-0918/profile-persona.tsx:72",
       "Pressed offering, seeking, and topic chips each toggled off without affecting another tag group.",
       "Tag toggles changed local form state only until save.",
     ],
     [
-      "repos/orbits/app/(app)/app/profile/orbit-real-profile.tsx:457",
+      "repos/orbits/app/(app)/app/profile/profile-0918/profile-persona.tsx:81",
       "All three custom-tag fields accepted distinct audit values; pressing Enter in the topic field added 审计话题-可信数据 and cleared the draft.",
       "Draft input and Enter handling changed local tag state only until save.",
     ],
     [
-      "repos/orbits/app/(app)/app/profile/orbit-real-profile.tsx:473",
-      "The enabled Add controls appended 活动, 审计能力-API持久化, and 审计目标-企业AI合作 to their exact groups; empty Add controls stayed disabled.",
-      "Add changed local tag state only until save and did not create duplicate profile records.",
-    ],
-    [
-      "repos/orbits/app/(app)/app/profile/orbit-real-profile.tsx:540",
-      "The offering callback added and removed source-extracted and custom offering tags without changing seeking or topics.",
-      "The callback updated only the offering array before the explicit save.",
-    ],
-    [
-      "repos/orbits/app/(app)/app/profile/orbit-real-profile.tsx:541",
-      "The seeking callback added and removed source-extracted and custom relationship targets without changing offering or topics.",
-      "The callback updated only the seeking array before the explicit save.",
-    ],
-    [
-      "repos/orbits/app/(app)/app/profile/orbit-real-profile.tsx:542",
-      "The topics callback added 审计话题-可信数据 through Enter and later removed it during cleanup without changing offering or seeking.",
-      "The callback updated only the topics array before the explicit save.",
-    ],
-    [
-      "repos/orbits/app/(app)/app/profile/orbit-real-profile.tsx:773",
+      "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx:123",
       "The desktop form rejected a whitespace-only name, then submitted the complete 100% profile through the actor-scoped PUT and GET readback chain.",
       "One profile record was updated in place; a hard re-entry showed the same values and no duplicate record.",
     ],
     [
-      "repos/orbits/app/(app)/app/profile/orbit-real-profile.tsx:776",
-      "Back navigated from /app/profile to /app/home after cleanup and the home surface rendered the restored actor profile.",
-      "Navigation only; no profile or relationship record was written.",
-    ],
-    [
-      "repos/orbits/app/(app)/app/profile/orbit-real-profile.tsx:793",
-      "Cancel discarded the visible unsaved title 未保存的临时职位, opened /app/home, and a new Edit universal profile entry restored the last saved 产品验证负责人 value.",
+      "repos/orbits/app/(app)/app/profile/profile-0918/profile-shell.tsx:117",
+      "取消 in the persona / basic / settings save bar navigates to /app/profile with a full page load and discards the unsaved draft (no reload GET, no in-place view flip); the overview shows only the last saved values.",
       "Cancel performed no PUT and preserved the previously saved profile.",
     ],
     [
-      "repos/orbits/app/(app)/app/profile/orbit-real-profile.tsx:794",
-      "Save profile persisted every desktop scalar and list field, displayed 档案已保存并完成复读核验。, and survived a fresh entry from /app.",
+      "repos/orbits/app/(app)/app/profile/profile-0918/profile-shell.tsx:118",
+      "保存修改 in the basic / settings save bar submits the basic scope through the actor-scoped PUT and GET readback chain and shows the shell notice 基础资料已保存并完成复读核验。 (amber 基础资料已保存，但还需填写：… variant while onboarding stays incomplete); on persona it saves the matching scope and returns to the overview with the 修改已保存 toast.",
       "Repeated reads returned the same actor-owned profile; cleanup updated that record back to its original values.",
-    ],
-    [
-      "repos/orbits/app/(app)/app/profile/orbit-real-profile.tsx:800",
-      "At 390x844 the mobile form rendered the complete editor, submitted a distinct mobile headline, and preserved it after hard navigation.",
-      "The mobile form updated the same actor-owned profile instead of creating a platform-specific duplicate.",
-    ],
-    [
-      "repos/orbits/app/(app)/app/profile/orbit-real-profile.tsx:801",
-      "The mobile Save control persisted 移动端保存验证-20260729, displayed the verified-save status, and hard navigation read the same value back.",
-      "The mobile save updated the same profile once; final desktop cleanup restored the original 20% profile.",
     ],
   ].map(([sourceRef, actualResult, idempotency]) => [
     sourceRef,
@@ -2595,7 +2570,9 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
     },
   ],
   [
-    "web:/app/agent|repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx#onclick:() => void ask(message.retryRequest!, index)#重新提交请求 / Retry request",
+    // iOrbit 任务 3：助手回合搬到 `iorbit-0918/iorbit-chat.tsx`，onClick 表达式逐字未变
+    // （计划「审阅修订」8），只改证据键里的文件路径。
+    "web:/app/agent|repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-chat.tsx#onclick:() => void ask(message.retryRequest!, index)#重新提交请求 / Retry request",
     {
       actualResult:
         "An explicit missing DeepSeek key produced one real 503 failure and the exact message retry control. Restoring the configured provider and rapidly activating retry twice emitted one retry request with empty history, replaced the stale failure with one successful assistant turn, survived refresh, and remained absent for actor B.",
@@ -2667,8 +2644,15 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
         "web-agent-partial-failure-retry-compensation-2026-07-29",
     },
   ],
+  // iOrbit 任务 6b：下面三条改指 `iorbit-0918/iorbit-rich-components.tsx`。与被删掉的 10 条
+  // 抽屉/概览键不同，这三枚控件是任务 6a 从 `orbit-real-agent.tsx` **逐字搬家**的结果——
+  // handler 表达式与可见文案与 2026-07-29 实际跑过的那一枚**逐字一致**，只有文件路径变了：
+  //   `orbit-real-agent.tsx:94`  onClick={async () => setCopied(await copyAgentMessageText(text))}
+  //   `orbit-real-agent.tsx:478` onClick={onCancel}  → Keep conversation / 保留对话
+  //   `orbit-real-agent.tsx:488` onClick={onConfirm} → Deleting… / Delete conversation
+  // 判据与保留下来的重试键（`iorbit-chat.tsx`）完全相同，因此保留 runtime-verified。
   [
-    'web:/app/agent|repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx#onclick:async () => setCopied(await copyAgentMessageText(text))#t({ en: "Copy message", zh: "复制消息" })',
+    'web:/app/agent|repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-rich-components.tsx#onclick:async () => setCopied(await copyAgentMessageText(text))#t({ en: "Copy message", zh: "复制消息" })',
     {
       actualResult:
         "Clicking the latest assistant message copy control changed data-orbit-agent-message-copy from idle to copied and changed its title to 已复制 on the real persisted conversation.",
@@ -2739,115 +2723,23 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
       verificationCase: "web-agent-review-transition-state-machine-2026-07-29",
     },
   ],
+  // iOrbit 任务 6b：`查看依据 · N 条真实记录` 的键盘披露控件在
+  // `c0835aff fix(agent): hide internal result diagnostics`（2026-08-25）就已从产品里移除，
+  // 这条证据键从那天起就是死键——与 iOrbit 改版无关，本次一并删除。对应的
+  // web-agent-evidence-source-disclosure-2026-07-29 用例仍作为历史记录留在 VERIFIED_AUDIT_CASES。
+  // iOrbit 任务 6b 修订轮 1：历史抽屉（`iorbit-history-drawer.tsx`，任务 4 新建）与概览的
+  // 「◷ 历史记录」（`iorbit-home.tsx`，任务 2 新建）都**不是**旧组件的逐字搬家——handler
+  // 表达式与可见文案都变了（例如 `onclick:() => { setMenuOpenId(null); onPick(item); }`、
+  // 标签由「对话历史」变成「历史记录」，而 2026-07-29 那次取证是在 390x844 的移动顶栏上做的，
+  // 其 actualResult 描述的 DOM 今天已不存在）。把 web-agent-history-lifecycle-2026-07-29 /
+  // web-agent-mobile-history-navigation-2026-07-29 / web-agent-history-navigation-resize-2026-07-29
+  // 的证据改指到这些新控件，等于让审计产物声称一份并不存在的运行时证据，与本文件
+  // 「证据必须 handler-bound、只归属实际跑过的那一枚控件」的口径相冲突。
+  // 因此这 10 条键**删除**，对应交互回落 `inventoried-static-info`→`inventoried-static-only`。
+  // 用例本身仍作为历史记录留在 VERIFIED_AUDIT_CASES；**重新对新抽屉与新概览跑一轮浏览器
+  // 取证是后续工作**（记在 6b 报告「Fix round 1」与遗留里）。
   [
-    "web:/app/agent|repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx#onkeydown:toggleAgentEvidenceSourcesFromKeyboard#{t({ en: `Sources · ${totalItems} records`, zh: `查看依据 · ${totalItems} 条真实记录`, })}",
-    {
-      actualResult:
-        "The live recommendation first exposed an inflated 8-record count from an exact duplicate replan artifact, then 5 from a four-record result overlapping a one-record refinement. After repair, the persisted conversation rendered 查看依据 · 4 条真实记录, expanded to one source group from orbit-ai · events with the exact source time and evidence ids, opened with Enter, and closed with Space.",
-      testData:
-        "Actor user_ms5llhof_wrbpuq; sessions agent-session-ms5y03iq-c0phvh and agent-session-ms5yf1pi-bsibno; runs run:conversation:ad4cf600-e3cc-4529-b5c0-925aa8978e98 and run:conversation:d52a1b13-4b1f-4dd5-97db-571bf3484f0f; four unique event evidence records",
-      idempotency:
-        "Disclosure changed only the native details open state. Repeated parsing grouped equivalent and overlapping references by source snapshot and evidence id, persisted one normalized four-record reference, and final cleanup returned both sessions and both feedback records as null.",
-      verificationCase: "web-agent-evidence-source-disclosure-2026-07-29",
-    },
-  ],
-  [
-    'web:/app/agent|repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx#t({ en: "Rename conversation", zh: "重命名对话" })',
-    {
-      actualResult:
-        "The rename field loaded the persisted display name for the selected actor-owned session and accepted a replacement title without changing the underlying session id or messages.",
-      testData:
-        "Live session agent-session-ms5w1kuk-o68abs with two read-only messages and the generated title 这是 History Lifecyc...",
-      idempotency:
-        "Editing the field alone wrote nothing; only the explicit save control submitted the new title, while cancel discarded the draft.",
-      verificationCase: "web-agent-history-lifecycle-2026-07-29",
-    },
-  ],
-  [
-    'web:/app/agent|repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx#t({ en: "Save conversation name", zh: "保存对话名称" })',
-    {
-      actualResult:
-        "保存对话名称 persisted History Lifecycle Audit 20260729, closed the editor, rendered 对话已重命名, and retained the exact title after a production-page reload.",
-      testData:
-        "Live actor user_ms5llhof_wrbpuq and session agent-session-ms5w1kuk-o68abs",
-      idempotency:
-        "The per-session mutation fence disabled concurrent history writes, and the UI changed only after the API proved storage.persisted=true.",
-      verificationCase: "web-agent-history-lifecycle-2026-07-29",
-    },
-  ],
-  [
-    'web:/app/agent|repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx#t({ en: "Cancel conversation rename", zh: "取消重命名对话" })',
-    {
-      actualResult:
-        "After the field was changed to SHOULD NOT PERSIST 20260729, 取消重命名对话 closed the editor, restored the prior title, and a reload proved the temporary value had not been saved.",
-      testData:
-        "Existing actor-owned Undo Audit conversation agent-session-ms5tz2ay-zx6dfl",
-      idempotency:
-        "Cancel performed no request and wrote no session record; repeated reads retained the prior title and messages.",
-      verificationCase: "web-agent-history-lifecycle-2026-07-29",
-    },
-  ],
-  [
-    "web:/app/agent|repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx#item.q || item.title",
-    {
-      actualResult:
-        "Selecting the temporary history row after first opening a different conversation navigated to ?session=agent-session-ms5w1kuk-o68abs and restored both the exact prompt and assistant reply; the same result survived reload.",
-      testData:
-        "Two actor-owned persisted conversations, including the read-only History Lifecycle Audit session",
-      idempotency:
-        "Selection only read the actor-scoped session and updated URL/local presentation state; it created no conversation, message, action, or external record.",
-      verificationCase: "web-agent-history-lifecycle-2026-07-29",
-    },
-  ],
-  [
-    'web:/app/agent|repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx#t({ en: "More actions", zh: "更多操作" })',
-    {
-      actualResult:
-        "更多操作 opened the exact session-scoped menu with pin or unpin, rename, and delete actions; opening it changed no stored record.",
-      testData:
-        "Session menu button carrying data-orbit-agent-history-menu-button=agent-session-ms5w1kuk-o68abs",
-      idempotency:
-        "Repeated menu open and close changed only local disclosure state and wrote no history record.",
-      verificationCase: "web-agent-history-lifecycle-2026-07-29",
-    },
-  ],
-  [
-    "web:/app/agent|repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx#Unpin / 取消置顶 / Pin / 置顶",
-    {
-      actualResult:
-        "置顶 waited for persisted storage evidence, rendered 对话已置顶, moved the session into the pinned group order, and reopened as 取消置顶 after reload.",
-      testData:
-        "Live session agent-session-ms5w1kuk-o68abs initially stored with pinned=false",
-      idempotency:
-        "The session-level mutation fence prevented duplicate concurrent writes; live readback returned pinned=true exactly once.",
-      verificationCase: "web-agent-history-lifecycle-2026-07-29",
-    },
-  ],
-  [
-    "web:/app/agent|repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx#Rename / 重命名",
-    {
-      actualResult:
-        "重命名 closed the actions menu and opened one named field with explicit save and cancel controls for the selected session.",
-      testData: "Pinned live History Lifecycle Audit session",
-      idempotency:
-        "Opening rename changed only local editor state and did not write until explicit save.",
-      verificationCase: "web-agent-history-lifecycle-2026-07-29",
-    },
-  ],
-  [
-    "web:/app/agent|repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx#Delete / 删除对话",
-    {
-      actualResult:
-        "删除对话 did not delete immediately; it opened an alertdialog naming the exact conversation and stating that its messages would be permanently removed and could not be recovered.",
-      testData:
-        "Selected History Lifecycle Audit 20260729 session with two persisted messages",
-      idempotency:
-        "Opening the confirmation wrote nothing and retained the session in both UI and live storage.",
-      verificationCase: "web-agent-history-lifecycle-2026-07-29",
-    },
-  ],
-  [
-    "web:/app/agent|repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx#Keep conversation / 保留对话",
+    "web:/app/agent|repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-rich-components.tsx#onclick:onCancel#Keep conversation / 保留对话",
     {
       actualResult:
         "保留对话 closed the destructive confirmation, kept the selected session and its assistant reply visible, and left the history row present.",
@@ -2857,7 +2749,7 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
     },
   ],
   [
-    "web:/app/agent|repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx#Deleting… / 正在删除… / Delete conversation / 删除对话",
+    "web:/app/agent|repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-rich-components.tsx#onclick:onConfirm#Deleting… / 正在删除… / Delete conversation / 删除对话",
     {
       actualResult:
         "Confirmed deletion removed the active row only after the actor-scoped DELETE persisted, navigated to the fresh Agent home, removed the transcript, and remained absent after reload.",
@@ -2868,54 +2760,10 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
       verificationCase: "web-agent-history-lifecycle-2026-07-29",
     },
   ],
-  [
-    "web:/app/agent|repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx#onclick:newChat#New chat / 新对话",
-    {
-      actualResult:
-        "After selecting the real Undo Audit conversation, desktop 新对话 returned the URL to /app/agent, removed the old prompt and transcript, restored the welcome workspace and active composer, and retained all six persisted history rows.",
-      testData:
-        "Authenticated actor user_ms5llhof_wrbpuq with six stored sessions and active session agent-session-ms5tz2ay-zx6dfl",
-      idempotency:
-        "New chat changed only active client session state and URL; it deleted no session, message, action, task, or external record.",
-      verificationCase: "web-agent-history-navigation-resize-2026-07-29",
-    },
-  ],
-  [
-    'web:/app/agent|repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx#t({ en: "Chat history", zh: "对话历史" })',
-    {
-      actualResult:
-        "At 390x844 the history control was initially present in the DOM but invisible because the shared mobile nav rule hid the mixed extras container. After separating mobile contextual actions, the top bar exposed 对话历史 and 打开菜单, kept 打开收件箱 hidden, and clicking 对话历史 opened the labelled modal drawer with focus on 关闭.",
-      testData:
-        "Authenticated actor user_ms5llhof_wrbpuq, production Web /app/agent at 390x844, six actor-owned persisted sessions",
-      idempotency:
-        "Opening, focus traversal, Escape, and reopening changed only drawer presentation state. They made no session, message, action, task, inbox, or external write.",
-      verificationCase: "web-agent-mobile-history-navigation-2026-07-29",
-    },
-  ],
-  [
-    "web:/app/agent|repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx#onclick:onNewChat#New chat / 新对话",
-    {
-      actualResult:
-        "After the mobile drawer selected session agent-session-ms5tz2ay-zx6dfl and reload restored its prompt and pending-action explanation, 新对话 closed the drawer, returned the URL to /app/agent, removed the old transcript, restored the welcome workspace, returned focus to 对话历史, and retained six of six history rows.",
-      testData:
-        "Authenticated actor user_ms5llhof_wrbpuq with six stored sessions; selected Undo Audit session agent-session-ms5tz2ay-zx6dfl; 390x844 production viewport",
-      idempotency:
-        "Mobile New chat reset only active client state and URL. The history row count remained 6 before and 6 after, proving it did not delete a session or domain record.",
-      verificationCase: "web-agent-mobile-history-navigation-2026-07-29",
-    },
-  ],
-  [
-    'web:/app/agent|repos/orbits/app/(app)/app/agent/orbit-real-agent.tsx#t({ en: "Resize chat history", zh: "调整历史宽度" })',
-    {
-      actualResult:
-        "The vertical separator announced min=180, max=380, and current=212. ArrowRight changed current and rendered width to 228, Home moved to 180, and End moved to 380.",
-      testData:
-        "Authenticated desktop Agent production page with the focusable history separator",
-      idempotency:
-        "Keyboard resizing changed only local layout state and wrote no session, preference, message, action, or external record; reload restored the product default.",
-      verificationCase: "web-agent-history-navigation-resize-2026-07-29",
-    },
-  ],
+  // iOrbit 任务 6b：桌面常驻侧栏的「新对话」随侧栏一起下线（计划「能力保全决定」里
+  // 唯一的一条能力移除）。今天只剩历史抽屉里的那一枚，其证据键在下方。
+  // iOrbit 任务 6b：`调整历史宽度` 的可拖拽分隔条随常驻侧栏一起下线，产品里已无对应控件，
+  // 证据键删除；web-agent-history-navigation-resize-2026-07-29 用例本身仍在 VERIFIED_AUDIT_CASES。
   [
     "web:/app/chat|repos/orbits/shared/ui/state-view.tsx:249",
     {
@@ -3172,6 +3020,62 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
         "web-debug-api-probe-method-query-ui-2026-07-30",
     },
   ]),
+  // 台账「遗留清单（六域收尾统一登记）」第 2 条：任务 6b 把这 10 枚控件下调为
+  // `inventoried-static-only`，因为 2026-07-29 的证据属于已被重写的旧组件。
+  // 2026-09-24 用真实浏览器逐枚重跑（qa@orbit.test / 验证库 orbit_newui_events_20260922），
+  // 下面每一条 actualResult 都是那一轮**实测**到的结果，不是预期。
+  ...[
+    [
+      "app/agent/iorbit-0918/iorbit-home.tsx:1083",
+      "Activating ◷ 历史记录 on the overview mounted the history drawer (0 → 1 [data-orbit-agent-history-drawer] node), rendered five real conversation rows under the 历史记录 heading, and moved keyboard focus inside the drawer. No conversation request was issued: the list was already resident from the page load.",
+    ],
+    [
+      "app/agent/iorbit-0918/iorbit-history-drawer.tsx:164",
+      "＋ 新对话 closed the drawer and left the actor on /app/agent with an empty thread (zero rendered turns, composer visible). No session was written by the activation itself.",
+    ],
+    [
+      "app/agent/iorbit-0918/iorbit-history-drawer.tsx:246",
+      "Activating a history row closed the drawer, moved the URL to /app/agent?session=evidence-0924-a and restored that stored conversation's two turns from the server.",
+    ],
+    [
+      "app/agent/iorbit-0918/iorbit-history-drawer.tsx:277",
+      "··· opened exactly one [data-orbit-agent-history-menu] for its own row (0 → 1 menus) with the pin, rename, move-to and delete items visible, and reported aria-expanded=true.",
+    ],
+    [
+      "app/agent/iorbit-0918/iorbit-history-drawer.tsx:304",
+      "置顶 on the last row (index 4 of 5) issued exactly one PATCH /api/ai/conversations/sessions/<id>, moved that row to index 0 with a 已置顶 · 2026年9月18日 meta line, stayed at index 0 across a hard reload, and flipped the menu item text to 取消置顶. Activating it again issued a second PATCH and returned the row to unpinned.",
+    ],
+    [
+      "app/agent/iorbit-0918/iorbit-history-drawer.tsx:317",
+      "重命名 replaced the row body with the rename form (rename inputs 0 → 1) prefilled with that conversation's current title, and closed the ··· menu.",
+    ],
+    [
+      "app/agent/iorbit-0918/iorbit-history-drawer.tsx:213",
+      "The rename field arrived focused and prefilled with the current title, accepted typed replacement text, and emptying it disabled the adjacent 保存 button. Typing alone issued no request.",
+    ],
+    [
+      "app/agent/iorbit-0918/iorbit-history-drawer.tsx:228",
+      "保存 issued exactly one PATCH /api/ai/conversations/sessions/evidence-0924-a followed by the list refetch, replaced the row title with the typed value, and the new title was still present after a hard reload. The button is disabled while the field is empty, so an empty rename cannot be submitted.",
+    ],
+    [
+      "app/agent/iorbit-0918/iorbit-history-drawer.tsx:236",
+      "取消 discarded the typed replacement, left the stored title unchanged and issued zero requests. This control was found broken by the same runtime run: the invisible ··· button (position:absolute, opacity:0, pointer-events:auto) covered the centre of 取消 (cancel x1157–1203, ··· x1177–1205; document.elementFromPoint at the cancel centre returned button.btn.ir-hist-more), so a mouse click opened the menu instead. The ··· button is no longer rendered while its row is renaming, and the observation above is from the re-run after that fix.",
+    ],
+    [
+      "app/agent/iorbit-0918/iorbit-history-drawer.tsx:355",
+      "删除对话 opened the confirmation alert dialog 「删除这个对话？」 offering 保留对话 / 删除对话 rather than deleting immediately. Confirming issued exactly one DELETE /api/ai/conversations/sessions/evidence-0924-c, removed the row (6 → 5) and the removal survived a hard reload; the stored record moved to lifecycle_state=deleted rather than being dropped.",
+    ],
+  ].map(([suffix, actualResult]) => [
+    `web:/app/agent|repos/orbits/app/(app)/${suffix}`,
+    {
+      actualResult,
+      testData:
+        "qa@orbit.test signed in through the real /app/account/login form in a 1240×900 Chromium session against the Next dev server on :3100, backed by the local verification database orbit_newui_events_20260922 (workspace:orbit-small-staging-20260917); three throwaway conversations were seeded beforehand through the real POST /api/ai/conversations/sessions route.",
+      idempotency:
+        "Every activation issued at most one write (pin and rename one PATCH each, delete one DELETE); 取消 and the menu/open controls issued none. The pin toggle was returned to unpinned and the three throwaway conversations were removed through the same DELETE route, leaving the fixture set exactly as found; the pixel-baseline conversation iorbit-visual-chat-0918 was never mutated. The whole run produced zero console errors.",
+      verificationCase: "web-agent-history-drawer-controls-2026-09-24",
+    },
+  ]),
 ]);
 const LIVE_CONTACTS_LIST_INTERACTION_EVIDENCE = new Map([
   [
@@ -3334,6 +3238,21 @@ const LIVE_EVENT_REGISTRATION_INTERACTION_EVIDENCE = new Map(
   ]),
 );
 const VERIFIED_AUDIT_CASES = [
+  {
+    id: "web-agent-history-drawer-controls-2026-09-24",
+    target:
+      "/app/agent history drawer (app/(app)/app/agent/iorbit-0918/iorbit-history-drawer.tsx) plus the overview entry point iorbit-home.tsx:1083, driven end to end in a real Chromium session against the Next dev server on :3100 over the Postgres verification database",
+    testData:
+      "qa@orbit.test signed in through the real login form at 1240×900; verification database orbit_newui_events_20260922, workspace:orbit-small-staging-20260917; three throwaway conversations seeded through POST /api/ai/conversations/sessions; the pixel-baseline conversation iorbit-visual-chat-0918 deliberately left untouched",
+    expected:
+      "Each of the ten controls performs its stated effect; the write controls (pin, save rename, delete) persist across a hard reload; cancel rename writes nothing; delete asks for confirmation first",
+    actual:
+      "All ten were exercised and behaved as specified, with zero console errors across the run. 取消 (cancel rename) initially could not be activated at all: the row's invisible ··· button covered its centre point, so the click opened the more menu instead; document.elementFromPoint at the cancel centre returned button.btn.ir-hist-more. After the ··· button stopped being rendered while its own row is renaming, cancel discarded the edit, left the stored title unchanged and issued zero requests. Pin moved a row from index 4 to index 0 and held that position across reload; save rename persisted across reload; delete raised the 「删除这个对话？」 alert dialog before issuing one DELETE.",
+    evidence:
+      "Chromium run of 2026-09-24 against http://localhost:3100 with a per-step observation log (DOM node counts, row order, menu-item labels, issued requests) and a separate geometry probe recording the cancel/··· bounding boxes and the elementFromPoint hit; the store was inspected directly afterwards to confirm the pin returned to false and the deleted conversation moved to lifecycle_state=deleted.",
+    conclusion:
+      "pass — ten controls runtime-verified against the current components; one real defect found by the run and fixed before the final observation",
+  },
   {
     id: "inventory-route-denominator-2026-07-28",
     target: "Next.js and Expo Router route trees",
@@ -7484,17 +7403,10 @@ const RETIRED_CURRENT_WEB_RUNTIME_CASES = new Map([
     "web-public-organizer-unknown-slug-boundary-2026-07-29",
     "web-production-route-transport-smoke-2026-07-28",
   ])],
-  ["web:/app/party", new Set([
-    "web-party-source-context-boundaries-2026-07-29",
-    "web-public-event-detail-lifecycle-2026-07-29",
-  ])],
-  ["web:/app/party/checkin", new Set([
-    "web-party-source-context-boundaries-2026-07-29",
-  ])],
-  ["web:/app/party/graph", new Set([
-    "web-party-source-context-boundaries-2026-07-29",
-  ])],
 ]);
+// /app/party, /app/party/checkin and /app/party/graph were deleted on 2026-09-22
+// (replaced by /app/events/[id]/live); their historical evidence above stays as
+// history and no longer needs a current-eligibility entry.
 
 function isCurrentWebRuntimeCase(surfaceId, verificationCase) {
   return typeof verificationCase === "string" && verificationCase.length > 0 &&
@@ -7547,6 +7459,46 @@ export function lookupWebSurfaceRuntimeEvidence(
   return record && isCurrentWebRuntimeCase(surfaceId, record.verificationCase)
     ? record
     : undefined;
+}
+
+/**
+ * 每一张运行时交互证据表里，键形为 `<file>:<line>`（可带 `<surfaceId>|` 前缀）的条目。
+ *
+ * 这类键**按行号认领**某一枚控件的证据。只要有人在该文件靠前的位置加一行，键就会悄悄
+ * 落到别的行上——证据要么被丢掉、要么被记到另一枚控件头上，而且以前不会有任何测试跑红
+ * （2026-09-24：给 ProfileBasic 加一个形参，profile-basic.tsx 整体下移 4 行，
+ * `/app/profile` 的 runtime-verified 交互由 11 静默掉到 8）。
+ * `tests/audits/full-product-functional-audit.test.ts` 用它把每个键钉回真实控件上。
+ */
+export function collectLineAnchoredRuntimeEvidenceKeys() {
+  const maps = [
+    ["LIVE_PROFILE_INTERACTION_EVIDENCE", LIVE_PROFILE_INTERACTION_EVIDENCE],
+    ["LIVE_EVENT_REGISTRATION_INTERACTION_EVIDENCE", LIVE_EVENT_REGISTRATION_INTERACTION_EVIDENCE],
+    ["LIVE_BUSINESS_CARD_RESTRICTED_INTERACTION_EVIDENCE", LIVE_BUSINESS_CARD_RESTRICTED_INTERACTION_EVIDENCE],
+    ["LIVE_CONTACTS_LIST_INTERACTION_EVIDENCE", LIVE_CONTACTS_LIST_INTERACTION_EVIDENCE],
+    ["LIVE_CONTACT_DETAIL_INTERACTION_EVIDENCE", LIVE_CONTACT_DETAIL_INTERACTION_EVIDENCE],
+    ["LIVE_MOBILE_AUTH_INTERACTION_EVIDENCE", LIVE_MOBILE_AUTH_INTERACTION_EVIDENCE],
+    ["LIVE_MOBILE_CONTACT_ACQUISITION_INTERACTION_EVIDENCE", LIVE_MOBILE_CONTACT_ACQUISITION_INTERACTION_EVIDENCE],
+    ["LIVE_MOBILE_ADDITIONAL_INTERACTION_EVIDENCE", LIVE_MOBILE_ADDITIONAL_INTERACTION_EVIDENCE],
+    ["LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE", LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE],
+  ];
+  const anchored = [];
+  for (const [mapName, map] of maps) {
+    for (const [key, record] of map) {
+      const match = /^(?:([^|]+)\|)?([^|#]+\.(?:tsx?|jsx?)):(\d+)$/u.exec(key);
+      if (!match) continue;
+      anchored.push({
+        actualResult: record.actualResult,
+        key,
+        line: Number(match[3]),
+        mapName,
+        sourceFile: match[2],
+        surfaceId: match[1] ?? null,
+        verificationCase: record.verificationCase ?? null,
+      });
+    }
+  }
+  return anchored;
 }
 
 export function getHistoricalWebRuntimeEvidence() {

@@ -1,16 +1,11 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { iorbitChatSurfaceSource } from "./iorbit-chat-surface-source";
 
 test("Settings retain result-learning controls without exposing them in chat", async () => {
   const [chat, feedback, settings, settingsContent] = await Promise.all([
-    readFile(
-      new URL(
-        "../../app/(app)/app/agent/orbit-real-agent.tsx",
-        import.meta.url,
-      ),
-      "utf8",
-    ),
+    Promise.resolve(iorbitChatSurfaceSource()),
     readFile(
       new URL(
         "../../app/(app)/app/agent/agent-outcome-feedback.tsx",
@@ -25,9 +20,11 @@ test("Settings retain result-learning controls without exposing them in chat", a
       ),
       "utf8",
     ),
+    // 个人中心 task 6: settings/orbit-settings-content.tsx was deleted; the
+    // feedback module is mounted by profile-0918/profile-legacy-settings.tsx.
     readFile(
       new URL(
-        "../../app/(app)/app/settings/orbit-settings-content.tsx",
+        "../../app/(app)/app/profile/profile-0918/profile-legacy-settings.tsx",
         import.meta.url,
       ),
       "utf8",

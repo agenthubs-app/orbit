@@ -14,6 +14,10 @@ import type {
   LiveRecord,
   LiveRecordStoreLike,
 } from "../../../shared/storage/live-record-store";
+import {
+  createProfileActorPostgresReader,
+  type ProfileActorPostgresReadRecord,
+} from "./profile-actor-postgres-reader";
 
 export interface LiveProfileRecord extends UserProfileDTO {
   birthDate?: string | null;
@@ -97,10 +101,15 @@ function stringArray(value: unknown): readonly string[] {
     : [];
 }
 
+type ProfileMapperRecord = Pick<
+  ProfileActorPostgresReadRecord,
+  "createdAt" | "evidenceIds" | "payload" | "updatedAt"
+>;
+
 function accountFromRecord(
-  record: LiveRecord<Record<string, unknown>>,
+  record: ProfileMapperRecord,
 ): AccountDTO | null {
-  const payload = record.payload;
+  const payload = record.payload as Record<string, unknown>;
 
   if (
     !nonEmptyString(payload.id) ||
@@ -120,9 +129,9 @@ function accountFromRecord(
 }
 
 function profileFromRecord(
-  record: LiveRecord<Record<string, unknown>>,
+  record: ProfileMapperRecord,
 ): LiveProfileRecord | null {
-  const payload = record.payload;
+  const payload = record.payload as Record<string, unknown>;
 
   if (
     !nonEmptyString(payload.id) ||
@@ -170,7 +179,7 @@ function profileFromRecord(
 }
 
 function latestTimestamp(
-  records: readonly LiveRecord<Record<string, unknown>>[],
+  records: readonly Pick<ProfileActorPostgresReadRecord, "updatedAt">[],
 ): string {
   return (
     records
@@ -179,6 +188,21 @@ function latestTimestamp(
       .sort()
       .at(-1) ?? new Date(0).toISOString()
   );
+}
+
+function profileGraphFromPostgresRead(input: {
+  accounts: readonly ProfileActorPostgresReadRecord[];
+  profiles: readonly ProfileActorPostgresReadRecord[];
+}): LiveProfileGraph {
+  return {
+    accounts: input.accounts
+      .map(accountFromRecord)
+      .filter((account): account is AccountDTO => account !== null),
+    generatedAt: latestTimestamp([...input.accounts, ...input.profiles]),
+    profiles: input.profiles
+      .map(profileFromRecord)
+      .filter((profile): profile is LiveProfileRecord => profile !== null),
+  };
 }
 
 function searchTextFor(profile: LiveProfileRecord): string {
@@ -250,6 +274,10 @@ export function createStorageProfileProvider({
     source: source ?? `live-record-store:profiles:${workspaceId}`,
     sourceLabel,
     async readProfileGraph(actorId): Promise<LiveProfileGraph> {
+      if (!actorId.trim()) {
+        throw new Error("Profile actor is required");
+      }
+
       const [accountRecords, profileRecords] = await Promise.all([
         store.listRecords({
           limit: "unbounded",
@@ -339,8 +367,16 @@ export function createTransactionalStorageProfileProvider({
   sourceLabel?: string;
 }): LiveProfileProvider {
   const options = { workspaceId, source, sourceLabel };
+  const storeProvider = createStorageProfileProvider({
+    ...options,
+    store: createPostgresLiveRecordStore({ client }),
+  });
+  const actorReader = createProfileActorPostgresReader({ client, workspaceId });
   return {
-    ...createStorageProfileProvider({ ...options, store: createPostgresLiveRecordStore({ client }) }),
+    ...storeProvider,
+    async readProfileGraph(actorId) {
+      return profileGraphFromPostgresRead(await actorReader(actorId));
+    },
     withProfileMutation(input, actorId, operation) {
       return runProfileMutation({ client, workspaceId, actorId, input,
         operation: store => operation(createStorageProfileProvider({ ...options, store })),

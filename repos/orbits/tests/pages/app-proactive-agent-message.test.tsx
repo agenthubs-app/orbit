@@ -35,32 +35,9 @@ async function firstProactiveMessageId(): Promise<string> {
   return result.data?.messages[0]?.messageId ?? "";
 }
 
-test("/app/chat does not surface fixture-backed proactive calendar messages", async () => {
-  const { loadAppChatRouteViewModel } = await import(
-    "../../app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-route-view-model"
-  );
-  const { ChatWorkspace } = await import(
-    "../../app/(app)/app/chat/chat-workspace"
-  );
-  const routeModel = await loadAppChatRouteViewModel(undefined, {
-    actorId: "account:test-proactive-chat",
-  });
-
-  assert.equal(routeModel.state, "success");
-  if (routeModel.state !== "success") {
-    return;
-  }
-
-  const html = renderToStaticMarkup(
-    <ChatWorkspace language="zh" workspace={routeModel.workspace} />,
-  );
-
-  assert.match(html, /data-orbit-real-page="chat"/);
-  assert.doesNotMatch(
-    html,
-    /data-orbit-proactive-inbox|Upcoming from Orbit Agent|Seed investor preparation call/,
-  );
-});
+// iOrbit 任务 6a：原来这里有一条 "/app/chat does not surface fixture-backed proactive
+// calendar messages"，渲染的是已删除的 `chat/chat-workspace.tsx`（`/app/chat` 路由整条
+// 归并进 `/app/agent`）。同一条保障由下面那条 `/app/agent` 用例承担。
 
 test("/app/agent ignores obsolete fixture proactive ids", async () => {
   const proactive = await firstProactiveMessageId();
@@ -70,8 +47,8 @@ test("/app/agent ignores obsolete fixture proactive ids", async () => {
   const { chatRouteToOrbitAgentViewModel } = await import(
     "../../app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-view-model-adapter"
   );
-  const { OrbitRealAgent } = await import(
-    "../../app/(app)/app/agent/orbit-real-agent"
+  const { IOrbitShell } = await import(
+    "../../app/(app)/app/agent/iorbit-0918/iorbit-shell"
   );
   const routeModel = await loadAppChatRouteViewModel(
     { proactive } as unknown as {
@@ -87,7 +64,9 @@ test("/app/agent ignores obsolete fixture proactive ids", async () => {
   }
 
   const html = renderToStaticMarkup(
-    <OrbitRealAgent
+    <IOrbitShell
+      home={null}
+      initialDeepLink
       viewModel={chatRouteToOrbitAgentViewModel(routeModel)}
     />,
   );
@@ -100,16 +79,14 @@ test("/app/agent ignores obsolete fixture proactive ids", async () => {
 });
 
 test("proactive route composition stays out of API routes and presenter-only files", () => {
-  const chatPageSource = source("app/(app)/app/chat/page.tsx");
   const chatRouteSource = source(
     "app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-route-view-model.ts",
   );
   const agentPageSource = source("app/(app)/app/agent/page.tsx");
 
   assert.match(agentPageSource, /loadAppChatRouteViewModel/);
-  // /app/chat 已收窄为 /app/agent 重定向（iOrbit 工作台合并），对话壳统一在 agent。
-  assert.match(chatPageSource, /redirect\(`\/app\/agent\$\{suffix\}`\)/);
-  assert.doesNotMatch(chatPageSource, /app\/api/);
+  // iOrbit 任务 6a：`/app/chat` 路由已整条删除（此前是 `/app/agent` 重定向），
+  // 对话壳统一在 agent；只剩这两个仍被 `agent/page.tsx` 引用的组合文件。
   assert.doesNotMatch(agentPageSource, /app\/api/);
   assert.doesNotMatch(
     chatRouteSource,

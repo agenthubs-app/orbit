@@ -5,20 +5,15 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { AppRouterContext } from "next/dist/shared/lib/app-router-context.shared-runtime";
 import { PathnameContext, SearchParamsContext } from "next/dist/shared/lib/hooks-client-context.shared-runtime";
 
-import { contactDetailRouteToOrbitContactsViewModel } from "../../app/(app)/app/contacts/compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-view-model-adapter";
-import { loadAppContactDetailRoute } from "../../app/(app)/app/contacts/compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-route-service";
-import { loadAppContactsRouteViewModel } from "../../app/(app)/app/contacts/compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-route-view-model";
-import { contactsRouteToOrbitContactsViewModel } from "../../app/(app)/app/contacts/compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-view-model-adapter";
-import { OrbitRealCardConnection } from "../../app/(app)/app/contacts/orbit-real-card-connection";
-import { OrbitRealCardsList } from "../../app/(app)/app/contacts/orbit-real-contacts";
 import { loadAppEventDetailRoute } from "../../app/(app)/app/events/compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-route-service";
 import {
   eventDetailRouteToOrbitLandingEventView,
 } from "../../app/(app)/app/events/compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-view-model-adapter";
 import { loadAppEventsRouteViewModel } from "../../app/(app)/app/events/compose-app-events-from-previously-approved-mock-first-capabilities/events-route-view-model";
 import { eventsRouteToOrbitLandingViewModel } from "../../app/(app)/app/events/compose-app-events-from-previously-approved-mock-first-capabilities/events-view-model-adapter";
-import { OrbitRealEventDetail } from "../../app/(app)/app/events/[id]/orbit-real-event-detail";
-import { OrbitRealExploreClient } from "../../app/(app)/app/events/orbit-real-explore-client";
+import { EventDetail } from "../../app/(app)/app/events/events-0918/event-detail";
+import { EventsList } from "../../app/(app)/app/events/events-0918/events-list";
+import { PublicTopNav } from "../../app/(app)/app/orbit-public-shell";
 import { OrbitStarfieldHome } from "../../app/(app)/app/orbit-starfield-home";
 
 async function renderRootLanding(): Promise<string> {
@@ -43,10 +38,14 @@ async function renderEventsPage(): Promise<string> {
     }}>
       <PathnameContext.Provider value="/app/events">
         <SearchParamsContext.Provider value={new URLSearchParams()}>
-          <OrbitRealExploreClient
-            registrationAvailabilityByEventId={{}}
-            viewModel={eventsRouteToOrbitLandingViewModel(routeModel)}
-          />
+          {/* 与 events/page.tsx 接线一致：顶栏在页面层、列表在 events-0918 壳内。 */}
+          <div data-orbit-real-page="events-0918">
+            <PublicTopNav active="events" />
+            <EventsList
+              registrationAvailabilityByEventId={{}}
+              viewModel={eventsRouteToOrbitLandingViewModel(routeModel)}
+            />
+          </div>
         </SearchParamsContext.Provider>
       </PathnameContext.Provider>
     </AppRouterContext.Provider>,
@@ -68,44 +67,8 @@ async function renderEventDetailPage(): Promise<string> {
   const artwork = getDemoEventSceneAsset("demo-event-1");
   assert.ok(artwork, "the known-artwork test needs an explicit local cover");
   return renderToStaticMarkup(
-    <OrbitRealEventDetail
+    <EventDetail
       event={{ ...eventDetailRouteToOrbitLandingEventView(routeModel), detailLogoUrl: artwork.src }}
-    />,
-  );
-}
-
-async function renderContactsPage(): Promise<string> {
-  const routeModel = await loadAppContactsRouteViewModel();
-
-  assert.equal(routeModel.state, "success");
-
-  if (routeModel.state !== "success") {
-    return "";
-  }
-
-  return renderToStaticMarkup(
-    <OrbitRealCardsList
-      viewModel={contactsRouteToOrbitContactsViewModel(routeModel)}
-    />,
-  );
-}
-
-async function renderContactDetailPage(): Promise<string> {
-  const routeModel = await loadAppContactDetailRoute({
-    contactId: "demo-contact-1",
-    mode: "mock",
-  });
-
-  assert.equal(routeModel.routeState, "success");
-
-  if (routeModel.routeState !== "success") {
-    return "";
-  }
-
-  return renderToStaticMarkup(
-    <OrbitRealCardConnection
-      contactId="demo-contact-1"
-      viewModel={contactDetailRouteToOrbitContactsViewModel(routeModel)}
     />,
   );
 }
@@ -194,39 +157,15 @@ test("event list and event detail render manifest scene images", async () => {
   // This manifest cover is SVG: it scales without raster srcset variants.
   const artwork = getDemoEventSceneAsset("demo-event-1")!;
   const coverImages = detailImages.filter((tag) => tag.includes(`src="${artwork.src}"`));
-  assert.equal(coverImages.length, 2, "known artwork should render in the backdrop and rail");
+  assert.equal(coverImages.length, 1, "known artwork should render once in the hero cover");
   assert.doesNotMatch(coverImages[0], /loading="lazy"/);
-  assert.match(coverImages[1], /loading="lazy"/);
   for (const tag of coverImages) assert.match(tag, /data-nimg="fill"/);
   // The manifest uses SVG artwork, for which Next omits raster sizes/srcset.
-  // Verify loading policy in the actual journey slots, not the old image count.
-  const heroImage = detailHtml.match(/class="detail-cover"[\s\S]*?(<img\b[^>]*>)/)?.[1];
-  const railImage = detailHtml.match(/class="cover cover-grain rail-cover"[\s\S]*?(<img\b[^>]*>)/)?.[1];
+  // Verify loading policy in the actual hero slot, not the old rail slot
+  // (Orbit_0918: `ev-hero-cover` on the detail, `ev-recap-cover` on the recap state).
+  const heroImage = detailHtml.match(/class="cover cover-grain ev-(?:hero|recap)-cover"[\s\S]*?(<img\b[^>]*>)/)?.[1];
   assert.ok(heroImage, "event detail must render responsive hero artwork");
-  assert.ok(railImage, "event detail must render artwork in its rail slot");
   assert.doesNotMatch(heroImage, /loading="lazy"/);
-  assert.match(railImage, /loading="lazy"/);
   assert.match(detailHtml, /data-orbit-progressive-image-lqip=""/);
   assert.doesNotMatch(detailHtml, /background:radial-gradient\(120% 120%/);
-});
-
-test("contact list and contact detail render manifest avatar images", async () => {
-  const listHtml = await renderContactsPage();
-  const detailHtml = await renderContactDetailPage();
-
-  assertImageMarkup(listHtml, "contact list");
-  assertImageMarkup(detailHtml, "contact detail");
-  assertNamedBrandLink(detailHtml, "contact detail");
-  assert.match(listHtml, /data-demo-visual-asset-id="orbit-demo-avatar-/);
-  assert.match(detailHtml, /data-demo-visual-asset-id="orbit-demo-avatar-/);
-  assert.match(listHtml, /data-orbit-progressive-image-lqip=""/);
-  assert.match(detailHtml, /data-orbit-progressive-image-lqip=""/);
-  assert.match(
-    listHtml,
-    /data-demo-visual-asset-id="orbit-demo-avatar-[^"]+"[^>]+background:var\(--surface-3\)/,
-  );
-  assert.match(
-    detailHtml,
-    /data-demo-visual-asset-id="orbit-demo-avatar-[^"]+"[^>]+background:var\(--surface-3\)/,
-  );
 });

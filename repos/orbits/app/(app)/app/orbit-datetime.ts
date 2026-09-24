@@ -3,7 +3,7 @@
  *
  * `dateLocale` was copy-pasted into at least five files (orbit-agent-hero,
  * orbit-real-landing-page, home/orbit-real-home, o/orbit-real-organizer-public,
- * events/[id]/orbit-real-event-detail) and a couple of call sites hardcoded
+ * events/events-0918/event-detail) and a couple of call sites hardcoded
  * "zh-CN" outright, so an English or Japanese reader still got Chinese dates.
  *
  * More importantly, some surfaces skipped formatting altogether: UI audit

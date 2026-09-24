@@ -47,10 +47,11 @@ test("event context entry asks for current status and next steps without executi
   assert.match(prompt, /Do not perform any external action/);
 });
 
-test("contact and event detail views both reuse the context entry helper", () => {
+// The contact detail moved to network-0918/network-detail-modal.tsx (Orbit_0918),
+// whose design has no Ask-Agent entry; only the event detail reuses the helper.
+test("event detail view reuses the context entry helper", () => {
   for (const path of [
-    "app/(app)/app/contacts/orbit-real-card-connection.tsx",
-    "app/(app)/app/events/[id]/orbit-real-event-detail.tsx",
+    "app/(app)/app/events/events-0918/event-detail.tsx",
   ]) {
     const component = readFileSync(join(projectRoot, path), "utf8");
 

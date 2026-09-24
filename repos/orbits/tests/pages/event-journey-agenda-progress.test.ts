@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { agendaProgress } from "../../app/(app)/app/events/[id]/orbit-real-event-detail";
+import { agendaProgress } from "../../app/(app)/app/events/events-0918/event-detail";
 
 // 2026-08-13 19:00 Asia/Tokyo (UTC+9, 无夏令时) = 2026-08-13T10:00:00Z
 const STARTS_AT = "2026-08-13T10:00:00.000Z";

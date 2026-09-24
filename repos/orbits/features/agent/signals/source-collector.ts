@@ -153,7 +153,7 @@ export function createAgentSignalSourceCollector({
               actions: [
                 {
                   actionId: "open",
-                  href: "/app/followups",
+                  href: "/app/agent/plan",
                   label: "查看跟进",
                 },
                 {

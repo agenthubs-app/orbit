@@ -5,17 +5,14 @@ import { SessionContext, signOut } from "next-auth/react";
 import { usePathname } from "next/navigation";
 
 import { useOrbitLanguage } from "./orbit-language-context";
-import { Avatar, Icon, Logo, gradientFromString } from "./orbit-reference-primitives";
+import { Icon } from "./orbit-reference-primitives";
 import { productHref } from "./orbit-product-href";
 import { ORBIT_Z } from "./orbit-z";
 
-// "schedule" no longer has a nav entry of its own (T3, today-schedule merge —
-// folded into "today", now labeled 日程/Schedule) but stays in the union:
-// app/(app)/app/schedule/orbit-real-schedule-page.tsx and
-// app/(app)/app/followups/orbit-real-schedule.tsx still reference
-// `active="schedule"` — both files stay in place (unreachable from normal
-// navigation now that schedule/page.tsx and followups/page.tsx redirect to
-// /app/today, but not deleted; see those route adapters).
+// iOrbit 任务 6a：`/app/schedule`、`/app/followups`、`/app/today` 三条路由已随
+// 路由归并删除（取代者是 `/app/agent/plan` 与 `/app/agent/actions`）。"schedule"
+// 与 "today" 已无任何页面使用，但留在 union 里：这个 union 是壳的公共 API，
+// 收窄它会波及仍在传 `active` 的其它壳调用点，属于 6a 范围外的改动。
 export type OrbitNavActive = "home" | "today" | "events" | "schedule" | "cards" | "agent" | "me" | "settings";
 
 export { productHref } from "./orbit-product-href";
@@ -107,27 +104,21 @@ function OrbitNavAccountControl({
     const nextPath = pathname || "/app";
 
     return (
-      <span style={{ alignItems: "center", display: "inline-flex", gap: 10 }}>
+      <span style={{ alignItems: "center", display: "inline-flex", gap: 18 }}>
         <a
           className="orbit-me-link"
           href={preserveHref(`/app/account/login?next=${encodeURIComponent(nextPath)}`)}
         >
           {t({ en: "Sign in", zh: "登录" })}
         </a>
+        {/* Orbit_0918: the dark join pill only appears once the header is in
+            its scrolled state (design 首页 header, sc-if scrolled). Visibility
+            is CSS-driven off header[data-orbit-nav-scrolled]. */}
         <a
+          className="orbit-nav-join-cta"
           href={preserveHref(`/app/account/signup?next=${encodeURIComponent(nextPath)}`)}
-          style={{
-            background: "var(--accent)",
-            borderRadius: "var(--r-pill)",
-            color: "var(--on-accent)",
-            fontSize: 13.5,
-            fontWeight: 600,
-            padding: "7px 15px",
-            textDecoration: "none",
-            whiteSpace: "nowrap",
-          }}
         >
-          {t({ en: "Sign up", zh: "注册" })}
+          {t({ en: "Join now", zh: "立即加入" })}
         </a>
       </span>
     );
@@ -144,11 +135,9 @@ function OrbitNavAccountControl({
         type="button"
         style={{ background: "transparent", border: 0, cursor: "pointer", display: "inline-flex", padding: 0 }}
       >
-        <Avatar
-          g={gradientFromString(sessionUser.email || sessionUser.id)}
-          letter={(sessionUser.name || "O").slice(0, 1).toUpperCase()}
-          size={32}
-        />
+        <span aria-hidden="true" className="orbit-nav-avatar">
+          {(sessionUser.name || "O").slice(0, 1).toUpperCase()}
+        </span>
       </button>
       {menuOpen ? (
         <div
@@ -173,7 +162,7 @@ function OrbitNavAccountControl({
           <a
             href={preserveHref("/app/profile")}
             role="menuitem"
-            style={{ alignItems: "center", borderRadius: 8, color: "var(--text)", display: "flex", fontSize: 13.5, fontWeight: 600, gap: 8, padding: "9px 10px", textDecoration: "none" }}
+            style={{ alignItems: "center", borderRadius: 8, color: "var(--text)", display: "flex", fontSize: 14, fontWeight: 600, gap: 8, padding: "9px 10px", textDecoration: "none" }}
           >
             <Icon name="users" size={15} />
             {t({ en: "Profile", zh: "个人资料" })}
@@ -181,7 +170,7 @@ function OrbitNavAccountControl({
           <a
             href={preserveHref("/app/events?scope=registered")}
             role="menuitem"
-            style={{ alignItems: "center", borderRadius: 8, color: "var(--text)", display: "flex", fontSize: 13.5, fontWeight: 600, gap: 8, padding: "9px 10px", textDecoration: "none" }}
+            style={{ alignItems: "center", borderRadius: 8, color: "var(--text)", display: "flex", fontSize: 14, fontWeight: 600, gap: 8, padding: "9px 10px", textDecoration: "none" }}
           >
             <Icon name="calendar" size={15} />
             {t({ en: "My events", zh: "我的活动" })}
@@ -189,7 +178,7 @@ function OrbitNavAccountControl({
           <a
             href={preserveHref("/app/events/center")}
             role="menuitem"
-            style={{ alignItems: "center", borderRadius: 8, color: "var(--text)", display: "flex", fontSize: 13.5, fontWeight: 600, gap: 8, padding: "9px 10px", textDecoration: "none" }}
+            style={{ alignItems: "center", borderRadius: 8, color: "var(--text)", display: "flex", fontSize: 14, fontWeight: 600, gap: 8, padding: "9px 10px", textDecoration: "none" }}
           >
             <Icon name="settings" size={15} />
             {t({ en: "Event operations", zh: "活动运营中心" })}
@@ -197,7 +186,7 @@ function OrbitNavAccountControl({
           <a
             href={preserveHref("/app/settings")}
             role="menuitem"
-            style={{ alignItems: "center", borderRadius: 8, color: "var(--text)", display: "flex", fontSize: 13.5, fontWeight: 600, gap: 8, padding: "9px 10px", textDecoration: "none" }}
+            style={{ alignItems: "center", borderRadius: 8, color: "var(--text)", display: "flex", fontSize: 14, fontWeight: 600, gap: 8, padding: "9px 10px", textDecoration: "none" }}
           >
             <Icon name="settings" size={15} />
             {t({ en: "Settings", zh: "设置" })}
@@ -209,7 +198,7 @@ function OrbitNavAccountControl({
             }}
             role="menuitem"
             type="button"
-            style={{ alignItems: "center", background: "transparent", border: 0, borderRadius: 8, color: "var(--danger, #C2410C)", cursor: "pointer", display: "flex", fontFamily: "var(--ff)", fontSize: 13.5, fontWeight: 600, gap: 8, padding: "9px 10px", textAlign: "left", width: "100%" }}
+            style={{ alignItems: "center", background: "transparent", border: 0, borderRadius: 8, color: "var(--danger, #C2410C)", cursor: "pointer", display: "flex", fontFamily: "var(--ff)", fontSize: 14, fontWeight: 600, gap: 8, padding: "9px 10px", textAlign: "left", width: "100%" }}
           >
             <Icon name="x" size={15} />
             {t({ en: "Sign out", zh: "退出登录" })}
@@ -357,6 +346,21 @@ export function OrbitTopNav({
   const { language, preserveHref, setLanguage, t } = useOrbitLanguage();
   const isAgent = agentActive ?? active === "agent";
   const [menuOpen, setMenuOpen] = useState(false);
+  // Orbit_0918 浮岛药丸导航：scrollY > 40 时药丸收缩并浮起（设计稿 scrolled 态）。
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    // react-test-renderer / 非浏览器环境没有完整 window：跳过滚动监听，
+    // 保持未滚动初始态（pill 展开），浏览器挂载后正常接管。
+    if (typeof window === "undefined" || typeof window.addEventListener !== "function") return undefined;
+    function onScroll() {
+      const next = window.scrollY > 40;
+      setScrolled((current) => (current === next ? current : next));
+    }
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   useEffect(() => {
     if (!menuOpen) return undefined;
@@ -381,28 +385,33 @@ export function OrbitTopNav({
   };
   const links = [
     ["/events", t({ en: "Events", zh: "活动" }), "events"],
-    ["/today", t({ en: "Schedule", zh: "日程" }), "today"],
     ["/contacts", t({ en: "Contacts", zh: "人脉" }), "cards"],
   ] as const;
+  // 2026-09-18 用户决定：导航不再有 Calendar/日程 tab——日历能力合入 iOrbit。
+  // /today 与 /schedule 路由保留，从 iOrbit 内进入；menuItems 同步移除日程项。
   const menuItems = [
     { active: isAgent, href: "/app/agent", key: "agent", label: "iOrbit" },
     { active: active === "events", href: productHref("/events"), key: "events", label: t({ en: "Events", zh: "活动" }) },
-    { active: active === "today", href: productHref("/today"), key: "today", label: t({ en: "Schedule", zh: "日程" }) },
     { active: active === "cards", href: productHref("/contacts"), key: "cards", label: t({ en: "Contacts", zh: "人脉" }) },
   ];
 
   return (
     <>
+      {/* Noto Serif SC（品牌字）与 Noto Sans SC 全局字体；与落地页同源，React 会去重。 */}
+      <link
+        href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@700;900&family=Noto+Sans+SC:wght@400;500;700&display=swap"
+        rel="stylesheet"
+      />
       <header
-        className={`orbit-top-nav orbit-nav-menu${tone === "starfield" ? " is-starfield" : ""}`}
+        className={`orbit-top-nav orbit-nav-menu orbit-top-nav-0918${tone === "starfield" ? " is-starfield" : ""}`}
+        data-orbit-nav-scrolled={scrolled ? "true" : "false"}
         data-orbit-nav-tone={tone}
       >
+        <div className="orbit-top-nav-pill">
         <div className="orbit-nav-lead">
           <a aria-label="Orbit" className={`orbit-brand-link hit-44${active === "home" ? " is-active" : ""}`} href={preserveHref("/")} style={{ textDecoration: "none" }}>
-            <Logo size={24} withText={false} />
             <span className="orbit-brand-word">
               <span className="orbit-brand-name">Orbit</span>
-              <span className="orbit-brand-sub mono">{t({ en: "Powered by the iOrbit matching engine", zh: "由 iOrbit 智能匹配引擎驱动" })}</span>
             </span>
           </a>
           {active ? <span className="orbit-nav-page-title">{t(pageLabels[active])}</span> : null}
@@ -436,6 +445,7 @@ export function OrbitTopNav({
           >
             <Icon name={menuOpen ? "x" : "menu"} size={20} />
           </button>
+        </div>
         </div>
       </header>
       {menuOpen ? (

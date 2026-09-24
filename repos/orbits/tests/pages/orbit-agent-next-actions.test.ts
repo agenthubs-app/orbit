@@ -13,7 +13,7 @@ function signal(
     actions: [
       {
         actionId: "open",
-        href: "/app/followups",
+        href: "/app/agent/plan",
         label: "查看跟进",
       },
       {
@@ -24,7 +24,7 @@ function signal(
       },
       {
         actionId: "mark_done",
-        href: "/app/followups",
+        href: "/app/agent/plan",
         label: "完成",
       },
     ],

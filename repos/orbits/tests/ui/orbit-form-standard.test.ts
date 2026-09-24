@@ -2,9 +2,13 @@
  * Gate test for T7 (audit P1-6): form field unification onto the FormField
  * primitive (orbit-reference-primitives.tsx).
  *
- * (a) FormField has real external adopters in account auth and post-event
- *     follow-up capture. The retired duplicate /app/register prototype no
- *     longer counts as an adopter.
+ * (a) FormField has a real external adopter in post-event follow-up capture.
+ *     The retired duplicate /app/register prototype no longer counts as an
+ *     adopter, and neither does account auth since 2026-09-22: the Orbit_0918
+ *     auth modal (`account/auth-0918/`) replaced `orbit-real-account-auth.tsx`
+ *     and renders the design's own `div.au-label > label[for] + input`
+ *     structure, which conflicts with FormField's label wrapper — so the
+ *     adopter threshold is now 1.
  * (b) Sitewide `role="alert"` markers must not go down: T7 keeps every
  *     existing announcement (FormField renders its own dynamically) while
  *     standardizing error semantics — it should never remove one.
@@ -26,13 +30,14 @@ const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 const APP_DIR = join(projectRoot, "app/(app)/app");
 
 const PRIMITIVES_PATH = "app/(app)/app/orbit-reference-primitives.tsx";
-const ACCOUNT_AUTH_PATH = "app/(app)/app/account/orbit-real-account-auth.tsx";
 const POST_EVENT_CAPTURE_PATH =
   "app/(app)/app/events/[id]/orbit-post-event-followup-capture.tsx";
 const EVENT_REGISTRATION_WORKSPACE_PATH =
   "app/(app)/app/events/[id]/register/event-registration-workspace.tsx";
 
-const MIGRATED_FILES = [ACCOUNT_AUTH_PATH, POST_EVENT_CAPTURE_PATH];
+// account/orbit-real-account-auth.tsx was deleted on 2026-09-22 (Orbit_0918
+// auth modal); its successor intentionally does not use FormField (see (a)).
+const MIGRATED_FILES = [POST_EVENT_CAPTURE_PATH];
 
 function source(path: string): string {
   return readFileSync(join(projectRoot, path), "utf8");
@@ -52,7 +57,7 @@ function walk(dir: string, out: string[] = []): string[] {
   return out;
 }
 
-// ---- (a) FormField has ≥3 real external adopters ----
+// ---- (a) FormField has ≥1 real external adopter ----
 
 test("FormField is imported and rendered by production forms outside its own definition", () => {
   const files = walk(APP_DIR).filter((full) => relative(projectRoot, full) !== PRIMITIVES_PATH);
@@ -66,8 +71,8 @@ test("FormField is imported and rendered by production forms outside its own def
   });
 
   assert.ok(
-    adopters.length >= 2,
-    `expected >=2 files importing+rendering FormField, found ${adopters.length}: ${adopters.map((f) => relative(projectRoot, f)).join(", ")}`,
+    adopters.length >= 1,
+    `expected >=1 file importing+rendering FormField, found ${adopters.length}: ${adopters.map((f) => relative(projectRoot, f)).join(", ")}`,
   );
 
   for (const path of MIGRATED_FILES) {
@@ -97,12 +102,13 @@ function stripComments(text: string): string {
 // undefined}`), so this literal-string count intentionally only tracks the
 // hand-rolled markers that existed before T7 — it must never go down.
 // 7 is the true code-level count (comments stripped) across
-// account/mobile-google, account-auth, contacts/all-actions-controls,
+// account/mobile-google, account-auth, agent/actions/all-actions-controls,
 // events/[id]/register/event-registration-workspace (2 real banners),
 // profile, and today/orbit-today-decision-form. The raw (unstripped) count
 // was 8: event-registration-workspace also has a `//` comment that
 // documents the alignment by *naming* `role="alert"`, which isn't a marker
-// and must not count.
+// and must not count. (2026-09-22: account-auth's marker now lives in
+// account/auth-0918/auth-form.tsx `AuthErrorCard`; the count is unchanged.)
 const ROLE_ALERT_BASELINE = 7;
 
 test('role="alert" count in app/(app)/app does not decrease', () => {

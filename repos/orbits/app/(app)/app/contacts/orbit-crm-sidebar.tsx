@@ -37,9 +37,8 @@ export type CrmSidebarCounts = Partial<Record<CrmSidebarActive, number>>;
 const WALLET_ITEMS: Item[] = [
   { key: "list", icon: "wallet", href: "/app/contacts", label: { en: "All contacts", zh: "全部人脉" } },
   { key: "pipeline", icon: "network", href: "/app/contacts/pipeline", label: { en: "Relationship progress", zh: "关系进展" } },
-  { key: "intros", icon: "users", href: "/app/contacts/intros", label: { en: "Introductions", zh: "引荐记录" } },
   { key: "dashboard", icon: "grid", href: "/app/contacts/dashboard", label: { en: "Network analysis", zh: "人脉分析" } },
-  { key: "allActions", icon: "list", href: "/app/contacts/all-actions", label: { en: "All arrangements", zh: "全部安排" } },
+  { key: "allActions", icon: "list", href: "/app/agent/actions", label: { en: "All arrangements", zh: "全部安排" } },
 ];
 
 const CAPTURE_ITEMS: Item[] = [

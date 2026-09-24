@@ -7,7 +7,7 @@
  *   fontWeight: 400, 500, 600, 700, 800
  *   gap:        0, 4, 8, 12, 16, 20, 24, 32, 48
  *
- * T6 snapped eight core surfaces (today x3, contacts/all-actions x3, agent,
+ * T6 snapped eight core surfaces (today x3, all-actions x3 — the ledger screen retired 2026-09, its controls now live in agent/actions — agent,
  * contacts) to this scale and converted every numeric `borderRadius` literal
  * in them to a `var(--r-*)` token. This test does not try to migrate the
  * whole app in one shot — it locks in what T6 already snapped and stops new
@@ -113,7 +113,11 @@ test("fontSize literals outside the scale in app/(app)/app do not increase", () 
   // T6 snapped 8 core surfaces to 0 violations each. This ceiling covers
   // everything else in the app that T6 did not touch — only decrease it as
   // future tasks migrate more files onto the scale.
-  const CEILING = 63;
+  // Orbit_0918 task 8: legacy orbit-real contact views deleted → 63 to 48.
+  // Events task 6 (2026-09-22) deleted /app/party* (orbit-real-party.tsx) → 36.
+  // 运营台 task 6 (2026-09-22) deleted roles/event-role-management-workspace.tsx
+  // (fontSize 10 style object) → 35 (measured).
+  const CEILING = 35;
 
   assert.ok(
     hits.length <= CEILING,
@@ -125,7 +129,9 @@ test("fontSize literals outside the scale in app/(app)/app do not increase", () 
 test("fontWeight literals outside {400,500,600,700,800} in app/(app)/app do not increase", () => {
   const hits = SITEWIDE_FILES.flatMap((f) => findScaleViolations(f, "fontWeight", FONT_WEIGHT_SCALE));
 
-  const CEILING = 22;
+  // Orbit_0918 task 8: legacy orbit-real contact views deleted → 22 to 20.
+  // Events task 6 (2026-09-22) deleted /app/party* (orbit-real-party.tsx) → 16.
+  const CEILING = 16;
 
   assert.ok(
     hits.length <= CEILING,
@@ -137,7 +143,21 @@ test("fontWeight literals outside {400,500,600,700,800} in app/(app)/app do not 
 test("gap literals outside the scale in app/(app)/app do not increase", () => {
   const hits = SITEWIDE_FILES.flatMap((f) => findScaleViolations(f, "gap", GAP_SCALE));
 
-  const CEILING = 250;
+  // Orbit_0918 task 8: legacy orbit-real contact views deleted → 250 to 230.
+  // 个人中心 task 6 deleted orbit-real-profile.tsx → 227.
+  // Events task 6 (2026-09-22) deleted /app/party* (orbit-real-party.tsx +
+  // event-operations-controls.tsx) → 194.
+  // 运营台 task 4 (2026-09-22) deleted event-admission-review-workspace.tsx
+  // (gap 6/7/10/14/18 style objects) → 181 (measured).
+  // 运营台 task 6 (2026-09-22) deleted roles/event-role-management-workspace.tsx
+  // (gap 6/10 style objects) → 174 (measured).
+  // 运营台 task 7 (2026-09-22) shared OpsBoundary replaced the admission page's
+  // gap 10 boundary row with the on-scale 12 → 173 (measured).
+  // iOrbit task 6a (2026-09-23) deleted the fused agent files, the three old
+  // sibling screens, chat/ and the /app/today · /app/schedule · /app/followups
+  // routes → 167 (measured). fontSize (35) and fontWeight (16) are unchanged:
+  // the deleted files carried no off-scale literal of those two kinds.
+  const CEILING = 167;
 
   assert.ok(
     hits.length <= CEILING,
@@ -148,18 +168,27 @@ test("gap literals outside the scale in app/(app)/app do not increase", () => {
 
 // ---- (b) the eight T6-snapped files: zero violations, all three properties ----
 
+// iOrbit 任务 6a（2026-09-23）：`/app/today` 三个 T6 文件随路由删除
+// （`orbit-today-decision-form.tsx` 还有消费者，移到 `agent/actions/`）；
+// `orbit-real-agent.tsx` 删除，取而代之把 Orbit_0918 的 iOrbit 屏级文件加进来——
+// 它们本来就是零内联几何（皮肤全在 `iorbit-styles.ts` 的模板字符串里），
+// 加进这张零容忍清单是为了防止后续改动把内联几何写回去。
 const SNAPPED_FILES = [
-  "app/(app)/app/today/orbit-real-today.tsx",
-  "app/(app)/app/today/orbit-today-decision-panel.tsx",
-  "app/(app)/app/today/orbit-today-decision-form.tsx",
   "app/(app)/app/settings/orbit-agent-execution-settings.tsx",
-  "app/(app)/app/contacts/all-actions/orbit-real-all-actions.tsx",
-  "app/(app)/app/contacts/all-actions/orbit-all-actions-controls.tsx",
-  "app/(app)/app/agent/orbit-real-agent.tsx",
-  "app/(app)/app/contacts/orbit-real-contacts.tsx",
+  "app/(app)/app/agent/actions/orbit-all-actions-controls.tsx",
+  "app/(app)/app/agent/actions/orbit-today-decision-form.tsx",
+  "app/(app)/app/agent/iorbit-0918/iorbit-shell.tsx",
+  "app/(app)/app/agent/iorbit-0918/iorbit-screen-frame.tsx",
+  "app/(app)/app/agent/iorbit-0918/iorbit-home.tsx",
+  "app/(app)/app/agent/iorbit-0918/iorbit-chat.tsx",
+  "app/(app)/app/agent/iorbit-0918/iorbit-chat-aside.tsx",
+  "app/(app)/app/agent/iorbit-0918/iorbit-history-drawer.tsx",
+  "app/(app)/app/agent/iorbit-0918/iorbit-actions.tsx",
+  "app/(app)/app/agent/iorbit-0918/iorbit-plan.tsx",
+  "app/(app)/app/agent/iorbit-0918/iorbit-strategy.tsx",
 ];
 
-test("the eight T6-snapped files have zero off-scale fontSize/fontWeight/gap literals", () => {
+test("every snapped file has zero off-scale fontSize/fontWeight/gap literals", () => {
   const allHits: ScaleHit[] = [];
   for (const relPath of SNAPPED_FILES) {
     const full = join(projectRoot, relPath);
@@ -175,7 +204,7 @@ test("the eight T6-snapped files have zero off-scale fontSize/fontWeight/gap lit
   );
 });
 
-test("the eight T6-snapped files have zero numeric (non-token) borderRadius literals", () => {
+test("every snapped file has zero numeric (non-token) borderRadius literals", () => {
   const re = /\bborderRadius\s*:\s*(-?[0-9]+(?:\.[0-9]+)?)/g;
   const hits: ScaleHit[] = [];
   for (const relPath of SNAPPED_FILES) {

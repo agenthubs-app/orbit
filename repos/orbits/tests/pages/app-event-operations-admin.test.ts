@@ -25,36 +25,68 @@ test("event operations workspace requires login and per-event operations capabil
 });
 
 test("organizer workspace exposes the complete strict generation and audit workflow", () => {
-  const client = source(
-    "app/(app)/app/events/[id]/operations/event-operations-admin-workspace.tsx",
-  );
+  // 运营台 任务 1：状态/fetch/动作已原样搬入 ops-0918/use-event-operations.ts；
+  // 下面按「hook 文件 vs JSX 文件」拆分同一组断言，意图不变。
+  // 运营台 任务 3：旧 admin workspace JSX 已被 ops-0918 概览 / 匹配屏替换（旧文件删除）。JSX 侧断言的新去处：
+  //   ops-console.tsx           useEventOperations(event)、/export（「更多 ⌄」菜单）
+  //   ops-overview.tsx          CONSENT AUDIT / VENUE CHECK-IN ENTRY /
+  //                             不会生成二维码图片 / CONFIGURED TIMELINE / readOnly={canonicalScheduleFields.includes /
+  //                             onInput ×3 + nextValue ×3 / profileEditDeadlineAt / roundOneStartsAt（配置折叠区）
+  //   运营台 任务 4：「参会者与到场状态」目录（REAL REGISTRATION DIRECTORY / 标记到场）迁出概览 ——
+  //   真实报名目录 → ops-people.tsx（workspace.participants 表格）；标记到场 → ops-checkin.tsx（useCheckInRoster.markArrived）。
+  //   ops-match.tsx             Worker 处理中 / 重试失败分片 / 原子发布 / 所有任务完成并由你发布后… / table.rationale /
+  //                             table.icebreakers / member.seat（桌卡）/ grouping.roundOne|roundTwo（经 ops-model roundTables）
+  //   ops-operations-shared.tsx 生成匹配（尚无生成时的按钮名）/ 失败的片段会自动重试（确认框）/ 重试失败分片 / 原子发布 文案表
+  //   ops-model.ts              grouping.roundOne / grouping.roundTwo（roundTables）；PUBLISHED SEATING PREVIEW 眉题随旧预览区
+  //                             一并退役（桌卡 = 已发布分桌，语义由「桌卡只读取已原子发布的结果」文案承接）。
+  const screens = [
+    "app/(app)/app/events/ops-0918/ops-console.tsx",
+    "app/(app)/app/events/ops-0918/ops-overview.tsx",
+    "app/(app)/app/events/ops-0918/ops-match.tsx",
+    "app/(app)/app/events/ops-0918/ops-operations-shared.tsx",
+    "app/(app)/app/events/ops-0918/ops-people.tsx",
+    "app/(app)/app/events/ops-0918/ops-checkin.tsx",
+  ];
+  const client = screens.map(source).join("\n");
+  const model = source("app/(app)/app/events/ops-0918/ops-model.ts");
+  const hook = source("app/(app)/app/events/ops-0918/use-event-operations.ts");
+  const roster = source("app/(app)/app/events/ops-0918/use-check-in-roster.ts");
+  assert.match(client, /useEventOperations\(event\)/);
+  assert.doesNotMatch(hook, /progressSteps|markParticipantArrived|checkInsByParticipant/, "任务 7：无消费者的派生 / 动作已删除");
 
-  assert.match(client, /method: "PUT"/);
+  assert.match(hook, /method: "PUT"/);
   assert.match(client, /生成匹配/);
   assert.match(client, /Worker 处理中/);
-  assert.match(client, /setInterval/);
+  assert.match(hook, /setInterval/);
   assert.match(client, /失败的片段会自动重试/);
+  assert.match(hook, /失败的片段会自动重试/);
   assert.doesNotMatch(client, /maxConcurrency|event-operations-admin-ui/);
+  assert.doesNotMatch(hook, /maxConcurrency|event-operations-admin-ui/);
   assert.match(client, /重试失败分片/);
   assert.match(client, /原子发布/);
-  assert.match(client, /已完成分片的输出全部保留/);
+  assert.match(hook, /已完成分片的输出全部保留/);
   assert.match(
-    client,
+    hook,
     /const actionError[\s\S]*await load\(\);[\s\S]*setError\(actionError\)/,
     "generation failures must remain visible after the latest persisted state is reloaded",
   );
   assert.match(client, /\/export/);
-  assert.match(client, /REAL REGISTRATION DIRECTORY/);
+  assert.match(client, /workspace\.participants\.length === 0 \? <div className="op-empty op-prow-empty">尚无报名。/, "real registration directory (people screen)");
   assert.match(client, /CONSENT AUDIT/);
-  assert.match(client, /\/check-ins/);
+  // 运营台 任务 7：POST /check-ins 从 use-event-operations 删除（无消费者），只由 use-check-in-roster.markArrived 承担
+  assert.doesNotMatch(hook, /\/check-ins/);
+  assert.match(roster, /\/operations\/admin\/check-ins/);
+  assert.match(roster, /method: "POST"/);
   assert.match(client, /标记到场/);
   assert.match(client, /VENUE CHECK-IN ENTRY/);
   assert.match(client, /不会生成二维码图片/);
-  assert.match(client, /party\/checkin\?eventId=/);
+  assert.match(hook, /\/operations\/check-in`/);
+  assert.doesNotMatch(client, /\/app\/party/);
+  assert.doesNotMatch(hook, /\/app\/party/);
   assert.match(client, /CONFIGURED TIMELINE/);
-  assert.match(client, /canonicalScheduleFields = \["eventStartsAt", "eventEndsAt"\]/);
-  assert.match(client, /field === "eventStartsAt"\s*\? event\.startsAt/);
-  assert.match(client, /field === "eventEndsAt"\s*\? event\.endsAt/);
+  assert.match(hook, /canonicalScheduleFields = \["eventStartsAt", "eventEndsAt"\]/);
+  assert.match(hook, /field === "eventStartsAt"\s*\? event\.startsAt/);
+  assert.match(hook, /field === "eventEndsAt"\s*\? event\.endsAt/);
   assert.match(client, /readOnly=\{canonicalScheduleFields\.includes/);
   assert.equal(
     (client.match(/onInput=\{\(input\) => \{/g) ?? []).length,
@@ -69,9 +101,10 @@ test("organizer workspace exposes the complete strict generation and audit workf
   assert.doesNotMatch(client, /onChange=\{\(input\) => setForm/);
   assert.match(client, /profileEditDeadlineAt/);
   assert.match(client, /roundOneStartsAt/);
-  assert.match(client, /PUBLISHED SEATING PREVIEW/);
-  assert.match(client, /grouping\.roundOne/);
-  assert.match(client, /grouping\.roundTwo/);
+  assert.match(client, /桌卡只读取已原子发布的结果/u);
+  assert.match(client, /roundTables\(published, round\)/);
+  assert.match(model, /grouping\.roundOne/);
+  assert.match(model, /grouping\.roundTwo/);
   assert.match(client, /table\.rationale/);
   assert.match(client, /table\.icebreakers/);
   assert.match(client, /member\.seat/);

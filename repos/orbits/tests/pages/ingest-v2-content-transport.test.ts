@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { randomUUID } from "node:crypto";
 import type { upload } from "@vercel/blob/client";
-import { createIngestContentUploader } from "../../app/(app)/app/contacts/new/batch2/ingest-v2-content-transport";
+import { createIngestContentUploader } from "../../app/(app)/app/contacts/ingest-v2/ingest-v2-content-transport";
 
 const file = new File([Buffer.alloc(6 * 1024 * 1024)], "card.jpg", { type: "image/jpeg" });
 const input = { batchId: "batch", itemId: "item", operation: "replace" as const, expectedVersion: 3,

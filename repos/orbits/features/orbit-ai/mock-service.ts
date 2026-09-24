@@ -80,7 +80,7 @@ const englishFallbackItems: readonly OrbitAiStageItem[] = [
   {
     actionLabel: "Open follow-ups",
     body: "Review promises, draft boundaries, and follow-up timing before anything is sent.",
-    href: "/app/followups",
+    href: "/app/agent/plan",
     label: "Follow-ups",
     title: "Follow-up queue",
   },
@@ -94,14 +94,14 @@ const englishFallbackItems: readonly OrbitAiStageItem[] = [
   {
     actionLabel: "Open conversations",
     body: "Use private conversation context without turning it into automatic outreach.",
-    href: "/app/chat",
+    href: "/app/agent",
     label: "Conversations",
     title: "Conversation context",
   },
   {
     actionLabel: "Open relationship health",
     body: "See gaps, dormant ties, and relationship health signals in one place.",
-    href: "/app/dashboard",
+    href: "/app/contacts/dashboard",
     label: "Health",
     title: "Network signal",
   },
@@ -132,7 +132,7 @@ const chineseFallbackItems: readonly OrbitAiStageItem[] = [
   {
     actionLabel: "打开跟进",
     body: "先看承诺、草稿边界和时机，再决定要不要发出去。",
-    href: "/app/followups",
+    href: "/app/agent/plan",
     label: "跟进",
     title: "跟进队列",
   },
@@ -146,14 +146,14 @@ const chineseFallbackItems: readonly OrbitAiStageItem[] = [
   {
     actionLabel: "打开对话",
     body: "把私聊上下文拿来参考，但不自动对外发送。",
-    href: "/app/chat",
+    href: "/app/agent",
     label: "对话",
     title: "对话上下文",
   },
   {
     actionLabel: "打开关系健康",
     body: "看关系缺口、沉睡关系和当前网络信号。",
-    href: "/app/dashboard",
+    href: "/app/contacts/dashboard",
     label: "关系健康",
     title: "关系信号",
   },
@@ -476,7 +476,7 @@ export function createMockOrbitAiCommandService(): OrbitAiCommandService {
                 language === "en"
                   ? task.recommendedAction
                   : "先确认摘要和语气，再决定是否发送。",
-              href: "/app/followups",
+              href: "/app/agent/plan",
               label: language === "en" ? task.dueLabel : "等待确认",
               title:
                 language === "en"
@@ -492,7 +492,7 @@ export function createMockOrbitAiCommandService(): OrbitAiCommandService {
                   language === "en"
                     ? task.recommendedAction
                     : "把承诺、草稿和提醒放在一起复核。",
-                href: "/app/followups",
+                href: "/app/agent/plan",
                 label:
                   language === "en"
                     ? `${task.contactName} at ${task.organization}`
@@ -515,7 +515,7 @@ export function createMockOrbitAiCommandService(): OrbitAiCommandService {
           panel,
           prompt,
           sideEffectsExecuted: false,
-          stageCtaHref: "/app/followups",
+          stageCtaHref: "/app/agent/plan",
           stageCtaLabel: language === "en" ? "Open follow-ups" : "打开跟进",
           stageItems: [...bootstrapTasks, ...tasks].slice(0, 3),
           stageSubtitle:
@@ -548,7 +548,7 @@ export function createMockOrbitAiCommandService(): OrbitAiCommandService {
                 language === "en"
                   ? task.recommendedAction
                   : "跟进草稿保持待确认，不会自动发送。",
-              href: "/app/followups",
+              href: "/app/agent/plan",
               label: language === "en" ? "Follow-up" : "跟进",
               title: task.title,
             }),
@@ -662,7 +662,7 @@ export function createMockOrbitAiCommandService(): OrbitAiCommandService {
           panel,
           prompt,
           sideEffectsExecuted: false,
-          stageCtaHref: "/app/dashboard",
+          stageCtaHref: "/app/contacts/dashboard",
           stageCtaLabel: language === "en" ? "Open relationship health" : "打开关系健康",
           stageItems: metrics.map((metric) =>
             itemFromParts({
@@ -671,7 +671,7 @@ export function createMockOrbitAiCommandService(): OrbitAiCommandService {
                 language === "en"
                   ? `${metric.value} ${metric.label.toLowerCase()} need context-aware review.`
                   : `${metric.value} 个${metric.label === "High-value relationships" ? "高价值关系" : "关系信号"}需要复核。`,
-              href: "/app/dashboard",
+              href: "/app/contacts/dashboard",
               label: language === "en" ? "Network signal" : "关系信号",
               title:
                 language === "en"

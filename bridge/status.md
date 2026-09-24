@@ -1,5 +1,9 @@
 # 两端当前状态
 
+## 2026-09-17 Web 报名候选的跨端发布门
+
+主集成`66087fff`已本地验收报名回执/独立GET及规范账号接线（84/84与全typecheck）。尚未发布：历史raw报名未审计/迁移，App报名屏仍可能拒绝规范accountId回执，跨端联验未执行。详见[BR-031](2026-09-17-web-registration-identity-candidate.md)；本条不改变已完成的生产数据切换，也不把此前跨端其他子项重新判失败。
+
 ## 2026-09-17 7a 报名／独立画像集成（验收开放）
 
 0066功能与运行修复已合并push chat-agent `e73e6fb26`并独立核对远端。Main Web fresh重建重启、Simulator fresh安装及真实Main8082 loaded-JS已核对，App101/101、Web62/62。Phone修复消费 `8d87be6ff` fresh Next＋Expo完成，公网仍旧0065；旧源真实画像保存与数据不变成立，新源3/8／零自动AI调用尚未实际复测。Main认证受SQL53000数据库额度阻挡，当前Browser／任务连接也不可用；未切库／升级或伪造通过。见[交接](2026-09-17-registration-portrait-7a.md)与[未完成验收报告](../repos/orbit-app/docs/sprints/0066-registration-portrait-7a/REPORT.md)，不据此关闭缺项。

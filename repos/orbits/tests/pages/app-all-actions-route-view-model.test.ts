@@ -6,7 +6,7 @@
  */
 import assert from "node:assert/strict";
 import test from "node:test";
-import { loadAppAllActionsRouteViewModel } from "../../app/(app)/app/contacts/all-actions/compose-app-all-actions-from-agent-ledger/all-actions-route-view-model";
+import { loadAppAllActionsRouteViewModel } from "../../app/(app)/app/agent/actions/compose-app-all-actions-from-agent-ledger/all-actions-route-view-model";
 
 test("all actions lists every ledger entry by default", async () => {
   const model = await loadAppAllActionsRouteViewModel();

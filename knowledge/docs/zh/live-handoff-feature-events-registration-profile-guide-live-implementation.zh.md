@@ -31,16 +31,29 @@
 
 ## 结构化阅读入口
 
-- 第 1 节：Registration Profile Guide Live 实现
-- 第 2 节：Mock 边界
-- 第 3 节：Live Replacement 路径
-- 第 4 节：Privacy 和 Provenance
-- 第 5 节：Replacement 测试
+- 第 1 节：活动 Registration Live 实现
+- 第 2 节：源标题：Shared Orbit AI Model
+- 第 3 节：Registration 状态
+- 第 4 节：API 和 UI
+- 第 5 节：验证
 
 ## 保留的代码与命令证据
 
-源文档没有独立代码块；涉及的路径、命令和接口名保留在上方元信息中。
+### 代码证据 1
 
+```ts
+type EventRegistration = {
+  id: string;
+  eventId: string;
+  userId: string;
+  status: "rsvped" | "cancelled";
+  participantProfileId: string;
+  registeredAt: string;
+  cancelledAt: string | null;
+  reactivatedAt: string | null;
+  updatedAt: string;
+};
+```
 
 ## 源文档正文
 

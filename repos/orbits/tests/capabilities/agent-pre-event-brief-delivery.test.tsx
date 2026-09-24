@@ -1,9 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { renderToStaticMarkup } from "react-dom/server";
 
-import { OrbitTodayPreEventBrief } from "../../app/(app)/app/today/orbit-today-pre-event-brief";
-import { todaySectionForEntry } from "../../app/(app)/app/today/compose-app-today-from-agent-ledger/today-route-view-model";
 import { createAgentSchedulerRouteHandler } from "../../app/api/internal/agent/scheduler/route-handler";
 import { agentActionToLedgerEntry } from "../../features/agent/ledger/runtime-adapter";
 import { createStorageContactArchiveActionWriter } from "../../features/contacts/action-writer";
@@ -23,7 +20,14 @@ import { createStorageFollowupActionWriter } from "../../features/followups/acti
 import { shouldSendPreEventNudge } from "../../features/notifications/push-adapter";
 import { createStorageNotificationDeliveryService } from "../../features/notifications/delivery-service";
 import { createStorageReminderActionWriter } from "../../features/notifications/action-writer";
-import { readPreEventBriefFromAction } from "../../features/agent/ledger/pre-event-brief";
+// iOrbit 任务 6a：`/app/today` 路由已删除，`todaySectionForEntry` 与
+// `OrbitTodayPreEventBrief` 随之消失。「已准备 → 已查看」这条能力断言改成直接读
+// 账本判据 `isUnviewedPreEventBriefEntry`（它本来就是 `todaySectionForEntry` 的
+// "prepared" 判据，仍在 features 层）；简报卡的 HTML 断言随组件删除。
+import {
+  isUnviewedPreEventBriefEntry,
+  readPreEventBriefFromAction,
+} from "../../features/agent/ledger/pre-event-brief";
 import {
   createAgentWorkflowScheduler,
   type ScheduledBriefCandidate,
@@ -169,27 +173,19 @@ test("scheduled brief is complete, stays prepared until viewed, and viewed state
     briefAction,
     await harness.runtime.getRun(briefAction.runId),
   );
-  assert.equal(todaySectionForEntry(beforeView), "prepared");
+  assert.equal(isUnviewedPreEventBriefEntry(beforeView), true);
 
   const viewed = await harness.runtime.markActionViewed(briefAction.actionId);
   const afterView = agentActionToLedgerEntry(
     viewed,
     await harness.runtime.getRun(viewed.runId),
   );
-  assert.equal(todaySectionForEntry(afterView), "recent");
+  assert.equal(isUnviewedPreEventBriefEntry(afterView), false);
 
   const second = await scheduler.tick();
   assert.equal(second.pushed.length, 0);
   assert.deepEqual(sent, ["legacy:event:event-brief-delivery"]);
 
-  const html = renderToStaticMarkup(<OrbitTodayPreEventBrief brief={brief} />);
-  assert.match(html, /本场目标/);
-  assert.match(html, /准备缺口/);
-  assert.match(html, /Aiko Mori/);
-  assert.match(html, /上次互动/);
-  assert.match(html, /7 月 10 日讨论过储能试点/);
-  assert.match(html, /建议话题/);
-  assert.match(html, /未完成承诺/);
 });
 
 test("event goal remains editable until confirmation and executes the edited value", async () => {

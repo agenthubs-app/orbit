@@ -34,9 +34,10 @@
 - 第 1 节：Events 模块
 - 第 2 节：模块定位
 - 第 3 节：期望行为
-- 第 4 节：Mock 行为
-- 第 5 节：源标题：Live Store
-- 第 6 节：热拔插边界
+- 第 4 节：主办方身份与所有权
+- 第 5 节：Mock 行为
+- 第 6 节：源标题：Live Store
+- 第 7 节：热拔插边界
 
 ## 保留的代码与命令证据
 
@@ -52,6 +53,14 @@ Events 负责活动创建、导入、参会者名单、目标准备、现场记�
 ## 期望行为
 
 模块应支持活动全生命周期：活动详情、参会者、活动目标、准备度、现场 encounter、want-to-connect 和 post-event review。每一步都应保留来源和操作边界。
+
+## 主办方身份与所有权
+
+每个活动的 `organizerActorId` 必须属于一个已注册的 Orbit 用户，并解析到完整的 AuthUser、Account 和 Profile 身份链。Contact、Profile ID、邮箱、公开主办方标签或任意外部字符串都不能直接充当活动 owner。
+
+主办方是否属于小雨的现有人脉，由独立的 ContactActorLink/关系事实表达，不改变活动 owner 的账号语义。未注册的外部人物只能作为候选主办方；完成注册和账号关联前不能接收活动主办权。
+
+owner 从 Event Core organizer 派生。主办权变更必须走显式、可审计的 ownership-transfer 流程，不能通过直接覆盖数据库字段实现。
 
 ## Mock 行为
 

@@ -5,6 +5,7 @@ import test from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { defaultMockFixtures } from "../../shared/mock/fixtures";
 import type { LocalRemoteContactGraph } from "../../features/contacts/contact-graph-provider";
+import { iorbitChatSurfaceSource } from "./iorbit-chat-surface-source";
 
 const projectRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -14,6 +15,12 @@ const projectRoot = path.resolve(
 function readProjectFile(relativePath: string): string {
   return fs.readFileSync(path.join(projectRoot, relativePath), "utf8");
 }
+
+// iOrbit 任务 1b：artifact→人脉卡的纯函数在 `iorbit-model.ts`、读 artifact 的在
+// `use-agent-chat.ts`，JSX 留在 `orbit-real-agent.tsx`。
+const IORBIT_MODEL_PATH = "app/(app)/app/agent/iorbit-0918/iorbit-model.ts";
+const IORBIT_CHAT_HOOK_PATH = "app/(app)/app/agent/iorbit-0918/use-agent-chat.ts";
+const IORBIT_HISTORY_HOOK_PATH = "app/(app)/app/agent/iorbit-0918/use-agent-history.ts";
 
 async function importProjectModule<TModule>(
   relativePath: string,
@@ -90,19 +97,23 @@ test("/app/agent consumes GET q prompts and renders linked contact recommendatio
 
 test("/app/agent maps contact artifacts into reason, confidence, evidence, and detail-card fields", () => {
   const pageSource = readProjectFile("app/(app)/app/agent/page.tsx");
-  const agentSource = readProjectFile(
-    "app/(app)/app/agent/orbit-real-agent.tsx",
-  );
+  // iOrbit 任务 6a：`orbit-real-agent.tsx` 已删除；对话面的源码断言改读
+  // `iorbit-chat-surface-source.ts` 合并的那一组在售文件（内容同源，换了住处）。
+  const agentSource = iorbitChatSurfaceSource();
 
   assert.match(pageSource, /searchParams/);
   assert.match(pageSource, /loadAppChatRouteViewModel/);
   assert.match(pageSource, /composeOrbitAgentEntryViewModel/);
-  assert.match(agentSource, /currentAgentQuery\(\)/);
-  assert.match(agentSource, /artifactOfKind\(\s*payload\.data\.artifacts,\s*"contact_recommendations"/);
-  assert.match(agentSource, /peopleItemsFromArtifact\(contactArtifact\)/);
-  assert.match(agentSource, /industry: item\.confidenceLabel/);
-  assert.match(agentSource, /opener: item\.body/);
-  assert.match(agentSource, /reason: item\.reason/);
+  const modelSource = readProjectFile(IORBIT_MODEL_PATH);
+  const chatHookSource = readProjectFile(IORBIT_CHAT_HOOK_PATH);
+  const historyHookSource = readProjectFile(IORBIT_HISTORY_HOOK_PATH);
+
+  assert.match(chatHookSource, /currentAgentQuery\(\)/);
+  assert.match(chatHookSource, /artifactOfKind\(\s*payload\.data\.artifacts,\s*"contact_recommendations"/);
+  assert.match(chatHookSource, /peopleItemsFromArtifact\(contactArtifact\)/);
+  assert.match(modelSource, /industry: item\.confidenceLabel/);
+  assert.match(modelSource, /opener: item\.body/);
+  assert.match(modelSource, /reason: item\.reason/);
   assert.match(agentSource, /function AgentPeopleRow/);
   assert.match(agentSource, /navigate\(`\/app\/contacts\/\$\{connection\.id\}`\)/);
   assert.match(agentSource, /requestMessageDraft/);
@@ -121,15 +132,17 @@ test("/app/agent maps contact artifacts into reason, confidence, evidence, and d
   // 里不对普通用户展示的内部产物，继续挡住。
   assert.match(peopleRowSource, /item\.reason \? <span className="why">/);
   assert.doesNotMatch(peopleRowSource, /item\.opener \? <span/);
-  assert.doesNotMatch(agentSource, /查看完整处理过程/);
-  assert.doesNotMatch(agentSource, /data-agent-run-details/);
-  assert.doesNotMatch(agentSource, /AgentEvidenceSources/);
+  for (const checked of [agentSource, modelSource, chatHookSource, historyHookSource]) {
+    assert.doesNotMatch(checked, /查看完整处理过程/);
+    assert.doesNotMatch(checked, /data-agent-run-details/);
+    assert.doesNotMatch(checked, /AgentEvidenceSources/);
+  }
 });
 
 test("contact artifact mapping preserves actor-scoped contact ids", async () => {
   const { contactIdFromArtifactItemId } = await importProjectModule<{
     contactIdFromArtifactItemId: (value: unknown) => string;
-  }>("app/(app)/app/agent/orbit-real-agent.tsx");
+  }>("app/(app)/app/agent/iorbit-0918/iorbit-model.ts");
 
   assert.equal(
     contactIdFromArtifactItemId(
@@ -144,9 +157,9 @@ test("contact artifact mapping preserves actor-scoped contact ids", async () => 
 });
 
 test("/app/agent makes contact and event discovery explicit before submission", () => {
-  const agentSource = readProjectFile(
-    "app/(app)/app/agent/orbit-real-agent.tsx",
-  );
+  // iOrbit 任务 6a：`orbit-real-agent.tsx` 已删除；对话面的源码断言改读
+  // `iorbit-chat-surface-source.ts` 合并的那一组在售文件（内容同源，换了住处）。
+  const agentSource = iorbitChatSurfaceSource();
 
   assert.match(agentSource, /viewModel\.suggests\.map/);
   assert.match(agentSource, /onPick\(suggest\.q\)/);
@@ -287,18 +300,17 @@ test("contact detail mapping translates live source and relationship tokens into
 
 test("contact detail presenter exposes one identity, provenance, and follow-up surface", () => {
   const source = readProjectFile(
-    "app/(app)/app/contacts/orbit-real-card-connection.tsx",
+    "app/(app)/app/contacts/network-0918/network-detail-modal.tsx",
   );
 
-  assert.match(source, /className="orbit-desktop-only"/);
-  assert.match(source, /className="orbit-mobile-only"/);
-  assert.match(source, /<OrbitContactAvatar contact=\{contact\}/);
-  assert.match(source, /<SourceBadge source=\{contact\.source\}/);
-  assert.match(source, /data-agent-context="contact"/);
-  assert.match(source, /data-inbox-compose/);
-  assert.match(source, /<TimelineCard contact=\{contact\}/);
-  assert.match(source, /<NextStepCard(?: compact)? contact=\{contact\}/);
-  assert.doesNotMatch(source, /isMobileLayout|setIsMobileLayout/);
+  // One modal (no desktop/mobile duplicate trees): identity hero, source-code provenance, follow-up entry.
+  assert.doesNotMatch(source, /orbit-desktop-only|orbit-mobile-only|isMobileLayout|setIsMobileLayout/);
+  assert.match(source, /className="nw-detail-name">\{contact\.displayName\}/);
+  assert.match(source, /SOURCE_LABEL\[source\]/);
+  assert.match(source, /desc: metSummary\(contact\.met\)/);
+  assert.match(source, /className="btn nw-detail-follow" onClick=\{onFollow\}/);
+  assert.match(source, /sortedNotes\(contact\.notes\)/);
+  assert.equal((source.match(/role="dialog"/g) ?? []).length, 1);
 });
 
 test("contact recommendation documentation records evaluation threshold and live replacement path", () => {

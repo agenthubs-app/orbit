@@ -1,8 +1,9 @@
 import { redirect } from "next/navigation";
 
 import { auth } from "../../../../../auth";
+import { AccountTopNav } from "../../orbit-account-shell";
 import { OrbitReferenceStyles } from "../../orbit-reference-styles";
-import { EventCenterWorkspace } from "./event-center-workspace";
+import { OpsHub } from "../ops-0918/ops-hub";
 
 export default async function EventCenterPage() {
   const session = await auth();
@@ -13,7 +14,11 @@ export default async function EventCenterPage() {
   return (
     <>
       <OrbitReferenceStyles />
-      <EventCenterWorkspace />
+      {/* 顶栏样式限定在 [data-orbit-real-page] 祖先下（orbit-reference-styles.tsx），外层容器必须带该属性。 */}
+      <div data-orbit-real-page="ops-0918">
+        <AccountTopNav active="events" />
+        <OpsHub />
+      </div>
     </>
   );
 }

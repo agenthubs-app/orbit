@@ -1,12 +1,26 @@
+/**
+ * 人脉概览 / AI 人脉分析 route adapter（/app/contacts/dashboard）。
+ *
+ * 只连接 live-capable contacts route model + contacts analysis 和 Network v2 概览屏 / 分析子页；
+ * `?tab=structure|opportunities` 进分析子页（既有 query 语义保留），否则为概览。
+ */
 import { redirect } from "next/navigation";
 
 import { auth } from "../../../../../auth";
 import { resolveAuthenticatedApiActorFromSession } from "../../../../api/_shared/authenticated-actor";
-import { getOrbitServerLanguage } from "../../orbit-language-server";
+import { getOrbitServerLanguage, localizeOrbitTree } from "../../orbit-language-server";
+import { AccountTopNav } from "../../orbit-account-shell";
+import { applyOrbitContactsPresentation } from "../../orbit-contacts-presentation";
 import { OrbitReferenceStyles } from "../../orbit-reference-styles";
 import { OrbitVisualFreezeRuntime } from "../../orbit-visual-freeze-runtime";
 import { loadContactsAnalysis } from "../analysis/contacts-analysis-route-service";
-import { ContactsAnalysisWorkspace } from "../analysis/contacts-analysis-workspace";
+import {
+  ContactsSubrouteStateBoundary,
+  contactsRouteToOrbitContactsViewModel,
+} from "../compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-subroute-route-adapter";
+import { loadAppContactsRouteViewModel } from "../compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-route-view-model";
+import { NetworkAnalysis } from "../network-0918/network-analysis";
+import { NetworkOverview } from "../network-0918/network-overview";
 
 export default async function AppContactsDashboardPage({ searchParams }: {
   searchParams?: Promise<{ tab?: string | string[] }>;
@@ -28,14 +42,32 @@ export default async function AppContactsDashboardPage({ searchParams }: {
     getOrbitServerLanguage(),
     searchParams,
   ]);
-  const view = await loadContactsAnalysis(actor.id, language);
+  const [analysis, routeModel] = await Promise.all([
+    loadContactsAnalysis(actor.id, language),
+    loadAppContactsRouteViewModel({}, actor.id),
+  ]);
   const tab = params?.tab === "structure" || params?.tab === "opportunities" ? params.tab : "overview";
+  const toViewModel = (payload: Parameters<typeof contactsRouteToOrbitContactsViewModel>[0]) =>
+    localizeOrbitTree(applyOrbitContactsPresentation(contactsRouteToOrbitContactsViewModel(payload), language), language);
 
   return (
     <>
       <OrbitReferenceStyles />
       <OrbitVisualFreezeRuntime />
-      <ContactsAnalysisWorkspace initialView={view} initialTab={tab} />
+      {routeModel.state === "success" ? (
+        // 顶栏样式限定在 [data-orbit-real-page] 祖先下（orbit-reference-styles.tsx），外层容器必须带该属性。
+        <div data-orbit-real-page="network" data-orbit-route="app-contacts-dashboard-route">
+          <AccountTopNav active="cards" />
+          {tab === "overview"
+            ? <NetworkOverview viewModel={toViewModel(routeModel.payload)} analysis={analysis} />
+            : <NetworkAnalysis viewModel={toViewModel(routeModel.payload)} analysis={analysis} initialTab={tab === "opportunities" ? "opp" : "struct"} />}
+        </div>
+      ) : (
+        <ContactsSubrouteStateBoundary
+          marker="app-contacts-dashboard-route"
+          routeModel={routeModel}
+        />
+      )}
     </>
   );
 }

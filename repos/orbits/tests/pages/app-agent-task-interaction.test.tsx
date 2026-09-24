@@ -2,8 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { useState } from "react";
 import { act, create, type ReactTestRenderer } from "react-test-renderer";
-import { OrbitRealAgent, parseAgentChatHistoryStorage } from "../../app/(app)/app/agent/orbit-real-agent";
+// iOrbit 任务 6a：`orbit-real-agent.tsx` 删除，挂载树换成在售的对话壳
+// （`initialDeepLink` = 服务端解析出的 `?q=`／`?session=`，等价旧组件的直接进对话）。
+import { IOrbitShell } from "../../app/(app)/app/agent/iorbit-0918/iorbit-shell";
+import { parseAgentChatHistoryStorage } from "../../app/(app)/app/agent/iorbit-0918/iorbit-model";
 import { createOrbitAgentStarterViewModel } from "../../app/(app)/app/orbit-agent-route-view-model";
+import { buttonWithText } from "./app-agent-characterization-harness";
 
 const suggestion = { state: "suggested", title: "准备会面", category: "work", suggestionId: "suggestion:one/two", dueAt: "2026-09-09T01:00:00.000Z" };
 const task = {
@@ -252,8 +256,15 @@ async function mountPage(
     return Response.json({ success: true, data: {} });
   });
   const home = analysisPrefill ? { account: { fullName: "本人", headline: "", initial: "本" }, events: [], stats: { events: 0, people: 1, inProgress: 0 } } : undefined;
-  await act(async () => { root = create(<OrbitRealAgent home={home} viewModel={createOrbitAgentStarterViewModel()} />); });
+  await act(async () => { root = create(<IOrbitShell home={home ?? null} initialDeepLink viewModel={createOrbitAgentStarterViewModel()} />); });
   return { root: root!, persisted, requests, organizationMutations, conversationRequests, pendingSaves, respond: (response: Response) => respond(response) };
+}
+
+// iOrbit 任务 6a：旧组件的桌面/移动两棵 DOM 随 `orbit-real-agent.tsx` 删除
+// （「审阅修订」15 记过的壳形态变化），新壳是单套 DOM，因此原来断「两棵树各一份」
+// 的计数一律变成 1。历史能力也不再有常驻侧栏，改由「◷ 历史记录」抽屉进入。
+function openHistoryDrawer(root: ReactTestRenderer) {
+  act(() => buttonWithText(root, "历史记录").props.onClick());
 }
 
 async function waitForPendingSessionSave(pendingSaves: Array<() => void>) {
@@ -293,8 +304,8 @@ test("new chat keeps a persistent composer and sends its next turn through relia
   const { root, conversationRequests } = await mountPage(t);
   const forms = root.root.findAllByProps({ "data-orbit-agent-chat-composer": true });
   const inputs = root.root.findAllByProps({ "data-orbit-agent-chat-input": true });
-  assert.equal(forms.length, 2, "desktop and mobile trees share the chat composer contract");
-  assert.equal(inputs.length, 2, "desktop and mobile trees expose the chat textbox");
+  assert.equal(forms.length, 1, "the single-tree shell keeps one chat composer");
+  assert.equal(inputs.length, 1, "the single-tree shell exposes one chat textbox");
 
   const input = inputs[0];
   act(() => input.props.onChange({ target: { value: "继续确认这个推荐" } }));
@@ -333,13 +344,14 @@ test("contacts analysis opens as an editable draft and sends its structured orig
   });
 
   assert.equal(conversationRequests.length, 0, "opening a prefill must not generate");
-  const inputs = root.root.findAllByProps({ "aria-label": "向 iOrbit 提问" });
-  assert.equal(inputs.length, 2);
+  // 任务 3：预填落在对话输入区（旧实现落在 dashboard 的一次性简报框 `.glass.brief-input`）。
+  const inputs = root.root.findAllByProps({ "data-orbit-agent-chat-input": true });
+  assert.equal(inputs.length, 1);
   assert.ok(inputs.every((input) => input.props.value === "请根据我的关系目标和当前人脉数据生成分析报告。"));
   const input = inputs[0];
   await act(async () => { input.props.onChange({ target: { value: "请重点分析我在东京制造业的人脉缺口。" } }); });
   await act(async () => {
-    root.root.findAllByProps({ className: "glass brief-input" })[0].props.onSubmit({ preventDefault() {} });
+    root.root.findAllByProps({ "data-orbit-agent-chat-composer": true })[0].props.onSubmit({ preventDefault() {} });
     await new Promise<void>((resolve) => setImmediate(resolve));
   });
   assert.equal(conversationRequests.length, 1);
@@ -349,6 +361,7 @@ test("contacts analysis opens as an editable draft and sends its structured orig
 
 test("Web chat started from a group records the origin and persists group membership after the first reply", async (t) => {
   const { root, organizationMutations, conversationRequests } = await mountPage(t);
+  openHistoryDrawer(root);
   act(() => root.root.findAllByType("button").find((button) => button.children.includes("分组"))!.props.onClick());
   act(() => root.root.findAllByType("button").find((button) => button.children.includes("新建"))!.props.onClick());
   await act(async () => {
@@ -376,7 +389,7 @@ test("opening a restored Web session performs no automatic POST", async (t) => {
   assert.equal(persisted.length, 0);
   assert.equal(
     root.root.findAllByProps({ "data-orbit-agent-chat-input": true }).length,
-    2,
+    1,
     "restored sessions keep the same persistent chat composer",
   );
 });
@@ -394,7 +407,7 @@ test("a created task without recommendation evidence renders its status and enco
   assert.doesNotMatch(rendered, emptyEvidenceMessage);
   assert.doesNotMatch(rendered, /服务端任意回复/u);
   assert.match(rendered, /已创建待办：准备会面/u);
-  assert.equal(root.root.findAllByProps({ href: "/app/tasks/task%3Aone%2Ftwo" }).length, 2);
+  assert.equal(root.root.findAllByProps({ href: "/app/tasks/task%3Aone%2Ftwo" }).length, 1);
 });
 
 test("a suggested task without recommendation evidence remains an explicit user decision", async (t) => {
@@ -407,7 +420,7 @@ test("a suggested task without recommendation evidence remains an explicit user 
   assert.doesNotMatch(rendered, emptyEvidenceMessage);
   assert.doesNotMatch(rendered, /服务端任意回复/u);
   assert.match(rendered, /要把“准备会面”加入待办吗？/u);
-  assert.equal(root.root.findAllByProps({ "aria-label": "加入待办：准备会面" }).length, 2);
+  assert.equal(root.root.findAllByProps({ "aria-label": "加入待办：准备会面" }).length, 1);
   assert.equal(root.root.findAllByProps({ href: "/app/tasks/task%3Aone%2Ftwo" }).length, 0);
 });
 
@@ -452,13 +465,13 @@ test("an absent task interaction keeps the evidence guard and suppresses arbitra
 test("real AI replies render in both responsive trees with a shared operation lock and persist the accepted task", async (t) => {
   const { root, persisted, requests, respond } = await mountPage(t);
   const accept = root.root.findAllByProps({ "aria-label": "加入待办：准备会面" });
-  assert.equal(accept.length, 2);
+  assert.equal(accept.length, 1);
   let request: Promise<void>;
-  await act(async () => { request = accept[0].props.onClick(); void accept[1].props.onClick(); });
+  await act(async () => { request = accept[0].props.onClick(); void accept[0].props.onClick(); });
   assert.equal(requests.length, 1);
   assert.ok(root.root.findAllByProps({ "aria-label": "加入待办：准备会面" }).every((button) => button.props.disabled));
   await act(async () => { respond(Response.json({ success: true, data: { task } })); await request; });
-  assert.equal(root.root.findAllByProps({ href: "/app/tasks/task%3Aone%2Ftwo" }).length, 2);
+  assert.equal(root.root.findAllByProps({ href: "/app/tasks/task%3Aone%2Ftwo" }).length, 1);
   assert.deepEqual(persisted.at(-1)?.messages.at(-1)?.taskInteraction, {
     state: "created", title: "准备会面", category: "work", taskId: "task:one/two",
   });
@@ -467,13 +480,14 @@ test("real AI replies render in both responsive trees with a shared operation lo
 test("starting a new conversation during acceptance never writes the old card into the new thread", async (t) => {
   const { root, persisted, respond } = await mountPage(t);
   const accept = root.root.findAllByProps({ "aria-label": "加入待办：准备会面" });
-  assert.equal(accept.length, 2);
+  assert.equal(accept.length, 1);
   let request: Promise<void>;
   await act(async () => { request = accept[0].props.onClick(); });
-  act(() => root.root.findAllByProps({ className: "orbit-agent-new-chat" })[0].props.onClick());
+  openHistoryDrawer(root);
+  act(() => root.root.findAllByProps({ className: "btn ir-drawer-new" })[0].props.onClick());
   assert.equal(
     root.root.findAllByProps({ "data-orbit-agent-chat-input": true }).length,
-    2,
+    1,
     "starting a new conversation keeps the persistent composer visible",
   );
   const savedCount = persisted.length;
@@ -498,6 +512,7 @@ test("delayed history writes cannot overwrite a newer accepted-task snapshot", a
 test("renaming while a task is accepted preserves both the name and task in saved and reopened history", async (t) => {
   const { root, pendingSaves, persisted, organizationMutations, respond } = await mountPage(t, true);
   await waitForPendingSessionSave(pendingSaves);
+  openHistoryDrawer(root);
   act(() => root.root.findAllByProps({ "aria-label": "更多操作" })[0].props.onClick());
   const rename = root.root.findAll((node) => node.type === "button" && node.props["data-orbit-agent-history-rename"])[0];
   act(() => rename.props.onClick());
@@ -506,7 +521,7 @@ test("renaming while a task is accepted preserves both the name and task in save
   const renameForm = root.root.findAllByType("form").find((form) =>
     form.findAll((node) => Boolean(node.props["data-orbit-agent-history-rename-input"])).length > 0,
   );
-  assert.ok(renameForm, "the history rename form remains distinct from the responsive chat composers");
+  assert.ok(renameForm, "the history rename form remains distinct from the chat composer");
   act(() => renameForm!.props.onSubmit({ preventDefault() {} }));
   let request: Promise<void>;
   await act(async () => { request = root.root.findAllByProps({ "aria-label": "加入待办：准备会面" })[0].props.onClick(); });
@@ -514,8 +529,8 @@ test("renaming while a task is accepted preserves both the name and task in save
   await drainPendingSessionSaves(pendingSaves);
   assert.equal(persisted.at(-1)?.messages.at(-1)?.taskInteraction?.state, "created");
   assert.equal((organizationMutations.at(-1) as any).patch.customTitle, "会面资料");
-  await act(async () => root.root.findAllByProps({ className: "btn btn-quiet orbit-agent-history-entry" })[0].props.onClick());
-  assert.equal(root.root.findAllByProps({ href: "/app/tasks/task%3Aone%2Ftwo" }).length, 2);
+  await act(async () => root.root.findAllByProps({ className: "btn ir-hist-open" })[0].props.onClick());
+  assert.equal(root.root.findAllByProps({ href: "/app/tasks/task%3Aone%2Ftwo" }).length, 1);
 });
 
 test("the shared Web suggestion client accepts and dismisses through real actor-scoped handlers", async () => {

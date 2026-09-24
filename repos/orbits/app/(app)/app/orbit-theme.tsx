@@ -137,13 +137,9 @@ html[data-theme="light"] body:has(.orbit-account-auth-page) {
 
 /* Chrome surfaces that hardcode dark glass (not token-driven) — restated in
    light glass so bars/badges/sidebars don't read as grey blocks in light mode.
-   A nav with an explicit dark tone owns its contrast and opts out here. */
-html[data-theme="light"] [data-orbit-real-page] .orbit-top-nav:not(.is-starfield) {
-  -webkit-backdrop-filter: none;
-  backdrop-filter: none;
-  background: #ffffff;
-  border-bottom: 1px solid var(--hairline);
-}
+   A nav with an explicit dark tone owns its contrast and opts out here.
+   2026-09-18: Orbit_0918 浮岛药丸导航为固定浅色设计（外层透明、视觉在 pill），
+   不再需要对 .orbit-top-nav 本身做浅色重映射。 */
 html[data-theme="light"] [data-orbit-real-page] .orbit-organizer-topnav {
   background: #ffffff;
 }
@@ -180,18 +176,15 @@ html[data-theme="light"] [data-orbit-real-page] .orbit-platform-sidebar {
   background: var(--surface-2);
 }
 
-/* Top-nav links hardcode a near-white color (dark-theme ink) that is invisible
-   on a light canvas — restate them in dark ink for the light theme, except when
-   the shared nav is intentionally rendered with the starfield dark tone. */
+/* Top-nav links use the fixed Orbit_0918 pill palette in both themes; the
+   :not(.is-starfield) guard stays so the dark starfield tone keeps owning its
+   own nav contrast. */
 html[data-theme="light"] [data-orbit-real-page] .orbit-top-nav:not(.is-starfield) .orbit-nav-link {
-  color: rgba(23, 33, 31, 0.64);
+  color: #3B3F7A;
 }
 html[data-theme="light"] [data-orbit-real-page] .orbit-top-nav:not(.is-starfield) .orbit-nav-link:hover,
 html[data-theme="light"] [data-orbit-real-page] .orbit-top-nav:not(.is-starfield) .orbit-nav-link.is-active {
-  color: var(--ink);
-}
-html[data-theme="light"] [data-orbit-real-page] .orbit-top-nav:not(.is-starfield) .orbit-nav-link.is-active {
-  background: rgba(23, 33, 31, 0.06);
+  color: #0E1225;
 }
 
 /* Inverted-contrast controls pair a var(--ink) background with near-black text

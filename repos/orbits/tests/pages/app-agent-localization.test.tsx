@@ -8,6 +8,7 @@ import { createMockOrbitAgentConversationService } from "../../features/orbit-ai
 import { localizeOrbitAiPanelProactiveContext } from "../../features/orbit-ai/panel-localization";
 import { loadOrbitAiProactiveCalendarMessagesForApp } from "../../features/orbit-ai/proactive-calendar-service";
 import { syncResult } from "../support/sync-result";
+import { iorbitChatSurfaceSource } from "./iorbit-chat-surface-source";
 
 const projectRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -17,6 +18,12 @@ const projectRoot = path.resolve(
 function readProjectFile(relativePath: string): string {
   return fs.readFileSync(path.join(projectRoot, relativePath), "utf8");
 }
+
+// iOrbit 任务 1b：纯函数在 `iorbit-model.ts`、对话状态/`ask` 在 `use-agent-chat.ts`，
+// JSX 留在 `orbit-real-agent.tsx`。源码断言按此拆成两半。
+const IORBIT_MODEL_PATH = "app/(app)/app/agent/iorbit-0918/iorbit-model.ts";
+const IORBIT_CHAT_HOOK_PATH = "app/(app)/app/agent/iorbit-0918/use-agent-chat.ts";
+const IORBIT_HISTORY_HOOK_PATH = "app/(app)/app/agent/iorbit-0918/use-agent-history.ts";
 
 test("/app/agent Chinese contact artifacts carry localized product labels and answers", () => {
   const result = syncResult(createMockOrbitAgentConversationService().sendMessage({
@@ -78,18 +85,24 @@ test("/app/agent proactive calendar context remains localizable without changing
 
 test("/app/agent localizes server view models and sends locale through the API boundary once", () => {
   const pageSource = readProjectFile("app/(app)/app/agent/page.tsx");
-  const agentSource = readProjectFile(
-    "app/(app)/app/agent/orbit-real-agent.tsx",
-  );
+  // iOrbit 任务 6a：`orbit-real-agent.tsx` 已删除；对话面的源码断言改读
+  // `iorbit-chat-surface-source.ts` 合并的那一组在售文件（内容同源，换了住处）。
+  const agentSource = iorbitChatSurfaceSource();
 
   assert.match(pageSource, /requestedLanguage/);
   assert.match(pageSource, /localizeOrbitTree/);
-  assert.match(agentSource, /const locale = languageRef\.current === "zh" \? "zh" : "en"/);
+  const modelSource = readProjectFile(IORBIT_MODEL_PATH);
+  const chatHookSource = readProjectFile(IORBIT_CHAT_HOOK_PATH);
+  const historyHookSource = readProjectFile(IORBIT_HISTORY_HOOK_PATH);
+
+  assert.match(chatHookSource, /const locale = languageRef\.current === "zh" \? "zh" : "en"/);
   assert.match(
-    agentSource,
+    chatHookSource,
     /JSON\.stringify\(\{ history, \.\.\.reliableRequest \}\)/,
   );
-  assert.match(agentSource, /artifactMetadataValue\(item, \["分数", "Score"\]\)/);
-  assert.match(agentSource, /locale === "zh"/);
-  assert.doesNotMatch(agentSource, /localizeOrbitAiPanel/);
+  assert.match(modelSource, /artifactMetadataValue\(item, \["分数", "Score"\]\)/);
+  assert.match(chatHookSource, /locale === "zh"/);
+  for (const checked of [agentSource, modelSource, chatHookSource, historyHookSource]) {
+    assert.doesNotMatch(checked, /localizeOrbitAiPanel/);
+  }
 });

@@ -14,10 +14,33 @@ test("settings route renders inside the shared account shell", () => {
   const pagePath = join(projectRoot, "app/(app)/app/settings/page.tsx");
   assert.ok(existsSync(pagePath));
 
+  // 设置页与个人资料同壳（Orbit_0918 个人中心）：外层 profile-0918 作用域 + 顶栏 settings 高亮 + settings 屏。
   const page = readFileSync(pagePath, "utf8");
-  assert.match(page, /data-orbit-real-page="settings"/);
+  assert.match(page, /data-orbit-real-page="profile-0918"/);
   assert.match(page, /<AccountTopNav active="settings"/);
-  assert.match(page, /<OrbitSettingsContent/);
+  assert.match(page, /<ProfileScreens view="settings"/);
+
+  // 五个既有设置模块仍然挂载，且包在 .pc-legacy-settings 皮肤作用域里（配色不回退）。
+  const legacy = source(
+    "app/(app)/app/profile/profile-0918/profile-legacy-settings.tsx",
+  );
+  assert.match(legacy, /className="pc-legacy-settings"/);
+  assert.match(legacy, /\.pc-legacy-settings\{/);
+  assert.match(legacy, /\.pc-legacy-settings \.card\{/);
+  for (const component of [
+    "OrbitAppearanceSettings",
+    "OrbitAgentMemorySettings",
+    "OrbitAgentFeedbackSettings",
+    "OrbitAgentAutomationSettings",
+    "OrbitAgentExecutionSettings",
+  ]) {
+    assert.match(legacy, new RegExp(`<${component} />`));
+  }
+  // 任务 5：settings 屏（profile-settings.tsx）在设计卡片之后挂 ProfileLegacySettings；容器按 view 挂 ProfileSettings。
+  const settingsScreen = source("app/(app)/app/profile/profile-0918/profile-settings.tsx");
+  assert.match(settingsScreen, /<ProfileLegacySettings \/>/);
+  const screens = source("app/(app)/app/profile/profile-0918/profile-screens.tsx");
+  assert.match(screens, /<ProfileSettings session=\{session\}/);
 });
 
 test("appearance settings offers explicit light and dark choices", () => {
@@ -34,8 +57,11 @@ test("appearance settings offers explicit light and dark choices", () => {
 });
 
 test("settings page copy follows the shared language preference", () => {
-  const content = source("app/(app)/app/settings/orbit-settings-content.tsx");
-  assert.match(content, /useOrbitLanguage/);
-  assert.match(content, /en: "Settings", zh: "设置"/);
-  assert.match(content, /<OrbitAppearanceSettings/);
+  // 个人中心 task 6 deleted settings/orbit-settings-content.tsx: the settings page title now comes from the
+  // profile-0918 shell (iOrbit 设置) and the appearance module is mounted by profile-legacy-settings.tsx.
+  const shell = source("app/(app)/app/profile/profile-0918/profile-shell.tsx");
+  assert.match(shell, /useOrbitLanguage/);
+  assert.match(shell, /zh: "iOrbit 设置", en: "iOrbit settings"/);
+  const legacy = source("app/(app)/app/profile/profile-0918/profile-legacy-settings.tsx");
+  assert.match(legacy, /<OrbitAppearanceSettings/);
 });

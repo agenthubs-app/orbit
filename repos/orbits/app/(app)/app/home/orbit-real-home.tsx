@@ -38,7 +38,7 @@ function hubEntryCards(t: Translate) {
   return [
     { g: "g-emerald", href: "/app/profile", icon: "user", sub: t({ en: "Auto-reused for every event", zh: "报名各场自动复用" }), title: t({ en: "Universal profile", zh: "通用画像" }) },
     { g: "g-rose", href: "/app/contacts", icon: "wallet", sub: t({ en: "Post-event contact CRM", zh: "会后人脉 CRM" }), title: t({ en: "Contacts", zh: "名片夹" }) },
-    { g: "g-sky", href: "/app/today", icon: "clock", sub: t({ en: "Meetings and interaction log", zh: "约见与交往记录" }), title: t({ en: "Schedule", zh: "日程安排" }) },
+    { g: "g-sky", href: "/app/agent/plan", icon: "clock", sub: t({ en: "Meetings and interaction log", zh: "约见与交往记录" }), title: t({ en: "Schedule", zh: "日程安排" }) },
   ];
 }
 
@@ -291,7 +291,7 @@ function AccountEventCard({ event, language, t }: { event: OrbitLandingEventView
         <span className="orbit-account-event-module-meta">
           <span><Icon color="var(--text-3)" name="clock" size={15} />{date.time}</span>
           {place ? <span><Icon color="var(--text-3)" name="pin" size={15} />{place}</span> : null}
-          <span><Icon color="var(--text-3)" name="users" size={15} />{event.participantCount} 人已报名</span>
+          {event.participantCount !== null ? <span><Icon color="var(--text-3)" name="users" size={15} />{event.participantCount} 人已报名</span> : null}
         </span>
         <span className="orbit-account-event-module-foot">
           <span>{event.status === "ended" ? t({ en: "Tap to revisit details", zh: "点击回看活动详情" }) : t({ en: "Tap to view details", zh: "点击查看活动详情" })}</span>
@@ -516,7 +516,7 @@ function ConsoleReminderPanels({ language, t }: { language: OrbitLanguage; t: Tr
         {reminders === null ? <span style={{ color: "var(--text-4)", fontSize: 13 }}>{t({ en: "Loading…", zh: "正在读取…" })}</span> : null}
         {schedule.map((alert) => <ReminderRow alert={alert} key={alert.id} t={t} />)}
         {reminders !== null && schedule.length === 0 ? (
-          <span style={{ color: "var(--text-3)", fontSize: 13 }}>{t({ en: "No appointment needs you right now.", zh: "暂无需要处理的约谈。" })} <a href="/app/today" onClick={(clickEvent) => { clickEvent.preventDefault(); orbitNavigate("/today"); }} style={{ color: "var(--accent)", fontWeight: 700 }}>{t({ en: "Open schedule", zh: "打开日程" })}</a></span>
+          <span style={{ color: "var(--text-3)", fontSize: 13 }}>{t({ en: "No appointment needs you right now.", zh: "暂无需要处理的约谈。" })} <a href="/app/agent/plan" onClick={(clickEvent) => { clickEvent.preventDefault(); orbitNavigate("/agent/plan"); }} style={{ color: "var(--accent)", fontWeight: 700 }}>{t({ en: "Open schedule", zh: "打开日程" })}</a></span>
         ) : null}
       </section>
       <section className="card" data-console-section="contacts" style={{ display: "grid", gap: 11, padding: "16px 18px" }}>

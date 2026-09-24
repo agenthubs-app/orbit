@@ -384,7 +384,11 @@ export function createLiveAsyncRelationshipConversationService({
             followUpTaskId: "",
             scheduleWindowId: "",
             sourceContextLabel,
-            stageHref: `/app/chat?conversationId=${encodeURIComponent(conversationId)}`,
+            // iOrbit 任务 6a：`/app/chat` 路由已删除。这条深链**在删除之前就是坏的**
+            // （`/app/chat` 只转发 `q`/`lang`，而且 `conversationId ≠ sessionId`），
+            // 因此这里只做不恶化的降级：落到对话壳本身，不编一个 conversationId →
+            // sessionId 的映射（「审阅修订」31，改法写进遗留清单）。
+            stageHref: "/app/agent",
             title: "复核关系草稿",
           },
           provenance: provenance(provider, thread.evidenceIds),

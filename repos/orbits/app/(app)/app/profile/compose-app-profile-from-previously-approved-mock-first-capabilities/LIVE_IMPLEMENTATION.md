@@ -21,13 +21,14 @@ mock behavior for providers that have not opted into a hybrid implementation.
 `app/(app)/app/profile/page.tsx` resolves the authenticated actor and passes
 only that actor to `loadAppProfileRouteViewModel()`. Successful route models are
 adapted through
-`profile-view-model-adapter.ts` and rendered by `OrbitRealProfile`; loading,
+`profile-view-model-adapter.ts` and rendered by `ProfileScreens`
+(`profile-0918/`, replacing the legacy `OrbitRealProfile`); loading,
 empty, and failure states stay at the route boundary through `StateView`. This
 keeps the product profile editor on the real UI while preserving the
 live-capable service bundle and controlled failure behavior.
 
 The profile route has no query-driven action contract. Editing and persistence
-belong to the explicit profile API path used by `OrbitRealProfile`; the page GET
+belong to the explicit profile API path used by `useProfileEditorSession`; the page GET
 only reads the authenticated actor's sourced profile, extraction state, and
 review queue. Preferred intro channels come from the stored profile and cannot
 be replaced by URL parameters. Profile signal suggestions remain a separate

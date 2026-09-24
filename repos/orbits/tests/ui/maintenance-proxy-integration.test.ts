@@ -11,7 +11,7 @@ import { handleMaintenanceRequest } from "../../features/operations/maintenance/
 const path = new URL("../../proxy.ts", import.meta.url);
 const requireFromProxy = createRequire(path);
 const compiled = transformSync(readFileSync(path, "utf8"), { loader: "ts", format: "cjs" });
-const module = { exports: {} as { proxy: (request: NextRequest & { auth: unknown }) => Response } };
+const module = { exports: {} as { proxy: (request: NextRequest & { auth: unknown }) => Response | Promise<Response> } };
 new Function("require", "module", "exports", compiled.code)(
   (name: string) => name === "./auth" ? { auth: (callback: unknown) => callback } : requireFromProxy(name),
   module, module.exports,
@@ -33,7 +33,7 @@ test("sessionless Cron reaches its secret guard; missing and wrong secrets do no
       headers: auth ? { authorization: auth } : {},
     }) as NextRequest & { auth: unknown };
     request.auth = null;
-    const decision = proxy(request);
+    const decision = await proxy(request);
     assert.equal(decision.headers.get("x-middleware-next"), "1");
     const response = await handleMaintenanceRequest(request, deps, secret);
     assert.equal(response.status, auth === `Bearer ${secret}` ? 200 : 401);
@@ -41,13 +41,13 @@ test("sessionless Cron reaches its secret guard; missing and wrong secrets do no
   assert.equal(runs, 1);
 });
 
-test("Cron exemption does not grant sessionless access to any adjacent or personal route", () => {
+test("Cron exemption does not grant sessionless access to any adjacent or personal route", async () => {
   for (const path of ["/api/internal/maintenance/extra", "/api/internal/agent/worker", "/api/tasks", "/api/notes", "/api/relationship-tasks", "/api/notifications", "/api/queues/event-operations"]) {
     const request = new NextRequest(`https://test${path}`) as NextRequest & { auth: unknown };
     request.auth = null;
-    assert.equal(proxy(request).status, 401, path);
+    assert.equal((await proxy(request)).status, 401, path);
   }
   const post = new NextRequest("https://test/api/internal/maintenance", { method: "POST" }) as NextRequest & { auth: unknown };
   post.auth = null;
-  assert.equal(proxy(post).status, 401);
+  assert.equal((await proxy(post)).status, 401);
 });

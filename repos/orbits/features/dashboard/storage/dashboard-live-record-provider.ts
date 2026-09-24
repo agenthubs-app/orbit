@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import type {
   ConnectionDTO,
   ContactDTO,
@@ -23,6 +24,11 @@ import type {
 import type { LiveRecordSqlClient } from "../../../shared/storage/postgres-live-record-store";
 import { createConfiguredPostgresLiveRecordStore } from "../../../shared/storage/configured-live-record-store";
 import type { LiveDashboardAggregateProvider } from "../live-service";
+import {
+  buildDashboardSummaryFromGraph,
+  createDashboardSummaryPostgresReader,
+  DashboardSummaryRequiresGraphFallback,
+} from "./dashboard-summary-postgres-reader";
 
 export interface LiveDashboardGraph {
   connections: readonly ConnectionDTO[];
@@ -53,6 +59,39 @@ export interface StorageDashboardAggregateProviderOptions {
 export interface ConfiguredStorageDashboardAggregateProviderOptions {
   env?: LiveDatabaseEnv;
   sourceLabel?: string;
+}
+
+interface DashboardLiveReadScope {
+  closed: boolean;
+  graphReads: Map< object, Map<string, Promise<LiveDashboardGraph>>>;
+}
+
+const dashboardLiveReadScope = new AsyncLocalStorage<DashboardLiveReadScope>();
+
+/**
+ * Bind dashboard graph coalescing to one real request fan-out.  A provider
+ * called without this scope deliberately does not reuse an in-flight read.
+ */
+export async function withDashboardLiveReadScope<TResult>(
+  operation: () => TResult | Promise<TResult>,
+): Promise<TResult> {
+  const scope: DashboardLiveReadScope = {
+    closed: false,
+    graphReads: new Map(),
+  };
+
+  return dashboardLiveReadScope.run(scope, async () => {
+    try {
+      return await operation();
+    } finally {
+      scope.closed = true;
+      scope.graphReads.clear();
+    }
+  });
+}
+
+function dashboardReadActorKey(accountId?: string): string {
+  return accountId === undefined ? "\u0000unscoped" : `\u0001${accountId}`;
 }
 
 interface CachedConfiguredStorageDashboardAggregateProvider {
@@ -491,13 +530,25 @@ export function createStorageDashboardAggregateProvider({
   store,
   workspaceId,
 }: StorageDashboardAggregateProviderOptions): LiveDashboardAggregateProvider {
-  const inFlightReads = new Map<string, Promise<LiveDashboardGraph>>();
+  const providerIdentity = {};
+  const providerSource = source ?? `live-record-store:dashboard:${workspaceId}`;
+  const summaryReader = sqlClient
+    ? createDashboardSummaryPostgresReader({
+        client: sqlClient,
+        source: providerSource,
+        sourceLabel,
+        workspaceId,
+      })
+    : null;
 
   async function readGraph(accountId?: string): Promise<LiveDashboardGraph> {
-    if (sqlClient) {
-      const existing = inFlightReads.get(accountId);
-      if (existing) return existing;
-    }
+    const scope = sqlClient ? dashboardLiveReadScope.getStore() : undefined;
+    const providerReads = scope?.closed
+      ? undefined
+      : scope?.graphReads.get(providerIdentity);
+    const actorKey = dashboardReadActorKey(accountId);
+    const existing = providerReads?.get(actorKey);
+    if (existing) return existing;
 
     const read = (async () => {
       const ownerQuery = accountId === undefined ? {} : { userId: accountId };
@@ -609,16 +660,21 @@ export function createStorageDashboardAggregateProvider({
 
     if (!sqlClient) return read;
 
-    inFlightReads.set(accountId, read);
+    if (!scope || scope.closed) return read;
+    const scopedProviderReads = providerReads ?? new Map<string, Promise<LiveDashboardGraph>>();
+    scope.graphReads.set(providerIdentity, scopedProviderReads);
+    scopedProviderReads.set(actorKey, read);
     const cleanup = () => {
-      if (inFlightReads.get(accountId) === read) inFlightReads.delete(accountId);
+      if (scope.closed) return;
+      if (scopedProviderReads.get(actorKey) === read) scopedProviderReads.delete(actorKey);
+      if (scopedProviderReads.size === 0) scope.graphReads.delete(providerIdentity);
     };
     void read.then(cleanup, cleanup);
     return read;
   }
 
-  return {
-    source: source ?? `live-record-store:dashboard:${workspaceId}`,
+  const provider: LiveDashboardAggregateProvider = {
+    source: providerSource,
     sourceLabel,
     readDashboardGraph() {
       return readGraph();
@@ -627,6 +683,41 @@ export function createStorageDashboardAggregateProvider({
       return readGraph(accountId);
     },
   };
+
+  if (summaryReader) {
+    provider.readDashboardSummaryForAccount = (accountId, scenario = "success") => {
+      const scope = dashboardLiveReadScope.getStore();
+      const providerReads = scope?.closed
+        ? undefined
+        : scope?.graphReads.get(providerIdentity);
+      const existing = providerReads?.get(dashboardReadActorKey(accountId));
+      if (existing) {
+        return existing.then((graph) =>
+          buildDashboardSummaryFromGraph(
+            graph,
+            providerSource,
+            sourceLabel,
+            scenario,
+          ),
+        );
+      }
+      return summaryReader.readForAccount(accountId, scenario).catch((error: unknown) => {
+        if (!(error instanceof DashboardSummaryRequiresGraphFallback)) {
+          throw error;
+        }
+        return readGraph(accountId).then((graph) =>
+          buildDashboardSummaryFromGraph(
+            graph,
+            providerSource,
+            sourceLabel,
+            scenario,
+          ),
+        );
+      });
+    };
+  }
+
+  return provider;
 }
 
 export function createConfiguredStorageDashboardAggregateProvider({

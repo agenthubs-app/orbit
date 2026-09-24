@@ -31,11 +31,10 @@ test("登录后的产品页都挂提问入口", () => {
     "/app/events",
     "/app/events/event_signup_01",
     "/app/contacts",
-    "/app/contacts/all-actions",
-    "/app/today",
-    "/app/followups",
+    "/app/agent/actions",
+    "/app/agent/plan",
     "/app/inbox",
-    "/app/dashboard",
+    "/app/contacts/dashboard",
     "/app/settings",
   ]) {
     assert.equal(allowsOrbitAsk(path), true, `expected ask entry on ${path}`);
@@ -50,7 +49,6 @@ test("登录页、公开页、kiosk 和后台不挂", () => {
     "/app/admin",
     "/app/admin/platform",
     "/app/o/some-organizer",
-    "/app/party/checkin",
     "/app/events/event_01/operations/check-in",
     "/app/events/event_01/operations/admission",
     "/",
@@ -65,10 +63,10 @@ test("前缀匹配只在路径边界处生效", () => {
   assert.equal(allowsOrbitAsk("/app/orbits"), true);
   assert.equal(allowsOrbitAsk("/app/o"), false);
   assert.equal(allowsOrbitAsk("/app/o/x"), false);
-  // party 下只有签到大屏被排除，其余 party 页面照常。
-  assert.equal(allowsOrbitAsk("/app/party"), true);
-  assert.equal(allowsOrbitAsk("/app/party/graph"), true);
-  assert.equal(allowsOrbitAsk("/app/party/checkin"), false);
+  // 活动现场屏（取代 /app/party*）照常挂；只有运营 kiosk 子路由被排除。
+  assert.equal(allowsOrbitAsk("/app/events/event_01/live"), true);
+  assert.equal(allowsOrbitAsk("/app/events/event_01/live?tab=graph"), true);
+  assert.equal(allowsOrbitAsk("/app/events/event_01/operations/check-in"), false);
 });
 
 test("页面上下文标签按路由推导，且跟随语言", () => {
@@ -77,7 +75,10 @@ test("页面上下文标签按路由推导，且跟随语言", () => {
   assert.equal(orbitAskPageContext("/app/events", "zh"), "活动列表");
   assert.equal(orbitAskPageContext("/app/contacts", "zh"), "我的人脉");
   assert.equal(orbitAskPageContext("/app/contacts/c_01", "zh"), "这位人脉");
-  assert.equal(orbitAskPageContext("/app/today", "zh"), "我的日程");
+  // iOrbit 任务 6a：`/app/today` / `/app/schedule` / `/app/followups` 已删除，
+  // 上下文标签改挂取代它们的两条 iOrbit 兄弟屏。
+  assert.equal(orbitAskPageContext("/app/agent/plan", "zh"), "我的日程");
+  assert.equal(orbitAskPageContext("/app/agent/actions", "zh"), "我的待办");
   // 没有值得带走的上下文时返回 null，界面上就不显示那枚 chip。
   assert.equal(orbitAskPageContext("/app/agent", "zh"), null);
   assert.equal(orbitAskPageContext("/app/settings", "zh"), null);

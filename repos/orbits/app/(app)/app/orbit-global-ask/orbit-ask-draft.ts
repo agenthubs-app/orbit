@@ -135,6 +135,21 @@ export function takeAgentPrefill(): OrbitAgentPrefill | null {
   }
 }
 
+/**
+ * 只「看」不「取」：iOrbit 壳用它判断该不该直接落在对话分支——待办提问与预填
+ * 都只有对话分支会消费，停在概览屏那句话就静默丢了（计划「审阅修订」6）。
+ * 真正的读取与清除仍然只发生在 `takePendingAsk()` / `takeAgentPrefill()`。
+ */
+export function hasPendingOrbitAgentHandoff(): boolean {
+  try {
+    const store = session();
+
+    return Boolean(store?.getItem(PENDING_KEY) || store?.getItem(AGENT_PREFILL_KEY));
+  } catch {
+    return false;
+  }
+}
+
 /** 登出时清干净：草稿和待办提问都属于上一个登录态。 */
 export function clearOrbitAskSession(): void {
   try {

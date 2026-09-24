@@ -1,0 +1,486 @@
+{
+  "summary": {
+    "changed_count": 66,
+    "affected_count": 1,
+    "changed_files": 19,
+    "risk_level": "medium"
+  },
+  "changed_symbols": [
+    {
+      "id": "Interface:repos/orbits/app/(app)/app/canonical-event-detail-view.ts:CanonicalEventDetailDependencies",
+      "name": "CanonicalEventDetailDependencies",
+      "type": "Interface",
+      "filePath": "repos/orbits/app/(app)/app/canonical-event-detail-view.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/app/(app)/app/canonical-event-detail-view.ts:CanonicalEventDetailDependencies.readAdmissionPolicy",
+      "name": "readAdmissionPolicy",
+      "type": "Property",
+      "filePath": "repos/orbits/app/(app)/app/canonical-event-detail-view.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/app/(app)/app/canonical-event-detail-view.ts:resolveCanonicalEventDetailView",
+      "name": "resolveCanonicalEventDetailView",
+      "type": "Function",
+      "filePath": "repos/orbits/app/(app)/app/canonical-event-detail-view.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/app/(app)/app/canonical-event-detail-view.ts:resolveConfiguredCanonicalEventDetailView",
+      "name": "resolveConfiguredCanonicalEventDetailView",
+      "type": "Function",
+      "filePath": "repos/orbits/app/(app)/app/canonical-event-detail-view.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/app/(app)/app/events/[id]/orbit-real-event-detail.tsx:EventInfoCard",
+      "name": "EventInfoCard",
+      "type": "Function",
+      "filePath": "repos/orbits/app/(app)/app/events/[id]/orbit-real-event-detail.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/app/(app)/app/events/compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-view-model-adapter.ts:eventDetailRouteToOrbitLandingEventView",
+      "name": "eventDetailRouteToOrbitLandingEventView",
+      "type": "Function",
+      "filePath": "repos/orbits/app/(app)/app/events/compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-view-model-adapter.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/app/(app)/app/events/compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-view-model-adapter.ts:eventDetailRouteToOrbitLandingEventView.brandColor@91:4",
+      "name": "brandColor",
+      "type": "Property",
+      "filePath": "repos/orbits/app/(app)/app/events/compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-view-model-adapter.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Interface:repos/orbits/app/(app)/app/events/orbit-real-explore-client.tsx:MappedEvent",
+      "name": "MappedEvent",
+      "type": "Interface",
+      "filePath": "repos/orbits/app/(app)/app/events/orbit-real-explore-client.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/app/(app)/app/events/orbit-real-explore-client.tsx:MappedEvent.people",
+      "name": "people",
+      "type": "Property",
+      "filePath": "repos/orbits/app/(app)/app/events/orbit-real-explore-client.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/app/(app)/app/events/orbit-real-explore-client.tsx:EventModuleCard",
+      "name": "EventModuleCard",
+      "type": "Function",
+      "filePath": "repos/orbits/app/(app)/app/events/orbit-real-explore-client.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/app/(app)/app/events/orbit-real-explore-client.tsx:MapEventCard",
+      "name": "MapEventCard",
+      "type": "Function",
+      "filePath": "repos/orbits/app/(app)/app/events/orbit-real-explore-client.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/app/(app)/app/events/orbit-real-explore-client.tsx:MobileExploreCard",
+      "name": "MobileExploreCard",
+      "type": "Function",
+      "filePath": "repos/orbits/app/(app)/app/events/orbit-real-explore-client.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/app/(app)/app/home/compose-app-home-from-previously-approved-mock-first-capabilities/home-route-view-model.tsx:canonicalEventToLandingEvent",
+      "name": "canonicalEventToLandingEvent",
+      "type": "Function",
+      "filePath": "repos/orbits/app/(app)/app/home/compose-app-home-from-previously-approved-mock-first-capabilities/home-route-view-model.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/app/(app)/app/home/orbit-real-home.tsx:AccountEventCard",
+      "name": "AccountEventCard",
+      "type": "Function",
+      "filePath": "repos/orbits/app/(app)/app/home/orbit-real-home.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/app/(app)/app/o/compose-app-organizer-public-from-previously-approved-mock-first-capabilities/organizer-public-route-view-model.ts:canonicalOrganizerViewModel",
+      "name": "canonicalOrganizerViewModel",
+      "type": "Function",
+      "filePath": "repos/orbits/app/(app)/app/o/compose-app-organizer-public-from-previously-approved-mock-first-capabilities/organizer-public-route-view-model.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/app/(app)/app/o/compose-app-organizer-public-from-previously-approved-mock-first-capabilities/organizer-public-route-view-model.ts:canonicalOrganizerViewModel.fn@322:69.participantCount@337:6",
+      "name": "participantCount",
+      "type": "Property",
+      "filePath": "repos/orbits/app/(app)/app/o/compose-app-organizer-public-from-previously-approved-mock-first-capabilities/organizer-public-route-view-model.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Interface:repos/orbits/app/(app)/app/orbit-landing-route-view-model.ts:OrbitLandingEventView",
+      "name": "OrbitLandingEventView",
+      "type": "Interface",
+      "filePath": "repos/orbits/app/(app)/app/orbit-landing-route-view-model.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/app/(app)/app/orbit-landing-route-view-model.ts:OrbitLandingEventView.cap",
+      "name": "cap",
+      "type": "Property",
+      "filePath": "repos/orbits/app/(app)/app/orbit-landing-route-view-model.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/app/(app)/app/orbit-landing-route-view-model.ts:OrbitLandingEventView.participantCount",
+      "name": "participantCount",
+      "type": "Property",
+      "filePath": "repos/orbits/app/(app)/app/orbit-landing-route-view-model.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Interface:repos/orbits/app/(app)/app/orbit-landing-route-view-model.ts:OrbitEventStatsView",
+      "name": "OrbitEventStatsView",
+      "type": "Interface",
+      "filePath": "repos/orbits/app/(app)/app/orbit-landing-route-view-model.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/app/(app)/app/orbit-landing-route-view-model.ts:OrbitEventStatsView.count",
+      "name": "count",
+      "type": "Property",
+      "filePath": "repos/orbits/app/(app)/app/orbit-landing-route-view-model.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "TypeAlias:repos/orbits/app/(app)/app/orbit-landing-route-view-model.ts:OrbitLandingCatalogueSnapshot",
+      "name": "OrbitLandingCatalogueSnapshot",
+      "type": "TypeAlias",
+      "filePath": "repos/orbits/app/(app)/app/orbit-landing-route-view-model.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/app/(app)/app/orbit-landing-route-view-model.ts:OrbitLandingCatalogueSnapshot.participantCounts",
+      "name": "participantCounts",
+      "type": "Property",
+      "filePath": "repos/orbits/app/(app)/app/orbit-landing-route-view-model.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/app/(app)/app/orbit-landing-route-view-model.ts:eventView",
+      "name": "eventView",
+      "type": "Function",
+      "filePath": "repos/orbits/app/(app)/app/orbit-landing-route-view-model.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/app/(app)/app/orbit-landing-route-view-model.ts:getOrbitLandingEventView",
+      "name": "getOrbitLandingEventView",
+      "type": "Function",
+      "filePath": "repos/orbits/app/(app)/app/orbit-landing-route-view-model.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "TypeAlias:repos/orbits/app/(app)/app/orbit-organizer-route-view-model.ts:OrbitOrganizerEventView",
+      "name": "OrbitOrganizerEventView",
+      "type": "TypeAlias",
+      "filePath": "repos/orbits/app/(app)/app/orbit-organizer-route-view-model.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Interface:repos/orbits/app/(app)/app/orbit-organizer-route-view-model.ts:OrbitOrganizerPublicViewModel",
+      "name": "OrbitOrganizerPublicViewModel",
+      "type": "Interface",
+      "filePath": "repos/orbits/app/(app)/app/orbit-organizer-route-view-model.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/app/(app)/app/orbit-organizer-route-view-model.ts:OrbitOrganizerPublicViewModel.events",
+      "name": "events",
+      "type": "Property",
+      "filePath": "repos/orbits/app/(app)/app/orbit-organizer-route-view-model.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/app/(app)/app/orbit-registered-event-route-view-model.ts:getOrbitRegisteredEventViewModel",
+      "name": "getOrbitRegisteredEventViewModel",
+      "type": "Function",
+      "filePath": "repos/orbits/app/(app)/app/orbit-registered-event-route-view-model.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/app/(app)/app/orbit-registered-event-route-view-model.ts:getOrbitRegisteredEventViewModel.stats@43:4",
+      "name": "stats",
+      "type": "Property",
+      "filePath": "repos/orbits/app/(app)/app/orbit-registered-event-route-view-model.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Section:repos/orbits/docs/development/web-2026-09-17/W3/CONSUMERS.md:L1:W3-F nullable 人数消费者核对",
+      "name": "W3-F nullable 人数消费者核对",
+      "type": "Section",
+      "filePath": "repos/orbits/docs/development/web-2026-09-17/W3/CONSUMERS.md",
+      "change_type": "touched"
+    },
+    {
+      "id": "Section:repos/orbits/docs/development/web-2026-09-17/W3/CONSUMERS.md:L5:图谱风险与核对方法",
+      "name": "图谱风险与核对方法",
+      "type": "Section",
+      "filePath": "repos/orbits/docs/development/web-2026-09-17/W3/CONSUMERS.md",
+      "change_type": "touched"
+    },
+    {
+      "id": "Section:repos/orbits/docs/development/web-2026-09-17/W3/CONSUMERS.md:L13:24 direct 的实际消费者矩阵",
+      "name": "24 direct 的实际消费者矩阵",
+      "type": "Section",
+      "filePath": "repos/orbits/docs/development/web-2026-09-17/W3/CONSUMERS.md",
+      "change_type": "touched"
+    },
+    {
+      "id": "Section:repos/orbits/docs/development/web-2026-09-17/W3/CONSUMERS.md:L38:UNKNOWN 的边界",
+      "name": "UNKNOWN 的边界",
+      "type": "Section",
+      "filePath": "repos/orbits/docs/development/web-2026-09-17/W3/CONSUMERS.md",
+      "change_type": "touched"
+    },
+    {
+      "id": "Section:repos/orbits/docs/development/web-2026-09-17/W3/PLAN.md:L1:W3 活动详情事实映射与报名回执设计包",
+      "name": "W3 活动详情事实映射与报名回执设计包",
+      "type": "Section",
+      "filePath": "repos/orbits/docs/development/web-2026-09-17/W3/PLAN.md",
+      "change_type": "touched"
+    },
+    {
+      "id": "Section:repos/orbits/docs/development/web-2026-09-17/W3/PLAN.md:L11:1. 基线与证据边界",
+      "name": "1. 基线与证据边界",
+      "type": "Section",
+      "filePath": "repos/orbits/docs/development/web-2026-09-17/W3/PLAN.md",
+      "change_type": "touched"
+    },
+    {
+      "id": "Section:repos/orbits/docs/development/web-2026-09-17/W3/PLAN.md:L21:2. 已有实现与剩余 ID",
+      "name": "2. 已有实现与剩余 ID",
+      "type": "Section",
+      "filePath": "repos/orbits/docs/development/web-2026-09-17/W3/PLAN.md",
+      "change_type": "touched"
+    },
+    {
+      "id": "Section:repos/orbits/docs/development/web-2026-09-17/W3/PLAN.md:L38:3. 数据来源与最小模型",
+      "name": "3. 数据来源与最小模型",
+      "type": "Section",
+      "filePath": "repos/orbits/docs/development/web-2026-09-17/W3/PLAN.md",
+      "change_type": "touched"
+    },
+    {
+      "id": "Section:repos/orbits/docs/development/web-2026-09-17/W3/PLAN.md:L61:4. 页面行为（沿用现有布局）",
+      "name": "4. 页面行为（沿用现有布局）",
+      "type": "Section",
+      "filePath": "repos/orbits/docs/development/web-2026-09-17/W3/PLAN.md",
+      "change_type": "touched"
+    },
+    {
+      "id": "Section:repos/orbits/docs/development/web-2026-09-17/W3/PLAN.md:L79:5. 建议批次与文件冻结",
+      "name": "5. 建议批次与文件冻结",
+      "type": "Section",
+      "filePath": "repos/orbits/docs/development/web-2026-09-17/W3/PLAN.md",
+      "change_type": "touched"
+    },
+    {
+      "id": "Section:repos/orbits/docs/development/web-2026-09-17/W3/PLAN.md:L83:F：事实映射（优先）",
+      "name": "F：事实映射（优先）",
+      "type": "Section",
+      "filePath": "repos/orbits/docs/development/web-2026-09-17/W3/PLAN.md",
+      "change_type": "touched"
+    },
+    {
+      "id": "Section:repos/orbits/docs/development/web-2026-09-17/W3/PLAN.md:L100:R：回执验收（明确后批，不扩入 F）",
+      "name": "R：回执验收（明确后批，不扩入 F）",
+      "type": "Section",
+      "filePath": "repos/orbits/docs/development/web-2026-09-17/W3/PLAN.md",
+      "change_type": "touched"
+    },
+    {
+      "id": "Section:repos/orbits/docs/development/web-2026-09-17/W3/PLAN.md:L108:6. 测试矩阵与关闭标准",
+      "name": "6. 测试矩阵与关闭标准",
+      "type": "Section",
+      "filePath": "repos/orbits/docs/development/web-2026-09-17/W3/PLAN.md",
+      "change_type": "touched"
+    },
+    {
+      "id": "Section:repos/orbits/docs/development/web-2026-09-17/W3/PLAN.md:L125:7. 已跑验证与拟跑命令",
+      "name": "7. 已跑验证与拟跑命令",
+      "type": "Section",
+      "filePath": "repos/orbits/docs/development/web-2026-09-17/W3/PLAN.md",
+      "change_type": "touched"
+    },
+    {
+      "id": "Section:repos/orbits/docs/development/web-2026-09-17/W3/PLAN.md:L139:8. 风险与主代理待决定",
+      "name": "8. 风险与主代理待决定",
+      "type": "Section",
+      "filePath": "repos/orbits/docs/development/web-2026-09-17/W3/PLAN.md",
+      "change_type": "touched"
+    },
+    {
+      "id": "Section:repos/orbits/docs/development/web-2026-09-17/W3/REPORT.md:L1:W3 实施与验收记录",
+      "name": "W3 实施与验收记录",
+      "type": "Section",
+      "filePath": "repos/orbits/docs/development/web-2026-09-17/W3/REPORT.md",
+      "change_type": "touched"
+    },
+    {
+      "id": "Section:repos/orbits/docs/development/web-2026-09-17/W3/REPORT.md:L5:F：人数和容量事实",
+      "name": "F：人数和容量事实",
+      "type": "Section",
+      "filePath": "repos/orbits/docs/development/web-2026-09-17/W3/REPORT.md",
+      "change_type": "touched"
+    },
+    {
+      "id": "Section:repos/orbits/docs/development/web-2026-09-17/W3/REPORT.md:L13:真实本地产品路由",
+      "name": "真实本地产品路由",
+      "type": "Section",
+      "filePath": "repos/orbits/docs/development/web-2026-09-17/W3/REPORT.md",
+      "change_type": "touched"
+    },
+    {
+      "id": "Section:repos/orbits/docs/development/web-2026-09-17/W3/REPORT.md:L36:测试与独立审查",
+      "name": "测试与独立审查",
+      "type": "Section",
+      "filePath": "repos/orbits/docs/development/web-2026-09-17/W3/REPORT.md",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/app-canonical-event-detail-view.test.ts:fn@216:92.readOperationsSummary@221:6",
+      "name": "readOperationsSummary",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/app-canonical-event-detail-view.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/app-canonical-event-detail-view.test.ts:fn@216:92.readAdmissionPolicy@222:6",
+      "name": "readAdmissionPolicy",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/app-canonical-event-detail-view.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/app-canonical-event-detail-view.test.ts:fn@234:114.readOperationsSummary@240:6",
+      "name": "readOperationsSummary",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/app-canonical-event-detail-view.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/app-canonical-event-detail-view.test.ts:fn@234:114.readAdmissionPolicy@246:6",
+      "name": "readAdmissionPolicy",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/app-canonical-event-detail-view.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Property:repos/orbits/tests/pages/app-canonical-event-detail-view.test.ts:fn@234:114.readAdmissionPolicy@246:27.capacity@248:17",
+      "name": "capacity",
+      "type": "Property",
+      "filePath": "repos/orbits/tests/pages/app-canonical-event-detail-view.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/app-canonical-event-detail-view.test.ts:fn@261:85.readOperationsSummary@286:8",
+      "name": "readOperationsSummary",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/app-canonical-event-detail-view.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/app-canonical-event-detail-view.test.ts:fn@298:88.view@302:2",
+      "name": "view",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/app-canonical-event-detail-view.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/app-event-detail-page.test.tsx:fn@152:75.render@160:2",
+      "name": "render",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/app-event-detail-page.test.tsx",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/app-events-view-switcher.test.ts:exploreEvent",
+      "name": "exploreEvent",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/app-events-view-switcher.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/app-events-view-switcher.test.ts:exploreTree",
+      "name": "exploreTree",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/app-events-view-switcher.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/app-events-view-switcher.test.ts:exploreTree.back@53:4",
+      "name": "back",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/app-events-view-switcher.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/app-events-view-switcher.test.ts:exploreTree.forward@54:4",
+      "name": "forward",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/app-events-view-switcher.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/app-events-view-switcher.test.ts:exploreTree.prefetch@55:4",
+      "name": "prefetch",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/app-events-view-switcher.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/app-events-view-switcher.test.ts:exploreTree.push@56:4",
+      "name": "push",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/app-events-view-switcher.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/app-events-view-switcher.test.ts:exploreTree.refresh@57:4",
+      "name": "refresh",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/app-events-view-switcher.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/app-events-view-switcher.test.ts:exploreTree.replace@58:4",
+      "name": "replace",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/app-events-view-switcher.test.ts",
+      "change_type": "touched"
+    },
+    {
+      "id": "Function:repos/orbits/tests/pages/app-events-view-switcher.test.ts:textContent",
+      "name": "textContent",
+      "type": "Function",
+      "filePath": "repos/orbits/tests/pages/app-events-view-switcher.test.ts",
+      "change_type": "touched"
+    }
+  ],
+  "affected_processes": [
+    {
+      "id": "proc_68_appeventspage",
+      "name": "AppEventsPage → EventStatusFor",
+      "process_type": "cross_community",
+      "step_count": 4,
+      "changed_steps": [
+        {
+          "symbol": "eventView",
+          "step": 3
+        }
+      ]
+    }
+  ]
+}

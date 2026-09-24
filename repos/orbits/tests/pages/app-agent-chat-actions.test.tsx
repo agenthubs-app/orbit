@@ -17,7 +17,7 @@ import {
 import {
   agentRetryRequestForAssistant,
   prepareAgentFailedRequestRetry,
-} from "../../app/(app)/app/agent/orbit-real-agent";
+} from "../../app/(app)/app/agent/iorbit-0918/iorbit-model";
 import { latestConversationRuntimeLink } from "../../features/orbit-ai/conversation-runtime-links";
 
 test("conversation response links actions from exactly one shared run", () => {
@@ -345,7 +345,7 @@ test("chat action card exposes the shared action id and canonical Today and ledg
   assert.match(html, /data-agent-action-id="action:post-event:1"/);
   assert.match(html, /本次 Agent 过程/);
   assert.match(html, /正在同步/);
-  assert.match(html, /在 Today 查看/);
+  assert.match(html, /在安排里查看/);
   assert.match(html, /全部安排/);
 });
 
@@ -353,17 +353,39 @@ test("Agent chat persists run ids without rendering internal tracking UI", async
   const source = await import("node:fs/promises").then((fs) =>
     fs.readFile(
       new URL(
-        "../../app/(app)/app/agent/orbit-real-agent.tsx",
+        "../../app/(app)/app/agent/iorbit-0918/iorbit-chat.tsx",
         import.meta.url,
       ),
       "utf8",
     ),
   );
 
-  assert.match(source, /actionIds\?: readonly string\[\]/);
-  assert.match(source, /runId\?: string/);
-  assert.match(source, /payload\.data\.actionIds/);
-  assert.match(source, /evidenceRefsFromArtifacts/);
+  const modelSource = await import("node:fs/promises").then((fs) =>
+    fs.readFile(
+      new URL(
+        "../../app/(app)/app/agent/iorbit-0918/iorbit-model.ts",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+  );
+  const chatHookSource = await import("node:fs/promises").then((fs) =>
+    fs.readFile(
+      new URL(
+        "../../app/(app)/app/agent/iorbit-0918/use-agent-chat.ts",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+  );
+
+  // iOrbit 任务 1b：AgentMessage 形状与 artifact→证据在 model，读回执在 hook，
+  // 只渲染的部分（run details / evidence 面板）留在 JSX 文件上断言。
+  // 任务 6a：JSX 文件从删除的 `orbit-real-agent.tsx` 换成 `iorbit-0918/iorbit-chat.tsx`。
+  assert.match(modelSource, /actionIds\?: readonly string\[\]/);
+  assert.match(modelSource, /runId\?: string/);
+  assert.match(chatHookSource, /payload\.data\.actionIds/);
+  assert.match(modelSource, /evidenceRefsFromArtifacts/);
   assert.doesNotMatch(source, /data-agent-evidence-sources/);
   assert.match(source, /showRunDetails={false}/);
   assert.doesNotMatch(source, /data-agent-run-details/);
@@ -416,7 +438,7 @@ test("product action handoff shows review links without run diagnostics or visib
   );
   const visibleText = html.replace(/<[^>]*>/g, "");
   assert.match(visibleText, /本次安排/);
-  assert.match(visibleText, /在 Today 查看/);
+  assert.match(visibleText, /在安排里查看/);
   assert.match(visibleText, /全部安排/);
   assert.doesNotMatch(visibleText, /private-internal-id|Agent 过程|Agent 进度|确认执行/);
   assert.doesNotMatch(html, /data-agent-run-step|data-agent-run-status/);

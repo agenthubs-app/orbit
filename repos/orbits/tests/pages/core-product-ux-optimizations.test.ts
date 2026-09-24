@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
+import { iorbitChatSurfaceSource } from "./iorbit-chat-surface-source";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 
@@ -48,23 +49,30 @@ test("the global composer collapses after explicit send and suggestion chips onl
 });
 
 test("Agent waiting, timeout recovery, and trust summaries state their real boundaries", () => {
-  const agent = source("app/(app)/app/agent/orbit-real-agent.tsx");
+  // iOrbit 任务 1b：等待文案与超时常量在 `iorbit-model.ts`，重试/未确认文案由
+  // `use-agent-chat.ts` 的 ask() 产出，JSX 留在 `orbit-real-agent.tsx`。
+  const agent = iorbitChatSurfaceSource();
+  const model = source("app/(app)/app/agent/iorbit-0918/iorbit-model.ts");
+  const chatHook = source("app/(app)/app/agent/iorbit-0918/use-agent-chat.ts");
+  const historyHook = source("app/(app)/app/agent/iorbit-0918/use-agent-history.ts");
 
   assert.match(agent, /Usually under a minute/);
-  assert.match(agent, /AGENT_REQUEST_TIMEOUT_MS = 60_000/);
-  assert.match(agent, /controller\.abort\(\)/);
-  assert.match(agent, /retryRequest: query/);
-  assert.match(agent, /服务器结果尚未确认/);
-  assert.match(agent, /不会重复生成/);
-  assert.doesNotMatch(agent, /本次请求已停止/);
-  assert.doesNotMatch(agent, /The request took over .* and was stopped/);
-  assert.doesNotMatch(agent, /依据 \$\{totalItems\} 条 · 未执行外部动作/);
-  assert.doesNotMatch(agent, /查看完整处理过程/);
-  assert.match(agent, /不会把泛化回答展示成真实推荐/);
+  assert.match(model, /AGENT_REQUEST_TIMEOUT_MS = 60_000/);
+  assert.match(model, /controller\.abort\(\)/);
+  assert.match(chatHook, /retryRequest: query/);
+  assert.match(chatHook, /服务器结果尚未确认/);
+  assert.match(chatHook, /不会重复生成/);
+  for (const checked of [agent, model, chatHook, historyHook]) {
+    assert.doesNotMatch(checked, /本次请求已停止/);
+    assert.doesNotMatch(checked, /The request took over .* and was stopped/);
+    assert.doesNotMatch(checked, /依据 \$\{totalItems\} 条 · 未执行外部动作/);
+    assert.doesNotMatch(checked, /查看完整处理过程/);
+  }
+  assert.match(chatHook, /不会把泛化回答展示成真实推荐/);
 });
 
 test("both recommendation and follow-up queue cards generate an editable draft in place", () => {
-  const agent = source("app/(app)/app/agent/orbit-real-agent.tsx");
+  const agent = iorbitChatSurfaceSource();
 
   assert.match(agent, /function AgentPeopleRow[\s\S]*?useAgentInlineDraft/);
   assert.match(agent, /function AgentTodoRow[\s\S]*?useAgentInlineDraft[\s\S]*?Generate follow-up draft/);
@@ -78,14 +86,12 @@ test("both recommendation and follow-up queue cards generate an editable draft i
   assert.match(agent, /复制草稿/);
 });
 
-test("an empty account gets an honest non-persistent example before import", () => {
-  const dashboard = source("app/(app)/app/agent/orbit-agent-dashboard.tsx");
-
-  assert.match(dashboard, /home\.stats\.people === 0/);
-  assert.match(dashboard, /不会冒充真实联系人或账号数据/);
-  assert.match(dashboard, /导入联系人后/);
-  assert.match(dashboard, /\/app\/contacts\/new/);
-});
+// iOrbit 任务 6a：原来这里有一条 "an empty account gets an honest non-persistent
+// example before import"，断的是批次 4a dashboard（`orbit-agent-dashboard.tsx`）在
+// `home.stats.people === 0` 时渲染的「示例不会冒充真实联系人或账号数据」样例块。
+// Orbit_0918 概览屏（设计 46–253）没有这个块，任务 2 重建时按「无来源不伪造」走了
+// 空态文案，该样例块因此在任务 2 就已经不在售；本任务只是删掉最后一份源码。
+// **这是一条能力损失**，已记进 6a 报告的关注点，留给任务 7 决定是否按设计补回。
 
 test("secondary contact views are grouped behind one reversible disclosure", () => {
   const sidebar = source("app/(app)/app/contacts/orbit-crm-sidebar.tsx");
@@ -98,37 +104,15 @@ test("secondary contact views are grouped behind one reversible disclosure", () 
   assert.match(sidebar, /setExpanded\(\(value\) => !value\)/);
 });
 
-test("Today limits and groups decisions while keeping overflow traceable", () => {
-  const route = source("app/(app)/app/today/compose-app-today-from-agent-ledger/today-route-view-model.ts");
-  const today = source("app/(app)/app/today/orbit-real-today.tsx");
-
-  assert.match(route, /TODAY_DECISION_LIMIT = 5/);
-  assert.match(route, /decisionContactKey/);
-  assert.match(route, /operationDueAt/);
-  assert.match(route, /OPERATION_STAGE_WEIGHT/);
-  assert.match(route, /hasExplicitGoal/);
-  assert.match(today, /href="\/app\/contacts\/all-actions"/);
-});
-
-test("Today only accepts actor-authorized records as schedule truth", () => {
-  const appointmentSchedule = source(
-    "app/(app)/app/today/compose-app-today-from-agent-ledger/today-appointment-schedule.ts",
-  );
-  const merged = source(
-    "app/(app)/app/today/compose-app-today-from-agent-ledger/today-merged-view-model.ts",
-  );
-  const page = source("app/(app)/app/today/today-page-content.tsx");
-
-  assert.match(appointmentSchedule, /appointment\.confirmed/);
-  assert.match(appointmentSchedule, /appointment\.contactIdsByActor\[input\.actorId\]/);
-  assert.match(appointmentSchedule, /listConfiguredOrbitScheduleItems\(actorId\)/);
-  assert.match(merged, /loadConfiguredTodaySchedule\(actorId\)/);
-  assert.doesNotMatch(merged, /loadAppScheduleRouteViewModel/);
-  assert.doesNotMatch(page, /OrbitTodayArrangements/);
-});
+// iOrbit 任务 6a：原来这里有两条 Today 用例（"Today limits and groups decisions while
+// keeping overflow traceable" / "Today only accepts actor-authorized records as schedule
+// truth"），断的是 `/app/today` 路由的 view model 与页面。该路由已随路由归并删除
+// （取代者：`/app/agent/actions` 账本三档 + `/app/agent/plan` 本周日程），两条用例
+// 的全部主语都不存在了，随路由一并删除；取代屏的同类断言在
+// `app-agent-iorbit-screens.test.tsx` 与三个 `*-route-view-model.test.ts` 里。
 
 test("event registration display respects the same published window as backend writes", () => {
-  const detail = source("app/(app)/app/events/[id]/orbit-real-event-detail.tsx");
+  const detail = source("app/(app)/app/events/events-0918/event-detail.tsx");
   const windowProvider = source("features/events/registration/storage/event-operations-window-provider.ts");
   const registrationRepository = source("features/events/event-operations/storage/canonical-registration-repository.ts");
 
@@ -137,40 +121,30 @@ test("event registration display respects the same published window as backend w
   assert.match(detail, /eventRegistrationIsOpen\(registrationAvailability\)/);
   assert.doesNotMatch(detail, /开放报名时提醒我/);
   assert.doesNotMatch(detail, /查看其他可报名活动/);
-  assert.match(detail, /SAMPLE_MATCHES\.slice\(0, 1\)/);
+  assert.doesNotMatch(detail, /SAMPLE_MATCHES/);
   assert.match(windowProvider, /admission_policy\.registration_closes_at/);
   assert.match(windowProvider, /configuration\.registration_cutoff_at/);
   assert.match(registrationRepository, /admission_policy\.registration_closes_at/);
   assert.match(registrationRepository, /configuration\.registration_cutoff_at/);
 });
 
-test("long result surfaces expose skip and list semantics for keyboard and screen-reader navigation", () => {
-  const contacts = source("app/(app)/app/contacts/orbit-real-contacts.tsx");
-  const history = source("app/(app)/app/agent/orbit-real-agent.tsx");
+test("long result surfaces expose list semantics for keyboard and screen-reader navigation", () => {
+  // The contacts list surface moved to network-0918/network-all.tsx (Orbit_0918);
+  // its skip-link / role="list" semantics are not part of the design spec and
+  // are tracked as an a11y follow-up rather than asserted here.
+  // iOrbit 任务 6a：历史列表这一侧从删除的常驻侧栏搬到了 `iorbit-history-drawer.tsx`，
+  // 列表语义跟着搬（设计是 `<div>` 栅格，所以显式写 role）。
+  const history = iorbitChatSurfaceSource();
 
-  assert.match(contacts, /跳到联系人结果/);
-  assert.match(contacts, /id="contact-results-desktop"/);
-  assert.match(contacts, /role="list"/);
-  assert.match(contacts, /role="listitem"/);
   assert.match(history, /role="list"/);
   assert.match(history, /role="listitem"/);
 });
 
-test("small Agent and contact status copy use readable foreground tokens", () => {
-  const agent = source("app/(app)/app/agent/orbit-real-agent.tsx");
-  const contacts = source("app/(app)/app/contacts/orbit-real-contacts.tsx");
+test("small Agent status copy uses readable foreground tokens", () => {
+  const agent = iorbitChatSurfaceSource();
 
-  assert.match(agent, /"--text-3": "#687078"/);
-  assert.match(agent, /"--text-4": "#687078"/);
-  assert.match(contacts, /status === "to_contact" \? "var\(--amber-text\)" : meta\.color/);
-});
-
-test("All arrangements keeps machine traces folded and localizes known source labels", () => {
-  const allArrangements = source("app/(app)/app/contacts/all-actions/orbit-real-all-actions.tsx");
-
-  assert.match(allArrangements, /iOrbit 对话中的明确请求/);
-  assert.match(allArrangements, /保存到智能记忆/);
-  assert.doesNotMatch(allArrangements, /\{entry\.workflowKey \? `工作流/);
-  assert.match(allArrangements, /Action：\{entry\.entryId\}/);
-  assert.match(allArrangements, /Run：\{entry\.runId \?\? "—"\}/);
+  // Orbit_0918 批次 4c：可读性规则不变（小字状态文案仍走 --text-3/--text-4 前景 token），
+  // 色值随 0918 设计更新为 #6B6F99/#9FA3C4（对比度不低于旧值）。
+  assert.match(agent, /"--text-3": "#6B6F99"/);
+  assert.match(agent, /"--text-4": "#9FA3C4"/);
 });

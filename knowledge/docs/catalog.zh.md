@@ -247,12 +247,6 @@
 
 ### harness
 
-- **Harness 审计 2026-06-24**（`harness-state/audits/2026-06-24-harness-audit.md`）
-  - 中文阅读版：`knowledge/docs/zh/harness-audit-2026-06-24.zh.md`
-  - 简介：记录长跑 harness 的早期审计结果、风险和修正方向，是理解 harness 演进的历史证据。
-  - 审计依据：已纳入历史审计；当前 harness 行为已用 harness/README、AGENT.md 和 harness 脚本作为后续权威入口。
-  - 状态：`historical`；新鲜度：`known-stale`；负责人域：`harness`
-  - 关联知识页：`knowledge/wiki/harness.zh.md`
 - **根 Agent 运行规则**（`AGENT.md`）
   - 中文阅读版：`knowledge/docs/zh/root-agent-operating-notes.zh.md`
   - 简介：定义 harness、repos/orbits、参考项目、sprint 粒度、产品化策略和知识库维护规则。
@@ -340,12 +334,6 @@
   - 审计依据：已核对页面目录存在：repos/orbits/app/(app)/app/contacts/new/compose-app-contacts-new-from-previously-approved-mock-first-capabilities。页面是否仍完全匹配文档，需要结合 route view-model 和页面测试继续审计。
   - 状态：`generated-evidence`；新鲜度：`likely-current`；负责人域：`app`
   - 关联知识页：`knowledge/wiki/architecture.zh.md`
-- **App 页面组合交接：dashboard/compose app dashboard from previously approved mock first capabilities**（`repos/orbits/app/(app)/app/dashboard/compose-app-dashboard-from-previously-approved-mock-first-capabilities/LIVE_IMPLEMENTATION.md`）
-  - 中文阅读版：`knowledge/docs/zh/live-handoff-app-app-app-dashboard-compose-app-dashboard-from-previously-approved-mock-first-capabilities.zh.md`
-  - 简介：记录 app 路由 dashboard/compose app dashboard from previously approved mock first capabilities 如何由已批准的 mock-first capability 组合成可运行页面，以及未来 live 替换时需要保留的交互边界。
-  - 审计依据：已核对页面目录存在：repos/orbits/app/(app)/app/dashboard/compose-app-dashboard-from-previously-approved-mock-first-capabilities。页面是否仍完全匹配文档，需要结合 route view-model 和页面测试继续审计。
-  - 状态：`generated-evidence`；新鲜度：`likely-current`；负责人域：`app`
-  - 关联知识页：`knowledge/wiki/architecture.zh.md`
 - **App 页面组合交接：events/compose app events demo event 1 from previously approved mock first capabilities**（`repos/orbits/app/(app)/app/events/compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/LIVE_IMPLEMENTATION.md`）
   - 中文阅读版：`knowledge/docs/zh/live-handoff-app-app-app-events-compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities.zh.md`
   - 简介：记录 app 路由 events/compose app events demo event 1 from previously approved mock first capabilities 如何由已批准的 mock-first capability 组合成可运行页面，以及未来 live 替换时需要保留的交互边界。
@@ -358,12 +346,6 @@
   - 审计依据：已核对页面目录存在：repos/orbits/app/(app)/app/events/compose-app-events-from-previously-approved-mock-first-capabilities。页面是否仍完全匹配文档，需要结合 route view-model 和页面测试继续审计。
   - 状态：`generated-evidence`；新鲜度：`likely-current`；负责人域：`app`
   - 关联知识页：`knowledge/wiki/architecture.zh.md`
-- **App 页面组合交接：followups/compose app followups from previously approved mock first capabilities**（`repos/orbits/app/(app)/app/followups/compose-app-followups-from-previously-approved-mock-first-capabilities/LIVE_IMPLEMENTATION.md`）
-  - 中文阅读版：`knowledge/docs/zh/live-handoff-app-app-app-followups-compose-app-followups-from-previously-approved-mock-first-capabilities.zh.md`
-  - 简介：记录 app 路由 followups/compose app followups from previously approved mock first capabilities 如何由已批准的 mock-first capability 组合成可运行页面，以及未来 live 替换时需要保留的交互边界。
-  - 审计依据：已核对页面目录存在：repos/orbits/app/(app)/app/followups/compose-app-followups-from-previously-approved-mock-first-capabilities。页面是否仍完全匹配文档，需要结合 route view-model 和页面测试继续审计。
-  - 状态：`generated-evidence`；新鲜度：`likely-current`；负责人域：`app`
-  - 关联知识页：`knowledge/wiki/architecture.zh.md`
 - **App 页面组合交接：home/compose app home from previously approved mock first capabilities**（`repos/orbits/app/(app)/app/home/compose-app-home-from-previously-approved-mock-first-capabilities/LIVE_IMPLEMENTATION.md`）
   - 中文阅读版：`knowledge/docs/zh/live-handoff-app-app-app-home-compose-app-home-from-previously-approved-mock-first-capabilities.zh.md`
   - 简介：记录 app 路由 home/compose app home from previously approved mock first capabilities 如何由已批准的 mock-first capability 组合成可运行页面，以及未来 live 替换时需要保留的交互边界。
@@ -374,12 +356,6 @@
   - 中文阅读版：`knowledge/docs/zh/live-handoff-app-app-app-profile-compose-app-profile-from-previously-approved-mock-first-capabilities.zh.md`
   - 简介：记录 app 路由 profile/compose app profile from previously approved mock first capabilities 如何由已批准的 mock-first capability 组合成可运行页面，以及未来 live 替换时需要保留的交互边界。
   - 审计依据：已核对页面目录存在：repos/orbits/app/(app)/app/profile/compose-app-profile-from-previously-approved-mock-first-capabilities。页面是否仍完全匹配文档，需要结合 route view-model 和页面测试继续审计。
-  - 状态：`generated-evidence`；新鲜度：`likely-current`；负责人域：`app`
-  - 关联知识页：`knowledge/wiki/architecture.zh.md`
-- **App 页面组合交接：schedule**（`repos/orbits/app/(app)/app/schedule/SCHEDULE_LIVE_IMPLEMENTATION.md`）
-  - 中文阅读版：`knowledge/docs/zh/live-handoff-app-app-app-schedule-SCHEDULE-LIVE-IMPLEMENTATION-md.zh.md`
-  - 简介：记录 app 路由 schedule 如何由已批准的 mock-first capability 组合成可运行页面，以及未来 live 替换时需要保留的交互边界。
-  - 审计依据：已核对页面目录存在：repos/orbits/app/(app)/app/schedule。页面是否仍完全匹配文档，需要结合 route view-model 和页面测试继续审计。
   - 状态：`generated-evidence`；新鲜度：`likely-current`；负责人域：`app`
   - 关联知识页：`knowledge/wiki/architecture.zh.md`
 - **App 页面组合交接：dev/capabilities/capability debug dashboard**（`repos/orbits/app/dev/capabilities/capability-debug-dashboard/LIVE_IMPLEMENTATION.md`）
@@ -652,6 +628,12 @@
   - 审计依据：已核对对应 feature 目录存在：repos/orbits/features/permissions/sensitive-action-confirmation-guard。目录级实时行为仍以 service factory、API route 和测试为准。
   - 状态：`generated-evidence`；新鲜度：`likely-current`；负责人域：`feature:permissions`
   - 关联知识页：`knowledge/wiki/modules.zh.md`
+- **personal-schedule 能力 Live 交接：live implementation**（`repos/orbits/features/personal-schedule/LIVE_IMPLEMENTATION.md`）
+  - 中文阅读版：`knowledge/docs/zh/live-handoff-feature-personal-schedule-live-implementation.zh.md`
+  - 简介：记录 personal-schedule 模块 live implementation 能力的 live 实现 边界：需要替换的服务、环境变量、权限约束和验证要求。
+  - 审计依据：已核对对应 feature 目录存在：repos/orbits/features/personal-schedule。具体切换行为以 service factory 与测试为准。
+  - 状态：`generated-evidence`；新鲜度：`likely-current`；负责人域：`feature:personal-schedule`
+  - 关联知识页：`knowledge/wiki/modules.zh.md`
 - **profile 能力 Live 交接：profile document extraction mock**（`repos/orbits/features/profile/profile-document-extraction-mock/LIVE_IMPLEMENTATION.md`）
   - 中文阅读版：`knowledge/docs/zh/live-handoff-feature-profile-profile-document-extraction-mock.zh.md`
   - 简介：记录 profile 模块中 profile document extraction mock 能力从 mock-first 实现切换到 live provider 时需要替换和验证的边界。
@@ -681,6 +663,12 @@
   - 简介：记录 recommendations 模块中 event value recommendation mock 能力从 mock-first 实现切换到 live provider 时需要替换和验证的边界。
   - 审计依据：已核对对应 feature 目录存在：repos/orbits/features/recommendations/event-value-recommendation-mock。目录级实时行为仍以 service factory、API route 和测试为准。
   - 状态：`generated-evidence`；新鲜度：`likely-current`；负责人域：`feature:recommendations`
+  - 关联知识页：`knowledge/wiki/modules.zh.md`
+- **relationship-communication 能力 Live 交接：live implementation**（`repos/orbits/features/relationship-communication/LIVE_IMPLEMENTATION.md`）
+  - 中文阅读版：`knowledge/docs/zh/live-handoff-feature-relationship-communication-live-implementation.zh.md`
+  - 简介：记录 relationship-communication 模块 live implementation 能力的 live 实现 边界：需要替换的服务、环境变量、权限约束和验证要求。
+  - 审计依据：已核对对应 feature 目录存在：repos/orbits/features/relationship-communication。具体切换行为以 service factory 与测试为准。
+  - 状态：`generated-evidence`；新鲜度：`likely-current`；负责人域：`feature:relationship-communication`
   - 关联知识页：`knowledge/wiki/modules.zh.md`
 - **search 能力 Live 交接：relationship natural search mock**（`repos/orbits/features/search/relationship-natural-search-mock/LIVE_IMPLEMENTATION.md`）
   - 中文阅读版：`knowledge/docs/zh/live-handoff-feature-search-relationship-natural-search-mock.zh.md`
@@ -871,45 +859,6 @@
   - 审计依据：这是一份 2026-07-02 的一次性性能优化实施计划（含每步测试断言与提交流程），并带有'未经用户明确恢复不得实施'的前置条件；实际查询形态应以 contacts/connections/analysis 的 live 服务、存储 provider 及 *-live-store 能力测试为准。
   - 状态：`historical`；新鲜度：`likely-current`；负责人域：`contacts`
   - 关联知识页：`knowledge/wiki/modules.zh.md`、`knowledge/wiki/data-and-mockdata.zh.md`
-
-### learning
-
-- **根排障知识**（`.learnings/TROUBLESHOOTING.md`）
-  - 中文阅读版：`knowledge/docs/zh/learning-troubleshooting.zh.md`
-  - 简介：记录 Orbit AI trace submit loading、provider timeout 和 responsive submit 控件等排障过程。
-  - 审计依据：来源文件为 gitignore 本地文件，2026-07-11 核对时在本机已缺失；综合内容仍保留在关联知识页。
-  - 状态：`current`；新鲜度：`known-stale`；负责人域：`learning`
-  - 关联知识页：`knowledge/learnings/troubleshooting.zh.md`
-- **根错误记录**（`.learnings/ERRORS.md`）
-  - 中文阅读版：`knowledge/docs/zh/learning-errors.zh.md`
-  - 简介：记录 harness 依赖、tsx eval、provider hang 和 git diff 命令等错误经验。
-  - 审计依据：来源文件为 gitignore 本地文件，2026-07-11 核对时在本机已缺失；综合内容仍保留在关联知识页。
-  - 状态：`current`；新鲜度：`known-stale`；负责人域：`learning`
-  - 关联知识页：`knowledge/learnings/errors.zh.md`
-- **根通用经验**（`.learnings/LEARNINGS.md`）
-  - 中文阅读版：`knowledge/docs/zh/learning-patterns-root.zh.md`
-  - 简介：记录用户反馈、harness best practices 和项目维护经验。
-  - 审计依据：来源文件为 gitignore 本地文件，2026-07-11 核对时在本机已缺失；综合内容仍保留在关联知识页。
-  - 状态：`current`；新鲜度：`known-stale`；负责人域：`learning`
-  - 关联知识页：`knowledge/learnings/patterns.zh.md`
-- **性能经验**（`.learnings/PERFORMANCE.md`）
-  - 中文阅读版：`knowledge/docs/zh/learning-performance.zh.md`
-  - 简介：记录性能检查相关经验，作为后续优化和回归排查入口。
-  - 审计依据：已标记为历史性能 learnings；当前性能判断需要结合新的 trace、测试或性能记录，但该经验仍是有效排查入口。
-  - 状态：`historical`；新鲜度：`known-stale`；负责人域：`learning`
-  - 关联知识页：`knowledge/learnings/patterns.zh.md`
-- **App 错误记录**（`repos/orbits/.learnings/ERRORS.md`）
-  - 中文阅读版：`knowledge/docs/zh/app-learning-errors.zh.md`
-  - 简介：记录 repos/orbits 内 fixture migration、comment patch、git diff 正则等错误经验。
-  - 审计依据：来源文件为 gitignore 本地文件，2026-07-11 核对时在本机已缺失；综合内容仍保留在关联知识页。
-  - 状态：`current`；新鲜度：`known-stale`；负责人域：`learning`
-  - 关联知识页：`knowledge/learnings/errors.zh.md`
-- **App 经验记录**（`repos/orbits/.learnings/LEARNINGS.md`）
-  - 中文阅读版：`knowledge/docs/zh/app-learning-patterns.zh.md`
-  - 简介：记录 framework/mock/live 解耦、提交范围检查和注释提交卫生等经验。
-  - 审计依据：来源文件为 gitignore 本地文件，2026-07-11 核对时在本机已缺失；综合内容仍保留在关联知识页。
-  - 状态：`current`；新鲜度：`known-stale`；负责人域：`learning`
-  - 关联知识页：`knowledge/learnings/patterns.zh.md`
 
 ### mockdata
 

@@ -7,6 +7,8 @@ import { createNotificationInteractionService, type NotificationInteractionServi
 import { createReminderPlanRepository, type ReminderPlanRepository } from "../features/notifications/reminder-plan-repository";
 import {
   createReminderPlanService,
+  ReminderPlanServiceError,
+  type ReminderTargetAuthorizer,
   type ReminderPlanService,
 } from "../features/notifications/reminder-plan-service";
 import type {
@@ -30,6 +32,18 @@ import { loadLocalEnv } from "./load-local-env";
 export const CLOUD_REMINDER_CHAIN_CHANNEL = "in_app" as const;
 export const CLOUD_REMINDER_CHAIN_MAX_EXISTING_DUE_PLANS = 0;
 export const CLOUD_REMINDER_CHAIN_MAX_SEARCH_ROWS = 50;
+
+export function createCloudReminderTargetAuthorizer(
+  listTask: (actorId: string) => Promise<readonly TaskItemDTO[]>,
+): ReminderTargetAuthorizer {
+  return {
+    async assertOwned(input) {
+      if (input.targetType !== "task") throw new ReminderPlanServiceError("TARGET_NOT_OWNED", "The verifier only accepts task reminder targets");
+      const target = (await listTask(input.actorId)).find((item) => item.id === input.targetId);
+      if (!target) throw new ReminderPlanServiceError("TARGET_NOT_OWNED", "target not owned");
+    },
+  };
+}
 
 export interface CloudReminderChainCommand {
   actorId: string;
@@ -554,13 +568,7 @@ export function createConfiguredCloudReminderChainServices(actorId: string) {
     now: () => new Date().toISOString(),
     pushDevices: createDisabledReminderPushDevices(),
     repository: scopedReminderRepository,
-    targetAuthorizer: {
-      async assertOwned(input) {
-        if (input.targetType !== "task") throw new Error("The verifier only accepts task reminder targets");
-        const target = (await taskService.list({ actorId: input.actorId })).find((item) => item.id === input.targetId);
-        if (!target) throw new Error("target not owned");
-      },
-    },
+    targetAuthorizer: createCloudReminderTargetAuthorizer((requestedActorId) => taskService.list({ actorId: requestedActorId })),
   });
   const interactions = createNotificationInteractionService({ store, workspaceId });
 

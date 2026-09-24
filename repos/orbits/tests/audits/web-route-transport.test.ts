@@ -38,11 +38,18 @@ function requiresAuthentication(pathname: string): boolean {
   );
 }
 
+// iOrbit 任务 6b：46 → 53。审计 inventory 此前长期未重生成，这次重生成后 Web 表面从 46
+// 条变成 53 条：减去任务 6a 归并掉的 /app/chat、/app/today、/app/schedule(+events/[id])、
+// /app/followups 与更早批次删掉的 /app/contacts/{all-actions,graph,intros}、/app/dashboard、
+// /app/party*，加上此前批次已上线却没进过清单的 /app/events/**（center / live / analytics /
+// operations×4）、/app/tasks*、/app/inbox/sources/[id]、/app/invitations/[token]、
+// /app/contacts/analysis/[dimension]/[bucketId]、/app/account/reset-password、
+// /app/profile/continue、/app/agent/{actions,plan,strategy}、/app/home。
 test("all dynamic Web routes have an explicit valid runtime sample", () => {
   const runtimePaths = webSurfaces.map(runtimePathForSurface);
 
-  assert.equal(runtimePaths.length, 46);
-  assert.equal(new Set(runtimePaths).size, 46);
+  assert.equal(runtimePaths.length, 53);
+  assert.equal(new Set(runtimePaths).size, 53);
   assert.equal(runtimePaths.includes("/app/events/EVT01"), true);
   assert.equal(
     runtimePaths.includes(
@@ -92,10 +99,17 @@ test("whole-Web transport verification reports every route and any mismatch", as
     },
   });
 
+  // 20/26 → 34/19。okResponses 上升不是回归，而是把一批「从来没进过清单」的路由记了进来：
+  // ORBIT_PRIVATE_APP_PREFIXES（`features/auth/app-auth-routing.ts:1-9`）只覆盖
+  // /app/{admin,agent,contacts,home,platform,profile,settings}，所以 /app/tasks*、
+  // /app/events/**、/app/inbox/sources/[id]、/app/invitations/[token]、/app/events/center
+  // 这些路由在 Web 边界上是 public-at-web-boundary（页面内再自行鉴权）。任务 6a 从白名单
+  // 里删掉的四条是 /app/{chat,followups,schedule,today}，它们的页面本身也已删除。
+  // 「/app/tasks* 没有 Web 边界鉴权」是本次重生成暴露出的既有问题，记进遗留，不在本任务改。
   assert.deepEqual(report.summary, {
-    routeSurfaces: 46,
-    okResponses: 20,
-    authRedirects: 26,
+    routeSurfaces: 53,
+    okResponses: 34,
+    authRedirects: 19,
     failures: 0,
   });
   assert.equal(report.results.every((result) => result.conclusion === "pass"), true);
@@ -105,5 +119,5 @@ test("whole-Web transport verification reports every route and any mismatch", as
     fetchImplementation: async () =>
       new Response("<title>Failure</title>", { status: 500 }),
   });
-  assert.equal(failedReport.summary.failures, 46);
+  assert.equal(failedReport.summary.failures, 53);
 });

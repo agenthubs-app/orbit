@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
+import { iorbitChatSurfaceSource } from "./iorbit-chat-surface-source";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 
@@ -29,17 +30,23 @@ test("app-home-route redirects into the iOrbit workspace which composes home dat
   assert.match(agentPageSource, /presentOrbitEvents/);
   assert.match(agentPageSource, /readRuntimeEventRegistrationStates/);
   assert.match(agentPageSource, /resolveConfiguredActorEventCanonicalIds/);
-  assert.match(agentPageSource, /registrationAvailabilityByEventId=/);
+  // iOrbit 任务 3 修订轮 1：`registrationAvailabilityByEventId` 的唯一消费者是批次 4a
+  // 的 dashboard（任务 6 删除），新概览屏不读它，所以那个 prop 从 page.tsx 去掉了。
+  // 这里改断「运行时报名态仍然进到首屏数据里」——即每场活动的 registered 标记。
+  assert.match(agentPageSource, /registrationStates\[event\.id\]\?\.registered/);
   assert.match(agentPageSource, /youRsvped: registered/);
 
-  const agentUiSource = source("app/(app)/app/agent/orbit-real-agent.tsx");
-  assert.match(agentUiSource, /OrbitAgentDashboard/);
+  // iOrbit 任务 6a：`orbit-real-agent.tsx` 与 `orbit-agent-dashboard.tsx` 都已删除；
+  // 首屏组件今天是 `iorbit-0918/iorbit-home.tsx`，由壳按视图挂载。
+  assert.match(agentPageSource, /IOrbitShell/);
+  const agentUiSource = iorbitChatSurfaceSource();
+  assert.match(agentUiSource, /<IOrbitHome/);
 });
 
-test("web root owns the responsive starfield journey", () => {
+test("web root renders the Orbit_0918 landing with a session-aware entry", () => {
   const pageSource = source("app/page.tsx");
 
-  assert.match(pageSource, /OrbitStarfieldHome/);
+  assert.match(pageSource, /OrbitLanding0918/);
   assert.match(pageSource, /auth\(\)/);
   assert.match(pageSource, /SessionProvider/);
   assert.match(pageSource, /OrbitLanguageProvider/);
@@ -59,16 +66,18 @@ test("starfield journey mounts dedicated desktop and mobile trees", () => {
   assert.match(shellSource, /mq\.addEventListener\("change", apply\)/);
 });
 
-test("starfield navigation links to concrete product routes", () => {
+test("landing navigation links to concrete product routes", () => {
   const shellSource = source("app/(app)/app/orbit-public-shell.tsx");
-  const starfieldHome = source("app/(app)/app/orbit-starfield-home.tsx");
+  const landing = source("app/(app)/app/orbit-landing-0918.tsx");
 
-  assert.match(starfieldHome, /<OrbitTopNav/);
-  assert.match(starfieldHome, /tone="starfield"/);
+  assert.match(landing, /<OrbitTopNav/);
+  assert.match(landing, /authenticatedFallback=\{authenticated\}/);
   assert.match(shellSource, /href=\{preserveHref\("\/app\/agent"\)\}/);
   assert.match(shellSource, /\["\/events"/);
-  assert.match(shellSource, /\["\/today"/);
   assert.match(shellSource, /\["\/contacts"/);
+  // Calendar 独立 tab 已合入 iOrbit：导航不再暴露 /today 与 /schedule 入口。
+  assert.doesNotMatch(shellSource, /\["\/today"/);
+  assert.doesNotMatch(shellSource, /\["\/schedule"/);
 });
 
 test("starfield account actions branch only on server-owned authentication", () => {
@@ -84,12 +93,12 @@ test("starfield account actions branch only on server-owned authentication", () 
   assert.match(shellSource, /\/app\/account\/signup\?next=/);
 });
 
-test("/app mirrors the authenticated starfield entry", () => {
+test("/app mirrors the anonymous landing entry and redirects members", () => {
   const appPageSource = source("app/(app)/app/page.tsx");
 
-  assert.match(appPageSource, /OrbitStarfieldHome/);
+  assert.match(appPageSource, /OrbitLanding0918/);
   assert.match(appPageSource, /await auth\(\)/);
-  // Signed-in members are redirected to the personal console; the starfield
+  // Signed-in members are redirected to the personal console; the landing
   // stays the anonymous-only entry.
   assert.match(appPageSource, /redirect\("\/app\/home"\)/);
   assert.match(appPageSource, /authenticated=\{false\}/);
@@ -150,13 +159,17 @@ test("app home does not relabel event records as registrations", () => {
 
 test("iOrbit dashboard presents registration state from the shared runtime snapshot", () => {
   const dashboardSource = source(
-    "app/(app)/app/agent/orbit-agent-dashboard.tsx",
+    "app/(app)/app/agent/iorbit-0918/iorbit-home.tsx",
   );
+  const modelSource = source("app/(app)/app/agent/iorbit-0918/iorbit-model.ts");
 
-  assert.match(dashboardSource, /registrationAvailabilityByEventId/);
-  assert.match(dashboardSource, /eventRegistrationIsOpen\(nextEventRegistrationAvailability\)/);
-  assert.match(dashboardSource, /eventRegistrationLabel\(registrationAvailability\)/);
-  assert.match(dashboardSource, /eventRegistrationIsOpen\(registrationAvailabilityByEventId\[event.id\]/);
+  // iOrbit 任务 3 修订轮 1 已经把 `registrationAvailabilityByEventId` 从 page.tsx 去掉
+  // （Orbit_0918 概览屏 148–170 不画报名窗口文案）；任务 6a 删掉最后一个消费者
+  // `orbit-agent-dashboard.tsx` 之后，这里改断在售概览屏读的是服务端注入的
+  // `youRsvped`——同一份运行时报名快照，换了字段。
+  assert.match(dashboardSource, /iorbitRegisteredEvents\(home\?\.events \?\? \[\], now\.getTime\(\)\)/);
+  assert.match(modelSource, /event\.youRsvped \|\| event\.stats\.youRsvped/);
+  assert.doesNotMatch(dashboardSource, /registrationAvailabilityByEventId/);
   assert.doesNotMatch(
     dashboardSource,
     /浏览可报名的活动，回答两题即可完成报名/,
@@ -179,7 +192,7 @@ test("app home hub entry cards link to live app routes", () => {
 
   assert.match(homeUiSource, /href: "\/app\/profile"/);
   assert.match(homeUiSource, /href: "\/app\/contacts"/);
-  assert.match(homeUiSource, /href: "\/app\/today"/);
+  assert.match(homeUiSource, /href: "\/app\/agent\/plan"/);
   assert.match(homeUiSource, /title: t\(\{ en: "Universal profile", zh: "通用画像" \}\)/);
   assert.match(homeUiSource, /sub: t\(\{ en: "Meetings and interaction log", zh: "约见与交往记录" \}\)/);
   assert.match(homeUiSource, /<h3 className="h-section"[^>]*>\{item\.title\}<\/h3>/);
@@ -196,7 +209,7 @@ test("product route href mapping is idempotent for concrete app paths", async ()
   assert.equal(productHref("/app/contacts"), "/app/contacts");
   assert.equal(productHref("/app/schedule"), "/app/schedule");
   assert.equal(productHref("/app/events/EVT01"), "/app/events/EVT01");
-  assert.equal(productHref("/home/schedule"), "/app/today");
+  assert.equal(productHref("/home/schedule"), "/app/agent/plan");
   assert.equal(productHref("/home/cards"), "/app/contacts");
 });
 

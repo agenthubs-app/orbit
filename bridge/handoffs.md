@@ -1,5 +1,9 @@
 # 同步队列
 
+## BR-031 — Web 报名规范身份候选（未发布）
+
+Web源`23646028`已由主独立集成为`66087fff`，本地PG84/84与全typecheck通过。历史raw/account报名兼容和App严格回执身份仍为发布门，未部署、未迁移、未改App；详见[版本、消费点与关闭条件](2026-09-17-web-registration-identity-candidate.md)。其他已批准本地开发继续。
+
 ## 0066 — 7a 报名／画像，consumer_ready
 
 Main固定源修复已合并push `e73e6fb26`并核对独立远端，Phone六文件修复消费 `8d87be6ff` fresh两端产物已完成，公网仍旧0065。Main fresh Web／主8082原生loaded-source成立，但认证被既有数据库SQL53000阻挡；当前Browser／任务连接不可用，新源真实重开3/8／0模型尝试及完整SC尚缺。唯一B不重开、ROOT只集成／QA，未切库／升级；[交接与继续条件](2026-09-17-registration-portrait-7a.md)。

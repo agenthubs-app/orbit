@@ -13,7 +13,7 @@ import { loadAppContactDetailRoute } from "../../app/(app)/app/contacts/compose-
 import { contactDetailRouteToOrbitContactsViewModel } from "../../app/(app)/app/contacts/compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-view-model-adapter";
 import { applyOrbitContactsPresentation } from "../../app/(app)/app/orbit-contacts-presentation";
 import { OrbitRealCardsDashboard } from "../../app/(app)/app/contacts/orbit-real-cards-dashboard";
-import { filterConnections } from "../../app/(app)/app/contacts/orbit-real-contacts";
+import { toPerson } from "../../app/(app)/app/contacts/network-0918/network-model";
 
 async function contactsRoute(t: TestContext) {
   const graph: LocalRemoteContactGraph = {
@@ -87,12 +87,15 @@ test("dashboard industry distribution shows unclassified instead of cities or ta
   assert.doesNotMatch(html, />Osaka<|>custom-tag<|>Relationship</);
 });
 
-test("separating industry from location preserves city search for every contact", async (t) => {
+test("separating industry from location keeps the city as region, never as industry, in the network model", async (t) => {
   const route = await contactsRoute(t);
   const model = listView(route);
-  assert.deepEqual(filterConnections(model.connections, "Osaka").map((item) => item.id).sort(), ["classified", "unclassified"]);
-  const localized = applyOrbitContactsPresentation(model, "zh");
-  assert.deepEqual(filterConnections(localized.connections, "大阪").map((item) => item.id).sort(), ["classified", "unclassified"]);
+  const people = model.connections.map(toPerson);
+  assert.deepEqual(people.map((p) => p.region).sort(), ["Osaka", "Osaka"]);
+  assert.deepEqual(people.map((p) => [p.id, p.industry]).sort(), [["classified", "科技与互联网"], ["unclassified", ""]]);
+  const localized = applyOrbitContactsPresentation(model, "zh").connections.map(toPerson);
+  assert.deepEqual(localized.map((p) => p.region).sort(), ["大阪", "大阪"]);
+  assert.deepEqual(localized.map((p) => [p.id, p.industry]).sort(), [["classified", "科技与互联网"], ["unclassified", ""]]);
 });
 
 test("industry metric excludes contacts whose industry is unclassified", async (t) => {

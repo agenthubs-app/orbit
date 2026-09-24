@@ -26,7 +26,7 @@ interface ConfirmedFollowupView {
   sourceKind: "commitment" | "next_step";
   sourceText: string;
   state: "available" | "completed" | "created" | "dismissed" | "partial";
-  taskHref: "/app/followups";
+  taskHref: "/app/agent/plan";
   taskId: string;
   taskStatus: "completed" | "dismissed" | "missing" | "open" | "scheduled";
 }

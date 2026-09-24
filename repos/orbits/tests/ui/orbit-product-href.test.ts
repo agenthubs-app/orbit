@@ -31,8 +31,12 @@ test("root stays root (the starfield home lives at /)", () => {
 test("prototype mappings survive the unification", () => {
   assert.equal(productHref("/explore"), "/app/events");
   assert.equal(productHref("/home/cards"), "/app/contacts");
-  assert.equal(productHref("/home/schedule"), "/app/today");
-  assert.equal(productHref("/today"), "/app/today");
+  // iOrbit 任务 6a：原型的日程/待办入口从已删除的 `/app/today` / `/app/followups`
+  // 改到取代它们的两条 iOrbit 兄弟屏。
+  assert.equal(productHref("/home/schedule"), "/app/agent/plan");
+  assert.equal(productHref("/today"), "/app/agent/plan");
+  assert.equal(productHref("/schedule"), "/app/agent/plan");
+  assert.equal(productHref("/followups"), "/app/agent/actions");
 });
 
 test("the shell re-exports the shared implementation", () => {
@@ -47,13 +51,14 @@ test("the shell re-exports the shared implementation", () => {
   assert.ok(!/export function productHref/.test(shellSource));
 });
 
-test("Party workspace routes preserve one encoded source event id", () => {
-  assert.equal(partyHrefForEvent("event_001"), "/app/party?eventId=event_001");
+test("live-screen routes preserve one encoded source event id (former /app/party)", () => {
+  assert.equal(partyHrefForEvent("event_001"), "/app/events/event_001/live");
   assert.equal(
-    partyHrefForEvent("event / 東京", "/checkin"),
-    "/app/party/checkin?eventId=event%20%2F%20%E6%9D%B1%E4%BA%AC",
+    partyHrefForEvent("event / 東京"),
+    "/app/events/event%20%2F%20%E6%9D%B1%E4%BA%AC/live",
   );
-  assert.equal(partyHrefForEvent("", "/graph"), "/app/party/graph");
+  assert.equal(partyHrefForEvent(""), "/app/events");
+  assert.equal(productHref("/party"), "/app/events");
 });
 
 test("Agent entry URLs preserve one encoded user prompt", () => {

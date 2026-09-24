@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import { loadAppProfileRouteViewModel } from "../../app/(app)/app/profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-route-view-model";
 import { resolveAppProfileRouteServices } from "../../app/(app)/app/profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-service-factory";
 import { profileRouteToOrbitProfileViewModel } from "../../app/(app)/app/profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-view-model-adapter";
-import { profileReadbackMatches } from "../../app/(app)/app/profile/orbit-real-profile";
+import { profileReadbackMatches } from "../../app/(app)/app/profile/profile-0918/use-profile-editor-session";
 import type {
   ManualProfileUpdateInput,
   ProfilePayload,
@@ -104,13 +104,40 @@ test("app profile route loader returns a controlled live failure when storage is
         viewModel.routeState.evidenceIds.join(" "),
         /PROFILE_LIVE_STORE_UNCONFIGURED|evidence:profile_live_store_unconfigured/,
       );
+      assert.equal(
+        viewModel.routeState.copy.description,
+        "资料暂时无法加载，请稍后重试。 / Your profile is temporarily unavailable. Please try again later.",
+      );
+      assert.equal(
+        viewModel.routeState.copy.guardrail,
+        "返回会重新读取资料，不会提交资料修改或接受建议。 / Returning reloads the profile without submitting edits or accepting suggestions.",
+      );
+      assert.equal(
+        viewModel.routeState.copy.nextStep,
+        "请重新打开资料页重试；若需要登录，请先登录。 / Reopen your profile to try again. Sign in if prompted.",
+      );
+      assert.equal(
+        viewModel.routeState.copy.purpose,
+        "显示资料加载的恢复方式。 / Show how to retry loading the profile.",
+      );
+      assert.equal(viewModel.routeState.recoveryActions[0]?.id, "profile-failure-return");
+      assert.equal(viewModel.routeState.recoveryActions[0]?.href, "/app/profile");
+      assert.equal(
+        viewModel.routeState.recoveryActions[0]?.label,
+        "重试加载资料 / Retry loading profile",
+      );
+      assert.equal(
+        viewModel.routeState.recoveryActions[0]?.recoveryCopy,
+        "重新打开资料页，重试读取；此操作不会保存修改。 / Reopen the profile page to retry loading it. This action does not save edits.",
+      );
     }
   });
 });
 
 test("/app/profile page renders the real Orbit profile editor", () => {
   const pageSource = source("app/(app)/app/profile/page.tsx");
-  const profileSource = source("app/(app)/app/profile/orbit-real-profile.tsx");
+  const profileSource = source("app/(app)/app/profile/profile-0918/profile-screens.tsx");
+  const editorAdapterSource = source("app/(app)/app/profile/profile-editor-adapter.ts");
   const profileModelSource = source(
     "app/(app)/app/orbit-profile-route-view-model.ts",
   );
@@ -118,13 +145,20 @@ test("/app/profile page renders the real Orbit profile editor", () => {
     "app/(app)/app/profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-route-view-model.ts",
   );
 
-  assert.match(pageSource, /loadAppProfileRouteViewModel/);
-  assert.match(pageSource, /profileRouteToOrbitProfileViewModel/);
-  assert.match(pageSource, /OrbitRealProfile/);
-  assert.match(pageSource, /StateView/);
+  const loaderSource = source(
+    "app/(app)/app/profile/profile-0918/load-profile-editor-page.tsx",
+  );
+
+  assert.match(pageSource, /loadProfileEditorPage/);
+  assert.match(loaderSource, /loadAppProfileRouteViewModel/);
+  assert.match(loaderSource, /profileRouteToOrbitProfileEditorViewModel/);
+  assert.match(pageSource, /ProfileScreens/);
+  assert.match(loaderSource, /StateView/);
   assert.doesNotMatch(pageSource, /AppProfileCommandCenter/);
-  assert.match(profileSource, /data-orbit-real-page="profile"/);
-  assert.doesNotMatch(pageSource, /searchParams/);
+  assert.match(pageSource, /data-orbit-real-page="profile-0918"/);
+  assert.match(profileSource, /useProfileEditorSession/);
+  assert.match(pageSource, /searchParams/);
+  assert.match(pageSource, /onboardingNext/);
   assert.doesNotMatch(routeSource, /readSearchParam/);
   assert.doesNotMatch(routeSource, /complete-profile-field/);
   assert.doesNotMatch(routeSource, /AppProfileActionViewModel/);
@@ -145,34 +179,71 @@ test("app profile route scenarios are available only through explicit internal c
   }
 });
 
-test("profile editor uses API extraction and save readback instead of timed success", () => {
-  const profileSource = source("app/(app)/app/profile/orbit-real-profile.tsx");
+test("internal failure route copy stays owner neutral", async () => {
+  const viewModel = await loadAppProfileRouteViewModel(undefined, {
+    scenario: "failure",
+  });
 
-  assert.match(profileSource, /fetch\("\/api\/profile"/);
-  assert.match(profileSource, /method: "PUT"/);
-  assert.match(profileSource, /cache: "no-store"/);
-  assert.match(profileSource, /profileReadbackMatches/);
-  assert.match(profileSource, /saved\.handles\?\.wechatId/);
-  assert.match(profileSource, /sameList\(saved\.offering/);
-  assert.match(profileSource, /\/api\/profile\/extractions\/resume/);
+  assert.equal(viewModel.state, "route-state");
+  if (viewModel.state === "route-state") {
+    const visibleCopy = [
+      viewModel.routeState.copy.description,
+      viewModel.routeState.copy.guardrail,
+      viewModel.routeState.copy.nextStep,
+      viewModel.routeState.copy.purpose,
+      ...viewModel.routeState.recoveryActions.flatMap((action) => [
+        action.label,
+        action.recoveryCopy,
+      ]),
+    ].join(" ");
+
+    assert.match(visibleCopy, /Your profile is temporarily unavailable/);
+    assert.doesNotMatch(visibleCopy, /Ari/);
+    assert.equal(viewModel.routeState.errorCode, "PROFILE_SIGNAL_REVIEW_QUEUE_FAILED");
+  }
+});
+
+test("profile editor uses API extraction and save readback instead of timed success", () => {
+  // 个人中心 task 6 deleted the legacy orbit-real-profile.tsx; the quick-fill / extraction UI now lives in
+  // profile-0918/profile-basic.tsx (assertion intent unchanged).
+  const profileSource = source("app/(app)/app/profile/profile-0918/profile-basic.tsx");
+  // Session logic (load / save / readback / extraction) lives in the hook since 个人中心 task 1.
+  const sessionSource = source("app/(app)/app/profile/profile-0918/use-profile-editor-session.ts");
+  const editorAdapterSource = source("app/(app)/app/profile/profile-editor-adapter.ts");
+
+  assert.match(sessionSource, /fetch\("\/api\/profile"/);
+  assert.match(sessionSource, /method: "PUT"/);
+  assert.match(sessionSource, /cache: "no-store"/);
+  assert.match(sessionSource, /profileReadbackMatches/);
+  assert.match(editorAdapterSource, /sameHandles/);
+  assert.match(editorAdapterSource, /sameList\(saved\.offering/);
+  assert.match(sessionSource, /\/api\/profile\/extractions\/resume/);
   assert.match(profileSource, /Structured text extract/);
   assert.match(profileSource, /href="\/app\/contacts\/new"/);
   assert.doesNotMatch(profileSource, /type="file"/);
   assert.doesNotMatch(profileSource, /AI text extract/);
-  assert.match(profileSource, /Your profile was not changed/);
+  assert.match(sessionSource, /Your profile was not changed/);
   assert.doesNotMatch(profileSource, /fakeExtract|window\.setTimeout/);
+  assert.doesNotMatch(sessionSource, /fakeExtract|window\.setTimeout/);
   assert.doesNotMatch(profileSource, /setMessage\(t\(\{ en: "Saved\."/);
+  assert.doesNotMatch(sessionSource, /setMessage\(t\(\{ en: "Saved\."/);
 });
 
-test("profile editor exposes free-text industry and custom tag entry", () => {
-  const profileSource = source("app/(app)/app/profile/orbit-real-profile.tsx");
+test("profile editor exposes structured industries and custom tag entry", () => {
+  // 个人中心 task 6: structured industries live on the basic-profile screen, custom tag entry on the persona
+  // screen. The legacy `allOptions` suggestion union and the "Enter a specific item" placeholder were
+  // structure of the deleted editor (the 0918 persona screen has no suggestion chips; group placeholders come
+  // from profile-model), so those two assertions are dropped rather than re-pointed.
+  const basicSource = source("app/(app)/app/profile/profile-0918/profile-basic.tsx");
+  const personaSource = source("app/(app)/app/profile/profile-0918/profile-persona.tsx");
 
-  assert.match(profileSource, /<FieldInput label=\{t\(\{ en: "Industry", zh: "行业" \}\)\}/);
-  assert.match(profileSource, /listSecondaryIndustries/);
-  assert.match(profileSource, /Enter a specific item/);
-  assert.match(profileSource, /添加\$\{label\}项目/);
-  assert.match(profileSource, /const allOptions = Array\.from\(new Set/);
-  assert.match(profileSource, /maxLength=\{80\}/);
+  assert.match(basicSource, /Primary industry/);
+  assert.match(basicSource, /Secondary industry/);
+  assert.match(basicSource, /Existing industry text is preserved/);
+  assert.doesNotMatch(basicSource, /en: "Industry", zh: "行业"/);
+  assert.match(basicSource, /listSecondaryIndustries/);
+  assert.match(personaSource, /添加\$\{label\}项目/);
+  assert.match(personaSource, /maxLength=\{80\}/);
 });
 
 test("profile save verification rejects a partial readback", () => {
@@ -236,11 +307,16 @@ test("profile save verification rejects a partial readback", () => {
 
 test("/app/profile maps actor-scoped profile data without hardcoded founder identity", () => {
   const pageSource = source("app/(app)/app/profile/page.tsx");
+  // 视图模型转换住在 profile/settings 共用的服务端 helper 里（个人中心 任务 2）。
+  const loaderSource = source(
+    "app/(app)/app/profile/profile-0918/load-profile-editor-page.tsx",
+  );
   const adapterSource = source(
     "app/(app)/app/profile/compose-app-profile-from-previously-approved-mock-first-capabilities/profile-view-model-adapter.ts",
   );
 
-  assert.match(pageSource, /profileRouteToOrbitProfileViewModel/);
+  assert.match(pageSource, /loadProfileEditorPage\(/);
+  assert.match(loaderSource, /profileRouteToOrbitProfileEditorViewModel/);
   assert.match(adapterSource, /fullName: profile\.displayName/);
   assert.match(adapterSource, /const offering = \[\.\.\.\(profile\.offering/);
   assert.match(adapterSource, /const seeking = \[\.\.\.\(profile\.seeking/);

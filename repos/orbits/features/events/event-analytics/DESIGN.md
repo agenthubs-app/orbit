@@ -42,8 +42,8 @@ AI 端点不配置 provider、不触发任务、不把 queued/running/failed 转
 
 已发布分组不从可空的 normalized child tables/seats 推断。read model 只从 publication head 指向的 `published_dto.grouping.roundOne/roundTwo` 读取桌次与 members；DTO 的 event/generation 对齐、轮次数组、桌号、成员、座位和重复分配均会校验，异常快照直接失败，不会以零值或其他存储降级替代。
 
-`EventAnalyticsReport` 是纯展示组件，不发请求、不开启轮询、不触发 AI 生成，也不依赖活动详情页或运营管理工作区。
+~~`EventAnalyticsReport` 是纯展示组件，不发请求、不开启轮询、不触发 AI 生成，也不依赖活动详情页或运营管理工作区。~~ —— `report.tsx` 已于 2026-09-22（运营台屏级替换任务 7）删除：App 端唯一落点 `/app/events/:id/analytics` 改由 `app/(app)/app/events/ops-0918/ops-report.tsx`（数据 `use-event-analytics.ts`，字段映射 `ops-model.ts` `reportStats` / `attendeeStats` / `reportRate` / `reportFollowup` / `attendeeAiStatus`）按 Orbit_0918 设计渲染；旧组件曾展示而新屏无槽位的指标（已取消报名、分组桌数 / 座位、联系请求等待 / 拒绝 / 撤回、约谈各状态计数、ROI 各比率与强行动分项、AI 产物正文）为有意省略，聚合接口与读模型不变。
 
-独立页面位于 `/app/events/:id/analytics`：服务端先验证登录，未登录会携带当前路径跳转登录页；页面使用统一 Orbit 样式与活动导航。客户端先读取 aggregate endpoint，只有得到 `403` 时才尝试本人 attendee endpoint。因此 owner、operations 和 read-only analyst 会看到聚合页；只有无聚合权限但有该活动有效报名的用户会看到本人报告。`401`、`5xx` 和网络错误不会降级为 attendee 请求，并提供显式重试。页面提供返回活动详情的入口，但不会修改详情页或运营工作区。
+独立页面位于 `/app/events/:id/analytics`：服务端先验证登录，未登录会携带当前路径跳转登录页；页面使用 Orbit_0918 运营台壳（`OpsConsoleShell view="report"`）与账户导航。客户端（`use-event-analytics.ts`）先读取 aggregate endpoint，只有得到 `403` 时才尝试本人 attendee endpoint。因此 owner、operations 和 read-only analyst 会看到聚合页；只有无聚合权限但有该活动有效报名的用户会看到本人报告。`401`、`5xx` 和网络错误不会降级为 attendee 请求，并提供显式重试。页面提供返回活动详情的入口，但不会修改详情页或运营工作区。
 
 组织者的可解释比率为：签到率 = 已签到 / 有效报名、联系同意率 = 已同意 / 全部联系请求状态、完成约谈率 = 已完成 / 全部约谈状态、双向连接参与率 = 双方均签到关系中的 distinct 签到者 / distinct 签到者、有效连接率 = 至少有一项强行动的关系中的 distinct 参与者 / distinct 签到者、行动归因覆盖率 = 强归因完成 operation / 已声明本活动的 ROI-eligible 完成 operation。UI 同时展示整数百分比和准确分子/分母；零分母明确显示“暂无样本”。

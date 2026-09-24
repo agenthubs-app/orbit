@@ -1,5 +1,7 @@
 import type { EventAccessService } from "../../../features/events/event-access/service";
 import { createConfiguredEventAccessService } from "../../../features/events/event-access/runtime";
+import { createConfiguredEventAdmissionService } from "../../../features/events/admission/runtime";
+import type { EventAdmissionPolicy } from "../../../features/events/admission/contract";
 import type { EventOperationsCatalogueSummary } from "../../../features/events/event-operations/repository";
 import { readEventOperationsCatalogueSummary } from "../../../features/events/event-operations/catalogue-summary";
 import {
@@ -43,6 +45,9 @@ export interface CanonicalEventDetailDependencies {
   readOperationsSummary: (
     eventId: string,
   ) => Promise<EventOperationsCatalogueSummary | null>;
+  readAdmissionPolicy?: (
+    eventId: string,
+  ) => Promise<Pick<EventAdmissionPolicy, "capacity"> | null | undefined>;
   readRegistrationAvailability: (
     eventId: string,
   ) => Promise<EventRegistrationAvailability>;
@@ -161,8 +166,18 @@ export async function resolveCanonicalEventDetailView(
     return { state: "forbidden" };
   }
 
-  const participantCount = operationSummary?.activeRegistrationCount ?? 0;
+  const participantCount =
+    operationSummary &&
+    operationSummary.eventId === canonicalEvent.eventId &&
+    Number.isSafeInteger(operationSummary.activeRegistrationCount) &&
+    operationSummary.activeRegistrationCount >= 0
+      ? operationSummary.activeRegistrationCount
+      : null;
+  const admissionPolicy = dependencies.readAdmissionPolicy
+    ? await dependencies.readAdmissionPolicy(canonicalEvent.eventId)
+    : null;
   const event = getOrbitLandingEventView({
+    capacity: admissionPolicy?.capacity,
     event: publishedCanonicalEventToEventDTO(canonicalEvent),
     evidenceSummary:
       canonicalEvent.description?.trim() ||
@@ -202,10 +217,14 @@ export async function resolveConfiguredCanonicalEventDetailView(input: {
 }): Promise<CanonicalEventDetailResolution> {
   const coreService = createConfiguredEventCoreService();
   if (!coreService) return { state: "unavailable" };
+  const admissionService = createConfiguredEventAdmissionService();
   return resolveCanonicalEventDetailView(input, {
     accessService: createConfiguredEventAccessService(),
     coreService,
     now: new Date(),
+    readAdmissionPolicy: admissionService
+      ? (eventId) => admissionService.getPolicy(eventId)
+      : undefined,
     readOperationsSummary: readEventOperationsCatalogueSummary,
     readRegistrationAvailability: readRuntimeEventRegistrationAvailability,
     readRegistrationWindow: readRuntimeEventRegistrationWindow,

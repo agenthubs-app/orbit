@@ -3,6 +3,12 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+
+import type { EventDTO } from "../../shared/domain/contracts";
+import { getOrbitLandingEventView } from "../../app/(app)/app/orbit-landing-route-view-model";
+import { OrbitRealHome } from "../../app/(app)/app/home/orbit-real-home";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 
@@ -33,7 +39,7 @@ test("/app/home/events applies the same event presentation layer as /app/events"
   assert.match(pageSource, /events:\s*presentOrbitEvents\(routeModel\.home\.events,\s*language \?\? "zh"\)/u);
 });
 
-test("active and ended Home event cards preserve the actor-owned event identity when entering Party", () => {
+test("active and ended Home event cards preserve the actor-owned event identity when entering the live screen", () => {
   const homeSource = source("app/(app)/app/home/orbit-real-home.tsx");
 
   assert.match(
@@ -49,4 +55,56 @@ test("active and ended Home event cards preserve the actor-owned event identity 
     3,
   );
   assert.doesNotMatch(homeSource, /orbitNavigate\("\/party"\)/u);
+});
+
+test("Home event cards hide an unknown participant count", () => {
+  const event = getOrbitLandingEventView({
+    event: {
+      endsAt: "2030-01-01T11:00:00.000Z",
+      evidenceIds: ["evidence:home-unknown-count"],
+      id: "event:home-unknown-count",
+      location: "Tokyo",
+      name: "Unknown count home fixture",
+      organizerId: "actor:home-fixture",
+      source: {
+        id: "fixture:home-unknown-count",
+        label: "local fixture",
+        type: "manual",
+      },
+      startsAt: "2030-01-01T09:00:00.000Z",
+    } satisfies EventDTO,
+    evidenceSummary: "Local home fixture",
+    generatedAt: "2029-12-01T00:00:00.000Z",
+    participantCount: null,
+    routeCode: "HOME-UNKNOWN-COUNT",
+  });
+  const html = renderToStaticMarkup(
+    createElement(OrbitRealHome, {
+      mode: "events",
+      viewModel: {
+        account: { fullName: "Orbit", headline: "", initial: "O" },
+        events: [event],
+        stats: { events: 1, inProgress: 0, people: 0 },
+      },
+    }),
+  );
+
+  assert.doesNotMatch(html, /null\s*人已报名|undefined\s*人已报名/u);
+  assert.doesNotMatch(html, /人已报名/u);
+
+  for (const participantCount of [0, 7]) {
+    const knownHtml = renderToStaticMarkup(
+      createElement(OrbitRealHome, {
+        mode: "events",
+        viewModel: {
+          account: { fullName: "Orbit", headline: "", initial: "O" },
+          events: [{ ...event, participantCount }],
+          stats: { events: 1, inProgress: 0, people: 0 },
+        },
+      }),
+    );
+
+    assert.match(knownHtml, /Unknown count home fixture/u);
+    assert.match(knownHtml, new RegExp(`${participantCount} 人已报名`, "u"));
+  }
 });

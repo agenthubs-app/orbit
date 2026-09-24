@@ -170,6 +170,16 @@ function textMatchesToken(text: string, token: string): boolean {
   return text.includes(token);
 }
 
+export function matchedTokensForText(
+  text: string,
+  query: string,
+): readonly string[] {
+  const normalizedText = text.toLowerCase();
+  return tokensFor(query).filter((token) =>
+    textMatchesToken(normalizedText, token),
+  );
+}
+
 // 种子活动的 description 把三语简介拼在一段里（"JA: … ZH: … EN: …"）；
 // 按标记抽出各语言句子，展示层就不用透出整个导入串。
 function localizedDescriptionsFor(description: string): {

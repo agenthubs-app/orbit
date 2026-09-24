@@ -99,7 +99,7 @@ export async function GET(
       now,
     });
     const response = NextResponse.redirect(
-      new URL("/app/contacts/all-actions?integration=connected", request.url),
+      new URL("/app/agent/actions?integration=connected", request.url),
     );
     response.cookies.set(`orbit-integration-state-${selected}`, "", {
       httpOnly: true,

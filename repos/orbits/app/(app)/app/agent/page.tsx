@@ -2,7 +2,9 @@
  * Agent 页 route adapter。
  *
  * route 只负责挂载样式/runtime，并把 live-capable Orbit AI 聊天入口挂到 `/app/agent`。
- * 数据仍走 live 的 chat route view model；视觉组件采用统一后的 OrbitRealAgent。
+ * 数据仍走 live 的 chat route view model；视觉组件采用 Orbit_0918 的 iOrbit 壳
+ * （`agent/iorbit-0918/iorbit-shell.tsx`）：home 分支渲染 `iorbit-home.tsx`，chat 分支渲染
+ * `iorbit-chat.tsx`。旧的 `OrbitRealAgent` 已于任务 6a 删除。
  */
 import { getOrbitServerLanguage, localizeOrbitTree } from "../orbit-language-server";
 import type { OrbitLanguage } from "../orbit-language-core";
@@ -18,13 +20,15 @@ import {
   type AppChatSearchParams,
 } from "../chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-route-view-model";
 import { composeOrbitAgentEntryViewModel } from "../chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-view-model-adapter";
-import { OrbitRealAgent } from "./orbit-real-agent";
+import { IOrbitShell } from "./iorbit-0918/iorbit-shell";
 import { loadAppHomeRouteViewModel } from "../home/compose-app-home-from-previously-approved-mock-first-capabilities/home-route-view-model";
 import { presentOrbitEvents } from "../orbit-event-presentation";
 import { readRuntimeEventRegistrationStates } from "../../../../features/events/registration/runtime";
 import { resolveConfiguredActorEventCanonicalIds } from "../canonical-event-detail-view";
 
 export type AppAgentSearchParams = AppChatSearchParams & {
+  /** `?history=1`：strategy / contacts 两屏页头的「◷ 历史记录」落点（任务 5）。 */
+  history?: string | string[];
   lang?: string | string[];
   q?: string | string[];
 };
@@ -71,11 +75,13 @@ function AgentRouteStateBoundary({
             recoveryCopy: routeState.copy.nextStep,
           },
           {
-            href: "/app/chat",
+            // iOrbit 任务 6a：`/app/chat` 已删除（路由归并）。对话记录与隐私控件现在
+            // 都在 iOrbit 的历史抽屉里，恢复链接因此指向 `/app/agent?history=1`。
+            href: "/app/agent?history=1",
             id: "agent-recovery-chat",
-            label: "Open chat workspace",
+            label: "Open conversation history",
             recoveryCopy:
-              "Use the Chat workspace to review conversation records and privacy controls directly.",
+              "Open the iOrbit conversation history drawer to review past conversations and their records.",
           },
         ]}
         title={routeState.copy.title}
@@ -174,13 +180,14 @@ export default async function AppAgentPage({
       <OrbitVisualFreezeRuntime />
       {entryModel.state === "ready" ? (
         <div data-orbit-route="app-agent-route">
-          <OrbitRealAgent
-            registrationAvailabilityByEventId={Object.fromEntries(
-              Object.entries(registrationStates).map(([eventId, state]) => [
-                eventId,
-                state.availability,
-              ]),
+          <IOrbitShell
+            initialDeepLink={Boolean(
+              firstSearchParam(resolvedSearchParams, "q") ||
+                firstSearchParam(resolvedSearchParams, "session"),
             )}
+            initialHistoryOpen={
+              firstSearchParam(resolvedSearchParams, "history") === "1"
+            }
             home={
               homeModel.state === "success"
                 ? localizeOrbitTree(

@@ -7,7 +7,7 @@ import { loadAppEventsRouteViewModel } from "../../app/(app)/app/events/compose-
 import { resolveAppEventsRouteServices } from "../../app/(app)/app/events/compose-app-events-from-previously-approved-mock-first-capabilities/events-service-factory";
 import { eventChoiceToLandingEvent } from "../../app/(app)/app/events/compose-app-events-from-previously-approved-mock-first-capabilities/events-view-model-adapter";
 import { EVENT_CONTENT } from "../../app/(app)/app/orbit-event-content";
-import { fmtDay } from "../../app/(app)/app/events/orbit-real-explore-client";
+import { fmtDay } from "../../app/(app)/app/events/events-0918/events-model";
 import { loadLocalEnv } from "../../scripts/load-local-env";
 
 loadLocalEnv();
@@ -265,7 +265,9 @@ test("/app/events renders the public event catalogue without requiring authentic
     "app/(app)/app/orbit-landing-route-view-model.ts",
   );
 
-  assert.match(pageSource, /OrbitRealExploreClient/);
+  assert.match(pageSource, /EventsList/);
+  // 公开页：顶栏按登录态选择，未登录不得挂 AccountTopNav（会请求 /api/notifications → 401）。
+  assert.match(pageSource, /authenticated \? <AccountTopNav active="events" \/> : <PublicTopNav active="events" \/>/);
   assert.match(pageSource, /createConfiguredCanonicalPublicEventCatalogue/);
   assert.match(pageSource, /getOrbitLandingViewModelFromCatalogue/);
   assert.match(pageSource, /readRuntimeEventRegistrationStates/);

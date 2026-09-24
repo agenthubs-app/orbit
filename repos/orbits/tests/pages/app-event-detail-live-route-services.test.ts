@@ -15,9 +15,9 @@ import {
 import { eventDetailRouteToOrbitLandingEventView } from "../../app/(app)/app/events/compose-app-events-demo-event-1-from-previously-approved-mock-first-capabilities/event-detail-view-model-adapter";
 import {
   canUseEventDetailHistoryBack,
-  eventTime,
-  OrbitRealEventDetail,
-} from "../../app/(app)/app/events/[id]/orbit-real-event-detail";
+  EventDetail,
+} from "../../app/(app)/app/events/events-0918/event-detail";
+import { formatEventDateRange } from "../../app/(app)/app/events/events-0918/events-model";
 
 const liveDatabaseEnvKeys = [
   "ORBIT_EVENT_DATABASE_URL",
@@ -296,7 +296,8 @@ test("event detail presents invalid end times honestly instead of a zero-duratio
     endsAt: event.startsAt,
   };
   const presented = presentOrbitEvent(invalidEvent, "zh");
-  const time = eventTime(presented, (copy) => copy.zh, "zh");
+  // 详情 hero 的日期行走 events-model.formatEventDateRange（设计 e.dateFull）；无效区间只显示开始钟点。
+  const time = formatEventDateRange(presented, "zh", true);
   const logistics = presented.about?.find((section) => section.icon === "📍");
 
   assert.deepEqual(
@@ -308,14 +309,14 @@ test("event detail presents invalid end times honestly instead of a zero-duratio
     [],
   );
   assert.deepEqual(presented.agenda, []);
-  assert.match(time.time, /结束时间待确认/u);
-  assert.doesNotMatch(time.time, / - /u);
+  assert.doesNotMatch(time, / - /u);
+  assert.match(time, /\d{1,2}:\d{2}$/u);
   assert.match(logistics?.body ?? "", /结束时间待确认/u);
 });
 
 test("event detail reads registration state from the authenticated canonical server snapshot", () => {
   const detailSource = source(
-    "app/(app)/app/events/[id]/orbit-real-event-detail.tsx",
+    "app/(app)/app/events/events-0918/event-detail.tsx",
   );
 
   const pageSource = source("app/(app)/app/events/[id]/page.tsx");
@@ -323,7 +324,8 @@ test("event detail reads registration state from the authenticated canonical ser
   assert.match(pageSource, /youRsvped: resolution\.registered/);
   assert.doesNotMatch(detailSource, /registration\?questions=false|setRegistrationStatus/);
   assert.match(detailSource, /registrationStatus/);
-  assert.match(detailSource, /Manage registration|管理报名/);
+  // Orbit_0918: 「管理报名」→ 设计 161 「修改报名信息」（已报名时链 /register）。
+  assert.match(detailSource, /Edit registration|修改报名信息/);
   assert.match(detailSource, /Register again|重新报名/);
   assert.match(detailSource, /\/app\/events\/.*\/register/);
   assert.match(detailSource, /const youRsvped = registrationStatus === "rsvped"/);
@@ -336,7 +338,7 @@ test("event detail reads registration state from the authenticated canonical ser
 
 test("public event detail derives registration from server auth and gates matchmaking requests", () => {
   const detailSource = source(
-    "app/(app)/app/events/[id]/orbit-real-event-detail.tsx",
+    "app/(app)/app/events/events-0918/event-detail.tsx",
   );
   const matchmakingSource = source(
     "app/(app)/app/events/[id]/orbit-event-matchmaking.tsx",
@@ -357,7 +359,7 @@ test("public event detail derives registration from server auth and gates matchm
 
 test("event detail with no organizer source renders a non-link pending boundary", () => {
   const detailSource = source(
-    "app/(app)/app/events/[id]/orbit-real-event-detail.tsx",
+    "app/(app)/app/events/events-0918/event-detail.tsx",
   );
 
   assert.match(detailSource, /if \(!organizer\)/);
@@ -417,6 +419,9 @@ test("event matchmaking only offers registration while the event and its registr
   if (routeModel.routeState !== "success") return;
   const event = eventDetailRouteToOrbitLandingEventView(routeModel);
 
+  // Orbit_0918: the hero 「修改报名信息」 link addresses the event by public code,
+  // so the id-addressed count below is still only the matchmaking recovery link;
+  // every closed / unknown window still exposes no registration link at all.
   for (const scenario of [
     { status: "upcoming", availability: "open", registrationLinks: 1 },
     { status: "ended", availability: "open", registrationLinks: 0 },
@@ -453,7 +458,7 @@ test("event matchmaking only offers registration while the event and its registr
       });
 
       await act(async () => {
-        renderer = create(createElement(OrbitRealEventDetail, {
+        renderer = create(createElement(EventDetail, {
           event: {
             ...event,
             id: eventId,

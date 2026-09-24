@@ -12,20 +12,23 @@ test("personal app route trees are private", () => {
     "/app/agent",
     "/app/admin",
     "/app/admin/events",
-    "/app/chat/thread-1",
+    "/app/agent/plan",
     "/app/contacts",
     "/app/contacts/person-1",
-    "/app/dashboard",
-    "/app/followups",
     "/app/home",
     "/app/home/events",
-    "/app/party/checkin",
     "/app/platform",
     "/app/profile",
-    "/app/schedule",
-    "/app/today",
   ]) {
     assert.equal(isOrbitPrivateAppPath(pathname), true, pathname);
+  }
+});
+
+// iOrbit 任务 6a：`/app/chat`、`/app/followups`、`/app/schedule`、`/app/today`
+// 四条路由随路由归并删除，`next` 白名单同步移除——它们不再是私有前缀。
+test("the consolidated-away routes are no longer private prefixes", () => {
+  for (const pathname of ["/app/chat", "/app/followups", "/app/schedule", "/app/today"]) {
+    assert.equal(isOrbitPrivateAppPath(pathname), false, pathname);
   }
 });
 
@@ -58,7 +61,7 @@ test("auth return paths preserve safe local destinations and reject redirect att
     "/app/contacts?view=graph#person",
   );
   assert.equal(normalizeOrbitAuthReturnPath("/"), "/");
-  assert.equal(normalizeOrbitAuthReturnPath(["/app/today", "/app/home"]), "/app/today");
+  assert.equal(normalizeOrbitAuthReturnPath(["/app/agent", "/app/home"]), "/app/agent");
 
   for (const unsafe of [
     "https://evil.example/steal",

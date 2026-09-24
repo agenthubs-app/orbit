@@ -6,7 +6,9 @@ import {
   type ContactsListSearchResult,
 } from "./contract";
 import {
+  buildAvailableFiltersFromFacetCounts,
   runContactsGraphQuery,
+  type ContactsFacetCounts,
   type ContactsGraphQueryContext,
 } from "./contact-graph-query";
 import type { LocalRemoteContactGraph } from "./contact-graph-provider";
@@ -160,19 +162,33 @@ async function runLiveContactsQuery(
     : await provider.readContactGraph(actorId);
 
   const boundedPage = (graph as LocalRemoteContactGraph & {
-    boundedPage?: { nextCursor?: string; total: number };
+    boundedPage?: {
+      facetCounts?: ContactsFacetCounts;
+      nextCursor?: string;
+      total: number;
+    };
   }).boundedPage;
+  const graphQueryInput = boundedPage?.facetCounts
+    ? { ...input, cursor: null }
+    : boundedPage
+      ? { ...input, query: null, cursor: null, limit: null }
+      : input;
   const result = runContactsGraphQuery(
     graph,
-    boundedPage
-      ? { ...input, query: null, cursor: null, limit: null }
-      : input,
+    graphQueryInput,
     graphQueryContext(provider),
   );
   if (result.success && boundedPage) {
+    if (boundedPage.facetCounts) {
+      result.data.availableFilters = buildAvailableFiltersFromFacetCounts(
+        boundedPage.facetCounts,
+        result.data.appliedFilters,
+      );
+    }
     result.data.total = boundedPage.total;
     result.data.summary = `${boundedPage.total} contacts matched the live database query.`;
     if (boundedPage.nextCursor) result.data.nextCursor = boundedPage.nextCursor;
+    else delete result.data.nextCursor;
   }
   return clonePayload(result);
 }

@@ -40,6 +40,14 @@ import {
   readQuickSignupAnswers,
 } from "../orbit-event-quick-signup";
 import { EventAdmissionStatusCard } from "./event-admission-status-card";
+import {
+  answersFromTranscript as answersFrom,
+  isStatusCardApplication,
+  matchesAdmissionApplicationReceipt,
+  registrationCopy as copy,
+  registrationFieldLabel as fieldLabel,
+  transcriptFromAnswers,
+} from "./registration-workspace-model";
 import { registrationQuestionnaireProgress } from "../../../../../../features/mobile/registration-questionnaire-progress";
 import { registrationBlockingReasonCopy } from "../../../../../../features/events/registration/blocking-reason-copy";
 import { RegistrationPortraitWorkspace } from "./registration-portrait-workspace";
@@ -75,7 +83,7 @@ type RegistrationEnvelope = {
 };
 
 type AdmissionEnvelope = {
-  data?: EventAdmissionApplication;
+  data?: unknown;
   error?: { message?: string };
   success: boolean;
 };
@@ -95,62 +103,6 @@ const TOTAL_REQUIRED_QUESTIONS = EVENT_PROFILE_CORE_FIELDS.length;
 const GENERATING_MIN_MS = 2700;
 const GENERATING_STAGE_MS = 900;
 const OPTION_KEYS = ["A", "B", "C", "D"] as const;
-
-function copy(language: Language, value: { en: string; zh: string }): string {
-  return language === "en" ? value.en : value.zh;
-}
-
-function fieldLabel(
-  language: Language,
-  field: AdaptiveInterviewTurn["field"],
-): string {
-  const labels: Record<AdaptiveInterviewTurn["field"], { en: string; zh: string }> = {
-    desiredOutcome: { en: "Outcome", zh: "期待结果" },
-    energyStyle: { en: "Social energy", zh: "社交能量" },
-    experienceHighlight: { en: "Experience", zh: "经验亮点" },
-    followUpPreference: { en: "Follow-up", zh: "后续方式" },
-    industry: { en: "Industry", zh: "行业" },
-    positioning: { en: "Positioning", zh: "定位" },
-    targetAttendees: { en: "Who to meet", zh: "想认识" },
-    valueOffered: { en: "What you offer", zh: "能提供" },
-  };
-
-  return copy(language, labels[field]);
-}
-
-function answersFrom(
-  transcript: readonly AdaptiveInterviewTurn[],
-): EventParticipantProfileAnswers {
-  return Object.fromEntries(
-    transcript.map((turn) => [turn.field, turn.answer]),
-  ) as EventParticipantProfileAnswers;
-}
-
-function transcriptFromAnswers(
-  answers: EventParticipantProfileAnswers,
-): AdaptiveInterviewTurn[] {
-  return Object.entries(answers)
-    .filter(
-      (entry): entry is [AdaptiveInterviewTurn["field"], string] =>
-        typeof entry[1] === "string" && entry[1].trim().length > 0,
-    )
-    .map(([field, answer]) => ({ answer, field, prompt: field }));
-}
-
-type StatusCardApplication = EventAdmissionApplication & {
-  status: "pending_review" | "rejected" | "waitlisted" | "withdrawn";
-};
-
-function isStatusCardApplication(
-  application: EventAdmissionApplication | null,
-): application is StatusCardApplication {
-  return Boolean(
-    application &&
-      ["pending_review", "rejected", "waitlisted", "withdrawn"].includes(
-        application.status,
-      ),
-  );
-}
 
 export function EventRegistrationWorkspace({
   actorId,
@@ -252,6 +204,53 @@ export function EventRegistrationWorkspace({
   const latestAuthority = useRef(authority); latestAuthority.current = authority;
   const currentQuestionNode = useRef<HTMLDivElement>(null);
 
+  async function readAdmissionApplicationReadback(
+    receipt: EventAdmissionApplication,
+    isCurrent: () => boolean,
+  ): Promise<EventAdmissionApplication | null> {
+    if (!isCurrent()) return null;
+    let response: Response;
+    try {
+      response = await fetch(
+        `/api/events/${encodeURIComponent(event.id)}/admission/application`,
+        { cache: "no-store", method: "GET" },
+      );
+    } catch {
+      if (!isCurrent()) return null;
+      throw new Error(
+        copy(language, {
+          en: "The saved admission application could not be read back. Your answers were kept; reload its status.",
+          zh: "暂时无法回读准入申请，答案已保留，请重新读取状态。",
+        }),
+      );
+    }
+    const body = (await response.json().catch(() => null)) as {
+      data?: unknown;
+      error?: { message?: string };
+      success?: boolean;
+    } | null;
+    if (!isCurrent()) return null;
+    if (
+      !response.ok ||
+      body?.success !== true ||
+      !matchesAdmissionApplicationReceipt(body?.data, {
+        actorId: registrationActorId,
+        applicationVersion: receipt.applicationVersion,
+        eventId: event.id,
+        status: receipt.status,
+      })
+    ) {
+      throw new Error(
+        body?.error?.message ??
+          copy(language, {
+            en: "The saved admission application could not be read back. Your answers were kept; reload its status.",
+            zh: "暂时无法回读准入申请，答案已保留，请重新读取状态。",
+          }),
+      );
+    }
+    return body.data;
+  }
+
   const status =
     admissionApplication?.status ?? registration?.status ?? "unregistered";
   const canWithdrawAdmission = Boolean(
@@ -292,7 +291,7 @@ export function EventRegistrationWorkspace({
       setFreeText(""); setFreeTextOpen(false); setSelectedOption(null);
       setInterviewDone(false); setThinking(false); setPersona(null);
       setRegistration(initialRegistration); setAdmissionApplication(initialAdmissionApplication);
-      setEligibility(initialEligibility); setConfirmingCancel(false); cancelPending.current = false; cancelAuthority.current = null;
+      setEligibility(initialEligibility); setPendingCancel(false); setConfirmingCancel(false); cancelPending.current = false; cancelAuthority.current = null;
       setStage(initialAdmissionApplication?.status === "admitted" ? "registered" : initialAdmissionApplication?.status ?? (initialRegistration?.status === "rsvped" ? "registered" : initialRegistration?.status === "cancelled" ? "cancelled" : "interview"));
       autoFetchedFirstQuestion.current = false;
     }
@@ -520,8 +519,36 @@ export function EventRegistrationWorkspace({
           if (!mounted.current || currentScope.current !== scopeKey || generationRunId.current !== runId) return;
 
           if (admissionControlled) {
-            savedApplication = registrationBody.data as EventAdmissionApplication;
-            setAdmissionApplication(savedApplication);
+            if (
+              !matchesAdmissionApplicationReceipt(registrationBody.data, {
+                actorId: registrationActorId,
+                eventId: event.id,
+              })
+            ) {
+              throw new Error(
+                copy(language, {
+                  en: "The admission response could not be verified. Your answers were kept; reload its status.",
+                  zh: "未能核对准入回执，答案已保留，请重新读取准入状态。",
+                }),
+              );
+            }
+            const readback = await readAdmissionApplicationReadback(
+              registrationBody.data,
+              () =>
+                mounted.current &&
+                currentScope.current === scopeKey &&
+                generationRunId.current === runId,
+            );
+            if (
+              !mounted.current ||
+              currentScope.current !== scopeKey ||
+              generationRunId.current !== runId
+            ) {
+              return;
+            }
+            if (!readback) return;
+            savedApplication = readback;
+            setAdmissionApplication(readback);
           } else {
             savedRegistration = await readRegistrationReadback(registrationBody.data as EventRegistration, registration?.status === "cancelled" ? "reactivate" : "register");
             if (!mounted.current || currentScope.current !== scopeKey || generationRunId.current !== runId) return;
@@ -758,6 +785,9 @@ export function EventRegistrationWorkspace({
 
   async function cancelRegistration() {
     if (!mounted.current || currentScope.current !== scopeKey || cancelPending.current || generationPending.current || !canCancelEnrollment || cancelAuthority.current !== latestAuthority.current) return;
+    const operationScope = scopeKey;
+    const operationEpoch = generationRunId.current;
+    const expectedApplicationVersion = admissionApplication?.applicationVersion;
     cancelPending.current = true;
     setError(null);
     setPendingCancel(true);
@@ -770,8 +800,7 @@ export function EventRegistrationWorkspace({
         admissionControlled
           ? {
               body: JSON.stringify({
-                expectedApplicationVersion:
-                  admissionApplication?.applicationVersion,
+                expectedApplicationVersion,
               }),
               headers: { "content-type": "application/json" },
               method: "DELETE",
@@ -788,7 +817,13 @@ export function EventRegistrationWorkspace({
       const body = (await response.json()) as
         | AdmissionEnvelope
         | RegistrationEnvelope;
-      if (!mounted.current || currentScope.current !== scopeKey) return;
+      if (
+        !mounted.current ||
+        currentScope.current !== operationScope ||
+        generationRunId.current !== operationEpoch
+      ) {
+        return;
+      }
 
       if (!response.ok || body.success !== true || !body.data) {
         throw new Error(
@@ -798,24 +833,79 @@ export function EventRegistrationWorkspace({
       }
 
       if (admissionControlled) {
-        setAdmissionApplication(body.data as EventAdmissionApplication);
+        if (
+          typeof expectedApplicationVersion !== "number" ||
+          !Number.isSafeInteger(expectedApplicationVersion) ||
+          expectedApplicationVersion < 1 ||
+          expectedApplicationVersion >= Number.MAX_SAFE_INTEGER ||
+          !matchesAdmissionApplicationReceipt(body.data, {
+            actorId: registrationActorId,
+            applicationVersion: expectedApplicationVersion + 1,
+            eventId: event.id,
+            status: "withdrawn",
+          })
+        ) {
+          throw new Error(
+            copy(language, {
+              en: "The withdrawal response could not be verified. Reload the application status.",
+              zh: "未能核对撤回回执，请重新读取申请状态。",
+            }),
+          );
+        }
+        const readback = await readAdmissionApplicationReadback(
+          body.data,
+          () =>
+            mounted.current &&
+            currentScope.current === operationScope &&
+            generationRunId.current === operationEpoch &&
+            cancelPending.current,
+        );
+        if (
+          !mounted.current ||
+          currentScope.current !== operationScope ||
+          generationRunId.current !== operationEpoch ||
+          !cancelPending.current
+        ) {
+          return;
+        }
+        if (!readback) return;
+        setAdmissionApplication(readback);
       } else {
         const readback = await readRegistrationReadback(body.data as EventRegistration, "cancel");
-        if (!mounted.current || currentScope.current !== scopeKey) return;
+        if (
+          !mounted.current ||
+          currentScope.current !== operationScope ||
+          generationRunId.current !== operationEpoch
+        ) {
+          return;
+        }
         setRegistration(readback);
       }
       setPersona(null);
       setConfirmingCancel(false);
       setStage(admissionControlled ? "withdrawn" : "cancelled");
     } catch (caught) {
-      if (!mounted.current || currentScope.current !== scopeKey) return;
+      if (
+        !mounted.current ||
+        currentScope.current !== operationScope ||
+        generationRunId.current !== operationEpoch
+      ) {
+        return;
+      }
       setError(
         caught instanceof Error
           ? caught.message
           : copy(language, { en: "Registration could not be cancelled.", zh: "暂时无法取消预约。" }),
       );
     } finally {
-      if (mounted.current && currentScope.current === scopeKey) { cancelPending.current = false; setPendingCancel(false); }
+      if (
+        mounted.current &&
+        currentScope.current === operationScope &&
+        generationRunId.current === operationEpoch
+      ) {
+        cancelPending.current = false;
+        setPendingCancel(false);
+      }
     }
   }
 
@@ -858,6 +948,26 @@ export function EventRegistrationWorkspace({
       }}
     >
       <style>{`
+        /* Orbit_0918 批次 1c：报名屏视觉替换。页作用域重映射全套 token 到 0918
+           靛蓝体系并改 light color-scheme（沿用批次 3d 无引号选择器约定）；
+           逻辑、data-* 钩子、签名问答与 readback 语义零改动。 */
+        [data-orbit-registration-profile-guide=register]{
+          color-scheme:light;
+          --ink:#0E1225;--text:#0E1225;--text-2:#3B3F7A;--text-3:#6B6F99;--text-4:#9FA3C4;
+          --bg:#FBFBFE;--bg-soft:#F7F7FD;--bg-sunken:#F1F1FA;
+          --surface:#FFFFFF;--surface-2:#F7F7FD;--surface-3:#ECEEFB;
+          --border:#E8E9F6;--border-2:#DDDEFA;--border-strong:#B9BCEB;--hairline:#F1F1FA;
+          --accent:#4B4FC7;--accent-hover:#2E3270;--accent-soft:#ECEEFB;--accent-ring:#B9BCEB;
+          --on-accent:#FFFFFF;--on-dark:#FFFFFF;
+          --ff-display:'Noto Serif SC','Songti SC','SimSun',serif;
+        }
+        [data-orbit-registration-profile-guide=register] .btn-primary{background:#0E1225;border-color:#0E1225;box-shadow:none;color:#FFFFFF}
+        [data-orbit-registration-profile-guide=register] .btn-primary:hover:not(:disabled){background:#2E3270;border-color:#2E3270}
+        [data-orbit-registration-profile-guide=register] .btn-secondary{background:#FFFFFF;border-color:#DDDEFA;color:#3B3F7A;box-shadow:none}
+        [data-orbit-registration-profile-guide=register] .btn-secondary:hover:not(:disabled){border-color:#B9BCEB;color:#2E3270}
+        [data-orbit-registration-profile-guide=register] .chip{border-color:#DDDEFA;color:#3B3F7A;background:#FFFFFF}
+        [data-orbit-registration-profile-guide=register] .field{background:#FFFFFF;border-color:#DDDEFA;color:#0E1225}
+        [data-orbit-registration-profile-guide=register] .field:focus{border-color:#4B4FC7;outline:3px solid #ECEEFB;outline-offset:0}
         @keyframes regFadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes regReveal { 0% { opacity: 0; transform: translateY(22px) scale(.97); } 60% { opacity: 1; } 100% { opacity: 1; transform: translateY(0) scale(1); } }
         @keyframes regPulse { 0%, 100% { opacity: .3; transform: scale(.9); } 50% { opacity: 1; transform: scale(1.08); } }

@@ -42,7 +42,7 @@ test("one-hour reminder retry preserves both its time and idempotency key", asyn
 test("canonical App task links open Web task details without changing legacy reminder links", () => {
   const hrefs = ["/tasks/task%3Aone%2Ftwo", "/app/contacts/person", "https://evil.test", "/tasks/../settings"];
   const alerts = toReminderAlerts({ reminders: hrefs.map((href, index) => ({ reminderId: String(index), title: "待办提醒", contactName: "待办提醒", organization: "Orbit", dueAt: "2026-09-07T00:00:00Z", recommendedWindow: "2026-09-07T00:00:00Z", priority: "normal", href })) } as any);
-  assert.deepEqual(alerts.map((alert) => alert.href), ["/app/tasks/task%3Aone%2Ftwo", "/app/contacts/person", "/app/followups", "/app/followups"]);
+  assert.deepEqual(alerts.map((alert) => alert.href), ["/app/tasks/task%3Aone%2Ftwo", "/app/contacts/person", "/app/agent/plan", "/app/agent/plan"]);
 });
 
 test("an expired uncertain reminder offers an explicit recovery instead of an unusable time picker", async (t) => {

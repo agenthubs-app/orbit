@@ -794,38 +794,40 @@ const reactReferenceIsolationStyles = `
   border-color: var(--border-strong);
 }
 
-[data-orbit-real-page] .orbit-top-nav .orbit-nav-link {
-  font-weight: 600;
-}
-
+/* Orbit_0918 浮岛药丸导航：品牌与链接使用设计稿固定浅色配色（不随主题变量），
+   在未转换的深色画布页面上浅色药丸同样保持可读。 */
 [data-orbit-real-page] .orbit-brand-link {
   align-items: center;
-  color: var(--accent);
+  color: #0E1225;
   display: inline-flex;
   flex: 0 0 auto;
 }
 
-[data-orbit-real-page="agent"] .orbit-nav-link {
-  font-weight: 600;
-}
-
-/* Mobile navigation: the top bar carries brand + current page title on the
-   left, and iOrbit + language + hamburger on the right; primary destinations
-   live in the hamburger's full-width menu panel. This replaces the old
-   compressed single-bar layout (11px links, 30×34 targets). */
+/* Mobile navigation: the floating pill keeps brand + current page title on the
+   left, and language + hamburger on the right; primary destinations live in
+   the hamburger's menu panel. The outer header becomes a transparent strip;
+   the pill is the visible bar. */
 @media (max-width: 640px) {
   [data-orbit-real-page] .orbit-top-nav {
-    display: flex !important;
+    display: block !important;
     flex-shrink: 0;
-    gap: 10px;
-    height: 56px;
-    min-height: 56px;
-    padding: 0 14px;
+    height: auto;
+    min-height: 0;
+    padding: 10px 12px 0;
     width: 100%;
   }
 
+  [data-orbit-real-page] .orbit-top-nav-pill {
+    gap: 10px;
+    min-height: 56px;
+    padding: 6px 8px 6px 20px;
+  }
+
+  [data-orbit-real-page] .orbit-top-nav .orbit-brand-name {
+    font-size: 20px;
+  }
+
   [data-orbit-real-page] .orbit-top-nav .orbit-nav-links,
-  [data-orbit-real-page] .orbit-top-nav .orbit-brand-word,
   [data-orbit-real-page] .orbit-top-nav .orbit-me-link {
     display: none !important;
   }
@@ -842,36 +844,54 @@ const reactReferenceIsolationStyles = `
 }
 
 /* ===================================================================
-   Desktop top-nav — match the starfield homepage nav (orbit-starfield-
-   desktop #skNav) so the product pages and the landing share ONE nav
-   language: brand wordmark + tagline, centered plain-text links, plain
-   中/EN, subtle "Me" pill. Only applies >640px; the mobile hamburger
-   layout above is untouched.
+   Orbit_0918 浮岛药丸导航（桌面+移动共用）。外层 header 是透明吸附条，
+   滚动超过 40px 后获得内边距；视觉条是内部 pill：圆角 999、毛玻璃、
+   滚动后收缩（max-width 1240→1180，padding 18/40→8/12/8/28）并浮起
+   （边框 #E8E9F6 + 阴影），与 docs/designs/Orbit_0918 六页共用 header
+   完全一致。移动端布局见上方 <=640px 块。
    =================================================================== */
-[data-orbit-real-page] .orbit-top-nav {
-  justify-content: space-between;
+[data-orbit-real-page] .orbit-top-nav-pill {
+  align-items: center;
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  background: rgba(251, 251, 254, 0.9);
+  border: 1px solid transparent;
+  border-radius: 999px;
+  box-shadow: none;
+  display: flex;
+  gap: 24px;
+  margin: 0 auto;
+  max-width: 1240px;
+  padding: 18px 40px;
+  transition: all 0.35s ease;
+  width: 100%;
 }
-/* Match the homepage nav's taller, roomier bar on desktop (mobile keeps its
-   own compact 56px bar from the <=640px block above). Grid 1fr/auto/1fr keeps
-   the centre link group geometrically centred regardless of how wide the
-   right-hand account cluster is (我的 vs 登录+注册) — decoupled by design. */
+[data-orbit-real-page] .orbit-top-nav[data-orbit-nav-scrolled="true"] .orbit-top-nav-pill {
+  background: rgba(255, 255, 255, 0.92);
+  border-color: #E8E9F6;
+  box-shadow: 0 12px 40px rgba(59, 63, 122, 0.12);
+  max-width: 1180px;
+  padding: 8px 12px 8px 28px;
+}
+/* 未滚动时隐藏「立即加入」CTA（设计稿 sc-if scrolled），登录链接常显。 */
+[data-orbit-real-page] .orbit-top-nav[data-orbit-nav-scrolled="false"] .orbit-nav-join-cta {
+  display: none;
+}
+/* Grid 1fr/auto/1fr keeps the centre link group geometrically centred
+   regardless of how wide the right-hand account cluster is. */
 @media (min-width: 641px) {
-  [data-orbit-real-page] .orbit-top-nav {
-    align-items: center;
-    column-gap: 16px;
+  [data-orbit-real-page] .orbit-top-nav-pill {
+    column-gap: 24px;
     display: grid;
     grid-template-columns: 1fr auto 1fr;
-    height: auto;
-    min-height: 0;
-    padding: 18px clamp(20px, 5vw, 56px);
   }
-  [data-orbit-real-page] .orbit-top-nav > .orbit-nav-lead {
+  [data-orbit-real-page] .orbit-top-nav-pill > .orbit-nav-lead {
     justify-self: start;
   }
-  [data-orbit-real-page] .orbit-top-nav > .orbit-nav-links {
+  [data-orbit-real-page] .orbit-top-nav-pill > .orbit-nav-links {
     justify-self: center;
   }
-  [data-orbit-real-page] .orbit-top-nav > .orbit-top-actions {
+  [data-orbit-real-page] .orbit-top-nav-pill > .orbit-top-actions {
     justify-self: end;
   }
 }
@@ -891,66 +911,86 @@ const reactReferenceIsolationStyles = `
   flex-direction: column;
   line-height: 1;
 }
+/* Orbit_0918：衬线品牌字（Noto Serif SC 900），设计稿无副标语。 */
 [data-orbit-real-page] .orbit-brand-name {
-  color: var(--ink);
-  font-size: 18px;
-  font-weight: 500;
-  letter-spacing: 0.02em;
-}
-/* UI-audit fix P1-k. This rendered the product's own tagline ("由 iOrbit
-   智能匹配引擎驱动") at 9px — the smallest text anywhere in the app, below the
-   11px floor the codebase already states elsewhere, and in --text-3 on a dark
-   canvas. It sits in the top nav on every single page. */
-[data-orbit-real-page] .orbit-brand-sub {
-  color: var(--text-3);
-  font-size: var(--fs-11);
-  letter-spacing: 0.03em;
-  margin-top: 4px;
+  color: #0E1225;
+  font-family: "Noto Serif SC", "Songti SC", "SimSun", serif;
+  font-size: 26px;
+  font-weight: 900;
+  letter-spacing: -0.03em;
 }
 [data-orbit-real-page] .orbit-top-nav .orbit-nav-links {
   align-items: center;
   display: flex;
-  gap: 4px;
+  gap: 40px;
 }
 [data-orbit-real-page] .orbit-top-nav .orbit-nav-link {
   background: none;
   border: 0;
-  border-radius: 9px;
-  color: rgba(236, 234, 246, 0.72);
-  font-size: 14px;
-  font-weight: 500;
-  padding: 8px 15px;
+  color: #3B3F7A;
+  font-size: 15px;
+  font-weight: 400;
+  padding: 8px 0;
   text-decoration: none;
-  transition: color 0.14s, background 0.14s;
+  transition: color 0.14s;
 }
 [data-orbit-real-page] .orbit-top-nav .orbit-nav-link:hover {
   background: transparent;
-  color: var(--ink);
+  color: #0E1225;
 }
 [data-orbit-real-page] .orbit-top-nav .orbit-nav-link.is-active {
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--ink);
-}
-[data-orbit-real-page] .orbit-top-nav .orbit-me-link {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--border-2);
-  border-radius: var(--r-pill);
-  color: var(--text);
-  font-size: 13px;
+  background: transparent;
+  color: #0E1225;
   font-weight: 500;
+}
+/* 登录：纯文字链接（设计稿右侧「登录」）。 */
+[data-orbit-real-page] .orbit-top-nav .orbit-me-link {
+  background: none;
+  border: 0;
+  color: #3B3F7A;
+  font-size: 15px;
+  font-weight: 400;
   height: auto;
-  padding: 7px 16px;
+  padding: 8px 0;
+  text-decoration: none;
 }
 [data-orbit-real-page] .orbit-top-nav .orbit-me-link:hover {
-  background: rgba(255, 255, 255, 0.11);
+  background: none;
+  color: #0E1225;
 }
-/* Right-actions spacing must equal the homepage nav's 14px gap; otherwise the
-   language toggle touches the "Me" pill and the space-between centering shifts
-   the links a few px off the homepage's positions. */
+/* 立即加入：深色药丸 CTA（#0E1225 → hover #2E3270），仅滚动态显示（见上方
+   [data-orbit-nav-scrolled="false"] 规则）。 */
+[data-orbit-real-page] .orbit-nav-join-cta {
+  background: #0E1225;
+  border-radius: 999px;
+  color: #FFFFFF;
+  font-size: 15px;
+  font-weight: 500;
+  padding: 11px 22px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+[data-orbit-real-page] .orbit-nav-join-cta:hover {
+  background: #2E3270;
+  color: #FFFFFF;
+}
+/* 已登录头像：34px 浅紫圆底 + 首字母（设计稿登录态右侧）。 */
+[data-orbit-real-page] .orbit-nav-avatar {
+  align-items: center;
+  background: #DDDEFA;
+  border-radius: 50%;
+  color: #3B3F7A;
+  display: inline-flex;
+  font-size: 14px;
+  font-weight: 700;
+  height: 34px;
+  justify-content: center;
+  width: 34px;
+}
 [data-orbit-real-page] .orbit-top-nav .orbit-top-actions {
   align-items: center;
   display: flex;
-  gap: 14px;
+  gap: 18px;
 }
 
 /* The starfield homepage now renders the same OrbitTopNav DOM as every
@@ -2054,13 +2094,22 @@ html:has([data-orbit-real-page]) {
   background: rgba(10, 8, 18, 0.66);
   border-bottom: 1px solid var(--border);
 }
-/* Product top-nav uses the exact glass of the starfield homepage nav
-   (orbit-starfield #skNav): lighter, more transparent, softer hairline. */
+/* Orbit_0918 浮岛导航：外层 header 退化为透明吸附条（视觉全在内部 pill 上），
+   滚动超过 40px 时获得 14px 24px 内边距，padding 过渡 0.35s（设计稿 scrolled 态）。
+   覆盖 generated.css 里 64px 白玻璃旧条的 height/padding/gap/背景。 */
 [data-orbit-real-page] .orbit-top-nav {
-  background: rgba(8, 7, 16, 0.26);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-  border-bottom: 1px solid rgba(150, 145, 200, 0.07);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  background: transparent;
+  border-bottom: none;
+  display: block;
+  gap: 0;
+  height: auto;
+  padding: 0;
+  transition: padding 0.35s ease;
+}
+[data-orbit-real-page] .orbit-top-nav[data-orbit-nav-scrolled="true"] {
+  padding: 14px 24px;
 }
 [data-orbit-real-page] .orbit-mobile-bar,
 [data-orbit-real-page] .orbit-sticky-cta,
@@ -2279,7 +2328,7 @@ html:has([data-orbit-real-page]) {
 [data-orbit-real-page] .orbit-lang-toggle button {
   background: none;
   border: 0;
-  color: var(--text-3);
+  color: #6B6F99;
   cursor: pointer;
   font: inherit;
   letter-spacing: inherit;
@@ -2297,10 +2346,11 @@ html:has([data-orbit-real-page]) {
   transform: translate(-50%, -50%);
 }
 [data-orbit-real-page] .orbit-lang-toggle button.is-active {
-  color: var(--ink);
+  color: #0E1225;
+  font-weight: 700;
 }
 [data-orbit-real-page] .orbit-lang-sep {
-  color: var(--text-4);
+  color: #D8D9F0;
 }
 
 /* The desktop text switcher becomes a compact page-colored pill on mobile. */
@@ -2377,7 +2427,7 @@ html:has([data-orbit-real-page]) {
      "人/脉" — 49px of content inside a 56px bar. Clamping to a single line with
      an ellipsis keeps the bar's height stable no matter how long the title is. */
   [data-orbit-real-page] .orbit-nav-menu .orbit-nav-page-title {
-    color: var(--ink);
+    color: #0E1225;
     display: block;
     font-family: var(--ff-display);
     font-size: 17px;
@@ -2391,7 +2441,7 @@ html:has([data-orbit-real-page]) {
   /* The lead group is the only flexible cell in the bar: it absorbs the
      remaining width and yields it to the (fixed-size) action cluster, so the
      title truncates instead of the actions overflowing. */
-  [data-orbit-real-page] .orbit-top-nav > .orbit-nav-lead {
+  [data-orbit-real-page] .orbit-top-nav .orbit-nav-lead {
     flex: 1 1 auto;
     min-width: 0;
     overflow: hidden;
@@ -2404,7 +2454,7 @@ html:has([data-orbit-real-page]) {
     background: transparent;
     border: 0;
     border-radius: var(--r-sm);
-    color: var(--text-2);
+    color: #3B3F7A;
     cursor: pointer;
     display: inline-flex;
     height: 36px;
@@ -2422,14 +2472,15 @@ html:has([data-orbit-real-page]) {
   }
 
   [data-orbit-real-page] .orbit-lang-toggle {
-    background: var(--surface-2);
-    border: 1px solid var(--border);
+    background: #F7F7FD;
+    border: 1px solid #E8E9F6;
     border-radius: var(--r-pill);
     gap: 0;
     padding: 3px;
   }
   [data-orbit-real-page] .orbit-lang-toggle button {
     border-radius: var(--r-pill);
+    color: #6B6F99;
     min-height: 36px;
     min-width: 40px;
     padding: 0 9px;
@@ -2438,8 +2489,8 @@ html:has([data-orbit-real-page]) {
     content: none;
   }
   [data-orbit-real-page] .orbit-lang-toggle button.is-active {
-    background: var(--accent-soft);
-    color: var(--accent);
+    background: #ECEEFB;
+    color: #3B3F7A;
   }
   [data-orbit-real-page] .orbit-lang-sep {
     display: none;
@@ -2450,7 +2501,7 @@ html:has([data-orbit-real-page]) {
     left: 0;
     position: fixed;
     right: 0;
-    top: 56px;
+    top: 76px;
     z-index: var(--z-overlay);
   }
   [data-orbit-real-page] .orbit-nav-menu-scrim {
@@ -2601,13 +2652,6 @@ html[data-theme="light"] [data-orbit-real-page="agent"] {
 
 html[data-theme="light"] body:has([data-orbit-real-page="agent"]) {
   background: #FFFFFF;
-}
-
-html[data-theme="light"] [data-orbit-real-page="agent"] .orbit-top-nav {
-  -webkit-backdrop-filter: none;
-  backdrop-filter: none;
-  background: var(--agent-canvas);
-  border-bottom-color: var(--agent-hairline);
 }
 
 [data-orbit-real-page="agent"] .orbit-agent-workspace {
