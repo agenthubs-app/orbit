@@ -1,7 +1,7 @@
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **orbit** (397312 symbols, 571875 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **orbit-root** (399814 symbols, 575891 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 
@@ -24,10 +24,10 @@ This project is indexed by GitNexus as **orbit** (397312 symbols, 571875 relatio
 
 | Resource | Use for |
 |----------|---------|
-| `gitnexus://repo/orbit/context` | Codebase overview, check index freshness |
-| `gitnexus://repo/orbit/clusters` | All functional areas |
-| `gitnexus://repo/orbit/processes` | All execution flows |
-| `gitnexus://repo/orbit/process/{name}` | Step-by-step execution trace |
+| `gitnexus://repo/orbit-root/context` | Codebase overview, check index freshness |
+| `gitnexus://repo/orbit-root/clusters` | All functional areas |
+| `gitnexus://repo/orbit-root/processes` | All execution flows |
+| `gitnexus://repo/orbit-root/process/{name}` | Step-by-step execution trace |
 
 ## CLI
 

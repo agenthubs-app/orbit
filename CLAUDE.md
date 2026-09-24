@@ -1,7 +1,7 @@
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **orbit** (397312 symbols, 571875 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **orbit-root** (399814 symbols, 575891 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 
@@ -24,10 +24,10 @@ This project is indexed by GitNexus as **orbit** (397312 symbols, 571875 relatio
 
 | Resource | Use for |
 |----------|---------|
-| `gitnexus://repo/orbit/context` | Codebase overview, check index freshness |
-| `gitnexus://repo/orbit/clusters` | All functional areas |
-| `gitnexus://repo/orbit/processes` | All execution flows |
-| `gitnexus://repo/orbit/process/{name}` | Step-by-step execution trace |
+| `gitnexus://repo/orbit-root/context` | Codebase overview, check index freshness |
+| `gitnexus://repo/orbit-root/clusters` | All functional areas |
+| `gitnexus://repo/orbit-root/processes` | All execution flows |
+| `gitnexus://repo/orbit-root/process/{name}` | Step-by-step execution trace |
 
 ## CLI
 
@@ -41,3 +41,10 @@ This project is indexed by GitNexus as **orbit** (397312 symbols, 571875 relatio
 | Index, status, clean, wiki CLI commands | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md` |
 
 <!-- gitnexus:end -->
+
+# Git Worktree Policy
+
+- **All `git worktree add` operations MUST create the worktree on the external disk**, under `/Volumes/ORICO/Dev/worktrees/orbit/<branch-or-task-name>`.
+- NEVER create worktrees under the project directory (e.g. `.worktrees/`) or anywhere on the internal disk — full checkouts run to ~650MB–1GB each and previously accumulated 28GB locally.
+- If `/Volumes/ORICO` is not mounted, stop and ask the user; do not fall back to the internal disk.
+- Removing a worktree (`git worktree remove`) never deletes the branch or its commits; only uncommitted changes in that worktree are lost, so check `git -C <worktree> status` first.

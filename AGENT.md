@@ -14,6 +14,18 @@ living project note: update it whenever the harness workflow or development poli
 - `repos/orbits` is managed as a local git repo. Current policy is local commits only:
   `workspace.git.enabled: true`, `strategy: path-scoped`, `push: false`.
 
+## Git Worktree Policy
+
+- All `git worktree add` operations must create the worktree on the external disk, under
+  `/Volumes/ORICO/Dev/worktrees/orbit/<branch-or-task-name>`.
+- Never create worktrees under the project directory (for example `.worktrees/`) or anywhere on
+  the internal disk. Full checkouts run to roughly 650MB–1GB each and previously accumulated
+  28GB locally.
+- If `/Volumes/ORICO` is not mounted, stop and ask the user; do not fall back to the internal
+  disk.
+- Removing a worktree with `git worktree remove` never deletes the branch or its commits; only
+  uncommitted changes inside that worktree are lost, so check `git -C <worktree> status` first.
+
 ## Harness Execution
 
 Use `uv` for every Python command.
