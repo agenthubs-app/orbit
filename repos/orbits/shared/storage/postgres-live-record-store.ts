@@ -50,7 +50,7 @@ export interface PgLiveRecordSqlClientOptions {
   timeouts?: PgPoolTimeoutOptions;
 }
 
-type PostgresLiveRecordRow = {
+export type PostgresLiveRecordRow = {
   collection_name: string;
   created_at: Date | string;
   deleted_at?: Date | string | null;
@@ -126,7 +126,7 @@ function payloadFromRow<TPayload extends Record<string, unknown>>(
   return cloneJson(payload) as TPayload;
 }
 
-function rowToRecord<TPayload extends Record<string, unknown>>(
+export function rowToRecord<TPayload extends Record<string, unknown>>(
   row: PostgresLiveRecordRow,
 ): LiveRecord<TPayload> {
   return {

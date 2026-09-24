@@ -20,6 +20,8 @@ import type {
   LiveRecordStoreLike,
 } from "../../../shared/storage/live-record-store";
 import type { LiveFollowupTaskProvider } from "../live-service";
+import { createPostgresRelationshipScopeReader, relationshipRecordOwnedByActor, type RelationshipScopeRecordReader } from "../../../shared/storage/relationship-read-scope";
+import { resolveSharedReadBudgetGate } from "../../sync/read-budget-gate";
 
 export interface LiveFollowupGraph {
   connections: readonly ConnectionDTO[];
@@ -41,6 +43,7 @@ export interface StorageFollowupTaskProviderOptions {
   sourceLabel?: string;
   store: LiveRecordStoreLike<Record<string, unknown>>;
   workspaceId: string;
+  scopeRecordReader?: RelationshipScopeRecordReader;
 }
 
 export interface ConfiguredStorageFollowupTaskProviderOptions {
@@ -273,13 +276,15 @@ export function createStorageFollowupTaskProvider({
   sourceLabel = "Followup shared live storage",
   store,
   workspaceId,
+  scopeRecordReader,
 }: StorageFollowupTaskProviderOptions): LiveFollowupTaskProvider {
   return {
     source: source ?? `live-record-store:followups:${workspaceId}`,
     sourceLabel,
     async readFollowupGraph(actorId: string): Promise<LiveFollowupGraph> {
+      const scope = await scopeRecordReader?.(actorId);
       const [taskRecords, contactRecords, connectionRecords, evidenceRecords] =
-        await Promise.all([
+        scope ? [scope.tasks, scope.contacts, scope.connections, scope.evidence] : await Promise.all([
           store.listRecords({
             limit: "unbounded",
             workspaceId,
@@ -305,7 +310,7 @@ export function createStorageFollowupTaskProvider({
       const belongsToActor = (
         record: LiveRecord<Record<string, unknown>>,
       ): boolean =>
-        record.userId === actorId || record.payload.accountId === actorId;
+        relationshipRecordOwnedByActor(record, actorId);
       const actorTaskRecords = taskRecords.filter(belongsToActor);
       const actorConnectionRecords = connectionRecords.filter(belongsToActor);
       const actorContactIds = new Set([
@@ -395,6 +400,9 @@ export function createConfiguredStorageFollowupTaskProvider({
     sourceLabel,
     store: configuredStore.store,
     workspaceId: configuredStore.workspaceId,
+    scopeRecordReader: createPostgresRelationshipScopeReader({ client: configuredStore.client, workspaceId: configuredStore.workspaceId, purpose: "followups",
+      beforeRead: () => resolveSharedReadBudgetGate(env)?.assertAllowed({ collectionName: "tasks" }),
+    }),
   });
 
   if (canUseDefaultCache) {

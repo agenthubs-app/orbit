@@ -7,27 +7,18 @@ import { chromium, type Browser, type Page } from "playwright";
 const require = createRequire(import.meta.url);
 let browser: Browser;
 let script: string;
-const inboxPath = "/api/relationship-communication/conversations";
+const inboxPath = "/api/relationship-communication/unread-summary";
 const typedPath = "/api/inbox/notifications";
 const disabledTyped = {enabled:false,items:[],unreadCount:0,nextCursor:null,asOf:"2026-09-16T00:00:00.000Z"};
-const notificationsPath = "/api/notifications";
+const notificationsPath = "/api/notifications/unread-summary";
 const inbox = (count: number, actor = "actor:one") => {
-  const remote = actor === "actor:two" ? "actor:one" : "actor:two";
   return {
-    conversations: [{
-      conversationId: "thread:one", contactId: "contact:one",
-      participantAccountIds: [actor, remote], participantDisplayNames: { [actor]: actor, [remote]: remote },
-      qualificationVersion: "qualification:one", status: "active",
-      createdAt: "2026-09-15T00:00:00Z", updatedAt: "2026-09-15T00:00:00Z", unreadCount: count,
-      messages: Array.from({ length: Math.max(count, 1) }, (_, index) => ({
-        messageId: `message:${index}`, conversationId: "thread:one", senderAccountId: remote,
-        senderDisplayName: remote, body: `message ${index}`, sentAt: "2026-09-15T00:00:00Z", deliveryState: "delivered"
-      }))
-    }],
+    actorId: actor,
+    unreadTotal: count,
     refreshedAt: "2026-09-15T00:00:00Z"
   };
 };
-const notifications = { state: "success", reminders: ["unread", "read", "ignored"].map(reminderId => ({ reminderId, title: "提醒", priority: "normal" })), notificationInteractions: { read: "read", ignored: "ignored" } };
+const notifications = inbox(1);
 
 // Real badge hook, HTTP client and view-model. Only auth, navigation focus,
 // native lifecycle, snapshot I/O and network transport are controlled here.
@@ -91,15 +82,16 @@ async function update(p: Page, patch: object) { await p.evaluate(patch => (windo
 async function count(p: Page) { return p.getByLabel("未读数量", { exact: true }).innerText(); }
 async function reads(p: Page): Promise<{ path: string; method: string; aborted: boolean }[]> { return p.evaluate(() => (window as any).fixture.requests.map((r: any) => ({ path: r.path, method: r.method, aborted: Boolean(r.signal?.aborted) }))); }
 async function reply(p: Page, index: number, data: unknown, status = 200, success = status === 200) { await p.evaluate(args => (window as any).fixture.reply(...args), [index, data, status, success]); await settle(p); }
-async function hydrate(p: Page, amount = 2, notices: unknown = notifications) {
-  const current = await p.evaluate(() => { const s = (window as any).fixture; return { actor: s.actor, indices: [s.requests.findLastIndex((r: any) => r.path.includes("relationship-communication")), s.requests.findLastIndex((r: any) => r.path === "/api/notifications")] }; });
-  await reply(p, current.indices[0], inbox(amount, current.actor)); await reply(p, current.indices[1], notices);
+async function hydrate(p: Page, amount = 2, notices = notifications) {
+  const current = await p.evaluate(() => { const s = (window as any).fixture; return { actor: s.actor, indices: [s.requests.findLastIndex((r: any) => r.path.includes("relationship-communication")), s.requests.findLastIndex((r: any) => r.path === "/api/notifications/unread-summary")] }; });
+  await reply(p, current.indices[0], inbox(amount, current.actor)); await reply(p, current.indices[1], {...notices,actorId:current.actor});
   const typed = await p.evaluate(() => (window as any).fixture.requests.findLastIndex((r:any)=>r.path === "/api/inbox/notifications"));await reply(p,typed,disabledTyped);
 }
 
-test("badge reads authoritative and legacy sources and excludes persisted read and ignored reminders", async t => {
+test("badge reads authoritative message and legacy unread summaries", async t => {
   const p = await open(t); assert.equal(await count(p), "unknown");
   assert.deepEqual((await reads(p)).map(({ path, method }) => ({ path, method })), [{ path: inboxPath, method: "GET" }, { path: notificationsPath, method: "GET" }, {path:typedPath,method:"GET"}]);
+  assert.equal(await p.evaluate(()=>new URL((window as any).fixture.requests[2].url).searchParams.get('limit')), '1');
   await hydrate(p); assert.equal(await count(p), "3");
 });
 
@@ -121,7 +113,7 @@ test("a confirmed message or reminder state invalidates the badge immediately", 
   await p.evaluate(() => (window as any).invalidateMessageState()); await settle(p);
   assert.equal((await reads(p)).length, 6);
   assert.equal(await count(p), "3");
-  await hydrate(p, 0, { state: "empty", reminders: [], notificationInteractions: {} });
+  await hydrate(p, 0, inbox(0));
   assert.equal(await count(p), "unknown");
 });
 
@@ -202,7 +194,7 @@ test("unmount releases native listeners and aborts the pending badge reads", asy
 
 for (const [amount, expected] of [[0, "unknown"], [105, "99"]] as const) {
   test("badge retains its zero and upper-bound display rules " + amount, async t => {
-    const p = await open(t); await hydrate(p, amount, { reminders: [] }); assert.equal(await count(p), expected);
+    const p = await open(t); await hydrate(p, amount, inbox(0)); assert.equal(await count(p), expected);
   });
 }
 test('enabled typed count replaces legacy reminders and remains independent of real messages',async t=>{

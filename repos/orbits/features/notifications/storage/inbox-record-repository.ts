@@ -1,4 +1,5 @@
-import type { InboxNotificationActionReceipt, InboxNotificationDTO, InboxNotificationKind } from '../../../shared/contract/inbox-notifications';
+import type { InboxNotificationActionReceipt, InboxNotificationDTO, InboxNotificationKind, InboxNotificationSource } from '../../../shared/contract/inbox-notifications';
+import { createPostgresInboxReadWindow } from './inbox-read-window';
 import type { TransactionalPostgresClient, TransactionalSqlExecutor } from '../../../shared/storage/transactional-postgres';
 import { createPostgresLiveRecordStore } from '../../../shared/storage/postgres-live-record-store';
 
@@ -19,9 +20,17 @@ export interface InboxPageQuery {
 export interface InboxRecordRepository {
   transaction<T>(actorId:string,operation:(transaction:InboxRecordTransaction)=>Promise<T>):Promise<T>;
   page(query:InboxPageQuery):Promise<readonly InboxNotificationDTO[]>;
+  /** Optional for in-memory adapters; configured PostgreSQL always supplies it. */
+  readWindow?: InboxReadWindow;
+}
+export interface InboxReadWindow {
+  invalidIds(actorId:string,asOf:string):Promise<readonly string[]>;
+  page(query:InboxPageQuery & {history:boolean}):Promise<readonly InboxNotificationDTO[]>;
+  unreadPage(query:InboxPageQuery & {now:string}):Promise<readonly {id:string;occurredAt:string;sources:readonly InboxNotificationSource[]}[]>;
 }
 export function createPostgresInboxRecordRepository(input:{client:TransactionalPostgresClient;workspaceId:string}):InboxRecordRepository {
   return {
+    readWindow: createPostgresInboxReadWindow(input),
     async transaction(actorId,operation) {
       for(let attempt=0;;attempt++) {
         try { return await input.client.transaction(async executor=>{

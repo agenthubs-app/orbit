@@ -46,7 +46,8 @@ test("read metrics report safe scalar measurements and UTF-8 row bytes", async (
 
   await runner("/* ignored */ SELECT $1", async () => ({ rows: privateRows }));
 
-  assert.deepEqual(metrics, [{
+  assert.match(metrics[0]!.queryFingerprint!, /^[a-f0-9]{24}$/);
+  assert.deepEqual(metrics.map(({queryFingerprint: _fingerprint,...metric})=>metric), [{
     queryCount: 1,
     queryKind: "select",
     returnedRows: 2,
@@ -80,7 +81,7 @@ test("environment opt-in logs only the safe metric event", async () => {
   assert.equal(JSON.parse(String(lines[0])).event, "postgres_read_metric");
 });
 
-test("only read-shaped SQL is measured", async () => {
+test("reads and DML returned rows are measured, empty writes are excluded", async () => {
   const metrics: PostgresReadMetric[] = [];
   let nowCalls = 0;
   const runner = createPostgresReadMetricsRunner(
@@ -94,10 +95,13 @@ test("only read-shaped SQL is measured", async () => {
 
   await runner("update orbit_records set payload = $1", async () => ({ rows: privateRows }));
   await runner("with rows as (select 1) select * from rows", async () => ({ rows: [] }));
+  await runner("insert into example values ($1)", async () => ({ rows: [] }));
 
-  assert.equal(metrics.length, 1);
-  assert.equal(metrics[0]?.queryKind, "with");
-  assert.equal(nowCalls, 2);
+  assert.equal(metrics.length, 2);
+  assert.equal(metrics[0]?.queryKind, "update");
+  assert.equal(metrics[0]?.returnedRows, 2);
+  assert.equal(metrics[1]?.queryKind, "with");
+  assert.equal(nowCalls, 6);
 });
 
 test("observer failures and read failures cannot alter database behavior", async () => {
@@ -126,7 +130,8 @@ test("observer failures and read failures cannot alter database behavior", async
     failingRunner("select 7", async () => { throw databaseFailure; }),
     (error) => error === databaseFailure,
   );
-  assert.deepEqual(failingMetrics[0], {
+  const {queryFingerprint:_fingerprint,...failureMetric}=failingMetrics[0]!;
+  assert.deepEqual(failureMetric, {
     queryCount: 1,
     queryKind: "select",
     returnedRows: 0,
@@ -206,5 +211,6 @@ test("transactional client measures direct and in-transaction reads without extr
   })), [
     { queryKind: "select", returnedRows: 1, elapsedMs: 4 },
     { queryKind: "select", returnedRows: 1, elapsedMs: 3 },
+    { queryKind: "update", returnedRows: 1, elapsedMs: 0 },
   ]);
 });

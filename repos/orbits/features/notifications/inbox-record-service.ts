@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import type { InboxNotificationDTO, InboxNotificationKind, InboxNotificationActionInput, InboxNotificationActionReceipt, InboxNotificationReadBatchInput, InboxNotificationSource, InboxNotificationListDTO } from '../../shared/contract/inbox-notifications';
 import { inboxNotificationSchema, inboxNotificationActionSchema, inboxNotificationReadBatchSchema } from '../../shared/api-schema/inbox-notifications';
 import type { InboxRecordRepository, InboxRecordTransaction } from './storage/inbox-record-repository';
+import { readBoundedInbox } from './inbox-bounded-list';
 
 export class InboxRecordError extends Error {
   constructor(readonly code:'NOT_FOUND'|'CONFLICT'|'SOURCE_UNAVAILABLE'|'VALIDATION_ERROR'|'INTEGRITY_VIOLATION',message:string){super(message);}
@@ -76,6 +77,16 @@ export function createInboxRecordService(input:{repository:InboxRecordRepository
       let cursor:{scope:string;asOf:string;at:string;id:string}|null=null;
       if(query.cursor)try{cursor=JSON.parse(Buffer.from(query.cursor,'base64url').toString());if(!cursor||cursor.scope!==scope||!Number.isFinite(Date.parse(cursor.asOf))||!Number.isFinite(Date.parse(cursor.at))||typeof cursor.id!=='string')throw new Error();}catch{throw new InboxRecordError('VALIDATION_ERROR','Invalid inbox cursor');}
       const asOf=cursor?.asOf??now(),items:InboxNotificationDTO[]=[];
+      if(input.repository.readWindow) {
+        const invalid=await input.repository.readWindow.invalidIds(actorId,asOf);
+        if(invalid.length)throw new InboxRecordError('INTEGRITY_VIOLATION',`Inbox records are not classifiable: ${invalid.join(', ')}`);
+        const result=await readBoundedInbox({window:input.repository.readWindow,actorId,asOf,now:now(),limit,
+          history:query.history??false,...(query.kind?{kind:query.kind}:{}),...(cursor?{before:{at:cursor.at,id:cursor.id}}:{}),
+          present:row=>present(row,query.language),access:input.sourceAccess});
+        const last=result.items.at(-1);
+        return {enabled:true,items:result.items,unreadCount:result.unreadCount,asOf,
+          nextCursor:result.hasMore&&last?Buffer.from(JSON.stringify({scope,asOf,at:last.occurredAt,id:last.id})).toString('base64url'):null};
+      }
       // Read-side permission checks apply to every returned row and unread count.
       // Keyset batches avoid contact scans and offset drift when new rows arrive.
       let before:{at:string;id:string}|undefined,unreadCount=0,hasMore=false;

@@ -74,6 +74,13 @@ export interface RelationshipConversationListDTO {
   refreshedAt: string;
 }
 
+/** Lightweight badge response; never contains conversation or message content. */
+export interface RelationshipUnreadSummaryDTO {
+  actorId: string;
+  unreadTotal: number;
+  refreshedAt: string;
+}
+
 export interface RelationshipDeliveryReceiptDTO {
   conversationId: string;
   message: RelationshipMessageDTO;

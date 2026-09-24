@@ -6,8 +6,8 @@
   "chains": {
     "contacts.list": {
       "queries": 6,
-      "rows": 1548,
-      "bytes": 1374261
+      "rows": 2064,
+      "bytes": 1409601
     },
     "tasks.list": {
       "queries": 1,
@@ -31,6 +31,13 @@
     }
   },
   "history": [
+    {
+      "date": "2026-09-25",
+      "chain": "contacts.list",
+      "rows": { "from": 1548, "to": 2064 },
+      "bytes": { "from": 1374261, "to": 1409601 },
+      "why": "Fixed-fixture comparison against scope reader 1618d772 attributes the complete delta to 516 narrow evidence storage-key rows (35340 bytes). Contact results are unchanged; the additional lookup preserves domain-id versus storage-id correctness. Reproduce with scripts/diagnostics/neon-egress-local-probe.ts on local PostgreSQL. No other chain budget is increased."
+    },
     {
       "sprint": "0071",
       "chain": "notes.list",

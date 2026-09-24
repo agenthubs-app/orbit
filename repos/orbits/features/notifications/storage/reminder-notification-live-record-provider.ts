@@ -25,6 +25,8 @@ import type {
   LiveReminderScheduleNotificationProvider,
 } from "../live-service";
 import {projectLegacyNotification,verifyLegacyTarget} from '../legacy-source-projection';
+import { createPostgresRelationshipScopeReader, relationshipRecordOwnedByActor, type RelationshipScopeRecordReader } from "../../../shared/storage/relationship-read-scope";
+import { resolveSharedReadBudgetGate } from "../../sync/read-budget-gate";
 
 export const REMINDER_NOTIFICATION_LIVE_RECORD_COLLECTIONS = {
   connections: "connections",
@@ -39,6 +41,7 @@ export interface StorageReminderScheduleNotificationProviderOptions {
   sourceLabel?: string;
   store: LiveRecordStoreLike<Record<string, unknown>>;
   workspaceId: string;
+  scopeRecordReader?: RelationshipScopeRecordReader;
 }
 
 export interface ConfiguredStorageReminderScheduleNotificationProviderOptions {
@@ -327,7 +330,13 @@ async function readGraph(
   store: LiveRecordStoreLike<Record<string, unknown>>,
   workspaceId: string,
   actorId: string,
+  scopeRecordReader?: RelationshipScopeRecordReader,
 ): Promise<LiveReminderNotificationGraph> {
+  const scope = await scopeRecordReader?.(actorId);
+  const scopedStore: LiveRecordStoreLike<Record<string, unknown>> = scope ? {
+    ...store,
+    listRecords: async query => scope[query.collectionName as keyof typeof scope] ?? [],
+  } : store;
   const [
     notificationRecords,
     taskRecords,
@@ -336,27 +345,27 @@ async function readGraph(
     evidenceRecords,
   ] = await Promise.all([
     listCollection(
-      store,
+      scopedStore,
       workspaceId,
       REMINDER_NOTIFICATION_LIVE_RECORD_COLLECTIONS.notifications,
     ),
     listCollection(
-      store,
+      scopedStore,
       workspaceId,
       REMINDER_NOTIFICATION_LIVE_RECORD_COLLECTIONS.tasks,
     ),
     listCollection(
-      store,
+      scopedStore,
       workspaceId,
       REMINDER_NOTIFICATION_LIVE_RECORD_COLLECTIONS.contacts,
     ),
     listCollection(
-      store,
+      scopedStore,
       workspaceId,
       REMINDER_NOTIFICATION_LIVE_RECORD_COLLECTIONS.connections,
     ),
     listCollection(
-      store,
+      scopedStore,
       workspaceId,
       REMINDER_NOTIFICATION_LIVE_RECORD_COLLECTIONS.evidence,
     ),
@@ -365,18 +374,13 @@ async function readGraph(
   const belongsToActor = (
     record: LiveRecord<Record<string, unknown>>,
   ): boolean =>
-    record.userId === actorId || record.payload.accountId === actorId;
+    relationshipRecordOwnedByActor(record, actorId);
   const actorNotificationRecords = notificationRecords.filter(
     (record) => record.workspaceId === workspaceId && record.userId === actorId,
   );
   const actorConnectionRecords = connectionRecords.filter(belongsToActor);
-  const notificationTargetIds = new Set(
-    actorNotificationRecords.flatMap((record) =>
-      nonEmptyString(record.targetId) ? [record.targetId] : [],
-    ),
-  );
   const actorTaskRecords = taskRecords.filter(
-    (record) => belongsToActor(record) || notificationTargetIds.has(record.recordId),
+    (record) => belongsToActor(record),
   );
   const actorContactIds = new Set([
     ...actorConnectionRecords.flatMap((record) =>
@@ -451,13 +455,14 @@ export function createStorageReminderScheduleNotificationProvider({
   sourceLabel = "Reminder notification shared live storage",
   store,
   workspaceId,
+  scopeRecordReader,
 }: StorageReminderScheduleNotificationProviderOptions): LiveReminderScheduleNotificationProvider {
   return {
     source:
       source ?? `live-record-store:reminder-schedule-notification:${workspaceId}`,
     sourceLabel,
     readReminderNotificationGraph: (actorId) =>
-      readGraph(store, workspaceId, actorId),
+      readGraph(store, workspaceId, actorId, scopeRecordReader),
   };
 }
 
@@ -494,6 +499,9 @@ export function createConfiguredStorageReminderScheduleNotificationProvider({
     sourceLabel,
     store: configuredStore.store,
     workspaceId: configuredStore.workspaceId,
+    scopeRecordReader: createPostgresRelationshipScopeReader({ client: configuredStore.client, workspaceId: configuredStore.workspaceId, purpose: "legacy-notifications",
+      beforeRead: () => resolveSharedReadBudgetGate(env)?.assertAllowed({ collectionName: "notifications" }),
+    }),
   });
 
   cachedDefaultProvider = { key, provider };

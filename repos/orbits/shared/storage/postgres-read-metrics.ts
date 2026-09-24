@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 export const POSTGRES_READ_METRICS_ENV = "ORBIT_PG_READ_METRICS";
 
 export type PostgresReadQueryKind =
@@ -6,7 +8,8 @@ export type PostgresReadQueryKind =
   | "show"
   | "values"
   | "explain"
-  | "table";
+  | "table"
+  | "insert" | "update" | "delete" | "merge";
 
 export interface PostgresReadMetric {
   queryCount: 1;
@@ -15,6 +18,8 @@ export interface PostgresReadMetric {
   approximateSerializedRowBytes: number;
   elapsedMs: number;
   failed: boolean;
+  /** Hash of SQL text, never parameters, raw SQL, record IDs or result data. */
+  queryFingerprint?: string;
 }
 
 export type PostgresReadMetricsObserver = (
@@ -90,6 +95,10 @@ function readQueryKind(text: string): PostgresReadQueryKind | null {
     case "values":
     case "explain":
     case "table":
+    case "insert":
+    case "update":
+    case "delete":
+    case "merge":
       return keyword;
     default:
       return null;
@@ -196,9 +205,15 @@ export function createPostgresReadMetricsRunner(
         approximateSerializedRowBytes: approximateSerializedRowBytes(rows),
         elapsedMs: Math.max(0, safeNow(readNow) - startedAt),
         failed,
+        queryFingerprint: createHash("sha256").update(text.trim()).digest("hex").slice(0, 24),
       };
 
-      observeSafely(observer, metric);
+      // DML can return complete payloads through RETURNING. Empty successful
+      // writes have no row egress; do not count them as reads. SQL text matching
+      // cannot reliably identify RETURNING through strings/comments, so use rows.
+      if (rows.length || failed || !["insert", "update", "delete", "merge"].includes(queryKind)) {
+        observeSafely(observer, metric);
+      }
     }
   };
 }

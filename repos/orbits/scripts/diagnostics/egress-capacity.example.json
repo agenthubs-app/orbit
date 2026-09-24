@@ -1,0 +1,15 @@
+{
+  "days": 30,
+  "quotaBytes": 5000000000,
+  "reserveFraction": 0.3,
+  "fixedBackgroundBytesPerDay": 1000000,
+  "oneOffMonthlyBytes": 100000000,
+  "groups": [{
+    "name": "illustrative-only-replace-with-measurements",
+    "dailyActiveUsers": 100,
+    "foregroundSecondsPerDay": 3600,
+    "pollIntervalSeconds": 15,
+    "pollDatabaseBytes": 10000,
+    "operations": [{"name": "illustrative-operation", "countPerUserDay": 5, "databaseBytes": 50000}]
+  }]
+}

@@ -4,10 +4,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AppState } from "react-native";
 import { useOrbitApiBaseUrl } from "../api/ApiBaseUrlProvider";
 import { useOrbitAuthSession } from "../api/AuthSessionProvider";
-import { ORBIT_API_ENDPOINTS, relationshipCommunicationConversationsPath } from "../api/endpoints";
+import { readLegacyNotificationUnreadCount, type LegacyUnreadCapability } from "../api/legacy-notification-unread-summary";
+import { readRelationshipUnreadCount, type RelationshipUnreadCapability } from "../api/relationship-unread-summary";
 import {
   MESSAGE_STATE_FOREGROUND_REFRESH_MS,
-  relationshipConversationListToInbox,
   subscribeMessageStateInvalidation,
 } from "../api/message-state";
 import { useOrbitApiClient } from "./useOrbitApiClient";
@@ -28,7 +28,7 @@ export function useRelationshipInboxBadgeCount(scopeKey?: string): number | unde
   const sequence = useRef(0);
   const actorId = auth.actorId ?? "";
   const ready = focused && foreground && auth.ready && auth.signedIn && server.ready && Boolean(actorId);
-  const scope = useMemo(() => ({ key: String(++sequence.current), ready }),
+  const scope = useMemo(() => ({ key: String(++sequence.current), ready, unreadCapability: {} as RelationshipUnreadCapability, legacyCapability: {} as LegacyUnreadCapability }),
     [ready, actorId, auth.cookieHeader, server.baseUrl, scopeKey, resumeIndex]);
   const latest = useRef(scope);
   latest.current = scope;
@@ -62,27 +62,38 @@ export function useRelationshipInboxBadgeCount(scopeKey?: string): number | unde
     const current = () => latest.current === scope && !controller.signal.aborted;
     // Each source can contribute independently, but never from an old scope or
     // a cached content preview while the current unread state is unknown.
-    const data: { inbox?: unknown; notifications?: unknown; typed?: unknown } = {};
+    const data: { inbox?: number | undefined; notifications?: number | undefined; typed?: unknown } = {};
     async function read(path: string, source: keyof typeof data) {
       try {
-        const result = await client.get<unknown>(path, { signal: controller.signal });
-        if (!current()) return;
-        data[source] = result.success && result.status >= 200 && result.status < 300 ? result.data : null;
+        if (source === "inbox") {
+          const count = await readRelationshipUnreadCount({ client, actorId, signal: controller.signal, capability: scope.unreadCapability });
+          if (!current()) return;
+          data.inbox = count;
+        } else if (source === "notifications") {
+          const count = await readLegacyNotificationUnreadCount({client,actorId,signal:controller.signal,capability:scope.legacyCapability});
+          if (!current()) return;
+          data.notifications = count;
+        } else {
+          const result = await client.get<unknown>(path, { signal: controller.signal });
+          if (!current()) return;
+          data[source] = result.success && result.status >= 200 && result.status < 300 ? result.data : null;
+        }
       } catch {
         if (!current()) return;
-        data[source] = null;
+        if (source === "inbox" || source === "notifications") data[source] = undefined;
+        else data[source] = null;
       }
-      const inbox = relationshipConversationListToInbox(data.inbox, actorId);
-      const alerts = relationshipAlertsToView(data.notifications);
       const typed=notificationInboxData(data.typed,actorId);
-      const count = (typed?.enabled ? typed.unreadCount : 0) + relationshipInboxBadgeCount(inbox ?? {
-        conversations: [], selected: null, summary: "暂无对话", title: "收件箱"
-      }, typed?.enabled === false ? alerts : relationshipAlertsToView(null));
+      const count = (typed?.enabled ? typed.unreadCount : typed?.enabled === false ? data.notifications ?? 0 : 0) + relationshipInboxBadgeCount({
+        conversations: [], selected: null, summary: "暂无对话", title: "收件箱", unreadTotal: data.inbox ?? 0,
+      }, relationshipAlertsToView(null));
       setSnapshot({ scope, signal: controller.signal, count: count > 0 ? Math.min(count, 99) : undefined });
     }
-    void read(relationshipCommunicationConversationsPath(), "inbox");
-    void read(ORBIT_API_ENDPOINTS.notifications, "notifications");
-    void read(INBOX_NOTIFICATIONS_PATH, "typed");
+    void read("", "inbox");
+    void read("", "notifications");
+    // The global count is independent of page size. Until typed summary has a
+    // producer-complete read-only endpoint, request the smallest supported page.
+    void read(`${INBOX_NOTIFICATIONS_PATH}?limit=1`, "typed");
     return () => {
       controller.abort();
       if (pending.current === controller) pending.current = null;
