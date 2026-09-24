@@ -1,15 +1,15 @@
 # iOrbit Product Surface Manifest
 
 - Schema: 2
-- Indexed commit: `ffdf4d6633340bd6008536de49079648a70d5487`
-- Deterministic generated timestamp (commit time): 2026-09-24T02:14:47+09:00
+- Indexed commit: `64b5c47a15658bd248231c3c443cf1766dbf1992`
+- Deterministic generated timestamp (commit time): 2026-09-24T03:53:23+09:00
 - Scope: All production Next.js page routes; API and /dev routes excluded
 - Evidence level: Static source inventory. Runtime, API, database, permission, desktop, and mobile fields remain explicitly unverified until browser evidence is recorded.
 - Routes: 45
-- Actions/interactions: 2615
-- Authenticated routes: 19
-- Public-at-proxy routes: 26
-- Ungated routes (no prefix-list entry and no page-level auth gate): 4
+- Actions/interactions: 2613
+- Authenticated routes: 23
+- Public-at-proxy routes: 22
+- Ungated routes (no prefix-list entry and no page-level auth gate): 3
 
 ## Route inventory
 
@@ -34,12 +34,12 @@
 | `/app/contacts` | Contact list and discovery | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 81 | 30 | 0 |
 | `/app/contacts/pipeline` | Relationship pipeline | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 68 | 30 | 0 |
 | `/app/events/[id]/analytics` | Production application surface; purpose requires product review | public-at-proxy | Live, Mock, Fixture, Derived, AI Generated, User Confirmed | 68 | 19 | 0 |
-| `/app/events/[id]/live` | Production application surface; purpose requires product review | public-at-proxy | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 124 | 30 | 1 |
+| `/app/events/[id]/live` | Production application surface; purpose requires product review | public-at-proxy | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 123 | 30 | 0 |
 | `/app/events/[id]/operations/admission` | Production application surface; purpose requires product review | public-at-proxy | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 85 | 30 | 0 |
 | `/app/events/[id]/operations/check-in` | Production application surface; purpose requires product review | public-at-proxy | Live, Mock, Fixture, Derived, AI Generated, User Confirmed | 73 | 27 | 0 |
 | `/app/events/[id]/operations/experience` | Production application surface; purpose requires product review | public-at-proxy | Live, Mock, Fixture, Derived, AI Generated, User Confirmed | 76 | 30 | 0 |
 | `/app/events/[id]/operations` | Production application surface; purpose requires product review | public-at-proxy | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 104 | 30 | 0 |
-| `/app/events/[id]` | Event detail and event operations | public-at-proxy | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 144 | 30 | 1 |
+| `/app/events/[id]` | Event detail and event operations | public-at-proxy | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 143 | 30 | 0 |
 | `/app/events/[id]/register` | Event registration | public-at-proxy | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 51 | 30 | 0 |
 | `/app/events/center` | Production application surface; purpose requires product review | public-at-proxy | Live, Mock, Fixture, Derived, AI Generated, User Confirmed | 69 | 20 | 0 |
 | `/app/events` | Event discovery | public-at-proxy | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 68 | 30 | 0 |
@@ -55,10 +55,10 @@
 | `/app/profile` | User profile | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed | 108 | 30 | 0 |
 | `/app/register` | Legacy registration entry | ungated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 3 | 30 | 0 |
 | `/app/settings` | User, Agent, memory, automation, and appearance settings | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed | 108 | 27 | 0 |
-| `/app/tasks/[id]` | Production application surface; purpose requires product review | public-at-proxy | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 84 | 30 | 0 |
-| `/app/tasks` | Production application surface; purpose requires product review | public-at-proxy | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 84 | 30 | 0 |
-| `/app/tasks/personal` | Production application surface; purpose requires product review | public-at-proxy | Live, Mock, Fixture, Derived, AI Generated, User Confirmed | 91 | 30 | 0 |
-| `/app/tasks/relationship/[id]` | Production application surface; purpose requires product review | ungated | Unclassified | 5 | 30 | 0 |
+| `/app/tasks/[id]` | Production application surface; purpose requires product review | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 84 | 30 | 0 |
+| `/app/tasks` | Production application surface; purpose requires product review | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed, Externally Executed | 84 | 30 | 0 |
+| `/app/tasks/personal` | Production application surface; purpose requires product review | authenticated | Live, Mock, Fixture, Derived, AI Generated, User Confirmed | 91 | 30 | 0 |
+| `/app/tasks/relationship/[id]` | Production application surface; purpose requires product review | authenticated | Unclassified | 5 | 30 | 0 |
 | `/` | Public landing and Agent entry | public-at-proxy | Live, Mock, Fixture, Derived, User Confirmed | 28 | 2 | 0 |
 
 ## Verification semantics

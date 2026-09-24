@@ -2,8 +2,8 @@
   "schemaVersion": 2,
   "scope": "All production Next.js page routes; API and /dev routes excluded",
   "evidenceLevel": "Static source inventory. Runtime, API, database, permission, desktop, and mobile fields remain explicitly unverified until browser evidence is recorded.",
-  "commit": "ffdf4d6633340bd6008536de49079648a70d5487",
-  "generatedAt": "2026-09-24T02:14:47+09:00",
+  "commit": "64b5c47a15658bd248231c3c443cf1766dbf1992",
+  "generatedAt": "2026-09-24T03:53:23+09:00",
   "authoritativeInputs": {
     "appRoot": "repos/orbits/app",
     "authRouting": "repos/orbits/features/auth/app-auth-routing.ts",
@@ -14,17 +14,18 @@
       "/app/home",
       "/app/platform",
       "/app/profile",
-      "/app/settings"
+      "/app/settings",
+      "/app/tasks"
     ]
   },
   "summary": {
     "routes": 45,
-    "actions": 2615,
-    "authenticatedRoutes": 19,
-    "publicRoutes": 26,
-    "ungatedRoutes": 4,
-    "risks": 8,
-    "p0Candidates": 8,
+    "actions": 2613,
+    "authenticatedRoutes": 23,
+    "publicRoutes": 22,
+    "ungatedRoutes": 3,
+    "risks": 6,
+    "p0Candidates": 6,
     "p1Candidates": 0
   },
   "surfaces": [
@@ -26379,26 +26380,6 @@
         {
           "actionId": "/app/events/[id]/live#1",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-attendee-modal.tsx",
-          "line": 103,
-          "kind": "button",
-          "tag": "button",
-          "label": "{t(status.action)}",
-          "accessibleName": "dynamic-runtime",
-          "href": null,
-          "handlers": [],
-          "behaviorEvidence": "missing-static",
-          "componentOwnershipEvidence": null,
-          "imperativeBehaviorEvidence": [],
-          "readWrite": "unknown-requires-runtime-verification",
-          "confirmation": "unknown-requires-runtime-verification",
-          "retry": "unknown-requires-runtime-verification",
-          "undoCompensation": "unknown-requires-runtime-verification",
-          "loadingOrDisabled": "present-static",
-          "feedback": "present-static"
-        },
-        {
-          "actionId": "/app/events/[id]/live#2",
-          "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-attendee-modal.tsx",
           "line": 104,
           "kind": "button",
           "tag": "button",
@@ -26419,7 +26400,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#3",
+          "actionId": "/app/events/[id]/live#2",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-attendee-modal.tsx",
           "line": 107,
           "kind": "button",
@@ -26441,7 +26422,7 @@
           "feedback": "present-static"
         },
         {
-          "actionId": "/app/events/[id]/live#4",
+          "actionId": "/app/events/[id]/live#3",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-attendee-modal.tsx",
           "line": 118,
           "kind": "button",
@@ -26463,7 +26444,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#5",
+          "actionId": "/app/events/[id]/live#4",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-attendee-modal.tsx",
           "line": 121,
           "kind": "button",
@@ -26485,7 +26466,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#6",
+          "actionId": "/app/events/[id]/live#5",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-attendee-modal.tsx",
           "line": 93,
           "kind": "link",
@@ -26505,7 +26486,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#7",
+          "actionId": "/app/events/[id]/live#6",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-attendee-modal.tsx",
           "line": 97,
           "kind": "button",
@@ -26527,7 +26508,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#8",
+          "actionId": "/app/events/[id]/live#7",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-attendee-modal.tsx",
           "line": 98,
           "kind": "button",
@@ -26549,7 +26530,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#9",
+          "actionId": "/app/events/[id]/live#8",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-contact-action.tsx",
           "line": 40,
           "kind": "button",
@@ -26571,7 +26552,7 @@
           "feedback": "present-static"
         },
         {
-          "actionId": "/app/events/[id]/live#10",
+          "actionId": "/app/events/[id]/live#9",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-contact-action.tsx",
           "line": 58,
           "kind": "button",
@@ -26593,7 +26574,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#11",
+          "actionId": "/app/events/[id]/live#10",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-contact-action.tsx",
           "line": 61,
           "kind": "button",
@@ -26615,7 +26596,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#12",
+          "actionId": "/app/events/[id]/live#11",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-contact-action.tsx",
           "line": 70,
           "kind": "button",
@@ -26637,7 +26618,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#13",
+          "actionId": "/app/events/[id]/live#12",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-contact-action.tsx",
           "line": 78,
           "kind": "link",
@@ -26657,7 +26638,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#14",
+          "actionId": "/app/events/[id]/live#13",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-exchange-modal.tsx",
           "line": 101,
           "kind": "button",
@@ -26679,7 +26660,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#15",
+          "actionId": "/app/events/[id]/live#14",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-exchange-modal.tsx",
           "line": 129,
           "kind": "button",
@@ -26701,7 +26682,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#16",
+          "actionId": "/app/events/[id]/live#15",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-exchange-modal.tsx",
           "line": 139,
           "kind": "button",
@@ -26723,7 +26704,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#17",
+          "actionId": "/app/events/[id]/live#16",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-exchange-modal.tsx",
           "line": 140,
           "kind": "button",
@@ -26745,7 +26726,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#18",
+          "actionId": "/app/events/[id]/live#17",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-exchange-modal.tsx",
           "line": 72,
           "kind": "button",
@@ -26767,7 +26748,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#19",
+          "actionId": "/app/events/[id]/live#18",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-exchange-modal.tsx",
           "line": 85,
           "kind": "link",
@@ -26787,7 +26768,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#20",
+          "actionId": "/app/events/[id]/live#19",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-exchange-modal.tsx",
           "line": 96,
           "kind": "button",
@@ -26809,7 +26790,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#21",
+          "actionId": "/app/events/[id]/live#20",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-exchange-modal.tsx",
           "line": 99,
           "kind": "button",
@@ -26831,7 +26812,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#22",
+          "actionId": "/app/events/[id]/live#21",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-live.tsx",
           "line": 134,
           "kind": "button",
@@ -26853,7 +26834,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#23",
+          "actionId": "/app/events/[id]/live#22",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-live.tsx",
           "line": 151,
           "kind": "click-handler",
@@ -26875,7 +26856,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#24",
+          "actionId": "/app/events/[id]/live#23",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-live.tsx",
           "line": 175,
           "kind": "button",
@@ -26897,7 +26878,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#25",
+          "actionId": "/app/events/[id]/live#24",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-live.tsx",
           "line": 188,
           "kind": "button",
@@ -26919,7 +26900,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#26",
+          "actionId": "/app/events/[id]/live#25",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-live.tsx",
           "line": 219,
           "kind": "button",
@@ -26941,7 +26922,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#27",
+          "actionId": "/app/events/[id]/live#26",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-live.tsx",
           "line": 261,
           "kind": "button",
@@ -26963,7 +26944,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#28",
+          "actionId": "/app/events/[id]/live#27",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-live.tsx",
           "line": 292,
           "kind": "button",
@@ -26985,7 +26966,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#29",
+          "actionId": "/app/events/[id]/live#28",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-live.tsx",
           "line": 300,
           "kind": "button",
@@ -27007,7 +26988,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#30",
+          "actionId": "/app/events/[id]/live#29",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-live.tsx",
           "line": 314,
           "kind": "button",
@@ -27029,7 +27010,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#31",
+          "actionId": "/app/events/[id]/live#30",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-live.tsx",
           "line": 318,
           "kind": "button",
@@ -27051,7 +27032,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#32",
+          "actionId": "/app/events/[id]/live#31",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-live.tsx",
           "line": 340,
           "kind": "button",
@@ -27073,7 +27054,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#33",
+          "actionId": "/app/events/[id]/live#32",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-live.tsx",
           "line": 417,
           "kind": "button",
@@ -27095,7 +27076,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#34",
+          "actionId": "/app/events/[id]/live#33",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-live.tsx",
           "line": 429,
           "kind": "button",
@@ -27117,7 +27098,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#35",
+          "actionId": "/app/events/[id]/live#34",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-live.tsx",
           "line": 431,
           "kind": "button",
@@ -27139,7 +27120,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#36",
+          "actionId": "/app/events/[id]/live#35",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-live.tsx",
           "line": 433,
           "kind": "button",
@@ -27161,7 +27142,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#37",
+          "actionId": "/app/events/[id]/live#36",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-live.tsx",
           "line": 459,
           "kind": "button",
@@ -27183,7 +27164,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#38",
+          "actionId": "/app/events/[id]/live#37",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-live.tsx",
           "line": 567,
           "kind": "button",
@@ -27205,7 +27186,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#39",
+          "actionId": "/app/events/[id]/live#38",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-live.tsx",
           "line": 618,
           "kind": "button",
@@ -27227,7 +27208,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#40",
+          "actionId": "/app/events/[id]/live#39",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-live.tsx",
           "line": 637,
           "kind": "button",
@@ -27249,7 +27230,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#41",
+          "actionId": "/app/events/[id]/live#40",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-live.tsx",
           "line": 738,
           "kind": "link",
@@ -27269,7 +27250,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#42",
+          "actionId": "/app/events/[id]/live#41",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-live.tsx",
           "line": 740,
           "kind": "link",
@@ -27289,7 +27270,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#43",
+          "actionId": "/app/events/[id]/live#42",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-modal-frame.tsx",
           "line": 125,
           "kind": "button",
@@ -27311,7 +27292,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#44",
+          "actionId": "/app/events/[id]/live#43",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-modal-frame.tsx",
           "line": 95,
           "kind": "click-handler",
@@ -27333,7 +27314,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#45",
+          "actionId": "/app/events/[id]/live#44",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-modal-frame.tsx",
           "line": 96,
           "kind": "keyboard-handler",
@@ -27355,7 +27336,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#46",
+          "actionId": "/app/events/[id]/live#45",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-note-modal.tsx",
           "line": 123,
           "kind": "button",
@@ -27377,7 +27358,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#47",
+          "actionId": "/app/events/[id]/live#46",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-note-modal.tsx",
           "line": 135,
           "kind": "button",
@@ -27399,7 +27380,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#48",
+          "actionId": "/app/events/[id]/live#47",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-note-modal.tsx",
           "line": 137,
           "kind": "keyboard-handler",
@@ -27421,7 +27402,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#49",
+          "actionId": "/app/events/[id]/live#48",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-note-modal.tsx",
           "line": 152,
           "kind": "button",
@@ -27443,7 +27424,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#50",
+          "actionId": "/app/events/[id]/live#49",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-note-modal.tsx",
           "line": 153,
           "kind": "button",
@@ -27465,7 +27446,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#51",
+          "actionId": "/app/events/[id]/live#50",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-register-modal.tsx",
           "line": 122,
           "kind": "link",
@@ -27487,7 +27468,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#52",
+          "actionId": "/app/events/[id]/live#51",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-register-modal.tsx",
           "line": 128,
           "kind": "button",
@@ -27509,7 +27490,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#53",
+          "actionId": "/app/events/[id]/live#52",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-register-modal.tsx",
           "line": 129,
           "kind": "button",
@@ -27531,7 +27512,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#54",
+          "actionId": "/app/events/[id]/live#53",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-schedule-modal.tsx",
           "line": 264,
           "kind": "link",
@@ -27551,7 +27532,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#55",
+          "actionId": "/app/events/[id]/live#54",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-schedule-modal.tsx",
           "line": 269,
           "kind": "button",
@@ -27573,7 +27554,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#56",
+          "actionId": "/app/events/[id]/live#55",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-schedule-modal.tsx",
           "line": 307,
           "kind": "button",
@@ -27595,7 +27576,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#57",
+          "actionId": "/app/events/[id]/live#56",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-schedule-modal.tsx",
           "line": 326,
           "kind": "button",
@@ -27617,7 +27598,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#58",
+          "actionId": "/app/events/[id]/live#57",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-schedule-modal.tsx",
           "line": 343,
           "kind": "button",
@@ -27639,7 +27620,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#59",
+          "actionId": "/app/events/[id]/live#58",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-schedule-modal.tsx",
           "line": 368,
           "kind": "button",
@@ -27661,7 +27642,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#60",
+          "actionId": "/app/events/[id]/live#59",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-schedule-modal.tsx",
           "line": 369,
           "kind": "button",
@@ -27683,7 +27664,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#61",
+          "actionId": "/app/events/[id]/live#60",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/events-shell.tsx",
           "line": 48,
           "kind": "link",
@@ -27703,7 +27684,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#62",
+          "actionId": "/app/events/[id]/live#61",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/events-shell.tsx",
           "line": 51,
           "kind": "button",
@@ -27725,7 +27706,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#63",
+          "actionId": "/app/events/[id]/live#62",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/events-shell.tsx",
           "line": 54,
           "kind": "button",
@@ -27747,7 +27728,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#64",
+          "actionId": "/app/events/[id]/live#63",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/events-shell.tsx",
           "line": 57,
           "kind": "link",
@@ -27767,7 +27748,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#65",
+          "actionId": "/app/events/[id]/live#64",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/contact-messages-tab.tsx",
           "line": 128,
           "kind": "button",
@@ -27789,7 +27770,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#66",
+          "actionId": "/app/events/[id]/live#65",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/contact-messages-tab.tsx",
           "line": 133,
           "kind": "button",
@@ -27811,7 +27792,7 @@
           "feedback": "present-static"
         },
         {
-          "actionId": "/app/events/[id]/live#67",
+          "actionId": "/app/events/[id]/live#66",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/contact-messages-tab.tsx",
           "line": 139,
           "kind": "button",
@@ -27833,7 +27814,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#68",
+          "actionId": "/app/events/[id]/live#67",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/contact-messages-tab.tsx",
           "line": 142,
           "kind": "button",
@@ -27855,7 +27836,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#69",
+          "actionId": "/app/events/[id]/live#68",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/contact-messages-tab.tsx",
           "line": 149,
           "kind": "button",
@@ -27877,7 +27858,7 @@
           "feedback": "present-static"
         },
         {
-          "actionId": "/app/events/[id]/live#70",
+          "actionId": "/app/events/[id]/live#69",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 1239,
           "kind": "click-handler",
@@ -27899,7 +27880,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#71",
+          "actionId": "/app/events/[id]/live#70",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 1275,
           "kind": "button",
@@ -27921,7 +27902,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#72",
+          "actionId": "/app/events/[id]/live#71",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 1286,
           "kind": "button",
@@ -27944,7 +27925,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#73",
+          "actionId": "/app/events/[id]/live#72",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 1316,
           "kind": "button",
@@ -27966,7 +27947,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#74",
+          "actionId": "/app/events/[id]/live#73",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 1575,
           "kind": "button",
@@ -27988,7 +27969,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#75",
+          "actionId": "/app/events/[id]/live#74",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 429,
           "kind": "button",
@@ -28010,7 +27991,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#76",
+          "actionId": "/app/events/[id]/live#75",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 440,
           "kind": "link",
@@ -28032,7 +28013,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#77",
+          "actionId": "/app/events/[id]/live#76",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 447,
           "kind": "button",
@@ -28054,7 +28035,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#78",
+          "actionId": "/app/events/[id]/live#77",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 475,
           "kind": "button",
@@ -28076,7 +28057,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#79",
+          "actionId": "/app/events/[id]/live#78",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 544,
           "kind": "button",
@@ -28098,7 +28079,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#80",
+          "actionId": "/app/events/[id]/live#79",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 565,
           "kind": "button",
@@ -28120,7 +28101,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#81",
+          "actionId": "/app/events/[id]/live#80",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 569,
           "kind": "button",
@@ -28142,7 +28123,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#82",
+          "actionId": "/app/events/[id]/live#81",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 594,
           "kind": "button",
@@ -28164,7 +28145,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#83",
+          "actionId": "/app/events/[id]/live#82",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 776,
           "kind": "button",
@@ -28186,7 +28167,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#84",
+          "actionId": "/app/events/[id]/live#83",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 788,
           "kind": "button",
@@ -28208,7 +28189,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#85",
+          "actionId": "/app/events/[id]/live#84",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 816,
           "kind": "button",
@@ -28230,7 +28211,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#86",
+          "actionId": "/app/events/[id]/live#85",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 895,
           "kind": "button",
@@ -28252,7 +28233,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#87",
+          "actionId": "/app/events/[id]/live#86",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 944,
           "kind": "button",
@@ -28274,7 +28255,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#88",
+          "actionId": "/app/events/[id]/live#87",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/typed-notifications-tab.tsx",
           "line": 14,
           "kind": "button",
@@ -28296,7 +28277,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#89",
+          "actionId": "/app/events/[id]/live#88",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/typed-notifications-tab.tsx",
           "line": 54,
           "kind": "button",
@@ -28318,7 +28299,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#90",
+          "actionId": "/app/events/[id]/live#89",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/typed-notifications-tab.tsx",
           "line": 57,
           "kind": "button",
@@ -28340,7 +28321,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#91",
+          "actionId": "/app/events/[id]/live#90",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/typed-notifications-tab.tsx",
           "line": 62,
           "kind": "link",
@@ -28360,7 +28341,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#92",
+          "actionId": "/app/events/[id]/live#91",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/typed-notifications-tab.tsx",
           "line": 63,
           "kind": "button",
@@ -28382,7 +28363,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#93",
+          "actionId": "/app/events/[id]/live#92",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/typed-notifications-tab.tsx",
           "line": 65,
           "kind": "button",
@@ -28404,7 +28385,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#94",
+          "actionId": "/app/events/[id]/live#93",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/typed-notifications-tab.tsx",
           "line": 66,
           "kind": "button",
@@ -28426,7 +28407,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#95",
+          "actionId": "/app/events/[id]/live#94",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/typed-notifications-tab.tsx",
           "line": 68,
           "kind": "button",
@@ -28448,7 +28429,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#96",
+          "actionId": "/app/events/[id]/live#95",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-account-shell.tsx",
           "line": 106,
           "kind": "button",
@@ -28470,7 +28451,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#97",
+          "actionId": "/app/events/[id]/live#96",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-account-shell.tsx",
           "line": 169,
           "kind": "click-handler",
@@ -28492,7 +28473,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#98",
+          "actionId": "/app/events/[id]/live#97",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-account-shell.tsx",
           "line": 201,
           "kind": "button",
@@ -28514,7 +28495,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#99",
+          "actionId": "/app/events/[id]/live#98",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 108,
           "kind": "link",
@@ -28534,7 +28515,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#100",
+          "actionId": "/app/events/[id]/live#99",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 117,
           "kind": "link",
@@ -28554,7 +28535,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#101",
+          "actionId": "/app/events/[id]/live#100",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 129,
           "kind": "button",
@@ -28576,7 +28557,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#102",
+          "actionId": "/app/events/[id]/live#101",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 162,
           "kind": "link",
@@ -28596,7 +28577,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#103",
+          "actionId": "/app/events/[id]/live#102",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 170,
           "kind": "link",
@@ -28616,7 +28597,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#104",
+          "actionId": "/app/events/[id]/live#103",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 178,
           "kind": "link",
@@ -28636,7 +28617,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#105",
+          "actionId": "/app/events/[id]/live#104",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 186,
           "kind": "link",
@@ -28656,7 +28637,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#106",
+          "actionId": "/app/events/[id]/live#105",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 194,
           "kind": "button",
@@ -28678,7 +28659,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#107",
+          "actionId": "/app/events/[id]/live#106",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 237,
           "kind": "button",
@@ -28700,7 +28681,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#108",
+          "actionId": "/app/events/[id]/live#107",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 274,
           "kind": "link",
@@ -28720,7 +28701,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#109",
+          "actionId": "/app/events/[id]/live#108",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 281,
           "kind": "link",
@@ -28740,7 +28721,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#110",
+          "actionId": "/app/events/[id]/live#109",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 287,
           "kind": "link",
@@ -28760,7 +28741,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#111",
+          "actionId": "/app/events/[id]/live#110",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 293,
           "kind": "link",
@@ -28780,7 +28761,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#112",
+          "actionId": "/app/events/[id]/live#111",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 308,
           "kind": "link",
@@ -28800,7 +28781,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#113",
+          "actionId": "/app/events/[id]/live#112",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 314,
           "kind": "link",
@@ -28820,7 +28801,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#114",
+          "actionId": "/app/events/[id]/live#113",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 412,
           "kind": "link",
@@ -28840,7 +28821,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#115",
+          "actionId": "/app/events/[id]/live#114",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 421,
           "kind": "link",
@@ -28860,7 +28841,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#116",
+          "actionId": "/app/events/[id]/live#115",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 423,
           "kind": "link",
@@ -28880,7 +28861,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#117",
+          "actionId": "/app/events/[id]/live#116",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 439,
           "kind": "button",
@@ -28902,7 +28883,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#118",
+          "actionId": "/app/events/[id]/live#117",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 453,
           "kind": "button",
@@ -28924,7 +28905,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#119",
+          "actionId": "/app/events/[id]/live#118",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 456,
           "kind": "link",
@@ -28944,7 +28925,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#120",
+          "actionId": "/app/events/[id]/live#119",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-reference-primitives.tsx",
           "line": 149,
           "kind": "button",
@@ -28966,7 +28947,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#121",
+          "actionId": "/app/events/[id]/live#120",
           "sourceFile": "repos/orbits/app/(app)/app/settings/notification-delivery-settings.tsx",
           "line": 14,
           "kind": "button",
@@ -28988,7 +28969,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#122",
+          "actionId": "/app/events/[id]/live#121",
           "sourceFile": "repos/orbits/shared/ui/primitives.tsx",
           "line": 217,
           "kind": "button",
@@ -29008,7 +28989,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#123",
+          "actionId": "/app/events/[id]/live#122",
           "sourceFile": "repos/orbits/shared/ui/primitives.tsx",
           "line": 225,
           "kind": "button",
@@ -29028,7 +29009,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]/live#124",
+          "actionId": "/app/events/[id]/live#123",
           "sourceFile": "repos/orbits/shared/ui/state-view.tsx",
           "line": 285,
           "kind": "link",
@@ -29080,19 +29061,7 @@
         "repos/orbits/tests/api/reminder-plan-routes.test.ts",
         "repos/orbits/tests/api/secondary-industry-search-route.test.ts"
       ],
-      "knownRisks": [
-        {
-          "severity": "P0",
-          "type": "behavior-missing-static",
-          "route": "/app/events/[id]/live",
-          "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-attendee-modal.tsx",
-          "line": 103,
-          "trigger": "button {t(status.action)}",
-          "userImpact": "Visible control may not perform an action.",
-          "status": "open-needs-runtime-verification",
-          "nextAction": "Verify DOM behavior; wire a real handler/href or explain unavailability."
-        }
-      ]
+      "knownRisks": []
     },
     {
       "route": "/app/events/[id]/operations/admission",
@@ -37565,26 +37534,6 @@
         {
           "actionId": "/app/events/[id]#37",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-attendee-modal.tsx",
-          "line": 103,
-          "kind": "button",
-          "tag": "button",
-          "label": "{t(status.action)}",
-          "accessibleName": "dynamic-runtime",
-          "href": null,
-          "handlers": [],
-          "behaviorEvidence": "missing-static",
-          "componentOwnershipEvidence": null,
-          "imperativeBehaviorEvidence": [],
-          "readWrite": "unknown-requires-runtime-verification",
-          "confirmation": "unknown-requires-runtime-verification",
-          "retry": "unknown-requires-runtime-verification",
-          "undoCompensation": "unknown-requires-runtime-verification",
-          "loadingOrDisabled": "present-static",
-          "feedback": "present-static"
-        },
-        {
-          "actionId": "/app/events/[id]#38",
-          "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-attendee-modal.tsx",
           "line": 104,
           "kind": "button",
           "tag": "button",
@@ -37605,7 +37554,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#39",
+          "actionId": "/app/events/[id]#38",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-attendee-modal.tsx",
           "line": 107,
           "kind": "button",
@@ -37627,7 +37576,7 @@
           "feedback": "present-static"
         },
         {
-          "actionId": "/app/events/[id]#40",
+          "actionId": "/app/events/[id]#39",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-attendee-modal.tsx",
           "line": 118,
           "kind": "button",
@@ -37649,7 +37598,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#41",
+          "actionId": "/app/events/[id]#40",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-attendee-modal.tsx",
           "line": 121,
           "kind": "button",
@@ -37671,7 +37620,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#42",
+          "actionId": "/app/events/[id]#41",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-attendee-modal.tsx",
           "line": 93,
           "kind": "link",
@@ -37691,7 +37640,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#43",
+          "actionId": "/app/events/[id]#42",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-attendee-modal.tsx",
           "line": 97,
           "kind": "button",
@@ -37713,7 +37662,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#44",
+          "actionId": "/app/events/[id]#43",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-attendee-modal.tsx",
           "line": 98,
           "kind": "button",
@@ -37735,7 +37684,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#45",
+          "actionId": "/app/events/[id]#44",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-detail.tsx",
           "line": 264,
           "kind": "button",
@@ -37757,7 +37706,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#46",
+          "actionId": "/app/events/[id]#45",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-detail.tsx",
           "line": 317,
           "kind": "link",
@@ -37777,7 +37726,7 @@
           "feedback": "present-static"
         },
         {
-          "actionId": "/app/events/[id]#47",
+          "actionId": "/app/events/[id]#46",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-detail.tsx",
           "line": 347,
           "kind": "link",
@@ -37797,7 +37746,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#48",
+          "actionId": "/app/events/[id]#47",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-detail.tsx",
           "line": 444,
           "kind": "link",
@@ -37817,7 +37766,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#49",
+          "actionId": "/app/events/[id]#48",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-detail.tsx",
           "line": 481,
           "kind": "link",
@@ -37837,7 +37786,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#50",
+          "actionId": "/app/events/[id]#49",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-detail.tsx",
           "line": 540,
           "kind": "button",
@@ -37859,7 +37808,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#51",
+          "actionId": "/app/events/[id]#50",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-detail.tsx",
           "line": 548,
           "kind": "link",
@@ -37879,7 +37828,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#52",
+          "actionId": "/app/events/[id]#51",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-detail.tsx",
           "line": 569,
           "kind": "link",
@@ -37899,7 +37848,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#53",
+          "actionId": "/app/events/[id]#52",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-detail.tsx",
           "line": 608,
           "kind": "button",
@@ -37921,7 +37870,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#54",
+          "actionId": "/app/events/[id]#53",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-detail.tsx",
           "line": 633,
           "kind": "link",
@@ -37941,7 +37890,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#55",
+          "actionId": "/app/events/[id]#54",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-exchange-modal.tsx",
           "line": 101,
           "kind": "button",
@@ -37963,7 +37912,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#56",
+          "actionId": "/app/events/[id]#55",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-exchange-modal.tsx",
           "line": 129,
           "kind": "button",
@@ -37985,7 +37934,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#57",
+          "actionId": "/app/events/[id]#56",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-exchange-modal.tsx",
           "line": 139,
           "kind": "button",
@@ -38007,7 +37956,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#58",
+          "actionId": "/app/events/[id]#57",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-exchange-modal.tsx",
           "line": 140,
           "kind": "button",
@@ -38029,7 +37978,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#59",
+          "actionId": "/app/events/[id]#58",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-exchange-modal.tsx",
           "line": 72,
           "kind": "button",
@@ -38051,7 +38000,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#60",
+          "actionId": "/app/events/[id]#59",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-exchange-modal.tsx",
           "line": 85,
           "kind": "link",
@@ -38071,7 +38020,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#61",
+          "actionId": "/app/events/[id]#60",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-exchange-modal.tsx",
           "line": 96,
           "kind": "button",
@@ -38093,7 +38042,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#62",
+          "actionId": "/app/events/[id]#61",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-exchange-modal.tsx",
           "line": 99,
           "kind": "button",
@@ -38115,7 +38064,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#63",
+          "actionId": "/app/events/[id]#62",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-modal-frame.tsx",
           "line": 125,
           "kind": "button",
@@ -38137,7 +38086,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#64",
+          "actionId": "/app/events/[id]#63",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-modal-frame.tsx",
           "line": 95,
           "kind": "click-handler",
@@ -38159,7 +38108,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#65",
+          "actionId": "/app/events/[id]#64",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-modal-frame.tsx",
           "line": 96,
           "kind": "keyboard-handler",
@@ -38181,7 +38130,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#66",
+          "actionId": "/app/events/[id]#65",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-note-modal.tsx",
           "line": 123,
           "kind": "button",
@@ -38203,7 +38152,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#67",
+          "actionId": "/app/events/[id]#66",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-note-modal.tsx",
           "line": 135,
           "kind": "button",
@@ -38225,7 +38174,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#68",
+          "actionId": "/app/events/[id]#67",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-note-modal.tsx",
           "line": 137,
           "kind": "keyboard-handler",
@@ -38247,7 +38196,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#69",
+          "actionId": "/app/events/[id]#68",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-note-modal.tsx",
           "line": 152,
           "kind": "button",
@@ -38269,7 +38218,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#70",
+          "actionId": "/app/events/[id]#69",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-note-modal.tsx",
           "line": 153,
           "kind": "button",
@@ -38291,7 +38240,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#71",
+          "actionId": "/app/events/[id]#70",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-register-modal.tsx",
           "line": 122,
           "kind": "link",
@@ -38313,7 +38262,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#72",
+          "actionId": "/app/events/[id]#71",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-register-modal.tsx",
           "line": 128,
           "kind": "button",
@@ -38335,7 +38284,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#73",
+          "actionId": "/app/events/[id]#72",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-register-modal.tsx",
           "line": 129,
           "kind": "button",
@@ -38357,7 +38306,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#74",
+          "actionId": "/app/events/[id]#73",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-schedule-modal.tsx",
           "line": 264,
           "kind": "link",
@@ -38377,7 +38326,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#75",
+          "actionId": "/app/events/[id]#74",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-schedule-modal.tsx",
           "line": 269,
           "kind": "button",
@@ -38399,7 +38348,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#76",
+          "actionId": "/app/events/[id]#75",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-schedule-modal.tsx",
           "line": 307,
           "kind": "button",
@@ -38421,7 +38370,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#77",
+          "actionId": "/app/events/[id]#76",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-schedule-modal.tsx",
           "line": 326,
           "kind": "button",
@@ -38443,7 +38392,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#78",
+          "actionId": "/app/events/[id]#77",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-schedule-modal.tsx",
           "line": 343,
           "kind": "button",
@@ -38465,7 +38414,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#79",
+          "actionId": "/app/events/[id]#78",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-schedule-modal.tsx",
           "line": 368,
           "kind": "button",
@@ -38487,7 +38436,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#80",
+          "actionId": "/app/events/[id]#79",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-schedule-modal.tsx",
           "line": 369,
           "kind": "button",
@@ -38509,7 +38458,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#81",
+          "actionId": "/app/events/[id]#80",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/events-shell.tsx",
           "line": 48,
           "kind": "link",
@@ -38529,7 +38478,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#82",
+          "actionId": "/app/events/[id]#81",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/events-shell.tsx",
           "line": 51,
           "kind": "button",
@@ -38551,7 +38500,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#83",
+          "actionId": "/app/events/[id]#82",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/events-shell.tsx",
           "line": 54,
           "kind": "button",
@@ -38573,7 +38522,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#84",
+          "actionId": "/app/events/[id]#83",
           "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/events-shell.tsx",
           "line": 57,
           "kind": "link",
@@ -38593,7 +38542,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#85",
+          "actionId": "/app/events/[id]#84",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/contact-messages-tab.tsx",
           "line": 128,
           "kind": "button",
@@ -38615,7 +38564,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#86",
+          "actionId": "/app/events/[id]#85",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/contact-messages-tab.tsx",
           "line": 133,
           "kind": "button",
@@ -38637,7 +38586,7 @@
           "feedback": "present-static"
         },
         {
-          "actionId": "/app/events/[id]#87",
+          "actionId": "/app/events/[id]#86",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/contact-messages-tab.tsx",
           "line": 139,
           "kind": "button",
@@ -38659,7 +38608,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#88",
+          "actionId": "/app/events/[id]#87",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/contact-messages-tab.tsx",
           "line": 142,
           "kind": "button",
@@ -38681,7 +38630,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#89",
+          "actionId": "/app/events/[id]#88",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/contact-messages-tab.tsx",
           "line": 149,
           "kind": "button",
@@ -38703,7 +38652,7 @@
           "feedback": "present-static"
         },
         {
-          "actionId": "/app/events/[id]#90",
+          "actionId": "/app/events/[id]#89",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 1239,
           "kind": "click-handler",
@@ -38725,7 +38674,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#91",
+          "actionId": "/app/events/[id]#90",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 1275,
           "kind": "button",
@@ -38747,7 +38696,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#92",
+          "actionId": "/app/events/[id]#91",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 1286,
           "kind": "button",
@@ -38770,7 +38719,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#93",
+          "actionId": "/app/events/[id]#92",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 1316,
           "kind": "button",
@@ -38792,7 +38741,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#94",
+          "actionId": "/app/events/[id]#93",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 1575,
           "kind": "button",
@@ -38814,7 +38763,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#95",
+          "actionId": "/app/events/[id]#94",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 429,
           "kind": "button",
@@ -38836,7 +38785,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#96",
+          "actionId": "/app/events/[id]#95",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 440,
           "kind": "link",
@@ -38858,7 +38807,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#97",
+          "actionId": "/app/events/[id]#96",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 447,
           "kind": "button",
@@ -38880,7 +38829,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#98",
+          "actionId": "/app/events/[id]#97",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 475,
           "kind": "button",
@@ -38902,7 +38851,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#99",
+          "actionId": "/app/events/[id]#98",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 544,
           "kind": "button",
@@ -38924,7 +38873,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#100",
+          "actionId": "/app/events/[id]#99",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 565,
           "kind": "button",
@@ -38946,7 +38895,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#101",
+          "actionId": "/app/events/[id]#100",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 569,
           "kind": "button",
@@ -38968,7 +38917,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#102",
+          "actionId": "/app/events/[id]#101",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 594,
           "kind": "button",
@@ -38990,7 +38939,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#103",
+          "actionId": "/app/events/[id]#102",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 776,
           "kind": "button",
@@ -39012,7 +38961,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#104",
+          "actionId": "/app/events/[id]#103",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 788,
           "kind": "button",
@@ -39034,7 +38983,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#105",
+          "actionId": "/app/events/[id]#104",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 816,
           "kind": "button",
@@ -39056,7 +39005,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#106",
+          "actionId": "/app/events/[id]#105",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 895,
           "kind": "button",
@@ -39078,7 +39027,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#107",
+          "actionId": "/app/events/[id]#106",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/relationship-inbox-panel.tsx",
           "line": 944,
           "kind": "button",
@@ -39100,7 +39049,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#108",
+          "actionId": "/app/events/[id]#107",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/typed-notifications-tab.tsx",
           "line": 14,
           "kind": "button",
@@ -39122,7 +39071,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#109",
+          "actionId": "/app/events/[id]#108",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/typed-notifications-tab.tsx",
           "line": 54,
           "kind": "button",
@@ -39144,7 +39093,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#110",
+          "actionId": "/app/events/[id]#109",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/typed-notifications-tab.tsx",
           "line": 57,
           "kind": "button",
@@ -39166,7 +39115,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#111",
+          "actionId": "/app/events/[id]#110",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/typed-notifications-tab.tsx",
           "line": 62,
           "kind": "link",
@@ -39186,7 +39135,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#112",
+          "actionId": "/app/events/[id]#111",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/typed-notifications-tab.tsx",
           "line": 63,
           "kind": "button",
@@ -39208,7 +39157,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#113",
+          "actionId": "/app/events/[id]#112",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/typed-notifications-tab.tsx",
           "line": 65,
           "kind": "button",
@@ -39230,7 +39179,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#114",
+          "actionId": "/app/events/[id]#113",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/typed-notifications-tab.tsx",
           "line": 66,
           "kind": "button",
@@ -39252,7 +39201,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#115",
+          "actionId": "/app/events/[id]#114",
           "sourceFile": "repos/orbits/app/(app)/app/inbox/typed-notifications-tab.tsx",
           "line": 68,
           "kind": "button",
@@ -39274,7 +39223,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#116",
+          "actionId": "/app/events/[id]#115",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-account-shell.tsx",
           "line": 106,
           "kind": "button",
@@ -39296,7 +39245,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#117",
+          "actionId": "/app/events/[id]#116",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-account-shell.tsx",
           "line": 169,
           "kind": "click-handler",
@@ -39318,7 +39267,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#118",
+          "actionId": "/app/events/[id]#117",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-account-shell.tsx",
           "line": 201,
           "kind": "button",
@@ -39340,7 +39289,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#119",
+          "actionId": "/app/events/[id]#118",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 108,
           "kind": "link",
@@ -39360,7 +39309,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#120",
+          "actionId": "/app/events/[id]#119",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 117,
           "kind": "link",
@@ -39380,7 +39329,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#121",
+          "actionId": "/app/events/[id]#120",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 129,
           "kind": "button",
@@ -39402,7 +39351,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#122",
+          "actionId": "/app/events/[id]#121",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 162,
           "kind": "link",
@@ -39422,7 +39371,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#123",
+          "actionId": "/app/events/[id]#122",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 170,
           "kind": "link",
@@ -39442,7 +39391,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#124",
+          "actionId": "/app/events/[id]#123",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 178,
           "kind": "link",
@@ -39462,7 +39411,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#125",
+          "actionId": "/app/events/[id]#124",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 186,
           "kind": "link",
@@ -39482,7 +39431,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#126",
+          "actionId": "/app/events/[id]#125",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 194,
           "kind": "button",
@@ -39504,7 +39453,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#127",
+          "actionId": "/app/events/[id]#126",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 237,
           "kind": "button",
@@ -39526,7 +39475,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#128",
+          "actionId": "/app/events/[id]#127",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 274,
           "kind": "link",
@@ -39546,7 +39495,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#129",
+          "actionId": "/app/events/[id]#128",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 281,
           "kind": "link",
@@ -39566,7 +39515,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#130",
+          "actionId": "/app/events/[id]#129",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 287,
           "kind": "link",
@@ -39586,7 +39535,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#131",
+          "actionId": "/app/events/[id]#130",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 293,
           "kind": "link",
@@ -39606,7 +39555,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#132",
+          "actionId": "/app/events/[id]#131",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 308,
           "kind": "link",
@@ -39626,7 +39575,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#133",
+          "actionId": "/app/events/[id]#132",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 314,
           "kind": "link",
@@ -39646,7 +39595,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#134",
+          "actionId": "/app/events/[id]#133",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 412,
           "kind": "link",
@@ -39666,7 +39615,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#135",
+          "actionId": "/app/events/[id]#134",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 421,
           "kind": "link",
@@ -39686,7 +39635,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#136",
+          "actionId": "/app/events/[id]#135",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 423,
           "kind": "link",
@@ -39706,7 +39655,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#137",
+          "actionId": "/app/events/[id]#136",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 439,
           "kind": "button",
@@ -39728,7 +39677,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#138",
+          "actionId": "/app/events/[id]#137",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 453,
           "kind": "button",
@@ -39750,7 +39699,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#139",
+          "actionId": "/app/events/[id]#138",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-public-shell.tsx",
           "line": 456,
           "kind": "link",
@@ -39770,7 +39719,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#140",
+          "actionId": "/app/events/[id]#139",
           "sourceFile": "repos/orbits/app/(app)/app/orbit-reference-primitives.tsx",
           "line": 149,
           "kind": "button",
@@ -39792,7 +39741,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#141",
+          "actionId": "/app/events/[id]#140",
           "sourceFile": "repos/orbits/app/(app)/app/settings/notification-delivery-settings.tsx",
           "line": 14,
           "kind": "button",
@@ -39814,7 +39763,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#142",
+          "actionId": "/app/events/[id]#141",
           "sourceFile": "repos/orbits/shared/ui/primitives.tsx",
           "line": 217,
           "kind": "button",
@@ -39834,7 +39783,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#143",
+          "actionId": "/app/events/[id]#142",
           "sourceFile": "repos/orbits/shared/ui/primitives.tsx",
           "line": 225,
           "kind": "button",
@@ -39854,7 +39803,7 @@
           "feedback": "unknown-requires-runtime-verification"
         },
         {
-          "actionId": "/app/events/[id]#144",
+          "actionId": "/app/events/[id]#143",
           "sourceFile": "repos/orbits/shared/ui/state-view.tsx",
           "line": 285,
           "kind": "link",
@@ -39906,19 +39855,7 @@
         "repos/orbits/tests/api/knowledge-document-content.test.ts",
         "repos/orbits/tests/api/live-post-event-followup-fail-closed.test.ts"
       ],
-      "knownRisks": [
-        {
-          "severity": "P0",
-          "type": "behavior-missing-static",
-          "route": "/app/events/[id]",
-          "sourceFile": "repos/orbits/app/(app)/app/events/events-0918/event-attendee-modal.tsx",
-          "line": 103,
-          "trigger": "button {t(status.action)}",
-          "userImpact": "Visible control may not perform an action.",
-          "status": "open-needs-runtime-verification",
-          "nextAction": "Verify DOM behavior; wire a real handler/href or explain unavailability."
-        }
-      ]
+      "knownRisks": []
     },
     {
       "route": "/app/events/[id]/register",
@@ -48711,6 +48648,7 @@
       "actions": [],
       "testCoverage": [
         "repos/orbits/tests/api-schema/business-card-batch-schema.test.ts",
+        "repos/orbits/tests/audits/full-product-functional-audit.test.ts",
         "repos/orbits/tests/audits/web-route-transport.test.ts",
         "repos/orbits/tests/capabilities/contact-search-pagination.test.ts",
         "repos/orbits/tests/capabilities/orbit-agent-conversation-readback.test.ts",
@@ -48738,8 +48676,7 @@
         "repos/orbits/tests/ui/iorbit-console-styles-dead-classes.test.ts",
         "repos/orbits/tests/ui/orbit-0918-anchor-colour.test.ts",
         "repos/orbits/tests/ui/orbit-button-ratchet.test.ts",
-        "repos/orbits/tests/ui/orbit-form-standard.test.ts",
-        "repos/orbits/tests/ui/orbit-scale-ratchet.test.ts"
+        "repos/orbits/tests/ui/orbit-form-standard.test.ts"
       ],
       "knownRisks": []
     },
@@ -53771,12 +53708,12 @@
       "purpose": "Production application surface; purpose requires product review",
       "pageFile": "repos/orbits/app/(app)/app/tasks/[id]/page.tsx",
       "access": {
-        "policy": "public-at-proxy",
-        "anonymousBehavior": "allow at proxy boundary",
-        "authenticatedBehavior": "allow at proxy boundary",
+        "policy": "authenticated",
+        "anonymousBehavior": "redirect:/app/account/login?next=<safe-local-route>",
+        "authenticatedBehavior": "allow",
         "evidence": "repos/orbits/features/auth/app-auth-routing.ts",
-        "pageAuthGate": "page-gates",
-        "runtimeAuthorization": "page/server authorization requires verification"
+        "pageAuthGate": "page-also-gates",
+        "runtimeAuthorization": "requires-browser-verification"
       },
       "data": {
         "sourceKinds": [
@@ -55660,12 +55597,12 @@
       "purpose": "Production application surface; purpose requires product review",
       "pageFile": "repos/orbits/app/(app)/app/tasks/page.tsx",
       "access": {
-        "policy": "public-at-proxy",
-        "anonymousBehavior": "allow at proxy boundary",
-        "authenticatedBehavior": "allow at proxy boundary",
+        "policy": "authenticated",
+        "anonymousBehavior": "redirect:/app/account/login?next=<safe-local-route>",
+        "authenticatedBehavior": "allow",
         "evidence": "repos/orbits/features/auth/app-auth-routing.ts",
-        "pageAuthGate": "page-gates",
-        "runtimeAuthorization": "page/server authorization requires verification"
+        "pageAuthGate": "page-also-gates",
+        "runtimeAuthorization": "requires-browser-verification"
       },
       "data": {
         "sourceKinds": [
@@ -57530,6 +57467,7 @@
         "repos/orbits/tests/audits/web-route-transport.test.ts",
         "repos/orbits/tests/capabilities/agent-signals.test.ts",
         "repos/orbits/tests/capabilities/agent-workflows-e2e.test.ts",
+        "repos/orbits/tests/capabilities/app-auth-routing.test.ts",
         "repos/orbits/tests/capabilities/app-bootstrap-live-store.test.ts",
         "repos/orbits/tests/capabilities/app-bootstrap-mock-aggregator.test.ts",
         "repos/orbits/tests/capabilities/bootstrap-dashboard-egress-bounds.test.ts",
@@ -57539,8 +57477,7 @@
         "repos/orbits/tests/capabilities/core-hybrid-local-remote-services.test.ts",
         "repos/orbits/tests/capabilities/dashboard-aggregate-live-store.test.ts",
         "repos/orbits/tests/capabilities/dashboard-aggregate-mock.test.ts",
-        "repos/orbits/tests/capabilities/event-operations-engine.test.ts",
-        "repos/orbits/tests/capabilities/followup-task-generation-live-store.test.ts"
+        "repos/orbits/tests/capabilities/event-operations-engine.test.ts"
       ],
       "knownRisks": []
     },
@@ -57549,12 +57486,12 @@
       "purpose": "Production application surface; purpose requires product review",
       "pageFile": "repos/orbits/app/(app)/app/tasks/personal/page.tsx",
       "access": {
-        "policy": "public-at-proxy",
-        "anonymousBehavior": "allow at proxy boundary",
-        "authenticatedBehavior": "allow at proxy boundary",
+        "policy": "authenticated",
+        "anonymousBehavior": "redirect:/app/account/login?next=<safe-local-route>",
+        "authenticatedBehavior": "allow",
         "evidence": "repos/orbits/features/auth/app-auth-routing.ts",
-        "pageAuthGate": "page-gates",
-        "runtimeAuthorization": "page/server authorization requires verification"
+        "pageAuthGate": "page-also-gates",
+        "runtimeAuthorization": "requires-browser-verification"
       },
       "data": {
         "sourceKinds": [
@@ -59601,11 +59538,11 @@
       "purpose": "Production application surface; purpose requires product review",
       "pageFile": "repos/orbits/app/(app)/app/tasks/relationship/[id]/page.tsx",
       "access": {
-        "policy": "ungated",
-        "anonymousBehavior": "unknown: neither ORBIT_PRIVATE_APP_PREFIXES nor the page itself gates this route",
+        "policy": "authenticated",
+        "anonymousBehavior": "redirect:/app/account/login?next=<safe-local-route>",
         "authenticatedBehavior": "allow",
-        "evidence": "repos/orbits/features/auth/app-auth-routing.ts (prefix list: not listed); repos/orbits/app/(app)/app/tasks/relationship/[id]/page.tsx (no auth() / resolveAuthenticatedApiActorFromSession() call)",
-        "pageAuthGate": "none",
+        "evidence": "repos/orbits/features/auth/app-auth-routing.ts",
+        "pageAuthGate": "prefix-only",
         "runtimeAuthorization": "requires-browser-verification"
       },
       "data": {

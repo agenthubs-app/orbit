@@ -130,10 +130,10 @@
 | `web:/app/profile/continue` | web | production | `/app/profile/continue` | `web:/app/profile` |  | 0 | 0 | 8 | inventory-complete-runtime-verification-pending |
 | `web:/app/register` | web | production | `/app/register` | `web:/app` |  | 0 | 2 | 4 | runtime-partially-verified-browser-base-state |
 | `web:/app/settings` | web | production | `/app/settings` | `web:/app` |  | 1 | 150 | 13 | runtime-partially-verified-web-settings-actor-scoped-lifecycle |
-| `web:/app/tasks` | web | production | `/app/tasks` | `web:/app` |  | 1 | 107 | 33 | inventory-complete-runtime-verification-pending |
-| `web:/app/tasks/[id]` | web | production | `/app/tasks/[id]` | `web:/app/tasks` | id | 1 | 107 | 30 | inventory-complete-runtime-verification-pending |
-| `web:/app/tasks/personal` | web | production | `/app/tasks/personal` | `web:/app/tasks` |  | 4 | 111 | 12 | inventory-complete-runtime-verification-pending |
-| `web:/app/tasks/relationship/[id]` | web | production | `/app/tasks/relationship/[id]` | `web:/app/tasks` | id | 0 | 10 | 2 | inventory-complete-runtime-verification-pending |
+| `web:/app/tasks` | web | production | `/app/tasks` | `web:/app` |  | 1 | 107 | 34 | inventory-complete-runtime-verification-pending |
+| `web:/app/tasks/[id]` | web | production | `/app/tasks/[id]` | `web:/app/tasks` | id | 1 | 107 | 31 | inventory-complete-runtime-verification-pending |
+| `web:/app/tasks/personal` | web | production | `/app/tasks/personal` | `web:/app/tasks` |  | 4 | 111 | 13 | inventory-complete-runtime-verification-pending |
+| `web:/app/tasks/relationship/[id]` | web | production | `/app/tasks/relationship/[id]` | `web:/app/tasks` | id | 0 | 10 | 3 | inventory-complete-runtime-verification-pending |
 | `web:/dev/agent-test-report` | web | development | `/dev/agent-test-report` | `web:/` |  | 0 | 5 | 3 | runtime-partially-verified-browser-base-state |
 | `web:/dev/capabilities` | web | development | `/dev/capabilities` | `web:/` |  | 0 | 1 | 53 | runtime-partially-verified-browser-base-state |
 | `web:/dev/capabilities/[slug]` | web | development | `/dev/capabilities/[slug]` | `web:/dev/capabilities` | slug | 0 | 335 | 53 | runtime-partially-verified-six-ids |

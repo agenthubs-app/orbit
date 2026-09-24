@@ -19,6 +19,12 @@ test("personal app route trees are private", () => {
     "/app/home/events",
     "/app/platform",
     "/app/profile",
+    // 2026-09-24：`/app/tasks/relationship/[id]` 整页没有 `auth()`，此前前缀表也不覆盖
+    // `/app/tasks`，未登录访客因此拿到空壳而不是登录跳转。这四条把前缀补齐后的覆盖钉住。
+    "/app/tasks",
+    "/app/tasks/personal",
+    "/app/tasks/task%3Aone",
+    "/app/tasks/relationship/connection%3A1",
   ]) {
     assert.equal(isOrbitPrivateAppPath(pathname), true, pathname);
   }

@@ -105,11 +105,15 @@ test("whole-Web transport verification reports every route and any mismatch", as
   // /app/events/**、/app/inbox/sources/[id]、/app/invitations/[token]、/app/events/center
   // 这些路由在 Web 边界上是 public-at-web-boundary（页面内再自行鉴权）。任务 6a 从白名单
   // 里删掉的四条是 /app/{chat,followups,schedule,today}，它们的页面本身也已删除。
-  // 「/app/tasks* 没有 Web 边界鉴权」是本次重生成暴露出的既有问题，记进遗留，不在本任务改。
+  // 2026-09-24：上面那条遗留已修。`/app/tasks` 进了 ORBIT_PRIVATE_APP_PREFIXES，四条
+  // /app/tasks* 因此从「公开可达」转为「未登录跳登录」，计数 34/19 → 30/23（routeSurfaces
+  // 不变）。这不是回归，是缺口被补上：`/app/tasks/relationship/[id]/page.tsx` 整页没有
+  // `auth()`（同目录另外三个页面都有），此前未登录访客拿到的是取不到数据的编辑器空壳。
+  // App 不受影响——它把该 href 翻译成自己的原生屏，不加载这个网页（见前缀表处的注释）。
   assert.deepEqual(report.summary, {
     routeSurfaces: 53,
-    okResponses: 34,
-    authRedirects: 19,
+    okResponses: 30,
+    authRedirects: 23,
     failures: 0,
   });
   assert.equal(report.results.every((result) => result.conclusion === "pass"), true);

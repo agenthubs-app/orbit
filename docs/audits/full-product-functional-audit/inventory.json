@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "generatedFromCommit": "fbfe5bbd3fc3ad82cebc6d614f6b0405397befc1",
-  "deterministicSourceTime": "2026-09-24T03:04:48+09:00",
+  "generatedFromCommit": "64b5c47a15658bd248231c3c443cf1766dbf1992",
+  "deterministicSourceTime": "2026-09-24T03:53:23+09:00",
   "sourceState": "head-plus-uncommitted-authoritative-inputs",
-  "uncommittedAuthoritativeInputChanges": 11,
+  "uncommittedAuthoritativeInputChanges": 8,
   "scope": "All Next.js pages including development routes and all Expo Router route files; API handlers are downstream dependencies, not user surfaces.",
   "evidenceSemantics": "Static inventory proves reachability and source evidence only. Runtime, persistence, identity, external effects, and user-visible outcomes remain failed-open only as explicit pending verification, never as pass.",
   "authoritativeInputs": {
@@ -16,7 +16,8 @@
       "/app/home",
       "/app/platform",
       "/app/profile",
-      "/app/settings"
+      "/app/settings",
+      "/app/tasks"
     ],
     "webPublicPathExceptions": [
       "/app/admin/access",
@@ -90627,6 +90628,7 @@
           "repos/orbits/app/(app)/app/account/auth-0918/auth-reset.tsx",
           "repos/orbits/app/(app)/app/account/auth-0918/use-account-auth.ts",
           "repos/orbits/app/(app)/app/account/auth-0918/use-password-reset.ts",
+          "repos/orbits/features/auth/app-auth-routing.ts",
           "repos/orbits/features/auth/service.ts",
           "repos/orbits/shared/contract/envelope.ts"
         ],
@@ -92153,6 +92155,7 @@
           "repos/orbits/app/(app)/app/account/auth-0918/auth-reset.tsx",
           "repos/orbits/app/(app)/app/account/auth-0918/use-account-auth.ts",
           "repos/orbits/app/(app)/app/account/auth-0918/use-password-reset.ts",
+          "repos/orbits/features/auth/app-auth-routing.ts",
           "repos/orbits/features/auth/service.ts",
           "repos/orbits/shared/contract/envelope.ts"
         ],
@@ -94046,7 +94049,8 @@
           "repos/orbits/app/(app)/app/account/auth-0918/auth-register.tsx",
           "repos/orbits/app/(app)/app/account/auth-0918/auth-reset.tsx",
           "repos/orbits/app/(app)/app/account/auth-0918/use-account-auth.ts",
-          "repos/orbits/app/(app)/app/account/auth-0918/use-password-reset.ts"
+          "repos/orbits/app/(app)/app/account/auth-0918/use-password-reset.ts",
+          "repos/orbits/features/auth/app-auth-routing.ts"
         ],
         "live": [],
         "mockOrFixture": [],
@@ -95461,6 +95465,7 @@
           "repos/orbits/app/(app)/app/account/auth-0918/auth-reset.tsx",
           "repos/orbits/app/(app)/app/account/auth-0918/use-account-auth.ts",
           "repos/orbits/app/(app)/app/account/auth-0918/use-password-reset.ts",
+          "repos/orbits/features/auth/app-auth-routing.ts",
           "repos/orbits/features/auth/service.ts",
           "repos/orbits/shared/contract/envelope.ts"
         ],
@@ -183123,6 +183128,7 @@
           "repos/orbits/app/(app)/app/settings/orbit-agent-feedback-settings.tsx",
           "repos/orbits/app/(app)/app/settings/orbit-agent-memory-settings.tsx",
           "repos/orbits/app/api/_shared/authenticated-actor.ts",
+          "repos/orbits/features/auth/app-auth-routing.ts",
           "repos/orbits/features/auth/service.ts",
           "repos/orbits/features/chat/contract.ts",
           "repos/orbits/features/notifications/contract.ts",
@@ -189089,6 +189095,7 @@
         "api": [
           "repos/orbits/app/(app)/app/profile/profile-onboarding-access.server.ts",
           "repos/orbits/app/api/_shared/authenticated-actor.ts",
+          "repos/orbits/features/auth/app-auth-routing.ts",
           "repos/orbits/features/auth/service.ts",
           "repos/orbits/features/profile/service.ts",
           "repos/orbits/shared/contract/envelope.ts",
@@ -189646,6 +189653,7 @@
           "repos/orbits/app/(app)/app/settings/orbit-agent-feedback-settings.tsx",
           "repos/orbits/app/(app)/app/settings/orbit-agent-memory-settings.tsx",
           "repos/orbits/app/api/_shared/authenticated-actor.ts",
+          "repos/orbits/features/auth/app-auth-routing.ts",
           "repos/orbits/features/auth/service.ts",
           "repos/orbits/features/chat/contract.ts",
           "repos/orbits/features/notifications/contract.ts",
@@ -195634,10 +195642,9 @@
       "trigger": "direct route, navigation, redirect, or deep link",
       "access": {
         "roles": [
-          "anonymous",
           "authenticated-user"
         ],
-        "policy": "public-at-web-boundary; page authorization requires verification"
+        "policy": "authenticated-at-web-boundary"
       },
       "prerequisites": "runtime data, session, role, and configuration require verification",
       "dataSources": {
@@ -199795,6 +199802,7 @@
         "repos/orbits/tests/audits/full-product-functional-audit.test.ts",
         "repos/orbits/tests/audits/product-surface-manifest.test.ts",
         "repos/orbits/tests/audits/web-route-transport.test.ts",
+        "repos/orbits/tests/capabilities/app-auth-routing.test.ts",
         "repos/orbits/tests/pages/app-agent-home-dashboard-entry.test.ts",
         "repos/orbits/tests/pages/app-agent-task-interaction.test.tsx",
         "repos/orbits/tests/pages/app-canonical-agent-personal-scope.test.ts",
@@ -199840,10 +199848,9 @@
       "trigger": "direct route, navigation, redirect, or deep link",
       "access": {
         "roles": [
-          "anonymous",
           "authenticated-user"
         ],
-        "policy": "public-at-web-boundary; page authorization requires verification"
+        "policy": "authenticated-at-web-boundary"
       },
       "prerequisites": "runtime data, session, role, and configuration require verification",
       "dataSources": {
@@ -203989,6 +203996,7 @@
         "repos/orbits/tests/api/personal-schedule-collection.test.ts",
         "repos/orbits/tests/api/personal-schedule-representation.test.ts",
         "repos/orbits/tests/api/personal-schedule-routes.test.ts",
+        "repos/orbits/tests/capabilities/app-auth-routing.test.ts",
         "repos/orbits/tests/pages/app-agent-home-dashboard-entry.test.ts",
         "repos/orbits/tests/pages/app-agent-task-interaction.test.tsx",
         "repos/orbits/tests/pages/app-canonical-agent-personal-scope.test.ts",
@@ -204032,10 +204040,9 @@
       "trigger": "direct route, navigation, redirect, or deep link",
       "access": {
         "roles": [
-          "anonymous",
           "authenticated-user"
         ],
-        "policy": "public-at-web-boundary; page authorization requires verification"
+        "policy": "authenticated-at-web-boundary"
       },
       "prerequisites": "runtime data, session, role, and configuration require verification",
       "dataSources": {
@@ -208420,6 +208427,7 @@
         "repos/orbits/tests/api/personal-schedule-collection.test.ts",
         "repos/orbits/tests/api/personal-schedule-representation.test.ts",
         "repos/orbits/tests/api/personal-schedule-routes.test.ts",
+        "repos/orbits/tests/capabilities/app-auth-routing.test.ts",
         "repos/orbits/tests/pages/app-agent-home-dashboard-entry.test.ts",
         "repos/orbits/tests/pages/app-canonical-agent-personal-scope.test.ts",
         "repos/orbits/tests/pages/app-home-facts-view-model.test.ts",
@@ -208447,10 +208455,9 @@
       "trigger": "direct route, navigation, redirect, or deep link",
       "access": {
         "roles": [
-          "anonymous",
           "authenticated-user"
         ],
-        "policy": "public-at-web-boundary; page authorization requires verification"
+        "policy": "authenticated-at-web-boundary"
       },
       "prerequisites": "runtime data, session, role, and configuration require verification",
       "dataSources": {
@@ -208901,6 +208908,7 @@
       ],
       "overlays": [],
       "testEvidence": [
+        "repos/orbits/tests/capabilities/app-auth-routing.test.ts",
         "repos/orbits/tests/pages/contact-relationship-initialization.test.tsx",
         "repos/orbits/tests/pages/web-tasks-relationship-lifecycle.test.tsx"
       ],
