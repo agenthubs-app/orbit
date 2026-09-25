@@ -1174,8 +1174,11 @@ export async function readCanonicalReminderProjectionSource(executor:Transaction
   if(!rows.rows.length)return null;
   const plan=planFromRow(rows.rows[0],source.actorId);
   if(!plan)throw Error('CANONICAL_PROJECTION_SOURCE_INVALID');
-  if(canonicalInboxProjectionRevision(plan)!==source.sourceRevision||plan.status!=='delivered')return null;
+  if(canonicalInboxProjectionRevision(plan)!==source.sourceRevision||plan.status==='cancelled')return null;
   if(plan.channels.length!==1||plan.channels[0]!=='in_app')throw Error('CANONICAL_PROJECTION_SOURCE_INVALID');
+  // Match the existing reminder inbox: a due scheduled/failed plan is visible
+  // even before successful delivery. Only a delivered claim needs its fence.
+  if(plan.status!=='delivered')return plan;
   const id=canonicalReminderDeliveryId(plan);
   const deliveries=await executor.query<WakeRow>(`with source as (
     select record_id,user_id,(select jsonb_object_agg(key,value)
@@ -1363,6 +1366,7 @@ async function consumeLeasedWake(
           return { outcome: "stale", reason: "plan_cancelled_during_dispatch" };
         }
         if (currentPlan.status === "failed") {
+          await runtime.inboxProjection?.enqueue(budgetedTx,{actorId,sourceKind:'canonical_reminder',sourceId:currentPlan.id,sourceRevision:canonicalInboxProjectionRevision(currentPlan)});
           await finishIntent({ state: "failed", sourceRevision: currentPlan.updatedAt, lastErrorCode: currentPlan.failureCode ?? "DISPATCH_FAILED", leaseToken: undefined, leaseExpiresAt: undefined, leaseWorkerId: undefined });
           return { outcome: "failed", reason: currentPlan.failureCode ?? "dispatch_failed" };
         }

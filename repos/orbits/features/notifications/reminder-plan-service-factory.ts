@@ -10,6 +10,7 @@ import type { ReminderTargetType } from './reminder-plan-contract';
 import { assertCanonicalReminderTargetOwned, type CanonicalReminderWakePublisher } from "./canonical-reminder-wake";
 import { createCanonicalReminderCommandService, type CanonicalReminderCommandRuntime } from "./canonical-reminder-command-transaction";
 import type { LiveDatabaseEnv } from "../../shared/storage/live-database-config";
+import { createInboxProjectionWorkRepository } from "./storage/inbox-projection-work";
 
 export async function assertReminderTargetOwned(input: { store: LiveRecordStoreLike; workspaceId: string; actorId: string; targetId: string; targetType: ReminderTargetType }) {
   return assertCanonicalReminderTargetOwned(input);
@@ -57,6 +58,9 @@ export function createConfiguredReminderPlanService(options: ConfiguredReminderP
       workspaceId: configured.workspaceId,
       now,
       publisher: options.publisher ?? options.runtime?.publisher,
+      inboxProjection: (options.env ?? process.env).ORBIT_CANONICAL_INBOX_PROJECTION === "1"
+        ? options.runtime?.inboxProjection ?? createInboxProjectionWorkRepository({client:transactional.client,workspaceId:configured.workspaceId,now})
+        : undefined,
     },
   });
   return { ...base, ...commands };

@@ -384,3 +384,13 @@ App首页真实消费5条卡片和全局匹配总数，完成后重读并补位�
 资料页/账号/公开投影/编辑/读取清单组合 **245/245，零跳过**，App 完整 typecheck 通过。编辑前 ProfileStatistics/ProfileStatistic 图影响 LOW；审计表为 UNKNOWN，已以实际引用补查，不能把无图边当成无影响。全量 App 回归另记。服务端至少需要第十八批的日期分页能力；未部署、未改云环境、未安装手机。通知全来源增量化、Today/日历其他消费者和真实生产流量验证仍开放。
 
 冻结该批App后的完整回归 **3,627项，3,626通过、1失败、0跳过**；唯一失败仍为同样5个Web页面缺少App等价路由。未新增路由占位或豁免，资料页计数专项及其他旧场景无新增失败。
+
+## 第二十批：纯站内提醒从成功投递后登记，补到计划变化/到期登记
+
+第十九批资料页已提交 `54f956ea`。本批先用本地PG复现：创建未来提醒时没有工作项；再复现投递失败后工作项仍指向scheduled旧revision。现由configured reminder命令在原事务登记纯in_app计划，未来创建/改期等到fireAt才可领取，取消立即替换generation。wake和旧dispatcher的失败状态也登记；消费者接受scheduled/failed，delivered继续校验投递fence。不会发Push，不将失败计划伪装成已投递。普通幂等重放不重置工作状态，工作持久化失败会回滚计划及wake。
+
+真实测试覆盖未来不领取、延后使旧lease失效、到期未投递也正确物化、取消不可见、failed来源、异账号拒绝、两个实际dispatcher失败路径和数据库触发器注入的原子回滚。第一轮5项合跑中，10万已完成工作项的测试夹具插入遇到5s语句超时（当时同时跑App全量/索引）；保留失败记录，随后串行完整重跑通过，未减少10万夹具或放宽数据库超时。首次Webtypecheck指出测试给cancel传了不支持的expectedUpdatedAt，已按真实契约修正，不修改取消接口。
+
+仍默认关闭`ORBIT_CANONICAL_INBOX_PROJECTION`，无DDL变更、无线上操作。混合Push计划、typed snooze、周期日程其他writer、历史回填抑制旧Push及独立窗口补齐仍未接齐，GET刷新保留。新发现typed snooze持inbox锁，与当前worker的work→inbox顺序相反，必须先统一锁序再接该writer，不能简单补一个入队回调。具体发布门见canonical-inbox-projection-rollout。GitNexus命令工厂为CRITICAL，实际涉及提醒API、任务取消及AI确认；已预先告知并覆盖既有事务/队列回归，最终all图检查无partial/truncated/error，不把单独worker入口LOW当作整体低风险。
+
+最终11个文件的本地提醒API/命令事务/wake/维护/投影回归 **70/70，零跳过**，Web完整typecheck通过。第一次59通过/1环境跳过并未算全绿；补上专用本地R2库后整组重新执行，保留10万历史工作项测试。该结果只证明此子集，不代表其他来源或生产切换已完成。

@@ -1,10 +1,12 @@
 # Canonical 提醒通知投影：本地实现与发布门
 
-状态：默认关闭的第一来源基础实现，**不是已经完成的 P3 切换**。未部署、未安装生产表、未回填、未发送真实 Push。现有 GET / 后台 business refresh 保留。
+状态：默认关闭的第一来源基础实现，已补纯站内计划命令的变化/到期登记，**不是已经完成的 P3 切换**。未部署、未安装生产表、未回填、未发送真实 Push。现有 GET / 后台 business refresh 保留。
 
 ## 本批实际覆盖
 
 canonical wake 成功投递站内提醒，以及旧 canonical maintenance dispatcher 成功保存 delivered plan 时，在原业务事务中登记 `orbit_inbox_projection_work`。主事实回滚，工作项也回滚；工作项写失败则整笔投递事务失败重试。通知文案校验在独立消费者中进行，不让 typed inbox 的较严格长度限制阻塞原本合法的提醒投递。
+
+后续增量：同一开关也控制 configured reminder 命令的 create / reschedule / cancel / cancelFutureForTarget 的纯站内计划登记。创建及改期将 available_at 设为 fireAt，未到期不领取；取消立即登记新 revision、使旧 lease 失效。正常幂等重放不重置已完成/失败工作。wake 和旧 dispatcher 的 failed 状态同样登记，否则原 scheduled 工作会因 revision 变化被跳过而漏掉通知。消费者允许 scheduled / failed；delivered 仍额外核对 delivery fence。登记与主事实共用事务，工作表故障会使启用此开关的业务命令回滚，因此表和迁移门必须先就绪。默认关闭时不产生这项依赖。
 
 工作键为 workspace / actor / canonical_reminder / plan ID，只合并最终状态，不用于消息、约谈事件历史。revision 为明确字段的 SHA-256 等价指纹，不是时间排序水位；同毫秒改期也能产生新 generation。来源记录的行 owner、entity account/owner、ID、来源/目标元数据，以及对应 delivery fence 均重验。展示及动作仍走已有权威来源权限，不缓存 available=true。
 
@@ -14,9 +16,9 @@ canonical wake 成功投递站内提醒，以及旧 canonical maintenance dispat
 
 ## 仍然阻止切换的具体缺项
 
-1. **语义尚不等价**：旧 `reminderPlanNotification` 会物化已到期且未取消的计划，包含 scheduled / failed；本批只接受 delivered + 对应 delivery fence。不能用本批覆盖率代替完整来源覆盖率，更不能直接删 GET reminder 分支。
+1. **语义尚不等价**：纯站内的 configured 命令、wake / dispatcher 已覆盖 scheduled / failed / delivered，取消仍由读取权威权限隐藏。混合 Push 计划、其他直接 repository writer 和历史计划还没有完整变化/到期登记，不能用这一子集代替完整来源覆盖率，更不能直接删 GET reminder 分支。
 2. **周期日程**：旧 refresh 同时负责生成周期实例/计划并验证当前实例。本批没有替代 series / exception / 到期窗口补齐。停止旧刷新前必须先接独立有限窗口补齐任务。
-3. **改期、取消、删除和其他 writer**：本批成功投递入口有可靠工作项，但不是完整来源变更日志；旧读时授权继续遮挡失效来源。需逐 writer 补同步失效或可靠工作项，并做 writer 覆盖测试后才能迁移精确计数/缓存。
+3. **其他 writer 与目标撤销**：configured reminder 命令的纯站内改期/取消已登记；typed inbox snooze、周期日程 reconcile、其他直接 repository 写入和目标删除/撤权仍需逐项接齐。旧读时授权继续遮挡失效来源，不能迁移成缓存授权或直接物化计数。typed snooze 当前持有 inbox actor 锁，不能直接插入一个反向获取 work 锁的回调：消费者目前为 work → inbox，接线前须统一锁顺序并做真实并发验证。
 4. **历史回填与 Push**：未提供可运行回填。未来先接齐 writer，再按 ID 分页、事务内锁定并重读来源、持久 checkpoint、小批推进；扫描结果不能直接覆盖并发新 revision。既有 notificationCutover.since 只排除切换前历史，不能保证切换之后的历史回填不再次进入 Push 候选。需要单独的历史投递抑制事实/对账，不能靠把通知全部标已读或改变 cutover 时间来掩盖。
 5. **调度与运维**：独立 queue wake 仅登记工作；本批消费者在 canonical maintenance pass 的尾部。heartbeat 关闭或 pass 时间用完会延后消费；尚需负载下公平性、最大通知延迟、failed/积压告警验收。不能声称已经实现准时通知 SLA。
 
@@ -43,6 +45,7 @@ failed 是可调查记录，不是成功。修复来源并产生不同指纹可�
 
 ```sh
 env -i PATH="$PATH" ORBIT_LIFECYCLE_TEST_DATABASE_URL=postgresql://li@localhost/orbit_cutover_test_20260917 node --import tsx --test tests/services/inbox-projection-work-postgres.test.ts tests/services/canonical-inbox-projection-postgres.test.ts tests/services/canonical-inbox-projection-cost-postgres.test.ts tests/services/typed-message-materialize-cost-postgres.test.ts tests/services/canonical-reminder-wake-postgres.test.ts
+env -i PATH="$PATH" ORBIT_LIFECYCLE_TEST_DATABASE_URL=postgresql://li@localhost/orbit_cutover_test_20260917 node --import tsx --test --test-concurrency=1 tests/services/canonical-inbox-plan-changes-postgres.test.ts tests/services/inbox-projection-work-postgres.test.ts
 env -i PATH="$PATH" ORBIT_LIFECYCLE_TEST_DATABASE_URL=postgresql://li@localhost/orbit_neon_audit_20260925 node --import tsx scripts/diagnostics/check-inbox-source-batches.ts
 ```
 

@@ -147,7 +147,7 @@ export async function dispatchActor(runtime: CanonicalReminderMaintenanceRuntime
       now: () => now,
       repository: { ...repository, listDuePlans: async () => plans, savePlan:async plan=>{
         const saved=await repository.savePlan(plan);
-        if(saved.status==='delivered')await runtime.inboxProjection?.enqueue(tx,{actorId,sourceKind:'canonical_reminder',sourceId:saved.id,sourceRevision:canonicalInboxProjectionRevision(saved)});
+        await runtime.inboxProjection?.enqueue(tx,{actorId,sourceKind:'canonical_reminder',sourceId:saved.id,sourceRevision:canonicalInboxProjectionRevision(saved)});
         return saved;
       } },
     });

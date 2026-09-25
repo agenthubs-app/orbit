@@ -7,8 +7,9 @@ import {createInboxRecordUpserter,InboxRecordError} from './inbox-record-service
 import {createNotificationInteractionService} from './interaction-service';
 import {reminderPlanNotification} from './inbox-business-projections';
 
-/** One bounded database-only pass. Delivery is already authoritative; invalid
- * UI content becomes a visible failed work item, never a failed reminder send. */
+/** One bounded database-only pass over changed/due plans. A delivered plan
+ * additionally needs its delivery fence. Invalid UI content becomes a failed
+ * work item, never a failed reminder send. */
 export async function runInboxProjectionPass(input:{client:TransactionalPostgresClient;workspaceId:string;enabled:boolean;now?:()=>string;limit?:number;deadline?:number;clock?:()=>Date}) {
   const result={projectionClaimed:0,projectionCompleted:0,projectionSkipped:0,projectionFailed:0,projectionDeferred:0};
   if(!input.enabled)return result;

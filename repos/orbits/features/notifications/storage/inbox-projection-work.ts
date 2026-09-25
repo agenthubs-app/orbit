@@ -25,6 +25,9 @@ create index if not exists orbit_inbox_projection_leased_idx
 
 export interface InboxProjectionSource {actorId:string;sourceKind:'canonical_reminder';sourceId:string;sourceRevision:string}
 export interface InboxProjectionLease extends InboxProjectionSource {generation:string;leaseToken:string;attempts:number}
+export interface InboxProjectionWriter {
+  enqueue(executor:TransactionalSqlExecutor,source:InboxProjectionSource,options?:{availableAt?:string}):Promise<void>;
+}
 const MAX_ATTEMPTS=8;
 function required(value:string){if(typeof value!=='string'||!value.trim()||value!==value.trim()||value.length>2048||value.includes('\0'))throw Error('INBOX_PROJECTION_INPUT_INVALID');return value;}
 function timestamp(value:string){if(!Number.isFinite(Date.parse(value)))throw Error('INBOX_PROJECTION_INPUT_INVALID');return new Date(value).toISOString();}
@@ -42,15 +45,16 @@ export function createInboxProjectionWorkRepository(input:{client:TransactionalP
   return {
     /** Must share the authority's transaction and source-row lock. Stale
      * backfill must lock/re-read the source before enqueue, never replay a scan. */
-    async enqueue(executor:TransactionalSqlExecutor,source:InboxProjectionSource):Promise<void>{
+    async enqueue(executor:TransactionalSqlExecutor,source:InboxProjectionSource,options:{availableAt?:string}={}):Promise<void>{
       if(source.sourceKind!=='canonical_reminder')throw Error('INBOX_PROJECTION_INPUT_INVALID');
+      const at=now(),availableAt=options.availableAt===undefined?at:timestamp(options.availableAt);
       await executor.query(`insert into orbit_inbox_projection_work
         (workspace_id,actor_id,source_kind,source_id,source_revision,generation,state,available_at,created_at,updated_at)
-        values($1,$2,$3,$4,$5,1,'pending',$6,$6,$6)
+        values($1,$2,$3,$4,$5,1,'pending',$7,$6,$6)
         on conflict(workspace_id,actor_id,source_kind,source_id) do update set
           source_revision=excluded.source_revision,generation=orbit_inbox_projection_work.generation+1,
           state='pending',available_at=excluded.available_at,attempts=0,lease_token=null,lease_until=null,error_code=null,updated_at=excluded.updated_at
-        where orbit_inbox_projection_work.source_revision<>excluded.source_revision`,[...scope(source),required(source.sourceRevision),now()]);
+        where orbit_inbox_projection_work.source_revision<>excluded.source_revision`,[...scope(source),required(source.sourceRevision),at,availableAt]);
     },
     async claim(options:{limit?:number;leaseMs?:number}={}):Promise<InboxProjectionLease[]>{
       const limit=options.limit??25,leaseMs=options.leaseMs??60000;

@@ -24,12 +24,15 @@ import {
 } from "./reminder-plan-service";
 import { createReminderPlanRepository, type ReminderPlanRepository } from "./reminder-plan-repository";
 import type { ReminderPlanDTO } from "./reminder-plan-contract";
+import type { InboxProjectionWriter } from "./storage/inbox-projection-work";
+import { canonicalInboxProjectionRevision } from "./canonical-inbox-projection-revision";
 
 export interface CanonicalReminderCommandRuntime {
   client: TransactionalPostgresClient;
   workspaceId: string;
   now?: () => string;
   publisher?: CanonicalReminderWakePublisher;
+  inboxProjection?: InboxProjectionWriter;
 }
 
 export type CanonicalReminderCommandService = Pick<
@@ -245,6 +248,10 @@ export function createCanonicalReminderCommandService({
           if (!validPlan(plan, plan.ownerUserId)) throw new Error("Canonical reminder plan scope is invalid");
           const saved = await baseRepository.savePlan(plan);
           await saveIntentForPlan(saved, true);
+          if (isPureInApp(saved)) await runtime.inboxProjection?.enqueue(tx, {
+            actorId: saved.ownerUserId, sourceKind: "canonical_reminder", sourceId: saved.id,
+            sourceRevision: canonicalInboxProjectionRevision(saved),
+          }, { availableAt: saved.status === "cancelled" ? commandNow : saved.fireAt });
           return saved;
         },
       };
