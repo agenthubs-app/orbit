@@ -3,8 +3,8 @@ import test from "node:test";
 
 import type { ManualProfileUpdateInput } from "../../features/profile/contract";
 import { createLiveProfileService } from "../../features/profile/live-service";
+import { projectPublicProfile } from "../../features/profile/public-projection";
 import { createStorageProfileProvider } from "../../features/profile/storage/profile-live-record-provider";
-import * as profileContract from "../../shared/contract/profile";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
 
 const instant = "2026-09-15T06:00:00.000Z";
@@ -88,9 +88,7 @@ test("profile rejects bio over 80 visible characters and tag groups over five be
   }
 });
 
-test("the shared public projection exposes one allowlist and excludes private profile fields", () => {
-  const projectPublicProfile = Reflect.get(profileContract, "projectPublicProfile");
-  assert.equal(typeof projectPublicProfile, "function");
+test("the profile feature public projection exposes one allowlist and excludes private profile fields", () => {
   const sourceProfile = {
     id: "profile:actor-a",
     birthDate: "2000-02-29",

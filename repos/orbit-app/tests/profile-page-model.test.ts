@@ -33,7 +33,7 @@ test("legacy seeking fields become stable candidates without changing the saved 
   assert.deepEqual(session.draft.seeking, ["技术交流"]);
 });
 
-test("preview uses the unsaved draft through the shared public projector", () => {
+test("preview projects the unsaved draft and excludes private fields", () => {
   const scope = { actorId: "actor:one", apiOrigin: "https://orbit.example" };
   openProfileEditSession(scope, profile);
   const session = updateProfileEditDraft(scope, {

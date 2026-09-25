@@ -43,8 +43,9 @@ import {
 } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import type { IndustrySelectionContract } from "../../api/contract/industries";
-import { projectPublicProfile, type ManualProfileContract } from "../../api/contract/profile";
+import type { ManualProfileContract } from "../../api/contract/profile";
 import { INDUSTRY_CATALOG, industryLabel, listSecondaryIndustries, secondaryIndustryLabel, validateIndustrySelection } from "../../api/domain/industries";
+import { projectPublicProfile } from "./profile-page-model";
 import {
   buildProfileDocumentExtractionRequest,
   buildProfileUpdateRequest,

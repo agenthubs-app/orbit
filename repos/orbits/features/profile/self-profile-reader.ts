@@ -1,7 +1,7 @@
 import type { IndustryIdCode, SecondaryIndustryIdCode } from "../../shared/contract/industries";
 import type { OrbitLanguage } from "../../shared/contract/language";
 import { INDUSTRY_TAXONOMY_VERSION, industryLabel, secondaryIndustryLabel, validateIndustrySelection } from "../../shared/domain/industries";
-import { projectPublicProfile } from "../../shared/contract/profile";
+import { projectPublicProfile } from "./public-projection";
 import { createProfileService } from "./service-factory";
 
 export type SelfProfileReadContext = { actorId: string; mode: "mock" | "hybrid" | "live" };

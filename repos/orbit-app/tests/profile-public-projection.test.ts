@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { projectPublicProfile, type ManualProfileContract } from "../src/api/contract/profile";
+import type { ManualProfileContract } from "../src/api/contract/profile";
+import { projectPublicProfile } from "../src/screens/profile/profile-page-model";
 import { profileDetailSchema, profileSuggestionDismissReceiptSchema, profileSuggestionsSchema, type ProfileSuggestion } from "../src/api/profile-detail-contract";
 import { profilePayload, profileSuggestionsPayload } from "./helpers/profile-detail-fixtures";
 
@@ -31,7 +32,7 @@ const privateProfile: ManualProfileContract = {
   updatedAt: "2026-09-15T00:00:00.000Z",
 };
 
-test("the App consumes the same explicit public projection and excludes private markers", () => {
+test("the App-owned public projection excludes private profile markers", () => {
   const projected = projectPublicProfile(privateProfile);
   assert.deepEqual(Object.keys(projected).sort(), [
     "bio", "displayName", "headline", "homeMarket", "id", "offering", "organization",

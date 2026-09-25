@@ -84,8 +84,8 @@ export interface ManualProfileContract extends IndustrySelectionContract {
   updatedAt: string;
 }
 
-// The profile overview, self-preview and AI self-profile reader share this
-// explicit public boundary. Private profile fields are deliberately absent.
+// Public profile responses use this explicit shape. Private profile fields are
+// deliberately absent; each client owns its runtime projection helper.
 export interface PublicProfileProjectionContract extends IndustrySelectionContract {
   id: string;
   displayName: string;
@@ -103,37 +103,6 @@ export interface PublicProfileProjectionContract extends IndustrySelectionContra
   topics?: readonly string[];
   spokenLanguages?: readonly string[];
   updatedAt: string;
-}
-
-export function projectPublicProfile(
-  profile: ManualProfileContract,
-): PublicProfileProjectionContract {
-  return {
-    id: profile.id,
-    displayName: profile.displayName,
-    headline: profile.headline,
-    organization: profile.organization,
-    role: profile.role,
-    homeMarket: profile.homeMarket,
-    relationshipGoal: profile.relationshipGoal,
-    targetRelationshipTypes: [...profile.targetRelationshipTypes],
-    preferredIntroChannels: [...profile.preferredIntroChannels],
-    ...(profile.primaryIndustryId !== undefined
-      ? { primaryIndustryId: profile.primaryIndustryId }
-      : {}),
-    ...(profile.secondaryIndustryId !== undefined
-      ? { secondaryIndustryId: profile.secondaryIndustryId }
-      : {}),
-    ...(profile.industry !== undefined ? { industry: profile.industry } : {}),
-    ...(profile.bio !== undefined ? { bio: profile.bio } : {}),
-    ...(profile.offering !== undefined ? { offering: [...profile.offering] } : {}),
-    ...(profile.seeking !== undefined ? { seeking: [...profile.seeking] } : {}),
-    ...(profile.topics !== undefined ? { topics: [...profile.topics] } : {}),
-    ...(profile.spokenLanguages !== undefined
-      ? { spokenLanguages: [...profile.spokenLanguages] }
-      : {}),
-    updatedAt: profile.updatedAt,
-  };
 }
 
 // 驱动客户端的「还缺什么」提示。

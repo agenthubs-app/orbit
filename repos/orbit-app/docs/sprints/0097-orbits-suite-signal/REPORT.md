@@ -68,3 +68,9 @@ apiKey: explicitApiKey ?? readString(process.env.DEEPSEEK_API_KEY),
 ## 交接
 
 值得做的下一步不是继续逐条修，而是**先决定 D 群**：12 条里有 12 条都在同一个"运行时证据"机制上。如果那套证据确实需要人工执行，把它从默认集合里分出去，剩下的 29 条才有可能收敛到"一次全量就能判断回归"。
+
+## 2026-09-25 后续：资料公开投影的运行时边界
+
+此前 F′ 的契约目录检查失败已按新的实现范围修复：Web 实现在 `features/profile/public-projection.ts`，App 实现在 `src/screens/profile/profile-page-model.ts`；`shared/contract/profile.ts` 及官方同步到 App 的副本现在只保留类型声明。两端 projector 保留相同的显式公开字段白名单，生日、私密联系方式、跟进偏好和来源元数据仍被排除。
+
+本地定向结果：orbits 25/25、App 21/21，两端 typecheck 通过。没有重跑 orbits 全量，因此本报告的 41 项历史统计未更新，0097 总体状态仍为 `partial`；本记录不表示生产发布或整项 Sprint 验收完成。
