@@ -12,13 +12,14 @@ import { createTaskRepository } from '../tasks/repository';
 import { createTaskSuggestionService } from '../tasks/suggestion-service';
 import { createTaskSuggestionRepository } from '../tasks/suggestion-repository';
 import { createReminderPlanRepository } from './reminder-plan-repository';
-import { createReminderPlanService } from './reminder-plan-service';
+import { createCanonicalReminderCommandService } from './canonical-reminder-command-transaction';
 import type { AppointmentAggregate } from '../appointments/contract';
 import { createPersonalScheduleService } from '../personal-schedule/service';
 import { AppError } from '../../shared/errors/app-error';
 import { isCurrentPersonalScheduleReminderPlan } from '../personal-schedule/reminder-plans';
 import type { ReminderPlanDTO } from './reminder-plan-contract';
 import {readSimpleInboxSourceStates} from './storage/inbox-source-state-batch';
+import {createInboxProjectionWorkRepository,type InboxProjectionWriter} from './storage/inbox-projection-work';
 
 /**
  * Typed notifications (reminder / suggestion / update) are the inbox. The rollout
@@ -34,7 +35,7 @@ export function isTypedInboxEnabled(actorId:string,env:NodeJS.ProcessEnv=process
   const disabled=(env.ORBIT_TYPED_INBOX_DISABLED_ACTORS??'').split(',').map(s=>s.trim()).filter(Boolean);
   return actorId.trim().length>0 && !disabled.includes(actorId);
 }
-export function createInboxRuntime(input:{client:TransactionalPostgresClient;workspaceId:string;now?:()=>string;forDispatch?:boolean}) {
+export function createInboxRuntime(input:{client:TransactionalPostgresClient;workspaceId:string;now?:()=>string;forDispatch?:boolean;inboxProjection?:InboxProjectionWriter}) {
   const now=input.now??(()=>new Date().toISOString());
   const storeFor=(tx?:InboxRecordTransaction)=>createPostgresLiveRecordStore({client:tx?.executor??input.client});
   const collections:Partial<Record<InboxNotificationSource['sourceKind'],string>>={task:'tasks',schedule:'personal_schedule_items',note:'notes',contact:'contacts',goal:'profiles',connection:'integrations',reminder_plan:'reminderPlans',batch:'businessCardBatches'};
@@ -112,8 +113,12 @@ export function createInboxRuntime(input:{client:TransactionalPostgresClient;wor
     },
     async snooze(n,scheduledFor,key,tx) {
       const source=n.sources.find(s=>s.sourceKind==='reminder_plan');if(!source)throw new InboxRecordError('CONFLICT','This reminder has no editable plan');
-      const reminders=createReminderPlanService({now,repository:createReminderPlanRepository({store:storeFor(tx),workspaceId:input.workspaceId})});
-      const plan=await reminders.reschedule({actorId:n.actorId,reminderId:source.sourceId,fireAt:scheduledFor,timeZone:(await reminders.list({actorId:n.actorId,includeCancelled:true})).find(p=>p.id===source.sourceId)?.timeZone??'Asia/Tokyo',expectedUpdatedAt:source.sourceRevision,idempotencyKey:key});
+      const repository=createReminderPlanRepository({store:storeFor(tx),workspaceId:input.workspaceId});
+      const current=await repository.getPlan(n.actorId,source.sourceId);
+      if(!current||current.id!==source.sourceId||current.accountId!==n.actorId||current.ownerUserId!==n.actorId)throw new InboxRecordError('SOURCE_UNAVAILABLE','Reminder plan unavailable');
+      if(!tx.executor)throw new Error('A transaction is required');
+      const reminders=createCanonicalReminderCommandService({runtime:{client:input.client,workspaceId:input.workspaceId,now,executor:tx.executor,inboxProjection:input.inboxProjection}});
+      const plan=await reminders.reschedule({actorId:n.actorId,reminderId:source.sourceId,fireAt:scheduledFor,timeZone:current.timeZone,expectedUpdatedAt:source.sourceRevision,idempotencyKey:key});
       // The service persists this same notification object atomically.
       n.sources=n.sources.map(s=>s===source?{...s,sourceRevision:plan.updatedAt}:s);
     },
@@ -121,5 +126,7 @@ export function createInboxRuntime(input:{client:TransactionalPostgresClient;wor
   return {service,sourceAccess,sourceAccessBatch};
 }
 export function createConfiguredInboxRuntime() {
-  const runtime=createConfiguredTransactionalPostgresRuntime();return runtime?{...createInboxRuntime(runtime),...runtime}:null;
+  const runtime=createConfiguredTransactionalPostgresRuntime();if(!runtime)return null;
+  const inboxProjection=process.env.ORBIT_CANONICAL_INBOX_PROJECTION==='1'?createInboxProjectionWorkRepository(runtime):undefined;
+  return {...createInboxRuntime({...runtime,inboxProjection}),...runtime};
 }

@@ -1,5 +1,6 @@
 import {randomUUID} from 'node:crypto';
 import type {TransactionalPostgresClient,TransactionalSqlExecutor} from '../../../shared/storage/transactional-postgres';
+import {INBOX_RECORD_COLLECTION} from './inbox-record-repository';
 
 // Additive schema, deliberately not installed from a request or worker. The
 // deployment/backfill gate must be completed before enabling its producer.
@@ -78,12 +79,15 @@ export function createInboxProjectionWorkRepository(input:{client:TransactionalP
         return result.rows.filter(row=>row.state==='leased').map(row=>({actorId:row.actor_id,sourceKind:row.source_kind,sourceId:row.source_id,sourceRevision:row.source_revision,generation:row.generation,leaseToken:row.lease_token!,attempts:row.attempts}));
       });
     },
-    /** Database-only operation: source reads must not acquire authority row
-     * locks after this work-row lock. Revalidate current source in the snapshot;
-     * a concurrent producer queues a new generation when it commits. No sends. */
+    /** Database-only operation. Lock actor inbox before work, matching inbox
+     * snooze (inbox -> source -> work). Source reads here must remain unlocked.
+     * Retry serialization conflicts from a fresh snapshot; no external sends. */
     async complete(lease:InboxProjectionLease,operation:(executor:TransactionalSqlExecutor)=>Promise<void>):Promise<boolean>{
-      return input.client.transaction(async tx=>{
+      return claimTransaction(async tx=>{
         const values=fence(lease);
+        await tx.query("set local statement_timeout = '5s'");
+        await tx.query("set local lock_timeout = '1s'");
+        await tx.query('select pg_advisory_xact_lock(hashtextextended($1, 0))',[JSON.stringify([workspaceId,INBOX_RECORD_COLLECTION,lease.actorId])]);
         const current=await tx.query(`select generation from orbit_inbox_projection_work where
           workspace_id=$1 and actor_id=$2 and source_kind=$3 and source_id=$4 and source_revision=$5
           and generation::text=$6 and lease_token=$7 and state='leased' and lease_until>$8::timestamptz for update`,[...values,now()]);

@@ -33,6 +33,9 @@ export interface CanonicalReminderCommandRuntime {
   now?: () => string;
   publisher?: CanonicalReminderWakePublisher;
   inboxProjection?: InboxProjectionWriter;
+  /** Enlist in a caller-owned transaction. The caller commits/retries it;
+   * durable wakes are repaired by the scheduler, never published before commit. */
+  executor?: TransactionalSqlExecutor;
 }
 
 export type CanonicalReminderCommandService = Pick<
@@ -189,7 +192,7 @@ export function createCanonicalReminderCommandService({
     }) => Promise<T>;
   }): Promise<T> {
     const commandNow = nowFor(runtime);
-    const committed = await transactionWithRetry(runtime.client, async (tx) => {
+    const operation = async (tx: TransactionalSqlExecutor) => {
       await boundTransaction(tx);
       await tx.query("select pg_advisory_xact_lock(hashtextextended($1, 0))", [canonicalReminderActorLockKey(runtime.workspaceId, input.actorId)]);
       const store = createPostgresLiveRecordStore({ client: tx });
@@ -280,8 +283,11 @@ export function createCanonicalReminderCommandService({
       // rewritten by the command replay path.
       if (validPlan(result, input.actorId)) await saveIntentForPlan(result, false, true);
       return { result, candidates };
-    });
-    await publishAfterCommit(committed.candidates, commandNow);
+    };
+    const committed = runtime.executor
+      ? await operation(runtime.executor)
+      : await transactionWithRetry(runtime.client, operation);
+    if (!runtime.executor) await publishAfterCommit(committed.candidates, commandNow);
     return committed.result;
   }
 

@@ -12,13 +12,15 @@ canonical wake 成功投递站内提醒，以及旧 canonical maintenance dispat
 
 每次默认领取 25 项，硬上限 50，`SKIP LOCKED`；lease token / generation / revision / scope 共同 fencing。投影和完成在同一事务；lease 到期或写失败不能留下完成标记。失败退避重试，8 次后进入 failed；非法来源可直接 failed。同 revision 不复活死信。completed 历史不参与 idle 领取，没有 `MAX(serial)` 或裸时间戳消费水位。
 
-锁顺序：生产者在既有业务锁内 enqueue；消费者锁工作项后仅普通 SELECT 读取来源，不反向获取业务行锁。外部发送不得放入 complete 回调。消费者与生产者并发发生 serializable conflict 时重试/重领，不能忽略冲突并提交旧结果。
+锁顺序：普通生产者在既有业务锁内 enqueue；typed snooze 为 inbox actor → canonical reminder actor / plan / wake → work；消费者必须先锁 inbox actor，再锁 work，随后仅普通 SELECT 读取来源，不反向获取业务行锁。claim 事务不获取 inbox 锁且在消费前提交。complete 在获取锁之前设置5s语句/1s锁超时，并在40001/40P01时最多重试两次完整事务；外部发送不得放入回调，不能忽略冲突并提交旧结果。
+
+typed inbox 的纯站内 snooze 已接入同一变化/到期登记。它用精确 getPlan 获取时区，不枚举全部提醒；复用 canonical reminder 的改期命令，在通知已有事务内同时保存 plan、wake intent、projection work 和通知动作回执。该模式不自行开启/重试嵌套事务、不在提交前发队列消息，由外层事务重试以及持久wake调度器负责恢复。即使投影开关关闭，snooze也会正确更新canonical wake，不再保留旧fireAt；只有projection work的写入仍受开关控制。
 
 ## 仍然阻止切换的具体缺项
 
 1. **语义尚不等价**：纯站内的 configured 命令、wake / dispatcher 已覆盖 scheduled / failed / delivered，取消仍由读取权威权限隐藏。混合 Push 计划、其他直接 repository writer 和历史计划还没有完整变化/到期登记，不能用这一子集代替完整来源覆盖率，更不能直接删 GET reminder 分支。
 2. **周期日程**：旧 refresh 同时负责生成周期实例/计划并验证当前实例。本批没有替代 series / exception / 到期窗口补齐。停止旧刷新前必须先接独立有限窗口补齐任务。
-3. **其他 writer 与目标撤销**：configured reminder 命令的纯站内改期/取消已登记；typed inbox snooze、周期日程 reconcile、其他直接 repository 写入和目标删除/撤权仍需逐项接齐。旧读时授权继续遮挡失效来源，不能迁移成缓存授权或直接物化计数。typed snooze 当前持有 inbox actor 锁，不能直接插入一个反向获取 work 锁的回调：消费者目前为 work → inbox，接线前须统一锁顺序并做真实并发验证。
+3. **其他 writer 与目标撤销**：configured reminder 命令及typed inbox snooze的纯站内改期/取消已登记；周期日程 reconcile、其他直接 repository 写入和目标删除/撤权仍需逐项接齐。旧读时授权继续遮挡失效来源，不能迁移成缓存授权或直接物化计数。新的共同锁序已由两个真实数据库事务并发验证，其他writer接线仍须遵守它。
 4. **历史回填与 Push**：未提供可运行回填。未来先接齐 writer，再按 ID 分页、事务内锁定并重读来源、持久 checkpoint、小批推进；扫描结果不能直接覆盖并发新 revision。既有 notificationCutover.since 只排除切换前历史，不能保证切换之后的历史回填不再次进入 Push 候选。需要单独的历史投递抑制事实/对账，不能靠把通知全部标已读或改变 cutover 时间来掩盖。
 5. **调度与运维**：独立 queue wake 仅登记工作；本批消费者在 canonical maintenance pass 的尾部。heartbeat 关闭或 pass 时间用完会延后消费；尚需负载下公平性、最大通知延迟、failed/积压告警验收。不能声称已经实现准时通知 SLA。
 
@@ -46,6 +48,7 @@ failed 是可调查记录，不是成功。修复来源并产生不同指纹可�
 ```sh
 env -i PATH="$PATH" ORBIT_LIFECYCLE_TEST_DATABASE_URL=postgresql://li@localhost/orbit_cutover_test_20260917 node --import tsx --test tests/services/inbox-projection-work-postgres.test.ts tests/services/canonical-inbox-projection-postgres.test.ts tests/services/canonical-inbox-projection-cost-postgres.test.ts tests/services/typed-message-materialize-cost-postgres.test.ts tests/services/canonical-reminder-wake-postgres.test.ts
 env -i PATH="$PATH" ORBIT_LIFECYCLE_TEST_DATABASE_URL=postgresql://li@localhost/orbit_cutover_test_20260917 node --import tsx --test --test-concurrency=1 tests/services/canonical-inbox-plan-changes-postgres.test.ts tests/services/inbox-projection-work-postgres.test.ts
+env -i PATH="$PATH" ORBIT_LIFECYCLE_TEST_DATABASE_URL=postgresql://li@localhost/orbit_cutover_test_20260917 node --import tsx --test --test-concurrency=1 tests/services/inbox-snooze-projection-postgres.test.ts tests/services/inbox-record-postgres.test.ts
 env -i PATH="$PATH" ORBIT_LIFECYCLE_TEST_DATABASE_URL=postgresql://li@localhost/orbit_neon_audit_20260925 node --import tsx scripts/diagnostics/check-inbox-source-batches.ts
 ```
 

@@ -394,3 +394,17 @@ App首页真实消费5条卡片和全局匹配总数，完成后重读并补位�
 仍默认关闭`ORBIT_CANONICAL_INBOX_PROJECTION`，无DDL变更、无线上操作。混合Push计划、typed snooze、周期日程其他writer、历史回填抑制旧Push及独立窗口补齐仍未接齐，GET刷新保留。新发现typed snooze持inbox锁，与当前worker的work→inbox顺序相反，必须先统一锁序再接该writer，不能简单补一个入队回调。具体发布门见canonical-inbox-projection-rollout。GitNexus命令工厂为CRITICAL，实际涉及提醒API、任务取消及AI确认；已预先告知并覆盖既有事务/队列回归，最终all图检查无partial/truncated/error，不把单独worker入口LOW当作整体低风险。
 
 最终11个文件的本地提醒API/命令事务/wake/维护/投影回归 **70/70，零跳过**，Web完整typecheck通过。第一次59通过/1环境跳过并未算全绿；补上专用本地R2库后整组重新执行，保留10万历史工作项测试。该结果只证明此子集，不代表其他来源或生产切换已完成。
+
+## 第二十一批：稍后提醒的精确读取、统一事务和到期链
+
+第二十批已提交 `1986f747`。继续核实typed snooze：为了取一个plan的时区，原来会读取全部plan；它直接调用基础repository改时间，没有更新canonical wake。先后以测试复现全量查询、简单入队后的锁超时、snooze后wake仍保留旧fireAt，再分别修正，未用频率降低/重试次数增加掩盖。
+
+如今按ID读plan并复核归属，用canonical改期命令加入已有通知事务，一次保存plan、wake、受开关控制的projection work及通知回执。加入外层事务时不另开事务、不自行重试已经失败的事务、不提前发布队列hint；40001交给整个外层事务重试。正常独立命令原事务/提交后发布逻辑不变。worker改为inbox actor→work锁序，来源读取仍不加业务锁，避免与snooze的inbox→业务→work顺序相反；获取锁前就设置超时，冲突从新快照重试。
+
+新真实PG并发测试先提交claim、再让用户动作持有inbox锁，让worker确定等待后继续动作；验证动作成功、旧worker被generation挡住且无失败重试、未来不到期不领取、重复动作不增加generation、到期后实际canonical wake投递成功且没有重复通知。工作项故障回滚计划/通知/回执，可用同一动作键重试；外层回滚/40001不触发嵌套事务或外部发布。早期夹具用同一事务模拟嵌套重试遇到25P02，已改为两个真实事务和明确提交屏障，保留最初锁超时反例。
+
+旧inbox-record-postgres集成测试原来读取默认数据库配置，补跑时本地public表不存在。现改为显式ORBIT_LIFECYCLE_TEST_DATABASE_URL、拒绝非localhost及带URL参数的连接、随机隔离schema自建表并清理自己的schema；不依赖开发库既有表，也不再可能跟着默认配置误连Neon。两项真实事务测试通过；测试适配器泛型类型问题已修正，完整回归与typecheck结果另记。
+
+GitNexus共用命令和工作仓库为CRITICAL，inbox工厂HIGH，configured工厂UNKNOWN已用实际API调用核对。没有修改HTTP契约/App代码、手机、线上开关或云数据库。纯站内snooze的wake一致性默认生效；projection仍默认关闭。混合Push计划、周期日程writer/窗口补齐、历史回填/Push抑制和其他通知来源仍是明确未完成项，不能删除GET刷新。
+
+最终本地后端API/权威事务/队列/来源读取/并发动作 **89/89，零跳过**，App typed通知/通知状态/收件箱交互/提醒选项 **49/49，零跳过**，Web完整typecheck通过。App代码未变，未重复声称新的全量或实机验收。
