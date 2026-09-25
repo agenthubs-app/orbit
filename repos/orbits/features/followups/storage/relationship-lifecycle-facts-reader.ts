@@ -12,6 +12,8 @@ import {
 import type { LiveDatabaseEnv } from "../../../shared/storage/live-database-config";
 import type { LiveRecordSqlClient } from "../../../shared/storage/postgres-live-record-store";
 
+// A matching account alias is consistency metadata, never an independent grant.
+// Followup tasks/connections require the persisted row owner to match the actor.
 export const RELATIONSHIP_LIFECYCLE_FACTS_SQL = `
 with actor_tasks as materialized (
   select r.*
@@ -19,13 +21,8 @@ with actor_tasks as materialized (
   where r.workspace_id = $1
     and r.collection_name = 'tasks'
     and r.lifecycle_state <> 'deleted'
-    and (
-      coalesce(r.user_id = $2, false)
-      or coalesce((
-        jsonb_typeof(r.payload -> 'accountId') = 'string'
-        and r.payload -> 'accountId' = to_jsonb($2::text)
-      ), false)
-    )
+    and r.user_id = $2
+    and (r.payload -> 'accountId' is null or r.payload -> 'accountId' = 'null'::jsonb or r.payload -> 'accountId' = to_jsonb($2::text))
 ),
 actor_connections as materialized (
   select r.*
@@ -33,13 +30,8 @@ actor_connections as materialized (
   where r.workspace_id = $1
     and r.collection_name = 'connections'
     and r.lifecycle_state <> 'deleted'
-    and (
-      coalesce(r.user_id = $2, false)
-      or coalesce((
-        jsonb_typeof(r.payload -> 'accountId') = 'string'
-        and r.payload -> 'accountId' = to_jsonb($2::text)
-      ), false)
-    )
+    and r.user_id = $2
+    and (r.payload -> 'accountId' is null or r.payload -> 'accountId' = 'null'::jsonb or r.payload -> 'accountId' = to_jsonb($2::text))
 ),
 referenced_connection_ids as materialized (
   select distinct r.payload -> 'connectionId' as connection_id
@@ -117,10 +109,7 @@ task_projection as (
       'authorization', jsonb_build_object(
         'actorOwned', (
           coalesce(r.user_id = $2, false)
-          or coalesce((
-            jsonb_typeof(r.payload -> 'accountId') = 'string'
-            and r.payload -> 'accountId' = to_jsonb($2::text)
-          ), false)
+          and (r.payload -> 'accountId' is null or r.payload -> 'accountId' = 'null'::jsonb or r.payload -> 'accountId' = to_jsonb($2::text))
         ),
         'connectionAuthorized', false
       ),
@@ -161,10 +150,7 @@ connection_projection as (
       'authorization', jsonb_build_object(
         'actorOwned', (
           coalesce(r.user_id = $2, false)
-          or coalesce((
-            jsonb_typeof(r.payload -> 'accountId') = 'string'
-            and r.payload -> 'accountId' = to_jsonb($2::text)
-          ), false)
+          and (r.payload -> 'accountId' is null or r.payload -> 'accountId' = 'null'::jsonb or r.payload -> 'accountId' = to_jsonb($2::text))
         ),
         'connectionAuthorized', false
       ),
@@ -895,6 +881,11 @@ export function decodeRelationshipLifecycleFacts(
   const contacts = value.contacts
     .map((item) => decodeContactRow(item, expectedWorkspaceId))
     .filter((item): item is RelationshipLifecycleFactsContact => item !== null);
+
+  if ([...tasks, ...connections].some(item => item.metadata.userId !== expectedActorId)
+    || connections.some(item => item.accountId !== expectedActorId)) {
+    throw new Error("Relationship lifecycle owner scope is invalid.");
+  }
 
   return {
     tasks: resolveDomainDuplicates(tasks, "task"),

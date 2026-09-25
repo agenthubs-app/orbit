@@ -43,6 +43,7 @@ export function createPostgresRelationshipScopeReader(input: {
         from orbit_records r
         where r.workspace_id=$1 and r.collection_name in ('tasks','contacts','connections','evidence','notifications')
           and r.lifecycle_state<>'deleted' and ($3='followups' or r.lifecycle_state<>'archived')
+          and ($3<>'followups' or r.user_id=$2)
           and ((r.user_id=$2 and (r.payload->>'accountId' is null or r.payload->'accountId'=to_jsonb($2::text)))
             or (nullif(r.user_id,'') is null and r.payload->'accountId'=to_jsonb($2::text)))
       ), notifications as (

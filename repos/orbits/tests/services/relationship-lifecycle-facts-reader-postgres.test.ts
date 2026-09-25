@@ -257,20 +257,19 @@ test("PostgreSQL facts reader applies actor/workspace/domain authorization and n
     });
     const facts = await reader.readRelationshipLifecycleFacts(actorId);
 
-    assert.deepEqual(facts.tasks.map((item) => item.id).sort(), ["task:account", "task:cross-workspace", "task:deleted-connection", "task:non-c", "task:owned", "task:task-only-account-id", "task:task-only-foreign"]);
-    assert.deepEqual(facts.connections.map((item) => item.id), ["connection:shared"]);
-    assert.deepEqual(facts.contacts.map((item) => item.id).sort(), ["contact:non-c", "contact:owned", "contact:shared"]);
+    assert.deepEqual(facts.tasks.map((item) => item.id).sort(), ["task:cross-workspace", "task:deleted-connection", "task:non-c", "task:owned", "task:task-only-account-id", "task:task-only-foreign"]);
+    assert.deepEqual(facts.connections.map((item) => item.id), []);
+    assert.deepEqual(facts.contacts.map((item) => item.id).sort(), ["contact:owned"]);
     assert.equal(JSON.stringify(facts).includes("PRIVATE"), false);
     assert.equal(JSON.stringify(facts).includes("primaryEmail"), false);
     assert.equal(JSON.stringify(facts).includes("searchText"), false);
 
     const model = await loadRelationshipLifecycleTasks({ actorId, reader });
     assert.equal(model.state, "success");
-    assert.equal(model.currentCount, 3);
-    assert.equal(model.orphanCount, 4);
-    assert.deepEqual(model.currentTasks.map((item) => item.id).sort(), ["task:account", "task:non-c", "task:owned"]);
-    assert.equal(model.currentTasks.find((item) => item.id === "task:account")?.operationHref, "/app/contacts/contact%3Ashared");
-    assert.deepEqual(model.orphanTasks.map((item) => item.id).sort(), ["task:cross-workspace", "task:deleted-connection", "task:task-only-account-id", "task:task-only-foreign"]);
+    assert.equal(model.currentCount, 1);
+    assert.equal(model.orphanCount, 5);
+    assert.deepEqual(model.currentTasks.map((item) => item.id).sort(), ["task:owned"]);
+    assert.deepEqual(model.orphanTasks.map((item) => item.id).sort(), ["task:cross-workspace", "task:deleted-connection", "task:non-c", "task:task-only-account-id", "task:task-only-foreign"]);
   });
 });
 
@@ -372,7 +371,7 @@ test("PostgreSQL reader fails closed for duplicate domain identity and does not 
   });
 });
 
-test("PostgreSQL authorization uses strict JSON string equality and preserves owner/account OR semantics", databaseTest, async () => {
+test("PostgreSQL authorization requires a consistent row owner; account aliases never grant access", databaseTest, async () => {
   await withDatabase(async ({ pool }) => {
     const numericActor = "7";
     await insert(pool, record("tasks", "storage:task:string-account", taskPayload("task:string-account", { accountId: numericActor, contactId: null, connectionId: null }), { userId: null }));
@@ -393,9 +392,9 @@ test("PostgreSQL authorization uses strict JSON string equality and preserves ow
     const reader = createRelationshipLifecycleFactsReader({ client: pool, workspaceId });
     const facts = await reader.readRelationshipLifecycleFacts(numericActor);
 
-    assert.deepEqual(facts.tasks.map((item) => item.id).sort(), ["task:account-wins", "task:connection-reference", "task:non-c-contact", "task:owner-wins", "task:string-account"]);
-    assert.deepEqual(facts.connections.map((item) => item.id), ["connection:string-account"]);
-    assert.deepEqual(facts.contacts.map((item) => item.id).sort(), ["contact:owner-wins", "contact:string-account"]);
+    assert.deepEqual(facts.tasks.map((item) => item.id).sort(), ["task:connection-reference", "task:non-c-contact"]);
+    assert.deepEqual(facts.connections.map((item) => item.id), []);
+    assert.deepEqual(facts.contacts.map((item) => item.id), []);
   });
 });
 
@@ -528,10 +527,10 @@ test("PostgreSQL reader keeps fixed actor T/C/H raw rows and JSON bytes stable a
       assert.equal(rawRows.length, 1);
       assert.equal((rawEnvelope as { tasks: unknown[] }).tasks.length, 2);
       assert.equal((rawEnvelope as { connections: unknown[] }).connections.length, 1);
-      assert.equal((rawEnvelope as { contacts: unknown[] }).contacts.length, 2);
+      assert.equal((rawEnvelope as { contacts: unknown[] }).contacts.length, 1);
       assert.equal(facts.tasks.length, 2);
       assert.equal(facts.connections.length, 1);
-      assert.equal(facts.contacts.length, 2);
+      assert.equal(facts.contacts.length, 1);
       const rawJson = JSON.stringify(rawEnvelope);
       assert.doesNotMatch(rawJson, /foreign-bench|task:foreign|contact:foreign|PRIVATE|primaryEmail|searchText/u);
       assert.ok(beforeAnalyzeWork <= scale * 100 + 1000, `unexpected pre-ANALYZE foreign EXPLAIN work at scale ${scale}: ${beforeAnalyzeWork}`);

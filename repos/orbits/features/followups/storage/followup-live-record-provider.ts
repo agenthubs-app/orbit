@@ -310,7 +310,7 @@ export function createStorageFollowupTaskProvider({
       const belongsToActor = (
         record: LiveRecord<Record<string, unknown>>,
       ): boolean =>
-        relationshipRecordOwnedByActor(record, actorId);
+        record.userId === actorId && relationshipRecordOwnedByActor(record, actorId);
       const actorTaskRecords = taskRecords.filter(belongsToActor);
       const actorConnectionRecords = connectionRecords.filter(belongsToActor);
       const actorContactIds = new Set([

@@ -70,5 +70,15 @@ test("complete legacy summary includes persisted identity and nonempty message/n
       console.info(JSON.stringify({ metric: "inbox_summary_request", recordsPerSource: size + 1, queries, rows, returnedJsonBytes: bytes, includes: "persisted identity + both readers", excludes: "Auth.js cookie CPU, PG wire/TLS" }));
       previous = size;
     }
+    const before = await identity.readAccountSessionGraph({ userId: "profile" });
+    // Imported avatars, documents and raw profile fields must not hitchhike on
+    // every authenticated badge read. The public session projection is intact.
+    await pool.query(`update orbit_records set payload=payload||jsonb_build_object('rawImportedDocument',repeat('x',2000000)),search_text=repeat('y',2000000)
+      where collection_name in ('profiles','accounts')`);
+    assert.deepEqual(await identity.readAccountSessionGraph({ userId: "profile" }), before);
+    bytes = 0; queries = 0; rows = 0;
+    assert.equal((await handler()).status, 200);
+    assert.ok(bytes < 8000, `large unrelated profile fields escaped the identity projection: ${bytes}`);
+    console.info(JSON.stringify({ metric: "inbox_summary_request_large_identity", extraStoredBytes: 8000000, queries, rows, returnedJsonBytes: bytes }));
   } finally { await pool.query(`drop schema ${schema} cascade`); await pool.end(); }
 });

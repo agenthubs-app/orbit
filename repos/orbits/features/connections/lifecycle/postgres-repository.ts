@@ -25,7 +25,8 @@ function recordVersion(value: unknown): number {
 
 function assertOwner(row: RecordRow, workspaceId: string, actorId: string): void {
   if (!row.payload || typeof row.payload !== "object" || Array.isArray(row.payload)) throw new RelationshipLifecycleError("INVALID_TRANSITION", "Stored record payload is malformed.");
-  if (row.workspace_id !== workspaceId || row.user_id !== actorId || row.payload.id !== row.record_id) {
+  if (row.workspace_id !== workspaceId || row.user_id !== actorId || row.payload.id !== row.record_id
+    || (row.payload.accountId != null && row.payload.accountId !== actorId)) {
     throw new RelationshipLifecycleError("FORBIDDEN", "Stored record ownership is inconsistent.");
   }
 }

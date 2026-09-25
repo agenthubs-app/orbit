@@ -70,8 +70,8 @@ Web/App 完整类型检查通过。GitNexus 增量索引的 FTS 构建失败后�
 
 ## 仍未完成 / 条件门
 
-- P0 尚缺 Web 各完整路径、复杂联系人关联/搜索及 worker 基准，真实 wire 校准和历史预算失败归因。
-- P1b 会话摘要/历史消息页、跟进用途专用 SQL reader，以及 App 联系人屏幕分页消费尚未完成。新联系人契约已同步，但不能把契约同步当手机 UI 已迁移。
+- P0 尚缺 Web 各完整路径、复杂联系人关联/搜索及 worker 基准、真实 wire 校准。历史联系人 1548→2064 行的预算失败归因已在上一轮完成，见旧执行记录和 `scripts/diagnostics/neon-egress-local-probe.ts`，不重复列为未完成。
+- P1b 会话摘要/历史消息页已在第二批本地完成；跟进用途专用分页 reader，以及 App 联系人屏幕分页消费尚未完成。新联系人契约已同步，但不能把契约同步当手机 UI 已迁移。
 - 服务端版本缓存尚未开启：尚未证明全体 writer/权限/时间边界封闭。不得用 TTL 私有缓存绕过该条件。
 - P3 尚未移除 typed GET 刷新，也没有停止维护链。事务增量与到期入口必须逐来源对账，不能在本批省流量后擅自删除。
 
@@ -95,3 +95,28 @@ Web/App 完整类型检查通过。GitNexus 增量索引的 FTS 构建失败后�
 18 项 API/服务/权限/真实 Chromium 交互及兼容回归通过；Web/App 完整类型检查和 App 契约同步测试通过。浏览器测试曾因 about:blank 非安全上下文没有 randomUUID 失败，改用本地拦截 HTTPS 页面后验证真实发送重试，不改生产随机 ID 实现。新 Zod 元组在本仓库非严格空值设置下的推断差异通过运行时长度验证和显式二元组解决。
 
 下一批核对发现：当前 `/api/tasks` 实际导出 canonical collection handler，不是旧 followup generation handler；网页人脉跟进及首页使用 `relationship-lifecycle-facts-reader`。因此用途迁移必须从真实消费者入手，不能新增一个无人调用的 `/followups/page` 就宣布页面优化完成。旧推导建议和 canonical/lifecycle 实体仍需分别保持业务语义。
+
+第二批提交 `039d440a`。提交前 GitNexus 强制重建成功，all/staged 变更检查已运行；staged 21 文件/149 符号，结构化结果无 partial/truncated/error。affected_count=0 不能解释成公共收件箱不受影响：此前 panel impact 为 CRITICAL，JSX/动态调用已有漏边，已按源码和浏览器行为回归。
+
+## 第三批：身份窄投影与用户确认的跟进归属边界
+
+### 身份读取
+
+账户 provider 只让 SQL 返回 account/profile 映射器实际消费的字段，不返回 search_text、导入原件等无关内容。不改变身份选择、别名解析、缺省语言或公开 session 字段。没有截断用户档案字段，没有建立身份缓存。
+
+完整摘要请求增添“账户与档案各 2 MB 无关字段 + 各 2 MB search_text”的同一固定夹具，优化前返回 8,001,227 B，优化后 1,177 B；4 查询/4 行，映射后的账户图完全相同。14 项身份/摘要/认证回归通过。这是刻意放大的本地固定数据实验，不是生产档案大小或 Neon 账单。实际保留的 headline 等字段仍可能很大，不能宣称任意身份数据都有绝对 4 KB 上限。
+
+### 归属决定与执行
+
+用户明确选择“归属信息一致才能查看，关联账号不允许查看”。落实为：
+
+- 跟进任务/关系连接必须 `user_id === actorId`；payload.accountId 非空时也必须严格等于 actorId。数字/对象/数组不转字符串授权。
+- 只有关联 accountId、所有者为空、所有者和关联账号冲突，均不可见。缺省关联字段但行所有者正确的旧任务仍可读；连接仍须通过原有业务字段验证。
+- 新网页 facts SQL、旧 followup graph PostgreSQL 分支及内存/fallback provider 一致收紧；decoder 也拒绝与请求 actor 不符的所有者证明。公共 scope reader 的 legacy-notifications 分支没有被顺带改权限。
+- 跟进详情/操作仓库的 assertOwner 同时检查 payload.accountId 冲突，避免列表拒绝而详情仍可读。两者使用同一个验证入口；事务在拒绝后不执行写入。
+- 本次没有取消通过合法、本人拥有的关系连接读取关联联系人摘要的既有授权；它不授予查看对方跟进任务的权利。其他联系人/消息共享协议不在这次跟进规则修改范围。
+- 不运行生产数据修复，不为无主记录猜测所有者，不把旧数据自动重归属。
+
+先写否定测试实际失败，再修实现：association-only 行曾被返回；详情中的冲突 task 曾未被拒绝。现已通过对应断言。更新原测试中明确要求 owner/account OR 和空所有者放行的断言，保留这些反例数据，改为验证拒绝。另修正一项既有过期测试：configured 旧 provider 早已改成 1 次 scoped SQL，测试还模拟 4 次 collection 查询；现在模拟真实查询参数，不放宽失败断言。
+
+本地跟进 scope、真实 PostgreSQL facts、首页/任务页、API 与生命周期服务组合 57 项通过；详情仓库与初始化 PostgreSQL 组合 32 项通过；Web 完整类型检查通过。GitNexus 强制重建后执行 all/staged 检查，staged 12 文件/19 个图可识别变更符号，结构化结果无 partial/truncated/error；affected=0 不推翻前述 CRITICAL 调用影响和动态图漏边，已补相应真实路径测试。本次没有上线；后续分页必须以这次确认的权限为准。

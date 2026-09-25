@@ -351,7 +351,7 @@ test("raw SQL rows require every projected key, including null-capable keys", as
   await assert.rejects(contactReader.readRelationshipLifecycleFacts(actorId), /shape/i);
 });
 
-test("decoder accepts legacy empty user ids and throws for an impossible row kind", async () => {
+test("decoder rejects missing followup owners and an impossible row kind", async () => {
   const legacy = taskRow({
     id: "task:legacy-empty-user",
     metadata: metadata("tasks", "storage:task:legacy-empty-user", ""),
@@ -360,8 +360,7 @@ test("decoder accepts legacy empty user ids and throws for an impossible row kin
     client: fakeSqlClient(envelope({ tasks: [legacy] })),
     workspaceId,
   });
-  const facts = await validReader.readRelationshipLifecycleFacts(actorId);
-  assert.equal(facts.tasks[0]?.metadata.userId, "");
+  await assert.rejects(validReader.readRelationshipLifecycleFacts(actorId), /owner scope/i);
 
   const nullProofReader = createRelationshipLifecycleFactsReader({
     client: fakeSqlClient(envelope({
@@ -455,7 +454,7 @@ test("home default followup loader explicitly binds facts reader and never calls
   assert.equal(result.followups.items[0]?.connectionId, "connection:ren");
 });
 
-test("home default uses configured facts SQL while the no-argument loader keeps the legacy four reads", async () => {
+test("home default uses configured facts SQL while the legacy loader uses the scoped graph query", async () => {
   const syntheticDatabaseUrl = "postgresql://w5-f-mock@127.0.0.1:1/orbit_w5_f_test";
   const previous = {
     eventUrl: process.env.ORBIT_EVENT_DATABASE_URL,
@@ -479,8 +478,7 @@ test("home default uses configured facts SQL while the no-argument loader keeps 
       return { rows: [{ envelope: envelope() }] };
     }
     legacyCalls += 1;
-    const collectionName = Array.isArray(values) ? values[1] : undefined;
-    if (collectionName !== "tasks") return { rows: [] };
+    assert.deepEqual(values, [workspaceId, actorId, "followups"]);
     return {
       rows: [{
         workspace_id: workspaceId,
@@ -533,7 +531,7 @@ test("home default uses configured facts SQL while the no-argument loader keeps 
     const legacy = await loadRelationshipLifecycleTasks({ actorId });
     assert.equal(legacy.sourceLabel, "Followup Postgres live storage");
     assert.equal(legacy.state, "success");
-    assert.equal(legacyCalls, 4);
+    assert.equal(legacyCalls, 1);
     assert.equal(legacy.orphanTasks[0]?.id, "task:legacy-default");
   } finally {
     Pool.prototype.query = originalPoolQuery;

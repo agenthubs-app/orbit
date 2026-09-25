@@ -38,6 +38,15 @@ export const ACCOUNT_SESSION_LIVE_RECORD_COLLECTIONS = {
   profiles: "profiles",
 } as const;
 
+// Exact inputs consumed by accountFromRecord/profileFromRecord. Imported
+// documents, avatars and search indexes belong to profile/detail reads, not
+// every request's persisted identity lookup. Row ownership/evidence is retained.
+const ACCOUNT_SESSION_FIELDS = ["id", "name", "createdAt", "updatedAt"];
+const PROFILE_SESSION_FIELDS = [
+  "id", "accountId", "displayName", "role", "timezone", "headline", "homeMarket",
+  "preferredFollowUpWindow", "preferredLanguage", "relationshipGoal", "createdAt", "updatedAt",
+];
+
 export interface StorageAccountSessionProviderOptions {
   requireIdentity?: boolean;
   source?: string;
@@ -156,6 +165,8 @@ export function createStorageAccountSessionProvider({
           limit: "unbounded",
           workspaceId,
           collectionName: ACCOUNT_SESSION_LIVE_RECORD_COLLECTIONS.profiles,
+          payloadFields: PROFILE_SESSION_FIELDS,
+          omitSearchText: true,
           payloadId: subject,
         });
         if (profileRecords.length === 0) {
@@ -163,6 +174,8 @@ export function createStorageAccountSessionProvider({
             limit: "unbounded",
             workspaceId,
             collectionName: ACCOUNT_SESSION_LIVE_RECORD_COLLECTIONS.profiles,
+            payloadFields: PROFILE_SESSION_FIELDS,
+            omitSearchText: true,
             payloadAccountId: identity?.accountId ?? subject,
           });
         }
@@ -171,6 +184,8 @@ export function createStorageAccountSessionProvider({
           limit: "unbounded",
           workspaceId,
           collectionName: ACCOUNT_SESSION_LIVE_RECORD_COLLECTIONS.accounts,
+          payloadFields: ACCOUNT_SESSION_FIELDS,
+          omitSearchText: true,
           payloadId,
         })))).flat();
         const records = [...accountRecords, ...profileRecords];
@@ -186,11 +201,15 @@ export function createStorageAccountSessionProvider({
           limit: "unbounded",
           workspaceId,
           collectionName: ACCOUNT_SESSION_LIVE_RECORD_COLLECTIONS.accounts,
+          payloadFields: ACCOUNT_SESSION_FIELDS,
+          omitSearchText: true,
         }),
         store.listRecords({
           limit: "unbounded",
           workspaceId,
           collectionName: ACCOUNT_SESSION_LIVE_RECORD_COLLECTIONS.profiles,
+          payloadFields: PROFILE_SESSION_FIELDS,
+          omitSearchText: true,
         }),
       ]);
       const records = [...accountRecords, ...profileRecords];

@@ -22,6 +22,16 @@ const mutation = { actorId, connectionId, expectedVersion: 3, idempotencyKey: "k
 const databaseUrl = process.env.ORBIT_LIFECYCLE_TEST_DATABASE_URL;
 const databaseTest = { skip: databaseUrl ? false : "ORBIT_LIFECYCLE_TEST_DATABASE_URL is not configured" };
 
+test("followup detail refuses an owned task whose associated account contradicts its owner", databaseTest, async () => withDatabase(async ({ repo, insert }) => {
+  await insert("tasks", "task:conflicting-account", actorId, {
+    id: "task:conflicting-account", accountId: "actor:other", connectionId, contactId,
+    title: "Private conflicting followup", relationshipPurpose: "follow_up", status: "open",
+    dueAt: now, createdAt: now, updatedAt: now,
+  });
+  await assert.rejects(repo.read(actorId, connectionId), { code: "FORBIDDEN" });
+  await assert.rejects(repo.mutate(mutation, () => { throw Error("must not execute"); }), { code: "FORBIDDEN" });
+}));
+
 test("SQL mutation checks receipts then locks only actor/workspace-owned records before writes", async () => {
   const calls: { sql: string; values?: readonly unknown[] }[] = [];
   const row = (collection: string, id: string, payload: Record<string, unknown>) => ({ workspace_id: workspaceId, collection_name: collection, record_id: id, user_id: actorId, payload, created_at: now, updated_at: now, lifecycle_state: "active" });

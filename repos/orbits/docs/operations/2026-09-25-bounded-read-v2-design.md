@@ -79,6 +79,7 @@
 
 ### 4.2 跟进与任务
 
+- 2026-09-25 用户追加确认：跟进任务/关系连接必须由当前 actor 拥有，关联 `accountId` 不能独立授予访问。具体为 `user_id = actor`，且 payload.accountId 缺省/NULL 或与 actor 一致；缺少行所有者、只有关联账号匹配、归属冲突均拒绝。该决定覆盖下面“保持原权限语义”的旧假设，但不改其他业务的共享授权，也不自动修复/重归属旧数据。
 - 不修改 `readFollowupGraph()` 的既有完整语义。新增 `listFollowupPage()`、`readFollowupDetail()`、`readSignalCandidates()` 并逐调用方迁移。
 - 任务和建议的排除、优先级、日期及排序规则以现有 `payloadFor/relationshipSuggestions` 为 oracle。SQL 窄候选 CTE/UNION + NOT EXISTS 实现同一规则，最终全局排序后分页；只给本页补必要联系人字段。
 - “只取 tasks 前 30 条再算建议”不可接受。建议不能偷偷写成已确认任务，也不能为了排序捏造截止日期。
