@@ -6,6 +6,7 @@ import {createInboxRuntime} from './inbox-record-service-factory';
 import {InboxRecordError} from './inbox-record-service';
 import {createDiscoveryRepository} from './discovery/discovery-repository';
 import type {DeliveryPolicyRepository} from './delivery-policy-repository';
+import {readHistoricalNotificationSuppression} from './delivery-policy-repository';
 const string=(v:unknown)=>typeof v==='string'?v:'';
 export function createTypedDeliverySources(input:{actorId:string;client:TransactionalPostgresClient;workspaceId:string;repository:DeliveryPolicyRepository;now?:()=>string}) {
  const store=createPostgresLiveRecordStore({client:input.client}),now=input.now??(()=>new Date().toISOString());
@@ -19,6 +20,7 @@ export function createTypedDeliverySources(input:{actorId:string;client:Transact
    const cutover=await input.repository.cutover(input.actorId);if(!cutover?.enabled)return null;
    const p=await createDiscoveryRepository(input).preferences(input.actorId),source=d.policySource;
    if(source.kind==='notification'){
+    if(await readHistoricalNotificationSuppression({executor:input.client,workspaceId:input.workspaceId,actorId:input.actorId,eventKey:source.eventKey}))return null;
     let n;try{n=await createInboxRuntime({...input,forDispatch:true}).service.get(input.actorId,source.id,p.language);}catch(error){if(error instanceof InboxRecordError&&error.code==='NOT_FOUND')return null;throw error;}
     const scheduled=n.scheduledFor??n.occurredAt,eventKey=n.id+':'+scheduled;
     if(n.target.status!=='available'||n.disposition!=='open'||eventKey!==source.eventKey||scheduled<cutover.since)return null;

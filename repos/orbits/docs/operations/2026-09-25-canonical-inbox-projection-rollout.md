@@ -27,7 +27,7 @@ typed inbox 的纯站内 snooze 已接入同一变化/到期登记。它用精�
 1. **语义尚不等价**：configured命令（含mixed/push及typed snooze）、wake / canonical dispatcher、configured legacy dispatcher和周期日程reconcile已接当前变化/到期登记。历史计划未回填，旧部署/未更新脚本仍可能漏登记，取消仍由读取权威权限隐藏，不能直接删GET reminder分支。
 2. **周期日程**：独立持久窗口已接维护入口且本地验证，不再需要GET才能扩展新series；历史series还没有窗口进度，必须回填并逐项对账。单series异常实例读取仍需审计其历史规模；不能把新series到期测试当作全部历史迁移完成。reconcile使用单series旧计划50条keyset取消＋50个ID批量存在检查，相应partial索引尚未安装线上。
 3. **其他 writer 与目标撤销**：configured命令、typed inbox snooze、周期日程reconcile和configured legacy dispatcher已登记；旧部署、诊断/种子脚本的直接repository写入，以及目标删除/撤权仍需逐项审计。旧读时授权继续遮挡失效来源，不能迁移成缓存授权或直接物化计数。新的共同锁序已由两个真实数据库事务并发验证，其他writer接线仍须遵守它。
-4. **历史回填与 Push**：未提供可运行回填。未来先接齐 writer，再按 ID 分页、事务内锁定并重读来源、持久 checkpoint、小批推进；扫描结果不能直接覆盖并发新 revision。既有 notificationCutover.since 只排除切换前历史，不能保证切换之后的历史回填不再次进入 Push 候选。需要单独的历史投递抑制事实/对账，不能靠把通知全部标已读或改变 cutover 时间来掩盖。
+4. **历史回填与 Push**：尚未提供完整可运行回填。先接齐 writer，再按 ID 分页、事务内锁定并重读来源、持久 checkpoint、小批推进；扫描结果不能直接覆盖并发新 revision。既有 notificationCutover.since 只排除切换前历史。现已提供独立`notificationHistoricalSuppressions`事实和登记函数：精确绑定workspace/actor/notification ID+scheduledFor，不改read/disposition；登记必须与历史投影/工作/进度同事务，锁序policy在inbox/source/work之前。已有非rejected外部发送预约时拒绝登记并要求对账，不能声称撤回了正在发送的Push。typed候选生成按每页批量检查（最多50个键），来源读取和最终reserve再次检查；事实不一致/数据库失败不会当作允许发送。同通知改期成新eventKey仍可发送。持久回填调用、旧部署/外部发送在途清点仍未完成，不能单凭该防护开启迁移。
 5. **调度与运维**：独立 queue wake 仅登记工作；本批消费者在 canonical maintenance pass 的尾部。heartbeat 关闭或 pass 时间用完会延后消费；尚需负载下公平性、最大通知延迟、failed/积压告警验收。不能声称已经实现准时通知 SLA。
 
 ## 后续有授权时的迁移检查顺序

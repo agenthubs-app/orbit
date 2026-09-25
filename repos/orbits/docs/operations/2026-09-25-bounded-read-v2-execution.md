@@ -480,3 +480,13 @@ App实际NoteDetailScreen改用独立NoteSourceTasks：下一页替换、不无�
 契约全目录检查另外发现此前profile契约含运行时`projectPublicProfile`（来自`6dd44b94`），不属于本批分页改动，仍是发布检查缺项。此前通知summary的统一出口已补齐；这些检查不能被分页的成功用例代替。
 
 最终Web完整typecheck通过；App全量 **3629项、3628通过、1失败、零跳过**。唯一失败仍是既有路由对齐：`/agent/actions`、`/agent/plan`、`/agent/strategy`、`/events/[id]/live`、`/profile/continue`，不删除测试/添加空跳转充数。Web契约与新接口/schema组合5/6，唯一失败是上述旧profile运行时代码；新增分页契约出口和运行时反例通过。最终GitNexus all/staged为22/21文件、113/110符号、1个流程、MEDIUM，无partial/truncated/error；全库流程枚举限制保留，实际已知调用按本批测试补核。新schema原UNKNOWN已经文本确认服务器reader和App消费者；任务公用CTE影响两类分页与Today完成计数，均已真实PG回归。
+
+## 第二十八批：历史通知可保持未读，但不重新外推
+
+第二十七批已提交`c03cc078`。PG红例确认：即使已有历史抑制事实，旧真实reserve仍返回allowed:true。新增独立`notificationHistoricalSuppressions`事实读取/事务登记，键是workspace、actor、notification ID+原scheduledFor，不改变通知readAt、disposition或cutover。登记受与真实reserve相同的policy actor锁保护；已started/receipt pending/sent/unknown的发送不能被假装撤回，登记拒绝并要求对账；明确rejected才可登记。事务回滚不留下事实，同event幂等不覆盖原batch，未来事件不能标历史。损坏/异主的事实拒绝继续发送，不作为无抑制处理。
+
+候选生成每页最多50键合并成一条窄SQL，避免为每条通知新增一次往返；source resolve和最终reserve继续检查，已进入候选队列的历史项同样被拦住。新scheduledFor是不同事件，不受旧抑制影响。不额外发送真实Push、不安装新表、不改已有未读或设备状态；事实使用既有orbit_records存储，尚无生产数据。
+
+PG专项5/5覆盖真实reserve红转绿、事务回滚/幂等/跨actor-workspace隔离/未来拒绝/已开始发送拒绝、真实worker处理旧候选且正常新事件仍可发送、两个真实事务竞争时抑制获胜且实际收件箱仍未读、真实configured materialize对3条通知只作1次抑制查询且仅为2条创建候选。source权限在单项未读测试中为明确替身，真实materialize另使用真实提醒/任务来源验证；外部Push仅本地替身。9文件投递/切流/读取/路由组合31/31，零跳过，新增materialize用例另5/5；Web完整typecheck通过。
+
+这只是持久回填必需的历史投递保护，不是完整回填：尚需持久checkpoint、事务内源重读和工作登记、历史series窗口、来源集合对账及发布许可。默认不会创建任何抑制事实；必须由后续回填在与历史投影同一事务内显式调用。原GET及后台refresh未删。编辑前delivery policy图风险HIGH，已告知；typed source/runtime LOW，新函数索引未识别时按实际调用补查，未当无影响。

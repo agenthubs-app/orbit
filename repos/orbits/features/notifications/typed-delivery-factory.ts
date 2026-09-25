@@ -5,7 +5,7 @@ import {createStorageNotificationDeliveryService} from './delivery-service';
 import {createPushDeviceService,type PushDeviceService} from './push-device-service';
 import type {OrbitPushAdapter} from './push-adapter';
 import {createConfiguredExpoPushAdapter} from './push-adapter';
-import {createDeliveryPolicyRepository} from './delivery-policy-repository';
+import {createDeliveryPolicyRepository,readHistoricalNotificationSuppressions} from './delivery-policy-repository';
 import {createTypedDeliverySources} from './typed-delivery-source';
 import {createTypedDeliveryWorker} from './typed-delivery-worker';
 import {createInboxRuntime} from './inbox-record-service-factory';
@@ -18,7 +18,20 @@ export function createTypedDeliveryRuntime(input:{actorId:string;client:Transact
    await refreshInboxBusinessRecords({...input,now:input.now?.()??new Date().toISOString(),service:inbox.service,since:cutover.since});
    const counts={notifications:0,messages:0};
    const state=await repository.get<{notifications:string|null;messages:{at:string;id:string}|null}>(input.client,'notificationDeliveryCursor',input.actorId)??{notifications:null,messages:null};
-   let cursor=state.notifications;for(let page=0;page<4;page++){const list=await inbox.service.list(input.actorId,{limit:50,...(cursor?{cursor}:{})});for(const n of list.items){const scheduled=n.scheduledFor??n.occurredAt;if(scheduled<cutover.since||n.readAt||n.disposition!=='open')continue;const eventKey=n.id+':'+scheduled;await ledger.materialize({signalId:'typed:'+n.id,signalRevision:scheduled,phase:'commitment',title:'Orbit',body:'Notification',scheduledFor:scheduled,policySource:{kind:'notification',id:n.id,eventKey}});counts.notifications++;}cursor=list.nextCursor;if(!cursor)break;}
+   let cursor=state.notifications;
+   for(let page=0;page<4;page++){
+    const list=await inbox.service.list(input.actorId,{limit:50,...(cursor?{cursor}:{})});
+    const candidates=list.items.flatMap(n=>{
+     const scheduled=n.scheduledFor??n.occurredAt;
+     return scheduled<cutover.since||n.readAt||n.disposition!=='open'?[]:[{n,scheduled,eventKey:n.id+':'+scheduled}];
+    });
+    const historical=await readHistoricalNotificationSuppressions({executor:input.client,workspaceId:input.workspaceId,actorId:input.actorId,eventKeys:candidates.map(item=>item.eventKey)});
+    for(const {n,scheduled,eventKey} of candidates){
+     if(historical.has(eventKey))continue;
+     await ledger.materialize({signalId:'typed:'+n.id,signalRevision:scheduled,phase:'commitment',title:'Orbit',body:'Notification',scheduledFor:scheduled,policySource:{kind:'notification',id:n.id,eventKey}});counts.notifications++;
+    }
+    cursor=list.nextCursor;if(!cursor)break;
+   }
    // Candidate creation only needs references; dispatch still resolves the
    // current message, binding, membership and read state before sending.
    const position=state.messages??{at:cutover.since,id:''};const rows=await input.client.query<{payload:{messageId:string;conversationId:string;sentAt:string}}>(`select jsonb_build_object('messageId',m.payload->'messageId','conversationId',m.payload->'conversationId','sentAt',m.payload->'sentAt') as payload from orbit_records m where m.workspace_id=$1 and m.collection_name='relationship_communication_messages' and m.lifecycle_state='active' and m.payload->>'senderAccountId'<>$2 and (m.payload->>'sentAt',m.record_id)>($3,$4) and exists(select 1 from orbit_records c where c.workspace_id=$1 and c.collection_name='relationship_communication_conversations' and c.record_id=m.payload->>'conversationId' and c.payload->'participantAccountIds' ? $2) order by m.payload->>'sentAt',m.record_id limit 50`,[input.workspaceId,input.actorId,position.at,position.id]);
