@@ -7,6 +7,7 @@ import { createAppointmentService } from "../../features/appointments/service";
 import { createPersonalScheduleService } from "../../features/personal-schedule/service";
 import { createTaskRepository } from "../../features/tasks/repository";
 import { createTaskService } from "../../features/tasks/service";
+import type { TaskItemDTO } from "../../features/tasks/contract";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
 import type { RelationshipLifecycleTaskReadModel } from "../../app/(app)/app/tasks/relationship-lifecycle-tasks";
 import {
@@ -725,6 +726,102 @@ test("tasks classify dual dates without manufacturing a deadline and cap only di
   assert.equal(planPast.dueAt, undefined);
   assert.equal(planPast.plannedDate, "2026-09-16");
   assert.equal(model.tasks.groups.find((group) => group.key === "undated")?.items.length, 0);
+});
+
+test("bounded task summary preserves exact group counts and one global three-row cap", async () => {
+  let readInput: { actorId: string; window: unknown } | undefined;
+  const model = await loadHomeFacts({
+    actorId: ACTOR,
+    snapshotAt: SNAPSHOT,
+    dependencies: baseDependencies({
+      taskService: undefined,
+      taskSummaryReader: {
+        async read(actorId, window) {
+          readInput = { actorId, window };
+          return {
+            count: 5,
+            groupCounts: { overdue: 1, "plan-past": 1, recent: 2, undated: 1 },
+            items: [
+              { group: "overdue", id: "task:late", title: "逾期", dueAt: "2026-09-16T14:00:00.000Z" },
+              { group: "plan-past", id: "task:past", title: "计划已过", plannedDate: "2026-09-16" },
+              { group: "recent", id: "task:soon", title: "即将到期", dueAt: "2026-09-19T01:00:00.000Z" },
+            ],
+          };
+        },
+      },
+    }),
+  });
+
+  assert.equal(readInput?.actorId, ACTOR);
+  assert.deepEqual(readInput?.window, {
+    productDate: "2026-09-17",
+    snapshotAt: SNAPSHOT,
+    timeZone: "Asia/Tokyo",
+    toDate: "2026-09-24",
+  });
+  assert.equal(model.tasks.state, "ready");
+  assert.equal(model.tasks.count, 5);
+  assert.equal(model.tasks.items.length, 3);
+  assert.deepEqual(
+    model.tasks.groups.map((group) => [group.key, group.count, group.items.length, group.viewHref]),
+    [
+      ["overdue", 1, 1, "/app/tasks"],
+      ["plan-past", 1, 1, "/app/tasks"],
+      ["recent", 2, 1, "/app/tasks"],
+      ["undated", 1, 0, "/app/tasks"],
+    ],
+  );
+  assert.deepEqual(model.tasks.items.map((item) => item.key), [
+    "tasks:task:late",
+    "tasks:task:past",
+    "tasks:task:soon",
+  ]);
+});
+
+test("Home task identity ties use UTF-8 byte order, independent of locale collation", async () => {
+  const ids = ["é", "e\u0301", "中", "10", "2", "A", "a", "!"];
+  const tasks = ids.map((id) => ({
+    accountId: ACTOR,
+    category: "work",
+    createdAt: SNAPSHOT,
+    id,
+    ownerUserId: ACTOR,
+    priority: "normal",
+    source: "manual",
+    status: "open",
+    title: `Task ${id}`,
+    updatedAt: SNAPSHOT,
+  } as TaskItemDTO));
+  const model = await loadHomeFacts({
+    actorId: ACTOR,
+    snapshotAt: SNAPSHOT,
+    dependencies: baseDependencies({ taskService: { async list() { return tasks; } } }),
+  });
+  const expected = ids
+    .sort((left, right) => Buffer.compare(
+      Buffer.from(`tasks:${left}`, "utf8"),
+      Buffer.from(`tasks:${right}`, "utf8"),
+    ))
+    .slice(0, 3);
+
+  assert.equal(model.tasks.count, ids.length);
+  assert.deepEqual(model.tasks.items.map((item) => item.id), expected);
+  assert.deepEqual(model.tasks.items.map((item) => item.key), expected.map((id) => `tasks:${id}`));
+});
+
+test("bounded task summary errors remain unavailable rather than becoming empty", async () => {
+  const model = await loadHomeFacts({
+    actorId: ACTOR,
+    snapshotAt: SNAPSHOT,
+    dependencies: baseDependencies({
+      taskService: undefined,
+      taskSummaryReader: { async read() { throw new Error("summary read failed"); } },
+    }),
+  });
+
+  assert.equal(model.tasks.state, "unavailable");
+  assert.equal(model.tasks.count, null);
+  assert.deepEqual(model.tasks.items, []);
 });
 
 test("followups preserve current, history, and orphan collections with real operation links", async () => {

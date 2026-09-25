@@ -5,19 +5,23 @@ import {
   resolveLocalDateTime,
   validTimeZone,
 } from "../../../../features/tasks/local-date-time";
-import {
-  createConfiguredTaskService,
-} from "../../../../features/tasks/service-factory";
 import type { TaskService } from "../../../../features/tasks/service";
 import type { TaskItemDTO } from "../../../../features/tasks/contract";
+import {
+  createConfiguredHomeTaskSummaryReader,
+  HOME_TASK_TITLE_PREVIEW_LIMIT,
+  type HomeTaskSummary,
+  type HomeTaskSummaryReader,
+} from "../../../../features/tasks/home-summary-reader";
 import {
   createConfiguredPersonalScheduleService,
 } from "../../../../features/personal-schedule/service-factory";
 import type { PersonalScheduleService } from "../../../../features/personal-schedule/service";
 import type { PersonalScheduleContract } from "../../../../shared/contract/tasks";
 import {
-  createConfiguredAppointmentService,
-} from "../../../../features/appointments/runtime";
+  createConfiguredHomeAppointmentSummaryReader,
+  type HomeAppointmentSummaryReader,
+} from "../../../../features/appointments/home-summary-reader";
 import type { AppointmentService } from "../../../../features/appointments/service";
 import type { AppointmentAggregate } from "../../../../features/appointments/contract";
 import {
@@ -104,6 +108,7 @@ export interface HomeFactsTaskItem {
   key: string;
   plannedDate?: string;
   status: "open";
+  /** Display preview only; the linked task detail keeps the complete title. */
   title: string;
 }
 
@@ -162,6 +167,11 @@ export interface HomeFactsFollowupCollection {
   warning?: string;
 }
 
+/**
+ * Home overview summary: counts cover all matching rows, while the source and
+ * each group's items expose only the same visible global three-row subset.
+ * Open the task view link for the complete task list.
+ */
 export interface HomeFactsTaskSource
   extends HomeFactsGroupedSource<HomeFactsTaskItem> {}
 
@@ -198,6 +208,8 @@ type FollowupLoader = (
 
 /** Narrow seams keep tests on memory readers and keep feature DTOs out of presenters. */
 export interface HomeFactsRouteDependencies {
+  appointmentSummaryReader?: HomeAppointmentSummaryReader | null;
+  appointmentSummaryReaderFactory?: () => HomeAppointmentSummaryReader | null;
   appointmentService?: AppointmentReader | null;
   appointmentServiceFactory?: () => AppointmentReader | null;
   followupLoader?: FollowupLoader | null;
@@ -205,6 +217,8 @@ export interface HomeFactsRouteDependencies {
   followupSummaryReaderFactory?: () => LifecycleHomeSummaryReader | null;
   personalScheduleService?: PersonalScheduleReader | null;
   personalScheduleServiceFactory?: () => PersonalScheduleReader | null;
+  taskSummaryReader?: HomeTaskSummaryReader | null;
+  taskSummaryReaderFactory?: () => HomeTaskSummaryReader | null;
   taskService?: TaskReader | null;
   taskServiceFactory?: () => TaskReader | null;
 }
@@ -335,12 +349,36 @@ function compareCandidates<TItem extends { group: HomeFactsGroupKey; id?: string
   );
 }
 
+/** Home task tie-breaks are byte-stable; only the task identity tie can change. */
+function compareHomeTaskCandidates<TItem extends { group: HomeFactsGroupKey; id?: string; key?: string }>(
+  left: HomeFactsCandidate<TItem>,
+  right: HomeFactsCandidate<TItem>,
+): number {
+  const groupDelta = groupRank(left.item.group) - groupRank(right.item.group);
+  if (groupDelta !== 0) return groupDelta;
+  // Task sort keys are canonical ASCII dates/instants, so byte order preserves
+  // their established chronological/prefix ordering without locale dependence.
+  const sortDelta = Buffer.compare(
+    Buffer.from(left.sortKey, "utf8"),
+    Buffer.from(right.sortKey, "utf8"),
+  );
+  if (sortDelta !== 0) return sortDelta;
+  return Buffer.compare(
+    Buffer.from(left.item.key ?? left.item.id ?? "", "utf8"),
+    Buffer.from(right.item.key ?? right.item.id ?? "", "utf8"),
+  );
+}
+
 function groupedSource<TItem extends { group: HomeFactsGroupKey }>(
   source: HomeFactsSourceKey,
   sourceLabel: string,
   candidates: readonly HomeFactsCandidate<TItem>[],
+  compare: (
+    left: HomeFactsCandidate<TItem>,
+    right: HomeFactsCandidate<TItem>,
+  ) => number = compareCandidates,
 ): HomeFactsGroupedSource<TItem> {
-  const sorted = [...candidates].sort(compareCandidates);
+  const sorted = [...candidates].sort(compare);
   const visible = sorted.slice(0, HOME_FACTS_DISPLAY_LIMIT).map(({ item }) => item);
 
   return {
@@ -355,6 +393,53 @@ function groupedSource<TItem extends { group: HomeFactsGroupKey }>(
     sourceLabel,
     state: sorted.length > 0 ? "ready" : "empty",
     viewHref: HOME_FACTS_VIEW_HREFS[source],
+  };
+}
+
+/** Preserve the one-global-three display contract while counts stay complete. */
+function groupedTaskSummarySource(
+  summary: HomeTaskSummary,
+): HomeFactsTaskSource {
+  const groupCount = Object.values(summary.groupCounts).reduce(
+    (total, value) => total + value,
+    0,
+  );
+  if (
+    !Number.isSafeInteger(summary.count) ||
+    summary.count < 0 ||
+    groupCount !== summary.count ||
+    summary.items.length > HOME_FACTS_DISPLAY_LIMIT
+  ) {
+    throw new Error("Home task summary is invalid.");
+  }
+
+  const candidates = summary.items.map((item) => ({
+    item: {
+      ...(item.dueAt !== undefined ? { dueAt: item.dueAt } : {}),
+      group: item.group,
+      href: `/app/tasks/${encodeURIComponent(item.id)}`,
+      id: item.id,
+      key: `tasks:${item.id}`,
+      ...(item.plannedDate !== undefined ? { plannedDate: item.plannedDate } : {}),
+      status: "open" as const,
+      title: item.title,
+    },
+    sortKey: item.dueAt ?? item.plannedDate ?? "9999-12-31",
+  } satisfies HomeFactsCandidate<HomeFactsTaskItem>));
+  const visible = [...candidates].sort(compareHomeTaskCandidates).map(({ item }) => item);
+
+  return {
+    count: summary.count,
+    groups: GROUP_ORDER.map((key) => ({
+      count: summary.groupCounts[key],
+      items: visible.filter((item) => item.group === key),
+      key,
+      viewHref: HOME_FACTS_VIEW_HREFS.tasks,
+    })),
+    items: visible,
+    sourceLabel: SOURCE_LABELS.tasks,
+    state: summary.count > 0 ? "ready" : "empty",
+    viewHref: HOME_FACTS_VIEW_HREFS.tasks,
   };
 }
 
@@ -517,6 +602,7 @@ function taskCandidate(
       : new Date(validInstant(task.dueAt, "Task dueAt")).toISOString();
   const id = validText(task.id, "Task id");
   const title = validText(task.title, "Task title");
+  const titlePreview = Array.from(title).slice(0, HOME_TASK_TITLE_PREVIEW_LIMIT).join("");
   const group = taskGroup(task, context);
   if (!group) return null;
 
@@ -529,7 +615,7 @@ function taskCandidate(
       key: `tasks:${id}`,
       ...(task.plannedDate !== undefined ? { plannedDate: task.plannedDate } : {}),
       status: "open",
-      title,
+      title: titlePreview,
     },
     sortKey: dueAt ?? task.plannedDate ?? "9999-12-31",
   };
@@ -540,7 +626,19 @@ function taskServiceFrom(
 ): TaskReader | null {
   if (dependencies.taskService !== undefined) return dependencies.taskService;
   if (dependencies.taskServiceFactory) return dependencies.taskServiceFactory();
-  return createConfiguredTaskService();
+  return null;
+}
+
+function taskSummaryReaderFrom(
+  dependencies: HomeFactsRouteDependencies,
+): HomeTaskSummaryReader | null {
+  if (dependencies.taskSummaryReader !== undefined) {
+    return dependencies.taskSummaryReader;
+  }
+  if (dependencies.taskSummaryReaderFactory) {
+    return dependencies.taskSummaryReaderFactory();
+  }
+  return createConfiguredHomeTaskSummaryReader();
 }
 
 async function loadTasks(
@@ -549,23 +647,44 @@ async function loadTasks(
   dependencies: HomeFactsRouteDependencies,
 ): Promise<HomeFactsTaskSource> {
   try {
-    const service = taskServiceFrom(dependencies);
-    if (!service) {
+    const hasLegacyService =
+      dependencies.taskService !== undefined ||
+      dependencies.taskServiceFactory !== undefined;
+    if (hasLegacyService) {
+      const service = taskServiceFrom(dependencies);
+      if (!service) {
+        return unavailableSource<HomeFactsTaskItem>(
+          "tasks",
+          "待办来源未配置或读取失败。",
+        );
+      }
+      const tasks = await service.list({ actorId, status: "open" });
+      if (!Array.isArray(tasks)) throw new Error("Task source did not return a list.");
+      return groupedSource(
+        "tasks",
+        SOURCE_LABELS.tasks,
+      tasks.flatMap((task) => {
+        const candidate = taskCandidate(task, actorId, context);
+        return candidate ? [candidate] : [];
+      }),
+      compareHomeTaskCandidates,
+    );
+    }
+
+    const reader = taskSummaryReaderFrom(dependencies);
+    if (!reader) {
       return unavailableSource<HomeFactsTaskItem>(
         "tasks",
         "待办来源未配置或读取失败。",
       );
     }
-    const tasks = await service.list({ actorId, status: "open" });
-    if (!Array.isArray(tasks)) throw new Error("Task source did not return a list.");
-    return groupedSource(
-      "tasks",
-      SOURCE_LABELS.tasks,
-      tasks.flatMap((task) => {
-        const candidate = taskCandidate(task, actorId, context);
-        return candidate ? [candidate] : [];
-      }),
-    );
+    const summary = await reader.read(actorId, {
+      productDate: context.productDate,
+      snapshotAt: new Date(context.snapshotMs).toISOString(),
+      timeZone: ORBIT_DISPLAY_TIME_ZONE,
+      toDate: context.toDate,
+    });
+    return groupedTaskSummarySource(summary);
   } catch {
     return unavailableSource<HomeFactsTaskItem>(
       "tasks",
@@ -859,7 +978,7 @@ function appointmentServiceFrom(
   if (dependencies.appointmentServiceFactory) {
     return dependencies.appointmentServiceFactory();
   }
-  return createConfiguredAppointmentService();
+  return null;
 }
 
 function appointmentTemporalState(
@@ -938,6 +1057,35 @@ async function loadAppointments(
   dependencies: HomeFactsRouteDependencies,
 ): Promise<HomeFactsAppointmentSource> {
   try {
+    const useSummary = dependencies.appointmentSummaryReader !== undefined ||
+      dependencies.appointmentSummaryReaderFactory !== undefined ||
+      (dependencies.appointmentService === undefined && dependencies.appointmentServiceFactory === undefined);
+    if (useSummary) {
+      const reader = dependencies.appointmentSummaryReader !== undefined
+        ? dependencies.appointmentSummaryReader
+        : (dependencies.appointmentSummaryReaderFactory ?? createConfiguredHomeAppointmentSummaryReader)();
+      if (!reader) return unavailableAppointmentSource("约见来源未配置或读取失败。");
+      const summary = await reader.read(actorId, { from: new Date(context.fromMs).toISOString(), to: new Date(context.toMs).toISOString() });
+      if (!Number.isSafeInteger(summary.count) || summary.count < 0 || summary.items.length !== Math.min(HOME_FACTS_DISPLAY_LIMIT, summary.count)) {
+        throw new Error("Home appointment summary is invalid.");
+      }
+      const items = summary.items.map((item): HomeFactsAppointmentItem => {
+        const startsMs = validInstant(item.startsAtUtc, "Appointment startsAtUtc");
+        const endsMs = startsMs + item.durationMinutes * 60_000;
+        return {
+          ...item,
+          endsAtUtc: new Date(endsMs).toISOString(),
+          href: HOME_FACTS_VIEW_HREFS.appointments,
+          key: `appointments:${item.appointmentId}`,
+          needsReconfirmation: item.status === "reschedule_pending",
+          temporalState: appointmentTemporalState(startsMs, endsMs, context.snapshotMs),
+        };
+      });
+      return { count: summary.count, items, sourceLabel: SOURCE_LABELS.appointments,
+        state: summary.count > 0 ? "ready" : "empty", viewHref: HOME_FACTS_VIEW_HREFS.appointments };
+    }
+    // Explicitly injected stores remain the test oracle, never an expensive
+    // fallback when the production summary query fails.
     const service = appointmentServiceFrom(dependencies);
     if (!service) return unavailableAppointmentSource("约见来源未配置或读取失败。");
     const records = await service.list({ actorId });
@@ -951,7 +1099,7 @@ async function loadAppointments(
         const startDelta = left.startsAtUtc.localeCompare(right.startsAtUtc);
         return startDelta !== 0
           ? startDelta
-          : left.appointmentId.localeCompare(right.appointmentId);
+          : Buffer.compare(Buffer.from(left.appointmentId), Buffer.from(right.appointmentId));
       });
     return {
       count: items.length,

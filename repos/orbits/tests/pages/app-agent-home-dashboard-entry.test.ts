@@ -781,9 +781,9 @@ test("default route composition binds existing facts loader and W3 runtime once"
 test("facts-loader failure fallback supplies explicit null readers without touching configured fact leaves", async () => {
   const routePath = testRequire.resolve("../../app/(app)/app/agent/home-dashboard-route-service.ts");
   const factsPath = testRequire.resolve("../../app/(app)/app/agent/home-facts-route-service.ts");
-  const taskFactoryPath = testRequire.resolve("../../features/tasks/service-factory.ts");
+  const taskFactoryPath = testRequire.resolve("../../features/tasks/home-summary-reader.ts");
   const personalFactoryPath = testRequire.resolve("../../features/personal-schedule/service-factory.ts");
-  const appointmentFactoryPath = testRequire.resolve("../../features/appointments/runtime.ts");
+  const appointmentFactoryPath = testRequire.resolve("../../features/appointments/home-summary-reader.ts");
   const followupReaderPath = testRequire.resolve("../../features/followups/storage/lifecycle-home-summary.ts");
   const paths = [routePath, factsPath, taskFactoryPath, personalFactoryPath, appointmentFactoryPath, followupReaderPath];
   const previous = new Map(paths.map((path) => [path, testRequire.cache[path]]));
@@ -796,9 +796,10 @@ test("facts-loader failure fallback supplies explicit null readers without touch
 
   try {
     installModule(taskFactoryPath, {
-      createConfiguredTaskService: () => {
+      HOME_TASK_TITLE_PREVIEW_LIMIT: 240,
+      createConfiguredHomeTaskSummaryReader: () => {
         factoryCalls.tasks += 1;
-        return { list: async () => [] };
+        return { read: async () => ({ count: 0, groupCounts: { overdue: 0, "plan-past": 0, recent: 0, undated: 0 }, items: [] }) };
       },
     });
     installModule(personalFactoryPath, {
@@ -808,9 +809,9 @@ test("facts-loader failure fallback supplies explicit null readers without touch
       },
     });
     installModule(appointmentFactoryPath, {
-      createConfiguredAppointmentService: () => {
+      createConfiguredHomeAppointmentSummaryReader: () => {
         factoryCalls.appointments += 1;
-        return { list: async () => [] };
+        return { read: async () => ({ count: 0, items: [] }) };
       },
     });
     installModule(followupReaderPath, {
@@ -903,12 +904,14 @@ stub("features/account/storage/account-live-record-provider.ts", {
     },
   }),
 });
-stub("features/tasks/service-factory.ts", {
-  createConfiguredTaskService: () => ({
-    list: async (input) => {
+stub("features/tasks/home-summary-reader.ts", {
+  HOME_TASK_TITLE_PREVIEW_LIMIT: 240,
+  createConfiguredHomeTaskSummaryReader: () => ({
+    read: async (actorId, window) => {
       counts.tasks += 1;
-      calls.push(["tasks", input]);
-      return [];
+      calls.push(["tasks", { actorId, window }]);
+      assert.ok(window.snapshotAt && window.productDate && window.toDate);
+      return { count: 0, groupCounts: { overdue: 0, "plan-past": 0, recent: 0, undated: 0 }, items: [] };
     },
   }),
 });
@@ -921,13 +924,14 @@ stub("features/personal-schedule/service-factory.ts", {
     },
   }),
 });
-stub("features/appointments/runtime.ts", {
-  createConfiguredAppointmentService: () => ({
-    list: async (input) => {
+stub("features/appointments/home-summary-reader.ts", {
+  createConfiguredHomeAppointmentSummaryReader: () => ({
+    read: async (actorId, window) => {
       counts.appointments += 1;
-      calls.push(["appointments", input]);
+      calls.push(["appointments", { actorId, window }]);
+      assert.ok(window.from && window.to);
       if (appointmentFailure) throw new Error("private appointment diagnostic");
-      return [];
+      return { count: 0, items: [] };
     },
   }),
 });

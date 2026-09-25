@@ -546,3 +546,27 @@ Luna max只读复核发现并复现：`2026-09-01T00:30:00+02:00`实际比`2026-
 精确method影响分析为UNKNOWN，索引指出动态receiver调用点未解析；通过源码确认这两处是实际typed候选/最终投递门，按生产推送路径回归，不视作无人调用。未访问生产、发布、配置Push或发送真实消息；其他来源增量化和真实流量验收仍未完成。
 
 App审计锚点已核对实际调用更新到335，offline-read-inventory **23/23**，未更改endpoint范围/离线政策；App完整第二轮仍在运行，不能用定向成功冒充全量。fixture/runtime单独 **26/26**，全83项包含该组。提交前all/staged图检查14/13文件、32/29符号，无partial/truncated/error；动态调用缺口由既有调用链与真实PG/服务回归补核，0 affected流程不是全产品完成。
+
+## 第三十四批：真实首页任务与约见只返回摘要
+
+2026-09-26，基于 `d5756990`。真实 Web 链 `refreshHomeDashboardAction → loadHomeDashboardSnapshot → loadHomeFacts` 中，任务和约见两路默认都改为单 SQL 的计数加全局三条摘要。任务保持逾期、计划已过、近期、无日期分组及各组全量数量；标题最多240个Unicode码点，不返回notes/history。约见保持本人作为owner或invitee的权限，并核对存储列与payload身份一致；只显示窗口内confirmed/reschedule_pending的已确认安排，不返回协商、会议链接或说明正文。
+
+两路同组同时间下的隐藏ID平局顺序明确定义为UTF-8字节序（SQL `COLLATE "C"`），因此平局边界的三条展示可能与原locale排序不同；业务日期优先级、数量、状态、详情链接不变。注入的内存/完整service仅保留测试oracle；默认生产读取失败返回unavailable，不回退到全量读取。窗口半开、offset按实际时刻比较，非法日期和权限不一致失败，不冒充零条。
+
+本地PG增长：10,000任务的一次摘要SQL返回1行/3,141B；10,001约见（含大段history/details）的一次摘要SQL返回1行/510B。指标仅为数据库结果JSON字节，不是完整HTTP成本或Neon账单。SQL仍需在数据库内核验和计数本人的候选；没有宣称CPU与本人数据量无关。没有新增缓存、schema或迁移。
+
+实际adapter与旧service差分、Unicode/emoji、offset/午夜/毫秒截断、窗口边界、改期中/取消/完成、错误字段/身份、无全量fallback、首页默认action链及plan/strategy/view-model共 **84/84通过，零跳过**。扩大回归发现followup旧fixture仍将“只有关系授权、无本人归属”的联系人作为正例；按已批准的严格所有权规则修正正例，并新增无主/foreign且有关系仍拒绝的反例，没有放宽生产授权。默认入口测试的stub已改为真实新summary工厂，保留认证actor和失败隔离断言。
+
+复现（Web根目录；不加载.env）：
+
+```sh
+env -i PATH="$PATH" ORBIT_LIFECYCLE_TEST_DATABASE_URL=postgresql://li@localhost/orbit_cutover_test_20260917 node --import tsx --test --test-concurrency=1 tests/services/home-appointment-summary-postgres.test.ts tests/pages/app-home-facts-task-summary-reader.test.ts tests/pages/app-home-facts-route-service.test.ts tests/pages/app-agent-home-dashboard-entry.test.ts tests/pages/app-agent-plan-route-view-model.test.ts tests/pages/app-agent-strategy-route-view-model.test.ts tests/pages/app-home-facts-view-model.test.ts tests/pages/app-home-facts-followup-reader.test.ts
+```
+
+图绑定root `orbit`，`d5756990`强制索引；loadTasks/loadAppointments/groupedSource为LOW，依赖接口HomeFactsRouteDependencies为 **HIGH（28节点/15直接依赖）**，已提前报告并覆盖相关页面。测试入口/新reader图UNKNOWN按源码真实调用补核，不当成unused。
+
+独立审阅发现并用PG红→绿复现：SQL默认btrim只去普通空格，不等价旧JS trim；已按ECMAScript完整空白集处理损坏的全空白约见ID，覆盖NBSP、BOM、EM SPACE与行分隔符。没有改创建规则或正常ID。完整Webtypecheck通过，额外首页展示/无界读取审计 **22/22**；提交前raw all/staged图检查无partial/truncated/error，staged仅本批9个文件。图0 affected流程不代表接口无影响，仍按上述HIGH范围与实际回归判断。
+
+跨端：没有改共享HTTP契约、App包或线上配置。App先前全量第二轮已结束：3,629项/3,628通过/1失败/0跳过；唯一失败是5个Web路径无原生同名入口，不是离线审计。独立核实其中actions/profile continuation可复用现有功能，plan/strategy/event live是实际未覆盖的组合界面；不能用空壳跳转消除失败。后续兼容改造与原生验收另记，不因本批Web测试通过关闭。
+
+仍未完成：Today旧API/客户端全任务列表、个人日程窗口与异常历史读取、其他通知来源增量化，以及受控发布与真实流量校准。新代码尚未部署。

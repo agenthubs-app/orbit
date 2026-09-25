@@ -154,8 +154,8 @@ function connectionRow(overrides: Partial<ConnectionRow> = {}): ConnectionRow {
 function contactRow(overrides: Partial<ContactRow> = {}): ContactRow {
   return {
     kind: "contact",
-    metadata: metadata("contacts", "storage:contact:ren", null),
-    authorization: { actorOwned: false, connectionAuthorized: true },
+    metadata: metadata("contacts", "storage:contact:ren", actorId),
+    authorization: { actorOwned: true, connectionAuthorized: true },
     id: "contact:ren",
     displayName: "Ren Ito",
     organization: "Orbit Labs",
@@ -275,6 +275,16 @@ function homeDependencies(
     followupReaderFactory,
   };
 }
+
+test("a relationship alone never authorizes an unowned or foreign contact", async () => {
+  for (const userId of [null, "actor:other"]) {
+    const reader = createRelationshipLifecycleFactsReader({ workspaceId, client: fakeSqlClient(envelope({
+      contacts: [contactRow({ metadata: metadata("contacts", "storage:contact:ren", userId),
+        authorization: { actorOwned: false, connectionAuthorized: true } })],
+    })) });
+    await assert.rejects(reader.readRelationshipLifecycleFacts(actorId), /contact authorization proof/);
+  }
+});
 
 test("configured facts reader uses one strict projected SQL statement and preserves domain ids", async () => {
   const client = fakeSqlClient(envelope());
@@ -411,7 +421,7 @@ test("equivalent duplicate identity policy is stable and conflicts fail closed f
     client: fakeSqlClient(envelope({
       contacts: [
         contactRow(),
-        contactRow({ metadata: metadata("contacts", "storage:contact:conflict", null), displayName: "冲突联系人" }),
+        contactRow({ metadata: metadata("contacts", "storage:contact:conflict", actorId), displayName: "冲突联系人" }),
       ],
     })),
     workspaceId,
@@ -858,11 +868,11 @@ test("reader loader trims only the validated actor boundary and does not invoke 
 test("equivalent task duplicates are preserved while equivalent contacts and connections choose a stable record", async () => {
   const equalTask = taskRow({ metadata: metadata("tasks", "storage:task:equal-b") });
   const equalConnection = connectionRow({ metadata: metadata("connections", "storage:connection:z") });
-  const equalContact = contactRow({ metadata: metadata("contacts", "storage:contact:z", null) });
+  const equalContact = contactRow({ metadata: metadata("contacts", "storage:contact:z", actorId) });
   const client = fakeSqlClient(envelope({
     tasks: [taskRow({ metadata: metadata("tasks", "storage:task:equal-a") }), equalTask],
     connections: [connectionRow({ metadata: metadata("connections", "storage:connection:a") }), equalConnection],
-    contacts: [contactRow({ metadata: metadata("contacts", "storage:contact:a", null) }), equalContact],
+    contacts: [contactRow({ metadata: metadata("contacts", "storage:contact:a", actorId) }), equalContact],
   }));
   const reader = createRelationshipLifecycleFactsReader({ client, workspaceId });
 
