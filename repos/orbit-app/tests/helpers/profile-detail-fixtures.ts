@@ -34,6 +34,12 @@ export const profileContactsPayload = {
 const task = { id: "task:1", accountId: "account-1", ownerUserId: "actor-1", title: "整理访谈记录", status: "open", category: "work", plannedDate: "2026-09-12", priority: "normal", source: "manual", createdAt: at, updatedAt: at };
 export const profileTasksPayload = { tasks: [task, { ...task, id: "task:2", plannedDate: "2026-09-11" }, { ...task, id: "task:3", plannedDate: undefined, dueAt: "2026-09-11T15:01:00Z" },
   { ...task, id: "task:future", plannedDate: "2026-09-13" }, { ...task, id: "task:done", status: "completed", completedAt: at }] };
+export const profileContactSummaryPayload = { total: 2, sources: { manual: 2 }, statuses: { active: 1, needs_follow_up: 1 }, values: {}, tags: [], hasMoreTags: false, asOf: at };
+export const profileTaskDayPagePayload = { actorId: "actor-1", status: "open", scope: "all", query: "",
+  dueWindow: { plannedThrough: "2026-09-12", dueBefore: "2026-09-12T15:00:00.000Z" },
+  items: [{ id: "task:3", titlePreview: task.title, locationPreview: null, status: "open", category: task.category, priority: task.priority, plannedDate: null,
+    dueAt: "2026-09-11T15:01:00Z", updatedAt: at, relatedContact: null }],
+  total: 3, counts: { open: 3, completed: 0 }, hasMore: true, nextCursor: "signed", asOf: at };
 const schedule = { id: "schedule:1", kind: "meeting", category: "meeting", state: "upcoming", title: "合作讨论", startsAt: "2026-09-12T05:00:00Z", endsAt: "2026-09-12T06:00:00Z", sourceId: "meeting:1", location: "线上" };
 export const profileSchedulePayload = { scheduleItems: [schedule, { ...schedule, id: "schedule:2", kind: "event", sourceId: "event:2", startsAt: "2026-09-20T05:00:00Z", endsAt: "2026-09-20T06:00:00Z" },
   { ...schedule, id: "schedule:old", startsAt: "2026-09-11T05:00:00Z", endsAt: "2026-09-11T06:00:00Z" }, { ...schedule, id: "schedule:cancelled", state: "cancelled" }] };
@@ -42,6 +48,8 @@ export const profileReadPayloads = {
   "/api/profile/update-suggestions": profileSuggestionsPayload,
   "/api/contacts": profileContactsPayload,
   "/api/tasks": profileTasksPayload,
+  "/api/contacts/summary": profileContactSummaryPayload,
+  "/api/tasks/page": profileTaskDayPagePayload,
   "/api/schedule-items": profileSchedulePayload
 };
 

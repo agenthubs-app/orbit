@@ -5,6 +5,7 @@ import * as ImagePicker from "expo-image-picker";
 import { type Href, useRouter } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  AppState,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -20,7 +21,7 @@ import {
   ORBIT_API_ENDPOINTS,
   profileUpdateSuggestionAcceptPath
 } from "../../api/endpoints";
-import { profileContactsCount, profileDetailSchema, profileExtractionReceiptSchema, profileSaveReceiptSchema, profileSuggestionReceiptSchema, profileSuggestionsSchema, profileTodayTasksCount, profileUpcomingScheduleCount,
+import { profileDetailSchema, profileExtractionReceiptSchema, profileSaveReceiptSchema, profileSuggestionReceiptSchema, profileSuggestionsSchema, profileUpcomingScheduleCount,
   type AcceptedProfileSuggestion, type ProfileDetail, type ProfileExtraction, type ProfileSaveRequest, type ProfileSuggestions } from "../../api/profile-detail-contract";
 import { validateApiResourceState } from "../../api/validated-resource-state";
 import { OrbitTabBar } from "../../components/OrbitTabBar";
@@ -32,6 +33,9 @@ import { radius, spacing, textStyles, typography } from "../../design/tokens";
 import { createControlStyles } from "../../design/controls";
 import { createThemedStyles } from "../../design/theme";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
+import { useOrbitTimeZone } from "../../time/OrbitTimeZoneProvider";
+import { homeDateView } from "../../view-models/home-dashboard";
+import { profileContactSummaryCount, profileTaskDayCount, profileTaskDayPath } from "../../view-models/profile-statistic-counts";
 import type { MessageKey, OrbitTranslator } from "../../i18n/messages";
 import {
   type ApiResourceState,
@@ -1328,23 +1332,35 @@ function OrbitBusinessCard({ profile, onEdit }: { profile: ProfileSummary; onEdi
 function ProfileStatistics({ scopeKey, isScopeCurrent }: { scopeKey: string; isScopeCurrent: () => boolean }) {
   const { styles } = useStyles();
   const locale = useOrbitLocale();
+  const auth = useOrbitAuthSession();
+  const { timeZone } = useOrbitTimeZone();
+  const [day, setDay] = useState(() => homeDateView(new Date(), undefined, timeZone).selectedDateKey);
+  useEffect(() => {
+    const update = () => {
+      if (AppState.currentState === "active" && isScopeCurrent()) setDay(homeDateView(new Date(), undefined, timeZone).selectedDateKey);
+    };
+    update();
+    const timer = setInterval(update, 60_000);
+    const listener = AppState.addEventListener("change", update);
+    return () => { clearInterval(timer); listener.remove(); };
+  }, [isScopeCurrent, timeZone]);
   const { width, fontScale } = useWindowDimensions();
   const narrow = width < 360 || fontScale > 1.2;
   return <View style={[styles.statistics, narrow && styles.statisticsNarrow]}>
-    <ProfileStatistic label={locale.t("profile.contacts")} path={ORBIT_API_ENDPOINTS.contacts} href="/contacts" count={profileContactsCount} scopeKey={scopeKey} isScopeCurrent={isScopeCurrent} first narrow={narrow} />
-    <ProfileStatistic label={locale.t("profile.todayTasks")} path={ORBIT_API_ENDPOINTS.tasks + "?status=open"} href="/tasks" count={profileTodayTasksCount} scopeKey={scopeKey} isScopeCurrent={isScopeCurrent} narrow={narrow} />
+    <ProfileStatistic label={locale.t("profile.contacts")} path="/api/contacts/summary" href="/contacts" count={profileContactSummaryCount} scopeKey={scopeKey} isScopeCurrent={isScopeCurrent} first narrow={narrow} networkOnly />
+    <ProfileStatistic label={locale.t("profile.todayTasks")} path={profileTaskDayPath(day, timeZone)} href="/tasks" count={data => profileTaskDayCount(data, auth.actorId ?? "", day, timeZone)} scopeKey={scopeKey} isScopeCurrent={isScopeCurrent} narrow={narrow} networkOnly />
     <ProfileStatistic label={locale.t("profile.upcomingSchedule")} path={ORBIT_API_ENDPOINTS.scheduleItems} href="/schedule" count={profileUpcomingScheduleCount} scopeKey={scopeKey} isScopeCurrent={isScopeCurrent} narrow={narrow} />
   </View>;
 }
 
-function ProfileStatistic({ label, path, href, count, scopeKey, isScopeCurrent, first = false, narrow }: {
-  label: string; path: string; href: Href; count: (data: unknown) => number | null; scopeKey: string; isScopeCurrent: () => boolean; first?: boolean; narrow: boolean;
+function ProfileStatistic({ label, path, href, count, scopeKey, isScopeCurrent, first = false, narrow, networkOnly = false }: {
+  label: string; path: string; href: Href; count: (data: unknown) => number | null; scopeKey: string; isScopeCurrent: () => boolean; first?: boolean; narrow: boolean; networkOnly?: boolean;
 }) {
   const { styles } = useStyles();
   const locale = useOrbitLocale();
   const router = useRouter();
   const [attempt, setAttempt] = useState(0);
-  const state = useApiResource<unknown>(path, () => false, { scopeKey: JSON.stringify([scopeKey, path, attempt]) });
+  const state = useApiResource<unknown>(path, () => false, { scopeKey: JSON.stringify([scopeKey, path, attempt]), cachePolicy: networkOnly ? "network-only" : "default" });
   const value = state.kind === "success" || state.kind === "empty" ? count(state.data) : null;
   const cellStyles = [styles.statistic, narrow && styles.statisticNarrow, !first && !narrow && styles.statisticNext, !first && narrow && styles.statisticNextNarrow];
   if (value !== null) return <Pressable accessibilityRole="button" accessibilityLabel={label + " " + value} onPress={() => { if (isScopeCurrent()) router.push(href); }} style={({ pressed }) => [...cellStyles, pressed && styles.pressed]}>

@@ -4,7 +4,7 @@ import { createRequire } from "node:module";
 import test from "node:test";
 import { build } from "esbuild";
 import { chromium, type Browser, type Page } from "playwright";
-import { acceptedProfileSuggestionPayload, emptyProfilePayload, profileContactsPayload, profileExtractionPayload, profilePayload, profileReadPayloads, profileSchedulePayload, profileSuggestion, profileSuggestionsPayload, profileTasksPayload, readyProfileSuggestionsPayload } from "./helpers/profile-detail-fixtures";
+import { acceptedProfileSuggestionPayload, emptyProfilePayload, profileContactSummaryPayload, profileTaskDayPagePayload, profileExtractionPayload, profilePayload, profileReadPayloads, profileSchedulePayload, profileSuggestion, profileSuggestionsPayload, readyProfileSuggestionsPayload } from "./helpers/profile-detail-fixtures";
 
 const require = createRequire(import.meta.url);
 const iconFont = readFileSync("node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Ionicons.ttf").toString("base64");
@@ -17,12 +17,15 @@ import React, { useSyncExternalStore } from "react";
 import { View } from "react-native-web";
 import glyphs from "@expo/vector-icons/build/vendor/react-native-vector-icons/glyphmaps/Ionicons.json";
 import { onSessionExpired } from "./src/api/session-expiry";
-const listeners = new Set(); let revision = 0;
+const listeners = new Set(), timers = new Map(); let revision = 0, timerId = 0;
 const observe = () => useSyncExternalStore(fn => { listeners.add(fn); return () => listeners.delete(fn); }, () => revision);
 const NativeDate = Date;
-window.Date = class extends NativeDate { constructor(...args) { super(...(args.length ? args : ["2026-09-12T00:00:00Z"])); } static now() { return NativeDate.parse("2026-09-12T00:00:00Z"); } };
+window.Date = class extends NativeDate { constructor(...args) { super(...(args.length ? args : [window.fixture?.now ?? "2026-09-12T00:00:00Z"])); } static now() { return NativeDate.parse(window.fixture?.now ?? "2026-09-12T00:00:00Z"); } };
+window.setInterval = fn => { const id = ++timerId; timers.set(id, fn); return id; };
+window.clearInterval = id => timers.delete(id);
 const state = window.fixture = { requests: [], pending: [], navigation: [], presses: {}, picks: [], expiries: 0, actor: "actor-1", name: "程川", cookieHeader: "", baseUrl: "https://orbit.example", ready: true, baseReady: true, signedIn: true, focused: true, mounted: true, width: 390, fontScale: 1, ...window.initialFixture,
   update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); },
+  tick() { [...timers.values()].forEach(fn => fn()); },
   reply(index, status = 200, payload) { const r = state.requests[index]; r.replied = true; state.pending[index]?.(new Response(JSON.stringify(status === 200 || payload !== undefined ? { success: true, data: payload === undefined ? state.payloads[r.path] : payload } : { success: false, error: { code: "UNAVAILABLE", message: "暂时无法读取，请重试。" } }), { status, headers: { "Content-Type": "application/json" } })); }
 };
 onSessionExpired(() => state.expiries++);
@@ -78,6 +81,37 @@ export const TextInput = props => { const s = useFixture(); return <RealTextInpu
 });
 test.after(async () => { await browser?.close(); });
 async function settle(p: Page) { await p.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))); }
+
+test("profile counters never download full contact or task collections", async t => {
+  const p = await open(t);
+  const requests = await p.evaluate(() => (window as any).fixture.requests.map((r: any) => r.url)) as string[];
+  assert.ok(!requests.some(url => ["/api/contacts", "/api/tasks"].includes(new URL(url).pathname)));
+  assert.ok(requests.some(url => new URL(url).pathname === "/api/contacts/summary"));
+  const task = requests.find(url => new URL(url).pathname === "/api/tasks/page"); assert.ok(task);
+  assert.equal(new URL(task).searchParams.get("limit"), "1");
+  assert.equal(new URL(task).searchParams.get("plannedThrough"), "2026-09-12");
+});
+
+test("profile midnight changes only the task count window and never accepts yesterday's count", async t => {
+  const p = await open(t);
+  const before = await p.evaluate(() => (window as any).fixture.requests.length);
+  await update(p, { now: "2026-09-12T15:01:00Z", holdReads: true });
+  await p.evaluate(() => (window as any).fixture.tick()); await settle(p);
+  await p.waitForFunction(start => (window as any).fixture.requests.length > start, before);
+  const requests = await p.evaluate(start => (window as any).fixture.requests.slice(start).map((r: any) => r.url), before) as string[];
+  assert.equal(requests.length, 1); assert.equal(new URL(requests[0]!).pathname, "/api/tasks/page");
+  assert.equal(new URL(requests[0]!).searchParams.get("plannedThrough"), "2026-09-13");
+  assert.equal(await p.getByRole("button", { name: "今日待办 3", exact: true }).count(), 0);
+  // The old day's otherwise valid response must be rejected by the receipt scope.
+  await p.evaluate(index => (window as any).fixture.reply(index), before); await settle(p);
+  assert.equal(await p.getByRole("button", { name: "重试今日待办", exact: true }).count(), 1);
+  await press(p, "重试今日待办");
+  await p.evaluate(payload => {
+    const s = (window as any).fixture;
+    s.reply(s.requests.length - 1, 200, payload);
+  }, { ...profileTaskDayPagePayload, total: 7, counts: { open: 7, completed: 0 }, dueWindow: { plannedThrough: "2026-09-13", dueBefore: "2026-09-13T15:00:00.000Z" } });
+  await p.getByRole("button", { name: "今日待办 7", exact: true }).waitFor();
+});
 async function open(t: { after(fn: () => Promise<void>): void }, patch: Record<string, unknown> = {}) {
   const p = await browser.newPage({ viewport: { width: Number(patch.width ?? 390), height: 844 }, deviceScaleFactor: 2, colorScheme: patch.dark ? "dark" : "light" });
   p.setDefaultTimeout(1800); const errors: string[] = []; p.on("pageerror", error => errors.push(error.message));
@@ -217,7 +251,7 @@ test("profile overview follows the approved hierarchy with real statistics and n
   assert.equal(await p.getByRole("tab", { name: "我的", exact: true }).getAttribute("aria-selected"), "true");
   assert.deepEqual(await writes(p), []);
   const queries = await p.evaluate(() => (window as any).fixture.requests.map((r: any) => r.url));
-  assert.ok(queries.some((url: string) => url.endsWith("/api/tasks?status=open")));
+  assert.ok(queries.some((url: string) => new URL(url).pathname === "/api/tasks/page" && new URL(url).searchParams.get("limit") === "1"));
   if (process.env.APP_STYLE_SCREENSHOTS) await p.screenshot({ path: "/tmp/orbit-ink-signal-profile-390-" + (process.env.PROFILE_QA_PASS ?? "round1") + ".png" });
 });
 
@@ -303,8 +337,9 @@ test("profile edit is explicit and returning to the overview preserves the unsub
 });
 
 test("profile statistics show real zero and keep a failed counter distinct with independent retry", async t => {
-  const payloads = { ...profileReadPayloads, "/api/contacts": { ...profileContactsPayload, state: "empty", contacts: [] }, "/api/tasks": { tasks: [] }, "/api/schedule-items": { scheduleItems: [] } };
-  const p = await open(t, { payloads, failPaths: ["/api/tasks"] });
+  const payloads = { ...profileReadPayloads, "/api/contacts/summary": { ...profileContactSummaryPayload, total: 0, statuses: {}, sources: {} },
+    "/api/tasks/page": { ...profileTaskDayPagePayload, items: [], total: 0, counts: { open: 0, completed: 0 }, hasMore: false, nextCursor: null }, "/api/schedule-items": { scheduleItems: [] } };
+  const p = await open(t, { payloads, failPaths: ["/api/tasks/page"] });
   for (const label of ["人脉 0", "近期日程 0"]) assert.equal(await p.getByRole("button", { name: label, exact: true }).count(), 1);
   assert.equal(await p.getByRole("button", { name: "今日待办 0", exact: true }).count(), 0);
   assert.equal(await p.getByText("未读到", { exact: true }).count(), 1);
@@ -316,7 +351,7 @@ test("profile statistics show real zero and keep a failed counter distinct with 
   await p.evaluate(before => (window as any).fixture.reply(before), before);
   await p.getByRole("button", { name: "今日待办 0", exact: true }).waitFor();
   assert.equal(await p.getByRole("button", { name: "今日待办 0", exact: true }).count(), 1);
-  assert.deepEqual(await p.evaluate(before => (window as any).fixture.requests.slice(before).map((r: any) => [r.method, r.path]), before), [["GET", "/api/tasks"]]);
+  assert.deepEqual(await p.evaluate(before => (window as any).fixture.requests.slice(before).map((r: any) => [r.method, r.path]), before), [["GET", "/api/tasks/page"]]);
   assert.deepEqual(await writes(p), []);
 });
 
@@ -351,9 +386,10 @@ for (const profile of [{}, { ...profilePayload, state: "empty" }, { ...profilePa
 });
 
 for (const [path, payload, label] of [
-  ["/api/contacts", { ...profileContactsPayload, contacts: [profileContactsPayload.contacts[0], profileContactsPayload.contacts[0]] }, "人脉"],
-  ["/api/contacts", { ...profileContactsPayload, state: "empty" }, "人脉"],
-  ["/api/tasks", { tasks: [{ ...profileTasksPayload.tasks[0], plannedDate: "2026-02-30" }] }, "今日待办"],
+  ["/api/contacts/summary", { ...profileContactSummaryPayload, total: -1 }, "人脉"],
+  ["/api/contacts/summary", { ...profileContactSummaryPayload, total: "2" }, "人脉"],
+  ["/api/tasks/page", { ...profileTaskDayPagePayload, actorId: "foreign" }, "今日待办"],
+  ["/api/tasks/page", { ...profileTaskDayPagePayload, dueWindow: undefined }, "今日待办"],
   ["/api/schedule-items", { scheduleItems: [{ ...profileSchedulePayload.scheduleItems[0], category: undefined }] }, "近期日程"],
   ["/api/schedule-items", { scheduleItems: [{ ...profileSchedulePayload.scheduleItems[0], category: "invalid" }] }, "近期日程"],
   ["/api/schedule-items", { scheduleItems: [{ ...profileSchedulePayload.scheduleItems[0], endsAt: "2026-09-12T04:00:00Z" }] }, "近期日程"]
