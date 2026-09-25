@@ -1166,6 +1166,19 @@ function planFromRow(row: PlanRow | null | undefined, actorId: string, projectio
 /** Read one authority source, not its workspace graph. No source row lock:
  * this runs under the projection-work lock and must not reverse writer order. */
 export async function readCanonicalReminderProjectionSource(executor:TransactionalSqlExecutor,workspaceId:string,source:InboxProjectionSource):Promise<ReminderPlanDTO|null> {
+  const plan=await readProjectionPlanRow(executor,workspaceId,source);
+  if(!plan||canonicalInboxProjectionRevision(plan)!==source.sourceRevision||plan.status==='cancelled')return null;
+  return verifyProjectionDelivery(executor,workspaceId,source,plan);
+}
+
+/** Backfill must lock/re-read authority, not replay a revision from its ID scan.
+ * Caller owns source locks. Ordinary work consumers keep the revision fence. */
+export async function readCanonicalReminderProjectionCandidate(executor:TransactionalSqlExecutor,workspaceId:string,source:Pick<InboxProjectionSource,'actorId'|'sourceId'>):Promise<ReminderPlanDTO|null> {
+  const plan=await readProjectionPlanRow(executor,workspaceId,source);
+  return !plan||plan.status==='cancelled'?null:verifyProjectionDelivery(executor,workspaceId,source,plan);
+}
+
+async function readProjectionPlanRow(executor:TransactionalSqlExecutor,workspaceId:string,source:Pick<InboxProjectionSource,'actorId'|'sourceId'>):Promise<ReminderPlanDTO|null> {
   const rows=await executor.query<PlanRow>(`with source as (
     select workspace_id,collection_name,record_id,user_id,source_id,target_type,target_id,created_at,updated_at,
       (select jsonb_object_agg(key,value) from jsonb_each(case when jsonb_typeof(payload->'entity')='object' then payload->'entity' else '{}'::jsonb end)
@@ -1176,7 +1189,10 @@ export async function readCanonicalReminderProjectionSource(executor:Transaction
   if(!rows.rows.length)return null;
   const plan=planFromRow(rows.rows[0],source.actorId,true);
   if(!plan)throw Error('CANONICAL_PROJECTION_SOURCE_INVALID');
-  if(canonicalInboxProjectionRevision(plan)!==source.sourceRevision||plan.status==='cancelled')return null;
+  return plan;
+}
+
+async function verifyProjectionDelivery(executor:TransactionalSqlExecutor,workspaceId:string,source:Pick<InboxProjectionSource,'actorId'|'sourceId'>,plan:ReminderPlanDTO):Promise<ReminderPlanDTO|null> {
   // Match the existing reminder inbox: a due scheduled/failed plan is visible
   // even before successful delivery. Pure-in-app delivered needs its fence.
   // A mixed/push plan's delivered status can mean Push only. Inbox projection

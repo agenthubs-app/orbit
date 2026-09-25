@@ -41,6 +41,16 @@ typed inbox 的纯站内 snooze 已接入同一变化/到期登记。它用精�
 5. 小批回填不发送历史 Push；逐 actor 对照通知集合、未读、read/dismiss/snooze 和撤权。已知 scheduled/failed/周期日程差异必须归零或由单独明确产品决定处理，不能拿总条数相同代替逐项对账。
 6. 只有对应来源前后台生产者均等价时才删除它的 GET/后台全量枚举；其他来源保持显式未迁移状态。
 
+## 显式 canonical plan 回填入口（本地已验证，未执行生产）
+
+`features/notifications/canonical-inbox-backfill.ts`提供`runCanonicalInboxBackfillPass`。它不由GET或scheduler自动调用；必须给出精确workspace/actor/batchId/cutoff，确认新旧writer已接齐后显式`writersReady:true`。该值是操作方前置确认，不会自动证明旧部署已停止。每次默认10条、最大25条，默认5秒数据库操作预算、最大10秒；连接取得仍受连接池超时。只扫描cutoff之前创建的本人plan，按ID而不是MAX(serial)/updatedAt推进，同batch不同cutoff拒绝恢复。
+
+进度保存在既有orbit_records的`notificationProjectionBackfill`集合，绑定actor/batch；每项事务采用policy→inbox→canonical actor→source row→work顺序，锁定并重读权威plan，再登记当前fingerprint及availableAt，最后推进checkpoint。取消/消失来源跳过；归属矛盾或损坏plan/进度报错不推进。可序列化冲突从新事务重试最多2次；已提交前项不丢，失败项重跑。未来plan只排未来工作，不抑制Push；未展示的cutoff前事件在同事务先登记历史抑制。已经展示的同event不改原投递状态。`done`只代表plan工作登记完成，**不是所有通知物化/权限/Push对账已完成**。
+
+先安装独立additive索引`orbit_records_reminder_actor_id_idx`（workspace、user、record_id COLLATE C，仅reminderPlans）；已在本地真实EXPLAIN验证。不要为此盲跑全部旧迁移。完成checkpoint再次调用不再扫描plan。调用方须按批准的云操作/字节预算决定是否继续下一批，不能为了追求done而无预算循环。本轮没有生产CLI调用、回填、开flag或真实Push。
+
+仍需：历史series窗口进度的回填、所有旧writer/旧部署清点、逐项集合与动作对账、计划登记后的实际消费/积压验收、其他通知来源；上述缺项仍阻止删除GET/后台refresh。新入口不能代替这些发布门。
+
 ## 暂停与恢复
 
 flag 关闭并重新部署相关消费者/生产者后不再领取或登记本批工作，工作数据保留，恢复后可重领过期 lease；不会删除已有 typed 通知，也不会停止 canonical reminder 本身或旧 refresh。已开始的 pass 可以完成手里的数据库事务，这不是强制中断。必须清点旧部署/独立 scheduler 并实际确认不再 claim，不能仅凭环境变量页面判定已停。没有新增自我续排的队列链。

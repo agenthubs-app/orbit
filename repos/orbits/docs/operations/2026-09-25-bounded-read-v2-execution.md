@@ -490,3 +490,17 @@ App实际NoteDetailScreen改用独立NoteSourceTasks：下一页替换、不无�
 PG专项5/5覆盖真实reserve红转绿、事务回滚/幂等/跨actor-workspace隔离/未来拒绝/已开始发送拒绝、真实worker处理旧候选且正常新事件仍可发送、两个真实事务竞争时抑制获胜且实际收件箱仍未读、真实configured materialize对3条通知只作1次抑制查询且仅为2条创建候选。source权限在单项未读测试中为明确替身，真实materialize另使用真实提醒/任务来源验证；外部Push仅本地替身。9文件投递/切流/读取/路由组合31/31，零跳过，新增materialize用例另5/5；Web完整typecheck通过。
 
 这只是持久回填必需的历史投递保护，不是完整回填：尚需持久checkpoint、事务内源重读和工作登记、历史series窗口、来源集合对账及发布许可。默认不会创建任何抑制事实；必须由后续回填在与历史投影同一事务内显式调用。原GET及后台refresh未删。编辑前delivery policy图风险HIGH，已告知；typed source/runtime LOW，新函数索引未识别时按实际调用补查，未当无影响。
+
+第二十八批提交`dc3092c0`；最终all/staged图检查7/6文件、74/71符号，无partial/truncated/error。工具零affected流程不抹除编辑前HIGH判断，真实reserve/materialize/source/worker路径由上述测试补证。
+
+## 第二十九批：canonical历史plan显式小批回填与持久断点
+
+新增`runCanonicalInboxBackfillPass`，按精确workspace/actor/batchId/cutoff限定范围，要求显式writer前置确认，不挂GET/维护循环。默认每次10条、最大25条，默认5秒操作预算、最大10秒；语句超时随剩余预算缩短，连接获取由池超时约束。每项单独事务将当前plan revision工作、过去未展示事件的Push抑制和checkpoint一起保存，失败只留下此前成功项。固定policy→inbox→canonical actor→源行→work锁序；扫描只给ID，真正登记前锁定并重读；40001/40P01从新事务最多重试2次，不用扫描时的旧payload覆盖新版本。
+
+复用原通知ID计算，投影candidate与普通work reader共用严格归属/字段/纯站内delivery fence检查；普通消费者仍先检查revision，不因提取函数改变stale语义。未来plan在fireAt等待、不会登记历史抑制；取消/消失plan跳过；矛盾owner、损坏checkpoint拒绝推进。过去已有同event通知不重解释其原投递状态。完成断点再调用不重新枚举plan，旧batch改cutoff拒绝。`done`只证明工作登记完成，未证明通知已全部生成/投递对账。
+
+本地PG先测出无索引时每次候选查询全表扫描＋排序，新增`orbit_records_reminder_actor_id_idx`后真实EXPLAIN使用actor+ID索引。本人历史从2增至10,002条，每批2条仍只读 **2条来源、1,210 B**（不含checkpoint/工作写入返回等，非整批/Neon账单）。专项6/6覆盖分批断点/未来/取消/实际未读保留、工作失败回滚抑制与checkpoint、扫描后并发旧writer更新触发新快照重读、增长预算/执行计划、双worker争用进度不重排及foreign拒绝、错误归属/损坏进度失败。11文件提醒/物化/成本/周期/snooze/收件箱/迁移组合32/32，零跳过；加强后专项另6/6，完整类型检查结果后补。
+
+这批没有部署、安装线上索引、发送Push、改手机或删除GET。历史series窗口、逐对象对账、其他来源和真实生产验收仍未完成。编辑前共用upserter HIGH已告知，单源reader LOW；新增回填符号UNKNOWN时查明只有本地测试调用，没有偷偷加入后台自动执行。迁移入口及前置条件详见canonical投影发布门文档。
+
+测试泛型包装首次typecheck报错，改为保留真实query的TRow泛型，未放宽生产类型；最后完整Webtypecheck通过。最终all/staged图检查8/7文件、59/56符号，无partial/truncated/error；零affected流程仍不替代已知共用通知写入路径的回归。

@@ -42,7 +42,7 @@ export function assertInboxRecordsIntact(notifications:readonly InboxNotificatio
  * consumers. The caller owns transaction lifetime; this never sends a push. */
 export function createInboxRecordUpserter(input:{transaction:InboxRecordRepository['transaction'];now:()=>string}) {
   return async (raw:InboxNotificationUpsert)=>{
-    const id='inbox:'+digest([raw.actorId,raw.semanticKey]).slice(0,32);
+    const id=inboxNotificationId(raw.actorId,raw.semanticKey);
     const parsed=inboxNotificationSchema.safeParse({...raw,id,revision:1,readAt:raw.readAt??null,disposition:raw.disposition??'open',updatedAt:input.now()});
     if(!parsed.success || (raw.kind==='reminder' && !raw.dueAt && !raw.scheduledFor))throw new InboxRecordError('VALIDATION_ERROR','Notification needs valid sources, text and reminder time');
     return input.transaction(raw.actorId,async tx=>{
@@ -58,6 +58,11 @@ export function createInboxRecordUpserter(input:{transaction:InboxRecordReposito
       await tx.save({notification:parsed.data,operations:{}});return parsed.data;
     });
   };
+}
+
+/** Shared with transactional historical projection registration. */
+export function inboxNotificationId(actorId:string,semanticKey:string):string {
+  return 'inbox:'+digest([actorId,semanticKey]).slice(0,32);
 }
 
 export function createInboxRecordService(input:{repository:InboxRecordRepository;sourceAccess:InboxSourceAccess;sourceAccessBatch?:InboxSourceAccessBatch;effects:InboxBusinessEffects;now?:()=>string}) {
