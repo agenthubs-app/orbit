@@ -6,21 +6,22 @@ import { ActivityIndicator, AppState, Image, Platform, Pressable, RefreshControl
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
-import { eventValueRecommendationsPath, ORBIT_API_ENDPOINTS, taskPath, tasksPath } from "../../api/endpoints";
+import { eventValueRecommendationsPath, ORBIT_API_ENDPOINTS, taskPath } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
 import { LoadingState } from "../../components/LoadingState";
 import { createThemedStyles } from "../../design/theme";
 import { useRelationshipInboxBadgeCount } from "../../hooks/useRelationshipInboxBadgeCount";
 import { useHomeDashboardClient } from "../../hooks/useHomeDashboardClient";
-import { homeDateView, homeRecommendedEventsToView, homeScheduleToView, homeTasksToView } from "../../view-models/home-dashboard";
+import { homeDateView, homeRecommendedEventsToView, homeScheduleToView } from "../../view-models/home-dashboard";
+import { homeTaskPagePath, homeTaskPageToView } from "../../view-models/home-task-page";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import type { MessageKey } from "../../i18n/messages";
 
 type Section = "schedule" | "tasks" | "events";
 type Resource = { kind: "loading" } | { kind: "ready"; data: unknown } | { kind: "error"; message: string };
 type Resources = Record<Section, Resource>;
-type Scope = { key: number; ready: boolean; baseUrl: string; client: ReturnType<typeof useHomeDashboardClient> };
-const paths: Record<Section, string> = { schedule: ORBIT_API_ENDPOINTS.scheduleItems, tasks: tasksPath("open"), events: eventValueRecommendationsPath({ limit: 3 }) };
+type Scope = { key: number; actorId: string; ready: boolean; baseUrl: string; client: ReturnType<typeof useHomeDashboardClient> };
+const paths: Record<Section, string> = { schedule: ORBIT_API_ENDPOINTS.scheduleItems, tasks: "/api/tasks/page", events: eventValueRecommendationsPath({ limit: 3 }) };
 const sections: Section[] = ["schedule", "tasks", "events"];
 const loading = (): Resources => ({ schedule: { kind: "loading" }, tasks: { kind: "loading" }, events: { kind: "loading" } });
 const homeFont = Platform.select({
@@ -45,7 +46,7 @@ export function HomeDashboardScreen() {
   const ready = auth.ready && auth.signedIn && server.ready && Boolean(actor);
   const sequence = useRef(0);
   const scope = useMemo<Scope>(() => ({
-    key: ++sequence.current, ready, baseUrl: server.baseUrl, client,
+    key: ++sequence.current, actorId: actor, ready, baseUrl: server.baseUrl, client,
   }), [ready, actor, server.baseUrl, auth.cookieHeader, client]);
   const latest = useRef(scope);
   latest.current = scope;
@@ -76,6 +77,7 @@ function HomeDashboard({ scope, current }: { scope: Scope; current: () => boolea
   const runtime = useRef({
     alive: true, focused: false, foreground: AppState.currentState === "active", generation: 0,
     mutating: false, writeSequence: 0, reading: new Set<Section>(), resources: loading(),
+    taskGeneration: 0, taskAbort: null as (() => void) | null, taskDayRefreshPending: false,
     controllers: new Set<AbortController>(),
   });
   const isCurrent = useCallback(() => {
@@ -91,6 +93,7 @@ function HomeDashboard({ scope, current }: { scope: Scope; current: () => boolea
     r.generation++;
     r.controllers.forEach(controller => controller.abort()); r.controllers.clear();
     r.reading.clear(); r.mutating = false; r.resources = loading();
+    r.taskGeneration++; r.taskAbort = null; r.taskDayRefreshPending = false;
     setResources(r.resources); setUpdatingId(null); setMutationError("");
   }, []);
   const capture = useCallback(() => {
@@ -100,6 +103,7 @@ function HomeDashboard({ scope, current }: { scope: Scope; current: () => boolea
     r.controllers.add(controller);
     return {
       signal: controller.signal,
+      abort: () => controller.abort(),
       valid: () => isCurrent() && runtime.current.generation === generation && !controller.signal.aborted,
       release: () => runtime.current.controllers.delete(controller),
     };
@@ -109,20 +113,33 @@ function HomeDashboard({ scope, current }: { scope: Scope; current: () => boolea
     if (!isCurrent() || r.reading.has(section) || (section === "tasks" && r.mutating)) return;
     r.reading.add(section); put(section, { kind: "loading" });
     const ticket = capture();
+    const day = selectedDate.current, taskGeneration = r.taskGeneration;
+    if (section === "tasks") r.taskAbort = ticket.abort;
+    const valid = () => ticket.valid() && (section !== "tasks" || (r.taskGeneration === taskGeneration && selectedDate.current === day));
     try {
-      const result = await scope.client.get<unknown>(paths[section], { signal: ticket.signal });
-      if (!ticket.valid()) return;
+      const result = await scope.client.get<unknown>(section === "tasks" ? homeTaskPagePath(day, timeZone) : paths[section], { signal: ticket.signal });
+      if (!valid()) return;
       const time = new Date();
       const accepted = result.success && result.status >= 200 && result.status < 300;
-      const data = accepted ? (section === "tasks" ? homeTasksToView(result.data, selectedDate.current, time, timeZone, locale.language)
+      const data = accepted ? (section === "tasks" ? homeTaskPageToView(result.data, scope.actorId, day, time, timeZone, locale.language)
         : section === "schedule" ? homeScheduleToView(result.data, selectedDate.current, time, timeZone, locale.language) : homeRecommendedEventsToView(result.data, timeZone, locale.language)) : null;
       put(section, accepted && data !== null ? { kind: "ready", data: result.data }
         : { kind: "error", message: result.success ? locale.t("home.invalidData") : result.error.message });
     } finally {
-      if (ticket.valid()) r.reading.delete(section);
+      if (valid()) r.reading.delete(section);
       ticket.release();
     }
   }, [capture, isCurrent, locale.language, locale.t, put, scope, timeZone]);
+  const previousTaskDay = useRef(date.selectedDateKey);
+  useEffect(() => {
+    if (previousTaskDay.current === date.selectedDateKey) return;
+    previousTaskDay.current = date.selectedDateKey;
+    const r = runtime.current;
+    r.taskGeneration++; r.taskAbort?.(); r.taskAbort = null; r.reading.delete("tasks");
+    put("tasks", { kind: "loading" });
+    r.taskDayRefreshPending = r.mutating;
+    if (!r.mutating) void read("tasks");
+  }, [date.selectedDateKey, put, read]);
   const refresh = useCallback(() => {
     if (!isCurrent()) return;
     setInboxReadVersion(value => value + 1);
@@ -149,7 +166,7 @@ function HomeDashboard({ scope, current }: { scope: Scope; current: () => boolea
     const r = runtime.current;
     const resource = r.resources.tasks;
     if (!isCurrent() || r.mutating || resource.kind !== "ready" ||
-      !homeTasksToView(resource.data, selectedDate.current, new Date(), timeZone, locale.language)?.some(task => task.id === id)) return;
+      !homeTaskPageToView(resource.data, scope.actorId, selectedDate.current, new Date(), timeZone, locale.language)?.items.some(task => task.id === id)) return;
     r.mutating = true; setUpdatingId(id); setMutationError("");
     const ticket = capture();
     try {
@@ -166,18 +183,24 @@ function HomeDashboard({ scope, current }: { scope: Scope; current: () => boolea
         void read("tasks");
         setInboxReadVersion(value => value + 1);
       } else setMutationError(result.success ? locale.t("home.completeUnconfirmed") : result.error.message);
-    } finally { ticket.release(); }
+    } finally {
+      if (ticket.valid() && r.taskDayRefreshPending) {
+        r.mutating = false; r.taskDayRefreshPending = false; setUpdatingId(null); void read("tasks");
+      }
+      ticket.release();
+    }
   }
   function navigate(href: string) { if (isCurrent()) router.push(href as Href); }
   const schedules = resources.schedule.kind === "ready" ? homeScheduleToView(resources.schedule.data, date.selectedDateKey, now, timeZone, locale.language) : null;
-  const tasks = resources.tasks.kind === "ready" ? homeTasksToView(resources.tasks.data, date.selectedDateKey, now, timeZone, locale.language) : null;
+  const taskPage = resources.tasks.kind === "ready" ? homeTaskPageToView(resources.tasks.data, scope.actorId, date.selectedDateKey, now, timeZone, locale.language) : null;
+  const taskPending = resources.tasks.kind === "loading" || (resources.tasks.kind === "ready" && taskPage === null);
   const events = resources.events.kind === "ready" ? homeRecommendedEventsToView(resources.events.data, timeZone, locale.language) : null;
-  const visibleTasks = tasks?.slice(0, 5);
+  const visibleTasks = taskPage?.items;
   const highlightedSchedule = schedules?.find(item => item.state === "ongoing") ?? schedules?.find(item => item.state === "upcoming");
 
   function sectionBody(section: Section, label: string, content: ReactNode) {
     const state = resources[section];
-    if (state.kind === "loading") return <View accessibilityRole="progressbar" accessibilityLabel={locale.t("home.readingNamed", { name: label })} style={styles.skeleton}>
+    if (state.kind === "loading" || (section === "tasks" && taskPending)) return <View accessibilityRole="progressbar" accessibilityLabel={locale.t("home.readingNamed", { name: label })} style={styles.skeleton}>
       {(section === "tasks" ? [0, 1, 2] : [0, 1]).map(index => <View key={index} importantForAccessibility="no-hide-descendants" aria-hidden style={styles.skeletonRow}>
         <View style={section === "tasks" ? styles.skeletonCheckbox : section === "schedule" ? styles.skeletonMarker : styles.skeletonAvatar} />
         <View style={styles.skeletonContent}>
@@ -222,9 +245,9 @@ function HomeDashboard({ scope, current }: { scope: Scope; current: () => boolea
     </View>}>
     <View style={styles.dateRow}>
       <Text accessibilityRole="header" style={styles.date}>{date.dateLabel}</Text>
-      {resources.schedule.kind === "loading" && resources.tasks.kind === "loading" ?
+      {resources.schedule.kind === "loading" && taskPending ?
         <View testID="home-summary-loading" aria-hidden importantForAccessibility="no-hide-descendants" style={styles.summarySkeleton} /> :
-        <Text style={styles.dateSummary}>{[date.weekdayLabel, ...(schedules ? [locale.t("home.scheduleCount", { count: schedules.length })] : []), ...(tasks ? [locale.t("home.taskCount", { count: tasks.length })] : [])].join(" · ")}</Text>}
+        <Text style={styles.dateSummary}>{[date.weekdayLabel, ...(schedules ? [locale.t("home.scheduleCount", { count: schedules.length })] : []), ...(taskPage ? [locale.t("home.taskCount", { count: taskPage.total })] : [])].join(" · ")}</Text>}
     </View>
     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.weekScroll} contentContainerStyle={styles.week}>
       {date.week.map(day => <Pressable key={day.dateKey} accessibilityRole="button" accessibilityLabel={day.dateKey + " " + day.weekdayLabel}
@@ -254,7 +277,7 @@ function HomeDashboard({ scope, current }: { scope: Scope; current: () => boolea
           </Pressable>) : <Text style={styles.empty}>{locale.t("home.noSchedule")}</Text>)}
       </View>
       <View style={[styles.taskColumn, singleColumn && styles.fullTasks]}>
-        {sectionHeading(locale.t("home.tasks"), tasks?.length, "/tasks", locale.t("home.allTasks"), resources.tasks.kind === "loading")}
+        {sectionHeading(locale.t("home.tasks"), taskPage?.total, "/tasks", locale.t("home.allTasks"), taskPending)}
         {sectionBody("tasks", locale.t("home.tasks"), visibleTasks?.length ? visibleTasks.map(task => <View key={task.id} style={styles.taskRow}>
           <Pressable accessibilityRole="button" accessibilityLabel={locale.t("home.completeTask", { name: task.title })}
             accessibilityState={{ disabled: updatingId !== null }} disabled={updatingId !== null}

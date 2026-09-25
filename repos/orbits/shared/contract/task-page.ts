@@ -18,6 +18,8 @@ export interface TaskPageContract {
   status: "open" | "completed";
   scope: "all" | "relationship";
   query: string;
+  /** When requested: planned on/before this date OR due before this UTC instant. */
+  dueWindow?: { plannedThrough: string; dueBefore: string };
   items: TaskCardContract[];
   counts: { open: number; completed: number };
   total: number;

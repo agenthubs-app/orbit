@@ -45,11 +45,24 @@ const state = window.fixture = {
   requests: [], replies: [], navigation: [], presses: {}, expiries: 0, ...window.initialFixture,
   update(patch) { Object.assign(state, patch); if (patch.appState) nativeListeners.forEach(fn => fn(patch.appState)); version++; listeners.forEach(fn => fn()); },
   tick() { [...timers.values()].forEach(fn => fn()); },
+  taskPage(tasks, url) {
+    const params = new URL(url, "https://orbit.test").searchParams;
+    const plannedThrough = params.get("plannedThrough"), dueBefore = params.get("dueBefore");
+    const selected = tasks.filter(t => t.status === "open" && ((t.plannedDate && t.plannedDate <= plannedThrough) || (t.dueAt && Date.parse(t.dueAt) < Date.parse(dueBefore))))
+      .sort((a,b) => String(a.dueAt ?? a.plannedDate + "T23:59:59").localeCompare(String(b.dueAt ?? b.plannedDate + "T23:59:59")) || a.id.localeCompare(b.id));
+    return { actorId: state.actor, status: "open", scope: "all", query: "", dueWindow: { plannedThrough, dueBefore },
+      items: selected.slice(0,5).map(t => ({id:t.id,titlePreview:t.title,locationPreview:t.location ?? null,status:t.status,category:t.category,priority:t.priority,
+        plannedDate:t.plannedDate ?? null,dueAt:t.dueAt ?? null,updatedAt:"2026-09-11T00:00:00.000Z",relatedContact:null})),
+      total:selected.length,counts:{open:selected.length,completed:0},hasMore:selected.length>5,nextCursor:selected.length>5?"signed":null,asOf:"2026-09-11T00:00:00.000Z" };
+  },
   body(path) {
+    const url = path; path = new URL(path, "https://orbit.test").pathname;
+    if (path === "/api/tasks/page") return state.taskPage(state.tasks ?? (state.visual
+      ? ["发送项目介绍", "确认下周会面时间", "补充合作记录", "整理访谈提纲", "回复活动报名问题"].map((title, index) => task({ id: "visual-task-" + index, title }))
+      : [task(), task({ id: "future", title: "周末整理资料", plannedDate: "2026-09-12" })]), url);
     if (path === "/api/inbox/summary") return { actorId: state.actor, messagesUnread: state.visual ? 3 : 0, notificationsUnread: 0, notificationMode: "legacy", notificationRead: "ready", asOf: "2026-09-25T00:00:00Z" };
     if (path.startsWith("/api/inbox/notifications")) return state.typedInbox ?? { enabled: false, items: [], unreadCount: 0, nextCursor: null, asOf: '2026-09-16T00:00:00.000Z' };
     if (state.visual) {
-      if (path === "/api/tasks") return { tasks: state.tasks ?? ["发送项目介绍", "确认下周会面时间", "补充合作记录", "整理访谈提纲", "回复活动报名问题"].map((title, index) => task({ id: "visual-task-" + index, title })) };
       if (path === "/api/schedule-items") return { scheduleItems: [
         schedule({ id: "visual-schedule-1", title: "陈默 · 需求复盘", startsAt: "2026-09-11T01:00:00Z", endsAt: "2026-09-11T01:30:00Z" }),
         schedule({ id: "visual-schedule-2", title: "林悦 · 合作沟通" }),
@@ -60,7 +73,6 @@ const state = window.fixture = {
       ] };
       if (path === "/api/relationship-communication/conversations") { const actor = state.actor, remote = "remote:" + actor; return { conversations: [{ conversationId: "visual-inbox", contactId: "contact:visual", participantAccountIds: [actor, remote], participantDisplayNames: { [actor]: actor, [remote]: remote }, qualificationVersion: "qualification:visual", status: "active", createdAt: "2026-09-15T00:00:00Z", updatedAt: "2026-09-15T00:00:00Z", unreadCount: 3, messages: [0, 1, 2].map(index => ({ messageId: "visual-message:" + index, conversationId: "visual-inbox", senderAccountId: remote, senderDisplayName: remote, body: "message " + index, sentAt: "2026-09-15T00:00:00Z", deliveryState: "delivered" })) }], refreshedAt: "2026-09-15T00:00:00Z" }; }
     }
-    if (path === "/api/tasks") return { tasks: state.tasks ?? [task(), task({ id: "future", title: "周末整理资料", plannedDate: "2026-09-12" })] };
     if (path === "/api/schedule-items") return { scheduleItems: [schedule(), schedule({ id: "event", title: "设计分享会", kind: "event", sourceId: "event:/one",
       startsAt: "2026-09-11T07:00:00Z", endsAt: "2026-09-11T08:00:00Z" })] };
     if (path === "/api/recommendations/events") return state.recommendations ?? { state: "success", recommendations: [recommendation()] };
@@ -69,7 +81,8 @@ const state = window.fixture = {
   },
   reply(index, data, status = 200, success = status === 200) {
     const r = state.requests[index]; r.replied = true;
-    state.replies[index](new Response(JSON.stringify(success ? { success: true, data: data ?? state.body(r.path) }
+    if (r.path === "/api/tasks/page" && Array.isArray(data?.tasks)) data = state.taskPage(data.tasks, r.url);
+    state.replies[index](new Response(JSON.stringify(success ? { success: true, data: data ?? state.body(r.url) }
       : { success: false, error: { code: "SERVICE_UNAVAILABLE", message: "暂时无法读取，请重试。" } }),
       { status, headers: { "Content-Type": "application/json" } }));
   },
@@ -158,6 +171,56 @@ async function writes(p: Page) { return p.evaluate(() => (window as any).fixture
 async function writeIndex(p: Page) { return p.evaluate(() => (window as any).fixture.requests.findIndex((r: any) => r.method === "PATCH")); }
 async function reply(p: Page, index: number, data: unknown, status = 200) { await p.evaluate(({ index, data, status }) => (window as any).fixture.reply(index, data, status), { index, data, status }); await settle(p); }
 
+test("home requests five server-filtered task cards, never the full task collection", async t => {
+  const p = await open(t);
+  const requests = await p.evaluate(() => (window as any).fixture.requests.map((r: any) => r.url)) as string[];
+  assert.ok(!requests.some(url => new URL(url).pathname === "/api/tasks"));
+  const tasks = requests.find(url => new URL(url).pathname === "/api/tasks/page");
+  assert.ok(tasks);
+  const params = new URL(tasks).searchParams;
+  assert.equal(params.get("limit"), "5");
+  assert.equal(params.get("plannedThrough"), "2026-09-11");
+  assert.equal(params.get("dueBefore"), "2026-09-11T15:00:00.000Z");
+});
+
+test("changing home date reloads only its task window and rejects a late prior-date response", async t => {
+  const p = await open(t); await hydrate(p);
+  const before = await p.evaluate(() => (window as any).fixture.requests.length);
+  await press(p, "2026-09-12 周六");
+  assert.equal(await p.getByRole("progressbar", { name: "正在读取待办" }).count(), 1);
+  const future = await p.evaluate(() => (window as any).fixture.requests.length - 1);
+  await press(p, "2026-09-11 周五");
+  assert.deepEqual(await p.evaluate(start => (window as any).fixture.requests.slice(start).map((r: any) => r.path), before), ["/api/tasks/page", "/api/tasks/page"]);
+  assert.equal(await p.evaluate(index => (window as any).fixture.requests[index].signal.aborted, future), true);
+  await reply(p, future, { tasks: [inputTask({ id: "obsolete", title: "旧日期不能覆盖", plannedDate: "2026-09-12" })] });
+  await hydrate(p);
+  assert.equal(await p.getByRole("button", { name: "查看待办：发送项目介绍" }).count(), 1);
+  assert.doesNotMatch(await p.locator("body").innerText(), /旧日期不能覆盖/);
+});
+
+for (const success of [true, false]) test("date change during completion eventually reads the current day " + success, async t => {
+  const p = await open(t); await hydrate(p);
+  await press(p, "完成待办：发送项目介绍"); const write = await writeIndex(p);
+  await press(p, "2026-09-12 周六");
+  await reply(p, write, success ? { task: { id: "task:/one", status: "completed" } } : {}, success ? 200 : 503);
+  await hydrate(p);
+  assert.equal(await p.getByRole("progressbar", { name: "正在读取待办" }).count(), 0);
+  assert.equal(await p.getByRole("button", { name: "查看待办：周末整理资料" }).count(), 1);
+});
+
+for (const change of [{ actorId: "foreign" }, { dueWindow: undefined }, { dueWindow: { plannedThrough: "2026-09-11", dueBefore: "2026-09-12T00:00:00.000Z" } }])
+  test("home rejects another actor or date scope without showing zero " + JSON.stringify(change), async t => {
+    const p = await open(t);
+    await p.evaluate(patch => {
+      const state = (window as any).fixture, index = state.requests.findIndex((r: any) => r.path === "/api/tasks/page");
+      state.reply(index, { ...state.body(state.requests[index].url), ...patch });
+    }, change);
+    await hydrate(p);
+    assert.equal(await p.getByRole("button", { name: "重试待办" }).count(), 1);
+    assert.equal(await p.getByRole("button", { name: "查看待办：发送项目介绍" }).count(), 0);
+    assert.doesNotMatch(await p.locator("body").innerText(), /当天没有待办/);
+  });
+
 test("real home route reads actual sections, shows named skeletons and never redirects or writes on mount", async t => {
   const p = await open(t);
   assert.equal(await p.getByRole("textbox", { name: "搜索人脉" }).count(), 1);
@@ -211,7 +274,7 @@ test("successful completion reloads the same ordering and fills the fifth slot",
   const p = await open(t, { tasks }); await hydrate(p);
   await press(p, "完成待办：待办 0");
   await reply(p, await writeIndex(p), { task: { id: "task:0", status: "completed" } });
-  const read = await p.evaluate(() => (window as any).fixture.requests.findLastIndex((r: any) => r.path === "/api/tasks"));
+  const read = await p.evaluate(() => (window as any).fixture.requests.findLastIndex((r: any) => r.path === "/api/tasks/page"));
   await reply(p, read, { tasks: tasks.slice(1) });
   assert.equal(await p.getByRole("button", { name: "查看待办：待办 5" }).count(), 1);
   assert.equal(await p.getByRole("button", { name: /^查看待办：待办 / }).count(), 5);
@@ -240,6 +303,7 @@ for (const state of ["loading", "empty", "failure"] as const) {
 test("selecting another day filters real content and changes the selected accessible date", async t => {
   const p = await open(t); await hydrate(p);
   await press(p, "2026-09-12 周六");
+  await hydrate(p);
   assert.equal(await p.getByRole("button", { name: "2026-09-12 周六" }).getAttribute("aria-selected"), "true");
   assert.match(await p.locator("body").innerText(), /9\.12/);
   assert.match(await p.locator("body").innerText(), /周末整理资料/);
@@ -258,7 +322,7 @@ test("task completion is acknowledged, synchronously locked, encoded and followe
   assert.equal(sent[0].body.action, "complete"); assert.match(sent[0].body.idempotencyKey, /^ios:home:complete:/);
   assert.equal(await p.getByRole("button", { name: "查看待办：发送项目介绍" }).count(), 1);
   await reply(p, await writeIndex(p), { task: { id: "task:/one", status: "completed" } });
-  const read = await p.evaluate(() => (window as any).fixture.requests.findLastIndex((r: any) => r.path === "/api/tasks"));
+  const read = await p.evaluate(() => (window as any).fixture.requests.findLastIndex((r: any) => r.path === "/api/tasks/page"));
   await reply(p, read, { tasks: [] });
   assert.match(await p.locator("body").innerText(), /当天没有待办/);
 });
@@ -308,7 +372,7 @@ test("resume reloads server truth; independent errors retry without losing other
   const p = await open(t); await hydrate(p);
   await update(p, { appState: "background" }); await update(p, { appState: "active" });
   assert.equal(await p.getByRole("button", { name: "查看待办：发送项目介绍" }).count(), 0);
-  const index = await p.evaluate(() => (window as any).fixture.requests.findLastIndex((r: any) => r.path === "/api/tasks"));
+  const index = await p.evaluate(() => (window as any).fixture.requests.findLastIndex((r: any) => r.path === "/api/tasks/page"));
   await reply(p, index, {}, 503); await hydrate(p);
   assert.equal(await p.getByRole("button", { name: "查看日程：合作沟通" }).count(), 1);
   assert.equal(await p.getByRole("button", { name: "查看活动：周末产品交流会" }).count(), 1);
@@ -339,6 +403,7 @@ test("large font uses one column; narrow event rows stay within bounds and clear
 test("an unselected date follows Tokyo midnight without inventing writes", async t => {
   const p = await open(t); await hydrate(p);
   await update(p, { now: "2026-09-11T15:01:00Z" }); await p.evaluate(() => (window as any).fixture.tick()); await settle(p);
+  await hydrate(p);
   assert.equal(await p.getByRole("button", { name: "2026-09-12 周六" }).getAttribute("aria-selected"), "true");
   assert.match(await p.locator("body").innerText(), /周末整理资料/);
   assert.deepEqual(await writes(p), []);
@@ -462,7 +527,7 @@ for (const change of [{ actor: "two" }, { focused: false }, { appState: "backgro
   });
 }
 
-for (const [path, section] of [["/api/tasks", "待办"], ["/api/schedule-items", "日程"], ["/api/recommendations/events", "活动"]]) {
+for (const [path, section] of [["/api/tasks/page", "待办"], ["/api/schedule-items", "日程"], ["/api/recommendations/events", "活动"]]) {
   test("HTTP 503 with a success envelope never grants a usable " + section + " read", async t => {
     const p = await open(t);
     const index = await p.evaluate(path => (window as any).fixture.requests.findIndex((r: any) => r.path === path), path);
@@ -479,7 +544,7 @@ test("HTTP 503 with a success completion envelope cannot acknowledge the write",
   await settle(p);
   assert.equal(await p.getByRole("alert").count(), 1);
   assert.equal(await p.getByRole("button", { name: "查看待办：发送项目介绍" }).count(), 1);
-  assert.equal(await p.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.path === "/api/tasks").length), 1);
+  assert.equal(await p.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.path === "/api/tasks/page").length), 1);
 });
 
 test("badge rejects counts carried by an HTTP 503 success envelope", async t => {
@@ -496,7 +561,7 @@ test("pulling home refresh re-reads the unified badge summary and updates the vi
   assert.equal(await p.getByTestId("home-inbox-badge").innerText(), "");
   await p.evaluate(() => (window as any).fixture.refresh()); await settle(p);
   const reads = await p.evaluate(() => (window as any).fixture.requests.slice(4).map((r: any) => r.path).sort());
-  assert.deepEqual(reads, ["/api/inbox/summary", "/api/recommendations/events", "/api/schedule-items", "/api/tasks"]);
+  assert.deepEqual(reads, ["/api/inbox/summary", "/api/recommendations/events", "/api/schedule-items", "/api/tasks/page"]);
   const index = await p.evaluate(() => (window as any).fixture.requests.findLastIndex((r: any) => r.path === "/api/inbox/summary"));
   await reply(p, index, relationshipInbox(8)); await hydrate(p);
   assert.equal(await p.getByTestId("home-inbox-badge").innerText(), ""); assert.deepEqual(await writes(p), []);
@@ -509,7 +574,7 @@ test("acknowledged home completion re-reads badge sources instead of decrementin
   await press(p, "完成待办：发送项目介绍");
   assert.equal(await p.getByTestId("home-inbox-badge").innerText(), "");
   await reply(p, await writeIndex(p), { task: { id: "task:/one", status: "completed" } });
-  assert.deepEqual(await p.evaluate(() => (window as any).fixture.requests.slice(5).map((r: any) => r.path).sort()), ["/api/inbox/summary", "/api/tasks"]);
+  assert.deepEqual(await p.evaluate(() => (window as any).fixture.requests.slice(5).map((r: any) => r.path).sort()), ["/api/inbox/summary", "/api/tasks/page"]);
   await hydrate(p);
   assert.equal(await p.getByTestId("home-inbox-badge").count(), 0);
   assert.equal((await writes(p)).length, 1);

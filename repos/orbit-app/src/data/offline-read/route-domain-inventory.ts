@@ -318,7 +318,7 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/screens/events/EventsScreen.tsx","POST","/api/recommendations/events/:id/accept"],
   ["src/screens/home/HomeDashboardScreen.tsx","GET","/api/recommendations/events"],
   ["src/screens/home/HomeDashboardScreen.tsx","GET","/api/schedule-items"],
-  ["src/screens/home/HomeDashboardScreen.tsx","GET","/api/tasks"],
+  ["src/screens/home/HomeDashboardScreen.tsx","GET","/api/tasks/page"],
   ["src/screens/home/HomeDashboardScreen.tsx","PATCH","/api/tasks/:id"],
   ["src/screens/home/HomeScreen.tsx","GET","/api/contacts"],
   ["src/screens/home/HomeScreen.tsx","GET","/api/events/public"],

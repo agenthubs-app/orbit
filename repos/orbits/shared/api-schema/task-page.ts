@@ -2,6 +2,16 @@ import { z } from "zod";
 
 const key = z.string().min(1).max(2048);
 const instant = z.string().max(40).refine(value => Number.isFinite(Date.parse(value)));
+export const taskDueWindowSchema = z.object({
+  plannedThrough: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(value => {
+    const parsed = new Date(value + "T00:00:00.000Z");
+    return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+  }),
+  dueBefore: z.string().max(40).refine(value => {
+    const parsed = new Date(value);
+    return Number.isFinite(parsed.getTime()) && parsed.toISOString() === value && /^\d{4}-/.test(value);
+  }),
+}).strict();
 export const taskCardSchema = z.object({
   id: key, titlePreview: z.string().max(480), locationPreview: z.string().max(240).nullable(),
   status: z.enum(["open", "completed"]),
@@ -13,6 +23,7 @@ export const taskCardSchema = z.object({
 
 export const taskPageSchema = z.object({
   actorId: key, status: z.enum(["open", "completed"]), scope: z.enum(["all", "relationship"]), query: z.string().max(240),
+  dueWindow: taskDueWindowSchema.optional(),
   items: z.array(taskCardSchema).max(50),
   counts: z.object({ open: z.number().int().nonnegative().safe(), completed: z.number().int().nonnegative().safe() }).strict(),
   total: z.number().int().nonnegative().safe(), hasMore: z.boolean(), nextCursor: z.string().min(1).max(8000).nullable(), asOf: instant,

@@ -1,7 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import type { TaskPageContract } from "../../shared/contract/task-page";
-import { taskCardSchema, taskPageSchema } from "../../shared/api-schema/task-page";
+import { taskCardSchema, taskDueWindowSchema, taskPageSchema } from "../../shared/api-schema/task-page";
 import { createConfiguredPostgresLiveRecordStore } from "../../shared/storage/configured-live-record-store";
 import type { LiveRecordSqlClient } from "../../shared/storage/postgres-live-record-store";
 import { resolveSharedReadBudgetGate } from "../sync/read-budget-gate";
@@ -12,6 +12,7 @@ export interface TaskPageQuery {
   query?: string;
   limit?: number;
   cursor?: string | null;
+  dueWindow?: TaskPageContract["dueWindow"];
 }
 
 const whitespace = "\\0009\\000A\\000B\\000C\\000D\\0020\\00A0\\1680\\2000\\2001\\2002\\2003\\2004\\2005\\2006\\2007\\2008\\2009\\200A\\2028\\2029\\202F\\205F\\3000\\FEFF";
@@ -27,6 +28,19 @@ const localDate = (v: string) => `(case when jsonb_typeof(${v})='string' and (${
   else false end)`;
 const enums = (v: string, values: string[]) => `(jsonb_typeof(${v})='string' and (${v} #>> '{}') in (${values.map(value => `'${value}'`).join(",")}))`;
 
+// valid materializes the decoder-compatible ISO checks first. Construct the
+// instant explicitly: JS accepts February 31, 24:00 and offsets up to 23:59,
+// while PostgreSQL's timestamp text cast rejects some of those inputs.
+const dueInstant = `(case when t ? 'dueAt' then (
+  make_date(case when substring(t->>'dueAt',1,4)::int=0 then -1 else substring(t->>'dueAt',1,4)::int end,substring(t->>'dueAt',6,2)::int,1)::timestamp
+  + (substring(t->>'dueAt',9,2)::int-1)*interval '1 day'
+  + make_interval(hours=>substring(t->>'dueAt',12,2)::int,mins=>substring(t->>'dueAt',15,2)::int,
+      secs=>substring(substring(t->>'dueAt',18) from '^([0-9]{2}(?:[.][0-9]{1,3})?)')::double precision)
+  - (case when right(t->>'dueAt',1)='Z' then 0 else
+      (case when left(right(t->>'dueAt',6),1)='+' then 1 else -1 end)
+      *(substring(right(t->>'dueAt',6),2,2)::int*60+right(t->>'dueAt',2)::int) end)*interval '1 minute'
+) at time zone 'UTC' end)`;
+
 // This is a read model, not a shortened TaskRecordPayload. Audit histories and
 // note bodies are validated/searched inside PG and never sent with list cards.
 // Count and page selection share the same statement snapshot and authorization.
@@ -37,7 +51,9 @@ const SQL = `with owned as materialized (
     and payload->'task'->'accountId'=to_jsonb($2::text) and payload->'task'->'ownerUserId'=to_jsonb($2::text)
     and payload->'task'->'id'=to_jsonb(record_id)
 ), valid as materialized (
-  select *, case when $3='completed' then t->>'updatedAt' else coalesce(t->>'dueAt',t->>'plannedDate','9999') end as sort_key
+  select *, case when $3='completed' then t->>'updatedAt'
+    when $10::text is not null then coalesce(t->>'dueAt',(t->>'plannedDate')||'T23:59:59','9999')
+    else coalesce(t->>'dueAt',t->>'plannedDate','9999') end as sort_key
   from owned where ${nonblank("t->'id'")} and ${nonblank("t->'title'")}
     and ${enums("t->'status'", ["open", "completed", "cancelled"])}
     and ${enums("t->'category'", ["relationship", "meeting", "event", "work", "personal", "other"])}
@@ -70,6 +86,7 @@ const SQL = `with owned as materialized (
 ), filtered as materialized (
   select * from valid where ($4='all' or t->>'category'='relationship' or ${nonblank("t->'relatedContactId'")})
     and ($5='' or strpos(lower((t->>'title') || ' ' || coalesce(t->>'notes','') collate pg_catalog."und-x-icu"),lower($5 collate pg_catalog."und-x-icu"))>0)
+    and ($10::text is null or (t->>'plannedDate') collate "C"<=$10 collate "C" or ${dueInstant}<$11::timestamptz)
 ), page as (
   select * from filtered where t->>'status'=$3 and ($6::text is null
     or case when $3='completed' then sort_key collate "C"<$6 collate "C" else sort_key collate "C">$6 collate "C" end
@@ -97,7 +114,11 @@ export function createTaskPageReader(input: { client: LiveRecordSqlClient; works
     if (!actorId.trim() || actorId.length > 2048 || !["open","completed"].includes(query.status) || !["all","relationship"].includes(scope)
       || !Number.isSafeInteger(limit) || limit < 1 || limit > 50 || search.length > 240) throw Error("TASK_PAGE_INPUT_INVALID");
     if (Buffer.byteLength(input.secret) < 32) throw Error("READ_CURSOR_SECRET_MISSING");
-    const identity = JSON.stringify(["task-page:v1",input.workspaceId,actorId,query.status,scope,search]);
+    const parsedWindow = query.dueWindow === undefined ? undefined : taskDueWindowSchema.safeParse(query.dueWindow);
+    if (parsedWindow && !parsedWindow.success) throw Error("TASK_PAGE_INPUT_INVALID");
+    const dueWindow = parsedWindow?.success ? parsedWindow.data : undefined;
+    // Keep existing unfiltered cursors compatible; date-filtered cursors bind both cutoffs.
+    const identity = JSON.stringify(["task-page:v1",input.workspaceId,actorId,query.status,scope,search,...(dueWindow ? [dueWindow.plannedThrough,dueWindow.dueBefore] : [])]);
     const sign = (value: string) => createHmac("sha256",input.secret).update(identity).update(value).digest();
     let after: z.infer<typeof position> | null = null;
     if (query.cursor) try {
@@ -108,12 +129,13 @@ export function createTaskPageReader(input: { client: LiveRecordSqlClient; works
       if (actual.length !== expected.length || actual.toString("base64url") !== signature || !timingSafeEqual(actual,expected)) throw Error();
       after = position.parse(JSON.parse(Buffer.from(payload,"base64url").toString("utf8")));
     } catch { throw Error("TASK_PAGE_CURSOR_INVALID"); }
-    const response = await input.client.query<{result: unknown}>(SQL,[input.workspaceId,actorId,query.status,scope,search,after?.sort ?? null,after?.updated ?? null,after?.id ?? null,limit+1]);
+    const response = await input.client.query<{result: unknown}>(SQL,[input.workspaceId,actorId,query.status,scope,search,after?.sort ?? null,after?.updated ?? null,after?.id ?? null,limit+1,dueWindow?.plannedThrough ?? null,dueWindow?.dueBefore ?? null]);
     const result = z.object({ ok: z.literal(true), counts: z.object({open:z.number().int().nonnegative().safe(),completed:z.number().int().nonnegative().safe()}).strict(),
       items:z.array(taskCardSchema.extend({position})).max(51) }).strict().parse(response.rows[0]?.result);
     const items = result.items.slice(0,limit), hasMore = result.items.length > limit, last = items.at(-1);
     const encoded = hasMore && last ? Buffer.from(JSON.stringify(last.position)).toString("base64url") : null;
     return taskPageSchema.parse({actorId,status:query.status,scope,query:search,items:items.map(({position:_position,...card})=>card),counts:result.counts,total:result.counts[query.status],hasMore,
+      ...(dueWindow ? { dueWindow } : {}),
       nextCursor:encoded ? `${encoded}.${sign(encoded).toString("base64url")}` : null,asOf:input.now?.() ?? new Date().toISOString()});
   }};
 }
