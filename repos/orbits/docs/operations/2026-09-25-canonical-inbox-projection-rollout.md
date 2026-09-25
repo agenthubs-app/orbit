@@ -25,7 +25,7 @@ typed inbox 的纯站内 snooze 已接入同一变化/到期登记。它用精�
 ## 仍然阻止切换的具体缺项
 
 1. **语义尚不等价**：configured命令（含mixed/push及typed snooze）、wake / canonical dispatcher、configured legacy dispatcher和周期日程reconcile已接当前变化/到期登记。历史计划未回填，旧部署/未更新脚本仍可能漏登记，取消仍由读取权威权限隐藏，不能直接删GET reminder分支。
-2. **周期日程**：独立持久窗口已接维护入口且本地验证，不再需要GET才能扩展新series；历史series还没有窗口进度，必须回填并逐项对账。单series异常实例读取仍需审计其历史规模；不能把新series到期测试当作全部历史迁移完成。reconcile使用单series旧计划50条keyset取消＋50个ID批量存在检查，相应partial索引尚未安装线上。
+2. **周期日程**：独立持久窗口已接维护入口且本地验证，不再需要GET才能扩展新series；历史series窗口已有显式小批登记入口（下文），尚未在生产执行或逐项对账。单series异常实例读取仍需审计其历史规模；不能把新series到期测试当作全部历史迁移完成。reconcile使用单series旧计划50条keyset取消＋50个ID批量存在检查，相应partial索引尚未安装线上。
 3. **其他 writer 与目标撤销**：configured命令、typed inbox snooze、周期日程reconcile和configured legacy dispatcher已登记；旧部署、诊断/种子脚本的直接repository写入，以及目标删除/撤权仍需逐项审计。旧读时授权继续遮挡失效来源，不能迁移成缓存授权或直接物化计数。新的共同锁序已由两个真实数据库事务并发验证，其他writer接线仍须遵守它。
 4. **历史回填与 Push**：尚未提供完整可运行回填。先接齐 writer，再按 ID 分页、事务内锁定并重读来源、持久 checkpoint、小批推进；扫描结果不能直接覆盖并发新 revision。既有 notificationCutover.since 只排除切换前历史。现已提供独立`notificationHistoricalSuppressions`事实和登记函数：精确绑定workspace/actor/notification ID+scheduledFor，不改read/disposition；登记必须与历史投影/工作/进度同事务，锁序policy在inbox/source/work之前。已有非rejected外部发送预约时拒绝登记并要求对账，不能声称撤回了正在发送的Push。typed候选生成按每页批量检查（最多50个键），来源读取和最终reserve再次检查；事实不一致/数据库失败不会当作允许发送。同通知改期成新eventKey仍可发送。持久回填调用、旧部署/外部发送在途清点仍未完成，不能单凭该防护开启迁移。
 5. **调度与运维**：独立 queue wake 仅登记工作；本批消费者在 canonical maintenance pass 的尾部。heartbeat 关闭或 pass 时间用完会延后消费；尚需负载下公平性、最大通知延迟、failed/积压告警验收。不能声称已经实现准时通知 SLA。
@@ -49,7 +49,15 @@ typed inbox 的纯站内 snooze 已接入同一变化/到期登记。它用精�
 
 先安装独立additive索引`orbit_records_reminder_actor_id_idx`（workspace、user、record_id COLLATE C，仅reminderPlans）；已在本地真实EXPLAIN验证。不要为此盲跑全部旧迁移。完成checkpoint再次调用不再扫描plan。调用方须按批准的云操作/字节预算决定是否继续下一批，不能为了追求done而无预算循环。本轮没有生产CLI调用、回填、开flag或真实Push。
 
-仍需：历史series窗口进度的回填、所有旧writer/旧部署清点、逐项集合与动作对账、计划登记后的实际消费/积压验收、其他通知来源；上述缺项仍阻止删除GET/后台refresh。新入口不能代替这些发布门。
+仍需：历史series窗口及plan的实际受控回填、所有旧writer/旧部署清点、逐项集合与动作对账、计划登记后的实际消费/积压验收、其他通知来源；上述缺项仍阻止删除GET/后台refresh。新入口不能代替这些发布门。
+
+## 显式历史周期窗口登记（本地已验证，未执行生产）
+
+`features/personal-schedule/reminder-window-backfill.ts` 的 `runScheduleReminderWindowBootstrapPass` 使用精确 workspace/actor/batchId/cutoff、writer 前置确认、默认10条/最多25条和5秒/最多10秒预算；没有自动GET/维护调用。按本人历史日程ID keyset推进，`scheduleWindowBackfill`持久断点与窗口登记在同一事务。actor锁与正常日程写入相同；扫描只给ID，登记前锁定并重读源行，发生序列化冲突时最多从新事务重试2次。归属矛盾、损坏来源/进度或超过64 KiB的来源拒绝推进，不下载超大正文；删除、非周期、无提醒、实例来源跳过。
+
+只INSERT缺失窗口，`ON CONFLICT DO NOTHING`保留已有 horizon/失败状态/版本。有效series登记 `horizon_through=now,next_refresh_at=now`，表示需要后台处理，不冒充已有90天覆盖；过期或取消series登记inactive。由已有window worker补未来计划，原reconcile禁止新增过去开始或提醒时间已过的计划；它不修改旧历史plan、不发送Push。旧plan的站内通知回填另走上节入口及历史抑制。`done`仅代表扫描/窗口登记完成，不代表未来工作已消费或业务对账完成。
+
+需先显式安装单个additive索引 `orbit_records_schedule_actor_id_idx`（workspace、user、record_id COLLATE C，仅personal_schedule_items），及已有窗口表；不要盲跑整套旧迁移。真实EXPLAIN由无索引Seq Scan+Sort改为该索引。10,002条本人series时每批2条来源仍730 B（仅来源返回JSON，不是整批或Neon账单）。已完成断点不再扫描日程，换batch不会重置已有窗口；修改同batch cutoff拒绝。操作方应固定cutoff并按授权云预算决定下一批，writersReady只是前置确认，不会自动检查旧部署。
 
 ## 暂停与恢复
 

@@ -99,6 +99,10 @@ create index if not exists orbit_records_tasks_note_source_idx
 create index if not exists orbit_records_reminder_actor_id_idx
   on orbit_records(workspace_id,user_id,record_id collate "C")
   where collection_name='reminderPlans';
+
+create index if not exists orbit_records_schedule_actor_id_idx
+  on orbit_records(workspace_id,user_id,record_id collate "C")
+  where collection_name='personal_schedule_items';
 `;
 
 export interface OrbitRecordsMigrationClient {

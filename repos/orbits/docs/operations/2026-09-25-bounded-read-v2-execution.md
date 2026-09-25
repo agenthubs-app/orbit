@@ -504,3 +504,15 @@ PG专项5/5覆盖真实reserve红转绿、事务回滚/幂等/跨actor-workspace
 这批没有部署、安装线上索引、发送Push、改手机或删除GET。历史series窗口、逐对象对账、其他来源和真实生产验收仍未完成。编辑前共用upserter HIGH已告知，单源reader LOW；新增回填符号UNKNOWN时查明只有本地测试调用，没有偷偷加入后台自动执行。迁移入口及前置条件详见canonical投影发布门文档。
 
 测试泛型包装首次typecheck报错，改为保留真实query的TRow泛型，未放宽生产类型；最后完整Webtypecheck通过。最终all/staged图检查8/7文件、59/56符号，无partial/truncated/error；零affected流程仍不替代已知共用通知写入路径的回归。
+
+## 第三十批：旧周期日程显式分批登记后台窗口
+
+第二十九批提交`8c0a6dc5`。旧writer创建的循环日程有reminderPlans但无窗口，后台无法发现；新增独立`runScheduleReminderWindowBootstrapPass`，不改原GET或worker接线。精确workspace/actor/batchId/cutoff、writer就绪确认、默认10/最大25条、5秒/最大10秒预算；同日程actor锁下先读持久断点、ID keyset扫描一项，再锁定重读当前来源。来源/窗口/断点同事务，冲突最多两次新事务重试；错误归属、超大/损坏payload、损坏断点均拒绝推进，异主/异workspace/截止后记录不进入迁移。
+
+只补缺失窗口、不更新已有horizon/失败/版本；新窗口立即到期、horizon为登记时间，不谎称90天已经覆盖。过期或取消周期登记inactive，无周期/无提醒/删除/实例跳过。原worker根据当前来源补未来计划，原历史plan不变；不触发Push。真实旧writer月度日程从3条计划经显式登记及后台变5条，新增全部在未来，旧3条逐项一致；再次运行不重置进度。检查点与窗口一起回滚，两个并发迁移调用共享进度，扫描后旧writer并发修改会触发新快照重读。
+
+成本测试首先真实失败：每项候选Seq Scan+Sort近1万条。新增`orbit_records_schedule_actor_id_idx`后真实EXPLAIN使用actor-ID索引；从2增长到10,002条本人series，每批2条仍 **730 B来源返回**，不是整个批次/Neon账单。6文件日程窗口/计划/通知/成本/历史plan回填回归 **30/30，零跳过**，随后增加边界用例的结果后记；完整Webtypecheck通过。未执行线上DDL、回填、发布、开flag、真实Push或手机更新。
+
+共用窗口repository预检CRITICAL（直接日程service/window worker，25影响点），已告知；最终使用独立迁移入口，没有修改该共用函数。新函数UNKNOWN已文本确认此前无调用；migration常量UNKNOWN已确认由正式migration入口及本地测试/脚本使用，只新增索引声明。窗口/plan实际受控回填、逐对象对账、异常实例历史规模、其他通知来源、全部客户端消费者和生产验收仍开放，不能删除旧refresh。
+
+追加cutoff/跨workspace/删除源/损坏断点负例后专项 **6/6，零跳过**，最终完整Webtypecheck通过。最终all/staged图检查6/5文件、52/49符号，无partial/truncated/error；0 affected流程不替代上述真实调用回归。本次索引FTS/BM25构建失败，符号影响/变更检查仍可执行，不把概念搜索缺失当成无调用。
