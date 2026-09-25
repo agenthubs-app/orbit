@@ -18,7 +18,11 @@ import {
   repairCanonicalReminderWakes,
   type RepairCanonicalReminderWakesResult,
   type CanonicalReminderWakePublisher,
+  type CanonicalReminderWakeRuntime,
 } from "./canonical-reminder-wake";
+import {createInboxProjectionWorkRepository} from './storage/inbox-projection-work';
+import {runInboxProjectionPass} from './inbox-projection-worker';
+import {canonicalInboxProjectionRevision} from './canonical-inbox-projection-revision';
 
 export { canonicalReminderActorLockKey } from "./canonical-reminder-wake";
 
@@ -60,6 +64,7 @@ export interface CanonicalReminderMaintenanceRuntime {
   workspaceId: string;
   now?: () => string;
   publisher?: CanonicalReminderWakePublisher;
+  inboxProjection?: CanonicalReminderWakeRuntime['inboxProjection'];
 }
 
 function ownedStore(tx: TransactionalSqlExecutor, workspaceId: string, actorId: string): LiveRecordStoreLike<Record<string, unknown>> {
@@ -140,7 +145,11 @@ export async function dispatchActor(runtime: CanonicalReminderMaintenanceRuntime
     }
     const service = createReminderPlanService({
       now: () => now,
-      repository: { ...repository, listDuePlans: async () => plans },
+      repository: { ...repository, listDuePlans: async () => plans, savePlan:async plan=>{
+        const saved=await repository.savePlan(plan);
+        if(saved.status==='delivered')await runtime.inboxProjection?.enqueue(tx,{actorId,sourceKind:'canonical_reminder',sourceId:saved.id,sourceRevision:canonicalInboxProjectionRevision(saved)});
+        return saved;
+      } },
     });
     return service.dispatchDue({ now, provider: { async send() { throw new Error("External reminder sends are disabled"); } } });
   });
@@ -164,11 +173,14 @@ export function createConfiguredCanonicalReminderMaintenanceTask({
       })();
       if (!configured) return { skipped: "database_unconfigured" };
       if (!configured.workspaceId.trim()) throw new Error("Reminder workspace is required");
+      const projectionEnabled=(env??process.env).ORBIT_CANONICAL_INBOX_PROJECTION==='1';
+      const inboxProjection=projectionEnabled?(configured.inboxProjection??createInboxProjectionWorkRepository({...configured,now:configured.now??(()=>context.now().toISOString())})):undefined;
       const wakeRuntime = {
         client: configured.client,
         workspaceId: configured.workspaceId,
         now: configured.now ?? (() => context.now().toISOString()),
         publisher: configured.publisher,
+        inboxProjection,
       };
       const wakeResult: RepairCanonicalReminderWakesResult = await repairCanonicalReminderWakes({
         runtime: wakeRuntime,
@@ -201,12 +213,14 @@ export function createConfiguredCanonicalReminderMaintenanceTask({
             });
           },
         },
-        dispatcher: { dispatchDueForActor: ({ actorId, now }) => dispatchActor(configured, actorId, now) },
+        dispatcher: { dispatchDueForActor: ({ actorId, now }) => dispatchActor({...configured,inboxProjection}, actorId, now) },
       }).run(context);
-      const wakeSummary: Record<string, number> = { ...wakeResult };
+      const projectionSummary=projectionEnabled?await runInboxProjectionPass({...configured,enabled:true,now:wakeRuntime.now,deadline:context.deadline,clock:context.now,limit:25}):{};
+      const wakeSummary: Record<string, number> = { ...wakeResult,...projectionSummary };
       if ("skipped" in legacyResult) return wakeSummary;
       return {
         ...legacyResult,
+        ...projectionSummary,
         claimed: legacyResult.claimed + wakeResult.claimed,
         inAppDelivered: legacyResult.inAppDelivered + wakeResult.inAppDelivered,
         failed: legacyResult.failed + wakeResult.failed,

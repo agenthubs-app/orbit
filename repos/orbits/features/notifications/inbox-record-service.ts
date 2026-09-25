@@ -38,6 +38,28 @@ export function assertInboxRecordsIntact(notifications:readonly InboxNotificatio
   if(offenders.length)throw new InboxRecordError('INTEGRITY_VIOLATION',`Inbox records are not classifiable: ${offenders.slice(0,20).join(', ')}`);
 }
 
+/** The producer merge is shared by ordinary requests and database-only work
+ * consumers. The caller owns transaction lifetime; this never sends a push. */
+export function createInboxRecordUpserter(input:{transaction:InboxRecordRepository['transaction'];now:()=>string}) {
+  return async (raw:InboxNotificationUpsert)=>{
+    const id='inbox:'+digest([raw.actorId,raw.semanticKey]).slice(0,32);
+    const parsed=inboxNotificationSchema.safeParse({...raw,id,revision:1,readAt:raw.readAt??null,disposition:raw.disposition??'open',updatedAt:input.now()});
+    if(!parsed.success || (raw.kind==='reminder' && !raw.dueAt && !raw.scheduledFor))throw new InboxRecordError('VALIDATION_ERROR','Notification needs valid sources, text and reminder time');
+    return input.transaction(raw.actorId,async tx=>{
+      const existing=await tx.get(id);
+      if(existing) {
+        // Producer replays never resurrect a disposition or reset reading.
+        const old=existing.notification;
+        const changed=digest([old.sources.map(s=>[s.sourceKind,s.sourceId,s.sourceRevision]),old.dueAt,old.scheduledFor,old.title,old.reason,old.copy])!==digest([raw.sources.map(s=>[s.sourceKind,s.sourceId,s.sourceRevision]),raw.dueAt,raw.scheduledFor,raw.title,raw.reason,raw.copy]);
+        if(!changed)return old;
+        const notification={...parsed.data,revision:old.revision+1,readAt:old.readAt,disposition:old.disposition,occurredAt:old.occurredAt,expiresAt:old.expiresAt??parsed.data.expiresAt};
+        await tx.save({...existing,notification});return notification;
+      }
+      await tx.save({notification:parsed.data,operations:{}});return parsed.data;
+    });
+  };
+}
+
 export function createInboxRecordService(input:{repository:InboxRecordRepository;sourceAccess:InboxSourceAccess;sourceAccessBatch?:InboxSourceAccessBatch;effects:InboxBusinessEffects;now?:()=>string}) {
   const now=input.now??(()=>new Date().toISOString());
   async function present(n:InboxNotificationDTO,language:'zh'|'en'|'ja'='zh',transaction?:InboxRecordTransaction,checked?:readonly ('available'|'changed'|'unavailable')[]):Promise<InboxNotificationDTO> {
@@ -52,24 +74,7 @@ export function createInboxRecordService(input:{repository:InboxRecordRepository
     return {...n,...n.copy?.[language],...(expired?{disposition:'expired' as const}:{}),actions:expired||n.disposition!=='open'?n.actions.filter(a=>a==='read'):n.actions};
   }
   const service={
-    async upsert(raw:InboxNotificationUpsert) {
-      const id='inbox:'+digest([raw.actorId,raw.semanticKey]).slice(0,32);
-      const parsed=inboxNotificationSchema.safeParse({...raw,id,revision:1,readAt:raw.readAt??null,disposition:raw.disposition??'open',updatedAt:now()});
-      if(!parsed.success || (raw.kind==='reminder' && !raw.dueAt && !raw.scheduledFor))throw new InboxRecordError('VALIDATION_ERROR','Notification needs valid sources, text and reminder time');
-      return input.repository.transaction(raw.actorId,async tx=>{
-        const existing=await tx.get(id);
-        if(existing) {
-          // Producer replays never resurrect a disposition or reset reading. A new
-          // semantic fact needs a distinct key; ordinary wording is not a new fact.
-          const old=existing.notification;
-          const changed=digest([old.sources.map(s=>[s.sourceKind,s.sourceId,s.sourceRevision]),old.dueAt,old.scheduledFor,old.title,old.reason,old.copy])!==digest([raw.sources.map(s=>[s.sourceKind,s.sourceId,s.sourceRevision]),raw.dueAt,raw.scheduledFor,raw.title,raw.reason,raw.copy]);
-          if(!changed)return old;
-          const notification={...parsed.data,revision:old.revision+1,readAt:old.readAt,disposition:old.disposition,occurredAt:old.occurredAt,expiresAt:old.expiresAt??parsed.data.expiresAt};
-          await tx.save({...existing,notification});return notification;
-        }
-        await tx.save({notification:parsed.data,operations:{}});return parsed.data;
-      });
-    },
+    upsert:createInboxRecordUpserter({transaction:(actorId,operation)=>input.repository.transaction(actorId,operation),now}),
     async get(actorId:string,id:string,language:'zh'|'en'|'ja'='zh') {
       return input.repository.transaction(actorId,async tx=>{const row=await tx.get(id);if(!row)throw new InboxRecordError('NOT_FOUND','Notification not found');assertInboxRecordsIntact([row.notification]);return present(row.notification,language,tx);});
     },

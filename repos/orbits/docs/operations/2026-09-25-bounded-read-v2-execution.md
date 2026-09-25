@@ -247,3 +247,19 @@ env -i PATH="$PATH" node --import tsx --test tests/relationship-task-pages.test.
 ```
 
 发布门：服务端须先具有新端点，稳定签名密钥和已验证的 Node/ICU/PostgreSQL 排序运行时；现有本地白名单仍不能直接视为生产已验证。旧服务器的 404 明确失败，不静默回退。未部署、未迁移云数据库、未更新手机；根目录 bridge 的已有未提交交接保持原样。P2 私有缓存、P3 逐来源变化/到期和其生产门仍未完成。
+
+## 第十一批：到期投递后的可靠通知工作项与后台窄消息候选
+
+第十批已提交 `ac43c747`。按来源推进 P3 的第一步：canonical 站内提醒投递成功时，原事务写入专用 projection work。复用原 wake 的到期、取消、改期和投递 fencing；不新增外部发送，不用通知格式错误阻塞原本合法的提醒。独立消费者每批 25（最多 50），claim/lease/退避/8 次死信，投影和完成同事务。旧 worker、超时 lease、重复消费不能覆盖新 generation；新来源变化与正在处理的旧工作并发仍留下新工作。
+
+发现并修复新实现的同毫秒漏洞：原先用 plan.updatedAt 等价判断，真实 create → delivered → reschedule → delivered 保持同一时钟时不能登记第二次变化。测试先失败，再改为明确字段指纹（不作为排序游标）；旧 lease 被新 generation 压住，SQL 窄字段读取与 producer 计算一致。
+
+行 owner、entity account/owner 一致及对应投递 fence 必须通过；关联账号不能凭 account 字段访问。worker 只读取当前 plan 和 delivery 的允许字段，超大有效字段在 SQL 内拒绝，未知私密大字段不传出。1 万无关同 owner 历史计划不增加这两次来源查询返回：本地两条来源全 payload **4,000,896 B → 1,175 B**，2 次查询；这是放大 fixture 的来源读取，不是完整请求/账单。10 万已完成 work 时 idle 领取仍返回 0 项。
+
+另一个可独立使用的优化：后台 typed message materialize 原来下载完整 message payload，实际仅用 messageId / conversationId / sentAt。现改为 SQL 窄投影，保留原成员候选过滤、顺序、50 条限制、cursor 及 delivery ledger 去重，真正发送前的权威授权/正文读取不变。本地 50 条各含 200 KB 无关正文/历史的候选 **10,008,001 B → 5,101 B**；65 消息走 50/15/50 重放仍只建立 65 个投递意图。旧时间 cursor 尾页复位仍存在，本批不冒称消息已可靠增量化。
+
+新开关 `ORBIT_CANONICAL_INBOX_PROJECTION=1` 默认关闭，schema 不由运行时自动安装。新来源 worker 没有证明旧 GET refresh 等价：旧到期物化包含 scheduled/failed，周期日程还依赖窗口补齐；历史回填的 Push 抑制也没完成。因此保留所有旧 refresh，没有自动回填，没有启用缓存、扩大 typed rollout 或修改生产。具体迁移、暂停及切换检查见 [发布门与复现说明](2026-09-25-canonical-inbox-projection-rollout.md)。
+
+GitNexus 编辑前对共用 inbox service/repository 为 HIGH，已告知；图上 wake/dispatch/窄候选入口为 LOW，但动态维护入口仍用实际 PostgreSQL 回归覆盖。共享 upserter / transaction helper 提取仅为让投影与完成共用事务，原 action 权限/事务/幂等不变。未修改 API/契约/App；根 bridge 未提交交接不覆盖。本批没有完成全部 P3，不把默认关闭的能力计入生产流量收益。
+
+验证：新工作项/实际投递/来源窄读/消息候选 5 项及原 canonical wake 26 项通过，另通知来源/并发动作/日程/discovery 33 项通过，共 64 项、无跳过；Web 完整 typecheck 通过。首次合跑误用了 audit 库名，原 canonical 测试的固定库名安全断言拒绝，未算通过；改为其指定的本地 cutover 测试库后 31 项全通过，复现命令已修正。整批图检查因共用通知事务链为 CRITICAL，保留实际回归与默认关闭的上线门，不能以单入口 LOW 稀释整体风险。

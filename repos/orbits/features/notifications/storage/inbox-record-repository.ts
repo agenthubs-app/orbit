@@ -28,22 +28,27 @@ export interface InboxReadWindow {
   page(query:InboxPageQuery & {history:boolean}):Promise<readonly InboxNotificationDTO[]>;
   unreadPage(query:InboxPageQuery & {now:string}):Promise<readonly {id:string;occurredAt:string;sources:readonly InboxNotificationSource[]}[]>;
 }
+/** Called only inside an existing transaction. Do not commit, retry or send
+ * external effects here; the owner must retry the whole authority transaction. */
+export async function createPostgresInboxRecordTransaction(input:{executor:TransactionalSqlExecutor;workspaceId:string;actorId:string}):Promise<InboxRecordTransaction> {
+  const {executor,workspaceId,actorId}=input;
+  await executor.query('select pg_advisory_xact_lock(hashtextextended($1, 0))',[JSON.stringify([workspaceId,INBOX_RECORD_COLLECTION,actorId])]);
+  const store=createPostgresLiveRecordStore({client:executor});
+  return {executor,
+    async get(id) {const row=await store.getRecord({workspaceId,collectionName:INBOX_RECORD_COLLECTION,recordId:id});return row?.userId===actorId?row.payload as unknown as InboxStoredRecord:null;},
+    async save(record) {
+      const n=record.notification;if(n.actorId!==actorId)throw new Error('Inbox owner mismatch');
+      await store.upsertRecord({workspaceId,collectionName:INBOX_RECORD_COLLECTION,recordId:n.id,userId:actorId,sourceType:'system',sourceId:n.semanticKey,evidenceIds:n.sources.map(s=>s.sourceId),lifecycleState:'active',payload:record as unknown as Record<string,unknown>,createdAt:n.occurredAt,updatedAt:n.updatedAt,occurredAt:n.occurredAt});
+    },
+  };
+}
 export function createPostgresInboxRecordRepository(input:{client:TransactionalPostgresClient;workspaceId:string}):InboxRecordRepository {
   return {
     readWindow: createPostgresInboxReadWindow(input),
     async transaction(actorId,operation) {
       for(let attempt=0;;attempt++) {
         try { return await input.client.transaction(async executor=>{
-          // One account lock covers receipt replay, notification and business mutations.
-          await executor.query('select pg_advisory_xact_lock(hashtextextended($1, 0))',[JSON.stringify([input.workspaceId,INBOX_RECORD_COLLECTION,actorId])]);
-          const store=createPostgresLiveRecordStore({client:executor});
-          return operation({ executor,
-            async get(id) { const row=await store.getRecord({workspaceId:input.workspaceId,collectionName:INBOX_RECORD_COLLECTION,recordId:id}); return row?.userId===actorId ? row.payload as unknown as InboxStoredRecord:null; },
-            async save(record) {
-              const n=record.notification;if(n.actorId!==actorId)throw new Error('Inbox owner mismatch');
-              await store.upsertRecord({workspaceId:input.workspaceId,collectionName:INBOX_RECORD_COLLECTION,recordId:n.id,userId:actorId,sourceType:'system',sourceId:n.semanticKey,evidenceIds:n.sources.map(s=>s.sourceId),lifecycleState:'active',payload:record as unknown as Record<string,unknown>,createdAt:n.occurredAt,updatedAt:n.updatedAt,occurredAt:n.occurredAt});
-            },
-          });
+          return operation(await createPostgresInboxRecordTransaction({executor,workspaceId:input.workspaceId,actorId}));
         }); } catch(error) { if(attempt>=2 || !['40001','40P01'].includes(String((error as {code?:string}).code)))throw error; }
       }
     },

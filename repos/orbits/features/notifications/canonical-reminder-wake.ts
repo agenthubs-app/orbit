@@ -14,6 +14,8 @@ import { createReminderPlanRepository } from "./reminder-plan-repository";
 import { createReminderPlanService, ReminderPlanServiceError } from "./reminder-plan-service";
 import type { NotificationDeliveryDTO, NotificationPreferencesDTO, ReminderPlanDTO, ReminderTargetType } from "./reminder-plan-contract";
 import { MAINTENANCE_HEARTBEAT_TOPIC } from "../operations/maintenance/heartbeat";
+import {createInboxProjectionWorkRepository,type InboxProjectionSource} from './storage/inbox-projection-work';
+import {canonicalInboxProjectionRevision} from './canonical-inbox-projection-revision';
 
 export { MAINTENANCE_HEARTBEAT_TOPIC };
 
@@ -100,6 +102,8 @@ export interface CanonicalReminderWakeRuntime {
   workspaceId: string;
   now?: () => string;
   publisher?: CanonicalReminderWakePublisher;
+  /** Opt-in only after the additive work schema has been installed. */
+  inboxProjection?: {enqueue(executor:TransactionalSqlExecutor,source:InboxProjectionSource):Promise<void>};
 }
 
 type WakeRecordPayload = CanonicalReminderWakeIntent & Record<string, unknown>;
@@ -1157,6 +1161,35 @@ function planFromRow(row: PlanRow | null | undefined, actorId: string): Reminder
   return plan;
 }
 
+/** Read one authority source, not its workspace graph. No source row lock:
+ * this runs under the projection-work lock and must not reverse writer order. */
+export async function readCanonicalReminderProjectionSource(executor:TransactionalSqlExecutor,workspaceId:string,source:InboxProjectionSource):Promise<ReminderPlanDTO|null> {
+  const rows=await executor.query<PlanRow>(`with source as (
+    select workspace_id,collection_name,record_id,user_id,source_id,target_type,target_id,created_at,updated_at,
+      (select jsonb_object_agg(key,value) from jsonb_each(case when jsonb_typeof(payload->'entity')='object' then payload->'entity' else '{}'::jsonb end)
+        where key in ('id','accountId','ownerUserId','targetType','targetId','fireAt','timeZone','status','title','body','deepLink','createdBy','createdAt','updatedAt','channels','deliveredAt','cancelledAt','failureCode')) as entity
+    from orbit_records where workspace_id=$1 and collection_name='reminderPlans' and record_id=$2 and user_id=$3 and lifecycle_state='active')
+    select workspace_id,collection_name,record_id,user_id,source_id,target_type,target_id,created_at,updated_at,
+      jsonb_build_object('entity',case when octet_length(entity::text)<=65536 then entity else null end) as payload from source`,[workspaceId,source.sourceId,source.actorId]);
+  if(!rows.rows.length)return null;
+  const plan=planFromRow(rows.rows[0],source.actorId);
+  if(!plan)throw Error('CANONICAL_PROJECTION_SOURCE_INVALID');
+  if(canonicalInboxProjectionRevision(plan)!==source.sourceRevision||plan.status!=='delivered')return null;
+  if(plan.channels.length!==1||plan.channels[0]!=='in_app')throw Error('CANONICAL_PROJECTION_SOURCE_INVALID');
+  const id=canonicalReminderDeliveryId(plan);
+  const deliveries=await executor.query<WakeRow>(`with source as (
+    select record_id,user_id,(select jsonb_object_agg(key,value)
+      from jsonb_each(case when jsonb_typeof(payload->'entity')='object' then payload->'entity' else '{}'::jsonb end)
+      where key in ('id','accountId','ownerUserId','reminderPlanId','fireAt','channel','status','createdAt','updatedAt','deliveredAt','deviceId','providerMessageId','failureCode')) as entity
+    from orbit_records where workspace_id=$1 and collection_name='notificationDeliveries' and record_id=$2 and user_id=$3 and lifecycle_state='active')
+    select record_id,user_id,jsonb_build_object('entity',case when octet_length(entity::text)<=16384 then entity else null end) as payload from source`,[workspaceId,id,source.actorId]);
+  const payload=deliveries.rows[0]?.payload;
+  const delivery=isRecord(payload)&&isRecord(payload.entity)?reminderDeliveryFromEntity(payload.entity):null;
+  if(!delivery||delivery.id!==id||delivery.accountId!==source.actorId||delivery.ownerUserId!==source.actorId||delivery.status!=='delivered'||delivery.channel!=='in_app'
+    ||delivery.reminderPlanId!==plan.id||delivery.fireAt!==plan.fireAt)throw Error('CANONICAL_PROJECTION_SOURCE_INVALID');
+  return plan;
+}
+
 function wakeRecordFromSqlRow(row: WakeRow, intent: CanonicalReminderWakeIntent): LiveRecord<WakeRecordPayload> {
   const createdAt = row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at ?? intent.createdAt);
   const updatedAt = row.updated_at instanceof Date ? row.updated_at.toISOString() : String(row.updated_at ?? intent.updatedAt);
@@ -1277,6 +1310,7 @@ async function consumeLeasedWake(
             await finishIntent({ state: "failed", lastErrorCode: "PLAN_DELIVERED_WITHOUT_FENCE", leaseToken: undefined, leaseExpiresAt: undefined, leaseWorkerId: undefined });
             return { outcome: "failed", reason: "plan_delivered_without_fence" };
           }
+          await runtime.inboxProjection?.enqueue(budgetedTx,{actorId,sourceKind:'canonical_reminder',sourceId:plan.id,sourceRevision:canonicalInboxProjectionRevision(plan)});
           await finishIntent({ state: "delivered", sourceRevision: plan.updatedAt, leaseToken: undefined, leaseExpiresAt: undefined, leaseWorkerId: undefined, lastErrorCode: undefined });
           return { outcome: "already_delivered", deliveryId };
         }
@@ -1320,6 +1354,7 @@ async function consumeLeasedWake(
           return { outcome: "failed", reason: "plan_scope_invalid_after_dispatch" };
         }
         if (currentPlan.status === "delivered") {
+          await runtime.inboxProjection?.enqueue(budgetedTx,{actorId,sourceKind:'canonical_reminder',sourceId:currentPlan.id,sourceRevision:canonicalInboxProjectionRevision(currentPlan)});
           await finishIntent({ state: "delivered", sourceRevision: currentPlan.updatedAt, leaseToken: undefined, leaseExpiresAt: undefined, leaseWorkerId: undefined, lastErrorCode: undefined });
           return { outcome: dispatchResult.inAppDelivered > 0 ? "delivered" : "already_delivered", deliveryId };
         }
@@ -1450,5 +1485,6 @@ export async function repairCanonicalReminderWakes(input: RepairCanonicalReminde
 export async function processConfiguredCanonicalReminderWake(message: unknown): Promise<WakeProcessResult> {
   const runtime = createConfiguredTransactionalPostgresRuntime({ max: 2 });
   if (!runtime) return { outcome: "ignored", reason: "database_unconfigured" };
-  return processCanonicalReminderWakeMessage(message, { client: runtime.client, workspaceId: runtime.workspaceId }, "maintenance-queue");
+  const inboxProjection=process.env.ORBIT_CANONICAL_INBOX_PROJECTION==='1'?createInboxProjectionWorkRepository(runtime):undefined;
+  return processCanonicalReminderWakeMessage(message, { client: runtime.client, workspaceId: runtime.workspaceId, inboxProjection }, "maintenance-queue");
 }
