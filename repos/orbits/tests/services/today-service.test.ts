@@ -150,3 +150,22 @@ test("includes overdue open tasks but never completed tasks in today's open list
   const result = await service.getToday({ actorId, now, timeZone: "Asia/Tokyo" });
   assert.deepEqual(result.tasks.map((item) => item.id), [overdue.task.id]);
 });
+
+test("production completion counter avoids downloading history and errors are not reported as zero", async () => {
+  const { taskService, suggestionService } = services();
+  let fail = false;
+  const service = createTodayService({
+    taskService: { ...taskService, async history() { throw Error("Unbounded history must not run"); } },
+    suggestionService,
+    scheduleProvider: { async list() { return []; } },
+    completedCounter: { async count(query) {
+      assert.deepEqual(query, { actorId, now, timeZone: "Asia/Tokyo" });
+      if (fail) throw Error("Counter unavailable");
+      return 7;
+    } },
+  });
+  const result = await service.getToday({ actorId, now, timeZone: "Asia/Tokyo" });
+  assert.equal(result.completedCount, 7); assert.equal(result.summary.completedCount, 7);
+  fail = true;
+  await assert.rejects(service.getToday({ actorId, now, timeZone: "Asia/Tokyo" }), /Counter unavailable/);
+});

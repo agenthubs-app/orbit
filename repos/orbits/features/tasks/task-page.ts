@@ -31,29 +31,34 @@ const enums = (v: string, values: string[]) => `(jsonb_typeof(${v})='string' and
 // valid materializes the decoder-compatible ISO checks first. Construct the
 // instant explicitly: JS accepts February 31, 24:00 and offsets up to 23:59,
 // while PostgreSQL's timestamp text cast rejects some of those inputs.
-const dueInstant = `(case when t ? 'dueAt' then (
-  make_date(case when substring(t->>'dueAt',1,4)::int=0 then -1 else substring(t->>'dueAt',1,4)::int end,substring(t->>'dueAt',6,2)::int,1)::timestamp
-  + (substring(t->>'dueAt',9,2)::int-1)*interval '1 day'
-  + make_interval(hours=>substring(t->>'dueAt',12,2)::int,mins=>substring(t->>'dueAt',15,2)::int,
-      secs=>substring(substring(t->>'dueAt',18) from '^([0-9]{2}(?:[.][0-9]{1,3})?)')::double precision)
-  - (case when right(t->>'dueAt',1)='Z' then 0 else
-      (case when left(right(t->>'dueAt',6),1)='+' then 1 else -1 end)
-      *(substring(right(t->>'dueAt',6),2,2)::int*60+right(t->>'dueAt',2)::int) end)*interval '1 minute'
-) at time zone 'UTC' end)`;
+/** Internal SQL expression; callers supply trusted column expressions only. */
+export function taskTimestampSql(value: string): string {
+  return `(
+  make_date(case when substring(${value},1,4)::int=0 then -1 else substring(${value},1,4)::int end,substring(${value},6,2)::int,1)::timestamp
+  + (substring(${value},9,2)::int-1)*interval '1 day'
+  + make_interval(hours=>substring(${value},12,2)::int,mins=>substring(${value},15,2)::int,
+      secs=>substring(substring(${value},18) from '^([0-9]{2}(?:[.][0-9]{1,3})?)')::double precision)
+  - (case when right(${value},1)='Z' then 0 else
+      (case when left(right(${value},6),1)='+' then 1 else -1 end)
+      *(substring(right(${value},6),2,2)::int*60+right(${value},2)::int) end)*interval '1 minute'
+) at time zone 'UTC'`;
+}
+const dueInstant = `(case when t ? 'dueAt' then ${taskTimestampSql("t->>'dueAt'")} end)`;
 
 // This is a read model, not a shortened TaskRecordPayload. Audit histories and
 // note bodies are validated/searched inside PG and never sent with list cards.
 // Count and page selection share the same statement snapshot and authorization.
-const SQL = `with owned as materialized (
+/** Shared decoder-equivalent authorization/validation for list and aggregate reads.
+ * $1 is workspace, $2 is actor; deleted history is opt-in. */
+export function taskRecordsValidityCte(includeDeleted = false): string {
+  return `owned as materialized (
   select record_id,payload->'task' as t,payload->'activities' as activities from orbit_records
-  where workspace_id=$1 and collection_name='tasks' and user_id=$2 and lifecycle_state<>'deleted'
+  where workspace_id=$1 and collection_name='tasks' and user_id=$2 ${includeDeleted ? "" : "and lifecycle_state<>'deleted'"}
     and payload->'version'='1'::jsonb and jsonb_typeof(payload->'task')='object' and jsonb_typeof(payload->'activities')='array'
     and payload->'task'->'accountId'=to_jsonb($2::text) and payload->'task'->'ownerUserId'=to_jsonb($2::text)
     and payload->'task'->'id'=to_jsonb(record_id)
 ), valid as materialized (
-  select *, case when $3='completed' then t->>'updatedAt'
-    when $10::text is not null then coalesce(t->>'dueAt',(t->>'plannedDate')||'T23:59:59','9999')
-    else coalesce(t->>'dueAt',t->>'plannedDate','9999') end as sort_key
+  select *
   from owned where ${nonblank("t->'id'")} and ${nonblank("t->'title'")}
     and ${enums("t->'status'", ["open", "completed", "cancelled"])}
     and ${enums("t->'category'", ["relationship", "meeting", "event", "work", "personal", "other"])}
@@ -83,8 +88,13 @@ const SQL = `with owned as materialized (
         and (not (a ? 'changes') or jsonb_typeof(a->'changes')='object') and copies=1
         and (previous_at is null or (a->>'occurredAt') collate "C">=previous_at collate "C"),false)
     )
-), filtered as materialized (
-  select * from valid where ($4='all' or t->>'category'='relationship' or ${nonblank("t->'relatedContactId'")})
+)`;
+}
+
+const SQL = `with ${taskRecordsValidityCte()}, filtered as materialized (
+  select *, case when $3='completed' then t->>'updatedAt'
+    when $10::text is not null then coalesce(t->>'dueAt',(t->>'plannedDate')||'T23:59:59','9999')
+    else coalesce(t->>'dueAt',t->>'plannedDate','9999') end as sort_key from valid where ($4='all' or t->>'category'='relationship' or ${nonblank("t->'relatedContactId'")})
     and ($5='' or strpos(lower((t->>'title') || ' ' || coalesce(t->>'notes','') collate pg_catalog."und-x-icu"),lower($5 collate pg_catalog."und-x-icu"))>0)
     and ($10::text is null or (t->>'plannedDate') collate "C"<=$10 collate "C" or ${dueInstant}<$11::timestamptz)
 ), page as (

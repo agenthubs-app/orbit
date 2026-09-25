@@ -6,6 +6,7 @@ import type {
   TodayAggregateDTO,
 } from "./today-contract";
 import type { TodayScheduleProvider } from "./today-schedule-provider";
+import type { TodayCompletedCounter } from "./today-completed-counter";
 
 function localDate(isoDateTime: string, timeZone: string): string {
   const parts = new Intl.DateTimeFormat("en-US", {
@@ -53,14 +54,17 @@ export function createTodayService(input: {
   taskService: TaskService;
   suggestionService: TaskSuggestionService;
   scheduleProvider: TodayScheduleProvider;
+  completedCounter?: TodayCompletedCounter;
 }): TodayService {
   return {
     async getToday(query) {
       const date = localDate(query.now, query.timeZone);
-      const [allOpenTasks, activities, suggestions, scheduleItems] =
+      const [allOpenTasks, completedCount, suggestions, scheduleItems] =
         await Promise.all([
           input.taskService.list({ actorId: query.actorId, status: "open" }),
-          input.taskService.history({ actorId: query.actorId }),
+          input.completedCounter ? input.completedCounter.count(query) : input.taskService.history({ actorId: query.actorId }).then(activities => new Set(
+            activities.filter(activity => activity.type === "completed" && localDate(activity.occurredAt, query.timeZone) === date).map(activity => activity.taskId),
+          ).size),
           input.suggestionService.list({
             actorId: query.actorId,
             now: query.now,
@@ -80,15 +84,6 @@ export function createTodayService(input: {
           const rightTime = right.dueAt ?? `${right.plannedDate ?? date}T23:59:59`;
           return leftTime.localeCompare(rightTime);
         });
-      const completedCount = new Set(
-        activities
-          .filter(
-            (activity) =>
-              activity.type === "completed" &&
-              localDate(activity.occurredAt, query.timeZone) === date,
-          )
-          .map((activity) => activity.taskId),
-      ).size;
       const schedule = scheduleItems
         .map((item) => ({
           ...item,

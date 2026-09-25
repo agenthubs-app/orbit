@@ -452,3 +452,17 @@ PG覆盖mixed创建/幂等/未来不领取/无pure wake、真实legacy in_app投
 本地真实PG专项9/9：不打开App自动补齐、同revision不抖动、两worker竞争不重复、故障回滚和死信、fresh-transaction重试及截止、失败标记故障不拖停另一actor。另放入1万未来active＋1万inactive进度，空闲只有1条业务SELECT、0行、无orbit_records读取；真实EXPLAIN选用due partial index，未禁用Seq Scan。21文件日程/通知/事务/路由/读取审计回归 **125/125，零跳过**，Web完整typecheck通过。首轮typecheck的汇总联合类型和测试reminderMinutes字面量类型已修正，未放宽生产契约。
 
 尚未完成：历史series窗口/计划回填、历史Push抑制、异常实例历史规模、其他通知来源、实际客户端全部消费者及发布/真实Neon流量验收。保留GET刷新，不把新窗口交付当成P3完成。合并schema如今包括两个表、三个partial indexes，已有旧工作表的环境仍必须显式安装窗口表；未部署、未安装线上DDL、未开flag、未发送Push、未安装手机。GitNexus绑定根orbit/当前工作区；维护入口LOW直接影响configured tasks，新窗口符号原UNKNOWN已核对实际引用，日程共用入口此前CRITICAL告警及回归范围继续保留。
+
+## 第二十六批：Today完成数直接聚合，不下载全部任务历史
+
+第二十五批已提交`5c1249df`，all/staged图检查分别9/8文件、78/75符号、11个流程、HIGH，无partial/truncated/error；索引全库流程枚举上限警告保留，不能将未列出流程当成不受影响。
+
+Today为显示一个completedCount，原来再次读取该actor全部任务正文和活动历史。先以禁止history的服务测试复现失败，现在configured Today显式注入SQL计数器；无SQL的内存服务保留原算法。复用任务分页的同一归属和记录有效性CTE，数据库内检查完整活动有效性/去重/顺序后按完成事件的本地日期统计distinct任务事实。包含软删除/归档记录、已恢复/取消的完成历史，同一任务当天完成多次只计一次；不以当前completed状态或当前任务页长度替代。原HTTP/App响应字段、列表范围和动作契约不变；数据库失败返回原503，不显示假零。
+
+真实PG逐项对照原history算法，覆盖跨actor/workspace/行主与payload冲突、异常历史、重复/逆序活动、Tokyo跨午夜、纽约23/25小时日、旧Date.parse允许的2月31日/24:00/大时差。初测固定偏移`+09:30`得2而不是7，核实为PG POSIX符号与Intl ISO符号相反，现使用Intl解析后的zone并转换固定偏移符号；具名IANA zone保留规则，另验证负偏移、别名和低年份。SQL时间表达式与任务分页复用，不直接强转Date.parse允许但PG拒绝的原始时间文本。
+
+新增1万条各含4KB备注任务后，原history读取 **47,963,341 B**，新计数仍 **15 B、1 SQL、1行**。仅此统计链路；PG内校验/聚合CPU仍随记录/活动数增长，不宣称整个Today或Neon账单恒定。7文件任务分页/解码/Today服务/API/页面组合 **20/20，零跳过**，完整Webtypecheck通过。分页原10万数据的首窗仍11,632 B，未改变游标格式与排序。额外消费/日期分页回归另记。
+
+发布：服务端代码上线即可使用新统计，App无需为本项改包；本轮未发布、未访问Neon、未重启手机/共享服务、未改共享契约。Today的全任务/建议/日程列表仍在，完整摘要分页与其他消费者治理未完成。GitNexus Today/service factory直接影响正式GET，LOW；共享任务分页文件直接影响分页handler，LOW；新增计数器UNKNOWN以真实工厂和测试引用补查，不据此作无影响判断。
+
+额外日期分页PG/API **3/3**，App Today映射/入口及首页日期窗口 **15/15**，均零跳过；未改App源码，不能当作新的实机/全量验收。完整重建后的all/staged图检查8/7文件、55/52符号，均无partial/truncated/error；零affected流程仍须以已知Today正式GET和任务分页调用及上述回归补证。

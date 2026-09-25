@@ -6,6 +6,8 @@ import { createTaskSuggestionRepository } from "./suggestion-repository";
 import { createTaskSuggestionService } from "./suggestion-service";
 import { createTodayService } from "./today-service";
 import { createConfiguredTodayScheduleProvider } from "./today-schedule-provider";
+import { createTodayCompletedCounter } from "./today-completed-counter";
+import { resolveSharedReadBudgetGate } from "../sync/read-budget-gate";
 
 export function createConfiguredTodayService() {
   const configured = createConfiguredPostgresLiveRecordStore();
@@ -21,6 +23,10 @@ export function createConfiguredTodayService() {
   });
   return createTodayService({
     taskService,
+    completedCounter: { count(query) {
+      resolveSharedReadBudgetGate()?.assertAllowed({ collectionName: "tasks" });
+      return createTodayCompletedCounter({ client: configured.client, workspaceId: configured.workspaceId }).count(query);
+    } },
     suggestionService: createTaskSuggestionService({
       repository: createTaskSuggestionRepository({
         store: configured.store,
