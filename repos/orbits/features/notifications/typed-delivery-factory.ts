@@ -14,7 +14,9 @@ export function createTypedDeliveryRuntime(input:{actorId:string;client:Transact
  const repository=createDeliveryPolicyRepository(input),devices=input.devices??createPushDeviceService({actorId:input.actorId}),sources=createTypedDeliverySources({...input,repository}),ledger=createStorageNotificationDeliveryService({...input,store:createPostgresLiveRecordStore({client:input.client}) as never,sqlClient:input.client,devices});
  return {...input,repository,devices,sources,ledger,worker:createTypedDeliveryWorker({...input,repository,devices,sources,ledger,push:input.push===undefined?createConfiguredExpoPushAdapter():input.push}),
   async materialize(){
-   const cutover=await repository.cutover(input.actorId);if(!cutover?.enabled)return {notifications:0,messages:0};const inbox=createInboxRuntime(input);
+   const cutover=await repository.cutover(input.actorId);if(!cutover?.enabled)return {notifications:0,messages:0};
+   const since=Date.parse(cutover.since);if(!Number.isFinite(since))throw Error('TYPED_DELIVERY_CUTOVER_INVALID');
+   const inbox=createInboxRuntime(input);
    await refreshInboxBusinessRecords({...input,now:input.now?.()??new Date().toISOString(),service:inbox.service,since:cutover.since});
    const counts={notifications:0,messages:0};
    const state=await repository.get<{notifications:string|null;messages:{at:string;id:string}|null}>(input.client,'notificationDeliveryCursor',input.actorId)??{notifications:null,messages:null};
@@ -23,7 +25,8 @@ export function createTypedDeliveryRuntime(input:{actorId:string;client:Transact
     const list=await inbox.service.list(input.actorId,{limit:50,...(cursor?{cursor}:{})});
     const candidates=list.items.flatMap(n=>{
      const scheduled=n.scheduledFor??n.occurredAt;
-     return scheduled<cutover.since||n.readAt||n.disposition!=='open'?[]:[{n,scheduled,eventKey:n.id+':'+scheduled}];
+     const scheduledAt=Date.parse(scheduled);
+     return !Number.isFinite(scheduledAt)||scheduledAt<since||n.readAt||n.disposition!=='open'?[]:[{n,scheduled,eventKey:n.id+':'+scheduled}];
     });
     const historical=await readHistoricalNotificationSuppressions({executor:input.client,workspaceId:input.workspaceId,actorId:input.actorId,eventKeys:candidates.map(item=>item.eventKey)});
     for(const {n,scheduled,eventKey} of candidates){

@@ -516,3 +516,33 @@ PG专项5/5覆盖真实reserve红转绿、事务回滚/幂等/跨actor-workspace
 共用窗口repository预检CRITICAL（直接日程service/window worker，25影响点），已告知；最终使用独立迁移入口，没有修改该共用函数。新函数UNKNOWN已文本确认此前无调用；migration常量UNKNOWN已确认由正式migration入口及本地测试/脚本使用，只新增索引声明。窗口/plan实际受控回填、逐对象对账、异常实例历史规模、其他通知来源、全部客户端消费者和生产验收仍开放，不能删除旧refresh。
 
 追加cutoff/跨workspace/删除源/损坏断点负例后专项 **6/6，零跳过**，最终完整Webtypecheck通过。最终all/staged图检查6/5文件、52/49符号，无partial/truncated/error；0 affected流程不替代上述真实调用回归。本次索引FTS/BM25构建失败，符号影响/变更检查仍可执行，不把概念搜索缺失当成无调用。
+
+## 第三十一批：公开画像运行时逻辑退出纯类型契约
+
+第三十批提交`9d477e59`。Luna max 子agent先复现 `contract-surface` 的旧profile运行时函数违规，再将Web的`projectPublicProfile`移到feature-owned `public-projection.ts`，App移到既有`profile-page-model.ts`。契约只保留原类型、公开字段白名单与响应形状不变；App副本仅通过官方sync生成，没有扩大共享运行时目录或放宽检查。两端继续显式排除生日、私有联系方式、跟进偏好和来源元数据，并复制公开数组防止修改原profile。
+
+子agent定向Web 25/25、App 21/21及两端完整typecheck通过，主集成复验另记。GitNexus pre-edit Web/App公开投影、ProfileScreen与preview mapper均LOW；反射测试调用未被图解析，已以源码确认并改为静态helper导入。不是App全量/真机/生产验收，其他5条原生路由缺口仍保留。两端各自小型helper依赖独立白名单测试，避免往纯类型合同重新放回业务执行代码。
+
+提交`26b8cabc`，主集成Web 25/25通过；完整图重建后all/staged检查17/10文件、36/24符号，无partial/truncated/error。另以8c0a6dc5为base的compare检查19文件、89符号，无flags，覆盖前批新增窗口；工具0 affected流程仍不是全业务无影响证明。随后App全量 **3629项、3627通过、2失败、零跳过**：原5路由缺口之外，ProfileScreen多一行import让computed-path审计锚点334→335过期，已派给原实现agent修复，未删除审计或改离线持久策略。
+
+## 第三十二批：精确日程实例只读当天异常，补登记兼容混合来源
+
+`readPersonalScheduleOccurrenceExceptions`新增可选occurrenceDate：精确实例get及编辑读取把完整record ID、actor和series下推storage、LIMIT 1；解码仍复核owner、source、日期、版本、合法patch，不把storage返回当成可信授权。整窗查询保留原语义，没有悄悄截断历史。日程服务的具体发生日读取、实例展开与patch合并接入该路径；图分析这四个目标均LOW，直接影响日程实例读取/写入。
+
+真实PG先建改期实例，再加同系列1万条合法历史异常。精确get仍返回相同新日期/标题，异常查询固定2条/2行/**1,520 B**；真实EXPLAIN用主键，无Seq Scan。跨actor拒绝、取消后不可读；内存反例验证错误日期/错record ID/异主失败。该数字仅异常记录返回，整个窗口刷新/实例修改末尾的reconcile仍可能读取全series历史，尚未宣称该缺项已解决。
+
+同时通过新增红例发现authority日程集合还包含活动和会议，第一版bootstrap严格personal解码会中断。现按kind分别执行对应严格schema与owner校验，只对personal base series登记，合法event/meeting跳过。writer确认改为严格true。新PG组合8/8（精确实例成本1＋bootstrap7），零跳过，完整Webtypecheck通过。较早7文件日程组合54/56：测试造数的保留字别名错误已修；另一个旧runtime夹具不支持新增历史Push抑制SQL，正在由子agent忠实补齐，未跳过该失败。
+
+GitNexus增量重建曾丢失已有函数UID并导致FTS失败，已执行force完整重建恢复（124,360 nodes / 290,080 edges）；后续影响检查使用完整图，UNKNOWN的新入口另外确认仅测试调用，不作为无风险依据。最终变更范围检查与回归结果另记。
+
+## 第三十三批：typed通知切换时间按实际时刻比较
+
+Luna max只读复核发现并复现：`2026-09-01T00:30:00+02:00`实际比`2026-09-01T00:00:00.000Z`早90分钟，但原字符串比较在候选生成和最终来源校验两处放行。仅改这两个notification门，使用Date.parse后的有限epoch比较，等值继续允许；不改正常消息排序/水位。非法cutover.since在materialize刚读取开关后显式报错，早于business refresh/游标读取或保存，不能当成功空扫描推进断点；source最终门也拒绝无效时刻。
+
+持久PG回归覆盖正负offset的历史/等值/未来、非法since时sentinel游标不变且无候选、手工绕过生成门的旧候选被真实source/worker抑制、等值事件可到本地fake发送器，以及全部6条通知仍未读。原明确设计保持：已经存在同event的通知不因回填重解释投递策略；此次修的是其原本就应该遵守的cutover，不把既有策略当成回填新触发Push。外部发送仅测试替身。
+
+子agent串行3文件12/12通过；先前并发合跑的10k backfill性能用例曾触发5秒statement_timeout，保留失败证据，单跑及串行原阈值通过，没有调大阈值。主集成12文件日程/历史通知/回填/投递/读取审计 **83/83，零跳过**，完整Webtypecheck通过。fixture补齐真实历史抑制SQL的scope/键/有效性、Unicode码点长度、精确recordIds和参数limit，不以空结果绕开保护；这些内存夹具不是PG证据，真实PG测试另列。
+
+精确method影响分析为UNKNOWN，索引指出动态receiver调用点未解析；通过源码确认这两处是实际typed候选/最终投递门，按生产推送路径回归，不视作无人调用。未访问生产、发布、配置Push或发送真实消息；其他来源增量化和真实流量验收仍未完成。
+
+App审计锚点已核对实际调用更新到335，offline-read-inventory **23/23**，未更改endpoint范围/离线政策；App完整第二轮仍在运行，不能用定向成功冒充全量。fixture/runtime单独 **26/26**，全83项包含该组。提交前all/staged图检查14/13文件、32/29符号，无partial/truncated/error；动态调用缺口由既有调用链与真实PG/服务回归补核，0 affected流程不是全产品完成。

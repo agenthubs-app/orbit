@@ -18,6 +18,34 @@ export function personalScheduleSqlFixture() {
       return { rows: [structuredClone(row)] };
     }
     if (text.startsWith("select to_regclass")) return { rows: [] };
+    // Match the scoped join first, then report matching but malformed facts as
+    // invalid rows; production relies on those rows to fail closed.
+    if (/from\s+unnest\(\$3::text\[\],\s*\$4::text\[\]\)\s+s\(event_key,record_id\)\s+join\s+orbit_records\s+r/i.test(text)) {
+      const eventKeys = values[2];
+      const recordIds = values[3];
+      if (!Array.isArray(eventKeys) || !Array.isArray(recordIds) || eventKeys.length !== recordIds.length) {
+        throw new Error("Invalid historical suppression key pairs in schedule fixture");
+      }
+      const actorId = values[1];
+      const collectionName = values[4];
+      const result = eventKeys.flatMap((eventKey, index) => [...data.values()]
+        .filter(row => row.workspace_id === values[0] && row.collection_name === collectionName && row.record_id === recordIds[index])
+        .map(row => {
+          const payload = typeof row.payload === "string" ? JSON.parse(row.payload) : row.payload;
+          const batchId = payload && typeof payload === "object" ? (payload as Record<string, unknown>).batchId : undefined;
+          const recordedAt = payload && typeof payload === "object" ? (payload as Record<string, unknown>).recordedAt : undefined;
+          return {
+            event_key: eventKey,
+            valid: row.user_id === actorId && row.lifecycle_state === "active" &&
+              (payload as Record<string, unknown> | undefined)?.actorId === actorId &&
+              (payload as Record<string, unknown> | undefined)?.eventKey === eventKey &&
+              (payload as Record<string, unknown> | undefined)?.reason === "historical_backfill" &&
+              typeof batchId === "string" && [...batchId].length >= 1 && [...batchId].length <= 4096 &&
+              typeof recordedAt === "string",
+          };
+        }));
+      return { rows: structuredClone(result) };
+    }
     if (text.startsWith("select") && text.includes("from orbit_records")) {
       let found = [...data.values()].filter(row => row.workspace_id === values[0]);
       if (sql.includes("collection_name='reminderPlans'")) {
@@ -37,10 +65,21 @@ export function personalScheduleSqlFixture() {
         const match = new RegExp(`\\b${column}\\s*=\\s*\\$(\\d+)\\b`).exec(sql);
         if (match) found = found.filter(row => row[column] === values[Number(match[1]) - 1]);
       }
+      const recordIdsMatch = /\brecord_id\s*=\s*any\(\$(\d+)::text\[\]\)/i.exec(text);
+      if (recordIdsMatch) {
+        const recordIds = values[Number(recordIdsMatch[1]) - 1];
+        if (!Array.isArray(recordIds)) throw new Error("Invalid record ID array in schedule fixture");
+        found = found.filter(row => recordIds.includes(row.record_id));
+      }
       if (sql.includes("lifecycle_state <> 'deleted'")) found = found.filter(row => row.lifecycle_state !== "deleted");
       if (sql.includes("collection_name in ('reminderPlans','businessCardBatches')")) found = found.filter(row => ["reminderPlans", "businessCardBatches"].includes(String(row.collection_name)) && String(row.record_id) > String(values[2]));
       found.sort((a, b) => String(a.record_id).localeCompare(String(b.record_id)));
-      if (sql.includes("limit 1")) found = found.slice(0, 1);
+      const parameterizedLimit = /\blimit\s+\$(\d+)\b/i.exec(text);
+      if (parameterizedLimit) {
+        const limit = values[Number(parameterizedLimit[1]) - 1];
+        if (typeof limit !== "number" || !Number.isSafeInteger(limit) || limit < 1) throw new Error("Invalid parameterized limit in schedule fixture");
+        found = found.slice(0, limit);
+      } else if (sql.includes("limit 1")) found = found.slice(0, 1);
       else if (sql.includes("limit 50")) found = found.slice(0, 50);
       return { rows: structuredClone(found) };
     }

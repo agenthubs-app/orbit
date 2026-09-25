@@ -23,7 +23,8 @@ export function createTypedDeliverySources(input:{actorId:string;client:Transact
     if(await readHistoricalNotificationSuppression({executor:input.client,workspaceId:input.workspaceId,actorId:input.actorId,eventKey:source.eventKey}))return null;
     let n;try{n=await createInboxRuntime({...input,forDispatch:true}).service.get(input.actorId,source.id,p.language);}catch(error){if(error instanceof InboxRecordError&&error.code==='NOT_FOUND')return null;throw error;}
     const scheduled=n.scheduledFor??n.occurredAt,eventKey=n.id+':'+scheduled;
-    if(n.target.status!=='available'||n.disposition!=='open'||eventKey!==source.eventKey||scheduled<cutover.since)return null;
+    const scheduledAt=Date.parse(scheduled),since=Date.parse(cutover.since);
+    if(n.target.status!=='available'||n.disposition!=='open'||eventKey!==source.eventKey||!Number.isFinite(scheduledAt)||!Number.isFinite(since)||scheduledAt<since)return null;
     if(n.sources.some(s=>s.objectId==='discovery')&&!p.enabled)return null;
     return {subject:{channel:n.kind,origin:n.origin,scheduledFor:scheduled,expiresAt:n.expiresAt,active:true,read:!!n.readAt,explicitNight:n.origin==='user',hasFactualWindow:!!n.dueAt},title:n.title,body:n.reason,href:'/inbox/notifications/'+encodeURIComponent(n.id),language:p.language};
    }

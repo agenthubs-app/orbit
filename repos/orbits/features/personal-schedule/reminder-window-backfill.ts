@@ -5,6 +5,7 @@ import type { TransactionalPostgresClient, TransactionalSqlExecutor } from '../.
 import { createPostgresLiveRecordStore } from '../../shared/storage/postgres-live-record-store';
 import { personalScheduleSchema } from '../../shared/api-schema/personal-schedule';
 import { localParts } from '../tasks/local-date-time';
+import { canonicalScheduleItemSchema } from './authority-contract';
 
 const collection = 'scheduleWindowBackfill';
 const key = z.string().min(1).max(2048).refine(value => value === value.trim() && !value.includes('\0'));
@@ -31,7 +32,7 @@ export async function runScheduleReminderWindowBootstrapPass(input: {
   [workspaceId, actorId, batchId].forEach(value => key.parse(value)); instant.parse(cutoff);
   const now = input.now ?? (() => new Date().toISOString()), limit = input.limit ?? 10, budget = input.budgetMs ?? 5000;
   instant.parse(now());
-  if (!input.writersReady || Date.parse(cutoff) > Date.parse(now()) || !Number.isSafeInteger(limit) || limit < 1 || limit > 25
+  if (input.writersReady !== true || Date.parse(cutoff) > Date.parse(now()) || !Number.isSafeInteger(limit) || limit < 1 || limit > 25
     || !Number.isSafeInteger(budget) || budget < 1 || budget > 10000) throw Error('SCHEDULE_BACKFILL_INPUT_INVALID');
   const recordId = createHash('sha256').update(JSON.stringify([workspaceId, actorId, batchId])).digest('hex');
   const expires = performance.now() + budget;
@@ -75,9 +76,10 @@ export async function runScheduleReminderWindowBootstrapPass(input: {
             let registered = 0;
             const row = source.rows[0];
             if (row && row.lifecycle_state !== 'deleted') {
-              const item = personalScheduleSchema.parse(row.payload);
+              const kind = z.object({ kind: z.string() }).parse(row.payload).kind;
+              const item = kind === 'personal' ? personalScheduleSchema.parse(row.payload) : canonicalScheduleItemSchema.parse(row.payload);
               if (item.id !== sourceId || item.ownerUserId !== actorId || item.accountId !== actorId) throw Error('SCHEDULE_BACKFILL_SOURCE_INVALID');
-              if (item.sourceId === item.id && item.recurrence && item.reminderMinutes !== undefined) {
+              if (item.kind === 'personal' && item.sourceId === item.id && item.recurrence && item.reminderMinutes !== undefined) {
                 if (!item.timeZone) throw Error('SCHEDULE_BACKFILL_SOURCE_INVALID');
                 const active = item.state !== 'cancelled' && (!item.recurrence.until || localParts(at, item.timeZone).date <= item.recurrence.until);
                 const inserted = await tx.query(`insert into orbit_schedule_reminder_windows

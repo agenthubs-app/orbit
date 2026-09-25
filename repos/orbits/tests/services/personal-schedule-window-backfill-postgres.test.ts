@@ -146,3 +146,12 @@ test('cutoff, workspace, deleted source and corrupt checkpoint boundaries are en
   await client.query("update orbit_records set user_id='other' where collection_name='scheduleWindowBackfill'");
   await assert.rejects(runScheduleReminderWindowBootstrapPass(options(client)), /PROGRESS_INVALID/);
 }));
+
+test('shared schedule authority may contain meetings and events without blocking personal series migration', { skip: !url, timeout: 30000 }, () => database(async client => {
+  await seed(client, '00-event', { kind: 'event', category: 'event', eventId: 'event' });
+  await seed(client, '01-meeting', { kind: 'meeting', category: 'meeting', meetingId: 'meeting' });
+  await seed(client, '02-personal');
+  const result = await runScheduleReminderWindowBootstrapPass({ ...options(client), limit: 10 });
+  assert.equal(result.progress?.done, true); assert.equal(result.progress?.processed, 3); assert.equal(result.progress?.skipped, 2);
+  assert.deepEqual((await client.query('select series_id from orbit_schedule_reminder_windows')).rows, [{ series_id: '02-personal' }]);
+}));

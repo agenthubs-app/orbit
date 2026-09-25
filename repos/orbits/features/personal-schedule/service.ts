@@ -48,7 +48,7 @@ export function createPersonalScheduleService(input: { store: LiveRecordStoreLik
   async function personalScheduleOccurrences(store: typeof input.store, actorId: string, item: PersonalScheduleContract, window: { from: string; to: string }, date?: string): Promise<PersonalScheduleContract[]> {
     if (!item.recurrence) return [publicItem(item, now())];
     if (!item.timeZone) throw new AppError("VALIDATION_ERROR", "Repeating schedules require a time zone.");
-    const exceptions = await readPersonalScheduleOccurrenceExceptions({ store, workspaceId: input.workspaceId, actorId, seriesId: item.id });
+    const exceptions = await readPersonalScheduleOccurrenceExceptions({ store, workspaceId: input.workspaceId, actorId, seriesId: item.id, occurrenceDate: date });
     const series = { ...item, timeZone: item.timeZone, recurrence: item.recurrence };
     const anchors = new Map(expandPersonalScheduleOccurrences(series, window, date).map(occurrence => [occurrence.occurrenceDate, occurrence]));
     for (const exception of exceptions) {
@@ -76,7 +76,7 @@ export function createPersonalScheduleService(input: { store: LiveRecordStoreLik
     if (collision) throw new AppError(collision.userId === actorId ? "CONFLICT" : "NOT_FOUND", "Schedule occurrence identity is unavailable.");
     const base = await read(store, actorId, match[1]!);
     if (!base.recurrence) throw new AppError("NOT_FOUND", "Personal schedule occurrence not found.");
-    const exceptions = await readPersonalScheduleOccurrenceExceptions({ store, workspaceId: input.workspaceId, actorId, seriesId: base.id });
+    const exceptions = await readPersonalScheduleOccurrenceExceptions({ store, workspaceId: input.workspaceId, actorId, seriesId: base.id, occurrenceDate: match[2] });
     const exception = exceptions.find(value => value.occurrenceDate === match[2]);
     const day = exception?.patch.startsAt ? Date.parse(exception.patch.startsAt) : calendarDate(match[2]!)!.getTime();
     const instances = await personalScheduleOccurrences(store, actorId, base, { from: new Date(day - 2 * 86_400_000).toISOString(), to: new Date(day + 2 * 86_400_000).toISOString() }, match[2]);
@@ -156,7 +156,7 @@ export function createPersonalScheduleService(input: { store: LiveRecordStoreLik
           const patch = (command as PersonalScheduleUpdate).patch;
           if (occurrenceScope && (Object.hasOwn(patch, "recurrence") || Object.hasOwn(patch, "reminderMinutes"))) throw new AppError("VALIDATION_ERROR", "Change reminder/repeat rules on the entire series.");
           if (occurrenceScope) {
-            const exceptions = await readPersonalScheduleOccurrenceExceptions({ store, workspaceId: input.workspaceId, actorId, seriesId: base.id });
+            const exceptions = await readPersonalScheduleOccurrenceExceptions({ store, workspaceId: input.workspaceId, actorId, seriesId: base.id, occurrenceDate: item.occurrenceDate });
             exceptionPatch = { ...exceptions.find(value => value.occurrenceDate === item.occurrenceDate)?.patch, ...patch };
           }
           item = patchPersonalScheduleFields(item, patch);

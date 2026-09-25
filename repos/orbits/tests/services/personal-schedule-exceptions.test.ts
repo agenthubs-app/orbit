@@ -32,3 +32,18 @@ test("exception storage rejects impossible dates, stale envelopes and forbidden 
     { ...record, payload: { ...record.payload, patch: { recurrence: { frequency: "monthly" } } } },
   ]) await assert.rejects(readPersonalScheduleOccurrenceExceptions({ ...query, store: createMemoryLiveRecordStore([corrupt]) }));
 });
+
+test("single-occurrence reads are storage-bounded and retain owner, identity and envelope checks", async () => {
+  const memory = createMemoryLiveRecordStore([record]);
+  const reads: unknown[] = [];
+  const store = { ...memory, listRecords(input: Parameters<typeof memory.listRecords>[0]) { reads.push(input); return memory.listRecords(input); } };
+  const exact = { ...query, store, occurrenceDate: "2026-09-19" };
+  assert.equal((await readPersonalScheduleOccurrenceExceptions(exact)).length, 1);
+  assert.deepEqual(reads, [{
+    limit: 1, workspaceId: query.workspaceId, collectionName: record.collectionName, userId: query.actorId, sourceId: query.seriesId, recordIds: [record.recordId],
+  }]);
+  assert.deepEqual(await readPersonalScheduleOccurrenceExceptions({ ...exact, actorId: "other" }), []);
+  assert.deepEqual(await readPersonalScheduleOccurrenceExceptions({ ...exact, occurrenceDate: "2026-09-20" }), []);
+  await assert.rejects(readPersonalScheduleOccurrenceExceptions({ ...exact, occurrenceDate: "2026-02-30" }), /valid occurrence date/);
+  await assert.rejects(readPersonalScheduleOccurrenceExceptions({ ...exact, store: { ...memory, listRecords: () => [record] }, occurrenceDate: "2026-09-20" }), /integrity mismatch/);
+});
