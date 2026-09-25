@@ -33,6 +33,14 @@ export const useApiResource = path => {
   rerender(); state.reads.push(path);
   if (state.kind !== "success") return { kind: state.kind, error: { message: "连接暂时失败" }, refreshing: false, refresh() {} };
   const query = new URL(path, "http://fixture").searchParams.get("query") || "";
+  const params = new URL(path, "http://fixture").searchParams;
+  const directory = state.large ? Array.from({length:65},(_,i)=>({...contacts[0],id:'paged:'+i,displayName:'分页联系人 '+i,status:'active'})) : contacts;
+  const filtered = directory.filter(contact => (contact.displayName + contact.organization).includes(query) && (!params.has('status') || params.getAll('status').includes(contact.status)));
+  if (path.startsWith('/api/contacts/page')) {
+    const offset=Number(params.get('cursor')||0),items=filtered.slice(offset,offset+30).map(c=>({id:c.id,displayName:c.displayName,organization:c.organization,role:c.role,status:c.status,sourceType:'manual',pendingInitialization:false,nextActionPreview:c.nextAction,valueTypes:[],updatedAt:'2026-09-25T00:00:00Z'}));
+    return {kind:'success',data:{items,hasMore:offset+30<filtered.length,nextCursor:offset+30<filtered.length?String(offset+30):null,asOf:'2026-09-25T00:00:00Z'},refreshing:false,refresh(){}};
+  }
+  if (path.startsWith('/api/contacts/summary')) return {kind:'success',data:{total:filtered.length,sources:{manual:directory.length},statuses:{active:directory.filter(c=>c.status==='active').length,needs_follow_up:directory.filter(c=>c.status==='needs_follow_up').length},values:{},tags:[],hasMoreTags:false,asOf:'2026-09-25T00:00:00Z'},refreshing:false,refresh(){}};
   const data = path.includes("suggestions") ? { suggestions: [] }
     : path.includes("contact%3A0") ? { state: "success", editableStatusOptions: ["active", "needs_follow_up", "nurture", "archived"], editableTagOptions: [], contact: { ...contacts[0], notes: [], tags: [], source: { type: "manual", label: "手动记录" }, evidence: [], lastInteraction: { channel: "manual_note", occurredAt: "", summary: "" }, publicProfile: { ...contacts[0].publicProfile, topics: [], conversationPrompts: [] } } }
     : path.includes("connections") ? { connections: [] }
@@ -147,6 +155,21 @@ test("compact list retains every contact and all four operable filters", async t
   await page.getByRole("button", { name: /^需要联系 \d+$/ }).click();
   assert.equal(await page.getByRole("button", { name: /打开联系人详情/ }).count(), 1);
   assert.equal(await page.getByRole("button", { name: "行动筛选，已选 1 项", exact: true }).count(), 1);
+});
+
+test("real contacts list pages instead of treating the first thirty as the entire directory", async t => {
+  const page = await openScreen(t);
+  await page.evaluate(() => (window as any).fixture.update({ large: true }));
+  await page.getByText("本页 30 位，共 65 位", { exact: true }).waitFor();
+  assert.equal(await page.getByRole("button", { name: /打开联系人详情/ }).count(), 30);
+  await page.getByRole("button", { name: "下一页", exact: true }).click();
+  await page.getByText("分页联系人 30", { exact: true }).waitFor();
+  assert.equal(await page.getByText("分页联系人 0", { exact: true }).count(), 0);
+  await page.getByRole("button", { name: "下一页", exact: true }).click();
+  await page.getByText("本页 5 位，共 65 位", { exact: true }).waitFor();
+  await page.getByRole("button", { name: "返回第一页", exact: true }).click();
+  await page.getByText("分页联系人 0", { exact: true }).waitFor();
+  assert.ok((await page.evaluate(() => (window as any).fixture.reads)).every((path: string) => !/^\/api\/contacts(?:\?|$)/.test(path)));
 });
 
 test("detail offers a touch-sized draft action that navigates with the real contact without sending", async t => {

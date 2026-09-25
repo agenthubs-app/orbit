@@ -29,6 +29,11 @@ test("compact cards are bounded, permission scoped, signed and preserve global c
       notes: "private note ".repeat(10000), nextAction: { text: "下一步".repeat(2000) },
     } });
     for (let n = 0; n < 35; n++) await seed(`c${String(n).padStart(3, "0")}`);
+    await store.upsertRecord({ ...common, collectionName: "connections", recordId: "cn", payload: {
+      id: "cn", accountId: "a", contactId: "c000", stage: "active", summary: "Private relationship context",
+      valueTypes: ["strategic_fit", "commercial_opportunity", "strategic_fit"],
+      source: { type: "manual", id: "s" }, evidenceIds: ["e"], createdAt: timestamp, updatedAt: timestamp,
+    } });
     await seed("foreign", "b");
     const reader = createPostgresContactCardReader({ client, workspaceId: "w", cursorSecret: "local-test-secret-".repeat(3) });
     bytes = 0; reads = 0;
@@ -39,6 +44,7 @@ test("compact cards are bounded, permission scoped, signed and preserve global c
     assert.ok(bytes < 64_000, `page returned ${bytes} bytes`);
     assert.equal(first.items[0]?.nextActionPreview.length, 320);
     assert.ok(!JSON.stringify(first).includes("private note"));
+    assert.deepEqual(first.items.find(item => item.id === "c000")?.valueTypes, ["strategic_fit", "commercial_opportunity"]);
     const second = await reader.page({ cursor: first.nextCursor }, "a");
     assert.equal(second.items.length, 5);
     assert.equal(second.hasMore, false);

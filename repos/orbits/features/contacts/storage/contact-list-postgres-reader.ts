@@ -1035,6 +1035,8 @@ ${output === "cards" ? `select
       'status', p.status,
       'pendingInitialization', p.contact_lifecycle_initialization is not distinct from 'pending',
       'nextActionPreview', left(p.next_action, 320),
+      'valueTypes', (select coalesce(jsonb_agg(v.value order by v.first_position), '[]'::jsonb)
+        from (select value, min(position) as first_position from unnest(p.value_types) with ordinality t(value, position) group by value) v),
       'updatedAt', left(p.effective_updated_at, 64)
     )
   ) order by p.page_position) from page_rows p where p.page_position <= $14), '[]'::jsonb) as page,

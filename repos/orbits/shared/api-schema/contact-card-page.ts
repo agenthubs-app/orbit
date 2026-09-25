@@ -10,6 +10,7 @@ export const contactCardSchema = z.object({
   status: z.enum(["active", "needs_follow_up", "nurture", "archived"]),
   pendingInitialization: z.boolean(),
   nextActionPreview: z.string().max(640).refine(value => Array.from(value).length <= 320),
+  valueTypes: z.array(z.enum(["strategic_fit", "commercial_opportunity", "knowledge_exchange", "referral_path", "community_context"])).max(5).default([]),
   updatedAt: z.string().datetime({ offset: true }),
 });
 export const contactCardPageSchema = z.object({

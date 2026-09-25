@@ -17,7 +17,8 @@ const contactsListRoutePath = join(repoRoot, "app", "contacts", "list.tsx");
 test("contacts screen can run the web deep contact search", () => {
   assert.match(screenSource, /ORBIT_API_ENDPOINTS\.contactsSearch/u);
   assert.match(screenSource, /buildContactsSearchRequest/u);
-  assert.match(screenSource, /contactSearchFilterSections/u);
+  // The compact list's global facets now live in the bounded-page view model.
+  assert.match(screenSource, /contactCardFilters/u);
   assert.match(screenSource, /contactsSearchToView/u);
   assert.match(screenSource, /selectedSourceFilters/u);
   assert.match(screenSource, /selectedTagFilters/u);

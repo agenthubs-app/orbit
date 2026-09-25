@@ -1,6 +1,8 @@
 import type { MessageDictionary } from "./messages";
 
 export const ja = {
+  "contacts.nextPage": "次のページ", "contacts.firstPage": "最初のページに戻る",
+  "contacts.pageCount": "このページ {shown} 人、全 {total} 人", "contacts.partialTags": "タグは最初の 50 件のみ表示しています。検索で絞り込めます。",
   "portrait66.restartQuestions": "未保存の質問を聞き直す", "portrait66.unverifiedDrafts": "下書きは残っています。新しい質問に答えてから、ポートレートを生成してください。",
   "portrait66.reloadSources": "プロフィールの元情報を再取得",
   "portrait66.recommendationsFailed": "おすすめを取得できませんでした。再試行してください。", "portrait66.viewContact": "連絡先を見る",

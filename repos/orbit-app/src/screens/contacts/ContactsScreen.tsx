@@ -5,7 +5,6 @@ import {
   type ReactNode,
   useEffect,
   useId,
-  useMemo,
   useRef,
   useState
 } from "react";
@@ -25,7 +24,7 @@ import Svg, { Circle, Defs, LinearGradient, Path, Stop } from "react-native-svg"
 import { z } from "zod";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import type { OrbitLanguage } from "../../api/contract/language";
-import { contactsListPath, ORBIT_API_ENDPOINTS } from "../../api/endpoints";
+import { ORBIT_API_ENDPOINTS } from "../../api/endpoints";
 import { INDUSTRY_CATALOG, SECONDARY_INDUSTRY_CATALOG } from "../../api/domain/industries";
 import { mobileContactsDashboardSectionSchemas } from "../../api/schema/mobile-contacts-dashboard";
 import { validateApiResourceState } from "../../api/validated-resource-state";
@@ -39,6 +38,8 @@ import { layout, radius, spacing, textStyles, type OrbitColors } from "../../des
 import { createControlStyles } from "../../design/controls";
 import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
+import { useContactCardPages } from "../../hooks/useContactCardPages";
+import { contactCardFilters, contactCardViews } from "../../view-models/contact-card-pages";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { createTranslator } from "../../i18n/messages";
@@ -47,9 +48,7 @@ import { ContactNeedsHomeEntry } from "./ContactNeedsHomeEntry";
 import {
   buildContactsSearchRequest,
   contactAvatarFor,
-  contactDimensionFilterOptions,
   contactDimensionStatusFilters,
-  contactSearchFilterSections,
   contactsSearchToView,
   contactsToSummaries,
   filterContactListPayloadByDimensions,
@@ -1334,6 +1333,7 @@ function ContactsListContent({
   advancedFilterSections,
   baseUrl,
   contacts,
+  directoryTotal,
   hasListFilters,
   onActionStateChange,
   onClearQuery,
@@ -1372,6 +1372,7 @@ function ContactsListContent({
   advancedFilterSections: ContactSearchFilterSectionView[];
   baseUrl: string;
   contacts: ContactSummary[];
+  directoryTotal: number;
   hasListFilters: boolean;
   onActionStateChange: (status: ContactActionStateFilter | null) => void;
   onClearQuery: () => void;
@@ -1421,7 +1422,7 @@ function ContactsListContent({
   const loadedWithoutContacts =
     (state.kind === "empty" || state.kind === "success") &&
     contacts.length === 0;
-  const directoryEmpty = primary && loadedWithoutContacts && !query.trim() && !hasListFilters;
+  const directoryEmpty = primary && loadedWithoutContacts && directoryTotal === 0 && !query.trim() && !hasListFilters;
   const showSearchOptions = !primary || searchOptionsOpen;
 
   return (
@@ -1710,50 +1711,33 @@ function ContactsListScreen({ primary = false, scopeKey, isScopeCurrent }: { pri
     actionState: selectedActionState,
     relationshipProgress: selectedRelationshipProgress
   });
-  const contactsPath = useMemo(
-    () =>
-      contactsListPath({
-        query,
-        sourceFilters: selectedSourceFilters,
-        statusFilters: dimensionStatusFilters,
-        tagFilters: selectedTagFilters,
-        valueFilters: selectedValueFilters
-      }),
-    [
-      query,
-      dimensionStatusFilters.join(","),
-      selectedSourceFilters,
-      selectedTagFilters,
-      selectedValueFilters
-    ]
-  );
-  const rawState = useApiResource<unknown>(
-    contactsPath,
-    (data) => contactsToSummaries(data, locale.language).length === 0,
-    scopeKey === undefined ? {} : { scopeKey }
-  );
-  const validatedState = primary ? validateApiResourceState(rawState, mainContactsSchema) : rawState;
-  const pendingCollection = primary && hasContactData(validatedState) && (validatedState.data as { state: string }).state === "pending";
-  const state = pendingCollection ? { kind: "loading" as const, refreshing: validatedState.refreshing, refresh: validatedState.refresh } : validatedState;
+  const contactPages = useContactCardPages({
+    query,
+    sourceFilters: selectedSourceFilters,
+    statusFilters: dimensionStatusFilters,
+    tagFilters: selectedTagFilters,
+    valueFilters: selectedValueFilters
+  }, scopeKey);
+  const state = contactPages.state;
   const relationshipSuggestionsState = useApiResource<unknown>(
     ORBIT_API_ENDPOINTS.relationshipSearchSuggestions,
     (data) => relationshipSearchSuggestionsToView(data).suggestions.length === 0,
     scopeKey === undefined ? {} : { scopeKey }
   );
-  const contactData = hasContactData(state) ? state.data : null;
   const relationshipSuggestions =
     hasContactData(relationshipSuggestionsState)
       ? relationshipSearchSuggestionsToView(relationshipSuggestionsState.data, locale.language)
       : null;
-  const dimensionFilterOptions = contactDimensionFilterOptions(contactData, {
+  const compactFilters = contactCardFilters(contactPages.summary, {
     actionState: selectedActionState,
     relationshipProgress: selectedRelationshipProgress
-  });
-  const advancedFilterSections = contactSearchFilterSections(contactData, {
+  }, {
     sourceFilters: selectedSourceFilters,
     tagFilters: selectedTagFilters,
     valueFilters: selectedValueFilters
   }, locale.language);
+  const dimensionFilterOptions = compactFilters.dimensions;
+  const advancedFilterSections = compactFilters.advanced;
   const hasAdvancedFilters =
     selectedSourceFilters.length > 0 ||
     selectedTagFilters.length > 0 ||
@@ -1762,11 +1746,12 @@ function ContactsListScreen({ primary = false, scopeKey, isScopeCurrent }: { pri
     hasAdvancedFilters ||
     selectedActionState !== null ||
     selectedRelationshipProgress !== null;
-  const filteredContactData = filterContactListPayloadByDimensions(contactData, {
-    actionState: selectedActionState,
-    relationshipProgress: selectedRelationshipProgress
-  });
-  const contacts = contactData ? contactsToSummaries(filteredContactData, locale.language) : [];
+  // These two dimensions have no intersection; never filter a partial page and
+  // mistake the remainder for the entire matching directory.
+  const incompatibleDimensions = selectedActionState === "needs_follow_up" &&
+    selectedRelationshipProgress !== null && selectedRelationshipProgress !== "active";
+  const contacts = incompatibleDimensions ? [] : contactCardViews(contactPages.page?.items ?? [], locale.language);
+  const directoryTotal = incompatibleDimensions ? 0 : contactPages.summary?.total ?? 0;
   const openContact = (id: string) => {
     if (!isCurrent()) return;
     router.push({
@@ -1995,11 +1980,12 @@ function ContactsListScreen({ primary = false, scopeKey, isScopeCurrent }: { pri
           refreshing={state.refreshing || relationshipSuggestionsState.refreshing}
           tintColor={colors.accent}
         />;
-  const content = <ContactsListContent
+  const content = <><ContactsListContent
         actionStateOptions={dimensionFilterOptions.actionState}
         advancedFilterSections={advancedFilterSections}
         baseUrl={baseUrl}
         contacts={contacts}
+        directoryTotal={directoryTotal}
         hasListFilters={hasListFilters}
         onActionStateChange={(value) => { cancelSearch(); setSelectedActionState(value); }}
         onClearQuery={() => {
@@ -2064,13 +2050,20 @@ function ContactsListScreen({ primary = false, scopeKey, isScopeCurrent }: { pri
           setSearchResult(null); setRelationshipSearchResult(null); setSearchError(null); setRelationshipSearchError(null);
         }}
         onNavigate={navigate}
-      />;
+      />
+      <View style={styles.pageControls}>
+        {contactPages.page ? <Text style={styles.pageCount}>{locale.t("contacts.pageCount", { shown: contacts.length, total: directoryTotal })}</Text> : null}
+        {compactFilters.hasMoreTags ? <Text style={styles.pageCount}>{locale.t("contacts.partialTags")}</Text> : null}
+        {!contactPages.isFirstPage ? <Pressable accessibilityRole="button" onPress={contactPages.firstPage} style={styles.mainRetry}><Text style={styles.mainLink}>{locale.t("contacts.firstPage")}</Text></Pressable> : null}
+        {contactPages.page?.hasMore && !incompatibleDimensions ? <Pressable accessibilityRole="button" onPress={contactPages.nextPage} style={styles.mainRetry}><Text style={styles.mainLink}>{locale.t("contacts.nextPage")}</Text></Pressable> : null}
+      </View>
+    </>;
   if (!primary) return <ContactPage backLabel={locale.t("contacts.listBack")} refreshControl={refreshControl} title={locale.t("contacts.listTitle")}>{content}</ContactPage>;
-  const directoryEmpty = hasContactData(state) && contacts.length === 0 && !query.trim() && !hasListFilters;
+  const directoryEmpty = hasContactData(state) && directoryTotal === 0 && !query.trim() && !hasListFilters;
   return <AppScreen title={locale.t("contacts.title")} refreshControl={refreshControl} header={<View style={styles.mainHeader}>
     <View style={styles.mainHeading}>
       <Text accessibilityRole="header" style={styles.mainTitle}>{locale.t("contacts.title")}</Text>
-      {hasContactData(state) ? <Text testID="contacts-main-count" accessibilityLabel={locale.t("contacts.count", { count: contacts.length })} style={[styles.mainCount, directoryEmpty && styles.mainCountEmpty]}>{contacts.length}</Text> : null}
+      {hasContactData(state) ? <Text testID="contacts-main-count" accessibilityLabel={locale.t("contacts.count", { count: directoryTotal })} style={[styles.mainCount, directoryEmpty && styles.mainCountEmpty]}>{directoryTotal}</Text> : null}
     </View>
     {!directoryEmpty ? <View style={styles.mainHeaderActions}>
       <Pressable accessibilityRole="button" accessibilityLabel={locale.t("contacts.scanCard")} onPress={() => navigate("/contacts/new")} style={styles.mainHeaderButton}>
@@ -2099,6 +2092,8 @@ export function ContactsScreen({
 }
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
+  pageControls: { paddingVertical: 12, gap: 4 },
+  pageCount: { color: colors.text3, fontSize: 13, lineHeight: 20 },
   mainHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginTop: -4, minHeight: 44 },
   mainHeading: { flexDirection: "row", alignItems: "baseline", flexWrap: "wrap", gap: 10 },
   mainTitle: { fontFamily: mainContactFont, fontSize: 30, lineHeight: 38, fontWeight: "900", letterSpacing: -0.6, color: colors.ink },

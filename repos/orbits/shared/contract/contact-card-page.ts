@@ -8,6 +8,8 @@ export interface ContactCardDTO {
   status: "active" | "needs_follow_up" | "nurture" | "archived";
   pendingInitialization: boolean;
   nextActionPreview: string;
+  /** Bounded distinct labels; older page deployments may omit this field. */
+  valueTypes?: ("strategic_fit" | "commercial_opportunity" | "knowledge_exchange" | "referral_path" | "community_context")[];
   updatedAt: string;
 }
 

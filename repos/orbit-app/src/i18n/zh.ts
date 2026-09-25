@@ -1,6 +1,8 @@
 import type { MessageDictionary } from "./messages";
 
 export const zh = {
+  "contacts.nextPage": "下一页", "contacts.firstPage": "返回第一页",
+  "contacts.pageCount": "本页 {shown} 位，共 {total} 位", "contacts.partialTags": "仅显示前 50 个标签，可用搜索缩小范围。",
   "portrait66.restartQuestions": "重新追问未保存的题目", "portrait66.unverifiedDrafts": "这些草稿已保留，请回答新题后再生成画像。",
   "portrait66.reloadSources": "重新读取画像来源",
   "portrait66.recommendationsFailed": "推荐暂时无法读取，请重试。", "portrait66.viewContact": "查看联系人",

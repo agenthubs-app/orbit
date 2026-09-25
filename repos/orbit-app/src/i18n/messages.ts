@@ -4,6 +4,7 @@ import { ja } from "./ja";
 import { zh } from "./zh";
 
 export const messageKeys = [
+  "contacts.nextPage", "contacts.firstPage", "contacts.pageCount", "contacts.partialTags",
   "portrait66.restartQuestions", "portrait66.unverifiedDrafts",
   "portrait66.readFailed", "portrait66.requiredOpen",
   "portrait66.reloadSources",
