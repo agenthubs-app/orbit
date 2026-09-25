@@ -21,11 +21,11 @@ const state = window.fixture = {
   update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); },
   message(body, id = "message:1", senderAccountId = state.actor) { return { messageId: id, conversationId: state.conversationId, senderAccountId, senderDisplayName: senderAccountId === state.actor ? "Sender" : "Receiver", body, sentAt: "2026-09-14T12:00:00.000Z", deliveryState: "delivered" }; },
   conversation() { return { conversationId: state.conversationId, contactId: "contact:receiver", participantAccountIds: ["account:sender", "account:receiver"], participantDisplayNames: { "account:sender": "Sender", "account:receiver": "Receiver" }, qualificationVersion: state.qualificationVersion, status: state.status, createdAt: "2026-09-14T11:00:00.000Z", updatedAt: "2026-09-14T12:00:00.000Z", unreadCount: 0, messages: state.messages }; },
-  data(path) { return path.endsWith("/extractions") ? { extractedNeeds: [], extractedTasks: [], relationshipProfileUpdates: [], confirmationRequiredProfileSuggestions: [] } : state.conversation(); },
+  data(path) { const url = new URL(path, state.baseUrl); if (url.pathname.endsWith("/extractions")) return { extractedNeeds: [], extractedTasks: [], relationshipProfileUpdates: [], confirmationRequiredProfileSuggestions: [] }; if (url.pathname.endsWith("/messages")) { const { messages, unreadCount, ...conversation } = state.conversation(); const end = Number(url.searchParams.get("cursor") || messages.length); const start = Math.max(0, end - 30); return { actorId: state.actor, conversation, items: messages.slice(start, end), hasMore: start > 0, nextCursor: start ? String(start) : null, newestCursor: end ? String(end) : null, direction: "older", asOf: conversation.updatedAt }; } return state.conversation(); },
   receipt(body, overrides = {}) { const message = state.message(body); return { conversationId: state.conversationId, deliveryState: "delivered", qualificationVersion: state.qualificationVersion, message, ...overrides }; },
   reply(index, status = 200, data) { const body = status >= 400 ? { success: false, error: { code: "SERVICE_UNAVAILABLE", message: "Rejected" } } : { success: true, data: data === undefined ? state.data(state.requests[index].path) : data }; state.pending[index]?.(new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } })); }
 };
-window.fetch = async (input, init = {}) => { const index = state.requests.length; const url = new URL(String(input)); state.requests.push({ method: init.method || "GET", path: url.pathname, body: init.body ? JSON.parse(init.body) : null, headers: Object.fromEntries(new Headers(init.headers).entries()), signal: init.signal }); const result = new Promise(resolve => state.pending[index] = resolve); if ((init.method || "GET") === "GET" && !state.holdReads) queueMicrotask(() => state.reply(index, state.readStatus)); return result; };
+window.fetch = async (input, init = {}) => { const index = state.requests.length; const url = new URL(String(input)); state.requests.push({ method: init.method || "GET", path: url.pathname + url.search, body: init.body ? JSON.parse(init.body) : null, headers: Object.fromEntries(new Headers(init.headers).entries()), signal: init.signal }); const result = new Promise(resolve => state.pending[index] = resolve); if ((init.method || "GET") === "GET" && !state.holdReads) queueMicrotask(() => state.reply(index, state.readStatus)); return result; };
 export const useFixture = () => { observe(); return state; };
 export const useOrbitAuthSession = () => { observe(); return { ready: state.ready, signedIn: state.signedIn, accountId: state.signedIn ? state.actor : null, actorId: state.signedIn ? state.actor : null, user: state.signedIn ? { id: state.actor } : null, cookieHeader: state.cookieHeader }; };
 export const useOrbitApiBaseUrl = () => { observe(); return { ready: state.baseReady, baseUrl: state.baseUrl }; };
@@ -111,7 +111,8 @@ test("opening a verified conversation never sends and revoked qualification fail
   await page.evaluate(() => (window as any).fixture.update({ status: "revoked" }));
   await page.evaluate(() => (window as any).fixture.refresh());
   await settle(page);
-  assert.equal(await page.getByRole("button", { name: "发送消息", exact: true }).isDisabled(), true);
+  assert.equal(await page.getByRole("button", { name: "发送消息", exact: true }).count(), 0);
+  assert.match(await page.locator("body").innerText(), /当前账号可访问/u);
   assert.deepEqual(await writes(page), []);
 });
 
@@ -162,4 +163,63 @@ test("an identity change aborts an in-flight delivery and suppresses its late re
   await page.evaluate(() => { const state = (window as any).fixture; state.reply(state.oldWrite, 201, state.receipt("需要确认送达的消息")); });
   await settle(page);
   assert.equal(await page.getByText("消息已送达已验证的 Orbit 账号。", { exact: true }).count(), 0);
+});
+
+test("legacy chat opens only a 30-message window, replaces older pages and retains the draft", async t => {
+  const messages = Array.from({ length: 65 }, (_, index) => ({ messageId: `message:${index}`, conversationId: "conversation:1", senderAccountId: "account:receiver", senderDisplayName: "Receiver", body: `历史正文 ${index}`, sentAt: "2026-09-14T12:00:00.000Z", deliveryState: "delivered" }));
+  const page = await open(t, { messages });
+  await fill(page, "翻页也不要丢掉草稿");
+  assert.equal(await page.getByText("历史正文 64", { exact: true }).count(), 1);
+  assert.equal(await page.getByText("历史正文 34", { exact: true }).count(), 0);
+  await page.getByRole("button", { name: "更早的消息", exact: true }).click();
+  await settle(page);
+  assert.equal(await page.getByText("历史正文 34", { exact: true }).count(), 1);
+  assert.equal(await page.getByText("历史正文 64", { exact: true }).count(), 0);
+  assert.equal(await page.getByPlaceholder("写给已验证联系人").inputValue(), "翻页也不要丢掉草稿");
+  await page.getByRole("button", { name: "更早的消息", exact: true }).click();
+  await settle(page);
+  assert.equal(await page.getByText("历史正文 0", { exact: true }).count(), 1);
+  assert.equal(await page.getByText("历史正文 34", { exact: true }).count(), 0);
+  assert.equal(await page.getByRole("button", { name: "更早的消息", exact: true }).count(), 0);
+  await page.getByRole("button", { name: "最新消息", exact: true }).click();
+  await settle(page);
+  assert.equal(await page.getByText("历史正文 64", { exact: true }).count(), 1);
+  const reads = await page.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.method === "GET" && !r.path.endsWith("/extractions")).map((r: any) => r.path));
+  assert.equal(reads.length, 4);
+  assert.ok(reads.every((path: string) => path.includes("/messages?limit=30&direction=older")));
+  assert.deepEqual(await writes(page), []);
+});
+
+for (const readStatus of [403, 404]) test(`a ${readStatus} refresh hides private content without a full-history fallback`, async t => {
+  const page = await open(t);
+  await fill(page, "本地未发送草稿");
+  await page.evaluate(readStatus => { const state = (window as any).fixture; state.readStatus = readStatus; state.refresh(); }, readStatus);
+  await settle(page);
+  assert.equal(await page.getByPlaceholder("写给已验证联系人").count(), 0);
+  assert.equal(await page.getByText("查看联系人", { exact: true }).count(), 0);
+  assert.equal(await page.getByRole("button", { name: "发送消息", exact: true }).count(), 0);
+  assert.deepEqual(await writes(page), []);
+  const reads = await page.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.method === "GET" && !r.path.endsWith("/extractions")).map((r: any) => r.path));
+  assert.ok(reads.every((path: string) => path.includes("/messages?limit=30&direction=older")));
+  await page.evaluate(() => { const state = (window as any).fixture; state.readStatus = 200; state.refresh(); });
+  await settle(page);
+  assert.equal(await page.getByPlaceholder("写给已验证联系人").inputValue(), "本地未发送草稿");
+});
+
+test("a late older-page response cannot replace the latest window", async t => {
+  const messages = Array.from({ length: 60 }, (_, index) => ({ messageId: `message:${index}`, conversationId: "conversation:1", senderAccountId: "account:receiver", senderDisplayName: "Receiver", body: `保密正文 ${index}`, sentAt: "2026-09-14T12:00:00.000Z", deliveryState: "delivered" }));
+  const page = await open(t, { messages });
+  await page.evaluate(() => { (window as any).fixture.holdReads = true; });
+  await page.getByRole("button", { name: "更早的消息", exact: true }).click();
+  await settle(page);
+  assert.equal(await page.getByText("保密正文 59", { exact: true }).count(), 0);
+  await page.evaluate(() => { const state = (window as any).fixture; state.oldRead = state.requests.length - 1; state.holdReads = false; });
+  await page.getByRole("button", { name: "最新消息", exact: true }).click();
+  await settle(page);
+  assert.equal(await page.getByText("保密正文 59", { exact: true }).count(), 1);
+  assert.equal(await page.evaluate(() => { const state = (window as any).fixture; return state.requests[state.oldRead].signal.aborted; }), true);
+  await page.evaluate(() => { const state = (window as any).fixture; state.reply(state.oldRead); });
+  await settle(page);
+  assert.equal(await page.getByText("保密正文 0", { exact: true }).count(), 0);
+  assert.equal(await page.getByText("保密正文 59", { exact: true }).count(), 1);
 });

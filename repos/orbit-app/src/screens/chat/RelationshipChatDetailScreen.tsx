@@ -14,7 +14,7 @@ import {
   buildRelationshipMessageDeliveryRequest,
   relationshipDeliveryReceiptMatches
 } from "../../api/contact-communication";
-import type { RelationshipConversationDTO } from "../../api/contract/relationship-communication";
+import type { RelationshipMessagePageDTO } from "../../api/contract/relationship-communication";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import {
@@ -28,13 +28,12 @@ import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
 import { createControlStyles } from "../../design/controls";
 import { radius, spacing, textStyles, typography } from "../../design/tokens";
-import { createThemedStyles, useOrbitTheme } from "../../design/theme";
+import { createThemedStyles } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
-import {
-  relationshipCommunicationThreadToView,
-  type RelationshipCommunicationMessageView
-} from "../../view-models/contact-communication";
+import type { RelationshipCommunicationMessageView } from "../../view-models/contact-communication";
+import { decodeRelationshipMessagePage } from "../../view-models/relationship-pages";
+import { relationshipChatWindowView } from "../../view-models/relationship-chat-window";
 import {
   relationshipChatExtractionToView,
   type RelationshipChatExtractionItemView
@@ -42,13 +41,6 @@ import {
 
 function firstParam(value: string | string[] | undefined): string {
   return Array.isArray(value) ? value[0] ?? "" : value ?? "";
-}
-
-function isConversation(value: unknown, conversationId: string): value is RelationshipConversationDTO {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
-  const record = value as Partial<RelationshipConversationDTO>;
-  return record.conversationId === conversationId && Array.isArray(record.messages) &&
-    Array.isArray(record.participantAccountIds) && typeof record.qualificationVersion === "string";
 }
 
 export function RelationshipChatDetailScreen() {
@@ -73,12 +65,13 @@ function ScopedChatDetailScreen({ actorId, conversationId, scopeKey }: {
   conversationId: string;
   scopeKey: string;
 }) {
-  const { colors } = useOrbitTheme();
+  const { colors, styles } = useStyles();
   const [deliveryNotice, setDeliveryNotice] = useState("");
+  const [cursor, setCursor] = useState<string | null>(null);
   const state = useApiResource<unknown>(
-    relationshipCommunicationConversationPath(conversationId),
+    `${relationshipCommunicationConversationPath(conversationId)}/messages?limit=30&direction=older${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`,
     () => false,
-    { scopeKey, cachePolicy: "network-only" }
+    { scopeKey: `${scopeKey}:window:${cursor ?? "latest"}`, cachePolicy: "network-only" }
   );
   const extractionState = useApiResource<unknown>(
     chatConversationExtractionsPath(conversationId),
@@ -89,9 +82,10 @@ function ScopedChatDetailScreen({ actorId, conversationId, scopeKey }: {
     { scopeKey, cachePolicy: "network-only" }
   );
   const loaded = state.kind === "success" || state.kind === "empty" ? state.data : null;
-  const freshData = isConversation(loaded, conversationId) ? loaded : null;
+  const freshData = decodeRelationshipMessagePage(loaded, actorId, conversationId);
 
   function refreshAll() {
+    setCursor(null);
     state.refresh();
     extractionState.refresh();
   }
@@ -108,10 +102,11 @@ function ScopedChatDetailScreen({ actorId, conversationId, scopeKey }: {
       {(state.kind === "success" || state.kind === "empty") && !freshData ? (
         <ErrorState message="没有读到当前账号可访问的会话，请刷新后重试。" />
       ) : null}
-      {freshData ? (
+      {freshData?.hasMore ? <Pressable accessibilityRole="button" onPress={() => setCursor(freshData.nextCursor)} style={styles.pageButton}><Text style={styles.linkButtonText}>更早的消息</Text></Pressable> : null}
+      {cursor ? <Pressable accessibilityRole="button" onPress={refreshAll} style={styles.pageButton}><Text style={styles.linkButtonText}>最新消息</Text></Pressable> : null}
         <ThreadContent
           actorId={actorId}
-          conversation={freshData}
+          page={freshData}
           extractionData={extractionState.kind === "success" ? extractionState.data : null}
           extractionError={extractionState.kind === "failure" || extractionState.kind === "offline" ? extractionState.error.message : ""}
           extractionLoading={extractionState.kind === "loading"}
@@ -122,14 +117,13 @@ function ScopedChatDetailScreen({ actorId, conversationId, scopeKey }: {
           }}
           scopeKey={scopeKey}
         />
-      ) : null}
     </AppScreen>
   );
 }
 
-function ThreadContent({ actorId, conversation, deliveryNotice, extractionData, extractionError, extractionLoading, onDelivered, scopeKey }: {
+function ThreadContent({ actorId, page, deliveryNotice, extractionData, extractionError, extractionLoading, onDelivered, scopeKey }: {
   actorId: string;
-  conversation: RelationshipConversationDTO;
+  page: RelationshipMessagePageDTO | null;
   deliveryNotice: string;
   extractionData: unknown;
   extractionError: string;
@@ -140,13 +134,23 @@ function ThreadContent({ actorId, conversation, deliveryNotice, extractionData, 
   const { colors, styles } = useStyles();
   const client = useOrbitApiClient({ scopeKey });
   const router = useRouter();
-  const view = relationshipCommunicationThreadToView(conversation, actorId);
+  const view = page ? relationshipChatWindowView(page, actorId) : null;
+  const active = useRef(false);
+  active.current = Boolean(view?.canSend);
   const mounted = useRef(true);
   const request = useRef<AbortController | null>(null);
   const attempt = useRef<{ body: string; qualificationVersion: string; requestId: string } | null>(null);
   const [draftBody, setDraftBody] = useState("");
   const [feedback, setFeedback] = useState("");
   const [pending, setPending] = useState(false);
+
+  useEffect(() => {
+    if (!page) {
+      request.current?.abort();
+      request.current = null;
+      setPending(false);
+    }
+  }, [page]);
 
   useEffect(() => {
     mounted.current = true;
@@ -157,13 +161,13 @@ function ThreadContent({ actorId, conversation, deliveryNotice, extractionData, 
   }, []);
 
   async function sendVerifiedMessage() {
-    if (!mounted.current || request.current || !view.canSend) return;
+    if (!mounted.current || !active.current || request.current || !view?.canSend) return;
     const normalizedBody = draftBody.trim();
     const currentAttempt = attempt.current?.body === normalizedBody && attempt.current.qualificationVersion === view.qualificationVersion
       ? attempt.current
       : { body: normalizedBody, qualificationVersion: view.qualificationVersion, requestId: randomUUID() };
     attempt.current = currentAttempt;
-    const built = buildRelationshipMessageDeliveryRequest({ ...currentAttempt, conversationId: conversation.conversationId });
+    const built = buildRelationshipMessageDeliveryRequest({ ...currentAttempt, conversationId: view.conversationId });
     setFeedback("");
     if (!built.success) {
       setFeedback(built.error);
@@ -178,10 +182,10 @@ function ThreadContent({ actorId, conversation, deliveryNotice, extractionData, 
         headers: built.request.headers,
         signal: controller.signal
       });
-      if (!mounted.current || controller.signal.aborted) return;
+      if (!mounted.current || !active.current || controller.signal.aborted) return;
       if (!result.success || result.status < 200 || result.status >= 300 || !relationshipDeliveryReceiptMatches(result.data, {
         body: currentAttempt.body,
-        conversationId: conversation.conversationId,
+        conversationId: view.conversationId,
         qualificationVersion: currentAttempt.qualificationVersion,
         senderAccountId: actorId
       })) {
@@ -209,6 +213,10 @@ function ThreadContent({ actorId, conversation, deliveryNotice, extractionData, 
     attempt.current = null;
   }
 
+  // Keep only the local draft mounted; an unavailable window must not retain
+  // visible messages, contact links, extraction results or send authority.
+  if (!view) return null;
+
   return (
     <>
       <DataCard detail={view.participant} title={view.title}>
@@ -222,7 +230,7 @@ function ThreadContent({ actorId, conversation, deliveryNotice, extractionData, 
           </Pressable>
         ) : null}
       </DataCard>
-      <DataCard detail={`${view.messages.length} 条消息`} title="消息记录">
+      <DataCard detail={`本页 ${view.messages.length} 条消息`} title="消息记录">
         {view.messages.length ? (
           <View style={styles.messageList}>{view.messages.map((message) => <MessageRow key={message.id} message={message} />)}</View>
         ) : <EmptyState message="验证完成后可以发送第一条消息。" title="暂无消息" />}
@@ -300,6 +308,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   messageRow: { backgroundColor: colors.surface2, borderRadius: radius.card, gap: spacing.xs, padding: spacing.md },
   messageSender: { color: colors.ink, fontSize: typography.small, fontWeight: "700" },
   pressed: { opacity: 0.72 },
+  pageButton: { minHeight: 44, justifyContent: "center", paddingVertical: spacing.sm },
   primaryButton: { ...createControlStyles(colors).primaryButton, alignSelf: "flex-start" },
   primaryButtonText: { ...createControlStyles(colors).primaryButtonText },
   successText: { color: colors.live, fontSize: typography.small, lineHeight: 20 },
