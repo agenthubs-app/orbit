@@ -35,14 +35,14 @@ test('exact moved occurrence reads never download the series exception history',
     const before = await service.get({ actorId, id: occurrenceId });
     assert.equal(before.startsAt, '2026-10-02T11:00:00.000Z'); assert.equal(before.title, 'Moved');
     const baseline = reads.reduce((n, read) => n + read.bytes, 0);
-    assert.equal(reads.length, 2); assert.ok(reads.every(read => read.rows === 1));
+    assert.equal(reads.length, 1); assert.ok(reads.every(read => read.rows === 1));
     await pool.query(`insert into orbit_records(workspace_id,collection_name,record_id,user_id,source_type,source_id,evidence_ids,lifecycle_state,payload,created_at,updated_at)
       select $1,'personal_schedule_occurrence_exceptions',$2||':occurrence:'||occurrence_date,$3,'manual',$2,array[]::text[],'active',
         jsonb_build_object('seriesId',$2::text,'occurrenceDate',occurrence_date,'cancelled',false,'patch',jsonb_build_object('title',repeat('t',200),'location',repeat('l',400)),'updatedAt',$4::text),$4::timestamptz,$4::timestamptz
       from (select to_char(date '1990-01-01'+n,'YYYY-MM-DD') as occurrence_date from generate_series(0,9999)n) dates`, [workspaceId, scheduleItem.id, actorId, at]);
     reads = [];
     assert.deepEqual(await service.get({ actorId, id: occurrenceId }), before);
-    assert.equal(reads.length, 2); assert.ok(reads.every(read => read.rows === 1));
+    assert.equal(reads.length, 1); assert.ok(reads.every(read => read.rows === 1));
     assert.equal(reads.reduce((n, read) => n + read.bytes, 0), baseline);
     await pool.query('analyze orbit_records');
     const explain = await pool.query('explain (analyze, buffers, format json) ' + reads[0].sql, [...reads[0].values!]);
@@ -51,6 +51,6 @@ test('exact moved occurrence reads never download the series exception history',
     await pool.query("update orbit_records set payload=jsonb_set(payload,'{cancelled}','true') where collection_name='personal_schedule_occurrence_exceptions' and record_id=$1", [occurrenceId]);
     await assert.rejects(service.get({ actorId, id: occurrenceId }), /not found/);
     assert.equal(moved.scheduleItem.id, occurrenceId);
-    console.log(JSON.stringify({ metric: 'exact_schedule_occurrence', historicalExceptions: 10000, exceptionQueries: 2, exceptionRows: 2, exceptionBytes: baseline }));
+    console.log(JSON.stringify({ metric: 'exact_schedule_occurrence', historicalExceptions: 10000, exceptionQueries: 1, exceptionRows: 1, exceptionBytes: baseline }));
   } finally { await pool.query(`drop schema if exists ${schema} cascade`); await client.close(); }
 });

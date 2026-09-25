@@ -9,7 +9,7 @@ import { canonicalScheduleItemSchema } from "./authority-contract";
 import { calendarDate, localParts } from "../tasks/local-date-time";
 import type { PersonalScheduleAssociationReader } from "./association-reader";
 import { expandPersonalScheduleOccurrences } from "./recurrence";
-import { PERSONAL_SCHEDULE_EXCEPTION_COLLECTION, readPersonalScheduleOccurrenceExceptions } from "./occurrence-exceptions";
+import { PERSONAL_SCHEDULE_EXCEPTION_COLLECTION, readPersonalScheduleOccurrenceExceptions, type PersonalScheduleOccurrenceException } from "./occurrence-exceptions";
 import { reconcilePersonalScheduleReminderPlans } from "./reminder-plans";
 import { createPersonalScheduleReminderRepository, createMemoryPersonalScheduleReminderRepository } from "./reminder-plan-storage";
 import type { InboxProjectionWriter } from "../notifications/storage/inbox-projection-work";
@@ -45,10 +45,13 @@ export function createPersonalScheduleService(input: { store: LiveRecordStoreLik
     for (const key of ["location", "endsAt", "allDay", "timeZone", "meetingMethod", "meetingUrl", "contactIds", "noteIds", "recurrence", "reminderMinutes"] as const) if (patch[key] === null) delete result[key];
     return result;
   }
-  async function personalScheduleOccurrences(store: typeof input.store, actorId: string, item: PersonalScheduleContract, window: { from: string; to: string }, date?: string): Promise<PersonalScheduleContract[]> {
+  async function personalScheduleOccurrences(store: typeof input.store, actorId: string, item: PersonalScheduleContract, window: { from: string; to: string }, exact?: { date: string; exceptions: readonly PersonalScheduleOccurrenceException[] }): Promise<PersonalScheduleContract[]> {
     if (!item.recurrence) return [publicItem(item, now())];
     if (!item.timeZone) throw new AppError("VALIDATION_ERROR", "Repeating schedules require a time zone.");
-    const exceptions = await readPersonalScheduleOccurrenceExceptions({ store, workspaceId: input.workspaceId, actorId, seriesId: item.id, occurrenceDate: date });
+    // The exact reader has already checked the same actor/series/date. Reuse
+    // that result only within this call; there is no cross-request cache.
+    const date = exact?.date;
+    const exceptions = exact?.exceptions ?? await readPersonalScheduleOccurrenceExceptions({ store, workspaceId: input.workspaceId, actorId, seriesId: item.id });
     const series = { ...item, timeZone: item.timeZone, recurrence: item.recurrence };
     const anchors = new Map(expandPersonalScheduleOccurrences(series, window, date).map(occurrence => [occurrence.occurrenceDate, occurrence]));
     for (const exception of exceptions) {
@@ -79,7 +82,7 @@ export function createPersonalScheduleService(input: { store: LiveRecordStoreLik
     const exceptions = await readPersonalScheduleOccurrenceExceptions({ store, workspaceId: input.workspaceId, actorId, seriesId: base.id, occurrenceDate: match[2] });
     const exception = exceptions.find(value => value.occurrenceDate === match[2]);
     const day = exception?.patch.startsAt ? Date.parse(exception.patch.startsAt) : calendarDate(match[2]!)!.getTime();
-    const instances = await personalScheduleOccurrences(store, actorId, base, { from: new Date(day - 2 * 86_400_000).toISOString(), to: new Date(day + 2 * 86_400_000).toISOString() }, match[2]);
+    const instances = await personalScheduleOccurrences(store, actorId, base, { from: new Date(day - 2 * 86_400_000).toISOString(), to: new Date(day + 2 * 86_400_000).toISOString() }, { date: match[2]!, exceptions });
     const item = instances.find(value => value.id === id);
     if (!item) throw new AppError("NOT_FOUND", "Personal schedule occurrence not found.");
     return item;

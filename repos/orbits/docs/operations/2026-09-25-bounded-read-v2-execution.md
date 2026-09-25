@@ -570,3 +570,17 @@ env -i PATH="$PATH" ORBIT_LIFECYCLE_TEST_DATABASE_URL=postgresql://li@localhost/
 跨端：没有改共享HTTP契约、App包或线上配置。App先前全量第二轮已结束：3,629项/3,628通过/1失败/0跳过；唯一失败是5个Web路径无原生同名入口，不是离线审计。独立核实其中actions/profile continuation可复用现有功能，plan/strategy/event live是实际未覆盖的组合界面；不能用空壳跳转消除失败。后续兼容改造与原生验收另记，不因本批Web测试通过关闭。
 
 仍未完成：Today旧API/客户端全任务列表、个人日程窗口与异常历史读取、其他通知来源增量化，以及受控发布与真实流量校准。新代码尚未部署。
+
+## 第三十五批：日程精确读取去重与整窗成本复现
+
+第三十四批提交 `ab482a1e`。精确实例读取先校验某天的异常，再用该结果展开当天实例；原先展开函数重复查询同一异常。现在只在同一次调用内传递已校验结果，不增加跨请求缓存，也不改变整窗读取。新增预算断言先红（实际2次、期望1次）后绿：同系列1万条历史异常下，精确读取固定 **1次异常查询/1行/760 B**，相比第三十二批的2次/1,520 B减半。后续请求仍能读到新取消状态，不会复用过期值。
+
+本地日程实例/异常/重复规则/运行时/关联事务/历史窗口登记/窗口worker共 **47/47，零跳过**，完整Web typecheck通过。GitNexus绑定root orbit、索引ab482a1e；两个被改函数LOW，直接调用包括日程list、精确get、实例修改和提醒同步；本次只改变精确get的内部传参。
+
+整窗读取仍未解决。已把可复现脚本收进 `scripts/diagnostics/schedule-exception-window-cost.ts`：仅允许显式loopback专用测试库、不加载.env，在随机schema内造数并finally清理。复现命令（Web根目录）：
+
+```sh
+env -i PATH="$PATH" ORBIT_LIFECYCLE_TEST_DATABASE_URL=postgresql://li@localhost/orbit_cutover_test_20260917 node --import tsx scripts/diagnostics/schedule-exception-window-cost.ts
+```
+
+主集成独立复现：固定90天窗、结果始终90项时，历史异常0/100/1,000/5,000条使数据库SELECT结果从1,071 B升到138,976 B/1,381,079 B/6,901,079 B。另一组将全部历史实例改期进当前窗，5,000条时应合法返回5,090项，结果JSON约2.95 MB，不能靠静默截断“优化”。因此下一步必须同时区分无关历史过滤与合法结果分页，保留取消、移入/移出窗口、权限和损坏来源处理；本批不把精确get优化冒充整窗已完成。这些是本地合成数据的结果JSON字节，不是生产排名或Neon计费数据；未访问云端、发布或触发真实Push。
