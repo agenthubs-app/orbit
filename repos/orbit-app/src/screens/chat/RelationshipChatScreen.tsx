@@ -1,41 +1,54 @@
 import { Ionicons } from "@expo/vector-icons";
+import { randomUUID } from "expo-crypto";
+import { useMemo, useState } from "react";
 import { type Href, useRouter } from "expo-router";
 import { Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
-import { relationshipCommunicationConversationsPath } from "../../api/endpoints";
+import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
+import type { RelationshipConversationSummaryPageDTO } from "../../api/contract/relationship-communication";
 import { AppScreen } from "../../components/AppScreen";
 import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
 import { textStyles, radius, spacing, typography } from "../../design/tokens";
-import { createThemedStyles, useOrbitTheme } from "../../design/theme";
+import { createThemedStyles } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import {
   type RelationshipChatMetricView
 } from "../../view-models/relationship-chat";
-import {
-  isRelationshipConversationList,
-  relationshipCommunicationListToView,
-  type RelationshipCommunicationConversationView
-} from "../../view-models/contact-communication";
+import type { RelationshipCommunicationConversationView } from "../../view-models/contact-communication";
+import { decodeConversationSummaryPage } from "../../view-models/relationship-pages";
+import { relationshipChatSummaryPageView } from "../../view-models/relationship-chat-pages";
 
 export function RelationshipChatScreen() {
-  const { colors } = useOrbitTheme();
   const auth = useOrbitAuthSession();
+  const server = useOrbitApiBaseUrl();
   const actorId = auth.actorId ?? "";
+  const ready = auth.ready && auth.signedIn && server.ready && Boolean(actorId);
+  const scopeKey = useMemo(() => randomUUID(), [server.baseUrl, actorId, auth.cookieHeader, ready]);
+  if (!ready) return <AppScreen title="关系对话"><LoadingState /></AppScreen>;
+  return <ScopedChatList actorId={actorId} key={scopeKey} scopeKey={scopeKey} />;
+}
+
+function ScopedChatList({ actorId, scopeKey }: { actorId: string; scopeKey: string }) {
+  const { colors, styles } = useStyles();
+  const [cursor, setCursor] = useState<string | null>(null);
   const state = useApiResource<unknown>(
-    relationshipCommunicationConversationsPath(),
-    (data) => isRelationshipConversationList(data) && data.conversations.length === 0,
-    { scopeKey: actorId, cachePolicy: "network-only" }
+    `/api/relationship-communication/conversation-summaries?limit=20${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`,
+    () => false,
+    { scopeKey: `${scopeKey}:page:${cursor ?? "first"}`, cachePolicy: "network-only" }
   );
+  const loaded = state.kind === "success" || state.kind === "empty";
+  const page = decodeConversationSummaryPage(loaded ? state.data : null, actorId);
+  function refresh() { setCursor(null); state.refresh(); }
 
   return (
     <AppScreen
       eyebrow="人脉消息"
       refreshControl={
         <RefreshControl
-          onRefresh={state.refresh}
+          onRefresh={refresh}
           refreshing={state.refreshing}
           tintColor={colors.accent}
         />
@@ -49,22 +62,24 @@ export function RelationshipChatScreen() {
       {state.kind === "failure" ? (
         <ErrorState message={state.error.message} />
       ) : null}
-      {state.kind === "empty" ? (
+      {page && page.items.length === 0 ? (
         <EmptyState
           message="有一对一关系上下文时，对话会出现在这里。"
           title="暂无关系对话"
         />
       ) : null}
-      {state.kind === "success" && isRelationshipConversationList(state.data) ? <ChatListContent actorId={actorId} data={state.data} /> : null}
-      {state.kind === "success" && !isRelationshipConversationList(state.data) ? <ErrorState message="对话列表格式不完整，请刷新后重试。" /> : null}
+      {page && page.items.length > 0 ? <ChatListContent actorId={actorId} data={page} /> : null}
+      {loaded && !page ? <ErrorState message="没有读到当前账号可访问的对话列表，请刷新后重试。" /> : null}
+      {page?.hasMore ? <Pressable accessibilityRole="button" onPress={() => setCursor(page.nextCursor)} style={styles.pageButton}><Text style={styles.bodyText}>下一页</Text></Pressable> : null}
+      {cursor ? <Pressable accessibilityRole="button" onPress={refresh} style={styles.pageButton}><Text style={styles.bodyText}>返回第一页</Text></Pressable> : null}
     </AppScreen>
   );
 }
 
-function ChatListContent({ actorId, data }: { actorId: string; data: Parameters<typeof relationshipCommunicationListToView>[0] }) {
+function ChatListContent({ actorId, data }: { actorId: string; data: RelationshipConversationSummaryPageDTO }) {
   const { colors, styles } = useStyles();
   const router = useRouter();
-  const view = relationshipCommunicationListToView(data, actorId);
+  const view = relationshipChatSummaryPageView(data, actorId);
 
   return (
     <>
@@ -82,7 +97,7 @@ function ChatListContent({ actorId, data }: { actorId: string; data: Parameters<
           </Text>
         </View>
       </DataCard>
-      <DataCard detail="按待联系和未读排序" title="对话列表">
+      <DataCard detail="按最近更新排序" title="对话列表">
         <View style={styles.listStack}>
           {view.conversations.map((conversation) => (
             <ConversationRow
@@ -171,6 +186,7 @@ function ConversationRow({
 }
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
+  pageButton: { minHeight: 44, justifyContent: "center", paddingVertical: spacing.sm },
   agentEntry: {
     alignItems: "center",
     flexDirection: "row",

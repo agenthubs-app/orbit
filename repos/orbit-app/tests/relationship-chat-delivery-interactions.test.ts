@@ -21,7 +21,7 @@ const state = window.fixture = {
   update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); },
   message(body, id = "message:1", senderAccountId = state.actor) { return { messageId: id, conversationId: state.conversationId, senderAccountId, senderDisplayName: senderAccountId === state.actor ? "Sender" : "Receiver", body, sentAt: "2026-09-14T12:00:00.000Z", deliveryState: "delivered" }; },
   conversation() { return { conversationId: state.conversationId, contactId: "contact:receiver", participantAccountIds: ["account:sender", "account:receiver"], participantDisplayNames: { "account:sender": "Sender", "account:receiver": "Receiver" }, qualificationVersion: state.qualificationVersion, status: state.status, createdAt: "2026-09-14T11:00:00.000Z", updatedAt: "2026-09-14T12:00:00.000Z", unreadCount: 0, messages: state.messages }; },
-  data(path) { const url = new URL(path, state.baseUrl); if (url.pathname.endsWith("/extractions")) return { extractedNeeds: [], extractedTasks: [], relationshipProfileUpdates: [], confirmationRequiredProfileSuggestions: [] }; if (url.pathname.endsWith("/messages")) { const { messages, unreadCount, ...conversation } = state.conversation(); const end = Number(url.searchParams.get("cursor") || messages.length); const start = Math.max(0, end - 30); return { actorId: state.actor, conversation, items: messages.slice(start, end), hasMore: start > 0, nextCursor: start ? String(start) : null, newestCursor: end ? String(end) : null, direction: "older", asOf: conversation.updatedAt }; } return state.conversation(); },
+  data(path) { const url = new URL(path, state.baseUrl); if (url.pathname.endsWith("/conversation-summaries")) { const start = Number(url.searchParams.get("cursor") || 0), end = Math.min(start + 20, 45); const { messages, ...base } = state.conversation(); return { actorId: state.actor, items: Array.from({ length: end - start }, (_, i) => ({ ...base, conversationId: 'conversation:' + (i + start), participantDisplayNames: { ...base.participantDisplayNames, 'account:receiver': 'Receiver ' + (i + start) }, lastMessage: null })), hasMore: end < 45, nextCursor: end < 45 ? String(end) : null, asOf: base.updatedAt }; } if (url.pathname.endsWith("/extractions")) return { extractedNeeds: [], extractedTasks: [], relationshipProfileUpdates: [], confirmationRequiredProfileSuggestions: [] }; if (url.pathname.endsWith("/messages")) { const { messages, unreadCount, ...conversation } = state.conversation(); const end = Number(url.searchParams.get("cursor") || messages.length); const start = Math.max(0, end - 30); return { actorId: state.actor, conversation, items: messages.slice(start, end), hasMore: start > 0, nextCursor: start ? String(start) : null, newestCursor: end ? String(end) : null, direction: "older", asOf: conversation.updatedAt }; } return state.conversation(); },
   receipt(body, overrides = {}) { const message = state.message(body); return { conversationId: state.conversationId, deliveryState: "delivered", qualificationVersion: state.qualificationVersion, message, ...overrides }; },
   reply(index, status = 200, data) { const body = status >= 400 ? { success: false, error: { code: "SERVICE_UNAVAILABLE", message: "Rejected" } } : { success: true, data: data === undefined ? state.data(state.requests[index].path) : data }; state.pending[index]?.(new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } })); }
 };
@@ -44,7 +44,7 @@ export const SafeAreaView = ({ edges, ...props }) => <View {...props} />;
 
 test.before(async () => {
   const result = await build({
-    stdin: { contents: 'import React from "react"; import { createRoot } from "react-dom/client"; import Route from "./app/chat/[id]"; import { useFixture } from "fixture"; function App() { useFixture(); return <Route />; } createRoot(document.getElementById("root")).render(<App />);', resolveDir: process.cwd(), loader: "tsx" },
+    stdin: { contents: 'import React from "react"; import { createRoot } from "react-dom/client"; import Route from "./app/chat/[id]"; import ListRoute from "./app/chat"; import { useFixture } from "fixture"; function App() { const state = useFixture(); return state.listMode ? <ListRoute /> : <Route />; } createRoot(document.getElementById("root")).render(<App />);', resolveDir: process.cwd(), loader: "tsx" },
     bundle: true,
     write: false,
     format: "iife",
@@ -72,7 +72,7 @@ async function settle(page: Page) {
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
 }
 
-async function open(t: { after(fn: () => Promise<void>): void }, patch = {}) {
+async function open(t: { after(fn: () => Promise<void>): void }, patch: { listMode?: boolean; [key: string]: unknown } = {}) {
   const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
   page.setDefaultTimeout(2500);
   const errors: string[] = [];
@@ -82,7 +82,8 @@ async function open(t: { after(fn: () => Promise<void>): void }, patch = {}) {
   await page.setContent('<div id="root"></div>');
   await page.evaluate(value => { (window as any).initialFixture = value; }, patch);
   await page.addScriptTag({ content: script });
-  await page.getByPlaceholder("写给已验证联系人", { exact: true }).waitFor();
+  if (patch.listMode) await page.getByText("关系对话", { exact: true }).first().waitFor();
+  else await page.getByPlaceholder("写给已验证联系人", { exact: true }).waitFor();
   await settle(page);
   return page;
 }
@@ -222,4 +223,27 @@ test("a late older-page response cannot replace the latest window", async t => {
   await settle(page);
   assert.equal(await page.getByText("保密正文 0", { exact: true }).count(), 0);
   assert.equal(await page.getByText("保密正文 59", { exact: true }).count(), 1);
+});
+
+test("legacy chat list reads 20 summaries per page and hides them on identity change", async t => {
+  const page = await open(t, { listMode: true });
+  await page.getByText("Receiver 0", { exact: true }).waitFor();
+  assert.equal(await page.getByRole("button", { name: /Receiver \d/ }).count(), 20);
+  await page.getByRole("button", { name: "下一页", exact: true }).click();
+  await settle(page);
+  assert.equal(await page.getByText("Receiver 0", { exact: true }).count(), 0);
+  assert.equal(await page.getByText("Receiver 20", { exact: true }).count(), 1);
+  await page.getByRole("button", { name: "下一页", exact: true }).click();
+  await settle(page);
+  assert.equal(await page.getByRole("button", { name: /Receiver \d/ }).count(), 5);
+  await page.getByRole("button", { name: "返回第一页", exact: true }).click();
+  await settle(page);
+  assert.equal(await page.getByText("Receiver 0", { exact: true }).count(), 1);
+  const reads = await page.evaluate(() => (window as any).fixture.requests.map((r: any) => r.path));
+  assert.equal(reads.length, 4);
+  assert.ok(reads.every((path: string) => path.startsWith("/api/relationship-communication/conversation-summaries?limit=20")));
+  await page.evaluate(() => { const state = (window as any).fixture; state.holdReads = true; state.update({ actor: "account:other" }); });
+  await settle(page);
+  assert.equal(await page.getByRole("button", { name: /Receiver \d/ }).count(), 0);
+  assert.deepEqual(await writes(page), []);
 });

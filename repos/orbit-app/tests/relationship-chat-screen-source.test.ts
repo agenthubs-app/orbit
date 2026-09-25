@@ -31,8 +31,8 @@ test("relationship chat screen opens with an Orbit AI relationship entry", () =>
 });
 
 test("relationship chat screen reads the verified shared conversation list for the signed-in account", () => {
-  assert.match(screenSource, /relationshipCommunicationConversationsPath/u);
-  assert.match(screenSource, /relationshipCommunicationListToView/u);
+  assert.match(screenSource, /conversation-summaries\?limit=20/u);
+  assert.match(screenSource, /relationshipChatSummaryPageView/u);
   assert.match(screenSource, /useOrbitAuthSession/u);
   assert.match(screenSource, /auth\.actorId/u);
   assert.doesNotMatch(screenSource, /auth\.user\?\.id/u);
