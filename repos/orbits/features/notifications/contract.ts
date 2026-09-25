@@ -284,3 +284,4 @@ export function reminderScheduleNotificationFailureContext(
     service: "reminder-schedule-notification",
   };
 }
+export type {InboxSummaryDTO} from '../../shared/contract/inbox-summary';

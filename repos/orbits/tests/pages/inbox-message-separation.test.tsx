@@ -97,6 +97,7 @@ test('inbox counts remain separate when notifications are read or temporarily un
   assert.equal(typeof counts, 'function');
   const previous = globalThis.fetch;
   globalThis.fetch = (async url => {
+    if (String(url) === '/api/inbox/summary') return Response.json({ success: false }, { status: 404 });
     if (String(url) === '/api/account/me') return Response.json({ success: true, data: { account: { id: 'a' } } });
     if (String(url).startsWith('/api/relationship-communication')) return Response.json({ success: true, data: { conversations: [conversation], refreshedAt: at, unreadTotal: 7 } });
     return Response.json({ success: false }, { status: 503 });

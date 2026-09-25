@@ -19,6 +19,8 @@ import { contactsRouteToOrbitContactsViewModel } from "./compose-app-contacts-fr
 import { applyOrbitContactsPresentation } from "../orbit-contacts-presentation";
 import { AccountTopNav } from "../orbit-account-shell";
 import { NetworkAll } from "./network-0918/network-all";
+import { NetworkCards } from "./network-0918/network-cards";
+import { loadContactCardRoute } from "./contact-card-route-service";
 
 type ContactsRouteState =
   | AppContactsRouteStateViewModel
@@ -75,8 +77,18 @@ export default async function AppContactsPage({
     throw new Error("Authenticated Orbit account membership is unavailable.");
   }
 
+  const params = await searchParams;
+  const cards = await loadContactCardRoute(params ?? {}, actor);
+  if (cards) return <>
+    <OrbitReferenceStyles /><OrbitVisualFreezeRuntime />
+    <div data-orbit-real-page="network" data-orbit-route="app-contacts-route">
+      <AccountTopNav active="cards" />
+      {cards.state === "ready" ? <NetworkCards key={`${actor.id}:${cards.view.params}`} view={cards.view} />
+        : <section role="alert"><p>{cards.message}</p><a href="/app/contacts">清除筛选并返回第一页 / First page</a></section>}
+    </div>
+  </>;
   const routeModel = await loadAppContactsRouteViewModel(
-    await searchParams,
+    params,
     actor.id,
   );
   const language =

@@ -292,3 +292,5 @@ export type {
   ReadScope,
   ReadSurface
 } from "./universal-read";
+export type {InboxSummaryDTO} from './inbox-summary';
+export type { ContactCardDTO, ContactCardPageDTO, ContactCardSummaryDTO } from "./contact-card-page";

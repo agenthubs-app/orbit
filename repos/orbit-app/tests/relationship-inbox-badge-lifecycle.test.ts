@@ -40,6 +40,9 @@ const state = window.fixture = {
 };
 onSessionExpired(() => state.expiries++);
 window.fetch = async (input, init) => {
+  // Existing cases exercise the old-deployment fallback. New-protocol cases
+  // below record the summary request too; API helper tests count the 404 probe.
+  if (new URL(String(input)).pathname === "/api/inbox/summary" && !state.unified) return new Response(JSON.stringify({success:false,error:{code:"NOT_FOUND",message:"old deployment"}}), {status:404,headers:{"Content-Type":"application/json"}});
   const index = state.requests.length;
   state.requests.push({ path: new URL(String(input)).pathname, url: String(input), method: init.method, headers: init.headers, signal: init.signal });
   return new Promise(resolve => state.pending[index] = resolve);
@@ -56,8 +59,8 @@ export const writeSnapshot = async () => { state.snapshots++; };
 test.before(async () => {
   const result = await build({
     stdin: { contents: `import React, { useState } from "react"; import { createRoot } from "react-dom/client"; import { useFixture } from "fixture"; import { useRelationshipInboxBadgeCount } from "./src/hooks/useRelationshipInboxBadgeCount"; import { emitMessageStateInvalidation } from "./src/api/message-state"; window.invalidateMessageState = emitMessageStateInvalidation;
-function Badge() { const s = useFixture(); const count = useRelationshipInboxBadgeCount(s.scopeKey); const [draft, setDraft] = useState(""); return <><output aria-label="未读数量">{count ?? "unknown"}</output><input aria-label="草稿" value={draft} onChange={e => setDraft(e.target.value)} /></>; }
-function App() { const s = useFixture(); return s.mounted ? <Badge /> : null; } createRoot(document.getElementById("root")).render(<App />);`, loader: "tsx", resolveDir: process.cwd() },
+function Badge({second=false}) { const s = useFixture(); const count = useRelationshipInboxBadgeCount(second ? "another-screen-scope" : s.scopeKey); const [draft, setDraft] = useState(""); return <><output aria-label="未读数量">{count ?? "unknown"}</output><input aria-label="草稿" value={draft} onChange={e => setDraft(e.target.value)} /></>; }
+function App() { const s = useFixture(); return s.mounted ? <><Badge />{s.multiple && <Badge second />}</> : null; } createRoot(document.getElementById("root")).render(<App />);`, loader: "tsx", resolveDir: process.cwd() },
     bundle: true, write: false, format: "iife", jsx: "automatic", define: { "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
     plugins: [{ name: "badge-boundaries", setup(plugin) {
       plugin.onResolve({ filter: /^(fixture|expo-router|react-native)$|\/(ApiBaseUrlProvider|AuthSessionProvider|snapshot-store)$/ }, () => ({ path: "fixture", namespace: "badge" }));
@@ -93,6 +96,23 @@ test("badge reads authoritative message and legacy unread summaries", async t =>
   assert.deepEqual((await reads(p)).map(({ path, method }) => ({ path, method })), [{ path: inboxPath, method: "GET" }, { path: notificationsPath, method: "GET" }, {path:typedPath,method:"GET"}]);
   assert.equal(await p.evaluate(()=>new URL((window as any).fixture.requests[2].url).searchParams.get('limit')), '1');
   await hydrate(p); assert.equal(await count(p), "3");
+});
+
+test("two real hooks with different screen keys share one summary and one foreground timer", async t => {
+  const p = await open(t, { unified: true, multiple: true, clock: true });
+  assert.equal((await reads(p)).length, 1);
+  const data = { actorId: "actor:one", messagesUnread: 2, notificationsUnread: 3, notificationMode: "legacy", notificationRead: "ready", asOf: "2026-09-25T00:00:00Z" };
+  await reply(p, 0, data);
+  assert.deepEqual(await p.getByLabel("未读数量", { exact: true }).allTextContents(), ["5", "5"]);
+  await p.clock.fastForward(15_001); await settle(p);
+  assert.equal((await reads(p)).length, 2);
+  await update(p, { multiple: false });
+  assert.equal((await reads(p))[1]?.aborted, false, "one unmount must not cancel the other subscriber");
+  await reply(p, 1, { ...data, messagesUnread: 6 });
+  assert.equal(await count(p), "9");
+  await update(p, { appState: "background" });
+  await p.clock.fastForward(60_000); await settle(p);
+  assert.equal((await reads(p)).length, 2);
 });
 
 test("foreground polling refreshes within fifteen seconds without clearing the visible count or draft", async t => {
@@ -204,4 +224,22 @@ test('enabled typed count replaces legacy reminders and remains independent of r
  await p.evaluate(()=>(window as any).invalidateMessageState());await settle(p);
  await reply(p,index+1,inbox(2));await reply(p,index+2,notifications);
  await reply(p,index+3,{...disabledTyped,enabled:true,unreadCount:4});assert.equal(await count(p),'6');
+});
+
+test('new legacy summary renders with one request and refreshes without reading lists',async t=>{
+ const p=await open(t,{unified:true,clock:true});
+ assert.deepEqual((await reads(p)).map(r=>r.path),['/api/inbox/summary']);
+ const data={actorId:'actor:one',messagesUnread:2,notificationsUnread:3,notificationMode:'legacy',notificationRead:'ready',asOf:'2026-09-25T00:00:00Z'};
+ await reply(p,0,data);assert.equal(await count(p),'5');
+ await p.clock.fastForward(15001);await settle(p);assert.equal((await reads(p)).length,2);
+ await reply(p,1,{...data,messagesUnread:6});assert.equal(await count(p),'9');
+ await update(p,{actor:'actor:two'});assert.equal(await count(p),'unknown');
+ await reply(p,2,data);assert.equal(await count(p),'unknown');
+});
+test('new summary failures do not request old lists or expire a revoked identity',async t=>{
+ const p=await open(t,{unified:true});await update(p,{appState:'background'});
+ assert.ok((await reads(p))[0]!.aborted);await reply(p,0,{},401);
+ assert.equal(await p.evaluate(()=>(window as any).fixture.expiries),0);
+ await update(p,{appState:'active'});await reply(p,1,{},503);
+ assert.equal((await reads(p)).length,2);assert.equal(await count(p),'unknown');
 });

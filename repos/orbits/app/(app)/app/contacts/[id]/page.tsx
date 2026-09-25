@@ -22,6 +22,8 @@ import {
   type AppContactDetailBoundaryModel,
 } from "../compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-route-service";
 import { NetworkAll } from "../network-0918/network-all";
+import { NetworkCards } from "../network-0918/network-cards";
+import { loadContactCardRoute } from "../contact-card-route-service";
 import { loadAppContactsRouteViewModel } from "../compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-route-view-model";
 import { contactsRouteToOrbitContactsViewModel } from "../compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-view-model-adapter";
 import { applyOrbitContactsPresentation } from "../../orbit-contacts-presentation";
@@ -148,9 +150,10 @@ export default async function AppContactDetailPage({
   }
 
   // 列表屏在弹窗后面：列表 VM 只喂列表，详情弹窗只吃详情路由的 VM（真实 notes / editableTags / lastInteraction）。
-  const listRoute = await loadAppContactsRouteViewModel({}, actor.id);
+  const cards = await loadContactCardRoute({}, actor);
+  const listRoute = cards ? null : await loadAppContactsRouteViewModel({}, actor.id);
   const listVm =
-    listRoute.state === "success"
+    listRoute?.state === "success"
       ? localizeOrbitTree(applyOrbitContactsPresentation(contactsRouteToOrbitContactsViewModel(listRoute), language), language)
       : { connections: [], events: [], intros: [], pipelineStatuses: [] };
   const detail = contactDetailPageViewModel(routeModel, language).connections[0];
@@ -191,11 +194,18 @@ export default async function AppContactDetailPage({
       {/* 顶栏样式限定在 [data-orbit-real-page] 祖先下（orbit-reference-styles.tsx），外层容器必须带该属性。 */}
       <div data-orbit-real-page="network" data-orbit-route="app-contact-detail-route">
         <AccountTopNav active="cards" />
+        {cards?.state === "ready" ? <NetworkCards
+          key={`${actor.id}:${contactId}`}
+          view={cards.view}
+          openDetail={{ contact: detail, closeHref: "/app/contacts", extra }}
+        /> : <>
+        {cards?.state === "error" && <p role="alert">{cards.message}</p>}
         <NetworkAll
           key={`${actor.id}:${contactId}`}
           viewModel={listVm}
           openDetail={{ contact: detail, closeHref: "/app/contacts", extra }}
         />
+        </>}
       </div>
     </>
   );

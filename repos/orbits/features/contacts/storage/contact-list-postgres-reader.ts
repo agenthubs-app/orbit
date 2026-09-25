@@ -1,4 +1,6 @@
-import { createHash } from "node:crypto";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
+import { contactCardPageSchema, contactCardSummarySchema } from "../../../shared/api-schema/contact-card-page";
+import type { ContactCardPageDTO, ContactCardSummaryDTO } from "../../../shared/contract/contact-card-page";
 
 import {
   CONTACT_SOURCE_FILTERS,
@@ -77,7 +79,8 @@ const ECMASCRIPT_TRIM_CHARS_SQL = [
 
 const CONTACT_SEARCH_MATCHER_POLICY_VERSION = "ecmascript-lower-substring-v1";
 
-function createContactListSql(useVerifiedSearchCollation: boolean): string {
+function createContactListSql(useVerifiedSearchCollation: boolean, output: "records" | "cards" | "summary" = "records", boundedCandidates = false): string {
+  const needsSearchText = output === "records" || useVerifiedSearchCollation;
   const searchCollation = useVerifiedSearchCollation
     ? ' collate pg_catalog."und-x-icu"'
     : "";
@@ -164,6 +167,16 @@ with base_contacts as materialized (
     and nullif(btrim(c.payload->>'createdAt', ${ECMASCRIPT_TRIM_CHARS_SQL}), '') is not null
     and nullif(btrim(c.payload->>'updatedAt', ${ECMASCRIPT_TRIM_CHARS_SQL}), '') is not null
     and ${CONTACT_ACTOR_AUTHORIZATION_SQL}
+    ${boundedCandidates ? `and ($6::text[] is null or (
+      case when c.payload->'source'->>'type' in (${CONTACT_SOURCE_FILTERS.map(value => `'${value}'`).join(", ")})
+        then c.payload->'source'->>'type' else 'manual' end
+    ) = any($6::text[]))
+    and ($10::integer is null
+      or coalesce(c.occurred_at, c.updated_at) < $11::timestamptz
+      or (coalesce(c.occurred_at, c.updated_at) = $11::timestamptz and c.updated_at < $12::timestamptz)
+      or (coalesce(c.occurred_at, c.updated_at) = $11::timestamptz and c.updated_at = $12::timestamptz and c.record_id > $13))
+    order by coalesce(c.occurred_at, c.updated_at) desc, c.updated_at desc, c.record_id asc
+    limit $14 + 1` : ""}
 ), actor_connections as materialized (
   select
     c.record_id,
@@ -188,6 +201,7 @@ with base_contacts as materialized (
     and c.collection_name = '${CONNECTION_COLLECTION}'
     and c.lifecycle_state <> 'deleted'
     and (c.user_id = $4 or c.payload->>'accountId' = $4)
+    ${boundedCandidates ? "and exists (select 1 from base_contacts page_contact where page_contact.payload->>'id' = c.payload->>'contactId')" : ""}
     and jsonb_typeof(c.payload->'id') = 'string'
     and jsonb_typeof(c.payload->'accountId') = 'string'
     and jsonb_typeof(c.payload->'contactId') = 'string'
@@ -648,17 +662,16 @@ with base_contacts as materialized (
       ),
       '{}'::text[]
     ) as tags,
-    coalesce(et_lookup.texts ->> c.record_id, '') as evidence_text,
+    ${needsSearchText ? "coalesce(et_lookup.texts ->> c.record_id, '')" : "''::text"} as evidence_text,
     c.contact_error_code,
     cv_lookup.error_codes ->> (c.payload->>'id') as connection_error_code,
-    coalesce(search_lookup.texts ->> (c.payload->>'id'), '') as connection_search_text
+    ${needsSearchText ? "coalesce(search_lookup.texts ->> (c.payload->>'id'), '')" : "''::text"} as connection_search_text
   from base_contacts c
   cross join connection_validation_lookup cv_lookup
   cross join display_connections_lookup display_lookup
   cross join canonical_connections_lookup canonical_lookup
   cross join display_detail_states_lookup detail_lookup
-  cross join contact_evidence_text_lookup et_lookup
-  cross join connection_search_lookup search_lookup
+  ${needsSearchText ? "cross join contact_evidence_text_lookup et_lookup\n  cross join connection_search_lookup search_lookup" : ""}
 ), contact_dto as materialized (
   select
     v.*,
@@ -1005,7 +1018,38 @@ with base_contacts as materialized (
     exists (select 1 from page_rows p where p.page_position > $14) as has_more
   from page_projections p
 ), ${runtimeFingerprintCte}
-select
+${output === "cards" ? `select
+  coalesce((select jsonb_agg(jsonb_build_object(
+    'record_id', left(p.record_id, 512),
+    'sort_prefix_rank', p.sort_prefix_rank,
+    'sort_occurred_at', p.sort_occurred_at,
+    'sort_updated_at', p.sort_updated_at,
+    'error_code', coalesce(p.contact_error_code, p.connection_error_code,
+      case when length(p.record_id) > 512 or length(p.contact_id) > 512 or length(p.effective_updated_at) > 64 then 'CONTACT_CARD_FIELD_INVALID' end),
+    'card', jsonb_build_object(
+      'id', left(p.contact_id, 512),
+      'displayName', left(p.display_name, 128),
+      'organization', left(p.organization, 128),
+      'role', left(p.role, 128),
+      'sourceType', p.source_type,
+      'status', p.status,
+      'pendingInitialization', p.contact_lifecycle_initialization is not distinct from 'pending',
+      'nextActionPreview', left(p.next_action, 320),
+      'updatedAt', left(p.effective_updated_at, 64)
+    )
+  ) order by p.page_position) from page_rows p where p.page_position <= $14), '[]'::jsonb) as page,
+  exists(select 1 from page_rows p where p.page_position > $14) as has_more,
+  r.fingerprint as runtime_fingerprint
+from runtime_fingerprint r` : output === "summary" ? `select
+  m.total,
+  coalesce((select jsonb_object_agg(source_type, count) from facet_sources), '{}'::jsonb) as sources,
+  coalesce((select jsonb_object_agg(status, count) from facet_statuses), '{}'::jsonb) as statuses,
+  coalesce((select jsonb_object_agg(value, count) from facet_values), '{}'::jsonb) as values,
+  coalesce((select jsonb_agg(jsonb_build_object('value', value, 'count', count) order by first_order, first_tag_order, value)
+    from (select * from facet_tags order by first_order, first_tag_order, value limit 50) tags), '[]'::jsonb) as tags,
+  exists(select 1 from facet_tags offset 50 limit 1) as has_more_tags,
+  r.fingerprint as runtime_fingerprint
+from matched_count m cross join runtime_fingerprint r` : `select
   'fast' as result_mode,
   m.total,
   f.facet_tags,
@@ -1037,12 +1081,107 @@ select
   p.storage_order as fallback_order
 from page_projections p
 where $16::boolean
-order by result_mode, fallback_order nulls first
+order by result_mode, fallback_order nulls first`}
 `;
 }
 
 const CONTACT_LIST_SQL = createContactListSql(true);
 const CONTACT_FALLBACK_SQL = createContactListSql(false);
+
+const CONTACT_CARD_SQL = [createContactListSql(false, "cards"), createContactListSql(true, "cards")];
+const CONTACT_CARD_HEAD_SQL = createContactListSql(false, "cards", true);
+const CONTACT_SUMMARY_SQL = [createContactListSql(false, "summary"), createContactListSql(true, "summary")];
+
+/** Narrow, fail-closed protocol. Unlike the legacy reader, never downloads a fallback graph. */
+export function createPostgresContactCardReader(input: {
+  client: LiveRecordSqlClient;
+  workspaceId: string;
+  cursorSecret: string;
+  now?: () => number;
+}) {
+  if (Buffer.byteLength(input.cursorSecret) < 32) throw new Error("CONTACT_CURSOR_SECRET_MISSING");
+  const now = input.now ?? Date.now;
+  const sign = (payload: string) => createHmac("sha256", input.cursorSecret)
+    .update("contact-card-page:v1:").update(payload).digest();
+  const seal = (position: ContactPageCursor, query: ContactsListSearchFilterInput, actorId: string) => {
+    const payload = encodeCursor(position, query, actorId, input.workspaceId);
+    return `${payload}.${sign(payload).toString("base64url")}`;
+  };
+  const unseal = (query: ContactsListSearchFilterInput, actorId: string) => {
+    if (!query.cursor) return null;
+    if (query.cursor.length > 4096) throw new Error("CONTACT_CURSOR_INVALID");
+    const [payload, signature, ...extra] = query.cursor.split(".");
+    if (!payload || !signature || extra.length) throw new Error("CONTACT_CURSOR_INVALID");
+    const provided = Buffer.from(signature, "base64url");
+    const expected = sign(payload);
+    if (provided.toString("base64url") !== signature || provided.length !== expected.length || !timingSafeEqual(provided, expected)) {
+      throw new Error("CONTACT_CURSOR_INVALID");
+    }
+    const position = decodeCursor(payload, query, actorId, input.workspaceId);
+    if (!position) throw new Error("CONTACT_CURSOR_INVALID");
+    return position;
+  };
+  const execute = async (raw: ContactsListSearchFilterInput, actorId: string, summary: boolean) => {
+    const query = { ...raw, limit: raw.limit ?? 30 };
+    if (!actorId.trim() || !supportsBoundedContactPage(query) || query.limit > 50 ||
+      (query.query?.length ?? 0) > 256 || query.contextEventId || query.scenario) {
+      throw new Error("CONTACT_PAGE_INPUT_INVALID");
+    }
+    const cursor = unseal(query, actorId);
+    const search = escapeLikePattern(query.query?.trim().toLowerCase() ?? "");
+    const verified = search.length > 0;
+    if (verified && !(await verifiedContactSearchRuntime(input.client, now))) {
+      throw new Error("CONTACT_SEARCH_RUNTIME_UNSUPPORTED");
+    }
+    const sources = selectedValues(query.sourceFilters);
+    const statuses = selectedValues(query.statusFilters);
+    const values = [input.workspaceId, CONTACT_COLLECTION, search, actorId, CONNECTION_COLLECTION,
+      sources.length ? [...sources] : null, statuses.length ? [...statuses] : null,
+      [...selectedValues(query.tagFilters)], [...selectedValues(query.valueFilters)],
+      cursor?.prefixRank ?? null, cursor?.occurredAt ?? null, cursor?.updatedAt ?? null, cursor?.recordId ?? null,
+      query.limit, search ? `${search}%` : "%", false];
+    // No derived filters: select the authorized contact page before expanding
+    // relationships. Applying this shortcut to status/tag/value search would
+    // incorrectly filter only a partial candidate set.
+    const head = !summary && !verified && !statuses.length && !selectedValues(query.tagFilters).length && !selectedValues(query.valueFilters).length;
+    const result = await input.client.query<Record<string, unknown>>(
+      head ? CONTACT_CARD_HEAD_SQL : (summary ? CONTACT_SUMMARY_SQL : CONTACT_CARD_SQL)[verified ? 1 : 0]!, values,
+    );
+    if (result.rows.length !== 1) throw new Error("CONTACT_PAGE_RESULT_INVALID");
+    const row = result.rows[0]!;
+    if (verified && !runtimeTupleMatches(row.runtime_fingerprint as ContactSearchRuntimeTuple)) {
+      invalidateVerifiedContactSearchRuntime(input.client, now);
+      throw new Error("CONTACT_SEARCH_RUNTIME_UNSUPPORTED");
+    }
+    return { row, query };
+  };
+  return {
+    async page(query: ContactsListSearchFilterInput, actorId: string): Promise<ContactCardPageDTO> {
+      const { row } = await execute(query, actorId, false);
+      if (!Array.isArray(row.page)) throw new Error("CONTACT_PAGE_RESULT_INVALID");
+      const projections = row.page as (ContactPageProjection & { card: unknown })[];
+      for (const projection of projections) if (projection.error_code) throw new Error(String(projection.error_code));
+      const last = projections.at(-1);
+      const hasMore = row.has_more === true;
+      let nextCursor: string | null = null;
+      if (hasMore) {
+        const occurredAt = timestampString(last?.sort_occurred_at);
+        const updatedAt = timestampString(last?.sort_updated_at);
+        if (!last || typeof last.record_id !== "string" || !occurredAt || !updatedAt ||
+          ![0, 1].includes(Number(last.sort_prefix_rank))) throw new Error("CONTACT_PAGE_RESULT_INVALID");
+        nextCursor = seal({ prefixRank: Number(last.sort_prefix_rank), occurredAt, updatedAt, recordId: last.record_id }, query, actorId);
+      }
+      const page = contactCardPageSchema.parse({ items: projections.map(p => p.card), nextCursor, hasMore, asOf: new Date(now()).toISOString() });
+      return { ...page, nextCursor: page.nextCursor ?? null };
+    },
+    async summary(query: ContactsListSearchFilterInput, actorId: string): Promise<ContactCardSummaryDTO> {
+      const { row } = await execute({ ...query, cursor: undefined }, actorId, true);
+      return contactCardSummarySchema.parse({ total: Number(row.total), sources: row.sources,
+        statuses: row.statuses, values: row.values, tags: row.tags, hasMoreTags: row.has_more_tags,
+        asOf: new Date(now()).toISOString() });
+    },
+  };
+}
 
 interface ContactPageQueryRow {
   result_mode?: unknown;

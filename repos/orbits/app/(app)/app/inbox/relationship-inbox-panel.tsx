@@ -1,6 +1,7 @@
 "use client";
 import {TypedNotificationsTab} from './typed-notifications-tab';
 import {notificationInboxView} from './notification-inbox-view-model';
+import { readWebInboxSummary } from './inbox-summary-client';
 
 import {
   useCallback,
@@ -127,9 +128,19 @@ function initialOf(name: string): string {
   return name.trim().slice(0, 1).toUpperCase() || "?";
 }
 
+const activeInboxCountReads = new Map<string, Promise<Record<InboxTab, number>>>();
 export async function readInboxUnreadCounts(language: OrbitLanguage, expectedActor?: string): Promise<Record<InboxTab, number>> {
+  const key = JSON.stringify([language, expectedActor ?? null]);
+  const existing = activeInboxCountReads.get(key);
+  if (existing) return existing;
+  const read = (async () => {
   const actor = await readContactMessageActor();
   if (expectedActor && actor !== expectedActor) throw new Error("Account changed");
+  const bounded = await readWebInboxSummary(actor, language);
+  if (bounded) {
+    if (await readContactMessageActor() !== actor) throw new Error("Account changed");
+    return bounded;
+  }
   const [messages, reminders] = await Promise.allSettled([
     communicationRequest("/api/relationship-communication/conversations"), (async () => {
       const raw = await communicationRequest("/api/inbox/notifications?language=" + language);
@@ -145,6 +156,10 @@ export async function readInboxUnreadCounts(language: OrbitLanguage, expectedAct
     threads = Number.isSafeInteger(total) && total! >= 0 ? total! : rows.reduce((sum, row) => sum + row.unreadCount, 0);
   }
   return { threads, alerts: reminders.status === "fulfilled" ? reminders.value : 0 };
+  })();
+  activeInboxCountReads.set(key, read);
+  try { return await read; }
+  finally { if (activeInboxCountReads.get(key) === read) activeInboxCountReads.delete(key); }
 }
 
 // The outer indicator is a dot; each inbox tab owns its own unread count.
