@@ -18,6 +18,7 @@ import { createPersonalScheduleService } from '../personal-schedule/service';
 import { AppError } from '../../shared/errors/app-error';
 import { isCurrentPersonalScheduleReminderPlan } from '../personal-schedule/reminder-plans';
 import type { ReminderPlanDTO } from './reminder-plan-contract';
+import {readSimpleInboxSourceStates} from './storage/inbox-source-state-batch';
 
 /**
  * Typed notifications (reminder / suggestion / update) are the inbox. The rollout
@@ -90,7 +91,14 @@ export function createInboxRuntime(input:{client:TransactionalPostgresClient;wor
     const revision=String(entity.version??entity.updatedAt??record.updatedAt);
     return revision===source.sourceRevision?'available':'changed';
   };
-  const service=createInboxRecordService({repository:createPostgresInboxRecordRepository(input),now,sourceAccess,effects:{
+  const sourceAccessBatch=async(actorId:string,sources:readonly InboxNotificationSource[])=>{
+    const states=await readSimpleInboxSourceStates({client:input.client,workspaceId:input.workspaceId,actorId,sources});
+    // Complex kinds retain their domain-specific authorization/expiry checks.
+    // Sequential fallback avoids starting hundreds of domain queries at once.
+    for(let i=0;i<states.length;i++)if(states[i]===null)states[i]=await sourceAccess(actorId,sources[i]!);
+    return states as ('available'|'changed'|'unavailable')[];
+  };
+  const service=createInboxRecordService({repository:createPostgresInboxRecordRepository(input),now,sourceAccess,sourceAccessBatch,effects:{
     async accept(n,key,tx) {
       if(!tx.executor)throw new Error('A transaction is required');
       // Reuse the canonical task mutation lock and task suggestion acceptance;
@@ -110,7 +118,7 @@ export function createInboxRuntime(input:{client:TransactionalPostgresClient;wor
       n.sources=n.sources.map(s=>s===source?{...s,sourceRevision:plan.updatedAt}:s);
     },
   }});
-  return {service,sourceAccess};
+  return {service,sourceAccess,sourceAccessBatch};
 }
 export function createConfiguredInboxRuntime() {
   const runtime=createConfiguredTransactionalPostgresRuntime();return runtime?{...createInboxRuntime(runtime),...runtime}:null;

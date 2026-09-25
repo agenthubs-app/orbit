@@ -208,3 +208,21 @@ TDD 先确认旧入口仍读取整份历史及保留撤权 UI 的两项失败，
 第七批提交 `2e67e2f4`，其 GitNexus staged 检查 4 文件/26 符号、low、无 partial/truncated/error。旧 `/chat` 本批接入 20 条摘要分页，窗口替换、不累积历史、不下载消息正文。页内数字明确标为“本页对话/本页未读”，不冒充全局总数；主收件箱的独立全局未读不变。排序文案修正为与 SQL 一致的最近更新，AI 入口和详情导航保持。
 
 请求绑定账号、凭据、服务器和页码，失效隐藏前页；没有私有持久快照和全量 fallback。新增真实请求浏览器测试先红后绿，验证 45 会话按 20/20/5 替换、返回首页和身份变更清除；聊天相关 17 项及宽入口的暗色、失败、空态、提取/投递 7 项均通过，App 类型检查通过。旧详情与新消息窗口的通用页面 fixture 已同步为窄契约。API/共享契约未变，不等于已安装或发布。
+
+## 第九批：通知来源批量状态校验与读取策略补齐
+
+第八批提交 `e95710d1`，staged 图检查 6 文件/28 符号、low，无 partial/truncated/error。本批通知工厂/服务影响提醒物化和 discovery，编辑前已按 HIGH 报告；不修改原有动作事务及逐条权威来源校验。
+
+列表及精确未读计算按当前候选批次合并来源：task/schedule/note/contact/goal/旧 batch 一次最多 100 个去重 ID，SQL 内限定 workspace/owner/lifecycle，只返回 status/version/updatedAt，不读业务正文/操作历史。NULL wrapper、primitive、数组/对象版本等保留 JS 原语义；旧编码 payload 和 appointment/discovery/connection/reminder-plan/v2 batch 继续调用原领域规则，不缓存授权结论。相同 ID 的不同集合不混淆；输出数量不完整时 fail closed。详情和 accept/snooze/read 动作仍在原事务中重新校验，不复用列表结果。
+
+本地放大 fixture（19 个业务对象各加 100 KB 无关正文，22 个来源引用）：独立来源校验 22 查询/2,110,061 B → 1 查询/2,904 B；完整列表及全局未读 31 查询/2,721,717 B → 5 查询/12,612 B，响应逐字段相同。该字节数为 SQL 返回 JSON 估计，不是 Neon 协议字节或生产月账单。201 个不同 ID 分成 3 次 SQL；所有简单集合、空/缺失/撤权/归档、版本变化、多页/历史/类别计数均对照旧校验。
+
+回归首次有 2 项因空 public schema 失败、3 项因直接 URL 未配置跳过；没有计为通过。新增可复现隔离脚本，只接受本机 PostgreSQL，临时 schema 初始化真实表、子进程白名单环境（无云/模型凭据），结束清理自己的 schema。最终 33 项全部通过、无跳过：包括 PostgreSQL 并发 accept/幂等、延期、约谈显式提醒优先、discovery 撤销消息分析后去除私密摘录、日程实例取消与到期规则。Web 完整类型检查通过。
+
+```sh
+env -i PATH="$PATH" ORBIT_LIFECYCLE_TEST_DATABASE_URL=postgresql://li@localhost/orbit_neon_audit_20260925 node --import tsx scripts/diagnostics/check-inbox-source-batches.ts
+```
+
+App 读取面审计发现迁移前接口和行号残留：同步新消费者登记，保留动态发送动作的已核实路径，删除已不存在的旧读取点；联系人 summary 的查询分隔符明确化，避免被误当动态 ID。窄私有读取仍登记 network-only，不授权离线缓存；静态 `/contacts/page` 优先于参数 `/contacts/:id`，同等具体度的冲突仍拒绝。读取审计/联系人生命周期 26 项通过；没有放宽未知路径。共享契约未变，根 bridge 进行中的交接文件保持原样。
+
+限制：活跃未读来源仍需全部检查，不可用通知过多仍可能多次翻候选页；复杂领域和旧编码 fallback 未变成常数成本。业务 GET refresh、后台全量物化、旧 AI/signals 图、App 人脉跟进列表和生产运行时/实际月速率仍未全部完成。不能据此宣布 5 GB/月已经可保证或 P3 已完成。

@@ -77,7 +77,16 @@ function surfaceFrom([consumerFile, method, endpointTemplate]: SurfaceKey): Read
   const secret = providerTodo || endpointTemplate.startsWith('/api/account/session/')
     || endpointTemplate.startsWith('/api/auth/') || endpointTemplate.startsWith('/api/devices/')
     // Private portraits remain network-only until trusted grant/epoch invalidation is available.
-    || endpointTemplate === '/api/events/:id/registration/portrait';
+    || endpointTemplate === '/api/events/:id/registration/portrait'
+    // Bounded private readers have no proven revoke/version cache protocol yet.
+    || (method === 'GET' && ([
+      '/api/contacts/page','/api/contacts/summary','/api/inbox/summary',
+      '/api/notifications/unread-summary','/api/relationship-communication/unread-summary',
+      '/api/relationship-communication/conversation-summaries','/api/relationship-communication/conversations/:id/messages',
+    ].includes(endpointTemplate) || [
+      'src/api/inbox-badge-resource.ts','src/api/inbox-summary.ts',
+      'src/api/legacy-notification-unread-summary.ts','src/api/relationship-unread-summary.ts',
+    ].includes(consumerFile)));
   const binary = endpointTemplate.endsWith('/image') || endpointTemplate.endsWith('/content');
   return {
     consumerFile,
@@ -118,9 +127,15 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/api/mobile-auth.ts","GET","/api/auth/session"],
   ["src/hooks/useContactNeeds.ts","GET","/api/profile"],
   ["src/hooks/useContactNeeds.ts","PUT","/api/profile"],
-  ["src/hooks/useRelationshipInboxBadgeCount.ts","GET","/api/inbox/notifications"],
-  ["src/hooks/useRelationshipInboxBadgeCount.ts","GET","/api/notifications"],
-  ["src/hooks/useRelationshipInboxBadgeCount.ts","GET","/api/relationship-communication/conversations"],
+  ["src/api/inbox-badge-resource.ts","GET","/api/inbox/notifications"],
+  ["src/api/inbox-summary.ts","GET","/api/inbox/notifications"],
+  ["src/api/inbox-summary.ts","GET","/api/inbox/summary"],
+  ["src/api/legacy-notification-unread-summary.ts","GET","/api/notifications"],
+  ["src/api/legacy-notification-unread-summary.ts","GET","/api/notifications/unread-summary"],
+  ["src/api/relationship-unread-summary.ts","GET","/api/relationship-communication/conversations"],
+  ["src/api/relationship-unread-summary.ts","GET","/api/relationship-communication/unread-summary"],
+  ["src/hooks/useContactCardPages.ts","GET","/api/contacts/page"],
+  ["src/hooks/useContactCardPages.ts","GET","/api/contacts/summary"],
   ["src/i18n/OrbitLocaleProvider.tsx","GET","/api/account/language-preference"],
   ["src/i18n/OrbitLocaleProvider.tsx","PUT","/api/account/language-preference"],
   ["src/notifications/delivery-ownership.ts","GET","/api/inbox/delivery/owner"],
@@ -156,16 +171,17 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/screens/ai/AiScreen.tsx","DELETE","/api/ai/conversations/sessions/:id"],
   ["src/screens/ai/AiScreen.tsx","GET","/api/today"],
   ["src/screens/chat/RelationshipChatDetailScreen.tsx","GET","/api/chat/conversations/:id/extractions"],
-  ["src/screens/chat/RelationshipChatDetailScreen.tsx","GET","/api/relationship-communication/conversations/:id"],
+  ["src/screens/chat/RelationshipChatDetailScreen.tsx","GET","/api/relationship-communication/conversations/:id/messages"],
   ["src/screens/chat/RelationshipChatDetailScreen.tsx","POST","/api/relationship-communication/conversations/:id/messages"],
-  ["src/screens/chat/RelationshipChatScreen.tsx","GET","/api/relationship-communication/conversations"],
+  ["src/screens/chat/RelationshipChatScreen.tsx","GET","/api/relationship-communication/conversation-summaries"],
   ["src/screens/inbox/NotificationDetailScreen.tsx","GET","/api/inbox/notifications/:id"],
   ["src/screens/inbox/NotificationDetailScreen.tsx","POST","/api/inbox/notifications/:id/actions"],
   ["src/screens/inbox/RelationshipInboxScreen.tsx","GET","/api/chat/privacy"],
   ["src/screens/inbox/RelationshipInboxScreen.tsx","GET","/api/notifications"],
   ["src/screens/inbox/RelationshipInboxScreen.tsx","GET","/api/notifications/deliveries/:id"],
-  ["src/screens/inbox/RelationshipInboxScreen.tsx","GET","/api/relationship-communication/conversations"],
-  ["src/screens/inbox/RelationshipInboxScreen.tsx","GET","/api/relationship-communication/conversations/:id"],
+  ["src/screens/inbox/RelationshipInboxScreen.tsx","GET","/api/relationship-communication/conversation-summaries"],
+  ["src/screens/inbox/RelationshipInboxScreen.tsx","GET","/api/relationship-communication/conversations/:id/messages"],
+  ["src/screens/inbox/RelationshipInboxScreen.tsx","GET","/api/relationship-communication/unread-summary"],
   ["src/screens/inbox/RelationshipInboxScreen.tsx","GET","/api/relationship-signals/email-calendar"],
   ["src/screens/inbox/RelationshipInboxScreen.tsx","PATCH","/api/agent/signals/:id"],
   ["src/screens/inbox/RelationshipInboxScreen.tsx","POST","/api/chat/privacy/analysis-toggle"],
@@ -228,7 +244,6 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/screens/contacts/ContactsGraphScreen.tsx","GET","/api/connections/:id"],
   ["src/screens/contacts/ContactsGraphScreen.tsx","POST","/api/connections/:id/evidence"],
   ["src/screens/contacts/ContactsGraphScreen.tsx","PATCH","/api/connections/:id/profile"],
-  ["src/screens/contacts/ContactsScreen.tsx","GET","/api/contacts"],
   ["src/screens/contacts/ContactsScreen.tsx","POST","/api/contacts/search"],
   ["src/screens/contacts/ContactsScreen.tsx","POST","/api/search/relationships"],
   ["src/screens/contacts/ContactsScreen.tsx","GET","/api/search/suggestions"],
@@ -430,7 +445,12 @@ export function matchTemplate(template: string, path: string): boolean {
 }
 
 export function resolveReadSurface(method: string, path: string): ReadSurface {
-  const matches = surfaces.filter(row => row.method === method && matchTemplate(row.endpointTemplate, path));
+  const candidates = surfaces.filter(row => row.method === method && matchTemplate(row.endpointTemplate, path));
+  // Literal routes such as /contacts/page outrank /contacts/:id, just as on
+  // the server. Equally specific conflicting policies still fail closed.
+  const specificity = (template: string) => template.split('/').filter(part => part && !part.startsWith(':')).length;
+  const score = Math.max(-1, ...candidates.map(row => specificity(row.endpointTemplate)));
+  const matches = candidates.filter(row => specificity(row.endpointTemplate) === score);
   // Several consumers may share a route; they must all declare the same policy.
   const policies = new Map(matches.map(({ consumerFile: _, ...policy }) => [JSON.stringify(policy), policy]));
   if (policies.size !== 1) throw new Error('UNREGISTERED_READ');

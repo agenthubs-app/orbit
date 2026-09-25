@@ -20,7 +20,7 @@ export function useContactCardPages(filters: ContactsListPathInput, consumerScop
   const enabled = auth.ready && auth.signedIn && server.ready && Boolean(auth.actorId);
   const rawPage = useApiResource<unknown>(`/api/contacts/page?${pageParams}`, data => contactCardPageSchema.safeParse(data).success && (data as ContactCardPageDTO).items.length === 0,
     { scopeKey: JSON.stringify([scope, cursor]), cachePolicy: "network-only", enabled });
-  const rawSummary = useApiResource<unknown>(`/api/contacts/summary${query ? `?${query}` : ""}`, () => false,
+  const rawSummary = useApiResource<unknown>(`/api/contacts/summary?${query}`, () => false,
     { scopeKey: scope, cachePolicy: "network-only", enabled });
   const pageState = validateApiResourceState(rawPage, contactCardPageSchema.refine(page => page.hasMore === Boolean(page.nextCursor)));
   const summaryState = validateApiResourceState(rawSummary, contactCardSummarySchema);

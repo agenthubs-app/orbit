@@ -154,7 +154,12 @@ test('the actual native consumers all have explicit versioned policies', async (
     'src/screens/inbox/RelationshipInboxScreen.tsx POST /api/relationship-signals/:id/confirm',
     'src/screens/inbox/useNotificationInbox.ts GET /api/inbox/notifications',
     'src/screens/inbox/useNotificationInbox.ts POST /api/inbox/notifications/read',
-    'src/hooks/useRelationshipInboxBadgeCount.ts GET /api/inbox/notifications',
+    'src/api/inbox-badge-resource.ts GET /api/inbox/notifications',
+    'src/api/inbox-summary.ts GET /api/inbox/summary',
+    'src/hooks/useContactCardPages.ts GET /api/contacts/page',
+    'src/hooks/useContactCardPages.ts GET /api/contacts/summary',
+    'src/screens/chat/RelationshipChatScreen.tsx GET /api/relationship-communication/conversation-summaries',
+    'src/screens/chat/RelationshipChatDetailScreen.tsx GET /api/relationship-communication/conversations/:id/messages',
     'src/screens/tasks/TaskDetailScreen.tsx PATCH /api/tasks/:id',
     'src/screens/tasks/TaskDetailScreen.tsx DELETE /api/tasks/:id',
     'src/screens/tasks/TaskDetailScreen.tsx POST /api/reminders',
@@ -163,6 +168,13 @@ test('the actual native consumers all have explicit versioned policies', async (
   assert.deepEqual(await auditReadSurfaces(root), { unregistered: [], invalid: [] });
   assert.ok(surfaces.some(row => row.readPersistence === 'device_only' && row.mutationPolicy === 'local_only'));
   assert.ok(surfaces.every(row => row.mutationPolicy !== 'offline_queue'));
+});
+
+test('bounded private pages and badge summaries stay network-only until permission invalidation is proven', () => {
+  for(const path of ['/api/contacts/page','/api/contacts/summary','/api/inbox/summary','/api/notifications/unread-summary','/api/relationship-communication/unread-summary','/api/relationship-communication/conversation-summaries','/api/relationship-communication/conversations/c/messages']) {
+    assert.equal(resolveReadSurface('GET',path).readPersistence,'online_only_secret');
+    assert.equal(resolveReadSurface('GET',path).binaryPolicy,'never_local');
+  }
 });
 
 test('wrapper aliases, generic requests and computed client methods are audited independently', async t => {

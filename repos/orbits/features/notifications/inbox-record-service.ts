@@ -9,6 +9,7 @@ export class InboxRecordError extends Error {
 }
 export type InboxNotificationUpsert = Omit<InboxNotificationDTO,'id'|'revision'|'readAt'|'disposition'|'updatedAt'> & {readAt?:string|null;disposition?:InboxNotificationDTO['disposition']};
 export interface InboxSourceAccess { (actorId:string,source:InboxNotificationSource,transaction?:InboxRecordTransaction):Promise<'available'|'changed'|'unavailable'>; }
+export interface InboxSourceAccessBatch { (actorId:string,sources:readonly InboxNotificationSource[]):Promise<readonly ('available'|'changed'|'unavailable')[]>; }
 export interface InboxBusinessEffects {
   accept(notification:InboxNotificationDTO,key:string,transaction:InboxRecordTransaction):Promise<string>;
   snooze(notification:InboxNotificationDTO,scheduledFor:string,key:string,transaction:InboxRecordTransaction):Promise<void>;
@@ -37,10 +38,11 @@ export function assertInboxRecordsIntact(notifications:readonly InboxNotificatio
   if(offenders.length)throw new InboxRecordError('INTEGRITY_VIOLATION',`Inbox records are not classifiable: ${offenders.slice(0,20).join(', ')}`);
 }
 
-export function createInboxRecordService(input:{repository:InboxRecordRepository;sourceAccess:InboxSourceAccess;effects:InboxBusinessEffects;now?:()=>string}) {
+export function createInboxRecordService(input:{repository:InboxRecordRepository;sourceAccess:InboxSourceAccess;sourceAccessBatch?:InboxSourceAccessBatch;effects:InboxBusinessEffects;now?:()=>string}) {
   const now=input.now??(()=>new Date().toISOString());
-  async function present(n:InboxNotificationDTO,language:'zh'|'en'|'ja'='zh',transaction?:InboxRecordTransaction):Promise<InboxNotificationDTO> {
-    const states=await Promise.all(n.sources.map(s=>input.sourceAccess(n.actorId,s,transaction)));
+  async function present(n:InboxNotificationDTO,language:'zh'|'en'|'ja'='zh',transaction?:InboxRecordTransaction,checked?:readonly ('available'|'changed'|'unavailable')[]):Promise<InboxNotificationDTO> {
+    const states=checked??await Promise.all(n.sources.map(s=>input.sourceAccess(n.actorId,s,transaction)));
+    if(states.length!==n.sources.length)throw new InboxRecordError('INTEGRITY_VIOLATION','Incomplete source authorization');
     const access=states.includes('unavailable')?'unavailable':states.includes('changed')?'changed':'available';
     const expired=n.expiresAt && Date.parse(n.expiresAt)<=Date.parse(now()) && n.disposition==='open';
     if(access!=='available') {
@@ -82,7 +84,14 @@ export function createInboxRecordService(input:{repository:InboxRecordRepository
         if(invalid.length)throw new InboxRecordError('INTEGRITY_VIOLATION',`Inbox records are not classifiable: ${invalid.join(', ')}`);
         const result=await readBoundedInbox({window:input.repository.readWindow,actorId,asOf,now:now(),limit,
           history:query.history??false,...(query.kind?{kind:query.kind}:{}),...(cursor?{before:{at:cursor.at,id:cursor.id}}:{}),
-          present:row=>present(row,query.language),access:input.sourceAccess});
+          present:row=>present(row,query.language),access:input.sourceAccess,
+          ...(input.sourceAccessBatch?{accessBatch:input.sourceAccessBatch,presentBatch:async(rows:readonly InboxNotificationDTO[])=>{
+            if(rows.some(row=>row.actorId!==actorId))throw new InboxRecordError('INTEGRITY_VIOLATION','Mismatched notification actor');
+            const sources=rows.flatMap(row=>row.sources),states=await input.sourceAccessBatch!(actorId,sources);
+            if(states.length!==sources.length)throw new InboxRecordError('INTEGRITY_VIOLATION','Incomplete source authorization');
+            let offset=0;
+            return Promise.all(rows.map(row=>{const checked=states.slice(offset,offset+row.sources.length);offset+=row.sources.length;return present(row,query.language,undefined,checked);}));
+          }}:{})});
         const last=result.items.at(-1);
         return {enabled:true,items:result.items,unreadCount:result.unreadCount,asOf,
           nextCursor:result.hasMore&&last?Buffer.from(JSON.stringify({scope,asOf,at:last.occurredAt,id:last.id})).toString('base64url'):null};
