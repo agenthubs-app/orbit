@@ -49,9 +49,9 @@ test("contact detail SQL transfer stays fixed as unrelated relationships and pri
     const provider = createStorageContactGraphProvider({ store, workspaceId, contactScopeRecordReader: createPostgresContactScopeRecordReader({ client, workspaceId }) });
     const base = { source: { type: "manual", id: "read-test" }, evidenceIds: ["evidence:test"], createdAt: now, updatedAt: now };
     for (const [collection, payload, owner] of [
-      ["contacts", { ...base, id: "contact:target", displayName: "Target", stage: "captured" }, "actor:other"],
-      // Historical accountId ownership remains supported, not just user_id.
-      ["connections", { ...base, id: "connection:target", contactId: "contact:target", accountId: actorId, summary: "Target relationship", stage: "active", version: 1, valueTypes: [] }, null],
+      ["contacts", { ...base, id: "contact:target", displayName: "Target", stage: "captured" }, actorId],
+      // Positive cost fixture has authoritative ownership on both records.
+      ["connections", { ...base, id: "connection:target", contactId: "contact:target", accountId: actorId, summary: "Target relationship", stage: "active", version: 1, valueTypes: [] }, actorId],
     ] as const) {
       await raw.query("insert into orbit_records (workspace_id,collection_name,record_id,user_id,source_type,source_id,payload,created_at,updated_at) values ($1,$2,$3,$4,'manual','read-test',$5,$6,$6)", [workspaceId, collection, payload.id, owner, payload, now]);
     }

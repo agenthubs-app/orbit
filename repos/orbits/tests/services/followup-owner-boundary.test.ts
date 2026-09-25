@@ -53,8 +53,8 @@ test("both PostgreSQL followup readers exclude association-only/conflicting rows
     const facts = await createRelationshipLifecycleFactsReader({ client: pool, workspaceId: "w" }).readRelationshipLifecycleFacts("a");
     assert.deepEqual(facts.tasks.map(item => item.id).sort(), ["tasks:consistent", "tasks:owner-only"]);
     assert.equal((await createRelationshipLifecycleFactsReader({ client: pool, workspaceId: "w" }).readRelationshipLifecycleFacts("b")).tasks.length, 0);
-    // User decision concerns followups, not a silent global rewrite of legacy notification access.
+    // The clarified ownership rule also applies to legacy notification sources.
     const legacy = await createPostgresRelationshipScopeReader({ client: pool, workspaceId: "w", purpose: "legacy-notifications" })("a");
-    assert.ok(legacy.tasks.some(row => row.recordId === "tasks:association-only"));
+    assert.ok(!legacy.tasks.some(row => row.recordId === "tasks:association-only"));
   } finally { await pool.query(`drop schema ${schema} cascade`); await pool.end(); }
 });

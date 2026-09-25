@@ -156,7 +156,7 @@ test("live connection evidence service reads generated relationship graph from s
   }
 });
 
-test("live connection evidence reads legacy payload-owned records without crossing accounts", async () => {
+test("live connection evidence rejects legacy payload-only ownership without granting access", async () => {
   const workspaceId = "workspace:legacy-payload-owned-connections";
   const primaryAccountId = "account:legacy-primary";
   const secondaryAccountId = "account:legacy-secondary";
@@ -254,13 +254,13 @@ test("live connection evidence reads legacy payload-owned records without crossi
     primaryList.success
       ? primaryList.data.connections.map((connection) => connection.id)
       : [],
-    ["connection:legacy-primary"],
+    [],
   );
   assert.equal(
     primaryList.success ? primaryList.data.connections[0]?.displayName : "",
-    "Legacy primary",
+    undefined,
   );
-  assert.equal(primaryDetail.success, true);
+  assert.equal(primaryDetail.success, false);
   assert.equal(crossAccountDetail.success, false);
   if (!crossAccountDetail.success) {
     assert.equal(crossAccountDetail.error.code, "CONNECTION_NOT_FOUND");

@@ -1,4 +1,5 @@
 import { AppError } from "../../../shared/errors/app-error";
+import { contactRecordOwnedByActor } from "./contact-read-authorization";
 
 import type {
   ConnectionDTO,
@@ -54,7 +55,7 @@ export const CONTACTS_LIVE_RECORD_COLLECTIONS = {
 // The list DTO does not consume private notes, raw captures, handles or full
 // detail-state history. Keep those in the explicit contact-detail read path.
 const contactListPayloadFields = [
-  "id", "version", "displayName", "organization", "role", "location",
+  "id", "version", "accountId", "displayName", "organization", "role", "location",
   "profileSnippet", "primaryIndustryId", "secondaryIndustryId", "nextAction",
   "stage", "lifecycleInitialization", "source", "evidenceIds", "createdAt", "updatedAt",
 ] as const;
@@ -462,8 +463,7 @@ function graphFromRecords(input: {
     ? input.connectionRecords
         .filter(
           (record) =>
-            record.userId === input.actorId ||
-            record.payload.accountId === input.actorId,
+            contactRecordOwnedByActor(record, input.actorId!),
         )
         .map(connectionFromRecord)
         .filter((connection): connection is ConnectionDTO => connection !== null)
@@ -614,13 +614,7 @@ async function readFocusedContactGraph(input: {
   }
   const actorConnectionRecords = allConnectionRecords.filter(
     (record) =>
-      record.userId === actorId ||
-      record.payload.accountId === actorId,
-  );
-  const actorContactIds = new Set(
-    actorConnectionRecords
-      .map((record) => record.payload.contactId)
-      .filter(nonEmptyString),
+      contactRecordOwnedByActor(record, actorId),
   );
   const actorDetailStateRecords = detailStateRecords.filter(
     (record) => record.userId === actorId,
@@ -655,10 +649,7 @@ async function readFocusedContactGraph(input: {
   const allActorContactRecords = orderedContactRecords.filter(
     (record) => {
       const actorCanSeeContact =
-        boundedPage !== null ||
-        record.userId === actorId ||
-        (nonEmptyString(record.payload.id) &&
-          actorContactIds.has(record.payload.id));
+        contactRecordOwnedByActor(record, actorId);
       if (!actorCanSeeContact || !useLegacyListPrefilter) return actorCanSeeContact;
       const contactId = optionalString(record.payload.id);
       return (
@@ -859,30 +850,13 @@ export function createStorageContactGraphProvider({
       if (!normalizedActorId || !normalizedContactId) {
         throw new Error("Contact industry update requires actor and contact identifiers.");
       }
-      const scope = contactScopeRecordReader
-        ? await contactScopeRecordReader(normalizedActorId, [normalizedContactId])
-        : null;
-      const [contactRecord, connectionRecords] = await Promise.all([
-        store.getRecord({
-          workspaceId,
-          collectionName: CONTACTS_LIVE_RECORD_COLLECTIONS.contacts,
-          recordId: normalizedContactId,
-        }),
-        store.listRecords({
-          limit: "unbounded",
-          workspaceId,
-          collectionName: CONTACTS_LIVE_RECORD_COLLECTIONS.connections,
-          ...(scope ? { recordIds: scope.connectionIds } : {}),
-        }),
-      ]);
+      const contactRecord = await store.getRecord({
+        workspaceId,
+        collectionName: CONTACTS_LIVE_RECORD_COLLECTIONS.contacts,
+        recordId: normalizedContactId,
+      });
       const actorCanEdit =
-        contactRecord?.userId === normalizedActorId ||
-        connectionRecords.some(
-          (record) =>
-            (record.userId === normalizedActorId ||
-              record.payload.accountId === normalizedActorId) &&
-            record.payload.contactId === normalizedContactId,
-        );
+        contactRecord && contactRecordOwnedByActor(contactRecord, normalizedActorId);
       if (!contactRecord || !actorCanEdit) {
         throw new Error("Contact industry update is outside the actor boundary.");
       }

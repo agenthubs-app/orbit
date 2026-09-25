@@ -313,24 +313,7 @@ export function createStorageFollowupTaskProvider({
         record.userId === actorId && relationshipRecordOwnedByActor(record, actorId);
       const actorTaskRecords = taskRecords.filter(belongsToActor);
       const actorConnectionRecords = connectionRecords.filter(belongsToActor);
-      const actorContactIds = new Set([
-        ...actorTaskRecords.flatMap((record) =>
-          nonEmptyString(record.payload.contactId)
-            ? [record.payload.contactId]
-            : [],
-        ),
-        ...actorConnectionRecords.flatMap((record) =>
-          nonEmptyString(record.payload.contactId)
-            ? [record.payload.contactId]
-            : [],
-        ),
-      ]);
-      const actorContactRecords = contactRecords.filter(
-        (record) =>
-          belongsToActor(record) ||
-          (nonEmptyString(record.payload.id) &&
-            actorContactIds.has(record.payload.id)),
-      );
+      const actorContactRecords = contactRecords.filter(belongsToActor);
       const actorEvidenceIds = new Set(
         [
           ...actorTaskRecords,

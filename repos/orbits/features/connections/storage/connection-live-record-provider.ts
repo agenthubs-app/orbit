@@ -68,9 +68,8 @@ function recordBelongsToAccount(
   record: LiveRecord<Record<string, unknown>>,
   accountId: string,
 ): boolean {
-  return nonEmptyString(record.userId)
-    ? record.userId === accountId
-    : record.payload.accountId === accountId;
+  return nonEmptyString(accountId) && record.userId === accountId
+    && (record.payload.accountId == null || record.payload.accountId === accountId);
 }
 
 function stringArray(value: unknown): readonly string[] {
@@ -285,15 +284,19 @@ async function readFocusedConnectionGraph(input: {
   const contactIds = Array.from(
     new Set(connections.map((connection) => connection.contactId)),
   );
-  const contactRecords =
+  const candidateContactRecords =
     contactIds.length > 0
       ? await input.store.listRecords({
           limit: "unbounded",
           workspaceId: input.workspaceId,
           collectionName: CONNECTION_LIVE_RECORD_COLLECTIONS.contacts,
           recordIds: contactIds,
+          ...(accountId ? { userId: accountId } : {}),
         })
       : [];
+  const contactRecords = accountId
+    ? candidateContactRecords.filter(record => recordBelongsToAccount(record, accountId))
+    : candidateContactRecords;
   const contacts = contactRecords
     .map(contactFromRecord)
     .filter((contact): contact is ContactDTO => contact !== null);
@@ -370,13 +373,14 @@ export function createStorageConnectionEvidenceProvider({
       const evidenceRecordIds = Array.from(
         new Set(connections.flatMap((connection) => connection.evidenceIds)),
       );
-      const [contactRecords, evidenceRecords] = await Promise.all([
+      const [candidateContactRecords, evidenceRecords] = await Promise.all([
         contactIds.length > 0
           ? store.listRecords({
               limit: "unbounded",
               workspaceId,
               collectionName: CONNECTION_LIVE_RECORD_COLLECTIONS.contacts,
               recordIds: contactIds,
+              userId: accountId,
             })
           : [],
         evidenceRecordIds.length > 0
@@ -391,7 +395,7 @@ export function createStorageConnectionEvidenceProvider({
 
       return graphFromRecords({
         connectionRecords,
-        contactRecords,
+        contactRecords: candidateContactRecords.filter(record => recordBelongsToAccount(record, accountId)),
         evidenceRecords,
       });
     },

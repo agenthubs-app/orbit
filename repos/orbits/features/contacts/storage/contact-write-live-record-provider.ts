@@ -200,8 +200,8 @@ function belongsToActor(
   actorId: string,
 ): boolean {
   return (
-    record.userId === actorId ||
-    record.payload.accountId === actorId
+    record.userId === actorId &&
+    (record.payload.accountId == null || record.payload.accountId === actorId)
   );
 }
 

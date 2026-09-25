@@ -1,3 +1,4 @@
+import { contactRecordOwnedByActor } from "../../contacts/storage/contact-read-authorization";
 import type {
   AccountDTO,
   AgentActionDTO,
@@ -482,12 +483,15 @@ async function listCollection(
   collectionName: string,
   accountId?: string,
 ): Promise<readonly LiveRecord<Record<string, unknown>>[]> {
-  return store.listRecords({
+  const records = await store.listRecords({
     limit: "unbounded",
     workspaceId,
     collectionName,
     userId: accountId,
   });
+  return collectionName === APP_BOOTSTRAP_LIVE_RECORD_COLLECTIONS.contacts && accountId !== undefined
+    ? records.filter(record => contactRecordOwnedByActor(record, accountId))
+    : records;
 }
 
 interface ProjectedBootstrapRow {
@@ -691,7 +695,9 @@ async function readProjectedBootstrapCollections(
   const result = await client.query<ProjectedBootstrapRow>(
     bootstrapProjectionSql
       .replace("__COLLECTIONS__", `$${collectionParameter}`)
-      .replace("__OWNER_FILTER__", hasOwnerFilter ? "and user_id = $2" : ""),
+      .replace("__OWNER_FILTER__", hasOwnerFilter ? `and user_id = $2
+        and (collection_name <> 'contacts' or
+          (payload->'accountId' is null or payload->'accountId' = 'null'::jsonb or payload->'accountId' = to_jsonb($2::text)))` : ""),
     values,
   );
   const collections = new Map<string, LiveRecord<Record<string, unknown>>[]>();

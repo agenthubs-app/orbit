@@ -30,7 +30,7 @@ async function insert(pool: Pool, collectionName: string, id: string, payload: R
   });
 }
 async function seed(pool: Pool) {
-  await insert(pool, "contacts", "c", { displayName: "Contact", organization: "Org", stage: "active", privateNotes: "PRIVATE_NOTES" }, "b");
+  await insert(pool, "contacts", "c", { displayName: "Contact", organization: "Org", stage: "active", privateNotes: "PRIVATE_NOTES" }, "a");
   await insert(pool, "contacts", "other", { displayName: "Other", stage: "active" });
   await insert(pool, "connections", "cn", { accountId: "a", contactId: "c", stage: "active", summary: "PRIVATE_SUMMARY" });
 }

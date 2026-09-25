@@ -6,6 +6,7 @@ import type {
   RelationshipEvidenceDTO,
   TaskDTO,
 } from "../../../shared/domain/contracts";
+import { contactRecordOwnedByActor } from "../../contacts/storage/contact-read-authorization";
 import {
   isRelationshipStage,
   isRelationshipTrustLevel,
@@ -502,7 +503,9 @@ async function readProjectedDashboardCollections(
   const result = await client.query<ProjectedDashboardRow>(
     dashboardProjectionSql
       .replace("__COLLECTIONS__", `$${collectionParameter}`)
-      .replace("__OWNER_FILTER__", hasOwnerFilter ? "and user_id = $2" : ""),
+      .replace("__OWNER_FILTER__", hasOwnerFilter ? `and user_id = $2
+        and (collection_name <> 'contacts' or
+          (payload->'accountId' is null or payload->'accountId' = 'null'::jsonb or payload->'accountId' = to_jsonb($2::text)))` : ""),
     values,
   );
   const collections = new Map<string, LiveRecord<Record<string, unknown>>[]>();
@@ -603,7 +606,8 @@ export function createStorageDashboardAggregateProvider({
 
             return {
               connections: connectionRecords,
-              contacts: contactRecords,
+              contacts: accountId === undefined ? contactRecords
+                : contactRecords.filter(record => contactRecordOwnedByActor(record, accountId)),
               detailStates: detailStateRecords,
               events: eventRecords,
               evidence: evidenceRecords,

@@ -30,12 +30,12 @@ test("summary reader rejects cross-actor metadata, deletion and malformed identi
   }
 });
 
-test("contact summary query uses the same owner/connection authorization and paginates by canonical identity", async () => {
+test("contact summary requires the private contact owner and never grants access through a connection", async () => {
   const f = fixture([{ id: "contact:one", recordId: "contact:one", title: "林悦", lifecycleState: "active" }]);
   assert.deepEqual((await f.read({ actorId: "actor-1", kind: "contact", limit: 20, afterId: "contact:before" })).candidates, [{ id: "contact:one", title: "林悦" }]);
-  assert.match(f.calls[0]!.sql, /connection\.workspace_id = c\.workspace_id/);
-  assert.match(f.calls[0]!.sql, /connection\.payload->>'accountId' = \$4/);
-  assert.match(f.calls[0]!.sql, /connection\.lifecycle_state <> 'deleted'/);
+  assert.match(f.calls[0]!.sql, /c\.user_id = \$4/);
+  assert.match(f.calls[0]!.sql, /c\.payload->'accountId'=to_jsonb\(\$4::text\)/);
+  assert.doesNotMatch(f.calls[0]!.sql, /connection\.payload/);
   assert.equal(f.calls[0]!.values![2], "contact:before");
 });
 

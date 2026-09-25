@@ -20,7 +20,7 @@ test('relationship task page matches the legacy list, enforces ownership before 
   const client:LiveRecordSqlClient={async query(text,values){const result=await pool.query(text,values as unknown[]);bytes+=Buffer.byteLength(JSON.stringify(result.rows));queries++;return result;}};
   try {
     await pool.query(`create schema ${schema}`);await pool.query(ORBIT_RECORDS_SCHEMA_SQL);
-    await insert('contacts','c',{displayName:'Contact',stage:'active',privateNotes:'PRIVATE_NOTE'},'b');
+    await insert('contacts','c',{displayName:'Contact',stage:'active',privateNotes:'PRIVATE_NOTE'},'a');
     await insert('connections','cn',{accountId:'a',contactId:'c',stage:'active',summary:'PRIVATE_RELATIONSHIP'});
     const ids=['É','e','é','E','东京','東京','😀',...Array.from({length:95},(_,i)=>`task:${String(i).padStart(4,'0')}`)];
     for(const [i,id] of ids.entries())await insert('tasks',id,{title:`Task ${id}`,status:i%3?'open':'completed',connectionId:'cn',dueAt:i%5?at:null});
@@ -53,6 +53,9 @@ test('relationship task page matches the legacy list, enforces ownership before 
     bytes=0;queries=0;const large=await reader.read('a',{mode:'open'});
     assert.equal(queries,1);assert.ok(bytes<16000);assert.ok(!JSON.stringify(large).includes('PRIVATE'));
     console.info(JSON.stringify({metric:'relationship_task_page',smallBytes,largeBytes:bytes,total:large.total,queries}));
+    await pool.query(`update orbit_records set user_id='b' where collection_name='contacts'`);
+    assert.equal((await reader.read('a',{mode:'open',cursor})).total,0,'owned relationship cannot grant access to a foreign contact');
+    await pool.query(`update orbit_records set user_id='a' where collection_name='contacts'`);
     await pool.query(`update orbit_records set user_id='b' where collection_name='connections'`);
     assert.equal((await reader.read('a',{mode:'open',cursor})).total,0);
   }finally{await pool.query(`drop schema if exists ${schema} cascade`);await pool.end();}

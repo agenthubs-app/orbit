@@ -84,13 +84,8 @@ selected_contacts as materialized (
       select needed.contact_id
       from needed_contact_ids needed
     )), false)
-    and (
-      coalesce(c.user_id = $2, false)
-      or coalesce((c.payload -> 'id' in (
-        select authorized.contact_id
-        from actor_connection_contact_ids authorized
-      )), false)
-    )
+    and c.user_id = $2
+    and (c.payload->'accountId' is null or c.payload->'accountId'='null'::jsonb or c.payload->'accountId'=to_jsonb($2::text))
 ),
 task_projection as (
   select
@@ -526,7 +521,7 @@ function commonRowValid(
   if (kind !== "contact" && !authorization.actorOwned) {
     throw new Error("Relationship lifecycle actor authorization proof is invalid.");
   }
-  if (kind === "contact" && !authorization.actorOwned && !authorization.connectionAuthorized) {
+  if (kind === "contact" && !authorization.actorOwned) {
     throw new Error("Relationship lifecycle contact authorization proof is invalid.");
   }
   return { metadata, authorization };
@@ -885,7 +880,7 @@ export function decodeRelationshipLifecycleFacts(
     .map((item) => decodeContactRow(item, expectedWorkspaceId))
     .filter((item): item is RelationshipLifecycleFactsContact => item !== null);
 
-  if ([...tasks, ...connections].some(item => item.metadata.userId !== expectedActorId)
+  if ([...tasks, ...connections, ...contacts].some(item => item.metadata.userId !== expectedActorId)
     || connections.some(item => item.accountId !== expectedActorId)) {
     throw new Error("Relationship lifecycle owner scope is invalid.");
   }

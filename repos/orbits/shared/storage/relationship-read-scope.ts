@@ -10,12 +10,11 @@ export interface RelationshipScopedRecords {
 }
 export type RelationshipScopeRecordReader = (actorId: string) => Promise<RelationshipScopedRecords>;
 
-/** Legacy payload ownership is accepted only when it does not contradict a row owner. */
+/** An associated account is never an alternative to an authoritative row owner. */
 export function relationshipRecordOwnedByActor(record: LiveRecord<Record<string, unknown>>, actorId: string): boolean {
   if (!actorId.trim()) return false;
   const alias = record.payload.accountId;
-  return record.userId === actorId ? alias == null || alias === actorId
-    : !record.userId && alias === actorId;
+  return record.userId === actorId && (alias == null || alias === actorId);
 }
 
 /**
@@ -43,9 +42,8 @@ export function createPostgresRelationshipScopeReader(input: {
         from orbit_records r
         where r.workspace_id=$1 and r.collection_name in ('tasks','contacts','connections','evidence','notifications')
           and r.lifecycle_state<>'deleted' and ($3='followups' or r.lifecycle_state<>'archived')
-          and ($3<>'followups' or r.user_id=$2)
-          and ((r.user_id=$2 and (r.payload->>'accountId' is null or r.payload->'accountId'=to_jsonb($2::text)))
-            or (nullif(r.user_id,'') is null and r.payload->'accountId'=to_jsonb($2::text)))
+          and r.user_id=$2
+          and (r.payload->'accountId' is null or r.payload->'accountId'='null'::jsonb or r.payload->'accountId'=to_jsonb($2::text))
       ), notifications as (
         select collection_name,record_id,payload,evidence_ids,target_id,target_type from orbit_records
         where $3='legacy-notifications' and workspace_id=$1 and collection_name='notifications'
@@ -59,6 +57,8 @@ export function createPostgresRelationshipScopeReader(input: {
         select c.collection_name,c.record_id,c.payload,c.evidence_ids,c.target_id,c.target_type
         from orbit_records c where c.workspace_id=$1 and c.collection_name='contacts'
           and c.lifecycle_state<>'deleted' and ($3='followups' or c.lifecycle_state<>'archived')
+          and c.user_id=$2
+          and (c.payload->'accountId' is null or c.payload->'accountId'='null'::jsonb or c.payload->'accountId'=to_jsonb($2::text))
           and (c.record_id in (select record_id from owned where collection_name='contacts')
             or case when $3='followups' then c.payload->>'id' else c.record_id end in (select id from contact_refs))
       ), sources as (

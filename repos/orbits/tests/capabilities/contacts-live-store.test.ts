@@ -95,6 +95,7 @@ function activeRecord(input: {
   payload: Record<string, unknown> & { id: string };
   searchText: string;
   targetType: string;
+  userId?: string;
   workspaceId: string;
 }): LiveRecord<Record<string, unknown>> {
   const now = "2026-07-02T10:00:00.000Z";
@@ -110,6 +111,7 @@ function activeRecord(input: {
     : [input.payload.id];
 
   return {
+    userId: input.userId,
     workspaceId: input.workspaceId,
     collectionName: input.collectionName,
     recordId: input.payload.id,
@@ -347,6 +349,7 @@ test("live contacts search reads only evidence needed for listed contacts", asyn
         payload,
         searchText: `${payload.displayName} ${payload.organization}`,
         targetType: "contact",
+        userId: actorId,
         workspaceId,
       }),
     );
@@ -359,6 +362,7 @@ test("live contacts search reads only evidence needed for listed contacts", asyn
         payload,
         searchText: `${payload.summary} ${payload.contactId}`,
         targetType: "connection",
+        userId: actorId,
         workspaceId,
       }),
     );

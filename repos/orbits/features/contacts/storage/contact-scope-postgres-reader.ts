@@ -29,13 +29,8 @@ export function createPostgresContactScopeRecordReader(input: {
       where c.workspace_id = $1 and c.collection_name = 'contacts'
         and c.lifecycle_state <> 'deleted'
         and ($3::text[] is null or c.record_id = any($3::text[]))
-        and (c.user_id = $2 or exists (
-          select 1 from orbit_records r
-          where r.workspace_id = c.workspace_id and r.collection_name = 'connections'
-            and r.lifecycle_state <> 'deleted'
-            and r.payload->>'contactId' = c.payload->>'id'
-            and (r.user_id = $2 or r.payload->>'accountId' = $2)
-        ))
+        and c.user_id = $2
+        and (c.payload->'accountId' is null or c.payload->'accountId'='null'::jsonb or c.payload->'accountId'=to_jsonb($2::text))
     `, [input.workspaceId, actorId, contactIds ?? null]);
     const allowedIds = accessible.rows.map(row => row.record_id);
     const domainIds = accessible.rows.map(row => row.contact_id).filter((id): id is string => typeof id === "string" && id.length > 0);
@@ -47,7 +42,8 @@ export function createPostgresContactScopeRecordReader(input: {
         where r.workspace_id = $1 and r.collection_name = 'connections'
           and r.lifecycle_state <> 'deleted'
           and r.payload->>'contactId' = any($3::text[])
-          and (r.user_id = $2 or r.payload->>'accountId' = $2)
+          and r.user_id = $2
+          and (r.payload->'accountId' is null or r.payload->'accountId'='null'::jsonb or r.payload->'accountId'=to_jsonb($2::text))
       ), referenced_evidence_ids as (
         select distinct evidence_item.value #>> '{}' as evidence_id
         from (
@@ -70,7 +66,8 @@ export function createPostgresContactScopeRecordReader(input: {
         from orbit_records
         where workspace_id = $1 and lifecycle_state <> 'deleted'
           and payload->>'contactId' = any($3::text[])
-          and ((collection_name = 'connections' and (user_id = $2 or payload->>'accountId' = $2))
+          and ((collection_name = 'connections' and user_id = $2
+              and (payload->'accountId' is null or payload->'accountId'='null'::jsonb or payload->'accountId'=to_jsonb($2::text)))
             or (collection_name = 'contact_detail_states' and user_id = $2))
         union all
         select 'evidence' as collection_name, e.record_id

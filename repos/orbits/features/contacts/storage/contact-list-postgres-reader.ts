@@ -57,7 +57,7 @@ const VALUE_TYPES_SQL = [
 ].map((value) => `'${value}'`).join(", ");
 
 const CONTACT_PAYLOAD_FIELDS_SQL = [
-  "id", "version", "displayName", "organization", "role", "location",
+  "id", "version", "accountId", "displayName", "organization", "role", "location",
   "profileSnippet", "primaryIndustryId", "secondaryIndustryId", "nextAction",
   "stage", "lifecycleInitialization", "source", "evidenceIds", "createdAt", "updatedAt",
 ].map((value) => `'${value}'`).join(", ");
@@ -200,7 +200,7 @@ with base_contacts as materialized (
   where c.workspace_id = $1
     and c.collection_name = '${CONNECTION_COLLECTION}'
     and c.lifecycle_state <> 'deleted'
-    and (c.user_id = $4 or c.payload->>'accountId' = $4)
+    and c.user_id = $4 and c.payload->'accountId' = to_jsonb($4::text)
     ${boundedCandidates ? "and exists (select 1 from base_contacts page_contact where page_contact.payload->>'id' = c.payload->>'contactId')" : ""}
     and jsonb_typeof(c.payload->'id') = 'string'
     and jsonb_typeof(c.payload->'accountId') = 'string'

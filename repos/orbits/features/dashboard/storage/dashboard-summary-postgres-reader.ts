@@ -95,6 +95,8 @@ with scoped_records as (
   from orbit_records
   where workspace_id = $1
     and user_id = $2
+    and (collection_name <> 'contacts' or
+      (payload->'accountId' is null or payload->'accountId' = 'null'::jsonb or payload->'accountId' = to_jsonb($2::text)))
     and collection_name = any($3::text[])
     and lifecycle_state <> 'deleted'
 ),

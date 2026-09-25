@@ -263,3 +263,32 @@ env -i PATH="$PATH" node --import tsx --test tests/relationship-task-pages.test.
 GitNexus 编辑前对共用 inbox service/repository 为 HIGH，已告知；图上 wake/dispatch/窄候选入口为 LOW，但动态维护入口仍用实际 PostgreSQL 回归覆盖。共享 upserter / transaction helper 提取仅为让投影与完成共用事务，原 action 权限/事务/幂等不变。未修改 API/契约/App；根 bridge 未提交交接不覆盖。本批没有完成全部 P3，不把默认关闭的能力计入生产流量收益。
 
 验证：新工作项/实际投递/来源窄读/消息候选 5 项及原 canonical wake 26 项通过，另通知来源/并发动作/日程/discovery 33 项通过，共 64 项、无跳过；Web 完整 typecheck 通过。首次合跑误用了 audit 库名，原 canonical 测试的固定库名安全断言拒绝，未算通过；改为其指定的本地 cutover 测试库后 31 项全通过，复现命令已修正。整批图检查因共用通知事务链为 CRITICAL，保留实际回归与默认关闭的上线门，不能以单入口 LOW 稀释整体风险。
+
+## 第十二批：私人联系人严格归属，包括合法关系引用
+
+基于 `b669a133`。用户明确回答“禁止，只能查看本人拥有的联系人”。**本节取代第三批中“合法本人关系可以读取外部联系人摘要”的旧保留项**：联系人行所有者必须等于 actor，payload.accountId 缺省/NULL 或相等；关联账号、本人拥有的关系/任务/通知引用都不能代替联系人所有权。没有明确所有者、归属冲突、数组/数字伪造关联字段均拒绝。合法双方会话仍按有效绑定与成员资格授权，本批不把聊天改成仅消息所有者可见。
+
+落实范围：联系人 SQL 卡片/摘要/旧分页、详情及行业编辑、内存 fallback、名片写入服务的联系人查找、关系证据的账号读取、跟进 SQL facts/旧图、legacy 通知关联联系人、日程关联候选，以及 bootstrap/dashboard 的联系人聚合与计数。内部窄投影保留用于复核的 accountId；移除“来自分页 reader 就默认有权”的旁路。详情行业更新不再扫描关系来寻找替代授权。
+
+回归先红后绿：新增 `tests/services/contact-owner-boundary.test.ts` 保留“B 拥有联系人、A 拥有合法关系”的明确反例；SQL、内存、列表总数、聚合、HTTP GET/PATCH 都拒绝，拒绝修改前后存储一致。再发现 bootstrap/dashboard 仍会返回行 owner 与 accountId 冲突的数据，同样先复现再修正。原测试的合法成本夹具改成明确本人所有，不减少数据量；原 alias-only 访问断言改为拒绝，负例没有删除。联系人归属撤销后，旧人脉任务游标也不能继续显示该任务。
+
+验证（全部本地、清空云凭据、随机隔离 schema）：
+
+- 权限、SQL 读取、业务能力、聚合、真实 HTTP 入口和会话路由组合 **78 项通过，0 跳过**。
+- bootstrap/dashboard 的本地 PostgreSQL 投影 **5 项通过，0 跳过**。首次合跑因该测试要求专用库名而跳过了 1 项；改用其指定的 `orbit_lifecycle_r1_20260917` 后补跑，不将跳过算通过。
+- lifecycle 增长测试 **6 项通过，0 跳过**。101 / 10,001 / 100,001 条任务及各自关联对象，单页分别 11,491 / 11,493 / 11,494 B；十万组约 12.1 秒。归属收紧后传输边界仍成立，数据库计算成本仍增长。
+- Web 完整类型检查通过；没有共享 HTTP 形状变更、App 文件修改或手机验证。
+
+核心反例及增长复现：
+
+```sh
+env -i PATH="$PATH" ORBIT_LIFECYCLE_TEST_DATABASE_URL=postgresql://li@localhost/orbit_neon_audit_20260925 node --import tsx --test tests/services/contact-owner-boundary.test.ts tests/services/contact-detail-lifecycle-guard-postgres.test.ts tests/services/event-relationship-contact-detail-postgres.test.ts
+env -i PATH="$PATH" ORBIT_LIFECYCLE_TEST_DATABASE_URL=postgresql://li@localhost/orbit_neon_audit_20260925 ORBIT_FOLLOWUP_PAGE_GROWTH=1 node --import tsx --test tests/services/lifecycle-task-pages-postgres.test.ts
+env -i PATH="$PATH" ORBIT_LIFECYCLE_TEST_DATABASE_URL=postgresql://li@localhost:5432/orbit_lifecycle_r1_20260917 node --import tsx --test tests/capabilities/bootstrap-dashboard-egress-bounds.test.ts
+```
+
+兼容与发布：老客户端响应形状不变，但不再看到无主/跨所有者旧联系人，这是明确批准的权限变化；不会自动替这些记录改归属。Web/App 列表、相关任务及聚合会同步减少这类项目。没有部署、Neon 读写/迁移、生产数据修复或删除；根 bridge 的已有未提交交接保持原样。
+
+剩余事项仍独立记录：普通 canonical `/api/tasks` 的 list 与人脉跟进分页不是同一入口，仍需迁移实际消费者，不能将第十批当作所有任务列表均已完成；P3 可靠变化/到期第一来源仍默认关闭，尚不能删除旧 refresh；生产运行时、旧客户端实际使用量、真实 Neon 月速率及发布尚未验收。本批不把本地授权修复当成全部四项或线上治理完成。
+
+GitNexus 绑定根仓库 `orbit`（`/Users/li/work/orbit`，基线 `b669a133`），编辑前共享联系人 provider 为 HIGH，已说明会影响详情、搜索、笔记/日程引用；新增聚合入口补做 impact。UNKNOWN 常量/测试入口由源码引用和真实测试补核，不当作无影响。强制重建后 all/staged 原始检查均无 partial/truncated/error；staged 25 文件、58 个可识别符号。图报告 low/0 个流程不能抵消权限语义变更和动态漏边风险，验收依据同时包含上述 89 项本地回归。

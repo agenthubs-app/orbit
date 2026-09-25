@@ -273,7 +273,7 @@ test("PostgreSQL facts reader applies actor/workspace/domain authorization and n
   });
 });
 
-test("PostgreSQL reader emits false ownership and true connection authorization for a NULL-owner contact", databaseTest, async () => {
+test("PostgreSQL reader excludes NULL-owner contacts even with an owned relationship", databaseTest, async () => {
   await withDatabase(async ({ pool }) => {
     const contactId = "contact:null-owner";
     const connectionId = "connection:full-actor";
@@ -317,13 +317,10 @@ test("PostgreSQL reader emits false ownership and true connection authorization 
         authorization: { actorOwned: boolean; connectionAuthorized: boolean };
       }[];
     }).contacts;
-    assert.deepEqual(rawContacts.find((contact) => contact.id === contactId)?.authorization, {
-      actorOwned: false,
-      connectionAuthorized: true,
-    });
+    assert.deepEqual(rawContacts, []);
     assert.equal(model.state, "success");
-    assert.equal(model.currentCount, 1);
-    assert.equal(model.currentTasks[0]?.operationHref, "/app/contacts/contact%3Anull-owner");
+    assert.equal(model.currentCount, 0);
+    assert.equal(model.orphanCount, 1);
   });
 });
 
@@ -480,7 +477,7 @@ test("PostgreSQL reader keeps fixed actor T/C/H raw rows and JSON bytes stable a
     await withDatabase(async ({ pool, schema }) => {
       await insert(pool, record("connections", "storage:connection:shared", connectionPayload("connection:shared", "contact:shared", actorId), { userId: actorId }));
       await insert(pool, record("connections", "storage:connection:non-c", connectionPayload("connection:non-c", "contact:non-c", "account:foreign"), { userId: actorId }));
-      await insert(pool, record("contacts", "storage:contact:shared", contactPayload("contact:shared"), { userId: foreignActor }));
+      await insert(pool, record("contacts", "storage:contact:shared", contactPayload("contact:shared"), { userId: actorId }));
       await insert(pool, record("contacts", "storage:contact:non-c", contactPayload("contact:non-c"), { userId: foreignActor }));
       await insert(pool, record("tasks", "storage:task:shared", taskPayload("task:shared", { contactId: "contact:shared", connectionId: "connection:shared" }), { userId: actorId }));
       await insert(pool, record("tasks", "storage:task:non-c", taskPayload("task:non-c", { contactId: "contact:non-c", connectionId: null }), { userId: actorId }));
@@ -589,7 +586,7 @@ test("PostgreSQL reader scales actor associations with one query and bounded rec
       for (let index = 0; index < scale; index += 1) {
         const ownContactId = `contact:own-bench:${scale}:${index}`;
         const ownConnectionId = `connection:own-bench:${scale}:${index}`;
-        await insert(pool, record("contacts", `storage:${ownContactId}`, contactPayload(ownContactId), { userId: null }));
+        await insert(pool, record("contacts", `storage:${ownContactId}`, contactPayload(ownContactId), { userId: actorId }));
         await insert(pool, record("connections", `storage:${ownConnectionId}`, connectionPayload(ownConnectionId, ownContactId, actorId), { userId: actorId }));
         await insert(pool, record("tasks", `storage:task:own-bench:${scale}:${index}`, taskPayload(`task:own-bench:${scale}:${index}`, { contactId: ownContactId, connectionId: ownConnectionId }), { userId: actorId }));
       }
@@ -636,7 +633,7 @@ test("PostgreSQL reader scales actor associations with one query and bounded rec
       assert.equal(readerQueryCount, 1);
       assert.equal(rawRows.length, 1);
       assert.equal(rawContacts.length, scale);
-      assert.ok(rawContacts.every((contact) => contact.authorization.actorOwned === false && contact.authorization.connectionAuthorized === true));
+      assert.ok(rawContacts.every((contact) => contact.authorization.actorOwned === true && contact.authorization.connectionAuthorized === true));
       assert.doesNotMatch(JSON.stringify(rawEnvelope), /PRIVATE|primaryEmail|searchText/u);
       assert.equal(facts.contacts.length, scale);
       assert.equal(facts.connections.length, scale);

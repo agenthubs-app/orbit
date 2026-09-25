@@ -382,21 +382,8 @@ async function readGraph(
   const actorTaskRecords = taskRecords.filter(
     (record) => belongsToActor(record),
   );
-  const actorContactIds = new Set([
-    ...actorConnectionRecords.flatMap((record) =>
-      nonEmptyString(record.payload.contactId) ? [record.payload.contactId] : [],
-    ),
-    ...actorTaskRecords.flatMap((record) =>
-      nonEmptyString(record.payload.contactId) ? [record.payload.contactId] : [],
-    ),
-    ...actorNotificationRecords.flatMap((record) =>
-      record.targetType === "contact" && nonEmptyString(record.targetId)
-        ? [record.targetId]
-        : [],
-    ),
-  ]);
   const actorContactRecords = contactRecords.filter(
-    (record) => belongsToActor(record) || actorContactIds.has(record.recordId),
+    (record) => record.userId === actorId && belongsToActor(record),
   );
   const actorEvidenceIds = new Set(
     [
