@@ -408,3 +408,17 @@ App首页真实消费5条卡片和全局匹配总数，完成后重读并补位�
 GitNexus共用命令和工作仓库为CRITICAL，inbox工厂HIGH，configured工厂UNKNOWN已用实际API调用核对。没有修改HTTP契约/App代码、手机、线上开关或云数据库。纯站内snooze的wake一致性默认生效；projection仍默认关闭。混合Push计划、周期日程writer/窗口补齐、历史回填/Push抑制和其他通知来源仍是明确未完成项，不能删除GET刷新。
 
 最终本地后端API/权威事务/队列/来源读取/并发动作 **89/89，零跳过**，App typed通知/通知状态/收件箱交互/提醒选项 **49/49，零跳过**，Web完整typecheck通过。App代码未变，未重复声称新的全量或实机验收。
+
+## 第二十二批：周期日程的提醒核对不再反复读取整个用户的提醒
+
+第二十一批已提交 `7c71aec9`。实际周期刷新每处理一个series，就调用一次全用户`listPlans`；随后每个未来实例再`getPlan`下载正文，仅用于判断是否已存在。真实本地PG先复现：一个每日series，加入同用户1万条各含4KB正文的无关计划，单次刷新返回JSON从216,004字节升到50,362,686字节。首次夹具的evidence_ids误用JSONB已改为真实text[]后才取得该反例，不把夹具错误算业务证据。
+
+新增日程专用存储边界：仅按workspace/actor/series查询未来scheduled且已过期revision的计划，每页50条，C排序keyset推进；边取消边分页不会像OFFSET漏掉后页。未变化的revision和delivered/cancelled历史不会离开数据库。未来实例的存在检查改成每批最多50个精确ID，仅返回ID和归属有效性，不读正文；已删除身份也不复活，异主或归属损坏的ID冲突报错，不覆盖他人记录。SQL执行器来自原日程事务，不借第二条连接；日程、异常实例、计划及幂等回执继续一起提交/回滚。非SQL内存服务保留独立适配器，生产配置使用事务SQL适配器。
+
+同一PG夹具修复后刷新为 **12,642字节**，加入1万无关计划保持12,642；改名后的新基准12,646，再加入1万同series历史计划仍为12,646。覆盖超过50条旧计划全部取消、别人的身份不能覆盖、tombstone不复活、数据库故障使日程改名回滚。此为局部数据库JSON返回成本，不是Neon真实月流量或整个通知GET的成本；旧GET仍枚举其他业务记录，周期窗口调度/混合Push生产者仍未完成。
+
+新增`orbit_records_schedule_pending_series_idx`到既有records迁移，按workspace/actor/C排序series前缀收窄，partial谓词排除非日程计划及非scheduled历史。真实EXPLAIN在2万额外记录下使用该索引、没有Seq Scan，没有关闭顺序扫描来强迫计划。线上没有安装索引；发布前需检查精确目标、索引定义及安装方式，大表应单独考虑CONCURRENTLY和锁预算，不能直接跑整个旧迁移来冒充零风险变更。旧版本应用无需新索引也可运行，HTTP/App契约不变。
+
+扩大回归先发现13个旧SQL模拟夹具不认识新查询，补齐后仅剩2个日期漂移失败：测试要求生成9月19–21日提醒却使用现实9月25日。现固定测试Date到原fixture日期，未改变生产时间逻辑、权限/并发/回滚断言。15项定向、6项PG/迁移/读取审计通过；最终整组/typecheck结果随后补记。GitNexus日程共用入口CRITICAL已预先提示；测试fixture/新增符号/SQL常量的UNKNOWN已用明确文本引用补查，不当作无影响。没有云操作、App改包或发布。
+
+最终18个文件的日程API/规则/事务/通知来源/canonical唤醒/迁移/读取审计回归 **130/130，零跳过**。测试时钟hook的Node类型联合先报错，增加TestContext验证后14/14复验及Web完整typecheck通过。刷新索引后的all/staged图检查均无partial/truncated/error；工具给出的零affected流程不推翻编辑前CRITICAL判断，按真实已知调用路径完成上述回归。

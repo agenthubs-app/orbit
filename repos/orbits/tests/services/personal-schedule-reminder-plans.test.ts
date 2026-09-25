@@ -3,9 +3,11 @@ import test from "node:test";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
 import { createReminderPlanRepository } from "../../features/notifications/reminder-plan-repository";
 import { reconcilePersonalScheduleReminderPlans } from "../../features/personal-schedule/reminder-plans";
+import { createMemoryPersonalScheduleReminderRepository } from "../../features/personal-schedule/reminder-plan-storage";
 
 function fixture() {
-  const repository = createReminderPlanRepository({ store: createMemoryLiveRecordStore(), workspaceId: "reminder-60" });
+  const storage = { store: createMemoryLiveRecordStore(), workspaceId: "reminder-60" };
+  const repository = { ...createReminderPlanRepository(storage), ...createMemoryPersonalScheduleReminderRepository(storage) };
   const input = { repository, actorId: "owner", seriesId: "personal:series", revision: "2026-09-17T08:00:00Z", title: "Meeting", timeZone: "Asia/Tokyo", now: "2026-09-17T08:00:00Z", reminderMinutes: 15,
     occurrences: [{ id: "personal:series:occurrence:2026-09-17", startsAt: "2026-09-17T09:00:00Z" }, { id: "personal:series:occurrence:2026-09-18", startsAt: "2026-09-18T09:00:00Z" }] };
   return { repository, input };

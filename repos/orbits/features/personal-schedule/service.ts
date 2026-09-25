@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { personalScheduleSchema, personalScheduleCreateSchema, personalScheduleUpdateSchema, personalScheduleDeleteSchema, type PersonalScheduleCreate, type PersonalScheduleUpdate, type PersonalScheduleDelete } from "../../shared/api-schema/personal-schedule";
 import type { PersonalScheduleContract } from "../../shared/contract/tasks";
 import type { LiveRecordStoreLike } from "../../shared/storage/live-record-store";
-import type { TransactionalPostgresClient } from "../../shared/storage/transactional-postgres";
+import type { TransactionalPostgresClient, TransactionalSqlExecutor } from "../../shared/storage/transactional-postgres";
 import { createPostgresLiveRecordStore } from "../../shared/storage/postgres-live-record-store";
 import { AppError } from "../../shared/errors/app-error";
 import { canonicalScheduleItemSchema } from "./authority-contract";
@@ -11,7 +11,7 @@ import type { PersonalScheduleAssociationReader } from "./association-reader";
 import { expandPersonalScheduleOccurrences } from "./recurrence";
 import { PERSONAL_SCHEDULE_EXCEPTION_COLLECTION, readPersonalScheduleOccurrenceExceptions } from "./occurrence-exceptions";
 import { reconcilePersonalScheduleReminderPlans } from "./reminder-plans";
-import { createReminderPlanRepository } from "../notifications/reminder-plan-repository";
+import { createPersonalScheduleReminderRepository, createMemoryPersonalScheduleReminderRepository } from "./reminder-plan-storage";
 
 const collectionName = "personal_schedule_items";
 const locks = new WeakMap<object, Map<string, Promise<void>>>();
@@ -79,17 +79,18 @@ export function createPersonalScheduleService(input: { store: LiveRecordStoreLik
     if (!item) throw new AppError("NOT_FOUND", "Personal schedule occurrence not found.");
     return item;
   }
-  async function syncPersonalScheduleReminderPlans(store: typeof input.store, actorId: string, saved: PersonalScheduleContract, at: string) {
+  async function syncPersonalScheduleReminderPlans(store: typeof input.store, actorId: string, saved: PersonalScheduleContract, at: string, executor?: TransactionalSqlExecutor) {
     const window = { from: at, to: new Date(Date.parse(at) + 90 * 86_400_000).toISOString() };
     const instances = saved.state === "cancelled" ? [] : await personalScheduleOccurrences(store, actorId, saved, window);
-    await reconcilePersonalScheduleReminderPlans({ repository: createReminderPlanRepository({ store, workspaceId: input.workspaceId }), actorId, seriesId: saved.id, revision: saved.updatedAt, title: saved.title, timeZone: saved.timeZone ?? "UTC", now: at, reminderMinutes: saved.state === "cancelled" ? null : saved.reminderMinutes ?? null, occurrences: instances });
+    const repository = executor ? createPersonalScheduleReminderRepository({ store, workspaceId: input.workspaceId, executor }) : createMemoryPersonalScheduleReminderRepository({ store, workspaceId: input.workspaceId });
+    await reconcilePersonalScheduleReminderPlans({ repository, actorId, seriesId: saved.id, revision: saved.updatedAt, title: saved.title, timeZone: saved.timeZone ?? "UTC", now: at, reminderMinutes: saved.state === "cancelled" ? null : saved.reminderMinutes ?? null, occurrences: instances });
   }
-  async function withScheduleTransaction<T>(actorId: string, operation: (store: typeof input.store) => Promise<T>): Promise<T> {
+  async function withScheduleTransaction<T>(actorId: string, operation: (store: typeof input.store, executor?: TransactionalSqlExecutor) => Promise<T>): Promise<T> {
     if (input.client) {
       for (let attempt = 0; attempt < 3; attempt++) {
         try { return await input.client.transaction(async tx => {
           await tx.query("select pg_advisory_xact_lock(hashtextextended($1, 0))", [JSON.stringify(["personal-schedule", input.workspaceId, actorId])]);
-          return operation(createPostgresLiveRecordStore({ client: tx }));
+          return operation(createPostgresLiveRecordStore({ client: tx }), tx);
         }); } catch (error) { const code = error && typeof error === "object" && "code" in error ? error.code : null; if ((code === "40001" || code === "40P01") && attempt < 2) continue; throw error; }
       }
       throw new Error("Personal schedule retry limit reached");
@@ -101,7 +102,7 @@ export function createPersonalScheduleService(input: { store: LiveRecordStoreLik
   }
   async function mutate(action: "create" | "update" | "delete", actorId: string, id: string, body: PersonalScheduleCreate | PersonalScheduleUpdate | PersonalScheduleDelete) {
     const fingerprint = hash({ action, id, body }); const receiptId = hash([actorId, body.idempotencyKey]); const at = now();
-    const execute = async (store: typeof input.store) => {
+    const execute = async (store: typeof input.store, executor?: TransactionalSqlExecutor) => {
       const receiptQuery = { workspaceId: input.workspaceId, collectionName: "personal_schedule_mutations", recordId: receiptId };
       const receipt = await store.getRecord({ ...receiptQuery, includeDeleted: true });
       if (receipt) {
@@ -167,7 +168,7 @@ export function createPersonalScheduleService(input: { store: LiveRecordStoreLik
       if (occurrenceScope) await store.upsertRecord({ workspaceId: input.workspaceId, collectionName: PERSONAL_SCHEDULE_EXCEPTION_COLLECTION, recordId: item.id, userId: actorId, sourceType: "manual", sourceId: base!.id, evidenceIds: [], createdAt: base!.createdAt, updatedAt: item.updatedAt, lifecycleState: "active", payload: { seriesId: base!.id, occurrenceDate: item.occurrenceDate, cancelled: action === "delete", patch: exceptionPatch, updatedAt: item.updatedAt } });
       await store.upsertRecord({ workspaceId: input.workspaceId, collectionName, recordId: saved.id, userId: actorId, sourceType: "manual", sourceId: saved.id, evidenceIds: [],
         createdAt: saved.createdAt, updatedAt: saved.updatedAt, lifecycleState: action === "delete" && !occurrenceScope ? "deleted" : "active", ...(action === "delete" && !occurrenceScope ? { deletedAt: saved.updatedAt } : {}), payload: { ...saved } });
-      await syncPersonalScheduleReminderPlans(store, actorId, saved, at);
+      await syncPersonalScheduleReminderPlans(store, actorId, saved, at, executor);
       const result = { scheduleItem: item, ...(action === "delete" ? { deleted: true } : {}) };
       await store.upsertRecord({ ...receiptQuery, userId: actorId, sourceType: "manual", sourceId: receiptId, evidenceIds: [], createdAt: at, updatedAt: at, lifecycleState: "active", payload: { fingerprint, result } });
       return result;
@@ -176,14 +177,14 @@ export function createPersonalScheduleService(input: { store: LiveRecordStoreLik
   }
   return {
     async refreshReminderPlans({ actorId }: { actorId: string }) {
-      return withScheduleTransaction(actorId, async store => {
+      return withScheduleTransaction(actorId, async (store, executor) => {
         const records = await store.listRecords({ limit: "unbounded", workspaceId: input.workspaceId, collectionName, userId: actorId });
         for (const record of records) {
           const canonical = canonicalScheduleItemSchema.parse(record.payload);
           if (canonical.kind !== "personal") continue;
           const item = await read(store, actorId, record.recordId);
           if (item.sourceId !== item.id || record.sourceId !== item.id) throw new Error("Personal schedule source mismatch");
-          await syncPersonalScheduleReminderPlans(store, actorId, item, now());
+          await syncPersonalScheduleReminderPlans(store, actorId, item, now(), executor);
         }
       });
     },

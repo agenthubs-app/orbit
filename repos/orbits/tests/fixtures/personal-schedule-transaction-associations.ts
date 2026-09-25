@@ -23,6 +23,19 @@ export function personalScheduleTransactionAssociationsFixture() {
     }
     if (text.startsWith("select") && text.includes("from orbit_records")) {
       let found = [...data.values()].filter(row => row.workspace_id === values[0]);
+      if (sql.includes("collection_name='reminderPlans'")) {
+        found = found.filter(row => row.collection_name === 'reminderPlans');
+        const entity = (row: Record<string, unknown>) => (typeof row.payload === 'string' ? JSON.parse(row.payload) : row.payload)?.entity;
+        if (sql.includes('record_id=any($3::text[])')) return { rows: found.filter(row => (values[2] as string[]).includes(String(row.record_id))).map(row => ({ record_id: row.record_id,
+          valid: row.user_id === values[1] && row.source_id === row.record_id && entity(row)?.id === row.record_id && entity(row)?.ownerUserId === values[1] && entity(row)?.accountId === values[1] })) };
+        if (sql.includes("record_id like $3 || '%'")) {
+          found = found.filter(row => row.user_id === values[1] && row.lifecycle_state === 'active' && String(row.record_id).startsWith(String(values[2])) &&
+            (values[3] === null || !String(row.record_id).startsWith(String(values[3]))) && String(row.record_id) > String(values[4]) &&
+            entity(row)?.status === 'scheduled' && entity(row)?.ownerUserId === values[1] && entity(row)?.accountId === values[1] && Date.parse(entity(row)?.fireAt) >= Date.parse(String(values[5])));
+          found.sort((a, b) => String(a.record_id) < String(b.record_id) ? -1 : String(a.record_id) > String(b.record_id) ? 1 : 0);
+          return { rows: structuredClone(found.slice(0, 50)) };
+        }
+      }
       for (const column of ["collection_name", "record_id", "source_id", "user_id", "lifecycle_state"]) {
         const match = new RegExp(`\\b${column}\\s*=\\s*\\$(\\d+)\\b`).exec(sql);
         if (match) found = found.filter(row => row[column] === values[Number(match[1]) - 1]);

@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import type { ReminderPlanRepository } from "../notifications/reminder-plan-repository";
+import { SCHEDULE_REMINDER_PAGE_SIZE, type PersonalScheduleReminderRepository } from "./reminder-plan-storage";
 import { validTimeZone } from "../tasks/local-date-time";
 import type { ReminderPlanDTO } from "../notifications/reminder-plan-contract";
 import type { PersonalScheduleContract } from "../../shared/contract/tasks";
@@ -21,7 +21,7 @@ export function isCurrentPersonalScheduleReminderPlan(plan: ReminderPlanDTO, act
 // The schedule mutation/extension caller must supply a repository bound to its
 // transaction and hold the same actor schedule lock as schedule/exception writes.
 export async function reconcilePersonalScheduleReminderPlans(input: {
-  repository: ReminderPlanRepository;
+  repository: PersonalScheduleReminderRepository;
   actorId: string;
   seriesId: string;
   revision: string;
@@ -38,7 +38,6 @@ export async function reconcilePersonalScheduleReminderPlans(input: {
   const prefix = `schedule-reminder:${scope}:`;
   const revision = createHash("sha256").update(JSON.stringify([input.revision, input.reminderMinutes])).digest("hex").slice(0, 24);
   const revisionPrefix = `${prefix}${revision}:`;
-  const existing = await input.repository.listPlans({ actorId: input.actorId, includeCancelled: true });
   const desired = new Map<string, { id: string; startsAt: string; fireAt: string }>();
   if (input.reminderMinutes !== null) for (const occurrence of input.occurrences) {
     if (occurrence.id !== input.seriesId && !occurrence.id.startsWith(`${input.seriesId}:occurrence:`)) throw new Error("Reminder occurrence does not belong to this series.");
@@ -48,18 +47,30 @@ export async function reconcilePersonalScheduleReminderPlans(input: {
     const occurrenceKey = createHash("sha256").update(JSON.stringify([occurrence.id, fireAt])).digest("hex").slice(0, 24);
     desired.set(`${revisionPrefix}${occurrenceKey}`, { ...occurrence, fireAt });
   }
-  for (const plan of existing) {
-    if (plan.ownerUserId !== input.actorId || plan.accountId !== input.actorId || !plan.id.startsWith(prefix) || plan.status !== "scheduled" || Date.parse(plan.fireAt) < at) continue;
-    // Current-revision due plans survive window extension so the authoritative
-    // inbox refresh can still consume them. Mutations have a new revision.
-    if (input.reminderMinutes !== null && plan.id.startsWith(revisionPrefix)) continue;
-    await input.repository.savePlan({ ...plan, status: "cancelled", cancelledAt: input.now, updatedAt: input.now });
+  let afterId: string | undefined;
+  for (;;) {
+    // Only obsolete, future, pending plans for this series cross the storage
+    // boundary. A keyset (not OFFSET) remains valid as cancellation changes the
+    // result set. Current-revision and historical plans are never downloaded.
+    const page = await input.repository.cancellationPage({ actorId: input.actorId, prefix,
+      ...(input.reminderMinutes !== null ? { keepRevisionPrefix: revisionPrefix } : {}), now: input.now, afterId });
+    for (const plan of page) await input.repository.savePlan({ ...plan, status: "cancelled", cancelledAt: input.now, updatedAt: input.now });
+    if (page.length < SCHEDULE_REMINDER_PAGE_SIZE) break;
+    const next = page.at(-1)!.id;
+    if (afterId !== undefined && next <= afterId) throw new Error("Schedule reminder cursor did not advance.");
+    afterId = next;
   }
-  for (const [id, occurrence] of desired) {
-    // No historical delivery and no resurrection, including cancelled plans.
-    if (Date.parse(occurrence.startsAt) <= at || Date.parse(occurrence.fireAt) < at || await input.repository.getPlan(input.actorId, id)) continue;
-    await input.repository.savePlan({ id, accountId: input.actorId, ownerUserId: input.actorId, targetType: "schedule_item", targetId: occurrence.id,
-      fireAt: occurrence.fireAt, timeZone: input.timeZone, status: "scheduled", channels: ["in_app", "ios_push"], title: input.title, body: input.title,
-      deepLink: `/schedule/personal/${encodeURIComponent(occurrence.id)}`, createdBy: "user", createdAt: input.now, updatedAt: input.now });
+  // No historical delivery and no resurrection, including cancelled/deleted
+  // identities. Existence is a bounded ID batch, not a full plan per occurrence.
+  const future = [...desired].filter(([, occurrence]) => Date.parse(occurrence.startsAt) > at && Date.parse(occurrence.fireAt) >= at);
+  for (let offset = 0; offset < future.length; offset += SCHEDULE_REMINDER_PAGE_SIZE) {
+    const batch = future.slice(offset, offset + SCHEDULE_REMINDER_PAGE_SIZE);
+    const existing = new Set(await input.repository.existingPlanIds(input.actorId, batch.map(([id]) => id)));
+    for (const [id, occurrence] of batch) {
+      if (existing.has(id)) continue;
+      await input.repository.savePlan({ id, accountId: input.actorId, ownerUserId: input.actorId, targetType: "schedule_item", targetId: occurrence.id,
+        fireAt: occurrence.fireAt, timeZone: input.timeZone, status: "scheduled", channels: ["in_app", "ios_push"], title: input.title, body: input.title,
+        deepLink: `/schedule/personal/${encodeURIComponent(occurrence.id)}`, createdBy: "user", createdAt: input.now, updatedAt: input.now });
+    }
   }
 }

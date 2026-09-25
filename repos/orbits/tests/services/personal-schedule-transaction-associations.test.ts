@@ -9,6 +9,12 @@ import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-st
 
 const actorId = "account:owner", workspaceId = "workspace:transaction-associations";
 const stamp = "2026-09-17T00:00:00.000Z";
+// These fixtures test future September 19–21 reminders. Keep the production
+// factory clock deterministic instead of letting the test expire after the 21st.
+test.beforeEach(context => {
+  if (!("mock" in context)) throw Error("A test context is required to freeze the fixture clock");
+  context.mock.timers.enable({ apis: ["Date"], now: Date.parse(stamp) });
+});
 async function fixture() {
   const sql = personalScheduleTransactionAssociationsFixture();
   // Prime the existing configured-runtime seam with the controlled pool, then

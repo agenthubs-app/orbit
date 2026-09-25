@@ -84,6 +84,13 @@ create index if not exists orbit_records_private_owner_idx
 create index if not exists orbit_records_connection_contact_owner_idx
   on orbit_records (workspace_id, (payload->>'contactId'), user_id, (payload->>'accountId'))
   where lifecycle_state <> 'deleted' and collection_name = 'connections';
+
+-- Reconcile one schedule series without reading unrelated plans or completed
+-- history. C collation makes the hashed series prefix a bounded index range.
+create index if not exists orbit_records_schedule_pending_series_idx
+  on orbit_records (workspace_id, user_id, record_id collate "C")
+  where collection_name = 'reminderPlans' and lifecycle_state = 'active'
+    and record_id like 'schedule-reminder:%' and payload->'entity'->>'status' = 'scheduled';
 `;
 
 export interface OrbitRecordsMigrationClient {
