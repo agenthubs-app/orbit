@@ -26,6 +26,9 @@ export async function readUnifiedInboxCount(input:{client:OrbitApiClient;actorId
     if(input.signal.aborted)return failed;
     if(typed.status===401||typed.status===403)return failed;
     const notifications=typed.success&&typed.status>=200&&typed.status<300?notificationInboxData(typed.data,input.actorId):null;
-    return {kind:'count',count:summary.messagesUnread+(notifications?.enabled?notifications.unreadCount:0)};
+    // The summary selected typed mode. Missing, failed, or contradictory typed
+    // data cannot prove a zero count and must not make the refresh look healthy.
+    if(!notifications?.enabled)return failed;
+    return {kind:'count',count:summary.messagesUnread+notifications.unreadCount};
   } catch {return failed;}
 }

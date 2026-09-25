@@ -328,3 +328,25 @@ App完整测试曾运行3,609项：3,566通过、43失败、0跳过，**不标�
 发布依赖：服务端须先具备task-page、contact-labels、稳定游标签名与相容PG运行时，随后发布App；尚未部署、安装手机、读取Neon或改云配置。shared契约/schema由Web同步，已有根bridge未提交内容未覆盖。本批未关闭：RelationshipTaskTools为旧建议仍调用全量`/api/tasks`、Today及其他旧消费者、P3逐来源可靠变化/到期、生产真实消耗与发布验收。不能把普通待办主体分页当作整个任务相关页面已恒定成本。
 
 最终本批App专项合跑88/88、零跳过；另宽入口待办/跟进/大字4/4、两端完整typecheck通过。全量43项失败是此前完整测试的事实，后续专项通过不冒充已重新全量绿色。可复现的新增入口验证为`task-page-source-lifecycle.test.ts`、`contact-labels-lifecycle.test.ts`、`task-list-bounded-source.test.ts`、`tasks-unification-interactions.test.ts`；后端为`task-page-postgres.test.ts`、`contact-labels-postgres.test.ts`及对应API测试，均已收进仓库，不依赖临时脚本。
+
+## 第十五批：真实消费者兼容回归与角标失败语义
+
+基于 `0aea0381`。联系人、首页、AI 抽屉、收件箱工作区测试仍向新页面返回旧完整列表，现按真实分页/摘要契约接线。联系人实际页面43/43：首页52/52；AI/导航/工作区组合125/125。保留多语言、输入草稿、滚动/大字、切账号、后台/失焦、迟到401、手动刷新与写回执断言，不将这些问题通过跳过或放宽业务断言处理。普通联系人页显式断言只请求30条卡片及summary、不读旧`/api/contacts`；首页/AI角标显式断言正常路径只读`/api/inbox/summary`，不读三份旧列表。404兼容分支仍由独立API测试覆盖。
+
+同时发现并先用失败测试复现真实缺陷：summary已选择typed模式时，typed刷新503/无效响应/矛盾的disabled结果被当作0，导致不完整总数被发布为健康读取。现保持unknown，不退回旧全量通知；合并角标的重试退避不再被这种部分失败重置。401/403、身份错误、缺失端点和取消仍有原测试，专项6/6。
+
+第一次重跑App全量为 **3,612项：3,610通过、2失败、0跳过**（不是全绿）。其中静态路由对齐缺 `/agent/actions`、`/agent/plan`、`/agent/strategy`、`/events/[id]/live`、`/profile/continue`；未伪造空路由或放宽检查。另profile任意文本`__proto__`用例在全量中读取到应用前的输入值，单独3项复跑通过；其测试原仅等两帧，现明确等待建议应用反馈及输入值真正更新，再保留精确断言。未借此修改资料业务代码。后续完整回归结果另记，不将单项重跑冒充全量通过。
+
+## 第十六批：待确认建议从正式任务全量读取中分离
+
+源码核对：当前`GET /api/tasks`只返回正式TaskService.list，旧TaskTools却每次下载它来筛选无status的legacy生成建议；这些候选并非当前接口的数据源。正式建议在`taskSuggestions`集合，旧`/api/task-suggestions`同样全量读取且在GET中逐条改到期状态，因此没有直接换到该旧接口。
+
+新增独立只读`GET /api/task-suggestions/page`，默认20/最多30条，SQL按workspace、行owner、payload.accountId/ownerUserId与ID一致授权，校验候选字段，按有效pending或已到期snoozed/未expired选择。到期判断按真实时间戳，不按有无毫秒的字符串排序；列表不改建议状态。排序confidence倒序、createdAt/ID的C序，HMAC游标绑定workspace/actor/scope及v1；当前状态/时间变化后的列表是live分页，不声称跨请求数据库快照。全局计数和页面来自同一SQL快照。异常ID超字节限额返回微小失败；无完整reason、证据数组、源笔记、联系人正文外传，只输出240字符标题和320字符理由。日期仅接受受支持的有效ISO格式，非规范旧数据不自动修复或迁移。
+
+App任务工具直接消费新建议页面，20条替换窗口；按账号、凭据、服务器隔离，核对响应actor/scope，失败不伪造0，不降级`/api/tasks`。新私有读取注册为online-only，不缓存私有授权结果。正式任务数量不包含建议，提醒/草稿/显式人工生成入口不变；旧AI草稿仍通过既有抽屉查看。这里是建议预览，不是接受建议回执，不修改原接受/拒绝流程；旧客户端接口保留。
+
+本地PG16/API3项通过，包含多页无重复、跨账号/筛选/workspace游标拒绝、归属冲突、畸形证据/日期/引用/版本、到期与延后可见、只读不改状态和规模增长。**10,038条可见建议时，20条首窗11,129 B，1 SQL**，大理由及证据不外传；这是返回JSON大小，不是Neon账单，SQL计数和有效性检查仍随候选增长消耗CPU。App任务/工作区/分页/离线边界/共享契约组合117/117、零跳过；真实页面验证翻页替换、全局25条计数、foreign actor拒绝、503不报空与不读旧全量任务。两端完整typecheck通过，新契约/schema按sync:contract复制，有实际ContractMatches编译断言。
+
+跨端发布顺序仍为后端新接口/稳定签名密钥/PG16先就绪，再发布消费App；未部署、未安装手机、未连接Neon或修改云设置。仍开放：Today及其他完整任务消费者、TaskTools旧提醒读取、通知逐来源完整变化/到期处理、路由兼容缺口、生产真实消耗与发布验收。此次移除的是TaskTools全量任务请求，不是宣称所有任务和通知入口均完成治理。
+
+最终冻结本批后的 App 全量结果：**3,614 项，3,613 通过、1 失败、0 跳过**。唯一失败仍为上述5个 Web 页面缺少对应 App 路由；未增加空路由、豁免或跳过检查。旧 followups 接线锚点改为新建议组件，实际建议分页/数量隔离由端到端测试验证；日期选择器同时检查 CSS 最小高度44px和实际框，后者仅容许0.001px的浏览器浮点误差，未改变产品控件尺寸。GitNexus 绑定当前根仓库 orbit/0aea0381，已重建包含新生产文件的索引；all 原始检查36个符号、4个流程、medium，无 partial/truncated/error，staged检查另覆盖新增文件。不将专项或全量结果当成手机、生产或所有通知来源已验收。

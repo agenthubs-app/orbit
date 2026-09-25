@@ -58,8 +58,12 @@ test("unavailable zone is read-only instead of throwing away the picker", async 
 test("calendar navigation and confirm actions retain forty-four-pixel touch targets", async t => {
   const page = await open(t);
   for (const name of ["上个月", "下个月", "完成"]) {
-    const box = await page.getByRole("dialog").getByRole("button", { name, exact: true }).boundingBox();
-    assert.ok(box && box.height >= 44 && box.width >= 44, name + ": " + JSON.stringify(box));
+    const button = page.getByRole("dialog").getByRole("button", { name, exact: true });
+    const box = await button.boundingBox();
+    // Fractional scroll transforms can report CSS 44px as 43.99993896484375.
+    // Preserve the actual CSS minimum and tolerate only subpixel readout noise.
+    assert.ok(await button.evaluate(el => parseFloat(getComputedStyle(el).minHeight) >= 44));
+    assert.ok(box && box.height >= 44 - 0.001 && box.width >= 44 - 0.001, name + ": " + JSON.stringify(box));
   }
 });
 

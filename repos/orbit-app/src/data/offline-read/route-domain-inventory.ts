@@ -81,7 +81,7 @@ function surfaceFrom([consumerFile, method, endpointTemplate]: SurfaceKey): Read
     // Bounded private readers have no proven revoke/version cache protocol yet.
     || (method === 'GET' && ([
       '/api/contacts/page','/api/contacts/summary','/api/contacts/labels','/api/inbox/summary',
-      '/api/relationship-tasks/page','/api/tasks/page',
+      '/api/relationship-tasks/page','/api/tasks/page','/api/task-suggestions/page',
       '/api/notifications/unread-summary','/api/relationship-communication/unread-summary',
       '/api/relationship-communication/conversation-summaries','/api/relationship-communication/conversations/:id/messages',
     ].includes(endpointTemplate) || [
@@ -394,7 +394,7 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/screens/settings/NotificationDiscoverySettings.tsx","GET","/api/inbox/discovery/preferences"],
   ["src/screens/settings/NotificationDiscoverySettings.tsx","POST","/api/inbox/discovery/preferences"],
   ["src/screens/tasks/RelationshipTaskTools.tsx","GET","/api/notifications"],
-  ["src/screens/tasks/RelationshipTaskTools.tsx","GET","/api/tasks"],
+  ["src/screens/tasks/PendingTaskSuggestions.tsx","GET","/api/task-suggestions/page"],
   ["src/screens/tasks/TaskDetailScreen.tsx","GET","/api/reminders"],
   ["src/screens/tasks/TaskDetailScreen.tsx","GET","/api/tasks/:id"],
   ["src/screens/tasks/TaskDetailScreen.tsx","GET","/api/tasks/:id/activities"],

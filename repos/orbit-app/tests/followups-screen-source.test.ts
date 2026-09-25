@@ -24,8 +24,11 @@ test("unified tools consume the published opaque templates and canonical history
   assert.doesNotMatch(tools, /client\.(post|patch)|taskGeneration|reminderGeneration|messageDraftPath/);
 });
 
-test("legacy candidates remain separate from canonical task counts and automatic person selection", () => {
-  assert.match(tools, /candidatesPayload/);
+test("suggestions use their own source and cannot auto-select a person", () => {
+  // Only component wiring here; real count separation, failure and paging are
+  // exercised through the mounted route in tasks-unification-interactions.
+  assert.match(tools, /<PendingTaskSuggestions\s*\/>/);
+  assert.doesNotMatch(tools, /tasksPath\(\)|candidatesPayload/);
   assert.match(tools, /ORBIT_API_ENDPOINTS.notifications/);
   assert.match(tools, /if \(!selected\)/);
   assert.doesNotMatch(tools, /priorityTask|savedDraftTask|\.open\.find/);

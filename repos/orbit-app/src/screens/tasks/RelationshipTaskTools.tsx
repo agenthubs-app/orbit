@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { TaskListEntry } from "./task-list-source";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
-import { ORBIT_API_ENDPOINTS, tasksPath } from "../../api/endpoints";
+import { ORBIT_API_ENDPOINTS } from "../../api/endpoints";
 import { ErrorState } from "../../components/ErrorState";
 import { createControlStyles } from "../../design/controls";
 import { createThemedStyles } from "../../design/theme";
@@ -16,37 +16,26 @@ import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { localParts } from "../../time/date-time";
 import { useContactLabels,type ContactLabel } from "../../hooks/useContactLabels";
 import { TaskContactPicker } from "./TaskContactPicker";
-import { followupsPageToView } from "../../view-models/followups-page";
+import { PendingTaskSuggestions } from "./PendingTaskSuggestions";
 import { followupsToView } from "../../view-models/followups";
 import { isRelationshipTask } from "../../view-models/task-list-scope";
 
 interface RelationshipTaskToolsProps {
   tasks: readonly TaskListEntry[];
   contacts: readonly ContactLabel[];
-  /** Raw /api/tasks payload from a network-backed list; omit when the list comes from the mirror. */
+  /** Legacy caller compatibility only; never use a task list as a suggestion source. */
   tasksPayload?: unknown;
 }
 
 /**
- * Unconfirmed legacy suggestions only exist in the /api/tasks response, never in
- * the mirror. When the list is mirror-backed the tools fetch that payload on
- * demand, so the default tasks screen still costs zero business requests.
+ * The task page/mirror provides saved task cards only. Suggestions use their
+ * own bounded canonical source; AI draft artifacts remain in the AI drawer.
  */
 export function RelationshipTaskTools(props: RelationshipTaskToolsProps) {
-  return props.tasksPayload === undefined
-    ? <RelationshipTaskToolsFromNetwork {...props} />
-    : <RelationshipTaskToolsView {...props} tasksPayload={props.tasksPayload} />;
+  return <RelationshipTaskToolsView {...props} />;
 }
 
-function RelationshipTaskToolsFromNetwork(props: RelationshipTaskToolsProps) {
-  const auth = useOrbitAuthSession(), server = useOrbitApiBaseUrl();
-  const scopeKey = JSON.stringify([auth.actorId, server.baseUrl]);
-  const suggestions = useApiResource<unknown>(tasksPath(), () => false, { scopeKey, cachePolicy: "network-only" });
-  const payload = suggestions.kind === "success" || suggestions.kind === "empty" ? suggestions.data : {};
-  return <RelationshipTaskToolsView {...props} tasksPayload={payload} />;
-}
-
-function RelationshipTaskToolsView({ tasks, contacts, tasksPayload }: RelationshipTaskToolsProps & { tasksPayload: unknown }) {
+function RelationshipTaskToolsView({ tasks, contacts }: RelationshipTaskToolsProps) {
   const { styles } = useStyles();
   const locale = useOrbitLocale();
   const router = useRouter();
@@ -56,7 +45,7 @@ function RelationshipTaskToolsView({ tasks, contacts, tasksPayload }: Relationsh
   const scopeKey = JSON.stringify([actorId, server.baseUrl]);
   const notifications = useApiResource<unknown>(ORBIT_API_ENDPOINTS.notifications, () => false, { scopeKey, cachePolicy: "network-only" });
   const view = followupsToView({
-    tasksPayload: followupsPageToView(tasksPayload, { contacts }).candidatesPayload,
+    tasksPayload: {},
     notificationsPayload: notifications.kind === "success" || notifications.kind === "empty" ? notifications.data : {},
   }, locale.language);
   const notificationData = notifications.kind === "success" || notifications.kind === "empty" ? notifications.data : null;
@@ -120,13 +109,7 @@ function RelationshipTaskToolsView({ tasks, contacts, tasksPayload }: Relationsh
     {templateError ? <Text accessibilityRole="alert" style={styles.error}>{templateError}</Text> : null}
     {pickedId&&!picked.loading&&!picked.items.length?<View><Text accessibilityRole="alert" style={styles.error}>{locale.t("tasks.contactUnavailable")}</Text><Pressable accessibilityRole="button" onPress={picked.refresh} style={styles.button}><Text style={styles.buttonText}>{locale.language==="zh"?"重新确认联系人":locale.language==="ja"?"連絡先を再確認":"Recheck contact"}</Text></Pressable></View>:null}
     <Pressable accessibilityRole="button" onPress={() => router.push("/ai?drawer=1" as Href)} style={styles.button}><Text style={styles.buttonText}>{locale.t("relationshipTasks.viewExisting")}</Text></Pressable>
-    <Text accessibilityRole="header" style={styles.heading}>{locale.t("relationshipTasks.pendingSuggestions", { count: view.tasks.length })}</Text>
-    {view.tasks.length === 0 ? <Text style={styles.body}>{locale.t("relationshipTasks.emptySuggestions")}</Text> : null}
-    {view.tasks.map(task => <View key={task.id} style={styles.option}>
-      <Text style={styles.body}>{task.title}</Text>
-      <Text style={styles.body}>{task.recommendedAction}</Text>
-      <Text style={styles.detail}>{[task.contactName, task.organization, task.sourceLabel].filter(Boolean).join(" · ")}</Text>
-    </View>)}
+    <PendingTaskSuggestions />
     <Text accessibilityRole="header" style={styles.heading}>{locale.t("relationshipTasks.reminderQueue", { count: notifications.kind === "success" || notifications.kind === "empty" ? ` ${view.reminders.length}` : "" })}</Text>
     {notifications.kind === "loading" ? <Text style={styles.detail}>{locale.t("relationshipTasks.reminderLoading")}</Text> : null}
     {notifications.kind === "failure" || notifications.kind === "offline" ? <ErrorState title={locale.t("relationshipTasks.remindersUnavailable")} message={notifications.error.message} /> : null}

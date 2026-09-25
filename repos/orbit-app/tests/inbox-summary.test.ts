@@ -23,6 +23,17 @@ test('only explicit endpoint absence permits fallback, remembered for this scope
   const f=harness([r]);assert.deepEqual(await f.read(),{kind:'count',count:undefined});assert.equal(f.paths.length,1);assert.equal(f.capability.legacyOnly,undefined);
  }
 });
+test('typed refresh failures remain unknown instead of counting missing notifications as zero', async () => {
+ for (const response of [
+  {status:503}, {status:403}, {status:404}, {status:200,data:{}},
+  {status:200,data:{enabled:false,items:[],unreadCount:0,nextCursor:null,asOf:at}},
+ ]) {
+  const h=harness([{status:200,data:{...legacy,notificationMode:'typed',notificationRead:'refresh-required',notificationsUnread:null}},response]);
+  assert.deepEqual(await h.read(),{kind:'count',count:undefined});
+  assert.equal(h.paths.length,2,'a failed refresh must not trigger full legacy list reads');
+  assert.equal(h.capability.legacyOnly,undefined);
+ }
+});
 test('aborted responses cannot publish a count or change capability',async()=>{
  const h=harness([{status:404}]);h.controller.abort();assert.deepEqual(await h.read(),{kind:'count',count:undefined});assert.equal(h.capability.legacyOnly,undefined);
 });

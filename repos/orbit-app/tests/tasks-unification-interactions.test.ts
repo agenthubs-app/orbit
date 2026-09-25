@@ -99,6 +99,7 @@ async function open(t: { after(fn: () => Promise<void>): void }, patch: Record<s
       response = Response.json({ success: true, data: { ...aiConversationPayload, assistantMessage: "待复核的联系草稿", messages: [{ ...aiConversationPayload.messages[0], content: input.message }, { ...aiConversationPayload.messages[1], content: "待复核的联系草稿" }] } });
     }
     else if (url.pathname === "/api/ai/conversations/sessions") response = Response.json({ success: true, data: method === "GET" ? emptyAiSessionListPayload : { session: JSON.parse(body!).session, storage: emptyAiSessionListPayload.storage } });
+    else if (url.pathname === "/api/task-suggestions/page") response = Response.json({success:true,data:{actorId:session.actor,scope:"relationship",items:[],total:0,nextCursor:null,hasMore:false,asOf:"2026-09-25T00:00:00Z"}});
     else if (url.pathname === "/api/relationship-tasks/page") response = Response.json({ success: true, data: { actorId: session.actor, mode: url.searchParams.get('mode'), items: [], total: 0, hasMore: false, nextCursor: null, asOf: '2026-09-25T00:00:00.000Z' } });
     else if (url.pathname === "/api/tasks/page") response = Response.json({success:true,data:taskPageFixture(await service.list({actorId:session.actor}),session.actor,url.searchParams)});
     else if (url.pathname === "/api/contacts/labels") response=Response.json({success:true,data:{actorId:session.actor,items:session.actor==="owner"&&url.searchParams.getAll("id").includes("contact:22")?[{id:"contact:22",namePreview:"真实联系人",organizationPreview:"真实机构"}]:[],asOf:"2026-09-25T00:00:00Z"}});
@@ -285,25 +286,68 @@ test("real task handlers deny unauthenticated and foreign-actor writes without t
   }
 });
 
-test("legacy suggestions and reminder queue remain readable without becoming saved tasks", async t => {
+test("canonical suggestion previews and reminder queue remain separate from saved task counts", async t => {
   const page = await open(t, { params: { scope: "relationship" } });
   await page.getByRole("checkbox", { name: "完成：事项 22", exact: true }).waitFor();
-  // Explicit legacy read-response fixture; canonical mutation tests above keep
-  // using the actual collection/detail handlers and storage service.
-  const legacy = { taskId: "legacy:1", title: "原有待确认建议", contactName: "未选择的联系人", organization: "旧来源", contactId: "missing-contact", priority: "today", dueInDays: 0, recommendedAction: "先确认合作方向", rationale: "旧记录", triggerKind: "event_encounter", source: { label: "历史来源" }, evidenceIds: [] };
-  for (const [endpoint, data] of [["tasks", { tasks: [...tasks, legacy] }], ["notifications", { reminders: [{ reminderId: "legacy-reminder:1", title: "原有提醒候选", contactName: "旧联系人", organization: "旧来源", dueInDays: 0, priority: "high", recommendedWindow: "复核后安排" }], notificationQueue: [] }]] as const) {
+  // Suggestions have their own canonical source. /api/tasks cannot supply them.
+  const suggestions = { actorId: "owner", scope: "relationship", total: 1, items: [{ id: "suggestion:1", titlePreview: "原有待确认建议", reasonPreview: "先确认合作方向", category: "relationship", updatedAt: "2026-09-25T00:00:00Z" }], nextCursor: null, hasMore: false, asOf: "2026-09-25T00:00:00Z" };
+  for (const [endpoint, data] of [["task-suggestions/page?*", suggestions], ["notifications", { reminders: [{ reminderId: "legacy-reminder:1", title: "原有提醒候选", contactName: "旧联系人", organization: "旧来源", dueInDays: 0, priority: "high", recommendedWindow: "复核后安排" }], notificationQueue: [] }]] as const) {
     await page.route(`**/api/${endpoint}`, async route => {
       if (route.request().method() !== "GET") return route.fallback();
       await route.fulfill({ status: 200, contentType: "application/json", headers: { "Access-Control-Allow-Origin": "null", "Access-Control-Allow-Credentials": "true" }, body: JSON.stringify({ success: true, data }) });
     });
   }
   await page.evaluate(() => (window as any).fixture.update({ baseUrl: "https://legacy.example" }));
-  await page.getByText("联系 未选择的联系人", { exact: true }).waitFor();
+  await page.getByText("原有待确认建议", { exact: true }).waitFor();
+  await page.getByRole("heading", { name: "待确认建议 1", exact: true }).waitFor();
   await page.getByText("原有提醒候选", { exact: true }).waitFor();
   await page.getByRole("tab", { name: "未完成 21", exact: true }).waitFor();
   assert.equal(await page.getByRole("checkbox").count(), 21);
   assert.equal(await page.getByRole("checkbox", { name: /未选择的联系人/ }).count(), 0);
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests.filter((request: any) => request.method !== "GET")), []);
+  assert.equal(await page.evaluate(() => (window as any).fixture.requests.some((request: any) => request.path === "/api/tasks")), false);
+});
+
+test("unavailable suggestion pages do not invent a zero or fall back to full tasks", async t => {
+  const page = await open(t, { params: { scope: "relationship" } });
+  await page.getByRole("heading", { name: "建议与草稿", exact: true }).waitFor();
+  await page.route("**/api/task-suggestions/page?*", route => route.fulfill({ status: 503, contentType: "application/json", headers: { "Access-Control-Allow-Origin": "null", "Access-Control-Allow-Credentials": "true" }, body: JSON.stringify({success:false,error:{code:"UNAVAILABLE",message:"建议未能读取"}}) }));
+  await page.evaluate(() => (window as any).fixture.update({ baseUrl: "https://failure.example" }));
+  await page.getByText("建议未能读取", {exact:true}).waitFor();
+  assert.equal(await page.getByRole("heading", {name:"待确认建议 0",exact:true}).count(),0);
+  assert.equal(await page.getByText("暂无待确认建议。", {exact:true}).count(),0);
+  assert.equal(await page.evaluate(() => (window as any).fixture.requests.some((r:any)=>r.path==="/api/tasks")),false);
+});
+
+test("suggestion next page replaces twenty previews and rejects a foreign actor response", async t => {
+  const page = await open(t, { params: { scope: "relationship" } });
+  await page.getByRole("heading", { name: "建议与草稿", exact: true }).waitFor();
+  let wrongActor=false;
+  const reads:string[]=[];
+  await page.route("**/api/task-suggestions/page?*", async route => {
+    const params=new URL(route.request().url()).searchParams;
+    assert.equal(params.get("limit"),"20");assert.equal(params.get("scope"),"relationship");
+    const cursor=params.get("cursor");reads.push(cursor??"first");
+    const start=cursor?20:0, length=cursor?5:20;
+    const data={actorId:wrongActor?"foreign":"owner",scope:"relationship",total:25,
+      items:Array.from({length},(_,n)=>({id:`suggestion:${start+n}`,titlePreview:`建议 ${start+n}`,reasonPreview:"复核依据",category:"relationship",updatedAt:"2026-09-25T00:00:00Z"})),
+      hasMore:!cursor,nextCursor:cursor?null:"signed-next",asOf:"2026-09-25T00:00:00Z"};
+    await route.fulfill({status:200,contentType:"application/json",headers:{"Access-Control-Allow-Origin":"null","Access-Control-Allow-Credentials":"true"},body:JSON.stringify({success:true,data})});
+  });
+  await page.evaluate(()=>(window as any).fixture.update({baseUrl:"https://suggestions.example"}));
+  await page.getByText("建议 0",{exact:true}).waitFor();
+  assert.equal(await page.getByText(/^建议 \d+$/).count(),20);
+  await page.getByRole("button",{name:"下一页",exact:true}).click();
+  await page.getByText("建议 24",{exact:true}).waitFor();
+  assert.equal(await page.getByText(/^建议 \d+$/).count(),5);
+  assert.equal(await page.getByText("建议 0",{exact:true}).count(),0);
+  assert.deepEqual(reads,["first","signed-next"]);
+  await page.getByRole("heading",{name:"待确认建议 25",exact:true}).waitFor();
+  wrongActor=true;
+  await page.getByRole("button",{name:"返回第一页",exact:true}).click();
+  await page.getByText("未能确认建议，请重试。",{exact:true}).waitFor();
+  assert.equal(await page.getByText(/^建议 \d+$/).count(),0);
+  assert.equal(await page.getByRole("heading",{name:"待确认建议 25",exact:true}).count(),0);
 });
 
 test("an unavailable reminder queue is shown as an error instead of an empty count", async t => {

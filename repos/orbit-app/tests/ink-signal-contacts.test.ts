@@ -25,6 +25,26 @@ const state = window.fixture = { requests: [], navigation: [], nativeCalls: [], 
   focused: true, mounted: true, fontScale: 1, width: 390, language: "zh", params: {}, ...window.initialFixture,
   update(patch) { Object.assign(state, patch); version++; listeners.forEach(fn => fn()); },
   data(path, url) {
+    if (path === "/api/contacts/page" || path === "/api/contacts/summary") {
+      if (state.invalid) return { state: "success", contacts: [] };
+      // An unfinished legacy response is not a valid empty page.
+      if (state.pendingCollection) return { state: "pending", contacts: [] };
+      const search = new URL(url).searchParams;
+      const query = search.get("query") || "";
+      const statuses = search.getAll("status");
+      const items = state.empty ? [] : contacts.filter(c =>
+        (c.displayName + c.organization).includes(query) && (!statuses.length || statuses.includes(c.status)));
+      const asOf = "2026-09-25T00:00:00.000Z";
+      if (path === "/api/contacts/summary") return {
+        total: items.length, sources: { manual: items.length },
+        statuses: Object.fromEntries(["active", "needs_follow_up"].map(status => [status, items.filter(c => c.status === status).length])),
+        values: {}, tags: [], hasMoreTags: false, asOf
+      };
+      return { items: items.slice(0, 30).map(c => ({ id: c.id, displayName: c.displayName,
+        organization: c.organization, role: c.role, sourceType: c.source.type, status: c.status,
+        pendingInitialization: false, nextActionPreview: "", valueTypes: [], updatedAt: asOf })),
+        nextCursor: null, hasMore: false, asOf };
+    }
     if (path === "/api/contacts") {
       const search = new URL(url).searchParams;
       const query = search.get("query") || "";
@@ -121,6 +141,10 @@ test("main contacts route shows the actual list, real count and Ink navigation w
   assert.equal(await p.getByRole("tab", { name: "人脉", exact: true }).getAttribute("aria-selected"), "true");
   assert.equal(await p.getByRole("button", { name: "返回联系人" }).count(), 0);
   assert.deepEqual(await writes(p), []);
+  const reads = await p.evaluate(() => (window as any).fixture.requests.map((r: any) => ({ path: r.path, limit: new URL(r.url).searchParams.get("limit") })));
+  assert.ok(reads.some((r: any) => r.path === "/api/contacts/page" && r.limit === "30"));
+  assert.ok(reads.some((r: any) => r.path === "/api/contacts/summary"));
+  assert.ok(reads.every((r: any) => r.path !== "/api/contacts"), "the list must never download full contact records");
   if (process.env.APP_STYLE_SCREENSHOTS) await p.screenshot({ path: "/tmp/orbit-ink-signal-contacts-390-" + (process.env.CONTACTS_QA_PASS ?? "current") + ".png" });
 });
 
@@ -278,9 +302,9 @@ for (const patch of [{ holdReads: true }, { failure: true }, { invalid: true }, 
     const p = await open(t, patch);
     assert.equal(await p.getByTestId("contacts-main-count").count(), 0);
     assert.doesNotMatch(await p.locator("body").innerText(), /还没有人脉/);
-    if ("failure" in patch || "invalid" in patch) {
+    if ("failure" in patch || "invalid" in patch || "pendingCollection" in patch) {
       await press(p, "重新读取人脉");
-      assert.ok(await p.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.path === "/api/contacts").length > 1));
+      assert.ok(await p.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.path === "/api/contacts/page").length > 1));
     } else assert.ok(await p.getByRole("progressbar").count());
   });
 }

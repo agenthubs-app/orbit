@@ -41,12 +41,14 @@ test("the Orbit AI drawer links Today to its canonical open task count", () => {
   assert.doesNotMatch(aiScreenSource, /entry\.href === "\/schedule"/u);
 });
 
-test("the inbox badge count reads only durable inbox and notification sources", () => {
-  assert.match(badgeHookSource, /relationshipCommunicationConversationsPath\(\)/u);
-  assert.match(badgeHookSource, /ORBIT_API_ENDPOINTS\.notifications/u);
+test("the inbox badge delegates native lifecycle wiring to the shared scoped resource", () => {
+  // Native subscription wiring only. Count-only HTTP reads, refresh and late
+  // responses are exercised in home-dashboard-interactions and inbox-summary.
+  assert.match(badgeHookSource, /subscribeInboxBadge/u);
+  assert.match(badgeHookSource, /AppState\.addEventListener/u);
+  assert.match(badgeHookSource, /server\.baseUrl, actorId, auth\.cookieHeader/u);
   assert.doesNotMatch(badgeHookSource, /ORBIT_API_ENDPOINTS\.proactiveTurns/u);
-  assert.match(badgeHookSource, /relationshipInboxBadgeCount/u);
-  assert.match(badgeHookSource, /Math\.min\(count, 99\)/u);
+  assert.doesNotMatch(badgeHookSource, /relationshipCommunicationConversationsPath|ORBIT_API_ENDPOINTS\.notifications/u);
 });
 
 test("inbox route lives inside the app group without a duplicate root route", () => {

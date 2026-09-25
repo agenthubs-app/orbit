@@ -299,3 +299,4 @@ export type {
 export type {InboxSummaryDTO} from './inbox-summary';
 export type { ContactCardDTO, ContactCardPageDTO, ContactCardSummaryDTO } from "./contact-card-page";
 export type { ContactLabelsContract } from "./contact-labels";
+export type { TaskSuggestionCardContract, TaskSuggestionPageContract } from "./task-suggestion-page";

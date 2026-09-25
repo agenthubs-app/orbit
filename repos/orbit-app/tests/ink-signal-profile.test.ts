@@ -716,6 +716,10 @@ for (const value of ["constructor", "__proto__", "Live performance with generate
   const p = await edit(t, { payloads: { ...profileReadPayloads, "/api/profile/update-suggestions": { ...readyProfileSuggestionsPayload, suggestions: [suggestion] } } });
   assert.equal(await p.getByText(value, { exact: true }).count(), 3);
   await press(p, "确认标题建议"); await replyWrite(p, { ...acceptedProfileSuggestionPayload, acceptedSuggestion: { ...suggestion, status: "accepted" }, profilePatch: { headline: value } });
+  // Two animation frames are not proof that asynchronous receipt handling has
+  // committed. Wait for the actual applied-state signal before reading input.
+  await p.getByText("建议已放进编辑表单。检查后保存资料。", { exact: true }).waitFor();
+  await p.waitForFunction(expected => document.querySelector<HTMLInputElement>('input[aria-label="标题"]')?.value === expected, value);
   assert.equal(await p.getByRole("textbox", { name: "标题", exact: true }).inputValue(), value);
 });
 
