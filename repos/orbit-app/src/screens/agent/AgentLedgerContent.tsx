@@ -26,6 +26,7 @@ export interface AgentLedgerContentProps {
     selectedOperationIds: readonly string[]
   ) => void;
   pending: PendingTransition | null;
+  selectedEntryId?: string | undefined;
   view: AgentLedgerSurfaceView;
 }
 
@@ -34,9 +35,24 @@ export function AgentLedgerContent({
   feedback,
   onTransition,
   pending,
+  selectedEntryId,
   view
 }: AgentLedgerContentProps) {
   const { styles } = useStyles();
+  const sections = view.sections.map((section) => {
+    const selectedIndex = selectedEntryId
+      ? section.entries.findIndex((entry) => entry.id === selectedEntryId)
+      : -1;
+    if (selectedIndex <= 0) {
+      return section;
+    }
+
+    const entries = [...section.entries];
+    const [selected] = entries.splice(selectedIndex, 1);
+    entries.unshift(selected!);
+    return { ...section, entries };
+  });
+
   return (
     <>
       <DataCard detail={view.summary} title={view.title}>
@@ -53,10 +69,10 @@ export function AgentLedgerContent({
       {feedback ? <Text style={styles.feedback}>{feedback}</Text> : null}
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
-      {view.sections.length === 0 ? (
+      {sections.length === 0 ? (
         <EmptyState message={view.emptyMessage} title={view.emptyTitle} />
       ) : (
-        view.sections.map((section) => (
+        sections.map((section) => (
           <View key={section.id} style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>{section.title}</Text>
@@ -68,6 +84,7 @@ export function AgentLedgerContent({
                 key={`${entry.id}:${entry.updatedLabel}:${entry.status}`}
                 onTransition={onTransition}
                 pending={pending}
+                selected={entry.id === selectedEntryId}
               />
             ))}
           </View>
@@ -80,11 +97,13 @@ export function AgentLedgerContent({
 function AgentLedgerEntryCard({
   entry,
   onTransition,
-  pending
+  pending,
+  selected
 }: {
   entry: AgentLedgerEntryView;
   onTransition: AgentLedgerContentProps["onTransition"];
   pending: PendingTransition | null;
+  selected: boolean;
 }) {
   const { styles } = useStyles();
   const [selectedOperationIds, setSelectedOperationIds] = useState<
@@ -112,6 +131,7 @@ function AgentLedgerEntryCard({
       detail={`${entry.statusLabel} · ${entry.riskLabel}`}
       title={entry.title}
     >
+      {selected ? <Text style={styles.linkedEntry}>从链接打开</Text> : null}
       {entry.contactLine ? (
         <Text style={styles.contactLine}>{entry.contactLine}</Text>
       ) : null}
@@ -297,6 +317,17 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     color: colors.rose,
     fontSize: typography.small,
     lineHeight: 20
+  },
+  linkedEntry: {
+    alignSelf: "flex-start",
+    backgroundColor: colors.accentSoft,
+    borderRadius: radius.sm,
+    color: colors.accent,
+    fontSize: typography.caption,
+    fontWeight: "600",
+    marginBottom: spacing.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs
   },
   evidence: {
     color: colors.text2,

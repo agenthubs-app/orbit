@@ -43,6 +43,7 @@ test("mobile actor workspaces share one private-route policy", () => {
     "/admin",
     "/admin/events",
     "/agent",
+    "/agent/actions",
     "/ai/conversation-1",
     "/chat/thread-1",
     "/contacts/matches",
@@ -62,6 +63,7 @@ test("mobile actor workspaces share one private-route policy", () => {
     "/party/checkin",
     "/platform",
     "/profile",
+    "/profile/continue",
     "/schedule/events/event-1",
     "/schedule/meetings/appointment-1",
     "/settings/api",
@@ -235,6 +237,7 @@ test("every root-level private entry uses the shared render gate", () => {
     "admin.tsx",
     "admin/events.tsx",
     "agent.tsx",
+    "agent/actions.tsx",
     "ai/[id].tsx",
     "chat.tsx",
     "chat/[id].tsx",
@@ -273,6 +276,7 @@ test("every root-level private entry uses the shared render gate", () => {
     "party/checkin.tsx",
     "party/graph.tsx",
     "platform.tsx",
+    "profile/continue.tsx",
     "profile/edit.tsx",
     "profile/more.tsx",
     "profile/preview.tsx",
@@ -332,4 +336,25 @@ test("experience login return drops duplicate path ids and preserves other conte
   const path = "/events/event%3A%2F%20%E7%A9%BA/operations/experience";
   assert.equal(isPrivateMobileRoute(path), true);
   assert.equal(mobileLoginHref(path, { id: ["event:/ 空", "duplicate"], tab: "preview", "#": "questions" }), `/account/login?next=${encodeURIComponent(path + "?tab=preview#questions")}`);
+});
+
+test("compatibility routes stay actor-private and retain deep-link context through login", () => {
+  const agentEntry = "/agent/actions?entry=action%3Acurrent";
+  const profileContinue = "/profile/continue?next=%2Fevents%2Fevent-1%3Ftab%3Ddetails";
+
+  for (const pathname of ["/agent/actions", "/profile/continue"]) {
+    assert.equal(isPrivateMobileRoute(pathname), true, pathname);
+  }
+  assert.equal(
+    mobileLoginHref("/agent/actions", { entry: "action:current" }),
+    `/account/login?next=${encodeURIComponent(agentEntry)}`
+  );
+  assert.equal(
+    mobileLoginHref("/profile/continue", {
+      next: "/events/event-1?tab=details"
+    }),
+    `/account/login?next=${encodeURIComponent(profileContinue)}`
+  );
+  assert.equal(normalizedNext(agentEntry), agentEntry);
+  assert.equal(normalizedNext(profileContinue), profileContinue);
 });

@@ -12,6 +12,7 @@ type InitialRoutePath =
   | "/admin/access"
   | "/admin/events"
   | "/agent"
+  | "/agent/actions"
   | "/ai"
   | "/chat"
   | "/dashboard"
@@ -40,6 +41,7 @@ type InitialRoutePath =
   | `/schedule/personal/${string}`
   | `/schedule/events/${string}`
   | "/profile"
+  | "/profile/continue"
   | `/ai/${string}`
   | `/chat/${string}`
   | `/contacts/${string}`
@@ -64,6 +66,7 @@ const routeByKey: Record<string, InitialRoutePath> = {
   "admin/access": "/admin/access",
   "admin/events": "/admin/events",
   agent: "/agent",
+  "agent/actions": "/agent/actions",
   ai: "/ai",
   chat: "/chat",
   contacts: "/contacts",
@@ -82,6 +85,7 @@ const routeByKey: Record<string, InitialRoutePath> = {
   "party/checkin": "/party/checkin",
   "party/graph": "/party/graph",
   profile: "/profile",
+  "profile/continue": "/profile/continue",
   register: "/register",
   schedule: "/schedule",
   settings: "/settings",

@@ -78,3 +78,49 @@ test("native ledger content renders the shared Action identity, audit and contro
   assert.match(text, /忽略/u);
   assert.match(text, /消息/u);
 });
+
+test("an entry deep link selects the current actor's ledger entry before the general list", () => {
+  const selected = payload.entries[0]!;
+  const other = {
+    ...selected,
+    entryId: "action:another-current-entry",
+    title: "Another current-account action",
+    runId: "run:another-current-entry",
+    workflowKey: "another_workflow",
+  };
+  const text = renderedText(
+    <AgentLedgerContent
+      error={null}
+      feedback={null}
+      onTransition={() => undefined}
+      pending={null}
+      selectedEntryId={selected.entryId}
+      view={agentLedgerToSurfaceView(
+        { ...payload, entries: [other, selected] },
+        "all"
+      )}
+    />
+  );
+
+  assert.ok(text.indexOf(selected.title) >= 0);
+  assert.ok(text.indexOf(other.title) >= 0);
+  assert.ok(text.indexOf(selected.title) < text.indexOf(other.title));
+  assert.match(text, /从链接打开/u);
+});
+
+test("an entry id absent from the actor-scoped ledger does not select or reveal a record", () => {
+  const text = renderedText(
+    <AgentLedgerContent
+      error={null}
+      feedback={null}
+      onTransition={() => undefined}
+      pending={null}
+      selectedEntryId="action:other-account-private-entry"
+      view={agentLedgerToSurfaceView(payload, "all")}
+    />
+  );
+
+  assert.doesNotMatch(text, /从链接打开/u);
+  assert.match(text, /建立待办事项 — Kenji Watanabe/u);
+  assert.doesNotMatch(text, /other-account-private-entry/u);
+});

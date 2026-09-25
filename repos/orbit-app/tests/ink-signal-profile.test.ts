@@ -170,6 +170,62 @@ test("profile completion cannot infer a missing policy from the old richness sco
   assert.deepEqual(await writes(p), []);
 });
 
+test("profile completion ignores a stale complete policy after the signed-in actor changes", async t => {
+  const oldActorComplete = {
+    ...profilePayload,
+    onboarding: { policyVersion: 1, status: "complete", missingFields: [] },
+    profile: { ...profilePayload.profile, displayName: "旧账号私密资料" }
+  };
+  const currentActorIncomplete = {
+    ...profilePayload,
+    onboarding: { policyVersion: 1, status: "incomplete", missingFields: ["birthDate"] }
+  };
+  const p = await open(t, {
+    complete: "1",
+    next: "/events/event-1",
+    holdReads: true,
+    payloads: { ...profileReadPayloads, "/api/profile": oldActorComplete }
+  });
+  const oldProfileIndex = await p.evaluate(() =>
+    (window as any).fixture.requests.findIndex((request: any) => request.path === "/api/profile")
+  );
+  assert.ok(oldProfileIndex >= 0);
+
+  await update(p, {
+    actor: "actor-2",
+    payloads: { ...profileReadPayloads, "/api/profile": currentActorIncomplete }
+  });
+  const currentRequests: Array<{ index: number; path: string }> = await p.evaluate(start =>
+    (window as any).fixture.requests.slice(start).map((request: any, offset: number) => ({
+      index: start + offset,
+      path: request.path
+    })),
+    oldProfileIndex + 1
+  );
+  const currentProfileIndex = currentRequests.findLast((request) => request.path === "/api/profile")?.index;
+  assert.ok(currentProfileIndex !== undefined);
+
+  await p.evaluate(({ index, payload }) => (window as any).fixture.reply(index, 200, payload), {
+    index: oldProfileIndex,
+    payload: oldActorComplete
+  });
+  await settle(p);
+  assert.deepEqual(await navigation(p), []);
+  assert.equal(await p.getByText("旧账号私密资料", { exact: true }).count(), 0);
+
+  await p.evaluate(({ requests, profileIndex, payload }) => {
+    const state = (window as any).fixture;
+    for (const request of requests) {
+      if (request.path !== "/api/profile") state.reply(request.index);
+    }
+    state.reply(profileIndex, 200, payload);
+  }, { requests: currentRequests, profileIndex: currentProfileIndex, payload: currentActorIncomplete });
+  await p.getByRole("textbox", { name: "生日（仅自己可见）", exact: true }).waitFor();
+  assert.equal(await p.getByText("还需填写：生日", { exact: true }).count(), 1);
+  assert.deepEqual(await navigation(p), []);
+  assert.deepEqual(await writes(p), []);
+});
+
 test("profile completion returns to the safe target only after the matching save completes the server policy", async t => {
   const p = await open(t, { complete: "1", next: "/events/event-1", holdWrites: true, payloads: { ...profileReadPayloads,
     "/api/profile": { ...profilePayload, onboarding: { policyVersion: 1, status: "incomplete", missingFields: ["birthDate"] } } } });

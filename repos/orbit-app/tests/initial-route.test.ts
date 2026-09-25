@@ -69,6 +69,19 @@ describe("resolveInitialRouteHref", () => {
     assert.equal(resolveInitialRouteHref(" profile "), "/profile");
   });
 
+  it("supports only the exact compatibility route entries and retains their query", () => {
+    assert.equal(
+      resolveInitialRouteHref("/agent/actions?entry=action%3Aone"),
+      "/agent/actions?entry=action%3Aone"
+    );
+    assert.equal(
+      resolveInitialRouteHref("/profile/continue?next=%2Fevents%2Fevent-1"),
+      "/profile/continue?next=%2Fevents%2Fevent-1"
+    );
+    assert.equal(resolveInitialRouteHref("/agent/actions/other"), "/home");
+    assert.equal(resolveInitialRouteHref("/profile/continue/other"), "/home");
+  });
+
   it("accepts supported detail routes for simulator review", () => {
     assert.equal(resolveInitialRouteHref("contacts/new"), "/contacts/new");
     assert.equal(

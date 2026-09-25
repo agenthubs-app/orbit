@@ -21,3 +21,30 @@ test("native Today uses the task workspace while All Actions keeps the Agent Led
   assert.match(allActions, /AllActionsAgentLedgerScreen/u);
   assert.doesNotMatch(allActions, /AgentActionsScreen/u);
 });
+
+test("agent actions compatibility route reuses the actor-scoped All Actions ledger", () => {
+  const route = readFileSync(
+    join(repoRoot, "app", "agent", "actions.tsx"),
+    "utf8"
+  );
+
+  assert.match(route, /AllActionsAgentLedgerScreen/u);
+  assert.match(route, /useLocalSearchParams/u);
+  assert.match(route, /firstAgentLedgerEntryId/u);
+  assert.match(route, /selectedEntryId/u);
+  assert.match(route, /withOrbitPrivateRoute/u);
+  assert.doesNotMatch(route, /AgentActionsScreen/u);
+});
+
+test("profile continuation route is a private handoff and delegates completion to Profile", () => {
+  const route = readFileSync(
+    join(repoRoot, "app", "profile", "continue.tsx"),
+    "utf8"
+  );
+
+  assert.match(route, /profileContinuationHref/u);
+  assert.match(route, /useLocalSearchParams/u);
+  assert.match(route, /Redirect/u);
+  assert.match(route, /withOrbitPrivateRoute/u);
+  assert.doesNotMatch(route, /useOrbitApiClient|useApiResource|ProfileScreen/u);
+});

@@ -46,9 +46,11 @@ function transitionFeedback(
 }
 
 export function AgentLedgerScreen({
-  mode
+  mode,
+  selectedEntryId
 }: {
   mode: AgentLedgerSurfaceMode;
+  selectedEntryId?: string | undefined;
 }) {
   const { colors } = useOrbitTheme();
   const client = useOrbitApiClient();
@@ -139,6 +141,7 @@ export function AgentLedgerScreen({
             void applyTransition(entry, transition, selectedOperationIds)
           }
           pending={pending}
+          selectedEntryId={mode === "all" ? selectedEntryId : undefined}
           view={view}
         />
       ) : null}
@@ -150,6 +153,10 @@ export function TodayAgentLedgerScreen() {
   return <AgentLedgerScreen mode="today" />;
 }
 
-export function AllActionsAgentLedgerScreen() {
-  return <AgentLedgerScreen mode="all" />;
+export function AllActionsAgentLedgerScreen({
+  selectedEntryId
+}: {
+  selectedEntryId?: string | undefined;
+} = {}) {
+  return <AgentLedgerScreen mode="all" selectedEntryId={selectedEntryId} />;
 }
