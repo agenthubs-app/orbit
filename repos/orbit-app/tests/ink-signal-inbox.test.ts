@@ -54,9 +54,14 @@ export const useApiResource = path => {
 const client = { async get(path) {
     if (path.startsWith("/api/inbox/notifications")) return { success: true, status: 200, data: { enabled: false, items: [], unreadCount: 0, nextCursor: null, asOf: '2026-09-16T00:00:00.000Z' }, meta: { featureMode: null, privacy: null, runtimeBoundary: null } };
  if (path === "/api/inbox/delivery/preferences") return {success:false,status:404};
- if (path.startsWith("/api/relationship-communication/conversations") || path.includes("relationship-inbox") || path === "/api/notifications" || path.includes("relationship-signals")) {
+ if (path.startsWith("/api/relationship-communication/") || path.includes("relationship-inbox") || path === "/api/notifications" || path.includes("relationship-signals")) {
   state.resourceReads.push(path);
   const resource = useApiResource(path); if (resource.kind === "loading") return new Promise(() => {});
+  if (path.startsWith('/api/relationship-communication/conversation-summaries')) {
+    const list=state.detail?[resource.data]:resource.data.conversations;
+    resource.data={actorId:'inbox-style-actor',items:(list||[]).map(({messages,...c})=>({...c,lastMessage:messages?.length?{messageId:messages.at(-1).messageId,senderAccountId:messages.at(-1).senderAccountId,sentAt:messages.at(-1).sentAt,bodyPreview:messages.at(-1).body}:null})),hasMore:false,nextCursor:null,asOf:'2026-09-25T00:00:00Z'};
+  } else if (path.startsWith('/api/relationship-communication/unread-summary')) resource.data={actorId:'inbox-style-actor',unreadTotal:(resource.data.conversations||[]).reduce((sum,c)=>sum+c.unreadCount,0),refreshedAt:'2026-09-25T00:00:00Z'};
+  else if (path.includes('/messages?')) {const {messages,unreadCount,lastReadMessageId,...conversation}=resource.data;resource.data={actorId:'inbox-style-actor',conversation,items:messages,hasMore:false,nextCursor:null,newestCursor:messages?.length?'newer':null,direction:'older',asOf:'2026-09-25T00:00:00Z'};}
   return { success: resource.kind === "success" || resource.kind === "empty", status: resource.kind === "offline" ? 0 : resource.kind === "failure" ? 503 : 200, data: resource.data, error: { code: "READ_FAILED", ...resource.error }, meta: { featureMode: null, privacy: null, runtimeBoundary: null } };
  }
  state.requests.push({ method: "GET", path }); return { success: false, error: { message: "隐私控制暂时不可用。" } };

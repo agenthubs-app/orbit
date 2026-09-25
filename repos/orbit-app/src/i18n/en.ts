@@ -1,6 +1,8 @@
 import type { MessageDictionary } from "./messages";
 
 export const en = {
+  "inbox.olderMessages": "Earlier messages", "inbox.latestMessages": "Back to latest messages",
+  "inbox.nextConversationPage": "Next conversation page", "inbox.firstConversationPage": "First conversation page", "inbox.markPageRead": "Mark this page read",
   "contacts.nextPage": "Next page", "contacts.firstPage": "Back to first page",
   "contacts.pageCount": "{shown} on this page, {total} total", "contacts.partialTags": "Only the first 50 tags are shown. Search to narrow the results.",
   "portrait66.restartQuestions": "Ask unstored questions again", "portrait66.unverifiedDrafts": "These drafts were kept. Answer new questions before generating your portrait.",

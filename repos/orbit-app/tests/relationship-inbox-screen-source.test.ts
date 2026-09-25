@@ -45,7 +45,7 @@ test("notification delivery card binds themed styles locally", () => {
 });
 
 test("relationship inbox hands reply drafts to an opaque stable-contact IORBIT prefill", () => {
-  assert.match(screenSource, /relationshipConversationContactId/u);
+  assert.match(screenSource, /retainedContactId\.current = page!\.conversation\.contactId/u);
   assert.match(screenSource, /registerAiTemplatePrefill/u);
   assert.match(screenSource, /inboxPolishTemplate\(\{ contactId, contactName: detail\.participantName, draft: body\.trim\(\) \}\)/u);
   assert.match(screenSource, /pathname: "\/ai\/\[id\]", params: \{ id: "new", prefillIntent \}/u);

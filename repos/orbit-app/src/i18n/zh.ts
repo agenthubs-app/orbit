@@ -1,6 +1,8 @@
 import type { MessageDictionary } from "./messages";
 
 export const zh = {
+  "inbox.olderMessages": "更早的消息", "inbox.latestMessages": "返回最新消息",
+  "inbox.nextConversationPage": "下一页会话", "inbox.firstConversationPage": "返回第一页会话", "inbox.markPageRead": "本页已读",
   "contacts.nextPage": "下一页", "contacts.firstPage": "返回第一页",
   "contacts.pageCount": "本页 {shown} 位，共 {total} 位", "contacts.partialTags": "仅显示前 50 个标签，可用搜索缩小范围。",
   "portrait66.restartQuestions": "重新追问未保存的题目", "portrait66.unverifiedDrafts": "这些草稿已保留，请回答新题后再生成画像。",

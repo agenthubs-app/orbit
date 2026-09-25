@@ -1,6 +1,8 @@
 import type { MessageDictionary } from "./messages";
 
 export const ja = {
+  "inbox.olderMessages": "以前のメッセージ", "inbox.latestMessages": "最新のメッセージに戻る",
+  "inbox.nextConversationPage": "次の会話ページ", "inbox.firstConversationPage": "最初の会話ページ", "inbox.markPageRead": "このページを既読にする",
   "contacts.nextPage": "次のページ", "contacts.firstPage": "最初のページに戻る",
   "contacts.pageCount": "このページ {shown} 人、全 {total} 人", "contacts.partialTags": "タグは最初の 50 件のみ表示しています。検索で絞り込めます。",
   "portrait66.restartQuestions": "未保存の質問を聞き直す", "portrait66.unverifiedDrafts": "下書きは残っています。新しい質問に答えてから、ポートレートを生成してください。",

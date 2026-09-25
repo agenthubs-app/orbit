@@ -47,6 +47,22 @@ export const useApiResource = path => {
 };
 const client = {
   async get(path) {
+    (state.reads ??= []).push(path);
+    if (path.startsWith('/api/relationship-communication/conversation-summaries')) {
+      if (state.kind === 'loading') return new Promise(() => {});
+      if (state.kind !== 'success') return {success:false,status:state.kind === 'offline'?0:503,error:{code:'READ_FAILED',message:'连接暂时失败'},meta:{}};
+      const offset = Number(new URL(path, 'http://fixture').searchParams.get('cursor') || 0);
+      const all = state.detail ? [{...thread,unreadCount:state.detailUnread??thread.unreadCount}] : state.large ? Array.from({length:45},(_,i)=>({...conversations[0],conversationId:'paged:'+i,participantDisplayNames:{'inbox-test-actor':'我','actor:wei':'分页会话 '+i}})) : conversations;
+      const items=all.slice(offset,offset+20).map(({messages,...c})=>({...c,lastMessage:messages.length?{messageId:messages.at(-1).messageId,senderAccountId:messages.at(-1).senderAccountId,sentAt:messages.at(-1).sentAt,bodyPreview:messages.at(-1).body}:null}));
+      return {success:true,status:200,data:{actorId:'inbox-test-actor',items,nextCursor:offset+20<all.length?String(offset+20):null,hasMore:offset+20<all.length,asOf:'2026-09-25T00:00:00Z'},meta:{}};
+    }
+    if (path === '/api/relationship-communication/unread-summary') return {success:true,status:200,data:{actorId:'inbox-test-actor',unreadTotal:state.large?90:2,refreshedAt:'2026-09-25T00:00:00Z'},meta:{}};
+    if (path.startsWith('/api/relationship-communication/conversations/thread%3Awei/messages?')) {
+      const cursor=new URL(path,'http://fixture').searchParams.get('cursor');
+      const {messages,unreadCount,...conversation}=thread;
+      const items=state.emptyMessages?[{...messages[0],body:''}]:state.history?Array.from({length:30},(_,i)=>({...messages[0],messageId:'history:'+String((cursor?0:30)+i),body:'历史消息 '+String((cursor?0:30)+i)})):messages;
+      return {success:true,status:200,data:{actorId:'inbox-test-actor',conversation,items,hasMore:!!state.history&&!cursor,nextCursor:state.history&&!cursor?'older-page':null,newestCursor:'newer',direction:'older',asOf:'2026-09-25T00:00:00Z'},meta:{}};
+    }
     if (path.startsWith("/api/inbox/notifications")) return { success: true, status: 200, data: { enabled: false, items: [], unreadCount: 0, nextCursor: null, asOf: '2026-09-16T00:00:00.000Z' }, meta: { featureMode: null, privacy: null, runtimeBoundary: null } };
     if (path.includes("relationship-communication/conversations") || path === "/api/notifications" || path.includes("relationship-signals")) {
       const resource = useApiResource(path); if (resource.kind === "loading") return new Promise(() => {});
@@ -106,6 +122,44 @@ async function openScreen(t: { after: (fn: () => Promise<void>) => void }): Prom
   await page.getByRole("heading", { name: "收件箱", exact: true }).waitFor();
   return page;
 }
+
+test("inbox lists only summary pages and retains a global unread count", async t => {
+  const page = await openScreen(t);
+  await page.evaluate(() => (window as any).fixture.update({ large: true }));
+  await page.getByText('分页会话 0', { exact: true }).waitFor();
+  await page.getByRole('tab', {name:'消息 90',exact:true}).waitFor();
+  await page.getByRole('button', { name: '下一页会话', exact: true }).click();
+  await page.getByText('分页会话 20', { exact: true }).waitFor();
+  await page.getByRole('tab', {name:'消息 90',exact:true}).waitFor();
+  assert.equal(await page.getByText('分页会话 0', { exact: true }).count(), 0);
+  await page.getByRole('button', { name: '下一页会话', exact: true }).click();
+  await page.getByText('分页会话 40', { exact: true }).waitFor();
+  await page.getByRole('button', { name: '返回第一页会话', exact: true }).click();
+  await page.getByText('分页会话 0', { exact: true }).waitFor();
+  const reads = await page.evaluate(() => (window as any).fixture.reads);
+  assert.ok(!reads.some((path: string) => /^\/api\/relationship-communication\/conversations(?:\?|$)/.test(path)));
+  assert.ok(reads.includes('/api/relationship-communication/unread-summary'));
+});
+
+test("thread replaces bounded history windows, retains a draft and never reads the full conversation", async t => {
+  const page = await openScreen(t);
+  await page.evaluate(() => { (window as any).fixture.update({history:true}); (window as any).openDetail(); });
+  await page.getByText('历史消息 59',{exact:true}).waitFor();
+  await page.getByRole('textbox',{name:'回复正文',exact:true}).fill('保留未发送草稿');
+  await page.getByRole('button',{name:'更早的消息',exact:true}).click();
+  await page.getByText('历史消息 0',{exact:true}).waitFor();
+  assert.equal(await page.getByText('历史消息 59',{exact:true}).count(),0);
+  assert.equal(await page.getByRole('textbox',{name:'回复正文',exact:true}).inputValue(),'保留未发送草稿');
+  await page.evaluate(() => (window as any).fixture.update({detailUnread:1}));
+  await page.getByText('历史消息 0',{exact:true}).waitFor();
+  assert.deepEqual(await page.evaluate(()=>(window as any).fixture.requests),[], 'reading old pages must not move the read cursor backwards');
+  await page.evaluate(() => (window as any).fixture.update({detailUnread:0}));
+  await page.getByRole('button',{name:'返回最新消息',exact:true}).click();
+  await page.getByText('历史消息 59',{exact:true}).waitFor();
+  const reads=await page.evaluate(()=>(window as any).fixture.reads);
+  assert.ok(!reads.some((path:string)=>/^\/api\/relationship-communication\/conversations\/[^/]+$/.test(path)));
+  assert.deepEqual(await page.evaluate(()=>(window as any).fixture.requests),[]);
+});
 
 async function enterComposer(page: Page, participantName = "王明") {
   await page.evaluate(participantName => (window as any).fixture.update({ seed: { participantName } }), participantName);

@@ -175,6 +175,7 @@ test("maps only bounded core API path templates to stable scenarios", () => {
   assert.equal(appPerformanceScenarioForPath("/api/notes?limit=20&q=private"), "app.notes");
   assert.equal(appPerformanceScenarioForPath("/api/notes/note%3Aone"), "app.notes");
   assert.equal(appPerformanceScenarioForPath("/api/chat/relationship-inbox?conversationId=one"), "app.inbox");
+  assert.equal(appPerformanceScenarioForPath("/api/relationship-communication/conversation-summaries?cursor=private"), "app.inbox");
   assert.equal(appPerformanceScenarioForPath("/api/schedule-items?from=2026-09-15"), "app.schedule");
   assert.equal(appPerformanceScenarioForPath("/api/profile"), "app.profile");
   assert.equal(appPerformanceScenarioForPath("/api/admin/private"), null);

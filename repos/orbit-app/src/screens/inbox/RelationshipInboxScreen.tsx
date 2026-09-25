@@ -30,17 +30,12 @@ import {
   chatPrivacyControlsPath,
   notificationDeliveryPath,
   relationshipCommunicationConversationPath,
-  relationshipCommunicationConversationsPath,
   relationshipCommunicationReadPath
 } from "../../api/endpoints";
 import {
   MESSAGE_STATE_FOREGROUND_REFRESH_MS,
   emitMessageStateInvalidation,
-  relationshipConversationContactId,
-  relationshipConversationListToInbox,
-  relationshipConversationToThread,
   relationshipReadReceiptMatches,
-  relationshipReadTarget,
   subscribeMessageStateInvalidation,
 } from "../../api/message-state";
 import { DataCard } from "../../components/DataCard";
@@ -59,12 +54,13 @@ import { inboxNotificationActions, inboxNotificationReceiptMatches, inboxNotific
 import {
   filterInboxFeed,
   inboxFeedFromSources,
-  inboxMessageReadItems,
   type InboxFeedFilter,
   type InboxFeedItem,
   type InboxFeedView,
 } from "../../view-models/inbox-feed";
 import { runInboxReadBatch } from "../../view-models/inbox-read-batch";
+import { decodeConversationSummaryPage, conversationSummaryView, conversationSummaryReadItems, decodeRelationshipMessagePage, relationshipMessagePageView } from "../../view-models/relationship-pages";
+import { relationshipUnreadSummarySchema } from "../../api/schema/relationship-unread-summary";
 import {
   buildRelationshipSignalConfirmRequest,
   buildRelationshipPrivacyToggleRequest,
@@ -191,13 +187,13 @@ function useInboxResource(path: string, isEmpty: (data: unknown) => boolean,
   emptyRef.current = isEmpty;
   const validRef = useRef(options.isValid);
   validRef.current = options.isValid;
-  const [snapshot, setSnapshot] = useState<{ clientGet: ClientGet; state: RouteState<unknown>; refreshing: boolean } | null>(null);
+  const [snapshot, setSnapshot] = useState<{ clientGet: ClientGet; path: string; state: RouteState<unknown>; refreshing: boolean } | null>(null);
   const refresh = useCallback(() => {
     if (!isCurrent()) return;
     pending.current?.abort();
-    setSnapshot(previous => ({ clientGet, state: !options.clearOnRefresh && previous?.clientGet === clientGet ? previous.state : { kind: "loading" }, refreshing: true }));
+    setSnapshot(previous => ({ clientGet, path, state: !options.clearOnRefresh && previous?.clientGet === clientGet && previous.path === path ? previous.state : { kind: "loading" }, refreshing: true }));
     setAttempt(value => value + 1);
-  }, [clientGet, isCurrent, options.clearOnRefresh]);
+  }, [clientGet, isCurrent, options.clearOnRefresh, path]);
   useEffect(() => {
     if (!isCurrent()) return;
     const controller = new AbortController();
@@ -209,10 +205,10 @@ function useInboxResource(path: string, isEmpty: (data: unknown) => boolean,
         : received.success && validRef.current && !validRef.current(received.data)
           ? { ...received, success: false as const, error: { code: "ORBIT_APP_INVALID_MESSAGE_STATE", message: locale.t("inbox.invalidMessageState") } }
           : received;
-      setSnapshot({ clientGet, state: resultToRouteState(result, emptyRef.current), refreshing: false });
+      setSnapshot({ clientGet, path, state: resultToRouteState(result, emptyRef.current), refreshing: false });
     }).catch(() => {
       if (!isCurrent() || controller.signal.aborted) return;
-      setSnapshot({ clientGet, state: { kind: "failure", status: 0, meta: { featureMode: null, privacy: null, runtimeBoundary: null }, error: { code: "ORBIT_APP_UNEXPECTED_ERROR", message: locale.t("inbox.requestFailed") } }, refreshing: false });
+      setSnapshot({ clientGet, path, state: { kind: "failure", status: 0, meta: { featureMode: null, privacy: null, runtimeBoundary: null }, error: { code: "ORBIT_APP_UNEXPECTED_ERROR", message: locale.t("inbox.requestFailed") } }, refreshing: false });
     });
     return () => controller.abort();
   }, [attempt, clientGet, isCurrent, path]);
@@ -221,8 +217,8 @@ function useInboxResource(path: string, isEmpty: (data: unknown) => boolean,
     const timer = setInterval(refresh, options.refreshIntervalMs);
     return () => clearInterval(timer);
   }, [isCurrent, options.refreshIntervalMs, refresh]);
-  return { ...(isCurrent() && snapshot?.clientGet === clientGet ? snapshot.state : { kind: "loading" as const }), refresh,
-    refreshing: isCurrent() && snapshot?.clientGet === clientGet ? snapshot.refreshing : false };
+  return { ...(isCurrent() && snapshot?.clientGet === clientGet && snapshot.path === path ? snapshot.state : { kind: "loading" as const }), refresh,
+    refreshing: isCurrent() && snapshot?.clientGet === clientGet && snapshot.path === path ? snapshot.refreshing : false };
 }
 
 function firstParam(value: string | string[] | undefined): string {
@@ -343,14 +339,21 @@ function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliv
     | { kind: "failure"; message: string }
     | { data: DeliveryView; kind: "success"; signal: AbortSignal }
   >({ kind: "idle" });
+  const [conversationCursor, setConversationCursor] = useState<string | null>(null);
   const state = useInboxResource(
-    relationshipCommunicationConversationsPath(),
-    (data) => relationshipConversationListToInbox(data, actorId)?.conversations.length === 0,
+    `/api/relationship-communication/conversation-summaries?limit=20${conversationCursor ? `&cursor=${encodeURIComponent(conversationCursor)}` : ""}`,
+    (data) => decodeConversationSummaryPage(data, actorId)?.items.length === 0,
     clientGet, isCurrent, {
-      isValid: (data) => relationshipConversationListToInbox(data, actorId) !== null,
+      isValid: (data) => decodeConversationSummaryPage(data, actorId) !== null,
       refreshIntervalMs: MESSAGE_STATE_FOREGROUND_REFRESH_MS,
     }
   );
+  const unreadState = useInboxResource("/api/relationship-communication/unread-summary", () => false, clientGet, isCurrent, {
+    isValid: data => { const parsed = relationshipUnreadSummarySchema.safeParse(data); return parsed.success && parsed.data.actorId === actorId; },
+    refreshIntervalMs: MESSAGE_STATE_FOREGROUND_REFRESH_MS,
+  });
+  const unread = relationshipUnreadSummarySchema.safeParse(unreadState.kind === "success" ? unreadState.data : null);
+  const messagesUnread = unread.success && unread.data.actorId === actorId ? unread.data.unreadTotal : 0;
   const notificationsState = useInboxResource(
     ORBIT_API_ENDPOINTS.notifications,
     (data) => relationshipAlertsToView(data, undefined, locale.language).alerts.length === 0,
@@ -372,30 +375,12 @@ function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliv
     (data) => relationshipSignalsToView(data, locale.language).signals.length === 0,
     clientGet, isCurrent
   );
-  const firstPage = state.kind === "success" || state.kind === "empty" ? state.data : null;
-  type MessagePage = import("../../api/contract/relationship-communication").RelationshipConversationListDTO;
-  const [more, setMore] = useState<{ source: unknown; page: MessagePage } | null>(null);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [pageError, setPageError] = useState("");
-  const firstPageRef = useRef(firstPage); firstPageRef.current = firstPage;
-  const conversationsData = more && more.source === firstPage ? more.page : firstPage;
-  const messagePage = conversationsData as MessagePage | null;
-  const nextCursor = typeof messagePage?.nextCursor === "string" ? messagePage.nextCursor : null;
-  async function loadMoreMessages() {
-    if (!nextCursor || loadingMore || !isCurrent()) return;
-    const source = firstPage;
-    setLoadingMore(true); setPageError("");
-    try {
-      const result = await clientGet(relationshipCommunicationConversationsPath() + "?cursor=" + encodeURIComponent(nextCursor));
-      if (!isCurrent() || firstPageRef.current !== source) return;
-      if (!result.success || !relationshipConversationListToInbox(result.data, actorId)) throw new Error();
-      const incoming = result.data as MessagePage;
-      const byId = new Map(messagePage?.conversations.map(item => [item.conversationId, item]));
-      incoming.conversations.forEach(item => byId.set(item.conversationId, item));
-      setMore({ source, page: { ...incoming, conversations: [...byId.values()] } });
-    } catch { if (isCurrent()) setPageError(locale.t("inbox.requestFailed")); }
-    finally { if (isCurrent()) setLoadingMore(false); }
-  }
+  const conversationsData = state.kind === "success" || state.kind === "empty" ? state.data : null;
+  const messagePage = decodeConversationSummaryPage(conversationsData, actorId);
+  const nextCursor = messagePage?.nextCursor;
+  const loadingMore = state.kind === "loading" || state.refreshing;
+  const pageError = "";
+  function loadMoreMessages() { if (nextCursor && isCurrent()) setConversationCursor(nextCursor); }
   const signalsData = signalsState.kind === "success" || signalsState.kind === "empty" ? signalsState.data : null;
   const feed = useMemo(() => inboxFeedFromSources({
     actorId,
@@ -413,7 +398,7 @@ function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliv
   currentBatchScope.current = batchScope;
   const [batchPending, setBatchPending] = useState(false);
   const [batchError, setBatchError] = useState("");
-  const readItems = activeSection === "threads" ? inboxMessageReadItems(conversationsData, actorId) : feed.items;
+  const readItems = activeSection === "threads" ? (messagePage ? conversationSummaryReadItems(messagePage, actorId, locale.language) : []) : feed.items;
   const confirmableUnread = readItems.filter(item => !item.read && item.readAction).length;
   const [composing, setComposing] = useState(
     Boolean(!seedContactId && (seedName || seedOrganization))
@@ -428,6 +413,7 @@ function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliv
   const isContentCurrent = useCallback(() => isCurrent() && currentContent.current, [isCurrent, contentReady]);
 
   useEffect(() => subscribeMessageStateInvalidation(state.refresh), [state.refresh]);
+  useEffect(() => subscribeMessageStateInvalidation(unreadState.refresh), [unreadState.refresh]);
 
   useEffect(() => {
     currentDelivery.current = null;
@@ -496,6 +482,8 @@ function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliv
     if (!isCurrent()) return;
     refreshDelivery();
     state.refresh();
+    setConversationCursor(null);
+    unreadState.refresh();
     refreshNotifications();
     signalsState.refresh();
   }
@@ -543,6 +531,7 @@ function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliv
       }
       title={locale.t(contentReady && composing ? "inbox.compose" : contentReady && createdThread ? "inbox.draftPreview" : "inbox.title")}
       onMarkAllRead={!composing && !createdThread ? () => void (activeSection === "alerts" && typedEnabled ? typedInbox.markRead() : markAllRead()) : undefined}
+      markAllReadLabel={activeSection === "threads" ? locale.t("inbox.markPageRead") : locale.t("inbox.markAllRead")}
       markAllReadDisabled={activeSection === "alerts" && typedEnabled ? typedInbox.busy || !typedInbox.data?.unreadCount : batchPending || confirmableUnread === 0}
       hideBack={contentReady && composing}
       onBack={createdThread ? () => setCreatedThread(null) : undefined}
@@ -563,7 +552,8 @@ function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliv
       {activeSection === "threads" && state.kind === "failure" ? (
         <ErrorState message={state.error.message} />
       ) : null}
-      {!composing && !createdThread ? <InboxSegmentedControl activeSection={activeSection} alertCount={typedEnabled ? typedInbox.data?.unreadCount ?? 0 : feed.unreadCount} messageCount={Number.isSafeInteger(messagePage?.unreadTotal) && messagePage!.unreadTotal! >= 0 ? messagePage!.unreadTotal! : relationshipConversationListToInbox(conversationsData, actorId)?.conversations.reduce((sum, item) => sum + item.unreadCount, 0) ?? 0} onChange={selectSection} /> : null}
+      {!composing && !createdThread ? <InboxSegmentedControl activeSection={activeSection} alertCount={typedEnabled ? typedInbox.data?.unreadCount ?? 0 : feed.unreadCount} messageCount={messagesUnread} onChange={selectSection} /> : null}
+      {activeSection === "threads" && conversationCursor && !composing && !createdThread ? <ActionButton icon="arrow-back-outline" label={locale.t("inbox.firstConversationPage")} onPress={() => setConversationCursor(null)} variant="secondary" /> : null}
       {activeSection === "alerts" && typedEnabled ? (typedInbox.data ? <NotificationInboxList data={typedInbox.data} filter={typedInbox.filter} onFilter={typedInbox.setFilter} busy={typedInbox.busy} error={typedInbox.error} onRefresh={typedInbox.refresh} onMore={() => void typedInbox.more()} onOpen={id => router.push(`/inbox/notifications/${encodeURIComponent(id)}` as Href)} /> : typedInbox.error ? <View><ErrorState message={typedInbox.error}/><Pressable accessibilityRole="button" onPress={typedInbox.refresh}><Text>{locale.t("common.retry")}</Text></Pressable></View> : <LoadingState />) : retainedContent.current || activeSection === "alerts" ? (
         <View style={activeSection === "threads" && !contentReady ? { display: "none" } : undefined}>
         <InboxContent
@@ -633,21 +623,34 @@ function ScopedRelationshipInboxThreadScreen({ actorId, conversationId, scopeKey
   const locale = useOrbitLocale();
   const { colors } = useOrbitTheme();
   const { clientGet, clientPost, isCurrent } = useInboxRequests(scopeKey);
-  const state = useInboxResource(
-    relationshipCommunicationConversationPath(conversationId),
-    (data) => relationshipConversationToThread(data, actorId)?.messages.length === 0,
+  const [historyCursor, setHistoryCursor] = useState<string | null>(null);
+  const summaryState = useInboxResource(`/api/relationship-communication/conversation-summaries?conversationId=${encodeURIComponent(conversationId)}&limit=1`, () => false,
+    clientGet, isCurrent, { isValid: data => {
+      const page = decodeConversationSummaryPage(data, actorId);
+      return !!page && page.items.length === 1 && page.items[0]?.conversationId === conversationId;
+    }, refreshIntervalMs: MESSAGE_STATE_FOREGROUND_REFRESH_MS });
+  const messageState = useInboxResource(
+    `${relationshipCommunicationConversationPath(conversationId)}/messages?limit=30&direction=older${historyCursor ? `&cursor=${encodeURIComponent(historyCursor)}` : ""}`,
+    (data) => decodeRelationshipMessagePage(data, actorId, conversationId)?.items.length === 0,
     clientGet, isCurrent, {
-      isValid: (data) => relationshipConversationToThread(data, actorId) !== null,
+      isValid: (data) => decodeRelationshipMessagePage(data, actorId, conversationId)?.direction === "older",
       refreshIntervalMs: MESSAGE_STATE_FOREGROUND_REFRESH_MS,
     }
   );
+  const refresh = useCallback(() => { setHistoryCursor(null); summaryState.refresh(); messageState.refresh(); }, [summaryState.refresh, messageState.refresh]);
+  const summary = decodeConversationSummaryPage(summaryState.kind === "success" ? summaryState.data : null, actorId)?.items[0];
+  const state = { ...(summaryState.kind === "failure" || summaryState.kind === "offline" ? summaryState
+    : messageState.kind === "failure" || messageState.kind === "offline" ? messageState
+    : summaryState.kind === "loading" ? summaryState : messageState), refresh,
+    refreshing: summaryState.refreshing || messageState.refreshing };
   const stateData = state.kind === "success" || state.kind === "empty" ? state.data : null;
-  const detail = stateData ? relationshipConversationToThread(stateData, actorId) : null;
+  const page = decodeRelationshipMessagePage(stateData, actorId, conversationId);
+  const detail = page && summary && page.conversation.qualificationVersion === summary.qualificationVersion ? relationshipMessagePageView(page, actorId, locale.language) : null;
   const retainedDetail = useRef<RelationshipThreadDetailView | null>(null);
   const retainedContactId = useRef("");
   if (detail) {
     retainedDetail.current = detail;
-    retainedContactId.current = relationshipConversationContactId(stateData, actorId);
+    retainedContactId.current = page!.conversation.contactId;
   }
   const contentReady = Boolean(detail);
   const currentContent = useRef(contentReady);
@@ -659,7 +662,8 @@ function ScopedRelationshipInboxThreadScreen({ actorId, conversationId, scopeKey
   useEffect(() => subscribeMessageStateInvalidation(state.refresh), [state.refresh]);
   useEffect(() => {
     if (!stateData || !isContentCurrent()) return;
-    const target = relationshipReadTarget(stateData, actorId);
+    const last = page?.items.at(-1);
+    const target = !historyCursor && summary && summary.unreadCount > 0 && last ? { conversationId, lastReadMessageId: last.messageId } : null;
     if (!target) {
       setReadError("");
       return;
@@ -685,7 +689,7 @@ function ScopedRelationshipInboxThreadScreen({ actorId, conversationId, scopeKey
         setReadError(locale.t("inbox.readUnconfirmed"));
       }
     });
-  }, [actorId, clientPost, isContentCurrent, stateData]);
+  }, [actorId, clientPost, isContentCurrent, stateData, historyCursor, summary?.unreadCount]);
 
   return (
     <InboxLayout
@@ -708,6 +712,9 @@ function ScopedRelationshipInboxThreadScreen({ actorId, conversationId, scopeKey
       {conversationId && state.kind === "failure" ? (
         <ErrorState message={state.error.message} />
       ) : null}
+      {page && summary && !detail ? <ErrorState message={locale.t("inbox.invalidMessageState")} /> : null}
+      {historyCursor ? <ActionButton icon="arrow-forward-outline" label={locale.t("inbox.latestMessages")} onPress={refresh} variant="secondary" /> : null}
+      {detail && page?.nextCursor ? <ActionButton icon="chevron-up-outline" label={locale.t("inbox.olderMessages")} onPress={() => setHistoryCursor(page.nextCursor)} variant="secondary" /> : null}
       {conversationId && detail ? <NotificationDeliverySettings conversationId={conversationId}/> : null}
       {conversationId && readError ? <Text accessibilityRole="alert">{readError}</Text> : null}
       {conversationId && retainedDetail.current ? (
@@ -718,7 +725,7 @@ function ScopedRelationshipInboxThreadScreen({ actorId, conversationId, scopeKey
           contactId={retainedContactId.current}
           isCurrent={isContentCurrent}
           detail={retainedDetail.current}
-          delivery={stateData ? { actorId, qualificationVersion: (stateData as { qualificationVersion: string }).qualificationVersion } : undefined}
+          delivery={detail && page ? { actorId, qualificationVersion: page.conversation.qualificationVersion } : undefined}
         />
         </View>
       ) : null}
@@ -732,11 +739,12 @@ function ScopedRelationshipInboxThreadScreen({ actorId, conversationId, scopeKey
   );
 }
 
-function InboxLayout({ children, title, refreshControl, onCompose, onMarkAllRead, markAllReadDisabled = false, onBack, hideBack = false }: PropsWithChildren<{
+function InboxLayout({ children, title, refreshControl, onCompose, onMarkAllRead, markAllReadLabel, markAllReadDisabled = false, onBack, hideBack = false }: PropsWithChildren<{
   title: string;
   refreshControl?: React.ReactElement<React.ComponentProps<typeof RefreshControl>>;
   onCompose?: (() => void) | undefined;
   onMarkAllRead?: (() => void) | undefined;
+  markAllReadLabel?: string;
   markAllReadDisabled?: boolean;
   onBack?: (() => void) | undefined;
   hideBack?: boolean;
@@ -771,13 +779,13 @@ function InboxLayout({ children, title, refreshControl, onCompose, onMarkAllRead
           {onMarkAllRead ? (
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={locale.t("inbox.markAllRead")}
+              accessibilityLabel={markAllReadLabel ?? locale.t("inbox.markAllRead")}
               accessibilityState={{ disabled: markAllReadDisabled }}
               disabled={markAllReadDisabled}
               onPress={onMarkAllRead}
               style={({ pressed }) => [styles.toolbarButton, markAllReadDisabled && styles.disabled, pressed && styles.pressed]}
             >
-              <Text style={styles.toolbarComposeText}>{locale.t("inbox.markAllRead")}</Text>
+              <Text style={styles.toolbarComposeText}>{markAllReadLabel ?? locale.t("inbox.markAllRead")}</Text>
             </Pressable>
           ) : onCompose ? (
             <Pressable
@@ -964,7 +972,8 @@ function InboxContent({
 }) {
   const locale = useOrbitLocale();
   const { styles } = useStyles();
-  const view = relationshipConversationListToInbox(data, actorId) ?? {
+  const page = decodeConversationSummaryPage(data, actorId);
+  const view = page ? conversationSummaryView(page, actorId, locale.language) : {
     conversations: [], selected: null, summary: locale.t("inbox.noMessages"), title: locale.t("inbox.title")
   };
   const signalsView = relationshipSignalsToView(signalsData, locale.language);
@@ -1078,7 +1087,7 @@ function InboxContent({
   if (activeSection === "threads") return <>
     <MessageInboxList conversations={view.conversations} onOpen={onOpenConversation} />
     {batchError || pageError ? <Text accessibilityRole="alert">{batchError || pageError}</Text> : null}
-    {onLoadMoreMessages ? <ActionButton icon="chevron-down-outline" disabled={loadingMore} label={locale.t("inbox.loadMoreMessages")} onPress={onLoadMoreMessages} variant="secondary" /> : null}
+    {onLoadMoreMessages ? <ActionButton icon="chevron-down-outline" disabled={loadingMore} label={locale.t("inbox.nextConversationPage")} onPress={onLoadMoreMessages} variant="secondary" /> : null}
   </>;
 
   const visibleFeed = filterInboxFeed(feed, activeFilter);

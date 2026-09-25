@@ -38,6 +38,9 @@ const state = window.fixture = {
     if (path.includes("relationship-signals")) return state.signals || { signals: [] };
     if (path === "/api/chat/privacy") return { conversationId: state.conversationId, participantName: state.actor, organization: "Example", analysisOptIn: { enabled: state.allowPrivateAnalysis ?? true, status: state.allowPrivateAnalysis === false ? "opted_out" : "opted_in" }, analysisDeletion: { status: "available" }, sensitiveShareConfirmation: { confirmationRequired: true, status: "required" }, privateNotes: [], provenance: { sourceLabel: "对话记录" }, state: "success" };
     if (path === "/api/relationship-communication/conversations") return { conversations: [state.conversation()], refreshedAt: "2026-09-15T00:00:00Z" };
+    if (path === "/api/relationship-communication/conversation-summaries") { const {messages,...c}=state.detail?state.thread():state.conversation();const last=messages.at(-1);return {actorId:state.actor,items:[{...c,lastMessage:{messageId:last.messageId,senderAccountId:last.senderAccountId,sentAt:last.sentAt,bodyPreview:last.body}}],hasMore:false,nextCursor:null,asOf:"2026-09-25T00:00:00Z"}; }
+    if (path === "/api/relationship-communication/unread-summary") return {actorId:state.actor,unreadTotal:2,refreshedAt:"2026-09-25T00:00:00Z"};
+    if (path.includes("/api/relationship-communication/conversations/") && path.endsWith("/messages")) { const {messages,unreadCount,...conversation}=state.thread(state.serverDraftReply||"已有消息");return {actorId:state.actor,conversation,items:messages,hasMore:false,nextCursor:null,newestCursor:"newer",direction:"older",asOf:"2026-09-25T00:00:00Z"}; }
     if (path.includes("/api/relationship-communication/conversations/")) return state.thread(state.serverDraftReply || "已有消息");
     return { inbox: { conversations: [state.conversation()] }, selectedThread: state.detail ? state.thread() : null, currentUser: { displayName: "当前用户" }, draftReply: { body: state.serverDraftReply || "" }, sideEffects: effects };
   },
@@ -60,7 +63,7 @@ export const Stack = () => null;
 export const randomUUID = () => "test-inbox-scope-" + (++uuid);
 export const readSnapshot = async (_baseUrl, _actorId, path) => { const cached = path === "/api/notifications" ? state.cachedNotifications : state.cachedInbox; return cached ? { result: { success: true, status: 200, data: cached, meta: { featureMode: null, privacy: null, runtimeBoundary: null } }, syncedAt: "2026-09-12T00:00:00Z" } : null; };
 export const writeSnapshot = async () => {};
-export const appPerformanceScenarioForPath = path => path === "/api/relationship-communication/conversations" ? "app.inbox" : null;
+export const appPerformanceScenarioForPath = path => path.startsWith("/api/relationship-communication/conversation-summaries") ? "app.inbox" : null;
 export const appPerformanceInput = (metric, scenario) => ({ commit: "baseline-sha", environment: "app-release-simulator", metric, run: 1, scenario, unit: "milliseconds" });
 export const isAppPerformanceEnabled = () => true;
 export const measureAppPerformance = async (input, work) => { const result = await work(); state.measurements.push(input); return result; };
@@ -141,7 +144,7 @@ for (const detail of [false, true]) {
   test(`inbox ${detail ? "thread" : "list"} never coalesces a new empty-cookie actor with old pending reads`, async t => {
     const p = await open(t, { detail, holdReads: true });
     const oldCount = await p.evaluate(() => (window as any).fixture.requests.length);
-    assert.equal(oldCount, detail ? 1 : 4);
+    assert.equal(oldCount, detail ? 2 : 5);
     await update(p, { actor: "actor:two" });
     assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), oldCount * 2);
     await p.evaluate(oldCount => { const s = (window as any).fixture; for (let i = 0; i < oldCount; i++) s.reply(i, 401); }, oldCount); await settle(p);
@@ -440,9 +443,9 @@ test("inbox polls real conversations within fifteen seconds without replacing an
   await p.getByRole("textbox", { name: "正文", exact: true }).fill("十五秒内不能丢的草稿");
   await p.evaluate(() => { (window as any).fixture.holdReads = true; });
   await p.clock.fastForward(15_001); await settle(p);
-  assert.equal(await p.evaluate(() => (window as any).fixture.requests.filter((request: any) => request.path === "/api/relationship-communication/conversations").length), 2);
+  assert.equal(await p.evaluate(() => (window as any).fixture.requests.filter((request: any) => request.path === "/api/relationship-communication/conversation-summaries").length), 2);
   assert.equal(await p.getByRole("textbox", { name: "正文", exact: true }).inputValue(), "十五秒内不能丢的草稿");
-  await p.evaluate(() => { const s = (window as any).fixture; const index = s.requests.findLastIndex((request: any) => request.path === "/api/relationship-communication/conversations"); s.reply(index); }); await settle(p);
+  await p.evaluate(() => { const s = (window as any).fixture; const index = s.requests.findLastIndex((request: any) => request.path === "/api/relationship-communication/conversation-summaries"); s.reply(index); }); await settle(p);
   assert.equal(await p.getByRole("textbox", { name: "正文", exact: true }).inputValue(), "十五秒内不能丢的草稿");
 });
 
@@ -474,7 +477,7 @@ for (const detail of [false, true]) {
     await p.evaluate(() => { const s = (window as any).fixture; s.holdReads = true; s.emit("background"); }); await settle(p);
     assert.doesNotMatch(await p.locator("body").innerText(), /已有消息|actor:one/u);
     await p.evaluate(() => (window as any).fixture.emit("active")); await settle(p);
-    const count = detail ? 1 : 4;
+    const count = detail ? 2 : 5;
     assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), count * 2);
     assert.doesNotMatch(await p.locator("body").innerText(), /已有消息|actor:one/u);
     await p.evaluate(count => { const s = (window as any).fixture; for (let i = count; i < s.requests.length; i++) s.reply(i); }, count); await settle(p);
@@ -485,9 +488,9 @@ for (const detail of [false, true]) {
   test(`inbox foreground catches batched inactive-active once for ${detail ? "thread" : "list"}`, async t => {
     const p = await open(t, { detail });
     await p.evaluate(() => { const s = (window as any).fixture; s.emit("inactive"); s.emit("active"); }); await settle(p);
-    assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), detail ? 2 : 8);
+    assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), detail ? 4 : 10);
     await p.evaluate(() => { const s = (window as any).fixture; s.emit("active"); s.emit("active"); }); await settle(p);
-    assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), detail ? 2 : 8);
+    assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), detail ? 4 : 10);
   });
 
   test(`inbox foreground rereads ${detail ? "thread" : "list"} on focus restoration and does not read while blurred`, async t => {
@@ -495,9 +498,9 @@ for (const detail of [false, true]) {
     await update(p, { focused: false });
     assert.doesNotMatch(await p.locator("body").innerText(), /已有消息/u);
     await p.evaluate(() => { const s = (window as any).fixture; s.emit("background"); s.emit("active"); s.refresh(); }); await settle(p);
-    assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), detail ? 1 : 4);
+    assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), detail ? 2 : 5);
     await update(p, { focused: true });
-    assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), detail ? 2 : 8);
+    assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), detail ? 4 : 10);
     assert.match(await p.locator("body").innerText(), /已有消息/u);
   });
 }
@@ -646,7 +649,7 @@ test("inbox foreground clears the hidden draft when identity changes in the back
   await p.getByRole("textbox", { name: "回复正文", exact: true }).fill("原账号的回复");
   await p.evaluate(() => (window as any).fixture.emit("background")); await settle(p);
   await update(p, { actor: "actor:two" });
-  assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), 1);
+  assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), 2);
   await p.evaluate(() => (window as any).fixture.emit("active")); await settle(p);
   assert.equal(await p.getByRole("textbox", { name: "回复正文", exact: true }).inputValue(), "");
   assert.match(await p.locator("body").innerText(), /actor:two/u);
@@ -678,7 +681,7 @@ test("a reply receipt from the previous account cannot update the next account's
   await settle(p);
   assert.equal(await p.getByRole("textbox", { name: "回复正文" }).inputValue(), "");
   assert.equal(await p.evaluate(() => (window as any).fixture.expiries), 0);
-  assert.equal(await p.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.path.endsWith("/messages")).length), 1);
+  assert.equal(await p.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.method === "POST" && r.path.endsWith("/messages")).length), 1);
 });
 
 const typedAt = '2026-09-16T02:00:00.000Z';
