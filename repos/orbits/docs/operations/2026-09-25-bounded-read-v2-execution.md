@@ -434,3 +434,11 @@ GitNexus共用命令和工作仓库为CRITICAL，inbox工厂HIGH，configured工
 仍未完成：普通mixed/push configured提醒命令及旧legacy dispatcher的全部writer登记；定期series窗口扩展的独立有界持久任务；历史回填与Push抑制；其余通知来源。已有旧混合writer若改变revision，待消费工作会判过期，这也是不能删除旧refresh或宣称“整个reminder来源已增量完成”的具体原因。尚未安装线上工作表、开flag、发布、发送Push或验证Neon实际月用量。
 
 负例测试的wake存储泛型先未通过typecheck，改为真实WakeIntent类型的PG store后，该PG测试及Web完整typecheck均通过；生产接口类型未放宽。编辑前日程服务CRITICAL、sync HIGH，configured工厂UNKNOWN已核对日程API/Today/AI真实调用。索引重建后的提交图检查另记，不把86项子集当作整个App或生产验收。
+
+## 第二十四批：普通混合/Push提醒命令与旧投递器登记当前版本
+
+第二十三批已提交`f4493e5e`。本地PG两阶段反例：mixed命令创建后0个work；只接create后，旧dispatcher把plan改为delivered，work还指向scheduled版本。现在configured命令对所有合法渠道登记变化/到期工作，纯站内wake创建条件不变，不给混合或Push-only伪造pure wake。configured旧dispatcher保存最终plan时，用一个局部数据库事务一起保存plan和projection revision，原有发送/切流策略未重写；默认flag关闭仍使用原repository。
+
+PG覆盖mixed创建/幂等/未来不领取/无pure wake、真实legacy in_app投递先发生再投影、改期/取消、Push-only无可用渠道失败仍保持旧收件箱语义、命令与旧dispatcher的plan/work原子回滚及故障恢复。外部send是明确禁止的测试替身，不能作为真实Push已验收证据。17文件提醒/切流/工作队列/日程来源/路由回归 **78/78，零跳过**，Web完整typecheck通过。编辑前configured工厂和canonical命令图影响均CRITICAL，已预先提示并保留原wake/投递fence验证。线上表、flag、部署和手机均未改。
+
+这些生产者已接齐不等于通知全量迁移完成：周期series的独立持久窗口补齐、历史回填和Push抑制、目标撤销，以及其他业务通知来源仍开放。旧legacy dispatcher的外部发送不在本批plan/work事务内，不能把这次数据库原子登记描述为外部Push exactly-once；旧GET和legacy切流门继续保留。

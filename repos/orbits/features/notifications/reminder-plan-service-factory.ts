@@ -11,6 +11,7 @@ import { assertCanonicalReminderTargetOwned, type CanonicalReminderWakePublisher
 import { createCanonicalReminderCommandService, type CanonicalReminderCommandRuntime } from "./canonical-reminder-command-transaction";
 import type { LiveDatabaseEnv } from "../../shared/storage/live-database-config";
 import { createInboxProjectionWorkRepository } from "./storage/inbox-projection-work";
+import { canonicalInboxProjectionRevision } from "./canonical-inbox-projection-revision";
 
 export async function assertReminderTargetOwned(input: { store: LiveRecordStoreLike; workspaceId: string; actorId: string; targetId: string; targetType: ReminderTargetType }) {
   return assertCanonicalReminderTargetOwned(input);
@@ -31,6 +32,10 @@ export function createConfiguredReminderPlanService(options: ConfiguredReminderP
   if (!configured) throw new Error("Reminder plan storage is not configured");
   if (!transactional || transactional.workspaceId !== configured.workspaceId) throw new Error("Reminder plan transactional storage is not configured");
   const now = options.now ?? options.runtime?.now ?? (() => new Date().toISOString());
+  const inboxProjection = (options.env ?? process.env).ORBIT_CANONICAL_INBOX_PROJECTION === "1"
+    ? options.runtime?.inboxProjection ?? createInboxProjectionWorkRepository({ client: transactional.client, workspaceId: configured.workspaceId, now })
+    : undefined;
+  const repository = createReminderPlanRepository({ store: configured.store, workspaceId: configured.workspaceId });
   const targetAuthorizer: ReminderTargetAuthorizer = {
     assertOwned: command => assertReminderTargetOwned({ ...configured, ...command }),
   };
@@ -49,7 +54,15 @@ export function createConfiguredReminderPlanService(options: ConfiguredReminderP
     pushDevices: createReminderPushDeviceGateway({
       serviceForActor: (actorId) => createPushDeviceService({ actorId }),
     }),
-    repository: createReminderPlanRepository({ store: configured.store, workspaceId: configured.workspaceId }),
+    repository: { ...repository, savePlan: inboxProjection ? plan => transactional.client.transaction(async tx => {
+      // The legacy dispatcher still owns its existing delivery policy and
+      // external sends. Only its final plan fact and projection revision are
+      // committed together here; a projection is never proof of Push delivery.
+      const saved = await createReminderPlanRepository({ store: createPostgresLiveRecordStore({ client: tx }), workspaceId: configured.workspaceId }).savePlan(plan);
+      await inboxProjection.enqueue(tx, { actorId: saved.ownerUserId, sourceKind: "canonical_reminder", sourceId: saved.id,
+        sourceRevision: canonicalInboxProjectionRevision(saved) }, { availableAt: saved.status === "cancelled" ? saved.updatedAt : saved.fireAt });
+      return saved;
+    }) : repository.savePlan },
     targetAuthorizer,
   });
   const commands = createCanonicalReminderCommandService({
@@ -58,9 +71,7 @@ export function createConfiguredReminderPlanService(options: ConfiguredReminderP
       workspaceId: configured.workspaceId,
       now,
       publisher: options.publisher ?? options.runtime?.publisher,
-      inboxProjection: (options.env ?? process.env).ORBIT_CANONICAL_INBOX_PROJECTION === "1"
-        ? options.runtime?.inboxProjection ?? createInboxProjectionWorkRepository({client:transactional.client,workspaceId:configured.workspaceId,now})
-        : undefined,
+      inboxProjection,
     },
   });
   return { ...base, ...commands };

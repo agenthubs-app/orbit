@@ -18,11 +18,13 @@ typed inbox 的纯站内 snooze 已接入同一变化/到期登记。它用精�
 
 周期日程reconcile现已在日程原事务登记新建/取消plan的到期工作，configured日程工厂及旧business refresh受相同flag控制。周期计划本来包含in_app+ios_push，因此投影专用读取允许合法混合渠道，并在scheduled周期计划物化前重新校验当前series/occurrence。混合delivered可能只表示Push成功，投影不要求也不伪造in_app fence；pure-in-app delivered仍要求fence，canonical wake本身不接受混合计划。这是通知读模型登记，不是Push投递迁移。
 
+普通mixed/push configured命令及typed snooze现也登记变化/到期工作，纯站内wake创建条件不变。configured legacy dispatcher保存最终plan时，和projection revision在同一局部数据库事务提交，避免先投递后消费时work仍指向旧scheduled版本。原外部发送/设备状态/切流策略未重写，不能将局部数据库原子性宣传为Push exactly-once；无可用渠道的failed仍能按旧收件箱语义生成提醒。
+
 ## 仍然阻止切换的具体缺项
 
-1. **语义尚不等价**：纯站内的 configured 命令、wake / dispatcher 已覆盖 scheduled / failed / delivered，取消仍由读取权威权限隐藏。周期日程的混合计划生产者已登记，但普通mixed/push提醒命令、旧legacy dispatcher、其他直接repository writer和历史计划还没有完整变化/到期登记；旧writer改变revision可让待消费工作过期，不能直接删GET reminder分支。
+1. **语义尚不等价**：configured命令（含mixed/push及typed snooze）、wake / canonical dispatcher、configured legacy dispatcher和周期日程reconcile已接当前变化/到期登记。历史计划未回填，旧部署/未更新脚本仍可能漏登记，取消仍由读取权威权限隐藏，不能直接删GET reminder分支。
 2. **周期日程**：旧 refresh 同时负责生成周期实例/计划并验证当前实例。已消除reconcile中的全用户plan列表和逐实例正文读取，改为单series旧计划50条keyset取消＋50个ID批量存在检查；相应partial索引加入records迁移，尚未安装线上。该改造降低旧路径成本，但没有替代series / exception / 到期窗口补齐。停止旧刷新前必须先接独立有限窗口补齐任务。
-3. **其他 writer 与目标撤销**：configured reminder命令及typed inbox snooze的纯站内改期/取消、周期日程reconcile已登记；普通mixed/push命令、旧legacy dispatcher、其他直接repository写入和目标删除/撤权仍需逐项接齐。旧读时授权继续遮挡失效来源，不能迁移成缓存授权或直接物化计数。新的共同锁序已由两个真实数据库事务并发验证，其他writer接线仍须遵守它。
+3. **其他 writer 与目标撤销**：configured命令、typed inbox snooze、周期日程reconcile和configured legacy dispatcher已登记；旧部署、诊断/种子脚本的直接repository写入，以及目标删除/撤权仍需逐项审计。旧读时授权继续遮挡失效来源，不能迁移成缓存授权或直接物化计数。新的共同锁序已由两个真实数据库事务并发验证，其他writer接线仍须遵守它。
 4. **历史回填与 Push**：未提供可运行回填。未来先接齐 writer，再按 ID 分页、事务内锁定并重读来源、持久 checkpoint、小批推进；扫描结果不能直接覆盖并发新 revision。既有 notificationCutover.since 只排除切换前历史，不能保证切换之后的历史回填不再次进入 Push 候选。需要单独的历史投递抑制事实/对账，不能靠把通知全部标已读或改变 cutover 时间来掩盖。
 5. **调度与运维**：独立 queue wake 仅登记工作；本批消费者在 canonical maintenance pass 的尾部。heartbeat 关闭或 pass 时间用完会延后消费；尚需负载下公平性、最大通知延迟、failed/积压告警验收。不能声称已经实现准时通知 SLA。
 

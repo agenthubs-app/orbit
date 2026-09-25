@@ -251,7 +251,7 @@ export function createCanonicalReminderCommandService({
           if (!validPlan(plan, plan.ownerUserId)) throw new Error("Canonical reminder plan scope is invalid");
           const saved = await baseRepository.savePlan(plan);
           await saveIntentForPlan(saved, true);
-          if (isPureInApp(saved)) await runtime.inboxProjection?.enqueue(tx, {
+          await runtime.inboxProjection?.enqueue(tx, {
             actorId: saved.ownerUserId, sourceKind: "canonical_reminder", sourceId: saved.id,
             sourceRevision: canonicalInboxProjectionRevision(saved),
           }, { availableAt: saved.status === "cancelled" ? commandNow : saved.fireAt });

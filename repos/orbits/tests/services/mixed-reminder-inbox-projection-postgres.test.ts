@@ -1,0 +1,71 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { randomUUID } from 'node:crypto';
+import { Pool } from 'pg';
+import { createTransactionalPostgresClient } from '../../shared/storage/transactional-postgres';
+import { createPostgresLiveRecordStore } from '../../shared/storage/postgres-live-record-store';
+import { ORBIT_RECORDS_SCHEMA_SQL } from '../../shared/storage/migrations';
+import { createConfiguredReminderPlanService } from '../../features/notifications/reminder-plan-service-factory';
+import { createReminderPlanRepository } from '../../features/notifications/reminder-plan-repository';
+import { canonicalInboxProjectionRevision } from '../../features/notifications/canonical-inbox-projection-revision';
+import { INBOX_PROJECTION_WORK_SCHEMA_SQL } from '../../features/notifications/storage/inbox-projection-work';
+import { runInboxProjectionPass } from '../../features/notifications/inbox-projection-worker';
+
+const url = process.env.ORBIT_LIFECYCLE_TEST_DATABASE_URL;
+test('configured mixed and Push-only commands plus legacy dispatch keep the inbox work revision current', { skip: !url, timeout: 20000 }, async () => {
+  assert.ok(url); const address = new URL(url);
+  assert.ok(['localhost', '127.0.0.1'].includes(address.hostname)); assert.equal(address.search, '');
+  const schema = 'mixed_inbox_' + randomUUID().replaceAll('-', '');
+  const pool = new Pool({ connectionString: url, max: 3, options: `-c search_path=${schema} -c statement_timeout=5000 -c lock_timeout=1000` });
+  const client = createTransactionalPostgresClient({ connectionString: url, pool });
+  const workspaceId = 'w', actorId = 'a'; let clock = '2026-09-25T00:00:00.000Z'; const now = () => clock;
+  const store = createPostgresLiveRecordStore({ client });
+  const repository = createReminderPlanRepository({ store, workspaceId });
+  const runtime = { client, workspaceId, now, publisher: { publish: async () => { throw Error('mixed plans must not create pure-in-app wakes'); } } };
+  const service = createConfiguredReminderPlanService({ runtime, env: { ORBIT_CANONICAL_INBOX_PROJECTION: '1' } });
+  const pass = () => runInboxProjectionPass({ client, workspaceId, now, enabled: true });
+  const rows = () => pool.query('select source_id,source_revision,state,generation::text,available_at from orbit_inbox_projection_work order by source_id');
+  const create = (key: string, channels: readonly ('in_app' | 'ios_push')[] = ['in_app', 'ios_push']) => service.create({ actorId, targetType: 'task', targetId: 'task', fireAt: '2026-09-25T01:00:00.000Z', timeZone: 'UTC', channels, title: 'Reminder', body: 'Body', deepLink: '/app/tasks/task', createdBy: 'user', idempotencyKey: key });
+  try {
+    await pool.query(`create schema ${schema}`); await pool.query(ORBIT_RECORDS_SCHEMA_SQL); await pool.query(INBOX_PROJECTION_WORK_SCHEMA_SQL);
+    await store.upsertRecord({ workspaceId, collectionName: 'tasks', recordId: 'task', userId: actorId, sourceType: 'manual', sourceId: 'task', evidenceIds: [], lifecycleState: 'active', createdAt: clock, updatedAt: clock, payload: { version: 1, task: { id: 'task', accountId: actorId, ownerUserId: actorId, title: 'Task', status: 'open', category: 'work', priority: 'normal', source: 'manual', createdAt: clock, updatedAt: clock }, activities: [] } });
+    const plan = await create('mixed');
+    assert.equal((await rows()).rows.length, 1, 'mixed creation registers a due work item');
+    assert.equal((await pass()).projectionClaimed, 0);
+    await create('mixed'); assert.equal((await rows()).rows[0].generation, '1');
+    assert.equal((await pool.query("select count(*)::int as n from orbit_records where collection_name='canonical_reminder_wakes'")).rows[0].n, 0);
+    const preferences = await service.getPreferences(actorId);
+    await service.updatePreferences({ ...preferences, actorId, iosPushEnabled: false });
+    clock = '2026-09-25T01:00:00.000Z';
+    const dispatched = await service.dispatchDue({ now: clock, provider: { send: async () => { throw Error('external sends disabled in this test'); } } });
+    assert.equal(dispatched.inAppDelivered, 1);
+    const delivered = await repository.getPlan(actorId, plan.id); assert.equal(delivered?.status, 'delivered');
+    assert.equal((await rows()).rows[0].source_revision, canonicalInboxProjectionRevision(delivered!), 'legacy dispatch must replace the now-stale scheduled revision');
+    assert.equal((await pass()).projectionCompleted, 1, 'delivery-before-projection must not lose the notification');
+    const later = await service.reschedule({ actorId, reminderId: plan.id, fireAt: '2026-09-25T02:00:00.000Z', timeZone: 'UTC', expectedUpdatedAt: delivered!.updatedAt, idempotencyKey: 'later' });
+    assert.equal((await rows()).rows[0].source_revision, canonicalInboxProjectionRevision(later));
+    assert.equal((await pass()).projectionClaimed, 0);
+    await service.cancel({ actorId, reminderId: plan.id, idempotencyKey: 'cancel' });
+    assert.equal((await pass()).projectionCompleted, 0);
+    // Push-only remains a visible reminder in the old inbox even when every
+    // delivery channel is disabled. It must not disappear on a failed revision.
+    const push = await create('push', ['ios_push']);
+    await service.dispatchDue({ now: clock, provider: { send: async () => { throw Error('external sends disabled in this test'); } } });
+    const failed = await repository.getPlan(actorId, push.id); assert.equal(failed?.status, 'failed');
+    assert.equal((await rows()).rows.find(row => row.source_id === push.id)?.source_revision, canonicalInboxProjectionRevision(failed!));
+    assert.equal((await pass()).projectionCompleted, 1);
+    const retryPlan = await create('dispatch-rollback', ['ios_push']);
+    await pool.query(`create function reject_projection_work() returns trigger language plpgsql as $$ begin raise exception 'work unavailable'; end $$`);
+    await pool.query('create trigger reject_projection_work before insert or update on orbit_inbox_projection_work for each row execute function reject_projection_work()');
+    const before = (await pool.query('select count(*)::int as n from orbit_records')).rows[0].n;
+    await assert.rejects(create('rollback'), /work unavailable/);
+    assert.equal((await pool.query('select count(*)::int as n from orbit_records')).rows[0].n, before);
+    await assert.rejects(service.dispatchDue({ now: clock, provider: { send: async () => { throw Error('external sends disabled in this test'); } } }), /work unavailable/);
+    assert.equal((await repository.getPlan(actorId, retryPlan.id))?.status, 'scheduled', 'failed legacy plan/work write rolls back both facts');
+    assert.equal((await rows()).rows.find(row => row.source_id === retryPlan.id)?.source_revision, canonicalInboxProjectionRevision(retryPlan));
+    await pool.query('drop trigger reject_projection_work on orbit_inbox_projection_work');
+    await service.dispatchDue({ now: clock, provider: { send: async () => { throw Error('external sends disabled in this test'); } } });
+    assert.equal((await repository.getPlan(actorId, retryPlan.id))?.status, 'failed');
+    assert.equal((await pass()).projectionCompleted, 1, 'the next legacy pass can persist the plan and updated revision after recovery');
+  } finally { await pool.query(`drop schema if exists ${schema} cascade`); await client.close(); }
+});
