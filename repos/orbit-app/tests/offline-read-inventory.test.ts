@@ -34,7 +34,7 @@ test('roster qualification registers the same durable event read policy as the p
 
 test('canonical lifecycle and participant consumers are registered without offline mutation authority', () => {
   const expected = [
-    ['src/screens/tasks/RelationshipLifecycleList.tsx', 'GET', '/api/relationship-tasks', 'tasks'],
+    ['src/screens/tasks/RelationshipLifecycleList.tsx', 'GET', '/api/relationship-tasks/page', 'tasks'],
     ['src/screens/tasks/RelationshipLifecycleScreen.tsx', 'GET', '/api/connections/:id/lifecycle', 'connections'],
     ['src/screens/tasks/RelationshipLifecycleScreen.tsx', 'POST', '/api/connections/:id/lifecycle', 'connections'],
     ['src/view-models/relationship-initialization.ts', 'GET', '/api/connections', 'connections'],

@@ -146,7 +146,7 @@ test("list blocks same-turn double completion and keeps the row after a rejected
   await page.evaluate(() => (window as any).fixture.release());
   await page.getByRole("alert").filter({ hasText: "保存失败" }).waitFor();
   assert.equal(await checkbox.getAttribute("aria-checked"), "false");
-  assert.deepEqual(await page.evaluate(() => (window as any).fixture.refreshes), ["/api/relationship-tasks"]);
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.refreshes), ["/api/relationship-tasks/page?mode=open&limit=30"]);
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.httpReads), initialReads);
 });
 
@@ -160,7 +160,7 @@ test("list transport rejection unlocks actions and visibly preserves the unchang
   assert.equal(await checkbox.getAttribute("aria-checked"), "false");
   await page.evaluate(() => (window as any).fixture.update({ thrown: false }));
   await checkbox.click(); assert.equal((await requests(page)).length, 2);
-  assert.deepEqual(await page.evaluate(() => (window as any).fixture.refreshes), ["/api/relationship-tasks", "/api/tasks"]);
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.refreshes), ["/api/relationship-tasks/page?mode=open&limit=30", "/api/tasks"]);
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.httpReads), initialReads);
 });
 

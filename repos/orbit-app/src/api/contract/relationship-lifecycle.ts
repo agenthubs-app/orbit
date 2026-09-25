@@ -24,6 +24,17 @@ export interface RelationshipTaskSummary {
   dueAt: string | null;
 }
 
+/** Bounded display window, not a complete task/relationship graph. */
+export interface RelationshipTaskPageDTO {
+  actorId: string;
+  mode: "open" | "completed";
+  items: { itemKey: string; taskId: string; connectionId: string; contactId: string; contactNamePreview: string; titlePreview: string; status: "open" | "scheduled" | "completed" | "dismissed"; dueAt: string | null }[];
+  total: number;
+  nextCursor: string | null;
+  hasMore: boolean;
+  asOf: string;
+}
+
 /** Acquisition is not a fifth canonical relationship stage. */
 export type RelationshipInitializationRead =
   | { state: "pending"; revision: string; connectionId: string }

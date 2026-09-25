@@ -22,3 +22,14 @@ export const relationshipLifecycleSnapshotSchema = z.object({
 export const relationshipLifecycleReadSchema = z.object({ snapshot: relationshipLifecycleSnapshotSchema });
 export const relationshipLifecycleMutationSchema = relationshipLifecycleReadSchema.extend({ replayed: z.boolean() });
 export const relationshipTaskListSchema = z.object({ tasks: z.array(z.object({ taskId: id, connectionId: id, contactId: id, contactName: z.string(), title: z.string(), status, dueAt: instant.nullable() })) });
+export const relationshipTaskPageItemSchema = z.object({ itemKey: z.string().min(1).max(2048), taskId: id, connectionId: id, contactId: id,
+  contactNamePreview: z.string().min(1).max(240), titlePreview: z.string().min(1).max(480), status, dueAt: instant.nullable() }).strict();
+export const relationshipTaskPageSchema = z.object({
+  actorId: id, mode: z.enum(["open", "completed"]),
+  items: z.array(relationshipTaskPageItemSchema).max(50),
+  total: z.number().int().nonnegative().safe(), hasMore: z.boolean(), nextCursor: z.string().max(18000).nullable(), asOf: instant,
+}).strict().transform(page => ({ ...page, nextCursor: page.nextCursor ?? null,
+  // Keep required nullable keys explicit under both Web's non-strict and App's
+  // strict TypeScript settings. Missing keys still fail the object validation.
+  items: page.items.map(item => ({ ...item, dueAt: item.dueAt ?? null })),
+}));

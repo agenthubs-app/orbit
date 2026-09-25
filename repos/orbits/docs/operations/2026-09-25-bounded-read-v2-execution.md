@@ -226,3 +226,24 @@ env -i PATH="$PATH" ORBIT_LIFECYCLE_TEST_DATABASE_URL=postgresql://li@localhost/
 App 读取面审计发现迁移前接口和行号残留：同步新消费者登记，保留动态发送动作的已核实路径，删除已不存在的旧读取点；联系人 summary 的查询分隔符明确化，避免被误当动态 ID。窄私有读取仍登记 network-only，不授权离线缓存；静态 `/contacts/page` 优先于参数 `/contacts/:id`，同等具体度的冲突仍拒绝。读取审计/联系人生命周期 26 项通过；没有放宽未知路径。共享契约未变，根 bridge 进行中的交接文件保持原样。
 
 限制：活跃未读来源仍需全部检查，不可用通知过多仍可能多次翻候选页；复杂领域和旧编码 fallback 未变成常数成本。业务 GET refresh、后台全量物化、旧 AI/signals 图、App 人脉跟进列表和生产运行时/实际月速率仍未全部完成。不能据此宣布 5 GB/月已经可保证或 P3 已完成。
+
+## 第十批：App 人脉跟进真正分页
+
+第九批已提交 `c586aa58`。新增 `/api/relationship-tasks/page`，默认 30、最大 50；App 待办页的人脉跟进改用此接口，open/completed 在 SQL 中过滤，不先下载全部再由手机筛选。旧接口和关系完成/下一步命令保留。列表必须同时有当前 actor 合法拥有的任务、关系及可解析联系人，与旧 App 列表对照；不能直接复用 Web 允许无关系任务的页面口径。
+
+归属规则复用用户决定：任务/关系的行所有者必须是本人，关联 accountId 缺省/NULL 或一致；关联账号、无所有者、冲突字段不能授予访问。SQL 内重验后分页，游标签名绑定 workspace/actor/mode/协议/完整排序位置。更改关系归属后旧游标不再返回任务。返回 titlePreview/contactNamePreview，不下载正文、关系摘要、证据数组；进入原详情仍读权威完整内容。新端点拒绝重复/未知参数和非法上限，运行时/配置失败显示 unavailable，不回退全量图。
+
+App 以 30/30/5 窗口替换而非累积；切换状态、账号、凭据、服务器重置第一页，迟到响应不能跨 scope 恢复内容；403 和错误 actor 响应隐藏旧页。返回任务页后刷新第一页，未 ready 时不请求，不写私有离线快照；列表没有把当前页数量当全局总数。新契约/schema 从 Web 同步，编译期 ContractMatches 和运行时严格校验同时保留。首次类型检查发现非 strict Web 对 nullable 键的推断差异，已显式保留必填 nullable 输出，未放宽运行时缺字段检查。
+
+本地随机 schema 的真实 PostgreSQL 测试以旧 provider + `relationshipTaskSummaries` 为 oracle，覆盖 Unicode/空日期排序、两种状态、非法归属、缺失/冲突关联、游標篡改及跨账号/模式。约 100 条 → 10,068 条本人合法任务，30 条首窗 PG 返回 JSON 为 8,738 B → 8,741 B，均为 1 次查询；增长夹具另外包含每条 5 KB 标题。不是整个 API 请求或 Neon 月账单，也没有解决全局校验/精确计数的数据库 CPU 增长。
+
+验证：新增 PG/API 4 项通过；App 真实 Chromium、任务编辑幂等/回执、旧待办操作和读取策略合计 58 项通过，无跳过。最终 schema 同步后新增 8 项两端复测通过，Web/App 全量 typecheck 通过。读取面审计 unregistered/invalid 均为 0。截图已查看，仅本地浏览器验证，不冒充手机安装或原生验证。
+
+```sh
+# Web cwd
+env -i PATH="$PATH" ORBIT_LIFECYCLE_TEST_DATABASE_URL=postgresql://li@localhost/orbit_neon_audit_20260925 node --import tsx --test tests/services/relationship-task-page-postgres.test.ts tests/api/relationship-task-page.test.ts
+# App cwd
+env -i PATH="$PATH" node --import tsx --test tests/relationship-task-pages.test.ts tests/relationship-task-pages-interactions.test.ts tests/relationship-lifecycle-interactions.test.ts tests/ink-signal-tasks.test.ts tests/tasks-unification-interactions.test.ts tests/offline-read-inventory.test.ts
+```
+
+发布门：服务端须先具有新端点，稳定签名密钥和已验证的 Node/ICU/PostgreSQL 排序运行时；现有本地白名单仍不能直接视为生产已验证。旧服务器的 404 明确失败，不静默回退。未部署、未迁移云数据库、未更新手机；根目录 bridge 的已有未提交交接保持原样。P2 私有缓存、P3 逐来源变化/到期和其生产门仍未完成。

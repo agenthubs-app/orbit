@@ -12,7 +12,7 @@ function domainFor(path: string): string {
   if (path.startsWith('/api/notes')) return 'notes';
   if (path.startsWith('/api/task-suggestions')) return 'task-suggestions';
   if (path.startsWith('/api/tasks')) return 'tasks';
-  if (path === '/api/relationship-tasks') return 'tasks';
+  if (path === '/api/relationship-tasks' || path === '/api/relationship-tasks/page') return 'tasks';
   if (path.startsWith('/api/reminders')) return 'followups';
   if (path.includes('/meeting-details')) return 'meetings';
   if (path.startsWith('/api/appointments')) return 'appointments';
@@ -81,6 +81,7 @@ function surfaceFrom([consumerFile, method, endpointTemplate]: SurfaceKey): Read
     // Bounded private readers have no proven revoke/version cache protocol yet.
     || (method === 'GET' && ([
       '/api/contacts/page','/api/contacts/summary','/api/inbox/summary',
+      '/api/relationship-tasks/page',
       '/api/notifications/unread-summary','/api/relationship-communication/unread-summary',
       '/api/relationship-communication/conversation-summaries','/api/relationship-communication/conversations/:id/messages',
     ].includes(endpointTemplate) || [
@@ -269,7 +270,7 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/view-models/event-attendee-controller.ts","POST","/api/events/:id/operations/check-in"],
   ["src/view-models/event-attendee-controller.ts","POST","/api/events/:id/operations/contact-requests"],
   ["src/view-models/event-attendee-controller.ts","POST","/api/events/:id/operations/contact-requests/:id/:id"],
-  ["src/screens/tasks/RelationshipLifecycleList.tsx","GET","/api/relationship-tasks"],
+  ["src/screens/tasks/RelationshipLifecycleList.tsx","GET","/api/relationship-tasks/page"],
   ["src/screens/tasks/RelationshipLifecycleScreen.tsx","GET","/api/connections/:id/lifecycle"],
   ["src/screens/tasks/RelationshipLifecycleScreen.tsx","POST","/api/connections/:id/lifecycle"],
   ["src/view-models/relationship-initialization.ts","GET","/api/connections"],
