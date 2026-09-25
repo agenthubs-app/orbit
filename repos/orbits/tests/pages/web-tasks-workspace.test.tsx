@@ -30,6 +30,15 @@ function httpFixture() {
       tasks.push(task);
       return Response.json({ success: true, data: { task } });
     }
+    if (path.startsWith("/api/tasks/page?")) {
+      const params = new URL(path, "https://orbit.test").searchParams;
+      const status = params.get("status"), query = params.get("query") ?? "";
+      const matching = tasks.filter(task => `${task.title} ${task.notes}`.toLowerCase().includes(query.toLowerCase()));
+      const counts = { open: matching.filter(task => task.status === "open").length, completed: matching.filter(task => task.status === "completed").length };
+      return Response.json({ success: true, data: { actorId: "account:test", status, scope: "all", query, counts, total: counts[status!], hasMore: false, nextCursor: null, asOf: "2026-09-25T00:00:00Z",
+        items: matching.filter(task => task.status === status).map(task => ({ id: task.id, titlePreview: task.title, locationPreview: null, status: task.status, category: task.category, priority: task.priority,
+          plannedDate: task.plannedDate ?? null, dueAt: null, updatedAt: task.updatedAt, relatedContact: null })) } });
+    }
     if (path.startsWith("/api/tasks?")) {
       const status = new URL(path, "https://orbit.test").searchParams.get("status");
       return Response.json({ success: true, data: { tasks: tasks.filter((task) => task.status === status) } });

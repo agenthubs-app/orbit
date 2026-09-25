@@ -23,6 +23,9 @@ export interface TaskSuggestionView {
   reason: string;
 }
 
+/** Display-only list row. It must never be used as a full task edit baseline. */
+export type TaskRowView = Pick<TaskView, "id" | "title" | "status" | "category" | "plannedDate" | "dueAt" | "href">;
+
 export interface TaskActivityView {
   id: string;
   type: string;

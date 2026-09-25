@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 // A resource belongs to one route/filter. Late reads cannot paint over a new
 // selection; failed refreshes retain the last successful data with an error.
-export function useTasksResource<T>(load: () => Promise<T>, key: string) {
+export function useTasksResource<T>(load: () => Promise<T>, key: string, options: { discardOnRefresh?: boolean } = {}) {
   const loader = useRef(load);
   const generation = useRef(0);
   loader.current = load;
@@ -14,13 +14,13 @@ export function useTasksResource<T>(load: () => Promise<T>, key: string) {
   useEffect(() => {
     let active = true;
     const requestGeneration = ++generation.current;
-    setState((current) => ({ key, data: current.key === key ? current.data : null, loading: true, error: null }));
+    setState((current) => ({ key, data: current.key === key && !options.discardOnRefresh ? current.data : null, loading: true, error: null }));
     loader.current().then(
       (data) => { if (active && requestGeneration === generation.current) setState({ key, data, loading: false, error: null }); },
       (error) => { if (active && requestGeneration === generation.current) setState((current) => ({ ...current, loading: false, error })); },
     );
     return () => { active = false; };
-  }, [key, revision]);
+  }, [key, revision, options.discardOnRefresh]);
   const replace = (data: T) => { generation.current += 1; setState({ key, data, loading: false, error: null }); };
   return { ...(state.key === key ? state : { data: null, loading: true, error: null }), refresh, replace };
 }

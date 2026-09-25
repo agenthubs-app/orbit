@@ -1,7 +1,8 @@
 import { z } from "zod";
+import { taskPageSchema } from "../../../../shared/api-schema/task-page";
 import {
   activitiesToView, remindersToView, suggestionsToView, taskToView, tasksToView, todayTasksToView,
-  type TaskView,
+  type TaskView, type TaskRowView,
 } from "./tasks-view-model";
 
 export class TasksClientError extends Error {
@@ -72,6 +73,17 @@ export function createTasksClient(fetcher: typeof fetch = fetch) {
   }
 
   return {
+    loadPage: (status: "open" | "completed", query = "", cursor: string | null = null) => {
+      const params = new URLSearchParams({ status, query: query.trim(), limit: "30" });
+      if (cursor) params.set("cursor", cursor);
+      return request(`/api/tasks/page?${params}`, value => {
+        const page = taskPageSchema.parse(value);
+        if (page.status !== status || page.scope !== "all" || page.query !== query.trim()) throw new Error("Task page scope mismatch");
+        const items: TaskRowView[] = page.items.map(item => ({ id: item.id, title: item.titlePreview, status: item.status, category: item.category,
+          ...(item.plannedDate ? { plannedDate: item.plannedDate } : {}), ...(item.dueAt ? { dueAt: item.dueAt } : {}), href: `/app/tasks/${encodeURIComponent(item.id)}` }));
+        return { ...page, items };
+      });
+    },
     loadList: (status: "open" | "completed") => request(`/api/tasks?status=${status}`, tasksToView),
     loadTask: (id: string) => request(pathFor(id), single),
     loadToday: () => request("/api/today?timeZone=Asia%2FTokyo", todayTasksToView),

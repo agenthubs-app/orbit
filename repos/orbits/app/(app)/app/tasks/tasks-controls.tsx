@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { useOrbitLanguage } from "../orbit-language-context";
 import { tasksErrorMessage } from "./tasks-client";
-import { taskCategoryLabel, taskTimeLabel, type TaskSuggestionView, type TaskView } from "./tasks-view-model";
+import { taskCategoryLabel, taskTimeLabel, type TaskSuggestionView, type TaskRowView } from "./tasks-view-model";
 
 export function TasksFeedback({ error, message }: { error: unknown; message?: string }) {
   const { language } = useOrbitLanguage();
@@ -39,7 +39,7 @@ export function TaskComposer({ busy, onCreate }: { busy: boolean; onCreate: (tit
   </form>;
 }
 
-export function TaskRows({ items, busy, onToggle }: { items: readonly TaskView[]; busy: boolean; onToggle: (task: TaskView) => void }) {
+export function TaskRows({ items, busy, onToggle }: { items: readonly TaskRowView[]; busy: boolean; onToggle: (task: TaskRowView) => void }) {
   const { t, language, preserveHref } = useOrbitLanguage();
   const english = language !== "zh";
   return <ul className="task-rows">

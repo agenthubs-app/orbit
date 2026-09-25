@@ -292,3 +292,19 @@ env -i PATH="$PATH" ORBIT_LIFECYCLE_TEST_DATABASE_URL=postgresql://li@localhost:
 剩余事项仍独立记录：普通 canonical `/api/tasks` 的 list 与人脉跟进分页不是同一入口，仍需迁移实际消费者，不能将第十批当作所有任务列表均已完成；P3 可靠变化/到期第一来源仍默认关闭，尚不能删除旧 refresh；生产运行时、旧客户端实际使用量、真实 Neon 月速率及发布尚未验收。本批不把本地授权修复当成全部四项或线上治理完成。
 
 GitNexus 绑定根仓库 `orbit`（`/Users/li/work/orbit`，基线 `b669a133`），编辑前共享联系人 provider 为 HIGH，已说明会影响详情、搜索、笔记/日程引用；新增聚合入口补做 impact。UNKNOWN 常量/测试入口由源码引用和真实测试补核，不当作无影响。强制重建后 all/staged 原始检查均无 partial/truncated/error；staged 25 文件、58 个可识别符号。图报告 low/0 个流程不能抵消权限语义变更和动态漏边风险，验收依据同时包含上述 89 项本地回归。
+
+## 第十三批：普通待办独立卡片分页与 Web 正式入口
+
+基于 `caf9bd8a`。新增 `/api/tasks/page`，默认30/最多50条；SQL 内同时按 workspace、行所有者、task.accountId/ownerUserId 检验本人归属，再进行状态、relationship 范围及标题/备注搜索、全局计数和签名游标分页。排序协议显式使用 C 字节序：待办按 dueAt/plannedDate/无日期在后、updatedAt 倒序、ID 正序；完成列表按 updatedAt 倒序、ID 正序。游标签名绑定 actor/workspace/status/scope/query/v1，不能跨账号或筛选复用。
+
+列表只返回240字符标题、120字符地点和本人联系人摘要；备注、活动历史和完整业务 payload 不传出数据库。联系人名字也必须行 owner/accountId 一致；外部联系人、冲突 accountId、数组伪造 accountId、撤权或缺失都返回 null，不借任务关系授权。非规范 enum 数组明确拒绝，不继承旧 decoder 的 String(array) 意外容错；未改旧详情/写入格式，也未修复或迁移存量数据。其他日期/归属/完成字段/重复、逆序和越权历史测试与旧 service.list 结果集对照。超长引用 ID 返回微小错误，不先返回页面再失败。
+
+Web `/app/tasks` 已真实消费新接口：30条窗口替换，搜索在服务器覆盖全部任务，切换筛选回首页，完成/恢复/创建后重新读取，失败隐藏旧列表。迟到旧搜索不能覆盖新结果。保留旧 `/api/tasks` 供旧客户端，不以截断旧接口伪装兼容；详情和动作不变。新增独立 TaskCard/TaskPage 契约、严格运行时 schema 及实际编译期 ContractMatches，App 副本经 sync:contract 生成。
+
+本地 PG16 随机 schema、隔离环境、无云凭据：65条大备注任务 → 10,062条 → 100,062条时，30条首窗 PG 返回 JSON 为 **11,039 → 11,042 → 11,043 B**，每次1条 SQL。新增九万条和验证在本机执行；不是 Neon 协议/账单字节，不代表数据库 CPU 恒定：全局计数、搜索和历史有效性仍在数据库内处理全部候选。22项数据库/真实 handler/Web 组件/原详情与动作回归通过，零跳过，Web全量类型检查通过。
+
+```sh
+env -i PATH="$PATH" ORBIT_LIFECYCLE_TEST_DATABASE_URL=postgresql://li@localhost/orbit_neon_audit_20260925 node --import tsx --test tests/services/task-page-postgres.test.ts tests/pages/web-task-pages.test.tsx tests/api/task-page.test.ts tests/pages/web-tasks-workspace.test.tsx tests/pages/web-tasks-client.test.ts tests/pages/web-tasks-retry.test.ts
+```
+
+跨端交接：本端为 caf9bd8a 后本批；App 此批仅同步契约，尚未消费新普通任务页。核实 native 已使用 lease/domain-page 本地镜像，支持浏览器镜像时 Web App 也复用镜像；不能笼统说手机每次下载 `/api/tasks`。仍须治理 online-only fallback 的全量读取、TasksScreen 的全联系人附带请求、RelationshipTaskTools 的旧建议入口，并保留镜像的授权/增量同步机制。Today 汇总和建议列表另有全量路径，本批未替换。新端点要求稳定签名密钥与 PG und-x-icu；当前只验证本机运行时，没有发布或手机安装，生产真实用量仍待验收。

@@ -1,3 +1,5 @@
+export type { TaskCardContract, TaskPageContract } from "../../shared/contract/task-page";
+
 export const TASK_CATEGORIES = [
   "relationship",
   "meeting",

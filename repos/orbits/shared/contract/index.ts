@@ -137,6 +137,7 @@ export type {
   TaskStatus,
   TaskSuggestionContract
 } from "./tasks";
+export type { TaskCardContract, TaskPageContract } from "./task-page";
 
 export type {
   MeetingDetailsActorRole,

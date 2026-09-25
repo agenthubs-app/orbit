@@ -11,22 +11,23 @@ export function TasksWorkspace({ initialStatus = "open" }: { initialStatus?: "op
   const client = useMemo(() => createTasksClient(), []);
   const [status, setStatus] = useState(initialStatus);
   const [query, setQuery] = useState("");
-  const tasks = useTasksResource(() => client.loadList(status), status);
+  const [cursor, setCursor] = useState<string | null>(null);
+  const tasks = useTasksResource(() => client.loadPage(status, query, cursor), JSON.stringify([status, query.trim(), cursor]), { discardOnRefresh: true });
   const suggestions = useTasksResource(() => client.loadSuggestions(), "suggestions");
   const mutation = useTasksMutation();
-  const visible = tasks.data?.filter((task) => `${task.title} ${task.notes}`.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase())) ?? [];
-  const refresh = () => { tasks.refresh(); suggestions.refresh(); };
+  const visible = tasks.data?.items ?? [];
+  const refresh = () => { setCursor(null); tasks.refresh(); suggestions.refresh(); };
 
   return <section className="orbit-tasks" aria-label={t({ zh: "待办事项", en: "Tasks" })}>
     <div className="task-toolbar">
       <div className="task-tabs" role="group" aria-label={t({ zh: "待办状态", en: "Task status" })}>
-        <button aria-label={t({ zh: "查看待办", en: "View open tasks" })} aria-pressed={status === "open"} className="btn btn-ghost" onClick={() => setStatus("open")} type="button">{t({ zh: "待办", en: "Open" })}</button>
-        <button aria-label={t({ zh: "查看已完成待办", en: "View completed tasks" })} aria-pressed={status === "completed"} className="btn btn-ghost" onClick={() => setStatus("completed")} type="button">{t({ zh: "已完成", en: "Completed" })}</button>
+        <button aria-label={t({ zh: "查看待办", en: "View open tasks" })} aria-pressed={status === "open"} className="btn btn-ghost" onClick={() => { setCursor(null); setStatus("open"); }} type="button">{t({ zh: "待办", en: "Open" })}</button>
+        <button aria-label={t({ zh: "查看已完成待办", en: "View completed tasks" })} aria-pressed={status === "completed"} className="btn btn-ghost" onClick={() => { setCursor(null); setStatus("completed"); }} type="button">{t({ zh: "已完成", en: "Completed" })}</button>
       </div>
       <button className="btn btn-ghost btn-sm" disabled={tasks.loading || mutation.busy} onClick={refresh} type="button">{t({ zh: "刷新", en: "Refresh" })}</button>
     </div>
     <TaskComposer busy={mutation.busy} onCreate={(title) => mutation.run(() => client.create(title), () => { setStatus("open"); setQuery(""); refresh(); }, t({ zh: "待办已添加", en: "Task added" }))} />
-    <label className="task-search">{t({ zh: "搜索待办", en: "Search tasks" })}<input onChange={(event) => setQuery(event.target.value)} type="search" value={query} /></label>
+    <label className="task-search">{t({ zh: "搜索待办", en: "Search tasks" })}<input maxLength={240} onChange={(event) => { setCursor(null); setQuery(event.target.value); }} type="search" value={query} /></label>
     <TasksFeedback error={mutation.error} message={mutation.message} />
     <TasksReadError error={tasks.error} hasData={!!tasks.data} onRetry={tasks.refresh} />
     {tasks.loading && !tasks.data ? <p role="status">{t({ zh: "正在读取待办…", en: "Loading tasks…" })}</p> : null}
@@ -35,6 +36,11 @@ export function TasksWorkspace({ initialStatus = "open" }: { initialStatus?: "op
       void mutation.run(() => client.setCompleted(task.id, task.status !== "completed"), refresh,
         task.status === "completed" ? t({ zh: "已恢复待办", en: "Task reopened" }) : t({ zh: "已完成待办", en: "Task completed" }));
     }} />
+    {tasks.data ? <p>{t({ zh: `本页 ${visible.length} 条，共 ${tasks.data.total} 条`, en: `${visible.length} on this page, ${tasks.data.total} total` })}</p> : null}
+    <div className="task-toolbar">
+      {cursor ? <button type="button" className="btn btn-ghost" disabled={tasks.loading || mutation.busy} onClick={() => setCursor(null)}>{t({ zh: "返回第一页", en: "First page" })}</button> : null}
+      {tasks.data?.nextCursor ? <button type="button" aria-label={t({ zh: "下一页待办", en: "Next task page" })} className="btn btn-ghost" disabled={tasks.loading || mutation.busy} onClick={() => setCursor(tasks.data!.nextCursor)}>{t({ zh: "下一页", en: "Next page" })}</button> : null}
+    </div>
     {status === "open" ? <>
       <TasksReadError error={suggestions.error} hasData={!!suggestions.data} onRetry={suggestions.refresh} />
       <TaskSuggestions items={suggestions.data ?? []} busy={mutation.busy} onResolve={(id, action) => {
