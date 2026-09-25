@@ -1,4 +1,4 @@
-import { profileTasksPayload } from "./profile-detail-fixtures";
+import type { TodayTaskSummaryModeContract } from "../../src/api/contract/today";
 
 // Complete existing HTTP shapes; no imports from the server implementation.
 export const aiConversationPayload = {
@@ -17,9 +17,24 @@ export const aiSession = {
   organization: { customTitle: "产品试点讨论", groupId: "group:work", pinned: false, revision: 2 },
   messages: [{ role: "user", text: "讨论产品试点" }, { role: "assistant", text: "梳理了试点范围、时间节点和资源需求。" }]
 };
-export const aiSessionListPayload = { sessions: [aiSession, { ...aiSession, id: "session:2", title: "本周安排", customTitle: "本周安排", organization: { ...aiSession.organization, customTitle: "本周安排" }, updatedAt: "2026-09-09T01:00:00Z", messages: [{ role: "user", text: "本周安排" }, { role: "assistant", text: "汇总本周重点工作与待办事项。" }] }], storage: { configured: true, persisted: true, source: "session-store" } };
-export const emptyAiSessionListPayload = { ...aiSessionListPayload, sessions: [] };
-export const aiTodayPayload = { date: "2026-09-12", timeZone: "Asia/Tokyo", tasks: [profileTasksPayload.tasks[0]], completedCount: 0, suggestions: [], schedule: [], summary: { openTaskCount: 1, completedCount: 0, suggestionCount: 0, scheduleCount: 0 } };
+const aiSessionSummary = (session: typeof aiSession) => ({
+  id: session.id,
+  title: session.title,
+  firstUserText: session.messages.find(message => message.role === "user")?.text ?? "",
+  lastMessagePreview: session.messages.at(-1)?.text ?? "",
+  createdAt: session.createdAt,
+  updatedAt: session.updatedAt,
+  messageRevision: 1,
+  organization: session.organization,
+});
+export const aiSessionListPayload = { items: [aiSessionSummary(aiSession), aiSessionSummary({ ...aiSession, id: "session:2", title: "本周安排", customTitle: "本周安排", organization: { ...aiSession.organization, customTitle: "本周安排" }, updatedAt: "2026-09-09T01:00:00Z", messages: [{ role: "user", text: "本周安排" }, { role: "assistant", text: "汇总本周重点工作与待办事项。" }] })], nextCursor: null, hasMore: false, storage: { configured: true, persisted: true, source: "session-store" } };
+export const emptyAiSessionListPayload = { ...aiSessionListPayload, items: [] };
+export const aiTodayPayload = {
+  taskMode: "summary", date: "2026-09-12", timeZone: "Asia/Tokyo",
+  items: [{ kind: "task", task: { id: "task:1", titlePreview: "整理访谈记录", category: "work", priority: "normal", plannedDate: "2026-09-12", dueAt: null } }],
+  summary: { openTaskCount: 1, suggestionCount: 0 },
+  questionSignals: { urgentTask: false, relationshipTask: false, preparation: false },
+} satisfies TodayTaskSummaryModeContract;
 export const aiReadPayloads = {
   "/api/ai/conversations": aiConversationPayload,
   "/api/ai/conversations/sessions": aiSessionListPayload,

@@ -6,6 +6,7 @@ import { build } from "esbuild";
 import { chromium, type Browser, type Page } from "playwright";
 import { aiConversationPayload, aiReadPayloads, aiSession, aiSessionListPayload, emptyAiConversationPayload, emptyAiSessionListPayload } from "./helpers/ai-fixtures";
 import { aiSessionReceiptMatches } from "../src/api/ai-history-contract";
+import { entityArtifactToDisplay } from "../src/api/schema/ai-artifacts";
 
 const require = createRequire(import.meta.url);
 const iconFont = readFileSync("node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Ionicons.ttf").toString("base64");
@@ -121,8 +122,34 @@ const conversationReadPayloads = {
   ...aiReadPayloads,
   "/api/ai/conversations/conversation%3A1": aiConversationPayload,
   "/api/ai/conversations/sessions/session%3A1": { session: aiSession, storage: aiSessionListPayload.storage },
-  "/api/events": { events: [] }, "/api/contacts": { contacts: [] }, "/api/tasks": { tasks: [] }, "/api/profile": {}
+  "/api/events": { events: [] }, "/api/contacts": { contacts: [] }, "/api/tasks": { tasks: [] }, "/api/profile": {},
+  "/api/contacts/page": { items: [], nextCursor: null, hasMore: false, asOf: "2026-09-12T03:00:00Z" }
 };
+
+test("ordinary AI chat does not prefetch unrelated business collections, including refresh", async t => {
+  const p = await open(t, { params: { id: "new" } });
+  const auxiliaryPaths = ["/api/events", "/api/contacts", "/api/tasks", "/api/profile", "/api/contacts/page"];
+  const auxiliaryReads = () => p.evaluate(paths => (window as any).fixture.requests.filter((r: any) => r.method === "GET" && paths.includes(r.path)).map((r: any) => r.path), auxiliaryPaths);
+  assert.deepEqual(await auxiliaryReads(), []);
+  await p.evaluate(() => (window as any).fixture.refresh());
+  await settle(p);
+  assert.deepEqual(await auxiliaryReads(), []);
+  await press(p, "提及联系人");
+  await p.getByText("没有匹配的联系人。", { exact: true }).waitFor();
+  assert.deepEqual(await auxiliaryReads(), ["/api/contacts/page"]);
+  assert.deepEqual(await writes(p), []);
+});
+
+test("legacy follow-up keywords never synthesize a panel by downloading business collections", async t => {
+  const session = { ...aiSession, messages: [{ id: "u:followup", role: "user", text: "查看跟进" }, { id: "a:followup", role: "assistant", text: "请检查待处理事项。" }] };
+  const p = await open(t, { params: { id: session.id, source: "session" }, payloads: { ...conversationReadPayloads, "/api/ai/conversations/sessions/session%3A1": { session, storage: aiSessionListPayload.storage } } });
+  const paths = await p.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.method === "GET").map((r: any) => r.path));
+  assert.ok(!paths.includes("/api/tasks"));
+  assert.ok(!paths.includes("/api/events"));
+  assert.ok(!paths.includes("/api/contacts"));
+  assert.ok(!paths.includes("/api/profile"));
+  assert.deepEqual(await writes(p), []);
+});
 
 test("saved contact results render all eight true candidates under their own reply and refresh without writes", async t => {
   const session = { ...aiSession, messages: [{ id: "user:contact:qa", role: "user", text: "从我的人脉找联系人来讨论点单助手，谁愿意聊聊？" }, { id: "assistant:contact:qa", role: "assistant", text: "我来查找。" }] };
@@ -190,16 +217,16 @@ for (const [name, artifactRecovery] of [
   assert.equal(await p.getByText("历史原文应保留。", { exact: true }).count(), 1);
   assert.equal(await p.getByText("部分结果无法恢复或超出展示上限，历史回复已保留。", { exact: true }).count(), 1);
   assert.equal(await p.getByText("未推荐联系人1", { exact: true }).count(), 0);
-  assert.equal(await p.getByText("待办", { exact: true }).count(), 1);
+  assert.equal(await p.getByText("待办", { exact: true }).count(), 0);
   assert.deepEqual(await writes(p), []);
 });
 
-test("absent legacy recovery keeps people compatibility", async t => {
+test("absent legacy recovery preserves the reply without inventing people recommendations", async t => {
   const p = await open(t, { params: { id: aiSession.id, source: "session" }, payloads: { ...conversationReadPayloads,
     "/api/contacts": { contacts: unrelatedContacts },
     "/api/ai/conversations/sessions/session%3A1": { session: peopleKeywordSession, storage: aiSessionListPayload.storage }
   } });
-  assert.equal(await p.getByText("未推荐联系人1", { exact: true }).count(), 1);
+  assert.equal(await p.getByText("未推荐联系人1", { exact: true }).count(), 0);
   assert.equal(await p.getByText("历史原文应保留。", { exact: true }).count(), 1);
   assert.deepEqual(await writes(p), []);
 });
@@ -209,7 +236,7 @@ test("people keyword cannot expose generic candidates while a retained reply ref
   await p.getByRole("textbox").fill("从我的人脉找联系人，并安排下一步跟进。");
   await press(p, "发送消息");
   await replyLastWrite(p, replyPayload("从我的人脉找联系人，并安排下一步跟进。", "历史原文应保留。"));
-  assert.equal(await p.getByText("未推荐联系人1", { exact: true }).count(), 1);
+  assert.equal(await p.getByText("未推荐联系人1", { exact: true }).count(), 0);
   await update(p, { holdReads: true });
   await p.evaluate(() => (window as any).fixture.refresh()); await settle(p);
   assert.equal(await p.getByText("历史原文应保留。", { exact: true }).count(), 1);
@@ -295,7 +322,7 @@ test("business template prefill is one-use and sends its stable contact referenc
   const message = "请为 @林悦 起草一封联系邮件，只生成草稿，不要发送。";
   const p = await open(t, {
     prefill: { entryPointId: "contact.message_draft", message, references: [{ id: contact.id, type: "contact" }], template: { id: "contact.message_draft", version: 1 } },
-    payloads: { ...conversationReadPayloads, "/api/contacts": { contacts: [contact] } },
+    payloads: { ...conversationReadPayloads, "/api/contacts/contact%3Alin%3Adesign": { contact } },
   });
   assert.deepEqual(await writes(p), []);
   assert.equal(await p.getByRole("textbox", { name: "消息", exact: true }).inputValue(), message);
@@ -405,9 +432,11 @@ test("mention picker disambiguates same-name contacts and sends the selected sta
     { id: "contact:lin:design", displayName: "林悦", organization: "云间设计", role: "设计师", status: "active" },
     { id: "contact:lin:commerce", displayName: "林悦", organization: "云间商贸", role: "采购", status: "active" },
   ];
-  const p = await open(t, { params: { id: "new" }, payloads: { ...conversationReadPayloads, "/api/contacts": { contacts } } });
+  const page = { items: contacts.map(contact => ({ ...contact, sourceType: "manual", pendingInitialization: false, nextActionPreview: "", updatedAt: "2026-09-12T03:00:00Z" })), nextCursor: null, hasMore: false, asOf: "2026-09-12T03:00:00Z" };
+  const p = await open(t, { params: { id: "new" }, payloads: { ...conversationReadPayloads, "/api/contacts/page": page } });
   await press(p, "提及联系人");
   await p.getByRole("textbox", { name: "搜索要提及的联系人", exact: true }).fill("商贸");
+  await p.waitForFunction(() => (window as any).fixture.requests.some((r: any) => r.path === "/api/contacts/page" && new URL(r.url).searchParams.get("query") === "商贸"));
   await press(p, "选择联系人：林悦，云间商贸，采购");
   assert.match(await p.getByRole("textbox", { name: "消息", exact: true }).inputValue(), /@林悦/u);
   await press(p, "发送消息");
@@ -420,12 +449,48 @@ test("mention picker explains empty and unavailable contact sources without bloc
   await empty.getByText("没有匹配的联系人。", { exact: true }).waitFor();
   assert.deepEqual(await writes(empty), []);
 
-  const unavailable = await open(t, { params: { id: "new" }, failPaths: ["/api/contacts"] });
+  const unavailable = await open(t, { params: { id: "new" }, failPaths: ["/api/contacts/page"] });
   await press(unavailable, "提及联系人");
   await unavailable.getByText("联系人暂时不可用，问题仍可不关联联系人发送。", { exact: true }).waitFor();
   await unavailable.getByRole("textbox", { name: "消息", exact: true }).fill("不关联联系人也可以继续");
   await press(unavailable, "发送消息");
   assert.deepEqual((await writes(unavailable))[0].body.references, []);
+});
+
+test("mention picker follows a server cursor and resets it when the search changes", async t => {
+  const card = (id: string, displayName: string) => ({ id, displayName, organization: "分页测试", role: "负责人", status: "active", sourceType: "manual", pendingInitialization: false, nextActionPreview: "", updatedAt: "2026-09-12T03:00:00Z" });
+  const first = { items: [card("contact:first", "第一页联系人")], hasMore: true, nextCursor: "signed-next-page", asOf: "2026-09-12T03:00:00Z" };
+  const second = { items: [card("contact:second", "第二页联系人")], hasMore: false, nextCursor: null, asOf: first.asOf };
+  const p = await open(t, { params: { id: "new" }, payloads: { ...conversationReadPayloads, "/api/contacts/page": first } });
+  await press(p, "提及联系人"); await p.getByText("第一页联系人", { exact: true }).waitFor();
+  await update(p, { payloads: { ...conversationReadPayloads, "/api/contacts/page": second } });
+  await press(p, "下一页"); await p.getByText("第二页联系人", { exact: true }).waitFor();
+  assert.equal(await p.getByText("第一页联系人", { exact: true }).count(), 0);
+  const reads = await p.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.path === "/api/contacts/page").map((r: any) => r.url));
+  assert.equal(new URL(reads.at(-1)).searchParams.get("cursor"), "signed-next-page");
+  assert.equal(new URL(reads.at(-1)).searchParams.get("limit"), "8");
+  await p.getByRole("textbox", { name: "搜索要提及的联系人", exact: true }).fill("目标组织");
+  await p.waitForFunction(() => (window as any).fixture.requests.some((r: any) => r.path === "/api/contacts/page" && new URL(r.url).searchParams.get("query") === "目标组织"));
+  const latest = await p.evaluate(() => (window as any).fixture.requests.findLast((r: any) => r.path === "/api/contacts/page").url);
+  assert.equal(new URL(latest).searchParams.has("cursor"), false);
+  assert.deepEqual(await writes(p), []);
+});
+
+test("mention picker ignores an old search response and clears private rows when the actor changes", async t => {
+  const page = (name: string) => ({ items: [{ id: "contact:scoped", displayName: name, organization: "测试", role: "负责人", status: "active", sourceType: "manual", pendingInitialization: false, nextActionPreview: "", updatedAt: "2026-09-12T03:00:00Z" }], hasMore: false, nextCursor: null, asOf: "2026-09-12T03:00:00Z" });
+  const p = await open(t, { params: { id: "new" }, holdReads: true });
+  await press(p, "提及联系人");
+  const first = await p.evaluate(() => (window as any).fixture.requests.findLastIndex((r: any) => r.path === "/api/contacts/page"));
+  await p.getByRole("textbox", { name: "搜索要提及的联系人", exact: true }).fill("新查询");
+  await p.waitForFunction(() => (window as any).fixture.requests.some((r: any) => r.path === "/api/contacts/page" && new URL(r.url).searchParams.get("query") === "新查询"));
+  const latest = await p.evaluate(() => (window as any).fixture.requests.findLastIndex((r: any) => r.path === "/api/contacts/page"));
+  await p.evaluate(({ index, data }) => (window as any).fixture.reply(index, 200, data), { index: first, data: page("旧查询联系人") }); await settle(p);
+  assert.equal(await p.getByText("旧查询联系人", { exact: true }).count(), 0);
+  await p.evaluate(({ index, data }) => (window as any).fixture.reply(index, 200, data), { index: latest, data: page("当前联系人") });
+  await p.getByText("当前联系人", { exact: true }).waitFor();
+  await update(p, { actor: "actor-2" });
+  assert.equal(await p.getByText("当前联系人", { exact: true }).count(), 0);
+  assert.deepEqual(await writes(p), []);
 });
 test("note template stays local until explicit send and retains input for date confirmation", async t => {
   const p = await open(t, { params: {
@@ -747,15 +812,18 @@ for (const session of [{ ...aiSession, id: "other-session" }, { ...aiSession, me
 const sourceQuestion = "帮我整理明天交流会的准备事项。";
 const sourceAnswer = "好的，以下是为你整理的准备事项，帮助你更高效地参与明天的交流会。\n\n1. **先准备一个具体问题**\n\n选一个正在推进的项目，说清楚目前卡在哪里。把背景控制在几句话内，给对方留下追问空间。\n\n2. **带上可分享的材料**\n\n准备一页项目介绍和一个能快速演示的原型。不必一次讲完全部功能，先确认对方最关心的部分。\n\n3. **会后记下约定**\n\n交流结束后整理讨论内容与下一步，再决定是否创建待办或日程。不要把尚未确认的想法写成已约定事项。";
 const sourceReadPayloads = { ...conversationReadPayloads, "/api/ai/conversations/conversation%3A1": replyPayload(sourceQuestion, sourceAnswer) };
-test("AI real event reference uses a compact source-sized thumbnail and retains navigation", async t => {
-  const payloads = { ...sourceReadPayloads, "/api/events": { events: [{ id: "event:1", title: "周末产品交流会", startsAt: "2026-09-12T14:00:00+09:00", endsAt: "2026-09-12T16:00:00+09:00", city: "东京", venue: "涩谷", status: "published", participantCount: 12, coverPath: "/orbit-covers/meeting.jpg" }] } };
-  const p = await open(t, { payloads }); const row = p.getByRole("button").filter({ has: p.getByText("周末产品交流会", { exact: true }) });
-  if (process.env.ORBIT_CAPTURE_AI) await p.screenshot({ path: "/tmp/orbit-ink-signal-ai-conversation-reference-390.png" });
-  assert.equal(await row.evaluate(el => getComputedStyle(el).borderTopWidth), "0px");
-  const img = await p.getByTestId('ai-event-image-event:1').evaluate(el => ({ width: el.clientWidth, height: el.clientHeight }));
-  assert.deepEqual(img, { width: 64, height: 52 });
-  const rowBox = await row.boundingBox(); assert.ok(rowBox && rowBox.y < 620 && rowBox.y + rowBox.height < 714);
-  await row.click(); assert.deepEqual(await navigation(p), ["/events/event%3A1"]);
+test("AI verified event cards retain navigation without fetching the event collection", async t => {
+  const fixture = JSON.parse(readFileSync("tests/helpers/ai-entity-artifact-fixtures.json", "utf8")).event;
+  const shared = { artifactId: "artifact:event", taskId: "task:event", status: "ready", presentation: fixture.presentation };
+  const artifact = entityArtifactToDisplay({ task: { ...shared, kind: fixture.taskKind, conversationId: "conversation:1", artifactProducer: "event_producer", query: "查活动", createdAt: "2026-09-12", updatedAt: "2026-09-12" }, result: { ...shared, kind: fixture.taskKind, generatedView: { summary: "活动结果", sections: fixture.sections }, nextAction: "" } });
+  assert.equal(artifact.status, "ready", "the test must provide a valid generated artifact before exercising card recovery");
+  const session = { ...aiSession, messages: [{ id: "u", role: "user", text: "查活动" }, { id: "a", role: "assistant", text: "这是已核实的活动。" }] };
+  const recovery = { truncated: false, turns: [{ sessionId: session.id, requestId: "r", userMessageId: "u", assistantMessageId: "a", status: "ready", artifacts: [artifact] }] };
+  const p = await open(t, { params: { id: session.id, source: "session" }, payloads: { ...conversationReadPayloads, "/api/ai/conversations/sessions/session%3A1": { session, storage: aiSessionListPayload.storage, artifactRecovery: recovery } } });
+  const card = p.getByTestId("ai-entity-card-event").first();
+  await card.waitFor(); await card.click();
+  assert.match(String((await navigation(p))[0]), /^\/events\//);
+  assert.equal(await p.evaluate(() => (window as any).fixture.requests.some((r: any) => r.path === "/api/events")), false);
 });
 test("AI conversation fits the supplied compact header with its centered brand", async t => {
   const p = await open(t, { payloads: sourceReadPayloads });
@@ -771,11 +839,12 @@ test("AI conversation displays readable numbered steps with aligned supporting p
   const detail = await p.getByText("选一个正在推进的项目，说清楚目前卡在哪里。把背景控制在几句话内，给对方留下追问空间。", { exact: true }).boundingBox();
   assert.ok(title && detail && Math.abs(title.x - detail.x) < 1);
 });
-test("AI conversation keeps related panels after the answer instead of interrupting it", async t => {
+test("AI conversation preserves the full answer without adding keyword-derived panels", async t => {
   const p = await open(t, { payloads: sourceReadPayloads });
   const lastParagraph = await p.getByText("交流结束后整理讨论内容与下一步，再决定是否创建待办或日程。不要把尚未确认的想法写成已约定事项。", { exact: true }).boundingBox();
-  const related = await p.getByText("相关活动", { exact: true }).boundingBox();
-  assert.ok(lastParagraph && related && related.y >= lastParagraph.y + lastParagraph.height);
+  assert.ok(lastParagraph);
+  assert.equal(await p.getByText("相关活动", { exact: true }).count(), 0);
+  assert.equal(await p.evaluate(() => (window as any).fixture.requests.some((r: any) => ["/api/events", "/api/tasks"].includes(r.path))), false);
 });
 test("AI conversation composer stays compact then grows without covering the send control", async t => {
   const p = await open(t); const input = p.getByRole("textbox", { name: "消息", exact: true }); assert.equal((await input.boundingBox())?.height, 44);

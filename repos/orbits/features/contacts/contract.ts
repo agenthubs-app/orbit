@@ -1,5 +1,6 @@
 import type { AppErrorCode } from "../../shared/errors/app-error";
 export type { ContactCardDTO, ContactCardPageDTO, ContactCardSummaryDTO } from "../../shared/contract/contact-card-page";
+export type { ContactIntroSourceLabelContract, ContactIntroSummaryCandidateContract, ContactIntrosSummaryContract } from "../../shared/contract/contact-intros-summary";
 import type { ContractMatches } from "../../shared/contract-check";
 import type {
   ContactSourceFilterCode,

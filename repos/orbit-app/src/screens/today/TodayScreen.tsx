@@ -1,7 +1,7 @@
 import { useOrbitTimeZone } from "../../time/OrbitTimeZoneProvider";
 import { Ionicons } from "@expo/vector-icons";
 import { type Href, useRouter } from "expo-router";
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Pressable,
   RefreshControl,
@@ -15,7 +15,6 @@ import {
   ORBIT_API_ENDPOINTS,
   taskPath,
   taskSuggestionAcceptPath,
-  todayPath,
 } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
 import { ErrorState } from "../../components/ErrorState";
@@ -23,22 +22,18 @@ import { LoadingState } from "../../components/LoadingState";
 import { textStyles, radius, spacing, typography } from "../../design/tokens";
 import { createControlStyles } from "../../design/controls";
 import { createThemedStyles } from "../../design/theme";
-import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
+import { useTodayTaskPages } from "../../hooks/useTodayTaskPages";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
-import {
-  todayToView,
-  type TodayTaskRowView,
-  type TodayView,
-} from "../../view-models/today-tasks";
+import { todayTaskPageToView, type TodayTaskCardRowView, type TodayTaskPageView } from "../../view-models/today-task-pages";
 
-function todayDateKey(timeZone: string): string {
+function todayDateKey(timeZone: string, now = new Date()): string {
   const parts = new Intl.DateTimeFormat("en-US", {
     day: "2-digit",
     month: "2-digit",
     timeZone,
     year: "numeric",
-  }).formatToParts(new Date());
+  }).formatToParts(now);
   const value = Object.fromEntries(parts.map((item) => [item.type, item.value]));
   return `${value.year}-${value.month}-${value.day}`;
 }
@@ -47,23 +42,27 @@ function mutationKey(action: string): string {
   return `ios:${action}:${Date.now()}`;
 }
 
-function usable<T>(state: ReturnType<typeof useApiResource<T>>) {
-  return state.kind === "success" || state.kind === "empty";
-}
-
 export function TodayScreen() {
   const { timeZone, canSave } = useOrbitTimeZone();
   const locale = useOrbitLocale();
   const { colors, styles } = useStyles();
   const router = useRouter();
   const client = useOrbitApiClient();
-  const path = useMemo(() => todayPath(timeZone), [timeZone]);
-  const todayState = useApiResource<unknown>(path, () => false);
+  const [clock, setClock] = useState(() => new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setClock(new Date()), 30_000);
+    return () => clearInterval(timer);
+  }, []);
+  const date = todayDateKey(timeZone, clock);
+  const todayState = useTodayTaskPages(timeZone, date);
   const [draft, setDraft] = useState("");
   const [creating, setCreating] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [mutationError, setMutationError] = useState<string | null>(null);
-  const view = usable(todayState) ? todayToView(todayState.data, new Date(), timeZone, locale.language) : null;
+  const view = todayState.data
+    ? todayTaskPageToView(todayState.data.today, todayState.data.page.actorId, date, clock, timeZone, locale.language,
+      todayState.data.page.items, todayState.data.page)
+    : null;
 
   async function createTask() {
     if (!canSave) { setMutationError(locale.t("today.timezoneUnavailable")); return; }
@@ -81,7 +80,7 @@ export function TodayScreen() {
     });
     if (result.success) {
       setDraft("");
-      todayState.refresh();
+      todayState.state.refresh();
     } else {
       setMutationError(result.error.message);
     }
@@ -98,7 +97,7 @@ export function TodayScreen() {
       },
     });
     if (result.success) {
-      todayState.refresh();
+      todayState.state.refresh();
     } else {
       setMutationError(result.error.message);
     }
@@ -112,7 +111,7 @@ export function TodayScreen() {
       body: { idempotencyKey: mutationKey(`accept:${suggestionId}`) },
     });
     if (result.success) {
-      todayState.refresh();
+      todayState.state.refresh();
     } else {
       setMutationError(result.error.message);
     }
@@ -123,16 +122,24 @@ export function TodayScreen() {
     <AppScreen
       refreshControl={
         <RefreshControl
-          onRefresh={todayState.refresh}
-          refreshing={todayState.refreshing}
+          onRefresh={todayState.state.refresh}
+          refreshing={todayState.state.refreshing}
           tintColor={colors.accent}
         />
       }
       title={locale.t("today.title")}
     >
-      {todayState.kind === "loading" ? <LoadingState /> : null}
-      {todayState.kind === "failure" || todayState.kind === "offline" ? (
-        <ErrorState message={todayState.error.message} title={locale.t("today.unavailable")} />
+      {todayState.state.kind === "loading" ? <LoadingState /> : null}
+      {todayState.state.kind === "failure" || todayState.state.kind === "offline" ? (
+        <View>
+          <ErrorState message={todayState.state.error.message} title={locale.t("today.unavailable")} />
+          <Pressable accessibilityRole="button" onPress={todayState.state.refresh} style={styles.headerAction}>
+            <Text style={styles.headerActionText}>{locale.t("common.retry")}</Text>
+          </Pressable>
+        </View>
+      ) : null}
+      {(todayState.state.kind === "success" || todayState.state.kind === "empty") && !view ? (
+        <ErrorState message={locale.t("common.error")} title={locale.t("today.unavailable")} />
       ) : null}
       {view ? (
         <TodayWorkspace
@@ -142,12 +149,15 @@ export function TodayScreen() {
           onChangeDraft={setDraft}
           onCompleteTask={completeTask}
           onCreateTask={createTask}
+          onLoadMoreTasks={todayState.loadMore}
           onOpenCompleted={() =>
             router.push({ pathname: "/tasks", params: { view: "completed" } })
           }
           onOpenSchedule={() => router.push("/schedule" as Href)}
-          onOpenTask={(id) => router.push(`/tasks/${id}` as Href)}
+          onOpenTask={(id) => router.push(`/tasks/${encodeURIComponent(id)}` as Href)}
           onOpenTasks={() => router.push("/tasks" as Href)}
+          taskLoadError={todayState.moreError}
+          taskLoadingMore={todayState.loadingMore}
           updatingId={updatingId}
           view={view}
         />
@@ -164,10 +174,13 @@ function TodayWorkspace({
   onChangeDraft,
   onCompleteTask,
   onCreateTask,
+  onLoadMoreTasks,
   onOpenCompleted,
   onOpenSchedule,
   onOpenTask,
   onOpenTasks,
+  taskLoadError,
+  taskLoadingMore,
   updatingId,
   view,
 }: {
@@ -177,12 +190,15 @@ function TodayWorkspace({
   onChangeDraft: (value: string) => void;
   onCompleteTask: (id: string) => void;
   onCreateTask: () => void;
+  onLoadMoreTasks: () => void;
   onOpenCompleted: () => void;
   onOpenSchedule: () => void;
   onOpenTask: (id: string) => void;
   onOpenTasks: () => void;
+  taskLoadError: string | null;
+  taskLoadingMore: boolean;
   updatingId: string | null;
-  view: TodayView;
+  view: TodayTaskPageView;
 }) {
   const locale = useOrbitLocale();
   const { colors, styles } = useStyles();
@@ -224,6 +240,14 @@ function TodayWorkspace({
             />
           ))
         )}
+        {view.hasMore ? (
+          <View style={styles.moreTasks}>
+            {taskLoadError ? <Text accessibilityRole="alert" style={styles.errorText}>{taskLoadError}</Text> : null}
+            <Pressable accessibilityRole="button" disabled={taskLoadingMore} onPress={onLoadMoreTasks} style={styles.moreTasksButton}>
+              <Text style={styles.headerActionText}>{locale.t(taskLoadError ? "common.retry" : taskLoadingMore ? "today.loadingMoreTasks" : "today.loadMoreTasks")}</Text>
+            </Pressable>
+          </View>
+        ) : null}
         <Pressable
           accessibilityRole="button"
           onPress={onOpenCompleted}
@@ -335,14 +359,14 @@ function TaskRow({
   loading: boolean;
   onComplete: () => void;
   onOpen: () => void;
-  task: TodayTaskRowView;
+  task: TodayTaskCardRowView;
 }) {
   const locale = useOrbitLocale();
   const { styles } = useStyles();
   return (
     <View style={[styles.taskRow, !last ? styles.rowBorder : null]}>
       <Pressable
-        accessibilityLabel={locale.t("today.completeNamed", { title: task.title })}
+        accessibilityLabel={locale.t("today.completeNamed", { title: task.titlePreview })}
         accessibilityRole="checkbox"
         disabled={loading}
         onPress={onComplete}
@@ -357,8 +381,8 @@ function TaskRow({
         onPress={onOpen}
         style={({ pressed }) => [styles.taskBody, pressed ? styles.pressed : null]}
       >
-        <Text numberOfLines={1} style={styles.rowTitle}>{task.title}</Text>
-        <Text style={styles.rowMeta}>{[task.categoryLabel, task.location].filter(Boolean).join(" · ")}</Text>
+        <Text numberOfLines={1} style={styles.rowTitle}>{task.titlePreview}</Text>
+        <Text style={styles.rowMeta}>{[task.categoryLabel, task.locationPreview].filter(Boolean).join(" · ")}</Text>
       </Pressable>
       {task.dueLabel ? (
         <Text
@@ -414,5 +438,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   summary: { color: colors.text3, fontSize: typography.small },
   taskBody: { flex: 1, gap: 3, justifyContent: "center", minHeight: 52, minWidth: 0 },
   taskRow: { alignItems: "center", flexDirection: "row", minHeight: 54, paddingLeft: spacing.xs },
+  moreTasks: { alignItems: "center", borderTopColor: colors.border, borderTopWidth: 1, gap: spacing.xs, minHeight: 44, paddingHorizontal: spacing.md, paddingTop: spacing.xs },
+  moreTasksButton: { alignItems: "center", minHeight: 40, justifyContent: "center", minWidth: 120 },
   workspace: { gap: spacing.sm },
 }));

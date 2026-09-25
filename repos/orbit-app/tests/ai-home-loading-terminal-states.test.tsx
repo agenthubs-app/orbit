@@ -17,7 +17,19 @@ import { aiConversationPayload, emptyAiSessionListPayload } from "./helpers/ai-f
 let todayKind = "success";
 let sessionsKind = "success";
 let conversationKind = "success";
-let today: unknown = {};
+const todayDate = (() => {
+  const parts = new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
+  const value = Object.fromEntries(parts.map(item => [item.type, item.value]));
+  return `${value.year}-${value.month}-${value.day}`;
+})();
+let today: unknown = {
+  taskMode: "summary",
+  date: todayDate,
+  timeZone: "Asia/Tokyo",
+  summary: { openTaskCount: 0, suggestionCount: 0 },
+  items: [],
+  questionSignals: { urgentTask: false, relationshipTask: false, preparation: false },
+};
 let overdue = false;
 
 const loader = Module as unknown as { _load: (name: string, ...args: unknown[]) => unknown };
@@ -32,7 +44,7 @@ loader._load = (name, ...args) => {
   // The ceiling's own timing is covered in use-loading-deadline.test.ts; this
   // file is about what each region shows once it has or has not expired.
   if (name.endsWith("/hooks/useLoadingDeadline")) return { LOADING_DEADLINE_MS: 8_000, useLoadingDeadline: () => overdue };
-  if (name.endsWith("/hooks/useApiResource")) return {
+  if (name.endsWith("/hooks/useApiResource") || name === "./useApiResource") return {
     useApiResource: (path: string) => {
       const kind = path.startsWith("/api/today") ? todayKind : path.includes("/sessions") ? sessionsKind : conversationKind;
       return {
@@ -47,7 +59,10 @@ loader._load = (name, ...args) => {
 const { AiScreen } = require("../src/screens/ai/AiScreen");
 loader._load = originalLoad;
 
-test.beforeEach(() => { todayKind = "success"; sessionsKind = "success"; conversationKind = "success"; today = {}; overdue = false; });
+test.beforeEach(() => { todayKind = "success"; sessionsKind = "success"; conversationKind = "success"; today = {
+  taskMode: "summary", date: todayDate, timeZone: "Asia/Tokyo", summary: { openTaskCount: 0, suggestionCount: 0 }, items: [],
+  questionSignals: { urgentTask: false, relationshipTask: false, preparation: false },
+}; overdue = false; });
 
 test("still reading: each region says so while its request is in flight", () => {
   todayKind = "loading"; sessionsKind = "loading"; conversationKind = "loading";

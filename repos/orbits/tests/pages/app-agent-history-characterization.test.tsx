@@ -18,7 +18,7 @@ import {
 // 那两处断言换成只断列表内容。
 //
 // 特征化渲染测试（iOrbit 任务 1a，历史侧）：锁定
-// 历史记录行为，使 `use-agent-history` 抽出后「零变化」可证。覆盖 cursor 分页抽干、
+// 历史记录行为，使 `use-agent-history` 抽出后「零变化」可证。覆盖显式 cursor 分页、
 // 分组筛选、置顶排序、重命名、删除二次确认与乐观队列失败文案、toast、跨标签
 // window.focus 刷新。断言全部落在渲染结果与真实请求上，不做源码正则。
 
@@ -66,7 +66,7 @@ function toast(root: Parameters<typeof renderedText>[0]) {
   return nodes[0] ?? null;
 }
 
-test("history follows every server cursor page and shows all of the drained conversations", async (t) => {
+test("history fetches one summary page and follows each cursor only on explicit request", async (t) => {
   const harness = await mountAgent(t, {
     sessionPages: [
       [session("session:a", "第一页对话", "2026-09-20T00:00:00.000Z")],
@@ -76,25 +76,37 @@ test("history follows every server cursor page and shows all of the drained conv
   });
   await openDrawer(harness);
 
-  const listCalls = harness.calls.filter((call) => call.url.startsWith("/api/ai/conversations/sessions?"));
+  let listCalls = harness.calls.filter((call) => call.url.startsWith("/api/ai/conversations/sessions?"));
+  assert.equal(listCalls.length, 1, "initial history load must fetch one bounded page");
+  assert.ok(listCalls[0]!.url.includes("limit=50"));
+  assert.equal(listCalls[0]!.url.includes("v=2"), false);
+  assert.equal(listCalls[0]!.url.includes("cursor="), false);
+  assert.deepEqual(historyTitles(harness.root), ["第一页对话"]);
+
+  for (const [cursor, expectedTitles] of [
+    ["1", ["第一页对话", "第二页对话"]],
+    ["2", ["第一页对话", "第二页对话", "第三页对话"]],
+  ] as const) {
+    await act(async () => {
+      buttonWithText(harness.root, "加载更多历史记录 ⌄").props.onClick();
+    });
+    await harness.settle(1);
+    listCalls = harness.calls.filter((call) => call.url.startsWith("/api/ai/conversations/sessions?"));
+    assert.ok(listCalls.at(-1)!.url.includes(`cursor=${cursor}`));
+    assert.deepEqual(historyTitles(harness.root), expectedTitles);
+  }
   assert.equal(listCalls.length, 3);
-  assert.ok(listCalls[0].url.includes("limit=50"));
-  assert.ok(listCalls[0].url.includes("v=2"));
-  assert.equal(listCalls[0].url.includes("cursor="), false);
-  assert.ok(listCalls[1].url.includes("cursor=1"));
-  assert.ok(listCalls[2].url.includes("cursor=2"));
-  assert.deepEqual(historyTitles(harness.root), ["第一页对话", "第二页对话", "第三页对话"]);
 });
 
-test("pinned conversations sort above newer ones and keep their custom title", async (t) => {
+test("pinned conversations preserve server order above newer ones and keep their custom title", async (t) => {
   const harness = await mountAgent(t, {
     sessionPages: [
       [
-        session("session:new", "最新的对话", "2026-09-21T00:00:00.000Z"),
         session("session:old", "很久以前", "2026-09-01T00:00:00.000Z", {
           customTitle: "钉在最上面",
           organization: { customTitle: "钉在最上面", groupId: null, pinned: true, revision: 2 },
         }),
+        session("session:new", "最新的对话", "2026-09-21T00:00:00.000Z"),
       ],
     ],
   });

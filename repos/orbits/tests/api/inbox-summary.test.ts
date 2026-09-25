@@ -13,11 +13,11 @@ test('combined legacy summary authenticates once and selects only narrow readers
   const body=await response.json();assert.deepEqual(inboxSummarySchema.parse(body.data),{actorId:'account',messagesUnread:4,notificationsUnread:3,notificationMode:'legacy',notificationRead:'ready',asOf:at});
   assert.equal(response.headers.get('cache-control'),'private, no-store');
 });
-test('typed mode never calls legacy or materializes a feed and explicitly requires the existing refresh',async()=>{
+test('typed mode reads its permission-checked count without legacy or feed materialization',async()=>{
   const response=await createInboxSummaryGetHandler({resolveActor:async()=>actor,typedEnabled:()=>true,
-    readMessages:async()=>2,readLegacy:async()=>{throw Error('wrong source');},now:()=>at})();
+    readMessages:async()=>2,readLegacy:async()=>{throw Error('wrong source');},readTyped:async()=>5,now:()=>at})();
   const body=await response.json();assert.equal(response.status,200);
-  assert.deepEqual(inboxSummarySchema.parse(body.data),{actorId:'account',messagesUnread:2,notificationsUnread:null,notificationMode:'typed',notificationRead:'refresh-required',asOf:at});
+  assert.deepEqual(inboxSummarySchema.parse(body.data),{actorId:'account',messagesUnread:2,notificationsUnread:5,notificationMode:'typed',notificationRead:'ready',asOf:at});
 });
 test('authentication and server failures never leak internals or fabricate a zero count',async()=>{
   assert.equal((await createInboxSummaryGetHandler({resolveActor:async()=>null,typedEnabled:()=>{throw Error('must not read');}})()).status,401);

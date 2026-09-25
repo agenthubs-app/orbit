@@ -27,13 +27,14 @@ export const useSafeAreaInsets = () => ({ top: 48, bottom: 24, left: 0, right: 0
 export const Ionicons = ({ name, size, color }) => <span aria-hidden="true" style={{ fontFamily: "OrbitTestIonicons", fontSize: size, color, width: size, height: size, flexShrink: 0, lineHeight: 1 }}>{String.fromCodePoint(glyphs[name])}</span>;
 `;
 const tasks = { tasks: [{ id: "task-fri", taskId: "task-fri", title: "给山田发介绍资料", contactName: "山田洋介", organization: "Sakura Ventures", notes: "确认合作资料", recommendedAction: "发送合作资料", category: "relationship", status: "open", priority: "normal", plannedDate: "2026-09-11", dueAt: "2026-09-11T09:00:00+09:00", source: "manual", createdAt: "2026-09-10T00:00:00Z", updatedAt: "2026-09-10T00:00:00Z" }] };
+const taskPage = { actorId: "actor", status: "open", scope: "all", query: "", items: [{ id: "task-fri", titlePreview: "给山田发介绍资料", locationPreview: null, status: "open", category: "relationship", priority: "normal", plannedDate: "2026-09-11", dueAt: "2026-09-11T09:00:00+09:00", updatedAt: "2026-09-10T00:00:00.000Z", completedAt: null, relatedContact: { id: "contact-yamada", namePreview: "山田洋介", organizationPreview: "Sakura Ventures" } }], counts: { open: 1, completed: 0 }, total: 1, hasMore: false, nextCursor: null, asOf: "2026-09-11T05:20:00.000Z" };
 const events = { events: [{ id: "event-fri", eventId: "event-fri", title: "AI 创业者交流", startsAt: "2026-09-11T16:00:00+09:00", endsAt: "2026-09-11T17:00:00+09:00", date: "2026-09-11", location: "渋谷", venue: "渋谷", status: "published" }] };
 const item = { id: "meeting-fri", kind: "meeting", sourceId: "meeting-fri", title: "与陈雨辰聊合作", startsAt: "2026-09-11T14:30:00+09:00", endsAt: "2026-09-11T15:15:00+09:00", location: "东京 · 线上", state: "scheduled" };
 const scheduleItems = { scheduleItems: [item,
   { ...item, id: "personal-sat", kind: "personal", title: "整理本周笔记", startsAt: "2026-09-12T15:00:00+09:00", endsAt: "2026-09-12T16:00:00+09:00", location: "个人日程" },
   { ...item, id: "meeting-sun", title: "周日会面", startsAt: "2026-09-13T10:00:00+09:00", endsAt: "2026-09-13T11:00:00+09:00" },
   { ...item, id: "meeting-mon", title: "周一已安排的会面", startsAt: "2026-09-07T10:00:00+09:00", endsAt: "2026-09-07T11:00:00+09:00" }] };
-const payloads = { "/api/tasks": tasks, "/api/events/public": events, "/api/schedule-items": scheduleItems };
+const payloads = { "/api/tasks/page?status=open&scope=all&limit=4": taskPage, "/api/events/public": events, "/api/schedule-items": scheduleItems };
 
 test.before(async () => {
   const result = await build({ stdin: { contents: 'import React from "react"; import { createRoot } from "react-dom/client"; import { ScheduleScreen } from "./src/screens/schedule/ScheduleScreen"; createRoot(document.getElementById("root")).render(<ScheduleScreen />);', loader: "tsx", resolveDir: process.cwd() }, bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"], define: { "process.env.NODE_ENV": '"test"', __DEV__: "false" }, plugins: [{ name: "schedule-boundaries", setup(plugin) {
@@ -153,7 +154,7 @@ test("current time and next-up emphasis update without shifting the event's time
 });
 
 test("partial-source failure stays visible beside the remaining real agenda", async t => {
-  const page = await open(t, { kinds: { "/api/tasks": "failure" } });
+  const page = await open(t, { kinds: { "/api/tasks/page?status=open&scope=all&limit=4": "failure" } });
   await page.getByText("待办加载失败", { exact: true }).waitFor();
   await page.getByRole("button", { name: /AI 创业者交流/ }).waitFor();
   assert.equal(await page.getByRole("button", { name: /给山田发介绍资料/ }).count(), 0);

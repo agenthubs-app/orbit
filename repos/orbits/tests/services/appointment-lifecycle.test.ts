@@ -148,13 +148,20 @@ test("appointment retains proposal history through counter, confirmation, and re
   assert.equal(replay.appointment.version, 6);
 
   const outbox = repository.outbox();
-  assert.equal(outbox.length, 14);
+  assert.equal(outbox.length, 16);
   assert.equal(outbox.filter((event) => event.eventType === "appointment.proposed").length, 1);
   assert.equal(outbox.filter((event) => event.eventType === "appointment.countered").length, 1);
   assert.equal(outbox.filter((event) => event.eventType === "appointment.reschedule.proposed").length, 1);
   assert.equal(outbox.filter((event) => event.eventType === "appointment.reminders.invalidate").length, 1);
   assert.equal(new Set(outbox.map((event) => event.dedupeKey)).size, outbox.length);
   assert.equal(outbox.filter((event) => event.eventType === "appointment.reminder.t24h").length, 2);
+  const thirtyMinuteReminders = outbox.filter((event) => event.eventType === "appointment.reminder.t30m");
+  assert.equal(thirtyMinuteReminders.length, 2);
+  assert.deepEqual(thirtyMinuteReminders.map((event) => event.availableAt), [
+    "2026-09-15T03:00:00.000Z",
+    "2026-09-23T08:30:00.000Z",
+  ]);
+  assert.ok(thirtyMinuteReminders.every((event) => event.dedupeKey.endsWith(":t30m")));
   assert.equal(outbox.filter((event) => event.eventType === "appointment.memo.t15m").length, 2);
   assert.equal(outbox.filter((event) => event.eventType === "appointment.calendar.requested").length, 2);
   assert.equal(outbox.filter((event) => event.eventType === "appointment.meeting.requested").length, 0);

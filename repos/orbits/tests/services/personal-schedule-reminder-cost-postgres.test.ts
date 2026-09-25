@@ -26,10 +26,10 @@ test('schedule reconciliation does not download unrelated plans or historical re
   const workspaceId = 'w', actorId = 'a'; let clock = '2026-09-25T00:00:00.000Z';
   const store = createPostgresLiveRecordStore({ client });
   const service = createPersonalScheduleService({ store, client, workspaceId, now: () => clock });
-  const refresh = async () => { reads = []; await service.refreshReminderPlans({ actorId }); return reads.reduce((n, r) => n + r.bytes, 0); };
   try {
     await pool.query(`create schema ${schema}`); await pool.query(ORBIT_RECORDS_SCHEMA_SQL);
     const { scheduleItem } = await service.create(actorId, { title: 'Daily', startsAt: '2026-09-26T09:00:00.000Z', timeZone: 'UTC', reminderMinutes: 15, recurrence: { frequency: 'daily' }, idempotencyKey: 'create' });
+    const refresh = async () => { reads = []; await service.refreshReminderPlansForSeries({ actorId, id: scheduleItem.id }); return reads.reduce((n, r) => n + r.bytes, 0); };
     const baseline = await refresh();
     assert.ok(baseline < 15000, 'unchanged plans need batched identity checks, not repeated full body downloads');
     // Local-only expansion: other plans owned by this actor, not just foreign

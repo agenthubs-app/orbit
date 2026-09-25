@@ -12,6 +12,8 @@ import {
 } from "react-native";
 import { ORBIT_API_ENDPOINTS } from "../../api/endpoints";
 import type { OrbitLanguage } from "../../api/contract/language";
+import { taskPageSchema } from "../../api/schema/task-page";
+import { validateApiResourceState } from "../../api/validated-resource-state";
 import { AppScreen } from "../../components/AppScreen";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
@@ -19,9 +21,11 @@ import { layout, textStyles, radius, spacing, typography, type OrbitColors } fro
 import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
+import { normalizeTaskPageContract } from "../../view-models/today-task-pages";
 import {
   japanCalendarDateInfo,
   scheduleToCalendarView,
+  taskPageToScheduleTasks,
   shiftScheduleDateKey,
   shiftScheduleMonthDateKey,
   type ScheduleCalendarDay,
@@ -128,7 +132,14 @@ export function ScheduleScreen() {
   const locale = useOrbitLocale();
   const { timeZone } = useOrbitTimeZone();
   const { colors } = useOrbitTheme();
-  const tasksState = useApiResource<unknown>(ORBIT_API_ENDPOINTS.tasks, () => false);
+  const rawTasksState = useApiResource<unknown>(
+    "/api/tasks/page?status=open&scope=all&limit=4",
+    (data) => taskPageSchema.safeParse(data).success && taskPageSchema.parse(data).items.length === 0
+  );
+  const tasksState = validateApiResourceState(
+    rawTasksState,
+    taskPageSchema.refine((page) => page.status === "open" && page.scope === "all" && page.query === "")
+  );
   const eventsState = useApiResource<unknown>(
     ORBIT_API_ENDPOINTS.publicEvents,
     () => false
@@ -161,7 +172,7 @@ export function ScheduleScreen() {
           : { scheduleItems: [] },
         ...(selectedDateKey ? { selectedDateKey } : {}),
         weekStartsOn: 1,
-        tasks: usable(tasksState) ? tasksState.data : { tasks: [] }
+        tasks: usable(tasksState) ? taskPageToScheduleTasks(normalizeTaskPageContract(tasksState.data)) : { tasks: [] }
       })
     : null;
   const loading = tasksState.kind === "loading" || eventsState.kind === "loading" || scheduleItemsState.kind === "loading";

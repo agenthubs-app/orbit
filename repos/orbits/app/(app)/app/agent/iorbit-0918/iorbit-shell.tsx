@@ -81,6 +81,10 @@ export function IOrbitShell({
     historyFeedback,
     historyMutationQueue,
     historyMutationSessionId,
+    historyPageHasMore,
+    historyPageLoading,
+    historyQuery,
+    loadMoreHistory,
     moveHistorySession,
     pendingDeleteHistory,
     renameHistoryGroup,
@@ -89,6 +93,7 @@ export function IOrbitShell({
     sessionGroups,
     setHistoryDeleteError,
     setHistoryFeedback,
+    setHistoryQuery,
     setPendingDeleteHistory,
     setSelectedSessionGroupId,
     setSessionGroups,
@@ -329,13 +334,18 @@ export function IOrbitShell({
             groupMutationPending={groupMutationPending}
             groups={sessionGroups}
             history={storedHistory}
+            historyHasMore={historyPageHasMore}
+            historyLoading={historyPageLoading}
+            historyQuery={historyQuery}
             language={language}
             onClose={() => setHistOpen(false)}
             onCreateGroup={(name) => { void createHistoryGroup(name); }}
             onDelete={deleteHistorySession}
             onDeleteGroup={(group) => { void deleteHistoryGroup(group); }}
             onFilterGroup={setSelectedSessionGroupId}
+            onLoadMore={() => { void loadMoreHistory(); }}
             onMove={moveHistorySession}
+            onSearch={setHistoryQuery}
             // iOrbit 合并前终审 2：抽屉里的「新对话」与挑一条历史都必须把视图带到
             // 对话。`chatOpen` 的同步只认上升沿（「返回概览」刻意不清 `chatOpen`），
             // 所以从对话 → 返回概览 → 抽屉 → 挑一条时，URL 与线程都换了、人还留在

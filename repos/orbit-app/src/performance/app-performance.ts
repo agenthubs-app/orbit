@@ -84,7 +84,6 @@ export function appPerformanceScenarioForPath(
     pathname === "/api/chat/relationship-inbox" ||
     pathname.startsWith("/api/chat/relationship-inbox/") ||
     pathname === "/api/relationship-communication/conversation-summaries" ||
-    pathname === "/api/relationship-communication/conversations" ||
     pathname.startsWith("/api/relationship-communication/conversations/")
   ) return "app.inbox";
   if (pathname === "/api/schedule-items" || pathname.startsWith("/api/schedule-items/")) return "app.schedule";

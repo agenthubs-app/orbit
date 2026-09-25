@@ -8,6 +8,7 @@ import { createTodayService } from "./today-service";
 import { createConfiguredTodayScheduleProvider } from "./today-schedule-provider";
 import { createTodayCompletedCounter } from "./today-completed-counter";
 import { resolveSharedReadBudgetGate } from "../sync/read-budget-gate";
+import { createConfiguredTaskPageReader } from "./task-page";
 
 export function createConfiguredTodayService() {
   const configured = createConfiguredPostgresLiveRecordStore();
@@ -21,8 +22,10 @@ export function createConfiguredTodayService() {
       transactionClient: createConfiguredTransactionalPostgresRuntime()?.client,
     }),
   });
+  const taskPageReader = createConfiguredTaskPageReader(configured.workspaceId);
+  if (!taskPageReader) throw new Error("Today task-page storage is not configured");
   return createTodayService({
-    taskService,
+    taskPageReader,
     completedCounter: { count(query) {
       resolveSharedReadBudgetGate()?.assertAllowed({ collectionName: "tasks" });
       return createTodayCompletedCounter({ client: configured.client, workspaceId: configured.workspaceId }).count(query);

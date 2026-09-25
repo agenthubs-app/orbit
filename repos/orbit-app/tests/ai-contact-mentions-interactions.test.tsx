@@ -1,17 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { filterMentionContacts } from "../src/screens/ai/ContactMentionPicker";
 import {
   consumeAiTemplatePrefill,
   registerAiTemplatePrefill,
 } from "../src/data/ai-template-prefill";
-
-const contacts = [
-  { id: "contact:lin:design", name: "林悦", organization: "云间设计", role: "设计师" },
-  { id: "contact:lin:commerce", name: "林悦", organization: "云间商贸", role: "采购" },
-  { id: "contact:sato", name: "佐藤健", organization: "青空", role: "工程师" },
-];
 
 test("template prefill is one-use, identity scoped and never carries private text in its route id", () => {
   const intentId = registerAiTemplatePrefill({
@@ -41,8 +34,5 @@ test("template prefill is one-use, identity scoped and never carries private tex
   assert.equal(consumeAiTemplatePrefill({ id: validId, actorId: "actor:one", baseUrl: "https://orbit.test" }), null);
 });
 
-test("mention picker filters partial names and companies and distinguishes same-name stable ids", () => {
-  assert.deepEqual(filterMentionContacts(contacts, "商贸", []), [contacts[1]]);
-  assert.deepEqual(filterMentionContacts(contacts, "林", ["contact:lin:design"]), [contacts[1]]);
-  assert.deepEqual(filterMentionContacts(contacts, "青空", []), [contacts[2]]);
-});
+// Search, paging and same-name selection are exercised through the real picker
+// and HTTP boundary in ink-signal-ai-conversation.test.ts, not a local array scan.

@@ -251,6 +251,8 @@ export interface ContactDetailPublicProfile {
 // 末尾的 executed/requested 布尔字段是安全审计，不是 UI 装饰字段。
 export interface ContactDetail {
   id: string;
+  /** Exact actor-owned relationship used to build this detail, when present. */
+  connectionId?: string;
   lifecycleInitialization?: "pending" | "ready";
   contentLanguage: OrbitLanguage;
   displayName: string;

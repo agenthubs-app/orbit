@@ -10,7 +10,6 @@ export type ContactInitializationView = { kind: "loading" | "hidden" | "error" }
 export interface ContactInitializationState { view: ContactInitializationView; draft: ContactInitializationDraft; busy: boolean; locked: boolean; error: string; notice: "saved" | "replayed" | null }
 const blank = (): ContactInitializationDraft => ({ stage: "", goal: "", title: "", date: "", time: "", archiveConfirmed: false });
 const connectionIdentity = z.string().min(1).max(256).refine(value => value.trim() === value && !value.includes("\0"));
-const connectionCandidates = z.object({ connections: z.array(z.object({ id: connectionIdentity, contactId: connectionIdentity })) });
 function viewOf(read: RelationshipInitializationRead): ContactInitializationView {
   if (read.state === "pending") return { kind: "pending" };
   return { kind: "initialized", stage: read.snapshot.connection.stage, goal: read.snapshot.connection.activeGoal, connectionId: read.snapshot.connection.connectionId,
@@ -20,7 +19,7 @@ function viewOf(read: RelationshipInitializationRead): ContactInitializationView
 // One controller per actor/cookie/baseURL/contact scope. No shared cache, writes,
 // or optimistic stage projection; only verified receipts update the display.
 export function createContactInitializationController(options: {
-  client: OrbitApiClient; actorId: string; contactId: string; isCurrent: () => boolean;
+  client: OrbitApiClient; actorId: string; contactId: string; connectionId: string | null; isCurrent: () => boolean;
   createId: () => string; onConfirmed: () => void;
 }) {
   let state: ContactInitializationState = { view: { kind: "loading" }, draft: blank(), busy: false, locked: false, error: "", notice: null };
@@ -44,23 +43,16 @@ export function createContactInitializationController(options: {
       if (!current(token) || controller.signal.aborted) return;
       let next: RelationshipInitializationRead | null = null;
       if (!result.success && result.status === 404) {
-        // No accepted exchange side does not imply no canonical relationship.
-        // Resolve only this contact through the same actor/cookie/server client.
-        const listed = await options.client.get<unknown>("/api/connections", { signal: controller.signal });
-        if (!current(token) || controller.signal.aborted) return;
-        if (!listed.success) throw new Error(`${listed.error.code}: ${listed.error.message}`);
-        const parsed = connectionCandidates.safeParse(listed.data);
-        if (listed.status < 200 || listed.status >= 300 || !parsed.success) throw new Error(invalidResponse);
-        const candidates = parsed.data.connections.filter(connection => connection.contactId === options.contactId);
-        if (candidates.length === 0 && read === null) {
+        // The focused contact detail already resolved its actor-owned
+        // relationship. Never download every relationship to recover one ID.
+        if (!options.connectionId && read === null) {
           intent = null; publish({ view: { kind: "hidden" }, draft: blank(), locked: false }); return;
         }
-        if (candidates.length !== 1) throw new Error(invalidResponse);
-        const candidate = candidates[0]!;
-        const canonical = await options.client.get<unknown>(relationshipLifecyclePath(candidate.id), { signal: controller.signal });
+        if (!options.connectionId) throw new Error(invalidResponse);
+        const canonical = await options.client.get<unknown>(relationshipLifecyclePath(options.connectionId), { signal: controller.signal });
         if (!current(token) || controller.signal.aborted) return;
         if (!canonical.success) throw new Error(`${canonical.error.code}: ${canonical.error.message}`);
-        const snapshot = canonical.status >= 200 && canonical.status < 300 ? readRelationshipSnapshot(canonical.data, options.actorId, candidate.id) : null;
+        const snapshot = canonical.status >= 200 && canonical.status < 300 ? readRelationshipSnapshot(canonical.data, options.actorId, options.connectionId) : null;
         if (!snapshot || snapshot.connection.contactId !== options.contactId) throw new Error(invalidResponse);
         next = { state: "initialized", snapshot };
       } else {

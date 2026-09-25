@@ -489,7 +489,7 @@ export async function readRuntimeConversation(state: RuntimeScenarios, sessionId
   const detail = await runtimeJson(state.origin, `${base}/${sessionId}`, state.owner.cookie);
   const list = await runtimeJson(state.origin, base, state.owner.cookie);
   runtimeCheck(detail.data.session.id === sessionId && detail.data.session.customTitle === title && detail.data.session.messages.length === count && detail.data.session.pinned === pinned
-    && list.data.sessions.some((item: any) => item.id === sessionId && item.customTitle === title), "CONVERSATION_HTTP_READBACK_FAILED");
+    && list.data.items.some((item: any) => item.id === sessionId && item.organization.customTitle === title && !("messages" in item)), "CONVERSATION_HTTP_READBACK_FAILED");
   const { createStorageOrbitAgentChatSessionProvider, orbitAgentChatSessionActorWorkspaceId } = await import("../../features/orbit-ai/storage/orbit-agent-chat-session-live-record-provider");
   const provider = createStorageOrbitAgentChatSessionProvider({ store: state.fixture.records.store, workspaceId: WORKSPACE_ID, actorId: state.owner.id });
   const stored = await provider.getSession(sessionId);

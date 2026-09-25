@@ -587,6 +587,7 @@ function detailFor(input: {
 
   return {
     id: input.contact.id,
+    ...(input.connection ? { connectionId: input.connection.id } : {}),
     lifecycleInitialization: input.contact.lifecycleInitialization,
     displayName: input.contact.displayName,
     contentLanguage: input.language,

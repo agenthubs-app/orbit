@@ -1,7 +1,7 @@
 'use client';
 import {useEffect,useRef,useState} from 'react';
 import {useOrbitLanguage} from '../orbit-language-context';
-import {readContactMessageActor} from '../inbox/contact-messages-tab';
+import {readContactMessageActor} from '../inbox/inbox-request';
 import type {NotificationDiscoveryStatusDTO} from '../../../../shared/contract/notification-discovery';
 import {notificationDiscoveryStatusSchema} from '../../../../shared/api-schema/notification-discovery';
 const endpoint='/api/inbox/discovery/preferences';

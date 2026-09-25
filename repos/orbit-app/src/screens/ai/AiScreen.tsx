@@ -23,16 +23,17 @@ import {
 } from "react-native-safe-area-context";
 import {
   ORBIT_API_ENDPOINTS,
-  aiConversationSessionPath,
-  todayPath
+  aiConversationSessionPath
 } from "../../api/endpoints";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
-import { aiConversationListSchema, aiHistoryRows, aiSessionDeleteReceiptSchema, aiSessionGroupListSchema, aiSessionListSchema, type AiSession } from "../../api/ai-history-contract";
+import { aiConversationListSchema, aiHistoryRows, aiSessionDeleteReceiptSchema, aiSessionGroupListSchema, type AiSession } from "../../api/ai-history-contract";
 import type { AiSessionEntryPointId, AiSessionGroupContract } from "../../api/contract/ai-sessions";
+import type { AiSessionSummaryItemContract } from "../../api/contract/ai-session-page";
 import type { OrbitLanguage } from "../../api/contract/language";
 import { createAiSessionGroup, deleteAiSessionGroup, renameAiSessionGroup, updateAiSessionOrganization } from "../../api/ai-session-management";
 import { aiSessionOriginInputSchema } from "../../api/schema/ai-sessions";
+import { aiSessionSummaryPageSchema } from "../../api/schema/ai-session-page";
 import { validateApiResourceState } from "../../api/validated-resource-state";
 import { iorbitBrandMark } from "../../design/iorbit-brand";
 import { registerAiSendIntent } from "../../data/ai-send-intent";
@@ -43,27 +44,37 @@ import {
   useApiResource,
   type ApiResourceState
 } from "../../hooks/useApiResource";
+import { useValidatedApiResource } from "../../hooks/useValidatedApiResource";
 import { useLoadingDeadline } from "../../hooks/useLoadingDeadline";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useRelationshipInboxBadgeCount } from "../../hooks/useRelationshipInboxBadgeCount";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import type { MessageKey } from "../../i18n/messages";
 import { mobileUserDisplayName } from "../../view-models/mobile-profile";
+import { todayTaskSummaryModeSchema } from "../../api/schema/today";
 import {
   orbitAiHomeChatWindow,
   type ChatMessageView,
   type OrbitAiHomeChatWindow
 } from "../../view-models/conversations";
-import {
-  todayHomeSummary,
-  todayHomeQuestions,
-  type TodayHomeActionView
-} from "../../view-models/today-tasks";
+import type { TodayHomeActionView } from "../../view-models/today-tasks";
+import { todaySummaryPath, todaySummaryQuestions, todaySummaryToHomeView } from "../../view-models/today-task-pages";
 import { OrbitNextActions } from "./OrbitNextActions";
 import { homeQuestionSnapshot, type HomeQuestionSnapshot } from "../../view-models/home-question-snapshot";
 import { AiSessionOrganizationPanel } from "./AiSessionOrganization";
 
 type CapabilityTone = "accent" | "amber" | "live" | "sky";
+
+function localDateKey(timeZone: string, now = new Date()): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    day: "2-digit",
+    month: "2-digit",
+    timeZone,
+    year: "numeric",
+  }).formatToParts(now);
+  const value = Object.fromEntries(parts.map(item => [item.type, item.value]));
+  return `${value.year}-${value.month}-${value.day}`;
+}
 
 const capabilityEntries: {
   detailKey: MessageKey;
@@ -111,6 +122,14 @@ type AiDrawerHistoryItem = {
   source: "conversation" | "session";
   title: string;
   when: string;
+};
+
+type AiHistoryContinuation = {
+  identity: string;
+  items: AiSessionSummaryItemContract[];
+  nextCursor: string | null;
+  hasMore: boolean;
+  usedCursors: string[];
 };
 
 function optionalParam(value: string | string[] | undefined): string {
@@ -196,24 +215,44 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
   const keyboardBottomInset = useStableKeyboardBottomInset();
   const [refreshIndex, setRefreshIndex] = useState(0);
   const [historyAttempt, setHistoryAttempt] = useState(0);
+  const [historyQuery, setHistoryQuery] = useState("");
+  const [debouncedHistoryQuery, setDebouncedHistoryQuery] = useState("");
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [groupsAttempt, setGroupsAttempt] = useState(0);
   const [conversationAttempt, setConversationAttempt] = useState(0);
   const [todayAttempt, setTodayAttempt] = useState(0);
-  const [additionalHistorySessions, setAdditionalHistorySessions] = useState<AiSession[]>([]);
-  const [historyPaginationBusy, setHistoryPaginationBusy] = useState(false);
-  const [historyPaginationError, setHistoryPaginationError] = useState<string | null>(null);
   const readScope = JSON.stringify([scopeKey, refreshIndex]);
+  const historyQueryParam = debouncedHistoryQuery;
+  const historyQuerySettled = historyQuery.trim() === historyQueryParam;
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedHistoryQuery(historyQuery.trim()), 250);
+    return () => clearTimeout(timer);
+  }, [historyQuery]);
+  const historyFilterIdentity = JSON.stringify([readScope, historyAttempt, historyQueryParam, selectedGroupId]);
+  const latestHistoryFilterIdentity = useRef(historyFilterIdentity);
+  latestHistoryFilterIdentity.current = historyFilterIdentity;
+  const historyParams = new URLSearchParams({ limit: "20" });
+  if (historyQueryParam) historyParams.set("q", historyQueryParam);
+  if (selectedGroupId) historyParams.set("groupId", selectedGroupId);
+  const historyPath = `${ORBIT_API_ENDPOINTS.aiConversationSessions}?${historyParams.toString()}`;
   const ownership = useMemo(() => ({}), [readScope]);
   const latest = useRef(ownership);
   latest.current = ownership;
   const mounted = useRef(true);
   const deleteOperation = useRef<AbortController | null>(null);
   const organizationOperation = useRef<AbortController | null>(null);
+  const historyPageOperation = useRef<AbortController | null>(null);
+  const [historyContinuation, setHistoryContinuation] = useState<AiHistoryContinuation | null>(null);
+  const [historyPagingIdentity, setHistoryPagingIdentity] = useState<string | null>(null);
+  const [historyPageError, setHistoryPageError] = useState<{ identity: string; message: string } | null>(null);
+  useEffect(() => {
+    if (!historyQuerySettled) historyPageOperation.current?.abort();
+  }, [historyQuerySettled]);
   const navigationLock = useRef(false);
   const owns = () => mounted.current && latest.current === ownership && isScopeCurrent();
   useEffect(() => {
     mounted.current = true;
-    return () => { mounted.current = false; deleteOperation.current?.abort(); deleteOperation.current = null; organizationOperation.current?.abort(); organizationOperation.current = null; };
+    return () => { mounted.current = false; deleteOperation.current?.abort(); deleteOperation.current = null; organizationOperation.current?.abort(); organizationOperation.current = null; historyPageOperation.current?.abort(); historyPageOperation.current = null; };
   }, [ownership]);
   const client = useOrbitApiClient({ scopeKey: readScope });
   const inboxBadge = useRelationshipInboxBadgeCount(readScope);
@@ -223,19 +262,22 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
     { scopeKey: JSON.stringify([readScope, conversationAttempt]) }
   ), aiConversationListSchema);
   const historyState = validateApiResourceState(useApiResource<unknown>(
-    `${ORBIT_API_ENDPOINTS.aiConversationSessions}?v=2&limit=50`,
-    () => false,
-    { scopeKey: JSON.stringify([readScope, historyAttempt]) }
-  ), aiSessionListSchema);
+    historyPath,
+    data => { const parsed = aiSessionSummaryPageSchema.safeParse(data); return parsed.success && parsed.data.items.length === 0; },
+    { scopeKey: historyFilterIdentity, cachePolicy: "network-only" }
+  ), aiSessionSummaryPageSchema);
   const groupsState = validateApiResourceState(useApiResource<unknown>(
     ORBIT_API_ENDPOINTS.aiConversationGroups,
     () => false,
     { scopeKey: JSON.stringify([readScope, groupsAttempt]) }
   ), aiSessionGroupListSchema);
-  const todayState = useApiResource<unknown>(
-    todayPath("Asia/Tokyo"),
-    (data) => todayHomeSummary(data, new Date(), "Asia/Tokyo", locale.language).items.length === 0,
-    { scopeKey: JSON.stringify([readScope, todayAttempt]) }
+  const todayNow = new Date();
+  const todayDate = localDateKey("Asia/Tokyo", todayNow);
+  const todayState = useValidatedApiResource(
+    todaySummaryPath("Asia/Tokyo"),
+    todayTaskSummaryModeSchema.refine(value => value.date === todayDate && value.timeZone === "Asia/Tokyo", { message: "Stale Today summary scope" }),
+    data => data.items.length === 0,
+    { scopeKey: JSON.stringify([readScope, todayAttempt, todayDate]), cachePolicy: "network-only" }
   );
   // Sprint 0092: neither region may say "still reading" without end. A retry
   // bumps the attempt counter, which restarts the clock for that region.
@@ -250,7 +292,6 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
   const [organizationItem, setOrganizationItem] = useState<AiDrawerHistoryItem | null>(null);
   const [organizationBusy, setOrganizationBusy] = useState(false);
   const [organizationError, setOrganizationError] = useState<string | null>(null);
-  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [initialGroupId, setInitialGroupId] = useState<string | null>(null);
   const [composerMenuOpen, setComposerMenuOpen] = useState(false);
   const [startedNewChat, setStartedNewChat] = useState(false);
@@ -275,59 +316,69 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
   const firstHistoryPage = historyState.kind === "success" || historyState.kind === "empty"
     ? historyState.data
     : null;
-  const firstHistoryPageIdentity = firstHistoryPage
-    ? JSON.stringify([readScope, historyAttempt, firstHistoryPage.nextCursor, firstHistoryPage.sessions.map(session => session.id)])
-    : JSON.stringify([readScope, historyAttempt, historyState.kind]);
+  const activeHistoryContinuation = historyContinuation?.identity === historyFilterIdentity ? historyContinuation : null;
+  const displaySessionPage = firstHistoryPage ? {
+    ...firstHistoryPage,
+    items: [...firstHistoryPage.items, ...(activeHistoryContinuation?.items ?? [])],
+  } : null;
+  const historyNextCursor = activeHistoryContinuation ? activeHistoryContinuation.nextCursor : firstHistoryPage?.nextCursor ?? null;
+  const historyHasMore = activeHistoryContinuation ? activeHistoryContinuation.hasMore : firstHistoryPage?.hasMore ?? false;
+  const historyPaging = historyPagingIdentity === historyFilterIdentity;
+  const activeHistoryPageError = historyPageError?.identity === historyFilterIdentity ? historyPageError.message : null;
   useEffect(() => {
-    setAdditionalHistorySessions([]);
-    setHistoryPaginationError(null);
-    if (!firstHistoryPage?.nextCursor) {
-      setHistoryPaginationBusy(false);
+    historyPageOperation.current?.abort();
+    historyPageOperation.current = null;
+    setHistoryContinuation(current => current?.identity === historyFilterIdentity ? current : null);
+    setHistoryPagingIdentity(null);
+    setHistoryPageError(current => current?.identity === historyFilterIdentity ? current : null);
+  }, [historyFilterIdentity]);
+  async function loadMoreHistory() {
+    if (!owns() || !historyQuerySettled || !firstHistoryPage || !historyHasMore || !historyNextCursor || historyPageOperation.current) return;
+    const identity = historyFilterIdentity;
+    const cursor = historyNextCursor;
+    const continuation = historyContinuation?.identity === identity ? historyContinuation : null;
+    const seenCursors = new Set(continuation?.usedCursors ?? []);
+    if (seenCursors.has(cursor)) {
+      setHistoryPageError({ identity, message: locale.t("ai.historyUnreadable") });
       return;
     }
-    let active = true;
-    const controller = new AbortController();
-    const loadRemainingHistory = async () => {
-      setHistoryPaginationBusy(true);
-      const sessions: AiSession[] = [];
-      const seenCursors = new Set<string>();
-      let cursor: string | null = firstHistoryPage.nextCursor ?? null;
-      for (let page = 0; active && cursor && page < 199; page += 1) {
-        if (seenCursors.has(cursor)) {
-          setHistoryPaginationError(locale.t("ai.historyUnreadable"));
-          break;
-        }
-        seenCursors.add(cursor);
-        const result = await client.get<unknown>(
-          `${ORBIT_API_ENDPOINTS.aiConversationSessions}?v=2&limit=50&cursor=${encodeURIComponent(cursor)}`,
-          { signal: controller.signal },
-        );
-        if (!active || controller.signal.aborted) return;
-        const parsed = result.success ? aiSessionListSchema.safeParse(result.data) : null;
-        if (!result.success || !parsed?.success) {
-          setHistoryPaginationError(locale.t("ai.historyUnreadable"));
-          break;
-        }
-        sessions.push(...parsed.data.sessions);
-        cursor = parsed.data.nextCursor ?? null;
+    const operation = new AbortController();
+    historyPageOperation.current = operation;
+    setHistoryPagingIdentity(identity);
+    setHistoryPageError(null);
+    const params = new URLSearchParams({ limit: "20", cursor });
+    if (historyQueryParam) params.set("q", historyQueryParam);
+    if (selectedGroupId) params.set("groupId", selectedGroupId);
+    try {
+      const result = await client.get<unknown>(`${ORBIT_API_ENDPOINTS.aiConversationSessions}?${params.toString()}`, { signal: operation.signal });
+      if (!owns() || operation.signal.aborted || latestHistoryFilterIdentity.current !== identity || historyPageOperation.current !== operation) return;
+      const parsed = result.success ? aiSessionSummaryPageSchema.safeParse(result.data) : null;
+      if (!result.success || !parsed?.success || (parsed.data.nextCursor !== null && (parsed.data.nextCursor === cursor || seenCursors.has(parsed.data.nextCursor)))) {
+        setHistoryPageError({ identity, message: locale.t("ai.historyUnreadable") });
+        return;
       }
-      if (active) {
-        setAdditionalHistorySessions(sessions);
-        setHistoryPaginationBusy(false);
+      const previousItems = continuation?.items ?? [];
+      const existingIds = new Set([...firstHistoryPage.items, ...previousItems].map(item => item.id));
+      const newItems = parsed.data.items.filter(item => !existingIds.has(item.id));
+      setHistoryContinuation({
+        identity,
+        items: [...previousItems, ...newItems],
+        nextCursor: parsed.data.nextCursor,
+        hasMore: parsed.data.hasMore,
+        usedCursors: [...seenCursors, cursor],
+      });
+      setHistoryPageError(null);
+    } catch {
+      if (owns() && !operation.signal.aborted && latestHistoryFilterIdentity.current === identity) {
+        setHistoryPageError({ identity, message: locale.t("ai.historyUnreadable") });
       }
-    };
-    void loadRemainingHistory();
-    return () => {
-      active = false;
-      controller.abort();
-    };
-  }, [client, firstHistoryPageIdentity]);
-  const completeHistoryData = firstHistoryPage ? {
-    ...firstHistoryPage,
-    sessions: [...new Map(
-      [...firstHistoryPage.sessions, ...additionalHistorySessions].map(session => [session.id, session]),
-    ).values()],
-  } : null;
+    } finally {
+      if (historyPageOperation.current === operation) {
+        historyPageOperation.current = null;
+        setHistoryPagingIdentity(current => current === identity ? null : current);
+      }
+    }
+  }
   const projectedHomeChat = orbitAiHomeChatWindow(
     startedNewChat || state.kind !== "success" ? null : state.data,
     null,
@@ -339,16 +390,18 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
     content: state.kind === "success" ? state.data.messages.find(item => item.messageId === message.id)?.content ?? state.data.assistantMessage : message.content
   })) };
   const historyItems = aiHistoryRows(state.kind === "success" || state.kind === "empty" ? state.data : null,
-    completeHistoryData)
-    .filter(item => item.source !== "session" || !deletedIds.includes(item.id));
+    displaySessionPage)
+    .filter(item => {
+      if (item.source === "session") return !deletedIds.includes(item.id);
+      if (selectedGroupId && item.groupId !== selectedGroupId) return false;
+      return !historyQueryParam || `${item.title} ${item.preview}`.toLocaleLowerCase().includes(historyQueryParam.toLocaleLowerCase());
+    });
   const groups = groupsState.kind === "success" || groupsState.kind === "empty"
     ? groupsState.data.groups
     : [];
   const historyNotices: { message: string; retryLabel?: string; onRetry?: () => void }[] = [];
   if (recentLoading && !recentOverdue) historyNotices.push({ message: locale.t("ai.loadingRecent") });
   if (recentOverdue) historyNotices.push({ message: locale.t("ai.recentTimedOut"), retryLabel: locale.t("common.retry"), onRetry: () => { if (owns()) { setConversationAttempt(value => value + 1); setHistoryAttempt(value => value + 1); } } });
-  if (historyPaginationBusy) historyNotices.push({ message: locale.t("ai.loadingAllHistory") });
-  if (historyPaginationError) historyNotices.push({ message: historyPaginationError, retryLabel: locale.t("ai.retryRead"), onRetry: () => { if (owns()) setHistoryAttempt(value => value + 1); } });
   if (state.kind === "failure" || state.kind === "offline") historyNotices.push({ message: locale.t("ai.conversationsUnreadable"), retryLabel: locale.t("ai.retryConversations"), onRetry: () => { if (owns()) setConversationAttempt(value => value + 1); } });
   if (historyState.kind === "failure" || historyState.kind === "offline") historyNotices.push({ message: locale.t("ai.historyUnreadable"), retryLabel: locale.t("ai.retryHistory"), onRetry: () => { if (owns()) setHistoryAttempt(value => value + 1); } });
   if ((state.kind === "success" || state.kind === "empty") && state.data.state === "pending") historyNotices.push({ message: locale.t("ai.conversationPreparing") });
@@ -357,16 +410,20 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
     todayState.kind === "success" || todayState.kind === "empty"
       ? todayState.data
       : null;
-  const todaySummary = todayHomeSummary(todayPayload, new Date(), "Asia/Tokyo", locale.language);
+  const todaySummary = todayPayload
+    ? todaySummaryToHomeView(todayPayload, todayDate, "Asia/Tokyo", todayNow, locale.language)
+    : null;
+  const todaySummaryView = todaySummary ?? { items: [], openTaskCount: 0, suggestionCount: 0 };
+  const summaryQuestions = todayPayload ? todaySummaryQuestions(todayPayload, locale.language) : null;
   const [questionSnapshot, setQuestionSnapshot] = useState<HomeQuestionSnapshot | null>(null);
   const nextQuestionSnapshot = homeQuestionSnapshot(questionSnapshot, {
-    scope: JSON.stringify([baseUrl, auth.actorId]),
-    payload: todayPayload,
-    ready: auth.ready && todayState.kind !== "loading",
+    scope: JSON.stringify([baseUrl, auth.actorId, todayDate]),
+    questions: summaryQuestions,
+    ready: auth.ready && summaryQuestions !== null,
     refreshing: todayState.refreshing
   });
   if (nextQuestionSnapshot !== questionSnapshot) setQuestionSnapshot(nextQuestionSnapshot);
-  const suggestedPrompts = [...(nextQuestionSnapshot.questions ?? todayHomeQuestions(null, new Date(), locale.language)), { kind: "discussion", label: locale.t("ai.discussionPrompt") }];
+  const suggestedPrompts = [...(nextQuestionSnapshot.questions ?? todaySummaryQuestions(null, locale.language)), { kind: "discussion", label: locale.t("ai.discussionPrompt") }];
   const todayError =
     todayState.kind === "offline" || todayState.kind === "failure"
       ? todayState.error.message
@@ -660,7 +717,7 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
               onOpen={openTodayAction}
               onOpenSuggestions={() => openCapability("/today" as Href)}
               onRefresh={() => { if (owns()) setTodayAttempt(value => value + 1); todayState.refresh(); }}
-              summary={todaySummary}
+            summary={todaySummaryView}
             />
           </ChatTranscript>
           {sendError ? (
@@ -679,7 +736,9 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
         inboxBadge={inboxBadge}
         historyItems={historyItems}
         historyNotices={historyNotices}
-        todayBadge={todaySummary.openTaskCount}
+        historyQuery={historyQuery}
+        todayBadge={todaySummaryView.openTaskCount}
+        onHistoryQueryChange={setHistoryQuery}
         onClose={() => setDrawerOpen(false)}
         onNewChat={startNewChat}
         onOpenCapability={openCapability}
@@ -689,9 +748,11 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
       <OrbitAiHistoryPanel
         deletingHistoryId={deletingHistoryId}
         historyDeleteError={historyDeleteError}
-        historyPaginationError={historyPaginationError}
-        historyPaging={historyPaginationBusy}
-        historyItems={selectedGroupId ? historyItems.filter(item => item.groupId === selectedGroupId) : historyItems}
+        historyPaginationError={activeHistoryPageError}
+        historyPaging={historyPaging}
+        historyHasMore={historyHasMore && historyQuerySettled}
+        historyItems={historyItems}
+        historyQuery={historyQuery}
         groupFilterName={groups.find(group => group.id === selectedGroupId)?.name ?? null}
         historyStateKind={historyState.kind}
         conversationStateKind={state.kind}
@@ -709,6 +770,8 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
           if (owns()) setOrganizationOpen(true);
         }}
         onDeleteHistoryItem={item => { if (owns() && !deleteOperation.current) { setHistoryDeleteError(null); setConfirmDelete(item); } }}
+        onLoadMoreHistory={() => { void loadMoreHistory(); }}
+        onHistoryQueryChange={setHistoryQuery}
         onManageGroups={() => openOrganization(null)}
         onManageHistoryItem={item => openOrganization(item)}
         onOpenHistoryItem={openHistoryItem}
@@ -1007,9 +1070,11 @@ function OrbitAiDrawer({
   accountName,
   historyItems,
   historyNotices,
+  historyQuery,
   inboxBadge,
   todayBadge,
   onClose,
+  onHistoryQueryChange,
   onNewChat,
   onOpenCapability,
   onOpenHistoryItem,
@@ -1018,9 +1083,11 @@ function OrbitAiDrawer({
   accountName: string;
   historyItems: AiDrawerHistoryItem[];
   historyNotices: { message: string; retryLabel?: string; onRetry?: () => void }[];
+  historyQuery: string;
   inboxBadge: number | undefined;
   todayBadge: number;
   onClose: () => void;
+  onHistoryQueryChange: (value: string) => void;
   onNewChat: () => void;
   onOpenCapability: (href: Href) => void;
   onOpenHistoryItem: (item: AiDrawerHistoryItem) => void;
@@ -1028,13 +1095,6 @@ function OrbitAiDrawer({
 }) {
   const locale = useOrbitLocale();
   const { colors, styles } = useStyles();
-  const [historyQuery, setHistoryQuery] = useState("");
-  const normalizedQuery = historyQuery.trim().toLocaleLowerCase();
-  const filteredHistoryItems = normalizedQuery
-    ? historyItems.filter((item) =>
-        `${item.title} ${item.preview}`.toLocaleLowerCase().includes(normalizedQuery)
-      )
-    : historyItems;
 
   return (
     <Modal
@@ -1089,7 +1149,7 @@ function OrbitAiDrawer({
             <View style={styles.drawerSearchBox}>
               <Ionicons color={colors.text3} name="search-outline" size={17} />
               <TextInput
-                onChangeText={setHistoryQuery}
+                onChangeText={onHistoryQueryChange}
                 placeholder={locale.t("ai.searchConversations")}
                 placeholderTextColor={colors.text4}
                 style={styles.drawerSearchInput}
@@ -1115,7 +1175,7 @@ function OrbitAiDrawer({
               {notice.onRetry ? <Pressable accessibilityLabel={notice.retryLabel} accessibilityRole="button" onPress={notice.onRetry} style={styles.retryButton}><Text style={styles.allHistoryText}>{locale.t("common.retry")}</Text></Pressable> : null}
             </View>)}
             <View style={styles.drawerRecentList}>
-              {filteredHistoryItems.slice(0, 8).map((item) => (
+              {historyItems.slice(0, 8).map((item) => (
                 <Pressable
                   accessibilityRole="button"
                   key={`${item.source}:${item.id}`}
@@ -1129,7 +1189,7 @@ function OrbitAiDrawer({
                   </View>
                 </Pressable>
               ))}
-              {filteredHistoryItems.length === 0 && historyNotices.length === 0 ? (
+              {historyItems.length === 0 && historyNotices.length === 0 ? (
                 <Text style={styles.drawerEmptyText}>{locale.t("ai.noMatchingChats")}</Text>
               ) : null}
             </View>
@@ -1235,7 +1295,9 @@ function OrbitAiHistoryPanel({
   historyDeleteError,
   historyPaginationError,
   historyPaging,
+  historyHasMore,
   historyItems,
+  historyQuery,
   groupFilterName,
   historyStateKind,
   onClose,
@@ -1243,6 +1305,8 @@ function OrbitAiHistoryPanel({
   onCancelDelete,
   onConfirmDelete,
   onDeleteHistoryItem,
+  onLoadMoreHistory,
+  onHistoryQueryChange,
   onManageGroups,
   onManageHistoryItem,
   onOpenHistoryItem,
@@ -1259,7 +1323,9 @@ function OrbitAiHistoryPanel({
   historyDeleteError: string | null;
   historyPaginationError: string | null;
   historyPaging: boolean;
+  historyHasMore: boolean;
   historyItems: AiDrawerHistoryItem[];
+  historyQuery: string;
   groupFilterName: string | null;
   historyStateKind: ApiResourceState<unknown>["kind"];
   onClose: () => void;
@@ -1267,6 +1333,8 @@ function OrbitAiHistoryPanel({
   onCancelDelete: () => void;
   onConfirmDelete: () => void;
   onDeleteHistoryItem: (item: AiDrawerHistoryItem) => void;
+  onLoadMoreHistory: () => void;
+  onHistoryQueryChange: (value: string) => void;
   onManageGroups: () => void;
   onManageHistoryItem: (item: AiDrawerHistoryItem) => void;
   onOpenHistoryItem: (item: AiDrawerHistoryItem) => void;
@@ -1275,25 +1343,9 @@ function OrbitAiHistoryPanel({
 }) {
   const locale = useOrbitLocale();
   const { colors, styles } = useStyles();
-  const [historyQuery, setHistoryQuery] = useState("");
-  const normalizedHistoryQuery = historyQuery.trim().toLocaleLowerCase();
-  const filteredHistoryItems = normalizedHistoryQuery
-    ? historyItems.filter((item) =>
-        [item.title, item.preview, item.when]
-          .join(" ")
-          .toLocaleLowerCase()
-          .includes(normalizedHistoryQuery)
-      )
-    : historyItems;
   const conversationFailed = conversationStateKind === "failure" || conversationStateKind === "offline";
   const historyFailed = historyStateKind === "failure" || historyStateKind === "offline";
-  const loading = conversationStateKind === "loading" || historyStateKind === "loading" || historyPaging;
-
-  useEffect(() => {
-    if (!visible) {
-      setHistoryQuery("");
-    }
-  }, [visible]);
+  const loading = conversationStateKind === "loading" || historyStateKind === "loading";
 
   return (
     <Modal
@@ -1336,7 +1388,6 @@ function OrbitAiHistoryPanel({
           {historyDeleteError ? (
             <Text style={styles.errorText}>{historyDeleteError}</Text>
           ) : null}
-          {historyPaginationError ? <Text style={styles.errorText}>{historyPaginationError}</Text> : null}
           {confirmDelete ? <View style={styles.deleteConfirmation}>
             <Text style={styles.recentTitle}>{locale.t("ai.deleteNamed", { title: confirmDelete.title })}</Text>
             <Text style={styles.recentPreview}>{locale.t("ai.deleteIrreversible")}</Text>
@@ -1348,7 +1399,7 @@ function OrbitAiHistoryPanel({
           <View style={styles.drawerSearchBox}>
             <Ionicons color={colors.text3} name="search-outline" size={15} />
             <TextInput
-              onChangeText={setHistoryQuery}
+              onChangeText={onHistoryQueryChange}
               placeholder={locale.t("ai.searchHistory")}
               placeholderTextColor={colors.text4}
               style={styles.drawerSearchInput}
@@ -1357,13 +1408,15 @@ function OrbitAiHistoryPanel({
           </View>
           <DrawerHistoryList
             deletingHistoryId={deletingHistoryId}
-            historyItems={filteredHistoryItems}
-            hasQuery={normalizedHistoryQuery.length > 0}
-            canShowEmpty={!conversationFailed && !historyFailed && !loading && !conversationPending && !historyUnavailable}
+            historyItems={historyItems}
+            hasQuery={historyQuery.trim().length > 0}
+            canShowEmpty={!conversationFailed && !historyFailed && !loading && !historyPaging && !conversationPending && !historyUnavailable}
             onDeleteHistoryItem={onDeleteHistoryItem}
             onManageHistoryItem={onManageHistoryItem}
             onOpenHistoryItem={onOpenHistoryItem}
           />
+          {historyPaginationError ? <Text style={styles.errorText}>{historyPaginationError}</Text> : null}
+          {historyHasMore ? <Pressable accessibilityLabel={locale.t(historyPaginationError ? "ai.retryMoreHistory" : "ai.loadMoreHistory")} accessibilityRole="button" disabled={historyPaging} onPress={onLoadMoreHistory} style={[styles.retryButton, historyPaging ? styles.disabled : null]}><Text style={styles.allHistoryText}>{locale.t(historyPaging ? "ai.loadingMoreHistory" : historyPaginationError ? "ai.retryMoreHistory" : "ai.loadMoreHistory")}</Text></Pressable> : null}
         </View>
       </View>
     </Modal>

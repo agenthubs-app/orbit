@@ -9,7 +9,6 @@ import {createDeliveryPolicyRepository,readHistoricalNotificationSuppressions} f
 import {createTypedDeliverySources} from './typed-delivery-source';
 import {createTypedDeliveryWorker} from './typed-delivery-worker';
 import {createInboxRuntime} from './inbox-record-service-factory';
-import {refreshInboxBusinessRecords} from './inbox-business-refresh';
 export function createTypedDeliveryRuntime(input:{actorId:string;client:TransactionalPostgresClient;workspaceId:string;now?:()=>string;devices?:PushDeviceService;push?:OrbitPushAdapter|null}) {
  const repository=createDeliveryPolicyRepository(input),devices=input.devices??createPushDeviceService({actorId:input.actorId}),sources=createTypedDeliverySources({...input,repository}),ledger=createStorageNotificationDeliveryService({...input,store:createPostgresLiveRecordStore({client:input.client}) as never,sqlClient:input.client,devices});
  return {...input,repository,devices,sources,ledger,worker:createTypedDeliveryWorker({...input,repository,devices,sources,ledger,push:input.push===undefined?createConfiguredExpoPushAdapter():input.push}),
@@ -17,7 +16,6 @@ export function createTypedDeliveryRuntime(input:{actorId:string;client:Transact
    const cutover=await repository.cutover(input.actorId);if(!cutover?.enabled)return {notifications:0,messages:0};
    const since=Date.parse(cutover.since);if(!Number.isFinite(since))throw Error('TYPED_DELIVERY_CUTOVER_INVALID');
    const inbox=createInboxRuntime(input);
-   await refreshInboxBusinessRecords({...input,now:input.now?.()??new Date().toISOString(),service:inbox.service,since:cutover.since});
    const counts={notifications:0,messages:0};
    const state=await repository.get<{notifications:string|null;messages:{at:string;id:string}|null}>(input.client,'notificationDeliveryCursor',input.actorId)??{notifications:null,messages:null};
    let cursor=state.notifications;

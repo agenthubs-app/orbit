@@ -1,61 +1,43 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { homeQuestionSnapshot } from "../src/view-models/home-question-snapshot";
-import { todayHomeQuestions } from "../src/view-models/today-tasks";
 
-const relationship = { tasks: [{ id: "follow", title: "已有跟进", category: "relationship", status: "open", priority: "normal" }] };
-const input = { scope: "account/server", payload: relationship, ready: true, refreshing: false };
+const question = (kind: "tasks" | "followup" | "preparation") => [{ kind, label: `prompt:${kind}` }, { kind: "discovery" as const, label: "prompt:discovery" }];
+const input = { scope: "account/server", questions: question("followup"), ready: true, refreshing: false };
 
-test("first resolved data selects contextual questions, then background changes cannot replace them", () => {
+test("first resolved summary stores server-signal questions and ignores background changes", () => {
   const loading = homeQuestionSnapshot(null, { ...input, ready: false });
   assert.equal(loading.questions, null);
   const resolved = homeQuestionSnapshot(loading, input);
-  assert.deepEqual(resolved.questions?.map((q) => q.kind), ["followup", "discovery"]);
-  assert.equal(homeQuestionSnapshot(resolved, { ...input, payload: {} }), resolved);
+  assert.deepEqual(resolved.questions?.map(item => item.kind), ["followup", "discovery"]);
+  assert.equal(homeQuestionSnapshot(resolved, { ...input, questions: question("tasks") }), resolved);
 });
 
-test("an explicit refresh keeps visible questions until completion and then selects again", () => {
+test("an explicit refresh keeps visible questions until the fresh summary resolves", () => {
   const first = homeQuestionSnapshot(null, input);
-  const refreshing = homeQuestionSnapshot(first, { ...input, refreshing: true });
+  const refreshing = homeQuestionSnapshot(first, { ...input, refreshing: true, questions: question("tasks") });
   assert.equal(refreshing.questions, first.questions);
-  const next = homeQuestionSnapshot(refreshing, { ...input, payload: {}, refreshing: false });
-  assert.deepEqual(next.questions?.map((q) => q.kind), ["tasks", "discovery"]);
+  const next = homeQuestionSnapshot(refreshing, { ...input, questions: question("preparation") });
+  assert.deepEqual(next.questions?.map(item => item.kind), ["preparation", "discovery"]);
 });
 
-test("account or server changes discard the old selection and wait for that resource to reload", () => {
+test("account or server changes discard the old selection until the new summary loads", () => {
   const first = homeQuestionSnapshot(null, input);
-  const newInput = { ...input, scope: "other/server" };
-  const changed = homeQuestionSnapshot(first, newInput);
+  const nextInput = { ...input, scope: "other/server", questions: question("tasks") };
+  const changed = homeQuestionSnapshot(first, nextInput);
   assert.equal(changed.questions, null);
-  assert.equal(homeQuestionSnapshot(changed, newInput), changed, "old resource data must not be accepted under a new account");
-  const loading = homeQuestionSnapshot(changed, { ...newInput, ready: false });
-  const resolved = homeQuestionSnapshot(loading, { ...newInput, payload: {} });
-  assert.deepEqual(resolved.questions?.map((q) => q.kind), ["tasks", "discovery"]);
+  assert.equal(homeQuestionSnapshot(changed, nextInput), changed, "do not reuse an old account's signal result");
+  const loading = homeQuestionSnapshot(changed, { ...nextInput, ready: false });
+  const resolved = homeQuestionSnapshot(loading, nextInput);
+  assert.deepEqual(resolved.questions?.map(item => item.kind), ["tasks", "discovery"]);
 });
 
-test("malformed, completed and cancelled records do not manufacture contextual recommendations", () => {
-  for (const payload of [null, [], { tasks: [null, { category: "relationship" }] }, {
-    tasks: ["completed", "cancelled"].map((status) => ({ ...relationship.tasks[0], status })),
-    schedule: [{ id: "past", title: "过去的活动", kind: "event", category: "event", state: "ended", startsAt: "2020-01-01T00:00:00Z", sourceId: "past" }]
-  }]) {
-    assert.deepEqual(todayHomeQuestions(payload).map((q) => q.kind), ["tasks", "discovery"]);
-  }
-});
-
-test("a scope change after an earlier refresh accepts the resource's refreshing-only reload cycle", () => {
-  const first = homeQuestionSnapshot(null, { ...input, payload: {} });
-  const changedInput = { ...input, scope: "another-account/server" };
-  const changed = homeQuestionSnapshot(first, changedInput);
-  const refreshing = homeQuestionSnapshot(changed, { ...changedInput, refreshing: true });
-  assert.equal(refreshing.questions, null, "do not accept old data while the new account is loading");
-  const resolved = homeQuestionSnapshot(refreshing, changedInput);
-  assert.deepEqual(resolved.questions?.map((q) => q.kind), ["followup", "discovery"]);
-});
-
-test("overdue open work wins over an upcoming event and invalid dates are not urgency", () => {
-  const now = new Date("2026-09-07T00:00:00Z");
-  const payload = { tasks: [{ ...relationship.tasks[0], dueAt: "2026-09-06T23:59:59Z" }] };
-  assert.deepEqual(todayHomeQuestions(payload, now).map((q) => q.kind), ["tasks", "discovery"]);
-  const invalid = { tasks: [{ ...relationship.tasks[0], dueAt: "invalid" }] };
-  assert.deepEqual(todayHomeQuestions(invalid, now).map((q) => q.kind), ["followup", "discovery"]);
+test("a scope change during refresh waits for the new scoped request", () => {
+  const first = homeQuestionSnapshot(null, { ...input, refreshing: false });
+  const nextInput = { ...input, scope: "another-account/server", questions: question("preparation") };
+  const changed = homeQuestionSnapshot(first, nextInput);
+  const refreshing = homeQuestionSnapshot(changed, { ...nextInput, refreshing: true });
+  assert.equal(refreshing.questions, null);
+  const resolved = homeQuestionSnapshot(refreshing, nextInput);
+  assert.deepEqual(resolved.questions?.map(item => item.kind), ["preparation", "discovery"]);
 });

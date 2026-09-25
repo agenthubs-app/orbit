@@ -48,11 +48,11 @@ import {
   createAgentSessionId,
   deleteStoredAgentChatSession,
   loadStoredAgentChatSessions,
-  upsertAgentChatSession,
+  upsertAgentChatSummary,
   type AgentHistoryFeedback,
   type AgentMessage,
   type AgentPanel,
-  type AgentStoredChatSession,
+  type AgentSessionSummary,
 } from "./iorbit-model";
 
 // 删除当前会话时要重置的对话侧状态。`use-agent-chat` 在组件里通过 `bindChat`
@@ -82,26 +82,31 @@ export function useAgentHistory() {
   const languageRef = useRef(language);
   languageRef.current = language;
 
-  const [storedSessions, setStoredSessions] = useState<AgentStoredChatSession[]>([]);
+  const [storedSessions, setStoredSessions] = useState<AgentSessionSummary[]>([]);
   const [sessionGroups, setSessionGroups] = useState<AiSessionGroupContract[]>([]);
 
   const [historyMutationQueue] = useState(createAgentChatSessionMutationQueue);
 
   const [historyFeedback, setHistoryFeedback] = useState<AgentHistoryFeedback | null>(null);
 
-  const storedSessionsRef = useRef<AgentStoredChatSession[]>(storedSessions);
+  const storedSessionsRef = useRef<AgentSessionSummary[]>(storedSessions);
   storedSessionsRef.current = storedSessions;
   const [historySidebarResizing, setHistorySidebarResizing] = useState(false);
   const [historySidebarWidth, setHistorySidebarWidth] = useState(
     HISTORY_SIDEBAR_DEFAULT_WIDTH,
   );
   const [selectedSessionGroupId, setSelectedSessionGroupId] = useState<string | null>(null);
+  const [historyQuery, setHistoryQuery] = useState("");
+  const [historyPageHasMore, setHistoryPageHasMore] = useState(false);
+  const [historyPageCursor, setHistoryPageCursor] = useState<string | null>(null);
+  const [historyPageLoading, setHistoryPageLoading] = useState(false);
   const [groupMutationPending, setGroupMutationPending] = useState(false);
   const [historyDeleteError, setHistoryDeleteError] = useState<string | null>(null);
   const [historyMutationSessionId, setHistoryMutationSessionId] = useState<string | null>(null);
   const [pendingDeleteHistory, setPendingDeleteHistory] = useState<OrbitAgentHistoryView | null>(null);
   const historyResizeRef = useRef<{ startWidth: number; startX: number } | null>(null);
   const historyMutationSessionIdRef = useRef<string | null>(null);
+  const historyPageGenerationRef = useRef(0);
 
   const storedHistory = useMemo(
     () => agentChatHistorySessionsToHistory(storedSessions, language, sessionGroups)
@@ -111,22 +116,64 @@ export function useAgentHistory() {
 
   useEffect(() => {
     let cancelled = false;
-    const refreshAcrossClients = () => {
-      void Promise.all([loadStoredAgentChatSessions(), loadAgentChatGroups()]).then(
-        ([sessions, groups]) => {
-          if (cancelled) return;
-          storedSessionsRef.current = sessions;
-          setStoredSessions(sessions);
-          setSessionGroups(groups);
-        },
-      );
+    const refreshAcrossClients = (clearCurrentPage: boolean) => {
+      const generation = ++historyPageGenerationRef.current;
+      if (clearCurrentPage) {
+        storedSessionsRef.current = [];
+        setStoredSessions([]);
+        setHistoryPageCursor(null);
+        setHistoryPageHasMore(false);
+      }
+      setHistoryPageLoading(true);
+      void Promise.all([
+        loadStoredAgentChatSessions({ groupId: selectedSessionGroupId, q: historyQuery }),
+        loadAgentChatGroups(),
+      ]).then(([page, groups]) => {
+        if (cancelled || generation !== historyPageGenerationRef.current) return;
+        if (page) {
+          storedSessionsRef.current = page.items;
+          setStoredSessions(page.items);
+          setHistoryPageCursor(page.nextCursor);
+          setHistoryPageHasMore(page.hasMore);
+        } else {
+          storedSessionsRef.current = [];
+          setStoredSessions([]);
+          setHistoryPageCursor(null);
+          setHistoryPageHasMore(false);
+        }
+        setSessionGroups(groups);
+      }).finally(() => {
+        if (!cancelled && generation === historyPageGenerationRef.current) setHistoryPageLoading(false);
+      });
     };
-    window.addEventListener("focus", refreshAcrossClients);
+    const refreshOnFocus = () => refreshAcrossClients(false);
+    refreshAcrossClients(true);
+    window.addEventListener("focus", refreshOnFocus);
     return () => {
       cancelled = true;
-      window.removeEventListener("focus", refreshAcrossClients);
+      window.removeEventListener("focus", refreshOnFocus);
     };
-  }, []);
+  }, [historyQuery, selectedSessionGroupId]);
+
+  const loadMoreHistory = async () => {
+    const cursor = historyPageCursor;
+    if (!historyPageHasMore || !cursor || historyPageLoading) return;
+    const generation = historyPageGenerationRef.current;
+    setHistoryPageLoading(true);
+    try {
+      const page = await loadStoredAgentChatSessions({ cursor, groupId: selectedSessionGroupId, q: historyQuery });
+      if (!page || generation !== historyPageGenerationRef.current) return;
+      const merged = [...storedSessionsRef.current];
+      const existing = new Set(merged.map((session) => session.id));
+      for (const session of page.items) if (!existing.has(session.id)) merged.push(session);
+      storedSessionsRef.current = merged;
+      setStoredSessions(merged);
+      setHistoryPageCursor(page.nextCursor);
+      setHistoryPageHasMore(page.hasMore);
+    } finally {
+      if (generation === historyPageGenerationRef.current) setHistoryPageLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (!historySidebarResizing) {
@@ -243,12 +290,9 @@ export function useAgentHistory() {
 
       const latest = storedSessionsRef.current.find((session) => session.id === sessionId) ?? currentSession;
       if (!savedOrganization) return false;
-      const nextSessions = upsertAgentChatSession(storedSessionsRef.current, {
+      const nextSessions = upsertAgentChatSummary(storedSessionsRef.current, {
         ...latest,
-        customTitle: savedOrganization.customTitle ?? undefined,
         organization: savedOrganization,
-        pinned: savedOrganization.pinned,
-        title: savedOrganization.customTitle ?? latest.title,
       });
       storedSessionsRef.current = nextSessions;
       setStoredSessions(nextSessions);
@@ -448,9 +492,13 @@ export function useAgentHistory() {
     historyFeedback,
     historyMutationQueue,
     historyMutationSessionId,
+    historyPageHasMore,
+    historyPageLoading,
+    historyQuery,
     historySidebarResizing,
     historySidebarWidth,
     moveHistorySession,
+    loadMoreHistory,
     pendingDeleteHistory,
     renameHistoryGroup,
     renameHistorySession,
@@ -459,6 +507,7 @@ export function useAgentHistory() {
     sessionGroups,
     setHistoryDeleteError,
     setHistoryFeedback,
+    setHistoryQuery,
     setPendingDeleteHistory,
     setSelectedSessionGroupId,
     setSessionGroups,

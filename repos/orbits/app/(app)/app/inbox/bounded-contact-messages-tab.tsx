@@ -4,13 +4,11 @@ import { useOrbitLanguage } from "../orbit-language-context";
 import { formatOrbitDateTime } from "../orbit-datetime";
 import { NotificationDeliverySettings } from "../settings/notification-delivery-settings";
 import { Avatar } from "../orbit-reference-primitives";
-import { ContactMessagesTab } from "./contact-messages-tab";
 import { BoundedMessageReadError, readMessageCards, readMessageWindow, confirmMessageWindowRead, sendWindowMessage, type MessageCardPageView, type MessageWindowView } from "./bounded-contact-messages-view-model";
 
 /** List summaries and one selected history window are independent resources. */
 export function BoundedContactMessagesTab({ actorId, onIdentityChanged }: { actorId: string; onIdentityChanged: () => void }) {
   const { t, language } = useOrbitLanguage();
-  const [legacy, setLegacy] = useState(false);
   const [cards, setCards] = useState<MessageCardPageView | null>(null);
   const [listCursor, setListCursor] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
@@ -33,7 +31,6 @@ export function BoundedContactMessagesTab({ actorId, onIdentityChanged }: { acto
     return () => { controller.abort(); lifetime.current = null; };
   }, [actorId]);
   useEffect(() => {
-    if (legacy) return;
     const controller = new AbortController(); let busy = false;
     setCards(null); setListError(false);
     const refresh = async () => {
@@ -42,7 +39,6 @@ export function BoundedContactMessagesTab({ actorId, onIdentityChanged }: { acto
       try { const result = await readMessageCards(actorId, controller.signal, listCursor); if (!controller.signal.aborted) { setCards(result); setListError(false); } }
       catch (error) {
         if (controller.signal.aborted) return;
-        if (error instanceof BoundedMessageReadError && [404,405].includes(error.status)) { setLegacy(true); return; }
         if (error instanceof BoundedMessageReadError && [401,403].includes(error.status)) changed.current();
         setCards(null); setListError(true);
       } finally { busy = false; }
@@ -50,10 +46,10 @@ export function BoundedContactMessagesTab({ actorId, onIdentityChanged }: { acto
     void refresh(); const timer = setInterval(() => void refresh(), 15_000);
     document.addEventListener("visibilitychange", refresh);
     return () => { controller.abort(); clearInterval(timer); document.removeEventListener("visibilitychange", refresh); };
-  }, [actorId, listCursor, attempt, legacy]);
+  }, [actorId, listCursor, attempt]);
   useEffect(() => {
     setDetail(null); setDetailError(false);
-    if (!selected || legacy) return;
+    if (!selected) return;
     const controller = new AbortController(); let busy = false;
     const refresh = async () => {
       if (busy || document.visibilityState === "hidden") return;
@@ -71,7 +67,7 @@ export function BoundedContactMessagesTab({ actorId, onIdentityChanged }: { acto
     const timer = historyCursor ? undefined : setInterval(() => void refresh(), 15_000);
     document.addEventListener("visibilitychange", refresh);
     return () => { controller.abort(); clearInterval(timer); document.removeEventListener("visibilitychange", refresh); };
-  }, [actorId, selected, historyCursor, attempt, legacy]);
+  }, [actorId, selected, historyCursor, attempt]);
   useEffect(() => {
     if (!detail || detail.id !== selected || historyCursor) return;
     const remote = [...detail.messages].reverse().find(message => message.authorId !== actorId);
@@ -107,7 +103,6 @@ export function BoundedContactMessagesTab({ actorId, onIdentityChanged }: { acto
     }
     finally { sendLock.current = false; if (!controller.signal.aborted) setSending(false); }
   }
-  if (legacy) return <ContactMessagesTab actorId={actorId} onIdentityChanged={onIdentityChanged} />;
   const retry = <button className="btn btn-ghost" onClick={() => setAttempt(n => n + 1)}>{t({ zh: "重试", en: "Retry" })}</button>;
   return <div className={`ri-thread-workspace${selected ? " has-open-thread" : ""}`}>
     <aside className="ri-thread-list"><div className="ri-thread-scroll scroll">

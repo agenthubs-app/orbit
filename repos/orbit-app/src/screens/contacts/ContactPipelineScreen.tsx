@@ -2,15 +2,12 @@ import { Ionicons } from "@expo/vector-icons";
 import { type Href, useRouter } from "expo-router";
 import { useState } from "react";
 import {
-  Image,
   Pressable,
   RefreshControl,
   StyleSheet,
   Text,
   View
 } from "react-native";
-import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
-import { ORBIT_API_ENDPOINTS } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
@@ -18,97 +15,55 @@ import { LoadingState } from "../../components/LoadingState";
 import { textStyles, radius, spacing, type OrbitColors } from "../../design/tokens";
 import { createControlStyles } from "../../design/controls";
 import { createThemedStyles, useOrbitTheme } from "../../design/theme";
-import { useApiResource } from "../../hooks/useApiResource";
+import { useContactPipelinePages } from "../../hooks/useContactPipelinePages";
 import {
-  contactsPipelineToView,
+  contactPipelinePageToView,
   type ContactPipelineActionDueTone,
-  type ContactPipelineActionItemView,
-  type ContactPipelineCardView,
+  type ContactPipelineActionView,
+  type ContactPipelineContactView,
   type ContactPipelineStageId,
   type ContactPipelineStageView
-} from "../../view-models/contact-pipeline";
+} from "../../view-models/contact-pipeline-pages";
 import {
   contactAvatarFor,
   type ContactAvatarTone
 } from "../../view-models/contacts";
 
-type RelationshipProgressMode = "actions" | "stages";
-
 export function ContactPipelineScreen() {
   const { colors } = useOrbitTheme();
-  const contactsState = useApiResource<unknown>(
-    ORBIT_API_ENDPOINTS.contacts,
-    (data) =>
-      contactsPipelineToView({
-        connectionsPayload: { connections: [] },
-        contactsPayload: data
-      }).stages.every((stage) => stage.count === 0)
-  );
-  const connectionsState = useApiResource<unknown>(
-    ORBIT_API_ENDPOINTS.connections,
-    () => false
-  );
-  const tasksState = useApiResource<unknown>(ORBIT_API_ENDPOINTS.tasks, () => false);
-  const refreshing =
-    contactsState.refreshing || connectionsState.refreshing || tasksState.refreshing;
-  const refresh = () => {
-    contactsState.refresh();
-    connectionsState.refresh();
-    tasksState.refresh();
-  };
+  const [mode, setMode] = useState<"actions" | "stages">("actions");
+  const [selectedStageId, setSelectedStageId] = useState<ContactPipelineStageId>("to_contact");
+  const pipeline = useContactPipelinePages(selectedStageId);
+  const view = pipeline.data ? contactPipelinePageToView(pipeline.data.page) : null;
 
   return (
     <AppScreen
       refreshControl={
         <RefreshControl
-          onRefresh={refresh}
-          refreshing={refreshing}
+          onRefresh={pipeline.state.refresh}
+          refreshing={pipeline.state.refreshing}
           tintColor={colors.accent}
         />
       }
       title="关系进展"
     >
-      {contactsState.kind === "loading" || connectionsState.kind === "loading" ? (
-        <LoadingState />
-      ) : null}
-      {contactsState.kind === "offline" || connectionsState.kind === "offline" ? (
-        <ErrorState
-          message={
-            contactsState.kind === "offline"
-              ? contactsState.error.message
-              : connectionsState.kind === "offline"
-                ? connectionsState.error.message
-                : "请检查服务器连接。"
-          }
-          title="服务器连不上"
-        />
-      ) : null}
-      {contactsState.kind === "failure" || connectionsState.kind === "failure" ? (
-        <ErrorState
-          message={
-            contactsState.kind === "failure"
-              ? contactsState.error.message
-              : connectionsState.kind === "failure"
-                ? connectionsState.error.message
-                : "关系进展暂时无法加载。"
-          }
-        />
-      ) : null}
-      {contactsState.kind === "empty" ? (
-        <EmptyState
-          message="先添加联系人，再记录关系所处的阶段。"
-          title="暂无关系进展"
-        />
-      ) : null}
-      {contactsState.kind === "success" && connectionsState.kind === "success" ? (
+      {pipeline.state.kind === "loading" ? <LoadingState /> : null}
+      {pipeline.state.kind === "offline" ? <ErrorState message={pipeline.state.error.message} title="服务器连不上" /> : null}
+      {pipeline.state.kind === "failure" ? <ErrorState message={pipeline.state.error.message} /> : null}
+      {pipeline.state.kind === "empty" ? <EmptyState message="先添加联系人，再记录关系所处的阶段。" title="暂无关系进展" /> : null}
+      {view && pipeline.data ? (
         <PipelineContent
-          connectionsPayload={connectionsState.data}
-          contactsPayload={contactsState.data}
-          tasksLoading={tasksState.kind === "loading"}
-          tasksPayload={tasksState.kind === "success" ? tasksState.data : undefined}
-          tasksUnavailable={
-            tasksState.kind === "failure" || tasksState.kind === "offline"
-          }
+          actions={view.actions}
+          contacts={view.contacts}
+          loadingMore={pipeline.loadingMore}
+          moreError={pipeline.moreError}
+          hasMore={pipeline.data.page.hasMore}
+          loadMore={pipeline.loadMore}
+          mode={mode}
+          onModeChange={setMode}
+          onStageChange={setSelectedStageId}
+          selectedStageId={selectedStageId}
+          stages={view.stages}
         />
       ) : null}
     </AppScreen>
@@ -116,36 +71,33 @@ export function ContactPipelineScreen() {
 }
 
 function PipelineContent({
-  connectionsPayload,
-  contactsPayload,
-  tasksLoading,
-  tasksPayload,
-  tasksUnavailable
+  actions,
+  contacts,
+  hasMore,
+  loadingMore,
+  loadMore,
+  moreError,
+  mode,
+  onModeChange,
+  onStageChange,
+  selectedStageId,
+  stages
 }: {
-  connectionsPayload: unknown;
-  contactsPayload: unknown;
-  tasksLoading: boolean;
-  tasksPayload: unknown;
-  tasksUnavailable: boolean;
+  actions: ContactPipelineActionView[];
+  contacts: ContactPipelineContactView[];
+  hasMore: boolean;
+  loadingMore: boolean;
+  loadMore: () => void;
+  moreError: string | null;
+  mode: "actions" | "stages";
+  onModeChange: (mode: "actions" | "stages") => void;
+  onStageChange: (stageId: ContactPipelineStageId) => void;
+  selectedStageId: ContactPipelineStageId;
+  stages: ContactPipelineStageView[];
 }) {
   const { styles } = useStyles();
   const router = useRouter();
-  const { baseUrl } = useOrbitApiBaseUrl();
-  const [mode, setMode] = useState<RelationshipProgressMode>("actions");
-  const [selectedStageId, setSelectedStageId] =
-    useState<ContactPipelineStageId>("to_contact");
-  const view = contactsPipelineToView({
-    connectionsPayload,
-    contactsPayload,
-    tasksPayload
-  });
-  const selectedStage =
-    view.stages.find((stage) => stage.id === selectedStageId) ?? view.stages[0];
-
-  function selectStage(stageId: ContactPipelineStageId) {
-    setSelectedStageId(stageId);
-    setMode("stages");
-  }
+  const selectedStage = stages.find(stage => stage.id === selectedStageId) ?? stages[0];
 
   return (
     <>
@@ -153,39 +105,39 @@ function PipelineContent({
         <ModeButton
           active={mode === "actions"}
           label="待处理"
-          onPress={() => setMode("actions")}
+          onPress={() => onModeChange("actions")}
         />
         <ModeButton
           active={mode === "stages"}
           label="按阶段"
-          onPress={() => setMode("stages")}
+          onPress={() => onModeChange("stages")}
         />
       </View>
 
       {mode === "actions" ? (
         <>
           <ActionPanel
-            baseUrl={baseUrl}
-            loading={tasksLoading}
             onContactPress={(contactId) =>
               router.push(`/contacts/${encodeURIComponent(contactId)}` as Href)
             }
             onViewAll={() => router.push("/tasks?scope=relationship" as Href)}
-            tasks={view.actionItems.slice(0, 3)}
-            unavailable={tasksUnavailable}
+            tasks={actions}
           />
-          <StageSnapshot onSelect={selectStage} stages={view.stages} />
+          <StageSnapshot onSelect={(stageId) => { onStageChange(stageId); onModeChange("stages"); }} stages={stages} />
         </>
       ) : selectedStage ? (
         <StagePanel
-          baseUrl={baseUrl}
+          contacts={contacts}
+          hasMore={hasMore}
+          loadingMore={loadingMore}
+          loadMore={loadMore}
+          moreError={moreError}
           onContactPress={(contactId) =>
             router.push(`/contacts/${encodeURIComponent(contactId)}` as Href)
           }
-          selectedStage={selectedStage}
           selectedStageId={selectedStageId}
-          setSelectedStageId={setSelectedStageId}
-          stages={view.stages}
+          onStageChange={onStageChange}
+          stages={stages}
         />
       ) : null}
 
@@ -217,13 +169,10 @@ function ModeButton({ active, label, onPress }: {
   );
 }
 
-function ActionPanel({ baseUrl, loading, onContactPress, onViewAll, tasks, unavailable }: {
-  baseUrl: string;
-  loading: boolean;
+function ActionPanel({ onContactPress, onViewAll, tasks }: {
   onContactPress: (contactId: string) => void;
   onViewAll: () => void;
-  tasks: ContactPipelineActionItemView[];
-  unavailable: boolean;
+  tasks: ContactPipelineActionView[];
 }) {
   const { colors, styles } = useStyles();
   return (
@@ -240,16 +189,11 @@ function ActionPanel({ baseUrl, loading, onContactPress, onViewAll, tasks, unava
         ) : null}
       </View>
 
-      {loading ? <Text style={styles.emptyText}>正在读取待办...</Text> : null}
-      {unavailable ? (
-        <Text style={styles.emptyText}>待办暂时没有加载出来，下拉可以重试。</Text>
-      ) : null}
-      {!loading && !unavailable && tasks.length === 0 ? (
+      {tasks.length === 0 ? (
         <Text style={styles.emptyText}>暂时没有已安排日期的关系待办。</Text>
       ) : null}
       {tasks.map((task, index) => (
         <ActionRow
-          baseUrl={baseUrl}
           isFirst={index === 0}
           key={task.taskId}
           onPress={() => onContactPress(task.contactId)}
@@ -269,11 +213,10 @@ function ActionPanel({ baseUrl, loading, onContactPress, onViewAll, tasks, unava
   );
 }
 
-function ActionRow({ baseUrl, isFirst, onPress, task }: {
-  baseUrl: string;
+function ActionRow({ isFirst, onPress, task }: {
   isFirst: boolean;
   onPress: () => void;
-  task: ContactPipelineActionItemView;
+  task: ContactPipelineActionView;
 }) {
   const { styles } = useStyles();
   return (
@@ -288,9 +231,7 @@ function ActionRow({ baseUrl, isFirst, onPress, task }: {
       ]}
     >
       <ContactAvatar
-        baseUrl={baseUrl}
         id={task.contactId}
-        imageUrl={task.imageUrl}
         name={task.contactName}
       />
       <View style={styles.actionTextBlock}>
@@ -379,21 +320,29 @@ function StageSnapshot({ onSelect, stages }: {
 }
 
 function StagePanel({
-  baseUrl,
+  contacts,
+  hasMore,
+  loadingMore,
+  loadMore,
+  moreError,
   onContactPress,
-  selectedStage,
   selectedStageId,
-  setSelectedStageId,
+  onStageChange,
   stages
 }: {
-  baseUrl: string;
+  contacts: ContactPipelineContactView[];
+  hasMore: boolean;
+  loadingMore: boolean;
+  loadMore: () => void;
+  moreError: string | null;
   onContactPress: (contactId: string) => void;
-  selectedStage: ContactPipelineStageView;
   selectedStageId: ContactPipelineStageId;
-  setSelectedStageId: (stageId: ContactPipelineStageId) => void;
+  onStageChange: (stageId: ContactPipelineStageId) => void;
   stages: ContactPipelineStageView[];
 }) {
+  const selectedStage = stages.find(stage => stage.id === selectedStageId) ?? stages[0];
   const { styles } = useStyles();
+  if (!selectedStage) return null;
   return (
     <>
       <View style={styles.stageTabs}>
@@ -404,7 +353,7 @@ function StagePanel({
               accessibilityRole="tab"
               accessibilityState={{ selected }}
               key={stage.id}
-              onPress={() => setSelectedStageId(stage.id)}
+              onPress={() => onStageChange(stage.id)}
               style={({ pressed }) => [
                 styles.stageTab,
                 selected ? styles.stageTabSelected : null,
@@ -440,31 +389,40 @@ function StagePanel({
             <Text style={styles.sectionDetail}>{selectedStage.detail}</Text>
           </View>
         </View>
-        {selectedStage.contacts.length === 0 ? (
+        {selectedStage.count === 0 ? (
           <Text style={styles.emptyText}>这一阶段暂时没有联系人。</Text>
         ) : null}
-        {selectedStage.contacts.map((contact, index) => (
+        {contacts.map((contact, index) => (
           <StageContactRow
-            baseUrl={baseUrl}
             contact={contact}
             isFirst={index === 0}
             key={contact.id}
             onPress={() => onContactPress(contact.id)}
           />
         ))}
+        {moreError ? <Text style={styles.errorText}>{moreError}</Text> : null}
+        {hasMore || moreError ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={moreError ? "重试加载更多联系人" : loadingMore ? "正在加载更多联系人" : "加载更多联系人"}
+            disabled={loadingMore}
+            onPress={loadMore}
+            style={({ pressed }) => [styles.moreButton, pressed ? styles.pressed : null, loadingMore ? styles.disabled : null]}
+          >
+            <Text style={styles.sectionDetail}>{loadingMore ? "正在加载…" : moreError ? "重试加载更多" : "加载更多"}</Text>
+          </Pressable>
+        ) : null}
       </View>
     </>
   );
 }
 
 function StageContactRow({
-  baseUrl,
   contact,
   isFirst,
   onPress
 }: {
-  baseUrl: string;
-  contact: ContactPipelineCardView;
+  contact: ContactPipelineContactView;
   isFirst: boolean;
   onPress: () => void;
 }) {
@@ -477,9 +435,7 @@ function StageContactRow({
         style={({ pressed }) => [styles.stageContactMain, pressed ? styles.pressed : null]}
       >
         <ContactAvatar
-          baseUrl={baseUrl}
           id={contact.id}
-          imageUrl={contact.imageUrl}
           name={contact.name}
         />
         <View style={styles.stageContactCopy}>
@@ -495,11 +451,6 @@ function StageContactRow({
   );
 }
 
-function assetUrl(baseUrl: string, path: string): string {
-  if (/^https?:\/\//iu.test(path)) return path;
-  return `${baseUrl.replace(/\/$/u, "")}/${path.replace(/^\//u, "")}`;
-}
-
 const avatarToneStyles = (colors: OrbitColors): Record<
   ContactAvatarTone,
   { backgroundColor: string; color: string }
@@ -511,10 +462,8 @@ const avatarToneStyles = (colors: OrbitColors): Record<
   violet: { backgroundColor: colors.accentSoft, color: colors.accent }
 });
 
-function ContactAvatar({ baseUrl, id, imageUrl, name }: {
-  baseUrl: string;
+function ContactAvatar({ id, name }: {
   id: string;
-  imageUrl: string | undefined;
   name: string;
 }) {
   const { colors, styles } = useStyles();
@@ -523,17 +472,9 @@ function ContactAvatar({ baseUrl, id, imageUrl, name }: {
 
   return (
     <View style={[styles.avatar, { backgroundColor: visual.backgroundColor }]}>
-      {imageUrl ? (
-        <Image
-          resizeMode="cover"
-          source={{ uri: assetUrl(baseUrl, imageUrl) }}
-          style={styles.avatarImage}
-        />
-      ) : (
-        <Text style={[styles.avatarText, { color: visual.color }]}>
-          {avatar.initial}
-        </Text>
-      )}
+      <Text style={[styles.avatarText, { color: visual.color }]}>
+        {avatar.initial}
+      </Text>
     </View>
   );
 }

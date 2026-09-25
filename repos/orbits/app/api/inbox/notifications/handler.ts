@@ -3,13 +3,12 @@ import { resolveAuthenticatedApiActor,authenticatedApiActorRequiredResponse,type
 import { success,failure } from '../../../../shared/api/envelope';
 import { AppError } from '../../../../shared/errors/app-error';
 import { createConfiguredInboxRuntime,isTypedInboxEnabled } from '../../../../features/notifications/inbox-record-service-factory';
-import { refreshInboxBusinessRecords } from '../../../../features/notifications/inbox-business-refresh';
 import { InboxRecordError } from '../../../../features/notifications/inbox-record-service';
 import { inboxNotificationActionSchema,inboxNotificationReadBatchSchema } from '../../../../shared/api-schema/inbox-notifications';
 import type { InboxNotificationKind } from '../../../../shared/contract/inbox-notifications';
 
 type Operation='list'|'detail'|'action'|'read';
-export function createInboxNotificationHandler(options:{resolveActor?:ResolveAuthenticatedApiActor;enabled?:(actorId:string)=>boolean;runtime?:typeof createConfiguredInboxRuntime;refresh?:(input:Parameters<typeof refreshInboxBusinessRecords>[0])=>Promise<unknown>}={}) {
+export function createInboxNotificationHandler(options:{resolveActor?:ResolveAuthenticatedApiActor;enabled?:(actorId:string)=>boolean;runtime?:typeof createConfiguredInboxRuntime}={}) {
   return async(operation:Operation,request:Request,context?:{params:Promise<{id:string}>}):Promise<Response>=>{
     const actor=await (options.resolveActor??resolveAuthenticatedApiActor)();if(!actor)return authenticatedApiActorRequiredResponse('live');
     const send=(data:unknown)=>NextResponse.json(success(data),{headers:{'Cache-Control':'no-store'}});
@@ -19,7 +18,6 @@ export function createInboxNotificationHandler(options:{resolveActor?:ResolveAut
       const url=new URL(request.url),language=url.searchParams.get('language');const lang=language==='en'||language==='ja'?language:'zh';
       if(operation==='list') {
         const kind=url.searchParams.get('kind');if(kind&&!['reminder','suggestion','update'].includes(kind))throw new InboxRecordError('VALIDATION_ERROR','Invalid category');
-        await (options.refresh??refreshInboxBusinessRecords)({...runtime,actorId:actor.id,principalId:actor.userId,since:process.env.ORBIT_TYPED_INBOX_SINCE??new Date(Date.now()-30*86400000).toISOString()});
         return send(await runtime.service.list(actor.id,{language:lang,...(kind?{kind:kind as InboxNotificationKind}:{}),...(url.searchParams.has('cursor')?{cursor:url.searchParams.get('cursor')!}:{}),...(url.searchParams.has('limit')?{limit:Number(url.searchParams.get('limit'))}:{}),history:url.searchParams.get('history')==='true'}));
       }
       if(operation==='read') {

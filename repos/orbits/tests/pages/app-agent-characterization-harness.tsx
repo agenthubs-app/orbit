@@ -223,11 +223,70 @@ export async function mountAgent(
       return Response.json({ success: true, data: { storage: { persisted: true } } });
     }
     if (url.startsWith("/api/ai/conversations/sessions?")) {
-      const cursor = new URL(url, "https://orbit.test").searchParams.get("cursor");
+      const query = new URL(url, "https://orbit.test").searchParams;
+      const cursor = query.get("cursor");
       const index = cursor ? Number(cursor) : 0;
-      const sessions = pages[index] ?? [];
+      const groupId = query.get("groupId");
+      const pinned = query.get("pinned");
+      const search = query.get("q")?.trim().toLocaleLowerCase() ?? "";
+      const sessions = (pages[index] ?? []).filter((session) => {
+        const organization = session.organization;
+        const effectiveGroupId = organization
+          ? (typeof organization.groupId === "string" ? organization.groupId : null)
+          : null;
+        const effectivePinned = organization ? organization.pinned === true : session.pinned === true;
+        if (groupId === "ungrouped" && effectiveGroupId !== null) return false;
+        if (groupId && groupId !== "ungrouped" && effectiveGroupId !== groupId) return false;
+        if (pinned === "true" && !effectivePinned) return false;
+        if (pinned === "false" && effectivePinned) return false;
+        if (!search) return true;
+        const customTitle = organization
+          ? (typeof organization.customTitle === "string" ? organization.customTitle : "")
+          : (session.customTitle ?? "");
+        const messageText = session.messages.map((message) => String(message.text ?? "")).join(" ");
+        return `${session.id} ${session.title} ${customTitle} ${messageText}`.toLocaleLowerCase().includes(search);
+      }).sort((left, right) => {
+        const leftPinned = left.organization ? left.organization.pinned === true : left.pinned === true;
+        const rightPinned = right.organization ? right.organization.pinned === true : right.pinned === true;
+        return Number(rightPinned) - Number(leftPinned)
+          || right.createdAt.localeCompare(left.createdAt)
+          || left.id.localeCompare(right.id);
+      });
       const nextCursor = index + 1 < pages.length ? String(index + 1) : null;
-      return Response.json({ success: true, data: { nextCursor, sessions } });
+      const limit = Number(query.get("limit") ?? 50);
+      const items = sessions.slice(0, limit).map((session) => {
+        const organization = session.organization
+          ? {
+              customTitle: typeof session.organization.customTitle === "string" ? session.organization.customTitle : null,
+              groupId: typeof session.organization.groupId === "string" ? session.organization.groupId : null,
+              pinned: session.organization.pinned === true,
+              revision: typeof session.organization.revision === "number" ? session.organization.revision : 0,
+            }
+          : {
+              customTitle: session.customTitle ?? null,
+              groupId: null,
+              pinned: session.pinned === true,
+              revision: 0,
+            };
+        const userMessages = session.messages.filter((message) => message.role === "user");
+        const lastMessage = session.messages.at(-1);
+        return {
+          id: session.id,
+          title: session.title,
+          firstUserText: String(userMessages[0]?.text ?? "").slice(0, 240),
+          lastMessagePreview: String(lastMessage?.text ?? "").slice(0, 240),
+          createdAt: session.createdAt,
+          updatedAt: session.updatedAt,
+          messageRevision: session.messages.length,
+          organization,
+        };
+      });
+      return Response.json({ success: true, data: {
+        hasMore: nextCursor !== null || sessions.length > limit,
+        items,
+        nextCursor,
+        storage: { configured: true, persisted: true },
+      } });
     }
     if (url.startsWith("/api/ai/conversations/sessions/") && call.method === "PATCH") {
       const sessionId = decodeURIComponent(url.slice("/api/ai/conversations/sessions/".length));

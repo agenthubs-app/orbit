@@ -50,34 +50,19 @@ import type { ApiResourceState } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { resultToRouteState, type RouteState } from "../../view-models/route-state";
-import { inboxNotificationActions, inboxNotificationReceiptMatches, inboxNotificationsReadable } from "../../view-models/inbox-notification-actions";
-import {
-  filterInboxFeed,
-  inboxFeedFromSources,
-  type InboxFeedFilter,
-  type InboxFeedItem,
-  type InboxFeedView,
-} from "../../view-models/inbox-feed";
 import { runInboxReadBatch } from "../../view-models/inbox-read-batch";
 import { decodeConversationSummaryPage, conversationSummaryView, conversationSummaryReadItems, decodeRelationshipMessagePage, relationshipMessagePageView } from "../../view-models/relationship-pages";
 import { relationshipUnreadSummarySchema } from "../../api/schema/relationship-unread-summary";
 import {
-  buildRelationshipSignalConfirmRequest,
   buildRelationshipPrivacyToggleRequest,
   buildRelationshipThreadDraftRequest,
   createdRelationshipThreadToView,
   relationshipConversationIdForContact,
-  relationshipAlertsToView,
   relationshipInboxErrorText,
   relationshipPrivacyControlsToView,
-  relationshipSignalConfirmToView,
-  relationshipSignalsToView,
-  type RelationshipAlertsView,
   type RelationshipCreatedThreadView,
   type RelationshipConversationView,
   type RelationshipPrivacyControlsView,
-  type RelationshipSignalConfirmView,
-  type RelationshipSignalsView,
   type RelationshipThreadDetailView
 } from "../../view-models/relationship-inbox";
 import { inboxPolishTemplate, registerAiTemplatePrefill } from "../../data/ai-template-prefill";
@@ -312,7 +297,6 @@ function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliv
   const { clientGet, clientPost, clientPatch, isCurrent } = useInboxRequests(scopeKey);
   const server = useOrbitApiBaseUrl();
   const typedInbox = useNotificationInbox(actorId, clientGet, clientPost, isCurrent);
-  const typedEnabled = typedInbox.enabled !== false;
   const [activeSection, setActiveSection] = useState<InboxSection>(deliveryId ? "alerts" : "threads");
   const selectionChanged = useRef(false);
   const preferenceKey = JSON.stringify(["orbit.inbox.tab", server.baseUrl, actorId]);
@@ -354,51 +338,21 @@ function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliv
   });
   const unread = relationshipUnreadSummarySchema.safeParse(unreadState.kind === "success" ? unreadState.data : null);
   const messagesUnread = unread.success && unread.data.actorId === actorId ? unread.data.unreadTotal : 0;
-  const notificationsState = useInboxResource(
-    ORBIT_API_ENDPOINTS.notifications,
-    (data) => relationshipAlertsToView(data, undefined, locale.language).alerts.length === 0,
-    clientGet, isCurrent, { clearOnRefresh: true }
-  );
-  const notificationsData = notificationsState.kind === "success" || notificationsState.kind === "empty"
-    ? notificationsState.data : null;
-  const notificationsReadable = inboxNotificationsReadable(notificationsData);
-  const currentNotifications = useRef<unknown>(null);
-  currentNotifications.current = notificationsReadable ? notificationsData : null;
-  const getCurrentNotifications = useCallback(() => isCurrent() ? currentNotifications.current : null, [isCurrent]);
-  function refreshNotifications() {
-    if (!isCurrent()) return;
-    currentNotifications.current = null;
-    notificationsState.refresh();
-  }
-  const signalsState = useInboxResource(
-    ORBIT_API_ENDPOINTS.relationshipSignalsEmailCalendar,
-    (data) => relationshipSignalsToView(data, locale.language).signals.length === 0,
-    clientGet, isCurrent
-  );
   const conversationsData = state.kind === "success" || state.kind === "empty" ? state.data : null;
   const messagePage = decodeConversationSummaryPage(conversationsData, actorId);
   const nextCursor = messagePage?.nextCursor;
   const loadingMore = state.kind === "loading" || state.refreshing;
   const pageError = "";
   function loadMoreMessages() { if (nextCursor && isCurrent()) setConversationCursor(nextCursor); }
-  const signalsData = signalsState.kind === "success" || signalsState.kind === "empty" ? signalsState.data : null;
-  const feed = useMemo(() => inboxFeedFromSources({
-    actorId,
-    conversationsData,
-    language: locale.language,
-    notificationsData,
-    now: new Date().toISOString(),
-    signalsData,
-  }), [actorId, conversationsData, locale.language, notificationsData, signalsData]);
   const batchScope = useMemo(
-    () => ({ actorId, conversationsData, notificationsData, signalsData, activeSection }),
-    [actorId, conversationsData, notificationsData, signalsData, activeSection]
+    () => ({ actorId, conversationsData, activeSection }),
+    [actorId, conversationsData, activeSection]
   );
   const currentBatchScope = useRef(batchScope);
   currentBatchScope.current = batchScope;
   const [batchPending, setBatchPending] = useState(false);
   const [batchError, setBatchError] = useState("");
-  const readItems = activeSection === "threads" ? (messagePage ? conversationSummaryReadItems(messagePage, actorId, locale.language) : []) : feed.items;
+  const readItems = messagePage ? conversationSummaryReadItems(messagePage, actorId, locale.language) : [];
   const confirmableUnread = readItems.filter(item => !item.read && item.readAction).length;
   const [composing, setComposing] = useState(
     Boolean(!seedContactId && (seedName || seedOrganization))
@@ -484,8 +438,7 @@ function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliv
     state.refresh();
     setConversationCursor(null);
     unreadState.refresh();
-    refreshNotifications();
-    signalsState.refresh();
+    typedInbox.refresh();
   }
 
   async function markAllRead() {
@@ -504,8 +457,8 @@ function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliv
         setBatchError(locale.t("inbox.markAllReadFailed", { count: result.failedIds.length }));
       }
       emitMessageStateInvalidation();
-      refreshNotifications();
-      signalsState.refresh();
+      state.refresh();
+      unreadState.refresh();
     } finally {
       if (isCurrent() && currentBatchScope.current === scope) setBatchPending(false);
     }
@@ -520,19 +473,18 @@ function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliv
     <InboxLayout
       refreshControl={
         <RefreshControl
-          onRefresh={() => { refreshAll(); typedInbox.refresh(); }}
+          onRefresh={refreshAll}
           refreshing={
             state.refreshing || deliveryState.kind === "loading" ||
-            notificationsState.refreshing ||
-            signalsState.refreshing
+            typedInbox.busy
           }
           tintColor={colors.accent}
         />
       }
       title={locale.t(contentReady && composing ? "inbox.compose" : contentReady && createdThread ? "inbox.draftPreview" : "inbox.title")}
-      onMarkAllRead={!composing && !createdThread ? () => void (activeSection === "alerts" && typedEnabled ? typedInbox.markRead() : markAllRead()) : undefined}
+      onMarkAllRead={!composing && !createdThread ? () => void (activeSection === "alerts" ? typedInbox.markRead() : markAllRead()) : undefined}
       markAllReadLabel={activeSection === "threads" ? locale.t("inbox.markPageRead") : locale.t("inbox.markAllRead")}
-      markAllReadDisabled={activeSection === "alerts" && typedEnabled ? typedInbox.busy || !typedInbox.data?.unreadCount : batchPending || confirmableUnread === 0}
+      markAllReadDisabled={activeSection === "alerts" ? typedInbox.busy || !typedInbox.data?.unreadCount : batchPending || confirmableUnread === 0}
       hideBack={contentReady && composing}
       onBack={createdThread ? () => setCreatedThread(null) : undefined}
     >
@@ -552,54 +504,29 @@ function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliv
       {activeSection === "threads" && state.kind === "failure" ? (
         <ErrorState message={state.error.message} />
       ) : null}
-      {!composing && !createdThread ? <InboxSegmentedControl activeSection={activeSection} alertCount={typedEnabled ? typedInbox.data?.unreadCount ?? 0 : feed.unreadCount} messageCount={messagesUnread} onChange={selectSection} /> : null}
+      {!composing && !createdThread ? <InboxSegmentedControl activeSection={activeSection} alertCount={typedInbox.data?.unreadCount ?? 0} messageCount={messagesUnread} onChange={selectSection} /> : null}
       {activeSection === "threads" && conversationCursor && !composing && !createdThread ? <ActionButton icon="arrow-back-outline" label={locale.t("inbox.firstConversationPage")} onPress={() => setConversationCursor(null)} variant="secondary" /> : null}
-      {activeSection === "alerts" && typedEnabled ? (typedInbox.data ? <NotificationInboxList data={typedInbox.data} filter={typedInbox.filter} onFilter={typedInbox.setFilter} busy={typedInbox.busy} error={typedInbox.error} onRefresh={typedInbox.refresh} onMore={() => void typedInbox.more()} onOpen={id => router.push(`/inbox/notifications/${encodeURIComponent(id)}` as Href)} /> : typedInbox.error ? <View><ErrorState message={typedInbox.error}/><Pressable accessibilityRole="button" onPress={typedInbox.refresh}><Text>{locale.t("common.retry")}</Text></Pressable></View> : <LoadingState />) : retainedContent.current || activeSection === "alerts" ? (
+      {activeSection === "alerts" ? (typedInbox.data ? <NotificationInboxList data={typedInbox.data} filter={typedInbox.filter} onFilter={typedInbox.setFilter} busy={typedInbox.busy} error={typedInbox.error} onRefresh={typedInbox.refresh} onMore={() => void typedInbox.more()} onOpen={id => router.push(`/inbox/notifications/${encodeURIComponent(id)}` as Href)} /> : typedInbox.error ? <View><ErrorState message={typedInbox.error}/><Pressable accessibilityRole="button" onPress={typedInbox.refresh}><Text>{locale.t("common.retry")}</Text></Pressable></View> : <LoadingState />) : retainedContent.current ? (
         <View style={activeSection === "threads" && !contentReady ? { display: "none" } : undefined}>
         <InboxContent
-          activeSection={activeSection}
           onLoadMoreMessages={nextCursor ? () => void loadMoreMessages() : undefined}
           loadingMore={loadingMore}
           pageError={pageError}
           clientGet={clientGet}
           clientPost={clientPost}
-          isCurrent={activeSection === "alerts" ? isCurrent : isContentCurrent}
-          contentReady={activeSection === "alerts" || contentReady}
+          isCurrent={isContentCurrent}
+          contentReady={contentReady}
           actorId={actorId}
-          getCurrentNotifications={getCurrentNotifications}
           createdThread={createdThread}
           data={retainedContent.current?.data}
-          feed={feed}
           batchError={batchError}
-          notificationsData={notificationsData}
-          notificationsError={
-            notificationsState.kind === "failure" || notificationsState.kind === "offline"
-              ? relationshipInboxErrorText(notificationsState.error.message, locale.t("inbox.alertsUnavailable"), locale.language)
-              : (notificationsState.kind === "success" || notificationsState.kind === "empty") && !notificationsReadable
-                ? locale.t("inbox.alertsInvalid") : ""
-          }
-          notificationsLoading={notificationsState.kind === "loading"}
-          onRefreshNotifications={refreshNotifications}
-          onOpenNotificationTarget={(href) => { if (isCurrent()) router.push(href as Href); }}
           onOpenConversation={openConversation}
           onSetCreatedThread={setCreatedThread}
-          onRefreshSignals={signalsState.refresh}
           seed={{
             contactId: seedContactId,
             organization: seedOrganization,
             participantName: seedName
           }}
-          signalsData={signalsData}
-          signalsError={
-            signalsState.kind === "failure" || signalsState.kind === "offline"
-              ? relationshipInboxErrorText(
-                  signalsState.error.message,
-                  locale.t("inbox.signalsUnavailable"),
-                  locale.language
-                )
-              : ""
-          }
-          signalsLoading={signalsState.kind === "loading"}
           setComposing={setComposing}
           composing={composing}
         />
@@ -670,7 +597,7 @@ function ScopedRelationshipInboxThreadScreen({ actorId, conversationId, scopeKey
     }
     const key = `${target.conversationId}\u001f${target.lastReadMessageId}`;
     const previousAttempt = readAttempt.current;
-    if (previousAttempt?.data === stateData && previousAttempt.key === key) return;
+    if (previousAttempt && previousAttempt.data === stateData && previousAttempt.key === key) return;
     readAttempt.current = { data: stateData, key };
     setReadError("");
     void clientPost(relationshipCommunicationReadPath(target.conversationId), {
@@ -915,59 +842,35 @@ function InboxContent({
   onLoadMoreMessages,
   loadingMore,
   pageError,
-  activeSection,
   actorId,
   batchError,
   clientGet,
   clientPost,
   isCurrent,
   contentReady,
-  getCurrentNotifications,
   composing,
   createdThread,
   data,
-  feed,
-  notificationsData,
-  notificationsError,
-  notificationsLoading,
   onOpenConversation,
-  onOpenNotificationTarget,
   onSetCreatedThread,
-  onRefreshNotifications,
-  onRefreshSignals,
   seed,
-  signalsData,
-  signalsError,
-  signalsLoading,
   setComposing
 }: {
   onLoadMoreMessages: (() => void) | undefined;
   loadingMore: boolean;
   pageError: string;
-  activeSection: InboxSection;
   actorId: string;
   batchError: string;
   clientGet: ClientGet;
   clientPost: ClientPost;
   isCurrent: () => boolean;
   contentReady: boolean;
-  getCurrentNotifications: () => unknown;
   composing: boolean;
   createdThread: RelationshipCreatedThreadView | null;
   data: unknown;
-  feed: InboxFeedView;
-  notificationsData: unknown;
-  notificationsError: string;
-  notificationsLoading: boolean;
   onOpenConversation: (conversationId: string) => void;
-  onOpenNotificationTarget: (href: string) => void;
   onSetCreatedThread: (thread: RelationshipCreatedThreadView | null) => void;
-  onRefreshNotifications: () => void;
-  onRefreshSignals: () => void;
   seed: { contactId: string; organization: string; participantName: string };
-  signalsData: unknown;
-  signalsError: string;
-  signalsLoading: boolean;
   setComposing: (value: boolean) => void;
 }) {
   const locale = useOrbitLocale();
@@ -976,57 +879,7 @@ function InboxContent({
   const view = page ? conversationSummaryView(page, actorId, locale.language) : {
     conversations: [], selected: null, summary: locale.t("inbox.noMessages"), title: locale.t("inbox.title")
   };
-  const signalsView = relationshipSignalsToView(signalsData, locale.language);
-  const [activeFilter, setActiveFilter] = useState<InboxFeedFilter>("all");
-  const [reviewSignals, setReviewSignals] = useState(false);
   const [seedHandled, setSeedHandled] = useState(false);
-  const [notificationPending, setNotificationPending] = useState<string | null>(null);
-  const [notificationError, setNotificationError] = useState("");
-  const notificationLock = useRef(false);
-  const alertsActive = useRef(false);
-  alertsActive.current = !composing && !createdThread;
-  useEffect(() => () => { alertsActive.current = false; }, []);
-  useEffect(() => { notificationLock.current = false; setNotificationPending(null); setNotificationError(""); }, [isCurrent]);
-
-
-  async function actOnAlert(id: string, state: "read" | "ignored") {
-    if (!isCurrent() || notificationLock.current || !alertsActive.current) return;
-    const source = getCurrentNotifications();
-    if (!source) return;
-    const action = inboxNotificationActions(source).get(id);
-    setNotificationError("");
-    if (!action || action.ignored) {
-      setNotificationError(locale.t("inbox.notificationChanged"));
-      return;
-    }
-    if (state === "read" && !action.href) {
-      setNotificationError(locale.t("inbox.targetUnsupported"));
-      return;
-    }
-    if (!action.canPersist && state === "ignored") return;
-    if (state === "read" && (!action.canPersist || action.read)) {
-      onOpenNotificationTarget(action.href!);
-      return;
-    }
-    notificationLock.current = true;
-    setNotificationPending(id);
-    try {
-      const result = await clientPost(`/api/notifications/${encodeURIComponent(id)}/state`, { state });
-      if (!isCurrent() || !alertsActive.current || getCurrentNotifications() !== source) return;
-      if (!result.success || result.status === undefined || result.status < 200 || result.status >= 300
-        || !inboxNotificationReceiptMatches(result.data, id, state)) {
-        setNotificationError(locale.t("inbox.stateUnconfirmed"));
-        return;
-      }
-      emitMessageStateInvalidation();
-      onRefreshNotifications();
-      if (state === "read") onOpenNotificationTarget(action.href!);
-    } catch {
-      if (isCurrent() && alertsActive.current && getCurrentNotifications() === source) setNotificationError(locale.t("inbox.stateUnconfirmed"));
-    } finally {
-      if (isCurrent()) { notificationLock.current = false; setNotificationPending(null); }
-    }
-  }
   const seededConversationId = relationshipConversationIdForContact(
     view,
     seed.contactId
@@ -1054,13 +907,6 @@ function InboxContent({
     setComposing
   ]);
 
-  useEffect(() => {
-    if (composing) {
-      setActiveFilter("all");
-      setReviewSignals(false);
-    }
-  }, [composing]);
-
   if (composing || createdThread) {
     return (
       <NewThreadComposer
@@ -1084,342 +930,11 @@ function InboxContent({
 
   if (!contentReady) return null;
 
-  if (activeSection === "threads") return <>
+  return <>
     <MessageInboxList conversations={view.conversations} onOpen={onOpenConversation} />
     {batchError || pageError ? <Text accessibilityRole="alert">{batchError || pageError}</Text> : null}
     {onLoadMoreMessages ? <ActionButton icon="chevron-down-outline" disabled={loadingMore} label={locale.t("inbox.nextConversationPage")} onPress={onLoadMoreMessages} variant="secondary" /> : null}
   </>;
-
-  const visibleFeed = filterInboxFeed(feed, activeFilter);
-
-  function openFeedItem(item: InboxFeedItem) {
-    if (item.id.startsWith("conversation:")) {
-      onOpenConversation(item.id.slice("conversation:".length));
-      return;
-    }
-    if (item.id.startsWith("notification:") && item.targetHref) {
-      void actOnAlert(item.id.slice("notification:".length), "read");
-      return;
-    }
-    if (item.targetHref) {
-      onOpenNotificationTarget(item.targetHref);
-      return;
-    }
-    if (item.id.startsWith("signal:")) setReviewSignals(true);
-  }
-
-  return (
-    <View style={styles.mailContent}>
-      <UnifiedInboxTabs
-        activeFilter={activeFilter}
-        onChange={filter => {
-          setActiveFilter(filter);
-          setReviewSignals(false);
-        }}
-        unreadCount={feed.unreadCount}
-      />
-      {batchError ? <Text accessibilityRole="alert" style={styles.unifiedError}>{batchError}</Text> : null}
-      {notificationError ? <Text accessibilityRole="alert" style={styles.unifiedError}>{notificationError}</Text> : null}
-      {notificationsLoading ? <Text style={styles.resourceStatus}>{locale.t("inbox.reminderLoading")}</Text> : null}
-      {notificationsError ? (
-        <View style={styles.unifiedSourceError}>
-          <Text accessibilityRole="alert" style={styles.errorText}>{notificationsError}</Text>
-          <ActionButton icon="refresh-outline" label={locale.t("inbox.retryAlerts")} onPress={onRefreshNotifications} variant="secondary" />
-        </View>
-      ) : null}
-      {signalsLoading ? <Text style={styles.resourceStatus}>{locale.t("inbox.signalsLoading")}</Text> : null}
-      {signalsError ? <Text accessibilityRole="alert" style={styles.unifiedError}>{signalsError}</Text> : null}
-      <UnifiedFeedList
-        disabled={notificationPending !== null}
-        items={visibleFeed.items}
-        onOpen={openFeedItem}
-      />
-      {reviewSignals && activeFilter === "contact" ? (
-        <RelationshipSignalsCard
-          clientPost={clientPost}
-          isCurrent={isCurrent}
-          error={signalsError}
-          loading={signalsLoading}
-          onConfirmed={onRefreshSignals}
-          view={signalsView}
-        />
-      ) : null}
-      {visibleFeed.items.length === 0 && !notificationsLoading && !signalsLoading ? (
-        <EmptyState message={locale.t("inbox.messagesHint")} title={locale.t("inbox.noMessages")} />
-      ) : null}
-      {feed.coverageConfirmed && visibleFeed.items.length > 0 ? (
-        <Text style={styles.feedCoverage}>{locale.t("inbox.recentThirtyDays")}</Text>
-      ) : null}
-    </View>
-  );
-}
-
-function RelationshipSignalsCard({
-  clientPost,
-  isCurrent,
-  error,
-  loading,
-  onConfirmed,
-  view
-}: {
-  clientPost: ClientPost;
-  isCurrent: () => boolean;
-  error: string;
-  loading: boolean;
-  onConfirmed: () => void;
-  view: RelationshipSignalsView;
-}) {
-  const locale = useOrbitLocale();
-  const { colors, styles } = useStyles();
-  const { fontScale } = useWindowDimensions();
-  const [pendingSignalId, setPendingSignalId] = useState<string | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
-  const [confirmation, setConfirmation] =
-    useState<RelationshipSignalConfirmView | null>(null);
-  useEffect(() => { setPendingSignalId(null); setActionError(null); setConfirmation(null); }, [isCurrent]);
-
-  async function onConfirmSignal(id: string) {
-    if (!isCurrent()) return;
-    const request = buildRelationshipSignalConfirmRequest(id, locale.language);
-
-    if (!request.success) {
-      setActionError(request.error);
-      return;
-    }
-
-    setPendingSignalId(id);
-    setActionError(null);
-
-    try {
-      const result = await clientPost(request.request.endpoint, request.request.body);
-      if (!isCurrent()) return;
-
-      if (!result.success) {
-        setActionError(
-          relationshipInboxErrorText(
-            result.error?.message,
-            locale.t("inbox.signalConfirmFailed"),
-            locale.language
-          )
-        );
-        return;
-      }
-
-      setConfirmation(relationshipSignalConfirmToView(result.data, locale.language));
-      onConfirmed();
-    } catch (requestError) {
-      if (!isCurrent()) return;
-      setActionError(
-        relationshipInboxErrorText(requestError, locale.t("inbox.signalConfirmFailed"), locale.language)
-      );
-    } finally {
-      if (isCurrent()) setPendingSignalId(null);
-    }
-  }
-
-  return (
-    <DataCard detail={loading || error ? "" : view.summary} title={locale.t("inbox.signalsTitle")}>
-      {loading ? <Text style={styles.threadPreview}>{locale.t("inbox.signalsLoading")}</Text> : null}
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
-      {actionError ? <Text style={styles.errorText}>{actionError}</Text> : null}
-      {confirmation ? (
-        <View style={styles.stagedBox}>
-          <Text style={styles.stagedTitle}>{confirmation.title}</Text>
-          <Text style={styles.bodyText}>{confirmation.contactLine}</Text>
-          <Text style={styles.threadPreview}>
-            {confirmation.detail} · {confirmation.confirmedAt}
-          </Text>
-          <Text style={styles.safetyText}>{confirmation.safetyText}</Text>
-        </View>
-      ) : null}
-      {view.signals.length > 0 ? (
-        <View style={styles.listStack}>
-          {view.signals.map((signal) => (
-            <View key={signal.id} style={styles.alertRow}>
-              <View style={[styles.alertRowTop, fontScale > 1.3 && styles.alertRowTopLarge]}>
-                <Text style={styles.alertTitle}>
-                  {signal.title}
-                </Text>
-                <Text style={[styles.alertTime, fontScale > 1.3 && styles.alertTimeLarge]}>{signal.occurredAt}</Text>
-              </View>
-              <Text style={styles.alertDetail}>
-                {signal.metaLine}
-              </Text>
-              <Text style={styles.threadPreview}>
-                {signal.context}
-              </Text>
-              <Text style={styles.threadPreview}>
-                {signal.evidenceExcerpt}
-              </Text>
-              <View style={styles.tagsRow}>
-                <Text style={styles.sourceTag}>{signal.sourceLabel}</Text>
-                <Text style={styles.unreadTag}>{signal.confidenceLabel}</Text>
-                <Text style={styles.proactiveTag}>{signal.statusLabel}</Text>
-                <Text style={styles.sourceTag}>{signal.permissionLabel}</Text>
-              </View>
-              <Text style={styles.safetyText}>{signal.nextAction}</Text>
-              {signal.canConfirm ? (
-                <ActionButton
-                  disabled={pendingSignalId !== null}
-                  icon="checkmark-outline"
-                  label={locale.t("inbox.confirmSignal")}
-                  onPress={() => onConfirmSignal(signal.id)}
-                  variant="secondary"
-                />
-              ) : null}
-            </View>
-          ))}
-        </View>
-      ) : !loading && !error ? (
-        <View style={styles.emptyInboxSection}>
-          <Ionicons color={colors.text3} name="trail-sign-outline" size={22} />
-          <Text style={styles.emptyInboxTitle}>{locale.t("inbox.noSignals")}</Text>
-          <Text style={styles.threadPreview}>{view.emptyText}</Text>
-        </View>
-      ) : null}
-      <Text style={styles.safetyText}>{view.safetyText}</Text>
-    </DataCard>
-  );
-}
-
-function UnifiedInboxTabs({
-  activeFilter,
-  onChange,
-  unreadCount,
-}: {
-  activeFilter: InboxFeedFilter;
-  onChange: (filter: InboxFeedFilter) => void;
-  unreadCount: number;
-}) {
-  const locale = useOrbitLocale();
-  const { styles } = useStyles();
-  const tabs: ReadonlyArray<{ filter: InboxFeedFilter; label: string }> = [
-    { filter: "all", label: locale.t("inbox.all") },
-    { filter: "activity", label: locale.t("inbox.activity") },
-    { filter: "task", label: locale.t("inbox.tasks") },
-    { filter: "contact", label: locale.t("inbox.contacts") },
-  ];
-  return (
-    <ScrollView
-      accessibilityRole="tablist"
-      contentContainerStyle={styles.feedTabsContent}
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      style={styles.feedTabs}
-    >
-      {tabs.map(tab => {
-        const active = activeFilter === tab.filter;
-        const count = tab.filter === "all" ? unreadCount : 0;
-        const accessibleLabel = count ? `${tab.label} ${count}` : tab.label;
-        return (
-          <Pressable
-            accessibilityLabel={accessibleLabel}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: active }}
-            key={tab.filter}
-            onPress={() => onChange(tab.filter)}
-            style={({ pressed }) => [
-              styles.feedTab,
-              active && styles.feedTabActive,
-              pressed && styles.pressed,
-            ]}
-          >
-            <Text style={[styles.feedTabText, active && styles.feedTabTextActive]}>{tab.label}{count > 0 ? " " : ""}</Text>
-            {count > 0 ? <Text style={styles.feedTabCount}>{count}</Text> : null}
-          </Pressable>
-        );
-      })}
-    </ScrollView>
-  );
-}
-
-function feedCategoryLabel(category: InboxFeedItem["category"], t: ReturnType<typeof useOrbitLocale>["t"]): string {
-  const keys = {
-    activity: "inbox.sourceActivity",
-    assistant: "inbox.sourceAssistant",
-    contact: "inbox.sourceContact",
-    task: "inbox.sourceTask",
-  } as const;
-  return t(keys[category]);
-}
-
-function feedTimeLabel(value: string, language: ReturnType<typeof useOrbitLocale>["language"], yesterday: string): string {
-  if (!value) return "";
-  const date = new Date(value);
-  if (!Number.isFinite(date.getTime())) return "";
-  const current = new Date();
-  const sameDay = date.getFullYear() === current.getFullYear()
-    && date.getMonth() === current.getMonth() && date.getDate() === current.getDate();
-  if (sameDay) return date.toLocaleTimeString(language === "en" ? "en-US" : language === "ja" ? "ja-JP" : "zh-CN", {
-    hour: "2-digit",
-    hour12: false,
-    minute: "2-digit",
-  });
-  const previous = new Date(current);
-  previous.setDate(current.getDate() - 1);
-  if (date.getFullYear() === previous.getFullYear()
-    && date.getMonth() === previous.getMonth() && date.getDate() === previous.getDate()) return yesterday;
-  return date.toLocaleDateString(language === "en" ? "en-US" : language === "ja" ? "ja-JP" : "zh-CN", {
-    day: "numeric",
-    month: "short",
-  });
-}
-
-function UnifiedFeedList({
-  disabled,
-  items,
-  onOpen,
-}: {
-  disabled: boolean;
-  items: readonly InboxFeedItem[];
-  onOpen: (item: InboxFeedItem) => void;
-}) {
-  const locale = useOrbitLocale();
-  const { styles } = useStyles();
-  const { fontScale } = useWindowDimensions();
-  return (
-    <View style={styles.feedList}>
-      {items.map(item => {
-        const category = feedCategoryLabel(item.category, locale.t);
-        const subtitle = item.subtitle && item.subtitle !== category ? `${category} · ${item.subtitle}` : category;
-        const time = feedTimeLabel(item.occurredAt, locale.language, locale.t("inbox.yesterday"));
-        const state = locale.t(item.read ? "inbox.readState" : "inbox.unreadState");
-        const interactive = Boolean(item.targetHref || item.id.startsWith("conversation:") || item.id.startsWith("signal:"));
-        const content = (
-          <>
-            <View style={styles.feedUnreadGutter}>
-              {!item.read ? <View style={styles.feedUnreadDot} /> : null}
-            </View>
-            <View style={[styles.feedRowBody, fontScale > 1.3 && styles.feedRowBodyLarge]}>
-              <View style={styles.feedCopy}>
-                <Text style={[styles.feedTitle, !item.read && styles.feedTitleUnread]}>{item.title}</Text>
-                <Text style={styles.feedSubtitle}>{subtitle}</Text>
-              </View>
-              {time ? <Text style={[styles.feedTime, fontScale > 1.3 && styles.feedTimeLarge]}>{time}</Text> : null}
-            </View>
-          </>
-        );
-        const accessibilityLabel = [item.title, subtitle, time, state].filter(Boolean).join("，");
-        return interactive ? (
-          <Pressable
-            accessibilityLabel={accessibilityLabel}
-            accessibilityRole="button"
-            accessibilityState={{ disabled }}
-            disabled={disabled}
-            key={item.id}
-            onPress={() => onOpen(item)}
-            style={({ pressed }) => [styles.feedRow, pressed && styles.pressed]}
-          >
-            {content}
-          </Pressable>
-        ) : (
-          <View accessibilityLabel={accessibilityLabel} accessible key={item.id} style={styles.feedRow}>
-            {content}
-          </View>
-        );
-      })}
-    </View>
-  );
 }
 
 function InboxSegmentedControl({
@@ -1488,116 +1003,6 @@ function SegmentButton({
       </Text>
       {count > 0 ? <Text style={styles.segmentCount}>{count}</Text> : null}
     </Pressable>
-  );
-}
-
-function AlertDismissButton({
-  disabled = false,
-  label,
-  onPress
-}: {
-  disabled?: boolean;
-  label: string;
-  onPress: () => void;
-}) {
-  const { colors, styles } = useStyles();
-  return (
-    <Pressable
-      accessibilityLabel={label}
-      accessibilityRole="button"
-      accessibilityState={{ disabled }}
-      disabled={disabled}
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.alertDismissButton,
-        disabled ? styles.disabled : null,
-        pressed ? styles.pressed : null
-      ]}
-    >
-      <Ionicons color={colors.text3} name="close-outline" size={15} />
-      <Text style={styles.alertDismissText}>{label}</Text>
-    </Pressable>
-  );
-}
-
-function AlertsCard({
-  error,
-  pendingId,
-  onDismissAlert,
-  onOpenAlert,
-  view
-}: {
-  error: string;
-  pendingId: string | null;
-  onDismissAlert: (id: string) => void;
-  onOpenAlert: (id: string) => void;
-  view: RelationshipAlertsView;
-}) {
-  const locale = useOrbitLocale();
-  const { colors, styles } = useStyles();
-  const { fontScale } = useWindowDimensions();
-  return (
-    <View style={styles.remindersPane}>
-      <Text style={styles.threadPreview}>{locale.t(view.alerts.some(alert => alert.canPersistState)
-        ? "inbox.stateAccount" : "inbox.stateSession")}</Text>
-      {error ? <Text accessibilityRole="alert" style={styles.errorText}>{error}</Text> : null}
-      {pendingId ? <Text accessibilityLiveRegion="polite" style={styles.resourceStatus}>{locale.t("inbox.updating")}</Text> : null}
-      {view.alerts.length > 0 ? (
-        <View style={styles.listStack}>
-          {view.alerts.map((alert) => (
-            <View key={alert.id} style={styles.alertRow}>
-              <View style={[styles.alertRowTop, fontScale > 1.3 && styles.alertRowTopLarge]}>
-                <Text style={styles.alertTitle}>
-                  {alert.title}
-                </Text>
-                <Text style={[styles.alertTime, fontScale > 1.3 && styles.alertTimeLarge]}>{alert.dueLabel}</Text>
-              </View>
-              {alert.detail ? (
-                <Text style={styles.alertDetail}>
-                  {alert.detail}
-                </Text>
-              ) : null}
-              <View style={styles.metaRow}>
-                <Text
-                  style={
-                    alert.kind === "proactive"
-                      ? styles.proactiveTag
-                      : styles.unreadTag
-                  }
-                >
-                  {alert.priorityLabel}
-                </Text>
-                {alert.read ? <Text style={styles.alertDetail}>{locale.t("inbox.read")}</Text> : null}
-                {alert.href ? (
-                  <Pressable accessibilityRole="button" accessibilityLabel={locale.t("inbox.openAlert", { title: alert.title })}
-                    accessibilityState={{ disabled: pendingId !== null }} disabled={pendingId !== null}
-                    onPress={() => onOpenAlert(alert.id)}
-                    style={({ pressed }) => [styles.alertDismissButton, pendingId ? styles.disabled : null, pressed ? styles.pressed : null]}>
-                    <Ionicons color={colors.accent} name="arrow-forward-outline" size={15} />
-                    <Text style={styles.alertDismissText}>{locale.t("inbox.view")}</Text>
-                  </Pressable>
-                ) : null}
-                <AlertDismissButton
-                  disabled={pendingId !== null}
-                  label={locale.t("inbox.ignore")}
-                  onPress={() => onDismissAlert(alert.id)}
-                />
-              </View>
-              {alert.canPersistState && !alert.href ? <Text style={styles.alertDetail}>{locale.t("inbox.targetUnsupported")}</Text> : null}
-            </View>
-          ))}
-        </View>
-      ) : (
-        <View style={styles.emptyInboxSection}>
-          <Ionicons color={colors.text3} name="notifications-outline" size={22} />
-          <Text style={styles.emptyInboxTitle}>{locale.t("inbox.noAlerts")}</Text>
-          <Text style={styles.threadPreview}>
-            {locale.t("inbox.noAlertsBody")}
-          </Text>
-        </View>
-      )}
-      <Text style={styles.safetyText}>{view.safetyText}</Text>
-    </View>
   );
 }
 

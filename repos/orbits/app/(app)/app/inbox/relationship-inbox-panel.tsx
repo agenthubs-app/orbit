@@ -1,6 +1,5 @@
 "use client";
 import {TypedNotificationsTab} from './typed-notifications-tab';
-import {notificationInboxView} from './notification-inbox-view-model';
 import { readWebInboxSummary } from './inbox-summary-client';
 
 import {
@@ -21,18 +20,15 @@ import { Avatar, Icon } from "../orbit-reference-primitives";
 import {
   toCreatedThread,
   toInboxPanelViewModel,
-  toReminderAlerts,
   unreadThreadCount,
   type InboxPanelViewModel,
-  type InboxReminderAlert,
   type InboxThreadDetail,
   type InboxThreadListItem,
 } from "./inbox-panel-view-model";
 import { ORBIT_Z } from "../orbit-z";
 
-import { communicationRequest, readContactMessageActor } from "./contact-messages-tab";
+import { readContactMessageActor } from "./inbox-request";
 import { BoundedContactMessagesTab } from "./bounded-contact-messages-tab";
-import { toContactMessageInbox } from "./inbox-panel-view-model";
 
 type InboxTab = "threads" | "alerts";
 
@@ -138,25 +134,8 @@ export async function readInboxUnreadCounts(language: OrbitLanguage, expectedAct
   const actor = await readContactMessageActor();
   if (expectedActor && actor !== expectedActor) throw new Error("Account changed");
   const bounded = await readWebInboxSummary(actor, language);
-  if (bounded) {
-    if (await readContactMessageActor() !== actor) throw new Error("Account changed");
-    return bounded;
-  }
-  const [messages, reminders] = await Promise.allSettled([
-    communicationRequest("/api/relationship-communication/conversations"), (async () => {
-      const raw = await communicationRequest("/api/inbox/notifications?language=" + language);
-      const typed = notificationInboxView(raw, actor);
-      return typed.enabled ? typed.unreadCount : (await fetchReminderAlerts(language)).length;
-    })(),
-  ]);
   if (await readContactMessageActor() !== actor) throw new Error("Account changed");
-  let threads = 0;
-  if (messages.status === "fulfilled") {
-    const rows = toContactMessageInbox(messages.value, actor);
-    const total = (messages.value as { unreadTotal?: number }).unreadTotal;
-    threads = Number.isSafeInteger(total) && total! >= 0 ? total! : rows.reduce((sum, row) => sum + row.unreadCount, 0);
-  }
-  return { threads, alerts: reminders.status === "fulfilled" ? reminders.value : 0 };
+  return bounded;
   })();
   activeInboxCountReads.set(key, read);
   try { return await read; }
@@ -346,132 +325,6 @@ function EmptyState({ icon, title, hint }: { icon: string; title: string; hint: 
       <Icon name={icon} size={30} stroke={1.5} />
       <div style={{ color: "var(--text-2)", fontSize: 14, fontWeight: 600 }}>{title}</div>
       <div style={{ fontSize: 12.5, lineHeight: 1.55, maxWidth: 280 }}>{hint}</div>
-    </div>
-  );
-}
-
-// 提醒 tab 数据源：notifications reminders（GET）+ orbit-ai proactive nudge（POST）。
-// 两者都 fail-closed，出错时返回空数组，不阻塞面板。
-async function fetchReminderAlerts(
-  language: OrbitLanguage,
-): Promise<readonly InboxReminderAlert[]> {
-  try {
-    const response = await fetch("/api/notifications", {
-      headers: { accept: "application/json" },
-    });
-    const envelope = (await response.json()) as { success?: boolean; data?: unknown };
-    if (!response.ok || envelope.success !== true || !envelope.data) {
-      return [];
-    }
-    return toReminderAlerts(
-      envelope.data as Parameters<typeof toReminderAlerts>[0],
-      language,
-    );
-  } catch {
-    return [];
-  }
-}
-
-function AlertsTab() {
-  const { t, language } = useOrbitLanguage();
-  const [state, setState] = useState<"loading" | "ready">("loading");
-  const [reminders, setReminders] = useState<readonly InboxReminderAlert[]>([]);
-  const [dismissed, setDismissed] = useState<Set<string>>(() => new Set());
-
-  useEffect(() => {
-    let active = true;
-    setState("loading");
-    fetchReminderAlerts(language)
-      .then((reminderAlerts) => {
-        if (!active) return;
-        setReminders(reminderAlerts);
-        setState("ready");
-      })
-      .catch(() => {
-        if (active) setState("ready");
-      });
-    return () => {
-      active = false;
-    };
-  }, [language]);
-
-  const persistNotificationState = (id: string, state: "read" | "ignored") =>
-    fetch(`/api/notifications/${encodeURIComponent(id)}/state`, {
-      body: JSON.stringify({ state }),
-      headers: { "content-type": "application/json" },
-      keepalive: true,
-      method: "POST",
-    });
-
-  const dismiss = (id: string) => {
-    setDismissed((prev) => {
-      const next = new Set(prev);
-      next.add(id);
-      return next;
-    });
-    void persistNotificationState(id, "ignored").then((response) => {
-      if (response.ok) return;
-      setDismissed((prev) => {
-        const next = new Set(prev);
-        next.delete(id);
-        return next;
-      });
-    }).catch(() => {
-      setDismissed((prev) => {
-        const next = new Set(prev);
-        next.delete(id);
-        return next;
-      });
-    });
-  };
-
-  if (state === "loading") {
-    return <EmptyState hint={t({ en: "Loading alerts…", zh: "正在加载提醒…" })} icon="bell" title={t({ en: "Loading", zh: "加载中" })} />;
-  }
-
-  const visibleReminders = reminders.filter((item) => !dismissed.has(item.id));
-
-  if (!visibleReminders.length) {
-    return <EmptyState hint={t({ en: "Source-backed reminders will appear here.", zh: "来源明确的提醒会显示在这里。" })} icon="bell" title={t({ en: "All clear", zh: "暂无提醒" })} />;
-  }
-
-  return (
-    <div className="ri-alerts">
-      {visibleReminders.length ? (
-        <div className="ri-alert-group">
-          <div style={{ alignItems: "center", display: "flex", justifyContent: "space-between" }}>
-            <div className="ri-alert-eyebrow">{t({ en: "Reminders", zh: "跟进提醒" })}</div>
-            {visibleReminders.length > 1 ? (
-              <button
-                className="btn btn-ghost btn-sm"
-                onClick={() => { for (const alert of visibleReminders) dismiss(alert.id); }}
-                type="button"
-              >
-                {t({ en: "Dismiss all", zh: "全部忽略" })}
-              </button>
-            ) : null}
-          </div>
-          {visibleReminders.map((alert) => (
-            <div className={`ri-alert ri-alert-pri-${alert.priority}`} key={alert.id}>
-              <a className="ri-alert-main ri-alert-nav" href={alert.href} onClick={() => { void persistNotificationState(alert.id, "read"); }}>
-                <div className="ri-alert-title">{alert.title}</div>
-                <div className="ri-alert-meta">
-                  {[alert.contactName, alert.organization].filter(Boolean).join(" · ")}
-                </div>
-                <div className="ri-alert-due mono">{alert.dueLabel}</div>
-              </a>
-              <button aria-label={t({ en: "Dismiss", zh: "忽略" })} className="ri-alert-dismiss" onClick={() => dismiss(alert.id)} type="button">
-                <Icon name="x" size={14} />
-              </button>
-            </div>
-          ))}
-        </div>
-      ) : null}
-
-      <div className="ri-boundary">
-        <Icon name="lock" size={13} />
-        <span>{t({ en: "In-app reminders stay in Orbit. No external push, email, or SMS was sent.", zh: "站内提醒仅保留在 Orbit；未发送外部推送、邮件或短信。" })}</span>
-      </div>
     </div>
   );
 }
@@ -1348,7 +1201,7 @@ function RelationshipInboxPanel({
           {tab === "threads" ? (
             seed ? <ThreadsTab newThreadSeed={seed} onNewThreadConsumed={() => setSeed(null)} /> : actorId ? <BoundedContactMessagesTab key={actorId} actorId={actorId} onIdentityChanged={() => { setActorId(null); setIdentityError(true); }} /> : <p role="status">{identityError ? t({ zh: "登录状态已变化，请重新打开收件箱。", en: "Your session changed. Please reopen the inbox.", ja: "ログイン状態が変わりました。受信トレイを開き直してください。" }) : t({ zh: "正在读取消息…", en: "Loading messages…", ja: "メッセージを読み込み中…" })}</p>
           ) : (
-            actorId ? <TypedNotificationsTab key={actorId} actorId={actorId} onIdentityChanged={() => { setActorId(null); setIdentityError(true); }} fallback={<AlertsTab />} /> : <p role="status">{t({zh:"正在读取通知…",en:"Loading notifications…",ja:"通知を読み込み中…"})}</p>
+            actorId ? <TypedNotificationsTab key={actorId} actorId={actorId} onIdentityChanged={() => { setActorId(null); setIdentityError(true); }} /> : <p role="status">{t({zh:"正在读取通知…",en:"Loading notifications…",ja:"通知を読み込み中…"})}</p>
           )}
         </div>
       </div>

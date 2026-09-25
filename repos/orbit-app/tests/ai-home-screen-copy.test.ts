@@ -128,14 +128,23 @@ test("Orbit AI drawer keeps web sessions and normal AI conversations in history"
   assert.match(screenSource, /const historyItems = aiHistoryRows/u);
 });
 
-test("Orbit AI drawer can search long history lists", () => {
+test("Orbit AI session search and group filters are part of the server page scope", () => {
   assert.match(screenSource, /historyQuery/u);
-  assert.match(screenSource, /filteredHistoryItems/u);
+  assert.match(screenSource, /historyParams.set\("q", historyQueryParam\)/u);
+  assert.match(screenSource, /historyParams.set\("groupId", selectedGroupId\)/u);
+  assert.match(screenSource, /params.set\("q", historyQueryParam\)/u);
+  assert.match(screenSource, /latestHistoryFilterIdentity.current !== identity/u);
   assert.match(screenSource, /placeholder=\{locale\.t\("ai\.searchHistory"\)\}/u);
-  assert.match(screenSource, /historyItems=\{filteredHistoryItems\}/u);
+  assert.match(screenSource, /historyItems=\{historyItems\}/u);
+  assert.match(screenSource, /"ai\.loadMoreHistory"/u);
+  assert.match(screenSource, /"ai\.loadingMoreHistory"/u);
+  assert.match(screenSource, /"ai\.retryMoreHistory"/u);
+  assert.match(screenSource, /aiSessionSummaryPageSchema/u);
+  assert.doesNotMatch(screenSource, /v=2|loadRemainingHistory|page < 199/u);
 
-  const searchIndex = screenSource.indexOf('placeholder={locale.t("ai.searchHistory")}');
-  const listIndex = screenSource.indexOf("historyItems={filteredHistoryItems}");
+  const panelStart = screenSource.indexOf("function OrbitAiHistoryPanel");
+  const searchIndex = screenSource.indexOf('placeholder={locale.t("ai.searchHistory")}', panelStart);
+  const listIndex = screenSource.indexOf("<DrawerHistoryList", panelStart);
 
   assert.notEqual(searchIndex, -1);
   assert.notEqual(listIndex, -1);
@@ -202,8 +211,10 @@ test("Orbit AI home keeps empty conversation guidance above the composer", () =>
 
 test("Orbit AI home renders Today tasks and schedule before chat messages", () => {
   assert.match(screenSource, /OrbitNextActions/u);
-  assert.match(screenSource, /todayPath\("Asia\/Tokyo"\)/u);
-  assert.match(screenSource, /todayHomeSummary/u);
+  assert.match(screenSource, /todaySummaryPath\("Asia\/Tokyo"\)/u);
+  assert.match(screenSource, /todaySummaryToHomeView/u);
+  assert.match(screenSource, /todaySummaryQuestions/u);
+  assert.doesNotMatch(screenSource, /todayPath\(|todayHomeSummary|todayHomeQuestions/u);
   assert.match(screenSource, /openTaskCount/u);
   assert.doesNotMatch(screenSource, /agentSignalsHomePath|agentSignalPath|agentSignalsToNextActions/u);
 
@@ -217,7 +228,7 @@ test("Orbit AI home renders Today tasks and schedule before chat messages", () =
 
 test("Orbit AI keeps suggestions separate from tasks and uses the Today count in the drawer", () => {
   assert.match(screenSource, /onOpenSuggestions=\{\(\) => openCapability\("\/today" as Href\)\}/u);
-  assert.match(screenSource, /todayBadge=\{todaySummary\.openTaskCount\}/u);
+  assert.match(screenSource, /todayBadge=\{todaySummaryView\.openTaskCount\}/u);
   assert.doesNotMatch(screenSource, /nextActionsBadge/u);
 });
 
@@ -241,7 +252,7 @@ test("Orbit AI drawer integrates workspace shortcuts, inbox, search, and recent 
   assert.match(screenSource, /accessibilityLabel=\{locale\.t\("ai\.openInbox"\)\}/u);
   assert.match(screenSource, /placeholder=\{locale\.t\("ai\.searchConversations"\)\}/u);
   assert.match(screenSource, /locale\.t\("ai\.recentChats"\)/u);
-  assert.match(screenSource, /filteredHistoryItems\.slice/u);
+  assert.match(screenSource, /historyItems\.slice\(0, 8\)/u);
   assert.match(screenSource, /accessibilityLabel=\{locale\.t\("ai\.newChat"\)\}/u);
 
   for (const icon of [

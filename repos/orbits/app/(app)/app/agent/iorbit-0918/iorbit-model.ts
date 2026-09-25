@@ -2,12 +2,14 @@
 // helper（解析 / 归一化 / 重试 / 标题与分组派生 / 常量）。本文件不得 import React、
 // 不得带 "use client"（计划「审阅修订」29），以便 node 测试直接 import。
 import { aiSessionOrganizationSchema, aiSessionOriginSchema, reliableAiSendInputSchema } from "../../../../../shared/api-schema/ai-sessions";
+import { aiSessionSummaryPageSchema } from "../../../../../shared/api-schema/ai-session-page";
 import type {
   AiSessionGroupContract,
   AiSessionOrganizationContract,
   ReliableAiSendInputContract,
   StoredAiSessionOriginContract,
 } from "../../../../../shared/contract/ai-sessions";
+import type { AiSessionSummaryItemContract, AiSessionSummaryPageContract } from "../../../../../shared/contract/ai-session-page";
 import type {
   OrbitAgentEventResultView,
   OrbitAgentHistoryView,
@@ -530,6 +532,8 @@ export interface AgentStoredChatSession {
   updatedAt: string;
 }
 
+export type AgentSessionSummary = AiSessionSummaryItemContract;
+
 function parseStoredAgentMessage(value: unknown): AgentMessage | null {
   if (isStoredAgentMessage(value)) {
     if (value.role === "user") return value;
@@ -633,8 +637,9 @@ export function parseAgentChatHistoryStorage(
   }
 }
 
-function parseAgentChatSessionsData(value: unknown): AgentStoredChatSession[] {
-  return isRecord(value) ? parseAgentChatSessionsArray(value.sessions) : [];
+function parseAgentChatSessionsData(value: unknown): AgentSessionSummary[] {
+  const parsed = aiSessionSummaryPageSchema.safeParse(value);
+  return parsed.success ? parsed.data.items as AgentSessionSummary[] : [];
 }
 
 function parseAgentChatSessionData(value: unknown): AgentStoredChatSession | null {
@@ -647,7 +652,7 @@ function parseAgentChatSessionData(value: unknown): AgentStoredChatSession | nul
 }
 
 export function agentChatHistorySessionsToHistory(
-  sessions: readonly AgentStoredChatSession[],
+  sessions: readonly AgentSessionSummary[],
   language: AgentHistoryLanguage,
   groups: readonly AiSessionGroupContract[] = [],
 ): OrbitAgentHistoryView[] {
@@ -655,17 +660,9 @@ export function agentChatHistorySessionsToHistory(
   const groupNames = new Map(groups.map((group) => [group.id, group.name]));
 
   return [...sessions]
-    .sort(
-      (a, b) =>
-        Number(b.pinned === true) - Number(a.pinned === true) ||
-        b.createdAt.localeCompare(a.createdAt),
-    )
-    .slice(0, MAX_AGENT_CHAT_HISTORY_SESSIONS)
     .map((session) => {
-      const firstUserMessage =
-        session.messages.find((message) => message.role === "user")?.text ??
-        session.title;
-      const title = displayTitleForStoredSession(session);
+      const firstUserMessage = session.firstUserText || session.title;
+      const title = session.organization.customTitle?.trim() || session.title;
       const groupId = session.organization?.groupId ?? null;
 
       return {
@@ -675,7 +672,7 @@ export function agentChatHistorySessionsToHistory(
         groupId,
         id: `session:${session.id}`,
         organizationRevision: session.organization?.revision ?? 0,
-        pinned: session.pinned,
+        pinned: session.organization.pinned,
         q: firstUserMessage,
         sessionId: session.id,
         title,
@@ -814,6 +811,34 @@ function upsertAgentChatSession(
   ].slice(0, MAX_AGENT_CHAT_HISTORY_SESSIONS);
 }
 
+function agentChatSummaryFromStoredSession(session: AgentStoredChatSession): AgentSessionSummary {
+  const organization = session.organization ?? {
+    customTitle: session.customTitle?.trim() || null,
+    groupId: null,
+    pinned: session.pinned === true,
+    revision: 0,
+  };
+  const codePoints = (value: string) => [...value].slice(0, 240).join("");
+  return {
+    id: session.id,
+    title: session.title,
+    firstUserText: codePoints(session.messages.find((message) => message.role === "user")?.text ?? ""),
+    lastMessagePreview: codePoints(session.messages.at(-1)?.text ?? ""),
+    createdAt: session.createdAt,
+    updatedAt: session.updatedAt,
+    messageRevision: session.messageRevision ?? session.messages.length,
+    organization,
+  };
+}
+
+function upsertAgentChatSummary(
+  summaries: readonly AgentSessionSummary[],
+  session: AgentStoredChatSession | AgentSessionSummary,
+): AgentSessionSummary[] {
+  const summary = "messages" in session ? agentChatSummaryFromStoredSession(session) : session;
+  return [summary, ...summaries.filter((item) => item.id !== summary.id)];
+}
+
 function agentChatSessionsApiPath(sessionId?: string): string {
   return sessionId
     ? `${AGENT_CHAT_SESSIONS_API_PATH}/${encodeURIComponent(sessionId)}`
@@ -840,30 +865,27 @@ export function agentChatHistoryMutationWasPersisted(
   );
 }
 
-export async function loadStoredAgentChatSessions(): Promise<AgentStoredChatSession[]> {
+export async function loadStoredAgentChatSessions(input: {
+  cursor?: string | null;
+  groupId?: string | null;
+  limit?: number;
+  q?: string;
+} = {}): Promise<AiSessionSummaryPageContract | null> {
   try {
-    const sessions: AgentStoredChatSession[] = [];
-    let cursor: string | null = null;
-    for (let page = 0; page < 200; page += 1) {
-      const query = new URLSearchParams({ limit: "50", v: "2" });
-      if (cursor) query.set("cursor", cursor);
-      const response = await fetch(`${agentChatSessionsApiPath()}?${query}`, {
-        headers: { accept: "application/json" },
-        method: "GET",
-      });
-      const payload = await readJsonResponse(response);
-      if (!response.ok || !isRecord(payload) || payload.success !== true || !isRecord(payload.data)) {
-        return [];
-      }
-      sessions.push(...parseAgentChatSessionsData(payload.data));
-      cursor = typeof payload.data.nextCursor === "string" && payload.data.nextCursor
-        ? payload.data.nextCursor
-        : null;
-      if (!cursor) break;
-    }
-    return [...new Map(sessions.map((session) => [session.id, session])).values()];
+    const query = new URLSearchParams({ limit: String(input.limit ?? 50) });
+    if (input.cursor) query.set("cursor", input.cursor);
+    if (input.groupId) query.set("groupId", input.groupId);
+    if (input.q?.trim()) query.set("q", input.q.trim());
+    const response = await fetch(`${agentChatSessionsApiPath()}?${query}`, {
+      headers: { accept: "application/json" },
+      method: "GET",
+    });
+    const payload = await readJsonResponse(response);
+    if (!response.ok || !isRecord(payload) || payload.success !== true || !isRecord(payload.data)) return null;
+    const parsed = aiSessionSummaryPageSchema.safeParse(payload.data);
+    return parsed.success ? parsed.data as AiSessionSummaryPageContract : null;
   } catch {
-    return [];
+    return null;
   }
 }
 
@@ -1191,6 +1213,7 @@ export {
   todoItemsFromArtifact,
   truncateAgentChatTitle,
   upsertAgentChatSession,
+  upsertAgentChatSummary,
   type AgentArtifactRecord,
   type AgentArtifactViewItem,
   type AgentHistoryFeedback,

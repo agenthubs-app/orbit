@@ -45,15 +45,16 @@ export function createPersonalScheduleService(input: { store: LiveRecordStoreLik
     for (const key of ["location", "endsAt", "allDay", "timeZone", "meetingMethod", "meetingUrl", "contactIds", "noteIds", "recurrence", "reminderMinutes"] as const) if (patch[key] === null) delete result[key];
     return result;
   }
-  async function personalScheduleOccurrences(store: typeof input.store, actorId: string, item: PersonalScheduleContract, window: { from: string; to: string }, exact?: { date: string; exceptions: readonly PersonalScheduleOccurrenceException[] }): Promise<PersonalScheduleContract[]> {
+  async function personalScheduleOccurrences(store: typeof input.store, actorId: string, item: PersonalScheduleContract, window: { from: string; to: string }, exact?: { date: string; exceptions: readonly PersonalScheduleOccurrenceException[] }, executor: TransactionalSqlExecutor | undefined = input.executor ?? input.client): Promise<PersonalScheduleContract[]> {
     if (!item.recurrence) return [publicItem(item, now())];
     if (!item.timeZone) throw new AppError("VALIDATION_ERROR", "Repeating schedules require a time zone.");
     // The exact reader has already checked the same actor/series/date. Reuse
     // that result only within this call; there is no cross-request cache.
     const date = exact?.date;
-    const exceptions = exact?.exceptions ?? await readPersonalScheduleOccurrenceExceptions({ store, workspaceId: input.workspaceId, actorId, seriesId: item.id });
     const series = { ...item, timeZone: item.timeZone, recurrence: item.recurrence };
     const anchors = new Map(expandPersonalScheduleOccurrences(series, window, date).map(occurrence => [occurrence.occurrenceDate, occurrence]));
+    const exceptions = exact?.exceptions ?? await readPersonalScheduleOccurrenceExceptions({ store, workspaceId: input.workspaceId, actorId, seriesId: item.id, executor,
+      window: { ...window, occurrenceDates: [...anchors.keys()] } });
     for (const exception of exceptions) {
       if (exception.cancelled || (date !== undefined && exception.occurrenceDate !== date) || anchors.has(exception.occurrenceDate)) continue;
       // An exception may move an anchor from outside this window into it.
@@ -79,7 +80,7 @@ export function createPersonalScheduleService(input: { store: LiveRecordStoreLik
     if (collision) throw new AppError(collision.userId === actorId ? "CONFLICT" : "NOT_FOUND", "Schedule occurrence identity is unavailable.");
     const base = await read(store, actorId, match[1]!);
     if (!base.recurrence) throw new AppError("NOT_FOUND", "Personal schedule occurrence not found.");
-    const exceptions = await readPersonalScheduleOccurrenceExceptions({ store, workspaceId: input.workspaceId, actorId, seriesId: base.id, occurrenceDate: match[2] });
+    const exceptions = await readPersonalScheduleOccurrenceExceptions({ store, workspaceId: input.workspaceId, actorId, seriesId: base.id, occurrenceDate: match[2]! });
     const exception = exceptions.find(value => value.occurrenceDate === match[2]);
     const day = exception?.patch.startsAt ? Date.parse(exception.patch.startsAt) : calendarDate(match[2]!)!.getTime();
     const instances = await personalScheduleOccurrences(store, actorId, base, { from: new Date(day - 2 * 86_400_000).toISOString(), to: new Date(day + 2 * 86_400_000).toISOString() }, { date: match[2]!, exceptions });
@@ -89,7 +90,7 @@ export function createPersonalScheduleService(input: { store: LiveRecordStoreLik
   }
   async function syncPersonalScheduleReminderPlans(store: typeof input.store, actorId: string, saved: PersonalScheduleContract, at: string, executor?: TransactionalSqlExecutor) {
     const window = { from: at, to: new Date(Date.parse(at) + 90 * 86_400_000).toISOString() };
-    const instances = saved.state === "cancelled" ? [] : await personalScheduleOccurrences(store, actorId, saved, window);
+    const instances = saved.state === "cancelled" ? [] : await personalScheduleOccurrences(store, actorId, saved, window, undefined, executor);
     const repository = executor ? createPersonalScheduleReminderRepository({ store, workspaceId: input.workspaceId, executor }) : createMemoryPersonalScheduleReminderRepository({ store, workspaceId: input.workspaceId });
     await reconcilePersonalScheduleReminderPlans({ repository: { ...repository, async savePlan(plan) {
       const persisted = await repository.savePlan(plan);
@@ -159,7 +160,7 @@ export function createPersonalScheduleService(input: { store: LiveRecordStoreLik
           const patch = (command as PersonalScheduleUpdate).patch;
           if (occurrenceScope && (Object.hasOwn(patch, "recurrence") || Object.hasOwn(patch, "reminderMinutes"))) throw new AppError("VALIDATION_ERROR", "Change reminder/repeat rules on the entire series.");
           if (occurrenceScope) {
-            const exceptions = await readPersonalScheduleOccurrenceExceptions({ store, workspaceId: input.workspaceId, actorId, seriesId: base.id, occurrenceDate: item.occurrenceDate });
+            const exceptions = await readPersonalScheduleOccurrenceExceptions({ store, workspaceId: input.workspaceId, actorId, seriesId: base.id, occurrenceDate: item.occurrenceDate! });
             exceptionPatch = { ...exceptions.find(value => value.occurrenceDate === item.occurrenceDate)?.patch, ...patch };
           }
           item = patchPersonalScheduleFields(item, patch);
@@ -207,18 +208,6 @@ export function createPersonalScheduleService(input: { store: LiveRecordStoreLik
         const item = await read(store, actorId, id);
         if (item.sourceId !== item.id || item.id !== id) throw new Error("Personal schedule source mismatch");
         await syncPersonalScheduleReminderPlans(store, actorId, item, now(), executor);
-      });
-    },
-    async refreshReminderPlans({ actorId }: { actorId: string }) {
-      return withScheduleTransaction(actorId, async (store, executor) => {
-        const records = await store.listRecords({ limit: "unbounded", workspaceId: input.workspaceId, collectionName, userId: actorId });
-        for (const record of records) {
-          const canonical = canonicalScheduleItemSchema.parse(record.payload);
-          if (canonical.kind !== "personal") continue;
-          const item = await read(store, actorId, record.recordId);
-          if (item.sourceId !== item.id || record.sourceId !== item.id) throw new Error("Personal schedule source mismatch");
-          await syncPersonalScheduleReminderPlans(store, actorId, item, now(), executor);
-        }
       });
     },
     async get({ actorId, id }: { actorId: string; id: string }) { return publicItem(await readPersonalScheduleOccurrence(input.store, actorId, id), now()); },

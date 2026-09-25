@@ -1,8 +1,18 @@
 import type {
-  TaskCategory,
-  TaskItemDTO,
-  TaskSuggestionDTO,
-} from "./contract";
+  TodayTaskPageModeContract,
+  TodayTaskSummaryModeContract,
+} from "../../shared/contract/today";
+import type { TaskCategory, TaskPageContract, TaskSuggestionDTO } from "./contract";
+
+export type {
+  TodayActionSummaryContract,
+  TodayScheduleActionSummaryContract,
+  TodayTaskActionSummaryContract,
+  TodayTaskCategoryContract,
+  TodayTaskModeContract,
+  TodayTaskPageModeContract,
+  TodayTaskSummaryModeContract,
+} from "../../shared/contract/today";
 
 export type ScheduleItemState =
   | "upcoming"
@@ -24,17 +34,10 @@ export interface ScheduleItemDTO {
   sourceId: string;
 }
 
-export interface TodayAggregateDTO {
-  date: string;
-  timeZone: string;
-  tasks: readonly TaskItemDTO[];
-  completedCount: number;
-  suggestions: readonly TaskSuggestionDTO[];
-  schedule: readonly ScheduleItemDTO[];
-  summary: {
-    openTaskCount: number;
-    completedCount: number;
-    suggestionCount: number;
-    scheduleCount: number;
-  };
-}
+export type TodayPageModeDTO = TodayTaskPageModeContract<
+  TaskPageContract,
+  TaskSuggestionDTO,
+  ScheduleItemDTO
+>;
+
+export type TodaySummaryModeDTO = TodayTaskSummaryModeContract;

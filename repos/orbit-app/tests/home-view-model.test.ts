@@ -2,34 +2,9 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-import {
-  homeFilteredEvents,
-  homeToView,
-  type HomeEventFilter
-} from "../src/view-models/home";
+import { filterEventSummaries } from "../src/view-models/events";
+import { homeEventsToView, type HomeEventFilter } from "../src/view-models/home";
 import { scheduleToTimelineView } from "../src/view-models/schedule";
-
-function flattenedText(value: unknown): string {
-  return JSON.stringify(value);
-}
-
-const profilePayload = {
-  profile: {
-    bio: "Orbit 创始人，帮企业把 AI 用到真实业务里。",
-    displayName: "Xinyi Zhao",
-    headline: "Orbit 创始人",
-    industry: "AI 企业应用",
-    primaryIndustryId: "technology_internet",
-    secondaryIndustryId: "technology_internet.ai_data",
-    offering: ["AI 落地路径", "企业知识库"],
-    organization: "Orbit",
-    relationshipGoal: "找到能互相帮忙的企业客户、合作伙伴和日本本地资源。",
-    role: "创始人",
-    seeking: ["正在导入 AI 的企业"],
-    timezone: "Tokyo",
-    topics: ["RAG", "Agent 工作流"]
-  }
-};
 
 const eventsPayload = {
   events: [
@@ -57,139 +32,36 @@ const eventsPayload = {
   ]
 };
 
-const contactsPayload = {
-  contacts: [
-    {
-      displayName: "王晨",
-      id: "contact_1",
-      organization: "红桥科技",
-      role: "市场负责人",
-      status: "active"
-    },
-    {
-      displayName: "田中",
-      id: "contact_2",
-      organization: "Kansai Partners",
-      role: "顾问",
-      status: "dormant"
-    }
-  ]
-};
-
-test("homeToView combines profile, events, and contacts into a Chinese mobile hub", () => {
-  const view = homeToView({
-    contacts: contactsPayload,
+test("home events view derives event state from status and schedule timestamps", () => {
+  const view = homeEventsToView({
     events: eventsPayload,
-    now: new Date("2026-07-24T00:00:00.000+09:00"),
-    profile: profilePayload
+    now: new Date("2026-07-24T00:00:00.000+09:00")
   });
 
-  assert.equal(view.profile.displayName, "Xinyi Zhao");
-  assert.equal(view.profile.primaryIndustryId, "technology_internet");
-  assert.equal(view.profile.secondaryIndustryId, "technology_internet.ai_data");
-  assert.deepEqual(view.stats, {
-    events: "3",
-    inProgress: "1",
-    people: "2"
-  });
-  assert.deepEqual(view.assistant, {
-    placeholder: "问人脉、活动、待办或日程",
-    title: "有什么可以帮你？"
-  });
-  assert.deepEqual(view.layout, {
-    aiMinHeight: 560,
-    askInputMinHeight: 138,
-    entryVariant: "compact",
-    pipelineVariant: "single-row",
-    secondaryEventLimit: 2
-  });
-  assert.deepEqual(view.pipeline, [
-    {
-      detail: "需要准备与复盘",
-      label: "活动",
-      tone: "sky",
-      value: "3"
-    },
-    {
-      detail: "可触达关系",
-      label: "人脉",
-      tone: "accent",
-      value: "2"
-    },
-    {
-      detail: "今天优先处理",
-      label: "推进中",
-      tone: "live",
-      value: "1"
-    }
-  ]);
-  assert.deepEqual(view.profilePanel, {
-    bio: "Orbit 创始人，帮企业把 AI 用到真实业务里。",
-    facts: [
-      { label: "身份", value: "创始人" },
-      { label: "领域", value: "AI 企业应用" },
-      { label: "时区", value: "Tokyo" }
-    ],
-    goal: "找到能互相帮忙的企业客户、合作伙伴和日本本地资源。",
-    groups: [
-      {
-        items: ["AI 落地路径", "企业知识库"],
-        title: "我能提供"
-      },
-      {
-        items: ["正在导入 AI 的企业"],
-        title: "我在寻找"
-      },
-      {
-        items: ["RAG", "Agent 工作流"],
-        title: "想聊的话题"
-      }
-    ],
-    title: "别人会看到的资料"
-  });
   assert.deepEqual(
-    view.entries.map((entry) => [entry.href, entry.title]),
+    view.map((event) => [event.id, event.state]),
     [
-      ["/profile", "通用画像"],
-      ["/contacts", "名片夹"],
-      ["/schedule", "日程安排"]
+      ["event_live", "active"],
+      ["event_next", "upcoming"],
+      ["event_done", "ended"]
     ]
   );
-  assert.deepEqual(view.filterCounts, {
-    active: 1,
-    all: 3,
-    ended: 1,
-    upcoming: 1
-  });
-  assert.equal(view.events[0]?.state, "active");
-  assert.equal(view.events[1]?.state, "upcoming");
-  assert.equal(view.events[2]?.state, "ended");
-  assert.doesNotMatch(
-    flattenedText(view),
-    /\b(mock|fixture|provider|source-backed|implementation|command-center)\b/iu
-  );
+  assert.equal(view[0]?.detailLine, "8月4日 周二 10:00 · 东京");
 });
 
-test("home relationship workbench is a fixed three-cell row", () => {
+test("the mounted HomeScreen is the events page and has no profile or contacts source", () => {
   const source = readFileSync(
     new URL("../src/screens/home/HomeScreen.tsx", import.meta.url),
     "utf8"
   );
 
+  assert.match(source, /export function HomeScreen\(\)/u);
   assert.match(
     source,
-    /pipelineRail:\s*\{[^}]*flexDirection:\s*"row"/su
+    /useApiResource<unknown>\(\s*ORBIT_API_ENDPOINTS\.publicEvents/u
   );
-  assert.doesNotMatch(
-    source,
-    /pipelineRail:\s*\{[^}]*flexWrap:\s*"wrap"/su
-  );
-  assert.match(source, /pipelineCell:\s*\{[^}]*minWidth:\s*0/su);
-  assert.match(source, /pipelineDivider:\s*\{/u);
-  assert.match(
-    source,
-    /<Pressable\s+accessibilityLabel="发送给 iOrbit"\s+accessibilityRole="button"/su
-  );
+  assert.doesNotMatch(source, /ORBIT_API_ENDPOINTS\.(?:profile|contacts)/u);
+  assert.doesNotMatch(source, /HomeHub|homeToView|HomeProfilePanel|PipelineRail/u);
 });
 
 test("home events route renders events as an image-first list", () => {
@@ -228,8 +100,6 @@ test("home events route renders events as an image-first list", () => {
   assert.match(source, /styles\.homeEventImageMetaRow/u);
   assert.match(source, /event\.participantCountLabel/u);
   assert.match(source, /event\.actionLabel/u);
-  // The real HomeScreen render in app-wide-events.test.ts checks the retained
-  // cover, complete title and growing text layout at 320pt.
   assert.doesNotMatch(source, /homeEventImageFrame:\s*\{[^}]*padding:/su);
   assert.doesNotMatch(source, /function EventModuleList/u);
   assert.doesNotMatch(source, /function EventModuleCard/u);
@@ -279,38 +149,23 @@ test("home and schedule consume the same canonical public event count", () => {
       title: "准入活动"
     }]
   };
-  const home = homeToView({
-    contacts: { contacts: [] },
+  const home = homeEventsToView({
     events,
-    now: new Date("2026-09-15T00:00:00+09:00"),
-    profile: { profile: {} }
+    now: new Date("2026-09-15T00:00:00+09:00")
   });
   const schedule = scheduleToTimelineView({
     events,
     now: new Date("2026-09-15T00:00:00+09:00"),
     tasks: { tasks: [] }
   });
-  assert.equal(home.events[0]?.participantCountLabel, "0 人已报名");
+  assert.equal(home[0]?.participantCountLabel, "0 人已报名");
   assert.equal(
     schedule.eventHighlights[0]?.participantCountLabel,
-    home.events[0]?.participantCountLabel
+    home[0]?.participantCountLabel
   );
 });
 
-test("home hub event preview also uses the image-first event list", () => {
-  const source = readFileSync(
-    new URL("../src/screens/home/HomeScreen.tsx", import.meta.url),
-    "utf8"
-  );
-  const hubStart = source.indexOf("function HomeHubContent");
-  const profileStart = source.indexOf("function HomeProfilePanel");
-  const hubSource = source.slice(hubStart, profileStart);
-
-  assert.match(hubSource, /<EventImageList/u);
-  assert.doesNotMatch(hubSource, /<EventRow/u);
-});
-
-test("home event image cards keep time and location labels readable", () => {
+test("home event cards keep time and location labels readable", () => {
   const source = readFileSync(
     new URL("../src/screens/home/HomeScreen.tsx", import.meta.url),
     "utf8"
@@ -335,15 +190,13 @@ test("home event image cards keep time and location labels readable", () => {
   assert.doesNotMatch(source, /homeEventImageDetail:\s*\{[^}]*flex:\s*1/su);
 });
 
-test("homeFilteredEvents applies the same filters as the web home events view", () => {
-  const view = homeToView({
-    contacts: contactsPayload,
+test("home event filters use the shared public event filter implementation", () => {
+  const events = homeEventsToView({
     events: eventsPayload,
-    now: new Date("2026-07-24T00:00:00.000+09:00"),
-    profile: profilePayload
+    now: new Date("2026-07-24T00:00:00.000+09:00")
   });
   const idsByFilter = (filter: HomeEventFilter) =>
-    homeFilteredEvents(view.events, filter).map((event) => event.id);
+    filterEventSummaries(events, { status: filter }).map((event) => event.id);
 
   assert.deepEqual(idsByFilter("all"), ["event_live", "event_next", "event_done"]);
   assert.deepEqual(idsByFilter("active"), ["event_live"]);
@@ -351,9 +204,8 @@ test("homeFilteredEvents applies the same filters as the web home events view", 
   assert.deepEqual(idsByFilter("ended"), ["event_done"]);
 });
 
-test("homeToView marks scheduled events as ended when their time has passed", () => {
-  const view = homeToView({
-    contacts: contactsPayload,
+test("home event view marks past scheduled events as ended", () => {
+  const view = homeEventsToView({
     events: {
       events: [
         {
@@ -366,15 +218,8 @@ test("homeToView marks scheduled events as ended when their time has passed", ()
         }
       ]
     },
-    now: new Date("2026-07-24T00:00:00.000+09:00"),
-    profile: profilePayload
+    now: new Date("2026-07-24T00:00:00.000+09:00")
   });
 
-  assert.equal(view.events[0]?.state, "ended");
-  assert.deepEqual(view.filterCounts, {
-    active: 0,
-    all: 1,
-    ended: 1,
-    upcoming: 0
-  });
+  assert.equal(view[0]?.state, "ended");
 });

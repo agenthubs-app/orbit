@@ -10,6 +10,7 @@ import type {ContractMatches} from '../../../../shared/contract-check';
 import type {z} from 'zod';
 import {AppError} from '../../../../shared/errors/app-error';
 import {createConfiguredPostgresLiveRecordStore} from '../../../../shared/storage/configured-live-record-store';
+import {createConfiguredInboxRuntime} from '../../../../features/notifications/inbox-record-service-factory';
 import {authenticatedApiActorRequiredResponse,resolveAuthenticatedApiActor,type ResolveAuthenticatedApiActor} from '../../_shared/authenticated-actor';
 
 type Actor=NonNullable<Awaited<ReturnType<ResolveAuthenticatedApiActor>>>;
@@ -21,6 +22,7 @@ export function createInboxSummaryGetHandler(options:{
   typedEnabled?:(actorId:string)=>boolean;
   readMessages?:(actor:Actor)=>Promise<number>;
   readLegacy?:(actor:Actor)=>Promise<number>;
+  readTyped?:(actor:Actor)=>Promise<number>;
   now?:()=>string;
 }={}) {
   return async function GET():Promise<Response> {
@@ -40,12 +42,16 @@ export function createInboxSummaryGetHandler(options:{
       };
       const [messagesUnread,notificationsUnread]=await Promise.all([
         options.readMessages?options.readMessages(actor):readRelationshipUnreadSummary(storage()).then(r=>r.unreadTotal),
-        typed?Promise.resolve(null):options.readLegacy?options.readLegacy(actor):readLegacyNotificationUnreadSummary(storage()).then(r=>r.unreadTotal),
+        typed
+          ? options.readTyped?options.readTyped(actor):Promise.resolve().then(()=>{
+              const inbox=createConfiguredInboxRuntime();
+              if(!inbox||inbox.workspaceId!==actor.workspaceId)throw new Error('Storage scope unavailable');
+              return inbox.service.unreadCount(actorId);
+            })
+          : options.readLegacy?options.readLegacy(actor):readLegacyNotificationUnreadSummary(storage()).then(r=>r.unreadTotal),
       ]);
-      // Typed producers still depend on the old GET refresh. Never call that
-      // path inside this read-only endpoint, or pretend its count is zero.
       const data=inboxSummarySchema.parse({actorId,messagesUnread,notificationsUnread,
-        notificationMode:typed?'typed':'legacy',notificationRead:typed?'refresh-required':'ready',
+        notificationMode:typed?'typed':'legacy',notificationRead:'ready',
         asOf:(options.now??(()=>new Date().toISOString()))()});
       if(!matches)throw new Error('Contract mismatch');
       return NextResponse.json(success(data),{headers});

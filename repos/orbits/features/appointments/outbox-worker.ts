@@ -2,7 +2,10 @@ import { randomUUID } from "node:crypto";
 
 import type { AppointmentOutboxEvent } from "./contract";
 import type { AppointmentNotificationProjector } from "./notification-projector";
-import type { EventOperationsPostgresRuntime } from "../events/event-operations/storage/postgres-client";
+import type { EventOperationsPostgresRuntime, EventOperationsSqlExecutor } from "../events/event-operations/storage/postgres-client";
+import type { TransactionalPostgresClient, TransactionalSqlExecutor } from "../../shared/storage/transactional-postgres";
+import { createInboxRuntime } from "../notifications/inbox-record-service-factory";
+import { createAppointmentOutboxInboxProjector } from "../notifications/appointment-outbox-inbox-projector";
 
 type Row = Record<string, unknown>;
 
@@ -37,6 +40,22 @@ function isProviderCancellation(eventType: AppointmentOutboxEvent["eventType"]):
   return eventType === "appointment.calendar.cancel" || eventType === "appointment.meeting.cancel";
 }
 
+function transactionalInboxClient(runtime: EventOperationsPostgresRuntime): TransactionalPostgresClient {
+  const executor = (client: EventOperationsSqlExecutor): TransactionalSqlExecutor => ({
+    async query<TRow>(text: string, values?: readonly unknown[]) {
+      const result = await client.query<TRow>(text, values);
+      return { rows: result.rows };
+    },
+  });
+  return {
+    ...executor(runtime.client),
+    async transaction<T>(operation: (transaction: TransactionalSqlExecutor) => Promise<T>) {
+      return runtime.client.transaction((transaction) => operation(executor(transaction)), { isolation: "read committed" });
+    },
+    async close() {},
+  };
+}
+
 async function providerRevisionIsCurrent(
   runtime: EventOperationsPostgresRuntime,
   event: AppointmentOutboxEvent,
@@ -54,6 +73,7 @@ async function providerRevisionIsCurrent(
 
 export async function runAppointmentOutboxBatch(input: {
   limit?: number;
+  now?: () => string;
   projector: AppointmentNotificationProjector;
   runtime: EventOperationsPostgresRuntime;
 }): Promise<{ completed: number; failed: number; retried: number }> {
@@ -81,12 +101,22 @@ export async function runAppointmentOutboxBatch(input: {
   let completed = 0;
   let failed = 0;
   let retried = 0;
+  const inboxRuntime = createInboxRuntime({ client: transactionalInboxClient(input.runtime), workspaceId: input.runtime.workspaceId, ...(input.now ? { now: input.now } : {}) });
+  const inboxProjector = createAppointmentOutboxInboxProjector({
+    client: input.runtime.client,
+    workspaceId: input.runtime.workspaceId,
+    service: inboxRuntime.service,
+    ...(input.now ? { now: input.now } : {}),
+  });
   await Promise.all(claimed.rows.map(async (row) => {
     const item = message(row);
     try {
-      const projection = await providerRevisionIsCurrent(input.runtime, item)
-        ? await input.projector.project(item)
-        : { notificationIds: [], policy: "superseded" as const };
+      const inboxProjection = await inboxProjector.project(item);
+      const projection = item.eventType === "appointment.reminder.t30m"
+        ? { notificationIds: inboxProjection.notificationIds, policy: "in_app" as const }
+        : await providerRevisionIsCurrent(input.runtime, item)
+          ? await input.projector.project(item)
+          : { notificationIds: [], policy: "superseded" as const };
       const result = await input.runtime.client.transaction(async (transaction) => {
         if ((isProviderRequest(item.eventType) || isProviderCancellation(item.eventType)) && projection.policy === "provider_not_configured") {
           await transaction.query(`update appointment_aggregates set payload = jsonb_set(

@@ -19,6 +19,7 @@ const listeners = new Set(); let revision = 0;
 const state = window.fixture = { actor: "actor:one", cookieHeader: "session=one", baseUrl: "http://fixture", requests: [], navigation: [], nativeCalls: [], cameraGranted: true, photoGranted: true, kind: "success", postMode: "failure", putMode: "failure", pendingPost: null, pendingPut: null, refreshes: 0, resourceScopeKey: JSON.stringify(["actor:one", "session=one", "http://fixture"]), uuidSequence: 0, update(patch) { Object.assign(state, patch); revision++; listeners.forEach(f => f()); } };
 const rerender = () => useSyncExternalStore(f => { listeners.add(f); return () => listeners.delete(f); }, () => revision);
 const contacts = { contacts: [{ id: "contact:1", displayName: "林悦", organization: "红桥科技", role: "市场负责人", location: "东京", industry: "enterprise_saas", status: "active", value: { score: 89, valueTypes: [] } }] };
+const introSummary = { totalContacts: 7, referralCandidateCount: 1, candidates: [{ id: "contact:1", displayName: "林悦", organization: "红桥科技", role: "市场负责人", hasReferralPath: false, sourceLabel: "朋友介绍", strengthScore: 89 }] };
 const mobile = {
   aggregate: { relationshipAssetTotals: { contacts: 1 }, highValueCount: 1, pendingFollowups: { count: 1 }, dormantContacts: { count: 0 } },
   analysis: { current: { analysisVersion: "contacts.analysis@1", sourceDataVersion: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }, report: { analysisVersion: "contacts.analysis@1", body: "现有人脉覆盖零售合作，下一步应补充投资人联系。", generatedAt: "2026-09-15T01:00:01.000Z", messageId: "message:analysis:1", sessionId: "session:analysis:1", sourceDataVersion: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" }, stale: true },
@@ -34,7 +35,7 @@ export const usePathname = () => "/contacts";
 export const useRouter = () => ({ canGoBack: () => false, back() { state.navigation.push("back"); }, replace(path) { state.navigation.push(path); }, push(path) { state.navigation.push(path); } });
 const structure = { dimension: "industry", bucket: { label: "科技合作伙伴", contactCount: 1, percentage: 100 }, contacts: [{ ...contacts.contacts[0], relationshipStrength: "strong" }], commonTags: [{ label: "日本市场", contactCount: 1 }], relationshipQuality: [{ id: "strong", label: "强关系", contactCount: 1, percentage: 100 }], insight: "科技合作伙伴已有交流基础。" };
 const connections = { connections: [{ id: "connection:1", contactId: "contact:1", displayName: "林悦", organization: "红桥科技", relationshipStage: "needs_follow_up", strengthScore: 89, sourceLinks: [{ label: "朋友引荐", type: "referral" }], evidenceTimeline: [{ title: "已有交流记录" }] }] };
-export const useApiResource = path => { rerender(); return { kind: state.kind, error: { message: "连接暂时失败" }, data: path.includes("structure/") ? structure : path.includes("connections") ? connections : path.includes("tasks") ? { tasks: [] } : path.includes("draft") ? {} : path.includes("aggregate") ? mobile.aggregate : path.includes("opportunities") ? mobile.opportunities : path.includes("distributions") ? mobile.distributions : path.includes("gaps") ? mobile.gaps : contacts, refreshing: false, refresh() {} }; };
+export const useApiResource = path => { rerender(); return { kind: state.kind, error: { message: "连接暂时失败" }, data: path.includes("intros/summary") ? introSummary : path.includes("structure/") ? structure : path.includes("connections") ? connections : path.includes("tasks") ? { tasks: [] } : path.includes("draft") ? {} : path.includes("aggregate") ? mobile.aggregate : path.includes("opportunities") ? mobile.opportunities : path.includes("distributions") ? mobile.distributions : path.includes("gaps") ? mobile.gaps : contacts, refreshing: false, refresh() {} }; };
 export const useValidatedApiResource = (_path, _schema, isEmpty, options = {}) => { rerender(); state.dashboardScopeKey = options.scopeKey; const base = state.zeroContacts ? { ...mobile, aggregate: { ...mobile.aggregate, relationshipAssetTotals: { ...mobile.aggregate.relationshipAssetTotals, contacts: 0 } }, contacts: { contacts: [] } } : mobile; const data = state.remoteGoal === undefined ? base : { ...base, profile: { ...base.profile, profile: { ...base.profile.profile, relationshipGoal: state.remoteGoal, updatedAt: state.remoteUpdatedAt } } }; const scopeCurrent = options.scopeKey === undefined || options.scopeKey === state.resourceScopeKey; return { kind: scopeCurrent ? (isEmpty(data) ? "empty" : state.kind) : "loading", data, error: { message: "连接暂时失败" }, refreshing: false, refresh() { state.refreshes++; state.resourceScopeKey = options.scopeKey; revision++; listeners.forEach(f => f()); } }; };
 const record = method => async (path, options) => {
   state.requests.push({ method, path, body: options?.body });
@@ -68,9 +69,8 @@ import { ContactsDashboardScreen } from "./src/screens/contacts/ContactsDashboar
 import { ContactPipelineScreen } from "./src/screens/contacts/ContactPipelineScreen";
 import { ContactStructureDetailScreen } from "./src/screens/contacts/ContactStructureDetailScreen";
 import { ContactIntrosScreen } from "./src/screens/contacts/ContactIntrosScreen";
-import { ContactsGraphScreen } from "./src/screens/contacts/ContactsGraphScreen";
 import { DashboardScreen } from "./src/screens/dashboard/DashboardScreen";
-const screens = { overview: ContactsScreen, acquisition: ContactAcquisitionScreen, analysis: ContactsDashboardScreen, pipeline: ContactPipelineScreen, structure: ContactStructureDetailScreen, intros: ContactIntrosScreen, graph: ContactsGraphScreen, dashboard: DashboardScreen };
+const screens = { overview: ContactsScreen, acquisition: ContactAcquisitionScreen, analysis: ContactsDashboardScreen, pipeline: ContactPipelineScreen, structure: ContactStructureDetailScreen, intros: ContactIntrosScreen, dashboard: DashboardScreen };
 const Screen = screens[new URLSearchParams(location.search).get("screen") || "overview"];
 createRoot(document.getElementById("root")).render(<Screen />);`, resolveDir: process.cwd(), loader: "tsx" },
     bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"],
@@ -344,6 +344,10 @@ test("analysis opened in dark appearance keeps its real modal readable and bound
 
 test("introduction selection opens an editable draft without preparing or sending an invitation", async t => {
   const page = await openScreen(t, "intros");
+  await page.getByText("7", { exact: true }).waitFor();
+  await page.getByText("1 位联系人适合先准备引荐。", { exact: true }).waitFor();
+  await page.getByText("来自朋友介绍，适合先整理双方需求。", { exact: true }).waitFor();
+  await page.getByText("朋友介绍", { exact: true }).waitFor();
   const prepare = page.getByRole("button", { name: "准备邀请", exact: true });
   await touchFits(prepare, 50); await prepare.click();
   const email = page.getByPlaceholder("name@example.com");
@@ -353,12 +357,7 @@ test("introduction selection opens an editable draft without preparing or sendin
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);
 });
 
-test("legacy graph and dashboard retain their real actions and request boundaries", async t => {
-  const graph = await openScreen(t, "graph", "dark");
-  for (const name of ["查看证据", "生成画像", "打开联系人"]) await touchFits(graph.getByRole("button", { name, exact: true }));
-  await graph.getByRole("button", { name: "打开联系人", exact: true }).click();
-  assert.deepEqual(await graph.evaluate(() => (window as any).fixture.navigation), ["/contacts/contact%3A1"]);
-  assert.deepEqual(await graph.evaluate(() => (window as any).fixture.requests), []);
+test("dashboard retains its real actions and request boundaries", async t => {
   const dashboard = await openScreen(t, "dashboard");
   const recompute = dashboard.getByRole("button", { name: "重新计算机会", exact: true });
   await touchFits(recompute, 50);
@@ -367,43 +366,6 @@ test("legacy graph and dashboard retain their real actions and request boundarie
   await dashboard.getByText("暂时无法保存，请重试", { exact: true }).waitFor();
   assert.equal((await dashboard.evaluate(() => (window as any).fixture.requests)).length, 1);
 });
-
-for (const scheme of ["light", "dark"] as const) {
-  test(`${scheme}: graph evidence opens an inset editor and retains its draft after a controlled failed write`, async t => {
-    const page = await openScreen(t, "graph", scheme);
-    assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);
-    await page.getByRole("button", { name: "查看证据", exact: true }).click();
-    await page.getByText("上周确认了合作方向。", { exact: true }).waitFor();
-    const title = page.getByPlaceholder("标题，比如 后续可引荐");
-    const excerpt = page.getByPlaceholder("写清楚这条关系为什么值得联系");
-    const form = title.locator("..");
-    assert.deepEqual(await form.evaluate(el => {
-      const s = getComputedStyle(el);
-      return [s.backgroundColor, s.borderRadius, s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft];
-    }), [scheme === "light" ? "rgb(245, 247, 250)" : "rgb(39, 44, 53)", "12px", "12px", "12px", "12px", "12px"]);
-    await touchFits(title); await touchFits(excerpt);
-    const submit = page.getByRole("button", { name: "添加证据", exact: true });
-    await touchFits(submit, 50);
-    assert.equal(await submit.evaluate(el => getComputedStyle(el).backgroundColor), scheme === "light" ? "rgb(11, 18, 32)" : "rgb(240, 240, 236)");
-    assert.equal(await submit.locator("[dir='auto']").evaluate(el => getComputedStyle(el).color), scheme === "light" ? "rgb(255, 255, 255)" : "rgb(23, 28, 42)");
-    const formBox = (await form.boundingBox())!;
-    const submitBox = (await submit.boundingBox())!;
-    assert.equal(submitBox.x - formBox.x, 12);
-    assert.equal(formBox.x + formBox.width - submitBox.x - submitBox.width, 12);
-    await title.fill("后续可引荐"); await excerpt.fill("对方愿意介绍零售合作伙伴。");
-    assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), [{ method: "GET", path: "/api/connections/connection%3A1", body: undefined }]);
-    await submit.click();
-    await page.getByText("这条证据暂时补充不了，请刷新后再试一次。", { exact: true }).waitFor();
-    assert.equal(await title.inputValue(), "后续可引荐");
-    assert.equal(await excerpt.inputValue(), "对方愿意介绍零售合作伙伴。");
-    assert.equal(await submit.isEnabled(), true);
-    assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), [
-      { method: "GET", path: "/api/connections/connection%3A1", body: undefined },
-      { method: "POST", path: "/api/connections/connection%3A1/evidence", body: { contribution: "user_note", excerpt: "对方愿意介绍零售合作伙伴。", sourceLabel: "iOS 手动补充", sourceType: "manual", title: "后续可引荐" } }
-    ]);
-    if (process.env.APP_STYLE_SCREENSHOTS) await page.screenshot({ path: `/tmp/orbit-app-wide-contacts-graph-evidence-${scheme}.png`, fullPage: true });
-  });
-}
 
 test("denied camera and photo access show feedback and allow safe acquisition recovery without writes", async t => {
   const page = await openScreen(t, "acquisition");

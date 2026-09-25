@@ -44,6 +44,7 @@ async function insertOutbox(client: EventOperationsSqlExecutor, workspaceId: str
           and payload ->> 'revision' = $3
           and event_type in (
             'appointment.reminder.t24h',
+            'appointment.reminder.t30m',
             'appointment.reminder.t1h',
             'appointment.memo.t15m'
           )

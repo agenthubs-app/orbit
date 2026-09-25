@@ -34,9 +34,9 @@ test("read and receipt verify contact, actor, connection and exact requested goa
   }
 });
 
-function controller(client: object, onConfirmed = () => {}, isCurrent = () => true) {
+function controller(client: object, onConfirmed = () => {}, isCurrent = () => true, focusedConnectionId: string | null = connectionId) {
   let sequence = 0;
-  return createContactInitializationController({ actorId, contactId, client: client as OrbitApiClient, isCurrent, onConfirmed, createId: () => `id:${++sequence}` });
+  return createContactInitializationController({ actorId, contactId, connectionId: focusedConnectionId, client: client as OrbitApiClient, isCurrent, onConfirmed, createId: () => `id:${++sequence}` });
 }
 test("lost ACK locks intent; retries identical body/key/task, duplicate submits coalesce, refresh confirms ready", async () => {
   const bodies: unknown[] = []; let confirmed = 0;
@@ -55,9 +55,12 @@ test("lost ACK locks intent; retries identical body/key/task, duplicate submits 
   await c.refresh(); assert.equal(c.getSnapshot().view.kind, "initialized");
 });
 test("GET 404 hides only verified unconnected contacts; other errors remain visible; POST 404 does not hide", async () => {
-  for (const status of [404, 403, 500]) {
-    const c = controller({ get: async (path: string) => path === "/api/connections" ? ok({ connections: [] }) : error(status, "READ_ERROR") }); await c.start();
-    assert.equal(c.getSnapshot().view.kind, status === 404 ? "hidden" : "error");
+  const unconnected = controller({ get: async () => error(404, "READ_ERROR") }, () => {}, () => true, null);
+  await unconnected.start();
+  assert.equal(unconnected.getSnapshot().view.kind, "hidden");
+  for (const status of [403, 500]) {
+    const c = controller({ get: async () => error(status, "READ_ERROR") }); await c.start();
+    assert.equal(c.getSnapshot().view.kind, "error");
   }
   const c = controller({ get: async () => ok(pending), post: async () => error(404, "WRITE_NOT_FOUND") });
   await c.start(); c.change({ stage: "active", goal: "A real goal" }); await c.save("Asia/Shanghai", true);
@@ -69,23 +72,18 @@ test("init 404 resolves exact scoped connection then canonical snapshot without 
   const c = controller({ get: async (path: string) => {
     paths.push(path);
     if (path.endsWith("relationship-initialization")) return error(404, "NOT_EVENT");
-    if (path === "/api/connections") return ok({ connections: [{ id: "unrelated", contactId: "other" }, { id: connectionId, contactId }] });
     return ok({ snapshot });
   } });
   await c.start();
   assert.equal(c.getSnapshot().view.kind, "initialized");
-  assert.deepEqual(paths, ["/api/contacts/contact%3A%2Fone/relationship-initialization", "/api/connections", "/api/connections/connection%3Aone/lifecycle"]);
+  assert.deepEqual(paths, ["/api/contacts/contact%3A%2Fone/relationship-initialization", "/api/connections/connection%3Aone/lifecycle"]);
   assert.equal(c.getSnapshot().draft.stage, "");
 });
 
 test("canonical candidate missing, malformed, foreign, ambiguous or failed never falls open to legacy editing", async () => {
   for (const candidate of [error(404, "NOT_FOUND"), error(503, "UNAVAILABLE"), ok({}), ok({ snapshot: { ...snapshot, connection: { ...snapshot.connection, actorId: "other" } } }), ok({ snapshot: { ...snapshot, connection: { ...snapshot.connection, contactId: "other" } } })]) {
-    const c = controller({ get: async (path: string) => path.endsWith("relationship-initialization") ? error(404, "NOT_EVENT") : path === "/api/connections" ? ok({ connections: [{ id: connectionId, contactId }] }) : candidate });
+    const c = controller({ get: async (path: string) => path.endsWith("relationship-initialization") ? error(404, "NOT_EVENT") : candidate });
     await c.start(); assert.equal(c.getSnapshot().view.kind, "error"); assert.ok(c.getSnapshot().error);
-  }
-  for (const list of [error(503, "UNAVAILABLE"), ok({}), ok({ connections: [{}] }), ok({ connections: [{ id: connectionId, contactId }, { id: "second", contactId }] })]) {
-    const c = controller({ get: async (path: string) => path.endsWith("relationship-initialization") ? error(404, "NOT_EVENT") : list });
-    await c.start(); assert.equal(c.getSnapshot().view.kind, "error");
   }
 });
 
@@ -93,7 +91,7 @@ test("late canonical lookup after owner departure cannot publish or dispatch a f
   let finish!: (value: unknown) => void; const paths: string[] = [];
   const c = controller({ get: async (path: string) => { paths.push(path); return path.endsWith("relationship-initialization") ? error(404, "NOT_EVENT") : new Promise(resolve => { finish = resolve; }); } });
   const loading = c.start(); await new Promise(resolve => setImmediate(resolve));
-  c.dispose(); finish(ok({ connections: [{ id: connectionId, contactId }] })); await loading;
+  c.dispose(); finish(ok({ snapshot })); await loading;
   assert.equal(paths.length, 2); assert.equal(c.getSnapshot().view.kind, "loading");
 });
 

@@ -3,6 +3,9 @@ import { createHash } from "node:crypto";
 import { aiSessionOriginSchema } from "../../../shared/api-schema/ai-sessions";
 import type { AiSessionEntryPointId, AiSessionOriginContract, AiSessionReferenceContract, StoredAiSessionOriginContract } from "../../../shared/contract/ai-sessions";
 import { createConfiguredPostgresLiveRecordStore } from "../../../shared/storage/configured-live-record-store";
+import type { AiSessionSummaryPageContract } from "../../../shared/contract/ai-session-page";
+import type { AiSessionOrganizationContract } from "../../../shared/contract/ai-sessions";
+import type { LiveRecordSqlClient } from "../../../shared/storage/postgres-live-record-store";
 import {
   resolveLiveDatabaseConnectionConfig,
   type LiveDatabaseEnv,
@@ -11,6 +14,11 @@ import type {
   LiveRecord,
   LiveRecordStoreLike,
 } from "../../../shared/storage/live-record-store";
+import {
+  createOrbitAgentChatSessionSummaryPageReader,
+  pageOrbitAgentChatSessionSummaryCandidates,
+  type OrbitAgentChatSessionSummaryQuery,
+} from "./orbit-agent-chat-session-summary-page";
 
 export const ORBIT_AGENT_CHAT_SESSION_LIVE_RECORD_COLLECTIONS = {
   messages: "orbit_agent_chat_messages",
@@ -76,6 +84,10 @@ export interface OrbitAgentChatSessionProvider {
   listSessions: (options?: {
     limit?: number;
   }) => Promise<readonly OrbitAgentChatSessionSnapshot[]>;
+  listSessionSummariesPage: (
+    query: OrbitAgentChatSessionSummaryQuery,
+    listOrganizations?: (sessionIds: readonly string[]) => Promise<ReadonlyMap<string, AiSessionOrganizationContract>>,
+  ) => Promise<AiSessionSummaryPageContract>;
   listSessionsByEntryPoint: (entryPointId: AiSessionEntryPointId) => Promise<
     readonly OrbitAgentChatSessionSnapshot[]
   >;
@@ -94,6 +106,8 @@ export interface StorageOrbitAgentChatSessionProviderOptions {
   sourceLabel?: string;
   store: LiveRecordStoreLike<Record<string, unknown>>;
   workspaceId: string;
+  summaryPageClient?: LiveRecordSqlClient;
+  summaryPageSecret?: string;
 }
 
 export interface ConfiguredStorageOrbitAgentChatSessionProviderOptions {
@@ -454,11 +468,22 @@ export function createStorageOrbitAgentChatSessionProvider({
   sourceLabel = "Orbit Agent chat session live storage",
   store,
   workspaceId,
+  summaryPageClient,
+  summaryPageSecret,
 }: StorageOrbitAgentChatSessionProviderOptions): OrbitAgentChatSessionProvider {
   const actorWorkspaceId = orbitAgentChatSessionActorWorkspaceId(
     workspaceId,
     actorId,
   );
+  const summaryPageReader = summaryPageClient
+    ? createOrbitAgentChatSessionSummaryPageReader({
+        actorId,
+        actorWorkspaceId,
+        baseWorkspaceId: workspaceId,
+        client: summaryPageClient,
+        secret: summaryPageSecret ?? process.env.ORBIT_READ_CURSOR_SECRET ?? process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET ?? "",
+      })
+    : null;
 
   async function persistSession(
     sessionInput: OrbitAgentChatSessionSnapshot,
@@ -657,6 +682,44 @@ export function createStorageOrbitAgentChatSessionProvider({
       return sessions.flatMap((session) => (session ? [session] : []));
     },
 
+    async listSessionSummariesPage(query, listOrganizations) {
+      if (summaryPageReader) return summaryPageReader.read(query);
+      const records = await store.listRecords({
+        limit: "unbounded",
+        collectionName: ORBIT_AGENT_CHAT_SESSION_LIVE_RECORD_COLLECTIONS.sessions,
+        workspaceId: actorWorkspaceId,
+      });
+      const candidates = records.flatMap((record) => {
+        const payload = record.payload;
+        const id = typeof payload.id === "string" ? payload.id : record.recordId;
+        const title = typeof payload.title === "string" ? payload.title.trim().slice(0, MAX_SESSION_TITLE_LENGTH) : "";
+        const createdAt = typeof payload.createdAt === "string" ? validTimestamp(payload.createdAt) : record.createdAt;
+        const updatedAt = typeof payload.updatedAt === "string" ? validTimestamp(payload.updatedAt) : record.updatedAt;
+        if (!id || id !== record.recordId || !title) return [];
+        return [{
+          id,
+          title,
+          firstUserText: typeof payload.firstUserMessage === "string" ? payload.firstUserMessage : "",
+          lastMessagePreview: typeof payload.lastMessagePreview === "string" ? payload.lastMessagePreview : "",
+          createdAt,
+          updatedAt,
+          messageRevision: typeof payload.messageRevision === "number" && Number.isSafeInteger(payload.messageRevision) && payload.messageRevision >= 0 ? payload.messageRevision : 0,
+          searchText: record.searchText ?? "",
+          sessionCustomTitle: typeof payload.customTitle === "string" ? payload.customTitle : null,
+          pinned: payload.pinned === true,
+        }];
+      });
+      const organizations = listOrganizations ? await listOrganizations(candidates.map((candidate) => candidate.id)) : new Map<string, AiSessionOrganizationContract>();
+      return pageOrbitAgentChatSessionSummaryCandidates({
+        actorId,
+        actorWorkspaceId,
+        baseWorkspaceId: workspaceId,
+        candidates: candidates.map((candidate) => ({ ...candidate, organization: organizations.get(candidate.id) })),
+        query,
+        secret: summaryPageSecret ?? (summaryPageClient ? "" : "orbit-mock-session-summary-cursor-secret-32-bytes"),
+      });
+    },
+
     async listSessionsByEntryPoint(entryPointId) {
       const records = await store.listRecords({
         limit: "unbounded",
@@ -720,6 +783,7 @@ export function createConfiguredStorageOrbitAgentChatSessionProvider({
     source: `postgres-live-record-store:orbit-agent-chat-session:${configuredStore.workspaceId}`,
     sourceLabel,
     store: configuredStore.store,
+    summaryPageClient: configuredStore.client,
     workspaceId: configuredStore.workspaceId,
   });
 

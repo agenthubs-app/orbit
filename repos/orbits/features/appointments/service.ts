@@ -180,6 +180,7 @@ function confirmationEvents(appointment: AppointmentAggregate, previousRevision:
   }));
   events.push(outboxEvent({ appointment, eventType: "appointment.calendar.requested", revision: confirmed.proposalRevision, suffix: "calendar-requested", timestamp }));
   events.push(outboxEvent({ appointment, availableAt: new Date(starts - 24 * 60 * 60_000).toISOString(), eventType: "appointment.reminder.t24h", revision: confirmed.proposalRevision, suffix: "t24h", timestamp }));
+  events.push(outboxEvent({ appointment, availableAt: new Date(starts - 30 * 60_000).toISOString(), eventType: "appointment.reminder.t30m", revision: confirmed.proposalRevision, suffix: "t30m", timestamp }));
   events.push(outboxEvent({ appointment, availableAt: new Date(starts - 60 * 60_000).toISOString(), eventType: "appointment.reminder.t1h", revision: confirmed.proposalRevision, suffix: "t1h", timestamp }));
   events.push(outboxEvent({ appointment, availableAt: new Date(ends + 15 * 60_000).toISOString(), eventType: "appointment.memo.t15m", revision: confirmed.proposalRevision, suffix: "t15m", timestamp }));
   return events;

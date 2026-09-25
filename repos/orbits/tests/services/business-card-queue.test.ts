@@ -8,7 +8,7 @@ import { createBusinessCardBatchWorker } from "../../features/acquisition/busine
 import { createBusinessCardBatchImageStore } from "../../features/acquisition/storage/business-card-batch-image-store";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
 import { isCardQueueWake, withQueuedCardBatches } from "../../features/acquisition/business-card-queue-dispatch";
-import { CardWorkPending, processCardQueueTick } from "../../features/acquisition/business-card-queue-worker";
+import { CardWorkPending, processCardQueueTick, projectBusinessCardInboxNotification } from "../../features/acquisition/business-card-queue-worker";
 
 test("card queue accepts only a version and pipeline, never private card content", () => {
   for (const pipeline of ["v1", "v2"]) assert.ok(isCardQueueWake({ version: 1, pipeline }));
@@ -52,6 +52,34 @@ test("card queue retains delivery while work or a future lease remains; errors a
   await assert.rejects(processCardQueueTick("v2", {
     run: async () => { throw new Error("private storage detail"); }, pending: async () => false,
   }), { message: "Business-card background execution unavailable." });
+});
+
+test("ready card batches project one exact owned source into the typed inbox", async () => {
+  for (const pipeline of ["v1", "v2"] as const) {
+    const queries: { text: string; values?: readonly unknown[] }[] = [];
+    const projected: { semanticKey: string; sourceId: string; revision: string }[] = [];
+    await projectBusinessCardInboxNotification({
+      actorId: "actor:test",
+      batchId: "batch:test",
+      pipeline,
+      workspaceId: "workspace:test",
+      client: { async query<TRow>(text: string, values?: readonly unknown[]) {
+        queries.push({ text, values });
+        const rows = pipeline === "v1" ? [{ batch: { actorId: "actor:test", id: "batch:test",
+          status: "ready_for_review", totalItems: 12, updatedAt: "2026-09-26T00:00:00.000Z" } }] : [{
+          version: "7", status: "ready_for_review", expected_items: 12,
+          updated_at: new Date("2026-09-26T00:00:00.000Z"),
+        }];
+        return { rows: rows as TRow[] };
+      } },
+      upsert: async notification => { projected.push({ semanticKey: notification.semanticKey,
+        sourceId: notification.sources[0]!.sourceId, revision: notification.sources[0]!.sourceRevision }); },
+    });
+    assert.equal(queries.length, 1);
+    assert.deepEqual(queries[0]?.values, ["workspace:test", "batch:test", "actor:test"]);
+    assert.deepEqual(projected, [{ semanticKey: `batch:${pipeline}:batch:test`, sourceId: "batch:test",
+      revision: pipeline === "v1" ? "2026-09-26T00:00:00.000Z" : "7" }]);
+  }
 });
 
 test("durable batches survive dispatch failure; internal work never recursively publishes", async () => {

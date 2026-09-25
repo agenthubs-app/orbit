@@ -23,7 +23,6 @@ import type { IndustryIdCode, SecondaryIndustryIdCode } from "../../api/contract
 import { INDUSTRY_CATALOG, listSecondaryIndustries, secondaryIndustryLabel } from "../../api/domain/industries";
 import {
   contactDetailPath,
-  ORBIT_API_ENDPOINTS,
   relationshipCommunicationEligibilityPath,
   relationshipValueAnalysisPath,
   relationshipValueRecomputePath
@@ -48,11 +47,7 @@ import {
   type ContactAvatarTone,
   type ContactDetailSummary
 } from "../../view-models/contacts";
-import {
-  relationshipConnectionIdForContact,
-  relationshipValueStateIsEmpty,
-  relationshipValueToView
-} from "../../view-models/relationship-value";
+import { relationshipValueStateIsEmpty, relationshipValueToView } from "../../view-models/relationship-value";
 import { buildContactDetailEditRequest, confirmContactDetailEdit, contactDetailEditorFrom, contactDetailReadSchema as detailReadSchema, type ContactDetailEditor, type ContactDetailEditDraft } from "../../view-models/contact-detail-editor";
 import { applyContactInitializationView } from "../../view-models/relationship-initialization";
 import { ContactRelationshipInitializer, contactInitializationStageText, useContactInitialization, type ContactInitializationBinding } from "./ContactRelationshipInitializer";
@@ -99,24 +94,16 @@ export function ContactDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: s
     { scopeKey: scopeKey ?? actorId }
   );
   const state = validateApiResourceState(rawState, detailReadSchema.refine(value => value.contact.id === contactId));
-  const connectionsState = useApiResource<unknown>(
-    ORBIT_API_ENDPOINTS.connections,
-    () => false,
-    { scopeKey: scopeKey ?? actorId }
-  );
   const eligibilityState = useApiResource<unknown>(
     relationshipCommunicationEligibilityPath(contactId),
     () => false,
     { scopeKey: scopeKey ?? actorId, cachePolicy: "network-only" }
   );
-  const connectionId =
-    relationshipConnectionIdForContact(
-      state.kind === "success" || state.kind === "empty" ? state.data : null,
-      connectionsState.kind === "success" || connectionsState.kind === "empty"
-        ? connectionsState.data
-        : null,
-      contactId
-    ) ?? contactId;
+  const focusedConnectionId =
+    (state.kind === "success" || state.kind === "empty"
+      ? state.data.contact.connectionId
+      : undefined);
+  const connectionId = focusedConnectionId ?? contactId;
   const relationshipValueState = useApiResource<unknown>(
     relationshipValueAnalysisPath(connectionId),
     relationshipValueStateIsEmpty,
@@ -151,7 +138,6 @@ export function ContactDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: s
   const [actionError, setActionError] = useState<string | null>(null);
   const refreshing =
     state.refreshing ||
-    connectionsState.refreshing ||
     eligibilityState.refreshing ||
     relationshipValueState.refreshing ||
     relationshipValuePending;
@@ -162,9 +148,9 @@ export function ContactDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: s
   }, [scope]);
 
   function isCurrent() { return mounted.current && latestScope.current === scope && isScopeCurrent?.() !== false; }
-  const initialization = useContactInitialization(contactId, scopeKey, isCurrent, () => {
+  const initialization = useContactInitialization(contactId, state.kind === "success" || state.kind === "empty" ? focusedConnectionId ?? null : undefined, scopeKey, isCurrent, () => {
     if (!isCurrent()) return;
-    setEditing(null); state.refresh(); connectionsState.refresh();
+    setEditing(null); state.refresh();
   });
   const canEditContact = initialization.state.view.kind === "hidden" || initialization.state.view.kind === "initialized";
 
@@ -180,7 +166,6 @@ export function ContactDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: s
     void initialization.controller.refresh();
     setRelationshipValueOverride(null);
     state.refresh();
-    connectionsState.refresh();
     eligibilityState.refresh();
     relationshipValueState.refresh();
   }

@@ -2,6 +2,9 @@ import { randomUUID } from "node:crypto";
 import { createConfiguredPostgresLiveRecordStore } from "../../shared/storage/configured-live-record-store";
 import { createPostgresLiveRecordStore, type LiveRecordSqlClient } from "../../shared/storage/postgres-live-record-store";
 import { createStorageNotificationDeliveryService } from "../notifications/delivery-service";
+import { batchResultNotification } from "../notifications/inbox-business-projections";
+import { createConfiguredInboxRuntime } from "../notifications/inbox-record-service-factory";
+import type { InboxNotificationUpsert } from "../notifications/inbox-record-service";
 import { createConfiguredBusinessCardBatchService } from "./business-card-batch-service";
 import { createBusinessCardBatchWorker } from "./business-card-batch-worker";
 import { createConfiguredBusinessCardCloudOcrProvider } from "./business-card-ocr-provider-selection";
@@ -22,6 +25,40 @@ const READY_V1 = `
 
 export class CardWorkPending extends Error {
   constructor(readonly afterSeconds: number) { super("Business-card work remains pending."); }
+}
+
+export async function projectBusinessCardInboxNotification(input: {
+  actorId: string;
+  batchId: string;
+  client: LiveRecordSqlClient;
+  pipeline: CardPipeline;
+  upsert(notification: InboxNotificationUpsert): Promise<unknown>;
+  workspaceId: string;
+}): Promise<void> {
+  if (input.pipeline === "v1") {
+    const result = await input.client.query<{ batch: {
+      actorId: string; id: string; status: string; totalItems: number; updatedAt: string;
+    } }>(`select payload->'batch' as batch from orbit_records
+      where workspace_id=$1 and collection_name='businessCardBatches' and record_id=$2
+        and user_id=$3 and lifecycle_state<>'deleted'`, [input.workspaceId, input.batchId, input.actorId]);
+    const batch = result.rows[0]?.batch;
+    if (!batch || batch.actorId !== input.actorId || batch.id !== input.batchId) throw new Error("Business-card batch unavailable.");
+    const notification = batchResultNotification({ actorId: input.actorId, batchId: input.batchId,
+      revision: batch.updatedAt, occurredAt: batch.updatedAt, count: batch.totalItems,
+      status: batch.status, pipeline: input.pipeline });
+    if (notification) await input.upsert(notification);
+    return;
+  }
+  const result = await input.client.query<{ version: string; status: string; expected_items: number; updated_at: Date }>(`
+    select version::text,status,expected_items,updated_at from bc_ingest_batches
+    where workspace_id=$1 and id=$2 and actor_id=$3`, [input.workspaceId, input.batchId, input.actorId]);
+  const batch = result.rows[0];
+  if (!batch) throw new Error("Business-card batch unavailable.");
+  const occurredAt = batch.updated_at.toISOString();
+  const notification = batchResultNotification({ actorId: input.actorId, batchId: input.batchId,
+    revision: batch.version, occurredAt, count: batch.expected_items,
+    status: batch.status, pipeline: input.pipeline });
+  if (notification) await input.upsert(notification);
 }
 
 export async function hasPendingCardWork(client: LiveRecordSqlClient, workspaceId: string, pipeline: CardPipeline): Promise<boolean> {
@@ -109,6 +146,12 @@ export async function runConfiguredCardQueueTick(pipeline: CardPipeline): Promis
       signalId: generation === undefined ? `signal:business-card-batch:${batchId}` : `signal:business-card-ingest-v2:${batchId}`,
       signalRevision: String(generation ?? 1), title: "名片批量识别有更新",
     });
+    const inbox = createConfiguredInboxRuntime();
+    if (!inbox || inbox.workspaceId !== configured.workspaceId) {
+      throw new Error("Business-card inbox storage unavailable.");
+    }
+    await projectBusinessCardInboxNotification({ actorId, batchId, client: configured.client,
+      pipeline, upsert: notification => inbox.service.upsert(notification), workspaceId: configured.workspaceId });
     if (generation === undefined) {
       const now = new Date().toISOString();
       await configured.store.upsertRecord({

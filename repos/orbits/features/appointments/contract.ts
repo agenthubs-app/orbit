@@ -114,6 +114,7 @@ export interface AppointmentOutboxEvent {
     | "appointment.rescheduled"
     | "appointment.reminders.invalidate"
     | "appointment.reminder.t24h"
+    | "appointment.reminder.t30m"
     | "appointment.reminder.t1h"
     | "appointment.memo.t15m"
     | "appointment.cancelled"

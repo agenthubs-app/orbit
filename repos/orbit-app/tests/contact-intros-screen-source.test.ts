@@ -10,6 +10,10 @@ const screenSource = readFileSync(
 );
 
 test("contact intros creates an explicit shareable server invitation", () => {
+  assert.match(screenSource, /CONTACT_INTROS_SUMMARY_ENDPOINT = "\/api\/contacts\/intros\/summary"/u);
+  assert.match(screenSource, /contactIntrosSummaryToView/u);
+  assert.doesNotMatch(screenSource, /ORBIT_API_ENDPOINTS\.(?:contacts|connections)/u);
+  assert.doesNotMatch(screenSource, /contactsPipelineToView/u);
   assert.match(screenSource, /useOrbitApiClient/u);
   assert.match(screenSource, /buildRelationshipInvitationRequest/u);
   assert.match(screenSource, /relationshipCommunicationInvitationsPath/u);

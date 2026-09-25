@@ -7,13 +7,16 @@ const source = readFileSync(
   "utf8"
 );
 
-test("relationship progress defaults to a compact task-first view", () => {
-  assert.match(source, /ORBIT_API_ENDPOINTS\.tasks/);
-  assert.match(source, /useState<RelationshipProgressMode>\("actions"\)/);
+test("relationship progress reads one bounded page resource and keeps the task-first view", () => {
+  assert.match(source, /useContactPipelinePages/);
+  assert.doesNotMatch(source, /ORBIT_API_ENDPOINTS\.(contacts|connections|tasks)/);
+  assert.match(source, /useState<"actions" \| "stages">\("actions"\)/);
   assert.match(source, /label="待处理"/);
   assert.match(source, /label="按阶段"/);
-  assert.match(source, /view\.actionItems\.slice\(0, 3\)/);
+  assert.match(source, /hasMore/);
+  assert.match(source, /loadMore/);
   assert.match(source, /router\.push\("\/tasks\?scope=relationship" as Href\)/);
+  assert.doesNotMatch(source, /contactsPipelineToView|\.slice\(0,\s*3\)/);
 });
 
 test("relationship progress has no legacy preview write path and retains task navigation", () => {

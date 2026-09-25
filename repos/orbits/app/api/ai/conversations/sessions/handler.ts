@@ -103,9 +103,9 @@ export function createOrbitAgentChatSessionsHandlers(
       if (!provider) {
         return NextResponse.json(
           success({
-            sessions: [],
             items: [],
             nextCursor: null,
+            hasMore: false,
             storage: { configured: false, persisted: false },
           }),
           {
@@ -117,107 +117,43 @@ export function createOrbitAgentChatSessionsHandlers(
 
       try {
         const url = new URL(request.url);
-        const version = url.searchParams.get("v");
-        const explicitV2 = version === "2";
-        const requestedLimit = Number(url.searchParams.get("limit"));
-        const limit = Math.max(
-          1,
-          Math.min(
-            Number.isSafeInteger(requestedLimit) && requestedLimit > 0
-              ? requestedLimit
-              : explicitV2
-                ? 20
-                : 12,
-            50,
-          ),
-        );
-        const rawSessions = await provider.listSessions({ limit: 10_000 });
-        const organizations = organizationStore
-          ? await organizationStore.listSessionOrganizations(
-              rawSessions.map((session) => session.id),
-            )
-          : new Map();
-        const query = url.searchParams.get("q")?.trim().toLocaleLowerCase() ?? "";
-        const groupId = url.searchParams.get("groupId");
-        const pinned = url.searchParams.get("pinned");
-        const sessions = rawSessions
-          .map((session) => {
-            const organization = organizations.get(session.id) ?? {
-              customTitle: session.customTitle ?? null,
-              groupId: null,
-              pinned: session.pinned === true,
-              revision: 0,
-            };
-            return {
-              ...session,
-              customTitle: organization.customTitle ?? undefined,
-              organization,
-              pinned: organization.pinned,
-            };
-          })
-          .filter((session) => {
-            if (
-              groupId &&
-              (groupId === "ungrouped"
-                ? session.organization.groupId !== null
-                : session.organization.groupId !== groupId)
-            ) {
-              return false;
-            }
-            if (pinned === "true" && !session.organization.pinned) return false;
-            if (pinned === "false" && session.organization.pinned) return false;
-            if (!query) return true;
-            return [
-              session.id,
-              session.title,
-              session.organization.customTitle,
-              ...session.messages.map((message) => message.text),
-            ]
-              .filter((value): value is string => typeof value === "string")
-              .join(" ")
-              .toLocaleLowerCase()
-              .includes(query);
-          })
-          .sort(
-            (left, right) =>
-              Number(right.organization.pinned) - Number(left.organization.pinned) ||
-              right.createdAt.localeCompare(left.createdAt) ||
-              left.id.localeCompare(right.id),
-          );
-        const cursor = url.searchParams.get("cursor");
-        let start = 0;
-        if (cursor) {
-          try {
-            const cursorId = Buffer.from(cursor, "base64url").toString("utf8");
-            const cursorIndex = sessions.findIndex((session) => session.id === cursorId);
-            start = cursorIndex >= 0 ? cursorIndex + 1 : sessions.length;
-          } catch {
-            start = sessions.length;
-          }
+        const params = url.searchParams;
+        const allowed = new Set(["limit", "cursor", "q", "groupId", "pinned"]);
+        if ([...params.keys()].some((key) => !allowed.has(key) || params.getAll(key).length !== 1)) {
+          throw new AppError("VALIDATION_ERROR", "Invalid AI session page query.");
         }
-        const items = sessions.slice(start, start + limit);
-        const nextCursor =
-          start + limit < sessions.length && items.length > 0
-            ? Buffer.from(items[items.length - 1].id).toString("base64url")
-            : null;
+        const limit = params.has("limit") ? Number(params.get("limit")) : 20;
+        const rawPinned = params.get("pinned");
+        const cursor = params.get("cursor");
+        const q = params.get("q") ?? "";
+        const groupId = params.get("groupId");
+        if (!Number.isSafeInteger(limit) || limit < 1 || limit > 50 || q.length > 240
+          || (groupId !== null && groupId.length > 160)
+          || (rawPinned !== null && rawPinned !== "true" && rawPinned !== "false")
+          || (params.has("cursor") && (!cursor || cursor.length > 8000))) {
+          throw new AppError("VALIDATION_ERROR", "Invalid AI session page query.");
+        }
+        const page = await provider.listSessionSummariesPage({
+          cursor,
+          groupId,
+          limit,
+          pinned: rawPinned === null ? null : rawPinned === "true",
+          q,
+        }, organizationStore
+          ? (sessionIds) => organizationStore.listSessionOrganizations(sessionIds)
+          : undefined);
 
         return NextResponse.json(
-          success({
-            sessions: explicitV2 ? items : sessions.slice(0, limit),
-            items,
-            nextCursor,
-            storage: {
-              configured: true,
-              persisted: true,
-              source: provider.source,
-            },
-          }),
+          success({ ...page, storage: { ...page.storage, source: provider.source } }),
           {
             headers: runtimeBoundaryHeaders(mode),
             status: 200,
           },
         );
       } catch (error) {
+        if (error instanceof Error && ["SESSION_PAGE_INPUT_INVALID", "SESSION_PAGE_CURSOR_INVALID"].includes(error.message)) {
+          return responseForError(mode, new AppError("VALIDATION_ERROR", "Reload the first AI session page."));
+        }
         return responseForError(mode, error);
       }
     },

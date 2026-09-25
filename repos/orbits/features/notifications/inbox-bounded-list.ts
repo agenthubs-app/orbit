@@ -1,6 +1,35 @@
 import type { InboxNotificationDTO, InboxNotificationSource } from '../../shared/contract/inbox-notifications';
 import type { InboxReadWindow } from './storage/inbox-record-repository';
 
+type UnreadAccessInput = {
+  window: InboxReadWindow;
+  actorId: string;
+  asOf: string;
+  now: string;
+  access: (actor: string, source: InboxNotificationSource) => Promise<'available' | 'changed' | 'unavailable'>;
+  accessBatch?: (actor: string, sources: readonly InboxNotificationSource[]) => Promise<readonly ('available' | 'changed' | 'unavailable')[]>;
+};
+
+export async function countAuthorizedUnread(input: UnreadAccessInput): Promise<number> {
+  let before: {at:string;id:string} | undefined, unreadCount = 0;
+  while (true) {
+    const rows = await input.window.unreadPage({ actorId: input.actorId, asOf: input.asOf, now: input.now, limit: 50, ...(before ? {before} : {}) });
+    const sources = rows.flatMap(row => row.sources);
+    const states: ('available'|'changed'|'unavailable')[] = [];
+    if (input.accessBatch) states.push(...await input.accessBatch(input.actorId, sources));
+    else for (const row of rows) states.push(...await Promise.all(row.sources.map(source => input.access(input.actorId, source))));
+    if (states.length !== sources.length) throw new Error('Incomplete source authorization');
+    let offset = 0;
+    for (const row of rows) {
+      const checked = states.slice(offset, offset + row.sources.length); offset += row.sources.length;
+      if (checked.length && checked.every(state => state === 'available')) unreadCount++;
+    }
+    if (rows.length < 50) break;
+    const last = rows.at(-1)!; before = {at:last.occurredAt,id:last.id};
+  }
+  return unreadCount;
+}
+
 /** Separate page payloads from global, permission-checked unread candidates. */
 export async function readBoundedInbox(input:{
   window:InboxReadWindow;actorId:string;asOf:string;now:string;limit:number;
@@ -29,23 +58,8 @@ export async function readBoundedInbox(input:{
     if(hasMore||rows.length<size)break;
     const last=rows.at(-1)!;before={at:last.occurredAt,id:last.id};
   }
-  before=undefined;
   // Not a raw COUNT: current authorization and revision determine unreadness.
   // Only active unread source metadata is transferred, not read history/copy/receipts.
-  while(true) {
-    const rows=await input.window.unreadPage({actorId:input.actorId,asOf:input.asOf,now:input.now,limit:50,...(before?{before}:{})});
-    const sources=rows.flatMap(row=>row.sources);
-    const states:('available'|'changed'|'unavailable')[]=[];
-    if(input.accessBatch)states.push(...await input.accessBatch(input.actorId,sources));
-    else for(const row of rows)states.push(...await Promise.all(row.sources.map(source=>input.access(input.actorId,source))));
-    if(states.length!==sources.length)throw new Error('Incomplete source authorization');
-    let offset=0;
-    for(const row of rows) {
-      const checked=states.slice(offset,offset+row.sources.length);offset+=row.sources.length;
-      if(checked.length && checked.every(state=>state==='available'))unreadCount++;
-    }
-    if(rows.length<50)break;
-    const last=rows.at(-1)!;before={at:last.occurredAt,id:last.id};
-  }
+  unreadCount = await countAuthorizedUnread(input);
   return {items,hasMore,unreadCount};
 }

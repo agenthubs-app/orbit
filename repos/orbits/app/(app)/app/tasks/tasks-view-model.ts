@@ -56,14 +56,6 @@ export function taskToView(value: unknown): TaskView {
   return { ...task, notes: task.notes ?? "", href: `/app/tasks/${encodeURIComponent(task.id)}` };
 }
 
-export function tasksToView(value: unknown): TaskView[] {
-  const { tasks } = z.object({ tasks: z.array(z.unknown()) }).parse(value);
-  return tasks.map(taskToView).sort((a, b) => {
-    if (a.status === "completed" && b.status === "completed") return b.updatedAt.localeCompare(a.updatedAt);
-    return (a.dueAt ?? a.plannedDate ?? "9999").localeCompare(b.dueAt ?? b.plannedDate ?? "9999");
-  });
-}
-
 export function suggestionsToView(value: unknown): TaskSuggestionView[] {
   const parsed = z.object({ suggestions: z.array(suggestionSchema) }).parse(value);
   return parsed.suggestions as TaskSuggestionView[];
@@ -82,16 +74,6 @@ export function remindersToView(value: unknown): TaskReminderView[] {
     id: nonempty, fireAt: instant, status: z.enum(["scheduled", "delivered", "cancelled", "failed"]),
   })) }).parse(value);
   return (parsed.reminders as TaskReminderView[]).filter((item) => item.status === "scheduled");
-}
-
-export function todayTasksToView(value: unknown) {
-  const parsed = z.object({ summary: z.object({
-    openTaskCount: z.number().int().nonnegative(), suggestionCount: z.number().int().nonnegative(),
-  }) }).parse(value);
-  return {
-    tasks: tasksToView(value), suggestions: suggestionsToView(value),
-    count: parsed.summary.openTaskCount, suggestionCount: parsed.summary.suggestionCount,
-  };
 }
 
 export function taskCategoryLabel(value: TaskCategory, english: boolean): string {

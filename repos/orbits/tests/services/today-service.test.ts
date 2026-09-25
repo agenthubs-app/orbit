@@ -1,171 +1,125 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createTaskRepository } from "../../features/tasks/repository";
-import { createTaskService } from "../../features/tasks/service";
-import { createTaskSuggestionRepository } from "../../features/tasks/suggestion-repository";
-import { createTaskSuggestionService } from "../../features/tasks/suggestion-service";
 import { createTodayService } from "../../features/tasks/today-service";
-import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
+import type { TaskPageQuery } from "../../features/tasks/task-page";
+import type { TaskPageContract } from "../../shared/contract/task-page";
+import type { ScheduleItemDTO } from "../../features/tasks/today-contract";
 
 const actorId = "account:xiaoyu";
-const workspaceId = "workspace:today";
 const now = "2026-08-29T03:30:00.000Z"; // 12:30 in Tokyo
+const timeZone = "Asia/Tokyo";
 
-function services() {
-  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
-  const taskService = createTaskService({
-    repository: createTaskRepository({ store, workspaceId }),
-  });
-  const suggestionService = createTaskSuggestionService({
-    repository: createTaskSuggestionRepository({ store, workspaceId }),
-    taskService,
-  });
-  return { suggestionService, taskService };
+function emptyPage(): TaskPageContract {
+  return {
+    actorId,
+    status: "open",
+    scope: "all",
+    query: "",
+    dueWindow: { plannedThrough: "2026-08-29", dueBefore: "2026-08-29T15:00:00.000Z" },
+    items: [],
+    counts: { open: 0, completed: 0 },
+    total: 0,
+    hasMore: false,
+    nextCursor: null,
+    asOf: now,
+  };
 }
 
-test("aggregates today's open work, completion facts, suggestions, and schedule", async () => {
-  const { suggestionService, taskService } = services();
-  const todayTask = await taskService.create({
-    actorId,
-    title: "整理活动参会名单",
-    category: "event",
-    plannedDate: "2026-08-29",
-    idempotencyKey: "today:event-list",
-    now: "2026-08-28T10:00:00.000Z",
-  });
-  await taskService.create({
-    actorId,
-    title: "下周提交公司资料",
-    category: "work",
-    plannedDate: "2026-09-02",
-    idempotencyKey: "future:company-docs",
-    now: "2026-08-28T10:00:00.000Z",
-  });
-  const completed = await taskService.create({
-    actorId,
-    title: "确认团队周会议程",
-    category: "meeting",
-    plannedDate: "2026-08-29",
-    idempotencyKey: "today:meeting-agenda",
-    now: "2026-08-28T10:00:00.000Z",
-  });
-  await taskService.complete({
-    actorId,
-    taskId: completed.task.id,
-    completedBy: actorId,
-    completionSource: "user",
-    idempotencyKey: "complete:meeting-agenda",
-    now: "2026-08-29T02:00:00.000Z",
-  });
-  await suggestionService.suggest({
-    actorId,
-    title: "活动前确认重点联系人",
-    reason: "今晚参会，提前确认更容易见到",
-    category: "relationship",
-    evidenceIds: ["evidence:event"],
-    confidence: 0.9,
-    deduplicationKey: "today:event-contacts",
-    now: "2026-08-29T01:00:00.000Z",
-  });
-
-  const observedActors: string[] = [];
-  const service = createTodayService({
-    taskService,
-    suggestionService,
-    scheduleProvider: {
-      async list(input) {
-        observedActors.push(input.actorId);
-        return [
-          {
-            id: "schedule:morning-meeting",
-            kind: "meeting",
-            category: "meeting",
-            state: "upcoming",
-            title: "团队周会",
-            startsAt: "2026-08-29T01:00:00.000Z",
-            endsAt: "2026-08-29T02:00:00.000Z",
-            sourceId: "appointment:weekly",
-          },
-          {
-            id: "schedule:evening-event",
-            kind: "event",
-            category: "event",
-            state: "upcoming",
-            title: "关西跨境商务交流会",
-            startsAt: "2026-08-29T09:30:00.000Z",
-            sourceId: "event:kansai",
-          },
-          {
-            id: "schedule:future",
-            kind: "personal",
-            category: "personal",
-            state: "upcoming",
-            title: "下周体检",
-            startsAt: "2026-09-02T01:00:00.000Z",
-            sourceId: "calendar:health-check",
-          },
-        ];
+function service(input: {
+  read?: (query: TaskPageQuery) => Promise<TaskPageContract>;
+  completedCount?: number;
+  schedule?: readonly ScheduleItemDTO[];
+  suggestions?: readonly Record<string, unknown>[];
+} = {}) {
+  const observed: TaskPageQuery[] = [];
+  return {
+    observed,
+    value: createTodayService({
+      taskPageReader: {
+        async read(_actorId, query) {
+          observed.push({ ...query });
+          return input.read ? input.read(query) : emptyPage();
+        },
+        async readToday() { throw new Error("Page mode does not request AI signals"); },
       },
-    },
-  });
+      completedCounter: { async count(query) {
+        assert.deepEqual(query, { actorId, now, timeZone });
+        return input.completedCount ?? 0;
+      } },
+      suggestionService: { async list() { return input.suggestions ?? []; } } as never,
+      scheduleProvider: { async list() { return input.schedule ?? []; } },
+    }),
+  };
+}
 
-  const result = await service.getToday({
-    actorId,
-    now,
-    timeZone: "Asia/Tokyo",
-  });
-
-  assert.deepEqual(observedActors, [actorId]);
-  assert.deepEqual(result.tasks.map((item) => item.id), [todayTask.task.id]);
-  assert.equal(result.completedCount, 1);
-  assert.equal(result.suggestions.length, 1);
-  assert.deepEqual(
-    result.schedule.map((item) => [item.id, item.state]),
-    [
-      ["schedule:morning-meeting", "ended"],
-      ["schedule:evening-event", "upcoming"],
+test("page mode sends the local Today OR window to the reader and keeps exact counts and side data", async () => {
+  const taskPage = emptyPage();
+  const card = {
+    id: "task:today",
+    titlePreview: "整理活动参会名单",
+    locationPreview: null,
+    status: "open" as const,
+    category: "event" as const,
+    priority: "normal" as const,
+    plannedDate: "2026-08-29",
+    dueAt: null,
+    updatedAt: "2026-08-28T10:00:00.000Z",
+    relatedContact: null,
+  };
+  const fixtures = service({
+    completedCount: 1,
+    suggestions: [
+      { id: "s1", title: "建议一", reason: "理由", category: "relationship", status: "pending" },
+      { id: "s2", title: "建议二", reason: "理由", category: "relationship", status: "pending" },
+      { id: "s3", title: "建议三", reason: "理由", category: "relationship", status: "pending" },
     ],
-  );
+    schedule: [
+      { id: "schedule:morning", kind: "meeting", category: "meeting", state: "upcoming", title: "团队周会", startsAt: "2026-08-29T01:00:00.000Z", endsAt: "2026-08-29T02:00:00.000Z", sourceId: "appointment:weekly" },
+      { id: "schedule:evening", kind: "event", category: "event", state: "upcoming", title: "交流会", startsAt: "2026-08-29T09:30:00.000Z", sourceId: "event:kansai" },
+      { id: "schedule:future", kind: "personal", category: "personal", state: "upcoming", title: "下周体检", startsAt: "2026-09-02T01:00:00.000Z", sourceId: "calendar:health-check" },
+    ],
+    read: async () => ({ ...taskPage, items: [card], counts: { open: 1, completed: 1 }, total: 1 }),
+  });
+
+  const result = await fixtures.value.getToday({ actorId, now, timeZone });
+
+  assert.deepEqual(fixtures.observed, [{
+    status: "open",
+    scope: "all",
+    query: "",
+    limit: 20,
+    dueWindow: { plannedThrough: "2026-08-29", dueBefore: "2026-08-29T15:00:00.000Z" },
+  }]);
+  assert.equal(result.taskMode, "page");
+  assert.equal(result.taskPage.total, 1);
+  assert.deepEqual(result.taskPage.items.map((item) => item.id), ["task:today"]);
+  assert.equal(result.completedCount, 1);
   assert.equal(result.summary.openTaskCount, 1);
-  assert.equal(result.summary.scheduleCount, 2);
+  assert.equal(result.summary.completedCount, 1);
+  assert.equal(result.summary.suggestionCount, 3);
+  assert.equal(result.suggestions.length, 2);
+  assert.deepEqual(result.schedule.map((item) => [item.id, item.state]), [
+    ["schedule:morning", "ended"],
+    ["schedule:evening", "upcoming"],
+  ]);
+  assert.equal("tasks" in result, false);
 });
 
-test("includes overdue open tasks but never completed tasks in today's open list", async () => {
-  const { suggestionService, taskService } = services();
-  const overdue = await taskService.create({
-    actorId,
-    title: "补交历史资料",
-    category: "work",
-    dueAt: "2026-08-28T02:00:00.000Z",
-    idempotencyKey: "overdue:documents",
-    now: "2026-08-27T02:00:00.000Z",
-  });
-  const service = createTodayService({
-    taskService,
-    suggestionService,
+test("task page and completion counter failures fail the whole Today response", async () => {
+  const failingPage = createTodayService({
+    taskPageReader: { async read() { throw new Error("Reader unavailable"); }, async readToday() { throw new Error("unused"); } },
+    completedCounter: { async count() { return 0; } },
+    suggestionService: { async list() { return []; } } as never,
     scheduleProvider: { async list() { return []; } },
   });
+  await assert.rejects(failingPage.getToday({ actorId, now, timeZone }), /Reader unavailable/);
 
-  const result = await service.getToday({ actorId, now, timeZone: "Asia/Tokyo" });
-  assert.deepEqual(result.tasks.map((item) => item.id), [overdue.task.id]);
-});
-
-test("production completion counter avoids downloading history and errors are not reported as zero", async () => {
-  const { taskService, suggestionService } = services();
-  let fail = false;
-  const service = createTodayService({
-    taskService: { ...taskService, async history() { throw Error("Unbounded history must not run"); } },
-    suggestionService,
+  const failingCounter = createTodayService({
+    taskPageReader: { async read() { return emptyPage(); }, async readToday() { throw new Error("unused"); } },
+    completedCounter: { async count() { throw new Error("Counter unavailable"); } },
+    suggestionService: { async list() { return []; } } as never,
     scheduleProvider: { async list() { return []; } },
-    completedCounter: { async count(query) {
-      assert.deepEqual(query, { actorId, now, timeZone: "Asia/Tokyo" });
-      if (fail) throw Error("Counter unavailable");
-      return 7;
-    } },
   });
-  const result = await service.getToday({ actorId, now, timeZone: "Asia/Tokyo" });
-  assert.equal(result.completedCount, 7); assert.equal(result.summary.completedCount, 7);
-  fail = true;
-  await assert.rejects(service.getToday({ actorId, now, timeZone: "Asia/Tokyo" }), /Counter unavailable/);
+  await assert.rejects(failingCounter.getToday({ actorId, now, timeZone }), /Counter unavailable/);
 });

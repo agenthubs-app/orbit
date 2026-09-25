@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';import test from 'node:test';
-import { reminderPlanNotification, appointmentChangeNotification, batchResultNotification } from '../../features/notifications/inbox-business-projections';
+import { reminderPlanNotification, appointmentChangeNotification, batchResultNotification, integrationExpiryNotification } from '../../features/notifications/inbox-business-projections';
 const at='2026-09-16T02:00:00.000Z';
 test('explicit reminders retain original title, time and stable legacy identity',()=>{
  const n=reminderPlanNotification({id:'r',accountId:'a',ownerUserId:'a',targetType:'task',targetId:'t',fireAt:at,timeZone:'Asia/Tokyo',status:'scheduled',channels:['in_app'],title:'原文标题',body:'原文原因',deepLink:'/tasks/t',createdBy:'user',createdAt:at,updatedAt:at},at);
@@ -20,4 +20,10 @@ test('card results aggregate once per batch and ignore per-item processing',()=>
 test('appointment time is readable in the proposal timezone and not a raw UTC string',()=>{
  const n=appointmentChangeNotification({actorId:'a',appointmentId:'ap',contactName:'佐藤健一',contactId:'sato',history:{actorId:'b',at,command:'accept',detail:'accepted',proposalRevision:1,version:3},time:'2026-09-17T01:00:00.000Z',timeZone:'Asia/Tokyo'});
  assert.match(n!.copy!.zh.reason,/10:00/);assert.doesNotMatch(n!.copy!.zh.reason,/T01:00/);
+});
+test('integration expiry is projected once at the expiry boundary only when reconnect is required',()=>{
+ const ignored=integrationExpiryNotification({actorId:'account',principalId:'user',provider:'gmail',expiresAt:at,requiresReconnect:false});
+ assert.equal(ignored,null);
+ const n=integrationExpiryNotification({actorId:'account',principalId:'user',provider:'gmail',expiresAt:at,requiresReconnect:true});
+ assert.equal(n?.semanticKey,`connection:gmail:${at}`);assert.equal(n?.occurredAt,at);assert.equal(n?.sources[0]?.authorId,'user');assert.equal(n?.target.href,'/settings');
 });

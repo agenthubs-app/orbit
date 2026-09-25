@@ -1,7 +1,7 @@
 'use client';
 import {useEffect,useState} from 'react';
 import {useOrbitLanguage} from '../orbit-language-context';
-import {communicationRequest,readContactMessageActor} from './contact-messages-tab';
+import {communicationRequest,readContactMessageActor} from './inbox-request';
 import {notificationDetailView,type NotificationRow} from './notification-inbox-view-model';
 import {verifiedSourceNote} from './notification-source-view-model';
 export function NotificationSourcePage({notificationId}:{notificationId:string}) {

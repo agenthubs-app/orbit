@@ -3,6 +3,7 @@ import * as holidayJp from "@holiday-jp/holiday_jp";
 import { eventsToSummaries } from "./events";
 import type { FollowupTaskContract } from "../api/contract/followups";
 import type { OrbitLanguage } from "../api/contract/language";
+import type { TaskPageContract } from "../api/contract/task-page";
 import { createTranslator, type OrbitTranslator } from "../i18n/messages";
 
 export interface ScheduleItem {
@@ -313,6 +314,27 @@ export function tasksToScheduleItems(data: unknown, timeZone = "Asia/Tokyo", lan
   return listFromPayload(data, "tasks")
     .filter(isRecord)
     .map(task => taskToScheduleItem(task, timeZone, language));
+}
+
+/** The schedule preview consumes task cards, never full task bodies/history. */
+export function taskPageToScheduleTasks(page: TaskPageContract): { tasks: Record<string, unknown>[] } {
+  return {
+    tasks: page.items.map((item) => ({
+      id: item.id,
+      taskId: item.id,
+      title: item.titlePreview,
+      status: item.status,
+      category: item.category,
+      priority: item.priority,
+      plannedDate: item.plannedDate ?? undefined,
+      dueAt: item.dueAt ?? undefined,
+      updatedAt: item.updatedAt,
+      location: item.locationPreview ?? undefined,
+      relatedContactId: item.relatedContact?.id,
+      contactName: item.relatedContact?.namePreview,
+      organization: item.relatedContact?.organizationPreview,
+    })),
+  };
 }
 
 function eventStatusLabel(value: string, t: OrbitTranslator): string {

@@ -49,9 +49,6 @@ try {
         tasks.push(task); data = { task };
       } else if (url.pathname === "/api/tasks") {
         data = { tasks: tasks.filter((item) => item.status === url.searchParams.get("status")) };
-      } else if (url.pathname === "/api/today") {
-        const open = tasks.filter((item) => item.status === "open");
-        data = { tasks: open, suggestions, summary: { openTaskCount: open.length, suggestionCount: suggestions.length } };
       } else if (url.pathname === "/api/task-suggestions") data = { suggestions };
       else if (url.pathname.startsWith("/api/task-suggestions/")) {
         suggestions = [];
@@ -108,13 +105,8 @@ try {
     await page.getByRole("button", { name: "删除待办", exact: true }).click();
     await page.getByRole("button", { name: "确认删除待办", exact: true }).click();
     await page.getByText("待办已删除", { exact: true }).waitFor();
-    await page.goto(`${origin}/app/today`, { waitUntil: "networkidle" });
-    const summary = page.getByRole("region", { name: "今天的待办" });
-    await summary.getByRole("link", { name: "全部待办", exact: true }).waitFor();
-    await summary.getByRole("link", { name: /整理会议记录/ }).waitFor();
-    await page.screenshot({ path: `${output}/${name}-today.png`, fullPage: true });
     assert.deepEqual(errors, [], "no uncaught browser errors");
-    console.log(`${name}: auth gate, CRUD, suggestions, reminders, Today entry and responsive checks passed`);
+    console.log(`${name}: auth gate, CRUD, suggestions, reminders and responsive checks passed`);
     await context.close();
   }
   console.log(`Screenshots: ${output}`);

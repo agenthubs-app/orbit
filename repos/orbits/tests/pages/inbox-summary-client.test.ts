@@ -17,13 +17,12 @@ test("Web badge uses only the selected narrow source, never falls back on failur
       await assert.rejects(readWebInboxSummary("a", "zh"));
     }
     globalThis.fetch = (async () => Response.json({ success: false }, { status: 404 })) as typeof fetch;
-    assert.equal(await readWebInboxSummary("a", "zh"), null);
+    await assert.rejects(readWebInboxSummary("a", "zh"), /Inbox summary unavailable/);
     calls.length = 0;
-    globalThis.fetch = (async url => { calls.push(String(url)); return String(url) === "/api/inbox/summary"
-      ? Response.json({ success: true, data: { ...summary, notificationMode: "typed", notificationRead: "refresh-required", notificationsUnread: null } })
-      : Response.json({ success: false }, { status: 503 }); }) as typeof fetch;
-    assert.deepEqual(await readWebInboxSummary("a", "zh"), { threads: 3, alerts: 0 });
-    assert.deepEqual(calls, ["/api/inbox/summary", "/api/inbox/notifications?limit=1&language=zh"]);
+    globalThis.fetch = (async url => { calls.push(String(url)); return Response.json({ success: true,
+      data: { ...summary, notificationMode: "typed", notificationsUnread: 9 } }); }) as typeof fetch;
+    assert.deepEqual(await readWebInboxSummary("a", "zh"), { threads: 3, alerts: 9 });
+    assert.deepEqual(calls, ["/api/inbox/summary"]);
   } finally { globalThis.fetch = previous; }
 });
 

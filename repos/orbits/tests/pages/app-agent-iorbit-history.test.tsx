@@ -105,18 +105,23 @@ function drawer(props: Partial<React.ComponentProps<typeof IOrbitHistoryDrawer>>
       groupMutationPending={false}
       groups={[]}
       history={[historyItem("session:a", "第一条对话")]}
+      historyHasMore={false}
+      historyLoading={false}
+      historyQuery=""
       language="zh"
       onClose={() => undefined}
       onCreateGroup={() => undefined}
       onDelete={() => undefined}
       onDeleteGroup={() => undefined}
       onFilterGroup={() => undefined}
+      onLoadMore={() => undefined}
       onMove={() => undefined}
       onNewChat={() => undefined}
       onNewInGroup={() => undefined}
       onPick={() => undefined}
       onRename={() => undefined}
       onRenameGroup={() => undefined}
+      onSearch={() => undefined}
       onTogglePin={() => undefined}
       pendingSessionId={null}
       selectedGroupId={null}
@@ -446,11 +451,16 @@ test("the current session's row is tinted, keyed on the active session id", asyn
   assert.ok(textOf(tinted[0]!.children as unknown).includes("正在看的对话"));
 });
 
-test("the drawer reveals more of the already-drained list instead of paging the API", async (t) => {
-  const many = Array.from({ length: 8 }, (_, index) =>
+test("the drawer reveals current-page rows before fetching the next cursor", async (t) => {
+  const many = Array.from({ length: 14 }, (_, index) =>
     session(`session:${index}`, `对话 ${index}`, `2026-09-${String(10 + index).padStart(2, "0")}T00:00:00.000Z`),
   );
-  const harness = await mountShell(t, { sessionPages: [many] });
+  const harness = await mountShell(t, {
+    sessionPages: [many, [
+      session("session:14", "对话 14", "2026-09-18T00:00:00.000Z"),
+      session("session:15", "对话 15", "2026-09-19T00:00:00.000Z"),
+    ]],
+  });
   await openDrawer(harness);
 
   assert.equal(rows(harness.root).length, 6);
@@ -463,12 +473,57 @@ test("the drawer reveals more of the already-drained list instead of paging the 
   });
   await harness.settle(1);
 
-  assert.equal(rows(harness.root).length, 8);
+  assert.equal(rows(harness.root).length, 12);
   assert.equal(
     harness.calls.filter((call) => call.url.startsWith("/api/ai/conversations/sessions?")).length,
     listCallsBefore,
-    "revealing more must not hit the sessions API again (审阅修订 11)",
+    "current-page reveal must not fetch another cursor",
   );
+
+  await act(async () => {
+    buttonWithText(harness.root, "加载更多历史记录 ⌄").props.onClick();
+  });
+  await harness.settle(1);
+  assert.equal(rows(harness.root).length, 16);
+  assert.equal(
+    harness.calls.filter((call) => call.url.startsWith("/api/ai/conversations/sessions?")).length,
+    listCallsBefore + 1,
+    "a subsequent explicit load-more must fetch the next server cursor",
+  );
+});
+
+test("history search waits for its debounce and reloads the server page without a cursor", async (t) => {
+  const harness = await mountShell(t, {
+    sessionPages: [[
+      session("session:needle", "needle 对话", "2026-09-20T00:00:00.000Z"),
+      session("session:other", "其他对话", "2026-09-19T00:00:00.000Z"),
+    ]],
+  });
+  await openDrawer(harness);
+  const listCallsBefore = harness.calls.filter((call) =>
+    call.url.startsWith("/api/ai/conversations/sessions?"),
+  ).length;
+
+  await act(async () => {
+    harness.root.root.findByProps({ "data-orbit-agent-history-search": true })
+      .props.onChange({ target: { value: "needle" } });
+  });
+  assert.equal(
+    harness.calls.filter((call) => call.url.startsWith("/api/ai/conversations/sessions?")).length,
+    listCallsBefore,
+    "typing alone must not query the server",
+  );
+  const debounce = harness.timers.find((timer) => timer.delay === 250);
+  assert.ok(debounce, "the server query should use the 250 ms debounce");
+  await act(async () => debounce.fire());
+  await harness.settle(1);
+
+  const calls = harness.calls.filter((call) => call.url.startsWith("/api/ai/conversations/sessions?"));
+  assert.equal(calls.length, listCallsBefore + 1);
+  const query = new URL(calls.at(-1)!.url, "https://orbit.test").searchParams;
+  assert.equal(query.get("q"), "needle");
+  assert.equal(query.has("cursor"), false, "a changed query restarts at the first cursor");
+  assert.deepEqual(rowTitles(harness.root), ["needle 对话"]);
 });
 
 test("the group filter strip narrows the drawer's list", async (t) => {

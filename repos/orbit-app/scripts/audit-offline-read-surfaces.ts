@@ -19,7 +19,7 @@ const unique = (values: string[]) => [...new Set(values)];
 const usedComputedPathKeys = new Set<string>();
 
 const computedPathFamilies: Readonly<Record<string, readonly string[]>> = {
-  'src/screens/ai/AiConversationScreen.tsx:354': ['/api/ai/conversations', '/api/ai/conversations/:id'],
+  'src/screens/ai/AiConversationScreen.tsx:328': ['/api/ai/conversations', '/api/ai/conversations/:id'],
   'src/screens/chat/RelationshipChatDetailScreen.tsx:180': ['/api/relationship-communication/conversations/:id/messages'],
   'src/screens/contacts/ContactAcquisitionScreen.tsx:401': ['/api/contact-drafts/:id'],
   'src/screens/contacts/ContactAcquisitionScreen.tsx:440': ['/api/contact-drafts/manual', '/api/contact-drafts/qr/scan', '/api/contact-drafts/business-card/scan'],
@@ -28,19 +28,15 @@ const computedPathFamilies: Readonly<Record<string, readonly string[]>> = {
   'src/screens/contacts/ContactAcquisitionScreen.tsx:623': ['/api/contact-drafts/external/import'],
   'src/screens/contacts/ContactAcquisitionScreen.tsx:692': ['/api/contact-drafts/referral'],
   'src/screens/contacts/ContactAcquisitionScreen.tsx:725': ['/api/contact-drafts/recommended/:id/confirm'],
-  'src/screens/contacts/ContactIntrosScreen.tsx:175': ['/api/relationship-communication/invitations'],
-  'src/screens/contacts/ContactsGraphScreen.tsx:137': ['/api/connections/:id/evidence'],
-  'src/screens/contacts/ContactsGraphScreen.tsx:169': ['/api/connections/:id/profile'],
-  'src/screens/inbox/RelationshipInboxScreen.tsx:1194': ['/api/relationship-signals/:id/confirm'],
-  'src/screens/inbox/RelationshipInboxScreen.tsx:1819': ['/api/chat/privacy/analysis-toggle'],
-  'src/screens/inbox/RelationshipInboxScreen.tsx:1929': ['/api/relationship-communication/conversations/:id/messages'],
-  'src/screens/inbox/RelationshipInboxScreen.tsx:2070': ['/api/chat/relationship-inbox'],
+  'src/screens/contacts/ContactIntrosScreen.tsx:146': ['/api/relationship-communication/invitations'],
+  'src/screens/inbox/RelationshipInboxScreen.tsx:1224': ['/api/chat/privacy/analysis-toggle'],
+  'src/screens/inbox/RelationshipInboxScreen.tsx:1334': ['/api/relationship-communication/conversations/:id/messages'],
+  'src/screens/inbox/RelationshipInboxScreen.tsx:1475': ['/api/chat/relationship-inbox'],
   'src/screens/profile/ProfileMoreScreen.tsx:78': ['/api/profile/extractions/business-card', '/api/profile/extractions/resume'],
   'src/screens/profile/ProfileScreen.tsx:335': ['/api/profile/extractions/business-card', '/api/profile/extractions/resume'],
   'src/screens/tasks/TaskDetailScreen.tsx:79': ['/api/tasks/:id'],
   'src/screens/tasks/TaskDetailScreen.tsx:80': ['/api/tasks/:id/activities'],
   'src/screens/tasks/TaskDetailScreen.tsx:81': ['/api/reminders'],
-  'src/screens/today/TodayScreen.tsx:61': ['/api/today'],
 };
 
 // 这些 transport 调用点在运行时从不指向 Orbit API，因而没有可登记的读取面。

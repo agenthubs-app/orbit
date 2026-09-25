@@ -137,8 +137,12 @@ test("conversation POST receipt opens through the canonical actor session GET an
     assert.equal(read.status, 200, "a success receipt must be readable by the same signed-in account, not a raw profile namespace");
     const opened = await read.json();
     assert.deepEqual(opened.data.session.messages.map((m: { role: string; text: string }) => [m.role, m.text]), [["user", input.message], ["assistant", "确定性回答"]]);
-    const list = await h.createOrbitAgentChatSessionsHandlers().GET(new Request("https://orbit.local/api/ai/conversations/sessions?v=2"));
-    assert.equal((await list.json()).data.sessions[0].id, input.sessionId);
+    const list = await h.createOrbitAgentChatSessionsHandlers().GET(new Request("https://orbit.local/api/ai/conversations/sessions"));
+    const summaryPage = (await list.json()).data;
+    assert.equal(summaryPage.items[0].id, input.sessionId);
+    assert.equal("messages" in summaryPage.items[0], false);
+    assert.equal("origin" in summaryPage.items[0], false);
+    assert.equal("panel" in summaryPage.items[0], false);
     const replay = await h.POST(request());
     assert.equal((await replay.json()).data.reliableSend.replayed, true);
     assert.equal(h.fixture.calls, 1);

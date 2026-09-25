@@ -62,7 +62,7 @@ test("Orbit Agent chat session API fails closed for writes when live storage is 
 
     assert.equal(listResponse.status, 200);
     assert.equal(listEnvelope.success, true);
-    assert.deepEqual(listEnvelope.data.sessions, []);
+    assert.deepEqual(listEnvelope.data.items, []);
     assert.equal(listEnvelope.data.storage.configured, false);
     assert.equal(listEnvelope.data.storage.persisted, false);
 
@@ -162,21 +162,14 @@ test("Orbit Agent chat session API restores mock sessions across requests", asyn
 
     const listResponse = await route.GET();
     const listEnvelope = await listResponse.json();
-    const listedSession = listEnvelope.data.sessions.find(
+    const listedSession = listEnvelope.data.items.find(
       (item: { id?: string }) => item.id === sessionId,
     );
 
     assert.equal(listResponse.status, 200);
     assert.equal(listEnvelope.success, true);
     assert.equal(listedSession.id, sessionId);
-    assert.equal(
-      listedSession.messages[1].runId,
-      "run:post-event-followup:session-test",
-    );
-    assert.deepEqual(listedSession.messages[1].actionIds, [
-      "action:followup-task:session-test",
-    ]);
-
+    assert.equal("messages" in listedSession, false);
     const byIdModule = await importProjectModule<{
       createOrbitAgentChatSessionHandlers: (dependencies: {
         resolveActor: () => Promise<{ id: string }>;
@@ -205,6 +198,8 @@ test("Orbit Agent chat session API restores mock sessions across requests", asyn
 
     assert.equal(getResponse.status, 200);
     assert.equal(getEnvelope.data.session.id, sessionId);
+    assert.equal(getEnvelope.data.session.messages[1].runId, "run:post-event-followup:session-test");
+    assert.deepEqual(getEnvelope.data.session.messages[1].actionIds, ["action:followup-task:session-test"]);
 
     const deleteResponse = await byIdRoute.DELETE(
       new Request(

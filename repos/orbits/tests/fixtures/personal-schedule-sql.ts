@@ -18,6 +18,31 @@ export function personalScheduleSqlFixture() {
       return { rows: [structuredClone(row)] };
     }
     if (text.startsWith("select to_regclass")) return { rows: [] };
+    const isScheduleExceptionWindowQuery = /from\s+orbit_records\s+where\s+workspace_id\s*=\s*\$1/i.test(text) &&
+      /collection_name\s*=\s*\$2/i.test(text) && /user_id\s*=\s*\$3/i.test(text) &&
+      /source_id\s*=\s*\$4/i.test(text) && /lifecycle_state\s*<>\s*'deleted'/i.test(text) &&
+      /record_id\s*=\s*any\(\$5::text\[\]\)/i.test(text) &&
+      /left\s*\(\s*payload->'patch'->>'startsAt'\s*,\s*10\s*\)\s+between\s+\$6\s+and\s+\$7/i.test(text);
+    if (text.startsWith("select") && isScheduleExceptionWindowQuery) {
+      const [workspaceId, collectionName, actorId, sourceId, rawIds, earliest, latest] = values;
+      if (typeof workspaceId !== "string" || typeof collectionName !== "string" || typeof actorId !== "string" ||
+        typeof sourceId !== "string" || !Array.isArray(rawIds) || rawIds.some(id => typeof id !== "string") ||
+        typeof earliest !== "string" || typeof latest !== "string") {
+        throw new Error("Invalid schedule exception window SQL parameters");
+      }
+      const occurrenceIds = new Set(rawIds as string[]);
+      const selected = [...data.values()].filter(row => {
+        if (row.workspace_id !== workspaceId || row.collection_name !== collectionName || row.user_id !== actorId ||
+          row.source_id !== sourceId || row.lifecycle_state === "deleted") return false;
+        const payload = typeof row.payload === "string" ? JSON.parse(row.payload) : row.payload;
+        const patch = payload && typeof payload === "object" ? (payload as Record<string, unknown>).patch : undefined;
+        const startsAt = patch && typeof patch === "object" ? (patch as Record<string, unknown>).startsAt : undefined;
+        const movedDate = typeof startsAt === "string" ? startsAt.slice(0, 10) : "";
+        return occurrenceIds.has(String(row.record_id)) || (movedDate >= earliest && movedDate <= latest);
+      });
+      selected.sort((left, right) => String(left.record_id) < String(right.record_id) ? -1 : String(left.record_id) > String(right.record_id) ? 1 : 0);
+      return { rows: structuredClone(selected) };
+    }
     // Match the scoped join first, then report matching but malformed facts as
     // invalid rows; production relies on those rows to fail closed.
     if (/from\s+unnest\(\$3::text\[\],\s*\$4::text\[\]\)\s+s\(event_key,record_id\)\s+join\s+orbit_records\s+r/i.test(text)) {
@@ -72,6 +97,14 @@ export function personalScheduleSqlFixture() {
         found = found.filter(row => recordIds.includes(row.record_id));
       }
       if (sql.includes("lifecycle_state <> 'deleted'")) found = found.filter(row => row.lifecycle_state !== "deleted");
+      if (sql.includes("collection_name='businessCardBatches'")) {
+        const [workspaceId, actorId, afterId] = values;
+        if (typeof workspaceId !== "string" || typeof actorId !== "string" || typeof afterId !== "string" || !/record_id\s*>\s*\$3/i.test(text)) {
+          throw new Error("Invalid business-card batch keyset query in schedule fixture");
+        }
+        found = found.filter(row => row.workspace_id === workspaceId && row.collection_name === "businessCardBatches" &&
+          row.user_id === actorId && row.lifecycle_state === "active" && String(row.record_id) > afterId);
+      }
       if (sql.includes("collection_name in ('reminderPlans','businessCardBatches')")) found = found.filter(row => ["reminderPlans", "businessCardBatches"].includes(String(row.collection_name)) && String(row.record_id) > String(values[2]));
       found.sort((a, b) => String(a.record_id).localeCompare(String(b.record_id)));
       const parameterizedLimit = /\blimit\s+\$(\d+)\b/i.exec(text);

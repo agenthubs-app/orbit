@@ -11,8 +11,11 @@ import {
   View
 } from "react-native";
 import type { RelationshipInvitationDTO } from "../../api/contract/relationship-communication";
+import type { ContactIntrosSummaryContract } from "../../api/contract/contact-intros-summary";
 import { buildRelationshipInvitationRequest } from "../../api/contact-communication";
-import { ORBIT_API_ENDPOINTS, relationshipCommunicationInvitationsPath } from "../../api/endpoints";
+import { relationshipCommunicationInvitationsPath } from "../../api/endpoints";
+import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
+import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { AppScreen } from "../../components/AppScreen";
 import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
@@ -24,10 +27,12 @@ import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import {
-  contactsPipelineToView,
   type ContactIntroCandidateView,
-  type ContactPipelineMetricView
+  type ContactPipelineMetricView,
 } from "../../view-models/contact-pipeline";
+import { contactIntrosSummaryToView } from "../../view-models/contact-intros-summary";
+
+const CONTACT_INTROS_SUMMARY_ENDPOINT = "/api/contacts/intros/summary";
 
 interface PreparedInvitationRecord {
   candidate: ContactIntroCandidateView;
@@ -36,23 +41,16 @@ interface PreparedInvitationRecord {
 
 export function ContactIntrosScreen() {
   const { colors } = useOrbitTheme();
-  const contactsState = useApiResource<unknown>(
-    ORBIT_API_ENDPOINTS.contacts,
-    (data) =>
-      contactsPipelineToView({
-        connectionsPayload: { connections: [] },
-        contactsPayload: data
-      }).stages.every((stage) => stage.count === 0)
+  const auth = useOrbitAuthSession();
+  const { baseUrl } = useOrbitApiBaseUrl();
+  const scopeKey = JSON.stringify([auth.actorId ?? "", auth.cookieHeader, baseUrl]);
+  const summaryState = useApiResource<ContactIntrosSummaryContract>(
+    CONTACT_INTROS_SUMMARY_ENDPOINT,
+    (data) => data.totalContacts === 0,
+    { scopeKey }
   );
-  const connectionsState = useApiResource<unknown>(
-    ORBIT_API_ENDPOINTS.connections,
-    () => false
-  );
-  const refreshing = contactsState.refreshing || connectionsState.refreshing;
-  const refresh = () => {
-    contactsState.refresh();
-    connectionsState.refresh();
-  };
+  const refreshing = summaryState.refreshing;
+  const refresh = () => summaryState.refresh();
 
   return (
     <AppScreen
@@ -66,59 +64,38 @@ export function ContactIntrosScreen() {
       }
       title="引荐准备"
     >
-      {contactsState.kind === "loading" || connectionsState.kind === "loading" ? (
+      {summaryState.kind === "loading" ? (
         <LoadingState />
       ) : null}
-      {contactsState.kind === "offline" || connectionsState.kind === "offline" ? (
+      {summaryState.kind === "offline" ? (
         <ErrorState
-          message={
-            contactsState.kind === "offline"
-              ? contactsState.error.message
-              : connectionsState.kind === "offline"
-                ? connectionsState.error.message
-                : "请检查服务器连接。"
-          }
+          message={summaryState.error.message}
           title="服务器连不上"
         />
       ) : null}
-      {contactsState.kind === "failure" || connectionsState.kind === "failure" ? (
+      {summaryState.kind === "failure" ? (
         <ErrorState
-          message={
-            contactsState.kind === "failure"
-              ? contactsState.error.message
-              : connectionsState.kind === "failure"
-                ? connectionsState.error.message
-                : "引荐准备暂时无法加载。"
-          }
+          message={summaryState.error.message}
         />
       ) : null}
-      {contactsState.kind === "empty" ? (
+      {summaryState.kind === "empty" ? (
         <EmptyState
           message="先补联系人来源，再整理适合互相介绍的人。"
           title="暂无引荐候选"
         />
       ) : null}
-      {contactsState.kind === "success" && connectionsState.kind === "success" ? (
-        <IntrosContent
-          connectionsPayload={connectionsState.data}
-          contactsPayload={contactsState.data}
-        />
+      {summaryState.kind === "success" ? (
+        <IntrosContent summary={summaryState.data} />
       ) : null}
     </AppScreen>
   );
 }
 
-function IntrosContent({
-  connectionsPayload,
-  contactsPayload
-}: {
-  connectionsPayload: unknown;
-  contactsPayload: unknown;
-}) {
+function IntrosContent({ summary }: { summary: ContactIntrosSummaryContract }) {
   const { colors, styles } = useStyles();
   const router = useRouter();
   const client = useOrbitApiClient();
-  const view = contactsPipelineToView({ connectionsPayload, contactsPayload });
+  const view = contactIntrosSummaryToView(summary);
   const [activeCandidate, setActiveCandidate] =
     useState<ContactIntroCandidateView | null>(null);
   const [recipientEmail, setRecipientEmail] = useState("");
@@ -130,14 +107,8 @@ function IntrosContent({
   const [invitationStatus, setInvitationStatus] = useState<
     "idle" | "preparing" | "sharing"
   >("idle");
-  const totalMetric = view.metrics.find((metric) => metric.label === "联系人") ?? {
-    label: "联系人",
-    value: "0"
-  };
-  const introMetric = view.metrics.find((metric) => metric.label === "可引荐") ?? {
-    label: "可引荐",
-    value: "0"
-  };
+  const totalMetric = { label: "联系人", value: String(view.totalContactCount) };
+  const introMetric = { label: "可引荐", value: String(view.introCandidateCount) };
 
   function selectInvitationCandidate(candidate: ContactIntroCandidateView) {
     setActiveCandidate(candidate);
@@ -222,7 +193,9 @@ function IntrosContent({
 
   return (
     <>
-      <DataCard detail={view.introReadiness.summary} title="引荐总览">
+      <DataCard detail={view.introCandidateCount > 0
+        ? `${view.introCandidateCount} 位联系人适合先准备引荐。`
+        : "还没有适合发起引荐的候选。"} title="引荐总览">
         <MetricGrid
           metrics={[
             totalMetric,
@@ -241,10 +214,10 @@ function IntrosContent({
       {preparedInvitations.length > 0 ? (
         <PreparedInvitationRecordsCard records={preparedInvitations} />
       ) : null}
-      {view.introReadiness.candidates.length > 0 ? (
+      {view.candidates.length > 0 ? (
         <DataCard detail="按关系强度和引荐路径排序" title="可准备的人">
           <View style={styles.listStack}>
-            {view.introReadiness.candidates.map((candidate) => (
+            {view.candidates.map((candidate) => (
               <IntroCandidateRow
                 candidate={candidate}
                 key={candidate.id}

@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  todayHomeSummary,
   ownedTaskDetailToView,
   taskActivitiesToView,
   taskDetailToView,
@@ -216,55 +215,4 @@ test("owned task detail accepts the canonical account and rejects a foreign owne
   assert.equal(ownedTaskDetailToView({ task: openTask }, "user:raw-login"), null);
   assert.equal(ownedTaskDetailToView({ task: { ...openTask, ownerUserId: "account:other" } }, "account:xiaoyu"), null);
   assert.equal(ownedTaskDetailToView({ task: { ...openTask, accountId: "account:other" } }, "account:xiaoyu"), null);
-});
-
-test("todayHomeSummary limits home rows and keeps tasks, schedules, and suggestions distinct", () => {
-  const view = todayHomeSummary({
-    tasks: [
-      openTask,
-      { ...openTask, id: "task:second", title: "确认会面材料", category: "meeting" },
-    ],
-    suggestions: [
-      {
-        id: "suggestion:one",
-        title: "联系活动主办方",
-        reason: "活动临近",
-        category: "relationship",
-        status: "pending",
-      },
-    ],
-    schedule: [
-      {
-        id: "schedule:meeting",
-        kind: "meeting",
-        category: "meeting",
-        state: "upcoming",
-        title: "与渡边会面",
-        startsAt: "2026-08-29T05:00:00.000Z",
-        sourceId: "appointment:watanabe",
-      },
-      {
-        id: "schedule:event",
-        kind: "event",
-        category: "event",
-        state: "upcoming",
-        title: "关西跨境商务交流会",
-        startsAt: "2026-08-29T09:00:00.000Z",
-        sourceId: "event:kansai",
-      },
-    ],
-    summary: {
-      openTaskCount: 2,
-      completedCount: 1,
-      suggestionCount: 1,
-      scheduleCount: 2,
-    },
-  }, new Date("2026-08-29T03:30:00.000Z"));
-
-  assert.equal(view.items.length, 3);
-  assert.deepEqual(view.items.map((item) => item.kind), ["task", "task", "schedule"]);
-  assert.equal(view.items[0]?.href, "/tasks/task%3Aevent-list");
-  assert.equal(view.items[2]?.href, "/schedule");
-  assert.equal(view.openTaskCount, 2);
-  assert.equal(view.suggestionCount, 1);
 });

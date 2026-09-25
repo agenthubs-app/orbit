@@ -74,43 +74,10 @@ test("AI conversation screen renders the entity draft card and confirms it expli
   assert.match(screenSource, /body: \{ action \}/u);
 });
 
-test("AI conversation event panel renders related events as compact content modules", () => {
-  assert.match(screenSource, /function EventInlinePanel/u);
-  assert.match(screenSource, /prioritizeConversationEvents/u);
-  assert.match(screenSource, /prioritizedEvents/u);
-  assert.match(screenSource, /styles\.eventSuggestionThumbFrame/u);
-  assert.match(screenSource, /styles\.eventSuggestionDetail/u);
-  assert.match(screenSource, /event\.participantCountLabel/u);
-  assert.match(screenSource, /event\.actionLabel/u);
-  assert.match(
-    screenSource,
-    /eventSuggestionThumbFrame:\s*\{[^}]*height:\s*52[^}]*width:\s*64/su
-  );
-  assert.doesNotMatch(screenSource, /styles\.eventImageFrame/u);
-  assert.doesNotMatch(screenSource, /eventImageFrame:\s*\{/u);
-  assert.doesNotMatch(screenSource, /eventCards\.slice\(0,\s*3\)\.map/u);
-});
-
-test("AI conversation people panel reuses contact avatar images", () => {
-  assert.match(screenSource, /Image,/u);
-  assert.match(screenSource, /function PeopleInlinePanel/u);
-  assert.match(screenSource, /baseUrl: string/u);
-  assert.match(screenSource, /contact\.imageUrl/u);
-  assert.match(
-    screenSource,
-    /source=\{\{ uri: assetUrl\(baseUrl, contact\.imageUrl\) \}\}/u
-  );
-  assert.match(screenSource, /styles\.contactAvatarImage/u);
-});
-
-test("AI conversation people panel prioritizes contacts mentioned in the thread", () => {
-  assert.match(screenSource, /prioritizeConversationContacts/u);
-  assert.match(screenSource, /thread: ConversationThreadView/u);
-  assert.match(screenSource, /prioritizedContacts/u);
-  assert.match(
-    screenSource,
-    /prioritizeConversationContacts\(thread,\s*contactCards\)/u
-  );
-  assert.match(screenSource, /prioritizedContacts\.slice\(0,\s*3\)/u);
-  assert.doesNotMatch(screenSource, /contactCards\.slice\(0,\s*3\)\.map/u);
+test("AI conversation uses typed entity cards without keyword-based collection panels", () => {
+  assert.match(screenSource, /AiEntityCardList/u);
+  assert.doesNotMatch(screenSource, /ConversationInlinePanels|prioritizeConversationContacts|prioritizeConversationEvents/u);
+  assert.doesNotMatch(screenSource, /ORBIT_API_ENDPOINTS\.(contacts|events|tasks|profile)\b/u);
+  assert.match(screenSource, /ContactMentionPicker/u);
+  assert.match(screenSource, /ContactReferenceChip/u);
 });

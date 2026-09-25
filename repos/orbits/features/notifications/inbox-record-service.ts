@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import type { InboxNotificationDTO, InboxNotificationKind, InboxNotificationActionInput, InboxNotificationActionReceipt, InboxNotificationReadBatchInput, InboxNotificationSource, InboxNotificationListDTO } from '../../shared/contract/inbox-notifications';
 import { inboxNotificationSchema, inboxNotificationActionSchema, inboxNotificationReadBatchSchema } from '../../shared/api-schema/inbox-notifications';
 import type { InboxRecordRepository, InboxRecordTransaction } from './storage/inbox-record-repository';
-import { readBoundedInbox } from './inbox-bounded-list';
+import { countAuthorizedUnread, readBoundedInbox } from './inbox-bounded-list';
 
 export class InboxRecordError extends Error {
   constructor(readonly code:'NOT_FOUND'|'CONFLICT'|'SOURCE_UNAVAILABLE'|'VALIDATION_ERROR'|'INTEGRITY_VIOLATION',message:string){super(message);}
@@ -82,6 +82,14 @@ export function createInboxRecordService(input:{repository:InboxRecordRepository
     upsert:createInboxRecordUpserter({transaction:(actorId,operation)=>input.repository.transaction(actorId,operation),now}),
     async get(actorId:string,id:string,language:'zh'|'en'|'ja'='zh') {
       return input.repository.transaction(actorId,async tx=>{const row=await tx.get(id);if(!row)throw new InboxRecordError('NOT_FOUND','Notification not found');assertInboxRecordsIntact([row.notification]);return present(row.notification,language,tx);});
+    },
+    async unreadCount(actorId:string,asOf=now()):Promise<number> {
+      if (input.repository.readWindow) {
+        const invalid=await input.repository.readWindow.invalidIds(actorId,asOf);
+        if(invalid.length)throw new InboxRecordError('INTEGRITY_VIOLATION',`Inbox records are not classifiable: ${invalid.join(', ')}`);
+        return countAuthorizedUnread({window:input.repository.readWindow,actorId,asOf,now:now(),access:input.sourceAccess,...(input.sourceAccessBatch?{accessBatch:input.sourceAccessBatch}:{})});
+      }
+      return (await service.list(actorId,{limit:1})).unreadCount;
     },
     async list(actorId:string,query:InboxListQuery):Promise<InboxNotificationListDTO> {
       const limit=query.limit??50;if(!Number.isSafeInteger(limit)||limit<1||limit>50)throw new InboxRecordError('VALIDATION_ERROR','Invalid page limit');

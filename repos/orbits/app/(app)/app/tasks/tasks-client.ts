@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { taskPageSchema } from "../../../../shared/api-schema/task-page";
 import {
-  activitiesToView, remindersToView, suggestionsToView, taskToView, tasksToView, todayTasksToView,
+  activitiesToView, remindersToView, suggestionsToView, taskToView,
   type TaskView, type TaskRowView,
 } from "./tasks-view-model";
 
@@ -84,9 +84,7 @@ export function createTasksClient(fetcher: typeof fetch = fetch) {
         return { ...page, items };
       });
     },
-    loadList: (status: "open" | "completed") => request(`/api/tasks?status=${status}`, tasksToView),
     loadTask: (id: string) => request(pathFor(id), single),
-    loadToday: () => request("/api/today?timeZone=Asia%2FTokyo", todayTasksToView),
     loadSuggestions: () => request("/api/task-suggestions", suggestionsToView),
     loadActivities: (id: string) => request(`${pathFor(id)}/activities`, activitiesToView),
     loadReminders: (id: string) => request(`/api/reminders?${new URLSearchParams({ targetType: "task", targetId: id })}`, remindersToView),

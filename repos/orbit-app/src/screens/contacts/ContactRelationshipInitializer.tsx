@@ -13,18 +13,18 @@ import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { useOrbitTimeZone } from "../../time/OrbitTimeZoneProvider";
 import { createContactInitializationController, type ContactInitializationState } from "../../view-models/relationship-initialization";
 
-export function useContactInitialization(contactId: string, parentScopeKey: string | undefined, isScopeCurrent: () => boolean, onConfirmed: () => void) {
+export function useContactInitialization(contactId: string, connectionId: string | null | undefined, parentScopeKey: string | undefined, isScopeCurrent: () => boolean, onConfirmed: () => void) {
   const auth = useOrbitAuthSession(), server = useOrbitApiBaseUrl();
-  const ready = auth.ready && auth.signedIn && server.ready && Boolean(auth.actorId && contactId);
-  const scopeKey = JSON.stringify([auth.actorId, auth.cookieHeader, server.baseUrl, contactId, parentScopeKey, ready]);
+  const ready = auth.ready && auth.signedIn && server.ready && Boolean(auth.actorId && contactId) && connectionId !== undefined;
+  const scopeKey = JSON.stringify([auth.actorId, auth.cookieHeader, server.baseUrl, contactId, connectionId, parentScopeKey, ready]);
   const client = useOrbitApiClient({ scopeKey });
   const scope = useMemo(() => ({}), [scopeKey]);
   const latest = useRef(scope); latest.current = scope;
   const callbacks = useRef({ isScopeCurrent, onConfirmed }); callbacks.current = { isScopeCurrent, onConfirmed };
-  const controller = useMemo(() => createContactInitializationController({ client, actorId: auth.actorId ?? "", contactId,
+  const controller = useMemo(() => createContactInitializationController({ client, actorId: auth.actorId ?? "", contactId, connectionId: connectionId ?? null,
     createId: () => Crypto.randomUUID(), isCurrent: () => ready && latest.current === scope && callbacks.current.isScopeCurrent(),
     onConfirmed: () => { if (latest.current === scope && callbacks.current.isScopeCurrent()) callbacks.current.onConfirmed(); },
-  }), [client, scope, ready, auth.actorId, contactId]);
+  }), [client, scope, ready, auth.actorId, contactId, connectionId]);
   const state = useSyncExternalStore(controller.subscribe, controller.getSnapshot, controller.getSnapshot);
   useEffect(() => { if (ready) void controller.start(); return () => controller.dispose(); }, [controller, ready]);
   return { controller, state, ready };

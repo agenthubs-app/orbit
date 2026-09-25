@@ -74,7 +74,7 @@ test("schedule screen can render partial timeline data while one source is pendi
   );
   assert.match(
     screenSource,
-    /tasks:\s*usable\(tasksState\)\s*\?\s*tasksState\.data\s*:\s*\{\s*tasks:\s*\[\]\s*\}/u
+    /tasks:\s*usable\(tasksState\)\s*\?\s*taskPageToScheduleTasks\(normalizeTaskPageContract\(tasksState\.data\)\)\s*:\s*\{\s*tasks:\s*\[\]\s*\}/u
   );
   assert.match(
     screenSource,
@@ -84,4 +84,10 @@ test("schedule screen can render partial timeline data while one source is pendi
     screenSource,
     /usable\(tasksState\) && usable\(eventsState\)\s*\?/u
   );
+});
+
+test("schedule preview reads four bounded task cards instead of the full task collection", () => {
+  assert.match(screenSource, /\/api\/tasks\/page\?status=open&scope=all&limit=4/u);
+  assert.match(screenSource, /taskPageSchema/u);
+  assert.doesNotMatch(screenSource, /ORBIT_API_ENDPOINTS\.tasks\b/u);
 });

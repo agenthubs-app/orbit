@@ -179,3 +179,70 @@ test("SQL fixture bounds occurrence exceptions by the exact same-series record I
   assert.equal(exceptions.length, 1);
   assert.equal(exceptions[0]!.occurrenceDate, "2026-09-19");
 });
+
+test("SQL fixture returns window anchors and moved-in exceptions while excluding unrelated, foreign and deleted rows", async () => {
+  const fixture = personalScheduleSqlFixture();
+  const workspaceId = "workspace-window";
+  const actorId = "owner";
+  const seriesId = "personal:window-series";
+  const collectionName = "personal_schedule_occurrence_exceptions";
+  const updatedAt = "2026-09-25T12:00:00.000Z";
+  const seed = async (input: {
+    occurrenceDate: string;
+    startsAt?: string;
+    cancelled?: boolean;
+    userId?: string;
+    lifecycleState?: "active" | "archived" | "deleted";
+  }) => {
+    const patch = input.startsAt ? {
+      startsAt: input.startsAt,
+      endsAt: new Date(Date.parse(input.startsAt) + 60 * 60_000).toISOString(),
+    } : {};
+    await fixture.store.upsertRecord({
+      workspaceId,
+      collectionName,
+      recordId: `${seriesId}:occurrence:${input.occurrenceDate}`,
+      userId: input.userId ?? actorId,
+      sourceType: "manual",
+      sourceId: seriesId,
+      evidenceIds: [],
+      lifecycleState: input.lifecycleState ?? "active",
+      createdAt: updatedAt,
+      updatedAt,
+      payload: {
+        seriesId,
+        occurrenceDate: input.occurrenceDate,
+        cancelled: input.cancelled ?? false,
+        patch,
+        updatedAt,
+      },
+    });
+  };
+
+  // Original anchors are retained even when moved out or cancelled. A moved-in
+  // row has a different occurrence ID, so it is found by its patched date.
+  await seed({ occurrenceDate: "2026-10-01", startsAt: "2026-10-20T11:00:00.000Z" });
+  await seed({ occurrenceDate: "2026-10-02", cancelled: true });
+  await seed({ occurrenceDate: "2026-09-20", startsAt: "2026-10-02T11:00:00.000Z" });
+  await seed({ occurrenceDate: "2026-09-21", startsAt: "2026-10-15T11:00:00.000Z" });
+  await seed({ occurrenceDate: "2026-09-22", startsAt: "2026-10-02T11:00:00.000Z", userId: "intruder" });
+  await seed({ occurrenceDate: "2026-09-23", startsAt: "2026-10-02T11:00:00.000Z", lifecycleState: "deleted" });
+
+  const exceptions = await readPersonalScheduleOccurrenceExceptions({
+    store: fixture.store,
+    executor: fixture.client,
+    workspaceId,
+    actorId,
+    seriesId,
+    window: {
+      from: "2026-10-01T00:00:00.000Z",
+      to: "2026-10-03T00:00:00.000Z",
+      occurrenceDates: ["2026-10-01", "2026-10-02"],
+    },
+  });
+
+  assert.deepEqual(exceptions.map(exception => exception.occurrenceDate), ["2026-09-20", "2026-10-01", "2026-10-02"]);
+  assert.equal(exceptions[0]!.patch.startsAt, "2026-10-02T11:00:00.000Z");
+  assert.equal(exceptions[1]!.patch.startsAt, "2026-10-20T11:00:00.000Z");
+  assert.equal(exceptions[2]!.cancelled, true);
+});

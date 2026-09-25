@@ -1,4 +1,4 @@
-import { todayHomeQuestions, type HomeQuestion } from "./today-tasks";
+import type { HomeQuestion } from "./today-tasks";
 
 export interface HomeQuestionSnapshot {
   scope: string;
@@ -9,7 +9,7 @@ export interface HomeQuestionSnapshot {
 
 interface HomeQuestionInput {
   scope: string;
-  payload: unknown;
+  questions: readonly HomeQuestion[] | null;
   ready: boolean;
   refreshing: boolean;
 }
@@ -27,7 +27,7 @@ export function homeQuestionSnapshot(
 
   const questions = input.ready && !input.refreshing &&
     (!previous?.questions || previous.refreshing)
-    ? todayHomeQuestions(input.payload)
+    ? input.questions
     : previous?.questions ?? null;
   if (previous && previous.questions === questions &&
     previous.refreshing === input.refreshing && !previous.awaitingLoading) return previous;

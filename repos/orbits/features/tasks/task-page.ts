@@ -15,6 +15,15 @@ export interface TaskPageQuery {
   dueWindow?: TaskPageContract["dueWindow"];
 }
 
+export interface TodayTaskSignals {
+  urgentTask: boolean;
+  relationshipTask: boolean;
+}
+
+export interface TodayTaskPageResult extends TaskPageContract {
+  todaySignals: TodayTaskSignals;
+}
+
 const whitespace = "\\0009\\000A\\000B\\000C\\000D\\0020\\00A0\\1680\\2000\\2001\\2002\\2003\\2004\\2005\\2006\\2007\\2008\\2009\\200A\\2028\\2029\\202F\\205F\\3000\\FEFF";
 const nonblank = (v: string) => `(jsonb_typeof(${v})='string' and btrim(${v} #>> '{}',U&'${whitespace}')<>'')`;
 const optional = (v: string, key: string) => `(not (${v} ? '${key}') or ${nonblank(`${v}->'${key}'`)})`;
@@ -117,14 +126,20 @@ select case when exists(select 1 from filtered where octet_length(record_id)>204
   then jsonb_build_object('ok',false)
   else jsonb_build_object('ok',true,
   'counts',jsonb_build_object('open',(select count(*) from filtered where t->>'status'='open'),'completed',(select count(*) from filtered where t->>'status'='completed')),
-  'items',coalesce((select jsonb_agg(card order by case when $3='completed' then sort_key end collate "C" desc,case when $3<>'completed' then sort_key end collate "C",(t->>'updatedAt') collate "C" desc,record_id collate "C") from cards),'[]'::jsonb)) end as result`;
+  'items',coalesce((select jsonb_agg(card order by case when $3='completed' then sort_key end collate "C" desc,case when $3<>'completed' then sort_key end collate "C",(t->>'updatedAt') collate "C" desc,record_id collate "C") from cards),'[]'::jsonb))
+  || case when $12::timestamptz is null then '{}'::jsonb else jsonb_build_object('todaySignals',jsonb_build_object(
+    'urgentTask',exists(select 1 from filtered where t->>'status'='open' and (t->>'priority'='high' or (t ? 'dueAt' and ${dueInstant}<=$12::timestamptz))),
+    'relationshipTask',exists(select 1 from filtered where t->>'status'='open' and t->>'category'='relationship')
+  )) end end as result`;
 
 const position = z.object({ sort: z.string().min(1).max(40), updated: z.string().min(1).max(40), id: z.string().min(1).max(2048) }).strict();
+const todayTaskSignalsSchema = z.object({ urgentTask: z.boolean(), relationshipTask: z.boolean() }).strict();
 export function createTaskPageReader(input: { client: LiveRecordSqlClient; workspaceId: string; secret: string; now?: () => string }) {
-  return { async read(actorId: string, query: TaskPageQuery): Promise<TaskPageContract> {
+  async function readInternal(actorId: string, query: TaskPageQuery, todaySignalsNow?: string): Promise<TaskPageContract | TodayTaskPageResult> {
     const limit = query.limit ?? 30, scope = query.scope ?? "all", search = (query.query ?? "").trim();
     if (!actorId.trim() || actorId.length > 2048 || !["open","completed"].includes(query.status) || !["all","relationship"].includes(scope)
       || !Number.isSafeInteger(limit) || limit < 1 || limit > 50 || search.length > 240) throw Error("TASK_PAGE_INPUT_INVALID");
+    if (todaySignalsNow !== undefined && (query.status !== "open" || scope !== "all" || search !== "" || !query.dueWindow || !Number.isFinite(Date.parse(todaySignalsNow)))) throw Error("TODAY_TASK_PAGE_INPUT_INVALID");
     if (Buffer.byteLength(input.secret) < 32) throw Error("READ_CURSOR_SECRET_MISSING");
     const parsedWindow = query.dueWindow === undefined ? undefined : taskDueWindowSchema.safeParse(query.dueWindow);
     if (parsedWindow && !parsedWindow.success) throw Error("TASK_PAGE_INPUT_INVALID");
@@ -141,15 +156,28 @@ export function createTaskPageReader(input: { client: LiveRecordSqlClient; works
       if (actual.length !== expected.length || actual.toString("base64url") !== signature || !timingSafeEqual(actual,expected)) throw Error();
       after = position.parse(JSON.parse(Buffer.from(payload,"base64url").toString("utf8")));
     } catch { throw Error("TASK_PAGE_CURSOR_INVALID"); }
-    const response = await input.client.query<{result: unknown}>(SQL,[input.workspaceId,actorId,query.status,scope,search,after?.sort ?? null,after?.updated ?? null,after?.id ?? null,limit+1,dueWindow?.plannedThrough ?? null,dueWindow?.dueBefore ?? null]);
+    const response = await input.client.query<{result: unknown}>(SQL,[input.workspaceId,actorId,query.status,scope,search,after?.sort ?? null,after?.updated ?? null,after?.id ?? null,limit+1,dueWindow?.plannedThrough ?? null,dueWindow?.dueBefore ?? null,todaySignalsNow ?? null]);
     const result = z.object({ ok: z.literal(true), counts: z.object({open:z.number().int().nonnegative().safe(),completed:z.number().int().nonnegative().safe()}).strict(),
-      items:z.array(taskCardSchema.extend({position})).max(51) }).strict().parse(response.rows[0]?.result);
+      items:z.array(taskCardSchema.extend({position})).max(51), todaySignals: todayTaskSignalsSchema.optional() }).strict().parse(response.rows[0]?.result);
     const items = result.items.slice(0,limit), hasMore = result.items.length > limit, last = items.at(-1);
     const encoded = hasMore && last ? Buffer.from(JSON.stringify(last.position)).toString("base64url") : null;
-    return taskPageSchema.parse({actorId,status:query.status,scope,query:search,items:items.map(({position:_position,...card})=>card),counts:result.counts,total:result.counts[query.status],hasMore,
+    const page = taskPageSchema.parse({actorId,status:query.status,scope,query:search,items:items.map(({position:_position,...card})=>card),counts:result.counts,total:result.counts[query.status],hasMore,
       ...(dueWindow ? { dueWindow } : {}),
       nextCursor:encoded ? `${encoded}.${sign(encoded).toString("base64url")}` : null,asOf:input.now?.() ?? new Date().toISOString()});
-  }};
+    if (todaySignalsNow === undefined) return page;
+    if (!result.todaySignals) throw Error("TODAY_TASK_SIGNALS_INVALID");
+    return { ...page, todaySignals: result.todaySignals };
+  }
+  return {
+    read(actorId: string, query: TaskPageQuery): Promise<TaskPageContract> {
+      return readInternal(actorId, query);
+    },
+    async readToday(actorId: string, query: TaskPageQuery, now: string): Promise<TodayTaskPageResult> {
+      const page = await readInternal(actorId, query, now);
+      if (!("todaySignals" in page)) throw Error("TODAY_TASK_SIGNALS_INVALID");
+      return page;
+    },
+  };
 }
 
 export function createConfiguredTaskPageReader(expectedWorkspaceId?: string) {
@@ -157,5 +185,8 @@ export function createConfiguredTaskPageReader(expectedWorkspaceId?: string) {
   if (!configured) return null;
   if (expectedWorkspaceId && expectedWorkspaceId !== configured.workspaceId) throw Error("TASK_PAGE_STORAGE_UNAVAILABLE");
   const reader = createTaskPageReader({client:configured.client,workspaceId:configured.workspaceId,secret:process.env.ORBIT_READ_CURSOR_SECRET ?? process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET ?? ""});
-  return {read(actorId:string,query:TaskPageQuery){resolveSharedReadBudgetGate()?.assertAllowed({collectionName:"tasks"});return reader.read(actorId,query);}};
+  return {
+    read(actorId:string,query:TaskPageQuery){resolveSharedReadBudgetGate()?.assertAllowed({collectionName:"tasks"});return reader.read(actorId,query);},
+    readToday(actorId:string,query:TaskPageQuery,now:string){resolveSharedReadBudgetGate()?.assertAllowed({collectionName:"tasks"});return reader.readToday(actorId,query,now);},
+  };
 }

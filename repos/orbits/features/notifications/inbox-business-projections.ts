@@ -1,6 +1,7 @@
 import type { ReminderPlanDTO } from './reminder-plan-contract';
 import type { AppointmentHistoryEntry } from '../appointments/contract';
 import type { InboxNotificationUpsert } from './inbox-record-service';
+import type { OrbitIntegrationProvider } from '../integrations/contract';
 
 export function reminderPlanNotification(plan:ReminderPlanDTO,now:string):InboxNotificationUpsert|null {
   if(plan.status==='cancelled'||plan.fireAt>now)return null;
@@ -20,4 +21,12 @@ export function batchResultNotification(input:{actorId:string;batchId:string;rev
   const ready=input.status==='ready_for_review';
   const copy={zh:{title:ready?'名片处理完成，请复核':'名片导入已完成',reason:ready?`这批 ${input.count} 张名片已处理，请确认识别结果。`:`这批 ${input.count} 张名片已完成处理。`},en:{title:ready?'Cards are ready for review':'Card import completed',reason:ready?`Review the results for ${input.count} cards in this batch.`:`Processing completed for ${input.count} cards.`},ja:{title:ready?'名刺の処理結果を確認してください':'名刺の取り込みが完了しました',reason:ready?`${input.count} 枚の名刺の読み取り結果を確認してください。`:`${input.count} 枚の名刺の処理が完了しました。`}};
   return {actorId:input.actorId,semanticKey:`batch:${input.pipeline}:${input.batchId}`,kind:'update',origin:'business',...copy.zh,copy,occurredAt:input.occurredAt,sources:[{sourceKind:'batch',sourceId:input.batchId,sourceRevision:input.revision,objectId:input.pipeline,occurredAt:input.occurredAt,readAt:input.occurredAt}],target:{kind:'batch',id:input.batchId,href:`/contacts/new/${input.pipeline==='v2'?'batch2':'batch'}/${encodeURIComponent(input.batchId)}`,status:'available'},actions:['read','dismiss','handle']};
+}
+
+export function integrationExpiryNotification(input:{actorId:string;principalId:string;provider:OrbitIntegrationProvider;expiresAt:string;requiresReconnect:boolean}):InboxNotificationUpsert|null {
+  if(!input.requiresReconnect||!Number.isFinite(Date.parse(input.expiresAt)))return null;
+  const names:Record<OrbitIntegrationProvider,string>={google_calendar:'Google Calendar',gmail:'Gmail',microsoft_graph:'Microsoft'};
+  const name=names[input.provider];
+  const copy={zh:{title:`${name}需要重新连接`,reason:'授权已到期，请重新连接以恢复同步。'},en:{title:`Reconnect ${name}`,reason:'Authorization expired. Reconnect to resume syncing.'},ja:{title:`${name}の再接続が必要です`,reason:'認証の有効期限が切れました。同期を再開するには再接続してください。'}};
+  return {actorId:input.actorId,semanticKey:`connection:${input.provider}:${input.expiresAt}`,kind:'update',origin:'business',...copy.zh,copy,occurredAt:input.expiresAt,sources:[{sourceKind:'connection',sourceId:input.provider,sourceRevision:input.expiresAt,authorId:input.principalId,occurredAt:input.expiresAt,readAt:input.expiresAt}],target:{kind:'source',id:input.provider,href:'/settings',status:'available'},actions:['read','dismiss','handle']};
 }

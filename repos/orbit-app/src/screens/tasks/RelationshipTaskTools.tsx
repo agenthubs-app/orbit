@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { TaskListEntry } from "./task-list-source";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
-import { ORBIT_API_ENDPOINTS } from "../../api/endpoints";
+import { INBOX_NOTIFICATIONS_PATH, notificationInboxData } from "../../api/inbox-notifications";
 import { ErrorState } from "../../components/ErrorState";
 import { createControlStyles } from "../../design/controls";
 import { createThemedStyles } from "../../design/theme";
@@ -17,7 +17,6 @@ import { localParts } from "../../time/date-time";
 import { useContactLabels,type ContactLabel } from "../../hooks/useContactLabels";
 import { TaskContactPicker } from "./TaskContactPicker";
 import { PendingTaskSuggestions } from "./PendingTaskSuggestions";
-import { followupsToView } from "../../view-models/followups";
 import { isRelationshipTask } from "../../view-models/task-list-scope";
 
 interface RelationshipTaskToolsProps {
@@ -43,18 +42,14 @@ function RelationshipTaskToolsView({ tasks, contacts }: RelationshipTaskToolsPro
   const auth = useOrbitAuthSession(), server = useOrbitApiBaseUrl();
   const actorId = auth.actorId;
   const scopeKey = JSON.stringify([actorId, server.baseUrl]);
-  const notifications = useApiResource<unknown>(ORBIT_API_ENDPOINTS.notifications, () => false, { scopeKey, cachePolicy: "network-only" });
-  const view = followupsToView({
-    tasksPayload: {},
-    notificationsPayload: notifications.kind === "success" || notifications.kind === "empty" ? notifications.data : {},
-  }, locale.language);
+  const notifications = useApiResource<unknown>(`${INBOX_NOTIFICATIONS_PATH}?kind=reminder&limit=20`, () => false, { scopeKey, cachePolicy: "network-only" });
   const notificationData = notifications.kind === "success" || notifications.kind === "empty" ? notifications.data : null;
-  const rawReminders = typeof notificationData === "object" && notificationData !== null && "reminders" in notificationData && Array.isArray(notificationData.reminders) ? notificationData.reminders : [];
+  const reminders = actorId && notificationData ? notificationInboxData(notificationData, actorId)?.items ?? [] : [];
   const reminderDates = new Map<string, string>();
-  for (const reminder of rawReminders) {
-    if (typeof reminder !== "object" || reminder === null || typeof reminder.reminderId !== "string" || typeof reminder.dueAt !== "string" || !Number.isFinite(Date.parse(reminder.dueAt))) continue;
+  for (const reminder of reminders) {
+    if (typeof reminder.dueAt !== "string" || !Number.isFinite(Date.parse(reminder.dueAt))) continue;
     const parts = localParts(reminder.dueAt, timeZone);
-    reminderDates.set(reminder.reminderId, `${parts.date} ${parts.time}`);
+    reminderDates.set(reminder.id, `${parts.date} ${parts.time}`);
   }
   const [choosing, setChoosing] = useState(false);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
@@ -110,13 +105,13 @@ function RelationshipTaskToolsView({ tasks, contacts }: RelationshipTaskToolsPro
     {pickedId&&!picked.loading&&!picked.items.length?<View><Text accessibilityRole="alert" style={styles.error}>{locale.t("tasks.contactUnavailable")}</Text><Pressable accessibilityRole="button" onPress={picked.refresh} style={styles.button}><Text style={styles.buttonText}>{locale.language==="zh"?"重新确认联系人":locale.language==="ja"?"連絡先を再確認":"Recheck contact"}</Text></Pressable></View>:null}
     <Pressable accessibilityRole="button" onPress={() => router.push("/ai?drawer=1" as Href)} style={styles.button}><Text style={styles.buttonText}>{locale.t("relationshipTasks.viewExisting")}</Text></Pressable>
     <PendingTaskSuggestions />
-    <Text accessibilityRole="header" style={styles.heading}>{locale.t("relationshipTasks.reminderQueue", { count: notifications.kind === "success" || notifications.kind === "empty" ? ` ${view.reminders.length}` : "" })}</Text>
+    <Text accessibilityRole="header" style={styles.heading}>{locale.t("relationshipTasks.reminderQueue", { count: notifications.kind === "success" || notifications.kind === "empty" ? ` ${reminders.length}` : "" })}</Text>
     {notifications.kind === "loading" ? <Text style={styles.detail}>{locale.t("relationshipTasks.reminderLoading")}</Text> : null}
     {notifications.kind === "failure" || notifications.kind === "offline" ? <ErrorState title={locale.t("relationshipTasks.remindersUnavailable")} message={notifications.error.message} /> : null}
-    {(notifications.kind === "success" || notifications.kind === "empty") && view.reminders.length === 0 ? <Text style={styles.body}>{locale.t("relationshipTasks.emptyReminders")}</Text> : null}
-    {view.reminders.map(reminder => <View key={reminder.id} style={styles.option}>
+    {(notifications.kind === "success" || notifications.kind === "empty") && reminders.length === 0 ? <Text style={styles.body}>{locale.t("relationshipTasks.emptyReminders")}</Text> : null}
+    {reminders.map(reminder => <View key={reminder.id} style={styles.option}>
       <Text style={styles.body}>{reminder.title}</Text>
-      <Text style={styles.detail}>{[reminder.organization, reminderDates.get(reminder.id) ?? reminder.dueLabel, reminder.windowLabel, reminder.queueLabel].filter(Boolean).join(" · ")}</Text>
+      <Text style={styles.detail}>{[reminder.object?.name, reminderDates.get(reminder.id), reminder.reason].filter(Boolean).join(" · ")}</Text>
     </View>)}
     <Pressable accessibilityRole="button" onPress={notifications.refresh} disabled={notifications.refreshing} style={styles.button}><Text style={styles.buttonText}>{locale.t("relationshipTasks.refreshReminders")}</Text></Pressable>
     <Text style={styles.detail}>{locale.t("relationshipTasks.disclaimer")}</Text>

@@ -13,7 +13,7 @@ test("task day API forwards an authenticated bounded date window without changin
       reads++; assert.equal(id, "a"); assert.equal(query.limit, 5); assert.deepEqual(query.dueWindow, dueWindow);
       return { actorId: id, status: "open", scope: "all", query: "", dueWindow, items: [], total: 0, counts: { open: 0, completed: 0 },
         hasMore: false, nextCursor: null, asOf: "2026-09-25T00:00:00.000Z" } satisfies TaskPageContract;
-    } };
+    }, readToday: async () => { throw Error("unused"); } };
   } });
   const response = await handler(new Request("https://orbit.test/api/tasks/page?" + new URLSearchParams({ limit: "5", ...dueWindow })));
   assert.equal(response.status, 200); assert.equal(reads, 1); assert.deepEqual((await response.json()).data.dueWindow, dueWindow);

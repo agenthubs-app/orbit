@@ -43,8 +43,9 @@ test("contact detail screen exposes a reviewed archive action", () => {
 test("contact detail screen reads and renders relationship value analysis", () => {
   assert.match(screenSource, /relationshipValueAnalysisPath/u);
   assert.match(screenSource, /relationshipValueRecomputePath/u);
-  assert.match(screenSource, /ORBIT_API_ENDPOINTS\.connections/u);
-  assert.match(screenSource, /relationshipConnectionIdForContact/u);
+  assert.match(screenSource, /state\.data\.contact\.connectionId/u);
+  assert.doesNotMatch(screenSource, /ORBIT_API_ENDPOINTS\.connections/u);
+  assert.doesNotMatch(screenSource, /relationshipConnectionIdForContact/u);
   assert.match(screenSource, /relationshipValueToView/u);
   assert.match(screenSource, /relationshipValueState/u);
   assert.match(screenSource, /RelationshipValueCard/u);

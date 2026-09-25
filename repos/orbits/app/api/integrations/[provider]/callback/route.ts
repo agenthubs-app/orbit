@@ -4,6 +4,9 @@ import { ORBIT_INTEGRATION_PROVIDERS, type OrbitIntegrationProvider } from "../.
 import { verifyIntegrationOAuthState } from "../../../../../features/integrations/oauth-state";
 import { createConfiguredOrbitIntegrationService } from "../../../../../features/integrations/service-factory";
 import { integrationSessionBinding } from "../../../../../features/integrations/session-binding";
+import { createConfiguredInboxRuntime } from "../../../../../features/notifications/inbox-record-service-factory";
+import { integrationExpiryNotification } from "../../../../../features/notifications/inbox-business-projections";
+import { resolveAuthenticatedApiActorFromSession } from "../../../_shared/authenticated-actor";
 
 interface Context {
   params: Promise<{ provider: string }>;
@@ -43,6 +46,11 @@ export async function GET(
     .slice(1)
     .join("=");
   const secret = process.env.ORBIT_INTEGRATION_STATE_SECRET?.trim();
+  const actor = await resolveAuthenticatedApiActorFromSession({
+    email: session.user.email,
+    name: session.user.name,
+    userId: session.user.id,
+  });
   const service = createConfiguredOrbitIntegrationService({
     actorId: session.user.id,
   });
@@ -53,6 +61,7 @@ export async function GET(
     !stateCookie ||
     stateCookie !== state ||
     !secret ||
+    !actor ||
     !service ||
     !verifyIntegrationOAuthState({
       state,
@@ -98,6 +107,27 @@ export async function GET(
       code,
       now,
     });
+    const authorization = (await service.listAuthorizations(now)).find(
+      (item) => item.provider === selected,
+    );
+    if (authorization?.expiresAt) {
+      const afterExpiry = new Date(Date.parse(authorization.expiresAt) + 1).toISOString();
+      const requiresReconnect = (await service.listAuthorizations(afterExpiry)).find(
+        (item) => item.provider === selected,
+      )?.status === "expired";
+      const notification = integrationExpiryNotification({
+        actorId: actor.id,
+        principalId: actor.userId,
+        provider: selected,
+        expiresAt: authorization.expiresAt,
+        requiresReconnect,
+      });
+      if (notification) {
+        const inbox = createConfiguredInboxRuntime();
+        if (!inbox) throw new Error("Notification storage is unavailable.");
+        await inbox.service.upsert(notification);
+      }
+    }
     const response = NextResponse.redirect(
       new URL("/app/agent/actions?integration=connected", request.url),
     );

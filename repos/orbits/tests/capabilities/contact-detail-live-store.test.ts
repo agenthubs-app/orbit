@@ -327,6 +327,7 @@ test("canonical connection stages are authoritative even without markers and rej
   const before = await service.getContactDetail({ actorId, contactId });
   assert.equal(before.success, true);
   if (!before.success || !before.data.contact) throw new Error("Missing canonical contact");
+  assert.equal(before.data.contact.connectionId, "connection:legacy-canonical");
   assert.equal(before.data.contact.status, "active");
   assert.equal(before.data.contact.updatedAt, base.updatedAt);
 

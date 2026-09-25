@@ -13,9 +13,8 @@
  * 移动到分组 · 删除→二次确认）/ 新对话 全部保留在这个结构里，逐条记偏差。删除二次
  * 确认对话框与 toast 由壳挂载（`AgentHistoryDeleteDialog` / `.nc-toast`）。
  *
- * 「加载更多」是**客户端逐段展开**，不是懒加载分页（审阅修订 11）：会话列表在
- * `use-agent-history` 里已经把所有 cursor 页抽干，置顶优先排序与分组计数都是对全集
- * 做的，改成懒加载会让后面几页的置顶会话排不到顶、分组计数出错。
+ * 会话行以服务端 cursor 顺序逐页读取；抽屉只请求当前页，显式“加载更多”才取下一页。
+ * 服务器在每一页边界完成置顶/时间排序与分组、搜索过滤，客户端只逐段显示已取到的行。
  *
  * a11y 走统一口径（计划陷阱 10）：`useOrbitModalA11y` + `role="dialog"` +
  * `aria-modal` + `ORBIT_Z.modal`，不手写 keydown 陷阱。设计 788 的 `z-index:100`
@@ -23,7 +22,7 @@
  */
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type { AiSessionGroupContract } from "../../../../../shared/contract/ai-sessions";
 import { useOrbitLanguage } from "../../orbit-language-context";
@@ -42,6 +41,9 @@ export interface IOrbitHistoryDrawerProps {
   groupMutationPending: boolean;
   groups: readonly AiSessionGroupContract[];
   history: readonly OrbitAgentHistoryView[];
+  historyHasMore: boolean;
+  historyLoading: boolean;
+  historyQuery: string;
   language: AgentHistoryLanguage;
   onClose: () => void;
   onCreateGroup: (name: string) => void;
@@ -49,11 +51,13 @@ export interface IOrbitHistoryDrawerProps {
   onDeleteGroup: (group: AiSessionGroupContract) => void;
   onFilterGroup: (groupId: string | null) => void;
   onMove: (history: OrbitAgentHistoryView, groupId: string | null) => void;
+  onLoadMore: () => void;
   onNewChat: () => void;
   onNewInGroup: (groupId: string) => void;
   onPick: (history: OrbitAgentHistoryView) => void;
   onRename: (history: OrbitAgentHistoryView, title: string) => void;
   onRenameGroup: (group: AiSessionGroupContract, name: string) => void;
+  onSearch: (query: string) => void;
   onTogglePin: (history: OrbitAgentHistoryView) => void;
   pendingSessionId: string | null;
   selectedGroupId: string | null;
@@ -65,6 +69,9 @@ export function IOrbitHistoryDrawer({
   groupMutationPending,
   groups,
   history,
+  historyHasMore,
+  historyLoading,
+  historyQuery,
   language,
   onClose,
   onCreateGroup,
@@ -72,11 +79,13 @@ export function IOrbitHistoryDrawer({
   onDeleteGroup,
   onFilterGroup,
   onMove,
+  onLoadMore,
   onNewChat,
   onNewInGroup,
   onPick,
   onRename,
   onRenameGroup,
+  onSearch,
   onTogglePin,
   pendingSessionId,
   selectedGroupId,
@@ -84,17 +93,29 @@ export function IOrbitHistoryDrawer({
   const { t } = useOrbitLanguage();
   const panelRef = useOrbitModalA11y(onClose);
   const [revealed, setRevealed] = useState(IORBIT_HISTORY_REVEAL_STEP);
+  const [searchDraft, setSearchDraft] = useState(historyQuery);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renamingTitle, setRenamingTitle] = useState("");
+  // Server-side search is intentionally debounced so typing does not issue a DB query per key.
+  useEffect(() => {
+    setSearchDraft(historyQuery);
+  }, [historyQuery]);
+
+  useEffect(() => {
+    if (searchDraft === historyQuery) return undefined;
+    const timer = window.setTimeout(() => onSearch(searchDraft.trim()), 250);
+    return () => window.clearTimeout(timer);
+  }, [historyQuery, onSearch, searchDraft]);
 
   // 换一个分组筛选就是换一份列表，展开量跟着回到第一段。
   useEffect(() => {
     setRevealed(IORBIT_HISTORY_REVEAL_STEP);
-  }, [selectedGroupId]);
+  }, [historyQuery, selectedGroupId]);
 
   const visible = history.slice(0, revealed);
-  const hasMore = history.length > visible.length;
+  const hasMoreLocally = history.length > visible.length;
+  const hasMore = hasMoreLocally || historyHasMore;
 
   const startRename = (item: OrbitAgentHistoryView) => {
     setMenuOpenId(null);
@@ -179,6 +200,16 @@ export function IOrbitHistoryDrawer({
 
         {/* 793 */}
         <span className="ir-drawer-eyebrow">{t({ en: "Recent conversations", zh: "最近的对话" })}</span>
+
+        <input
+          aria-label={t({ en: "Search conversations", zh: "搜索对话" })}
+          data-orbit-agent-history-search
+          maxLength={240}
+          onChange={(event) => setSearchDraft(event.target.value)}
+          placeholder={t({ en: "Search conversations", zh: "搜索对话" })}
+          type="search"
+          value={searchDraft}
+        />
 
         {/* 794–802。`role="list"`/`"listitem"` 是设计外的既有 a11y 保障（旧侧栏有，
             `core-product-ux-optimizations.test.ts` 的「long result surfaces」用例钉着它）：
@@ -376,19 +407,28 @@ export function IOrbitHistoryDrawer({
 
         {history.length === 0 ? (
           <span className="ir-drawer-empty">
-            {t({ en: "No conversations yet.", zh: "还没有对话记录。" })}
+            {historyLoading
+              ? t({ en: "Loading…", zh: "加载中…" })
+              : t({ en: "No conversations yet.", zh: "还没有对话记录。" })}
           </span>
         ) : null}
 
-        {/* 803：客户端逐段展开（审阅修订 11），列表本身已经抽干 */}
+        {/* Expand the current page first; fetch a new cursor only after its rows are revealed. */}
         {hasMore ? (
           <button
             className="btn ir-drawer-more"
             data-orbit-agent-history-reveal-more
-            onClick={() => setRevealed((count) => count + IORBIT_HISTORY_REVEAL_STEP)}
+            disabled={historyLoading}
+            onClick={() => {
+              const nextRevealed = revealed + IORBIT_HISTORY_REVEAL_STEP;
+              setRevealed(nextRevealed);
+              if (!hasMoreLocally || (historyHasMore && nextRevealed >= history.length)) onLoadMore();
+            }}
             type="button"
           >
-            {t({ en: "Load more history ⌄", zh: "加载更多历史记录 ⌄" })}
+            {historyLoading
+              ? t({ en: "Loading…", zh: "加载中…" })
+              : t({ en: "Load more history ⌄", zh: "加载更多历史记录 ⌄" })}
           </button>
         ) : null}
       </div>

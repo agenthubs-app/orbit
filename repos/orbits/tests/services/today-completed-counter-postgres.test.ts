@@ -9,6 +9,7 @@ import { createTaskService } from '../../features/tasks/service';
 import { createTaskRepository } from '../../features/tasks/repository';
 import { createTaskSuggestionService } from '../../features/tasks/suggestion-service';
 import { createTaskSuggestionRepository } from '../../features/tasks/suggestion-repository';
+import { createTaskPageReader } from '../../features/tasks/task-page';
 import { createPostgresLiveRecordStore } from '../../shared/storage/postgres-live-record-store';
 import { ORBIT_RECORDS_SCHEMA_SQL } from '../../shared/storage/migrations';
 
@@ -85,11 +86,12 @@ test('Today completion count preserves owned historical facts, timezone boundari
     assert.equal(await counter.count({ actorId: 'a', now: at, timeZone: 'Asia/Tokyo' }), baseline);
     assert.equal(bytes, beforeBytes); assert.equal(queries, 1);
     console.log(JSON.stringify({ metric: 'today_completed_count', tasks: 10000 + timestamps.length + 16, bytes, queries, legacyBytes }));
-    const today = createTodayService({ taskService: { ...taskService, async list() { return []; }, async history() { throw Error('History body download forbidden'); } }, completedCounter: counter,
+    const taskPageReader = createTaskPageReader({ client: measured, workspaceId: 'w', secret: 'local-test-secret-'.repeat(4) });
+    const today = createTodayService({ taskPageReader, completedCounter: counter,
       suggestionService: createTaskSuggestionService({ taskService, repository: createTaskSuggestionRepository({ store, workspaceId: 'w' }) }), scheduleProvider: { async list() { return []; } } });
     const response = await createTodayGetHandler({ resolveActor: async () => ({ id: 'a' }), now: () => at, service: today })(new Request('http://localhost/api/today?timeZone=Asia%2FTokyo'));
-    assert.equal(response.status, 200); const body = await response.json(); assert.equal(body.data.completedCount, baseline); assert.equal(body.data.summary.completedCount, baseline);
-    const fail = createTodayService({ taskService: { ...taskService, async list() { return []; } }, completedCounter: { async count() { throw Error('Database unavailable'); } },
+    assert.equal(response.status, 200); const body = await response.json(); assert.equal(body.data.taskMode, 'page'); assert.equal(body.data.completedCount, baseline); assert.equal(body.data.summary.completedCount, baseline);
+    const fail = createTodayService({ taskPageReader, completedCounter: { async count() { throw Error('Database unavailable'); } },
       suggestionService: createTaskSuggestionService({ taskService, repository: createTaskSuggestionRepository({ store, workspaceId: 'w' }) }), scheduleProvider: { async list() { return []; } } });
     const unavailable = await createTodayGetHandler({ resolveActor: async () => ({ id: 'a' }), now: () => at, service: fail })(new Request('http://localhost/api/today'));
     assert.equal(unavailable.status, 503);

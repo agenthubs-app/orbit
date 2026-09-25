@@ -37,7 +37,6 @@ test('canonical lifecycle and participant consumers are registered without offli
     ['src/screens/tasks/RelationshipLifecycleList.tsx', 'GET', '/api/relationship-tasks/page', 'tasks'],
     ['src/screens/tasks/RelationshipLifecycleScreen.tsx', 'GET', '/api/connections/:id/lifecycle', 'connections'],
     ['src/screens/tasks/RelationshipLifecycleScreen.tsx', 'POST', '/api/connections/:id/lifecycle', 'connections'],
-    ['src/view-models/relationship-initialization.ts', 'GET', '/api/connections', 'connections'],
     ['src/view-models/relationship-initialization.ts', 'GET', '/api/connections/:id/lifecycle', 'connections'],
     ['src/view-models/relationship-initialization.ts', 'GET', '/api/contacts/:id/relationship-initialization', 'contacts'],
     ['src/view-models/relationship-initialization.ts', 'POST', '/api/contacts/:id/relationship-initialization', 'contacts'],
@@ -147,14 +146,11 @@ test('the actual native consumers all have explicit versioned policies', async (
     'src/screens/inbox/RelationshipInboxScreen.tsx POST /api/relationship-communication/conversations/:id/read',
     'src/screens/inbox/RelationshipInboxScreen.tsx GET /api/chat/privacy',
     'src/screens/inbox/RelationshipInboxScreen.tsx PATCH /api/agent/signals/:id',
-    'src/screens/inbox/RelationshipInboxScreen.tsx POST /api/notifications/:id/state',
     'src/screens/inbox/RelationshipInboxScreen.tsx POST /api/chat/privacy/analysis-toggle',
     'src/screens/inbox/RelationshipInboxScreen.tsx POST /api/chat/relationship-inbox',
     'src/screens/inbox/RelationshipInboxScreen.tsx POST /api/relationship-communication/conversations/:id/messages',
-    'src/screens/inbox/RelationshipInboxScreen.tsx POST /api/relationship-signals/:id/confirm',
     'src/screens/inbox/useNotificationInbox.ts GET /api/inbox/notifications',
     'src/screens/inbox/useNotificationInbox.ts POST /api/inbox/notifications/read',
-    'src/api/inbox-badge-resource.ts GET /api/inbox/notifications',
     'src/api/inbox-summary.ts GET /api/inbox/summary',
     'src/hooks/useContactCardPages.ts GET /api/contacts/page',
     'src/hooks/useContactCardPages.ts GET /api/contacts/summary',
@@ -171,7 +167,7 @@ test('the actual native consumers all have explicit versioned policies', async (
 });
 
 test('bounded private pages and badge summaries stay network-only until permission invalidation is proven', () => {
-  for(const path of ['/api/contacts/page','/api/contacts/summary','/api/inbox/summary','/api/notifications/unread-summary','/api/relationship-communication/unread-summary','/api/relationship-communication/conversation-summaries','/api/relationship-communication/conversations/c/messages']) {
+  for(const path of ['/api/contacts/page','/api/contacts/summary','/api/inbox/summary','/api/relationship-communication/conversation-summaries','/api/relationship-communication/conversations/c/messages']) {
     assert.equal(resolveReadSurface('GET',path).readPersistence,'online_only_secret');
     assert.equal(resolveReadSurface('GET',path).binaryPolicy,'never_local');
   }
@@ -366,7 +362,7 @@ test('reads and mutations on one endpoint remain separate registered surfaces', 
   assert.equal(mutation.mutationPolicy, 'online_only');
   assert.equal(resolveReadSurface('GET', '/api/inbox/discovery/preferences').domainId, 'notification-discovery');
   assert.equal(resolveReadSurface('GET', '/api/chat/privacy?conversationId=c1').domainId, 'chat-privacy');
-  assert.equal(resolveReadSurface('POST', '/api/notifications/n1/state').domainId, 'message-read-state');
+  assert.equal(resolveReadSurface('POST', '/api/inbox/notifications/n1/actions').domainId, 'notifications');
   assert.equal(resolveReadSurface('POST', '/api/relationship-communication/conversations/c1/read').domainId, 'message-read-state');
 });
 

@@ -9,6 +9,7 @@ export const contactDetailReadSchema = z.object({
   state: z.literal("success"),
   contact: z.object({
     id: z.string().trim().min(1),
+    connectionId: z.string().trim().min(1).optional(),
     displayName: z.string().trim().min(1),
     role: z.string(), organization: z.string(), location: z.string(),
     primaryEmail: z.string().optional(),

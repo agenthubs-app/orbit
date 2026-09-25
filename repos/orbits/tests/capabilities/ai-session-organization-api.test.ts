@@ -75,20 +75,20 @@ test("organization APIs create groups, patch sessions, filter, search, and pagin
   assert.equal(patched.pinned, true);
 
   const searchResponse = await sessions.GET(
-    request("/api/ai/conversations/sessions?v=2&q=needle&groupId=group%3Aalpha&pinned=true"),
+    request("/api/ai/conversations/sessions?q=needle&groupId=group%3Aalpha&pinned=true"),
   );
   const search = (await searchResponse.json()).data;
   assert.deepEqual(search.items.map((item: { id: string }) => item.id), ["session:54"]);
   assert.equal(search.nextCursor, null);
 
   const firstResponse = await sessions.GET(
-    request("/api/ai/conversations/sessions?v=2&limit=50"),
+    request("/api/ai/conversations/sessions?limit=50"),
   );
   const first = (await firstResponse.json()).data;
   assert.equal(first.items.length, 50);
   assert.equal(typeof first.nextCursor, "string");
   const secondResponse = await sessions.GET(
-    request(`/api/ai/conversations/sessions?v=2&limit=50&cursor=${encodeURIComponent(first.nextCursor)}`),
+    request(`/api/ai/conversations/sessions?limit=50&cursor=${encodeURIComponent(first.nextCursor)}`),
   );
   const second = (await secondResponse.json()).data;
   assert.equal(second.items.length, 5);
@@ -170,7 +170,7 @@ test("organization APIs hide another actor's groups and sessions", async () => {
   const sessionItems = createOrbitAgentChatSessionHandlers(dependencies);
 
   assert.deepEqual((await (await groups.GET(request("/api/ai/conversations/groups"))).json()).data.groups, []);
-  assert.deepEqual((await (await sessions.GET(request("/api/ai/conversations/sessions?v=2"))).json()).data.items, []);
+  assert.deepEqual((await (await sessions.GET(request("/api/ai/conversations/sessions"))).json()).data.items, []);
   const patchResponse = await sessionItems.PATCH(
     request("/api/ai/conversations/sessions/session%3Aprivate", "PATCH", {
       expectedRevision: 0,

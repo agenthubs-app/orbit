@@ -1,8 +1,5 @@
 import type { OrbitApiClient } from "./client";
-import { readUnifiedInboxCount, type InboxSummaryCapability } from "./inbox-summary";
-import { readRelationshipUnreadCount, type RelationshipUnreadCapability } from "./relationship-unread-summary";
-import { readLegacyNotificationUnreadCount, type LegacyUnreadCapability } from "./legacy-notification-unread-summary";
-import { INBOX_NOTIFICATIONS_PATH, notificationInboxData } from "./inbox-notifications";
+import { readUnifiedInboxCount } from "./inbox-summary";
 import { MESSAGE_STATE_FOREGROUND_REFRESH_MS, subscribeMessageStateInvalidation } from "./message-state";
 
 type Listener = (count: number | undefined) => void;
@@ -23,9 +20,6 @@ export function subscribeInboxBadge(input: {
   let entry = activeResources.get(input.scope);
   const joining = Boolean(entry);
   if (!entry) {
-    const summaryCapability: InboxSummaryCapability = {};
-    const messagesCapability: RelationshipUnreadCapability = {};
-    const legacyCapability: LegacyUnreadCapability = {};
     let queued = false, failures = 0, nextAttemptAt = 0;
     let deadline: ReturnType<typeof setTimeout> | undefined;
     const created: Entry = {
@@ -55,20 +49,10 @@ export function subscribeInboxBadge(input: {
         void (async () => {
           let healthy = false;
           try {
-            const summary = await readUnifiedInboxCount({ client: input.client, actorId: input.actorId, signal: controller.signal, capability: summaryCapability });
+            const summary = await readUnifiedInboxCount({ client: input.client, actorId: input.actorId, signal: controller.signal });
             if (!current()) return;
-            if (summary.kind === "count") { healthy = summary.count !== undefined; publish(summary.count); return; }
-            // Compatibility only after a confirmed missing endpoint.
-            const data: { messages?: number | undefined; legacy?: number | undefined; typed?: ReturnType<typeof notificationInboxData> } = {};
-            const emit = () => publish((data.messages ?? 0) + (data.typed?.enabled ? data.typed.unreadCount : data.typed?.enabled === false ? data.legacy ?? 0 : 0));
-            await Promise.all([
-              readRelationshipUnreadCount({ client: input.client, actorId: input.actorId, signal: controller.signal, capability: messagesCapability }).then(count => { data.messages = count; emit(); }),
-              readLegacyNotificationUnreadCount({ client: input.client, actorId: input.actorId, signal: controller.signal, capability: legacyCapability }).then(count => { data.legacy = count; emit(); }),
-              input.client.get<unknown>(`${INBOX_NOTIFICATIONS_PATH}?limit=1`, { signal: controller.signal })
-                .then(result => { data.typed = result.success && result.status >= 200 && result.status < 300 ? notificationInboxData(result.data, input.actorId) : null; emit(); })
-                .catch(() => { data.typed = null; emit(); }),
-            ]);
-            healthy = data.messages !== undefined && Boolean(data.typed) && (data.typed?.enabled === true || data.legacy !== undefined);
+            healthy = summary.count !== undefined;
+            publish(summary.count);
           } catch { publish(undefined); }
           finally {
             if (current()) {

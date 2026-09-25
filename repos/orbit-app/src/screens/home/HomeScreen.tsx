@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { type Href, useRouter } from "expo-router";
-import { Fragment, useMemo, useState } from "react";
+import { useState } from "react";
 import {
   ImageBackground,
   Pressable,
@@ -13,7 +13,6 @@ import {
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { ORBIT_API_ENDPOINTS } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
-import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
@@ -28,18 +27,10 @@ import {
   type EventDiscoveryStatusFilter
 } from "../../view-models/events";
 import {
-  homeFilteredEvents,
-  homeToView,
-  type HomeEntryView,
+  homeEventsToView,
   type HomeEventFilter,
-  type HomeEventView,
-  type HomePipelineItemView,
-  type HomeProfileGroupView,
-  type HomeProfilePanelView,
-  type HomeView
+  type HomeEventView
 } from "../../view-models/home";
-
-type HomeMode = "events" | "hub";
 
 const filterLabels: Record<HomeEventFilter, string> = {
   active: "进行中",
@@ -54,12 +45,6 @@ const homeEventFilterOrder: HomeEventFilter[] = [
   "active",
   "ended"
 ];
-
-const homeAskPrompts = [
-  { entryPointId: "home.contact_priority", message: "今天我应该先联系谁？" },
-  { entryPointId: "home.event_preparation", message: "帮我准备最近一场活动" },
-  { entryPointId: "home.introductions", message: "有哪些人适合互相介绍？" }
-] as const;
 
 function isReady(
   state: ReturnType<typeof useApiResource<unknown>>
@@ -85,326 +70,71 @@ function homeEventDateChip(startsAt: string): { date: string; detail: string } {
   };
 }
 
-export function HomeScreen({ mode = "hub" }: { mode?: HomeMode }) {
+export function HomeScreen() {
   const { colors } = useOrbitTheme();
   const router = useRouter();
   const { baseUrl } = useOrbitApiBaseUrl();
   const [filter, setFilter] = useState<HomeEventFilter>("all");
   const [eventQuery, setEventQuery] = useState("");
   const [eventTopicFilter, setEventTopicFilter] = useState("");
-  const profileState = useApiResource<unknown>(
-    ORBIT_API_ENDPOINTS.profile,
-    () => false
-  );
   const eventsState = useApiResource<unknown>(
     ORBIT_API_ENDPOINTS.publicEvents,
     () => false
   );
-  const contactsState = useApiResource<unknown>(
-    ORBIT_API_ENDPOINTS.contacts,
-    () => false
-  );
-  const view = useMemo(() => {
-    if (!isReady(profileState) || !isReady(eventsState) || !isReady(contactsState)) {
-      return null;
-    }
-
-    return homeToView({
-      contacts: contactsState.data,
-      events: eventsState.data,
-      profile: profileState.data
-    });
-  }, [contactsState, eventsState, profileState]);
-
-  function refreshAll() {
-    profileState.refresh();
-    eventsState.refresh();
-    contactsState.refresh();
-  }
-
-  const loading =
-    profileState.kind === "loading" ||
-    eventsState.kind === "loading" ||
-    contactsState.kind === "loading";
-  const offline =
-    profileState.kind === "offline"
-      ? profileState.error.message
-      : eventsState.kind === "offline"
-        ? eventsState.error.message
-        : contactsState.kind === "offline"
-          ? contactsState.error.message
-          : null;
-  const failure =
-    profileState.kind === "failure"
-      ? profileState.error.message
-      : eventsState.kind === "failure"
-        ? eventsState.error.message
-        : contactsState.kind === "failure"
-          ? contactsState.error.message
-          : null;
+  const events = isReady(eventsState)
+    ? homeEventsToView({ events: eventsState.data })
+    : null;
 
   return (
     <AppScreen
-      {...(mode === "events" ? {} : { eyebrow: "个人首页" })}
       refreshControl={
         <RefreshControl
-          onRefresh={refreshAll}
-          refreshing={
-            profileState.refreshing ||
-            eventsState.refreshing ||
-            contactsState.refreshing
-          }
+          onRefresh={eventsState.refresh}
+          refreshing={eventsState.refreshing}
           tintColor={colors.accent}
         />
       }
-      title={mode === "events" ? "我的活动" : "首页"}
+      title="我的活动"
     >
-      {loading ? <LoadingState /> : null}
-      {offline ? <ErrorState message={offline} title="服务器连不上" /> : null}
-      {failure ? <ErrorState message={failure} title="首页不可用" /> : null}
-      {view ? (
-        mode === "events" ? (
-          <HomeEventsContent
-            baseUrl={baseUrl}
-            eventQuery={eventQuery}
-            eventTopicFilter={eventTopicFilter}
-            filter={filter}
-            onEventQueryChange={setEventQuery}
-            onEventTopicFilterChange={setEventTopicFilter}
-            onFilterChange={setFilter}
-            onOpenEvent={(eventId) =>
-              router.push(`/events/${encodeURIComponent(eventId)}` as Href)
-            }
-            view={view}
-          />
-        ) : (
-          <HomeHubContent
-            baseUrl={baseUrl}
-            onAskOrbit={(message, entryPointId) =>
-              router.push({
-                params: { id: "new", initialMessage: message, entryPointId },
-                pathname: "/ai/[id]"
-              })
-            }
-            onOpenEntry={(href) => router.push(href as Href)}
-            onOpenEvent={(eventId) =>
-              router.push(`/events/${encodeURIComponent(eventId)}` as Href)
-            }
-            onOpenEvents={() => router.push("/home/events" as Href)}
-            view={view}
-          />
-        )
+      {eventsState.kind === "loading" ? <LoadingState /> : null}
+      {eventsState.kind === "offline" ? (
+        <ErrorState message={eventsState.error.message} title="服务器连不上" />
+      ) : null}
+      {eventsState.kind === "failure" ? (
+        <ErrorState message={eventsState.error.message} title="首页不可用" />
+      ) : null}
+      {events ? (
+        <HomeEventsContent
+          baseUrl={baseUrl}
+          events={events}
+          eventQuery={eventQuery}
+          eventTopicFilter={eventTopicFilter}
+          filter={filter}
+          onEventQueryChange={setEventQuery}
+          onEventTopicFilterChange={setEventTopicFilter}
+          onFilterChange={setFilter}
+          onOpenEvent={(eventId) =>
+            router.push(`/events/${encodeURIComponent(eventId)}` as Href)
+          }
+        />
       ) : null}
     </AppScreen>
   );
 }
 
-function HomeHubContent({
-  baseUrl,
-  onAskOrbit,
-  onOpenEntry,
-  onOpenEvent,
-  onOpenEvents,
-  view
-}: {
-  baseUrl: string;
-  onAskOrbit: (message: string, entryPointId: string) => void;
-  onOpenEntry: (href: HomeEntryView["href"]) => void;
-  onOpenEvent: (eventId: string) => void;
-  onOpenEvents: () => void;
-  view: HomeView;
-}) {
-  const { colors, styles } = useStyles();
-  const previewEvents = view.events.slice(0, view.layout.secondaryEventLimit);
-  const [askDraft, setAskDraft] = useState("");
-  const [askError, setAskError] = useState<string | null>(null);
-
-  function submitAsk(message: string, entryPointId = "ai.home") {
-    const trimmed = message.trim();
-
-    if (!trimmed) {
-      setAskError("先输入你想让 Orbit AI 判断的问题。");
-      return;
-    }
-
-    setAskError(null);
-    setAskDraft("");
-    onAskOrbit(trimmed, entryPointId);
-  }
-
-  return (
-    <>
-      <View style={[styles.homeHero, { minHeight: view.layout.aiMinHeight }]}>
-        <View style={styles.heroHeader}>
-          <View style={styles.heroAiIcon}>
-            <Ionicons color={colors.accent} name="sparkles-outline" size={22} />
-          </View>
-          <View style={styles.heroTextBlock}>
-            <Text style={styles.heroEyebrow}>Ask Orbit AI</Text>
-            <Text style={styles.heroTitle}>
-              {view.assistant.title}
-            </Text>
-          </View>
-        </View>
-        <View style={styles.askComposer}>
-          <TextInput
-            multiline
-            onChangeText={setAskDraft}
-            placeholder={view.assistant.placeholder}
-            placeholderTextColor={colors.text4}
-            style={[
-              styles.askInput,
-              { minHeight: view.layout.askInputMinHeight }
-            ]}
-            value={askDraft}
-          />
-          <Pressable
-            accessibilityLabel="发送给 iOrbit"
-            accessibilityRole="button"
-            onPress={() => submitAsk(askDraft)}
-            style={({ pressed }) => [
-              styles.askSendButton,
-              pressed ? styles.pressed : null
-            ]}
-          >
-            <Ionicons color={colors.onAccent} name="send" size={18} />
-          </Pressable>
-        </View>
-        {askError ? <Text style={styles.errorText}>{askError}</Text> : null}
-        <View style={styles.promptChips}>
-          {homeAskPrompts.map((prompt) => (
-            <Pressable
-              accessibilityRole="button"
-              key={prompt.entryPointId}
-              onPress={() => submitAsk(prompt.message, prompt.entryPointId)}
-              style={({ pressed }) => [
-                styles.promptChip,
-                pressed ? styles.pressed : null
-              ]}
-            >
-              <Text style={styles.promptChipText}>{prompt.message}</Text>
-            </Pressable>
-          ))}
-        </View>
-        <PipelineRail items={view.pipeline} />
-      </View>
-
-      <HomeProfilePanel
-        onPress={() => onOpenEntry("/profile")}
-        panel={view.profilePanel}
-      />
-
-      <View style={styles.sectionBlock}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>常用入口</Text>
-          <Text style={styles.sectionHint}>需要直接处理时再打开</Text>
-        </View>
-        <View style={styles.entryGrid}>
-          {view.entries.map((entry) => (
-            <EntryTile
-              entry={entry}
-              key={entry.href}
-              onPress={onOpenEntry}
-              variant={view.layout.entryVariant}
-            />
-          ))}
-        </View>
-      </View>
-
-      <View style={styles.sectionBlock}>
-        <View style={styles.sectionHeader}>
-          <View style={styles.sectionTitleBlock}>
-            <Text style={styles.sectionTitle}>我的活动</Text>
-            <Text style={styles.sectionHint}>挑一场需要准备的活动</Text>
-          </View>
-          <Pressable
-            accessibilityRole="button"
-            onPress={onOpenEvents}
-            style={({ pressed }) => [
-              styles.textIconButton,
-              pressed ? styles.pressed : null
-            ]}
-          >
-            <Text style={styles.textIconButtonText}>全部</Text>
-            <Ionicons color={colors.accent} name="chevron-forward" size={16} />
-          </Pressable>
-        </View>
-        {previewEvents.length > 0 ? (
-          <EventImageList
-            baseUrl={baseUrl}
-            events={previewEvents}
-            onPress={onOpenEvent}
-          />
-        ) : (
-          <EmptyState message="报名过的活动会出现在这里。" title="暂无活动" />
-        )}
-      </View>
-    </>
-  );
-}
-
-function HomeProfilePanel({
-  onPress,
-  panel
-}: {
-  onPress: () => void;
-  panel: HomeProfilePanelView;
-}) {
-  const { styles } = useStyles();
-  return (
-    <DataCard detail={panel.goal} onPress={onPress} title={panel.title}>
-      {panel.bio ? <Text style={styles.profileBio}>{panel.bio}</Text> : null}
-      {panel.facts.length > 0 ? (
-        <View style={styles.profileFactGrid}>
-          {panel.facts.map((fact) => (
-            <View key={fact.label} style={styles.profileFact}>
-              <Text style={styles.profileFactLabel}>{fact.label}</Text>
-              <Text style={styles.profileFactValue}>
-                {fact.value}
-              </Text>
-            </View>
-          ))}
-        </View>
-      ) : null}
-      {panel.groups.length > 0 ? (
-        <View style={styles.profileGroupStack}>
-          {panel.groups.map((group) => (
-            <HomeProfileGroup group={group} key={group.title} />
-          ))}
-        </View>
-      ) : null}
-    </DataCard>
-  );
-}
-
-function HomeProfileGroup({ group }: { group: HomeProfileGroupView }) {
-  const { styles } = useStyles();
-  return (
-    <View style={styles.profileGroup}>
-      <Text style={styles.profileGroupTitle}>{group.title}</Text>
-      <View style={styles.profileChipRow}>
-        {group.items.slice(0, 5).map((item) => (
-          <Text key={item} style={styles.profileChip}>
-            {item}
-          </Text>
-        ))}
-      </View>
-    </View>
-  );
-}
-
 function HomeEventsContent({
   baseUrl,
+  events,
   eventQuery,
   eventTopicFilter,
   filter,
   onEventQueryChange,
   onEventTopicFilterChange,
   onFilterChange,
-  onOpenEvent,
-  view
+  onOpenEvent
 }: {
   baseUrl: string;
+  events: HomeEventView[];
   eventQuery: string;
   eventTopicFilter: string;
   filter: HomeEventFilter;
@@ -412,19 +142,18 @@ function HomeEventsContent({
   onEventTopicFilterChange: (topic: string) => void;
   onFilterChange: (filter: HomeEventFilter) => void;
   onOpenEvent: (eventId: string) => void;
-  view: HomeView;
 }) {
-  const filteredEvents = filterEventSummaries(view.events, {
+  const filteredEvents = filterEventSummaries(events, {
     query: eventQuery,
     status: filter,
     topic: eventTopicFilter
   });
-  const discoveryTopics = eventDiscoveryTopics(view.events);
-  const discoveryCounts = eventDiscoveryFilterCounts(view.events);
+  const discoveryTopics = eventDiscoveryTopics(events);
+  const discoveryCounts = eventDiscoveryFilterCounts(events);
   const resultLabel =
-    filteredEvents.length === view.events.length
-      ? `${view.events.length} 场活动`
-      : `${filteredEvents.length} / ${view.events.length} 场活动`;
+    filteredEvents.length === events.length
+      ? `${events.length} 场活动`
+      : `${filteredEvents.length} / ${events.length} 场活动`;
 
   return (
     <>
@@ -434,10 +163,10 @@ function HomeEventsContent({
           events={filteredEvents}
           onPress={onOpenEvent}
         />
-      ) : view.events.length === 0 ? (
+      ) : events.length === 0 ? (
         <EmptyState message="报名过的活动会出现在这里。" title="暂无活动" />
       ) : null}
-      {view.events.length > 0 ? (
+      {events.length > 0 ? (
         <HomeEventDiscoveryControls
           counts={discoveryCounts}
           filter={filter}
@@ -450,7 +179,7 @@ function HomeEventsContent({
           topics={discoveryTopics}
         />
       ) : null}
-      {view.events.length > 0 && filteredEvents.length === 0 ? (
+      {events.length > 0 && filteredEvents.length === 0 ? (
         <EmptyState
           message="换个关键词，或清掉状态和主题筛选。"
           title="没有匹配的活动"
@@ -677,197 +406,7 @@ function EventImageCard({
   );
 }
 
-function PipelineRail({ items }: { items: HomePipelineItemView[] }) {
-  const { styles } = useStyles();
-  return (
-    <View style={styles.pipelineRail}>
-      {items.map((item, index) => (
-        <Fragment key={item.label}>
-          {index > 0 ? <View style={styles.pipelineDivider} /> : null}
-          <PipelineCell item={item} />
-        </Fragment>
-      ))}
-    </View>
-  );
-}
-
-function PipelineCell({ item }: { item: HomePipelineItemView }) {
-  const { styles } = useStyles();
-  const textStyle =
-    item.tone === "live"
-      ? styles.pipelineValueLive
-      : item.tone === "sky"
-        ? styles.pipelineValueSky
-        : styles.pipelineValueAccent;
-
-  return (
-    <View style={styles.pipelineCell}>
-      <Text style={[styles.pipelineValue, textStyle]}>
-        {item.value}
-      </Text>
-      <Text style={styles.pipelineLabel}>
-        {item.label}
-      </Text>
-      <Text
-        ellipsizeMode="tail"
-        style={styles.pipelineDetail}
-      >
-        {item.detail}
-      </Text>
-    </View>
-  );
-}
-
-function EntryTile({
-  entry,
-  onPress,
-  variant
-}: {
-  entry: HomeEntryView;
-  onPress: (href: HomeEntryView["href"]) => void;
-  variant?: HomeView["layout"]["entryVariant"];
-}) {
-  const { colors, styles } = useStyles();
-  const iconName =
-    entry.href === "/profile"
-      ? "person-outline"
-      : entry.href === "/contacts"
-        ? "people-outline"
-        : "calendar-outline";
-
-  return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={() => onPress(entry.href)}
-      style={({ pressed }) => [
-        styles.entryTile,
-        variant === "compact" ? styles.entryTileCompact : null,
-        pressed ? styles.pressed : null
-      ]}
-    >
-      <View
-        style={[
-          styles.entryIcon,
-          variant === "compact" ? styles.entryIconCompact : null
-        ]}
-      >
-        <Ionicons color={colors.accent} name={iconName} size={18} />
-      </View>
-      <Text style={styles.itemTitle}>
-        {entry.title}
-      </Text>
-      {variant === "compact" ? null : (
-        <Text style={styles.metaText}>
-          {entry.detail}
-        </Text>
-      )}
-    </Pressable>
-  );
-}
-
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
-  askComposer: {
-    alignItems: "flex-end",
-    backgroundColor: colors.surface,
-    borderColor: colors.accentSoft,
-    borderRadius: radius.input,
-    borderWidth: 2,
-    flexDirection: "row",
-    gap: spacing.sm,
-    padding: spacing.md
-  },
-  askInput: {
-    color: colors.text,
-    flex: 1,
-    fontSize: 17,
-    lineHeight: 24,
-    maxHeight: 190,
-    minHeight: 96,
-    minWidth: 0,
-    paddingHorizontal: spacing.sm,
-    paddingTop: spacing.sm,
-    textAlignVertical: "top"
-  },
-  askSendButton: {
-    alignItems: "center",
-    backgroundColor: colors.accent,
-    borderRadius: radius.control,
-    height: 44,
-    justifyContent: "center",
-    width: 48
-  },
-  bodyText: {
-    color: colors.text2,
-    ...textStyles.body
-  },
-  entryIcon: {
-    alignItems: "center",
-    backgroundColor: colors.accentSofter,
-    borderRadius: radius.control,
-    height: 38,
-    justifyContent: "center",
-    width: 38
-  },
-  entryGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm
-  },
-  entryRow: {
-    alignItems: "center",
-    backgroundColor: colors.surface2,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    flexDirection: "row",
-    gap: spacing.md,
-    padding: spacing.md
-  },
-  entryStack: {
-    gap: spacing.sm
-  },
-  entryTile: {
-    flexBasis: "31%",
-    flexGrow: 1,
-    gap: spacing.sm,
-    minHeight: 112,
-    minWidth: 104,
-    backgroundColor: "transparent",
-    paddingVertical: spacing.md
-  },
-  entryIconCompact: {
-    height: 34,
-    width: 34
-  },
-  entryTileCompact: {
-    alignItems: "center",
-    backgroundColor: colors.surface2,
-    flexBasis: "31%",
-    gap: spacing.xs,
-    justifyContent: "center",
-    minHeight: 76,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.md
-  },
-  errorText: {
-    color: colors.rose,
-    fontSize: typography.small,
-    lineHeight: 20
-  },
-  eventMark: {
-    alignItems: "center",
-    backgroundColor: colors.ink,
-    borderRadius: radius.md,
-    height: 42,
-    justifyContent: "center",
-    width: 42
-  },
-  eventMarkText: {
-    color: colors.onAccent,
-    fontSize: typography.section,
-    fontWeight: "700",
-    lineHeight: 22
-  },
   filterButton: {
     ...createControlStyles(colors).chip
   },
@@ -884,52 +423,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     gap: spacing.sm
-  },
-  heroAiIcon: {
-    alignItems: "center",
-    backgroundColor: colors.accentSofter,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    height: 48,
-    justifyContent: "center",
-    width: 48
-  },
-  heroEyebrow: {
-    color: colors.accent,
-    fontSize: typography.caption,
-    fontWeight: "800",
-    lineHeight: 16
-  },
-  heroHeader: {
-    alignItems: "flex-start",
-    flexDirection: "row",
-    gap: spacing.md
-  },
-  heroHeadline: {
-    color: colors.text2,
-    fontSize: typography.small,
-    lineHeight: 19
-  },
-  heroSummary: {
-    color: colors.text,
-    fontSize: typography.small,
-    lineHeight: 20
-  },
-  heroTextBlock: {
-    flex: 1,
-    gap: spacing.xs,
-    minWidth: 0
-  },
-  heroTitle: {
-    color: colors.ink,
-    ...textStyles.pageTitle
-  },
-  homeHero: {
-    gap: spacing.xl,
-    minHeight: 430,
-    backgroundColor: "transparent",
-    paddingVertical: spacing.md
   },
   homeEventImageCard: {
     backgroundColor: "transparent",
@@ -1016,11 +509,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     gap: spacing.md,
     justifyContent: "space-between"
   },
-  homeEventFilterBlock: {
-    gap: spacing.md,
-    backgroundColor: "transparent",
-    paddingVertical: spacing.md
-  },
   homeEventFilterLabel: {
     color: colors.text3,
     fontSize: typography.caption,
@@ -1101,215 +589,8 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     color: colors.onImage,
     ...textStyles.title
   },
-  itemTitle: {
-    color: colors.ink,
-    ...textStyles.listTitle
-  },
-  metaText: {
-    color: colors.text3,
-    fontSize: typography.small,
-    lineHeight: 19
-  },
-  pipelineCell: {
-    alignItems: "center",
-    flex: 1,
-    gap: spacing.xxs,
-    minHeight: 82,
-    minWidth: 0,
-    paddingHorizontal: spacing.xs,
-    paddingVertical: spacing.md
-  },
-  pipelineDetail: {
-    color: colors.text3,
-    fontSize: 11,
-    lineHeight: 15,
-    textAlign: "center"
-  },
-  pipelineDivider: {
-    alignSelf: "stretch",
-    backgroundColor: colors.border,
-    width: StyleSheet.hairlineWidth
-  },
-  pipelineLabel: {
-    color: colors.text2,
-    fontSize: typography.caption,
-    fontWeight: "700",
-    lineHeight: 16,
-    textAlign: "center"
-  },
-  pipelineRail: {
-    backgroundColor: colors.surface2,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    flexDirection: "row",
-    overflow: "hidden"
-  },
-  pipelineValue: {
-    fontSize: 24,
-    fontWeight: "900",
-    lineHeight: 28
-  },
-  pipelineValueAccent: {
-    color: colors.accent
-  },
-  pipelineValueLive: {
-    color: colors.live
-  },
-  pipelineValueSky: {
-    color: colors.sky
-  },
   pressed: {
     opacity: 0.84,
     transform: [{ translateY: 0.5 }]
   },
-  profileBio: {
-    color: colors.text,
-    fontSize: typography.small,
-    lineHeight: 20
-  },
-  profileChip: {
-    backgroundColor: colors.accentSofter,
-    borderRadius: radius.pill,
-    color: colors.accent,
-    fontSize: typography.caption,
-    fontWeight: "700",
-    lineHeight: 16,
-    overflow: "hidden",
-    paddingHorizontal: 10,
-    paddingVertical: 6
-  },
-  profileChipRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.xs
-  },
-  profileFact: {
-    backgroundColor: colors.surface2,
-    borderColor: colors.border,
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    flexBasis: "31%",
-    flexGrow: 1,
-    gap: 3,
-    minWidth: 94,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.sm
-  },
-  profileFactGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm
-  },
-  profileFactLabel: {
-    color: colors.text3,
-    fontSize: 11,
-    fontWeight: "700",
-    lineHeight: 14
-  },
-  profileFactValue: {
-    color: colors.ink,
-    fontSize: typography.caption,
-    fontWeight: "700",
-    lineHeight: 17
-  },
-  profileGroup: {
-    gap: spacing.xs
-  },
-  profileGroupStack: {
-    gap: spacing.sm
-  },
-  profileGroupTitle: {
-    color: colors.text2,
-    fontSize: typography.caption,
-    fontWeight: "800",
-    lineHeight: 16
-  },
-  promptChip: {
-    ...createControlStyles(colors).chip
-  },
-  promptChips: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm
-  },
-  promptChipText: {
-    ...createControlStyles(colors).chipText
-  },
-  sectionBlock: {
-    gap: spacing.sm
-  },
-  sectionHeader: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: spacing.md,
-    justifyContent: "space-between",
-    paddingHorizontal: spacing.xs
-  },
-  sectionHint: {
-    color: colors.text3,
-    flexShrink: 1,
-    fontSize: typography.caption,
-    lineHeight: 16,
-    textAlign: "right"
-  },
-  sectionTitle: {
-    color: colors.ink,
-    ...textStyles.section
-  },
-  sectionTitleBlock: {
-    flex: 1,
-    gap: spacing.xs,
-    minWidth: 0
-  },
-  secondaryButton: {
-    ...createControlStyles(colors).secondaryButton,
-    flexDirection: "row",
-    gap: spacing.sm,
-    maxWidth: "100%"
-  },
-  secondaryButtonText: {
-    ...createControlStyles(colors).secondaryButtonText
-  },
-  statCell: {
-    alignItems: "center",
-    backgroundColor: colors.surface2,
-    borderRadius: radius.md,
-    flex: 1,
-    gap: spacing.xs,
-    minWidth: 84,
-    padding: spacing.md
-  },
-  statLabel: {
-    color: colors.text3,
-    fontSize: typography.caption,
-    lineHeight: 16
-  },
-  statRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm
-  },
-  statValue: {
-    color: colors.ink,
-    ...textStyles.title
-  },
-  statePill: {
-    backgroundColor: colors.accentSofter,
-    borderRadius: radius.control,
-    color: colors.accent,
-    fontSize: typography.caption,
-    fontWeight: "700",
-    lineHeight: 16,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm
-  },
-  textIconButton: {
-    flexDirection: "row",
-    gap: spacing.xs,
-    ...createControlStyles(colors).secondaryButton
-  },
-  textIconButtonText: {
-    ...createControlStyles(colors).secondaryButtonText
-  }
 }));

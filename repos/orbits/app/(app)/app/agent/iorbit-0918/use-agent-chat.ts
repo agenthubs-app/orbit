@@ -51,17 +51,17 @@ import {
   historyContentFor,
   isRecord,
   loadStoredAgentChatSession,
-  loadStoredAgentChatSessions,
   panelFromMessages,
   peopleItemsFromArtifact,
   persistStoredAgentChatSession,
   prepareAgentFailedRequestRetry,
   titleFromMessages,
   todoItemsFromArtifact,
-  upsertAgentChatSession,
+  upsertAgentChatSummary,
   type AgentHistoryFeedback,
   type AgentMessage,
   type AgentPanel,
+  type AgentSessionSummary,
   type AgentReliableRequest,
   type AgentStoredChatSession,
 } from "./iorbit-model";
@@ -72,8 +72,8 @@ export interface AgentChatHistoryStore {
   historyMutationQueue: ReturnType<typeof createAgentChatSessionMutationQueue>;
   setHistoryFeedback: Dispatch<SetStateAction<AgentHistoryFeedback | null>>;
   setSessionGroups: Dispatch<SetStateAction<AiSessionGroupContract[]>>;
-  setStoredSessions: Dispatch<SetStateAction<AgentStoredChatSession[]>>;
-  storedSessionsRef: MutableRefObject<AgentStoredChatSession[]>;
+  setStoredSessions: Dispatch<SetStateAction<AgentSessionSummary[]>>;
+  storedSessionsRef: MutableRefObject<AgentSessionSummary[]>;
 }
 
 export function useAgentChat({ history, suggests }: { history: AgentChatHistoryStore; suggests: OrbitAgentViewModel["suggests"] }) {
@@ -113,6 +113,7 @@ export function useAgentChat({ history, suggests }: { history: AgentChatHistoryS
   const reliableMessageRevisionRef = useRef<number | null>(null);
   const initialGroupIdRef = useRef<string | null>(null);
   const initialOrganizationRef = useRef<{ organization: AiSessionOrganizationContract; sessionId: string } | null>(null);
+  const activeSessionDetailRef = useRef<AgentStoredChatSession | null>(null);
 
   languageRef.current = language;
   messagesRef.current = messages;
@@ -132,6 +133,7 @@ export function useAgentChat({ history, suggests }: { history: AgentChatHistoryS
   }, [preserveHref]);
 
   const restoreSession = useCallback((session: AgentStoredChatSession) => {
+    activeSessionDetailRef.current = session;
     skipRestoredSessionPersistenceRef.current = true;
     setHistOpen(false);
     setMessages(session.messages);
@@ -179,7 +181,10 @@ export function useAgentChat({ history, suggests }: { history: AgentChatHistoryS
     const existingSession = storedSessionsRef.current.find(
       (item) => item.id === sessionId,
     );
-    const customTitle = existingSession?.customTitle?.trim();
+    const existingDetail = activeSessionDetailRef.current?.id === sessionId
+      ? activeSessionDetailRef.current
+      : null;
+    const customTitle = (existingSession?.organization.customTitle ?? existingDetail?.customTitle)?.trim();
     const autoTitle = titleFromMessages(nextMessages);
     const session: AgentStoredChatSession = {
       createdAt: existingSession?.createdAt ?? now,
@@ -190,21 +195,23 @@ export function useAgentChat({ history, suggests }: { history: AgentChatHistoryS
         existingSession?.messageRevision ??
         nextMessages.length,
       messages: [...nextMessages],
-      origin: existingSession?.origin,
+      origin: existingDetail?.origin,
       organization:
         existingSession?.organization ??
+        existingDetail?.organization ??
         (initialOrganizationRef.current?.sessionId === sessionId
           ? initialOrganizationRef.current.organization
           : undefined),
       panel: nextPanel,
-      pinned: existingSession?.pinned,
+      pinned: existingSession?.organization.pinned ?? existingDetail?.pinned,
       title: customTitle || autoTitle,
       updatedAt: now,
     };
-    const nextSessions = upsertAgentChatSession(
+    const nextSessions = upsertAgentChatSummary(
       storedSessionsRef.current,
       session,
     );
+    activeSessionDetailRef.current = session;
 
     activeSessionIdRef.current = sessionId;
     setActiveSessionId(sessionId);
@@ -215,9 +222,10 @@ export function useAgentChat({ history, suggests }: { history: AgentChatHistoryS
       const latest = storedSessionsRef.current.find((item) => item.id === session.id);
       return persistStoredAgentChatSession({
         ...session,
-        customTitle: latest?.customTitle,
-        pinned: latest?.pinned,
-        title: latest?.customTitle?.trim() || session.title,
+        customTitle: latest?.organization.customTitle ?? session.customTitle,
+        organization: latest?.organization ?? session.organization,
+        pinned: latest?.organization.pinned ?? session.pinned,
+        title: latest?.organization.customTitle?.trim() || session.title,
       });
     }).then((persisted) => {
       if (!persisted) {
@@ -284,7 +292,7 @@ export function useAgentChat({ history, suggests }: { history: AgentChatHistoryS
       retryRequest ?? {
         clientMessageId: stableId("message"),
         expectedMessageRevision:
-          existingSession?.messageRevision ?? existingSession?.messages.length ?? 0,
+          existingSession?.messageRevision ?? 0,
         locale,
         message: query,
         ...(existingSession
@@ -560,8 +568,8 @@ export function useAgentChat({ history, suggests }: { history: AgentChatHistoryS
 
     const hydrateHistory = async () => {
       const sessionId = currentAgentSessionId();
-      const [sessions, groups] = await Promise.all([
-        loadStoredAgentChatSessions(),
+      const [session, groups] = await Promise.all([
+        sessionId ? loadStoredAgentChatSession(sessionId) : Promise.resolve(null),
         loadAgentChatGroups(),
       ]);
 
@@ -569,20 +577,6 @@ export function useAgentChat({ history, suggests }: { history: AgentChatHistoryS
         return;
       }
 
-      let session =
-        sessions.find((item) => item.id === sessionId) ??
-        (sessionId ? await loadStoredAgentChatSession(sessionId) : null);
-
-      if (cancelled) {
-        return;
-      }
-
-      const nextSessions = session
-        ? upsertAgentChatSession(sessions, session)
-        : sessions;
-
-      storedSessionsRef.current = nextSessions;
-      setStoredSessions(nextSessions);
       setSessionGroups(groups);
       historyHydratedRef.current = true;
 
@@ -617,21 +611,12 @@ export function useAgentChat({ history, suggests }: { history: AgentChatHistoryS
 
   const pickHistory = (item: OrbitAgentHistoryView) => {
     if (item.sessionId) {
-      const session = storedSessionsRef.current.find(
-        (stored) => stored.id === item.sessionId,
-      );
-      if (session) {
-        restoreSession(session);
-        navigate(`/agent?session=${encodeURIComponent(session.id)}`);
-        return;
-      }
-
       void loadStoredAgentChatSession(item.sessionId).then((storedSession) => {
         if (!storedSession) {
           return;
         }
 
-        const nextSessions = upsertAgentChatSession(
+        const nextSessions = upsertAgentChatSummary(
           storedSessionsRef.current,
           storedSession,
         );
@@ -648,6 +633,7 @@ export function useAgentChat({ history, suggests }: { history: AgentChatHistoryS
     setPanel(null);
     setActiveSessionId(null);
     activeSessionIdRef.current = null;
+    activeSessionDetailRef.current = null;
     reliableMessageRevisionRef.current = null;
     suppressReliableSessionPersistenceRef.current = false;
     navigate(`/agent?q=${encodeURIComponent(item.q)}`);
@@ -664,6 +650,7 @@ export function useAgentChat({ history, suggests }: { history: AgentChatHistoryS
     setActiveSessionId(null);
     setChatOpen(openChat);
     activeSessionIdRef.current = null;
+    activeSessionDetailRef.current = null;
     initialGroupIdRef.current = initialGroupId;
     initialOrganizationRef.current = null;
     if (typeof window !== "undefined") {

@@ -4,7 +4,9 @@ import { personalScheduleSqlFixture } from "../fixtures/personal-schedule-sql";
 import { createPersonalScheduleService } from "../../features/personal-schedule/service";
 import { createReminderPlanRepository } from "../../features/notifications/reminder-plan-repository";
 import { createInboxRuntime } from "../../features/notifications/inbox-record-service-factory";
-import { refreshInboxBusinessRecords } from "../../features/notifications/inbox-business-refresh";
+import { backfillBusinessCardInboxRecords } from "../../features/notifications/inbox-business-refresh";
+import { reminderPlanNotification } from "../../features/notifications/inbox-business-projections";
+import { inboxNotificationId } from "../../features/notifications/inbox-record-service";
 import { assertReminderTargetOwned } from "../../features/notifications/reminder-plan-service-factory";
 import { createTypedDeliverySources } from "../../features/notifications/typed-delivery-source";
 import { createDeliveryPolicyRepository } from "../../features/notifications/delivery-policy-repository";
@@ -42,40 +44,45 @@ test("inbox source access recognizes the authoritative occurrence and rejects it
   assert.equal(await inbox.sourceAccess("other", source), "unavailable");
 });
 
-test("existing periodic refresh extends the finite plan horizon under the schedule mutation lock", async () => {
+test("one due series extends its finite plan horizon under the schedule mutation lock", async () => {
   const f = fixture();
-  await f.service.create("owner", f.fields);
+  const { scheduleItem } = await f.service.create("owner", f.fields);
   const old = await f.repository.listPlans({ actorId: "owner" });
   f.setNow("2026-12-16T08:00:00Z");
-  assert.equal(typeof (f.service as any).refreshReminderPlans, "function");
-  await (f.service as any).refreshReminderPlans({ actorId: "owner" });
+  assert.equal('refreshReminderPlans' in f.service, false, 'the obsolete actor-wide refresh has no fallback entry');
+  await f.service.refreshReminderPlansForSeries({ actorId: "owner", id: scheduleItem.id });
   const plans = await f.repository.listPlans({ actorId: "owner" });
   assert.equal(plans.length > old.length, true);
   assert.equal(plans.some(plan => plan.targetId.endsWith("2027-01-01")), true);
   assert.equal(f.locks.filter(lock => lock === JSON.stringify(["personal-schedule", f.workspaceId, "owner"])).length, 2);
 });
 
-test("the existing due inbox refresh produces one notification pointing at the exact occurrence", async () => {
+test("explicit card backfill projects owned batches but leaves reminders to the canonical worker", async () => {
   const f = fixture();
   const { scheduleItem } = await f.service.create("owner", { ...f.fields, recurrence: { frequency: "daily", until: "2026-09-20" } });
   f.setNow("2026-09-18T08:45:00Z");
+  const batch = { id: "batch-owner", actorId: "owner", status: "ready_for_review", totalItems: 2, processedItems: 2,
+    failedItems: 0, confirmedItems: 0, skippedItems: 0, sourceFiles: [], createdAt: f.now(), updatedAt: f.now(), expiresAt: "2026-10-18T08:45:00Z" };
+  await f.store.upsertRecord({ workspaceId: f.workspaceId, collectionName: "businessCardBatches", recordId: batch.id, userId: "owner",
+    sourceType: "manual", sourceId: batch.id, evidenceIds: [], lifecycleState: "active", createdAt: batch.createdAt, updatedAt: batch.updatedAt, payload: { batch } });
   const inbox = createInboxRuntime(f);
-  await refreshInboxBusinessRecords({ ...f, actorId: "owner", service: inbox.service, since: "2026-09-17T00:00:00Z", now: f.now() });
-  await refreshInboxBusinessRecords({ ...f, actorId: "owner", service: inbox.service, since: "2026-09-17T00:00:00Z", now: f.now() });
+  await backfillBusinessCardInboxRecords({ ...f, actorId: "owner", service: inbox.service, since: "2026-09-17T00:00:00Z" });
+  await backfillBusinessCardInboxRecords({ ...f, actorId: "owner", service: inbox.service, since: "2026-09-17T00:00:00Z" });
   const rows = await f.store.listRecords({ limit: "unbounded", workspaceId: f.workspaceId, collectionName: "inboxNotifications", userId: "owner" });
   assert.equal(rows.length, 1);
-  const stored = rows[0]!.payload.notification as { id: string };
+  const stored = rows[0]!.payload.notification as { id: string; semanticKey: string; title: string };
+  assert.equal(stored.semanticKey, "batch:v1:batch-owner");
+  assert.equal(stored.title, "名片处理完成，请复核");
   const notification = await inbox.service.get("owner", stored.id);
   assert.equal(notification.target.status, "available");
-  assert.equal(notification.target.id, `${scheduleItem.id}:occurrence:2026-09-18`);
-  assert.equal(notification.scheduledFor, "2026-09-18T08:45:00.000Z");
   assert.equal(notification.revision, 1);
-  const destination = await f.service.get({ actorId: "owner", id: notification.target.id });
-  assert.equal(destination.startsAt, "2026-09-18T09:00:00.000Z");
-  await f.service.remove("owner", destination.id, { expectedUpdatedAt: destination.updatedAt, idempotencyKey: "due-cancel", scope: "occurrence" });
-  const cancelled = await inbox.service.get("owner", stored.id);
-  assert.equal(cancelled.target.status, "unavailable");
-  assert.equal(cancelled.target.href, null);
+  const reminderPlan = (await f.repository.listPlans({ actorId: "owner" })).find(plan => plan.targetId.endsWith(":2026-09-18"))!;
+  const reminderId = inboxNotificationId("owner", `reminder-plan:${reminderPlan.id}`);
+  assert.equal(await f.store.getRecord({ workspaceId: f.workspaceId, collectionName: "inboxNotifications", recordId: reminderId, userId: "owner" }), null,
+    "card backfill must not create a reminder from the actor plan collection");
+  assert.equal(await inbox.sourceAccess("owner", { sourceKind: "reminder_plan", sourceId: reminderPlan.id,
+    sourceRevision: reminderPlan.updatedAt, occurredAt: reminderPlan.createdAt, readAt: f.now() }), "available",
+  "reminder target authority remains available to the canonical worker and details");
 });
 
 test("the real reminder target authorizer accepts an owned occurrence, not another actor or nonexistent date", async () => {
@@ -106,7 +113,7 @@ test("malformed occurrence targets cannot gain authority through an unrelated pa
 });
 
 for (const mutation of ["move", "disable", "cancel"] as const) {
-  test(`an elapsed pending managed reminder cannot newly project after ${mutation}`, async () => {
+  test(`a stale managed reminder source becomes unavailable after ${mutation}`, async () => {
     const f = fixture();
     const { scheduleItem } = await f.service.create("owner", f.fields);
     const old = (await f.repository.listPlans({ actorId: "owner" })).find(plan => plan.targetId.endsWith(":2026-09-18"))!;
@@ -118,13 +125,10 @@ for (const mutation of ["move", "disable", "cancel"] as const) {
     const inbox = createInboxRuntime(f);
     const source = { sourceKind: "reminder_plan" as const, sourceId: old.id, sourceRevision: old.updatedAt, occurredAt: old.createdAt, readAt: f.now() };
     assert.equal(await inbox.sourceAccess("owner", source), "unavailable");
-    await refreshInboxBusinessRecords({ ...f, actorId: "owner", service: inbox.service, since: "2026-09-17T00:00:00Z", now: f.now() });
-    const rows = await f.store.listRecords({ limit: "unbounded", workspaceId: f.workspaceId, collectionName: "inboxNotifications", userId: "owner" });
-    assert.equal(rows.some(row => (row.payload.notification as { legacyId?: string }).legacyId === old.id), false);
   });
 }
 
-test("delivered managed reminder history remains visible but its stale queued source cannot dispatch", async () => {
+test("a materialized delivered reminder remains visible but its stale queued source cannot dispatch", async () => {
   const f = fixture();
   const { scheduleItem } = await f.service.create("owner", f.fields);
   const initial = (await f.repository.listPlans({ actorId: "owner" })).find(plan => plan.targetId.endsWith(":2026-09-18"))!;
@@ -132,7 +136,9 @@ test("delivered managed reminder history remains visible but its stale queued so
   const delivered = { ...initial, status: "delivered" as const, updatedAt: f.now() };
   await f.repository.savePlan(delivered);
   const inbox = createInboxRuntime(f);
-  await refreshInboxBusinessRecords({ ...f, actorId: "owner", service: inbox.service, since: "2026-09-17T00:00:00Z", now: f.now() });
+  const projected = reminderPlanNotification(delivered, f.now());
+  assert.ok(projected);
+  await inbox.service.upsert(projected);
   const rows = await f.store.listRecords({ limit: "unbounded", workspaceId: f.workspaceId, collectionName: "inboxNotifications", userId: "owner" });
   const stored = rows[0]!.payload.notification as { id: string; scheduledFor: string };
   await f.store.upsertRecord({ workspaceId: f.workspaceId, collectionName: "notificationCutover", recordId: "owner", userId: "owner", sourceType: "system", sourceId: "owner", evidenceIds: [], lifecycleState: "active", createdAt: f.now(), updatedAt: f.now(), payload: { enabled: true, generation: 1, since: "2026-09-17T00:00:00Z", batchId: "test" } });

@@ -49,47 +49,26 @@ import type { AiSessionOriginInputContract, AiSessionReferenceContract } from ".
 import { updateAiSessionOrganization } from "../../api/ai-session-management";
 import { useMobileViewport } from "../../platform/use-mobile-viewport";
 import { ContactMentionPicker, type MentionContact } from "./ContactMentionPicker";
+import { ContactReferenceChip } from "./ContactReferenceChip";
 import { AiEntityCardList } from "./cards/AiEntityCard";
 import { sessionContactArtifacts, sessionEntityCards } from "../../view-models/ai-artifacts";
 import { aiSessionArtifactRecoverySchema } from "../../api/schema/ai-artifacts";
 import {
   conversationAiRunReferencesFor,
-  conversationInlinePanelsForThread,
   conversationPayloadToThreadView,
   conversationQuickRoutes,
   conversationRecordLinks,
   conversationTaskDetailHref,
   markdownBlocksFor,
   pendingConversationThreadView,
-  prioritizeConversationContacts,
-  prioritizeConversationEvents,
   type ChatMessageView,
-  type ConversationInlinePanelView,
   type ConversationQuickRouteView,
   type ConversationThreadView,
   type MarkdownBlockView,
   type MarkdownInlineView,
   type TaskInteractionView
 } from "../../view-models/conversations";
-import {
-  contactAvatarFor,
-  contactsToSummaries,
-  type ContactSummary
-} from "../../view-models/contacts";
-import { eventsToSummaries, type EventSummary } from "../../view-models/events";
-import {
-  followupInlineContextLabel,
-  followupsToView,
-  type FollowupTaskView
-} from "../../view-models/followups";
-import { profileToSummary, type ProfileSummary } from "../../view-models/profile";
-import {
-  tasksToScheduleItems,
-  type ScheduleItem
-} from "../../view-models/schedule";
 import { noteSourceFromParams } from "../../view-models/note-suggestions";
-
-type ResourceKind = "empty" | "failure" | "loading" | "offline" | "success";
 
 function firstParam(value: string | string[] | undefined): string {
   if (Array.isArray(value)) {
@@ -190,10 +169,6 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
     : isStoredAgentSession ? aiConversationSessionPath(conversationId) : aiConversationPath(conversationId);
   // Private artifact evidence must be reauthorized, not retained after a failed refresh.
   const state = useApiResource<unknown>(path, () => false, { ...readOptions, cachePolicy: "network-only" });
-  const eventsState = useApiResource<unknown>(ORBIT_API_ENDPOINTS.events, data => eventsToSummaries(data).length === 0, readOptions);
-  const contactsState = useApiResource<unknown>(ORBIT_API_ENDPOINTS.contacts, data => contactsToSummaries(data).length === 0, readOptions);
-  const tasksState = useApiResource<unknown>(ORBIT_API_ENDPOINTS.tasks, data => followupsToView({ notificationsPayload: {}, tasksPayload: data }, locale.language).tasks.length === 0, readOptions);
-  const profileState = useApiResource<unknown>(ORBIT_API_ENDPOINTS.profile, () => false, readOptions);
   const [draftMessage, setDraftMessage] = useJournalState(journal, "draftMessage", isDraftConversation && optionalParam(initialMessageConsumed) !== "1" ? initialDraft ?? initialPrompt : "");
   const draftValue = useRef(draftMessage);
   const draftRevision = useRef(journal.draftRevision ?? 0);
@@ -268,7 +243,6 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
     : initialThread && failedRequest ? { ...initialThread, title: locale.t("aiConversation.noAnswer"), messages: initialThread.messages.filter(item => item.role === "user") } : initialThread;
   const resultScopeReady = owns() && (isDraftConversation || (!state.refreshing && (state.kind === "success" || state.kind === "empty") && !readInvalid));
   const thread = resolvedThread ? { ...resolvedThread, contactArtifacts: resultScopeReady ? resolvedThread.contactArtifacts ?? [] : [] } : null;
-  const inlinePanels = thread && (!isDraftConversation || latestData) ? conversationInlinePanelsForThread(thread, locale.language).filter(panel => panel.kind !== "people" || (resultScopeReady && !thread.contactArtifactNotice && !thread.contactArtifacts?.length)) : [];
 
   function changeDraft(value: string) {
     if (!owns()) return;
@@ -283,7 +257,7 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
     // Refresh reads only. It never consumes a draft or replays an initial write.
     if (!isDraftConversation && !sendOperation.current && !saveOperation.current && !taskOperation.current && !pendingSaveRef.current
       && (state.kind === "success" || state.kind === "empty")) refreshOverlay.current = state.data;
-    state.refresh(); eventsState.refresh(); contactsState.refresh(); tasksState.refresh(); profileState.refresh();
+    state.refresh();
   }
 
   function conversationHistoryForRequest() {
@@ -511,7 +485,6 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
     if (receipt) {
       setAcceptedTaskId(receipt.taskId);
       setTaskInteractionResolution(action === "accept" ? "accepted" : "dismissed");
-      if (action === "accept") tasksState.refresh();
       if (savedSessionId && !saveNotice && !draftValue.current.trim()) router.replace({ params: { id: savedSessionId, source: "session" }, pathname: "/ai/[id]" });
     } else setActionError(result.success ? locale.t("aiConversation.operationUnconfirmed") : result.error.message);
     requests.current.delete(controller); taskOperation.current = null; setTaskInteractionBusy(false);
@@ -558,7 +531,6 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
       : null;
     if (settled) {
       setEntityDraftOverride(settled);
-      if (settled.state === "created" && settled.kind === "task") tasksState.refresh();
     } else {
       // A refused write keeps the card confirmable; show the server's reason
       // rather than a generic failure the user cannot act on.
@@ -570,21 +542,6 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
   function openHref(href: string) {
     if (owns()) router.push(href as Href);
   }
-  const eventCards =
-    eventsState.kind === "success" ? eventsToSummaries(eventsState.data) : [];
-  const contactCards = contactsState.kind === "success"
-    ? contactsToSummaries(contactsState.data)
-    : [];
-  const followupTasks = tasksState.kind === "success"
-    ? followupsToView({ notificationsPayload: {}, tasksPayload: tasksState.data }, locale.language)
-        .tasks
-    : [];
-  const scheduleItems = tasksState.kind === "success"
-    ? tasksToScheduleItems(tasksState.data, "Asia/Tokyo", locale.language)
-    : [];
-  const profile = profileState.kind === "success" || profileState.kind === "empty"
-    ? profileToSummary(profileState.data)
-    : null;
 
   return (
     <SafeAreaView
@@ -615,33 +572,17 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
       {thread ? (
         <ConversationThread
           baseUrl={baseUrl}
-          contactCards={contactCards}
-          contactsStateKind={contactsState.kind}
+          scopeKey={scopeKey}
           draftMessage={draftMessage}
           selectedReferences={selectedReferences}
-          eventCards={eventCards}
-          eventsStateKind={eventsState.kind}
-          followupTasks={followupTasks}
-          followupsStateKind={tasksState.kind}
-          inlinePanels={inlinePanels}
           onBack={() => openHref("/ai")}
           onChangeDraft={changeDraft}
           onAddMention={addMention}
           onRemoveReference={removeReference}
-          onOpenContact={(contactId) =>
-            openHref(`/contacts/${encodeURIComponent(contactId)}`)
-          }
-          onOpenEvent={(eventId) =>
-            openHref(`/events/${encodeURIComponent(eventId)}`)
-          }
           onOpenHref={openHref}
           onResolveTaskSuggestion={resolveTaskSuggestion}
-          profile={profile}
-          profileStateKind={profileState.kind}
           onRefresh={refresh}
           refreshing={state.refreshing}
-          scheduleItems={scheduleItems}
-          scheduleStateKind={tasksState.kind}
           onSend={sendMessage}
           sendError={sendError}
           sendCode={sendCode}
@@ -673,29 +614,17 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
 
 function ConversationThread({
   baseUrl,
-  contactCards,
-  contactsStateKind,
+  scopeKey,
   draftMessage,
   selectedReferences,
-  eventCards,
-  eventsStateKind,
-  followupTasks,
-  followupsStateKind,
-  inlinePanels,
   onBack,
   onChangeDraft,
   onAddMention,
   onRemoveReference,
-  onOpenContact,
-  onOpenEvent,
   onOpenHref,
   onResolveTaskSuggestion,
-  profile,
-  profileStateKind,
   onRefresh,
   refreshing,
-  scheduleItems,
-  scheduleStateKind,
   onSend,
   sendError,
   sendCode,
@@ -719,29 +648,17 @@ function ConversationThread({
   thread
 }: {
   baseUrl: string;
-  contactCards: ContactSummary[];
-  contactsStateKind: ResourceKind;
+  scopeKey?: string | undefined;
   draftMessage: string;
   selectedReferences: readonly AiSessionReferenceContract[];
-  eventCards: EventSummary[];
-  eventsStateKind: ResourceKind;
-  followupTasks: FollowupTaskView[];
-  followupsStateKind: ResourceKind;
-  inlinePanels: ConversationInlinePanelView[];
   onBack: () => void;
   onChangeDraft: (value: string) => void;
   onAddMention: (contact: MentionContact) => void;
   onRemoveReference: (reference: AiSessionReferenceContract) => void;
-  onOpenContact: (contactId: string) => void;
-  onOpenEvent: (eventId: string) => void;
   onOpenHref: (href: string) => void;
   onResolveTaskSuggestion: (action: "accept" | "dismiss") => void;
-  profile: ProfileSummary | null;
-  profileStateKind: ResourceKind;
   onRefresh: () => void;
   refreshing: boolean;
-  scheduleItems: ScheduleItem[];
-  scheduleStateKind: ResourceKind;
   onSend: () => void;
   sendError: string | null;
   sendCode: string | null;
@@ -768,6 +685,7 @@ function ConversationThread({
   const { colors, styles } = useStyles();
   const [routesOpen, setRoutesOpen] = useState(false);
   const [mentionsOpen, setMentionsOpen] = useState(false);
+  const [referenceNames, setReferenceNames] = useState<Record<string, string>>({});
   const { fontScale } = useWindowDimensions();
   const minimumInputHeight = Math.max(44, Math.ceil(22 * fontScale + 12));
   const [inputHeight, setInputHeight] = useState(44);
@@ -850,26 +768,6 @@ function ConversationThread({
                 {index === inlinePanelAnchorIndex && thread.entityCards?.cards.length ? (
                   <AiEntityCardList onOpenHref={onOpenHref} views={thread.entityCards.cards} />
                 ) : null}
-                {index === inlinePanelAnchorIndex && inlinePanels.length > 0 ? (
-                  <ConversationInlinePanels
-                    baseUrl={baseUrl}
-                    contactCards={contactCards}
-                    contactsStateKind={contactsStateKind}
-                    eventCards={eventCards}
-                    eventsStateKind={eventsStateKind}
-                    followupTasks={followupTasks}
-                    followupsStateKind={followupsStateKind}
-                    onOpenContact={onOpenContact}
-                    onOpenEvent={onOpenEvent}
-                    onOpenHref={onOpenHref}
-                    panels={inlinePanels}
-                    profile={profile}
-                    profileStateKind={profileStateKind}
-                    scheduleItems={scheduleItems}
-                    scheduleStateKind={scheduleStateKind}
-                    thread={thread}
-                  />
-                ) : null}
               </Fragment>
             ))}
           </View>
@@ -931,14 +829,13 @@ function ConversationThread({
       </ScrollView>
       {saveNotice ? <Text accessibilityLiveRegion="polite" style={[styles.errorText, { marginHorizontal: layout.pageInset }]}>{saveNotice}</Text> : null}
       <View testID="conversation-composer" style={styles.composerPanel}>
-        {selectedReferences.length > 0 ? <View style={styles.referenceRow}>{selectedReferences.map(reference => {
-          const contact = contactCards.find(item => item.id === reference.id);
-          return <Pressable accessibilityLabel={locale.t("aiConversation.removeContact", { name: contact?.name ?? reference.id })} accessibilityRole="button" key={`${reference.type}:${reference.id}`} onPress={() => onRemoveReference(reference)} style={styles.referenceChip}><Text style={styles.referenceChipText}>@{contact?.name ?? reference.id} ×</Text></Pressable>;
-        })}</View> : null}
-        {mentionsOpen ? contactsStateKind === "success" || contactsStateKind === "empty"
-          ? <ContactMentionPicker contacts={contactCards} onSelect={(contact) => { onAddMention(contact); setMentionsOpen(false); }} selectedIds={selectedReferences.filter(reference => reference.type === "contact").map(reference => reference.id)} />
-          : <Text style={styles.errorText}>{locale.t(contactsStateKind === "loading" ? "aiConversation.contactsLoading" : "aiConversation.contactsUnavailable")}</Text>
-        : null}
+        {selectedReferences.length > 0 ? <View style={styles.referenceRow}>{selectedReferences.map(reference => (
+          <ContactReferenceChip key={`${reference.type}:${reference.id}`} id={reference.id} knownName={referenceNames[reference.id]} scopeKey={scopeKey}
+            onRemove={() => onRemoveReference(reference)} style={styles.referenceChip} textStyle={styles.referenceChipText} />
+        ))}</View> : null}
+        {mentionsOpen ? <ContactMentionPicker scopeKey={scopeKey} onSelect={(contact) => {
+          setReferenceNames(names => ({ ...names, [contact.id]: contact.name })); onAddMention(contact); setMentionsOpen(false);
+        }} selectedIds={selectedReferences.filter(reference => reference.type === "contact").map(reference => reference.id)} /> : null}
         <TextInput
           accessibilityLabel={locale.t("ai.message")}
           multiline
@@ -1066,548 +963,6 @@ function TaskInteractionCard({
       ) : null}
     </View>
   );
-}
-
-function ConversationInlinePanels({
-  baseUrl,
-  contactCards,
-  contactsStateKind,
-  eventCards,
-  eventsStateKind,
-  followupTasks,
-  followupsStateKind,
-  onOpenContact,
-  onOpenEvent,
-  onOpenHref,
-  panels,
-  profile,
-  profileStateKind,
-  scheduleItems,
-  scheduleStateKind,
-  thread
-}: {
-  baseUrl: string;
-  contactCards: ContactSummary[];
-  contactsStateKind: ResourceKind;
-  eventCards: EventSummary[];
-  eventsStateKind: ResourceKind;
-  followupTasks: FollowupTaskView[];
-  followupsStateKind: ResourceKind;
-  onOpenContact: (contactId: string) => void;
-  onOpenEvent: (eventId: string) => void;
-  onOpenHref: (href: string) => void;
-  panels: ConversationInlinePanelView[];
-  profile: ProfileSummary | null;
-  profileStateKind: ResourceKind;
-  scheduleItems: ScheduleItem[];
-  scheduleStateKind: ResourceKind;
-  thread: ConversationThreadView;
-}) {
-  const { styles } = useStyles();
-  return (
-    <View style={styles.inlinePanelStack}>
-      {panels.map((panel) => {
-        if (panel.kind === "people") {
-          return (
-            <PeopleInlinePanel
-              baseUrl={baseUrl}
-              contactCards={contactCards}
-              contactsStateKind={contactsStateKind}
-              key={panel.kind}
-              onOpenContact={onOpenContact}
-              onOpenHref={onOpenHref}
-              panel={panel}
-              thread={thread}
-            />
-          );
-        }
-
-        if (panel.kind === "followups") {
-          return (
-            <FollowupsInlinePanel
-              followupTasks={followupTasks}
-              followupsStateKind={followupsStateKind}
-              key={panel.kind}
-              onOpenHref={onOpenHref}
-              panel={panel}
-            />
-          );
-        }
-
-        if (panel.kind === "schedule") {
-          return (
-            <ScheduleInlinePanel
-              key={panel.kind}
-              onOpenHref={onOpenHref}
-              panel={panel}
-              scheduleItems={scheduleItems}
-              scheduleStateKind={scheduleStateKind}
-            />
-          );
-        }
-
-        if (panel.kind === "profile") {
-          return (
-            <ProfileInlinePanel
-              key={panel.kind}
-              onOpenHref={onOpenHref}
-              panel={panel}
-              profile={profile}
-              profileStateKind={profileStateKind}
-            />
-          );
-        }
-
-        return (
-            <EventInlinePanel
-              baseUrl={baseUrl}
-              eventCards={eventCards}
-              eventsStateKind={eventsStateKind}
-              key={panel.kind}
-              onOpenEvent={onOpenEvent}
-              onOpenHref={onOpenHref}
-              panel={panel}
-              thread={thread}
-            />
-        );
-      })}
-    </View>
-  );
-}
-
-function EventInlinePanel({
-  baseUrl,
-  eventCards,
-  eventsStateKind,
-  onOpenEvent,
-  onOpenHref,
-  panel,
-  thread
-}: {
-  baseUrl: string;
-  eventCards: EventSummary[];
-  eventsStateKind: ResourceKind;
-  onOpenEvent: (eventId: string) => void;
-  onOpenHref: (href: ConversationQuickRouteView["href"]) => void;
-  panel: ConversationInlinePanelView;
-  thread: ConversationThreadView;
-}) {
-  const { colors, styles } = useStyles();
-  const locale = useOrbitLocale();
-  const prioritizedEvents = prioritizeConversationEvents(thread, eventCards);
-  const header = (
-      <View style={[styles.inlinePanelHeader, eventCards.length ? styles.eventPanelHeader : null]}>
-        <View style={styles.inlinePanelTitleBlock}>
-          <Text style={styles.panelTitle}>{panel.title}</Text>
-          {!eventCards.length ? <Text style={styles.inlinePanelDetail}>{panel.detail}</Text> : null}
-        </View>
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => onOpenHref(panel.actionHref)}
-          style={({ pressed }) => [
-            styles.inlinePanelAction,
-            pressed ? styles.pressed : null
-          ]}
-        >
-          <Text style={styles.inlinePanelActionText}>{locale.t("aiConversation.all")}</Text>
-          <Ionicons color={colors.accent} name="chevron-forward" size={15} />
-        </Pressable>
-      </View>
-  );
-
-  return (
-    <View style={styles.inlinePanel}>
-      {!eventCards.length ? header : null}
-      {eventsStateKind === "loading" ? (
-        <Text style={styles.inlinePanelDetail}>{locale.t("aiConversation.eventsLoading")}</Text>
-      ) : null}
-      {eventsStateKind === "offline" || eventsStateKind === "failure" ? (
-        <Text style={styles.errorText}>{locale.t("aiConversation.eventsUnavailable")}</Text>
-      ) : null}
-      {eventsStateKind === "empty" ? (
-        <Text style={styles.inlinePanelDetail}>{locale.t("aiConversation.eventsEmpty")}</Text>
-      ) : null}
-      {eventCards.length > 0 ? (
-        <View style={styles.eventCardStack}>
-          {prioritizedEvents.slice(0, 3).map((event) => (
-            <Pressable
-              accessibilityRole="button"
-              key={event.id}
-              onPress={() => onOpenEvent(event.id)}
-              style={({ pressed }) => [
-                styles.eventSuggestionCard,
-                pressed ? styles.pressed : null
-              ]}
-            >
-                <Image
-                  testID={`ai-event-image-${event.id}`}
-                  source={{ uri: assetUrl(baseUrl, event.coverPath) }}
-                  style={styles.eventSuggestionThumbFrame}
-                />
-              <View style={styles.eventSuggestionText}>
-                <Text numberOfLines={2} style={styles.eventSuggestionTitle}>
-                  {event.title}
-                </Text>
-                <Text style={styles.eventSuggestionDetail}>{event.startsAt}{event.location ? ` · ${event.location}` : ""}</Text>
-                <Text style={styles.eventSuggestionDetail}>{event.status} · {event.participantCountLabel}</Text>
-              </View>
-              <Text style={styles.eventSuggestionAction}>{event.actionLabel}</Text>
-            </Pressable>
-          ))}
-        </View>
-      ) : null}
-      {eventCards.length ? header : null}
-    </View>
-  );
-}
-
-function PeopleInlinePanel({
-  baseUrl,
-  contactCards,
-  contactsStateKind,
-  onOpenContact,
-  onOpenHref,
-  panel,
-  thread
-}: {
-  baseUrl: string;
-  contactCards: ContactSummary[];
-  contactsStateKind: ResourceKind;
-  onOpenContact: (contactId: string) => void;
-  onOpenHref: (href: ConversationQuickRouteView["href"]) => void;
-  panel: ConversationInlinePanelView;
-  thread: ConversationThreadView;
-}) {
-  const { colors, styles } = useStyles();
-  const locale = useOrbitLocale();
-  const prioritizedContacts = prioritizeConversationContacts(thread, contactCards);
-
-  return (
-    <View style={styles.inlinePanel}>
-      <View style={styles.inlinePanelHeader}>
-        <View style={styles.inlinePanelTitleBlock}>
-          <Text style={styles.panelTitle}>{panel.title}</Text>
-          <Text style={styles.inlinePanelDetail}>{panel.detail}</Text>
-        </View>
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => onOpenHref(panel.actionHref)}
-          style={({ pressed }) => [
-            styles.inlinePanelAction,
-            pressed ? styles.pressed : null
-          ]}
-        >
-          <Text style={styles.inlinePanelActionText}>{locale.t("aiConversation.all")}</Text>
-          <Ionicons color={colors.accent} name="chevron-forward" size={15} />
-        </Pressable>
-      </View>
-      {contactsStateKind === "loading" ? (
-        <Text style={styles.inlinePanelDetail}>{locale.t("aiConversation.contactsLoading")}</Text>
-      ) : null}
-      {contactsStateKind === "offline" || contactsStateKind === "failure" ? (
-        <Text style={styles.errorText}>{locale.t("aiConversation.contactsUnavailable")}</Text>
-      ) : null}
-      {contactsStateKind === "empty" ? (
-        <Text style={styles.inlinePanelDetail}>{locale.t("aiConversation.contactsEmpty")}</Text>
-      ) : null}
-      {prioritizedContacts.length > 0 ? (
-        <View style={styles.contactCardStack}>
-          {prioritizedContacts.slice(0, 3).map((contact) => {
-            const avatar = contactAvatarFor(contact);
-
-            return (
-              <Pressable
-                accessibilityRole="button"
-                key={contact.id}
-                onPress={() => onOpenContact(contact.id)}
-                style={({ pressed }) => [
-                  styles.contactSuggestionCard,
-                  pressed ? styles.pressed : null
-                ]}
-              >
-                <View
-                  style={[
-                    styles.contactAvatar,
-                    contactAvatarToneStyle(avatar.tone, styles)
-                  ]}
-                >
-                  {contact.imageUrl ? (
-                    <Image
-                      resizeMode="cover"
-                      source={{ uri: assetUrl(baseUrl, contact.imageUrl) }}
-                      style={styles.contactAvatarImage}
-                    />
-                  ) : (
-                    <Text style={styles.contactAvatarText}>
-                      {avatar.initial}
-                    </Text>
-                  )}
-                </View>
-                <View style={styles.contactSuggestionText}>
-                  <Text numberOfLines={1} style={styles.eventSuggestionTitle}>
-                    {contact.name}
-                  </Text>
-                  <Text numberOfLines={1} style={styles.eventSuggestionDetail}>
-                    {[
-                      contact.status,
-                      contact.valueLabels.slice(0, 2).join(" / ")
-                    ]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  </Text>
-                  <Text numberOfLines={2} style={styles.inlinePanelDetail}>
-                    {contact.nextAction}
-                  </Text>
-                </View>
-              </Pressable>
-            );
-          })}
-        </View>
-      ) : null}
-    </View>
-  );
-}
-
-function FollowupsInlinePanel({
-  followupTasks,
-  followupsStateKind,
-  onOpenHref,
-  panel
-}: {
-  followupTasks: FollowupTaskView[];
-  followupsStateKind: ResourceKind;
-  onOpenHref: (href: string) => void;
-  panel: ConversationInlinePanelView;
-}) {
-  const { colors, styles } = useStyles();
-  const locale = useOrbitLocale();
-  return (
-    <View style={styles.inlinePanel}>
-      <View style={styles.inlinePanelHeader}>
-        <View style={styles.inlinePanelTitleBlock}>
-          <Text style={styles.panelTitle}>{panel.title}</Text>
-          <Text style={styles.inlinePanelDetail}>{panel.detail}</Text>
-        </View>
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => onOpenHref(panel.actionHref)}
-          style={({ pressed }) => [
-            styles.inlinePanelAction,
-            pressed ? styles.pressed : null
-          ]}
-        >
-          <Text style={styles.inlinePanelActionText}>{locale.t("aiConversation.all")}</Text>
-          <Ionicons color={colors.accent} name="chevron-forward" size={15} />
-        </Pressable>
-      </View>
-      {followupsStateKind === "loading" ? (
-        <Text style={styles.inlinePanelDetail}>{locale.t("aiConversation.tasksLoading")}</Text>
-      ) : null}
-      {followupsStateKind === "offline" || followupsStateKind === "failure" ? (
-        <Text style={styles.errorText}>{locale.t("aiConversation.tasksUnavailable")}</Text>
-      ) : null}
-      {followupTasks.length > 0 ? (
-        <View style={styles.followupCardStack}>
-          {followupTasks.slice(0, 3).map((task) => (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={locale.t("aiConversation.openTaskNamed", { title: locale.t.literal(task.title) })}
-              disabled={!conversationTaskDetailHref(task.id)}
-              key={task.id}
-              onPress={() => onOpenHref(conversationTaskDetailHref(task.id)!)}
-              style={({ pressed }) => [
-                styles.followupSuggestionCard,
-                pressed ? styles.pressed : null
-              ]}
-            >
-              <View style={styles.followupStatusColumn}>
-                <Text style={styles.followupPriority}>{task.priorityLabel}</Text>
-                <Text style={styles.followupDue}>{task.dueLabel}</Text>
-              </View>
-              <View style={styles.eventSuggestionText}>
-                <Text numberOfLines={1} style={styles.eventSuggestionTitle}>
-                  {task.title}
-                </Text>
-                <Text numberOfLines={1} style={styles.eventSuggestionDetail}>
-                  {followupInlineContextLabel(task)}
-                </Text>
-                <Text numberOfLines={2} style={styles.inlinePanelDetail}>
-                  {task.recommendedAction}
-                </Text>
-              </View>
-              <Ionicons color={colors.accent} name="chevron-forward" size={18} />
-            </Pressable>
-          ))}
-        </View>
-      ) : followupsStateKind === "empty" ? (
-        <Text style={styles.inlinePanelDetail}>{locale.t("aiConversation.followupsEmpty")}</Text>
-      ) : null}
-    </View>
-  );
-}
-
-function ScheduleInlinePanel({
-  onOpenHref,
-  panel,
-  scheduleItems,
-  scheduleStateKind
-}: {
-  onOpenHref: (href: string) => void;
-  panel: ConversationInlinePanelView;
-  scheduleItems: ScheduleItem[];
-  scheduleStateKind: ResourceKind;
-}) {
-  const { colors, styles } = useStyles();
-  const locale = useOrbitLocale();
-  return (
-    <View style={styles.inlinePanel}>
-      <View style={styles.inlinePanelHeader}>
-        <View style={styles.inlinePanelTitleBlock}>
-          <Text style={styles.panelTitle}>{panel.title}</Text>
-          <Text style={styles.inlinePanelDetail}>{panel.detail}</Text>
-        </View>
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => onOpenHref(panel.actionHref)}
-          style={({ pressed }) => [
-            styles.inlinePanelAction,
-            pressed ? styles.pressed : null
-          ]}
-        >
-          <Text style={styles.inlinePanelActionText}>{locale.t("aiConversation.all")}</Text>
-          <Ionicons color={colors.accent} name="chevron-forward" size={15} />
-        </Pressable>
-      </View>
-      {scheduleStateKind === "loading" ? (
-        <Text style={styles.inlinePanelDetail}>{locale.t("aiConversation.scheduleLoading")}</Text>
-      ) : null}
-      {scheduleStateKind === "offline" || scheduleStateKind === "failure" ? (
-        <Text style={styles.errorText}>{locale.t("aiConversation.scheduleUnavailable")}</Text>
-      ) : null}
-      {scheduleItems.length > 0 ? (
-        <View style={styles.scheduleCardStack}>
-          {scheduleItems.slice(0, 3).map((item) => (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={locale.t("aiConversation.openTaskNamed", { title: locale.t.literal(item.title) })}
-              disabled={!conversationTaskDetailHref(item.id)}
-              key={item.id}
-              onPress={() => onOpenHref(conversationTaskDetailHref(item.id)!)}
-              style={({ pressed }) => [
-                styles.scheduleSuggestionCard,
-                pressed ? styles.pressed : null
-              ]}
-            >
-              <View style={styles.scheduleDateBadge}>
-                <Text numberOfLines={2} style={styles.scheduleDateText}>
-                  {item.dayLabel}
-                </Text>
-                {item.timeLabel ? (
-                  <Text style={styles.scheduleTimeText}>{item.timeLabel}</Text>
-                ) : null}
-              </View>
-              <View style={styles.eventSuggestionText}>
-                <Text numberOfLines={1} style={styles.eventSuggestionTitle}>
-                  {item.title}
-                </Text>
-                <Text numberOfLines={1} style={styles.eventSuggestionDetail}>
-                  {item.priority}
-                </Text>
-                <Text numberOfLines={2} style={styles.inlinePanelDetail}>
-                  {item.recommendedAction}
-                </Text>
-              </View>
-            </Pressable>
-          ))}
-        </View>
-      ) : scheduleStateKind === "empty" ? (
-        <Text style={styles.inlinePanelDetail}>{locale.t("aiConversation.scheduleEmpty")}</Text>
-      ) : null}
-    </View>
-  );
-}
-
-function ProfileInlinePanel({
-  onOpenHref,
-  panel,
-  profile,
-  profileStateKind
-}: {
-  onOpenHref: (href: ConversationQuickRouteView["href"]) => void;
-  panel: ConversationInlinePanelView;
-  profile: ProfileSummary | null;
-  profileStateKind: ResourceKind;
-}) {
-  const { colors, styles } = useStyles();
-  const locale = useOrbitLocale();
-  return (
-    <View style={styles.inlinePanel}>
-      <View style={styles.inlinePanelHeader}>
-        <View style={styles.inlinePanelTitleBlock}>
-          <Text style={styles.panelTitle}>{panel.title}</Text>
-          <Text style={styles.inlinePanelDetail}>{panel.detail}</Text>
-        </View>
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => onOpenHref(panel.actionHref)}
-          style={({ pressed }) => [
-            styles.inlinePanelAction,
-            pressed ? styles.pressed : null
-          ]}
-        >
-          <Text style={styles.inlinePanelActionText}>{locale.t("aiConversation.profileComplete")}</Text>
-          <Ionicons color={colors.accent} name="chevron-forward" size={15} />
-        </Pressable>
-      </View>
-      {profileStateKind === "loading" ? (
-        <Text style={styles.inlinePanelDetail}>{locale.t("aiConversation.profileLoading")}</Text>
-      ) : null}
-      {profileStateKind === "offline" || profileStateKind === "failure" ? (
-        <Text style={styles.errorText}>{locale.t("aiConversation.profileUnavailable")}</Text>
-      ) : null}
-      {profile ? (
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => onOpenHref("/profile")}
-          style={({ pressed }) => [
-            styles.profileSuggestionCard,
-            pressed ? styles.pressed : null
-          ]}
-        >
-          <View style={styles.profileAvatar}>
-            <Text style={styles.profileAvatarText}>
-              {profile.displayName.trim().slice(0, 1) || "O"}
-            </Text>
-          </View>
-          <View style={styles.profileSuggestionText}>
-            <Text numberOfLines={1} style={styles.eventSuggestionTitle}>
-              {profile.displayName}
-            </Text>
-            <Text numberOfLines={2} style={styles.eventSuggestionDetail}>
-              {profile.headline}
-            </Text>
-            <View style={styles.profileChipRow}>
-              {profile.offering.slice(0, 3).map((item) => (
-                <Text numberOfLines={1} key={item} style={styles.profileChip}>
-                  {item}
-                </Text>
-              ))}
-            </View>
-          </View>
-        </Pressable>
-      ) : profileStateKind === "empty" ? (
-        <Text style={styles.inlinePanelDetail}>{locale.t("aiConversation.profileEmpty")}</Text>
-      ) : null}
-    </View>
-  );
-}
-
-function contactAvatarToneStyle(tone: ReturnType<typeof contactAvatarFor>["tone"], styles: ReturnType<typeof useStyles>["styles"]) {
-  if (tone === "amber") return styles.contactAvatarAmber;
-  if (tone === "emerald") return styles.contactAvatarEmerald;
-  if (tone === "rose") return styles.contactAvatarRose;
-  if (tone === "sky") return styles.contactAvatarSky;
-  return styles.contactAvatarViolet;
 }
 
 function QuickRouteDock({
@@ -1852,88 +1207,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     fontSize: typography.small,
     lineHeight: 20
   },
-  aiRunActionText: {
-    color: colors.accent,
-    fontSize: typography.caption,
-    fontWeight: "800",
-    lineHeight: 16
-  },
-  aiRunHeader: {
-    alignItems: "flex-start",
-    flexDirection: "row",
-    gap: spacing.md,
-    justifyContent: "space-between"
-  },
-  aiRunMetric: {
-    backgroundColor: colors.accentSofter,
-    borderColor: colors.border,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    color: colors.accent,
-    flexShrink: 1,
-    fontSize: 11,
-    fontWeight: "800",
-    lineHeight: 15,
-    maxWidth: "100%",
-    overflow: "hidden",
-    paddingHorizontal: 8,
-    paddingVertical: 5
-  },
-  aiRunMetricRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.xs
-  },
-  aiRunOutput: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border2,
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    color: colors.text,
-    fontSize: typography.small,
-    lineHeight: 20,
-    padding: spacing.md
-  },
-  aiRunPanel: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.card,
-    borderWidth: 1,
-    gap: spacing.md,
-    padding: spacing.md
-  },
-  aiRunReference: {
-    alignItems: "center",
-    backgroundColor: colors.surface2,
-    borderColor: colors.border,
-    borderRadius: radius.card,
-    borderWidth: 1,
-    flexDirection: "row",
-    gap: spacing.md,
-    padding: spacing.md
-  },
-  aiRunReferenceStack: {
-    gap: spacing.sm
-  },
-  aiRunReferenceText: {
-    flex: 1,
-    gap: spacing.xs,
-    minWidth: 0
-  },
-  aiRunResult: {
-    backgroundColor: colors.surface2,
-    borderColor: colors.border,
-    borderRadius: radius.card,
-    borderWidth: 1,
-    gap: spacing.sm,
-    padding: spacing.md
-  },
-  aiRunSafetyText: {
-    color: colors.live,
-    fontSize: typography.caption,
-    fontWeight: "800",
-    lineHeight: 16
-  },
   disabled: {
     opacity: 0.54
   },
@@ -1955,57 +1228,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     borderRadius: 16,
     marginHorizontal: layout.pageInset
   },
-  contactAvatar: {
-    alignItems: "center",
-    borderRadius: radius.pill,
-    height: 48,
-    justifyContent: "center",
-    width: 48
-  },
-  contactAvatarAmber: {
-    backgroundColor: colors.amberSoft
-  },
-  contactAvatarEmerald: {
-    backgroundColor: colors.liveSoft
-  },
-  contactAvatarRose: {
-    backgroundColor: colors.roseSoft
-  },
-  contactAvatarSky: {
-    backgroundColor: colors.skySoft
-  },
-  contactAvatarImage: {
-    borderRadius: radius.pill,
-    height: "100%",
-    width: "100%"
-  },
-  contactAvatarText: {
-    color: colors.ink,
-    fontSize: typography.section,
-    fontWeight: "900",
-    lineHeight: 22
-  },
-  contactAvatarViolet: {
-    backgroundColor: colors.accentSofter
-  },
-  contactCardStack: {
-    gap: spacing.sm
-  },
-  contactSuggestionCard: {
-    alignItems: "center",
-    backgroundColor: colors.surface,
-    borderColor: colors.border2,
-    borderRadius: radius.card,
-    borderWidth: 1,
-    flexDirection: "row",
-    gap: spacing.md,
-    padding: spacing.md
-  },
-  contactSuggestionText: {
-    flex: 1,
-    gap: spacing.xs,
-    minWidth: 0
-  },
   input: {
     backgroundColor: colors.surface,
     color: colors.text,
@@ -2016,180 +1238,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     paddingHorizontal: 4,
     paddingTop: 6,
     paddingBottom: 6
-  },
-  eventCardStack: {
-    gap: spacing.sm
-  },
-  eventStatusBadge: {
-    alignSelf: "stretch",
-    backgroundColor: colors.accentSofter,
-    borderColor: colors.accentSoft,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    color: colors.accent,
-    fontSize: 11,
-    fontWeight: "800",
-    lineHeight: 14,
-    overflow: "hidden",
-    paddingHorizontal: 6,
-    paddingVertical: 4,
-    textAlign: "center"
-  },
-  eventSuggestionCard: {
-    alignItems: "center",
-    backgroundColor: colors.surface,
-    borderColor: colors.border2,
-    borderRadius: radius.card,
-    borderWidth: 0,
-    flexDirection: "row",
-    gap: spacing.md,
-    paddingVertical: 12
-  },
-  eventPanelHeader: { alignItems: "center" },
-  eventSuggestionDetail: {
-    color: colors.text3,
-    fontSize: typography.caption,
-    lineHeight: 16,
-    minWidth: 0
-  },
-  eventSuggestionAction: {
-    color: colors.accent,
-    flexShrink: 0,
-    fontSize: typography.caption,
-    fontWeight: "800",
-    lineHeight: 16
-  },
-  eventSuggestionFooter: {
-    alignItems: "center",
-    borderTopColor: colors.border,
-    borderTopWidth: 1,
-    flexDirection: "row",
-    gap: spacing.sm,
-    justifyContent: "space-between",
-    paddingTop: spacing.xs
-  },
-  eventSuggestionMediaColumn: {
-    flexShrink: 0,
-    gap: spacing.xs,
-    width: 64
-  },
-  eventSuggestionMeta: {
-    gap: spacing.xxs
-  },
-  eventSuggestionMetaLine: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: spacing.xs,
-    minWidth: 0
-  },
-  eventSuggestionText: {
-    flex: 1,
-    gap: spacing.xs,
-    minWidth: 0
-  },
-  eventSuggestionThumbFrame: {
-    backgroundColor: colors.surface3,
-    borderRadius: radius.sm,
-    height: 52,
-    overflow: "hidden",
-    width: 64
-  },
-  eventSuggestionThumbImage: {
-    borderRadius: radius.sm
-  },
-  eventSuggestionThumbOverlay: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: "rgba(10,10,16,0.10)"
-  },
-  eventSuggestionTitle: {
-    color: colors.ink,
-    fontSize: 15,
-    fontWeight: "800",
-    lineHeight: 18
-  },
-  followupCardStack: {
-    gap: spacing.sm
-  },
-  followupDue: {
-    color: colors.text3,
-    fontSize: 11,
-    fontWeight: "700",
-    lineHeight: 15
-  },
-  followupPriority: {
-    color: colors.live,
-    fontSize: typography.caption,
-    fontWeight: "900",
-    lineHeight: 16
-  },
-  followupStatusColumn: {
-    alignItems: "flex-start",
-    backgroundColor: colors.liveSoft,
-    borderRadius: radius.sm,
-    gap: spacing.xs,
-    justifyContent: "center",
-    minHeight: 54,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.sm,
-    width: 82
-  },
-  followupSuggestionCard: {
-    alignItems: "center",
-    backgroundColor: colors.surface,
-    borderColor: colors.border2,
-    borderRadius: radius.card,
-    borderWidth: 1,
-    flexDirection: "row",
-    gap: spacing.md,
-    padding: spacing.md
-  },
-  profileAvatar: {
-    alignItems: "center",
-    backgroundColor: colors.accentSofter,
-    borderRadius: radius.pill,
-    height: 50,
-    justifyContent: "center",
-    width: 50
-  },
-  profileAvatarText: {
-    color: colors.accent,
-    fontSize: typography.section,
-    fontWeight: "900",
-    lineHeight: 22
-  },
-  profileChip: {
-    backgroundColor: colors.surface2,
-    borderColor: colors.border,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    color: colors.text2,
-    fontSize: 11,
-    fontWeight: "700",
-    lineHeight: 15,
-    maxWidth: "100%",
-    overflow: "hidden",
-    paddingHorizontal: 8,
-    paddingVertical: 5
-  },
-  profileChipRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.xs
-  },
-  profileSuggestionCard: {
-    alignItems: "flex-start",
-    backgroundColor: colors.surface,
-    borderColor: colors.border2,
-    borderRadius: radius.card,
-    borderWidth: 1,
-    flexDirection: "row",
-    gap: spacing.md,
-    padding: spacing.md
-  },
-  profileSuggestionText: {
-    flex: 1,
-    gap: spacing.xs,
-    minWidth: 0
   },
   intentPanel: {
     gap: spacing.sm
@@ -2266,42 +1314,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     fontSize: typography.small,
     fontWeight: "700"
   },
-  inlinePanel: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderTopWidth: 1,
-    gap: spacing.md,
-    paddingVertical: spacing.lg
-  },
-  inlinePanelAction: {
-    ...createControlStyles(colors).secondaryButton,
-    flexDirection: "row",
-    gap: spacing.xs
-  },
-  inlinePanelActionText: {
-    ...textStyles.small,
-    color: colors.accent,
-    flexShrink: 1
-  },
-  inlinePanelDetail: {
-    color: colors.text3,
-    fontSize: typography.small,
-    lineHeight: 19
-  },
-  inlinePanelHeader: {
-    alignItems: "flex-start",
-    flexDirection: "row",
-    gap: spacing.md,
-    justifyContent: "space-between"
-  },
-  inlinePanelStack: {
-    gap: spacing.sm
-  },
-  inlinePanelTitleBlock: {
-    flex: 1,
-    gap: spacing.xs,
-    minWidth: 0
-  },
   listBullet: {
     color: colors.text,
     fontSize: typography.small,
@@ -2363,10 +1375,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     fontWeight: "700",
     lineHeight: 24
   },
-  messageTime: {
-    color: colors.text4,
-    fontSize: typography.caption
-  },
   panelTitle: {
     ...textStyles.section,
     color: colors.ink
@@ -2374,42 +1382,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   pressed: {
     opacity: 0.78,
     transform: [{ translateY: 0.5 }]
-  },
-  scheduleCardStack: {
-    gap: spacing.sm
-  },
-  scheduleDateBadge: {
-    alignItems: "flex-start",
-    backgroundColor: colors.skySoft,
-    borderRadius: radius.sm,
-    gap: spacing.xs,
-    justifyContent: "center",
-    minHeight: 58,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.sm,
-    width: 86
-  },
-  scheduleDateText: {
-    color: colors.sky,
-    fontSize: 11,
-    fontWeight: "900",
-    lineHeight: 15
-  },
-  scheduleSuggestionCard: {
-    alignItems: "center",
-    backgroundColor: colors.surface,
-    borderColor: colors.border2,
-    borderRadius: radius.card,
-    borderWidth: 1,
-    flexDirection: "row",
-    gap: spacing.md,
-    padding: spacing.md
-  },
-  scheduleTimeText: {
-    color: colors.text2,
-    fontSize: typography.caption,
-    fontWeight: "800",
-    lineHeight: 16
   },
   quickRouteButton: {
     alignItems: "center",
@@ -2453,11 +1425,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     height: 44,
     width: 44,
     justifyContent: "center",
-  },
-  sendButtonText: {
-    color: colors.onAccent,
-    fontSize: typography.small,
-    fontWeight: "700"
   },
   threadEyebrow: {
     color: colors.ink,

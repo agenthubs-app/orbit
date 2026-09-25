@@ -12,7 +12,8 @@ import type { OrbitLandingEventView } from "../orbit-landing-route-view-model";
 import { partyHrefForEvent } from "../orbit-product-href";
 import { gradientFromString, Icon, StatusBadge } from "../orbit-reference-primitives";
 import { getDemoEventSceneAsset } from "../../../../shared/demo-visual-assets";
-import { toReminderAlerts, type InboxReminderAlert } from "../inbox/inbox-panel-view-model";
+import { inboxNotificationListSchema } from "../../../../shared/api-schema/inbox-notifications";
+import { notificationWebSourceHref } from "../inbox/notification-source-view-model";
 import {
   localizeHomeHeadline,
   localizeHomeList,
@@ -466,20 +467,34 @@ function homeDateTimeRange(event: OrbitLandingEventView, t: Translate): string {
   return `${t({ en: "Today", zh: "今天" })} ${fmt.format(starts)}${Number.isFinite(ends.getTime()) ? ` – ${fmt.format(ends)}` : ""}`;
 }
 
-/** 日程/人脉提醒：与收件箱同源（/api/notifications），按约谈类拆分到日程栏。 */
+interface ConsoleReminder {
+  id: string; title: string; contactName: string; organization: string;
+  dueLabel: string; href: string; appointment: boolean;
+}
+
+/** 日程/人脉提醒：只读 typed inbox 的首个有界提醒页。 */
 function useConsoleReminders(language: OrbitLanguage) {
-  const [reminders, setReminders] = useState<readonly InboxReminderAlert[] | null>(null);
+  const [reminders, setReminders] = useState<readonly ConsoleReminder[] | null>(null);
   useEffect(() => {
     let active = true;
     void (async () => {
       try {
-        const response = await fetch("/api/notifications", { headers: { accept: "application/json" } });
+        const response = await fetch(`/api/inbox/notifications?${new URLSearchParams({ kind: "reminder", language, limit: "4" })}`, { headers: { accept: "application/json" } });
         const envelope = (await response.json().catch(() => null)) as { data?: unknown; success?: boolean } | null;
         if (!response.ok || envelope?.success !== true || !envelope.data) {
           if (active) setReminders([]);
           return;
         }
-        if (active) setReminders(toReminderAlerts(envelope.data as Parameters<typeof toReminderAlerts>[0], language));
+        const page = inboxNotificationListSchema.parse(envelope.data);
+        if (active) setReminders(page.items.map(item => ({
+          id: item.id,
+          title: item.title,
+          contactName: item.object?.name ?? "",
+          organization: "",
+          dueLabel: item.dueAt ? new Intl.DateTimeFormat(language === "zh" ? "zh-CN" : language === "ja" ? "ja-JP" : "en-US", { dateStyle: "medium", timeStyle: "short", ...tz }).format(new Date(item.dueAt)) : "",
+          href: notificationWebSourceHref(item) ?? "/app/inbox",
+          appointment: item.target.kind === "appointment",
+        })));
       } catch {
         if (active) setReminders([]);
       }
@@ -489,7 +504,7 @@ function useConsoleReminders(language: OrbitLanguage) {
   return reminders;
 }
 
-function ReminderRow({ alert, t }: { alert: InboxReminderAlert; t: Translate }) {
+function ReminderRow({ alert, t }: { alert: ConsoleReminder; t: Translate }) {
   return (
     <a href={alert.href} style={{ alignItems: "center", background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: 13, display: "flex", gap: 12, padding: "11px 13px", textDecoration: "none" }}>
       <span className="avatar g-sky" style={{ flexShrink: 0, fontSize: 14, height: 38, width: 38 }}>{(alert.contactName || alert.title).slice(0, 1)}</span>
@@ -506,9 +521,8 @@ function ReminderRow({ alert, t }: { alert: InboxReminderAlert; t: Translate }) 
 
 function ConsoleReminderPanels({ language, t }: { language: OrbitLanguage; t: Translate }) {
   const reminders = useConsoleReminders(language);
-  const isAppointment = (alert: InboxReminderAlert) => /约谈|appointment/iu.test(alert.title);
-  const schedule = (reminders ?? []).filter(isAppointment).slice(0, 2);
-  const people = (reminders ?? []).filter((alert) => !isAppointment(alert)).slice(0, 2);
+  const schedule = (reminders ?? []).filter(alert => alert.appointment).slice(0, 2);
+  const people = (reminders ?? []).filter(alert => !alert.appointment).slice(0, 2);
   return (
     <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 340px), 1fr))" }}>
       <section className="card" data-console-section="schedule" style={{ display: "grid", gap: 11, padding: "16px 18px" }}>

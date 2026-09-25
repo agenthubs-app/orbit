@@ -1,9 +1,9 @@
 'use client';
 import {notificationWebSourceHref} from './notification-source-view-model';
-import {useEffect,useRef,useState,type ReactNode} from 'react';
+import {useEffect,useRef,useState} from 'react';
 import {useOrbitLanguage} from '../orbit-language-context';
 import {formatOrbitDateTime} from '../orbit-datetime';
-import {communicationRequest,readContactMessageActor} from './contact-messages-tab';
+import {communicationRequest,readContactMessageActor} from './inbox-request';
 import {notificationInboxView,notificationDetailView,type NotificationRow,type NotificationCategory,type NotificationList} from './notification-inbox-view-model';
 
 const categories={all:{zh:'全部',en:'All',ja:'すべて'},reminder:{zh:'提醒',en:'Reminders',ja:'リマインダー'},suggestion:{zh:'建议',en:'Suggestions',ja:'提案'},update:{zh:'动态',en:'Updates',ja:'更新'},history:{zh:'历史记录',en:'History',ja:'履歴'}};
@@ -17,7 +17,7 @@ export function NotificationRecordCard({notification:n,onOpen}:{notification:Not
   {!n.readAt&&n.disposition==='open'?<span aria-label={t({zh:'未读',en:'Unread',ja:'未読'})} style={{width:6,height:6,borderRadius:3,background:'var(--accent)',marginTop:8}}/>:null}
  </button>;
 }
-export function TypedNotificationsTab({actorId,onIdentityChanged,fallback}:{actorId:string;onIdentityChanged:()=>void;fallback:ReactNode}) {
+export function TypedNotificationsTab({actorId,onIdentityChanged}:{actorId:string;onIdentityChanged:()=>void}) {
  const {t,language}=useOrbitLanguage();const [filter,setFilter]=useState<keyof typeof categories>('all'),[data,setData]=useState<NotificationList|null>(null),[detail,setDetail]=useState<NotificationRow|null>(null),[error,setError]=useState(''),[attempt,setAttempt]=useState(0),[busy,setBusy]=useState(false);
  const scope=useRef<AbortController|null>(null),pending=useRef<{id:string;request:{action:keyof typeof actions;expectedRevision:number;idempotencyKey:string;scheduledFor?:string}}|null>(null),lock=useRef(false),query=`language=${language}${filter==='history'?'&history=true':filter==='all'?'':'&kind='+filter}`;
  const changed=useRef(onIdentityChanged);changed.current=onIdentityChanged;
@@ -48,7 +48,6 @@ export function TypedNotificationsTab({actorId,onIdentityChanged,fallback}:{acto
  }
  async function markRead(){if(!data||lock.current)return;const controller=scope.current;if(!controller)return;lock.current=true;setBusy(true);const snapshot=data.items.filter(n=>!n.readAt&&n.actions.includes('read')).map(n=>({id:n.id,expectedRevision:n.revision}));try{for(let i=0;i<snapshot.length;i+=50){const items=snapshot.slice(i,i+50);const result=await request('/api/inbox/notifications/read',{method:'POST',body:JSON.stringify({items,idempotencyKey:crypto.randomUUID()})},controller) as {results?:{id:string;error?:string;notification?:NotificationRow}[]};if(!result.results||items.some(n=>!result.results!.some(r=>r.id===n.id&&!r.error&&r.notification?.actorId===actorId&&r.notification.readAt)))throw new Error();}if(!controller.signal.aborted)setAttempt(n=>n+1);}catch{if(!controller.signal.aborted)setError(t({zh:'部分通知未能标记，请刷新后重试。',en:'Some notifications could not be marked. Refresh and retry.',ja:'一部の通知を既読にできませんでした。更新して再試行してください。'}));}finally{lock.current=false;if(!controller.signal.aborted)setBusy(false);}}
  async function more(){if(!data?.nextCursor||lock.current)return;const previous=data,controller=scope.current;if(!controller)return;lock.current=true;setBusy(true);try{const next=notificationInboxView(await request('/api/inbox/notifications?'+query+'&cursor='+encodeURIComponent(previous.nextCursor!),{},controller),actorId);if(!controller.signal.aborted)setData(old=>old===previous?{...next,items:[...new Map([...old.items,...next.items].map(n=>[n.id,n])).values()]}:old);}catch{if(!controller.signal.aborted)setError(t({zh:'加载失败，请重试。',en:'Could not load more. Retry.',ja:'読み込めません。再試行してください。'}));}finally{lock.current=false;if(!controller.signal.aborted)setBusy(false);}}
- if(data?.enabled===false)return fallback;
  const dispositions={open:{zh:'未处理',en:'Open',ja:'未対応'},handled:{zh:'已处理',en:'Handled',ja:'対応済み'},dismissed:{zh:'已忽略',en:'Dismissed',ja:'非表示'},accepted:{zh:'已加入待办',en:'Task added',ja:'タスクに追加済み'},expired:{zh:'已过期',en:'Expired',ja:'期限切れ'},archived:{zh:'已归档',en:'Archived',ja:'アーカイブ済み'}};
  return <div style={{padding:16}}>
   {error?<div role="alert">{error} <button className="btn btn-ghost" type="button" onClick={()=>{pending.current=null;setAttempt(n=>n+1);}}>{t({zh:'刷新',en:'Refresh',ja:'更新'})}</button>{pending.current?<button className="btn btn-ghost" type="button" disabled={busy} onClick={()=>void act(pending.current!.request.action)}>{t({zh:'重试操作',en:'Retry action',ja:'操作を再試行'})}</button>:null}</div>:null}

@@ -306,80 +306,9 @@ export function todayToView(payload: unknown, now = new Date(), timeZone = "Asia
   };
 }
 
-export function todayHomeSummary(
-  payload: unknown,
-  now = new Date(),
-  timeZone = "Asia/Tokyo",
-  language: OrbitLanguage = "zh",
-): TodayHomeSummaryView {
-  const root = isRecord(payload) ? payload : {};
-  const summary = isRecord(root.summary) ? root.summary : {};
-  const today = todayToView(payload, now, timeZone, language);
-  const items = [
-    ...today.tasks.map((task) => ({
-      context: [task.categoryLabel, task.dueLabel].filter(Boolean).join(" · "),
-      href: `/tasks/${encodeURIComponent(task.id)}`,
-      id: task.id,
-      kind: "task" as const,
-      title: task.title,
-    })),
-    ...today.schedule.map((item) => ({
-      context: [item.stateLabel, item.detail].filter(Boolean).join(" · "),
-      href: "/schedule",
-      id: item.id,
-      kind: "schedule" as const,
-      title: item.title,
-    })),
-  ]
-    .slice(0, 3)
-    .map((item, index) => ({ ...item, index: index + 1 }));
-
-  return {
-    items,
-    openTaskCount:
-      typeof summary.openTaskCount === "number" && summary.openTaskCount >= 0
-        ? summary.openTaskCount
-        : today.tasks.length,
-    suggestionCount:
-      typeof summary.suggestionCount === "number" && summary.suggestionCount >= 0
-        ? summary.suggestionCount
-        : today.suggestions.length,
-  };
-}
-
 export interface HomeQuestion {
   kind: "tasks" | "followup" | "preparation" | "discovery";
   label: string;
-}
-
-export function todayHomeQuestions(
-  payload: unknown,
-  now = new Date(),
-  language: OrbitLanguage = "zh",
-): readonly HomeQuestion[] {
-  const t = createTranslator(language);
-  const root = isRecord(payload) ? payload : {};
-  const tasks = (Array.isArray(root.tasks) ? root.tasks : [])
-    .map(taskFrom)
-    .filter((task): task is TaskItemContract => task !== null && task.status === "open");
-  const schedule = (Array.isArray(root.schedule) ? root.schedule : [])
-    .map(scheduleFrom)
-    .filter((item): item is ScheduleItemContract => item !== null);
-  const urgent = tasks.some((task) => task.priority === "high" ||
-    (typeof task.dueAt === "string" && Date.parse(task.dueAt) <= now.getTime()));
-  const preparation = schedule.some((item) =>
-    (item.kind === "meeting" || item.kind === "event") &&
-    item.state === "upcoming" && Date.parse(item.startsAt) > now.getTime());
-  const followup = tasks.some((task) => task.category === "relationship");
-  const primary: HomeQuestion = urgent
-    ? { kind: "tasks", label: t("todayVm.questionTasks") }
-    : preparation
-      ? { kind: "preparation", label: t("todayVm.questionPreparation") }
-      : followup
-        ? { kind: "followup", label: t("todayVm.questionFollowup") }
-        : { kind: "tasks", label: t("todayVm.questionTasks") };
-
-  return [primary, { kind: "discovery", label: t("todayVm.questionDiscovery") }];
 }
 
 export function tasksToListView(

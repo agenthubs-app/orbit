@@ -19,9 +19,9 @@ test("retry after a committed task response is lost does not create a duplicate"
   });
   await assert.rejects(client.create("整理会议记录"));
   await client.create("整理会议记录");
-  assert.equal((await client.loadList("open")).length, 1);
+  assert.equal((await service.list({ actorId: "test", status: "open" })).length, 1);
   await client.create("整理会议记录");
-  assert.equal((await client.loadList("open")).length, 2, "new intentional creation gets a new key");
+  assert.equal((await service.list({ actorId: "test", status: "open" })).length, 2, "new intentional creation gets a new key");
 });
 
 test("one-hour reminder retry preserves both its time and idempotency key", async () => {

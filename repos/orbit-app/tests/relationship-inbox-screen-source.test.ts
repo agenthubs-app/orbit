@@ -13,17 +13,17 @@ const detailRoutePath = join(repoRoot, "app", "inbox", "[id].tsx");
 // Native route / HTTP boundary checks remain here. Feed filters, reading and
 // seeded compose behavior are exercised in relationship-inbox-interactions.test.ts.
 
-test("relationship inbox uses the unified feed and does not expose local-only reminder dismissal", () => {
-  assert.match(screenSource, /inboxFeedFromSources/u);
+test("relationship inbox uses the typed notification list and does not expose the legacy reminder feed", () => {
+  assert.match(screenSource, /useNotificationInbox/u);
+  assert.match(screenSource, /NotificationInboxList/u);
   assert.match(screenSource, /runInboxReadBatch/u);
-  assert.match(screenSource, /UnifiedInboxTabs/u);
-  assert.match(screenSource, /UnifiedFeedList/u);
-  assert.doesNotMatch(screenSource.slice(screenSource.indexOf("function InboxContent"), screenSource.indexOf("function RelationshipSignalsCard")), /onDismissAlert|inbox\.ignore/u);
+  assert.doesNotMatch(screenSource, /inboxFeedFromSources|UnifiedInboxTabs|UnifiedFeedList|RelationshipSignalsCard/u);
+  assert.doesNotMatch(screenSource, /ORBIT_API_ENDPOINTS\.notifications/u);
 });
 
 test("relationship inbox does not GET the POST-only proactive signal endpoint", () => {
   assert.doesNotMatch(screenSource, /ORBIT_API_ENDPOINTS\.proactiveTurns/u);
-  assert.match(screenSource, /ORBIT_API_ENDPOINTS\.notifications/u);
+  assert.match(screenSource, /useNotificationInbox/u);
 });
 
 test("notification deep links fetch an authenticated delivery and expose signal actions", () => {
@@ -95,12 +95,6 @@ test("relationship inbox privacy controls never render raw implementation errors
 test("relationship inbox actions sanitize user-facing error text", () => {
   const screenActions = [
     {
-      end: "function InboxSegmentedControl",
-      fallback: "inbox\\.signalConfirmFailed",
-      name: "RelationshipSignalsCard",
-      setter: "setActionError"
-    },
-    {
       end: "function LabeledInput",
       fallback: "inbox\\.createDraftFailed",
       name: "NewThreadComposer",
@@ -133,17 +127,6 @@ test("relationship inbox actions sanitize user-facing error text", () => {
   }
 });
 
-test("relationship inbox shows and confirms email or calendar relationship signals", () => {
-  assert.match(screenSource, /relationshipSignalsEmailCalendar/u);
-  assert.match(screenSource, /relationshipSignalsToView/u);
-  assert.match(screenSource, /buildRelationshipSignalConfirmRequest/u);
-  assert.match(screenSource, /relationshipSignalConfirmToView/u);
-  assert.match(screenSource, /RelationshipSignalsCard/u);
-  assert.match(screenSource, /onConfirmSignal/u);
-  assert.match(screenSource, /label=\{locale\.t\("inbox\.confirmSignal"\)\}/u);
-  assert.match(screenSource, /title=\{locale\.t\("inbox\.signalsTitle"\)\}/u);
-});
-
 test("relationship inbox opens an existing thread before composing from a contact seed", () => {
   assert.match(screenSource, /relationshipConversationIdForContact/u);
   assert.match(screenSource, /seededConversationId/u);
@@ -162,7 +145,7 @@ test("relationship inbox opens threads on a dedicated detail route", () => {
   assert.match(screenSource, /relationshipCommunicationConversationPath\(conversationId\)/u);
 
   const listStart = screenSource.indexOf("function InboxContent");
-  const listEnd = screenSource.indexOf("function RelationshipSignalsCard");
+  const listEnd = screenSource.indexOf("function InboxSegmentedControl");
   const listSource = screenSource.slice(listStart, listEnd);
 
   assert.doesNotMatch(listSource, /detail=\{view\.selected\}/u);

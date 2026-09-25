@@ -4,6 +4,7 @@ import { createRequire } from "node:module";
 import test from "node:test";
 import { build } from "esbuild";
 import { chromium, type Browser, type Page } from "playwright";
+import { aiSessionSummaryPageSchema } from "../src/api/schema/ai-session-page";
 import { aiConversationPayload, aiReadPayloads, aiSession, aiSessionListPayload, emptyAiConversationPayload, emptyAiSessionListPayload } from "./helpers/ai-fixtures";
 
 const require = createRequire(import.meta.url);
@@ -27,7 +28,18 @@ const NativeDate = Date;
 window.Date = class extends NativeDate { constructor(...args) { super(...(args.length ? args : ["2026-09-12T03:00:00Z"])); } static now() { return NativeDate.parse("2026-09-12T03:00:00Z"); } };
 const state = window.fixture = { requests: [], pending: [], navigation: [], presses: {}, expiries: 0, actor: "actor-1", name: "程川", cookieHeader: "", baseUrl: "https://orbit.example", ready: true, baseReady: true, signedIn: true, focused: true, appState: "active", mounted: true, width: 390, fontScale: 1, ...window.initialFixture,
   update(patch) { Object.assign(state, patch); if (patch.appState) nativeListeners.forEach(fn => fn(patch.appState)); revision++; listeners.forEach(fn => fn()); },
-  reply(index, status = 200, payload) { const r = state.requests[index]; const cursor = new URL(r.url).searchParams.get("cursor") ?? "first"; const paged = r.path === "/api/ai/conversations/sessions" ? state.pagePayloads?.[cursor] : undefined; r.replied = true; state.pending[index]?.(new Response(JSON.stringify(status === 200 || payload !== undefined ? { success: true, data: payload === undefined ? paged ?? state.payloads[r.path] ?? (r.path === "/api/inbox/notifications" ? {enabled:false,items:[],unreadCount:0,nextCursor:null,asOf:"2026-09-16T00:00:00.000Z"} : undefined) : payload } : { success: false, error: { code: "UNAVAILABLE", message: "暂时无法读取，请重试。" } }), { status, headers: { "Content-Type": "application/json" } })); }
+  reply(index, status = 200, payload) {
+    const r = state.requests[index]; const params = new URL(r.url).searchParams;
+    const cursor = params.get("cursor") ?? "first"; const pageKey = [params.get("q") ?? "", params.get("groupId") ?? "", cursor].join("|");
+    const configuredPage = state.pagePayloads?.[pageKey] ?? state.pagePayloads?.[cursor];
+    let paged = r.path === "/api/ai/conversations/sessions" ? configuredPage ?? state.payloads[r.path] : undefined;
+    if (r.path === "/api/ai/conversations/sessions" && !configuredPage && paged && Array.isArray(paged.items) && cursor === "first") {
+      const query = params.get("q")?.trim().toLocaleLowerCase() ?? ""; const groupId = params.get("groupId");
+      paged = { ...paged, items: paged.items.filter(item => (!query || [item.id, item.title, item.firstUserText, item.lastMessagePreview, item.organization.customTitle ?? ""].join(" ").toLocaleLowerCase().includes(query)) && (!groupId || item.organization.groupId === groupId)) };
+    }
+    r.replied = true;
+    state.pending[index]?.(new Response(JSON.stringify(status === 200 || payload !== undefined ? { success: true, data: payload === undefined ? paged ?? state.payloads[r.path] ?? (r.path === "/api/inbox/notifications" ? {enabled:false,items:[],unreadCount:0,nextCursor:null,asOf:"2026-09-16T00:00:00.000Z"} : undefined) : payload } : { success: false, error: { code: "UNAVAILABLE", message: "暂时无法读取，请重试。" } }), { status, headers: { "Content-Type": "application/json" } }));
+  }
 };
 onSessionExpired(() => state.expiries++);
 window.fetch = async (input, init) => { const index = state.requests.length; const url = new URL(String(input)); state.requests.push({ path: url.pathname, url: String(input), method: init.method, body: init.body ? JSON.parse(init.body) : null, signal: init.signal });
@@ -92,6 +104,11 @@ async function twice(p: Page, label: string) { await p.evaluate(label => { const
 
 test("AI home presents editable prompts and real recent conversations before its own next actions", async t => {
   const p = await open(t);
+  await p.getByText("整理访谈记录", { exact: true }).waitFor();
+  const todayRequests = await p.evaluate(() => (window as any).fixture.requests.filter((request: any) => request.path === "/api/today").map((request: any) => request.url));
+  assert.equal(todayRequests.length, 1);
+  assert.equal(new URL(todayRequests[0]).searchParams.get("taskMode"), "summary");
+  assert.equal(new URL(todayRequests[0]).searchParams.has("limit"), false, "the real summary endpoint rejects a client limit");
   assert.equal(await p.getByRole("heading", { name: "今天想 整理什么？" }).count(), 1);
   assert.equal(await p.getByRole("button", { name: /^填入问题：/ }).count(), 3);
   const rows = p.getByRole("button", { name: /^继续会话：/ });
@@ -101,16 +118,31 @@ test("AI home presents editable prompts and real recent conversations before its
   assert.equal(await p.getByRole("tab").count(), 0); assert.deepEqual(await writes(p), []);
   if (process.env.APP_STYLE_SCREENSHOTS) { await p.getByRole("textbox", { name: "消息", exact: true }).fill("帮我整理明天交流会的准备事项"); await p.screenshot({ path: "/tmp/orbit-ink-signal-ai-home-390.png" }); }
 });
-test("AI full history follows server cursors and exposes later pages", async t => {
-  const later = { ...aiSession, id: "session:later", title: "第 51 条会话", customTitle: "第 51 条会话", organization: { ...aiSession.organization, customTitle: "第 51 条会话", groupId: null }, updatedAt: "2026-09-08T01:00:00Z" };
+test("AI history reads one summary page, then follows its cursor only on explicit request", async t => {
+  const later = { ...aiSessionListPayload.items[0], id: "session:later", title: "第 51 条会话", firstUserText: "第 51 条会话", lastMessagePreview: "后续会话预览", organization: { ...aiSession.organization, customTitle: "第 51 条会话", groupId: null }, updatedAt: "2026-09-08T01:00:00Z" };
   const p = await open(t, { pagePayloads: {
-    first: { ...aiSessionListPayload, sessions: [aiSession], nextCursor: "page-two" },
-    "page-two": { ...aiSessionListPayload, sessions: [later], nextCursor: null },
+    first: { ...aiSessionListPayload, items: [aiSessionListPayload.items[0]], nextCursor: "page-two", hasMore: true },
+    "page-two": { ...aiSessionListPayload, items: [later], nextCursor: null, hasMore: false },
   } });
-  await p.waitForFunction(() => (window as any).fixture.requests.some((request: any) => new URL(request.url).searchParams.get("cursor") === "page-two"));
-  await settle(p);
+  await p.waitForFunction(() => (window as any).fixture.requests.some((request: any) => request.path === "/api/ai/conversations/sessions"));
+  const firstRequest = await p.evaluate(() => (window as any).fixture.requests.find((request: any) => request.path === "/api/ai/conversations/sessions"));
+  assert.equal(new URL(firstRequest.url).searchParams.get("limit"), "20");
+  assert.equal(new URL(firstRequest.url).searchParams.has("v"), false);
+  assert.equal(await p.evaluate(() => (window as any).fixture.requests.filter((request: any) => request.path === "/api/ai/conversations/sessions").length), 1, "entering the screen must not auto-fetch continuation pages");
   await press(p, "全部会话");
+  await press(p, "加载更多历史记录");
+  await p.waitForFunction(() => (window as any).fixture.requests.some((request: any) => new URL(request.url).searchParams.get("cursor") === "page-two"));
   assert.equal(await p.getByRole("button", { name: "继续会话：第 51 条会话", exact: true }).count(), 1);
+});
+test("AI session summary limits count Unicode code points", () => {
+  const item = aiSessionListPayload.items[0]!;
+  const makePage = (title: string, preview: string) => ({
+    ...aiSessionListPayload,
+    items: [{ ...item, title, firstUserText: preview, lastMessagePreview: preview }],
+  });
+  assert.equal(aiSessionSummaryPageSchema.safeParse(makePage("😀".repeat(120), "🌱".repeat(240))).success, true);
+  assert.equal(aiSessionSummaryPageSchema.safeParse(makePage("😀".repeat(121), "🌱".repeat(240))).success, false);
+  assert.equal(aiSessionSummaryPageSchema.safeParse(makePage("😀".repeat(120), "🌱".repeat(241))).success, false);
 });
 test("AI home uses the supplied brand asset", async t => {
   const p = await open(t); const mark = p.getByTestId("iorbit-brand-mark"); assert.equal(await mark.count(), 1);
@@ -148,10 +180,106 @@ for (const patch of [{}, { width: 320, fontScale: 1.6 }]) test("AI composer grow
   assert.ok(collapsed && collapsed.height >= ("fontScale" in patch ? 47.2 : 44) && collapsed.height < 60, JSON.stringify(collapsed));
 });
 test("AI history search distinguishes no match from an empty history", async t => {
-  const p = await open(t); await press(p, "全部会话");
+  const p = await open(t, { pagePayloads: { "不存在的讨论||first": { ...emptyAiSessionListPayload } } }); await press(p, "全部会话");
   await p.getByPlaceholder("搜索历史", { exact: true }).fill("不存在的讨论"); await settle(p);
+  await p.waitForFunction(() => (window as any).fixture.requests.some((request: any) => new URL(request.url).searchParams.get("q") === "不存在的讨论"));
   assert.equal(await p.getByText("还没有匹配的对话。", { exact: true }).count(), 1);
   assert.equal(await p.getByText("还没有历史记录", { exact: true }).count(), 0);
+});
+test("AI history search debounces rapid input to one final server query", async t => {
+  const p = await open(t); await press(p, "全部会话");
+  await p.getByPlaceholder("搜索历史", { exact: true }).pressSequentially("产品试点", { delay: 25 });
+  await p.waitForFunction(() => (window as any).fixture.requests.some((request: any) => {
+    const url = new URL(request.url); return request.path === "/api/ai/conversations/sessions" && url.searchParams.get("q") === "产品试点";
+  }));
+  const queries = await p.evaluate(() => (window as any).fixture.requests
+    .filter((request: any) => request.path === "/api/ai/conversations/sessions")
+    .map((request: any) => new URL(request.url).searchParams.get("q"))
+    .filter((query: string | null) => query !== null));
+  assert.deepEqual(queries, ["产品试点"]);
+});
+test("AI history filters on the server and a changed filter restarts from the first cursor", async t => {
+  const product = aiSessionListPayload.items[0]!;
+  const weekly = aiSessionListPayload.items[1]!;
+  const p = await open(t, { pagePayloads: {
+    first: { ...aiSessionListPayload, items: [product], nextCursor: "all-next", hasMore: true },
+    "||all-next": { ...aiSessionListPayload, items: [weekly], nextCursor: null, hasMore: false },
+    "产品试点||first": { ...aiSessionListPayload, items: [product], nextCursor: "product-next", hasMore: true },
+    "产品试点||product-next": { ...aiSessionListPayload, items: [{ ...product, id: "session:product-next", title: "第二页产品讨论", organization: { ...product.organization, customTitle: "第二页产品讨论" } }], nextCursor: null, hasMore: false },
+    "本周||first": { ...aiSessionListPayload, items: [weekly], nextCursor: null, hasMore: false },
+  } });
+  await p.waitForFunction(() => (window as any).fixture.requests.some((request: any) => request.path === "/api/ai/conversations/sessions"));
+  await press(p, "全部会话");
+  const search = p.getByPlaceholder("搜索历史", { exact: true });
+  await search.fill("产品试点");
+  await p.waitForFunction(() => (window as any).fixture.requests.some((request: any) => {
+    const url = new URL(request.url); return request.path === "/api/ai/conversations/sessions" && url.searchParams.get("q") === "产品试点";
+  }));
+  await press(p, "加载更多历史记录");
+  await p.waitForFunction(() => (window as any).fixture.requests.some((request: any) => new URL(request.url).searchParams.get("cursor") === "product-next"));
+  await p.getByRole("button", { name: "打开历史记录：第二页产品讨论", exact: true }).waitFor();
+  await search.fill("本周");
+  await p.getByRole("button", { name: "打开历史记录：本周安排", exact: true }).waitFor();
+  assert.equal(await p.getByRole("button", { name: "打开历史记录：第二页产品讨论", exact: true }).count(), 0);
+  const filteredRequests = await p.evaluate(() => (window as any).fixture.requests
+    .filter((request: any) => request.path === "/api/ai/conversations/sessions")
+    .map((request: any) => { const params = new URL(request.url).searchParams; return { q: params.get("q"), cursor: params.get("cursor") }; }));
+  assert.equal(filteredRequests.some((params: { q: string | null; cursor: string | null }) => params.cursor === "product-next" && params.q === "本周"), false);
+  assert.equal(filteredRequests.at(-1)?.q, "本周");
+  assert.equal(filteredRequests.at(-1)?.cursor, null);
+});
+test("AI history keeps the active query and group when an organization mutation refreshes page one", async t => {
+  const p = await open(t, { holdWrites: true });
+  await press(p, "全部会话"); await press(p, "管理分组"); await press(p, "打开分组：工作");
+  await p.getByPlaceholder("搜索历史", { exact: true }).fill("产品试点");
+  await p.waitForFunction(() => (window as any).fixture.requests.some((request: any) => {
+    const url = new URL(request.url); return request.path === "/api/ai/conversations/sessions" && url.searchParams.get("q") === "产品试点" && url.searchParams.get("groupId") === "group:work";
+  }));
+  await p.getByRole("button", { name: "整理会话", exact: true }).first().click(); await settle(p); await press(p, "置顶会话");
+  const patchIndex = await p.evaluate(() => (window as any).fixture.requests.findLastIndex((request: any) => request.method === "PATCH" && request.path.includes("/sessions/")));
+  assert.notEqual(patchIndex, -1);
+  const beforeRefresh = await p.evaluate(() => (window as any).fixture.requests.length);
+  await p.evaluate(({ index, session }) => (window as any).fixture.reply(index, 200, { session, storage: { configured: true, persisted: true, source: "session-store" } }), { index: patchIndex, session: { ...aiSession, organization: { ...aiSession.organization, pinned: true } } });
+  await p.waitForFunction(before => (window as any).fixture.requests.slice(before).some((request: any) => {
+    const url = new URL(request.url); return request.path === "/api/ai/conversations/sessions" && url.searchParams.get("q") === "产品试点" && url.searchParams.get("groupId") === "group:work" && !url.searchParams.has("cursor");
+  }), beforeRefresh);
+  const refresh = await p.evaluate(before => (window as any).fixture.requests.slice(before).filter((request: any) => request.path === "/api/ai/conversations/sessions").map((request: any) => request.url), beforeRefresh);
+  assert.equal(refresh.length, 1);
+});
+test("AI continuation failure keeps the loaded page and retries the same cursor", async t => {
+  const weekly = aiSessionListPayload.items[1]!;
+  const later = { ...weekly, id: "session:after-retry", title: "重试后会话", organization: { ...weekly.organization, customTitle: "重试后会话" } };
+  const p = await open(t, { pagePayloads: {
+    first: { ...aiSessionListPayload, items: [aiSessionListPayload.items[0]], nextCursor: "retry-cursor", hasMore: true },
+    "||retry-cursor": { ...aiSessionListPayload, items: [later], nextCursor: null, hasMore: false },
+  } });
+  await p.waitForFunction(() => (window as any).fixture.requests.some((request: any) => request.path === "/api/ai/conversations/sessions"));
+  await press(p, "全部会话"); await update(p, { holdReads: true }); await press(p, "加载更多历史记录");
+  await p.waitForFunction(() => (window as any).fixture.requests.some((request: any) => new URL(request.url).searchParams.get("cursor") === "retry-cursor"));
+  const failedIndex = await p.evaluate(() => (window as any).fixture.requests.findLastIndex((request: any) => new URL(request.url).searchParams.get("cursor") === "retry-cursor"));
+  await p.evaluate(index => (window as any).fixture.reply(index, 503), failedIndex); await settle(p);
+  assert.equal(await p.getByRole("button", { name: "打开历史记录：产品试点讨论", exact: true }).count(), 1);
+  assert.equal(await p.getByText("历史记录未能读取", { exact: true }).count(), 1);
+  await update(p, { holdReads: false }); await press(p, "重试加载更多");
+  await p.getByRole("button", { name: "打开历史记录：重试后会话", exact: true }).waitFor();
+  const cursors = await p.evaluate(() => (window as any).fixture.requests.filter((request: any) => request.path === "/api/ai/conversations/sessions").map((request: any) => new URL(request.url).searchParams.get("cursor")));
+  assert.deepEqual(cursors, [null, "retry-cursor", "retry-cursor"]);
+});
+for (const patch of [{ actor: "actor-2" }, { cookieHeader: "orbit_session=changed" }, { baseUrl: "https://other.example" }]) test("AI late continuation from a prior scope cannot appear after scope changes " + JSON.stringify(patch), async t => {
+  const weekly = aiSessionListPayload.items[1]!;
+  const later = { ...weekly, id: "session:old-account", title: "旧账号会话", organization: { ...weekly.organization, customTitle: "旧账号会话" } };
+  const p = await open(t, { pagePayloads: {
+    first: { ...aiSessionListPayload, items: [aiSessionListPayload.items[0]], nextCursor: "old-account-cursor", hasMore: true },
+    "||old-account-cursor": { ...aiSessionListPayload, items: [later], nextCursor: null, hasMore: false },
+  } });
+  await p.waitForFunction(() => (window as any).fixture.requests.some((request: any) => request.path === "/api/ai/conversations/sessions"));
+  await press(p, "全部会话"); await update(p, { holdReads: true }); await press(p, "加载更多历史记录");
+  await p.waitForFunction(() => (window as any).fixture.requests.some((request: any) => new URL(request.url).searchParams.get("cursor") === "old-account-cursor"));
+  const pendingIndex = await p.evaluate(() => (window as any).fixture.requests.findLastIndex((request: any) => new URL(request.url).searchParams.get("cursor") === "old-account-cursor"));
+  await update(p, patch);
+  await p.evaluate(index => (window as any).fixture.reply(index, 200), pendingIndex); await settle(p);
+  assert.equal(await p.getByRole("button", { name: "打开历史记录：旧账号会话", exact: true }).count(), 0);
+  assert.equal(await p.getByRole("button", { name: "打开历史记录：产品试点讨论", exact: true }).count(), 0);
 });
 
 test("AI home prompt selection never sends and its editable draft submits only once", async t => {
@@ -221,12 +349,14 @@ for (const [actor, name, expected] of [
 });
 test("AI opening and closing history preserves draft and history search is real", async t => {
   const p = await open(t); await p.getByRole("textbox", { name: "消息", exact: true }).fill("尚未发送"); await press(p, "全部会话");
-  await p.getByPlaceholder("搜索历史").fill("产品试点"); assert.equal(await p.getByRole("button", { name: /^打开历史记录：/ }).count(), 1);
+  await p.getByPlaceholder("搜索历史").fill("产品试点");
+  await p.waitForFunction(() => (window as any).fixture.requests.some((request: any) => new URL(request.url).searchParams.get("q") === "产品试点"));
+  assert.equal(await p.getByRole("button", { name: /^打开历史记录：/ }).count(), 1);
   await press(p, "关闭历史"); assert.equal(await p.getByRole("textbox", { name: "消息", exact: true }).inputValue(), "尚未发送"); assert.deepEqual(await writes(p), []);
 });
 test("AI history preserves multilingual titles containing ordinary implementation-like words", async t => {
   const title = "Live music provider · 東京で会いましょう？";
-  const p = await open(t, { payloads: { ...aiReadPayloads, "/api/ai/conversations/sessions": { ...aiSessionListPayload, sessions: [{ ...aiSession, customTitle: title, organization: { ...aiSession.organization, customTitle: title } }] } } });
+  const p = await open(t, { payloads: { ...aiReadPayloads, "/api/ai/conversations/sessions": { ...aiSessionListPayload, items: [{ ...aiSessionListPayload.items[0], title, organization: { ...aiSession.organization, customTitle: title } }] } } });
   assert.equal(await p.getByRole("button", { name: "继续会话：" + title, exact: true }).count(), 1);
 });
 test("AI home retains actual assistant business text below recent history", async t => {
@@ -265,8 +395,8 @@ test("AI only genuine empty sources show an empty history", async t => {
   const p = await open(t, { payloads: { ...aiReadPayloads, "/api/ai/conversations": emptyAiConversationPayload, "/api/ai/conversations/sessions": emptyAiSessionListPayload } });
   assert.equal(await p.getByText("还没有会话", { exact: true }).count(), 1); assert.equal(await p.getByRole("button", { name: /^继续会话：/ }).count(), 0);
 });
-for (const session of [{ ...aiSession, title: "" }, { ...aiSession, title: "   " }, { ...aiSession, messages: [] }]) test("AI malformed empty session cannot disappear into an empty history " + JSON.stringify(session), async t => {
-  const p = await open(t, { payloads: { ...aiReadPayloads, "/api/ai/conversations": emptyAiConversationPayload, "/api/ai/conversations/sessions": { ...aiSessionListPayload, sessions: [session] } } });
+for (const item of [{ ...aiSessionListPayload.items[0], id: "" }, { ...aiSessionListPayload.items[0], messages: aiSession.messages }]) test("AI malformed session summary cannot disappear into an empty history " + JSON.stringify(item), async t => {
+  const p = await open(t, { payloads: { ...aiReadPayloads, "/api/ai/conversations": emptyAiConversationPayload, "/api/ai/conversations/sessions": { ...aiSessionListPayload, items: [item] } } });
   assert.equal(await p.getByText("历史记录未能读取", { exact: true }).count(), 1); assert.equal(await p.getByText("还没有会话", { exact: true }).count(), 0);
 });
 for (const payload of [{ ...emptyAiConversationPayload, state: "success" }, { ...emptyAiConversationPayload, state: "pending" }, { ...emptyAiConversationPayload, activeConversationId: "not-empty" }, { ...aiConversationPayload, messages: [] }]) test("AI inconsistent conversation read state cannot become empty success " + JSON.stringify(payload), async t => {
@@ -280,7 +410,7 @@ test("AI pending conversation records do not claim that history is empty", async
 test("AI confirmed deletion removes only the acknowledged session and refreshes its source", async t => {
   const p = await open(t, { holdWrites: true }); await press(p, "全部会话"); await p.getByRole("button", { name: "删除历史记录", exact: true }).first().click(); await settle(p); await press(p, "确认删除");
   const count = await p.evaluate(() => (window as any).fixture.requests.length);
-  await update(p, { payloads: { ...aiReadPayloads, "/api/ai/conversations/sessions": { ...aiSessionListPayload, sessions: aiSessionListPayload.sessions.slice(1) } } });
+  await update(p, { payloads: { ...aiReadPayloads, "/api/ai/conversations/sessions": { ...aiSessionListPayload, items: aiSessionListPayload.items.slice(1) } } });
   await p.evaluate(() => { const s = (window as any).fixture; s.reply(s.requests.findLastIndex((r: any) => r.method === "DELETE"), 200, { deleted: true, storage: { configured: true, persisted: true, source: "session-store" } }); }); await settle(p);
   assert.equal(await p.getByRole("button", { name: "打开历史记录：产品试点讨论", exact: true }).count(), 0);
   assert.equal(await p.getByRole("button", { name: "打开历史记录：本周安排", exact: true }).count(), 1);
@@ -295,7 +425,7 @@ for (const patch of [{ actor: "actor-2" }, { focused: false }, { mounted: false 
   await p.evaluate(() => { const s = (window as any).fixture; s.reply(s.requests.findLastIndex((r: any) => r.method === "DELETE"), 401); }); await settle(p);
   assert.equal(await p.evaluate(() => (window as any).fixture.expiries), 0); assert.equal((await writes(p)).length, 1);
 });
-for (const payload of [{}, { ...aiSessionListPayload, sessions: [{ ...aiSession, id: "" }] }, { ...aiSessionListPayload, sessions: [aiSession, aiSession] }, { ...aiSessionListPayload, storage: { configured: false, persisted: false } }]) test("AI invalid history stays retryable " + JSON.stringify(payload), async t => {
+for (const payload of [{}, { ...aiSessionListPayload, items: [{ ...aiSessionListPayload.items[0], id: "" }] }, { ...aiSessionListPayload, items: [aiSessionListPayload.items[0], aiSessionListPayload.items[0]] }, { ...aiSessionListPayload, nextCursor: "orphaned-cursor" }]) test("AI invalid history stays retryable " + JSON.stringify(payload), async t => {
   const p = await open(t, { payloads: { ...aiReadPayloads, "/api/ai/conversations/sessions": payload } });
   assert.equal(await p.getByText("历史记录未能读取", { exact: true }).count(), 1); assert.equal(await p.getByRole("button", { name: "继续会话：交流会准备", exact: true }).count(), 1);
   await update(p, { payloads: aiReadPayloads }); await press(p, "重试历史记录"); await p.getByRole("button", { name: "继续会话：产品试点讨论", exact: true }).waitFor(); assert.deepEqual(await writes(p), []);
@@ -356,9 +486,19 @@ test("AI group manager creates, opens, and starts a grouped chat without sending
     body: { id: "group:test-send-intent", mutationId: "test-send-intent", name: "客户 A" }
   }]);
 
-  const p2 = await open(t);
-  await press(p2, "全部会话"); await press(p2, "管理分组"); await press(p2, "打开分组：工作");
+  const p2 = await open(t, { pagePayloads: {
+    first: { ...aiSessionListPayload, nextCursor: "all-groups-next", hasMore: true },
+    "all-groups-next": { ...emptyAiSessionListPayload },
+  } });
+  await press(p2, "全部会话"); await press(p2, "加载更多历史记录");
+  await p2.waitForFunction(() => (window as any).fixture.requests.some((request: any) => new URL(request.url).searchParams.get("cursor") === "all-groups-next"));
+  await press(p2, "管理分组"); await press(p2, "打开分组：工作");
   assert.equal(await p2.getByText("历史记录 · 工作", { exact: true }).count(), 1);
+  await p2.waitForFunction(() => (window as any).fixture.requests.some((request: any) => {
+    const url = new URL(request.url); return request.path === "/api/ai/conversations/sessions" && url.searchParams.get("groupId") === "group:work";
+  }));
+  const groupedRead = await p2.evaluate(() => (window as any).fixture.requests.filter((request: any) => request.path === "/api/ai/conversations/sessions").map((request: any) => request.url).at(-1));
+  assert.equal(new URL(groupedRead).searchParams.has("cursor"), false, "changing group must read the first filtered page, not reuse an earlier cursor");
   await press(p2, "管理分组"); await press(p2, "在分组中新建：工作");
   assert.equal(await p2.getByRole("textbox", { name: "消息", exact: true }).inputValue(), "");
   assert.deepEqual(await writes(p2), []);

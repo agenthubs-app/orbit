@@ -23,6 +23,19 @@ function taskHarness() {
   const fetcher = (async (path: string, init?: RequestInit) => {
     const request = new Request(new URL(path, "https://orbit.test"), init);
     requests.push(request.clone());
+    if (new URL(request.url).pathname === "/api/tasks/page") {
+      const status = new URL(request.url).searchParams.get("status") as "open" | "completed";
+      const all = await service.list({ actorId, status });
+      const counts = {
+        open: (await service.list({ actorId, status: "open" })).length,
+        completed: (await service.list({ actorId, status: "completed" })).length,
+      };
+      return Response.json({ success: true, data: { actorId, status, scope: "all", query: "", items: all.map(task => ({
+        id: task.id, titlePreview: task.title, locationPreview: task.location ?? null, status: task.status,
+        category: task.category, priority: task.priority, plannedDate: task.plannedDate ?? null, dueAt: task.dueAt ?? null,
+        updatedAt: task.updatedAt, completedAt: task.completedAt ?? null, relatedContact: null,
+      })), counts, total: counts[status], hasMore: false, nextCursor: null, asOf: now } });
+    }
     const segments = new URL(request.url).pathname.split("/");
     if (!segments[3]) return collection[request.method](request);
     const context = { params: Promise.resolve({ id: decodeURIComponent(segments[3]) }) };
@@ -33,16 +46,17 @@ function taskHarness() {
 
 test("Web-created tasks can be read, completed and reopened through the canonical API", async () => {
   const { client, requests } = taskHarness();
+  const list = async (status: "open" | "completed") => (await client.loadPage(status)).items;
   const task = await client.create("  准备访谈提纲  ");
   assert.equal(task.title, "准备访谈提纲");
   assert.equal(task.status, "open");
-  assert.equal((await client.loadList("open"))[0].id, task.id);
+  assert.equal((await list("open"))[0].id, task.id);
   assert.equal((await client.loadTask(task.id)).id, task.id);
   await client.setCompleted(task.id, true);
-  assert.deepEqual(await client.loadList("open"), []);
-  assert.equal((await client.loadList("completed"))[0].id, task.id);
+  assert.deepEqual(await list("open"), []);
+  assert.equal((await list("completed"))[0].id, task.id);
   await client.setCompleted(task.id, false);
-  assert.equal((await client.loadList("open"))[0].id, task.id);
+  assert.equal((await list("open"))[0].id, task.id);
   const created = await requests[0].clone().json();
   assert.match(created.plannedDate, /^\d{4}-\d{2}-\d{2}$/);
   assert.equal(created.category, "other");
@@ -63,7 +77,7 @@ test("Web edits retain server conflict protection and deletion remains actor-sco
   await assert.rejects(client.loadTask(original.id), (error: any) => error.code === "NOT_FOUND");
   setActor("account:web-tasks");
   await client.remove(original.id);
-  assert.deepEqual(await client.loadList("open"), []);
+  assert.deepEqual((await client.loadPage("open")).items, []);
 });
 
 test("invalid input and unsupported note clearing never pretend to save", async () => {
@@ -77,15 +91,15 @@ test("invalid input and unsupported note clearing never pretend to save", async 
   assert.equal(requests.length, count);
 });
 
-test("malformed envelopes and task records fail visibly instead of becoming empty lists", async () => {
-  for (const data of [{ tasks: [{ id: "x", title: "invalid" }] }, { other: [] }]) {
+test("malformed envelopes and task pages fail visibly instead of becoming empty lists", async () => {
+  for (const data of [{ items: [{ id: "x", title: "invalid" }] }, { other: [] }]) {
     const client = createTasksClient(async () => Response.json({ success: true, data }));
-    await assert.rejects(client.loadList("open"), (error: any) => error.code === "INVALID_RESPONSE");
+    await assert.rejects(client.loadPage("open"), (error: any) => error.code === "INVALID_RESPONSE");
   }
   const unauthorized = createTasksClient(async () => Response.json({ success: false, error: { code: "UNAUTHORIZED", message: "Sign in" } }, { status: 401 }));
-  await assert.rejects(unauthorized.loadList("open"), (error: any) => error.code === "UNAUTHORIZED");
+  await assert.rejects(unauthorized.loadPage("open"), (error: any) => error.code === "UNAUTHORIZED");
   const offline = createTasksClient(async () => { throw new TypeError("Failed to fetch"); });
-  await assert.rejects(offline.loadList("open"), (error: any) => error.code === "NETWORK_ERROR");
+  await assert.rejects(offline.loadPage("open"), (error: any) => error.code === "NETWORK_ERROR");
 });
 
 test("Web date/location patches use canonical null clearing and validate the echoed fields", async () => {

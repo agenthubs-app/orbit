@@ -10,7 +10,22 @@ import {
   loadStoredAgentChatSessions,
   parseAgentChatHistoryStorage,
   titleFromMessages,
+  upsertAgentChatSummary,
 } from "../../app/(app)/app/agent/iorbit-0918/iorbit-model";
+
+const summary = (input: {
+  id: string; title: string; firstUserText: string; createdAt: string; updatedAt: string;
+  customTitle?: string | null; pinned?: boolean; groupId?: string | null;
+}) => ({
+  id: input.id,
+  title: input.title,
+  firstUserText: input.firstUserText,
+  lastMessagePreview: "preview",
+  createdAt: input.createdAt,
+  updatedAt: input.updatedAt,
+  messageRevision: 2,
+  organization: { customTitle: input.customTitle ?? null, groupId: input.groupId ?? null, pinned: input.pinned === true, revision: 1 },
+});
 import { chatRouteToOrbitAgentViewModel } from "../../app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-view-model-adapter";
 
 const projectRoot = path.resolve(
@@ -104,7 +119,9 @@ test("agent chat history parser keeps refreshable sessions under the ungrouped s
       },
     ]),
   );
-  const history = agentChatHistorySessionsToHistory(sessions, "zh");
+  const history = agentChatHistorySessionsToHistory([
+    summary({ id: sessions[0].id, title: sessions[0].title, firstUserText: "帮我找适合聊食品供应链的人", createdAt: sessions[0].createdAt, updatedAt: sessions[0].updatedAt }),
+  ], "zh");
 
   assert.equal(history.length, 1);
   assert.equal(history[0].group, "未分组");
@@ -113,32 +130,62 @@ test("agent chat history parser keeps refreshable sessions under the ungrouped s
   assert.doesNotMatch(history.map((item) => item.group).join(" "), /关系聊天/);
 });
 
-test("agent chat history follows every server cursor instead of truncating after the first page", async (t) => {
-  const session = (index: number) => ({
+test("agent chat history loader requests exactly one filtered summary page", async (t) => {
+  const session = (index: number) => summary({
     createdAt: `2026-07-09T02:${String(index).padStart(2, "0")}:00.000Z`,
     id: `session-${index}`,
-    messages: [{ role: "user", text: `问题 ${index}` }, { role: "assistant", text: `回答 ${index}` }],
+    firstUserText: `问题 ${index}`,
     title: `会话 ${index}`,
     updatedAt: `2026-07-09T02:${String(index).padStart(2, "0")}:30.000Z`,
   });
-  const pages = [Array.from({ length: 50 }, (_, index) => session(index)), [session(50)]];
+  const items = Array.from({ length: 20 }, (_, index) => session(index));
   const requested: string[] = [];
   t.mock.method(globalThis, "fetch", async (input: string | URL | Request) => {
     requested.push(String(input));
-    const cursor = new URL(String(input), "https://orbit.test").searchParams.get("cursor");
-    const page = cursor ? 1 : 0;
     return Response.json({ success: true, data: {
-      sessions: pages[page],
-      nextCursor: page === 0 ? "page-two" : null,
+      items,
+      hasMore: true,
+      nextCursor: "page-two",
+      storage: { configured: true, persisted: true },
     } });
   });
 
-  const sessions = await loadStoredAgentChatSessions();
+  const page = await loadStoredAgentChatSessions({
+    groupId: "group-1",
+    limit: 20,
+    q: "needle",
+  });
 
-  assert.equal(sessions.length, 51);
-  assert.equal(new Set(sessions.map((item) => item.id)).size, 51);
-  assert.equal(requested.length, 2);
-  assert.match(requested[1]!, /cursor=page-two/u);
+  assert.deepEqual(page?.items.map((item) => item.id), items.map((item) => item.id));
+  assert.equal(page?.hasMore, true);
+  assert.equal(page?.nextCursor, "page-two");
+  assert.equal(requested.length, 1);
+  const query = new URL(requested[0]!, "https://orbit.test").searchParams;
+  assert.equal(query.get("limit"), "20");
+  assert.equal(query.get("groupId"), "group-1");
+  assert.equal(query.get("q"), "needle");
+});
+
+test("explicitly loaded summary pages are not silently truncated at the former 10k request cap", () => {
+  const sessions = Array.from({ length: 10_001 }, (_, index) => summary({
+    createdAt: `2026-07-09T02:${String(index % 60).padStart(2, "0")}:00.000Z`,
+    id: `session-${index}`,
+    firstUserText: `问题 ${index}`,
+    title: `会话 ${index}`,
+    updatedAt: `2026-07-09T02:${String(index % 60).padStart(2, "0")}:30.000Z`,
+  }));
+  const history = agentChatHistorySessionsToHistory(sessions, "zh");
+
+  assert.equal(history.length, 10_001);
+  const withNewSession = upsertAgentChatSummary(sessions, summary({
+    createdAt: "2026-07-10T00:00:00.000Z",
+    id: "new-session",
+    firstUserText: "new question",
+    title: "New session",
+    updatedAt: "2026-07-10T00:00:00.000Z",
+  }));
+  assert.equal(withNewSession.length, 10_002);
+  assert.equal(withNewSession.at(-1)?.id, "session-10000");
 });
 
 test("agent chat history parser preserves minimal persisted assistant messages", () => {
@@ -261,51 +308,35 @@ test("agent chat history preserves a failed message's retry request", () => {
 test("agent chat history keeps initial message order after a previous session is reopened", () => {
   const history = agentChatHistorySessionsToHistory(
     [
-      {
+      summary({
         createdAt: "2026-07-09T02:00:00.000Z",
         id: "older-session",
-        messages: [{ role: "user", text: "第一段对话" }],
+        firstUserText: "第一段对话",
         title: "第一段对话",
         updatedAt: "2026-07-09T04:30:00.000Z",
-      },
-      {
+      }),
+      summary({
         createdAt: "2026-07-09T03:00:00.000Z",
         id: "newer-session",
-        messages: [{ role: "user", text: "第二段对话" }],
+        firstUserText: "第二段对话",
         title: "第二段对话",
         updatedAt: "2026-07-09T03:05:00.000Z",
-      },
+      }),
     ],
     "zh",
   );
 
   assert.deepEqual(
     history.map((item) => item.sessionId),
-    ["newer-session", "older-session"],
+    ["older-session", "newer-session"],
   );
 });
 
 test("agent chat history pins sessions above normal initial-time ordering and keeps custom titles", () => {
-  const sessions = parseAgentChatHistoryStorage(
-    JSON.stringify([
-      {
-        createdAt: "2026-07-09T02:00:00.000Z",
-        customTitle: "Maya 活动跟进",
-        id: "pinned-older-session",
-        messages: [{ role: "user", text: "帮我推荐下周适合见 Maya 的活动" }],
-        pinned: true,
-        title: "旧标题",
-        updatedAt: "2026-07-09T02:05:00.000Z",
-      },
-      {
-        createdAt: "2026-07-09T03:00:00.000Z",
-        id: "normal-newer-session",
-        messages: [{ role: "user", text: "帮我找适合聊食品供应链的人" }],
-        title: "食品供应链人脉",
-        updatedAt: "2026-07-09T03:05:00.000Z",
-      },
-    ]),
-  );
+  const sessions = [
+    summary({ createdAt: "2026-07-09T02:00:00.000Z", customTitle: "Maya 活动跟进", firstUserText: "帮我推荐下周适合见 Maya 的活动", id: "pinned-older-session", pinned: true, title: "旧标题", updatedAt: "2026-07-09T02:05:00.000Z" }),
+    summary({ createdAt: "2026-07-09T03:00:00.000Z", firstUserText: "帮我找适合聊食品供应链的人", id: "normal-newer-session", title: "食品供应链人脉", updatedAt: "2026-07-09T03:05:00.000Z" }),
+  ];
   const history = agentChatHistorySessionsToHistory(sessions, "zh");
 
   assert.deepEqual(
@@ -371,7 +402,7 @@ test("agent sidebar persists sessions through the Orbit Agent sessions API", () 
   const historyHookSource = readProjectFile(IORBIT_HISTORY_HOOK_PATH);
 
   assert.match(modelSource, /\/api\/ai\/conversations\/sessions/);
-  assert.match(chatHookSource, /loadStoredAgentChatSessions/);
+  assert.match(historyHookSource, /loadStoredAgentChatSessions/);
   assert.match(chatHookSource, /persistStoredAgentChatSession/);
   assert.match(source, /history=\{storedHistory\}/);
   assert.match(chatHookSource, /restoreSession\(session\)/);
@@ -473,6 +504,9 @@ test("agent sidebar exposes deletion controls for history", () => {
   // 任务 6a：桌面/移动两套 DOM 随 `orbit-real-agent.tsx` 一起删除，抽屉只剩一套
   // （任务 4 的「壳形态变化」）。断言因此改指新抽屉的同名能力标记。
   assert.match(source, /function IOrbitHistoryDrawer/);
+  assert.match(source, /data-orbit-agent-history-search/);
+  assert.match(source, /setTimeout\(\(\) => onSearch\(searchDraft\.trim\(\)\), 250\)/);
+  assert.match(source, /onLoadMore\(\)/);
   assert.match(source, /data-orbit-agent-history-drawer/);
   assert.match(source, /const panelRef = useOrbitModalA11y\(onClose\)/);
   assert.match(source, /aria-labelledby="orbit-iorbit-history-title"/);
