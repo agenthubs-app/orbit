@@ -17,6 +17,7 @@ import {
   type RelationshipLifecycleFactsReader,
 } from "../../features/followups/storage/relationship-lifecycle-facts-reader";
 import type { LiveRecordSqlClient } from "../../shared/storage/postgres-live-record-store";
+import { LIFECYCLE_HOME_SUMMARY_SQL } from "../../features/followups/storage/lifecycle-home-summary";
 
 const actorId = "actor:w5-f";
 const workspaceId = "workspace:w5-f";
@@ -454,7 +455,7 @@ test("home default followup loader explicitly binds facts reader and never calls
   assert.equal(result.followups.items[0]?.connectionId, "connection:ren");
 });
 
-test("home default uses configured facts SQL while the legacy loader uses the scoped graph query", async () => {
+test("home default uses bounded summary SQL while the legacy loader uses the scoped graph query", async () => {
   const syntheticDatabaseUrl = "postgresql://w5-f-mock@127.0.0.1:1/orbit_w5_f_test";
   const previous = {
     eventUrl: process.env.ORBIT_EVENT_DATABASE_URL,
@@ -472,10 +473,17 @@ test("home default uses configured facts SQL while the legacy loader uses the sc
     if (options?.connectionString !== syntheticDatabaseUrl) {
       return Reflect.apply(originalPoolQuery as unknown as (...args: unknown[]) => unknown, this, [text, values]);
     }
-    if (text === RELATIONSHIP_LIFECYCLE_FACTS_SQL) {
+    if (text === LIFECYCLE_HOME_SUMMARY_SQL) {
       factsCalls += 1;
-      assert.deepEqual(values, [workspaceId, actorId]);
-      return { rows: [{ envelope: envelope() }] };
+      assert.deepEqual(values?.slice(0, 3), [workspaceId, actorId, at]);
+      return { rows: [{ result: {
+        ok: true,
+        runtime: { pg: "160012", encoding: "UTF8", catalog: "153.136", actual: "153.136", provider: "i", deterministic: true },
+        counts: { current: 40, history: 2, orphan: 0 }, groups: { overdue: 40, recent: 0, undated: 0 },
+        items: [{ id: "task:current", recordId: "storage:current", dueKey: "2026-09-16T00:00:00Z", titlePreview: "Current task", status: "open",
+          dueAt: "2026-09-16T00:00:00Z", updatedAt: at, contactId: "contact:ren", connectionId: "connection:ren",
+          contactNamePreview: "Ren", organizationPreview: "Orbit", relationshipStage: "active", issue: null, group: "overdue" }],
+      } }] };
     }
     legacyCalls += 1;
     assert.deepEqual(values, [workspaceId, actorId, "followups"]);
@@ -525,7 +533,8 @@ test("home default uses configured facts SQL while the legacy loader uses the sc
     });
     assert.equal(factsCalls, 1);
     assert.equal(home.followups.state, "ready");
-    assert.equal(home.followups.sourceLabel, "Relationship lifecycle facts from Postgres live storage");
+    assert.equal(home.followups.sourceLabel, "关系跟进");
+    assert.equal(home.followups.count, 40);
     assert.equal(home.followups.items[0]?.id, "task:current");
 
     const legacy = await loadRelationshipLifecycleTasks({ actorId });

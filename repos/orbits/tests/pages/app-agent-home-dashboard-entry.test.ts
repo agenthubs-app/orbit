@@ -784,14 +784,14 @@ test("facts-loader failure fallback supplies explicit null readers without touch
   const taskFactoryPath = testRequire.resolve("../../features/tasks/service-factory.ts");
   const personalFactoryPath = testRequire.resolve("../../features/personal-schedule/service-factory.ts");
   const appointmentFactoryPath = testRequire.resolve("../../features/appointments/runtime.ts");
-  const followupReaderPath = testRequire.resolve("../../features/followups/storage/relationship-lifecycle-facts-reader.ts");
+  const followupReaderPath = testRequire.resolve("../../features/followups/storage/lifecycle-home-summary.ts");
   const paths = [routePath, factsPath, taskFactoryPath, personalFactoryPath, appointmentFactoryPath, followupReaderPath];
   const previous = new Map(paths.map((path) => [path, testRequire.cache[path]]));
   const factoryCalls = { appointments: 0, followups: 0, personal: 0, tasks: 0 };
   const emptyFollowupFacts = {
-    contacts: [],
-    connections: [],
-    tasks: [],
+    counts: { current: 0, history: 0, orphan: 0 },
+    groups: { overdue: 0, recent: 0, undated: 0 },
+    items: [],
   };
 
   try {
@@ -814,11 +814,10 @@ test("facts-loader failure fallback supplies explicit null readers without touch
       },
     });
     installModule(followupReaderPath, {
-      createConfiguredRelationshipLifecycleFactsReader: () => {
+      createConfiguredLifecycleHomeSummaryReader: () => {
         factoryCalls.followups += 1;
         return {
-          readRelationshipLifecycleFacts: async () => emptyFollowupFacts,
-          sourceLabel: "Relationship lifecycle facts",
+          read: async () => emptyFollowupFacts,
         };
       },
     });
@@ -932,15 +931,15 @@ stub("features/appointments/runtime.ts", {
     },
   }),
 });
-const followupPath = "features/followups/storage/relationship-lifecycle-facts-reader.ts";
+const followupPath = "features/followups/storage/lifecycle-home-summary.ts";
 const actualFollowupModule = req(join(root, followupPath));
 stub(followupPath, {
   ...actualFollowupModule,
-  createConfiguredRelationshipLifecycleFactsReader: () => ({
-    readRelationshipLifecycleFacts: async (accountId) => {
+  createConfiguredLifecycleHomeSummaryReader: () => ({
+    read: async (accountId) => {
       counts.followups += 1;
       assert.equal(accountId, "account:canonical");
-      return { tasks: [], contacts: [], connections: [] };
+      return { counts: { current: 0, history: 0, orphan: 0 }, groups: { overdue: 0, recent: 0, undated: 0 }, items: [] };
     },
   }),
 });

@@ -14,7 +14,7 @@ import type { LiveRecordSqlClient } from "../../../shared/storage/postgres-live-
 
 // A matching account alias is consistency metadata, never an independent grant.
 // Followup tasks/connections require the persisted row owner to match the actor.
-export const RELATIONSHIP_LIFECYCLE_FACTS_SQL = `
+export const RELATIONSHIP_LIFECYCLE_FACTS_CTES = `
 with actor_tasks as materialized (
   select r.*
   from orbit_records r
@@ -209,6 +209,9 @@ contact_projection as (
     r.record_id as sort_record_id
   from selected_contacts r
 )
+`;
+
+export const RELATIONSHIP_LIFECYCLE_FACTS_SQL = `${RELATIONSHIP_LIFECYCLE_FACTS_CTES}
 select jsonb_build_object(
   'version', 1,
   'workspaceId', $1,

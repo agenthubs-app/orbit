@@ -29,6 +29,10 @@ import {
   type RelationshipLifecycleTaskReadModel,
   type RelationshipLifecycleTaskView,
 } from "../tasks/relationship-lifecycle-tasks";
+import {
+  createConfiguredLifecycleHomeSummaryReader,
+  type LifecycleHomeSummaryReader,
+} from "../../../../features/followups/storage/lifecycle-home-summary";
 
 /**
  * The Agent home facts route is deliberately an adapter, not another feature
@@ -198,6 +202,7 @@ export interface HomeFactsRouteDependencies {
   appointmentServiceFactory?: () => AppointmentReader | null;
   followupLoader?: FollowupLoader | null;
   followupReaderFactory?: () => RelationshipLifecycleFactsReader | null;
+  followupSummaryReaderFactory?: () => LifecycleHomeSummaryReader | null;
   personalScheduleService?: PersonalScheduleReader | null;
   personalScheduleServiceFactory?: () => PersonalScheduleReader | null;
   taskService?: TaskReader | null;
@@ -693,6 +698,11 @@ async function loadFollowups(
   dependencies: HomeFactsRouteDependencies,
 ): Promise<HomeFactsFollowupSource> {
   try {
+    // Explicit legacy dependencies remain useful as a differential oracle in tests.
+    // Production uses only the purpose-specific three-card summary; no full-graph fallback.
+    if (dependencies.followupLoader === undefined && dependencies.followupReaderFactory === undefined) {
+      return await loadBoundedFollowups(actorId, context, dependencies);
+    }
     const loader = followupLoaderFrom(dependencies);
     if (!loader) return unavailableFollowupSource("关系跟进来源未配置或读取失败。");
     const result = await loader({ actorId });
@@ -712,6 +722,33 @@ async function loadFollowups(
   } catch {
     return unavailableFollowupSource("关系跟进来源未配置或读取失败。");
   }
+}
+
+async function loadBoundedFollowups(
+  actorId: string,
+  context: HomeFactsWindowContext,
+  dependencies: HomeFactsRouteDependencies,
+): Promise<HomeFactsFollowupSource> {
+  const reader = (dependencies.followupSummaryReaderFactory ?? createConfiguredLifecycleHomeSummaryReader)();
+  if (!reader) return unavailableFollowupSource("关系跟进来源未配置或读取失败。");
+  const result = await reader.read(actorId, { snapshotAt: new Date(context.snapshotMs).toISOString(), from: context.window.from, to: context.window.to });
+  const candidates = result.items.map(card => followupCandidate({
+    id: card.id, title: card.titlePreview, status: card.status, ...(card.dueAt ? { dueAt: card.dueAt } : {}),
+    contactId: card.contactId, connectionId: card.connectionId, contactName: card.contactNamePreview,
+    organization: card.organizationPreview, relationshipStage: card.relationshipStage,
+    operationHref: card.contactId && !card.issue ? `/app/contacts/${encodeURIComponent(card.contactId)}` : null,
+    ...(card.issue ? { issue: card.issue } : {}), updatedAt: card.updatedAt,
+  }, "current", context));
+  if (candidates.some((item, index) => !item || item.item.group !== result.items[index].group)) throw new Error("FOLLOWUP_SUMMARY_MISMATCH");
+  const base = groupedSource("followups", SOURCE_LABELS.followups, candidates as HomeFactsCandidate<HomeFactsFollowupItem>[]);
+  return {
+    ...base, count: result.counts.current, state: result.counts.current ? "ready" : "empty",
+    groups: base.groups.map(group => ({ ...group, count: group.key === "plan-past" ? 0 : result.groups[group.key] })),
+    current: { count: result.counts.current, items: base.items, viewHref: HOME_FACTS_VIEW_HREFS.followups },
+    history: { count: result.counts.history, items: [], viewHref: HOME_FACTS_VIEW_HREFS.followups },
+    orphan: { count: result.counts.orphan, items: [], viewHref: HOME_FACTS_VIEW_HREFS.followups,
+      ...(result.counts.orphan > 0 ? { warning: "存在失联跟进，请在待办中处理。" } : {}) },
+  };
 }
 
 function personalServiceFrom(

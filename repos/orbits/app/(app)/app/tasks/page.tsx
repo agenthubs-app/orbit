@@ -1,12 +1,12 @@
 import { redirect } from "next/navigation";
 import { auth } from "../../../../auth";
 import { resolveAuthenticatedApiActorFromSession } from "../../../api/_shared/authenticated-actor";
-import { loadRelationshipLifecycleTasks } from "./relationship-lifecycle-tasks";
+import { loadLifecycleTaskPages, type LifecyclePageSearchParams } from "./lifecycle-pages-route-service";
 import { TasksPageContent } from "./tasks-page-content";
 
 export const dynamic = "force-dynamic";
 
-export default async function AppTasksPage({ searchParams }: { searchParams?: Promise<{ view?: string }> } = {}) {
+export default async function AppTasksPage({ searchParams }: { searchParams?: Promise<LifecyclePageSearchParams> } = {}) {
   const params = await searchParams;
   const session = await auth();
   if (!session?.user?.id) {
@@ -18,8 +18,9 @@ export default async function AppTasksPage({ searchParams }: { searchParams?: Pr
     name: session.user.name,
     userId: session.user.id,
   });
-  const relationshipTasks = await loadRelationshipLifecycleTasks({
+  const relationshipTasks = await loadLifecycleTaskPages({
     actorId: actor?.id ?? "",
+    params,
   });
 
   return <TasksPageContent

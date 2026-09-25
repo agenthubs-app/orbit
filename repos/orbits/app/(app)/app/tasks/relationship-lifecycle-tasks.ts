@@ -34,6 +34,7 @@ export interface RelationshipLifecycleTaskCollections {
   currentCount: number;
   historyCount: number;
   orphanCount: number;
+  pagination?: Record<"current" | "history" | "orphan", { nextHref: string | null; firstHref: string | null }>;
 }
 
 export type RelationshipLifecycleTaskReadModel =

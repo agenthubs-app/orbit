@@ -71,7 +71,7 @@ Web/App 完整类型检查通过。GitNexus 增量索引的 FTS 构建失败后�
 ## 仍未完成 / 条件门
 
 - P0 尚缺 Web 各完整路径、复杂联系人关联/搜索及 worker 基准、真实 wire 校准。历史联系人 1548→2064 行的预算失败归因已在上一轮完成，见旧执行记录和 `scripts/diagnostics/neon-egress-local-probe.ts`，不重复列为未完成。
-- P1b 会话摘要/历史消息页已在第二批本地完成；跟进用途专用分页 reader，以及 App 联系人屏幕分页消费尚未完成。新联系人契约已同步，但不能把契约同步当手机 UI 已迁移。
+- P1b 会话摘要/历史消息页已在第二批本地完成；Web 跟进任务页和首页摘要已在第四批迁移。旧 AI/信号/提醒的完整图用途及 App 联系人屏幕分页消费尚未迁移。新联系人契约已同步，但不能把契约同步当手机 UI 已迁移。
 - 服务端版本缓存尚未开启：尚未证明全体 writer/权限/时间边界封闭。不得用 TTL 私有缓存绕过该条件。
 - P3 尚未移除 typed GET 刷新，也没有停止维护链。事务增量与到期入口必须逐来源对账，不能在本批省流量后擅自删除。
 
@@ -94,7 +94,7 @@ Web/App 完整类型检查通过。GitNexus 增量索引的 FTS 构建失败后�
 
 18 项 API/服务/权限/真实 Chromium 交互及兼容回归通过；Web/App 完整类型检查和 App 契约同步测试通过。浏览器测试曾因 about:blank 非安全上下文没有 randomUUID 失败，改用本地拦截 HTTPS 页面后验证真实发送重试，不改生产随机 ID 实现。新 Zod 元组在本仓库非严格空值设置下的推断差异通过运行时长度验证和显式二元组解决。
 
-下一批核对发现：当前 `/api/tasks` 实际导出 canonical collection handler，不是旧 followup generation handler；网页人脉跟进及首页使用 `relationship-lifecycle-facts-reader`。因此用途迁移必须从真实消费者入手，不能新增一个无人调用的 `/followups/page` 就宣布页面优化完成。旧推导建议和 canonical/lifecycle 实体仍需分别保持业务语义。
+下一批核对发现：当前 `/api/tasks` 实际导出 canonical collection handler，不是旧 followup generation handler；首页使用 `relationship-lifecycle-facts-reader`，任务页当时仍使用 `loadRelationshipLifecycleTasks` 的默认旧 graph provider（第四批已迁移）。因此用途迁移必须从真实消费者入手，不能新增一个无人调用的 `/followups/page` 就宣布页面优化完成。旧推导建议和 canonical/lifecycle 实体仍需分别保持业务语义。
 
 第二批提交 `039d440a`。提交前 GitNexus 强制重建成功，all/staged 变更检查已运行；staged 21 文件/149 符号，结构化结果无 partial/truncated/error。affected_count=0 不能解释成公共收件箱不受影响：此前 panel impact 为 CRITICAL，JSX/动态调用已有漏边，已按源码和浏览器行为回归。
 
@@ -120,3 +120,48 @@ Web/App 完整类型检查通过。GitNexus 增量索引的 FTS 构建失败后�
 先写否定测试实际失败，再修实现：association-only 行曾被返回；详情中的冲突 task 曾未被拒绝。现已通过对应断言。更新原测试中明确要求 owner/account OR 和空所有者放行的断言，保留这些反例数据，改为验证拒绝。另修正一项既有过期测试：configured 旧 provider 早已改成 1 次 scoped SQL，测试还模拟 4 次 collection 查询；现在模拟真实查询参数，不放宽失败断言。
 
 本地跟进 scope、真实 PostgreSQL facts、首页/任务页、API 与生命周期服务组合 57 项通过；详情仓库与初始化 PostgreSQL 组合 32 项通过；Web 完整类型检查通过。GitNexus 强制重建后执行 all/staged 检查，staged 12 文件/19 个图可识别变更符号，结构化结果无 partial/truncated/error；affected=0 不推翻前述 CRITICAL 调用影响和动态图漏边，已补相应真实路径测试。本次没有上线；后续分页必须以这次确认的权限为准。
+
+## 第四批：Web 跟进任务页与首页摘要
+
+基于 `1ff1cfeb`。本批只改 Web 代码与本地测试，未部署、未连接 Neon、未改共享 HTTP 契约或安装手机。旧完整图和生成建议服务仍保留原契约；没有给公共图强行 LIMIT。
+
+### 实际入口与业务边界
+
+- `/app/tasks` 的服务器 loader 改用 `lifecycle-task-pages`：当前/历史/无法关联三组各 30 条，以签名游标继续；总数在 SQL 内按全体合法数据统计，与页内容分开聚合、同一快照输出。不是把 30 条当全部。
+- 使用普通服务器页面导航，不增加无人消费的 HTTP 端点。每次翻页重新认证并重新校验归属；只保留三组的当前窗口，不在浏览器累积全量数据，不在 hydration 后再次读取。每次导航仍会重算全局统计，这部分数据库 CPU 没有被缓存。
+- 游标绑定 workspace/actor/分组/协议，使用与已有新分页相同的稳定密钥来源；跨人、跨工作区、跨分组和篡改均拒绝。失败显示 unavailable，可回第一页；不退回全量 provider。
+- SQL 复用原 facts 的权限和字段投影 CTE；业务有效性、缺失关联/冲突分类、同编号冲突 fail-closed、合法相同任务重复记录的数量均保留。联系人/组织/标题只返回明确命名的预览字段，不传全文、来源/证据数组或私有笔记。
+- 首页默认改为 `lifecycle-home-summary`，只传排名最前 3 条及全局分组计数；按同一 snapshot 的逾期、产品时区七天窗口、无日期分类。历史/无法关联仍统计但不放进当前提醒。没有取分页前 30 条再充当完整首页统计。
+- 日期校验保持严格 ISO 与毫秒精度，覆盖时区偏移、24:00、超长小数截断及窗口边界；页外非法当前任务日期仍使来源 unavailable。历史/无法关联的日期不被误用来阻断当前提醒。
+- 排序仍沿用已验证的 Node/ICU/PG 元组，其他元组 fail-closed。**目标生产运行时未验证，这是发布门，不是已具备上线条件。** 与联系人搜索一样，不能自动发布到不同运行时后再假装兼容。
+
+### 本地冷读实测
+
+以下是专用 reader 的 PG 返回 JSON 字节，不含完整 Web 页面认证、其他栏目、协议/TLS，更不是 Neon 账单。所有缓存关闭、数据库 localhost、测试 schema 随机隔离并清理。
+
+| 数据 | 旧 facts | 新任务页 | 新首页跟进摘要 |
+|---|---:|---:|---:|
+| 101 个本人任务，共用少量关联 | — | 10,499 B | 1,293 B |
+| 10,001 个本人任务，共用少量关联 | 5,861,764 B | 10,501 B | 1,297 B |
+| 100,001 个本人任务，共用少量关联 | 未重复跑旧全量 | 10,502 B | 1,299 B |
+
+一万条同夹具的任务页返回量降低约 99.82%，首页跟进摘要降低约 99.98%。这些数字只适用于本地合成夹具的该 reader。
+
+另独立增加每条任务各自关联的联系人/关系：101 / 10,001 / 100,001 个任务，对应联系人 102 / 10,002 / 100,002 和连接 101 / 10,001 / 100,001。任务页分别 11,491 / 11,493 / 11,494 B。再加同规模其他账号数据，输出和字节保持相同。
+
+发现并修复了一次真实性能失败：一万组关联时，复杂 JSON 条件把 CTE 估算到 1 行，三个 Nested Loop 反复扫描全部中间结果，超过原 60 秒 SQL 超时。改为一次查询内构建只含必要字段的紧凑 ID 查找对象，再按 ID 解析任务关联；不是跨请求缓存，不保存授权结论。未延长 SQL 超时、关闭安全校验或放宽预算。复测一万组约 1.57 秒，十万组约 12.94 秒。EXPLAIN ANALYZE 的可复现入口见下方环境开关。
+
+**数据库计算成本仍未固定**：十万任务、少量关联时，任务页约 3.7 秒、首页约 4.5 秒；十万独立关联约 13 秒。全局完整性校验、精确计数和中间投影仍随本人数据增长，SQL 内查找对象也消耗内存。按 V2 4.2，这已经构成评估窄 `followup_read_items` 的证据，但新表仍需生产者/删除/回填覆盖，不能直接放一个私有 TTL 缓存宣称根治。
+
+### 验证与复现
+
+新增 PostgreSQL 6 项通过（含大规模、归属反例、游标、页外重复冲突、字段类型矩阵、百万字标题、时间边界）；相关既有读取/首页默认链路/归属和真实 Chromium 导航 61 项通过，无跳过。默认链路的测试桩已从全量 facts 换成真实调用的新 summary 工厂，保留独立进程的 action → facts 链路检查。测试源码均入仓库，不依赖 `/tmp` 脚本保存证据。
+
+```sh
+env -i PATH="$PATH" ORBIT_LIFECYCLE_TEST_DATABASE_URL=postgresql://li@localhost/orbit_neon_audit_20260925 ORBIT_FOLLOWUP_PAGE_GROWTH=1 ORBIT_FOLLOWUP_EXPLAIN=1 node --import tsx --test tests/services/lifecycle-task-pages-postgres.test.ts
+env -i PATH="$PATH" ORBIT_W5_F_TEST_DATABASE_URL=postgresql://li@localhost/orbit_w5_f_test ORBIT_LIFECYCLE_TEST_DATABASE_URL=postgresql://li@localhost/orbit_neon_audit_20260925 node --import tsx --test tests/services/relationship-lifecycle-facts-reader-postgres.test.ts tests/pages/web-tasks-relationship-lifecycle.test.tsx tests/pages/app-home-facts-followup-reader.test.ts tests/pages/app-agent-home-dashboard-entry.test.ts tests/pages/lifecycle-pages-browser.test.ts tests/services/followup-owner-boundary.test.ts
+```
+
+另一端影响：无共享 HTTP 契约变动，App 仍用原协议；不能将 Web 页面优化算成手机或旧 AI/worker 已迁移。根目录 bridge 台账原有未提交内容保持不变。
+
+Web 完整类型检查通过。GitNexus 强制重建后 all/staged 检查通过，staged 13 文件/138 个可识别变更符号，原始结果无 partial/truncated/error。affected=0 仍受动态/框架入口漏边限制，已用真实 PostgreSQL、默认首页调用链和浏览器导航补证，不能解释为没有页面影响。

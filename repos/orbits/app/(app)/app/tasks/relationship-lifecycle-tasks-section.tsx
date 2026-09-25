@@ -78,7 +78,7 @@ function TaskGroup({
   return <>
     <h3 className="relationship-lifecycle-task-group-heading">{label}</h3>
     {items.length ? <ul className="relationship-lifecycle-task-rows">
-      {items.map((task) => <RelationshipLifecycleTaskRow key={task.id} task={task} />)}
+      {items.map((task, index) => <RelationshipLifecycleTaskRow key={`${task.id}:${index}`} task={task} />)}
     </ul> : <p className="task-empty">暂无记录。</p>}
   </>;
 }
@@ -105,24 +105,38 @@ export function RelationshipLifecycleTasksSection({
 
     {model.state === "unavailable" ? <p className="task-empty">
       {t({ zh: "人脉跟进暂不可用。", en: "Relationship follow-ups are unavailable." })}
+      {" "}<a href="/app/tasks">{t({ zh: "重新加载首页", en: "Reload first page" })}</a>
     </p> : <>
       <TaskGroup
         items={model.currentTasks}
         label={t({ zh: `当前跟进（${model.currentCount}）`, en: `Current follow-ups (${model.currentCount})` })}
       />
+      <LifecyclePager page={model.pagination?.current} />
       {model.historyCount > 0 ? <details className="relationship-lifecycle-task-history" open={model.currentCount === 0}>
         <summary>{t({ zh: `历史跟进（${model.historyCount}）`, en: `Follow-up history (${model.historyCount})` })}</summary>
         <TaskGroup
           items={model.historyTasks}
           label={t({ zh: "已完成/已忽略", en: "Completed / dismissed" })}
         />
+        <LifecyclePager page={model.pagination?.history} />
       </details> : null}
       {model.orphanCount > 0 ? <section className="relationship-lifecycle-task-orphans" aria-label={t({ zh: "无法关联的人脉跟进", en: "Unlinked relationship follow-ups" })}>
         <h3 className="relationship-lifecycle-task-group-heading">{t({ zh: `无法关联（${model.orphanCount}）`, en: `Unlinked (${model.orphanCount})` })}</h3>
         <ul className="relationship-lifecycle-task-rows">
-          {model.orphanTasks.map((task) => <RelationshipLifecycleTaskRow key={task.id} task={task} />)}
+          {model.orphanTasks.map((task, index) => <RelationshipLifecycleTaskRow key={`${task.id}:${index}`} task={task} />)}
         </ul>
+        <LifecyclePager page={model.pagination?.orphan} />
       </section> : null}
     </>}
   </section>;
+}
+
+function LifecyclePager({ page }: { page?: { nextHref: string | null; firstHref: string | null } }) {
+  const { t, preserveHref } = useOrbitLanguage();
+  if (!page?.nextHref && !page?.firstHref) return null;
+  // Plain navigation reauthenticates on every page and keeps only one page per group.
+  return <nav aria-label={t({ zh: "跟进分页", en: "Follow-up pagination" })}>
+    {page.firstHref ? <a className="btn btn-ghost btn-sm" href={preserveHref(page.firstHref)}>{t({ zh: "返回第一页", en: "First page" })}</a> : null}
+    {page.nextHref ? <a className="btn btn-ghost btn-sm" href={preserveHref(page.nextHref)}>{t({ zh: "下一页", en: "Next page" })}</a> : null}
+  </nav>;
 }
