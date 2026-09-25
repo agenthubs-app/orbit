@@ -466,3 +466,17 @@ Today为显示一个completedCount，原来再次读取该actor全部任务正�
 发布：服务端代码上线即可使用新统计，App无需为本项改包；本轮未发布、未访问Neon、未重启手机/共享服务、未改共享契约。Today的全任务/建议/日程列表仍在，完整摘要分页与其他消费者治理未完成。GitNexus Today/service factory直接影响正式GET，LOW；共享任务分页文件直接影响分页handler，LOW；新增计数器UNKNOWN以真实工厂和测试引用补查，不据此作无影响判断。
 
 额外日期分页PG/API **3/3**，App Today映射/入口及首页日期窗口 **15/15**，均零跳过；未改App源码，不能当作新的实机/全量验收。完整重建后的all/staged图检查8/7文件、55/52符号，均无partial/truncated/error；零affected流程仍须以已知Today正式GET和任务分页调用及上述回归补证。
+
+## 第二十七批：笔记详情只读取本篇关联任务的摘要页
+
+第二十六批已提交`f52812b1`。实际App笔记详情原来GET `/api/tasks`，下载本人全部任务后按sourceNoteId过滤。新增 `/api/tasks/note-page?noteId=…&limit=20&cursor=…`；默认20、最大30，SQL先按workspace、行主、payload归属及note来源筛选，再校验并分页。保留open/completed/cancelled三种原有状态，不借现有open任务页丢掉已取消项。摘要只有ID、最多240字符标题、状态、来源笔记版本，不返回备注/活动历史；一个SQL快照返回总数和页面，HMAC游标绑定workspace/actor/note。该接口只授予本人任务读取，不授予被引用笔记的读取权限。
+
+首次PG测试发现缺来源索引，查询计划扫描全部actor任务。现在新增partial index `orbit_records_tasks_note_source_idx`，并把来源条件提前到校验历史之前。真实PG测试35个合法关联任务，含取消/完成、错误行主/account/owner/workspace、删除、异常版本；两页20+15完整且不重复。再加1万条各含约4.8KB备注的无关任务，第一页仍 **3,202 B、1 SQL**，真实EXPLAIN使用来源索引。6文件任务分页/日期分页/Today计数/迁移/API回归 **10/10，零跳过**。这是窄结果返回字节，不是Neon计费值；同一篇笔记关联任务增多时COUNT仍有数据库成本。
+
+App实际NoteDetailScreen改用独立NoteSourceTasks：下一页替换、不无限累积，提供回第一页/任务详情跳转，拒绝不同actor/note回执，失败显式重试、不回退全量接口；无可靠撤权缓存协议，继续network-only。归属正确的笔记确认后才挂载，既有路由scope和父组件key隔离换账号/服务器/笔记。契约和schema通过正式sync命令复制。新增运行时反例确保游标缺字段不是空页、重复ID/超页/带正文/不安全版本被拒绝；TypeScript非strict模式对nullable的推断问题按既有task-page模式显式规范化输出，没有强转或放宽契约。最终笔记交互/两类同步 **22/22，零跳过**，较早包含建议和离线读取清单回归 **49/49**，App完整typecheck通过。
+
+发布顺序：先在明确批准的目标环境安装上述**单个新增索引**，配置至少32字节的既有读取游标签名密钥，部署新后端端点，再更新App；不要为加一个索引盲跑全库历史迁移。旧 `/api/tasks` 保留兼容；新App面对旧后端404/503会明确失败，不静默全量回退。尚未部署、未改Neon/手机，也没有把笔记页的事件名称全量读取说成已治理。两端完整检查和最终图检查结果后续补记。
+
+契约全目录检查另外发现此前profile契约含运行时`projectPublicProfile`（来自`6dd44b94`），不属于本批分页改动，仍是发布检查缺项。此前通知summary的统一出口已补齐；这些检查不能被分页的成功用例代替。
+
+最终Web完整typecheck通过；App全量 **3629项、3628通过、1失败、零跳过**。唯一失败仍是既有路由对齐：`/agent/actions`、`/agent/plan`、`/agent/strategy`、`/events/[id]/live`、`/profile/continue`，不删除测试/添加空跳转充数。Web契约与新接口/schema组合5/6，唯一失败是上述旧profile运行时代码；新增分页契约出口和运行时反例通过。最终GitNexus all/staged为22/21文件、113/110符号、1个流程、MEDIUM，无partial/truncated/error；全库流程枚举限制保留，实际已知调用按本批测试补核。新schema原UNKNOWN已经文本确认服务器reader和App消费者；任务公用CTE影响两类分页与Today完成计数，均已真实PG回归。

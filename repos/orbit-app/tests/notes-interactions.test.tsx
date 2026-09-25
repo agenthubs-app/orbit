@@ -11,7 +11,7 @@ let server: Server;
 let url: string;
 
 const fixture = `
-import React, { useSyncExternalStore } from "react";
+import React, { useEffect, useSyncExternalStore } from "react";
 import { View } from "react-native";
 const listeners = new Set(); let revision = 0;
 const rerender = () => useSyncExternalStore(listener => { listeners.add(listener); return () => listeners.delete(listener); }, () => revision);
@@ -22,7 +22,7 @@ const original = {
 };
 const state = window.fixture = {
   mode: new URLSearchParams(location.search).get("mode") || "new",
-  response: "success", requests: [], navigation: [], drafts: [], note: original,
+  response: "success", requests: [], reads: [], navigation: [], drafts: [], note: original,
   update(patch) { Object.assign(state, patch); revision++; listeners.forEach(listener => listener()); }
 };
 const contacts = { total: 3, contacts: [
@@ -77,8 +77,17 @@ export const noteDraftStorage = {
   async save(_scope, draft) { state.drafts.push({ kind: "save", body: draft.body }); },
   async clear() { state.drafts.push({ kind: "clear" }); if (new URLSearchParams(location.search).get("restore") === "slow-clear") await new Promise(resolve => { state.releaseClear = resolve; }); }
 };
-export const useApiResource = path => {
+export const useApiResource = (path, _empty, options = {}) => {
   rerender();
+  useEffect(() => { state.reads.push({ path, options }); }, [path]);
+  if (path.startsWith("/api/tasks/note-page?")) {
+    const params = new URLSearchParams(path.split("?")[1]), next = params.has("cursor");
+    if (state.taskResponse === "failure") return { kind: "failure", refreshing: false, refresh() { state.update({taskResponse:"success"}); }, error: { message: "关联待办暂不可用" } };
+    return { kind: "success", refreshing: false, refresh() { state.update({}); }, data: {
+      actorId: state.taskResponse === "foreign" ? "foreign" : "account:one", noteId: state.taskResponse === "wrong-note" ? "note:other" : "note:one", total: 25, hasMore: !next, nextCursor: next ? null : "next", asOf: "2026-09-25T00:00:00Z",
+      items: Array.from({length: next ? 5 : 20}, (_, i) => ({id:"task:"+(i+(next?20:0)),titlePreview:"关联事项 "+(i+(next?20:0)),status:"open",sourceNoteVersion:2}))
+    } };
+  }
   return { kind: "success", data: path === "/api/contacts" ? contacts : { note: state.note }, refreshing: false, refresh() { state.update({}); } };
 };
 export const useLocalSearchParams = () => state.mode === "new" ? { contactId: "contact:a" } : { id: "note:one" };
@@ -195,6 +204,38 @@ test("detail is read-only and opens the dedicated edit route", async (t) => {
   await value.getByRole("button", { name: "打开关联人脉 佐藤" }).waitFor();
   await value.getByRole("button", { name: "编辑笔记" }).click();
   assert.deepEqual(await value.evaluate(() => (window as any).fixture.navigation), ["/notes/note%3Aone/edit"]);
+});
+
+test("note task links read one bounded page, replace it on navigation, and reject foreign receipts", async (t) => {
+  const value = await page(t, "detail");
+  await value.getByRole("button", { name: "打开来源待办 关联事项 0", exact: true }).waitFor({ timeout: 5000 });
+  assert.equal(await value.getByRole("button", { name: /^打开来源待办 关联事项 / }).count(), 20);
+  await value.getByRole("button", { name: "下一页", exact: true }).click();
+  await value.getByRole("button", { name: "打开来源待办 关联事项 20", exact: true }).waitFor();
+  assert.equal(await value.getByRole("button", { name: /^打开来源待办 关联事项 / }).count(), 5);
+  assert.equal(await value.getByRole("button", { name: "打开来源待办 关联事项 0", exact: true }).count(), 0);
+  await value.getByRole("button", { name: "打开来源待办 关联事项 20", exact: true }).click();
+  assert.deepEqual(await value.evaluate(() => (window as any).fixture.navigation), ["/tasks/task%3A20"]);
+  await value.getByRole("button", { name: "返回第一页", exact: true }).click();
+  await value.getByRole("button", { name: "打开来源待办 关联事项 0", exact: true }).waitFor();
+  assert.equal(await value.getByRole("button", { name: /^打开来源待办 关联事项 / }).count(), 20);
+  const reads = await value.evaluate(() => (window as any).fixture.reads);
+  assert.equal(reads.some((r: any) => r.path === "/api/tasks"), false);
+  assert.ok(reads.filter((r: any) => r.path.startsWith("/api/tasks/note-page?")).every((r: any) => r.options.cachePolicy === "network-only" && r.path.includes("limit=20")));
+  await value.evaluate(() => (window as any).fixture.update({ taskResponse: "foreign" }));
+  await value.getByText("未能确认关联待办，请重试。", { exact: true }).waitFor();
+  assert.equal(await value.getByRole("button", { name: /^打开来源待办 关联事项 / }).count(), 0);
+  await value.evaluate(() => (window as any).fixture.update({ taskResponse: "wrong-note" }));
+  await value.getByText("未能确认关联待办，请重试。", { exact: true }).waitFor();
+  assert.equal(await value.getByRole("button", { name: /^打开来源待办 关联事项 / }).count(), 0);
+});
+
+test("note task request failures are visible and retry restores the list", async (t) => {
+  const value = await page(t, "detail");
+  await value.evaluate(() => (window as any).fixture.update({ taskResponse: "failure" }));
+  await value.getByText("关联待办暂不可用", { exact: true }).waitFor({ timeout: 5000 });
+  await value.getByRole("button", { name: "重试", exact: true }).click();
+  await value.getByRole("button", { name: "打开来源待办 关联事项 0", exact: true }).waitFor();
 });
 
 test("note detail opens an editable IORBIT template without making a write request", async (t) => {

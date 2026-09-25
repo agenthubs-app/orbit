@@ -81,7 +81,7 @@ function surfaceFrom([consumerFile, method, endpointTemplate]: SurfaceKey): Read
     // Bounded private readers have no proven revoke/version cache protocol yet.
     || (method === 'GET' && ([
       '/api/contacts/page','/api/contacts/summary','/api/contacts/labels','/api/inbox/summary',
-      '/api/relationship-tasks/page','/api/tasks/page','/api/task-suggestions/page',
+      '/api/relationship-tasks/page','/api/tasks/page','/api/task-suggestions/page','/api/tasks/note-page',
       '/api/notifications/unread-summary','/api/relationship-communication/unread-summary',
       '/api/relationship-communication/conversation-summaries','/api/relationship-communication/conversations/:id/messages',
     ].includes(endpointTemplate) || [
@@ -332,7 +332,7 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/screens/notes/NewNoteScreen.tsx","POST","/api/notes"],
   ["src/screens/notes/NoteDetailScreen.tsx","GET","/api/events"],
   ["src/screens/notes/NoteDetailScreen.tsx","GET","/api/notes/:id"],
-  ["src/screens/notes/NoteDetailScreen.tsx","GET","/api/tasks"],
+  ["src/screens/notes/NoteSourceTasks.tsx","GET","/api/tasks/note-page"],
   ["src/screens/notes/NotesScreen.tsx","GET","/api/notes"],
   ["src/screens/notes/useNoteContactSummaries.ts","GET","/api/contacts/:id"],
   ["src/screens/organizer/OrganizerPublicScreen.tsx","GET","/api/events/public"],

@@ -49,11 +49,13 @@ const dueInstant = `(case when t ? 'dueAt' then ${taskTimestampSql("t->>'dueAt'"
 // note bodies are validated/searched inside PG and never sent with list cards.
 // Count and page selection share the same statement snapshot and authorization.
 /** Shared decoder-equivalent authorization/validation for list and aggregate reads.
- * $1 is workspace, $2 is actor; deleted history is opt-in. */
-export function taskRecordsValidityCte(includeDeleted = false): string {
+ * $1 is workspace, $2 is actor, $3 is note ID when noteSourceFilter is enabled;
+ * deleted history is opt-in. */
+export function taskRecordsValidityCte(includeDeleted = false, noteSourceFilter = false): string {
   return `owned as materialized (
   select record_id,payload->'task' as t,payload->'activities' as activities from orbit_records
   where workspace_id=$1 and collection_name='tasks' and user_id=$2 ${includeDeleted ? "" : "and lifecycle_state<>'deleted'"}
+    ${noteSourceFilter ? "and payload->'task'->>'sourceNoteId'=$3" : ""}
     and payload->'version'='1'::jsonb and jsonb_typeof(payload->'task')='object' and jsonb_typeof(payload->'activities')='array'
     and payload->'task'->'accountId'=to_jsonb($2::text) and payload->'task'->'ownerUserId'=to_jsonb($2::text)
     and payload->'task'->'id'=to_jsonb(record_id)

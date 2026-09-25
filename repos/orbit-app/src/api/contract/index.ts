@@ -296,7 +296,9 @@ export type {
   ReadScope,
   ReadSurface
 } from "./universal-read";
-export type {InboxSummaryDTO} from './inbox-summary';
+export type { InboxSummaryDTO } from "./inbox-summary";
+export type { LegacyNotificationUnreadSummaryDTO } from "./legacy-notification-unread-summary";
 export type { ContactCardDTO, ContactCardPageDTO, ContactCardSummaryDTO } from "./contact-card-page";
 export type { ContactLabelsContract } from "./contact-labels";
 export type { TaskSuggestionCardContract, TaskSuggestionPageContract } from "./task-suggestion-page";
+export type { NoteTaskCardContract, NoteTaskPageContract } from "./note-task-page";

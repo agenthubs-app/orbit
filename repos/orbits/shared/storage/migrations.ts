@@ -91,6 +91,10 @@ create index if not exists orbit_records_schedule_pending_series_idx
   on orbit_records (workspace_id, user_id, record_id collate "C")
   where collection_name = 'reminderPlans' and lifecycle_state = 'active'
     and record_id like 'schedule-reminder:%' and payload->'entity'->>'status' = 'scheduled';
+
+create index if not exists orbit_records_tasks_note_source_idx
+  on orbit_records(workspace_id,user_id,((payload->'task')->>'sourceNoteId'))
+  where collection_name='tasks' and lifecycle_state<>'deleted';
 `;
 
 export interface OrbitRecordsMigrationClient {
