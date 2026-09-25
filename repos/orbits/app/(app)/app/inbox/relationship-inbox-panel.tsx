@@ -30,7 +30,8 @@ import {
 } from "./inbox-panel-view-model";
 import { ORBIT_Z } from "../orbit-z";
 
-import { ContactMessagesTab, communicationRequest, readContactMessageActor } from "./contact-messages-tab";
+import { communicationRequest, readContactMessageActor } from "./contact-messages-tab";
+import { BoundedContactMessagesTab } from "./bounded-contact-messages-tab";
 import { toContactMessageInbox } from "./inbox-panel-view-model";
 
 type InboxTab = "threads" | "alerts";
@@ -1345,7 +1346,7 @@ function RelationshipInboxPanel({
 
         <div className={`ri-panel-body${tab === "alerts" ? " scroll" : ""}`}>
           {tab === "threads" ? (
-            seed ? <ThreadsTab newThreadSeed={seed} onNewThreadConsumed={() => setSeed(null)} /> : actorId ? <ContactMessagesTab key={actorId} actorId={actorId} onIdentityChanged={() => { setActorId(null); setIdentityError(true); }} /> : <p role="status">{identityError ? t({ zh: "登录状态已变化，请重新打开收件箱。", en: "Your session changed. Please reopen the inbox.", ja: "ログイン状態が変わりました。受信トレイを開き直してください。" }) : t({ zh: "正在读取消息…", en: "Loading messages…", ja: "メッセージを読み込み中…" })}</p>
+            seed ? <ThreadsTab newThreadSeed={seed} onNewThreadConsumed={() => setSeed(null)} /> : actorId ? <BoundedContactMessagesTab key={actorId} actorId={actorId} onIdentityChanged={() => { setActorId(null); setIdentityError(true); }} /> : <p role="status">{identityError ? t({ zh: "登录状态已变化，请重新打开收件箱。", en: "Your session changed. Please reopen the inbox.", ja: "ログイン状態が変わりました。受信トレイを開き直してください。" }) : t({ zh: "正在读取消息…", en: "Loading messages…", ja: "メッセージを読み込み中…" })}</p>
           ) : (
             actorId ? <TypedNotificationsTab key={actorId} actorId={actorId} onIdentityChanged={() => { setActorId(null); setIdentityError(true); }} fallback={<AlertsTab />} /> : <p role="status">{t({zh:"正在读取通知…",en:"Loading notifications…",ja:"通知を読み込み中…"})}</p>
           )}

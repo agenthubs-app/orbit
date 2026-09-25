@@ -81,6 +81,28 @@ export interface RelationshipUnreadSummaryDTO {
   refreshedAt: string;
 }
 
+/** A list preview never contains a messages array. Names/body are bounded previews. */
+export interface RelationshipConversationSummaryDTO extends Omit<RelationshipConversationDTO, "messages" | "lastReadMessageId"> {
+  lastMessage: (Pick<RelationshipMessageDTO, "messageId" | "senderAccountId" | "sentAt"> & { bodyPreview: string }) | null;
+}
+export interface RelationshipConversationSummaryPageDTO {
+  actorId: string;
+  items: RelationshipConversationSummaryDTO[];
+  nextCursor: string | null;
+  hasMore: boolean;
+  asOf: string;
+}
+export interface RelationshipMessagePageDTO {
+  actorId: string;
+  conversation: Omit<RelationshipConversationDTO, "messages" | "unreadCount" | "lastReadMessageId">;
+  items: RelationshipMessageDTO[];
+  nextCursor: string | null;
+  newestCursor: string | null;
+  hasMore: boolean;
+  direction: "older" | "newer";
+  asOf: string;
+}
+
 export interface RelationshipDeliveryReceiptDTO {
   conversationId: string;
   message: RelationshipMessageDTO;

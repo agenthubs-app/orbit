@@ -928,9 +928,28 @@ export function createRelationshipCommunicationService({
     },
 
     async markConversationRead(input) {
-      const conversation = await this.getConversation(input.conversationId);
+      const conversationId = required(input.conversationId, "Conversation");
+      const conversation = conversationFrom(await store.getRecord({
+        workspaceId: scopedWorkspaceId,
+        collectionName: RELATIONSHIP_COMMUNICATION_COLLECTIONS.conversations,
+        recordId: conversationId,
+      }));
+      if (!conversation || !hasParticipant(conversation, accountId) || !(await currentBindingForConversation(conversation))) {
+        throw new Error("This conversation is not available to the signed-in account.");
+      }
       const lastReadMessageId = required(input.lastReadMessageId, "Last read message");
-      if (!conversation.messages.some((item) => item.messageId === lastReadMessageId)) {
+      // Membership needs the target message identity, never its body or the
+      // entire history. Canonical message record IDs equal messageId.
+      const [message] = await store.listRecords({
+        workspaceId: scopedWorkspaceId,
+        collectionName: RELATIONSHIP_COMMUNICATION_COLLECTIONS.messages,
+        targetId: conversationId,
+        recordIds: [lastReadMessageId],
+        limit: 1,
+        payloadFields: ["kind", "conversationId", "messageId"],
+        omitSearchText: true,
+      });
+      if (message?.payload.kind !== "relationship_message" || message.payload.conversationId !== conversationId || message.payload.messageId !== lastReadMessageId) {
         throw new Error("The last read message is not available in this conversation.");
       }
       const readAt = now();

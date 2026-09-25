@@ -210,6 +210,9 @@ export type {
 export type {
   RelationshipConversationDTO,
   RelationshipConversationListDTO,
+  RelationshipConversationSummaryDTO,
+  RelationshipConversationSummaryPageDTO,
+  RelationshipMessagePageDTO,
   RelationshipDeliveryReceiptDTO,
   RelationshipEligibilityDTO,
   RelationshipEligibilityStatus,
