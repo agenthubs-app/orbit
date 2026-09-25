@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { type Href, useRouter } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import type { TaskItemContract } from "../../api/contract/tasks";
+import type { TaskListEntry } from "./task-list-source";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { ORBIT_API_ENDPOINTS, tasksPath } from "../../api/endpoints";
@@ -14,14 +14,15 @@ import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitTimeZone } from "../../time/OrbitTimeZoneProvider";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { localParts } from "../../time/date-time";
-import type { ContactSummary } from "../../view-models/contacts";
+import { useContactLabels,type ContactLabel } from "../../hooks/useContactLabels";
+import { TaskContactPicker } from "./TaskContactPicker";
 import { followupsPageToView } from "../../view-models/followups-page";
 import { followupsToView } from "../../view-models/followups";
 import { isRelationshipTask } from "../../view-models/task-list-scope";
 
 interface RelationshipTaskToolsProps {
-  tasks: readonly TaskItemContract[];
-  contacts: readonly ContactSummary[];
+  tasks: readonly TaskListEntry[];
+  contacts: readonly ContactLabel[];
   /** Raw /api/tasks payload from a network-backed list; omit when the list comes from the mirror. */
   tasksPayload?: unknown;
 }
@@ -68,6 +69,9 @@ function RelationshipTaskToolsView({ tasks, contacts, tasksPayload }: Relationsh
   }
   const [choosing, setChoosing] = useState(false);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const [searchingContacts,setSearchingContacts]=useState(false);
+  const [pickedId,setPickedId]=useState<string|null>(null);
+  const picked=useContactLabels(pickedId?[pickedId]:[],scopeKey);
   const [templateError, setTemplateError] = useState<string | null>(null);
   const contactsById = new Map(contacts.map(contact => [contact.id, contact]));
   const options = [
@@ -77,7 +81,7 @@ function RelationshipTaskToolsView({ tasks, contacts, tasksPayload }: Relationsh
     }),
     ...contacts.map(contact => ({ key: `contact:${contact.id}`, contact, task: null, label: [contact.name, contact.organization].filter(Boolean).join(" · ") })),
   ];
-  const selected = options.find(option => option.key === selectedKey) ?? null;
+  const selected = pickedId ? (picked.items[0]?{contact:picked.items[0],task:null,label:[picked.items[0].name,picked.items[0].organization].filter(Boolean).join(" · ")}:null) : options.find(option => option.key === selectedKey) ?? null;
   const ready = auth.ready && auth.signedIn && server.ready && Boolean(actorId);
 
   function openTemplate(template: ReturnType<typeof contactFollowupTemplate> | ReturnType<typeof followupCandidateTemplate>) {
@@ -101,9 +105,11 @@ function RelationshipTaskToolsView({ tasks, contacts, tasksPayload }: Relationsh
     </Pressable>
     {choosing ? <View style={styles.options}>
       {options.length === 0 ? <Text style={styles.body}>{locale.t("relationshipTasks.emptyOptions")}</Text> : null}
-      {options.map(option => <Pressable key={option.key} accessibilityRole="button" accessibilityLabel={option.label} onPress={() => { setSelectedKey(option.key); setChoosing(false); }} style={styles.option}>
+      {options.map(option => <Pressable key={option.key} accessibilityRole="button" accessibilityLabel={option.label} onPress={() => { setPickedId(null);setSelectedKey(option.key); setChoosing(false); }} style={styles.option}>
         <Text style={styles.body}>{option.label}</Text>
       </Pressable>)}
+      <Pressable accessibilityRole="button" onPress={()=>setSearchingContacts(true)} style={styles.button}><Text style={styles.buttonText}>{locale.language==="zh"?"搜索其他联系人":locale.language==="ja"?"他の連絡先を検索":"Find another contact"}</Text></Pressable>
+      {searchingContacts?<TaskContactPicker onChoose={id=>{setPickedId(id);setSelectedKey(null);setSearchingContacts(false);setChoosing(false);}}/>:null}
       <Pressable accessibilityRole="button" onPress={() => setChoosing(false)} style={styles.button}><Text style={styles.buttonText}>{locale.t("relationshipTasks.cancelSelection")}</Text></Pressable>
     </View> : null}
     <Text style={styles.detail}>{locale.t("relationshipTasks.modifyBeforeSend")}</Text>
@@ -112,6 +118,7 @@ function RelationshipTaskToolsView({ tasks, contacts, tasksPayload }: Relationsh
     <Pressable accessibilityRole="button" disabled={!ready} onPress={() => openTemplate(followupCandidateTemplate("task"))} style={styles.button}><Text style={styles.buttonText}>{locale.t("relationshipTasks.generateCandidates")}</Text></Pressable>
     <Pressable accessibilityRole="button" disabled={!ready} onPress={() => openTemplate(followupCandidateTemplate("reminder"))} style={styles.button}><Text style={styles.buttonText}>{locale.t("relationshipTasks.generateReminderCandidate")}</Text></Pressable>
     {templateError ? <Text accessibilityRole="alert" style={styles.error}>{templateError}</Text> : null}
+    {pickedId&&!picked.loading&&!picked.items.length?<View><Text accessibilityRole="alert" style={styles.error}>{locale.t("tasks.contactUnavailable")}</Text><Pressable accessibilityRole="button" onPress={picked.refresh} style={styles.button}><Text style={styles.buttonText}>{locale.language==="zh"?"重新确认联系人":locale.language==="ja"?"連絡先を再確認":"Recheck contact"}</Text></Pressable></View>:null}
     <Pressable accessibilityRole="button" onPress={() => router.push("/ai?drawer=1" as Href)} style={styles.button}><Text style={styles.buttonText}>{locale.t("relationshipTasks.viewExisting")}</Text></Pressable>
     <Text accessibilityRole="header" style={styles.heading}>{locale.t("relationshipTasks.pendingSuggestions", { count: view.tasks.length })}</Text>
     {view.tasks.length === 0 ? <Text style={styles.body}>{locale.t("relationshipTasks.emptySuggestions")}</Text> : null}

@@ -15,12 +15,11 @@ import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
 import { layout } from "../../design/tokens";
 import { createThemedStyles } from "../../design/theme";
-import { useApiResource } from "../../hooks/useApiResource";
+import { useContactLabels } from "../../hooks/useContactLabels";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { tasksToListView, type TaskListRowView } from "../../view-models/today-tasks";
-import { contactsToSummaries } from "../../view-models/contacts";
-import { parseTaskListSelection, selectTaskListItems, taskListReceiptMatches } from "../../view-models/task-list-scope";
+import { parseTaskListSelection, taskListReceiptMatches } from "../../view-models/task-list-scope";
 import { useTaskListSource } from "./task-list-source";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
@@ -41,7 +40,7 @@ export function TasksScreen() {
   const auth = useOrbitAuthSession(), server = useOrbitApiBaseUrl();
   const actorId = auth.actorId ?? "";
   const ready = auth.ready && auth.signedIn && server.ready && !!actorId;
-  const scopeKey = JSON.stringify([actorId, server.baseUrl, ready]);
+  const scopeKey = JSON.stringify([actorId, auth.cookieHeader, server.baseUrl, ready]);
   const client = useOrbitApiClient({ scopeKey });
   const scope = useMemo(() => ({ active: true, busy: false, controller: new AbortController(), keys: new Map<string, string>() }), [client, scopeKey]);
   const currentScope = useRef(scope); currentScope.current = scope;
@@ -51,15 +50,22 @@ export function TasksScreen() {
   const [mutationError, setMutationError] = useState<string | null>(null);
   const [displayScope, setDisplayScope] = useState(scope);
   if (displayScope !== scope) { setDisplayScope(scope); setUpdatingId(null); setMutationError(null); }
-  // Native reads the local mirror (lease → domain pages); Web keeps the network read (task-list-source.web.ts).
-  const source = useTaskListSource({ actorId, ready, scopeKey });
-  const contactsState = useApiResource<unknown>("/api/contacts", () => false, { scopeKey, cachePolicy: "network-only" });
+  const pageScope=JSON.stringify([scopeKey,selection]);
+  const [position,setPosition]=useState<{scope:string;cursor:string|null}>({scope:pageScope,cursor:null});
+  const cursor=position.scope===pageScope?position.cursor:null;
+  // Both sources expose one window: native/browser mirror reads locally;
+  // online-only browsers use SQL pages instead of fetching the full task list.
+  const source = useTaskListSource({ actorId, ready, scopeKey, selection, cursor });
+  const refreshTasks=()=>{setPosition({scope:pageScope,cursor:null});source.refresh();};
   const loaded = ready && !source.loading && !source.failure;
   const canonical = source.canonical;
-  const contacts = new Map(contactsToSummaries(ready && (contactsState.kind === "success" || contactsState.kind === "empty") ? contactsState.data : {}).map(contact => [contact.id, contact]));
+  const contactsState=useContactLabels(canonical?.flatMap(task=>task.relatedContactId?[task.relatedContactId]:[])??[],JSON.stringify([scopeKey,selection,cursor]),ready);
+  const contacts = new Map(contactsState.items.map(contact => [contact.id, contact]));
   const now = new Date();
-  const open = canonical ? tasksToListView({ tasks: selectTaskListItems(canonical, { ...selection, view: "open" }) }, "open", now, timeZone, locale.language).items : null;
-  const completed = canonical ? tasksToListView({ tasks: selectTaskListItems(canonical, { ...selection, view: "completed" }) }, "completed", now, timeZone, locale.language).items : null;
+  // The authoritative source already filters scope before paging. A card may
+  // hide an unauthorized contact, which must not make its owned task disappear.
+  const open = canonical ? tasksToListView({ tasks: canonical }, "open", now, timeZone, locale.language).items : null;
+  const completed = canonical ? tasksToListView({ tasks: canonical }, "completed", now, timeZone, locale.language).items : null;
   const today = tokyoDateKey(now, timeZone);
   const groups = open && completed ? [
     ...(mode === "open" ? [
@@ -94,7 +100,7 @@ export function TasksScreen() {
       if (!scope.active || currentScope.current !== scope) return;
       if (!result.success) setMutationError(result.error.message);
       else if (result.status < 200 || result.status >= 300 || !taskListReceiptMatches(result.data, actorId, baseline, action)) setMutationError(locale.t("tasks.operationUnconfirmed"));
-      else if (await source.confirmMutation(item.id, action)) { scope.keys.delete(intent); }
+      else if (await source.confirmMutation(item.id, action)) { scope.keys.delete(intent); setPosition({scope:pageScope,cursor:null}); }
       else setMutationError(locale.t("sync.mutationPending"));
     } catch {
       if (scope.active && currentScope.current === scope) setMutationError(locale.t("tasks.operationFailed"));
@@ -110,7 +116,7 @@ export function TasksScreen() {
       backLabel={locale.t("nav.home")}
       refreshControl={
         <RefreshControl
-          onRefresh={() => { source.refresh(); contactsState.refresh(); }}
+          onRefresh={() => { refreshTasks(); contactsState.refresh(); }}
           refreshing={source.refreshing}
           tintColor={colors.accent}
         />
@@ -123,14 +129,14 @@ export function TasksScreen() {
       <View accessibilityRole="tablist" style={styles.tabs}>
         {([ ["all", locale.t("tasks.scopeAll")], ["relationship", locale.t("tasks.scopeRelationship")] ] as const).map(([value, label]) => <Pressable key={value} accessibilityRole="tab" accessibilityLabel={label} aria-selected={selection.scope === value} accessibilityState={{ selected: selection.scope === value }} onPress={() => setSelection(previous => ({ ...previous, scope: value }))} style={[styles.tab, selection.scope === value && styles.tabSelected]}><Text style={[styles.tabText, selection.scope === value && styles.tabTextSelected]}>{label}</Text></Pressable>)}
       </View>
-      <TaskModeSwitcher mode={mode} onChange={view => setSelection(previous => ({ ...previous, view }))} openCount={open?.length} completedCount={completed?.length} />
+      <TaskModeSwitcher mode={mode} onChange={view => setSelection(previous => ({ ...previous, view }))} openCount={source.counts?.open} completedCount={source.counts?.completed} />
       {source.syncLabelKey ? <Text accessibilityLiveRegion="polite" style={styles.syncStatus}>{locale.t(source.syncLabelKey)}</Text> : null}
       {source.loading ? <LoadingState /> : null}
       {source.failure ? (
         <ErrorState message={source.failure} title={locale.t("tasks.unavailable")} />
       ) : null}
       {loaded && !canonical ? <ErrorState title={locale.t("tasks.dataUnavailable")} message={locale.t("tasks.dataUnavailableBody")} /> : null}
-      {ready && (contactsState.kind === "failure" || contactsState.kind === "offline") ? <ErrorState title={locale.t("tasks.contactsUnavailable")} message={locale.t("tasks.contactsUnavailableBody")} /> : null}
+      {ready && contactsState.failure ? <ErrorState title={locale.t("tasks.contactsUnavailable")} message={locale.t("tasks.contactsUnavailableBody")} /> : null}
       {canonical && (mode === "open" ? open?.length === 0 : completed?.length === 0) ? (
         <EmptyState
           message={locale.t(mode === "open" ? "tasks.emptyOpenBody" : "tasks.emptyCompletedBody")}
@@ -186,6 +192,8 @@ export function TasksScreen() {
         </View>
       ))}
       </View>
+      {source.nextCursor ? <Pressable accessibilityRole="button" onPress={()=>setPosition({scope:pageScope,cursor:source.nextCursor})} style={styles.contactLink}><Text style={styles.contactText}>{locale.language==="zh"?"下一页待办":locale.language==="ja"?"次のタスク":"Next task page"}</Text></Pressable>:null}
+      {cursor ? <Pressable accessibilityRole="button" onPress={refreshTasks} style={styles.contactLink}><Text style={styles.contactText}>{locale.language==="zh"?"返回待办第一页":locale.language==="ja"?"最初のタスク":"First task page"}</Text></Pressable>:null}
       {mutationError ? <Text accessibilityRole="alert" style={styles.errorText}>{mutationError}</Text> : null}
       <RelationshipLifecycleList key={`lifecycle:${scopeKey}`} scopeKey={scopeKey} ready={ready} mode={mode} />
       {selection.scope === "all" && mode === "open" ? <PersonalScheduleList /> : null}

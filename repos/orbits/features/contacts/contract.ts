@@ -200,3 +200,4 @@ export interface ContactsListSearchFailure {
 export type ContactsListSearchResult =
   | ContactsListSearchSuccess
   | ContactsListSearchFailure;
+export type { ContactLabelsContract } from "../../shared/contract/contact-labels";

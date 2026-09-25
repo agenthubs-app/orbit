@@ -1,7 +1,7 @@
 import type { TaskItemContract } from "../../api/contract/tasks";
 import type { useSyncedCollection } from "../../hooks/useSyncedCollection";
 import type { MessageKey } from "../../i18n/messages";
-import { readTaskListItems } from "../../view-models/task-list-scope";
+import { readTaskListItems, selectTaskListItems } from "../../view-models/task-list-scope";
 import type { TaskListSource, TaskListSourceInput } from "./task-list-source";
 
 type SyncedTasks = ReturnType<typeof useSyncedCollection<Record<string, unknown>>>;
@@ -28,8 +28,21 @@ export function mirrorTaskListSource(state: SyncedTasks, input: TaskListSourceIn
   // the error rather than an empty page, and an empty array here would show both.
   const readable = everSynced && !(state.status === "failure" && state.records.length === 0);
   const canonical = input.ready && readable ? itemsFrom(state.records, input.actorId) : null;
+  const selection=input.selection??{scope:"all",view:"open"};
+  const open=canonical?selectTaskListItems(canonical,{...selection,view:"open"}):null;
+  const completed=canonical?selectTaskListItems(canonical,{...selection,view:"completed"}):null;
+  const selected=selection.view==="open"?open:completed;
+  const compare=(a:string,b:string)=>a<b?-1:a>b?1:0;
+  // This is a local mirror window, not a server cursor or a new network read.
+  // Sorting matches the explicit task-page v1 order for canonical ASCII IDs.
+  selected?.sort((a,b)=>selection.view==="completed"?compare(b.updatedAt,a.updatedAt)||compare(a.id,b.id)
+    :compare(a.dueAt??a.plannedDate??"9999",b.dueAt??b.plannedDate??"9999")||compare(b.updatedAt,a.updatedAt)||compare(a.id,b.id));
+  const offset=input.cursor?.match(/^local:([0-9]+)$/)?Number(input.cursor.slice(6)):0;
+  const validOffset=Number.isSafeInteger(offset)&&offset>=0?offset:0;
   return {
-    canonical,
+    canonical:selected?.slice(validOffset,validOffset+30)??null,
+    counts:open&&completed?{open:open.length,completed:completed.length}:null,
+    nextCursor:selected&&validOffset+30<selected.length?`local:${validOffset+30}`:null,
     loading: input.ready && !everSynced && state.status !== "failure",
     failure: state.status === "failure" ? state.error ?? "sync.failure" : null,
     refreshing: state.status === "syncing",

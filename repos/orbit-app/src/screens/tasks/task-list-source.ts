@@ -2,6 +2,11 @@ import type { TaskItemContract } from "../../api/contract/tasks";
 import { useSyncedCollection } from "../../hooks/useSyncedCollection";
 import type { MessageKey } from "../../i18n/messages";
 import { mirrorTaskListSource } from "./task-list-source-mirror";
+import type { TaskListSelection } from "../../view-models/task-list-scope";
+
+// A list entry is deliberately not a complete task/detail record. Network
+// cards do not contain notes, history, creation metadata or ownership claims.
+export type TaskListEntry = Pick<TaskItemContract, "id" | "title" | "status" | "category" | "priority" | "updatedAt" | "completedAt" | "plannedDate" | "dueAt" | "location" | "relatedContactId" | "notes">;
 
 /**
  * Native task list source: the local mirror fed by the lease → domain-page
@@ -12,10 +17,14 @@ export interface TaskListSourceInput {
   actorId: string;
   ready: boolean;
   scopeKey: string;
+  selection?: TaskListSelection;
+  cursor?: string | null;
 }
 
 export interface TaskListSource {
-  canonical: TaskItemContract[] | null;
+  canonical: TaskListEntry[] | null;
+  counts: {open:number;completed:number} | null;
+  nextCursor: string | null;
   /** Nothing readable yet (first sync still running). */
   loading: boolean;
   failure: string | null;

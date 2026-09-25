@@ -8,6 +8,8 @@ export interface TaskCardContract {
   plannedDate: string | null;
   dueAt: string | null;
   updatedAt: string;
+  /** Older page deployments may omit this; never infer it from updatedAt. */
+  completedAt?: string | null;
   relatedContact: { id: string; namePreview: string; organizationPreview: string } | null;
 }
 

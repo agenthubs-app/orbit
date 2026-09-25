@@ -7,7 +7,7 @@ export const taskCardSchema = z.object({
   status: z.enum(["open", "completed"]),
   category: z.enum(["relationship", "meeting", "event", "work", "personal", "other"]),
   priority: z.enum(["normal", "high"]), plannedDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
-  dueAt: instant.nullable(), updatedAt: instant,
+  dueAt: instant.nullable(), updatedAt: instant, completedAt: instant.nullable().optional(),
   relatedContact: z.object({ id: key, namePreview: z.string().max(240), organizationPreview: z.string().max(240) }).strict().nullable(),
 }).strict();
 

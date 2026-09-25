@@ -298,3 +298,4 @@ export type {
 } from "./universal-read";
 export type {InboxSummaryDTO} from './inbox-summary';
 export type { ContactCardDTO, ContactCardPageDTO, ContactCardSummaryDTO } from "./contact-card-page";
+export type { ContactLabelsContract } from "./contact-labels";

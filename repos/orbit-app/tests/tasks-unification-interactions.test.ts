@@ -6,6 +6,7 @@ import test from "node:test";
 import { build } from "esbuild";
 import { chromium, type Browser, type Page } from "playwright";
 import { aiConversationPayload, emptyAiConversationPayload, emptyAiSessionListPayload } from "./helpers/ai-fixtures";
+import { taskPageFixture } from "./helpers/task-page-fixture";
 
 const require = createRequire(import.meta.url);
 let browser: Browser, script: string;
@@ -99,6 +100,8 @@ async function open(t: { after(fn: () => Promise<void>): void }, patch: Record<s
     }
     else if (url.pathname === "/api/ai/conversations/sessions") response = Response.json({ success: true, data: method === "GET" ? emptyAiSessionListPayload : { session: JSON.parse(body!).session, storage: emptyAiSessionListPayload.storage } });
     else if (url.pathname === "/api/relationship-tasks/page") response = Response.json({ success: true, data: { actorId: session.actor, mode: url.searchParams.get('mode'), items: [], total: 0, hasMore: false, nextCursor: null, asOf: '2026-09-25T00:00:00.000Z' } });
+    else if (url.pathname === "/api/tasks/page") response = Response.json({success:true,data:taskPageFixture(await service.list({actorId:session.actor}),session.actor,url.searchParams)});
+    else if (url.pathname === "/api/contacts/labels") response=Response.json({success:true,data:{actorId:session.actor,items:session.actor==="owner"&&url.searchParams.getAll("id").includes("contact:22")?[{id:"contact:22",namePreview:"真实联系人",organizationPreview:"真实机构"}]:[],asOf:"2026-09-25T00:00:00Z"}});
     else if (url.pathname === "/api/tasks") response = await createTaskCollectionHandlers(dependencies).GET(nativeRequest);
     else if (url.pathname.startsWith("/api/tasks/") && method === "PATCH") response = await createTaskDetailHandlers(dependencies).PATCH(nativeRequest, { params: Promise.resolve({ id: decodeURIComponent(url.pathname.slice("/api/tasks/".length)) }) });
     else response = Response.json({ success: true, data: url.pathname === "/api/contacts" ? { contacts: [{ id: "contact:22", name: "真实联系人", organization: "真实机构", role: "负责人" }] } : { scheduleItems: [] } });
@@ -118,14 +121,23 @@ test("actual list keeps 61 task IDs in four scope/status combinations without ca
   await page.getByRole("checkbox", { name: "完成：事项 0", exact: true }).first().waitFor();
   await page.getByRole("tab", { name: "全部", exact: true }).waitFor();
   await page.getByRole("tab", { name: "未完成 31", exact: true }).waitFor();
-  assert.equal(await page.getByRole("checkbox").count(), 31);
+  assert.equal(await page.getByRole("checkbox").count(), 30);
+  const firstNames=await page.getByRole("checkbox").evaluateAll(elements=>elements.map(e=>e.getAttribute("aria-label")));
+  await page.getByRole("button",{name:"下一页待办",exact:true}).click();
+  await page.waitForFunction(()=>document.querySelectorAll('[role="checkbox"]').length===1);
+  const secondNames=await page.getByRole("checkbox").evaluateAll(elements=>elements.map(e=>e.getAttribute("aria-label")));
+  assert.equal(new Set([...firstNames,...secondNames]).size,31);
+  await page.getByRole("button",{name:"返回待办第一页",exact:true}).click();
+  await page.waitForFunction(()=>document.querySelectorAll('[role="checkbox"]').length===30);
   assert.equal(await page.getByText("未确认候选", { exact: true }).count(), 0);
   await page.getByRole("tab", { name: "已完成 30", exact: true }).click();
+  await page.getByRole("checkbox", {name:"恢复：事项 1",exact:true}).waitFor();
   assert.equal(await page.getByRole("checkbox").count(), 30);
   await page.getByRole("tab", { name: "人脉", exact: true }).click();
   await page.getByRole("tab", { name: "已完成 21", exact: true }).waitFor();
   assert.equal(await page.getByRole("checkbox").count(), 21);
   await page.getByRole("tab", { name: "未完成 21", exact: true }).click();
+  await page.getByRole("checkbox", {name:"完成：事项 0",exact:true}).waitFor();
   assert.equal(await page.getByRole("checkbox").count(), 21);
   assert.equal(await page.getByRole("checkbox", { name: "完成：事项 22", exact: true }).count(), 1);
   assert.equal(await page.getByRole("checkbox", { name: "完成：事项 60", exact: true }).count(), 0);
@@ -140,6 +152,35 @@ test("route parameters use first values and preserve a distinct contact navigati
   await contact.waitFor(); assert.ok((await contact.boundingBox())!.height >= 44);
   await contact.click();
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), ["/contacts/contact%3A22"]);
+  const paths=await page.evaluate(()=>(window as any).fixture.requests.map((r:any)=>r.path));
+  assert.ok(paths.includes("/api/contacts/labels"));assert.ok(!paths.includes("/api/contacts"));
+});
+
+test("contact picker searches another owned page and revalidates its name before enabling a draft",async t=>{
+  const page=await open(t,{params:{scope:"relationship"}});
+  await page.getByRole("checkbox",{name:"完成：事项 22",exact:true}).waitFor();
+  const headers={"Access-Control-Allow-Origin":"null","Access-Control-Allow-Credentials":"true"};
+  await page.route("**/api/contacts/page?*",async route=>{
+    const query=new URL(route.request().url()).searchParams.get("query");
+    await route.fulfill({status:200,contentType:"application/json",headers,body:JSON.stringify({success:true,data:{items:query==="页外"?[{id:"contact:outside",displayName:"页外本人联系人",organization:"公司",role:"",sourceType:"manual",status:"active",pendingInitialization:false,nextActionPreview:"",updatedAt:"2026-09-25T00:00:00Z"}]:[],hasMore:false,nextCursor:null,asOf:"2026-09-25T00:00:00Z"}})});
+  });
+  await page.route("**/api/contacts/summary?*",route=>route.fulfill({status:200,contentType:"application/json",headers,body:JSON.stringify({success:true,data:{total:1,sources:{manual:1},statuses:{active:1},values:{},tags:[],hasMoreTags:false,asOf:"2026-09-25T00:00:00Z"}})}));
+  let denySelected=true;
+  await page.route("**/api/contacts/labels?*",async route=>{
+    if(!new URL(route.request().url()).searchParams.getAll("id").includes("contact:outside"))return route.fallback();
+    await route.fulfill({status:denySelected?403:200,contentType:"application/json",headers,body:JSON.stringify(denySelected?{success:false,error:{code:"FORBIDDEN",message:"revoked"}}:{success:true,data:{actorId:"owner",items:[{id:"contact:outside",namePreview:"页外本人联系人",organizationPreview:"公司"}],asOf:"2026-09-25T00:00:00Z"}})});
+  });
+  await page.getByRole("button",{name:"选择联系人或事项",exact:true}).click();
+  await page.getByRole("button",{name:"搜索其他联系人",exact:true}).click();
+  await page.getByRole("textbox",{name:"搜索联系人",exact:true}).fill("页外");
+  await page.getByRole("button",{name:"页外本人联系人 · 公司",exact:true}).click();
+  await page.getByRole("button",{name:"重新确认联系人",exact:true}).waitFor();
+  assert.equal(await page.getByRole("button",{name:"AI 起草",exact:true}).isDisabled(),true);
+  assert.deepEqual(await page.evaluate(()=>(window as any).fixture.navigation),[]);
+  denySelected=false;
+  await page.getByRole("button",{name:"重新确认联系人",exact:true}).click();
+  await page.getByText(/已选择.*页外本人联系人/).waitFor();
+  assert.equal(await page.getByRole("button",{name:"AI 起草",exact:true}).isDisabled(),false);
 });
 
 test("private route blocks signed-out reads rather than displaying a personal task list", async t => {

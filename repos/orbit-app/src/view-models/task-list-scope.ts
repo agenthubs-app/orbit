@@ -25,7 +25,7 @@ export function taskListHref(params?: { scope?: unknown; view?: unknown } | null
   return query.size ? `/tasks?${query}` : "/tasks";
 }
 
-export function selectTaskListItems(tasks: readonly TaskItemContract[], selection: TaskListSelection): TaskItemContract[] {
+export function selectTaskListItems<T extends Pick<TaskItemContract,"id"|"status"|"category"|"relatedContactId">>(tasks: readonly T[], selection: TaskListSelection): T[] {
   const ids = new Set<string>();
   return tasks.filter(task => {
     if (!task.id || task.status !== selection.view || (selection.scope === "relationship" && !isRelationshipTask(task)) || ids.has(task.id)) return false;
@@ -50,7 +50,7 @@ export function readTaskListItems(payload: unknown, actorId: string): TaskItemCo
   return items;
 }
 
-export function taskListReceiptMatches(payload: unknown, actorId: string, baseline: TaskItemContract, action: "complete" | "reopen"): boolean {
+export function taskListReceiptMatches(payload: unknown, actorId: string, baseline: Pick<TaskItemContract,"id"|"updatedAt">, action: "complete" | "reopen"): boolean {
   const raw = typeof payload === "object" && payload !== null && "task" in payload ? payload.task : null;
   const item = readTaskListItems({ tasks: [raw] }, actorId)?.[0];
   return !!item && item.id === baseline.id && item.status === (action === "complete" ? "completed" : "open") && Date.parse(item.updatedAt) > Date.parse(baseline.updatedAt);

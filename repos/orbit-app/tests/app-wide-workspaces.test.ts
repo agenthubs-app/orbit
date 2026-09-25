@@ -14,6 +14,7 @@ import React, { useEffect, useSyncExternalStore } from "react";
 export const useFocusEffect = effect => useEffect(effect, [effect]);
 import { View } from "react-native";
 import { aiConversationPayload, emptyAiConversationPayload, aiSessionListPayload } from "./tests/helpers/ai-fixtures";
+import { taskPageFixture } from "./tests/helpers/task-page-fixture";
 let revision = 0; const listeners = new Set();
 const rerender = () => useSyncExternalStore(fn => { listeners.add(fn); return () => listeners.delete(fn); }, () => revision);
 const state = window.fixture = { kind: "success", empty: false, requests: [], navigation: [], refreshes: [], update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); } };
@@ -52,6 +53,8 @@ function dataFor(path) {
   if (path.startsWith("/api/chat/conversations/")) return { state: state.empty ? "empty" : "success", conversation, messages: state.empty ? [] : [chatMessage], sendMessageState: chatBoundary };
   if (path === "/api/chat/conversations") return { conversations: state.empty ? [] : [conversation] };
   if (path.includes("activities")) return { activities: [] };
+  if (path.startsWith("/api/tasks/page?")) return taskPageFixture(state.empty?[]:[task,{...task,id:"completed-one",status:"completed",title:"已经完成的资料核对",completedAt:"2026-09-08T01:00:00Z"}],"reader",new URLSearchParams(path.split("?")[1]));
+  if (path.startsWith("/api/contacts/labels?")) return {actorId:"reader",items:[],asOf:"2026-09-25T00:00:00Z"};
   if (path.startsWith("/api/tasks/")) return { task };
   if (path.startsWith("/api/tasks")) return { tasks: state.empty ? [] : screen === "schedule" ? [task] : [task, { ...task, id: "completed-one", taskId: "completed-one", status: "completed", title: "已经完成的资料核对" }] };
   if (path.startsWith("/api/today")) return { date: "2026-09-08", timeZone: "Asia/Tokyo", tasks: state.empty ? [] : [task], suggestions: [{ id: "suggestion-one", title: "确认参会伙伴", reason: "安排会面", category: "relationship", status: "pending" }], schedule: [], completedCount: 1 };
@@ -134,7 +137,9 @@ async function open(t: { after: (fn: () => Promise<void>) => void }, screen: str
   await page.route("**/*", route => route.request().url().startsWith(url) ? route.continue() : route.abort());
   await page.goto(`${url}?screen=${screen}`); return page;
 }
-async function fits(action: Locator, height = 44) { const b = (await action.boundingBox())!; assert.ok(b && b.height >= height, `expected ${height}pt target, got ${b?.height}`); assert.ok(b.x >= 0 && b.x + b.width <= 320, "action fits 320pt screen"); }
+// Browser transforms can report a CSS 44px target as 43.99993896484375.
+// Tolerate only floating-point noise, not a physically smaller hit target.
+async function fits(action: Locator, height = 44) { const b = (await action.boundingBox())!; assert.ok(b && b.height + 0.001 >= height, `expected ${height}pt target, got ${b?.height}`); assert.ok(b.x >= 0 && b.x + b.width <= 320, "action fits 320pt screen"); }
 async function noWrites(page: Page) { assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests.filter((request: any) => request.method !== "get")), []); }
 
 test("personal schedule reads retain v3 audit while every mutation still violates the no-write boundary", async t => {

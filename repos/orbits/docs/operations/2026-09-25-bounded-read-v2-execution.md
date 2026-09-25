@@ -308,3 +308,23 @@ env -i PATH="$PATH" ORBIT_LIFECYCLE_TEST_DATABASE_URL=postgresql://li@localhost/
 ```
 
 跨端交接：本端为 caf9bd8a 后本批；App 此批仅同步契约，尚未消费新普通任务页。核实 native 已使用 lease/domain-page 本地镜像，支持浏览器镜像时 Web App 也复用镜像；不能笼统说手机每次下载 `/api/tasks`。仍须治理 online-only fallback 的全量读取、TasksScreen 的全联系人附带请求、RelationshipTaskTools 的旧建议入口，并保留镜像的授权/增量同步机制。Today 汇总和建议列表另有全量路径，本批未替换。新端点要求稳定签名密钥与 PG und-x-icu；当前只验证本机运行时，没有发布或手机安装，生产真实用量仍待验收。
+
+## 第十四批：App 普通待办窗口与本页联系人名字
+
+第十三批提交 `f21bcd9e`；其22项Web/PG、6项契约同步、两端完整类型检查通过，staged图检查21文件/132符号、medium、无partial/truncated/error。以下为该版本之后的跨端增量，不是生产发布。
+
+App普通待办统一暴露30条窗口。native及可用的浏览器本地镜像保留lease/domain-page机制、已有离线展示和写后同步确认，仅在本地筛选/排序后显示一页；**没有宣称本地数据库已经按页读取**。online-only浏览器改读`/api/tasks/page`，不再全量下载普通任务。两种来源均提供全局open/completed数，翻页替换、切筛选/账号/凭据/服务器回首页；旧账号、旧页迟到响应、错误actor/筛选回执和403不显示旧条目，不写私有快照，不降级旧全量接口。浏览器失去镜像能力后不把local offset传给服务器签名游标。
+
+列表使用明确的TaskListEntry投影，不伪装完整TaskItem。卡片新增可选completedAt（由SQL返回实际完成时间），保留旧卡片部署兼容，不从updatedAt捏造完成时间。完成/恢复回执仍校验账号、ID、目标状态和较新版本，native仍等待镜像确认；操作幂等与详情接口未替换。
+
+新增`GET /api/contacts/labels?id=...`：最多30个请求ID、单ID最多2048字符、JSON ID集合最多8192字节，超界明确失败、不截断；一条SQL按workspace/行owner/accountId/lifecycle/ID匹配，只返回各120字符姓名/机构。无主、关联账号伪造、跨owner及撤权不返回名字，关系引用不授予访问。App只读取当前页引用的ID，没有`TasksScreen → GET /api/contacts`全量请求；账号、凭据、服务器、页码或ID集合变化清除旧名字。返回错误actor或未请求ID也失败。没有将名字摘要当联系人详情或缓存授权结论。
+
+选择其他联系人改为显式打开搜索/分页选择器，覆盖当前页外本人联系人；点击选项后再次精确读取其当前授权名字，失败/撤权时禁止AI草稿并显示重试。已有本页任务选择、取消、手动编辑再发送、联系人与任务独立跳转保持。名字请求属于online-only，离线任务列表仍可读，但不能拿过期名字当当前联系人授权。
+
+验证：本地PG/API7项通过，含1万无关联系人增长、归属冲突和边界拒绝；新完成时间字段后，普通任务65/10,062/100,062条的首窗为**11,628/11,631/11,632 B**、各1 SQL。与App全量浏览器测试并发的首轮在插入九万fixture时触发15秒statement_timeout，保留失败记录；未放宽限制，浏览器全量结束后独立复跑通过。数字仍仅为PG返回JSON，不是Neon账单。两端完整类型检查通过。
+
+App完整测试曾运行3,609项：3,566通过、43失败、0跳过，**不标全量绿色**。本批相关的旧task-list源码锚点、两个屏幕fixture已改为真实新分页数据；源断言只用于平台解析/接线，实际30+1窗口、四类筛选、完成/恢复、幂等、账号切换、名字撤权、页外搜索另有Chromium验证。App-wide点击高度断言仅容许0.001px浮点误差（实际CSS44px被浏览器报告43.99993896484375），没有缩小按钮或跳过断言。全量其他失败仍需逐项核对：角标/收件箱及联系人旧fixture、路由对齐缺口等，不能自动归为无关或当作已验收。
+
+发布依赖：服务端须先具备task-page、contact-labels、稳定游标签名与相容PG运行时，随后发布App；尚未部署、安装手机、读取Neon或改云配置。shared契约/schema由Web同步，已有根bridge未提交内容未覆盖。本批未关闭：RelationshipTaskTools为旧建议仍调用全量`/api/tasks`、Today及其他旧消费者、P3逐来源可靠变化/到期、生产真实消耗与发布验收。不能把普通待办主体分页当作整个任务相关页面已恒定成本。
+
+最终本批App专项合跑88/88、零跳过；另宽入口待办/跟进/大字4/4、两端完整typecheck通过。全量43项失败是此前完整测试的事实，后续专项通过不冒充已重新全量绿色。可复现的新增入口验证为`task-page-source-lifecycle.test.ts`、`contact-labels-lifecycle.test.ts`、`task-list-bounded-source.test.ts`、`tasks-unification-interactions.test.ts`；后端为`task-page-postgres.test.ts`、`contact-labels-postgres.test.ts`及对应API测试，均已收进仓库，不依赖临时脚本。

@@ -77,7 +77,7 @@ const SQL = `with owned as materialized (
   order by case when $3='completed' then sort_key end collate "C" desc,case when $3<>'completed' then sort_key end collate "C",(t->>'updatedAt') collate "C" desc,record_id collate "C" limit $9
 ), cards as (
   select p.*, jsonb_build_object('id',record_id,'titlePreview',left(t->>'title',240),'locationPreview',left(t->>'location',120),
-    'status',t->>'status','category',t->>'category','priority',t->>'priority','plannedDate',t->>'plannedDate','dueAt',t->>'dueAt','updatedAt',t->>'updatedAt',
+    'status',t->>'status','category',t->>'category','priority',t->>'priority','plannedDate',t->>'plannedDate','dueAt',t->>'dueAt','updatedAt',t->>'updatedAt','completedAt',t->>'completedAt',
     'relatedContact',(select jsonb_build_object('id',c.record_id,'namePreview',left(c.payload->>'displayName',120),'organizationPreview',left(coalesce(c.payload->>'organization',''),120))
       from orbit_records c where c.workspace_id=$1 and c.collection_name='contacts' and c.record_id=t->>'relatedContactId' and c.user_id=$2 and c.lifecycle_state<>'deleted'
         and (c.payload->'accountId' is null or c.payload->'accountId'='null'::jsonb or c.payload->'accountId'=to_jsonb($2::text))

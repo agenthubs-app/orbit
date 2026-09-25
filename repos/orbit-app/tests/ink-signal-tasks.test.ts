@@ -20,6 +20,7 @@ const tasks = [task,
 // Real screens, theme, view models and RNW. Only navigation/device and external
 // resource/client boundaries are replaced; this is not an HTTP/native QA claim.
 const fixture = `
+import { taskPageFixture } from "./tests/helpers/task-page-fixture";
 import React, { useEffect, useSyncExternalStore } from "react";
 export const useFocusEffect = effect => useEffect(effect, []);
 import { View } from "react-native-web";
@@ -28,7 +29,7 @@ let revision = 0, nextId = 0; const listeners = new Set();
 const state = window.fixture = { width: 390, fontScale: 1, screen: "list", navigation: [], requests: [], reads: [], httpReads: [], refreshes: [], permissionCalls: 0, ...window.initialFixture,
   update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); } };
 export const useFixture = () => { useSyncExternalStore(fn => { listeners.add(fn); return () => listeners.delete(fn); }, () => revision); return state; };
-export const useApiResource = path => { useFixture(); if (!state.reads.includes(path)) state.reads.push(path); return { kind: state.kinds?.[path] || "success", data: path === "/api/schedule-items?scope=personal" ? { scheduleItems: [] } : path === "/api/tasks" ? { tasks: state.tasks } : path.startsWith("/api/tasks?") ? { tasks: state.tasks.filter(t => t.status === new URLSearchParams(path.split("?")[1]).get("status")) } : path.endsWith("/activities") ? { activities: [] } : path.startsWith("/api/reminders") ? { reminders: [] } : { task: state.task }, error: { message: "暂时无法读取，请重试。" }, refreshing: false, refresh() { state.refreshes.push(path); } }; };
+export const useApiResource = path => { useFixture(); if (!state.reads.includes(path)) state.reads.push(path); return { kind: state.kinds?.[path] || "success", data: path.startsWith("/api/tasks/page?") ? taskPageFixture(state.tasks,"test",new URLSearchParams(path.split("?")[1])) : path.startsWith("/api/contacts/labels?") ? {actorId:"test",items:[],asOf:"2026-09-25T00:00:00Z"} : path === "/api/schedule-items?scope=personal" ? { scheduleItems: [] } : path === "/api/tasks" ? { tasks: state.tasks } : path.startsWith("/api/tasks?") ? { tasks: state.tasks.filter(t => t.status === new URLSearchParams(path.split("?")[1]).get("status")) } : path.endsWith("/activities") ? { activities: [] } : path.startsWith("/api/reminders") ? { reminders: [] } : { task: state.task }, error: { message: "暂时无法读取，请重试。" }, refreshing: false, refresh() { state.refreshes.push(path); } }; };
 async function request(method, path, options) { state.requests.push({ method, path, ...options }); if (state.hold) await new Promise(resolve => state.release = resolve); if (state.thrown) throw Error("transport"); if (state.failure) return { success: false, error: { message: "保存失败，请重试。" } }; const record = state.tasks.find(task => path === "/api/tasks/" + encodeURIComponent(task.id)) ?? state.task; return { success: true, status: 200, data: { task: { ...record, ...options.body.patch, status: options.body.action === "complete" ? "completed" : options.body.action === "reopen" ? "open" : record.status, updatedAt: "2026-09-11T05:30:00Z" } } }; }
 const client = { async get(path, options) {
   const url = new URL(path, "https://orbit.example");
@@ -160,7 +161,7 @@ test("list transport rejection unlocks actions and visibly preserves the unchang
   assert.equal(await checkbox.getAttribute("aria-checked"), "false");
   await page.evaluate(() => (window as any).fixture.update({ thrown: false }));
   await checkbox.click(); assert.equal((await requests(page)).length, 2);
-  assert.deepEqual(await page.evaluate(() => (window as any).fixture.refreshes), ["/api/relationship-tasks/page?mode=open&limit=30", "/api/tasks"]);
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.refreshes), ["/api/relationship-tasks/page?mode=open&limit=30", "/api/tasks/page?status=open&scope=all&limit=30"]);
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.httpReads), initialReads);
 });
 
@@ -177,7 +178,7 @@ test("list retains overdue and undated work, navigates canonical task IDs and ex
 test("completed deep link and list load failure do not invent zero counts or empty success", async t => {
   const page = await open(t, { view: "completed" });
   assert.equal(await page.getByRole("tab", { name: "已完成 1", exact: true }).getAttribute("aria-selected"), "true");
-  await page.evaluate(() => (window as any).fixture.update({ kinds: { "/api/tasks": "failure" } }));
+  await page.evaluate(() => (window as any).fixture.update({ kinds: { "/api/tasks/page?status=completed&scope=all&limit=30": "failure" } }));
   await page.getByText("待办暂时打不开", { exact: true }).waitFor();
   assert.equal(await page.getByRole("checkbox").count(), 0);
   assert.equal(await page.getByRole("tab", { name: / 0$/ }).count(), 0);
