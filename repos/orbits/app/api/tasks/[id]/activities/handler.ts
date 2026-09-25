@@ -20,8 +20,7 @@ export function createTaskActivitiesGetHandler(
     if (!actor) return authenticatedApiActorRequiredResponse(resolveFeatureMode());
     try {
       const { id } = await context.params;
-      const activities = (await taskRouteService(dependencies).history({ actorId: actor.id }))
-        .filter((item) => item.taskId === id);
+      const activities = await taskRouteService(dependencies).history({ actorId: actor.id, taskId: id });
       return taskSuccessResponse({ activities });
     } catch (error) {
       return taskErrorResponse(error);

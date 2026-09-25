@@ -70,6 +70,10 @@ export interface TaskUpdatePatch {
 }
 
 export interface TaskService {
+  get: (input: {
+    actorId: string;
+    taskId: string;
+  }) => Promise<TaskItemDTO | null>;
   list: (input: {
     actorId: string;
     status?: TaskStatus;
@@ -77,6 +81,7 @@ export interface TaskService {
   }) => Promise<readonly TaskItemDTO[]>;
   history: (input: {
     actorId: string;
+    taskId?: string;
     from?: string;
     to?: string;
     category?: TaskCategory;
@@ -236,12 +241,17 @@ export function createTaskService(input: {
       if (termination) await input.onTaskTerminated?.(termination);
       return result;
     };
-    return { list: read.list, history: read.history,
+    return { get: read.get, list: read.list, history: read.history,
       create: command => run("create", command), update: command => run("update", command),
       complete: command => run("complete", command), reopen: command => run("reopen", command),
       cancel: command => run("cancel", command), delete: command => run("delete", command) };
   }
   return {
+    async get(query) {
+      const stored = await input.repository.get(query.actorId, query.taskId);
+      return stored?.payload.task ?? null;
+    },
+
     async list(query) {
       const records = await input.repository.list(query.actorId);
       return records
@@ -255,9 +265,10 @@ export function createTaskService(input: {
     },
 
     async history(query) {
-      const records = await input.repository.list(query.actorId, {
-        includeDeleted: true,
-      });
+      const records = query.taskId === undefined
+        ? await input.repository.list(query.actorId, { includeDeleted: true })
+        : await input.repository.get(query.actorId, query.taskId, { includeDeleted: true })
+          .then(record => record ? [record] : []);
       return records
         .flatMap((record) => record.payload.activities)
         .filter(

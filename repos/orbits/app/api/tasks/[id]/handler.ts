@@ -52,8 +52,7 @@ export function createTaskDetailHandlers(dependencies?: TaskRouteDependencies) {
       if (!actor) return authenticatedApiActorRequiredResponse(resolveFeatureMode());
       try {
         const { id } = await context.params;
-        const task = (await taskRouteService(dependencies).list({ actorId: actor.id }))
-          .find((item) => item.id === id);
+        const task = await taskRouteService(dependencies).get({ actorId: actor.id, taskId: id });
         if (!task) throw new AppError("NOT_FOUND", "Task not found.");
         return taskSuccessResponse({ task });
       } catch (error) {

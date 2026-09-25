@@ -65,6 +65,7 @@ export function createTaskRepository(input: {
         workspaceId: input.workspaceId,
         collectionName: TASK_COLLECTION,
         recordId: taskId,
+        userId: actorId,
         includeDeleted: options.includeDeleted,
       });
       if (!record || record.userId !== actorId) {

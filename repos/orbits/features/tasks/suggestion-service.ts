@@ -228,8 +228,10 @@ export function createTaskSuggestionService(input: {
       );
 
       if (suggestion.status === "accepted" && suggestion.acceptedTaskId) {
-        const task = (await input.taskService.list({ actorId: acceptInput.actorId }))
-          .find((item) => item.id === suggestion.acceptedTaskId);
+        const task = await input.taskService.get({
+          actorId: acceptInput.actorId,
+          taskId: suggestion.acceptedTaskId,
+        });
         if (task) {
           return { suggestion, task };
         }
