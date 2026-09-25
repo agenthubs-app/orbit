@@ -1,6 +1,7 @@
 import {randomUUID} from 'node:crypto';
 import type {TransactionalPostgresClient,TransactionalSqlExecutor} from '../../../shared/storage/transactional-postgres';
 import {INBOX_RECORD_COLLECTION} from './inbox-record-repository';
+import {SCHEDULE_REMINDER_WINDOW_SCHEMA_SQL} from '../../personal-schedule/reminder-window-storage';
 
 // Additive schema, deliberately not installed from a request or worker. The
 // deployment/backfill gate must be completed before enabling its producer.
@@ -22,6 +23,7 @@ create index if not exists orbit_inbox_projection_pending_idx
   on orbit_inbox_projection_work(workspace_id,available_at,actor_id,source_kind,source_id) where state='pending';
 create index if not exists orbit_inbox_projection_leased_idx
   on orbit_inbox_projection_work(workspace_id,lease_until,actor_id,source_kind,source_id) where state='leased';
+${SCHEDULE_REMINDER_WINDOW_SCHEMA_SQL}
 `;
 
 export interface InboxProjectionSource {actorId:string;sourceKind:'canonical_reminder';sourceId:string;sourceRevision:string}

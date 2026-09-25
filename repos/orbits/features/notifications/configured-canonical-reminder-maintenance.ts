@@ -23,6 +23,7 @@ import {
 import {createInboxProjectionWorkRepository} from './storage/inbox-projection-work';
 import {runInboxProjectionPass} from './inbox-projection-worker';
 import {canonicalInboxProjectionRevision} from './canonical-inbox-projection-revision';
+import {runScheduleReminderWindowPass} from '../personal-schedule/reminder-window-worker';
 
 export { canonicalReminderActorLockKey } from "./canonical-reminder-wake";
 
@@ -182,6 +183,8 @@ export function createConfiguredCanonicalReminderMaintenanceTask({
         publisher: configured.publisher,
         inboxProjection,
       };
+      const windowSummary: Record<string, number> = inboxProjection ? await runScheduleReminderWindowPass({ ...wakeRuntime, inboxProjection, deadline: context.deadline, clock: context.now })
+        .catch(() => ({ windowFailed: 1 })) : {};
       const wakeResult: RepairCanonicalReminderWakesResult = await repairCanonicalReminderWakes({
         runtime: wakeRuntime,
         workerId,
@@ -215,15 +218,17 @@ export function createConfiguredCanonicalReminderMaintenanceTask({
         },
         dispatcher: { dispatchDueForActor: ({ actorId, now }) => dispatchActor({...configured,inboxProjection}, actorId, now) },
       }).run(context);
-      const projectionSummary=projectionEnabled?await runInboxProjectionPass({...configured,enabled:true,now:wakeRuntime.now,deadline:context.deadline,clock:context.now,limit:25}):{};
-      const wakeSummary: Record<string, number> = { ...wakeResult,...projectionSummary };
+      const projectionSummary: Record<string, number> = projectionEnabled?await runInboxProjectionPass({...configured,enabled:true,now:wakeRuntime.now,deadline:context.deadline,clock:context.now,limit:25}):{};
+      const sourceFailures = (windowSummary.windowFailed ?? 0) + (projectionSummary.projectionFailed ?? 0);
+      const wakeSummary: Record<string, number> = { ...wakeResult,...projectionSummary,...windowSummary, failed: wakeResult.failed + sourceFailures };
       if ("skipped" in legacyResult) return wakeSummary;
       return {
         ...legacyResult,
         ...projectionSummary,
+        ...windowSummary,
         claimed: legacyResult.claimed + wakeResult.claimed,
         inAppDelivered: legacyResult.inAppDelivered + wakeResult.inAppDelivered,
-        failed: legacyResult.failed + wakeResult.failed,
+        failed: legacyResult.failed + wakeResult.failed + sourceFailures,
         wakeClaimed: wakeResult.wakeClaimed,
         wakeDelivered: wakeResult.wakeDelivered,
         wakeFailed: wakeResult.wakeFailed,

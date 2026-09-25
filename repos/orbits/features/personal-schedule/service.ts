@@ -14,6 +14,7 @@ import { reconcilePersonalScheduleReminderPlans } from "./reminder-plans";
 import { createPersonalScheduleReminderRepository, createMemoryPersonalScheduleReminderRepository } from "./reminder-plan-storage";
 import type { InboxProjectionWriter } from "../notifications/storage/inbox-projection-work";
 import { canonicalInboxProjectionRevision } from "../notifications/canonical-inbox-projection-revision";
+import { createScheduleReminderWindowRepository } from "./reminder-window-storage";
 
 const collectionName = "personal_schedule_items";
 const locks = new WeakMap<object, Map<string, Promise<void>>>();
@@ -28,9 +29,10 @@ function publicItem(item: PersonalScheduleContract, now: string): PersonalSchedu
   return { ...item, state: item.state === "cancelled" ? "cancelled" : time < Date.parse(item.startsAt) ? "upcoming" : item.endsAt && time < Date.parse(item.endsAt) ? "ongoing" : "ended" };
 }
 
-export function createPersonalScheduleService(input: { store: LiveRecordStoreLike<Record<string, unknown>>; workspaceId: string; client?: TransactionalPostgresClient; now?: () => string; inboxProjection?: InboxProjectionWriter; associationReader?: PersonalScheduleAssociationReader; associationReaderForStore?: (store: LiveRecordStoreLike<Record<string, unknown>>) => PersonalScheduleAssociationReader }) {
+export function createPersonalScheduleService(input: { store: LiveRecordStoreLike<Record<string, unknown>>; workspaceId: string; client?: TransactionalPostgresClient; now?: () => string; inboxProjection?: InboxProjectionWriter; executor?: TransactionalSqlExecutor; associationReader?: PersonalScheduleAssociationReader; associationReaderForStore?: (store: LiveRecordStoreLike<Record<string, unknown>>) => PersonalScheduleAssociationReader }) {
   if (input.inboxProjection && !input.client) throw new Error("Schedule inbox projection requires a transaction client");
   const now = input.now ?? (() => new Date().toISOString());
+  const reminderWindows = input.inboxProjection && input.client ? createScheduleReminderWindowRepository({ client: input.client, workspaceId: input.workspaceId }) : undefined;
   async function read(store: typeof input.store, actorId: string, id: string) {
     const record = await store.getRecord({ workspaceId: input.workspaceId, collectionName, recordId: id });
     if (!record || record.userId !== actorId) throw new AppError("NOT_FOUND", "Personal schedule not found.");
@@ -95,8 +97,18 @@ export function createPersonalScheduleService(input: { store: LiveRecordStoreLik
       }
       return persisted;
     } }, actorId, seriesId: saved.id, revision: saved.updatedAt, title: saved.title, timeZone: saved.timeZone ?? "UTC", now: at, reminderMinutes: saved.state === "cancelled" ? null : saved.reminderMinutes ?? null, occurrences: instances });
+    if (reminderWindows) {
+      if (!executor) throw new Error("Schedule window progress escaped its transaction");
+      await reminderWindows.record(executor, saved, at, window.to);
+    }
   }
   async function withScheduleTransaction<T>(actorId: string, operation: (store: typeof input.store, executor?: TransactionalSqlExecutor) => Promise<T>): Promise<T> {
+    // A database-only window worker may enlist its existing transaction. It
+    // owns commit/retry; never start or retry a nested transaction here.
+    if (input.executor) {
+      await input.executor.query("select pg_advisory_xact_lock(hashtextextended($1, 0))", [JSON.stringify(["personal-schedule", input.workspaceId, actorId])]);
+      return operation(createPostgresLiveRecordStore({ client: input.executor }), input.executor);
+    }
     if (input.client) {
       for (let attempt = 0; attempt < 3; attempt++) {
         try { return await input.client.transaction(async tx => {
@@ -187,6 +199,13 @@ export function createPersonalScheduleService(input: { store: LiveRecordStoreLik
     return withScheduleTransaction(actorId, execute);
   }
   return {
+    async refreshReminderPlansForSeries({ actorId, id }: { actorId: string; id: string }) {
+      return withScheduleTransaction(actorId, async (store, executor) => {
+        const item = await read(store, actorId, id);
+        if (item.sourceId !== item.id || item.id !== id) throw new Error("Personal schedule source mismatch");
+        await syncPersonalScheduleReminderPlans(store, actorId, item, now(), executor);
+      });
+    },
     async refreshReminderPlans({ actorId }: { actorId: string }) {
       return withScheduleTransaction(actorId, async (store, executor) => {
         const records = await store.listRecords({ limit: "unbounded", workspaceId: input.workspaceId, collectionName, userId: actorId });

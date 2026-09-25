@@ -442,3 +442,13 @@ GitNexus共用命令和工作仓库为CRITICAL，inbox工厂HIGH，configured工
 PG覆盖mixed创建/幂等/未来不领取/无pure wake、真实legacy in_app投递先发生再投影、改期/取消、Push-only无可用渠道失败仍保持旧收件箱语义、命令与旧dispatcher的plan/work原子回滚及故障恢复。外部send是明确禁止的测试替身，不能作为真实Push已验收证据。17文件提醒/切流/工作队列/日程来源/路由回归 **78/78，零跳过**，Web完整typecheck通过。编辑前configured工厂和canonical命令图影响均CRITICAL，已预先提示并保留原wake/投递fence验证。线上表、flag、部署和手机均未改。
 
 这些生产者已接齐不等于通知全量迁移完成：周期series的独立持久窗口补齐、历史回填和Push抑制、目标撤销，以及其他业务通知来源仍开放。旧legacy dispatcher的外部发送不在本批plan/work事务内，不能把这次数据库原子登记描述为外部Push exactly-once；旧GET和legacy切流门继续保留。
+
+## 第二十五批：周期日程不依赖打开收件箱来补未来提醒
+
+第二十四批已提交`4fc3ba30`。先用真实configured maintenance复现：创建月度series有3条计划，推进60天并运行后台后仍只有3条；新实现扩展到5条，无用户GET。增加独立`orbit_schedule_reminder_windows`进度表，日程事务内同时保存计划、projection work和进度。90天生成窗口提前30天到期，维护默认每次10个series、最多25个，SQL仅取到期进度、精确读series；actor锁在window锁之前，调用日程服务加入既有事务，不嵌套提交/重试。存在窗口表的依赖仅在原projection flag开启时生效，默认仍关闭，无请求时DDL。
+
+额外红例证明两处问题：扩展失败没有计入维护failed；发现查询失败直接打断其他通知。修正后窗口/投影失败计入汇总，窗口失败标记本身故障也不阻塞其他series。候选读取、单项事务和失败标记均有限时SQL，语句超时按剩余预算收紧；连接获取仍受池超时控制。40001/40P01从新事务重试，最多两次，截止后不再起新重试。失败回滚计划/work/进度，60秒起指数退避至1小时，第8次failed；同revision的GET不复活，新revision才可重新登记。取消/关闭提醒/删除重复规则停用窗口，缺失/跨owner源同样停用且不生成计划。
+
+本地真实PG专项9/9：不打开App自动补齐、同revision不抖动、两worker竞争不重复、故障回滚和死信、fresh-transaction重试及截止、失败标记故障不拖停另一actor。另放入1万未来active＋1万inactive进度，空闲只有1条业务SELECT、0行、无orbit_records读取；真实EXPLAIN选用due partial index，未禁用Seq Scan。21文件日程/通知/事务/路由/读取审计回归 **125/125，零跳过**，Web完整typecheck通过。首轮typecheck的汇总联合类型和测试reminderMinutes字面量类型已修正，未放宽生产契约。
+
+尚未完成：历史series窗口/计划回填、历史Push抑制、异常实例历史规模、其他通知来源、实际客户端全部消费者及发布/真实Neon流量验收。保留GET刷新，不把新窗口交付当成P3完成。合并schema如今包括两个表、三个partial indexes，已有旧工作表的环境仍必须显式安装窗口表；未部署、未安装线上DDL、未开flag、未发送Push、未安装手机。GitNexus绑定根orbit/当前工作区；维护入口LOW直接影响configured tasks，新窗口符号原UNKNOWN已核对实际引用，日程共用入口此前CRITICAL告警及回归范围继续保留。
