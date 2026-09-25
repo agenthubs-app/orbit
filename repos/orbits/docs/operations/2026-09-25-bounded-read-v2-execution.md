@@ -422,3 +422,15 @@ GitNexus共用命令和工作仓库为CRITICAL，inbox工厂HIGH，configured工
 扩大回归先发现13个旧SQL模拟夹具不认识新查询，补齐后仅剩2个日期漂移失败：测试要求生成9月19–21日提醒却使用现实9月25日。现固定测试Date到原fixture日期，未改变生产时间逻辑、权限/并发/回滚断言。15项定向、6项PG/迁移/读取审计通过；最终整组/typecheck结果随后补记。GitNexus日程共用入口CRITICAL已预先提示；测试fixture/新增符号/SQL常量的UNKNOWN已用明确文本引用补查，不当作无影响。没有云操作、App改包或发布。
 
 最终18个文件的日程API/规则/事务/通知来源/canonical唤醒/迁移/读取审计回归 **130/130，零跳过**。测试时钟hook的Node类型联合先报错，增加TestContext验证后14/14复验及Web完整typecheck通过。刷新索引后的all/staged图检查均无partial/truncated/error；工具给出的零affected流程不推翻编辑前CRITICAL判断，按真实已知调用路径完成上述回归。
+
+## 第二十三批：周期日程在事务中登记到期通知
+
+第二十二批已提交`efaed4c7`。本地PG先复现3个日程计划、0个projection work。如今日程create/update/delete及现有窗口refresh通过同一事务保存计划和工作项；新/改期实例等fireAt，取消立即替换generation。仅显式注入writer或配置`ORBIT_CANONICAL_INBOX_PROJECTION=1`时登记，configured日程工厂和旧business refresh均接线，默认仍关闭；内存无事务服务不能启用writer。没有自行启动新调度链，也没有移除旧refresh。
+
+周期计划原本是`in_app + ios_push`，所以仅投影读取允许合法的混合/Push渠道；普通canonical wake与owned-store的解码仍默认仅接受纯in_app。混合计划的delivered可能只是Push成功，投影不强求/伪造站内fence，也不写delivery、不改plan状态；纯站内delivered继续核对真实fence。scheduled周期计划在物化前重新验证当前series/occurrence，过去已到期、但series修改后仍保留的历史plan不再新建通知。读取/派发时的原权限校验仍保留，未缓存授权。
+
+真实PG验证创建3个持久工作、未来不领取、幂等不重置、到期生成、系列改期屏蔽旧due工作、取消隐藏、不发送或伪造Push，以及queue写故障回滚日程/计划/回执。另验证混合delivered无站内fence仍可按旧语义投影、pure delivered缺fence拒绝、异actor拒绝，强行创建指向混合plan的pure wake仍被真实消费器拒绝且delivery表为空。12文件组合 **86/86，零跳过**；加强负例后该PG测试再次通过，完整类型检查另记。
+
+仍未完成：普通mixed/push configured提醒命令及旧legacy dispatcher的全部writer登记；定期series窗口扩展的独立有界持久任务；历史回填与Push抑制；其余通知来源。已有旧混合writer若改变revision，待消费工作会判过期，这也是不能删除旧refresh或宣称“整个reminder来源已增量完成”的具体原因。尚未安装线上工作表、开flag、发布、发送Push或验证Neon实际月用量。
+
+负例测试的wake存储泛型先未通过typecheck，改为真实WakeIntent类型的PG store后，该PG测试及Web完整typecheck均通过；生产接口类型未放宽。编辑前日程服务CRITICAL、sync HIGH，configured工厂UNKNOWN已核对日程API/Today/AI真实调用。索引重建后的提交图检查另记，不把86项子集当作整个App或生产验收。

@@ -12,6 +12,8 @@ import { expandPersonalScheduleOccurrences } from "./recurrence";
 import { PERSONAL_SCHEDULE_EXCEPTION_COLLECTION, readPersonalScheduleOccurrenceExceptions } from "./occurrence-exceptions";
 import { reconcilePersonalScheduleReminderPlans } from "./reminder-plans";
 import { createPersonalScheduleReminderRepository, createMemoryPersonalScheduleReminderRepository } from "./reminder-plan-storage";
+import type { InboxProjectionWriter } from "../notifications/storage/inbox-projection-work";
+import { canonicalInboxProjectionRevision } from "../notifications/canonical-inbox-projection-revision";
 
 const collectionName = "personal_schedule_items";
 const locks = new WeakMap<object, Map<string, Promise<void>>>();
@@ -26,7 +28,8 @@ function publicItem(item: PersonalScheduleContract, now: string): PersonalSchedu
   return { ...item, state: item.state === "cancelled" ? "cancelled" : time < Date.parse(item.startsAt) ? "upcoming" : item.endsAt && time < Date.parse(item.endsAt) ? "ongoing" : "ended" };
 }
 
-export function createPersonalScheduleService(input: { store: LiveRecordStoreLike<Record<string, unknown>>; workspaceId: string; client?: TransactionalPostgresClient; now?: () => string; associationReader?: PersonalScheduleAssociationReader; associationReaderForStore?: (store: LiveRecordStoreLike<Record<string, unknown>>) => PersonalScheduleAssociationReader }) {
+export function createPersonalScheduleService(input: { store: LiveRecordStoreLike<Record<string, unknown>>; workspaceId: string; client?: TransactionalPostgresClient; now?: () => string; inboxProjection?: InboxProjectionWriter; associationReader?: PersonalScheduleAssociationReader; associationReaderForStore?: (store: LiveRecordStoreLike<Record<string, unknown>>) => PersonalScheduleAssociationReader }) {
+  if (input.inboxProjection && !input.client) throw new Error("Schedule inbox projection requires a transaction client");
   const now = input.now ?? (() => new Date().toISOString());
   async function read(store: typeof input.store, actorId: string, id: string) {
     const record = await store.getRecord({ workspaceId: input.workspaceId, collectionName, recordId: id });
@@ -83,7 +86,15 @@ export function createPersonalScheduleService(input: { store: LiveRecordStoreLik
     const window = { from: at, to: new Date(Date.parse(at) + 90 * 86_400_000).toISOString() };
     const instances = saved.state === "cancelled" ? [] : await personalScheduleOccurrences(store, actorId, saved, window);
     const repository = executor ? createPersonalScheduleReminderRepository({ store, workspaceId: input.workspaceId, executor }) : createMemoryPersonalScheduleReminderRepository({ store, workspaceId: input.workspaceId });
-    await reconcilePersonalScheduleReminderPlans({ repository, actorId, seriesId: saved.id, revision: saved.updatedAt, title: saved.title, timeZone: saved.timeZone ?? "UTC", now: at, reminderMinutes: saved.state === "cancelled" ? null : saved.reminderMinutes ?? null, occurrences: instances });
+    await reconcilePersonalScheduleReminderPlans({ repository: { ...repository, async savePlan(plan) {
+      const persisted = await repository.savePlan(plan);
+      if (input.inboxProjection) {
+        if (!executor) throw new Error("Schedule inbox projection escaped its transaction");
+        await input.inboxProjection.enqueue(executor, { actorId, sourceKind: "canonical_reminder", sourceId: persisted.id,
+          sourceRevision: canonicalInboxProjectionRevision(persisted) }, { availableAt: persisted.status === "cancelled" ? at : persisted.fireAt });
+      }
+      return persisted;
+    } }, actorId, seriesId: saved.id, revision: saved.updatedAt, title: saved.title, timeZone: saved.timeZone ?? "UTC", now: at, reminderMinutes: saved.state === "cancelled" ? null : saved.reminderMinutes ?? null, occurrences: instances });
   }
   async function withScheduleTransaction<T>(actorId: string, operation: (store: typeof input.store, executor?: TransactionalSqlExecutor) => Promise<T>): Promise<T> {
     if (input.client) {

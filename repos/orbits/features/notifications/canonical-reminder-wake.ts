@@ -506,7 +506,7 @@ type ReminderOwnedCollection = (typeof reminderOwnedCollections)[number];
 
 class CanonicalReminderScopeError extends Error {}
 
-function reminderPlanFromEntity(value: Record<string, unknown>): ReminderPlanDTO | null {
+function reminderPlanFromEntity(value: Record<string, unknown>, projectionChannels = false): ReminderPlanDTO | null {
   const id = value.id;
   const accountId = value.accountId;
   const ownerUserId = value.ownerUserId;
@@ -526,7 +526,9 @@ function reminderPlanFromEntity(value: Record<string, unknown>): ReminderPlanDTO
   const failureCode = optionalString(value.failureCode);
   if (!nonEmpty(id) || !nonEmpty(accountId) || !nonEmpty(ownerUserId) || !targetType(targetTypeValue) ||
       !nonEmpty(targetId) || !validDate(fireAt) || !nonEmpty(timeZone) ||
-      !Array.isArray(value.channels) || value.channels.length !== 1 || value.channels[0] !== "in_app" ||
+      !Array.isArray(value.channels) || value.channels.length < 1 || value.channels.length > 2 ||
+      value.channels.some(channel => channel !== "in_app" && channel !== "ios_push") || new Set(value.channels).size !== value.channels.length ||
+      (!projectionChannels && (value.channels.length !== 1 || value.channels[0] !== "in_app")) ||
       !reminderPlanStatus(status) || !reminderCreatedBy(createdBy) || !nonEmpty(title) || !nonEmpty(body) ||
       !nonEmpty(deepLink) || !validDate(createdAt) || !validDate(updatedAt) ||
       deliveredAt === null || cancelledAt === null || failureCode === null) return null;
@@ -539,7 +541,7 @@ function reminderPlanFromEntity(value: Record<string, unknown>): ReminderPlanDTO
     fireAt,
     timeZone,
     status,
-    channels: ["in_app"],
+    channels: value.channels as ReminderPlanDTO["channels"],
     title,
     body,
     deepLink,
@@ -1148,10 +1150,10 @@ async function claimCanonicalReminderWakesInternal(
   throw new Error("Canonical reminder wake transaction retry limit reached");
 }
 
-function planFromRow(row: PlanRow | null | undefined, actorId: string): ReminderPlanDTO | null {
+function planFromRow(row: PlanRow | null | undefined, actorId: string, projectionChannels = false): ReminderPlanDTO | null {
   if (!row) return null;
   if (!isRecord(row.payload) || !isRecord(row.payload.entity)) return null;
-  const plan = reminderPlanFromEntity(row.payload.entity);
+  const plan = reminderPlanFromEntity(row.payload.entity, projectionChannels);
   if (!plan) return null;
   const persistedUpdatedAt = row.updated_at instanceof Date ? row.updated_at.toISOString() : String(row.updated_at ?? "");
   if (row.user_id !== actorId || plan.id !== row.record_id || plan.ownerUserId !== actorId || plan.accountId !== actorId ||
@@ -1172,13 +1174,15 @@ export async function readCanonicalReminderProjectionSource(executor:Transaction
     select workspace_id,collection_name,record_id,user_id,source_id,target_type,target_id,created_at,updated_at,
       jsonb_build_object('entity',case when octet_length(entity::text)<=65536 then entity else null end) as payload from source`,[workspaceId,source.sourceId,source.actorId]);
   if(!rows.rows.length)return null;
-  const plan=planFromRow(rows.rows[0],source.actorId);
+  const plan=planFromRow(rows.rows[0],source.actorId,true);
   if(!plan)throw Error('CANONICAL_PROJECTION_SOURCE_INVALID');
   if(canonicalInboxProjectionRevision(plan)!==source.sourceRevision||plan.status==='cancelled')return null;
-  if(plan.channels.length!==1||plan.channels[0]!=='in_app')throw Error('CANONICAL_PROJECTION_SOURCE_INVALID');
   // Match the existing reminder inbox: a due scheduled/failed plan is visible
-  // even before successful delivery. Only a delivered claim needs its fence.
-  if(plan.status!=='delivered')return plan;
+  // even before successful delivery. Pure-in-app delivered needs its fence.
+  // A mixed/push plan's delivered status can mean Push only. Inbox projection
+  // follows the plan fact, never claims in-app or Push delivery on its behalf.
+  // The pure-in-app wake authority keeps its original delivery-fence check.
+  if(plan.status!=='delivered'||plan.channels.length!==1||plan.channels[0]!=='in_app')return plan;
   const id=canonicalReminderDeliveryId(plan);
   const deliveries=await executor.query<WakeRow>(`with source as (
     select record_id,user_id,(select jsonb_object_agg(key,value)

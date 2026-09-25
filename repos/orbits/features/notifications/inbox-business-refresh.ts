@@ -11,12 +11,14 @@ import { createConfiguredOrbitIntegrationService } from '../integrations/service
 import { createPersonalScheduleService } from '../personal-schedule/service';
 import { isCurrentPersonalScheduleReminderPlan } from '../personal-schedule/reminder-plans';
 import { AppError } from '../../shared/errors/app-error';
+import { createInboxProjectionWorkRepository } from './storage/inbox-projection-work';
 
 // Existing business facts project to records. This is not a second delivery
 // executor: explicit reminder scheduling remains in the existing plan service.
 export async function refreshInboxBusinessRecords(input:{actorId:string;principalId?:string;client:TransactionalPostgresClient;workspaceId:string;service:InboxRecordService;since:string;now?:string}) {
   const at=input.now??new Date().toISOString(),store=createPostgresLiveRecordStore({client:input.client});
-  await createPersonalScheduleService({store,client:input.client,workspaceId:input.workspaceId,now:()=>at}).refreshReminderPlans({actorId:input.actorId});
+  const inboxProjection=process.env.ORBIT_CANONICAL_INBOX_PROJECTION==='1'?createInboxProjectionWorkRepository({...input,now:()=>at}):undefined;
+  await createPersonalScheduleService({store,client:input.client,workspaceId:input.workspaceId,now:()=>at,inboxProjection}).refreshReminderPlans({actorId:input.actorId});
   const interactions=createNotificationInteractionService({store,workspaceId:input.workspaceId});
   let before='';let projected=0;
   while(true) {
