@@ -1,6 +1,6 @@
 # 核心读取治理执行账本
 
-2026-09-25；用户已授权修订计划并执行。基线 `26b3d5fc`。无生产部署、任务停启、付费或生产数据修复授权。
+2026-09-25；用户已授权修订计划并执行。基线 `26b3d5fc`。下文保留本地批次完成时的事实；随后用户明确授权本批生产发布，已按文末增量独立上线。任务停启、付费及额外生产数据修复不在此次授权内。
 
 ## 工作清单
 
@@ -92,3 +92,17 @@ Web/App 同步契约由 `npm run sync:contract` 生成，未手改副本。根 B
 4. **未完成的长期项**：会话摘要/消息历史分页、本人全部跟进/联系人/任务/笔记分页、typed 全来源增量与到期覆盖。它们没有被标成已完成，也不能因第一批测试通过宣称全产品已规模化。
 
 只读发布差异检查已发现具体依赖：生产 typed service 尚无 HEAD 的 integrity failure/默认隐藏失效来源语义；旧 legacy provider 尚未过滤 archived；configured store 的进程预算、pool profile 与 timeout 接线也有差异。因此不能宣称本提交直接 cherry-pick 到 `02ec26f0` 就通过生产验证。先在隔离发布分支明确带入哪些既有语义，再做该版本回归及小流量验收；这与一口气发布全部 HEAD 是两个不同方案。
+
+## 后续授权与独立上线（2026-09-25）
+
+用户在得知“只发布这批优化，不带其他数百提交”的范围后回复“允许”。从生产 `02ec26f0` 新建隔离分支 `codex/neon-bounded-read-release-20260925`，移植并验证后端批次 `46e438ea57a29dca5e53396315b7ee26cda7e9a9`；没有发布主线全部 HEAD。
+
+本次保留生产 typed 白名单、失效来源占位及 legacy 归档记录行为，不带入新的 integrity/隐藏规则或 sync/budget 子系统。schema、依赖、维护/cron/队列配置及环境变量未修改。发布版 Web 47/47、生成契约 4/4、完整 typecheck 和生产 build 通过；不是直接复用上文主线 57/37 的测试结论。
+
+Vercel `prj_PFJXRat2a7ADxz6tWVLQU7rNTaIt` 的新 production 部署 `dpl_C7whpxNmJk7qaqcKTtGr2xgAPwAo` 已 READY，先 skip-domain 后 promote；平台回读确认 `www.orbitailink.com` 与 `orbitailink.com` 均指向新部署。正式地址为 https://www.orbitailink.com 。原部署 `dpl_3UBsvmTRUMtYkFwujuhNmUw4ebpZ` 保留回退。
+
+发布技能不允许主动 fetch 部署 URL，本轮只确认云端构建和域名绑定，不冒称真实登录/读写/推送已验。旧部署最近一小时的有限日志搜索未返回读取计量样本；仍没有足够同窗口数据证明月流量节省比例。
+
+本批 Vercel 发布不更新原生 App 安装包，消息/legacy 摘要接口要等新版 App 实际消费；服务端 scoped graph 和 typed 分页已进入正式代码。不能宣称手机角标全量读取已在所有用户设备消失，也不能把第一批上线当成全产品规模化治理完成。
+
+详细回执在隔离发布分支 `repos/orbits/docs/operations/2026-09-25-bounded-read-production-release.md`。根 Bridge 原有修改及用户其他文件保持不变。
