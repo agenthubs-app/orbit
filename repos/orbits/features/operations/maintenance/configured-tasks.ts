@@ -118,7 +118,7 @@ export function createConfiguredMaintenanceTasks({
       name: "notification_redelivery",
       async run({ deadline }) {
         try {
-          const pass = await runNotificationDeliveryPass({ deadline, refreshSignals: true, workerId });
+          const pass = await runNotificationDeliveryPass({ deadline, workerId });
           return {
             actors: pass.actorCount,
             deferredActors: pass.deferredActors,
@@ -126,8 +126,6 @@ export function createConfiguredMaintenanceTasks({
             sent: pass.result.sent,
             retried: pass.result.retried,
             deadLettered: pass.result.deadLettered,
-            signalsCreated: pass.signalMaterialization.created,
-            postEventCreated: pass.postEventMaterialization.created,
           };
         } catch (error) {
           if (error instanceof NotificationDeliveryUnconfigured) return { skipped: error.reason };

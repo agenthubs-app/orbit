@@ -12,28 +12,15 @@ const pollIntervalMs = Math.max(
 const workerId =
   process.env.ORBIT_NOTIFICATION_WORKER_ID?.trim() ??
   `notification-worker:${process.pid}`;
-const signalPollIntervalMs = Math.max(
-  10_000,
-  Number.parseInt(process.env.ORBIT_NOTIFICATION_SIGNAL_POLL_MS ?? "60000", 10) ||
-    60_000,
-);
-
 async function main(): Promise<void> {
-  let nextSignalRefreshAt = 0;
   while (true) {
-    const refreshSignals = Date.now() >= nextSignalRefreshAt;
-    if (refreshSignals) nextSignalRefreshAt = Date.now() + signalPollIntervalMs;
     // Configuration errors (no actor or Event Core database) propagate and stop
     // the process, matching the previous fail-fast startup behaviour.
-    const pass = await runNotificationDeliveryPass({ refreshSignals, workerId });
-    const { actorCount, postEventMaterialization, result, signalMaterialization } = pass;
-    if (
-      result.claimed > 0 ||
-      signalMaterialization.created > 0 ||
-      postEventMaterialization.created > 0
-    ) {
+    const pass = await runNotificationDeliveryPass({ workerId });
+    const { actorCount, result } = pass;
+    if (result.claimed > 0) {
       process.stdout.write(
-        `${JSON.stringify({ actorCount, postEventMaterialization, result, signalMaterialization, workerId })}\n`,
+        `${JSON.stringify({ actorCount, result, workerId })}\n`,
       );
     }
     await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
