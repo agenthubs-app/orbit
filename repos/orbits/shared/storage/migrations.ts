@@ -138,7 +138,8 @@ export async function runOrbitRecordsMigration(
   client: OrbitRecordsMigrationClient,
 ): Promise<void> {
   await client.query(ORBIT_RECORDS_SCHEMA_SQL);
-  await client.query(ORBIT_READ_RECEIPTS_SCHEMA_SQL);
   await runRelationshipLifecycleMigrations(client);
   await runEventOperationsMigrations(client);
+  // Independent of every other table; last so existing migration order is unchanged.
+  await client.query(ORBIT_READ_RECEIPTS_SCHEMA_SQL);
 }

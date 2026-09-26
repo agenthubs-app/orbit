@@ -104,19 +104,19 @@ test("orbit records migration can run through an async SQL client", async () => 
   assert.match(client.calls[0]?.text ?? "", /payload jsonb not null/i);
   assert.match(
     client.calls[1]?.text ?? "",
-    /create table if not exists orbit_read_receipts/i,
-  );
-  assert.match(
-    client.calls[2]?.text ?? "",
     /create table if not exists relationship_lifecycle_command_receipts/i,
   );
   assert.match(
-    client.calls[3]?.text ?? "",
+    client.calls[2]?.text ?? "",
     /create table if not exists event_ops_schema_migrations/i,
   );
-  assert.match(client.calls[4]?.text ?? "", /create table event_ops_events/i);
+  assert.match(client.calls[3]?.text ?? "", /create table event_ops_events/i);
+  assert.match(
+    client.calls.at(-1)?.text ?? "",
+    /create table if not exists orbit_read_receipts/i,
+  );
   for (const [index, migration] of EVENT_OPERATIONS_SCHEMA_MIGRATIONS.entries()) {
-    const sql = client.calls[index + 4]?.text ?? "";
+    const sql = client.calls[index + 3]?.text ?? "";
     assert.ok(sql.includes(`where version = ${migration.version};`));
     assert.ok(sql.includes(migration.name));
     assert.ok(sql.includes(migration.checksum));
