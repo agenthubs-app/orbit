@@ -12,3 +12,11 @@ test("production maintenance includes exactly one canonical reminder task withou
     skipped: "database_unconfigured",
   });
 });
+
+test("production maintenance runs the read-cost rollup task once, inside the existing daily pass", async () => {
+  const tasks = createConfiguredMaintenanceTasks({ env: { NODE_ENV: "test" }, workerId: "wiring-test" });
+  const readCost = tasks.filter((task) => task.name === "read_cost_rollup");
+  assert.equal(readCost.length, 1);
+  assert.equal(tasks.at(-1)?.name, "read_cost_rollup", "runs after the delivery tasks");
+  assert.deepEqual(await readCost[0]!.run({ now: () => new Date(0), deadline: 1000 }), { skipped: "database_unconfigured" });
+});

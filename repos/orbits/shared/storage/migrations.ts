@@ -107,7 +107,7 @@ create index if not exists orbit_records_schedule_actor_id_idx
 
 // Request read receipts (monitoring O1): one row per sampled server request or
 // background task. Written after the response by shared/observability; kept
-// 14 days by the O2 cleanup job, which deletes by occurred_at. account_id is
+// 14 days by the O2 cleanup job (read_cost_rollup maintenance task), which deletes by occurred_at. account_id is
 // the raw Orbit account id; logs and Axiom only ever see a fingerprint.
 export const ORBIT_READ_RECEIPTS_SCHEMA_SQL = `
 create table if not exists orbit_read_receipts (
@@ -128,6 +128,62 @@ create table if not exists orbit_read_receipts (
 
 create index if not exists orbit_read_receipts_occurred_at_idx
   on orbit_read_receipts (occurred_at);
+
+-- Monitoring O2/O3 (features/operations/read-cost): daily rollups (kept 1 year),
+-- the daily Neon reconciliation (kept for ever) and the alert ledger that makes
+-- each rule fire once per day and subject. Same statement as the receipts table
+-- so the migration step count and order stay unchanged.
+create table if not exists orbit_read_cost_daily_routes (
+  day date not null,
+  route text not null,
+  source text not null,
+  receipt_count integer not null,
+  requests bigint not null,
+  query_count bigint not null,
+  row_count bigint not null,
+  byte_count bigint not null,
+  db_ms double precision not null,
+  failed_query_count bigint not null,
+  response_bytes bigint not null,
+  max_request_bytes bigint not null,
+  computed_at timestamptz not null default now(),
+  primary key (day, route, source)
+);
+
+create table if not exists orbit_read_cost_daily_accounts (
+  day date not null,
+  account_id text not null,
+  receipt_count integer not null,
+  requests bigint not null,
+  query_count bigint not null,
+  row_count bigint not null,
+  byte_count bigint not null,
+  db_ms double precision not null,
+  computed_at timestamptz not null default now(),
+  primary key (day, account_id)
+);
+
+create table if not exists orbit_read_cost_reconciliation (
+  day date primary key,
+  recorded_bytes bigint not null,
+  neon_status text not null check (neon_status in ('ok', 'unavailable', 'failed')),
+  neon_bytes bigint,
+  coverage double precision,
+  neon_reason text,
+  computed_at timestamptz not null
+);
+
+create table if not exists orbit_read_cost_alerts (
+  alert_id text primary key,
+  rule text not null check (rule in ('route_average_spike', 'large_request', 'low_coverage')),
+  day date not null,
+  subject text not null,
+  observed double precision not null,
+  threshold double precision not null,
+  created_at timestamptz not null default now(),
+  notified_at timestamptz,
+  unique (rule, day, subject)
+);
 `;
 
 export interface OrbitRecordsMigrationClient {

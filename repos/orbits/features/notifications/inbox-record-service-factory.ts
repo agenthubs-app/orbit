@@ -20,6 +20,8 @@ import { isCurrentPersonalScheduleReminderPlan } from '../personal-schedule/remi
 import type { ReminderPlanDTO } from './reminder-plan-contract';
 import {readSimpleInboxSourceStates} from './storage/inbox-source-state-batch';
 import {createInboxProjectionWorkRepository,type InboxProjectionWriter} from './storage/inbox-projection-work';
+import {readCostAlertSourceState} from '../operations/read-cost/alerts';
+import {isReadCostAdmin} from '../operations/read-cost/config';
 
 /**
  * Typed notifications (reminder / suggestion / update) are the inbox. The rollout
@@ -41,6 +43,8 @@ export function createInboxRuntime(input:{client:TransactionalPostgresClient;wor
   const collections:Partial<Record<InboxNotificationSource['sourceKind'],string>>={task:'tasks',schedule:'personal_schedule_items',note:'notes',contact:'contacts',goal:'profiles',connection:'integrations',reminder_plan:'reminderPlans',batch:'businessCardBatches'};
   const sourceAccess:InboxSourceAccess=async(actorId,source,tx)=>{
     const client=tx?.executor??input.client;
+    // Read-cost alerts (monitoring O3) are visible only to configured admins.
+    if(source.sourceKind==='read_cost_alert')return readCostAlertSourceState(client,{actorId,sourceId:source.sourceId,sourceRevision:source.sourceRevision,isAdmin:id=>isReadCostAdmin(id)});
     if(source.objectId==='discovery') {
       const adapters=createDiscoverySourceAdapters({client,store:storeFor(tx),workspaceId:input.workspaceId,now,preferences:actor=>createDiscoveryRepository({...input,client:{...input.client,query:client.query}}).preferences(actor)});
       return await adapters.read(actorId,{kind:source.sourceKind,id:source.sourceId,revision:source.sourceRevision,at:source.occurredAt,key:source.sourceKind+':'+source.sourceId},false)?'available':'unavailable';

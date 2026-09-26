@@ -11,6 +11,7 @@ import { redispatchPendingAgentActions } from "../../agent/runtime/dispatch-scan
 import { dispatchPasswordResetMail } from "../../auth/password-reset-dispatch";
 import { NotificationDeliveryUnconfigured, runNotificationDeliveryPass } from "../../notifications/delivery-pass";
 import { createConfiguredCanonicalReminderMaintenanceTask } from "../../notifications/configured-canonical-reminder-maintenance";
+import { createReadCostMaintenanceTask } from "../read-cost/maintenance-task";
 import type { MaintenanceTask } from "./pass";
 
 // The production task list. Each task checks its own configuration and reports
@@ -133,5 +134,8 @@ export function createConfiguredMaintenanceTasks({
         }
       },
     },
+    // Monitoring O2/O3: daily read-cost rollup, Neon reconciliation, retention
+    // and admin alerts. Days already final are skipped, so heartbeat passes are cheap.
+    createReadCostMaintenanceTask({ env }),
   ];
 }
