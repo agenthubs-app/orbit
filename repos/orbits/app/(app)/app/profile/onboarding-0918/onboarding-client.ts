@@ -115,3 +115,97 @@ export async function generateIntroDraft(language: "zh" | "en"): Promise<{ bio: 
   }
   return { bio: envelope.data.bio, headline: envelope.data.headline };
 }
+
+// ── 引导内扫描名片：识别 → 用户核对 → 确认后才建联系人（与名片收录工作台同一对接口）──
+export interface ScannedCard {
+  company: string;
+  draftId: string;
+  email: string;
+  evidenceIds: string[];
+  imageDigest: string;
+  issues: { code: string; field: string; message: string }[];
+  name: string;
+  phone: string;
+  relationshipContext: string;
+  title: string;
+}
+
+interface ScanPayload {
+  capture?: { imageDigest?: string };
+  draft?: {
+    displayName?: string;
+    email?: string;
+    evidence?: readonly { evidenceId: string }[];
+    id?: string;
+    organization?: string;
+    phone?: string;
+    relationshipContext?: string;
+    role?: string;
+  } | null;
+  ocr?: { reviewIssues?: readonly { code: string; field: string; message: string }[] };
+}
+
+export async function scanContactCard(file: File): Promise<ScannedCard> {
+  const form = new FormData();
+  form.append("image", file, file.name);
+  const response = await fetch("/api/contact-drafts/business-card/scan", { body: form, method: "POST" });
+  const envelope = await readJson<ScanPayload>(response);
+  const data = envelope.data;
+  const draft = data?.draft;
+  if (!response.ok || envelope.success !== true || !draft?.id || !data?.capture?.imageDigest) {
+    throw new OnboardingRequestError(envelope.error?.message ?? "Business card recognition failed", envelope.error?.code);
+  }
+  return {
+    company: draft.organization?.trim() ?? "",
+    draftId: draft.id,
+    email: draft.email?.trim() ?? "",
+    evidenceIds: (draft.evidence ?? []).map(item => item.evidenceId),
+    imageDigest: data.capture.imageDigest,
+    issues: [...(data.ocr?.reviewIssues ?? [])],
+    name: draft.displayName?.trim() ?? "",
+    phone: draft.phone?.trim() ?? "",
+    relationshipContext: draft.relationshipContext?.trim() ?? "",
+    title: draft.role?.trim() ?? "",
+  };
+}
+
+export async function confirmContactCard(card: ScannedCard): Promise<{ contactId: string }> {
+  const response = await fetch("/api/contacts/business-card/confirm", {
+    body: JSON.stringify({
+      confirmed: true,
+      displayName: card.name,
+      draftId: card.draftId,
+      email: card.email,
+      evidenceIds: card.evidenceIds,
+      imageDigest: card.imageDigest,
+      organization: card.company,
+      phone: card.phone,
+      relationshipContext: card.relationshipContext,
+      role: card.title,
+    }),
+    headers: { "content-type": "application/json" },
+    method: "POST",
+  });
+  const envelope = await readJson<{ contactId?: string; state?: string }>(response);
+  if (envelope.data?.state === "duplicate_review") {
+    throw new OnboardingRequestError("duplicate", "DUPLICATE_REVIEW");
+  }
+  if (!response.ok || envelope.success !== true || !envelope.data?.contactId) {
+    throw new OnboardingRequestError(envelope.error?.message ?? "Contact save failed", envelope.error?.code);
+  }
+  return { contactId: envelope.data.contactId };
+}
+
+/** 「我在寻找」✦ 建议：后端按已保存的资料让 AI 从候选里挑选，返回值必为候选原文。 */
+export async function fetchSeekSuggestions(candidates: readonly string[], language: "zh" | "en"): Promise<string[]> {
+  const response = await fetch("/api/profile/seek-suggestions", {
+    body: JSON.stringify({ candidates, language }),
+    headers: { "content-type": "application/json" },
+    method: "POST",
+  });
+  const envelope = await readJson<{ suggestions?: string[] }>(response);
+  if (!response.ok || envelope.success !== true || !Array.isArray(envelope.data?.suggestions)) {
+    throw new OnboardingRequestError(envelope.error?.message ?? "Suggestions failed", envelope.error?.code);
+  }
+  return envelope.data.suggestions;
+}

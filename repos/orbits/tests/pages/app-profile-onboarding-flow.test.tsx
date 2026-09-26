@@ -9,7 +9,8 @@ import {
   SEEK_OPTIONS,
   addCustomValue,
   composeRelationshipGoal,
-  suggestedSeekOptions,
+  parseRelationshipGoal,
+  seekOptionsFromLabels,
   toggleValue,
 } from "../../app/(app)/app/profile/onboarding-0918/onboarding-model";
 import { firstIncompleteStep } from "../../app/(app)/app/profile/onboarding-0918/onboarding-previews";
@@ -19,14 +20,11 @@ test("onboarding has five steps with the AI introduction between persona and imp
   assert.deepEqual(ONBOARDING_STEPS, ["profile", "goals", "persona", "intro", "import"]);
 });
 
-test("goal badges are grouped and every goal's seek suggestion exists in the seek options", () => {
-  const goals = GOAL_GROUPS.flatMap(group => group.options);
-  assert.ok(goals.length >= 15);
-  for (const goal of goals) {
-    assert.ok(suggestedSeekOptions([goal.zh]).length > 0, `no seek suggestion for ${goal.zh}`);
-    assert.deepEqual(suggestedSeekOptions([goal.en]), suggestedSeekOptions([goal.zh]), "language-independent");
-  }
+test("goal badges are grouped and AI seek labels map back to seek options in either language", () => {
+  assert.ok(GOAL_GROUPS.flatMap(group => group.options).length >= 15);
   assert.ok(SEEK_OPTIONS.length >= 20);
+  const mapped = seekOptionsFromLabels(["Investors", "渠道合作伙伴", "不存在的标签", "投资人"]);
+  assert.deepEqual(mapped.map(option => option.zh), ["投资人", "渠道合作伙伴"]);
 });
 
 test("relationship goal text combines chips, focus sentence and horizon", () => {
@@ -68,4 +66,13 @@ test("welcome screen renders the five steps and the real nav (no calendar, no Li
   assert.match(html, />活动</);
   assert.match(html, />人脉</);
   assert.doesNotMatch(html, /日历|领英|LinkedIn/);
+});
+
+test("saved goal text round-trips back into chips, focus and horizon when the local draft is gone", () => {
+  const draft = { goals: ["寻找合作伙伴", "开拓新市场"], focus: "把产品推到日本：先找 5 家试用", horizon: "本季度" };
+  assert.deepEqual(parseRelationshipGoal(composeRelationshipGoal(draft, "zh")), draft);
+  const en = { goals: ["Raise funding"], focus: "Close a seed round", horizon: "This year" };
+  assert.deepEqual(parseRelationshipGoal(composeRelationshipGoal(en, "en")), en);
+  // 不是引导写出的格式（例如个人中心手写的目标）：整段保留为「一句话」，不丢内容。
+  assert.deepEqual(parseRelationshipGoal("三个月内认识 3 位日本渠道伙伴"), { goals: [], focus: "三个月内认识 3 位日本渠道伙伴", horizon: "" });
 });

@@ -76,6 +76,15 @@ export function parseProfileIntroDraft(text: string): { bio: string; headline: s
   return { bio, headline };
 }
 
+function describeRejection(text: string): string {
+  try {
+    const record = JSON.parse(text.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "")) as Record<string, unknown>;
+    return `headline ${visibleLength(clean(record.headline))}/${PROFILE_INTRO_HEADLINE_LIMIT}, bio ${visibleLength(clean(record.bio))}/${PROFILE_INTRO_BIO_LIMIT}`;
+  } catch {
+    return "not valid JSON";
+  }
+}
+
 /** 模型输入：只含用户自己填写的资料字段，空字段省略。 */
 export function profileIntroModelInput(profile: ManualProfile, language: "zh" | "en"): string {
   const primary = isIndustryIdCode(profile.primaryIndustryId) ? industryLabel(profile.primaryIndustryId, language) : "";
@@ -98,13 +107,19 @@ export function profileIntroModelInput(profile: ManualProfile, language: "zh" | 
   return JSON.stringify({ outputLanguage: language === "en" ? "English" : "Simplified Chinese", profile: compact }, null, 2);
 }
 
+// 模型常把「关于我」写到 82–93 字（实测 10 次中 2 次超 80）。提示里给更紧的目标长度，
+// 硬上限仍由 parseProfileIntroDraft 按可见字符校验。
+const HEADLINE_TARGET = 28;
+const BIO_TARGET = 60;
+const MAX_ATTEMPTS = 3;
+
 function systemInstruction(language: "zh" | "en"): string {
   const units = language === "en" ? "characters" : "Chinese characters";
   return [
     "You write the self-introduction shown on a business networking profile, in the first person.",
     "Use only facts from the supplied profile. Do not invent employers, achievements, numbers, years of experience, clients or credentials.",
-    `"headline" is one short line (at most ${PROFILE_INTRO_HEADLINE_LIMIT} ${units}) saying who the person is and what they focus on.`,
-    `"bio" is "About me" (at most ${PROFILE_INTRO_BIO_LIMIT} ${units}, one or two sentences): what they do, what they can help with and who they want to meet.`,
+    `"headline" is one short line of about ${HEADLINE_TARGET} ${units} (never more than ${PROFILE_INTRO_HEADLINE_LIMIT}) saying who the person is and what they focus on.`,
+    `"bio" is "About me": about ${BIO_TARGET} ${units} (never more than ${PROFILE_INTRO_BIO_LIMIT}), one or two sentences: what they do, what they can help with and who they want to meet. Pick the most important points instead of listing everything.`,
     "Plain, specific and friendly; no emoji, no hashtags, no marketing superlatives.",
     'Return strict JSON only: {"headline":"...","bio":"..."}.',
   ].join(" ");
@@ -133,27 +148,29 @@ export function createProfileIntroDraftService(options: ProfileIntroDraftService
 
       const userText = profileIntroModelInput(profile, language);
       const instruction = systemInstruction(language);
-      let modelResult: OrbitAgentModelTextResult = await runModel({ config: modelConfig, systemInstruction: instruction, userText });
-      if (modelResult.success === false) {
-        return { success: false, error: { code: modelResult.error.code, message: modelResult.error.message } };
-      }
-      let draft = parseProfileIntroDraft(modelResult.text);
-      if (!draft) {
-        // 超长或非 JSON：带着约束重试一次，仍不合格就明确失败，不截断半句话。
-        modelResult = await runModel({
+      let lastRejection = "";
+      for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
+        // 超长或非 JSON：带上被拒原因重试，不截断半句话。
+        const modelResult: OrbitAgentModelTextResult = await runModel({
           config: modelConfig,
-          systemInstruction: `${instruction} A previous answer was rejected because it was not valid JSON or exceeded the length limits. Keep both fields strictly within the limits.`,
+          systemInstruction: attempt === 1
+            ? instruction
+            : `${instruction} A previous answer was rejected (${lastRejection}). Write noticeably shorter and keep both fields strictly within the limits.`,
           userText,
         });
         if (modelResult.success === false) {
+          console.warn("[profile-intro-draft] model_failed", { attempt, code: modelResult.error.code });
           return { success: false, error: { code: modelResult.error.code, message: modelResult.error.message } };
         }
-        draft = parseProfileIntroDraft(modelResult.text);
+        const draft = parseProfileIntroDraft(modelResult.text);
+        if (draft) {
+          return { success: true, data: { ...draft, model: modelResult.model, provider: modelResult.provider } };
+        }
+        lastRejection = describeRejection(modelResult.text);
+        // 只记长度/原因，不记用户资料与生成内容。
+        console.warn("[profile-intro-draft] output_rejected", { attempt, reason: lastRejection });
       }
-      if (!draft) {
-        return { success: false, error: { code: "MODEL_OUTPUT_INVALID", message: "The AI response did not contain a usable introduction." } };
-      }
-      return { success: true, data: { ...draft, model: modelResult.model, provider: modelResult.provider } };
+      return { success: false, error: { code: "MODEL_OUTPUT_INVALID", message: "The AI response did not contain a usable introduction." } };
     },
   };
 }

@@ -293,6 +293,18 @@ ${S} .btn.ob-autofill[disabled] { background: #F7F7FD; color: #2E3270; border-co
 ${S} .btn.ob-chip[disabled] { background: #FFFFFF; color: #3B3F7A; border-color: #E8E9F6; opacity: .4; cursor: default; }
 ${S} .btn.ob-chip-add-btn[disabled] { background: #ECEEFB; color: #2E3270; opacity: .5; cursor: default; }
 
+/* ── 引导内扫描名片 ── */
+${S} .btn.ob-scan-drop { display: flex; align-items: center; justify-content: flex-start; gap: 14px; width: 100%; padding: 20px; border: 1px dashed #B9BCEB; border-radius: 16px; background: #F7F7FD; text-align: left; cursor: pointer; }
+${S} .btn.ob-scan-drop:hover { background: #ECEEFB; }
+${S} .btn.ob-scan-drop[disabled] { background: #F7F7FD; color: inherit; border-color: #B9BCEB; opacity: .7; cursor: progress; }
+${S} .ob-card-review { display: flex; flex-direction: column; gap: 16px; padding: 20px; border: 1px solid #4B4FC7; border-radius: 16px; background: #FFFFFF; }
+${S} .ob-card-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 12px; }
+${S} .ob-issues { flex-direction: column; align-items: flex-start; gap: 8px; }
+${S} .ob-issues ul { margin: 0; padding-left: 18px; }
+${S} .ob-ack { display: flex; align-items: center; gap: 8px; font-weight: 500; cursor: pointer; }
+${S} .ob-added { display: flex; flex-direction: column; gap: 10px; }
+
+${S} .ob-suggest-loading { animation: ob-pulse 1.4s ease infinite; }
 ${S} .ob-toast { position: fixed; left: 50%; bottom: 80px; transform: translateX(-50%); z-index: 200; padding: 12px 22px; border-radius: 999px; background: #0E1225; color: #FFFFFF; font-size: 14px; box-shadow: 0 18px 40px rgba(14,18,37,0.25); }
 
 @media (max-width: 860px) {

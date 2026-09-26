@@ -78,39 +78,19 @@ export const HORIZONS: readonly Copy[] = [
 
 export { OFFER_OPTIONS, SEEK_OPTIONS, TOPIC_OPTIONS };
 
-// 目标（中文键）→ 「我在寻找」建议（中文键，须存在于 SEEK_OPTIONS）。
-const SEEK_SUGGESTIONS: Record<string, readonly string[]> = {
-  获取客户: ["潜在客户", "企业决策者"],
-  寻找合作伙伴: ["战略合作伙伴", "渠道合作伙伴"],
-  开拓新市场: ["渠道合作伙伴", "本地向导"],
-  出海拓展: ["出海合作伙伴", "本地向导"],
-  寻找供应商: ["供应商", "服务商"],
-  提升品牌曝光: ["媒体与 KOL", "活动主办方"],
-  寻找投资: ["投资人"],
-  寻找投资机会: ["创业者"],
-  招聘人才: ["技术人才", "业务人才"],
-  寻找联合创始人: ["联合创始人"],
-  拓展行业人脉: ["同行交流", "行业专家"],
-  学习行业趋势: ["行业专家"],
-  寻找导师: ["行业导师"],
-  职业发展: ["行业导师", "同行交流"],
-  组织活动与社群: ["活动主办方", "社群运营者"],
-  探索新方向: ["行业专家", "创业者"],
-};
-
 /** 选项在任一语言下的文本与 value 相同即视为同一个（切换语言后仍能识别）。 */
 export function optionMatches(option: Copy, value: string): boolean {
   return value === option.zh || value === option.en;
 }
 
-function zhKey(value: string, options: readonly Copy[]): string {
-  return options.find(option => optionMatches(option, value))?.zh ?? value;
-}
-
-/** 已选目标 → 建议的「我在寻找」选项（Copy），去重、保持 SEEK_OPTIONS 顺序。 */
-export function suggestedSeekOptions(goals: readonly string[]): Copy[] {
-  const keys = new Set(goals.flatMap(goal => SEEK_SUGGESTIONS[zhKey(goal, GOAL_OPTIONS_FLAT)] ?? []));
-  return SEEK_OPTIONS.filter(option => keys.has(option.zh));
+/** AI 返回的建议标签（当前语言原文）→ SEEK_OPTIONS 里的选项，保持 AI 给出的顺序。 */
+export function seekOptionsFromLabels(labels: readonly string[]): Copy[] {
+  const picked: Copy[] = [];
+  for (const label of labels) {
+    const option = SEEK_OPTIONS.find(item => optionMatches(item, label));
+    if (option && !picked.includes(option)) picked.push(option);
+  }
+  return picked;
 }
 
 export function toggleValue(values: readonly string[], value: string, limit?: number): string[] {
@@ -150,12 +130,39 @@ export function composeRelationshipGoal(draft: GoalDraft, language: Lang): strin
   return language === "en" ? `${body} (${horizon})` : `${body}（${horizon}）`;
 }
 
-// ── 本地草稿：刷新/中途离开后回到同一步，目标结构（chip/时间范围）不丢 ──
+/**
+ * composeRelationshipGoal 的逆运算：本地草稿丢失（换设备、清缓存）时，从已保存的目标文本
+ * 还原 chip / 一句话 / 时间范围。只认本引导写出的格式；认不出就整段当作「一句话」。
+ */
+export function parseRelationshipGoal(text: string): GoalDraft {
+  let rest = text.trim();
+  if (!rest) return { goals: [], focus: "", horizon: "" };
+  let horizon = "";
+  const horizonMatch = rest.match(/(?:（([^（）]+)）|\s\(([^()]+)\))$/u);
+  const horizonText = horizonMatch ? (horizonMatch[1] ?? horizonMatch[2] ?? "").trim() : "";
+  if (horizonText && HORIZONS.some(option => optionMatches(option, horizonText))) {
+    horizon = horizonText;
+    rest = rest.slice(0, horizonMatch!.index).trim();
+  }
+  const split = rest.match(/^([^]*?)(?:：|: )([^]*)$/u);
+  const head = split ? split[1]! : rest;
+  const focus = split ? split[2]!.trim() : "";
+  const candidates = head.split(/、|, /u).map(item => item.trim()).filter(Boolean);
+  const known = candidates.length > 0 && candidates.length <= GOAL_LIMIT && candidates.every(item => GOAL_OPTIONS_FLAT.some(option => optionMatches(option, item)));
+  if (known) return { goals: candidates, focus: focus.slice(0, FOCUS_LIMIT), horizon };
+  return { goals: [], focus: rest.slice(0, FOCUS_LIMIT), horizon };
+}
+
+// 「换一版」次数上限（自动生成的第一版与失败的尝试不计）。
+export const INTRO_REGENERATE_LIMIT = 3;
+
+// ── 本地草稿：刷新/中途离开后回到同一步，目标结构（chip/时间范围）不丢；只在完成引导时清除 ──
 export interface OnboardingDraft {
   view: OnboardingView;
   goals: string[];
   focus: string;
   horizon: string;
+  introRegenerations: number;
 }
 
 const DRAFT_PREFIX = "orbit.onboarding.v1:";
@@ -170,6 +177,9 @@ export function readOnboardingDraft(actorKey: string): OnboardingDraft | null {
       goals: Array.isArray(parsed.goals) ? parsed.goals.filter((item): item is string => typeof item === "string").slice(0, GOAL_LIMIT) : [],
       focus: typeof parsed.focus === "string" ? parsed.focus.slice(0, FOCUS_LIMIT) : "",
       horizon: typeof parsed.horizon === "string" ? parsed.horizon : "",
+      introRegenerations: typeof parsed.introRegenerations === "number" && parsed.introRegenerations >= 0
+        ? Math.min(Math.floor(parsed.introRegenerations), INTRO_REGENERATE_LIMIT)
+        : 0,
     };
   } catch {
     return null;
