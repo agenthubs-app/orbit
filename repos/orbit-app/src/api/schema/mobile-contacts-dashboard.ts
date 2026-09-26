@@ -344,6 +344,16 @@ const contactsPayloadSchema = z
     appliedFilters: z.object({}).passthrough(),
     availableFilters: z.object({}).passthrough(),
     contacts: z.array(contactListItemSchema),
+    // Sprint 0101: `contacts` holds only the people the page shows. Role
+    // statistics over every contact travel as trimmed roles with counts.
+    roleCounts: z
+      .array(
+        z.object({
+          role: nonEmptyString,
+          count: finiteNumber.int().positive(),
+        }),
+      )
+      .optional(),
     summary: z.string(),
     nextAction: z.string(),
   })

@@ -547,6 +547,8 @@ async function readFocusedContactGraph(input: {
   store: LiveRecordStoreLike<Record<string, unknown>>;
   workspaceId: string;
 }): Promise<BoundedContactGraph> {
+  // Sprint 0101: an explicit id list is a focused read, never a list page.
+  const requestedContactIds = input.listInput?.contactIds ?? undefined;
   const actorId = input.actorId?.trim();
   if (!actorId) {
     return graphFromRecords({
@@ -557,7 +559,7 @@ async function readFocusedContactGraph(input: {
     });
   }
 
-  const boundedPage = input.listInput && input.contactRecordPageReader
+  const boundedPage = input.listInput && input.contactRecordPageReader && !requestedContactIds
     ? await input.contactRecordPageReader(input.listInput, actorId)
     : null;
   const usesFastBoundedPage = boundedPage !== null && boundedPage.mode !== "fallback";
@@ -566,7 +568,9 @@ async function readFocusedContactGraph(input: {
   const scope = snapshotPage
     ? null
     : input.contactScopeRecordReader
-    ? await input.contactScopeRecordReader(actorId, focusedIds)
+    ? requestedContactIds
+      ? await input.contactScopeRecordReader(actorId, requestedContactIds, "domain")
+      : await input.contactScopeRecordReader(actorId, focusedIds)
     : null;
   const legacyListQuery = input.listInput?.query?.trim().toLocaleLowerCase();
   const useLegacyListPrefilter =

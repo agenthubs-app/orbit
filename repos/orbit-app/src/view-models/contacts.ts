@@ -1393,6 +1393,34 @@ export function contactLocationsToValues(data: unknown): string[] {
     .filter((location) => location.length > 0);
 }
 
+export interface ContactRoleCount {
+  role: string;
+  count: number;
+}
+
+/**
+ * Sprint 0101: the contacts-analysis payload carries only the contacts the
+ * page shows, plus role counts over every contact. Roles get the same label
+ * mapping as contactsToSummaries so role statistics do not change. Returns
+ * null for older servers that still send the full list without counts.
+ */
+export function contactRoleCountsFromPayload(
+  data: unknown,
+  language: OrbitLanguage = "zh"
+): ContactRoleCount[] | null {
+  if (!isRecord(data) || !Array.isArray(data.roleCounts)) {
+    return null;
+  }
+
+  return data.roleCounts.filter(isRecord).flatMap((entry) => {
+    const role = stringField(entry, "role");
+    const count = numberField(entry, "count");
+    return role && count !== null && count > 0
+      ? [{ role: language === "zh" ? roleLabel(role) : role, count }]
+      : [];
+  });
+}
+
 export function contactsToSummaries(
   data: unknown,
   language: OrbitLanguage = "zh"

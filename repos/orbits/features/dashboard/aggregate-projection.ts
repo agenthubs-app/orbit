@@ -1,7 +1,8 @@
-import type {
-  DashboardAggregatePayload,
-  DashboardAggregateScenario,
-  DashboardHighValueRelationship,
+import {
+  DASHBOARD_SHORT_LIST_LIMIT,
+  type DashboardAggregatePayload,
+  type DashboardAggregateScenario,
+  type DashboardHighValueRelationship,
 } from "./contract";
 import type {
   ConnectionDTO,
@@ -103,4 +104,12 @@ export function applyDashboardActivityLimit(
     ...payload,
     recentActivity: payload.recentActivity.slice(0, limit),
   };
+}
+
+/** Recent activity is a short list: at most DASHBOARD_SHORT_LIST_LIMIT items. */
+export function dashboardShortListActivityLimit(activityLimit?: number | null): number {
+  const limit = normalizeDashboardActivityLimit(activityLimit);
+  return limit === null
+    ? DASHBOARD_SHORT_LIST_LIMIT
+    : Math.min(limit, DASHBOARD_SHORT_LIST_LIMIT);
 }

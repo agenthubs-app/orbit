@@ -660,7 +660,10 @@ function buildPayload(
   input: ContactsListSearchFilterInput = {},
   context: ContactsGraphQueryContext = hybridGraphQueryContext,
 ): ContactsListSearchPayload {
-  const allContacts = toContactListItems(graph);
+  const requestedIds = input.contactIds ? new Set(input.contactIds) : null;
+  const allContacts = toContactListItems(graph).filter(
+    (contact) => !requestedIds || requestedIds.has(contact.id),
+  );
   const appliedFilters = appliedFiltersFromInput(input);
   const ambiguousContactIds = (graph as LocalRemoteContactGraph & {
     ambiguousContactIds?: readonly string[];

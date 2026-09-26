@@ -7,6 +7,11 @@ import {
   type MobileContactsDashboardPayload,
 } from "../../shared/api-schema/mobile-contacts-dashboard";
 import { createContactsListSearchAndFilterService } from "../contacts/service-factory";
+import type { ContactsListSearchAndFilterService } from "../contacts/service";
+import type { DashboardAggregateService } from "../dashboard/service";
+import type { NetworkDistributionAnalyticsService } from "../dashboard/distribution-contract";
+import type { OpportunityReminderAnalyticsService } from "../dashboard/opportunity-contract";
+import type { ProfileService } from "../profile/service";
 import {
   createActorScopedNetworkDistributionAnalyticsService,
   createActorScopedOpportunityReminderAnalyticsService,
@@ -14,7 +19,10 @@ import {
   createNetworkDistributionAnalyticsService,
   createOpportunityReminderAnalyticsService,
 } from "../dashboard/service-factory";
-import { withDashboardLiveReadScope } from "../dashboard/storage/dashboard-live-record-provider";
+import {
+  createConfiguredStorageDashboardAggregateProvider,
+  withDashboardLiveReadScope,
+} from "../dashboard/storage/dashboard-live-record-provider";
 import { createProfileService } from "../profile/service-factory";
 import { createOrbitAgentChatSessionProvider } from "../orbit-ai/storage/orbit-agent-chat-session-provider-factory";
 import {
@@ -43,8 +51,58 @@ export interface MobileContactsDashboardDependencies {
   loadGaps: MobileContactsDashboardSectionLoader;
   loadDistributions: MobileContactsDashboardSectionLoader;
   loadProfile: MobileContactsDashboardSectionLoader;
-  loadContacts: MobileContactsDashboardSectionLoader;
+  /**
+   * Sprint 0101: only the contacts the page shows, by domain id (the ids come
+   * from the aggregate and opportunity sections of the same response).
+   */
+  loadContacts: (
+    actorId: string,
+    contactIds: readonly string[],
+  ) =>
+    | MobileContactsDashboardSectionResult
+    | Promise<MobileContactsDashboardSectionResult>;
+  /** Trimmed roles with counts over all contacts (the App "decision role" tile). */
+  loadContactRoleCounts?: (
+    actorId: string,
+  ) => Promise<readonly MobileContactsDashboardRoleCount[]>;
   now?: () => string;
+}
+
+export interface MobileContactsDashboardRoleCount {
+  role: string;
+  count: number;
+}
+
+function stringValue(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value : null;
+}
+
+/** Contact ids that the contacts-analysis page (App and web) displays or links. */
+export function referencedContactIds(sections: {
+  aggregate: unknown;
+  opportunities: unknown;
+}): readonly string[] {
+  const ids = new Set<string>();
+  const add = (value: unknown) => {
+    const id = stringValue(value);
+    if (id) ids.add(id);
+  };
+  const list = (value: unknown): readonly Record<string, unknown>[] =>
+    Array.isArray(value)
+      ? value.filter((item): item is Record<string, unknown> => typeof item === "object" && item !== null)
+      : [];
+  const aggregate = (sections.aggregate ?? {}) as Record<string, any>;
+  for (const item of list(aggregate.newContacts?.contacts)) add(item.contactId);
+  for (const item of list(aggregate.dormantContacts?.contacts)) add(item.contactId);
+  const opportunities = (sections.opportunities ?? {}) as Record<string, any>;
+  for (const item of list(opportunities.highPriorityOpportunities)) {
+    add(item.contactId);
+    const brief = (item.actionBrief ?? {}) as Record<string, any>;
+    add(brief.primaryAction?.contactId);
+    add(brief.secondaryAction?.contactId);
+  }
+  for (const item of list(opportunities.dormantHighValueContacts)) add(item.contactId);
+  return [...ids];
 }
 
 export interface MobileContactsDashboardInput {
@@ -96,6 +154,30 @@ function optionalSection(
     : { data: null, unavailable: true };
 }
 
+async function loadReferencedContacts(
+  dependencies: MobileContactsDashboardDependencies,
+  actorId: string,
+  contactIds: readonly string[],
+): Promise<MobileContactsDashboardSectionResult> {
+  const [contacts, roleCounts] = await Promise.all([
+    dependencies.loadContacts(actorId, contactIds),
+    dependencies.loadContactRoleCounts
+      ? dependencies.loadContactRoleCounts(actorId).then(
+          (value) => ({ success: true as const, value }),
+          (error: unknown) => ({ success: false as const, error }),
+        )
+      : null,
+  ]);
+  if (!contacts.success || roleCounts === null) return contacts;
+  // Without role counts the App would compute its role tile from the partial
+  // list, so the section is reported unavailable instead of silently wrong.
+  if (roleCounts.success === false) return { success: false, error: roleCounts.error };
+  return {
+    success: true,
+    data: { ...(contacts.data as Record<string, unknown>), roleCounts: roleCounts.value },
+  };
+}
+
 export function createMobileContactsDashboardService(
   dependencies: MobileContactsDashboardDependencies,
 ): MobileContactsDashboardService {
@@ -111,15 +193,23 @@ export function createMobileContactsDashboardService(
         distributionsResult,
         profileResult,
         contactsResult,
-      ] = await withDashboardLiveReadScope(() => Promise.all([
-        dependencies.loadAggregate(actorId),
-        dependencies.loadSummary(actorId),
-        dependencies.loadOpportunities(actorId),
-        dependencies.loadGaps(actorId),
-        dependencies.loadDistributions(actorId),
-        dependencies.loadProfile(actorId),
-        dependencies.loadContacts(actorId),
-      ]));
+      ] = await withDashboardLiveReadScope(async () => {
+        const sections = await Promise.all([
+          dependencies.loadAggregate(actorId),
+          dependencies.loadSummary(actorId),
+          dependencies.loadOpportunities(actorId),
+          dependencies.loadGaps(actorId),
+          dependencies.loadDistributions(actorId),
+          dependencies.loadProfile(actorId),
+        ]);
+        const [aggregateSection, , opportunitiesSection] = sections;
+        const contactIds = referencedContactIds({
+          aggregate: aggregateSection.success ? aggregateSection.data : null,
+          opportunities: opportunitiesSection.success ? opportunitiesSection.data : null,
+        });
+        const contacts = await loadReferencedContacts(dependencies, actorId, contactIds);
+        return [...sections, contacts] as const;
+      });
 
       if (!aggregateResult.success) {
         return {
@@ -205,30 +295,43 @@ export function createMobileContactsDashboardService(
   };
 }
 
-export function createConfiguredMobileContactsDashboardService(
-  mode: FeatureMode = resolveFeatureMode(),
-): MobileContactsDashboardService {
-  const dashboard = createDashboardAggregateService(mode);
-  const profile = createProfileService(mode);
-  const contacts = createContactsListSearchAndFilterService(mode);
+export interface MobileContactsDashboardSources {
+  dashboard: DashboardAggregateService;
+  distribution: (actorId: string) => NetworkDistributionAnalyticsService;
+  opportunity: (actorId: string) => OpportunityReminderAnalyticsService;
+  profile: ProfileService;
+  contacts: ContactsListSearchAndFilterService;
+  /** Defaults to counting roles over the full contacts list (non-live modes). */
+  contactRoleCounts?: (actorId: string) => Promise<readonly MobileContactsDashboardRoleCount[]>;
+  loadAnalysis?: MobileContactsDashboardDependencies["loadAnalysis"];
+}
 
-  function distribution(actorId: string) {
-    return mode === "live"
-      ? createActorScopedNetworkDistributionAnalyticsService(actorId)
-      : createNetworkDistributionAnalyticsService(mode);
+async function roleCountsFromFullList(
+  contacts: ContactsListSearchAndFilterService,
+  actorId: string,
+): Promise<readonly MobileContactsDashboardRoleCount[]> {
+  const result = await contacts.listContacts({ actorId });
+  if (result.success === false) throw new Error(result.error.code);
+  const counts = new Map<string, number>();
+  for (const contact of result.data.contacts) {
+    const role = contact.role.trim();
+    if (role) counts.set(role, (counts.get(role) ?? 0) + 1);
   }
+  return [...counts.entries()].map(([role, count]) => ({ role, count }));
+}
 
-  function opportunity(actorId: string) {
-    return mode === "live"
-      ? createActorScopedOpportunityReminderAnalyticsService(actorId)
-      : createOpportunityReminderAnalyticsService(mode);
-  }
-
+/** One composition shared by production and the read-cost ledger. */
+export function createMobileContactsDashboardServiceFromSources({
+  dashboard,
+  distribution,
+  opportunity,
+  profile,
+  contacts,
+  contactRoleCounts,
+  loadAnalysis,
+}: MobileContactsDashboardSources): MobileContactsDashboardService {
   return createMobileContactsDashboardService({
-    loadAnalysis: (actorId, source) =>
-      createContactsAnalysisReportProvider({
-        sessionProvider: createOrbitAgentChatSessionProvider(mode, actorId),
-      }).getAnalysis({ source }),
+    loadAnalysis,
     loadAggregate: (actorId) =>
       dashboard.getDashboardAggregate({ actorId, activityLimit: 4 }),
     loadSummary: (actorId) => dashboard.getDashboardSummary({ actorId }),
@@ -237,6 +340,41 @@ export function createConfiguredMobileContactsDashboardService(
     loadGaps: (actorId) => distribution(actorId).getNetworkGaps(),
     loadDistributions: (actorId) => distribution(actorId).getDistributions(),
     loadProfile: (actorId) => profile.getProfile({ actorId }),
-    loadContacts: (actorId) => contacts.listContacts({ actorId }),
+    loadContacts: (actorId, contactIds) => contacts.listContacts({ actorId, contactIds }),
+    loadContactRoleCounts: (actorId) =>
+      contactRoleCounts ? contactRoleCounts(actorId) : roleCountsFromFullList(contacts, actorId),
+  });
+}
+
+async function configuredContactRoleCounts(
+  actorId: string,
+): Promise<readonly MobileContactsDashboardRoleCount[]> {
+  const provider = createConfiguredStorageDashboardAggregateProvider();
+  if (!provider?.readContactRoleCountsForAccount) {
+    throw new Error("Dashboard live storage is not configured");
+  }
+  return provider.readContactRoleCountsForAccount(actorId);
+}
+
+export function createConfiguredMobileContactsDashboardService(
+  mode: FeatureMode = resolveFeatureMode(),
+): MobileContactsDashboardService {
+  return createMobileContactsDashboardServiceFromSources({
+    dashboard: createDashboardAggregateService(mode),
+    distribution: (actorId) =>
+      mode === "live"
+        ? createActorScopedNetworkDistributionAnalyticsService(actorId)
+        : createNetworkDistributionAnalyticsService(mode),
+    opportunity: (actorId) =>
+      mode === "live"
+        ? createActorScopedOpportunityReminderAnalyticsService(actorId)
+        : createOpportunityReminderAnalyticsService(mode),
+    profile: createProfileService(mode),
+    contacts: createContactsListSearchAndFilterService(mode),
+    ...(mode === "live" ? { contactRoleCounts: configuredContactRoleCounts } : {}),
+    loadAnalysis: (actorId, source) =>
+      createContactsAnalysisReportProvider({
+        sessionProvider: createOrbitAgentChatSessionProvider(mode, actorId),
+      }).getAnalysis({ source }),
   });
 }

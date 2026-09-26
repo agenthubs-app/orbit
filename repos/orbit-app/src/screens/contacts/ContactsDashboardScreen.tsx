@@ -51,6 +51,7 @@ import {
 import {
   contactAvatarFor,
   contactLocationsToValues,
+  contactRoleCountsFromPayload,
   contactsToSummaries,
   type ContactAvatarTone,
   type ContactSummary
@@ -247,7 +248,8 @@ function ContactsDashboardContent({
     },
     relationshipGoal,
     contacts,
-    contactLocations
+    contactLocations,
+    contactRoleCountsFromPayload(contactsPayload)
   );
   const analysisReport = contactsAnalysisReportToView(analysis, unavailableSections);
 

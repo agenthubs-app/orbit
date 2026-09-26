@@ -348,3 +348,39 @@ test("contactsAnalysisToView does not claim goal coverage before a goal is set",
   assert.equal(view.actions[0]?.brief, undefined);
   assert.equal(JSON.stringify(view).includes("Review live context"), false);
 });
+
+test("decision role tile is the same from server role counts as from the full contact list (0101)", async () => {
+  const { contactsToSummaries, contactRoleCountsFromPayload } = await import("../src/view-models/contacts");
+  const roles = ["CEO", " 销售总监 ", "Founder", "founder ceo", "代表取締役", "Consultant", "operator", "产品经理", "Founder", "   "];
+  const fullPayload = {
+    contacts: roles.map((role, index) => ({ id: `c${index}`, displayName: `Contact ${index}`, role, organization: "Org", status: "active" }))
+  };
+  const counts = new Map<string, number>();
+  for (const role of roles.map((value) => value.trim()).filter(Boolean)) counts.set(role, (counts.get(role) ?? 0) + 1);
+  const referencedPayload = {
+    contacts: fullPayload.contacts.slice(0, 2),
+    roleCounts: [...counts.entries()].map(([role, count]) => ({ role, count }))
+  };
+  const input = { aggregate: { relationshipAssetTotals: { contacts: roles.length } } };
+  const role = (view: ReturnType<typeof contactsAnalysisToView>) => view.dimensions.find((item) => item.id === "role");
+
+  const fromFullList = contactsAnalysisToView(input, "", contactsToSummaries(fullPayload));
+  const fromRoleCounts = contactsAnalysisToView(
+    input,
+    "",
+    contactsToSummaries(referencedPayload),
+    [],
+    contactRoleCountsFromPayload(referencedPayload)
+  );
+  assert.equal(role(fromFullList)?.value, "决策层 78%");
+  assert.deepEqual(role(fromRoleCounts), role(fromFullList));
+
+  const structure = (view: ReturnType<typeof contactsAnalysisToView>, id: string) =>
+    view.structureDimensions.find((item) => item.id === id)?.items;
+  assert.deepEqual(structure(fromRoleCounts, "role"), structure(fromFullList, "role"), "role fallback without server buckets");
+  assert.deepEqual(structure(fromRoleCounts, "location"), [], "a page-only list never stands in for location buckets");
+
+  const noRoles = contactsAnalysisToView(input, "", [], [], contactRoleCountsFromPayload({ contacts: [], roleCounts: [] }));
+  assert.equal(role(noRoles)?.value, "待完善");
+  assert.equal(contactRoleCountsFromPayload({ contacts: [] }), null, "older servers without roleCounts keep the list fallback");
+});

@@ -141,7 +141,7 @@ test("provider availability, cancellation and unsafe next remain truthful", asyn
   await page.evaluate(() => (window as any).fixture.update({ ready: true })); await google.click();
   await page.getByText("已取消 Google 登录。", { exact: true }).waitFor();
   assert.equal(await page.getByRole("alert").count(), 0); assert.deepEqual(await navigation(page), []);
-  assert.deepEqual(await requests(page), [{ name: "google", payload: { redirectTo: "/dashboard" } }]);
+  assert.deepEqual(await requests(page), [{ name: "google", payload: { redirectTo: "/home" } }]);
 });
 
 test("recovery and registration links preserve next without implicit writes", async t => {

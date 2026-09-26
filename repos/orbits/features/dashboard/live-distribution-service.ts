@@ -5,7 +5,9 @@ import type {
 import {
   INDUSTRY_CATALOG,
   industryLabel,
+  isIndustryIdCode,
 } from "../../shared/domain/industries";
+import { DASHBOARD_SHORT_LIST_LIMIT } from "./contract";
 import {
   NETWORK_DISTRIBUTION_ANALYTICS_ERROR_DEFINITIONS,
   type IndustryDistributionBucket,
@@ -34,7 +36,10 @@ import {
   type ValueTypeDistributionBucket,
 } from "./distribution-contract";
 import type { LiveDashboardGraph } from "./storage/dashboard-live-record-provider";
-import type { LiveNetworkDistributionAnalyticsProvider } from "./storage/network-distribution-live-record-provider";
+import type {
+  LiveNetworkDistributionAnalyticsProvider,
+  NetworkDistributionReadModel,
+} from "./storage/network-distribution-live-record-provider";
 
 export interface LiveNetworkDistributionAnalyticsServiceOptions {
   now?: () => string;
@@ -597,6 +602,230 @@ function distributionPayload(
   };
 }
 
+/** Sprint 0101: every list in the distribution response is a short list. */
+function shortEvidence<T extends { evidenceIds: readonly string[] }>(bucket: T): T {
+  return { ...bucket, evidenceIds: bucket.evidenceIds.slice(0, DASHBOARD_SHORT_LIST_LIMIT) };
+}
+
+function projectDistributionShortLists(
+  payload: NetworkDistributionAnalyticsPayload,
+): NetworkDistributionAnalyticsPayload {
+  return {
+    ...payload,
+    industryDistribution: payload.industryDistribution.map(shortEvidence),
+    structureDistributions: Object.fromEntries(
+      Object.entries(payload.structureDistributions).map(([dimension, buckets]) => [
+        dimension,
+        (buckets as readonly NetworkStructureDistributionBucket[]).map(shortEvidence),
+      ]),
+    ) as unknown as NetworkStructureDistributions,
+    valueTypeDistribution: payload.valueTypeDistribution.map(shortEvidence),
+    relationshipStrengthDistribution: payload.relationshipStrengthDistribution.map(shortEvidence),
+    provenance: shortEvidence(payload.provenance),
+  };
+}
+
+type StructureReadGroup = NetworkDistributionReadModel["structureGroups"][number];
+
+function readModelDescriptor(
+  dimension: NetworkStructureDimensionId,
+  group: StructureReadGroup,
+): { id: string; label: string; missing: boolean } {
+  if (dimension === "industry") {
+    return group.key && isIndustryIdCode(group.key)
+      ? { id: group.key, label: industryLabel(group.key, "zh"), missing: false }
+      : { id: "unclassified", label: "未分类", missing: true };
+  }
+  if (dimension === "location") return normalizedLocation(group.key ?? undefined);
+  if (dimension === "role") return normalizedRole(group.key ?? undefined);
+  const strength = (group.key ?? "weak") as NetworkRelationshipStrength;
+  return { id: strength, label: relationshipLabels[strength], missing: group.firstMissing };
+}
+
+function comparePositions(left: readonly number[], right: readonly number[]): number {
+  for (let index = 0; index < Math.max(left.length, right.length); index += 1) {
+    const difference = (left[index] ?? -1) - (right[index] ?? -1);
+    if (difference !== 0) return difference;
+  }
+  return 0;
+}
+
+function structureDistributionFromReadModel(
+  model: NetworkDistributionReadModel,
+  dimension: NetworkStructureDimensionId,
+): readonly (NetworkStructureDistributionBucket & { rawKeys: readonly (string | null)[] })[] {
+  const groups = new Map<string, {
+    label: string;
+    missing: boolean;
+    count: number;
+    rawKeys: (string | null)[];
+    evidence: Map<string, readonly number[]>;
+  }>();
+  const rawGroups = model.structureGroups
+    .filter((group) => group.dimension === dimension)
+    .sort((left, right) => left.firstPosition - right.firstPosition);
+  for (const rawGroup of rawGroups) {
+    const descriptor = readModelDescriptor(dimension, rawGroup);
+    const group = groups.get(descriptor.id) ?? {
+      label: descriptor.label,
+      missing: descriptor.missing,
+      count: 0,
+      rawKeys: [],
+      evidence: new Map<string, readonly number[]>(),
+    };
+    group.count += rawGroup.count;
+    group.rawKeys.push(rawGroup.key);
+    for (const candidate of model.structureEvidence) {
+      if (candidate.dimension !== dimension || candidate.key !== rawGroup.key) continue;
+      const known = group.evidence.get(candidate.evidenceId);
+      if (!known || comparePositions(candidate.position, known) < 0) {
+        group.evidence.set(candidate.evidenceId, candidate.position);
+      }
+    }
+    groups.set(descriptor.id, group);
+  }
+  const entries = [...groups.entries()];
+  if (dimension === "industry") {
+    const order = new Map(INDUSTRY_CATALOG.map((item, index) => [item.id, index]));
+    entries.sort(([left], [right]) =>
+      (order.get(left as never) ?? Number.MAX_SAFE_INTEGER) -
+      (order.get(right as never) ?? Number.MAX_SAFE_INTEGER),
+    );
+  } else if (dimension === "relationship") {
+    const order = new Map(["strong", "warm", "weak"].map((id, index) => [id, index]));
+    entries.sort(([left], [right]) => (order.get(left) ?? 9) - (order.get(right) ?? 9));
+  } else {
+    entries.sort(([, left], [, right]) =>
+      right.count - left.count || left.label.localeCompare(right.label),
+    );
+  }
+  const percentages = allocatedPercentages(entries.map(([, group]) => group.count));
+  return entries.map(([bucketId, group], index) => ({
+    bucketId,
+    label: group.label,
+    contactCount: group.count,
+    percentage: percentages[index] ?? 0,
+    evidenceIds: uniqueStrings(
+      [...group.evidence.entries()]
+        .sort(([, left], [, right]) => comparePositions(left, right))
+        .slice(0, DASHBOARD_SHORT_LIST_LIMIT)
+        .map(([evidenceId]) => evidenceId),
+    ),
+    missingData: group.missing,
+    ...(dimension === "industry" && bucketId !== "unclassified"
+      ? { primaryIndustryId: bucketId as NetworkStructureDistributionBucket["primaryIndustryId"] }
+      : {}),
+    rawKeys: group.rawKeys,
+  }));
+}
+
+function distributionPayloadFromReadModel(
+  model: NetworkDistributionReadModel,
+  provider: LiveNetworkDistributionAnalyticsProvider,
+): NetworkDistributionAnalyticsPayload {
+  const structures = Object.fromEntries(
+    structureDimensions.map((dimension) => [
+      dimension,
+      structureDistributionFromReadModel(model, dimension),
+    ]),
+  ) as Record<NetworkStructureDimensionId, ReturnType<typeof structureDistributionFromReadModel>>;
+  const industryDistribution = structures.industry.map((group) => {
+    const inBucket = (key: string | null) => group.rawKeys.includes(key);
+    return {
+      bucketId: group.bucketId,
+      label: group.label,
+      contactCount: group.contactCount,
+      percentage: group.percentage,
+      topOrganizations: model.industryOrganizations
+        .filter((item) => inBucket(item.key))
+        .sort((left, right) => right.count - left.count || left.organization.localeCompare(right.organization))
+        .slice(0, 3)
+        .map((item) => item.organization),
+      sourceRefs: model.industrySources
+        .filter((item) => inBucket(item.key))
+        .slice(0, 3)
+        .map((item) => ({
+          type: item.type as NetworkDistributionAnalyticsSourceReference["type"],
+          id: item.id,
+          label: item.label ?? "Live contact source",
+          providerRecordId: item.id,
+          generatedBy: "live-store-query" as const,
+        })),
+      evidenceIds: group.evidenceIds.length
+        ? group.evidenceIds
+        : [`evidence:network-distribution:${group.bucketId}`],
+    };
+  });
+  const orderedValueTypes: readonly NetworkRelationshipValueType[] = [
+    "commercial_opportunity",
+    "strategic_fit",
+    "referral_path",
+    "investor_access",
+  ];
+  const totalAssignments = model.valueTypes.reduce((total, bucket) => total + bucket.count, 0);
+  const valueTypeDistribution = orderedValueTypes
+    .map((valueType) => {
+      const bucket = model.valueTypes.find((item) => item.valueType === valueType);
+      const relationshipCount = bucket?.count ?? 0;
+      const evidenceIds = uniqueStrings(bucket?.evidenceIds ?? []);
+      return {
+        valueType,
+        label: valueTypeLabels[valueType],
+        relationshipCount,
+        percentage: percentage(relationshipCount, totalAssignments),
+        exampleConnectionIds: bucket?.exampleConnectionIds ?? [],
+        evidenceIds: evidenceIds.length > 0
+          ? evidenceIds
+          : [`evidence:network-distribution:value:${valueType}`],
+      };
+    })
+    .filter((bucket) => bucket.relationshipCount > 0);
+  const orderedStrengths: readonly NetworkRelationshipStrength[] = ["strong", "warm", "weak"];
+  const relationshipStrengthDistribution = orderedStrengths
+    .map((strength) => {
+      const bucket = model.strengths.find((item) => item.strength === strength);
+      const relationshipCount = bucket?.count ?? 0;
+      const evidenceIds = uniqueStrings(bucket?.evidenceIds ?? []);
+      return {
+        strength,
+        relationshipCount,
+        percentage: percentage(relationshipCount, model.connectionsCount),
+        followupRisk: followupRiskFor(strength),
+        evidenceIds: evidenceIds.length > 0
+          ? evidenceIds
+          : [`evidence:network-distribution:strength:${strength}`],
+      };
+    })
+    .filter((bucket) => bucket.relationshipCount > 0);
+  const provenanceEvidenceIds = uniqueStrings(model.provenanceEvidenceIds);
+
+  return {
+    state: model.contactsCount > 0 ? "success" : "empty",
+    industryDistribution,
+    structureDistributions: Object.fromEntries(
+      structureDimensions.map((dimension) => [
+        dimension,
+        structures[dimension].map(({ rawKeys: _rawKeys, ...bucket }) => bucket),
+      ]),
+    ) as unknown as NetworkStructureDistributions,
+    valueTypeDistribution,
+    relationshipStrengthDistribution,
+    summary:
+      "Live network distribution analytics grouped source-backed contacts and relationships from shared live storage.",
+    provenance: provenance({
+      collectedAt: model.generatedAt,
+      databaseReadExecuted: true,
+      evidenceIds: provenanceEvidenceIds.length > 0
+        ? provenanceEvidenceIds
+        : ["evidence:network-distribution-live-empty"],
+      generationMethod: "live-store-query",
+      provider,
+    }),
+    nextAction:
+      "Use live distribution buckets to choose the next event and follow-up focus.",
+  };
+}
+
 function emptyDistributionPayload(input: {
   evidenceId: string;
   now: string;
@@ -926,10 +1155,17 @@ export function createLiveNetworkDistributionAnalyticsService({
         case "success":
         default:
           return distributionsSuccess(
-            distributionPayload(
-              await provider.readNetworkDistributionGraph(),
-              provider,
-            ),
+            provider.readNetworkDistributionReadModel
+              ? distributionPayloadFromReadModel(
+                  await provider.readNetworkDistributionReadModel(),
+                  provider,
+                )
+              : projectDistributionShortLists(
+                  distributionPayload(
+                    await provider.readNetworkDistributionGraph(),
+                    provider,
+                  ),
+                ),
           );
       }
     },

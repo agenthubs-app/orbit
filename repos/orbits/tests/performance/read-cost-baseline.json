@@ -21,8 +21,13 @@
     },
     "dashboard": {
       "queries": 1,
-      "rows": 5068,
-      "bytes": 3570222
+      "rows": 1,
+      "bytes": 6660
+    },
+    "contacts.dashboard": {
+      "queries": 13,
+      "rows": 5523,
+      "bytes": 3911181
     },
     "events.list": {
       "queries": 1,
@@ -34,8 +39,14 @@
     {
       "date": "2026-09-25",
       "chain": "contacts.list",
-      "rows": { "from": 1548, "to": 2064 },
-      "bytes": { "from": 1374261, "to": 1409601 },
+      "rows": {
+        "from": 1548,
+        "to": 2064
+      },
+      "bytes": {
+        "from": 1374261,
+        "to": 1409601
+      },
       "why": "Fixed-fixture comparison against scope reader 1618d772 attributes the complete delta to 516 narrow evidence storage-key rows (35340 bytes). Contact results are unchanged; the additional lookup preserves domain-id versus storage-id correctness. Reproduce with scripts/diagnostics/neon-egress-local-probe.ts on local PostgreSQL. No other chain budget is increased."
     },
     {
@@ -46,6 +57,40 @@
         "to": 12116
       },
       "why": "list projection drops the operations log"
+    },
+    {
+      "sprint": "0101",
+      "chain": "dashboard",
+      "queries": {
+        "from": 1,
+        "to": 1
+      },
+      "rows": {
+        "from": 5068,
+        "to": 1
+      },
+      "bytes": {
+        "from": 3570222,
+        "to": 6660
+      },
+      "why": "Totals, the five short lists and recent activity are computed in one SQL statement that returns a single row; the full-graph read is gone from GET /api/dashboard. Equality with the JS graph computation is proven by tests/services/dashboard-sql-read-model-postgres.test.ts."
+    },
+    {
+      "sprint": "0101",
+      "chain": "contacts.dashboard",
+      "queries": {
+        "from": 9,
+        "to": 13
+      },
+      "rows": {
+        "from": 7160,
+        "to": 5523
+      },
+      "bytes": {
+        "from": 5013724,
+        "to": 3911181
+      },
+      "why": "New chain (production composition of /api/mobile/contacts-dashboard without the stored AI report lookup). The 'from' values were measured on the pre-0101 composition in the same fixture (build/harness-state/evidence/sprint-0101/run-01/commands/ledger-before-with-contacts-dashboard-chain.txt). The full contacts list (~1.4MB) is replaced by an id read of the referenced contacts plus SQL role counts; aggregate, summary and distributions are SQL. Four extra small statements; the remaining ~2.96MB is the full-graph read that gaps and opportunities keep until sprint 0102."
     }
   ]
 }

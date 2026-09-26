@@ -153,7 +153,7 @@ test("profile completion opens the existing editor from the server policy withou
   assert.deepEqual(await navigation(p), []);
 });
 
-for (const [next, expected] of [["/events/event-1?tab=details", "/events/event-1?tab=details"], ["https://untrusted.test", "/dashboard"]]) {
+for (const [next, expected] of [["/events/event-1?tab=details", "/events/event-1?tab=details"], ["https://untrusted.test", "/home"]]) {
   test("profile completion already complete returns only to a safe target " + next, async t => {
     const p = await open(t, { complete: "1", next, payloads: { ...profileReadPayloads,
       "/api/profile": { ...profilePayload, onboarding: { policyVersion: 1, status: "complete", missingFields: [] } } } });

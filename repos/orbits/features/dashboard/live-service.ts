@@ -1,5 +1,7 @@
 import {
   DASHBOARD_AGGREGATE_ERROR_DEFINITIONS,
+  DASHBOARD_SHORT_LIST_LIMIT,
+  type DashboardRelationshipAssetTotals,
   type DashboardAggregateErrorCode,
   type DashboardAggregateFailure,
   type DashboardAggregateInput,
@@ -18,8 +20,8 @@ import {
   type DashboardRecentActivity,
 } from "./contract";
 import {
-  applyDashboardActivityLimit,
   dashboardContactsById,
+  dashboardShortListActivityLimit,
   dashboardDueLabel,
   dashboardPriorityScore,
   dashboardValueType,
@@ -33,6 +35,29 @@ import type {
 } from "../../shared/domain/contracts";
 import type { DashboardAggregateService } from "./service";
 import type { LiveDashboardGraph } from "./storage/dashboard-live-record-provider";
+import type { NetworkDistributionReadModel } from "./storage/network-distribution-live-record-provider";
+import { DashboardSummaryRequiresGraphFallback } from "./storage/dashboard-summary-postgres-reader";
+
+/** Everything a dashboard aggregate response needs; every list is already short. */
+export interface DashboardAggregateReadModel {
+  generatedAt: string;
+  relationshipAssetTotals: DashboardRelationshipAssetTotals;
+  newContactsCount: number;
+  highValueCount: number;
+  pendingFollowupCount: number;
+  dormantContactCount: number;
+  provenanceEvidenceIds: readonly string[];
+  newContacts: readonly DashboardNewContact[];
+  highValueRelationships: readonly DashboardHighValueRelationship[];
+  pendingFollowups: readonly DashboardFollowupTask[];
+  dormantContacts: readonly DashboardDormantContact[];
+  recentActivity: readonly DashboardRecentActivity[];
+}
+
+export interface DashboardContactRoleCount {
+  role: string;
+  count: number;
+}
 
 type LiveDashboardAggregateProviderResult<TResult> = Promise<TResult> | TResult;
 
@@ -43,6 +68,19 @@ export interface LiveDashboardAggregateProvider {
   readDashboardGraphForAccount?: (
     accountId: string,
   ) => LiveDashboardAggregateProviderResult<LiveDashboardGraph>;
+  /** Sprint 0101: totals and short lists computed in SQL (no full-graph read). */
+  readDashboardAggregateForAccount?: (
+    accountId: string,
+    input: { activityLimit: number },
+  ) => Promise<DashboardAggregateReadModel>;
+  /** Trimmed non-empty contact roles with their counts (contacts analysis). */
+  readContactRoleCountsForAccount?: (
+    accountId: string,
+  ) => Promise<readonly DashboardContactRoleCount[]>;
+  /** Sprint 0101: grouped distribution rows computed in SQL. */
+  readNetworkDistributionReadModelForAccount?: (
+    accountId: string,
+  ) => Promise<NetworkDistributionReadModel>;
   /** Internal read-model capability; it must not widen the public dashboard DTO. */
   readDashboardSummaryForAccount?: (
     accountId: string,
@@ -72,15 +110,15 @@ function evidenceIdsFor(graph: LiveDashboardGraph): readonly string[] {
 }
 
 function provenanceFor(
-  graph: LiveDashboardGraph,
+  model: Pick<DashboardAggregateReadModel, "generatedAt" | "provenanceEvidenceIds">,
   provider: LiveDashboardAggregateProvider,
   sourceLabel = provider.sourceLabel,
 ): DashboardAggregateProvenance {
   return {
     source: provider.source,
     sourceLabel,
-    evidenceIds: evidenceIdsFor(graph),
-    collectedAt: graph.generatedAt,
+    evidenceIds: model.provenanceEvidenceIds,
+    collectedAt: model.generatedAt,
     privacy: "live-dashboard-aggregate",
     generationMethod: "live-store-query",
     liveAnalyticsQueryExecuted: false,
@@ -239,17 +277,18 @@ function toRecentActivity(
   );
 }
 
-function aggregatePayload(
+/** Full-graph (JS) read model: the original list rules, cut to short lists. */
+export function dashboardAggregateReadModelFromGraph(
   graph: LiveDashboardGraph,
-  provider: LiveDashboardAggregateProvider,
-): DashboardAggregatePayload {
+  activityLimit?: number | null,
+): DashboardAggregateReadModel {
   const newContacts = graph.contacts.map(toNewContact);
   const highValueRelationships = toHighValueRelationships(graph);
   const pendingFollowupTasks = toPendingFollowups(graph);
   const dormantContacts = toDormantContacts(graph);
 
   return {
-    state: graph.contacts.length > 0 ? "success" : "empty",
+    generatedAt: graph.generatedAt,
     relationshipAssetTotals: {
       contacts: graph.contacts.length,
       connections: graph.connections.length,
@@ -258,25 +297,70 @@ function aggregatePayload(
       ).length,
       eventsRepresented: graph.events.length,
     },
-    newContacts: {
-      count: newContacts.length,
-      windowLabel: "Live relationship database",
-      contacts: newContacts,
-    },
+    newContactsCount: newContacts.length,
     highValueCount: highValueRelationships.length,
-    highValueRelationships,
+    pendingFollowupCount: pendingFollowupTasks.length,
+    dormantContactCount: dormantContacts.length,
+    provenanceEvidenceIds: evidenceIdsFor(graph).slice(0, DASHBOARD_SHORT_LIST_LIMIT),
+    newContacts: newContacts.slice(0, DASHBOARD_SHORT_LIST_LIMIT),
+    highValueRelationships: highValueRelationships.slice(0, DASHBOARD_SHORT_LIST_LIMIT),
+    pendingFollowups: pendingFollowupTasks.slice(0, DASHBOARD_SHORT_LIST_LIMIT),
+    dormantContacts: dormantContacts.slice(0, DASHBOARD_SHORT_LIST_LIMIT),
+    recentActivity: toRecentActivity(graph).slice(
+      0,
+      dashboardShortListActivityLimit(activityLimit),
+    ),
+  };
+}
+
+function emptyReadModel(generatedAt: string): DashboardAggregateReadModel {
+  return {
+    generatedAt,
+    relationshipAssetTotals: {
+      contacts: 0,
+      connections: 0,
+      evidenceBackedRelationships: 0,
+      eventsRepresented: 0,
+    },
+    newContactsCount: 0,
+    highValueCount: 0,
+    pendingFollowupCount: 0,
+    dormantContactCount: 0,
+    provenanceEvidenceIds: ["evidence:dashboard-live-store-empty"],
+    newContacts: [],
+    highValueRelationships: [],
+    pendingFollowups: [],
+    dormantContacts: [],
+    recentActivity: [],
+  };
+}
+
+function aggregatePayload(
+  model: DashboardAggregateReadModel,
+  provider: LiveDashboardAggregateProvider,
+): DashboardAggregatePayload {
+  return {
+    state: model.relationshipAssetTotals.contacts > 0 ? "success" : "empty",
+    relationshipAssetTotals: model.relationshipAssetTotals,
+    newContacts: {
+      count: model.newContactsCount,
+      windowLabel: "Live relationship database",
+      contacts: model.newContacts,
+    },
+    highValueCount: model.highValueCount,
+    highValueRelationships: model.highValueRelationships,
     pendingFollowups: {
-      count: pendingFollowupTasks.length,
-      tasks: pendingFollowupTasks,
+      count: model.pendingFollowupCount,
+      tasks: model.pendingFollowups,
     },
     dormantContacts: {
-      count: dormantContacts.length,
-      contacts: dormantContacts,
+      count: model.dormantContactCount,
+      contacts: model.dormantContacts,
     },
-    recentActivity: toRecentActivity(graph),
+    recentActivity: model.recentActivity,
     summary:
       "Live dashboard aggregate was computed from shared remote relationship records.",
-    provenance: provenanceFor(graph, provider),
+    provenance: provenanceFor(model, provider),
     nextAction:
       "Use the source-backed live dashboard aggregate for agent workflow testing.",
   };
@@ -292,7 +376,14 @@ function aggregateSuccess(data: DashboardAggregatePayload): DashboardAggregateRe
 function summarySuccess(
   data: DashboardAggregatePayload,
 ): DashboardAggregateSummaryResult {
-  const summary = buildDashboardAggregateSummary(data);
+  const built = buildDashboardAggregateSummary(data);
+  const summary = {
+    ...built,
+    metrics: built.metrics.map((metric) => ({
+      ...metric,
+      evidenceIds: metric.evidenceIds.slice(0, DASHBOARD_SHORT_LIST_LIMIT),
+    })),
+  };
 
   return {
     success: true,
@@ -331,15 +422,12 @@ function failure(
 }
 
 function emptyPayload(
-  graph: LiveDashboardGraph,
+  model: DashboardAggregateReadModel,
   provider: LiveDashboardAggregateProvider,
   state: "empty" | "pending",
 ): DashboardAggregatePayload {
   return {
-    ...aggregatePayload(
-      { ...graph, contacts: [], connections: [], events: [], tasks: [] },
-      provider,
-    ),
+    ...aggregatePayload(emptyReadModel(model.generatedAt), provider),
     state,
     summary:
       state === "pending"
@@ -349,24 +437,44 @@ function emptyPayload(
 }
 
 function scenarioAggregateResult(
-  graph: LiveDashboardGraph,
+  model: DashboardAggregateReadModel,
   provider: LiveDashboardAggregateProvider,
   scenario: DashboardAggregateScenario,
 ): DashboardAggregateResult | null {
   switch (scenario) {
     case "empty":
-      return aggregateSuccess(emptyPayload(graph, provider, "empty"));
+      return aggregateSuccess(emptyPayload(model, provider, "empty"));
     case "pending":
-      return aggregateSuccess(emptyPayload(graph, provider, "pending"));
+      return aggregateSuccess(emptyPayload(model, provider, "pending"));
     case "failure":
       return failure(
         "DASHBOARD_AGGREGATE_LIVE_FAILED",
-        provenanceFor(graph, provider, "Live dashboard controlled failure"),
+        provenanceFor(model, provider, "Live dashboard controlled failure"),
       );
     case "success":
     default:
       return null;
   }
+}
+
+async function readAggregateModel(
+  provider: LiveDashboardAggregateProvider,
+  actorId: string,
+  activityLimit?: number | null,
+): Promise<DashboardAggregateReadModel> {
+  if (provider.readDashboardAggregateForAccount) {
+    try {
+      return await provider.readDashboardAggregateForAccount(actorId, {
+        activityLimit: dashboardShortListActivityLimit(activityLimit),
+      });
+    } catch (error) {
+      if (!(error instanceof DashboardSummaryRequiresGraphFallback)) throw error;
+    }
+  }
+  const graph = provider.readDashboardGraphForAccount
+    ? await provider.readDashboardGraphForAccount(actorId)
+    : await provider.readDashboardGraph();
+  return dashboardAggregateReadModelFromGraph(graph, activityLimit);
 }
 
 async function aggregateFor(
@@ -389,11 +497,9 @@ async function aggregateFor(
     );
   }
 
-  const graph = provider.readDashboardGraphForAccount
-    ? await provider.readDashboardGraphForAccount(actorId)
-    : await provider.readDashboardGraph();
+  const model = await readAggregateModel(provider, actorId, input.activityLimit);
   const scenario = scenarioAggregateResult(
-    graph,
+    model,
     provider,
     normalizeDashboardAggregateScenario(input.scenario),
   );
@@ -402,9 +508,7 @@ async function aggregateFor(
     return scenario;
   }
 
-  return aggregateSuccess(
-    applyDashboardActivityLimit(aggregatePayload(graph, provider), input.activityLimit),
-  );
+  return aggregateSuccess(aggregatePayload(model, provider));
 }
 
 async function summaryFor(

@@ -16,6 +16,10 @@ export const DASHBOARD_AGGREGATE_ERROR_CODES = [
 export type DashboardAggregateErrorCode =
   (typeof DASHBOARD_AGGREGATE_ERROR_CODES)[number];
 
+// Sprint 0101: every list in a dashboard response is a short list. Totals stay
+// exact; lists keep their original order and are cut to this many items.
+export const DASHBOARD_SHORT_LIST_LIMIT = 5;
+
 export type DashboardAggregateScenario =
   | "success"
   | "empty"

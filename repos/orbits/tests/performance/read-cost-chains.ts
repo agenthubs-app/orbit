@@ -8,6 +8,15 @@ import {
 import { createPostgresContactScopeRecordReader } from "../../features/contacts/storage/contact-scope-postgres-reader";
 import { createLiveDashboardAggregateService } from "../../features/dashboard/live-service";
 import { createStorageDashboardAggregateProvider } from "../../features/dashboard/storage/dashboard-live-record-provider";
+import { createLiveNetworkDistributionAnalyticsService } from "../../features/dashboard/live-distribution-service";
+import { createLiveOpportunityReminderAnalyticsService } from "../../features/dashboard/live-opportunity-service";
+import {
+  networkDistributionProviderForAccount,
+  opportunityProviderForAccount,
+} from "../../features/dashboard/service-factory";
+import { createMobileContactsDashboardServiceFromSources } from "../../features/mobile/contacts-dashboard-service";
+import { createLiveProfileService } from "../../features/profile/live-service";
+import { createStorageProfileProvider } from "../../features/profile/storage/profile-live-record-provider";
 import { createLiveEventCrudAndImportService } from "../../features/events/event-crud-and-import/live-service";
 import { createStorageEventStoreProvider } from "../../features/events/event-crud-and-import/providers/storage-event-provider";
 import { createNoteAssociationReader } from "../../features/notes/association-reader";
@@ -114,6 +123,26 @@ export async function seedReadCostChains({
       }).getDashboardAggregate({ actorId });
       assert.ok(result.success, "dashboard must succeed");
       return result.success;
+    },
+    "contacts.dashboard": async () => {
+      // Production composition of /api/mobile/contacts-dashboard; the stored AI
+      // analysis lookup (chat sessions) is not part of this read chain.
+      const dashboardProvider = createStorageDashboardAggregateProvider({ store, workspaceId, sqlClient: client });
+      const result = await createMobileContactsDashboardServiceFromSources({
+        dashboard: createLiveDashboardAggregateService({ provider: dashboardProvider }),
+        distribution: (id) => createLiveNetworkDistributionAnalyticsService({
+          provider: networkDistributionProviderForAccount(dashboardProvider, id),
+        }),
+        opportunity: (id) => createLiveOpportunityReminderAnalyticsService({
+          provider: opportunityProviderForAccount(dashboardProvider, id),
+        }),
+        profile: createLiveProfileService({ provider: createStorageProfileProvider({ store, workspaceId }) }),
+        contacts: createLiveContactsListSearchAndFilterService({ provider: contactProvider }),
+        contactRoleCounts: (id) => dashboardProvider.readContactRoleCountsForAccount!(id),
+      }).getDashboard({ actorId });
+      assert.ok(result.success, "contacts.dashboard must succeed");
+      assert.deepEqual(result.data.unavailableSections.filter((section) => section !== "analysis" && section !== "profile"), []);
+      return result.data.aggregate.relationshipAssetTotals.contacts;
     },
     "events.list": async () => {
       const result = await createLiveEventCrudAndImportService({

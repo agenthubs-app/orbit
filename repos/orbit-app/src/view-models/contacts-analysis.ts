@@ -4,7 +4,7 @@ import {
   type DashboardView,
   type DashboardViewInput
 } from "./dashboard";
-import type { ContactSummary } from "./contacts";
+import type { ContactRoleCount, ContactSummary } from "./contacts";
 
 export interface ContactsAnalysisDiagnosisView {
   detail: string;
@@ -344,22 +344,31 @@ function localizedGapLabel(value: string): string {
   return chineseOnly(translated, "待补齐的人脉覆盖");
 }
 
-function decisionRolePercentage(contacts: ContactSummary[]): number | null {
-  const roles = contacts
-    .map((contact) => contact.role.trim())
-    .filter((role) => role.length > 0);
+function decisionRolePercentage(
+  contacts: ContactSummary[],
+  roleCounts: ContactRoleCount[] | null = null
+): number | null {
+  const roles = (
+    roleCounts ??
+    contacts.map((contact) => ({ count: 1, role: contact.role }))
+  )
+    .map((entry) => ({ count: entry.count, role: entry.role.trim() }))
+    .filter((entry) => entry.role.length > 0);
+  const total = roles.reduce((sum, entry) => sum + entry.count, 0);
 
-  if (roles.length === 0) {
+  if (total === 0) {
     return null;
   }
 
-  const decisionRoles = roles.filter((role) =>
-    /创始|负责人|董事|总监|经理|社长|代表|主管|合伙人|首席|ceo|coo|cfo|cto|founder|owner|president/iu.test(
-      role
+  const decisionRoles = roles
+    .filter((entry) =>
+      /创始|负责人|董事|总监|经理|社长|代表|主管|合伙人|首席|ceo|coo|cfo|cto|founder|owner|president/iu.test(
+        entry.role
+      )
     )
-  ).length;
+    .reduce((sum, entry) => sum + entry.count, 0);
 
-  return Math.round((decisionRoles / roles.length) * 100);
+  return Math.round((decisionRoles / total) * 100);
 }
 
 function diagnosisFor(dashboard: DashboardView): string {
@@ -386,13 +395,14 @@ function diagnosisFor(dashboard: DashboardView): string {
 
 function analysisDimensions(
   dashboard: DashboardView,
-  contacts: ContactSummary[]
+  contacts: ContactSummary[],
+  roleCounts: ContactRoleCount[] | null
 ): ContactsAnalysisDimensionView[] {
   const strongestIndustry = [...dashboard.industries].sort(
     (left, right) => right.percentage - left.percentage
   )[0];
   const strong = dashboard.strengths.find((item) => item.id === "strong");
-  const rolePercentage = decisionRolePercentage(contacts);
+  const rolePercentage = decisionRolePercentage(contacts, roleCounts);
 
   return [
     {
@@ -521,7 +531,8 @@ function structureDimensions(
   dashboard: DashboardView,
   contacts: ContactSummary[],
   locations: string[],
-  distributions: unknown
+  distributions: unknown,
+  roleCounts: ContactRoleCount[] | null
 ): ContactsAnalysisStructureDimensionView[] {
   const industryItems = serverStructureItems(distributions, "industry") ?? dashboard.industries.map((industry) => ({
     countLabel: industry.countLabel,
@@ -529,9 +540,14 @@ function structureDimensions(
     label: industry.label,
     percentage: industry.percentage
   }));
-  const locationItems = serverStructureItems(distributions, "location") ?? countedBreakdown(locations, "人");
+  // With role counts the contacts list is only the people on the page, so it
+  // cannot stand in for missing server location buckets.
+  const locationItems = serverStructureItems(distributions, "location") ??
+    (roleCounts ? [] : countedBreakdown(locations, "人"));
   const roleItems = serverStructureItems(distributions, "role") ?? countedBreakdown(
-    contacts.map((contact) => roleCategory(contact.role)),
+    roleCounts
+      ? roleCounts.flatMap((entry) => Array.from({ length: entry.count }, () => roleCategory(entry.role)))
+      : contacts.map((contact) => roleCategory(contact.role)),
     "人"
   );
   const relationshipItems = serverStructureItems(distributions, "relationship") ?? dashboard.strengths.map((strength) => ({
@@ -595,7 +611,8 @@ export function contactsAnalysisToView(
   input: DashboardViewInput,
   relationshipGoal: string,
   contacts: ContactSummary[] = [],
-  locations: string[] = []
+  locations: string[] = [],
+  roleCounts: ContactRoleCount[] | null = null
 ): ContactsAnalysisView {
   const dashboard = dashboardToView(input);
   const goal = relationshipGoal.trim();
@@ -684,7 +701,7 @@ export function contactsAnalysisToView(
       scoreLabel: hasGoal ? `${dashboard.coverageScore}%` : "--",
       statusLabel: hasGoal ? "目标匹配" : "结构诊断"
     },
-    dimensions: analysisDimensions(dashboard, contacts),
+    dimensions: analysisDimensions(dashboard, contacts, roleCounts),
     goal: goal || defaultGoal,
     goalConfigured: hasGoal,
     health: [
@@ -715,7 +732,8 @@ export function contactsAnalysisToView(
       dashboard,
       contacts,
       locations,
-      input.distributions
+      input.distributions,
+      roleCounts
     )
   };
 }

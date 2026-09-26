@@ -134,6 +134,7 @@ test("each read-cost ledger chain yields one receipt row whose queries, rows and
     "tasks.list": "/api/tasks",
     "notes.list": "/api/notes",
     "dashboard": "/api/dashboard",
+    "contacts.dashboard": "/api/mobile/contacts-dashboard",
     "events.list": "/api/events",
   };
   for (const [chain, run] of Object.entries(chains)) {

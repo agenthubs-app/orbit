@@ -42,7 +42,7 @@ interface AccountAuthOptions {
   t?: OrbitTranslator;
 }
 
-const defaultNext = "/dashboard";
+const defaultNext = "/home";
 const authEntryPaths = new Set([
   "/account/forgot-password",
   "/account/reset-password",

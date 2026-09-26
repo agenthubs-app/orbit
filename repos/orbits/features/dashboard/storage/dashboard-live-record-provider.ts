@@ -25,6 +25,7 @@ import type {
 import type { LiveRecordSqlClient } from "../../../shared/storage/postgres-live-record-store";
 import { createConfiguredPostgresLiveRecordStore } from "../../../shared/storage/configured-live-record-store";
 import type { LiveDashboardAggregateProvider } from "../live-service";
+import { createDashboardReadModelPostgresReader } from "./dashboard-read-model-postgres-reader";
 import {
   buildDashboardSummaryFromGraph,
   createDashboardSummaryPostgresReader,
@@ -449,7 +450,7 @@ const dashboardProjectionSql = `
     and collection_name = any(__COLLECTIONS__::text[])
     and lifecycle_state <> 'deleted'
     __OWNER_FILTER__
-  order by collection_name, coalesce(occurred_at, updated_at) desc, updated_at desc
+  order by collection_name, coalesce(occurred_at, updated_at) desc, updated_at desc, record_id
 `;
 
 function projectedDashboardRecord(
@@ -535,6 +536,9 @@ export function createStorageDashboardAggregateProvider({
 }: StorageDashboardAggregateProviderOptions): LiveDashboardAggregateProvider {
   const providerIdentity = {};
   const providerSource = source ?? `live-record-store:dashboard:${workspaceId}`;
+  const readModelReader = sqlClient
+    ? createDashboardReadModelPostgresReader({ client: sqlClient, workspaceId })
+    : null;
   const summaryReader = sqlClient
     ? createDashboardSummaryPostgresReader({
         client: sqlClient,
@@ -686,7 +690,23 @@ export function createStorageDashboardAggregateProvider({
     readDashboardGraphForAccount(accountId: string) {
       return readGraph(accountId);
     },
+    async readContactRoleCountsForAccount(accountId: string) {
+      if (readModelReader) return readModelReader.readContactRoleCountsForAccount(accountId);
+      const counts = new Map<string, number>();
+      for (const contact of (await readGraph(accountId)).contacts) {
+        const role = contact.role?.trim();
+        if (role) counts.set(role, (counts.get(role) ?? 0) + 1);
+      }
+      return [...counts.entries()].map(([role, count]) => ({ role, count }));
+    },
   };
+
+  if (readModelReader) {
+    provider.readDashboardAggregateForAccount = (accountId, input) =>
+      readModelReader.readAggregateForAccount(accountId, input);
+    provider.readNetworkDistributionReadModelForAccount = (accountId) =>
+      readModelReader.readDistributionForAccount(accountId);
+  }
 
   if (summaryReader) {
     provider.readDashboardSummaryForAccount = (accountId, scenario = "success") => {

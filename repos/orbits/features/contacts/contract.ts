@@ -116,6 +116,11 @@ export interface ContactsListSearchFilterInput {
   cursor?: string | null;
   limit?: number | null;
   contextEventId?: string | null;
+  /**
+   * Sprint 0101: read only these contacts (domain ids), e.g. the people a
+   * contacts-analysis page shows. An empty list reads nothing.
+   */
+  contactIds?: readonly string[] | null;
 }
 
 export interface ContactsListSearchFilterErrorDefinition {

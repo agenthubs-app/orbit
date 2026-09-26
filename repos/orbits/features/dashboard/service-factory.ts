@@ -14,6 +14,9 @@ import { createConfiguredStorageOpportunityReminderAnalyticsProvider } from "./s
 import type { NetworkDistributionAnalyticsService } from "./distribution-contract";
 import type { OpportunityReminderAnalyticsService } from "./opportunity-contract";
 import type { DashboardAggregateService } from "./service";
+import type { LiveDashboardAggregateProvider } from "./live-service";
+import type { LiveNetworkDistributionAnalyticsProvider } from "./storage/network-distribution-live-record-provider";
+import type { LiveOpportunityReminderAnalyticsProvider } from "./storage/opportunity-live-record-provider";
 
 export const dashboardAggregateServiceFactory =
   createModuleServiceFactory<DashboardAggregateService>({
@@ -86,25 +89,38 @@ export function createNetworkDistributionAnalyticsService(
   return resolution.service;
 }
 
+/** Bind a dashboard provider to one account for distribution analytics. */
+export function networkDistributionProviderForAccount(
+  provider: LiveDashboardAggregateProvider | null,
+  accountId: string,
+): LiveNetworkDistributionAnalyticsProvider | null {
+  const normalizedAccountId = accountId.trim();
+  if (!normalizedAccountId || !provider?.readDashboardGraphForAccount) return null;
+  return {
+    source: provider.source.replace(
+      "postgres-live-record-store:dashboard:",
+      "postgres-live-record-store:network-distribution:",
+    ),
+    sourceLabel: provider.sourceLabel,
+    readNetworkDistributionGraph: () =>
+      provider.readDashboardGraphForAccount!(normalizedAccountId),
+    ...(provider.readNetworkDistributionReadModelForAccount
+      ? {
+          readNetworkDistributionReadModel: () =>
+            provider.readNetworkDistributionReadModelForAccount!(normalizedAccountId),
+        }
+      : {}),
+  };
+}
+
 export function createActorScopedNetworkDistributionAnalyticsService(
   accountId: string,
 ): NetworkDistributionAnalyticsService {
-  const provider = createConfiguredStorageDashboardAggregateProvider();
-  const normalizedAccountId = accountId.trim();
-
   return createLiveNetworkDistributionAnalyticsService({
-    provider:
-      normalizedAccountId && provider?.readDashboardGraphForAccount
-        ? {
-            source: provider.source.replace(
-              "postgres-live-record-store:dashboard:",
-              "postgres-live-record-store:network-distribution:",
-            ),
-            sourceLabel: provider.sourceLabel,
-            readNetworkDistributionGraph: () =>
-              provider.readDashboardGraphForAccount!(normalizedAccountId),
-          }
-        : null,
+    provider: networkDistributionProviderForAccount(
+      createConfiguredStorageDashboardAggregateProvider(),
+      accountId,
+    ),
   });
 }
 
@@ -126,24 +142,31 @@ export function createOpportunityReminderAnalyticsService(
   return resolution.service;
 }
 
+/** Bind a dashboard provider to one account for opportunity analytics. */
+export function opportunityProviderForAccount(
+  provider: LiveDashboardAggregateProvider | null,
+  accountId: string,
+): LiveOpportunityReminderAnalyticsProvider | null {
+  const normalizedAccountId = accountId.trim();
+  if (!normalizedAccountId || !provider?.readDashboardGraphForAccount) return null;
+  return {
+    source: provider.source.replace(
+      "postgres-live-record-store:dashboard:",
+      "postgres-live-record-store:opportunity-reminder:",
+    ),
+    sourceLabel: provider.sourceLabel,
+    readOpportunityGraph: () =>
+      provider.readDashboardGraphForAccount!(normalizedAccountId),
+  };
+}
+
 export function createActorScopedOpportunityReminderAnalyticsService(
   accountId: string,
 ): OpportunityReminderAnalyticsService {
-  const provider = createConfiguredStorageDashboardAggregateProvider();
-  const normalizedAccountId = accountId.trim();
-
   return createLiveOpportunityReminderAnalyticsService({
-    provider:
-      normalizedAccountId && provider?.readDashboardGraphForAccount
-        ? {
-            source: provider.source.replace(
-              "postgres-live-record-store:dashboard:",
-              "postgres-live-record-store:opportunity-reminder:",
-            ),
-            sourceLabel: provider.sourceLabel,
-            readOpportunityGraph: () =>
-              provider.readDashboardGraphForAccount!(normalizedAccountId),
-          }
-        : null,
+    provider: opportunityProviderForAccount(
+      createConfiguredStorageDashboardAggregateProvider(),
+      accountId,
+    ),
   });
 }

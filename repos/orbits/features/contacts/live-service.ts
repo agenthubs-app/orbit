@@ -157,9 +157,11 @@ async function runLiveContactsQuery(
     return actorRequiredFailure();
   }
 
-  const graph = provider.readContactGraphForList
-    ? await provider.readContactGraphForList(input, actorId)
-    : await provider.readContactGraph(actorId);
+  const graph: LocalRemoteContactGraph = input.contactIds?.length === 0
+    ? { contacts: [], connections: [], evidence: [], generatedAt: new Date(0).toISOString() }
+    : provider.readContactGraphForList
+      ? await provider.readContactGraphForList(input, actorId)
+      : await provider.readContactGraph(actorId);
 
   const boundedPage = (graph as LocalRemoteContactGraph & {
     boundedPage?: {

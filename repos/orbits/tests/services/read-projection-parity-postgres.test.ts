@@ -397,7 +397,8 @@ function oracleProvenance(
     sourceLabel,
     evidenceIds:
       allEvidence.length > 0
-        ? [...new Set(allEvidence)]
+        // Sprint 0101: evidence lists are short lists (first five, graph order).
+        ? [...new Set(allEvidence)].slice(0, 5)
         : ["evidence:dashboard-live-store-empty"],
     collectedAt: oracleGeneratedAt(scoped),
     privacy: "live-dashboard-aggregate",
@@ -543,25 +544,25 @@ function literalSummaryOracle(
           id: "new-contacts",
           label: "New contacts",
           value: contacts.length,
-          evidenceIds: contacts.flatMap((contact) => contact.evidenceIds),
+          evidenceIds: contacts.flatMap((contact) => contact.evidenceIds).slice(0, 5),
         },
         {
           id: "high-value",
           label: "High-value relationships",
           value: highValue.length,
-          evidenceIds: highValue.flatMap((connection) => connection.evidenceIds),
+          evidenceIds: highValue.flatMap((connection) => connection.evidenceIds).slice(0, 5),
         },
         {
           id: "pending-followups",
           label: "Pending followups",
           value: pending.length,
-          evidenceIds: pending.flatMap((task) => task.evidenceIds),
+          evidenceIds: pending.flatMap((task) => task.evidenceIds).slice(0, 5),
         },
         {
           id: "dormant-contacts",
           label: "Dormant contacts",
           value: dormant.length,
-          evidenceIds: dormant.flatMap((contact) => contact.evidenceIds),
+          evidenceIds: dormant.flatMap((contact) => contact.evidenceIds).slice(0, 5),
         },
       ],
       recentActivity: activities,
@@ -931,10 +932,13 @@ test("B3 summary reader matches an independent full-response oracle", {
       "contacts keep their envelope order before tasks, and scheduled wins the task tie before the cutoff",
     );
     assert.deepEqual(expected.success && expected.data.metrics[2]?.evidenceIds, ["e:fallback", "e:69.5", "e:seventy", "e:seventy"]);
-    assert.deepEqual(expected.success && expected.data.metrics[1]?.evidenceIds, ["e:captured", "e:beta", "e:shared", "e:alpha", "e:alpha", "e:shared"]);
+    assert.deepEqual(expected.success && expected.data.metrics[1]?.evidenceIds, ["e:captured", "e:beta", "e:shared", "e:alpha", "e:alpha"]);
     assert.equal(ECMASCRIPT_TRIM_CHARACTERS.length, 25);
     assert.ok(ECMASCRIPT_TRIM_CHARACTERS.every((character) => character.trim() === ""));
-    assert.ok(expected.success && expected.data.provenance.evidenceIds.includes("v"));
+    // Sprint 0101: the provenance is the first five distinct ids ("v" from the
+    // whitespace-source events now lies beyond them; trim rules stay covered by
+    // the full deepEqual above).
+    assert.equal(expected.success && expected.data.provenance.evidenceIds.length, 5);
     assert.ok(expected.success && !expected.data.provenance.evidenceIds.includes(ECMASCRIPT_TRIM_STRING));
   } finally {
     await client.close();
@@ -1069,7 +1073,8 @@ test("B3 cost baseline measures the real graph projection against summary SQL", 
       assert.equal(summaryAfterCall.returnedBytes, summaryBeforeCall.returnedBytes);
       assert.ok(graphBeforeCall.returnedBytes > summaryBeforeCall.returnedBytes);
       assert.ok(summaryBeforeUnrelated.success);
-      assert.ok(summaryBeforeUnrelated.data.provenance.evidenceIds.length >= size);
+      // Sprint 0101: provenance is a short list, independent of the fixture size.
+      assert.equal(summaryBeforeUnrelated.data.provenance.evidenceIds.length, 5);
 
       growth.push({
         sameActorRecords: size,
@@ -1108,7 +1113,10 @@ test("B3 cost baseline measures the real graph projection against summary SQL", 
   }
 });
 
-test("B3 falls back for a noncanonical activity timestamp without casting the payload", {
+// Sprint 0101: any printable-ASCII activity string is ordered in SQL with the
+// ICU collation (tests/services/dashboard-sql-read-model-postgres.test.ts);
+// only other characters still take the graph fallback.
+test("B3 falls back for a non-ASCII activity timestamp without casting the payload", {
   skip: SUMMARY_DATABASE_URL ? false : "Explicit isolated PostgreSQL URL required",
 }, async () => {
   assert.ok(SUMMARY_DATABASE_URL);
@@ -1140,7 +1148,7 @@ test("B3 falls back for a noncanonical activity timestamp without casting the pa
     source: { type: "manual", id: "source:noncanonical", label: "Fallback source" },
     evidenceIds: ["e:noncanonical"],
     createdAt: "2026/09/17 09:00:00",
-    updatedAt: "not-an-ISO-activity",
+    updatedAt: "not-an-ISO-activity：九月",
   }, {
     updatedAt: "2026-09-17T09:00:00.000Z",
     occurredAt: "2026-09-17T08:00:00.000Z",
@@ -1173,7 +1181,7 @@ test("B3 falls back for a noncanonical activity timestamp without casting the pa
     assert.equal(measuredCalls(measured, false).length, 1, "noncanonical ordering honestly adds one graph query");
     assert.match(measuredCalls(measured, true)[0]?.text ?? "", /dashboard summary read model/i);
     assert.match(measuredCalls(measured, false)[0]?.text ?? "", /jsonb_build_object/i);
-    assert.equal(actual.success && actual.data.recentActivity[0]?.occurredAt, "not-an-ISO-activity");
+    assert.equal(actual.success && actual.data.recentActivity[0]?.occurredAt, "not-an-ISO-activity：九月");
   } finally {
     await client.close();
     try { await admin.query(`drop schema if exists ${schema} cascade`); } finally { await admin.end(); }
