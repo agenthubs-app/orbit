@@ -51,11 +51,22 @@ test("visibleCharacterCount counts graphemes, not UTF-16 units", () => {
   assert.equal(visibleCharacterCount("一句话介绍"), 5);
 });
 
-test("validateProfileSaveDraft enforces name, industry pair and 80-char bio for basic scope only", () => {
+test("validateProfileSaveDraft enforces name, industry pair and 80-char bio, plus a direct handle on the basic-profile screen", () => {
   const scopeDirty = new Set<ProfileEditorField>(["displayName"]);
   assert.deepEqual(validateProfileSaveDraft({ profile: profile(), scope: "basic", scopeDirty }), { ok: true });
   assert.equal(validateProfileSaveDraft({ profile: profile({ fullName: "  " }), scope: "basic", scopeDirty }).ok, false);
   assert.equal(validateProfileSaveDraft({ profile: profile({ secondaryIndustryId: undefined }), scope: "basic", scopeDirty }).ok, false);
+  const noHandleProfile = profile({ handles: undefined, lineId: "", wechatName: "" });
+  assert.equal(validateProfileSaveDraft({ profile: noHandleProfile, scope: "basic", scopeDirty }).ok, true, "settings basic-scope save does not own the contact requirement");
+  const noDirectHandle = validateProfileSaveDraft({ profile: noHandleProfile, requireDirectHandle: true, scope: "basic", scopeDirty });
+  assert.equal(noDirectHandle.ok, false);
+  if (noDirectHandle.ok) throw new Error("Expected missing direct handle validation");
+  assert.deepEqual(noDirectHandle.message, {
+    en: "Add either WeChat or LINE before saving the basic profile.",
+    zh: "保存基础资料前，请至少填写 WeChat 或 LINE 其中一项。",
+  });
+  assert.equal(validateProfileSaveDraft({ profile: profile({ lineId: "", wechatName: "wx-only" }), requireDirectHandle: true, scope: "basic", scopeDirty }).ok, true);
+  assert.equal(validateProfileSaveDraft({ profile: profile({ lineId: "line-only", wechatName: "" }), requireDirectHandle: true, scope: "basic", scopeDirty }).ok, true);
   const longBio = profile({ bio: "x".repeat(81) });
   const tooLong = validateProfileSaveDraft({ profile: longBio, scope: "basic", scopeDirty: new Set(["bio"]) });
   assert.equal(tooLong.ok, false);

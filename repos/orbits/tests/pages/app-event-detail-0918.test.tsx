@@ -78,7 +78,7 @@ test("registered live event: 「进入活动现场」 + 「修改报名信息」
 
 test("detail tabs use the design's overlapping semantics (dIntro = intro||agenda, dPeople = people||intro, dHost = host)", async () => {
   const base = await baseEvent();
-  const event: OrbitLandingEventView = { ...base, status: "upcoming", stats: { ...base.stats, youRsvped: false }, youRsvped: false };
+  const event: OrbitLandingEventView = { ...base, status: "upcoming", stats: { ...base.stats, youRsvped: true }, youRsvped: true };
 
   const ssr = renderToStaticMarkup(<EventDetail event={event} registrationAvailability="open" />);
   assert.equal(hiddenState(ssr, "intro"), false);
@@ -109,7 +109,7 @@ test("detail tabs use the design's overlapping semantics (dIntro = intro||agenda
   }
 });
 
-test("intro = real description + real agenda (highlights omitted); unregistered attendees see 「报名后可见」", async () => {
+test("intro = real description + real agenda (highlights omitted); unregistered attendees have no attendee surface", async () => {
   const base = await baseEvent();
   const event: OrbitLandingEventView = { ...base, status: "upcoming", stats: { ...base.stats, youRsvped: false }, youRsvped: false };
   const html = renderToStaticMarkup(<EventDetail event={event} registrationAvailability="open" />);
@@ -121,8 +121,8 @@ test("intro = real description + real agenda (highlights omitted); unregistered 
   }
   assert.match(html, /class="ev-agenda-caret">⌄</);
   assert.doesNotMatch(html, /ev-highlight|开放交流|思维碰撞/);
-  assert.match(html, /data-events-people="teaser"/);
-  assert.match(html, /报名后可见/);
+  assert.doesNotMatch(html, /role="tab" type="button">参会者</);
+  assert.doesNotMatch(html, /data-events-panel="people"/);
   assert.doesNotMatch(html, /data-event-participant-directory/);
   assert.match(html, /<span class="ev-host-logo">/);
   assert.match(html, new RegExp(`<strong class="ev-host-name">${base.organizer}</strong>`, "u"));
@@ -167,12 +167,12 @@ test("recap state renders for ?view=recap or an ended event: shared body, 「—
   assert.match(active, /class="ev-chip ev-chip-hero" style="background:#E6F1EC;color:#2F6B4F">进行中</);
   // Unregistered viewers never see names.
   const anonymous = renderToStaticMarkup(<EventDetail event={{ ...ended, stats: { ...ended.stats, attendees: [], youRsvped: false }, youRsvped: false }} />);
-  assert.match(anonymous, /活动已结束；参会者名单仅向已确认参会者开放/);
+  assert.doesNotMatch(anonymous, /精选参会者|参会者名单/);
+  assert.doesNotMatch(anonymous, /role="tab" type="button">(?:参会者|交流记录|生成总结)</);
   assert.doesNotMatch(anonymous, /Alice Attendee/);
   // 终审 M2：进行中的活动以 ?view=recap 进入回顾态时，未报名文案不能说「活动已结束」。
   const anonymousActive = renderToStaticMarkup(<EventDetail event={{ ...base, status: "active", stats: { ...base.stats, attendees: [], youRsvped: false }, youRsvped: false }} view="recap" />);
-  assert.match(anonymousActive, /参会者名单仅向已确认参会者开放/);
-  assert.doesNotMatch(anonymousActive, /活动已结束/);
+  assert.doesNotMatch(anonymousActive, /精选参会者|参会者名单|活动已结束/);
 });
 
 test("recapPeople prefers the published directory and exposes contactId only for accepted exchanges", async () => {
@@ -202,9 +202,9 @@ test("recapPeople prefers the published directory and exposes contactId only for
   assert.equal(rendered.filter((p) => p.contactId).length, 1);
 });
 
-test("recap 「生成总结」 tab is the explicit 「等 W4」 empty state; other tabs only switch the highlight", async () => {
+test("registered recap exposes private tabs and keeps 「生成总结」 as the explicit 「等 W4」 empty state", async () => {
   const base = await baseEvent();
-  const event: OrbitLandingEventView = { ...base, status: "ended", stats: { ...base.stats, youRsvped: false }, youRsvped: false };
+  const event: OrbitLandingEventView = { ...base, status: "ended", stats: { ...base.stats, youRsvped: true }, youRsvped: true };
   let renderer!: ReactTestRenderer;
   await act(async () => {
     renderer = create(createElement(EventDetail, { event }));
@@ -220,7 +220,7 @@ test("recap 「生成总结」 tab is the explicit 「等 W4」 empty state; oth
     await clickTab("参会者");
     assert.equal(body(), initial);
     await clickTab("交流记录");
-    assert.equal(body(), initial);
+    assert.match(body(), /data-events-recap-notes/);
     await clickTab("生成总结");
     assert.match(body(), /data-events-recap-empty":"summary"/);
     assert.match(body(), /等 W4/);

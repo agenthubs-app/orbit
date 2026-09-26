@@ -6,7 +6,7 @@
  *   - 「基础信息」字段顺序：姓名*（表单首个 <input>，editorDisabled 时 disabled）/ 一级行业* / 二级行业*（两个 <select> 从旧
  *     EditSections 原样搬，保留 aria-label）/ 职位 / 公司 / 生日*（type=date）/ 关于我（bio，80 可见字符校验由
  *     validateProfileSaveDraft 提供）/ 一句话介绍（headline 只读，hook 无保存通道）。
- *   - 「联系方式」：WeChat 与 LINE 可编辑（hook update 只把这两个标记为脏）；Email 只读；其余 handle 只读行；一律「仅自己可见」。
+ *   - 「联系方式」：WeChat 与 LINE 可编辑且二选一必填（hook update 只把这两个标记为脏）；Email 只读；其余 handle 只读行；一律「仅自己可见」。
  *   - 必填标记 <span class="pc-required">必填</span>；壳里的保存栏通过 formRef.requestSubmit() 提交本表单。
  */
 "use client";
@@ -174,12 +174,12 @@ export function ProfileBasic({
         <section className="pc-card pc-side-section">
           <span className="pc-side-head">
             <span className="pc-side-title-row"><span className="pc-side-title-icon">✉</span><strong className="pc-h2">{t({ en: "Contact details", zh: "联系方式" })}</strong></span>
-            <span className="pc-side-desc">{t({ en: "Contact details are optional, only visible to you, and saved with the basic profile.", zh: "联系方式可选、仅自己可见，随基础资料一起保存。" })}</span>
+            <span className="pc-side-desc">{t({ en: "Add either WeChat or LINE. Contact details are only visible to you and saved with the basic profile.", zh: "WeChat 或 LINE 任选一项必填；联系方式仅自己可见，随基础资料一起保存。" })}</span>
           </span>
-          <Field label={{ en: "WeChat", zh: "WeChat" }}>
+          <Field label={{ en: "WeChat (either this or LINE)", zh: "WeChat（与 LINE 二选一必填）" }} required>
             <span className="pc-input-wrap"><input aria-label="WeChat" className="pc-input" disabled={editorDisabled} onChange={(event) => session.update("wechatName", event.target.value)} value={profile.wechatName} /></span>
           </Field>
-          <Field label={{ en: "LINE", zh: "LINE" }}>
+          <Field label={{ en: "LINE (either this or WeChat)", zh: "LINE（与 WeChat 二选一必填）" }} required>
             <span className="pc-input-wrap"><input aria-label="LINE" className="pc-input" disabled={editorDisabled} onChange={(event) => session.update("lineId", event.target.value)} value={profile.lineId} /></span>
           </Field>
           {profile.email.trim() ? <ReadonlyRow label="Email" scope={scope} value={profile.email} /> : null}

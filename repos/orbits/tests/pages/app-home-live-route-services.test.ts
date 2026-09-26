@@ -210,7 +210,7 @@ test("product route href mapping is idempotent for concrete app paths", async ()
   assert.equal(productHref("/app/schedule"), "/app/schedule");
   assert.equal(productHref("/app/events/EVT01"), "/app/events/EVT01");
   assert.equal(productHref("/home/schedule"), "/app/agent/plan");
-  assert.equal(productHref("/home/cards"), "/app/contacts");
+  assert.equal(productHref("/home/cards"), "/app/contacts/dashboard");
 });
 
 test("shared home navigation keeps Orbit home on the integrated web root", async () => {

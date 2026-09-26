@@ -123,7 +123,7 @@ export function ProfileShell({
       {onboardingBanner ? (
         <div className="pc-notice pc-notice-warning" role="status">
           <span className="pc-notice-text">
-            {t({ en: "Finish your basic profile before entering iOrbit, Events and Network.", zh: "完成基础资料后才能进入 iOrbit、活动、人脉。" })}
+            {t({ en: "Step 1: edit your profile. Finish the required basics before entering iOrbit, Events and Network.", zh: "第一步：编辑个人资料。完成必填的基础资料后，才能进入 iOrbit、活动和人脉。" })}
             {onboardingBanner.missing.length ? ` ${t({ en: "Still needed: ", zh: "还需填写：" })}${onboardingBanner.missing.join(t({ en: ", ", zh: "、" }))}` : ""}
           </span>
           <a className="btn pc-btn-primary" href={onboardingBanner.go}>{t({ en: "Fill it in", zh: "去填写" })}</a>

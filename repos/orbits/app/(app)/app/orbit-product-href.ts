@@ -21,7 +21,8 @@ export function productHref(prototypeHref: string) {
   if (prototypeHref === "/today" || prototypeHref === "/schedule")
     return "/app/agent/plan";
   if (prototypeHref === "/followups") return "/app/agent/actions";
-  if (prototypeHref === "/home/cards") return "/app/contacts";
+  if (prototypeHref === "/contacts" || prototypeHref === "/home/cards")
+    return "/app/contacts/dashboard";
   if (prototypeHref === "/home/cards/scan") return "/app/contacts/new";
   if (prototypeHref.startsWith("/home/cards/"))
     return `/app/contacts/${prototypeHref.split("/").pop()}`;

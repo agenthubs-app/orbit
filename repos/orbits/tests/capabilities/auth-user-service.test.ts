@@ -83,6 +83,14 @@ test("live auth provisioning creates one account and profile and preserves them 
     })?.payload.accountId,
     userId,
   );
+  assert.equal(
+    store.getRecord({
+      workspaceId,
+      collectionName: "profiles",
+      recordId: `profile:${userId}`,
+    })?.payload.displayNameConfirmed,
+    false,
+  );
 
   await service.verifyCredentials({
     email: "member@example.com",

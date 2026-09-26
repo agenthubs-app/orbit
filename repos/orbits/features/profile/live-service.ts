@@ -112,13 +112,19 @@ function manualProfileFor(input: {
   accountName?: string;
   profile: LiveProfileRecord;
 }): ManualProfile {
-  const organization = input.profile.organization ?? input.accountName ?? "";
+  // An Orbit account label (for example “alice 的 Orbit”) is not a company.
+  // Organization stays empty until the user or an explicit profile source
+  // supplies one.
+  const organization = input.profile.organization ?? "";
   const role = input.profile.role ?? "";
   const publicProfile = input.profile.publicProfile;
 
   return {
     id: input.profile.id,
-    displayName: input.profile.displayName,
+    displayName:
+      input.profile.displayNameConfirmed === false
+        ? ""
+        : input.profile.displayName,
     ...(input.profile.birthDate !== undefined ? { birthDate: input.profile.birthDate } : {}),
     headline: input.profile.headline ?? "",
     organization,
@@ -291,13 +297,17 @@ function mergeProfile(input: {
   const role = normalizeText(input.update.role, baseManual?.role ?? "");
   const organization = normalizeText(
     input.update.organization,
-    baseManual?.organization ?? accountNameFor(input.graph, accountId) ?? "",
+    baseManual?.organization ?? "",
   );
 
   return {
     id: profileId,
     accountId,
     displayName,
+    displayNameConfirmed:
+      input.update.displayName !== undefined
+        ? Boolean(displayName)
+        : input.base?.displayNameConfirmed,
     ...(input.update.birthDate !== undefined
       ? { birthDate: input.update.birthDate }
       : input.base?.birthDate !== undefined ? { birthDate: input.base.birthDate } : {}),

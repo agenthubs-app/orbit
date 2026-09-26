@@ -36,16 +36,20 @@ export type ProfileSaveValidation =
 
 export function validateProfileSaveDraft(input: {
   profile: OrbitProfileEditorView;
+  requireDirectHandle?: boolean;
   scope: ProfileEditorSaveScope;
   scopeDirty: ReadonlySet<ProfileEditorField>;
 }): ProfileSaveValidation {
-  const { profile, scope, scopeDirty } = input;
+  const { profile, requireDirectHandle = false, scope, scopeDirty } = input;
   if (scope !== "basic") return { ok: true };
   if (!profile.fullName.trim()) {
     return { ok: false, message: { en: "Add your name before saving the profile.", zh: "请填写姓名后再保存档案。" } };
   }
   if (!profile.primaryIndustryId || !profile.secondaryIndustryId || !validateIndustrySelection(profile).valid) {
     return { ok: false, message: { en: "Choose both industry levels before saving the basic profile.", zh: "保存基础资料前，请选择完整的一级和二级行业。" } };
+  }
+  if (requireDirectHandle && !profile.wechatName.trim() && !profile.lineId.trim()) {
+    return { ok: false, message: { en: "Add either WeChat or LINE before saving the basic profile.", zh: "保存基础资料前，请至少填写 WeChat 或 LINE 其中一项。" } };
   }
   if (scopeDirty.has("bio") && visibleCharacterCount(profile.bio.trim()) > BIO_VISIBLE_LIMIT) {
     return { ok: false, message: { en: "Keep About me within 80 visible characters.", zh: "关于我不能超过 80 个可见字符。" } };

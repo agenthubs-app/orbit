@@ -20,6 +20,7 @@ import { useEffect, useRef, useState } from "react";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import type { OrbitProfileEditorViewModel } from "../profile-editor-adapter";
 import { ProfileBasic } from "./profile-basic";
+import { clearProfileEditorDraft } from "./profile-editor-draft";
 import { ProfileConnect } from "./profile-connect";
 import { missingFieldLabels } from "./profile-model";
 import { ProfileOverview } from "./profile-overview";
@@ -102,10 +103,12 @@ export function ProfileScreens({
     if (activeView === "settings") {
       // /app/settings 路由：reload 后整页跳转让共享顶栏切回「我的」。
       await session.reloadLatestProfile();
+      clearProfileEditorDraft();
       window.location.assign(profileRoutePath("profile", onboardingQuery));
       return;
     }
     // persona / basic：整页跳转丢弃草稿。不调 reloadLatestProfile（它保留脏字段），也不就地切视图。
+    clearProfileEditorDraft();
     window.location.assign(profileRoutePath("profile", onboardingQuery));
   }
 
@@ -134,7 +137,7 @@ export function ProfileScreens({
         ) : activeView === "persona" ? (
           <ProfilePersona session={session} />
         ) : activeView === "basic" ? (
-          <ProfileBasic aria-label={t({ en: "Edit basic profile", zh: "编辑基础资料" })} formRef={basicFormRef} onSubmit={() => session.saveProfile("basic")} session={session} />
+          <ProfileBasic aria-label={t({ en: "Edit basic profile", zh: "编辑基础资料" })} formRef={basicFormRef} onSubmit={() => session.saveProfile("basic", { requireDirectHandle: true })} session={session} />
         ) : activeView === "settings" ? (
           <ProfileSettings session={session} onboardingQuery={onboardingQuery} />
         ) : (

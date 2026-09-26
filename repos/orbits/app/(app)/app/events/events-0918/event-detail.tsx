@@ -522,7 +522,7 @@ function RecapBody({
             {event.descriptionZh || event.summaryZh || ""}
           </p>
         </div>
-        <div className="ev-recap-card">
+        {youRsvped ? <div className="ev-recap-card">
           <div className="ev-recap-card-head">
             <span className="ev-recap-card-title">
               <span aria-hidden="true" className="ev-icon-44">◎</span>
@@ -552,14 +552,10 @@ function RecapBody({
             </div>
           ) : (
             <p className="ev-p ev-muted">
-              {youRsvped
-                ? t({ en: "The attendee roster for this event has not been published.", zh: "本场活动的参会者名单尚未发布。" })
-                : event.status === "ended"
-                  ? t({ en: "This event has ended. Private participant records are only available to confirmed attendees.", zh: "活动已结束；参会者名单仅向已确认参会者开放。" })
-                  : t({ en: "Private participant records are only available to confirmed attendees.", zh: "参会者名单仅向已确认参会者开放。" })}
+              {t({ en: "The attendee roster for this event has not been published.", zh: "本场活动的参会者名单尚未发布。" })}
             </p>
           )}
-        </div>
+        </div> : null}
         <div className="ev-banner">
           <span aria-hidden="true" className="ev-icon-44">◎</span>
           <span className="ev-banner-copy">
@@ -738,9 +734,11 @@ export function EventDetail({
     const people = recapPeople(event, summary, youRsvped);
     const recapTabs: { id: RecapTab; label: string }[] = [
       { id: "recap", label: t({ en: "Recap", zh: "回顾" }) },
-      { id: "people", label: t({ en: "Attendees", zh: "参会者" }) },
-      { id: "notes", label: t({ en: "Notes", zh: "交流记录" }) },
-      { id: "summary", label: t({ en: "Summary", zh: "生成总结" }) },
+      ...(youRsvped ? [
+        { id: "people" as const, label: t({ en: "Attendees", zh: "参会者" }) },
+        { id: "notes" as const, label: t({ en: "Notes", zh: "交流记录" }) },
+        { id: "summary" as const, label: t({ en: "Summary", zh: "生成总结" }) },
+      ] : []),
     ];
     return (
       <main className="ev-main" data-appscroll data-event-journey-state={stage} data-events-view="recap">
@@ -792,12 +790,12 @@ export function EventDetail({
   const tabs: { id: DetailTab; label: string }[] = [
     { id: "intro", label: t({ en: "About", zh: "介绍" }) },
     { id: "agenda", label: t({ en: "Agenda", zh: "议程" }) },
-    { id: "people", label: t({ en: "Attendees", zh: "参会者" }) },
+    ...(youRsvped ? [{ id: "people" as const, label: t({ en: "Attendees", zh: "参会者" }) }] : []),
     { id: "host", label: t({ en: "Organizer", zh: "主办方" }) },
   ];
   // 设计 88：dIntro = intro || agenda；dPeople = people || intro；dHost = host。
   const showIntro = tab === "intro" || tab === "agenda";
-  const showPeople = tab === "people" || tab === "intro";
+  const showPeople = youRsvped && (tab === "people" || tab === "intro");
   const showHost = tab === "host";
   const tags = event.tags.filter((tag) => tag.trim());
 
@@ -846,9 +844,11 @@ export function EventDetail({
         <div className="ev-panel" data-events-panel="intro" hidden={!showIntro}>
           <IntroPanel event={event} t={t} />
         </div>
-        <div className="ev-panel" data-events-panel="people" hidden={!showPeople}>
-          {peoplePanel}
-        </div>
+        {youRsvped ? (
+          <div className="ev-panel" data-events-panel="people" hidden={!showPeople}>
+            {peoplePanel}
+          </div>
+        ) : null}
         <div className="ev-panel" data-events-panel="host" hidden={!showHost}>
           <HostPanel canOpenOperations={canOpenOperations} event={event} t={t} />
         </div>

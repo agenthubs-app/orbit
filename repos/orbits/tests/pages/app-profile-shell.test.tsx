@@ -148,7 +148,7 @@ test("onboarding banner lists the missing fields and links to the basic editor",
   const html = renderToStaticMarkup(
     <ProfileShell view="basic" session={session()} onboardingBanner={{ missing: ["生日", "二级行业"], go: "/app/profile?view=basic&onboarding=1&next=%2Fapp%2Fhome" }}>x</ProfileShell>,
   );
-  assert.match(html, /完成基础资料后才能进入 iOrbit、活动、人脉/);
+  assert.match(html, /第一步：编辑个人资料。完成必填的基础资料后，才能进入 iOrbit、活动和人脉。/);
   assert.match(html, /还需填写：生日、二级行业/);
   assert.match(html, /class="pc-notice pc-notice-warning"/);
   assert.match(html, /<a[^>]*class="btn pc-btn-primary"[^>]*href="\/app\/profile\?view=basic&amp;onboarding=1&amp;next=%2Fapp%2Fhome"[^>]*>去填写<\/a>/);

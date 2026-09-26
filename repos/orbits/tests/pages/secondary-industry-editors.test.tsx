@@ -55,6 +55,7 @@ test("Web profile selects a parent and child, verifies a real actor-scoped readb
   await service.updateProfile({
     bio: "Keep this bio",
     displayName: "Editor A",
+    handles: { wechatId: "editor-a" },
     homeMarket: "Legacy market",
     industry: "Legacy raw industry",
     primaryIndustryId: "technology_internet",
@@ -71,7 +72,7 @@ test("Web profile selects a parent and child, verifies a real actor-scoped readb
     return handlers.GET(request);
   }) as typeof fetch);
   const model = { industries: [], offeringTags: [], seekingTags: [], topics: [], profile: {
-    fullName: "Editor A", headline: "", company: "", title: "", industry: "Legacy raw industry", intro: "", bio: "Keep this bio", email: "", wechatName: "", lineId: "", offering: [], seeking: [], topics: [],
+    fullName: "Editor A", headline: "", company: "", title: "", industry: "Legacy raw industry", intro: "", bio: "Keep this bio", email: "", wechatName: "editor-a", lineId: "", offering: [], seeking: [], topics: [],
     birthDate: null, expectedUpdatedAt: null, hasPersistedProfile: false, onboarding: { policyVersion: 1 as const, status: "incomplete" as const, missingFields: [] },
   } } satisfies OrbitProfileEditorViewModel;
   let root!: ReactTestRenderer;

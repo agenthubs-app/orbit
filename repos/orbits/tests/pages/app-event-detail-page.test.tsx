@@ -112,7 +112,8 @@ test("event journey renders unregistered, registered, and ended as exclusive pro
 
   assert.match(pre, /data-event-journey-state="pre"/);
   assert.match(pre, />立即报名<|>Register now</);
-  assert.match(pre, /报名后可见|appear here after you register/);
+  assert.doesNotMatch(pre, /role="tab" type="button">(?:参会者|Attendees)</);
+  assert.doesNotMatch(pre, /data-events-panel="people"/);
   assert.doesNotMatch(pre, /data-event-participant-directory/);
   assert.doesNotMatch(pre, /修改报名信息|Edit registration/);
   assert.match(joined, /data-event-journey-state="joined"/);

@@ -89,10 +89,14 @@ function profileRecord(
   user: AuthUserDTO,
   workspaceId: string,
 ): LiveRecord<Record<string, unknown>> {
-  const profile: UserProfileDTO = {
+  const profile: UserProfileDTO & { displayNameConfirmed: boolean } = {
     id: `profile:${user.id}`,
     accountId: user.id,
     displayName: user.displayName,
+    // Password registration only knows an email-derived technical label. Keep
+    // it for account/session identity, but do not present it as a name the user
+    // supplied in profile onboarding. OAuth providers do supply a real name.
+    displayNameConfirmed: user.provider !== "credentials",
     timezone: "Asia/Tokyo",
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,

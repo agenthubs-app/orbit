@@ -29,6 +29,10 @@ import {
   validateProfileSaveDraft,
 } from "../profile-save-model";
 import { ONBOARDING_FIELD_LABEL } from "./profile-model";
+import {
+  readProfileEditorDraft,
+  writeProfileEditorDraft,
+} from "./profile-editor-draft";
 
 type Translate = ReturnType<typeof useOrbitLanguage>["t"];
 
@@ -87,7 +91,7 @@ export interface ProfileEditorSession {
   updateBirthDate(value: string): void;
   updateIndustry(sel: IndustrySelectionContract): void;
   toggleTag(field: TagField, tag: string): void;
-  saveProfile(scope: ProfileEditorSaveScope): Promise<void>;
+  saveProfile(scope: ProfileEditorSaveScope, options?: { requireDirectHandle?: boolean }): Promise<void>;
   reloadLatestProfile(): Promise<void>;
   onTextExtract(): Promise<void>;
   onboardingNext?: string;
@@ -172,21 +176,37 @@ export function useProfileEditorSession({
           throw new Error("Profile read failed");
         }
         if (!active || !mountedRef.current || operationEpoch.current !== loadEpoch) return;
-        if (envelope.data.profile) {
-          setProfile(current => profileEditorViewFromPayload(current, envelope.data!));
-          setDirtyFields(new Set());
-          setDirtyHandleFields(new Set());
-        } else {
-          setProfile(current => ({
-            ...current,
-            birthDate: null,
-            expectedUpdatedAt: null,
-            hasPersistedProfile: false,
-            onboarding: envelope.data!.onboarding!,
-            primaryIndustryId: undefined,
-            secondaryIndustryId: undefined,
+        const latest = envelope.data.profile
+          ? profileEditorViewFromPayload(initialProfile, envelope.data)
+          : ({
+              ...initialProfile,
+              birthDate: null,
+              expectedUpdatedAt: null,
+              hasPersistedProfile: false,
+              onboarding: envelope.data.onboarding,
+              primaryIndustryId: undefined,
+              secondaryIndustryId: undefined,
+            } satisfies EditableProfile);
+        const defaultDirty = envelope.data.profile
+          ? new Set<ProfileEditorField>()
+          : new Set<ProfileEditorField>(["displayName"]);
+        const stored = readProfileEditorDraft(latest.email);
+        if (stored) {
+          const storedDirty = new Set(stored.dirtyFields);
+          const storedHandleDirty = new Set(stored.dirtyHandleFields);
+          setProfile(mergeProfilePreservingDraft({
+            current: stored.profile,
+            dirtyHandleFields: storedHandleDirty,
+            latest,
+            preserve: storedDirty,
           }));
-          setDirtyFields(current => new Set(current).add("displayName"));
+          setDirtyFields(storedDirty);
+          setDirtyHandleFields(storedHandleDirty);
+          setMethod(stored.method);
+          setExtractText(stored.extractText);
+        } else {
+          setProfile(latest);
+          setDirtyFields(defaultDirty);
           setDirtyHandleFields(new Set());
         }
         setIndustryReady(true);
@@ -201,6 +221,18 @@ export function useProfileEditorSession({
       mountedRef.current = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!industryReady || !profile.email) return;
+    writeProfileEditorDraft({
+      actorKey: profile.email,
+      dirtyFields: [...dirtyFields],
+      dirtyHandleFields: [...dirtyHandleFields],
+      extractText,
+      method,
+      profile,
+    });
+  }, [dirtyFields, dirtyHandleFields, extractText, industryReady, method, profile]);
 
   function markDirty(field: ProfileEditorField) {
     setDirtyFields(current => new Set(current).add(field));
@@ -325,7 +357,7 @@ export function useProfileEditorSession({
     });
   }
 
-  async function saveProfile(scope: ProfileEditorSaveScope) {
+  async function saveProfile(scope: ProfileEditorSaveScope, options: { requireDirectHandle?: boolean } = {}) {
     if (editorDisabled || reloadInFlight.current !== null || saveInFlight.current !== null) return;
     const scopeFields = profileSaveScopeFields(scope);
     const scopeDirty = new Set([...dirtyFields].filter(field => scopeFields.has(field)));
@@ -335,7 +367,7 @@ export function useProfileEditorSession({
       return;
     }
     const dirtyHandleFieldsAtSave = new Set(dirtyHandleFields);
-    const validation = validateProfileSaveDraft({ profile, scope, scopeDirty });
+    const validation = validateProfileSaveDraft({ profile, requireDirectHandle: options.requireDirectHandle, scope, scopeDirty });
     if (validation.ok === false) {
       setMessageKind("error");
       setMessage(t(validation.message));

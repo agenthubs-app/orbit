@@ -85,10 +85,10 @@ const FULL: Partial<OrbitProfileEditorView> = {
   onboarding: { policyVersion: 1, status: "complete", missingFields: [] },
 };
 
-test("basic screen wraps everything in a form, marks the four required fields, and puts 姓名 first", () => {
+test("basic screen wraps everything in a form, marks core fields plus WeChat/LINE choice, and puts 姓名 first", () => {
   const html = renderToStaticMarkup(<ProfileBasic session={session(FULL)} onSubmit={async () => undefined} />);
   assert.match(html, /^<form /);
-  assert.equal((html.match(/<span class="pc-required">必填<\/span>/g) ?? []).length, 4);
+  assert.equal((html.match(/<span class="pc-required">必填<\/span>/g) ?? []).length, 6);
   for (const label of ["姓名", "一级行业", "二级行业", "生日"]) {
     assert.match(html, new RegExp(`${label}<span class="pc-required">必填</span>`), `${label} required`);
   }
@@ -110,6 +110,9 @@ test("basic screen wraps everything in a form, marks the four required fields, a
   // 联系方式：WeChat / LINE 可编辑，Email 只读，其余 handle 只读行
   assert.match(html, /<input [^>]*aria-label="WeChat"[^>]*value="zs_wechat"/);
   assert.match(html, /<input [^>]*aria-label="LINE"[^>]*value="zs_line"/);
+  assert.match(html, /WeChat（与 LINE 二选一必填）<span class="pc-required">必填<\/span>/);
+  assert.match(html, /LINE（与 WeChat 二选一必填）<span class="pc-required">必填<\/span>/);
+  assert.match(html, /WeChat 或 LINE 任选一项必填/);
   assert.doesNotMatch(html, /<input [^>]*value="zhangsan@example.com"/);
   assert.match(html, /Email<\/span><span class="pc-readonly">zhangsan@example.com<\/span>/);
   assert.match(html, /LinkedIn<\/span><span class="pc-readonly">linkedin\.com\/in\/zs<\/span>/);
@@ -216,6 +219,7 @@ test("PROFILE_STYLES carry the basic-screen rules scoped to the page", () => {
 function payload(overrides: Partial<ProfilePayload> = {}, manual: Partial<ManualProfile> = {}): ProfilePayload {
   const profileRecord: ManualProfile = {
     displayName: "张三",
+    handles: { wechatId: "wx-zhang" },
     headline: "",
     id: "profile:zhang",
     industry: "",
@@ -251,6 +255,8 @@ function viewModel(): OrbitProfileEditorViewModel {
       expectedUpdatedAt: "2026-09-17T00:00:00.000Z",
       primaryIndustryId: "technology_internet",
       secondaryIndustryId: "technology_internet.ai_data",
+      handles: { wechatId: "wx-zhang" },
+      wechatName: "wx-zhang",
       onboarding: { policyVersion: 1, status: "incomplete", missingFields: ["birthDate"] },
     }),
   } as unknown as OrbitProfileEditorViewModel;
@@ -307,7 +313,7 @@ test("ProfileScreens basic (onboarding=1): banner shows, saving without a birthd
   assert.equal(root.root.findAllByProps({ "data-profile-view": "basic" }).length >= 1, true);
   const banner = root.root.findAllByProps({ role: "status" }).find((n) => n.props.className?.includes("pc-notice-warning"));
   assert.ok(banner, "gate banner");
-  assert.match(textOf(banner), /完成基础资料后才能进入/);
+  assert.match(textOf(banner), /第一步：编辑个人资料/);
 
   const name = root.root.findAllByType("input")[0];
   assert.equal(name.props.value, "张三");

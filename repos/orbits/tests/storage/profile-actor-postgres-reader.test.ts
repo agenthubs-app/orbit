@@ -113,7 +113,7 @@ test("uses strict JSON identity predicates and two narrow ordered queries", asyn
   const profileFields = calls[1].values?.[2];
   assert.deepEqual(accountFields, ["id", "name", "createdAt", "updatedAt"]);
   assert.deepEqual(profileFields, [
-    "id", "accountId", "displayName", "birthDate", "role", "timezone",
+    "id", "accountId", "displayName", "displayNameConfirmed", "birthDate", "role", "timezone",
     "headline", "handles", "homeMarket", "organization",
     "preferredFollowUpWindow", "preferredIntroChannels", "preferredLanguage",
     "relationshipGoal", "targetRelationshipTypes", "spokenLanguages",

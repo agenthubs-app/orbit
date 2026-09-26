@@ -36,6 +36,7 @@ const PROFILE_PAYLOAD_FIELDS = [
   "id",
   "accountId",
   "displayName",
+  "displayNameConfirmed",
   "birthDate",
   "role",
   "timezone",

@@ -30,6 +30,8 @@ Service factory 提供 profile、document extraction 和 signal review queue ser
 
 `/app/profile` 使用服务端返回的 `onboarding.policyVersion = 1` 作为唯一引导状态。该政策只检查 `displayName`、`primaryIndustryId`、`secondaryIndustryId` 和私密 `birthDate`；页面不会用当前登录账号的显示名预填值冒充已保存完成。生日只进入本人编辑器和私密状态提示，不能进入名片、公开投影或 AI 资料上下文。
 
+邮箱密码注册产生的账号显示名只是认证层技术占位。认证建档以 `displayNameConfirmed: false` 标记，资料读取时投影为空，直到用户显式保存姓名；账号容器名称（例如“某某的 Orbit”）也不得回退为公司。Web 基础资料保存另要求 WeChat 或 LINE 至少填写一项。未保存字段按当前账号保存在标签页级 `sessionStorage`，从 iOrbit 设置或连接页返回时恢复，保存完成后清除。
+
 基础资料和匹配偏好分开保存。基础资料的新一句话介绍写入 `bio`，限制为 80 个可见字符，并保留已有 `headline` 与 `relationshipGoal`；行业编辑使用稳定的父子 ID，旧 `industry` 文字只读保留。联系方式保存时先以服务端实际 handles 对象为基线，再应用可见字段，避免替换对象时丢失 phone、website、LinkedIn 等隐藏句柄。匹配保存只提交变更的 offering、seeking 或 topics；前两者各最多 5 项，topics 不在页面臆造数量上限，也不把它们镜像到市场、介绍渠道或关系类型字段。
 
 页面写入使用 `expectedUpdatedAt` 与 `mutationId`。首次创建版本为 `null`，同一请求的不确定重试复用相同请求体和 ID，正文变化生成新 ID；PUT 回执必须匹配后，再用独立 GET 仅核对本次提交的字段。版本冲突保留本地草稿并要求加载最新版本，加载后把未保存字段合并回草稿再由用户再次保存。可选建议或用户主动触发的资料提取失败，不阻塞手动资料加载。

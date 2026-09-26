@@ -21,6 +21,7 @@ import {
 
 export interface LiveProfileRecord extends UserProfileDTO {
   birthDate?: string | null;
+  displayNameConfirmed?: boolean;
   headline?: string;
   homeMarket?: string;
   organization?: string;
@@ -147,6 +148,10 @@ function profileFromRecord(
     id: payload.id,
     accountId: payload.accountId,
     displayName: payload.displayName,
+    displayNameConfirmed:
+      typeof payload.displayNameConfirmed === "boolean"
+        ? payload.displayNameConfirmed
+        : undefined,
     birthDate: payload.birthDate === null ? null : optionalString(payload.birthDate),
     role: optionalString(payload.role),
     timezone: optionalString(payload.timezone),

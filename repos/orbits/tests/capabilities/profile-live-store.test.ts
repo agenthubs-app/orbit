@@ -43,7 +43,7 @@ test("live profile service reads and upserts generated profile records", async (
   assert.equal(profile.data.profile?.id, fixtureProfile.id);
   assert.equal(profile.data.profile?.displayName, fixtureProfile.displayName);
   assert.equal(profile.data.profile?.role, fixtureProfile.role);
-  assert.equal(profile.data.profile?.organization, fixtureAccount.name);
+  assert.equal(profile.data.profile?.organization, "");
   assert.equal(profile.data.profile?.homeMarket, "");
   assert.equal(profile.data.profile?.preferredLanguage, "zh");
   assert.equal(profile.data.provenance.source, `live-record-store:profiles:${workspaceId}`);
@@ -187,4 +187,55 @@ test("live profile service requires an actor and cannot read another actor's pro
   assert.equal(missingActor.error.code, "PROFILE_ACTOR_REQUIRED");
   assert.equal(otherActor.success, true);
   assert.equal(otherActor.data.profile, null);
+});
+
+test("auth placeholders do not become a profile name or company", async () => {
+  const actorId = "account:email-signup";
+  const workspaceId = "workspace:profile-email-signup";
+  const timestamp = "2026-09-26T00:00:00.000Z";
+  const store = createMemoryLiveRecordStore<Record<string, unknown>>([
+    {
+      workspaceId,
+      collectionName: "accounts",
+      recordId: actorId,
+      userId: actorId,
+      sourceType: "manual",
+      sourceId: `auth-account:${actorId}`,
+      evidenceIds: [`evidence:auth-account:${actorId}`],
+      lifecycleState: "active",
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      payload: { id: actorId, name: "member 的 Orbit", createdAt: timestamp, updatedAt: timestamp },
+    },
+    {
+      workspaceId,
+      collectionName: "profiles",
+      recordId: `profile:${actorId}`,
+      userId: actorId,
+      sourceType: "manual",
+      sourceId: `auth-profile:${actorId}`,
+      evidenceIds: [`evidence:auth-profile:${actorId}`],
+      lifecycleState: "active",
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      payload: {
+        id: `profile:${actorId}`,
+        accountId: actorId,
+        displayName: "member",
+        displayNameConfirmed: false,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      },
+    },
+  ]);
+  const result = await createLiveProfileService({
+    now: () => timestamp,
+    provider: createStorageProfileProvider({ store, workspaceId }),
+  }).getProfile({ actorId });
+
+  assert.equal(result.success, true);
+  if (!result.success) throw new Error("Profile read failed");
+  assert.equal(result.data.profile?.displayName, "");
+  assert.equal(result.data.profile?.organization, "");
+  assert.deepEqual(result.data.onboarding?.missingFields, ["displayName", "primaryIndustryId", "secondaryIndustryId", "birthDate"]);
 });
