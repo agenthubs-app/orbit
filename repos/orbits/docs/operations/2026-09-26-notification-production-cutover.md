@@ -3,7 +3,9 @@
 ## Production deployment
 
 - Vercel project: `orbit-staging-20260917`.
-- Deployment: `dpl_FvQUtuQ12pb3sh8ejBt93fozRyqq`.
+- Producer deployment: `dpl_FvQUtuQ12pb3sh8ejBt93fozRyqq`.
+- Final deployment with the legacy delivery scan removed:
+  `dpl_9veYnUJEUedv1LXBUyhQdaGcjPxe` (`Ready`).
 - Production aliases: `orbitailink.com`, `www.orbitailink.com`.
 - `ORBIT_CANONICAL_INBOX_PROJECTION=1` is enabled for Production.
 
@@ -27,6 +29,10 @@ The zero-write migration plan was generated immediately before apply for every
 actor. Every plan had zero blocked deliveries. Batch
 `notification-cutover-20260926` was then applied to all four actors at generation
 1, with no conflicts.
+
+The post-deploy database check found four account rows and four enabled cutover
+rows, all with `legacyBlocked=true`. No legacy delivery remained in processing,
+unknown-receipt, scheduled, or retry-scheduled state.
 
 The delivery worker no longer contains the legacy signal refresh/materialization
 branch. An opted-in actor without a cutover row receives one typed cutover row in
