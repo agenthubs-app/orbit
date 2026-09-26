@@ -149,7 +149,7 @@ function ReadCostView({ data, t, zh }: { data: ReadCostOverview; t: (key: keyof 
         {data.trend.route === null ? <p className="orbit-host-muted">{t("noData")}</p> : (
           <>
             <p className="orbit-host-muted" style={{ margin: "0 0 10px" }}>{t("trendHint")}</p>
-            <div role="img" aria-label={`${t("trend")} ${data.trend.route}`} style={{ alignItems: "flex-end", borderBottom: "1px solid var(--border-strong)", display: "flex", gap: 2, height: 140 }}>
+            <div role="img" aria-label={`${t("trend")} ${data.trend.route}`} style={{ alignItems: "flex-end", borderBottom: "1px solid var(--border-strong)", display: "flex", gap: 4, height: 140 }}>
               {data.trend.points.map((p) => (
                 <div
                   key={p.day}
