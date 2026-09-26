@@ -42,6 +42,8 @@ export interface AgentRuntimeRepository {
    */
   getReceiptByIdempotencyKey: (
     idempotencyKey: string,
+    /** Receipts belong to one run; the lookup reads only that run's rows (0103). */
+    runId: string,
   ) => Promise<AgentExecutionReceipt | null>;
 }
 
@@ -152,9 +154,10 @@ export function createMemoryAgentRuntimeRepository(): AgentRuntimeRepository {
       }
       return clone(claimed);
     },
-    async getReceiptByIdempotencyKey(idempotencyKey) {
+    async getReceiptByIdempotencyKey(idempotencyKey, runId) {
       const receipt = [...receipts.values()].find(
         (candidate) =>
+          candidate.runId === runId &&
           candidate.idempotencyKey === idempotencyKey &&
           (candidate.status === "completed" ||
             candidate.status === "undone"),

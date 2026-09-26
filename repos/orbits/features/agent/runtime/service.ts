@@ -46,6 +46,19 @@ export interface AgentRuntimeService {
     trigger: AgentRun["trigger"];
     createdAt?: string;
   }) => Promise<AgentRun>;
+  /**
+   * Records a run that finished within one request (a plain AI answer) with a
+   * single write: no pre-read, no step rows, no analytics rows. The timing
+   * spans stay on the request record and are read back from there (0103).
+   */
+  recordCompletedRun: (input: {
+    runId: string;
+    workflowKey: string;
+    workflowVersion?: number;
+    conversationId?: string;
+    trigger: AgentRun["trigger"];
+    createdAt?: string;
+  }) => Promise<AgentRun>;
   addRunStep: (
     step: Omit<AgentRunStep, "createdAt" | "updatedAt"> & {
       createdAt?: string;
@@ -153,7 +166,7 @@ export function agentRunProgress(detail: AgentRunDetail): AgentRunProgress {
   };
 }
 
-function orderedRunDetail(detail: AgentRunDetail): AgentRunDetail {
+export function orderedRunDetail(detail: AgentRunDetail): AgentRunDetail {
   return {
     ...detail,
     steps: [...detail.steps].sort(
@@ -436,6 +449,24 @@ export function createAgentRuntimeService({
         runId: run.runId,
         workflowKey: run.workflowKey,
       });
+      return run;
+    },
+    async recordCompletedRun(input) {
+      const timestamp = input.createdAt ?? now();
+      const run: AgentRun = {
+        runId: input.runId,
+        workflowKey: input.workflowKey,
+        workflowVersion: input.workflowVersion ?? 1,
+        conversationId: input.conversationId,
+        trigger: input.trigger,
+        status: "completed",
+        actionIds: [],
+        createdAt: timestamp,
+        startedAt: timestamp,
+        completedAt: timestamp,
+        updatedAt: timestamp,
+      };
+      await repository.saveRun(run);
       return run;
     },
     async addRunStep(input) {
@@ -963,7 +994,7 @@ export function createAgentRuntimeService({
       for (const operation of executedOperations) {
         const undoIdempotencyKey = `undo:${operation.idempotencyKey}`;
         const existingReceipt =
-          await repository.getReceiptByIdempotencyKey(undoIdempotencyKey);
+          await repository.getReceiptByIdempotencyKey(undoIdempotencyKey, action.runId);
         if (existingReceipt?.status === "undone") continue;
         await executors.compensate(operation, {
           actionId,
@@ -1059,7 +1090,7 @@ export function createAgentRuntimeService({
         }
 
         const existingReceipt =
-          await repository.getReceiptByIdempotencyKey(event.idempotencyKey);
+          await repository.getReceiptByIdempotencyKey(event.idempotencyKey, event.runId);
         if (existingReceipt) {
           await repository.saveOutbox({
             ...event,

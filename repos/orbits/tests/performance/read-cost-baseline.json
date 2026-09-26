@@ -33,6 +33,11 @@
       "queries": 1,
       "rows": 13,
       "bytes": 21268
+    },
+    "ai.run": {
+      "queries": 3,
+      "rows": 5,
+      "bytes": 9525
     }
   },
   "history": [
@@ -108,6 +113,23 @@
         "to": 357627
       },
       "why": "Gaps and opportunities come from the actor's dashboard snapshot (orbit_records collection dashboard_snapshots) keyed by the relationship-graph version (count/sum/max of sync_revision over the six graph collections). One statement returns the version and the stored snapshot and replaces the full-graph read (~2.96MB) while the data is unchanged; the chain setup computes the snapshot once, as the first open after a write does. The seeded schema carries sync_revision as on the development database (tests/support/sync-revision-fixture.ts). Equality with the fresh JS computation, invalidation and isolation: tests/services/dashboard-snapshot-postgres.test.ts. The 'dashboard' chain (GET /api/dashboard, 6660 bytes) does not read gaps or opportunities and is unchanged."
+    },
+    {
+      "sprint": "0103",
+      "chain": "ai.run",
+      "queries": {
+        "from": 5,
+        "to": 3
+      },
+      "rows": {
+        "from": 164,
+        "to": 5
+      },
+      "bytes": {
+        "from": 197115,
+        "to": 9525
+      },
+      "why": "New chain (GET /api/ai/runs/[id]). The pre-0103 getRun listed the actor subspace whole (steps, actions, outbox, receipts; 164 rows with 20 legacy plain runs, growing with history) and filtered by run id in memory; it now reads the run by record id and its rows by envelope target (orbit_records_target_idx), plus the turn request record by run id. From-numbers measured on the same seed against the pre-0103 provider."
     }
   ]
 }

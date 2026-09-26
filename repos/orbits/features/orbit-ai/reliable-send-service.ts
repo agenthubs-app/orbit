@@ -54,6 +54,20 @@ export interface OrbitAgentChatRequestStore {
     fingerprint: string,
     sessionId: string,
   ): Promise<"existing" | "started">;
+  /**
+   * The actor's request record whose stored result carries this agent run id
+   * (0103: the run's timing steps are read from here). Exact, indexed lookup.
+   */
+  findByRunId?(runId: string): Promise<{ result: unknown; updatedAt?: string } | null>;
+}
+
+/** The agent run id a stored conversation result refers to, if any. */
+export function runIdOfResult(result: unknown): string | null {
+  if (typeof result !== "object" || result === null) return null;
+  const data = (result as { data?: unknown }).data;
+  if (typeof data !== "object" || data === null) return null;
+  const runId = (data as { runId?: unknown }).runId;
+  return typeof runId === "string" && runId.trim() ? runId : null;
 }
 
 export class ReliableSendError extends Error {
@@ -115,6 +129,14 @@ export function createMemoryOrbitAgentChatRequestStore(): OrbitAgentChatRequestS
         sessionId,
         state: "completed",
       });
+    },
+    async findByRunId(runId: string) {
+      for (const record of records.values()) {
+        if (record.result !== undefined && runIdOfResult(record.result) === runId) {
+          return { result: record.result };
+        }
+      }
+      return null;
     },
     async get<TResult>(requestId: string) {
       return (

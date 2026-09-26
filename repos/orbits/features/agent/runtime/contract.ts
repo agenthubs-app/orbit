@@ -129,6 +129,8 @@ export interface AgentRunStep {
   };
   startedAt?: string;
   completedAt?: string;
+  /** Measured duration; present on steps derived from a conversation's timing spans (0103). */
+  durationMs?: number;
   createdAt: string;
   updatedAt: string;
 }

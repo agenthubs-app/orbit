@@ -136,6 +136,7 @@ test("each read-cost ledger chain yields one receipt row whose queries, rows and
     "dashboard": "/api/dashboard",
     "contacts.dashboard": "/api/mobile/contacts-dashboard",
     "events.list": "/api/events",
+    "ai.run": "/api/ai/runs/[id]",
   };
   for (const [chain, run] of Object.entries(chains)) {
     const scope = nextRequestScope(routes[chain]!, APP_HEADERS);

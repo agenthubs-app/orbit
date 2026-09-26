@@ -465,16 +465,22 @@ test("storage repository returns completed compensation but ignores failed attem
   });
 
   assert.equal(
-    await repository.getReceiptByIdempotencyKey("failed-attempt"),
+    await repository.getReceiptByIdempotencyKey("failed-attempt", baseReceipt.runId),
     null,
   );
   assert.equal(
     (
       await repository.getReceiptByIdempotencyKey(
         "undo:completed-write",
+        baseReceipt.runId,
       )
     )?.status,
     "undone",
+  );
+  // 0103: the lookup reads one run's receipts; another run never matches.
+  assert.equal(
+    await repository.getReceiptByIdempotencyKey("undo:completed-write", "run:another"),
+    null,
   );
 });
 

@@ -10,6 +10,7 @@ import {
 import {
   ReliableSendError,
   createMemoryOrbitAgentChatRequestStore,
+  runIdOfResult,
   type OrbitAgentChatRequestStore,
   type ReliableSendRequestRecord,
 } from "../reliable-send-service";
@@ -105,9 +106,13 @@ export function createTransactionalOrbitAgentChatRequestStore(input: {
         throw new ReliableSendError("REQUEST_ID_REUSED");
       }
       const at = now();
+      // 0103: the envelope names the agent run so the run detail can read this
+      // turn's timing spans by run id (orbit_records_target_idx).
+      const runId = runIdOfResult(result);
       await store.upsertRecord({
         collectionName: REQUEST_COLLECTION,
         createdAt: existing?.createdAt ?? at,
+        ...(runId ? { targetType: "agent_run", targetId: runId } : {}),
         evidenceIds: [],
         lifecycleState: "active",
         payload: {
@@ -130,6 +135,21 @@ export function createTransactionalOrbitAgentChatRequestStore(input: {
   }
 
   return {
+    async findByRunId(runId) {
+      const store = createPostgresLiveRecordStore<Record<string, unknown>>({
+        client: input.client,
+      });
+      const [record] = await store.listRecords({
+        collectionName: REQUEST_COLLECTION,
+        limit: 1,
+        targetId: runId,
+        targetType: "agent_run",
+        userId: actorId,
+        workspaceId: input.workspaceId,
+      });
+      if (!record || record.userId !== actorId || runIdOfResult(record.payload.result) !== runId) return null;
+      return { result: record.payload.result, updatedAt: record.updatedAt };
+    },
     complete: (requestId, fingerprint, result) =>
       write(requestId, fingerprint, "completed", result),
     get: read,

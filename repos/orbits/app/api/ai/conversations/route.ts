@@ -607,59 +607,28 @@ function entityDraftKindLabel(kind: string): string {
   return { event: "活动", note: "笔记", schedule: "日程", task: "待办" }[kind] ?? "记录";
 }
 
+// Sprint 0103 (AI trace A1): the turn's timing spans stay on the reliable
+// request record (result.data.diagnostics.timings) and GET /api/ai/runs/[id]
+// derives the run's steps from there. No agentRunSteps or agentAnalyticsEvents
+// rows are written, and a new run is recorded with one write, no pre-read.
 async function persistConversationRunTrace(
   result: OrbitAgentConversationResult,
   runtime: AgentRuntimeService,
 ): Promise<OrbitAgentConversationResult> {
   if (result.success === false) return result;
   const existingRunId = result.data.runId?.trim();
-  const runId = existingRunId || `run:conversation:${crypto.randomUUID()}`;
-  const conversationId = result.data.activeConversationId?.trim() || undefined;
-  const run = await runtime.createRun({
-    conversationId,
+  if (existingRunId) {
+    // An action run was already recorded for this turn; it stays as it is.
+    return { success: true, data: { ...result.data, runId: existingRunId } };
+  }
+  const runId = `run:conversation:${crypto.randomUUID()}`;
+  await runtime.recordCompletedRun({
+    conversationId: result.data.activeConversationId?.trim() || undefined,
     runId,
     trigger: "chat",
     workflowKey: "agent_conversation_v1",
     workflowVersion: 1,
   });
-  const spans = result.data.diagnostics?.timings ?? [];
-  const traceSteps =
-    spans.length > 0
-      ? spans
-      : [
-          {
-            durationMs: 0,
-            phase: "final_response",
-            skipped: false,
-          },
-        ];
-  for (let index = 0; index < traceSteps.length; index += 1) {
-    const span = traceSteps[index];
-    await runtime.addRunStep({
-      attempt: 1,
-      inputRef:
-        index === 0 && conversationId
-          ? `conversation:${conversationId}`
-          : undefined,
-      kind:
-        span.phase === "planner" || span.phase === "synthesis"
-          ? "ai"
-          : span.phase === "artifact_generation" ||
-              span.phase === "tool_mapping"
-            ? "tool"
-            : "deterministic",
-      name: span.phase,
-      outputRef:
-        index === traceSteps.length - 1 ? `${runId}:response` : undefined,
-      runId,
-      sequence: index + 1,
-      status: span.skipped ? "skipped" : "completed",
-      stepId: `${runId}:step:${index + 1}:${span.phase}`,
-    });
-  }
-  if (!existingRunId && run.status !== "completed") {
-    await runtime.updateRunStatus(runId, "completed");
-  }
   return {
     success: true,
     data: {

@@ -18,6 +18,41 @@ import type { AgentRuntimeRepository } from "../runtime/repository";
 
 const OUTBOX_LEASE_TIMEOUT_MS = 15 * 60_000;
 
+/**
+ * Sprint 0103 (AI trace A3): every step, action, outbox and receipt row carries
+ * its run in the record envelope (target_type/target_id, indexed by
+ * orbit_records_target_idx), so one run is read exactly instead of listing the
+ * actor's whole history and filtering in memory.
+ */
+export const AGENT_RUN_TARGET_TYPE = "agent_run";
+/** Rows one run may hold across steps, actions, outbox and receipts. */
+export const AGENT_RUN_CHILD_READ_LIMIT = 500;
+/** Newest actions the Agent ledger lists; older ones age out (A4 retention is 1 year). */
+export const AGENT_ACTION_LIST_LIMIT = 500;
+/** Store-only (mock, no SQL client) outbox scan; live claims go through SQL. */
+const STORE_OUTBOX_SCAN_LIMIT = 1000;
+
+/**
+ * Backfills the run target on rows written before 0103: agent runtime child
+ * rows (in the actor subspaces) and AI request records. Idempotent; it only
+ * updates rows whose target is still empty. Deletes nothing.
+ */
+export const AGENT_RUN_TARGET_BACKFILL_SQL = `
+  update orbit_records
+     set target_type = '${AGENT_RUN_TARGET_TYPE}',
+         target_id = case
+           when collection_name = 'orbit_agent_chat_requests' then payload->'result'->'data'->>'runId'
+           else payload->'entity'->>'runId'
+         end
+   where target_id is null
+     and (
+       (collection_name in ('agentRunSteps', 'agentActionsV2', 'agentOutbox', 'agentExecutionReceipts')
+         and coalesce(payload->'entity'->>'runId', '') <> '')
+       or (collection_name = 'orbit_agent_chat_requests'
+         and coalesce(payload->'result'->'data'->>'runId', '') <> '')
+     )
+`;
+
 export const AGENT_RUNTIME_LIVE_RECORD_COLLECTIONS = {
   runs: "agentRuns",
   runSteps: "agentRunSteps",
@@ -26,6 +61,14 @@ export const AGENT_RUNTIME_LIVE_RECORD_COLLECTIONS = {
   receipts: "agentExecutionReceipts",
   analytics: "agentAnalyticsEvents",
 } as const;
+
+/** Collections that make up a run detail; only these carry the run target. */
+const RUN_CHILD_COLLECTIONS: ReadonlySet<string> = new Set([
+  AGENT_RUNTIME_LIVE_RECORD_COLLECTIONS.runSteps,
+  AGENT_RUNTIME_LIVE_RECORD_COLLECTIONS.actions,
+  AGENT_RUNTIME_LIVE_RECORD_COLLECTIONS.outbox,
+  AGENT_RUNTIME_LIVE_RECORD_COLLECTIONS.receipts,
+]);
 
 interface AgentRuntimePayload extends Record<string, unknown> {
   entity: unknown;
@@ -70,6 +113,12 @@ function recordFor(
     typeof entity.createdAt === "string" ? entity.createdAt : now;
   const updatedAt =
     typeof entity.updatedAt === "string" ? entity.updatedAt : now;
+  const runId =
+    RUN_CHILD_COLLECTIONS.has(collectionName) &&
+    typeof entity.runId === "string" &&
+    entity.runId
+      ? entity.runId
+      : null;
   const evidenceIds = Array.isArray(entity.evidenceIds)
     ? entity.evidenceIds.filter(
         (value): value is string => typeof value === "string",
@@ -84,6 +133,7 @@ function recordFor(
     sourceId: recordId,
     sourceLabel: `Orbit Agent ${collectionName}`,
     evidenceIds,
+    ...(runId ? { targetType: AGENT_RUN_TARGET_TYPE, targetId: runId } : {}),
     lifecycleState: "active",
     searchText: JSON.stringify(entity),
     payload: { entity },
@@ -92,17 +142,48 @@ function recordFor(
   };
 }
 
-async function list<TEntity>(
-  store: LiveRecordStoreLike<AgentRuntimePayload>,
-  workspaceId: string,
-  collectionName: string,
+function entities<TEntity>(
+  records: readonly LiveRecord<AgentRuntimePayload>[],
   idKey: string,
-): Promise<TEntity[]> {
-  const records = await store.listRecords({ limit: "unbounded", collectionName, workspaceId });
+): TEntity[] {
   return records.flatMap((record) => {
     const entity = entityFromRecord<TEntity>(record, idKey);
     return entity ? [entity] : [];
   });
+}
+
+async function listBounded<TEntity>(
+  store: LiveRecordStoreLike<AgentRuntimePayload>,
+  workspaceId: string,
+  collectionName: string,
+  idKey: string,
+  limit: number,
+): Promise<TEntity[]> {
+  const records = await store.listRecords({ limit, collectionName, workspaceId });
+  if (records.length >= limit) {
+    console.warn(JSON.stringify({ event: "agent_runtime_list_limit_reached", collectionName, limit }));
+  }
+  return entities<TEntity>(records, idKey);
+}
+
+/** Every step, action, outbox and receipt row of one run, by its envelope target. */
+async function runChildRecords(
+  store: LiveRecordStoreLike<AgentRuntimePayload>,
+  workspaceId: string,
+  runId: string,
+  collectionName?: string,
+): Promise<readonly LiveRecord<AgentRuntimePayload>[]> {
+  const records = await store.listRecords({
+    workspaceId,
+    ...(collectionName ? { collectionName } : {}),
+    targetType: AGENT_RUN_TARGET_TYPE,
+    targetId: runId,
+    limit: AGENT_RUN_CHILD_READ_LIMIT,
+  });
+  if (records.length >= AGENT_RUN_CHILD_READ_LIMIT) {
+    console.warn(JSON.stringify({ event: "agent_run_child_read_limit_reached", runId, limit: AGENT_RUN_CHILD_READ_LIMIT }));
+  }
+  return records;
 }
 
 async function get<TEntity>(
@@ -153,11 +234,12 @@ export function createStorageAgentRuntimeRepository({
     const leaseExpiredBefore = new Date(
       Date.parse(input.now) - OUTBOX_LEASE_TIMEOUT_MS,
     ).toISOString();
-    const events = await list<AgentOutboxEvent>(
+    const events = await listBounded<AgentOutboxEvent>(
       store,
       workspaceId,
       AGENT_RUNTIME_LIVE_RECORD_COLLECTIONS.outbox,
       "outboxId",
+      STORE_OUTBOX_SCAN_LIMIT,
     );
     const claimed = events
       .filter(
@@ -203,32 +285,13 @@ export function createStorageAgentRuntimeRepository({
       );
       if (!run) return null;
 
-      const [steps, actions, outbox, receipts] = await Promise.all([
-        list<AgentRunStep>(
-          store,
-          workspaceId,
-          AGENT_RUNTIME_LIVE_RECORD_COLLECTIONS.runSteps,
-          "stepId",
-        ),
-        list<AgentActionRecord>(
-          store,
-          workspaceId,
-          AGENT_RUNTIME_LIVE_RECORD_COLLECTIONS.actions,
-          "actionId",
-        ),
-        list<AgentOutboxEvent>(
-          store,
-          workspaceId,
-          AGENT_RUNTIME_LIVE_RECORD_COLLECTIONS.outbox,
-          "outboxId",
-        ),
-        list<AgentExecutionReceipt>(
-          store,
-          workspaceId,
-          AGENT_RUNTIME_LIVE_RECORD_COLLECTIONS.receipts,
-          "receiptId",
-        ),
-      ]);
+      const children = await runChildRecords(store, workspaceId, runId);
+      const inCollection = (collectionName: string) =>
+        children.filter((record) => record.collectionName === collectionName);
+      const steps = entities<AgentRunStep>(inCollection(AGENT_RUNTIME_LIVE_RECORD_COLLECTIONS.runSteps), "stepId");
+      const actions = entities<AgentActionRecord>(inCollection(AGENT_RUNTIME_LIVE_RECORD_COLLECTIONS.actions), "actionId");
+      const outbox = entities<AgentOutboxEvent>(inCollection(AGENT_RUNTIME_LIVE_RECORD_COLLECTIONS.outbox), "outboxId");
+      const receipts = entities<AgentExecutionReceipt>(inCollection(AGENT_RUNTIME_LIVE_RECORD_COLLECTIONS.receipts), "receiptId");
 
       return {
         run,
@@ -239,11 +302,12 @@ export function createStorageAgentRuntimeRepository({
       };
     },
     async listActions(input = {}) {
-      const actions = await list<AgentActionRecord>(
+      const actions = await listBounded<AgentActionRecord>(
         store,
         workspaceId,
         AGENT_RUNTIME_LIVE_RECORD_COLLECTIONS.actions,
         "actionId",
+        AGENT_ACTION_LIST_LIMIT,
       );
 
       return actions
@@ -409,17 +473,21 @@ export function createStorageAgentRuntimeRepository({
       );
       return claimed;
     },
-    async getReceiptByIdempotencyKey(idempotencyKey) {
-      const receipts = await list<AgentExecutionReceipt>(
-        store,
-        workspaceId,
-        AGENT_RUNTIME_LIVE_RECORD_COLLECTIONS.receipts,
+    async getReceiptByIdempotencyKey(idempotencyKey, runId) {
+      const receipts = entities<AgentExecutionReceipt>(
+        await runChildRecords(
+          store,
+          workspaceId,
+          runId,
+          AGENT_RUNTIME_LIVE_RECORD_COLLECTIONS.receipts,
+        ),
         "receiptId",
       );
 
       return (
         receipts.find(
           (receipt) =>
+            receipt.runId === runId &&
             receipt.idempotencyKey === idempotencyKey &&
             (receipt.status === "completed" ||
               receipt.status === "undone"),

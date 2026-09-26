@@ -19,7 +19,6 @@
     "features/agent/memory/service.ts": 1,
     "features/agent/signals/service.ts": 1,
     "features/agent/storage/agent-action-live-record-provider.ts": 1,
-    "features/agent/storage/agent-runtime-live-record-provider.ts": 1,
     "features/audit/storage/source-consistency-provenance-audit-live-record-provider.ts": 1,
     "features/auth/storage/auth-account-provisioning-provider.ts": 1,
     "features/bootstrap/storage/bootstrap-live-record-provider.ts": 1,

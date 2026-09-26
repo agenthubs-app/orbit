@@ -20,8 +20,7 @@ function route(message: string, sourceNote: boolean) {
     "../../../../shared/config/feature-mode": { resolveFeatureMode: () => "live" },
     "./request-context": { resolveOrbitAgentConversationRequestContext: async () => ({
       actorId: "actor:qa", runtime: {
-        createRun: async () => ({ runId: "run:qa", status: "completed" }),
-        addRunStep: async () => {},
+        recordCompletedRun: async () => ({ runId: "run:qa", status: "completed" }),
       },
     }) },
     "../../../../features/orbit-ai/service-factory": { createOrbitAgentConversationServiceForActor: () => ({
