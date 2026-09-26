@@ -36,6 +36,7 @@ import type {
 import type { DashboardAggregateService } from "./service";
 import type { LiveDashboardGraph } from "./storage/dashboard-live-record-provider";
 import type { NetworkDistributionReadModel } from "./storage/network-distribution-live-record-provider";
+import type { DashboardAnalysisSnapshot } from "./storage/dashboard-snapshot";
 import { DashboardSummaryRequiresGraphFallback } from "./storage/dashboard-summary-postgres-reader";
 
 /** Everything a dashboard aggregate response needs; every list is already short. */
@@ -81,6 +82,15 @@ export interface LiveDashboardAggregateProvider {
   readNetworkDistributionReadModelForAccount?: (
     accountId: string,
   ) => Promise<NetworkDistributionReadModel>;
+  /**
+   * Sprint 0102: the actor's relationship-graph version (one small aggregate
+   * query), or null when the database has no sync_revision column.
+   */
+  readDashboardGraphVersionForAccount?: (accountId: string) => Promise<string | null>;
+  /** Sprint 0102: gaps and opportunities cached per graph version; null without a version. */
+  readDashboardAnalysisSnapshotForAccount?: (
+    accountId: string,
+  ) => Promise<DashboardAnalysisSnapshot | null>;
   /** Internal read-model capability; it must not widen the public dashboard DTO. */
   readDashboardSummaryForAccount?: (
     accountId: string,

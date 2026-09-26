@@ -26,8 +26,8 @@
     },
     "contacts.dashboard": {
       "queries": 13,
-      "rows": 5523,
-      "bytes": 3911181
+      "rows": 456,
+      "bytes": 357627
     },
     "events.list": {
       "queries": 1,
@@ -91,6 +91,23 @@
         "to": 3911181
       },
       "why": "New chain (production composition of /api/mobile/contacts-dashboard without the stored AI report lookup). The 'from' values were measured on the pre-0101 composition in the same fixture (build/harness-state/evidence/sprint-0101/run-01/commands/ledger-before-with-contacts-dashboard-chain.txt). The full contacts list (~1.4MB) is replaced by an id read of the referenced contacts plus SQL role counts; aggregate, summary and distributions are SQL. Four extra small statements; the remaining ~2.96MB is the full-graph read that gaps and opportunities keep until sprint 0102."
+    },
+    {
+      "sprint": "0102",
+      "chain": "contacts.dashboard",
+      "queries": {
+        "from": 13,
+        "to": 13
+      },
+      "rows": {
+        "from": 5523,
+        "to": 456
+      },
+      "bytes": {
+        "from": 3911181,
+        "to": 357627
+      },
+      "why": "Gaps and opportunities come from the actor's dashboard snapshot (orbit_records collection dashboard_snapshots) keyed by the relationship-graph version (count/sum/max of sync_revision over the six graph collections). One statement returns the version and the stored snapshot and replaces the full-graph read (~2.96MB) while the data is unchanged; the chain setup computes the snapshot once, as the first open after a write does. The seeded schema carries sync_revision as on the development database (tests/support/sync-revision-fixture.ts). Equality with the fresh JS computation, invalidation and isolation: tests/services/dashboard-snapshot-postgres.test.ts. The 'dashboard' chain (GET /api/dashboard, 6660 bytes) does not read gaps or opportunities and is unchanged."
     }
   ]
 }

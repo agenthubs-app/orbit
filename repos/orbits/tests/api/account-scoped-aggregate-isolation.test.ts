@@ -6,7 +6,7 @@ import { createStorageAccountSessionProvider } from "../../features/account/stor
 import { createLiveConnectionEvidenceService } from "../../features/connections/live-service";
 import { createStorageConnectionEvidenceProvider } from "../../features/connections/storage/connection-live-record-provider";
 import { createLiveDashboardAggregateService } from "../../features/dashboard/live-service";
-import { createStorageDashboardAggregateProvider } from "../../features/dashboard/storage/dashboard-live-record-provider";
+import { createMemoryDashboardProvider } from "../support/memory-dashboard-provider";
 import { createStorageAppBootstrapProvider } from "../../features/bootstrap/storage/bootstrap-live-record-provider";
 import { createStorageRelationshipValueProvider } from "../../features/analysis/storage/relationship-value-live-record-provider";
 import { createStorageSourceConsistencyProvenanceAuditProvider } from "../../features/audit/storage/source-consistency-provenance-audit-live-record-provider";
@@ -200,7 +200,7 @@ test("dashboard and connections keep two accounts isolated inside one workspace"
     }),
   });
   const dashboardService = createLiveDashboardAggregateService({
-    provider: createStorageDashboardAggregateProvider({
+    provider: createMemoryDashboardProvider({
       store,
       workspaceId,
     }),

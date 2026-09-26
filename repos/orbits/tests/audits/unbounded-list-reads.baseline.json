@@ -30,7 +30,6 @@
     "features/contacts/introduction-records.ts": 3,
     "features/contacts/storage/contact-live-record-provider.ts": 4,
     "features/contacts/storage/contact-write-live-record-provider.ts": 1,
-    "features/dashboard/storage/dashboard-live-record-provider.ts": 6,
     "features/encounters/service.ts": 1,
     "features/events/attendee-roster/storage/generated-attendee-roster-live-record-provider.ts": 7,
     "features/events/confirmed-followup/service.ts": 3,

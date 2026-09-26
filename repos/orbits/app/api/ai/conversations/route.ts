@@ -811,19 +811,20 @@ export async function POST(request: Request): Promise<Response> {
         prepareExecution: async () => {
           const origin = reliableInput.data.origin;
           if (origin?.entryPointId !== "contacts.analysis") return {};
-          const dashboard = await createConfiguredMobileContactsDashboardService(mode).getDashboard({ actorId });
-          if (!dashboard.success) {
+          // Sprint 0102: the graph version is checked first (one small query);
+          // a stale page is refused before any section is read, and a current
+          // one is served from the SQL read models and the dashboard snapshot.
+          const analysisSource = await createConfiguredMobileContactsDashboardService(mode).getAnalysisSource!({
+            actorId,
+            claimedSourceDataVersion: origin.sourceDataVersion ?? "",
+          });
+          if (analysisSource.success === false && analysisSource.error === "conflict") {
+            throw new AppError("CONFLICT", "The contacts analysis source changed. Refresh the analysis before sending.");
+          }
+          if (analysisSource.success === false) {
             throw new AppError("SERVICE_UNAVAILABLE", "The current contacts analysis source could not be verified.");
           }
-          const source = {
-              aggregate: dashboard.data.aggregate,
-              contacts: dashboard.data.contacts,
-              distributions: dashboard.data.distributions,
-              gaps: dashboard.data.gaps,
-              opportunities: dashboard.data.opportunities,
-              profile: dashboard.data.profile,
-              summary: dashboard.data.summary,
-          };
+          const source = analysisSource.source;
           const trustedOriginVerification = verifyContactsAnalysisSourceVersion({
             claimed: origin.sourceDataVersion ?? "",
             source,

@@ -1,3 +1,20 @@
+/**
+ * Dashboard relationship-graph version (sprint 0102). A separate partial index
+ * instead of widening orbit_records_sync_actor_idx: the sync readers scan
+ * (workspace_id, user_id, sync_revision) ranges and filter collection_name on
+ * the heap, so widening that index would make every sync page step over the
+ * user's contacts, connections and evidence rows. This one serves only the
+ * count/sum/max aggregate in features/dashboard/storage/dashboard-snapshot.ts
+ * as an index-only scan. Idempotent; safe to run alone on a database that
+ * already has sync_revision (it does not touch the sync trigger or functions).
+ */
+export const DASHBOARD_GRAPH_VERSION_INDEX_SQL = `
+create index if not exists orbit_records_graph_version_idx
+  on orbit_records (workspace_id, user_id, sync_revision)
+  where user_id is not null
+    and collection_name in ('connections', 'contact_detail_states', 'contacts', 'events', 'evidence', 'tasks');
+`;
+
 export const SYNC_REVISION_MIGRATION_SQL = `
 create sequence if not exists orbit_records_sync_revision_seq;
 
@@ -130,7 +147,7 @@ create index if not exists orbit_records_sync_actor_idx
   on orbit_records (workspace_id, user_id, sync_revision)
   where user_id is not null
     and collection_name in ('notes', 'tasks', 'personal_schedule_items');
-
+${DASHBOARD_GRAPH_VERSION_INDEX_SQL}
 -- Product deletes are persistent lifecycle_state = 'deleted' updates, so the
 -- UPDATE trigger assigns their tombstone revision without removing the row.
 `;

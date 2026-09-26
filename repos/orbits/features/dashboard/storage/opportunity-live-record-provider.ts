@@ -1,3 +1,4 @@
+import type { OpportunityCore } from "../live-opportunity-service";
 import {
   createConfiguredStorageDashboardAggregateProvider,
   createStorageDashboardAggregateProvider,
@@ -10,6 +11,11 @@ export interface LiveOpportunityReminderAnalyticsProvider {
   source: string;
   sourceLabel: string;
   readOpportunityGraph: () => LiveDashboardGraph | Promise<LiveDashboardGraph>;
+  /**
+   * Sprint 0102: ranked candidates from the actor's dashboard snapshot; null
+   * when no graph version is available (the service then reads the graph).
+   */
+  readOpportunityCore?: () => Promise<OpportunityCore | null>;
 }
 
 export type StorageOpportunityReminderAnalyticsProviderOptions =
@@ -21,13 +27,13 @@ export type ConfiguredStorageOpportunityReminderAnalyticsProviderOptions =
 export function createStorageOpportunityReminderAnalyticsProvider({
   source,
   sourceLabel = "Opportunity reminder shared live storage",
-  store,
+  sqlClient,
   workspaceId,
 }: StorageOpportunityReminderAnalyticsProviderOptions): LiveOpportunityReminderAnalyticsProvider {
   const provider = createStorageDashboardAggregateProvider({
     source: source ?? `live-record-store:opportunity-reminder:${workspaceId}`,
     sourceLabel,
-    store,
+    sqlClient,
     workspaceId,
   });
 

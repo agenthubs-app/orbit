@@ -110,6 +110,12 @@ export function networkDistributionProviderForAccount(
             provider.readNetworkDistributionReadModelForAccount!(normalizedAccountId),
         }
       : {}),
+    ...(provider.readDashboardAnalysisSnapshotForAccount
+      ? {
+          readNetworkGapCore: async () =>
+            (await provider.readDashboardAnalysisSnapshotForAccount!(normalizedAccountId))?.gaps ?? null,
+        }
+      : {}),
   };
 }
 
@@ -157,6 +163,12 @@ export function opportunityProviderForAccount(
     sourceLabel: provider.sourceLabel,
     readOpportunityGraph: () =>
       provider.readDashboardGraphForAccount!(normalizedAccountId),
+    ...(provider.readDashboardAnalysisSnapshotForAccount
+      ? {
+          readOpportunityCore: async () =>
+            (await provider.readDashboardAnalysisSnapshotForAccount!(normalizedAccountId))?.opportunities ?? null,
+        }
+      : {}),
   };
 }
 

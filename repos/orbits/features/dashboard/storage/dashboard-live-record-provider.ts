@@ -6,7 +6,6 @@ import type {
   RelationshipEvidenceDTO,
   TaskDTO,
 } from "../../../shared/domain/contracts";
-import { contactRecordOwnedByActor } from "../../contacts/storage/contact-read-authorization";
 import {
   isRelationshipStage,
   isRelationshipTrustLevel,
@@ -26,6 +25,11 @@ import type { LiveRecordSqlClient } from "../../../shared/storage/postgres-live-
 import { createConfiguredPostgresLiveRecordStore } from "../../../shared/storage/configured-live-record-store";
 import type { LiveDashboardAggregateProvider } from "../live-service";
 import { createDashboardReadModelPostgresReader } from "./dashboard-read-model-postgres-reader";
+import {
+  readDashboardGraphState,
+  readOrComputeDashboardSnapshot,
+  type DashboardAnalysisSnapshot,
+} from "./dashboard-snapshot";
 import {
   buildDashboardSummaryFromGraph,
   createDashboardSummaryPostgresReader,
@@ -51,11 +55,18 @@ export const DASHBOARD_LIVE_RECORD_COLLECTIONS = {
 } as const;
 
 export interface StorageDashboardAggregateProviderOptions {
-  sqlClient?: LiveRecordSqlClient;
+  /**
+   * Every dashboard read is SQL (sprint 0102 removed the listRecords fallback
+   * that read six collections without a limit).
+   */
+  sqlClient: LiveRecordSqlClient;
   source?: string;
   sourceLabel?: string;
-  store: LiveRecordStoreLike<Record<string, unknown>>;
+  /** Not read by the dashboard provider; kept so existing call sites compile. */
+  store?: LiveRecordStoreLike<Record<string, unknown>>;
   workspaceId: string;
+  /** Snapshot computedAt clock (tests). */
+  now?: () => string;
 }
 
 export interface ConfiguredStorageDashboardAggregateProviderOptions {
@@ -66,6 +77,8 @@ export interface ConfiguredStorageDashboardAggregateProviderOptions {
 interface DashboardLiveReadScope {
   closed: boolean;
   graphReads: Map< object, Map<string, Promise<LiveDashboardGraph>>>;
+  /** Graph versions and snapshots read in this request (sprint 0102). */
+  analysisReads: Map<object, Map<string, Promise<unknown>>>;
 }
 
 const dashboardLiveReadScope = new AsyncLocalStorage<DashboardLiveReadScope>();
@@ -80,6 +93,7 @@ export async function withDashboardLiveReadScope<TResult>(
   const scope: DashboardLiveReadScope = {
     closed: false,
     graphReads: new Map(),
+    analysisReads: new Map(),
   };
 
   return dashboardLiveReadScope.run(scope, async () => {
@@ -88,6 +102,7 @@ export async function withDashboardLiveReadScope<TResult>(
     } finally {
       scope.closed = true;
       scope.graphReads.clear();
+      scope.analysisReads.clear();
     }
   });
 }
@@ -352,7 +367,7 @@ interface ProjectedDashboardRow {
   payload: Record<string, unknown> | string | null;
 }
 
-interface DashboardRecordCollections {
+export interface DashboardRecordCollections {
   connections: readonly LiveRecord<Record<string, unknown>>[];
   contacts: readonly LiveRecord<Record<string, unknown>>[];
   detailStates: readonly LiveRecord<Record<string, unknown>>[];
@@ -527,29 +542,116 @@ async function readProjectedDashboardCollections(
   };
 }
 
+/**
+ * Maps the six collections of one actor (or the workspace) to the dashboard
+ * graph. Exported for test doubles that hold records in memory.
+ */
+export function dashboardGraphFromRecords(collections: DashboardRecordCollections): LiveDashboardGraph {
+  const {
+    contacts: contactRecords,
+    connections: connectionRecords,
+    detailStates: detailStateRecords,
+    events: eventRecords,
+    tasks: taskRecords,
+    evidence: evidenceRecords,
+  } = collections;
+
+  const customTagsByContactId = new Map<string, readonly string[]>();
+  for (const record of detailStateRecords) {
+    const contactId = optionalString(record.payload.contactId);
+    if (contactId) customTagsByContactId.set(contactId, stringArray(record.payload.tags));
+  }
+
+  return {
+    connections: connectionRecords
+      .map(connectionFromRecord)
+      .filter((connection): connection is ConnectionDTO => connection !== null),
+    contacts: contactRecords
+      .map(contactFromRecord)
+      .filter((contact): contact is ContactDTO => contact !== null)
+      .map((contact) => ({
+        ...contact,
+        customTags: customTagsByContactId.get(contact.id) ?? contact.customTags ?? [],
+      })),
+    events: eventRecords
+      .map(eventFromRecord)
+      .filter((event): event is EventDTO => event !== null),
+    evidence: evidenceRecords
+      .map(evidenceFromRecord)
+      .filter(
+        (evidence): evidence is RelationshipEvidenceDTO => evidence !== null,
+      ),
+    generatedAt: latestTimestamp([
+      ...contactRecords,
+      ...connectionRecords,
+      ...detailStateRecords,
+      ...eventRecords,
+      ...taskRecords,
+      ...evidenceRecords,
+    ]),
+    tasks: taskRecords
+      .map(taskFromRecord)
+      .filter((task): task is TaskDTO => task !== null),
+  };
+}
+
 export function createStorageDashboardAggregateProvider({
   sqlClient,
   source,
   sourceLabel = "Dashboard shared live storage",
-  store,
   workspaceId,
+  now,
 }: StorageDashboardAggregateProviderOptions): LiveDashboardAggregateProvider {
+  if (!sqlClient) throw new Error("The dashboard provider requires a SQL client.");
   const providerIdentity = {};
   const providerSource = source ?? `live-record-store:dashboard:${workspaceId}`;
-  const readModelReader = sqlClient
-    ? createDashboardReadModelPostgresReader({ client: sqlClient, workspaceId })
-    : null;
-  const summaryReader = sqlClient
-    ? createDashboardSummaryPostgresReader({
-        client: sqlClient,
-        source: providerSource,
-        sourceLabel,
-        workspaceId,
-      })
-    : null;
+  const readModelReader = createDashboardReadModelPostgresReader({ client: sqlClient, workspaceId });
+  const summaryReader = createDashboardSummaryPostgresReader({
+    client: sqlClient,
+    source: providerSource,
+    sourceLabel,
+    workspaceId,
+  });
+
+  /** Coalesce one analysis read per request, provider and key (like readGraph). */
+  function scopedAnalysisRead<T>(key: string, read: () => Promise<T>): Promise<T> {
+    const scope = dashboardLiveReadScope.getStore();
+    if (!scope || scope.closed) return read();
+    const reads = scope.analysisReads.get(providerIdentity) ?? new Map<string, Promise<unknown>>();
+    scope.analysisReads.set(providerIdentity, reads);
+    const existing = reads.get(key) as Promise<T> | undefined;
+    if (existing) return existing;
+    const pending = read();
+    reads.set(key, pending);
+    // A failed read is not reused within the request.
+    pending.catch(() => { if (reads.get(key) === pending) reads.delete(key); });
+    return pending;
+  }
+
+  function readGraphState(accountId: string) {
+    return scopedAnalysisRead(`state\u0000${accountId}`, () =>
+      readDashboardGraphState(sqlClient, workspaceId, accountId));
+  }
+
+  async function readGraphVersion(accountId: string): Promise<string | null> {
+    return (await readGraphState(accountId))?.graphVersion ?? null;
+  }
+
+  function readAnalysisSnapshot(accountId: string): Promise<DashboardAnalysisSnapshot | null> {
+    return scopedAnalysisRead(`snapshot\u0000${accountId}`, async () => {
+      const state = await readGraphState(accountId);
+      if (state === null) return null;
+      return readOrComputeDashboardSnapshot(
+        { client: sqlClient, workspaceId, now },
+        accountId,
+        state,
+        () => readGraph(accountId),
+      );
+    });
+  }
 
   async function readGraph(accountId?: string): Promise<LiveDashboardGraph> {
-    const scope = sqlClient ? dashboardLiveReadScope.getStore() : undefined;
+    const scope = dashboardLiveReadScope.getStore();
     const providerReads = scope?.closed
       ? undefined
       : scope?.graphReads.get(providerIdentity);
@@ -558,115 +660,9 @@ export function createStorageDashboardAggregateProvider({
     if (existing) return existing;
 
     const read = (async () => {
-      const ownerQuery = accountId === undefined ? {} : { userId: accountId };
-      const collections = sqlClient
-        ? await readProjectedDashboardCollections(sqlClient, workspaceId, accountId)
-        : await (async (): Promise<DashboardRecordCollections> => {
-            const [
-              contactRecords,
-              connectionRecords,
-              detailStateRecords,
-              eventRecords,
-              taskRecords,
-              evidenceRecords,
-            ] = await Promise.all([
-              store.listRecords({
-                limit: "unbounded",
-                workspaceId,
-                collectionName: DASHBOARD_LIVE_RECORD_COLLECTIONS.contacts,
-                ...ownerQuery,
-              }),
-              store.listRecords({
-                limit: "unbounded",
-                workspaceId,
-                collectionName: DASHBOARD_LIVE_RECORD_COLLECTIONS.connections,
-                ...ownerQuery,
-              }),
-              store.listRecords({
-                limit: "unbounded",
-                workspaceId,
-                collectionName: DASHBOARD_LIVE_RECORD_COLLECTIONS.detailStates,
-                ...ownerQuery,
-              }),
-              store.listRecords({
-                limit: "unbounded",
-                workspaceId,
-                collectionName: DASHBOARD_LIVE_RECORD_COLLECTIONS.events,
-                ...ownerQuery,
-              }),
-              store.listRecords({
-                limit: "unbounded",
-                workspaceId,
-                collectionName: DASHBOARD_LIVE_RECORD_COLLECTIONS.tasks,
-                ...ownerQuery,
-              }),
-              store.listRecords({
-                limit: "unbounded",
-                workspaceId,
-                collectionName: DASHBOARD_LIVE_RECORD_COLLECTIONS.evidence,
-                ...ownerQuery,
-              }),
-            ]);
-
-            return {
-              connections: connectionRecords,
-              contacts: accountId === undefined ? contactRecords
-                : contactRecords.filter(record => contactRecordOwnedByActor(record, accountId)),
-              detailStates: detailStateRecords,
-              events: eventRecords,
-              evidence: evidenceRecords,
-              tasks: taskRecords,
-            };
-          })();
-      const {
-        contacts: contactRecords,
-        connections: connectionRecords,
-        detailStates: detailStateRecords,
-        events: eventRecords,
-        tasks: taskRecords,
-        evidence: evidenceRecords,
-      } = collections;
-
-    const customTagsByContactId = new Map<string, readonly string[]>();
-    for (const record of detailStateRecords) {
-      const contactId = optionalString(record.payload.contactId);
-      if (contactId) customTagsByContactId.set(contactId, stringArray(record.payload.tags));
-    }
-
-      return {
-      connections: connectionRecords
-        .map(connectionFromRecord)
-        .filter((connection): connection is ConnectionDTO => connection !== null),
-      contacts: contactRecords
-        .map(contactFromRecord)
-        .filter((contact): contact is ContactDTO => contact !== null)
-        .map((contact) => ({
-          ...contact,
-          customTags: customTagsByContactId.get(contact.id) ?? contact.customTags ?? [],
-        })),
-      events: eventRecords
-        .map(eventFromRecord)
-        .filter((event): event is EventDTO => event !== null),
-      evidence: evidenceRecords
-        .map(evidenceFromRecord)
-        .filter(
-          (evidence): evidence is RelationshipEvidenceDTO => evidence !== null,
-        ),
-      generatedAt: latestTimestamp([
-        ...contactRecords,
-        ...connectionRecords,
-        ...detailStateRecords,
-        ...eventRecords,
-        ...taskRecords,
-        ...evidenceRecords,
-      ]),
-      tasks: taskRecords
-        .map(taskFromRecord)
-        .filter((task): task is TaskDTO => task !== null),
-      };
+      const collections = await readProjectedDashboardCollections(sqlClient, workspaceId, accountId);
+      return dashboardGraphFromRecords(collections);
     })();
-
-    if (!sqlClient) return read;
 
     if (!scope || scope.closed) return read;
     const scopedProviderReads = providerReads ?? new Map<string, Promise<LiveDashboardGraph>>();
@@ -690,23 +686,16 @@ export function createStorageDashboardAggregateProvider({
     readDashboardGraphForAccount(accountId: string) {
       return readGraph(accountId);
     },
-    async readContactRoleCountsForAccount(accountId: string) {
-      if (readModelReader) return readModelReader.readContactRoleCountsForAccount(accountId);
-      const counts = new Map<string, number>();
-      for (const contact of (await readGraph(accountId)).contacts) {
-        const role = contact.role?.trim();
-        if (role) counts.set(role, (counts.get(role) ?? 0) + 1);
-      }
-      return [...counts.entries()].map(([role, count]) => ({ role, count }));
+    readContactRoleCountsForAccount(accountId: string) {
+      return readModelReader.readContactRoleCountsForAccount(accountId);
     },
+    readDashboardAggregateForAccount: (accountId, input) =>
+      readModelReader.readAggregateForAccount(accountId, input),
+    readNetworkDistributionReadModelForAccount: (accountId) =>
+      readModelReader.readDistributionForAccount(accountId),
+    readDashboardGraphVersionForAccount: readGraphVersion,
+    readDashboardAnalysisSnapshotForAccount: readAnalysisSnapshot,
   };
-
-  if (readModelReader) {
-    provider.readDashboardAggregateForAccount = (accountId, input) =>
-      readModelReader.readAggregateForAccount(accountId, input);
-    provider.readNetworkDistributionReadModelForAccount = (accountId) =>
-      readModelReader.readDistributionForAccount(accountId);
-  }
 
   if (summaryReader) {
     provider.readDashboardSummaryForAccount = (accountId, scenario = "success") => {

@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "db:migrate:live": "tsx scripts/migrate-live-records.ts",
+    "db:migrate:dashboard-graph-version": "tsx scripts/migrate-dashboard-graph-version.ts",
     "db:backfill:auth-accounts": "tsx scripts/backfill-auth-account-memberships.ts",
     "db:bootstrap:event-organizers": "tsx scripts/bootstrap-event-organizer-accounts.ts",
     "db:migrate:event-organizer-owners": "tsx scripts/migrate-event-organizer-owners.ts",

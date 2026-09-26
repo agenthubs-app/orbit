@@ -907,10 +907,19 @@ function coverageScore(gaps: readonly NetworkGapAnalysisItem[]): number {
   return Math.max(0, Math.round(100 - (totalDeficit / totalTarget) * 125));
 }
 
-function gapPayload(
-  graph: LiveDashboardGraph,
-  provider: LiveNetworkDistributionAnalyticsProvider,
-): NetworkGapAnalysisPayload {
+/**
+ * The provider-independent part of the gap analysis (sprint 0102): everything
+ * the payload needs from the graph. Stored in dashboard snapshots and rendered
+ * with gapPayloadFromCore, so a snapshot and a fresh computation are equal.
+ */
+export interface NetworkGapCore {
+  state: NetworkGapAnalysisPayload["state"];
+  coverageScore: number;
+  gaps: readonly NetworkGapAnalysisItem[];
+  collectedAt: string;
+}
+
+export function networkGapCoreFromGraph(graph: LiveDashboardGraph): NetworkGapCore {
   const industries = industryDistribution(graph);
   const values = valueTypeDistribution(graph);
   const strengths = strengthDistribution(graph);
@@ -981,12 +990,24 @@ function gapPayload(
     state: graph.contacts.length > 0 ? "success" : "empty",
     coverageScore: coverageScore(gaps),
     gaps,
+    collectedAt: graph.generatedAt,
+  };
+}
+
+function gapPayloadFromCore(
+  core: NetworkGapCore,
+  provider: LiveNetworkDistributionAnalyticsProvider,
+): NetworkGapAnalysisPayload {
+  return {
+    state: core.state,
+    coverageScore: core.coverageScore,
+    gaps: core.gaps,
     summary:
       "Live network gap analysis compares generated relationship coverage against deterministic target thresholds.",
     provenance: provenance({
-      collectedAt: graph.generatedAt,
+      collectedAt: core.collectedAt,
       databaseReadExecuted: true,
-      evidenceIds: uniqueStrings(gaps.flatMap((item) => item.evidenceIds)),
+      evidenceIds: uniqueStrings(core.gaps.flatMap((item) => item.evidenceIds)),
       generationMethod: "rule-based-gap-analysis",
       provider,
     }),
@@ -1214,7 +1235,11 @@ export function createLiveNetworkDistributionAnalyticsService({
         case "success":
         default:
           return gapsSuccess(
-            gapPayload(await provider.readNetworkDistributionGraph(), provider),
+            gapPayloadFromCore(
+              (await provider.readNetworkGapCore?.()) ??
+                networkGapCoreFromGraph(await provider.readNetworkDistributionGraph()),
+              provider,
+            ),
           );
       }
     },

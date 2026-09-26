@@ -27,6 +27,7 @@ import { createTaskService } from "../../features/tasks/service";
 import { createConfiguredPostgresLiveRecordStore } from "../../shared/storage/configured-live-record-store";
 import { seedGeneratedRelationshipFixturesIntoLiveStore } from "../../shared/storage/seed-generated-fixtures";
 import type { TransactionalPostgresClient } from "../../shared/storage/transactional-postgres";
+import { SYNC_REVISION_ASSIGN_ONLY_SQL } from "../support/sync-revision-fixture";
 
 /**
  * The five operation chains of the frozen read-cost baseline, seeded and
@@ -62,6 +63,8 @@ export async function seedReadCostChains({
   });
   assert.ok(configured);
   const { store } = configured;
+  // sync_revision as on the development database: the dashboard graph version needs it (0102).
+  await client.query(SYNC_REVISION_ASSIGN_ONLY_SQL);
   await seedGeneratedRelationshipFixturesIntoLiveStore({ store, workspaceId, now: () => READ_COST_SEEDED_AT });
   const notes = createNoteService({
     repository: createNoteRepository({ store, workspaceId }),
@@ -100,6 +103,11 @@ export async function seedReadCostChains({
     contactScopeRecordReader: createPostgresContactScopeRecordReader({ client, workspaceId }),
     contactRecordPageReader: createPostgresContactRecordPageReader({ client, workspaceId }),
   });
+  // The chains measure unchanged data: the actor's gaps/opportunities snapshot
+  // is computed once here, as the first dashboard open after a write would.
+  const primed = await createStorageDashboardAggregateProvider({ store, workspaceId, sqlClient: client })
+    .readDashboardAnalysisSnapshotForAccount!(actorId);
+  assert.ok(primed, "the seeded schema provides a graph version");
   return {
     "contacts.list": async () => {
       const result = await createLiveContactsListSearchAndFilterService({ provider: contactProvider }).listContacts({ actorId });
@@ -139,6 +147,7 @@ export async function seedReadCostChains({
         profile: createLiveProfileService({ provider: createStorageProfileProvider({ store, workspaceId }) }),
         contacts: createLiveContactsListSearchAndFilterService({ provider: contactProvider }),
         contactRoleCounts: (id) => dashboardProvider.readContactRoleCountsForAccount!(id),
+        graphVersion: (id) => dashboardProvider.readDashboardGraphVersionForAccount!(id),
       }).getDashboard({ actorId });
       assert.ok(result.success, "contacts.dashboard must succeed");
       assert.deepEqual(result.data.unavailableSections.filter((section) => section !== "analysis" && section !== "profile"), []);

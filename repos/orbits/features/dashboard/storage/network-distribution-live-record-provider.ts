@@ -1,3 +1,4 @@
+import type { NetworkGapCore } from "../live-distribution-service";
 import {
   createConfiguredStorageDashboardAggregateProvider,
   createStorageDashboardAggregateProvider,
@@ -14,6 +15,11 @@ export interface LiveNetworkDistributionAnalyticsProvider {
     | Promise<LiveDashboardGraph>;
   /** Sprint 0101: grouped distribution rows computed in SQL (no full-graph read). */
   readNetworkDistributionReadModel?: () => Promise<NetworkDistributionReadModel>;
+  /**
+   * Sprint 0102: gap analysis from the actor's dashboard snapshot; null when
+   * no graph version is available (the service then reads the graph).
+   */
+  readNetworkGapCore?: () => Promise<NetworkGapCore | null>;
 }
 
 export type NetworkStructureDimensionKey = "industry" | "location" | "role" | "relationship";
@@ -61,13 +67,13 @@ export type ConfiguredStorageNetworkDistributionAnalyticsProviderOptions =
 export function createStorageNetworkDistributionAnalyticsProvider({
   source,
   sourceLabel = "Network distribution shared live storage",
-  store,
+  sqlClient,
   workspaceId,
 }: StorageNetworkDistributionAnalyticsProviderOptions): LiveNetworkDistributionAnalyticsProvider {
   const provider = createStorageDashboardAggregateProvider({
     source: source ?? `live-record-store:network-distribution:${workspaceId}`,
     sourceLabel,
-    store,
+    sqlClient,
     workspaceId,
   });
 

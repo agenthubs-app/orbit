@@ -9,7 +9,14 @@ export const CONTACTS_ANALYSIS_VERSION = "contacts.analysis@1" as const;
 export type ContactsAnalysisSource = Pick<
   MobileContactsDashboardPayload,
   "aggregate" | "contacts" | "distributions" | "gaps" | "opportunities" | "profile" | "summary"
->;
+> & {
+  /**
+   * Sprint 0102: the actor's relationship-graph version when the database
+   * provides one. The source data version is then derived from it alone, so
+   * the AI entry can verify a page's version with one small query.
+   */
+  graphVersion?: string;
+};
 
 export interface ContactsAnalysisReport {
   analysisVersion: typeof CONTACTS_ANALYSIS_VERSION;
@@ -80,7 +87,19 @@ function canonicalize(value: unknown, key?: string): CanonicalValue | undefined 
   return undefined;
 }
 
+/** 64-hex source data version for a relationship-graph version (same format as the content hash). */
+export function contactsAnalysisGraphSourceDataVersion(graphVersion: string): string {
+  return createHash("sha256")
+    .update(JSON.stringify(["contacts.analysis.graph@1", graphVersion]))
+    .digest("hex");
+}
+
 export function createContactsAnalysisSourceDataVersion(source: Record<string, unknown>): string {
+  // Without a graph version (mock mode, no sync_revision column) the version
+  // stays the canonical content hash.
+  if (typeof source.graphVersion === "string") {
+    return contactsAnalysisGraphSourceDataVersion(source.graphVersion);
+  }
   return createHash("sha256")
     .update(JSON.stringify(canonicalize(source) ?? null))
     .digest("hex");

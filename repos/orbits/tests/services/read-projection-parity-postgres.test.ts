@@ -4,6 +4,7 @@ import test from "node:test";
 import { Pool } from "pg";
 import { createStorageAppBootstrapProvider } from "../../features/bootstrap/storage/bootstrap-live-record-provider";
 import { createStorageDashboardAggregateProvider } from "../../features/dashboard/storage/dashboard-live-record-provider";
+import { createMemoryDashboardProvider } from "../support/memory-dashboard-provider";
 import { defaultMockFixtures } from "../../shared/mock/fixtures";
 import { ORBIT_RECORDS_SCHEMA_SQL } from "../../shared/storage/migrations";
 import { createPostgresLiveRecordStore } from "../../shared/storage/postgres-live-record-store";
@@ -28,7 +29,8 @@ test("Postgres projections preserve the full generated bootstrap/dashboard graph
     await seedGeneratedRelationshipFixturesIntoLiveStore({ store, workspaceId, collectionNames: ["accounts", "agentActions", "connections", "contacts", "events", "evidence", "notifications", "permissions", "profiles", "tasks"] });
     const oldBootstrap = createStorageAppBootstrapProvider({ store, workspaceId });
     const newBootstrap = createStorageAppBootstrapProvider({ store, workspaceId, sqlClient: client });
-    const oldDashboard = createStorageDashboardAggregateProvider({ store, workspaceId });
+    // The listRecords graph read left production in 0102; it remains the oracle here.
+    const oldDashboard = createMemoryDashboardProvider({ store, workspaceId });
     const newDashboard = createStorageDashboardAggregateProvider({ store, workspaceId, sqlClient: client });
     // The old SQL has no tie-breaker for equal occurred_at/updated_at. Compare
     // complete contents first, without asserting an order it never guaranteed.
@@ -885,7 +887,7 @@ test("B3 summary reader matches an independent full-response oracle", {
       source: "test:dashboard-summary",
       sourceLabel: "B3 dashboard summary test storage",
     });
-    const oldProvider = createStorageDashboardAggregateProvider({
+    const oldProvider = createMemoryDashboardProvider({
       store: memoryStore,
       workspaceId: SUMMARY_WORKSPACE,
       source: "test:dashboard-summary",

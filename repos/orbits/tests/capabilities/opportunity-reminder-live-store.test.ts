@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createLiveOpportunityReminderAnalyticsService } from "../../features/dashboard/live-opportunity-service";
-import { createStorageOpportunityReminderAnalyticsProvider } from "../../features/dashboard/storage/opportunity-live-record-provider";
+import { createMemoryOpportunityReminderProvider } from "../support/memory-dashboard-provider";
 import { defaultMockFixtures } from "../../shared/mock/fixtures";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
 import { seedGeneratedRelationshipFixturesIntoLiveStore } from "../../shared/storage/seed-generated-fixtures";
@@ -33,7 +33,7 @@ test("live opportunity reminder analytics reads generated graph and recomputes w
     recordId: fixtureConnection.id,
     workspaceId,
   });
-  const provider = createStorageOpportunityReminderAnalyticsProvider({
+  const provider = createMemoryOpportunityReminderProvider({
     sourceLabel: "Opportunity reminder memory live storage",
     store,
     workspaceId,
@@ -173,7 +173,7 @@ test("live opportunity reminder analytics reads generated graph and recomputes w
 
   const emptyStore = createMemoryLiveRecordStore<Record<string, unknown>>();
   const emptyService = createLiveOpportunityReminderAnalyticsService({
-    provider: createStorageOpportunityReminderAnalyticsProvider({
+    provider: createMemoryOpportunityReminderProvider({
       sourceLabel: "Empty opportunity reminder memory storage",
       store: emptyStore,
       workspaceId: "workspace:opportunity-reminder-empty",

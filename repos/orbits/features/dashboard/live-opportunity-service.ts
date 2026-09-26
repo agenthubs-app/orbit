@@ -38,6 +38,28 @@ interface TaskOpportunityCandidate {
   task: TaskDTO;
 }
 
+interface DormantOpportunityCandidate {
+  connection: ConnectionDTO;
+  contact: ContactDTO;
+  score: number;
+}
+
+const OPPORTUNITY_LIST_LIMIT = 3;
+
+/**
+ * The time-independent part of opportunity analytics (sprint 0102): the ranked
+ * candidates the payload is rendered from. Due labels and action briefs depend
+ * on the request time, so they are rendered from these candidates on every
+ * read; storing the candidates keeps a snapshot equal to a fresh computation
+ * at any later time.
+ */
+export interface OpportunityCore {
+  generatedAt: string;
+  evaluatedContacts: number;
+  taskCandidates: readonly TaskOpportunityCandidate[];
+  dormantCandidates: readonly DormantOpportunityCandidate[];
+}
+
 const emptyEvidenceId = "evidence:opportunity-reminder-live-empty";
 const failedEvidenceId = "evidence:opportunity-reminder-live-failed";
 const pendingEvidenceId = "evidence:opportunity-reminder-live-pending";
@@ -569,16 +591,30 @@ function suggestedReasonsFor(input: {
   return reasons.slice(0, 4);
 }
 
-function payloadFromGraph(input: {
-  graph: LiveDashboardGraph;
+export function opportunityCoreFromGraph(graph: LiveDashboardGraph): OpportunityCore {
+  return {
+    generatedAt: graph.generatedAt,
+    evaluatedContacts: graph.contacts.length,
+    taskCandidates: taskCandidates(graph).slice(0, OPPORTUNITY_LIST_LIMIT),
+    dormantCandidates: dormantConnections(graph).slice(0, OPPORTUNITY_LIST_LIMIT),
+  };
+}
+
+async function readCore(
+  provider: LiveOpportunityReminderAnalyticsProvider,
+): Promise<OpportunityCore> {
+  return (await provider.readOpportunityCore?.()) ??
+    opportunityCoreFromGraph(await provider.readOpportunityGraph());
+}
+
+function payloadFromCore(input: {
+  core: OpportunityCore;
   now: string;
   provider: LiveOpportunityReminderAnalyticsProvider;
 }): OpportunityReminderAnalyticsPayload {
-  const opportunities = taskCandidates(input.graph)
-    .slice(0, 3)
+  const opportunities = input.core.taskCandidates
     .map((candidate) => opportunityFor(candidate, input.now));
-  const dormantContacts = dormantConnections(input.graph)
-    .slice(0, 3)
+  const dormantContacts = input.core.dormantCandidates
     .map((candidate, index) =>
       dormantContactFor({
         ...candidate,
@@ -607,7 +643,7 @@ function payloadFromGraph(input: {
     summary:
       "Live opportunity reminder analytics ranked open tasks and dormant high-value relationships from shared live storage.",
     provenance: provenance({
-      collectedAt: input.graph.generatedAt,
+      collectedAt: input.core.generatedAt,
       databaseReadExecuted: true,
       evidenceIds,
       generationMethod: "live-store-query",
@@ -645,12 +681,11 @@ function emptyPayload(input: {
 }
 
 function recomputePayload(input: {
-  graph: LiveDashboardGraph;
+  core: OpportunityCore;
   now: string;
   provider: LiveOpportunityReminderAnalyticsProvider;
 }): OpportunityReminderRecomputePayload {
-  const opportunities = taskCandidates(input.graph)
-    .slice(0, 3)
+  const opportunities = input.core.taskCandidates
     .map((candidate) => opportunityFor(candidate, input.now));
   const evidenceIds = uniqueStrings(
     opportunities.flatMap((opportunity) => opportunity.evidenceIds),
@@ -659,7 +694,7 @@ function recomputePayload(input: {
   return {
     state: opportunities.length > 0 ? "success" : "empty",
     recomputedAt: input.now,
-    evaluatedContacts: input.graph.contacts.length,
+    evaluatedContacts: input.core.evaluatedContacts,
     generatedOpportunityCount: opportunities.length,
     changedOpportunityIds: opportunities.map(
       (opportunity) => opportunity.opportunityId,
@@ -667,7 +702,7 @@ function recomputePayload(input: {
     summary:
       "Rule-based live recompute re-ranked open follow-up tasks without writing dashboard reminders.",
     provenance: provenance({
-      collectedAt: input.graph.generatedAt,
+      collectedAt: input.core.generatedAt,
       databaseReadExecuted: true,
       evidenceIds,
       generationMethod: "rule-based-recompute",
@@ -754,8 +789,8 @@ export function createLiveOpportunityReminderAnalyticsService({
         case "success":
         default:
           return remindersSuccess(
-            payloadFromGraph({
-              graph: await provider.readOpportunityGraph(),
+            payloadFromCore({
+              core: await readCore(provider),
               now: capturedNow,
               provider,
             }),
@@ -809,7 +844,7 @@ export function createLiveOpportunityReminderAnalyticsService({
         default:
           return recomputeSuccess(
             recomputePayload({
-              graph: await provider.readOpportunityGraph(),
+              core: await readCore(provider),
               now: capturedNow,
               provider,
             }),

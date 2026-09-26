@@ -26,6 +26,7 @@ import {
 import { createProfileService } from "../profile/service-factory";
 import { createOrbitAgentChatSessionProvider } from "../orbit-ai/storage/orbit-agent-chat-session-provider-factory";
 import {
+  contactsAnalysisGraphSourceDataVersion,
   createContactsAnalysisReportProvider,
   type ContactsAnalysisSource,
 } from "./contacts-analysis-report-provider";
@@ -65,6 +66,11 @@ export interface MobileContactsDashboardDependencies {
   loadContactRoleCounts?: (
     actorId: string,
   ) => Promise<readonly MobileContactsDashboardRoleCount[]>;
+  /**
+   * Sprint 0102: the actor's relationship-graph version (null when the
+   * database has none). Read in the same request scope as the sections.
+   */
+  loadGraphVersion?: (actorId: string) => Promise<string | null>;
   now?: () => string;
 }
 
@@ -123,10 +129,24 @@ export type MobileContactsDashboardResult =
       };
     };
 
+export type MobileContactsAnalysisSourceResult =
+  | { success: true; source: ContactsAnalysisSource }
+  | { success: false; error: "conflict" | "unavailable" };
+
 export interface MobileContactsDashboardService {
   getDashboard: (
     input: MobileContactsDashboardInput,
   ) => Promise<MobileContactsDashboardResult>;
+  /**
+   * The AI contacts-analysis entry (sprint 0102): when a graph version is
+   * available and the page's version does not match it, returns "conflict"
+   * after that one small query, without reading any section. Otherwise builds
+   * the same source the page was built from (SQL read models + snapshot).
+   */
+  getAnalysisSource?: (input: {
+    actorId: string;
+    claimedSourceDataVersion: string;
+  }) => Promise<MobileContactsAnalysisSourceResult>;
 }
 
 function optionalSection(
@@ -183,8 +203,35 @@ export function createMobileContactsDashboardService(
 ): MobileContactsDashboardService {
   const now = dependencies.now ?? (() => new Date().toISOString());
 
-  return {
-    async getDashboard({ actorId }) {
+  const loadGraphVersion = (actorId: string): Promise<string | null> =>
+    dependencies.loadGraphVersion
+      ? dependencies.loadGraphVersion(actorId).catch(() => null)
+      : Promise.resolve(null);
+
+  // Must run inside withDashboardLiveReadScope so the graph version, the
+  // snapshot and any graph read are shared by every section.
+  async function loadSections(actorId: string) {
+    const [sections, graphVersion] = await Promise.all([
+      Promise.all([
+        dependencies.loadAggregate(actorId),
+        dependencies.loadSummary(actorId),
+        dependencies.loadOpportunities(actorId),
+        dependencies.loadGaps(actorId),
+        dependencies.loadDistributions(actorId),
+        dependencies.loadProfile(actorId),
+      ]),
+      loadGraphVersion(actorId),
+    ]);
+    const [aggregateSection, , opportunitiesSection] = sections;
+    const contactIds = referencedContactIds({
+      aggregate: aggregateSection.success ? aggregateSection.data : null,
+      opportunities: opportunitiesSection.success ? opportunitiesSection.data : null,
+    });
+    const contacts = await loadReferencedContacts(dependencies, actorId, contactIds);
+    return { sections: [...sections, contacts] as const, graphVersion };
+  }
+
+  function assemble({ sections, graphVersion }: Awaited<ReturnType<typeof loadSections>>) {
       const [
         aggregateResult,
         summaryResult,
@@ -193,30 +240,14 @@ export function createMobileContactsDashboardService(
         distributionsResult,
         profileResult,
         contactsResult,
-      ] = await withDashboardLiveReadScope(async () => {
-        const sections = await Promise.all([
-          dependencies.loadAggregate(actorId),
-          dependencies.loadSummary(actorId),
-          dependencies.loadOpportunities(actorId),
-          dependencies.loadGaps(actorId),
-          dependencies.loadDistributions(actorId),
-          dependencies.loadProfile(actorId),
-        ]);
-        const [aggregateSection, , opportunitiesSection] = sections;
-        const contactIds = referencedContactIds({
-          aggregate: aggregateSection.success ? aggregateSection.data : null,
-          opportunities: opportunitiesSection.success ? opportunitiesSection.data : null,
-        });
-        const contacts = await loadReferencedContacts(dependencies, actorId, contactIds);
-        return [...sections, contacts] as const;
-      });
+      ] = sections;
 
       if (!aggregateResult.success) {
         return {
-          success: false,
+          success: false as const,
           error: {
-            code: "MOBILE_CONTACTS_DASHBOARD_REQUIRED_SECTION_FAILED",
-            section: "aggregate",
+            code: "MOBILE_CONTACTS_DASHBOARD_REQUIRED_SECTION_FAILED" as const,
+            section: "aggregate" as const,
           },
         };
       }
@@ -226,10 +257,10 @@ export function createMobileContactsDashboardService(
       );
       if (!aggregate.success) {
         return {
-          success: false,
+          success: false as const,
           error: {
-            code: "MOBILE_CONTACTS_DASHBOARD_CONTRACT_MISMATCH",
-            section: "aggregate",
+            code: "MOBILE_CONTACTS_DASHBOARD_CONTRACT_MISMATCH" as const,
+            section: "aggregate" as const,
           },
         };
       }
@@ -250,7 +281,29 @@ export function createMobileContactsDashboardService(
         distributions: optionalResults.distributions.data,
         profile: optionalResults.profile.data,
         contacts: optionalResults.contacts.data,
+        ...(graphVersion === null ? {} : { graphVersion }),
       } as ContactsAnalysisSource;
+      return { success: true as const, aggregate: aggregate.data, optionalResults, analysisSource };
+  }
+
+  return {
+    async getAnalysisSource({ actorId, claimedSourceDataVersion }) {
+      return withDashboardLiveReadScope(async (): Promise<MobileContactsAnalysisSourceResult> => {
+        const graphVersion = await loadGraphVersion(actorId);
+        if (graphVersion !== null && contactsAnalysisGraphSourceDataVersion(graphVersion) !== claimedSourceDataVersion) {
+          return { success: false, error: "conflict" };
+        }
+        const assembled = assemble(await loadSections(actorId));
+        return assembled.success
+          ? { success: true, source: assembled.analysisSource }
+          : { success: false, error: "unavailable" };
+      });
+    },
+
+    async getDashboard({ actorId }) {
+      const assembled = assemble(await withDashboardLiveReadScope(() => loadSections(actorId)));
+      if (!assembled.success) return { success: false, error: assembled.error };
+      const { aggregate, optionalResults, analysisSource } = assembled;
       let analysis: ReturnType<typeof optionalSection> | undefined;
       if (dependencies.loadAnalysis) {
         let analysisResult: MobileContactsDashboardSectionResult;
@@ -270,7 +323,7 @@ export function createMobileContactsDashboardService(
         schemaVersion: 1,
         generatedAt: now(),
         ...(analysis ? { analysis: analysis.data } : {}),
-        aggregate: aggregate.data,
+        aggregate,
         summary: optionalResults.summary.data,
         opportunities: optionalResults.opportunities.data,
         gaps: optionalResults.gaps.data,
@@ -303,6 +356,8 @@ export interface MobileContactsDashboardSources {
   contacts: ContactsListSearchAndFilterService;
   /** Defaults to counting roles over the full contacts list (non-live modes). */
   contactRoleCounts?: (actorId: string) => Promise<readonly MobileContactsDashboardRoleCount[]>;
+  /** Sprint 0102: relationship-graph version (live dashboard provider). */
+  graphVersion?: (actorId: string) => Promise<string | null>;
   loadAnalysis?: MobileContactsDashboardDependencies["loadAnalysis"];
 }
 
@@ -328,10 +383,12 @@ export function createMobileContactsDashboardServiceFromSources({
   profile,
   contacts,
   contactRoleCounts,
+  graphVersion,
   loadAnalysis,
 }: MobileContactsDashboardSources): MobileContactsDashboardService {
   return createMobileContactsDashboardService({
     loadAnalysis,
+    ...(graphVersion ? { loadGraphVersion: graphVersion } : {}),
     loadAggregate: (actorId) =>
       dashboard.getDashboardAggregate({ actorId, activityLimit: 4 }),
     loadSummary: (actorId) => dashboard.getDashboardSummary({ actorId }),
@@ -344,6 +401,13 @@ export function createMobileContactsDashboardServiceFromSources({
     loadContactRoleCounts: (actorId) =>
       contactRoleCounts ? contactRoleCounts(actorId) : roleCountsFromFullList(contacts, actorId),
   });
+}
+
+async function configuredGraphVersion(actorId: string): Promise<string | null> {
+  const provider = createConfiguredStorageDashboardAggregateProvider();
+  return provider?.readDashboardGraphVersionForAccount
+    ? provider.readDashboardGraphVersionForAccount(actorId)
+    : null;
 }
 
 async function configuredContactRoleCounts(
@@ -371,7 +435,9 @@ export function createConfiguredMobileContactsDashboardService(
         : createOpportunityReminderAnalyticsService(mode),
     profile: createProfileService(mode),
     contacts: createContactsListSearchAndFilterService(mode),
-    ...(mode === "live" ? { contactRoleCounts: configuredContactRoleCounts } : {}),
+    ...(mode === "live"
+      ? { contactRoleCounts: configuredContactRoleCounts, graphVersion: configuredGraphVersion }
+      : {}),
     loadAnalysis: (actorId, source) =>
       createContactsAnalysisReportProvider({
         sessionProvider: createOrbitAgentChatSessionProvider(mode, actorId),

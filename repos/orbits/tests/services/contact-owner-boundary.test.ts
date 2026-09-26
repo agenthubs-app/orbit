@@ -40,7 +40,7 @@ test('contact fallback rejects alias-only and conflicting relationship ownership
   assert.deepEqual(graph.contacts.map(c=>c.id),['own']);assert.equal(graph.connections.length,0);
   assert.ok(!JSON.stringify(graph).includes('FOREIGN_RELATIONSHIP'));
   assert.deepEqual((await createStorageAppBootstrapProvider({store,workspaceId:'w'}).readBootstrapGraphForAccount!('a')).contacts.map(c=>c.id),['own']);
-  assert.deepEqual((await createStorageDashboardAggregateProvider({store,workspaceId:'w'}).readDashboardGraphForAccount!('a')).contacts.map(c=>c.id),['own']);
+  // Dashboard graph reads are SQL only since 0102; the Postgres test below covers its owner boundary.
   assert.deepEqual((await createStorageFollowupTaskProvider({store,workspaceId:'w'}).readFollowupGraph('a')).contacts.map(c=>c.id),['own']);
   const connectionGraph=await createStorageConnectionEvidenceProvider({store,workspaceId:'w'}).readConnectionEvidenceGraphForAccount!('a');
   assert.deepEqual(connectionGraph.contacts,[]);
