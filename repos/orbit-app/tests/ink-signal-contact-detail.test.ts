@@ -22,15 +22,17 @@ const contact = { id: "contact:/1", displayName: "林悦", role: "产品设计�
   nextAction: "确认产品试点范围", notes: [{ noteId: "note-1", body: "9月10日 · 合作方向讨论\\n确认产品试点范围。", createdAt: "2026-09-10T09:00:00+09:00", privacy: "private", authorLabel: "我" }] };
 const state = window.fixture = { requests: [], pending: [], navigation: [], presses: {}, expiries: 0, contactId: contact.id, actor: "actor-1", cookieHeader: "", baseUrl: "https://orbit.example", ready: true, baseReady: true, signedIn: true, focused: true, mounted: true, canGoBack: false, width: 390, fontScale: 1, language: "zh", contact, ...window.initialFixture,
   update(patch) { Object.assign(state, patch); version++; listeners.forEach(fn => fn()); },
-  data(path) {
+  data(path, url) {
     if (path === "/api/contacts") return { contacts: state.contacts ?? [state.contact] };
-    if (path.startsWith("/api/contacts/")) return state.invalid ? {} : { state: "success", contact: { ...state.contact, id: state.wrongId ? "wrong" : state.contactId, ...(state.longText ? { displayName: "林悦跨团队合作负责人", role: "产品体验与跨团队协作及服务设计负责人", primaryEmail: "long-contact-identity-without-shortening@example.test", publicProfile: { ...state.contact.publicProfile, offering: ["从用户访谈到交互原型验证及跨团队协作流程的完整研究与设计支持，保留全部合作信息。", "本地社区资源", "补充的第三项合作资源"] } } : {}) }, editableStatusOptions: ["active", "needs_follow_up", "nurture", "archived"], editableTagOptions: [], summary: "", nextAction: "" };
+    // The relationship overview reads one bounded page per stage (fc0569649).
+    if (path === "/api/contacts/pipeline") { const stage = new URL(url).searchParams.get("stage"); const all = stage === "to_contact" ? (state.contacts ?? []) : []; return { asOf: "2026-09-17T00:00:00.000Z", stage, stageCounts: { to_contact: (state.contacts ?? []).length, in_progress: 0, nurture: 0, archived: 0 }, items: all.slice(0, 20).map(contact => ({ id: contact.id, displayName: contact.displayName, organization: "", role: "" })), hasMore: all.length > 20, nextCursor: all.length > 20 ? "20" : null, actions: [] }; }
+    if (path.startsWith("/api/contacts/")) return state.invalid ? {} : { state: "success", contact: { ...state.contact, id: state.wrongId ? "wrong" : state.contactId, ...(state.connectionId ? { connectionId: state.connectionId } : {}), ...(state.longText ? { displayName: "林悦跨团队合作负责人", role: "产品体验与跨团队协作及服务设计负责人", primaryEmail: "long-contact-identity-without-shortening@example.test", publicProfile: { ...state.contact.publicProfile, offering: ["从用户访谈到交互原型验证及跨团队协作流程的完整研究与设计支持，保留全部合作信息。", "本地社区资源", "补充的第三项合作资源"] } } : {}) }, editableStatusOptions: ["active", "needs_follow_up", "nurture", "archived"], editableTagOptions: [], summary: "", nextAction: "" };
     if (path === "/api/connections") return { connections: state.connections ?? [] };
     if (path === "/api/tasks") return { tasks: [] };
     return {};
   },
   reply(index, status = 200, payload) { const r = state.requests[index];
-    state.pending[index]?.(new Response(JSON.stringify(status === 200 || payload !== undefined ? { success: true, data: payload === undefined ? state.data(r.path) : payload } : { success: false, error: { code: "UNAVAILABLE", message: "暂时无法保存，请重试" } }), { status, headers: { "Content-Type": "application/json" } }));
+    state.pending[index]?.(new Response(JSON.stringify(status === 200 || payload !== undefined ? { success: true, data: payload === undefined ? state.data(r.path, r.url) : payload } : { success: false, error: { code: "UNAVAILABLE", message: "暂时无法保存，请重试" } }), { status, headers: { "Content-Type": "application/json" } }));
   }
 };
 onSessionExpired(() => state.expiries++);
@@ -110,7 +112,7 @@ async function writes(p: Page) { return p.evaluate(() => (window as any).fixture
 
 test("unmarked canonical fixture resolves after init404, displays authoritative task and keeps private-only editor", async t => {
   const identity = { actorId: "actor-1", contactId: "contact:/1", connectionId: "connection_0030", version: 2, createdAt: "2026-09-17T00:00:00Z", updatedAt: "2026-09-17T00:00:00Z" };
-  const p = await open(t, { connections: [{ id: identity.connectionId, contactId: identity.contactId, relationshipStage: "needs_follow_up" }], lifecycleStatus: 200, lifecyclePayload: { snapshot: {
+  const p = await open(t, { connectionId: identity.connectionId, lifecycleStatus: 200, lifecyclePayload: { snapshot: {
     connection: { ...identity, stage: "needs_follow_up", activeGoal: null }, tasks: [{ ...identity, taskId: "task_030", title: "Canonical fixture next step", status: "open", purpose: "follow_up", dueAt: "2026-10-01T00:00:00Z" }]
   } } });
   await p.getByText(/Canonical fixture next step/).waitFor();
@@ -124,7 +126,7 @@ test("unmarked canonical fixture resolves after init404, displays authoritative 
 });
 
 test("candidate lifecycle failure never falls open to legacy status editor", async t => {
-  const p = await open(t, { connections: [{ id: "canonical", contactId: "contact:/1" }], lifecycleStatus: 503 });
+  const p = await open(t, { connectionId: "canonical", lifecycleStatus: 503 });
   await p.getByText("关系状态读取失败", { exact: true }).waitFor();
   assert.equal(await p.getByRole("button", { name: "编辑资料", exact: true }).count(), 0);
   assert.deepEqual(await writes(p), []);
@@ -132,7 +134,7 @@ test("candidate lifecycle failure never falls open to legacy status editor", asy
 
 test("pipeline keeps read-only distribution and tasks route without stage PATCH or per-contact lifecycle fanout", async t => {
   const contacts = Array.from({ length: 66 }, (_, index) => ({ id: `contact_${index}`, displayName: `Contact ${index}`, status: "needs_follow_up" }));
-  const p = await open(t, { pipeline: true, contacts, connections: contacts.map((contact, index) => ({ id: `connection_${index}`, contactId: contact.id, relationshipStage: "needs_follow_up" })) });
+  const p = await open(t, { pipeline: true, contacts });
   await press(p, "查看全部待办");
   assert.equal(await p.evaluate(() => (window as any).fixture.navigation[0]), "/tasks?scope=relationship");
   await p.getByRole("tab", { name: "按阶段", exact: true }).click(); await settle(p);
@@ -140,6 +142,7 @@ test("pipeline keeps read-only distribution and tasks route without stage PATCH 
   assert.equal(await p.getByText("Contact 0", { exact: true }).count(), 1);
   assert.deepEqual(await writes(p), []);
   assert.equal(await p.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.path.includes("/lifecycle") || r.path.includes("relationship-initialization")).length), 0);
+  assert.equal(await p.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.path === "/api/contacts" || r.path === "/api/connections").length), 0, "no whole-collection reads");
 });
 
 for (const withTask of [false, true]) test("ready contact preserves generic shortcuts without legacy nextAction " + withTask, async t => {
@@ -394,8 +397,11 @@ test("recompute only announces a validated current-contact result, not a success
   assert.equal(await p.getByText("已重新计算。未创建任务，也没有发送消息。", { exact: true }).count(), 1);
 });
 
+// Since fc0569649 the focused contact detail carries its connectionId; a detail
+// refresh that resolves a different connection is the identity change.
+async function resolveConnection(p: Page) { await p.evaluate(() => { const s = (window as any).fixture; s.update({ connectionId: "connection-real" }); s.refresh(); }); await settle(p); }
 for (const timing of ["pending", "confirmed"]) test("resolved connection identity revokes the " + timing + " recompute and its retained callback", async t => {
-  const p = await open(t, { holdWrites: true, holdConnections: true });
+  const p = await open(t, { holdWrites: true });
   await p.getByRole("button", { name: /完整资料/ }).click();
   await p.evaluate(() => { const s = (window as any).fixture; s.oldRecompute = s.presses["重新计算"]; s.oldRecompute(); }); await settle(p);
   const valid = { state: "success", summary: "关系价值已核对", nextAction: "核对证据", assessment: { id: "value-1", connectionId: "contact:/1", contactId: "contact:/1", contactDisplayName: "林悦", relationshipValueType: "community_bridge", priorityScore: { value: 72, band: "high", calculation: "来源证据", factors: [] }, rationale: { summary: "关系背景", evidence: [], limitations: [] }, suggestedNextAction: { label: "核对证据", dueWindow: "本周", channel: "manual_note", confidence: "medium", reason: "来源" }, sourceEvidenceIds: [], scoredAt: "2026-09-12", createdBy: "live-relationship-value-scoring-service" } };
@@ -403,7 +409,7 @@ for (const timing of ["pending", "confirmed"]) test("resolved connection identit
     await p.evaluate(valid => { const s = (window as any).fixture; s.reply(s.requests.findIndex((r: any) => r.method === "POST"), 200, valid); }, valid); await settle(p);
     assert.equal(await p.getByText("72 分", { exact: true }).count(), 1);
   }
-  await p.evaluate(() => { const s = (window as any).fixture; s.reply(s.requests.findIndex((r: any) => r.path === "/api/connections"), 200, { connections: [{ id: "connection-real", contactId: "contact:/1" }] }); }); await settle(p);
+  await resolveConnection(p);
   if (timing === "pending") {
     assert.equal(await p.evaluate(() => (window as any).fixture.requests.find((r: any) => r.method === "POST").signal.aborted), true);
     await p.evaluate(valid => { const s = (window as any).fixture; s.reply(s.requests.findIndex((r: any) => r.method === "POST"), 200, valid); }, valid); await settle(p);
@@ -419,8 +425,8 @@ for (const timing of ["pending", "confirmed"]) test("resolved connection identit
 });
 
 test("resolved connection identity suppresses an old recompute session-expiry response", async t => {
-  const p = await open(t, { holdWrites: true, holdConnections: true }); await p.getByRole("button", { name: /完整资料/ }).click(); await press(p, "重新计算");
-  await p.evaluate(() => { const s = (window as any).fixture; s.reply(s.requests.findIndex((r: any) => r.path === "/api/connections"), 200, { connections: [{ id: "connection-real", contactId: "contact:/1" }] }); }); await settle(p);
+  const p = await open(t, { holdWrites: true }); await p.getByRole("button", { name: /完整资料/ }).click(); await press(p, "重新计算");
+  await resolveConnection(p);
   await p.evaluate(() => { const s = (window as any).fixture; s.reply(s.requests.findIndex((r: any) => r.method === "POST"), 401); }); await settle(p);
   assert.equal(await p.evaluate(() => (window as any).fixture.expiries), 0);
   assert.equal(await p.getByRole("button", { name: "重新计算", exact: true }).isEnabled(), true);
@@ -433,7 +439,7 @@ for (const outcome of ["new-read-failure", "old-read-expiry"]) test("resolved co
   await p.getByRole("button", { name: /完整资料/ }).click();
   assert.equal(await p.getByText("91 分", { exact: true }).count(), 1);
   await p.evaluate(() => (window as any).fixture.refresh()); await settle(p);
-  await p.evaluate(({ valid, outcome }) => { const s = (window as any).fixture; s.oldAnalysisIndex = s.requests.findLastIndex((r: any) => r.path.startsWith("/api/analysis/relationship-value/")); if (outcome === "new-read-failure") s.reply(s.oldAnalysisIndex, 200, valid); s.reply(s.requests.findLastIndex((r: any) => r.path === "/api/connections"), 200, { connections: [{ id: "connection-real", contactId: "contact:/1" }] }); }, { valid, outcome }); await settle(p);
+  await p.evaluate(({ valid, outcome }) => { const s = (window as any).fixture; s.update({ connectionId: "connection-real" }); s.oldAnalysisIndex = s.requests.findLastIndex((r: any) => r.path.startsWith("/api/analysis/relationship-value/")); if (outcome === "new-read-failure") s.reply(s.oldAnalysisIndex, 200, valid); s.reply(s.requests.findLastIndex((r: any) => r.path === "/api/contacts/" + encodeURIComponent(s.contactId))); }, { valid, outcome }); await settle(p);
   assert.equal(await p.getByText("91 分", { exact: true }).count(), 0, "old analysis cannot remain while a different connection loads");
   await p.evaluate(outcome => { const s = (window as any).fixture; if (outcome === "old-read-expiry") s.reply(s.oldAnalysisIndex, 401); s.reply(s.requests.findLastIndex((r: any) => r.path.endsWith("/connection-real")), 503); }, outcome); await settle(p);
   assert.equal(await p.getByText("91 分", { exact: true }).count(), 0, "a new-connection failure cannot restore the old assessment");

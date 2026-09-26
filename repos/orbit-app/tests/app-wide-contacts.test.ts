@@ -42,11 +42,15 @@ const record = method => async (path, options) => {
   if (method === "POST" && state.postMode === "pending") return new Promise(resolve => { state.pendingPost = resolve; });
   if (method === "PUT" && state.putMode === "pending") return new Promise(resolve => { state.pendingPut = resolve; });
   if (method === "PUT" && state.putMode === "conflict") { state.remoteGoal = "服务器上的并发目标"; state.remoteUpdatedAt = "2026-09-15T00:00:05.000Z"; return { success: false, status: 409, error: { message: "关系目标已在另一端更新" } }; }
+  // The relationship overview reads one bounded pipeline page per stage.
+  if (method === "GET" && path.startsWith("/api/contacts/pipeline?")) { const stage = new URLSearchParams(path.split("?")[1]).get("stage"); return { success: true, status: 200, data: { asOf: "2026-09-15T00:00:00.000Z", stage, stageCounts: { to_contact: 1, in_progress: 0, nurture: 0, archived: 0 }, items: stage === "to_contact" ? [{ id: "contact:1", displayName: "林悦", organization: "Orbit", role: "采购负责人" }] : [], hasMore: false, nextCursor: null, actions: [] }, meta: { featureMode: null, privacy: null, runtimeBoundary: null } }; }
   if (method === "GET" && path === "/api/connections/connection%3A1") return { success: true, data: { connection: connections.connections[0], sourceLinks: [{ evidenceId: "source:1", label: "朋友引荐", type: "referral" }], evidenceTimeline: [{ evidenceId: "evidence:1", title: "已有交流记录", excerpt: "上周确认了合作方向。", contribution: "user_note" }] } };
   return { success: false, error: { message: "暂时无法保存，请重试" } };
 };
-export const useOrbitApiClient = (options = {}) => { state.clientScopeKey = options.scopeKey; return { post: record("POST"), put: record("PUT"), patch: record("PATCH"), get: record("GET") }; };
-export const useOrbitApiBaseUrl = () => { rerender(); return { baseUrl: state.baseUrl }; };
+// Like the real hook, the client is stable for a given scope key.
+const clients = new Map();
+export const useOrbitApiClient = (options = {}) => { state.clientScopeKey = options.scopeKey; if (!clients.has(options.scopeKey)) clients.set(options.scopeKey, { post: record("POST"), put: record("PUT"), patch: record("PATCH"), get: record("GET") }); return clients.get(options.scopeKey); };
+export const useOrbitApiBaseUrl = () => { rerender(); return { ready: true, baseUrl: state.baseUrl }; };
 export const useOrbitAuthSession = () => { rerender(); return { ready: true, signedIn: true, accountId: state.actor, actorId: state.actor, cookieHeader: state.cookieHeader, user: { id: state.actor } }; };
 export const randomUUID = () => "fixture-relationship-goal-mutation-" + ++state.uuidSequence;
 export const useRelationshipInboxBadgeCount = () => 0;
@@ -307,7 +311,9 @@ test("pipeline mode selection has 44pt targets and does not advance a relationsh
     const mode = page.getByRole("tab", { name, exact: true });
     await touchFits(mode); await mode.click();
   }
-  assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);
+  // Bounded pipeline page reads are expected; switching modes must never write.
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests.filter((request: any) => request.method !== "GET")), []);
+  assert.ok((await page.evaluate(() => (window as any).fixture.requests)).every((request: any) => request.path.startsWith("/api/contacts/pipeline?")));
 });
 
 test("analysis summary shows complete values and explanations on a narrow phone", async t => {

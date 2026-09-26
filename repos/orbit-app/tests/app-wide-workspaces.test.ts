@@ -15,6 +15,7 @@ export const useFocusEffect = effect => useEffect(effect, [effect]);
 import { View } from "react-native";
 import { aiConversationPayload, emptyAiConversationPayload, aiSessionListPayload } from "./tests/helpers/ai-fixtures";
 import { taskPageFixture } from "./tests/helpers/task-page-fixture";
+import { todayTaskWindow } from "./src/view-models/today-task-pages";
 let revision = 0; const listeners = new Set();
 const rerender = () => useSyncExternalStore(fn => { listeners.add(fn); return () => listeners.delete(fn); }, () => revision);
 const state = window.fixture = { kind: "success", empty: false, requests: [], navigation: [], refreshes: [], update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); } };
@@ -72,6 +73,14 @@ const client = Object.fromEntries(["get", "post", "patch", "delete", "put"].map(
   if ((screen === "inbox" || screen === "inboxThread") && method === "get" && (path.startsWith("/api/relationship-communication/conversations") || path.startsWith("/api/relationship-communication/conversation-summaries") || path === "/api/relationship-communication/unread-summary" || path.includes("relationship-inbox") || path === "/api/notifications" || path.includes("relationship-signals"))) {
     if (state.kind === "loading") return new Promise(() => {});
     return { success: state.kind === "success" || state.kind === "empty", status: state.kind === "offline" ? 0 : state.kind === "failure" ? 503 : 200, data: dataFor(path), error: { code: "READ_FAILED", message: "连接暂时失败" }, meta: { featureMode: null, privacy: null, runtimeBoundary: null } };
+  }
+  // Today reads its bounded task page through the API client (taskMode=page).
+  if (method === "get" && path.startsWith("/api/today?")) {
+    if (state.kind === "loading") return new Promise(() => {});
+    const timeZone = new URLSearchParams(path.split("?")[1]).get("timeZone");
+    const taskPage = { ...taskPageFixture(state.empty ? [] : [task], "reader", new URLSearchParams("status=open&scope=all")), dueWindow: todayTaskWindow("2026-09-08", timeZone) };
+    const suggestions = [{ id: "suggestion-one", title: "确认参会伙伴", reason: "安排会面", category: "relationship", status: "pending" }];
+    return { success: state.kind === "success" || state.kind === "empty", status: state.kind === "offline" ? 0 : state.kind === "failure" ? 503 : 200, data: { taskMode: "page", date: "2026-09-08", timeZone, taskPage, completedCount: 1, summary: { openTaskCount: taskPage.total, completedCount: 1, suggestionCount: suggestions.length, scheduleCount: 0 }, suggestions, schedule: [] }, error: { code: "READ_FAILED", message: "连接暂时失败" }, meta: { featureMode: null, privacy: null, runtimeBoundary: null } };
   }
   state.requests.push({ method, path, body: options?.body });
   if (method === "get" && path.startsWith("/api/schedule-items?")) {
@@ -166,28 +175,23 @@ test("personal schedule reads retain v3 audit while every mutation still violate
 });
 
 for (const scheme of ["light", "dark"] as const) {
-  test(`${scheme}: final inset AI artifacts preserve all embedded panels, audit request and navigation`, async t => {
+  test(`${scheme}: final inset AI artifacts preserve the retained embedded panels without collection reads`, async t => {
     const page = await open(t, "conversation&insets=true", scheme);
     const reply = page.getByRole("textbox", { name: "消息", exact: true }); await reply.fill("仍需核对的草稿");
-    const contact = page.getByText("林悦", { exact: true }).locator("xpath=ancestor::*[@role='button'][1]");
-    const event = page.getByText("合作交流会", { exact: true }).locator("xpath=ancestor::*[@role='button'][1]");
-    const profile = page.getByText("资料里的林悦", { exact: true }).locator("xpath=ancestor::*[@role='button'][1]");
-    const followup = page.getByRole("button", { name: "打开待办详情：联系 林悦", exact: true }).first();
-    const schedule = page.getByRole("button", { name: "打开待办详情：确认合作时间", exact: true });
-    await followup.waitFor();
-    // Sprint 0085: the run-evidence panel, its reference row and its result block
-    // are gone with the panel itself, so the shared radius now covers the panels
-    // that remain.
-    assert.equal(await page.getByText("AI 运行依据", { exact: true }).count(), 0);
-    const panels = [contact, event, followup, profile, schedule,
+    // The keyword-driven contact/event/follow-up/profile/schedule panels were
+    // removed with their whole-collection reads (docs/operations/2026-09-26-ai-conversation-bounded-reads.md).
+    // Sprint 0085: the run-evidence panel is gone too. The intent block and the
+    // task interaction card remain and share the inset radius.
+    const panels = [
       page.getByText("核对合作信息", { exact: true }).locator(".."),
       page.getByText("待确认的采购讨论", { exact: true }).locator("..").locator("..").locator("..")];
     const radii = []; for (const panel of panels) { await panel.waitFor(); radii.push(await panel.evaluate(el => getComputedStyle(el).borderRadius)); }
-    assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), [], "no reply fetches a run record on its own");
-    for (const panel of [contact, event, followup, profile, schedule]) await panel.click();
-    assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), ["/contacts/person-one", "/events/event-one", "/tasks/task-one", "/profile", "/tasks/task-one"]);
+    assert.equal(await page.getByText("AI 运行依据", { exact: true }).count(), 0);
+    for (const removed of ["打开待办详情：联系 林悦", "打开待办详情：确认合作时间"]) assert.equal(await page.getByRole("button", { name: removed, exact: true }).count(), 0, removed);
+    assert.equal(await page.getByText("资料里的林悦", { exact: true }).count(), 0, "profile collection is not read into the conversation");
+    assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), [], "no reply fetches a run record or collection on its own");
     assert.equal(await reply.inputValue(), "仍需核对的草稿");
-    assert.deepEqual(radii, ["12px", "12px", "12px", "12px", "12px", "12px", "12px"], "contact/event/followup/profile/schedule suggestions, intentBlock, taskInteractionCard");
+    assert.deepEqual(radii, ["12px", "12px"], "intentBlock, taskInteractionCard");
   });
   test(`${scheme}: final inset chat extraction and delivered message keep the exact request boundary`, async t => {
     const page = await open(t, "thread&insets=true", scheme);
@@ -201,9 +205,12 @@ for (const scheme of ["light", "dark"] as const) {
   test(`${scheme}: inbox empty filter keeps the compact no-compose boundary`, async t => {
     const page = await open(t, "inbox", scheme);
     await page.getByRole("tab", { name: "通知", exact: true }).click();
-    await page.getByRole("tab", { name: "活动", exact: true }).click();
-    const empty = page.getByText("暂无消息", { exact: true }).locator("..").locator("..");
-    assert.equal(await empty.evaluate(el => getComputedStyle(el).borderRadius), "0px", "emptyInboxSection");
+    // The legacy reminder/signal feed and its filters were retired (fc0569649);
+    // notifications now come only from the typed inbox and its kind filters.
+    await page.getByRole("tab", { name: "动态", exact: true }).click();
+    const empty = page.getByText("暂无通知", { exact: true });
+    await empty.waitFor();
+    assert.equal(await empty.evaluate(el => getComputedStyle(el).borderRadius), "0px", "typed inbox empty state stays flat");
     assert.equal(await page.getByRole("textbox").count(), 0);
     assert.equal(await page.getByRole("button", { name: "写消息", exact: true }).count(), 0);
     await noWrites(page);
