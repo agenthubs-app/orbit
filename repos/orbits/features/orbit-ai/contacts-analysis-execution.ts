@@ -59,10 +59,12 @@ export function contactsAnalysisSynthesisInput(input: {
   locale: string | null | undefined;
   message: string;
 }): GeminiOrbitAgentSynthesisInput {
+  // The graph version only binds the page to the verified data (0102); the model gets the data itself.
+  const { graphVersion: _graphVersion, ...analysisData } = input.context.source;
   return {
     artifacts: [{
       kind: "contacts_analysis", preferredSurface: "conversation", title: "人脉分析",
-      summary: JSON.stringify({ analysisVersion: "contacts.analysis@1", sourceDataVersion: input.context.sourceDataVersion, evidenceAnchors: evidenceAnchors(input.context.source), untrustedContactsAnalysisData: input.context.source }),
+      summary: JSON.stringify({ analysisVersion: "contacts.analysis@1", sourceDataVersion: input.context.sourceDataVersion, evidenceAnchors: evidenceAnchors(input.context.source), untrustedContactsAnalysisData: analysisData }),
     }],
     assistantMessage: "Produce the complete registered contacts.analysis@1 report from the verified actor data, not a candidate list.",
     history: input.history, intent: "general_chat", locale: input.locale, message: input.message, toolRequests: [],

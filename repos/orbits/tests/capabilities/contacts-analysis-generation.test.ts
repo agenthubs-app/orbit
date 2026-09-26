@@ -215,3 +215,17 @@ test("source verification alone cannot mark a local confirmation response as an 
   const session = await sessionProvider.getSession("session:test");
   assert.equal(session?.origin && "verification" in session.origin ? session.origin.verification : undefined, undefined);
 });
+
+test("the graph version verifies the source but is not part of the data given to the model (0102)", async () => {
+  const { contactsAnalysisSynthesisInput } = await import("../../features/orbit-ai/contacts-analysis-execution");
+  const versioned = { ...source, graphVersion: "12:3456:789" };
+  const sourceDataVersion = createContactsAnalysisSourceDataVersion(versioned);
+  assert.notEqual(sourceDataVersion, createContactsAnalysisSourceDataVersion(source), "the version comes from the graph version");
+  const input = contactsAnalysisSynthesisInput({
+    context: { source: versioned, sourceDataVersion } as unknown as Parameters<typeof contactsAnalysisSynthesisInput>[0]["context"],
+    history: [], locale: "zh", message: question,
+  });
+  const supplied = JSON.parse(input.artifacts[0]!.summary);
+  assert.deepEqual(supplied.untrustedContactsAnalysisData, source);
+  assert.equal(supplied.sourceDataVersion, sourceDataVersion);
+});
