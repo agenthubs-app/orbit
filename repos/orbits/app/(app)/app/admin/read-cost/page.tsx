@@ -38,6 +38,7 @@ const COPY = {
   accounts: { zh: "最费的 20 个用户（7 天）", en: "Top 20 accounts (7 days)" },
   account: { zh: "账号编号", en: "Account ID" },
   trend: { zh: "接口 30 天趋势", en: "30-day route trend" },
+  peak: { zh: "最高", en: "Peak" },
   trendHint: { zh: "点上表中的接口切换。柱高为平均每次读取量。", en: "Pick a route above. Bar height is the average read per request." },
   alerts: { zh: "最近报警（30 天）", en: "Recent alerts (30 days)" },
   noData: { zh: "暂无数据", en: "No data yet" },
@@ -89,12 +90,12 @@ function ReadCostView({ data, t, zh }: { data: ReadCostOverview; t: (key: keyof 
   return (
     <>
       <Section id="days" title={t("days")}>
-        <table style={{ borderCollapse: "collapse", width: "100%" }}>
+        <table style={{ borderCollapse: "collapse", minWidth: 600, width: "100%" }}>
           <thead><tr><th style={head}>{t("day")}</th><th style={headNum}>{t("requests")}</th><th style={headNum}>{t("recorded")}</th><th style={head} /><th style={headNum}>{t("neon")}</th><th style={headNum}>{t("coverage")}</th></tr></thead>
           <tbody>
             {data.days.map((d) => (
               <tr key={d.day}>
-                <td style={cell}>{d.day}</td>
+                <td style={{ ...cell, whiteSpace: "nowrap" }}>{d.day}</td>
                 <td style={num}>{d.requests.toLocaleString("en-US")}</td>
                 <td style={num}>{formatBytes(d.recordedBytes)}</td>
                 <td style={{ ...cell, width: "30%" }}><Bar label={formatBytes(d.recordedBytes)} max={maxDay} value={d.recordedBytes} /></td>
@@ -107,12 +108,12 @@ function ReadCostView({ data, t, zh }: { data: ReadCostOverview; t: (key: keyof 
       </Section>
       <Section id="routes" title={t("routes")}>
         {data.topRoutes.length === 0 ? <p className="orbit-host-muted">{t("noData")}</p> : (
-          <table style={{ borderCollapse: "collapse", width: "100%" }}>
+          <table style={{ borderCollapse: "collapse", minWidth: 600, width: "100%" }}>
             <thead><tr><th style={head}>{t("route")}</th><th style={headNum}>{t("requests")}</th><th style={headNum}>{t("avg")}</th><th style={headNum}>{t("max")}</th><th style={headNum}>{t("total")}</th><th style={head} /></tr></thead>
             <tbody>
               {data.topRoutes.map((r) => (
                 <tr key={r.route} style={r.route === data.trend.route ? { background: "var(--accent-softer)" } : undefined}>
-                  <td style={{ ...cell, fontFamily: "var(--ff-mono)", fontSize: "var(--fs-13)", wordBreak: "break-all" }}>
+                  <td style={{ ...cell, fontFamily: "var(--ff-mono)", fontSize: "var(--fs-13)", whiteSpace: "nowrap" }}>
                     <Link href={`/app/admin/read-cost?route=${encodeURIComponent(r.route)}`}>{r.route}</Link>
                   </td>
                   <td style={num}>{r.requests.toLocaleString("en-US")}</td>
@@ -128,12 +129,12 @@ function ReadCostView({ data, t, zh }: { data: ReadCostOverview; t: (key: keyof 
       </Section>
       <Section id="accounts" title={t("accounts")}>
         {data.topAccounts.length === 0 ? <p className="orbit-host-muted">{t("noData")}</p> : (
-          <table style={{ borderCollapse: "collapse", width: "100%" }}>
+          <table style={{ borderCollapse: "collapse", minWidth: 600, width: "100%" }}>
             <thead><tr><th style={head}>{t("account")}</th><th style={headNum}>{t("requests")}</th><th style={headNum}>{t("avg")}</th><th style={headNum}>{t("total")}</th><th style={head} /></tr></thead>
             <tbody>
               {data.topAccounts.map((a) => (
                 <tr key={a.accountId}>
-                  <td style={{ ...cell, fontFamily: "var(--ff-mono)", fontSize: "var(--fs-13)", wordBreak: "break-all" }}>{a.accountId}</td>
+                  <td style={{ ...cell, fontFamily: "var(--ff-mono)", fontSize: "var(--fs-13)", whiteSpace: "nowrap" }}>{a.accountId}</td>
                   <td style={num}>{a.requests.toLocaleString("en-US")}</td>
                   <td style={num}>{formatBytes(a.avgBytes)}</td>
                   <td style={num}>{formatBytes(a.totalBytes)}</td>
@@ -160,18 +161,18 @@ function ReadCostView({ data, t, zh }: { data: ReadCostOverview; t: (key: keyof 
               ))}
             </div>
             <div className="orbit-host-muted" style={{ display: "flex", fontSize: "var(--fs-12)", justifyContent: "space-between", marginTop: 6 }}>
-              <span>{data.trend.points[0]?.day}</span><span>{t("avg")} max {formatBytes(maxTrend)}</span><span>{data.trend.points.at(-1)?.day}</span>
+              <span>{data.trend.points[0]?.day}</span><span>{t("peak")} {formatBytes(maxTrend)}</span><span>{data.trend.points.at(-1)?.day}</span>
             </div>
           </>
         )}
       </Section>
       <Section id="alerts" title={t("alerts")}>
         {data.alerts.length === 0 ? <p className="orbit-host-muted">{t("noData")}</p> : (
-          <table style={{ borderCollapse: "collapse", width: "100%" }}>
+          <table style={{ borderCollapse: "collapse", minWidth: 600, width: "100%" }}>
             <tbody>
               {data.alerts.map((a) => (
                 <tr key={`${a.rule}:${a.day}:${a.subject}`}>
-                  <td style={cell}>{a.day}</td>
+                  <td style={{ ...cell, whiteSpace: "nowrap" }}>{a.day}</td>
                   <td style={cell}>{RULES[a.rule][zh ? "zh" : "en"]}</td>
                   <td style={{ ...cell, fontFamily: "var(--ff-mono)", fontSize: "var(--fs-13)" }}>{a.subject}</td>
                   <td style={num}>{a.rule === "low_coverage" ? `${Math.round(a.observed * 100)}%` : formatBytes(a.observed)}</td>
