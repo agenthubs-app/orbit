@@ -1,0 +1,283 @@
+<title>看板读取方案</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Serif+SC:wght@600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap">
+<style>
+:root{
+  --paper:#f4f6f3; --surface:#ffffff; --ink:#1c2422; --muted:#5d6a66; --line:#d5ddd8;
+  --accent:#28676a; --accent-soft:#e0eeec; --chalk:#1f3a36; --chalk-ink:#eaf2ee;
+  --warn:#94600f; --warn-soft:#f6ecda; --good:#2e7a4b; --good-soft:#e0f0e5; --bad:#a23a2e; --bad-soft:#f7e2de;
+  --code:#ecf0ee; --hl:#fff4c7;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --paper:#101615; --surface:#172020; --ink:#e1e9e5; --muted:#99a8a3; --line:#2b3937;
+    --accent:#72b7b6; --accent-soft:#1c3230; --chalk:#0c1c1a; --chalk-ink:#dcebe5;
+    --warn:#e0a44e; --warn-soft:#342914; --good:#7cc596; --good-soft:#1b3125; --bad:#e2887c; --bad-soft:#3a211e;
+    --code:#1d2726; --hl:#3a3413;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --paper:#101615; --surface:#172020; --ink:#e1e9e5; --muted:#99a8a3; --line:#2b3937;
+  --accent:#72b7b6; --accent-soft:#1c3230; --chalk:#0c1c1a; --chalk-ink:#dcebe5;
+  --warn:#e0a44e; --warn-soft:#342914; --good:#7cc596; --good-soft:#1b3125; --bad:#e2887c; --bad-soft:#3a211e;
+  --code:#1d2726; --hl:#3a3413;
+}
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font-family:"Noto Sans SC","PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;font-size:16px;line-height:1.85;padding-inline:16px;padding-block:28px 80px}
+main{max-width:740px;margin:0 auto;display:flex;flex-direction:column;gap:56px}
+h1,h2{font-family:"Noto Serif SC","Songti SC",serif;text-wrap:balance;margin:0}
+h1{font-size:32px;line-height:1.3}
+h2{font-size:24px;line-height:1.4}
+h3{font-size:17px;margin:0;font-weight:700}
+p{margin:0;max-width:64ch}
+ul,ol{margin:0;padding-left:1.35em;display:flex;flex-direction:column;gap:6px;max-width:64ch}
+code,.mono{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.86em;background:var(--code);padding:1px 5px;border-radius:4px;word-break:break-all}
+strong{font-weight:700}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.cover{background:var(--chalk);color:var(--chalk-ink);border-radius:10px;padding:28px 24px;display:flex;flex-direction:column;gap:14px}
+.cover .course{font:500 12.5px/1.4 "IBM Plex Mono",monospace;letter-spacing:.1em;text-transform:uppercase;opacity:.8}
+.cover p{color:var(--chalk-ink);opacity:.92}
+.cover ol{gap:4px}
+.cover a{color:var(--chalk-ink)}
+
+.lesson{display:flex;flex-direction:column;gap:18px}
+.lesson-head{display:flex;flex-direction:column;gap:6px;border-top:2px solid var(--ink);padding-top:14px}
+.lesson-no{font:500 13px/1 "IBM Plex Mono",monospace;letter-spacing:.08em;color:var(--accent)}
+.question{font-size:15px;color:var(--muted)}
+.question strong{color:var(--ink)}
+
+.analogy{background:var(--warn-soft);border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:8px}
+.analogy .tag,.terms .tag,.recap .tag{font:500 12px/1.4 "IBM Plex Mono",monospace;letter-spacing:.06em;color:var(--warn)}
+.terms{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.terms .tag{color:var(--accent)}
+.terms dl{margin:0;display:grid;grid-template-columns:minmax(96px,max-content) 1fr;gap:8px 14px}
+.terms dt{font-weight:700}
+.terms dt small{display:block;font:400 12px/1.3 "IBM Plex Mono",monospace;color:var(--muted)}
+.terms dd{margin:0}
+@media (max-width:480px){.terms dl{grid-template-columns:1fr}.terms dd{margin-bottom:6px}}
+.recap{border-left:3px solid var(--accent);padding:4px 0 4px 14px;display:flex;flex-direction:column;gap:4px}
+.recap .tag{color:var(--accent)}
+
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:600px;font-size:14.5px;line-height:1.6}
+th,td{text-align:left;vertical-align:top;padding:9px 12px;border-bottom:1px solid var(--line)}
+th{font-size:13px;color:var(--muted);background:var(--paper);font-weight:600}
+tr:last-child td{border-bottom:0}
+tr.group td{background:var(--accent-soft);font-weight:700;font-size:13.5px;color:var(--accent)}
+td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+.hl{background:var(--hl);padding:0 3px;border-radius:3px}
+
+pre.json{margin:0;background:var(--code);border-radius:8px;padding:14px;overflow-x:auto;font:13px/1.6 "IBM Plex Mono",ui-monospace,monospace;color:var(--ink)}
+pre.json .c{color:var(--muted)}
+figure{margin:0;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px;overflow-x:auto;display:flex;flex-direction:column;gap:8px}
+figcaption{font-size:13.5px;color:var(--muted)}
+.pill{display:inline-block;font-size:12.5px;font-weight:500;padding:1px 9px;border-radius:999px;white-space:nowrap}
+.p-good{background:var(--good-soft);color:var(--good)}
+.p-warn{background:var(--warn-soft);color:var(--warn)}
+.p-bad{background:var(--bad-soft);color:var(--bad)}
+.steps{display:flex;flex-direction:column;gap:10px;counter-reset:s;padding:0;list-style:none;max-width:none}
+.steps li{display:grid;grid-template-columns:30px 1fr;gap:10px;align-items:start}
+.steps li::before{counter-increment:s;content:counter(s);width:26px;height:26px;border-radius:50%;background:var(--accent);color:var(--surface);font:600 13px/26px "IBM Plex Mono",monospace;text-align:center;margin-top:2px}
+.decision{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px 16px;display:flex;flex-direction:column;gap:4px}
+.muted{color:var(--muted)}
+.glossary dl{margin:0;display:grid;grid-template-columns:minmax(110px,max-content) 1fr;gap:8px 16px}
+.glossary dt{font-weight:700}
+.glossary dd{margin:0}
+@media (max-width:480px){.glossary dl{grid-template-columns:1fr}h1{font-size:26px}h2{font-size:21px}body{font-size:15.5px}}
+.callout{background:var(--accent-soft);border-left:3px solid var(--accent);padding:14px 16px;border-radius:0 8px 8px 0;display:flex;flex-direction:column;gap:8px}
+.callout.warn{background:var(--warn-soft);border-left-color:var(--warn)}
+</style>
+<main>
+<section class="cover">
+  <div class="course">设计案 · 已定稿 2026-09-27</div>
+  <h1>看板读取方案</h1>
+  <p>这份设计案回答：<strong>看板和「联系人分析」每次打开都要从 Neon 读走你名下的全部数据，怎样改成只读结果？</strong></p>
+  <p>它直接用上一轮讲的四种省流量做法：让数据库自己算、数据没变就不重算、写入时顺手更新、只读用得到的。</p>
+  <ol>
+    <li><a href="#s1">看板是什么，谁在用</a></li>
+    <li><a href="#s2">现在每次读什么</a></li>
+    <li><a href="#s3">把看板拆开：每一块该用哪种做法</a></li>
+    <li><a href="#s4">数字和短列表：让数据库算</a></li>
+    <li><a href="#s5">缺口和机会：数据没变就不重算</a></li>
+    <li><a href="#s6">从联系人分析问 AI：不再重读整份看板</a></li>
+    <li><a href="#s7">App：在手机上算</a></li>
+    <li><a href="#s8">改完之后</a></li>
+    <li><a href="#s9">分期和验收</a></li>
+    <li><a href="#s10">已定的决定</a></li>
+  </ol>
+</section>
+
+<section class="lesson" id="s1">
+  <div class="lesson-head"><span class="lesson-no">第 1 步</span><h2>看板是什么，谁在用</h2></div>
+  <p>看板是把你的人脉情况汇总成一页：有多少联系人、哪些关系价值高、哪些人很久没联系、有哪些待跟进、人脉在行业和地区上怎么分布、缺哪类人、有哪些机会值得跟进。</p>
+  <p>它的计算都只用<strong>你自己的数据</strong>，一共 6 类：联系人、关系、待办、来源记录、活动、联系人详情状态。</p>
+  <div class="tbl"><table>
+    <thead><tr><th>谁在用</th><th>接口</th><th>说明</th></tr></thead>
+    <tbody>
+      <tr><td>App「看板」页</td><td><code>/api/dashboard</code></td><td><strong>App 登录后默认跳到这一页</strong>（<code>account-auth.ts:45</code>），所以每次登录都会读一遍</td></tr>
+      <tr><td>App 管理页</td><td><code>/api/dashboard</code></td><td></td></tr>
+      <tr><td>App 和网页的「联系人分析」页</td><td><code>/api/mobile/contacts-dashboard</code></td><td>联系人页里的「分析」入口进来</td></tr>
+      <tr><td>从「联系人分析」入口向 AI 提问</td><td>AI 对话接口</td><td>AI 回答前把整份联系人分析再读一遍，见第 6 步</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section class="lesson" id="s2">
+  <div class="lesson-head"><span class="lesson-no">第 2 步</span><h2>现在每次读什么</h2></div>
+  <p><strong>核心读取：</strong>一条 SQL 把你名下这 6 类数据全部读出来，<strong>不设上限</strong>，然后在 Vercel 的内存里算出所有统计。代码里把它叫「读整张关系图」。</p>
+  <p>「联系人分析」页在此之外还要读：</p>
+  <ul>
+    <li>一份用 SQL 算好的小统计（这部分已经是「让数据库算」了）；</li>
+    <li><strong>完整的联系人列表</strong>（读取成本账本里，联系人列表一次约 1.4MB）；</li>
+    <li>个人资料、上次的 AI 分析报告。</li>
+  </ul>
+  <p>同一个请求里，缺口、机会、分布这几块共用同一次「读整张图」，不会读好几遍，这一点已经做对了。</p>
+  <div class="tbl"><table>
+    <thead><tr><th>数据量</th><th class="num">读整张图一次</th></tr></thead>
+    <tbody>
+      <tr><td>读取成本账本（测试种子，被测账号名下约 5,000 行）</td><td class="num">约 3.5MB</td></tr>
+      <tr><td>开发库的演示账号（341 行）</td><td class="num">约 266KB</td></tr>
+    </tbody>
+  </table></div>
+  <p><strong>返回给手机的也很大：</strong>看板的响应里，「新联系人」「高价值关系」「待跟进」「很久没联系」这四个列表都是<strong>全部</strong>，没有只取前几条。只有「最近动态」限制了条数。</p>
+  <div class="recap"><div class="tag">这一步的结论</div><p>读取量和返回量都跟着你名下的数据线性增长。数据越多的用户，每次打开越贵，而他们恰恰是最常用看板的人。</p></div>
+</section>
+
+<section class="lesson" id="s3">
+  <div class="lesson-head"><span class="lesson-no">第 3 步</span><h2>把看板拆开：每一块该用哪种做法</h2></div>
+  <div class="tbl"><table>
+    <thead><tr><th>看板上的一块</th><th>它是什么计算</th><th>用哪种做法</th></tr></thead>
+    <tbody>
+      <tr><td>各种总数：联系人数、关系数、高价值数、待跟进数、很久没联系数、覆盖的活动数</td><td>数数</td><td><strong>让数据库算</strong>。其中大部分已经有 SQL 版本（<code>dashboard-summary-postgres-reader.ts</code>）</td></tr>
+      <tr><td>短列表：新联系人、高价值关系、待跟进、很久没联系、最近动态</td><td>筛选 + 排序 + 取前几条</td><td><strong>让数据库算</strong>，只取前 N 条，只取显示用的字段</td></tr>
+      <tr><td>分布：行业、地区、角色</td><td>分组数数</td><td><strong>让数据库算</strong></td></tr>
+      <tr><td>人脉缺口</td><td>规则较多的分析（约 1,000 行代码）</td><td><strong>数据没变就不重算</strong></td></tr>
+      <tr><td>跟进机会</td><td>综合多项因素打分（约 800 行代码）</td><td><strong>数据没变就不重算</strong></td></tr>
+      <tr><td>AI 分析报告</td><td>模型生成，已经存在对话记录里</td><td>不变</td></tr>
+      <tr><td>联系人分析页读的完整联系人列表</td><td>给页面上出现的名字配资料</td><td><strong>只读用得到的</strong>：只按编号读页面上出现的那几位</td></tr>
+    </tbody>
+  </table></div>
+  <p>为什么缺口和机会不也改成 SQL？它们的规则多，写成 SQL 会很长，以后改规则时要同时改两处，容易不一致。让它们继续用现在的代码算，只是<strong>算的次数变少</strong>，更稳妥。</p>
+</section>
+
+<section class="lesson" id="s4">
+  <div class="lesson-head"><span class="lesson-no">第 4 步</span><h2>数字和短列表：让数据库算</h2></div>
+  <p>举两个例子：</p>
+  <div class="analogy">
+    <div class="tag">「待跟进」这一块</div>
+    <p>现在：把全部待办读出来，在 Vercel 上筛出「未完成」的，数一下，再把它们全部发给手机。</p>
+    <p>改后：让数据库返回两样东西：未完成待办的<strong>个数</strong>，和按截止时间排的<strong>前 5 条</strong>（只含标题、截止时间、联系人名）。</p>
+  </div>
+  <div class="analogy">
+    <div class="tag">「行业分布」这一块</div>
+    <p>现在：把全部联系人读出来，在 Vercel 上按行业分组数数。</p>
+    <p>改后：数据库直接返回「IT 42、制造 17、零售 9……」十几行。</p>
+  </div>
+  <p>SQL 版本的总数统计代码里已经有一份，这次把短列表和分布补齐，所有调用方都改用它。</p>
+  <p><strong>最大的风险是两边算得不一样。</strong>比如「高价值」的门槛，现有代码里一处写的是 70 分，SQL 里写的是 69.5 分（为了模拟四舍五入）。所以要加一道<strong>对照测试</strong>：同一份测试数据，SQL 版和现在的代码版算出来的每个数字、每个列表都必须完全一样。旧代码暂时保留，专门给这个测试当标准答案。</p>
+</section>
+
+<section class="lesson" id="s5">
+  <div class="lesson-head"><span class="lesson-no">第 5 步</span><h2>缺口和机会：数据没变就不重算</h2></div>
+  <h3>什么是「关系图版本」</h3>
+  <p>回忆一下流水号：每一行数据被新建或修改时，都会领一个全局递增的号码。那么<strong>你名下这 6 类数据里最大的那个流水号</strong>，就能代表你的关系图现在是第几版：只要有任何一行被改过，最大流水号一定会变大。删除也一样，因为删除只是把这一行标记为「已删除」，同样会领新号。</p>
+  <p>查这个数字只需要一条很小的查询，返回一个数字，约 100 字节。前提是有合适的索引：现在的同步索引只覆盖待办、笔记、日程 3 类，要把它扩展到这 6 类。</p>
+
+  <h3>怎么用</h3>
+  <ol class="steps">
+    <li><p>请求来了，先查你的关系图版本，比如 88,213。</p></li>
+    <li><p>看存好的结果：如果上次算缺口和机会时的版本也是 88,213，<strong>直接返回存好的结果</strong>，几 KB。</p></li>
+    <li><p>如果版本变了，才读一次整张图，重算，把结果和新版本号一起存起来。</p></li>
+  </ol>
+  <p>存好的结果放在万能表里一个新的类别，比如叫「看板快照」，每个用户一行，信封上写着主人，信纸里是结果和版本号。</p>
+  <p>什么时候会重算？你改了任何一个联系人、关系、待办、来源、活动之后第一次打开看板。每天看板被打开的次数，通常远多于这几类数据真正变化的次数。</p>
+  <p class="muted">两个请求同时发现版本变了、同时重算，也不会出错：算出来的结果一样，谁后写都行。</p>
+</section>
+
+<section class="lesson" id="s6">
+  <div class="lesson-head"><span class="lesson-no">第 6 步</span><h2>从联系人分析问 AI：不再重读整份看板</h2></div>
+  <p>现在的流程：</p>
+  <ol>
+    <li>你在联系人分析页看到一份数据，页面带着它的「数据版本」向 AI 提问；</li>
+    <li>服务器为了确认你看到的是最新数据，<strong>把整份联系人分析重新读一遍</strong>（整张图 + 完整联系人列表），算出版本再比较；</li>
+    <li>比较通过后，把这份数据交给 AI 作为背景资料。</li>
+  </ol>
+  <p>改后：</p>
+  <ol>
+    <li>页面带着「关系图版本」提问；</li>
+    <li>服务器只查一次关系图版本（约 100 字节）来比较；</li>
+    <li>交给 AI 的背景资料，直接用第 4 步的 SQL 结果和第 5 步存好的快照，都只有几 KB。</li>
+  </ol>
+  <p>版本对不上时，和现在一样提示「数据已更新，请刷新后再问」。</p>
+</section>
+
+<section class="lesson" id="s7">
+  <div class="lesson-head"><span class="lesson-no">第 7 步</span><h2>App：在手机上算</h2></div>
+  <p>等「断网也能用」1b 把联系人、关系、来源放进手机后，App 上的看板就不需要问服务器了：</p>
+  <ul>
+    <li>总数、短列表、分布、缺口、机会，全部由手机读本地数据自己算；</li>
+    <li>断网时也能看；</li>
+    <li>只有 AI 分析报告还要从服务器取（它是模型生成的）。</li>
+  </ul>
+  <p><strong>算法只能有一份</strong>，否则网页和 App 的数字会慢慢对不上。做法是把缺口和机会的计算抽成不依赖服务器的纯函数，服务器（算快照时）和 App 共用。总数和短列表在服务器上是 SQL、在手机上是代码，所以第 4 步的对照测试也要覆盖手机上的版本。</p>
+  <p class="muted">这里有一个已知的坑：代码里有一条规则，限制哪些文件可以在服务器和 App 之间共用。之前遇到同样的问题时，是复制了两份来解决的。见第 10 步决定 3。</p>
+</section>
+
+<section class="lesson" id="s8">
+  <div class="lesson-head"><span class="lesson-no">第 8 步</span><h2>改完之后</h2></div>
+  <p>用账本里那个重度账号（整张图约 3.5MB）估算，每次打开：</p>
+  <div class="tbl"><table>
+    <thead><tr><th>场景</th><th class="num">现在</th><th class="num">D1 之后</th><th class="num">D2 之后</th><th class="num">D3 之后（App）</th></tr></thead>
+    <tbody>
+      <tr><td>打开看板，数据没变</td><td class="num">约 3.5MB</td><td class="num">约 3.5MB（缺口和机会还要读整张图）</td><td class="num">约 10KB</td><td class="num">0</td></tr>
+      <tr><td>打开联系人分析，数据没变</td><td class="num">约 5MB</td><td class="num">约 3.5MB</td><td class="num">约 15KB</td><td class="num">只取 AI 报告</td></tr>
+      <tr><td>打开看板，数据刚变过</td><td class="num">约 3.5MB</td><td class="num">约 3.5MB</td><td class="num">约 3.5MB（重算一次）</td><td class="num">0</td></tr>
+      <tr><td>从联系人分析问 AI</td><td class="num">约 5MB</td><td class="num">约 3.5MB</td><td class="num">约 15KB</td><td class="num">约 15KB（AI 在服务器）</td></tr>
+      <tr><td>返回给手机</td><td class="num">全部列表</td><td class="num">每个列表前 5 条</td><td class="num">同左</td><td class="num">不经网络</td></tr>
+    </tbody>
+  </table></div>
+  <p class="muted">这些是按账本数据推算的，不是生产实测。「读取量监控」上线后，可以用真实数字对比改前改后。</p>
+  <p>D1 单独做只能省掉「完整联系人列表」和返回量，读取的大头要等 D2 的快照；所以 D1 和 D2 应该连着做。</p>
+</section>
+
+<section class="lesson" id="s9">
+  <div class="lesson-head"><span class="lesson-no">第 9 步</span><h2>分期和验收</h2></div>
+  <div class="tbl"><table>
+    <thead><tr><th>期</th><th>做什么</th><th>依赖</th></tr></thead>
+    <tbody>
+      <tr><td><strong>D1</strong> 数据库算</td><td>总数、短列表、分布改用 SQL；每个列表只返回前 5 条和显示字段；联系人分析只按编号读用到的联系人；对照测试；App 登录后默认页改回首页</td><td>无</td></tr>
+      <tr><td><strong>D2</strong> 快照</td><td>扩展索引；关系图版本；缺口和机会的快照；AI 的版本核对改为只查版本号并读快照；看板读取不再有不设上限的读取（棘轮减 6）</td><td>D1</td></tr>
+      <tr><td><strong>D3</strong> 手机上算</td><td>抽出共用的纯函数；App 看板和联系人分析读本地</td><td>「断网也能用」1b</td></tr>
+    </tbody>
+  </table></div>
+  <h3>验收</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>检查项</th><th>要看到的结果</th></tr></thead>
+    <tbody>
+      <tr><td>数字一致</td><td>对照测试：SQL 版、快照、现有代码三者在同一份数据上完全一致，包括边界情况（空数据、分数刚好在门槛上、已删除的行）</td></tr>
+      <tr><td>读取量</td><td>读取成本账本里「看板」在数据没变时 ≤ 20KB；新增「联系人分析」「从联系人分析问 AI」两项并设基线</td></tr>
+      <tr><td>快照失效</td><td>改任意一类数据中的任意一行（包括删除）后，下一次打开会重算，结果包含这次改动</td></tr>
+      <tr><td>隔离</td><td>A 的快照、版本号不会被 B 读到或影响</td></tr>
+      <tr><td>真机</td><td>phoneweb 和 Simulator 打开看板、联系人分析、从分析页问 AI；D3 之后开飞行模式也能看</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section class="lesson" id="s10">
+  <div class="lesson-head"><span class="lesson-no">第 10 步</span><h2>已定的决定</h2></div>
+  <div class="tbl"><table>
+    <thead><tr><th>事项</th><th>决定（2026-09-27）</th></tr></thead>
+    <tbody>
+      <tr><td>1. 短列表返回几条</td><td>5 条；想看全部跳到联系人列表分页</td></tr>
+      <tr><td>2. 快照存哪</td><td>万能表的新类别，每个用户一行，写上主人</td></tr>
+      <tr><td>3. 服务器和 App 共用计算代码</td><td>放进一个明确允许共用的目录，并调整那条共用规则</td></tr>
+      <tr><td>4. App 登录后的默认页</td><td>改回首页（<code>/home</code>），不再默认进看板。放进 D1 一起做</td></tr>
+      <tr><td>5. 排位</td><td>读取量监控 O1 之后、其他方案之前做 D1、D2；D3 跟在「断网也能用」1b 之后</td></tr>
+    </tbody>
+  </table></div>
+</section>
+</main>

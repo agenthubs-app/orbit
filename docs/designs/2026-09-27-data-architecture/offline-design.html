@@ -1,0 +1,366 @@
+<title>断网也能用</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Serif+SC:wght@600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap">
+<style>
+:root{
+  --paper:#f4f6f3; --surface:#ffffff; --ink:#1c2422; --muted:#5d6a66; --line:#d5ddd8;
+  --accent:#28676a; --accent-soft:#e0eeec; --chalk:#1f3a36; --chalk-ink:#eaf2ee;
+  --warn:#94600f; --warn-soft:#f6ecda; --good:#2e7a4b; --good-soft:#e0f0e5; --bad:#a23a2e; --bad-soft:#f7e2de;
+  --code:#ecf0ee; --hl:#fff4c7;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --paper:#101615; --surface:#172020; --ink:#e1e9e5; --muted:#99a8a3; --line:#2b3937;
+    --accent:#72b7b6; --accent-soft:#1c3230; --chalk:#0c1c1a; --chalk-ink:#dcebe5;
+    --warn:#e0a44e; --warn-soft:#342914; --good:#7cc596; --good-soft:#1b3125; --bad:#e2887c; --bad-soft:#3a211e;
+    --code:#1d2726; --hl:#3a3413;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --paper:#101615; --surface:#172020; --ink:#e1e9e5; --muted:#99a8a3; --line:#2b3937;
+  --accent:#72b7b6; --accent-soft:#1c3230; --chalk:#0c1c1a; --chalk-ink:#dcebe5;
+  --warn:#e0a44e; --warn-soft:#342914; --good:#7cc596; --good-soft:#1b3125; --bad:#e2887c; --bad-soft:#3a211e;
+  --code:#1d2726; --hl:#3a3413;
+}
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font-family:"Noto Sans SC","PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;font-size:16px;line-height:1.85;padding-inline:16px;padding-block:28px 80px}
+main{max-width:740px;margin:0 auto;display:flex;flex-direction:column;gap:56px}
+h1,h2{font-family:"Noto Serif SC","Songti SC",serif;text-wrap:balance;margin:0}
+h1{font-size:32px;line-height:1.3}
+h2{font-size:24px;line-height:1.4}
+h3{font-size:17px;margin:0;font-weight:700}
+p{margin:0;max-width:64ch}
+ul,ol{margin:0;padding-left:1.35em;display:flex;flex-direction:column;gap:6px;max-width:64ch}
+code,.mono{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.86em;background:var(--code);padding:1px 5px;border-radius:4px;word-break:break-all}
+strong{font-weight:700}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.cover{background:var(--chalk);color:var(--chalk-ink);border-radius:10px;padding:28px 24px;display:flex;flex-direction:column;gap:14px}
+.cover .course{font:500 12.5px/1.4 "IBM Plex Mono",monospace;letter-spacing:.1em;text-transform:uppercase;opacity:.8}
+.cover p{color:var(--chalk-ink);opacity:.92}
+.cover ol{gap:4px}
+.cover a{color:var(--chalk-ink)}
+
+.lesson{display:flex;flex-direction:column;gap:18px}
+.lesson-head{display:flex;flex-direction:column;gap:6px;border-top:2px solid var(--ink);padding-top:14px}
+.lesson-no{font:500 13px/1 "IBM Plex Mono",monospace;letter-spacing:.08em;color:var(--accent)}
+.question{font-size:15px;color:var(--muted)}
+.question strong{color:var(--ink)}
+
+.analogy{background:var(--warn-soft);border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:8px}
+.analogy .tag,.terms .tag,.recap .tag{font:500 12px/1.4 "IBM Plex Mono",monospace;letter-spacing:.06em;color:var(--warn)}
+.terms{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.terms .tag{color:var(--accent)}
+.terms dl{margin:0;display:grid;grid-template-columns:minmax(96px,max-content) 1fr;gap:8px 14px}
+.terms dt{font-weight:700}
+.terms dt small{display:block;font:400 12px/1.3 "IBM Plex Mono",monospace;color:var(--muted)}
+.terms dd{margin:0}
+@media (max-width:480px){.terms dl{grid-template-columns:1fr}.terms dd{margin-bottom:6px}}
+.recap{border-left:3px solid var(--accent);padding:4px 0 4px 14px;display:flex;flex-direction:column;gap:4px}
+.recap .tag{color:var(--accent)}
+
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:600px;font-size:14.5px;line-height:1.6}
+th,td{text-align:left;vertical-align:top;padding:9px 12px;border-bottom:1px solid var(--line)}
+th{font-size:13px;color:var(--muted);background:var(--paper);font-weight:600}
+tr:last-child td{border-bottom:0}
+tr.group td{background:var(--accent-soft);font-weight:700;font-size:13.5px;color:var(--accent)}
+td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+.hl{background:var(--hl);padding:0 3px;border-radius:3px}
+
+pre.json{margin:0;background:var(--code);border-radius:8px;padding:14px;overflow-x:auto;font:13px/1.6 "IBM Plex Mono",ui-monospace,monospace;color:var(--ink)}
+pre.json .c{color:var(--muted)}
+figure{margin:0;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px;overflow-x:auto;display:flex;flex-direction:column;gap:8px}
+figcaption{font-size:13.5px;color:var(--muted)}
+.pill{display:inline-block;font-size:12.5px;font-weight:500;padding:1px 9px;border-radius:999px;white-space:nowrap}
+.p-good{background:var(--good-soft);color:var(--good)}
+.p-warn{background:var(--warn-soft);color:var(--warn)}
+.p-bad{background:var(--bad-soft);color:var(--bad)}
+.steps{display:flex;flex-direction:column;gap:10px;counter-reset:s;padding:0;list-style:none;max-width:none}
+.steps li{display:grid;grid-template-columns:30px 1fr;gap:10px;align-items:start}
+.steps li::before{counter-increment:s;content:counter(s);width:26px;height:26px;border-radius:50%;background:var(--accent);color:var(--surface);font:600 13px/26px "IBM Plex Mono",monospace;text-align:center;margin-top:2px}
+.decision{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px 16px;display:flex;flex-direction:column;gap:4px}
+.muted{color:var(--muted)}
+.glossary dl{margin:0;display:grid;grid-template-columns:minmax(110px,max-content) 1fr;gap:8px 16px}
+.glossary dt{font-weight:700}
+.glossary dd{margin:0}
+@media (max-width:480px){.glossary dl{grid-template-columns:1fr}h1{font-size:26px}h2{font-size:21px}body{font-size:15.5px}}
+.callout{background:var(--accent-soft);border-left:3px solid var(--accent);padding:14px 16px;border-radius:0 8px 8px 0;display:flex;flex-direction:column;gap:8px}
+.callout.warn{background:var(--warn-soft);border-left-color:var(--warn)}
+</style>
+<main>
+
+<section class="cover">
+  <div class="course">设计案 · 已定稿 2026-09-27 · 取代原「推导可见性域同步」</div>
+  <h1>断网也能用</h1>
+  <p>这份设计案回答一个问题：<strong>怎样让 Orbit 的 App 在没有网络的时候，也能看你自己的数据、记下新的东西？</strong></p>
+  <p>它接着《Orbit 数据入门课》第 8、9 课往下讲。里面用到的「本地副本」「许可证」「书签」「流水号」「版本号」这些词，入门课都讲过；新出现的词会先解释再用。</p>
+  <p>全文按八步展开，每一步都建立在上一步的基础上：</p>
+  <ol>
+    <li><a href="#s1">目标：断网时要能做什么</a></li>
+    <li><a href="#s2">现状：已经有什么，还差什么</a></li>
+    <li><a href="#s3">哪些数据该放进手机</a></li>
+    <li><a href="#s4">为什么不能一次全放进去：四个障碍</a></li>
+    <li><a href="#s5">怎么解决这四个障碍</a></li>
+    <li><a href="#s6">按断网价值分期</a></li>
+    <li><a href="#s7">每一期怎么验收</a></li>
+    <li><a href="#s8">已定的决定</a></li>
+  </ol>
+</section>
+
+<!-- 第 1 步 -->
+<section class="lesson" id="s1">
+  <div class="lesson-head">
+    <span class="lesson-no">第 1 步</span>
+    <h2>目标：断网时要能做什么</h2>
+  </div>
+  <p>先想一个具体的场景。你去参加一场交流会，会场在地下一层，手机没有信号。这时你可能想做这些事：</p>
+  <ul>
+    <li>看这场活动在哪个厅、几点开始、议程是什么；</li>
+    <li>刚认识一个人，想翻出他的联系人资料，看看之前聊过什么；</li>
+    <li>聊完之后，马上记一条笔记，或者加一个待办「下周发资料给他」。</li>
+  </ul>
+  <p>这里面其实是两类需求：<strong>看</strong>，和<strong>改</strong>。所以本案说的「断网也能用」，包括两半：</p>
+  <div class="tbl"><table>
+    <thead><tr><th></th><th>意思</th><th>靠什么实现</th></tr></thead>
+    <tbody>
+      <tr><td><strong>断网能读</strong></td><td>没网时能看到自己的数据</td><td>本地副本（入门课第 8 课）</td></tr>
+      <tr><td><strong>断网能写</strong></td><td>没网时改的东西先存在手机上，有网了自动传给服务器</td><td>待上传队列 + 服务器回执（本案第 5 步）</td></tr>
+    </tbody>
+  </table></div>
+  <div class="recap"><div class="tag">这一步的结论</div><p>目标是「看」和「改」都能在断网时进行，只做一半是不够的。</p></div>
+</section>
+
+<!-- 第 2 步 -->
+<section class="lesson" id="s2">
+  <div class="lesson-head">
+    <span class="lesson-no">第 2 步</span>
+    <h2>现状：已经有什么，还差什么</h2>
+  </div>
+  <p>好消息是，本地副本的<strong>整套机制已经做好了</strong>，并且有自动测试逐条验证过：</p>
+  <ul>
+    <li>每个账号一个加密的本地文件，钥匙只存在这台手机上；</li>
+    <li>凭许可证同步，第一次全量，之后凭书签只拿变化的部分；</li>
+    <li>别人的数据不会进你的手机，换账号时旧账号的文件会被删掉；</li>
+    <li>许可证版本号一变，这一类数据就清空重抄。</li>
+  </ul>
+  <p>差的是<strong>用上它的范围</strong>：</p>
+  <div class="tbl"><table>
+    <thead><tr><th>范围</th><th>现在</th></tr></thead>
+    <tbody>
+      <tr><td>服务器允许同步的数据类别</td><td><span class="pill p-warn">3 类</span>：笔记、待办、个人日程</td></tr>
+      <tr><td>真正读本地副本的页面</td><td><span class="pill p-warn">1 个</span>：待办页。其他页面只是先显示上次的整份结果，每次仍然重新下载</td></tr>
+      <tr><td>写好了离线规则的接口</td><td><span class="pill p-warn">20 个</span>，而 App 实际调用约 219 个</td></tr>
+      <tr><td>断网能写</td><td><span class="pill p-bad">没有</span>：手机上已经建好了待上传队列，但服务器那边的回执还没做，也没有页面在用</td></tr>
+    </tbody>
+  </table></div>
+  <div class="recap"><div class="tag">这一步的结论</div><p>发动机已经造好了，但只装在了一辆车上。本案要做的是把它装到更多的车上，并补上「写」这一半。</p></div>
+</section>
+
+<!-- 第 3 步 -->
+<section class="lesson" id="s3">
+  <div class="lesson-head">
+    <span class="lesson-no">第 3 步</span>
+    <h2>哪些数据该放进手机</h2>
+  </div>
+  <p>不是所有数据都适合放进手机。按「放进来有没有用、有没有风险」分成四类：</p>
+  <div class="tbl"><table>
+    <thead><tr><th>类别</th><th>例子</th><th>怎么处理</th></tr></thead>
+    <tbody>
+      <tr><td><strong>A. 应该放</strong><br><span class="muted">你自己的数据</span></td><td>待办、笔记、日程、联系人（包括关系和来源）、会话和消息、收件箱通知、AI 对话记录、个人资料、你的活动报名</td><td>完整放进本地副本</td></tr>
+      <tr><td><strong>B. 放一部分</strong><br><span class="muted">太大、太杂，或者是服务器算出来的</span></td><td>公共活动目录；AI 分析结果、推荐、活动当天发布的座位和推荐人选</td><td>活动只放你报名过、收藏过、近期的；算出来的结果放最近一份，并标明「截至几点」</td></tr>
+      <tr><td><strong>C. 不该放</strong><br><span class="muted">放在手机上有风险</span></td><td>密码和登录凭证；活动工作人员能看到的参会者名单；别人的私密数据</td><td>只能在线看</td></tr>
+      <tr><td><strong>D. 放了也没用</strong><br><span class="muted">断网时本来就做不了</span></td><td>问 AI（模型在服务器上）、在全平台找新的人、报名和付款、实时收发消息</td><td>断网时明确提示「需要联网」</td></tr>
+    </tbody>
+  </table></div>
+  <p>A 类覆盖了日常的绝大部分使用场景，所以本案的重点是把 A 类逐步放进来，再加上 B 类里活动相关的那部分。</p>
+  <p class="muted">放进来要占多少空间？按上一份讲义的测试库计算，每人 5000 条大约 6MB，加上 AI 对话也就十几 MB。名片照片这类大文件只存描述信息，登记表里已经这样规定了。空间不是问题。</p>
+  <div class="recap"><div class="tag">这一步的结论</div><p>A 类全部放，B 类放一部分，C、D 类不放。</p></div>
+</section>
+
+<!-- 第 4 步 -->
+<section class="lesson" id="s4">
+  <div class="lesson-head">
+    <span class="lesson-no">第 4 步</span>
+    <h2>为什么不能一次全放进去：四个障碍</h2>
+  </div>
+  <p>既然机制已经有了，为什么不直接把 A 类都登记进去？因为有四个障碍。我们一个一个看。</p>
+
+  <h3>障碍一：归属不写在一列上</h3>
+  <p>回忆一下入门课：待办判断「是不是你的」很简单，看信封上的 <code>user_id</code> 就行。现有的同步就是建立在这个前提上的。</p>
+  <p>但有些数据的归属，要<strong>从别的记录推算出来</strong>。开发库里的真实情况：</p>
+  <div class="tbl"><table>
+    <thead><tr><th>数据</th><th class="num">行数 / 写了主人的</th><th>你能不能看，要看什么</th></tr></thead>
+    <tbody>
+      <tr><td>用户之间的消息</td><td class="num">—</td><td>它所在的对话，参与者里有没有你（一个对话同时属于两个人）</td></tr>
+      <tr><td>来源记录<br><span class="muted">代码里叫 evidence</span></td><td class="num">4,447 / 36</td><td>有没有被你的某个联系人引用</td></tr>
+      <tr><td>活动数据</td><td class="num">—</td><td>你在这场活动里是什么身份：参会者、工作人员还是主办方</td></tr>
+    </tbody>
+  </table></div>
+  <p>这种「能不能看要推算」的数据，叫<strong>推导可见性</strong>数据。</p>
+  <div class="callout"><p><strong>2026-09-27 讨论后，这张表缩小了：</strong></p>
+  <ul>
+    <li><strong>消息</strong>：改用专用表，每个参与者一行「成员记录」，上面写着人，见《消息数据方案》。</li>
+    <li><strong>来源记录</strong>：被引用的 309 条里只有 1 条同时被两个人引用，所以改成创建时写上主人，旧数据补填一次，共用的每人复制一份。</li>
+    <li>真正需要推算的只剩<strong>活动数据</strong>：你在活动里的身份，没法用一个 <code>user_id</code> 表达。</li>
+  </ul></div>
+
+  <h3>障碍二：数据「离开」你的时候，手机不知道</h3>
+  <p>这是最关键的一个障碍，它由障碍一引起。设想：</p>
+  <div class="analogy">
+    <div class="tag">一个具体的场景</div>
+    <p>你把一位联系人转给了同事。这条联系人的主人从你改成同事，它会领一个新的流水号，<strong>但同步程序只给你发「主人是你」的行</strong>。它现在的主人已经不是你了，所以你的手机再也收不到关于它的任何消息。结果它会<strong>一直留在你的手机里</strong>，连同你写的私人备注。</p>
+    <p>活动也一样：你的工作人员身份被收回，活动数据本身一个字没改，连新的流水号都不会领。</p>
+  </div>
+  <p>这已经不只是数据旧了，而是不该看的人还能看到，属于隐私问题。</p>
+
+  <h3>障碍三：有些数据不在万能表里</h3>
+  <p>同步现在只会从万能表读数据。但活动相关的数据，大部分存在<strong>专用表</strong>里（入门课第 5 课）：</p>
+  <div class="tbl"><table>
+    <thead><tr><th>活动当天你要看的</th><th>存在哪</th></tr></thead>
+    <tbody>
+      <tr><td>活动的地点、时间、介绍</td><td>专用表 <code>event_ops_events</code>、<code>event_event_versions</code></td></tr>
+      <tr><td>你的报名</td><td>专用表 <code>event_ops_membership_…</code></td></tr>
+      <tr><td>当天发布的座位和推荐人选</td><td>专用表 <code>event_ops_publications</code> 等</td></tr>
+    </tbody>
+  </table></div>
+  <p>所以活动要能同步，同步程序得先学会从专用表里读，还要能给出和万能表一样的「流水号」，否则书签就不起作用。</p>
+
+  <h3>障碍四：断网写需要服务器配合</h3>
+  <p>没网时改的东西，手机可以先放进待上传队列。难的是联网以后：</p>
+  <ul>
+    <li><strong>不能重复</strong>：网络不稳时同一条可能传两次，服务器要能认出来、只算一次（入门课第 6 课的「回执」）；</li>
+    <li><strong>要能对上号</strong>：你断网时新建的笔记，手机先给它一个临时编号，上传后服务器会给正式编号，两边要能对应起来；</li>
+    <li><strong>要处理冲突</strong>：手机和电脑断网时改了同一条，联网后听谁的。</li>
+  </ul>
+  <p>服务器这一侧的规则目前还没有做，这也是 Sprint 0034 一直被卡住的原因。</p>
+  <div class="recap"><div class="tag">这一步的结论</div><p>归属要推算、离开时手机不知道、数据在专用表里、写入要服务器配合，这四件事解决了，A 类才能放心放进来。</p></div>
+</section>
+
+<!-- 第 5 步 -->
+<section class="lesson" id="s5">
+  <div class="lesson-head">
+    <span class="lesson-no">第 5 步</span>
+    <h2>怎么解决这四个障碍</h2>
+  </div>
+  <p>下面四个办法，按顺序对应上一步的四个障碍。</p>
+
+  <h3>办法一：给每类数据写一份「说明书」（对应障碍一）</h3>
+  <p>现在的同步注册表，每一类只写了三件事：叫什么、对应哪个类别、是什么种类。我们给它加几项，让每类数据自己说清楚：</p>
+  <div class="tbl"><table>
+    <thead><tr><th>新增的一项</th><th>意思</th><th>拿联系人举例</th></tr></thead>
+    <tbody>
+      <tr><td>归属怎么判断</td><td>看一列，还是要推算</td><td>主人是你，并且没有转给别人</td></tr>
+      <tr><td>哪些字段会影响「谁能看」</td><td>这些字段一变，就要处理「数据离开」的问题</td><td>联系人的主人、关系的主人</td></tr>
+      <tr><td>附属数据</td><td>要跟着主数据一起下发的东西</td><td>这位联系人的关系、引用的来源</td></tr>
+      <tr><td>下发哪些字段</td><td>只发手机页面用得到的，不发内部信息</td><td>姓名、公司、职位、备注……不含来源元数据</td></tr>
+      <tr><td>从哪里读</td><td>万能表还是专用表</td><td>万能表</td></tr>
+    </tbody>
+  </table></div>
+  <p>这份说明书写在代码里，谁都能查。以后新增一类数据要同步，就是再写一份说明书。</p>
+
+  <h3>办法二：先装一道检查，重抄机制等需要时再接（对应障碍二）</h3>
+  <p>先弄清哪些情况会让数据「离开」你。按现在的产品，真实会发生的只有这几种：</p>
+  <div class="tbl"><table>
+    <thead><tr><th>情况</th><th>处理方式</th></tr></thead>
+    <tbody>
+      <tr><td>撤销和某人的关系</td><td>消息方案的成员表：成员行改成「已离开」，主人还是你，手机能收到</td></tr>
+      <tr><td>被移出活动工作人员名单</td><td>工作人员能看的数据属于 C 类，本来就不放进手机</td></tr>
+      <tr><td>取消报名、报名没通过</td><td>报名记录的主人还是你，手机能收到「已取消」；发布给你的座位和推荐跟着撤下</td></tr>
+      <tr><td>联系人转手</td><td>产品里<strong>还没有</strong>这个功能</td></tr>
+    </tbody>
+  </table></div>
+  <p>所以现在的做法分两步：</p>
+  <ol class="steps">
+    <li><p><strong>现在就装一道自动检查</strong>，做法和读取上限的棘轮一样：任何代码改了同步类别里的「主人」或「身份」字段，却没有通知手机，测试就报错。批量修改数据的脚本也在检查范围内，因为那是最容易漏掉的地方。</p></li>
+    <li><p><strong>等真的出现需要的功能</strong>（比如以后做联系人转手）时，再接上「整类重抄」：在同一个事务里，把改动前后两个人这一类的版本号都加一，手机看到版本号变了就清空重抄。<strong>旧主人才是需要清数据的那一方</strong>，所以只加新主人是不够的。这用的是许可证上现成的版本号，不需要新建机制。</p></li>
+  </ol>
+  <p class="muted">为什么选「整类重抄」而不是「逐条通知这一条删掉」：重抄用的是现成机制，而离开这件事很少发生，每人每类最多几百条，重抄一次可以接受。以后哪一类重抄太频繁，再单独给它升级。</p>
+
+  <h3>办法三：让同步学会从专用表读（对应障碍三）</h3>
+  <p>万能表之所以能增量同步，是因为每行都有一个自动领取的流水号。我们给活动相关的几张专用表也装上同一台「取号机」：这些表里的行只要被新建或修改，就领一个流水号，和万能表共用同一个号码序列。</p>
+  <p>这样一来，手机的书签对专用表也照样有效。同步程序再按说明书里「从哪里读」这一项，决定去万能表还是专用表取数据。</p>
+
+  <h3>办法四：断网写的三条规则（对应障碍四）</h3>
+  <p>这部分细节多，要单独出一份设计案。本案先定下三条原则：</p>
+  <ul>
+    <li><strong>每次修改带一个唯一编号</strong>：手机生成，服务器凭它认出重复的上传，只算一次。</li>
+    <li><strong>新建的东西先用临时编号</strong>：上传成功后，服务器返回正式编号，手机把本地的临时编号换掉。</li>
+    <li><strong>冲突时两边都保留</strong>：不偷偷覆盖任何一方的内容，而是提示你选择保留哪一个。</li>
+  </ul>
+  <p>另外，断网时改了、还没传上去的内容，AI 看不到。手机上要标明「未同步」，避免你以为 AI 已经知道了。</p>
+  <div class="recap"><div class="tag">这一步的结论</div><p>说明书解决「怎么判断归属」，版本号解决「离开时怎么清」，取号机解决「专用表怎么同步」，三条规则解决「断网怎么写」。</p></div>
+</section>
+
+<!-- 第 6 步 -->
+<section class="lesson" id="s6">
+  <div class="lesson-head">
+    <span class="lesson-no">第 6 步</span>
+    <h2>按断网价值分期</h2>
+  </div>
+  <p>顺序按「断网时最需要什么」来排，也就是第 1 步里那个会场的场景。</p>
+  <div class="tbl"><table>
+    <thead><tr><th>期</th><th>做什么</th><th>要用到的办法</th><th>难度</th></tr></thead>
+    <tbody>
+      <tr><td><strong>第 0 期</strong><br>地基</td><td>说明书、「改主人 / 身份」的自动检查、专用表的取号机、来源记录和演示数据补写主人</td><td>一、二、三</td><td><span class="pill p-warn">中</span></td></tr>
+      <tr><td><strong>第 1 期</strong><br>活动现场</td><td><strong>1a</strong> 你报名的活动：地点、时间、介绍、议程，以及当天发布给你的座位和推荐人选<br><strong>1b</strong> 联系人，连同关系和来源</td><td>1a：二、三；1b：一、二</td><td>1a <span class="pill p-warn">中</span><br>1b <span class="pill p-warn">中</span></td></tr>
+      <tr><td><strong>第 2 期</strong><br>日程、笔记</td><td>服务器已经登记好了，只差把页面改成以本地为主</td><td>不需要新办法</td><td><span class="pill p-good">小</span></td></tr>
+      <tr><td><strong>第 3 期</strong><br>通知、AI 对话、消息</td><td><strong>3a</strong> 收件箱通知、AI 对话记录（「AI 对话数据方案」里的 B3 就在这里）<br><strong>3b</strong> 用户之间的消息，就是《消息数据方案》的 M3</td><td>3a：一；3b：三</td><td>3a <span class="pill p-good">小</span><br>3b <span class="pill p-good">小</span></td></tr>
+      <tr><td><strong>第 4 期</strong><br>断网写</td><td>先出单独的设计案，再依次做笔记、待办、日程</td><td>四</td><td><span class="pill p-bad">大</span></td></tr>
+    </tbody>
+  </table></div>
+  <p>有两点说明：</p>
+  <ul>
+    <li><strong>第 2 期不依赖地基，可以和第 0 期同时做。</strong>它最简单，而且能尽早让用户感受到效果。排在第 2 位是按价值排的，不代表必须等前面做完。</li>
+    <li><strong>第 1 期拆成两半</strong>：活动（1a）先上线；联系人（1b）要先给来源记录补写主人，并处理「转手后旧主人的手机要清掉」，所以跟在后面。</li>
+  </ul>
+  <p>每一期是一个或几个 sprint，按现有规则执行：先写失败的测试再实现、两端全量测试、phoneweb 和 Simulator 各验证一次。</p>
+</section>
+
+<!-- 第 7 步 -->
+<section class="lesson" id="s7">
+  <div class="lesson-head">
+    <span class="lesson-no">第 7 步</span>
+    <h2>每一期怎么验收</h2>
+  </div>
+  <p>每一类数据加进来时，都要通过同一张检查表。前 6 项在入门课第 8 课那种「本机数据库扮演服务器」的测试里完成：数据库里同时装着用户 A、用户 B 和主办方的数据，逐项断言，不靠读代码来判断。</p>
+  <div class="tbl"><table>
+    <thead><tr><th>检查项</th><th>要看到的结果</th></tr></thead>
+    <tbody>
+      <tr><td>1. 隔离</td><td>A 登录后，A 的手机里没有任何一行 B 的数据</td></tr>
+      <tr><td>2. 离开就消失</td><td>撤销关系、取消报名之后，下一次同步时，相应的对话、座位和推荐从手机上消失</td></tr>
+      <tr><td>3. 重抄不丢待上传</td><td>整类重抄时，还没传上去的修改都还在</td></tr>
+      <tr><td>4. 增量</td><td>第一次全量 → 改一行只传一行 → 再同步一行都不传</td></tr>
+      <tr><td>5. 检查会报错</td><td>写一段故意改了「主人」却不通知手机的代码（包括批量脚本），自动检查报错</td></tr>
+      <tr><td>6. 成本</td><td>每条操作的读取次数、行数、字节数，不超过读取成本账本的基线；棘轮不增加</td></tr>
+      <tr><td>7. 真机断网</td><td>同一个账号，在 phoneweb 和 Simulator 上打开飞行模式，打开对应页面，能看到数据</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- 第 8 步 -->
+<section class="lesson" id="s8">
+  <div class="lesson-head">
+    <span class="lesson-no">第 8 步</span>
+    <h2>已定的决定</h2>
+  </div>
+  <div class="tbl"><table>
+    <thead><tr><th>事项</th><th>决定（2026-09-27）</th></tr></thead>
+    <tbody>
+      <tr><td>数据分成 A、B、C、D 四类，按断网价值排顺序</td><td>同意</td></tr>
+      <tr><td>活动工作人员能看到的参会者名单</td><td>不放进手机（C 类）</td></tr>
+      <tr><td>消息</td><td>按《消息数据方案》改用专用表，成员表决定归属</td></tr>
+      <tr><td>1. 数据「离开」怎么处理</td><td>现在只装自动检查；「整类重抄」等真正需要的功能出现时再接</td></tr>
+      <tr><td>2. 来源记录</td><td>按「被谁的记录引用」补写主人，被两人共用的每人复制一份</td></tr>
+      <tr><td>3. 没有主人的演示数据</td><td>补上合理的主人（按引用关系，或按生成它的演示账号），并修好种子脚本，让以后生成的数据都带主人</td></tr>
+      <tr><td>4. 自动检查覆盖批量脚本</td><td>覆盖</td></tr>
+      <tr><td>5. 活动当天发布的座位和推荐人选</td><td>第 1 期一起放，只放属于你的那一份</td></tr>
+    </tbody>
+  </table></div>
+  <p>下一步：和《AI 对话数据方案》《消息数据方案》一起排 sprint 顺序。</p>
+</section>
+
+</main>
