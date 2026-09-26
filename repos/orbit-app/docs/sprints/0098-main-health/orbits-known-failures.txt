@@ -1,0 +1,36 @@
+✖ ?session= restores the conversation through the shell without asking again
+✖ /app/events/[id]/register renders a public event without query setup
+✖ /app/events/[id]/register renders canonical event identity without inventing an unsigned AI question
+✖ /app/events/[id]/register uses reviewed English identity for public catalogue events
+✖ actual provider and service do not guess tasks or leak stale visible associations
+✖ after returning to the overview, picking another conversation lands back in the thread
+✖ business card scan API accepts JSON image uploads and reaches the cloud OCR boundary
+✖ business card scan API accepts multipart image uploads and reaches the cloud OCR boundary
+✖ contact detail mapping translates live source and relationship tokens into labels
+✖ every route surface requires runtime coverage
+✖ failing tests:
+✖ generated relationship live seed writes every default mock fixture collection
+✖ home default uses bounded summary SQL while the legacy loader uses the scoped graph query
+✖ isolated CLI dry run is read-only and does not disclose operator inputs
+✖ known ICU SQL incompatibility falls back once while other SQL errors propagate
+✖ literal route props exclude unreachable component branches
+✖ main event access schema is cut over and missing-event reads stay non-mutating
+✖ manifest generation writes the required repository artifacts
+✖ picking a stored conversation from history restores it and pushes its deep link
+✖ private notes remain isolated even when another actor has a connection to the same contact
+✖ profile retains actor isolation and eighteen exercised interactions
+✖ prop-gated DataCard pressables are counted only on routes that pass onPress
+✖ registration resolves only published canonical Event Core records and aliases
+✖ registration retains the local-parent Kansai identity, language, venue, and canonical aliases
+✖ reliable POST gives each reply a stable request identity and persists the final answer across turns and retry
+✖ required fresh documented runtime case: web:/app/events
+✖ required fresh documented runtime case: web:/app/events/[id]
+✖ required fresh documented runtime case: web:/app/o/[slug]
+✖ route query parameters come from route-local URL consumers, not transitive get/set calls
+✖ runtime evidence keys anchored by file:line still resolve to the control they credit
+✖ temporary-schema CLI applies only the reviewed 24-target manifest without leaking operator inputs
+✖ the event access ledger is constrained, monotonic, immutable, and leaves the configured schema unchanged
+✖ the web runtime migration CLI initializes an empty database and preserves data on rerun
+✖ two physical portrait transactions have one CAS winner, replay once, and receipt failure rolls back
+✖ unbounded listRecords reads never exceed the frozen ratchet
+✖ visible controls do not rely on missing static behavior evidence
