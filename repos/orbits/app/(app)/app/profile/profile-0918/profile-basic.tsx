@@ -5,7 +5,7 @@
  *   - 「快速填充」= 旧 ProfileMethods（手动填写 / 结构化文本提取 ← hook 的 method / extractText / onTextExtract / extracting）。
  *   - 「基础信息」字段顺序：姓名*（表单首个 <input>，editorDisabled 时 disabled）/ 一级行业* / 二级行业*（两个 <select> 从旧
  *     EditSections 原样搬，保留 aria-label）/ 职位 / 公司 / 生日*（type=date）/ 关于我（bio，80 可见字符校验由
- *     validateProfileSaveDraft 提供）/ 一句话介绍（headline 只读，hook 无保存通道）。
+ *     validateProfileSaveDraft 提供）/ 一句话介绍（headline，随基础资料保存；公开资料、概览、首页问候都会用到）。
  *   - 「联系方式」：WeChat 与 LINE 可编辑且二选一必填（hook update 只把这两个标记为脏）；Email 只读；其余 handle 只读行；一律「仅自己可见」。
  *   - 必填标记 <span class="pc-required">必填</span>；壳里的保存栏通过 formRef.requestSubmit() 提交本表单。
  */
@@ -162,11 +162,9 @@ export function ProfileBasic({
           <Field label={{ en: "About me (up to 80 visible characters)", zh: "关于我（最多 80 个可见字符）" }}>
             <span className="pc-input-wrap pc-input-wrap-area"><textarea className="pc-input pc-textarea" disabled={editorDisabled} onChange={(event) => session.update("bio", event.target.value)} rows={3} value={profile.bio} /></span>
           </Field>
-          <span className="pc-field">
-            <span className="pc-field-label">{t({ en: "One-line intro", zh: "一句话介绍" })}</span>
-            <span className="pc-readonly">{profile.headline.trim() || t({ en: "Not filled in", zh: "未填写" })}</span>
-            <span className="pc-readonly-scope">{t({ en: "Read-only here", zh: "此处只读" })}</span>
-          </span>
+          <Field label={{ en: "One-line intro", zh: "一句话介绍" }}>
+            <span className="pc-input-wrap"><input className="pc-input" disabled={editorDisabled} maxLength={80} onChange={(event) => session.update("headline", event.target.value)} placeholder={t({ en: "e.g. Helping Chinese brands launch in Japan", zh: "例如：帮助中国品牌落地日本市场" })} value={profile.headline} /></span>
+          </Field>
         </section>
       </div>
 

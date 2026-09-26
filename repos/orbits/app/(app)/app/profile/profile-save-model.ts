@@ -12,9 +12,9 @@ import {
 // 保存/刷新后「服务端最新 + 保留本地脏字段」的合并。不含 React 与 fetch，供新 UI 直接消费。
 
 const BASIC_SCOPE_FIELDS: readonly ProfileEditorField[] = [
-  "bio", "birthDate", "displayName", "handles", "organization", "primaryIndustryId", "role", "secondaryIndustryId",
+  "bio", "birthDate", "displayName", "handles", "headline", "organization", "primaryIndustryId", "role", "secondaryIndustryId",
 ];
-const MATCHING_SCOPE_FIELDS: readonly ProfileEditorField[] = ["offering", "seeking", "topics"];
+const MATCHING_SCOPE_FIELDS: readonly ProfileEditorField[] = ["offering", "relationshipGoal", "seeking", "topics"];
 const BIO_VISIBLE_LIMIT = 80;
 
 export function profileSaveScopeFields(scope: ProfileEditorSaveScope): Set<ProfileEditorField> {
@@ -78,6 +78,8 @@ export function mergeProfilePreservingDraft(input: {
     company: preserve.has("organization") ? current.company : latest.company,
     fullName: preserve.has("displayName") ? current.fullName : latest.fullName,
     handles: mergedHandles,
+    headline: preserve.has("headline") ? current.headline : latest.headline,
+    intro: preserve.has("relationshipGoal") ? current.intro : latest.intro,
     offering: preserve.has("offering") ? current.offering : latest.offering,
     primaryIndustryId: preserve.has("primaryIndustryId") ? current.primaryIndustryId : latest.primaryIndustryId,
     secondaryIndustryId: preserve.has("secondaryIndustryId") ? current.secondaryIndustryId : latest.secondaryIndustryId,

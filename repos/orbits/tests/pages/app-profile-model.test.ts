@@ -11,6 +11,7 @@ import {
   missingFieldLabels,
   onboardingFieldLabel,
   personaGroups,
+  selectedOptionValue,
   suggestions,
 } from "../../app/(app)/app/profile/profile-0918/profile-model";
 
@@ -77,7 +78,7 @@ test("completeness rounds the filled ratio and ignores whitespace-only text", ()
   assert.deepEqual(completeness(partial), { score: 30, filled: 3, total: 10 });
 });
 
-test("personaGroups maps the four groups in order and goal is a single chip from intro", () => {
+test("personaGroups maps the four groups in order, goal is a single value from intro, and multi-select groups carry preset options", () => {
   const groups = personaGroups(fullProfile());
   assert.deepEqual(groups.map(group => group.key), ["goal", "offer", "seek", "topic"]);
   assert.deepEqual(groups[0].values, ["Meet operators in Tokyo"]);
@@ -89,12 +90,15 @@ test("personaGroups maps the four groups in order and goal is a single chip from
     assert.ok(group.title.zh && group.title.en);
     assert.ok(group.hint.zh && group.hint.en);
   }
-  // 我的目标 只读（hook 无 intro 保存通道）：提示文案说明来源，且没有输入占位
-  assert.equal(groups[0].hint.zh, "目标来自基础资料的关系目标");
-  assert.equal(groups[0].hint.en, "Your goal comes from the relationship goal in your basic profile");
-  assert.equal(groups[0].placeholder, undefined);
+  // 我的目标：手动输入的单文本，下方三条示例（一条人脉目标 + 两条商业目标）；其余三组为多选，带按产品定位编写的双语预设选项
+  assert.ok(groups[0].placeholder.zh && groups[0].placeholder.en);
+  assert.deepEqual(groups[0].options.map(option => option.zh), ["三个月内认识 3 位日本市场的渠道伙伴", "年内在东京开出第一家线下门店", "从 0 到 1 打造自有品牌"]);
+  for (const option of groups[0].options) assert.ok(option.en);
   for (const group of groups.slice(1)) {
-    assert.ok(group.placeholder?.zh && group.placeholder?.en);
+    assert.ok(group.placeholder.zh && group.placeholder.en);
+    assert.ok(group.options.length >= 10, `${group.key} has preset options`);
+    for (const option of group.options) assert.ok(option.zh && option.en);
+    assert.equal(new Set(group.options.map(option => option.zh)).size, group.options.length, `${group.key} options unique`);
   }
   assert.deepEqual(personaGroups(emptyProfile())[0].values, []);
   assert.deepEqual(personaGroups(emptyProfile({ intro: "   " }))[0].values, []);
@@ -174,4 +178,11 @@ test("aboutShort keeps up to 62 characters and appends … beyond that (design a
   assert.equal(aboutShort(sixtyTwo), sixtyTwo);
   assert.equal(aboutShort(`${sixtyTwo}多`), `${sixtyTwo}…`);
   assert.equal(aboutShort(`${sixtyTwo}多出来的一大段`).length, 63);
+});
+
+test("selectedOptionValue matches a preset in either language", () => {
+  const option = { zh: "投资人", en: "Investors" };
+  assert.equal(selectedOptionValue(option, ["Investors"]), "Investors");
+  assert.equal(selectedOptionValue(option, ["投资人"]), "投资人");
+  assert.equal(selectedOptionValue(option, ["投资"]), undefined);
 });

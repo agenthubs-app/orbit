@@ -244,6 +244,8 @@ export function useProfileEditorSession({
       bio: "bio",
       company: "organization",
       fullName: "displayName",
+      headline: "headline",
+      intro: "relationshipGoal",
       title: "role",
       wechatName: "handles",
       lineId: "handles",
@@ -544,7 +546,7 @@ export function useProfileEditorSession({
   }
 
 
-  const matchingDirty = ["offering", "seeking", "topics"].some(field => dirtyFields.has(field as ProfileEditorField));
+  const matchingDirty = ["offering", "relationshipGoal", "seeking", "topics"].some(field => dirtyFields.has(field as ProfileEditorField));
   function notify(kind: NoticeKind, text: string) {
     setMessageKind(kind);
     setMessage(text);

@@ -288,9 +288,14 @@ export const PROFILE_STYLES = `
   height: auto; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; text-align: center; letter-spacing: 0; line-height: normal; font-weight: 400; border-radius: 0; transition: none; }
 [data-orbit-real-page="profile-0918"] .btn.pc-tag-remove:active { transform: none; }
 [data-orbit-real-page="profile-0918"] .btn.pc-tag-remove:disabled { cursor: default; opacity: 0.6; }
-/* 只读 chip（我的目标 = intro，无移除按钮；设计无）与空组占位 */
-[data-orbit-real-page="profile-0918"] .pc-tag-readonly { gap: 0; }
-[data-orbit-real-page="profile-0918"] .pc-tag-empty { background: #FFFFFF; color: #9FA3C4; }
+/* 预设多选选项（设计无）：点选即移到上方 badge；未选态为白底描边，与已选 badge 区分 */
+[data-orbit-real-page="profile-0918"] .pc-options { display: flex; flex-wrap: wrap; gap: 8px; }
+[data-orbit-real-page="profile-0918"] .btn.pc-option { padding: 6px 12px; border: 1px dashed #C9CBF0; border-radius: 999px; background: #FFFFFF; color: #4B4FC7; font-size: 12px; cursor: pointer;
+  height: auto; display: inline-flex; align-items: center; gap: 0; white-space: nowrap; letter-spacing: 0; line-height: normal; font-weight: 400; transition: background .15s ease, border-color .15s ease; }
+[data-orbit-real-page="profile-0918"] .btn.pc-option:hover:not(:disabled) { background: #ECEEFB; border-color: #A9ACE8; }
+[data-orbit-real-page="profile-0918"] .btn.pc-option:active { transform: none; }
+[data-orbit-real-page="profile-0918"] .btn.pc-option[aria-pressed="true"] { background: #ECEEFB; border-style: solid; border-color: #A9ACE8; }
+[data-orbit-real-page="profile-0918"] .btn.pc-option:disabled { cursor: default; opacity: 0.6; }
 [data-orbit-real-page="profile-0918"] .pc-input-wrap { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border: 1px solid #DDDEFA; border-radius: 10px; background: #FFFFFF; }
 [data-orbit-real-page="profile-0918"] .pc-input-plus { color: #9FA3C4; }
 [data-orbit-real-page="profile-0918"] .pc-input { flex: 1; min-width: 0; border: 0; outline: none; background: transparent; font-size: 13px;

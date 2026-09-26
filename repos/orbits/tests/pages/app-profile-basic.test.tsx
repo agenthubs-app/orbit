@@ -102,11 +102,12 @@ test("basic screen wraps everything in a form, marks core fields plus WeChat/LIN
   assert.match(html, /<option value="technology_internet\.ai_data" selected=""/);
   // 生日 type=date
   assert.match(html, /<input [^>]*type="date"[^>]*value="1990-01-01"/);
-  // 关于我 textarea + 80 可见字符提示；一句话介绍只读
+  // 关于我 textarea + 80 可见字符提示；一句话介绍可编辑（headline）
   assert.match(html, /关于我（最多 80 个可见字符）/);
   assert.match(html, /<textarea [^>]*class="pc-input pc-textarea"[^>]*>十年 B2B 产品经验。<\/textarea>/);
   assert.match(html, /一句话介绍/);
-  assert.match(html, /<span class="pc-readonly">把 AI 落到业务里<\/span>/);
+  assert.match(html, /<input class="pc-input" maxLength="80" placeholder="例如：帮助中国品牌落地日本市场" value="把 AI 落到业务里"\/>/);
+  assert.doesNotMatch(html, /此处只读/);
   // 联系方式：WeChat / LINE 可编辑，Email 只读，其余 handle 只读行
   assert.match(html, /<input [^>]*aria-label="WeChat"[^>]*value="zs_wechat"/);
   assert.match(html, /<input [^>]*aria-label="LINE"[^>]*value="zs_line"/);
@@ -176,8 +177,9 @@ test("field handlers route to the hook: update / updateBirthDate / updateIndustr
     root.root.findAllByProps({ "aria-label": "WeChat" })[0].props.onChange({ target: { value: "wx" } });
     root.root.findAllByProps({ "aria-label": "LINE" })[0].props.onChange({ target: { value: "ln" } });
     root.root.findAllByType("textarea").find((n) => n.props.value === "十年 B2B 产品经验。")!.props.onChange({ target: { value: "新简介" } });
+    root.root.findAllByType("input").find((i) => i.props.value === "把 AI 落到业务里")!.props.onChange({ target: { value: "新的一句话" } });
   });
-  assert.deepEqual(updates, [["fullName", "李四"], ["wechatName", "wx"], ["lineId", "ln"], ["bio", "新简介"]]);
+  assert.deepEqual(updates, [["fullName", "李四"], ["wechatName", "wx"], ["lineId", "ln"], ["bio", "新简介"], ["headline", "新的一句话"]]);
   assert.deepEqual(industries, [
     { primaryIndustryId: "finance_investment", secondaryIndustryId: null },
     { primaryIndustryId: "technology_internet", secondaryIndustryId: null },

@@ -102,7 +102,7 @@ async function typeAndEnter(root: ReactTestRenderer, label: string, value: strin
   return prevented;
 }
 
-test("persona renders the three editable groups with label chips and ✕ remove buttons, plus a read-only goal chip", () => {
+test("persona renders the three multi-select groups with badges above the add box, plus a manual goal input", () => {
   const html = renderToStaticMarkup(<ProfilePersona session={session(FULL)} />);
   for (const label of ["我能提供", "我在寻找", "想聊的话题"]) {
     assert.match(html, new RegExp(`role="group" aria-label="${label}"`), `group ${label}`);
@@ -110,14 +110,21 @@ test("persona renders the three editable groups with label chips and ✕ remove 
   assert.match(html, /<span class="pc-tag">产品咨询 <button[^>]*class="btn pc-tag-remove"[^>]*>✕<\/button><\/span>/);
   assert.match(html, /<span class="pc-tag">投资人 <button/);
   assert.match(html, /<span class="pc-tag">生成式 AI <button/);
-  // 我的目标：只读 chip、无输入框、无移除按钮
-  assert.match(html, /我的目标/);
-  assert.match(html, /<span class="pc-tag pc-tag-readonly">拓展日本市场<\/span>/);
-  const goalCard = html.slice(html.indexOf("我的目标"), html.indexOf("我能提供"));
-  assert.doesNotMatch(goalCard, /<input/);
-  assert.doesNotMatch(goalCard, /pc-tag-remove/);
-  // 三组可编辑：各一个输入框
-  assert.equal((html.match(/<input /g) ?? []).length, 3);
+  // badge 在添加框上方
+  const offerCard = html.slice(html.indexOf('aria-label="我能提供"'), html.indexOf('aria-label="我在寻找"'));
+  assert.ok(offerCard.indexOf("pc-tag-remove") < offerCard.indexOf("pc-input-wrap"), "badges render above the add box");
+  // 我的目标：手动输入框承载 intro，无 chip、无移除按钮
+  const goalCard = html.slice(html.indexOf("我的目标"), html.indexOf('aria-label="我能提供"'));
+  assert.match(goalCard, /<input aria-label="我的目标"[^>]*value="拓展日本市场"/);
+  assert.match(goalCard, /placeholder="写下你的目标，或点击下方示例快速填入"/);
+  // 输入框下方三枚示例 badge
+  assert.ok(goalCard.indexOf("pc-input-wrap") < goalCard.indexOf("pc-options"), "goal examples render below the input");
+  for (const example of ["三个月内认识 3 位日本市场的渠道伙伴", "年内在东京开出第一家线下门店", "从 0 到 1 打造自有品牌"]) {
+    assert.match(goalCard, new RegExp(`class="btn pc-option"[^>]*>＋ ${example}</button>`), example);
+  }
+  assert.doesNotMatch(goalCard, /pc-tag/);
+  // 目标 + 三组添加框
+  assert.equal((html.match(/<input /g) ?? []).length, 4);
   // 设计 groupMeta 的 hint / placeholder
   assert.match(html, /你可以为他人提供什么帮助或资源？（可选择多个）/);
   assert.match(html, /placeholder="添加我能提供的内容，例如：投资机会"/);
@@ -126,10 +133,76 @@ test("persona renders the three editable groups with label chips and ✕ remove 
   }
 });
 
-test("persona goal without intro shows 未设置 and empty groups show no chips", () => {
+test("preset options sit below the add box and hide once selected (in either language)", () => {
+  const html = renderToStaticMarkup(<ProfilePersona session={session({ seeking: ["Investors"], topics: ["生成式 AI"] })} />);
+  const seekCard = html.slice(html.indexOf('aria-label="我在寻找"'), html.indexOf('aria-label="想聊的话题"'));
+  assert.ok(seekCard.indexOf("pc-input-wrap") < seekCard.indexOf("pc-options"), "options render below the add box");
+  assert.match(seekCard, /class="btn pc-option"[^>]*>＋ 联合创始人<\/button>/);
+  assert.doesNotMatch(seekCard, />＋ 投资人</, "option selected in English is hidden");
+  const topicCard = html.slice(html.indexOf('aria-label="想聊的话题"'), html.indexOf("预览效果"));
+  assert.doesNotMatch(topicCard, />＋ 生成式 AI</);
+  assert.match(topicCard, />＋ 日本市场</);
+});
+
+test("empty goal shows an empty input and empty groups show no badges", () => {
   const html = renderToStaticMarkup(<ProfilePersona session={session()} />);
-  assert.match(html, /<span class="pc-tag pc-tag-readonly pc-tag-empty">未设置<\/span>/);
+  assert.match(html, /<input aria-label="我的目标"[^>]*value=""/);
   assert.doesNotMatch(html, /pc-tag-remove/);
+  assert.doesNotMatch(html, /class="pc-tags"/);
+});
+
+test("typing a goal calls update(\"intro\")", async () => {
+  const calls: [string, unknown][] = [];
+  let root!: ReactTestRenderer;
+  await act(async () => {
+    root = create(<ProfilePersona session={session(FULL, { update: ((field: string, value: unknown) => { calls.push([field, value]); }) as ProfileEditorSession["update"] })} />);
+  });
+  const input = group(root, "我的目标").findAllByType("input")[0];
+  assert.equal(input.props.maxLength, 100);
+  await act(async () => { input.props.onChange({ target: { value: "认识出海渠道伙伴" } }); });
+  assert.deepEqual(calls, [["intro", "认识出海渠道伙伴"]]);
+  act(() => root.unmount());
+});
+
+test("clicking a goal example fills the goal input via update(\"intro\") and marks it pressed", async () => {
+  const calls: [string, unknown][] = [];
+  let root!: ReactTestRenderer;
+  await act(async () => {
+    root = create(<ProfilePersona session={session({ intro: "年内在东京开出第一家线下门店" }, { update: ((field: string, value: unknown) => { calls.push([field, value]); }) as ProfileEditorSession["update"] })} />);
+  });
+  const examples = group(root, "我的目标示例").findAllByType("button");
+  assert.equal(examples.length, 3);
+  assert.deepEqual(examples.map((b) => b.props["aria-pressed"]), [false, true, false]);
+  await act(async () => { examples[2].props.onClick(); });
+  assert.deepEqual(calls, [["intro", "从 0 到 1 打造自有品牌"]]);
+  act(() => root.unmount());
+});
+
+test("clicking a preset option adds it via toggleTag and respects the 5-item limit", async () => {
+  const calls: [string, string][] = [];
+  const notices: [string, string][] = [];
+  let root!: ReactTestRenderer;
+  await act(async () => {
+    root = create(
+      <ProfilePersona
+        session={session({ offering: ["a", "b", "c", "d", "e"] }, {
+          toggleTag: (field, tag) => { calls.push([field, tag]); },
+          notify: (kind, text) => { notices.push([kind, text]); },
+        })}
+      />,
+    );
+  });
+  const option = (label: string, text: string) => {
+    const found = group(root, label).findAllByType("button").find((b) => b.props.className === "btn pc-option" && b.children.includes(text));
+    assert.ok(found, `option ${text} in ${label}`);
+    return found;
+  };
+  await act(async () => { option("我在寻找", "投资人").props.onClick(); });
+  await act(async () => { option("想聊的话题", "金融科技").props.onClick(); });
+  await act(async () => { option("我能提供", "市场渠道").props.onClick(); });
+  assert.deepEqual(calls, [["seeking", "投资人"], ["topics", "金融科技"]]);
+  assert.deepEqual(notices, [["error", "能提供和想寻求各最多选择 5 项。"]]);
+  act(() => root.unmount());
 });
 
 test("chip ✕ calls toggleTag with the group field and label", async () => {
@@ -224,14 +297,15 @@ test("preview card shows the real name, title · company, bio and the four group
   assert.doesNotMatch(blank, /pc-preview-bio/);
 });
 
-test("persona inputs and remove buttons are disabled while the editor is disabled", () => {
+test("persona inputs, options and remove buttons are disabled while the editor is disabled", () => {
   const html = renderToStaticMarkup(<ProfilePersona session={session(FULL, { editorDisabled: true })} />);
-  assert.equal((html.match(/<input [^>]*disabled=""/g) ?? []).length, 3);
+  assert.equal((html.match(/<input [^>]*disabled=""/g) ?? []).length, 4);
+  assert.match(html, /class="btn pc-option" disabled=""/);
   assert.match(html, /class="btn pc-tag-remove" disabled=""/);
 });
 
 test("PROFILE_STYLES carry the persona rules scoped to the page", () => {
-  for (const cls of [".pc-editor", ".pc-group", ".pc-group-icon", ".pc-tag", ".btn.pc-tag-remove", ".pc-input-wrap", ".pc-input", ".pc-preview-box", ".pc-preview-row", ".pc-preview-tag", ".pc-tip", ".pc-tip-n"]) {
+  for (const cls of [".pc-editor", ".pc-group", ".pc-group-icon", ".pc-tag", ".btn.pc-tag-remove", ".pc-input-wrap", ".pc-input", ".pc-options", ".btn.pc-option", ".pc-preview-box", ".pc-preview-row", ".pc-preview-tag", ".pc-tip", ".pc-tip-n"]) {
     assert.match(PROFILE_STYLES, new RegExp(`\\[data-orbit-real-page="profile-0918"\\] ${cls.replace(/\./g, "\\.")} \\{`), cls);
   }
   assert.match(PROFILE_STYLES, /\.btn\.pc-tag-remove:active \{ transform: none; \}/);

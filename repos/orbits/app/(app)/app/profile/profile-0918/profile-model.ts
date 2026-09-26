@@ -69,14 +69,79 @@ export interface PersonaGroup {
   icon: string;
   title: Copy;
   hint: Copy;
-  /** 只读组（goal）没有输入框，也就没有占位文案。 */
-  placeholder?: Copy;
+  placeholder: Copy;
+  /** 预设选项：多选组点选即加 badge；goal 点选即填入输入框（单文本，替换当前内容）。 */
+  options: readonly Copy[];
   values: string[];
 }
 
-// goal 只有单文本 intro(=relationshipGoal)，且 hook 没有它的保存通道，只读展示为一个 chip：
-// hint 说明来源（设计 groupMeta 的「可选择多个」不成立），无 placeholder。
-// 其余三组 icon / hint / placeholder 取设计稿 renderVals().groupMeta（◎ ✦ ⚇ ▤）。
+/*
+ * 预设选项按 Orbit 定位编写：「懂你人脉的商务秘书」，服务商业活动参与者（创业者 + 潜客维护者），
+ * 中日跨境场景为主。选项只是快捷输入，存入的仍是当前语言的纯文本标签，与手动添加的标签同一口径。
+ */
+// 我的目标：一条人脉目标 + 两条商业目标，作为填写示例；点击后可在输入框里继续改。
+export const GOAL_OPTIONS: readonly Copy[] = [
+  { zh: "三个月内认识 3 位日本市场的渠道伙伴", en: "Meet three channel partners for the Japan market within three months" },
+  { zh: "年内在东京开出第一家线下门店", en: "Open our first physical store in Tokyo this year" },
+  { zh: "从 0 到 1 打造自有品牌", en: "Build our own brand from zero to one" },
+];
+
+export const OFFER_OPTIONS: readonly Copy[] = [
+  { zh: "投融资资源", en: "Investment & funding" },
+  { zh: "客户引荐", en: "Customer introductions" },
+  { zh: "市场渠道", en: "Market channels" },
+  { zh: "行业经验", en: "Industry expertise" },
+  { zh: "产品与技术咨询", en: "Product & tech advice" },
+  { zh: "创业辅导", en: "Startup mentoring" },
+  { zh: "日本市场资源", en: "Japan market access" },
+  { zh: "中国市场资源", en: "China market access" },
+  { zh: "出海落地支持", en: "Overseas expansion support" },
+  { zh: "供应链资源", en: "Supply chain resources" },
+  { zh: "人才推荐", en: "Talent referrals" },
+  { zh: "媒体与品牌曝光", en: "Media & brand exposure" },
+  { zh: "活动与社群资源", en: "Events & community access" },
+  { zh: "法务财税咨询", en: "Legal, tax & finance advice" },
+];
+
+export const SEEK_OPTIONS: readonly Copy[] = [
+  { zh: "投资人", en: "Investors" },
+  { zh: "联合创始人", en: "Co-founders" },
+  { zh: "潜在客户", en: "Potential customers" },
+  { zh: "渠道合作伙伴", en: "Channel partners" },
+  { zh: "战略合作伙伴", en: "Strategic partners" },
+  { zh: "出海合作伙伴", en: "Overseas expansion partners" },
+  { zh: "供应商", en: "Suppliers" },
+  { zh: "行业导师", en: "Mentors & advisors" },
+  { zh: "技术人才", en: "Technical talent" },
+  { zh: "媒体与 KOL", en: "Media & KOLs" },
+  { zh: "活动主办方", en: "Event organisers" },
+  { zh: "同行交流", en: "Industry peers" },
+];
+
+export const TOPIC_OPTIONS: readonly Copy[] = [
+  { zh: "生成式 AI", en: "Generative AI" },
+  { zh: "创业与融资", en: "Startups & fundraising" },
+  { zh: "出海与跨境", en: "Going global" },
+  { zh: "日本市场", en: "Japan market" },
+  { zh: "中国市场", en: "China market" },
+  { zh: "SaaS 与企业服务", en: "SaaS & enterprise" },
+  { zh: "金融科技", en: "Fintech" },
+  { zh: "消费品牌", en: "Consumer brands" },
+  { zh: "产品与增长", en: "Product & growth" },
+  { zh: "投资趋势", en: "Investment trends" },
+  { zh: "可持续发展", en: "Sustainability" },
+  { zh: "医疗健康", en: "Healthcare" },
+  { zh: "Web3", en: "Web3" },
+  { zh: "团队与管理", en: "Leadership & teams" },
+];
+
+/** 选项在任一语言下已被选中（切换语言后仍能识别之前选的标签）。 */
+export function selectedOptionValue(option: Copy, values: readonly string[]): string | undefined {
+  return values.find(value => value === option.zh || value === option.en);
+}
+
+// goal = 单文本 intro(=relationshipGoal)，手动输入，随画像保存（matching 作用域）。
+// 其余三组 icon / hint / placeholder 取设计稿 renderVals().groupMeta（◎ ✦ ⚇ ▤），外加预设多选选项。
 export function personaGroups(p: OrbitProfileEditorView): PersonaGroup[] {
   const intro = p.intro.trim();
   return [
@@ -84,7 +149,9 @@ export function personaGroups(p: OrbitProfileEditorView): PersonaGroup[] {
       key: "goal",
       icon: "◎",
       title: { zh: "我的目标", en: "My goal" },
-      hint: { zh: "目标来自基础资料的关系目标", en: "Your goal comes from the relationship goal in your basic profile" },
+      hint: { zh: "用一句话写下你近期最想达成的目标，人脉或商业目标都可以。", en: "In one sentence, what do you most want to achieve right now? A networking or business goal both work." },
+      placeholder: { zh: "写下你的目标，或点击下方示例快速填入", en: "Write your goal, or tap an example below" },
+      options: GOAL_OPTIONS,
       values: intro ? [intro] : [],
     },
     {
@@ -93,6 +160,7 @@ export function personaGroups(p: OrbitProfileEditorView): PersonaGroup[] {
       title: { zh: "我能提供", en: "I can offer" },
       hint: { zh: "你可以为他人提供什么帮助或资源？（可选择多个）", en: "What help or resources can you offer others? (multiple allowed)" },
       placeholder: { zh: "添加我能提供的内容，例如：投资机会", en: "Add what you can offer, e.g. investment opportunities" },
+      options: OFFER_OPTIONS,
       values: [...p.offering],
     },
     {
@@ -101,6 +169,7 @@ export function personaGroups(p: OrbitProfileEditorView): PersonaGroup[] {
       title: { zh: "我在寻找", en: "I am seeking" },
       hint: { zh: "你希望结识什么样的人或组织？（可选择多个）", en: "Who or which organisations do you hope to meet? (multiple allowed)" },
       placeholder: { zh: "添加你在寻找的对象，例如：市场渠道伙伴", en: "Add who you are seeking, e.g. channel partners" },
+      options: SEEK_OPTIONS,
       values: [...p.seeking],
     },
     {
@@ -109,6 +178,7 @@ export function personaGroups(p: OrbitProfileEditorView): PersonaGroup[] {
       title: { zh: "想聊的话题", en: "Topics to talk about" },
       hint: { zh: "你对哪些话题感兴趣？（可选择多个）", en: "Which topics interest you? (multiple allowed)" },
       placeholder: { zh: "添加你感兴趣的话题，例如：可持续发展", en: "Add a topic you care about, e.g. sustainability" },
+      options: TOPIC_OPTIONS,
       values: [...p.topics],
     },
   ];

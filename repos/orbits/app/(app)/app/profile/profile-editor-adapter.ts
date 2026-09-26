@@ -20,9 +20,11 @@ export type ProfileEditorField =
   | "birthDate"
   | "displayName"
   | "handles"
+  | "headline"
   | "offering"
   | "organization"
   | "primaryIndustryId"
+  | "relationshipGoal"
   | "role"
   | "secondaryIndustryId"
   | "seeking"
@@ -146,6 +148,7 @@ export function profileEditorUpdateInput(input: {
     if (dirtyFields.has("role")) update.role = profile.title;
     if (dirtyFields.has("birthDate")) update.birthDate = profile.birthDate || null;
     if (dirtyFields.has("bio")) update.bio = profile.bio;
+    if (dirtyFields.has("headline")) update.headline = profile.headline;
     if (
       dirtyFields.has("primaryIndustryId") &&
       profile.primaryIndustryId !== undefined
@@ -165,6 +168,7 @@ export function profileEditorUpdateInput(input: {
     if (dirtyFields.has("offering")) update.offering = [...profile.offering];
     if (dirtyFields.has("seeking")) update.seeking = [...profile.seeking];
     if (dirtyFields.has("topics")) update.topics = [...profile.topics];
+    if (dirtyFields.has("relationshipGoal")) update.relationshipGoal = profile.intro;
   }
 
   return update;

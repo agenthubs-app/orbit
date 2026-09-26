@@ -40,8 +40,9 @@ function profile(overrides: Partial<OrbitProfileEditorView> = {}): OrbitProfileE
 test("scope fields are disjoint between basic and matching", () => {
   const basic = profileSaveScopeFields("basic");
   const matching = profileSaveScopeFields("matching");
-  assert.equal(basic.size, 8);
-  assert.deepEqual([...matching].sort(), ["offering", "seeking", "topics"]);
+  assert.equal(basic.size, 9);
+  assert.equal(basic.has("headline"), true);
+  assert.deepEqual([...matching].sort(), ["offering", "relationshipGoal", "seeking", "topics"]);
   for (const field of matching) assert.equal(basic.has(field), false);
 });
 

@@ -141,6 +141,20 @@ test("basic and matching saves stay narrow while retaining hidden handles", () =
     mutationId: "first-edit",
   });
   assert.equal("headline" in basic, false);
+
+  // 一句话介绍（headline）改动后随基础资料保存
+  const withHeadline = profileEditorUpdateInput({
+    dirtyFields: new Set(["headline"]),
+    expectedUpdatedAt: profile.expectedUpdatedAt,
+    mutationId: "headline-edit",
+    profile,
+    scope: "basic",
+  });
+  assert.deepEqual(withHeadline, {
+    expectedUpdatedAt: "2026-09-17T00:00:00.000Z",
+    headline: "Existing headline",
+    mutationId: "headline-edit",
+  });
   assert.equal("relationshipGoal" in basic, false);
   assert.equal("homeMarket" in basic, false);
   assert.equal("offering" in basic, false);
@@ -156,6 +170,20 @@ test("basic and matching saves stay narrow while retaining hidden handles", () =
     expectedUpdatedAt: "2026-09-17T00:00:00.000Z",
     mutationId: "matching-edit",
     offering: ["Product strategy"],
+  });
+
+  // 我的目标（intro → relationshipGoal）随画像一起保存在 matching 作用域
+  const goal = profileEditorUpdateInput({
+    dirtyFields: new Set(["relationshipGoal"]),
+    expectedUpdatedAt: profile.expectedUpdatedAt,
+    mutationId: "goal-edit",
+    profile,
+    scope: "matching",
+  });
+  assert.deepEqual(goal, {
+    expectedUpdatedAt: "2026-09-17T00:00:00.000Z",
+    mutationId: "goal-edit",
+    relationshipGoal: "Existing relationship goal",
   });
 });
 
