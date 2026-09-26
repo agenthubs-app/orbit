@@ -1,4 +1,5 @@
 import { Pool } from "pg";
+import { meterPostgresPool } from "../../../shared/storage/metered-postgres-pool";
 import { runBusinessCardIngestV2Migrations } from "../business-card-ingest-v2/migrations";
 
 export async function prepareV1CardImageJournal(pool: Pick<Pool, "connect">): Promise<void> {
@@ -40,7 +41,7 @@ export function configuredV1CardImageJournal(connectionString: string) {
   if (!runtime) {
     // Separate from the V1 transaction pool: waiting batch transactions must
     // never exhaust the connections needed to commit the pre-upload intent.
-    const pool = new Pool({ connectionString, max: 2, allowExitOnIdle: true });
+    const pool = meterPostgresPool(new Pool({ connectionString, max: 2, allowExitOnIdle: true }));
     let ready: Promise<void> | undefined;
     runtime = { pool, prepare() {
       return ready ??= prepareV1CardImageJournal(pool).catch(() => {

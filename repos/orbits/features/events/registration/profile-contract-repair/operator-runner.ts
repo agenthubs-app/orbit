@@ -1,4 +1,5 @@
 import { Pool } from "pg";
+import { meterPostgresPool } from "../../../../shared/storage/metered-postgres-pool";
 import {
   operatorReviewedFileSnapshotMatches,
   readOperatorReviewedFile,
@@ -84,7 +85,7 @@ export async function readProfileContractRepairOperatorManifestFile(path: string
 }
 
 async function defaultReadiness(connectionString: string): Promise<void> {
-  const pool = new Pool({ connectionString, max: 1 });
+  const pool = meterPostgresPool(new Pool({ connectionString, max: 1 }));
   try {
     const result = await pool.query<{ version: unknown; runs: unknown; items: unknown }>(
       `select coalesce(max(version), 0) as version,

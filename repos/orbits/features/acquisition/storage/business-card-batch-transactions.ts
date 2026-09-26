@@ -1,4 +1,5 @@
 import { Pool } from "pg";
+import { meterPostgresPool } from "../../../shared/storage/metered-postgres-pool";
 
 import type { BusinessCardBatchService } from "../business-card-batch-service";
 import type { LiveRecordStoreLike } from "../../../shared/storage/live-record-store";
@@ -9,7 +10,7 @@ const pools = new Map<string, Pool>();
 export function configuredBusinessCardBatchPool(connectionString: string): Pool {
   let pool = pools.get(connectionString);
   if (!pool) {
-    pool = new Pool({ connectionString, max: 4, allowExitOnIdle: true });
+    pool = meterPostgresPool(new Pool({ connectionString, max: 4, allowExitOnIdle: true }));
     pools.set(connectionString, pool);
   }
   return pool;

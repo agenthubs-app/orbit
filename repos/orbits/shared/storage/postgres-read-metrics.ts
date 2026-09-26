@@ -1,5 +1,7 @@
 import { createHash } from "node:crypto";
 
+import { readReceiptsEnabled, recordReadReceiptMetric } from "../observability/read-receipts";
+
 export const POSTGRES_READ_METRICS_ENV = "ORBIT_PG_READ_METRICS";
 
 export type PostgresReadQueryKind =
@@ -168,8 +170,17 @@ function observerFor(
   config: PostgresReadMetricsConfig | undefined,
   env: PostgresReadMetricsEnv,
 ): PostgresReadMetricsObserver | undefined {
-  if (typeof config === "function") return config;
-  return config?.observer ?? (enabledByEnv(env) ? safeConsoleObserver : undefined);
+  const configured = typeof config === "function"
+    ? config
+    : config?.observer ?? (enabledByEnv(env) ? safeConsoleObserver : undefined);
+  // Every metered client also feeds the request read receipt, so no pool can
+  // be measured by one path and missed by the other.
+  if (!readReceiptsEnabled(env)) return configured;
+  if (!configured) return recordReadReceiptMetric;
+  return (metric) => {
+    recordReadReceiptMetric(metric);
+    return configured(metric);
+  };
 }
 
 export function createPostgresReadMetricsRunner(

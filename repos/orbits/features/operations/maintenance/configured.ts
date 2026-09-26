@@ -1,4 +1,5 @@
 import { Pool } from "pg";
+import { meterPostgresPool } from "../../../shared/storage/metered-postgres-pool";
 import { send } from "@vercel/queue";
 import { resolveLiveDatabaseConnectionConfig } from "../../../shared/storage/live-database-config";
 import { createConfiguredMaintenanceTasks } from "./configured-tasks";
@@ -33,7 +34,7 @@ export function getConfiguredMaintenanceRuntime(): ConfiguredMaintenanceRuntime 
     globalCache.__orbitMaintenanceRuntime = null;
     return null;
   }
-  const pool = new Pool({ connectionString: config.connectionString, max: 2 });
+  const pool = meterPostgresPool(new Pool({ connectionString: config.connectionString, max: 2 }));
   globalCache.__orbitMaintenanceRuntime = {
     pool,
     workspaceId: config.workspaceId,

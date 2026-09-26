@@ -105,6 +105,31 @@ create index if not exists orbit_records_schedule_actor_id_idx
   where collection_name='personal_schedule_items';
 `;
 
+// Request read receipts (monitoring O1): one row per sampled server request or
+// background task. Written after the response by shared/observability; kept
+// 14 days by the O2 cleanup job, which deletes by occurred_at. account_id is
+// the raw Orbit account id; logs and Axiom only ever see a fingerprint.
+export const ORBIT_READ_RECEIPTS_SCHEMA_SQL = `
+create table if not exists orbit_read_receipts (
+  id bigint generated always as identity primary key,
+  occurred_at timestamptz not null,
+  route text,
+  source text not null,
+  account_id text,
+  query_count integer not null,
+  row_count bigint not null,
+  byte_count bigint not null,
+  db_ms double precision not null,
+  failed_query_count integer not null default 0,
+  response_bytes bigint,
+  status_code smallint,
+  sample_rate real not null default 1
+);
+
+create index if not exists orbit_read_receipts_occurred_at_idx
+  on orbit_read_receipts (occurred_at);
+`;
+
 export interface OrbitRecordsMigrationClient {
   query: (text: string) => Promise<unknown>;
 }
@@ -113,6 +138,7 @@ export async function runOrbitRecordsMigration(
   client: OrbitRecordsMigrationClient,
 ): Promise<void> {
   await client.query(ORBIT_RECORDS_SCHEMA_SQL);
+  await client.query(ORBIT_READ_RECEIPTS_SCHEMA_SQL);
   await runRelationshipLifecycleMigrations(client);
   await runEventOperationsMigrations(client);
 }
