@@ -290,50 +290,119 @@ function personaResponse() {
   });
 }
 
-test("a legacy register receipt is accepted only after an independent matching GET", async () => {
-  const originalFetch = globalThis.fetch;
-  const originalWindow = installWindow();
-  const requests: PendingRequest[] = [];
-  let personaRequests = 0;
+// The registration workspace is wrapped by the event portrait workspace (Sprint 0066),
+// which reads its own sources on mount for every signed-in actor. Those reads are not
+// part of the registration/admission readback protocol under test, so they are answered
+// here and kept out of each test's pending request queue.
+function portraitSourceRead(
+  path: string,
+  questions: readonly { field: "targetAttendees" | "valueOffered"; options: string[] }[] = [],
+): Promise<Response> | null {
+  if (path.endsWith("/registration/portrait")) {
+    return Promise.resolve(Response.json({ data: { portrait: null }, success: true }));
+  }
+  if (path.includes("portraitProofs=true")) {
+    return Promise.resolve(Response.json({
+      data: {
+        questionSet: {
+          questions: questions.map(({ field, options }) => ({
+            id: field,
+            options,
+            participantProfileField: field,
+            portraitQuestionToken: `formal:${field}`,
+            prompt: `Formal ${field}?`,
+            required: true,
+          })),
+        },
+        registration: null,
+      },
+      success: true,
+    }));
+  }
+  return null;
+}
+
+// Since Sprint 0066 a non-admission registration is submitted from the portrait
+// workspace's formal questions ("Confirm registration"); saving a registration no
+// longer generates a persona. The readback rule these tests guard is unchanged:
+// a register receipt only counts after an independent matching GET.
+const FORMAL_QUESTIONS = [
+  { field: "targetAttendees", options: ["Founders"] },
+  { field: "valueOffered", options: ["Operators"] },
+] as const satisfies readonly { field: "targetAttendees" | "valueOffered"; options: string[] }[];
+
+function installLegacyFetch(requests: PendingRequest[], counters: { persona: number }) {
   globalThis.fetch = ((input, init) => {
     const path = String(input);
+    const sourceRead = portraitSourceRead(path, FORMAL_QUESTIONS.map((question) => ({ ...question, options: [...question.options] })));
+    if (sourceRead) return sourceRead;
     if (path.endsWith("/registration/persona")) {
-      personaRequests += 1;
+      counters.persona += 1;
       return Promise.resolve(personaResponse());
     }
     return new Promise<Response>((resolve, reject) => requests.push({ init, path, reject, resolve }));
   }) as typeof fetch;
+}
+
+async function answerFormalQuestions(renderer: ReactTestRenderer) {
+  await act(async () => { button(renderer, "Founders").props.onClick(); });
+  await act(async () => { button(renderer, "Operators").props.onClick(); });
+  const confirm = button(renderer, "Confirm registration");
+  assert.equal(confirm.props.disabled, false);
+  return confirm;
+}
+
+function assertDraftPreserved(renderer: ReactTestRenderer, label: string) {
+  const main = renderer.root.findByType("main");
+  assert.equal(main.props["data-registration-status"], "unregistered", label);
+  assert.equal(main.props["data-registration-stage"], "interview", label);
+  assert.equal(button(renderer, "Founders").props["aria-pressed"], true, label);
+  assert.equal(button(renderer, "Operators").props["aria-pressed"], true, label);
+  assert.equal(button(renderer, "Confirm registration").props.disabled, false, label);
+  assert.equal(renderer.root.findAllByProps({ role: "alert" }).length, 1, label);
+}
+
+test("a legacy register receipt is accepted only after an independent matching GET", async () => {
+  const originalFetch = globalThis.fetch;
+  const originalWindow = installWindow();
+  const requests: PendingRequest[] = [];
+  const counters = { persona: 0 };
+  installLegacyFetch(requests, counters);
 
   const receipt = legacyRegistration();
   let renderer!: ReactTestRenderer;
   try {
     await act(async () => { renderer = create(legacyScreen()); });
-    const save = await completeCoreAnswers(renderer, requests);
+    const confirm = await answerFormalQuestions(renderer);
     let savePromise!: Promise<void>;
     await act(async () => {
-      savePromise = save.props.onClick();
+      savePromise = confirm.props.onClick();
+      await Promise.resolve();
+    });
+    assert.equal(requests.length, 1);
+    assert.match(requests[0]!.path, /\/registration$/u);
+    assert.equal(requests[0]!.init?.method, "POST");
+    const body = JSON.parse(String(requests[0]!.init?.body));
+    assert.equal(body.intent, "register");
+    assert.deepEqual(body.answers, { targetAttendees: "Founders", valueOffered: "Operators" });
+    requests[0]!.resolve(Response.json({ data: receipt, success: true }));
+    await act(async () => {
+      await Promise.resolve();
       await Promise.resolve();
     });
     assert.equal(requests.length, 2);
-    assert.match(requests[1]!.path, /\/registration$/u);
-    assert.equal(requests[1]!.init?.method, "POST");
-    requests[1]!.resolve(Response.json({ data: receipt, success: true }));
-    await act(async () => {
-      await Promise.resolve();
-      await Promise.resolve();
-    });
-    assert.equal(requests.length, 3);
-    assert.equal(personaRequests, 0);
-    assert.equal(requests[2]!.init?.method, "GET");
-    assert.equal(requests[2]!.init?.cache, "no-store");
-    requests[2]!.resolve(Response.json({
+    assert.match(requests[1]!.path, /\/registration\?questions=false$/u);
+    assert.equal(requests[1]!.init?.method, "GET");
+    assert.equal(requests[1]!.init?.cache, "no-store");
+    assert.notEqual(renderer.root.findByType("main").props["data-registration-status"], "rsvped", "no success before the GET");
+    requests[1]!.resolve(Response.json({
       data: { eligibility: { allowedActions: ["cancel"] }, registration: receipt },
       success: true,
     }));
     await act(async () => { await savePromise; });
-    assert.equal(personaRequests, 1);
+    assert.equal(counters.persona, 0, "saving a registration never generates a persona");
     assert.equal(renderer.root.findByType("main").props["data-registration-status"], "rsvped");
-    assert.equal(renderer.root.findByType("main").props["data-registration-stage"], "persona");
+    assert.equal(renderer.root.findByType("main").props["data-registration-stage"], "registered");
   } finally {
     globalThis.fetch = originalFetch;
     if (renderer) await act(async () => { renderer.unmount(); });
@@ -374,34 +443,24 @@ test("legacy register receipt mismatches preserve the draft and never enter succ
     const originalFetch = globalThis.fetch;
     const originalWindow = installWindow();
     const requests: PendingRequest[] = [];
-    let personaRequests = 0;
-    globalThis.fetch = ((input, init) => {
-      const path = String(input);
-      if (path.endsWith("/registration/persona")) {
-        personaRequests += 1;
-        return Promise.resolve(personaResponse());
-      }
-      return new Promise<Response>((resolve, reject) => requests.push({ init, path, reject, resolve }));
-    }) as typeof fetch;
+    const counters = { persona: 0 };
+    installLegacyFetch(requests, counters);
     let renderer!: ReactTestRenderer;
     try {
       await act(async () => { renderer = create(legacyScreen()); });
-      const save = await completeCoreAnswers(renderer, requests);
+      const confirm = await answerFormalQuestions(renderer);
       let savePromise!: Promise<void>;
       await act(async () => {
-        savePromise = save.props.onClick();
+        savePromise = confirm.props.onClick();
         await Promise.resolve();
       });
-      assert.equal(requests.length, 2, testCase.label);
-      requests[1]!.resolve(Response.json({ data: testCase.receipt, success: true }));
+      assert.equal(requests.length, 1, testCase.label);
+      requests[0]!.resolve(Response.json({ data: testCase.receipt, success: true }));
       await act(async () => { await savePromise; });
 
-      assert.equal(requests.length, 2, testCase.label);
-      assert.equal(personaRequests, 0, testCase.label);
-      assert.equal(renderer.root.findByType("main").props["data-registration-status"], "unregistered", testCase.label);
-      assert.equal(renderer.root.findByType("main").props["data-registration-stage"], "interview", testCase.label);
-      assert.equal(renderer.root.findAllByProps({ "data-registration-history": true }).length, 2, testCase.label);
-      assert.equal(renderer.root.findAllByProps({ role: "alert" }).length, 1, testCase.label);
+      assert.equal(requests.length, 1, `${testCase.label}: an unverified receipt is never read back`);
+      assert.equal(counters.persona, 0, testCase.label);
+      assertDraftPreserved(renderer, testCase.label);
     } finally {
       globalThis.fetch = originalFetch;
       if (renderer) await act(async () => { renderer.unmount(); });
@@ -415,15 +474,19 @@ test("legacy register GET mismatches and failures preserve the draft and never e
   const cases: { label: string; respond: (request: PendingRequest) => void }[] = [
     {
       label: "wrong actor",
-      respond: (request) => request.resolve(Response.json({ data: { ...baseReceipt, userId: "actor:other" }, success: true })),
+      respond: (request) => request.resolve(Response.json({ data: { registration: { ...baseReceipt, userId: "actor:other" } }, success: true })),
     },
     {
       label: "wrong event",
-      respond: (request) => request.resolve(Response.json({ data: { ...baseReceipt, eventId: "event:other" }, success: true })),
+      respond: (request) => request.resolve(Response.json({ data: { registration: { ...baseReceipt, eventId: "event:other" } }, success: true })),
     },
     {
       label: "wrong version",
-      respond: (request) => request.resolve(Response.json({ data: { ...baseReceipt, updatedAt: "2026-09-17T00:01:00.000Z" }, success: true })),
+      respond: (request) => request.resolve(Response.json({ data: { registration: { ...baseReceipt, updatedAt: "2026-09-17T00:01:00.000Z" } }, success: true })),
+    },
+    {
+      label: "unwrapped record",
+      respond: (request) => request.resolve(Response.json({ data: baseReceipt, success: true })),
     },
     {
       label: "failed envelope",
@@ -439,39 +502,29 @@ test("legacy register GET mismatches and failures preserve the draft and never e
     const originalFetch = globalThis.fetch;
     const originalWindow = installWindow();
     const requests: PendingRequest[] = [];
-    let personaRequests = 0;
-    globalThis.fetch = ((input, init) => {
-      const path = String(input);
-      if (path.endsWith("/registration/persona")) {
-        personaRequests += 1;
-        return Promise.resolve(personaResponse());
-      }
-      return new Promise<Response>((resolve, reject) => requests.push({ init, path, reject, resolve }));
-    }) as typeof fetch;
+    const counters = { persona: 0 };
+    installLegacyFetch(requests, counters);
     let renderer!: ReactTestRenderer;
     try {
       await act(async () => { renderer = create(legacyScreen()); });
-      const save = await completeCoreAnswers(renderer, requests);
+      const confirm = await answerFormalQuestions(renderer);
       let savePromise!: Promise<void>;
       await act(async () => {
-        savePromise = save.props.onClick();
+        savePromise = confirm.props.onClick();
+        await Promise.resolve();
+      });
+      assert.equal(requests.length, 1, testCase.label);
+      requests[0]!.resolve(Response.json({ data: baseReceipt, success: true }));
+      await act(async () => {
+        await Promise.resolve();
         await Promise.resolve();
       });
       assert.equal(requests.length, 2, testCase.label);
-      requests[1]!.resolve(Response.json({ data: baseReceipt, success: true }));
-      await act(async () => {
-        await Promise.resolve();
-        await Promise.resolve();
-      });
-      assert.equal(requests.length, 3, testCase.label);
-      testCase.respond(requests[2]!);
+      testCase.respond(requests[1]!);
       await act(async () => { await savePromise; });
 
-      assert.equal(personaRequests, 0, testCase.label);
-      assert.equal(renderer.root.findByType("main").props["data-registration-status"], "unregistered", testCase.label);
-      assert.equal(renderer.root.findByType("main").props["data-registration-stage"], "interview", testCase.label);
-      assert.equal(renderer.root.findAllByProps({ "data-registration-history": true }).length, 2, testCase.label);
-      assert.equal(renderer.root.findAllByProps({ role: "alert" }).length, 1, testCase.label);
+      assert.equal(counters.persona, 0, testCase.label);
+      assertDraftPreserved(renderer, testCase.label);
     } finally {
       globalThis.fetch = originalFetch;
       if (renderer) await act(async () => { renderer.unmount(); });
@@ -497,6 +550,8 @@ test("an admission POST receipt with the wrong actor cannot update the workspace
   });
   globalThis.fetch = ((input) => {
     const path = String(input);
+    const sourceRead = portraitSourceRead(path);
+    if (sourceRead) return sourceRead;
     if (path.endsWith("/registration/persona")) {
       personaRequests += 1;
       return Promise.resolve(
@@ -619,6 +674,8 @@ test("admission readback accepts a canonical account ACK and rejects raw or othe
     let personaRequests = 0;
     globalThis.fetch = ((input, init) => {
       const path = String(input);
+      const sourceRead = portraitSourceRead(path);
+      if (sourceRead) return sourceRead;
       if (path.endsWith("/registration/persona")) {
         personaRequests += 1;
         return Promise.resolve(personaResponse());
@@ -681,6 +738,8 @@ test("a late admission POST cannot read back or start persona generation in a ne
   let personaRequests = 0;
   globalThis.fetch = ((input, init) => {
     const path = String(input);
+    const sourceRead = portraitSourceRead(path);
+    if (sourceRead) return sourceRead;
     if (path.endsWith("/registration/persona")) {
       personaRequests += 1;
       return Promise.resolve(personaResponse());
@@ -733,6 +792,8 @@ test("an admission POST readback cannot update a new actor scope", async () => {
   let personaRequests = 0;
   globalThis.fetch = ((input, init) => {
     const path = String(input);
+    const sourceRead = portraitSourceRead(path);
+    if (sourceRead) return sourceRead;
     if (path.endsWith("/registration/persona")) {
       personaRequests += 1;
       return Promise.resolve(personaResponse());
@@ -786,6 +847,8 @@ test("an admission POST readback cannot update an unmounted workspace", async ()
   let personaRequests = 0;
   globalThis.fetch = ((input, init) => {
     const path = String(input);
+    const sourceRead = portraitSourceRead(path);
+    if (sourceRead) return sourceRead;
     if (path.endsWith("/registration/persona")) {
       personaRequests += 1;
       return Promise.resolve(personaResponse());
@@ -837,6 +900,8 @@ test("an admission POST rejects a wrong event, non-positive version, or unknown 
     let personaRequests = 0;
     globalThis.fetch = ((input, init) => {
       const path = String(input);
+      const sourceRead = portraitSourceRead(path);
+      if (sourceRead) return sourceRead;
       if (path.endsWith("/registration/persona")) {
         personaRequests += 1;
         return Promise.resolve(personaResponse());
@@ -876,6 +941,8 @@ test("an admission POST waits for a matching direct GET and preserves the existi
   let personaRequests = 0;
   globalThis.fetch = ((input, init) => {
     const path = String(input);
+    const sourceRead = portraitSourceRead(path);
+    if (sourceRead) return sourceRead;
     if (path.endsWith("/registration/persona")) {
       personaRequests += 1;
       return Promise.resolve(personaResponse());
@@ -966,6 +1033,8 @@ test("admission readback failures keep the submitted answers and never start per
     let personaRequests = 0;
     globalThis.fetch = ((input, init) => {
       const path = String(input);
+      const sourceRead = portraitSourceRead(path);
+      if (sourceRead) return sourceRead;
       if (path.endsWith("/registration/persona")) {
         personaRequests += 1;
         return Promise.resolve(personaResponse());
@@ -1009,6 +1078,8 @@ test("admission withdrawal is single-flight, requires withdrawn version plus one
   const requests: PendingRequest[] = [];
   globalThis.fetch = ((input, init) => {
     const path = String(input);
+    const sourceRead = portraitSourceRead(path);
+    if (sourceRead) return sourceRead;
     return new Promise<Response>((resolve, reject) => requests.push({ init, path, reject, resolve }));
   }) as typeof fetch;
   const current = application({
@@ -1072,7 +1143,7 @@ test("an admission withdrawal GET failure keeps the pending application and its 
   const originalWindow = installWindow();
   const requests: PendingRequest[] = [];
   globalThis.fetch = ((input, init) =>
-    new Promise<Response>((resolve, reject) => requests.push({ init, path: String(input), reject, resolve }))) as typeof fetch;
+    portraitSourceRead(String(input)) ?? new Promise<Response>((resolve, reject) => requests.push({ init, path: String(input), reject, resolve }))) as typeof fetch;
   const current = application({
     applicationVersion: 4,
     profilePayload: { answers: { targetAttendees: "Founders", valueOffered: "Operators" } },
@@ -1132,7 +1203,7 @@ test("admission withdrawal rejects an untrusted or non-next-version DELETE recei
     const originalWindow = installWindow();
     const requests: PendingRequest[] = [];
     globalThis.fetch = ((input, init) =>
-      new Promise<Response>((resolve, reject) => requests.push({ init, path: String(input), reject, resolve }))) as typeof fetch;
+      portraitSourceRead(String(input)) ?? new Promise<Response>((resolve, reject) => requests.push({ init, path: String(input), reject, resolve }))) as typeof fetch;
     const current = application({
       applicationVersion: 4,
       profilePayload: { answers: { targetAttendees: "Founders", valueOffered: "Operators" } },
@@ -1171,7 +1242,7 @@ test("a late admission GET cannot update a scope that leaves and returns to the 
   const originalWindow = installWindow();
   const requests: PendingRequest[] = [];
   globalThis.fetch = ((input, init) =>
-    new Promise<Response>((resolve, reject) => requests.push({ init, path: String(input), reject, resolve }))) as typeof fetch;
+    portraitSourceRead(String(input)) ?? new Promise<Response>((resolve, reject) => requests.push({ init, path: String(input), reject, resolve }))) as typeof fetch;
   const currentA = application({
     applicationVersion: 4,
     profilePayload: { answers: { targetAttendees: "Founders", valueOffered: "Operators" } },
