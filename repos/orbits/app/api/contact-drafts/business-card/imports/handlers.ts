@@ -5,6 +5,7 @@ import { resolveAuthenticatedApiActor, type ResolveAuthenticatedApiActor } from 
 import { getConfiguredCardUploadSources } from "../../../../../features/acquisition/storage/business-card-upload-source-runtime";
 import { CardUploadSourceError } from "../../../../../features/acquisition/storage/business-card-upload-source-error";
 import { createNormalizationGate } from "../../../../../features/acquisition/business-card-ingest-v2/normalization";
+import { readBusinessCardMetadata } from "../request-metadata";
 
 const UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
 const headers = { "cache-control": "no-store" };
@@ -15,31 +16,6 @@ const verificationGate = createNormalizationGate({ globalLimit: 1 });
 
 // 500 source UUIDs need about 20 KiB. This endpoint carries references only;
 // image/PDF bytes go directly to object storage using the upload token route.
-async function metadata(request: Request): Promise<Record<string, unknown>> {
-  if (request.headers.get("content-type")?.split(";")[0].trim() !== "application/json" || !request.body) throw new Error("Invalid metadata.");
-  const reader = request.body.getReader();
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  const deadline = new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error("Metadata timeout.")), 10_000); });
-  let complete = false;
-  try {
-    const chunks: Uint8Array[] = []; let size = 0;
-    for (;;) {
-      const next = await Promise.race([reader.read(), deadline]);
-      if (next.done) break;
-      size += next.value.byteLength;
-      if (size > 32 * 1024) throw new Error("Metadata too large.");
-      chunks.push(next.value);
-    }
-    const body: unknown = JSON.parse(Buffer.concat(chunks).toString("utf8"));
-    if (!body || typeof body !== "object" || Array.isArray(body)) throw new Error("Invalid metadata.");
-    complete = true; return body as Record<string, unknown>;
-  } finally {
-    clearTimeout(timer);
-    if (!complete) void reader.cancel().catch(() => {});
-    reader.releaseLock();
-  }
-}
-
 function repositoryFailure(cause: unknown): Response {
   const message = cause instanceof Error ? cause.message : "";
   if (["Preparation job not found.", "Preparation source not found.", "Upload source not found."].includes(message)) return failure(404, "IMPORT_NOT_FOUND");
@@ -66,7 +42,7 @@ export function createV1ImportHandlers({ resolveActor = resolveAuthenticatedApiA
       try {
         const actor = await authenticate(request, true); if (actor instanceof Response) return actor;
         let body: Record<string, unknown>;
-        try { body = await metadata(request); } catch { return failure(400, "INVALID_IMPORT_REQUEST"); }
+        try { body = await readBusinessCardMetadata(request, 32 * 1024); } catch { return failure(400, "INVALID_IMPORT_REQUEST"); }
         if (Object.keys(body).join(",") !== "sourceId" || typeof body.sourceId !== "string" || !UUID.test(body.sourceId)) {
           return failure(400, "INVALID_IMPORT_REQUEST");
         }
@@ -92,7 +68,7 @@ export function createV1ImportHandlers({ resolveActor = resolveAuthenticatedApiA
       try {
         const actor = await authenticate(request, true); if (actor instanceof Response) return actor;
         let body: Record<string, unknown>;
-        try { body = await metadata(request); } catch { return failure(400, "INVALID_IMPORT_REQUEST"); }
+        try { body = await readBusinessCardMetadata(request, 32 * 1024); } catch { return failure(400, "INVALID_IMPORT_REQUEST"); }
         if (Object.keys(body).sort().join(",") !== "requestKey,sourceIds" ||
             typeof body.requestKey !== "string" || !UUID.test(body.requestKey) || !Array.isArray(body.sourceIds) ||
             !body.sourceIds.length || body.sourceIds.length > 500 ||
@@ -123,7 +99,7 @@ export function createV1ImportHandlers({ resolveActor = resolveAuthenticatedApiA
       try {
         const actor = await authenticate(request, true); if (actor instanceof Response) return actor;
         const { id } = await context.params; if (!UUID.test(id)) return failure(404, "IMPORT_NOT_FOUND");
-        try { if (Object.keys(await metadata(request)).length) return failure(400, "INVALID_IMPORT_REQUEST"); }
+        try { if (Object.keys(await readBusinessCardMetadata(request, 32 * 1024)).length) return failure(400, "INVALID_IMPORT_REQUEST"); }
         catch { return failure(400, "INVALID_IMPORT_REQUEST"); }
         const runtime = await configured(); if (!runtime) return failure(503, "IMPORT_UNAVAILABLE");
         return Response.json({ data: { job: publicV1PreparationJob(await runtime.jobs.cancel(actor.id, id)) } }, { headers });

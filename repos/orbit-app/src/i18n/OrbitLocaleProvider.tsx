@@ -21,10 +21,7 @@ import {
   type LanguagePreferenceScope,
 } from "../api/language-preference";
 import { useOrbitApiClient } from "../hooks/useOrbitApiClient";
-import {
-  languageFromDeviceLocales,
-  resolveEffectiveLanguage,
-} from "./locale-core";
+import { languageFromDeviceLocales } from "./locale-core";
 import {
   OrbitLocaleContext,
   type OrbitLanguageChoice,

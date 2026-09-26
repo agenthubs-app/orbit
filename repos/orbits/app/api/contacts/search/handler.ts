@@ -1,47 +1,26 @@
 import { NextResponse } from "next/server";
 import {
-  failure,
   runtimeBoundaryHeaders,
   success,
 } from "../../../../shared/api/envelope";
 import { resolveFeatureMode } from "../../../../shared/config/feature-mode";
-import { getHttpStatusForAppErrorCode } from "../../../../shared/errors/app-error";
 import { createContactsListSearchAndFilterService } from "../../../../features/contacts/service-factory";
-import {
-  contactsListSearchFailureContext,
-  contactsListSearchFailureToAppError,
-} from "../../../../features/contacts/service";
 import type { ContactsListSearchFilterInput } from "../../../../features/contacts/contract";
 import {
   authenticatedApiActorRequiredResponse,
   resolveAuthenticatedApiActor,
   type ResolveAuthenticatedApiActor,
 } from "../../_shared/authenticated-actor";
+import {
+  contactsListSearchFailureResponse,
+  readContactFilterList,
+} from "../route-support";
 
 // 联系人搜索同时支持 query string、form 和 JSON。
 // route 的职责是把多种 HTTP 表达统一成 ContactsListSearchFilterInput；
 // 排序、过滤、local-remote 数据来源和 provenance 都由 contacts service 负责。
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function readSearchParamsList(
-  searchParams: URLSearchParams,
-  singularName: string,
-  pluralName: string,
-): string[] {
-  const values = [
-    ...searchParams.getAll(singularName),
-    ...searchParams.getAll(pluralName),
-  ];
-
-  // URL 支持 ?tag=a,b 和 ?tags=a&tags=b 两种写法，最后统一成干净数组。
-  return values.flatMap((value) =>
-    value
-      .split(",")
-      .map((item) => item.trim())
-      .filter(Boolean),
-  );
 }
 
 function readFormList(formData: FormData, fieldName: string): string[] {
@@ -99,10 +78,10 @@ async function readContactsSearchInput(
   const queryInput: ContactsListSearchFilterInput = {
     query: url.searchParams.get("query"),
     scenario: url.searchParams.get("scenario"),
-    sourceFilters: readSearchParamsList(url.searchParams, "source", "sources"),
-    statusFilters: readSearchParamsList(url.searchParams, "status", "statuses"),
-    tagFilters: readSearchParamsList(url.searchParams, "tag", "tags"),
-    valueFilters: readSearchParamsList(url.searchParams, "value", "values"),
+    sourceFilters: readContactFilterList(url.searchParams, "source", "sources"),
+    statusFilters: readContactFilterList(url.searchParams, "status", "statuses"),
+    tagFilters: readContactFilterList(url.searchParams, "tag", "tags"),
+    valueFilters: readContactFilterList(url.searchParams, "value", "values"),
     cursor: url.searchParams.get("cursor"),
     limit: url.searchParams.has("limit") ? Number(url.searchParams.get("limit")) : null,
     contextEventId: url.searchParams.get("contextEventId"),
@@ -202,15 +181,7 @@ export function createContactsSearchPostHandler(
     });
 
     if (result.success === false) {
-      const appError = contactsListSearchFailureToAppError(result);
-
-      return NextResponse.json(
-        failure(appError, contactsListSearchFailureContext(result, mode)),
-        {
-          headers: runtimeBoundaryHeaders(mode),
-          status: getHttpStatusForAppErrorCode(appError.code),
-        },
-      );
+      return contactsListSearchFailureResponse(result, mode);
     }
 
     return NextResponse.json(success(result.data), {

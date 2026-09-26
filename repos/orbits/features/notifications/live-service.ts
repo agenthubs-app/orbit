@@ -19,12 +19,14 @@ import {
 import type {
   ConnectionDTO,
   ContactDTO,
-  NotificationDTO,
   RelationshipEvidenceDTO,
   TaskDTO,
 } from "../../shared/domain/contracts";
 import type { ReminderScheduleNotificationService } from "./service";
-import {projectLegacyNotification,type LegacyProjectedNotification} from './legacy-source-projection';
+import {
+  projectLegacyNotification,
+  type LegacyProjectedNotification,
+} from "./legacy-source-projection";
 
 export interface LiveReminderNotificationGraph {
   connections: readonly ConnectionDTO[];
@@ -141,93 +143,6 @@ function selectedPriority(
   return null;
 }
 
-function evidenceForNotification(
-  notification: NotificationDTO,
-  graph: LiveReminderNotificationGraph,
-): RelationshipEvidenceDTO | null {
-  return (
-    graph.evidence.find((evidence) =>
-      notification.evidenceIds.includes(evidence.id),
-    ) ?? null
-  );
-}
-
-function taskIdFromEvidence(
-  evidence: RelationshipEvidenceDTO | null,
-): string | null {
-  return evidence?.summary.match(/task_\d+/)?.[0] ?? null;
-}
-
-function contactIdFromTitle(title: string): string | null {
-  return title.match(/contact_\d+/)?.[0] ?? null;
-}
-
-function taskForNotification(
-  notification: NotificationDTO,
-  graph: LiveReminderNotificationGraph,
-): TaskDTO | null {
-  const taskId = taskIdFromEvidence(evidenceForNotification(notification, graph));
-
-  if (taskId) {
-    const task = graph.tasks.find((item) => item.id === taskId);
-
-    if (task) {
-      return task;
-    }
-  }
-
-  const contactId = contactIdFromTitle(notification.title);
-
-  return (
-    graph.tasks.find((task) => task.title === notification.title) ??
-    graph.tasks.find((task) => task.contactId === contactId) ??
-    null
-  );
-}
-
-function contactForTask(
-  task: TaskDTO | null,
-  graph: LiveReminderNotificationGraph,
-  notification: NotificationDTO,
-): ContactDTO | null {
-  if (task?.contactId) {
-    const contact = graph.contacts.find((item) => item.id === task.contactId);
-
-    if (contact) {
-      return contact;
-    }
-  }
-
-  const contactId = contactIdFromTitle(notification.title);
-
-  return graph.contacts.find((contact) => contact.id === contactId) ?? null;
-}
-
-function connectionForTask(
-  task: TaskDTO | null,
-  graph: LiveReminderNotificationGraph,
-): ConnectionDTO | null {
-  if (task?.connectionId) {
-    const connection = graph.connections.find(
-      (item) => item.id === task.connectionId,
-    );
-
-    if (connection) {
-      return connection;
-    }
-  }
-
-  if (task?.contactId) {
-    return (
-      graph.connections.find(
-        (connection) => connection.contactId === task.contactId,
-      ) ?? null
-    );
-  }
-
-  return null;
-}
-
 function sourceForNotification(
   notification: LegacyProjectedNotification,
 ): ReminderScheduleNotificationSourceReference {
@@ -253,10 +168,6 @@ function sourceForNotification(
     providerRecordId: notification.source.id,
     generatedBy: "live-store-query",
   };
-}
-
-function dueAtFor(notification: NotificationDTO, task: TaskDTO | null): string {
-  return notification.scheduledFor ?? task?.dueAt ?? notification.createdAt;
 }
 
 function daysUntil(dueAt: string, generatedAt: string): number {
@@ -310,19 +221,12 @@ function recommendedWindowFor(priority: ReminderPriority): string {
   }
 }
 
-function evidenceIdsForReminder(
-  notification: NotificationDTO,
-  task: TaskDTO | null,
-): readonly string[] {
-  return [...new Set([...notification.evidenceIds, ...(task?.evidenceIds ?? [])])];
-}
-
 function toReminder(
   notification: LegacyProjectedNotification,
   graph: LiveReminderNotificationGraph,
 ): ScheduledReminder {
-  const target=notification.verifiedTarget??null;
-  notification=projectLegacyNotification(notification,target);
+  const target = notification.verifiedTarget ?? null;
+  notification = projectLegacyNotification(notification, target);
   const dueAt = notification.scheduledFor ?? target?.dueAt ?? notification.createdAt;
   const dueInDays = daysUntil(dueAt, graph.generatedAt);
   const priority = priorityFor(dueInDays);

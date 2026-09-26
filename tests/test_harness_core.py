@@ -1247,10 +1247,8 @@ def test_evaluator_and_verifier_prompts_do_not_reference_stale_evidence_path():
         goal="Current evidence",
         success_criteria=[SuccessCriterion(id="SC-1", description="Current iteration evidence is used.")],
     )
-    artifact_dir = Path("harness-state/runs/run-test/sprint-1/iter-2/artifacts")
-
-    evaluator_prompt = build_evaluator_prompt("SPEC", contract, "http://localhost:3000", "{}", artifact_dir)
-    verifier_prompt = build_verifier_prompt("PRODUCT", contract, "http://localhost:3000", "{}", artifact_dir)
+    evaluator_prompt = build_evaluator_prompt("SPEC", contract, "http://localhost:3000", "{}")
+    verifier_prompt = build_verifier_prompt("PRODUCT", contract, "http://localhost:3000", "{}")
 
     assert "harness-state/evidence/sprint-N/evidence.json" not in evaluator_prompt
     assert "harness-state/evidence/sprint-N/artifacts" not in verifier_prompt
@@ -3064,7 +3062,7 @@ def test_run_sprint_skips_self_assess_after_runtime_failure_in_same_sprint(tmp_p
         self_assess_calls.append(args)
         return RuntimeFailedSelfAssess()
 
-    def fake_collect_evidence(project_dir, app_url, contract, paths):
+    def fake_collect_evidence(app_url, contract, paths):
         (paths["sprint_evidence"] / "evidence.json").write_text("{}")
         return {}
 
@@ -4050,7 +4048,7 @@ def test_run_sprint_commits_app_changes_when_git_enabled(tmp_path, monkeypatch):
         page.write_text("export default function Page() { return null }")
         return "created page"
 
-    def fake_collect_evidence(project_dir, app_url, contract, paths):
+    def fake_collect_evidence(app_url, contract, paths):
         (paths["sprint_evidence"] / "evidence.json").write_text("{}")
         return {}
 
@@ -4101,7 +4099,7 @@ def test_run_sprint_groups_iteration_outputs_under_run_folder(tmp_path, monkeypa
         page.write_text("export default function Page() { return null }")
         return "created page"
 
-    def fake_collect_evidence(project_dir, app_url, contract, paths):
+    def fake_collect_evidence(app_url, contract, paths):
         (paths["sprint_evidence"] / "evidence.json").write_text("{}")
         return {}
 
@@ -4456,7 +4454,7 @@ def test_run_sprint_prepares_dependencies_and_dev_server_before_evidence(tmp_pat
     def fake_stop(server):
         events.append("stop")
 
-    def fake_collect_evidence(project_dir, app_url, contract, paths):
+    def fake_collect_evidence(app_url, contract, paths):
         events.append("evidence")
         (paths["sprint_evidence"] / "evidence.json").write_text("{}")
         return {}
@@ -4513,7 +4511,7 @@ def test_run_sprint_allows_current_iteration_artifacts_created_during_evidence_c
         page.write_text("export default function Page() { return 'ok' }")
         return "generated app"
 
-    def fake_collect_evidence(project_dir, app_url, contract, paths):
+    def fake_collect_evidence(app_url, contract, paths):
         (paths["artifacts"] / "evidence-note.json").write_text("{}")
         (paths["sprint_evidence"] / "evidence.json").write_text("{}")
         return {}
@@ -4581,7 +4579,7 @@ def test_run_sprint_runs_repair_pass_when_self_assess_is_not_confident(tmp_path,
             return False, ["SC-1 lacks the route implementation."]
         return True, []
 
-    def fake_collect_evidence(project_dir, app_url, contract, paths):
+    def fake_collect_evidence(app_url, contract, paths):
         (paths["sprint_evidence"] / "evidence.json").write_text("{}")
         return {}
 
@@ -4642,7 +4640,7 @@ def test_run_sprint_caps_self_assessment_repair_passes_per_sprint(tmp_path, monk
         self_assess_calls.append(args)
         return False, ["self-assess still wants more polish"]
 
-    def fake_collect_evidence(project_dir, app_url, contract, paths):
+    def fake_collect_evidence(app_url, contract, paths):
         (paths["sprint_evidence"] / "evidence.json").write_text("{}")
         return {}
 
@@ -4708,7 +4706,7 @@ def test_run_sprint_persists_repaired_handoff_before_evaluation(tmp_path, monkey
             return False, ["repair needed"]
         return True, []
 
-    def fake_collect_evidence(project_dir, app_url, contract, paths):
+    def fake_collect_evidence(app_url, contract, paths):
         persisted = HandoffState.load(paths["handoff_result"])
         assert persisted.completed_features == []
         assert "summary 2" in persisted.partial_features
@@ -4765,7 +4763,7 @@ def test_run_sprint_passes_failed_iteration_as_partial_handoff_to_next_generator
         page.write_text(f"// pass {len(handoffs_seen)}")
         return f"summary {len(handoffs_seen)}"
 
-    def fake_collect_evidence(project_dir, app_url, contract, paths):
+    def fake_collect_evidence(app_url, contract, paths):
         (paths["sprint_evidence"] / "evidence.json").write_text("{}")
         return {}
 
@@ -4834,7 +4832,7 @@ def test_run_sprint_treats_pass_before_min_iterations_as_verified_quality_baseli
         page.write_text(f"// pass {len(handoffs_seen)}")
         return f"summary {len(handoffs_seen)}"
 
-    def fake_collect_evidence(project_dir, app_url, contract, paths):
+    def fake_collect_evidence(app_url, contract, paths):
         (paths["sprint_evidence"] / "evidence.json").write_text("{}")
         return {}
 
@@ -4895,7 +4893,7 @@ def test_run_sprint_retries_verifier_runtime_failure_before_next_generator_itera
         page.write_text(f"// pass {len(generator_calls)}")
         return f"summary {len(generator_calls)}"
 
-    def fake_collect_evidence(project_dir, app_url, contract, paths):
+    def fake_collect_evidence(app_url, contract, paths):
         (paths["sprint_evidence"] / "evidence.json").write_text("{}")
         return {}
 
@@ -4970,7 +4968,7 @@ def test_run_sprint_records_reviewer_runtime_retry_artifact(tmp_path, monkeypatc
         page.write_text("// retry artifact")
         return "summary"
 
-    def fake_collect_evidence(project_dir, app_url, contract, paths):
+    def fake_collect_evidence(app_url, contract, paths):
         (paths["sprint_evidence"] / "evidence.json").write_text("{}")
         return {}
 
@@ -5052,7 +5050,7 @@ def test_run_sprint_creates_final_commit_marker_when_quality_iteration_has_no_ne
         page.write_text("// same verified content")
         return "same verified content"
 
-    def fake_collect_evidence(project_dir, app_url, contract, paths):
+    def fake_collect_evidence(app_url, contract, paths):
         (paths["sprint_evidence"] / "evidence.json").write_text("{}")
         return {}
 
@@ -5644,7 +5642,7 @@ def test_run_sprint_blocks_generator_root_build_artifacts(tmp_path, monkeypatch)
         page.write_text("export default function Page() { return 'ok' }")
         return "wrote root build artifact"
 
-    def fake_collect_evidence(project_dir, app_url, contract, paths):
+    def fake_collect_evidence(app_url, contract, paths):
         (paths["sprint_evidence"] / "evidence.json").write_text("{}")
         return {}
 
@@ -5745,7 +5743,7 @@ def test_run_sprint_blocks_generator_creating_nested_app_root(tmp_path, monkeypa
         nested.write_text("export default function Page() { return null }")
         return "created nested app root"
 
-    def fake_collect_evidence(project_dir, app_url, contract, paths):
+    def fake_collect_evidence(app_url, contract, paths):
         (paths["sprint_evidence"] / "evidence.json").write_text("{}")
         return {}
 
@@ -5793,7 +5791,7 @@ def test_run_sprint_blocks_generator_changes_outside_write_allowlist(tmp_path, m
         (project_dir / "repos/orbits/README.md").write_text("# Orbits\n\nGenerator changed outside allowlist.\n")
         return "changed README"
 
-    def fake_collect_evidence(project_dir, app_url, contract, paths):
+    def fake_collect_evidence(app_url, contract, paths):
         (paths["sprint_evidence"] / "evidence.json").write_text("{}")
         return {}
 
@@ -5892,7 +5890,7 @@ def test_run_sprint_ignores_preexisting_dirty_app_files_for_file_boundary(tmp_pa
         target.write_text("export const schema = 'v2';\n")
         return "created database schema"
 
-    def fake_collect_evidence(project_dir, app_url, contract, paths):
+    def fake_collect_evidence(app_url, contract, paths):
         (paths["sprint_evidence"] / "evidence.json").write_text("{}")
         return {}
 
@@ -6299,7 +6297,7 @@ def test_run_sprint_blocks_generator_renaming_protected_app_paths(tmp_path, monk
         subprocess.run(["git", "mv", ".env", "app/env-copy.txt"], cwd=app_dir, check=True)
         return "renamed env into app source"
 
-    def fake_collect_evidence(project_dir, app_url, contract, paths):
+    def fake_collect_evidence(app_url, contract, paths):
         (paths["sprint_evidence"] / "evidence.json").write_text("{}")
         return {}
 
@@ -6346,7 +6344,7 @@ def test_run_sprint_blocks_generator_creating_ignored_protected_app_artifacts(tm
         artifact.write_text("SECRET=leak")
         return "wrote ignored protected artifact"
 
-    def fake_collect_evidence(project_dir, app_url, contract, paths):
+    def fake_collect_evidence(app_url, contract, paths):
         (paths["sprint_evidence"] / "evidence.json").write_text("{}")
         return {}
 
@@ -6393,7 +6391,7 @@ def test_run_sprint_blocks_generator_creating_ignored_unprotected_app_artifacts(
         (project_dir / "repos/orbits/npm-debug.log").write_text("npm failed")
         return "wrote ignored app artifact"
 
-    def fake_collect_evidence(project_dir, app_url, contract, paths):
+    def fake_collect_evidence(app_url, contract, paths):
         (paths["sprint_evidence"] / "evidence.json").write_text("{}")
         return {}
 
@@ -6441,7 +6439,7 @@ def test_run_sprint_blocks_generator_modifying_existing_ignored_unprotected_app_
         (project_dir / "repos/orbits/npm-debug.log").write_text("after")
         return "modified ignored app artifact"
 
-    def fake_collect_evidence(project_dir, app_url, contract, paths):
+    def fake_collect_evidence(app_url, contract, paths):
         (paths["sprint_evidence"] / "evidence.json").write_text("{}")
         return {}
 
@@ -6504,7 +6502,7 @@ def test_run_sprint_blocks_repair_pass_creating_ignored_unprotected_app_artifact
             return False, ["needs repair"]
         return True, []
 
-    def fake_collect_evidence(project_dir, app_url, contract, paths):
+    def fake_collect_evidence(app_url, contract, paths):
         (paths["sprint_evidence"] / "evidence.json").write_text("{}")
         return {}
 
@@ -6553,7 +6551,7 @@ def test_run_sprint_blocks_generator_modifying_existing_ignored_protected_app_ar
         (project_dir / "repos/orbits/.env.local").write_text("after")
         return "modified ignored protected artifact"
 
-    def fake_collect_evidence(project_dir, app_url, contract, paths):
+    def fake_collect_evidence(app_url, contract, paths):
         (paths["sprint_evidence"] / "evidence.json").write_text("{}")
         return {}
 
@@ -6601,7 +6599,7 @@ def test_run_sprint_blocks_evaluator_changes_to_app_repo(tmp_path, monkeypatch):
         page.write_text("// generator")
         return "created page"
 
-    def fake_collect_evidence(project_dir, app_url, contract, paths):
+    def fake_collect_evidence(app_url, contract, paths):
         (paths["sprint_evidence"] / "evidence.json").write_text("{}")
         return {}
 
@@ -6650,7 +6648,7 @@ def test_run_sprint_blocks_evaluator_creating_protected_ignored_app_artifacts(tm
         page.write_text("// generator")
         return "created page"
 
-    def fake_collect_evidence(project_dir, app_url, contract, paths):
+    def fake_collect_evidence(app_url, contract, paths):
         (paths["sprint_evidence"] / "evidence.json").write_text("{}")
         return {}
 
@@ -6700,7 +6698,7 @@ def test_run_sprint_blocks_verifier_creating_protected_ignored_app_artifacts(tmp
         page.write_text("// generator")
         return "created page"
 
-    def fake_collect_evidence(project_dir, app_url, contract, paths):
+    def fake_collect_evidence(app_url, contract, paths):
         (paths["sprint_evidence"] / "evidence.json").write_text("{}")
         return {}
 
@@ -6778,9 +6776,9 @@ def test_run_sprint_blocks_evidence_collection_app_mutations(tmp_path, monkeypat
         page.write_text("// generator")
         return "created page"
 
-    def mutating_collect_evidence(project_dir, app_url, contract, paths):
+    def mutating_collect_evidence(app_url, contract, paths):
         (paths["sprint_evidence"] / "evidence.json").write_text("{}")
-        (project_dir / "repos/orbits/app/evidence-leak.jsx").write_text("// evidence wrote app")
+        (tmp_path / "repos/orbits/app/evidence-leak.jsx").write_text("// evidence wrote app")
         return {}
 
     monkeypatch.setattr("harness.harness.run_generator", fake_run_generator)
@@ -6821,9 +6819,9 @@ def test_evidence_collection_allows_runtime_next_artifacts(tmp_path, monkeypatch
     )
     paths = ensure_project_layout(tmp_path, cfg, sprint=1, iteration=1, run_id="runtime-test")
 
-    def runtime_collect(project_dir, app_url, contract, paths):
+    def runtime_collect(app_url, contract, paths):
         (paths["sprint_evidence"] / "evidence.json").write_text("{}")
-        artifact = project_dir / "repos/orbits/.next/dev/cache/runtime.txt"
+        artifact = tmp_path / "repos/orbits/.next/dev/cache/runtime.txt"
         artifact.parent.mkdir(parents=True, exist_ok=True)
         artifact.write_text("runtime")
         return {}
@@ -6852,7 +6850,7 @@ def test_evidence_collection_allows_same_content_source_touch(tmp_path, monkeypa
     )
     paths = ensure_project_layout(tmp_path, cfg, sprint=1, iteration=1, run_id="same-content-test")
 
-    def touch_same_content(project_dir, app_url, contract, paths):
+    def touch_same_content(app_url, contract, paths):
         (paths["sprint_evidence"] / "evidence.json").write_text("{}")
         source.write_text("/// <reference types=\"next\" />\n")
         return {}
@@ -6885,7 +6883,7 @@ def test_evidence_collection_allows_next_env_runtime_rewrite(tmp_path, monkeypat
     )
     paths = ensure_project_layout(tmp_path, cfg, sprint=1, iteration=1, run_id="next-env-runtime-test")
 
-    def rewrite_next_env(project_dir, app_url, contract, paths):
+    def rewrite_next_env(app_url, contract, paths):
         (paths["sprint_evidence"] / "evidence.json").write_text("{}")
         source.write_text(
             '/// <reference types="next" />\n'
@@ -6925,9 +6923,9 @@ def test_run_sprint_blocks_evidence_collection_modifying_existing_ignored_protec
         page.write_text("// generator")
         return "created page"
 
-    def mutating_collect_evidence(project_dir, app_url, contract, paths):
+    def mutating_collect_evidence(app_url, contract, paths):
         (paths["sprint_evidence"] / "evidence.json").write_text("{}")
-        (project_dir / "repos/orbits/.env.local").write_text("after")
+        (tmp_path / "repos/orbits/.env.local").write_text("after")
         return {}
 
     monkeypatch.setattr("harness.harness.run_generator", fake_run_generator)
@@ -6974,9 +6972,9 @@ def test_run_sprint_blocks_evidence_collection_writes_outside_current_iteration(
         page.write_text("// generator")
         return "created page"
 
-    def leaking_collect_evidence(project_dir, app_url, contract, paths):
+    def leaking_collect_evidence(app_url, contract, paths):
         (paths["sprint_evidence"] / "evidence.json").write_text("{}")
-        leak = project_dir / "harness-state/evidence/sprint-99/leak.txt"
+        leak = tmp_path / "harness-state/evidence/sprint-99/leak.txt"
         leak.parent.mkdir(parents=True, exist_ok=True)
         leak.write_text("wrong sprint")
         return {}
@@ -7025,9 +7023,9 @@ def test_run_sprint_blocks_evidence_collection_root_build_artifacts(tmp_path, mo
         page.write_text("// generator")
         return "created page"
 
-    def leaking_collect_evidence(project_dir, app_url, contract, paths):
+    def leaking_collect_evidence(app_url, contract, paths):
         (paths["sprint_evidence"] / "evidence.json").write_text("{}")
-        leak = project_dir / "build/evidence-leak.txt"
+        leak = tmp_path / "build/evidence-leak.txt"
         leak.parent.mkdir(parents=True, exist_ok=True)
         leak.write_text("root build evidence")
         return {}
@@ -7076,7 +7074,7 @@ def test_run_sprint_blocks_verifier_artifact_write_under_current_iteration(tmp_p
         page.write_text("// generator")
         return "created page"
 
-    def fake_collect_evidence(project_dir, app_url, contract, paths):
+    def fake_collect_evidence(app_url, contract, paths):
         (paths["sprint_evidence"] / "evidence.json").write_text("{}")
         return {}
 
@@ -7126,7 +7124,7 @@ def test_run_sprint_records_evaluator_crash_as_failed_eval_result(tmp_path, monk
         page.write_text("// generator")
         return "created page"
 
-    def fake_collect_evidence(project_dir, app_url, contract, paths):
+    def fake_collect_evidence(app_url, contract, paths):
         (paths["sprint_evidence"] / "evidence.json").write_text("{}")
         return {}
 
@@ -7235,7 +7233,7 @@ def test_run_sprint_records_verifier_crash_as_failed_verification_result(tmp_pat
         page.write_text("// generator")
         return "created page"
 
-    def fake_collect_evidence(project_dir, app_url, contract, paths):
+    def fake_collect_evidence(app_url, contract, paths):
         (paths["sprint_evidence"] / "evidence.json").write_text("{}")
         return {}
 
@@ -7436,7 +7434,7 @@ def test_collect_evidence_rejects_unsafe_declared_commands(tmp_path, monkeypatch
         }
 
     try:
-        evidence = collect_evidence(tmp_path, app_url, contract, paths, browser_collector=fake_browser_collector)
+        evidence = collect_evidence(app_url, contract, paths, browser_collector=fake_browser_collector)
     finally:
         server.shutdown()
         thread.join(timeout=2)
@@ -7496,7 +7494,7 @@ def test_collect_evidence_allows_focused_npm_test_paths(tmp_path, monkeypatch):
     )
 
     try:
-        evidence = collect_evidence(tmp_path, app_url, contract, paths)
+        evidence = collect_evidence(app_url, contract, paths)
     finally:
         server.shutdown()
         thread.join(timeout=2)
@@ -7540,7 +7538,7 @@ def test_collect_evidence_allows_relationship_schema_package_script(tmp_path, mo
         },
     )
 
-    evidence = collect_evidence(tmp_path, "http://127.0.0.1:1", contract, paths)
+    evidence = collect_evidence("http://127.0.0.1:1", contract, paths)
 
     assert evidence["commands"]["relationship-tests"]["returncode"] == 0
     assert captured["cmd"] == ["npm", "run", "test:relationship-schema"]
@@ -7578,7 +7576,7 @@ def test_collect_evidence_rejects_invalid_command_entries(tmp_path):
         }
 
     try:
-        evidence = collect_evidence(tmp_path, app_url, contract, paths, browser_collector=fake_browser_collector)
+        evidence = collect_evidence(app_url, contract, paths, browser_collector=fake_browser_collector)
     finally:
         server.shutdown()
         thread.join(timeout=2)
@@ -7618,7 +7616,7 @@ def test_collect_evidence_rejects_external_routes_and_api_paths(tmp_path, monkey
     def fail_browser_collector(url, paths, route_key):
         raise AssertionError("browser collector should not run for rejected route")
 
-    evidence = collect_evidence(tmp_path, "http://127.0.0.1:3000", contract, paths, browser_collector=fail_browser_collector)
+    evidence = collect_evidence("http://127.0.0.1:3000", contract, paths, browser_collector=fail_browser_collector)
 
     route_record = evidence["navigation"]["https://example.com/"]
     assert route_record["rejected"] is True
@@ -7674,7 +7672,7 @@ def test_collect_evidence_accepts_query_routes_as_distinct_browser_targets(tmp_p
         }
 
     try:
-        evidence = collect_evidence(tmp_path, app_url, contract, paths, browser_collector=fake_browser_collector)
+        evidence = collect_evidence(app_url, contract, paths, browser_collector=fake_browser_collector)
     finally:
         server.shutdown()
         thread.join(timeout=2)
@@ -7720,7 +7718,7 @@ def test_collect_evidence_rejects_invalid_api_entries(tmp_path):
         }
 
     try:
-        evidence = collect_evidence(tmp_path, app_url, contract, paths, browser_collector=fake_browser_collector)
+        evidence = collect_evidence(app_url, contract, paths, browser_collector=fake_browser_collector)
     finally:
         server.shutdown()
         thread.join(timeout=2)
@@ -7758,7 +7756,7 @@ def test_collect_evidence_rejects_invalid_api_probe_fields(tmp_path, monkeypatch
         },
     )
 
-    evidence = collect_evidence(tmp_path, "http://127.0.0.1:3000", contract, paths)
+    evidence = collect_evidence("http://127.0.0.1:3000", contract, paths)
 
     assert evidence["api"]["bad-method"]["rejected"] is True
     assert "method" in evidence["api"]["bad-method"]["error"]
@@ -7798,7 +7796,7 @@ def test_collect_evidence_respects_explicit_empty_routes_for_api_only_sprint(tmp
         raise AssertionError("browser collector should not run when routes is explicitly empty")
 
     try:
-        evidence = collect_evidence(tmp_path, app_url, contract, paths, browser_collector=fail_browser_collector)
+        evidence = collect_evidence(app_url, contract, paths, browser_collector=fail_browser_collector)
     finally:
         server.shutdown()
         thread.join(timeout=2)
@@ -7869,7 +7867,7 @@ def test_collect_evidence_records_api_probe_and_html_summary(tmp_path):
     )
 
     try:
-        evidence = collect_evidence(tmp_path, app_url, contract, paths)
+        evidence = collect_evidence(app_url, contract, paths)
     finally:
         server.shutdown()
         thread.join(timeout=2)
@@ -7908,7 +7906,7 @@ def test_collect_evidence_reads_expected_http_error_response_body(tmp_path):
     )
 
     try:
-        evidence = collect_evidence(tmp_path, app_url, contract, paths)
+        evidence = collect_evidence(app_url, contract, paths)
     finally:
         server.shutdown()
         thread.join(timeout=2)
@@ -7959,7 +7957,7 @@ def test_collect_evidence_rejects_source_files_outside_app_root(tmp_path):
         }
 
     try:
-        evidence = collect_evidence(tmp_path, app_url, contract, paths, browser_collector=fake_browser_collector)
+        evidence = collect_evidence(app_url, contract, paths, browser_collector=fake_browser_collector)
     finally:
         server.shutdown()
         thread.join(timeout=2)
@@ -7997,7 +7995,7 @@ def test_collect_evidence_allows_next_dynamic_segment_source_file_names(tmp_path
         evidence={"routes": [], "source_files": [source]},
     )
 
-    evidence = collect_evidence(tmp_path, "http://127.0.0.1:3000", contract, paths)
+    evidence = collect_evidence("http://127.0.0.1:3000", contract, paths)
 
     record = evidence["source_files"][source]
     assert record["missing"] is False
@@ -8046,7 +8044,7 @@ def test_collect_evidence_records_browser_artifact_with_injected_collector(tmp_p
         return record
 
     try:
-        evidence = collect_evidence(tmp_path, app_url, contract, paths, browser_collector=fake_browser_collector)
+        evidence = collect_evidence(app_url, contract, paths, browser_collector=fake_browser_collector)
     finally:
         server.shutdown()
         thread.join(timeout=2)
@@ -8250,7 +8248,7 @@ def test_collect_evidence_records_accessibility_and_performance_smoke_artifacts(
         }
 
     try:
-        evidence = collect_evidence(tmp_path, app_url, contract, paths, browser_collector=fake_browser_collector)
+        evidence = collect_evidence(app_url, contract, paths, browser_collector=fake_browser_collector)
     finally:
         server.shutdown()
         thread.join(timeout=2)
@@ -8319,7 +8317,7 @@ def test_collect_evidence_classifies_next_hmr_console_errors_as_dev_noise(tmp_pa
         }
 
     try:
-        evidence = collect_evidence(tmp_path, app_url, contract, paths, browser_collector=fake_browser_collector)
+        evidence = collect_evidence(app_url, contract, paths, browser_collector=fake_browser_collector)
     finally:
         server.shutdown()
         thread.join(timeout=2)
@@ -8374,8 +8372,8 @@ def test_iteration_scoped_evidence_does_not_overwrite_browser_artifacts(tmp_path
     try:
         iter1 = ensure_project_layout(tmp_path, cfg, sprint=1, iteration=1)
         iter2 = ensure_project_layout(tmp_path, cfg, sprint=1, iteration=2)
-        evidence1 = collect_evidence(tmp_path, app_url, contract, iter1, browser_collector=fake_browser_collector)
-        evidence2 = collect_evidence(tmp_path, app_url, contract, iter2, browser_collector=fake_browser_collector)
+        evidence1 = collect_evidence(app_url, contract, iter1, browser_collector=fake_browser_collector)
+        evidence2 = collect_evidence(app_url, contract, iter2, browser_collector=fake_browser_collector)
     finally:
         server.shutdown()
         thread.join(timeout=2)

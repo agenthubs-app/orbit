@@ -1,14 +1,11 @@
 /**
- * 侧边栏宽度单一来源测试。
+ * 侧边栏宽度单一来源与 iOrbit 历史面防回流测试。
  *
  * 人脉左侧栏宽度 212px 只能有一个来源（`ORBIT_LEFT_SIDEBAR_WIDTH`）。
  *
- * iOrbit 任务 4（2026-09-22）：对话域按 Orbit_0918 设计换成历史记录抽屉，**常驻历史
- * 侧栏与它的拖拽宽度是本计划唯一的一处能力移除**（设计 786–804 没有侧栏，历史、新
- * 对话、分组、置顶、重命名、移动、删除全部改从抽屉进入）。`HISTORY_SIDEBAR_*` 三个
- * 常量与拖拽 state 只剩尚未删除的 `orbit-real-agent.tsx` 在用（它已不再被渲染，任务
- * 6a 连同这几条用例一起删），下面两条因此标注为遗留；新屏这一侧由
- * 「the iOrbit history surface has no resizable sidebar」把「不得回流」钉住。
+ * iOrbit 任务 4（2026-09-22）：对话域按 Orbit_0918 设计换成历史记录抽屉，常驻历史
+ * 侧栏与拖拽宽度不属于在售能力；「the iOrbit history surface has no resizable sidebar」
+ * 把这个边界钉住。
  */
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
@@ -23,38 +20,9 @@ function source(path: string): string {
   return readFileSync(join(projectRoot, path), "utf8");
 }
 
-// iOrbit 任务 1b：三个 HISTORY_SIDEBAR_* 常量与 clampHistorySidebarWidth 搬到了
-// `iorbit-0918/iorbit-model.ts`（拖拽 JSX 仍在 `orbit-real-agent.tsx`）。
-// iOrbit 任务 1c：拖拽宽度 state 与 clampHistorySidebarWidth 的调用点搬到了
-// `iorbit-0918/use-agent-history.ts`；`orbit-real-agent.tsx` 只剩 resize handle
-// 的 JSX（aria-valuemin/max/now 与两个 handler 的传入）。
-const IORBIT_MODEL_PATH = "app/(app)/app/agent/iorbit-0918/iorbit-model.ts";
-const IORBIT_HISTORY_HOOK_PATH = "app/(app)/app/agent/iorbit-0918/use-agent-history.ts";
 
 test("the shared sidebar width matches the 人脉 column", () => {
   assert.equal(ORBIT_LEFT_SIDEBAR_WIDTH, 212);
-});
-
-test("[legacy, deleted in task 6a] the iOrbit sidebar derives its default width from the shared constant", () => {
-  const agent = source(IORBIT_MODEL_PATH);
-
-  assert.ok(agent.includes("ORBIT_LEFT_SIDEBAR_WIDTH"));
-  assert.ok(
-    agent.includes("const HISTORY_SIDEBAR_DEFAULT_WIDTH = ORBIT_LEFT_SIDEBAR_WIDTH"),
-  );
-});
-
-test("[legacy, deleted in task 6a] the iOrbit drag lower bound does not exceed the initial width", () => {
-  const agent = source(IORBIT_MODEL_PATH);
-  const min = Number(
-    /const HISTORY_SIDEBAR_MIN_WIDTH = (\d+)/.exec(agent)?.[1] ?? "0",
-  );
-
-  assert.ok(min > 0, "HISTORY_SIDEBAR_MIN_WIDTH must be a number literal");
-  assert.ok(
-    min <= ORBIT_LEFT_SIDEBAR_WIDTH,
-    `min ${min} would clamp the ${ORBIT_LEFT_SIDEBAR_WIDTH}px initial width upward`,
-  );
 });
 
 // 能力移除（iOrbit 任务 4）：取代原来的「the iOrbit sidebar is still resizable」。

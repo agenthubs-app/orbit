@@ -10,10 +10,18 @@ import {
   type FollowupTaskGenerationResult,
   type FollowupTaskGenerationScenario,
   type FollowupTaskGenerationSourceReference,
-  type FollowupTaskPriority,
   type FollowupTaskTrigger,
   type FollowupTaskTriggerKind,
 } from "./contract";
+import {
+  filterFollowupTasks,
+  followupConnectionForTask,
+  followupContactForTask,
+  followupDaysUntil,
+  followupPriorityFor,
+  followupTriggerKindFor,
+  normalizeFollowupTaskGenerationScenario,
+} from "./task-generation-projection";
 import type {
   ConnectionDTO,
   ContactDTO,
@@ -37,92 +45,8 @@ export interface LiveFollowupTaskGenerationServiceOptions {
   provider?: LiveFollowupTaskProvider | null;
 }
 
-const supportedScenarios = new Set<FollowupTaskGenerationScenario>([
-  "success",
-  "empty",
-  "pending",
-  "failure",
-]);
-
-const supportedTriggerKinds = new Set<FollowupTaskTriggerKind>([
-  "new_connection",
-  "event_encounter",
-  "promised_action",
-  "dormant_relationship",
-]);
-
 function clonePayload<TPayload>(payload: TPayload): TPayload {
   return JSON.parse(JSON.stringify(payload)) as TPayload;
-}
-
-function normalizeScenario(
-  scenario?:
-    | FollowupTaskGenerationListInput["scenario"]
-    | FollowupTaskGenerationGenerateInput["scenario"],
-): FollowupTaskGenerationScenario {
-  if (
-    scenario &&
-    supportedScenarios.has(scenario as FollowupTaskGenerationScenario)
-  ) {
-    return scenario as FollowupTaskGenerationScenario;
-  }
-
-  return "success";
-}
-
-function normalizedLimit(limit?: number | null): number | null {
-  if (!Number.isFinite(limit ?? Number.NaN)) {
-    return null;
-  }
-
-  return Math.max(0, Math.floor(limit as number));
-}
-
-function triggerKindFor(task: TaskDTO): FollowupTaskTriggerKind {
-  switch (task.source.type) {
-    case "event_import":
-      return "event_encounter";
-    case "calendar_signal":
-      return "dormant_relationship";
-    case "agent_action":
-    case "email_signal":
-      return "promised_action";
-    case "manual":
-    default:
-      return "new_connection";
-  }
-}
-
-function selectedTriggerKinds(
-  input: FollowupTaskGenerationListInput | FollowupTaskGenerationGenerateInput,
-): readonly FollowupTaskTriggerKind[] | null {
-  if ("triggerKinds" in input && Array.isArray(input.triggerKinds)) {
-    const kinds = input.triggerKinds.filter((kind): kind is FollowupTaskTriggerKind =>
-      supportedTriggerKinds.has(kind as FollowupTaskTriggerKind),
-    );
-
-    return kinds.length > 0 ? kinds : null;
-  }
-
-  if (
-    "triggerKind" in input &&
-    input.triggerKind &&
-    supportedTriggerKinds.has(input.triggerKind as FollowupTaskTriggerKind)
-  ) {
-    return [input.triggerKind as FollowupTaskTriggerKind];
-  }
-
-  return null;
-}
-
-function connectionIdFor(
-  input: FollowupTaskGenerationListInput | FollowupTaskGenerationGenerateInput,
-): string | null {
-  if (!("connectionId" in input)) {
-    return null;
-  }
-
-  return input.connectionId?.trim() || null;
 }
 
 function sourceForTask(task: TaskDTO): FollowupTaskGenerationSourceReference {
@@ -151,20 +75,6 @@ function sourceForTask(task: TaskDTO): FollowupTaskGenerationSourceReference {
   };
 }
 
-function contactForTask(
-  task: TaskDTO,
-  contactsById: ReadonlyMap<string, ContactDTO>,
-): ContactDTO | null {
-  return task.contactId ? contactsById.get(task.contactId) ?? null : null;
-}
-
-function connectionForTask(
-  task: TaskDTO,
-  connectionsById: ReadonlyMap<string, ConnectionDTO>,
-): ConnectionDTO | null {
-  return task.connectionId ? connectionsById.get(task.connectionId) ?? null : null;
-}
-
 // 没有任何一条证据带 summary 时，这里曾经返回 "Live task evidence is available for
 // review."，然后被当作跟进卡片的「理由」展示给用户：一句什么都没说明的英文兜底，
 // 比留空更伤——它看起来像有依据，实际什么依据都没给。改成返回空串，由展示层
@@ -180,33 +90,6 @@ function evidenceSummary(
   );
 }
 
-function daysUntil(dueAt: string | undefined, generatedAt: string): number {
-  if (!dueAt) {
-    return 7;
-  }
-
-  const dueTime = new Date(dueAt).getTime();
-  const baseTime = new Date(generatedAt).getTime();
-
-  if (!Number.isFinite(dueTime) || !Number.isFinite(baseTime)) {
-    return 7;
-  }
-
-  return Math.max(0, Math.ceil((dueTime - baseTime) / 86_400_000));
-}
-
-function priorityFor(dueInDays: number): FollowupTaskPriority {
-  if (dueInDays <= 1) {
-    return "today";
-  }
-
-  if (dueInDays <= 7) {
-    return "this_week";
-  }
-
-  return "nurture";
-}
-
 function toTask(task: TaskDTO, graph: LiveFollowupGraph): FollowupTask {
   const contactsById = new Map(graph.contacts.map((contact) => [contact.id, contact]));
   const connectionsById = new Map(
@@ -215,16 +98,16 @@ function toTask(task: TaskDTO, graph: LiveFollowupGraph): FollowupTask {
   const evidenceById = new Map(
     graph.evidence.map((evidence) => [evidence.id, evidence]),
   );
-  const contact = contactForTask(task, contactsById);
-  const connection = connectionForTask(task, connectionsById);
-  const dueInDays = daysUntil(task.dueAt, graph.generatedAt);
+  const contact = followupContactForTask(task, contactsById);
+  const connection = followupConnectionForTask(task, connectionsById);
+  const dueInDays = followupDaysUntil(task.dueAt, graph.generatedAt);
   const source = sourceForTask(task);
 
   return {
     taskId: task.id,
     title: task.title,
-    triggerKind: triggerKindFor(task),
-    priority: priorityFor(dueInDays),
+    triggerKind: followupTriggerKindFor(task),
+    priority: followupPriorityFor(dueInDays),
     dueAt: task.dueAt,
     dueInDays,
     contactId: contact?.id ?? null,
@@ -331,7 +214,7 @@ function relationshipSuggestions(
           taskId: `relationship-suggestion:${connection.id}`,
           title: recommendedAction,
           triggerKind: relationshipTriggerKind(connection),
-          priority: priorityFor(dueInDays),
+          priority: followupPriorityFor(dueInDays),
           dueInDays,
           connectionId: connection.id,
           contactName: contact.displayName,
@@ -383,25 +266,6 @@ function toTrigger(
     notificationDelivered: false,
     externalNetworkRequested: false,
   };
-}
-
-function filterTasks(
-  tasks: readonly FollowupTask[],
-  input: FollowupTaskGenerationListInput | FollowupTaskGenerationGenerateInput,
-): readonly FollowupTask[] {
-  const kinds = selectedTriggerKinds(input);
-  const connectionId = connectionIdFor(input);
-  const limit = normalizedLimit(input.limit);
-  const filtered = tasks.filter((task) => {
-    const matchesKind = kinds ? kinds.includes(task.triggerKind) : true;
-    const matchesConnection = connectionId
-      ? task.connectionId === connectionId
-      : true;
-
-    return matchesKind && matchesConnection;
-  });
-
-  return limit === null ? filtered : filtered.slice(0, limit);
 }
 
 function compareTasks(left: FollowupTask, right: FollowupTask): number {
@@ -461,7 +325,7 @@ function payloadFor(input: {
     ...storedTasks,
     ...relationshipSuggestions(input.graph, storedTasks),
   ].sort(compareTasks);
-  const tasks = filterTasks(allTasks, input.request);
+  const tasks = filterFollowupTasks(allTasks, input.request);
   const triggers = tasks.map((task) => toTrigger(task, input.graph));
 
   return {
@@ -616,7 +480,7 @@ export function createLiveFollowupTaskGenerationService({
       const scenario = scenarioResult(
         graph,
         provider as LiveFollowupTaskProvider,
-        normalizeScenario(input.scenario),
+        normalizeFollowupTaskGenerationScenario(input.scenario),
       );
 
       if (scenario) {
@@ -645,7 +509,7 @@ export function createLiveFollowupTaskGenerationService({
       const scenario = scenarioResult(
         graph,
         provider as LiveFollowupTaskProvider,
-        normalizeScenario(input.scenario),
+        normalizeFollowupTaskGenerationScenario(input.scenario),
       );
 
       if (scenario) {

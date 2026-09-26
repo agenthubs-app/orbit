@@ -1,20 +1,14 @@
-import { NextResponse } from "next/server";
-import {
-  failure,
-  runtimeBoundaryHeaders,
-  success,
-} from "../../../../../shared/api/envelope";
 import { resolveFeatureMode } from "../../../../../shared/config/feature-mode";
-import { getHttpStatusForAppErrorCode } from "../../../../../shared/errors/app-error";
-import {
-  createRelationshipStageAndProfileService,
-  relationshipProfileFailureContext,
-  relationshipProfileFailureToAppError,
-} from "../../../../../features/connections/service-factory";
+import { createRelationshipStageAndProfileService } from "../../../../../features/connections/service-factory";
 import type {
-  RelationshipProfileResult,
   RelationshipStageUpdateInput,
 } from "../../../../../features/connections/profile-contract";
+import {
+  connectionPatchHasBody,
+  isConnectionPatchRecord,
+  readConnectionPatchString,
+  relationshipProfileResponseForResult,
+} from "../route-support";
 
 export const dynamic = "force-dynamic";
 
@@ -41,22 +35,9 @@ type StageBodyResult =
     };
 
 // stage 更新只允许 relationshipStage 和 scenario 两个输入字段。
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function readString(value: unknown): string | undefined {
-  return typeof value === "string" ? value : undefined;
-}
-
-function requestHasBody(request: Request): boolean {
-  // body 为空时仍进入 service，让业务层返回统一的缺字段或 pending 状态。
-  return request.body !== null && request.headers.get("content-length") !== "0";
-}
-
 async function readStageBody(request: Request): Promise<StageBodyResult> {
   // JSON 解析失败单独标记，避免把 malformed body 当成空更新。
-  if (!requestHasBody(request)) {
+  if (!connectionPatchHasBody(request)) {
     return {
       success: true,
       body: {},
@@ -66,7 +47,7 @@ async function readStageBody(request: Request): Promise<StageBodyResult> {
   try {
     const body: unknown = await request.json();
 
-    if (!isRecord(body)) {
+    if (!isConnectionPatchRecord(body)) {
       return {
         success: true,
         body: {},
@@ -76,8 +57,8 @@ async function readStageBody(request: Request): Promise<StageBodyResult> {
     return {
       success: true,
       body: {
-        relationshipStage: readString(body.relationshipStage),
-        scenario: readString(body.scenario),
+        relationshipStage: readConnectionPatchString(body.relationshipStage),
+        scenario: readConnectionPatchString(body.scenario),
       },
     };
   } catch {
@@ -85,29 +66,6 @@ async function readStageBody(request: Request): Promise<StageBodyResult> {
       success: false,
     };
   }
-}
-
-function responseForResult(
-  result: RelationshipProfileResult,
-  mode: ReturnType<typeof resolveFeatureMode>,
-): Response {
-  // stage/profile 共享关系画像失败上下文。
-  if (result.success === false) {
-    const appError = relationshipProfileFailureToAppError(result);
-
-    return NextResponse.json(
-      failure(appError, relationshipProfileFailureContext(result, mode)),
-      {
-        headers: runtimeBoundaryHeaders(mode),
-        status: getHttpStatusForAppErrorCode(appError.code),
-      },
-    );
-  }
-
-  return NextResponse.json(success(result.data), {
-    headers: runtimeBoundaryHeaders(mode),
-    status: 200,
-  });
 }
 
 export async function PATCH(
@@ -125,7 +83,7 @@ export async function PATCH(
     // malformed JSON 交给 service 的 invalid body 分支，保持 envelope 一致。
     const invalidResult = await profileService.invalidRelationshipProfileBody();
 
-    return responseForResult(invalidResult, mode);
+    return relationshipProfileResponseForResult(invalidResult, mode);
   }
 
   // route 不在这里判断 stage 是否允许，只把输入交给业务服务。
@@ -137,5 +95,5 @@ export async function PATCH(
 
   const result = await profileService.updateStage(input);
 
-  return responseForResult(result, mode);
+  return relationshipProfileResponseForResult(result, mode);
 }

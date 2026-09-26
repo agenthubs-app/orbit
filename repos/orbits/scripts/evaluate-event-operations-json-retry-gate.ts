@@ -5,7 +5,10 @@ import { createEventOperationsAiProvider } from "../features/events/event-operat
 import { createEventOperationsPostgresClient } from "../features/events/event-operations/storage/postgres-client";
 import { createPostgresEventOperationsRepository } from "../features/events/event-operations/storage/postgres-repository";
 import { buildRecommendationTasks, evaluateRecommendationTask, hashEvaluationValue, type BuiltRecommendationTask, type EvaluationExecutionResult } from "./evaluate-event-operations-recommendations";
+import { mapRolling } from "./lib/map-rolling";
 import { loadLocalEnv } from "./load-local-env";
+
+export { mapRolling } from "./lib/map-rolling";
 
 const RETRYABLE_JSON_SHAPES = new Set(["empty", "parse_syntax", "unterminated_envelope"]);
 
@@ -79,14 +82,6 @@ export async function runBoundedJsonRetry(input: {
     totalDurationMs: performance.now() - started,
     totalTokens: attempts.reduce((total, attempt) => total + (attempt.promptTokens ?? 0) + (attempt.completionTokens ?? 0), 0),
   };
-}
-
-export async function mapRolling<T, TResult>(values: readonly T[], concurrency: number, evaluate: (value: T) => Promise<TResult>): Promise<readonly TResult[]> {
-  const results = new Array<TResult>(values.length); let next = 0;
-  await Promise.all(Array.from({ length: Math.min(concurrency, values.length) }, async () => {
-    while (next < values.length) { const index = next; next += 1; results[index] = await evaluate(values[index]!); }
-  }));
-  return results;
 }
 
 async function main(): Promise<void> {

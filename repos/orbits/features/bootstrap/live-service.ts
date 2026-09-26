@@ -173,15 +173,16 @@ function selectAccountAndProfile(graph: LiveAppBootstrapGraph):
   const accounts = [...graph.accounts].sort((left, right) =>
     left.id.localeCompare(right.id),
   );
+  const account = accounts[0];
 
-  for (const account of accounts) {
-    return {
-      account,
-      profile: profileForAccount(graph, account),
-    };
+  if (!account) {
+    return null;
   }
 
-  return null;
+  return {
+    account,
+    profile: profileForAccount(graph, account),
+  };
 }
 
 function contactById(

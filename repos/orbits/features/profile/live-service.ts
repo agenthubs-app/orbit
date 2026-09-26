@@ -3,13 +3,13 @@ import {
   type ManualProfile,
   type ManualProfileUpdateInput,
   type ProfileCompleteness,
-  type ProfileCompletenessField,
   type ProfileFailure,
   type ProfilePayload,
   type ProfileResult,
   type ProfileScenario,
   type ProfileSuccess,
 } from "./contract";
+import { scoreProfileCompleteness } from "./completeness";
 import type { ProfileService } from "./service";
 import type {
   LiveProfileGraph,
@@ -31,15 +31,6 @@ const supportedScenarios = new Set<ProfileScenario>([
   "empty",
   "pending",
 ]);
-
-const completenessFields: readonly ProfileCompletenessField[] = [
-  "displayName",
-  "headline",
-  "relationshipGoal",
-  "homeMarket",
-  "targetRelationshipTypes",
-  "preferredIntroChannels",
-];
 
 function clonePayload<TPayload>(payload: TPayload): TPayload {
   return JSON.parse(JSON.stringify(payload)) as TPayload;
@@ -88,52 +79,8 @@ function normalizeScenario(
     : "complete";
 }
 
-function hasValue(
-  profile: ManualProfile,
-  field: ProfileCompletenessField,
-): boolean {
-  const value = profile[field];
-
-  if (Array.isArray(value)) {
-    return value.length > 0;
-  }
-
-  if (typeof value === "string") {
-    return Boolean(value.trim());
-  }
-
-  return false;
-}
-
 function scoreCompleteness(profile: ManualProfile | null): ProfileCompleteness {
-  if (!profile) {
-    return {
-      score: 0,
-      status: "not-started",
-      completedFields: [],
-      missingFields: completenessFields,
-      nextBestField: "displayName",
-    };
-  }
-
-  const completedFields = completenessFields.filter((field) =>
-    hasValue(profile, field),
-  );
-  const missingFields = completenessFields.filter(
-    (field) => !completedFields.includes(field),
-  );
-  const score = Math.round(
-    (completedFields.length / completenessFields.length) * 100,
-  );
-
-  return {
-    score,
-    status:
-      score === 0 ? "not-started" : missingFields.length === 0 ? "ready" : "action-needed",
-    completedFields,
-    missingFields,
-    nextBestField: missingFields[0] ?? null,
-  };
+  return scoreProfileCompleteness(profile);
 }
 
 function accountNameFor(

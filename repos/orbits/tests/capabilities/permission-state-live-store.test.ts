@@ -102,6 +102,36 @@ test("permission live store maps remote permission records into staged authoriza
   ]);
 });
 
+test("permission live pending scenario uses the injected clock without reading the provider", async () => {
+  let nowCalls = 0;
+  let providerCalls = 0;
+  const collectedAt = "2026-07-29T04:00:00.000Z";
+  const service = createLivePermissionStateService({
+    now: () => {
+      nowCalls += 1;
+      return collectedAt;
+    },
+    provider: {
+      source: "permission-live-store-test",
+      sourceLabel: "Permission live store test",
+      readPermissionGraph: async () => {
+        providerCalls += 1;
+        throw new Error("pending policy should not read the provider");
+      },
+    },
+  });
+
+  const result = await service.listPermissionStates({ scenario: "pending" });
+
+  assert.equal(result.success, true);
+  if (!result.success) return;
+  assert.equal(nowCalls, 1);
+  assert.equal(providerCalls, 0);
+  assert.equal(result.data.provenance.collectedAt, collectedAt);
+  assert.equal(result.data.permissions[0]?.provenance.collectedAt, collectedAt);
+  assert.equal(result.data.permissions[0]?.evidence[0]?.collectedAt, collectedAt);
+});
+
 test("permission requests persist for the authenticated account and remain isolated", async () => {
   const store = createMemoryLiveRecordStore<Record<string, unknown>>();
   const provider = createStoragePermissionStateProvider({

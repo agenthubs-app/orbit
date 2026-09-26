@@ -86,6 +86,22 @@ const businessMetadata = new Set([
   // no reachable detail page.
   "kind",
 ]);
+
+function projectSuccessfulArtifactDisplay(generatedView: z.infer<typeof view> | null): Pick<AiContactArtifactContract, "summary" | "status" | "sections"> {
+  const sections = (generatedView?.sections ?? []).map(section => ({
+    title: section.title, ...(section.body === undefined ? {} : { body: section.body }),
+    items: section.items.map(source => {
+      const { actions: _actions, contactId: _contactId, ...item } = source;
+      return { ...item, metadata: item.metadata.filter(entry => businessMetadata.has(entry.label)), contactHref: contactArtifactDetailHref(source) };
+    })
+  }));
+  return {
+    summary: generatedView?.summary ?? "",
+    status: generatedView === null ? "unavailable" : sections.some(section => section.items.length > 0) ? "ready" : "empty",
+    sections,
+  };
+}
+
 export function contactArtifactToDisplay(value: unknown): AiContactArtifactContract {
   const parsed = contactArtifactSchema.safeParse(value);
   if (!parsed.success) {
@@ -94,14 +110,8 @@ export function contactArtifactToDisplay(value: unknown): AiContactArtifactContr
     return { artifactId: "unavailable", taskId: "unavailable", kind: "contact_recommendations", status: unsupported ? "unsupported" : "unavailable", title: "", summary: "", sections: [] };
   }
   const { task, result } = parsed.data;
-  const sections = result.status === "ready" ? (result.generatedView?.sections ?? []).map(section => ({
-    title: section.title, ...(section.body === undefined ? {} : { body: section.body }),
-    items: section.items.map(source => {
-      const { actions: _actions, contactId: _contactId, ...item } = source;
-      return { ...item, metadata: item.metadata.filter(entry => businessMetadata.has(entry.label)), contactHref: contactArtifactDetailHref(source) };
-    })
-  })) : [];
-  return { artifactId: task.artifactId, taskId: task.taskId, kind: "contact_recommendations", title: result.presentation.title, summary: result.status === "ready" ? result.generatedView?.summary ?? "" : "", status: result.status === "ready" ? result.generatedView === null ? "unavailable" : sections.some(section => section.items.length > 0) ? "ready" : "empty" : result.status, sections };
+  const display = result.status === "ready" ? projectSuccessfulArtifactDisplay(result.generatedView) : { summary: "", status: result.status, sections: [] };
+  return { artifactId: task.artifactId, taskId: task.taskId, kind: "contact_recommendations", title: result.presentation.title, ...display };
 }
 
 /**
@@ -124,14 +134,8 @@ export function entityArtifactToDisplay(value: unknown): AiContactArtifactContra
   const parsed = entityArtifactSchema.safeParse(value);
   if (!parsed.success) return { artifactId: "unavailable", taskId: "unavailable", kind: "contact_recommendations", status: "unavailable", title: "", summary: "", sections: [] };
   const { task, result } = parsed.data;
-  const sections = result.status === "ready" ? (result.generatedView?.sections ?? []).map(section => ({
-    title: section.title, ...(section.body === undefined ? {} : { body: section.body }),
-    items: section.items.map(source => {
-      const { actions: _actions, contactId: _contactId, ...item } = source;
-      return { ...item, metadata: item.metadata.filter(entry => businessMetadata.has(entry.label)), contactHref: contactArtifactDetailHref(source) };
-    })
-  })) : [];
-  return { artifactId: task.artifactId, taskId: task.taskId, kind: task.kind, title: result.presentation.title, summary: result.status === "ready" ? result.generatedView?.summary ?? "" : "", status: result.status === "ready" ? result.generatedView === null ? "unavailable" : sections.some(section => section.items.length > 0) ? "ready" : "empty" : result.status, sections };
+  const display = result.status === "ready" ? projectSuccessfulArtifactDisplay(result.generatedView) : { summary: "", status: result.status, sections: [] };
+  return { artifactId: task.artifactId, taskId: task.taskId, kind: task.kind, title: result.presentation.title, ...display };
 }
 
 const displayItem = z.object({ id, title: text, subtitle: text.optional(), body: text.optional(), reason: text.optional(), evidenceIds: z.array(id).max(200), metadata: z.array(metadata).max(32), contactHref: text.nullable() }).refine(value => {

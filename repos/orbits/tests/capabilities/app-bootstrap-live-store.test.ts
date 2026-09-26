@@ -245,6 +245,51 @@ test("app bootstrap live service aggregates first-screen data from live storage"
   assert.equal(result.data.provenance.databaseWriteExecuted, false);
 });
 
+test("app bootstrap selects the lexicographically first account and its profile", async () => {
+  const store = createMemoryLiveRecordStore<Record<string, unknown>>([
+    record("accounts", {
+      id: "account:z-last",
+      name: "Z Last Workspace",
+      createdAt: NOW,
+      updatedAt: NOW,
+    }),
+    record("accounts", {
+      id: "account:a-first",
+      name: "A First Workspace",
+      createdAt: NOW,
+      updatedAt: NOW,
+    }),
+    record("profiles", {
+      id: "profile:z-last",
+      accountId: "account:z-last",
+      displayName: "Z Last",
+      createdAt: NOW,
+      updatedAt: NOW,
+    }),
+    record("profiles", {
+      id: "profile:a-first",
+      accountId: "account:a-first",
+      displayName: "A First",
+      createdAt: NOW,
+      updatedAt: NOW,
+    }),
+  ]);
+  const provider = createStorageAppBootstrapProvider({
+    store,
+    workspaceId: WORKSPACE_ID,
+  });
+  const service = createLiveAppBootstrapService({ provider });
+
+  const result = await service.getAppBootstrap();
+
+  assert.equal(result.success, true);
+  if (!result.success) return;
+  assert.equal(result.data.account?.accountId, "account:a-first");
+  assert.equal(result.data.account?.workspaceName, "A First Workspace");
+  assert.equal(result.data.profile?.profileId, "profile:a-first");
+  assert.equal(result.data.profile?.displayName, "A First");
+});
+
 test("app bootstrap live service fails closed when live storage is unconfigured", async () => {
   const service = createLiveAppBootstrapService({
     now: () => NOW,

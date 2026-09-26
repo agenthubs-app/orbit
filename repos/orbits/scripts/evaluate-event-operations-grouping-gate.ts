@@ -11,6 +11,7 @@ import type {
 import { createEventOperationsPostgresClient } from "../features/events/event-operations/storage/postgres-client";
 import { createPostgresEventOperationsRepository } from "../features/events/event-operations/storage/postgres-repository";
 import { hashEvaluationValue } from "./evaluate-event-operations-recommendations";
+import { mapRolling } from "./lib/map-rolling";
 import { loadLocalEnv } from "./load-local-env";
 
 export interface GroupingGateOptions {
@@ -75,26 +76,6 @@ export function validateGroupingGateOutput(input: {
     seen.add(feature.participantId);
   }
   return null;
-}
-
-async function mapRolling<TValue, TResult>(
-  values: readonly TValue[],
-  concurrency: number,
-  operation: (value: TValue) => Promise<TResult>,
-): Promise<readonly TResult[]> {
-  const results = new Array<TResult>(values.length);
-  let cursor = 0;
-  await Promise.all(
-    Array.from({ length: Math.min(concurrency, values.length) }, async () => {
-      for (;;) {
-        const index = cursor;
-        cursor += 1;
-        if (index >= values.length) return;
-        results[index] = await operation(values[index]!);
-      }
-    }),
-  );
-  return results;
 }
 
 type GroupingRequest = Parameters<EventOperationsAiProvider["generateGroupingFeatures"]>[0];

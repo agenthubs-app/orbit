@@ -12,9 +12,6 @@ function source(path: string): string {
 
 test("/app/contacts/new renders the Network import screen without preflight side effects", async () => {
   const pageSource = source("app/(app)/app/contacts/new/page.tsx");
-  const retiredRouteLoaderSource = source(
-    "app/(app)/app/contacts/new/compose-app-contacts-new-from-previously-approved-mock-first-capabilities/contacts-new-route-services.ts",
-  );
 
   assert.match(pageSource, /await auth\(\)/);
   assert.match(pageSource, /session\?\.user\?\.id/);
@@ -30,8 +27,4 @@ test("/app/contacts/new renders the Network import screen without preflight side
     /loadAppContactsNewRouteViewModel|scanBusinessCard|scanQrCode|importEventAttendees|confirmManualContactDraft/,
   );
   assert.doesNotMatch(pageSource, /listBatches|fetchBatchDetail|business-card-ingest-v2\/(repository|worker|configured)/);
-  assert.doesNotMatch(
-    retiredRouteLoaderSource,
-    /createAppContactsNewRouteServices|loadAppContactsNewRouteViewModel|readSearchParam|confirmManualContactDraft/,
-  );
 });

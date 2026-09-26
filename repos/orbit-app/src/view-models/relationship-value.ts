@@ -48,57 +48,6 @@ function listField(record: UnknownRecord, fieldName: string): unknown[] {
   return Array.isArray(value) ? value : [];
 }
 
-function firstString(values: readonly string[]): string | null {
-  return values.find((value) => value.trim().length > 0)?.trim() ?? null;
-}
-
-function contactRecord(data: unknown): UnknownRecord {
-  if (!isRecord(data)) {
-    return {};
-  }
-
-  return isRecord(data.contact) ? data.contact : data;
-}
-
-function connectionRecords(data: unknown): UnknownRecord[] {
-  if (!isRecord(data)) {
-    return [];
-  }
-
-  return listField(data, "connections").filter(isRecord);
-}
-
-export function relationshipConnectionIdForContact(
-  contactPayload: unknown,
-  connectionsPayload: unknown,
-  fallbackContactId: string
-): string | null {
-  const contact = contactRecord(contactPayload);
-  const nestedConnection = isRecord(contact.connection) ? contact.connection : {};
-  const directId = firstString([
-    stringField(contact, "connectionId"),
-    stringField(contact, "relationshipConnectionId"),
-    stringField(contact, "primaryConnectionId"),
-    stringField(nestedConnection, "id")
-  ]);
-
-  if (directId) {
-    return directId;
-  }
-
-  const contactId = stringField(contact, "id", fallbackContactId).trim();
-
-  if (!contactId) {
-    return null;
-  }
-
-  const connection = connectionRecords(connectionsPayload).find(
-    (item) => stringField(item, "contactId") === contactId
-  );
-
-  return connection ? stringField(connection, "id") || null : null;
-}
-
 function relationshipValueTypeLabel(value: string): string {
   const labels: Record<string, string> = {
     community_bridge: "社群连接",

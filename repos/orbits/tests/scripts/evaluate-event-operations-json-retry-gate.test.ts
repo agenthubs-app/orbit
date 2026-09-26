@@ -59,3 +59,49 @@ test("first success uses one attempt and rolling plan handles 33 logical tasks",
   const values = await mapRolling(Array.from({ length: 33 }, (_, index) => index), 8, async (value) => value);
   assert.equal(values.length, 33);
 });
+
+test("rolling mapper preserves input order, caps active work, and handles empty input", async () => {
+  let active = 0;
+  let maximumActive = 0;
+  const started: number[] = [];
+  const values = await mapRolling([0, 1, 2, 3], 2, async (value) => {
+    started.push(value);
+    active += 1;
+    maximumActive = Math.max(maximumActive, active);
+    await new Promise<void>((resolve) => setTimeout(resolve, value === 0 ? 20 : 1));
+    active -= 1;
+    return value;
+  });
+  assert.deepEqual(started, [0, 1, 2, 3]);
+  assert.deepEqual(values, [0, 1, 2, 3]);
+  assert.equal(maximumActive, 2);
+
+  let evaluated = 0;
+  assert.deepEqual(
+    await mapRolling([], 2, async (value: never) => {
+      evaluated += 1;
+      return value;
+    }),
+    [],
+  );
+  assert.equal(evaluated, 0);
+});
+
+test("rolling mapper rejects immediately while already-started work continues", async () => {
+  let releaseOngoing!: () => void;
+  const ongoing = new Promise<void>((resolve) => { releaseOngoing = resolve; });
+  let ongoingFinished = false;
+  const mapped = mapRolling(["reject", "ongoing"], 2, async (value) => {
+    if (value === "reject") throw new Error("expected rejection");
+    await ongoing;
+    ongoingFinished = true;
+    return value;
+  });
+
+  await assert.rejects(mapped, /expected rejection/u);
+  assert.equal(ongoingFinished, false);
+  releaseOngoing();
+  await ongoing;
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  assert.equal(ongoingFinished, true);
+});

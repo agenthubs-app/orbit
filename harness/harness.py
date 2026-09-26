@@ -771,7 +771,7 @@ def run_evidence_collection_bounded(
     protected_app_before = protected_app_snapshot(project_dir, cfg)
     ignored_app_before = ignored_app_snapshot(project_dir, cfg)
     try:
-        return collect_evidence(project_dir, app_url, contract, paths)
+        return collect_evidence(app_url, contract, paths)
     finally:
         after = protected_workspace_snapshot(project_dir, cfg, excluded_roots=allowed_roots)
         protected_app_after = protected_app_snapshot(project_dir, cfg)

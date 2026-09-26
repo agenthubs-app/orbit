@@ -87,7 +87,6 @@ def build_verifier_prompt(
     contract: SprintContract,
     app_url: str,
     evidence_text: str,
-    artifact_dir: Path | None = None,
 ) -> str:
     # prompt 中包含 file boundary，是为了让 Verifier 区分“本 sprint 要负责的问题”
     # 和 forbidden route 里的历史 backlog 问题。

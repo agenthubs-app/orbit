@@ -110,9 +110,7 @@ interface ActiveScope extends SyncScopeInput {
   /** The last accepted server lease; read scopes derive from its grants. */
   lease: OfflineReadEnvelope | null;
   abortController: AbortController | null;
-  databaseAvailable: boolean;
   flight: SyncFlight | null;
-  generation: number;
   invalidated: boolean;
   leases: number;
   ready: Promise<void>;
@@ -152,7 +150,6 @@ export function createSyncCoordinator(input: {
   onManifestUnavailable?: (error: unknown) => void;
 }) {
   const now = input.now ?? Date.now;
-  let generation = 0;
   let active: ActiveScope | null = null;
 
   function isCurrent(scope: ActiveScope): boolean {
@@ -209,17 +206,14 @@ export function createSyncCoordinator(input: {
       }),
     );
     if (result === null) {
-      scope.databaseAvailable = false;
       throw new LocalMirrorUnavailableError();
     }
-    scope.databaseAvailable = true;
     return result.value;
   }
 
   async function initializeScope(scope: ActiveScope): Promise<void> {
     const baseScope = { baseUrl: scope.baseUrl, actorId: scope.actorId };
     if (!(await input.lifecycle.setScope(baseScope)) || !isCurrent(scope)) {
-      scope.databaseAvailable = false;
       return;
     }
     try {
@@ -230,11 +224,8 @@ export function createSyncCoordinator(input: {
       if (!isCurrent(scope)) return;
       scope.lease = acceptedLease(scope, storedLease);
       scope.workspaceId = scope.lease?.grants[0]?.workspaceId ?? workspaceId;
-      if (
-        workspaceId !== null &&
-        !(await input.lifecycle.setScope({ ...baseScope, workspaceId }))
-      ) {
-        scope.databaseAvailable = false;
+      if (workspaceId !== null) {
+        await input.lifecycle.setScope({ ...baseScope, workspaceId });
       }
     } catch (error) {
       if (!(error instanceof LocalMirrorUnavailableError)) throw error;
@@ -482,9 +473,7 @@ export function createSyncCoordinator(input: {
         ...scopeInput,
         lease: null,
         abortController: null,
-        databaseAvailable: true,
         flight: null,
-        generation: ++generation,
         invalidated: false,
         leases: 0,
         ready: Promise.resolve(),

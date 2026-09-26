@@ -93,15 +93,6 @@ test("agent action queue contract exports typed categories fixtures errors and s
       nextAction: string;
     };
   }>("features/agent/fixtures.ts");
-  const serviceSource = readFileSync(
-    join(projectRoot, "features/agent/service.ts"),
-    "utf8",
-  );
-
-  assert.match(serviceSource, /interface AgentActionQueueService/);
-  assert.match(serviceSource, /listActions/);
-  assert.match(serviceSource, /acceptAction/);
-  assert.match(serviceSource, /dismissAction/);
   assert.deepEqual(contract.AGENT_ACTION_QUEUE_ACTION_TYPES, [
     "event_reminder",
     "post_event_followup",

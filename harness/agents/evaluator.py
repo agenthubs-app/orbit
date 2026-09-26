@@ -401,7 +401,6 @@ def build_evaluator_prompt(
     contract: SprintContract,
     app_url: str,
     evidence_text: str,
-    artifact_dir: Path | None = None,
 ) -> str:
     prompt_path = Path(__file__).parents[1] / "prompts" / "evaluator.md"
     criteria = "\n".join(f"- {item.id}: {item.description}" for item in contract.success_criteria)
@@ -428,7 +427,6 @@ def run_evaluator(
     spec: str,
     contract: SprintContract,
     app_url: str,
-    rubric_track: str = "A",
     cfg: HarnessConfig | None = None,
     project_dir: Path | None = None,
     evidence_dir: Path | None = None,

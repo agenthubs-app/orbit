@@ -5,6 +5,7 @@ import { pathToFileURL } from "node:url";
 import test from "node:test";
 import { build } from "esbuild";
 import { chromium, type Browser, type Page } from "playwright";
+import { INBOX_NOTIFICATIONS_PATH } from "../src/api/inbox-notifications";
 import { aiConversationPayload, emptyAiConversationPayload, emptyAiSessionListPayload } from "./helpers/ai-fixtures";
 import { taskPageFixture } from "./helpers/task-page-fixture";
 
@@ -291,8 +292,16 @@ test("canonical suggestion previews and reminder queue remain separate from save
   await page.getByRole("checkbox", { name: "完成：事项 22", exact: true }).waitFor();
   // Suggestions have their own canonical source. /api/tasks cannot supply them.
   const suggestions = { actorId: "owner", scope: "relationship", total: 1, items: [{ id: "suggestion:1", titlePreview: "原有待确认建议", reasonPreview: "先确认合作方向", category: "relationship", updatedAt: "2026-09-25T00:00:00Z" }], nextCursor: null, hasMore: false, asOf: "2026-09-25T00:00:00Z" };
-  for (const [endpoint, data] of [["task-suggestions/page?*", suggestions], ["notifications", { reminders: [{ reminderId: "legacy-reminder:1", title: "原有提醒候选", contactName: "旧联系人", organization: "旧来源", dueInDays: 0, priority: "high", recommendedWindow: "复核后安排" }], notificationQueue: [] }]] as const) {
-    await page.route(`**/api/${endpoint}`, async route => {
+  const notificationTime = "2026-09-25T00:00:00Z";
+  const notifications = { enabled: true, items: [{
+    id: "legacy-reminder:1", actorId: "owner", revision: 1, kind: "reminder", origin: "automation", semanticKey: "legacy-reminder:1",
+    title: "原有提醒候选", reason: "复核后安排", object: { id: "contact:legacy", name: "旧联系人" },
+    sources: [{ sourceKind: "reminder_plan", sourceId: "legacy-reminder:1", sourceRevision: "1", occurredAt: notificationTime, readAt: notificationTime }],
+    target: { kind: "source", id: "legacy-reminder:1", href: null, status: "available" }, actions: ["read"],
+    occurredAt: notificationTime, updatedAt: notificationTime, readAt: null, dueAt: notificationTime, disposition: "open"
+  }], unreadCount: 1, nextCursor: null, asOf: notificationTime };
+  for (const [endpoint, data] of [["**/api/task-suggestions/page?*", suggestions], [`**${INBOX_NOTIFICATIONS_PATH}?*`, notifications]] as const) {
+    await page.route(endpoint, async route => {
       if (route.request().method() !== "GET") return route.fallback();
       await route.fulfill({ status: 200, contentType: "application/json", headers: { "Access-Control-Allow-Origin": "null", "Access-Control-Allow-Credentials": "true" }, body: JSON.stringify({ success: true, data }) });
     });
@@ -353,7 +362,7 @@ test("suggestion next page replaces twenty previews and rejects a foreign actor 
 test("an unavailable reminder queue is shown as an error instead of an empty count", async t => {
   const page = await open(t, { params: { scope: "relationship" } });
   await page.getByRole("heading", { name: "建议与草稿", exact: true }).waitFor();
-  await page.route("**/api/notifications", async route => {
+  await page.route(`**${INBOX_NOTIFICATIONS_PATH}?*`, async route => {
     if (route.request().method() !== "GET") return route.fallback();
     await route.fulfill({ status: 503, contentType: "application/json", headers: { "Access-Control-Allow-Origin": "null", "Access-Control-Allow-Credentials": "true" }, body: JSON.stringify({ success: false, error: { code: "UNAVAILABLE", message: "提醒暂时无法读取" } }) });
   });
@@ -367,9 +376,16 @@ test("an unavailable reminder queue is shown as an error instead of an empty cou
 test("migrated reminder instants follow the device zone across midnight", async t => {
   const page = await open(t, { params: { scope: "relationship" }, timeZone: "America/New_York" });
   await page.getByRole("heading", { name: "建议与草稿", exact: true }).waitFor();
-  await page.route("**/api/notifications", async route => {
+  await page.route(`**${INBOX_NOTIFICATIONS_PATH}?*`, async route => {
     if (route.request().method() !== "GET") return route.fallback();
-    const data = { reminders: [{ reminderId: "zone-reminder", title: "跨日提醒", dueAt: "2026-09-15T00:30:00Z", organization: "原有机构", priority: "normal" }], notificationQueue: [] };
+    const notificationTime = "2026-09-15T00:30:00Z";
+    const data = { enabled: true, items: [{
+      id: "zone-reminder", actorId: "owner", revision: 1, kind: "reminder", origin: "automation", semanticKey: "zone-reminder",
+      title: "跨日提醒", reason: "复核后安排", object: { id: "organization:legacy", name: "原有机构" },
+      sources: [{ sourceKind: "reminder_plan", sourceId: "zone-reminder", sourceRevision: "1", occurredAt: notificationTime, readAt: notificationTime }],
+      target: { kind: "source", id: "zone-reminder", href: null, status: "available" }, actions: ["read"],
+      occurredAt: notificationTime, updatedAt: notificationTime, readAt: null, dueAt: notificationTime, disposition: "open"
+    }], unreadCount: 1, nextCursor: null, asOf: notificationTime };
     await route.fulfill({ status: 200, contentType: "application/json", headers: { "Access-Control-Allow-Origin": "null", "Access-Control-Allow-Credentials": "true" }, body: JSON.stringify({ success: true, data }) });
   });
   await page.evaluate(() => (window as any).fixture.update({ baseUrl: "https://new-york.example" }));

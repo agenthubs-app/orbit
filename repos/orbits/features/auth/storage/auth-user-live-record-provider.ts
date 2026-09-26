@@ -129,24 +129,7 @@ export function createStorageAuthUserProvider({
       return record ? storedUserFromRecord(record) : null;
     },
     async saveUser(user) {
-      await store.upsertRecord({
-        workspaceId,
-        collectionName: AUTH_USER_LIVE_RECORD_COLLECTION,
-        recordId: authUserRecordId(user.email),
-        userId: user.id,
-        sourceType: "manual",
-        sourceId: `auth:${user.provider}`,
-        sourceLabel: "Orbit account sign-up",
-        provider: user.provider,
-        providerRecordId: user.providerAccountId,
-        evidenceIds: [`evidence:auth:${user.id}`],
-        occurredAt: user.createdAt,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
-        lifecycleState: "active",
-        searchText: user.email,
-        payload: { ...user },
-      });
+      await store.upsertRecord(recordFor(user));
 
       return user;
     },

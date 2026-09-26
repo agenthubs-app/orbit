@@ -83,5 +83,7 @@ encrypted payloads, and Cookie values must not be logged.
 - iOS Google sign-in through the Web broker
 - Web and iOS sign-out by clearing their local session
 
-Password reset is not implemented. Clients must describe it as unavailable
-rather than simulating a successful reset.
+Password reset is implemented through the durable queue and one-time redemption
+flow described above. Deployments without the required mail, queue, or secret
+configuration must surface the controlled unavailable response; clients must
+not simulate a successful reset.

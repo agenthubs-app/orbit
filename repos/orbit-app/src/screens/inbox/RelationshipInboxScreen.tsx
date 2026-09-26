@@ -666,10 +666,9 @@ function ScopedRelationshipInboxThreadScreen({ actorId, conversationId, scopeKey
   );
 }
 
-function InboxLayout({ children, title, refreshControl, onCompose, onMarkAllRead, markAllReadLabel, markAllReadDisabled = false, onBack, hideBack = false }: PropsWithChildren<{
+function InboxLayout({ children, title, refreshControl, onMarkAllRead, markAllReadLabel, markAllReadDisabled = false, onBack, hideBack = false }: PropsWithChildren<{
   title: string;
   refreshControl?: React.ReactElement<React.ComponentProps<typeof RefreshControl>>;
-  onCompose?: (() => void) | undefined;
   onMarkAllRead?: (() => void) | undefined;
   markAllReadLabel?: string;
   markAllReadDisabled?: boolean;
@@ -679,7 +678,6 @@ function InboxLayout({ children, title, refreshControl, onCompose, onMarkAllRead
   const locale = useOrbitLocale();
   const { colors, styles } = useStyles();
   const router = useRouter();
-  const { fontScale } = useWindowDimensions();
   const canGoBack = router.canGoBack();
   return (
     <SafeAreaView edges={["top"]} style={styles.inboxSafeArea}>
@@ -713,15 +711,6 @@ function InboxLayout({ children, title, refreshControl, onCompose, onMarkAllRead
               style={({ pressed }) => [styles.toolbarButton, markAllReadDisabled && styles.disabled, pressed && styles.pressed]}
             >
               <Text style={styles.toolbarComposeText}>{markAllReadLabel ?? locale.t("inbox.markAllRead")}</Text>
-            </Pressable>
-          ) : onCompose ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={locale.t("inbox.compose")}
-              onPress={onCompose}
-              style={({ pressed }) => [styles.toolbarButton, pressed && styles.pressed]}
-            >
-              <Text style={styles.toolbarComposeText}>{locale.t("inbox.compose")}</Text>
             </Pressable>
           ) : null}
         </View>

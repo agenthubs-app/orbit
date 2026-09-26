@@ -782,7 +782,6 @@ def collect_browser_evidence(url: str, paths: dict[str, Path], route_key: str) -
 
 
 def collect_evidence(
-    project_dir: Path,
     app_url: str,
     contract: SprintContract,
     paths: dict[str, Path],

@@ -10,10 +10,17 @@ import {
   type FollowupTaskGenerationResult,
   type FollowupTaskGenerationScenario,
   type FollowupTaskGenerationSourceReference,
-  type FollowupTaskPriority,
   type FollowupTaskTrigger,
-  type FollowupTaskTriggerKind,
 } from "../contract";
+import {
+  filterFollowupTasks,
+  followupConnectionForTask,
+  followupContactForTask,
+  followupDaysUntil,
+  followupPriorityFor,
+  followupTriggerKindFor,
+  normalizeFollowupTaskGenerationScenario,
+} from "../task-generation-projection";
 import type {
   ConnectionDTO,
   ContactDTO,
@@ -44,96 +51,12 @@ interface HybridFollowupTaskGenerationServiceOptions {
   repository?: FollowupLocalRemoteRepository;
 }
 
-const supportedScenarios = new Set<FollowupTaskGenerationScenario>([
-  "success",
-  "empty",
-  "pending",
-  "failure",
-]);
-
-const supportedTriggerKinds = new Set<FollowupTaskTriggerKind>([
-  "new_connection",
-  "event_encounter",
-  "promised_action",
-  "dormant_relationship",
-]);
-
 function clonePayload<TPayload>(payload: TPayload): TPayload {
   return JSON.parse(JSON.stringify(payload)) as TPayload;
 }
 
 function localRemoteSource(): string {
   return `local-remote-store:${ORBIT_LOCAL_REMOTE_DATABASE_KEY}`;
-}
-
-function normalizeScenario(
-  scenario?:
-    | FollowupTaskGenerationListInput["scenario"]
-    | FollowupTaskGenerationGenerateInput["scenario"],
-): FollowupTaskGenerationScenario {
-  if (
-    scenario &&
-    supportedScenarios.has(scenario as FollowupTaskGenerationScenario)
-  ) {
-    return scenario as FollowupTaskGenerationScenario;
-  }
-
-  return "success";
-}
-
-function normalizedLimit(limit?: number | null): number | null {
-  if (!Number.isFinite(limit ?? Number.NaN)) {
-    return null;
-  }
-
-  return Math.max(0, Math.floor(limit as number));
-}
-
-function triggerKindFor(task: TaskDTO): FollowupTaskTriggerKind {
-  switch (task.source.type) {
-    case "event_import":
-      return "event_encounter";
-    case "calendar_signal":
-      return "dormant_relationship";
-    case "agent_action":
-    case "email_signal":
-      return "promised_action";
-    case "manual":
-    default:
-      return "new_connection";
-  }
-}
-
-function selectedTriggerKinds(
-  input: FollowupTaskGenerationListInput | FollowupTaskGenerationGenerateInput,
-): readonly FollowupTaskTriggerKind[] | null {
-  if ("triggerKinds" in input && Array.isArray(input.triggerKinds)) {
-    const kinds = input.triggerKinds.filter((kind): kind is FollowupTaskTriggerKind =>
-      supportedTriggerKinds.has(kind as FollowupTaskTriggerKind),
-    );
-
-    return kinds.length > 0 ? kinds : null;
-  }
-
-  if (
-    "triggerKind" in input &&
-    input.triggerKind &&
-    supportedTriggerKinds.has(input.triggerKind as FollowupTaskTriggerKind)
-  ) {
-    return [input.triggerKind as FollowupTaskTriggerKind];
-  }
-
-  return null;
-}
-
-function connectionIdFor(
-  input: FollowupTaskGenerationListInput | FollowupTaskGenerationGenerateInput,
-): string | null {
-  if (!("connectionId" in input)) {
-    return null;
-  }
-
-  return input.connectionId?.trim() || null;
 }
 
 function sourceForTask(task: TaskDTO): FollowupTaskGenerationSourceReference {
@@ -155,20 +78,6 @@ function sourceForTask(task: TaskDTO): FollowupTaskGenerationSourceReference {
   };
 }
 
-function contactForTask(
-  task: TaskDTO,
-  contactsById: ReadonlyMap<string, ContactDTO>,
-): ContactDTO | null {
-  return task.contactId ? contactsById.get(task.contactId) ?? null : null;
-}
-
-function connectionForTask(
-  task: TaskDTO,
-  connectionsById: ReadonlyMap<string, ConnectionDTO>,
-): ConnectionDTO | null {
-  return task.connectionId ? connectionsById.get(task.connectionId) ?? null : null;
-}
-
 function evidenceSummary(
   evidenceIds: readonly string[],
   evidenceById: ReadonlyMap<string, RelationshipEvidenceDTO>,
@@ -179,33 +88,6 @@ function evidenceSummary(
       .find((summary): summary is string => Boolean(summary?.trim())) ??
     "Hybrid local remote task evidence is available for review."
   );
-}
-
-function daysUntil(dueAt: string | undefined, generatedAt: string): number {
-  if (!dueAt) {
-    return 7;
-  }
-
-  const dueTime = new Date(dueAt).getTime();
-  const baseTime = new Date(generatedAt).getTime();
-
-  if (!Number.isFinite(dueTime) || !Number.isFinite(baseTime)) {
-    return 7;
-  }
-
-  return Math.max(0, Math.ceil((dueTime - baseTime) / 86_400_000));
-}
-
-function priorityFor(dueInDays: number): FollowupTaskPriority {
-  if (dueInDays <= 1) {
-    return "today";
-  }
-
-  if (dueInDays <= 7) {
-    return "this_week";
-  }
-
-  return "nurture";
 }
 
 function toTask(
@@ -219,16 +101,16 @@ function toTask(
   const evidenceById = new Map(
     graph.evidence.map((evidence) => [evidence.id, evidence]),
   );
-  const contact = contactForTask(task, contactsById);
-  const connection = connectionForTask(task, connectionsById);
-  const dueInDays = daysUntil(task.dueAt, graph.generatedAt);
+  const contact = followupContactForTask(task, contactsById);
+  const connection = followupConnectionForTask(task, connectionsById);
+  const dueInDays = followupDaysUntil(task.dueAt, graph.generatedAt);
   const source = sourceForTask(task);
 
   return {
     taskId: task.id,
     title: task.title,
-    triggerKind: triggerKindFor(task),
-    priority: priorityFor(dueInDays),
+    triggerKind: followupTriggerKindFor(task),
+    priority: followupPriorityFor(dueInDays),
     dueAt: task.dueAt,
     dueInDays,
     connectionId: task.connectionId ?? connection?.id ?? "",
@@ -281,25 +163,6 @@ function toTrigger(
   };
 }
 
-function filterTasks(
-  tasks: readonly FollowupTask[],
-  input: FollowupTaskGenerationListInput | FollowupTaskGenerationGenerateInput,
-): readonly FollowupTask[] {
-  const kinds = selectedTriggerKinds(input);
-  const connectionId = connectionIdFor(input);
-  const limit = normalizedLimit(input.limit);
-  const filtered = tasks.filter((task) => {
-    const matchesKind = kinds ? kinds.includes(task.triggerKind) : true;
-    const matchesConnection = connectionId
-      ? task.connectionId === connectionId
-      : true;
-
-    return matchesKind && matchesConnection;
-  });
-
-  return limit === null ? filtered : filtered.slice(0, limit);
-}
-
 function evidenceIdsFor(tasks: readonly FollowupTask[]): readonly string[] {
   const evidenceIds = tasks.flatMap((task) => task.evidenceIds);
 
@@ -340,7 +203,7 @@ function payloadFor(
   sourceLabel: string,
 ): FollowupTaskGenerationPayload {
   const allTasks = graph.tasks.map((task) => toTask(task, graph));
-  const tasks = filterTasks(allTasks, input);
+  const tasks = filterFollowupTasks(allTasks, input);
   const triggers = tasks.map((task) => toTrigger(task, graph));
 
   return {
@@ -451,7 +314,10 @@ export function createHybridFollowupTaskGenerationService(
   return {
     listTasks(input = {}): FollowupTaskGenerationResult {
       const graph = repository.readFollowupGraph();
-      const scenario = scenarioResult(graph, normalizeScenario(input.scenario));
+      const scenario = scenarioResult(
+        graph,
+        normalizeFollowupTaskGenerationScenario(input.scenario),
+      );
 
       if (scenario) {
         return scenario;
@@ -462,7 +328,10 @@ export function createHybridFollowupTaskGenerationService(
 
     generateTasks(input = {}): FollowupTaskGenerationResult {
       const graph = repository.readFollowupGraph();
-      const scenario = scenarioResult(graph, normalizeScenario(input.scenario));
+      const scenario = scenarioResult(
+        graph,
+        normalizeFollowupTaskGenerationScenario(input.scenario),
+      );
 
       if (scenario) {
         return scenario;

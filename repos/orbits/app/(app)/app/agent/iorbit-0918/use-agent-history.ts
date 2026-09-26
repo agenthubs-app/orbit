@@ -2,7 +2,7 @@
 
 // iOrbit（对话域）历史记录状态 hook：从 `../orbit-real-agent.tsx` 与
 // `./use-agent-chat.ts` 逐字搬入的会话列表 / 分组 / 置顶 / 重命名 / 删除 /
-// 乐观写队列 / toast 反馈 / 侧栏拖拽宽度 / 跨标签 `window.focus` 刷新。
+// 乐观写队列 / toast 反馈 / 跨标签 `window.focus` 刷新。
 //
 // 归属划分（任务 1c）：会话列表与分组的**唯一所有者**是本 hook——
 // `storedSessions` / `storedSessionsRef` / `sessionGroups` /
@@ -19,9 +19,7 @@ import {
   useRef,
   useState,
   type Dispatch,
-  type KeyboardEvent as ReactKeyboardEvent,
   type MutableRefObject,
-  type PointerEvent as ReactPointerEvent,
   type SetStateAction,
 } from "react";
 import type {
@@ -40,11 +38,7 @@ import {
 } from "../agent-chat-history-organization";
 import {
   AGENT_CHAT_ACTIVE_SESSION_STORAGE_KEY,
-  HISTORY_SIDEBAR_DEFAULT_WIDTH,
-  HISTORY_SIDEBAR_MAX_WIDTH,
-  HISTORY_SIDEBAR_MIN_WIDTH,
   agentChatHistorySessionsToHistory,
-  clampHistorySidebarWidth,
   createAgentSessionId,
   deleteStoredAgentChatSession,
   loadStoredAgentChatSessions,
@@ -91,10 +85,6 @@ export function useAgentHistory() {
 
   const storedSessionsRef = useRef<AgentSessionSummary[]>(storedSessions);
   storedSessionsRef.current = storedSessions;
-  const [historySidebarResizing, setHistorySidebarResizing] = useState(false);
-  const [historySidebarWidth, setHistorySidebarWidth] = useState(
-    HISTORY_SIDEBAR_DEFAULT_WIDTH,
-  );
   const [selectedSessionGroupId, setSelectedSessionGroupId] = useState<string | null>(null);
   const [historyQuery, setHistoryQuery] = useState("");
   const [historyPageHasMore, setHistoryPageHasMore] = useState(false);
@@ -104,7 +94,6 @@ export function useAgentHistory() {
   const [historyDeleteError, setHistoryDeleteError] = useState<string | null>(null);
   const [historyMutationSessionId, setHistoryMutationSessionId] = useState<string | null>(null);
   const [pendingDeleteHistory, setPendingDeleteHistory] = useState<OrbitAgentHistoryView | null>(null);
-  const historyResizeRef = useRef<{ startWidth: number; startX: number } | null>(null);
   const historyMutationSessionIdRef = useRef<string | null>(null);
   const historyPageGenerationRef = useRef(0);
 
@@ -174,74 +163,6 @@ export function useAgentHistory() {
       if (generation === historyPageGenerationRef.current) setHistoryPageLoading(false);
     }
   };
-
-  useEffect(() => {
-    if (!historySidebarResizing) {
-      return undefined;
-    }
-
-    const onPointerMove = (event: PointerEvent) => {
-      const resize = historyResizeRef.current;
-      if (!resize) {
-        return;
-      }
-
-      setHistorySidebarWidth(
-        clampHistorySidebarWidth(
-          resize.startWidth + event.clientX - resize.startX,
-        ),
-      );
-    };
-    const stopResize = () => {
-      historyResizeRef.current = null;
-      setHistorySidebarResizing(false);
-    };
-
-    window.addEventListener("pointermove", onPointerMove);
-    window.addEventListener("pointerup", stopResize);
-    window.addEventListener("pointercancel", stopResize);
-
-    return () => {
-      window.removeEventListener("pointermove", onPointerMove);
-      window.removeEventListener("pointerup", stopResize);
-      window.removeEventListener("pointercancel", stopResize);
-    };
-  }, [historySidebarResizing]);
-
-  const startHistorySidebarResize = useCallback(
-    (event: ReactPointerEvent<HTMLButtonElement>) => {
-      event.preventDefault();
-      historyResizeRef.current = {
-        startWidth: historySidebarWidth,
-        startX: event.clientX,
-      };
-      setHistorySidebarResizing(true);
-    },
-    [historySidebarWidth],
-  );
-
-  const resizeHistorySidebarWithKeyboard = useCallback(
-    (event: ReactKeyboardEvent<HTMLButtonElement>) => {
-      const nextWidth =
-        event.key === "ArrowLeft"
-          ? historySidebarWidth - 16
-          : event.key === "ArrowRight"
-            ? historySidebarWidth + 16
-            : event.key === "Home"
-              ? HISTORY_SIDEBAR_MIN_WIDTH
-              : event.key === "End"
-                ? HISTORY_SIDEBAR_MAX_WIDTH
-                : null;
-
-      if (nextWidth === null) {
-        return;
-      }
-
-      event.preventDefault();
-      setHistorySidebarWidth(clampHistorySidebarWidth(nextWidth));
-    },
-    [historySidebarWidth],
-  );
 
   const updateHistorySession = async (
     sessionId: string,
@@ -495,14 +416,11 @@ export function useAgentHistory() {
     historyPageHasMore,
     historyPageLoading,
     historyQuery,
-    historySidebarResizing,
-    historySidebarWidth,
     moveHistorySession,
     loadMoreHistory,
     pendingDeleteHistory,
     renameHistoryGroup,
     renameHistorySession,
-    resizeHistorySidebarWithKeyboard,
     selectedSessionGroupId,
     sessionGroups,
     setHistoryDeleteError,
@@ -512,7 +430,6 @@ export function useAgentHistory() {
     setSelectedSessionGroupId,
     setSessionGroups,
     setStoredSessions,
-    startHistorySidebarResize,
     storedHistory,
     storedSessions,
     storedSessionsRef,

@@ -171,22 +171,7 @@ export function createSyncClient(
         `/api/sync?${query.toString()}`,
         options,
       );
-      if (!result.success) {
-        const errorInput = {
-          code: result.error.code,
-          context: result.error.context,
-          message: result.error.message,
-          status: result.status,
-        };
-        if (
-          result.status === 409 &&
-          result.error.code === "CONFLICT" &&
-          result.error.context?.syncErrorCode === "SYNC_RESET_REQUIRED"
-        ) {
-          throw new SyncResetRequiredError(errorInput);
-        }
-        throw new SyncRequestError(errorInput);
-      }
+      if (!result.success) failed(result);
       if (
         !Number.isInteger(result.status) ||
         result.status < 200 ||

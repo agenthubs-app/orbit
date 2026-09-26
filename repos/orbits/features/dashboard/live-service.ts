@@ -17,6 +17,14 @@ import {
   type DashboardNewContact,
   type DashboardRecentActivity,
 } from "./contract";
+import {
+  applyDashboardActivityLimit,
+  dashboardContactsById,
+  dashboardDueLabel,
+  dashboardPriorityScore,
+  dashboardValueType,
+  normalizeDashboardAggregateScenario,
+} from "./aggregate-projection";
 import { buildDashboardAggregateSummary } from "./summary";
 import type {
   ConnectionDTO,
@@ -46,35 +54,8 @@ export interface LiveDashboardAggregateServiceOptions {
   provider?: LiveDashboardAggregateProvider | null;
 }
 
-const supportedScenarios = new Set<DashboardAggregateScenario>([
-  "success",
-  "empty",
-  "pending",
-  "failure",
-]);
-
 function clonePayload<TPayload>(payload: TPayload): TPayload {
   return JSON.parse(JSON.stringify(payload)) as TPayload;
-}
-
-function normalizeScenario(
-  scenario?:
-    | DashboardAggregateInput["scenario"]
-    | DashboardAggregateSummaryInput["scenario"],
-): DashboardAggregateScenario {
-  if (scenario && supportedScenarios.has(scenario as DashboardAggregateScenario)) {
-    return scenario as DashboardAggregateScenario;
-  }
-
-  return "success";
-}
-
-function normalizedActivityLimit(limit?: number | null): number | null {
-  if (!Number.isFinite(limit ?? Number.NaN)) {
-    return null;
-  }
-
-  return Math.max(0, Math.floor(limit as number));
 }
 
 function evidenceIdsFor(graph: LiveDashboardGraph): readonly string[] {
@@ -173,41 +154,13 @@ function toNewContact(contact: ContactDTO): DashboardNewContact {
   };
 }
 
-function contactById(
-  contacts: readonly ContactDTO[],
-): ReadonlyMap<string, ContactDTO> {
-  return new Map(contacts.map((contact) => [contact.id, contact]));
-}
-
-function priorityScore(connection: ConnectionDTO): number {
-  return Math.round(
-    connection.businessRelevanceScore ??
-      connection.relationshipStrength ??
-      Math.min(95, 60 + connection.valueTypes.length * 10),
-  );
-}
-
-function firstDashboardValueType(
-  connection: ConnectionDTO,
-): DashboardHighValueRelationship["valueType"] {
-  if (connection.valueTypes.includes("commercial_opportunity")) {
-    return "commercial_opportunity";
-  }
-
-  if (connection.valueTypes.includes("referral_path")) {
-    return "referral_path";
-  }
-
-  return "strategic_fit";
-}
-
 function toHighValueRelationships(
   graph: LiveDashboardGraph,
 ): readonly DashboardHighValueRelationship[] {
-  const contactsById = contactById(graph.contacts);
+  const contactsById = dashboardContactsById(graph.contacts);
 
   return graph.connections
-    .filter((connection) => priorityScore(connection) >= 70)
+    .filter((connection) => dashboardPriorityScore(connection) >= 70)
     .map((connection) => {
       const contact = contactsById.get(connection.contactId);
 
@@ -215,43 +168,18 @@ function toHighValueRelationships(
         connectionId: connection.id,
         contactName: contact?.displayName ?? "Live relationship contact",
         organization: contact?.organization ?? "",
-        valueType: firstDashboardValueType(connection),
-        priorityScore: priorityScore(connection),
+        valueType: dashboardValueType(connection),
+        priorityScore: dashboardPriorityScore(connection),
         reason: connection.summary,
         evidenceIds: connection.evidenceIds,
       };
     });
 }
 
-function dueLabel(task: TaskDTO, generatedAt: string): string {
-  if (!task.dueAt) {
-    return "No due date";
-  }
-
-  const dueTime = new Date(task.dueAt).getTime();
-  const baseTime = new Date(generatedAt).getTime();
-
-  if (!Number.isFinite(dueTime) || !Number.isFinite(baseTime)) {
-    return "Due this week";
-  }
-
-  const days = Math.ceil((dueTime - baseTime) / 86_400_000);
-
-  if (days <= 0) {
-    return "Due today";
-  }
-
-  if (days === 1) {
-    return "Due tomorrow";
-  }
-
-  return `Due in ${days} days`;
-}
-
 function toPendingFollowups(
   graph: LiveDashboardGraph,
 ): readonly DashboardFollowupTask[] {
-  const contactsById = contactById(graph.contacts);
+  const contactsById = dashboardContactsById(graph.contacts);
 
   return graph.tasks
     .filter((task) => task.status === "open" || task.status === "scheduled")
@@ -263,7 +191,7 @@ function toPendingFollowups(
       return {
         taskId: task.id,
         contactName: contact?.displayName ?? "Live relationship contact",
-        dueLabel: dueLabel(task, graph.generatedAt),
+        dueLabel: dashboardDueLabel(task, graph.generatedAt),
         recommendedAction: task.title,
         evidenceIds: task.evidenceIds,
       };
@@ -309,22 +237,6 @@ function toRecentActivity(
   return [...contactActivities, ...taskActivities].sort((left, right) =>
     right.occurredAt.localeCompare(left.occurredAt),
   );
-}
-
-function applyActivityLimit(
-  payload: DashboardAggregatePayload,
-  activityLimit?: number | null,
-): DashboardAggregatePayload {
-  const limit = normalizedActivityLimit(activityLimit);
-
-  if (limit === null) {
-    return payload;
-  }
-
-  return {
-    ...payload,
-    recentActivity: payload.recentActivity.slice(0, limit),
-  };
 }
 
 function aggregatePayload(
@@ -483,7 +395,7 @@ async function aggregateFor(
   const scenario = scenarioAggregateResult(
     graph,
     provider,
-    normalizeScenario(input.scenario),
+    normalizeDashboardAggregateScenario(input.scenario),
   );
 
   if (scenario) {
@@ -491,7 +403,7 @@ async function aggregateFor(
   }
 
   return aggregateSuccess(
-    applyActivityLimit(aggregatePayload(graph, provider), input.activityLimit),
+    applyDashboardActivityLimit(aggregatePayload(graph, provider), input.activityLimit),
   );
 }
 
@@ -518,7 +430,7 @@ async function summaryFor(
   if (provider.readDashboardSummaryForAccount) {
     return provider.readDashboardSummaryForAccount(
       actorId,
-      normalizeScenario(input.scenario),
+      normalizeDashboardAggregateScenario(input.scenario),
     );
   }
 

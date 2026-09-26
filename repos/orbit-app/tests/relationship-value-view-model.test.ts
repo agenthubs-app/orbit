@@ -1,35 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  relationshipConnectionIdForContact,
   relationshipValueStateIsEmpty,
   relationshipValueToView
 } from "../src/view-models/relationship-value";
-
-test("relationshipConnectionIdForContact resolves a contact's connection id", () => {
-  assert.equal(
-    relationshipConnectionIdForContact(
-      { contact: { connectionId: "connection:direct", id: "contact:maya" } },
-      { connections: [] },
-      "contact:maya"
-    ),
-    "connection:direct"
-  );
-
-  assert.equal(
-    relationshipConnectionIdForContact(
-      { contact: { id: "contact:maya" } },
-      {
-        connections: [
-          { contactId: "contact:kenji", id: "connection:kenji" },
-          { contactId: "contact:maya", id: "connection:maya" }
-        ]
-      },
-      "contact:maya"
-    ),
-    "connection:maya"
-  );
-});
 
 test("relationshipValueToView maps a success payload into a Chinese card", () => {
   const view = relationshipValueToView({

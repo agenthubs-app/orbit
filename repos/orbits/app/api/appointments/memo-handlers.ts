@@ -5,10 +5,10 @@ import { createConfiguredAppointmentService } from "../../../features/appointmen
 import type { AppointmentService } from "../../../features/appointments/service";
 import { createConfiguredHumanEncounterService } from "../../../features/encounters/runtime";
 import type { HumanEncounterService } from "../../../features/encounters/service";
-import { failure, success } from "../../../shared/api/envelope";
-import { AppError, getHttpStatusForAppErrorCode } from "../../../shared/errors/app-error";
+import { success } from "../../../shared/api/envelope";
+import { AppError } from "../../../shared/errors/app-error";
 import { authenticatedApiActorRequiredResponse, resolveAuthenticatedApiActor, type ResolveAuthenticatedApiActor } from "../_shared/authenticated-actor";
-import { appointmentErrorResponse } from "./handlers";
+import { appointmentMutationErrorResponse, text } from "./handlers";
 
 export interface AppointmentMemoHandlerDependencies {
   appointmentService: () => Pick<AppointmentService, "get"> | null;
@@ -21,13 +21,6 @@ const configuredDependencies: AppointmentMemoHandlerDependencies = {
   encounterService: createConfiguredHumanEncounterService,
   resolveActor: resolveAuthenticatedApiActor,
 };
-
-function text(value: unknown, label: string, maxLength = 256): string {
-  if (typeof value !== "string" || !value.trim()) throw new AppError("VALIDATION_ERROR", `${label} is required.`);
-  const normalized = value.trim();
-  if (normalized.length > maxLength) throw new AppError("VALIDATION_ERROR", `${label} is too long.`);
-  return normalized;
-}
 
 function optionalText(value: unknown, label: string, maxLength: number): string | null {
   if (value === undefined || value === null) return null;
@@ -53,13 +46,6 @@ async function serviceFor(dependencies: AppointmentMemoHandlerDependencies) {
   return { actor, service: createAppointmentMemoService({ appointments, encounters }) };
 }
 
-function memoErrorResponse(error: unknown): Response {
-  if (error instanceof AppError) {
-    return NextResponse.json(failure(error), { status: getHttpStatusForAppErrorCode(error.code) });
-  }
-  return appointmentErrorResponse(error);
-}
-
 export function createAppointmentMemoGetHandler(dependencies: AppointmentMemoHandlerDependencies = configuredDependencies) {
   return async (request: Request, route: { params: Promise<{ id: string }> }): Promise<Response> => {
     try {
@@ -69,7 +55,7 @@ export function createAppointmentMemoGetHandler(dependencies: AppointmentMemoHan
       const entry = await boundary.service.getEntry({ actorId: boundary.actor.id, appointmentId: text(id, "appointmentId"), ...memoContext });
       return NextResponse.json(success(entry));
     } catch (error) {
-      return memoErrorResponse(error);
+      return appointmentMutationErrorResponse(error);
     }
   };
 }
@@ -106,7 +92,7 @@ export function createAppointmentMemoPostHandler(dependencies: AppointmentMemoHa
         projection: record.projection,
       }), { status: 201 });
     } catch (error) {
-      return memoErrorResponse(error);
+      return appointmentMutationErrorResponse(error);
     }
   };
 }

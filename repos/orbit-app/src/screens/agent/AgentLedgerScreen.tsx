@@ -149,10 +149,6 @@ export function AgentLedgerScreen({
   );
 }
 
-export function TodayAgentLedgerScreen() {
-  return <AgentLedgerScreen mode="today" />;
-}
-
 export function AllActionsAgentLedgerScreen({
   selectedEntryId
 }: {

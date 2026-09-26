@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { AppointmentError, type AppointmentAggregate, type AppointmentCommand, type AppointmentProposalInput } from "../../../features/appointments/contract";
 import { createConfiguredAppointmentService } from "../../../features/appointments/runtime";
 import { failure, success } from "../../../shared/api/envelope";
-import { AppError } from "../../../shared/errors/app-error";
+import { AppError, getHttpStatusForAppErrorCode } from "../../../shared/errors/app-error";
 import { authenticatedApiActorRequiredResponse, resolveAuthenticatedApiActor } from "../_shared/authenticated-actor";
 
 type Json = Record<string, unknown>;
@@ -14,7 +14,7 @@ async function bodyFor(request: Request): Promise<Json> {
   return value as Json;
 }
 
-function text(value: unknown, label: string, maxLength = 256): string {
+export function text(value: unknown, label: string, maxLength = 256): string {
   if (typeof value !== "string" || !value.trim()) throw new AppError("VALIDATION_ERROR", `${label} is required.`);
   const normalized = value.trim();
   if (normalized.length > maxLength) throw new AppError("VALIDATION_ERROR", `${label} is too long.`);
@@ -97,6 +97,13 @@ export function appointmentErrorResponse(error: unknown): Response {
   }
   if (error instanceof AppError) return NextResponse.json(failure(error), { status: 400 });
   return NextResponse.json(failure(new AppError("SERVICE_UNAVAILABLE", "Appointment service is temporarily unavailable.")), { status: 503 });
+}
+
+export function appointmentMutationErrorResponse(error: unknown): Response {
+  if (error instanceof AppError) {
+    return NextResponse.json(failure(error), { status: getHttpStatusForAppErrorCode(error.code) });
+  }
+  return appointmentErrorResponse(error);
 }
 
 async function actorAndService() {

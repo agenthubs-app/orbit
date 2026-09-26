@@ -58,6 +58,11 @@ test('a proven contact retains only its canonical detail action, never an unprov
  assert.equal(projectLegacyNotification({...notification,actionHref:'/app/contacts/contact%3Aone?appointmentId=stale'},target).actionHref,'/contacts/contact%3Aone');
  assert.equal(verifyLegacyTarget({actorId:actor,workspaceId:workspace,kind:'contact',id:record.recordId,record:{...record,userId:'other'}}),null);
 });
+test('service boundary reprojects injected legacy notifications before display',async()=>{
+ const service=createLiveReminderScheduleNotificationService({provider:{source:'test',sourceLabel:'test',async readReminderNotificationGraph(){return {connections:[],contacts:[],evidence:[],generatedAt:at,notifications:[notification],tasks:[]};}}});
+ const result=await service.listNotifications({actorId:actor});assert.equal(result.success,true);if(!result.success)throw Error('unavailable');
+ assert.equal(result.data.reminders[0]?.href,'');assert.equal(result.data.reminders[0]?.title,'来源已不可用');assert.equal(JSON.stringify(result.data).includes('SECRET OLD'),false);
+});
 test('actual provider and service do not guess tasks or leak stale visible associations',async()=>{
  const store=createMemoryLiveRecordStore<Record<string,unknown>>();const task=taskRecord();await store.upsertRecord(task);
  const notice:LiveRecord<Record<string,unknown>>={...task,collectionName:'notifications',recordId:notification.id,targetType:'task',targetId:task.recordId,payload:notification};

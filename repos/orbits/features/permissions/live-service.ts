@@ -478,18 +478,18 @@ export function createLivePermissionStateService({
           return stateSuccess(
             emptyPayload(now(), "Live permission empty state rule"),
           );
-        case "pending":
-          return requestSuccess(pendingPayload(now())).success
-            ? stateSuccess({
-                ...emptyPayload(now(), "Live permission pending state rule"),
-                state: "pending",
-                permissions: [pendingPayload(now()).permission],
-                summary:
-                  "Calendar authorization is staged for live provider review.",
-                nextAction:
-                  "Review the live calendar intent before provider access.",
-              })
-            : readLivePayload(provider, now());
+        case "pending": {
+          const collectedAt = now();
+          const pending = pendingPayload(collectedAt);
+
+          return stateSuccess({
+            ...emptyPayload(collectedAt, "Live permission pending state rule"),
+            state: "pending",
+            permissions: [pending.permission],
+            summary: "Calendar authorization is staged for live provider review.",
+            nextAction: "Review the live calendar intent before provider access.",
+          });
+        }
         case "failure":
           return failure(
             "PERMISSION_STATE_LIVE_STORE_UNCONFIGURED",

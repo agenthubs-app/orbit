@@ -29,6 +29,27 @@ test("empty profile reports authoritative missing fields without creating a reco
 });
 
 for (const mode of ["live", "mock"] as const) {
+  test(`${mode} empty completeness keeps the required six fields`, () => {
+    const service = mode === "live"
+      ? createLiveProfileService({ provider: createStorageProfileProvider({ store: createMemoryLiveRecordStore(), workspaceId: "onboarding-policy" }) })
+      : createMockProfileService();
+
+    assert.deepEqual(service.scoreCompleteness(null), {
+      score: 0,
+      status: "not-started",
+      completedFields: [],
+      missingFields: [
+        "displayName",
+        "headline",
+        "relationshipGoal",
+        "homeMarket",
+        "targetRelationshipTypes",
+        "preferredIntroChannels",
+      ],
+      nextBestField: "displayName",
+    });
+  });
+
   test(`${mode} onboarding uses only required fields and is independent of the old richness score`, async () => {
     const store = createMemoryLiveRecordStore<Record<string, unknown>>();
     const service = mode === "live"

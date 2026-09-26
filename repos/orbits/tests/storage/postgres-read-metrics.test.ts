@@ -26,9 +26,6 @@ test("disabled metrics delegate directly without timing or row serialization", a
   );
 
   assert.equal(runner, undefined);
-  const result = await (async () => ({ rows: privateRows }))();
-
-  assert.deepEqual(result.rows, privateRows);
   assert.equal(nowCalls, 0);
 });
 

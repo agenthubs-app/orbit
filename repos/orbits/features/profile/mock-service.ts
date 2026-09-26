@@ -3,13 +3,13 @@ import {
   type ManualProfile,
   type ManualProfileUpdateInput,
   type ProfileCompleteness,
-  type ProfileCompletenessField,
   type ProfileFailure,
   type ProfilePayload,
   type ProfileResult,
   type ProfileScenario,
   type ProfileSuccess,
 } from "./contract";
+import { scoreProfileCompleteness } from "./completeness";
 import {
   mockEmptyProfileFixture,
   mockManualProfile,
@@ -29,15 +29,6 @@ const supportedScenarios = new Set<ProfileScenario>([
   "empty",
   "pending",
 ]);
-
-const completenessFields: readonly ProfileCompletenessField[] = [
-  "displayName",
-  "headline",
-  "relationshipGoal",
-  "homeMarket",
-  "targetRelationshipTypes",
-  "preferredIntroChannels",
-];
 
 function clonePayload(payload: ProfilePayload): ProfilePayload {
   // profile payload 被编辑器消费后可能被局部修改，返回 clone 避免污染 fixture。
@@ -77,48 +68,12 @@ function normalizeScenario(
   return "complete";
 }
 
-function hasValue(
-  profile: ManualProfile,
-  field: ProfileCompletenessField,
-): boolean {
-  // completeness 只关心字段是否有用户可读值；数组字段至少需要一个条目。
-  const value = profile[field];
-
-  if (Array.isArray(value)) {
-    return value.length > 0;
-  }
-
-  if (typeof value === "string") {
-    return Boolean(value.trim());
-  }
-
-  return false;
-}
-
 function scoreCompleteness(profile: ManualProfile | null): ProfileCompleteness {
   // completeness score 是 deterministic UI 指标，不代表真实画像质量。
-  if (!profile) {
-    return clonePayload(mockEmptyProfileFixture).completeness;
-  }
-
-  const completedFields = completenessFields.filter((field) =>
-    hasValue(profile, field),
+  return scoreProfileCompleteness(
+    profile,
+    () => clonePayload(mockEmptyProfileFixture).completeness,
   );
-  const missingFields = completenessFields.filter(
-    (field) => !completedFields.includes(field),
-  );
-  const score = Math.round(
-    (completedFields.length / completenessFields.length) * 100,
-  );
-
-  return {
-    score,
-    status:
-      score === 0 ? "not-started" : missingFields.length === 0 ? "ready" : "action-needed",
-    completedFields,
-    missingFields,
-    nextBestField: missingFields[0] ?? null,
-  };
 }
 
 function buildUpdatedProfile(input: ManualProfileUpdateInput): ManualProfile {

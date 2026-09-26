@@ -2,10 +2,10 @@ import { NextResponse } from "next/server";
 
 import { createConfiguredAppointmentService } from "../../../features/appointments/runtime";
 import type { AppointmentService } from "../../../features/appointments/service";
-import { failure, success } from "../../../shared/api/envelope";
-import { AppError, getHttpStatusForAppErrorCode } from "../../../shared/errors/app-error";
+import { success } from "../../../shared/api/envelope";
+import { AppError } from "../../../shared/errors/app-error";
 import { authenticatedApiActorRequiredResponse, resolveAuthenticatedApiActor, type ResolveAuthenticatedApiActor } from "../_shared/authenticated-actor";
-import { appointmentErrorResponse, publicAppointment } from "./handlers";
+import { appointmentMutationErrorResponse, publicAppointment } from "./handlers";
 
 export interface AppointmentDetailsHandlerDependencies {
   appointmentService: () => Pick<AppointmentService, "updateDetails"> | null;
@@ -19,13 +19,6 @@ const configuredDependencies: AppointmentDetailsHandlerDependencies = {
 
 function validationError(message: string): AppError {
   return new AppError("VALIDATION_ERROR", message);
-}
-
-function errorResponse(error: unknown): Response {
-  if (error instanceof AppError) {
-    return NextResponse.json(failure(error), { status: getHttpStatusForAppErrorCode(error.code) });
-  }
-  return appointmentErrorResponse(error);
 }
 
 export function createAppointmentDetailsPatchHandler(dependencies: AppointmentDetailsHandlerDependencies = configuredDependencies) {
@@ -52,7 +45,7 @@ export function createAppointmentDetailsPatchHandler(dependencies: AppointmentDe
       });
       return NextResponse.json(success({ ...publicAppointment(result.appointment, actor.id), replayed: result.replayed }));
     } catch (error) {
-      return errorResponse(error);
+      return appointmentMutationErrorResponse(error);
     }
   };
 }

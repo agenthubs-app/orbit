@@ -107,10 +107,6 @@ test("events screen progressively reveals a dense event list", () => {
 });
 
 test("event discovery filters expose their selected state to VoiceOver", () => {
-  const controlsStart = screenSource.indexOf("function EventDiscoveryControls");
-  const controlsEnd = screenSource.indexOf("function CompactEventList");
-  const controlsSource = screenSource.slice(controlsStart, controlsEnd);
-
   assert.match(screenSource, /accessibilityState=\{\{ selected \}\}/u);
   // app-wide-events.test.ts measures the rendered chip target and selection state.
 });

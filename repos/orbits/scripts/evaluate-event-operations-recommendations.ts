@@ -19,6 +19,7 @@ import {
 } from "../features/events/event-operations/recommendation-validation";
 import { createEventOperationsPostgresClient } from "../features/events/event-operations/storage/postgres-client";
 import { createPostgresEventOperationsRepository } from "../features/events/event-operations/storage/postgres-repository";
+import { mapRolling as mapWithConcurrency } from "./lib/map-rolling";
 import { loadLocalEnv } from "./load-local-env";
 
 export interface EvaluationOptions {
@@ -399,23 +400,6 @@ function evaluationStateHash(input: {
   tasks: readonly EventOperationsGenerationTask[];
 }) {
   return hashEvaluationValue(input);
-}
-
-async function mapWithConcurrency<T, TResult>(
-  values: readonly T[],
-  concurrency: number,
-  evaluate: (value: T) => Promise<TResult>,
-): Promise<readonly TResult[]> {
-  const results = new Array<TResult>(values.length);
-  let nextIndex = 0;
-  await Promise.all(Array.from({ length: Math.min(concurrency, values.length) }, async () => {
-    while (nextIndex < values.length) {
-      const index = nextIndex;
-      nextIndex += 1;
-      results[index] = await evaluate(values[index]!);
-    }
-  }));
-  return results;
 }
 
 export function interleaveEvaluationArms<T>(

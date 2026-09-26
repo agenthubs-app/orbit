@@ -112,15 +112,6 @@ function assetUrl(baseUrl: string, path: string): string {
   return `${baseUrl.replace(/\/+$/u, "")}${normalizedPath}`;
 }
 
-function eventDateChip(startsAt: string): { date: string; detail: string } {
-  const [date = "", weekday = "", time = ""] = startsAt.split(/\s+/u);
-
-  return {
-    date: date || "待定",
-    detail: [weekday, time].filter(Boolean).join(" ")
-  };
-}
-
 function inferredEventTopic(title: string): string {
   const normalized = title.toLowerCase();
 
@@ -1077,55 +1068,11 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   discoveryChipTextActive: {
     ...createControlStyles(colors).selectedChipText
   },
-  discoveryFilterButton: {
-    alignItems: "center",
-    backgroundColor: colors.surface3,
-    borderRadius: radius.control,
-    flexDirection: "row",
-    height: 44,
-    justifyContent: "center",
-    minWidth: 44,
-    paddingHorizontal: spacing.sm
-  },
-  discoveryFilterButtonActive: {
-    backgroundColor: colors.accent
-  },
-  discoveryFilterCount: {
-    color: colors.onAccent,
-    fontSize: 10,
-    fontWeight: "900",
-    marginLeft: spacing.xs
-  },
   discoveryIconButton: {
     alignItems: "center",
     height: 44,
     justifyContent: "center",
     width: 44
-  },
-  discoveryClearButton: {
-    alignItems: "center",
-    height: 32,
-    justifyContent: "center",
-    width: 32
-  },
-  discoveryMetaRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "space-between"
-  },
-  discoveryPanel: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    gap: spacing.md,
-    padding: spacing.lg
-  },
-  discoveryResultLabel: {
-    color: colors.text3,
-    fontSize: typography.caption,
-    fontWeight: "700",
-    lineHeight: 17
   },
   discoverySearchInput: {
     color: colors.text,
@@ -1164,31 +1111,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     fontWeight: "800",
     lineHeight: 17
   },
-  statusRailContent: {
-    gap: spacing.sm,
-    paddingRight: spacing.lg
-  },
-  discoveryTopicChip: {
-    alignItems: "center",
-    backgroundColor: colors.surface2,
-    borderColor: colors.border,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    minHeight: 30,
-    paddingHorizontal: spacing.md,
-    justifyContent: "center"
-  },
-  discoveryTopicChipText: {
-    color: colors.text2,
-    fontSize: typography.caption,
-    fontWeight: "700",
-    lineHeight: 16
-  },
-  discoveryTopicRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.xs
-  },
   eventCardPressed: {
     opacity: 0.86,
     transform: [{ translateY: 0.5 }]
@@ -1208,24 +1130,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     backgroundColor: "transparent",
     paddingVertical: 4
   },
-  eventCenterEntryCopy: {
-    flex: 1,
-    gap: spacing.xxs,
-    minWidth: 0
-  },
-  eventCenterEntryDetail: {
-    color: colors.text3,
-    fontSize: typography.caption,
-    lineHeight: 17
-  },
-  eventCenterEntryIcon: {
-    alignItems: "center",
-    backgroundColor: colors.accentSofter,
-    borderRadius: radius.control,
-    height: 40,
-    justifyContent: "center",
-    width: 40
-  },
   eventCenterEntryTitle: {
     color: colors.accent,
     flexShrink: 1,
@@ -1233,9 +1137,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     fontSize: 13,
     fontWeight: "700",
     lineHeight: 20
-  },
-  eventImageList: {
-    gap: spacing.lg
   },
   showMoreEventsButton: {
     alignItems: "center",
@@ -1250,126 +1151,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     color: colors.accent,
     fontSize: typography.body,
     fontWeight: "700"
-  },
-  eventImageCard: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    overflow: "hidden"
-  },
-  eventImageCopy: {
-    gap: spacing.xs
-  },
-  eventImageFrame: {
-    backgroundColor: colors.surface3,
-    height: 240,
-    overflow: "hidden",
-    width: "100%"
-  },
-  eventImage: {
-    borderRadius: radius.lg
-  },
-  eventImageContent: {
-    ...StyleSheet.absoluteFill,
-    justifyContent: "space-between",
-    padding: spacing.lg
-  },
-  eventImageOverlay: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: "rgba(8,8,12,0.34)"
-  },
-  eventImageBottom: {
-    gap: spacing.md,
-    minWidth: 0
-  },
-  eventImageTopRow: {
-    alignItems: "flex-start",
-    flexDirection: "row",
-    gap: spacing.sm,
-    justifyContent: "space-between"
-  },
-  eventImageCta: {
-    color: colors.onImage,
-    fontSize: typography.caption,
-    fontWeight: "800",
-    lineHeight: 17
-  },
-  eventImageDateChip: {
-    alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.92)",
-    borderColor: "rgba(255,255,255,0.88)",
-    borderRadius: radius.control,
-    borderWidth: 1,
-    flexShrink: 0,
-    minWidth: 74,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs
-  },
-  eventImageDateDetail: {
-    color: colors.imageBadgeText,
-    fontSize: 10,
-    fontWeight: "700",
-    lineHeight: 13
-  },
-  eventImageDateValue: {
-    color: colors.imageBadgeText,
-    fontSize: typography.caption,
-    fontWeight: "900",
-    lineHeight: 17
-  },
-  eventImageDetail: {
-    color: "rgba(255,255,255,0.86)",
-    flexShrink: 1,
-    fontSize: typography.small,
-    fontWeight: "700",
-    lineHeight: 19,
-    minWidth: 0
-  },
-  eventImageFooter: {
-    alignItems: "center",
-    borderTopColor: "rgba(255,255,255,0.24)",
-    borderTopWidth: 1,
-    flexDirection: "row",
-    gap: spacing.md,
-    justifyContent: "space-between",
-    paddingTop: spacing.md
-  },
-  eventImageMetaLine: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: spacing.xs,
-    maxWidth: "100%",
-    minWidth: 0
-  },
-  eventImageMetaRow: {
-    gap: spacing.xs
-  },
-  eventImageStatusPill: {
-    alignSelf: "flex-start",
-    backgroundColor: "rgba(255,255,255,0.92)",
-    borderColor: "rgba(255,255,255,0.88)",
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    color: colors.imageBadgeText,
-    fontSize: 11,
-    fontWeight: "800",
-    lineHeight: 14,
-    overflow: "hidden",
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 5
-  },
-  eventImageSubtitle: {
-    color: "rgba(255,255,255,0.78)",
-    fontSize: typography.caption,
-    fontWeight: "800",
-    lineHeight: 16
-  },
-  eventImageTitle: {
-    color: colors.onImage,
-    fontSize: 24,
-    fontWeight: "900",
-    lineHeight: 30
   },
   eventList: {
     backgroundColor: "transparent",
@@ -1436,12 +1217,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     lineHeight: 20,
     fontWeight: "800",
     letterSpacing: -0.15
-  },
-  recommendationAction: {
-    color: colors.text,
-    fontSize: typography.caption,
-    fontWeight: "700",
-    lineHeight: 17
   },
   recommendationActionRow: {
     alignItems: "center",
@@ -1543,19 +1318,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   recommendationSection: {
     gap: spacing.md
   },
-  recommendationNextAction: {
-    color: colors.text3,
-    fontSize: typography.caption,
-    lineHeight: 17
-  },
-  recommendationRow: {
-    backgroundColor: colors.surface2,
-    borderColor: colors.border2,
-    borderRadius: radius.control,
-    borderWidth: 1,
-    gap: spacing.sm,
-    padding: spacing.md
-  },
   recommendationScore: {
     color: colors.ink,
     fontSize: typography.small,
@@ -1637,20 +1399,4 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     lineHeight: 21,
     fontWeight: "800"
   },
-  statusBadge: {
-    alignSelf: "flex-start",
-    backgroundColor: "rgba(255,255,255,0.92)",
-    borderColor: "rgba(255,255,255,0.88)",
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    color: colors.imageBadgeText,
-    fontSize: 11,
-    fontWeight: "800",
-    lineHeight: 14,
-    maxWidth: 150,
-    overflow: "hidden",
-    paddingHorizontal: 7,
-    paddingVertical: 5,
-    textAlign: "center"
-  }
 }));

@@ -2,9 +2,6 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  resolveLiveDatabaseConnectionConfig,
-} from "../../shared/storage/live-database-config";
-import {
   createPostgresLiveRecordStore,
   type LiveRecordSqlClient,
 } from "../../shared/storage/postgres-live-record-store";
@@ -211,28 +208,4 @@ test("postgres live record store lists gets and soft deletes records", async () 
   assert.ok(client.calls[0]?.values?.includes("account:owner"));
   assert.match(client.calls[2]?.text ?? "", /update orbit_records/i);
   assert.match(client.calls[2]?.text ?? "", /set lifecycle_state = 'deleted'/i);
-});
-
-test("live database config prefers event-specific URL over shared live URL", () => {
-  assert.deepEqual(
-    resolveLiveDatabaseConnectionConfig({
-      ORBIT_EVENT_DATABASE_URL: "postgres://events.example/orbit",
-      ORBIT_LIVE_DATABASE_URL: "postgres://shared.example/orbit",
-      ORBIT_WORKSPACE_ID: "workspace:demo",
-    }),
-    {
-      connectionString: "postgres://events.example/orbit",
-      workspaceId: "workspace:demo",
-    },
-  );
-  assert.deepEqual(
-    resolveLiveDatabaseConnectionConfig({
-      ORBIT_LIVE_DATABASE_URL: "postgres://shared.example/orbit",
-    }),
-    {
-      connectionString: "postgres://shared.example/orbit",
-      workspaceId: "workspace:default",
-    },
-  );
-  assert.equal(resolveLiveDatabaseConnectionConfig({}), null);
 });

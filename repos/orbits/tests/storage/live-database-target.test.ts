@@ -12,6 +12,7 @@ const LOCAL = "postgresql://localhost:5432/orbit_events";
 test("未设置 ORBIT_DATABASE_TARGET 时解析路径与切换前一致", () => {
   const config = resolveLiveDatabaseConnectionConfig({
     ORBIT_EVENT_DATABASE_URL: CLOUD,
+    ORBIT_LIVE_DATABASE_URL: "postgresql://shared.invalid/neondb",
     ORBIT_LOCAL_DATABASE_URL: LOCAL,
     ORBIT_WORKSPACE_ID: "workspace:orbit-dev",
   });

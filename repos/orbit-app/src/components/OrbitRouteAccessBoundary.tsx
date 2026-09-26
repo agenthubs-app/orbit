@@ -11,10 +11,7 @@ import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { useOrbitAuthSession } from "../api/AuthSessionProvider";
 import { spacing, typography } from "../design/tokens";
 import { createThemedStyles, useOrbitTheme } from "../design/theme";
-import {
-  isPrivateMobileRoute,
-  mobileLoginHref
-} from "../view-models/mobile-route-access";
+import { mobileLoginHref } from "../view-models/mobile-route-access";
 
 export function OrbitRouteAccessBoundary() {
   const { colors } = useOrbitTheme();

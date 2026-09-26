@@ -18,7 +18,6 @@ import type {
   OrbitAgentTodoResultView,
 } from "../../orbit-agent-route-view-model";
 import { gradientFromString } from "../../orbit-reference-primitives";
-import { ORBIT_LEFT_SIDEBAR_WIDTH } from "../../orbit-layout-constants";
 import { parseAgentTaskInteraction, type AgentTaskInteractionView } from "../agent-task-interaction-view-model";
 
 type AgentPanel = Pick<OrbitAgentScenarioView, "items" | "kind" | "panelTitle">;
@@ -181,9 +180,6 @@ export function uniqueAgentEvidenceRefs(
 const AGENT_CHAT_ACTIVE_SESSION_STORAGE_KEY = "orbit-agent-chat-active-session-v1";
 const AGENT_CHAT_SESSIONS_API_PATH = "/api/ai/conversations/sessions";
 const MAX_AGENT_CHAT_HISTORY_SESSIONS = 10_000;
-const HISTORY_SIDEBAR_DEFAULT_WIDTH = ORBIT_LEFT_SIDEBAR_WIDTH;
-const HISTORY_SIDEBAR_MAX_WIDTH = 380;
-const HISTORY_SIDEBAR_MIN_WIDTH = 180;
 const MAX_AGENT_CHAT_TITLE_LENGTH = 18;
 
 function depthFor(t: Translate) {
@@ -696,13 +692,6 @@ function truncateAgentChatTitle(value: string): string {
     : text;
 }
 
-function clampHistorySidebarWidth(value: number): number {
-  return Math.min(
-    HISTORY_SIDEBAR_MAX_WIDTH,
-    Math.max(HISTORY_SIDEBAR_MIN_WIDTH, Math.round(value)),
-  );
-}
-
 function compactTitlePhrase(subject: string, suffix: string): string {
   const text = cleanAgentTitleText(subject)
     .replace(/^基于我在\s*Orbit\s*中(?:已有|现有)的?\s*/i, "")
@@ -1164,9 +1153,6 @@ export {
   AGENT_REQUEST_TIMEOUT_MS,
   AgentRequestTimeoutError,
   CONTACT_RECOMMENDATION_ITEM_PREFIX,
-  HISTORY_SIDEBAR_DEFAULT_WIDTH,
-  HISTORY_SIDEBAR_MAX_WIDTH,
-  HISTORY_SIDEBAR_MIN_WIDTH,
   MAX_AGENT_CHAT_HISTORY_SESSIONS,
   MAX_AGENT_CHAT_TITLE_LENGTH,
   THINKING_PHASES,
@@ -1179,7 +1165,6 @@ export {
   artifactMetadataValue,
   artifactOfKind,
   cleanAgentTitleText,
-  clampHistorySidebarWidth,
   compactTitlePhrase,
   createAgentSessionId,
   currentAgentQuery,

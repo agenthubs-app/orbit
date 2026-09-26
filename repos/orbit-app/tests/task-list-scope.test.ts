@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { TaskItemContract } from "../src/api/contract/tasks";
 import { isRelationshipTask, parseTaskListSelection, readTaskListItems, selectTaskListItems, taskListReceiptMatches } from "../src/view-models/task-list-scope";
-import { followupsPageToView } from "../src/view-models/followups-page";
 import { resolveSupportedInitialRouteHref } from "../src/view-models/initial-route";
 import { isPrivateMobileRoute, mobileAuthReturnHref, mobileLoginHref } from "../src/view-models/mobile-route-access";
 
@@ -80,9 +79,6 @@ test("61 canonical tasks retain four orthogonal views, unique IDs and no candida
   assert.ok(!peopleOpen.some(item => item.id === "task:60"));
   assert.equal(allOpen[0], tasks[0], "selection retains the canonical object rather than making another task");
   assert.deepEqual(selectTaskListItems([], { scope: "relationship", view: "completed" }), []);
-  const legacy = followupsPageToView({ tasks }, { contacts: [] });
-  assert.deepEqual(legacy.open.map(item => item.id), peopleOpen.map(item => item.id));
-  assert.deepEqual(legacy.completed.map(item => item.id), peopleCompleted.map(item => item.id));
 });
 
 test("legacy followups links return to the relationship list with only supported status parameters", () => {

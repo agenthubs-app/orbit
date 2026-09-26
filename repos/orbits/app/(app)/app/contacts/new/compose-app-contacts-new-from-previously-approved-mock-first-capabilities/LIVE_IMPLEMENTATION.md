@@ -58,15 +58,17 @@ The former `loadAppContactsNewRouteViewModel()` capability aggregator is
 retired. It had no production caller, but retained URL-selected mock mode and
 fixture scenarios, parallel page-load capability calls, and a
 `action=confirm-manual-draft` GET confirmation branch. The historical module
-path now exports nothing because the typed lint manifest still names it.
+and explicit typed lint entry are deleted; the page now has no route-loader
+module to reintroduce those GET-side effects.
 Sources without a connected and actor-scoped live provider are visibly disabled
 rather than behaving like successful buttons.
 
 Verification:
 
 - `tests/pages/app-contacts-new-live-route-services.test.ts` proves the page
-  requires authentication, does not accept search parameters, performs no
-  acquisition preflight, and cannot regain the retired query-driven aggregator.
+  requires authentication, limits search parameters to client-side `method` and
+  `job` selection, performs no acquisition preflight, and cannot regain the
+  retired query-driven aggregator.
 
 ## Required Env Vars Or Permissions
 
