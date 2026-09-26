@@ -4,7 +4,7 @@ import { auth } from "../../../../../auth";
 import { readProfileOnboardingAccess } from "../profile-onboarding-access.server";
 import {
   normalizeProfileOnboardingNext,
-  profileOnboardingPath,
+  profileOnboardingFlowPath,
 } from "../profile-onboarding-navigation";
 
 type ProfileContinueSearchParams = {
@@ -13,7 +13,7 @@ type ProfileContinueSearchParams = {
 
 /**
  * The authenticated post-sign-in handoff. It reads only the actor-scoped
- * profile and sends incomplete profiles to the existing editor; optional
+ * profile and sends incomplete profiles to the new-user onboarding flow; optional
  * extraction and suggestions are deliberately outside this navigation path.
  */
 export default async function AppProfileContinuePage({
@@ -45,5 +45,5 @@ export default async function AppProfileContinuePage({
     redirect(next);
   }
 
-  redirect(profileOnboardingPath(next));
+  redirect(profileOnboardingFlowPath(next));
 }

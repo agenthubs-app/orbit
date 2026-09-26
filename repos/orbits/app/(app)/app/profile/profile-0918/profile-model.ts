@@ -101,6 +101,14 @@ export const OFFER_OPTIONS: readonly Copy[] = [
   { zh: "媒体与品牌曝光", en: "Media & brand exposure" },
   { zh: "活动与社群资源", en: "Events & community access" },
   { zh: "法务财税咨询", en: "Legal, tax & finance advice" },
+  { zh: "AI 落地经验", en: "Hands-on AI adoption" },
+  { zh: "技术开发能力", en: "Engineering capacity" },
+  { zh: "设计与创意", en: "Design & creative" },
+  { zh: "销售与商务拓展", en: "Sales & business development" },
+  { zh: "数据分析", en: "Data & analytics" },
+  { zh: "翻译与跨文化沟通", en: "Translation & cross-cultural support" },
+  { zh: "办公场地与孵化", en: "Office space & incubation" },
+  { zh: "政府与政策资源", en: "Government & policy contacts" },
 ];
 
 export const SEEK_OPTIONS: readonly Copy[] = [
@@ -116,6 +124,14 @@ export const SEEK_OPTIONS: readonly Copy[] = [
   { zh: "媒体与 KOL", en: "Media & KOLs" },
   { zh: "活动主办方", en: "Event organisers" },
   { zh: "同行交流", en: "Industry peers" },
+  { zh: "早期用户", en: "Early adopters" },
+  { zh: "行业专家", en: "Industry experts" },
+  { zh: "本地向导", en: "Local guides" },
+  { zh: "创业者", en: "Founders" },
+  { zh: "业务人才", en: "Business talent" },
+  { zh: "服务商", en: "Service providers" },
+  { zh: "社群运营者", en: "Community builders" },
+  { zh: "企业决策者", en: "Enterprise decision-makers" },
 ];
 
 export const TOPIC_OPTIONS: readonly Copy[] = [
@@ -133,6 +149,12 @@ export const TOPIC_OPTIONS: readonly Copy[] = [
   { zh: "医疗健康", en: "Healthcare" },
   { zh: "Web3", en: "Web3" },
   { zh: "团队与管理", en: "Leadership & teams" },
+  { zh: "跨境电商", en: "Cross-border e-commerce" },
+  { zh: "机器人与硬件", en: "Robotics & hardware" },
+  { zh: "新能源", en: "New energy" },
+  { zh: "内容与媒体", en: "Content & media" },
+  { zh: "教育", en: "Education" },
+  { zh: "文旅与餐饮", en: "Travel, food & hospitality" },
 ];
 
 /** 选项在任一语言下已被选中（切换语言后仍能识别之前选的标签）。 */

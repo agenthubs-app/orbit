@@ -880,7 +880,7 @@ test("continuation sends missing or failed membership back to profile onboarding
       "resolveActor",
       "redirect",
     ]);
-    assert.equal(calls.at(-1)?.input, "/app/profile?onboarding=1&next=%2Fapp%2Fhome");
+    assert.equal(calls.at(-1)?.input, "/app/profile/onboarding?next=%2Fapp%2Fhome");
   }, "live");
 });
 
@@ -923,7 +923,7 @@ test("continuation keeps an incomplete real store profile on onboarding in produ
     assert.equal(calls.find((call) => call.operation === "createProfileService")?.input, "live");
     assert.equal(
       calls.find((call) => call.operation === "redirect")?.input,
-      "/app/profile?onboarding=1&next=%2Fapp%2Fcontacts%3Ffrom%3Dprod",
+      "/app/profile/onboarding?next=%2Fapp%2Fcontacts%3Ffrom%3Dprod",
     );
   }, undefined, "production");
 });
@@ -951,7 +951,7 @@ test("continuation returns a failed real store to onboarding in production", asy
     assert.equal(calls.find((call) => call.operation === "createProfileService")?.input, "live");
     assert.equal(
       calls.find((call) => call.operation === "redirect")?.input,
-      "/app/profile?onboarding=1&next=%2Fapp%2Fhome",
+      "/app/profile/onboarding?next=%2Fapp%2Fhome",
     );
   }, undefined, "production");
 });
@@ -967,6 +967,6 @@ test("continuation does not construct a profile service when no feature mode is 
     });
     await assert.rejects(page(), (error) => error === redirected);
     assert.deepEqual(calls.map((call) => call.operation), ["auth", "redirect"]);
-    assert.equal(calls[1]?.input, "/app/profile?onboarding=1&next=%2Fapp%2Fhome");
+    assert.equal(calls[1]?.input, "/app/profile/onboarding?next=%2Fapp%2Fhome");
   });
 });

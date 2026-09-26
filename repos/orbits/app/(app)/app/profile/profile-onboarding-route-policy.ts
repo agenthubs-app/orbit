@@ -1,6 +1,7 @@
 import {
+  PROFILE_ONBOARDING_FLOW_ROUTE,
   normalizeProfileOnboardingNext,
-  profileOnboardingPath,
+  profileOnboardingFlowPath,
 } from "./profile-onboarding-navigation";
 
 const APP_ROUTE_PREFIX = "/app";
@@ -19,6 +20,7 @@ export function isProfileOnboardingNavigationExemptPath(
     matchesRoutePrefix(pathname, ACCOUNT_ROUTE_PREFIX) ||
     pathname === PROFILE_ROUTE ||
     pathname === PROFILE_CONTINUE_ROUTE ||
+    pathname === PROFILE_ONBOARDING_FLOW_ROUTE ||
     pathname === "/app/admin/access" ||
     pathname === "/app/login-admin"
   );
@@ -54,5 +56,5 @@ export function profileOnboardingRedirectPath(input: {
   const next = normalizeProfileOnboardingNext(
     `${input.pathname}${requestSearchWithoutRsc(input.search)}`,
   );
-  return profileOnboardingPath(next);
+  return profileOnboardingFlowPath(next);
 }

@@ -2,6 +2,7 @@ import { normalizeOrbitAuthReturnPath } from "../../../../features/auth/app-auth
 
 const PROFILE_ROUTE_PREFIX = "/app/profile";
 const PROFILE_CONTINUE_ROUTE = "/app/profile/continue";
+export const PROFILE_ONBOARDING_FLOW_ROUTE = "/app/profile/onboarding";
 
 function pathnameOf(value: string): string | null {
   try {
@@ -76,6 +77,12 @@ export function normalizeProfileAuthReturnPath(
 export function profileOnboardingPath(next: string): string {
   const safeNext = normalizeProfileOnboardingNext(next);
   return `${PROFILE_ROUTE_PREFIX}?onboarding=1&next=${encodeURIComponent(safeNext)}`;
+}
+
+/** 新用户引导（首次登录 / 资料门禁的落点）；next 为完成或跳过后的去处。 */
+export function profileOnboardingFlowPath(next: string): string {
+  const safeNext = normalizeProfileOnboardingNext(next);
+  return `${PROFILE_ONBOARDING_FLOW_ROUTE}?next=${encodeURIComponent(safeNext)}`;
 }
 
 export function profileContinuationPath(next: string): string {

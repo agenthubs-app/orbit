@@ -139,6 +139,9 @@ test("route policy gates only authenticated app GET/HEAD paths and keeps exact e
   );
   assert.equal(isProfileOnboardingNavigationExemptPath("/app/account/forgot-password"), true);
   assert.equal(isProfileOnboardingNavigationExemptPath("/app/accountX"), false);
+  // 新用户引导本身必须豁免，否则门禁会把未完成的用户无限重定向回自己。
+  assert.equal(isProfileOnboardingNavigationExemptPath("/app/profile/onboarding"), true);
+  assert.equal(isProfileOnboardingNavigationExemptPath("/app/profile/onboardingX"), false);
 });
 
 test("gate next preserves business query while removing RSC transport", () => {
@@ -147,7 +150,7 @@ test("gate next preserves business query while removing RSC transport", () => {
       pathname: "/app/events/one/register",
       search: "?lang=ja&tab=one&_rsc=transport&tab=two",
     }),
-    "/app/profile?onboarding=1&next=%2Fapp%2Fevents%2Fone%2Fregister%3Flang%3Dja%26tab%3Done%26tab%3Dtwo",
+    "/app/profile/onboarding?next=%2Fapp%2Fevents%2Fone%2Fregister%3Flang%3Dja%26tab%3Done%26tab%3Dtwo",
   );
 });
 
@@ -158,7 +161,7 @@ test("signed-in incomplete GET redirects through the real proxy callback", async
   assert.equal(accessCalls(), 1);
   assert.equal(
     response.headers.get("location"),
-    "https://test/app/profile?onboarding=1&next=%2Fapp%2Fhome%3Ffrom%3Dproxy",
+    "https://test/app/profile/onboarding?next=%2Fapp%2Fhome%3Ffrom%3Dproxy",
   );
   assert.equal(response.headers.get("cache-control"), "no-store");
 });
