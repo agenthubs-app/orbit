@@ -98,7 +98,11 @@ function availableBackPhotos(cards: readonly PairingCard[], targetCardId: string
   });
 }
 
-export function BusinessCardIngestV2Start() {
+/**
+ * onStarted：嵌入方（新用户引导）自己承接批次详情时传入，批次创建后回调批次 id、不跳页；
+ * 不传时保持原行为，跳到 /app/contacts/new?job=。
+ */
+export function BusinessCardIngestV2Start({ onStarted }: { onStarted?: (batchId: string) => void } = {}) {
   const { preserveHref, t } = useOrbitLanguage();
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -224,6 +228,10 @@ export function BusinessCardIngestV2Start() {
         return;
       }
       stashPendingFiles(body.data.batch.id, byDigest);
+      if (onStarted) {
+        onStarted(body.data.batch.id);
+        return;
+      }
       // 批次详情由 /app/contacts/new?job= 承载（batch2 路由待删）；id 含冒号，须编码。
       router.push(preserveHref(`/app/contacts/new?job=${encodeURIComponent(body.data.batch.id)}`));
     } catch (caught) {

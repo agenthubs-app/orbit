@@ -188,7 +188,7 @@ export function OnboardingHomePreview(props: OnboardingPreviewProps) {
         </section>
       </div>
 
-      <section className="ob-sec" {...goto("goals")}>
+      <section className="ob-sec" id="ob-events" {...goto("goals")}>
         <SectionHead icon="✧" sample title={t({ zh: "认识第一批人的最快方式", en: "The fastest way to meet your first people" })} note={t({ zh: "设定目标后按目标挑选近期活动", en: "Picked from upcoming events once your goal is set" })} />
         <div className="ob-events">
           {SAMPLE_EVENTS.map(event => (

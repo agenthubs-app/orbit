@@ -163,6 +163,8 @@ export interface OnboardingDraft {
   focus: string;
   horizon: string;
   introRegenerations: number;
+  /** 第 5 步名片批次（名片 V2）；刷新/返回后接着显示解析进度或确认界面。 */
+  cardBatchId: string | null;
 }
 
 const DRAFT_PREFIX = "orbit.onboarding.v1:";
@@ -180,6 +182,7 @@ export function readOnboardingDraft(actorKey: string): OnboardingDraft | null {
       introRegenerations: typeof parsed.introRegenerations === "number" && parsed.introRegenerations >= 0
         ? Math.min(Math.floor(parsed.introRegenerations), INTRO_REGENERATE_LIMIT)
         : 0,
+      cardBatchId: typeof parsed.cardBatchId === "string" && parsed.cardBatchId ? parsed.cardBatchId : null,
     };
   } catch {
     return null;

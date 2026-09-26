@@ -26,14 +26,11 @@ import {
   fetchProfile,
   generateIntroDraft,
   saveProfileFields,
-  confirmContactCard,
   fetchSeekSuggestions,
-  OnboardingRequestError,
-  scanContactCard,
   scanOwnBusinessCard,
   type ProfileFields,
-  type ScannedCard,
 } from "./onboarding-client";
+import { CardBatchReminders, OnboardingCardImport, useOnboardingCardBatch } from "./onboarding-card-import";
 import {
   BIO_LIMIT,
   FOCUS_LIMIT,
@@ -74,11 +71,6 @@ export interface OnboardingFlowProps {
 
 type IntroStatus = "idle" | "generating" | "ready" | "error";
 
-type CardStage =
-  | { kind: "idle"; message?: string }
-  | { kind: "scanning" }
-  | { kind: "review"; card: ScannedCard; acknowledged: boolean; message: string }
-  | { kind: "saving"; card: ScannedCard };
 
 interface BasicDraft {
   birthDate: string;
@@ -156,11 +148,12 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
   const [introStatus, setIntroStatus] = useState<IntroStatus>("idle");
   const [introError, setIntroError] = useState("");
   const [introRegenerations, setIntroRegenerations] = useState(0);
-  const [cardStage, setCardStage] = useState<CardStage>({ kind: "idle" });
-  const [addedContacts, setAddedContacts] = useState<string[]>([]);
+  const [cardBatchId, setCardBatchId] = useState<string | null>(null);
+  // 名片批次在页面顶层维护：离开第 5 步时上传/识别/自动导入照常进行，完成后在任意视图提醒。
+  const cardBatch = useOnboardingCardBatch(cardBatchId, t);
+  const importedCount = cardBatch.autoCount + cardBatch.userCount;
   // 「我在寻找」✦ 建议由 AI 按已保存的目标与资料挑选；forGoal 记录它对应哪一版目标，目标变了才重新请求。
   const [seekSuggest, setSeekSuggest] = useState<{ forGoal: string; labels: string[]; status: "idle" | "loading" | "ready" | "error" }>({ forGoal: "", labels: [], status: "idle" });
-  const contactFileRef = useRef<HTMLInputElement | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [scanning, setScanning] = useState(false);
@@ -209,6 +202,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
           setFocus(draft.focus);
           setHorizon(draft.horizon);
           setIntroRegenerations(draft.introRegenerations);
+          setCardBatchId(draft.cardBatchId);
           setView(draft.view);
         } else if (profile?.relationshipGoal?.trim()) {
           // 本地草稿没了（换设备/清缓存）：从已保存的目标文本还原 chip 与那一句话。
@@ -232,8 +226,8 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
 
   useEffect(() => {
     if (!loaded) return;
-    writeOnboardingDraft(actorKey, { focus, goals, horizon, introRegenerations, view });
-  }, [actorKey, focus, goals, horizon, introRegenerations, loaded, view]);
+    writeOnboardingDraft(actorKey, { cardBatchId, focus, goals, horizon, introRegenerations, view });
+  }, [actorKey, cardBatchId, focus, goals, horizon, introRegenerations, loaded, view]);
 
   function flash(text: string) {
     if (toastTimer.current) clearTimeout(toastTimer.current);
@@ -245,6 +239,14 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
     setError("");
     setView(nextView);
     if (typeof window !== "undefined") window.scrollTo({ top: 0 });
+  }
+
+  // 解析期间「看看近期活动 / 去 iOrbit 探索」：去预览页逛，解析在后台继续，完成后弹提醒。
+  function browse(target: "home" | "events") {
+    go("home");
+    if (target === "events") {
+      setTimeout(() => document.getElementById("ob-events")?.scrollIntoView({ behavior: "smooth", block: "start" }), 120);
+    }
   }
 
   // 中途离开（跳过、先进入 Orbit）保留草稿，回来还能接着填；只有走完最后一步才清除。
@@ -370,57 +372,6 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view, loaded]);
 
-  // ── 引导内扫描名片：识别 → 核对 → 确认后才建联系人；全程不离开引导页 ──
-  async function onContactFile(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file || cardStage.kind === "scanning" || cardStage.kind === "saving") return;
-    setCardStage({ kind: "scanning" });
-    try {
-      const card = await scanContactCard(file);
-      setCardStage({ kind: "review", card, acknowledged: card.issues.length === 0, message: "" });
-    } catch {
-      setCardStage({ kind: "idle", message: t({ zh: "这张名片没有识别出来，请换一张清晰、单张的照片再试。", en: "Couldn't read this card. Try a clear photo of a single card." }) });
-    }
-  }
-
-  async function confirmCard() {
-    if (cardStage.kind !== "review" || !cardStage.card.name.trim() || !cardStage.acknowledged) return;
-    const card = cardStage.card;
-    setCardStage({ kind: "saving", card });
-    try {
-      await confirmContactCard({ ...card, name: card.name.trim() });
-      setAddedContacts(current => [...current, card.name.trim()]);
-      setCardStage({ kind: "idle" });
-      flash(t({ zh: `已添加 ${card.name.trim()}`, en: `Added ${card.name.trim()}` }));
-    } catch (caught) {
-      const duplicate = caught instanceof OnboardingRequestError && caught.code === "DUPLICATE_REVIEW";
-      setCardStage({
-        kind: "review",
-        card,
-        acknowledged: true,
-        message: duplicate
-          ? t({ zh: "人脉里可能已有这个人，这张先不添加。之后可以在人脉页处理重复项。", en: "This person may already be in your network — skipped. Resolve duplicates later in Network." })
-          : t({ zh: "保存失败，请重试。", en: "Save failed. Please try again." }),
-      });
-    }
-  }
-
-  useEffect(() => {
-    const goal = savedGoal.trim();
-    if (view !== "persona" || !loaded || !goal || seekSuggest.forGoal === goal) return;
-    let active = true;
-    setSeekSuggest({ forGoal: goal, labels: [], status: "loading" });
-    void fetchSeekSuggestions(SEEK_OPTIONS.map(option => t(option)), lang)
-      .then(labels => active && setSeekSuggest({ forGoal: goal, labels, status: "ready" }))
-      .catch(() => active && setSeekSuggest({ forGoal: goal, labels: [], status: "error" }));
-    return () => {
-      active = false;
-    };
-    // t / lang 随语言切换整页刷新，不需要作为依赖。
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [view, loaded, savedGoal]);
-
   async function onCardFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     event.target.value = "";
@@ -509,7 +460,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
               </button>
             </div>
 
-            <div className="ob-grid">
+            <div className={`ob-grid${view === "import" ? " ob-grid-wide" : ""}`}>
               <section className="ob-card" aria-busy={!loaded || undefined}>
                 {view === "profile" ? (
                   <ProfileStep
@@ -555,17 +506,17 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
                   />
                 ) : null}
                 {view === "import" ? (
-                  <ImportStep
-                    added={addedContacts}
-                    available={cardScanAvailable}
-                    fileRef={contactFileRef}
-                    onCancelCard={() => setCardStage({ kind: "idle" })}
-                    onConfirmCard={() => void confirmCard()}
-                    onFile={onContactFile}
-                    setCardStage={setCardStage}
-                    stage={cardStage}
-                    t={t}
-                  />
+                  <div className="ob-stack" data-screen-label="06 带入人脉">
+                    <StepHead title={t({ zh: "带入你已有的人脉", en: "Bring in the people you already know" })} sub={t({ zh: "不带入也完全可以——Orbit 会通过活动帮你从零建立。拍下手边的名片，iOrbit 就能开始判断谁值得现在联系。", en: "Totally optional — Orbit helps you build from zero through events. Snap the cards you have and iOrbit can start judging who's worth contacting now." })} />
+                    <OnboardingCardImport
+                      available={cardScanAvailable}
+                      batch={cardBatch}
+                      onBatchStarted={setCardBatchId}
+                      onBrowse={browse}
+                      onReset={() => setCardBatchId(null)}
+                      t={t}
+                    />
+                  </div>
                 ) : null}
 
                 {error ? <div className="ob-notice ob-notice-error" role="alert">{error}</div> : null}
@@ -574,9 +525,14 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
                   <button className="btn ob-btn-ghost" disabled={saving} onClick={onBack} type="button">{t({ zh: "← 上一步", en: "← Back" })}</button>
                   <span className="ob-footer-right">
                     {view === "import" ? (
-                      <button className="btn ob-btn-dark" disabled={cardStage.kind === "scanning" || cardStage.kind === "saving"} onClick={finish} type="button">
-                        {addedContacts.length ? t({ zh: "完成设置，进入 Orbit", en: "Finish and enter Orbit" }) : t({ zh: "暂时跳过，完成设置", en: "Skip for now and finish" })}
-                      </button>
+                      <span className="ob-finish">
+                        {cardBatchId && (!cardBatch.reviewing || cardBatch.pending.length > 0) ? (
+                          <span className="ob-finish-note">{t({ zh: "没确认完的名片会留在「人脉 → 导入人脉」里", en: "Unfinished cards stay under Network → Import" })}</span>
+                        ) : null}
+                        <button className="btn ob-btn-dark" onClick={finish} type="button">
+                          {importedCount > 0 ? t({ zh: "完成设置，进入 Orbit", en: "Finish and enter Orbit" }) : cardBatchId ? t({ zh: "先完成设置", en: "Finish setup for now" }) : t({ zh: "暂时跳过，完成设置", en: "Skip for now and finish" })}
+                        </button>
+                      </span>
                     ) : (
                       <button aria-busy={saving || undefined} className="btn ob-btn-dark" disabled={nextDisabled} onClick={() => void onNext()} type="button">{nextLabel}</button>
                     )}
@@ -584,7 +540,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
                 </div>
               </section>
 
-              <UnderstandingAside
+              {view === "import" ? null : <UnderstandingAside
                 basic={basic}
                 focus={focus}
                 goals={goals}
@@ -592,13 +548,13 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
                 horizon={effectiveHorizon}
                 initial={initial}
                 language={language}
-                addedCount={addedContacts.length}
+                addedCount={importedCount}
                 offer={offer}
                 savedGoal={savedGoal}
                 seek={seek}
                 t={t}
                 view={view as OnboardingStep}
-              />
+              />}
             </div>
           </div>
         ) : null}
@@ -607,6 +563,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
         {view === "network" ? <OnboardingNetworkPreview {...previewProps} /> : null}
       </main>
 
+      <CardBatchReminders batch={cardBatch} onOpen={() => go("import")} t={t} viewingImport={view === "import"} />
       {toast ? <div className="ob-toast" role="status">{toast}</div> : null}
     </>
   );
@@ -1060,114 +1017,6 @@ function IntroStep({
       <div className="ob-tip ob-tip-sm">
         <span className="ob-spark" aria-hidden>✦</span>
         <span>{t({ zh: "只会保存到你的个人资料，不会发给任何人。之后可以在个人中心随时修改。", en: "Saved to your profile only — never sent to anyone. You can change it any time in your profile." })}</span>
-      </div>
-    </div>
-  );
-}
-
-function ImportStep({
-  added, available, fileRef, onCancelCard, onConfirmCard, onFile, setCardStage, stage, t,
-}: {
-  added: string[];
-  available: boolean;
-  fileRef: RefObject<HTMLInputElement | null>;
-  onCancelCard: () => void;
-  onConfirmCard: () => void;
-  onFile: (event: ChangeEvent<HTMLInputElement>) => void;
-  setCardStage: (stage: CardStage) => void;
-  stage: CardStage;
-  t: T;
-}) {
-  const busy = stage.kind === "scanning" || stage.kind === "saving";
-  const review = stage.kind === "review" || stage.kind === "saving" ? stage : null;
-  function edit(key: "company" | "email" | "name" | "phone" | "title") {
-    return (event: ChangeEvent<HTMLInputElement>) => {
-      if (stage.kind !== "review") return;
-      setCardStage({ ...stage, card: { ...stage.card, [key]: event.target.value } });
-    };
-  }
-  return (
-    <div className="ob-stack" data-screen-label="06 带入人脉">
-      <StepHead title={t({ zh: "带入你已有的人脉", en: "Bring in the people you already know" })} sub={t({ zh: "不带入也完全可以——Orbit 会通过活动帮你从零建立。拍几张手边的名片，iOrbit 就能开始判断谁值得现在联系。", en: "Totally optional — Orbit helps you build from zero through events. Snap a few cards and iOrbit can start judging who's worth contacting now." })} />
-
-      {!available ? (
-        <div className="ob-source ob-source-off">
-          <span className="ob-source-glyph" aria-hidden>▭</span>
-          <span className="ob-source-body">
-            <strong>{t({ zh: "扫描名片", en: "Scan business cards" })}</strong>
-            <span>{t({ zh: "名片识别暂未开放，之后可在人脉页使用", en: "Card recognition isn't available yet — use it later from Network" })}</span>
-          </span>
-        </div>
-      ) : review ? (
-        <div className="ob-card-review" aria-busy={stage.kind === "saving" || undefined}>
-          <span className="ob-label">{t({ zh: "核对识别结果，确认后才会添加", en: "Check the result — nothing is added until you confirm" })}</span>
-          <div className="ob-fields">
-            <label className="ob-field">
-              <span className="ob-field-label">{t({ zh: "姓名", en: "Name" })}<span className="ob-required">{t({ zh: "必填", en: "Required" })}</span></span>
-              <input className="ob-input" disabled={stage.kind === "saving"} onChange={edit("name")} value={review.card.name} />
-            </label>
-            <label className="ob-field">
-              <span className="ob-field-label">{t({ zh: "公司", en: "Company" })}</span>
-              <input className="ob-input" disabled={stage.kind === "saving"} onChange={edit("company")} value={review.card.company} />
-            </label>
-            <label className="ob-field">
-              <span className="ob-field-label">{t({ zh: "职位", en: "Title" })}</span>
-              <input className="ob-input" disabled={stage.kind === "saving"} onChange={edit("title")} value={review.card.title} />
-            </label>
-            <label className="ob-field">
-              <span className="ob-field-label">{t({ zh: "邮箱", en: "Email" })}</span>
-              <input className="ob-input" disabled={stage.kind === "saving"} onChange={edit("email")} type="email" value={review.card.email} />
-            </label>
-            <label className="ob-field">
-              <span className="ob-field-label">{t({ zh: "电话", en: "Phone" })}</span>
-              <input className="ob-input" disabled={stage.kind === "saving"} onChange={edit("phone")} value={review.card.phone} />
-            </label>
-          </div>
-          {review.card.issues.length ? (
-            <div className="ob-notice ob-notice-warning ob-issues">
-              <span>{t({ zh: "识别时有几处需要你留意：", en: "A few things to double-check:" })}</span>
-              <ul>{review.card.issues.map(issue => <li key={issue.code + issue.field}>{issue.message}</li>)}</ul>
-              <label className="ob-ack">
-                <input checked={stage.kind === "review" ? stage.acknowledged : true} disabled={stage.kind === "saving"} onChange={event => stage.kind === "review" && setCardStage({ ...stage, acknowledged: event.target.checked })} type="checkbox" />
-                {t({ zh: "我已核对以上内容", en: "I've checked these" })}
-              </label>
-            </div>
-          ) : null}
-          {stage.kind === "review" && stage.message ? <div className="ob-notice ob-notice-error" role="alert">{stage.message}</div> : null}
-          <div className="ob-card-actions">
-            <button className="btn ob-btn-ghost" disabled={stage.kind === "saving"} onClick={onCancelCard} type="button">{t({ zh: "不添加这张", en: "Discard this card" })}</button>
-            <button
-              className="btn ob-btn-dark ob-btn-dark-md"
-              disabled={stage.kind === "saving" || !review.card.name.trim() || (stage.kind === "review" && !stage.acknowledged)}
-              onClick={onConfirmCard}
-              type="button"
-            >
-              {stage.kind === "saving" ? t({ zh: "添加中…", en: "Adding…" }) : t({ zh: "确认添加", en: "Add contact" })}
-            </button>
-          </div>
-        </div>
-      ) : (
-        <button className="btn ob-scan-drop" disabled={busy} onClick={() => fileRef.current?.click()} type="button">
-          <span className="ob-source-glyph" aria-hidden>▭</span>
-          <span className="ob-source-body">
-            <strong>{stage.kind === "scanning" ? t({ zh: "正在识别名片…", en: "Reading the card…" }) : added.length ? t({ zh: "再扫一张名片", en: "Scan another card" }) : t({ zh: "拍摄或上传一张名片", en: "Photograph or upload a business card" })}</strong>
-            <span>{t({ zh: "一次一张，识别后由你核对确认", en: "One card at a time; you confirm each result" })}</span>
-          </span>
-        </button>
-      )}
-      <input accept="image/*,.heic,.heif" aria-hidden className="ob-sr" onChange={onFile} ref={fileRef} tabIndex={-1} type="file" />
-      {stage.kind === "idle" && stage.message ? <div className="ob-notice ob-notice-warning" role="alert">{stage.message}</div> : null}
-
-      {added.length ? (
-        <div className="ob-added">
-          <span className="ob-label">{t({ zh: `已添加 ${added.length} 位`, en: `${added.length} added` })}</span>
-          <span className="ob-mini-chips">{added.map((name, index) => <span className="ob-mini-chip" key={`${name}-${index}`}>{name}</span>)}</span>
-        </div>
-      ) : null}
-
-      <div className="ob-tip ob-tip-sm">
-        <span className="ob-spark" aria-hidden>⛨</span>
-        <span>{t({ zh: "识别结果需要你确认后才会保存为联系人。名片较多时，之后可在人脉页批量导入。Orbit 不会以你的名义给任何人发消息。", en: "Recognised cards become contacts only after you confirm. For many cards, bulk-import later from Network. Orbit never messages anyone on your behalf." })}</span>
       </div>
     </div>
   );
