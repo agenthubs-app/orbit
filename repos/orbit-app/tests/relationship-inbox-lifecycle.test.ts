@@ -144,7 +144,9 @@ for (const detail of [false, true]) {
   test(`inbox ${detail ? "thread" : "list"} never coalesces a new empty-cookie actor with old pending reads`, async t => {
     const p = await open(t, { detail, holdReads: true });
     const oldCount = await p.evaluate(() => (window as any).fixture.requests.length);
-    assert.equal(oldCount, detail ? 2 : 5);
+    // List: conversation summaries, unread summary and the typed inbox. The
+    // legacy /api/notifications and relationship-signal reads were retired (fc0569649).
+    assert.equal(oldCount, detail ? 2 : 3);
     await update(p, { actor: "actor:two" });
     assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), oldCount * 2);
     await p.evaluate(oldCount => { const s = (window as any).fixture; for (let i = 0; i < oldCount; i++) s.reply(i, 401); }, oldCount); await settle(p);
@@ -249,98 +251,11 @@ test("a mismatched read receipt keeps unread state visible and retries after a f
   assert.doesNotMatch(await p.locator("body").innerText(), /已读状态未能确认/u);
 });
 
-const persistentReminder = { reminderId: "reminder:one", title: "需要准备资料", organization: "Example", priority: "normal", dueAt: "2026-09-13T00:00:00Z", href: "/tasks/task%3Aone" };
-const persistentNotifications = { state: "success", reminders: [persistentReminder], notificationInteractions: {} };
-const readReceipt = { notificationId: "reminder:one", state: "read", updatedAt: "2026-09-13T00:01:00Z" };
-async function alerts(p: Page) { await p.getByRole("tab", { name: /^通知/ }).click(); await p.getByRole("tab", { name: "待办", exact: true }).click(); await settle(p); }
-function reminderButton(p: Page) { return p.getByRole("button", { name: /^需要准备资料，/u }); }
-
-test("opening a reminder waits for a single valid read receipt before navigating and rereading", async t => {
-  const p = await open(t, { notifications: persistentNotifications }); await alerts(p);
-  assert.deepEqual(await writes(p), []);
-  await p.evaluate(() => { const s = (window as any).fixture; const open = Object.entries(s.presses).find(([name]) => name.startsWith("需要准备资料，"))?.[1] as (() => void) | undefined; open?.(); open?.(); }); await settle(p);
-  assert.deepEqual(await writes(p), [{ method: "POST", path: "/api/notifications/reminder%3Aone/state", body: { state: "read" } }]);
-  assert.deepEqual(await p.evaluate(() => (window as any).fixture.navigation), []);
-  await p.evaluate(receipt => { const s = (window as any).fixture; s.notifications.notificationInteractions["reminder:one"] = "read"; s.reply(s.requests.findLastIndex((r: any) => r.method === "POST"), 200, receipt); }, readReceipt); await settle(p);
-  assert.deepEqual(await p.evaluate(() => (window as any).fixture.navigation), ["/tasks/task%3Aone"]);
-  assert.equal(await p.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.path === "/api/notifications").length), 2);
-  assert.equal(await p.getByRole("button", { name: /^需要准备资料，.*已读$/u }).count(), 1);
-});
-
-for (const [status, receipt] of [
-  [500, readReceipt], [200, null], [200, {}],
-  [200, { ...readReceipt, notificationId: "reminder:other" }],
-  [200, { ...readReceipt, state: "ignored" }],
-  [200, { ...readReceipt, updatedAt: "not-a-date" }],
-  [200, { notificationId: "reminder:one", state: "read" }],
-] as const) test(`unconfirmed read keeps the reminder and never navigates: ${status} ${JSON.stringify(receipt)}`, async t => {
-  const p = await open(t, { notifications: persistentNotifications }); await alerts(p);
-  await reminderButton(p).click(); await settle(p);
-  await p.evaluate(({ status, receipt }) => { const s = (window as any).fixture; s.reply(s.requests.findLastIndex((r: any) => r.method === "POST"), status, receipt); }, { status, receipt }); await settle(p);
-  assert.deepEqual(await p.evaluate(() => (window as any).fixture.navigation), []);
-  assert.equal(await p.getByText("需要准备资料", { exact: true }).count(), 1);
-  assert.equal(await p.getByRole("alert").count(), 1);
-  assert.equal(await p.getByText("已读", { exact: true }).count(), 0);
-  assert.equal(await reminderButton(p).isEnabled(), true);
-});
-
-test("already-read and legacy targets open without manufacturing a second state write", async t => {
-  for (const notifications of [
-    { ...persistentNotifications, notificationInteractions: { "reminder:one": "read" } },
-    { state: "success", reminders: [persistentReminder] },
-  ]) {
-    const p = await open(t, { notifications }); await alerts(p);
-    await reminderButton(p).click(); await settle(p);
-    assert.deepEqual(await writes(p), []);
-    assert.deepEqual(await p.evaluate(() => (window as any).fixture.navigation), ["/tasks/task%3Aone"]);
-  }
-});
-
-test("unsupported external reminder targets are omitted without being marked read", async t => {
-  const p = await open(t, { notifications: { ...persistentNotifications, reminders: [{ ...persistentReminder, href: "https://outside.example" }] } }); await alerts(p);
-  assert.equal(await reminderButton(p).count(), 0);
-  assert.equal(await p.getByText("需要准备资料", { exact: true }).count(), 0);
-  assert.deepEqual(await writes(p), []);
-  assert.equal(await p.getByText("已读", { exact: true }).count(), 0);
-});
-
-test("refresh immediately revokes an old reminder callback and read failure stays visible", async t => {
-  const p = await open(t, { notifications: persistentNotifications }); await alerts(p);
-  await p.evaluate(() => { const s = (window as any).fixture; s.oldOpen = Object.entries(s.presses).find(([name]) => name.startsWith("需要准备资料，"))?.[1]; s.holdReads = true; s.refresh(); s.oldOpen(); }); await settle(p);
-  assert.deepEqual(await writes(p), []);
-  await p.evaluate(() => { const s = (window as any).fixture; s.reply(s.requests.findLastIndex((r: any) => r.path === "/api/notifications"), 503); }); await settle(p);
-  assert.equal(await p.getByRole("button", { name: "重试读取提醒", exact: true }).count(), 1);
-  assert.equal(await reminderButton(p).count(), 0);
-  assert.equal(await p.getByText("暂无提醒", { exact: true }).count(), 0);
-});
-
-test("late reminder read across an account change cannot navigate or expire the new account", async t => {
-  const p = await open(t, { notifications: persistentNotifications }); await alerts(p);
-  await reminderButton(p).click(); await settle(p);
-  await p.evaluate(() => { const s = (window as any).fixture; s.oldWrite = s.requests.findLastIndex((r: any) => r.method === "POST"); });
-  await update(p, { actor: "actor:two" });
-  assert.equal(await p.evaluate(() => { const s = (window as any).fixture; return s.requests[s.oldWrite].signal.aborted; }), true);
-  await p.evaluate(() => { const s = (window as any).fixture; s.reply(s.oldWrite, 401); }); await settle(p);
-  assert.deepEqual(await p.evaluate(() => (window as any).fixture.navigation), []);
-  assert.equal(await p.evaluate(() => (window as any).fixture.expiries), 0);
-});
-
-test("cached reminders cannot authorize persistent writes before a fresh network read", async t => {
-  const p = await open(t, { cachedNotifications: persistentNotifications, holdReads: true });
-  await p.evaluate(() => { const s = (window as any).fixture; s.requests.forEach((r: any, i: number) => { if (r.path !== "/api/notifications") s.reply(i); }); }); await settle(p);
-  await alerts(p);
-  assert.equal(await p.getByText("需要准备资料", { exact: true }).count(), 0);
-  assert.match(await p.locator("body").innerText(), /正在读取提醒/u);
-  assert.deepEqual(await writes(p), []);
-});
-
-for (const notifications of [null, {}, { state: "pending", reminders: [], notificationInteractions: {} }, { ...persistentNotifications, notificationInteractions: { "reminder:one": "unknown" } }]) test(`invalid reminder read is an error, not a successful empty result: ${JSON.stringify(notifications)}`, async t => {
-  const p = await open(t, { notifications }); await alerts(p);
-  assert.equal(await p.getByRole("button", { name: "重试读取提醒", exact: true }).count(), 1);
-  assert.equal(await p.getByText("暂无提醒", { exact: true }).count(), 0);
-  assert.equal(await reminderButton(p).count(), 0);
-  assert.deepEqual(await writes(p), []);
-});
+// The legacy reminder feed (/api/notifications reminders with read receipts
+// under the 待办 filter) was removed from the inbox in fc0569649. Its 17 cases
+// were retired with it; typed notifications (read snapshot, source-only
+// navigation, account change, uncertain-action retry) are covered by the typed
+// inbox cases at the end of this file.
 
 const delivery = { deliveryId: "delivery:one", signalId: "signal:one", signalRevision: "one", phase: "pre_event", channel: "in_app", status: "scheduled", title: "当前提醒", body: "确认提醒内容", target: { kind: "inbox", deliveryId: "delivery:one" }, data: { deliveryId: "delivery:one" }, scheduledFor: "2026-09-13T00:00:00Z", availableAt: "2026-09-13T00:00:00Z", attempt: 0, maxAttempts: 3, createdAt: "2026-09-13T00:00:00Z", updatedAt: "2026-09-13T00:00:00Z" };
 const signalReceipt = { signal: { signalId: "signal:one", status: "acknowledged", lastObservedAt: "2026-09-13T01:00:00Z" } };
@@ -477,7 +392,7 @@ for (const detail of [false, true]) {
     await p.evaluate(() => { const s = (window as any).fixture; s.holdReads = true; s.emit("background"); }); await settle(p);
     assert.doesNotMatch(await p.locator("body").innerText(), /已有消息|actor:one/u);
     await p.evaluate(() => (window as any).fixture.emit("active")); await settle(p);
-    const count = detail ? 2 : 5;
+    const count = detail ? 2 : 3;
     assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), count * 2);
     assert.doesNotMatch(await p.locator("body").innerText(), /已有消息|actor:one/u);
     await p.evaluate(count => { const s = (window as any).fixture; for (let i = count; i < s.requests.length; i++) s.reply(i); }, count); await settle(p);
@@ -488,9 +403,9 @@ for (const detail of [false, true]) {
   test(`inbox foreground catches batched inactive-active once for ${detail ? "thread" : "list"}`, async t => {
     const p = await open(t, { detail });
     await p.evaluate(() => { const s = (window as any).fixture; s.emit("inactive"); s.emit("active"); }); await settle(p);
-    assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), detail ? 4 : 10);
+    assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), detail ? 4 : 6);
     await p.evaluate(() => { const s = (window as any).fixture; s.emit("active"); s.emit("active"); }); await settle(p);
-    assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), detail ? 4 : 10);
+    assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), detail ? 4 : 6);
   });
 
   test(`inbox foreground rereads ${detail ? "thread" : "list"} on focus restoration and does not read while blurred`, async t => {
@@ -498,9 +413,9 @@ for (const detail of [false, true]) {
     await update(p, { focused: false });
     assert.doesNotMatch(await p.locator("body").innerText(), /已有消息/u);
     await p.evaluate(() => { const s = (window as any).fixture; s.emit("background"); s.emit("active"); s.refresh(); }); await settle(p);
-    assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), detail ? 2 : 5);
+    assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), detail ? 2 : 3);
     await update(p, { focused: true });
-    assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), detail ? 4 : 10);
+    assert.equal(await p.evaluate(() => (window as any).fixture.requests.length), detail ? 4 : 6);
     assert.match(await p.locator("body").innerText(), /已有消息/u);
   });
 }
@@ -552,19 +467,6 @@ test("inbox foreground rejects old conversation callbacks even after the next re
   await p.evaluate(() => (window as any).fixture.emit("active")); await settle(p);
   await p.evaluate(() => (window as any).fixture.oldOpen()); await settle(p);
   assert.deepEqual(await p.evaluate(() => (window as any).fixture.navigation), []);
-});
-
-test("inbox foreground cancels a reminder read action and requires current state after resume", async t => {
-  const p = await open(t, { notifications: persistentNotifications }); await alerts(p);
-  await reminderButton(p).click(); await settle(p);
-  await p.evaluate(() => { const s = (window as any).fixture; s.oldWrite = s.requests.findLastIndex((r: any) => r.method === "POST"); s.holdReads = true; s.emit("background"); }); await settle(p);
-  assert.equal(await p.evaluate(() => { const s = (window as any).fixture; return s.requests[s.oldWrite].signal.aborted; }), true);
-  await p.evaluate(() => { const s = (window as any).fixture; s.emit("active"); s.reply(s.oldWrite, 200, { notificationId: "reminder:one", state: "read", updatedAt: "2026-09-13T00:01:00Z" }); }); await settle(p);
-  assert.deepEqual(await p.evaluate(() => (window as any).fixture.navigation), []);
-  assert.doesNotMatch(await p.locator("body").innerText(), /需要准备资料/u);
-  await p.evaluate(() => { const s = (window as any).fixture; s.requests.forEach((r: any, i: number) => { if (i > s.oldWrite && r.method === "GET") s.reply(i); }); }); await settle(p);
-  assert.equal(await p.getByRole("textbox", { name: "搜索姓名、主题或内容", exact: true }).count(), 0);
-  assert.equal(await reminderButton(p).isEnabled(), true);
 });
 
 test("inbox foreground invalidates a delivery action before a late 401 and rereads its detail", async t => {
@@ -627,21 +529,6 @@ test("inbox foreground refreshes disclosed privacy controls and rejects its inte
   assert.equal(await p.getByRole("button", { name: "停止分析", exact: true }).count(), 0);
   assert.equal(await p.getByRole("textbox", { name: "回复正文", exact: true }).inputValue(), "保留我的回复");
   assert.equal((await writes(p)).length, 1);
-});
-
-test("inbox foreground revokes a relationship signal confirmation and rereads the current list", async t => {
-  const signal = { id: "signal:mail", displayName: "待核对联系人", organization: "Example", role: "负责人", sourceKind: "email", signalKind: "introduction", relationshipContext: "需要核对交流背景", suggestedNextAction: "确认来源", occurredAt: "2026-09-13T00:00:00Z", confirmation: { state: "pending" }, permission: { state: "granted" }, confidence: "high", evidence: [{ excerpt: "已有交流记录" }] };
-  const p = await open(t, { signals: { signals: [signal] } });
-  await p.getByRole("tab", { name: /^通知/ }).click(); await p.getByRole("tab", { name: "人脉", exact: true }).click(); await settle(p);
-  await p.getByRole("button", { name: /^待核对联系人，/u }).click(); await settle(p);
-  await p.getByRole("button", { name: "确认线索", exact: true }).click(); await settle(p);
-  await p.evaluate(() => { const s = (window as any).fixture; s.oldWrite = s.requests.findLastIndex((r: any) => r.method === "POST"); s.oldAction = s.presses["确认线索"]; s.emit("background"); }); await settle(p);
-  assert.equal(await p.evaluate(() => { const s = (window as any).fixture; return s.requests[s.oldWrite].signal.aborted; }), true);
-  await p.evaluate(() => (window as any).fixture.emit("active")); await settle(p);
-  assert.equal(await p.getByRole("button", { name: "确认线索", exact: true }).isEnabled(), true);
-  await p.evaluate(signal => { const s = (window as any).fixture; s.oldAction(); s.reply(s.oldWrite, 200, { confirmedSignal: signal, confirmedAt: "2026-09-13T00:00:00Z", externalActionExecuted: false, relationshipWriteExecuted: false }); }, signal); await settle(p);
-  assert.equal((await writes(p)).length, 1);
-  assert.equal(await p.getByText("线索已确认", { exact: true }).count(), 0);
 });
 
 test("inbox foreground clears the hidden draft when identity changes in the background", async t => {
