@@ -16,6 +16,10 @@ const liveDatabaseEnvKeys = [
   "ORBIT_EVENT_DATABASE_URL",
   "ORBIT_LIVE_DATABASE_URL",
   "ORBIT_DATABASE_URL",
+  // The local/cloud target switch (ea90c33) resolves ORBIT_LOCAL_DATABASE_URL;
+  // clear it too so "unconfigured" does not depend on the developer machine.
+  "ORBIT_DATABASE_TARGET",
+  "ORBIT_LOCAL_DATABASE_URL",
 ] as const;
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 
