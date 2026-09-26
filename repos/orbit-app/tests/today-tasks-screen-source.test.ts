@@ -30,7 +30,7 @@ test("Today mutations use canonical task and suggestion endpoints", () => {
   assert.match(todaySource, /client\.patch<unknown>\(taskPath\(taskId\)/u);
   assert.match(todaySource, /action: "complete"/u);
   assert.match(todaySource, /client\.post<unknown>\(taskSuggestionAcceptPath\(suggestionId\)/u);
-  assert.match(todaySource, /todayState\.refresh\(\)/u);
+  assert.match(todaySource, /todayState\.state\.refresh\(\)/u);
 });
 
 test("all tasks keeps open and completed history as visible tabs", () => {
