@@ -42,7 +42,7 @@
 | [W0009](W0009-my-plan-page/GOAL.md) | 在「我的计划」里按周打勾，iOrbit 本周推进跟着更新；有计划时活动推荐理由改为对应阶段 | RW-10、RW-07（有计划时） | W0007、W0008 | planned |
 | [W0010](W0010-network-need-matching/GOAL.md) | 扫进来的名片自动提示能填上计划里的哪类人，确认后本周多一条「约 TA」 | RW-11 | W0007、W0009、W0013 | planned |
 | [W0011](W0011-card-review-in-today/GOAL.md) | 名片待确认出现在今日要事里，iOrbit 页不再有重复的浮动药丸 | RW-02 | W0001 | planned |
-| [W0013](W0013-card-industry/GOAL.md) | 批量扫名片时 AI 顺便给出一级／二级行业，审阅页可改，确认后存进联系人 | RW-11（补行业部分） | 无 | ready |
+| [W0013](W0013-card-industry/GOAL.md) | 批量扫名片时 AI 顺便给出一级／二级行业，审阅页可改，确认后存进联系人 | RW-11（补行业部分） | 无 | completed |
 | [W0012](W0012-long-term-tracking/GOAL.md) | 进展记录、每周一小结、重新分析与到期回顾 | RW-12 | W0008、W0009、W0010 | planned |
 | [W0014](W0014-demo-mode-plan-chat/GOAL.md) | 引导期间打开「我的计划」和示例对话，看到示例人物的计划和一段示例问答 | RW-03（我的计划、示例对话部分） | W0004、W0008、W0009 | planned |
 | [W0015](W0015-event-attribution/GOAL.md) | 活动当天或次日扫的名片，审阅时问「是在 X 活动认识的吗」，确认后记来源、活动标已参加 | RW-11（活动归属） | W0007、W0010 | planned |
@@ -58,3 +58,4 @@
 | W0001 | run-01（2026-09-28） | `a54004c8` | `83f4f931` | [REPORT](W0001-iorbit-home-morning/REPORT.md) |
 | W0002 | run-01（2026-09-28） | `fa7ab0b0` | `3f417abc` | [REPORT](W0002-goal-editor/REPORT.md) |
 | W0003 | run-01（2026-09-28） | `0ff45703` | `d54949f5` | [REPORT](W0003-community-event/REPORT.md) |
+| W0013 | run-01（2026-09-28） | `04fb477e` | `4f79d810` | [REPORT](W0013-card-industry/REPORT.md) |
