@@ -478,6 +478,39 @@ export function createRelationshipCommunicationService({
     return conversation;
   }
 
+  // A delivered reply is no longer a draft (Sprint 0122, Codex 104-C). The send
+  // request itself retires the sender's draft saved up to the delivery time, so a
+  // lost client-side clear cannot restore sent text, and text saved after the
+  // send (another device, a retried request) is never erased. A failure here
+  // fails the request; retrying with the same request id is idempotent.
+  async function retireReplyDraftSentBy(conversationId: string, sentAt: string): Promise<void> {
+    const recordId = replyDraftRecordId(conversationId, accountId);
+    const stored = await store.getRecord({
+      workspaceId: scopedWorkspaceId,
+      collectionName: RELATIONSHIP_REPLY_DRAFT_COLLECTION,
+      recordId,
+      userId: accountId,
+    });
+    const payload = stored?.payload;
+    if (!payload || payload.accountId !== accountId || payload.conversationId !== conversationId) return;
+    if (typeof payload.body !== "string" || !payload.body || typeof payload.updatedAt !== "string") return;
+    if (Date.parse(payload.updatedAt) > Date.parse(sentAt)) return;
+    await store.upsertRecord({
+      ...record({
+        collectionName: RELATIONSHIP_REPLY_DRAFT_COLLECTION,
+        payload: { ...payload, body: "", updatedAt: sentAt },
+        recordId,
+        targetId: conversationId,
+        timestamp: sentAt,
+        userId: accountId,
+        workspaceId: scopedWorkspaceId,
+      }),
+      searchText: "",
+      sourceLabel: "Orbit relationship reply draft",
+      targetType: RELATIONSHIP_REPLY_DRAFT_TARGET_TYPE,
+    });
+  }
+
   async function conversationDto(payload: ConversationPayload): Promise<RelationshipConversationDTO> {
     if (
       !hasParticipant(payload, accountId) ||
@@ -898,6 +931,7 @@ export function createRelationshipCommunicationService({
         ) {
           throw new Error("This request id was already used for a different message.");
         }
+        await retireReplyDraftSentBy(conversationId, existing.sentAt);
         return {
           conversationId,
           deliveryState: "delivered",
@@ -952,6 +986,7 @@ export function createRelationshipCommunicationService({
           workspaceId: scopedWorkspaceId,
         }),
       );
+      await retireReplyDraftSentBy(conversationId, sentAt);
       return {
         conversationId,
         deliveryState: "delivered",

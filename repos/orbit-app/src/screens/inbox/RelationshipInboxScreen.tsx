@@ -483,7 +483,7 @@ function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliv
       title={locale.t(contentReady && composing ? "inbox.compose" : contentReady && createdThread ? "inbox.draftPreview" : "inbox.title")}
       onMarkAllRead={!composing && !createdThread ? () => void (activeSection === "alerts" ? typedInbox.markRead() : markAllRead()) : undefined}
       markAllReadLabel={activeSection === "threads" ? locale.t("inbox.markPageRead") : locale.t("inbox.markAllRead")}
-      markAllReadDisabled={activeSection === "alerts" ? typedInbox.busy || !typedInbox.data?.unreadCount : batchPending || confirmableUnread === 0}
+      markAllReadDisabled={activeSection === "alerts" ? typedInbox.busy || !typedInbox.data?.items.some(item => !item.readAt && item.actions.includes("read")) : batchPending || confirmableUnread === 0}
       hideBack={contentReady && composing}
       onBack={createdThread ? () => setCreatedThread(null) : undefined}
     >
@@ -1160,9 +1160,22 @@ function ReplyComposer({
   const [sending, setSending] = useState(false);
   const [sendFailed, setSendFailed] = useState(false);
   const [draftStatus, setDraftStatus] = useState<"idle" | "saving" | "saved" | "failed">("idle");
+  // "Saved" belongs to the exact text of one save request (Sprint 0122, Codex
+  // 104-A): edits while it is in flight keep the composer unsaved, and a receipt
+  // that outlives this request scope is dropped. One save is in flight at a time
+  // so an older write cannot land after a newer one.
+  const [draftSaveInFlight, setDraftSaveInFlight] = useState(false);
+  const draftSaveRequest = useRef<object | null>(null);
+  const currentBody = useRef(body);
+  currentBody.current = body;
   const attempt = useRef<{ body: string; requestId: string; qualificationVersion: string } | null>(null);
   const sendRequest = useRef<object | null>(null);
   useEffect(() => { sendRequest.current = null; setSending(false); }, [isCurrent]);
+  useEffect(() => {
+    draftSaveRequest.current = null;
+    setDraftSaveInFlight(false);
+    setDraftStatus(status => status === "saving" ? "idle" : status);
+  }, [isCurrent]);
   useEffect(() => { setRewriteError(null); }, [isCurrent]);
 
   async function sendReply() {
@@ -1179,8 +1192,8 @@ function ReplyComposer({
         setSendFailed(true); return;
       }
       attempt.current = null; draftEdited.current = true; setBody(""); setDraftStatus("idle"); emitMessageStateInvalidation();
-      // The sent text is no longer a draft; clearing the saved copy is best-effort.
-      if (clientPut) void clientPut(relationshipReplyDraftPath(detail.conversationId), { body: "" }).catch(() => undefined);
+      // The delivery retires the saved draft on the server (Sprint 0122, Codex
+      // 104-C); no separate clear can fail here or erase newer text.
     } catch { if (isCurrent() && sendRequest.current === request) setSendFailed(true); }
     finally { if (sendRequest.current === request) { sendRequest.current = null; setSending(false); } }
   }
@@ -1199,17 +1212,24 @@ function ReplyComposer({
   }, [delivery?.actorId, detail.conversationId, isCurrent]);
 
   async function saveDraft() {
-    if (!delivery || !clientPut || !isCurrent()) return;
+    if (!delivery || !clientPut || !isCurrent() || draftSaveRequest.current) return;
     const saving = body;
+    const request = {};
+    draftSaveRequest.current = request;
+    setDraftSaveInFlight(true);
     setDraftStatus("saving");
+    let outcome: "saved" | "failed" = "failed";
     try {
       const result = await clientPut(relationshipReplyDraftPath(detail.conversationId), { body: saving });
-      if (!isCurrent()) return;
       const saved = result.success ? decodeRelationshipReplyDraft(result.data, detail.conversationId) : null;
-      setDraftStatus(saved && saved.body === saving ? "saved" : "failed");
-    } catch {
-      if (isCurrent()) setDraftStatus("failed");
-    }
+      outcome = saved && saved.body === saving ? "saved" : "failed";
+    } catch { outcome = "failed"; }
+    if (draftSaveRequest.current !== request || !isCurrent()) return;
+    draftSaveRequest.current = null;
+    setDraftSaveInFlight(false);
+    // Text edited during the save stays unsaved; the edit already reset the status.
+    if (currentBody.current !== saving) return;
+    setDraftStatus(outcome);
   }
 
   useEffect(() => {
@@ -1282,9 +1302,9 @@ function ReplyComposer({
         />
         {delivery && clientPut ? (
           <ActionButton
-            disabled={sending || !!attempt.current || draftStatus === "saving"}
+            disabled={sending || !!attempt.current || draftSaveInFlight}
             icon="save-outline"
-            label={locale.t(draftStatus === "saving" ? "inbox.savingDraft" : "inbox.saveDraft")}
+            label={locale.t(draftSaveInFlight ? "inbox.savingDraft" : "inbox.saveDraft")}
             onPress={saveDraft}
             variant="secondary"
           />

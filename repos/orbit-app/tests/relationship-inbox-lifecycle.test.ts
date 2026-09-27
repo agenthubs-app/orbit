@@ -19,7 +19,7 @@ const observe = () => useSyncExternalStore(fn => { listeners.add(fn); return () 
 const effects = { calendarEntryCreated: false, externalMessageSent: false, networkRequestMade: false, notificationDelivered: false, savedRecordCreated: false };
 const state = window.fixture = {
   actor: "actor:one", cookieHeader: "", ready: true, signedIn: true, baseReady: true, baseUrl: "https://orbit.example", mounted: true,
-  detail: false, detailUnread: 0, conversationId: "thread:one", seed: {}, requests: [], replies: [], draftRequests: [], savedDraft: "", draftPutStatus: 200, presses: {}, navigation: [], expiries: 0, holdReads: false, notifications: undefined, focused: true, appState: "active", measurements: [],
+  detail: false, detailUnread: 0, conversationId: "thread:one", seed: {}, requests: [], replies: [], draftRequests: [], draftReplies: [], holdDraftPuts: false, savedDraft: "", draftPutStatus: 200, presses: {}, navigation: [], expiries: 0, holdReads: false, notifications: undefined, focused: true, appState: "active", measurements: [],
   ...window.initialFixture,
   update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); },
   emit(appState) { state.appState = appState; nativeListeners.forEach(fn => fn(appState)); },
@@ -47,7 +47,7 @@ const state = window.fixture = {
   reply(index, status = 200, data) { state.replies[index]?.(new Response(JSON.stringify(status >= 400 && data === undefined ? { success: false, error: { code: status === 401 ? "UNAUTHORIZED" : "SERVICE_UNAVAILABLE", message: "测试服务暂不可用" } } : { success: true, data: data === undefined ? state.data(state.requests[index].path) : data }), { status, headers: { "content-type": "application/json" } })); }
 };
 onSessionExpired(() => state.expiries++);
-window.fetch = (input, init) => { const url = new URL(String(input)); if (url.pathname.endsWith("/draft")) { const body = init.body ? JSON.parse(init.body) : null; state.draftRequests.push({ method: init.method, path: url.pathname, body }); if (init.method === "PUT" && state.draftPutStatus >= 400) return Promise.resolve(new Response(JSON.stringify({ success: false, error: { code: "SERVICE_UNAVAILABLE", message: "测试服务暂不可用" } }), { status: state.draftPutStatus, headers: { "content-type": "application/json" } })); if (init.method === "PUT") state.savedDraft = body.body; return Promise.resolve(new Response(JSON.stringify({ success: true, data: { conversationId: state.conversationId, body: state.savedDraft, updatedAt: state.savedDraft ? "2026-09-27T00:00:00Z" : null } }), { status: 200, headers: { "content-type": "application/json" } })); } if (url.pathname === "/api/inbox/delivery/preferences") return Promise.resolve(new Response(JSON.stringify({success:false,error:{code:"NOT_FOUND",message:"Feature unavailable"}}),{status:404,headers:{"content-type":"application/json"}})); const index = state.requests.length; state.requests.push({ method: init.method, path: url.pathname, search: url.search, origin: url.origin, body: init.body ? JSON.parse(init.body) : null, signal: init.signal }); const reply = new Promise(resolve => state.replies[index] = resolve); if (init.method === "GET" && !state.holdReads) queueMicrotask(() => state.reply(index)); return reply; };
+window.fetch = (input, init) => { const url = new URL(String(input)); if (url.pathname.endsWith("/draft")) { const body = init.body ? JSON.parse(init.body) : null; state.draftRequests.push({ method: init.method, path: url.pathname, body }); if (init.method === "PUT" && state.draftPutStatus >= 400) return Promise.resolve(new Response(JSON.stringify({ success: false, error: { code: "SERVICE_UNAVAILABLE", message: "测试服务暂不可用" } }), { status: state.draftPutStatus, headers: { "content-type": "application/json" } })); const respond = () => { if (init.method === "PUT") state.savedDraft = body.body; return new Response(JSON.stringify({ success: true, data: { conversationId: state.conversationId, body: state.savedDraft, updatedAt: state.savedDraft ? "2026-09-27T00:00:00Z" : null } }), { status: 200, headers: { "content-type": "application/json" } }); }; if (init.method === "PUT" && state.holdDraftPuts) return new Promise(resolve => state.draftReplies.push(() => resolve(respond()))); if (init.method === "PUT") state.savedDraft = body.body; return Promise.resolve(new Response(JSON.stringify({ success: true, data: { conversationId: state.conversationId, body: state.savedDraft, updatedAt: state.savedDraft ? "2026-09-27T00:00:00Z" : null } }), { status: 200, headers: { "content-type": "application/json" } })); } if (url.pathname === "/api/inbox/delivery/preferences") return Promise.resolve(new Response(JSON.stringify({success:false,error:{code:"NOT_FOUND",message:"Feature unavailable"}}),{status:404,headers:{"content-type":"application/json"}})); const index = state.requests.length; state.requests.push({ method: init.method, path: url.pathname, search: url.search, origin: url.origin, body: init.body ? JSON.parse(init.body) : null, signal: init.signal }); const reply = new Promise(resolve => state.replies[index] = resolve); if (init.method === "GET" && !state.holdReads) queueMicrotask(() => state.reply(index)); return reply; };
 export const useFixture = () => { observe(); return state; };
 export const useIsFocused = () => { observe(); return state.focused; };
 export const AppState = { get currentState() { return state.appState; }, addEventListener(_event, fn) { nativeListeners.add(fn); return { remove() { nativeListeners.delete(fn); } }; } };
@@ -538,8 +538,11 @@ test("the real inbox thread sends with AI analysis off and retains the delivery 
   await settle(p);
   assert.equal(first.requestId, second.requestId);
   assert.equal(await input.inputValue(), "");
-  // Sprint 0104: a delivered reply is no longer a draft; the saved copy is cleared.
-  await p.waitForFunction(() => (window as any).fixture.draftRequests.some((r: any) => r.method === "PUT" && r.body.body === ""));
+  // Sprint 0122 (Codex 104-C): the delivery itself retires the saved draft on the
+  // server; the App no longer sends a blanket clear that could erase newer text
+  // or silently fail and bring the sent text back.
+  await settle(p);
+  assert.deepEqual(await p.evaluate(() => (window as any).fixture.draftRequests.filter((r: any) => r.method === "PUT")), []);
 });
 
 // Sprint 0104: the participant's reply draft lives on the relationship conversation.
@@ -566,6 +569,46 @@ test("a failed draft save keeps the typed reply and says it was not saved", asyn
   await p.getByText("草稿没有保存，请重试。", { exact: true }).waitFor();
   assert.equal(await input.inputValue(), "没存上的回复");
   assert.equal(await p.evaluate(() => (window as any).fixture.savedDraft), "旧草稿");
+});
+
+// Sprint 0122 (Codex 104-A): "saved" belongs to the text that was sent to be saved.
+test("a late save receipt for the first version never marks the edited second version saved", async t => {
+  const p = await open(t, { detail: true, holdDraftPuts: true });
+  const input = p.getByRole("textbox", { name: "回复正文", exact: true });
+  await input.fill("第一版");
+  await p.getByRole("button", { name: "保存草稿", exact: true }).click(); await settle(p);
+  await input.fill("第二版尚未保存");
+  await p.evaluate(() => (window as any).fixture.draftReplies.shift()()); await settle(p); await settle(p);
+  assert.equal(await p.evaluate(() => (window as any).fixture.savedDraft), "第一版");
+  assert.equal(await input.inputValue(), "第二版尚未保存");
+  assert.equal(await p.getByText("草稿已保存，只有你能看到。", { exact: true }).count(), 0, "the edited text is not reported as saved");
+  assert.equal(await p.getByText("草稿没有保存，请重试。", { exact: true }).count(), 0);
+  await p.getByRole("button", { name: "保存草稿", exact: true }).click(); await settle(p);
+  await p.evaluate(() => (window as any).fixture.draftReplies.shift()()); await settle(p);
+  await p.getByText("草稿已保存，只有你能看到。", { exact: true }).waitFor();
+  assert.equal(await p.evaluate(() => (window as any).fixture.savedDraft), "第二版尚未保存");
+});
+
+test("a save that was in flight when the screen lost focus does not leave the composer saving or claim success", async t => {
+  const p = await open(t, { detail: true, holdDraftPuts: true });
+  await p.getByRole("textbox", { name: "回复正文", exact: true }).fill("离开前的草稿");
+  await p.getByRole("button", { name: "保存草稿", exact: true }).click(); await settle(p);
+  await update(p, { focused: false });
+  await p.evaluate(() => (window as any).fixture.draftReplies.shift()()); await settle(p);
+  await update(p, { focused: true }); await settle(p);
+  await p.getByRole("button", { name: "保存草稿", exact: true }).waitFor();
+  assert.equal(await p.getByText("草稿已保存，只有你能看到。", { exact: true }).count(), 0);
+});
+
+test("a save receipt from the previous account never reaches the next account's composer", async t => {
+  const p = await open(t, { detail: true, holdDraftPuts: true });
+  await p.getByRole("textbox", { name: "回复正文", exact: true }).fill("旧账号的草稿");
+  await p.getByRole("button", { name: "保存草稿", exact: true }).click(); await settle(p);
+  await update(p, { actor: "actor:two" });
+  await p.evaluate(() => (window as any).fixture.draftReplies.shift()()); await settle(p); await settle(p);
+  assert.equal(await p.getByRole("textbox", { name: "回复正文", exact: true }).inputValue(), "");
+  assert.equal(await p.getByText("草稿已保存，只有你能看到。", { exact: true }).count(), 0);
+  assert.equal(await p.getByText("草稿没有保存，请重试。", { exact: true }).count(), 0);
 });
 
 test("typing before the saved draft arrives is never overwritten", async t => {
@@ -614,4 +657,25 @@ test('typed detail retries an uncertain action with the same key and rejects an 
  await p.getByRole('button',{name:'重试操作',exact:true}).click();await settle(p);assert.deepEqual((await writes(p))[1]?.body,first.body);
  await update(p,{actor:'actor:two'});await p.evaluate(record=>{const s=(window as any).fixture;s.reply(s.requests.findLastIndex((r:any)=>r.method==='POST'),200,{notification:{...record,revision:2,readAt:record.occurredAt}});},typedRecord);await settle(p);
  assert.doesNotMatch(await p.locator('body').innerText(),/原文承诺|发送报价资料/);assert.deepEqual(await p.evaluate(()=>(window as any).fixture.navigation),[]);
+});
+// Sprint 0122 (Codex 104-B): the badge keeps the server's global unread total,
+// which may include a type this build cannot show; "mark all read" only acts on
+// visible unread items, so it is not offered when there is none to act on.
+test('typed inbox keeps the server unread total for an unrecognized item and offers no empty mark-all-read', async t => {
+ const unknown={...typedRecord,id:'inbox:future',kind:'future_kind',title:'未来类型'};
+ const p=await open(t,{typedInbox:{...typedPage,items:[unknown],unreadCount:1}});
+ await p.getByRole('tab',{name:/^通知/}).click();await settle(p);
+ assert.match(await p.getByRole('tab',{name:/^通知/}).innerText(),/1/);
+ assert.doesNotMatch(await p.locator('body').innerText(),/未来类型/);
+ assert.equal(await p.getByRole('button',{name:'全部已读',exact:true}).isDisabled(),true);
+});
+// Sprint 0122 (Codex 98-C): assistive technology can tell which notification filter is selected.
+test('typed inbox filter tabs expose which one is selected', async t => {
+ const p=await open(t,{typedInbox:typedPage});await p.getByRole('tab',{name:/^通知/}).click();await settle(p);
+ const selected=async()=>p.evaluate(()=>[...document.querySelectorAll('[role="tab"][aria-selected="true"]')].map(el=>(el.textContent||'').trim()));
+ assert.ok((await selected()).includes('全部'),'the default filter is announced as selected');
+ await p.getByRole('tab',{name:'提醒',exact:true}).click();await settle(p);
+ assert.equal(await p.getByRole('tab',{name:'提醒',exact:true}).getAttribute('aria-selected'),'true');
+ assert.equal(await p.getByRole('tab',{name:'全部',exact:true}).getAttribute('aria-selected'),'false');
+ assert.ok(!(await selected()).includes('全部'));
 });

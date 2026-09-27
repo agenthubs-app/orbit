@@ -10,6 +10,7 @@ import {
 import {
   createConversationDraftGetHandler,
   createConversationDraftPutHandler,
+  createConversationMessagesPostHandler,
 } from "../../app/api/relationship-communication/handler";
 import { createLiveAsyncRelationshipConversationService } from "../../features/chat/live-async-service";
 import { createStorageAsyncRelationshipConversationProvider } from "../../features/chat/storage/async-relationship-conversation-live-record-provider";
@@ -62,9 +63,10 @@ function recorded(inner: LiveRecordStoreLike<Record<string, unknown>>): LiveReco
   });
 }
 
-function serviceFor(actor: typeof A) {
+function serviceFor(actor: typeof A, now?: () => string) {
   return createRelationshipCommunicationService({
     actor: { accountId: actor.id, displayName: actor.name, email: actor.email },
+    ...(now ? { now } : {}),
     invitationBaseUrl: "https://orbit.example/app/invitations",
     randomToken: () => `token-${randomUUID()}`,
     resolveContact: async (contactId, accountId) =>
@@ -179,6 +181,42 @@ test("a non-participant and an unknown conversation get 404 and nothing is writt
 test("an oversized or non-string draft body is rejected", { skip, timeout: 60_000 }, async () => {
   assert.equal((await draftCall(A, "PUT", conversationId, { body: "x".repeat(10_001) })).status, 400);
   assert.equal((await draftCall(A, "PUT", conversationId, { body: 42 })).status, 400);
+});
+
+// Sprint 0122 (Codex 104-C): the delivery itself retires the sender's reply
+// draft, so a failed follow-up clear can no longer bring the sent text back as a
+// draft. Only drafts saved up to the send are retired; newer text survives replays.
+test("a delivered reply retires the sender's draft saved before it, keeps the other participant's draft, and never erases text saved after the send", { skip, timeout: 60_000 }, async () => {
+  const at = (iso: string) => () => iso;
+  const send = (actor: typeof A, now: () => string, payload: Record<string, unknown>) =>
+    createConversationMessagesPostHandler({ createService: () => serviceFor(actor, now), resolveActor: async () => actor })(
+      new Request(`https://orbit.example/api/relationship-communication/conversations/${encodeURIComponent(conversationId)}/messages`, {
+        body: JSON.stringify(payload), headers: { "content-type": "application/json" }, method: "POST",
+      }),
+      { params: Promise.resolve({ id: conversationId }) },
+    );
+  const version = (await serviceFor(A).getConversation(conversationId)).qualificationVersion;
+  await draftCall(A, "PUT", conversationId, { body: "要发出去的回复" });
+  await draftCall(B, "PUT", conversationId, { body: "B 还没发的草稿" });
+
+  const stale = await send(A, at("2026-09-27T01:00:00.000Z"), { body: "要发出去的回复", qualificationVersion: "stale", requestId: "draft-send-stale" });
+  assert.notEqual(stale.status, 201);
+  assert.equal((await draftCall(A, "GET", conversationId)).body.data?.body, "要发出去的回复", "a rejected send keeps the draft");
+
+  const sent = await send(A, at("2099-01-01T00:00:00.000Z"), { body: "要发出去的回复", qualificationVersion: version, requestId: "draft-send-1" });
+  assert.equal(sent.status, 201);
+  assert.deepEqual((await draftCall(A, "GET", conversationId)).body.data?.body, "", "the sent text does not come back as a draft");
+  assert.equal((await draftCall(B, "GET", conversationId)).body.data?.body, "B 还没发的草稿");
+
+  // Written after the delivery (e.g. on another device); a retried request must not erase it.
+  const later = await createConversationDraftPutHandler({ createService: () => serviceFor(A, at("2099-01-01T00:05:00.000Z")), resolveActor: async () => A })(
+    draftRequest("PUT", conversationId, { body: "发送之后新写的" }), { params: Promise.resolve({ id: conversationId }) });
+  assert.equal(later.status, 200);
+  const replay = await send(A, at("2099-01-01T00:06:00.000Z"), { body: "要发出去的回复", qualificationVersion: version, requestId: "draft-send-1" });
+  assert.equal(replay.status, 201);
+  assert.equal((await draftCall(A, "GET", conversationId)).body.data?.body, "发送之后新写的");
+  await draftCall(A, "PUT", conversationId, { body: "" });
+  await draftCall(B, "PUT", conversationId, { body: "" });
 });
 
 test("after the binding is revoked the draft is no longer reachable", { skip, timeout: 60_000 }, async () => {

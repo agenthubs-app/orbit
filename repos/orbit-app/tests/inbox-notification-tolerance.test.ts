@@ -22,11 +22,28 @@ test('an unknown source kind, an unknown notification kind and a malformed item 
  assert.ok(!html.includes('未来来源类型'));assert.ok(!html.includes('未来通知分类'));
 });
 
-test('the unread count excludes skipped unread items so it matches what the list can clear',()=>{
- const data=notificationInboxData({enabled:true,items:[row('n1','发送报价资料'),futureSource,futureKind,malformed,row('n2','准备约谈问题',at)],unreadCount:4,nextCursor:null,asOf:at},'a');
- assert.equal(data?.unreadCount,1,'4 unread from the server minus 3 skipped unread items');
- const readSkipped=notificationInboxData({enabled:true,items:[row('n1','发送报价资料'),{...futureSource,readAt:at}],unreadCount:1,nextCursor:null,asOf:at},'a');
- assert.equal(readSkipped?.unreadCount,1,'a skipped item that was already read does not change the count');
+// Sprint 0122 (Codex 104-B): the server's unreadCount is a global total over
+// active, available notifications. Whether a skipped item contributed to it
+// cannot be read from readAt alone (dismissed, scheduled or unavailable rows do
+// not), and the client only sees one page. The App keeps the server total as is,
+// the same on every page, including types this build cannot show.
+test('the unread count stays the server total: a skipped dismissed, scheduled or unavailable row is never subtracted',()=>{
+ const future='2099-01-01T00:00:00.000Z';
+ for(const [label,skipped] of [
+  ['dismissed',{...futureKind,disposition:'dismissed'}],
+  ['scheduled',{...futureKind,scheduledFor:future}],
+  ['unavailable',{...futureSource,target:{...futureSource.target,status:'unavailable'}}],
+ ] as const){
+  const data=notificationInboxData({enabled:true,items:[row('n1','发送报价资料'),skipped],unreadCount:1,nextCursor:null,asOf:at},'a');
+  assert.deepEqual(data?.items.map(item=>item.id),['n1'],label+': the known unread item is kept');
+  assert.equal(data?.unreadCount,1,label+': one known unread item, server total 1');
+ }
+});
+test('every page of one inbox reports the same global unread total, whatever it skips',()=>{
+ const first=notificationInboxData({enabled:true,items:[row('n1','发送报价资料'),futureKind],unreadCount:3,nextCursor:'p2',asOf:at},'a');
+ const second=notificationInboxData({enabled:true,items:[futureSource,malformed,row('n2','准备约谈问题')],unreadCount:3,nextCursor:null,asOf:at},'a');
+ assert.equal(first?.unreadCount,3);assert.equal(second?.unreadCount,3);
+ assert.deepEqual(second?.items.map(item=>item.id),['n2']);
 });
 
 test('a foreign-account item or an invalid envelope still rejects the whole response',()=>{
