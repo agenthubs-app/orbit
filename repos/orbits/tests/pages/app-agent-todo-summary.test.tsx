@@ -115,10 +115,7 @@ test("/app/agent hydrates submitted to-do prompts through the client conversatio
   // `iorbit-chat-surface-source.ts` 合并的那一组在售文件（内容同源，换了住处）。
   const agentSource = iorbitChatSurfaceSource();
 
-  assert.match(
-    pageSource,
-    /loadAppChatRouteViewModel\(resolvedSearchParams,\s*\{\s*actorId,/,
-  );
+  assert.doesNotMatch(pageSource, /loadAppChatRouteViewModel/);
   const modelSource = readProjectFile(IORBIT_MODEL_PATH);
   const chatHookSource = readProjectFile(IORBIT_CHAT_HOOK_PATH);
 
@@ -168,7 +165,8 @@ test("/app/agent source exposes to-do prompt affordances without owning business
   // `iorbit-chat-surface-source.ts` 合并的那一组在售文件（内容同源，换了住处）。
   const agentSource = iorbitChatSurfaceSource();
 
-  assert.match(pageSource, /loadAppChatRouteViewModel/);
+  // Sprint 0104: legacy chat route model retired; the entry uses the starter model.
+  assert.match(pageSource, /createOrbitAgentStarterViewModel\(\)/);
   assert.doesNotMatch(pageSource, /mockFollowupTasks|mockEventRecords/);
   assert.match(agentSource, /viewModel\.suggests\.map/);
   assert.match(agentSource, /onPick\(suggest\.q\)/);

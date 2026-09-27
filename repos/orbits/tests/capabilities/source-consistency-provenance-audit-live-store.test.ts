@@ -10,12 +10,18 @@ import {
 import { defaultMockFixtures } from "../../shared/mock/fixtures";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
 import { seedGeneratedRelationshipFixturesIntoLiveStore } from "../../shared/storage/seed-generated-fixtures";
+import { MOCK_FIXTURE_COLLECTION_NAMES } from "../../shared/mock/fixtures";
+
+// Sprint 0104: the live seed no longer writes the retired legacy chat collections.
+// This provider still reads `messages`/`conversations` (open follow-up), so these
+// tests seed them explicitly to keep covering that existing code path.
+const LEGACY_INCLUSIVE_SEED = { collectionNames: MOCK_FIXTURE_COLLECTION_NAMES } as const;
 
 test("live source consistency provenance audit reads seeded live records without audit writes", async () => {
   const workspaceId = "workspace:source-consistency-live-store-test";
   const store = createMemoryLiveRecordStore<Record<string, unknown>>();
 
-  await seedGeneratedRelationshipFixturesIntoLiveStore({
+  await seedGeneratedRelationshipFixturesIntoLiveStore({ ...LEGACY_INCLUSIVE_SEED,
     store,
     workspaceId,
   });

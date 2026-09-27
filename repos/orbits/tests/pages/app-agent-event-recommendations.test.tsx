@@ -100,7 +100,8 @@ test("/app/agent maps event artifacts into reason, timing, confidence, and detai
   const agentSource = iorbitChatSurfaceSource();
 
   assert.match(pageSource, /searchParams/);
-  assert.match(pageSource, /loadAppChatRouteViewModel/);
+  // Sprint 0104: legacy chat route model retired; the entry uses the starter model.
+  assert.match(pageSource, /createOrbitAgentStarterViewModel\(\)/);
   const modelSource = readProjectFile(IORBIT_MODEL_PATH);
   const chatHookSource = readProjectFile(IORBIT_CHAT_HOOK_PATH);
 

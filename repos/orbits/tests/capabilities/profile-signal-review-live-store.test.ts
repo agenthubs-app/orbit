@@ -5,13 +5,19 @@ import { createLiveProfileSignalReviewQueueService } from "../../features/profil
 import { createStorageProfileSignalProvider } from "../../features/profile/storage/profile-signal-live-record-provider";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
 import { seedGeneratedRelationshipFixturesIntoLiveStore } from "../../shared/storage/seed-generated-fixtures";
+import { MOCK_FIXTURE_COLLECTION_NAMES } from "../../shared/mock/fixtures";
+
+// Sprint 0104: the live seed no longer writes the retired legacy chat collections.
+// This provider still reads `messages`/`conversations` (open follow-up), so these
+// tests seed them explicitly to keep covering that existing code path.
+const LEGACY_INCLUSIVE_SEED = { collectionNames: MOCK_FIXTURE_COLLECTION_NAMES } as const;
 
 test("live profile signal review queue derives sourced suggestions without profile writes", async () => {
   const actorId = "account_orbit_generated";
   const workspaceId = "workspace:profile-signal-live";
   const store = createMemoryLiveRecordStore<Record<string, unknown>>();
 
-  await seedGeneratedRelationshipFixturesIntoLiveStore({
+  await seedGeneratedRelationshipFixturesIntoLiveStore({ ...LEGACY_INCLUSIVE_SEED,
     now: () => "2026-07-02T05:00:00.000Z",
     store,
     workspaceId,
@@ -105,7 +111,7 @@ test("live profile signal review queue derives sourced suggestions without profi
 test("live profile signal review queue requires an actor and isolates unknown actors", async () => {
   const workspaceId = "workspace:profile-signal-actor-boundary";
   const store = createMemoryLiveRecordStore<Record<string, unknown>>();
-  await seedGeneratedRelationshipFixturesIntoLiveStore({ store, workspaceId });
+  await seedGeneratedRelationshipFixturesIntoLiveStore({ ...LEGACY_INCLUSIVE_SEED, store, workspaceId });
   const service = createLiveProfileSignalReviewQueueService({
     provider: createStorageProfileSignalProvider({ store, workspaceId }),
   });
@@ -129,7 +135,7 @@ const LATIN_SENTENCE = /[A-Za-z]{4,}\s+[A-Za-z]{4,}\s+[A-Za-z]{4,}/u;
 async function localizedQueue(language: string | undefined) {
   const workspaceId = "workspace:profile-signal-language";
   const store = createMemoryLiveRecordStore<Record<string, unknown>>();
-  await seedGeneratedRelationshipFixturesIntoLiveStore({ now: () => "2026-07-02T05:00:00.000Z", store, workspaceId });
+  await seedGeneratedRelationshipFixturesIntoLiveStore({ ...LEGACY_INCLUSIVE_SEED, now: () => "2026-07-02T05:00:00.000Z", store, workspaceId });
   const service = createLiveProfileSignalReviewQueueService({
     now: () => "2026-07-02T05:05:00.000Z",
     provider: createStorageProfileSignalProvider({ sourceLabel: "Profile signal memory live storage", store, workspaceId }),
@@ -173,7 +179,7 @@ test("an unknown or missing language falls back to zh, and en still returns Engl
 test("accepting a suggestion writes a localized patch value, not an English phrase", async () => {
   const workspaceId = "workspace:profile-signal-accept-language";
   const store = createMemoryLiveRecordStore<Record<string, unknown>>();
-  await seedGeneratedRelationshipFixturesIntoLiveStore({ now: () => "2026-07-02T05:00:00.000Z", store, workspaceId });
+  await seedGeneratedRelationshipFixturesIntoLiveStore({ ...LEGACY_INCLUSIVE_SEED, now: () => "2026-07-02T05:00:00.000Z", store, workspaceId });
   const service = createLiveProfileSignalReviewQueueService({
     now: () => "2026-07-02T05:05:00.000Z",
     provider: createStorageProfileSignalProvider({ sourceLabel: "Profile signal memory live storage", store, workspaceId }),

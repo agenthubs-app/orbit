@@ -5,6 +5,12 @@ import { createLiveProfileSignalReviewQueueService } from "../../features/profil
 import { createStorageProfileSignalProvider } from "../../features/profile/storage/profile-signal-live-record-provider";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
 import { seedGeneratedRelationshipFixturesIntoLiveStore } from "../../shared/storage/seed-generated-fixtures";
+import { MOCK_FIXTURE_COLLECTION_NAMES } from "../../shared/mock/fixtures";
+
+// Sprint 0104: the live seed no longer writes the retired legacy chat collections.
+// This provider still reads `messages`/`conversations` (open follow-up), so these
+// tests seed them explicitly to keep covering that existing code path.
+const LEGACY_INCLUSIVE_SEED = { collectionNames: MOCK_FIXTURE_COLLECTION_NAMES } as const;
 
 type DecisionResult = {
   success: boolean;
@@ -21,7 +27,7 @@ test("profile suggestion decisions persist by actor and replay the same mutation
   const actorId = "account_orbit_generated";
   const workspaceId = "workspace:profile-suggestion-decisions";
   const store = createMemoryLiveRecordStore<Record<string, unknown>>();
-  await seedGeneratedRelationshipFixturesIntoLiveStore({
+  await seedGeneratedRelationshipFixturesIntoLiveStore({ ...LEGACY_INCLUSIVE_SEED,
     now: () => "2026-07-02T05:00:00.000Z",
     store,
     workspaceId,
@@ -113,7 +119,7 @@ test("concurrent opposite suggestion decisions keep the first durable result", a
   const actorId = "account_orbit_generated";
   const workspaceId = "workspace:profile-suggestion-decision-race";
   const store = createMemoryLiveRecordStore<Record<string, unknown>>();
-  await seedGeneratedRelationshipFixturesIntoLiveStore({
+  await seedGeneratedRelationshipFixturesIntoLiveStore({ ...LEGACY_INCLUSIVE_SEED,
     now: () => "2026-07-02T05:00:00.000Z",
     store,
     workspaceId,
