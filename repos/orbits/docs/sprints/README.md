@@ -32,7 +32,7 @@
 | Sprint | 要实现的结果 | 需求 | 依赖／额外前置 | 状态 |
 | --- | --- | --- | --- | --- |
 | [W0001](W0001-iorbit-home-morning/GOAL.md) | 打开 iOrbit 先看到今天最该做的 1–3 件事，其余信息退到右栏和底部栏目 | RW-01 | 无；接续工作区里已写好的五个文件 | completed |
-| [W0002](W0002-goal-editor/GOAL.md) | 在资料页和 onboarding 设目标时，点示例句填入再改，选「一个月内／3 个月内／一年内」 | RW-05（第 3 步部分除外） | 无 | ready |
+| [W0002](W0002-goal-editor/GOAL.md) | 在资料页和 onboarding 设目标时，点示例句填入再改，选「一个月内／3 个月内／一年内」 | RW-05（第 3 步部分除外） | 无 | completed |
 | [W0003](W0003-community-event/GOAL.md) | 活动页最上面永远是「加入 iOrbit 社群」卡片，点「我已加入」后记为已加入；推荐理由只写真实匹配的目标词 | RW-06、RW-07（无计划时） | D4 可先占位 | ready |
 | [W0004](W0004-demo-mode-iorbit/GOAL.md) | 新用户打开 iOrbit 看到示例人物的完整一天，写操作被拦下并引到引导 | RW-03（iOrbit 首页部分） | W0001；开关默认关（D1） | planned |
 | [W0005](W0005-demo-mode-network/GOAL.md) | 新用户打开人脉页看到 30 位示例联系人和详情，扫名片仍是真实操作 | RW-03 | W0004 | planned |
@@ -56,3 +56,4 @@
 | Sprint | run | 最后功能 SHA | `chat-agent` 合并 SHA | 报告 |
 | --- | --- | --- | --- | --- |
 | W0001 | run-01（2026-09-28） | `a54004c8` | `83f4f931` | [REPORT](W0001-iorbit-home-morning/REPORT.md) |
+| W0002 | run-01（2026-09-28） | `fa7ab0b0` | `3f417abc` | [REPORT](W0002-goal-editor/REPORT.md) |
