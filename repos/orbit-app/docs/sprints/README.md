@@ -10,7 +10,7 @@
 
 ### 2026-09-27 数据架构路线（0098–0120）
 
-用户批准五份数据架构设计案并确认统一路线，要求自主执行（设计案副本：`docs/designs/2026-09-27-data-architecture/`）。执行顺序与理由见 [EXECUTION_ORDER.md](EXECUTION_ORDER.md#00980120-数据架构路线2026-09-27)；生产步骤汇总见 [PRODUCTION_ROLLOUT.md](PRODUCTION_ROLLOUT.md)。0098–0104 已合并；0105–0121 的 GOAL/PLANNER 已写好（planned）；**0121（Codex 审阅修复）排在 0105 之前执行**，断网写实现顺延为 0122 起。读取上限审计（chat-session 5>4）由 0112 处理（0098/0099 报告写的 0109 已更正）。需用户先决定的：0106、0107 设计案批准；0120 设计案批准；各 Sprint 的生产执行。
+用户批准五份数据架构设计案并确认统一路线，要求自主执行（设计案副本：`docs/designs/2026-09-27-data-architecture/`）。执行顺序与理由见 [EXECUTION_ORDER.md](EXECUTION_ORDER.md#00980120-数据架构路线2026-09-27)；生产步骤汇总见 [PRODUCTION_ROLLOUT.md](PRODUCTION_ROLLOUT.md)。0098–0104 已合并；0105–0121 的 GOAL/PLANNER 已写好（planned）；**0121（Codex 审阅修复）排在 0105 之前执行**，断网写实现顺延为 0122 起。读取上限审计（chat-session 5>4）由 0112 处理（0098/0099 报告写的 0109 已更正）。需用户先决定的：0120 设计案批准；各 Sprint 的生产执行。
 
 ### 2026-09-18 新增读取成本治理（Phase 0 主线对齐）
 
@@ -58,8 +58,8 @@ E 结构（0079–0080，需单独批准）依次领取，不并行。
 | [0110](0110-ai-plain-qa-no-run/GOAL.md) | 普通问答不写运行记录（A2）；去掉每轮整类计数读取；可选停写全部统计记录 | 用户 2026-09-27 决定：停写全部 agentAnalyticsEvents。Planner SHA be244bb6（revision 1，开工时追加基线） | planned |
 | [0109](0109-message-tables/GOAL.md) | 消息三张表（M2）：对话（并入绑定）/成员（并入已读）/消息（序号+去重），接口不变；清掉最后两处读旧集合 | 依赖 0108；生产行数查询与搬迁需确认。Planner SHA d955f66c（revision 1，开工时追加基线） | planned |
 | [0108](0108-local-notes-schedule/GOAL.md) | 笔记与个人日程读本地（断网第 2 期）+ 同步流水号的生产安全迁移（所有写入取提交顺序锁） | 依赖 0104；生产迁移需确认。Planner SHA 00a0d137（revision 1，开工时追加基线） | planned |
-| [0107](0107-app-event-live/GOAL.md) | App 活动现场页（设计案 → 实现），与网页 `/events/[id]/live` 等价 | **先出设计案，需用户批准**。Planner SHA 71e61500（revision 1，开工时追加基线） | planned |
-| [0106](0106-app-onboarding/GOAL.md) | App 新用户引导（设计案 → 实现），与网页 `/profile/onboarding`（Li-QY）等价 | **先出设计案，需用户批准**。Planner SHA a0316b78（revision 1，开工时追加基线） | planned |
+| [0107](0107-app-event-live/GOAL.md) | App 活动现场页（设计案 → 实现），与网页 `/events/[id]/live` 等价 | **设计稿已批准（2026-09-27）**：现场页取代「参会者与名片交换」页，`/party*` 跳转到现场页。Planner SHA 856bc3fe（revision 2，开工时追加基线） | planned |
+| [0106](0106-app-onboarding/GOAL.md) | App 新用户引导（设计案 → 实现），与网页 `/profile/onboarding`（Li-QY）等价 | **设计稿已批准（2026-09-27）**：登录后资料未完成、`/profile/continue` 两种情况进入，不加全局闸门。Planner SHA 2982919c（revision 2，开工时追加基线） | planned |
 | [0105](0105-route-parity-exceptions/GOAL.md) | 页面对齐例外：`/admin/read-cost`、`/agent/plan`、`/agent/strategy` 列为「只在网页上有」并写明原因 | 用户 2026-09-27 决定；只改测试。Planner SHA 357bcf4e（revision 1，开工时追加基线） | planned |
 | [0104](0104-legacy-chat-retirement/GOAL.md) | 旧 chat 退役（消息 M1）：草稿接新系统、删三处坏调用、iOrbit 页不读旧 chat、删旧接口/服务/演示数据，棘轮 −2；App 收件箱跳过未知通知类型 | 设计 message-design.html。基线 `39c874031`，Planner SHA 7c705fc5。run-01 结果：旧 chat 接口/服务/演示数据删除（本地清理 86 行），回复草稿落库到新系统对话（`conversations/[id]/draft`），删三处坏调用，iOrbit 页不读旧 chat，改写接口 409→200；App 收件箱逐条校验跳过未知通知；棘轮 164→162。事故：子代理误停用户 3000 dev server；协调者查明 0099 的 instrumentation 让 `next dev` 编译失败，已修复 `ec308129a` 并重启。遗留两处读旧集合转 0109。生产清理需用户确认。协调者复跑两端全量无回归 | completed |
 | [0103](0103-ai-trace-stop-duplicates/GOAL.md) | AI 轨迹 A1+A3：不再写步骤/统计记录（运行详情形状不变，步骤从请求记录计时拼出）；运行读取按编号精确读；棘轮 −1 | 设计 ai-data-design.html。基线 `84890147d`，Planner SHA d4fd294d。run-01 结果：普通问答不再写步骤（本地原 9 行）和统计（2 行）；运行按 `target_id=运行编号` 精确读，10 次与 200 次历史读取都是 2 查询/5 行/9.7KB（改前 111KB→2.05MB 线性增长）；AI 提问小票 143KB→52KB；棘轮 165→164。**生产部署后需执行 `npm run db:migrate:agent-run-targets` 回填旧行**。付费账本累计 $0.048249/$5。协调者复跑两端全量无回归 | completed |
