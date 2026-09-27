@@ -6,10 +6,12 @@
 
 import { useMemo, useState } from "react";
 
+import { DemoTag, useDemoMode } from "../../_demo/demo-mode-core";
 import type { OrbitContactsViewModel } from "../../orbit-contacts-route-view-model";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import type { ContactsAnalysisView } from "../analysis/contacts-analysis-view-model";
 import { NETWORK_STAGES, SOURCE_LABEL, STAGE_LABEL, STAGE_STYLE, matchesQuery, stageCounts, toPerson } from "./network-model";
+import { useNetworkDemoDetail } from "./network-detail-modal";
 import { NetworkChip, NetworkShell } from "./network-shell";
 
 const SUGGEST_PAGE = 3;
@@ -32,9 +34,13 @@ export function NetworkPipeline({ viewModel, analysis }: { viewModel: OrbitConta
   const safePage = pages ? page % pages : 0;
   const suggestions = actions.slice(safePage * SUGGEST_PAGE, safePage * SUGGEST_PAGE + SUGGEST_PAGE);
   const dash = "—";
+  // W0005 示例模式：卡片名字带「示例」角标，点联系人（含建议里的联系人）在本页弹示例详情。
+  const demo = useDemoMode();
+  const demoDetail = useNetworkDemoDetail("/app/contacts/pipeline");
+  const openDemo = demoDetail.openFromHref;
 
   return (
-    <NetworkShell screen="pipeline">
+    <NetworkShell screen="pipeline" modal={demoDetail.modal}>
       <div className="nw-pipe">
         <div className="nw-pipe-grid">
           <div className="nw-pipe-card">
@@ -58,7 +64,9 @@ export function NetworkPipeline({ viewModel, analysis }: { viewModel: OrbitConta
                 <span className="nw-ai-star">✦</span>
                 <div className="nw-card-head">
                   <h2 className="nw-h2">{t({ en: "AI network suggestions", zh: "AI 人脉建议" })}</h2>
-                  <span className="nw-ai-desc">{t({ en: "Actions recommended from your pipeline, interactions and industry signals.", zh: "基于你的关系管线、互动记录和行业动态，为你推荐以下行动。" })}</span>
+                  <span className="nw-ai-desc">{demo
+                    ? t({ en: "Demo persona's network analysis: actions recommended from their pipeline and interactions.", zh: "示例人物的人脉分析：根据示例人物的关系管线和互动记录推荐的行动。" })
+                    : t({ en: "Actions recommended from your pipeline, interactions and industry signals.", zh: "基于你的关系管线、互动记录和行业动态，为你推荐以下行动。" })}</span>
                 </div>
               </div>
               <button type="button" className="btn nw-shuffle" disabled={actions.length === 0} onClick={() => setPage((safePage + 1) % pages)}>{t({ en: "Shuffle ⟳", zh: "换一批 ⟳" })}</button>
@@ -66,9 +74,9 @@ export function NetworkPipeline({ viewModel, analysis }: { viewModel: OrbitConta
             {suggestions.length > 0 ? (
               <div className="nw-suggest-list">
                 {suggestions.map((sg) => (
-                  <a key={sg.id} className="btn nw-suggest" href={sg.primary.href}>
+                  <a key={sg.id} className="btn nw-suggest" href={sg.primary.href} onClick={(event) => openDemo(event, sg.primary.href)}>
                     <span className="nw-suggest-icon">➶</span>
-                    <span className="nw-suggest-copy"><strong className="nw-suggest-title">{sg.title}</strong><span className="nw-suggest-desc">{sg.judgment}</span></span>
+                    <span className="nw-suggest-copy"><strong className="nw-suggest-title">{demo && sg.contactName ? <>{sg.contactName}<DemoTag /> · </> : null}{sg.title}</strong><span className="nw-suggest-desc">{sg.judgment}</span></span>
                     <span className="nw-suggest-tag" style={{ background: "#ECEEFB", color: "#2E3270" }}>{sg.dueLabel}</span>
                     <span className="nw-suggest-arrow">›</span>
                   </a>
@@ -102,14 +110,14 @@ export function NetworkPipeline({ viewModel, analysis }: { viewModel: OrbitConta
               {col.people.map((p) => (
                 <div key={p.id} className="nw-kanban-card">
                   <div className="nw-kanban-top">
-                    <a className="btn nw-kanban-avatar" href={p.href}>{p.initial}</a>
-                    <a className="btn nw-kanban-who" href={p.href}>
-                      <strong className="nw-kanban-name">{p.name}</strong>
+                    <a className="btn nw-kanban-avatar" href={p.href} onClick={(event) => openDemo(event, p.href)}>{p.initial}</a>
+                    <a className="btn nw-kanban-who" href={p.href} onClick={(event) => openDemo(event, p.href)}>
+                      <strong className="nw-kanban-name">{p.name}{demo ? <DemoTag /> : null}</strong>
                       <span className="nw-kanban-org">{p.orgTitle}</span>
                       <span className="nw-kanban-source">{t(SOURCE_LABEL[p.source])}</span>
                       {p.pendingInit ? <NetworkChip bg="#F0F1F8" fg="#3B3F7A">{t({ en: "Status not set", zh: "待设置关系" })}</NetworkChip> : null}
                     </a>
-                    <a className="btn nw-kanban-more" href={p.href} title={t({ en: "Log a follow-up", zh: "记录跟进" })}>···</a>
+                    <a className="btn nw-kanban-more" href={p.href} onClick={(event) => openDemo(event, p.href)} title={t({ en: "Log a follow-up", zh: "记录跟进" })}>···</a>
                   </div>
                   <div className="nw-kanban-foot">
                     <span>{t({ en: "Last contact", zh: "上次互动" })} <span className="nw-kanban-v">{p.last || dash}</span></span>

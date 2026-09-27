@@ -5,7 +5,7 @@ import {
   success,
 } from "../../../../shared/api/envelope";
 import { resolveFeatureMode } from "../../../../shared/config/feature-mode";
-import { getHttpStatusForAppErrorCode } from "../../../../shared/errors/app-error";
+import { AppError, getHttpStatusForAppErrorCode } from "../../../../shared/errors/app-error";
 import {
   contactDetailTagStatusFailureContext,
   contactDetailTagStatusFailureToAppError,
@@ -15,6 +15,7 @@ import {
   type ContactDetailUpdateInput,
 } from "../../../../features/contacts/detail-contract";
 import { createContactDetailTagStatusService } from "../../../../features/contacts/service-factory";
+import { isDemoContactRouteId } from "../../../../shared/domain/guide-demo-contact";
 import {
   authenticatedApiActorRequiredResponse,
   resolveAuthenticatedApiActor,
@@ -157,6 +158,23 @@ async function readPatchBody(request: Request): Promise<PatchBodyResult> {
   }
 }
 
+/**
+ * 引导期示例联系人（`demo:` 前缀，W0005）只存在于前端、不对应任何存储记录：
+ * 写接口在读 body、建 service 之前直接拒绝。
+ */
+function demoContactWriteRejectedResponse(mode: ReturnType<typeof resolveFeatureMode>): Response {
+  return NextResponse.json(
+    failure(new AppError("NOT_FOUND", "Demo contacts are examples and cannot be changed."), {
+      boundary: "runtime",
+      mode,
+      privacy: "guide-demo-contact",
+      provenance: "The request was rejected before the contact detail service or any storage provider ran.",
+      service: "contact-detail",
+    }),
+    { headers: runtimeBoundaryHeaders(mode), status: 404 },
+  );
+}
+
 function responseForResult(
   result: ContactDetailTagStatusResult,
   mode: ReturnType<typeof resolveFeatureMode>,
@@ -216,6 +234,7 @@ export function createContactDetailPatchHandler(
     if (!actor) return authenticatedApiActorRequiredResponse(mode);
 
     const { id } = await context.params;
+    if (isDemoContactRouteId(id)) return demoContactWriteRejectedResponse(mode);
     const searchParams = new URL(request.url).searchParams;
     const patchBody = await readPatchBody(request);
     const contactDetailService = createContactDetailTagStatusService();

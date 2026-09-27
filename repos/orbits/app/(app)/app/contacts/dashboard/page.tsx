@@ -3,6 +3,9 @@
  *
  * 只连接 live-capable contacts route model + contacts analysis 和 Network v2 概览屏 / 分析子页；
  * `?tab=structure|opportunities` 进分析子页（既有 query 语义保留），否则为概览。
+ *
+ * W0005 示例模式：本人在引导期示例里时概览用示例人物的数据渲染，分析子页只显示横条与说明；
+ * 两者都不调用 `loadContactsAnalysis`／`loadAppContactsRouteViewModel`。
  */
 import { redirect } from "next/navigation";
 
@@ -21,6 +24,10 @@ import {
 import { loadAppContactsRouteViewModel } from "../compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-route-view-model";
 import { NetworkAnalysis } from "../network-0918/network-analysis";
 import { NetworkOverview } from "../network-0918/network-overview";
+import { NetworkDemoFrame } from "../network-0918/network-demo-frame";
+import { NetworkDemoAnalysisNotice } from "../network-0918/network-shell";
+import { readDemoModeViewForActor } from "../../_demo/demo-guide-view";
+import { buildDemoNetworkAnalysis, buildDemoNetworkViewModel } from "../../_demo/demo-network";
 
 export default async function AppContactsDashboardPage({ searchParams }: {
   searchParams?: Promise<{ tab?: string | string[] }>;
@@ -38,10 +45,27 @@ export default async function AppContactsDashboardPage({ searchParams }: {
     throw new Error("Authenticated Orbit account membership is unavailable.");
   }
 
+  const guide = await readDemoModeViewForActor({ actorId: actor.id, userId: session.user.id });
   const [language, params] = await Promise.all([
     getOrbitServerLanguage(),
     searchParams,
   ]);
+  if (guide) {
+    const now = new Date();
+    const lang = language === "en" ? "en" : "zh";
+    const overview = params?.tab !== "structure" && params?.tab !== "opportunities";
+    return (
+      <>
+        <OrbitReferenceStyles />
+        <OrbitVisualFreezeRuntime />
+        <NetworkDemoFrame guide={guide} route="app-contacts-dashboard-route">
+          {overview
+            ? <NetworkOverview viewModel={buildDemoNetworkViewModel(now, lang)} analysis={buildDemoNetworkAnalysis(now, lang)} />
+            : <NetworkDemoAnalysisNotice />}
+        </NetworkDemoFrame>
+      </>
+    );
+  }
   const [analysis, routeModel] = await Promise.all([
     loadContactsAnalysis(actor.id, language),
     loadAppContactsRouteViewModel({}, actor.id),

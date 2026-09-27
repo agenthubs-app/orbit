@@ -1,11 +1,16 @@
 /**
  * Network v2（Orbit_0918）人脉域壳：页头 + 四页签 + 全部 nw-* 样式。
  * JSX 逐元素来自 docs/designs/Orbit_0918/Network v2.dc.html 第 44–65 行。
+ *
+ * W0005 示例模式：服务端判定本人在引导期示例里时，页面用 `NetworkDemoFrame`（network-demo-frame.tsx）
+ * 包住人脉屏，挂上 `DemoModeProvider`、导航药丸与拦截层；壳在页头上方渲染「示例预览」横条。
+ * 没有 Provider 时（开关关、不在引导期、导入页、分组下钻页）`DemoBanner` 不渲染，一切照旧。
  */
 "use client";
 
 import type { ReactNode } from "react";
 
+import { DemoBanner } from "../../_demo/demo-mode-core";
 import { useOrbitLanguage } from "../../orbit-language-context";
 
 export type NetworkScreen = "overview" | "pipeline" | "all" | "import" | "analysis";
@@ -31,6 +36,7 @@ export function NetworkShell({ screen, children, modal }: { screen: NetworkScree
   return (
     <main data-orbit-real-page="network" data-network-screen={screen} className="nw-main">
       <style>{NETWORK_STYLES}</style>
+      <DemoBanner message={NETWORK_DEMO_MESSAGE} />
       {isMain ? (
         <>
           <div className="nw-head">
@@ -57,6 +63,30 @@ export function NetworkShell({ screen, children, modal }: { screen: NetworkScree
       {children}
       {modal}
     </main>
+  );
+}
+
+const NETWORK_DEMO_MESSAGE = {
+  en: "Once you finish the guide, this becomes your own network.",
+  zh: "完成引导后，这里换成你自己的人脉。",
+};
+
+/** 示例期间的「AI 人脉分析」子页：只有横条与一句说明，不另造分析数据。 */
+export function NetworkDemoAnalysisNotice() {
+  const { t } = useOrbitLanguage();
+  return (
+    <NetworkShell screen="analysis">
+      <div className="nw-card" data-network-demo-analysis>
+        <h2 className="nw-h2">{t({ en: "AI network analysis", zh: "AI 人脉分析" })}</h2>
+        <p className="nw-sub">
+          {t({
+            en: "The demo has no AI analysis. Once you finish the guide, it is generated from your own contacts.",
+            zh: "示例里没有 AI 人脉分析。完成引导后，这里会基于你自己的人脉生成。",
+          })}
+        </p>
+        <a className="nw-link" href="/app/contacts/dashboard">{t({ en: "← Back to the overview", zh: "← 回到概览" })}</a>
+      </div>
+    </NetworkShell>
   );
 }
 
@@ -614,4 +644,29 @@ export const NETWORK_STYLES = `
 [data-orbit-real-page="network"] .analysis-muted{color:var(--text-3);font-size:13px;line-height:1.7}
 [data-orbit-real-page="network"] .analysis-notice{padding:14px 18px;border:1px solid #E8E9F6;border-radius:12px;margin:14px 0;background:#F7F7FD}
 @media(max-width:900px){[data-orbit-real-page="network"] .analysis-grid{grid-template-columns:1fr}[data-orbit-real-page="network"] .analysis-card{padding:18px}}
+/* ── W0005 示例模式：横条、导航药丸、「示例」角标、拦截层（与 iOrbit 首页 W0004 的 ir-demo-* 同值，作用域换成人脉页） ── */
+[data-orbit-real-page="network"] .btn.ir-demo-collapse, [data-orbit-real-page="network"] .btn.ir-demo-pill, [data-orbit-real-page="network"] .btn.ir-demo-dismiss { height: auto; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; letter-spacing: 0; line-height: normal; transition: none; font-weight: 400; cursor: pointer; }
+[data-orbit-real-page="network"] .btn.ir-demo-collapse:active, [data-orbit-real-page="network"] .btn.ir-demo-pill:active, [data-orbit-real-page="network"] .btn.ir-demo-dismiss:active { transform: none; }
+[data-orbit-real-page="network"] .ir-demo-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding: 14px 18px; border-radius: 14px; background: #2E3270; color: #FFFFFF; }
+[data-orbit-real-page="network"] .ir-demo-tagline { font-size: 11.5px; font-weight: 700; letter-spacing: 0.12em; padding: 3px 8px; border-radius: 6px; background: rgba(255,255,255,0.14); }
+[data-orbit-real-page="network"] .ir-demo-msg { margin: 0; flex: 1; min-width: 220px; font-size: 14.5px; line-height: 1.6; }
+[data-orbit-real-page="network"] .ir-demo-msg small { display: block; opacity: 0.72; font-size: 12.5px; }
+[data-orbit-real-page="network"] .ir-demo-prog { display: inline-flex; align-items: center; gap: 4px; }
+[data-orbit-real-page="network"] .ir-demo-pip { width: 18px; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.22); }
+[data-orbit-real-page="network"] .ir-demo-pip-on { background: #FFFFFF; }
+[data-orbit-real-page="network"] a.ir-demo-cta, [data-orbit-real-page="network"] a.ir-demo-cta:hover { display: inline-flex; align-items: center; padding: 9px 16px; border: 1px solid #FFFFFF; border-radius: 10px; background: #FFFFFF; color: #2E3270; font-size: 14px; font-weight: 500; white-space: nowrap; text-decoration: none; }
+[data-orbit-real-page="network"] .btn.ir-demo-collapse { padding: 4px; border: 0; border-radius: 0; background: transparent; color: rgba(255,255,255,0.7); font-size: 13px; }
+[data-orbit-real-page="network"] .btn.ir-demo-collapse:hover { color: #FFFFFF; }
+[data-orbit-real-page="network"] .btn.ir-demo-pill { padding: 6px 11px; border: 0; border-radius: 999px; background: #2E3270; color: #FFFFFF; font-size: 12px; font-weight: 500; }
+[data-orbit-real-page="network"] .btn.ir-demo-pill:hover { background: #4B4FC7; }
+[data-orbit-real-page="network"] .ir-demo-tag { display: inline-block; margin-left: 6px; padding: 3px 4px; border: 1px dashed #B9BCEB; border-radius: 4px; color: #6B6F99; font-family: "Noto Sans SC", "PingFang SC", sans-serif; font-size: 10.5px; font-weight: 500; line-height: 1; letter-spacing: 0.04em; vertical-align: 3px; white-space: nowrap; }
+[data-orbit-real-page="network"] .ir-demo-scrim { position: fixed; inset: 0; display: flex; align-items: flex-start; justify-content: center; padding: 90px 16px 16px; background: rgba(14,18,37,0.32); }
+[data-orbit-real-page="network"] .ir-demo-sheet { display: flex; flex-direction: column; gap: 16px; width: 100%; max-width: 420px; padding: 24px 24px 20px; border-radius: 18px; background: #FFFFFF; box-shadow: 0 24px 60px rgba(14,18,37,0.22); outline: none; }
+[data-orbit-real-page="network"] .ir-demo-sheet h3 { margin: 0; font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 21px; line-height: 1.35; color: #0E1225; }
+[data-orbit-real-page="network"] .ir-demo-sheet p { margin: 0; font-size: 13.5px; line-height: 1.6; color: #6B6F99; }
+[data-orbit-real-page="network"] .ir-demo-sheet-acts { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px 16px; }
+[data-orbit-real-page="network"] .btn.ir-demo-dismiss { padding: 0; border: 0; border-radius: 0; background: transparent; color: #6B6F99; font-size: 14px; }
+[data-orbit-real-page="network"] .btn.ir-demo-dismiss:hover { color: #2E3270; }
+[data-orbit-real-page="network"] a.ir-demo-cta.ir-demo-cta-primary, [data-orbit-real-page="network"] a.ir-demo-cta.ir-demo-cta-primary:hover { border-color: #4B4FC7; background: #4B4FC7; color: #FFFFFF; }
+@media (max-width: 900px) { [data-orbit-real-page="network"] .ir-demo-msg { min-width: 0; flex-basis: 100%; } [data-orbit-real-page="network"] .ir-demo-scrim { padding-top: 40px; } }
 `;

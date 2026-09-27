@@ -3,13 +3,21 @@
  * 数据只来自详情路由的 OrbitContactView（真实 notes / editableTags / lastInteraction / publicProfile）。
  * 关闭 = 真实导航到 closeHref；「记录互动」「更新状态」都打开记录跟进弹窗。
  * 省略（无数据源 / 死链接，见台账）：「···」「✎ 编辑资料」「▦ 约时间」「查看全部 →」、概览「联系频率」。
+ *
+ * W0005 示例模式（`useDemoMode()` 非空）：名字旁带「示例」角标，「记录互动」「更新状态」改走
+ * `guardWrite`，弹「这是示例」、不打开记录跟进、不发请求。`useNetworkDemoDetail` 让列表／概览／
+ * 管线在示例里点联系人时直接在本页打开示例详情（前端数据，不导航、不发请求）；传了 `onClose`
+ * 时关闭只收起弹窗，不再导航。
  */
 "use client";
 
-import { useEffect, useRef, type MouseEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode, type Ref } from "react";
 
+import { buildDemoNetworkDetail, demoContactIdFromHref } from "../../_demo/demo-network";
+import { DemoTag, useDemoMode } from "../../_demo/demo-mode-core";
 import type { OrbitContactView } from "../../orbit-contacts-route-view-model";
 import { useOrbitLanguage } from "../../orbit-language-context";
+import { useOrbitModalA11y } from "../../orbit-modal-a11y";
 import { ContactRelationshipInitializationPanel, useContactRelationshipInitialization } from "../contact-relationship-initialization";
 import { SOURCE_LABEL, STAGE_CHIP, STAGE_LABEL, STAGE_STYLE, metSummary, sourceOf, stageOf } from "./network-model";
 
@@ -40,8 +48,23 @@ export function sortedNotes(notes: OrbitContactView["notes"]): OrbitContactView[
   return [...notes].sort((a, b) => (Date.parse(b.createdAt) || 0) - (Date.parse(a.createdAt) || 0));
 }
 
-export function NetworkDetailModal({ contact, closeHref, onFollow, extra }: { contact: OrbitContactView; closeHref: string; onFollow: () => void; extra?: ReactNode }) {
+export function NetworkDetailModal({ contact, closeHref, onFollow: openFollow, extra, onClose, dialogRef }: { contact: OrbitContactView; closeHref: string; onFollow: () => void; extra?: ReactNode; onClose?: () => void; dialogRef?: Ref<HTMLDivElement> }) {
   const { t, language } = useOrbitLanguage();
+  const demo = useDemoMode();
+  const guardWrite = demo?.guardWrite;
+  // 示例里两个写按钮各自弹拦截层（标签不同）；真实页面都打开记录跟进弹窗。
+  const onFollow = guardWrite ? () => guardWrite(t({ en: "interaction log", zh: "互动记录" })) : openFollow;
+  const onUpdateStatus = guardWrite ? () => guardWrite(t({ en: "relationship status", zh: "关系状态" })) : openFollow;
+  const close = useCallback(() => {
+    if (onClose) onClose();
+    else window.location.assign(closeHref);
+  }, [closeHref, onClose]);
+  const onCloseLink = onClose
+    ? (event: MouseEvent<HTMLAnchorElement>) => {
+        event.preventDefault();
+        onClose();
+      }
+    : undefined;
   const dash = "—";
   const stage = stageOf(contact);
   const source = sourceOf(contact);
@@ -66,14 +89,16 @@ export function NetworkDetailModal({ contact, closeHref, onFollow, extra }: { co
       const el = event.target as HTMLElement | null;
       // 弹窗内附加态（会后纪要等）的输入框里按 Esc 不关闭
       if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable)) return;
-      window.location.assign(closeHref);
+      // 示例拦截层开着时 Esc 归它（它自己关），不连带关掉详情。
+      if (demo?.intercept) return;
+      close();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [closeHref]);
+  }, [close, demo?.intercept]);
 
   const onOverlayClick = (event: MouseEvent<HTMLDivElement>) => {
-    if (event.target === event.currentTarget) window.location.assign(closeHref);
+    if (event.target === event.currentTarget) close();
   };
 
   // 设计 selOverview：图标 / 标签 / 值 / 说明；「联系频率」无数据源不渲染。
@@ -107,15 +132,15 @@ export function NetworkDetailModal({ contact, closeHref, onFollow, extra }: { co
 
   return (
     <div className="nw-overlay" onClick={onOverlayClick} data-network-modal="detail">
-      <div className="nw-modal nw-modal-detail" role="dialog" aria-modal="true" aria-label={t({ en: "Contact detail", zh: "联系人详情" })}>
+      <div ref={dialogRef} className="nw-modal nw-modal-detail" role="dialog" aria-modal="true" aria-label={t({ en: "Contact detail", zh: "联系人详情" })}>
         <div className="nw-modal-head">
           <strong className="nw-modal-title">{t({ en: "Contact detail", zh: "联系人详情" })}</strong>
-          <a ref={closeRef} className="btn nw-modal-close" href={closeHref} aria-label={t({ en: "Close", zh: "关闭" })}>×</a>
+          <a ref={closeRef} className="btn nw-modal-close" href={closeHref} onClick={onCloseLink} aria-label={t({ en: "Close", zh: "关闭" })}>×</a>
         </div>
         <div className="nw-detail-hero">
           <span className="nw-modal-avatar">{contact.initial || contact.displayName.slice(0, 1)}</span>
           <div className="nw-detail-id">
-            <h2 className="nw-detail-name">{contact.displayName}</h2>
+            <h2 className="nw-detail-name">{contact.displayName}{demo ? <DemoTag /> : null}</h2>
             <span className="nw-detail-org">{orgTitle}</span>
             <div className="nw-detail-meta">
               {location ? <span>◎ {location}</span> : null}
@@ -193,13 +218,67 @@ export function NetworkDetailModal({ contact, closeHref, onFollow, extra }: { co
           </div>
         </div>
         <div className="nw-detail-foot">
-          <a className="btn nw-detail-close" href={closeHref}>{t({ en: "Close", zh: "关闭" })}</a>
+          <a className="btn nw-detail-close" href={closeHref} onClick={onCloseLink}>{t({ en: "Close", zh: "关闭" })}</a>
           <div className="nw-detail-foot-actions">
             <button type="button" className="btn nw-detail-follow" onClick={onFollow}>▤ {t({ en: "Log interaction", zh: "记录互动" })}</button>
-            <button type="button" className="btn nw-detail-status" onClick={onFollow}>⇢ {t({ en: "Update status", zh: "更新状态" })}</button>
+            <button type="button" className="btn nw-detail-status" onClick={onUpdateStatus}>⇢ {t({ en: "Update status", zh: "更新状态" })}</button>
           </div>
         </div>
       </div>
     </div>
   );
+}
+
+/** 本页打开的示例详情：套上共用的弹窗无障碍行为（初始焦点、Tab 焦点圈定、Esc 关闭）。 */
+function NetworkDemoDetailDialog({ closeHref, contact, onClose }: { closeHref: string; contact: OrbitContactView; onClose: () => void }) {
+  const demo = useDemoMode();
+  const interceptOpen = Boolean(demo?.intercept);
+  // 「这是示例」拦截层叠在上面时 Esc 只归它；详情留着。
+  const dialogRef = useOrbitModalA11y(() => {
+    if (!interceptOpen) onClose();
+  });
+  return <NetworkDetailModal closeHref={closeHref} contact={contact} dialogRef={dialogRef} onClose={onClose} onFollow={() => undefined} />;
+}
+
+/**
+ * 示例模式里点联系人：在本页打开示例详情弹窗（`buildDemoNetworkDetail`，纯前端），不导航、
+ * 不发请求。不在示例里、不是示例联系人、或按了修饰键（新标签页打开）时什么都不做，
+ * 链接照常导航。`closeHref` 只作关闭按钮的 href 语义，关闭本身只收起弹窗，并把焦点还给
+ * 打开它的那个链接（Safari 点击链接不给链接焦点，所以不能只靠 activeElement 还原）。
+ */
+export function useNetworkDemoDetail(closeHref: string): {
+  modal: ReactNode;
+  openFromHref: (event: MouseEvent<HTMLElement>, href: string) => void;
+} {
+  const demo = useDemoMode();
+  const { language } = useOrbitLanguage();
+  const [openId, setOpenId] = useState<string | null>(null);
+  const triggerRef = useRef<HTMLElement | null>(null);
+  const inDemo = demo !== null;
+  const openFromHref = useCallback(
+    (event: MouseEvent<HTMLElement>, href: string) => {
+      if (!inDemo || event.defaultPrevented) return;
+      if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      const id = demoContactIdFromHref(href);
+      if (!id) return;
+      event.preventDefault();
+      triggerRef.current = event.currentTarget;
+      setOpenId(id);
+    },
+    [inDemo],
+  );
+  const close = useCallback(() => setOpenId(null), []);
+  // 弹窗卸载（含共用弹窗 hook 的焦点还原）之后再把焦点交回触发链接。
+  useEffect(() => {
+    if (openId !== null || !triggerRef.current) return;
+    const trigger = triggerRef.current;
+    triggerRef.current = null;
+    trigger.focus?.();
+  }, [openId]);
+  const contact = useMemo(
+    () => (inDemo && openId ? buildDemoNetworkDetail(openId, new Date(), language === "en" ? "en" : "zh") : null),
+    [inDemo, language, openId],
+  );
+  const modal = contact ? <NetworkDemoDetailDialog closeHref={closeHref} contact={contact} onClose={close} /> : null;
+  return { modal, openFromHref };
 }

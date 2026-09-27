@@ -7,10 +7,12 @@
 
 import { useMemo, useState } from "react";
 
+import { DemoTag, useDemoMode } from "../../_demo/demo-mode-core";
 import type { OrbitContactsViewModel } from "../../orbit-contacts-route-view-model";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import type { ContactsAnalysisView } from "../analysis/contacts-analysis-view-model";
 import { NETWORK_STAGES, STAGE_BAR_BG, STAGE_BAR_FG, STAGE_CHIP, STAGE_LABEL, donut, metSummary, stageClip, stageCounts, toPerson } from "./network-model";
+import { useNetworkDemoDetail } from "./network-detail-modal";
 import { cockpit, distributionRows, type DistKey } from "./network-overview-model";
 import { NetworkAvatar, NetworkShell } from "./network-shell";
 
@@ -40,14 +42,19 @@ export function NetworkOverview({ viewModel, analysis }: { viewModel: OrbitConta
   const ready = analysis.state === "ready";
   const dash = "—";
   const newContacts = ready ? String(analysis.metrics.newContacts) : dash;
-  const meta = ready
+  // W0005 示例模式：名字带「示例」角标、点开在本页弹示例详情；分析文案说明是示例人物的，不说「你的人脉」。
+  const demo = useDemoMode();
+  const demoDetail = useNetworkDemoDetail("/app/contacts/dashboard");
+  const meta = demo
+    ? t({ zh: `示例人物的人脉分析 · 依据 ${people.length} 位示例联系人`, en: `Demo persona's network analysis · based on ${people.length} demo contacts` })
+    : ready
     ? t({ zh: `更新于${formatMonthDay(analysis.generatedAt, t, true)} · 依据 ${people.length} 位联系人`, en: `Updated ${formatMonthDay(analysis.generatedAt, t, true)} · based on ${people.length} contacts` })
     : t({ zh: `分析生成中 · 依据 ${people.length} 位联系人`, en: `Analysis in progress · based on ${people.length} contacts` });
   const highlights = people.filter((p) => p.stage === "advance").slice(0, 2);
   const activity = ready ? analysis.activity : [];
 
   return (
-    <NetworkShell screen="overview">
+    <NetworkShell screen="overview" modal={demoDetail.modal}>
       <div className="nw-pipe">
         <div className="nw-pipe-grid">
           <div className="nw-pipe-card">
@@ -86,7 +93,9 @@ export function NetworkOverview({ viewModel, analysis }: { viewModel: OrbitConta
                 <span className="nw-ai-star">✦</span>
                 <div className="nw-card-head">
                   <h2 className="nw-h2">{t({ en: "AI network cockpit", zh: "AI 人脉驾驶舱" })}</h2>
-                  <span className="nw-ai-desc">{t({ en: "From your network data: spot opportunities and get the next step.", zh: "基于你的人脉数据，发现机会，给出下一步建议。" })}</span>
+                  <span className="nw-ai-desc">{demo
+                    ? t({ en: "Demo persona's network analysis: how the cockpit spots opportunities and suggests next steps.", zh: "示例人物的人脉分析：看看驾驶舱如何发现机会、给出下一步建议。" })
+                    : t({ en: "From your network data: spot opportunities and get the next step.", zh: "基于你的人脉数据，发现机会，给出下一步建议。" })}</span>
                 </div>
               </div>
               <span className="nw-cockpit-meta">{meta}</span>
@@ -127,9 +136,9 @@ export function NetworkOverview({ viewModel, analysis }: { viewModel: OrbitConta
           {highlights.length > 0 ? (
             <div className="nw-hl-grid">
               {highlights.map((p) => (
-                <a key={p.id} className="btn nw-hl" href={p.href}>
+                <a key={p.id} className="btn nw-hl" href={p.href} onClick={(event) => demoDetail.openFromHref(event, p.href)}>
                   <NetworkAvatar initial={p.initial} size={44} />
-                  <span className="nw-hl-copy"><strong className="nw-suggest-title">{p.name}</strong><span className="nw-ai-desc">{p.next || dash}</span></span>
+                  <span className="nw-hl-copy"><strong className="nw-suggest-title">{p.name}{demo ? <DemoTag /> : null}</strong><span className="nw-ai-desc">{p.next || dash}</span></span>
                   <span className="nw-hl-stage" style={{ background: STAGE_CHIP.advance.bg, color: STAGE_CHIP.advance.fg }}>{t(STAGE_LABEL.advance)}</span>
                   <span className="nw-suggest-arrow">›</span>
                 </a>
@@ -151,7 +160,7 @@ export function NetworkOverview({ viewModel, analysis }: { viewModel: OrbitConta
           {activity.map((a) => (
             <div key={a.id} className="nw-recent-row">
               <NetworkAvatar initial="◷" />
-              <strong className="nw-recent-name">{a.label}</strong>
+              <strong className="nw-recent-name">{a.contactName ? <>{a.contactName}{demo ? <DemoTag /> : null} · </> : null}{a.label}</strong>
               {/* 来源经 metSummary 清洗：账号邮箱 / 「confirmed by」句不渲染 */}
               <span className="nw-recent-org">{metSummary(a.source) || dash}</span>
               <span className="nw-recent-ind">{dash}</span>

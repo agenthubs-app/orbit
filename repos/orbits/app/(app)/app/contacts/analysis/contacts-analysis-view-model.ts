@@ -28,7 +28,8 @@ export type ContactsAnalysisView = { state: "error" | "pending" } | {
   generatedAt: string;
   summary: string;
   metrics: { contacts: number; newContacts: number; highValue: number; pendingFollowups: number; dormant: number };
-  activity: Array<{ id: string; label: string; occurredAt: string; source: string }>;
+  /** `contactName`：动态对应的联系人（只有引导期示例数据填，概览据此给名字挂「示例」角标；真实数据不填）。 */
+  activity: Array<{ id: string; label: string; occurredAt: string; source: string; contactName?: string }>;
   analysis: { state: "unavailable" } | ({ state: "ready" } & AnalysisReportView);
   goal: AnalysisSection<{ id: string | null; text: string; updatedAt: string; canEdit: boolean }>;
   structure: AnalysisSection<{
