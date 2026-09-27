@@ -32,6 +32,7 @@ import {
   type EventListLanguage,
 } from "./events-model";
 import { EventsShell, type EventsListView } from "./events-shell";
+import { CommunityCard } from "./community-card";
 
 /**
  * Orbit_0918 Events（参与者侧）发现活动 / 我的活动。
@@ -44,6 +45,9 @@ import { EventsShell, type EventsListView } from "./events-shell";
  * - 统计四卡 = 即将开始 / 我已报名 / 进行中 / 本月活动（设计「本周推荐 12」无来源）；
  * - 我的活动时间线「报名成功」无日期来源 → 「—」，开始 / 结束真实；
  * - 我的活动 = scope=registered（既有 URL 语义，账号菜单深链不变）。
+ *
+ * W0003：页签下方永远置顶「加入 iOrbit 用户社群」卡片（./community-card.tsx）。社群不是活动（D6），
+ * 卡片在搜索 / 筛选 / 统计 / 网格之外，活动列表的内容与排序不受影响。
  */
 
 function eventName(event: OrbitLandingEventView, language: EventListLanguage) {
@@ -299,11 +303,19 @@ const MINE_FILTERS: readonly MineFilter[] = ["all", "upcoming", "active", "ended
 const mineLabel = (key: MineFilter, t: ReturnType<typeof useOrbitLanguage>["t"]) =>
   key === "upcoming" ? t({ en: "Registered", zh: "已报名" }) : scopeLabel(key, t);
 
+export interface EventsListCommunityView {
+  /** 服务端读取的本人社群加入状态。 */
+  joined: boolean;
+  signedIn: boolean;
+}
+
 export function EventsList({
+  community = { joined: false, signedIn: false },
   initialScope = "all",
   registrationAvailabilityByEventId,
   viewModel,
 }: {
+  community?: EventsListCommunityView;
   initialScope?: EventScope;
   registrationAvailabilityByEventId: Readonly<Record<string, EventRegistrationAvailability>>;
   viewModel: OrbitLandingViewModel;
@@ -375,6 +387,8 @@ export function EventsList({
 
   return (
     <EventsShell onSelectView={selectView} view={isMine ? "mine" : "discover"}>
+      <CommunityCard joined={community.joined} signedIn={community.signedIn} />
+
       <div className="ev-toolbar">
         <div className="ev-search">
           <span aria-hidden="true" className="ev-search-icon">⌕</span>

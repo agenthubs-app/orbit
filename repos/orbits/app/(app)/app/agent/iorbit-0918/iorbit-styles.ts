@@ -418,6 +418,7 @@ export const IORBIT_STYLES = `
 [data-orbit-real-page="iorbit-0918"] .ir-row-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 [data-orbit-real-page="iorbit-0918"] .ir-row-title { font-size: 15px; font-weight: 500; }
 [data-orbit-real-page="iorbit-0918"] .ir-row-desc { font-size: 13px; color: #6B6F99; }
+[data-orbit-real-page="iorbit-0918"] .ir-match { font-size: 12.5px; color: #3B3F7A; }
 /* 设计每行只有一枚 CTA；写控件（确认 / 稍后 / 撤销 …）是设计外的能力保全 */
 [data-orbit-real-page="iorbit-0918"] .ir-row-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px; }
 /* 修订轮 1：被删旧屏的状态标签 / 证据 chips / preview（设计无槽位，记偏差） */

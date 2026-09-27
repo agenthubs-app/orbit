@@ -1,4 +1,6 @@
 import { auth } from "../../../../auth";
+import { readCommunityJoinedForActor } from "../../../../features/community/service-factory";
+import { resolveAuthenticatedApiActorFromSession } from "../../../api/_shared/authenticated-actor";
 import { createConfiguredCanonicalPublicEventCatalogue } from "../../../../features/events/core/public-catalogue-runtime";
 import {
   readRuntimeEventRegistrationStates,
@@ -94,6 +96,17 @@ export default async function AppEventsPage({
   );
 
   const authenticated = Boolean(session?.user?.id);
+  // 社群卡片（W0003）：本人加入状态在服务端读，首帧即正确；未登录不读。
+  const communityActor = session?.user?.id
+    ? await resolveAuthenticatedApiActorFromSession({
+        email: session.user.email,
+        name: session.user.name,
+        userId: session.user.id,
+      })
+    : null;
+  const communityJoined = await readCommunityJoinedForActor({
+    actorId: communityActor?.id,
+  });
 
   return (
     <>
@@ -104,6 +117,10 @@ export default async function AppEventsPage({
       <div data-orbit-real-page="events-0918" data-orbit-route="app-events-public-catalogue">
         {authenticated ? <AccountTopNav active="events" /> : <PublicTopNav active="events" />}
         <EventsList
+          community={{
+            joined: communityJoined,
+            signedIn: Boolean(communityActor),
+          }}
           initialScope={
             resolvedSearchParams.scope === "registered" ||
             resolvedSearchParams.scope === "upcoming" ||

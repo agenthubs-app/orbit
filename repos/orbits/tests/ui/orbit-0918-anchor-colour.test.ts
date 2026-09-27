@@ -21,6 +21,9 @@ import { join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
+import { IORBIT_STYLES } from "../../app/(app)/app/agent/iorbit-0918/iorbit-styles";
+import { COMMUNITY_CARD_STYLES } from "../../app/(app)/app/events/events-0918/community-card";
+
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 
 interface Domain {
@@ -36,6 +39,13 @@ interface Domain {
   stylesExport: string;
   /** 作用域属性值，用来确认基线 a / a:hover 规则确实存在。 */
   scope: string;
+  /**
+   * 样式表由多段拼成时（iOrbit：`IORBIT_STYLES` = 0918 皮肤 + 2026-09-28 首页改版的
+   * `IORBIT_HOME_STYLES`），源码切片只能看到第一段，改用运行时的完整字符串。
+   */
+  runtimeCss?: string;
+  /** 与主样式表同作用域、由组件自己注入的附加样式（如 W0003 社群卡片）。 */
+  extraCss?: string[];
 }
 
 const DOMAINS: Domain[] = [
@@ -62,6 +72,7 @@ const DOMAINS: Domain[] = [
     stylesFile: "app/(app)/app/events/events-0918/events-shell.tsx",
     stylesExport: "EVENTS_STYLES",
     scope: "events-0918",
+    extraCss: [COMMUNITY_CARD_STYLES],
   },
   {
     name: "ops",
@@ -86,11 +97,15 @@ const DOMAINS: Domain[] = [
     stylesFile: "app/(app)/app/agent/iorbit-0918/iorbit-styles.ts",
     stylesExport: "IORBIT_STYLES",
     scope: "iorbit-0918",
+    runtimeCss: IORBIT_STYLES,
   },
 ];
 
 /** 把 `export const X = \`…\`;` 的模板字面量切出来，再抹掉注释并拍平成一行。 */
 function readScopedCss(domain: Domain): string {
+  if (domain.runtimeCss !== undefined) {
+    return domain.runtimeCss.replace(/\/\*[\s\S]*?\*\//g, "").split("\n").join(" ");
+  }
   const source = readFileSync(join(projectRoot, domain.stylesFile), "utf8");
   const opener = `export const ${domain.stylesExport} = \``;
   const start = source.indexOf(opener);
@@ -98,7 +113,11 @@ function readScopedCss(domain: Domain): string {
   const body = source.slice(start + opener.length);
   const end = body.indexOf("\n`;");
   assert.ok(end >= 0, `${domain.stylesFile} 的 ${domain.stylesExport} 模板字面量没有闭合`);
-  return body.slice(0, end).replace(/\/\*[\s\S]*?\*\//g, "").split("\n").join(" ");
+  return [body.slice(0, end), ...(domain.extraCss ?? [])]
+    .join("\n")
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .split("\n")
+    .join(" ");
 }
 
 /** 收集整个域目录里落在 `<a>` 上的本域前缀类。 */

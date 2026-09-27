@@ -220,7 +220,7 @@ test("the home screen ships the morning-paper layout", () => {
     "已报名活动",
     "全部活动 →",
     "最近对话",
-    ">历史<",
+    ">历史记录<",
     "进入对话 →",
   ]) {
     assert.ok(html.includes(copy), `copy missing from the home screen: ${copy}`);
@@ -1038,4 +1038,88 @@ test("submitting the ask row deep-links into the chat branch", async (t) => {
     0,
     "the home branch unmounts once the shell switches to chat",
   );
+});
+
+/* ── 5. 社群行（W0003 SC-03）──────────────────────────────────────────── */
+
+function registeredEvent(id: string, name: string, startsAt: string) {
+  return {
+    id,
+    name,
+    place: "Tokyo",
+    startsAt,
+    stats: { youRsvped: true },
+    venue: `${name} 会场`,
+    youRsvped: true,
+  };
+}
+
+const HOME_WITH_EVENTS = {
+  ...HOME,
+  events: [
+    registeredEvent("ev-1", "第一场真实活动", "2099-10-01T09:00:00Z"),
+    registeredEvent("ev-2", "第二场真实活动", "2099-10-02T09:00:00Z"),
+    registeredEvent("ev-3", "第三场真实活动", "2099-10-03T09:00:00Z"),
+  ],
+};
+
+function registeredColumn(html: string): string {
+  const start = html.indexOf("已报名活动</h3>");
+  assert.ok(start >= 0, "the registered-events column must render");
+  return html.slice(start, html.indexOf("最近对话</h3>"));
+}
+
+function homeMarkup(props: { communityJoined?: boolean; home?: unknown }): string {
+  return renderToStaticMarkup(
+    <IOrbitHome
+      communityJoined={props.communityJoined}
+      home={(props.home ?? HOME) as never}
+      navigate={() => undefined}
+      onAsk={() => undefined}
+      onOpenChat={() => undefined}
+      onOpenHistory={() => undefined}
+      onOpenSession={() => undefined}
+    />,
+  );
+}
+
+test("not joined: the registered-events column opens with a community entry, labelled as a community", () => {
+  for (const home of [HOME, HOME_WITH_EVENTS]) {
+    const column = registeredColumn(homeMarkup({ communityJoined: false, home }));
+    const community = column.indexOf('data-orbit-iorbit-community="invite"');
+    assert.ok(community >= 0, "the community entry must be present");
+    // 第一条：在任何真实活动和空态之前。
+    assert.ok(column.indexOf('class="ir-m-event"') === -1 || community < column.indexOf('class="ir-m-event"'));
+    assert.ok(column.indexOf("还没有报名活动") === -1 || community < column.indexOf("还没有报名活动"));
+    const entry = column.slice(community, column.indexOf("</a>", community));
+    // 标明是社群，不伪装成活动（没有日期、写着「社群」），入口指向活动页的社群卡片。
+    assert.match(entry, /社群/);
+    assert.match(entry, /加入 iOrbit 用户社群/);
+    assert.match(column, /href="\/app\/events#iorbit-community"[^>]*data-orbit-iorbit-community="invite"|data-orbit-iorbit-community="invite"[^>]*href="\/app\/events#iorbit-community"/);
+    assert.doesNotMatch(entry, /已加入社群/);
+  }
+  // 没有报名活动时空态仍在（社群不冒充报名）。
+  assert.match(registeredColumn(homeMarkup({ communityJoined: false })), /还没有报名活动/);
+});
+
+test("joined: the first line reads 已加入社群 and real events still show up to two", () => {
+  const column = registeredColumn(homeMarkup({ communityJoined: true, home: HOME_WITH_EVENTS }));
+  const joined = column.indexOf('data-orbit-iorbit-community="joined"');
+  assert.ok(joined >= 0);
+  assert.ok(joined < column.indexOf("第一场真实活动"), "已加入社群 must be the first line");
+  assert.match(column, /已加入社群/);
+  assert.doesNotMatch(column, /data-orbit-iorbit-community="invite"/);
+  // 社群行不占真实活动的两个名额。
+  assert.match(column, /第一场真实活动/);
+  assert.match(column, /第二场真实活动/);
+  assert.doesNotMatch(column, /第三场真实活动/);
+});
+
+test("the shell hands the server-read community state down to the home column", () => {
+  const joined = renderToStaticMarkup(
+    <IOrbitShell communityJoined home={HOME as never} viewModel={VIEW_MODEL} />,
+  );
+  assert.match(joined, /data-orbit-iorbit-community="joined"/);
+  const invite = renderToStaticMarkup(<IOrbitShell home={HOME as never} viewModel={VIEW_MODEL} />);
+  assert.match(invite, /data-orbit-iorbit-community="invite"/);
 });
