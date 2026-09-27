@@ -8,8 +8,8 @@ import { seedGeneratedRelationshipFixturesIntoLiveStore } from "../../shared/sto
 import { MOCK_FIXTURE_COLLECTION_NAMES } from "../../shared/mock/fixtures";
 
 // Sprint 0104: the live seed no longer writes the retired legacy chat collections.
-// This provider still reads `messages`/`conversations` (open follow-up), so these
-// tests seed them explicitly to keep covering that existing code path.
+// Sprint 0109: this provider no longer reads the legacy `messages` collection;
+// these tests still seed it, so its rows demonstrably produce no "chat" suggestion.
 const LEGACY_INCLUSIVE_SEED = { collectionNames: MOCK_FIXTURE_COLLECTION_NAMES } as const;
 
 type DecisionResult = {
@@ -46,7 +46,7 @@ test("profile suggestion decisions persist by actor and replay the same mutation
   const queue = await service.listUpdateSuggestions({ actorId });
   assert.equal(queue.success, true);
   if (!queue.success) throw new Error("Suggestion queue failed");
-  assert.deepEqual(queue.data.suggestions.map(item => item.targetProfileField), ["seeking", "bio", "offering"]);
+  assert.deepEqual(queue.data.suggestions.map(item => item.targetProfileField), ["bio", "offering"]);
   const [first, second] = queue.data.suggestions;
   assert.ok(first && second);
 

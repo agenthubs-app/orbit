@@ -71,7 +71,6 @@ export const PROFILE_SIGNAL_LIVE_RECORD_COLLECTIONS = {
   contacts: "contacts",
   evidence: "evidence",
   interactionMemories: "interactionMemories",
-  messages: "messages",
   profiles: "profiles",
   suggestionDecisions: "profileSuggestionDecisions",
 } as const;
@@ -467,7 +466,6 @@ export function createStorageProfileSignalProvider({
         profileRecords,
         contactRecords,
         connectionRecords,
-        messageRecords,
         interactionMemoryRecords,
         evidenceRecords,
         suggestionDecisionRecords,
@@ -486,11 +484,6 @@ export function createStorageProfileSignalProvider({
           limit: "unbounded",
           workspaceId,
           collectionName: PROFILE_SIGNAL_LIVE_RECORD_COLLECTIONS.connections,
-        }),
-        store.listRecords({
-          limit: "unbounded",
-          workspaceId,
-          collectionName: PROFILE_SIGNAL_LIVE_RECORD_COLLECTIONS.messages,
         }),
         store.listRecords({
           limit: "unbounded",
@@ -541,24 +534,10 @@ export function createStorageProfileSignalProvider({
           (nonEmptyString(record.payload.connectionId) &&
             actorConnectionIds.has(record.payload.connectionId)),
       );
-      const actorConversationIds = new Set(
-        actorInteractionMemoryRecords
-          .map((record) => record.payload.conversationId)
-          .filter(nonEmptyString),
-      );
-      const actorMessageIds = new Set(
-        actorInteractionMemoryRecords
-          .map((record) => record.payload.messageId)
-          .filter(nonEmptyString),
-      );
-      const actorMessageRecords = messageRecords.filter(
-        (record) =>
-          belongsToActor(record, actorId) ||
-          (nonEmptyString(record.payload.conversationId) &&
-            actorConversationIds.has(record.payload.conversationId)) ||
-          (nonEmptyString(record.payload.id) &&
-            actorMessageIds.has(record.payload.id)),
-      );
+      // Sprint 0109: the legacy chat `messages` collection has had no writer since
+      // sprint 0104 and is no longer read. Relationship messages between two
+      // accounts are not a profile signal source (message plan decision 1).
+      const actorMessageRecords: LiveRecord<Record<string, unknown>>[] = [];
       const actorEvidenceIds = referencedEvidenceIds([
         ...actorProfileRecords,
         ...actorContactRecords,

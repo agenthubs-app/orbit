@@ -5,6 +5,7 @@ import { Pool } from 'pg';
 import { createTransactionalPostgresClient, type TransactionalPostgresClient } from '../../shared/storage/transactional-postgres';
 import { createPostgresLiveRecordStore } from '../../shared/storage/postgres-live-record-store';
 import { ORBIT_RECORDS_SCHEMA_SQL } from '../../shared/storage/migrations';
+import { RELATIONSHIP_MESSAGE_SCHEMA_SQL } from '../../features/relationship-communication/message-tables';
 import { createDeliveryPolicyRepository, deliveryPolicyId, readHistoricalNotificationSuppression, recordHistoricalNotificationSuppression } from '../../features/notifications/delivery-policy-repository';
 import { createStorageNotificationDeliveryService } from '../../features/notifications/delivery-service';
 import { createTypedDeliveryWorker } from '../../features/notifications/typed-delivery-worker';
@@ -48,7 +49,8 @@ async function database(run: (client: TransactionalPostgresClient) => Promise<vo
   const schema = 'historical_atomic_' + randomUUID().replaceAll('-', '');
   const pool = new Pool({ connectionString: url, max: 4, options: `-c search_path=${schema} -c statement_timeout=5000 -c lock_timeout=1000` });
   const client = createTransactionalPostgresClient({ connectionString: url, pool });
-  try { await pool.query(`create schema ${schema}`); await pool.query(ORBIT_RECORDS_SCHEMA_SQL); await run(client); }
+  // Production schema: orbit_records plus (sprint 0109) the relationship message tables the materializer reads.
+  try { await pool.query(`create schema ${schema}`); await pool.query(ORBIT_RECORDS_SCHEMA_SQL); await pool.query(RELATIONSHIP_MESSAGE_SCHEMA_SQL); await run(client); }
   finally { await pool.query(`drop schema if exists ${schema} cascade`); await client.close(); }
 }
 

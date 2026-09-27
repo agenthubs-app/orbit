@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { auditSyncWrites, type SyncWritePolicy } from "../support/sync-write-audit";
+import { auditMessageTableWrites, auditSyncWrites, type MessageTableWritePolicy, type SyncWritePolicy } from "../support/sync-write-audit";
 
 // Sprint 0108: every orbit_records writer in product code and scripts, and why
 // it is safe under the strict sync_revision trigger. A new writer, or a new
@@ -43,6 +43,12 @@ export const SYNC_WRITE_MANIFEST: Readonly<Record<string, SyncWritePolicy>> = {
   "scripts/seed-demo-workspace.ts": { policy: "non-sync", statements: 2, collections: "event_organizer_owner_migrations, events" },
 };
 
+// Sprint 0109: every writer of the relationship message tables (all rows are sync rows).
+export const MESSAGE_TABLE_WRITE_MANIFEST: Readonly<Record<string, MessageTableWritePolicy>> = {
+  "features/relationship-communication/message-store.ts": { statements: 8, how: "every write runs in a read-committed transaction that calls acquireSyncCommitOrderLock first" },
+  "features/relationship-communication/message-migration.ts": { statements: 9, how: "each legacy conversation is planned and applied inside one transaction after acquireSyncCommitOrderLock" },
+};
+
 const ROOT = join(__dirname, "../..");
 
 test("every orbit_records writer is classified and every sync-collection writer takes the commit-order lock", () => {
@@ -68,6 +74,31 @@ test("a new unlocked writer, a new statement in a listed file, or a missing lock
     assert.ok(problems.some((line) => line.startsWith("UNLOCKED features/demo/claims-lock.ts")), "a locked claim without a lock");
     assert.ok(problems.some((line) => line.startsWith("SYNC_LITERAL features/demo/non-sync.ts")), "a non-sync claim that writes tasks");
     assert.ok(problems.some((line) => line.startsWith("CHANGED scripts/grew.ts")), "a second statement in a listed file");
+    assert.ok(problems.some((line) => line.startsWith("STALE features/demo/removed.ts")), "a manifest entry without a writer");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("every relationship message table writer is listed and takes the commit-order lock", () => {
+  assert.deepEqual(auditMessageTableWrites(ROOT, MESSAGE_TABLE_WRITE_MANIFEST), []);
+});
+
+test("an unlisted, unlocked, grown or removed relationship message table writer fails the audit", () => {
+  const root = mkdtempSync(join(tmpdir(), "message-write-audit-"));
+  try {
+    mkdirSync(join(root, "features/demo"), { recursive: true });
+    writeFileSync(join(root, "features/demo/new-writer.ts"), "await tx.query(\"insert into relationship_messages (seq) values (1)\"); await acquireSyncCommitOrderLock(tx);");
+    writeFileSync(join(root, "features/demo/unlocked.ts"), "await sql.query(\"update relationship_conversation_members set unread_count = 0\");");
+    writeFileSync(join(root, "features/demo/grew.ts"), "acquireSyncCommitOrderLock(tx); q('update relationship_conversations set status = 1'); q('insert into relationship_messages values (1)');");
+    const problems = auditMessageTableWrites(root, {
+      "features/demo/unlocked.ts": { statements: 1, how: "claims" },
+      "features/demo/grew.ts": { statements: 1, how: "one" },
+      "features/demo/removed.ts": { statements: 1, how: "gone" },
+    });
+    assert.ok(problems.some((line) => line.startsWith("UNCLASSIFIED features/demo/new-writer.ts")), "an unknown writer");
+    assert.ok(problems.some((line) => line.startsWith("UNLOCKED features/demo/unlocked.ts")), "a writer without the lock");
+    assert.ok(problems.some((line) => line.startsWith("CHANGED features/demo/grew.ts")), "a second statement in a listed file");
     assert.ok(problems.some((line) => line.startsWith("STALE features/demo/removed.ts")), "a manifest entry without a writer");
   } finally {
     rmSync(root, { recursive: true, force: true });

@@ -14,6 +14,7 @@ import {
 } from "../../app/api/relationship-communication/handler";
 import { createLiveAsyncRelationshipConversationService } from "../../features/chat/live-async-service";
 import { createStorageAsyncRelationshipConversationProvider } from "../../features/chat/storage/async-relationship-conversation-live-record-provider";
+import { createRelationshipMessageStore } from "../../features/relationship-communication/message-store";
 import { createRelationshipCommunicationService } from "../../features/relationship-communication/service";
 import { runOrbitRecordsMigration } from "../../shared/storage/migrations";
 import type { LiveRecord, LiveRecordStoreLike } from "../../shared/storage/live-record-store";
@@ -74,6 +75,7 @@ function serviceFor(actor: typeof A, now?: () => string) {
         ? { contactId, displayName: B.name, organization: "Orbit QA", recipientEmail: B.email }
         : null,
     store,
+    messages: createRelationshipMessageStore({ client, workspaceId }),
     workspaceId,
   });
 }
