@@ -16,7 +16,8 @@ test("ordinary authorized session GET includes same-turn read-only artifact reco
   const before = JSON.stringify(session);
   const dependencies = {
     resolveActor: async () => ({ id: "actor:qa" }),
-    providerForActor: () => ({ source: "synthetic-test", sourceLabel: "测试", getSession: async (id: string) => id === session.id ? structuredClone(session) : null }),
+    providerForActor: () => ({ source: "synthetic-test", sourceLabel: "测试", getSessionPage: async (id: string) => id === session.id
+      ? { session: structuredClone(session), page: { hasMore: false, nextCursor: null, limit: 20 }, precedingMessage: null } : null }),
     organizationStoreForActor: () => null,
     artifactReaderForActor: (_mode: unknown, actorId: string) => ({ async read(actual: typeof session) {
       assert.equal(actorId, "actor:qa"); assert.equal(actual.id, session.id); reads++;
@@ -29,6 +30,7 @@ test("ordinary authorized session GET includes same-turn read-only artifact reco
     const envelope = await response.json();
     assert.equal(response.status, 200);
     assert.equal(envelope.data.artifactRecovery?.turns[0]?.assistantMessageId, "assistant:qa");
+    assert.deepEqual(envelope.data.page, { hasMore: false, nextCursor: null, limit: 20 });
     assert.equal(reads, 1);
     assert.equal(JSON.stringify(session), before);
   } finally {
@@ -60,10 +62,12 @@ test("parameterized bounded SELECT restores repeated questions by unique assista
   assert.deepEqual(recovery.turns.map(turn => [turn.requestId, turn.userMessageId, turn.assistantMessageId]), [["request:qa:2", "user:qa:2", "assistant:qa:2"], ["request:qa:1", "user:qa:1", "assistant:qa:1"]]);
   assert.equal(recovery.turns[0]?.artifacts[0]?.sections[0]?.items[0]?.contactHref, "/contacts/contact%3Aqa%3A2");
   assert.equal(fixture.queries.length, 1);
-  assert.deepEqual(fixture.queries[0]?.values, ["workspace:qa", "actor:qa", "orbit_agent_chat_requests", storedSession.id]);
-  assert.match(fixture.queries[0]!.text, /WHERE workspace_id = \$1 AND user_id = \$2/u);
+  // 0112: only the request records of the replies on this page, by key.
+  const requestKey = (requestId: string) => createHash("sha256").update(JSON.stringify(["actor:qa", requestId])).digest("hex");
+  assert.deepEqual(fixture.queries[0]?.values, ["workspace:qa", "actor:qa", "orbit_agent_chat_requests", storedSession.id, [requestKey("qa:1"), requestKey("qa:2")], 2]);
+  assert.match(fixture.queries[0]!.text, /WHERE workspace_id = \$1 AND user_id = \$2 AND collection_name = \$3 AND record_id = ANY\(\$5::text\[\]\)/u);
   assert.match(fixture.queries[0]!.text, /deleted_at IS NULL AND lifecycle_state = 'active'/u);
-  assert.match(fixture.queries[0]!.text, /ORDER BY updated_at DESC, record_id ASC LIMIT 101/u);
+  assert.match(fixture.queries[0]!.text, /ORDER BY updated_at DESC, record_id ASC LIMIT \$6/u);
   assert.doesNotMatch(fixture.queries[0]!.text, /INSERT|UPDATE|DELETE FROM/u);
   assert.equal(JSON.stringify(storedSession), before);
 });
@@ -86,11 +90,14 @@ test("ambiguous saved assistant identity and duplicate completed requests are ex
   assert.equal(recovery.unavailable, true);
 });
 
-test("source oversize and the 101st-row lookahead are reported without returning raw request bodies", async () => {
-  const rows = Array.from({ length: 101 }, () => ({ ...requestRow(), payload: null, source_bytes: 262145 }));
+test("source oversize is reported without returning raw request bodies, and a page with no replies reads nothing", async () => {
+  const rows = [{ ...requestRow(), payload: null, source_bytes: 262145 }];
   const recovery = await readerFor(rows).reader.read(storedSession);
   assert.deepEqual(recovery.turns, []);
-  assert.equal(recovery.truncated, true);
+  assert.equal(recovery.truncated, false, "0112 reads only the page's replies, so there is no lookahead row to truncate");
+  const noReplies = readerFor(rows);
+  assert.deepEqual(await noReplies.reader.read({ ...storedSession, messages: storedSession.messages.filter((message) => message.role === "user") }), { turns: [], truncated: false });
+  assert.equal(noReplies.queries.length, 0);
   assert.equal(recovery.oversized, true);
   assert.ok(Buffer.byteLength(JSON.stringify(recovery)) <= 131072);
 });
@@ -106,7 +113,7 @@ test("an artifact from another runtime conversation cannot expose its candidates
 test("deleted or foreign sessions and anonymous reads do not call the private artifact reader", async () => {
   let reads = 0;
   for (const actor of [{ id: "actor:other" }, null]) {
-    const dependencies = { resolveActor: async () => actor, providerForActor: () => ({ getSession: async () => null }), organizationStoreForActor: () => null, artifactReaderForActor: () => ({ read: async () => { reads++; throw new Error("reader must not run"); } }) };
+    const dependencies = { resolveActor: async () => actor, providerForActor: () => ({ getSessionPage: async () => null }), organizationStoreForActor: () => null, artifactReaderForActor: () => ({ read: async () => { reads++; throw new Error("reader must not run"); } }) };
     const handler = createOrbitAgentChatSessionHandlers(dependencies as unknown as Parameters<typeof createOrbitAgentChatSessionHandlers>[0]);
     const response = await handler.GET(new Request("https://orbit.test/api/ai/conversations/sessions/deleted"), { params: Promise.resolve({ id: "deleted" }) });
     assert.equal(response.status, actor ? 404 : 401);

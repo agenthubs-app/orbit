@@ -51,13 +51,8 @@ export function assertRatchet(actual: UnboundedReadCounts, baseline: UnboundedRe
 // fallback of listSessionSummariesPage; the Postgres path pages. The baseline may
 // only go down, so this file is held to its baseline by a separate TODO test that
 // keeps reporting until the read is bounded. Any further growth still fails.
-export const PENDING_RATCHET_OVERAGES: Readonly<Record<string, { actual: number; reason: string }>> = {
-  "features/orbit-ai/storage/orbit-agent-chat-session-live-record-provider.ts": {
-    actual: 5,
-    reason:
-      "fc0569649 added an unbounded fallback read in listSessionSummariesPage (5 > baseline 4); recovery: sprint 0112 bounds it, then delete this entry",
-  },
-};
+// Sprint 0112 bounded that read (and the file's other four), so the list is empty again.
+export const PENDING_RATCHET_OVERAGES: Readonly<Record<string, { actual: number; reason: string }>> = {};
 
 function readBaseline(): UnboundedReadCounts {
   return (JSON.parse(readFileSync(BASELINE_PATH, "utf8")) as { files: UnboundedReadCounts }).files;

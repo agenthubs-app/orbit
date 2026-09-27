@@ -148,5 +148,5 @@ export const contactArtifactDisplaySchema = z.object({ artifactId: id, taskId: i
   const items = value.sections.flatMap(section => section.items);
   return items.length <= 200 && new Set(items.map(item => item.id)).size === items.length && (value.status === "ready" ? items.length > 0 : items.length === 0);
 }).transform(value => ({ ...value, sections: value.sections.map(section => ({ ...section, items: section.items.map(item => ({ ...item, metadata: item.metadata.filter(entry => businessMetadata.has(entry.label)) })) })) }));
-export const aiSessionArtifactTurnSchema = z.object({ sessionId: id, requestId: id, userMessageId: id, assistantMessageId: id, status: z.enum(["ready", "unavailable", "oversized"]), artifacts: z.array(z.unknown()).max(16) });
+export const aiSessionArtifactTurnSchema = z.object({ sessionId: id, requestId: id, userMessageId: id, assistantMessageId: id, status: z.enum(["ready", "unavailable", "oversized"]), artifacts: z.array(z.unknown()).max(16), runId: id.optional(), actionIds: z.array(id).max(16).optional() });
 export const aiSessionArtifactRecoverySchema = z.object({ turns: z.array(aiSessionArtifactTurnSchema).max(100), truncated: z.boolean(), unavailable: z.boolean().optional(), oversized: z.boolean().optional() });

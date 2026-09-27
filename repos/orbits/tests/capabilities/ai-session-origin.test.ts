@@ -343,7 +343,11 @@ test("session origin survives old-client saves and rejects later replacement", a
   });
   const restoredAfterLongOldClientSave = await provider.getSession(initial.id);
   assert.deepEqual(restoredAfterLongOldClientSave?.origin, origin);
-  assert.deepEqual(restoredAfterLongOldClientSave?.messages[0]?.references, reliableInput.references);
+  // 0112: reads are paged; the first message is on the oldest page.
+  let oldest = await provider.getSessionPage(initial.id);
+  while (oldest?.page.nextCursor) oldest = await provider.getSessionPage(initial.id, { cursor: oldest.page.nextCursor });
+  assert.equal(oldest?.session.messages[0]?.id, reliableInput.clientMessageId);
+  assert.deepEqual(oldest?.session.messages[0]?.references, reliableInput.references);
 
   await assert.rejects(
     provider.upsertSession({

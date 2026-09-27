@@ -165,10 +165,11 @@ test("reliable send marks an execution-safe failure and retries the same request
     ...harness,
     sessionProvider: {
       ...harness.sessionProvider,
-      upsertSession: async (session) => {
+      // 0112: a send writes by appending (user message, then the reply).
+      appendMessages: async (sessionId, appendInput) => {
         writes += 1;
         if (writes === 1) throw new Error("storage unavailable");
-        return harness.sessionProvider.upsertSession(session);
+        return harness.sessionProvider.appendMessages(sessionId, appendInput);
       },
     },
   });
@@ -201,10 +202,10 @@ test("reliable send retries a failed assistant save without executing the model 
     ...harness,
     sessionProvider: {
       ...harness.sessionProvider,
-      upsertSession: async (session) => {
+      appendMessages: async (sessionId, appendInput) => {
         writes += 1;
         if (writes === 2) throw new Error("assistant storage unavailable");
-        return harness.sessionProvider.upsertSession(session);
+        return harness.sessionProvider.appendMessages(sessionId, appendInput);
       },
     },
   });

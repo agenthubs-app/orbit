@@ -827,7 +827,8 @@ export async function POST(request: Request): Promise<Response> {
           status: 202,
         });
       }
-      const session = await sessionProvider.getSession(reliableInput.data.sessionId);
+      // The receipt needs only the revision: one header row, never the messages.
+      const session = await sessionProvider.getSessionHeader(reliableInput.data.sessionId);
       result = resultWithReliableReceipt(
         reliable.result,
         reliableReceipt(
