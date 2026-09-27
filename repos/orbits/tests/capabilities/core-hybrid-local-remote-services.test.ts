@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createAgentActionQueueService } from "../../features/agent/service-factory";
 import { createAppBootstrapService } from "../../features/bootstrap/service-factory";
-import { createChatConversationMessageService } from "../../features/chat/service-factory";
 import { createDashboardAggregateService } from "../../features/dashboard/service-factory";
 import { createEventCrudAndImportService } from "../../features/events/service-factory";
 import { createFollowupTaskGenerationService } from "../../features/followups/service-factory";
@@ -184,19 +183,12 @@ test("core agent-facing services read the same hybrid local remote database seed
     const dashboard = await createDashboardAggregateService().getDashboardAggregate();
     const actions = await createAgentActionQueueService().listActions();
     const bootstrap = await createAppBootstrapService().getAppBootstrap();
-    const conversations = await createChatConversationMessageService()
-      .listConversations();
-    const thread = await createChatConversationMessageService().getMessageThread({
-      conversationId: "conversation_hybrid_mira",
-    });
 
     assert.equal(events.success, true);
     assert.equal(tasks.success, true);
     assert.equal(dashboard.success, true);
     assert.equal(actions.success, true);
     assert.equal(bootstrap.success, true);
-    assert.equal(conversations.success, true);
-    assert.equal(thread.success, true);
 
     assert.ok(
       events.data.events.some((event) => event.title === "Hybrid Agent Lab"),
@@ -220,19 +212,6 @@ test("core agent-facing services read the same hybrid local remote database seed
         (task) => task.taskId === "task_hybrid_mira_followup",
       ),
     );
-    assert.ok(
-      conversations.data.conversations.some(
-        (conversation) =>
-          conversation.conversationId === "conversation_hybrid_mira",
-      ),
-    );
-    assert.ok(
-      thread.data.messages.some(
-        (message) =>
-          message.body ===
-          "Please make sure the agent reads the hybrid local remote dataset.",
-      ),
-    );
 
     assert.equal(events.data.provenance.source.includes("local-remote-store"), true);
     assert.equal(tasks.data.provenance.source.includes("local-remote-store"), true);
@@ -243,10 +222,6 @@ test("core agent-facing services read the same hybrid local remote database seed
     assert.equal(actions.data.provenance.source.includes("local-remote-store"), true);
     assert.equal(
       bootstrap.data.provenance.source.includes("local-remote-store"),
-      true,
-    );
-    assert.equal(
-      conversations.data.provenance.source.includes("local-remote-store"),
       true,
     );
   } finally {

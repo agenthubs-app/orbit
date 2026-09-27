@@ -115,3 +115,13 @@ export interface RelationshipReadReceiptDTO {
   lastReadMessageId: string;
   readAt: string;
 }
+
+/**
+ * A participant's private, unsent reply draft for one relationship conversation.
+ * Each account only ever reads its own draft; `updatedAt` is null when none is saved.
+ */
+export interface RelationshipReplyDraftDTO {
+  body: string;
+  conversationId: string;
+  updatedAt: string | null;
+}

@@ -16,6 +16,7 @@ import type {
   AsyncConversationCreateResult,
   AsyncConversationInput,
   AsyncConversationWorkspaceResult,
+  AsyncRelationshipConversationService,
 } from "../../../../features/chat/service";
 import { createAsyncRelationshipConversationService } from "../../../../features/chat/service-factory";
 import {
@@ -65,8 +66,13 @@ function responseForResult(
   });
 }
 
+type CreateAsyncRelationshipConversationService = (
+  mode: ReturnType<typeof resolveFeatureMode>,
+) => AsyncRelationshipConversationService;
+
 export function createRelationshipInboxGetHandler(
   resolveActor: ResolveAuthenticatedApiActor = resolveAuthenticatedApiActor,
+  createService: CreateAsyncRelationshipConversationService = createAsyncRelationshipConversationService,
 ) {
   return async function GET(request: Request): Promise<Response> {
     const mode = resolveFeatureMode();
@@ -76,7 +82,7 @@ export function createRelationshipInboxGetHandler(
       return authenticatedApiActorRequiredResponse(mode);
     }
 
-    const service = createAsyncRelationshipConversationService(mode);
+    const service = createService(mode);
     const result = await service.getCorrespondenceWorkspace({
       ...readInput(request),
       actorDisplayName: actor?.name,
@@ -139,6 +145,7 @@ function createResponseForResult(
 
 export function createRelationshipInboxPostHandler(
   resolveActor: ResolveAuthenticatedApiActor = resolveAuthenticatedApiActor,
+  createService: CreateAsyncRelationshipConversationService = createAsyncRelationshipConversationService,
 ) {
   return async function POST(request: Request): Promise<Response> {
     const mode = resolveFeatureMode();
@@ -161,7 +168,7 @@ export function createRelationshipInboxPostHandler(
       sourceLabel: readString(body.sourceLabel),
       stagedAt: new Date().toISOString(),
     };
-    const service = createAsyncRelationshipConversationService(mode);
+    const service = createService(mode);
     const result = await service.createConversationFromDraft(input);
 
     return createResponseForResult(result, mode);

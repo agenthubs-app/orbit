@@ -11,7 +11,6 @@ import { fileURLToPath } from "node:url";
 
 import { createAgentActionQueueService } from "../../features/agent/service-factory";
 import { createAppBootstrapService } from "../../features/bootstrap/service-factory";
-import { createChatConversationMessageService } from "../../features/chat/service-factory";
 import { createContactsListSearchAndFilterService } from "../../features/contacts/service-factory";
 import { createDashboardAggregateService } from "../../features/dashboard/service-factory";
 import { createEventCrudAndImportService } from "../../features/events/service-factory";
@@ -58,10 +57,6 @@ test("core service factories expose default mock services and controlled live fa
     }).success,
     true,
   );
-  assert.equal(
-    (await createChatConversationMessageService().listConversations()).success,
-    true,
-  );
 
   const liveOrbitAi = resolveOrbitAiCommandService("live");
 
@@ -91,7 +86,7 @@ test("product entry and core API routes consume service factories instead of dir
     "app/api/events/route.ts",
     "app/api/tasks/route.ts",
     "app/api/agent/actions/route.ts",
-    "app/api/chat/conversations/route.ts",
+    "app/api/chat/relationship-inbox/handler.ts",
     "app/api/dashboard/route.ts",
   ];
 

@@ -4,44 +4,12 @@ import { join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
-import { createLiveChatConversationMessageService } from "../../features/chat/live-service";
-import { createStorageChatConversationMessageProvider } from "../../features/chat/storage/chat-conversation-live-record-provider";
 import { createOrbitAgentArtifactPreviewService } from "../../features/orbit-ai/artifact-task-preview-service";
-import { defaultMockFixtures } from "../../shared/mock/fixtures";
-import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
-import { seedGeneratedRelationshipFixturesIntoLiveStore } from "../../shared/storage/seed-generated-fixtures";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 
 function source(path: string): string {
   return readFileSync(join(projectRoot, path), "utf8");
-}
-
-function occurrences(value: string, pattern: RegExp): number {
-  return value.match(pattern)?.length ?? 0;
-}
-
-function artifactMetadataValue(
-  item: { metadata?: readonly { label: string; value: string }[] } | undefined,
-  label: string,
-): string {
-  return item?.metadata?.find((entry) => entry.label === label)?.value ?? "";
-}
-
-function seededConversationCase(index: number) {
-  const conversation = defaultMockFixtures.conversations[index];
-  const contact = defaultMockFixtures.contacts.find(
-    (item) => item.id === conversation?.participantContactIds[0],
-  );
-  const messages = defaultMockFixtures.messages.filter(
-    (message) => message.conversationId === conversation?.id,
-  );
-
-  assert.ok(conversation);
-  assert.ok(contact);
-  assert.ok(messages.length > 1);
-
-  return { contact, conversation, messages };
 }
 
 test("live artifact task service registers chat.context before preview fallback", () => {
@@ -315,292 +283,42 @@ test("chat.context uses actor-scoped contact evidence before any workspace-wide 
   ]);
 });
 
-test("chat.context artifact reads source-backed live chat conversations", async () => {
-  const workspaceId = "workspace:orbit-ai-chat-context-live-artifact-test";
-  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
-
-  await seedGeneratedRelationshipFixturesIntoLiveStore({
-    now: () => "2026-07-01T19:00:00.000Z",
-    store,
-    workspaceId,
-  });
-
-  const chatService = createLiveChatConversationMessageService({
-    provider: createStorageChatConversationMessageProvider({
-      sourceLabel: "Orbit AI chat context memory live storage",
-      store,
-      workspaceId,
-    }),
-  });
-  const serviceModule = await import(
-    "../../features/orbit-ai/chat-context-artifact-service"
-  );
-  const service = serviceModule.createOrbitAgentChatContextArtifactService({
-    chatService,
-    fallbackService: createOrbitAgentArtifactPreviewService(),
-  });
-  const seeded = seededConversationCase(0);
-
-  const result = await service.createArtifactTask({
-    kind: "relationship_chat_context",
-    locale: "zh",
-    query: `帮我整理${seeded.contact.displayName}的回复上下文`,
-    toolArguments: {
-      conversationId: seeded.conversation.id,
-    },
-  });
-
-  assert.equal(result.success, true);
-  assert.equal(result.data?.task.kind, "relationship_chat_context");
-  assert.equal(result.data?.task.artifactProducer, "relationship_chat_review_producer");
-  assert.equal(result.data?.result.safety.liveDatabaseReadExecuted, true);
-  assert.equal(result.data?.result.safety.liveDatabaseWriteExecuted, false);
-  assert.deepEqual(result.data?.result.provenance.sourceModules, [
-    "orbit-ai",
-    "chat",
-  ]);
-  assert.equal(
-    result.data?.result.provenance.toolCalls[0]?.toolName,
-    "chat.context",
-  );
-  assert.equal(
-    result.data?.result.provenance.toolCalls[0]?.status,
-    "completed",
-  );
-  assert.doesNotMatch(
-    result.data?.result.provenance.source ?? "",
-    /artifact-task-preview-service/,
-  );
-  assert.equal(
-    result.data?.result.generatedView?.sections[0]?.items[0]?.evidenceIds.includes(
-      seeded.messages[0]?.evidenceIds[0] ?? "",
-    ),
-    true,
-  );
-  assert.match(
-    result.data?.result.generatedView?.summary ?? "",
-    new RegExp(
-      [seeded.contact.displayName, seeded.conversation.id]
-        .map((value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
-        .join("|"),
-    ),
-  );
-  assert.equal(
-    result.data?.result.generatedView?.sections[0]?.items[0]?.actions[0]
-      ?.requiresConfirmation,
-    true,
-  );
-});
-
-test("chat.context resolves seeded follow-up requests before rendering the side-panel artifact", async () => {
-  const workspaceId = "workspace:orbit-ai-chat-context-followup-resolution-test";
-  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
-  const generatorCalls: {
-    relationship: { organization: string; participantName: string };
-    resolution: { score: number; state: string };
-    selectedConversation: { conversationId: string };
-  }[] = [];
-
-  await seedGeneratedRelationshipFixturesIntoLiveStore({
-    now: () => "2026-07-01T19:00:00.000Z",
-    store,
-    workspaceId,
-  });
-
-  const chatService = createLiveChatConversationMessageService({
-    provider: createStorageChatConversationMessageProvider({
-      sourceLabel: "Orbit AI follow-up resolution live storage",
-      store,
-      workspaceId,
-    }),
-  });
-  const serviceModule = await import(
-    "../../features/orbit-ai/chat-context-artifact-service"
-  );
-  const service = (
-    serviceModule.createOrbitAgentChatContextArtifactService as unknown as (input: {
-      chatService: typeof chatService;
-      fallbackService: ReturnType<typeof createOrbitAgentArtifactPreviewService>;
-      followupContextGenerator: {
-        generate: (input: {
-          relationship: { organization: string; participantName: string };
-          resolution: { score: number; state: string };
-          selectedConversation: { conversationId: string };
-        }) => {
-          confidenceLabel: string;
-          privacyNote: string;
-          recommendedFollowup: string;
-          relationshipContext: string;
-          summary: string;
-        };
-      };
-    }) => ReturnType<typeof serviceModule.createOrbitAgentChatContextArtifactService>
-  )({
-    chatService,
-    fallbackService: createOrbitAgentArtifactPreviewService(),
-    followupContextGenerator: {
-      generate(input) {
-        generatorCalls.push(input);
-
-        return {
-          confidenceLabel: "generated follow-up context",
-          privacyNote: "Source-backed context only.",
-          recommendedFollowup:
-            "Generated next step: review the Aoba Technologies evidence before any send.",
-          relationshipContext:
-            "Generated context: Aoba Technologies is the resolved seeded relationship.",
-          summary: `generated-followup:${input.selectedConversation.conversationId}:${input.relationship.organization}`,
-        };
+// Sprint 0104: the legacy chat store is retired. Without an actor and without an
+// injected thread source, chat.context must not reach for a workspace-wide chat read.
+test("chat.context without an actor or thread source falls back instead of reading the retired chat store", async () => {
+  const previous = { mode: process.env.ORBIT_MODULE_MODE, feature: process.env.ORBIT_FEATURE_MODE };
+  process.env.ORBIT_MODULE_MODE = "live";
+  process.env.ORBIT_FEATURE_MODE = "live";
+  try {
+    const serviceModule = await import(
+      "../../features/orbit-ai/chat-context-artifact-service"
+    );
+    const fallbackCalls: string[] = [];
+    const preview = createOrbitAgentArtifactPreviewService();
+    const service = serviceModule.createOrbitAgentChatContextArtifactService({
+      fallbackService: {
+        createArtifactTask(request) {
+          fallbackCalls.push(request.kind);
+          return preview.createArtifactTask(request);
+        },
+        getArtifactTask: (request) => preview.getArtifactTask(request),
       },
-    },
-  });
-  const seeded = seededConversationCase(1);
+    });
+    const result = await service.createArtifactTask({
+      kind: "relationship_chat_context",
+      locale: "zh",
+      query: "帮我整理山田千寻的回复上下文",
+    });
 
-  const result = await service.createArtifactTask({
-    kind: "relationship_chat_context",
-    locale: "en",
-    query: `Summarize my relationship context with ${seeded.contact.displayName} at ${seeded.contact.organization}.`,
-    toolArguments: {
-      contactName: seeded.contact.displayName,
-      conversationId: "missing-seeded-followup-conversation",
-    },
-  });
-  const resultText = JSON.stringify(result);
-
-  assert.equal(result.success, true);
-  assert.equal(result.data?.task.conversationId, seeded.conversation.id);
-  assert.equal(result.data?.result.status, "ready");
-  assert.equal(generatorCalls.length, 1);
-  assert.equal(
-    generatorCalls[0]?.selectedConversation.conversationId,
-    seeded.conversation.id,
-  );
-  assert.equal(
-    generatorCalls[0]?.relationship.organization,
-    seeded.contact.organization,
-  );
-  assert.ok((generatorCalls[0]?.resolution.score ?? 0) >= 0.7);
-  assert.match(
-    result.data?.result.generatedView?.summary ?? "",
-    new RegExp(
-      `generated-followup:${seeded.conversation.id}:${seeded.contact.organization}`.replace(
-        /[.*+?^${}()|[\]\\]/g,
-        "\\$&",
-      ),
-    ),
-  );
-  assert.doesNotMatch(
-    resultText,
-    /No mock chat conversation fixture matches that conversation id/,
-  );
-});
-
-test("chat.context default generator renders a seeded contact as a participant-facing relationship brief", async () => {
-  const workspaceId = "workspace:orbit-ai-chat-context-aoba-brief-test";
-  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
-
-  await seedGeneratedRelationshipFixturesIntoLiveStore({
-    now: () => "2026-07-01T19:00:00.000Z",
-    store,
-    workspaceId,
-  });
-
-  const chatService = createLiveChatConversationMessageService({
-    provider: createStorageChatConversationMessageProvider({
-      sourceLabel: "Orbit AI Aoba relationship brief live storage",
-      store,
-      workspaceId,
-    }),
-  });
-  const serviceModule = await import(
-    "../../features/orbit-ai/chat-context-artifact-service"
-  );
-  const service = serviceModule.createOrbitAgentChatContextArtifactService({
-    chatService,
-    fallbackService: createOrbitAgentArtifactPreviewService(),
-  });
-  const seeded = seededConversationCase(1);
-
-  const result = await service.createArtifactTask({
-    kind: "relationship_chat_context",
-    locale: "zh",
-    query: `总结和${seeded.contact.displayName}在${seeded.contact.organization}的关系上下文`,
-    toolArguments: {
-      contactName: seeded.contact.displayName,
-      conversationId: "missing-seeded-followup-conversation",
-    },
-  });
-  assert.equal(result.success, true);
-
-  if (result.success !== true) {
-    throw new Error("Expected Aoba relationship context artifact to resolve.");
+    assert.deepEqual(fallbackCalls, ["relationship_chat_context"]);
+    assert.equal(result.success, true);
+    assert.equal(result.data?.result.safety.liveDatabaseReadExecuted, false);
+  } finally {
+    if (previous.mode === undefined) delete process.env.ORBIT_MODULE_MODE;
+    else process.env.ORBIT_MODULE_MODE = previous.mode;
+    if (previous.feature === undefined) delete process.env.ORBIT_FEATURE_MODE;
+    else process.env.ORBIT_FEATURE_MODE = previous.feature;
   }
-
-  const generatedView = result.data.result.generatedView;
-  const summary = generatedView?.summary ?? "";
-  const sourceBody = generatedView?.sections[0]?.body ?? "";
-  const relationshipItem = generatedView?.sections[0]?.items[0];
-  const recentMessageItems = generatedView?.sections[1]?.items ?? [];
-  const recentMessageActionLabels = recentMessageItems.map(
-    (item) => item.actions[0]?.label ?? "",
-  );
-  const generatedText = JSON.stringify(generatedView);
-
-  assert.equal(result.data.task.conversationId, seeded.conversation.id);
-  assert.equal(result.data.result.status, "ready");
-  assert.ok(Number(artifactMetadataValue(relationshipItem, "匹配分")) >= 0.7);
-  assert.equal(artifactMetadataValue(relationshipItem, "来源"), "来自已保存的关系聊天");
-  assert.match(
-    artifactMetadataValue(relationshipItem, "技术来源"),
-    /Orbit AI Aoba relationship brief live storage/,
-  );
-  assert.match(sourceBody, /来自已保存的关系聊天/);
-  assert.doesNotMatch(sourceBody, /live storage|Postgres|Orbit AI Aoba/i);
-  assert.match(summary, new RegExp(seeded.contact.displayName));
-  assert.match(summary, new RegExp(seeded.contact.organization ?? ""));
-  assert.match(summary, /为什么认识|关系/);
-  assert.match(summary, /关系来源：2026年\d{1,2}月\d{1,2}日首条保存聊天：/);
-  assert.match(summary, /最新上下文|最近/);
-  assert.match(summary, /确认/);
-  assert.match(summary, /不会发送|不会创建日程/);
-  assert.match(
-    relationshipItem?.body ?? "",
-    new RegExp(seeded.contact.displayName),
-  );
-  assert.match(
-    relationshipItem?.body ?? "",
-    /2026年\d{1,2}月\d{1,2}日首条保存聊天/,
-  );
-  assert.match(relationshipItem?.subtitle ?? "", /确认/);
-  assert.match(generatedText, /互动|需求|跟进|确认/u);
-  assert.doesNotMatch(
-    generatedText,
-    /needs_follow_up|direct relationship match|scored relationship match|由直接关系匹配生成|由关系匹配分生成/,
-  );
-  assert.doesNotMatch(generatedText, /Orbit operator|2026-06-\d{2}T\d{2}:\d{2}:\d{2}/);
-  assert.equal(occurrences(generatedText, /为什么认识/g), 1);
-  assert.equal(occurrences(generatedText, /最新上下文/g), 1);
-  assert.deepEqual(
-    relationshipItem?.actions.map((action) => action.label),
-    ["确认并生成跟进建议", "暂不继续", "复核关系上下文"],
-  );
-  assert.equal(
-    new Set(recentMessageActionLabels).size,
-    recentMessageActionLabels.length,
-  );
-  assert.equal(recentMessageActionLabels.includes("复核上下文"), false);
-  assert.match(
-    recentMessageActionLabels[0] ?? "",
-    /复核 \d{1,2}月\d{1,2}日/,
-  );
-  assert.doesNotMatch(
-    summary,
-    /conversation_(?:seed_)?\d+|message_\d+|生成跟进上下文消息/,
-  );
-  assert.doesNotMatch(
-    generatedText,
-    /Review source evidence before recording another live-storage message|Follow up about .* concrete next step/,
-  );
 });
 
 test("default Orbit Agent API resolves Aoba relationship context for product deep links", async () => {

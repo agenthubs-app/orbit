@@ -9,7 +9,6 @@ import type {
   ChatMessage,
   ChatMessageThreadPayload,
 } from "../chat/contract";
-import { createChatConversationMessageService } from "../chat/service-factory";
 import type {
   ContactDetail,
   ContactDetailEvidence,
@@ -2163,8 +2162,10 @@ export function createOrbitAgentChatContextArtifactService(input: {
   const actorId = input.actorId?.trim() || null;
   const fallbackService =
     input.fallbackService ?? createOrbitAgentArtifactPreviewService();
-  const chatService =
-    input.chatService ?? createChatConversationMessageService();
+  // The retired legacy chat store has no live thread source any more (Sprint
+  // 0104). Only an explicitly injected thread source (the mock-mode demo) is
+  // consulted; without an actor and without one, the request falls back.
+  const chatService = input.chatService ?? null;
   const contactDetailService =
     input.contactDetailService ?? createContactDetailTagStatusService("live");
   const contactsService =
@@ -2192,6 +2193,10 @@ export function createOrbitAgentChatContextArtifactService(input: {
           query,
           request,
         });
+      }
+
+      if (!chatService) {
+        return fallbackService.createArtifactTask(request);
       }
 
       const listResult = chatService.listConversations({

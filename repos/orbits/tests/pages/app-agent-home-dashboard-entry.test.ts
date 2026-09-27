@@ -973,7 +973,6 @@ stub("features/events/event-operations/repository.ts", {
 for (const relativePath of [
   "app/(app)/app/home/compose-app-home-from-previously-approved-mock-first-capabilities/home-route-view-model.tsx",
   "features/events/canonical-participant-event-journeys.ts",
-  "app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-route-view-model.ts",
 ]) {
   stub(relativePath, new Proxy({}, { get() { throw new Error("old home/chat/journey forbidden"); } }));
 }

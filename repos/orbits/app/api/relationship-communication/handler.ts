@@ -211,3 +211,24 @@ export function createConversationReadPostHandler(
     );
   };
 }
+
+export function createConversationDraftGetHandler(
+  dependencies: RelationshipCommunicationHandlerDependencies = {},
+) {
+  return async (request: Request, context: DynamicContext) => {
+    const { id = "" } = await context.params;
+    return withService(request, dependencies, async (service) => service.getReplyDraft(id));
+  };
+}
+
+export function createConversationDraftPutHandler(
+  dependencies: RelationshipCommunicationHandlerDependencies = {},
+) {
+  return async (request: Request, context: DynamicContext) => {
+    const body = await readBody(request);
+    const { id = "" } = await context.params;
+    return withService(request, dependencies, async (service) =>
+      service.saveReplyDraft({ body: body.body, conversationId: id }),
+    );
+  };
+}

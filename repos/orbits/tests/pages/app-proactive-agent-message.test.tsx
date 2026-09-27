@@ -40,34 +40,19 @@ async function firstProactiveMessageId(): Promise<string> {
 // 归并进 `/app/agent`）。同一条保障由下面那条 `/app/agent` 用例承担。
 
 test("/app/agent ignores obsolete fixture proactive ids", async () => {
-  const proactive = await firstProactiveMessageId();
-  const { loadAppChatRouteViewModel } = await import(
-    "../../app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-route-view-model"
-  );
-  const { chatRouteToOrbitAgentViewModel } = await import(
-    "../../app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-view-model-adapter"
+  assert.ok(await firstProactiveMessageId());
+  const { createOrbitAgentStarterViewModel } = await import(
+    "../../app/(app)/app/orbit-agent-route-view-model"
   );
   const { IOrbitShell } = await import(
     "../../app/(app)/app/agent/iorbit-0918/iorbit-shell"
   );
-  const routeModel = await loadAppChatRouteViewModel(
-    { proactive } as unknown as {
-      conversation?: string;
-      conversationId?: string;
-    },
-    { actorId: "account:test-proactive-agent" },
-  );
-
-  assert.equal(routeModel.state, "success");
-  if (routeModel.state !== "success") {
-    return;
-  }
 
   const html = renderToStaticMarkup(
     <IOrbitShell
       home={null}
       initialDeepLink
-      viewModel={chatRouteToOrbitAgentViewModel(routeModel)}
+      viewModel={createOrbitAgentStarterViewModel()}
     />,
   );
 
@@ -79,17 +64,12 @@ test("/app/agent ignores obsolete fixture proactive ids", async () => {
 });
 
 test("proactive route composition stays out of API routes and presenter-only files", () => {
-  const chatRouteSource = source(
-    "app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-route-view-model.ts",
-  );
   const agentPageSource = source("app/(app)/app/agent/page.tsx");
 
-  assert.match(agentPageSource, /loadAppChatRouteViewModel/);
-  // iOrbit 任务 6a：`/app/chat` 路由已整条删除（此前是 `/app/agent` 重定向），
-  // 对话壳统一在 agent；只剩这两个仍被 `agent/page.tsx` 引用的组合文件。
-  assert.doesNotMatch(agentPageSource, /app\/api/);
+  // Sprint 0104：旧 chat 组合文件已删除，agent 页只用 starter view model。
+  assert.doesNotMatch(agentPageSource, /app\/api\/(?!_shared)/);
   assert.doesNotMatch(
-    chatRouteSource,
-    /loadOrbitAiProactiveCalendarMessagesForApp|createAsyncRelationshipConversationService/,
+    agentPageSource,
+    /loadOrbitAiProactiveCalendarMessagesForApp|createAsyncRelationshipConversationService|loadAppChatRouteViewModel/,
   );
 });

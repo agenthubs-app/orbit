@@ -144,22 +144,6 @@ import {
   REMINDER_SCHEDULE_NOTIFICATION_MOCK_SLUG,
 } from "../../../../features/notifications/reminder-schedule-and-notification-mock/debug-view";
 import {
-  ChatConversationAndMessageMockDemo,
-  CHAT_CONVERSATION_AND_MESSAGE_MOCK_SLUG,
-} from "../../../../features/chat/chat-conversation-and-message-mock/debug-view";
-import {
-  ChatWritingAssistMockDemo,
-  CHAT_WRITING_ASSIST_MOCK_SLUG,
-} from "../../../../features/chat/chat-writing-assist-mock/debug-view";
-import {
-  ChatSummaryExtractionMockDemo,
-  CHAT_SUMMARY_EXTRACTION_MOCK_SLUG,
-} from "../../../../features/chat/chat-summary-and-extraction-mock/debug-view";
-import {
-  ChatPrivacyControlsMockDemo,
-  CHAT_PRIVACY_CONTROLS_MOCK_SLUG,
-} from "../../../../features/chat/chat-privacy-controls-mock/debug-view";
-import {
   DashboardAggregateMockDemo,
   DASHBOARD_AGGREGATE_MOCK_SLUG,
 } from "../../../../features/dashboard/dashboard-aggregate-mock/debug-view";
@@ -345,22 +329,6 @@ export default async function CapabilityDemoPage({
 
   if (slug === REMINDER_SCHEDULE_NOTIFICATION_MOCK_SLUG) {
     return <ReminderScheduleNotificationMockDemo />;
-  }
-
-  if (slug === CHAT_CONVERSATION_AND_MESSAGE_MOCK_SLUG) {
-    return <ChatConversationAndMessageMockDemo />;
-  }
-
-  if (slug === CHAT_WRITING_ASSIST_MOCK_SLUG) {
-    return <ChatWritingAssistMockDemo />;
-  }
-
-  if (slug === CHAT_SUMMARY_EXTRACTION_MOCK_SLUG) {
-    return <ChatSummaryExtractionMockDemo />;
-  }
-
-  if (slug === CHAT_PRIVACY_CONTROLS_MOCK_SLUG) {
-    return <ChatPrivacyControlsMockDemo />;
   }
 
   if (slug === DASHBOARD_AGGREGATE_MOCK_SLUG) {

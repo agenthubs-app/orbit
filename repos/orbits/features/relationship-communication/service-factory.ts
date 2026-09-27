@@ -15,9 +15,11 @@ function unavailableService(message: string): RelationshipCommunicationService {
     getConversation: unavailable,
     getEligibility: unavailable,
     getInvitationPreview: unavailable,
+    getReplyDraft: unavailable,
     listConversations: unavailable,
     markConversationRead: unavailable,
     revokeContactBinding: unavailable,
+    saveReplyDraft: unavailable,
     sendMessage: unavailable,
   } as RelationshipCommunicationService;
 }

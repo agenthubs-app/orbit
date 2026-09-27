@@ -42,8 +42,7 @@ import {
 } from "../shared/storage/configured-live-record-store";
 import { resolveLiveDatabaseConnectionConfig } from "../shared/storage/live-database-config";
 import { runOrbitRecordsMigration } from "../shared/storage/migrations";
-import { seedGeneratedRelationshipFixturesIntoLiveStore } from "../shared/storage/seed-generated-fixtures";
-import { MOCK_FIXTURE_COLLECTION_NAMES } from "../shared/mock/fixtures";
+import { LIVE_SEED_COLLECTION_NAMES, seedGeneratedRelationshipFixturesIntoLiveStore } from "../shared/storage/seed-generated-fixtures";
 import { loadLocalEnv } from "./load-local-env";
 import { ensureDemoCanonicalMemberships } from "./demo-canonical-memberships";
 import { buildDemoOrganizerProjection } from "./demo-organizer-projection";
@@ -304,7 +303,7 @@ async function main(): Promise<void> {
     });
     const generatedSeed = await seedGeneratedRelationshipFixturesIntoLiveStore({
       collectionNames: existingEvents.length === 0
-        ? MOCK_FIXTURE_COLLECTION_NAMES
+        ? LIVE_SEED_COLLECTION_NAMES
         : ["accounts", "profiles", "organizers"],
       store,
       workspaceId,

@@ -4,7 +4,7 @@ import { useOrbitLanguage } from "../orbit-language-context";
 import { formatOrbitDateTime } from "../orbit-datetime";
 import { NotificationDeliverySettings } from "../settings/notification-delivery-settings";
 import { Avatar } from "../orbit-reference-primitives";
-import { BoundedMessageReadError, readMessageCards, readMessageWindow, confirmMessageWindowRead, sendWindowMessage, type MessageCardPageView, type MessageWindowView } from "./bounded-contact-messages-view-model";
+import { BoundedMessageReadError, readMessageCards, readMessageWindow, confirmMessageWindowRead, readReplyDraft, saveReplyDraft, sendWindowMessage, type MessageCardPageView, type MessageWindowView } from "./bounded-contact-messages-view-model";
 
 /** List summaries and one selected history window are independent resources. */
 export function BoundedContactMessagesTab({ actorId, onIdentityChanged }: { actorId: string; onIdentityChanged: () => void }) {
@@ -21,6 +21,8 @@ export function BoundedContactMessagesTab({ actorId, onIdentityChanged }: { acto
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState(false);
+  const [draftState, setDraftState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const bodyEdited = useRef(false);
   const changed = useRef(onIdentityChanged); changed.current = onIdentityChanged;
   const pending = useRef<{ conversationId: string; body: string; id: string; version: string } | null>(null);
   const lifetime = useRef<AbortController | null>(null);
@@ -68,6 +70,31 @@ export function BoundedContactMessagesTab({ actorId, onIdentityChanged }: { acto
     document.addEventListener("visibilitychange", refresh);
     return () => { controller.abort(); clearInterval(timer); document.removeEventListener("visibilitychange", refresh); };
   }, [actorId, selected, historyCursor, attempt]);
+  // Load the saved reply draft once per opened conversation, unless the user
+  // already started typing.
+  useEffect(() => {
+    bodyEdited.current = false; setDraftState("idle");
+    if (!selected) return;
+    const controller = new AbortController();
+    void readReplyDraft(actorId, selected, controller.signal)
+      .then(draft => { if (!controller.signal.aborted && !bodyEdited.current && draft.body) setBody(draft.body); })
+      .catch(error => {
+        if (controller.signal.aborted) return;
+        if (error instanceof BoundedMessageReadError && [401,403].includes(error.status)) changed.current();
+      });
+    return () => controller.abort();
+  }, [actorId, selected]);
+  async function saveDraft() {
+    const controller = lifetime.current;
+    if (!detail || detail.id !== selected || !controller || controller.signal.aborted) return;
+    setDraftState("saving");
+    try { await saveReplyDraft(actorId, detail.id, body, controller.signal); if (!controller.signal.aborted) setDraftState("saved"); }
+    catch (error) {
+      if (controller.signal.aborted) return;
+      setDraftState("error");
+      if (error instanceof BoundedMessageReadError && [401,403].includes(error.status)) changed.current();
+    }
+  }
   useEffect(() => {
     if (!detail || detail.id !== selected || historyCursor) return;
     const remote = [...detail.messages].reverse().find(message => message.authorId !== actorId);
@@ -95,6 +122,8 @@ export function BoundedContactMessagesTab({ actorId, onIdentityChanged }: { acto
       await sendWindowMessage(actorId, request, controller.signal);
       if (controller.signal.aborted) return;
       pending.current = null; setBody(""); setHistoryCursor(null); setAttempt(n => n + 1);
+      // The sent text is no longer a draft; clearing is best-effort.
+      setDraftState("idle"); void saveReplyDraft(actorId, request.conversationId, "", controller.signal).catch(() => undefined);
     } catch (error) {
       if (!controller.signal.aborted) {
         setSendError(true);
@@ -120,8 +149,11 @@ export function BoundedContactMessagesTab({ actorId, onIdentityChanged }: { acto
         <div>{detail.nextCursor && <button className="btn btn-ghost" onClick={() => setHistoryCursor(detail.nextCursor)}>{t({ zh: "更早的消息", en: "Earlier messages" })}</button>}{historyCursor && <button className="btn btn-ghost" onClick={() => setHistoryCursor(null)}>{t({ zh: "返回最新消息", en: "Latest messages" })}</button>}</div>
         {readError && <p role="alert">{t({ zh: "已读状态尚未保存，下次刷新会重试。", en: "Read state was not saved. It will retry." })}</p>}
         <div className="ri-msgs">{detail.messages.map(message => <article className={`ri-msg${message.authorId===actorId ? " is-me" : ""}`} key={message.id}><div className="ri-msg-meta"><strong className="ri-msg-sender">{message.author}</strong><time className="ri-msg-time">{formatOrbitDateTime(message.at,language)}</time></div><p className="ri-msg-body" style={{overflowWrap:"anywhere"}}>{message.body}</p></article>)}</div>
-        <div className="ri-composer"><label className="ri-composer-label">{t({ zh: "回复消息", en: "Reply" })}</label><textarea className="field ri-composer-input" aria-label={t({ zh: "回复消息", en: "Reply" })} value={body} onChange={e => setBody(e.target.value)} disabled={sending || Boolean(pending.current)} />
+        <div className="ri-composer"><label className="ri-composer-label">{t({ zh: "回复消息", en: "Reply" })}</label><textarea className="field ri-composer-input" aria-label={t({ zh: "回复消息", en: "Reply" })} value={body} onChange={e => { bodyEdited.current = true; setDraftState("idle"); setBody(e.target.value); }} disabled={sending || Boolean(pending.current)} />
           {sendError && <p role="alert">{t({ zh: "尚未确认送达，重试不会重复发送。", en: "Delivery unconfirmed. Retrying will not duplicate it." })}</p>}
+          {draftState === "saved" && <p role="status">{t({ zh: "草稿已保存，只有你能看到。", en: "Draft saved. Only you can see it." })}</p>}
+          {draftState === "error" && <p role="alert">{t({ zh: "草稿没有保存，请重试。", en: "Draft was not saved. Try again." })}</p>}
+          <button className="btn btn-ghost" disabled={sending || Boolean(pending.current) || draftState === "saving"} onClick={() => void saveDraft()}>{t({ zh: draftState === "saving" ? "保存中…" : "保存草稿", en: draftState === "saving" ? "Saving…" : "Save draft" })}</button>
           <button className="btn btn-primary" disabled={sending || (!body.trim() && !pending.current)} onClick={() => void send()}>{t({ zh: sending ? "发送中…" : sendError ? "重试发送" : "发送", en: sending ? "Sending…" : sendError ? "Retry send" : "Send" })}</button>
         </div>
       </div>}

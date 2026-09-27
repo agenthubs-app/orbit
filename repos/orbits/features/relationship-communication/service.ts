@@ -9,6 +9,7 @@ import type {
   RelationshipInvitationPreviewDTO,
   RelationshipMessageDTO,
   RelationshipReadReceiptDTO,
+  RelationshipReplyDraftDTO,
 } from "../../shared/contract/relationship-communication";
 import type {
   LiveRecord,
@@ -22,6 +23,12 @@ export const RELATIONSHIP_COMMUNICATION_COLLECTIONS = {
   messages: "relationship_communication_messages",
   reads: "relationship_communication_reads",
 } as const;
+
+// Reply drafts share the draft collection the relationship inbox already uses;
+// one row per (conversation, account), readable only by that account.
+export const RELATIONSHIP_REPLY_DRAFT_COLLECTION = "relationshipConversationDrafts";
+export const RELATIONSHIP_REPLY_DRAFT_TARGET_TYPE = "relationship_reply_draft";
+const REPLY_DRAFT_MAX_LENGTH = 10_000;
 
 export interface RelationshipCommunicationActor {
   accountId: string;
@@ -67,6 +74,11 @@ export interface SendRelationshipMessageInput {
   requestId: string;
 }
 
+export interface SaveRelationshipReplyDraftInput {
+  body: unknown;
+  conversationId: string;
+}
+
 export interface MarkRelationshipConversationReadInput {
   conversationId: string;
   lastReadMessageId: string;
@@ -82,11 +94,13 @@ export interface RelationshipCommunicationService {
   getConversation(conversationId: string): Promise<RelationshipConversationDTO>;
   getEligibility(contactId: string): Promise<RelationshipEligibilityDTO>;
   getInvitationPreview(token: string): Promise<RelationshipInvitationPreviewDTO>;
+  getReplyDraft(conversationId: string): Promise<RelationshipReplyDraftDTO>;
   listConversations(input?: { limit?: number; cursor?: string }): Promise<RelationshipConversationListDTO>;
   markConversationRead(
     input: MarkRelationshipConversationReadInput,
   ): Promise<RelationshipReadReceiptDTO>;
   revokeContactBinding(contactId: string): Promise<RelationshipEligibilityDTO>;
+  saveReplyDraft(input: SaveRelationshipReplyDraftInput): Promise<RelationshipReplyDraftDTO>;
   sendMessage(
     input: SendRelationshipMessageInput,
   ): Promise<RelationshipDeliveryReceiptDTO>;
@@ -286,6 +300,10 @@ function messageRecordId(
   return `relationship-message:${digest(conversationId, senderAccountId, requestId)}`;
 }
 
+function replyDraftRecordId(conversationId: string, accountId: string): string {
+  return `relationship-reply-draft:${digest(conversationId, accountId)}`;
+}
+
 function readRecordId(conversationId: string, accountId: string): string {
   return `relationship-read:${digest(conversationId, accountId)}`;
 }
@@ -443,6 +461,21 @@ export function createRelationshipCommunicationService({
       unreadCount,
       updatedAt: payload.updatedAt,
     };
+  }
+
+  // Point reads only: the conversation row and its binding. Drafts follow the
+  // same eligibility as the conversation view, without loading its history.
+  async function activeConversationForDraft(conversationIdInput: string): Promise<ConversationPayload> {
+    const conversationId = required(conversationIdInput, "Conversation");
+    const conversation = conversationFrom(await store.getRecord({
+      workspaceId: scopedWorkspaceId,
+      collectionName: RELATIONSHIP_COMMUNICATION_COLLECTIONS.conversations,
+      recordId: conversationId,
+    }));
+    if (!conversation || !hasParticipant(conversation, accountId) || !(await currentBindingForConversation(conversation))) {
+      throw new Error("This conversation is not available to the signed-in account.");
+    }
+    return conversation;
   }
 
   async function conversationDto(payload: ConversationPayload): Promise<RelationshipConversationDTO> {
@@ -925,6 +958,53 @@ export function createRelationshipCommunicationService({
         message: messageDto(persisted),
         qualificationVersion: requestedVersion,
       };
+    },
+
+    async getReplyDraft(conversationIdInput) {
+      const conversation = await activeConversationForDraft(conversationIdInput);
+      const stored = await store.getRecord({
+        workspaceId: scopedWorkspaceId,
+        collectionName: RELATIONSHIP_REPLY_DRAFT_COLLECTION,
+        recordId: replyDraftRecordId(conversation.conversationId, accountId),
+        userId: accountId,
+      });
+      const payload = stored?.payload;
+      const owned = payload && payload.accountId === accountId && payload.conversationId === conversation.conversationId;
+      return {
+        body: owned && typeof payload.body === "string" ? payload.body : "",
+        conversationId: conversation.conversationId,
+        updatedAt: owned && typeof payload.updatedAt === "string" ? payload.updatedAt : null,
+      };
+    },
+
+    async saveReplyDraft(input) {
+      if (typeof input.body !== "string" || input.body.length > REPLY_DRAFT_MAX_LENGTH) {
+        throw new Error("Draft body must be text of at most 10000 characters.");
+      }
+      const conversation = await activeConversationForDraft(input.conversationId);
+      const updatedAt = now();
+      const payload = {
+        accountId,
+        body: input.body,
+        conversationId: conversation.conversationId,
+        kind: "relationship_reply_draft",
+        updatedAt,
+      };
+      await store.upsertRecord({
+        ...record({
+          collectionName: RELATIONSHIP_REPLY_DRAFT_COLLECTION,
+          payload,
+          recordId: replyDraftRecordId(conversation.conversationId, accountId),
+          targetId: conversation.conversationId,
+          timestamp: updatedAt,
+          userId: accountId,
+          workspaceId: scopedWorkspaceId,
+        }),
+        searchText: "",
+        sourceLabel: "Orbit relationship reply draft",
+        targetType: RELATIONSHIP_REPLY_DRAFT_TARGET_TYPE,
+      });
+      return { body: input.body, conversationId: conversation.conversationId, updatedAt };
     },
 
     async markConversationRead(input) {

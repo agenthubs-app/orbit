@@ -10,7 +10,6 @@ import { createMemoryDashboardProvider } from "../support/memory-dashboard-provi
 import { createStorageAppBootstrapProvider } from "../../features/bootstrap/storage/bootstrap-live-record-provider";
 import { createStorageRelationshipValueProvider } from "../../features/analysis/storage/relationship-value-live-record-provider";
 import { createStorageSourceConsistencyProvenanceAuditProvider } from "../../features/audit/storage/source-consistency-provenance-audit-live-record-provider";
-import { createStorageChatConversationMessageProvider } from "../../features/chat/storage/chat-conversation-live-record-provider";
 import { createStoragePermissionStateProvider } from "../../features/permissions/storage/permission-live-record-provider";
 import { createStorageEventValueRecommendationProvider } from "../../features/recommendations/storage/event-value-live-record-provider";
 import { createStorageEventRecommendationProvider } from "../../features/recommendations/storage/event-recommendation-live-record-provider";
@@ -289,10 +288,6 @@ test("dashboard and connections keep two accounts isolated inside one workspace"
     [secondaryConnectionId],
   );
 
-  const chatProvider = createStorageChatConversationMessageProvider({
-    store,
-    workspaceId,
-  });
   const permissionProvider = createStoragePermissionStateProvider({
     store,
     workspaceId,
@@ -310,8 +305,6 @@ test("dashboard and connections keep two accounts isolated inside one workspace"
     workspaceId,
   });
   const [
-    primaryChat,
-    secondaryChat,
     primaryPermissions,
     secondaryPermissions,
     primaryEventValues,
@@ -319,8 +312,6 @@ test("dashboard and connections keep two accounts isolated inside one workspace"
     primaryAudit,
     secondaryAudit,
   ] = await Promise.all([
-    chatProvider.readChatGraphForAccount!(primaryAccountId),
-    chatProvider.readChatGraphForAccount!(secondaryAccountId),
     permissionProvider.readPermissionGraphForAccount!(primaryAccountId),
     permissionProvider.readPermissionGraphForAccount!(secondaryAccountId),
     eventValueProvider.listEventsForAccount!(primaryAccountId),
@@ -329,8 +320,6 @@ test("dashboard and connections keep two accounts isolated inside one workspace"
     auditProvider.readAuditGraphForAccount!(secondaryAccountId),
   ]);
 
-  assert.ok(primaryChat.conversations.length > 0);
-  assert.deepEqual(secondaryChat.conversations, []);
   assert.ok(primaryPermissions.permissions.length > 0);
   assert.deepEqual(secondaryPermissions.permissions, []);
   assert.equal(primaryEventValues.length, defaultMockFixtures.events.length);

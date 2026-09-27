@@ -13,12 +13,18 @@ import {
 } from "../../shared/storage/seed-generated-fixtures";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
 
+// Sprint 0104: the retired legacy chat collections are no longer seeded.
+const RETIRED_LEGACY_CHAT_COLLECTIONS = ["conversations", "messages"] as const;
+const LIVE_SEED_COLLECTIONS = MOCK_FIXTURE_COLLECTION_NAMES.filter(
+  (name) => !(RETIRED_LEGACY_CHAT_COLLECTIONS as readonly string[]).includes(name),
+);
+
 function fixtureCollection(name: MockFixtureCollectionName) {
   return defaultMockFixtures[name];
 }
 
 function expectedFixtureRecordCount(): number {
-  return MOCK_FIXTURE_COLLECTION_NAMES.reduce(
+  return LIVE_SEED_COLLECTIONS.reduce(
     (total, collectionName) => total + fixtureCollection(collectionName).length,
     0,
   );
@@ -49,13 +55,20 @@ test("generated relationship live seed writes every default mock fixture collect
     GENERATED_FIXTURE_LIVE_SEED_EXPECTED_COLLECTIONS.map(
       (collection) => collection.collectionName,
     ),
-    MOCK_FIXTURE_COLLECTION_NAMES,
+    LIVE_SEED_COLLECTIONS,
   );
   assert.equal(firstSeed.totalRecords, expectedTotalRecords);
   assert.equal(secondSeed.totalRecords, expectedTotalRecords);
-  assert.deepEqual(seededCollections, [...MOCK_FIXTURE_COLLECTION_NAMES]);
+  assert.deepEqual(seededCollections, [...LIVE_SEED_COLLECTIONS]);
+  for (const collectionName of RETIRED_LEGACY_CHAT_COLLECTIONS) {
+    assert.equal(
+      store.listRecords({ limit: "unbounded", workspaceId, collectionName }).length,
+      0,
+      `${collectionName} is a retired legacy chat collection and must not be seeded`,
+    );
+  }
 
-  for (const collectionName of MOCK_FIXTURE_COLLECTION_NAMES) {
+  for (const collectionName of LIVE_SEED_COLLECTIONS) {
     const fixtureRecords = fixtureCollection(collectionName);
     const liveRecords = store.listRecords({
       limit: "unbounded",
@@ -150,27 +163,6 @@ test("generated relationship live seed writes every default mock fixture collect
     ),
   );
 
-  const expectedMessage001 = defaultMockFixtures.messages.find(
-    (message) => message.id === "message_0001",
-  );
-  const message001 = store.getRecord({
-    workspaceId,
-    collectionName: "messages",
-    recordId: "message_0001",
-  });
-  assert.equal(message001?.targetType, "message");
-  assert.equal(message001?.targetId, "message_0001");
-  assert.equal(
-    message001?.payload.conversationId,
-    expectedMessage001?.conversationId,
-  );
-
-  const referencedConversation = store.getRecord({
-    workspaceId,
-    collectionName: "conversations",
-    recordId: expectedMessage001?.conversationId ?? "",
-  });
-  assert.equal(referencedConversation?.targetType, "conversation");
 
   const agentAction001 = store.getRecord({
     workspaceId,
@@ -309,4 +301,28 @@ test("generated fixture verification rejects any corrupted generated event name"
       /events event_02 name should match defaultMockFixtures/,
     );
   }
+});
+
+// Sprint 0104: the retired legacy chat collections are not seeded any more.
+test("generated live seed does not write the retired legacy chat collections", async () => {
+  const store = createMemoryLiveRecordStore();
+  const workspaceId = "workspace:generated-fixture-live-seed-legacy-chat-test";
+  const result = await seedGeneratedRelationshipFixturesIntoLiveStore({
+    now: () => "2026-09-27T00:00:00.000Z",
+    store,
+    workspaceId,
+  });
+
+  for (const collectionName of RETIRED_LEGACY_CHAT_COLLECTIONS) {
+    assert.equal(
+      store.listRecords({ limit: "unbounded", workspaceId, collectionName }).length,
+      0,
+      `${collectionName} must not be seeded`,
+    );
+    assert.equal(
+      result.collections.some((collection) => collection.collectionName === collectionName),
+      false,
+    );
+  }
+  assert.ok(store.listRecords({ limit: "unbounded", workspaceId, collectionName: "contacts" }).length > 0);
 });

@@ -2,7 +2,8 @@
  * Agent 页 route adapter。
  *
  * route 只负责挂载样式/runtime，并把 live-capable Orbit AI 聊天入口挂到 `/app/agent`。
- * 数据仍走 live 的 chat route view model；视觉组件采用 Orbit_0918 的 iOrbit 壳
+ * 欢迎区的示例问题来自固定的 starter view model（旧 chat 已于 Sprint 0104 退役，
+ * 服务端不再读取旧 chat 数据）；视觉组件采用 Orbit_0918 的 iOrbit 壳
  * （`agent/iorbit-0918/iorbit-shell.tsx`）：home 分支渲染 `iorbit-home.tsx`，chat 分支渲染
  * `iorbit-chat.tsx`。旧的 `OrbitRealAgent` 已于任务 6a 删除。
  */
@@ -10,23 +11,19 @@ import { getOrbitServerLanguage, localizeOrbitTree } from "../orbit-language-ser
 import type { OrbitLanguage } from "../orbit-language-core";
 import { OrbitReferenceStyles } from "../orbit-reference-styles";
 import { OrbitVisualFreezeRuntime } from "../orbit-visual-freeze-runtime";
-import { StateView } from "../../../../shared/ui/state-view";
 import { auth } from "../../../../auth";
 import { resolveAuthenticatedApiActorFromSession } from "../../../api/_shared/authenticated-actor";
 import { redirect } from "next/navigation";
-import {
-  loadAppChatRouteViewModel,
-  type AppChatRouteStateViewModel,
-  type AppChatSearchParams,
-} from "../chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-route-view-model";
-import { composeOrbitAgentEntryViewModel } from "../chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-view-model-adapter";
+import { createOrbitAgentStarterViewModel } from "../orbit-agent-route-view-model";
 import { IOrbitShell } from "./iorbit-0918/iorbit-shell";
 import { loadAppHomeRouteViewModel } from "../home/compose-app-home-from-previously-approved-mock-first-capabilities/home-route-view-model";
 import { presentOrbitEvents } from "../orbit-event-presentation";
 import { readRuntimeEventRegistrationStates } from "../../../../features/events/registration/runtime";
 import { resolveConfiguredActorEventCanonicalIds } from "../canonical-event-detail-view";
 
-export type AppAgentSearchParams = AppChatSearchParams & {
+export type AppAgentSearchParams = {
+  /** 历史会话深链（由 iOrbit 壳在客户端读取）。 */
+  session?: string | string[];
   /** `?history=1`：strategy / contacts 两屏页头的「◷ 历史记录」落点（任务 5）。 */
   history?: string | string[];
   lang?: string | string[];
@@ -46,48 +43,6 @@ async function getAgentPageLanguage(): Promise<OrbitLanguage> {
 
     throw error;
   }
-}
-
-function AgentRouteStateBoundary({
-  routeState,
-}: {
-  routeState: AppChatRouteStateViewModel;
-}) {
-  return (
-    <main
-      className="orbit-page"
-      data-orbit-route="app-agent-route-state"
-      style={{ background: "var(--bg)", minHeight: "100dvh", padding: 24 }}
-    >
-      <StateView
-        description={routeState.copy.description}
-        emptyState={routeState.copy.emptyState}
-        evidence={Array.from(routeState.evidenceIds)}
-        eyebrow="Orbit AI"
-        guardrail={routeState.copy.guardrail}
-        nextStep={routeState.copy.nextStep}
-        purpose={routeState.copy.purpose}
-        recoveryActions={[
-          {
-            href: "/app/agent",
-            id: "agent-recovery-reload",
-            label: "Reload Orbit AI",
-            recoveryCopy: routeState.copy.nextStep,
-          },
-          {
-            // iOrbit 任务 6a：`/app/chat` 已删除（路由归并）。对话记录与隐私控件现在
-            // 都在 iOrbit 的历史抽屉里，恢复链接因此指向 `/app/agent?history=1`。
-            href: "/app/agent?history=1",
-            id: "agent-recovery-chat",
-            label: "Open conversation history",
-            recoveryCopy:
-              "Open the iOrbit conversation history drawer to review past conversations and their records.",
-          },
-        ]}
-        title={routeState.copy.title}
-      />
-    </main>
-  );
 }
 
 function firstSearchParam(
@@ -129,9 +84,6 @@ export default async function AppAgentPage({
 
   const resolvedSearchParams = await searchParams;
   const requestedLanguage = languageSearchParam(resolvedSearchParams);
-  const routeModel = await loadAppChatRouteViewModel(resolvedSearchParams, {
-    actorId,
-  });
   // iOrbit 工作台首屏（dashboard）与旧 /app/home 同源的数据：账户、统计、活动旅程。
   const homeModel = await loadAppHomeRouteViewModel(undefined, {
     displayName:
@@ -168,18 +120,14 @@ export default async function AppAgentPage({
       ];
     }),
   );
-  const entryModel = composeOrbitAgentEntryViewModel(routeModel);
-  const language =
-    entryModel.state === "ready"
-      ? requestedLanguage ?? (await getAgentPageLanguage())
-      : "zh";
+  const viewModel = createOrbitAgentStarterViewModel();
+  const language = requestedLanguage ?? (await getAgentPageLanguage());
 
   return (
     <>
       <OrbitReferenceStyles />
       <OrbitVisualFreezeRuntime />
-      {entryModel.state === "ready" ? (
-        <div data-orbit-route="app-agent-route">
+      <div data-orbit-route="app-agent-route">
           <IOrbitShell
             initialDeepLink={Boolean(
               firstSearchParam(resolvedSearchParams, "q") ||
@@ -213,15 +161,9 @@ export default async function AppAgentPage({
                   )
                 : null
             }
-            viewModel={localizeOrbitTree(
-              entryModel.viewModel,
-              language,
-            )}
+            viewModel={localizeOrbitTree(viewModel, language)}
           />
-        </div>
-      ) : (
-        <AgentRouteStateBoundary routeState={entryModel.routeState} />
-      )}
+      </div>
     </>
   );
 }

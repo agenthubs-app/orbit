@@ -22,8 +22,6 @@
     "features/audit/storage/source-consistency-provenance-audit-live-record-provider.ts": 1,
     "features/auth/storage/auth-account-provisioning-provider.ts": 1,
     "features/bootstrap/storage/bootstrap-live-record-provider.ts": 1,
-    "features/chat/storage/async-relationship-conversation-live-record-provider.ts": 1,
-    "features/chat/storage/chat-conversation-live-record-provider.ts": 1,
     "features/connections/storage/connection-live-record-provider.ts": 8,
     "features/contacts/contact-actor-links/storage-provider.ts": 1,
     "features/contacts/introduction-records.ts": 3,
@@ -83,6 +81,18 @@
       "file": "features/connections/storage/connection-live-record-provider.ts",
       "delta": -1,
       "why": "single primary-key lookup now limit: 1"
+    },
+    {
+      "sprint": "0104",
+      "file": "features/chat/storage/async-relationship-conversation-live-record-provider.ts",
+      "delta": -1,
+      "why": "staged draft threads read only the actor's drafts with a row limit; legacy chat collections no longer read"
+    },
+    {
+      "sprint": "0104",
+      "file": "features/chat/storage/chat-conversation-live-record-provider.ts",
+      "delta": -1,
+      "why": "legacy chat storage provider deleted (message plan M1)"
     }
   ]
 }
