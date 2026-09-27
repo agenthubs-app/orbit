@@ -138,9 +138,9 @@ function Avatar({ name, size }: { name: string; size: 36 | 40 | 44 | 56 }) {
   return <View style={[styles.avatar, { width: size, height: size }]}><Text style={[styles.avatarText, { fontSize: size >= 56 ? 20 : size >= 44 ? 16 : size >= 40 ? 15 : 14 }]}>{initialFor(name)}</Text></View>;
 }
 
-function PersonRow({ person, onPress, trailing, size = 40, minHeight = 64 }: { person: AttendeeWorkspace["directory"][number]; onPress: () => void; trailing?: ReactNode; size?: 36 | 40 | 44; minHeight?: number }) {
+function PersonRow({ person, onPress, trailing, size = 40, minHeight = 64, divider = true }: { person: AttendeeWorkspace["directory"][number]; onPress: () => void; trailing?: ReactNode; size?: 36 | 40 | 44; minHeight?: number; divider?: boolean }) {
   const { styles } = useStyles();
-  return <Pressable accessibilityRole="button" accessibilityLabel={person.displayName} onPress={onPress} style={[styles.personRow, { minHeight }]}>
+  return <Pressable accessibilityRole="button" accessibilityLabel={person.displayName} onPress={onPress} style={[styles.personRow, { minHeight }, !divider && styles.noDivider]}>
     <Avatar name={person.displayName} size={size} />
     <View style={styles.personCopy}><Text style={styles.personName}>{person.displayName}</Text>{personRole(person) ? <Text style={styles.personRole}>{personRole(person)}</Text> : null}</View>
     {trailing}
@@ -190,7 +190,7 @@ function RecTab({ c, w, onOpen }: { c: LiveCopy; w: AttendeeWorkspace; onOpen: (
       const exchange = exchangeState(w, r.person.participantId);
       const actionable = exchange.kind === "none" || exchange.kind === "withdrawn_outgoing" || exchange.kind === "incoming";
       return <View key={r.person.participantId} style={styles.recCard}>
-        <PersonRow person={r.person} size={44} minHeight={44} onPress={() => onOpen(r.person.participantId)} trailing={<Text style={styles.matchBig}>{c.match(r.score)}</Text>} />
+        <PersonRow person={r.person} size={44} minHeight={44} divider={false} onPress={() => onOpen(r.person.participantId)} trailing={<Text style={styles.matchBig}>{c.match(r.score)}</Text>} />
         {r.reasons.length ? <Text style={styles.body}>{r.reasons.join(" ")}</Text> : null}
         <Pressable accessibilityRole="button" accessibilityLabel={`${c.recAction[exchange.kind]} · ${r.person.displayName}`} onPress={() => onOpen(r.person.participantId)} style={actionable ? styles.secondary : styles.pending}>
           <Text style={actionable ? styles.secondaryText : styles.pendingText}>{c.recAction[exchange.kind]}</Text>
@@ -340,6 +340,7 @@ export const useStyles = createThemedStyles(colors => {
     listHead: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: colors.hairline },
     listHeadPlain: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", minHeight: 22 },
     personRow: { flexDirection: "row", alignItems: "center", gap: 12, borderBottomWidth: 1, borderBottomColor: colors.hairline },
+    noDivider: { borderBottomWidth: 0 },
     personCopy: { flex: 1, gap: 2 },
     personName: { color: colors.ink, fontFamily: liveFont, fontSize: 15, lineHeight: 20, fontWeight: "700" },
     personRole: { color: colors.text3, fontFamily: liveFont, fontSize: 13, lineHeight: 18 },
