@@ -1,24 +1,23 @@
 /**
- * iOrbit 概览屏（Orbit_0918）。
+ * iOrbit 概览屏：报刊式改版（2026-09-27 定稿，原型 claude.ai/artifact/14nY6w6GDbW7cjpLNLgC6k）。
  *
- * JSX 逐元素来自 docs/designs/Orbit_0918/iOrbit.dc.html 第 46–253 行：
- *   49–55   标题行（iOrbit / 副标题 / 今天日期）
- *   57–74   提问输入 + 四枚 chips + 「打开对话」
- *   77–146  今日日程（78–110）与 日历（109–146）
- *   148–170 已报名活动
- *   172–193 建议与行动
- *   195–212 联系人机会
- *   214–236 本周推进
- *   237–252 继续对话
+ * 版式取代 docs/designs/Orbit_0918/iOrbit.dc.html 46–253 的七张等权卡片：
+ *   报头     iOrbit + 日期 + 一句导语（由真实计数拼成，不调模型）
+ *   左宽栏   今日要事：第 1 件是主稿，第 2、3 件是短讯，其余「还有 N 件」原地展开；
+ *            下面是追问条（原顶部大输入框 + 四枚 chip + 「打开对话」合并而来）
+ *   右窄栏   时间：选中日的时间线（今天带「现在」线）+ 紧凑月历
+ *   栏目区   本周推进 | 已报名活动 | 最近对话，无卡片边框、细线分栏
  *
- * 数据全部真实，设计 `renderVals`（820–907）里的 days / taskData / weekData /
- * selLabel / planDoneLabel 一概不用（计划「审阅修订」19、20）：
- *   - 已报名活动 / 本周目标：服务端注入的 home route view model
- *   - 今日日程 / 月历 / 联系人机会：`refreshHomeDashboardAction()` 的 D25 facts
- *   - 建议与行动：`POST /api/agent/signals?view=home`，行内 done / snooze 走
- *     `PATCH /api/agent/signals/{id}`（「审阅修订」10：写操作不得丢）
- *   - 本周推进进度：`GET /api/agent/ledger` 的真实状态
- *   - 继续对话：`GET /api/ai/conversations/sessions?limit=3`（「审阅修订」16）
+ * 今日要事的来源与排序：2 小时内开始的日程 → critical/high 信号 → 其余信号 →
+ * 跟进队列（仅在信号里没有 followup_due 时补位，避免同一件事出现两次）。
+ * 排序只看 severity 与真实时间戳，不用跟进队列的到期字段（到期时间被夹成「今天」的旧 bug）。
+ *
+ * 数据全部真实，写操作一个不丢：
+ *   - 已报名活动 / 目标：服务端注入的 home route view model
+ *   - 日程 / 月历 / 跟进：`refreshHomeDashboardAction()` 的 D25 facts
+ *   - 信号：`POST /api/agent/signals?view=home`，完成 / 明天提醒走 `PATCH /api/agent/signals/{id}`
+ *   - 本周推进进度：`GET /api/agent/ledger`
+ *   - 最近对话：`GET /api/ai/conversations/sessions?limit=3`
  * 无数据一律走空态文案，不伪造数字。
  */
 "use client";
@@ -49,6 +48,10 @@ import {
 } from "./iorbit-model";
 
 const TZ = "Asia/Tokyo";
+/** 日程在多久之内开始才进今日要事（Q6：2 小时）。 */
+const SOON_MS = 2 * 60 * 60 * 1000;
+/** 默认露出的要事条数：1 条主稿 + 2 条短讯。 */
+const VISIBLE_ITEMS = 3;
 
 type Loadable<T> = T | "pending" | "unavailable";
 
@@ -68,6 +71,8 @@ export interface IOrbitHomeProps {
   onOpenChat: () => void;
   onOpenHistory: () => void;
   onOpenSession: (sessionId: string) => void;
+  /** 覆盖点，仅测试使用：可注入的时钟（默认 `new Date()`，每分钟刷新）。 */
+  clock?: () => Date;
 }
 
 const isPersonalFact = (item: HomeFactsViewItem): item is HomeFactsPersonalItem =>
@@ -79,7 +84,7 @@ const isFollowupFact = (
 ): item is HomeFactsFollowupItem & { href: string | null } => "contactName" in item;
 
 interface ScheduleRow {
-  /** 全天项（或时间无法解析）：`time` 不是钟点，简报行不得把它当成开始时刻。 */
+  /** 全天项（或时间无法解析）：`time` 不是钟点。 */
   allDay: boolean;
   dayKey: string;
   id: string;
@@ -88,8 +93,29 @@ interface ScheduleRow {
   startMs: number;
   time: string;
   title: string;
-  tone: "a" | "b" | "c";
 }
+
+/** 今日要事的一条：主稿与短讯共用。 */
+interface TodayItem {
+  key: string;
+  /** 有时间压力（暖色只给它）。 */
+  hot: boolean;
+  title: string;
+  why: string | null;
+  proof: ReadonlyArray<readonly [string, string]>;
+  pills: ReadonlyArray<{ hot?: boolean; text: string }>;
+  primary: { href: string; label: string } | null;
+  ask: { label: string; prompt: string } | null;
+  /** 信号项才有：完成 / 明天提醒写回。 */
+  signalId: string | null;
+}
+
+const SEVERITY_RANK: Record<AgentTodaySignalView["severity"], number> = {
+  critical: 0,
+  high: 1,
+  low: 3,
+  medium: 2,
+};
 
 function parseHomeSessions(value: unknown): IOrbitHomeSession[] {
   if (typeof value !== "object" || value === null) return [];
@@ -124,19 +150,6 @@ function isLedgerEntries(value: unknown): value is { entries: readonly AgentLedg
   );
 }
 
-function initials(name: string): string {
-  const trimmed = name.trim();
-  if (!trimmed) return "?";
-  const ascii = trimmed.match(/[A-Za-z]+/gu);
-  if (ascii && ascii.length > 0) {
-    return ascii
-      .slice(0, 2)
-      .map((part) => part[0]!.toUpperCase())
-      .join("");
-  }
-  return trimmed.slice(0, 1);
-}
-
 /** 服务端错误体 `{error:{message}}`（沿用 `orbit-agent-today-workspace.tsx:29-40`）。 */
 function signalErrorMessage(value: unknown): string | null {
   if (
@@ -160,6 +173,26 @@ function snoozeUntilTomorrow(): string {
   return next.toISOString();
 }
 
+/** 报头旁的细线轨道：纯装饰（Q13）。 */
+function OrbitMark() {
+  return (
+    <svg aria-hidden className="ir-m-orbit" viewBox="0 0 44 26">
+      <ellipse
+        cx="22"
+        cy="13"
+        fill="none"
+        opacity=".55"
+        rx="20"
+        ry="8"
+        stroke="#4B4FC7"
+        strokeWidth="1.1"
+        transform="rotate(-14 22 13)"
+      />
+      <circle cx="38.6" cy="7.6" fill="#4B4FC7" r="2.6" />
+    </svg>
+  );
+}
+
 export function IOrbitHome({
   home,
   loadSnapshot,
@@ -168,6 +201,7 @@ export function IOrbitHome({
   onOpenChat,
   onOpenHistory,
   onOpenSession,
+  clock,
 }: IOrbitHomeProps) {
   const { language, t } = useOrbitLanguage();
   const lang: "en" | "zh" = language === "zh" ? "zh" : "en";
@@ -181,8 +215,17 @@ export function IOrbitHome({
   const [signalBusyId, setSignalBusyId] = useState<string | null>(null);
   const [signalError, setSignalError] = useState<string | null>(null);
   const [signalsRefreshing, setSignalsRefreshing] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const [calOpen, setCalOpen] = useState(false);
 
-  const now = useMemo(() => new Date(), []);
+  // 时钟每分钟前进一次：倒计时、2 小时窗口、「现在」线和跨午夜切日都跟着走。
+  const readClock = useCallback(() => (clock ? clock() : new Date()), [clock]);
+  const [now, setNow] = useState<Date>(() => readClock());
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.setInterval !== "function") return;
+    const id = window.setInterval(() => setNow(readClock()), 60_000);
+    return () => window.clearInterval?.(id);
+  }, [readClock]);
   const todayKey = iorbitDayKey(now);
   const [todayYear, todayMonth, todayDay] = todayKey.split("-").map(Number) as [
     number,
@@ -190,6 +233,12 @@ export function IOrbitHome({
     number,
   ];
   const [selectedDay, setSelectedDay] = useState(todayDay);
+  // 跨过东京午夜时，停在「旧的今天」上的选择跟着移到新的今天。
+  const [lastTodayKey, setLastTodayKey] = useState(todayKey);
+  if (lastTodayKey !== todayKey) {
+    setLastTodayKey(todayKey);
+    setSelectedDay(todayDay);
+  }
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -340,9 +389,17 @@ export function IOrbitHome({
     },
     [locale],
   );
+  const fmtDay = useCallback(
+    (iso: string) => {
+      const date = new Date(iso);
+      return Number.isNaN(date.getTime())
+        ? ""
+        : new Intl.DateTimeFormat(locale, { day: "numeric", month: "numeric", timeZone: TZ }).format(date);
+    },
+    [locale],
+  );
 
-  // 设计 152/161 是「接下来要去的两场」：未开始的按时间正序排前，已结束的按时间倒序排后。
-  // 同一份排序口径给对话屏右栏的「已报名活动」复用（`iorbit-chat-aside.tsx`）。
+  // 「接下来要去的两场」：未开始的按时间正序排前，已结束的按时间倒序排后。
   const registeredEvents = useMemo(
     () => iorbitRegisteredEvents(home?.events ?? [], now.getTime()),
     [home, now],
@@ -363,7 +420,6 @@ export function IOrbitHome({
               : t({ en: "In person", zh: "线下" }),
         time: fmtTime(item.startsAtUtc),
         title: t({ en: "Confirmed appointment", zh: "已确认约谈" }),
-        tone: "a" as const,
       })),
       ...personalItems.map((item) => ({
         allDay: item.allDay === true,
@@ -375,17 +431,17 @@ export function IOrbitHome({
         meta: t({ en: "Personal schedule", zh: "个人日程" }),
         time: item.allDay ? t({ en: "All day", zh: "全天" }) : fmtTime(item.startsAt),
         title: item.title,
-        tone: "b" as const,
       })),
       ...registeredEvents.map((event) => ({
         allDay: false,
         dayKey: iorbitDayKey(new Date(event.startsAt)),
         id: `event:${event.id}`,
         startMs: Date.parse(event.startsAt),
-        meta: event.venue || event.place,
-        time: `${fmtTime(event.startsAt)} – ${fmtTime(event.endsAt)}`,
+        meta: [t({ en: "Registered event", zh: "已报名活动" }), event.venue || event.place]
+          .filter(Boolean)
+          .join(" · "),
+        time: fmtTime(event.startsAt),
         title: event.name,
-        tone: "c" as const,
       })),
     ];
     // 按真实时间戳排，不能按格式化后的字符串：en-US 的 "06:30 PM" 会排在
@@ -401,25 +457,100 @@ export function IOrbitHome({
   const monthPrefix = `${todayYear}-${String(todayMonth).padStart(2, "0")}`;
   const selectedKey = `${monthPrefix}-${String(selectedDay).padStart(2, "0")}`;
   const selectedRows = scheduleRows.filter((row) => row.dayKey === selectedKey);
+  const isTodaySelected = selectedDay === todayDay;
   const markedDays = useMemo(() => {
-    const strong = new Set<number>();
-    const soft = new Set<number>();
+    const marked = new Set<number>();
     for (const row of scheduleRows) {
-      if (!row.dayKey.startsWith(monthPrefix)) continue;
-      const day = Number(row.dayKey.slice(8, 10));
-      if (row.tone === "b") soft.add(day);
-      else strong.add(day);
+      if (row.dayKey.startsWith(monthPrefix)) marked.add(Number(row.dayKey.slice(8, 10)));
     }
-    return { soft, strong };
+    return marked;
   }, [monthPrefix, scheduleRows]);
   const cells = useMemo(
     () => iorbitCalendarCells(todayYear, todayMonth),
     [todayMonth, todayYear],
   );
+  const todayWeek = Math.floor(cells.indexOf(todayDay) / 7);
 
-  const signalRows = Array.isArray(signals)
-    ? agentSignalsToNextActionRows(signals, lang).slice(0, 3)
-    : [];
+  const signalRows = useMemo(
+    () =>
+      Array.isArray(signals)
+        ? agentSignalsToNextActionRows(signals, lang)
+            // 已解决的信号只是历史，不进今日要事（也不参与跟进去重）。
+            .filter((row) => !row.completed)
+            .map((row, index) => ({ index, row }))
+            .sort(
+              (a, b) =>
+                SEVERITY_RANK[a.row.signal.severity] - SEVERITY_RANK[b.row.signal.severity] ||
+                a.index - b.index,
+            )
+            .map(({ row }) => row)
+        : [],
+    [lang, signals],
+  );
+
+  const items: readonly TodayItem[] = useMemo(() => {
+    const nowMs = now.getTime();
+    const soon: TodayItem[] = todayRows
+      .filter((row) => !row.allDay && row.startMs > nowMs && row.startMs - nowMs <= SOON_MS)
+      .map((row) => {
+        const minutes = Math.max(1, Math.round((row.startMs - nowMs) / 60000));
+        const left =
+          minutes >= 60
+            ? t({
+                en: `in ${Math.floor(minutes / 60)} h ${minutes % 60} min`,
+                zh: `还有 ${Math.floor(minutes / 60)} 小时 ${minutes % 60} 分`,
+              })
+            : t({ en: `in ${minutes} min`, zh: `还有 ${minutes} 分钟` });
+        return {
+          ask: null,
+          hot: true,
+          key: row.id,
+          pills: [{ hot: true, text: t({ en: `Starts ${row.time} · ${left}`, zh: `${row.time} 开始 · ${left}` }) }],
+          primary: { href: "/app/agent/plan", label: t({ en: "Open schedule", zh: "查看日程" }) },
+          proof: [[t({ en: "Schedule", zh: "日程" }), row.meta] as const],
+          signalId: null,
+          title: `${row.time} ${row.title}`,
+          why: null,
+        };
+      });
+
+    const fromSignals: TodayItem[] = signalRows.map((row) => {
+      const navigateAction = row.actions.find((action) => action.kind === "navigate" && action.href);
+      const askAction = row.actions.find((action) => action.kind === "ask" && action.prompt);
+      const urgent = row.signal.severity === "critical" || row.signal.severity === "high";
+      return {
+        ask: askAction?.prompt ? { label: askAction.label, prompt: askAction.prompt } : null,
+        hot: false,
+        key: `signal:${row.signal.signalId}`,
+        pills: urgent ? [{ text: t({ en: "Needs you", zh: "需要处理" }) }] : [],
+        primary: navigateAction?.href
+          ? { href: navigateAction.href, label: navigateAction.label || t({ en: "Open", zh: "打开" }) }
+          : { href: "/app/agent/actions", label: t({ en: "Open", zh: "打开" }) },
+        proof: row.signal.sources.map((source) => [source.sourceLabel, fmtDay(source.capturedAt)] as const),
+        signalId: row.signal.signalId,
+        title: row.title,
+        why: row.signal.reason || row.context || null,
+      };
+    });
+
+    // 信号里已经有 followup_due 时，跟进队列不再补位（同一件事不出现两次）。
+    const hasFollowupSignal = signalRows.some((row) => row.signal.type === "followup_due");
+    const fromFollowups: TodayItem[] = hasFollowupSignal
+      ? []
+      : followupItems.map((item) => ({
+          ask: null,
+          hot: false,
+          key: `followup:${item.key}`,
+          pills: [],
+          primary: { href: item.href ?? "/app/contacts", label: t({ en: "Open contact", zh: "打开联系人" }) },
+          proof: [[t({ en: "Follow-up", zh: "跟进" }), [item.organization, item.title].filter(Boolean).join(" · ")] as const],
+          signalId: null,
+          title: t({ en: `Follow up with ${item.contactName}`, zh: `跟进 ${item.contactName}` }),
+          why: null,
+        }));
+
+    return [...soon, ...fromSignals, ...fromFollowups];
+  }, [followupItems, fmtDay, now, signalRows, t, todayRows]);
 
   const progress = Array.isArray(ledger) ? iorbitLedgerProgress(ledger) : null;
   const focusTasks = Array.isArray(ledger)
@@ -435,20 +566,15 @@ export function IOrbitHome({
 
   const recentSessions = Array.isArray(sessions) ? sessions.slice(0, 3) : [];
 
-  // 设计 54：「2026年9月18日 · 星期五」——日期与星期之间是「 · 」，Intl 不会自己加。
-  const todayLabel = [
-    new Intl.DateTimeFormat(locale, {
-      day: "numeric",
-      month: "long",
-      timeZone: TZ,
-      year: "numeric",
-    }).format(now),
-    new Intl.DateTimeFormat(locale, { timeZone: TZ, weekday: "long" }).format(now),
-  ].join(" · ");
-  // 设计 115 是「2026年 9月」（年月之间有一个空格），zh-CN 的 Intl 会给「2026年9月」。
+  const dateMain = new Intl.DateTimeFormat(locale, {
+    day: "numeric",
+    month: "long",
+    timeZone: TZ,
+  }).format(now);
+  const weekday = new Intl.DateTimeFormat(locale, { timeZone: TZ, weekday: "long" }).format(now);
   const monthLabel =
     lang === "zh"
-      ? `${todayYear}年 ${todayMonth}月`
+      ? `${todayYear} 年 ${todayMonth} 月`
       : new Intl.DateTimeFormat(locale, { month: "long", timeZone: TZ, year: "numeric" }).format(now);
   const weekdayLabels =
     lang === "zh"
@@ -462,68 +588,254 @@ export function IOrbitHome({
     onAsk(value);
   };
 
-  const briefLines: string[] = [];
-  if (snapshot !== "pending") {
-    // 最早一项可能是全天日程：那时 `time` 是「全天 / All day」而不是钟点，
-    // 插进「最早一项 … 开始」会读成「最早一项 全天 开始」。这种时候只报条数。
-    const firstClock = todayRows[0] && !todayRows[0].allDay ? todayRows[0].time : null;
-    briefLines.push(
-      todayRows.length > 0
-        ? firstClock
-          ? t({
-              en: `${todayRows.length} item(s) on today's schedule, starting at ${firstClock}.`,
-              zh: `今天有 ${todayRows.length} 项日程安排，最早一项 ${firstClock} 开始。`,
-            })
-          : t({
-              en: `${todayRows.length} item(s) on today's schedule.`,
-              zh: `今天有 ${todayRows.length} 项日程安排。`,
-            })
-        : t({
-            en: "Nothing confirmed on today's schedule.",
-            zh: "今天没有已确认的日程。",
-          }),
-    );
-  }
-  if (signalRows.length > 0) {
-    briefLines.push(
-      t({
-        en: `${signalRows.length} relationship change(s) waiting for you.`,
-        zh: `有 ${signalRows.length} 条关系变化等待处理。`,
-      }),
-    );
-  }
-
-  // 「审阅修订」37：四个来源都不是 pending 了才算就绪，像素比对按它等待而不是固定 400ms。
+  // 「审阅修订」37：四个来源都不是 pending 了才算就绪，像素比对按它等待。
   const ready =
     snapshot !== "pending" &&
     ledger !== "pending" &&
     signals !== "pending" &&
     sessions !== "pending";
+  const itemsSettled = snapshot !== "pending" && signals !== "pending";
+  // 任一核心来源读不到时，不能给出「今天没有要紧的事」这种确定结论。
+  const partial = snapshot === "unavailable" || signals === "unavailable";
+
+  const lead = items[0] ?? null;
+  const briefs = items.slice(1, expanded ? items.length : VISIBLE_ITEMS);
+  const hiddenCount = Math.max(0, items.length - VISIBLE_ITEMS);
+
+  // 导语：一句话概括今天，只用真实计数（Q9）。最紧的一件若有时间压力，钟点用暖色。
+  // 暖色一屏不超过 3 处（主稿序号、倒计时、「现在」线），导语只用墨色强调。
+  const lede = !itemsSettled ? (
+    t({ en: "Reading your day…", zh: "正在整理今天的事…" })
+  ) : lead ? (
+    <>
+      {t({ en: "Today there are ", zh: "今天有 " })}
+      <strong>
+        {partial
+          ? t({ en: `at least ${items.length} thing(s)`, zh: `至少 ${items.length} 件事` })
+          : t({ en: `${items.length} thing(s)`, zh: `${items.length} 件事` })}
+      </strong>
+      {t({ en: ". The most pressing: ", zh: "，最紧的是：" })}
+      <strong>{lead.title}</strong>
+      {t({ en: ".", zh: "。" })}
+    </>
+  ) : partial ? (
+    t({ en: "Part of today's data can't be read right now.", zh: "今天的部分数据暂时读取不到。" })
+  ) : todayRows.length > 0 ? (
+    t({
+      en: `Nothing pressing today. ${todayRows.length} item(s) on the schedule.`,
+      zh: `今天没有要紧的事，日程上有 ${todayRows.length} 项安排。`,
+    })
+  ) : (
+    t({ en: "Nothing pressing today.", zh: "今天没有要紧的事。" })
+  );
+
+  const signalOps = (item: TodayItem) =>
+    item.signalId ? (
+      <span className="ir-m-ops">
+        {item.ask ? (
+          <button
+            className="btn ir-m-link"
+            data-orbit-agent-signal-ask={item.signalId}
+            onClick={() => onAsk(item.ask!.prompt)}
+            type="button"
+          >
+            {item.ask.label}
+          </button>
+        ) : null}
+        <button
+          className="btn ir-signal-op"
+          disabled={signalBusyId === item.signalId}
+          onClick={() => void updateSignal(item.signalId!, "dismissed")}
+          type="button"
+        >
+          {t({ en: "Done", zh: "完成" })}
+        </button>
+        <button
+          className="btn ir-signal-op"
+          disabled={signalBusyId === item.signalId}
+          onClick={() => void updateSignal(item.signalId!, "snoozed")}
+          type="button"
+        >
+          {t({ en: "Remind tomorrow", zh: "明天提醒" })}
+        </button>
+      </span>
+    ) : null;
+
+  const proofLine = (proof: TodayItem["proof"]) =>
+    proof.length > 0 ? (
+      <span className="ir-m-proof">
+        {proof.map(([label, value]) => (
+          <span key={`${label}:${value}`}>
+            <b>{label}</b>
+            {value}
+          </span>
+        ))}
+      </span>
+    ) : null;
+
+  // 时间线：今天在第一条未开始的项前插「现在」线。
+  const nowMs = now.getTime();
+  const nowIndex = isTodaySelected
+    ? selectedRows.findIndex((row) => !row.allDay && row.startMs > nowMs)
+    : -1;
+  const nowLabel = t({ en: `Now ${fmtTime(now.toISOString())}`, zh: `现在 ${fmtTime(now.toISOString())}` });
 
   return (
     <div className="ir-home" data-orbit-iorbit-ready={ready ? "true" : "false"}>
-      {/* 设计 49–55 */}
-      <div className="ir-head">
-        <div className="ir-head-copy">
-          <h1 className="ir-h1">iOrbit</h1>
-          <p className="ir-sub">
-            {t({
-              en: "Today's priorities, events and relationship moves — already sorted for you.",
-              zh: "今天的重要事项、活动与人脉推进，我已经帮你整理好了。",
-            })}
-          </p>
+      {/* 报头 */}
+      <header className="ir-m-mast">
+        <div className="ir-m-mast-row">
+          <span className="ir-m-title">
+            <h1 className="ir-h1 ir-m-h1">iOrbit</h1>
+            <OrbitMark />
+          </span>
+          <span className="ir-m-date">
+            {dateMain}
+            <small>{weekday}</small>
+          </span>
         </div>
-        <span className="ir-today">{todayLabel}</span>
-      </div>
+        <p className="ir-m-lede">{lede}</p>
+      </header>
 
-      {/* 设计 57–74 */}
-      <div className="ir-grid-ask">
-        <div className="ir-ask-col">
-          <div className="ir-ask">
-            <span className="ir-ask-icon">✦</span>
+      <div className="ir-m-spread">
+        {/* 左宽栏：今日要事 + 追问 */}
+        <section aria-label={t({ en: "Today", zh: "今日要事" })} className="ir-m-main">
+          <div className="ir-m-label">
+            <span>{t({ en: "TODAY", zh: "今日要事" })}</span>
+            <span className="ir-m-label-side">
+              {items.length > 0 ? (
+                <em>
+                  {t({
+                    en: `${Math.min(items.length, expanded ? items.length : VISIBLE_ITEMS)} of ${items.length}`,
+                    zh: `${Math.min(items.length, expanded ? items.length : VISIBLE_ITEMS)} / 共 ${items.length} 件`,
+                  })}
+                </em>
+              ) : null}
+              <button
+                className="btn ir-refresh"
+                data-orbit-agent-signals-refresh
+                disabled={signalsRefreshing}
+                onClick={() => void refreshSignals(true)}
+                type="button"
+              >
+                {signalsRefreshing
+                  ? t({ en: "Refreshing", zh: "刷新中" })
+                  : t({ en: "Refresh", zh: "刷新" })}
+              </button>
+            </span>
+          </div>
+
+          {partial && lead ? (
+            <p className="ir-m-partial" role="status">
+              {snapshot === "unavailable"
+                ? t({ en: "Schedule and follow-ups can't be read right now; this list may be incomplete.", zh: "日程与跟进暂时读取不到，下面的要事可能不完整。" })
+                : t({ en: "Relationship signals can't be read right now; this list may be incomplete.", zh: "关系信号暂时读取不到，下面的要事可能不完整。" })}
+            </p>
+          ) : null}
+          {signalError ? (
+            <p className="ir-note ir-note-error" role="alert">
+              {signalError}
+            </p>
+          ) : null}
+
+          {lead ? (
+            <article
+              className="ir-m-lead"
+              data-orbit-agent-signal={lead.signalId ?? undefined}
+            >
+              <span className={lead.hot ? "ir-m-ord ir-m-ord-hot" : "ir-m-ord"}>1</span>
+              <div className="ir-m-lead-body">
+                {lead.pills.length > 0 ? (
+                  <span className="ir-m-pills">
+                    {lead.pills.map((pill) => (
+                      <span className={pill.hot ? "ir-m-pill ir-m-pill-hot" : "ir-m-pill"} key={pill.text}>
+                        {pill.text}
+                      </span>
+                    ))}
+                  </span>
+                ) : null}
+                <h2 className="ir-m-lead-title">{lead.title}</h2>
+                {lead.why ? <p className="ir-m-why">{lead.why}</p> : null}
+                {proofLine(lead.proof)}
+                <span className="ir-m-acts">
+                  {lead.primary ? (
+                    <button
+                      className="btn ir-m-primary"
+                      onClick={() => navigate(lead.primary!.href)}
+                      type="button"
+                    >
+                      {lead.primary.label}
+                    </button>
+                  ) : null}
+                  {signalOps(lead)}
+                </span>
+              </div>
+            </article>
+          ) : (
+            <p className="ir-m-quiet">
+              {!itemsSettled
+                ? t({ en: "Checking what needs you today…", zh: "正在核对今天需要你处理的事…" })
+                : partial
+                  ? t({
+                      en: "Some sources are unavailable, so we can't confirm whether anything needs you today.",
+                      zh: "部分数据来源暂时不可用，无法确认今天是否有要紧的事。",
+                    })
+                  : t({
+                      en: "You are caught up. Nothing needs you right now.",
+                      zh: "今天没有必须处理的事。",
+                    })}
+            </p>
+          )}
+
+          {briefs.length > 0 ? (
+            <div className="ir-m-briefs">
+              {briefs.map((item, index) => (
+                <div
+                  className="ir-m-brief"
+                  data-orbit-agent-signal={item.signalId ?? undefined}
+                  key={item.key}
+                >
+                  <span className="ir-m-brief-n">{index + 2}</span>
+                  <span className="ir-m-brief-body">
+                    <strong className="ir-m-brief-title">{item.title}</strong>
+                    {proofLine(item.proof)}
+                    {signalOps(item)}
+                  </span>
+                  {item.primary ? (
+                    <button
+                      className="btn ir-m-go"
+                      onClick={() => navigate(item.primary!.href)}
+                      type="button"
+                    >
+                      {item.primary.label} →
+                    </button>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          ) : null}
+
+          {hiddenCount > 0 ? (
+            <button
+              aria-expanded={expanded}
+              className="btn ir-m-more"
+              onClick={() => setExpanded((value) => !value)}
+              type="button"
+            >
+              {expanded
+                ? t({ en: "Show less ▴", zh: "收起 ▴" })
+                : t({ en: `${hiddenCount} more ▾`, zh: `还有 ${hiddenCount} 件 ▾` })}
+            </button>
+          ) : null}
+
+          {/* 追问条：原顶部大输入框 + chips + 「打开对话」合并（Q11） */}
+          <div className="ir-m-ask">
+            <span aria-hidden className="ir-m-ask-mark">
+              ✦
+            </span>
             <input
               aria-label={t({ en: "Ask iOrbit", zh: "向 iOrbit 提问" })}
-              className="ir-ask-input"
+              className="ir-m-ask-input"
               data-orbit-iorbit-ask-input
               onChange={(event) => setDraft(event.target.value)}
               onKeyDown={(event) => {
@@ -533,8 +845,8 @@ export function IOrbitHome({
                 }
               }}
               placeholder={t({
-                en: "What do you want to move forward today?",
-                zh: "今天你想推进什么？",
+                en: "Anything else to move forward? Ask iOrbit",
+                zh: "还有别的想推进？问 iOrbit",
               })}
               value={draft}
             />
@@ -546,588 +858,257 @@ export function IOrbitHome({
             >
               →
             </button>
-          </div>
-          <div className="ir-chips">
+            <span aria-hidden className="ir-m-ask-divider" />
             <button
-              className="btn ir-chip"
-              onClick={() => onAsk(t({ en: "Plan my day", zh: "帮我安排今天" }))}
+              aria-label={t({ en: "Open chat", zh: "打开对话" })}
+              className="btn ir-m-chat"
+              onClick={onOpenChat}
+              title={t({ en: "Open chat", zh: "打开对话" })}
               type="button"
             >
-              {t({ en: "Plan my day", zh: "帮我安排今天" })}
+              <svg aria-hidden fill="none" height="18" stroke="currentColor" strokeWidth="1.6" viewBox="0 0 24 24" width="18">
+                <path d="M5 5h14a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-8l-4 3.5V16H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z" />
+              </svg>
             </button>
-            <button
-              className="btn ir-chip"
-              onClick={() =>
-                onAsk(t({ en: "Recommend events for me", zh: "推荐适合我的活动" }))
-              }
-              type="button"
-            >
-              {t({ en: "Recommend events for me", zh: "推荐适合我的活动" })}
-            </button>
-            {/* 设计 66/67：这两枚是导航不是发消息（「审阅修订」16）。 */}
-            <a className="ir-chip" href="/app/agent/strategy?view=contacts">
-              {t({ en: "Who should I contact first?", zh: "我该先联系谁" })}
-            </a>
-            <a className="ir-chip" href="/app/agent/strategy">
-              {t({ en: "Draft a plan for me", zh: "帮我制定推进计划" })}
-            </a>
           </div>
-        </div>
-        <button className="btn ir-open-chat" onClick={onOpenChat} type="button">
-          <span className="ir-open-chat-icon">▤</span>
-          {t({ en: "Open chat", zh: "打开对话" })} <span className="ir-caret">›</span>
-        </button>
-      </div>
-
-      <div className="ir-grid-cards">
-        {/* 设计 78–110：今日日程 */}
-        <section className="ir-card">
-          <div className="ir-card-head">
-            <span className="ir-card-title">
-              <span className="ir-card-icon">▦</span>
-              <strong className="ir-card-h">{t({ en: "Today", zh: "今日日程" })}</strong>
-            </span>
-            <a className="ir-card-link" href="/app/agent/plan">
-              {t({ en: "Full schedule →", zh: "查看完整日程 →" })}
-            </a>
-          </div>
-          <div className="ir-brief">
-            <span className="ir-brief-head">
-              <span className="ir-brief-icon">☀</span>{" "}
-              {t({ en: "Today's brief", zh: "今日简报" })}
-            </span>
-            {briefLines.length > 0 ? (
-              briefLines.map((line) => (
-                <span className="ir-brief-line" key={line}>
-                  · {line}
-                </span>
-              ))
-            ) : (
-              <span className="ir-brief-line">
-                ·{" "}
-                {t({
-                  en: "Reading your day…",
-                  zh: "正在读取今天的事实…",
-                })}
-              </span>
-            )}
-          </div>
-          {todayRows.length > 0 ? (
-            <div className="ir-agenda">
-              {todayRows.map((row, index) => (
-                <div
-                  className={index === 0 ? "ir-agenda-row" : "ir-agenda-row ir-agenda-div"}
-                  key={row.id}
-                >
-                  <span className="ir-agenda-time">{row.time}</span>
-                  <span className={`ir-agenda-dot ir-tone-${row.tone}`} />
-                  <span className="ir-agenda-copy">
-                    <strong className="ir-agenda-title">{row.title}</strong>
-                    <span className="ir-agenda-meta">{row.meta}</span>
-                  </span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="ir-note">
-              {snapshot === "pending"
-                ? t({ en: "Reading your schedule…", zh: "正在读取日程…" })
-                : snapshot === "unavailable"
-                  ? t({
-                      en: "The schedule source is unavailable right now.",
-                      zh: "日程来源暂时不可用。",
-                    })
-                  : t({
-                      en: "Nothing confirmed for today.",
-                      zh: "今天没有已确认的日程。",
-                    })}
-            </p>
-          )}
         </section>
 
-        {/* 设计 109–146：日历 */}
-        <section className="ir-card" id="calendar">
-          <div className="ir-card-head">
-            <span className="ir-card-title">
-              <span className="ir-card-icon">▦</span>
-              <strong className="ir-card-h">{t({ en: "Calendar", zh: "日历" })}</strong>
-            </span>
-            <a className="ir-card-link" href="/app/agent/plan">
-              {t({ en: "Open schedule →", zh: "进入日程页 →" })}
-            </a>
-          </div>
-          <div className="ir-cal-grid">
-            <div className="ir-cal-left">
-              <div className="ir-cal-bar">
-                <strong className="ir-cal-month">{monthLabel}</strong>
-                <span className="ir-cal-nav">
-                  {/* 设计 117/118 的 ‹ › 本身没有 handler，且跨月没有数据源 → aria-disabled（偏差）。 */}
-                  <button
-                    aria-disabled="true"
-                    aria-label={t({ en: "Previous month", zh: "上个月" })}
-                    className="btn ir-cal-nav-btn"
-                    type="button"
-                  >
-                    ‹
+        {/* 右窄栏：时间（Q12） */}
+        <aside className="ir-m-aside" id="calendar">
+          <div data-orbit-iorbit-day-panel>
+            <div className="ir-m-label">
+              <span>
+                {isTodaySelected
+                  ? t({ en: "TODAY'S SCHEDULE", zh: "今天" })
+                  : iorbitSelectedDayLabel(todayYear, todayMonth, selectedDay, lang)}
+              </span>
+              <span className="ir-m-label-side">
+                <em>{t({ en: `${selectedRows.length} item(s)`, zh: `${selectedRows.length} 个日程` })}</em>
+                {!isTodaySelected ? (
+                  <button className="btn ir-m-link" onClick={() => setSelectedDay(todayDay)} type="button">
+                    {t({ en: "Back to today", zh: "回到今天" })}
                   </button>
-                  <button
-                    aria-disabled="true"
-                    aria-label={t({ en: "Next month", zh: "下个月" })}
-                    className="btn ir-cal-nav-btn"
-                    type="button"
-                  >
-                    ›
-                  </button>
-                </span>
-              </div>
-              <div className="ir-cal-wd">
-                {weekdayLabels.map((label, index) => (
-                  <span key={`${label}-${index}`}>{label}</span>
-                ))}
-              </div>
-              <div className="ir-cal-days">
-                {cells.map((day, index) =>
-                  day === null ? (
-                    <span className="ir-day-blank" key={`blank-${index}`} />
-                  ) : (
-                    <button
-                      aria-pressed={day === selectedDay}
-                      className={
-                        day === selectedDay ? "btn ir-day ir-day-on" : "btn ir-day"
-                      }
-                      data-orbit-iorbit-day={day}
-                      key={`day-${day}`}
-                      onClick={() => setSelectedDay(day)}
-                      type="button"
-                    >
-                      {day}
-                      <span
-                        className={
-                          day === selectedDay
-                            ? "ir-day-dot"
-                            : markedDays.strong.has(day)
-                              ? "ir-day-dot ir-day-dot-a"
-                              : markedDays.soft.has(day)
-                                ? "ir-day-dot ir-day-dot-b"
-                                : "ir-day-dot"
-                        }
-                      />
-                    </button>
-                  ),
-                )}
-              </div>
+                ) : null}
+              </span>
             </div>
-            <div className="ir-day-panel" data-orbit-iorbit-day-panel>
-              <div className="ir-day-panel-head">
-                <strong className="ir-day-panel-title">
-                  {iorbitSelectedDayLabel(todayYear, todayMonth, selectedDay, lang)}
-                </strong>
-                <span className="ir-day-panel-count">
-                  {t({
-                    en: `${selectedRows.length} item(s)`,
-                    zh: `${selectedRows.length} 个日程`,
-                  })}
-                </span>
-              </div>
-              {selectedRows.length > 0 ? (
-                selectedRows.map((row) => (
-                  <div className="ir-day-item" key={row.id}>
-                    <span className={`ir-day-item-dot ir-tone-${row.tone}`} />
-                    <span className="ir-day-item-copy">
-                      <span className="ir-day-item-meta">{row.time}</span>
-                      <strong className="ir-day-item-title">{row.title}</strong>
-                      <span className="ir-day-item-meta">{row.meta}</span>
-                    </span>
+            {selectedRows.length > 0 ? (
+              <div className="ir-m-tl">
+                {selectedRows.map((row, index) => (
+                  <div key={row.id}>
+                    {index === nowIndex ? <div className="ir-m-now">{nowLabel}</div> : null}
+                    <div
+                      className={
+                        isTodaySelected && !row.allDay && row.startMs <= nowMs
+                          ? "ir-m-tl-item ir-m-tl-past"
+                          : "ir-m-tl-item"
+                      }
+                    >
+                      <span className="ir-m-tl-time">{row.time}</span>
+                      <span className="ir-m-tl-copy">
+                        <strong className="ir-agenda-title">{row.title}</strong>
+                        <span className="ir-m-tl-sub">{row.meta}</span>
+                      </span>
+                    </div>
                   </div>
-                ))
-              ) : (
-                <span className="ir-day-item-meta">
-                  {t({ en: "Nothing scheduled.", zh: "这一天没有日程。" })}
-                </span>
+                ))}
+                {isTodaySelected && nowIndex === -1 ? <div className="ir-m-now">{nowLabel}</div> : null}
+              </div>
+            ) : (
+              <>
+              {isTodaySelected && snapshot !== "pending" ? <div className="ir-m-now">{nowLabel}</div> : null}
+              <p className="ir-m-tl-empty">
+                {snapshot === "pending"
+                  ? t({ en: "Reading your schedule…", zh: "正在读取日程…" })
+                  : snapshot === "unavailable"
+                    ? t({ en: "The schedule source is unavailable right now.", zh: "日程来源暂时不可用。" })
+                    : isTodaySelected
+                      ? t({ en: "Nothing confirmed for today.", zh: "今天没有已确认的日程。" })
+                      : t({ en: "Nothing scheduled.", zh: "这一天没有日程。" })}
+              </p>
+              </>
+            )}
+          </div>
+
+          <div className="ir-m-cal" data-open={calOpen ? "true" : "false"}>
+            <div className="ir-m-cal-head">
+              <strong>{monthLabel}</strong>
+              <span className="ir-m-cal-head-side">
+                {/* 只在窄屏出现：默认只露出本周一行 */}
+                <button
+                  aria-expanded={calOpen}
+                  className="btn ir-m-link ir-m-cal-toggle"
+                  onClick={() => setCalOpen((value) => !value)}
+                  type="button"
+                >
+                  {calOpen ? t({ en: "Week ▴", zh: "收起月历 ▴" }) : t({ en: "Month ▾", zh: "月历 ▾" })}
+                </button>
+                <a className="ir-m-cal-link" href="/app/agent/plan">
+                  {t({ en: "Schedule →", zh: "日程页 →" })}
+                </a>
+              </span>
+            </div>
+            <div className="ir-m-cal-wd">
+              {weekdayLabels.map((label, index) => (
+                <span key={`${label}-${index}`}>{label}</span>
+              ))}
+            </div>
+            <div className="ir-m-cal-days">
+              {cells.map((day, index) =>
+                day === null ? (
+                  <span
+                    className={Math.floor(index / 7) === todayWeek ? undefined : "ir-m-off-week"}
+                    key={`blank-${index}`}
+                  />
+                ) : (
+                  <button
+                    aria-label={iorbitSelectedDayLabel(todayYear, todayMonth, day, lang)}
+                    aria-pressed={day === selectedDay}
+                    className={day === selectedDay ? "btn ir-day ir-day-on" : "btn ir-day"}
+                    data-orbit-iorbit-day={day}
+                    data-off-week={Math.floor(index / 7) === todayWeek ? undefined : "true"}
+                    data-today={day === todayDay ? "true" : undefined}
+                    key={`day-${day}`}
+                    onClick={() => setSelectedDay(day)}
+                    type="button"
+                  >
+                    {day}
+                    <span className={markedDays.has(day) ? "ir-day-dot ir-day-dot-a" : "ir-day-dot"} />
+                  </button>
+                ),
               )}
             </div>
           </div>
-        </section>
+        </aside>
+      </div>
 
-        {/* 设计 148–170：已报名活动 */}
-        <section className="ir-card ir-card-16">
-          <div className="ir-card-head">
-            <span className="ir-card-title">
-              <span className="ir-card-icon">✧</span>
-              <strong className="ir-card-h">
-                {t({ en: "Registered events", zh: "已报名活动" })}
-              </strong>
+      {/* 栏目区（Q14） */}
+      <section aria-label={t({ en: "Columns", zh: "栏目" })} className="ir-m-cols">
+        <div className="ir-m-col">
+          <div className="ir-m-col-head">
+            <h3>{t({ en: "This week", zh: "本周推进" })}</h3>
+            <a href="/app/agent/plan">{t({ en: "Plan →", zh: "执行计划 →" })}</a>
+          </div>
+          <p className="ir-m-goal">
+            {home?.account.relationshipGoal?.trim() ||
+              t({ en: "No goal on your profile yet.", zh: "还没有设定目标。" })}
+          </p>
+          <span className="ir-m-bar">
+            <span className="ir-m-bar-track">
+              <span className="ir-m-bar-fill" style={{ width: progress ? `${progress.percent}%` : "0%" }} />
             </span>
-            <a className="ir-card-link" href="/app/events">
-              {t({ en: "Event recommendations →", zh: "查看活动推荐 →" })}
+            <strong className="ir-progress-value">
+              {progress ? `${progress.done}/${progress.total}` : "—"}
+            </strong>
+          </span>
+          {focusTasks.length > 0 ? (
+            <ul className="ir-m-tasks">
+              {focusTasks.map((entry) => {
+                const done = entry.status === "completed";
+                return (
+                  // 账本任务没有写接口：渲染为静态状态标记，不做假按钮。
+                  <li className={done ? "ir-m-task ir-m-task-done" : "ir-m-task"} key={entry.entryId}>
+                    {entry.title}
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <p className="ir-m-empty">
+              {ledger === "pending"
+                ? t({ en: "Reading your plan…", zh: "正在读取执行计划…" })
+                : ledger === "unavailable"
+                  ? t({ en: "The plan source is unavailable right now.", zh: "执行计划来源暂时不可用。" })
+                  : t({ en: "No task is in progress this week.", zh: "这周还没有进行中的任务。" })}
+            </p>
+          )}
+          <span className="ir-m-strategy">
+            <a href="/app/agent/strategy?view=contacts">
+              {t({ en: "Who should I contact first? →", zh: "我该先联系谁 →" })}
             </a>
+            <a href="/app/agent/strategy">{t({ en: "Draft a plan →", zh: "帮我制定推进计划 →" })}</a>
+          </span>
+        </div>
+
+        <div className="ir-m-col">
+          <div className="ir-m-col-head">
+            <h3>{t({ en: "Registered events", zh: "已报名活动" })}</h3>
+            <a href="/app/events">{t({ en: "All events →", zh: "全部活动 →" })}</a>
           </div>
           {registeredEvents.length > 0 ? (
-            registeredEvents.slice(0, 2).map((event, index) => {
+            registeredEvents.slice(0, 2).map((event) => {
               const start = new Date(event.startsAt);
               return (
                 <a
-                  className="ir-event"
+                  className="ir-m-event"
                   href={`/app/events/${encodeURIComponent(event.id)}`}
                   key={event.id}
                 >
-                  <span
-                    className={
-                      index === 0 ? "ir-event-date ir-bg-a" : "ir-event-date ir-bg-b"
-                    }
-                  >
-                    <span className="ir-event-month">
-                      {new Intl.DateTimeFormat(locale, {
-                        month: lang === "zh" ? "numeric" : "short",
-                        timeZone: TZ,
-                      }).format(start)}
-                    </span>
-                    {/* 设计 153 是裸数字「18」；zh-CN 的 Intl 会给「18日」，所以直接取日号。 */}
-                    <strong className="ir-event-day">
-                      {Number(iorbitDayKey(start).slice(8, 10))}
-                    </strong>
+                  <span className="ir-m-event-date">
+                    {fmtDay(event.startsAt)}
+                    <small>
+                      {new Intl.DateTimeFormat(locale, { timeZone: TZ, weekday: "short" }).format(start)}{" "}
+                      {fmtTime(event.startsAt)}
+                    </small>
                   </span>
-                  <span className="ir-event-copy">
-                    <strong className="ir-event-title">{event.name}</strong>
-                    <span className="ir-event-meta">◎ {event.venue || event.place}</span>
-                    <span className="ir-event-meta">
-                      ◷{" "}
-                      {new Intl.DateTimeFormat(locale, {
-                        timeZone: TZ,
-                        weekday: "short",
-                      }).format(start)}{" "}
-                      {fmtTime(event.startsAt)} – {fmtTime(event.endsAt)}
-                    </span>
+                  <span className="ir-m-event-copy">
+                    <strong>{event.name}</strong>
+                    <span>{event.venue || event.place}</span>
                   </span>
-                  <span className="ir-event-chip">
-                    {t({ en: "Registered", zh: "已报名" })}
-                  </span>
-                  <span className="ir-caret">›</span>
                 </a>
               );
             })
           ) : (
-            <p className="ir-note">
-              {t({
-                en: "No registered events yet.",
-                zh: "还没有已报名的活动。",
-              })}
+            <p className="ir-m-empty">
+              {t({ en: "No registered events yet.", zh: "还没有报名活动。" })}{" "}
+              <a href="/app/events">{t({ en: "See recommendations →", zh: "看看推荐 →" })}</a>
             </p>
           )}
-        </section>
+        </div>
 
-        {/* 设计 172–193：建议与行动 */}
-        <section className="ir-card ir-card-14">
-          <div className="ir-card-head">
-            <span className="ir-card-title">
-              <span className="ir-card-icon">✦</span>
-              <strong className="ir-card-h">
-                {t({ en: "Suggestions and actions", zh: "建议与行动" })}
-              </strong>
-            </span>
-            <a className="ir-card-link" href="/app/agent/actions">
-              {t({ en: "All suggestions →", zh: "查看建议与行动 →" })}
-            </a>
-          </div>
-          {/* 设计没有画失败提示；`orbit-agent-today-workspace.tsx:147+` 原本会把写失败
-              显式告诉用户，换屏不能把它吞掉。 */}
-          {signalError ? (
-            <p className="ir-note ir-note-error" role="alert">
-              {signalError}
-            </p>
-          ) : null}
-          {signalRows.length > 0 ? (
-            signalRows.map((row) => {
-              // 合并前终审 4a：这里原来直接在 `row.signal.actions` 里写死 `"open"`，
-              // `row.actions`（`agentSignalsToNextActionRows` 已经筛好、带 label 的
-              // 那份）一次没读过，于是每条信号的 `ask_agent`——旧
-              // `orbit-agent-today-workspace.tsx:209-240` 渲染成「交给 iOrbit」的那枚
-              // 带提示词的按钮——整条能力消失了。改回读 `row.actions`：导航项决定整行
-              // 点击落点，提问项作为一枚显式控件补在 done / snooze 旁边。
-              const navigateAction = row.actions.find(
-                (action) => action.kind === "navigate" && action.href,
-              );
-              const askAction = row.actions.find(
-                (action) => action.kind === "ask" && action.prompt,
-              );
-
-              return (
-              <div
-                className="ir-signal"
-                data-orbit-agent-signal={row.signal.signalId}
-                key={row.signal.signalId}
-              >
-                <button
-                  className="btn ir-action"
-                  onClick={() => navigate(navigateAction?.href ?? "/app/agent/actions")}
-                  type="button"
-                >
-                  <span className="ir-action-icon">
-                    {row.signal.type === "followup_due"
-                      ? "✉"
-                      : row.signal.type === "event_upcoming"
-                        ? "▦"
-                        : "⚇"}
-                  </span>
-                  <span className="ir-action-copy">
-                    <strong className="ir-action-title">{row.title}</strong>
-                    <span className="ir-action-desc">{row.context}</span>
-                  </span>
-                  <span className="ir-caret">›</span>
-                </button>
-                {/* 设计没有画这几枚控件；既有的 done / snooze 写操作与 ask_agent 的
-                    带提示词提问都不得丢（「审阅修订」10 / 合并前终审 4a）。 */}
-                <span className="ir-signal-ops">
-                  {askAction?.prompt ? (
-                    <button
-                      className="btn ir-signal-op"
-                      data-orbit-agent-signal-ask={row.signal.signalId}
-                      onClick={() => onAsk(askAction.prompt as string)}
-                      type="button"
-                    >
-                      {askAction.label}
-                    </button>
-                  ) : null}
-                  <button
-                    className="btn ir-signal-op"
-                    disabled={signalBusyId === row.signal.signalId}
-                    onClick={() => void updateSignal(row.signal.signalId, "dismissed")}
-                    type="button"
-                  >
-                    {t({ en: "Done", zh: "完成" })}
-                  </button>
-                  <button
-                    className="btn ir-signal-op"
-                    disabled={signalBusyId === row.signal.signalId}
-                    onClick={() => void updateSignal(row.signal.signalId, "snoozed")}
-                    type="button"
-                  >
-                    {t({ en: "Remind tomorrow", zh: "明天提醒" })}
-                  </button>
-                </span>
-              </div>
-              );
-            })
-          ) : (
-            <p className="ir-note">
-              {signals === "pending"
-                ? t({ en: "Checking relationship changes…", zh: "正在核对关系变化…" })
-                : signals === "unavailable"
-                  ? t({
-                      en: "Relationship signals are unavailable.",
-                      zh: "暂时无法读取关系信号。",
-                    })
-                  : t({
-                      en: "You are caught up.",
-                      zh: "今天没有必须处理的变化。",
-                    })}
-            </p>
-          )}
-          <button
-            className="btn ir-refresh"
-            data-orbit-agent-signals-refresh
-            disabled={signalsRefreshing}
-            onClick={() => void refreshSignals(true)}
-            type="button"
-          >
-            {signalsRefreshing
-              ? t({ en: "Refreshing", zh: "刷新中" })
-              : t({ en: "Refresh", zh: "刷新" })}
-          </button>
-        </section>
-
-        {/* 设计 195–212：联系人机会 */}
-        <section className="ir-card ir-card-14">
-          <div className="ir-card-head">
-            <span className="ir-card-title">
-              <span className="ir-card-icon">⚇</span>
-              <strong className="ir-card-h">
-                {t({ en: "Contact opportunities", zh: "联系人机会" })}
-              </strong>
-            </span>
-            <a className="ir-card-link" href="/app/contacts">
-              {t({ en: "Contact suggestions →", zh: "查看联系人建议 →" })}
-            </a>
-          </div>
-          {followupItems.length > 0 ? (
-            followupItems.slice(0, 2).map((item, index) => (
-              <a
-                className="ir-person"
-                href={item.href ?? "/app/contacts"}
-                key={item.key}
-              >
-                <span
-                  className={
-                    index === 0 ? "ir-person-avatar ir-bg-a" : "ir-person-avatar ir-bg-b"
-                  }
-                >
-                  {initials(item.contactName)}
-                </span>
-                <span className="ir-person-copy">
-                  <span className="ir-person-name-row">
-                    <strong className="ir-person-name">{item.contactName}</strong>
-                    <span className="ir-person-meta">{item.organization}</span>
-                  </span>
-                  <span className="ir-person-meta">{item.title}</span>
-                </span>
-                <span className="ir-caret">›</span>
-              </a>
-            ))
-          ) : (
-            <p className="ir-note">
-              {snapshot === "pending"
-                ? t({ en: "Reading your contacts…", zh: "正在读取联系人…" })
-                : t({
-                    en: "No contact opportunity is waiting.",
-                    zh: "暂时没有待推进的联系人机会。",
-                  })}
-            </p>
-          )}
-        </section>
-
-        {/* 设计 214–236：本周推进 */}
-        <section className="ir-card ir-card-16">
-          <div className="ir-card-head">
-            <span className="ir-card-title">
-              <span className="ir-card-icon">◎</span>
-              <strong className="ir-card-h">
-                {t({ en: "This week", zh: "本周推进" })}
-              </strong>
-            </span>
-            <a className="ir-card-link" href="/app/agent/plan">
-              {t({ en: "Execution plan →", zh: "查看执行计划 →" })}
-            </a>
-          </div>
-          <div className="ir-goal">
-            <span className="ir-goal-copy">
-              <strong className="ir-goal-title">
-                {t({ en: "This week's goal", zh: "本周目标" })}
-              </strong>
-              <span className="ir-goal-text">
-                {home?.account.relationshipGoal?.trim() ||
-                  t({
-                    en: "No relationship goal on your profile yet.",
-                    zh: "资料里还没有填写关系目标。",
-                  })}
-              </span>
-            </span>
-            <span className="ir-progress">
-              <span className="ir-progress-row">
-                {t({ en: "Progress", zh: "进度" })}{" "}
-                <strong className="ir-progress-value">
-                  {progress ? `${progress.done}/${progress.total}` : "—"}
-                </strong>
-              </span>
-              <span className="ir-progress-track">
-                <span
-                  className="ir-progress-fill"
-                  style={{ width: progress ? `${progress.percent}%` : "0%" }}
-                />
-              </span>
+        <div className="ir-m-col">
+          <div className="ir-m-col-head">
+            <h3>{t({ en: "Recent chats", zh: "最近对话" })}</h3>
+            <span className="ir-m-col-acts">
+              <button className="btn ir-history-btn" onClick={onOpenHistory} type="button">
+                {t({ en: "History", zh: "历史" })}
+              </button>
+              <button className="btn ir-enter-btn" onClick={onOpenChat} type="button">
+                {t({ en: "Open chat →", zh: "进入对话 →" })}
+              </button>
             </span>
           </div>
-          {focusTasks.length > 0 ? (
-            <div className="ir-tasks">
-              {focusTasks.map((entry) => {
-                const done = entry.status === "completed";
+          {recentSessions.length > 0 ? (
+            <div className="ir-m-sessions">
+              {recentSessions.map((item) => {
+                const when = item.createdAt ? iorbitRelativeDayLabel(item.createdAt, now, lang) : null;
                 return (
-                  /* 设计 224 是 button（toggle）；账本任务没有写接口（「审阅修订」10）→
-                     渲染为静态状态标记，不做假按钮。 */
-                  <div className="ir-task" key={entry.entryId}>
-                    <span
-                      className={done ? "ir-task-box ir-task-box-done" : "ir-task-box"}
-                    >
-                      {done ? "✓" : ""}
+                  <button
+                    className="btn ir-m-session"
+                    data-orbit-iorbit-session={item.id}
+                    key={item.id}
+                    onClick={() => onOpenSession(item.id)}
+                    type="button"
+                  >
+                    <span className="ir-m-session-title">
+                      {item.title || t({ en: "Untitled chat", zh: "未命名对话" })}
                     </span>
-                    <span className={done ? "ir-task-text ir-task-text-done" : "ir-task-text"}>
-                      {entry.title}
-                    </span>
-                  </div>
+                    <time>
+                      {when
+                        ? t({ en: `Last chat · ${when}`, zh: `上次对话 · ${when}` })
+                        : t({ en: "Last chat", zh: "上次对话" })}
+                    </time>
+                  </button>
                 );
               })}
             </div>
           ) : (
-            <p className="ir-note">
-              {ledger === "pending"
-                ? t({ en: "Reading your plan…", zh: "正在读取执行计划…" })
-                : ledger === "unavailable"
-                  ? t({
-                      en: "The plan source is unavailable right now.",
-                      zh: "执行计划来源暂时不可用。",
-                    })
-                  : t({
-                      en: "No task is in progress this week.",
-                      zh: "本周还没有进行中的任务。",
-                    })}
+            <p className="ir-m-empty">
+              {sessions === "pending"
+                ? t({ en: "Reading your conversations…", zh: "正在读取对话记录…" })
+                : t({ en: "No conversation yet. Ask in the box above.", zh: "还没有对话。有问题在上面的输入框里问。" })}
             </p>
           )}
-        </section>
-      </div>
-
-      {/* 设计 237–252：继续对话 */}
-      <section className="ir-card ir-card-16">
-        <div className="ir-resume-head">
-          <span className="ir-resume-title">
-            <span className="ir-card-icon">▤</span>
-            <strong className="ir-card-h">
-              {t({ en: "Continue a conversation", zh: "继续对话" })}
-            </strong>
-            <span className="ir-resume-note">
-              {t({
-                en: "Pick up where you left off, or start a new topic.",
-                zh: "从上次的对话继续，或选择一个主题开始新的讨论。",
-              })}
-            </span>
-          </span>
-          <span className="ir-resume-actions">
-            <button className="btn ir-history-btn" onClick={onOpenHistory} type="button">
-              ◷ {t({ en: "History", zh: "历史记录" })}
-            </button>
-            <button className="btn ir-enter-btn" onClick={onOpenChat} type="button">
-              {t({ en: "Open chat page →", zh: "进入对话页 →" })}
-            </button>
-          </span>
         </div>
-        {recentSessions.length > 0 ? (
-          <div className="ir-resume-grid">
-            {recentSessions.map((item) => {
-              const when = item.createdAt
-                ? iorbitRelativeDayLabel(item.createdAt, now, lang)
-                : null;
-              return (
-                <button
-                  className="btn ir-resume-card"
-                  data-orbit-iorbit-session={item.id}
-                  key={item.id}
-                  onClick={() => onOpenSession(item.id)}
-                  type="button"
-                >
-                  <span className="ir-resume-icon">▤</span>
-                  <span className="ir-resume-copy">
-                    <strong className="ir-resume-card-title">
-                      {item.title || t({ en: "Untitled chat", zh: "未命名对话" })}
-                    </strong>
-                    <span className="ir-resume-card-meta">
-                      {when
-                        ? t({ en: `Last chat · ${when}`, zh: `上次对话 · ${when}` })
-                        : t({ en: "Last chat", zh: "上次对话" })}
-                    </span>
-                  </span>
-                  <span className="ir-caret">›</span>
-                </button>
-              );
-            })}
-          </div>
-        ) : (
-          <p className="ir-note">
-            {sessions === "pending"
-              ? t({ en: "Reading your conversations…", zh: "正在读取对话记录…" })
-              : t({
-                  en: "No conversation yet — start one above.",
-                  zh: "还没有对话记录，从上面的输入框开始吧。",
-                })}
-          </p>
-        )}
       </section>
     </div>
   );

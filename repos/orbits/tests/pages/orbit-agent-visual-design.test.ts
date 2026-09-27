@@ -89,13 +89,13 @@ test("Orbit agent light presentation keeps the readable token layer", () => {
 // 皮肤，皮肤本体仍在 `CONSOLE_STYLES` 里但已无消费者，因此改成断**在售的那一套**，
 // 并保住「审阅修订」10 / 28 点名不得丢的写能力与 data-* 标记。
 test("the iOrbit brief keeps the signal rows, their write controls and the refresh control", () => {
-  assert.match(homeSource, /className="ir-signal"/);
-  assert.match(homeSource, /data-orbit-agent-signal=\{row\.signal\.signalId\}/);
-  assert.match(homeSource, /className="ir-action-icon"/);
-  assert.match(homeSource, /className="ir-action-copy"/);
-  assert.match(homeSource, /className="ir-signal-ops"/);
-  assert.match(homeSource, /updateSignal\(row\.signal\.signalId, "dismissed"\)/);
-  assert.match(homeSource, /updateSignal\(row\.signal\.signalId, "snoozed"\)/);
+  // 2026-09-27 报刊式改版：信号并进「今日要事」（主稿 + 短讯），行上仍带 data-* 标记，
+  // 完成 / 明天提醒两枚写控件一直可见（不收进「⋯」菜单），刷新控件保留。
+  assert.match(homeSource, /data-orbit-agent-signal=\{lead\.signalId \?\? undefined\}/);
+  assert.match(homeSource, /data-orbit-agent-signal=\{item\.signalId \?\? undefined\}/);
+  assert.match(homeSource, /className="ir-m-ops"/);
+  assert.match(homeSource, /updateSignal\(item\.signalId!, "dismissed"\)/);
+  assert.match(homeSource, /updateSignal\(item\.signalId!, "snoozed"\)/);
   assert.match(homeSource, /data-orbit-agent-signals-refresh/);
   assert.match(homeSource, /agentSignalsToNextActionRows/);
   assert.match(homeSource, /signals\?view=home/);

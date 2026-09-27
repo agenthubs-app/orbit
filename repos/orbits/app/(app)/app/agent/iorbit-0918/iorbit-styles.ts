@@ -10,6 +10,8 @@
  * 壳继续 `export { IORBIT_STYLES }` 保持既有 import 路径不变。
  */
 // 每条规则 = 设计稿一个 style="" 原样搬入；顺序与值不得改动。前缀 [data-orbit-real-page="iorbit-0918"]。
+import { IORBIT_HOME_STYLES } from "./iorbit-home-styles";
+
 export const IORBIT_STYLES = `
 @keyframes orbit-fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 /* ── 设计 14–22 的全局 CSS + 25 行的页面包裹 ── */
@@ -27,7 +29,7 @@ export const IORBIT_STYLES = `
 [data-orbit-real-page="iorbit-0918"] .ir-screen-title { clip-path: inset(50%); height: 1px; margin: -1px; overflow: hidden; position: absolute; white-space: nowrap; width: 1px; }
 /* ── <main>（设计 43）与概览屏外层（设计 47）── */
 [data-orbit-real-page="iorbit-0918"] .ir-main { max-width: 1240px; margin: 0 auto; padding: 14px 40px 72px; display: flex; flex-direction: column; gap: 26px; }
-[data-orbit-real-page="iorbit-0918"] .ir-home { display: flex; flex-direction: column; gap: 26px; animation: orbit-fade .3s ease; }
+[data-orbit-real-page="iorbit-0918"] .ir-home { display: flex; flex-direction: column; gap: 34px; animation: orbit-fade .3s ease; }
 /* ── 标题行（设计 49–55）── */
 [data-orbit-real-page="iorbit-0918"] .ir-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 24px; }
 [data-orbit-real-page="iorbit-0918"] .ir-head-copy { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
@@ -570,4 +572,4 @@ export const IORBIT_STYLES = `
   [data-orbit-real-page="iorbit-0918"] .ir-two-col { grid-template-columns: minmax(0, 1fr); }
   [data-orbit-real-page="iorbit-0918"] .ir-contact-grid { grid-template-columns: minmax(0, 1fr); }
 }
-`;
+` + IORBIT_HOME_STYLES;
