@@ -1205,10 +1205,18 @@ function businessCardRelationshipText(
     : "通过名片交换认识。";
 }
 
+// The manual contact form stores what the user typed as "Manual note: <note>".
+// It is the user's own text, not seed copy: show it as written (0126).
+const MANUAL_NOTE_PREFIX = /^manual note:\s*/iu;
+
 function localizedRelationshipText(
   contact: Record<string, unknown>,
   value: string
 ): string {
+  if (MANUAL_NOTE_PREFIX.test(value)) {
+    return value.replace(MANUAL_NOTE_PREFIX, "").trim();
+  }
+
   const chinese = preferredChineseSegment(value);
 
   if (segmentLooksChinese(chinese)) {
