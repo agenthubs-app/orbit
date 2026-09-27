@@ -2017,4 +2017,5 @@ export const zh = {
   "onboarding.loadFailed": "资料暂时读取不了，请重试。",
   "onboarding.loading": "正在读取资料",
   "onboarding.importReadFailed": "名片进度暂时读取不了，稍后回到这一步会再读取。",
+  "onboarding.showMore": "展开更多",
 } as const satisfies MessageDictionary;

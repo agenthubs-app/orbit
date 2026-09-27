@@ -2017,4 +2017,5 @@ export const en = {
   "onboarding.loadFailed": "Couldn't load your profile. Please try again.",
   "onboarding.loading": "Loading your profile",
   "onboarding.importReadFailed": "Couldn't read card progress. It refreshes when you come back to this step.",
+  "onboarding.showMore": "Show more",
 } as const satisfies MessageDictionary;

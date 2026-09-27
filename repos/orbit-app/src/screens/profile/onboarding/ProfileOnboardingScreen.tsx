@@ -68,6 +68,7 @@ import { Banner, Chip, CustomChip, Field, PrimaryButton, SecondaryButton, StepFr
 type View_ = "loading" | "loadError" | "welcome" | "resume" | OnboardingStep;
 type Notice = { kind: "failed" | "offline" } | null;
 type IntroStatus = "idle" | "generating" | "ready" | "error";
+const COLLAPSED_OPTION_COUNT = 8;
 
 const STEP_TITLE_KEYS: Record<OnboardingStep, MessageKey> = {
   profile: "onboarding.step.profile", goals: "onboarding.step.goals", persona: "onboarding.step.persona", intro: "onboarding.step.intro", import: "onboarding.step.import"
@@ -440,11 +441,17 @@ function ProfileStep({ basic, disabled, message, onScan, scanning, setBasic, tod
 function ChipSet({ limit, options, setValues, values }: { limit?: number; options: readonly Copy[]; setValues: (update: (current: string[]) => string[]) => void; values: readonly string[] }) {
   const { styles } = useOnboardingStyles();
   const locale = useOrbitLocale();
+  const [expanded, setExpanded] = useState(false);
   const full = limit !== undefined && values.length >= limit;
   const custom = values.filter(value => !isKnownOption(options, value));
+  // Collapsed: the first 8 options, plus any selected option further down so a saved choice is never hidden.
+  const collapsible = options.length > COLLAPSED_OPTION_COUNT;
+  const visible = expanded || !collapsible
+    ? options
+    : options.filter((option, index) => index < COLLAPSED_OPTION_COUNT || values.some(value => optionMatches(option, value)));
   return (
     <View style={styles.chips}>
-      {options.map(option => {
+      {visible.map(option => {
         const selected = values.find(value => optionMatches(option, value));
         return (
           <Chip disabled={!selected && full} key={option.zh} label={optionLabel(option, locale.language)} selected={Boolean(selected)}
@@ -453,6 +460,11 @@ function ChipSet({ limit, options, setValues, values }: { limit?: number; option
       })}
       {custom.map(value => <Chip key={value} label={value} onPress={() => setValues(current => current.filter(item => item !== value))} removable selected />)}
       <CustomChip disabled={full} onAdd={value => setValues(current => addCustomValue(current, value, limit))} />
+      {collapsible && !expanded ? (
+        <Pressable accessibilityLabel={locale.t("onboarding.showMore")} accessibilityRole="button" onPress={() => setExpanded(true)} style={styles.linkButton}>
+          <Text style={styles.linkText}>{locale.t("onboarding.showMore")}</Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }

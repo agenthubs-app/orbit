@@ -2017,4 +2017,5 @@ export const ja = {
   "onboarding.loadFailed": "プロフィールを読み込めませんでした。もう一度お試しください。",
   "onboarding.loading": "プロフィールを読み込み中",
   "onboarding.importReadFailed": "名刺の進捗を読み込めませんでした。この画面に戻ると再読み込みします。",
+  "onboarding.showMore": "もっと見る",
 } as const satisfies MessageDictionary;

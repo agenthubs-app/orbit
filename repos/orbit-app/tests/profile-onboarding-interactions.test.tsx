@@ -269,3 +269,39 @@ test("English and Japanese render the whole welcome and step copy", async t => {
   await japanese.getByRole("heading", { name: /探しているものは/u }).waitFor();
   assert.equal((await fx(japanese)).profile.relationshipGoal, "顧客獲得（今四半期）");
 });
+
+test("step 3 groups show 8 options plus selected extras, expand to all, and toggle in both states", async t => {
+  const page = await open(t, withProfile({ ...complete, ...blank, relationshipGoal: "获取客户", topics: ["文旅与餐饮"] }));
+  await page.getByRole("button", { name: "继续", exact: true }).click();
+  await page.getByRole("heading", { name: /你能提供什么/u }).waitFor();
+  // Collapsed: the first 8 per group; the saved 20th topic stays visible; the 9th offer is hidden.
+  assert.equal(await page.getByRole("button", { name: "AI 落地经验", exact: true }).count(), 0, "9th+ options are hidden");
+  assert.equal(await page.getByRole("button", { name: "中国市场资源", exact: true }).count(), 1, "8th option visible");
+  assert.equal(await page.getByRole("button", { name: "文旅与餐饮", exact: true }).evaluate(el => getComputedStyle(el).backgroundColor), "rgb(11, 18, 32)", "selected option beyond 8 stays visible");
+  assert.equal(await page.getByRole("button", { name: "教育", exact: true }).count(), 0, "unselected 19th topic hidden");
+  assert.equal(await page.getByRole("button", { name: "展开更多" }).count(), 3, "one control per group");
+  await shot(page, "11-persona-collapsed");
+  // Select and deselect while collapsed; a deselected extra folds back out of view.
+  await page.getByRole("button", { name: "市场渠道", exact: true }).click();
+  await page.getByRole("button", { name: "文旅与餐饮", exact: true }).click();
+  assert.equal(await page.getByRole("button", { name: "文旅与餐饮", exact: true }).count(), 0, "a deselected extra folds away");
+  // Expand the offer group: all 22 visible, toggle works there too.
+  await page.getByRole("button", { name: "展开更多" }).first().click();
+  await page.getByRole("button", { name: "AI 落地经验", exact: true }).click();
+  assert.equal(await page.getByRole("button", { name: "政府与政策资源", exact: true }).count(), 1);
+  assert.equal(await page.getByRole("button", { name: "展开更多" }).count(), 2, "other groups stay collapsed");
+  await shot(page, "12-persona-expanded");
+  await page.getByRole("button", { name: "继续", exact: true }).click();
+  await page.getByRole("heading", { name: /iOrbit 帮你/u }).waitFor();
+  const saved = (await fx(page)).profile;
+  assert.deepEqual([saved.offering, saved.topics], [["市场渠道", "AI 落地经验"], []]);
+});
+
+test("the show-more control is translated in English and Japanese", async t => {
+  for (const [language, label, cont, heading] of [["en", "Show more", "Continue", /what are you looking for/u], ["ja", "もっと見る", "続ける", /探しているものは/u]] as const) {
+    const page = await open(t, { language, ...withProfile({ ...complete, ...blank, relationshipGoal: "x" }) });
+    await page.getByRole("button", { name: cont, exact: true }).click();
+    await page.getByRole("heading", { name: heading }).waitFor();
+    assert.equal(await page.getByRole("button", { name: label }).count(), 3, language);
+  }
+});

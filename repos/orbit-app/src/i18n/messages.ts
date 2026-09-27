@@ -2018,6 +2018,7 @@ export const messageKeys = [
   "onboarding.loadFailed",
   "onboarding.loading",
   "onboarding.importReadFailed",
+  "onboarding.showMore",
 ] as const;
 
 export type MessageKey = (typeof messageKeys)[number];
