@@ -8,6 +8,10 @@
 
 ## 先读哪里
 
+### 2026-09-27 数据架构路线（0098–0120）
+
+用户批准五份数据架构设计案并确认统一路线，要求自主执行（设计案副本：`docs/designs/2026-09-27-data-architecture/`）。执行顺序与理由见 [EXECUTION_ORDER.md](EXECUTION_ORDER.md#00980120-数据架构路线2026-09-27)；生产步骤汇总见 [PRODUCTION_ROLLOUT.md](PRODUCTION_ROLLOUT.md)。0098–0104 已合并；0105–0120 的 GOAL/PLANNER 已写好（planned）。需用户先决定的：0106、0107 设计案批准；0110 是否停写全部统计记录；0120 设计案批准；各 Sprint 的生产执行。
+
 ### 2026-09-18 新增读取成本治理（Phase 0 主线对齐）
 
 用户已批准[读取成本治理设计案 Rev 4]，要求逐个 Phase 执行，三次归位统一用 `merge` 不用 rebase。
@@ -40,6 +44,22 @@ E 结构（0079–0080，需单独批准）依次领取，不并行。
 | [0089](0089-contact-value-score-signal/GOAL.md) | 联系人列表价值分：查清 78 人中 76 人恒为 84 的成因，修算法或换掉列表右侧内容；不可信时不显示假值 | 复核第 3 条。读取点 `contacts.ts:319-321`。档位 App L。基线 `03fcfcff3`，Planner SHA bc931cd9。根因：`contact-graph-query.ts:233` 的 `min(95, 60 + valueTypes.length * 12)`——分数就是类型个数换身衣服，库里根本不存这个字段。78 人 2 种分数 vs 14 种类型组合，故换成它算自的价值类型（这一格可区分状态 2 → 14），**未改评分算法**（要有区分度需引入新评分维度，超出范围）。推翻并改写了 `contacts-screen-source` 里"显示分数、不显示类型"的既有断言，保留其紧凑性要求（单行、40% 上限）。顺带给离线读取审计加了 `STALE_COMPUTED_PATH_KEY` 诊断，挖出并清掉 3 条死 key | completed |
 | [0090](0090-recommended-event-location-authority/GOAL.md) | 首页推荐活动地点中文：`location`／`venue` 收口到权威来源并扩展 0082 的回填脚本，移除英文兜底 `"Live event source"` | 复核第 4 条，0082 同源遗留。provider `:203-206` 仍直读种子英文 `payload.location`；权威来源与回填机制 0082 已建好。档位 orbits L。基线 `22fd3aa17`，Planner SHA d6cd1b58。沿用 0082 的模式：canonical 值写进 provider 优先读的槽位（`payload.venue`），导入原文 `payload.location` 降为兜底；provider 的 `venue` 与 `location` 取同一权威值，否则 App 去重后会显示"上海 · Shanghai"。回填 13/16 → 复跑 0。**种子未改**——查明 fixture 本来就是中文、`seed-live-events.ts:230` 写的就是它，英文是更早一版 fixture 的遗留；改一个本来就对的种子只会制造假修复。英文兜底串 `"Live event source"` 删除。live 首页 vs 活动页逐条 mismatches 0 | completed |
 | [0091](0091-private-route-auth-gate/GOAL.md) | 私有路由登录态门：量 `auth.ready` 耗时构成并缩短已登录首屏等待，不放宽登录态判断 | 复核第 5 条（`/followups`、`/contacts/dashboard` 六秒以上）。`OrbitRouteAccessBoundary.tsx:34-42` 只有三态；auth 慢还会把镜像同步一起往后推。档位 App H（身份路径）。基线 `ededaa6ac`，Planner SHA ffe2a5a5。**六秒无法复现**：同口径重测三轮，`/followups` 193/142/147ms、`/contacts/dashboard` 2241/280/176ms、`/ai` 1419/177/124ms（首列为重新 export 后的冷跑）。SC-0091-01／03 因此拿不到有效证据。归因：复核当时磁盘仅剩 226MB，同轮还产生 82 条环境性测试失败，最可能同源（推断，环境已不可回放）。**做过并已撤销**：把 `expo-sqlite` 改成动态 import 试图让它离开登录门——第一次度量因复用浏览器 context 缓存了 WASM 而无效，换冷 context 重测显示无变化；那行静态 import 是 0077 特意留的（动态会把共用模块挪进 Worker 从不加载的 `__common.js`）。改动是 no-op 而注释却声称省了几秒，已整体撤销。`OrbitRouteAccessBoundary` 缺"本地会话先放行"那一档仍然属实，但那是安全语义决定，没有性能压力就不该顺手改 | failed |
+| [0120](0120-offline-write-design/GOAL.md) | 断网写设计案：以 0034 协议为起点，讲清去重、临时编号、冲突两边保留、界面「未同步/待发送/冲突」、恢复时机，给出 0121 起的划分 | 只出设计案，不改代码；**需用户批准**。依赖 0119。Planner SHA ade09815（revision 1，开工时追加基线） | planned |
+| [0119](0119-local-messages/GOAL.md) | 消息放进手机（断网 3b = 消息 M3）：成员行/对话/全部历史下发，收件箱与聊天本地优先，撤销后从双方手机删除 | 依赖 0109、0113。Planner SHA 4f9111be（revision 1，开工时追加基线） | planned |
+| [0118](0118-local-inbox-ai-sessions/GOAL.md) | 通知与 AI 对话放进手机（断网 3a = AI B3）：收件箱通知 + AI 会话列表 + 打开过的会话消息本地优先；失效通知也要从手机消失 | 依赖 0113、0112。Planner SHA 3e16b779（revision 1，开工时追加基线） | planned |
+| [0117](0117-dashboard-on-device/GOAL.md) | 看板在手机上算（看板 D3）：建立允许共用的目录并调整共用规则，缺口/机会纯函数，补齐 `events` 集合同步，App 本地计算且与服务器逐项一致 | 依赖 0116。Planner SHA ae310a9f（revision 1，开工时追加基线） | planned |
+| [0116](0116-local-contacts/GOAL.md) | 联系人放进手机（断网 1b）：联系人 + 关系 + 来源 + 详情状态（以 0114 清单为准）本地优先，本机搜索与服务端一致 | 依赖 0114；生产启用前须已执行 0114 补写。Planner SHA ce077538（revision 1，开工时追加基线） | planned |
+| [0115](0115-local-event-day/GOAL.md) | 活动现场放进手机（断网 1a）：已报名活动的公开信息、报名状态、签到窗口、发布给我的座位与推荐；取消/被拒后撤下；议程仅在有数据时显示 | 依赖 0113、0107。Planner SHA dc1c3e1f（revision 1，开工时追加基线） | planned |
+| [0114](0114-owner-backfill/GOAL.md) | 补写主人：联系人及附属数据按引用补写，共用来源每人复制一份，演示数据补合理主人，修种子脚本；平台公共数据不补 | 依赖 0113；生产执行需确认。Planner SHA 4ddae886（revision 1，开工时追加基线） | planned |
+| [0113](0113-sync-foundation/GOAL.md) | 同步地基：注册表 v2 说明书、修通用 upsert 清空主人、改主人/身份检查（含脚本）、活动专用表取号与专用表读取、App 按租约类别同步 | 依赖 0108。Planner SHA 4dd17235（revision 1，开工时追加基线） | planned |
+| [0112](0112-ai-session-paging/GOAL.md) | AI 会话分页（B1+B2）：首屏 20 条、上翻加载、卡片按需；问答只追加（现每轮读约 7N 写 2N）；客户端不再上传整会话；读取上限审计恢复通过 | 依赖 0110。Planner SHA 505a18ae（revision 1，开工时追加基线） | planned |
+| [0111](0111-ai-trace-retention/GOAL.md) | AI 轨迹保留期与存量清理（A4+A5）：动作结束 1 年整套删除（维护任务）；存量步骤/统计/普通问答运行记录：统计→备份→删除 | 依赖 0110；生产执行需确认，且须先执行 0103 回填。Planner SHA 0b8dfa29（revision 1，开工时追加基线） | planned |
+| [0110](0110-ai-plain-qa-no-run/GOAL.md) | 普通问答不写运行记录（A2）；去掉每轮整类计数读取；可选停写全部统计记录 | **开工前需用户决定是否停写全部 agentAnalyticsEvents（无读取方）**。Planner SHA 6c69de4a（revision 1，开工时追加基线） | planned |
+| [0109](0109-message-tables/GOAL.md) | 消息三张表（M2）：对话（并入绑定）/成员（并入已读）/消息（序号+去重），接口不变；清掉最后两处读旧集合 | 依赖 0108；生产行数查询与搬迁需确认。Planner SHA d955f66c（revision 1，开工时追加基线） | planned |
+| [0108](0108-local-notes-schedule/GOAL.md) | 笔记与个人日程读本地（断网第 2 期）+ 同步流水号的生产安全迁移（所有写入取提交顺序锁） | 依赖 0104；生产迁移需确认。Planner SHA 00a0d137（revision 1，开工时追加基线） | planned |
+| [0107](0107-app-event-live/GOAL.md) | App 活动现场页（设计案 → 实现），与网页 `/events/[id]/live` 等价 | **先出设计案，需用户批准**。Planner SHA 71e61500（revision 1，开工时追加基线） | planned |
+| [0106](0106-app-onboarding/GOAL.md) | App 新用户引导（设计案 → 实现），与网页 `/profile/onboarding`（Li-QY）等价 | **先出设计案，需用户批准**。Planner SHA a0316b78（revision 1，开工时追加基线） | planned |
+| [0105](0105-route-parity-exceptions/GOAL.md) | 页面对齐例外：`/admin/read-cost`、`/agent/plan`、`/agent/strategy` 列为「只在网页上有」并写明原因 | 用户 2026-09-27 决定；只改测试。Planner SHA 357bcf4e（revision 1，开工时追加基线） | planned |
 | [0104](0104-legacy-chat-retirement/GOAL.md) | 旧 chat 退役（消息 M1）：草稿接新系统、删三处坏调用、iOrbit 页不读旧 chat、删旧接口/服务/演示数据，棘轮 −2；App 收件箱跳过未知通知类型 | 设计 message-design.html。基线 `39c874031`，Planner SHA 7c705fc5。run-01 结果：旧 chat 接口/服务/演示数据删除（本地清理 86 行），回复草稿落库到新系统对话（`conversations/[id]/draft`），删三处坏调用，iOrbit 页不读旧 chat，改写接口 409→200；App 收件箱逐条校验跳过未知通知；棘轮 164→162。事故：子代理误停用户 3000 dev server；协调者查明 0099 的 instrumentation 让 `next dev` 编译失败，已修复 `ec308129a` 并重启。遗留两处读旧集合转 0109。生产清理需用户确认。协调者复跑两端全量无回归 | completed |
 | [0103](0103-ai-trace-stop-duplicates/GOAL.md) | AI 轨迹 A1+A3：不再写步骤/统计记录（运行详情形状不变，步骤从请求记录计时拼出）；运行读取按编号精确读；棘轮 −1 | 设计 ai-data-design.html。基线 `84890147d`，Planner SHA d4fd294d。run-01 结果：普通问答不再写步骤（本地原 9 行）和统计（2 行）；运行按 `target_id=运行编号` 精确读，10 次与 200 次历史读取都是 2 查询/5 行/9.7KB（改前 111KB→2.05MB 线性增长）；AI 提问小票 143KB→52KB；棘轮 165→164。**生产部署后需执行 `npm run db:migrate:agent-run-targets` 回填旧行**。付费账本累计 $0.048249/$5。协调者复跑两端全量无回归 | completed |
 | [0102](0102-dashboard-snapshots/GOAL.md) | 看板 D2：关系图版本（6 类最大 sync_revision，扩展同步索引）+ 缺口/机会快照（万能表新类别）+ AI 联系人分析入口只核对版本；棘轮 −6 | 设计 dashboard-design.html。基线 `af39bf984`，Planner SHA 9ec6bc79。run-01 结果：数据不变时缺口/机会/联系人分析不读整图（network-gaps 282KB→12KB，contacts-dashboard 390KB→120KB，AI 入口版本不符 397KB→18KB）；版本=行数+流水号和+最大流水号；新建部分索引 `orbit_records_graph_version_idx`；棘轮 171→165；9 项变异检查。**生产前提待用户决定：生产库是否有 `sync_revision` 列及如何安全加上（正式同步迁移要求写锁，现有写入不取锁）**，没有时自动退回整图。付费账本：本 Sprint 5 次 DeepSeek 保守记 $0.010，累计 $0.042249/$5。协调者复跑两端全量无回归 | completed |

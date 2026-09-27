@@ -31,7 +31,7 @@
 | 01 汇总之和等于小票之和；同一天重跑结果不变 | 通过 | 真库测试覆盖：抽样率 0.5 的小票算作 2 次、没有归属的小票、跨日边界。运行时：测试小票合计 21,294,789 字节，汇总表合计也是 21,294,789 字节。 |
 | 02 清理边界 | 通过 | 真库测试：14 天多 1 分钟的小票被删，13 天的保留；366 天前的汇总被删，364 天前的保留。运行时：维护任务删掉 15 天和 20 天前的两张小票，13 天前的那张还在。 |
 | 03 访问控制 | 通过 | 路由测试和运行时 HTTP 都验证了上表；管理员能看到 5 个区块；非管理员拿到的 404 页面里没有任何读取量数据。 |
-| 04 报警各发一次，重跑不重复 | 通过 | 真库测试：执行真实的 `runMaintenancePass`，再从真实收件箱路由读回，管理员 2 条、非管理员 0 条；重跑后数量不变。运行时：第一次维护返回 `alertsRaised 2 / alertsDelivered 2`，第二次都是 0。agenthubs 管理员账号（`account_orbit_generated`）通过 `/api/inbox/notifications` 读回 2 条中文通知，英文版也正确。 |
+| 04 报警各发一次，重跑不重复 | 通过 | 真库测试：执行真实的 `runMaintenancePass`，再从真实收件箱路由读回，管理员 2 条、非管理员 0 条；重跑后数量不变。运行时：第一次维护返回 `alertsRaised 2 / alertsDelivered 2`，第二次都是 0。测试中作为管理员的账号 `account_orbit_generated`（**更正 2026-09-27**：该编号属于演示账号 `demo-generated@orbit.test`，不是 agenthubs 账号；agenthubs 账号是 `user_mry5y200_58jpi8`，生产上配置 `ORBIT_READ_COST_ADMIN_ACCOUNT_IDS` 时应填生产环境 agenthubs 账号的编号）通过 `/api/inbox/notifications` 读回 2 条中文通知，英文版也正确。 |
 | 05 Neon 未配置时显示「未取得」；全量等 | 通过 | 未配置时记 `unavailable`，不发任何请求；本地模拟 Neon 接口时算出覆盖率 60%，触发低覆盖率报警；Neon 返回 500 时记 `failed`，维护任务照常成功。 |
 
 **变异检查**（证明测试真的会失败）：

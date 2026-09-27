@@ -93,9 +93,9 @@ figcaption{font-size:13.5px;color:var(--muted)}
 </style>
 <main>
 <section class="cover">
-  <div class="course">Sprint 计划 · 待确认 · 2026-09-27</div>
+  <div class="course">Sprint 计划 · 已确认 · 2026-09-27 修订</div>
   <h1>Sprint 路线</h1>
-  <p>把五份定稿设计案（AI 对话、消息、断网也能用、看板读取、读取量监控），加上修复主线测试，排成一条从 <strong>0098</strong> 开始的 sprint 序列。</p>
+  <p>把五份定稿设计案（AI 对话、消息、断网也能用、看板读取、读取量监控），加上修复主线测试，排成一条从 <strong>0098</strong> 开始的 sprint 序列（2026-09-27 修订：插入 0105–0107 页面对齐，其后顺延 3 号）。</p>
   <p>排序遵循四条原则：</p>
   <ol>
     <li><strong>先让测试变绿</strong>：规则要求每个 sprint 两端全量测试通过，主线不绿，什么都没法验收；</li>
@@ -140,16 +140,29 @@ figcaption{font-size:13.5px;color:var(--muted)}
 </section>
 
 <section class="lesson">
+  <div class="lesson-head"><span class="lesson-no">阶段三·补</span><h2>页面对齐（2026-09-27 加入）</h2></div>
+  <div class="tbl"><table>
+    <thead><tr><th>Sprint</th><th>内容</th><th>来源</th></tr></thead>
+    <tbody>
+      <tr><td><strong>0105</strong><br>页面对齐例外</td><td>页面对齐测试加入「只在网页上有」的例外并写明原因：<code>/admin/read-cost</code>（管理页）、<code>/agent/plan</code>、<code>/agent/strategy</code>（不符合事务管家定位，不原样移植；网页端暂不改）</td><td>用户决定</td></tr>
+      <tr><td><strong>0106</strong><br>App 新用户引导</td><td>先出设计案给你批准，再把网页的新用户引导（资料、名片、AI 自我介绍）做进 App；这是 Li-QY 的功能，设计案里对齐他的网页版</td><td>用户决定</td></tr>
+      <tr><td><strong>0107</strong><br>App 活动现场页</td><td>先出设计案给你批准，再把 <code>/events/[id]/live</code> 做进 App；为后面「断网也能用」的活动现场打基础</td><td>用户决定</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout"><p><strong>待设计的新功能（不在当前路线内）</strong>：首页「今天值得联系」卡片、收件箱跟进提醒、每周一「本周要推进的事」。把 plan/strategy 页面里真正有用的部分拆进 App 已有的入口，需先出设计案。</p></div>
+</section>
+
+<section class="lesson">
   <div class="lesson-head"><span class="lesson-no">阶段四</span><h2>清理和独立的小改动</h2></div>
   <div class="tbl"><table>
     <thead><tr><th>Sprint</th><th>内容</th><th>来源</th></tr></thead>
     <tbody>
       <tr><td><strong>0104</strong><br>旧 chat 退役</td><td>草稿改接新系统的对话编号；删除隐私开关、允许分析、提取要点三处坏调用；网页 iOrbit 页不再读旧 chat；删除旧接口、旧服务和演示数据；棘轮减 2</td><td>消息 M1</td></tr>
-      <tr><td><strong>0105</strong><br>日程、笔记读本地</td><td>服务器已经登记好，只把两个页面改成以本地副本为主</td><td>断网第 2 期</td></tr>
-      <tr><td><strong>0106</strong><br>消息三张表</td><td>先查生产库行数；建对话（并入绑定）、对话成员（并入已读）、消息三张表并切换；未读数在成员行上维护；棘轮减 4</td><td>消息 M2</td></tr>
-      <tr><td><strong>0107</strong><br>普通问答不写运行记录</td><td>运行记录只在执行动作时写；点赞功能保持现状</td><td>AI A2</td></tr>
-      <tr><td><strong>0108</strong><br>AI 轨迹保留期限和存量清理</td><td>带动作的运行在动作结束 1 年后整套删除；删除存量的步骤、统计、普通问答运行记录</td><td>AI A4 + A5</td></tr>
-      <tr><td><strong>0109</strong><br>AI 会话分页</td><td>打开会话首屏 20 条消息，卡片按需加载；App 和网页两端</td><td>AI B1 + B2</td></tr>
+      <tr><td><strong>0108</strong><br>日程、笔记读本地</td><td>笔记、个人日程页面改成本地优先；<strong>同时交付同步流水号的生产安全迁移</strong>：所有写入先取提交顺序锁，否则严格版流水号会让写入失败</td><td>断网第 2 期</td></tr>
+      <tr><td><strong>0109</strong><br>消息三张表</td><td>先查生产库行数；建对话（并入绑定）、对话成员（并入已读）、消息三张表并切换；未读数在成员行上维护；接口形状不变；清掉最后两处读旧 chat 集合（0104 遗留）；棘轮再减</td><td>消息 M2</td></tr>
+      <tr><td><strong>0110</strong><br>普通问答不写运行记录</td><td>普通问答不再写运行记录；去掉每轮为计数整类读取数据；<strong>开工前需你决定：是否停写全部统计记录（目前没有任何读取方）</strong></td><td>AI A2</td></tr>
+      <tr><td><strong>0111</strong><br>AI 轨迹保留期限和存量清理</td><td>带动作的运行在动作结束 1 年后整套删除；删除存量的步骤、统计、普通问答运行记录</td><td>AI A4 + A5</td></tr>
+      <tr><td><strong>0112</strong><br>AI 会话分页</td><td>打开会话首屏 20 条，往上翻再加载，卡片按需恢复；<strong>每次问答只追加新消息</strong>（现在每轮读约 7N 行、重写整个会话）；App 和网页不再上传整个会话；读取上限审计恢复通过</td><td>AI B1 + B2</td></tr>
     </tbody>
   </table></div>
 </section>
@@ -159,13 +172,13 @@ figcaption{font-size:13.5px;color:var(--muted)}
   <div class="tbl"><table>
     <thead><tr><th>Sprint</th><th>内容</th><th>来源</th></tr></thead>
     <tbody>
-      <tr><td><strong>0110</strong><br>同步地基</td><td>同步注册表加「说明书」；「改主人或身份却没通知手机」的自动检查（覆盖批量脚本）；专用表装取号机，同步能从专用表读</td><td>断网第 0 期</td></tr>
-      <tr><td><strong>0111</strong><br>补写主人</td><td>来源记录按引用补写主人，被两人共用的每人复制一份；没有主人的演示数据补上合理主人；修好种子脚本</td><td>断网第 0 期</td></tr>
-      <tr><td><strong>0112</strong><br>活动现场</td><td>你报名的活动（地点、时间、介绍、议程）和发布给你的座位、推荐放进手机；取消报名后撤下</td><td>断网 1a</td></tr>
-      <tr><td><strong>0113</strong><br>联系人放进手机</td><td>联系人、关系、来源进本地副本；联系人页改为读本地</td><td>断网 1b</td></tr>
-      <tr><td><strong>0114</strong><br>看板在手机上算</td><td>建立允许共用的目录并调整共用规则；缺口、机会抽成纯函数；App 看板和联系人分析读本地</td><td>看板 D3</td></tr>
-      <tr><td><strong>0115</strong><br>通知和 AI 对话放进手机</td><td>收件箱通知、AI 会话进本地副本</td><td>断网 3a = AI B3</td></tr>
-      <tr><td><strong>0116</strong><br>消息放进手机</td><td>成员、对话、全部历史消息进本地副本；撤销关系后从手机删除</td><td>断网 3b = 消息 M3</td></tr>
+      <tr><td><strong>0113</strong><br>同步地基</td><td>同步注册表加「说明书」；修掉「通用写入更新时把主人清空」的问题；「改主人 / 身份却没通知手机」的自动检查（覆盖批量脚本）；活动专用表装取号机，同步能从专用表读</td><td>断网第 0 期</td></tr>
+      <tr><td><strong>0114</strong><br>补写主人</td><td>联系人及其附属数据补写主人，被两人共用的来源每人复制一份；没有主人的演示数据补上合理主人；修好种子脚本；平台公共数据不补并说明</td><td>断网第 0 期</td></tr>
+      <tr><td><strong>0115</strong><br>活动现场</td><td>你报名的活动（地点、时间、介绍、议程）和发布给你的座位、推荐放进手机；取消报名后撤下</td><td>断网 1a</td></tr>
+      <tr><td><strong>0116</strong><br>联系人放进手机</td><td>联系人、关系、来源进本地副本；联系人页改为读本地</td><td>断网 1b</td></tr>
+      <tr><td><strong>0117</strong><br>看板在手机上算</td><td>建立允许共用的目录并调整共用规则；缺口、机会抽成纯函数；补齐看板用到但手机上还没有的数据（万能表 events 集合）；App 看板和联系人分析读本地计算</td><td>看板 D3</td></tr>
+      <tr><td><strong>0118</strong><br>通知和 AI 对话放进手机</td><td>收件箱通知、AI 会话列表和打开过的会话进本地副本；失效的通知也要从手机上消失</td><td>断网 3a = AI B3</td></tr>
+      <tr><td><strong>0119</strong><br>消息放进手机</td><td>成员、对话、全部历史消息进本地副本；撤销关系后从手机删除</td><td>断网 3b = 消息 M3</td></tr>
     </tbody>
   </table></div>
 </section>
@@ -175,8 +188,8 @@ figcaption{font-size:13.5px;color:var(--muted)}
   <div class="tbl"><table>
     <thead><tr><th>Sprint</th><th>内容</th><th>来源</th></tr></thead>
     <tbody>
-      <tr><td><strong>0117</strong><br>断网写设计案</td><td>只出设计案，不写代码：唯一编号去重、临时编号换正式编号、冲突两边都保留。<strong>需要你批准</strong></td><td>断网第 4 期</td></tr>
-      <tr><td>0118 起</td><td>按批准的设计案，依次做笔记、待办、日程的断网写，以及消息的断网发送</td><td>断网第 4 期 + 消息 M4</td></tr>
+      <tr><td><strong>0120</strong><br>断网写设计案</td><td>只出设计案，不写代码：唯一编号去重、临时编号换正式编号、冲突两边都保留。<strong>需要你批准</strong></td><td>断网第 4 期</td></tr>
+      <tr><td>0121 起</td><td>按批准的设计案，依次做笔记、待办、日程的断网写，以及消息的断网发送</td><td>断网第 4 期 + 消息 M4</td></tr>
     </tbody>
   </table></div>
 </section>
@@ -189,12 +202,13 @@ figcaption{font-size:13.5px;color:var(--muted)}
     <li>每个 sprint 在独立分支（工作目录放外接盘）完成，合回 <code>chat-agent</code>，写执行报告。</li>
   </ul>
   <h3>需要你当场确认的操作</h3>
+  <p class="muted">每个 Sprint 的完整计划（GOAL + PLANNER）已写入 <code>repos/orbit-app/docs/sprints/</code>；生产步骤汇总在 <code>PRODUCTION_ROLLOUT.md</code>。</p>
   <div class="tbl"><table>
     <thead><tr><th>操作</th><th>出现在</th></tr></thead>
     <tbody>
       <tr><td>推送到远端 / 部署生产</td><td>每个 sprint 合入之后</td></tr>
-      <tr><td>在生产库上删除或补写数据（先备份）</td><td>0106 查行数、0108 删存量、0111 补写主人</td></tr>
-      <tr><td>批准设计案</td><td>0117</td></tr>
+      <tr><td>在生产库上删除或补写数据（先备份）</td><td>0109 查行数、0111 删存量、0114 补写主人</td></tr>
+      <tr><td>批准设计案</td><td>0120</td></tr>
     </tbody>
   </table></div>
   <h3>不在这条路线里的事</h3>
