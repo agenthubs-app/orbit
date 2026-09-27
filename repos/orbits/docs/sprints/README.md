@@ -34,7 +34,7 @@
 | [W0001](W0001-iorbit-home-morning/GOAL.md) | 打开 iOrbit 先看到今天最该做的 1–3 件事，其余信息退到右栏和底部栏目 | RW-01 | 无；接续工作区里已写好的五个文件 | completed |
 | [W0002](W0002-goal-editor/GOAL.md) | 在资料页和 onboarding 设目标时，点示例句填入再改，选「一个月内／3 个月内／一年内」 | RW-05（第 3 步部分除外） | 无 | completed |
 | [W0003](W0003-community-event/GOAL.md) | 活动页最上面永远是「加入 iOrbit 社群」卡片，点「我已加入」后记为已加入；推荐理由只写真实匹配的目标词 | RW-06、RW-07（无计划时） | D4 可先占位 | completed |
-| [W0004](W0004-demo-mode-iorbit/GOAL.md) | 新用户打开 iOrbit 看到示例人物的完整一天，写操作被拦下并引到引导 | RW-03（iOrbit 首页部分） | W0001；开关默认关（D1） | planned |
+| [W0004](W0004-demo-mode-iorbit/GOAL.md) | 新用户打开 iOrbit 看到示例人物的完整一天，写操作被拦下并引到引导 | RW-03（iOrbit 首页部分） | W0001；开关默认关（D1） | completed |
 | [W0005](W0005-demo-mode-network/GOAL.md) | 新用户打开人脉页看到 30 位示例联系人和详情，扫名片仍是真实操作 | RW-03 | W0004 | planned |
 | [W0006](W0006-start-guide/GOAL.md) | 新用户在 /app/start 按顺序完成名片、目标、计划、活动，中途离开回来能续做 | RW-04、RW-05 第 3 步部分 | W0002、W0003、W0004；开关默认关（D1） | planned |
 | [W0007](W0007-plan-storage/GOAL.md) | 计划能按阶段、行动、人脉需求、信息、活动结构化保存和更新 | RW-09 | 无；本地测试库已核对（localhost），H 档 | completed |
@@ -60,3 +60,4 @@
 | W0003 | run-01（2026-09-28） | `0ff45703` | `d54949f5` | [REPORT](W0003-community-event/REPORT.md) |
 | W0013 | run-01（2026-09-28） | `04fb477e` | `4f79d810` | [REPORT](W0013-card-industry/REPORT.md) |
 | W0007 | run-01（2026-09-28） | `52ba4e40` | `7b8085cf` | [REPORT](W0007-plan-storage/REPORT.md) |
+| W0004 | run-01（2026-09-28） | `2220b061` | `1ada5684` | [REPORT](W0004-demo-mode-iorbit/REPORT.md) |
