@@ -62,7 +62,7 @@ E 结构（0079–0080，需单独批准）依次领取，不并行。
 | [0114](0114-owner-backfill/GOAL.md) | 补写主人：联系人及附属数据按引用补写，共用来源每人复制一份，演示数据补合理主人，修种子脚本；平台公共数据不补 | 依赖 0113；生产执行需确认。Planner SHA 4ddae886（revision 1，开工时追加基线） | planned |
 | [0113](0113-sync-foundation/GOAL.md) | 同步地基：注册表 v2 说明书、修通用 upsert 清空主人、改主人/身份检查（含脚本）、活动专用表取号与专用表读取、App 按租约类别同步 | 依赖 0108。Planner SHA 4dd17235（revision 1，开工时追加基线） | planned |
 | [0112](0112-ai-session-paging/GOAL.md) | AI 会话分页（B1+B2）：首屏 20 条、上翻加载、卡片按需；问答只追加（现每轮读约 7N 写 2N）；客户端不再上传整会话；读取上限审计恢复通过 | 依赖 0110。Planner SHA 505a18ae（revision 1，开工时追加基线） | planned |
-| [0111](0111-ai-trace-retention/GOAL.md) | AI 轨迹保留期与存量清理（A4+A5）：动作结束 1 年整套删除（维护任务）；存量步骤/统计/普通问答运行记录：统计→备份→删除 | 依赖 0110；生产执行需确认，且须先执行 0103 回填。Planner SHA 0b8dfa29（revision 1，开工时追加基线） | planned |
+| [0111](0111-ai-trace-retention/GOAL.md) | AI 轨迹保留期与存量清理（A4+A5）：动作结束 1 年整套删除（维护任务）；存量步骤/统计/普通问答运行记录：统计→备份→删除 | 依赖 0110；生产执行需确认，且须先执行 0103 回填。Planner SHA 0b8dfa29（revision 1，基线 7f8a3cc08） run-01 · 报告 [REPORT](0111-ai-trace-retention/REPORT.md) | completed |
 | [0110](0110-ai-plain-qa-no-run/GOAL.md) | 普通问答不写运行记录（A2）；去掉每轮整类计数读取；可选停写全部统计记录 | 用户 2026-09-27 决定：停写全部 agentAnalyticsEvents。Planner SHA be244bb6（revision 1，基线 85fa19b32） run-01 · 报告 [REPORT](0110-ai-plain-qa-no-run/REPORT.md)；棘轮 157→156；付费 3 次 | completed |
 | [0109](0109-message-tables/GOAL.md) | 消息三张表（M2）：对话（并入绑定）/成员（并入已读）/消息（序号+去重），接口不变；清掉最后两处读旧集合 | 依赖 0108；生产行数查询与搬迁需确认。Planner SHA d955f66c（revision 1，基线 b6acd1119） run-01 · 报告 [REPORT](0109-message-tables/REPORT.md)；棘轮 162→157 | completed |
 | [0108](0108-local-notes-schedule/GOAL.md) | 笔记与个人日程读本地（断网第 2 期）+ 同步流水号的生产安全迁移（所有写入取提交顺序锁） | 依赖 0104；生产迁移需确认。Planner SHA 00a0d137（revision 1，基线 9a027e2ba） run-01 · 报告 [REPORT](0108-local-notes-schedule/REPORT.md)；待定：phoneweb 断网看笔记 | completed |

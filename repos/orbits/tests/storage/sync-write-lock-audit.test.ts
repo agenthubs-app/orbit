@@ -20,6 +20,8 @@ export const SYNC_WRITE_MANIFEST: Readonly<Record<string, SyncWritePolicy>> = {
   "features/acquisition/storage/external-import-live-record-provider.ts": { policy: "guarded", statements: 1, how: "atomic contact-draft writer refuses sync collections" },
   "features/acquisition/storage/referral-live-record-provider.ts": { policy: "guarded", statements: 2, how: "atomic contact-draft writer refuses sync collections; second write is contactDrafts" },
   "features/acquisition/storage/contact-draft-live-record-provider.ts": { policy: "non-sync", statements: 1, collections: "contactDrafts" },
+  "features/agent/retention/legacy-trace-cleanup.ts": { policy: "non-sync", statements: 1, collections: "agentAnalyticsEvents, agentRuns, agentRunSteps deleted; orbit_agent_chat_requests link cleared (0111)" },
+  "features/agent/retention/run-retention.ts": { policy: "non-sync", statements: 1, collections: "agent run sets deleted; orbit_agent_chat_requests link cleared (0111)" },
   "features/agent/storage/agent-runtime-live-record-provider.ts": { policy: "non-sync", statements: 2, collections: "orbit_agent_chat_requests and agent runtime collections" },
   "features/appointments/notification-projector.ts": { policy: "non-sync", statements: 2, collections: "notifications" },
   "features/auth/password-reset-store.ts": { policy: "non-sync", statements: 4, collections: "auth_users" },

@@ -7,6 +7,7 @@
     "db:migrate:dashboard-graph-version": "tsx scripts/migrate-dashboard-graph-version.ts",
     "db:migrate:sync-revision": "tsx scripts/migrate-sync-revision.ts",
     "db:migrate:agent-run-targets": "tsx scripts/migrate-agent-run-targets.ts",
+    "db:cleanup:agent-trace-legacy": "tsx scripts/cleanup-agent-trace-legacy.ts",
     "db:cleanup:legacy-chat": "tsx scripts/cleanup-legacy-chat-records.ts",
     "db:migrate:exchange-notifications": "tsx scripts/migrate-event-contact-request-notifications.ts",
     "db:migrate:relationship-messages": "tsx scripts/migrate-relationship-messages.ts",

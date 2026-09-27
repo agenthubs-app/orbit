@@ -7,6 +7,7 @@ import { publishEventOperationsWake } from "../../events/event-operations/queue"
 import { getConfiguredIngestV2 } from "../../acquisition/business-card-ingest-v2/configured";
 import { redispatchPendingCardWork } from "../../acquisition/business-card-dispatch-scan";
 import { getConfiguredCardUploadSources } from "../../acquisition/storage/business-card-upload-source-runtime";
+import { createAgentRunRetentionMaintenanceTask } from "../../agent/retention/maintenance-task";
 import { redispatchPendingAgentActions } from "../../agent/runtime/dispatch-scan";
 import { dispatchPasswordResetMail } from "../../auth/password-reset-dispatch";
 import { NotificationDeliveryUnconfigured, runNotificationDeliveryPass } from "../../notifications/delivery-pass";
@@ -134,6 +135,9 @@ export function createConfiguredMaintenanceTasks({
         }
       },
     },
+    // AI A4 (0111): run sets whose action ended over a year ago are deleted
+    // whole, a bounded number per pass; open sets are never touched.
+    createAgentRunRetentionMaintenanceTask({ env }),
     // Monitoring O2/O3: daily read-cost rollup, Neon reconciliation, retention
     // and admin alerts. Days already final are skipped, so heartbeat passes are cheap.
     createReadCostMaintenanceTask({ env }),
