@@ -9,6 +9,7 @@ import { createRelationshipLifecycleService } from "../../features/connections/l
 import { assessRelationshipLifecycleMigration } from "../../features/connections/lifecycle/migration-preflight";
 import { createPostgresLiveRecordStore } from "../../shared/storage/postgres-live-record-store";
 import { ORBIT_RECORDS_SCHEMA_SQL } from "../../shared/storage/migrations";
+import { STRICT_SYNC_REVISION_SQL, testRawWrite } from "../support/sync-revision-fixture";
 import { createTransactionalPostgresClient, type TransactionalPostgresClient } from "../../shared/storage/transactional-postgres";
 import type { RelationshipInitializationChoice, RelationshipInitializationInput } from "../../shared/contract/relationship-lifecycle";
 
@@ -26,6 +27,8 @@ async function fixture(run: (f: { client: TransactionalPostgresClient; service: 
   try {
     await admin.query(`create schema ${schema}`);
     await client.query(ORBIT_RECORDS_SCHEMA_SQL);
+    // Sprint 0108: initialization writes tasks under the strict sync trigger.
+    await client.query(STRICT_SYNC_REVISION_SQL);
     await runRelationshipLifecycleMigrations(client);
     // Minimal SQL authority fixture, not production schema or consent creation.
     await client.query(`create table event_ops_relationship_sides (workspace_id text, relationship_pair_id text, owner_actor_id text, contact_id text, connection_id text);
@@ -106,7 +109,7 @@ test("stale revision, unknown keys, no goal, missing/invalid date, and existing 
   assert.deepEqual(await records(), before);
   await client.query("update orbit_records set payload=payload || '{\"notes\":\"new private note\"}'::jsonb where record_id='contact:a'");
   await assert.rejects(service.initialize("a", "contact:a", command), { code: "CONFLICT" });
-  await client.query("insert into orbit_records (workspace_id,collection_name,record_id,user_id,source_type,source_id,payload,created_at,updated_at) values ($1,'tasks','old','a','manual','test',$2,$3,$3)", [workspaceId, { id: "old", connectionId: "connection:a" }, now]);
+  await testRawWrite(client, "tasks", "insert into orbit_records (workspace_id,collection_name,record_id,user_id,source_type,source_id,payload,created_at,updated_at) values ($1,'tasks','old','a','manual','test',$2,$3,$3)", [workspaceId, { id: "old", connectionId: "connection:a" }, now]);
   await assert.rejects(service.read("a", "contact:a"), { code: "INVALID_TRANSITION" });
 }));
 test("same-key parallel retries commit once; changed body and second initialization conflict", db, async () => fixture(async ({ client, service, input }) => {
@@ -124,7 +127,7 @@ test("different-key concurrent choices allow exactly one and preserve the winner
   assert.equal(results.filter(r => r.status === "rejected" && r.reason.code === "CONFLICT").length, 1);
 }));
 test("task collision and audit failure roll back contact, connection, evidence, tasks and receipt", db, async () => fixture(async ({ client, service, input, records }) => {
-  await client.query("insert into orbit_records (workspace_id,collection_name,record_id,user_id,source_type,source_id,payload,created_at,updated_at) values ($1,'tasks',$2,'b','manual','test',$3,$4,$4)", [workspaceId, task.taskId, { id: task.taskId, title: "foreign preserved" }, now]);
+  await testRawWrite(client, "tasks", "insert into orbit_records (workspace_id,collection_name,record_id,user_id,source_type,source_id,payload,created_at,updated_at) values ($1,'tasks',$2,'b','manual','test',$3,$4,$4)", [workspaceId, task.taskId, { id: task.taskId, title: "foreign preserved" }, now]);
   const command = await input("a", { stage: "needs_follow_up", nextTask: task });
   const before = await records();
   await assert.rejects(service.initialize("a", "contact:a", command), { code: "INVALID_TASK" });

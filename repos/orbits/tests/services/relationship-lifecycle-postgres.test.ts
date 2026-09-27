@@ -6,6 +6,7 @@ import { createPostgresRelationshipLifecycleRepository } from "../../features/co
 import { applyRelationshipStageCommand, applyRelationshipTaskCompletion } from "../../features/connections/lifecycle/transition";
 import { runRelationshipLifecycleMigrations } from "../../features/connections/lifecycle/migrations";
 import { ORBIT_RECORDS_SCHEMA_SQL } from "../../shared/storage/migrations";
+import { STRICT_SYNC_REVISION_SQL, testRawWrite } from "../support/sync-revision-fixture";
 import { createConfiguredTransactionalPostgresRuntime, createTransactionalPostgresClient, type TransactionalPostgresClient, type TransactionalSqlExecutor } from "../../shared/storage/transactional-postgres";
 import { createConfiguredRelationshipLifecycleService } from "../../features/connections/lifecycle/service-factory";
 import { createPostgresLiveRecordStore } from "../../shared/storage/postgres-live-record-store";
@@ -81,10 +82,12 @@ async function withDatabase(operation: (fixture: {
   try {
     await admin.query(`create schema ${schema}`);
     await client.query(ORBIT_RECORDS_SCHEMA_SQL);
+    // Sprint 0108: lifecycle task writes run under the strict sync trigger.
+    await client.query(STRICT_SYNC_REVISION_SQL);
     await runRelationshipLifecycleMigrations(client);
     await runRelationshipLifecycleMigrations(client);
     const insert = async (collection: string, id: string, owner: string, payload: Record<string, unknown>) => {
-      await client.query("insert into orbit_records (workspace_id, collection_name, record_id, user_id, source_type, source_id, payload, created_at, updated_at) values ($1,$2,$3,$4,'manual','test:source',$5,$6,$6)", [workspaceId, collection, id, owner, payload, now]);
+      await testRawWrite(client, collection, "insert into orbit_records (workspace_id, collection_name, record_id, user_id, source_type, source_id, payload, created_at, updated_at) values ($1,$2,$3,$4,'manual','test:source',$5,$6,$6)", [workspaceId, collection, id, owner, payload, now]);
     };
     await insert("contacts", contactId, actorId, { id: contactId });
     await insert("connections", connectionId, actorId, connectionPayload);
@@ -247,7 +250,7 @@ test("PostgreSQL preserves generic tasks and existing task provenance while clos
   const generic = { id: "task:generic", connectionId, title: "普通任务", status: "open" };
   await insert("tasks", "task:generic", actorId, generic);
   await repo.mutate(mutation, (snapshot) => applyRelationshipStageCommand({ command, current: snapshot.connection, tasks: snapshot.tasks, now }));
-  await client.query("update orbit_records set payload=payload || $1::jsonb where collection_name='tasks' and record_id='task:1'", [{ evidenceIds: ["evidence:keep"], summary: "保留任务内容" }]);
+  await testRawWrite(client, "tasks", "update orbit_records set payload=payload || $1::jsonb where collection_name='tasks' and record_id='task:1'", [{ evidenceIds: ["evidence:keep"], summary: "保留任务内容" }]);
   await repo.mutate({ ...mutation, expectedVersion: 4, idempotencyKey: "archive", requestHash: "archive" }, (snapshot) => applyRelationshipStageCommand({ command: { actorId, connectionId, expectedVersion: 4, idempotencyKey: "archive", stage: "archived", dismissTaskIds: ["task:1"] }, current: snapshot.connection, tasks: snapshot.tasks, now }));
   const rows = await client.query<{ record_id: string; payload: Record<string, unknown> }>("select record_id,payload from orbit_records where collection_name='tasks'");
   assert.deepEqual(rows.rows.find(({ record_id }) => record_id === "task:generic")?.payload, generic);

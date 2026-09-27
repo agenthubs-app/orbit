@@ -320,8 +320,20 @@ function mapSchedulePayload(row: SyncReadRow, actorId: string) {
     updatedAt: payload.updatedAt,
   };
   if (payload.kind === "personal") {
-    put(result, "endsAt", payload.endsAt);
-    put(result, "location", payload.location);
+    // The owner's personal DTO (personalScheduleSchema), so the App can show
+    // the list and the detail from its mirror (sprint 0108).
+    for (const field of [
+      "endsAt",
+      "location",
+      "allDay",
+      "timeZone",
+      "meetingMethod",
+      "meetingUrl",
+      "contactIds",
+      "noteIds",
+      "recurrence",
+      "reminderMinutes",
+    ] as const) put(result, field, payload[field]);
     return result;
   }
   for (const field of [

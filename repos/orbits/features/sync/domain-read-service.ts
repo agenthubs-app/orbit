@@ -57,6 +57,43 @@ const PAGE_SQL = `
   limit $6
 `;
 
+// A recurring series' occurrence exceptions live in their own collection. Every
+// exception write also rewrites the series row (new revision), so sending the
+// exceptions with the series keeps the device complete. Exceptions for
+// occurrences that ended before this page was issued are left out: the device
+// never shows those, and the series payload would otherwise grow forever.
+const SCHEDULE_EXCEPTIONS_SQL = `
+  /* sync:domain:schedule-exceptions */
+  select source_id, payload
+  from orbit_records
+  where workspace_id = $1
+    and user_id = $2
+    and collection_name = 'personal_schedule_occurrence_exceptions'
+    and source_id = any($3::text[])
+    and lifecycle_state <> 'deleted'
+    and (payload ->> 'occurrenceDate' >= $4 or left(payload -> 'patch' ->> 'startsAt', 10) >= $4)
+  order by source_id, record_id
+`;
+
+type ScheduleException = { occurrenceDate: string; cancelled: boolean; patch: Record<string, unknown> };
+
+async function scheduleExceptions(client: AuthorizationEpochSqlClient, input: { workspaceId: string; actorId: string; seriesIds: readonly string[]; issuedAt: number }): Promise<Map<string, ScheduleException[]>> {
+  const bySeries = new Map<string, ScheduleException[]>();
+  if (input.seriesIds.length === 0) return bySeries;
+  const cutoff = new Date(input.issuedAt - 2 * 86_400_000).toISOString().slice(0, 10);
+  const result = await client.query<{ source_id: string; payload: Record<string, unknown> }>(SCHEDULE_EXCEPTIONS_SQL, [input.workspaceId, input.actorId, [...input.seriesIds], cutoff]);
+  for (const row of result.rows) {
+    const { occurrenceDate, cancelled, patch } = row.payload;
+    if (typeof occurrenceDate !== "string" || typeof cancelled !== "boolean" || !patch || typeof patch !== "object" || Array.isArray(patch)) {
+      throw new SyncReadError("SYNC_INVALID_RECORD", "A schedule occurrence exception is invalid.");
+    }
+    const list = bySeries.get(row.source_id) ?? [];
+    list.push({ occurrenceDate, cancelled, patch: patch as Record<string, unknown> });
+    bySeries.set(row.source_id, list);
+  }
+  return bySeries;
+}
+
 export function domainGeneration(epoch: string): string {
   return createHash("sha256").update(JSON.stringify([epoch, SYNC_REGISTRY_VERSION, SYNC_DOMAIN_SCHEMA_VERSION])).digest("hex").slice(0, 16);
 }
@@ -151,13 +188,22 @@ export function createDomainReadService({ client, cursorSecret, now = () => new 
       }
       const pageRows = result.rows.slice(0, input.limit);
       const hasMore = result.rows.length > input.limit;
+      const changes = pageRows.map((row) => domainChange(changeFromRow(row, input.actorId)));
+      if (domain.collectionName === "personal_schedule_items") {
+        const recurring = changes.filter((change) => change.payload && change.payload.kind === "personal" && change.payload.recurrence);
+        const exceptions = await scheduleExceptions(client, { workspaceId: input.workspaceId, actorId: input.actorId, seriesIds: recurring.map((change) => change.id), issuedAt });
+        for (const change of recurring) {
+          const list = exceptions.get(change.id);
+          if (list?.length) change.payload = { ...change.payload, occurrenceExceptions: list };
+        }
+      }
       afterRevision = hasMore ? String(pageRows.at(-1)?.sync_revision ?? afterRevision) : high;
       const page: DomainPage = {
         domainId: domain.domainId,
         schemaVersion: SYNC_DOMAIN_SCHEMA_VERSION,
         registryVersion: SYNC_REGISTRY_VERSION,
         authorizationEpoch: epoch.epoch,
-        changes: pageRows.map((row) => domainChange(changeFromRow(row, input.actorId))),
+        changes,
         nextCursor: cursors.encode({ ...scope, afterRevision, highWatermark: high }, issuedAt),
         highWatermark: high,
         hasMore,

@@ -55,6 +55,10 @@ test("one due series extends its finite plan horizon under the schedule mutation
   assert.equal(plans.length > old.length, true);
   assert.equal(plans.some(plan => plan.targetId.endsWith("2027-01-01")), true);
   assert.equal(f.locks.filter(lock => lock === JSON.stringify(["personal-schedule", f.workspaceId, "owner"])).length, 2);
+  // Sprint 0108: the series row is a sync collection and is written under the commit-order lock;
+  // receipts and reminder plans are not.
+  assert.ok(f.syncLockedWrites.includes("personal_schedule_items"));
+  assert.ok(!f.syncLockedWrites.includes("reminderPlans"));
 });
 
 test("explicit card backfill projects owned batches but leaves reminders to the canonical worker", async () => {

@@ -1,12 +1,20 @@
-import { DASHBOARD_GRAPH_VERSION_INDEX_SQL } from "../../features/sync/migrations";
+import { acquireSyncCommitOrderLock, isSyncCollection } from "../../features/sync/commit-order-lock";
+import { DASHBOARD_GRAPH_VERSION_INDEX_SQL, SYNC_REVISION_MIGRATION_SQL } from "../../features/sync/migrations";
 
 /**
- * sync_revision as it exists on the local development database (orbit_events,
- * set up in sprint 0069): column, sequence and a trigger that assigns a new
- * revision on every insert and update, without the sync commit-order write
- * lock that SYNC_REVISION_MIGRATION_SQL enforces (the product write paths do
- * not take that lock yet, so the full migration would reject task writes).
- * Plus the sprint 0102 graph-version index. Apply after ORBIT_RECORDS_SCHEMA_SQL.
+ * The strict sync_revision schema (sprint 0108): sequence, column, commit-order
+ * lock functions and the trigger that refuses unlocked writes to
+ * notes/tasks/personal_schedule_items. Apply after ORBIT_RECORDS_SCHEMA_SQL.
+ * This is what the local development database and production run.
+ */
+export const STRICT_SYNC_REVISION_SQL = SYNC_REVISION_MIGRATION_SQL;
+
+/**
+ * The relaxed variant sprint 0069 installed on orbit_events before any writer
+ * took the lock: a trigger that assigns a revision without checking the lock.
+ * Kept only for the migration tests (upgrading a relaxed database) and for the
+ * control test that shows why the lock is needed. Do not use it to make a new
+ * test pass.
  */
 export const SYNC_REVISION_ASSIGN_ONLY_SQL = `
 create sequence if not exists orbit_records_sync_revision_seq;
@@ -36,3 +44,18 @@ create index if not exists orbit_records_sync_actor_idx
     and collection_name in ('notes', 'tasks', 'personal_schedule_items');
 ${DASHBOARD_GRAPH_VERSION_INDEX_SQL}
 `;
+
+interface TestTransactionClient {
+  query(text: string, values?: readonly unknown[]): Promise<unknown>;
+  transaction<T>(operation: (tx: { query(text: string, values?: readonly unknown[]): Promise<{ rows: readonly unknown[] }> }) => Promise<T>): Promise<T>;
+}
+
+/**
+ * A test's own raw write (seeding, simulating another writer). Under the strict
+ * trigger a raw write to a sync collection needs the lock like any product
+ * writer; everything else runs as a plain statement.
+ */
+export async function testRawWrite(client: TestTransactionClient, collectionName: string, text: string, values?: readonly unknown[]): Promise<void> {
+  if (!isSyncCollection(collectionName)) { await client.query(text, values); return; }
+  await client.transaction(async (tx) => { await acquireSyncCommitOrderLock(tx); await tx.query(text, values); });
+}

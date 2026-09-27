@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { ORBIT_API_ENDPOINTS } from "../../api/endpoints";
 import type { NoteMentionContract } from "../../api/contract/notes";
 import { AppScreen } from "../../components/AppScreen";
+import { OfflineNotice } from "../../components/OfflineNotice";
 import { createThemedStyles } from "../../design/theme";
 import { radius, spacing, typography } from "../../design/tokens";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
@@ -17,6 +18,7 @@ import { buildRichNoteCreateRequest, confirmedNote } from "../../view-models/not
 import { NoteContactPicker } from "./NoteContactPicker";
 import { NoteMentionEditor } from "./NoteMentionEditor";
 import { NoteEventPicker } from "./NoteEventPicker";
+import { useNotesWriteStatus } from "./notes-source";
 
 let createSequence = 0;
 
@@ -27,6 +29,7 @@ export function NewNoteScreen({ actorId, draftServer = "local", scopeKey, isScop
   const client = useOrbitApiClient({ scopeKey });
   const locale = useOrbitLocale();
   const eventsState = useApiResource<unknown>(ORBIT_API_ENDPOINTS.events, () => false, { scopeKey });
+  const writeStatus = useNotesWriteStatus(actorId);
   const events = eventsState.kind === "success" || eventsState.kind === "empty" ? eventsToSummaries(eventsState.data) : [];
   const [title, setTitle] = useState("");
   const [draft, setDraft] = useState("");
@@ -109,7 +112,7 @@ export function NewNoteScreen({ actorId, draftServer = "local", scopeKey, isScop
   }
 
   async function save() {
-    if (!owns() || pending) return;
+    if (!owns() || pending || writeStatus.offline) return;
     const request = buildRichNoteCreateRequest({ title, body: draft, manualContactIds: selectedIds, mentions, eventIds }, idempotencyKey.current, locale.language);
     if (!request.success) { setError(request.error); return; }
     const operation = new AbortController(); controller.current = operation; setPending(true); setError("");
@@ -117,12 +120,18 @@ export function NewNoteScreen({ actorId, draftServer = "local", scopeKey, isScop
     if (!owns() || operation.signal.aborted) return;
     const note = result.success && result.status >= 200 && result.status < 300
       ? confirmedNote(result.data, { actorId, title: request.body.title, body: request.body.body, manualContactIds: request.body.manualContactIds, mentions: request.body.mentions, contactIds: [...request.body.manualContactIds, ...request.body.mentions.map((item) => item.contactId)], eventIds: request.body.eventIds }, locale.language) : null;
-    if (note) { autosaveAllowed.current = false; await noteDraftStorage.clear(draftScope); if (owns()) router.replace(`/notes/${encodeURIComponent(note.id)}`); }
+    if (note) {
+      autosaveAllowed.current = false; await noteDraftStorage.clear(draftScope);
+      // The detail page reads the device copy: pull the new note before opening it.
+      // If that pull fails, saving again replays the same idempotency key.
+      if (!await writeStatus.confirmSaved(note.id, note.version)) { if (owns()) { setError(locale.t("sync.mutationPending")); setPending(false); } }
+      else if (owns()) router.replace(`/notes/${encodeURIComponent(note.id)}`);
+    }
     else { setError(result.success ? locale.t("notes.createUnconfirmed") : result.error.message); setPending(false); }
     if (controller.current === operation) controller.current = null;
   }
 
-  const saveDisabled = pending || !title.trim() || !draft.trim();
+  const saveDisabled = pending || !title.trim() || !draft.trim() || writeStatus.offline;
   return <AppScreen title={locale.t("notes.new")} onBack={() => { if (!pending && owns()) hasChanges ? setShowExitPrompt(true) : router.back(); }} backAccessibilityLabel={locale.t("common.backToNamed", { name: locale.t("notes.title") })} backLabel={locale.t("notes.title")} headerActions={<View style={styles.headerActions}><Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.cancelNew")} disabled={pending} onPress={() => hasChanges ? setShowExitPrompt(true) : router.back()} style={styles.cancel}><Text style={styles.cancelText}>{locale.t("common.cancel")}</Text></Pressable><Pressable accessibilityRole="button" accessibilityLabel={locale.t(pending ? "notes.saving" : "notes.saveNote")} accessibilityState={{ disabled: saveDisabled }} disabled={saveDisabled} onPress={() => { void save(); }} style={styles.headerSave}><Text style={[styles.headerSaveText, saveDisabled && styles.headerSaveDisabled]}>{locale.t(pending ? "notes.saving" : "notes.save")}</Text></Pressable></View>}>
     {showExitPrompt ? <View accessibilityRole="alert" style={styles.exitPrompt}>
       <Text style={styles.exitTitle}>{locale.t("notes.keepDraftTitle")}</Text><Text style={styles.exitText}>{locale.t("notes.keepDraftBody")}</Text>
@@ -132,6 +141,7 @@ export function NewNoteScreen({ actorId, draftServer = "local", scopeKey, isScop
         <Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.keepAndExit")} onPress={() => { void preserveAndExit(); }} style={styles.exitPrimary}><Text style={styles.saveText}>{locale.t("notes.keepAndExit")}</Text></Pressable>
       </View>
     </View> : null}
+    {writeStatus.offline ? <OfflineNotice lastSyncedAt={writeStatus.lastSyncedAt} /> : null}
     <Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.viewHistory")} disabled={pending} onPress={() => { if (!owns()) return; exitToHistory.current = true; hasChanges ? setShowExitPrompt(true) : router.replace("/notes"); }} style={styles.cancel}><Text style={styles.cancelText}>{locale.t("notes.viewHistory")}</Text></Pressable>
     <View style={styles.paper}>
       <TextInput accessibilityLabel={locale.t("notes.noteTitle")} editable={!pending} maxLength={200} onChangeText={(value) => { setTitle(value); setError(""); }} placeholder={locale.t("notes.noteTitle")} placeholderTextColor={styles.placeholder.color} style={styles.titleInput} value={title} />

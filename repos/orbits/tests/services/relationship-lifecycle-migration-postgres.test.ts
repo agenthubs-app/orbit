@@ -3,6 +3,7 @@ import test from "node:test";
 import { lifecycleMigrationHash } from "../../features/connections/lifecycle/migration-plan";
 import { createPostgresLifecycleMigrationRepository } from "../../features/connections/lifecycle/migration-repository";
 import type { TransactionalPostgresClient, TransactionalSqlExecutor } from "../../shared/storage/transactional-postgres";
+import { testRawWrite } from "../support/sync-revision-fixture";
 import { lifecycleMigrationDatabaseTest as databaseTest, lifecycleMigrationFixtureCommand as command, lifecycleMigrationFixtureRecord as record, migrationActorId as actorId, migrationManifest as manifest, migrationNow as now, migrationWorkspaceId as workspaceId, withLifecycleMigrationDatabase as withDatabase } from "../support/lifecycle-migration-fixture";
 
 const repository = (client: TransactionalPostgresClient) => createPostgresLifecycleMigrationRepository({ client, workspaceId });
@@ -19,7 +20,7 @@ test("migration dry-run reads a complete source snapshot and never writes", data
   assert.equal(JSON.stringify(plan).includes("PRIVATE"), false);
   assert.deepEqual(await records(), before);
   assert.equal(await receiptCount(), 0);
-  await client.query("update orbit_records set payload=payload || '{\"private\":\"changed\"}'::jsonb where collection_name='tasks'");
+  await testRawWrite(client, "tasks", "update orbit_records set payload=payload || '{\"private\":\"changed\"}'::jsonb where collection_name='tasks'");
   assert.notEqual((await repo.dryRun(manifest)).sourceHash, plan.sourceHash);
 }));
 

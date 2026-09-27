@@ -5,6 +5,7 @@
   "scripts": {
     "db:migrate:live": "tsx scripts/migrate-live-records.ts",
     "db:migrate:dashboard-graph-version": "tsx scripts/migrate-dashboard-graph-version.ts",
+    "db:migrate:sync-revision": "tsx scripts/migrate-sync-revision.ts",
     "db:migrate:agent-run-targets": "tsx scripts/migrate-agent-run-targets.ts",
     "db:cleanup:legacy-chat": "tsx scripts/cleanup-legacy-chat-records.ts",
     "db:backfill:auth-accounts": "tsx scripts/backfill-auth-account-memberships.ts",

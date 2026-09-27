@@ -18,6 +18,7 @@
  * 写入用 upsert，重复跑安全；不会删除本地已有记录。
  */
 import { Client } from "pg";
+import { SYNC_COMMIT_ORDER_LOCK_CTE } from "../features/sync/commit-order-lock";
 
 const DEFAULT_COLLECTIONS = ["orbit_agent_chat_sessions"];
 
@@ -94,11 +95,14 @@ async function main(): Promise<void> {
 
         for (const row of rows.rows as Record<string, unknown>[]) {
           await local.query(
-            `insert into orbit_records (
+            // Copies may include sync collections: every statement takes the
+            // commit-order lock (harmless for the other collections).
+            `with ${SYNC_COMMIT_ORDER_LOCK_CTE}
+             insert into orbit_records (
                workspace_id, collection_name, record_id, user_id, source_type, source_id,
                source_label, provider, provider_record_id, evidence_ids, target_type, target_id,
                occurred_at, lifecycle_state, search_text, payload, created_at, updated_at, deleted_at
-             ) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+             ) select $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19 from sync_write_lock
              on conflict (workspace_id, collection_name, record_id) do update set
                user_id = excluded.user_id,
                source_type = excluded.source_type,

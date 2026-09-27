@@ -1,3 +1,49 @@
+import {
+  SYNC_COLLECTION_NAMES,
+  SYNC_COMMIT_ORDER_LOCK_CTE,
+  SYNC_WRITE_LOCK_KEY_SQL,
+  SYNC_WRITE_LOCK_SETTING,
+} from "./commit-order-lock";
+
+/**
+ * The strict trigger function: every insert/update gets a new revision, and a
+ * write to a sync collection must hold the commit-order lock.
+ */
+export const SYNC_REVISION_STRICT_FUNCTION_SQL = `
+create or replace function orbit_records_assign_sync_revision()
+returns trigger
+language plpgsql
+as $$
+begin
+  if orbit_records_is_sync_collection(new.collection_name)
+    and current_setting('${SYNC_WRITE_LOCK_SETTING}', true)
+      is distinct from orbit_records_sync_write_lock_key()::text then
+    raise exception 'SYNC_WRITE_LOCK_REQUIRED'
+      using errcode = '55P03';
+  end if;
+  new.sync_revision := nextval('orbit_records_sync_revision_seq'::regclass);
+  return new;
+end;
+$$;
+`;
+
+/**
+ * Rollback step 1 ("relax"): the same trigger without the lock check. Writes
+ * can no longer fail on the lock and still get revisions; only the commit-order
+ * guarantee is lost. This is the state sprint 0069 left orbit_events in.
+ */
+export const SYNC_REVISION_RELAXED_FUNCTION_SQL = `
+create or replace function orbit_records_assign_sync_revision()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.sync_revision := nextval('orbit_records_sync_revision_seq'::regclass);
+  return new;
+end;
+$$;
+`;
+
 /**
  * Dashboard relationship-graph version (sprint 0102). A separate partial index
  * instead of widening orbit_records_sync_actor_idx: the sync readers scan
@@ -15,19 +61,28 @@ create index if not exists orbit_records_graph_version_idx
     and collection_name in ('connections', 'contact_detail_states', 'contacts', 'events', 'evidence', 'tasks');
 `;
 
-export const SYNC_REVISION_MIGRATION_SQL = `
+/** Sequence and nullable column. Idempotent. */
+export const SYNC_REVISION_COLUMN_SQL = `
 create sequence if not exists orbit_records_sync_revision_seq;
 
 alter table orbit_records
   add column if not exists sync_revision bigint;
+`;
 
+/**
+ * The functions of the strict sync_revision schema. The assign function
+ * refuses a write to a sync collection that does not hold the commit-order
+ * lock (see features/sync/commit-order-lock.ts). Idempotent; replacing a
+ * function takes no table lock.
+ */
+export const SYNC_REVISION_FUNCTIONS_SQL = `
 create or replace function orbit_records_is_sync_collection(target_collection text)
 returns boolean
 language sql
 immutable
 parallel safe
 as $$
-  select target_collection in ('notes', 'tasks', 'personal_schedule_items');
+  select target_collection in (${SYNC_COLLECTION_NAMES.map((name) => `'${name}'`).join(", ")});
 $$;
 
 create or replace function orbit_records_sync_write_lock_key()
@@ -36,10 +91,7 @@ language sql
 stable
 parallel safe
 as $$
-  select hashtextextended(
-    'orbit:sync:commit-order:v1:' || 'orbit_records'::regclass::oid::text,
-    0
-  );
+  select ${SYNC_WRITE_LOCK_KEY_SQL};
 $$;
 
 create or replace function orbit_records_acquire_sync_write_lock(target_collection text)
@@ -52,28 +104,20 @@ begin
   if orbit_records_is_sync_collection(target_collection) then
     lock_key := orbit_records_sync_write_lock_key();
     perform pg_advisory_xact_lock(lock_key);
-    perform set_config('orbit.sync_write_lock_key', lock_key::text, true);
+    perform set_config('${SYNC_WRITE_LOCK_SETTING}', lock_key::text, true);
   end if;
   return true;
 end;
 $$;
 
-create or replace function orbit_records_assign_sync_revision()
-returns trigger
-language plpgsql
-as $$
-begin
-  if orbit_records_is_sync_collection(new.collection_name)
-    and current_setting('orbit.sync_write_lock_key', true)
-      is distinct from orbit_records_sync_write_lock_key()::text then
-    raise exception 'SYNC_WRITE_LOCK_REQUIRED'
-      using errcode = '55P03';
-  end if;
-  new.sync_revision := nextval('orbit_records_sync_revision_seq'::regclass);
-  return new;
-end;
-$$;
+${SYNC_REVISION_STRICT_FUNCTION_SQL}
+`;
 
+/**
+ * Moves the sequence past every stored revision, so the next nextval() can
+ * never collide with a revision a relaxed or restored database already holds.
+ */
+export const SYNC_REVISION_ALIGN_SEQUENCE_SQL = `
 with revision_state as (
   select
     coalesce((select max(sync_revision) from orbit_records), 0) as table_max,
@@ -90,33 +134,38 @@ select setval(
   end
 )
 from revision_state;
+`;
 
-with sync_write_lock as materialized (
-  select orbit_records_acquire_sync_write_lock('notes') as acquired
-)
+export const SYNC_REVISION_TRIGGER_SQL = `
+drop trigger if exists orbit_records_assign_sync_revision_trigger on orbit_records;
+create trigger orbit_records_assign_sync_revision_trigger
+  before insert or update on orbit_records
+  for each row execute function orbit_records_assign_sync_revision();
+`;
+
+export const SYNC_ACTOR_INDEX_SQL = `
+create index if not exists orbit_records_sync_actor_idx
+  on orbit_records (workspace_id, user_id, sync_revision)
+  where user_id is not null
+    and collection_name in (${SYNC_COLLECTION_NAMES.map((name) => `'${name}'`).join(", ")});
+`;
+
+/**
+ * One-shot strict schema for a fresh or test database: everything in one
+ * statement batch, with a single-statement backfill. Production uses the
+ * online, batched runner in sync-revision-migration.ts instead.
+ */
+export const SYNC_REVISION_MIGRATION_SQL = `
+${SYNC_REVISION_COLUMN_SQL}
+${SYNC_REVISION_FUNCTIONS_SQL}
+${SYNC_REVISION_ALIGN_SEQUENCE_SQL}
+with ${SYNC_COMMIT_ORDER_LOCK_CTE}
 update orbit_records
 set sync_revision = nextval('orbit_records_sync_revision_seq'::regclass)
 from sync_write_lock
-where sync_revision is null
-  and sync_write_lock.acquired;
+where sync_revision is null;
 
-with revision_state as (
-  select
-    coalesce((select max(sync_revision) from orbit_records), 0) as table_max,
-    last_value as sequence_last_value,
-    is_called as sequence_is_called
-  from orbit_records_sync_revision_seq
-)
-select setval(
-  'orbit_records_sync_revision_seq'::regclass,
-  greatest(table_max, sequence_last_value, 1),
-  case
-    when table_max >= sequence_last_value then table_max > 0
-    else sequence_is_called
-  end
-)
-from revision_state;
-
+${SYNC_REVISION_ALIGN_SEQUENCE_SQL}
 do $$
 begin
   if exists (select 1 from orbit_records where sync_revision is null) then
@@ -138,15 +187,8 @@ alter table orbit_records
 create unique index if not exists orbit_records_sync_revision_uidx
   on orbit_records (sync_revision);
 
-drop trigger if exists orbit_records_assign_sync_revision_trigger on orbit_records;
-create trigger orbit_records_assign_sync_revision_trigger
-  before insert or update on orbit_records
-  for each row execute function orbit_records_assign_sync_revision();
-
-create index if not exists orbit_records_sync_actor_idx
-  on orbit_records (workspace_id, user_id, sync_revision)
-  where user_id is not null
-    and collection_name in ('notes', 'tasks', 'personal_schedule_items');
+${SYNC_REVISION_TRIGGER_SQL}
+${SYNC_ACTOR_INDEX_SQL}
 ${DASHBOARD_GRAPH_VERSION_INDEX_SQL}
 -- Product deletes are persistent lifecycle_state = 'deleted' updates, so the
 -- UPDATE trigger assigns their tombstone revision without removing the row.
