@@ -27,7 +27,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, type ReactNode } from "react";
 
 import { useOrbitLanguage } from "../../orbit-language-context";
 import type { OrbitAgentViewModel } from "../../orbit-agent-route-view-model";
@@ -41,6 +41,7 @@ import {
   ThinkingIndicator,
 } from "./iorbit-rich-components";
 import { agentSuggestLabel, iorbitSelectedDayLabel, type AgentMessage } from "./iorbit-model";
+import type { AgentEarlierMessages } from "./use-agent-chat";
 
 // 首屏不加载 markdown 渲染器（门禁：tests/performance/orbit-agent-markdown-split.test.ts）。
 const AgentMarkdown = dynamic(() => import("../agent-markdown"), {
@@ -53,11 +54,14 @@ export interface IOrbitChatProps {
   /** 设计 321–343 的右栏（`iorbit-chat-aside.tsx`），由壳组装后传入。 */
   aside?: ReactNode;
   chatDraft: string;
+  /** Sprint 0112: paging back through a restored session (latest 20 first). */
+  earlier?: AgentEarlierMessages;
   messages: readonly AgentMessage[];
   navigate: (href: string) => void;
   /** 非破坏性返回（「审阅修订」17）：只切视图，不清空线程。 */
   onBack: () => void;
   onDraftChange: (value: string) => void;
+  onLoadEarlier?: () => void;
   onOpenHistory: () => void;
   onSubmitDraft: () => void;
   /** `useAgentTaskSuggestions` 的延迟补丁：按对象身份只打回原回合。 */
@@ -72,10 +76,12 @@ export function IOrbitChat({
   ask,
   aside,
   chatDraft,
+  earlier,
   messages,
   navigate,
   onBack,
   onDraftChange,
+  onLoadEarlier,
   onOpenHistory,
   onSubmitDraft,
   taskSuggestions,
@@ -92,11 +98,52 @@ export function IOrbitChat({
   // 首帧（含 `?session=` 恢复整段历史）不滚：滚的是整个窗口，一上来就跳到底会把
   // 面包屑、标题与顶栏推出视野。
   const turnCountRef = useRef<number | null>(null);
+  const lastMessageRef = useRef<AgentMessage | undefined>(undefined);
+  const threadRef = useRef<HTMLElement | null>(null);
+  const earlierRowRef = useRef<HTMLDivElement | null>(null);
+  // Sprint 0112: earlier messages are prepended above what the reader is looking
+  // at; the first message shown before the load stays where it was on screen.
+  const anchorRef = useRef<{ element: Element; top: number } | null>(null);
+  const requestEarlier = () => {
+    if (!earlier?.hasMore || earlier.status === "loading" || !onLoadEarlier) return;
+    const first = threadRef.current?.querySelector?.("[data-orbit-iorbit-message]");
+    anchorRef.current = first ? { element: first, top: first.getBoundingClientRect().top } : null;
+    onLoadEarlier();
+  };
+  useLayoutEffect(() => {
+    const anchor = anchorRef.current;
+    if (!anchor || typeof window === "undefined") return;
+    if (!anchor.element.isConnected) { anchorRef.current = null; return; }
+    const moved = anchor.element.getBoundingClientRect().top - anchor.top;
+    if (moved !== 0) window.scrollBy?.(0, moved);
+    if (messages.length > (turnCountRef.current ?? 0)) anchorRef.current = null;
+  }, [messages]);
+  useEffect(() => { if (earlier?.status === "error") anchorRef.current = null; }, [earlier?.status]);
+  // Scrolling back up until the top row is in view loads the page before it.
+  const requestEarlierRef = useRef(requestEarlier);
+  requestEarlierRef.current = requestEarlier;
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.scrollY !== "number" || !window.addEventListener) return;
+    let lastY = window.scrollY;
+    const onScroll = () => {
+      const y = window.scrollY;
+      const movingUp = y < lastY;
+      lastY = y;
+      const row = earlierRowRef.current;
+      if (movingUp && row && row.getBoundingClientRect().bottom > 0) requestEarlierRef.current();
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
   useEffect(() => {
     const count = messages.length;
     const previous = turnCountRef.current;
+    const previousLast = lastMessageRef.current;
     turnCountRef.current = count;
+    lastMessageRef.current = messages.at(-1);
     if (previous === null) return;
+    // Earlier messages were prepended: the latest turn did not change, so stay put.
+    if (count > previous && messages.at(-1) === previousLast && !thinking) return;
     // `?session=` 恢复会把整段历史一次性灌进来（0 → N，且没有 thinking）：那是「打开
     // 旧对话」，应该停在页首而不是跳到底。只有正在等回答、或已经在对话里又多了一轮
     // 时才滚。
@@ -169,18 +216,44 @@ export function IOrbitChat({
 
       {/* 269：左列线程 + 右列 aside（321–343，任务 4 由壳传入） */}
       <div className="ir-chat-grid">
-        <section className="ir-thread" data-orbit-iorbit-thread>
+        <section className="ir-thread" data-orbit-iorbit-thread ref={threadRef}>
           {hasThread ? <span className="ir-day-sep">{`${t({ en: "Today", zh: "今天" })} · ${dayLabel}`}</span> : null}
+
+          {/* Sprint 0112: the top of a restored thread pages back 20 messages at a time. */}
+          {earlier && (earlier.hasMore || earlier.status === "error" || earlier.allLoaded) ? (
+            <div className="ir-earlier" data-orbit-iorbit-earlier ref={earlierRowRef}>
+              {earlier.status === "loading" ? (
+                <span className="ir-panel-note" role="status">
+                  {t({ en: "Loading earlier messages…", zh: "正在加载更早的消息…" })}
+                </span>
+              ) : earlier.status === "error" ? (
+                <>
+                  <span className="ir-panel-note" role="alert">
+                    {t({ en: "Earlier messages could not be loaded", zh: "没能加载更早的消息" })}
+                  </span>
+                  <button className="btn ir-chip" onClick={requestEarlier} type="button">
+                    {t({ en: "Retry", zh: "重试" })}
+                  </button>
+                </>
+              ) : earlier.hasMore ? (
+                <button className="btn ir-chip" onClick={requestEarlier} type="button">
+                  {t({ en: "Load earlier messages", zh: "加载更早的消息" })}
+                </button>
+              ) : (
+                <span className="ir-panel-note">{t({ en: "All messages loaded", zh: "已加载全部消息" })}</span>
+              )}
+            </div>
+          ) : null}
 
           {messages.map((message, index) =>
             message.role === "user" ? (
-              <div className="ir-user-row" key={`user-${index}`}>
+              <div className="ir-user-row" data-orbit-iorbit-message key={message.id ?? `user-${index}`}>
                 <AgentMessageCopyButton text={message.text} />
                 <span className="ir-user-bubble">{message.text}</span>
                 <span className="ir-user-avatar">{userInitial}</span>
               </div>
             ) : (
-              <div className="ir-a-row" key={`assistant-${index}`}>
+              <div className="ir-a-row" data-orbit-iorbit-message key={message.id ?? `assistant-${index}`}>
                 {/* 设计 277 的助手头像是 ✦ 字形（与概览屏的 `ir-ask-icon` / `ir-card-icon`
                     同一套），不是旧控制台的 `AgentStar` SVG */}
                 <span className="ir-a-avatar">✦</span>

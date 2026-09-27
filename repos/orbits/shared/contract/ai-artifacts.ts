@@ -36,6 +36,9 @@ export interface AiSessionArtifactTurnContract {
   assistantMessageId: string;
   status: "ready" | "unavailable" | "oversized";
   artifacts: AiContactArtifactContract[];
+  /** Set when the turn proposed actions: the run whose status card the client shows (Sprint 0112). */
+  runId?: string;
+  actionIds?: string[];
 }
 export interface AiSessionArtifactRecoveryContract {
   turns: AiSessionArtifactTurnContract[];

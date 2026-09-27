@@ -37,3 +37,12 @@ export const aiSessionSummaryPageSchema = z.object({
     context.addIssue({ code: "custom", message: "Inconsistent AI session summary page" });
   }
 });
+
+export const AI_SESSION_MESSAGE_PAGE_DEFAULT_LIMIT = 20;
+export const AI_SESSION_MESSAGE_PAGE_MAX_LIMIT = 50;
+
+export const aiSessionMessagePageSchema = z.object({
+  hasMore: z.boolean(),
+  nextCursor: z.string().min(1).max(8000).nullable(),
+  limit: z.number().int().min(1).max(AI_SESSION_MESSAGE_PAGE_MAX_LIMIT),
+}).strict().refine((page) => page.hasMore === (page.nextCursor !== null), "Inconsistent AI session message page");

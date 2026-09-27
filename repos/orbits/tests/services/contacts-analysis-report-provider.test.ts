@@ -296,7 +296,8 @@ async function persistFixtureSession(
   const initial = canVerify ? { ...session, messages: session.messages.slice(0, 2), origin } : { ...session, origin };
   await provider.upsertSession(initial);
   if (verification && canVerify) {
-    await provider.upsertVerifiedAnalysisSession(initial, verification);
+    // 0112: the trusted marker is applied by the append that saves the first answer.
+    await provider.appendMessages(initial.id, { messages: [initial.messages[1] as OrbitAgentChatSessionSnapshot["messages"][number] & { id: string }], updatedAt: initial.updatedAt, verification });
     if (session.messages.length > 2) await provider.upsertSession({ ...session, origin: undefined });
   }
 }

@@ -117,3 +117,29 @@ export function sessionEntityCards(
   }
   return null;
 }
+
+/**
+ * Sprint 0112: the cards of every restored turn, each keyed to the reply that
+ * produced it. A session opens a page at a time, so cards follow their page and
+ * render under their own reply instead of all under the latest one.
+ */
+export function sessionEntityCardTurns(
+  session: { id: string; messages: readonly { id?: string | undefined; role: string }[] },
+  recovery: unknown,
+  t: OrbitTranslator,
+  language = "zh",
+): { assistantMessageId: string; cards: AiEntityCardView[] }[] {
+  const parsed = aiSessionArtifactRecoverySchema.safeParse(recovery);
+  if (!parsed.success) return [];
+  const seen = new Set<string>();
+  return parsed.data.turns.flatMap((turn) => {
+    const index = session.messages.findIndex(
+      (message) => message.id === turn.assistantMessageId && message.role === "assistant",
+    );
+    if (turn.sessionId !== session.id || index < 1 || turn.status !== "ready" || seen.has(turn.assistantMessageId)) return [];
+    if (session.messages[index - 1]?.role !== "user" || session.messages[index - 1]?.id !== turn.userMessageId) return [];
+    seen.add(turn.assistantMessageId);
+    const cards = turn.artifacts.flatMap((artifact) => aiEntityCardsFromArtifact(artifact, t, language)).slice(0, 16);
+    return cards.length ? [{ assistantMessageId: turn.assistantMessageId, cards }] : [];
+  });
+}

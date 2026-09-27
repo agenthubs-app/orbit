@@ -2,7 +2,8 @@
 // helper（解析 / 归一化 / 重试 / 标题与分组派生 / 常量）。本文件不得 import React、
 // 不得带 "use client"（计划「审阅修订」29），以便 node 测试直接 import。
 import { aiSessionOrganizationSchema, aiSessionOriginSchema, reliableAiSendInputSchema } from "../../../../../shared/api-schema/ai-sessions";
-import { aiSessionSummaryPageSchema } from "../../../../../shared/api-schema/ai-session-page";
+import { aiSessionMessagePageSchema, aiSessionSummaryPageSchema } from "../../../../../shared/api-schema/ai-session-page";
+import { aiSessionArtifactRecoverySchema } from "../../../../../shared/api-schema/ai-artifacts";
 import type {
   AiSessionGroupContract,
   AiSessionOrganizationContract,
@@ -522,6 +523,8 @@ export interface AgentStoredChatSession {
   messages: AgentMessage[];
   organization?: AiSessionOrganizationContract;
   origin?: StoredAiSessionOriginContract;
+  /** Sprint 0112: the page of messages this read returned (latest page first). */
+  page?: { hasMore: boolean; nextCursor: string | null };
   panel?: AgentPanel | null;
   pinned?: boolean;
   title: string;
@@ -549,6 +552,8 @@ function parseStoredAgentMessage(value: unknown): AgentMessage | null {
   ) {
     const taskInteraction = parseAgentTaskInteraction(value.taskInteraction);
     return {
+      // 0112: keep the id so a restored turn can be matched to its recovered run.
+      ...(typeof value.id === "string" && value.id.trim() ? { id: value.id } : {}),
       items: [],
       kind: "people",
       panelTitle: "",
@@ -643,8 +648,25 @@ function parseAgentChatSessionData(value: unknown): AgentStoredChatSession | nul
     isRecord(value) && isRecord(value.session)
       ? parseAgentChatSessionsArray([value.session])
       : [];
-
-  return sessions[0] ?? null;
+  const session = sessions[0];
+  if (!session || !isRecord(value)) return session ?? null;
+  const page = aiSessionMessagePageSchema.safeParse(value.page);
+  // Sprint 0112 (0110 follow-up): a turn that proposed actions keeps its status
+  // card when the session is restored, even if the stored reply is plain text
+  // (asked from the App or saved before the web wrote rich replies).
+  const recovery = aiSessionArtifactRecoverySchema.safeParse(value.artifactRecovery);
+  const runs = new Map(recovery.success
+    ? recovery.data.turns.flatMap((turn) => turn.sessionId === session.id && turn.runId && turn.actionIds?.length
+      ? [[turn.assistantMessageId, { actionIds: turn.actionIds, runId: turn.runId }] as const] : [])
+    : []);
+  return {
+    ...session,
+    messages: session.messages.map((message) => {
+      const run = message.role === "assistant" && message.id && !message.runId ? runs.get(message.id) : undefined;
+      return run ? { ...message, actionIds: [...run.actionIds], runId: run.runId } : message;
+    }),
+    ...(page.success ? { page: { hasMore: page.data.hasMore, nextCursor: page.data.nextCursor } } : {}),
+  };
 }
 
 export function agentChatHistorySessionsToHistory(
@@ -880,9 +902,11 @@ export async function loadStoredAgentChatSessions(input: {
 
 async function loadStoredAgentChatSession(
   sessionId: string,
+  cursor?: string | null,
 ): Promise<AgentStoredChatSession | null> {
   try {
-    const response = await fetch(agentChatSessionsApiPath(sessionId), {
+    const path = agentChatSessionsApiPath(sessionId);
+    const response = await fetch(cursor ? `${path}?${new URLSearchParams({ cursor }).toString()}` : path, {
       headers: { accept: "application/json" },
       method: "GET",
     });

@@ -43,7 +43,8 @@ test("Orbit Agent chat session provider persists sessions and messages in live r
 
   await provider.upsertSession(session);
 
-  const listed = await provider.listSessions();
+  // 0112: the whole-session list is gone; the sidebar reads bounded summaries.
+  const listed = (await provider.listSessionSummariesPage({ limit: 50 })).items;
   const restored = await provider.getSession(session.id);
   const sessionRecords = store.listRecords({
     limit: "unbounded",
@@ -60,11 +61,13 @@ test("Orbit Agent chat session provider persists sessions and messages in live r
 
   assert.equal(listed.length, 1);
   assert.equal(listed[0].id, session.id);
-  assert.equal(listed[0].customTitle, "供应链重点人脉");
-  assert.equal(listed[0].pinned, true);
+  assert.equal(listed[0].organization.customTitle, "供应链重点人脉");
+  assert.equal(listed[0].organization.pinned, true);
   assert.equal(listed[0].title, "供应链人脉");
+  assert.equal(restored?.customTitle, "供应链重点人脉");
+  assert.equal(restored?.pinned, true);
   assert.deepEqual(
-    listed[0].messages.map((message) => ({
+    restored?.messages.map((message) => ({
       role: message.role,
       text: message.text,
     })),
@@ -73,7 +76,6 @@ test("Orbit Agent chat session provider persists sessions and messages in live r
       { role: "assistant", text: "可以，先看北星食品附近的联系人。" },
     ],
   );
-  assert.deepEqual(restored, listed[0]);
   assert.equal(sessionRecords.length, 1);
   assert.equal(sessionRecords[0].createdAt, session.createdAt);
   assert.equal(sessionRecords[0].payload.customTitle, "供应链重点人脉");
@@ -131,7 +133,7 @@ test("Orbit Agent chat session provider lists sessions by initial creation time"
     updatedAt: "2026-07-09T01:05:00.000Z",
   });
 
-  const listed = await provider.listSessions();
+  const listed = (await provider.listSessionSummariesPage({ limit: 50 })).items;
 
   assert.deepEqual(
     listed.map((session) => session.id),
@@ -171,11 +173,11 @@ test("Orbit Agent chat session provider isolates the same session id by actor", 
   assert.equal((await alice.getSession("shared-client-session-id"))?.title, "Alice private prompt");
   assert.equal((await bob.getSession("shared-client-session-id"))?.title, "Bob private prompt");
   assert.deepEqual(
-    (await alice.listSessions()).map((session) => session.title),
+    (await alice.listSessionSummariesPage({ limit: 50 })).items.map((session) => session.title),
     ["Alice private prompt"],
   );
   assert.deepEqual(
-    (await bob.listSessions()).map((session) => session.title),
+    (await bob.listSessionSummariesPage({ limit: 50 })).items.map((session) => session.title),
     ["Bob private prompt"],
   );
 
@@ -208,7 +210,7 @@ test("Orbit Agent chat session deletion is idempotent", async () => {
   assert.equal(await provider.deleteSession("delete-once-session"), true);
   assert.equal(await provider.deleteSession("delete-once-session"), true);
   assert.equal(await provider.getSession("delete-once-session"), null);
-  assert.deepEqual(await provider.listSessions(), []);
+  assert.deepEqual((await provider.listSessionSummariesPage({ limit: 50 })).items, []);
 });
 
 test("Orbit Agent chat session provider rejects a stale shorter snapshot without deleting newer messages", async () => {
@@ -304,7 +306,15 @@ test("Orbit Agent chat session provider retains more than one hundred immutable 
     updatedAt: "2026-09-14T00:10:00.000Z",
   });
 
-  const restored = await provider.getSession("long-session");
-  assert.equal(restored?.messages.length, 101);
-  assert.deepEqual(restored?.messages.map((message) => message.id), messages.map((message) => message.id));
+  // 0112: reads are paged (20 by default); walking the cursor returns all 101 in order.
+  const pages: string[][] = [];
+  let cursor: string | null = null;
+  do {
+    const page = await provider.getSessionPage("long-session", { cursor });
+    assert.ok(page && page.session.messages.length <= 20);
+    pages.unshift(page!.session.messages.map((message) => message.id!));
+    cursor = page!.page.nextCursor;
+  } while (cursor);
+  assert.equal(pages.length, 6);
+  assert.deepEqual(pages.flat(), messages.map((message) => message.id));
 });

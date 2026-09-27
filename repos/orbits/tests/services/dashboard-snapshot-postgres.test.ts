@@ -370,7 +370,8 @@ async function persistAnalysisReport(harness: Harness, actorId: string, sourceDa
     origin,
   };
   await sessions.upsertSession(session);
-  await sessions.upsertVerifiedAnalysisSession(session, { analysisVersion: "contacts.analysis@1", kind: "contacts_analysis_execution", sourceDataVersion });
+  // 0112: the trusted marker is applied by the append that saves the first answer.
+  await sessions.appendMessages(session.id, { messages: [session.messages[1]], updatedAt: session.updatedAt, verification: { analysisVersion: "contacts.analysis@1", kind: "contacts_analysis_execution", sourceDataVersion } });
 }
 
 test("0121 changing the relationship goal makes the AI report stale and refuses the old version, while the graph version and snapshot stay", { skip, timeout: 120_000 }, async () => {

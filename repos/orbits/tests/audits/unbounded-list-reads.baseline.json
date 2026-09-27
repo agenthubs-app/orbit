@@ -25,7 +25,7 @@
     "features/connections/storage/connection-live-record-provider.ts": 8,
     "features/contacts/contact-actor-links/storage-provider.ts": 1,
     "features/contacts/introduction-records.ts": 3,
-    "features/contacts/storage/contact-live-record-provider.ts": 4,
+    "features/contacts/storage/contact-live-record-provider.ts": 3,
     "features/contacts/storage/contact-write-live-record-provider.ts": 1,
     "features/encounters/service.ts": 1,
     "features/events/attendee-roster/storage/generated-attendee-roster-live-record-provider.ts": 7,
@@ -47,13 +47,12 @@
     "features/notifications/reminder-plan-repository.ts": 2,
     "features/notifications/storage/reminder-notification-live-record-provider.ts": 1,
     "features/orbit-ai/data-query/query-service.ts": 6,
-    "features/orbit-ai/storage/orbit-agent-chat-session-live-record-provider.ts": 4,
     "features/orbit-ai/storage/orbit-agent-chat-session-transactions.ts": 5,
     "features/permissions/storage/permission-live-record-provider.ts": 1,
     "features/personal-schedule/authority-service.ts": 1,
     "features/personal-schedule/migration.ts": 2,
     "features/personal-schedule/occurrence-exceptions.ts": 1,
-    "features/personal-schedule/service.ts": 2,
+    "features/personal-schedule/service.ts": 1,
     "features/profile/storage/profile-live-record-provider.ts": 3,
     "features/profile/storage/profile-signal-live-record-provider.ts": 6,
     "features/recommendations/storage/event-recommendation-live-record-provider.ts": 7,
@@ -96,6 +95,24 @@
       "file": "features/orbit-ai/live-conversation-trace.ts",
       "delta": -1,
       "why": "the AI trace no longer reads whole collections only to count records"
+    },
+    {
+      "sprint": "0112",
+      "file": "features/orbit-ai/storage/orbit-agent-chat-session-live-record-provider.ts",
+      "delta": -4,
+      "why": "AI session messages are read a page at a time by indexed position; the whole-session list, the per-session full reads, the unbounded delete and the summary fallback are gone (the 0123 pending overage of 5 is also cleared)"
+    },
+    {
+      "sprint": "0112",
+      "file": "features/contacts/storage/contact-live-record-provider.ts",
+      "delta": -1,
+      "why": "baseline lowered to the actual count (3), left high by an earlier sprint"
+    },
+    {
+      "sprint": "0112",
+      "file": "features/personal-schedule/service.ts",
+      "delta": -1,
+      "why": "baseline lowered to the actual count (1), left high by an earlier sprint"
     }
   ]
 }

@@ -3,9 +3,20 @@ import type { FeatureMode } from "../../../shared/config/feature-mode";
 import { entityArtifactToDisplay } from "../../../shared/api-schema/ai-artifacts";
 import type { AiSessionArtifactRecoveryContract, AiSessionArtifactTurnContract } from "../../../shared/contract/ai-artifacts";
 import { createConfiguredTransactionalPostgresRuntime, type TransactionalSqlExecutor } from "../../../shared/storage/transactional-postgres";
-import type { OrbitAgentChatSessionSnapshot } from "./orbit-agent-chat-session-live-record-provider";
+import type { OrbitAgentChatSessionMessage, OrbitAgentChatSessionSnapshot } from "./orbit-agent-chat-session-live-record-provider";
 
-export interface OrbitAgentChatSessionArtifactReader { read(session: OrbitAgentChatSessionSnapshot): Promise<AiSessionArtifactRecoveryContract> }
+export interface OrbitAgentChatSessionArtifactReadOptions {
+  /** The message just before the page, so a reply at the page's top edge can be matched to its question. */
+  precedingMessage?: OrbitAgentChatSessionMessage | null;
+}
+/**
+ * Restores cards for the turns in `session.messages` (one page), reading the
+ * request record of each assistant reply on the page by its key. Nothing
+ * outside the page is read (Sprint 0112).
+ */
+export interface OrbitAgentChatSessionArtifactReader { read(session: OrbitAgentChatSessionSnapshot, options?: OrbitAgentChatSessionArtifactReadOptions): Promise<AiSessionArtifactRecoveryContract> }
+const ASSISTANT_PREFIX = "assistant:";
+const requestRecordId = (actorId: string, requestId: string) => createHash("sha256").update(JSON.stringify([actorId, requestId])).digest("hex");
 const record = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null && !Array.isArray(value);
 /**
  * Sprint 0095: the producer kinds that carry entity items worth restoring.
@@ -20,25 +31,30 @@ const entityKinds = new Set(["contact_recommendations", "event_recommendations",
 interface RequestRow { record_id: string; request_id: string; source_bytes: number; payload: unknown }
 
 export function createTransactionalOrbitAgentChatSessionArtifactReader(input: { actorId: string; workspaceId: string; client: TransactionalSqlExecutor }): OrbitAgentChatSessionArtifactReader {
-  return { async read(session) {
-    // Never download unbounded actor history or an oversized request body.
+  return { async read(page, options = {}) {
+    // The preceding message only helps validate the first reply on the page.
+    const session = options.precedingMessage ? { ...page, messages: [options.precedingMessage, ...page.messages] } : page;
+    const requestIds = [...new Set(page.messages.flatMap((message) => message.role === "assistant" && typeof message.id === "string"
+      && message.id.startsWith(ASSISTANT_PREFIX) && message.id.length > ASSISTANT_PREFIX.length ? [message.id.slice(ASSISTANT_PREFIX.length)] : []))];
+    const recovery: AiSessionArtifactRecoveryContract = { turns: [], truncated: false };
+    if (requestIds.length === 0) return recovery;
+    // Exact primary-key reads for this page's replies; never an oversized request body.
     const { rows } = await input.client.query<RequestRow>(`
       SELECT record_id, payload->>'requestId' AS request_id,
         octet_length(payload::text) AS source_bytes,
         CASE WHEN octet_length(payload::text) <= 262144 THEN payload ELSE NULL END AS payload
       FROM orbit_records
-      WHERE workspace_id = $1 AND user_id = $2 AND collection_name = $3
+      WHERE workspace_id = $1 AND user_id = $2 AND collection_name = $3 AND record_id = ANY($5::text[])
         AND payload->>'sessionId' = $4 AND deleted_at IS NULL AND lifecycle_state = 'active'
         AND payload->>'state' = 'completed' AND payload->'result'->>'success' = 'true'
-      ORDER BY updated_at DESC, record_id ASC LIMIT 101
-    `, [input.workspaceId, input.actorId, "orbit_agent_chat_requests", session.id]);
-    const recovery: AiSessionArtifactRecoveryContract = { turns: [], truncated: rows.length > 100 };
+      ORDER BY updated_at DESC, record_id ASC LIMIT $6
+    `, [input.workspaceId, input.actorId, "orbit_agent_chat_requests", page.id, requestIds.map((requestId) => requestRecordId(input.actorId, requestId)), requestIds.length]);
     const candidates: AiSessionArtifactTurnContract[] = [];
-    for (const row of rows.slice(0, 100)) {
+    for (const row of rows) {
       if (Number(row.source_bytes) > 262144) { recovery.oversized = true; recovery.unavailable = true; continue; }
       const source = row.payload;
       if (!record(source) || source.sessionId !== session.id || source.state !== "completed" || typeof source.requestId !== "string"
-        || row.request_id !== source.requestId || row.record_id !== createHash("sha256").update(JSON.stringify([input.actorId, source.requestId])).digest("hex")) { recovery.unavailable = true; continue; }
+        || row.request_id !== source.requestId || row.record_id !== requestRecordId(input.actorId, source.requestId)) { recovery.unavailable = true; continue; }
       const result = source.result;
       const data = record(result) && result.success === true && record(result.data) ? result.data : null;
       if (!data || !Array.isArray(data.messages) || !Array.isArray(data.artifacts) || typeof data.activeConversationId !== "string") { recovery.unavailable = true; continue; }
@@ -59,7 +75,13 @@ export function createTransactionalOrbitAgentChatSessionArtifactReader(input: { 
         return typeof kind === "string" && entityKinds.has(kind);
       }).map(value => record(value) && record(value.task) && value.task.conversationId === data.activeConversationId ? entityArtifactToDisplay(value) : entityArtifactToDisplay(null));
       if (data.artifacts.length > 16) { recovery.truncated = true; artifacts.push(entityArtifactToDisplay(null)); }
-      if (artifacts.length) candidates.push({ sessionId: session.id, requestId: source.requestId, userMessageId: savedUser.id, assistantMessageId: assistantId, status: "ready", artifacts: artifacts.slice(0, 16) });
+      // 0110 follow-up: a turn that proposed actions carries its run, so a restored
+      // conversation can show the same confirm/status card as the live reply.
+      const runId = typeof data.runId === "string" && data.runId.trim() ? data.runId.trim() : undefined;
+      const actionIds = runId && Array.isArray(data.actionIds)
+        ? data.actionIds.filter((value): value is string => typeof value === "string" && value.trim().length > 0).slice(0, 16) : [];
+      const action = runId && actionIds.length ? { runId, actionIds } : {};
+      if (artifacts.length || runId && actionIds.length) candidates.push({ sessionId: session.id, requestId: source.requestId, userMessageId: savedUser.id, assistantMessageId: assistantId, status: "ready", artifacts: artifacts.slice(0, 16), ...action });
     }
     for (const turn of candidates) {
       if (candidates.filter(value => value.assistantMessageId === turn.assistantMessageId).length !== 1) { recovery.unavailable = true; continue; }

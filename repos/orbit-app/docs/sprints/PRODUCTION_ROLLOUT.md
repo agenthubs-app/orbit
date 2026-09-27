@@ -32,6 +32,7 @@
 | 0109 消息三张表 | ① 只读查行数（REPORT 第 8 节的 SQL，或不带 `--apply` 的 `npm run db:migrate:relationship-messages`）；② 建表（`db:migrate:live`，或第 ③ 步 `--apply` 时自动建）；③ `npm run db:migrate:relationship-messages -- --apply --confirm-remote=<workspace>`（**需用户确认**）；④ 再预演 create 应为 0；⑤ 部署；⑥ 再预演，若 appendedMessages>0 就再 `--apply`，直到 0；⑦ 冒烟：列表、发送、已读 | **须先迁移后部署**：新代码只读新表，表不存在时消息接口返回 503（通知投递会跳过消息类，不受连带）。回滚：重新部署旧代码即可，旧集合没动过，但切换后发的消息只在新表里 |
 | 0110 普通问答不写运行记录 | 无迁移，部署即可 | 存量统计行和普通问答运行记录照常可读；删除交给 0111（先查行数、再备份）。0103 的 `db:migrate:agent-run-targets` 如果还没执行，仍需执行 |
 | 0111 AI 轨迹保留与清理 | ⓪ 只读确认 0103 回填已执行（REPORT 第 9 节的 SQL 应为 0，否则先 `db:migrate:agent-run-targets`）；① 只读统计（SQL，或 dry-run 的 `npm run db:cleanup:agent-trace-legacy`）；② **需用户确认**：`npm run db:cleanup:agent-trace-legacy -- --execute --confirm-remote=<host>/<db> --backup-dir=<外接盘目录>`，先导出完整备份再删；③ 再 dry-run，四项都应为 0；④ 部署后每日维护任务自动执行一年保留期 | 删除不可逆，备份含对话内容，须放在安全位置。0103 回填缺失时，清理命令拒绝执行，保留期任务返回 503 报警 |
+| 0112 AI 会话分页 | ① **部署前**手动执行 `create index concurrently if not exists orbit_records_agent_chat_message_order_idx …`（完整 SQL 见 REPORT 第 9 节），避免部署时的普通建索引短暂阻塞写入；② 确认生产有至少 32 字节的 `ORBIT_READ_CURSOR_SECRET`（或 `AUTH_SECRET`）；③ 部署 | 不需要回填；旧会话第一次追加时自动补 `nextMessageIndex`。旧网页标签页上传整会话时，服务器按编号合并，不会截断。长会话里中间的旧消息，侧栏搜索搜不到了 |
 
 ## 后续 Sprint 预告（合并后在上表补充具体命令）
 

@@ -26,7 +26,8 @@ test("AI conversation persists a consumed initial message before canonical navig
   assert.match(screenSource, /function persistAndCanonicalizeDraftConversation/u);
   assert.match(screenSource, /pendingSaveRef/u);
   assert.match(screenSource, /ORBIT_API_ENDPOINTS\.aiConversationSessions/u);
-  assert.match(screenSource, /aiSessionReceiptMatches\(result\.data, pending\.session\)/u);
+  // 0112: the receipt is checked against what was posted (this turn's messages only).
+  assert.match(screenSource, /aiSessionReceiptMatches\(result\.data, posted\)/u);
   assert.match(
     screenSource,
     /params: \{ id: saved\.id, source: "session" \}/u

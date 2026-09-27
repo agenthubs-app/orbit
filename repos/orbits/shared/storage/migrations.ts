@@ -104,6 +104,13 @@ create index if not exists orbit_records_reminder_actor_id_idx
 create index if not exists orbit_records_schedule_actor_id_idx
   on orbit_records(workspace_id,user_id,record_id collate "C")
   where collection_name='personal_schedule_items';
+
+-- Sprint 0112: an AI session's messages are read a page at a time, newest
+-- first, by their position (payload.index). The expression must stay identical
+-- to ORBIT_AGENT_CHAT_MESSAGE_POSITION_SQL in the chat session provider.
+create index if not exists orbit_records_agent_chat_message_order_idx
+  on orbit_records(workspace_id,target_id,(case when jsonb_typeof(payload->'index')='number' then (payload->>'index')::numeric end) desc,record_id desc)
+  where collection_name='orbit_agent_chat_messages' and lifecycle_state<>'deleted';
 `;
 
 // Request read receipts (monitoring O1): one row per sampled server request or
