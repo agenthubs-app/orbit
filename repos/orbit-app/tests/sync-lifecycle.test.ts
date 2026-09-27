@@ -431,3 +431,60 @@ test("clearing snapshots affects only the active workspace, including the defaul
   assert.equal((await f.coordinator.withDatabase(workspaces[2]!, db => db.all("SELECT * FROM sync_cursors")))?.length, 1);
   assert.equal(f.keys.size, 1);
 });
+
+// Sprint 0130: the session restore suspends instead of purging.
+test("suspending for a re-validation keeps the same identity's file, key and rows, and pauses reads until it is confirmed", async t => {
+  const f = await lifecycle(t);
+  await f.coordinator.setScope(scope);
+  assert.equal(await f.coordinator.withDatabase(scope, async db => { await db.execute("CREATE TABLE qa_marker (value TEXT)"); await db.run("INSERT INTO qa_marker VALUES (?)", ["kept"]); return true; }), true);
+  const name = [...f.files.keys()][0]!;
+  const key = [...f.keys.values()][0];
+  let release!: () => void;
+  const barrier = new Promise<void>(resolve => { release = resolve; });
+  let started!: () => void;
+  const running = new Promise<void>(resolve => { started = resolve; });
+  const inFlight = f.coordinator.withDatabase(scope, async () => { started(); await barrier; return "private"; });
+  await running;
+  const suspend = f.coordinator.suspendScope(`${scope.baseUrl}/`);
+  assert.equal(f.coordinator.isScopeReadable(scope), false, "readiness drops at once");
+  release();
+  assert.equal(await inFlight, null, "a read that started before the suspension returns nothing");
+  assert.equal(await suspend, true);
+  assert.equal(await f.coordinator.withDatabase(scope, async () => "private"), null, "no reads while suspended");
+  assert.deepEqual([f.files.has(name), [...f.keys.values()][0], f.events.includes("key-delete"), f.events.includes("close")], [true, key, false, false], "nothing was closed or deleted");
+  assert.equal(await f.coordinator.setScope(scope), true);
+  assert.equal(f.coordinator.isScopeReadable(scope), true);
+  assert.deepEqual(await f.coordinator.withDatabase(scope, async db => (await db.all<{ value: string }>("SELECT value FROM qa_marker")).map(row => row.value)), ["kept"], "the same rows are back");
+  assert.equal(f.events.filter(event => event.startsWith("open:")).length, 1, "the database was never reopened");
+});
+
+test("a suspension for another server purges; after a suspension another identity or none purges too", async t => {
+  const other = await lifecycle(t);
+  await other.coordinator.setScope(scope);
+  assert.equal(await other.coordinator.suspendScope("https://second.example"), true);
+  assert.deepEqual([other.files.size, other.keys.size], [0, 0], "a server change never keeps the old mirror");
+  for (const next of [{ ...scope, actorId: "other-private-fixture" }, null]) {
+    const f = await lifecycle(t);
+    await f.coordinator.setScope(scope);
+    const name = [...f.files.keys()][0]!;
+    await f.coordinator.suspendScope(scope.baseUrl);
+    assert.equal(await f.coordinator.setScope(next), true);
+    assert.equal(f.files.has(name), false, "the suspended identity's file is deleted");
+    assert.equal([...f.keys.keys()].filter(key => key.startsWith("orbit.sync.key.")).length, next ? 1 : 0);
+    assert.equal(await f.coordinator.withDatabase(scope, async () => "private"), null);
+  }
+});
+
+test("a suspension still finishes a pending erasure first and refuses while it cannot", async t => {
+  const f = await lifecycle(t);
+  await f.coordinator.setScope(scope);
+  f.state.keyDeleteFails = true;
+  assert.equal(await f.coordinator.setScope(null), false);
+  const restarted = (await import("../src/data/sync/sync-lifecycle")).createSyncLifecycle({
+    platform: "ios", loadNative: async () => f.native as any, report: (...args) => f.logs.push(args),
+  });
+  assert.equal(await restarted.suspendScope(scope.baseUrl), false);
+  f.state.keyDeleteFails = false;
+  assert.equal(await restarted.suspendScope(scope.baseUrl), true);
+  assert.equal(f.keys.has("orbit.sync.pending-cleanup"), false);
+});

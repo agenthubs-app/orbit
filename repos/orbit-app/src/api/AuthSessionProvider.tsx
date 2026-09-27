@@ -151,9 +151,10 @@ async function eraseRejectedIdentity(baseUrl: string): Promise<void> {
   } catch {
     console.warn("OFFLINE_IDENTITY_CLEAR_FAILED");
   }
+  // Without a record, whatever the restore left suspended is erased the same way.
   const cleared = cached
     ? await purgeSyncScope(syncLifecycle, { baseUrl, actorId: cached.accountId })
-    : true;
+    : await syncLifecycle.setScope(null);
   if (cleared && !usesBrowserManagedSession) await nativeAuthSessionStorage.clear(baseUrl);
 }
 
@@ -207,12 +208,18 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
       const requestRevision = authEnvironment.current.revision;
       const current = () => active && authEnvironment.current.revision === requestRevision;
       try {
-        if (!(await syncLifecycle.setScope(null)) || !active) return;
+        // Re-running the restore (provider remount, error-boundary retry, Expo Router root
+        // remount) must not erase the mirror of the identity it is about to confirm (0130):
+        // pause reads and keep the database; only another server's scope is purged here.
+        // The confirmed identity below resumes it (same) or purges it (other); a rejection,
+        // or no stored session at all, purges it.
+        if (!(await syncLifecycle.suspendScope(baseUrl)) || !active) return;
         const storedValue = usesBrowserManagedSession
           ? ""
           : (await nativeAuthSessionStorage.read(baseUrl)) ?? "";
 
         if (!usesBrowserManagedSession && !storedValue) {
+          await syncLifecycle.setScope(null);
           return;
         }
 
@@ -565,19 +572,18 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
       };
     }
 
-    if (!usesBrowserManagedSession) {
-      try {
-        if (!(await syncLifecycle.setScope(null))) {
-          return { message: "无法安全清除这台设备上的本地数据，请稍后再试。", success: false };
-        }
-        if (authEnvironment.current.revision !== requestRevision) return obsoleteAuthActionResult();
-        await nativeAuthSessionStorage.clear(baseUrl);
-      } catch {
-        return {
-          message: "无法清除这台设备上的登录状态，请稍后再试。",
-          success: false
-        };
+    try {
+      // The browser mirror is erased on sign-out too (0130); before, only native purged here.
+      if (!(await syncLifecycle.setScope(null))) {
+        return { message: "无法安全清除这台设备上的本地数据，请稍后再试。", success: false };
       }
+      if (authEnvironment.current.revision !== requestRevision) return obsoleteAuthActionResult();
+      if (!usesBrowserManagedSession) await nativeAuthSessionStorage.clear(baseUrl);
+    } catch {
+      return {
+        message: "无法清除这台设备上的登录状态，请稍后再试。",
+        success: false
+      };
     }
 
     if (authEnvironment.current.revision !== requestRevision) return obsoleteAuthActionResult();

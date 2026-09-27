@@ -248,7 +248,7 @@ function harness(input: { blockedPost?: string; optedIn?: boolean; failFirstToke
         calls.push("logout");
         return input.failLogout ? { success: false, error: { message: "logout unavailable" } } : { success: true };
       } };
-      if (id.endsWith("/sync-lifecycle")) return { syncLifecycle: { setScope: async () => { calls.push("sync-scope-change"); return true; } } };
+      if (id.endsWith("/sync-lifecycle")) return { syncLifecycle: { suspendScope: async () => { calls.push("sync-scope-suspend"); return true; }, setScope: async () => { calls.push("sync-scope-change"); return true; } } };
       if (id.endsWith("/OrbitLocaleContext")) return {
         useOrbitLocale: () => ({
           choice: "system",

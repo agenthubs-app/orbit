@@ -69,6 +69,15 @@ export const offlineIdentityStorage = {
 };
 export async function registerOrbitAccount() { return { success: true }; }
 export const syncLifecycle = {
+  // 0130: the restore suspends (recorded as { suspend }); only another server's open scope is purged there.
+  async suspendScope(baseUrl) {
+    state.scopeChanges.push({ suspend: baseUrl });
+    if (state.currentScope && state.currentScope.baseUrl !== baseUrl) {
+      if (state.keyDeleteFails) return false;
+      state.currentScope = null;
+    }
+    return true;
+  },
   async setScope(scope) {
     state.scopeChanges.push(scope);
     if (state.keyDeleteFails) return false;
@@ -268,7 +277,7 @@ test("a stored session stays closed when account/me cannot establish an owner", 
 
 test("restoring canonical identity activates the encrypted server/actor scope", async t => {
   const page = await open(t, { storedCookie: "session=restored" });
-  assert.deepEqual(await page.evaluate(() => (window as any).fixture.scopeChanges), [null, { baseUrl: "https://first.example", actorId: "account:canonical" }]);
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.scopeChanges), [{ suspend: "https://first.example" }, { baseUrl: "https://first.example", actorId: "account:canonical" }]);
 });
 
 test("key deletion failure blocks accepting a replacement account before persisting its cookie", async t => {
@@ -293,7 +302,7 @@ test("logout purges encrypted storage once and prevents a pending login from res
   assert.equal(await page.evaluate(() => (window as any).fixture.results[0].success), false);
   await page.waitForFunction(() => (window as any).fixture.auth.signedIn === false);
   assert.equal(await page.evaluate(() => (window as any).fixture.auth.signedIn), false);
-  assert.equal(await page.evaluate(() => (window as any).fixture.scopeChanges.filter((scope: unknown) => scope === null).length), 2);
+  assert.equal(await page.evaluate(() => (window as any).fixture.scopeChanges.filter((scope: unknown) => scope === null).length), 1);
 });
 
 test("logout key deletion failure is visible and keeps the current session from switching", async t => {
@@ -307,7 +316,7 @@ test("session expiry uses one lifecycle purge", async t => {
   const page = await open(t, { storedCookie: "session=restored" });
   await page.evaluate(() => (window as any).fixture.expire());
   await page.waitForFunction(() => (window as any).fixture.auth.signedIn === false);
-  assert.equal(await page.evaluate(() => (window as any).fixture.scopeChanges.filter((scope: unknown) => scope === null).length), 2);
+  assert.equal(await page.evaluate(() => (window as any).fixture.scopeChanges.filter((scope: unknown) => scope === null).length), 1);
 });
 
 test("an old server logout response cannot purge or clear the newly restored server session", async t => {
