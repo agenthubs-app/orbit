@@ -51,6 +51,7 @@ export const useLocalSearchParams = () => { observe(); return { id: state.taskId
 export const useGlobalSearchParams = useLocalSearchParams;
 export const usePathname = () => "/tasks/" + encodeURIComponent(state.taskId);
 export const useRouter = () => ({ canGoBack: () => false, back() {}, push() {}, replace() {} });
+export const useNavigation = () => ({ addListener: () => () => {}, dispatch() {} });
 export const Redirect = () => <div role="status">Sign in</div>;
 export const Stack = () => null;
 export const readSnapshot = async () => null;

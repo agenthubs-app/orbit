@@ -103,6 +103,7 @@ export const useLocalSearchParams = () => ({
 export const useIsFocused = () => true;
 export const usePathname = () => "/" + screen;
 export const useRouter = () => ({ canGoBack: () => true, back() { state.navigation.push("back"); }, push(path) { state.navigation.push(path); }, replace(path) { state.navigation.push(path); } });
+export const useNavigation = () => ({ addListener: () => () => {}, dispatch() {} });
 export const useOrbitApiBaseUrl = () => ({ ready: true, baseUrl: "https://orbit.test" });
 export const useOrbitAuthSession = () => ({ ready: true, signedIn: true, accountId: "reader", actorId: "reader", user: { id: "reader", name: "林悦", email: "reader@example.test" }, cookieHeader: "" });
 export const useRelationshipInboxBadgeCount = () => 0;

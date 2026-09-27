@@ -46,6 +46,7 @@ export const useOrbitAuthSession = () => ({ ready: true, signedIn: true, account
 export const useOrbitApiBaseUrl = () => ({ ready: true, baseUrl: "https://orbit.example" });
 export const useLocalSearchParams = () => { useFixture(); return state.screen === "detail" ? { id: state.task.id } : { view: state.view }; };
 export const useRouter = () => ({ canGoBack: () => false, push(href) { state.navigation.push(href); }, replace(href) { state.navigation.push(href); }, back() { state.navigation.push("back"); } });
+export const useNavigation = () => ({ addListener: () => () => {}, dispatch() {} });
 export const usePathname = () => { useFixture(); return state.screen === "detail" ? "/tasks/" + state.task.id : "/tasks"; };
 export const useRelationshipInboxBadgeCount = () => 0;
 export const SafeAreaView = ({ edges, style, ...props }) => <View {...props} style={[style, edges?.includes("top") && { paddingTop: 48 }]} />;
