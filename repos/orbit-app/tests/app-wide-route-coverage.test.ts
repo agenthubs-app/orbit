@@ -192,6 +192,7 @@ const integratedFeatureRoutes = [
   "/profile/continue",
   "/profile/edit",
   "/profile/more",
+  "/profile/onboarding",
   "/profile/preview",
   "/profile/suggestions",
   "/profile/tags"

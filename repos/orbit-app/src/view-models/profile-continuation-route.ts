@@ -70,8 +70,8 @@ export function safeProfileContinuationNext(
 
 export function profileContinuationHref(
   next: string | string[] | undefined
-): InitialRouteHref {
-  return `/profile?complete=1&next=${encodeURIComponent(
+): string {
+  return `/profile/onboarding?next=${encodeURIComponent(
     safeProfileContinuationNext(next)
   )}`;
 }

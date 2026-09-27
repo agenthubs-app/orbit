@@ -6,6 +6,8 @@
 
 2026-09-10 合并补充：当前代码共有 63 个入口。下方 58 条视觉验收记录仍仅对应原快照；另行集成的 `/account/reset-password`、`/contacts/new/batch/[id]`、`/contacts/new/batch2`、`/contacts/new/batch2/[id]`、`/events/[id]/operations/experience` 不继承这 58 条的原生观察证据，运行时验收仍未完成。路由清单测试同时核对两组入口，继续拒绝遗漏、重复及未登记的新入口。
 
+2026-09-27 补充（Sprint 0106）：新增 `/profile/onboarding`（`ProfileOnboardingScreen`，新用户引导，登录后资料未完成和 `/profile/continue` 进入），登记在路由清单测试的集成入口组，同样不继承这 58 条的原生观察证据；运行时证据见 Sprint 0106 报告。
+
 沿用已确认的蓝灰浅深色和原生排版，将统一页头、开放分区、表单及操作层级覆盖到全 App，不改变业务、API、权限或导航行为。
 
 - [执行规格](../../superpowers/specs/2026-09-08-app-wide-style-design.md)

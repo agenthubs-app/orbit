@@ -34,7 +34,7 @@ test("legacy batch login completion handoff preserves context and omits the path
   assert.equal(normalizedNext(next), next);
   assert.equal(
     nextHrefForAccountAuthSubmit({ email: "test@example.invalid", mode: "login", next }),
-    `/profile?complete=1&next=${encodeURIComponent(next)}`
+    `/profile/onboarding?next=${encodeURIComponent(next)}`
   );
 });
 
@@ -179,7 +179,7 @@ test("party query, duplicate values and fragment survive the login completion ha
       mode: "login",
       next: encodedNext ?? undefined
     }),
-    `/profile?complete=1&next=${encodeURIComponent(expected)}`
+    `/profile/onboarding?next=${encodeURIComponent(expected)}`
   );
 });
 
@@ -279,6 +279,7 @@ test("every root-level private entry uses the shared render gate", () => {
     "profile/continue.tsx",
     "profile/edit.tsx",
     "profile/more.tsx",
+    "profile/onboarding.tsx",
     "profile/preview.tsx",
     "profile/suggestions.tsx",
     "profile/tags.tsx",

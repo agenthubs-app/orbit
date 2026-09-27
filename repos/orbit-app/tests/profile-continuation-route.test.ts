@@ -13,14 +13,14 @@ test("profile continuation preserves an allowlisted internal destination", () =>
   );
   assert.equal(
     profileContinuationHref("/events/event-1?tab=details"),
-    "/profile?complete=1&next=%2Fevents%2Fevent-1%3Ftab%3Ddetails"
+    "/profile/onboarding?next=%2Fevents%2Fevent-1%3Ftab%3Ddetails"
   );
 });
 
 test("profile continuation uses the first route parameter value", () => {
   assert.equal(
     profileContinuationHref(["/events/first", "/events/second"]),
-    "/profile?complete=1&next=%2Fevents%2Ffirst"
+    "/profile/onboarding?next=%2Fevents%2Ffirst"
   );
 });
 
