@@ -22,6 +22,11 @@
  *   - 本周推进进度：`GET /api/agent/ledger`
  *   - 最近对话：`GET /api/ai/conversations/sessions?limit=3`
  * 无数据一律走空态文案，不伪造数字。
+ *
+ * 示例模式（W0004）：壳挂了 `DemoModeProvider` 时，上面每个来源都换成
+ * `_demo/demo-persona.ts` 的同形状示例数据，走的仍是下面同一套渲染代码；四个读取
+ * 请求一个都不发，完成／明天提醒、刷新、追问、打开对话／历史／会话、条目跳转全部改成
+ * `guardWrite(...)` 的「这是示例」拦截层。示例人名旁带「示例」角标。
  */
 "use client";
 
@@ -29,6 +34,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { AgentLedgerEntry } from "../../../../../features/agent/ledger/contract";
 import { COMMUNITY_CONFIG } from "../../../../../features/community/config";
+import { buildDemoHomeData } from "../../_demo/demo-persona";
+import { DemoTag, useDemoMode } from "../../_demo/demo-mode-context";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import type { OrbitHomeViewModel } from "../../orbit-home-route-view-model";
 import type { HomeDashboardSnapshot } from "../home-dashboard-route-service";
@@ -200,8 +207,8 @@ function OrbitMark() {
 }
 
 export function IOrbitHome({
-  communityJoined = false,
-  home,
+  communityJoined: communityJoinedProp = false,
+  home: homeProp,
   loadSnapshot,
   navigate,
   onAsk,
@@ -214,11 +221,15 @@ export function IOrbitHome({
   const lang: "en" | "zh" = language === "zh" ? "zh" : "en";
   const locale = lang === "zh" ? "zh-CN" : "en-US";
 
+  const demo = useDemoMode();
+  const demoActive = demo !== null;
+  const guardWrite = demo?.guardWrite;
+
   const [draft, setDraft] = useState("");
-  const [snapshot, setSnapshot] = useState<Loadable<HomeDashboardSnapshot>>("pending");
-  const [ledger, setLedger] = useState<Loadable<readonly AgentLedgerEntry[]>>("pending");
-  const [signals, setSignals] = useState<Loadable<readonly AgentTodaySignalView[]>>("pending");
-  const [sessions, setSessions] = useState<Loadable<readonly IOrbitHomeSession[]>>("pending");
+  const [snapshotState, setSnapshot] = useState<Loadable<HomeDashboardSnapshot>>("pending");
+  const [ledgerState, setLedger] = useState<Loadable<readonly AgentLedgerEntry[]>>("pending");
+  const [signalsState, setSignals] = useState<Loadable<readonly AgentTodaySignalView[]>>("pending");
+  const [sessionsState, setSessions] = useState<Loadable<readonly IOrbitHomeSession[]>>("pending");
   const [signalBusyId, setSignalBusyId] = useState<string | null>(null);
   const [signalError, setSignalError] = useState<string | null>(null);
   const [signalsRefreshing, setSignalsRefreshing] = useState(false);
@@ -226,7 +237,12 @@ export function IOrbitHome({
   const [calOpen, setCalOpen] = useState(false);
 
   // 时钟每分钟前进一次：倒计时、2 小时窗口、「现在」线和跨午夜切日都跟着走。
-  const readClock = useCallback(() => (clock ? clock() : new Date()), [clock]);
+  // 示例模式用示例时钟（东京的今天 11:40）。
+  const demoClock = demo?.clock;
+  const readClock = useCallback(
+    () => (demoClock ? demoClock() : clock ? clock() : new Date()),
+    [clock, demoClock],
+  );
   const [now, setNow] = useState<Date>(() => readClock());
   useEffect(() => {
     if (typeof window === "undefined" || typeof window.setInterval !== "function") return;
@@ -247,8 +263,20 @@ export function IOrbitHome({
     setSelectedDay(todayDay);
   }
 
+  // 示例数据：同形状替身，按「今天」生成（只随日期与语言变化）。
+  const demoData = useMemo(
+    () => (demoActive ? buildDemoHomeData(new Date(`${todayKey}T12:00:00+09:00`), lang) : null),
+    [demoActive, lang, todayKey],
+  );
+  const snapshot: Loadable<HomeDashboardSnapshot> = demoData ? demoData.snapshot : snapshotState;
+  const ledger: Loadable<readonly AgentLedgerEntry[]> = demoData ? demoData.ledger : ledgerState;
+  const signals: Loadable<readonly AgentTodaySignalView[]> = demoData ? demoData.signals : signalsState;
+  const sessions: Loadable<readonly IOrbitHomeSession[]> = demoData ? demoData.sessions : sessionsState;
+  const home = demoData ? demoData.home : homeProp;
+  const communityJoined = demoData ? demoData.communityJoined : communityJoinedProp;
+
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined" || demoActive) return;
     let live = true;
     const load = loadSnapshot
       ? loadSnapshot()
@@ -269,10 +297,10 @@ export function IOrbitHome({
     return () => {
       live = false;
     };
-  }, [loadSnapshot]);
+  }, [demoActive, loadSnapshot]);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined" || demoActive) return;
     const controller = new AbortController();
     void fetch("/api/agent/ledger", { cache: "no-store", signal: controller.signal })
       .then(async (response) => {
@@ -288,10 +316,10 @@ export function IOrbitHome({
       })
       .catch(() => setLedger("unavailable"));
     return () => controller.abort();
-  }, []);
+  }, [demoActive]);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined" || demoActive) return;
     const controller = new AbortController();
     void fetch("/api/ai/conversations/sessions?limit=3", {
       cache: "no-store",
@@ -304,7 +332,7 @@ export function IOrbitHome({
       })
       .catch(() => setSessions("unavailable"));
     return () => controller.abort();
-  }, []);
+  }, [demoActive]);
 
   const refreshSignals = useCallback(
     async (background = false) => {
@@ -331,14 +359,18 @@ export function IOrbitHome({
   );
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined" || demoActive) return;
     void refreshSignals();
-  }, [refreshSignals]);
+  }, [demoActive, refreshSignals]);
 
   const updateSignal = async (
     signalId: string,
     status: "dismissed" | "snoozed",
   ) => {
+    if (guardWrite) {
+      guardWrite(t({ en: "today's items", zh: "今日要事" }));
+      return;
+    }
     setSignalBusyId(signalId);
     setSignalError(null);
     try {
@@ -588,11 +620,37 @@ export function IOrbitHome({
       ? ["日", "一", "二", "三", "四", "五", "六"]
       : ["S", "M", "T", "W", "T", "F", "S"];
 
+  const chatLabel = t({ en: "conversation", zh: "对话" });
   const submitDraft = () => {
     const value = draft.trim();
+    if (guardWrite) {
+      guardWrite(chatLabel);
+      return;
+    }
     if (!value) return;
     setDraft("");
     onAsk(value);
+  };
+  const askSignal = (prompt: string) => (guardWrite ? guardWrite(chatLabel) : onAsk(prompt));
+  const openChat = () => (guardWrite ? guardWrite(chatLabel) : onOpenChat());
+  const openHistory = () =>
+    guardWrite ? guardWrite(t({ en: "conversation history", zh: "对话记录" })) : onOpenHistory();
+  const openSession = (sessionId: string) => (guardWrite ? guardWrite(chatLabel) : onOpenSession(sessionId));
+  // 示例条目指向的是示例人物的数据，跳过去只会是别人的页面或 404：一律拦下。
+  const openItem = (item: TodayItem) => {
+    if (!item.primary) return;
+    if (guardWrite) {
+      guardWrite(demoData?.writeLabels[item.key] ?? t({ en: "today's items", zh: "今日要事" }));
+      return;
+    }
+    navigate(item.primary.href);
+  };
+  const refreshNow = () => {
+    if (guardWrite) {
+      guardWrite(t({ en: "today's items", zh: "今日要事" }));
+      return;
+    }
+    void refreshSignals(true);
   };
 
   // 「审阅修订」37：四个来源都不是 pending 了才算就绪，像素比对按它等待。
@@ -643,7 +701,7 @@ export function IOrbitHome({
           <button
             className="btn ir-m-link"
             data-orbit-agent-signal-ask={item.signalId}
-            onClick={() => onAsk(item.ask!.prompt)}
+            onClick={() => askSignal(item.ask!.prompt)}
             type="button"
           >
             {item.ask.label}
@@ -722,7 +780,7 @@ export function IOrbitHome({
                 className="btn ir-refresh"
                 data-orbit-agent-signals-refresh
                 disabled={signalsRefreshing}
-                onClick={() => void refreshSignals(true)}
+                onClick={refreshNow}
                 type="button"
               >
                 {signalsRefreshing
@@ -752,13 +810,14 @@ export function IOrbitHome({
             >
               <span className={lead.hot ? "ir-m-ord ir-m-ord-hot" : "ir-m-ord"}>1</span>
               <div className="ir-m-lead-body">
-                {lead.pills.length > 0 ? (
+                {lead.pills.length > 0 || demoActive ? (
                   <span className="ir-m-pills">
                     {lead.pills.map((pill) => (
                       <span className={pill.hot ? "ir-m-pill ir-m-pill-hot" : "ir-m-pill"} key={pill.text}>
                         {pill.text}
                       </span>
                     ))}
+                    {demoActive ? <DemoTag /> : null}
                   </span>
                 ) : null}
                 <h2 className="ir-m-lead-title">{lead.title}</h2>
@@ -768,7 +827,7 @@ export function IOrbitHome({
                   {lead.primary ? (
                     <button
                       className="btn ir-m-primary"
-                      onClick={() => navigate(lead.primary!.href)}
+                      onClick={() => openItem(lead)}
                       type="button"
                     >
                       {lead.primary.label}
@@ -804,14 +863,17 @@ export function IOrbitHome({
                 >
                   <span className="ir-m-brief-n">{index + 2}</span>
                   <span className="ir-m-brief-body">
-                    <strong className="ir-m-brief-title">{item.title}</strong>
+                    <strong className="ir-m-brief-title">
+                      {item.title}
+                      {demoActive ? <DemoTag /> : null}
+                    </strong>
                     {proofLine(item.proof)}
                     {signalOps(item)}
                   </span>
                   {item.primary ? (
                     <button
                       className="btn ir-m-go"
-                      onClick={() => navigate(item.primary!.href)}
+                      onClick={() => openItem(item)}
                       type="button"
                     >
                       {item.primary.label} →
@@ -869,7 +931,7 @@ export function IOrbitHome({
             <button
               aria-label={t({ en: "Open chat", zh: "打开对话" })}
               className="btn ir-m-chat"
-              onClick={onOpenChat}
+              onClick={openChat}
               title={t({ en: "Open chat", zh: "打开对话" })}
               type="button"
             >
@@ -912,7 +974,10 @@ export function IOrbitHome({
                     >
                       <span className="ir-m-tl-time">{row.time}</span>
                       <span className="ir-m-tl-copy">
-                        <strong className="ir-agenda-title">{row.title}</strong>
+                        <strong className="ir-agenda-title">
+                          {row.title}
+                          {demoActive ? <DemoTag /> : null}
+                        </strong>
                         <span className="ir-m-tl-sub">{row.meta}</span>
                       </span>
                     </div>
@@ -1073,6 +1138,14 @@ export function IOrbitHome({
                   className="ir-m-event"
                   href={`/app/events/${encodeURIComponent(event.id)}`}
                   key={event.id}
+                  onClick={
+                    guardWrite
+                      ? (clickEvent) => {
+                          clickEvent.preventDefault();
+                          guardWrite(t({ en: "registered events", zh: "已报名活动" }));
+                        }
+                      : undefined
+                  }
                 >
                   <span className="ir-m-event-date">
                     {fmtDay(event.startsAt)}
@@ -1100,10 +1173,10 @@ export function IOrbitHome({
           <div className="ir-m-col-head">
             <h3>{t({ en: "Recent chats", zh: "最近对话" })}</h3>
             <span className="ir-m-col-acts">
-              <button className="btn ir-history-btn" onClick={onOpenHistory} type="button">
+              <button className="btn ir-history-btn" onClick={openHistory} type="button">
                 {t({ en: "History", zh: "历史记录" })}
               </button>
-              <button className="btn ir-enter-btn" onClick={onOpenChat} type="button">
+              <button className="btn ir-enter-btn" onClick={openChat} type="button">
                 {t({ en: "Open chat →", zh: "进入对话 →" })}
               </button>
             </span>
@@ -1117,7 +1190,7 @@ export function IOrbitHome({
                     className="btn ir-m-session"
                     data-orbit-iorbit-session={item.id}
                     key={item.id}
-                    onClick={() => onOpenSession(item.id)}
+                    onClick={() => openSession(item.id)}
                     type="button"
                   >
                     <span className="ir-m-session-title">

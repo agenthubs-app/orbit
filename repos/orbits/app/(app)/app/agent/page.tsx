@@ -5,6 +5,10 @@
  * 数据仍走 live 的 chat route view model；视觉组件采用 Orbit_0918 的 iOrbit 壳
  * （`agent/iorbit-0918/iorbit-shell.tsx`）：home 分支渲染 `iorbit-home.tsx`，chat 分支渲染
  * `iorbit-chat.tsx`。旧的 `OrbitRealAgent` 已于任务 6a 删除。
+ *
+ * W0004 示例模式：开关 `ORBIT_GUIDE_DEMO` 打开时，服务端按真实数据推导引导进度
+ * （`features/guide/progress.ts`），处于引导期的人把 `guide` 下传给壳，壳改渲染示例。
+ * 开关关闭时 `readGuideStatusForActor` 不做任何读取、直接返回 null，页面与 W0001 一致。
  */
 import { getOrbitServerLanguage, localizeOrbitTree } from "../orbit-language-server";
 import type { OrbitLanguage } from "../orbit-language-core";
@@ -26,6 +30,8 @@ import { presentOrbitEvents } from "../orbit-event-presentation";
 import { readRuntimeEventRegistrationStates } from "../../../../features/events/registration/runtime";
 import { resolveConfiguredActorEventCanonicalIds } from "../canonical-event-detail-view";
 import { readCommunityJoinedForActor } from "../../../../features/community/service-factory";
+import { readGuideStatusForActor, type GuideStatus } from "../../../../features/guide/progress";
+import type { DemoModeView } from "../_demo/demo-mode-context";
 
 export type AppAgentSearchParams = AppChatSearchParams & {
   /** `?history=1`：strategy / contacts 两屏页头的「◷ 历史记录」落点（任务 5）。 */
@@ -89,6 +95,18 @@ function AgentRouteStateBoundary({
       />
     </main>
   );
+}
+
+/** 引导状态 → 壳的示例视图（只有「在示例里」才非空）。 */
+function guideDemoView(status: GuideStatus | null): DemoModeView | null {
+  if (!status?.inDemo || !status.progress) return null;
+  return {
+    bannerCollapsed: status.bannerCollapsed,
+    completed: status.progress.completed,
+    confirmedContacts: status.progress.confirmedContacts,
+    nextStep: status.progress.nextStep,
+    steps: status.progress.steps,
+  };
 }
 
 function firstSearchParam(
@@ -171,6 +189,17 @@ export default async function AppAgentPage({
   );
   // W0003：「已报名活动」栏首行的社群状态由服务端读，SSR 首帧即正确。
   const communityJoined = await readCommunityJoinedForActor({ actorId });
+  // W0004：开关关闭时不读任何东西，返回 null。首页数据读不到时目标未知，按真实首页处理。
+  const guide =
+    homeModel.state === "success"
+      ? guideDemoView(
+          await readGuideStatusForActor({
+            actorId,
+            relationshipGoal: homeModel.home.account?.relationshipGoal,
+            userId: session.user.id,
+          }),
+        )
+      : null;
   const entryModel = composeOrbitAgentEntryViewModel(routeModel);
   const language =
     entryModel.state === "ready"
@@ -185,6 +214,7 @@ export default async function AppAgentPage({
         <div data-orbit-route="app-agent-route">
           <IOrbitShell
             communityJoined={communityJoined}
+            guide={guide}
             initialDeepLink={Boolean(
               firstSearchParam(resolvedSearchParams, "q") ||
                 firstSearchParam(resolvedSearchParams, "session"),
