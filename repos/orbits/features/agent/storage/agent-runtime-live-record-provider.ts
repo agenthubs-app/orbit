@@ -50,7 +50,8 @@ const STORE_OUTBOX_SCAN_LIMIT = 1000;
 /**
  * Backfills the run target on rows written before 0103: agent runtime child
  * rows (in the actor subspaces) and AI request records. Idempotent; it only
- * updates rows whose target is still empty. Deletes nothing.
+ * updates rows whose target is still empty. Deletes nothing. A request record
+ * is linked only while its run still exists (0111 retention deletes runs).
  */
 export const AGENT_RUN_TARGET_BACKFILL_SQL = `
   update orbit_records
@@ -64,7 +65,12 @@ export const AGENT_RUN_TARGET_BACKFILL_SQL = `
        (collection_name in ('agentRunSteps', 'agentActionsV2', 'agentOutbox', 'agentExecutionReceipts')
          and coalesce(payload->'entity'->>'runId', '') <> '')
        or (collection_name = 'orbit_agent_chat_requests'
-         and coalesce(payload->'result'->'data'->>'runId', '') <> '')
+         and coalesce(payload->'result'->'data'->>'runId', '') <> ''
+         -- 0111: a request whose run was deleted by retention or cleanup stays unlinked.
+         and exists (select 1 from orbit_records run
+           where run.workspace_id = orbit_records.workspace_id || ':agent-actor:' || orbit_records.user_id
+             and run.collection_name = 'agentRuns'
+             and run.record_id = orbit_records.payload->'result'->'data'->>'runId'))
      )
 `;
 
