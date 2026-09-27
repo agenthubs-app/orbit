@@ -13,8 +13,13 @@ import {
 } from "./sync-database-key";
 
 interface NativeSyncDependencies extends SyncKeyDependencies {
-  sqlite: Pick<typeof import("expo-sqlite"), "openDatabaseAsync" | "deleteDatabaseAsync">;
+  sqlite: Pick<typeof import("expo-sqlite"), "openDatabaseAsync" | "deleteDatabaseAsync"> & {
+    /** Names of the files in the SQLite directory; used to find other identities' mirrors (sprint 0113). */
+    listDatabaseNames?: () => Promise<readonly string[]>;
+  };
 }
+
+const IDENTITY_DATABASE = /^orbit-sync-([a-f0-9]{64})\.db$/u;
 
 type NativeDatabase = Awaited<ReturnType<NativeSyncDependencies["sqlite"]["openDatabaseAsync"]>>;
 interface OpenScope {
@@ -98,6 +103,37 @@ export function createSyncLifecycle(input: {
     } catch {
       input.report("SYNC_CLEANUP_STATE_FAILED", digest);
       return false;
+    }
+    return true;
+  }
+
+  /**
+   * One identity per device (sprint 0113; the browser has done this since
+   * 0125): opening a scope erases every other identity's database and key,
+   * including ones this process never opened (a session that ended by expiry,
+   * a killed process, an older build). Each erasure persists its intent first,
+   * exactly like purge, so a crash mid-way is finished by the next process
+   * before it accepts any identity. A failed erasure refuses the new identity.
+   */
+  async function eraseOtherIdentities(keep: string): Promise<boolean> {
+    if (!native?.sqlite.listDatabaseNames) return true;
+    let names: readonly string[];
+    try {
+      names = await native.sqlite.listDatabaseNames();
+    } catch {
+      // Enumeration is best effort; the open identity is still isolated by its own key.
+      input.report("SYNC_IDENTITY_SCAN_FAILED", keep);
+      return true;
+    }
+    const others = new Set(names.map(name => IDENTITY_DATABASE.exec(name)?.[1]).filter((digest): digest is string => Boolean(digest) && digest !== keep));
+    for (const digest of others) {
+      try {
+        await persistPendingSyncCleanup(digest, native);
+      } catch {
+        input.report("SYNC_CLEANUP_STATE_FAILED", digest);
+        return false;
+      }
+      if (!(await finishPendingCleanup(digest))) return false;
     }
     return true;
   }
@@ -202,6 +238,7 @@ export function createSyncLifecycle(input: {
             return true;
           }
           const digest = await syncScopeDigest(scope, loaded);
+          if (!(await eraseOtherIdentities(digest))) return false;
           current = { scope, digest, name: `orbit-sync-${digest}.db`, handle: null, database: null, blocked: false };
           const key = await loadSyncDatabaseKey(digest, loaded, () => loaded.sqlite.deleteDatabaseAsync(current!.name));
           current.handle = await loaded.sqlite.openDatabaseAsync(current.name, { useNewConnection: true });
@@ -263,6 +300,14 @@ export async function deleteSyncDatabaseFiles(
   }
 }
 
+export async function listSyncDatabaseNames(
+  sqlite: Pick<typeof import("expo-sqlite"), "defaultDatabaseDirectory">,
+  Directory: new (...paths: string[]) => { exists: boolean; list(): { name: string }[] },
+): Promise<string[]> {
+  const directory = new Directory(sqlite.defaultDatabaseDirectory);
+  return directory.exists ? directory.list().map(entry => entry.name) : [];
+}
+
 export const syncLifecycle = createSyncLifecycle({
   platform: Platform.OS,
   loadNative: async () => {
@@ -277,6 +322,7 @@ export const syncLifecycle = createSyncLifecycle({
         sqlite: {
           openDatabaseAsync: sqlite.openDatabaseAsync,
           deleteDatabaseAsync: (name: string) => deleteSyncDatabaseFiles(name, sqlite, fileSystem.File),
+          listDatabaseNames: async () => listSyncDatabaseNames(sqlite, fileSystem.Directory),
         },
         crypto,
         secureStore,
