@@ -13,6 +13,7 @@ import {
   AppError,
   getHttpStatusForAppErrorCode,
 } from "../../../../shared/errors/app-error";
+import { mobileContactsDashboardDeclaresRoleCounts } from "../../../../shared/api-schema/mobile-contacts-dashboard";
 import {
   createConfiguredMobileContactsDashboardService,
   type MobileContactsDashboardService,
@@ -37,7 +38,7 @@ export function createMobileContactsDashboardGetHandler(
   const createService =
     dependencies.createService ?? createConfiguredMobileContactsDashboardService;
 
-  return async function GET(_request: Request): Promise<Response> {
+  return async function GET(request: Request): Promise<Response> {
     const mode = resolveMode();
     const actor = await resolveActor();
 
@@ -45,7 +46,12 @@ export function createMobileContactsDashboardGetHandler(
       return authenticatedApiActorRequiredResponse(mode);
     }
 
-    const result = await createService(mode).getDashboard({ actorId: actor.id });
+    // Clients that do not declare roleCounts (App builds before 0121) keep the
+    // original full contacts list, so their role ratios stay correct.
+    const contactsScope = mobileContactsDashboardDeclaresRoleCounts(new URL(request.url).searchParams)
+      ? "referenced"
+      : "all";
+    const result = await createService(mode).getDashboard({ actorId: actor.id, contactsScope });
     if (result.success === true) {
       return NextResponse.json(success(result.data), {
         headers: runtimeBoundaryHeaders(mode),

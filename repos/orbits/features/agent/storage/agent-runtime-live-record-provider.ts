@@ -14,7 +14,17 @@ import type {
   AgentRunDetail,
   AgentRunStep,
 } from "../runtime/contract";
-import type { AgentRuntimeRepository } from "../runtime/repository";
+import {
+  AGENT_ACTION_PAGE_MAX,
+  agentActionPageLimit,
+  decodeAgentActionCursor,
+  encodeAgentActionCursor,
+  matchesAgentActionFilter,
+  pageAgentActions,
+  type AgentActionListFilter,
+  type AgentActionPage,
+  type AgentRuntimeRepository,
+} from "../runtime/repository";
 
 const OUTBOX_LEASE_TIMEOUT_MS = 15 * 60_000;
 
@@ -25,10 +35,16 @@ const OUTBOX_LEASE_TIMEOUT_MS = 15 * 60_000;
  * actor's whole history and filtering in memory.
  */
 export const AGENT_RUN_TARGET_TYPE = "agent_run";
-/** Rows one run may hold across steps, actions, outbox and receipts. */
+/**
+ * Rows read per query for one run's children. With SQL the run is read in
+ * keyset pages of this size until complete (0121); the store-only (mock) path
+ * reads one such page and warns when it is full.
+ */
 export const AGENT_RUN_CHILD_READ_LIMIT = 500;
-/** Newest actions the Agent ledger lists; older ones age out (A4 retention is 1 year). */
-export const AGENT_ACTION_LIST_LIMIT = 500;
+/** Largest Agent ledger page; the ledger filters in SQL first and pages explicitly (0121). */
+export const AGENT_ACTION_LIST_LIMIT = AGENT_ACTION_PAGE_MAX;
+/** Store-only (mock, no SQL client) action scan; live reads filter and page in SQL. */
+const STORE_ACTION_SCAN_LIMIT = 5000;
 /** Store-only (mock, no SQL client) outbox scan; live claims go through SQL. */
 const STORE_OUTBOX_SCAN_LIMIT = 1000;
 
@@ -95,7 +111,7 @@ function stringField(value: unknown, key: string): string | null {
 }
 
 function entityFromRecord<TEntity>(
-  record: LiveRecord<AgentRuntimePayload>,
+  record: Pick<LiveRecord<AgentRuntimePayload>, "payload">,
   idKey: string,
 ): TEntity | null {
   const entity = record.payload.entity;
@@ -143,7 +159,7 @@ function recordFor(
 }
 
 function entities<TEntity>(
-  records: readonly LiveRecord<AgentRuntimePayload>[],
+  records: readonly Pick<LiveRecord<AgentRuntimePayload>, "payload">[],
   idKey: string,
 ): TEntity[] {
   return records.flatMap((record) => {
@@ -166,13 +182,44 @@ async function listBounded<TEntity>(
   return entities<TEntity>(records, idKey);
 }
 
+interface ChildRow {
+  collection_name: string;
+  record_id: string;
+  payload: AgentRuntimePayload | string;
+}
+
+function parsedPayload(payload: AgentRuntimePayload | string): AgentRuntimePayload {
+  return typeof payload === "string" ? (JSON.parse(payload) as AgentRuntimePayload) : payload;
+}
+
 /** Every step, action, outbox and receipt row of one run, by its envelope target. */
 async function runChildRecords(
   store: LiveRecordStoreLike<AgentRuntimePayload>,
   workspaceId: string,
   runId: string,
   collectionName?: string,
-): Promise<readonly LiveRecord<AgentRuntimePayload>[]> {
+  sqlClient?: LiveRecordSqlClient,
+): Promise<readonly Pick<LiveRecord<AgentRuntimePayload>, "collectionName" | "payload">[]> {
+  if (sqlClient) {
+    // Complete by construction: bounded keyset pages until a short page.
+    const rows: Pick<LiveRecord<AgentRuntimePayload>, "collectionName" | "payload">[] = [];
+    let after = "";
+    for (;;) {
+      const page = await sqlClient.query<ChildRow>(
+        `select collection_name, record_id, payload from orbit_records
+          where workspace_id = $1 and target_type = $2 and target_id = $3
+            and lifecycle_state <> 'deleted'
+            and ($4::text is null or collection_name = $4)
+            and record_id collate "C" > $5
+          order by record_id collate "C"
+          limit $6`,
+        [workspaceId, AGENT_RUN_TARGET_TYPE, runId, collectionName ?? null, after, AGENT_RUN_CHILD_READ_LIMIT],
+      );
+      for (const row of page.rows) rows.push({ collectionName: row.collection_name, payload: parsedPayload(row.payload) });
+      if (page.rows.length < AGENT_RUN_CHILD_READ_LIMIT) return rows;
+      after = page.rows.at(-1)!.record_id;
+    }
+  }
   const records = await store.listRecords({
     workspaceId,
     ...(collectionName ? { collectionName } : {}),
@@ -223,6 +270,56 @@ export function createStorageAgentRuntimeRepository({
         new Date().toISOString(),
       ),
     );
+  }
+
+  async function listActionPage(
+    input: AgentActionListFilter & { limit?: number | null; cursor?: string | null } = {},
+  ): Promise<AgentActionPage> {
+    if (!sqlClient) {
+      const scanned = await listBounded<AgentActionRecord>(
+        store,
+        workspaceId,
+        AGENT_RUNTIME_LIVE_RECORD_COLLECTIONS.actions,
+        "actionId",
+        STORE_ACTION_SCAN_LIMIT,
+      );
+      return pageAgentActions(scanned.filter((action) => matchesAgentActionFilter(action, input)), input);
+    }
+    const limit = agentActionPageLimit(input.limit);
+    const after = input.cursor ? decodeAgentActionCursor(input.cursor) : null;
+    // Filters run in SQL before the limit; ordering and the keyset use the
+    // entity's updatedAt then the action id, byte-wise (ISO timestamps).
+    const result = await sqlClient.query<{ payload: AgentRuntimePayload | string }>(
+      `select payload from orbit_records
+        where workspace_id = $1 and collection_name = $2 and lifecycle_state <> 'deleted'
+          and ($3::text is null or payload->'entity'->>'status' = $3)
+          and ($4::text is null or payload->'entity'->>'workflowKey' = $4)
+          and ($5::text is null or payload->'entity'->>'createdAt' collate "C" >= $5 collate "C")
+          and ($6::text is null or payload->'entity'->>'createdAt' collate "C" <= $6 collate "C")
+          and ($7::text is null or (payload->'entity'->>'updatedAt' collate "C", record_id collate "C") < ($7 collate "C", $8 collate "C"))
+        order by payload->'entity'->>'updatedAt' collate "C" desc, record_id collate "C" desc
+        limit $9`,
+      [
+        workspaceId,
+        AGENT_RUNTIME_LIVE_RECORD_COLLECTIONS.actions,
+        input.status || null,
+        input.workflowKey || null,
+        input.createdAfter || null,
+        input.createdBefore || null,
+        after?.updatedAt ?? null,
+        after?.actionId ?? null,
+        limit + 1,
+      ],
+    );
+    const actions = result.rows.flatMap((row) => {
+      const entity = parsedPayload(row.payload).entity;
+      return stringField(entity, "actionId") ? [entity as AgentActionRecord] : [];
+    });
+    const page = actions.slice(0, limit);
+    return {
+      actions: page,
+      nextCursor: actions.length > limit && page.length > 0 ? encodeAgentActionCursor(page.at(-1)!) : null,
+    };
   }
 
   async function claimWithStore(input: {
@@ -285,7 +382,7 @@ export function createStorageAgentRuntimeRepository({
       );
       if (!run) return null;
 
-      const children = await runChildRecords(store, workspaceId, runId);
+      const children = await runChildRecords(store, workspaceId, runId, undefined, sqlClient);
       const inCollection = (collectionName: string) =>
         children.filter((record) => record.collectionName === collectionName);
       const steps = entities<AgentRunStep>(inCollection(AGENT_RUNTIME_LIVE_RECORD_COLLECTIONS.runSteps), "stepId");
@@ -302,27 +399,9 @@ export function createStorageAgentRuntimeRepository({
       };
     },
     async listActions(input = {}) {
-      const actions = await listBounded<AgentActionRecord>(
-        store,
-        workspaceId,
-        AGENT_RUNTIME_LIVE_RECORD_COLLECTIONS.actions,
-        "actionId",
-        AGENT_ACTION_LIST_LIMIT,
-      );
-
-      return actions
-        .filter(
-          (action) =>
-            (!input.status || action.status === input.status) &&
-            (!input.workflowKey ||
-              action.workflowKey === input.workflowKey) &&
-            (!input.createdAfter ||
-              action.createdAt >= input.createdAfter) &&
-            (!input.createdBefore ||
-              action.createdAt <= input.createdBefore),
-        )
-        .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+      return (await listActionPage(input)).actions;
     },
+    listActionPage,
     getAction: (actionId) =>
       get<AgentActionRecord>(
         store,
@@ -474,6 +553,23 @@ export function createStorageAgentRuntimeRepository({
       return claimed;
     },
     async getReceiptByIdempotencyKey(idempotencyKey, runId) {
+      if (sqlClient) {
+        // Exact lookup by run and key: never answered from a truncated list.
+        const found = await sqlClient.query<{ payload: AgentRuntimePayload | string }>(
+          `select payload from orbit_records
+            where workspace_id = $1 and collection_name = $2 and target_type = $3 and target_id = $4
+              and lifecycle_state <> 'deleted'
+              and payload->'entity'->>'idempotencyKey' = $5
+              and payload->'entity'->>'status' in ('completed', 'undone')
+            order by updated_at desc
+            limit 1`,
+          [workspaceId, AGENT_RUNTIME_LIVE_RECORD_COLLECTIONS.receipts, AGENT_RUN_TARGET_TYPE, runId, idempotencyKey],
+        );
+        const entity = found.rows[0] ? parsedPayload(found.rows[0].payload).entity : null;
+        return stringField(entity, "receiptId") && stringField(entity, "runId") === runId
+          ? (entity as AgentExecutionReceipt)
+          : null;
+      }
       const receipts = entities<AgentExecutionReceipt>(
         await runChildRecords(
           store,

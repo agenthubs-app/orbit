@@ -13,15 +13,26 @@ export const ROLLUP_LOOKBACK_DAYS = RECEIPT_RETENTION_DAYS - 1;
 /** A day's rollup is final once computed this long after the day ended (late after() writes). */
 export const ROLLUP_FINAL_AFTER_MS = 15 * 60_000;
 
-/** Rule 1: a route's average bytes per request exceeds the median of its previous 7 daily averages times this. */
+/**
+ * Rule 1 (design O3, as approved): a route's average bytes per request exceeds
+ * the median of its previous 7 daily averages times this. The rule is checked
+ * whenever a median exists (at least one history day); there is no minimum
+ * history length or minimum average (user decision 2026-09-27, Sprint 0121).
+ */
 export const ROUTE_SPIKE_FACTOR = 2;
 export const ROUTE_SPIKE_HISTORY_DAYS = 7;
-/** At least this many of those 7 days must have data before a median is trusted. */
-export const ROUTE_SPIKE_MIN_HISTORY_DAYS = 3;
-/** Averages below this are too small to be worth an alert, whatever the ratio. */
-export const ROUTE_SPIKE_MIN_AVERAGE_BYTES = 100_000;
 /** Rule 2: any single request reading more than 5 MB. */
 export const LARGE_REQUEST_BYTES = 5 * 1024 * 1024;
+/**
+ * Neon reconciliation retry for days recorded as failed/unavailable while
+ * receipts are still retained: at most this many Neon attempts per day, the
+ * next one no earlier than NEON_RETRY_BASE_MS * 2^(attempts - 1) (capped at
+ * NEON_RETRY_MAX_MS) after the last, and at most NEON_RETRY_PER_PASS days per pass.
+ */
+export const NEON_MAX_ATTEMPTS = 6;
+export const NEON_RETRY_BASE_MS = 60 * 60_000;
+export const NEON_RETRY_MAX_MS = 24 * 60 * 60_000;
+export const NEON_RETRY_PER_PASS = ROLLUP_LOOKBACK_DAYS;
 /** Rule 3: recorded bytes cover less than 70 % of Neon's transfer. */
 export const LOW_COVERAGE_BELOW = 0.7;
 /** Alerts are only raised for recently finalized days, never for an old backlog. */

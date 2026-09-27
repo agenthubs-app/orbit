@@ -79,12 +79,31 @@ function noFetch(): typeof fetch {
   return (async () => { throw new Error("Neon must not be called when unconfigured"); }) as typeof fetch;
 }
 
+const NEON_ENV = { NEON_API_KEY: "neon-test-key", NEON_PROJECT_ID: "proj-test", NEON_ORG_ID: "org-test-12345678" };
+
+/** The official v2 project consumption response shape (see tests/operations/read-cost.test.ts). */
+function neonV2Response(d: string, publicTransferBytes: number): Response {
+  return Response.json({
+    projects: [{
+      project_id: "proj-test",
+      periods: [{
+        period_id: "90c7f107-3fe7-4652-b1da-c61f71043128", period_plan: "launch", period_start: "2026-02-02T18:04:52Z",
+        consumption: [{
+          timeframe_start: `${d}T00:00:00Z`, timeframe_end: `${d}T23:59:59Z`,
+          metrics: [{ metric_name: "compute_unit_seconds", value: 84 }, { metric_name: "public_network_transfer_bytes", value: publicTransferBytes }],
+        }],
+      }],
+    }],
+    pagination: { cursor: "proj-test" },
+  });
+}
+
 function task(env: Record<string, string | undefined>, fetchImpl: typeof fetch = noFetch()) {
   return createReadCostMaintenanceTask({ resolve: () => ({ client, workspaceId }), env, fetch: fetchImpl });
 }
 
-async function pass(env: Record<string, string | undefined>, fetchImpl?: typeof fetch) {
-  return runMaintenancePass({ tasks: [task(env, fetchImpl)], now: () => NOW, log: () => {} });
+async function pass(env: Record<string, string | undefined>, fetchImpl?: typeof fetch, at: Date = NOW) {
+  return runMaintenancePass({ tasks: [task(env, fetchImpl)], now: () => at, log: () => {} });
 }
 
 async function inbox(actorId: string): Promise<InboxNotificationListDTO> {
@@ -279,12 +298,12 @@ test("SC-05 Neon unconfigured records 'unavailable' with no number and no reques
   const neon = (async (input: string | URL | Request, init?: RequestInit) => {
     requested.push(String(input));
     assert.equal(new Headers(init?.headers).get("authorization"), "Bearer neon-test-key");
-    return Response.json({ projects: [{ project_id: "proj-test", periods: [{ consumption: [{ timeframe_start: `${day(-1)}T00:00:00Z`, data_transfer_bytes: 1_000_000 }] }] }] });
+    return neonV2Response(day(-1), 1_000_000);
   }) as typeof fetch;
-  const env = { ORBIT_READ_COST_ADMIN_ACCOUNT_IDS: ADMIN, NEON_API_KEY: "neon-test-key", NEON_PROJECT_ID: "proj-test" };
+  const env = { ORBIT_READ_COST_ADMIN_ACCOUNT_IDS: ADMIN, ...NEON_ENV };
   const result = await pass(env, neon);
   assert.equal(result.tasks[0]!.status, "ok", JSON.stringify(result.tasks[0]));
-  assert.ok(requested.length >= 1 && requested.every((u) => u.startsWith("https://console.neon.tech/api/v2/consumption_history/projects?")));
+  assert.ok(requested.length >= 1 && requested.every((u) => u.startsWith("https://console.neon.tech/api/v2/consumption_history/v2/projects?")));
   const ok = await client.query<{ neon_status: string; neon_bytes: string; coverage: number }>(`select neon_status, neon_bytes::text, coverage from orbit_read_cost_reconciliation where day = $1`, [day(-1)]);
   assert.deepEqual(ok.rows[0], { neon_status: "ok", neon_bytes: "1000000", coverage: 0.6 });
   const coverageAlerts = await client.query(`select subject from orbit_read_cost_alerts where rule = 'low_coverage' and day = $1`, [day(-1)]);
@@ -334,4 +353,102 @@ test("SC-03 admin API: unauthenticated 401, non-admin 403, admin sees days, top 
   // Admin configuration is required: with no admin configured everybody is refused.
   const none = createReadCostAdminHandler({ resolveActor: async () => ({ id: ADMIN }), env: {}, client: () => client, now: () => NOW });
   assert.equal((await none(request)).status, 403);
+});
+
+test("0121 a route spike alerts by the original rule: a small route 20 KB -> 80 KB alerts; a short history with a median is checked", { skip, timeout: 90_000 }, async () => {
+  await reset();
+  const receipts: Receipt[] = [];
+  // Seven history days of a small route at 20 KB per request.
+  for (let offset = -8; offset <= -2; offset++) receipts.push({ at: `${day(offset)}T01:00:00.000Z`, route: "GET /api/small", account: OTHER, bytes: 20_000 });
+  // Only one history day (day -2) for a new route at 30 KB; yesterday 70 KB (> 2 x 30 KB).
+  receipts.push({ at: `${day(-2)}T02:00:00.000Z`, route: "GET /api/new", account: OTHER, bytes: 30_000 });
+  // Exactly twice the median is not above it: no alert.
+  for (let offset = -8; offset <= -2; offset++) receipts.push({ at: `${day(offset)}T03:00:00.000Z`, route: "GET /api/steady", account: OTHER, bytes: 50_000 });
+  // A route with no history has no median and is not checked.
+  receipts.push({ at: `${day(-1)}T04:00:00.000Z`, route: "GET /api/first", account: OTHER, bytes: 900_000 });
+  receipts.push({ at: `${day(-1)}T01:00:00.000Z`, route: "GET /api/small", account: OTHER, bytes: 80_000 });
+  receipts.push({ at: `${day(-1)}T02:00:00.000Z`, route: "GET /api/new", account: OTHER, bytes: 70_000 });
+  receipts.push({ at: `${day(-1)}T03:00:00.000Z`, route: "GET /api/steady", account: OTHER, bytes: 100_000 });
+  await insertReceipts(receipts);
+  const result = await pass({});
+  assert.equal(result.tasks[0]!.status, "ok", JSON.stringify(result.tasks[0]));
+  const alerts = await client.query<{ subject: string; observed: number; threshold: number }>(
+    `select subject, observed, threshold from orbit_read_cost_alerts where rule = 'route_average_spike' and day = $1 order by subject`, [day(-1)]);
+  assert.deepEqual(alerts.rows, [
+    { subject: "GET /api/new", observed: 70_000, threshold: 60_000 },
+    { subject: "GET /api/small", observed: 80_000, threshold: 40_000 },
+  ]);
+});
+
+async function reconciliation(d: string) {
+  return (await client.query<{ neon_status: string; neon_bytes: string | null; coverage: number | null; neon_attempts: number; computed_at: Date }>(
+    `select neon_status, neon_bytes::text, coverage, neon_attempts, computed_at from orbit_read_cost_reconciliation where day = $1`, [d])).rows[0]!;
+}
+
+test("0121 a failed Neon day is retried with backoff in later passes and then succeeds, without recomputing the rollup", { skip, timeout: 90_000 }, async () => {
+  await reset();
+  await insertReceipts([{ at: `${day(-1)}T05:00:00.000Z`, route: "GET /api/tasks", account: OTHER, bytes: 600_000 }]);
+  const env = { ORBIT_READ_COST_ADMIN_ACCOUNT_IDS: ADMIN, ...NEON_ENV };
+  let calls = 0;
+  const failing = (async () => { calls++; return new Response("{}", { status: 503 }); }) as typeof fetch;
+  await pass(env, failing);
+  const failed = await reconciliation(day(-1));
+  assert.equal(failed.neon_status, "failed");
+  const rollupAt = (await client.query<{ at: Date }>(`select max(computed_at) as at from orbit_read_cost_daily_routes where day = $1`, [day(-1)])).rows[0]!.at;
+  const callsAfterFirst = calls;
+  assert.ok(callsAfterFirst >= 1);
+
+  // Within the backoff window a pass does not call Neon again.
+  await pass(env, failing, new Date(NOW.getTime() + 5 * 60_000));
+  assert.equal(calls, callsAfterFirst, "no retry inside the backoff window");
+
+  // Later, Neon answers: the day becomes ok with coverage, the rollup is not recomputed.
+  const neonCalls: string[] = [];
+  const ok = (async (input: string | URL | Request) => { neonCalls.push(String(input)); return neonV2Response(day(-1), 1_000_000); }) as typeof fetch;
+  const later = await pass(env, ok, new Date(NOW.getTime() + 3 * 3_600_000));
+  assert.equal(later.tasks[0]!.status, "ok", JSON.stringify(later.tasks[0]));
+  const recovered = await reconciliation(day(-1));
+  assert.deepEqual({ status: recovered.neon_status, bytes: recovered.neon_bytes, coverage: recovered.coverage }, { status: "ok", bytes: "1000000", coverage: 0.6 });
+  assert.ok(neonCalls.some((u) => u.includes(`from=${day(-1)}T00`)), "the failed day was fetched again");
+  const rollupAtAfter = (await client.query<{ at: Date }>(`select max(computed_at) as at from orbit_read_cost_daily_routes where day = $1`, [day(-1)])).rows[0]!.at;
+  assert.equal(rollupAtAfter.toISOString(), rollupAt.toISOString(), "receipts are not re-rolled for a Neon retry");
+  assert.equal(recovered.computed_at.toISOString(), failed.computed_at.toISOString(), "the rollup completion time is unchanged");
+  // The recovered coverage is below 70 %: the low-coverage alert is raised for the recent day.
+  const coverageAlerts = await client.query(`select 1 from orbit_read_cost_alerts where rule = 'low_coverage' and day = $1`, [day(-1)]);
+  assert.equal(coverageAlerts.rows.length, 1);
+
+  // Once ok, the day is not fetched again.
+  const before = neonCalls.length;
+  await pass(env, ok, new Date(NOW.getTime() + 30 * 3_600_000));
+  assert.ok(!neonCalls.slice(before).some((u) => u.includes(`from=${day(-1)}T00`)), "an ok day is final");
+});
+
+test("0121 a day recorded while Neon was unconfigured is reconciled once Neon is configured; retries are bounded", { skip, timeout: 90_000 }, async () => {
+  await reset();
+  await insertReceipts([{ at: `${day(-3)}T05:00:00.000Z`, route: "GET /api/tasks", account: OTHER, bytes: 400_000 }]);
+  await pass({});
+  assert.equal((await reconciliation(day(-3))).neon_status, "unavailable");
+  // Still unconfigured: nothing to retry, no attempts are spent.
+  await pass({}, noFetch(), new Date(NOW.getTime() + 3_600_000));
+  assert.equal((await reconciliation(day(-3))).neon_attempts, 0);
+
+  const configured = await pass(NEON_ENV, (async () => neonV2Response(day(-3), 800_000)) as typeof fetch, new Date(NOW.getTime() + 2 * 3_600_000));
+  assert.equal(configured.tasks[0]!.status, "ok", JSON.stringify(configured.tasks[0]));
+  const row = await reconciliation(day(-3));
+  assert.deepEqual({ status: row.neon_status, bytes: row.neon_bytes, coverage: row.coverage }, { status: "ok", bytes: "800000", coverage: 0.5 });
+
+  // Bounded: a day that keeps failing stops being retried after the attempt limit.
+  await reset();
+  await insertReceipts([{ at: `${day(-1)}T05:00:00.000Z`, route: "GET /api/tasks", bytes: 1 }]);
+  let calls = 0;
+  // Every rolled day asks Neon; count only the requests for the day under test.
+  const failingForDay = (async (input: string | URL | Request) => {
+    if (String(input).includes(`from=${day(-1)}T00`)) calls++;
+    return new Response("{}", { status: 500 });
+  }) as typeof fetch;
+  for (let hour = 0; hour <= 24 * 12; hour += 6) await pass(NEON_ENV, failingForDay, new Date(NOW.getTime() + hour * 3_600_000));
+  const exhausted = await reconciliation(day(-1));
+  assert.equal(exhausted.neon_status, "failed");
+  assert.ok(calls === exhausted.neon_attempts && exhausted.neon_attempts === 6, `attempts ${exhausted.neon_attempts}, calls ${calls}`);
+  assert.ok(calls >= 3, `retried more than once (${calls})`);
 });

@@ -5,7 +5,8 @@ import {
   success,
 } from "../../../../shared/api/envelope";
 import { resolveFeatureMode } from "../../../../shared/config/feature-mode";
-import { getHttpStatusForAppErrorCode } from "../../../../shared/errors/app-error";
+import { AppError, getHttpStatusForAppErrorCode } from "../../../../shared/errors/app-error";
+import { isAgentActionCursor } from "../../../../features/agent/runtime/repository";
 import {
   agentLedgerFailureContext,
   agentLedgerFailureToAppError,
@@ -25,7 +26,17 @@ export async function GET(request: Request): Promise<Response> {
   const agentContext = await resolveAgentRequestContext(mode);
   if (!agentContext) return agentRequestUnauthorizedResponse();
   const service = createAgentLedgerForRequest(agentContext);
+  const cursor = searchParams.get("cursor");
+  if (cursor !== null && !isAgentActionCursor(cursor)) {
+    const appError = new AppError("VALIDATION_ERROR", "The ledger cursor is not valid.");
+    return NextResponse.json(failure(appError, { mode }), {
+      headers: runtimeBoundaryHeaders(mode),
+      status: getHttpStatusForAppErrorCode(appError.code),
+    });
+  }
   const result = await service.listEntries({
+    cursor,
+    limit: searchParams.get("limit"),
     createdAfter: searchParams.get("createdAfter"),
     createdBefore: searchParams.get("createdBefore"),
     scenario: searchParams.get("scenario"),

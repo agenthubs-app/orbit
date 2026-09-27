@@ -23,6 +23,12 @@ import {
 } from "../../features/contacts/storage/contact-live-record-provider";
 import { createPostgresContactScopeRecordReader } from "../../features/contacts/storage/contact-scope-postgres-reader";
 import { createMockProfileService } from "../../features/profile/mock-service";
+import { createLiveProfileService } from "../../features/profile/live-service";
+import { createStorageProfileProvider } from "../../features/profile/storage/profile-live-record-provider";
+import { createContactsAnalysisReportProvider } from "../../features/mobile/contacts-analysis-report-provider";
+import { createStorageOrbitAgentChatSessionProvider } from "../../features/orbit-ai/storage/orbit-agent-chat-session-live-record-provider";
+import type { ProfileService } from "../../features/profile/service";
+import { createMobileContactsDashboardGetHandler } from "../../app/api/mobile/contacts-dashboard/handler";
 import type { LiveRecord } from "../../shared/storage/live-record-store";
 import { ORBIT_RECORDS_SCHEMA_SQL } from "../../shared/storage/migrations";
 import { createPostgresLiveRecordStore, type LiveRecordSqlClient } from "../../shared/storage/postgres-live-record-store";
@@ -316,7 +322,7 @@ test("without a sync_revision column the services keep computing from the graph 
   });
 });
 
-function contactsDashboard(harness: Harness, measured: LiveRecordSqlClient) {
+function contactsDashboard(harness: Harness, measured: LiveRecordSqlClient, options: { profile?: ProfileService; withAnalysis?: boolean } = {}) {
   const store = harness.store;
   const dashboardProvider = harness.newProvider(measured);
   const contactProvider = createStorageContactGraphProvider({
@@ -329,12 +335,94 @@ function contactsDashboard(harness: Harness, measured: LiveRecordSqlClient) {
     dashboard: createLiveDashboardAggregateService({ provider: dashboardProvider }),
     distribution: (id) => createLiveNetworkDistributionAnalyticsService({ now: () => NOW, provider: networkDistributionProviderForAccount(dashboardProvider, id) }),
     opportunity: (id) => createLiveOpportunityReminderAnalyticsService({ now: () => NOW, provider: opportunityProviderForAccount(dashboardProvider, id) }),
-    profile: createMockProfileService(),
+    profile: options.profile ?? createMockProfileService(),
     contacts: createLiveContactsListSearchAndFilterService({ provider: contactProvider }),
     contactRoleCounts: (id) => dashboardProvider.readContactRoleCountsForAccount!(id),
     graphVersion: (id) => dashboardProvider.readDashboardGraphVersionForAccount!(id),
+    ...(options.withAnalysis ? {
+      loadAnalysis: (actorId: string, analysisSource: Parameters<ReturnType<typeof createContactsAnalysisReportProvider>["getAnalysis"]>[0]["source"]) =>
+        createContactsAnalysisReportProvider({ sessionProvider: analysisSessions(harness, actorId) }).getAnalysis({ source: analysisSource }),
+    } : {}),
   });
 }
+
+function analysisSessions(harness: Harness, actorId: string) {
+  return createStorageOrbitAgentChatSessionProvider({ actorId, store: harness.store, workspaceId: WORKSPACE });
+}
+
+const REPORT_BODY = "**关系结构**：六位联系人，依据 c1。\n**目标覆盖**：投资人目标缺少引荐人。\n**下一步建议**：先复核 c5 的会面记录。\n**判断依据**：c1 与 c5，未执行任何写入。";
+
+/** Persists a verified contacts.analysis report for `sourceDataVersion` through the real session provider. */
+async function persistAnalysisReport(harness: Harness, actorId: string, sourceDataVersion: string) {
+  const sessions = analysisSessions(harness, actorId);
+  const at = "2026-09-27T01:00:00.000Z";
+  const origin = {
+    entryClient: "app" as const, entryPointId: "contacts.analysis" as const, firstSentText: "分析人脉",
+    firstUserMessageId: "message:user:analysis", initialGroupId: null, kind: "structured" as const, recordedAt: at,
+    references: [], schemaVersion: 1 as const, sourceDataVersion, template: { id: "contacts.analysis", version: 1 },
+  };
+  const session = {
+    createdAt: at, updatedAt: "2026-09-27T01:00:01.000Z", id: `session:analysis:${sourceDataVersion.slice(0, 8)}`, title: "人脉分析",
+    messages: [
+      { createdAt: at, id: "message:user:analysis", role: "user" as const, text: "分析人脉" },
+      { createdAt: "2026-09-27T01:00:01.000Z", id: "message:assistant:analysis", role: "assistant" as const, text: REPORT_BODY },
+    ],
+    origin,
+  };
+  await sessions.upsertSession(session);
+  await sessions.upsertVerifiedAnalysisSession(session, { analysisVersion: "contacts.analysis@1", kind: "contacts_analysis_execution", sourceDataVersion });
+}
+
+test("0121 changing the relationship goal makes the AI report stale and refuses the old version, while the graph version and snapshot stay", { skip, timeout: 120_000 }, async () => {
+  await withSchema({ syncRevision: true }, async (harness) => {
+    const measured = recordingClient(harness.client);
+    const profile = createLiveProfileService({ provider: createStorageProfileProvider({ store: harness.store, workspaceId: WORKSPACE }), now: () => NOW });
+    const saved = await profile.updateProfile({ displayName: "Owner A", relationshipGoal: "寻找投资人", birthDate: "1990-01-01" }, { actorId: A });
+    assert.ok(saved.success, JSON.stringify(saved));
+    const dashboard = () => contactsDashboard(harness, measured, { profile, withAnalysis: true });
+
+    const first = await dashboard().getDashboard({ actorId: A });
+    assert.ok(first.success);
+    const v1 = first.data.analysis!.current.sourceDataVersion;
+    await persistAnalysisReport(harness, A, v1);
+    const fresh = await dashboard().getDashboard({ actorId: A });
+    assert.ok(fresh.success);
+    assert.ok(fresh.data.analysis!.report, "the persisted report is found");
+    assert.equal(fresh.data.analysis!.stale, false);
+    const graphVersion = await harness.newProvider().readDashboardGraphVersionForAccount!(A);
+
+    // A field outside the analysis input (birth date) changes nothing.
+    assert.ok((await profile.updateProfile({ birthDate: "1991-02-02" }, { actorId: A })).success);
+    const unchanged = await dashboard().getDashboard({ actorId: A });
+    assert.ok(unchanged.success);
+    assert.equal(unchanged.data.analysis!.current.sourceDataVersion, v1, "birth date is not part of the analysis version");
+    assert.equal(unchanged.data.analysis!.stale, false);
+
+    // The goal the model reads changes: the report is stale and the old version is refused.
+    assert.ok((await profile.updateProfile({ relationshipGoal: "寻找客户" }, { actorId: A })).success);
+    measured.texts.length = 0;
+    const changed = await dashboard().getDashboard({ actorId: A });
+    assert.ok(changed.success);
+    assert.equal(measured.texts.some((text) => text.includes(GRAPH_READ)), false, "profile edits do not invalidate the graph snapshot");
+    assert.equal(await harness.newProvider().readDashboardGraphVersionForAccount!(A), graphVersion, "the relationship-graph version is unchanged");
+    const v2 = changed.data.analysis!.current.sourceDataVersion;
+    assert.notEqual(v2, v1);
+    assert.equal(changed.data.analysis!.stale, true, "the report written for the old goal is stale");
+    assert.deepEqual(await dashboard().getAnalysisSource!({ actorId: A, claimedSourceDataVersion: v1 }), { success: false, error: "conflict" });
+    const verified = await dashboard().getAnalysisSource!({ actorId: A, claimedSourceDataVersion: v2 });
+    assert.ok(verified.success);
+    assert.equal(createContactsAnalysisSourceDataVersion(verified.source), v2, "the precheck and the route verification use the same composite version");
+    assert.equal((verified.source.profile as { profile: { relationshipGoal: string } }).profile.relationshipGoal, "寻找客户");
+
+    // A graph change alone still invalidates the snapshot and the version as before.
+    await harness.store.upsertRecord(contact("c9", { primaryIndustryId: "finance_investment" }));
+    measured.texts.length = 0;
+    const graphChanged = await dashboard().getDashboard({ actorId: A });
+    assert.ok(graphChanged.success);
+    assert.equal(measured.texts.filter((text) => text.includes(GRAPH_READ)).length, 1, "the snapshot is recomputed after a graph change");
+    assert.notEqual(graphChanged.data.analysis!.current.sourceDataVersion, v2);
+  });
+});
 
 test("contacts analysis page and its AI entry: current version reads no graph, a stale version is refused after one query", { skip, timeout: 120_000 }, async () => {
   await withSchema({ syncRevision: true }, async (harness) => {
@@ -354,7 +442,7 @@ test("contacts analysis page and its AI entry: current version reads no graph, a
 
     const version = await harness.newProvider().readDashboardGraphVersionForAccount!(A);
     assert.ok(version);
-    const claimed = contactsAnalysisGraphSourceDataVersion(version);
+    const claimed = contactsAnalysisGraphSourceDataVersion(version, page.data.profile);
     assert.match(claimed, /^[a-f0-9]{64}$/, "the page contract keeps its 64-hex format");
 
     measured.texts.length = 0;
@@ -368,7 +456,7 @@ test("contacts analysis page and its AI entry: current version reads no graph, a
     measured.texts.length = 0;
     const stale = await contactsDashboard(harness, measured).getAnalysisSource!({ actorId: A, claimedSourceDataVersion: "f".repeat(64) });
     assert.deepEqual(stale, { success: false, error: "conflict" });
-    assert.deepEqual(measured.texts.map((text) => text.includes(VERSION_READ)), [true], "a stale version costs exactly the version query");
+    assert.deepEqual(measured.texts.map((text) => text.includes(VERSION_READ)), [true], "a stale version costs exactly the version query (the profile read goes through the profile service)");
 
     // After a data change the page's old version is refused: the user must refresh.
     await store.upsertRecord(contact("c8", { primaryIndustryId: "finance_investment" }));
@@ -409,5 +497,58 @@ test("an update that commits after a later revision is visible still invalidates
       connectionClient.release();
       await slow.end();
     }
+  });
+});
+
+// The pre-0101 App's decision-role tile: it ignores roleCounts and derives the
+// ratio from `contacts` (same regex as the App's decisionRolePercentage).
+const DECISION_ROLE = /创始|负责人|董事|总监|经理|社长|代表|主管|合伙人|首席|ceo|coo|cfo|cto|founder|owner|president/iu;
+function oldAppDecisionRatio(data: { contacts?: { contacts?: Array<{ role?: string }> } | null }): number | null {
+  const roles = (data.contacts?.contacts ?? []).map((contact) => (contact.role ?? "").trim()).filter(Boolean);
+  if (roles.length === 0) return null;
+  return Math.round((roles.filter((role) => DECISION_ROLE.test(role)).length / roles.length) * 100);
+}
+function roleCountsDecisionRatio(roleCounts: ReadonlyArray<{ role: string; count: number }>): number | null {
+  const total = roleCounts.reduce((sum, entry) => sum + entry.count, 0);
+  if (total === 0) return null;
+  return Math.round((roleCounts.filter((entry) => DECISION_ROLE.test(entry.role)).reduce((sum, entry) => sum + entry.count, 0) / total) * 100);
+}
+
+test("0121 an App that does not declare roleCounts keeps the full-contacts contract; a declaring App gets page contacts plus role counts", { skip, timeout: 120_000 }, async () => {
+  await withSchema({ syncRevision: true }, async (harness) => {
+    // A: 6 fixture contacts (c1 is CEO) get roles, plus 14 older engineers the page never references.
+    for (const id of ["c2", "c3", "c4", "c5", "c6"]) await harness.store.upsertRecord(contact(id, { role: "CEO" }));
+    for (let index = 0; index < 14; index += 1) {
+      await harness.store.upsertRecord(contact(`old${index}`, { role: "Engineer", createdAt: "2025-01-01T00:00:00.000Z", updatedAt: "2025-01-01T00:00:00.000Z" }));
+    }
+    const GET = createMobileContactsDashboardGetHandler({
+      resolveActor: async () => ({ id: A }),
+      resolveMode: () => "live",
+      createService: () => contactsDashboard(harness, harness.client, { withAnalysis: true }),
+    });
+    const read = async (query: string) => {
+      const response = await GET(new Request(`http://localhost/api/mobile/contacts-dashboard${query}`));
+      assert.equal(response.status, 200);
+      return (await response.json()).data;
+    };
+    const roleCounts = await harness.newProvider().readContactRoleCountsForAccount!(A);
+    const globalRatio = roleCountsDecisionRatio(roleCounts);
+    assert.equal(globalRatio, 30, "6 of 20 contacts hold a decision role");
+
+    const declared = await read("?capabilities=roleCounts");
+    assert.ok(Array.isArray(declared.contacts.roleCounts), "a declaring client gets role counts");
+    assert.equal(roleCountsDecisionRatio(declared.contacts.roleCounts), globalRatio);
+    assert.ok(declared.contacts.contacts.length < 20, "a declaring client gets only the page's contacts");
+    assert.notEqual(oldAppDecisionRatio(declared), globalRatio, "precondition: the page sample's ratio differs from the global ratio");
+
+    // The old App sends no declaration: it must still see the right ratio.
+    const legacy = await read("");
+    assert.equal(legacy.contacts.contacts.length, 20, "no declaration: the original full contacts list");
+    assert.equal(oldAppDecisionRatio(legacy), globalRatio, "the old App's decision-role tile is correct");
+    // An unknown capability is not a declaration.
+    assert.equal((await read("?capabilities=somethingElse")).contacts.contacts.length, 20);
+    // The AI version does not depend on which contacts list the client asked for.
+    assert.match(declared.analysis.current.sourceDataVersion, /^[a-f0-9]{64}$/);
+    assert.equal(legacy.analysis.current.sourceDataVersion, declared.analysis.current.sourceDataVersion);
   });
 });

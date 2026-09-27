@@ -181,6 +181,9 @@ export interface AgentLedgerListInput {
   createdAfter?: string | null;
   createdBefore?: string | null;
   scenario?: "success" | "empty" | "failure" | string | null;
+  /** Page size (1..500, default 500) and the cursor from the previous page (0121). */
+  limit?: number | string | null;
+  cursor?: string | null;
 }
 
 export interface AgentLedgerTransitionInput {
@@ -202,6 +205,12 @@ export interface AgentLedgerDraftUpdateInput {
 export interface AgentLedgerListPayload {
   state: "success" | "empty";
   entries: readonly AgentLedgerEntry[];
+  /**
+   * Cursor of the next page, null on the last page (runtime-backed ledger,
+   * 0121). Entries are filtered before paging, so a page never hides older
+   * matching actions; a client passes this back as `cursor` to continue.
+   */
+  nextCursor?: string | null;
   summary: string;
   provenance: AgentLedgerProvenance;
   nextAction: string;

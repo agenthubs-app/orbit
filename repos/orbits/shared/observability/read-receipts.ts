@@ -73,6 +73,8 @@ interface ReadReceiptsState {
   tasks: AsyncLocalStorage<ReadLedger>;
   unattributed: ReadLedger | null;
   flushTimer: ReturnType<typeof setTimeout> | null;
+  /** Sample rate installed with the sink; applies to requests, tasks and unattributed reads alike. */
+  sampleRate: number;
 }
 
 const STATE_KEY = Symbol.for("orbit.readReceipts.state");
@@ -85,6 +87,7 @@ function state(): ReadReceiptsState {
     tasks: new AsyncLocalStorage<ReadLedger>(),
     unattributed: null,
     flushTimer: null,
+    sampleRate: 1,
   });
 }
 
@@ -159,8 +162,14 @@ export function readReceiptFromLedger(ledger: ReadLedger, response: ReadReceiptR
   };
 }
 
-export function installReadReceiptSink(sink: ReadReceiptSink | null): void {
-  state().sink = sink;
+/**
+ * Installs the receipt sink and the one sample rate (`readReceiptsSampleRate`)
+ * that every unit of work uses: request, background task and unattributed.
+ */
+export function installReadReceiptSink(sink: ReadReceiptSink | null, options: { sampleRate?: number } = {}): void {
+  const current = state();
+  current.sink = sink;
+  current.sampleRate = options.sampleRate ?? 1;
 }
 
 export function installRequestReadLedgerResolver(resolver: RequestReadLedgerResolver | null): void {
@@ -183,7 +192,7 @@ function unattributedLedger(): ReadLedger | null {
   const current = state();
   if (!current.sink) return null;
   if (!current.unattributed) {
-    current.unattributed = createReadLedger({ source: UNATTRIBUTED_READ_SOURCE });
+    current.unattributed = createReadLedger({ source: UNATTRIBUTED_READ_SOURCE, sampleRate: current.sampleRate });
     current.flushTimer = setTimeout(() => {
       void flushUnattributedReadReceipts();
     }, UNATTRIBUTED_FLUSH_MS);
@@ -248,7 +257,7 @@ export async function flushUnattributedReadReceipts(): Promise<void> {
  * into whichever request happens to be active.
  */
 export async function runWithReadReceiptSource<T>(taskName: string, run: () => Promise<T>): Promise<T> {
-  const ledger = createReadLedger({ source: `task:${taskName}` });
+  const ledger = createReadLedger({ source: `task:${taskName}`, sampleRate: state().sampleRate });
   try {
     return await state().tasks.run(ledger, run);
   } finally {

@@ -18,6 +18,7 @@ import { contactsAnalysisToView, type AnalysisDimension, type ContactsAnalysisVi
 import { donut, toPerson } from "./network-model";
 import { formatMonthDay } from "./network-overview";
 import { healthRows } from "./network-overview-model";
+import { MOBILE_CONTACTS_DASHBOARD_ROLE_COUNTS_QUERY } from "../../../../../shared/api-schema/mobile-contacts-dashboard";
 import { NetworkShell } from "./network-shell";
 
 export type AnalysisTabKey = "struct" | "opp";
@@ -65,7 +66,7 @@ export function NetworkAnalysis({ viewModel, analysis, initialTab }: { viewModel
         if (!response.ok || body?.success !== true || !["success", "empty"].includes(body?.data?.state) || !Number.isFinite(Date.parse(body?.data?.recomputedAt))) throw new Error("recompute");
         recomputed = true;
       }
-      const response = await fetch("/api/mobile/contacts-dashboard", { cache: "no-store" });
+      const response = await fetch(`/api/mobile/contacts-dashboard?${MOBILE_CONTACTS_DASHBOARD_ROLE_COUNTS_QUERY}`, { cache: "no-store" });
       const body = await response.json();
       const next = response.ok && body?.success === true ? contactsAnalysisToView(body.data, language) : { state: "error" as const };
       if (next.state === "error") throw new Error("refresh");

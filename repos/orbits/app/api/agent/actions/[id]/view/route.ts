@@ -16,9 +16,8 @@ export async function POST(
   const agentContext = await resolveAgentRequestContext(resolveFeatureMode());
   if (!agentContext) return agentRequestUnauthorizedResponse();
   const runtime = agentContext.runtime;
-  const action = (await runtime.listActions({})).find(
-    (candidate) => candidate.actionId === id,
-  );
+  // Exact lookup (0121): an action older than the newest list page still exists.
+  const action = await runtime.getAction(id);
   if (!action) {
     return NextResponse.json(
       {

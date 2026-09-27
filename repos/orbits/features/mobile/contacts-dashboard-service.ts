@@ -62,6 +62,12 @@ export interface MobileContactsDashboardDependencies {
   ) =>
     | MobileContactsDashboardSectionResult
     | Promise<MobileContactsDashboardSectionResult>;
+  /**
+   * Sprint 0121: the full contacts list, for clients that did not declare the
+   * roleCounts capability (the pre-0101 contract). Without it such clients get
+   * the contacts section as unavailable rather than a partial list.
+   */
+  loadAllContacts?: MobileContactsDashboardSectionLoader;
   /** Trimmed roles with counts over all contacts (the App "decision role" tile). */
   loadContactRoleCounts?: (
     actorId: string,
@@ -113,6 +119,12 @@ export function referencedContactIds(sections: {
 
 export interface MobileContactsDashboardInput {
   actorId: string;
+  /**
+   * "referenced" (default): the page's contacts plus roleCounts, for clients
+   * that declared the roleCounts capability. "all": the original full list,
+   * for clients that did not (they derive role ratios from the list).
+   */
+  contactsScope?: "referenced" | "all";
 }
 
 export type MobileContactsDashboardFailureCode =
@@ -198,6 +210,16 @@ async function loadReferencedContacts(
   };
 }
 
+async function settle(
+  load: () => MobileContactsDashboardSectionResult | Promise<MobileContactsDashboardSectionResult>,
+): Promise<MobileContactsDashboardSectionResult> {
+  try {
+    return await load();
+  } catch (error) {
+    return { success: false, error };
+  }
+}
+
 export function createMobileContactsDashboardService(
   dependencies: MobileContactsDashboardDependencies,
 ): MobileContactsDashboardService {
@@ -210,7 +232,7 @@ export function createMobileContactsDashboardService(
 
   // Must run inside withDashboardLiveReadScope so the graph version, the
   // snapshot and any graph read are shared by every section.
-  async function loadSections(actorId: string) {
+  async function loadSections(actorId: string, preloadedProfile?: MobileContactsDashboardSectionResult) {
     const [sections, graphVersion] = await Promise.all([
       Promise.all([
         dependencies.loadAggregate(actorId),
@@ -218,7 +240,7 @@ export function createMobileContactsDashboardService(
         dependencies.loadOpportunities(actorId),
         dependencies.loadGaps(actorId),
         dependencies.loadDistributions(actorId),
-        dependencies.loadProfile(actorId),
+        preloadedProfile ?? dependencies.loadProfile(actorId),
       ]),
       loadGraphVersion(actorId),
     ]);
@@ -289,21 +311,42 @@ export function createMobileContactsDashboardService(
   return {
     async getAnalysisSource({ actorId, claimedSourceDataVersion }) {
       return withDashboardLiveReadScope(async (): Promise<MobileContactsAnalysisSourceResult> => {
-        const graphVersion = await loadGraphVersion(actorId);
-        if (graphVersion !== null && contactsAnalysisGraphSourceDataVersion(graphVersion) !== claimedSourceDataVersion) {
+        // The AI version binds the graph version and the profile the model
+        // reads (0121), so both are checked before any section is read.
+        const [graphVersion, profile] = await Promise.all([
+          loadGraphVersion(actorId),
+          settle(() => dependencies.loadProfile(actorId)),
+        ]);
+        if (
+          graphVersion !== null &&
+          contactsAnalysisGraphSourceDataVersion(graphVersion, optionalSection("profile", profile).data) !== claimedSourceDataVersion
+        ) {
           return { success: false, error: "conflict" };
         }
-        const assembled = assemble(await loadSections(actorId));
+        const assembled = assemble(await loadSections(actorId, profile));
         return assembled.success
           ? { success: true, source: assembled.analysisSource }
           : { success: false, error: "unavailable" };
       });
     },
 
-    async getDashboard({ actorId }) {
+    async getDashboard({ actorId, contactsScope = "referenced" }) {
       const assembled = assemble(await withDashboardLiveReadScope(() => loadSections(actorId)));
       if (!assembled.success) return { success: false, error: assembled.error };
-      const { aggregate, optionalResults, analysisSource } = assembled;
+      const { aggregate, analysisSource } = assembled;
+      // The AI source (and its version) always uses the page's contacts; only
+      // the response's contacts section follows the client's contract.
+      const optionalResults = contactsScope === "all"
+        ? {
+            ...assembled.optionalResults,
+            contacts: optionalSection(
+              "contacts",
+              dependencies.loadAllContacts
+                ? await settle(() => dependencies.loadAllContacts!(actorId))
+                : { success: false, error: new Error("full contacts list unavailable") },
+            ),
+          }
+        : assembled.optionalResults;
       let analysis: ReturnType<typeof optionalSection> | undefined;
       if (dependencies.loadAnalysis) {
         let analysisResult: MobileContactsDashboardSectionResult;
@@ -398,6 +441,7 @@ export function createMobileContactsDashboardServiceFromSources({
     loadDistributions: (actorId) => distribution(actorId).getDistributions(),
     loadProfile: (actorId) => profile.getProfile({ actorId }),
     loadContacts: (actorId, contactIds) => contacts.listContacts({ actorId, contactIds }),
+    loadAllContacts: (actorId) => contacts.listContacts({ actorId }),
     loadContactRoleCounts: (actorId) =>
       contactRoleCounts ? contactRoleCounts(actorId) : roleCountsFromFullList(contacts, actorId),
   });

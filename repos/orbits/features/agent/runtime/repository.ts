@@ -10,14 +10,95 @@ import type {
 
 const OUTBOX_LEASE_TIMEOUT_MS = 15 * 60_000;
 
+export interface AgentActionListFilter {
+  status?: string | null;
+  workflowKey?: string | null;
+  createdAfter?: string | null;
+  createdBefore?: string | null;
+}
+
+/** Largest action page; also the size of `listActions`, which returns the first page. */
+export const AGENT_ACTION_PAGE_MAX = 500;
+
+export interface AgentActionPage {
+  /** Newest first (updatedAt, then actionId, both descending). */
+  actions: readonly AgentActionRecord[];
+  /** Opaque cursor of the next page, or null on the last page. */
+  nextCursor: string | null;
+}
+
+/**
+ * Keyset cursor over (updatedAt, actionId). Sprint 0121: the ledger filters
+ * first and pages explicitly, so older matching actions are never dropped.
+ */
+export function encodeAgentActionCursor(action: Pick<AgentActionRecord, "actionId" | "updatedAt">): string {
+  return Buffer.from(JSON.stringify([action.updatedAt, action.actionId]), "utf8").toString("base64url");
+}
+
+export function decodeAgentActionCursor(cursor: string): { updatedAt: string; actionId: string } {
+  try {
+    const value = JSON.parse(Buffer.from(cursor, "base64url").toString("utf8")) as unknown;
+    if (Array.isArray(value) && value.length === 2 && typeof value[0] === "string" && typeof value[1] === "string") {
+      return { updatedAt: value[0], actionId: value[1] };
+    }
+  } catch {
+    // Reported below.
+  }
+  throw new RangeError("Invalid agent action cursor");
+}
+
+export function isAgentActionCursor(cursor: string): boolean {
+  try {
+    decodeAgentActionCursor(cursor);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function agentActionPageLimit(limit: number | null | undefined): number {
+  return Number.isSafeInteger(limit) && (limit as number) > 0
+    ? Math.min(limit as number, AGENT_ACTION_PAGE_MAX)
+    : AGENT_ACTION_PAGE_MAX;
+}
+
+export function matchesAgentActionFilter(action: AgentActionRecord, input: AgentActionListFilter): boolean {
+  return (!input.status || action.status === input.status) &&
+    (!input.workflowKey || action.workflowKey === input.workflowKey) &&
+    (!input.createdAfter || action.createdAt >= input.createdAfter) &&
+    (!input.createdBefore || action.createdAt <= input.createdBefore);
+}
+
+const codeUnitOrder = (left: string, right: string) => (left < right ? -1 : left > right ? 1 : 0);
+
+/** Pages already-filtered actions in memory with the same order and cursor as the SQL path. */
+export function pageAgentActions(
+  actions: readonly AgentActionRecord[],
+  input: { limit?: number | null; cursor?: string | null },
+): AgentActionPage {
+  const limit = agentActionPageLimit(input.limit);
+  const after = input.cursor ? decodeAgentActionCursor(input.cursor) : null;
+  const ordered = [...actions]
+    .sort((left, right) => codeUnitOrder(right.updatedAt, left.updatedAt) || codeUnitOrder(right.actionId, left.actionId))
+    .filter((action) => !after ||
+      action.updatedAt < after.updatedAt ||
+      (action.updatedAt === after.updatedAt && action.actionId < after.actionId));
+  const page = ordered.slice(0, limit);
+  return {
+    actions: page,
+    nextCursor: ordered.length > limit ? encodeAgentActionCursor(page.at(-1)!) : null,
+  };
+}
+
 export interface AgentRuntimeRepository {
   getRun: (runId: string) => Promise<AgentRunDetail | null>;
-  listActions: (input?: {
-    status?: string | null;
-    workflowKey?: string | null;
-    createdAfter?: string | null;
-    createdBefore?: string | null;
-  }) => Promise<readonly AgentActionRecord[]>;
+  /** The first page (at most AGENT_ACTION_PAGE_MAX) of actions matching the filter. */
+  listActions: (input?: AgentActionListFilter) => Promise<readonly AgentActionRecord[]>;
+  /** Filters before it limits, then returns one page and the next cursor (0121). */
+  listActionPage: (input?: AgentActionListFilter & {
+    limit?: number | null;
+    cursor?: string | null;
+  }) => Promise<AgentActionPage>;
   getAction: (actionId: string) => Promise<AgentActionRecord | null>;
   saveRun: (run: AgentRun) => Promise<void>;
   saveRunStep: (step: AgentRunStep) => Promise<void>;
@@ -77,20 +158,10 @@ export function createMemoryAgentRuntimeRepository(): AgentRuntimeRepository {
       });
     },
     async listActions(input = {}) {
-      const result = [...actions.values()]
-        .filter(
-          (action) =>
-            (!input.status || action.status === input.status) &&
-            (!input.workflowKey ||
-              action.workflowKey === input.workflowKey) &&
-            (!input.createdAfter ||
-              action.createdAt >= input.createdAfter) &&
-            (!input.createdBefore ||
-              action.createdAt <= input.createdBefore),
-        )
-        .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
-
-      return clone(result);
+      return clone(pageAgentActions([...actions.values()].filter((action) => matchesAgentActionFilter(action, input)), {}).actions);
+    },
+    async listActionPage(input = {}) {
+      return clone(pageAgentActions([...actions.values()].filter((action) => matchesAgentActionFilter(action, input)), input));
     },
     async getAction(actionId) {
       const action = actions.get(actionId);

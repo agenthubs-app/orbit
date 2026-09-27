@@ -173,6 +173,13 @@ create table if not exists orbit_read_cost_reconciliation (
   computed_at timestamptz not null
 );
 
+-- Sprint 0121: Neon reconciliation is tracked apart from the local rollup, so a
+-- failed or not-yet-configured day is retried (bounded, with backoff) without
+-- recomputing receipts. computed_at stays the rollup completion time.
+alter table orbit_read_cost_reconciliation
+  add column if not exists neon_attempts integer not null default 0,
+  add column if not exists neon_retry_after timestamptz;
+
 create table if not exists orbit_read_cost_alerts (
   alert_id text primary key,
   rule text not null check (rule in ('route_average_spike', 'large_request', 'low_coverage')),
