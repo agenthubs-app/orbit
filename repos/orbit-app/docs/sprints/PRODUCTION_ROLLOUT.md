@@ -20,7 +20,7 @@
 | 0101 看板改由数据库算 | 确认 Neon 有 ICU 排序规则：`select 1 from pg_collation where collname='und-x-icu'` | 没有 ICU 时结果仍然正确，只是读得多，日志会出现 `dashboard_activity_collation_missing`；建议尽快发新版 App（带 `roleCounts`） |
 | 0102 看板快照 | ① 只读确认生产 `orbit_records` 有没有 `sync_revision` 列；② 有的话执行 `npm run db:migrate:dashboard-graph-version`，大表建议手工改成 `create index concurrently`；没有的话等 0108 | 没有这一列时代码会自动退回整图计算 |
 | 0103 AI 轨迹 | **部署前**执行一次 `npm run db:migrate:agent-run-targets`，给旧行补上所属运行编号；只做 UPDATE，数据多时分批。旧代码不依赖这一列，所以先回填没有副作用；部署后再回填，会有一段时间旧运行看不到自己的动作和回执（Codex 审阅意见） | **0111 在生产执行之前，这一步必须已经完成** |
-| 0121 Codex 审阅修复 | 合并后补充：Neon 用量接口所需的密钥与套餐；旧 App 能力声明带来的兼容顺序 | — |
+| 0121 Codex 审阅修复 | ① **部署前**对生产库执行 `npm run db:migrate:live`：给 `orbit_read_cost_reconciliation` 加两列 `neon_attempts`、`neon_retry_after`（`add column if not exists`，只加列，可重复执行）；② 部署；③ 可选：要启用 Neon 对账，除 `NEON_API_KEY`、`NEON_PROJECT_ID` 外**新增 `NEON_ORG_ID`**（v2 用量接口必填），且账号须是 Launch / Scale / Agent / Business / Enterprise 套餐，否则记为 `unavailable`（`plan_unsupported`）；配置后，最近 13 天里失败或未配置的日期会自动补取（每天最多 6 次，间隔 1、2、4、8、16 小时）；④ 部署后查看管理页：读取量报警改回设计原规则，小接口翻倍也会报警，报警可能比以前多；⑤ `ORBIT_READ_RECEIPTS_SAMPLE_RATE` 现在也作用于后台任务和未归属读取 | ① 必须先于部署：新代码写这两列，列不存在时读取量汇总任务会失败（其他功能不受影响）。**AI 人脉分析报告会一次性全部显示「需要更新」**：版本号改为同时绑定关系图和关系目标等资料，旧报告的版本号不再相等，用户重新生成一次即可。旧 App 兼容：服务端对没有声明 `capabilities=roleCounts` 的请求返回完整联系人列表，所以服务端与新 App 的发布顺序不限；旧 App 仍在使用期间，这个接口会多读完整联系人列表。Agent 账本分页依赖 0103 的目标回填（见上行），不需要新迁移 |
 | 0104 旧 chat 退役 | 部署后先执行 `npm run db:cleanup:legacy-chat` 预演看行数；确认后再执行 `-- --apply --confirm-remote=<workspace id>` | 不执行不影响功能 |
 
 ## 后续 Sprint 预告（合并后在上表补充具体命令）
