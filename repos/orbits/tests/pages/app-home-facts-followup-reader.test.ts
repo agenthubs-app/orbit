@@ -18,6 +18,20 @@ import {
 } from "../../features/followups/storage/relationship-lifecycle-facts-reader";
 import type { LiveRecordSqlClient } from "../../shared/storage/postgres-live-record-store";
 import { LIFECYCLE_HOME_SUMMARY_SQL } from "../../features/followups/storage/lifecycle-home-summary";
+import { assertLifecycleNodeSortRuntime } from "../../features/followups/storage/lifecycle-task-pages";
+
+// The home summary reader refuses to run outside the verified Node sort runtime
+// (product guard from e08a0806a: Node 25.6.0 / ICU 78.2 / Unicode 17.0), so the
+// bounded-SQL path cannot be observed elsewhere. The skip condition is the
+// product check itself: it recovers automatically once the pin holds or is relaxed.
+function nodeSortRuntimeSkipReason(): string | false {
+  try {
+    assertLifecycleNodeSortRuntime();
+    return false;
+  } catch {
+    return `unverified Node sort runtime ${process.versions.node}/ICU ${process.versions.icu}; recovery: run under Node 25.6.0 / ICU 78.2 or relax assertLifecycleNodeSortRuntime`;
+  }
+}
 
 const actorId = "actor:w5-f";
 const workspaceId = "workspace:w5-f";
@@ -465,7 +479,7 @@ test("home default followup loader explicitly binds facts reader and never calls
   assert.equal(result.followups.items[0]?.connectionId, "connection:ren");
 });
 
-test("home default uses bounded summary SQL while the legacy loader uses the scoped graph query", async () => {
+test("home default uses bounded summary SQL while the legacy loader uses the scoped graph query", { skip: nodeSortRuntimeSkipReason() }, async () => {
   const syntheticDatabaseUrl = "postgresql://w5-f-mock@127.0.0.1:1/orbit_w5_f_test";
   const previous = {
     eventUrl: process.env.ORBIT_EVENT_DATABASE_URL,

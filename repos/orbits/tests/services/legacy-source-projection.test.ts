@@ -76,9 +76,12 @@ test('actual provider and service do not guess tasks or leak stale visible assoc
  await store.upsertRecord({...notice,userId:'other',payload:{...notification,accountId:actor}});
  data=await list();assert.deepEqual(data.reminders,[]);assert.deepEqual(data.notificationQueue,[]);
  assert.equal(JSON.stringify(data).includes(notification.id),false);
- for(const bad of [{...notice,targetId:'missing'},{...notice,targetId:undefined},{...notice,lifecycleState:'archived' as const},{...notice,payload:{...notification,id:'wrong'}}]) {
+ for(const bad of [{...notice,targetId:'missing'},{...notice,targetId:undefined},{...notice,payload:{...notification,id:'wrong'}}]) {
   await store.upsertRecord(bad);data=await list();const reminder=data.reminders[0];assert.ok(reminder);assert.equal(reminder.href,'');assert.equal(reminder.followupTaskId,'');assert.equal(reminder.contactName,'');assert.equal(reminder.organization,'');assert.equal(reminder.connectionId,'');assert.deepEqual(reminder.evidenceIds,[]);assert.deepEqual(data.notificationQueue[0]?.evidenceIds,[]);assert.equal(JSON.stringify(data).includes('SECRET OLD'),false);
  }
+ // Sprint 0086 (f069df7e6): an archived (quarantined) notification is dropped from the
+ // feed instead of being projected as "来源已不可用" — it must not surface at all.
+ await store.upsertRecord({...notice,lifecycleState:'archived' as const});data=await list();assert.deepEqual(data.reminders,[]);assert.deepEqual(data.notificationQueue,[]);assert.equal(JSON.stringify(data).includes(notification.id),false);
  await store.upsertRecord(notice);await store.upsertRecord({...task,userId:'other'});data=await list();assert.equal(data.reminders[0]?.href,'');
 });
 test('canonical GET uses exact source proof, not delivered status or an old deepLink',async()=>{

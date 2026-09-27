@@ -206,6 +206,16 @@ test("the browser gives the request a 60s abort budget and reports the unconfirm
   assert.ok(retryButtons(harness.root).length > 0);
 });
 
+// Scoped to the history drawer so the Home "continue" list (same title) can't satisfy it.
+function historyDrawerButton(root: Parameters<typeof renderedText>[0], label: string) {
+  const drawer = root.root.find((node) => node.props["aria-labelledby"] === "orbit-iorbit-history-title");
+  const found = drawer
+    .findAll((node) => node.type === "button")
+    .find((node) => textOf(node.children as unknown).includes(label));
+  if (!found) throw new Error(`no history drawer button labelled ${label}`);
+  return found;
+}
+
 const RESTORED = {
   createdAt: "2026-09-20T00:00:00.000Z",
   id: "session:restored",
@@ -242,7 +252,9 @@ test("picking a stored conversation from history restores it and pushes its deep
   });
   await harness.settle(1);
   await act(async () => {
-    buttonWithText(harness.root, "上次问过的问题").props.onClick();
+    // 0123: since fc0569649 the drawer lists server summaries and shows the stored
+    // title (custom title or session.title), not the first question text.
+    historyDrawerButton(harness.root, "上次的对话").props.onClick();
   });
   await harness.settle();
 
@@ -273,7 +285,9 @@ test("after returning to the overview, picking another conversation lands back i
   });
   await harness.settle(1);
   await act(async () => {
-    buttonWithText(harness.root, "上次问过的问题").props.onClick();
+    // 0123: since fc0569649 the drawer lists server summaries and shows the stored
+    // title (custom title or session.title), not the first question text.
+    historyDrawerButton(harness.root, "上次的对话").props.onClick();
   });
   await harness.settle();
 

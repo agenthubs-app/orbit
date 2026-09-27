@@ -272,9 +272,33 @@ async function mount(
       method: (init?.method ?? "GET").toUpperCase(),
       url,
     });
+    // 0123: since fc0569649 the list returns summaries and a conversation is restored
+    // from `GET /api/ai/conversations/sessions/{id}`; serve both shapes like the API.
+    const storedSessions = (options.sessions ?? []) as Array<{ id: string; title: string; createdAt: string; updatedAt: string; messages: Array<{ role: string; text?: string }> }>;
+    if (url.startsWith("/api/ai/conversations/sessions/")) {
+      const sessionId = decodeURIComponent(url.slice("/api/ai/conversations/sessions/".length).split("?")[0]!);
+      const stored = storedSessions.find((session) => session.id === sessionId);
+      return stored
+        ? Response.json({ data: { session: stored }, success: true })
+        : Response.json({ success: false }, { status: 404 });
+    }
     if (url.startsWith("/api/ai/conversations/sessions")) {
       return Response.json({
-        data: { nextCursor: null, sessions: options.sessions ?? [] },
+        data: {
+          hasMore: false,
+          items: storedSessions.map((session) => ({
+            createdAt: session.createdAt,
+            firstUserText: String(session.messages.find((message) => message.role === "user")?.text ?? ""),
+            id: session.id,
+            lastMessagePreview: String(session.messages.at(-1)?.text ?? ""),
+            messageRevision: session.messages.length,
+            organization: { customTitle: null, groupId: null, pinned: false, revision: 0 },
+            title: session.title,
+            updatedAt: session.updatedAt,
+          })),
+          nextCursor: null,
+          storage: { configured: true, persisted: true },
+        },
         success: true,
       });
     }

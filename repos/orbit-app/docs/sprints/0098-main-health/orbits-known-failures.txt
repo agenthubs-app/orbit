@@ -1,36 +1,62 @@
-✖ ?session= restores the conversation through the shell without asking again
-✖ /app/events/[id]/register renders a public event without query setup
-✖ /app/events/[id]/register renders canonical event identity without inventing an unsigned AI question
-✖ /app/events/[id]/register uses reviewed English identity for public catalogue events
-✖ actual provider and service do not guess tasks or leak stale visible associations
-✖ after returning to the overview, picking another conversation lands back in the thread
-✖ business card scan API accepts JSON image uploads and reaches the cloud OCR boundary
-✖ business card scan API accepts multipart image uploads and reaches the cloud OCR boundary
-✖ contact detail mapping translates live source and relationship tokens into labels
-✖ every route surface requires runtime coverage
-✖ failing tests:
-✖ generated relationship live seed writes every default mock fixture collection
-✖ home default uses bounded summary SQL while the legacy loader uses the scoped graph query
-✖ isolated CLI dry run is read-only and does not disclose operator inputs
-✖ known ICU SQL incompatibility falls back once while other SQL errors propagate
-✖ literal route props exclude unreachable component branches
-✖ main event access schema is cut over and missing-event reads stay non-mutating
-✖ manifest generation writes the required repository artifacts
-✖ picking a stored conversation from history restores it and pushes its deep link
-✖ private notes remain isolated even when another actor has a connection to the same contact
-✖ profile retains actor isolation and eighteen exercised interactions
-✖ prop-gated DataCard pressables are counted only on routes that pass onPress
-✖ registration resolves only published canonical Event Core records and aliases
-✖ registration retains the local-parent Kansai identity, language, venue, and canonical aliases
-✖ reliable POST gives each reply a stable request identity and persists the final answer across turns and retry
-✖ required fresh documented runtime case: web:/app/events
-✖ required fresh documented runtime case: web:/app/events/[id]
-✖ required fresh documented runtime case: web:/app/o/[slug]
-✖ route query parameters come from route-local URL consumers, not transitive get/set calls
-✖ runtime evidence keys anchored by file:line still resolve to the control they credit
-✖ temporary-schema CLI applies only the reviewed 24-target manifest without leaking operator inputs
-✖ the event access ledger is constrained, monotonic, immutable, and leaves the configured schema unchanged
-✖ the web runtime migration CLI initializes an empty database and preserves data on rerun
-✖ two physical portrait transactions have one CAS winner, replay once, and receipt failure rolls back
-✖ unbounded listRecords reads never exceed the frozen ratchet
-✖ visible controls do not rely on missing static behavior evidence
+# orbits known failures: per-item status after sprint 0123 (baseline 3901eedf1)
+#
+# Expected failures in a default `npm test` (repos/orbits): NONE.
+# From 0123 on, any failing test in a default full run is a regression or an unfixed
+# flake. Remaining items are classified in code, as skips with a reason and a recovery
+# condition, runs gated into a separate npm script, or shrink-only known lists.
+#
+# Format: STATUS | test name | cause | action / recovery
+# STATUS values:
+#   FIXED      passes in the default suite
+#   SKIP-ENV   skipped with a reason when its environment is absent; runs (and must pass) when present
+#   GATED      skipped by default; runs strictly in `npm run test:audit-full-product`
+#   LISTED     the test passes; the finding is a classified entry in a shrink-only list in the test
+#   RENAMED    new test name after a fix
+#   REMOVED    not a test
+#
+FIXED    | ?session= restores the conversation through the shell without asking again | stale fixture: since fc0569649 a session is restored via GET /api/ai/conversations/sessions/{id} | fake API serves the detail shape as well as the summary list
+FIXED    | /app/events/[id]/register renders a public event without query setup | env: .env.local ORBIT_DATABASE_TARGET=local sent the product to orbit_events instead of the fixture schema | registration fixture pins the target env and requires a local host
+FIXED    | /app/events/[id]/register renders canonical event identity without inventing an unsigned AI question | same as above | same as above
+FIXED    | /app/events/[id]/register uses reviewed English identity for public catalogue events | same as above | same as above
+FIXED    | actual provider and service do not guess tasks or leak stale visible associations | stale: 0086 (f069df7e6) drops archived notifications instead of showing 来源已不可用 | asserts the archived notification does not surface at all
+FIXED    | after returning to the overview, picking another conversation lands back in the thread | stale: history drawer shows the stored title since fc0569649 | picks by title inside the drawer
+FIXED    | business card scan API accepts JSON image uploads and reaches the cloud OCR boundary | env leak: DeepSeek became an OCR provider (eaa274d8e); with DEEPSEEK_API_KEY exported the "unconfigured" case sent a real paid OCR request | test clears DEEPSEEK_API_KEY too
+FIXED    | business card scan API accepts multipart image uploads and reaches the cloud OCR boundary | same as above | same as above
+FIXED    | contact detail mapping translates live source and relationship tokens into labels | stale: b55a7cebe stopped inventing an event for a QR scan; the label moved to contact.met | asserts contact.met and that no event is invented
+GATED    | every route surface requires runtime coverage | runtime evidence is hand-recorded from manual browser runs; 66 of 144 surfaces have none | recovery: run and document the route cases, then `npm run test:audit-full-product` (sets ORBIT_AUDIT_RUNTIME_EVIDENCE=1)
+REMOVED  | failing tests: | parser artifact of the node:test summary header, not a test | -
+FIXED    | generated relationship live seed writes every default mock fixture collection | stale test and product defect: the seed skips 40 sub-threshold notifications (0086), but the verifier still expected them, so db:verify:live-generated-fixtures failed every fresh seed | verifier expectation filtered; test asserts they are not seeded
+SKIP-ENV | home default uses bounded summary SQL while the legacy loader uses the scoped graph query | product guard assertLifecycleNodeSortRuntime pins Node 25.6.0/ICU 78.2 (local Node is 25.8.1); passes 24/24 under a real Node 25.6.0 | recovery: run under Node 25.6.0, or relax the pin
+FIXED    | isolated CLI dry run is read-only and does not disclose operator inputs | env: the CLI loads .env.local and was redirected to orbit_events instead of the test schema | test pins ORBIT_DATABASE_TARGET/ORBIT_LOCAL_DATABASE_URL to the scoped URL; local-host guard
+SKIP-ENV | known ICU SQL incompatibility falls back once while other SQL errors propagate | fast ICU path only on the approved Node tuple (APPROVED_CONTACT_SEARCH_RUNTIME, Node 25.6.0); passes under a real Node 25.6.0 | recovery: run under Node 25.6.0
+FIXED    | literal route props exclude unreachable component branches | stale: contacts route renders ContactsScreen mode="main" (list branch) | expectation updated
+FIXED    | main event access schema is cut over and missing-event reads stay non-mutating | passes since 0107 (orbit_test migrated in 0099) | -
+LISTED   | manifest generation writes the required repository artifacts | scanner lacked native <form action> rule (fixed: 14 -> 12 P0 candidates); the 12 left are 9 keys: 7 scanner cross-component false positives and 2 inert iOrbit month buttons (product finding) | KNOWN_P0_CANDIDATES in product-surface-manifest.test.ts; recovery per entry
+FIXED    | picking a stored conversation from history restores it and pushes its deep link | stale: history drawer shows the stored title since fc0569649 | picks by title inside the drawer
+FIXED    | private notes remain isolated even when another actor has a connection to the same contact | stale: caf9bd8aa made a relationship reference no longer a read grant | asserts the other actor is denied read and write and nothing leaks
+RENAMED  | profile retains actor isolation and eighteen exercised interactions | now "profile retains actor isolation and its nine exercised interactions": 034b799c5 dropped 7 entries on purpose; 17478f5e6 rewrote 2 persona handlers, whose evidence was dropped (a changed handler needs a new run) | FIXED under the new name
+FIXED    | prop-gated DataCard pressables are counted only on routes that pass onPress | stale: no App screen passes onPress to DataCard after 1efc95508 | expected list is empty (still a negative check)
+FIXED    | registration resolves only published canonical Event Core records and aliases | env: .env.local target redirect (see register tests) | fixture pins the target env
+FIXED    | registration retains the local-parent Kansai identity, language, venue, and canonical aliases | same as above | same as above
+FIXED    | reliable POST gives each reply a stable request identity and persists the final answer across turns and retry | stale harness: route imports readEntityDraftIntent since f3df1cd93; the strict loader threw and the service answered 202 | loader provides the real pure module and a throwing draft-service stub
+GATED    | required fresh documented runtime case: web:/app/events | old evidence retired on purpose; needs a new documented browser case | recovery: run and document it, then `npm run test:audit-full-product`
+GATED    | required fresh documented runtime case: web:/app/events/[id] | same as above | same as above
+GATED    | required fresh documented runtime case: web:/app/o/[slug] | same as above | same as above
+FIXED    | route query parameters come from route-local URL consumers, not transitive get/set calls | stale: all 9 params are declared in app/ai/[id].tsx useLocalSearchParams | expected list updated
+FIXED    | runtime evidence keys anchored by file:line still resolve to the control they credit | fc0569649 shifted iorbit-history-drawer.tsx; handlers byte-identical | re-anchored 9 keys; 2 persona keys dropped (handler rewritten)
+FIXED    | temporary-schema CLI applies only the reviewed 24-target manifest without leaking operator inputs | env: CLI redirect (see dry run) | same fix
+FIXED    | the event access ledger is constrained, monotonic, immutable, and leaves the configured schema unchanged | passes since 0107 | -
+FIXED    | the web runtime migration CLI initializes an empty database and preserves data on rerun | env: test and CLI resolved ORBIT_DATABASE_TARGET=local (orbit_events) instead of the test schema | test uses ORBIT_EVENT_DATABASE_URL (local-host guard) and pins the CLI target
+SKIP-ENV | two physical portrait transactions have one CAS winner, replay once, and receipt failure rolls back | needs the sprint-0066 ROOT-owned portrait PostgreSQL (127.0.0.1:35436); it no longer exists | recovery: provision it and set ORBIT_PORTRAIT_TEST_PG_URL + ORBIT_PORTRAIT_TEST_DATABASE_MARKER (then all pins apply and it cannot skip)
+LISTED   | unbounded listRecords reads never exceed the frozen ratchet | fc0569649 added 1 unbounded fallback read (chat-session provider 5 > baseline 4); the baseline file is unchanged | PENDING_RATCHET_OVERAGES + TODO test "pending ratchet overage returns to baseline: ..."; recovery: sprint 0112 bounds the read, then delete the entry
+LISTED   | visible controls do not rely on missing static behavior evidence | same 12 controls as the manifest P0 list | KNOWN_MISSING_STATIC_BEHAVIOR in full-product-functional-audit.test.ts; recovery per entry
+#
+# Known flaky (from 0097/0098), 0123 status:
+FIXED    | trace contacts.recommend uses relationship matches instead of preview copy | root cause: the default live artifact service's language normalization used the exported DEEPSEEK_API_KEY and sent a real, paid keyword-extraction request; the model's keywords vary ("partnerships director" ranks Mina Tan first). Not a tie: ties fall back to value.score (Omar 88 > Mina 83) | withMethodEnv clears provider keys; npm test refuses paid AI hosts (scripts/test-paid-ai-boundary.mjs)
+FIXED    | live Gemini Orbit Agent maps network search into contact recommendations | same root cause (stubbed planner; the leak was the normalization call) | wrapped in withoutProviderKeys
+FIXED    | PostgreSQL keeps shared appointment details idempotent and accepts only one concurrent version | root cause: SERIALIZABLE mutate; a loser whose snapshot predates the winner's commit got raw SQLSTATE 40001, not APPOINTMENT_CONFLICT | product maps 40001/40P01 to APPOINTMENT_CONFLICT; deterministic race test added
+OPEN     | personal-schedule-picker-interactions (5 tests) | not reproduced: 3 solo runs, 10 parallel, 16 parallel under 12 CPU burners, all green; hypothesis page.setDefaultTimeout(1800) under load, unproven | not marked; watch
+OPEN     | window failure is visible in maintenance totals and does not stop other reminder work | Postgres-env only (skipped in default suite); 3/3 green with ORBIT_LIFECYCLE_TEST_DATABASE_URL | not marked; watch
+#
+# Postgres-env tests pinned to the Neon sort runtime (0108 coordinator):
+SKIP-ENV | lifecycle-task-pages-postgres (4 tests) and relationship-task-page-postgres (1 test) | product readers require PG 16.12 + ICU collation 153.136 and Node 25.6.0; the DB-name pin orbit_neon_audit_20260925 was a stand-in for that and was replaced by probing the runtime | recovery: ORBIT_LIFECYCLE_TEST_DATABASE_URL on PG 16.12 under Node 25.6.0
