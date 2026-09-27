@@ -208,8 +208,8 @@ export function createRuntimeBackedAgentLedgerService({
         },
       };
     } catch {
-      const existing = await runtime.listActions({});
-      return existing.some((action) => action.actionId === actionId)
+      // Exact lookup: an action older than any list page still exists.
+      return (await runtime.getAction(actionId))
         ? failure("AGENT_LEDGER_TRANSITION_INVALID")
         : failure("AGENT_LEDGER_ENTRY_NOT_FOUND");
     }
@@ -217,11 +217,14 @@ export function createRuntimeBackedAgentLedgerService({
 
   return {
     async listEntries(input = {}): Promise<AgentLedgerListResult> {
-      const actions = await runtime.listActions({
+      const limit = typeof input.limit === "string" ? Number(input.limit) : input.limit;
+      const { actions, nextCursor } = await runtime.listActionPage({
         status: input.status,
         workflowKey: input.workflowKey,
         createdAfter: input.createdAfter,
         createdBefore: input.createdBefore,
+        limit: typeof limit === "number" && Number.isFinite(limit) ? Math.trunc(limit) : null,
+        cursor: input.cursor ?? null,
       });
       const entries = await Promise.all(
         actions.map(async (action) =>
@@ -236,7 +239,10 @@ export function createRuntimeBackedAgentLedgerService({
               ? "empty"
               : "success",
           entries: input.scenario === "empty" ? [] : entries,
-          summary: `账本共 ${entries.length} 条记录，可追溯、可撤销。`,
+          nextCursor: input.scenario === "empty" ? null : nextCursor,
+          summary: nextCursor
+            ? `本页 ${entries.length} 条记录，还有更早的记录，可继续翻页。`
+            : `账本共 ${entries.length} 条记录，可追溯、可撤销。`,
           provenance: provenance({
             evidenceIds: entries.flatMap((entry) => entry.evidenceIds),
           }),

@@ -107,6 +107,10 @@ export interface AgentRuntimeService {
   ) => Promise<void>;
   getRun: (runId: string) => Promise<AgentRunDetail | null>;
   listActions: AgentRuntimeRepository["listActions"];
+  /** One filtered page of actions and the next cursor (0121). */
+  listActionPage: AgentRuntimeRepository["listActionPage"];
+  /** Exact lookup by id; existence checks must not scan a truncated list (0121). */
+  getAction: AgentRuntimeRepository["getAction"];
   processOutbox: (input?: {
     actionId?: string;
     limit?: number;
@@ -1051,6 +1055,8 @@ export function createAgentRuntimeService({
       return detail ? orderedRunDetail(detail) : null;
     },
     listActions: repository.listActions,
+    listActionPage: repository.listActionPage,
+    getAction: repository.getAction,
     async processOutbox(input = {}) {
       const timestamp = now();
       const requestedLimit = input.limit ?? 20;
