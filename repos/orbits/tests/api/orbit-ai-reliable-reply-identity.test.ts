@@ -16,9 +16,7 @@ test("reliable POST gives each reply a stable request identity and persists the 
   let calls = 0;
   const boundaries: Record<string, unknown> = {
     "../../../../shared/config/feature-mode": { resolveFeatureMode: () => "live" },
-    "./request-context": { resolveOrbitAgentConversationRequestContext: async () => ({ actorId: "actor:qa", runtime: {
-      recordCompletedRun: async () => ({ runId: "run:qa", status: "completed" }),
-    } }) },
+    "./request-context": { resolveOrbitAgentConversationRequestContext: async () => ({ actorId: "actor:qa", runtime: {} }) },
     "../../../../features/orbit-ai/service-factory": { createOrbitAgentConversationServiceForActor: () => ({ sendMessage: async () => {
       calls++;
       return { success: true, data: { activeConversationId: "conversation:legacy", assistantMessage: `final answer ${calls}`,

@@ -1,7 +1,6 @@
 import type {
   AgentActionOperationPayload,
   AgentActionRecord,
-  AgentAnalyticsEventName,
   AgentExecutionReceipt,
   AgentOutboxEvent,
   AgentRun,
@@ -46,19 +45,6 @@ export interface AgentRuntimeService {
     trigger: AgentRun["trigger"];
     createdAt?: string;
   }) => Promise<AgentRun>;
-  /**
-   * Records a run that finished within one request (a plain AI answer) with a
-   * single write: no pre-read, no step rows, no analytics rows. The timing
-   * spans stay on the request record and are read back from there (0103).
-   */
-  recordCompletedRun: (input: {
-    runId: string;
-    workflowKey: string;
-    workflowVersion?: number;
-    conversationId?: string;
-    trigger: AgentRun["trigger"];
-    createdAt?: string;
-  }) => Promise<AgentRun>;
   addRunStep: (
     step: Omit<AgentRunStep, "createdAt" | "updatedAt"> & {
       createdAt?: string;
@@ -96,15 +82,6 @@ export interface AgentRuntimeService {
   }) => Promise<AgentActionRecord>;
   undoAction: (actionId: string) => Promise<AgentActionRecord>;
   markActionViewed: (actionId: string) => Promise<AgentActionRecord>;
-  recordAnalytics: (
-    name: AgentAnalyticsEventName,
-    input: {
-      runId?: string;
-      actionId?: string;
-      workflowKey?: string;
-      metadata?: Record<string, string | number | boolean | null>;
-    },
-  ) => Promise<void>;
   getRun: (runId: string) => Promise<AgentRunDetail | null>;
   listActions: AgentRuntimeRepository["listActions"];
   /** One filtered page of actions and the next cursor (0121). */
@@ -185,6 +162,7 @@ export function orderedRunDetail(detail: AgentRunDetail): AgentRunDetail {
 
 export interface AgentRuntimeServiceOptions {
   executors: AgentExecutorRegistry;
+  /** Unused since 0110 (it only named analytics events); kept so existing callers compile. */
   id?: () => string;
   now?: () => string;
   repository: AgentRuntimeRepository;
@@ -248,31 +226,9 @@ function aggregateActionStatus(
 
 export function createAgentRuntimeService({
   executors,
-  id = () => crypto.randomUUID(),
   now = () => new Date().toISOString(),
   repository,
 }: AgentRuntimeServiceOptions): AgentRuntimeService {
-  async function analytics(
-    name: AgentAnalyticsEventName,
-    input: {
-      runId?: string;
-      actionId?: string;
-      workflowKey?: string;
-      metadata?: Record<string, string | number | boolean | null>;
-    },
-  ): Promise<void> {
-    const occurredAt = now();
-    await repository.saveAnalyticsEvent({
-      eventId: `analytics:${id()}`,
-      name,
-      occurredAt,
-      runId: input.runId,
-      actionId: input.actionId,
-      workflowKey: input.workflowKey,
-      metadata: input.metadata ?? {},
-    });
-  }
-
   async function requireAction(actionId: string): Promise<AgentActionRecord> {
     const action = await repository.getAction(actionId);
     if (!action) throw new Error(`Agent action ${actionId} was not found.`);
@@ -364,18 +320,6 @@ export function createAgentRuntimeService({
           : undefined,
       updatedAt: timestamp,
     });
-    if (status === "completed") {
-      await analytics("agent_run_completed", {
-        runId,
-        workflowKey: detail.run.workflowKey,
-      });
-    } else if (status === "failed") {
-      await analytics("agent_run_failed", {
-        runId,
-        workflowKey: detail.run.workflowKey,
-        metadata: { code: "AGENT_ACTION_FAILED" },
-      });
-    }
   }
 
   async function refreshActionStatus(
@@ -405,28 +349,6 @@ export function createAgentRuntimeService({
     };
     await repository.saveAction(updated);
 
-    if (action.status !== nextStatus && nextStatus === "completed") {
-      await analytics("agent_action_completed", {
-        runId: action.runId,
-        actionId: action.actionId,
-        workflowKey: action.workflowKey,
-      });
-      await analytics("relationship_work_completed", {
-        runId: action.runId,
-        actionId: action.actionId,
-        workflowKey: action.workflowKey,
-      });
-    } else if (
-      action.status !== nextStatus &&
-      (nextStatus === "failed" || nextStatus === "partially_failed")
-    ) {
-      await analytics("agent_action_failed", {
-        runId: action.runId,
-        actionId: action.actionId,
-        workflowKey: action.workflowKey,
-      });
-    }
-
     await refreshRunStatus(action.runId);
     return updated;
   }
@@ -446,28 +368,6 @@ export function createAgentRuntimeService({
         actionIds: [],
         createdAt: timestamp,
         startedAt: timestamp,
-        updatedAt: timestamp,
-      };
-      await repository.saveRun(run);
-      await analytics("agent_run_started", {
-        runId: run.runId,
-        workflowKey: run.workflowKey,
-      });
-      return run;
-    },
-    async recordCompletedRun(input) {
-      const timestamp = input.createdAt ?? now();
-      const run: AgentRun = {
-        runId: input.runId,
-        workflowKey: input.workflowKey,
-        workflowVersion: input.workflowVersion ?? 1,
-        conversationId: input.conversationId,
-        trigger: input.trigger,
-        status: "completed",
-        actionIds: [],
-        createdAt: timestamp,
-        startedAt: timestamp,
-        completedAt: timestamp,
         updatedAt: timestamp,
       };
       await repository.saveRun(run);
@@ -559,16 +459,6 @@ export function createAgentRuntimeService({
               updatedAt: timestamp,
             };
       await repository.saveRun(nextRun);
-      if (input.status === "failed") {
-        await analytics("agent_run_failed", {
-          runId: nextRun.runId,
-          workflowKey: nextRun.workflowKey,
-          metadata: {
-            code: nextRun.error?.code ?? "AGENT_RUN_STEP_FAILED",
-            stepId: step.stepId,
-          },
-        });
-      }
       return step;
     },
     async updateRunStatus(runId, status, error) {
@@ -592,18 +482,6 @@ export function createAgentRuntimeService({
         updatedAt: timestamp,
       };
       await repository.saveRun(run);
-      if (status === "completed") {
-        await analytics("agent_run_completed", {
-          runId,
-          workflowKey: run.workflowKey,
-        });
-      } else if (status === "failed") {
-        await analytics("agent_run_failed", {
-          runId,
-          workflowKey: run.workflowKey,
-          metadata: { code: error?.code ?? "UNKNOWN" },
-        });
-      }
       return run;
     },
     async cancelRun(runId) {
@@ -680,12 +558,6 @@ export function createAgentRuntimeService({
         status: "waiting_for_confirmation",
         waitingAt: timestamp,
         updatedAt: timestamp,
-      });
-      await analytics("agent_action_proposed", {
-        runId: action.runId,
-        actionId: action.actionId,
-        workflowKey: action.workflowKey,
-        metadata: { riskLevel: action.riskLevel },
       });
       return action;
     },
@@ -772,12 +644,6 @@ export function createAgentRuntimeService({
         }),
       );
       await repository.approveActionWithOutbox(approved, events);
-      await analytics("agent_action_approved", {
-        runId: action.runId,
-        actionId: action.actionId,
-        workflowKey: action.workflowKey,
-        metadata: { operationCount: operations.length },
-      });
       await refreshRunStatus(action.runId);
       return approved;
     },
@@ -789,11 +655,6 @@ export function createAgentRuntimeService({
         "deferred",
         "deferredAt",
       );
-      await analytics("today_item_snoozed", {
-        runId: action.runId,
-        actionId,
-        workflowKey: action.workflowKey,
-      });
       await refreshRunStatus(action.runId);
       return updated;
     },
@@ -805,11 +666,6 @@ export function createAgentRuntimeService({
         "rejected",
         "rejectedAt",
       );
-      await analytics("today_item_dismissed", {
-        runId: action.runId,
-        actionId,
-        workflowKey: action.workflowKey,
-      });
       await refreshRunStatus(action.runId);
       return updated;
     },
@@ -1029,11 +885,6 @@ export function createAgentRuntimeService({
         });
       }
       const updated = await saveActionStatus(action, "undone", "undoneAt");
-      await analytics("agent_action_undone", {
-        runId: action.runId,
-        actionId,
-        workflowKey: action.workflowKey,
-      });
       await refreshRunStatus(action.runId);
       return updated;
     },
@@ -1049,7 +900,6 @@ export function createAgentRuntimeService({
       await repository.saveAction(updated);
       return updated;
     },
-    recordAnalytics: analytics,
     async getRun(runId) {
       const detail = await repository.getRun(runId);
       return detail ? orderedRunDetail(detail) : null;

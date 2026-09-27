@@ -38,7 +38,7 @@ function geminiTextResponse(text: string): Response {
   });
 }
 
-test("Orbit AI live trace reads selected tool collections from live record storage", async () => {
+test("Orbit AI live trace names the tools' live record collections without scanning them (0110)", async () => {
   const { createMemoryLiveRecordStore } = await importProjectModule<{
     createMemoryLiveRecordStore: (seed: readonly Record<string, unknown>[]) => {
       listRecords: (query: Record<string, unknown>) => readonly Record<string, unknown>[];
@@ -53,7 +53,7 @@ test("Orbit AI live trace reads selected tool collections from live record stora
               adapterKind: string;
               collections: readonly {
                 collectionName: string;
-                recordCount: number;
+                recordCount?: number;
                 selectedForTools: boolean;
               }[];
               liveDatabaseReadExecuted: boolean;
@@ -162,11 +162,13 @@ test("Orbit AI live trace reads selected tool collections from live record stora
   assert.equal(fetchCount, 1);
   assert.equal(databaseInteraction?.adapterKind, "remote");
   assert.equal(databaseInteraction?.storageKey, "orbit_records");
-  assert.equal(databaseInteraction?.operation, "read");
-  assert.equal(databaseInteraction?.liveDatabaseReadExecuted, true);
+  // Sprint 0110: no whole-collection read just to count records.
+  assert.equal(databaseInteraction?.operation, "skipped");
+  assert.equal(databaseInteraction?.liveDatabaseReadExecuted, false);
   assert.equal(databaseInteraction?.liveDatabaseWriteExecuted, false);
   assert.match(databaseInteraction?.source ?? "", /live-record-store/);
   assert.match(databaseInteraction?.summary ?? "", /remote live/i);
+  assert.match(databaseInteraction?.summary ?? "", /does not scan/i);
   assert.deepEqual(
     Object.fromEntries(
       (databaseInteraction?.collections ?? []).map((collection) => [
@@ -178,16 +180,16 @@ test("Orbit AI live trace reads selected tool collections from live record stora
       ]),
     ),
     {
-      accounts: { recordCount: 0, selectedForTools: true },
-      attendees: { recordCount: 0, selectedForTools: true },
-      connections: { recordCount: 0, selectedForTools: true },
-      contacts: { recordCount: 1, selectedForTools: true },
-      eventParticipantIntents: { recordCount: 0, selectedForTools: true },
-      events: { recordCount: 1, selectedForTools: true },
-      evidence: { recordCount: 1, selectedForTools: true },
-      matchRecommendations: { recordCount: 0, selectedForTools: true },
-      profiles: { recordCount: 0, selectedForTools: true },
-      recommendationTests: { recordCount: 1, selectedForTools: true },
+      accounts: { recordCount: undefined, selectedForTools: true },
+      attendees: { recordCount: undefined, selectedForTools: true },
+      connections: { recordCount: undefined, selectedForTools: true },
+      contacts: { recordCount: undefined, selectedForTools: true },
+      eventParticipantIntents: { recordCount: undefined, selectedForTools: true },
+      events: { recordCount: undefined, selectedForTools: true },
+      evidence: { recordCount: undefined, selectedForTools: true },
+      matchRecommendations: { recordCount: undefined, selectedForTools: true },
+      profiles: { recordCount: undefined, selectedForTools: true },
+      recommendationTests: { recordCount: undefined, selectedForTools: true },
     },
   );
 });

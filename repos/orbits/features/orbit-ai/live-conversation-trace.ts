@@ -254,10 +254,14 @@ function configuredLiveTraceDatabaseContext(
   };
 }
 
-async function remoteDatabaseInteractionForTools(
+// Sprint 0110: this used to read every record of each selected collection
+// only to report how many there were. It now names the collections the
+// planned tools will use and reads nothing; the tools' own reads are traced
+// through their artifacts.
+function remoteDatabaseInteractionForTools(
   toolRequests: readonly GeminiOrbitAgentToolRequest[],
   config: LiveOrbitAgentTraceConfig,
-): Promise<OrbitAiTraceDatabaseInteraction | null> {
+): OrbitAiTraceDatabaseInteraction | null {
   const context = configuredLiveTraceDatabaseContext(config);
 
   if (!context) {
@@ -267,38 +271,23 @@ async function remoteDatabaseInteractionForTools(
   const selectedCollections = Array.from(
     selectedDatabaseCollectionsForTools(toolRequests),
   ).sort();
-  const collections = await Promise.all(
-    selectedCollections.map(async (collectionName) => {
-      const records = await context.store.listRecords({
-        limit: "unbounded",
-        collectionName,
-        workspaceId: context.workspaceId,
-      });
-
-      return {
-        collectionName,
-        recordCount: records.length,
-        selectedForTools: true,
-      };
-    }),
-  );
-  const recordCount = collections.reduce(
-    (total, collection) => total + collection.recordCount,
-    0,
-  );
+  const collections = selectedCollections.map((collectionName) => ({
+    collectionName,
+    selectedForTools: true,
+  }));
 
   return {
     adapterKind: "remote",
     collections,
     id: "database:live-record-context",
-    liveDatabaseReadExecuted: true,
+    liveDatabaseReadExecuted: false,
     liveDatabaseWriteExecuted: false,
-    operation: "read",
+    operation: "skipped",
     role: "data",
     schemaVersion: 1,
     source: context.source,
     storageKey: "orbit_records",
-    summary: `${collections.length} remote live record collections with ${recordCount} records were inspected for the planned Orbit tools.`,
+    summary: `${collections.length} remote live record collections are used by the planned Orbit tools; the trace does not scan them to count records.`,
   };
 }
 
@@ -306,7 +295,7 @@ async function databaseInteractionForTools(
   toolRequests: readonly GeminiOrbitAgentToolRequest[],
   config: LiveOrbitAgentTraceConfig,
 ): Promise<OrbitAiTraceDatabaseInteraction> {
-  const remoteInteraction = await remoteDatabaseInteractionForTools(
+  const remoteInteraction = remoteDatabaseInteractionForTools(
     toolRequests,
     config,
   );

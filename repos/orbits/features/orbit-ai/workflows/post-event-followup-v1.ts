@@ -218,14 +218,6 @@ export function createPostEventFollowupWorkflow(
           actorLabel: "Orbit user confirmed encounter note",
         });
       }
-      await runtime.recordAnalytics("encounter_note_confirmed", {
-        runId,
-        actionId: noteAction?.actionId,
-        workflowKey: "post_event_followup_v1",
-        metadata: {
-          source: input.noteSource ?? "typed",
-        },
-      });
 
       const draftActionId = workflowId("action:message-draft", {
         runId,
@@ -294,11 +286,6 @@ export function createPostEventFollowupWorkflow(
         actionId: draftAction.actionId,
         limit: 1,
         workerId: "post-event-followup-inline-draft",
-      });
-      await runtime.recordAnalytics("followup_draft_prepared", {
-        runId,
-        actionId: draftAction.actionId,
-        workflowKey: "post_event_followup_v1",
       });
 
       const taskActionId = workflowId("action:followup-task", {

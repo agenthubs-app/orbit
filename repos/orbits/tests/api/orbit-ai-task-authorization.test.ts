@@ -19,9 +19,7 @@ function route(message: string, sourceNote: boolean) {
   const boundaries: Record<string, unknown> = {
     "../../../../shared/config/feature-mode": { resolveFeatureMode: () => "live" },
     "./request-context": { resolveOrbitAgentConversationRequestContext: async () => ({
-      actorId: "actor:qa", runtime: {
-        recordCompletedRun: async () => ({ runId: "run:qa", status: "completed" }),
-      },
+      actorId: "actor:qa", runtime: {},
     }) },
     "../../../../features/orbit-ai/service-factory": { createOrbitAgentConversationServiceForActor: () => ({
       sendMessage: async (input: { message: string }) => {

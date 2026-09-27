@@ -26,11 +26,6 @@ export async function POST(
       { status: 404 },
     );
   }
-  await runtime.recordAnalytics("today_item_opened", {
-    runId: action.runId,
-    actionId: action.actionId,
-    workflowKey: action.workflowKey,
-  });
   if (
     action.workflowKey === "pre_event_brief_v1" &&
     action.operations.some(
@@ -38,11 +33,6 @@ export async function POST(
     )
   ) {
     await runtime.markActionViewed(action.actionId);
-    await runtime.recordAnalytics("brief_viewed", {
-      runId: action.runId,
-      actionId: action.actionId,
-      workflowKey: action.workflowKey,
-    });
   }
   return NextResponse.json({ data: { recorded: true } });
 }

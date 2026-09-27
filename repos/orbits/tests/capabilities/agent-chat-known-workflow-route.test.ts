@@ -336,7 +336,7 @@ test("protocol v2 conversation POST authorizes contact references before planner
   assert.equal(sendCalls, 1);
 });
 
-test("ordinary conversation responses use a fresh progress run and never inherit older actions", async () => {
+test("ordinary conversation responses carry no run and never inherit older actions (0110)", async () => {
   resetOrbitAgentRuntimeServicesForTests();
   const runtime = createOrbitAgentRuntimeService("mock");
   await runtime.createRun({
@@ -386,7 +386,7 @@ test("ordinary conversation responses use a fresh progress run and never inherit
   };
 
   assert.equal(response.status, 200);
-  assert.match(envelope.data?.runId ?? "", /^run:conversation:/);
-  assert.notEqual(envelope.data?.runId, "run:historical");
+  // Sprint 0110: a plain answer records no run, so it names none.
+  assert.equal(envelope.data?.runId, undefined);
   assert.equal(envelope.data?.actionIds, undefined);
 });
