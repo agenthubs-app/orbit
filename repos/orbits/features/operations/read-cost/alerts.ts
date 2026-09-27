@@ -6,8 +6,6 @@ import {
   LOW_COVERAGE_BELOW,
   ROUTE_SPIKE_FACTOR,
   ROUTE_SPIKE_HISTORY_DAYS,
-  ROUTE_SPIKE_MIN_AVERAGE_BYTES,
-  ROUTE_SPIKE_MIN_HISTORY_DAYS,
 } from "./config";
 import { addDays, median } from "./rollup";
 
@@ -47,9 +45,9 @@ async function candidates(client: TransactionalSqlExecutor, day: string): Promis
     byRoute.set(row.route, entry);
   }
   for (const [route, { today, history }] of byRoute) {
-    if (today === null || history.length < ROUTE_SPIKE_MIN_HISTORY_DAYS) continue;
-    const baseline = median(history)!;
-    if (today >= ROUTE_SPIKE_MIN_AVERAGE_BYTES && today > baseline * ROUTE_SPIKE_FACTOR) {
+    const baseline = median(history);
+    if (today === null || baseline === null) continue;
+    if (today > baseline * ROUTE_SPIKE_FACTOR) {
       found.push({ rule: "route_average_spike", subject: route, observed: today, threshold: baseline * ROUTE_SPIKE_FACTOR });
     }
   }

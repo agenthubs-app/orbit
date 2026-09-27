@@ -219,8 +219,8 @@ export function installNextReadReceipts({
 }): boolean {
   if (!readReceiptsEnabled(env)) return false;
   const state = adapterState();
-  installReadReceiptSink(sink);
   const sampleRate = readReceiptsSampleRate(env);
+  installReadReceiptSink(sink, { sampleRate });
   installRequestReadLedgerResolver(() => resolveNextRequestReadLedger(sampleRate));
   if (!state.installed) {
     state.installed = true;

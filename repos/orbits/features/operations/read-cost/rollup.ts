@@ -1,5 +1,9 @@
 import type { TransactionalPostgresClient, TransactionalSqlExecutor } from "../../../shared/storage/transactional-postgres";
 import {
+  NEON_MAX_ATTEMPTS,
+  NEON_RETRY_BASE_MS,
+  NEON_RETRY_MAX_MS,
+  NEON_RETRY_PER_PASS,
   RECEIPT_RETENTION_DAYS,
   ROLLUP_FINAL_AFTER_MS,
   ROLLUP_LOOKBACK_DAYS,
@@ -108,23 +112,75 @@ export async function rollupReadCostDay(
 
 export type ReconciliationStatus = "ok" | "unavailable" | "failed";
 
-/** Writes the day's reconciliation row. No Neon reader means "unavailable": no number is invented. */
+/** When the next Neon attempt may run after `attempts` attempts, or null when none remain. */
+export function neonRetryAfter(attempts: number, at: Date): Date | null {
+  if (attempts <= 0 || attempts >= NEON_MAX_ATTEMPTS) return null;
+  return new Date(at.getTime() + Math.min(NEON_RETRY_MAX_MS, NEON_RETRY_BASE_MS * 2 ** (attempts - 1)));
+}
+
+function coverageOf(recordedBytes: number, neonBytes: number | null): number | null {
+  return neonBytes && neonBytes > 0 ? recordedBytes / neonBytes : null;
+}
+
+/**
+ * Writes the day's reconciliation row after a rollup. No Neon reader means
+ * "unavailable" with no attempt spent: no number is invented, and the day is
+ * picked up by retryNeonReconciliation once Neon is configured.
+ */
 export async function reconcileReadCostDay(
   client: TransactionalSqlExecutor,
   input: { day: string; recordedBytes: number; neon: NeonUsageReader | null; computedAt: Date },
 ): Promise<ReconciliationStatus> {
   const usage = input.neon ? await input.neon(input.day) : { status: "unavailable" as const, reason: "not_configured" };
   const neonBytes = usage.status === "ok" ? usage.bytes : null;
-  const coverage = neonBytes && neonBytes > 0 ? input.recordedBytes / neonBytes : null;
+  const attempts = input.neon ? 1 : 0;
+  const retryAfter = usage.status === "ok" ? null : neonRetryAfter(attempts, input.computedAt);
   await client.query(
-    `insert into orbit_read_cost_reconciliation (day, recorded_bytes, neon_status, neon_bytes, coverage, neon_reason, computed_at)
-     values ($1::date, $2, $3, $4, $5, $6, $7)
+    `insert into orbit_read_cost_reconciliation (day, recorded_bytes, neon_status, neon_bytes, coverage, neon_reason, computed_at, neon_attempts, neon_retry_after)
+     values ($1::date, $2, $3, $4, $5, $6, $7, $8, $9)
      on conflict (day) do update set recorded_bytes = excluded.recorded_bytes, neon_status = excluded.neon_status,
        neon_bytes = excluded.neon_bytes, coverage = excluded.coverage, neon_reason = excluded.neon_reason,
-       computed_at = excluded.computed_at`,
-    [input.day, input.recordedBytes, usage.status, neonBytes, coverage, usage.status === "ok" ? null : usage.reason, input.computedAt.toISOString()],
+       computed_at = excluded.computed_at, neon_attempts = excluded.neon_attempts, neon_retry_after = excluded.neon_retry_after`,
+    [input.day, input.recordedBytes, usage.status, neonBytes, coverageOf(input.recordedBytes, neonBytes),
+      usage.status === "ok" ? null : usage.reason, input.computedAt.toISOString(), attempts, retryAfter?.toISOString() ?? null],
   );
   return usage.status;
+}
+
+/**
+ * Re-asks Neon for finalized days still covered by receipts whose
+ * reconciliation is failed or unavailable, due for retry and under the attempt
+ * limit. Only the Neon columns change: the rollup and its computed_at stay as
+ * they are, and coverage uses the stored recorded_bytes.
+ */
+export async function retryNeonReconciliation(
+  client: TransactionalSqlExecutor,
+  input: { neon: NeonUsageReader | null; now: Date; deadline: number; clock: () => Date },
+): Promise<Array<{ day: string; status: ReconciliationStatus }>> {
+  if (!input.neon) return [];
+  const due = await client.query<{ day: string; recorded_bytes: string; neon_attempts: number }>(
+    `select day::text as day, recorded_bytes::text, neon_attempts from orbit_read_cost_reconciliation
+      where day = any($1::date[]) and neon_status <> 'ok' and neon_attempts < $2
+        and (neon_retry_after is null or neon_retry_after <= $3::timestamptz)
+      order by day desc limit $4`,
+    [pendingDayCandidates(input.now), NEON_MAX_ATTEMPTS, input.now.toISOString(), NEON_RETRY_PER_PASS],
+  );
+  const results: Array<{ day: string; status: ReconciliationStatus }> = [];
+  for (const row of due.rows) {
+    if (input.clock().getTime() >= input.deadline) break;
+    const usage = await input.neon(row.day);
+    const neonBytes = usage.status === "ok" ? usage.bytes : null;
+    const attempts = row.neon_attempts + 1;
+    const retryAfter = usage.status === "ok" ? null : neonRetryAfter(attempts, input.now);
+    await client.query(
+      `update orbit_read_cost_reconciliation set neon_status = $2, neon_bytes = $3, coverage = $4, neon_reason = $5,
+         neon_attempts = $6, neon_retry_after = $7 where day = $1::date`,
+      [row.day, usage.status, neonBytes, coverageOf(Number(row.recorded_bytes), neonBytes),
+        usage.status === "ok" ? null : usage.reason, attempts, retryAfter?.toISOString() ?? null],
+    );
+    results.push({ day: row.day, status: usage.status });
+  }
+  return results;
 }
 
 const DELETE_BATCH = 10_000;

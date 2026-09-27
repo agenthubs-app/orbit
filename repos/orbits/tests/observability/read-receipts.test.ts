@@ -28,6 +28,7 @@ import {
   createReadReceiptSink,
   type AxiomFetch,
 } from "../../shared/observability/read-receipts-sink";
+import { runMaintenancePass } from "../../features/operations/maintenance/pass";
 import { meterPostgresPool } from "../../shared/storage/metered-postgres-pool";
 import { createPostgresReadMetricsRunner, type PostgresReadMetric } from "../../shared/storage/postgres-read-metrics";
 
@@ -400,5 +401,43 @@ test("without both Axiom variables nothing is sent anywhere", async () => {
     assert.equal(fetched, 0);
   } finally {
     globalThis.fetch = originalFetch;
+  }
+});
+
+test("0121 the configured sample rate also governs background tasks (real maintenance entry) and the unattributed ledger", async () => {
+  const receipts: ReadReceipt[] = [];
+  const runner = createPostgresReadMetricsRunner(undefined, ENABLED)!;
+  // One maintenance task that performs one metered read, run through the real pass entry.
+  const readingTask = { name: "probe", run: async () => { await runner(SQL, async () => ({ rows: [{ id: 1 }] })); return { read: 1 }; } };
+  const runPass = () => runMaintenancePass({ tasks: [readingTask], log: () => {} });
+  try {
+    installNextReadReceipts({ sink: (receipt) => void receipts.push(receipt), env: { ...ENABLED, ORBIT_READ_RECEIPTS_SAMPLE_RATE: "0" } });
+    const result = await runPass();
+    assert.equal(result.ok, 1, "the task itself still runs");
+    recordReadReceiptMetric(metric(2, 20));
+    await flushUnattributedReadReceipts();
+    assert.equal(receipts.length, 0, "sample rate 0: neither the task nor unattributed reads write a receipt");
+
+    installNextReadReceipts({ sink: (receipt) => void receipts.push(receipt), env: { ...ENABLED, ORBIT_READ_RECEIPTS_SAMPLE_RATE: "0.5" } });
+    const runs = 400;
+    for (let i = 0; i < runs; i++) await runPass();
+    const taskReceipts = receipts.filter((receipt) => receipt.source === "task:maintenance:probe");
+    assert.ok(taskReceipts.length > runs * 0.3 && taskReceipts.length < runs * 0.7, `about half sampled (${taskReceipts.length}/${runs})`);
+    assert.ok(taskReceipts.every((receipt) => receipt.sampleRate === 0.5), "the receipt carries the rate the rollup scales by");
+    for (let i = 0; i < 200; i++) {
+      recordReadReceiptMetric(metric(1, 1));
+      await flushUnattributedReadReceipts();
+    }
+    const unattributed = receipts.filter((receipt) => receipt.source === "unattributed");
+    assert.ok(unattributed.length > 60 && unattributed.length < 140, `about half of unattributed flushes sampled (${unattributed.length}/200)`);
+    assert.ok(unattributed.every((receipt) => receipt.sampleRate === 0.5));
+
+    // Default (no sample rate configured) keeps every task receipt.
+    receipts.length = 0;
+    installNextReadReceipts({ sink: (receipt) => void receipts.push(receipt), env: ENABLED });
+    await runPass();
+    assert.deepEqual(receipts.map((receipt) => [receipt.source, receipt.sampleRate]), [["task:maintenance:probe", 1]]);
+  } finally {
+    reset();
   }
 });

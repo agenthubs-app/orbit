@@ -5,7 +5,7 @@ import type { MaintenanceTask } from "../maintenance/pass";
 import { deliverReadCostAlerts, evaluateReadCostAlerts } from "./alerts";
 import { ALERT_MAX_AGE_DAYS, readCostAdminAccountIds } from "./config";
 import { createNeonUsageReader } from "./neon-usage";
-import { addDays, applyReadCostRetention, pendingReadCostDays, reconcileReadCostDay, rollupReadCostDay, utcDay } from "./rollup";
+import { addDays, applyReadCostRetention, pendingReadCostDays, reconcileReadCostDay, retryNeonReconciliation, rollupReadCostDay, utcDay } from "./rollup";
 
 // One maintenance task for monitoring O2/O3, run by the existing daily cron
 // pass (and its heartbeat): roll up finalized days, reconcile with Neon, raise
@@ -53,6 +53,14 @@ export function createReadCostMaintenanceTask(input: {
         daysRolled++;
         if (day >= addDays(today, -ALERT_MAX_AGE_DAYS)) alertsRaised += await evaluateReadCostAlerts(runtime.client, day);
       }
+      // Days whose Neon reconciliation failed or waited for configuration are
+      // retried with backoff; recovering a recent day re-evaluates its alerts.
+      let neonRecovered = 0;
+      for (const retry of await retryNeonReconciliation(runtime.client, { neon, now, deadline, clock })) {
+        if (retry.status !== "ok") continue;
+        neonRecovered++;
+        if (retry.day >= addDays(today, -ALERT_MAX_AGE_DAYS)) alertsRaised += await evaluateReadCostAlerts(runtime.client, retry.day);
+      }
       const retention = await applyReadCostRetention(runtime.client, { now, deadline, clock });
       const delivery = await deliverReadCostAlerts({
         client: runtime.client,
@@ -65,6 +73,7 @@ export function createReadCostMaintenanceTask(input: {
         daysRolled,
         neonUnavailable,
         neonFailed,
+        neonRecovered,
         alertsRaised,
         alertsDelivered: delivery.delivered,
         alertsPending: delivery.pending,
