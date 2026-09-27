@@ -217,7 +217,11 @@ export function openProfileEditSession(
 ): ProfileEditSession {
   const key = scopeKey(scope);
   const existing = sessions.get(key);
-  if (existing?.profileId === profile.id) {
+  // A session without the user's edits follows a newer server profile: a screen may
+  // render a cached pre-save profile first, and the fresh one arrives next (0126).
+  const cleanAndStale = existing?.profileId === profile.id && existing.dirtyFields.size === 0 &&
+    existing.pendingSave === null && Date.parse(profile.updatedAt) > Date.parse(existing.expectedUpdatedAt);
+  if (existing?.profileId === profile.id && !cleanAndStale) {
     return snapshot(existing);
   }
 

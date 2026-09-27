@@ -2013,17 +2013,15 @@ test("empty bounded query uses the uncollated SQL path without probing", async (
   assert.equal(projectionQueryCount, 1);
 });
 
-// The fast ICU path is only attempted on the approved Node runtime tuple (the
-// deployment runtime), which a stubbed SQL client cannot fake (0123).
+// The fast ICU path is only attempted when Node case mapping uses the approved
+// Unicode version, which a stubbed SQL client cannot fake (0123, relaxed in 0126).
 const approvedNodeSortRuntime =
-  process.versions.node === APPROVED_CONTACT_SEARCH_RUNTIME.node &&
-  process.versions.icu === APPROVED_CONTACT_SEARCH_RUNTIME.icu &&
   process.versions.unicode === APPROVED_CONTACT_SEARCH_RUNTIME.unicode;
 
 test("known ICU SQL incompatibility falls back once while other SQL errors propagate", {
   skip: approvedNodeSortRuntime
     ? false
-    : `fast ICU path requires Node ${APPROVED_CONTACT_SEARCH_RUNTIME.node} / ICU ${APPROVED_CONTACT_SEARCH_RUNTIME.icu} / Unicode ${APPROVED_CONTACT_SEARCH_RUNTIME.unicode}, running ${process.versions.node}; recovery: run this file under the approved Node runtime`,
+    : `fast ICU path requires Unicode ${APPROVED_CONTACT_SEARCH_RUNTIME.unicode} case mapping, running Node ${process.versions.node} (Unicode ${process.versions.unicode}); recovery: run this file under a Node with the approved Unicode version`,
 }, async () => {
   let probeCount = 0;
   let fastQueryCount = 0;

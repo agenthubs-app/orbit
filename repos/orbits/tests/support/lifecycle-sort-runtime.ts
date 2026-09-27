@@ -1,24 +1,19 @@
 import type { Pool } from "pg";
 import {
-  assertLifecycleNodeSortRuntime,
   LIFECYCLE_SORT_RUNTIME_CTE,
   lifecycleSortRuntimeSchema,
 } from "../../features/followups/storage/lifecycle-task-pages";
 
 /**
- * Lifecycle/relationship task pages refuse to run outside the verified sort
- * runtime (Neon PostgreSQL 16.12 with ICU collation 153.136, Node 25.6.0 with
- * ICU 78.2): SQL ordering must match the legacy localeCompare order exactly.
- * That pin is a product guard, so these tests run only where it holds.
+ * Lifecycle/relationship task pages refuse to run unless the database collation is
+ * the verified one (ICU und-x-icu 153.136, deterministic, UTF8): SQL ordering must
+ * match the legacy localeCompare order exactly. Since 0126 the Node version and the
+ * PostgreSQL server version are no longer part of that guard, so these tests run on
+ * any local PostgreSQL that reports the verified collation.
  * Returns a skip reason (with the recovery condition) or null when it holds.
  */
 export async function lifecycleSortRuntimeSkipReason(pool: Pool): Promise<string | null> {
-  const recovery = "recovery: run with ORBIT_LIFECYCLE_TEST_DATABASE_URL on PostgreSQL 16.12 (ICU und-x-icu 153.136, e.g. a Neon restore) under Node 25.6.0 / ICU 78.2";
-  try {
-    assertLifecycleNodeSortRuntime();
-  } catch {
-    return `unverified Node sort runtime ${process.versions.node}/ICU ${process.versions.icu}; ${recovery}`;
-  }
+  const recovery = "recovery: run with ORBIT_LIFECYCLE_TEST_DATABASE_URL on a PostgreSQL whose ICU und-x-icu collation version is 153.136";
   const { rows } = await pool.query(`with ${LIFECYCLE_SORT_RUNTIME_CTE} select to_jsonb(runtime) as runtime from runtime`);
   const runtime = rows[0]?.runtime as Record<string, unknown> | undefined;
   if (!lifecycleSortRuntimeSchema.safeParse(runtime).success) {

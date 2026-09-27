@@ -2,7 +2,8 @@ import { useOrbitTimeZone } from "../../time/OrbitTimeZoneProvider";
 import { localParts } from "../../time/date-time";
 import { Ionicons } from "@expo/vector-icons";
 import * as Crypto from "expo-crypto";
-import { type Href, useLocalSearchParams, useRouter } from "expo-router";
+import { type Href, useLocalSearchParams, useNavigation, useRouter } from "expo-router";
+import { usePreventRemove } from "expo-router/react-navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -67,6 +68,7 @@ export function TaskDetailScreen() {
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const taskId = first(params.id);
   const router = useRouter();
+  const navigation = useNavigation();
   const auth = useOrbitAuthSession();
   const server = useOrbitApiBaseUrl();
   const actorId = auth.actorId ?? "";
@@ -127,31 +129,35 @@ export function TaskDetailScreen() {
     body: Record<string, unknown> | (() => Promise<Record<string, unknown>>),
     onSuccess: (data: unknown) => void,
     accepts?: (data: unknown) => boolean,
-  ) {
+  ): Promise<boolean> {
     const scope = mutationScope;
     const isCurrent = () => ready && scope.active && scopeRef.current === scope;
-    if (!isCurrent() || scope.busy) return;
+    if (!isCurrent() || scope.busy) return false;
     scope.busy = true;
     setSaving(true);
     setMutationError(null);
     try {
       const payload = typeof body === "function" ? await body() : body;
-      if (!isCurrent()) return;
+      if (!isCurrent()) return false;
       const fingerprint = JSON.stringify([method, path, payload]);
       const key = scope.keys.get(fingerprint) ?? mutationKey();
       scope.keys.set(fingerprint, key);
       const result = await client[method]<unknown>(path, { body: { ...payload, idempotencyKey: key }, signal: scope.controller.signal });
-      if (!isCurrent()) return;
+      if (!isCurrent()) return false;
       if (result.success) {
         if (accepts && (result.status < 200 || result.status >= 300 || !accepts(result.data))) {
           setMutationError(locale.t("taskDetail.saveDateUnconfirmed"));
-          return;
+          return false;
         }
         scope.keys.delete(fingerprint);
         onSuccess(result.data);
-      } else setMutationError(result.error.message);
+        return true;
+      }
+      setMutationError(result.error.message);
+      return false;
     } catch {
       if (isCurrent()) setMutationError(locale.t("taskDetail.operationFailed"));
+      return false;
     } finally {
       scope.busy = false;
       if (isCurrent()) setSaving(false);
@@ -229,17 +235,17 @@ export function TaskDetailScreen() {
     }, data => taskDateReceiptMatches(data, taskId, actorId, change.patch));
   }
 
-  async function save() {
-    if (!detail || !baseline || baseline.id !== taskId || staleDraft || saving || !title.trim()) return;
+  async function save(): Promise<"noop" | "saved" | "failed"> {
+    if (!detail || !baseline || baseline.id !== taskId || staleDraft || saving || !title.trim()) return "noop";
     const normalizedTitle = title.trim();
     const normalizedNotes = notes.trim();
     if (baseline.notes && !normalizedNotes) {
       setMutationError(locale.t("taskDetail.noteClearUnsupported"));
-      return;
+      return "noop";
     }
-    if (normalizedTitle === baseline.title && normalizedNotes === baseline.notes.trim()) return;
+    if (normalizedTitle === baseline.title && normalizedNotes === baseline.notes.trim()) return "noop";
     const revisionAtStart = latest?.updatedAt;
-    await mutate("patch", taskPath(taskId), {
+    const saved = await mutate("patch", taskPath(taskId), {
       action: "update",
       expectedUpdatedAt: baseline.updatedAt,
       patch: {
@@ -257,7 +263,38 @@ export function TaskDetailScreen() {
       }
       refresh();
     });
+    return saved ? "saved" : "failed";
   }
+
+  // Leaving (header back, swipe, router.back) unmounts the editor before a blur
+  // save can run, and the unmounted scope drops it. Save a typed title/note first.
+  // If that save fails the user stays with the draft and the error; leaving again
+  // with the same draft is not blocked, so an offline user is never trapped (0126).
+  const saveRef = useRef(save);
+  saveRef.current = save;
+  const draftRef = useRef("");
+  draftRef.current = JSON.stringify([title.trim(), notes.trim()]);
+  const unsavedRef = useRef(false);
+  unsavedRef.current = Boolean(detail && baseline && baseline.id === taskId && !staleDraft && !saving && title.trim() &&
+    !(baseline.notes && !notes.trim()) && (title.trim() !== baseline.title || notes.trim() !== baseline.notes.trim()));
+  const [allowLeaveDraft, setAllowLeaveDraft] = useState<string | null>(null);
+  const preventLeave = unsavedRef.current && allowLeaveDraft !== draftRef.current;
+  const pendingLeaveRef = useRef<Parameters<typeof navigation.dispatch>[0] | null>(null);
+  // usePreventRemove also stops the native swipe, so JS and native stacks stay in sync.
+  usePreventRemove(preventLeave, ({ data }) => {
+    const draft = draftRef.current;
+    void saveRef.current().then((result) => {
+      if (result !== "failed") pendingLeaveRef.current = data.action;
+      setAllowLeaveDraft(draft);
+    });
+  });
+  useEffect(() => {
+    if (!pendingLeaveRef.current || preventLeave) return;
+    const action = pendingLeaveRef.current;
+    pendingLeaveRef.current = null;
+    // Dispatch after usePreventRemove has committed preventRemove=false.
+    setTimeout(() => navigation.dispatch(action), 0);
+  });
 
   async function changeStatus() {
     if (!detail) return;

@@ -158,3 +158,24 @@ test("agentActionsToView localizes confirmation-based due labels", () => {
 
   assert.equal(view.actions[0]?.dueLabel, "等你确认");
 });
+
+// 0126 Simulator regression: GET /api/agent/actions (ledger compatibility queue)
+// returns every ledger entry. The Agent center showed completed and approved
+// entries as "待确认" with a confirm button ("4 条待确认") while All Actions said
+// "1 条等待确认". Payload captured from the local production build (QA data).
+const ledgerQueuePayload = {"actions":[{"actionId":"iorbit-qa-ledger:done-001","actionType":"dormant_activation","title":"整理会后名单 — 东京 AI 交流会","contactName":"田中美咲","organization":"东京 AI 交流会","priority":"low","recommendedAction":"创建「整理东京 AI 交流会的会后名单」任务。","reason":"活动结束后 48 小时内整理名单的回复率最高。","dueLabel":"completed","confirmationRequired":false},{"actionId":"iorbit-qa-ledger:later-001","actionType":"event_reminder","title":"设置回访提醒 — 伊藤香織","contactName":"伊藤香織","organization":"横滨餐饮","priority":"medium","recommendedAction":"在下个月初提醒你回访伊藤香織，避免关系进入沉默期。","reason":"这条关系已经四周没有新的互动记录。","dueLabel":"deferred","confirmationRequired":true},{"actionId":"iorbit-qa-ledger:today-001","actionType":"message_draft_suggestion","title":"准备回信草稿 — 高橋智子","contactName":"高橋智子","organization":"青叶餐饮","priority":"low","recommendedAction":"保存给高橋智子的回信草稿，落点是她提过的门店选址问题。","reason":"对方的上一封邮件已经等了两天回复。","dueLabel":"approved","confirmationRequired":false},{"actionId":"iorbit-qa-ledger:decide-001","actionType":"dormant_activation","title":"建立跟进任务 — 佐藤健一","contactName":"佐藤健一","organization":"北星餐饮","priority":"high","recommendedAction":"创建「与佐藤健一确认下一步」跟进任务，含上次会面的三条结论。","reason":"上次会面后的跟进窗口还剩三天。","dueLabel":"Awaiting confirmation","confirmationRequired":true}]};
+
+test("the Agent center lists only actions that still need a decision", () => {
+  const view = agentActionsToView({ actionsPayload: ledgerQueuePayload });
+  assert.deepEqual(view.actions.map((action) => action.title), ["设置回访提醒 — 伊藤香織", "建立跟进任务 — 佐藤健一"]);
+  assert.ok(view.actions.every((action) => action.confirmationLabel === "需要你确认"));
+  assert.equal(view.metrics[0], "2 条待确认");
+  assert.match(view.summary, /^2 条建议需要你复核/);
+});
+
+test("a queue with only finished actions shows the empty Agent center", () => {
+  const finished = { actions: ledgerQueuePayload.actions.filter((action: { confirmationRequired: boolean }) => !action.confirmationRequired) };
+  const view = agentActionsToView({ actionsPayload: finished });
+  assert.equal(view.actions.length, 0);
+  assert.equal(view.metrics[0], "0 条待确认");
+});

@@ -103,6 +103,8 @@ export const useLocalSearchParams = () => ({
 export const useIsFocused = () => true;
 export const usePathname = () => "/" + screen;
 export const useRouter = () => ({ canGoBack: () => true, back() { state.navigation.push("back"); }, push(path) { state.navigation.push(path); }, replace(path) { state.navigation.push(path); } });
+export const useNavigation = () => ({ addListener: () => () => {}, dispatch() {} });
+export const usePreventRemove = () => {};
 export const useOrbitApiBaseUrl = () => ({ ready: true, baseUrl: "https://orbit.test" });
 export const useOrbitAuthSession = () => ({ ready: true, signedIn: true, accountId: "reader", actorId: "reader", user: { id: "reader", name: "林悦", email: "reader@example.test" }, cookieHeader: "" });
 export const useRelationshipInboxBadgeCount = () => 0;
@@ -127,7 +129,7 @@ test.before(async () => {
     // RN Web hardcodes fontScale=1. Replace this native dimension value only;
     // the real native-web elements, press handlers and layout stay intact.
     plugin.onLoad({ filter: /.*/, namespace: "workspace-native" }, () => ({ contents: `export * from ${JSON.stringify(require.resolve("react-native-web"))}; import { useWindowDimensions as realDimensions } from ${JSON.stringify(require.resolve("react-native-web"))}; import { useSyncExternalStore } from "react"; export function useWindowDimensions() { const dimensions = realDimensions(); const fontScale = useSyncExternalStore(listener => { window.addEventListener("workspace-fontscale", listener); return () => window.removeEventListener("workspace-fontscale", listener); }, () => window.fixture?.fontScale || 1); return { ...dimensions, fontScale }; }`, loader: "js", resolveDir: process.cwd() }));
-    plugin.onResolve({ filter: /^(expo-router|@expo\/vector-icons|react-native-safe-area-context|expo-crypto)$|\/(useApiResource|useOrbitApiClient|ApiBaseUrlProvider|AuthSessionProvider|useRelationshipInboxBadgeCount|native-notifications|useWebMirrorStatus|useSyncedCollection)$/ }, () => ({ path: "fixture", namespace: "workspace-test" }));
+    plugin.onResolve({ filter: /^(expo-router|expo-router\/react-navigation|@expo\/vector-icons|react-native-safe-area-context|expo-crypto)$|\/(useApiResource|useOrbitApiClient|ApiBaseUrlProvider|AuthSessionProvider|useRelationshipInboxBadgeCount|native-notifications|useWebMirrorStatus|useSyncedCollection)$/ }, () => ({ path: "fixture", namespace: "workspace-test" }));
     plugin.onLoad({ filter: /.*/, namespace: "workspace-test" }, () => ({ contents: fixture, loader: "jsx", resolveDir: process.cwd() }));
   } }] });
   server = createServer((_request, response) => { response.setHeader("content-type", "text/html; charset=utf-8"); response.end(`<style>html,body,#root{margin:0;height:100%}</style><div id="root"></div><script>${result.outputFiles[0]!.text}</script>`); });

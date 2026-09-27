@@ -25,6 +25,17 @@ const state = window.fixture = {
 };
 export const useLocalSearchParams = () => { rerender(); return { id: state.task.id }; };
 export const useRouter = () => ({ replace(path) { state.navigation.push(path); }, push(path) { state.navigation.push(path); } });
+// Navigation boundary for leaving the screen (header back, swipe, router.back): 0126.
+// Mirrors react-navigation: while prevented, leaving calls the callback instead.
+state.dispatched = []; state.preventRemove = { prevent: false, callback: null };
+export const useNavigation = () => ({ addListener: () => () => {}, dispatch(action) { state.dispatched.push(action); } });
+export const usePreventRemove = (prevent, callback) => { state.preventRemove = { prevent, callback }; };
+state.leave = () => {
+  const action = { type: "GO_BACK" };
+  if (state.preventRemove.prevent) { state.preventRemove.callback({ data: { action } }); return true; }
+  state.dispatched.push(action);
+  return false;
+};
 export const useApiResource = (path) => {
   rerender();
   return { kind: "success", data: path.endsWith("/activities") ? { activities: [] } : path.startsWith("/api/reminders") ? { reminders: state.reminders } : { task: state.task }, refreshing: false, refresh() { state.refreshes++; emit(); } };
@@ -84,7 +95,7 @@ test.before(async () => {
             });`,
           loader: "jsx", resolveDir: process.cwd(),
         }));
-        plugin.onResolve({ filter: /^(expo-router|expo-crypto|@expo\/vector-icons|react-native-safe-area-context)$|\/(useApiResource|useOrbitApiClient|AuthSessionProvider|ApiBaseUrlProvider|native-notifications|AppScreen|ErrorState|LoadingState)$|\/design\/theme$/ }, () => ({ path: "fixture", namespace: "task-test" }));
+        plugin.onResolve({ filter: /^(expo-router|expo-router\/react-navigation|expo-crypto|@expo\/vector-icons|react-native-safe-area-context)$|\/(useApiResource|useOrbitApiClient|AuthSessionProvider|ApiBaseUrlProvider|native-notifications|AppScreen|ErrorState|LoadingState)$|\/design\/theme$/ }, () => ({ path: "fixture", namespace: "task-test" }));
         plugin.onLoad({ filter: /.*/, namespace: "task-test" }, () => ({ contents: fixture, loader: "jsx", resolveDir: process.cwd() }));
       },
     }],
@@ -362,3 +373,49 @@ for (const operation of ["complete", "reopen", "delete", "reminder", "cancel"]) 
     assert.equal(snapshot.refreshes, operation === "delete" ? 0 : ["reminder", "cancel"].includes(operation) ? 1 : 3);
   });
 }
+
+// 0126 Simulator regression: typing a note and tapping Back unmounted the screen
+// before the blur save ran, so the note was silently lost.
+test("leaving with an unsaved note saves it first, then leaves", async (t) => {
+  const page = await openScreen(t);
+  await page.getByRole("textbox", { name: "备注", exact: true }).fill("Typed right before leaving");
+  assert.equal(await page.evaluate(() => (window as any).fixture.leave()), true, "leaving waits for the save");
+  await page.waitForFunction(() => (window as any).fixture.dispatched.length === 1);
+  const requests = await page.evaluate(() => (window as any).fixture.requests);
+  assert.equal(requests.length, 1);
+  assert.equal(requests[0].method, "PATCH");
+  assert.equal(requests[0].body.patch.notes, "Typed right before leaving");
+  assert.equal(requests[0].body.expectedUpdatedAt, "2026-09-07T00:00:00.000Z");
+});
+
+test("a failed save on leaving keeps the user on the task with the draft and a visible error", async (t) => {
+  const page = await openScreen(t);
+  await page.evaluate(() => { (window as any).fixture.failure = true; });
+  const notes = page.getByRole("textbox", { name: "备注", exact: true });
+  await notes.fill("Keep this draft");
+  await page.evaluate(() => (window as any).fixture.leave());
+  await page.getByText("连接暂时失败", { exact: true }).waitFor();
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.dispatched), []);
+  assert.equal(await notes.inputValue(), "Keep this draft");
+  await page.evaluate(() => { (window as any).fixture.failure = false; (window as any).fixture.leave(); });
+  await page.waitForFunction(() => (window as any).fixture.dispatched.length === 1);
+  assert.equal(await page.evaluate(() => (window as any).fixture.requests.at(-1).body.patch.notes), "Keep this draft");
+});
+
+test("after a failed save on leaving, leaving again with the same draft is not blocked", async (t) => {
+  const page = await openScreen(t);
+  await page.evaluate(() => { (window as any).fixture.failure = true; });
+  await page.getByRole("textbox", { name: "备注", exact: true }).fill("Offline draft");
+  await page.evaluate(() => (window as any).fixture.leave());
+  await page.getByText("连接暂时失败", { exact: true }).waitFor();
+  assert.equal(await page.evaluate(() => (window as any).fixture.leave()), false, "the user already saw the failure and can leave");
+  assert.equal(await page.evaluate(() => (window as any).fixture.requests.length), 1);
+  assert.equal(await page.evaluate(() => (window as any).fixture.dispatched.length), 1);
+});
+
+test("leaving a clean task does not write or wait", async (t) => {
+  const page = await openScreen(t);
+  assert.equal(await page.evaluate(() => (window as any).fixture.leave()), false);
+  assert.equal(await page.evaluate(() => (window as any).fixture.requests.length), 0);
+  assert.equal(await page.evaluate(() => (window as any).fixture.dispatched.length), 1);
+});
