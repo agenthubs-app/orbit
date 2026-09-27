@@ -33,10 +33,10 @@
 | 0110 普通问答不写运行记录 | 无迁移，部署即可 | 存量统计行和普通问答运行记录照常可读；删除交给 0111（先查行数、再备份）。0103 的 `db:migrate:agent-run-targets` 如果还没执行，仍需执行 |
 | 0111 AI 轨迹保留与清理 | ⓪ 只读确认 0103 回填已执行（REPORT 第 9 节的 SQL 应为 0，否则先 `db:migrate:agent-run-targets`）；① 只读统计（SQL，或 dry-run 的 `npm run db:cleanup:agent-trace-legacy`）；② **需用户确认**：`npm run db:cleanup:agent-trace-legacy -- --execute --confirm-remote=<host>/<db> --backup-dir=<外接盘目录>`，先导出完整备份再删；③ 再 dry-run，四项都应为 0；④ 部署后每日维护任务自动执行一年保留期 | 删除不可逆，备份含对话内容，须放在安全位置。0103 回填缺失时，清理命令拒绝执行，保留期任务返回 503 报警 |
 | 0112 AI 会话分页 | ① **部署前**手动执行 `create index concurrently if not exists orbit_records_agent_chat_message_order_idx …`（完整 SQL 见 REPORT 第 9 节），避免部署时的普通建索引短暂阻塞写入；② 确认生产有至少 32 字节的 `ORBIT_READ_CURSOR_SECRET`（或 `AUTH_SECRET`）；③ 部署 | 不需要回填；旧会话第一次追加时自动补 `nextMessageIndex`。旧网页标签页上传整会话时，服务器按编号合并，不会截断。长会话里中间的旧消息，侧栏搜索搜不到了 |
+| 0113 同步地基 | ① 只读检查：`db:migrate:sync-revision -- --check`（新增 `ownerGuardInstalled`），查 5 张活动表的行数和有没有 `sync_revision`；② **先部署**代码；③ `npm run db:migrate:sync-revision`（装主人守卫）；④ `npm run db:migrate:live`（活动表加列、回填、严格触发器，在一个事务里完成）；⑤ `--check` 确认守卫已装、活动表没有空编号；⑥ 冒烟：报名、取消、主办方配置、审核、笔记、待办、日程 | **顺序不能反**：先迁移再部署会让活动写入报 `SYNC_WRITE_LOCK_REQUIRED`，旧 upsert 清主人时会被守卫拒绝。回滚：先执行 `EVENT_SYNC_REVISION_RELAX_SQL`，再删守卫触发器。上线后要观察：报名、审核、配置写入现在也和笔记、消息一起排队，注意 40001 重试和延迟 |
 
 ## 后续 Sprint 预告（合并后在上表补充具体命令）
 
 | Sprint | 预计的生产步骤 |
 |---|---|
-| 0113 | 活动专用表加 `sync_revision` 并回填；通用 upsert 行为改变（不再清空主人） |
 | 0114 | 补写主人：预演 → 导出备份 → 执行 → 再预演；**要在 0116 上线之前完成** |
