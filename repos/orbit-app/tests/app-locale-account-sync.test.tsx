@@ -18,7 +18,10 @@ const state = window.fixture = {
   locales: [{ languageCode: "en", languageTag: "en-US" }],
   ready: true,
   requests: [],
+  cachedLanguages: {},
+  languageWrites: [],
   signedIn: true,
+  ...window.initialFixture,
   update(patch) { Object.assign(state, patch); revision += 1; listeners.forEach(listener => listener()); },
   release(index, result) { state.requests[index].resolve(result); },
   foreground() { foregroundListeners.forEach(listener => listener("active")); }
@@ -32,6 +35,10 @@ export function useOrbitAuthSession() { useFixture(); return { accountId: state.
 export function useOrbitApiClient() { useFixture(); return state.client; }
 export function getLocales() { return state.locales; }
 export const Platform = { OS: "web" };
+export const offlineIdentityStorage = {
+  async readLanguage(baseUrl, actorId) { const entry = state.cachedLanguages[baseUrl]; return entry && entry.actorId === actorId ? entry.preference : null; },
+  async writeLanguage(baseUrl, actorId, preference) { state.languageWrites.push({ baseUrl, actorId, preference }); state.cachedLanguages[baseUrl] = { actorId, preference }; }
+};
 export const AppState = { addEventListener(_name, listener) { foregroundListeners.add(listener); return { remove() { foregroundListeners.delete(listener); } }; } };
 state.client = {
   get(path, options) { return new Promise(resolve => state.requests.push({ kind: "get", path, options, resolve })); },
@@ -55,7 +62,7 @@ createRoot(document.getElementById("root")).render(<OrbitLocaleProvider><Probe /
     plugins: [{
       name: "locale-provider-fixture",
       setup(plugin) {
-        plugin.onResolve({ filter: /^fixture$|^expo-localization$|^react-native$|\/(ApiBaseUrlProvider|AuthSessionProvider|useOrbitApiClient)$/ }, () => ({ path: "fixture", namespace: "locale" }));
+        plugin.onResolve({ filter: /^fixture$|^expo-localization$|^react-native$|\/(ApiBaseUrlProvider|AuthSessionProvider|useOrbitApiClient|offline-identity-storage)$/ }, () => ({ path: "fixture", namespace: "locale" }));
         plugin.onLoad({ filter: /.*/, namespace: "locale" }, () => ({ contents: fixture, loader: "jsx", resolveDir: process.cwd() }));
       },
     }],
@@ -67,13 +74,14 @@ createRoot(document.getElementById("root")).render(<OrbitLocaleProvider><Probe /
 
 test.after(async () => browser?.close());
 
-async function open(t: { after(fn: () => Promise<void>): void }): Promise<Page> {
+async function open(t: { after(fn: () => Promise<void>): void }, initial: Record<string, unknown> = {}): Promise<Page> {
   const page = await browser.newPage();
   page.setDefaultTimeout(1_800);
   const errors: string[] = [];
   page.on("pageerror", error => errors.push(error.message));
   t.after(async () => { await page.close(); assert.deepEqual(errors, []); });
   await page.setContent('<div id="root"></div>');
+  await page.evaluate(value => { (window as any).initialFixture = value; }, initial);
   await page.addScriptTag({ content: script });
   await page.waitForFunction(() => (window as any).fixture.requests.length === 1);
   return page;
@@ -305,4 +313,37 @@ test("a version conflict refreshes server truth and retries the latest choice", 
   });
   await page.waitForFunction(() => (window as any).fixture.locale?.source === "account");
   assert.equal((await locale(page)).language, "ja");
+});
+
+test("offline: the account's last known language is kept instead of falling back to the device language (0127)", async t => {
+  const manualEn = { mode: "manual", language: "en", updatedAt: "2026-09-20T00:00:00.000Z" };
+  const page = await open(t, {
+    locales: [{ languageCode: "zh", languageTag: "zh-CN" }],
+    cachedLanguages: { "https://orbit.example": { actorId: "actor:one", preference: manualEn } },
+  });
+  await page.waitForFunction(() => (window as any).fixture.locale?.language === "en");
+  // The server cannot be reached: the read fails and nothing overrides the cached choice.
+  await page.evaluate(() => (window as any).fixture.release(0, { success: false, status: 0, error: { code: "ORBIT_APP_NETWORK_ERROR", message: "offline" } }));
+  await page.waitForFunction(() => (window as any).fixture.locale?.syncState === "error");
+  assert.equal(await page.evaluate(() => (window as any).fixture.locale.language), "en");
+  assert.equal(await page.evaluate(() => (window as any).fixture.locale.choice), "en");
+});
+
+test("a cached language never leaks to another account, and server answers refresh the cache", async t => {
+  const manualJa = { mode: "manual", language: "ja", updatedAt: "2026-09-20T00:00:00.000Z" };
+  const page = await open(t, {
+    actorId: "actor:two",
+    locales: [{ languageCode: "zh", languageTag: "zh-CN" }],
+    cachedLanguages: { "https://orbit.example": { actorId: "actor:one", preference: manualJa } },
+  });
+  await page.evaluate(() => (window as any).fixture.release(0, { success: false, status: 0, error: { code: "ORBIT_APP_NETWORK_ERROR", message: "offline" } }));
+  await page.waitForFunction(() => (window as any).fixture.locale?.syncState === "error");
+  assert.equal(await page.evaluate(() => (window as any).fixture.locale.language), "zh", "actor:two has no cache: device language");
+  await page.evaluate(() => (window as any).fixture.foreground());
+  await page.waitForFunction(() => (window as any).fixture.requests.length === 2);
+  await page.evaluate(() => (window as any).fixture.release(1, { success: true, status: 200, data: { mode: "manual", language: "en", updatedAt: "2026-09-27T00:00:00.000Z" } }));
+  await page.waitForFunction(() => (window as any).fixture.locale?.language === "en");
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.languageWrites), [{
+    baseUrl: "https://orbit.example", actorId: "actor:two", preference: { mode: "manual", language: "en", updatedAt: "2026-09-27T00:00:00.000Z" },
+  }]);
 });

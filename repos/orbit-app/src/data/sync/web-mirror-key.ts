@@ -77,3 +77,17 @@ export async function persistPendingWebMirrorCleanup(digest: string, deps: WebMi
 export async function clearPendingWebMirrorCleanup(deps: WebMirrorKeyDependencies): Promise<void> {
   await withStore(deps, "readwrite", (store) => store.delete(PENDING_CLEANUP));
 }
+
+/** Small text values that share the key store's protection (offline identity, 0127). */
+export async function readWebKeyStoreText(name: string, deps: Pick<WebMirrorKeyDependencies, "indexedDB">): Promise<string | null> {
+  const value = await withStore<unknown>(deps as WebMirrorKeyDependencies, "readonly", (store) => store.get(name));
+  return typeof value === "string" ? value : null;
+}
+
+export async function writeWebKeyStoreText(name: string, value: string, deps: Pick<WebMirrorKeyDependencies, "indexedDB">): Promise<void> {
+  await withStore(deps as WebMirrorKeyDependencies, "readwrite", (store) => store.put(value, name));
+}
+
+export async function deleteWebKeyStoreText(name: string, deps: Pick<WebMirrorKeyDependencies, "indexedDB">): Promise<void> {
+  await withStore(deps as WebMirrorKeyDependencies, "readwrite", (store) => store.delete(name));
+}

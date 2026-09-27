@@ -57,3 +57,28 @@
 
 - expo-sqlite web 以 `new Worker(new URL("./worker", location.href))` 启动 Worker，请求路径随当前路由变化。`scripts/build-web-sqlite-worker.mjs` 预构建 `public/worker.js` 与 `public/wa-sqlite-<hash>.wasm`（由 `npm run web:export` 自动执行）；`phoneweb-server.cjs` 把任何以 `worker` 结尾的路径映射到 `/worker.js`，并以 `application/wasm` 提供 wasm。
 - 局域网 IP 访问是非 secure context：这是浏览器规则，不是缺陷。要在手机上验证落盘，需 HTTPS（例如 zrok 隧道）或桌面 `localhost`。
+
+## 6. 离线冷启动身份（Sprint 0127）
+
+用户 2026-09-27 决定：断网时冷启动，信任上次联网验证过的身份，最长 30 天。
+
+| 项 | 原生 | 浏览器 |
+| --- | --- | --- |
+| 存什么 | `{baseUrl, accountId, user{id,email,name}, validatedAt}`；不含 Cookie | 同左 |
+| 存在哪 | SecureStore `orbit.offlineIdentity.<baseUrl>`，`AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY`，与会话 Cookie 同级 | IndexedDB `orbit-sync-keys`（与镜像密钥同库）；只在本地镜像可用（secure context 等）时写入，否则离线冷启动保持关闭 |
+| 何时写 | 登录成功、联网冷启动校验成功、断网恢复后复核成功、在线时回前台且距上次校验超过 12 小时 | 同左 |
+| 何时删 | 退出登录（第一步）、服务端明确拒绝（401/403 或 Auth.js 会话为空：停用、改密、撤销） | 同左 |
+
+判定规则（`src/api/offline-identity.ts`）：
+
+- **拒绝**：`/api/auth/session` 返回 401/403，或 2xx 的 JSON 里没有 user；`/api/account/me` 返回 401/403。清掉身份记录，再用换账号的清理路径（打开该账号作用域后 `setScope(null)`，带崩溃恢复标记）删除本地库和密钥，最后删 Cookie。
+- **不可达**：网络错误、超时、5xx、404、2xx 但不是 JSON（例如强制门户页）。距 `validatedAt` 不超过 30 天就用缓存身份进入并打开该账号的本地库；超过 30 天或没有记录则进登录页，不删任何数据。
+- 进入离线后每 10 秒、以及每次回到前台复核一次；联网后服务端拒绝则清空并退回登录页；仍不可达且已满 30 天则回登录页，不删数据。
+- 界面语言：服务端确认过的语言偏好随身份一起存（同一存储、同一清除时机），离线时用它而不是设备语言。
+
+已知限制：
+
+- 设备时钟被往回拨可以延长 30 天窗口；本地没有可信时间源。
+- 服务端校验用户状态时若数据库故障，Auth.js 也会返回空会话，客户端会按「拒绝」清空本地数据（数据在服务端仍在，重新登录后重新拉取）。
+- 升级前已登录、升级后从未联网校验过的设备没有记录，第一次断网冷启动仍进登录页。
+- 离线可读的内容还受服务端下发的离线读取租约约束（≤7 天）；租约过期后身份仍被信任，但本地数据会显示为锁定。
