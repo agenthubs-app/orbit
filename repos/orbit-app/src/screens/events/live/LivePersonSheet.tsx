@@ -57,7 +57,7 @@ export function LivePersonSheet({ eventId, participantId, workspace, venue, now,
 
   return <Modal animationType="slide" transparent visible onRequestClose={close}>
     <View style={styles.root}>
-      <Pressable accessible={false} style={styles.scrim} onPress={close} />
+      <Pressable accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" testID="live-person-scrim" style={styles.scrim} onPress={close} />
       <View style={styles.sheet} accessibilityViewIsModal>
         <View style={styles.handle} />
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.body}>
