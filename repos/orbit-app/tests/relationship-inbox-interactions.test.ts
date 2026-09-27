@@ -260,7 +260,7 @@ for (const kind of ["loading", "offline", "failure"]) {
   });
 }
 
-test("a real reply waits for explicit send and privacy controls do not crowd message reading", async t => {
+test("a real reply waits for explicit send and the retired privacy panel is gone", async t => {
   const page = await openScreen(t);
   await page.evaluate(() => (window as any).openDetail());
   const reply = page.getByRole("textbox", { name: "回复正文", exact: true });
@@ -272,8 +272,9 @@ test("a real reply waits for explicit send and privacy controls do not crowd mes
   assert.equal(await page.getByRole("button", { name: "预览回复", exact: true }).count(), 0);
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);
   assert.equal(await reply.inputValue(), "周四见。");
-  await page.getByRole("button", { name: "隐私设置", exact: true }).click();
-  await page.getByText("隐私控制暂时不可用。", { exact: true }).waitFor();
+  // Sprint 0104: the privacy panel called the legacy chat store with new-system ids and always failed.
+  assert.equal(await page.getByRole("button", { name: "隐私设置", exact: true }).count(), 0);
+  assert.equal(await page.evaluate(() => ((window as any).fixture.reads ?? []).some((path: string) => path.startsWith("/api/chat/"))), false);
 });
 
 test("an empty-body server message fails closed instead of becoming inbox content", async t => {

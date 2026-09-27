@@ -27,10 +27,10 @@ import type { ApiResult } from "../../api/types";
 import {
   ORBIT_API_ENDPOINTS,
   agentSignalPath,
-  chatPrivacyControlsPath,
   notificationDeliveryPath,
   relationshipCommunicationConversationPath,
-  relationshipCommunicationReadPath
+  relationshipCommunicationReadPath,
+  relationshipReplyDraftPath
 } from "../../api/endpoints";
 import {
   MESSAGE_STATE_FOREGROUND_REFRESH_MS,
@@ -39,7 +39,7 @@ import {
   subscribeMessageStateInvalidation,
 } from "../../api/message-state";
 import { DataCard } from "../../components/DataCard";
-import { buildRelationshipMessageDeliveryRequest, relationshipDeliveryReceiptMatches } from "../../api/contact-communication";
+import { buildRelationshipMessageDeliveryRequest, decodeRelationshipReplyDraft, relationshipDeliveryReceiptMatches } from "../../api/contact-communication";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
@@ -54,15 +54,12 @@ import { runInboxReadBatch } from "../../view-models/inbox-read-batch";
 import { decodeConversationSummaryPage, conversationSummaryView, conversationSummaryReadItems, decodeRelationshipMessagePage, relationshipMessagePageView } from "../../view-models/relationship-pages";
 import { relationshipUnreadSummarySchema } from "../../api/schema/relationship-unread-summary";
 import {
-  buildRelationshipPrivacyToggleRequest,
   buildRelationshipThreadDraftRequest,
   createdRelationshipThreadToView,
   relationshipConversationIdForContact,
   relationshipInboxErrorText,
-  relationshipPrivacyControlsToView,
   type RelationshipCreatedThreadView,
   type RelationshipConversationView,
-  type RelationshipPrivacyControlsView,
   type RelationshipThreadDetailView
 } from "../../view-models/relationship-inbox";
 import { inboxPolishTemplate, registerAiTemplatePrefill } from "../../data/ai-template-prefill";
@@ -77,6 +74,7 @@ import {
 type InboxSection = "alerts" | "threads";
 type ClientGet = (endpoint: string, options?: { signal?: AbortSignal }) => Promise<ApiResult<unknown>>;
 type ClientPost = (endpoint: string, body: unknown) => Promise<ApiResult<unknown>>;
+type ClientPut = (endpoint: string, body: unknown) => Promise<ApiResult<unknown>>;
 type ClientPatch = (endpoint: string, body: unknown, options?: { signal?: AbortSignal }) => Promise<{
   data?: unknown;
   error?: { message: string };
@@ -125,7 +123,7 @@ export function useInboxRequests(scopeKey: string) {
     return () => scope.controller.abort();
   }, [scope]);
   const isCurrent = useCallback(() => latest.current === scope && scope.ready && !scope.controller.signal.aborted, [scope]);
-  const request = useCallback(async (method: "get" | "post" | "patch", endpoint: string, body?: unknown, signal?: AbortSignal): ReturnType<ClientGet> => {
+  const request = useCallback(async (method: "get" | "post" | "patch" | "put", endpoint: string, body?: unknown, signal?: AbortSignal): ReturnType<ClientGet> => {
     const inactive: ApiResult<unknown> = { success: false, status: 0, meta: { featureMode: null, privacy: null, runtimeBoundary: null }, error: { code: "ORBIT_APP_INACTIVE_REQUEST", message: locale.t("inbox.requestInactive") } };
     if (!isCurrent() || signal?.aborted) return inactive;
     const controller = new AbortController();
@@ -152,7 +150,8 @@ export function useInboxRequests(scopeKey: string) {
   const clientGet = useCallback((endpoint: string, options?: { signal?: AbortSignal }) => request("get", endpoint, undefined, options?.signal), [request]);
   const clientPost = useCallback((endpoint: string, body: unknown) => request("post", endpoint, body), [request]);
   const clientPatch = useCallback((endpoint: string, body: unknown, options?: { signal?: AbortSignal }) => request("patch", endpoint, body, options?.signal), [request]);
-  return { clientGet, clientPost, clientPatch, isCurrent };
+  const clientPut = useCallback((endpoint: string, body: unknown) => request("put", endpoint, body), [request]);
+  return { clientGet, clientPost, clientPatch, clientPut, isCurrent };
 }
 
 // Inbox permissions/content must be confirmed by this foreground lifetime.
@@ -549,7 +548,7 @@ export function RelationshipInboxThreadScreen() {
 function ScopedRelationshipInboxThreadScreen({ actorId, conversationId, scopeKey }: { actorId: string; conversationId: string; scopeKey: string }) {
   const locale = useOrbitLocale();
   const { colors } = useOrbitTheme();
-  const { clientGet, clientPost, isCurrent } = useInboxRequests(scopeKey);
+  const { clientGet, clientPost, clientPut, isCurrent } = useInboxRequests(scopeKey);
   const [historyCursor, setHistoryCursor] = useState<string | null>(null);
   const summaryState = useInboxResource(`/api/relationship-communication/conversation-summaries?conversationId=${encodeURIComponent(conversationId)}&limit=1`, () => false,
     clientGet, isCurrent, { isValid: data => {
@@ -649,6 +648,7 @@ function ScopedRelationshipInboxThreadScreen({ actorId, conversationId, scopeKey
         <ThreadDetail
           clientGet={clientGet}
           clientPost={clientPost}
+          clientPut={clientPut}
           contactId={retainedContactId.current}
           isCurrent={isContentCurrent}
           detail={retainedDetail.current}
@@ -1066,6 +1066,7 @@ function ConversationList({
 function ThreadDetail({
   clientGet,
   clientPost,
+  clientPut,
   contactId,
   isCurrent,
   detail,
@@ -1074,6 +1075,7 @@ function ThreadDetail({
 }: {
   clientGet: ClientGet;
   clientPost: ClientPost;
+  clientPut?: ClientPut | undefined;
   contactId?: string;
   isCurrent: () => boolean;
   detail: RelationshipThreadDetailView;
@@ -1082,7 +1084,6 @@ function ThreadDetail({
 }) {
   const locale = useOrbitLocale();
   const { styles } = useStyles();
-  const [showPrivacy, setShowPrivacy] = useState(false);
   const [showEmptyRecords, setShowEmptyRecords] = useState(false);
   const emptyCount = detail.messages.filter(message => message.body === "暂无消息正文").length;
   const visibleMessages = showEmptyRecords
@@ -1123,173 +1124,24 @@ function ThreadDetail({
         <Text style={styles.safetyText}>{locale.t("inbox.previewOnly")}</Text>
       ) : (
         <>
-          <ReplyComposer contactId={contactId ?? ""} isCurrent={isCurrent} detail={detail} clientPost={clientPost} delivery={delivery} />
-          <Pressable accessibilityRole="button" accessibilityLabel={locale.t("inbox.privacy")} accessibilityState={{ expanded: showPrivacy }} onPress={() => setShowPrivacy(value => !value)} style={styles.privacyDisclosure}>
-            <Text style={styles.threadPreview}>{locale.t(showPrivacy ? "inbox.collapsePrivacy" : "inbox.privacy")}</Text>
-          </Pressable>
-          {showPrivacy ? <PrivacyControlsPanel clientGet={clientGet} clientPost={clientPost} isCurrent={isCurrent} detail={detail} /> : null}
+          <ReplyComposer clientGet={clientGet} clientPost={clientPost} clientPut={clientPut} contactId={contactId ?? ""} isCurrent={isCurrent} detail={detail} delivery={delivery} />
         </>
       )}
     </View>
   );
 }
 
-function PrivacyControlsPanel({
-  clientGet,
-  clientPost,
-  isCurrent,
-  detail
-}: {
-  clientGet: ClientGet;
-  clientPost: ClientPost;
-  isCurrent: () => boolean;
-  detail: RelationshipThreadDetailView;
-}) {
-  const locale = useOrbitLocale();
-  const { styles } = useStyles();
-  const [privacy, setPrivacy] = useState<RelationshipPrivacyControlsView | null>(
-    null
-  );
-  const [privacyError, setPrivacyError] = useState<string | null>(null);
-  const [privacyLoading, setPrivacyLoading] = useState(false);
-  const [privacyToggling, setPrivacyToggling] = useState(false);
-
-  async function loadPrivacyControls() {
-    if (!isCurrent()) return;
-    setPrivacyLoading(true);
-    setPrivacyError(null);
-
-    try {
-      const result = await clientGet(chatPrivacyControlsPath(detail.conversationId));
-      if (!isCurrent()) return;
-
-      if (result.success) {
-        setPrivacy(relationshipPrivacyControlsToView(result.data, locale.language));
-      } else {
-        setPrivacyError(
-          relationshipInboxErrorText(
-            result.error?.message,
-            locale.t("inbox.privacyUnavailable"),
-            locale.language
-          )
-        );
-      }
-    } catch (requestError) {
-      if (!isCurrent()) return;
-      setPrivacyError(
-        relationshipInboxErrorText(requestError, locale.t("inbox.privacyUnavailable"), locale.language)
-      );
-    } finally {
-      if (isCurrent()) setPrivacyLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    setPrivacy(null);
-    setPrivacyToggling(false);
-    setPrivacyLoading(false);
-    void loadPrivacyControls();
-  }, [detail.conversationId, isCurrent]);
-
-  async function toggleAnalysis() {
-    if (!privacy || !isCurrent()) {
-      return;
-    }
-
-    const request = buildRelationshipPrivacyToggleRequest({
-      conversationId: detail.conversationId,
-      enabled: privacy.nextEnabled
-    }, locale.language);
-
-    if (!request.success) {
-      setPrivacyError(request.error);
-      return;
-    }
-
-    setPrivacyToggling(true);
-    setPrivacyError(null);
-
-    try {
-      const result = await clientPost(request.request.endpoint, request.request.body);
-      if (!isCurrent()) return;
-
-      if (result.success) {
-        setPrivacy(relationshipPrivacyControlsToView(result.data, locale.language));
-      } else {
-        setPrivacyError(
-          relationshipInboxErrorText(
-            result.error?.message,
-            locale.t("inbox.privacyUpdateFailed"),
-            locale.language
-          )
-        );
-      }
-    } catch (requestError) {
-      if (!isCurrent()) return;
-      setPrivacyError(
-        relationshipInboxErrorText(requestError, locale.t("inbox.privacyUpdateFailed"), locale.language)
-      );
-    } finally {
-      if (isCurrent()) setPrivacyToggling(false);
-    }
-  }
-
-  if (!privacy) {
-    return (
-      <View style={styles.stagedBox}>
-        <Text style={styles.stagedTitle}>{locale.t("inbox.privacy")}</Text>
-        <Text style={styles.threadPreview}>
-          {locale.t(privacyLoading ? "inbox.privacyLoading" : "inbox.privacyUnavailable")}
-        </Text>
-        {privacyError ? <Text style={styles.errorText}>{privacyError}</Text> : null}
-        {!privacyLoading ? (
-          <ActionButton
-            icon="refresh-outline"
-            label={locale.t("common.retry")}
-            onPress={loadPrivacyControls}
-            variant="secondary"
-          />
-        ) : null}
-      </View>
-    );
-  }
-
-  return (
-    <View style={styles.privacyBox}>
-      <View style={styles.threadRowTop}>
-        <View>
-          <Text style={styles.stagedTitle}>{privacy.title}</Text>
-          <Text style={styles.threadPreview}>{privacy.summary}</Text>
-        </View>
-        <Text style={styles.sourceTag}>{privacy.sourceLabel}</Text>
-      </View>
-      <View style={styles.tagsRow}>
-        <Text style={styles.unreadTag}>{privacy.analysisLabel}</Text>
-        <Text style={styles.sourceTag}>{privacy.privateNotesLabel}</Text>
-        <Text style={styles.proactiveTag}>{privacy.shareLabel}</Text>
-      </View>
-      <Text style={styles.bodyText}>{privacy.analysisDetail}</Text>
-      <Text style={styles.threadPreview}>{privacy.deletionLabel}</Text>
-      <Text style={styles.safetyText}>{privacy.safetyText}</Text>
-      {privacyError ? <Text style={styles.errorText}>{privacyError}</Text> : null}
-      <ActionButton
-        disabled={privacyToggling}
-        icon="lock-closed-outline"
-        label={privacy.toggleLabel}
-        onPress={toggleAnalysis}
-        variant="secondary"
-      />
-    </View>
-  );
-}
-
 function ReplyComposer({
+  clientGet,
+  clientPut,
   contactId,
   isCurrent,
   detail,
   clientPost,
   delivery,
 }: {
+  clientGet: ClientGet;
+  clientPut?: ClientPut | undefined;
   contactId: string;
   isCurrent: () => boolean;
   detail: RelationshipThreadDetailView;
@@ -1307,6 +1159,7 @@ function ReplyComposer({
   const [staged, setStaged] = useState("");
   const [sending, setSending] = useState(false);
   const [sendFailed, setSendFailed] = useState(false);
+  const [draftStatus, setDraftStatus] = useState<"idle" | "saving" | "saved" | "failed">("idle");
   const attempt = useRef<{ body: string; requestId: string; qualificationVersion: string } | null>(null);
   const sendRequest = useRef<object | null>(null);
   useEffect(() => { sendRequest.current = null; setSending(false); }, [isCurrent]);
@@ -1325,9 +1178,38 @@ function ReplyComposer({
       if (!result.success || result.status < 200 || result.status >= 300 || !relationshipDeliveryReceiptMatches(result.data, { ...currentAttempt, conversationId: detail.conversationId, senderAccountId: delivery.actorId })) {
         setSendFailed(true); return;
       }
-      attempt.current = null; draftEdited.current = true; setBody(""); emitMessageStateInvalidation();
+      attempt.current = null; draftEdited.current = true; setBody(""); setDraftStatus("idle"); emitMessageStateInvalidation();
+      // The sent text is no longer a draft; clearing the saved copy is best-effort.
+      if (clientPut) void clientPut(relationshipReplyDraftPath(detail.conversationId), { body: "" }).catch(() => undefined);
     } catch { if (isCurrent() && sendRequest.current === request) setSendFailed(true); }
     finally { if (sendRequest.current === request) { sendRequest.current = null; setSending(false); } }
+  }
+
+  // Verified conversations keep the participant's own reply draft on the server
+  // (Sprint 0104); it is loaded once per conversation unless the user is typing.
+  useEffect(() => {
+    if (!delivery || !isCurrent()) return;
+    let current = true;
+    void clientGet(relationshipReplyDraftPath(detail.conversationId)).then(result => {
+      if (!current || !isCurrent() || draftEdited.current || !result.success) return;
+      const draft = decodeRelationshipReplyDraft(result.data, detail.conversationId);
+      if (draft?.body) setBody(draft.body);
+    }).catch(() => {});
+    return () => { current = false; };
+  }, [delivery?.actorId, detail.conversationId, isCurrent]);
+
+  async function saveDraft() {
+    if (!delivery || !clientPut || !isCurrent()) return;
+    const saving = body;
+    setDraftStatus("saving");
+    try {
+      const result = await clientPut(relationshipReplyDraftPath(detail.conversationId), { body: saving });
+      if (!isCurrent()) return;
+      const saved = result.success ? decodeRelationshipReplyDraft(result.data, detail.conversationId) : null;
+      setDraftStatus(saved && saved.body === saving ? "saved" : "failed");
+    } catch {
+      if (isCurrent()) setDraftStatus("failed");
+    }
   }
 
   useEffect(() => {
@@ -1377,6 +1259,7 @@ function ReplyComposer({
         multiline
         onChangeText={(value) => {
           draftEdited.current = true;
+          setDraftStatus("idle");
           setBody(value);
         }}
         placeholder={locale.t("inbox.replyPlaceholder")}
@@ -1386,6 +1269,8 @@ function ReplyComposer({
       />
       {rewriteError ? <Text style={styles.errorText}>{rewriteError}</Text> : null}
       {sendFailed ? <Text accessibilityRole="alert" style={styles.errorText}>{locale.t("inbox.sendUnconfirmed")}</Text> : null}
+      {draftStatus === "saved" ? <Text accessibilityRole="text" style={styles.safetyText}>{locale.t("inbox.draftSaved")}</Text> : null}
+      {draftStatus === "failed" ? <Text accessibilityRole="alert" style={styles.errorText}>{locale.t("inbox.draftSaveFailed")}</Text> : null}
       <Text style={styles.safetyText}>{delivery ? locale.t("inbox.verifiedSafety") : detail.safetyText}</Text>
       <View style={styles.buttonRow}>
         <ActionButton
@@ -1395,6 +1280,15 @@ function ReplyComposer({
           onPress={rewriteDraft}
           variant="secondary"
         />
+        {delivery && clientPut ? (
+          <ActionButton
+            disabled={sending || !!attempt.current || draftStatus === "saving"}
+            icon="save-outline"
+            label={locale.t(draftStatus === "saving" ? "inbox.savingDraft" : "inbox.saveDraft")}
+            onPress={saveDraft}
+            variant="secondary"
+          />
+        ) : null}
         <ActionButton
           disabled={sending || (!body.trim() && !attempt.current)}
           icon="mail-unread-outline"
@@ -1841,14 +1735,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     overflow: "hidden",
     paddingHorizontal: 8,
     paddingVertical: 4
-  },
-  privacyBox: {
-    backgroundColor: colors.surface2,
-    borderColor: colors.border,
-    borderRadius: radius.card,
-    borderWidth: 1,
-    gap: spacing.md,
-    padding: spacing.md
   },
   rewriteBox: {
     backgroundColor: colors.accentSofter,

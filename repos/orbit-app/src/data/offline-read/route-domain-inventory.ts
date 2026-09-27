@@ -29,8 +29,7 @@ function domainFor(path: string): string {
   if (path.startsWith('/api/relationship-communication/invitations') || path.startsWith('/api/contact-invitations')) return 'connections';
   if (path.startsWith('/api/relationship-communication/conversations') && path.endsWith('/read')) return 'message-read-state';
   if (path.startsWith('/api/relationship-communication/conversations') && path.endsWith('/messages')) return 'messages';
-  if (path.startsWith('/api/relationship-communication') || path.startsWith('/api/chat/conversations')) return 'conversations';
-  if (path.startsWith('/api/chat/privacy')) return 'chat-privacy';
+  if (path.startsWith('/api/relationship-communication')) return 'conversations';
   if (path.startsWith('/api/chat/')) return 'conversations';
   if (path.startsWith('/api/inbox/delivery/')) return 'notification-delivery';
   if (path.startsWith('/api/inbox/discovery/')) return 'notification-discovery';
@@ -84,6 +83,8 @@ function surfaceFrom([consumerFile, method, endpointTemplate]: SurfaceKey): Read
       '/api/relationship-tasks/page','/api/tasks/page','/api/task-suggestions/page','/api/tasks/note-page',
       '/api/contacts/pipeline',
       '/api/relationship-communication/conversation-summaries','/api/relationship-communication/conversations/:id/messages',
+      // A private reply draft must disappear with the binding; never cache it (Sprint 0104).
+      '/api/relationship-communication/conversations/:id/draft',
     ].includes(endpointTemplate) || [
       'src/api/inbox-badge-resource.ts','src/api/inbox-summary.ts',
     ].includes(consumerFile)));
@@ -162,19 +163,18 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/screens/ai/AiScreen.tsx","GET","/api/ai/conversations/sessions"],
   ["src/screens/ai/AiScreen.tsx","DELETE","/api/ai/conversations/sessions/:id"],
   ["src/screens/ai/AiScreen.tsx","GET","/api/today"],
-  ["src/screens/chat/RelationshipChatDetailScreen.tsx","GET","/api/chat/conversations/:id/extractions"],
   ["src/screens/chat/RelationshipChatDetailScreen.tsx","GET","/api/relationship-communication/conversations/:id/messages"],
   ["src/screens/chat/RelationshipChatDetailScreen.tsx","POST","/api/relationship-communication/conversations/:id/messages"],
   ["src/screens/chat/RelationshipChatScreen.tsx","GET","/api/relationship-communication/conversation-summaries"],
   ["src/screens/inbox/NotificationDetailScreen.tsx","GET","/api/inbox/notifications/:id"],
   ["src/screens/inbox/NotificationDetailScreen.tsx","POST","/api/inbox/notifications/:id/actions"],
-  ["src/screens/inbox/RelationshipInboxScreen.tsx","GET","/api/chat/privacy"],
   ["src/screens/inbox/RelationshipInboxScreen.tsx","GET","/api/notifications/deliveries/:id"],
   ["src/screens/inbox/RelationshipInboxScreen.tsx","GET","/api/relationship-communication/conversation-summaries"],
   ["src/screens/inbox/RelationshipInboxScreen.tsx","GET","/api/relationship-communication/conversations/:id/messages"],
   ["src/screens/inbox/RelationshipInboxScreen.tsx","GET","/api/relationship-communication/unread-summary"],
+  ["src/screens/inbox/RelationshipInboxScreen.tsx","GET","/api/relationship-communication/conversations/:id/draft"],
+  ["src/screens/inbox/RelationshipInboxScreen.tsx","PUT","/api/relationship-communication/conversations/:id/draft"],
   ["src/screens/inbox/RelationshipInboxScreen.tsx","PATCH","/api/agent/signals/:id"],
-  ["src/screens/inbox/RelationshipInboxScreen.tsx","POST","/api/chat/privacy/analysis-toggle"],
   ["src/screens/inbox/RelationshipInboxScreen.tsx","POST","/api/chat/relationship-inbox"],
   ["src/screens/inbox/RelationshipInboxScreen.tsx","POST","/api/relationship-communication/conversations/:id/messages"],
   ["src/screens/inbox/RelationshipInboxScreen.tsx","POST","/api/relationship-communication/conversations/:id/read"],

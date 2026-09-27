@@ -16,7 +16,6 @@ import {
   relationshipAlertsToView,
   createdRelationshipThreadToView,
   relationshipInboxErrorText,
-  relationshipPrivacyControlsToView,
   relationshipSignalConfirmToView,
   relationshipSignalsToView,
 } from "../src/view-models/relationship-inbox";
@@ -178,21 +177,6 @@ test("relationship inbox view models localize generated chrome and preserve sour
   assert.equal(englishSignals.signals[0]?.title, "Aiko Watanabe / 渡辺愛子");
   assert.equal(japaneseSignals.signals[0]?.sourceLabel, "メールシグナル");
   assert.equal(japaneseSignals.signals[0]?.nextAction, "紹介者に背景を確認してから、連絡するか決めます。");
-
-  const privacyPayload = {
-    analysisDeletion: { status: "available" },
-    analysisOptIn: { enabled: true },
-    privateNotes: [{ bodyRedacted: true }],
-    provenance: { sourceLabel: "Customer-authored audit trail" },
-    sensitiveShareConfirmation: { confirmationRequired: true },
-  };
-  const englishPrivacy = relationshipPrivacyControlsToView(privacyPayload, "en");
-  const japanesePrivacy = relationshipPrivacyControlsToView(privacyPayload, "ja");
-
-  assert.equal(englishPrivacy.title, "Privacy controls");
-  assert.equal(englishPrivacy.privateNotesLabel, "1 private note hidden");
-  assert.equal(japanesePrivacy.analysisLabel, "関係分析を許可");
-  assert.equal(englishPrivacy.sourceLabel, "Customer-authored audit trail");
 
   const alerts = relationshipAlertsToView({
     reminders: [{

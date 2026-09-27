@@ -105,6 +105,8 @@ async function writes(page: Page) {
 test("opening a verified conversation never sends and revoked qualification fails closed", async t => {
   const page = await open(t);
   assert.deepEqual(await writes(page), []);
+  // Sprint 0104: the retired legacy chat extraction call is gone.
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.path.startsWith("/api/chat/")).map((r: any) => r.path)), []);
   assert.equal(await page.getByRole("button", { name: "发送消息", exact: true }).isDisabled(), true);
   await fill(page);
   assert.equal(await page.getByRole("button", { name: "发送消息", exact: true }).isEnabled(), true);

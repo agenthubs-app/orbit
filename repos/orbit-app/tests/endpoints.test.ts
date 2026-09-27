@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  relationshipReplyDraftPath,
   agentActionAcceptPath,
   agentActionDismissPath,
   agentLedgerTransitionPath,
@@ -10,13 +11,6 @@ import {
   externalActionSandboxAuditPath,
   externalActionSandboxSendMessagePath,
   aiConversationSessionPath,
-  chatPrivacyAnalysisTogglePath,
-  chatPrivacyControlsPath,
-  chatConversationExtractionsPath,
-  chatAssistFollowupDraftPath,
-  chatConversationMessagesPath,
-  chatConversationPath,
-  chatConversationSummaryPath,
   confirmationApprovePath,
   confirmationRejectPath,
   connectionDetailPath,
@@ -118,28 +112,14 @@ test("Orbit API endpoints expose the relationship inbox route", () => {
     ORBIT_API_ENDPOINTS.relationshipSignalsEmailCalendar,
     "/api/relationship-signals/email-calendar"
   );
-  assert.equal(ORBIT_API_ENDPOINTS.chatAssistRewrite, "/api/chat/assist/rewrite");
+  // Sprint 0104: the retired legacy chat endpoints are no longer exposed to the App.
+  for (const key of ["chatAssistRewrite", "chatAssistFollowupDraft", "chatPrivacyControls", "chatPrivacyAnalysisToggle", "chatConversations"]) {
+    assert.equal(key in ORBIT_API_ENDPOINTS, false, key);
+  }
+  assert.deepEqual(Object.values(ORBIT_API_ENDPOINTS).filter((path) => String(path).startsWith("/api/chat/")), ["/api/chat/relationship-inbox"]);
   assert.equal(
-    ORBIT_API_ENDPOINTS.chatAssistFollowupDraft,
-    "/api/chat/assist/followup-draft"
-  );
-  assert.equal(ORBIT_API_ENDPOINTS.chatPrivacyControls, "/api/chat/privacy");
-  assert.equal(
-    ORBIT_API_ENDPOINTS.chatPrivacyAnalysisToggle,
-    "/api/chat/privacy/analysis-toggle"
-  );
-  assert.equal(
-    chatPrivacyControlsPath("conversation demo/aoba"),
-    "/api/chat/privacy?conversationId=conversation%20demo%2Faoba"
-  );
-  assert.equal(
-    chatPrivacyAnalysisTogglePath("conversation demo/aoba"),
-    "/api/chat/privacy/analysis-toggle?conversationId=conversation%20demo%2Faoba"
-  );
-  assert.equal(chatAssistFollowupDraftPath(), "/api/chat/assist/followup-draft");
-  assert.equal(
-    chatAssistFollowupDraftPath("pending"),
-    "/api/chat/assist/followup-draft?scenario=pending"
+    relationshipReplyDraftPath("relationship-conversation:1"),
+    "/api/relationship-communication/conversations/relationship-conversation%3A1/draft"
   );
   assert.equal(
     relationshipSignalsEmailCalendarPath({
@@ -660,26 +640,6 @@ test("Orbit API endpoints expose profile document extraction routes", () => {
   assert.equal(
     profileResumeExtractionPath(),
     "/api/profile/extractions/resume"
-  );
-});
-
-test("Orbit API endpoints expose relationship chat conversation routes", () => {
-  assert.equal(ORBIT_API_ENDPOINTS.chatConversations, "/api/chat/conversations");
-  assert.equal(
-    chatConversationPath("conversation 001"),
-    "/api/chat/conversations/conversation%20001"
-  );
-  assert.equal(
-    chatConversationMessagesPath("conversation 001"),
-    "/api/chat/conversations/conversation%20001/messages"
-  );
-  assert.equal(
-    chatConversationSummaryPath("conversation 001"),
-    "/api/chat/conversations/conversation%20001/summary"
-  );
-  assert.equal(
-    chatConversationExtractionsPath("conversation 001"),
-    "/api/chat/conversations/conversation%20001/extractions"
   );
 });
 

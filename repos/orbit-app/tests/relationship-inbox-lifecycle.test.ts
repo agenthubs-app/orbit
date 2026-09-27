@@ -19,7 +19,7 @@ const observe = () => useSyncExternalStore(fn => { listeners.add(fn); return () 
 const effects = { calendarEntryCreated: false, externalMessageSent: false, networkRequestMade: false, notificationDelivered: false, savedRecordCreated: false };
 const state = window.fixture = {
   actor: "actor:one", cookieHeader: "", ready: true, signedIn: true, baseReady: true, baseUrl: "https://orbit.example", mounted: true,
-  detail: false, detailUnread: 0, conversationId: "thread:one", seed: {}, requests: [], replies: [], presses: {}, navigation: [], expiries: 0, holdReads: false, notifications: undefined, focused: true, appState: "active", measurements: [],
+  detail: false, detailUnread: 0, conversationId: "thread:one", seed: {}, requests: [], replies: [], draftRequests: [], savedDraft: "", draftPutStatus: 200, presses: {}, navigation: [], expiries: 0, holdReads: false, notifications: undefined, focused: true, appState: "active", measurements: [],
   ...window.initialFixture,
   update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); },
   emit(appState) { state.appState = appState; nativeListeners.forEach(fn => fn(appState)); },
@@ -36,7 +36,6 @@ const state = window.fixture = {
     if (path.includes("/notifications/deliveries/")) return { deliveryId: state.seed.deliveryId, signalId: "signal:one", signalRevision: "one", phase: "pre_event", channel: "in_app", status: "scheduled", title: "当前提醒", body: "确认提醒内容", target: { kind: "inbox", deliveryId: state.seed.deliveryId }, data: { deliveryId: state.seed.deliveryId }, scheduledFor: "2026-09-13T00:00:00Z", availableAt: "2026-09-13T00:00:00Z", attempt: 0, maxAttempts: 3, createdAt: "2026-09-13T00:00:00Z", updatedAt: "2026-09-13T00:00:00Z" };
     if (path === "/api/notifications") return state.notifications !== undefined ? state.notifications : { state: "success", reminders: [{ reminderId: "reminder:one", title: "需要准备资料", organization: "Example", priority: "normal", dueAt: "2026-09-13T00:00:00Z" }] };
     if (path.includes("relationship-signals")) return state.signals || { signals: [] };
-    if (path === "/api/chat/privacy") return { conversationId: state.conversationId, participantName: state.actor, organization: "Example", analysisOptIn: { enabled: state.allowPrivateAnalysis ?? true, status: state.allowPrivateAnalysis === false ? "opted_out" : "opted_in" }, analysisDeletion: { status: "available" }, sensitiveShareConfirmation: { confirmationRequired: true, status: "required" }, privateNotes: [], provenance: { sourceLabel: "对话记录" }, state: "success" };
     if (path === "/api/relationship-communication/conversations") return { conversations: [state.conversation()], refreshedAt: "2026-09-15T00:00:00Z" };
     if (path === "/api/relationship-communication/conversation-summaries") { const {messages,...c}=state.detail?state.thread():state.conversation();const last=messages.at(-1);return {actorId:state.actor,items:[{...c,lastMessage:{messageId:last.messageId,senderAccountId:last.senderAccountId,sentAt:last.sentAt,bodyPreview:last.body}}],hasMore:false,nextCursor:null,asOf:"2026-09-25T00:00:00Z"}; }
     if (path === "/api/relationship-communication/unread-summary") return {actorId:state.actor,unreadTotal:2,refreshedAt:"2026-09-25T00:00:00Z"};
@@ -48,7 +47,7 @@ const state = window.fixture = {
   reply(index, status = 200, data) { state.replies[index]?.(new Response(JSON.stringify(status >= 400 && data === undefined ? { success: false, error: { code: status === 401 ? "UNAUTHORIZED" : "SERVICE_UNAVAILABLE", message: "测试服务暂不可用" } } : { success: true, data: data === undefined ? state.data(state.requests[index].path) : data }), { status, headers: { "content-type": "application/json" } })); }
 };
 onSessionExpired(() => state.expiries++);
-window.fetch = (input, init) => { const url = new URL(String(input)); if (url.pathname === "/api/inbox/delivery/preferences") return Promise.resolve(new Response(JSON.stringify({success:false,error:{code:"NOT_FOUND",message:"Feature unavailable"}}),{status:404,headers:{"content-type":"application/json"}})); const index = state.requests.length; state.requests.push({ method: init.method, path: url.pathname, search: url.search, origin: url.origin, body: init.body ? JSON.parse(init.body) : null, signal: init.signal }); const reply = new Promise(resolve => state.replies[index] = resolve); if (init.method === "GET" && !state.holdReads) queueMicrotask(() => state.reply(index)); return reply; };
+window.fetch = (input, init) => { const url = new URL(String(input)); if (url.pathname.endsWith("/draft")) { const body = init.body ? JSON.parse(init.body) : null; state.draftRequests.push({ method: init.method, path: url.pathname, body }); if (init.method === "PUT" && state.draftPutStatus >= 400) return Promise.resolve(new Response(JSON.stringify({ success: false, error: { code: "SERVICE_UNAVAILABLE", message: "测试服务暂不可用" } }), { status: state.draftPutStatus, headers: { "content-type": "application/json" } })); if (init.method === "PUT") state.savedDraft = body.body; return Promise.resolve(new Response(JSON.stringify({ success: true, data: { conversationId: state.conversationId, body: state.savedDraft, updatedAt: state.savedDraft ? "2026-09-27T00:00:00Z" : null } }), { status: 200, headers: { "content-type": "application/json" } })); } if (url.pathname === "/api/inbox/delivery/preferences") return Promise.resolve(new Response(JSON.stringify({success:false,error:{code:"NOT_FOUND",message:"Feature unavailable"}}),{status:404,headers:{"content-type":"application/json"}})); const index = state.requests.length; state.requests.push({ method: init.method, path: url.pathname, search: url.search, origin: url.origin, body: init.body ? JSON.parse(init.body) : null, signal: init.signal }); const reply = new Promise(resolve => state.replies[index] = resolve); if (init.method === "GET" && !state.holdReads) queueMicrotask(() => state.reply(index)); return reply; };
 export const useFixture = () => { observe(); return state; };
 export const useIsFocused = () => { observe(); return state.focused; };
 export const AppState = { get currentState() { return state.appState; }, addEventListener(_event, fn) { nativeListeners.add(fn); return { remove() { nativeListeners.delete(fn); } }; } };
@@ -514,23 +513,6 @@ test("real message refresh never invents a server-side reply draft", async t => 
   assert.deepEqual(await writes(p), []);
 });
 
-test("inbox foreground refreshes disclosed privacy controls and rejects its interrupted toggle", async t => {
-  const p = await open(t, { detail: true });
-  await p.getByRole("textbox", { name: "回复正文", exact: true }).fill("保留我的回复");
-  await p.getByRole("button", { name: "隐私设置", exact: true }).click(); await settle(p);
-  await p.getByRole("button", { name: "停止分析", exact: true }).click(); await settle(p);
-  await p.evaluate(() => { const s = (window as any).fixture; s.oldWrite = s.requests.findLastIndex((r: any) => r.method === "POST"); s.oldPrivacy = s.data("/api/chat/privacy"); s.emit("background"); s.allowPrivateAnalysis = false; }); await settle(p);
-  assert.equal(await p.evaluate(() => { const s = (window as any).fixture; return s.requests[s.oldWrite].signal.aborted; }), true);
-  await p.evaluate(() => (window as any).fixture.emit("active")); await settle(p);
-  assert.equal(await p.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.path === "/api/chat/privacy").length), 2);
-  assert.equal(await p.getByRole("button", { name: "允许分析", exact: true }).isEnabled(), true);
-  await p.evaluate(() => { const s = (window as any).fixture; s.reply(s.oldWrite, 200, s.oldPrivacy); }); await settle(p);
-  assert.equal(await p.getByRole("button", { name: "允许分析", exact: true }).isEnabled(), true);
-  assert.equal(await p.getByRole("button", { name: "停止分析", exact: true }).count(), 0);
-  assert.equal(await p.getByRole("textbox", { name: "回复正文", exact: true }).inputValue(), "保留我的回复");
-  assert.equal((await writes(p)).length, 1);
-});
-
 test("inbox foreground clears the hidden draft when identity changes in the background", async t => {
   const p = await open(t, { detail: true });
   await p.getByRole("textbox", { name: "回复正文", exact: true }).fill("原账号的回复");
@@ -556,6 +538,43 @@ test("the real inbox thread sends with AI analysis off and retains the delivery 
   await settle(p);
   assert.equal(first.requestId, second.requestId);
   assert.equal(await input.inputValue(), "");
+  // Sprint 0104: a delivered reply is no longer a draft; the saved copy is cleared.
+  await p.waitForFunction(() => (window as any).fixture.draftRequests.some((r: any) => r.method === "PUT" && r.body.body === ""));
+});
+
+// Sprint 0104: the participant's reply draft lives on the relationship conversation.
+test("a verified thread loads the saved reply draft and saves edits through the draft endpoint", async t => {
+  const p = await open(t, { detail: true, savedDraft: "上次保存的回复" });
+  const input = p.getByRole("textbox", { name: "回复正文", exact: true });
+  await p.waitForFunction(() => (document.querySelector('[aria-label="回复正文"]') as HTMLTextAreaElement | null)?.value === "上次保存的回复");
+  const reads = await p.evaluate(() => (window as any).fixture.draftRequests.filter((r: any) => r.method === "GET").map((r: any) => r.path));
+  assert.deepEqual(reads, ["/api/relationship-communication/conversations/thread%3Aone/draft"]);
+  await input.fill("改好的回复草稿");
+  await p.getByRole("button", { name: "保存草稿", exact: true }).click(); await settle(p);
+  await p.getByText("草稿已保存，只有你能看到。", { exact: true }).waitFor();
+  assert.equal(await p.evaluate(() => (window as any).fixture.savedDraft), "改好的回复草稿");
+  assert.deepEqual(await writes(p), [], "saving a draft never sends or marks anything");
+  assert.equal(await p.evaluate(() => (window as any).fixture.requests.some((r: any) => r.path.startsWith("/api/chat/"))), false);
+});
+
+test("a failed draft save keeps the typed reply and says it was not saved", async t => {
+  const p = await open(t, { detail: true, savedDraft: "旧草稿", draftPutStatus: 503 });
+  const input = p.getByRole("textbox", { name: "回复正文", exact: true });
+  await p.waitForFunction(() => (document.querySelector('[aria-label="回复正文"]') as HTMLTextAreaElement | null)?.value === "旧草稿");
+  await input.fill("没存上的回复");
+  await p.getByRole("button", { name: "保存草稿", exact: true }).click(); await settle(p);
+  await p.getByText("草稿没有保存，请重试。", { exact: true }).waitFor();
+  assert.equal(await input.inputValue(), "没存上的回复");
+  assert.equal(await p.evaluate(() => (window as any).fixture.savedDraft), "旧草稿");
+});
+
+test("typing before the saved draft arrives is never overwritten", async t => {
+  const p = await open(t, { detail: true, savedDraft: "" });
+  const input = p.getByRole("textbox", { name: "回复正文", exact: true });
+  await input.fill("我先打的字");
+  await p.evaluate(() => { const s = (window as any).fixture; s.savedDraft = "服务端草稿"; s.emit("background"); }); await settle(p);
+  await p.evaluate(() => (window as any).fixture.emit("active")); await settle(p);
+  assert.equal(await input.inputValue(), "我先打的字");
 });
 
 test("a reply receipt from the previous account cannot update the next account's composer", async t => {

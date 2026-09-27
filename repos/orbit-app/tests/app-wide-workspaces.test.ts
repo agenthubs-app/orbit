@@ -43,7 +43,6 @@ function dataFor(path) {
   if (finalInsets && path === "/api/contacts") return { contacts: [{ id: "person-one", displayName: "林悦", organization: "Orbit", role: "采购负责人", status: "active" }] };
   if (finalInsets && path === "/api/events") return { events: [event] };
   if (finalInsets && path === "/api/profile") return { profile: { displayName: "资料里的林悦", headline: "连接采购合作", organization: "Orbit", offering: ["本地渠道"], seeking: ["采购伙伴"] } };
-  if (finalInsets && path.includes("extractions")) return { extractedNeeds: [{ needId: "need:style", statement: "寻找日本采购合作伙伴", priority: "high" }], extractedTasks: [], relationshipProfileUpdates: [], confirmationRequiredProfileSuggestions: [], provenance: { sourceLabel: "对话记录" } };
   if (screen === "inboxThread" && path.includes("relationship-inbox")) return { inbox: { conversations: [{ ...conversation, contactId: "person-one", subject: "合作讨论" }] }, currentUser: { displayName: "我" }, selectedThread: { conversationId: "thread-one", subject: "合作讨论", summary: "先复核关系上下文", sourceContextLabels: [], messages: [{ messageId: "message-one", senderRole: "contact", senderName: "林悦", body: "周四讨论合作资料", occurredAt: "2026-09-07T01:00:00Z" }] }, draftReply: { body: "" }, sideEffects: {} };
   if (path === "/api/agent/ledger") return { entries: state.empty ? [] : [entry], state: "success", nextAction: "确认或稍后处理", summary: "1 条待确认" };
   if (path === "/api/agent/actions") return { actions: state.empty ? [] : [{ actionId: "action-one", actionType: "post_event_followup", contactName: "林悦", title: "确认合作资料", recommendedAction: "确认时间", confirmationRequired: true, externalSideEffectExecuted: false, priority: "high" }] };
@@ -52,9 +51,6 @@ function dataFor(path) {
   if (path.includes("relationship-inbox")) return { inbox: { conversations: [{ ...conversation, contactId: "person-one", subject: "合作讨论", preview: "周四讨论合作资料", lastCorrespondenceAt: "2026-09-07T01:00:00Z", nextActionLabel: "", sourceContextLabels: [] }] }, currentUser: { displayName: "我" }, selectedThread: null, sideEffects: {} };
   if (path === "/api/relationship-communication/conversations/thread-one") return { ...relationshipConversation, messages: state.empty ? [] : [relationshipMessage] };
   if (path === "/api/relationship-communication/conversations") return { conversations: state.empty ? [] : [{ ...relationshipConversation, messages: [relationshipMessage] }], refreshedAt: "2026-09-08T03:00:00Z" };
-  if (path.includes("extractions")) return {};
-  if (path.startsWith("/api/chat/conversations/")) return { state: state.empty ? "empty" : "success", conversation, messages: state.empty ? [] : [chatMessage], sendMessageState: chatBoundary };
-  if (path === "/api/chat/conversations") return { conversations: state.empty ? [] : [conversation] };
   if (path.includes("activities")) return { activities: [] };
   if (path.startsWith("/api/tasks/page?")) return taskPageFixture(state.empty?[]:[task,{...task,id:"completed-one",status:"completed",title:"已经完成的资料核对",completedAt:"2026-09-08T01:00:00Z"}],"reader",new URLSearchParams(path.split("?")[1]));
   if (path.startsWith("/api/contacts/labels?")) return {actorId:"reader",items:[],asOf:"2026-09-25T00:00:00Z"};
@@ -94,8 +90,6 @@ const client = Object.fromEntries(["get", "post", "patch", "delete", "put"].map(
       const message = { ...relationshipMessage, messageId: "message:style", body: options.body.body, senderAccountId: "reader", senderDisplayName: "我", sentAt: "2026-09-08T03:00:00Z" };
       return { success: true, status: 201, data: { conversationId: "thread-one", deliveryState: "delivered", qualificationVersion: "qv:style", message } };
     }
-    if (method === "get" && path === "/api/chat/privacy?conversationId=thread-one") return { success: true, data: { conversationId: "thread-one", participantName: "林悦", organization: "Orbit", analysisOptIn: { enabled: true, status: "opted_in" }, analysisDeletion: { status: "available" }, sensitiveShareConfirmation: { confirmationRequired: true, status: "required" }, privateNotes: [], state: "success" } };
-    if (method === "post" && path === "/api/chat/assist/rewrite") return { success: true, data: { assists: [{ assistId: "assist:style", label: "润色建议", rationale: "先核对时间", source: { label: "合作讨论" }, suggestedText: "周四可以一起核对合作资料。" }], state: "success" } };
   }
   return { success: false, error: { message: "操作暂时失败" } };
 }]));
@@ -193,10 +187,11 @@ for (const scheme of ["light", "dark"] as const) {
     assert.equal(await reply.inputValue(), "仍需核对的草稿");
     assert.deepEqual(radii, ["12px", "12px"], "intentBlock, taskInteractionCard");
   });
-  test(`${scheme}: final inset chat extraction and delivered message keep the exact request boundary`, async t => {
+  test(`${scheme}: final inset chat detail and delivered message keep the exact request boundary`, async t => {
     const page = await open(t, "thread&insets=true", scheme);
-    await page.getByText("寻找日本采购合作伙伴", { exact: true }).waitFor();
-    const draft = page.getByPlaceholder("写给已验证联系人"); await draft.fill("周四可以");
+    const draft = page.getByPlaceholder("写给已验证联系人"); await draft.waitFor(); await draft.fill("周四可以");
+    // Sprint 0104: the retired legacy chat extraction card is gone.
+    assert.equal(await page.getByText("提取结果", { exact: true }).count(), 0);
     await page.getByRole("button", { name: "发送消息", exact: true }).click();
     await page.getByText("消息已送达已验证的 Orbit 账号。", { exact: true }).waitFor();
     assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), [{ method: "post", path: "/api/relationship-communication/conversations/thread-one/messages", body: { body: "周四可以", qualificationVersion: "qv:style" } }]);
@@ -222,20 +217,17 @@ for (const scheme of ["light", "dark"] as const) {
     const bounds = await empty.boundingBox(); assert.ok(bounds && bounds.x >= 0 && bounds.x + bounds.width <= 320);
     await noWrites(page);
   });
-  test(`${scheme}: final inset inbox privacy and IORBIT handoff preserve the reply until explicit send`, async t => {
+  test(`${scheme}: final inset inbox IORBIT handoff preserves the reply until explicit send`, async t => {
     const page = await open(t, "inboxThread&insets=true", scheme);
     const reply = page.getByRole("textbox", { name: "回复正文", exact: true }); await reply.fill("周四可以");
-    await page.getByRole("button", { name: "隐私设置", exact: true }).click();
-    const privacy = page.getByText("隐私控制", { exact: true }).locator("..").locator("..").locator("..");
-    await page.getByText("允许关系分析", { exact: true }).waitFor();
-    const radii = [await privacy.evaluate(el => getComputedStyle(el).borderRadius)];
+    // Sprint 0104: the retired privacy panel (legacy chat) is gone.
+    assert.equal(await page.getByRole("button", { name: "隐私设置", exact: true }).count(), 0);
     await page.getByRole("button", { name: "润色草稿", exact: true }).click();
     const navigation = await page.evaluate(() => (window as any).fixture.navigation);
     assert.equal(navigation[0].pathname, "/ai/[id]"); assert.match(navigation[0].params.prefillIntent, /^ai-prefill-/);
     assert.doesNotMatch(JSON.stringify(navigation[0]), /周四可以|person-one|林悦/);
     assert.equal(await reply.inputValue(), "周四可以");
-    assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), [{ method: "get", path: "/api/chat/privacy?conversationId=thread-one", body: undefined }]);
-    assert.deepEqual(radii, ["12px"], "privacyBox");
+    assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);
     await page.getByRole("button", { name: "发送消息", exact: true }).click();
     await page.waitForFunction(() => (window as any).fixture.requests.some((r:any)=>r.method === "post"));
     assert.equal((await page.evaluate(() => (window as any).fixture.requests)).filter((r:any)=>r.method === "post").length,1);

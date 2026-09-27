@@ -11,11 +11,6 @@ export const ORBIT_API_ENDPOINTS = {
   authRegister: "/api/auth/register",
   authSession: "/api/auth/session",
   authSignOut: "/api/auth/signout",
-  chatAssistFollowupDraft: "/api/chat/assist/followup-draft",
-  chatAssistRewrite: "/api/chat/assist/rewrite",
-  chatConversations: "/api/chat/conversations",
-  chatPrivacyAnalysisToggle: "/api/chat/privacy/analysis-toggle",
-  chatPrivacyControls: "/api/chat/privacy",
   externalActionSandboxAudit: "/api/sandbox/external-actions/audit",
   externalActionSandboxSendMessage: "/api/sandbox/external-actions/send-message",
   contactDrafts: "/api/contact-drafts",
@@ -292,12 +287,6 @@ export function calendarPermissionRequestPath(
   scenario?: string | null
 ): string {
   return scenarioPath(ORBIT_API_ENDPOINTS.calendarPermissionRequest, scenario);
-}
-
-export function chatAssistFollowupDraftPath(
-  scenario?: string | null
-): string {
-  return scenarioPath(ORBIT_API_ENDPOINTS.chatAssistFollowupDraft, scenario);
 }
 
 export function relationshipSearchSuggestionsPath(
@@ -768,22 +757,6 @@ export function relationshipValueRecomputePath(
   return scenarioPath(ORBIT_API_ENDPOINTS.relationshipValueRecompute, scenario);
 }
 
-export function chatConversationPath(id: string): string {
-  return detailPath(ORBIT_API_ENDPOINTS.chatConversations, id);
-}
-
-export function chatConversationMessagesPath(id: string): string {
-  return `${chatConversationPath(id)}/messages`;
-}
-
-export function chatConversationSummaryPath(id: string): string {
-  return `${chatConversationPath(id)}/summary`;
-}
-
-export function chatConversationExtractionsPath(id: string): string {
-  return `${chatConversationPath(id)}/extractions`;
-}
-
 export function aiConversationPath(id: string): string {
   return detailPath(ORBIT_API_ENDPOINTS.conversations, id);
 }
@@ -842,6 +815,10 @@ export function relationshipCommunicationReadPath(id: string): string {
   return `${relationshipCommunicationConversationPath(id)}/read`;
 }
 
+export function relationshipReplyDraftPath(id: string): string {
+  return `${relationshipCommunicationConversationPath(id)}/draft`;
+}
+
 export interface RelationshipSignalsEmailCalendarPathInput {
   scenario?: string | null;
   sourceKind?: string | null;
@@ -881,18 +858,6 @@ function queryPath(path: string, params: Record<string, string>): string {
     .join("&");
 
   return queryString ? `${path}?${queryString}` : path;
-}
-
-export function chatPrivacyControlsPath(conversationId: string): string {
-  return queryPath(ORBIT_API_ENDPOINTS.chatPrivacyControls, {
-    conversationId: conversationId.trim()
-  });
-}
-
-export function chatPrivacyAnalysisTogglePath(conversationId: string): string {
-  return queryPath(ORBIT_API_ENDPOINTS.chatPrivacyAnalysisToggle, {
-    conversationId: conversationId.trim()
-  });
 }
 
 export function profileUpdateSuggestionAcceptPath(id: string): string {

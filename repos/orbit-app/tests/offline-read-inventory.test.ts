@@ -144,9 +144,9 @@ test('the actual native consumers all have explicit versioned policies', async (
     'src/screens/settings/NotificationDiscoverySettings.tsx GET /api/inbox/discovery/preferences',
     'src/screens/settings/NotificationDiscoverySettings.tsx POST /api/inbox/discovery/preferences',
     'src/screens/inbox/RelationshipInboxScreen.tsx POST /api/relationship-communication/conversations/:id/read',
-    'src/screens/inbox/RelationshipInboxScreen.tsx GET /api/chat/privacy',
+    'src/screens/inbox/RelationshipInboxScreen.tsx GET /api/relationship-communication/conversations/:id/draft',
+    'src/screens/inbox/RelationshipInboxScreen.tsx PUT /api/relationship-communication/conversations/:id/draft',
     'src/screens/inbox/RelationshipInboxScreen.tsx PATCH /api/agent/signals/:id',
-    'src/screens/inbox/RelationshipInboxScreen.tsx POST /api/chat/privacy/analysis-toggle',
     'src/screens/inbox/RelationshipInboxScreen.tsx POST /api/chat/relationship-inbox',
     'src/screens/inbox/RelationshipInboxScreen.tsx POST /api/relationship-communication/conversations/:id/messages',
     'src/screens/inbox/useNotificationInbox.ts GET /api/inbox/notifications',
@@ -361,7 +361,11 @@ test('reads and mutations on one endpoint remain separate registered surfaces', 
   assert.equal(read.domainId, 'notification-delivery');
   assert.equal(mutation.mutationPolicy, 'online_only');
   assert.equal(resolveReadSurface('GET', '/api/inbox/discovery/preferences').domainId, 'notification-discovery');
-  assert.equal(resolveReadSurface('GET', '/api/chat/privacy?conversationId=c1').domainId, 'chat-privacy');
+  assert.throws(() => resolveReadSurface('GET', '/api/chat/privacy?conversationId=c1'), /UNREGISTERED_READ/u);
+  const draft = resolveReadSurface('GET', '/api/relationship-communication/conversations/c1/draft');
+  assert.equal(draft.domainId, 'conversations');
+  assert.equal(draft.readPersistence, 'online_only_secret');
+  assert.equal(resolveReadSurface('PUT', '/api/relationship-communication/conversations/c1/draft').mutationPolicy, 'online_only');
   assert.equal(resolveReadSurface('POST', '/api/inbox/notifications/n1/actions').domainId, 'notifications');
   assert.equal(resolveReadSurface('POST', '/api/relationship-communication/conversations/c1/read').domainId, 'message-read-state');
 });
