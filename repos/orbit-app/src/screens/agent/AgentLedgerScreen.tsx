@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { RefreshControl } from "react-native";
 import type {
   AgentLedgerListPayloadContract,
@@ -7,6 +7,7 @@ import type {
   AgentLedgerTransitionRequestContract
 } from "../../api/agent-ledger-contract";
 import {
+  agentLedgerPagePath,
   agentLedgerTransitionPath,
   ORBIT_API_ENDPOINTS
 } from "../../api/endpoints";
@@ -18,6 +19,7 @@ import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import {
   agentLedgerToSurfaceView,
+  mergeAgentLedgerPages,
   type AgentLedgerEntryView,
   type AgentLedgerSurfaceMode
 } from "../../view-models/agent-ledger";
@@ -58,6 +60,25 @@ export function AgentLedgerScreen({
     ORBIT_API_ENDPOINTS.agentLedger,
     (data) => data.entries.length === 0
   );
+  // Older pages follow the server cursor (Sprint 0122, Codex 103-A). They
+  // belong to the first page they extend: a refresh, transition or account
+  // change replaces the first page and drops them, including a late reply.
+  const firstPage =
+    ledgerState.kind === "success" || ledgerState.kind === "empty"
+      ? ledgerState.data
+      : null;
+  const [olderPages, setOlderPages] = useState<{
+    base: AgentLedgerListPayloadContract;
+    pages: readonly AgentLedgerListPayloadContract[];
+  } | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
+  const loadMoreRequest = useRef<object | null>(null);
+  useEffect(() => {
+    loadMoreRequest.current = null;
+    setLoadingMore(false);
+    setLoadMoreError(null);
+  }, [firstPage]);
   const [pending, setPending] = useState<PendingTransition | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -104,10 +125,37 @@ export function AgentLedgerScreen({
     }
   }
 
-  const view =
-    ledgerState.kind === "success" || ledgerState.kind === "empty"
-      ? agentLedgerToSurfaceView(ledgerState.data, mode)
-      : null;
+  const loadedPages = firstPage
+    ? [firstPage, ...(olderPages?.base === firstPage ? olderPages.pages : [])]
+    : [];
+  const merged = firstPage ? mergeAgentLedgerPages(loadedPages) : null;
+
+  async function loadMore(): Promise<void> {
+    const cursor = merged?.nextCursor;
+    if (!firstPage || !cursor || loadMoreRequest.current) return;
+    const request = {};
+    const base = firstPage;
+    const previous = loadedPages.slice(1);
+    loadMoreRequest.current = request;
+    setLoadingMore(true);
+    setLoadMoreError(null);
+    let failure: string | null = null;
+    let page: AgentLedgerListPayloadContract | null = null;
+    try {
+      const result = await client.get<AgentLedgerListPayloadContract>(agentLedgerPagePath(cursor));
+      if (result.success && Array.isArray(result.data?.entries)) page = result.data;
+      else failure = result.success ? "更早的记录暂时读不出来。" : result.error.message;
+    } catch (error) {
+      failure = error instanceof Error ? error.message : "更早的记录暂时读不出来。";
+    }
+    if (loadMoreRequest.current !== request) return;
+    loadMoreRequest.current = null;
+    setLoadingMore(false);
+    if (page) setOlderPages({ base, pages: [...previous, page] });
+    else setLoadMoreError(failure);
+  }
+
+  const view = merged ? agentLedgerToSurfaceView(merged, mode) : null;
 
   return (
     <AppScreen
@@ -137,6 +185,9 @@ export function AgentLedgerScreen({
         <AgentLedgerContent
           error={actionError}
           feedback={feedback}
+          loadMoreError={loadMoreError}
+          loadingMore={loadingMore}
+          onLoadMore={() => void loadMore()}
           onTransition={(entry, transition, selectedOperationIds) =>
             void applyTransition(entry, transition, selectedOperationIds)
           }

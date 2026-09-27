@@ -23,7 +23,10 @@
  */
 "use client";
 
+import { useEffect, useRef, useState } from "react";
+
 import type { AgentLedgerEntry } from "../../../../../features/agent/ledger/contract";
+import { groupAgentActionEntries } from "../actions/action-tiers";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { OrbitAllActionsControls } from "../actions/orbit-all-actions-controls";
 import { OrbitTodayDecisionForm } from "../actions/orbit-today-decision-form";
@@ -106,9 +109,52 @@ export function IOrbitActions({ viewModel }: IOrbitActionsProps) {
   const countLabel = (value: number) =>
     zh ? `${value} 项` : `${value} item${value === 1 ? "" : "s"}`;
 
-  const tiers = viewModel.state === "success" ? viewModel.tiers : [];
-  const done = viewModel.completedToday;
-  const total = viewModel.todaysTotal;
+  // 「加载更多」（Sprint 0122，Codex 103-A）：沿服务端 cursor 取更早的记录，按同一
+  // 分档规则并入；换一份 viewModel（刷新、换账号）就丢弃已取的页和迟到响应。
+  const [older, setOlder] = useState<{ base: AgentActionsRouteViewModel; entries: readonly AgentLedgerEntry[]; nextCursor: string | null } | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [loadMoreFailed, setLoadMoreFailed] = useState(false);
+  const loadMoreRequest = useRef<AbortController | null>(null);
+  useEffect(() => {
+    setLoadingMore(false);
+    setLoadMoreFailed(false);
+    return () => { loadMoreRequest.current?.abort(); loadMoreRequest.current = null; };
+  }, [viewModel]);
+  const olderPages = older?.base === viewModel ? older : null;
+  const nextCursor = olderPages ? olderPages.nextCursor : viewModel.nextCursor ?? null;
+  const baseIds = new Set(viewModel.tiers.flatMap((tier) => tier.entries.map((entry) => entry.entryId)));
+  const olderEntries = (olderPages?.entries ?? []).filter((entry) => !baseIds.has(entry.entryId));
+  const olderGroups = groupAgentActionEntries(olderEntries);
+  const loadedCount = (viewModel.loadedCount ?? baseIds.size) + olderEntries.length;
+  async function loadMore() {
+    if (!nextCursor || loadMoreRequest.current) return;
+    const controller = new AbortController();
+    const base = viewModel;
+    const previous = olderPages?.entries ?? [];
+    loadMoreRequest.current = controller;
+    setLoadingMore(true);
+    setLoadMoreFailed(false);
+    let page: { entries: AgentLedgerEntry[]; nextCursor: string | null } | null = null;
+    try {
+      const response = await fetch(`/api/agent/ledger?cursor=${encodeURIComponent(nextCursor)}`, { cache: "no-store", signal: controller.signal });
+      const body = (await response.json().catch(() => null)) as { success?: boolean; data?: { entries?: unknown; nextCursor?: unknown } } | null;
+      if (response.ok && body?.success && Array.isArray(body.data?.entries)) {
+        page = { entries: body.data.entries as AgentLedgerEntry[], nextCursor: typeof body.data.nextCursor === "string" ? body.data.nextCursor : null };
+      }
+    } catch { page = null; }
+    if (controller.signal.aborted || loadMoreRequest.current !== controller) return;
+    loadMoreRequest.current = null;
+    setLoadingMore(false);
+    if (!page) { setLoadMoreFailed(true); return; }
+    const seen = new Set(previous.map((entry) => entry.entryId));
+    setOlder({ base, entries: [...previous, ...page.entries.filter((entry) => !seen.has(entry.entryId))], nextCursor: page.nextCursor });
+  }
+
+  const tiers = viewModel.state === "success"
+    ? viewModel.tiers.map((tier) => ({ ...tier, entries: [...tier.entries, ...(olderGroups.tiers.find((group) => group.key === tier.key)?.entries ?? [])] }))
+    : [];
+  const done = viewModel.completedToday + olderGroups.completedToday;
+  const total = viewModel.todaysTotal + olderGroups.todaysTotal;
   const percent = total > 0 ? Math.round((done / total) * 100) : 0;
   const countByTier = (key: AgentActionsTierKey) =>
     tiers.find((tier) => tier.key === key)?.entries.length ?? 0;
@@ -289,6 +335,26 @@ export function IOrbitActions({ viewModel }: IOrbitActionsProps) {
                 </section>
               );
             })}
+
+            {viewModel.state === "success" && (nextCursor || olderPages) ? (
+              <div className="ir-panel" data-orbit-agent-actions-paging="true">
+                <span className="ir-panel-note" role="status">
+                  {nextCursor
+                    ? t({ en: `Showing ${loadedCount} entries; older entries are available.`, zh: `已显示 ${loadedCount} 条记录，还有更早的记录。` })
+                    : t({ en: `All ${loadedCount} entries are loaded.`, zh: `已加载全部 ${loadedCount} 条记录。` })}
+                </span>
+                {loadMoreFailed ? (
+                  <span className="ir-panel-note" role="alert">
+                    {t({ en: "Older entries could not be loaded. Try again.", zh: "更早的记录暂时读不出来，可以重试。" })}
+                  </span>
+                ) : null}
+                {nextCursor ? (
+                  <button className="btn ir-chip" disabled={loadingMore} onClick={() => void loadMore()} type="button">
+                    {loadingMore ? t({ en: "Loading…", zh: "正在加载…" }) : t({ en: "Load more", zh: "加载更多" })}
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
           </div>
 
           {/* 406–423 */}

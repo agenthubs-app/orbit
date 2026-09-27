@@ -20,6 +20,9 @@ export interface PendingTransition {
 export interface AgentLedgerContentProps {
   error: string | null;
   feedback: string | null;
+  loadingMore?: boolean | undefined;
+  loadMoreError?: string | null | undefined;
+  onLoadMore?: (() => void) | undefined;
   onTransition: (
     entry: AgentLedgerEntryView,
     transition: AgentLedgerTransitionContract,
@@ -33,6 +36,9 @@ export interface AgentLedgerContentProps {
 export function AgentLedgerContent({
   error,
   feedback,
+  loadingMore = false,
+  loadMoreError = null,
+  onLoadMore,
   onTransition,
   pending,
   selectedEntryId,
@@ -90,6 +96,18 @@ export function AgentLedgerContent({
           </View>
         ))
       )}
+      {loadMoreError ? <Text accessibilityRole="alert" style={styles.error}>{loadMoreError}</Text> : null}
+      {view.hasMore && onLoadMore ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ busy: loadingMore, disabled: loadingMore }}
+          disabled={loadingMore}
+          onPress={onLoadMore}
+          style={styles.loadMore}
+        >
+          <Text style={styles.loadMoreText}>{loadingMore ? "正在加载…" : "加载更多"}</Text>
+        </Pressable>
+      ) : null}
     </>
   );
 }
@@ -336,6 +354,20 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   },
   evidenceList: {
     gap: spacing.xs
+  },
+  loadMore: {
+    alignItems: "center",
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    justifyContent: "center",
+    minHeight: 44,
+    paddingHorizontal: spacing.md
+  },
+  loadMoreText: {
+    color: colors.accent,
+    fontSize: typography.small,
+    fontWeight: "700"
   },
   feedback: {
     color: colors.live,

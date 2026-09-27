@@ -334,14 +334,18 @@ test("rows written before 0103 carry no run target; the backfill makes them read
 });
 
 // SC-0103-04
-test("runs with actions: the status card view and the Agent ledger match the pre-0103 behaviour", { skip, timeout: 120_000 }, async () => {
-  const clock = { now: "2026-09-27T01:00:00.000Z" };
-  const postgres = harness(storageRepository(`${workspaceId}:agent-actor:${ACTOR_A}:actions`), clock);
+// Sprint 0122: one clock drives the runtime and the request record, so the
+// derived steps' timestamps no longer depend on the machine's wall clock. The
+// clocks below sit before, around and long after the real run date.
+for (const [label, at] of [["past", "2020-01-01T00:00:00.000Z"], ["sprint-day", "2026-09-27T01:00:00.000Z"], ["future", "2099-12-31T23:00:00.000Z"]] as const)
+test(`runs with actions: the status card view and the Agent ledger match the pre-0103 behaviour (${label} clock)`, { skip, timeout: 120_000 }, async () => {
+  const clock = { now: at };
+  const postgres = harness(storageRepository(`${workspaceId}:agent-actor:${ACTOR_A}:actions:${label}`), clock);
   // Reference: the in-memory repository with the pre-0103 route behaviour, i.e.
   // the conversation's timing spans written as step rows onto the action run.
   const reference = harness(createMemoryAgentRuntimeRepository(), clock);
-  const runId = await recordActionRun(postgres, "card");
-  assert.equal(await recordActionRun(reference, "card"), runId);
+  const runId = await recordActionRun(postgres, `card-${label}`);
+  assert.equal(await recordActionRun(reference, `card-${label}`), runId);
   for (let index = 0; index < TIMINGS.length; index += 1) {
     const span = TIMINGS[index]!;
     await reference.runtime.addRunStep({
@@ -354,9 +358,9 @@ test("runs with actions: the status card view and the Agent ledger match the pre
     });
   }
   // The request record of the turn that proposed the action, as the route completes it.
-  const requestStore = createTransactionalOrbitAgentChatRequestStore({ actorId: ACTOR_A, client, workspaceId });
-  await requestStore.reserve("request:card", "fingerprint:card", "session:card");
-  await requestStore.complete("request:card", "fingerprint:card", {
+  const requestStore = createTransactionalOrbitAgentChatRequestStore({ actorId: ACTOR_A, client, workspaceId, now: () => clock.now });
+  await requestStore.reserve(`request:card:${label}`, `fingerprint:card:${label}`, `session:card:${label}`);
+  await requestStore.complete(`request:card:${label}`, `fingerprint:card:${label}`, {
     success: true, data: { runId, activeConversationId: "conversation:trace", diagnostics: { maxLoopSteps: 3, timings: TIMINGS } },
   });
 

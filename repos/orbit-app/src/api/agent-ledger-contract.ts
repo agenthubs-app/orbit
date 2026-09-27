@@ -80,6 +80,8 @@ export interface AgentLedgerEntryContract {
 
 export interface AgentLedgerListPayloadContract {
   entries: readonly AgentLedgerEntryContract[];
+  /** Opaque cursor for the next (older) page; null or absent on the last page. */
+  nextCursor?: string | null;
   nextAction: string;
   state: "success" | "empty";
   summary: string;

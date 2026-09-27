@@ -232,6 +232,10 @@ export function agentSignalPath(id: string): string {
   return `${ORBIT_API_ENDPOINTS.agentSignals}/${encodeURIComponent(id)}`;
 }
 
+export function agentLedgerPagePath(cursor: string): string {
+  return `${ORBIT_API_ENDPOINTS.agentLedger}?cursor=${encodeURIComponent(cursor)}`;
+}
+
 export function agentLedgerTransitionPath(id: string): string {
   return `${detailPath(ORBIT_API_ENDPOINTS.agentLedger, id)}/transition`;
 }

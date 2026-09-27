@@ -103,9 +103,9 @@ export function readCostAlertNotification(alert: ReadCostAlertRow, actorId: stri
   const { subject, day } = alert;
   const copy = alert.rule === "route_average_spike"
     ? {
-        zh: { title: `读取量翻倍：${subject}`, reason: `${day} 平均每次读取 ${kb(alert.observed)}，超过过去 7 天中位数的两倍（${kb(alert.threshold)}）。详情见网页管理后台 ${PAGE}。` },
-        en: { title: `Read volume doubled: ${subject}`, reason: `On ${day} the average read per request was ${kb(alert.observed)}, above twice the 7-day median (${kb(alert.threshold)}). Details: ${PAGE} in the web admin.` },
-        ja: { title: `読み取り量が倍増：${subject}`, reason: `${day} の 1 リクエスト平均読み取りは ${kb(alert.observed)} で、過去 7 日の中央値の 2 倍（${kb(alert.threshold)}）を超えました。詳細は Web 管理画面 ${PAGE}。` },
+        zh: { title: `读取量翻倍：${subject}`, reason: `${day} 每个记录了数据库读取的请求平均读取 ${kb(alert.observed)}，超过过去 7 天中位数的两倍（${kb(alert.threshold)}）。详情见网页管理后台 ${PAGE}。` },
+        en: { title: `Read volume doubled: ${subject}`, reason: `On ${day} the average read per request that recorded database reads was ${kb(alert.observed)}, above twice the 7-day median (${kb(alert.threshold)}). Details: ${PAGE} in the web admin.` },
+        ja: { title: `読み取り量が倍増：${subject}`, reason: `${day} のデータベース読み取りを記録したリクエスト 1 件あたりの平均読み取りは ${kb(alert.observed)} で、過去 7 日の中央値の 2 倍（${kb(alert.threshold)}）を超えました。詳細は Web 管理画面 ${PAGE}。` },
       }
     : alert.rule === "large_request"
       ? {

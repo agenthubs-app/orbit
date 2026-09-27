@@ -545,8 +545,17 @@ test("0121 an App that does not declare roleCounts keeps the full-contacts contr
     const legacy = await read("");
     assert.equal(legacy.contacts.contacts.length, 20, "no declaration: the original full contacts list");
     assert.equal(oldAppDecisionRatio(legacy), globalRatio, "the old App's decision-role tile is correct");
-    // An unknown capability is not a declaration.
-    assert.equal((await read("?capabilities=somethingElse")).contacts.contacts.length, 20);
+    // An unknown capability is not a declaration (Sprint 0122, Codex 101-A): the
+    // server answers exactly as for a client that declares nothing.
+    for (const query of ["?capabilities=somethingElse", "?capabilities=roleCountsV2", "?capabilities=rolecounts", "?capabilities="]) {
+      const unknown = await read(query);
+      assert.equal(unknown.contacts.contacts.length, 20, `${query}: the full contacts list`);
+      assert.equal(unknown.contacts.roleCounts, undefined, `${query}: no role counts`);
+      assert.equal(oldAppDecisionRatio(unknown), globalRatio, `${query}: the old ratio stays correct`);
+      assert.equal(unknown.analysis.current.sourceDataVersion, legacy.analysis.current.sourceDataVersion, `${query}: same AI version`);
+    }
+    // A known capability next to an unknown one still counts as declared.
+    assert.ok(Array.isArray((await read("?capabilities=somethingElse,roleCounts")).contacts.roleCounts));
     // The AI version does not depend on which contacts list the client asked for.
     assert.match(declared.analysis.current.sourceDataVersion, /^[a-f0-9]{64}$/);
     assert.equal(legacy.analysis.current.sourceDataVersion, declared.analysis.current.sourceDataVersion);

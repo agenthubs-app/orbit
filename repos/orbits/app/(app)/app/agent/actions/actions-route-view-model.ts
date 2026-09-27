@@ -18,6 +18,9 @@ import {
 } from "../../../../../features/agent/ledger/contract";
 import { createAgentLedgerService } from "../../../../../features/agent/service-factory";
 import type { AgentLedgerService } from "../../../../../features/agent/ledger/service";
+import { groupAgentActionEntries } from "./action-tiers";
+
+export { groupAgentActionEntries } from "./action-tiers";
 
 export type AgentActionsTierKey = "decide" | "today" | "later";
 
@@ -33,6 +36,10 @@ export interface AgentActionsRouteViewModel {
   completedToday: number;
   todaysTotal: number;
   selectedEntryId: string | null;
+  /** Cursor for older ledger entries; the page loads them on request (0122). */
+  nextCursor?: string | null;
+  /** Ledger entries this view was built from, actionable or not. */
+  loadedCount?: number;
   evidenceIds: readonly string[];
   errorCode: string | null;
   failureMessage: string | null;
@@ -58,26 +65,6 @@ function readParam(
   if (typeof value === "string") return value;
   if (Array.isArray(value)) return value[0] ?? null;
   return null;
-}
-
-function tierKeyForStatus(entry: AgentLedgerEntry): AgentActionsTierKey | null {
-  switch (entry.status) {
-    case "awaiting_confirmation":
-      return "decide";
-    case "approved":
-    case "executing":
-      return "today";
-    case "deferred":
-      return "later";
-    default:
-      return null;
-  }
-}
-
-function isCompletedToday(entry: AgentLedgerEntry, dayStart: Date): boolean {
-  if (!entry.completedAt) return false;
-  const completed = new Date(entry.completedAt);
-  return Number.isFinite(completed.getTime()) && completed >= dayStart;
 }
 
 export async function loadAgentActionsRouteViewModel(
@@ -115,40 +102,16 @@ export async function loadAgentActionsRouteViewModel(
     };
   }
 
-  const dayStart = new Date();
-  dayStart.setHours(0, 0, 0, 0);
-
-  const grouped: Record<AgentActionsTierKey, AgentLedgerEntry[]> = {
-    decide: [],
-    later: [],
-    today: [],
-  };
-  let completedToday = 0;
-  for (const entry of result.data.entries) {
-    const tier = tierKeyForStatus(entry);
-    if (tier) {
-      grouped[tier].push(entry);
-    } else if (isCompletedToday(entry, dayStart)) {
-      completedToday += 1;
-    }
-  }
-
-  const tiers: readonly AgentActionsTierViewModel[] = [
-    { entries: grouped.decide, key: "decide" },
-    { entries: grouped.today, key: "today" },
-    { entries: grouped.later, key: "later" },
-  ];
-  const actionable =
-    grouped.decide.length + grouped.today.length + grouped.later.length;
+  const grouped = groupAgentActionEntries(result.data.entries);
 
   return {
-    completedToday,
+    ...grouped,
     errorCode: null,
     evidenceIds: result.data.provenance.evidenceIds,
     failureMessage: null,
+    loadedCount: result.data.entries.length,
+    nextCursor: result.data.nextCursor ?? null,
     selectedEntryId: readParam(searchParams, "entry"),
     state: result.data.entries.length === 0 ? "empty" : "success",
-    tiers,
-    todaysTotal: actionable + completedToday,
   };
 }

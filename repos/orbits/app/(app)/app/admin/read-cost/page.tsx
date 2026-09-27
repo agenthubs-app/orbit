@@ -13,38 +13,12 @@ import { readReadCostOverview, type ReadCostOverview } from "../../../../../feat
 import { createConfiguredTransactionalPostgresRuntime } from "../../../../../shared/storage/transactional-postgres";
 import { getOrbitServerLanguage } from "../../orbit-language-server";
 import { OrbitReferenceStyles } from "../../orbit-reference-styles";
+import { READ_COST_ADMIN_COPY } from "./read-cost-copy";
 
 export const dynamic = "force-dynamic";
 
 type Copy = Record<string, { zh: string; en: string }>;
-const COPY = {
-  title: { zh: "读取量", en: "Read volume" },
-  subtitle: { zh: "按每日汇总计算（UTC 日），数字按抽样率放大。", en: "From daily rollups (UTC days), scaled by sample rate." },
-  back: { zh: "返回管理后台", en: "Back to admin" },
-  days: { zh: "最近 7 天总量与 Neon 对账", en: "Last 7 days vs. Neon transfer" },
-  day: { zh: "日期", en: "Day" },
-  requests: { zh: "请求数", en: "Requests" },
-  recorded: { zh: "我们记录的读取", en: "Recorded reads" },
-  neon: { zh: "Neon 传输量", en: "Neon transfer" },
-  coverage: { zh: "覆盖率", en: "Coverage" },
-  unavailable: { zh: "未取得（未配置 Neon 用量接口）", en: "Unavailable (Neon usage API not configured)" },
-  failed: { zh: "未取得（Neon 接口出错）", en: "Unavailable (Neon request failed)" },
-  pending: { zh: "尚未汇总", en: "Not rolled up yet" },
-  routes: { zh: "最费的 20 个接口（7 天）", en: "Top 20 routes (7 days)" },
-  route: { zh: "接口", en: "Route" },
-  avg: { zh: "平均每次", en: "Avg per request" },
-  total: { zh: "合计", en: "Total" },
-  max: { zh: "单次最大", en: "Largest request" },
-  accounts: { zh: "最费的 20 个用户（7 天）", en: "Top 20 accounts (7 days)" },
-  account: { zh: "账号编号", en: "Account ID" },
-  trend: { zh: "接口 30 天趋势", en: "30-day route trend" },
-  peak: { zh: "最高", en: "Peak" },
-  trendHint: { zh: "点上表中的接口切换。柱高为平均每次读取量。", en: "Pick a route above. Bar height is the average read per request." },
-  alerts: { zh: "最近报警（30 天）", en: "Recent alerts (30 days)" },
-  noData: { zh: "暂无数据", en: "No data yet" },
-  notified: { zh: "已通知", en: "Notified" },
-  waiting: { zh: "待通知", en: "Pending" },
-} satisfies Copy;
+const COPY = READ_COST_ADMIN_COPY;
 const RULES = {
   route_average_spike: { zh: "平均读取翻倍", en: "Average doubled" },
   large_request: { zh: "单次超过 5 MB", en: "Request over 5 MB" },
