@@ -317,7 +317,7 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/screens/notes/NewNoteScreen.tsx","GET","/api/events"],
   ["src/screens/notes/NewNoteScreen.tsx","POST","/api/notes"],
   ["src/screens/notes/NoteDetailScreen.tsx","GET","/api/events"],
-  // Sprint 0108: native notes read the device mirror; the browser stays online-only (0077 whitelist).
+  // Sprint 0108: native notes read the device mirror. Sprint 0125: the browser too when its mirror is available; these are its fallback reads.
   ["src/screens/notes/note-source-tasks-source.web.ts","GET","/api/tasks/note-page"],
   ["src/screens/notes/notes-source.web.ts","GET","/api/notes"],
   ["src/screens/notes/notes-source.web.ts","GET","/api/notes/:id"],

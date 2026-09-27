@@ -9,19 +9,25 @@ import { WEB_MIRROR_DOMAIN_IDS } from "../src/data/sync/web-mirror-storage";
 // the platform modules pick the mirror (native) or the browser behaviour.
 const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 
-test("notes screens read through notes-source; native is the mirror, the browser stays online-only", () => {
+test("notes screens read through notes-source; native is the mirror, the browser is mirror-first like tasks (0125)", () => {
   for (const screen of ["NotesScreen", "NoteDetailScreen", "EditNoteScreen", "NewNoteScreen"]) {
     const source = read(`src/screens/notes/${screen}.tsx`);
     assert.match(source, /from "\.\/notes-source"/, screen);
     assert.doesNotMatch(source, /useSyncedCollection|notePath\(noteId\), \(\) => false/, `${screen} reads no transport directly`);
   }
+  const mirror = read("src/screens/notes/notes-source-mirror.ts");
+  assert.match(mirror, /useSyncedCollection<.*>\(\{ kind: "note" \}\)/);
+  assert.doesNotMatch(mirror, /useApiResource|client\.get/);
   const native = read("src/screens/notes/notes-source.ts");
-  assert.match(native, /useSyncedCollection<.*>\(\{ kind: "note" \}\)/);
+  assert.match(native, /from "\.\/notes-source-mirror"/, "native reads the shared mirror hooks");
   assert.doesNotMatch(native, /useApiResource|client\.get/);
   const web = read("src/screens/notes/notes-source.web.ts");
-  assert.doesNotMatch(web, /useSyncedCollection/, "the browser does not mirror notes");
-  assert.ok(!WEB_MIRROR_DOMAIN_IDS.includes("notes"), "notes stay off the browser mirror whitelist (PLANNER 0077)");
-  assert.match(read("src/screens/notes/note-source-tasks-source.ts"), /useSyncedCollection<.*>\(\{ kind: "task" \}\)/);
+  assert.match(web, /useWebMirrorStatus\(\)/);
+  assert.match(web, /from "\.\/notes-source-mirror"/, "the browser reuses the native mirror hooks, not a second copy");
+  assert.match(web, /return mirrorActive \? fromMirror : fromNetwork/);
+  assert.ok(WEB_MIRROR_DOMAIN_IDS.includes("notes"), "notes are on the browser mirror whitelist (user decision 2026-09-27)");
+  assert.match(read("src/screens/notes/note-source-tasks-mirror.ts"), /useSyncedCollection<.*>\(\{ kind: "task" \}\)/);
+  assert.match(read("src/screens/notes/note-source-tasks-source.web.ts"), /return mirrorActive \? fromMirror : fromNetwork/);
 });
 
 test("personal-schedule screens read through personal-schedule-source; the browser is mirror-first like tasks", () => {

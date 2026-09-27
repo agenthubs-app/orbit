@@ -64,6 +64,12 @@ export async function deleteWebMirrorKey(digest: string, deps: WebMirrorKeyDepen
   await withStore(deps, "readwrite", (store) => store.delete(`orbit.sync.key.${digest}`));
 }
 
+/** Digests of every mirror key in this origin (one per server+actor that has opened a mirror here). */
+export async function listWebMirrorKeyDigests(deps: WebMirrorKeyDependencies): Promise<string[]> {
+  const names = await withStore<IDBValidKey[]>(deps, "readonly", (store) => store.getAllKeys());
+  return names.flatMap((name) => typeof name === "string" && /^orbit\.sync\.key\.[a-f0-9]{64}$/u.test(name) ? [name.slice("orbit.sync.key.".length)] : []);
+}
+
 export async function readPendingWebMirrorCleanup(deps: WebMirrorKeyDependencies): Promise<string | null> {
   const digest = await withStore<string | undefined>(deps, "readonly", (store) => store.get(PENDING_CLEANUP) as IDBRequest<string | undefined>);
   if (digest !== undefined && !/^[a-f0-9]{64}$/u.test(digest)) throw new Error("WEB_MIRROR_CLEANUP_STATE_INVALID");

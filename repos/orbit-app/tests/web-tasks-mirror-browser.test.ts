@@ -99,7 +99,7 @@ async function bundle() {
   return { appJs, workerJs, wasm };
 }
 
-/** A scripted sync host: lease, manifest (ETag/304), domain pages; notes are granted but the browser must never bind them. */
+/** A scripted sync host: lease, manifest (ETag/304), domain pages for every granted domain (notes joined the browser whitelist in 0125). */
 async function serve(files: Awaited<ReturnType<typeof bundle>>, state: HostState) {
   const json = (res: http.ServerResponse, status: number, body: unknown, headers: Record<string, string> = {}) => {
     res.writeHead(status, { "content-type": "application/json", "cache-control": "no-store", ...headers });
@@ -173,13 +173,13 @@ test("Web tasks mirror: whitelist binding, manifest-gated delta, offline stale, 
   page.on("pageerror", (error) => pageErrors.push(error.message.slice(0, 200)));
   await page.goto(`${base}/`);
 
-  // 1. First sync: lease → manifest → pages for the browser whitelist only (notes are granted but never bound).
+  // 1. First sync: lease → manifest → one page per whitelisted domain (notes too since sprint 0125).
   assert.equal(await call(page, `window.__tasks.open(${JSON.stringify(ACTOR)})`), true);
   const first = await call<{ status: string; ids: string[]; error: string | null }>(page, "window.__tasks.sync()");
   assert.equal(first.error, null);
   assert.deepEqual(first.ids, ["t1", "t2"]);
   assert.equal(first.status, "fresh");
-  assert.deepEqual(state.requests, ["/api/sync/lease", "/api/sync/manifest", "/api/sync/domains/tasks?first", "/api/sync/domains/personal-schedule?first"]);
+  assert.deepEqual(state.requests, ["/api/sync/lease", "/api/sync/manifest", "/api/sync/domains/notes?first", "/api/sync/domains/tasks?first", "/api/sync/domains/personal-schedule?first"]);
 
   // 2. Unchanged host: the second explicit sync is lease + manifest (304 replayed from the client cache), no page.
   state.requests.length = 0;
@@ -189,7 +189,7 @@ test("Web tasks mirror: whitelist binding, manifest-gated delta, offline stale, 
   assert.deepEqual(state.requests, ["/api/sync/lease", "/api/sync/manifest"]);
   assert.deepEqual(await call(page, "window.__tasks.manifestOutages"), []);
 
-  // 3. Only tasks moved: manifest 200, one tasks page from the stored cursor, nothing for personal-schedule.
+  // 3. Only tasks moved: manifest 200, one tasks page from the stored cursor, nothing for notes or personal-schedule.
   state.rows.tasks!.push(task("t3"));
   state.version += 1;
   state.requests.length = 0;

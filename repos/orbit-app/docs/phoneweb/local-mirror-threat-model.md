@@ -1,6 +1,6 @@
 # phoneweb 本地镜像：威胁模型与降级声明
 
-> 适用范围：浏览器端（phoneweb / `expo export --platform web`）的本地镜像存储层，落地于 Sprint 0077。
+> 适用范围：浏览器端（phoneweb / `expo export --platform web`）的本地镜像存储层，落地于 Sprint 0077；Sprint 0125 把笔记加入白名单（第 2 节）。
 > 这是**浏览器本地镜像**，其保护与原生 SQLCipher + SecureStore **不同**，不得对用户或文档宣称等同。
 
 ## 1. 它是什么
@@ -11,9 +11,9 @@
 | 持久化 | OPFS（`AccessHandlePoolVFS`），仅 secure context 可用 | 应用沙盒内 `.db` 文件 |
 | 库名 | `orbit-sync-<sha256(baseUrl, actorId) 前 32 位>.db`（OPFS 路径名上限 64 字节） | `orbit-sync-<sha256 全长>.db` |
 | 密钥 | Web Crypto AES-GCM-256 `CryptoKey`，`extractable: false`，存 IndexedDB `orbit-sync-keys` | 64 位十六进制随机密钥，存 SecureStore（`AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY`） |
-| 加密范围 | 仅 `sync_records.payload_json`（仓库边界 `payloadCodec`，每条记录独立 96 位 IV） | 整库（PRAGMA key） |
+| 加密范围 | 仅 `sync_records.payload_json`（仓库边界 `payloadCodec`，每条记录独立 96 位 IV）；连接开启 `PRAGMA secure_delete`，删除的行在库文件里被清零（0125） | 整库（PRAGMA key） |
 | 明文列 | `record_id`、`domain_id`、`workspace_id`、`revision`、`updated_at`、`payload_hash` 等元数据 | 无（整库密文） |
-| 白名单域 | `tasks`、`personal-schedule` | `notes`、`tasks`、`personal-schedule` |
+| 白名单域 | `notes`（0125 起）、`tasks`、`personal-schedule` | `notes`、`tasks`、`personal-schedule` |
 | 退化 | 任一能力缺失 → online-only + 原因，`setScope` 返回 true、`withDatabase` 返回 null | SQLite 二进制缺失 → 同样退化 |
 
 ## 2. 白名单及逐域论证
@@ -22,10 +22,24 @@
 | --- | --- | --- |
 | `tasks` | 是 | 正文为待办标题／截止／状态，泄露面小；离线可读的收益最直接（今日待办、跟进） |
 | `personal-schedule` | 是 | 用户自己的日程条目，无第三方正文；与待办同属"接下来要做什么" |
-| `notes` | **否** | 联系人笔记含第三方私密内容与原文；浏览器同源脚本可解密，风险收益不成比例，留待第二批评估 |
+| `notes` | **是**（Sprint 0125 起） | **用户 2026-09-27 决定放开**，见本节下方「笔记：决定与接受的风险」。0077 时的结论是「否」：联系人笔记含第三方私密内容与原文，浏览器同源脚本可解密 |
 | 联系人正文、消息原文、活动目录之外的内容 | 否 | 注册表 v1 尚未纳入；即使纳入也需先过本表 |
 
 白名单在 `web-mirror-storage.ts` 的 `WEB_MIRROR_DOMAIN_IDS` 硬编码，协调器只为白名单域绑定读取作用域与拉页；租约里其它域的授权在浏览器**既不存储也不拉取**。
+
+### 笔记：决定与接受的风险（Sprint 0125）
+
+- **决定**：用户 2026-09-27 回复 0108 报告第 9 节第 1 条，决定浏览器版也把笔记放进本地镜像，phoneweb 断网时能看笔记。
+- **接受的风险**：同源脚本（XSS、被注入的第三方脚本、能注入本站的浏览器扩展）可以借用不可导出的密钥解密笔记正文，也可以直接调用镜像仓库读出明文。笔记里包括联系人笔记中关于第三方的私密内容和原文（第三方本人没有同意，也不知道这份副本在浏览器里）。这一点与待办、个人日程相同，但笔记的泄露面大得多；原生的 SQLCipher + SecureStore 不存在这个问题。
+- **已有缓解**（都由浏览器测试覆盖，`tests/web-notes-mirror-browser.test.ts`、`tests/web-mirror-storage-browser.test.ts`）：
+  - **按源隔离**：OPFS 与 IndexedDB 只对本源可见，别的站点读不到。
+  - **落盘加密**：每条笔记的 `payload_json` 是 AES-GCM 密文（每条独立 IV），直接读 OPFS 文件字节找不到标题和正文；记录 id、修订号、时间戳按本文件第 1 节为明文元数据。
+  - **换身份清库删钥**：换账号、换服务器时先删密钥再删库文件。0125 起，打开一个身份时还会删掉本源里其他身份的密钥和库文件（包括这一页从未打开过的，例如会话过期后另一个人登录），同一个源只留一个身份的镜像。
+  - **撤权按 epoch 清空**：租约不再授予 `notes` 时，协调器把该域所有 epoch 的行、游标、索引一起删除，页面不再显示；`secure_delete` 让被删的行不在库文件的空闲页里留下 id 或密文。
+  - **非 secure context 不落盘**：经局域网 IP 等 http 地址访问时不创建库和密钥，笔记页回到在线读取，不报错。
+  - **退出登录、清除站点数据**：镜像和密钥一并删除。
+- **未缓解的部分**：同源脚本在页面打开期间能读到当前身份的全部笔记；这需要靠站点本身防 XSS（CSP、依赖审查）而不是本地镜像来防。
+- **已有浏览器升级**：库结构与域列表无关，不需要清库重建。升级后第一次同步只多拉一次 `notes` 的首页（没有游标），待办和个人日程的游标不变、不重拉。拉完之前笔记页显示「正在同步」，不会显示成空列表。`secure_delete` 只影响升级之后的删除；升级前删掉的待办、日程行可能还留在旧库文件的空闲页里（密文和 id），换身份或退出登录删库时一起消失。
 
 ## 3. 威胁模型
 
@@ -33,11 +47,11 @@
 | --- | --- | --- |
 | 物理拿到设备磁盘、离线读取 OPFS 文件 | **正文受保护**，元数据不受保护 | `payload_json` 为 AES-GCM 密文；密钥不在文件里，而在浏览器配置文件的 IndexedDB 中（同一磁盘上，由浏览器自身的配置文件加密与操作系统账户保护）。记录 id、修订号、时间戳明文可见 |
 | 导出密钥 | 不可能（JS 层面） | `extractable: false`；`crypto.subtle.exportKey` 抛 `InvalidAccessError`（浏览器测试 SC-0077-02 覆盖） |
-| **同源脚本**（XSS、被注入的第三方脚本、恶意扩展） | **不受保护** | 同源脚本可以*使用*密钥解密（虽不能导出），也可直接调用镜像仓库。这是与原生最本质的差异：原生的 SecureStore 与沙盒把攻击面限制在应用进程内 |
+| **同源脚本**（XSS、被注入的第三方脚本、恶意扩展） | **不受保护** | 同源脚本可以*使用*密钥解密（虽不能导出），也可直接调用镜像仓库。这是与原生最本质的差异：原生的 SecureStore 与沙盒把攻击面限制在应用进程内。0125 起这包括笔记正文与联系人笔记里的第三方内容，是用户明确接受的风险（第 2 节） |
 | 跨站点／跨源 | 受保护 | OPFS 与 IndexedDB 按源隔离 |
-| 同一浏览器换账号 | 受保护 | 换 actor 或换 server 即换库换密钥；切换前先记录 pending-cleanup，再关库、删密钥、删文件；上一身份的行不会留给下一身份（浏览器测试 SC-0077-03） |
+| 同一浏览器换账号 | 受保护 | 换 actor 或换 server 即换库换密钥；切换前先记录 pending-cleanup，再关库、删密钥、删文件；上一身份的行不会留给下一身份（浏览器测试 SC-0077-03）。0125 起打开任一身份时也删除本源内其他身份的密钥和文件，覆盖「上一身份在这一页从未打开」的情况（SC-0125-02） |
 | 密钥丢失、文件残留（清了 IndexedDB 未清 OPFS，或恢复的配置文件） | 受保护 | 无密钥的库文件视为孤儿：先删除再生成新密钥，绝不用新密钥打开旧文件 |
-| 撤权（租约不再含该域） | 受保护 | 复用 0075 协调器路径：域按 epoch 退役并清空 |
+| 撤权（租约不再含该域） | 受保护 | 复用 0075 协调器路径：域按 epoch 退役并清空；`secure_delete` 保证删除的行不留在空闲页（0125） |
 | 浏览器"清除站点数据" | 镜像与密钥一并删除 | 这是预期行为，不是故障；下次登录重新拉取 |
 | 非 secure context（例如经局域网 IP 访问 phoneweb） | 不落盘 | OPFS 与 `crypto.subtle` 在非 secure context 不可用；设置页显示"需要 HTTPS 或 localhost" |
 | SharedArrayBuffer / COOP-COEP | 不需要 | 只使用 expo-sqlite 的异步 API；不提升页面隔离级别 |

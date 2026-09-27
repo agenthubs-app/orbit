@@ -11,6 +11,9 @@ let server: Server;
 let url: string;
 
 const fixture = `
+// Sprint 0125: these tests cover the browser network source (no browser mirror available).
+export const useWebMirrorStatus = () => ({ mode: "online-only", reason: "no-opfs" });
+export const useSyncedCollection = () => ({ status: "unsynced", error: null, lastSyncedAt: null, records: [], workspaceId: null, refresh: async () => null, invalidate: async () => null });
 import React, { useEffect, useSyncExternalStore } from "react";
 import { View } from "react-native";
 const listeners = new Set(); let revision = 0;
@@ -131,7 +134,7 @@ test.before(async () => {
       name: "note-screen-boundaries",
       setup(plugin) {
         plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: require.resolve("react-native-web") }));
-        plugin.onResolve({ filter: /^react-native-safe-area-context$|^expo-router$|\/(useApiResource|useOrbitApiClient|note-draft-storage)$/ }, () => ({ path: "fixture", namespace: "notes-test" }));
+        plugin.onResolve({ filter: /^react-native-safe-area-context$|^expo-router$|\/(useApiResource|useOrbitApiClient|note-draft-storage|useWebMirrorStatus|useSyncedCollection)$/ }, () => ({ path: "fixture", namespace: "notes-test" }));
         plugin.onResolve({ filter: /^@expo\/vector-icons$/ }, () => ({ path: "icons", namespace: "notes-test" }));
         plugin.onLoad({ filter: /^fixture$/, namespace: "notes-test" }, () => ({ contents: fixture, loader: "jsx", resolveDir: process.cwd() }));
         plugin.onLoad({ filter: /^icons$/, namespace: "notes-test" }, () => ({ contents: 'export const Ionicons=()=>null;', loader: "js" }));
