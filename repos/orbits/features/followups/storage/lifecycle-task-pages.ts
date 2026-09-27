@@ -171,10 +171,14 @@ export interface LifecycleTaskPagesReader {
   read(actorId: string, cursors?: LifecycleCursors): Promise<LifecycleTaskPages>;
 }
 
-export const lifecycleSortRuntimeSchema = z.object({ pg: z.literal("160012"), encoding: z.literal("UTF8"), catalog: z.literal("153.136"), actual: z.literal("153.136"), provider: z.literal("i"), deterministic: z.literal(true) }).strict();
-export function assertLifecycleNodeSortRuntime() {
-  if (process.versions.node !== "25.6.0" || process.versions.icu !== "78.2" || process.versions.unicode !== "17.0") throw new Error("LIFECYCLE_SORT_RUNTIME_UNVERIFIED");
-}
+/** Lifecycle and relationship task pages are ordered and cut by PostgreSQL alone
+ * (und-x-icu keys, byte-order record ids); Node only slices the returned rows. What
+ * decides the order is therefore the database collation: the verified ICU collator
+ * version, provider, determinism and encoding, which still fail closed on drift.
+ * The server version number and the Node/ICU version do not (0126 replaced the Node
+ * 25.6.0 pin: the frozen legacy order holds on Node 24.21.0, 25.6.0 and 25.8.1 against
+ * PostgreSQL 18.3 with collation 153.136; see lifecycle-sort-order-postgres.test.ts). */
+export const lifecycleSortRuntimeSchema = z.object({ pg: z.string().regex(/^[0-9]+$/), encoding: z.literal("UTF8"), catalog: z.literal("153.136"), actual: z.literal("153.136"), provider: z.literal("i"), deterministic: z.literal(true) }).strict();
 
 function cursorCodec(secret: string, workspaceId: string, actorId: string, category: LifecycleGroup) {
   if (Buffer.byteLength(secret) < 32) throw new Error("READ_CURSOR_SECRET_MISSING");
@@ -214,8 +218,6 @@ export function createLifecycleTaskPagesReader(input: { client: LiveRecordSqlCli
         pages: z.object(groupShape).strict(),
         runtime: lifecycleSortRuntimeSchema,
       }).strict().parse(response.rows[0]!.result);
-      // Preserves the old localeCompare order only on the verified runtime tuple.
-      assertLifecycleNodeSortRuntime();
       const pages = {} as LifecycleTaskPages["pages"];
       for (const group of lifecycleGroups) {
         const items = result.pages[group].slice(0, 30);

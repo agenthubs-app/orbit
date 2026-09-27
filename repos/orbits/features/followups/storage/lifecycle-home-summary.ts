@@ -3,7 +3,7 @@ import { createConfiguredPostgresLiveRecordStore } from "../../../shared/storage
 import type { LiveRecordSqlClient } from "../../../shared/storage/postgres-live-record-store";
 import {
   LIFECYCLE_TASK_CLASSIFIED_CTES, LIFECYCLE_CARD_JSON_SQL, LIFECYCLE_SORT_RUNTIME_CTE,
-  cardSchema, lifecycleSortRuntimeSchema, assertLifecycleNodeSortRuntime,
+  cardSchema, lifecycleSortRuntimeSchema,
 } from "./lifecycle-task-pages";
 
 // Match the home adapter's strict ISO input, not PostgreSQL's permissive date parser.
@@ -66,7 +66,6 @@ export function createLifecycleHomeSummaryReader(input: { client: LiveRecordSqlC
     if (!actorId.trim()) throw new Error("ACTOR_REQUIRED");
     const times = [window.snapshotAt, window.from, window.to].map(value => new Date(value).toISOString());
     if (Date.parse(times[1]) > Date.parse(times[0]) || Date.parse(times[0]) >= Date.parse(times[2])) throw new Error("HOME_WINDOW_INVALID");
-    assertLifecycleNodeSortRuntime();
     const rows = await input.client.query<{ result: unknown }>(LIFECYCLE_HOME_SUMMARY_SQL, [input.workspaceId, actorId, ...times]);
     if (rows.rows.length !== 1) throw new Error("LIFECYCLE_HOME_INVALID");
     const result = summarySchema.parse(rows.rows[0]!.result);
