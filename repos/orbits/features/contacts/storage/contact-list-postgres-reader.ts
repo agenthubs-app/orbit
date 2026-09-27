@@ -1244,6 +1244,12 @@ interface RuntimeProbeCacheEntry {
   verified: boolean;
 }
 
+/** What decides whether the SQL matcher equals ecmascript-lower-substring-v1:
+ * PostgreSQL lower() under the verified ICU collation (collator version, provider,
+ * determinism, encoding) and the Unicode case-mapping tables behind JS toLowerCase
+ * (process.versions.unicode). The exact Node/ICU build and the PostgreSQL server
+ * version do not (0126: contact-search-runtime-parity-postgres passes on Node 24.21.0,
+ * 25.6.0 and 25.8.1, all Unicode 17.0, against PostgreSQL 18.3 with collation 153.136). */
 export const APPROVED_CONTACT_SEARCH_RUNTIME = {
   actual_collversion: "153.136",
   catalog_collversion: "153.136",
@@ -1251,11 +1257,8 @@ export const APPROVED_CONTACT_SEARCH_RUNTIME = {
   collation: "und-x-icu",
   collprovider: "i",
   matcher_policy_version: CONTACT_SEARCH_MATCHER_POLICY_VERSION,
-  node: "25.6.0",
   server_encoding: "UTF8",
-  server_version_num: "160012",
   unicode: "17.0",
-  icu: "78.2",
 } as const;
 
 const CONTACT_SEARCH_RUNTIME_PROBE_SQL = `
@@ -1299,9 +1302,6 @@ function runtimeTupleMatches(
     tuple.collprovider === APPROVED_CONTACT_SEARCH_RUNTIME.collprovider &&
     tuple.matcher_policy_version === APPROVED_CONTACT_SEARCH_RUNTIME.matcher_policy_version &&
     tuple.server_encoding === APPROVED_CONTACT_SEARCH_RUNTIME.server_encoding &&
-    tuple.server_version_num === APPROVED_CONTACT_SEARCH_RUNTIME.server_version_num &&
-    process.versions.node === APPROVED_CONTACT_SEARCH_RUNTIME.node &&
-    process.versions.icu === APPROVED_CONTACT_SEARCH_RUNTIME.icu &&
     process.versions.unicode === APPROVED_CONTACT_SEARCH_RUNTIME.unicode;
 }
 
