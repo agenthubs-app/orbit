@@ -25,6 +25,7 @@
 | 0108 同步流水号 | ① **先部署**含 `0376a895d` 的代码（笔记、待办、个人日程的写入都先取提交顺序锁；库里还没有严格版时锁是无害的空锁），确认三类写入正常；② 只读检查：`ORBIT_DATABASE_TARGET=cloud npm run db:migrate:sync-revision -- --check`（只打印状态，不写库），或 REPORT 第 11 节的只读 SQL；③ 低峰执行 `npm run db:migrate:sync-revision -- --batch-size=1000`（加列、分批回填、触发器、NOT NULL 用 NOT VALID + VALIDATE、索引 CONCURRENTLY，可重复执行）；④ 再 `--check`，应为 `state":"strict"`、`nullRevisions` 为 0；⑤ 冒烟：新建笔记、待办、日程各一条，都返回 201 | **顺序不能反**：先迁移而线上还是旧代码，三类写入全部报 55P03。回滚：`--rollback=relax`（写入不再要求锁，仍分配流水号），最后手段 `--rollback=disable`；两档之后重跑迁移都能回到严格版。本迁移已包含 0102 的 `db:migrate:dashboard-graph-version`，不必单独执行。已发布的 App 会把三类数据整类重抄一次（同步页 schema 升到 2），数据量很小 |
 | 0123 已知失败清理 | 无迁移；约见面接口并发编辑时，输的一方从 500 变为 409 `APPOINTMENT_CONFLICT` | 客户端按冲突处理、重读后重试 |
 | 0126 全局回归修复 | **部署前**只读确认：`select collversion from pg_collation where collname='und-x-icu'` 应为 `153.136`；然后部署 | 去掉 Node 25.6.0 钉死后，首页关系跟进、关系待办分页在 Vercel 的 LTS Node 上恢复工作；collversion 不符时这三个读取器按设计拒绝服务。联系人搜索快路径改为检查 Unicode 版本 |
+| 0128 报名问题缓存 | ① **部署前**执行 `ORBIT_DATABASE_TARGET=cloud npm run event-experience:migrate`（或 `npx tsx scripts/migrate-web-runtime.ts`），新建空表 `event_ops_registration_question_cache` 和一个部分唯一索引，可重复执行；② 部署 | 先部署后迁移也安全：迁移完成前报名页返回固定问题，不调用模型，日志出现 `registration_question_cache_unavailable`（42P01）。上线后，每场没有发布问题集的活动，每种语言第一次被读取时生成一次 |
 
 ## 后续 Sprint 预告（合并后在上表补充具体命令）
 
