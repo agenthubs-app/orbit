@@ -35,7 +35,7 @@ test("the web runtime migration CLI initializes an empty database and preserves 
     await admin.query(`create schema ${schema}`);
     migrate();
     const tables = (await pool.query<{ tablename: string }>("select tablename from pg_tables where schemaname=$1", [schema])).rows.map((row) => row.tablename);
-    for (const table of ["orbit_records", "event_ops_events", "event_ops_experience_versions", "event_analytics_roi_snapshots", "appointment_outbox", "bc_ingest_batches", ...ledgers]) {
+    for (const table of ["orbit_records", "event_ops_events", "event_ops_experience_versions", "event_ops_registration_question_cache", "event_analytics_roi_snapshots", "appointment_outbox", "bc_ingest_batches", ...ledgers]) {
       assert.ok(tables.includes(table), `missing runtime table ${table}`);
     }
     for (const table of tables.filter((name) => !ledgers.includes(name))) {
