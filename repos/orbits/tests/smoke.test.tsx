@@ -82,6 +82,12 @@ test("scaffold exposes the runnable Next.js App Router contract", async () => {
       `expected lint script to type-check ${sourcePath}`,
     );
   }
+  // A lint target that no longer exists makes `tsc` abort before it checks
+  // anything, so the whole script silently stops working (0105/0123).
+  const missingLintTargets = [...packageJson.scripts.lint.matchAll(/"([^"]+)"/g)]
+    .map((match: RegExpMatchArray) => match[1])
+    .filter((target: string) => !fs.existsSync(path.join(projectRoot, target)));
+  assert.deepEqual(missingLintTargets, [], "lint script names files that do not exist");
   assert.equal(packageJson.scripts.test, "node scripts/run-node-tests.mjs");
 
   for (const filePath of [
