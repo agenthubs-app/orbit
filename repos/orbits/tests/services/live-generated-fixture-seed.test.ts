@@ -8,6 +8,7 @@ import {
 } from "../../shared/mock/fixtures";
 import {
   GENERATED_FIXTURE_LIVE_SEED_EXPECTED_COLLECTIONS,
+  belowNotificationContentThreshold,
   seedGeneratedRelationshipFixturesIntoLiveStore,
   verifyGeneratedRelationshipFixturesInLiveStore,
 } from "../../shared/storage/seed-generated-fixtures";
@@ -23,9 +24,18 @@ function fixtureCollection(name: MockFixtureCollectionName) {
   return defaultMockFixtures[name];
 }
 
+// Sprint 0086 (f069df7e6): the seed no longer writes generated "复核与 X 的下一步"
+// notifications, which have no verifiable target; a fresh seed must not recreate them.
+function seededFixtureCollection(name: MockFixtureCollectionName) {
+  const records = fixtureCollection(name) as unknown as readonly { readonly [key: string]: unknown }[];
+  return name === "notifications"
+    ? records.filter((record) => !belowNotificationContentThreshold(record))
+    : records;
+}
+
 function expectedFixtureRecordCount(): number {
   return LIVE_SEED_COLLECTIONS.reduce(
-    (total, collectionName) => total + fixtureCollection(collectionName).length,
+    (total, collectionName) => total + seededFixtureCollection(collectionName).length,
     0,
   );
 }
@@ -69,7 +79,7 @@ test("generated relationship live seed writes every default mock fixture collect
   }
 
   for (const collectionName of LIVE_SEED_COLLECTIONS) {
-    const fixtureRecords = fixtureCollection(collectionName);
+    const fixtureRecords = seededFixtureCollection(collectionName) as readonly { id: string }[];
     const liveRecords = store.listRecords({
       limit: "unbounded",
       workspaceId,
@@ -89,6 +99,16 @@ test("generated relationship live seed writes every default mock fixture collect
   }
 
   assert.equal(store.listRecords({ limit: "unbounded", workspaceId }).length, expectedTotalRecords);
+  const subThresholdNotifications = (fixtureCollection("notifications") as unknown as readonly { readonly [key: string]: unknown }[])
+    .filter((record) => belowNotificationContentThreshold(record));
+  assert.ok(subThresholdNotifications.length > 0, "the fixtures still carry sub-threshold notifications to exclude");
+  for (const record of subThresholdNotifications) {
+    assert.equal(
+      store.getRecord({ workspaceId, collectionName: "notifications", recordId: String(record.id) }),
+      null,
+      `sub-threshold notification ${String(record.id)} must not be seeded`,
+    );
+  }
 
   const event01 = store.getRecord({
     workspaceId,
