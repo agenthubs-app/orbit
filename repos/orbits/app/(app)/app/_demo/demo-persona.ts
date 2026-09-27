@@ -17,12 +17,13 @@ import type { AgentTodaySignalView } from "../agent/orbit-agent-next-actions";
 import { iorbitDayKey } from "../agent/iorbit-0918/iorbit-model";
 import type { OrbitHomeViewModel } from "../orbit-home-route-view-model";
 import type { OrbitLandingEventView } from "../orbit-landing-route-view-model";
+import { DEMO_CLOCK_TIME, demoNow } from "./demo-clock";
 
 type Lang = "en" | "zh";
 type Copy = { en: string; zh: string };
 
-/** 示例时钟的钟点（东京时间）。 */
-export const DEMO_CLOCK_TIME = "11:40";
+/** 示例时钟（`DEMO_CLOCK_TIME` / `demoNow`）在 `demo-clock.ts`，这里原样转出。 */
+export { DEMO_CLOCK_TIME, demoNow };
 
 /** 示例人物的目标（也是「本周推进」栏首的一句）。 */
 export const DEMO_GOAL: Copy = {
@@ -69,11 +70,6 @@ function jstAt(dayKey: string, time: string): Date {
 function shiftDay(dayKey: string, days: number): string {
   const noon = jstAt(dayKey, "12:00");
   return iorbitDayKey(new Date(noon.getTime() + days * 86_400_000));
-}
-
-/** 示例时钟：东京的今天 11:40（日期跟着真实日期走，跨午夜也换到新的一天）。 */
-export function demoNow(real: Date = new Date()): Date {
-  return jstAt(iorbitDayKey(real), DEMO_CLOCK_TIME);
 }
 
 function demoEvent(input: {

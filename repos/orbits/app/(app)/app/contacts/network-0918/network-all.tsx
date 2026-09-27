@@ -1,11 +1,15 @@
-/** 「所有人脉」（Network v2 第 257–302 行）。数据 = OrbitContactsViewModel.connections。 */
+/**
+ * 「所有人脉」（Network v2 第 257–302 行）。数据 = OrbitContactsViewModel.connections。
+ * W0005 示例模式：每行名字旁带「示例」角标，点行在本页打开示例详情（`useNetworkDemoDetail`）。
+ */
 "use client";
 
 import { useCallback, useMemo, useState, type ReactNode } from "react";
 
+import { DemoTag, useDemoMode } from "../../_demo/demo-mode-core";
 import type { OrbitContactView, OrbitContactsViewModel } from "../../orbit-contacts-route-view-model";
 import { useOrbitLanguage } from "../../orbit-language-context";
-import { NetworkDetailModal } from "./network-detail-modal";
+import { NetworkDetailModal, useNetworkDemoDetail } from "./network-detail-modal";
 import { NetworkFollowModal } from "./network-follow-modal";
 import { NETWORK_SOURCES, SOURCE_ICON, SOURCE_LABEL, STAGE_CHIP, STAGE_LABEL, matchesQuery, sourceCounts, toPerson, type NetworkSource } from "./network-model";
 import { NetworkAvatar, NetworkChip, NetworkShell } from "./network-shell";
@@ -22,11 +26,13 @@ export function NetworkAll({ viewModel, initialSource = "all", openDetail }: { v
   const closeFollow = useCallback(() => setFollow(false), []);
   // 保存成功后整页重载：让服务端重新读详情与列表，不做本地假合并。
   const reload = useCallback(() => window.location.reload(), []);
+  const demo = useDemoMode();
+  const demoDetail = useNetworkDemoDetail("/app/contacts");
   const modal = openDetail ? (
     follow
       ? <NetworkFollowModal contact={openDetail.contact} onClose={closeFollow} onSaved={reload} />
       : <NetworkDetailModal contact={openDetail.contact} closeHref={openDetail.closeHref} onFollow={openFollow} extra={openDetail.extra} />
-  ) : null;
+  ) : demoDetail.modal;
   const people = useMemo(() => viewModel.connections.map(toPerson), [viewModel.connections]);
   const counts = useMemo(() => sourceCounts(people), [people]);
   const filtered = people.filter((p) => matchesQuery(p, query) && (source === "all" || p.source === source));
@@ -62,10 +68,10 @@ export function NetworkAll({ viewModel, initialSource = "all", openDetail }: { v
             <span className="nw-check"></span><span></span><span>{t({ en: "Name", zh: "姓名" })}</span><span>{t({ en: "Company & title", zh: "公司与职位" })}</span><span>{t({ en: "Source", zh: "来源" })}</span><span>{t({ en: "Status", zh: "关系状态" })}</span><span>{t({ en: "Last contact", zh: "最近互动" })}</span><span>{t({ en: "Next step / notes", zh: "下一步 / 备注" })}</span><span></span>
           </div>
           {filtered.map((p) => (
-            <a key={p.id} className="btn nw-row" href={p.href}>
+            <a key={p.id} className="btn nw-row" href={p.href} onClick={(event) => demoDetail.openFromHref(event, p.href)}>
               <span className="nw-check"></span>
               <NetworkAvatar initial={p.initial} />
-              <strong className="nw-row-name">{p.name}</strong>
+              <strong className="nw-row-name">{p.name}{demo ? <DemoTag /> : null}</strong>
               <span className="nw-row-org"><span className="nw-row-org-1">{p.org}</span><span className="nw-row-org-2">{p.title}</span></span>
               <span><NetworkChip bg="#ECEEFB" fg="#2E3270">{t(SOURCE_LABEL[p.source])}</NetworkChip></span>
               <span><NetworkChip bg={STAGE_CHIP[p.stage].bg} fg={STAGE_CHIP[p.stage].fg}>{p.pendingInit ? t({ en: "Status not set", zh: "待设置关系" }) : t(STAGE_LABEL[p.stage])}</NetworkChip></span>

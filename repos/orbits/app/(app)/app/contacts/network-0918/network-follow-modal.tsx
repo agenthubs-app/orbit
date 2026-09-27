@@ -3,11 +3,13 @@
  * 保存 = PATCH /api/contacts/<id>（与 contact-notes-editor / contact-tag-editor / contact-interaction-editor 同一接口与 fetch 模式）。
  * 「同步到 AI 分析」无接口：渲染为 aria-disabled 说明，不做假开关。
  * 阶段箭头只展示当前阶段（非交互）：阶段由关系生命周期任务推进，见 buildFollowPatch 注释。
+ * W0005 示例模式（`useDemoMode()` 非空）：「保存记录」改走 `guardWrite`，不发 PATCH。
  */
 "use client";
 
 import { useEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
 
+import { useDemoMode } from "../../_demo/demo-mode-core";
 import type { OrbitContactView } from "../../orbit-contacts-route-view-model";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { NETWORK_STAGES, STAGE_LABEL, stageClip, stageOf } from "./network-model";
@@ -68,6 +70,7 @@ function today(): string {
 
 export function NetworkFollowModal({ contact, onClose, onSaved }: { contact: OrbitContactView; onClose: () => void; onSaved: () => void }) {
   const { t } = useOrbitLanguage();
+  const demo = useDemoMode();
   const existingTags = contact.editableTags?.map((tag) => tag.value) ?? [];
   const labelByValue = new Map((contact.editableTags ?? []).map((tag) => [tag.value, tag.label] as const));
   const knownLabels = new Set((contact.editableTags ?? []).map((tag) => tag.label));
@@ -113,6 +116,10 @@ export function NetworkFollowModal({ contact, onClose, onSaved }: { contact: Orb
 
   async function save() {
     if (!canSave) return;
+    if (demo) {
+      demo.guardWrite(t({ en: "interaction log", zh: "互动记录" }));
+      return;
+    }
     setStatus("saving");
     try {
       const response = await fetch(`/api/contacts/${encodeURIComponent(contact.id)}`, {

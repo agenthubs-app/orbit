@@ -2,6 +2,9 @@
  * 关系管线页 route adapter。
  *
  * 这里只连接 live-capable contacts route model + contacts analysis 和 Network v2 管线屏。
+ *
+ * W0005 示例模式：本人在引导期示例里时用示例人物的数据渲染管线，不调用
+ * `loadAppContactsRouteViewModel`／`loadContactsAnalysis`。
  */
 import { OrbitReferenceStyles } from "../../orbit-reference-styles";
 import { OrbitVisualFreezeRuntime } from "../../orbit-visual-freeze-runtime";
@@ -18,6 +21,9 @@ import { applyOrbitContactsPresentation } from "../../orbit-contacts-presentatio
 import { AccountTopNav } from "../../orbit-account-shell";
 import { loadContactsAnalysis } from "../analysis/contacts-analysis-route-service";
 import { NetworkPipeline } from "../network-0918/network-pipeline";
+import { NetworkDemoFrame } from "../network-0918/network-demo-frame";
+import { readDemoModeViewForActor } from "../../_demo/demo-guide-view";
+import { buildDemoNetworkAnalysis, buildDemoNetworkViewModel } from "../../_demo/demo-network";
 import { auth } from "../../../../../auth";
 import { redirect } from "next/navigation";
 import { resolveAuthenticatedApiActorFromSession } from "../../../../api/_shared/authenticated-actor";
@@ -42,10 +48,24 @@ export default async function AppContactsPipelinePage({
     throw new Error("Authenticated Orbit account membership is unavailable.");
   }
 
+  const guide = await readDemoModeViewForActor({ actorId: actor.id, userId: session.user.id });
   const [language, params] = await Promise.all([
     getOrbitServerLanguage(),
     searchParams,
   ]);
+  if (guide) {
+    const now = new Date();
+    const lang = language === "en" ? "en" : "zh";
+    return (
+      <>
+        <OrbitReferenceStyles />
+        <OrbitVisualFreezeRuntime />
+        <NetworkDemoFrame guide={guide} route="app-contacts-pipeline-route">
+          <NetworkPipeline viewModel={buildDemoNetworkViewModel(now, lang)} analysis={buildDemoNetworkAnalysis(now, lang)} />
+        </NetworkDemoFrame>
+      </>
+    );
+  }
   const [routeModel, analysis] = await Promise.all([
     loadAppContactsRouteViewModel(params, actor.id),
     loadContactsAnalysis(actor.id, language),

@@ -4,6 +4,12 @@
  * 从动态路由参数读取 contact id，并通过 route-level capability service
  * 组合详情、证据和关系价值数据；成功时在「所有人脉」列表屏之上渲染
  * Orbit_0918 联系人详情弹窗（NetworkAll openDetail），关闭 = 导航回 /app/contacts。
+ *
+ * W0005：`demo:` 前缀的 id 是引导期示例联系人，只在本人处于示例里时存在——此时用示例数据渲染
+ * 列表与详情（不调用任何真实联系人读取）；开关关闭、不在引导期或 id 不认识时一律 404，
+ * 也绝不把 `demo:` id 交给真实的详情读取。示例期间打开真实 id 也不读任何真实数据，直接回到
+ * `/app/contacts`（示例列表）；不在示例里（开关关、老用户、已完成）时真实 id 的路径与改动前一致，
+ * 开关关闭时不做任何引导读取。
  */
 import {
   getOrbitServerLanguage,
@@ -29,10 +35,13 @@ import { contactsRouteToOrbitContactsViewModel } from "../compose-app-contacts-f
 import { applyOrbitContactsPresentation } from "../../orbit-contacts-presentation";
 import { AccountTopNav } from "../../orbit-account-shell";
 import { auth } from "../../../../../auth";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { resolveAuthenticatedApiActorFromSession } from "../../../../api/_shared/authenticated-actor";
 import { AppointmentMemoCapture } from "./appointment-memo-capture";
 import { OrbitAppointmentNegotiation } from "../../events/[id]/orbit-appointment-negotiation";
+import { readDemoModeViewForActor } from "../../_demo/demo-guide-view";
+import { buildDemoNetworkDetail, buildDemoNetworkViewModel, isDemoContactId } from "../../_demo/demo-network";
+import { NetworkDemoFrame } from "../network-0918/network-demo-frame";
 
 function decodeContactRouteId(id: string): string {
   try {
@@ -132,6 +141,32 @@ export default async function AppContactDetailPage({
   if (!actor) {
     throw new Error("Authenticated Orbit account membership is unavailable.");
   }
+
+  if (isDemoContactId(contactId)) {
+    const guide = await readDemoModeViewForActor({ actorId: actor.id, userId: session.user.id });
+    if (!guide) notFound();
+    const now = new Date();
+    const lang = (await getContactDetailPageLanguage()) === "en" ? "en" : "zh";
+    const demoDetail = buildDemoNetworkDetail(contactId, now, lang);
+    if (!demoDetail) notFound();
+    return (
+      <>
+        <OrbitReferenceStyles />
+        <OrbitVisualFreezeRuntime />
+        <NetworkDemoFrame guide={guide} route="app-contact-detail-route">
+          <NetworkAll
+            key={`${actor.id}:${contactId}`}
+            viewModel={buildDemoNetworkViewModel(now, lang)}
+            openDetail={{ contact: demoDetail, closeHref: "/app/contacts" }}
+          />
+        </NetworkDemoFrame>
+      </>
+    );
+  }
+
+  // 示例期间人脉页只显示示例人物：真实联系人详情（包括弹窗后面的真实列表）一律不读，回到示例列表。
+  // 开关关闭时这次判定不做任何读取。
+  if (await readDemoModeViewForActor({ actorId: actor.id, userId: session.user.id })) redirect("/app/contacts");
 
   const language = await getContactDetailPageLanguage();
   const routeModel = await loadAppContactDetailRoute({
