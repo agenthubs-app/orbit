@@ -58,8 +58,8 @@ const expectedRoutes: readonly ExpectedRoute[] = [
   },
   {
     route: "/events/[id]/attendees",
-    consumer: "EventAttendeesScreen",
-    kind: "screen"
+    consumer: "EventAttendeesRedirect → /events/[id]/live?tab=all",
+    kind: "redirect"
   },
   { route: "/events/center", consumer: "EventCenterScreen", kind: "screen" },
   {
@@ -141,13 +141,13 @@ const expectedRoutes: readonly ExpectedRoute[] = [
   { route: "/o/[slug]", consumer: "OrganizerPublicScreen", kind: "screen" },
   { route: "/register", consumer: "RegisterInviteScreen", kind: "screen" },
   { route: "/register/[code]", consumer: "RegisterInviteScreen", kind: "screen" },
-  { route: "/party", consumer: "PartyModeScreen (overview)", kind: "screen" },
+  { route: "/party", consumer: "PartyOverviewRedirect → /events/[id]/live", kind: "redirect" },
   {
     route: "/party/checkin",
-    consumer: "PartyModeScreen (checkin)",
-    kind: "screen"
+    consumer: "PartyCheckinRedirect → /events/[id]/live",
+    kind: "redirect"
   },
-  { route: "/party/graph", consumer: "PartyModeScreen (graph)", kind: "screen" },
+  { route: "/party/graph", consumer: "PartyGraphRedirect → /events/[id]/live?tab=agenda", kind: "redirect" },
   { route: "/home/events", consumer: "HomeScreen (events)", kind: "screen" },
   { route: "/dashboard", consumer: "DashboardScreen", kind: "screen" },
   { route: "/", consumer: "IndexRoute → resolveInitialRouteHref", kind: "redirect" },
@@ -176,6 +176,7 @@ const integratedFeatureRoutes = [
   "/contacts/new/batch2/[id]",
   "/contacts/new/import/[id]",
   "/contacts/matches",
+  "/events/[id]/live",
   "/events/[id]/operations/experience",
   "/events/[id]/participants/[participantId]",
   "/invitations/[token]",

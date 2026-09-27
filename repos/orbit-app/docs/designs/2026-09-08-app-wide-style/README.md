@@ -8,6 +8,8 @@
 
 2026-09-27 补充（Sprint 0106）：新增 `/profile/onboarding`（`ProfileOnboardingScreen`，新用户引导，登录后资料未完成和 `/profile/continue` 进入），登记在路由清单测试的集成入口组，同样不继承这 58 条的原生观察证据；运行时证据见 Sprint 0106 报告。
 
+2026-09-27 补充（Sprint 0107）：新增 `/events/[id]/live`（`EventLiveScreen`，活动现场页，对应网页 `/app/events/[id]/live`），登记在集成入口组，不继承这 58 条的原生观察证据；运行时证据见 Sprint 0107 报告。现场页取代了「参会者与名片交换」和旧派对模式：`/events/[id]/attendees` 与 `/party*` 在下表中改为 redirect，`/events/[id]/participants/[participantId]`（集成入口组）改为跳到现场页并打开对方资料。
+
 沿用已确认的蓝灰浅深色和原生排版，将统一页头、开放分区、表单及操作层级覆盖到全 App，不改变业务、API、权限或导航行为。
 
 - [执行规格](../../superpowers/specs/2026-09-08-app-wide-style-design.md)
@@ -105,7 +107,7 @@ Tasks 1–5 的领域实现、修补及独立复审已经闭合，58 个真实 `
 | `/events` | `EventsScreen` | screen | `.tmp/app-wide-style/after/task3/native-route-observations.json`: success，真实活动列表 | `tests/app-wide-events.test.ts`: 封面、筛选、320pt 大字动作 |
 | `/events/[id]` | `EventDetailScreen` | screen | `.tmp/app-wide-style/after/task3/native-route-observations.json`: success，`event_signup_03` | `tests/app-wide-events.test.ts`: 长标题、封面、报名/运营入口边界 |
 | `/events/[id]/register` | `EventRegistrationScreen` | screen | `.tmp/app-wide-style/after/task3/native-route-observations.json`: NOT_FOUND | `tests/app-wide-events.test.ts`: 受控选项、失败提交保留选择 |
-| `/events/[id]/attendees` | `EventAttendeesScreen` | screen | `.tmp/app-wide-style/after/task3/native-route-observations.json`: NOT_FOUND | `tests/app-wide-events.test.ts`: 受控参会者身份与只读到场状态 |
+| `/events/[id]/attendees` | `EventAttendeesRedirect → /events/[id]/live?tab=all` | redirect | `build/harness-state/evidence/sprint-0107/run-01/native-route-observations.json`: 跳到现场页参会者标签 | `tests/event-live-interactions.test.tsx`: 旧地址跳转到现场页参会者标签 |
 | `/events/center` | `EventCenterScreen` | screen | `.tmp/app-wide-style/after/task3/native-route-observations.json`: success | `tests/app-wide-events.test.ts`: 主动作独立换行及次级目的地 |
 | `/events/[id]/operations` | `EventOperationsScreen` | screen | `.tmp/app-wide-style/after/task3/native-route-observations.json`: permission-denied；另有真实 owner 未配置规则态 | `tests/app-wide-events.test.ts`: 受控 success/failure 与 50pt 发布动作 |
 | `/events/[id]/operations/admission` | `EventAdmissionReviewScreen` | screen | `.tmp/app-wide-style/after/task3/native-route-observations.json`: permission-denied | `tests/app-wide-events.test.ts`: 受控队列、资料弹层、处理态 guard |
@@ -138,9 +140,9 @@ Tasks 1–5 的领域实现、修补及独立复审已经闭合，58 个真实 `
 | `/o/[slug]` | `OrganizerPublicScreen` | screen | `.tmp/app-wide-style/after/task3/native-route-observations.json`: success，实际 organizer 内容 | `tests/app-wide-events.test.ts`: 封面与目的地，无报名写入 |
 | `/register` | `RegisterInviteScreen` | screen | `.tmp/app-wide-style/after/task3/native-route-observations.json`: empty-missing-code | `tests/app-wide-events.test.ts`: 邀请准备及空 code 边界 |
 | `/register/[code]` | `RegisterInviteScreen` | screen | `.tmp/app-wide-style/after/task3/native-route-observations.json`: success，`event_signup_03` | `tests/app-wide-events.test.ts`: 受控邀请内容与无报名写入 |
-| `/party` | `PartyModeScreen (overview)` | screen | `.tmp/app-wide-style/after/task3/native-route-observations.json`: NOT_FOUND | `tests/app-wide-events.test.ts`: 受控 overview 身份与只读状态 |
-| `/party/checkin` | `PartyModeScreen (checkin)` | screen | `.tmp/app-wide-style/after/task3/native-route-observations.json`: NOT_FOUND | `tests/app-wide-events.test.ts`: 受控 checkin 身份、路由与只读到场状态 |
-| `/party/graph` | `PartyModeScreen (graph)` | screen | `.tmp/app-wide-style/after/task3/native-route-observations.json`: NOT_FOUND | `tests/app-wide-events.test.ts`: 受控 graph 身份、路由与只读到场状态 |
+| `/party` | `PartyOverviewRedirect → /events/[id]/live` | redirect | `build/harness-state/evidence/sprint-0107/run-01/native-route-observations.json`: 有活动时跳到现场页，否则活动列表 | `tests/event-live-interactions.test.tsx`: 旧派对地址跳转 |
+| `/party/checkin` | `PartyCheckinRedirect → /events/[id]/live` | redirect | `build/harness-state/evidence/sprint-0107/run-01/native-route-observations.json`: 跳到现场页首页（签到） | `tests/event-live-interactions.test.tsx`: 旧派对地址跳转 |
+| `/party/graph` | `PartyGraphRedirect → /events/[id]/live?tab=agenda` | redirect | `build/harness-state/evidence/sprint-0107/run-01/native-route-observations.json`: 跳到现场页议程与关系图 | `tests/event-live-interactions.test.tsx`: 旧派对地址跳转 |
 | `/home/events` | `HomeScreen (events)` | screen | `.tmp/app-wide-style/after/task3/native-route-observations.json`: success，单一页面标题 | `tests/app-wide-events.test.ts`: 活动模式大字与目的地；真实 hub 模式另受控渲染 |
 | `/dashboard` | `DashboardScreen` | screen | `.tmp/app-wide-style/after/task2/native-route-observations.json`: success，legacy dashboard | `tests/app-wide-contacts.test.ts`: legacy dashboard 动作与请求边界 |
 | `/` | `IndexRoute → resolveInitialRouteHref` | redirect | `.tmp/app-wide-style/after/redirects/final-native-route-observations.json`: 实际到达 AI | `tests/initial-route.test.ts`: 默认目标及 resolver 契约 |

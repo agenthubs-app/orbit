@@ -18,8 +18,10 @@ test("canonical event uses operations entry and authoritative registration heade
   const paths = await p.evaluate(() => (window as any).fixture.requests.map((r: any) => r.path));
   assert.equal(paths.filter((path: string) => path.endsWith("/registration")).length, 1);
   assert.ok(!paths.some((path: string) => /readiness|recommendations|post-event/.test(path)));
-  await p.getByRole("button", { name: "打开活动现场", exact: true }).click();
-  assert.equal(await p.evaluate(() => (window as any).fixture.navigation.at(-1)), "/events/event%3A1/attendees");
+  // Registered, and the event is today (Tokyo): the entry is pinned in liveSoft above the description.
+  await p.getByTestId("event-live-entry").waitFor();
+  await p.getByRole("button", { name: "进入现场", exact: true }).click();
+  assert.equal(await p.evaluate(() => (window as any).fixture.navigation.at(-1)), "/events/event%3A1/live");
 });
 const iconFont = readFileSync("node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Ionicons.ttf").toString("base64");
 let browser: Browser;
@@ -700,9 +702,10 @@ test("detail uses actual Tokyo date, time range, organizer and agenda with four-
 });
 
 test("public-code reads navigate to canonical event IDs without registering", async t => {
-  const p = await open(t); await press(p, "报名参加"); await press(p, "打开活动现场");
+  const p = await open(t); await press(p, "报名参加");
   assert.equal(await p.getByRole("button", { name: "查看参会者", exact: true }).count(), 0);
-  assert.deepEqual(await p.evaluate(() => (window as any).fixture.navigation), ["/events/event%3A1/register", "/party?eventId=event%3A1"]);
+  assert.equal(await p.getByRole("button", { name: "进入现场", exact: true }).count(), 0, "no live entry without a registration");
+  assert.deepEqual(await p.evaluate(() => (window as any).fixture.navigation), ["/events/event%3A1/register"]);
   assert.deepEqual(await p.evaluate(() => (window as any).fixture.requests.map((r: any) => r.path)), ["/api/events/public/public-product"]);
   assert.deepEqual(await writes(p), []);
 });
@@ -763,7 +766,7 @@ for (const patch of [{ actor: "actor-2" }, { cookieHeader: "fixture-2" }, { base
 
 for (const patch of [{ actor: "actor-2" }, { cookieHeader: "fixture-2" }, { baseUrl: "https://second.example" }, { focused: false }, { signedIn: false }, { id: "event:2" }, { mounted: false }]) test("retained detail navigation and refresh callbacks are inert after scope changes " + JSON.stringify(patch), async t => {
   const p = await open(t, { signedIn: true }); await p.getByRole("button", { name: "报名参加", exact: true }).waitFor();
-  await p.evaluate(() => { const s = (window as any).fixture; s.retained = [s.presses["报名参加"], s.presses["查看参会者"], s.presses["打开活动现场"], s.presses["返回活动"], s.refresh]; });
+  await p.evaluate(() => { const s = (window as any).fixture; s.retained = [s.presses["报名参加"], s.presses["查看参会者"], s.presses["进入现场"], s.presses["返回活动"], s.refresh].filter(Boolean); });
   await update(p, { holdReads: true, ...patch });
   const before = await p.evaluate(() => (window as any).fixture.requests.length);
   await p.evaluate(() => (window as any).fixture.retained.forEach((action: () => void) => action())); await settle(p);
@@ -820,4 +823,16 @@ test("event confirmation and zero participants never imply the viewer is registe
   assert.equal(await p.getByText("星野社区主办 · 0 人已报名", { exact: true }).count(), 1);
   assert.equal(await p.getByRole("button", { name: "报名参加", exact: true }).count(), 1);
   assert.equal(await p.getByRole("button", { name: "管理报名", exact: true }).count(), 0);
+});
+
+test("canonical event without a registration shows no live entry", async t => {
+  const p = await open(t, { signedIn: true, eventPatch: { sourceMetadata: { label: "event-core-postgres" } }, registration: {
+    eligibility: { state: "open", allowedActions: ["register"], evaluatedAt: "2026-09-12T00:00:00Z", registrationVersion: null, applicationVersion: null, policyVersion: null, reason: "open" },
+    registration: null,
+    questionSet: { questions: [], provenance: { aiProviderRequested: false, externalNetworkRequested: false, fallbackReason: "QUESTIONS_NOT_REQUESTED", generationMethod: "deterministic-not-requested", model: null, provider: null } },
+  } });
+  await p.getByTestId("event-registration-status").waitFor();
+  await p.evaluate(() => new Promise(resolve => setTimeout(resolve, 300)));
+  assert.equal(await p.getByRole("button", { name: "进入现场", exact: true }).count(), 0);
+  assert.equal(await p.getByTestId("event-live-entry").count(), 0);
 });
