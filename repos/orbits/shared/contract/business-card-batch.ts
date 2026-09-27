@@ -1,3 +1,5 @@
+import type { IndustryIdCode, SecondaryIndustryIdCode } from "./industries";
+
 export type BusinessCardContactPointType =
   | "phone" | "mobile" | "fax" | "wechat" | "line" | "whatsapp" | "website" | "other";
 
@@ -23,6 +25,10 @@ export interface BusinessCardStructuredExtractionContract {
   addresses: readonly BusinessCardLabeledValueContract[];
   certifications: readonly string[];
   detectedLanguages: readonly string[];
+  /** AI 按受控分类判断的一级行业（提取结构 v2 起）；判断不出、分类外或旧数据为 null/缺省。 */
+  primaryIndustryId?: IndustryIdCode | null;
+  /** 二级行业，必须属于 primaryIndustryId；规则同上。 */
+  secondaryIndustryId?: SecondaryIndustryIdCode | null;
 }
 
 export type BusinessCardReviewIssueCode =
@@ -248,6 +254,9 @@ export interface IngestCardConfirmationInputContract extends BusinessCardBatchRe
   confirmationIntentId: string;
   expectedCardItems: readonly IngestCardConfirmationItemContract[];
   fieldSources: IngestCardFieldSourcesContract;
+  /** 审阅页「行业」一行的最终值；旧客户端不传时不写行业。 */
+  primaryIndustryId?: IndustryIdCode | null;
+  secondaryIndustryId?: SecondaryIndustryIdCode | null;
 }
 
 export type IngestConfirmationResponseContract =

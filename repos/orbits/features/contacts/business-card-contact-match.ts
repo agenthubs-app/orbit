@@ -5,6 +5,8 @@
  * （location / notes / 行业 / 标签都不在里面），用它读出来再整条写回会把这些字段抹掉。
  */
 import type { IngestContactCandidateContract } from "../../shared/contract/business-card-batch";
+import type { IndustrySelectionContract } from "../../shared/contract/industries";
+import { sanitizeIndustryPair } from "../../shared/domain/industries";
 import type { LiveRecord, LiveRecordStoreLike } from "../../shared/storage/live-record-store";
 
 export interface CardContactFields {
@@ -155,8 +157,30 @@ const FIELD_LABEL: Record<keyof CardContactFields, string> = {
 
 export class ContactMergeRejected extends Error {}
 
+function emptyValue(value: unknown): boolean {
+  return value === undefined || value === null || (typeof value === "string" && !value.trim());
+}
+
 /**
- * 把名片并入已有联系人：联系人空着的字段用名片补上；两边都有且不同的不覆盖，
+ * 行业只补空、不覆盖：联系人没有一级行业（也没有二级）时整对写入；一级相同且二级为空时只补二级。
+ * 一级不同一律不动——名片上的判断不能推翻用户已有的分类。
+ */
+function fillEmptyIndustry(payload: Record<string, unknown>, industry: IndustrySelectionContract | undefined): void {
+  const card = sanitizeIndustryPair(industry?.primaryIndustryId, industry?.secondaryIndustryId);
+  if (!card.primaryIndustryId) return;
+  if (emptyValue(payload.primaryIndustryId)) {
+    if (!emptyValue(payload.secondaryIndustryId)) return;
+    payload.primaryIndustryId = card.primaryIndustryId;
+    if (card.secondaryIndustryId) payload.secondaryIndustryId = card.secondaryIndustryId;
+    return;
+  }
+  if (payload.primaryIndustryId === card.primaryIndustryId && emptyValue(payload.secondaryIndustryId) && card.secondaryIndustryId) {
+    payload.secondaryIndustryId = card.secondaryIndustryId;
+  }
+}
+
+/**
+ * 把名片并入已有联系人：联系人空着的字段（含行业）用名片补上；两边都有且不同的不覆盖，
  * 写进备注「名片补充」一段；名片备注里联系人还没有的行（传真、微信…）也补进去。
  * 已有内容一律不删不改。按 updatedAt 条件更新，期间联系人被改过就拒绝（调用方回滚整个确认）。
  */
@@ -168,6 +192,8 @@ export async function mergeCardIntoContact(input: {
   card: CardContactFields;
   cardNotes: string;
   evidenceIds: readonly string[];
+  /** 审阅页确认的行业；只补联系人空着的行业字段。 */
+  industry?: IndustrySelectionContract;
   now?: () => Date;
 }): Promise<string> {
   const record = await input.store.getRecord({ collectionName: "contacts", recordId: input.contactId, workspaceId: input.workspaceId });
@@ -190,6 +216,7 @@ export async function mergeCardIntoContact(input: {
     if (!existing[field]) payload[PAYLOAD_KEY[field]] = value;
     else if (!sameField(field, existing[field], value)) supplements.push(`${FIELD_LABEL[field]}: ${value}`);
   }
+  fillEmptyIndustry(payload, input.industry);
 
   const currentNotes = text(payload.notes);
   // 按「值」去重：同一个号码换了标签（「传真」/「传真(Fax)」）不算新信息；

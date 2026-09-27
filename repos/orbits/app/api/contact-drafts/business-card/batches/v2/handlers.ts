@@ -591,10 +591,16 @@ function confirmationFingerprint(body: {
   relationshipContext: string;
   notes: string;
   allowDuplicate?: boolean;
+  primaryIndustryId?: string | null;
+  secondaryIndustryId?: string | null;
 }): string {
-  // 地址、合并目标是后加的字段：为空时不进规范化对象，旧确认的指纹保持不变、可安全重放。
+  // 地址、合并目标、行业是后加的字段：为空时不进规范化对象，旧确认的指纹保持不变、可安全重放。
   const address = body.address?.trim() ? { address: body.address } : {};
   const merge = body.mergeIntoContactId ? { mergeIntoContactId: body.mergeIntoContactId } : {};
+  const industry = {
+    ...(body.primaryIndustryId ? { primaryIndustryId: body.primaryIndustryId } : {}),
+    ...(body.secondaryIndustryId ? { secondaryIndustryId: body.secondaryIndustryId } : {}),
+  };
   const canonical = {
     ...address,
     allowDuplicate: body.allowDuplicate === true,
@@ -603,6 +609,7 @@ function confirmationFingerprint(body: {
     email: body.email,
     expectedCardItems: [...body.expectedCardItems].sort((a, b) => a.itemId.localeCompare(b.itemId)),
     fieldSources: Object.fromEntries(Object.entries(body.fieldSources).sort(([a], [b]) => a.localeCompare(b))),
+    ...industry,
     ...merge,
     notes: body.notes,
     organization: body.organization,
@@ -738,6 +745,10 @@ function createConfirmLikeHandler(
               phone: confirmation.data.phone,
               role: confirmation.data.role,
             };
+            const industry = {
+              primaryIndustryId: confirmation.data.primaryIndustryId ?? null,
+              secondaryIndustryId: confirmation.data.secondaryIndustryId ?? null,
+            };
             const store = recordStoreFor(client);
             const mergeInto = async (contactId: string) => {
               merged = true;
@@ -747,6 +758,7 @@ function createConfirmLikeHandler(
                 cardNotes: confirmation.data.notes,
                 contactId,
                 evidenceIds,
+                industry,
                 store,
                 workspaceId: runtime.workspaceId,
               });
@@ -778,6 +790,7 @@ function createConfirmLikeHandler(
               notes: confirmation.data.notes,
               organization: confirmation.data.organization,
               phone: confirmation.data.phone,
+              ...industry,
               relationshipContext: confirmation.data.relationshipContext,
               role: confirmation.data.role,
             });

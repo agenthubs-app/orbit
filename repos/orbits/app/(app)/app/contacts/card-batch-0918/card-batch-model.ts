@@ -69,6 +69,7 @@ export function cardReason(card: IngestV2CardViewModel, draft: IngestV2CardDraft
   if (duplicate) return { zh: "可能重复", en: "Possible duplicate" };
   if (card.hasTerminalFailure) return { zh: "识别失败", en: "Recognition failed" };
   if (draft.conflictedFields.length) return { zh: "正反面不一致", en: "Sides disagree" };
+  if (industryNeedsReview(draft)) return { zh: "正反面行业不一致", en: "Sides disagree on industry" };
   const issue = cardIssues(card)[0];
   if (issue?.code === "VERIFICATION_MISMATCH") return MISREAD_COPY[issue.field] ?? { zh: "可能有字读错", en: "May be misread" };
   if (issue) return REASON_COPY[issue.code] ?? { zh: "需要核对", en: "Needs a check" };
@@ -76,9 +77,14 @@ export function cardReason(card: IngestV2CardViewModel, draft: IngestV2CardDraft
   return { zh: "需要核对", en: "Needs a check" };
 }
 
+/** 正反面行业冲突且用户还没选定或清空：这张卡必须人工确认。 */
+export function industryNeedsReview(draft: IngestV2CardDraft): boolean {
+  return draft.industry?.conflicted === true;
+}
+
 /**
  * 设计稿「识别可靠，已自动导入」的判定：卡已全部识别、没有任何 reviewIssue、
- * 没有正反面冲突/过期来源、有姓名。只要有一条疑点就交给用户确认。
+ * 没有正反面冲突（含行业）/过期来源、有姓名。只要有一条疑点就交给用户确认。
  */
 export function isAutoImportEligible(card: IngestV2CardViewModel, draft: IngestV2CardDraft): boolean {
   return card.reviewable
@@ -90,7 +96,19 @@ export function isAutoImportEligible(card: IngestV2CardViewModel, draft: IngestV
     && cardIssues(card).length === 0
     && draft.conflictedFields.length === 0
     && draft.staleFields.length === 0
+    && !industryNeedsReview(draft)
     && Boolean(draft.fields.displayName.trim());
+}
+
+/**
+ * 与已有联系人完全一致的卡直接并入（哪怕识别有疑点）的前提：识别完成、没有失败面、没有正反面冲突。
+ * 行业两面不一致时也不自动并入——联系人字段对得上，不代表该补哪个行业。
+ */
+export function isAutoMergeEligible(card: IngestV2CardViewModel, draft: IngestV2CardDraft): boolean {
+  return card.allExtracted
+    && !card.hasTerminalFailure
+    && draft.conflictedFields.length === 0
+    && !industryNeedsReview(draft);
 }
 
 export function isCardSkipped(card: IngestV2CardViewModel): boolean {

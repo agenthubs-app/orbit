@@ -15,6 +15,7 @@ import {
   setManualDraftField,
   setManualDraftNotes,
   setDraftFieldSource,
+  setDraftIndustry,
   type IngestV2CardViewModel,
 } from "../../app/(app)/app/contacts/ingest-v2/ingest-v2-route-view-model";
 
@@ -285,4 +286,62 @@ test("completion counts are card-level for two-sided cards", () => {
     item({ id: "item-skipped", cardId: "card-2", seq: 3, status: "skipped" }),
   ];
   assert.deepEqual(completionCountsForItems(values), { confirmed: 1, skipped: 1 });
+});
+
+// W0013：审阅页「行业」一行。
+function withIndustry(base: IngestItemDTO, primaryIndustryId: string | null, secondaryIndustryId: string | null): IngestItemDTO {
+  return {
+    ...base,
+    extraction: { ...base.extraction!, primaryIndustryId, secondaryIndustryId } as IngestItemDTO["extraction"],
+    extractionSchemaVersion: 2,
+  };
+}
+
+test("the industry row starts from the recognized pair and reaches the confirmation payload; two different sides are a conflict", () => {
+  const front = withIndustry(item(), "technology_internet", "technology_internet.ai_data");
+  const back = withIndustry(item({ id: "item-back", side: "back", seq: 2, extraction: { ...EMPTY_EXTRACTION, fullName: "秋 太郎", organization: "Orbit" } }), "finance_investment", "finance_investment.fintech");
+  const conflicted = initialCardDraft(card([front, back]));
+  assert.deepEqual(conflicted.industry, { primaryIndustryId: null, secondaryIndustryId: null, edited: false, conflicted: true });
+
+  const backOnly = card([withIndustry(item(), null, null), back]);
+  assert.deepEqual(initialCardDraft(backOnly).industry, { primaryIndustryId: "finance_investment", secondaryIndustryId: "finance_investment.fintech", edited: false, conflicted: false });
+
+  const sameWithOneSecondary = card([withIndustry(item(), "technology_internet", null), withIndustry(back, "technology_internet", "technology_internet.ai_data")]);
+  assert.equal(initialCardDraft(sameWithOneSecondary).industry.secondaryIndustryId, "technology_internet.ai_data");
+  assert.equal(initialCardDraft(sameWithOneSecondary).industry.conflicted, false);
+
+  const single = card([front]);
+  const payload = buildConfirmationPayload(single, initialCardDraft(single), "intent:industry").payload!;
+  assert.equal(payload.primaryIndustryId, "technology_internet");
+  assert.equal(payload.secondaryIndustryId, "technology_internet.ai_data");
+});
+
+test("a v1 extraction without industry keys opens with an empty industry row and still confirms", () => {
+  const legacy = card([item()]);
+  const draft = initialCardDraft(legacy);
+  assert.deepEqual(draft.industry, { primaryIndustryId: null, secondaryIndustryId: null, edited: false, conflicted: false });
+  const prepared = buildConfirmationPayload(legacy, draft, "intent:legacy");
+  assert.equal(prepared.blockedReason, null);
+  assert.equal(prepared.payload?.primaryIndustryId, null);
+  assert.equal(prepared.payload?.secondaryIndustryId, null);
+});
+
+test("the reviewer can change or clear the industry and a poll keeps the choice", () => {
+  const current = card([withIndustry(item(), "technology_internet", "technology_internet.ai_data")]);
+  const draft = initialCardDraft(current);
+  const changed = setDraftIndustry(draft, { primaryIndustryId: "professional_services", secondaryIndustryId: "professional_services.legal" });
+  assert.deepEqual(changed.industry, { primaryIndustryId: "professional_services", secondaryIndustryId: "professional_services.legal", edited: true, conflicted: false });
+  assert.equal(reconcileCardDraft(changed, current).industry.primaryIndustryId, "professional_services");
+  assert.equal(buildConfirmationPayload(current, changed, "intent:changed").payload?.secondaryIndustryId, "professional_services.legal");
+
+  const cleared = setDraftIndustry(changed, { primaryIndustryId: null, secondaryIndustryId: null });
+  assert.deepEqual(reconcileCardDraft(cleared, current).industry, { primaryIndustryId: null, secondaryIndustryId: null, edited: true, conflicted: false });
+  assert.equal(buildConfirmationPayload(current, cleared, "intent:cleared").payload?.primaryIndustryId, null);
+
+  const mismatched = setDraftIndustry(draft, { primaryIndustryId: "professional_services", secondaryIndustryId: "finance_investment.banking" });
+  assert.equal(mismatched.industry.primaryIndustryId, null, "a mismatched pair is never submitted");
+
+  // 未改过的行业跟随最新识别结果（例如重新识别后）。
+  const rerun = card([withIndustry(item({ version: 2 }), "media_creative", null)]);
+  assert.equal(reconcileCardDraft(draft, rerun).industry.primaryIndustryId, "media_creative");
 });

@@ -5,6 +5,9 @@
  * for normalization and deciding which fields require human review.
  */
 
+import type { IndustryIdCode, SecondaryIndustryIdCode } from "../../shared/contract/industries";
+import { sanitizeIndustryPair } from "../../shared/domain/industries";
+
 export const BUSINESS_CARD_IMAGE_MIME_TYPES = [
   "image/jpeg",
   "image/png",
@@ -48,6 +51,12 @@ export interface BusinessCardStructuredExtraction {
   addresses: readonly BusinessCardLabeledValue[];
   certifications: readonly string[];
   detectedLanguages: readonly string[];
+  /**
+   * 文本整理步骤按受控行业分类顺带给出的一级／二级行业（提取结构 v2 起）。
+   * 唯一允许推断的字段；判断不出、分类外或一二级不匹配时为 null，旧 v1 JSON 缺省。
+   */
+  primaryIndustryId?: IndustryIdCode | null;
+  secondaryIndustryId?: SecondaryIndustryIdCode | null;
 }
 
 export type BusinessCardReviewIssueCode =
@@ -156,6 +165,7 @@ export function normalizeBusinessCardExtraction(
     addresses: labeledValues(extraction.addresses),
     certifications: textList(extraction.certifications),
     detectedLanguages: textList(extraction.detectedLanguages),
+    ...sanitizeIndustryPair(extraction.primaryIndustryId, extraction.secondaryIndustryId),
   };
 }
 

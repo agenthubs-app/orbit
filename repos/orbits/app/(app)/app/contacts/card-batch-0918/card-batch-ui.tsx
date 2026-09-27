@@ -10,12 +10,15 @@
 
 import { useEffect, useRef } from "react";
 
+import { INDUSTRY_CATALOG, isIndustryIdCode, listSecondaryIndustries } from "../../../../../shared/domain/industries";
 import { INGEST_V2_API_BASE, postAction } from "../ingest-v2/ingest-v2-client";
 import { IngestV2PrivateImage } from "../ingest-v2/ingest-v2-private-image";
 import {
   fieldCandidates,
+  industryCandidates,
   initialCardDraft,
   setDraftFieldSource,
+  setDraftIndustry,
   setManualDraftField,
   setManualDraftNotes,
   type IngestV2CardDraft,
@@ -27,6 +30,7 @@ import {
   cardReason,
   fieldTag,
   flaggedFields,
+  industryNeedsReview,
   isCardSkipped,
   type Copy,
 } from "./card-batch-model";
@@ -45,6 +49,107 @@ const FIELD_LABELS: Record<IngestV2Field, Copy> = {
   phone: { zh: "电话", en: "Phone" },
   address: { zh: "地址", en: "Address" },
 };
+
+function industryPairLabel(pair: { primaryIndustryId: string; secondaryIndustryId: string | null }, t: T): string {
+  const primary = INDUSTRY_CATALOG.find(industry => industry.id === pair.primaryIndustryId);
+  const secondary = isIndustryIdCode(pair.primaryIndustryId)
+    ? listSecondaryIndustries(pair.primaryIndustryId).find(industry => industry.id === pair.secondaryIndustryId)
+    : undefined;
+  return [primary ? t(primary.labels) : pair.primaryIndustryId, secondary ? t(secondary.labels) : null].filter(Boolean).join(" › ");
+}
+
+type EnterTarget = { tagName?: string; getAttribute?: (name: string) => string | null; closest?: (selector: string) => unknown } | null;
+
+/**
+ * 回车确认（设计稿 ↵）只在单行输入框和页面空白处生效：多行文本、按钮、下拉框（含 combobox / listbox
+ * 角色及其选项）里的回车属于控件本身——在行业下拉上按回车是选中选项，不能顺手把整张名片确认掉。
+ */
+export function enterConfirmsReview(event: { key: string; isComposing?: boolean; target: unknown }): boolean {
+  if (event.key !== "Enter" || event.isComposing) return false;
+  const target = event.target as EnterTarget;
+  const tag = target?.tagName?.toUpperCase();
+  if (tag === "TEXTAREA" || tag === "BUTTON" || tag === "SELECT" || tag === "OPTION") return false;
+  const role = target?.getAttribute?.("role");
+  if (role === "combobox" || role === "listbox" || role === "option") return false;
+  return !target?.closest?.('[role="listbox"], [role="combobox"]');
+}
+
+export function useReviewEnterConfirm(enabled: boolean, confirm: () => void): void {
+  const confirmRef = useRef(confirm);
+  confirmRef.current = confirm;
+  useEffect(() => {
+    if (!enabled) return;
+    function onKey(event: KeyboardEvent) {
+      if (!enterConfirmsReview(event)) return;
+      event.preventDefault();
+      confirmRef.current();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [enabled]);
+}
+
+/**
+ * 「行业」一行（一级 › 二级）：初值是识别时 AI 按受控分类给出的行业，可改可清空；
+ * 换一级时清空二级，与联系人行业编辑器同一规则。
+ */
+export function IndustryField({ baseline, busy, candidates = [], draft, onChange, t }: {
+  baseline: IngestV2CardDraft;
+  busy: boolean;
+  /** 各面识别出的行业；正反面冲突时作为「可能是」选项。 */
+  candidates?: readonly { primaryIndustryId: string; secondaryIndustryId: string | null }[];
+  draft: IngestV2CardDraft;
+  onChange: (selection: { primaryIndustryId: string | null; secondaryIndustryId: string | null }) => void;
+  t: T;
+}) {
+  const primary = draft.industry.primaryIndustryId;
+  const secondary = draft.industry.secondaryIndustryId;
+  const edited = draft.industry.edited
+    && (primary !== baseline.industry.primaryIndustryId || secondary !== baseline.industry.secondaryIndustryId);
+  // 正反面行业不一致：不预选，标「请核对」，直到用户选定或清空（选「未分类」也算处理过）。
+  const tag = fieldTag({ edited, flagged: draft.industry.conflicted, value: primary ?? "" });
+  const primaryLabel = t({ zh: "一级行业", en: "Primary industry" });
+  const secondaryLabel = t({ zh: "二级行业", en: "Secondary industry" });
+  return (
+    <div className={`cb-rfield cb-rfield-${tag.kind}`} data-review-field="industry">
+      <span className="cb-rfield-head"><span>{t({ zh: "行业", en: "Industry" })}</span><span className={`cb-rtag cb-rtag-${tag.kind}`}>{t(tag.label)}</span></span>
+      <span className="cb-rindustry">
+        <select
+          aria-label={primaryLabel}
+          className="cb-rinput"
+          disabled={busy}
+          onChange={event => onChange({ primaryIndustryId: event.target.value || null, secondaryIndustryId: event.target.value === primary ? secondary : null })}
+          value={primary ?? ""}
+        >
+          <option value="">{t({ zh: "未分类", en: "Unclassified" })}</option>
+          {INDUSTRY_CATALOG.map(industry => <option key={industry.id} value={industry.id}>{t(industry.labels)}</option>)}
+        </select>
+        <span aria-hidden className="cb-rindustry-sep">›</span>
+        <select
+          aria-label={secondaryLabel}
+          className="cb-rinput"
+          disabled={busy || !primary}
+          onChange={event => onChange({ primaryIndustryId: primary, secondaryIndustryId: event.target.value || null })}
+          value={secondary ?? ""}
+        >
+          <option value="">{t({ zh: "二级未填写", en: "Not set" })}</option>
+          {isIndustryIdCode(primary) ? listSecondaryIndustries(primary).map(industry => <option key={industry.id} value={industry.id}>{t(industry.labels)}</option>) : null}
+        </select>
+      </span>
+      {draft.industry.conflicted ? (
+        <span className="cb-alts" data-industry-conflict>
+          {t({ zh: "正反面行业不一致，可能是", en: "The sides disagree — maybe" })}
+          {candidates.map(candidate => (
+            <button className="btn cb-alt" key={`${candidate.primaryIndustryId}|${candidate.secondaryIndustryId}`} onClick={() => onChange(candidate)} type="button">
+              {industryPairLabel(candidate, t)}
+            </button>
+          ))}
+          <button className="btn cb-alt" onClick={() => onChange({ primaryIndustryId: null, secondaryIndustryId: null })} type="button">{t({ zh: "都不对，留空", en: "Neither — leave empty" })}</button>
+        </span>
+      ) : null}
+    </div>
+  );
+}
 
 /** 名片导入区：无批次时是上传区，有批次时依次是正在解析 → 确认 → 小结。自带作用域样式 .cbx。 */
 export function CardBatchImport(props: {
@@ -102,20 +207,7 @@ function BatchView({ batch, onBrowse, onReset, t }: { batch: CardBatch; onBrowse
   const batchId = batch.batchId!;
   const reattachRef = useRef<HTMLInputElement | null>(null);
 
-  // 回车确认（设计稿 ↵），输入框内也生效；按钮/多行文本不拦截。
-  const actRef = useRef(act);
-  actRef.current = act;
-  useEffect(() => {
-    if (!reviewing || finished) return;
-    function onKey(event: KeyboardEvent) {
-      const target = event.target as HTMLElement | null;
-      if (event.key !== "Enter" || event.isComposing || target?.tagName === "TEXTAREA" || target?.tagName === "BUTTON") return;
-      event.preventDefault();
-      void actRef.current("confirm");
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [finished, reviewing]);
+  useReviewEnterConfirm(reviewing && !finished, () => void act("confirm"));
 
   if (!detail) {
     return loadFailed ? (
@@ -168,7 +260,8 @@ function BatchView({ batch, onBrowse, onReset, t }: { batch: CardBatch; onBrowse
   const candidate = duplicate ? matches[active.cardId] ?? null : null;
   const handledCount = queue.filter(isHandled).length;
   const remainingAfter = pending.filter(card => card.cardId !== active.cardId).length;
-  const unresolved = [...flagged].filter(field => draft.fields[field] === baseline.fields[field]).length;
+  const unresolved = [...flagged].filter(field => draft.fields[field] === baseline.fields[field]).length
+    + (industryNeedsReview(draft) ? 1 : 0);
   const shownItem = active.items.find(item => item.side === side) ?? active.items[0]!;
   const reason = cardReason(active, draft, duplicate);
 
@@ -305,6 +398,15 @@ function BatchView({ batch, onBrowse, onReset, t }: { batch: CardBatch; onBrowse
               </div>
             );
           })}
+
+          <IndustryField
+            baseline={baseline}
+            busy={busy}
+            candidates={industryCandidates(active)}
+            draft={draft}
+            onChange={selection => setDrafts(current => ({ ...current, [active.cardId]: setDraftIndustry(current[active.cardId] ?? draft, selection) }))}
+            t={t}
+          />
 
           <div className="cb-rfield cb-rfield-notes">
             <span className="cb-rfield-head"><span>{t({ zh: "备注", en: "Notes" })}</span><span className="cb-rtag cb-rtag-ok">{t({ zh: "名片上的其他信息", en: "Everything else on the card" })}</span></span>

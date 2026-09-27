@@ -330,3 +330,37 @@ test("confirmed business-card contacts record the capture method as their source
   assert.equal(source.label, "Business card scan");
   assert.ok(!source.label.includes("user_ms1n64k3_eh7j0g"));
 });
+
+test("confirmed business-card contacts store the reviewed industry and omit an empty one", async () => {
+  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
+  const service = createLiveBusinessCardContactWriteService({
+    now: () => NOW,
+    provider: createStorageBusinessCardContactWriteProvider({ store, workspaceId: WORKSPACE_ID }),
+  });
+  const withIndustry = await service.confirmBusinessCardContact({
+    ...INPUT,
+    primaryIndustryId: "manufacturing_supply_chain",
+    secondaryIndustryId: "manufacturing_supply_chain.robotics",
+  });
+  assert.equal(withIndustry.success, true);
+  const withoutIndustry = await service.confirmBusinessCardContact({
+    ...INPUT,
+    allowDuplicate: true,
+    draftId: "business-card-review:cloud:no-industry",
+    primaryIndustryId: null,
+    secondaryIndustryId: null,
+  });
+  assert.equal(withoutIndustry.success, true);
+  const payloads = new Map(
+    store
+      .listRecords({ limit: "unbounded", collectionName: "contacts", workspaceId: WORKSPACE_ID })
+      .map((record) => [record.recordId, record.payload]),
+  );
+  assert.ok(withIndustry.success && withoutIndustry.success);
+  const stored = payloads.get(withIndustry.data.contactId)!;
+  assert.equal(stored.primaryIndustryId, "manufacturing_supply_chain");
+  assert.equal(stored.secondaryIndustryId, "manufacturing_supply_chain.robotics");
+  const empty = payloads.get(withoutIndustry.data.contactId)!;
+  assert.equal("primaryIndustryId" in empty, false);
+  assert.equal("secondaryIndustryId" in empty, false);
+});

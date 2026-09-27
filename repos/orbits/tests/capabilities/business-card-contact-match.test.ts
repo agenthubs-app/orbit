@@ -133,3 +133,64 @@ test("merging refuses someone else's contact and a contact that changed undernea
     ContactMergeRejected,
   );
 });
+
+// W0013：名片行业合并只补空、不覆盖。
+async function mergeIndustry(existing: Record<string, unknown>, industry: { primaryIndustryId: string | null; secondaryIndustryId: string | null }) {
+  const store = memoryStore(contactRecord("c1", { displayName: "佐々木 芳邦", ...existing }));
+  await mergeCardIntoContact({
+    actorId: ACTOR,
+    card: CARD,
+    cardNotes: "",
+    contactId: "c1",
+    evidenceIds: [],
+    industry: industry as Parameters<typeof mergeCardIntoContact>[0]["industry"],
+    now: () => new Date(NOW),
+    store,
+    workspaceId: "ws",
+  });
+  return store.current.payload;
+}
+
+test("merging writes the card industry into a contact that has none", async () => {
+  const payload = await mergeIndustry({}, { primaryIndustryId: "professional_services", secondaryIndustryId: "professional_services.legal" });
+  assert.equal(payload.primaryIndustryId, "professional_services");
+  assert.equal(payload.secondaryIndustryId, "professional_services.legal");
+});
+
+test("merging never overwrites an existing industry and only fills an empty secondary under the same primary", async () => {
+  const kept = await mergeIndustry(
+    { primaryIndustryId: "finance_investment", secondaryIndustryId: "finance_investment.banking" },
+    { primaryIndustryId: "professional_services", secondaryIndustryId: "professional_services.legal" },
+  );
+  assert.equal(kept.primaryIndustryId, "finance_investment");
+  assert.equal(kept.secondaryIndustryId, "finance_investment.banking");
+
+  const otherPrimary = await mergeIndustry(
+    { primaryIndustryId: "finance_investment" },
+    { primaryIndustryId: "professional_services", secondaryIndustryId: "professional_services.legal" },
+  );
+  assert.equal(otherPrimary.primaryIndustryId, "finance_investment");
+  assert.equal(otherPrimary.secondaryIndustryId, undefined, "a secondary from another primary is never attached");
+
+  const samePrimary = await mergeIndustry(
+    { primaryIndustryId: "professional_services", secondaryIndustryId: null },
+    { primaryIndustryId: "professional_services", secondaryIndustryId: "professional_services.legal" },
+  );
+  assert.equal(samePrimary.primaryIndustryId, "professional_services");
+  assert.equal(samePrimary.secondaryIndustryId, "professional_services.legal");
+
+  const secondaryOnly = await mergeIndustry(
+    { secondaryIndustryId: "finance_investment.banking" },
+    { primaryIndustryId: "professional_services", secondaryIndustryId: "professional_services.legal" },
+  );
+  assert.equal(secondaryOnly.primaryIndustryId, undefined, "an inconsistent existing pair is left alone");
+  assert.equal(secondaryOnly.secondaryIndustryId, "finance_investment.banking");
+});
+
+test("merging without a card industry, or with an invalid one, leaves the contact's industry empty", async () => {
+  const none = await mergeIndustry({}, { primaryIndustryId: null, secondaryIndustryId: null });
+  assert.equal(none.primaryIndustryId, undefined);
+  const mismatched = await mergeIndustry({}, { primaryIndustryId: "professional_services", secondaryIndustryId: "finance_investment.banking" });
+  assert.equal(mismatched.primaryIndustryId, undefined);
+  assert.equal(mismatched.secondaryIndustryId, undefined);
+});

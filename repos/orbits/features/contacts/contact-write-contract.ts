@@ -6,6 +6,7 @@ import type {
   ContactDTO,
   RelationshipEvidenceDTO,
 } from "../../shared/domain/contracts";
+import type { IndustryIdCode, SecondaryIndustryIdCode } from "../../shared/contract/industries";
 import { AppError, type AppErrorCode } from "../../shared/errors/app-error";
 
 export const BUSINESS_CARD_CONTACT_WRITE_ERROR_CODES = [
@@ -34,6 +35,9 @@ export interface ConfirmBusinessCardContactInput {
   notes?: string;
   organization: string;
   phone: string;
+  /** 审阅页确认的行业（名片识别时 AI 给出、用户可改）；缺省或 null 时不写。 */
+  primaryIndustryId?: IndustryIdCode | null;
+  secondaryIndustryId?: SecondaryIndustryIdCode | null;
   relationshipContext: string;
   role: string;
 }

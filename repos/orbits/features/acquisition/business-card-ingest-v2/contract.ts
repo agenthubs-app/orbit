@@ -13,7 +13,9 @@ export const INGEST_V2_OCR_DEADLINE_MS = 240_000;
 export const INGEST_V2_MAX_ATTEMPTS = 3;
 export const INGEST_V2_COLLECTING_TTL_HOURS = 24;
 export const INGEST_V2_REVIEW_TTL_DAYS = 7;
-export const INGEST_V2_EXTRACTION_SCHEMA_VERSION = 1;
+// v2（W0013）：extraction 增加 primaryIndustryId / secondaryIndustryId。v1 行缺这两个键，
+// 读取时由 repository 映射为 null，旧批次照常打开与确认。
+export const INGEST_V2_EXTRACTION_SCHEMA_VERSION = 2;
 export const INGEST_V2_DERIVATIVE_TARGET_EDGE_PX = 2048;
 export const INGEST_V2_DERIVATIVE_HARD_MAX_BYTES = 2 * 1024 * 1024;
 

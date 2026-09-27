@@ -12,6 +12,8 @@ import type {
   IngestManifestEntry,
 } from "../../../../../features/acquisition/business-card-ingest-v2/contract";
 import { aggregateBusinessCardNotes } from "../../../../../features/acquisition/business-card-notes-aggregation";
+import type { IndustryIdCode, SecondaryIndustryIdCode } from "../../../../../shared/contract/industries";
+import { sanitizeIndustryPair } from "../../../../../shared/domain/industries";
 
 export const INGEST_V2_FIELDS = [
   "displayName",
@@ -85,8 +87,22 @@ export interface IngestV2SourceSnapshot {
   imageDigest: string | null;
 }
 
+/** 审阅页「行业」一行（一级 › 二级）。初值来自识别结果，用户可改或清空。 */
+export interface IngestV2IndustryDraft {
+  primaryIndustryId: IndustryIdCode | null;
+  secondaryIndustryId: SecondaryIndustryIdCode | null;
+  /** 用户动过这一行：轮询刷新不再用识别结果覆盖。 */
+  edited: boolean;
+  /**
+   * 正反面给出了不同的有效行业（一级不同，或一级相同但二级都非空且不同）：不预选任何一边，
+   * 标「请核对」并挡住自动导入 / 自动并入，直到用户选定或清空。
+   */
+  conflicted: boolean;
+}
+
 export interface IngestV2CardDraft {
   fields: IngestV2FixedFields;
+  industry: IngestV2IndustryDraft;
   fieldSources: IngestCardFieldSourcesContract;
   sourceSnapshots: Record<IngestV2Field, IngestV2SourceSnapshot | null>;
   conflictedFields: readonly IngestV2Field[];
@@ -373,6 +389,38 @@ function notesSourceFingerprint(card: IngestV2CardViewModel, fields: Pick<Ingest
   });
 }
 
+/**
+ * 各面识别出的有效行业合并成一个初值：只有一面给出、或两面一致时直接采用；一级相同而只有一面给了二级时
+ * 取非空的二级；两面给出不同的一级、或同一一级下不同的二级时记为冲突，不替用户选。旧 v1 数据没有行业时为空。
+ */
+/** 各面识别出的有效行业（按正反面顺序、去重），供冲突时让用户挑选。 */
+export function industryCandidates(card: IngestV2CardViewModel): { primaryIndustryId: IndustryIdCode; secondaryIndustryId: SecondaryIndustryIdCode | null }[] {
+  const ordered = [...card.items].sort((a, b) => (a.side === b.side ? a.seq - b.seq : a.side === "front" ? -1 : 1));
+  const seen = new Set<string>();
+  return ordered.flatMap((item) => {
+    const pair = sanitizeIndustryPair(item.extraction?.primaryIndustryId, item.extraction?.secondaryIndustryId);
+    const key = `${pair.primaryIndustryId}|${pair.secondaryIndustryId}`;
+    if (pair.primaryIndustryId === null || seen.has(key)) return [];
+    seen.add(key);
+    return [{ primaryIndustryId: pair.primaryIndustryId, secondaryIndustryId: pair.secondaryIndustryId }];
+  });
+}
+
+export function initialIndustryDraft(card: IngestV2CardViewModel): IngestV2IndustryDraft {
+  const pairs = industryCandidates(card);
+  const empty = { primaryIndustryId: null, secondaryIndustryId: null, edited: false };
+  if (!pairs.length) return { ...empty, conflicted: false };
+  const primaries = new Set(pairs.map((pair) => pair.primaryIndustryId));
+  const secondaries = new Set(pairs.map((pair) => pair.secondaryIndustryId).filter((id) => id !== null));
+  if (primaries.size > 1 || secondaries.size > 1) return { ...empty, conflicted: true };
+  return {
+    primaryIndustryId: pairs[0]!.primaryIndustryId,
+    secondaryIndustryId: [...secondaries][0] ?? null,
+    edited: false,
+    conflicted: false,
+  };
+}
+
 export function initialCardDraft(card: IngestV2CardViewModel): IngestV2CardDraft {
   const fields = Object.fromEntries(INGEST_V2_FIELDS.map((field) => [field, ""])) as Record<IngestV2Field, string>;
   const fieldSources = Object.fromEntries(INGEST_V2_FIELDS.map((field) => [field, null])) as IngestCardFieldSourcesContract;
@@ -406,6 +454,7 @@ export function initialCardDraft(card: IngestV2CardViewModel): IngestV2CardDraft
   baseFields.notes = notesForCard(card, baseFields);
   return {
     fields: baseFields,
+    industry: initialIndustryDraft(card),
     fieldSources,
     sourceSnapshots,
     conflictedFields,
@@ -484,6 +533,8 @@ export function reconcileCardDraft(
 
   return {
     fields,
+    // 用户改过（含清空）的行业原样保留；否则跟随最新识别结果。
+    industry: previous.industry?.edited ? previous.industry : base.industry,
     fieldSources,
     sourceSnapshots,
     conflictedFields: [...conflictedFields],
@@ -507,6 +558,17 @@ export function setManualDraftField(
     sourceSnapshots: { ...draft.sourceSnapshots, [field]: null },
     conflictedFields: draft.conflictedFields.filter((entry) => entry !== field),
     staleFields: draft.staleFields.filter((entry) => entry !== field),
+  };
+}
+
+/** 审阅者改行业：按分类校验（二级不属于一级时整对清空，与识别结果同一规则）。 */
+export function setDraftIndustry(
+  draft: IngestV2CardDraft,
+  selection: { primaryIndustryId: string | null; secondaryIndustryId: string | null },
+): IngestV2CardDraft {
+  return {
+    ...draft,
+    industry: { ...sanitizeIndustryPair(selection.primaryIndustryId, selection.secondaryIndustryId), edited: true, conflicted: false },
   };
 }
 
@@ -582,6 +644,8 @@ export function buildConfirmationPayload(
       address: draft.fields.address,
       relationshipContext: draft.fields.relationshipContext,
       notes: draft.fields.notes,
+      primaryIndustryId: draft.industry?.primaryIndustryId ?? null,
+      secondaryIndustryId: draft.industry?.secondaryIndustryId ?? null,
       ...(allowDuplicate ? { allowDuplicate: true } : {}),
     },
     blockedReason: null,
