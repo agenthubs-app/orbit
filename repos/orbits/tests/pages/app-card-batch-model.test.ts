@@ -2,12 +2,14 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import type { IngestItemDTO } from "../../features/acquisition/business-card-ingest-v2/contract";
-import { groupIngestItemsByCardId, initialCardDraft, setManualDraftField } from "../../app/(app)/app/contacts/ingest-v2/ingest-v2-route-view-model";
+import { groupIngestItemsByCardId, initialCardDraft, setDraftIndustry, setManualDraftField } from "../../app/(app)/app/contacts/ingest-v2/ingest-v2-route-view-model";
 import {
   cardReason,
   fieldTag,
   flaggedFields,
+  industryNeedsReview,
   isAutoImportEligible,
+  isAutoMergeEligible,
   needsReview,
   parseStage,
 } from "../../app/(app)/app/contacts/card-batch-0918/card-batch-model";
@@ -77,4 +79,45 @@ test("a second-read disagreement names the field in plain words instead of pipel
   assert.equal(reason("emails"), "邮箱可能有字读错");
   assert.equal(reason("contactPoints"), "电话可能有字读错");
   assert.equal(reason("organization"), "公司名可能有字读错");
+});
+
+// W0013：正反面给出不同行业的卡不自动导入、也不自动并入，直到用户选定或清空。
+function twoSided(front: [string | null, string | null], back: [string | null, string | null]) {
+  const side = (which: "front" | "back", [primaryIndustryId, secondaryIndustryId]: [string | null, string | null]) => {
+    const base = item({ id: `item-${which}`, side: which, seq: which === "front" ? 1 : 2 });
+    return { ...base, extraction: { ...base.extraction!, primaryIndustryId, secondaryIndustryId } as IngestItemDTO["extraction"] };
+  };
+  const card = groupIngestItemsByCardId([side("front", front), side("back", back)])[0]!;
+  return { card, draft: initialCardDraft(card) };
+}
+
+test("different industries on two sides are not auto-imported or auto-merged until the reviewer resolves them", () => {
+  for (const [front, back] of [
+    [["technology_internet", "technology_internet.ai_data"], ["finance_investment", "finance_investment.fintech"]],
+    [["technology_internet", "technology_internet.ai_data"], ["technology_internet", "technology_internet.cybersecurity"]],
+  ] as const) {
+    const { card, draft } = twoSided([...front], [...back]);
+    assert.equal(industryNeedsReview(draft), true);
+    assert.equal(draft.industry.primaryIndustryId, null, "no side is silently preferred");
+    assert.equal(isAutoImportEligible(card, draft), false);
+    assert.equal(isAutoMergeEligible(card, draft), false);
+    assert.deepEqual(cardReason(card, draft, false), { zh: "正反面行业不一致", en: "Sides disagree on industry" });
+    assert.equal(needsReview(card, new Set()), true);
+
+    const picked = setDraftIndustry(draft, { primaryIndustryId: back[0], secondaryIndustryId: back[1] });
+    assert.equal(isAutoImportEligible(card, picked), true);
+    assert.equal(isAutoMergeEligible(card, picked), true);
+    const cleared = setDraftIndustry(draft, { primaryIndustryId: null, secondaryIndustryId: null });
+    assert.equal(industryNeedsReview(cleared), false, "clearing also resolves the conflict");
+  }
+});
+
+test("matching industries, or one side missing the secondary, are not a conflict", () => {
+  const same = twoSided(["technology_internet", "technology_internet.ai_data"], ["technology_internet", null]);
+  assert.equal(industryNeedsReview(same.draft), false);
+  assert.equal(same.draft.industry.secondaryIndustryId, "technology_internet.ai_data", "the non-null secondary is used");
+  assert.equal(isAutoImportEligible(same.card, same.draft), true);
+  const oneSide = twoSided([null, null], ["finance_investment", "finance_investment.fintech"]);
+  assert.equal(oneSide.draft.industry.primaryIndustryId, "finance_investment");
+  assert.equal(isAutoMergeEligible(oneSide.card, oneSide.draft), true);
 });

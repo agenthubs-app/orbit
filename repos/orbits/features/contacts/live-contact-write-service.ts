@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 
 import type { ContactDTO } from "../../shared/domain/contracts";
+import { sanitizeIndustryPair } from "../../shared/domain/industries";
 import {
   BUSINESS_CARD_CONTACT_WRITE_ERROR_DEFINITIONS,
   type BusinessCardContactWriteErrorCode,
@@ -125,6 +126,7 @@ function contactFor(input: {
   const location = nonEmpty(input.request.location ?? "");
   const profileSnippet = nonEmpty(input.request.relationshipContext);
   const notes = nonEmpty(input.request.notes ?? "");
+  const industry = sanitizeIndustryPair(input.request.primaryIndustryId, input.request.secondaryIndustryId);
 
   return {
     id: input.contactId,
@@ -136,6 +138,8 @@ function contactFor(input: {
     ...(phone ? { primaryPhone: phone } : {}),
     ...(profileSnippet ? { profileSnippet } : {}),
     ...(notes ? { notes } : {}),
+    ...(industry.primaryIndustryId ? { primaryIndustryId: industry.primaryIndustryId } : {}),
+    ...(industry.secondaryIndustryId ? { secondaryIndustryId: industry.secondaryIndustryId } : {}),
     stage: "captured",
     // 来源描述的是「这个联系人是怎么进来的」，不是「谁点的确认」。此前这里写的是
     // `Business card confirmed by ${actorLabel}`，而 V2 handler 传的 actorLabel 就是

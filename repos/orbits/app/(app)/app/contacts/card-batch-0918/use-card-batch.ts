@@ -29,6 +29,7 @@ import {
 } from "../ingest-v2/ingest-v2-route-view-model";
 import {
   isAutoImportEligible,
+  isAutoMergeEligible,
   isCardSkipped,
   needsReview,
   parseStage,
@@ -320,7 +321,7 @@ export function useCardBatch(batchId: string | null, t: T) {
       const draft = drafts[card.cardId];
       if (!draft || autoAttempted.current.has(card.cardId) || !card.reviewable || card.allConfirmed || isCardSkipped(card)) return false;
       const candidate = matches[card.cardId];
-      if (candidate) return candidate.identical && card.allExtracted && !card.hasTerminalFailure && draft.conflictedFields.length === 0;
+      if (candidate) return candidate.identical && isAutoMergeEligible(card, draft);
       return isAutoImportEligible(card, draft);
     });
     if (!eligible.length) return;

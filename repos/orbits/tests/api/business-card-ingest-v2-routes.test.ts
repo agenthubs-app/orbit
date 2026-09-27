@@ -19,6 +19,7 @@ import {
   type IngestV2Runtime,
 } from "../../app/api/contact-drafts/business-card/batches/v2/handlers";
 import type { BusinessCardStructuredExtraction } from "../../features/acquisition/business-card-cloud-ocr";
+import type { IngestItemDTO } from "../../features/acquisition/business-card-ingest-v2/contract";
 import { createFilesystemDerivativeStore } from "../../features/acquisition/business-card-ingest-v2/derivative-store";
 import { runBusinessCardIngestV2Migrations } from "../../features/acquisition/business-card-ingest-v2/migrations";
 import { createBusinessCardIngestRepository } from "../../features/acquisition/business-card-ingest-v2/repository";
@@ -678,5 +679,91 @@ test("v2 confirm links identical cards to the existing contact, surfaces similar
     assert.equal(payload.organization, "TEN法律事務所", "merging never overwrites an existing value");
     assert.equal(payload.location, "東京都文京区本郷4丁目2-2");
     assert.match(payload.notes, /公司: 別の事務所/);
+  });
+});
+
+// W0013：确认时写入审阅页的行业；合并只补空；提取结构 v1 的旧批次照常打开与确认。
+test("v2 confirm writes the reviewed industry, merges only into empty industry fields, and keeps v1 extractions confirmable", { skip }, async () => {
+  await withHarness(async ({ deps, runtime, pool }) => {
+    const heic = await readFile(FIXTURE_HEIC);
+    const created = await envelope(await createIngestV2CollectionHandlers(deps).POST(new Request("http://test/api/v2", { method: "POST", body: JSON.stringify({
+      idempotencyKey: "key-industry",
+      manifest: ["a", "b", "c", "d"].map((card, index) => ({ cardId: `card:${card}`, side: "front", fileName: `${card}.heic`, mimeType: "image/heic", rawSize: heic.length, seq: index + 1, clientDigest: sha256(heic) })),
+    }) })));
+    const batch = created.batch as { id: string };
+    const upload = createIngestV2UploadHandler(deps);
+    for (const item of created.items as Array<{ id: string }>) {
+      assert.equal((await upload(new Request("http://test/upload", { method: "PUT", body: new Uint8Array(heic), headers: { "content-type": "image/heic" } }), params({ id: batch.id, itemId: item.id }))).status, 200);
+    }
+    await createIngestV2FinalizeHandler(deps)(new Request("http://test/finalize", { method: "POST" }), params({ id: batch.id }));
+    const extraction: BusinessCardStructuredExtraction = {
+      fullName: "青空 太郎", nativeFullName: "青空 太郎", romanizedFullName: null, organization: "架空法律事務所", departments: [], title: "弁護士",
+      emails: [], contactPoints: [], website: null, addresses: [], certifications: [], detectedLanguages: ["ja"],
+      primaryIndustryId: "professional_services", secondaryIndustryId: "professional_services.legal",
+    };
+    for (const item of await runtime.repository.claimItems({ limit: 4 })) {
+      await runtime.repository.submitExtraction({ itemId: item.id, leaseToken: item.leaseToken, expectedVersion: item.version, extraction, reviewIssues: [], usage: null });
+    }
+    // 把 card:d 改回 v1 形状（没有行业键、版本 1），模拟升级前识别完的旧批次。
+    await pool.query(
+      `update bc_ingest_items set extraction = extraction - 'primaryIndustryId' - 'secondaryIndustryId', extraction_schema_version = 1 where card_id = 'card:d'`,
+    );
+    const detail = await envelope(await createIngestV2BatchDetailHandler(deps)(new Request("http://test/detail"), params({ id: batch.id })));
+    const items = detail.items as IngestItemDTO[];
+    const itemFor = (card: string) => items.find(entry => entry.cardId === `card:${card}`)!;
+    assert.equal(itemFor("a").extractionSchemaVersion, 2);
+    assert.equal(itemFor("a").extraction?.secondaryIndustryId, "professional_services.legal");
+    assert.equal(itemFor("d").extractionSchemaVersion, 1);
+    assert.equal(itemFor("d").extraction?.primaryIndustryId, null, "v1 JSON without industry reads back as null");
+    assert.equal(itemFor("d").extraction?.secondaryIndustryId, null);
+    assert.equal(itemFor("d").extraction?.organization, "架空法律事務所");
+
+    const body = (card: string, fields: Record<string, unknown>) => {
+      const item = itemFor(card);
+      return {
+        confirmationIntentId: `confirm:${card}`,
+        expectedCardItems: [{ itemId: item.id, version: item.version, imageDigest: item.imageDigest }],
+        fieldSources: { displayName: null, organization: null, role: null, email: null, phone: null },
+        organization: "", role: "", email: "", phone: "", relationshipContext: "", notes: "",
+        ...fields,
+      };
+    };
+    const confirm = createIngestV2ConfirmHandler(deps);
+    const post = async (card: string, payload: Record<string, unknown>) => {
+      const response = await confirm(new Request("http://test/confirm", { method: "POST", body: JSON.stringify(payload) }), params({ id: batch.id, itemId: itemFor(card).id }));
+      return { status: response.status, data: await envelope(response) };
+    };
+    const payloadOf = async (contactId: unknown) =>
+      (await pool.query(`select payload from orbit_records where collection_name = 'contacts' and record_id = $1`, [contactId])).rows[0].payload as Record<string, unknown>;
+
+    const mismatched = await post("a", body("a", { displayName: "青空 太郎", primaryIndustryId: "professional_services", secondaryIndustryId: "finance_investment.banking" }));
+    assert.equal(mismatched.status, 400, "a mismatched pair is rejected before any write");
+
+    // 新建：写入审阅页的行业。
+    const createdA = await post("a", body("a", { displayName: "青空 太郎", primaryIndustryId: "professional_services", secondaryIndustryId: "professional_services.legal" }));
+    assert.equal(createdA.data.state, "created");
+    const contactA = await payloadOf(createdA.data.contactId);
+    assert.equal(contactA.primaryIndustryId, "professional_services");
+    assert.equal(contactA.secondaryIndustryId, "professional_services.legal");
+
+    // 旧客户端不传行业：新建联系人没有行业。
+    const createdB = await post("b", body("b", { displayName: "別の 人" }));
+    assert.equal(createdB.data.state, "created");
+    assert.equal((await payloadOf(createdB.data.contactId)).primaryIndustryId, undefined);
+
+    // 合并到行业为空的联系人：补上。
+    const mergedIntoEmpty = await post("c", body("c", { displayName: "別の 人", mergeIntoContactId: createdB.data.contactId, primaryIndustryId: "finance_investment", secondaryIndustryId: "finance_investment.insurance" }));
+    assert.equal(mergedIntoEmpty.data.merged, true);
+    const contactB = await payloadOf(createdB.data.contactId);
+    assert.equal(contactB.primaryIndustryId, "finance_investment");
+    assert.equal(contactB.secondaryIndustryId, "finance_investment.insurance");
+
+    // v1 旧卡合并到已有行业的联系人：确认成功，已有行业不被覆盖。
+    const mergedIntoExisting = await post("d", body("d", { displayName: "青空 太郎", mergeIntoContactId: createdA.data.contactId, primaryIndustryId: "technology_internet", secondaryIndustryId: "technology_internet.ai_data" }));
+    assert.equal(mergedIntoExisting.status, 200);
+    assert.equal(mergedIntoExisting.data.state, "created");
+    const contactAAfter = await payloadOf(createdA.data.contactId);
+    assert.equal(contactAAfter.primaryIndustryId, "professional_services");
+    assert.equal(contactAAfter.secondaryIndustryId, "professional_services.legal");
   });
 });

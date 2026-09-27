@@ -25,6 +25,7 @@ import {
   type IngestItemErrorStage,
   type IngestManifestEntry,
 } from "./contract";
+import { sanitizeIndustryPair } from "../../../shared/domain/industries";
 
 // 设计方案：docs/superpowers/plans/2026-08-31-business-card-batch-ingest-v2.md (v2.4)
 //
@@ -215,6 +216,16 @@ function mapBatch(row: Record<string, unknown>): IngestBatchDTO {
   };
 }
 
+// 提取结构 v1 没有行业键：读出时统一补成 null（并按分类再校验一次），旧批次照常打开与确认。
+function storedExtraction(value: unknown): BusinessCardStructuredExtraction | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const extraction = value as BusinessCardStructuredExtraction;
+  return {
+    ...extraction,
+    ...sanitizeIndustryPair(extraction.primaryIndustryId, extraction.secondaryIndustryId),
+  };
+}
+
 function mapItem(row: Record<string, unknown>): IngestItemDTO {
   return {
     id: String(row.id),
@@ -231,7 +242,7 @@ function mapItem(row: Record<string, unknown>): IngestItemDTO {
     imageDigest: (row.image_digest as string | null) ?? null,
     derivativeObjectKey: (row.derivative_object_key as string | null) ?? null,
     derivativeSize: row.derivative_size === null ? null : Number(row.derivative_size),
-    extraction: (row.extraction as BusinessCardStructuredExtraction | null) ?? null,
+    extraction: storedExtraction(row.extraction),
     extractionSchemaVersion:
       row.extraction_schema_version === null
         ? null

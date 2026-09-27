@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import type * as Contract from "../contract/business-card-batch";
+import { INDUSTRY_IDS, sanitizeIndustryPair, validateIndustrySelection } from "../domain/industries";
 
 const identity = z.string().refine((value) => value.trim().length > 0);
 const timestamp = z.iso.datetime({ offset: true });
@@ -31,6 +32,9 @@ export const businessCardStructuredExtractionSchema: z.ZodType<Contract.Business
   addresses: z.array(labeledValueSchema).readonly(),
   certifications: z.array(z.string()).readonly(),
   detectedLanguages: z.array(z.string()).readonly(),
+  // 提取结构 v2 起才有。分类外或不匹配的值按分类清空，不让整条响应解析失败。
+  primaryIndustryId: z.unknown().optional(),
+  secondaryIndustryId: z.unknown().optional(),
 }).transform((value) => ({
   fullName: value.fullName,
   nativeFullName: value.nativeFullName,
@@ -44,6 +48,10 @@ export const businessCardStructuredExtractionSchema: z.ZodType<Contract.Business
   addresses: value.addresses,
   certifications: value.certifications,
   detectedLanguages: value.detectedLanguages,
+  // v1 数据两个键都缺省时保持缺省（契约里是可选字段，读取方按 null 处理）。
+  ...(value.primaryIndustryId === undefined && value.secondaryIndustryId === undefined
+    ? {}
+    : sanitizeIndustryPair(value.primaryIndustryId, value.secondaryIndustryId)),
 }));
 
 export const businessCardReviewIssueSchema: z.ZodType<Contract.BusinessCardReviewIssueContract> = z.object({
@@ -199,12 +207,14 @@ const ingestCardFieldSourcesSchema: z.ZodType<Contract.IngestCardFieldSourcesCon
   role: identity.nullable(),
   email: identity.nullable(),
   phone: identity.nullable(),
+  address: identity.nullable().optional(),
 }).transform((value): Contract.IngestCardFieldSourcesContract => ({
   displayName: value.displayName,
   organization: value.organization,
   role: value.role,
   email: value.email,
   phone: value.phone,
+  ...(value.address !== undefined ? { address: value.address } : {}),
 }));
 
 function normalizeLegacyIngestItem(value: unknown): unknown {
@@ -318,10 +328,17 @@ export const ingestCardConfirmationInputSchema: z.ZodType<Contract.IngestCardCon
   role: z.string(),
   email: z.string(),
   phone: z.string(),
+  address: z.string().optional(),
+  mergeIntoContactId: identity.optional(),
   relationshipContext: z.string(),
   notes: z.string(),
   allowDuplicate: z.boolean().optional(),
+  primaryIndustryId: z.enum(INDUSTRY_IDS).nullable().optional(),
+  secondaryIndustryId: z.string().nullable().optional(),
 }).superRefine((value, context) => {
+  if (!validateIndustrySelection(value).valid) {
+    context.addIssue({ code: "custom", path: ["secondaryIndustryId"], message: "Secondary industry must belong to the selected primary industry." });
+  }
   const itemIds = value.expectedCardItems.map((item) => item.itemId);
   if (new Set(itemIds).size !== itemIds.length) {
     context.addIssue({ code: "custom", path: ["expectedCardItems"], message: "Card item snapshots must be unique." });
@@ -341,8 +358,14 @@ export const ingestCardConfirmationInputSchema: z.ZodType<Contract.IngestCardCon
     role: value.role,
     email: value.email,
     phone: value.phone,
+    ...(value.address !== undefined ? { address: value.address } : {}),
+    ...(value.mergeIntoContactId !== undefined ? { mergeIntoContactId: value.mergeIntoContactId } : {}),
     relationshipContext: value.relationshipContext,
     notes: value.notes,
+    // 旧客户端不传行业：保持缺省，确认时不写行业。
+    ...(value.primaryIndustryId !== undefined || value.secondaryIndustryId !== undefined
+      ? sanitizeIndustryPair(value.primaryIndustryId, value.secondaryIndustryId)
+      : {}),
   };
   const { allowDuplicate } = value;
   return allowDuplicate === undefined ? confirmation : { ...confirmation, allowDuplicate };
