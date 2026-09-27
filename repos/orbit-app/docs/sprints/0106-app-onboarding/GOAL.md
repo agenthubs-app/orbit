@@ -4,7 +4,7 @@
 
 网页上新注册的用户会进入一个 5 步的引导：填基本资料（可扫自己的名片自动填）、说最近想推进什么、写能提供和在找的东西、让 iOrbit 写一段自我介绍、带入已有人脉。App 里没有这个流程，新用户登录后只被带到资料页补字段。大部分用户用 App，所以本 Sprint 把新用户引导做进 App。
 
-这是界面改动。**设计稿已于 2026-09-27 获用户批准**（https://claude.ai/artifact/B856DzzuzxbjT5y1kVSNfQ，本地副本 `docs/designs/2026-09-27-app-onboarding-live/`），实施以画板和其中的视觉规范为准。
+这是界面改动。**设计稿已于 2026-09-27 获用户批准**（https://claude.ai/artifact/B856DzzuzxbjT5y1kVSNfQ，本地副本见 [设计目录](../../../../../docs/designs/2026-09-27-app-onboarding-live/README.md)），实施以画板和其中的视觉规范为准。
 
 ## 做完能看到什么
 

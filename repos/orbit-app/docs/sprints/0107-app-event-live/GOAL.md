@@ -4,7 +4,7 @@
 
 活动当天，网页上已报名的参会者可以打开「现场」页 `/events/[id]/live`：签到、看为你推荐的人、全部参会者、桌位与轮次、关系图和议程，并直接发起交换名片、记笔记、约时间。大家在现场用的都是手机，App 里却没有这个页面，只有分散的「参会者与名片交换」和旧的派对模式。本 Sprint 把活动现场页做进 App。
 
-这是界面改动。**设计稿已于 2026-09-27 获用户批准**（https://claude.ai/artifact/B856DzzuzxbjT5y1kVSNfQ，本地副本 `docs/designs/2026-09-27-app-onboarding-live/`），实施以画板和其中的视觉规范为准。
+这是界面改动。**设计稿已于 2026-09-27 获用户批准**（https://claude.ai/artifact/B856DzzuzxbjT5y1kVSNfQ，本地副本见 [设计目录](../../../../../docs/designs/2026-09-27-app-onboarding-live/README.md)），实施以画板和其中的视觉规范为准。
 
 ## 做完能看到什么
 

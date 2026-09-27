@@ -25,6 +25,22 @@
 4. 自我介绍初稿：生成时机、重生成上限与网页一致；失败/超时的界面。
 5. 与 Li-QY 网页版的差异清单（如有）与理由。
 
+## 设计引用
+
+- 在线画布（私有，需登录）：https://claude.ai/artifact/B856DzzuzxbjT5y1kVSNfQ
+- 本地副本与视觉规范：[设计目录 README](../../../../../docs/designs/2026-09-27-app-onboarding-live/README.md)（视觉数值来源：[`controls.ts`](../../../src/design/controls.ts)、[`tokens.ts`](../../../src/design/tokens.ts)）
+- 画布索引：[canvas.json](../../../../../docs/designs/2026-09-27-app-onboarding-live/canvas.json)
+
+| 画板 | 内容 | 源文件 |
+| --- | --- | --- |
+| `Main` | 欢迎 | [Main.dc.html](../../../../../docs/designs/2026-09-27-app-onboarding-live/Main.dc.html) |
+| `OnbProfile` | 第 1 步 你是谁 | [OnbProfile.dc.html](../../../../../docs/designs/2026-09-27-app-onboarding-live/OnbProfile.dc.html) |
+| `OnbGoals` | 第 2 步 最近想推进什么 | [OnbGoals.dc.html](../../../../../docs/designs/2026-09-27-app-onboarding-live/OnbGoals.dc.html) |
+| `OnbPersona` | 第 3 步 提供与寻找 | [OnbPersona.dc.html](../../../../../docs/designs/2026-09-27-app-onboarding-live/OnbPersona.dc.html) |
+| `OnbIntro` | 第 4 步 AI 自我介绍 | [OnbIntro.dc.html](../../../../../docs/designs/2026-09-27-app-onboarding-live/OnbIntro.dc.html) |
+| `OnbImport` | 第 5 步 带入人脉 | [OnbImport.dc.html](../../../../../docs/designs/2026-09-27-app-onboarding-live/OnbImport.dc.html) |
+| `OnbStates` | 失败与中途退出 | [OnbStates.dc.html](../../../../../docs/designs/2026-09-27-app-onboarding-live/OnbStates.dc.html) |
+
 ## 已批准的设计（revision 2）
 
 实施以设计稿画板为准：`Main`、`OnbProfile`、`OnbGoals`、`OnbPersona`、`OnbIntro`、`OnbImport`、`OnbStates`。视觉数值一律取自 `controls.ts` 和 `tokens.ts`（清单见设计目录的 README），不另起样式。

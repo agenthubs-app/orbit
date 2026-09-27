@@ -24,6 +24,23 @@
 4. 入口：活动详情页何时显示「现场」按钮（报名后、活动当天、签到开放窗口内？）。
 5. 议程无数据时的显示；关系图在手机上的简化方案。
 
+## 设计引用
+
+- 在线画布（私有，需登录）：https://claude.ai/artifact/B856DzzuzxbjT5y1kVSNfQ
+- 本地副本与视觉规范：[设计目录 README](../../../../../docs/designs/2026-09-27-app-onboarding-live/README.md)（视觉数值来源：[`controls.ts`](../../../src/design/controls.ts)、[`tokens.ts`](../../../src/design/tokens.ts)）
+- 画布索引：[canvas.json](../../../../../docs/designs/2026-09-27-app-onboarding-live/canvas.json)
+
+| 画板 | 内容 | 源文件 |
+| --- | --- | --- |
+| `LiveEntry` | 活动详情入口 | [LiveEntry.dc.html](../../../../../docs/designs/2026-09-27-app-onboarding-live/LiveEntry.dc.html) |
+| `LiveHome` | 现场首页 | [LiveHome.dc.html](../../../../../docs/designs/2026-09-27-app-onboarding-live/LiveHome.dc.html) |
+| `LiveRec` | 为你推荐 | [LiveRec.dc.html](../../../../../docs/designs/2026-09-27-app-onboarding-live/LiveRec.dc.html) |
+| `LiveAll` | 全部参会者 | [LiveAll.dc.html](../../../../../docs/designs/2026-09-27-app-onboarding-live/LiveAll.dc.html) |
+| `LiveGroup` | 我的分组 | [LiveGroup.dc.html](../../../../../docs/designs/2026-09-27-app-onboarding-live/LiveGroup.dc.html) |
+| `LivePerson` | 对方资料与操作面板 | [LivePerson.dc.html](../../../../../docs/designs/2026-09-27-app-onboarding-live/LivePerson.dc.html) |
+| `LiveAgenda` | 议程与关系图 | [LiveAgenda.dc.html](../../../../../docs/designs/2026-09-27-app-onboarding-live/LiveAgenda.dc.html) |
+| `LiveDenied` | 未报名 / 断网 / 结果未发布 / 不在签到时间 | [LiveDenied.dc.html](../../../../../docs/designs/2026-09-27-app-onboarding-live/LiveDenied.dc.html) |
+
 ## 已批准的设计（revision 2）
 
 实施以设计稿画板为准：`LiveEntry`、`LiveHome`、`LiveRec`、`LiveAll`、`LiveGroup`、`LivePerson`、`LiveAgenda`、`LiveDenied`。视觉数值取自 `controls.ts`、`tokens.ts`（见设计目录 README）。
