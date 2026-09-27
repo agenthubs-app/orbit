@@ -801,6 +801,9 @@ function ConversationThread({
   const messageCount = useRef(thread.messages.length);
   messageCount.current = thread.messages.length;
   const pendingAnchor = useRef<{ count: number; height: number; offset: number } | null>(null);
+  // Prepended messages can lay out in more than one pass (text, then cards); keep
+  // compensating their growth briefly unless the reader starts scrolling.
+  const settlingAnchor = useRef<{ height: number; until: number } | null>(null);
   const turnCards = new Map((thread.entityCardTurns ?? []).map((turn) => [turn.assistantMessageId, turn.cards]));
   const requestEarlier = () => {
     if (!earlier || earlier.status === "loading" || !earlier.hasMore) return;
@@ -869,18 +872,28 @@ function ConversationThread({
           scrollOffset.current = contentOffset.y;
           if (userDragged.current && movingUp && contentOffset.y < 48) requestEarlier();
         }}
-        onScrollBeginDrag={() => { userDragged.current = true; }}
+        onScrollBeginDrag={() => { userDragged.current = true; settlingAnchor.current = null; }}
         scrollEventThrottle={100}
         onContentSizeChange={(_width, height) => {
           const anchor = pendingAnchor.current;
           contentHeight.current = height;
           if (anchor && messageCount.current > anchor.count) {
             pendingAnchor.current = null;
+            settlingAnchor.current = { height, until: Date.now() + 1500 };
             const y = Math.max(0, anchor.offset + height - anchor.height);
             scrollOffset.current = y;
             historyScroll.current?.scrollTo({ y, animated: false });
             return;
           }
+          const settling = settlingAnchor.current;
+          if (settling && Date.now() < settling.until) {
+            const y = Math.max(0, scrollOffset.current + height - settling.height);
+            settlingAnchor.current = { ...settling, height };
+            scrollOffset.current = y;
+            historyScroll.current?.scrollTo({ y, animated: false });
+            return;
+          }
+          settlingAnchor.current = null;
           if (followNewMessages.current) historyScroll.current?.scrollToEnd({ animated: true });
         }}
         refreshControl={<RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.accent} />}
