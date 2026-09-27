@@ -197,56 +197,46 @@ test("「◷ 历史记录」opens the history drawer over the overview", async (
   );
 });
 
-test("the home screen ships every design block from lines 46–253", () => {
+test("the home screen ships the morning-paper layout", () => {
   const html = shellMarkup();
 
   for (const copy of [
-    // 49–55
+    // 报头
     ">iOrbit<",
-    "今天的重要事项、活动与人脉推进，我已经帮你整理好了。",
-    // 57–74
-    "今天你想推进什么？",
-    "帮我安排今天",
-    "推荐适合我的活动",
-    "我该先联系谁",
-    "帮我制定推进计划",
+    "正在整理今天的事…",
+    // 左宽栏：今日要事 + 追问条
+    "今日要事",
+    "刷新",
+    "还有别的想推进？问 iOrbit",
     "打开对话",
-    // 78–110
-    "今日日程",
-    "查看完整日程 →",
-    "今日简报",
-    // 109–146
-    "日历",
-    "进入日程页 →",
-    // 148–170
-    "已报名活动",
-    "查看活动推荐 →",
-    // 172–193
-    "建议与行动",
-    "查看建议与行动 →",
-    // 195–212
-    "联系人机会",
-    "查看联系人建议 →",
-    // 214–236
+    // 右窄栏：时间
+    ">今天<",
+    "日程页 →",
+    // 栏目区
     "本周推进",
-    "查看执行计划 →",
-    "本周目标",
-    "进度",
-    // 237–252
-    "继续对话",
-    "从上次的对话继续，或选择一个主题开始新的讨论。",
-    "历史记录",
-    "进入对话页 →",
+    "执行计划 →",
+    "我该先联系谁 →",
+    "帮我制定推进计划 →",
+    "已报名活动",
+    "全部活动 →",
+    "最近对话",
+    ">历史<",
+    "进入对话 →",
   ]) {
-    assert.ok(html.includes(copy), `design copy missing from the home screen: ${copy}`);
+    assert.ok(html.includes(copy), `copy missing from the home screen: ${copy}`);
   }
 
-  // 跨域链接（「审阅修订」16）。
+  // 旧版七张等权卡片与顶部 chips 已经拿掉（Q7 / Q11）。
+  const homeHtml = html.split('class="ir-home"')[1] ?? "";
+  for (const gone of ["今日简报", "联系人机会", "帮我安排今天", "推荐适合我的活动", "class=\"ir-card"]) {
+    assert.ok(!homeHtml.includes(gone), `old home block leaked back: ${gone}`);
+  }
+
+  // 跨域链接。
   assert.match(html, /href="\/app\/events"/);
-  assert.match(html, /href="\/app\/contacts"/);
-  // 两枚导航 chip 是 <a>，不是发消息的按钮。
-  assert.match(html, /<a class="ir-chip" href="\/app\/agent\/strategy\?view=contacts"/);
-  assert.match(html, /<a class="ir-chip" href="\/app\/agent\/strategy"/);
+  assert.match(html, /href="\/app\/agent\/plan"/);
+  assert.match(html, /href="\/app\/agent\/strategy\?view=contacts"/);
+  assert.match(html, /href="\/app\/agent\/strategy"/);
 });
 
 test("the home screen never renders the design's mock numbers or names", () => {
@@ -398,6 +388,7 @@ interface Mounted {
 interface MountOptions {
   ledger?: unknown;
   signalPatchFails?: boolean;
+  signalsFail?: boolean;
   sessions?: unknown;
   signals?: unknown;
   snapshot?: unknown;
@@ -492,6 +483,7 @@ async function mountHome(
       return Response.json({ data: { signal: { ...signal, status: "dismissed" } } });
     }
     if (url.startsWith("/api/agent/signals")) {
+      if (options.signalsFail) return Response.json({ success: false }, { status: 503 });
       return Response.json({ data: { signals: options.signals ?? [] } });
     }
     if (url.startsWith("/api/ai/conversations/sessions")) {
@@ -531,6 +523,7 @@ function homeElement(
       onOpenChat={overrides.onOpenChat ?? (() => undefined)}
       onOpenHistory={overrides.onOpenHistory ?? (() => undefined)}
       onOpenSession={overrides.onOpenSession ?? (() => undefined)}
+      clock={overrides.clock}
     />
   );
 }
@@ -582,6 +575,153 @@ const SNAPSHOT = (isoDay: string) => ({
   },
 });
 
+test("today's items merge schedule, signals and follow-ups in priority order", async (t) => {
+  // SC-W0001-02：2 小时内开始的日程 → critical/high 信号 → 其余信号 → 跟进补位；
+  // 信号里已有 followup_due 时跟进队列不再补位；超过 3 件显示「还有 N 件」并可展开。
+  // 时钟固定在东京 12:00，约谈在 12:30 开始。
+  const clock = () => new Date("2026-09-28T03:00:00Z");
+  const snapshot = SNAPSHOT("2026-09-28");
+  const appointment = snapshot.facts.appointments.items[0]!;
+  appointment.startsAtUtc = "2026-09-28T03:30:00Z";
+  appointment.endsAtUtc = "2026-09-28T04:30:00Z";
+
+  const signal = (signalId: string, title: string, severity: string, type: string) => ({
+    actions: [{ actionId: "open", href: "/app/contacts/c9", label: "打开联系人" }],
+    changes: [],
+    confidence: 0.8,
+    lastObservedAt: "2026-09-20T00:00:00Z",
+    reason: `${title}的原因`,
+    severity,
+    signalId,
+    sources: [],
+    status: "new",
+    summary: title,
+    title,
+    type,
+  });
+
+  const titlesOf = (mounted: Mounted) => [
+    ...mounted.root.root
+      .findAll((node) => node.props?.className === "ir-m-lead-title")
+      .map((node) => textOf(node)),
+    ...mounted.root.root
+      .findAll((node) => node.props?.className === "ir-m-brief-title")
+      .map((node) => textOf(node)),
+  ];
+
+  const mixed = await mountHome(t, homeElement({ clock }), {
+    signals: [
+      signal("s-medium", "中等信号", "medium", "relationship_stale"),
+      signal("s-high", "紧急信号", "high", "relationship_stale"),
+    ],
+    snapshot,
+  });
+  const visible = titlesOf(mixed);
+  assert.equal(visible.length, 3, "one lead plus two briefs are shown by default");
+  assert.match(visible[0]!, /已确认约谈/, "the appointment starting within 2 hours leads");
+  assert.equal(visible[1], "紧急信号");
+  assert.equal(visible[2], "中等信号");
+
+  const more = mixed.root.root.findAll(
+    (node) => node.type === "button" && node.props?.className === "btn ir-m-more",
+  )[0]!;
+  assert.match(textOf(more), /还有 1 件/);
+  await act(async () => {
+    more.props.onClick();
+  });
+  const expanded = titlesOf(mixed);
+  assert.equal(expanded.length, 4);
+  assert.equal(expanded[3], "跟进 Mina Aoki", "the follow-up queue fills in last");
+
+  const deduped = await mountHome(t, homeElement({ clock }), {
+    signals: [signal("s-follow", "会后跟进", "high", "followup_due")],
+    snapshot,
+  });
+  assert.ok(
+    !titlesOf(deduped).some((title) => title.includes("Mina Aoki")),
+    "a followup_due signal suppresses the follow-up queue",
+  );
+});
+
+const EMPTY_SNAPSHOT = {
+  facts: {
+    appointments: { items: [], state: "ready" },
+    followups: { current: { items: [] }, state: "ready" },
+    personal: { items: [], state: "ready" },
+  },
+};
+
+const plainSignal = (signalId: string, title: string, severity: string, status = "new") => ({
+  actions: [{ actionId: "open", href: "/app/contacts/c9", label: "打开联系人" }],
+  changes: [],
+  confidence: 0.8,
+  lastObservedAt: "2026-09-20T00:00:00Z",
+  reason: `${title}的原因`,
+  severity,
+  signalId,
+  sources: [],
+  status,
+  summary: title,
+  title,
+  type: "relationship_stale",
+});
+
+test("resolved signals never enter today's items", async (t) => {
+  const mounted = await mountHome(t, homeElement(), {
+    signals: [plainSignal("s-done", "已解决的事", "critical", "resolved"), plainSignal("s-low", "低优先的事", "low")],
+    snapshot: EMPTY_SNAPSHOT,
+  });
+  const lead = mounted.root.root.findAll((node) => node.props?.className === "ir-m-lead-title");
+  assert.equal(lead.length, 1);
+  assert.equal(textOf(lead[0]!), "低优先的事");
+  assert.equal(
+    mounted.root.root.findAll((node) => node.props?.["data-orbit-agent-signal"] === "s-done").length,
+    0,
+    "a resolved signal gets no row and no write controls",
+  );
+});
+
+test("a single unavailable source never reads as an all-clear", async (t) => {
+  const mounted = await mountHome(t, homeElement(), { signalsFail: true, snapshot: EMPTY_SNAPSHOT });
+  const html = textOf(mounted.root.root as unknown as { children: readonly unknown[] });
+  assert.ok(html.includes("部分数据来源暂时不可用"), "the empty state admits the missing source");
+  assert.ok(!html.includes("今天没有必须处理的事"));
+  assert.ok(html.includes("今天的部分数据暂时读取不到"), "the lede does not claim a quiet day");
+});
+
+test("the now line stays visible after today's items end and on an empty day", async (t) => {
+  // 东京 21:00；当天唯一的约谈是 10:30。
+  const late = () => new Date("2026-09-28T12:00:00Z");
+  const panelText = (mounted: Mounted) =>
+    textOf(mounted.root.root.findAll((node) => node.props?.["data-orbit-iorbit-day-panel"] === true)[0]!);
+
+  const ended = await mountHome(t, homeElement({ clock: late }), { snapshot: SNAPSHOT("2026-09-28") });
+  const endedText = panelText(ended);
+  assert.ok(endedText.includes("现在 21:00"));
+  assert.ok(endedText.indexOf("已确认约谈") < endedText.indexOf("现在 21:00"), "the now line follows the finished items");
+
+  const empty = await mountHome(t, homeElement({ clock: late }), { snapshot: EMPTY_SNAPSHOT });
+  assert.ok(panelText(empty).includes("现在 21:00"));
+});
+
+test("the month toggle opens and closes the compact calendar", async (t) => {
+  const mounted = await mountHome(t, homeElement(), { snapshot: EMPTY_SNAPSHOT });
+  const cal = () => mounted.root.root.findAll((node) => node.props?.className === "ir-m-cal")[0]!;
+  const toggle = () =>
+    mounted.root.root.findAll(
+      (node) => node.type === "button" && node.props?.className === "btn ir-m-link ir-m-cal-toggle",
+    )[0]!;
+  assert.equal(cal().props["data-open"], "false");
+  await act(async () => {
+    toggle().props.onClick();
+  });
+  assert.equal(cal().props["data-open"], "true");
+  await act(async () => {
+    toggle().props.onClick();
+  });
+  assert.equal(cal().props["data-open"], "false");
+});
+
 test("picking a calendar day drives the day panel", async (t) => {
   // 用东京日历的「今天」造一条约谈，保证它落在当月。
   const todayKey = new Intl.DateTimeFormat("en-CA", {
@@ -619,27 +759,16 @@ test("picking a calendar day drives the day panel", async (t) => {
   assert.ok(textOf(panel()).includes("0 个日程"));
 });
 
-test("ask chips send a message while the two navigation chips are plain links", async (t) => {
+test("the strategy shortcuts are plain links, not message buttons", async (t) => {
   const asked: string[] = [];
   const mounted = await mountHome(t, homeElement({ onAsk: (query) => asked.push(query) }));
 
-  const chipButtons = mounted.root.root.findAll(
-    (node) => node.type === "button" && node.props?.className === "btn ir-chip",
-  );
-  assert.equal(chipButtons.length, 2, "only the two ask chips are buttons");
-
-  await act(async () => {
-    chipButtons[0]!.props.onClick();
-  });
-  assert.deepEqual(asked, ["帮我安排今天"]);
-
-  const chipLinks = mounted.root.root.findAll(
-    (node) => node.type === "a" && node.props?.className === "ir-chip",
-  );
-  assert.deepEqual(
-    chipLinks.map((node) => node.props.href),
-    ["/app/agent/strategy?view=contacts", "/app/agent/strategy"],
-  );
+  const links = mounted.root.root
+    .findAll((node) => node.type === "a" && typeof node.props?.href === "string")
+    .map((node) => node.props.href as string)
+    .filter((href) => href.startsWith("/app/agent/strategy"));
+  assert.deepEqual(links, ["/app/agent/strategy?view=contacts", "/app/agent/strategy"]);
+  assert.deepEqual(asked, [], "nothing is sent just by rendering");
 });
 
 test("the suggestion rows keep the signal done / snooze writes and the refresh control", async (t) => {
