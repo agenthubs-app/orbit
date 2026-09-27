@@ -1,6 +1,6 @@
 # Sprint 0126 — Simulator 全局回归
 
-**Plan revision:** 1。**模式:** existing-codebase / single-generator（测试为主，按需修复）。运行状态只在登记表。
+**Plan revision:** 2（2026-09-27 协调者追加「已知 P1」）。**模式:** existing-codebase / single-generator（测试为主，按需修复）。运行状态只在登记表。
 **原需求:** 用户 2026-09-27：「我希望你在完成当下 sprint 之后先做一个基于 simulator 的全局测试再向下进行」。
 **单一目标:** 在 iOS Simulator 上对合并后的 `chat-agent` 做一次全路由、全核心流程的回归，修掉 P0/P1，P2 登记去向。
 **基线:** 0123 合并后的 `chat-agent`（开工时追加提交号）。执行顺序：0123 → **0126** → 0125 → 0109。
@@ -31,6 +31,23 @@
 10. 旧地址：`/party*`、`/events/[id]/attendees`、`/events/[id]/participants/[pid]`、`[...legacy]` 等跳转落点正确。
 
 **C. 通用检查**：视觉语言一致（黑白、细分隔线、蓝色只做链接）；键盘遮挡；44 点触控；加载与错误态可见；无红屏、无控制台未捕获异常（Metro 日志）。
+
+## 已知 P1（开工前已查明，必须处理）
+
+- **Node 版本钉死让关系跟进失效**（0123 报告第 10 节第 1 条，协调者已核实）：
+  - `features/followups/storage/lifecycle-task-pages.ts` 的 `assertLifecycleNodeSortRuntime()` 要求 Node 25.6.0、ICU 78.2、Unicode 17.0，不满足就抛出 `LIFECYCLE_SORT_RUNTIME_UNVERIFIED`。本机 Node 是 25.8.1，Vercel 只提供 LTS 版本。
+  - 后果一：首页「关系跟进」被 `home-facts-route-service.ts` 的 `catch` 吞掉，静默显示「关系跟进来源未配置或读取失败」。
+  - 后果二：关系待办分页（`lifecycle-task-pages.ts`、`connections/lifecycle/task-page.ts`）直接报错。
+  - 联系人搜索（`contact-list-postgres-reader.ts` 的 `APPROVED_CONTACT_SEARCH_RUNTIME`）同样钉死了 Node 版本，但会退回慢路径。
+- **修复方向**：让结果的顺序不依赖 Node 的具体版本。先查清这个检查保护的是什么（JS 端 `localeCompare` 与数据库 ICU 排序一致），再选一种做法：
+  - 排序完全交给数据库；
+  - 或者改用与运行时无关的确定性比较；
+  - 或者把检查放宽到真正影响结果的条件，并证明在 Node 24（Vercel）和 25.8.1 上结果一致。
+- **要求**：
+  - 不许简单删除检查而不证明顺序不变。
+  - 用真库测试对照旧顺序。
+  - 首页跟进和关系待办在 Simulator 上复验。
+  - 联系人搜索的快路径一并评估。
 
 ## 问题处理
 
