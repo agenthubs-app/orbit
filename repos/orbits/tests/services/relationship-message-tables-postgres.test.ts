@@ -83,7 +83,14 @@ async function seedLegacy(h: RelationshipHarness) {
   }
 }
 
-test("parity: the pre-0109 legacy rows, migrated into the tables, answer every read route exactly as the old code did", { skip, timeout: 120_000 }, async () => {
+test("parity: the pre-0109 legacy rows, migrated into the tables, answer every read route exactly as the old code did", { skip, timeout: 120_000 }, async (t) => {
+  // The golden was captured in live mode; error envelopes echo the feature mode.
+  const saved = { feature: process.env.ORBIT_FEATURE_MODE, module: process.env.ORBIT_MODULE_MODE };
+  Object.assign(process.env, { ORBIT_FEATURE_MODE: "live", ORBIT_MODULE_MODE: "live" });
+  t.after(() => {
+    if (saved.feature === undefined) delete process.env.ORBIT_FEATURE_MODE; else process.env.ORBIT_FEATURE_MODE = saved.feature;
+    if (saved.module === undefined) delete process.env.ORBIT_MODULE_MODE; else process.env.ORBIT_MODULE_MODE = saved.module;
+  });
   const h = await createRelationshipHarness({ prefix: "rel_parity", workspaceId: PARITY_WORKSPACE, resolveContact: resolveParityContact });
   try {
     await seedLegacy(h);

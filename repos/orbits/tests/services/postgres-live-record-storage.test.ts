@@ -96,7 +96,9 @@ test("orbit records migration can run through an async SQL client", async () => 
 
   await runOrbitRecordsMigration(client);
 
-  assert.equal(client.calls.length, EVENT_OPERATIONS_SCHEMA_MIGRATIONS.length + 4);
+  // +5: orbit_records, lifecycle, event-ops bootstrap, read receipts, and (sprint 0109) the relationship message tables last.
+  assert.equal(client.calls.length, EVENT_OPERATIONS_SCHEMA_MIGRATIONS.length + 5);
+  assert.match(client.calls.at(-1)?.text ?? "", /create table if not exists relationship_messages/i);
   assert.match(
     client.calls[0]?.text ?? "",
     /create table if not exists orbit_records/i,
@@ -112,7 +114,7 @@ test("orbit records migration can run through an async SQL client", async () => 
   );
   assert.match(client.calls[3]?.text ?? "", /create table event_ops_events/i);
   assert.match(
-    client.calls.at(-1)?.text ?? "",
+    client.calls.at(-2)?.text ?? "",
     /create table if not exists orbit_read_receipts/i,
   );
   for (const [index, migration] of EVENT_OPERATIONS_SCHEMA_MIGRATIONS.entries()) {
