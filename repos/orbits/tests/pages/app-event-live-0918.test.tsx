@@ -468,3 +468,22 @@ test("liveReturnPath keeps tab / language / lang in the login next; live topbar 
   assert.match(live, /href=\{preserveHref\("\/app\/events"\)\}/);
   assert.match(live, /href=\{preserveHref\(detailHref\)\}/);
 });
+
+// Sprint 0129: an inbox exchange notification links to /app/events/<id>/live?participant=<pid>.
+test("live page opens the attendee modal for ?participant=; unknown ids and the viewer's own id open nothing", async () => {
+  const aiko = person();
+  const ken = person({ id: "participant:ken", initial: "K", isRecommended: false, name: "Ken Sato", company: "Bridge Works", title: "CTO", score: 0, reason: "" });
+  const vm = viewModel({ attendees: [aiko, ken], recommendations: [aiko], roundOne: table([ken]) });
+  for (const [initialPersonId, expected] of [["participant:ken", ["attendee"]], ["participant:nobody", []], ["participant:me", []], [undefined, []]] as const) {
+    let renderer!: ReactTestRenderer;
+    try {
+      await act(async () => { renderer = create(<EventLive initialPersonId={initialPersonId} initialTab="home" now={NOW} viewModel={vm} />); });
+      assert.deepEqual(modalKinds(renderer), expected, String(initialPersonId));
+      if (expected.length) assert.match(JSON.stringify(renderer.toJSON()), /Ken Sato/);
+    } finally {
+      if (renderer) await act(async () => { renderer.unmount(); });
+    }
+  }
+  const source = readFileSync(join(projectRoot, "app/(app)/app/events/[id]/live/page.tsx"), "utf8");
+  assert.match(source, /initialPersonId=\{readSearchParam\(query, "participant"\)\}/);
+});

@@ -700,7 +700,7 @@ function AgendaTab({ language, now, t, viewModel }: { language: EventListLanguag
 }
 
 // ── 页面 ──
-export function EventLive({ initialTab = "home", now, viewModel }: { initialTab?: LiveTab; now: string; viewModel: OrbitPartyViewModel }) {
+export function EventLive({ initialPersonId, initialTab = "home", now, viewModel }: { initialPersonId?: string; initialTab?: LiveTab; now: string; viewModel: OrbitPartyViewModel }) {
   const { language, preserveHref, t } = useOrbitLanguage();
   const lang = listLanguage(language);
   const [tab, setTab] = useState<LiveTab>(initialTab);
@@ -723,7 +723,13 @@ export function EventLive({ initialTab = "home", now, viewModel }: { initialTab?
   };
   const chip = STATUS_CHIP[viewModel.eventPhase];
   const detailHref = eventDetailHref(viewModel.eventId);
-  const [modal, setModal] = useState<EventModalState | null>(null);
+  // `?participant=` (inbox exchange notifications, 0129) opens that attendee's profile; unknown ids and "me" open nothing.
+  const [modal, setModal] = useState<EventModalState | null>(() => {
+    const person = initialPersonId && initialPersonId !== viewModel.me.participantId
+      ? viewModel.attendees.find((candidate) => candidate.id === initialPersonId)
+      : undefined;
+    return person ? { kind: "attendee", person } : null;
+  });
   const { toast, showToast } = useEventToast();
   const onOpen: OpenModal = useCallback((kind, person) => setModal({ kind, person }), []);
   const closeModal = useCallback(() => setModal(null), []);

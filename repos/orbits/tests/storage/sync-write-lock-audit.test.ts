@@ -33,6 +33,7 @@ export const SYNC_WRITE_MANIFEST: Readonly<Record<string, SyncWritePolicy>> = {
   "features/notifications/delivery-service.ts": { policy: "non-sync", statements: 3, collections: "notificationDeliveries" },
   "features/notifications/discovery/discovery-repository.ts": { policy: "non-sync", statements: 2, collections: "notification discovery work" },
   "features/notifications/notification-cutover-migration.ts": { policy: "non-sync", statements: 3, collections: "notification collections" },
+  "features/notifications/event-contact-request-inbox-migration.ts": { policy: "non-sync", statements: 1, collections: "notifications (archives migrated legacy exchange rows; inbox writes go through the live-record store)" },
   "scripts/backfill-event-display-fields.ts": { policy: "non-sync", statements: 1, collections: "events" },
   "scripts/backfill-test-secondary-industries.ts": { policy: "non-sync", statements: 1, collections: "contacts" },
   "scripts/bootstrap-event-organizer-accounts.ts": { policy: "non-sync", statements: 2, collections: "organizer accounts and events" },

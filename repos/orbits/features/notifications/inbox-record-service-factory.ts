@@ -22,6 +22,7 @@ import {readSimpleInboxSourceStates} from './storage/inbox-source-state-batch';
 import {createInboxProjectionWorkRepository,type InboxProjectionWriter} from './storage/inbox-projection-work';
 import {readCostAlertSourceState} from '../operations/read-cost/alerts';
 import {isReadCostAdmin} from '../operations/read-cost/config';
+import {eventContactRequestSourceState} from './event-contact-request-inbox';
 
 /**
  * Typed notifications (reminder / suggestion / update) are the inbox. The rollout
@@ -45,6 +46,8 @@ export function createInboxRuntime(input:{client:TransactionalPostgresClient;wor
     const client=tx?.executor??input.client;
     // Read-cost alerts (monitoring O3) are visible only to configured admins.
     if(source.sourceKind==='read_cost_alert')return readCostAlertSourceState(client,{actorId,sourceId:source.sourceId,sourceRevision:source.sourceRevision,isAdmin:id=>isReadCostAdmin(id)});
+    // Business-card exchange (0129): the request row and the recipient's exchange contact decide.
+    if(source.sourceKind==='event_contact_request')return eventContactRequestSourceState(client,input.workspaceId,actorId,source);
     if(source.objectId==='discovery') {
       const adapters=createDiscoverySourceAdapters({client,store:storeFor(tx),workspaceId:input.workspaceId,now,preferences:actor=>createDiscoveryRepository({...input,client:{...input.client,query:client.query}}).preferences(actor)});
       return await adapters.read(actorId,{kind:source.sourceKind,id:source.sourceId,revision:source.sourceRevision,at:source.occurredAt,key:source.sourceKind+':'+source.sourceId},false)?'available':'unavailable';

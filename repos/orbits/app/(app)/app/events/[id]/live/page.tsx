@@ -117,6 +117,7 @@ export default async function AppEventLivePage({
         <div data-orbit-real-page="events-0918" data-orbit-route="app-event-live-page">
           <AccountTopNav active="events" />
           <EventLive
+            initialPersonId={readSearchParam(query, "participant")}
             initialTab={liveTabFrom(readSearchParam(query, "tab"))}
             now={new Date().toISOString()}
             viewModel={localizeOrbitTree(routeModel.party, language)}
