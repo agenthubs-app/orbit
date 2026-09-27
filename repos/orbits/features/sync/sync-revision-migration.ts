@@ -163,6 +163,9 @@ export async function migrateSyncRevisionOnline(session: SyncRevisionMigrationSe
   // A rerun on a migrated database takes no table lock: the column and the
   // trigger are only (re)created when missing; replacing functions locks nothing.
   if (before.state === "absent") await timed(steps, "column", log, () => inTransaction(session, async () => { await session.query(SYNC_REVISION_COLUMN_SQL); }));
+  // The column can exist without the free-standing sequence (e.g. a table
+  // copied on its own); creating a missing sequence takes no table lock.
+  else await session.query("create sequence if not exists orbit_records_sync_revision_seq");
   await timed(steps, "functions", log, () => inTransaction(session, async () => { await session.query(SYNC_REVISION_FUNCTIONS_SQL); }));
   await timed(steps, "align-sequence", log, () => advanceSequencePastStoredRevisions(session));
   if (!before.triggerInstalled) await timed(steps, "trigger", log, () => inTransaction(session, async () => { await session.query(SYNC_REVISION_TRIGGER_SQL); }));

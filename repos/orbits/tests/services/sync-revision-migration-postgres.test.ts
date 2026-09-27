@@ -117,6 +117,18 @@ test("rollback 'disable' drops the trigger and NOT NULL; migrating again backfil
   await assertStrict(h, "after-disable");
 });
 
+test("a database that has the sync_revision column but lost its sequence migrates to strict", options, async (t) => {
+  // Seen when copying orbit_records alone: the column and its values come
+  // along, the free-standing sequence does not. The migration must not assume
+  // "column present" implies "sequence present".
+  const h = await database(t, "absent");
+  await migrateSyncRevisionOnline(h.session, { batchSize: 50 });
+  await rollbackSyncRevision(h.session, "disable");
+  await h.pool.query("drop sequence orbit_records_sync_revision_seq cascade");
+  await migrateSyncRevisionOnline(h.session, { batchSize: 50 });
+  await assertStrict(h, "after-lost-sequence");
+});
+
 test("product writes running during the batched backfill all succeed and keep unique revisions", options, async (t) => {
   const h = await database(t, "absent", 3000);
   let stop = false;
