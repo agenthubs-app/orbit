@@ -25,7 +25,7 @@ const serverNotes = () => [note("note:srv", "服务器上的笔记", 4)];
 export const state = window.fixture = { requests: [], navigation: [], syncs: 0, invalidations: 0, status: "fresh", mirror: "local-mirror", ...window.initialFixture };
 export const useLocalSearchParams = () => window.fixture.params ?? {};
 export const usePathname = () => "/notes";
-export const useRouter = () => ({ canGoBack: () => false, back() { state.navigation.push("back"); }, push(href) { state.navigation.push(href); }, replace(href) { state.navigation.push("replace:" + href); } });
+export const useRouter = () => ({ canGoBack: () => Boolean(state.canGoBack), back() { state.navigation.push("back"); }, push(href) { state.navigation.push(href); }, replace(href) { state.navigation.push("replace:" + href); } });
 export const useWebMirrorStatus = () => state.mirror === "local-mirror" ? { mode: "local-mirror", scopeDigest: "d".repeat(64), domains: ["notes", "tasks", "personal-schedule"] } : { mode: "online-only", reason: state.mirror };
 export const useSyncedCollection = ({ kind }) => ({
   status: state.status, error: state.status === "stale" ? "Network request failed" : null,
@@ -125,6 +125,16 @@ test("browser mirror active and offline: the list says 截至 and turns off 新�
   assert.equal(await add.isDisabled(), true);
   await add.click({ force: true });
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), []);
+});
+
+test("the list's 「首页」 button goes home even when there is history, online and offline (0125 leftover, 0130)", async (t) => {
+  for (const status of ["fresh", "stale"]) {
+    const { page } = await open(t, { status, canGoBack: true });
+    await page.getByText("发布会准备", { exact: true }).waitFor();
+    await page.getByRole("button", { name: "返回首页" }).click();
+    // router.back() here returned to an earlier /notes entry, so the first press looked like it did nothing.
+    assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), ["replace:/home"], status);
+  }
 });
 
 test("browser mirror active: the detail and its source tasks read the mirrors; offline 编辑 and the AI entry need the network", async (t) => {

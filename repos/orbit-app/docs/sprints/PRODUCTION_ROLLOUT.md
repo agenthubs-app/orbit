@@ -28,6 +28,7 @@
 | 0128 报名问题缓存 | ① **部署前**执行 `ORBIT_DATABASE_TARGET=cloud npm run event-experience:migrate`（或 `npx tsx scripts/migrate-web-runtime.ts`），新建空表 `event_ops_registration_question_cache` 和一个部分唯一索引，可重复执行；② 部署 | 先部署后迁移也安全：迁移完成前报名页返回固定问题，不调用模型，日志出现 `registration_question_cache_unavailable`（42P01）。上线后，每场没有发布问题集的活动，每种语言第一次被读取时生成一次 |
 | 0129 名片交换通知 | ① 部署 orbits（web 与 event-operations worker 一起），之后的交换通知直接进入新收件箱；② `npm run db:migrate:exchange-notifications` 预演，查看数量与跳过的行；③ 确认后 `-- --apply --confirm-remote=<workspace id>`（**需用户确认**）；④ 再预演应为 0；⑤ 发布新版 App | 旧行只归档不删除，改回 active 即可回退。不迁移不影响新通知，只是部署前的旧交换通知在收件箱里看不到。旧版 App（0104 之后）会跳过这类通知，但角标会把它们算进去 |
 | 0125 浏览器笔记离线 | 无迁移；重新导出并发布 phoneweb（`npm run web:export`） | 已有浏览器下次同步多拉一次笔记，不需要清库；升级前删掉的旧行可能还留在空闲页里，要等下次换身份删库时才消失 |
+| 0130 恢复会话保留副本 | 无迁移；重新发布 phoneweb 和 App | 已有本地库直接沿用；浏览器退出登录现在会删掉本地库 |
 
 ## 后续 Sprint 预告（合并后在上表补充具体命令）
 

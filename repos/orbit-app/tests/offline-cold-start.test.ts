@@ -16,6 +16,7 @@ const baseUrl = "http://127.0.0.1:3100";
 const cachedUser = { id: "user:alex", email: "alex@example.test", name: "Alex" };
 const record = { version: 1, baseUrl, accountId: "account:alex", user: cachedUser, validatedAt };
 const recordScope = { baseUrl, actorId: "account:alex" };
+const suspended = { suspend: baseUrl };
 
 const fixture = `
 import React, { useSyncExternalStore } from "react";
@@ -74,7 +75,11 @@ export const offlineIdentityStorage = {
   key(baseUrl) { return "orbit.offlineIdentity." + baseUrl; }
 };
 export async function registerOrbitAccount() { return { success: true }; }
-export const syncLifecycle = { async setScope(scope) { state.scopeChanges.push(scope); state.currentScope = scope; return true; } };
+// 0130: a restore suspends the open scope (recorded as { suspend }) instead of purging it; setScope(null) is a purge.
+export const syncLifecycle = {
+  async suspendScope(baseUrl) { state.scopeChanges.push({ suspend: baseUrl }); return true; },
+  async setScope(scope) { state.scopeChanges.push(scope); state.currentScope = scope; return true; }
+};
 export async function cancelOrbitManagedNotifications() {}
 export function onSessionExpired(handler) { state.expire = handler; return () => { state.expire = null; }; }
 export async function signOutOrbitSession() { return { success: true }; }
@@ -161,7 +166,7 @@ test("network error at cold start within 29 days enters the cached account offli
   assert.equal(s.actorId, "account:alex");
   assert.deepEqual(s.user, cachedUser);
   assert.equal(s.cookieHeader, "session=stored", "the stored cookie is kept for the reconnect check");
-  assert.deepEqual(s.scopeChanges, [null, recordScope]);
+  assert.deepEqual(s.scopeChanges, [suspended, recordScope]);
   assert.deepEqual(s.cookieClears, []);
   assert.deepEqual(s.identity, record, "an offline start does not extend the 30-day window");
 });
@@ -180,7 +185,7 @@ test("after 31 days without online validation a cold start shows the login page 
   const s = await state(page);
   assert.equal(s.signedIn, false);
   assert.equal(s.actorId, null);
-  assert.deepEqual(s.scopeChanges, [null], "no mirror is opened");
+  assert.deepEqual(s.scopeChanges, [suspended], "no mirror is opened and nothing is purged");
   assert.equal(s.storedCookie, "session=stored");
   assert.deepEqual(s.identity, record, "not a rejection: the same account can come back online");
 });
@@ -195,7 +200,7 @@ for (const answer of ["401", "revoked"]) {
     const page = await open(t, { validation: answer, identity: record }, validatedAt + 2 * day);
     const s = await state(page);
     assert.equal(s.signedIn, false);
-    assert.deepEqual(s.scopeChanges, [null, recordScope, null], "open-then-purge through the account-switch path");
+    assert.deepEqual(s.scopeChanges, [suspended, recordScope, null], "open-then-purge through the account-switch path");
     assert.deepEqual(s.cookieClears, [baseUrl]);
     assert.deepEqual(s.identityClears, [baseUrl]);
     assert.equal(s.identity, null);
@@ -223,7 +228,7 @@ test("on reconnect the session is revalidated at once and the 30-day window rest
   assert.equal(s.signedIn, true);
   assert.equal(s.actorId, "account:alex");
   assert.ok(s.identity.validatedAt >= start + 10_000, "validatedAt moved to the reconnect time");
-  assert.deepEqual(s.scopeChanges, [null, recordScope], "same mirror stays open");
+  assert.deepEqual(s.scopeChanges, [suspended, recordScope], "same mirror stays open");
 });
 
 test("returning to the foreground re-checks immediately while offline", async t => {
@@ -240,7 +245,7 @@ test("if the server rejects the session on reconnect, local data, key, cookie an
   await page.clock.runFor(15_000);
   await page.waitForFunction(() => (window as any).fixture.auth.signedIn === false);
   const s = await state(page);
-  assert.deepEqual(s.scopeChanges, [null, recordScope, null]);
+  assert.deepEqual(s.scopeChanges, [suspended, recordScope, null]);
   assert.deepEqual(s.cookieClears, [baseUrl]);
   assert.equal(s.identity, null);
   assert.deepEqual(s.replaces, ["/account/login"]);
@@ -254,7 +259,7 @@ test("a still-unreachable server keeps the offline session until the 30 days run
   await page.clock.runFor(15_000);
   await page.waitForFunction(() => (window as any).fixture.auth.signedIn === false);
   const s = await state(page);
-  assert.deepEqual(s.scopeChanges.filter((scope: unknown) => scope === null).length, 1, "no purge");
+  assert.deepEqual(s.scopeChanges.filter((scope: unknown) => scope === null).length, 0, "no purge");
   assert.equal(s.storedCookie, "session=stored");
   assert.deepEqual(s.replaces, ["/account/login"]);
 });

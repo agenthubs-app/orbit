@@ -58,7 +58,7 @@ export function NotesScreen({ actorId, scopeKey }: { actorId: string; scopeKey: 
     { value: "week", label: locale.t("notes.groupWeek") },
     { value: "earlier", label: locale.t("notes.groupEarlier") },
   ] as const).map((group) => ({ ...group, notes: notes?.filter((note) => noteGroup(note.updatedAt) === group.value) ?? [] })).filter((group) => group.notes.length), [locale, notes]);
-  return <AppScreen title={locale.t("notes.myNotes")} backAccessibilityLabel={locale.t("common.backToNamed", { name: locale.t("nav.home") })} backLabel={locale.t("nav.home")} refreshControl={<RefreshControl refreshing={source.refreshing} onRefresh={source.refresh} />} headerActions={
+  return <AppScreen title={locale.t("notes.myNotes")} backAccessibilityLabel={locale.t("common.backToNamed", { name: locale.t("nav.home") })} backLabel={locale.t("nav.home")} onBack={() => router.replace("/home" as Href)} refreshControl={<RefreshControl refreshing={source.refreshing} onRefresh={source.refresh} />} headerActions={
     <Pressable accessibilityRole="button" accessibilityLabel={source.offline ? `${locale.t("notes.new")}，${locale.t("sync.needsNetwork")}` : locale.t("notes.new")} accessibilityState={{ disabled: source.offline }} disabled={source.offline} onPress={() => router.push((contactId ? `/notes/new?contactId=${encodeURIComponent(contactId)}` : "/notes/new") as Href)} style={[styles.add, source.offline && styles.addDisabled]}>
       <Ionicons color={colors.onAccent} name="add" size={24} />
     </Pressable>

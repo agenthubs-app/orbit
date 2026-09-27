@@ -81,6 +81,8 @@ export function createWebSyncLifecycle(input: {
   let queue: Promise<unknown> = Promise.resolve();
   let cleanupRecovered = false;
   let readyToken = -1;
+  // Between suspendScope and the next setScope no read or write reaches the kept database (0130).
+  let suspended = false;
   const listeners = new Set<() => void>();
   let statusSnapshot: WebMirrorStatus | null = null;
 
@@ -189,6 +191,32 @@ export function createWebSyncLifecycle(input: {
     return true;
   }
 
+  /**
+   * Probe, load and finish a crash-interrupted erasure before any transition. "online-only" is a
+   * valid, reported state (callers succeed); "failed" is an unfinished erasure (callers refuse).
+   */
+  async function prepare(): Promise<"ready" | "online-only" | "failed"> {
+    if (probe()) return "online-only";
+    if (!(await loadDependencies())) {
+      unavailable = "open-failed";
+      input.report("SYNC_INIT_FAILED");
+      return "online-only";
+    }
+    if (!cleanupRecovered) {
+      try {
+        const pending = await readPendingWebMirrorCleanup(deps!);
+        if (pending && !(await finishPendingCleanup(pending))) return "failed";
+        cleanupRecovered = true;
+      } catch (error) {
+        // Without a readable key store nothing can be opened or leaked: degrade for this page session.
+        unavailable = "open-failed";
+        input.report("SYNC_CLEANUP_STATE_FAILED", undefined, error);
+        return "online-only";
+      }
+    }
+    return "ready";
+  }
+
   const payloadCodec: PayloadCodec = {
     async encode(serialized) {
       if (!current?.codec) throw new Error("SYNC_CODEC_UNAVAILABLE");
@@ -212,30 +240,28 @@ export function createWebSyncLifecycle(input: {
       return readyToken === token && Boolean(scope && current?.database && !current.blocked &&
         sameScope(current.scope, scope) && (scope.workspaceId === undefined || scope.workspaceId === current.scope.workspaceId));
     },
+    /** Same contract as the native lifecycle (sprint 0130): pause reads, delete nothing, purge only another server's scope. */
+    suspendScope(baseUrl: string): Promise<boolean> {
+      const normalized = normalizeOrbitApiBaseUrl(baseUrl);
+      ++token;
+      return enqueue(async () => {
+        const prepared = await prepare();
+        if (prepared !== "ready") return prepared === "online-only";
+        suspended = true;
+        if (current && (current.blocked || normalizeOrbitApiBaseUrl(current.scope.baseUrl) !== normalized)) {
+          return purge();
+        }
+        return true;
+      });
+    },
     setScope(scope: SyncSessionScope | null): Promise<boolean> {
       scope = scope ? { ...scope, baseUrl: normalizeOrbitApiBaseUrl(scope.baseUrl) } : null;
       const requestToken = ++token;
       return enqueue(async () => {
-        // Online-only is a valid, reported state, not a failed identity transition.
-        if (probe()) return true;
-        if (!(await loadDependencies())) {
-          unavailable = "open-failed";
-          input.report("SYNC_INIT_FAILED");
-          return true;
-        }
+        const prepared = await prepare();
+        if (prepared !== "ready") return prepared === "online-only";
         const loaded = deps!;
-        if (!cleanupRecovered) {
-          try {
-            const pending = await readPendingWebMirrorCleanup(loaded);
-            if (pending && !(await finishPendingCleanup(pending))) return false;
-            cleanupRecovered = true;
-          } catch (error) {
-            // Without a readable key store nothing can be opened or leaked: degrade for this page session.
-            unavailable = "open-failed";
-            input.report("SYNC_CLEANUP_STATE_FAILED", undefined, error);
-            return true;
-          }
-        }
+        suspended = false;
         if (current && (current.blocked || !scope || !sameScope(current.scope, scope))) {
           if (!(await purge())) return false;
         }
@@ -283,7 +309,7 @@ export function createWebSyncLifecycle(input: {
     withDatabase<T>(scope: SyncSessionScope | null, operation: (database: LocalSyncDatabase, activeScope: Readonly<SyncSessionScope>) => Promise<T>): Promise<T | null> {
       const requestToken = token;
       return enqueue(async () => {
-        if (requestToken !== token || !current?.database || current.blocked) return null;
+        if (requestToken !== token || suspended || !current?.database || current.blocked) return null;
         if (scope && (!sameScope(current.scope, scope) || (scope.workspaceId !== undefined && scope.workspaceId !== current.scope.workspaceId))) return null;
         try {
           const result = await operation(current.database, { ...current.scope });
