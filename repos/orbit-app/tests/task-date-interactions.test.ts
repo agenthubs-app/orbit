@@ -52,6 +52,7 @@ export const useGlobalSearchParams = useLocalSearchParams;
 export const usePathname = () => "/tasks/" + encodeURIComponent(state.taskId);
 export const useRouter = () => ({ canGoBack: () => false, back() {}, push() {}, replace() {} });
 export const useNavigation = () => ({ addListener: () => () => {}, dispatch() {} });
+export const usePreventRemove = () => {};
 export const Redirect = () => <div role="status">Sign in</div>;
 export const Stack = () => null;
 export const readSnapshot = async () => null;
@@ -72,7 +73,7 @@ test.before(async () => {
     plugins: [{ name: "task-date-boundaries", setup(plugin) {
       plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "task-dates" }));
       plugin.onResolve({ filter: /^react-native-svg$/ }, () => ({ path: require.resolve("react-native-svg/lib/module/ReactNativeSVG.web.js") }));
-      plugin.onResolve({ filter: /^(fixture|expo-router|expo-crypto|@expo\/vector-icons|react-native-safe-area-context)$|\/(ApiBaseUrlProvider|AuthSessionProvider|snapshot-store|native-notifications|useRelationshipInboxBadgeCount)$/ }, () => ({ path: "fixture", namespace: "task-dates" }));
+      plugin.onResolve({ filter: /^(fixture|expo-router|expo-router\/react-navigation|expo-crypto|@expo\/vector-icons|react-native-safe-area-context)$|\/(ApiBaseUrlProvider|AuthSessionProvider|snapshot-store|native-notifications|useRelationshipInboxBadgeCount)$/ }, () => ({ path: "fixture", namespace: "task-dates" }));
       plugin.onLoad({ filter: /.*/, namespace: "task-dates" }, args => ({ contents: args.path === "native" ? `
 import React from "react"; import { Pressable as RealPressable, RefreshControl as RealRefreshControl, Text as RealText, TextInput as RealInput, StyleSheet, useWindowDimensions as realDimensions } from "react-native-web"; import { useFixture } from "fixture"; export * from "react-native-web";
 export { AppState } from "fixture";

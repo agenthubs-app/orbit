@@ -33,9 +33,9 @@ const computedPathFamilies: Readonly<Record<string, readonly string[]>> = {
   'src/screens/inbox/RelationshipInboxScreen.tsx:1378': ['/api/chat/relationship-inbox'],
   'src/screens/profile/ProfileMoreScreen.tsx:78': ['/api/profile/extractions/business-card', '/api/profile/extractions/resume'],
   'src/screens/profile/ProfileScreen.tsx:335': ['/api/profile/extractions/business-card', '/api/profile/extractions/resume'],
-  'src/screens/tasks/TaskDetailScreen.tsx:80': ['/api/tasks/:id'],
-  'src/screens/tasks/TaskDetailScreen.tsx:81': ['/api/tasks/:id/activities'],
-  'src/screens/tasks/TaskDetailScreen.tsx:82': ['/api/reminders'],
+  'src/screens/tasks/TaskDetailScreen.tsx:81': ['/api/tasks/:id'],
+  'src/screens/tasks/TaskDetailScreen.tsx:82': ['/api/tasks/:id/activities'],
+  'src/screens/tasks/TaskDetailScreen.tsx:83': ['/api/reminders'],
 };
 
 // 这些 transport 调用点在运行时从不指向 Orbit API，因而没有可登记的读取面。

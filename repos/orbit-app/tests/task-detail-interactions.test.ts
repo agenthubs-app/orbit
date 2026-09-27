@@ -26,16 +26,15 @@ const state = window.fixture = {
 export const useLocalSearchParams = () => { rerender(); return { id: state.task.id }; };
 export const useRouter = () => ({ replace(path) { state.navigation.push(path); }, push(path) { state.navigation.push(path); } });
 // Navigation boundary for leaving the screen (header back, swipe, router.back): 0126.
-state.beforeRemove = new Set(); state.dispatched = [];
-export const useNavigation = () => ({
-  addListener(type, listener) { if (type !== "beforeRemove") return () => {}; state.beforeRemove.add(listener); return () => state.beforeRemove.delete(listener); },
-  dispatch(action) { state.dispatched.push(action); }
-});
+// Mirrors react-navigation: while prevented, leaving calls the callback instead.
+state.dispatched = []; state.preventRemove = { prevent: false, callback: null };
+export const useNavigation = () => ({ addListener: () => () => {}, dispatch(action) { state.dispatched.push(action); } });
+export const usePreventRemove = (prevent, callback) => { state.preventRemove = { prevent, callback }; };
 state.leave = () => {
-  const action = { type: "GO_BACK" }; let prevented = false;
-  state.beforeRemove.forEach(listener => listener({ preventDefault() { prevented = true; }, data: { action } }));
-  if (!prevented) state.dispatched.push(action);
-  return prevented;
+  const action = { type: "GO_BACK" };
+  if (state.preventRemove.prevent) { state.preventRemove.callback({ data: { action } }); return true; }
+  state.dispatched.push(action);
+  return false;
 };
 export const useApiResource = (path) => {
   rerender();
@@ -96,7 +95,7 @@ test.before(async () => {
             });`,
           loader: "jsx", resolveDir: process.cwd(),
         }));
-        plugin.onResolve({ filter: /^(expo-router|expo-crypto|@expo\/vector-icons|react-native-safe-area-context)$|\/(useApiResource|useOrbitApiClient|AuthSessionProvider|ApiBaseUrlProvider|native-notifications|AppScreen|ErrorState|LoadingState)$|\/design\/theme$/ }, () => ({ path: "fixture", namespace: "task-test" }));
+        plugin.onResolve({ filter: /^(expo-router|expo-router\/react-navigation|expo-crypto|@expo\/vector-icons|react-native-safe-area-context)$|\/(useApiResource|useOrbitApiClient|AuthSessionProvider|ApiBaseUrlProvider|native-notifications|AppScreen|ErrorState|LoadingState)$|\/design\/theme$/ }, () => ({ path: "fixture", namespace: "task-test" }));
         plugin.onLoad({ filter: /.*/, namespace: "task-test" }, () => ({ contents: fixture, loader: "jsx", resolveDir: process.cwd() }));
       },
     }],

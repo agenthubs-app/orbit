@@ -3,6 +3,7 @@ import { localParts } from "../../time/date-time";
 import { Ionicons } from "@expo/vector-icons";
 import * as Crypto from "expo-crypto";
 import { type Href, useLocalSearchParams, useNavigation, useRouter } from "expo-router";
+import { usePreventRemove } from "expo-router/react-navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -276,16 +277,24 @@ export function TaskDetailScreen() {
   const unsavedRef = useRef(false);
   unsavedRef.current = Boolean(detail && baseline && baseline.id === taskId && !staleDraft && !saving && title.trim() &&
     !(baseline.notes && !notes.trim()) && (title.trim() !== baseline.title || notes.trim() !== baseline.notes.trim()));
-  const allowLeaveDraftRef = useRef<string | null>(null);
-  useEffect(() => navigation.addListener("beforeRemove", (event) => {
-    if (!unsavedRef.current || allowLeaveDraftRef.current === draftRef.current) return;
+  const [allowLeaveDraft, setAllowLeaveDraft] = useState<string | null>(null);
+  const preventLeave = unsavedRef.current && allowLeaveDraft !== draftRef.current;
+  const pendingLeaveRef = useRef<Parameters<typeof navigation.dispatch>[0] | null>(null);
+  // usePreventRemove also stops the native swipe, so JS and native stacks stay in sync.
+  usePreventRemove(preventLeave, ({ data }) => {
     const draft = draftRef.current;
-    event.preventDefault();
     void saveRef.current().then((result) => {
-      allowLeaveDraftRef.current = draft;
-      if (result !== "failed") navigation.dispatch(event.data.action);
+      if (result !== "failed") pendingLeaveRef.current = data.action;
+      setAllowLeaveDraft(draft);
     });
-  }), [navigation]);
+  });
+  useEffect(() => {
+    if (!pendingLeaveRef.current || preventLeave) return;
+    const action = pendingLeaveRef.current;
+    pendingLeaveRef.current = null;
+    // Dispatch after usePreventRemove has committed preventRemove=false.
+    setTimeout(() => navigation.dispatch(action), 0);
+  });
 
   async function changeStatus() {
     if (!detail) return;
