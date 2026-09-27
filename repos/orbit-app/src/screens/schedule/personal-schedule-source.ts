@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 
+import { useMirrorProbe } from "../../hooks/useMirrorProbe";
 import { useSyncedCollection } from "../../hooks/useSyncedCollection";
 import {
   mirrorScheduleItem,
@@ -21,16 +22,19 @@ export type { PersonalScheduleItemSource, PersonalScheduleListSource, PersonalSc
  */
 export function usePersonalScheduleList(input: { actorId: string; ready: boolean; scopeKey: string; timeZone: string }): PersonalScheduleListSource {
   const state = useSyncedCollection<Record<string, unknown>>({ kind: "personal_schedule" });
+  useMirrorProbe(state.refresh, input.ready);
   // Keyed on the snapshot fields, not the hook result (a new object every render).
   return useMemo(() => mirrorScheduleList(state, input), [state.records, state.status, state.lastSyncedAt, state.error, state.refresh, input.actorId, input.ready, input.timeZone]);
 }
 
 export function usePersonalScheduleItem(input: { actorId: string; ready: boolean; scopeKey: string; id: string }): PersonalScheduleItemSource {
   const state = useSyncedCollection<Record<string, unknown>>({ kind: "personal_schedule" });
+  useMirrorProbe(state.refresh, input.ready && Boolean(input.id));
   return useMemo(() => mirrorScheduleItem(state, input), [state.records, state.status, state.lastSyncedAt, state.error, state.refresh, input.actorId, input.ready, input.id]);
 }
 
 export function usePersonalScheduleWriteStatus(input: { actorId: string; ready: boolean }): PersonalScheduleWriteStatus {
   const state = useSyncedCollection<Record<string, unknown>>({ kind: "personal_schedule" });
+  useMirrorProbe(state.refresh, input.ready && Boolean(input.actorId));
   return useMemo(() => mirrorScheduleWriteStatus(state, input.ready && Boolean(input.actorId)), [state.status, state.lastSyncedAt, state.error, state.invalidate, input.ready, input.actorId]);
 }

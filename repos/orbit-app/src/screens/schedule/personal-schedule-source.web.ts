@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { personalScheduleList, personalScheduleListPath, personalSchedulePath, readPersonalSchedule } from "../../api/personal-schedule";
 import type { PersonalScheduleContract } from "../../api/contract/tasks";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
+import { useMirrorProbe } from "../../hooks/useMirrorProbe";
 import { useSyncedCollection } from "../../hooks/useSyncedCollection";
 import { useWebMirrorStatus } from "../../hooks/useWebMirrorStatus";
 import {
@@ -29,6 +30,7 @@ export function usePersonalScheduleList(input: { actorId: string; ready: boolean
   const mirror = useWebMirrorStatus();
   const mirrorActive = mirror.mode === "local-mirror";
   const synced = useSyncedCollection<Record<string, unknown>>({ kind: "personal_schedule" });
+  useMirrorProbe(synced.refresh, mirrorActive && input.ready);
   const client = useOrbitApiClient({ scopeKey: input.scopeKey });
   const network = !mirrorActive && input.ready;
   const [snapshot, setSnapshot] = useState<{ scopeKey: string; items: PersonalScheduleContract[] | null; loading: boolean; failed: boolean }>({ scopeKey: input.scopeKey, items: null, loading: true, failed: false });
@@ -57,6 +59,7 @@ export function usePersonalScheduleItem(input: { actorId: string; ready: boolean
   const mirror = useWebMirrorStatus();
   const mirrorActive = mirror.mode === "local-mirror";
   const synced = useSyncedCollection<Record<string, unknown>>({ kind: "personal_schedule" });
+  useMirrorProbe(synced.refresh, mirrorActive && input.ready && Boolean(input.id));
   const client = useOrbitApiClient({ scopeKey: input.scopeKey });
   const network = !mirrorActive && input.ready && Boolean(input.id);
   const [state, setState] = useState<{ item: PersonalScheduleContract | null; loading: boolean; errorKey: "schedule.readUnconfirmed" | "schedule.readFailed" | null; errorText: string }>({ item: null, loading: network, errorKey: null, errorText: "" });

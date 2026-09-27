@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import type { SyncRecord } from "../../api/contract/sync";
 import { mirrorFreshness } from "../../data/sync/mirror-freshness";
+import { useMirrorProbe } from "../../hooks/useMirrorProbe";
 import { useSyncedCollection } from "../../hooks/useSyncedCollection";
 import type { MessageKey } from "../../i18n/messages";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
@@ -67,6 +68,7 @@ type Synced = ReturnType<typeof useSyncedCollection<Record<string, unknown>>>;
 function useNotesMirror(actorId: string) {
   const locale = useOrbitLocale();
   const state = useSyncedCollection<Record<string, unknown>>({ kind: "note" });
+  useMirrorProbe(state.refresh, Boolean(actorId));
   const freshness = mirrorFreshness(state, Boolean(actorId));
   const notes = useMemo(() => freshness.readable ? notesFromMirror(state.records, actorId, locale.language) : null, [actorId, freshness.readable, locale.language, state.records]);
   return { state, freshness, notes };
@@ -126,6 +128,7 @@ export function useNoteDetailSource(input: { actorId: string; noteId: string; sc
 export function useNotesWriteStatus(actorId: string): NotesWriteStatus {
   const locale = useOrbitLocale();
   const state = useSyncedCollection<Record<string, unknown>>({ kind: "note" });
+  useMirrorProbe(state.refresh, Boolean(actorId));
   const freshness = mirrorFreshness(state, Boolean(actorId));
   return {
     offline: freshness.offline,

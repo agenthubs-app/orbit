@@ -109,6 +109,7 @@ test("the notes list renders from the mirror, filters and searches locally, and 
   await page.getByText("午餐 @林玫", { exact: true }).waitFor();
   await page.waitForFunction(() => document.body.innerText.includes("已加载 1 / 共 1 篇"));
   assert.deepEqual((await requests(page)).filter((path) => path.includes("/api/notes")), [], "no /api/notes read on native");
+  assert.ok(await page.evaluate(() => (window as any).fixture.syncs) >= 1, "opening the page probes for changes (a conditional manifest read), after showing the mirror");
 });
 
 test("offline: the list keeps the device copy, says 截至 when, and turns off 新建", async (t) => {
