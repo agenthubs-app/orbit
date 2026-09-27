@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { notePath, ORBIT_API_ENDPOINTS } from "../../api/endpoints";
+import { OfflineNotice } from "../../components/OfflineNotice";
 import type { NoteMentionContract } from "../../api/contract/notes";
 import { AppScreen } from "../../components/AppScreen";
 import { ErrorState } from "../../components/ErrorState";
@@ -15,11 +16,12 @@ import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { noteDraftStorage } from "../../storage/note-draft-storage";
 import { contactsToSummaries, type ContactSummary } from "../../view-models/contacts";
 import { eventsToSummaries } from "../../view-models/events";
-import { buildRichNoteUpdateRequest, confirmedNote, noteFromPayload, type NoteView } from "../../view-models/notes";
+import { buildRichNoteUpdateRequest, confirmedNote, type NoteView } from "../../view-models/notes";
 import { NoteContactPicker } from "./NoteContactPicker";
 import { NoteMentionEditor } from "./NoteMentionEditor";
 import { NoteEventPicker } from "./NoteEventPicker";
 import { useNoteContactSummaries } from "./useNoteContactSummaries";
+import { useNoteDetailSource } from "./notes-source";
 
 let updateSequence = 0;
 
@@ -33,10 +35,10 @@ export function EditNoteScreen({ actorId, draftServer = "local", noteId, scopeKe
   const router = useRouter();
   const locale = useOrbitLocale();
   const client = useOrbitApiClient({ scopeKey });
-  const state = useApiResource<unknown>(notePath(noteId), () => false, { scopeKey, cachePolicy: "network-only" });
+  const source = useNoteDetailSource({ actorId, noteId, scopeKey });
   const eventsState = useApiResource<unknown>(ORBIT_API_ENDPOINTS.events, () => false, { scopeKey });
   const events = eventsState.kind === "success" || eventsState.kind === "empty" ? eventsToSummaries(eventsState.data) : [];
-  const serverNote = state.kind === "success" || state.kind === "empty" ? noteFromPayload(state.data, actorId, noteId, locale.language) : null;
+  const serverNote = source.note;
   const [confirmed, setConfirmed] = useState<NoteView | null>(null);
   const current = confirmed && (!serverNote || confirmed.version >= serverNote.version) ? confirmed : serverNote;
   const contactSummaries = useNoteContactSummaries(current?.manualContactIds ?? [], scopeKey);
@@ -131,7 +133,7 @@ export function EditNoteScreen({ actorId, draftServer = "local", noteId, scopeKe
   }
 
   async function save() {
-    if (!owns() || pending || !current) return;
+    if (!owns() || pending || !current || source.offline) return;
     const request = buildRichNoteUpdateRequest({ title, body: draft, manualContactIds: selectedIds, mentions, eventIds }, current.version, mutationKey.current, locale.language);
     if (!request.success) { setError(request.error); return; }
     const operation = new AbortController(); controller.current = operation; setPending(true); setError(""); setSaved(false);
@@ -143,14 +145,16 @@ export function EditNoteScreen({ actorId, draftServer = "local", noteId, scopeKe
       autosaveAllowed.current = false;
       await noteDraftStorage.clear(draftScope);
       if (!owns()) return;
-      initializedVersion.current = note.version; setConfirmed(note); setTitle(note.title); setDraft(note.body); setMentions([...note.mentions]); setSelectedIds([...note.manualContactIds]); setEventIds([...note.eventIds]); setDirty(false); setDraftStatus(""); setSaved(true); state.refresh();
+      initializedVersion.current = note.version; setConfirmed(note); setTitle(note.title); setDraft(note.body); setMentions([...note.mentions]); setSelectedIds([...note.manualContactIds]); setEventIds([...note.eventIds]); setDirty(false); setDraftStatus(""); setSaved(true);
+      // Pull the change into the device copy the list and detail read from.
+      if (!await source.confirmSaved(noteId, note.version) && owns()) setError(locale.t("sync.mutationPending"));
     } else setError(result.success ? locale.t("notes.updateUnconfirmed") : result.error.message);
     if (owns()) setPending(false);
     if (controller.current === operation) controller.current = null;
   }
 
-  const saveDisabled = pending || !dirty || !title.trim() || !draft.trim();
-  return <AppScreen title={locale.t("notes.edit")} onBack={() => { if (!pending && owns()) dirty ? setShowExitPrompt(true) : router.back(); }} backAccessibilityLabel={locale.t("common.backToNamed", { name: locale.t("notes.title") })} backLabel={locale.t("notes.title")} refreshControl={<RefreshControl refreshing={state.refreshing} onRefresh={state.refresh} />} headerActions={<View style={styles.headerActions}><Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.cancelEdit")} disabled={pending} onPress={() => dirty ? setShowExitPrompt(true) : router.back()} style={styles.cancel}><Text style={styles.cancelText}>{locale.t("common.cancel")}</Text></Pressable><Pressable accessibilityRole="button" accessibilityLabel={locale.t(pending ? "notes.saving" : "notes.saveChanges")} accessibilityState={{ disabled: saveDisabled }} disabled={saveDisabled} onPress={() => { void save(); }} style={styles.cancel}><Text style={[styles.headerSaveText, saveDisabled && styles.headerSaveDisabled]}>{locale.t(pending ? "notes.saving" : "notes.save")}</Text></Pressable></View>}>
+  const saveDisabled = pending || !dirty || !title.trim() || !draft.trim() || source.offline;
+  return <AppScreen title={locale.t("notes.edit")} onBack={() => { if (!pending && owns()) dirty ? setShowExitPrompt(true) : router.back(); }} backAccessibilityLabel={locale.t("common.backToNamed", { name: locale.t("notes.title") })} backLabel={locale.t("notes.title")} refreshControl={<RefreshControl refreshing={source.refreshing} onRefresh={source.refresh} />} headerActions={<View style={styles.headerActions}><Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.cancelEdit")} disabled={pending} onPress={() => dirty ? setShowExitPrompt(true) : router.back()} style={styles.cancel}><Text style={styles.cancelText}>{locale.t("common.cancel")}</Text></Pressable><Pressable accessibilityRole="button" accessibilityLabel={locale.t(pending ? "notes.saving" : "notes.saveChanges")} accessibilityState={{ disabled: saveDisabled }} disabled={saveDisabled} onPress={() => { void save(); }} style={styles.cancel}><Text style={[styles.headerSaveText, saveDisabled && styles.headerSaveDisabled]}>{locale.t(pending ? "notes.saving" : "notes.save")}</Text></Pressable></View>}>
     {showExitPrompt ? <View accessibilityRole="alert" style={styles.exitPrompt}>
       <Text style={styles.exitTitle}>{locale.t("notes.keepChangesTitle")}</Text><Text style={styles.notice}>{locale.t("notes.keepDraftBody")}</Text>
       <View style={styles.exitActions}>
@@ -159,9 +163,10 @@ export function EditNoteScreen({ actorId, draftServer = "local", noteId, scopeKe
         <Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.keepAndExit")} onPress={() => { void preserveAndExit(); }} style={styles.exitPrimary}><Text style={styles.saveText}>{locale.t("notes.keepAndExit")}</Text></Pressable>
       </View>
     </View> : null}
-    {state.kind === "loading" && !current ? <LoadingState /> : null}
-    {state.kind === "failure" || state.kind === "offline" ? <ErrorState message={state.error.message} /> : null}
-    {(state.kind === "success" || state.kind === "empty") && !current ? <ErrorState message={locale.t("notes.missing")} /> : null}
+    {source.offline ? <OfflineNotice lastSyncedAt={source.lastSyncedAt} /> : null}
+    {source.loading && !current ? <LoadingState /> : null}
+    {source.failure ? <ErrorState message={source.failure} /> : null}
+    {source.missing && !current ? <ErrorState message={locale.t("notes.missing")} /> : null}
     {current ? <>
       <Text style={styles.private}>{locale.t("notes.privateVersion", { version: current.version })}</Text>
       <View style={styles.paper}>

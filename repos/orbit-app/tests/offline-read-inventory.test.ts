@@ -106,8 +106,9 @@ test('canonical event and personal schedule consumers register exact domains wit
     ['src/screens/schedule/PersonalScheduleAssociations.tsx', 'GET', '/api/schedule-items/association-options/notes', 'notes'],
     ['src/screens/schedule/PersonalScheduleAssociations.tsx', 'GET', '/api/notes/:id', 'notes'],
     ['src/screens/schedule/PersonalScheduleAssociations.tsx', 'GET', '/api/schedule-items/association-options/contacts', 'contacts'],
-    ['src/screens/schedule/PersonalScheduleDetailScreen.tsx', 'GET', '/api/schedule-items', 'personal-schedule'],
-    ['src/screens/schedule/PersonalScheduleDetailScreen.tsx', 'GET', '/api/schedule-items/:id', 'personal-schedule'],
+    // Sprint 0108: the detail reads the mirror on native; the browser source keeps the network fallback.
+    ['src/screens/schedule/personal-schedule-source.web.ts', 'GET', '/api/schedule-items', 'personal-schedule'],
+    ['src/screens/schedule/personal-schedule-source.web.ts', 'GET', '/api/schedule-items/:id', 'personal-schedule'],
   ] as const) {
     const surface = surfaces.find(row => row.consumerFile === consumerFile && row.method === method && row.endpointTemplate === endpointTemplate);
     assert.ok(surface, `${consumerFile} ${method} ${endpointTemplate}`);
