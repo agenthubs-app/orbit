@@ -1,3 +1,4 @@
+import { writeAsOwner } from "../support/live-record-owner-fixture";
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -39,7 +40,7 @@ async function createSeedStore() {
 
   await Promise.all(
     actorRecords.map((record) =>
-      store.upsertRecord({
+      writeAsOwner(store, {
         ...record,
         userId: ACTOR_ID,
       }),

@@ -6,7 +6,15 @@ import {
   DomainUnknownError,
   type DomainReadService,
 } from "../../../features/sync/domain-read-service";
-import { SYNC_DOMAINS } from "../../../features/sync/domain-registry";
+import { SYNC_DOMAIN_SCHEMA_VERSION, SYNC_DOMAINS, SYNC_REGISTRY_VERSION } from "../../../features/sync/domain-registry";
+
+// The conditional manifest fingerprints orbit_records watermarks only. A device
+// domain read from a dedicated table (0115 on) must extend the watermark before
+// it may use the 304 path; until then the manifest is always produced.
+const MANIFEST_COLLECTIONS = SYNC_DOMAINS.flatMap((domain) => domain.source.kind === "orbit_records" ? [domain.source.collectionName] : []);
+const MANIFEST_IS_CONDITIONAL = MANIFEST_COLLECTIONS.length === SYNC_DOMAINS.length;
+// A new registry or page schema must never replay a cached manifest.
+const MANIFEST_ROUTE_KEY = `sync.manifest:r${SYNC_REGISTRY_VERSION}:s${SYNC_DOMAIN_SCHEMA_VERSION}`;
 import { SYNC_DEFAULT_LIMIT, SYNC_MAX_LIMIT } from "../../../features/sync/read-service";
 import { failure, runtimeBoundaryHeaders, success } from "../../../shared/api/envelope";
 import { resolveFeatureMode } from "../../../shared/config/feature-mode";
@@ -132,15 +140,18 @@ export function createSyncDomainHandlers(dependencies: SyncDomainRouteDependenci
     // collections (or the authorization rows) moved, the client gets a 304 and
     // replays its cached manifest, so an unchanged sync touches no business row.
     manifest(request: Request): Promise<Response> {
-      return guarded(({ actorId, workspaceId, service, mode }) =>
-        conditionalJsonRead(
-          { routeKey: "sync.manifest", request, actorId, workspaceId, collections: SYNC_DOMAINS.map((domain) => domain.collectionName), userScoped: true },
+      return guarded(({ actorId, workspaceId, service, mode }) => {
+        const produce = async () => {
+          const manifest = await service.manifest({ actorId, workspaceId });
+          return NextResponse.json(success(manifest), { headers: noStore(mode), status: 200 });
+        };
+        if (!MANIFEST_IS_CONDITIONAL) return produce();
+        return conditionalJsonRead(
+          { routeKey: MANIFEST_ROUTE_KEY, request, actorId, workspaceId, collections: MANIFEST_COLLECTIONS, userScoped: true },
           dependencies.conditionalRead ?? defaultConditionalReadDependencies(),
-          async () => {
-            const manifest = await service.manifest({ actorId, workspaceId });
-            return NextResponse.json(success(manifest), { headers: noStore(mode), status: 200 });
-          },
-        ));
+          produce,
+        );
+      });
     },
     domain(request: Request, domainId: string): Promise<Response> {
       return guarded(async ({ actorId, workspaceId, service, mode }) => {

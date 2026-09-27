@@ -3,13 +3,14 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { auditMessageTableWrites, auditSyncWrites, type MessageTableWritePolicy, type SyncWritePolicy } from "../support/sync-write-audit";
+import { EVENT_SYNC_REVISION_TABLES } from "../../features/events/event-operations/storage/sync-revision";
+import { auditEventTableWrites, auditMessageTableWrites, auditSyncWrites, type MessageTableWritePolicy, type SyncWritePolicy } from "../support/sync-write-audit";
 
 // Sprint 0108: every orbit_records writer in product code and scripts, and why
 // it is safe under the strict sync_revision trigger. A new writer, or a new
 // statement in a listed file, fails this test until it is classified.
 export const SYNC_WRITE_MANIFEST: Readonly<Record<string, SyncWritePolicy>> = {
-  "shared/storage/postgres-live-record-store.ts": { policy: "locked", statements: 4, how: "upsert/insertIfAbsent/updateIfCurrent/delete wrap sync collections in SYNC_COMMIT_ORDER_LOCK_CTE" },
+  "shared/storage/postgres-live-record-store.ts": { policy: "locked", statements: 5, how: "upsert/insertIfAbsent/updateIfCurrent/delete/reassignRecordOwner wrap sync collections in SYNC_COMMIT_ORDER_LOCK_CTE" },
   "features/connections/lifecycle/postgres-repository.ts": { policy: "locked", statements: 5, how: "acquireSyncCommitOrderLock before the first write when the plan touches tasks" },
   "features/connections/lifecycle/initialization.ts": { policy: "locked", statements: 2, how: "acquireSyncCommitOrderLock before the first write when a task is created" },
   "features/connections/lifecycle/migration-repository.ts": { policy: "locked", statements: 2, how: "acquireSyncCommitOrderLock when an owner repair touches a sync collection" },
@@ -49,6 +50,18 @@ export const SYNC_WRITE_MANIFEST: Readonly<Record<string, SyncWritePolicy>> = {
 export const MESSAGE_TABLE_WRITE_MANIFEST: Readonly<Record<string, MessageTableWritePolicy>> = {
   "features/relationship-communication/message-store.ts": { statements: 8, how: "every write runs in a read-committed transaction that calls acquireSyncCommitOrderLock first" },
   "features/relationship-communication/message-migration.ts": { statements: 9, how: "each legacy conversation is planned and applied inside one transaction after acquireSyncCommitOrderLock" },
+};
+
+// Sprint 0113: every writer of the event tables that carry sync_revision (strict trigger, same lock).
+export const EVENT_TABLE_WRITE_MANIFEST: Readonly<Record<string, MessageTableWritePolicy>> = {
+  "features/events/admission/storage/postgres-repository.ts": { statements: 1, how: "runTransaction takes the lock first for every admission write" },
+  "features/events/core/backfill.ts": { statements: 1, how: "applyEventCoreBackfillPlan takes the lock first" },
+  "features/events/event-operations/storage/canonical-membership-writer.ts": { statements: 1, how: "appendCanonicalMembershipVersion takes it again (callers take it first)" },
+  "features/events/event-operations/storage/canonical-registration-repository.ts": { statements: 2, how: "activation, register, cancel and seed transactions take the lock first" },
+  "features/events/event-operations/storage/postgres-repository.ts": { statements: 3, how: "saveConfiguration and publishGenerationAtomically take the lock first" },
+  "features/events/registration/phoneweb-registration-window-repair.ts": { statements: 3, how: "withRepairTransaction takes the lock before its row and table locks" },
+  "features/events/registration/profile-contract-repair/apply-repository.ts": { statements: 1, how: "applyTransaction takes the lock first" },
+  "scripts/demo-canonical-memberships.ts": { statements: 1, how: "the demo transaction takes the lock first" },
 };
 
 const ROOT = join(__dirname, "../..");
@@ -99,6 +112,32 @@ test("an unlisted, unlocked, grown or removed relationship message table writer 
       "features/demo/removed.ts": { statements: 1, how: "gone" },
     });
     assert.ok(problems.some((line) => line.startsWith("UNCLASSIFIED features/demo/new-writer.ts")), "an unknown writer");
+    assert.ok(problems.some((line) => line.startsWith("UNLOCKED features/demo/unlocked.ts")), "a writer without the lock");
+    assert.ok(problems.some((line) => line.startsWith("CHANGED features/demo/grew.ts")), "a second statement in a listed file");
+    assert.ok(problems.some((line) => line.startsWith("STALE features/demo/removed.ts")), "a manifest entry without a writer");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("every writer of the event tables that carry sync_revision takes the commit-order lock", () => {
+  assert.deepEqual(auditEventTableWrites(ROOT, EVENT_SYNC_REVISION_TABLES, EVENT_TABLE_WRITE_MANIFEST), []);
+});
+
+test("an unlisted, unlocked, grown or removed event table writer fails the audit", () => {
+  const root = mkdtempSync(join(tmpdir(), "event-write-audit-"));
+  try {
+    mkdirSync(join(root, "features/demo"), { recursive: true });
+    mkdirSync(join(root, "scripts"), { recursive: true });
+    writeFileSync(join(root, "scripts/new-writer.ts"), "await client.query(\"update event_ops_membership_heads set status = 'cancelled'\"); await acquireSyncCommitOrderLock(client);");
+    writeFileSync(join(root, "features/demo/unlocked.ts"), "await sql.query(\"insert into event_ops_publication_heads (event_id) values ($1)\");");
+    writeFileSync(join(root, "features/demo/grew.ts"), "acquireSyncCommitOrderLock(tx); q('update event_ops_events set title = 1'); q('insert into event_ops_configuration_heads values (1)');");
+    const problems = auditEventTableWrites(root, EVENT_SYNC_REVISION_TABLES, {
+      "features/demo/unlocked.ts": { statements: 1, how: "claims" },
+      "features/demo/grew.ts": { statements: 1, how: "one" },
+      "features/demo/removed.ts": { statements: 1, how: "gone" },
+    });
+    assert.ok(problems.some((line) => line.startsWith("UNCLASSIFIED scripts/new-writer.ts")), "an unknown writer (scripts too)");
     assert.ok(problems.some((line) => line.startsWith("UNLOCKED features/demo/unlocked.ts")), "a writer without the lock");
     assert.ok(problems.some((line) => line.startsWith("CHANGED features/demo/grew.ts")), "a second statement in a listed file");
     assert.ok(problems.some((line) => line.startsWith("STALE features/demo/removed.ts")), "a manifest entry without a writer");

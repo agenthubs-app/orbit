@@ -1,14 +1,17 @@
 import { Pool, type PoolConfig } from "pg";
 
-import type {
-  LiveRecord,
-  LiveRecordDeleteInput,
-  LiveRecordGetQuery,
-  LiveRecordListQuery,
-  LiveRecordStoreLike,
+import {
+  LiveRecordOwnerConflictError,
+  type LiveRecord,
+  type LiveRecordDeleteInput,
+  type LiveRecordGetQuery,
+  type LiveRecordListQuery,
+  type LiveRecordReassignOwnerInput,
+  type LiveRecordStoreLike,
 } from "./live-record-store";
 import { resolveListLimit } from "./live-record-store";
 import { isSyncCollection, SYNC_COMMIT_ORDER_LOCK_CTE } from "../../features/sync/commit-order-lock";
+import { assertRegisteredOwnerChange, SYNC_OWNER_CHANGE_SETTING } from "../../features/sync/owner-guard";
 import {
   createPostgresReadMetricsRunner,
   type PostgresReadMetricsConfig,
@@ -453,7 +456,10 @@ export function createPostgresLiveRecordStore<
           ${insertedRows(record.collectionName)}
           on conflict (workspace_id, collection_name, record_id)
           do update set
-            user_id = excluded.user_id,
+            -- Sprint 0113: an update without an owner keeps the stored one; an
+            -- unowned row may get its first owner; another owner is refused
+            -- by the WHERE below (no row back = LiveRecordOwnerConflictError).
+            user_id = coalesce(excluded.user_id, orbit_records.user_id),
             source_type = excluded.source_type,
             source_id = excluded.source_id,
             source_label = excluded.source_label,
@@ -468,16 +474,43 @@ export function createPostgresLiveRecordStore<
             payload = excluded.payload,
             updated_at = excluded.updated_at,
             deleted_at = excluded.deleted_at
+          where excluded.user_id is null
+            or nullif(orbit_records.user_id, '') is null
+            or orbit_records.user_id = excluded.user_id
           returning ${recordColumns}
         `,
         recordValues(record),
       );
 
       if (!result.rows[0]) {
-        throw new Error("orbit_records upsert returned no row");
+        throw new LiveRecordOwnerConflictError(record.collectionName, record.recordId);
       }
 
       return rowToRecord<TPayload>(result.rows[0]);
+    },
+
+    async reassignRecordOwner(input: LiveRecordReassignOwnerInput): Promise<LiveRecord<TPayload> | null> {
+      assertRegisteredOwnerChange(input.collectionName, input.handler);
+      // A registered handler marks its transaction for the owner guard trigger;
+      // the CTE is joined, so it runs before the row reaches the trigger.
+      const ctes = [
+        ...(isSyncCollection(input.collectionName) ? [SYNC_COMMIT_ORDER_LOCK_CTE] : []),
+        `owner_change as materialized (select set_config('${SYNC_OWNER_CHANGE_SETTING}', $6::text, true) as handler)`,
+      ];
+      const result = await client.query<PostgresLiveRecordRow>(
+        `
+          with ${ctes.join(",\n")}
+          update orbit_records
+          set user_id = $5, updated_at = $7
+          from owner_change${isSyncCollection(input.collectionName) ? ", sync_write_lock" : ""}
+          where workspace_id = $1 and collection_name = $2 and record_id = $3
+            and user_id is not distinct from $4::text
+            and lifecycle_state <> 'deleted'
+          returning ${recordColumns.split(",").map((column) => `orbit_records.${column.trim()}`).join(", ")}
+        `,
+        [input.workspaceId, input.collectionName, input.recordId, input.fromUserId, input.toUserId, input.handler ?? "", input.updatedAt],
+      );
+      return result.rows[0] ? rowToRecord<TPayload>(result.rows[0]) : null;
     },
   };
 }

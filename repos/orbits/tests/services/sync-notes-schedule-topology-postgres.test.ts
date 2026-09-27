@@ -184,3 +184,21 @@ test("a bookmark issued under the previous page schema is refused, so old device
   const response = await h.handlersFor(A).domain(new Request(`https://orbit.local/api/sync/domains/notes?cursor=${encodeURIComponent(oldCursor)}`), "notes");
   assert.equal(response.status, 409);
 });
+
+test("registry v2 (sprint 0113): a bookmark issued under registry v1 is refused, so every device rebuilds its three domains once", options, async (t) => {
+  const h = await host(t);
+  await seed(h);
+  assert.equal(SYNC_REGISTRY_VERSION, 2);
+  const lease = await h.handlersFor(A).lease(new Request("https://orbit.local/api/sync/lease?baseUrl=https%3A%2F%2Fapp.local"));
+  const epoch = ((await lease.json()) as { data: { grants: { authorizationEpoch: string }[] } }).data.grants[0]!.authorizationEpoch;
+  for (const domainId of ["notes", "tasks", "personal-schedule"] as const) {
+    const v1Cursor = createDomainCursorCodec({ secret: SECRET }).encode({
+      actorId: A, workspaceId: W, domainId, authorizationEpoch: epoch, generation: domainGeneration(epoch), schemaVersion: 2, registryVersion: 1, afterRevision: "0", highWatermark: "0",
+    }, Date.parse(clock));
+    const response = await h.handlersFor(A).domain(new Request(`https://orbit.local/api/sync/domains/${domainId}?cursor=${encodeURIComponent(v1Cursor)}`), domainId);
+    assert.equal(response.status, 409, `${domainId}: SYNC_RESET_REQUIRED`);
+  }
+  // The rebuilt mirror is the same data: a fresh pull returns exactly the account's own rows.
+  const notes = device(h, A, "notes");
+  assert.deepEqual(await notes.pull(), { upserts: 3, deletes: 0 });
+});

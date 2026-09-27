@@ -1,3 +1,4 @@
+import { lockedFixtureQuery } from "./sync-revision-fixture";
 import { randomUUID } from "node:crypto";
 import { Pool } from "pg";
 import { loadLocalEnv } from "../../scripts/load-local-env";
@@ -58,8 +59,7 @@ export async function createIsolatedRegistrationRuntime() {
         maxAttemptsPerTask: 3, recommendationCount: 4, shardSize: 6, tableSize: 6,
         updatedAt: new Date(now).toISOString(),
       });
-      await runtime.client.query(
-        `update event_ops_events set title=$3, description='Isolated registration fixture',
+      await lockedFixtureQuery(runtime.client, `update event_ops_events set title=$3, description='Isolated registration fixture',
            venue='Tokyo', timezone='Asia/Tokyo', starts_at=$4, ends_at=$5, public_code=$6, lifecycle_state_v2='published'
          where workspace_id=$1 and event_id=$2`,
         [workspaceId, eventId, title, at(0), at(180), eventId.replaceAll("_", "").replace("event", "EVT").toUpperCase()],

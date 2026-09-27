@@ -1,3 +1,4 @@
+import { acquireSyncCommitOrderLock } from "../features/sync/commit-order-lock";
 import { activateCanonicalRegistrationsWithExecutor } from "../features/events/event-operations/storage/canonical-registration-repository";
 import type { EventOperationsPostgresClient } from "../features/events/event-operations/storage/postgres-client";
 
@@ -31,6 +32,8 @@ export async function ensureDemoCanonicalMemberships(input: {
   )) throw new Error("Unreviewed or duplicate Demo event IDs.");
 
   return input.client.transaction(async (executor) => {
+    // Sprint 0113: event head tables carry sync_revision (strict trigger); take the commit-order lock first.
+    await acquireSyncCommitOrderLock(executor);
     for (const eventId of input.eventIds) {
       const event = (await executor.query<{
         registration_migration_state: string;

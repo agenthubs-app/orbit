@@ -1,3 +1,5 @@
+import { lockedFixtureQuery } from "../support/sync-revision-fixture";
+import { runEventSyncRevisionMigration } from "../../features/events/event-operations/storage/sync-revision";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { spawnSync } from "node:child_process";
@@ -47,6 +49,8 @@ test(
     try {
       await adminPool.query(`create schema ${schema}`);
       await runEventOperationsMigrations(client);
+      // Sprint 0113: the event head tables carry sync_revision under the strict trigger, as in production.
+      await runEventSyncRevisionMigration(client);
       const dbClock = await scopedPool.query<{ now: Date }>(
         "select statement_timestamp() as now",
       );
@@ -118,8 +122,7 @@ test(
         repository.registerCanonicalParticipant({ eventId: "event-canonical-registration", userId: "actor-before-publish" }),
         (error: unknown) => error instanceof EventRegistrationWindowError && error.code === "EVENT_REGISTRATION_CONFIGURATION_REQUIRED",
       );
-      await scopedPool.query(
-        `update event_ops_events set lifecycle_state_v2 = 'published'
+      await lockedFixtureQuery(scopedPool, `update event_ops_events set lifecycle_state_v2 = 'published'
          where workspace_id = $1 and event_id = $2`,
         ["workspace-registration-test", "event-canonical-registration"],
       );
@@ -185,8 +188,7 @@ test(
       assert.equal(await repository.cancelCanonicalRegistration({
         eventId: "event-canonical-registration", userId: "actor-foreign",
       }), null);
-      await scopedPool.query(
-        `insert into event_ops_configuration_heads
+      await lockedFixtureQuery(scopedPool, `insert into event_ops_configuration_heads
          select * from json_populate_record(null::event_ops_configuration_heads, $1::json)`,
         [JSON.stringify(removedConfiguration.rows[0])],
       );
@@ -317,8 +319,7 @@ test(
         tableSize: 6,
         updatedAt: at(base, 0),
       });
-      await scopedPool.query(
-        `update event_ops_events set lifecycle_state_v2 = 'published'
+      await lockedFixtureQuery(scopedPool, `update event_ops_events set lifecycle_state_v2 = 'published'
          where workspace_id = $1 and event_id = $2`,
         ["workspace-registration-test", "event-closed-registration"],
       );
@@ -338,8 +339,7 @@ test(
 
       // Public runtime reads also require canonical event identity and temporal fields.
       for (const eventId of ["event-canonical-registration", "event-closed-registration"]) {
-        await scopedPool.query(
-          `update event_ops_events set title = $2, description = 'Registration fixture',
+        await lockedFixtureQuery(scopedPool, `update event_ops_events set title = $2, description = 'Registration fixture',
              venue = 'Tokyo', timezone = 'Asia/Tokyo', starts_at = $3, ends_at = $4
            where workspace_id = $1 and event_id = $2`,
           ["workspace-registration-test", eventId, at(base, 30), at(base, 180)],
@@ -398,8 +398,7 @@ test(
         tableSize: 6,
         updatedAt: at(base, 0),
       });
-      await scopedPool.query(
-        `update event_ops_events set lifecycle_state_v2 = 'published'
+      await lockedFixtureQuery(scopedPool, `update event_ops_events set lifecycle_state_v2 = 'published'
          where workspace_id = $1 and event_id = $2`,
         ["workspace-registration-test", "event-shadow-import"],
       );
@@ -552,6 +551,8 @@ test(
     try {
       await adminPool.query(`create schema ${schema}`);
       await runEventOperationsMigrations(client);
+      // Sprint 0113: the event head tables carry sync_revision under the strict trigger, as in production.
+      await runEventSyncRevisionMigration(client);
       const dbClock = await scopedPool.query<{ now: Date }>(
         "select statement_timestamp() as now",
       );
@@ -565,8 +566,7 @@ test(
         "event-core-zero-registration",
         "event-core-missing-manifest",
       ]) {
-        await scopedPool.query(
-          `
+        await lockedFixtureQuery(scopedPool, `
             insert into event_ops_events (
               workspace_id, event_id, organizer_actor_id, lifecycle_state,
               revision, created_at, updated_at, public_code, title, description,
@@ -585,8 +585,7 @@ test(
         ["event-core-draft", "draft"],
         ["event-core-cancelled", "cancelled"],
       ] as const) {
-        await scopedPool.query(
-          `insert into event_ops_events (
+        await lockedFixtureQuery(scopedPool, `insert into event_ops_events (
              workspace_id, event_id, organizer_actor_id, lifecycle_state,
              revision, created_at, updated_at, public_code, title, description,
              venue, timezone, starts_at, ends_at, lifecycle_state_v2,
@@ -817,8 +816,7 @@ test(
         registration_migration_state: "legacy",
       });
 
-      await scopedPool.query(
-        `update event_ops_events
+      await lockedFixtureQuery(scopedPool, `update event_ops_events
          set registration_migration_count = registration_migration_count + 1
          where workspace_id = $1 and event_id = 'event-core-operator-manifest'`,
         [workspaceId],
@@ -835,8 +833,7 @@ test(
             error.message,
           ),
       );
-      await scopedPool.query(
-        `update event_ops_events
+      await lockedFixtureQuery(scopedPool, `update event_ops_events
          set registration_migration_count = registration_migration_count - 1
          where workspace_id = $1 and event_id = 'event-core-operator-manifest'`,
         [workspaceId],

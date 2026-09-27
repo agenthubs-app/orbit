@@ -1,3 +1,4 @@
+import { writeAsOwner } from "../support/live-record-owner-fixture";
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -79,7 +80,7 @@ test("live contact detail persists actor-scoped tag status note and interaction 
   for (const collectionName of ["contacts", "connections", "evidence"]) {
     const records = await store.listRecords({ limit: "unbounded", collectionName, workspaceId });
     for (const record of records) {
-      await store.upsertRecord({
+      await writeAsOwner(store, {
         ...record,
         userId: actorId,
         payload: { ...record.payload, accountId: actorId },
@@ -642,7 +643,7 @@ test("live contact detail write failure returns failure and leaves no detail sta
   for (const collectionName of ["contacts", "connections", "evidence"]) {
     const records = await store.listRecords({ limit: "unbounded", collectionName, workspaceId });
     for (const record of records) {
-      await store.upsertRecord({
+      await writeAsOwner(store, {
         ...record,
         userId: actorId,
         payload: { ...record.payload, accountId: actorId },
@@ -927,7 +928,7 @@ test("business-card contacts show the capture method as their source, including 
     for (const record of records) {
       const isTarget =
         collectionName === "contacts" && record.payload.id === "contact_078";
-      await store.upsertRecord({
+      await writeAsOwner(store, {
         ...record,
         userId: actorId,
         payload: {

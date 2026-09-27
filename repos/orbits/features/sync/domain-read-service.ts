@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import type { DomainChange, DomainManifest, DomainPage, OfflineReadEnvelope } from "../../shared/contract/universal-read";
 import { resolveAuthorizationEpoch, type AuthorizationEpoch, type AuthorizationEpochSqlClient } from "./authorization-epoch";
 import { createDomainCursorCodec, type DomainCursorScope } from "./domain-cursor";
-import { findSyncDomain, SYNC_DOMAIN_SCHEMA_VERSION, SYNC_DOMAINS, SYNC_REGISTRY_VERSION, type SyncDomainDefinition } from "./domain-registry";
+import { findSyncDomain, SYNC_DOMAIN_SCHEMA_VERSION, SYNC_DOMAINS, SYNC_REGISTRY_VERSION, type DedicatedTableSyncSource, type SyncDomainDefinition } from "./domain-registry";
 import { issueOfflineReadLease } from "./offline-read-lease";
 import { changeFromRow, SYNC_MAX_LIMIT, SYNC_MAX_PAGE_BYTES, SyncReadError, type SyncReadRow } from "./read-service";
 
@@ -15,6 +15,8 @@ export interface DomainReadServiceOptions {
   client: AuthorizationEpochSqlClient;
   cursorSecret: string;
   now?: () => string;
+  /** The manuals this service leases and reads; production uses the registry's device domains. */
+  domains?: readonly SyncDomainDefinition[];
 }
 
 export class DomainNotAuthorizedError extends Error {
@@ -37,6 +39,55 @@ const HIGH_WATERMARK_SQL = `
   from orbit_records
   where workspace_id = $1 and user_id = $2 and collection_name = $3
 `;
+
+// Dedicated-table source (sprint 0113): the table's own sync_revision, drawn
+// from the orbit_records sequence under the same commit-order lock, filtered to
+// the owner column the manual declares. Identifiers come from the registry and
+// are validated before any SQL is built.
+const IDENTIFIER = /^[a-z_][a-z0-9_]*$/;
+
+function dedicatedSql(source: DedicatedTableSyncSource, ownerColumn: string) {
+  const identifiers = [source.table, source.recordIdColumn, ownerColumn, ...Object.values(source.columns)];
+  if (!identifiers.every((identifier) => IDENTIFIER.test(identifier)) || !Object.keys(source.columns).every((field) => /^[A-Za-z][A-Za-z0-9]*$/.test(field))) {
+    throw new SyncReadError("SYNC_SCOPE_MISMATCH", "A dedicated sync source is not a plain identifier.");
+  }
+  const columns = Object.entries(source.columns).map(([field, column]) => `${column} as "${field}"`).join(", ");
+  return {
+    highWatermark: `
+  /* sync:domain:dedicated-high-watermark */
+  select coalesce(max(sync_revision), 0)::text as high_watermark
+  from ${source.table}
+  where workspace_id = $1 and ${ownerColumn} = $2
+`,
+    page: `
+  /* sync:domain:dedicated-page */
+  select ${source.recordIdColumn}::text as record_id, ${ownerColumn}::text as owner_id, ${columns},
+    sync_revision::text as sync_revision
+  from ${source.table}
+  where workspace_id = $1
+    and ${ownerColumn} = $2
+    and sync_revision > $3::bigint
+    and sync_revision <= $4::bigint
+  order by sync_revision asc
+  limit $5
+`,
+  };
+}
+
+function ownerColumnOf(domain: SyncDomainDefinition): string {
+  if (domain.ownership.rule !== "column") throw new SyncReadError("SYNC_DOMAIN_SOURCE_UNSUPPORTED", `Domain ${domain.domainId} derives its owner; no reader is implemented yet.`);
+  return domain.ownership.column;
+}
+
+/** Only the manual's fields leave the server. */
+function declaredFields(domain: SyncDomainDefinition, payload: Record<string, unknown>): Record<string, unknown> {
+  const allowed = new Set(domain.fields);
+  return Object.fromEntries(Object.entries(payload).filter(([key]) => allowed.has(key)));
+}
+
+function wireValue(value: unknown): unknown {
+  return value instanceof Date ? value.toISOString() : typeof value === "bigint" ? value.toString() : value;
+}
 
 // Registry v1 mirrors canonical records only. Legacy-shaped task rows (no nested
 // `task`) are invisible to /api/tasks and cannot be mutated through it; mirroring
@@ -107,8 +158,11 @@ function domainChange(change: ReturnType<typeof changeFromRow>): DomainChange {
   };
 }
 
-export function createDomainReadService({ client, cursorSecret, now = () => new Date().toISOString() }: DomainReadServiceOptions) {
+export function createDomainReadService({ client, cursorSecret, now = () => new Date().toISOString(), domains = SYNC_DOMAINS }: DomainReadServiceOptions) {
   const cursors = createDomainCursorCodec({ secret: cursorSecret });
+  // Production passes nothing and gets the device domains; a test adds the probe explicitly.
+  const leased = [...domains];
+  if (leased.length === 0) throw new Error("A domain read service needs at least one domain.");
 
   async function epochFor(actorId: string, workspaceId: string): Promise<AuthorizationEpoch> {
     if (!actorId.trim() || !workspaceId.trim()) throw new SyncReadError("SYNC_SCOPE_MISMATCH", "Authenticated sync scope is required.");
@@ -116,10 +170,47 @@ export function createDomainReadService({ client, cursorSecret, now = () => new 
   }
 
   async function highWatermark(actorId: string, workspaceId: string, domain: SyncDomainDefinition): Promise<string> {
-    const result = await client.query<{ high_watermark: string }>(HIGH_WATERMARK_SQL, [workspaceId, actorId, domain.collectionName]);
+    const source = domain.source;
+    const result = source.kind === "orbit_records"
+      ? await client.query<{ high_watermark: string }>(HIGH_WATERMARK_SQL, [workspaceId, actorId, source.collectionName])
+      : await client.query<{ high_watermark: string }>(dedicatedSql(source, ownerColumnOf(domain)).highWatermark, [workspaceId, actorId]);
     const value = result.rows[0]?.high_watermark;
     if (typeof value !== "string" || !/^(?:0|[1-9]\d*)$/.test(value)) throw new SyncReadError("SYNC_INVALID_HIGH_WATERMARK", "The sync high watermark is invalid.");
     return value;
+  }
+
+  type PageInput = { actorId: string; workspaceId: string; limit: number };
+  type PageRead = { changes: DomainChange[]; hasMore: boolean; lastRevision: string | null };
+
+  async function readRecordsPage(collectionName: string, input: PageInput, afterRevision: string, high: string): Promise<PageRead> {
+    const result = await client.query<SyncReadRow>(PAGE_SQL, [input.workspaceId, input.actorId, collectionName, afterRevision, high, input.limit + 1]);
+    if (result.rows.some((row) => row.workspace_id !== input.workspaceId || row.user_id !== input.actorId || row.collection_name !== collectionName)) {
+      throw new SyncReadError("SYNC_SCOPE_MISMATCH", "Sync rows must match the authenticated scope.");
+    }
+    const pageRows = result.rows.slice(0, input.limit);
+    return {
+      changes: pageRows.map((row) => domainChange(changeFromRow(row, input.actorId))),
+      hasMore: result.rows.length > input.limit,
+      lastRevision: pageRows.length ? String(pageRows.at(-1)!.sync_revision) : null,
+    };
+  }
+
+  async function readDedicatedPage(domain: SyncDomainDefinition, source: DedicatedTableSyncSource, input: PageInput, afterRevision: string, high: string): Promise<PageRead> {
+    const result = await client.query<Record<string, unknown> & { record_id: string; owner_id: string; sync_revision: string }>(
+      dedicatedSql(source, ownerColumnOf(domain)).page, [input.workspaceId, input.actorId, afterRevision, high, input.limit + 1],
+    );
+    if (result.rows.some((row) => row.owner_id !== input.actorId)) throw new SyncReadError("SYNC_SCOPE_MISMATCH", "Sync rows must match the authenticated scope.");
+    const pageRows = result.rows.slice(0, input.limit);
+    return {
+      changes: pageRows.map((row) => ({
+        id: row.record_id,
+        revision: row.sync_revision,
+        operation: "upsert" as const,
+        payload: Object.fromEntries(Object.keys(source.columns).map((field) => [field, wireValue(row[field])])),
+      })),
+      hasMore: result.rows.length > input.limit,
+      lastRevision: pageRows.length ? pageRows.at(-1)!.sync_revision : null,
+    };
   }
 
   return {
@@ -132,16 +223,16 @@ export function createDomainReadService({ client, cursorSecret, now = () => new 
         input.nowMs,
         input.offlineMaxAgeMs,
         {
-          registeredDomainIds: SYNC_DOMAINS.map((domain) => domain.domainId),
+          registeredDomainIds: leased.map((domain) => domain.domainId),
           authorizer: {
             // One statement, one snapshot: the epoch above is the durable authority for every grant.
             async readAtomicSnapshot(context) {
               return {
                 actorId: context.actorId, subject: context.subject, workspaceId: context.workspaceId,
                 consistency: "atomic", epochAuthority: "durable",
-                coveredDomainIds: SYNC_DOMAINS.map((domain) => domain.domainId),
+                coveredDomainIds: leased.map((domain) => domain.domainId),
                 grants: epoch.authorized
-                  ? SYNC_DOMAINS.map((domain) => ({ workspaceId: context.workspaceId, domainId: domain.domainId, authorizationEpoch: epoch.epoch }))
+                  ? leased.map((domain) => ({ workspaceId: context.workspaceId, domainId: domain.domainId, authorizationEpoch: epoch.epoch }))
                   : [],
               };
             },
@@ -153,7 +244,7 @@ export function createDomainReadService({ client, cursorSecret, now = () => new 
     async manifest(input: { actorId: string; workspaceId: string }): Promise<DomainManifest> {
       const epoch = await epochFor(input.actorId, input.workspaceId);
       if (!epoch.authorized) return { registryVersion: SYNC_REGISTRY_VERSION, domains: [] };
-      const domains = await Promise.all(SYNC_DOMAINS.map(async (domain) => ({
+      const entries = await Promise.all(leased.map(async (domain) => ({
         domainId: domain.domainId,
         schemaVersion: SYNC_DOMAIN_SCHEMA_VERSION,
         workspaceId: input.workspaceId,
@@ -163,11 +254,11 @@ export function createDomainReadService({ client, cursorSecret, now = () => new 
         history: "complete" as const,
         membershipCursor: null,
       })));
-      return { registryVersion: SYNC_REGISTRY_VERSION, domains };
+      return { registryVersion: SYNC_REGISTRY_VERSION, domains: entries };
     },
 
     async readDomainPage(input: { actorId: string; workspaceId: string; domainId: string; cursor?: string; limit: number }): Promise<DomainPage> {
-      const domain = findSyncDomain(input.domainId);
+      const domain = findSyncDomain(input.domainId, leased);
       if (!domain) throw new DomainUnknownError(input.domainId);
       if (!Number.isSafeInteger(input.limit) || input.limit < 1 || input.limit > SYNC_MAX_LIMIT) throw new SyncReadError("SYNC_SCOPE_MISMATCH", "Sync limit is invalid.");
       const epoch = await epochFor(input.actorId, input.workspaceId);
@@ -182,14 +273,12 @@ export function createDomainReadService({ client, cursorSecret, now = () => new 
       let afterRevision = decoded?.afterRevision ?? "0";
       let high = decoded?.highWatermark ?? "0";
       if (!decoded || decoded.afterRevision === decoded.highWatermark) high = await highWatermark(input.actorId, input.workspaceId, domain);
-      const result = await client.query<SyncReadRow>(PAGE_SQL, [input.workspaceId, input.actorId, domain.collectionName, afterRevision, high, input.limit + 1]);
-      if (result.rows.some((row) => row.workspace_id !== input.workspaceId || row.user_id !== input.actorId || row.collection_name !== domain.collectionName)) {
-        throw new SyncReadError("SYNC_SCOPE_MISMATCH", "Sync rows must match the authenticated scope.");
-      }
-      const pageRows = result.rows.slice(0, input.limit);
-      const hasMore = result.rows.length > input.limit;
-      const changes = pageRows.map((row) => domainChange(changeFromRow(row, input.actorId)));
-      if (domain.collectionName === "personal_schedule_items") {
+      const read = domain.source.kind === "orbit_records"
+        ? await readRecordsPage(domain.source.collectionName, input, afterRevision, high)
+        : await readDedicatedPage(domain, domain.source, input, afterRevision, high);
+      const { hasMore, lastRevision } = read;
+      const changes = read.changes;
+      if (domain.attachments.some((attachment) => attachment.collectionName === "personal_schedule_occurrence_exceptions")) {
         const recurring = changes.filter((change) => change.payload && change.payload.kind === "personal" && change.payload.recurrence);
         const exceptions = await scheduleExceptions(client, { workspaceId: input.workspaceId, actorId: input.actorId, seriesIds: recurring.map((change) => change.id), issuedAt });
         for (const change of recurring) {
@@ -197,7 +286,8 @@ export function createDomainReadService({ client, cursorSecret, now = () => new 
           if (list?.length) change.payload = { ...change.payload, occurrenceExceptions: list };
         }
       }
-      afterRevision = hasMore ? String(pageRows.at(-1)?.sync_revision ?? afterRevision) : high;
+      for (const change of changes) if (change.payload) change.payload = declaredFields(domain, change.payload);
+      afterRevision = hasMore ? (lastRevision ?? afterRevision) : high;
       const page: DomainPage = {
         domainId: domain.domainId,
         schemaVersion: SYNC_DOMAIN_SCHEMA_VERSION,

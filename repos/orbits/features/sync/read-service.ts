@@ -34,7 +34,8 @@ export type SyncReadErrorCode =
   | "SYNC_INVALID_RECORD"
   | "SYNC_PAYLOAD_TOO_LARGE"
   | "SYNC_PAGE_TOO_LARGE"
-  | "SYNC_SCOPE_MISMATCH";
+  | "SYNC_SCOPE_MISMATCH"
+  | "SYNC_DOMAIN_SOURCE_UNSUPPORTED";
 
 export class SyncReadError extends Error {
   constructor(

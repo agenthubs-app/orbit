@@ -1,3 +1,4 @@
+import { lockedFixtureQuery } from "./sync-revision-fixture";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import type { Pool } from "pg";
@@ -12,7 +13,7 @@ export async function seedProfileRepairFixture(pool: Pool, workspaceId: string) 
   const repository = createPostgresEventOperationsRepository({ client, workspaceId });
   const eventIds = ["repair-event-a", "repair-event-b"];
   for (const eventId of eventIds) {
-    await pool.query(`insert into event_ops_events (
+    await lockedFixtureQuery(pool, `insert into event_ops_events (
       workspace_id,event_id,organizer_actor_id,lifecycle_state,revision,created_at,updated_at,
       public_code,title,timezone,starts_at,ends_at,lifecycle_state_v2,source_payload,event_version
     ) values ($1,$2,'organizer-repair','active',1,now(),now(),$2,$2,'Asia/Tokyo',

@@ -1,3 +1,4 @@
+import { lockedFixtureQuery } from "./sync-revision-fixture";
 import assert from "node:assert/strict";
 import { createHash, randomUUID } from "node:crypto";
 import test from "node:test";
@@ -79,7 +80,7 @@ export function useRegistrationCatalogueFixture(
       const startsAt = new Date(event.start).toISOString();
       const endsAt = new Date(event.start + 2 * 60 * 60 * 1000).toISOString();
       const values = [workspaceId, event.id, event.code, event.title, startsAt, endsAt, event.state, event.venue];
-      await pool.query(`insert into event_ops_events (
+      await lockedFixtureQuery(pool, `insert into event_ops_events (
         workspace_id,event_id,organizer_actor_id,created_at,updated_at,public_code,
         title,description,venue,timezone,starts_at,ends_at,lifecycle_state_v2,source_payload,event_version
       ) values ($1,$2,'organizer:registration-test',now(),now(),$3,$4,

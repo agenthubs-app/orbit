@@ -134,3 +134,55 @@ export function auditMessageTableWrites(root: string, manifest: Readonly<Record<
   for (const file of Object.keys(manifest)) if (!scanned.has(file)) problems.push(`STALE ${file}: in the manifest but has no relationship message table write any more.`);
   return problems;
 }
+
+/**
+ * Sprint 0113: every row of the event head tables that carry sync_revision is a
+ * sync row too (strict trigger, same sequence and lock), so every file that
+ * inserts into or updates them must take the commit-order lock, like the
+ * message tables above. The table list comes from the migration itself.
+ */
+export function eventTableWritePattern(tables: readonly string[]): RegExp {
+  return new RegExp(`\\b(insert\\s+into|update|merge\\s+into)\\s+(${tables.join("|")})\\b`, "gi");
+}
+
+export function scanTableWrites(root: string, pattern: RegExp): SyncWriteFinding[] {
+  const found: SyncWriteFinding[] = [];
+  const visit = (directory: string) => {
+    let names: string[];
+    try { names = readdirSync(directory); } catch { return; }
+    for (const name of names) {
+      const path = join(directory, name);
+      if (statSync(path).isDirectory()) {
+        if (name === "node_modules" || name === ".next" || name === "tests") continue;
+        visit(path);
+        continue;
+      }
+      if (!/\.(ts|tsx|mjs|cjs|js)$/.test(name) || /\.test\.[a-z]+$/.test(name)) continue;
+      const text = readFileSync(path, "utf8");
+      const snippets = [...text.matchAll(pattern)].map((match) => text.slice(match.index, match.index + 200));
+      if (snippets.length) found.push({ file: relative(root, path).split(sep).join("/"), statements: snippets.length, snippets });
+    }
+  };
+  for (const scanned of SCANNED_ROOTS) visit(join(root, scanned));
+  return found.sort((left, right) => left.file.localeCompare(right.file));
+}
+
+export function auditEventTableWrites(root: string, tables: readonly string[], manifest: Readonly<Record<string, MessageTableWritePolicy>>): string[] {
+  const problems: string[] = [];
+  const findings = scanTableWrites(root, eventTableWritePattern(tables));
+  for (const finding of findings) {
+    const entry = manifest[finding.file];
+    if (!entry) {
+      problems.push(`UNCLASSIFIED ${finding.file}: ${finding.statements} event sync table write(s). Take the sync commit-order lock (features/sync/commit-order-lock.ts) at the start of the transaction and list the file.`);
+      continue;
+    }
+    if (entry.statements !== finding.statements) {
+      problems.push(`CHANGED ${finding.file}: ${finding.statements} event sync table write(s), manifest says ${entry.statements}. Review the new statement for the sync lock, then update the manifest.`);
+    }
+    const text = readFileSync(join(root, finding.file), "utf8");
+    if (!LOCK_MARKERS.some((marker) => text.includes(marker)) && !text.includes("SYNC_WRITE_LOCK_SETTING")) problems.push(`UNLOCKED ${finding.file}: writes event sync tables but takes no commit-order lock.`);
+  }
+  const scanned = new Set(findings.map((finding) => finding.file));
+  for (const file of Object.keys(manifest)) if (!scanned.has(file)) problems.push(`STALE ${file}: in the manifest but has no event sync table write any more.`);
+  return problems;
+}

@@ -1,3 +1,4 @@
+import { writeAsOwner } from "../support/live-record-owner-fixture";
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -261,7 +262,7 @@ test("generated fixture verification rejects records owned by another account", 
   });
 
   assert.ok(contact);
-  store.upsertRecord({
+  await writeAsOwner(store, {
     ...contact,
     userId: "account:other",
     updatedAt: now(),

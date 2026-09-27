@@ -14,23 +14,20 @@ import { seedGeneratedRelationshipFixturesIntoLiveStore } from "../../shared/sto
 test("live followup task generation reads generated tasks from shared live storage", async () => {
   const actorId = "actor:followup-live-store-test";
   const workspaceId = "workspace:followup-live-store-test";
-  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
-
+  // Sprint 0113: upsert never moves a row to another owner, and tasks are a sync
+  // domain, so the fixtures are seeded under the test actor instead of re-owned.
+  const fixtures = createMemoryLiveRecordStore<Record<string, unknown>>();
   await seedGeneratedRelationshipFixturesIntoLiveStore({
     now: () => "2026-07-01T19:00:00.000Z",
-    store,
+    store: fixtures,
     workspaceId,
   });
-  for (const collectionName of ["tasks", "contacts", "connections", "evidence"]) {
-    const records = await store.listRecords({ limit: "unbounded", collectionName, workspaceId });
-    for (const record of records) {
-      await store.upsertRecord({
-        ...record,
-        userId: actorId,
-        payload: { ...record.payload, accountId: actorId },
-      });
-    }
-  }
+  const store = createMemoryLiveRecordStore<Record<string, unknown>>(
+    (await fixtures.listRecords({ limit: "unbounded", workspaceId, includeDeleted: true })).map((record) =>
+      ["tasks", "contacts", "connections", "evidence"].includes(record.collectionName)
+        ? { ...record, userId: actorId, payload: { ...record.payload, accountId: actorId } }
+        : record),
+  );
   const firstTaskRecord = (
     await store.listRecords({ limit: "unbounded", collectionName: "tasks", workspaceId })
   )[0];

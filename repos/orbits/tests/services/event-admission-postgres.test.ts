@@ -1,3 +1,5 @@
+import { lockedFixtureQuery } from "../support/sync-revision-fixture";
+import { runEventSyncRevisionMigration } from "../../features/events/event-operations/storage/sync-revision";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import test from "node:test";
@@ -105,6 +107,8 @@ test(
       await adminPool.query(`create schema ${schema}`);
       await runEventOperationsMigrations(operationPool);
       await runEventOperationsMigrations(operationPool);
+      // Sprint 0113: the event head tables carry sync_revision under the strict trigger, as in production.
+      await runEventSyncRevisionMigration(operationPool);
       const migrations = await operationPool.query<{ checksum: string }>(
         "select checksum from event_ops_schema_migrations order by version",
       );
@@ -121,8 +125,7 @@ test(
         "event:activation-window-mismatch",
         "event:activation-legacy-history",
       ]) {
-        await operationPool.query(
-          `insert into event_ops_events (
+        await lockedFixtureQuery(operationPool, `insert into event_ops_events (
              workspace_id, event_id, organizer_actor_id, lifecycle_state,
              revision, created_at, updated_at
            ) values ($1, $2, $3, 'active', 1, now(), now())`,
@@ -185,8 +188,7 @@ test(
             updatedAt,
           ],
         );
-        await operationPool.query(
-          `insert into event_ops_configuration_heads (
+        await lockedFixtureQuery(operationPool, `insert into event_ops_configuration_heads (
              workspace_id, event_id, configuration_version, revision, updated_at
            ) values ($1, $2, $3, 1, $4)
            on conflict (workspace_id, event_id) do update set

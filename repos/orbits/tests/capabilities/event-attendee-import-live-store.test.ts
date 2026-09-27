@@ -1,3 +1,4 @@
+import { writeAsOwner } from "../support/live-record-owner-fixture";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -153,7 +154,7 @@ test("live event attendee import persists actor-owned canonical drafts idempoten
     });
 
     for (const item of records) {
-      await store.upsertRecord({
+      await writeAsOwner(store, {
         ...item,
         userId: actorId,
       });
@@ -323,7 +324,7 @@ test("event attendee import graph is isolated by actor ownership metadata", asyn
     });
 
     for (const item of records) {
-      await store.upsertRecord({
+      await writeAsOwner(store, {
         ...item,
         userId: "account:event-attendee-a",
       });

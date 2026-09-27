@@ -111,7 +111,9 @@ test("canonical registration activation wrapper opens one transaction and delega
   });
   assert.equal(transactionCount, 1);
   assert.deepEqual(executors, [executor]);
-  assert.equal(queries.length, 6);
+  // Sprint 0113: the first statement takes the sync commit-order lock (event heads carry sync_revision).
+  assert.equal(queries.length, 7);
+  assert.match(queries[0] ?? "", /pg_advisory_xact_lock/);
 });
 
 test("canonical registration activation rejects invalid identities before opening a transaction", async () => {

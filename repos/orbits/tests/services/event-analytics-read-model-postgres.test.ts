@@ -1,3 +1,5 @@
+import { lockedFixtureQuery } from "../support/sync-revision-fixture";
+import { runEventSyncRevisionMigration } from "../../features/events/event-operations/storage/sync-revision";
 import assert from "node:assert/strict";
 import { createHash, randomUUID } from "node:crypto";
 import test from "node:test";
@@ -82,6 +84,8 @@ test(
     try {
       await adminPool.query(`create schema ${schema}`);
       await runEventOperationsMigrations(runtime.client);
+      // Sprint 0113: the event head tables carry sync_revision under the strict trigger, as in production.
+      await runEventSyncRevisionMigration(runtime.client);
       await runOrbitRecordsSchema(scopedPool);
       await runAppointmentMigrations(runtime.client);
       await runEventAnalyticsMigrations(runtime.client);
@@ -108,7 +112,7 @@ test(
         tableSize: 4,
         updatedAt: at(base, 0),
       });
-      await runtime.client.query(`
+      await lockedFixtureQuery(runtime.client, `
         update event_ops_events
         set
           public_code = $3,
@@ -401,7 +405,7 @@ test(
         ORGANIZER_ID,
         publishedAt,
       ]);
-      await runtime.client.query(`
+      await lockedFixtureQuery(runtime.client, `
         insert into event_ops_publication_heads (
           workspace_id, event_id, publication_id, generation_id, revision,
           updated_at

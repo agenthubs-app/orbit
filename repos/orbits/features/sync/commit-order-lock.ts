@@ -23,9 +23,16 @@ export function isSyncCollection(collectionName: string): collectionName is Sync
   return (SYNC_COLLECTION_NAMES as readonly string[]).includes(collectionName);
 }
 
-/** Same expression as orbit_records_sync_write_lock_key(); a Postgres test pins the equality. */
+/**
+ * Same value as orbit_records_sync_write_lock_key(); a Postgres test pins the
+ * equality. Sprint 0113: to_regclass instead of ::regclass, so the event tables'
+ * writers can take the lock in a schema without orbit_records (event-only test
+ * databases). Where orbit_records exists both give the same oid, so the key of
+ * an already migrated database does not change; without it there is no sync
+ * and the lock is an unused advisory lock.
+ */
 export const SYNC_WRITE_LOCK_KEY_SQL =
-  "hashtextextended('orbit:sync:commit-order:v1:' || 'orbit_records'::regclass::oid::text, 0)";
+  "hashtextextended('orbit:sync:commit-order:v1:' || coalesce(to_regclass('orbit_records')::oid::text, ''), 0)";
 
 /** Transaction-local setting the strict trigger checks. */
 export const SYNC_WRITE_LOCK_SETTING = "orbit.sync_write_lock_key";

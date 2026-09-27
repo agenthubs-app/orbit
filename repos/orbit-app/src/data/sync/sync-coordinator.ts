@@ -13,6 +13,7 @@ import {
   type SyncClient,
   SyncResetRequiredError,
 } from "./sync-client";
+import { kindOfSyncDomain, KNOWN_SYNC_DOMAINS, syncDomainOfKind } from "./sync-domains";
 import {
   shouldSynchronize,
   type SyncRefreshReason,
@@ -21,13 +22,9 @@ import {
 const PAGE_LIMIT = 100;
 const MAX_PAGES_PER_RUN = 100;
 
-// Registry v1 mirrors the server's SYNC_DOMAINS; a lease grant per domain binds the read scope.
-const REGISTERED_DOMAIN_IDS = ["notes", "tasks", "personal-schedule"] as const;
-const DOMAIN_OF_KIND: Partial<Record<SyncChangeKind, string>> = {
-  note: "notes",
-  task: "tasks",
-  personal_schedule: "personal-schedule",
-};
+// Sprint 0113: the server's lease decides which domains sync (one grant binds one read
+// scope); KNOWN_SYNC_DOMAINS says which of them this build can store, and a
+// platform may narrow that further. Unknown grants are ignored.
 /** True only when the manifest entry for this bound scope matches the complete cursor's watermark and generation. */
 function manifestProvesUnchanged(manifest: DomainManifest | null, readScope: ReadScope, stored: LocalSyncCursor): boolean {
   if (!manifest || stored.bootstrapState !== "complete" || stored.highWatermark === null || stored.generation === null) return false;
@@ -39,7 +36,7 @@ function manifestProvesUnchanged(manifest: DomainManifest | null, readScope: Rea
 const REVOKED_EPOCH = "__revoked__";
 
 export interface SyncCoordinatorLifecycle {
-  /** Domains this platform may mirror; defaults to the full registry. The browser lists a narrower set. */
+  /** Domains this platform may mirror; defaults to every domain this build knows. The browser lists a narrower set. */
   registeredDomainIds?: readonly string[];
   /** At-rest codec for payload_json; the browser mirror encrypts per record, native relies on SQLCipher. */
   payloadCodec?: PayloadCodec;
@@ -156,7 +153,9 @@ export function createSyncCoordinator(input: {
     return active === scope && !scope.superseded;
   }
 
-  const registeredDomainIds: readonly string[] = input.lifecycle.registeredDomainIds ?? REGISTERED_DOMAIN_IDS;
+  // Known to this build and allowed on this platform; the lease picks from these.
+  const registeredDomainIds: readonly string[] = (input.lifecycle.registeredDomainIds ?? Object.keys(KNOWN_SYNC_DOMAINS))
+    .filter((domainId) => kindOfSyncDomain(domainId) !== null);
 
   function readScopesOf(scope: ActiveScope): ReadScope[] {
     if (!scope.lease) return [];
@@ -171,7 +170,7 @@ export function createSyncCoordinator(input: {
   }
 
   function readScopeFor(scope: ActiveScope, kind: SyncChangeKind): ReadScope | null {
-    const domainId = DOMAIN_OF_KIND[kind];
+    const domainId = syncDomainOfKind(kind);
     return readScopesOf(scope).find((candidate) => candidate.domainId === domainId) ?? null;
   }
 
@@ -243,7 +242,7 @@ export function createSyncCoordinator(input: {
     if (scope.workspaceId === null || !scope.lease) return null;
     let oldest: LocalSyncCursor | null = null;
     for (const grant of scope.lease.grants) {
-      const kind = (Object.keys(DOMAIN_OF_KIND) as SyncChangeKind[]).find((candidate) => DOMAIN_OF_KIND[candidate] === grant.domainId);
+      const kind = kindOfSyncDomain(grant.domainId);
       // A grant outside this platform's whitelist is never bound, so it never has a cursor and must not force a sync.
       if (!kind || !registeredDomainIds.includes(grant.domainId)) continue;
       const cursor = await readDomainCursor(scope, kind);
@@ -374,10 +373,11 @@ export function createSyncCoordinator(input: {
         if (!workspaceId) return { error: null };
 
         // Revocation drops every epoch of the domain; rotation keeps only the granted one.
-        for (const domainId of registeredDomainIds) {
+        // Driven by the lease: every mirrored domain granted now or in the previous lease.
+        const leasedDomainIds = [...new Set([...accepted.grants, ...previousGrants].map((candidate) => candidate.domainId))]
+          .filter((domainId) => registeredDomainIds.includes(domainId));
+        for (const domainId of leasedDomainIds) {
           const grant = accepted.grants.find((candidate) => candidate.domainId === domainId);
-          const previous = previousGrants.find((candidate) => candidate.domainId === domainId);
-          if (!grant && !previous) continue;
           await withRepository(scope, (repository) =>
             repository.retireEpochs(workspaceId, domainId, grant?.authorizationEpoch ?? REVOKED_EPOCH),
           );

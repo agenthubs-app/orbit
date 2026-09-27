@@ -16,6 +16,10 @@
  *
  * 目标库取 ORBIT_EVENT_DATABASE_URL(即当前 .env 指向的本地库)。
  * 写入用 upsert，重复跑安全；不会删除本地已有记录。
+ *
+ * 主人(user_id)规则(sprint 0113):云端行没有主人时保留本地主人;本地行已属于
+ * 另一个人时不覆盖，列为"owner conflict"跳过，最后以非零退出码报告。换主人
+ * 必须走已登记的处理方式，这个脚本不做。
  */
 import { Client } from "pg";
 import { SYNC_COMMIT_ORDER_LOCK_CTE } from "../features/sync/commit-order-lock";
@@ -82,6 +86,7 @@ async function main(): Promise<void> {
 
     try {
       let total = 0;
+      const ownerConflicts: string[] = [];
 
       for (const collection of targets) {
         const rows = await cloud.query(
@@ -94,7 +99,7 @@ async function main(): Promise<void> {
         );
 
         for (const row of rows.rows as Record<string, unknown>[]) {
-          await local.query(
+          const written = await local.query(
             // Copies may include sync collections: every statement takes the
             // commit-order lock (harmless for the other collections).
             `with ${SYNC_COMMIT_ORDER_LOCK_CTE}
@@ -104,7 +109,7 @@ async function main(): Promise<void> {
                occurred_at, lifecycle_state, search_text, payload, created_at, updated_at, deleted_at
              ) select $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19 from sync_write_lock
              on conflict (workspace_id, collection_name, record_id) do update set
-               user_id = excluded.user_id,
+               user_id = coalesce(excluded.user_id, orbit_records.user_id),
                source_type = excluded.source_type,
                source_id = excluded.source_id,
                source_label = excluded.source_label,
@@ -118,7 +123,11 @@ async function main(): Promise<void> {
                search_text = excluded.search_text,
                payload = excluded.payload,
                updated_at = excluded.updated_at,
-               deleted_at = excluded.deleted_at`,
+               deleted_at = excluded.deleted_at
+             where excluded.user_id is null
+               or nullif(orbit_records.user_id, '') is null
+               or orbit_records.user_id = excluded.user_id
+             returning record_id`,
             [
               row.workspace_id,
               row.collection_name,
@@ -141,13 +150,18 @@ async function main(): Promise<void> {
               row.deleted_at,
             ],
           );
+          if (written.rows.length !== 1) ownerConflicts.push(`${String(row.collection_name)}/${String(row.record_id)}`);
         }
 
         total += rows.rows.length;
         console.log(`- ${collection}: synced ${rows.rows.length} records`);
       }
 
-      console.log(`Synced ${total} records from cloud into local.`);
+      console.log(`Synced ${total - ownerConflicts.length} records from cloud into local.`);
+      if (ownerConflicts.length > 0) {
+        console.error(`Skipped ${ownerConflicts.length} owner conflict(s) (local row belongs to another owner): ${ownerConflicts.join(", ")}`);
+        process.exitCode = 1;
+      }
     } finally {
       await local.end();
     }
