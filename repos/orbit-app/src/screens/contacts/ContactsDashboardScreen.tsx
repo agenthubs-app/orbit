@@ -17,7 +17,10 @@ import {
   dashboardOpportunitiesRecomputePath,
   ORBIT_API_ENDPOINTS
 } from "../../api/endpoints";
-import { mobileContactsDashboardPayloadSchema } from "../../api/schema/mobile-contacts-dashboard";
+import {
+  MOBILE_CONTACTS_DASHBOARD_ROLE_COUNTS_QUERY,
+  mobileContactsDashboardPayloadSchema
+} from "../../api/schema/mobile-contacts-dashboard";
 import { AppScreen } from "../../components/AppScreen";
 import { AnalysisPieOrbitChart } from "../../components/AnalysisPieOrbitChart";
 import { DataCard } from "../../components/DataCard";
@@ -63,6 +66,11 @@ import {
 
 type AnalysisSegment = "opportunity" | "overview" | "structure";
 
+// This screen reads contacts.roleCounts for its role statistics, so it declares
+// the capability; the server then sends only the contacts the page shows.
+const CONTACTS_DASHBOARD_PATH =
+  `${ORBIT_API_ENDPOINTS.mobileContactsDashboard}?${MOBILE_CONTACTS_DASHBOARD_ROLE_COUNTS_QUERY}`;
+
 export function ContactsDashboardScreen() {
   const { colors } = useOrbitTheme();
   const auth = useOrbitAuthSession();
@@ -78,7 +86,7 @@ export function ContactsDashboardScreen() {
   const currentDashboardScope = useRef(dashboardScopeKey);
   currentDashboardScope.current = dashboardScopeKey;
   const dashboardState = useValidatedApiResource(
-    ORBIT_API_ENDPOINTS.mobileContactsDashboard,
+    CONTACTS_DASHBOARD_PATH,
     mobileContactsDashboardPayloadSchema,
     (data) => data.aggregate.relationshipAssetTotals.contacts === 0 && !data.analysis?.report,
     { scopeKey: dashboardScopeKey },

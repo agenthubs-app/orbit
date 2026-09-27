@@ -36,7 +36,7 @@ export const useRouter = () => ({ canGoBack: () => false, back() { state.navigat
 const structure = { dimension: "industry", bucket: { label: "科技合作伙伴", contactCount: 1, percentage: 100 }, contacts: [{ ...contacts.contacts[0], relationshipStrength: "strong" }], commonTags: [{ label: "日本市场", contactCount: 1 }], relationshipQuality: [{ id: "strong", label: "强关系", contactCount: 1, percentage: 100 }], insight: "科技合作伙伴已有交流基础。" };
 const connections = { connections: [{ id: "connection:1", contactId: "contact:1", displayName: "林悦", organization: "红桥科技", relationshipStage: "needs_follow_up", strengthScore: 89, sourceLinks: [{ label: "朋友引荐", type: "referral" }], evidenceTimeline: [{ title: "已有交流记录" }] }] };
 export const useApiResource = path => { rerender(); return { kind: state.kind, error: { message: "连接暂时失败" }, data: path.includes("intros/summary") ? introSummary : path.includes("structure/") ? structure : path.includes("connections") ? connections : path.includes("tasks") ? { tasks: [] } : path.includes("draft") ? {} : path.includes("aggregate") ? mobile.aggregate : path.includes("opportunities") ? mobile.opportunities : path.includes("distributions") ? mobile.distributions : path.includes("gaps") ? mobile.gaps : contacts, refreshing: false, refresh() {} }; };
-export const useValidatedApiResource = (_path, _schema, isEmpty, options = {}) => { rerender(); state.dashboardScopeKey = options.scopeKey; const base = state.zeroContacts ? { ...mobile, aggregate: { ...mobile.aggregate, relationshipAssetTotals: { ...mobile.aggregate.relationshipAssetTotals, contacts: 0 } }, contacts: { contacts: [] } } : mobile; const data = state.remoteGoal === undefined ? base : { ...base, profile: { ...base.profile, profile: { ...base.profile.profile, relationshipGoal: state.remoteGoal, updatedAt: state.remoteUpdatedAt } } }; const scopeCurrent = options.scopeKey === undefined || options.scopeKey === state.resourceScopeKey; return { kind: scopeCurrent ? (isEmpty(data) ? "empty" : state.kind) : "loading", data, error: { message: "连接暂时失败" }, refreshing: false, refresh() { state.refreshes++; state.resourceScopeKey = options.scopeKey; revision++; listeners.forEach(f => f()); } }; };
+export const useValidatedApiResource = (_path, _schema, isEmpty, options = {}) => { rerender(); state.dashboardScopeKey = options.scopeKey; state.dashboardPath = _path; const base = state.zeroContacts ? { ...mobile, aggregate: { ...mobile.aggregate, relationshipAssetTotals: { ...mobile.aggregate.relationshipAssetTotals, contacts: 0 } }, contacts: { contacts: [] } } : mobile; const data = state.remoteGoal === undefined ? base : { ...base, profile: { ...base.profile, profile: { ...base.profile.profile, relationshipGoal: state.remoteGoal, updatedAt: state.remoteUpdatedAt } } }; const scopeCurrent = options.scopeKey === undefined || options.scopeKey === state.resourceScopeKey; return { kind: scopeCurrent ? (isEmpty(data) ? "empty" : state.kind) : "loading", data, error: { message: "连接暂时失败" }, refreshing: false, refresh() { state.refreshes++; state.resourceScopeKey = options.scopeKey; revision++; listeners.forEach(f => f()); } }; };
 const record = method => async (path, options) => {
   state.requests.push({ method, path, body: options?.body });
   if (method === "POST" && state.postMode === "pending") return new Promise(resolve => { state.pendingPost = resolve; });
@@ -232,6 +232,15 @@ test("analysis scopes dashboard reads to actor, session and server and hides old
   assert.equal(await page.getByRole("button", { name: "去 IORBIT 分析", exact: true }).count(), 0);
   assert.equal(await page.getByRole("button", { name: /当前目标.*编辑目标/ }).count(), 0);
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);
+});
+
+test("analysis declares the roleCounts capability so the server may send only the page's contacts (0121)", async t => {
+  const page = await openScreen(t, "analysis");
+  await page.getByText(/contacts\.analysis@1/u).first().waitFor();
+  const path = await page.evaluate(() => (window as any).fixture.dashboardPath as string);
+  const [pathname, query] = path.split("?");
+  assert.equal(pathname, "/api/mobile/contacts-dashboard");
+  assert.deepEqual(new URLSearchParams(query).getAll("capabilities"), ["roleCounts"]);
 });
 
 test("analysis ignores an old opportunity recompute after actor and server scope replacement", async t => {

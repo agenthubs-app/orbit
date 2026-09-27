@@ -62,6 +62,12 @@ export interface MobileContactsDashboardDependencies {
   ) =>
     | MobileContactsDashboardSectionResult
     | Promise<MobileContactsDashboardSectionResult>;
+  /**
+   * Sprint 0121: the full contacts list, for clients that did not declare the
+   * roleCounts capability (the pre-0101 contract). Without it such clients get
+   * the contacts section as unavailable rather than a partial list.
+   */
+  loadAllContacts?: MobileContactsDashboardSectionLoader;
   /** Trimmed roles with counts over all contacts (the App "decision role" tile). */
   loadContactRoleCounts?: (
     actorId: string,
@@ -113,6 +119,12 @@ export function referencedContactIds(sections: {
 
 export interface MobileContactsDashboardInput {
   actorId: string;
+  /**
+   * "referenced" (default): the page's contacts plus roleCounts, for clients
+   * that declared the roleCounts capability. "all": the original full list,
+   * for clients that did not (they derive role ratios from the list).
+   */
+  contactsScope?: "referenced" | "all";
 }
 
 export type MobileContactsDashboardFailureCode =
@@ -318,10 +330,23 @@ export function createMobileContactsDashboardService(
       });
     },
 
-    async getDashboard({ actorId }) {
+    async getDashboard({ actorId, contactsScope = "referenced" }) {
       const assembled = assemble(await withDashboardLiveReadScope(() => loadSections(actorId)));
       if (!assembled.success) return { success: false, error: assembled.error };
-      const { aggregate, optionalResults, analysisSource } = assembled;
+      const { aggregate, analysisSource } = assembled;
+      // The AI source (and its version) always uses the page's contacts; only
+      // the response's contacts section follows the client's contract.
+      const optionalResults = contactsScope === "all"
+        ? {
+            ...assembled.optionalResults,
+            contacts: optionalSection(
+              "contacts",
+              dependencies.loadAllContacts
+                ? await settle(() => dependencies.loadAllContacts!(actorId))
+                : { success: false, error: new Error("full contacts list unavailable") },
+            ),
+          }
+        : assembled.optionalResults;
       let analysis: ReturnType<typeof optionalSection> | undefined;
       if (dependencies.loadAnalysis) {
         let analysisResult: MobileContactsDashboardSectionResult;
@@ -416,6 +441,7 @@ export function createMobileContactsDashboardServiceFromSources({
     loadDistributions: (actorId) => distribution(actorId).getDistributions(),
     loadProfile: (actorId) => profile.getProfile({ actorId }),
     loadContacts: (actorId, contactIds) => contacts.listContacts({ actorId, contactIds }),
+    loadAllContacts: (actorId) => contacts.listContacts({ actorId }),
     loadContactRoleCounts: (actorId) =>
       contactRoleCounts ? contactRoleCounts(actorId) : roleCountsFromFullList(contacts, actorId),
   });

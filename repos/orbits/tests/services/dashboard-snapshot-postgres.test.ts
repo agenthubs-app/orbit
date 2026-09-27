@@ -28,6 +28,7 @@ import { createStorageProfileProvider } from "../../features/profile/storage/pro
 import { createContactsAnalysisReportProvider } from "../../features/mobile/contacts-analysis-report-provider";
 import { createStorageOrbitAgentChatSessionProvider } from "../../features/orbit-ai/storage/orbit-agent-chat-session-live-record-provider";
 import type { ProfileService } from "../../features/profile/service";
+import { createMobileContactsDashboardGetHandler } from "../../app/api/mobile/contacts-dashboard/handler";
 import type { LiveRecord } from "../../shared/storage/live-record-store";
 import { ORBIT_RECORDS_SCHEMA_SQL } from "../../shared/storage/migrations";
 import { createPostgresLiveRecordStore, type LiveRecordSqlClient } from "../../shared/storage/postgres-live-record-store";
@@ -496,5 +497,58 @@ test("an update that commits after a later revision is visible still invalidates
       connectionClient.release();
       await slow.end();
     }
+  });
+});
+
+// The pre-0101 App's decision-role tile: it ignores roleCounts and derives the
+// ratio from `contacts` (same regex as the App's decisionRolePercentage).
+const DECISION_ROLE = /创始|负责人|董事|总监|经理|社长|代表|主管|合伙人|首席|ceo|coo|cfo|cto|founder|owner|president/iu;
+function oldAppDecisionRatio(data: { contacts?: { contacts?: Array<{ role?: string }> } | null }): number | null {
+  const roles = (data.contacts?.contacts ?? []).map((contact) => (contact.role ?? "").trim()).filter(Boolean);
+  if (roles.length === 0) return null;
+  return Math.round((roles.filter((role) => DECISION_ROLE.test(role)).length / roles.length) * 100);
+}
+function roleCountsDecisionRatio(roleCounts: ReadonlyArray<{ role: string; count: number }>): number | null {
+  const total = roleCounts.reduce((sum, entry) => sum + entry.count, 0);
+  if (total === 0) return null;
+  return Math.round((roleCounts.filter((entry) => DECISION_ROLE.test(entry.role)).reduce((sum, entry) => sum + entry.count, 0) / total) * 100);
+}
+
+test("0121 an App that does not declare roleCounts keeps the full-contacts contract; a declaring App gets page contacts plus role counts", { skip, timeout: 120_000 }, async () => {
+  await withSchema({ syncRevision: true }, async (harness) => {
+    // A: 6 fixture contacts (c1 is CEO) get roles, plus 14 older engineers the page never references.
+    for (const id of ["c2", "c3", "c4", "c5", "c6"]) await harness.store.upsertRecord(contact(id, { role: "CEO" }));
+    for (let index = 0; index < 14; index += 1) {
+      await harness.store.upsertRecord(contact(`old${index}`, { role: "Engineer", createdAt: "2025-01-01T00:00:00.000Z", updatedAt: "2025-01-01T00:00:00.000Z" }));
+    }
+    const GET = createMobileContactsDashboardGetHandler({
+      resolveActor: async () => ({ id: A }),
+      resolveMode: () => "live",
+      createService: () => contactsDashboard(harness, harness.client, { withAnalysis: true }),
+    });
+    const read = async (query: string) => {
+      const response = await GET(new Request(`http://localhost/api/mobile/contacts-dashboard${query}`));
+      assert.equal(response.status, 200);
+      return (await response.json()).data;
+    };
+    const roleCounts = await harness.newProvider().readContactRoleCountsForAccount!(A);
+    const globalRatio = roleCountsDecisionRatio(roleCounts);
+    assert.equal(globalRatio, 30, "6 of 20 contacts hold a decision role");
+
+    const declared = await read("?capabilities=roleCounts");
+    assert.ok(Array.isArray(declared.contacts.roleCounts), "a declaring client gets role counts");
+    assert.equal(roleCountsDecisionRatio(declared.contacts.roleCounts), globalRatio);
+    assert.ok(declared.contacts.contacts.length < 20, "a declaring client gets only the page's contacts");
+    assert.notEqual(oldAppDecisionRatio(declared), globalRatio, "precondition: the page sample's ratio differs from the global ratio");
+
+    // The old App sends no declaration: it must still see the right ratio.
+    const legacy = await read("");
+    assert.equal(legacy.contacts.contacts.length, 20, "no declaration: the original full contacts list");
+    assert.equal(oldAppDecisionRatio(legacy), globalRatio, "the old App's decision-role tile is correct");
+    // An unknown capability is not a declaration.
+    assert.equal((await read("?capabilities=somethingElse")).contacts.contacts.length, 20);
+    // The AI version does not depend on which contacts list the client asked for.
+    assert.match(declared.analysis.current.sourceDataVersion, /^[a-f0-9]{64}$/);
+    assert.equal(legacy.analysis.current.sourceDataVersion, declared.analysis.current.sourceDataVersion);
   });
 });

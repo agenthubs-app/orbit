@@ -433,3 +433,23 @@ export type MobileContactsDashboardPayload = z.infer<
 
 export type MobileContactsDashboardOptionalSection =
   (typeof MOBILE_CONTACTS_DASHBOARD_OPTIONAL_SECTIONS)[number];
+
+/**
+ * Sprint 0121: capability declaration for GET /api/mobile/contacts-dashboard.
+ * A client that reads `contacts.roleCounts` (instead of deriving role ratios
+ * from `contacts.contacts`) sends `?capabilities=roleCounts` and receives only
+ * the contacts the page shows plus role counts over all contacts. A request
+ * without the declaration (App builds before 0121) keeps the original
+ * contract: the full contacts list.
+ */
+export const MOBILE_CONTACTS_DASHBOARD_CAPABILITIES_PARAM = "capabilities";
+export const MOBILE_CONTACTS_DASHBOARD_ROLE_COUNTS_CAPABILITY = "roleCounts";
+export const MOBILE_CONTACTS_DASHBOARD_ROLE_COUNTS_QUERY =
+  `${MOBILE_CONTACTS_DASHBOARD_CAPABILITIES_PARAM}=${MOBILE_CONTACTS_DASHBOARD_ROLE_COUNTS_CAPABILITY}`;
+
+export function mobileContactsDashboardDeclaresRoleCounts(searchParams: URLSearchParams): boolean {
+  return searchParams
+    .getAll(MOBILE_CONTACTS_DASHBOARD_CAPABILITIES_PARAM)
+    .flatMap((value) => value.split(","))
+    .some((value) => value.trim() === MOBILE_CONTACTS_DASHBOARD_ROLE_COUNTS_CAPABILITY);
+}
