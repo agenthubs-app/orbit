@@ -156,3 +156,33 @@ test("suggestion decision retries reuse a mutation until the matching decision c
   assert.equal(getProfileEditSession(scope)?.suggestionDecisions["suggestion:one"], "dismissed");
   assert.equal(profileSuggestionDecisionMutationId(scope, "suggestion:one", "accepted", () => "three"), "ios:profile-suggestion:three");
 });
+
+// 0126 Simulator regression: after a successful save, a screen rendered the cached
+// pre-save profile first and opened a session from it; the fresh profile that
+// arrived next was ignored, so accepting a suggestion edited the stale session,
+// the save returned 409 "updated elsewhere" and the profile never got the value.
+test("a clean session adopts a newer server profile instead of staying on a stale snapshot", () => {
+  openProfileEditSession(scope, profile);
+  const fresh = { ...profile, role: "产品负责人", updatedAt: "2026-09-12T01:00:00.000Z" };
+  const rebased = openProfileEditSession(scope, fresh);
+  assert.equal(rebased.draft.role, "产品负责人");
+  applyProfileSuggestionToDraft(scope, { field: "offering", id: "suggestion:1", value: ["以活动为由的引荐"] });
+  const attempt = prepareProfileEditSave(scope, () => "id-1")!;
+  assert.equal(attempt.body.expectedUpdatedAt, "2026-09-12T01:00:00.000Z");
+  assert.equal(attempt.body.role, "产品负责人");
+  assert.deepEqual(attempt.body.offering, ["以活动为由的引荐"]);
+});
+
+test("a session with the user's own edits is never rebased by a newer server profile", () => {
+  openProfileEditSession(scope, profile);
+  updateProfileEditDraft(scope, { displayName: "程川（草稿）" });
+  const kept = openProfileEditSession(scope, { ...profile, displayName: "远端", updatedAt: "2026-09-12T01:00:00.000Z" });
+  assert.equal(kept.draft.displayName, "程川（草稿）");
+  assert.equal(prepareProfileEditSave(scope, () => "id-2")!.body.expectedUpdatedAt, profile.updatedAt);
+});
+
+test("an older snapshot never replaces a clean session built from a newer profile", () => {
+  openProfileEditSession(scope, { ...profile, role: "新", updatedAt: "2026-09-12T01:00:00.000Z" });
+  const kept = openProfileEditSession(scope, profile);
+  assert.equal(kept.draft.role, "新");
+});
