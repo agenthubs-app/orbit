@@ -146,6 +146,8 @@ export interface ConversationThreadView extends ConversationChatView {
   contactArtifactNotice?: boolean;
   /** Sprint 0094: uniform cards for every entity this turn surfaced. */
   entityCards?: { assistantMessageId: string; cards: AiEntityCardView[] } | null;
+  /** Sprint 0112: cards of restored turns, rendered under their own replies. */
+  entityCardTurns?: { assistantMessageId: string; cards: AiEntityCardView[] }[];
   nextAction: string;
   title: string;
 }

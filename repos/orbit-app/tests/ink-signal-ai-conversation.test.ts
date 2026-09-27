@@ -732,19 +732,22 @@ test("AI dismiss requires the selected suggestion's dismissed receipt", async t 
   assert.equal(await p.getByText("已暂不处理", { exact: true }).count(), 1);
   assert.equal((await writes(p))[0].body.idempotencyKey, (await writes(p))[1].body.idempotencyKey);
 });
-test("AI session continuation keeps old messages and an intentional repeated question in the save", async t => {
+// Sprint 0112: a save carries only the new turn; the server merges it by id and
+// keeps every earlier message, so the client no longer uploads the session.
+test("AI session continuation saves only the new turn, an intentional repeated question included", async t => {
   const session = { ...aiSession, customTitle: "原始自定义标题", pinned: true, panel: { kind: "people", title: "旧面板" }, messages: [{ role: "user", text: "再想一个方案" }, { role: "assistant", text: "第一轮回复\n\n原文段落", items: [{ id: "old-evidence" }], kind: "people", panelTitle: "原始面板" }] };
   const p = await open(t, { params: { id: session.id, source: "session" }, payloads: { ...conversationReadPayloads, "/api/ai/conversations/sessions/session%3A1": { session, storage: aiSessionListPayload.storage } } });
   await p.getByRole("textbox").fill("再想一个方案"); await press(p, "发送消息"); await replyLastWrite(p, replyPayload());
   const save = (await writes(p))[1]; assert.equal(save.path, "/api/ai/conversations/sessions");
-  assert.deepEqual(save.body.session.messages.map((m: any) => [m.role, m.text]), [["user", "再想一个方案"], ["assistant", "第一轮回复\n\n原文段落"], ["user", "再想一个方案"], ["assistant", "可以先讨论时间安排。"]]);
+  assert.deepEqual(save.body.session.messages.map((m: any) => [m.role, m.text]), [["user", "再想一个方案"], ["assistant", "可以先讨论时间安排。"]]);
   assert.equal(save.body.session.customTitle, session.customTitle); assert.equal(save.body.session.pinned, true); assert.deepEqual(save.body.session.panel, session.panel);
-  assert.deepEqual(save.body.session.messages[1].items, [{ id: "old-evidence" }]);
+  assert.equal(JSON.stringify(save.body).includes("old-evidence"), false, "earlier messages are not uploaded again");
+  assert.equal(await p.getByText("第一轮回复").count() > 0, true, "the earlier reply is still on screen");
   await replyLastWrite(p, { session: save.body.session, storage: { ...aiSessionListPayload.storage, persisted: false } });
   assert.equal(await p.getByRole("button", { name: "重试保存", exact: true }).count(), 1); await press(p, "重试保存"); assert.deepEqual((await writes(p))[2], save);
 });
 
-test("AI saved session sends its complete recent history on every continuation", async t => {
+test("AI saved session sends its recent history on every continuation and saves only each new turn", async t => {
   const session = { ...aiSession, customTitle: "原始自定义标题", pinned: true };
   const p = await open(t, { params: { id: session.id, source: "session" }, payloads: { ...conversationReadPayloads, "/api/ai/conversations/sessions/session%3A1": { session, storage: aiSessionListPayload.storage } } });
   const input = p.getByRole("textbox");
@@ -765,8 +768,6 @@ test("AI saved session sends its complete recent history on every continuation",
   assert.equal(secondSave.body.session.customTitle, "原始自定义标题");
   assert.equal(secondSave.body.session.pinned, true);
   assert.deepEqual(secondSave.body.session.messages.map((m: any) => [m.role, m.text]), [
-    ["user", "讨论产品试点"], ["assistant", "梳理了试点范围、时间节点和资源需求。"],
-    ["user", "再想一个方案"], ["assistant", "可以先讨论时间安排。"],
     ["user", "接着讨论下一步"], ["assistant", "下一步核对参与人员。"]
   ]);
   await replyLastWrite(p, { session: secondSave.body.session, storage: aiSessionListPayload.storage });

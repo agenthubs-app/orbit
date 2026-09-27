@@ -21,3 +21,14 @@ export interface AiSessionSummaryPageContract {
     source?: string;
   };
 }
+
+/**
+ * Sprint 0112: one page of an opened AI session's messages, newest page first.
+ * `nextCursor` loads the page just before this one (older messages); it is
+ * bound to the account and the session and is null on the oldest page.
+ */
+export interface AiSessionMessagePageContract {
+  hasMore: boolean;
+  nextCursor: string | null;
+  limit: number;
+}

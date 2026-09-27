@@ -3,7 +3,7 @@ import type { OrbitAiConversationSummaryContract, OrbitAiMessageContract } from 
 import { aiSessionOrganizationSchema, aiSessionOriginSchema, reliableAiSendReceiptSchema } from "./schema/ai-sessions";
 import type { ReliableAiSendReceiptContract } from "./contract/ai-sessions";
 import { aiSessionArtifactRecoverySchema } from "./schema/ai-artifacts";
-import { aiSessionSummaryPageSchema } from "./schema/ai-session-page";
+import { aiSessionMessagePageSchema, aiSessionSummaryPageSchema } from "./schema/ai-session-page";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -47,7 +47,7 @@ export const aiSessionGroupDeleteReceiptSchema = z.object({ deleted: z.literal(t
 
 export type AiSession = z.infer<typeof aiSessionSchema>;
 export type AiConversationPayload = z.infer<typeof aiConversationListSchema>;
-export const aiSessionReadSchema = z.object({ session: aiSessionSchema.nullable(), storage, artifactRecovery: z.unknown().optional() }).transform(value => ({ ...value, artifactRecovery: value.artifactRecovery === undefined ? undefined : aiSessionArtifactRecoverySchema.safeParse(value.artifactRecovery).success ? value.artifactRecovery : { turns: [], truncated: false, unavailable: true } }));
+export const aiSessionReadSchema = z.object({ session: aiSessionSchema.nullable(), storage, artifactRecovery: z.unknown().optional(), page: aiSessionMessagePageSchema.optional() }).transform(value => ({ ...value, artifactRecovery: value.artifactRecovery === undefined ? undefined : aiSessionArtifactRecoverySchema.safeParse(value.artifactRecovery).success ? value.artifactRecovery : { turns: [], truncated: false, unavailable: true } }));
 const persistedSessionReceipt = z.object({ session: aiSessionSchema, storage: storage.extend({ configured: z.literal(true), persisted: z.literal(true) }) });
 
 export function aiSessionReceiptMatches(data: unknown, expected: AiSession): boolean {
