@@ -30,6 +30,7 @@
 | 0125 浏览器笔记离线 | 无迁移；重新导出并发布 phoneweb（`npm run web:export`） | 已有浏览器下次同步多拉一次笔记，不需要清库；升级前删掉的旧行可能还留在空闲页里，要等下次换身份删库时才消失 |
 | 0130 恢复会话保留副本 | 无迁移；重新发布 phoneweb 和 App | 已有本地库直接沿用；浏览器退出登录现在会删掉本地库 |
 | 0109 消息三张表 | ① 只读查行数（REPORT 第 8 节的 SQL，或不带 `--apply` 的 `npm run db:migrate:relationship-messages`）；② 建表（`db:migrate:live`，或第 ③ 步 `--apply` 时自动建）；③ `npm run db:migrate:relationship-messages -- --apply --confirm-remote=<workspace>`（**需用户确认**）；④ 再预演 create 应为 0；⑤ 部署；⑥ 再预演，若 appendedMessages>0 就再 `--apply`，直到 0；⑦ 冒烟：列表、发送、已读 | **须先迁移后部署**：新代码只读新表，表不存在时消息接口返回 503（通知投递会跳过消息类，不受连带）。回滚：重新部署旧代码即可，旧集合没动过，但切换后发的消息只在新表里 |
+| 0110 普通问答不写运行记录 | 无迁移，部署即可 | 存量统计行和普通问答运行记录照常可读；删除交给 0111（先查行数、再备份）。0103 的 `db:migrate:agent-run-targets` 如果还没执行，仍需执行 |
 
 ## 后续 Sprint 预告（合并后在上表补充具体命令）
 
