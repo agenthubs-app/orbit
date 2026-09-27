@@ -71,6 +71,8 @@ export interface HarnessOptions {
   sessionStorageSeed?: Record<string, string>;
   /** 按 cursor 分页返回的会话页。 */
   sessionPages?: StoredSessionFixture[][];
+  /** Sprint 0112: answers GET /api/ai/conversations/sessions/{id}[?cursor=] (one message page). */
+  sessionReader?: (sessionId: string, cursor: string | null) => Response | Promise<Response>;
 }
 
 export interface Harness {
@@ -319,6 +321,10 @@ export async function mountAgent(
         return Response.json({ success: false, error: { code: "STORAGE_UNAVAILABLE" } }, { status: 503 });
       }
       return Response.json({ success: true, data: { storage: { persisted: true } } });
+    }
+    if (url.startsWith("/api/ai/conversations/sessions/") && options.sessionReader) {
+      const parsed = new URL(url, "https://orbit.test");
+      return options.sessionReader(decodeURIComponent(parsed.pathname.slice("/api/ai/conversations/sessions/".length)), parsed.searchParams.get("cursor"));
     }
     if (url.startsWith("/api/ai/conversations/sessions/")) {
       const sessionId = decodeURIComponent(url.slice("/api/ai/conversations/sessions/".length));

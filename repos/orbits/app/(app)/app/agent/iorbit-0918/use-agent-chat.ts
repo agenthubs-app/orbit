@@ -76,6 +76,15 @@ export interface AgentChatHistoryStore {
   storedSessionsRef: MutableRefObject<AgentSessionSummary[]>;
 }
 
+/** Sprint 0112: paging back through a restored session from the top of the thread. */
+export interface AgentEarlierMessages {
+  allLoaded: boolean;
+  hasMore: boolean;
+  status: "idle" | "loading" | "error";
+}
+type EarlierState = { cursor: string | null; hasMore: boolean; loadedPages: number; status: AgentEarlierMessages["status"] };
+const NO_EARLIER: EarlierState = { cursor: null, hasMore: false, loadedPages: 0, status: "idle" };
+
 export function useAgentChat({ history, suggests }: { history: AgentChatHistoryStore; suggests: OrbitAgentViewModel["suggests"] }) {
   const {
     historyMutationQueue,
@@ -114,6 +123,24 @@ export function useAgentChat({ history, suggests }: { history: AgentChatHistoryS
   const initialGroupIdRef = useRef<string | null>(null);
   const initialOrganizationRef = useRef<{ organization: AiSessionOrganizationContract; sessionId: string } | null>(null);
   const activeSessionDetailRef = useRef<AgentStoredChatSession | null>(null);
+  const [earlierState, setEarlierStateValue] = useState<EarlierState>(NO_EARLIER);
+  const earlierRef = useRef<EarlierState>(NO_EARLIER);
+  const setEarlierState = useCallback((next: EarlierState) => {
+    earlierRef.current = next;
+    setEarlierStateValue(next);
+  }, []);
+  // What the server already has for the active session, by message id, so a
+  // save sends only new or changed messages (0112: never the whole session).
+  const persistedMessagesRef = useRef<Map<string, string>>(new Map());
+  const persistedPanelRef = useRef<string>("null");
+  const rememberPersisted = useCallback((messages: readonly AgentMessage[], panel?: AgentPanel | null) => {
+    for (const message of messages) if (message.id) persistedMessagesRef.current.set(message.id, JSON.stringify(message));
+    if (panel !== undefined) persistedPanelRef.current = JSON.stringify(panel ?? null);
+  }, []);
+  const forgetPersisted = useCallback(() => {
+    persistedMessagesRef.current = new Map();
+    persistedPanelRef.current = "null";
+  }, []);
 
   languageRef.current = language;
   messagesRef.current = messages;
@@ -135,6 +162,11 @@ export function useAgentChat({ history, suggests }: { history: AgentChatHistoryS
   const restoreSession = useCallback((session: AgentStoredChatSession) => {
     activeSessionDetailRef.current = session;
     skipRestoredSessionPersistenceRef.current = true;
+    forgetPersisted();
+    rememberPersisted(session.messages, session.panel ?? panelFromMessages(session.messages));
+    setEarlierState(session.page?.hasMore && session.page.nextCursor
+      ? { cursor: session.page.nextCursor, hasMore: true, loadedPages: 0, status: "idle" }
+      : NO_EARLIER);
     setHistOpen(false);
     setMessages(session.messages);
     setPanel(session.panel ?? panelFromMessages(session.messages));
@@ -152,7 +184,7 @@ export function useAgentChat({ history, suggests }: { history: AgentChatHistoryS
         session.id,
       );
     }
-  }, []);
+  }, [forgetPersisted, rememberPersisted, setEarlierState]);
 
   const persistCurrentSession = useCallback((
     nextMessages: readonly AgentMessage[],
@@ -185,7 +217,17 @@ export function useAgentChat({ history, suggests }: { history: AgentChatHistoryS
       ? activeSessionDetailRef.current
       : null;
     const customTitle = (existingSession?.organization.customTitle ?? existingDetail?.customTitle)?.trim();
-    const autoTitle = titleFromMessages(nextMessages);
+    // A restored session shows one page, so its stored title is kept rather than
+    // re-derived from whatever page happens to be loaded.
+    const autoTitle = existingDetail?.title || existingSession?.title || titleFromMessages(nextMessages);
+    const changedMessages = nextMessages.filter((message) =>
+      message.id && persistedMessagesRef.current.get(message.id) !== JSON.stringify(message));
+    const panelChanged = JSON.stringify(nextPanel ?? null) !== persistedPanelRef.current;
+    const lastWithId = [...nextMessages].reverse().find((message) => message.id);
+    const outgoingMessages = changedMessages.length ? changedMessages : panelChanged && lastWithId ? [lastWithId] : [];
+    if (outgoingMessages.length === 0) {
+      return;
+    }
     const session: AgentStoredChatSession = {
       createdAt: existingSession?.createdAt ?? now,
       customTitle,
@@ -223,11 +265,14 @@ export function useAgentChat({ history, suggests }: { history: AgentChatHistoryS
       return persistStoredAgentChatSession({
         ...session,
         customTitle: latest?.organization.customTitle ?? session.customTitle,
+        // Only what changed; the server merges by message id and keeps the rest.
+        messages: outgoingMessages,
         organization: latest?.organization ?? session.organization,
         pinned: latest?.organization.pinned ?? session.pinned,
         title: latest?.organization.customTitle?.trim() || session.title,
       });
     }).then((persisted) => {
+      if (persisted && activeSessionIdRef.current === session.id) rememberPersisted(outgoingMessages, nextPanel);
       if (!persisted) {
         setHistoryFeedback({
           kind: "error",
@@ -245,7 +290,7 @@ export function useAgentChat({ history, suggests }: { history: AgentChatHistoryS
         sessionId,
       );
     }
-  }, [historyMutationQueue]);
+  }, [historyMutationQueue, rememberPersisted]);
 
   // 真实链路：把用户消息发给 Orbit Agent conversation API（planner → 白名单工具 →
   // 可复核 artifact → synthesis），并把 contact_recommendations artifact 映射到侧边栏。
@@ -291,7 +336,10 @@ export function useAgentChat({ history, suggests }: { history: AgentChatHistoryS
     const reliableRequest: AgentReliableRequest =
       retryRequest ?? {
         clientMessageId: stableId("message"),
+        // The revision of the session on screen: a restored (possibly deep-linked)
+        // session is not always in the loaded history list.
         expectedMessageRevision:
+          (activeSessionIdRef.current === sessionId ? reliableMessageRevisionRef.current : null) ??
           existingSession?.messageRevision ?? 0,
         locale,
         message: query,
@@ -554,6 +602,37 @@ export function useAgentChat({ history, suggests }: { history: AgentChatHistoryS
     }
   }, []);
 
+  // Sprint 0112: the 20 messages before the oldest one shown, prepended in order.
+  const loadEarlier = useCallback(async () => {
+    const sessionId = activeSessionIdRef.current;
+    const current = earlierRef.current;
+    if (!sessionId || !current.hasMore || !current.cursor || current.status === "loading") return;
+    setEarlierState({ ...current, status: "loading" });
+    const page = await loadStoredAgentChatSession(sessionId, current.cursor);
+    if (activeSessionIdRef.current !== sessionId || earlierRef.current.cursor !== current.cursor) return;
+    if (!page || page.id !== sessionId) {
+      setEarlierState({ ...current, status: "error" });
+      return;
+    }
+    rememberPersisted(page.messages);
+    setMessages((shown) => {
+      const ids = new Set(shown.flatMap((message) => message.id ? [message.id] : []));
+      return [...page.messages.filter((message) => !message.id || !ids.has(message.id)), ...shown];
+    });
+    setEarlierState({
+      cursor: page.page?.hasMore ? page.page.nextCursor : null,
+      hasMore: page.page?.hasMore === true && Boolean(page.page.nextCursor),
+      loadedPages: current.loadedPages + 1,
+      status: "idle",
+    });
+  }, [rememberPersisted, setEarlierState]);
+
+  const earlier: AgentEarlierMessages = {
+    allLoaded: !earlierState.hasMore && earlierState.loadedPages > 0,
+    hasMore: earlierState.hasMore,
+    status: earlierState.status,
+  };
+
   const submitChatDraft = useCallback(() => {
     const query = chatDraft.trim();
 
@@ -634,6 +713,8 @@ export function useAgentChat({ history, suggests }: { history: AgentChatHistoryS
     setActiveSessionId(null);
     activeSessionIdRef.current = null;
     activeSessionDetailRef.current = null;
+    forgetPersisted();
+    setEarlierState(NO_EARLIER);
     reliableMessageRevisionRef.current = null;
     suppressReliableSessionPersistenceRef.current = false;
     navigate(`/agent?q=${encodeURIComponent(item.q)}`);
@@ -651,6 +732,8 @@ export function useAgentChat({ history, suggests }: { history: AgentChatHistoryS
     setChatOpen(openChat);
     activeSessionIdRef.current = null;
     activeSessionDetailRef.current = null;
+    forgetPersisted();
+    setEarlierState(NO_EARLIER);
     initialGroupIdRef.current = initialGroupId;
     initialOrganizationRef.current = null;
     if (typeof window !== "undefined") {
@@ -715,8 +798,10 @@ export function useAgentChat({ history, suggests }: { history: AgentChatHistoryS
     chatDraft,
     chatOpen,
     clearConversation,
+    earlier,
     histOpen,
     languageRef,
+    loadEarlier,
     messages,
     navigate,
     newChat,

@@ -110,7 +110,9 @@ export function IOrbitShell({
     ask,
     chatDraft,
     chatOpen,
+    earlier,
     histOpen,
+    loadEarlier,
     messages,
     navigate,
     newChat,
@@ -280,7 +282,9 @@ export function IOrbitShell({
                 />
               }
               chatDraft={chatDraft}
+              earlier={earlier}
               messages={messages}
+              onLoadEarlier={() => void loadEarlier()}
               navigate={navigate}
               onBack={() => setView("home")}
               onDraftChange={setChatDraft}

@@ -242,6 +242,7 @@ export const IORBIT_STYLES = `
 [data-orbit-real-page="iorbit-0918"] .btn.ir-retry:active { transform: none; }
 /* ── 追问 chips（设计 299–304）：同一个类既给链接也给按钮元素，写两条规则 ── */
 [data-orbit-real-page="iorbit-0918"] .ir-followups { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; }
+[data-orbit-real-page="iorbit-0918"] .ir-earlier { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 44px; }
 [data-orbit-real-page="iorbit-0918"] .ir-followup { padding: 9px 16px; border: 1px solid #B9BCEB; border-radius: 999px; background: #FFFFFF; color: #2E3270; font-size: 13px; cursor: pointer; }
 [data-orbit-real-page="iorbit-0918"] .btn.ir-followup { padding: 9px 16px; border: 1px solid #B9BCEB; border-radius: 999px; background: #FFFFFF; color: #2E3270; font-size: 13px;
   height: auto; font-weight: 400; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; text-align: center; letter-spacing: 0; line-height: normal; transition: none; }
