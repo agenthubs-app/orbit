@@ -9,13 +9,14 @@ import {
   createInvitationAcceptPostHandler,
   createInvitationsPostHandler,
 } from "../../app/api/relationship-communication/handler";
-import { createRelationshipCommunicationService } from "../../features/relationship-communication/service";
-import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
+import { createRelationshipHarness, relationshipPostgresSkip } from "../support/relationship-message-harness";
 
-const workspaceId = "workspace:relationship-route-test";
-
-test("relationship communication routes expose authenticated invite, accept, and delivery receipts", async () => {
-  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
+// Sprint 0109: the service writes the relationship message tables, so the
+// route contract runs against real PostgreSQL (private schema).
+test("relationship communication routes expose authenticated invite, accept, and delivery receipts", { skip: relationshipPostgresSkip, timeout: 60_000 }, async (t) => {
+  const h = await createRelationshipHarness({ prefix: "rel_routes" });
+  t.after(() => h.close());
+  const workspaceId = h.workspaceId;
   const sender = {
     accountId: "account:sender",
     email: "sender@example.test",
@@ -31,12 +32,11 @@ test("relationship communication routes expose authenticated invite, accept, and
     workspaceId,
   };
   const createService = (actor: typeof sender, invitationBaseUrl: string) =>
-    createRelationshipCommunicationService({
-      actor: {
-        accountId: actor.id,
-        displayName: actor.name,
-        email: actor.email,
-      },
+    h.service({
+      accountId: actor.id,
+      displayName: actor.name,
+      email: actor.email,
+    }, {
       invitationBaseUrl,
       now: () => "2026-09-14T12:00:00.000Z",
       randomToken: () => "route-test-invitation-token",
@@ -49,8 +49,6 @@ test("relationship communication routes expose authenticated invite, accept, and
               recipientEmail: recipient.email,
             }
           : null,
-      store,
-      workspaceId,
     });
 
   const createInvitation = createInvitationsPostHandler({

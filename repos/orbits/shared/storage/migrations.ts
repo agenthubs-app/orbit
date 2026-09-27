@@ -1,5 +1,6 @@
 import { runEventOperationsMigrations } from "../../features/events/event-operations/storage/migrations";
 import { runRelationshipLifecycleMigrations } from "../../features/connections/lifecycle/migrations";
+import { runRelationshipMessageMigrations } from "../../features/relationship-communication/message-tables";
 
 export const ORBIT_RECORDS_SCHEMA_SQL = `
 create table if not exists orbit_records (
@@ -205,4 +206,7 @@ export async function runOrbitRecordsMigration(
   await runEventOperationsMigrations(client);
   // Independent of every other table; last so existing migration order is unchanged.
   await client.query(ORBIT_READ_RECEIPTS_SCHEMA_SQL);
+  // Sprint 0109: relationship conversations, members and messages. Last, so the
+  // existing steps keep their order; needs orbit_records (the sync lock key).
+  await runRelationshipMessageMigrations(client);
 }

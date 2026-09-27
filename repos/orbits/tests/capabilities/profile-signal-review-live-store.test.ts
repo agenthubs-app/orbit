@@ -8,8 +8,8 @@ import { seedGeneratedRelationshipFixturesIntoLiveStore } from "../../shared/sto
 import { MOCK_FIXTURE_COLLECTION_NAMES } from "../../shared/mock/fixtures";
 
 // Sprint 0104: the live seed no longer writes the retired legacy chat collections.
-// This provider still reads `messages`/`conversations` (open follow-up), so these
-// tests seed them explicitly to keep covering that existing code path.
+// Sprint 0109: this provider no longer reads the legacy `messages` collection;
+// these tests still seed it, so its rows demonstrably produce no "chat" suggestion.
 const LEGACY_INCLUSIVE_SEED = { collectionNames: MOCK_FIXTURE_COLLECTION_NAMES } as const;
 
 test("live profile signal review queue derives sourced suggestions without profile writes", async () => {
@@ -42,25 +42,24 @@ test("live profile signal review queue derives sourced suggestions without profi
 
   assert.equal(queue.success, true);
   assert.equal(queue.data.state, "success");
-  assert.equal(queue.data.suggestions.length, 3);
+  assert.equal(queue.data.suggestions.length, 2);
   assert.deepEqual(
     queue.data.suggestions.map((suggestion) => suggestion.sourceKind),
-    ["chat", "activity", "contact"],
+    ["activity", "contact"],
+    "seeded legacy chat messages are not read (sprint 0109)",
   );
   assert.deepEqual(
     queue.data.suggestions.map((suggestion) => suggestion.status),
-    ["pending", "pending", "pending"],
+    ["pending", "pending"],
   );
   assert.deepEqual(
     queue.data.suggestions.map((suggestion) => suggestion.targetProfileField),
-    ["seeking", "bio", "offering"],
+    ["bio", "offering"],
   );
-  assert.deepEqual(queue.data.suggestions[0]?.suggestedValue, ["能一起推进跟进的伙伴"]);
-  assert.equal(queue.data.suggestions[0]?.evidence[0]?.sourceKind, "chat");
-  assert.match(queue.data.suggestions[1]?.suggestedValue as string, /关系跟进/u);
-  assert.equal(queue.data.suggestions[1]?.evidence[0]?.sourceKind, "activity");
-  assert.deepEqual(queue.data.suggestions[2]?.suggestedValue, ["以活动为由的引荐"]);
-  assert.equal(queue.data.suggestions[2]?.evidence[0]?.sourceKind, "contact");
+  assert.match(queue.data.suggestions[0]?.suggestedValue as string, /关系跟进/u);
+  assert.equal(queue.data.suggestions[0]?.evidence[0]?.sourceKind, "activity");
+  assert.deepEqual(queue.data.suggestions[1]?.suggestedValue, ["以活动为由的引荐"]);
+  assert.equal(queue.data.suggestions[1]?.evidence[0]?.sourceKind, "contact");
   assert.equal(
     queue.data.provenance.source,
     `live-record-store:profile-signals:${workspaceId}`,
@@ -71,7 +70,7 @@ test("live profile signal review queue derives sourced suggestions without profi
   );
   assert.equal(queue.data.provenance.generationMethod, "rule-based-signal-match");
   assert.equal(queue.data.provenance.privacy, "actor-scoped-profile-signals");
-  assert.ok(queue.data.provenance.evidenceIds.length >= 3);
+  assert.ok(queue.data.provenance.evidenceIds.length >= 2);
 
   const accepted = await service.acceptUpdateSuggestion(
     queue.data.suggestions[0]?.id ?? "",
@@ -80,9 +79,9 @@ test("live profile signal review queue derives sourced suggestions without profi
 
   assert.equal(accepted.success, true);
   assert.equal(accepted.data.acceptedSuggestion.status, "accepted");
-  assert.deepEqual(accepted.data.appliedFields, ["seeking"]);
+  assert.deepEqual(accepted.data.appliedFields, ["bio"]);
   assert.deepEqual(accepted.data.profilePatch, {
-    seeking: queue.data.suggestions[0]?.suggestedValue,
+    bio: queue.data.suggestions[0]?.suggestedValue,
   });
   assert.equal(
     accepted.data.nextAction,
@@ -148,7 +147,7 @@ async function localizedQueue(language: string | undefined) {
 test("profile suggestion copy follows the account language and never leaves English prose in zh or ja", async () => {
   for (const language of ["zh", "ja"] as const) {
     const data = await localizedQueue(language);
-    assert.equal(data.suggestions.length, 3, language);
+    assert.equal(data.suggestions.length, 2, language);
     const composed = [
       data.summary,
       data.nextAction,
@@ -162,7 +161,7 @@ test("profile suggestion copy follows the account language and never leaves Engl
       assert.doesNotMatch(text, LATIN_SENTENCE, `${language} copy still reads as English: ${text}`);
       assert.ok(text.trim().length > 0, `${language} copy is empty`);
     }
-    assert.match(data.summary, /3/u, "the summary still reports the suggestion count");
+    assert.match(data.summary, /2/u, "the summary still reports the suggestion count");
   }
 });
 
@@ -173,7 +172,7 @@ test("an unknown or missing language falls back to zh, and en still returns Engl
   }
   const english = await localizedQueue("en");
   assert.match(english.nextAction, LATIN_SENTENCE);
-  assert.match(english.summary, /3 sourced profile suggestions/u);
+  assert.match(english.summary, /2 sourced profile suggestions/u);
 });
 
 test("accepting a suggestion writes a localized patch value, not an English phrase", async () => {

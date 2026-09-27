@@ -3,94 +3,76 @@ import type { RelationshipConversationSummaryPageDTO, RelationshipMessagePageDTO
 import { relationshipConversationSummaryPageSchema, relationshipMessagePageSchema } from "../../shared/api-schema/relationship-pages";
 import { createRelationshipReadCursor } from "./read-cursor";
 
-// Same bilateral binding boundary as unread-summary; every page rechecks it in
-// the same SQL snapshot as its message data. No cached permission or N+1 RPCs.
-const ELIGIBLE = `eligible as (
-  select c.record_id, c.payload from orbit_records c
-  join orbit_records b on b.workspace_id=c.workspace_id
-    and b.collection_name='relationship_communication_bindings'
-    and b.record_id=c.payload->>'bindingId' and b.lifecycle_state='active'
-  where c.workspace_id=$1 and c.collection_name='relationship_communication_conversations'
-    and c.lifecycle_state='active' and c.payload->>'kind'='relationship_conversation'
-    and c.payload->>'conversationId'=c.record_id and c.payload->>'status'='active'
-    and jsonb_typeof(c.payload->'participantAccountIds')='array'
-    and case when jsonb_typeof(c.payload->'participantAccountIds')='array'
-      then jsonb_array_length(c.payload->'participantAccountIds')=2 else false end
-    and c.payload->'participantAccountIds' ? $2
-    and b.payload->>'kind'='relationship_binding' and b.payload->>'status'='confirmed'
-    and b.payload->>'inviterAccountId'<>b.payload->>'remoteAccountId'
-    and b.payload->>'contactId'=c.payload->>'contactId'
-    and b.payload->>'conversationId'=c.record_id
-    and b.payload->>'qualificationVersion'=c.payload->>'qualificationVersion'
-    and c.payload->'participantAccountIds' ? (b.payload->>'inviterAccountId')
-    and c.payload->'participantAccountIds' ? (b.payload->>'remoteAccountId')
-)`;
+// Sprint 0109: summaries walk the caller's member rows through the
+// (account, last_message_at) inbox index and messages page by the
+// (conversation, seq) primary key. Both check, in the same SQL snapshot, that
+// the conversation is active and the caller is an active member; a revoked
+// conversation is invisible to both sides. No other account's rows are read.
+const iso = (column: string) => `to_char(${column} at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')`;
+const MEMBER_NAME = (account: string) => `(select left(n.display_name,256) from relationship_conversation_members n
+  where n.workspace_id=c.workspace_id and n.conversation_id=c.conversation_id and n.account_id=${account})`;
 
 const IDENTITY = `jsonb_build_object(
-  'conversationId', left(c.record_id,512), 'contactId', left(c.payload->>'contactId',512),
-  'participantAccountIds', c.payload->'participantAccountIds',
+  'conversationId', left(c.conversation_id,512), 'contactId', left(c.inviter_contact_id,512),
+  'participantAccountIds', jsonb_build_array(c.inviter_account_id, c.invitee_account_id),
   'participantDisplayNames', jsonb_build_object(
-    c.payload->'participantAccountIds'->>0, left(c.payload->'participantDisplayNames'->>(c.payload->'participantAccountIds'->>0),256),
-    c.payload->'participantAccountIds'->>1, left(c.payload->'participantDisplayNames'->>(c.payload->'participantAccountIds'->>1),256)),
-  'qualificationVersion', left(c.payload->>'qualificationVersion',512), 'status','active',
-  'createdAt', left(c.payload->>'createdAt',64), 'updatedAt', left(c.payload->>'updatedAt',64)
+    c.inviter_account_id, ${MEMBER_NAME("c.inviter_account_id")},
+    c.invitee_account_id, ${MEMBER_NAME("c.invitee_account_id")}),
+  'qualificationVersion', left(c.qualification_version,512), 'status','active',
+  'createdAt', ${iso("c.created_at")}, 'updatedAt', ${iso("c.last_message_at")}
 )`;
 
-const MESSAGE_MATCH = `m.workspace_id=$1 and m.collection_name='relationship_communication_messages'
-  and m.target_id=c.record_id and m.lifecycle_state<>'deleted'
-  and m.payload->>'kind'='relationship_message' and m.payload->>'conversationId'=c.record_id`;
-
-const CONVERSATIONS_SQL = `with ${ELIGIBLE}, candidates as (
-  select c.* from eligible c
-  where ($6::text is null or c.record_id=$6)
-    and ($4::text is null or (c.payload->>'updatedAt') collate "C" < $4
-      or (c.payload->>'updatedAt'=$4 and c.record_id collate "C">$5))
-  order by (c.payload->>'updatedAt') collate "C" desc, c.record_id collate "C" asc limit $3+1
-), selected as (select * from candidates order by (payload->>'updatedAt') collate "C" desc,record_id collate "C" asc limit $3)
+const CONVERSATIONS_SQL = `with candidates as (
+  select me.conversation_id, me.unread_count, me.last_message_at from relationship_conversation_members me
+  join relationship_conversations c on c.workspace_id=me.workspace_id and c.conversation_id=me.conversation_id and c.status='active'
+  where me.workspace_id=$1 and me.account_id=$2 and me.state='active'
+    and ($6::text is null or me.conversation_id=$6)
+    and ($4::timestamptz is null or me.last_message_at < $4::timestamptz
+      or (me.last_message_at=$4::timestamptz and me.conversation_id>$5::text))
+  order by me.last_message_at desc, me.conversation_id asc limit $3+1
+), selected as (select * from candidates order by last_message_at desc, conversation_id asc limit $3)
 select coalesce(jsonb_agg(${IDENTITY} || jsonb_build_object(
-  'unreadCount', (select count(*) from orbit_records m where ${MESSAGE_MATCH}
-    and m.payload->>'senderAccountId'<>$2 and (marker.record_id is null or
-      ((m.payload->>'sentAt') collate "C",(m.payload->>'messageId') collate "C") >
-      ((marker.payload->>'sentAt') collate "C",(marker.payload->>'messageId') collate "C"))),
-  'lastMessage', (select jsonb_build_object('messageId',left(m.payload->>'messageId',512),
-    'senderAccountId',left(m.payload->>'senderAccountId',512),'sentAt',left(m.payload->>'sentAt',64),
-    'bodyPreview',left(m.payload->>'body',320)) from orbit_records m where ${MESSAGE_MATCH}
-    order by (m.payload->>'sentAt') collate "C" desc,(m.payload->>'messageId') collate "C" desc limit 1)
-) order by (c.payload->>'updatedAt') collate "C" desc,c.record_id collate "C" asc),'[]'::jsonb) as items,
+  'unreadCount', s.unread_count,
+  'lastMessage', (select jsonb_build_object('messageId',left(lm.message_id,512),
+    'senderAccountId',left(lm.sender_account_id,512),'sentAt',${iso("lm.sent_at")},
+    'bodyPreview',left(lm.body,320)) from relationship_messages lm
+    where lm.workspace_id=$1 and lm.conversation_id=c.conversation_id and lm.seq=c.last_message_seq)
+) order by s.last_message_at desc, s.conversation_id asc),'[]'::jsonb) as items,
 exists(select 1 from candidates offset $3 limit 1) as has_more
-from selected c
-left join orbit_records r on r.workspace_id=$1 and r.collection_name='relationship_communication_reads'
-  and r.record_id='relationship-read:'||encode(sha256(convert_to(c.record_id,'UTF8')||decode('00','hex')||convert_to($2,'UTF8')),'hex')
-  and r.lifecycle_state<>'deleted' and r.payload->>'kind'='relationship_read'
-left join orbit_records marker on marker.workspace_id=$1 and marker.collection_name='relationship_communication_messages'
-  and marker.record_id=r.payload->>'lastReadMessageId' and marker.target_id=c.record_id
-  and marker.lifecycle_state<>'deleted' and marker.payload->>'kind'='relationship_message'
-  and marker.payload->>'conversationId'=c.record_id`;
+from selected s join relationship_conversations c on c.workspace_id=$1 and c.conversation_id=s.conversation_id`;
 
 function messagesSql(direction: "older" | "newer"): string {
   const comparison = direction === "older" ? "<" : ">";
   const order = direction === "older" ? "desc" : "asc";
-  return `with ${ELIGIBLE}, selected as (select * from eligible where record_id=$3), candidates as (
-    select m.payload from selected c join orbit_records m on ${MESSAGE_MATCH}
-    where ($5::text is null or ((m.payload->>'sentAt') collate "C", (m.payload->>'messageId') collate "C") ${comparison} ($5::text,$6::text))
-    order by (m.payload->>'sentAt') collate "C" ${order},(m.payload->>'messageId') collate "C" ${order} limit $4+1
+  return `with selected as (
+    select c.* from relationship_conversations c
+    join relationship_conversation_members me on me.workspace_id=c.workspace_id and me.conversation_id=c.conversation_id
+      and me.account_id=$2 and me.state='active'
+    where c.workspace_id=$1 and c.conversation_id=$3 and c.status='active'
+  ), anchor as (
+    select a.seq from relationship_messages a where $5::text is not null and a.workspace_id=$1 and a.conversation_id=$3 and a.message_id=$5
+  ), candidates as (
+    select m.* from relationship_messages m
+    where m.workspace_id=$1 and m.conversation_id=$3 and exists(select 1 from selected)
+      and ($5::text is null or m.seq ${comparison} (select seq from anchor))
+    order by m.seq ${order} limit $4+1
   ), measured as (
     select *, row_number() over w as position,
-      sum(octet_length(coalesce(payload->>'body','')) + 4096) over w as window_bytes
-    from candidates window w as (order by (payload->>'sentAt') collate "C" ${order},(payload->>'messageId') collate "C" ${order})
+      sum(octet_length(body) + 4096) over w as window_bytes
+    from candidates window w as (order by seq ${order})
   ), window_messages as (
     select * from measured where position<=$4 and (position=1 or window_bytes<=96000)
   ) select (select ${IDENTITY} from selected c) as conversation,
+    ($5::text is null or exists(select 1 from anchor)) as anchor_found,
     coalesce((select jsonb_agg(jsonb_build_object(
-      'messageId',left(payload->>'messageId',512),'conversationId',left(payload->>'conversationId',512),
-      'senderAccountId',left(payload->>'senderAccountId',512),'senderDisplayName',left(payload->>'senderDisplayName',512),
-      'body',left(payload->>'body',10000),'sentAt',left(payload->>'sentAt',64),'deliveryState',payload->>'deliveryState'
-    ) order by (payload->>'sentAt') collate "C" asc,(payload->>'messageId') collate "C" asc) from window_messages),'[]'::jsonb) as items,
+      'messageId',left(message_id,512),'conversationId',left(conversation_id,512),
+      'senderAccountId',left(sender_account_id,512),'senderDisplayName',left(sender_display_name,512),
+      'body',left(body,10000),'sentAt',${iso("sent_at")},'deliveryState','delivered'
+    ) order by seq asc) from window_messages),'[]'::jsonb) as items,
     (select count(*) from candidates) > (select count(*) from window_messages) as has_more,
-    exists(select 1 from window_messages where char_length(payload->>'body')>10000
-      or char_length(payload->>'messageId')>512 or char_length(payload->>'conversationId')>512
-      or char_length(payload->>'senderAccountId')>512 or char_length(payload->>'senderDisplayName')>512
-      or char_length(payload->>'sentAt')>64) as invalid_message`;
+    exists(select 1 from window_messages where char_length(body)>10000
+      or char_length(message_id)>512 or char_length(conversation_id)>512
+      or char_length(sender_account_id)>512 or char_length(sender_display_name)>512) as invalid_message`;
 }
 
 export function createRelationshipBoundedReader(input: {
@@ -125,10 +107,14 @@ export function createRelationshipBoundedReader(input: {
       if (direction !== "older" && direction !== "newer") throw new Error("RELATIONSHIP_PAGE_INPUT_INVALID");
       const cursorScope = scope("messages", conversationId, direction);
       const cursor = codec.decode(query.cursor, cursorScope);
-      const result = await input.client.query<{ conversation: unknown; items: unknown[]; has_more: boolean; invalid_message: boolean }>(messagesSql(direction),
-        [input.workspaceId,input.actorId,conversationId,limit,cursor?.at ?? null,cursor?.id ?? null]);
+      // The cursor still carries (sentAt, messageId) of the boundary message, so
+      // cursors issued before sprint 0109 stay valid; the page anchors on that
+      // message's sequence number.
+      const result = await input.client.query<{ conversation: unknown; anchor_found: boolean; items: unknown[]; has_more: boolean; invalid_message: boolean }>(messagesSql(direction),
+        [input.workspaceId,input.actorId,conversationId,limit,cursor?.id ?? null]);
       const row = result.rows[0];
       if (!row?.conversation) throw new Error("RELATIONSHIP_NOT_FOUND");
+      if (!row.anchor_found) throw new Error("RELATIONSHIP_CURSOR_INVALID");
       if (row.invalid_message) throw new Error("RELATIONSHIP_PAGE_RESULT_INVALID");
       const page = relationshipMessagePageSchema.parse({ actorId: input.actorId, conversation: row.conversation, items: row.items, hasMore: row.has_more, direction, nextCursor: null, newestCursor: null, asOf: now() });
       const last = direction === "older" ? page.items[0] : page.items.at(-1);

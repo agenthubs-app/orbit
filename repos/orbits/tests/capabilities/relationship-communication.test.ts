@@ -1,21 +1,23 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import test, { after } from "node:test";
 
-import {
-  createRelationshipCommunicationService,
-  RELATIONSHIP_COMMUNICATION_COLLECTIONS,
-} from "../../features/relationship-communication/service";
-import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
+import { SYNC_COMMIT_ORDER_LOCK_SQL } from "../../features/sync/commit-order-lock";
+import { createRelationshipHarness, relationshipPostgresSkip as skip, type RelationshipHarness } from "../support/relationship-message-harness";
 
-const WORKSPACE_ID = "workspace:relationship-communication-test";
+// Sprint 0109: conversations, members and messages live in dedicated Postgres
+// tables, so this capability contract runs against real PostgreSQL (one private
+// schema per harness) instead of the in-memory record store.
 const CONTACT_ID = "contact:recipient";
+const harnesses: RelationshipHarness[] = [];
+after(async () => { for (const h of harnesses) await h.close(); });
 
 function actor(accountId: string, email: string, displayName: string) {
   return { accountId, displayName, email };
 }
 
-function harness() {
-  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
+async function harness() {
+  const h = await createRelationshipHarness({ prefix: "rel_capability" });
+  harnesses.push(h);
   let nowIndex = 0;
   const timestamps = [
     "2026-09-14T10:00:00.000Z",
@@ -25,13 +27,11 @@ function harness() {
     "2026-09-14T10:04:00.000Z",
     "2026-09-14T10:05:00.000Z",
   ];
-  const options = (currentActor: ReturnType<typeof actor>) => ({
-    actor: currentActor,
-    invitationBaseUrl: "https://orbit.example/invitations",
+  const options = {
     now: () => timestamps[Math.min(nowIndex++, timestamps.length - 1)]!,
     randomToken: () => "test-token-with-enough-entropy-for-contract",
     resolveContact: async (contactId: string, accountId: string) =>
-      contactId === CONTACT_ID && accountId === "account:sender"
+      contactId.startsWith(CONTACT_ID) && accountId === "account:sender"
         ? {
             contactId,
             displayName: "Receiver Contact",
@@ -39,26 +39,18 @@ function harness() {
             recipientEmail: "receiver@example.test",
           }
         : null,
-    store,
-    workspaceId: WORKSPACE_ID,
-  });
+  };
 
   return {
-    recipient: createRelationshipCommunicationService(
-      options(actor("account:recipient", "receiver@example.test", "Receiver")),
-    ),
-    sender: createRelationshipCommunicationService(
-      options(actor("account:sender", "sender@example.test", "Sender")),
-    ),
-    stranger: createRelationshipCommunicationService(
-      options(actor("account:stranger", "stranger@example.test", "Stranger")),
-    ),
-    store,
+    recipient: h.service(actor("account:recipient", "receiver@example.test", "Receiver"), options),
+    sender: h.service(actor("account:sender", "sender@example.test", "Sender"), options),
+    stranger: h.service(actor("account:stranger", "stranger@example.test", "Stranger"), options),
+    h,
   };
 }
 
-test("verified invitation acceptance creates one versioned two-account conversation", async () => {
-  const { recipient, sender } = harness();
+test("verified invitation acceptance creates one versioned two-account conversation", { skip, timeout: 60_000 }, async () => {
+  const { recipient, sender } = await harness();
 
   assert.equal((await sender.getEligibility(CONTACT_ID)).status, "unregistered");
 
@@ -99,8 +91,8 @@ test("verified invitation acceptance creates one versioned two-account conversat
   assert.equal(senderEligibility.remoteAccount.displayName, "Receiver");
 });
 
-test("invitation acceptance requires the intended signed-in email and explicit confirmation", async () => {
-  const { sender, stranger } = harness();
+test("invitation acceptance requires the intended signed-in email and explicit confirmation", { skip, timeout: 60_000 }, async () => {
+  const { sender, stranger } = await harness();
   const invitation = await sender.createInvitation({
     contactId: CONTACT_ID,
     recipientEmail: "receiver@example.test",
@@ -121,8 +113,8 @@ test("invitation acceptance requires the intended signed-in email and explicit c
   );
 });
 
-test("delivery receipt is shared, idempotent, participant-scoped, and rejects stale eligibility", async () => {
-  const { recipient, sender, stranger } = harness();
+test("delivery receipt is shared, idempotent, participant-scoped, and rejects stale eligibility", { skip, timeout: 60_000 }, async () => {
+  const { recipient, sender, stranger } = await harness();
   const invitation = await sender.createInvitation({
     contactId: CONTACT_ID,
     recipientEmail: "receiver@example.test",
@@ -171,8 +163,8 @@ test("delivery receipt is shared, idempotent, participant-scoped, and rejects st
   );
 });
 
-test("recipient read state is durable and does not alter the sender unread count", async () => {
-  const { recipient, sender } = harness();
+test("recipient read state is durable and does not alter the sender unread count", { skip, timeout: 60_000 }, async () => {
+  const { recipient, sender } = await harness();
   const invitation = await sender.createInvitation({
     contactId: CONTACT_ID,
     recipientEmail: "receiver@example.test",
@@ -199,8 +191,8 @@ test("recipient read state is durable and does not alter the sender unread count
   assert.equal((await sender.listConversations()).conversations[0]?.unreadCount, 0);
 });
 
-test("an orphaned conversation cannot bypass the current binding after an acceptance race", async () => {
-  const { recipient, sender, stranger, store } = harness();
+test("a conversation row without member rows cannot be read or written by the account it names", { skip, timeout: 60_000 }, async () => {
+  const { recipient, sender, stranger, h } = await harness();
   const invitation = await sender.createInvitation({
     contactId: CONTACT_ID,
     recipientEmail: "receiver@example.test",
@@ -210,47 +202,17 @@ test("an orphaned conversation cannot bypass the current binding after an accept
     confirmed: true,
     token: invitation.token,
   });
-  const bindingRecord = (
-    await store.listRecords({
-      limit: "unbounded",
-      collectionName: RELATIONSHIP_COMMUNICATION_COLLECTIONS.bindings,
-      workspaceId: WORKSPACE_ID,
-    })
-  )[0]!;
+  // A forged conversation naming the stranger as invitee, but no membership:
+  // access is decided by the caller's own member row, never by the conversation row.
   const orphanConversationId = "relationship-conversation:orphaned-race";
-  const timestamp = "2026-09-14T10:06:00.000Z";
-  await store.upsertRecord({
-    collectionName: RELATIONSHIP_COMMUNICATION_COLLECTIONS.conversations,
-    createdAt: timestamp,
-    evidenceIds: ["evidence:orphaned-race"],
-    lifecycleState: "active",
-    occurredAt: timestamp,
-    payload: {
-      bindingId: bindingRecord.payload.bindingId,
-      contactId: CONTACT_ID,
-      conversationId: orphanConversationId,
-      createdAt: timestamp,
-      kind: "relationship_conversation",
-      participantAccountIds: ["account:sender", "account:stranger"],
-      participantDisplayNames: {
-        "account:sender": "Sender",
-        "account:stranger": "Stranger",
-      },
-      qualificationVersion: accepted.qualificationVersion,
-      status: "active",
-      updatedAt: timestamp,
-    },
-    provider: "orbit-relationship-communication",
-    providerRecordId: orphanConversationId,
-    recordId: orphanConversationId,
-    searchText: orphanConversationId,
-    sourceId: orphanConversationId,
-    sourceLabel: "Orbit relationship communication",
-    sourceType: "system",
-    targetId: orphanConversationId,
-    targetType: "conversation",
-    updatedAt: timestamp,
-    workspaceId: WORKSPACE_ID,
+  await h.client.transaction(async (tx) => {
+    await tx.query(SYNC_COMMIT_ORDER_LOCK_SQL);
+    await tx.query(
+      `insert into relationship_conversations (workspace_id, conversation_id, inviter_account_id, invitee_account_id, inviter_contact_id,
+         status, qualification_version, last_message_at, created_at, updated_at)
+       values ($1, $2, 'account:sender', 'account:stranger', 'contact:orphan', 'active', $3, now(), now(), now())`,
+      [h.workspaceId, orphanConversationId, accepted.qualificationVersion],
+    );
   });
 
   assert.equal((await stranger.listConversations()).conversations.length, 0);
@@ -267,10 +229,11 @@ test("an orphaned conversation cannot bypass the current binding after an accept
     }),
     /not available|eligibility/i,
   );
+  await assert.rejects(stranger.getConversation(accepted.conversationId!), /not available/i);
 });
 
-test('conversation pages reject invalid limits and preserve an account-scoped unread total', async () => {
-  const { sender, recipient } = harness();
+test('conversation pages reject invalid limits and preserve an account-scoped unread total', { skip, timeout: 60_000 }, async () => {
+  const { sender, recipient } = await harness();
   const invitation = await sender.createInvitation({ contactId: CONTACT_ID, recipientEmail: 'receiver@example.test', recipientName: 'Receiver' });
   const eligibility = await recipient.acceptInvitation({ confirmed: true, token: invitation.token });
   await sender.sendMessage({ conversationId: eligibility.conversationId!, qualificationVersion: eligibility.qualificationVersion!, body: '页内原文', requestId: 'page-test-send' });
@@ -283,24 +246,25 @@ test('conversation pages reject invalid limits and preserve an account-scoped un
   await assert.rejects(recipient.listConversations({ cursor: 'invalid-cursor' } as never));
 });
 
-test('conversation cursor pages use stable ties and cannot be reused by another account', async () => {
-  const { sender, recipient, store } = harness();
-  const invitation = await sender.createInvitation({ contactId: CONTACT_ID, recipientEmail: 'receiver@example.test', recipientName: 'Receiver' });
-  await recipient.acceptInvitation({ confirmed: true, token: invitation.token });
-  const original = (await store.listRecords({ limit: "unbounded", workspaceId: WORKSPACE_ID, collectionName: RELATIONSHIP_COMMUNICATION_COLLECTIONS.conversations }))[0]!;
-  const binding = (await store.listRecords({ limit: "unbounded", workspaceId: WORKSPACE_ID, collectionName: RELATIONSHIP_COMMUNICATION_COLLECTIONS.bindings }))[0]!;
-  for (const suffix of ['b', 'c']) {
-    const id = String(original.payload.conversationId) + suffix;
-    const bindingId = binding.recordId + suffix;
-    await store.upsertRecord({ ...binding, recordId: bindingId, payload: { ...binding.payload, bindingId, conversationId: id } });
-    await store.upsertRecord({ ...original, recordId: id, payload: { ...original.payload, conversationId: id, bindingId } });
+test('conversation cursor pages use stable ties and cannot be reused by another account', { skip, timeout: 60_000 }, async () => {
+  const { h } = await harness();
+  // Three conversations accepted at the same instant: ordering ties break on the conversation id.
+  const at = () => "2026-09-14T10:00:00.000Z";
+  const contact = async (contactId: string) => ({ contactId, displayName: "Receiver", organization: "Orbit Test", recipientEmail: "receiver@example.test" });
+  const sender = h.service(actor("account:sender", "sender@example.test", "Sender"), { now: at, resolveContact: contact });
+  const recipient = h.service(actor("account:recipient", "receiver@example.test", "Receiver"), { now: at, resolveContact: contact });
+  for (const suffix of ["", "-b", "-c"]) {
+    const invitation = await sender.createInvitation({ contactId: `${CONTACT_ID}${suffix}`, recipientEmail: 'receiver@example.test', recipientName: 'Receiver' });
+    await recipient.acceptInvitation({ confirmed: true, token: invitation.token });
   }
   const seen: string[] = []; let cursor: string | undefined;
   for (let i = 0; i < 3; i++) {
     const page = await recipient.listConversations({ limit: 1, ...(cursor ? { cursor } : {}) });
+    assert.equal(page.conversations[0]?.updatedAt, at());
     seen.push(...page.conversations.map(item => item.conversationId));
     if (page.nextCursor) await assert.rejects(sender.listConversations({ cursor: page.nextCursor }), /cursor/);
     cursor = page.nextCursor ?? undefined;
   }
   assert.equal(new Set(seen).size, 3); assert.equal(cursor, undefined);
+  assert.deepEqual(seen, [...seen].sort(), "ties are ordered by conversation id");
 });

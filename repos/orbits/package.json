@@ -9,6 +9,7 @@
     "db:migrate:agent-run-targets": "tsx scripts/migrate-agent-run-targets.ts",
     "db:cleanup:legacy-chat": "tsx scripts/cleanup-legacy-chat-records.ts",
     "db:migrate:exchange-notifications": "tsx scripts/migrate-event-contact-request-notifications.ts",
+    "db:migrate:relationship-messages": "tsx scripts/migrate-relationship-messages.ts",
     "db:backfill:auth-accounts": "tsx scripts/backfill-auth-account-memberships.ts",
     "db:bootstrap:event-organizers": "tsx scripts/bootstrap-event-organizer-accounts.ts",
     "db:migrate:event-organizer-owners": "tsx scripts/migrate-event-organizer-owners.ts",

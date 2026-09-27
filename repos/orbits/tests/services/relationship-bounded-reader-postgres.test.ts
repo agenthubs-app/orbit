@@ -1,72 +1,73 @@
 import assert from "node:assert/strict";
-import { randomUUID } from "node:crypto";
 import test from "node:test";
-import { Pool } from "pg";
 import { createRelationshipBoundedReader } from "../../features/relationship-communication/bounded-reader";
-import { createRelationshipCommunicationService } from "../../features/relationship-communication/service";
-import { createPostgresLiveRecordStore, type LiveRecordSqlClient } from "../../shared/storage/postgres-live-record-store";
-import { ORBIT_RECORDS_SCHEMA_SQL } from "../../shared/storage/migrations";
+import { SYNC_COMMIT_ORDER_LOCK_SQL } from "../../features/sync/commit-order-lock";
+import type { LiveRecordSqlClient } from "../../shared/storage/postgres-live-record-store";
+import { createReadCostLedger } from "../performance/read-cost-ledger";
+import { connect, createRelationshipHarness, relationshipPostgresSkip } from "../support/relationship-message-harness";
 
-test("conversation previews and message windows match the oracle without histories or N+1 transfer", { skip: !process.env.ORBIT_LIFECYCLE_TEST_DATABASE_URL, timeout: 60000 }, async () => {
-  const url = process.env.ORBIT_LIFECYCLE_TEST_DATABASE_URL!;
-  assert.ok(["localhost", "127.0.0.1"].includes(new URL(url).hostname));
-  const schema = `relationship_page_${randomUUID().replaceAll("-", "")}`;
-  const pool = new Pool({ connectionString: url, max: 1, options: `-c search_path=${schema}` });
+// Sprint 0109: previews and message windows read the relationship message tables.
+test("conversation previews and message windows match the oracle without histories or N+1 transfer", { skip: relationshipPostgresSkip, timeout: 60000 }, async (t) => {
+  const ledger = createReadCostLedger();
+  const h = await createRelationshipHarness({ prefix: "relationship_page", readMetrics: { observer: ledger.observer }, resolveContact: async contactId => ({ contactId, displayName: "Recipient", organization: "Test" }) });
+  t.after(() => h.close());
   let bytes = 0, queries = 0;
   const client: LiveRecordSqlClient = { async query<T>(sql: string, values?: readonly unknown[]) {
-    const result = await pool.query(sql, values ? [...values] : undefined);
+    const result = await h.client.query<T>(sql, values);
     bytes += Buffer.byteLength(JSON.stringify(result.rows)); queries++;
     return { rows: result.rows as T[] };
   } };
-  try {
-    await pool.query(`create schema ${schema}`); await pool.query(ORBIT_RECORDS_SCHEMA_SQL);
-    const store = createPostgresLiveRecordStore({ client }), workspaceId = "w";
-    const service = (id: string) => createRelationshipCommunicationService({ store, workspaceId, actor: { accountId: id, displayName: id, email: `${id}@example.test` }, invitationBaseUrl: "https://example.test/invitations", now: () => "2026-09-25T00:00:00.000Z", resolveContact: async contactId => ({ contactId, displayName: "Recipient", organization: "Test" }) });
-    const a = service("a"), b = service("b");
-    const invitation = await a.createInvitation({ contactId: "c", recipientName: "b", recipientEmail: "b@example.test" });
-    const binding = await b.acceptInvitation({ confirmed: true, token: invitation.token });
-    for (let n = 0; n < 6; n++) await a.sendMessage({ conversationId: binding.conversationId!, qualificationVersion: binding.qualificationVersion!, requestId: `r${n}`, body: `message ${n} ` + "私密".repeat(3000) });
-    const oracle = await b.getConversation(binding.conversationId!);
-    const reader = createRelationshipBoundedReader({ client, workspaceId, actorId: "b", cursorSecret: "test-secret-".repeat(4) });
-    bytes = 0; queries = 0;
-    const summaries = await reader.conversations({ limit: 1 });
-    assert.equal(queries, 1); assert.ok(bytes < 4000);
-    assert.equal(summaries.items[0]?.unreadCount, oracle.unreadCount);
-    assert.equal(summaries.items[0]?.lastMessage?.messageId, oracle.messages.at(-1)?.messageId);
-    assert.ok(!JSON.stringify(summaries).includes('"messages"'));
-    const first = await reader.messages(binding.conversationId!, { limit: 2 });
-    assert.deepEqual(first.items, oracle.messages.slice(-2)); assert.equal(first.hasMore, true);
-    const second = await reader.messages(binding.conversationId!, { limit: 2, cursor: first.nextCursor });
-    assert.deepEqual(second.items, oracle.messages.slice(-4, -2));
-    const byteBounded = await reader.messages(binding.conversationId!, { limit: 50 });
-    assert.ok(byteBounded.items.length < 6, "large legal bodies also respect a byte window");
-    assert.equal(byteBounded.hasMore, true);
-    assert.ok(Buffer.byteLength(JSON.stringify(byteBounded)) < 128000);
-    assert.ok(byteBounded.items.every(message => message.body.length === oracle.messages[0]!.body.length), "no silent truncation of a legal body");
-    await assert.rejects(reader.messages(binding.conversationId!, { cursor: `${first.nextCursor}x` }), /RELATIONSHIP_CURSOR_INVALID/);
-    const outsider = createRelationshipBoundedReader({ client, workspaceId, actorId: "x", cursorSecret: "test-secret-".repeat(4) });
-    assert.equal((await outsider.conversations({})).items.length, 0);
-    await assert.rejects(outsider.messages(binding.conversationId!, {}), /RELATIONSHIP_NOT_FOUND/);
-    bytes = 0; queries = 0;
-    await b.markConversationRead({ conversationId: binding.conversationId!, lastReadMessageId: oracle.messages[2]!.messageId });
-    assert.equal(queries, 4, "read marker must not fetch a full conversation snapshot");
-    assert.ok(bytes < 8000, `read marker returned ${bytes} bytes`);
-    assert.equal((await reader.conversations({})).items[0]?.unreadCount, (await b.getConversation(binding.conversationId!)).unreadCount);
-    await pool.query(`insert into orbit_records(workspace_id,collection_name,record_id,target_id,source_type,source_id,payload,created_at,updated_at)
-      select workspace_id,collection_name,'copy:'||n,target_id,source_type,source_id,payload||jsonb_build_object('messageId','copy:'||n,'body',repeat('x',2000)),created_at,updated_at
-      from (select * from orbit_records where collection_name='relationship_communication_messages' order by record_id limit 1) seed
-      cross join generate_series(1,10000)n`);
-    bytes = 0; queries = 0;
-    const grown = await reader.conversations({});
-    assert.equal(queries, 1); assert.equal(grown.items.length, 1); assert.ok(bytes < 4000);
-    console.info(JSON.stringify({ metric: "conversation_summary_growth", messages: 10006, queries, returnedJsonBytes: bytes }));
-    bytes = 0; queries = 0;
-    await b.markConversationRead({ conversationId: binding.conversationId!, lastReadMessageId: oracle.messages.at(-1)!.messageId });
-    assert.equal(queries, 4); assert.ok(bytes < 8000);
-    console.info(JSON.stringify({ metric: "conversation_mark_read_growth", messages: 10006, queries, returnedJsonBytes: bytes }));
-    await pool.query(`update orbit_records set payload=jsonb_set(payload,'{body}',to_jsonb(repeat('x',10001))) where collection_name='relationship_communication_messages'`, []);
-    await assert.rejects(reader.messages(binding.conversationId!), /RELATIONSHIP_PAGE_RESULT_INVALID/);
-    await a.revokeContactBinding("c");
-    await assert.rejects(reader.messages(binding.conversationId!, {}), /RELATIONSHIP_NOT_FOUND/);
-  } finally { await pool.query(`drop schema ${schema} cascade`); await pool.end(); }
+  const person = (id: string) => ({ accountId: id, displayName: id, email: `${id}@example.test` });
+  const a = h.service(person("a"), { now: () => "2026-09-25T00:00:00.000Z" }), b = h.service(person("b"));
+  const binding = await connect(h, person("a"), person("b"), "c");
+  for (let n = 0; n < 6; n++) await a.sendMessage({ conversationId: binding.conversationId, qualificationVersion: binding.qualificationVersion, requestId: `r${n}`, body: `message ${n} ` + "私密".repeat(3000) });
+  const oracle = await b.getConversation(binding.conversationId);
+  const reader = createRelationshipBoundedReader({ client, workspaceId: h.workspaceId, actorId: "b", cursorSecret: "test-secret-".repeat(4) });
+  bytes = 0; queries = 0;
+  const summaries = await reader.conversations({ limit: 1 });
+  assert.equal(queries, 1); assert.ok(bytes < 4000);
+  assert.equal(summaries.items[0]?.unreadCount, oracle.unreadCount);
+  assert.equal(summaries.items[0]?.lastMessage?.messageId, oracle.messages.at(-1)?.messageId);
+  assert.ok(!JSON.stringify(summaries).includes('"messages"'));
+  const first = await reader.messages(binding.conversationId, { limit: 2 });
+  assert.deepEqual(first.items, oracle.messages.slice(-2)); assert.equal(first.hasMore, true);
+  const second = await reader.messages(binding.conversationId, { limit: 2, cursor: first.nextCursor });
+  assert.deepEqual(second.items, oracle.messages.slice(-4, -2));
+  const byteBounded = await reader.messages(binding.conversationId, { limit: 50 });
+  assert.ok(byteBounded.items.length < 6, "large legal bodies also respect a byte window");
+  assert.equal(byteBounded.hasMore, true);
+  assert.ok(Buffer.byteLength(JSON.stringify(byteBounded)) < 128000);
+  assert.ok(byteBounded.items.every(message => message.body.length === oracle.messages[0]!.body.length), "no silent truncation of a legal body");
+  await assert.rejects(reader.messages(binding.conversationId, { cursor: `${first.nextCursor}x` }), /RELATIONSHIP_CURSOR_INVALID/);
+  const outsider = createRelationshipBoundedReader({ client, workspaceId: h.workspaceId, actorId: "x", cursorSecret: "test-secret-".repeat(4) });
+  assert.equal((await outsider.conversations({})).items.length, 0);
+  await assert.rejects(outsider.messages(binding.conversationId, {}), /RELATIONSHIP_NOT_FOUND/);
+
+  const markRead = (messageId: string) => ledger.measure("mark-read", () => b.markConversationRead({ conversationId: binding.conversationId, lastReadMessageId: messageId }));
+  const readSmall = await markRead(oracle.messages[2]!.messageId);
+  assert.ok(readSmall.cost.bytes < 8000, `read marker returned ${readSmall.cost.bytes} bytes`);
+  assert.equal((await reader.conversations({})).items[0]?.unreadCount, (await b.getConversation(binding.conversationId)).unreadCount);
+
+  // 10 000 more messages in another conversation of other accounts: the caller's reads do not grow.
+  const foreign = await connect(h, person("p"), person("q"), "c-foreign");
+  await h.client.transaction(async (tx) => {
+    await tx.query(SYNC_COMMIT_ORDER_LOCK_SQL);
+    await tx.query(`insert into relationship_messages (workspace_id, conversation_id, seq, message_id, sender_account_id, sender_display_name, body, sent_at, qualification_version, request_id)
+      select $1, $2, n, 'copy:'||n, 'p', 'p', repeat('x', 2000), now(), $3, 'copy:'||n from generate_series(1, 10000) n`, [h.workspaceId, foreign.conversationId, foreign.qualificationVersion]);
+    await tx.query("update relationship_conversations set last_message_seq = 10000 where conversation_id = $1", [foreign.conversationId]);
+  });
+  bytes = 0; queries = 0;
+  const grown = await reader.conversations({});
+  assert.equal(queries, 1); assert.equal(grown.items.length, 1); assert.ok(bytes < 4000);
+  console.info(JSON.stringify({ metric: "conversation_summary_growth", foreignMessages: 10000, queries, returnedJsonBytes: bytes }));
+  const readGrown = await markRead(oracle.messages.at(-1)!.messageId);
+  assert.ok(readGrown.cost.bytes <= readSmall.cost.bytes + 64, "marking read does not read the history");
+  console.info(JSON.stringify({ metric: "conversation_mark_read_growth", foreignMessages: 10000, cost: readGrown.cost }));
+  // The table refuses an over-long body, so an invalid page can no longer be stored.
+  await assert.rejects(h.client.transaction(async (tx) => {
+    await tx.query(SYNC_COMMIT_ORDER_LOCK_SQL);
+    await tx.query("update relationship_messages set body = repeat('x', 10001) where conversation_id = $1", [binding.conversationId]);
+  }), /check constraint/);
+  await a.revokeContactBinding("c");
+  await assert.rejects(reader.messages(binding.conversationId, {}), /RELATIONSHIP_NOT_FOUND/);
 });
