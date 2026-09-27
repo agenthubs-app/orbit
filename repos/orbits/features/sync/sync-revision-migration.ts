@@ -75,7 +75,8 @@ export async function inspectSyncRevision(session: SyncRevisionMigrationSession)
   const nullRevisions = Number((await session.query<{ n: string }>("select count(*)::text as n from orbit_records where sync_revision is null")).rows[0]?.n ?? 0);
   const triggerInstalled = await exists(session, "select 1 from pg_trigger where tgrelid = 'orbit_records'::regclass and tgname = 'orbit_records_assign_sync_revision_trigger' and not tgisinternal");
   const uniqueIndexValid = await exists(session, "select 1 from pg_index i join pg_class c on c.oid = i.indexrelid where i.indrelid = 'orbit_records'::regclass and c.relname = $1 and i.indisvalid", [UNIQUE_INDEX]);
-  const strictBody = await exists(session, "select 1 from pg_proc where oid = to_regprocedure('orbit_records_assign_sync_revision()') and prosrc like '%SYNC_WRITE_LOCK_REQUIRED%'");
+  // Match the raise, not the token: the 0069 relaxed body mentions SYNC_WRITE_LOCK_REQUIRED in a comment.
+  const strictBody = await exists(session, "select 1 from pg_proc where oid = to_regprocedure('orbit_records_assign_sync_revision()') and prosrc ~* $1", ["raise\\s+exception\\s+'SYNC_WRITE_LOCK_REQUIRED'"]);
   const columnNotNull = column.is_nullable === "NO";
   let state: SyncRevisionState;
   if (!triggerInstalled) state = "disabled";

@@ -143,3 +143,17 @@ test("stored revisions ahead of the sequence (a restored table) are skipped forw
   for (let n = 0; n < 5; n += 1) await h.store.upsertRecord(record("notes", `after-restore:${n}`));
   await assertStrict(h, "restored");
 });
+
+test("the relaxed body installed on orbit_events in 0069 (with a comment naming the error) is recognised as relaxed", options, async (t) => {
+  const h = await database(t, "relaxed");
+  await h.pool.query(`create or replace function orbit_records_assign_sync_revision() returns trigger language plpgsql as $$
+begin
+  -- 0069 本机开发库专用：不强制 SYNC_WRITE_LOCK_REQUIRED，只分配 revision。
+  new.sync_revision := nextval('orbit_records_sync_revision_seq'::regclass);
+  return new;
+end;
+$$`);
+  assert.equal((await inspectSyncRevision(h.session)).state, "relaxed");
+  await migrateSyncRevisionOnline(h.session, { batchSize: 10 });
+  await assertStrict(h, "orbit-events-shape");
+});
