@@ -1,8 +1,8 @@
 /**
  * 编辑商务画像屏（Orbit_0918 个人中心 设计稿 154–207 行）。
  *   - 左列「商务画像内容」：personaGroups 四张组卡（设计 158–174 行）。
- *   - 「我的目标」= intro(relationshipGoal) 单行文本，手动输入 → session.update("intro")，随保存栏一起存（matching 作用域）；
- *     输入框下方三枚示例 badge，点击即把示例文本填入输入框（替换当前内容，可继续编辑）。
+ *   - 「我的目标」= intro(relationshipGoal) 一段文字，用共享目标编辑器（goal-editor，与 onboarding 同一个）：
+ *     正文 + 期限经 useStoredGoal 合成「正文（期限）」→ session.update("intro")，随保存栏一起存（matching 作用域）。
  *   - offer / seek / topic 为多选：已选项以 badge 显示在添加框上方（✕ → toggleTag 移除）；添加框 + Enter 手动添加；
  *     添加框下方是按产品定位预设的选项，点一下即选中并移到上方 badge。添加前先 `selectedOptionValue` / `includes` 守卫
  *     （toggleTag 对已存在标签是移除）；offer / seek 各最多 5 项，超出 notify("error", 旧 ChipGroup 文案) 且不添加。
@@ -16,12 +16,11 @@ import { useState, type KeyboardEvent } from "react";
 
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { profileInitial } from "./business-card-preview";
+import { GoalEditor, GoalReminder, useStoredGoal } from "../goal-editor/goal-editor";
 import { personaGroups, selectedOptionValue, type PersonaGroup } from "./profile-model";
 import type { ProfileEditorSession } from "./use-profile-editor-session";
 
 type TagField = "offering" | "seeking" | "topics";
-
-const GOAL_MAX_LENGTH = 100;
 
 // 旧 EditSections：offer / seek 各 maxSelected 5，topic 无上限。
 const GROUP_FIELD: Record<PersonaGroup["key"], { field: TagField; max?: number } | null> = {
@@ -39,7 +38,8 @@ const TIPS: readonly { title: { zh: string; en: string }; desc: { zh: string; en
 ];
 
 function GoalCard({ group, session }: { group: PersonaGroup; session: ProfileEditorSession }) {
-  const { t } = useOrbitLanguage();
+  const { language, t } = useOrbitLanguage();
+  const goal = useStoredGoal(session.profile.intro, (value) => session.update("intro", value), language === "zh" ? "zh" : "en");
   const label = t(group.title);
   return (
     <div className="pc-group" role="group" aria-label={label}>
@@ -47,22 +47,8 @@ function GoalCard({ group, session }: { group: PersonaGroup; session: ProfileEdi
         <span className="pc-group-icon">{group.icon}</span>
         <span className="pc-group-copy"><strong className="pc-group-title">{label}</strong><span className="pc-group-hint">{t(group.hint)}</span></span>
       </span>
-      <span className="pc-input-wrap">
-        <input
-          aria-label={label}
-          className="pc-input"
-          disabled={session.editorDisabled}
-          maxLength={GOAL_MAX_LENGTH}
-          onChange={(event) => session.update("intro", event.target.value)}
-          placeholder={t(group.placeholder)}
-          value={session.profile.intro}
-        />
-      </span>
-      <span className="pc-options" aria-label={t({ en: `${label} examples`, zh: `${label}示例` })} role="group">
-        {group.options.map((option) => (
-          <button key={option.zh} aria-pressed={selectedOptionValue(option, [session.profile.intro]) !== undefined} className="btn pc-option" disabled={session.editorDisabled} onClick={() => session.update("intro", t(option))} type="button">＋ {t(option)}</button>
-        ))}
-      </span>
+      <GoalReminder />
+      <GoalEditor disabled={session.editorDisabled} {...goal} />
     </div>
   );
 }

@@ -90,9 +90,20 @@ test("personaGroups maps the four groups in order, goal is a single value from i
     assert.ok(group.title.zh && group.title.en);
     assert.ok(group.hint.zh && group.hint.en);
   }
-  // 我的目标：手动输入的单文本，下方三条示例（一条人脉目标 + 两条商业目标）；其余三组为多选，带按产品定位编写的双语预设选项
+  // 我的目标：手动输入的单文本，示例句与 onboarding 共用（共享目标编辑器 10 条，RW-05）；其余三组为多选，带按产品定位编写的双语预设选项
   assert.ok(groups[0].placeholder.zh && groups[0].placeholder.en);
-  assert.deepEqual(groups[0].options.map(option => option.zh), ["三个月内认识 3 位日本市场的渠道伙伴", "年内在东京开出第一家线下门店", "从 0 到 1 打造自有品牌"]);
+  assert.deepEqual(groups[0].options.map(option => option.zh), [
+    "三个月内拿到 10 家企业客户的试用",
+    "三个月内认识 3 位日本市场的渠道伙伴",
+    "一个月内见 10 位关注我们赛道的投资人",
+    "三个月内找到一位技术合伙人",
+    "一个月内招到一位会日语的销售负责人",
+    "年内在东京开出第一家线下门店",
+    "年内找到 2 家稳定的日本供应商",
+    "三个月内认识 20 位本行业的决策者",
+    "年内找到一位行业导师，每月聊一次",
+    "从 0 到 1 打造自有品牌",
+  ]);
   for (const option of groups[0].options) assert.ok(option.en);
   for (const group of groups.slice(1)) {
     assert.ok(group.placeholder.zh && group.placeholder.en);
