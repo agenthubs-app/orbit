@@ -25,12 +25,12 @@ test("the web runtime migration CLI initializes an empty database and preserves 
     assert.equal(result.status, 0, result.stderr);
     assert.match(result.stdout, /Web runtime schemas migrated; no demo data seeded/);
   };
-  const ledgers = ["event_ops_schema_migrations", "event_ops_experience_schema_migrations", "event_analytics_schema_migrations", "appointment_schema_migrations", "bc_ingest_schema_migrations"];
+  const ledgers = ["event_ops_schema_migrations", "event_ops_experience_schema_migrations", "event_analytics_schema_migrations", "appointment_schema_migrations", "bc_ingest_schema_migrations", "plans_schema_migrations"];
   try {
     await admin.query(`create schema ${schema}`);
     migrate();
     const tables = (await pool.query<{ tablename: string }>("select tablename from pg_tables where schemaname=$1", [schema])).rows.map((row) => row.tablename);
-    for (const table of ["orbit_records", "event_ops_events", "event_ops_experience_versions", "event_analytics_roi_snapshots", "appointment_outbox", "bc_ingest_batches", ...ledgers]) {
+    for (const table of ["orbit_records", "event_ops_events", "event_ops_experience_versions", "event_analytics_roi_snapshots", "appointment_outbox", "bc_ingest_batches", "plans", "plan_items", "plan_log", "plan_commands", ...ledgers]) {
       assert.ok(tables.includes(table), `missing runtime table ${table}`);
     }
     for (const table of tables.filter((name) => !ledgers.includes(name))) {

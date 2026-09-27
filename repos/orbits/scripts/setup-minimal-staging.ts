@@ -6,6 +6,7 @@ import { runEventExperienceMigrations } from "../features/events/experience/stor
 import { runEventAnalyticsMigrations } from "../features/events/event-analytics/migrations";
 import { runAppointmentMigrations } from "../features/appointments/storage/migrations";
 import { runBusinessCardIngestV2Migrations } from "../features/acquisition/business-card-ingest-v2/migrations";
+import { runPlanMigrations } from "../features/plans/migrations";
 import type { EventOperationsPostgresClient } from "../features/events/event-operations/storage/postgres-client";
 import { applyEventCoreBackfillPlan } from "../features/events/core/backfill";
 import { createPostgresEventAccessRepository } from "../features/events/event-access/storage/postgres-repository";
@@ -56,6 +57,7 @@ async function main() {
     await runEventAnalyticsMigrations(client);
     await runAppointmentMigrations(client);
     await runBusinessCardIngestV2Migrations(client);
+    await runPlanMigrations(client);
     const store = createPostgresLiveRecordStore({client});
     for (const record of seed.records) await store.upsertRecord(record);
     await applyEventCoreBackfillPlan({client,workspaceId:STAGING_WORKSPACE,plan:seed.events,now:seed.now});
