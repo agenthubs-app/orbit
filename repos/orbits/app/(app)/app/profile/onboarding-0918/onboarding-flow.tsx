@@ -30,7 +30,8 @@ import {
   scanOwnBusinessCard,
   type ProfileFields,
 } from "./onboarding-client";
-import { CardBatchReminders, OnboardingCardImport, useOnboardingCardBatch } from "./onboarding-card-import";
+import { CardBatchImport, CardBatchReminders } from "../../contacts/card-batch-0918/card-batch-ui";
+import { useCardBatch } from "../../contacts/card-batch-0918/use-card-batch";
 import {
   BIO_LIMIT,
   FOCUS_LIMIT,
@@ -150,7 +151,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
   const [introRegenerations, setIntroRegenerations] = useState(0);
   const [cardBatchId, setCardBatchId] = useState<string | null>(null);
   // 名片批次在页面顶层维护：离开第 5 步时上传/识别/自动导入照常进行，完成后在任意视图提醒。
-  const cardBatch = useOnboardingCardBatch(cardBatchId, t);
+  const cardBatch = useCardBatch(cardBatchId, t);
   const importedCount = cardBatch.autoCount + cardBatch.userCount;
   // 「我在寻找」✦ 建议由 AI 按已保存的目标与资料挑选；forGoal 记录它对应哪一版目标，目标变了才重新请求。
   const [seekSuggest, setSeekSuggest] = useState<{ forGoal: string; labels: string[]; status: "idle" | "loading" | "ready" | "error" }>({ forGoal: "", labels: [], status: "idle" });
@@ -508,7 +509,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
                 {view === "import" ? (
                   <div className="ob-stack" data-screen-label="06 带入人脉">
                     <StepHead title={t({ zh: "带入你已有的人脉", en: "Bring in the people you already know" })} sub={t({ zh: "不带入也完全可以——Orbit 会通过活动帮你从零建立。拍下手边的名片，iOrbit 就能开始判断谁值得现在联系。", en: "Totally optional — Orbit helps you build from zero through events. Snap the cards you have and iOrbit can start judging who's worth contacting now." })} />
-                    <OnboardingCardImport
+                    <CardBatchImport
                       available={cardScanAvailable}
                       batch={cardBatch}
                       onBatchStarted={setCardBatchId}
@@ -527,7 +528,9 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
                     {view === "import" ? (
                       <span className="ob-finish">
                         {cardBatchId && (!cardBatch.reviewing || cardBatch.pending.length > 0) ? (
-                          <span className="ob-finish-note">{t({ zh: "没确认完的名片会留在「人脉 → 导入人脉」里", en: "Unfinished cards stay under Network → Import" })}</span>
+                          <span className="ob-finish-note">{cardBatch.reviewing
+                            ? t({ zh: "没确认完的名片会留在「人脉 → 导入人脉」里", en: "Unfinished cards stay under Network → Import" })
+                            : t({ zh: "可以先完成设置，上传和解析会在后台继续，完成后提醒你", en: "Go ahead — upload and reading continue in the background; we'll let you know" })}</span>
                         ) : null}
                         <button className="btn ob-btn-dark" onClick={finish} type="button">
                           {importedCount > 0 ? t({ zh: "完成设置，进入 Orbit", en: "Finish and enter Orbit" }) : cardBatchId ? t({ zh: "先完成设置", en: "Finish setup for now" }) : t({ zh: "暂时跳过，完成设置", en: "Skip for now and finish" })}

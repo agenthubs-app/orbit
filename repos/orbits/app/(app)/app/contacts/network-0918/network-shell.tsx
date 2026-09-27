@@ -295,12 +295,15 @@ export const NETWORK_STYLES = `
 [data-orbit-real-page="network"] .nw-import-method-hint { font-size: 12px; color: #9FA3C4; }
 [data-orbit-real-page="network"] .nw-import-panel { border: 1px solid #E8E9F6; border-radius: 18px; background: #FFFFFF; padding: 26px; display: flex; flex-direction: column; gap: 16px; }
 [data-orbit-real-page="network"] .nw-import-panel-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-[data-orbit-real-page="network"] .nw-import-panel-link { font-size: 14px; color: #4B4FC7; text-decoration: underline; white-space: nowrap; }
+/* 「10 名片确认」子页（Network v2 398–404 行）：全宽，顶部「← 导入人脉」 */
+[data-orbit-real-page="network"] .nw-import-job { display: flex; flex-direction: column; gap: 22px; }
+[data-orbit-real-page="network"] .btn.nw-import-back { align-self: flex-start; display: flex; align-items: center; gap: 8px; height: auto; padding: 7px 14px; border: 1px solid #DDDEFA; border-radius: 999px; background: #FFFFFF; color: #3B3F7A; font-size: 13px; font-weight: 400; letter-spacing: 0; line-height: normal; transition: none; }
+[data-orbit-real-page="network"] .btn.nw-import-back:hover { background: #ECEEFB; color: #3B3F7A; }
+[data-orbit-real-page="network"] .btn.nw-import-back:active { transform: none; }
 /* 跨域 <a> 字色门禁（tests/ui/orbit-0918-anchor-colour.test.ts）：这一行落成 <a>，
    作用域基线 a:hover { color:#0E1225 } 的特指度高于单类规则，会在 hover 时把设计的
    #4B4FC7 换掉。设计稿这条链接没有 style-hover，所以这里只是把基线中和回原色，
    不是新增一个悬停态。同文件 .nw-link / .btn.nw-textlink 已是同一写法。 */
-[data-orbit-real-page="network"] .nw-import-panel-link:hover { color: #4B4FC7; }
 [data-orbit-real-page="network"] .nw-import-box { border: 1px solid #E8E9F6; border-radius: 18px; background: #FFFFFF; padding: 26px; display: flex; flex-direction: column; gap: 14px; }
 [data-orbit-real-page="network"] .nw-import-note { display: flex; gap: 12px; padding: 14px; border: 1px solid #E8E9F6; border-radius: 12px; }
 [data-orbit-real-page="network"] .nw-import-note-icon { width: 36px; height: 36px; border-radius: 10px; background: #ECEEFB; color: #4B4FC7; display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
@@ -501,6 +504,7 @@ export const NETWORK_STYLES = `
 [data-orbit-real-page="network"] .nw-ov-copy { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 [data-orbit-real-page="network"] .nw-ov-l { font-size: 12px; color: #6B6F99; }
 [data-orbit-real-page="network"] .nw-ov-v { font-size: 15px; }
+[data-orbit-real-page="network"] .nw-card-notes { margin: 10px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; line-height: 1.7; color: #3A3E66; }
 [data-orbit-real-page="network"] .nw-ov-d { font-size: 12px; color: #6B6F99; line-height: 1.5; }
 [data-orbit-real-page="network"] .nw-detail-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 20px; }
 [data-orbit-real-page="network"] .nw-detail-col { display: flex; flex-direction: column; gap: 20px; }

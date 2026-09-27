@@ -441,6 +441,7 @@ export function contactDetailRouteToOrbitContactsViewModel(
     lastEventId: eventId,
     lineId: model.contact.lineId ?? "",
     location: displayText(model.contact.location, language),
+    ...(model.contact.cardNotes ? { cardNotes: model.contact.cardNotes } : {}),
     met: displayText(model.contact.source.label, language),
     note:
       displayText(

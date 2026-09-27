@@ -25,6 +25,14 @@ import type {
   BusinessCardIngestRepository,
   IngestQueryClient,
 } from "../../../../../../features/acquisition/business-card-ingest-v2/repository";
+import {
+  ContactMergeRejected,
+  findContactCandidate,
+  listActorContactRecords,
+  mergeCardIntoContact,
+  type CardContactFields,
+  type ContactCandidate,
+} from "../../../../../../features/contacts/business-card-contact-match";
 import { createLiveBusinessCardContactWriteService } from "../../../../../../features/contacts/live-contact-write-service";
 import { createStorageBusinessCardContactWriteProvider } from "../../../../../../features/contacts/storage/contact-write-live-record-provider";
 import { createPostgresLiveRecordStore } from "../../../../../../shared/storage/postgres-live-record-store";
@@ -356,6 +364,32 @@ export function createIngestV2BatchDetailHandler(deps: IngestV2HandlerDeps = {})
   };
 }
 
+/**
+ * 最后一张照片传完即在服务端开始识别：用户上传后离开页面（新用户引导「先完成设置」、关掉标签页）
+ * 也不会卡在「待开始识别」。finalizeBatch 自带批次锁与幂等分支，并发/重复调用安全；
+ * 任何失败都不影响本次上传的响应（客户端或下一张上传会再试）。
+ */
+async function finalizeWhenAllUploaded(
+  deps: IngestV2HandlerDeps,
+  runtime: Parameters<Parameters<typeof withAuthedRuntime>[1]>[0]["runtime"],
+  actorId: string,
+  batchId: string,
+): Promise<void> {
+  try {
+    // 与手动 finalize 同一道预检：没有 OCR provider 时批次保持 collecting。
+    const configured = deps.isOcrProviderConfigured?.() ?? createConfiguredBusinessCardCloudOcrProvider() !== null;
+    if (!configured) return;
+    const detail = await runtime.repository.getBatch({ actorId, batchId });
+    if (!detail || detail.batch.status !== "collecting") return;
+    const awaiting = detail.items.some((item) => item.status === "awaiting_upload");
+    const uploaded = detail.items.some((item) => item.status === "uploaded");
+    if (awaiting || !uploaded) return;
+    await runtime.repository.finalizeBatch({ actorId, batchId });
+  } catch {
+    // 并发 finalize / 批次已变更：交给后续上传或客户端重试。
+  }
+}
+
 export function createIngestV2UploadHandler(deps: IngestV2HandlerDeps = {}) {
   return async function PUT(
     request: Request,
@@ -376,7 +410,8 @@ export function createIngestV2UploadHandler(deps: IngestV2HandlerDeps = {}) {
       if (!item) {
         return jsonError(new AppError("NOT_FOUND", `item ${itemId} was not found`), mode);
       }
-      if (item.status === "uploaded" && item.imageDigest === digest) {
+      // 同字节重传幂等：包括最后一张传完后批次已自动开始识别（item 已进入 queued/processing/…）。
+      if (item.status !== "awaiting_upload" && item.status !== "excluded" && item.imageDigest === digest) {
         return NextResponse.json(success({ item, alreadyUploaded: true }), {
           headers: runtimeBoundaryHeaders(mode),
         });
@@ -404,6 +439,7 @@ export function createIngestV2UploadHandler(deps: IngestV2HandlerDeps = {}) {
         if (result.alreadyUploaded) {
           await runtime.store.delete(stored.objectKey).catch(() => undefined);
         }
+        await finalizeWhenAllUploaded(deps, runtime, actorId, id);
         return NextResponse.json(
           success({ item: result.item, alreadyUploaded: result.alreadyUploaded }),
           { headers: runtimeBoundaryHeaders(mode) },
@@ -523,7 +559,10 @@ export function createIngestV2CancelHandler(deps: IngestV2HandlerDeps = {}) {
 // ---- 复核动作（方案 §五）----------------------------------------------------
 
 class DuplicateReviewSignal extends Error {
-  constructor(public readonly duplicateContactId: string) {
+  constructor(
+    public readonly duplicateContactId: string,
+    public readonly candidate: ContactCandidate | null = null,
+  ) {
     super("duplicate review required");
   }
 }
@@ -547,17 +586,24 @@ function confirmationFingerprint(body: {
   role: string;
   email: string;
   phone: string;
+  address?: string;
+  mergeIntoContactId?: string;
   relationshipContext: string;
   notes: string;
   allowDuplicate?: boolean;
 }): string {
+  // 地址、合并目标是后加的字段：为空时不进规范化对象，旧确认的指纹保持不变、可安全重放。
+  const address = body.address?.trim() ? { address: body.address } : {};
+  const merge = body.mergeIntoContactId ? { mergeIntoContactId: body.mergeIntoContactId } : {};
   const canonical = {
+    ...address,
     allowDuplicate: body.allowDuplicate === true,
     confirmationIntentId: body.confirmationIntentId,
     displayName: body.displayName,
     email: body.email,
     expectedCardItems: [...body.expectedCardItems].sort((a, b) => a.itemId.localeCompare(b.itemId)),
     fieldSources: Object.fromEntries(Object.entries(body.fieldSources).sort(([a], [b]) => a.localeCompare(b))),
+    ...merge,
     notes: body.notes,
     organization: body.organization,
     phone: body.phone,
@@ -567,9 +613,8 @@ function confirmationFingerprint(body: {
   return createHash("sha256").update(JSON.stringify(canonical)).digest("hex");
 }
 
-/** 把确认事务的 client 包装成 record store，让联系人写入与 item 转换同事务。 */
-function buildTxContactService(client: IngestQueryClient, workspaceId: string) {
-  const txStore = createPostgresLiveRecordStore({
+function recordStoreFor(client: IngestQueryClient) {
+  return createPostgresLiveRecordStore<Record<string, unknown>>({
     client: {
       async query(text: string, values?: readonly unknown[]) {
         const result = await client.query(text, values);
@@ -577,6 +622,11 @@ function buildTxContactService(client: IngestQueryClient, workspaceId: string) {
       },
     },
   });
+}
+
+/** 把确认事务的 client 包装成 record store，让联系人写入与 item 转换同事务。 */
+function buildTxContactService(client: IngestQueryClient, workspaceId: string) {
+  const txStore = recordStoreFor(client);
   const provider = createStorageBusinessCardContactWriteProvider({
     store: txStore,
     workspaceId,
@@ -667,6 +717,7 @@ function createConfirmLikeHandler(
       if (!confirmation.success) {
         return jsonError(new AppError("VALIDATION_ERROR", "Card confirmation intent, source versions, or field provenance is invalid."), mode);
       }
+      let merged = false;
       try {
         const confirmed = await runtime.repository.confirmCard({
           actorId,
@@ -678,8 +729,43 @@ function createConfirmLikeHandler(
           expectedItems: confirmation.data.expectedCardItems,
           fieldSources: confirmation.data.fieldSources,
           async createContact(client) {
+            const evidenceIds = cardItems.map((entry) => `evidence:business-card-batch:${entry.id}:${entry.side}`);
+            const card: CardContactFields = {
+              address: confirmation.data.address ?? "",
+              displayName: confirmation.data.displayName,
+              email: confirmation.data.email,
+              organization: confirmation.data.organization,
+              phone: confirmation.data.phone,
+              role: confirmation.data.role,
+            };
+            const store = recordStoreFor(client);
+            const mergeInto = async (contactId: string) => {
+              merged = true;
+              return mergeCardIntoContact({
+                actorId,
+                card,
+                cardNotes: confirmation.data.notes,
+                contactId,
+                evidenceIds,
+                store,
+                workspaceId: runtime.workspaceId,
+              });
+            };
+            // 用户选了「已有联系人，合并」。
+            if (confirmation.data.mergeIntoContactId) return mergeInto(confirmation.data.mergeIntoContactId);
+            if (confirmation.data.allowDuplicate !== true) {
+              const candidate = findContactCandidate(
+                await listActorContactRecords(store, runtime.workspaceId, actorId),
+                actorId,
+                card,
+              );
+              // 所有字段都与已有联系人一致：就是这个人，直接并入，不新建也不再询问。
+              if (candidate?.identical) return mergeInto(candidate.contactId);
+              if (candidate) throw new DuplicateReviewSignal(candidate.contactId, candidate);
+            }
             const contacts = buildTxContactService(client, runtime.workspaceId);
             const result = await contacts.confirmBusinessCardContact({
+              ...(confirmation.data.address?.trim() ? { location: confirmation.data.address } : {}),
               actorId,
               actorLabel: actorId,
               allowDuplicate: confirmation.data.allowDuplicate === true,
@@ -687,7 +773,7 @@ function createConfirmLikeHandler(
               displayName: confirmation.data.displayName,
               draftId: `business-card-batch:${id}:${item.cardId}`,
               email: confirmation.data.email,
-              evidenceIds: cardItems.map((entry) => `evidence:business-card-batch:${entry.id}:${entry.side}`),
+              evidenceIds,
               imageDigest: createHash("sha256").update(cardItems.map((entry) => entry.imageDigest ?? entry.id).join("\n")).digest("hex"),
               notes: confirmation.data.notes,
               organization: confirmation.data.organization,
@@ -719,6 +805,7 @@ function createConfirmLikeHandler(
             contactId: confirmedItem.confirmedContactId,
             item: confirmedItem,
             items: confirmed.items,
+            merged,
             replayed: confirmed.replayed,
             state: "created",
           }),
@@ -728,6 +815,7 @@ function createConfirmLikeHandler(
         if (error instanceof DuplicateReviewSignal) {
           return NextResponse.json(
             success({
+              candidate: error.candidate,
               duplicateContactId: error.duplicateContactId,
               state: "duplicate_review",
             }),
@@ -736,6 +824,9 @@ function createConfirmLikeHandler(
         }
         if (error instanceof ContactWriteRejected) {
           return jsonError(new AppError("VALIDATION_ERROR", error.message), mode);
+        }
+        if (error instanceof ContactMergeRejected) {
+          return jsonError(new AppError("CONFLICT", error.message), mode);
         }
         throw error;
       }
@@ -805,6 +896,55 @@ export function createIngestV2ImageHandler(deps: IngestV2HandlerDeps = {}) {
           ...Object.fromEntries(new Headers(runtimeBoundaryHeaders(mode)).entries()),
         },
       });
+    });
+  };
+}
+
+// ---- 复核页：查「可能是同一个联系人」-----------------------------------------
+
+function cardFieldsFrom(value: unknown): CardContactFields | null {
+  if (!isRecord(value)) return null;
+  return {
+    address: textField(value.address),
+    displayName: textField(value.displayName),
+    email: textField(value.email),
+    organization: textField(value.organization),
+    phone: textField(value.phone),
+    role: textField(value.role),
+  };
+}
+
+/**
+ * POST { cards: [{ cardId, fields }] } → { matches: { [cardId]: candidate | null } }。
+ * 字段取复核页当前草稿（用户可能改过），只在本人名下的联系人里找；只读，不改任何数据。
+ */
+export function createIngestV2DuplicateCandidatesHandler(deps: IngestV2HandlerDeps = {}) {
+  return async function POST(
+    request: Request,
+    context: { params: Promise<{ id: string }> },
+  ): Promise<Response> {
+    return withAuthedRuntime(deps, async ({ actorId, runtime, mode }) => {
+      const { id } = await context.params;
+      const detail = await runtime.repository.getBatch({ actorId, batchId: id });
+      if (!detail) return jsonError(new AppError("NOT_FOUND", `batch ${id} was not found`), mode);
+      const parsed: unknown = await request.json().catch(() => null);
+      const cards = isRecord(parsed) && Array.isArray(parsed.cards) ? parsed.cards : null;
+      if (!cards || cards.length > INGEST_V2_MAX_ITEMS) {
+        return jsonError(new AppError("VALIDATION_ERROR", "cards must be an array of at most one batch."), mode);
+      }
+      const requests = cards.flatMap((entry) => {
+        const fields = isRecord(entry) ? cardFieldsFrom(entry.fields) : null;
+        const cardId = isRecord(entry) ? textField(entry.cardId) : "";
+        return fields && cardId ? [{ cardId, fields }] : [];
+      });
+      const matches: Record<string, ContactCandidate | null> = {};
+      if (requests.length && runtime.repository.withReadClient) {
+        const records = await runtime.repository.withReadClient((client) =>
+          listActorContactRecords(recordStoreFor(client), runtime.workspaceId, actorId),
+        );
+        for (const { cardId, fields } of requests) matches[cardId] = findContactCandidate(records, actorId, fields);
+      }
+      return NextResponse.json(success({ matches }), { headers: runtimeBoundaryHeaders(mode) });
     });
   };
 }

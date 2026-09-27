@@ -863,6 +863,7 @@ const CARD_FIELD_LABELS: Record<IngestV2Field, { en: string; zh: string; ja: str
   role: { en: "Title", zh: "职位", ja: "役職" },
   email: { en: "Email", zh: "邮箱", ja: "メール" },
   phone: { en: "Phone", zh: "电话", ja: "電話" },
+  address: { en: "Address", zh: "地址", ja: "住所" },
 };
 
 function CardReviewPane({

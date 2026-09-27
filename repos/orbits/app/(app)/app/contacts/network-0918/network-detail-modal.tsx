@@ -94,6 +94,14 @@ export function NetworkDetailModal({ contact, closeHref, onFollow, extra }: { co
     { icon: "▤", label: "LINE", value: (contact.lineId ?? "").trim() },
   ].filter((c) => c.value);
 
+  // 名片备注里的「正面 · 文件名」是确认页的分组标题，详情里不显示。
+  const cardNotes = (contact.cardNotes ?? "")
+    .split(/\r?\n/)
+    .filter((line) => !/^(正面|反面) · /.test(line.trim()))
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+
   const bullets = (items: readonly string[]) =>
     items.length ? items.map((item, i) => <span key={i} className="nw-li"><span className="nw-li-dot">•</span>{item}</span>) : <span className="nw-li"><span className="nw-li-dot">•</span>{dash}</span>;
 
@@ -138,6 +146,12 @@ export function NetworkDetailModal({ contact, closeHref, onFollow, extra }: { co
                 </div>
               ))}
             </div>
+          </div>
+        ) : null}
+        {cardNotes ? (
+          <div className="nw-panel nw-panel-16" data-network-detail-card-notes>
+            <strong className="nw-panel-t">{t({ en: "Business card notes", zh: "名片备注" })}</strong>
+            <p className="nw-card-notes">{cardNotes}</p>
           </div>
         ) : null}
         <div className="nw-detail-cols">

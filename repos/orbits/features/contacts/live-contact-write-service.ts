@@ -122,6 +122,7 @@ function contactFor(input: {
   const role = nonEmpty(input.request.role);
   const email = nonEmpty(input.request.email);
   const phone = nonEmpty(input.request.phone);
+  const location = nonEmpty(input.request.location ?? "");
   const profileSnippet = nonEmpty(input.request.relationshipContext);
   const notes = nonEmpty(input.request.notes ?? "");
 
@@ -130,6 +131,7 @@ function contactFor(input: {
     displayName: input.request.displayName.trim(),
     ...(organization ? { organization } : {}),
     ...(role ? { role } : {}),
+    ...(location ? { location } : {}),
     ...(email ? { primaryEmail: email } : {}),
     ...(phone ? { primaryPhone: phone } : {}),
     ...(profileSnippet ? { profileSnippet } : {}),

@@ -16,6 +16,8 @@ export interface OrbitContactView {
   initial: string;
   lineId: string;
   location?: string;
+  /** 名片备注：确认名片时聚合的其他信息与合并补充，只读展示。 */
+  cardNotes?: string;
   lastEventId: string;
   met: string;
   note: string;

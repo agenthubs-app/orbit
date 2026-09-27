@@ -143,6 +143,8 @@ export interface BusinessCardIngestRepository {
     actorId: string;
     batchId: string;
   }): Promise<IngestBatchDTO>;
+  /** 只读查询用的连接（复核页查「可能是同一个联系人」）。不开事务、不加锁。 */
+  withReadClient?<T>(fn: (client: IngestQueryClient) => Promise<T>): Promise<T>;
   sweepDueBatches(): Promise<{ expiredBatchIds: string[] }>;
   reapExhaustedLeases(): Promise<{ reapedItemIds: string[] }>;
   listPendingNotifications(input: { limit: number }): Promise<
@@ -1290,6 +1292,10 @@ export function createBusinessCardIngestRepository(options: {
       });
       if (!result) throw new IngestConflictError("BATCH_GONE", "batch expired");
       return result;
+    },
+
+    withReadClient(fn) {
+      return withClient(fn);
     },
 
     async cancelBatch({ actorId, batchId }) {

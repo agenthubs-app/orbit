@@ -268,6 +268,8 @@ export interface ContactDetail {
   wechatId?: string;
   lineId?: string;
   website?: string;
+  /** 名片上没进固定字段的信息（传真、微信、罗马字姓名、其他地址…）以及合并时的「名片补充」。 */
+  cardNotes?: string;
   relationshipContext: string;
   publicProfile: ContactDetailPublicProfile;
   source: ContactDetailSourceReference;

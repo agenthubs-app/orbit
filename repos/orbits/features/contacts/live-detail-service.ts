@@ -610,6 +610,7 @@ function detailFor(input: {
     wechatId: input.contact.handles?.wechatId ?? "",
     lineId: input.contact.handles?.lineId ?? "",
     website: input.contact.handles?.website ?? "",
+    ...(input.contact.notes?.trim() ? { cardNotes: input.contact.notes.trim() } : {}),
     relationshipContext,
     publicProfile: publicProfileFor({
       contact: input.contact,

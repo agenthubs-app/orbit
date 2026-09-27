@@ -29,7 +29,8 @@ test("scan is the default selected method and the V2 work area is mounted", () =
   assert.equal((html.match(/class="nw-import-method[^"]* nw-import-method-on"/g) ?? []).length, 1);
   assert.match(html, /data-import-method="scan"[^>]*>[\s\S]*?class="btn nw-import-cta nw-import-cta-on"/);
   assert.match(html, /class="nw-import-panel"/);
-  assert.match(html, /class="bci-start"/);
+  assert.match(html, /data-card-uploader/);
+  assert.match(html, /批量上传名片照片/);
   // 导入记录：SSR 阶段尚未拉取，不渲染行也不渲染空态（空态只在拉取结果为空时出现）；表头与设计一致
   assert.doesNotMatch(html, /class="btn nw-import-row"|class="nw-empty"/);
   for (const h of ["导入时间", "来源", "文件 / 活动", "导入总数", "新增联系人", "合并联系人", "状态", "操作"]) assert.match(html, new RegExp(h));
@@ -39,15 +40,16 @@ test("unavailable capture renders the note card with the reason copy instead of 
   const html = render(
     <NetworkImport availability={{ available: false, reason: "ocr_provider_unconfigured" }} />,
   );
-  assert.doesNotMatch(html, /class="bci-start"/);
+  assert.doesNotMatch(html, /data-card-uploader/);
   assert.match(html, /nw-import-note[\s\S]*未配置云端 OCR/);
 });
 
-test("?job= renders the batch detail in the work area and keeps the method cards", () => {
+test("?job= renders the full-width card review sub-page with a back link (Network v2 10 名片确认)", () => {
   const html = render(<NetworkImport availability={availability} jobId="batch:abc" />);
   assert.match(html, /data-network-import-job="batch:abc"/);
-  assert.doesNotMatch(html, /class="bci-start"/);
-  assert.match(html, /扫描名片夹/);
+  assert.match(html, /class="btn nw-import-back"[^>]*>← 导入人脉</);
+  assert.doesNotMatch(html, /data-card-uploader/);
+  assert.doesNotMatch(html, /data-import-method=/, "method cards are not part of the review sub-page");
 });
 
 test("?method=csv highlights the csv card and shows the coming-soon note instead of the V2 entry", () => {
@@ -55,7 +57,7 @@ test("?method=csv highlights the csv card and shows the coming-soon note instead
   assert.match(html, /data-import-method="csv"[^>]*class="nw-import-method nw-import-method-soon nw-import-method-on"|class="nw-import-method nw-import-method-soon nw-import-method-on"[^>]*data-import-method="csv"/);
   assert.equal((html.match(/class="nw-import-method[^"]* nw-import-method-on"/g) ?? []).length, 1);
   assert.match(html, /nw-import-note[\s\S]*即将开放/);
-  assert.doesNotMatch(html, /class="bci-start"/);
+  assert.doesNotMatch(html, /data-card-uploader/);
 });
 
 test("import log keeps a distinct error state for a failed batches fetch instead of the empty-state copy", async () => {

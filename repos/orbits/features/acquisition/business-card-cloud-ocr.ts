@@ -169,18 +169,39 @@ function validPhone(value: string): boolean {
   return digits.length >= 7 && digits.length <= 18;
 }
 
-// 只有地址和电话/传真才可能带「本社／関西事業所」这类办公地点标签；
-// 微信/LINE/网站的 label 是渠道名（"WeChat"），把它们算进来会让
-// MULTIPLE_OFFICES 在几乎每张带 messenger 的名片上误报（实测复现）。
-function officeLabels(
-  extraction: BusinessCardStructuredExtraction,
-): readonly string[] {
-  return [
+// 名片上印的「Tel / Fax / mobile phone / 《office》/ 電話 / 携帯」是渠道名，
+// 不是办公地点。去掉这些通用词后还剩下内容（「本社」「関西事業所」「Shanghai」）
+// 才算地点标签——此前把渠道名也当地点，只要同时印了电话和传真就误报
+// MULTIPLE_OFFICES（实测：单一地址的日本名片被要求确认主要办公地点）。
+const GENERIC_CONTACT_LABEL_RE =
+  /tel(?:ephone)?|phone|fax|facsimile|mobile|cell(?:ular)?|office|direct|main|line|dial|number|address|addr|email|e-?mail|电话|電話|手机|手機|携帯|传真|傳真|ファッ?クス|住所|地址|办公室?|辦公室?|事務所|直通|直线|直線|代表|总机|總機|番号|号码|號碼|[^\p{L}\p{N}]+/giu;
+
+function locationLabel(label: string | null): string | null {
+  if (!label) return null;
+  const remainder = label.replace(GENERIC_CONTACT_LABEL_RE, "").toLowerCase();
+  // 去掉通用词后只剩一两个字母（"T"、"M"、"No"）的是缩写，同样不是地点。
+  return remainder.length > 2 || /[^\x00-\x7f]/.test(remainder) ? remainder : null;
+}
+
+function normalizedAddress(value: string): string {
+  return value.replace(/[^\p{L}\p{N}]+/gu, "").toLowerCase();
+}
+
+// 多个办公地点 = 印了多个不同的地址，或号码/地址上出现了多个不同的地点标签。
+// 微信/LINE/网站不参与：它们的 label 是渠道名。
+function hasMultipleOffices(extraction: BusinessCardStructuredExtraction): boolean {
+  if (new Set(extraction.addresses.map((item) => normalizedAddress(item.value))).size > 1) {
+    return true;
+  }
+  const labels = [
     ...extraction.addresses.map((item) => item.label),
     ...extraction.contactPoints
       .filter((item) => item.type === "phone" || item.type === "mobile" || item.type === "fax")
       .map((item) => item.label),
-  ].filter((label): label is string => Boolean(label));
+  ]
+    .map(locationLabel)
+    .filter((label): label is string => Boolean(label));
+  return new Set(labels).size > 1;
 }
 
 function hasSharedContactValue(
@@ -202,19 +223,26 @@ function hasSharedContactValue(
   return [...labelsByValue.values()].some((labels) => labels.size > 1);
 }
 
+const CJK_NAME_RE = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uac00-\ud7af]/u;
+// 一个罗马字/拼音音节：可选声母（含促音双写、拗音）+ 元音 + 可选 n/ng/r 韵尾。
+const ROMANIZED_TOKEN_RE =
+  /^(?:(?:(?:ch|sh|zh|ts|[kgnhbpmr]y|([bcdfghjklmpqrstvwxyz])\1?|n)?[aeiouvüāēīōūâêîôû]+(?:ng|n|r)?)|n)+$/iu;
+
+// 汉字/假名姓名配罗马字读音（富沢 弘治 / Tomizawa Hiroharu）是名片的常态，
+// 两种文字当然「不相等」——此前据此一律要求复核，每张日文名片都被拦下。
+// 只在读音明显不像罗马字/拼音（「UNRELATED PERSON」这类另一个人的名字）、
+// 或两个都是拉丁字母却拼法不同时才标出。
 function hasNativeRomanizedPairRequiringReview(
   extraction: BusinessCardStructuredExtraction,
 ): boolean {
-  const nativeName = extraction.nativeFullName?.replace(/\s/g, "").toLowerCase();
-  const romanizedName = extraction.romanizedFullName
-    ?.replace(/\s/g, "")
-    .toLowerCase();
-
-  return Boolean(
-    nativeName &&
-      romanizedName &&
-      nativeName !== romanizedName,
-  );
+  const nativeName = extraction.nativeFullName?.trim();
+  const romanizedName = extraction.romanizedFullName?.trim();
+  if (!nativeName || !romanizedName) return false;
+  if (CJK_NAME_RE.test(nativeName)) {
+    const tokens = romanizedName.split(/[\s\-·・.,]+/u).filter(Boolean);
+    return !tokens.every((token) => ROMANIZED_TOKEN_RE.test(token));
+  }
+  return nativeName.replace(/\s/g, "").toLowerCase() !== romanizedName.replace(/\s/g, "").toLowerCase();
 }
 
 // 法律实体后缀词典（有限集）：转写原文含后缀而结构化公司名缺失时强制复核。
@@ -252,6 +280,17 @@ function normalizedEmailForm(value: string): string {
 
 function phoneDigits(value: string): string {
   return value.replace(/\D/g, "");
+}
+
+// 两串号码是否「差一两位」：长度相差 ≤1，逐位对齐后不同的位 ≤2。
+function nearlySameDigits(left: string, right: string): boolean {
+  if (Math.abs(left.length - right.length) > 1) return false;
+  const width = Math.max(left.length, right.length);
+  let differences = Math.abs(left.length - right.length);
+  for (let index = 0; index < Math.min(left.length, right.length); index += 1) {
+    if (left[index] !== right[index]) differences += 1;
+  }
+  return differences > 0 && differences <= 2 && width >= 7;
 }
 
 export interface BusinessCardReviewContext {
@@ -299,7 +338,7 @@ export function reviewIssuesForBusinessCard(
     }
   }
 
-  if (new Set(officeLabels(extraction)).size > 1) {
+  if (hasMultipleOffices(extraction)) {
     issues.push({
       code: "MULTIPLE_OFFICES",
       field: "addresses",
@@ -366,7 +405,12 @@ export function reviewIssuesForBusinessCard(
         continue;
       }
       const digits = phoneDigits(point.value);
-      if (digits && verifiedPhones.length > 0 && !verifiedPhones.includes(digits)) {
+      // 传真不进联系人的电话字段，复核读数又常常整条漏掉传真——漏读不算分歧。
+      // 传真只在复核读出「差一两位的另一个号码」时才标出。
+      const disagrees = point.type === "fax"
+        ? verifiedPhones.some((verified) => nearlySameDigits(verified, digits))
+        : !verifiedPhones.includes(digits);
+      if (digits && verifiedPhones.length > 0 && !verifiedPhones.includes(digits) && disagrees) {
         issues.push({
           code: "VERIFICATION_MISMATCH",
           field: "contactPoints",

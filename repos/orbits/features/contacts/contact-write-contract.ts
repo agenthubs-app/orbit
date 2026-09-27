@@ -29,6 +29,8 @@ export interface ConfirmBusinessCardContactInput {
   email: string;
   evidenceIds: readonly string[];
   imageDigest: string;
+  /** 名片地址，写入联系人 location。 */
+  location?: string;
   notes?: string;
   organization: string;
   phone: string;

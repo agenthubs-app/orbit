@@ -96,3 +96,14 @@ test("detail modal mounts the relationship initialization panel above the timeli
   const html2 = renderToStaticMarkup(<NetworkDetailModal contact={contact} closeHref="/app/contacts" onFollow={() => {}} />);
   assert.doesNotMatch(html2, /我的关系设置|data-initialization-refresh/);
 });
+
+test("detail modal shows the business-card notes without the review page's photo headings, and omits the panel when empty", () => {
+  const withNotes = { ...(contact as object), cardNotes: "正面 · IMG_1.png\n传真: 03-6800-3712\n微信(Wechat): yoshikuni26" } as never;
+  const html = renderToStaticMarkup(<NetworkDetailModal contact={withNotes} closeHref="/app/contacts" onFollow={() => {}} />);
+  assert.match(html, /data-network-detail-card-notes/);
+  assert.match(html, /名片备注/);
+  assert.match(html, /传真: 03-6800-3712\n微信\(Wechat\): yoshikuni26/);
+  assert.doesNotMatch(html, /IMG_1\.png/);
+  const without = renderToStaticMarkup(<NetworkDetailModal contact={contact} closeHref="/app/contacts" onFollow={() => {}} />);
+  assert.doesNotMatch(without, /data-network-detail-card-notes/);
+});

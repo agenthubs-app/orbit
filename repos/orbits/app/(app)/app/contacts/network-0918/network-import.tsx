@@ -1,8 +1,9 @@
 /**
  * 「导入人脉」（Network v2 第 303–392 行）。
- * 四种方式卡 1:1；只有「扫描名片夹」接真实能力（名片 V2 入口 BusinessCardIngestV2Start），
+ * 四种方式卡 1:1；只有「扫描名片夹」接真实能力（名片批量导入 card-batch-0918，新 UI 浅紫色上传区），
  * 其余三张 CTA 为「即将开放」占位（无接口不做假流程）。
- * 设计稿的 CSV 预览表（328–360）被名片 V2 工作区替代；`?job=` 时工作区改为该批次详情。
+ * 设计稿的 CSV 预览表（328–360）被名片上传区替代；`?job=` 时是设计稿子页面「10 名片确认」
+ * （正在解析 → 逐张确认 → 小结），全宽、带「← 导入人脉」。
  * 导入记录 = 名片 V2 批次列表（与 business-card-batch-entry 相同的 /batches/v2 接口）。
  */
 "use client";
@@ -13,8 +14,8 @@ import { useRouter } from "next/navigation";
 import type { BusinessCardCaptureAvailability } from "../../../../../features/acquisition/business-card-capture-availability";
 import type { IngestBatchDTO } from "../../../../../features/acquisition/business-card-ingest-v2/contract";
 import { useOrbitLanguage } from "../../orbit-language-context";
-import { BusinessCardIngestV2Start } from "../ingest-v2/business-card-ingest-v2-start";
-import { BusinessCardIngestV2View } from "../ingest-v2/business-card-ingest-v2-view";
+import { CardBatchImport, CardBatchReminders } from "../card-batch-0918/card-batch-ui";
+import { useCardBatch } from "../card-batch-0918/use-card-batch";
 import { INGEST_V2_API_BASE } from "../ingest-v2/ingest-v2-client";
 import { INGEST_V2_COPY } from "../ingest-v2/ingest-v2-copy";
 import { NetworkShell } from "./network-shell";
@@ -75,6 +76,7 @@ export function NetworkImport({ availability, initialMethod = "scan", jobId }: {
   const [batches, setBatches] = useState<readonly IngestBatchDTO[] | null | "error">(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const selected = METHODS.find((m) => m.key === method) ?? METHODS[2]!;
+  const batch = useCardBatch(jobId ?? null, t);
   const dash = "—";
 
   useEffect(() => {
@@ -96,23 +98,15 @@ export function NetworkImport({ availability, initialMethod = "scan", jobId }: {
   }, [jobId]);
 
   function chooseScan() {
-    // 批次详情态下工作区被详情占用：CTA 改为导航回扫描方式；否则选中并滚到工作区。
-    if (jobId) {
-      router.push(preserveHref("/app/contacts/new?method=scan"));
-      return;
-    }
     setMethod("scan");
     panelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
+  function openBatch(batchId: string) {
+    router.push(preserveHref(jobHref(batchId)));
+  }
+
   function renderWorkArea() {
-    if (jobId) {
-      return (
-        <div data-network-import-job={jobId}>
-          <BusinessCardIngestV2View batchId={jobId} />
-        </div>
-      );
-    }
     if (method !== "scan") {
       return (
         <div className="nw-import-note">
@@ -129,7 +123,20 @@ export function NetworkImport({ availability, initialMethod = "scan", jobId }: {
         </div>
       );
     }
-    return <BusinessCardIngestV2Start />;
+    return <CardBatchImport available batch={batch} onBatchStarted={openBatch} onReset={() => router.push(preserveHref("/app/contacts/new?method=scan"))} t={t} />;
+  }
+
+  if (jobId) {
+    return (
+      <NetworkShell screen="import">
+        <div className="nw-import nw-import-job" data-network-import-job={jobId}>
+          <a className="btn nw-import-back" href={preserveHref("/app/contacts/new?method=scan")}>{t({ en: "← Import contacts", zh: "← 导入人脉" })}</a>
+          <CardBatchImport available={availability.available} batch={batch} onBatchStarted={openBatch} onReset={() => router.push(preserveHref("/app/contacts/new?method=scan"))} t={t} />
+          {/* 在确认页上：进入确认界面即视为已提醒，全站不再弹窗。 */}
+          <CardBatchReminders batch={batch} onOpen={() => undefined} t={t} viewingImport />
+        </div>
+      </NetworkShell>
+    );
   }
 
   return (
@@ -144,7 +151,7 @@ export function NetworkImport({ availability, initialMethod = "scan", jobId }: {
               </div>
               <div className="nw-import-methods">
                 {METHODS.map((m) => {
-                  const on = method === m.key && !jobId;
+                  const on = method === m.key;
                   const soon = m.key !== "scan";
                   return (
                     <div key={m.key} className={["nw-import-method", soon ? "nw-import-method-soon" : "", on ? "nw-import-method-on" : ""].filter(Boolean).join(" ")} data-import-method={m.key}>
@@ -166,10 +173,9 @@ export function NetworkImport({ availability, initialMethod = "scan", jobId }: {
             <div className="nw-import-panel" ref={panelRef}>
               <div className="nw-import-panel-head">
                 <div className="nw-card-head">
-                  <h2 className="nw-h2">{jobId ? t({ en: "Batch detail", zh: "批次详情" }) : t(selected.title)}</h2>
-                  <span className="nw-card-hint">{jobId ? t({ en: "Upload, recognition and review of this card batch.", zh: "该批名片的上传、识别与逐张复核。" }) : t(selected.desc)}</span>
+                  <h2 className="nw-h2">{t(selected.title)}</h2>
+                  <span className="nw-card-hint">{t(selected.desc)}</span>
                 </div>
-                {jobId ? <a className="nw-import-panel-link" href={preserveHref("/app/contacts/new?method=scan")}>{t({ en: "Back to import", zh: "返回导入" })}</a> : null}
               </div>
               {renderWorkArea()}
             </div>

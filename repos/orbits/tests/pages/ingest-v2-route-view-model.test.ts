@@ -192,6 +192,27 @@ test("confirmation payload freezes both sides, source IDs and intent without fab
   assert.equal(missingResult.blockedReason, "missing_image_digest");
 });
 
+test("the first printed address fills the address field, leaves notes, and reaches the payload", () => {
+  const extraction = {
+    ...EMPTY_EXTRACTION,
+    addresses: [
+      { label: "office", value: "〒171-0002 Minami-ikebukuro 2-23-4 Toshima-City Tokyo Japan" },
+      { label: "工場", value: "埼玉県テスト市5-6-7" },
+    ],
+    fullName: "富沢 弘治",
+    nativeFullName: "富沢 弘治",
+  };
+  const current = card([item({ extraction })]);
+  const draft = initialCardDraft(current);
+  assert.equal(draft.fields.address, "〒171-0002 Minami-ikebukuro 2-23-4 Toshima-City Tokyo Japan");
+  assert.equal(draft.fieldSources.address, "item-front");
+  assert.ok(!draft.fields.notes.includes("Minami-ikebukuro"), "the chosen address is not duplicated into notes");
+  assert.ok(draft.fields.notes.includes("埼玉県テスト市5-6-7"), "other printed addresses stay in notes");
+  const result = buildConfirmationPayload(current, draft, "intent:address");
+  assert.equal(result.payload?.address, draft.fields.address);
+  assert.equal(result.payload?.fieldSources.address, "item-front");
+});
+
 test("manual entry may submit a failed side, but normal confirm waits for both extracted", () => {
   const failed = card([
     item(),

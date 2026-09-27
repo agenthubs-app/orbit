@@ -19,6 +19,7 @@ export const INGEST_V2_FIELDS = [
   "role",
   "email",
   "phone",
+  "address",
 ] as const;
 
 export type IngestV2Field = (typeof INGEST_V2_FIELDS)[number];
@@ -29,6 +30,7 @@ export interface IngestV2FixedFields {
   role: string;
   email: string;
   phone: string;
+  address: string;
   relationshipContext: string;
   notes: string;
 }
@@ -157,6 +159,7 @@ function itemFieldValue(item: IngestItemDTO, field: IngestV2Field): string {
     case "role": return trimmed(extraction.title);
     case "email": return trimmed(extraction.emails[0]?.value);
     case "phone": return preferredPhone(extraction);
+    case "address": return trimmed(extraction.addresses[0]?.value);
   }
 }
 
@@ -345,11 +348,16 @@ function sourceMatches(snapshot: IngestV2SourceSnapshot, item: IngestItemDTO): b
   return snapshot.itemId === item.id && snapshot.version === item.version && snapshot.imageDigest === item.imageDigest;
 }
 
-function notesForCard(card: IngestV2CardViewModel, fields: Pick<IngestV2FixedFields, "email" | "phone">): string {
+function notesForCard(card: IngestV2CardViewModel, fields: Pick<IngestV2FixedFields, "email" | "phone" | "address">): string {
+  const chosenAddress = fields.address.trim();
   return card.items
     .flatMap((item) => {
       if (!item.extraction) return [];
-      const notes = aggregateBusinessCardNotes(item.extraction, {
+      // 已进「地址」固定字段的那条不再重复写进备注；其余地址（多个办公地点）照旧保留。
+      const extraction = chosenAddress
+        ? { ...item.extraction, addresses: item.extraction.addresses.filter((address) => address.value.trim() !== chosenAddress) }
+        : item.extraction;
+      const notes = aggregateBusinessCardNotes(extraction, {
         email: fields.email || null,
         phone: fields.phone || null,
       });
@@ -358,7 +366,7 @@ function notesForCard(card: IngestV2CardViewModel, fields: Pick<IngestV2FixedFie
     .join("\n\n");
 }
 
-function notesSourceFingerprint(card: IngestV2CardViewModel, fields: Pick<IngestV2FixedFields, "email" | "phone">): string {
+function notesSourceFingerprint(card: IngestV2CardViewModel, fields: Pick<IngestV2FixedFields, "email" | "phone" | "address">): string {
   return JSON.stringify({
     sources: card.items.map((item) => ({ id: item.id, version: item.version, imageDigest: item.imageDigest })),
     notes: notesForCard(card, fields),
@@ -571,6 +579,7 @@ export function buildConfirmationPayload(
       role: draft.fields.role,
       email: draft.fields.email,
       phone: draft.fields.phone,
+      address: draft.fields.address,
       relationshipContext: draft.fields.relationshipContext,
       notes: draft.fields.notes,
       ...(allowDuplicate ? { allowDuplicate: true } : {}),

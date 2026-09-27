@@ -199,12 +199,14 @@ const ingestCardFieldSourcesSchema: z.ZodType<Contract.IngestCardFieldSourcesCon
   role: identity.nullable(),
   email: identity.nullable(),
   phone: identity.nullable(),
+  address: identity.nullable().optional(),
 }).transform((value): Contract.IngestCardFieldSourcesContract => ({
   displayName: value.displayName,
   organization: value.organization,
   role: value.role,
   email: value.email,
   phone: value.phone,
+  ...(value.address !== undefined ? { address: value.address } : {}),
 }));
 
 function normalizeLegacyIngestItem(value: unknown): unknown {
@@ -318,6 +320,8 @@ export const ingestCardConfirmationInputSchema: z.ZodType<Contract.IngestCardCon
   role: z.string(),
   email: z.string(),
   phone: z.string(),
+  address: z.string().optional(),
+  mergeIntoContactId: identity.optional(),
   relationshipContext: z.string(),
   notes: z.string(),
   allowDuplicate: z.boolean().optional(),
@@ -341,6 +345,8 @@ export const ingestCardConfirmationInputSchema: z.ZodType<Contract.IngestCardCon
     role: value.role,
     email: value.email,
     phone: value.phone,
+    ...(value.address !== undefined ? { address: value.address } : {}),
+    ...(value.mergeIntoContactId !== undefined ? { mergeIntoContactId: value.mergeIntoContactId } : {}),
     relationshipContext: value.relationshipContext,
     notes: value.notes,
   };

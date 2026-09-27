@@ -10,7 +10,7 @@ import {
   isAutoImportEligible,
   needsReview,
   parseStage,
-} from "../../app/(app)/app/profile/onboarding-0918/onboarding-card-model";
+} from "../../app/(app)/app/contacts/card-batch-0918/card-batch-model";
 
 function item(overrides: Partial<IngestItemDTO> = {}): IngestItemDTO {
   return {
@@ -67,4 +67,14 @@ test("batch status maps to the three parsing stages", () => {
   assert.equal(parseStage("processing"), "recognize");
   assert.equal(parseStage("ready_for_review"), "review");
   assert.equal(parseStage(undefined), "upload", "no detail yet must never count as review (would mark the reminder as seen)");
+});
+
+test("a second-read disagreement names the field in plain words instead of pipeline jargon", () => {
+  const reason = (field: string) => {
+    const { card, draft } = cardOf({ reviewIssues: [{ code: "VERIFICATION_MISMATCH", field, message: "" }] as IngestItemDTO["reviewIssues"] });
+    return cardReason(card, draft, false).zh;
+  };
+  assert.equal(reason("emails"), "邮箱可能有字读错");
+  assert.equal(reason("contactPoints"), "电话可能有字读错");
+  assert.equal(reason("organization"), "公司名可能有字读错");
 });

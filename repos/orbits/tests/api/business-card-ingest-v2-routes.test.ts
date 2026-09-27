@@ -12,6 +12,7 @@ import {
   createIngestV2CancelHandler,
   createIngestV2CollectionHandlers,
   createIngestV2ConfirmHandler,
+  createIngestV2DuplicateCandidatesHandler,
   createIngestV2FinalizeHandler,
   createIngestV2UploadHandler,
   createIngestV2ReplaceHandler,
@@ -373,13 +374,15 @@ test("v2 confirm creates the contact in the same transaction, exactly once", { s
     );
     assert.equal(contactRows.rows[0].n, 1);
 
-    // 第二张同邮箱 → duplicate_review，不创建第二个联系人
+    // 第二张同邮箱但职位不同 → duplicate_review，不创建第二个联系人
+    // （所有字段都相同的卡会直接并入已有联系人，见下方「links identical cards」）
     const duplicateResponse = await confirm(
       new Request("http://test/confirm", {
         method: "POST",
         body: JSON.stringify({
           displayName: "王 小明",
           organization: "Orbit",
+          role: "CTO",
           email: "xiaoming@example.com",
         }),
       }),
@@ -409,6 +412,7 @@ test("v2 confirm creates the contact in the same transaction, exactly once", { s
         body: JSON.stringify({
           displayName: "王 小明",
           organization: "Orbit",
+          role: "CTO",
           email: "xiaoming@example.com",
           allowDuplicate: true,
         }),
@@ -493,11 +497,13 @@ test("v2 two-sided confirm binds both source snapshots and replays one contact",
     assert.ok(secondClaimed);
     await runtime.repository.submitExtraction({ itemId: secondClaimed.id, leaseToken: secondClaimed.leaseToken, expectedVersion: secondClaimed.version, extraction, reviewIssues: [], usage: null });
     const secondReview = (await runtime.repository.getBatch({ actorId: "actor:test", batchId: secondBatch.id }))!;
-    const secondBody = { ...body, confirmationIntentId: "confirm:card-one-second", expectedCardItems: secondReview.items.map(item => ({ itemId: item.id, version: item.version, imageDigest: item.imageDigest })), fieldSources: { displayName: secondItem.id, organization: secondItem.id, role: secondItem.id, email: secondItem.id, phone: null }, displayName: "次郎", email: "jiro@example.test", allowDuplicate: true };
+    const secondBody = { ...body, confirmationIntentId: "confirm:card-one-second", expectedCardItems: secondReview.items.map(item => ({ itemId: item.id, version: item.version, imageDigest: item.imageDigest })), fieldSources: { displayName: secondItem.id, organization: secondItem.id, role: secondItem.id, email: secondItem.id, phone: null, address: null }, displayName: "次郎", email: "jiro@example.test", address: "東京都テスト区1-2-3", allowDuplicate: true };
     const secondResponse = await confirm(new Request("http://test/confirm", { method: "POST", body: JSON.stringify(secondBody) }), params({ id: secondBatch.id, itemId: secondItem.id }));
     assert.equal(secondResponse.status, 200);
     const secondPayload = await envelope(secondResponse);
     assert.notEqual(secondPayload.contactId, payloads[0]!.contactId, "same client cardId in another batch must create an independent contact");
+    const secondContact = await pool.query(`select payload->>'location' as location from orbit_records where collection_name = 'contacts' and record_id = $1`, [secondPayload.contactId]);
+    assert.equal(secondContact.rows[0]?.location, "東京都テスト区1-2-3", "the reviewed address is saved as the contact's location");
     const finalCount = await pool.query(`select count(*)::int as n from orbit_records where collection_name = 'contacts'`);
     assert.equal(finalCount.rows[0].n, 2);
   });
@@ -527,7 +533,8 @@ test("v2 finalize refuses when the provider is unconfigured and keeps collecting
     const created = await envelope(createResponse);
     const batch = created.batch as { id: string };
     const items = created.items as Array<{ id: string }>;
-    const upload = createIngestV2UploadHandler(deps);
+    // 最后一张上传完会在服务端自动开始识别——但同样要过 provider 预检：未配置时批次保持 collecting。
+    const upload = createIngestV2UploadHandler({ ...deps, isOcrProviderConfigured: () => false });
     await upload(
       new Request("http://test/upload", {
         method: "PUT",
@@ -561,5 +568,115 @@ test("v2 finalize refuses when the provider is unconfigured and keeps collecting
     );
     assert.equal(cancelled.status, 200);
     assert.equal(((await envelope(cancelled)).batch as { status: string }).status, "cancelled");
+  });
+});
+
+test("v2 last upload starts recognition on the server; re-uploading the same bytes afterwards stays idempotent", { skip }, async () => {
+  await withHarness(async ({ deps }) => {
+    const heic = await readFile(FIXTURE_HEIC);
+    const collection = createIngestV2CollectionHandlers(deps);
+    const createResponse = await collection.POST(
+      new Request("http://test/batches", {
+        method: "POST",
+        body: JSON.stringify({
+          idempotencyKey: "auto-finalize",
+          manifest: [{ fileName: "a.heic", mimeType: "image/heic", rawSize: heic.length, seq: 1, clientDigest: sha256(heic) }],
+        }),
+      }),
+    );
+    const created = await envelope(createResponse);
+    const batch = created.batch as { id: string };
+    const items = created.items as Array<{ id: string }>;
+    const upload = createIngestV2UploadHandler({ ...deps, isOcrProviderConfigured: () => true });
+    const put = () => upload(
+      new Request("http://test/upload", { method: "PUT", body: new Uint8Array(heic), headers: { "content-type": "image/heic" } }),
+      params({ id: batch.id, itemId: items[0]!.id }),
+    );
+    assert.equal((await put()).status, 200);
+    const detail = createIngestV2BatchDetailHandler(deps);
+    const after = await envelope(await detail(new Request(`http://test/batches/${batch.id}`), params({ id: batch.id })));
+    assert.equal((after.batch as { status: string }).status, "processing", "no manual finalize needed");
+    const replay = await put();
+    assert.equal(replay.status, 200);
+    assert.equal((await envelope(replay)).alreadyUploaded, true);
+  });
+});
+
+test("v2 confirm links identical cards to the existing contact, surfaces similar ones, and merges on request", { skip }, async () => {
+  await withHarness(async ({ deps, runtime, pool }) => {
+    const heic = await readFile(FIXTURE_HEIC);
+    const created = await envelope(await createIngestV2CollectionHandlers(deps).POST(new Request("http://test/api/v2", { method: "POST", body: JSON.stringify({
+      idempotencyKey: "key-merge",
+      manifest: ["a", "b", "c"].map((card, index) => ({ cardId: `card:${card}`, side: "front", fileName: `${card}.heic`, mimeType: "image/heic", rawSize: heic.length, seq: index + 1, clientDigest: sha256(heic) })),
+    }) })));
+    const batch = created.batch as { id: string };
+    const upload = createIngestV2UploadHandler(deps);
+    for (const item of created.items as Array<{ id: string }>) {
+      assert.equal((await upload(new Request("http://test/upload", { method: "PUT", body: new Uint8Array(heic), headers: { "content-type": "image/heic" } }), params({ id: batch.id, itemId: item.id }))).status, 200);
+    }
+    await createIngestV2FinalizeHandler(deps)(new Request("http://test/finalize", { method: "POST" }), params({ id: batch.id }));
+    const extraction: BusinessCardStructuredExtraction = {
+      fullName: "佐々木 芳邦", nativeFullName: "佐々木 芳邦", romanizedFullName: null, organization: "TEN法律事務所", departments: [], title: "顧問",
+      emails: [], contactPoints: [{ label: "MOBILE", type: "mobile", value: "090-1838-1818" }], website: null,
+      addresses: [{ label: null, value: "東京都文京区本郷4丁目2-2" }], certifications: [], detectedLanguages: ["ja"],
+    };
+    for (const item of await runtime.repository.claimItems({ limit: 3 })) {
+      await runtime.repository.submitExtraction({ itemId: item.id, leaseToken: item.leaseToken, expectedVersion: item.version, extraction, reviewIssues: [], usage: null });
+    }
+    const review = (await runtime.repository.getBatch({ actorId: "actor:test", batchId: batch.id }))!;
+    const itemFor = (card: string) => review.items.find(item => item.cardId === `card:${card}`)!;
+    const fields = { displayName: "佐々木 芳邦", organization: "TEN法律事務所", role: "顧問", email: "", phone: "090-1838-1818", address: "東京都文京区本郷4丁目2-2" };
+    const body = (card: string, overrides: Record<string, unknown> = {}) => {
+      const item = itemFor(card);
+      return {
+        confirmationIntentId: `confirm:${card}:${JSON.stringify(overrides)}`,
+        expectedCardItems: [{ itemId: item.id, version: item.version, imageDigest: item.imageDigest }],
+        fieldSources: { displayName: item.id, organization: item.id, role: item.id, email: null, phone: item.id, address: item.id },
+        ...fields, relationshipContext: "", notes: "正面 · x.heic\n传真: 03-6800-3712", ...overrides,
+      };
+    };
+    const confirm = createIngestV2ConfirmHandler(deps);
+    const post = async (card: string, payload: Record<string, unknown>) => {
+      const response = await confirm(new Request("http://test/confirm", { method: "POST", body: JSON.stringify(payload) }), params({ id: batch.id, itemId: itemFor(card).id }));
+      assert.equal(response.status, 200);
+      return envelope(response);
+    };
+
+    const first = await post("a", body("a"));
+    assert.equal(first.state, "created");
+    assert.equal(first.merged, false);
+
+    const identical = await post("b", body("b"));
+    assert.equal(identical.state, "created", "an identical card is linked without asking");
+    assert.equal(identical.merged, true);
+    assert.equal(identical.contactId, first.contactId);
+
+    const similar = await post("c", body("c", { organization: "別の事務所" }));
+    assert.equal(similar.state, "duplicate_review");
+    const candidate = similar.candidate as { contactId: string; identical: boolean; matchedOn: string[]; organization: string };
+    assert.equal(candidate.contactId, first.contactId);
+    assert.equal(candidate.identical, false);
+    assert.deepEqual(candidate.matchedOn, ["phone"]);
+    assert.equal(candidate.organization, "TEN法律事務所");
+
+    const lookup = await envelope(await createIngestV2DuplicateCandidatesHandler(deps)(
+      new Request("http://test/duplicates", { method: "POST", body: JSON.stringify({ cards: [{ cardId: "card:c", fields: { ...fields, organization: "別の事務所" } }, { cardId: "card:x", fields: { ...fields, displayName: "別人", phone: "03-0000-0000" } }] }) }),
+      params({ id: batch.id }),
+    ));
+    const matches = lookup.matches as Record<string, { contactId: string } | null>;
+    assert.equal(matches["card:c"]?.contactId, first.contactId);
+    assert.equal(matches["card:x"], null);
+
+    const merged = await post("c", body("c", { organization: "別の事務所", mergeIntoContactId: first.contactId }));
+    assert.equal(merged.state, "created");
+    assert.equal(merged.merged, true);
+    assert.equal(merged.contactId, first.contactId);
+
+    const contacts = await pool.query(`select payload from orbit_records where collection_name = 'contacts'`);
+    assert.equal(contacts.rows.length, 1, "three cards of the same person leave one contact");
+    const payload = contacts.rows[0].payload as { organization: string; location: string; notes: string };
+    assert.equal(payload.organization, "TEN法律事務所", "merging never overwrites an existing value");
+    assert.equal(payload.location, "東京都文京区本郷4丁目2-2");
+    assert.match(payload.notes, /公司: 別の事務所/);
   });
 });

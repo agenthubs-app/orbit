@@ -1,5 +1,5 @@
 /**
- * 引导内名片导入的纯模型（无 React / fetch）：把名片 V2 批次（features/acquisition/business-card-ingest-v2）
+ * 名片批量导入（新用户引导 / 人脉导入 / 全站提醒共用）的纯模型（无 React / fetch）：把名片 V2 批次（features/acquisition/business-card-ingest-v2）
  * 映射成设计稿「10 名片确认」需要的东西——哪些卡可自动导入、哪些要人工核对、每个字段的核对状态。
  *
  * 设计稿按「置信度 %」着色，但识别管线不产出逐字段置信度；这里只用管线真实给出的依据：
@@ -11,12 +11,12 @@ import {
   type IngestV2CardDraft,
   type IngestV2CardViewModel,
   type IngestV2Field,
-} from "../../contacts/ingest-v2/ingest-v2-route-view-model";
-import type { Copy } from "./onboarding-model";
+} from "../ingest-v2/ingest-v2-route-view-model";
+export type Copy = { zh: string; en: string };
 
 export type ParseStage = "upload" | "recognize" | "review";
 
-// reviewIssue.field（识别层的字段名）→ 确认表单字段。地址等不在表单里的问题不标到字段上。
+// reviewIssue.field（识别层的字段名）→ 确认表单字段。不在表单里的问题不标到字段上。
 const ISSUE_FIELD_MAP: Record<string, IngestV2Field> = {
   fullName: "displayName",
   romanizedFullName: "displayName",
@@ -28,6 +28,7 @@ const ISSUE_FIELD_MAP: Record<string, IngestV2Field> = {
   email: "email",
   contactPoints: "phone",
   phones: "phone",
+  addresses: "address",
 };
 
 export function cardIssues(card: IngestV2CardViewModel): IngestItemDTO["reviewIssues"][number][] {
@@ -45,15 +46,22 @@ export function flaggedFields(card: IngestV2CardViewModel, draft: IngestV2CardDr
   return flagged;
 }
 
+// 徽标文案说人话：直接说哪个字段可能不对，不暴露「二次识别」这类管线术语。
 const REASON_COPY: Record<string, Copy> = {
   IDENTITY_MISSING: { zh: "未识别到姓名", en: "No name found" },
-  INVALID_EMAIL: { zh: "邮箱可疑", en: "Email looks off" },
-  INVALID_PHONE: { zh: "电话可疑", en: "Phone looks off" },
-  MULTIPLE_OFFICES: { zh: "多个办公地点", en: "Several offices" },
+  INVALID_EMAIL: { zh: "邮箱格式不对", en: "Email looks off" },
+  INVALID_PHONE: { zh: "电话格式不对", en: "Phone looks off" },
+  MULTIPLE_OFFICES: { zh: "有多个办公地点", en: "Several offices" },
   SHARED_CONTACT_VALUE: { zh: "号码归属不清", en: "Shared number" },
   NATIVE_ROMANIZED_NAME_CONFLICT: { zh: "姓名写法不一", en: "Name spellings differ" },
-  ORG_SUFFIX_MISSING: { zh: "公司后缀可能缺失", en: "Company suffix missing?" },
-  VERIFICATION_MISMATCH: { zh: "二次识别不一致", en: "Second read disagrees" },
+  ORG_SUFFIX_MISSING: { zh: "公司名可能少了后缀", en: "Company suffix missing?" },
+};
+
+// 同一张名片读了两遍，某个字段两次读出来不一样 → 这个字段可能有字读错了。
+const MISREAD_COPY: Record<string, Copy> = {
+  contactPoints: { zh: "电话可能有字读错", en: "Phone may be misread" },
+  emails: { zh: "邮箱可能有字读错", en: "Email may be misread" },
+  organization: { zh: "公司名可能有字读错", en: "Company may be misread" },
 };
 
 /** 左侧照片面板上的「⚠ 原因」徽标：取最需要人看的那一条。 */
@@ -62,6 +70,7 @@ export function cardReason(card: IngestV2CardViewModel, draft: IngestV2CardDraft
   if (card.hasTerminalFailure) return { zh: "识别失败", en: "Recognition failed" };
   if (draft.conflictedFields.length) return { zh: "正反面不一致", en: "Sides disagree" };
   const issue = cardIssues(card)[0];
+  if (issue?.code === "VERIFICATION_MISMATCH") return MISREAD_COPY[issue.field] ?? { zh: "可能有字读错", en: "May be misread" };
   if (issue) return REASON_COPY[issue.code] ?? { zh: "需要核对", en: "Needs a check" };
   if (!draft.fields.displayName.trim()) return REASON_COPY.IDENTITY_MISSING!;
   return { zh: "需要核对", en: "Needs a check" };
