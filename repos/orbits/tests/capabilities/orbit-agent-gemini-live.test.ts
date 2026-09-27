@@ -2392,9 +2392,12 @@ test("live Gemini Orbit Agent maps network search into contact recommendations",
     model: "gemini-3.5-flash",
   });
 
-  const result = await service.sendMessage({
+  // contacts.recommend runs through the default live artifact service, whose
+  // language normalization would otherwise use an exported provider key and send
+  // a real, paid request (0123). The planner above is the only model this test uses.
+  const result = await withoutProviderKeys(() => service.sendMessage({
     message: "谁认识餐饮行业客户？",
-  });
+  }));
 
   assert.equal(result.success, true);
   assert.equal(result.data?.artifacts[0]?.task.kind, "contact_recommendations");

@@ -277,7 +277,11 @@ test("contact detail mapping translates live source and relationship tokens into
     adapterModule.contactDetailRouteToOrbitContactsViewModel(routeModel);
   const contact = viewModel.connections[0];
   const encounter = contact?.encounters[0];
+  // b55a7cebe: a QR scan with a person (not "QR scan at <event>") no longer invents
+  // an event, so the localized source label is shown in the 认识于 field (met).
+  assert.equal(viewModel.events.length, 0);
   const visibleText = [
+    contact?.met,
     contact?.note,
     contact?.offering,
     encounter?.context.reason,

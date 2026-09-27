@@ -82,10 +82,14 @@ export const LIVE_SEED_COLLECTION_NAMES: readonly MockFixtureCollectionName[] =
       !(RETIRED_LEGACY_CHAT_COLLECTIONS as readonly string[]).includes(collectionName),
   );
 
+// The expectation must match what the seed writes: sub-threshold notifications are
+// skipped (0086), so a verifier expecting them failed every fresh seed (0123).
 export const GENERATED_FIXTURE_LIVE_SEED_EXPECTED_COLLECTIONS =
   LIVE_SEED_COLLECTION_NAMES.map((collectionName) => ({
     collectionName,
-    recordIds: fixtureRecordsFor(collectionName).map((record) => record.id),
+    recordIds: fixtureRecordsFor(collectionName)
+      .filter((record) => collectionName !== "notifications" || !belowNotificationContentThreshold(record))
+      .map((record) => record.id),
   })) satisfies readonly GeneratedFixtureLiveSeedCollection[];
 
 function fixtureRecordsFor(

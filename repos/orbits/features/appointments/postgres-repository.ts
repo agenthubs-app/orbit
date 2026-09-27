@@ -10,6 +10,19 @@ function payload(row: Row): AppointmentAggregate {
   return value as AppointmentAggregate;
 }
 
+const CONCURRENT_UPDATE_SQLSTATES = new Set(["40001", "40P01"]);
+
+async function concurrentUpdateAsConflict<TValue>(run: () => Promise<TValue>): Promise<TValue> {
+  try {
+    return await run();
+  } catch (error) {
+    if (typeof error === "object" && error !== null && "code" in error && CONCURRENT_UPDATE_SQLSTATES.has(String(error.code))) {
+      throw new AppointmentError("APPOINTMENT_CONFLICT", "The appointment changed concurrently.");
+    }
+    throw error;
+  }
+}
+
 async function receipt(client: EventOperationsSqlExecutor, workspaceId: string, actorId: string, key: string, command: string, requestHash: string): Promise<AppointmentAggregate | null> {
   const result = await client.query<Row>(`select aggregate.payload
     from appointment_command_receipts receipt
@@ -92,7 +105,10 @@ export function createPostgresAppointmentRepository(runtime: EventOperationsPost
       return result.rows.map(payload);
     },
     async mutate(input, operation): Promise<AppointmentMutationResult> {
-      return client.transaction(async (tx) => {
+      // SERIALIZABLE: a writer whose snapshot predates a concurrent commit fails with
+      // 40001 (or 40P01) before it can reach the version check. That is the same
+      // lost race as a stale expectedVersion, so report it as a conflict (0123).
+      return concurrentUpdateAsConflict(() => client.transaction(async (tx) => {
         const prior = await receipt(tx, workspaceId, input.actorId, input.idempotencyKey, input.command, input.requestHash);
         if (prior) return { appointment: prior, replayed: true };
         const result = await tx.query<Row>(`select payload from appointment_aggregates
@@ -109,7 +125,7 @@ export function createPostgresAppointmentRepository(runtime: EventOperationsPost
         await insertOutbox(tx, workspaceId, value.outbox);
         await insertReceipt(tx, workspaceId, input.actorId, input.idempotencyKey, input.command, input.requestHash, value.appointment);
         return { appointment: value.appointment, replayed: false };
-      });
+      }));
     },
   };
 }

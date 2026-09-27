@@ -1620,6 +1620,11 @@ const LIVE_MOBILE_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
 // new screens (Add-tag controls, the three ChipGroup onChange callbacks, Back →
 // /app/home, and the separate mobile form / mobile Save) and were dropped rather
 // than re-attached to unrelated lines. Evidence texts stay the 2026-07-29 record.
+// 2026-09-26 (17478f5e6) rewrote the persona tag editor (addDraft → addTag, the goal group
+// split into its own card), so the two profile-persona.tsx observations (tag ✕ toggle and
+// custom-tag Enter) no longer describe an unchanged handler. Per the audit rule "changed
+// handlers require new runtime evidence" they were dropped (0123), not re-anchored; a fresh
+// browser run of /app/profile persona editing may restore them.
 const LIVE_PROFILE_INTERACTION_EVIDENCE = new Map(
   [
     [
@@ -1651,16 +1656,6 @@ const LIVE_PROFILE_INTERACTION_EVIDENCE = new Map(
       "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx:163",
       "Bio and opener accepted distinct multi-word Chinese values and updated the business-card preview before save.",
       "Textarea edits remained local until save.",
-    ],
-    [
-      "repos/orbits/app/(app)/app/profile/profile-0918/profile-persona.tsx:72",
-      "Pressed offering, seeking, and topic chips each toggled off without affecting another tag group.",
-      "Tag toggles changed local form state only until save.",
-    ],
-    [
-      "repos/orbits/app/(app)/app/profile/profile-0918/profile-persona.tsx:81",
-      "All three custom-tag fields accepted distinct audit values; pressing Enter in the topic field added 审计话题-可信数据 and cleared the draft.",
-      "Draft input and Enter handling changed local tag state only until save.",
     ],
     [
       "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx:123",
@@ -3030,39 +3025,39 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
       "Activating ◷ 历史记录 on the overview mounted the history drawer (0 → 1 [data-orbit-agent-history-drawer] node), rendered five real conversation rows under the 历史记录 heading, and moved keyboard focus inside the drawer. No conversation request was issued: the list was already resident from the page load.",
     ],
     [
-      "app/agent/iorbit-0918/iorbit-history-drawer.tsx:164",
+      "app/agent/iorbit-0918/iorbit-history-drawer.tsx:185",
       "＋ 新对话 closed the drawer and left the actor on /app/agent with an empty thread (zero rendered turns, composer visible). No session was written by the activation itself.",
     ],
     [
-      "app/agent/iorbit-0918/iorbit-history-drawer.tsx:246",
+      "app/agent/iorbit-0918/iorbit-history-drawer.tsx:277",
       "Activating a history row closed the drawer, moved the URL to /app/agent?session=evidence-0924-a and restored that stored conversation's two turns from the server.",
     ],
     [
-      "app/agent/iorbit-0918/iorbit-history-drawer.tsx:277",
+      "app/agent/iorbit-0918/iorbit-history-drawer.tsx:308",
       "··· opened exactly one [data-orbit-agent-history-menu] for its own row (0 → 1 menus) with the pin, rename, move-to and delete items visible, and reported aria-expanded=true.",
     ],
     [
-      "app/agent/iorbit-0918/iorbit-history-drawer.tsx:304",
+      "app/agent/iorbit-0918/iorbit-history-drawer.tsx:335",
       "置顶 on the last row (index 4 of 5) issued exactly one PATCH /api/ai/conversations/sessions/<id>, moved that row to index 0 with a 已置顶 · 2026年9月18日 meta line, stayed at index 0 across a hard reload, and flipped the menu item text to 取消置顶. Activating it again issued a second PATCH and returned the row to unpinned.",
     ],
     [
-      "app/agent/iorbit-0918/iorbit-history-drawer.tsx:317",
+      "app/agent/iorbit-0918/iorbit-history-drawer.tsx:348",
       "重命名 replaced the row body with the rename form (rename inputs 0 → 1) prefilled with that conversation's current title, and closed the ··· menu.",
     ],
     [
-      "app/agent/iorbit-0918/iorbit-history-drawer.tsx:213",
+      "app/agent/iorbit-0918/iorbit-history-drawer.tsx:244",
       "The rename field arrived focused and prefilled with the current title, accepted typed replacement text, and emptying it disabled the adjacent 保存 button. Typing alone issued no request.",
     ],
     [
-      "app/agent/iorbit-0918/iorbit-history-drawer.tsx:228",
+      "app/agent/iorbit-0918/iorbit-history-drawer.tsx:259",
       "保存 issued exactly one PATCH /api/ai/conversations/sessions/evidence-0924-a followed by the list refetch, replaced the row title with the typed value, and the new title was still present after a hard reload. The button is disabled while the field is empty, so an empty rename cannot be submitted.",
     ],
     [
-      "app/agent/iorbit-0918/iorbit-history-drawer.tsx:236",
+      "app/agent/iorbit-0918/iorbit-history-drawer.tsx:267",
       "取消 discarded the typed replacement, left the stored title unchanged and issued zero requests. This control was found broken by the same runtime run: the invisible ··· button (position:absolute, opacity:0, pointer-events:auto) covered the centre of 取消 (cancel x1157–1203, ··· x1177–1205; document.elementFromPoint at the cancel centre returned button.btn.ir-hist-more), so a mouse click opened the menu instead. The ··· button is no longer rendered while its row is renaming, and the observation above is from the re-run after that fix.",
     ],
     [
-      "app/agent/iorbit-0918/iorbit-history-drawer.tsx:355",
+      "app/agent/iorbit-0918/iorbit-history-drawer.tsx:386",
       "删除对话 opened the confirmation alert dialog 「删除这个对话？」 offering 保留对话 / 删除对话 rather than deleting immediately. Confirming issued exactly one DELETE /api/ai/conversations/sessions/evidence-0924-c, removed the row (6 → 5) and the removal survived a hard reload; the stored record moved to lifecycle_state=deleted rather than being dropped.",
     ],
   ].map(([suffix, actualResult]) => [

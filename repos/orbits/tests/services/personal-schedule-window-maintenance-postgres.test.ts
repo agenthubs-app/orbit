@@ -17,7 +17,10 @@ test('maintenance extends recurring reminder horizons without any inbox GET or a
   const schema = 'schedule_window_' + randomUUID().replaceAll('-', '');
   const pool = new Pool({ connectionString: url, max: 3, options: `-c search_path=${schema} -c statement_timeout=5000 -c lock_timeout=1000` });
   const client = createTransactionalPostgresClient({ connectionString: url, pool });
-  const workspaceId = 'w', actorId = 'a'; let clock = '2026-09-25T00:00:00.000Z'; const now = () => clock;
+  // Advisory locks are database-wide, not per schema: with a shared 'w'/'a' every
+  // concurrently running test file contended on the same personal-schedule lock and the
+  // window worker's try-lock skipped the extension (0123). Keep the key unique per test.
+  const workspaceId = 'w:' + schema, actorId = 'a'; let clock = '2026-09-25T00:00:00.000Z'; const now = () => clock;
   const store = createPostgresLiveRecordStore({ client });
   const work = createInboxProjectionWorkRepository({ client, workspaceId, now });
   const runtime = { store, client, workspaceId, now, inboxProjection: work };
@@ -47,7 +50,10 @@ async function withWindowFixture(operation: (fixture: {
   const schema = 'schedule_window_' + randomUUID().replaceAll('-', '');
   const pool = new Pool({ connectionString: url, max: 4, options: `-c search_path=${schema} -c statement_timeout=5000 -c lock_timeout=1000` });
   const client = createTransactionalPostgresClient({ connectionString: url, pool });
-  const workspaceId = 'w', actorId = 'a'; let clock = '2026-09-25T00:00:00.000Z'; const now = () => clock;
+  // Advisory locks are database-wide, not per schema: with a shared 'w'/'a' every
+  // concurrently running test file contended on the same personal-schedule lock and the
+  // window worker's try-lock skipped the extension (0123). Keep the key unique per test.
+  const workspaceId = 'w:' + schema, actorId = 'a'; let clock = '2026-09-25T00:00:00.000Z'; const now = () => clock;
   const work = createInboxProjectionWorkRepository({ client, workspaceId, now });
   const schedule = createPersonalScheduleService({ client, workspaceId, now, inboxProjection: work, store: createPostgresLiveRecordStore({ client }) });
   try {
@@ -171,7 +177,7 @@ test('cancelled, disabled, removed and foreign schedules cannot extend reminder 
 
 test('idle window discovery is indexed, bounded, and never downloads schedule bodies', { skip: !url, timeout: 20000 }, async () => withWindowFixture(async f => {
   await f.pool.query(`insert into orbit_schedule_reminder_windows(workspace_id,actor_id,series_id,source_revision,state,horizon_through,next_refresh_at,updated_at)
-    select 'w','bulk','series:'||n,'revision',case when n<=10000 then 'active' else 'inactive' end,'2027-01-01','2026-12-01','2026-09-25' from generate_series(1,20000) n`);
+    select $1,'bulk','series:'||n,'revision',case when n<=10000 then 'active' else 'inactive' end,'2027-01-01','2026-12-01','2026-09-25' from generate_series(1,20000) n`, [f.workspaceId]);
   await f.pool.query('analyze orbit_schedule_reminder_windows');
   const read: { sql: string; rows: number }[] = [];
   const client: TransactionalPostgresClient = { ...f.client, transaction: op => f.client.transaction(tx => op({ async query<T>(sql: string, values?: readonly unknown[]) {
@@ -181,7 +187,7 @@ test('idle window discovery is indexed, bounded, and never downloads schedule bo
   assert.equal((await runScheduleReminderWindowPass({ ...f, client, inboxProjection: f.work })).windowExamined, 0);
   assert.equal(read.length, 1); assert.equal(read[0].rows, 0);
   assert.match(read[0].sql, /limit \$3/);
-  const plan = await f.pool.query('explain (format json) ' + read[0].sql, ['w', f.now(), 10]);
+  const plan = await f.pool.query('explain (format json) ' + read[0].sql, [f.workspaceId, f.now(), 10]);
   assert.match(JSON.stringify(plan.rows), /orbit_schedule_reminder_windows_due_idx/);
   read.length = 0;
   assert.equal((await runScheduleReminderWindowPass({ ...f, client, inboxProjection: f.work, clock: () => new Date(f.now()), deadline: Date.parse(f.now()) })).windowDeferred, 1);

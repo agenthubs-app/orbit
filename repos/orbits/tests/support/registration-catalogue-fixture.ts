@@ -54,6 +54,8 @@ export function useRegistrationCatalogueFixture(
     loadLocalEnv();
     const databaseUrl = process.env.ORBIT_EVENT_DATABASE_URL;
     assert.ok(databaseUrl, "Registration integration tests require ORBIT_EVENT_DATABASE_URL pointing to a test database.");
+    // .env holds the Neon URL; if .env.local is missing loadLocalEnv() would fall back to it (0123).
+    assert.ok(["localhost", "127.0.0.1", "::1", "[::1]"].includes(new URL(databaseUrl).hostname), "Registration integration tests only run against a local database.");
     schema = `registration_catalogue_${randomUUID().replaceAll("-", "")}`;
     const workspaceId = `workspace:${schema}`;
     const url = new URL(databaseUrl);
@@ -97,6 +99,12 @@ export function useRegistrationCatalogueFixture(
       ORBIT_LIVE_DATABASE_URL: url.toString(),
       ORBIT_DATABASE_URL: url.toString(),
       ORBIT_WORKSPACE_ID: workspaceId,
+      // loadLocalEnv() above may import ORBIT_DATABASE_TARGET=local from .env.local;
+      // the product would then read ORBIT_LOCAL_DATABASE_URL (the dev database)
+      // instead of this schema (8e5bd493a target switch; 0123).
+      ORBIT_DATABASE_TARGET: "",
+      ORBIT_LOCAL_DATABASE_URL: "",
+      ORBIT_LOCAL_WORKSPACE_ID: "",
       OPENAI_API_KEY: "",
       DEEPSEEK_API_KEY: "",
       GEMINI_API_KEY: "",

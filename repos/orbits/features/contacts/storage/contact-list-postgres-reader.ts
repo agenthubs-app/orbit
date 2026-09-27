@@ -1244,7 +1244,7 @@ interface RuntimeProbeCacheEntry {
   verified: boolean;
 }
 
-const APPROVED_CONTACT_SEARCH_RUNTIME = {
+export const APPROVED_CONTACT_SEARCH_RUNTIME = {
   actual_collversion: "153.136",
   catalog_collversion: "153.136",
   collisdeterministic: true,

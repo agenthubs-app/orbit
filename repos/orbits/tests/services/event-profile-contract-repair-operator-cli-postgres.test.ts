@@ -21,8 +21,17 @@ loadLocalEnv();
 const connectionString = process.env.ORBIT_EVENT_DATABASE_URL;
 
 function command(args: readonly string[], env: NodeJS.ProcessEnv) {
+  // The CLI loads .env.local, whose ORBIT_DATABASE_TARGET=local would redirect it to
+  // ORBIT_LOCAL_DATABASE_URL (the developer's orbit_events) instead of this test's
+  // temporary schema. Pin both targets to the scoped URL (0123).
+  const pinned: NodeJS.ProcessEnv = {
+    ...env,
+    ORBIT_DATABASE_TARGET: "local",
+    ORBIT_LOCAL_DATABASE_URL: env.ORBIT_EVENT_DATABASE_URL,
+  };
+  delete pinned.ORBIT_LOCAL_WORKSPACE_ID;
   return spawnSync("npm", ["--silent", "run", "events:repair-profile-contract", "--", ...args], {
-    cwd: process.cwd(), encoding: "utf8", env, timeout: 25_000,
+    cwd: process.cwd(), encoding: "utf8", env: pinned, timeout: 25_000,
   });
 }
 
@@ -34,6 +43,8 @@ function schemaUrl(value: string, schema: string): string {
 
 async function createTemporaryFixture() {
   assert.ok(connectionString);
+  // loadLocalEnv() falls back to .env when .env.local is absent; never let that reach a remote host (0123).
+  assert.ok(["localhost", "127.0.0.1", "::1", "[::1]"].includes(new URL(connectionString).hostname), "profile repair CLI tests only run against a local database");
   const schema = `profile_repair_operator_cli_${randomUUID().replaceAll("-", "")}`;
   const workspaceId = `workspace:${schema}`;
   const admin = new Pool({ connectionString, max: 1 });
