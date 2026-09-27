@@ -1628,37 +1628,37 @@ const LIVE_MOBILE_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
 const LIVE_PROFILE_INTERACTION_EVIDENCE = new Map(
   [
     [
-      "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx:67",
+      "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx:68",
       "Manual entry and structured text extraction each became the pressed fill method and exposed only the controls belonging to that method.",
       "Method selection changed local presentation only and did not write a profile.",
     ],
     [
-      "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx:70",
+      "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx:71",
       "Scan/import in Import hub opened /app/contacts/new, which truthfully rendered every unconfigured acquisition source as unavailable and performed no upload or contact write.",
       "Navigation only; the profile, contact collection, and acquisition drafts were unchanged.",
     ],
     [
-      "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx:76",
+      "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx:77",
       "The structured-text field preserved eight explicit Chinese profile lines before extraction.",
       "Typing changed local form state only and did not write a profile.",
     ],
     [
-      "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx:79",
+      "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx:80",
       "Extract to form first rejected an empty input with 请先粘贴档案文本再提取。; the labeled Chinese input then populated name, company, title, market, relationship goal, two offering tags, and two seeking tags while requiring review before save.",
       "Extraction produced a local draft only; it made no profile write until the separate save action.",
     ],
     [
-      "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx:131",
+      "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx:135",
       "Every rendered scalar field accepted its audit value; the authenticated email remained readonly and retained audit-permission-1785253354985@example.invalid.",
       "Field edits remained local until save; the readonly email could not be changed by the editor.",
     ],
     [
-      "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx:163",
+      "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx:167",
       "Bio and opener accepted distinct multi-word Chinese values and updated the business-card preview before save.",
       "Textarea edits remained local until save.",
     ],
     [
-      "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx:123",
+      "repos/orbits/app/(app)/app/profile/profile-0918/profile-basic.tsx:127",
       "The desktop form rejected a whitespace-only name, then submitted the complete 100% profile through the actor-scoped PUT and GET readback chain.",
       "One profile record was updated in place; a hard re-entry showed the same values and no duplicate record.",
     ],
