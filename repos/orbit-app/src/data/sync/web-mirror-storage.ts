@@ -1,7 +1,10 @@
 import type { LocalSyncDatabase, LocalSyncSqlValue } from "./local-sync-database-core";
 
-/** Domains the browser may mirror. Notes stay online-only in the browser (PLANNER 0077, 判断 4). */
-export const WEB_MIRROR_DOMAIN_IDS: readonly string[] = ["tasks", "personal-schedule"];
+/**
+ * Domains the browser may mirror. Notes joined in sprint 0125 (user decision
+ * 2026-09-27, accepted risk recorded in docs/phoneweb/local-mirror-threat-model.md).
+ */
+export const WEB_MIRROR_DOMAIN_IDS: readonly string[] = ["notes", "tasks", "personal-schedule"];
 
 /**
  * Browser mirror storage: expo-sqlite's web build (wa-sqlite in a Worker, OPFS

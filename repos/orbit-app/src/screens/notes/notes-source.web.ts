@@ -3,24 +3,60 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { notePath, notesSearchPath } from "../../api/endpoints";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
+import { useWebMirrorStatus } from "../../hooks/useWebMirrorStatus";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { mergeNotePages } from "../../view-models/note-history-pagination";
 import { noteFromPayload, notesPageFromPayload, type NoteView } from "../../view-models/notes";
-import type { NoteDetailSource, NotesListSource, NotesListSourceInput, NotesWriteStatus } from "./notes-source";
+import {
+  useMirrorNoteDetail,
+  useMirrorNotesList,
+  useMirrorNotesWriteStatus,
+  type NoteDetailSource,
+  type NotesListSource,
+  type NotesListSourceInput,
+  type NotesWriteStatus,
+} from "./notes-source-mirror";
+
+export { NOTES_PAGE_SIZE } from "./notes-source-mirror";
+export type { NoteDetailSource, NotesListSource, NotesListSourceInput, NotesMirrorStatus, NotesWriteStatus } from "./notes-source-mirror";
 
 /**
- * Browser notes source: online-only. Notes are not written to the browser
- * mirror (PLANNER 0077 whitelist: tasks and personal-schedule only), so the
- * page keeps the server search with cursor pages it had before sprint 0108.
+ * Browser notes source, the tasks-page pattern of sprint 0078: since sprint
+ * 0125 notes are on the browser mirror whitelist, so the page reads the same
+ * mirror hooks as native (「截至」 offline, writes need the network) whenever
+ * the browser mirror is available. Without it (non-secure context, missing
+ * OPFS/IndexedDB/Web Crypto, open failure) the page keeps the server search
+ * with cursor pages. Both sources always run so the hook order never changes;
+ * each is inert while the other is authoritative.
  */
-const OFFLINE_STATUS = { offline: false, lastSyncedAt: null, syncLabelKey: null } as const;
+const ONLINE_STATUS = { offline: false, lastSyncedAt: null, syncLabelKey: null } as const;
 
 export function useNotesListSource(input: NotesListSourceInput): NotesListSource {
+  const mirrorActive = useWebMirrorStatus().mode === "local-mirror";
+  const fromMirror = useMirrorNotesList(input, mirrorActive);
+  const fromNetwork = useNetworkNotesList(input, !mirrorActive);
+  return mirrorActive ? fromMirror : fromNetwork;
+}
+
+export function useNoteDetailSource(input: { actorId: string; noteId: string; scopeKey: string }): NoteDetailSource {
+  const mirrorActive = useWebMirrorStatus().mode === "local-mirror";
+  const fromMirror = useMirrorNoteDetail(input, mirrorActive);
+  const fromNetwork = useNetworkNoteDetail(input, !mirrorActive);
+  return mirrorActive ? fromMirror : fromNetwork;
+}
+
+export function useNotesWriteStatus(actorId: string): NotesWriteStatus {
+  const mirrorActive = useWebMirrorStatus().mode === "local-mirror";
+  const fromMirror = useMirrorNotesWriteStatus(actorId, mirrorActive);
+  return mirrorActive ? fromMirror : { ...ONLINE_STATUS, async confirmSaved() { return true; } };
+}
+
+function useNetworkNotesList(input: NotesListSourceInput, enabled: boolean): NotesListSource {
   const locale = useOrbitLocale();
   const client = useOrbitApiClient({ scopeKey: input.scopeKey });
   const query = { association: input.association, ...(input.contactId ? { contactId: input.contactId } : {}), q: input.q, limit: 20 };
   const path = notesSearchPath(query);
-  const state = useApiResource<unknown>(path, () => false, { scopeKey: input.scopeKey, cachePolicy: "network-only" });
+  const state = useApiResource<unknown>(path, () => false, { scopeKey: input.scopeKey, cachePolicy: "network-only", enabled });
   const basePage = state.kind === "success" || state.kind === "empty" ? notesPageFromPayload(state.data, input.actorId, locale.language) : null;
   const [extraNotes, setExtraNotes] = useState<NoteView[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -82,13 +118,13 @@ export function useNotesListSource(input: NotesListSourceInput): NotesListSource
     invalid: (state.kind === "success" || state.kind === "empty") && notes === null,
     refreshing: state.refreshing,
     refresh: state.refresh,
-    ...OFFLINE_STATUS,
+    ...ONLINE_STATUS,
   };
 }
 
-export function useNoteDetailSource(input: { actorId: string; noteId: string; scopeKey: string }): NoteDetailSource {
+function useNetworkNoteDetail(input: { actorId: string; noteId: string; scopeKey: string }, enabled: boolean): NoteDetailSource {
   const locale = useOrbitLocale();
-  const state = useApiResource<unknown>(notePath(input.noteId), () => false, { scopeKey: input.scopeKey, cachePolicy: "network-only" });
+  const state = useApiResource<unknown>(notePath(input.noteId), () => false, { scopeKey: input.scopeKey, cachePolicy: "network-only", enabled });
   const loaded = state.kind === "success" || state.kind === "empty";
   const note = loaded ? noteFromPayload(state.data, input.actorId, input.noteId, locale.language) : null;
   return {
@@ -98,12 +134,8 @@ export function useNoteDetailSource(input: { actorId: string; noteId: string; sc
     missing: loaded && !note,
     refreshing: state.refreshing,
     refresh: state.refresh,
-    ...OFFLINE_STATUS,
+    ...ONLINE_STATUS,
     // The network source is the authority: re-read it and accept the receipt.
     async confirmSaved() { state.refresh(); return true; },
   };
-}
-
-export function useNotesWriteStatus(_actorId: string): NotesWriteStatus {
-  return { ...OFFLINE_STATUS, async confirmSaved() { return true; } };
 }

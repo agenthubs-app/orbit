@@ -6,6 +6,7 @@ import type { SyncSessionScope } from "./sync-database-key";
 import {
   clearPendingWebMirrorCleanup,
   deleteWebMirrorKey,
+  listWebMirrorKeyDigests,
   loadWebMirrorKey,
   persistPendingWebMirrorCleanup,
   readPendingWebMirrorCleanup,
@@ -143,6 +144,25 @@ export function createWebSyncLifecycle(input: {
     return true;
   }
 
+  /**
+   * One identity per origin (sprint 0125): opening a scope erases every other
+   * identity's key and file, including ones this page never opened (a session
+   * that ended by expiry or on another page load, so no in-session switch purged
+   * it). The key goes first, so a file that fails to delete can no longer be decrypted.
+   */
+  async function eraseOtherIdentities(keep: string): Promise<void> {
+    if (!deps) return;
+    for (const digest of await listWebMirrorKeyDigests(deps)) {
+      if (digest === keep) continue;
+      await deleteWebMirrorKey(digest, deps);
+      try {
+        await deps.sqlite.deleteDatabaseAsync(webMirrorDatabaseName(digest));
+      } catch {
+        input.report("SYNC_FILE_DELETE_FAILED", digest);
+      }
+    }
+  }
+
   async function purge(): Promise<boolean> {
     if (!current || !deps) return true;
     current.database = null;
@@ -229,9 +249,13 @@ export function createWebSyncLifecycle(input: {
         try {
           const digest = await sha256Hex(loaded.subtle, JSON.stringify([scope.baseUrl, scope.actorId]));
           current = { scope, digest, name: webMirrorDatabaseName(digest), handle: null, database: null, codec: null, blocked: false };
+          await eraseOtherIdentities(digest);
           const key = await loadWebMirrorKey(digest, loaded, () => loaded.sqlite.deleteDatabaseAsync(current!.name));
           current.handle = await withDeadline(loaded.sqlite.openDatabaseAsync(current.name, { useNewConnection: true }), openTimeoutMs, "SYNC_OPEN_TIMEOUT");
           const database = adaptWebDatabase(current.handle);
+          // Only payload_json is encrypted here (no SQLCipher): zero deleted rows so a revoked
+          // domain or retired epoch leaves no ids or decryptable ciphertext in freed pages (0125).
+          await withDeadline(database.execute("PRAGMA secure_delete = ON"), openTimeoutMs, "SYNC_OPEN_TIMEOUT");
           await withDeadline(initializeLocalSyncDatabase(database), openTimeoutMs, "SYNC_OPEN_TIMEOUT");
           if (requestToken !== token) {
             await purge();

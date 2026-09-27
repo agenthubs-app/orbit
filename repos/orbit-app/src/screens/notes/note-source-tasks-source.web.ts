@@ -2,11 +2,25 @@ import { useState } from "react";
 
 import { noteTaskPageSchema } from "../../api/schema/note-task-page";
 import { useApiResource } from "../../hooks/useApiResource";
+import { useWebMirrorStatus } from "../../hooks/useWebMirrorStatus";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
-import type { NoteSourceTasks } from "./note-source-tasks-source";
+import { useMirrorNoteSourceTasks, type NoteSourceTasks } from "./note-source-tasks-mirror";
 
-/** Browser: the bounded server page, as before sprint 0108. */
+export type { NoteSourceTasks } from "./note-source-tasks-mirror";
+
+/**
+ * Browser: the task mirror when the browser mirror is active (sprint 0125, so
+ * an offline note detail still lists its tasks), the bounded server page
+ * otherwise. Both run every render; the server page is inert while the mirror is the source.
+ */
 export function useNoteSourceTasks(input: { actorId: string; noteId: string; scopeKey: string }): NoteSourceTasks {
+  const mirrorActive = useWebMirrorStatus().mode === "local-mirror";
+  const fromMirror = useMirrorNoteSourceTasks(input);
+  const fromNetwork = useNetworkNoteSourceTasks(input, !mirrorActive);
+  return mirrorActive ? fromMirror : fromNetwork;
+}
+
+function useNetworkNoteSourceTasks(input: { actorId: string; noteId: string; scopeKey: string }, enabled: boolean): NoteSourceTasks {
   const locale = useOrbitLocale();
   const { actorId, noteId } = input;
   const scope = JSON.stringify([input.scopeKey, actorId, noteId]);
@@ -15,7 +29,7 @@ export function useNoteSourceTasks(input: { actorId: string; noteId: string; sco
   const params = new URLSearchParams({ noteId, limit: "20" });
   if (cursor) params.set("cursor", cursor);
   const state = useApiResource<unknown>(`/api/tasks/note-page?${params}`, () => false, {
-    scopeKey: JSON.stringify([scope, cursor]), cachePolicy: "network-only", enabled: Boolean(actorId && noteId),
+    scopeKey: JSON.stringify([scope, cursor]), cachePolicy: "network-only", enabled: enabled && Boolean(actorId && noteId),
   });
   const loaded = state.kind === "success" || state.kind === "empty";
   const parsed = loaded ? noteTaskPageSchema.safeParse(state.data) : null;
