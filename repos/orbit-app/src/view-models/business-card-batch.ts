@@ -3,12 +3,14 @@ import type { ApiResult } from "../api/types";
 import { businessCardBatchConfirmationResponseSchema, businessCardBatchDetailSchema } from "../api/schema/business-card-batch";
 
 export type BusinessCardReviewFields = { displayName: string; organization: string; role: string; email: string; phone: string; relationshipContext: string; notes: string };
+/** 字段来源里 App 审阅页实际处理的字段（Web 契约后来加的 `address` 等不在 App 审阅范围内）。 */
+export type BusinessCardConflictField = keyof IngestCardFieldSourcesContract & keyof BusinessCardReviewFields;
 export interface BusinessCardReviewDraft { fields: BusinessCardReviewFields; dirty: boolean; }
 export interface BusinessCardFieldChoice { value: string; itemId: string; side: "front" | "back"; }
 export interface BusinessCardReviewCardDraft extends BusinessCardReviewDraft {
   sources: IngestCardFieldSourcesContract;
   conflicts: Partial<Record<keyof IngestCardFieldSourcesContract, readonly BusinessCardFieldChoice[]>>;
-  unresolvedConflicts: readonly (keyof IngestCardFieldSourcesContract)[];
+  unresolvedConflicts: readonly BusinessCardConflictField[];
   manualFields: readonly (keyof BusinessCardReviewFields)[];
   itemVersions: Readonly<Record<string, string>>;
 }
@@ -62,7 +64,7 @@ export function reconcileBusinessCardReviewCard(
   const fields: BusinessCardReviewFields = { displayName: "", organization: "", role: "", email: "", phone: "", relationshipContext: "", notes: "" };
   const sources: IngestCardFieldSourcesContract = { displayName: null, organization: null, role: null, email: null, phone: null };
   const conflicts: BusinessCardReviewCardDraft["conflicts"] = {};
-  const unresolvedConflicts: (keyof IngestCardFieldSourcesContract)[] = [];
+  const unresolvedConflicts: BusinessCardConflictField[] = [];
   for (const field of ["displayName", "organization", "role", "email", "phone"] as const) {
     const choices: BusinessCardFieldChoice[] = [];
     const seen = new Set<string>();
