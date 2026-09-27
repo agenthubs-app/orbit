@@ -20,6 +20,7 @@ import { parseOrbitLanguage } from "../../shared/i18n/orbit-language";
 import { mergeIndustrySelection, validateIndustrySelection } from "../../shared/domain/industries";
 import { calculateProfileOnboarding, isValidProfileBirthDate } from "./onboarding";
 import { ProfileMutationError, validateProfileMutation } from "./storage/profile-mutations";
+import { profileBioWithinLimit } from "../../shared/api-schema/profile-bio";
 
 export interface LiveProfileServiceOptions {
   now?: () => string;
@@ -264,13 +265,7 @@ function normalizeProfileHandles(
 
 function profileInkSignalFieldsAreValid(update: ManualProfileUpdateInput): boolean {
   const bio = update.bio?.trim() ?? "";
-  const Segmenter = (Intl as unknown as {
-    Segmenter?: new (locale?: string, options?: { granularity: "grapheme" }) => { segment(input: string): Iterable<unknown> };
-  }).Segmenter;
-  const visibleCharacters = Segmenter
-    ? Array.from(new Segmenter(undefined, { granularity: "grapheme" }).segment(bio)).length
-    : Array.from(bio).length;
-  return visibleCharacters <= 80
+  return profileBioWithinLimit(bio)
     && normalizeProfileTags(update.offering, []).length <= 5
     && normalizeProfileTags(update.seeking, []).length <= 5;
 }

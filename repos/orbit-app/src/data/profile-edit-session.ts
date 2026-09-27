@@ -3,6 +3,7 @@ import type {
   ManualProfileContract,
   ProfileSaveConcurrencyContract,
 } from "../api/contract/profile";
+import { profileBioWithinLimit, profileVisibleLength } from "../api/schema/profile-bio";
 
 export interface ProfileEditSessionScope {
   actorId: string;
@@ -107,14 +108,7 @@ export function normalizeProfileTagValues(values: readonly string[]): string[] {
 }
 
 export function profileVisibleCharacterCount(value: string): number {
-  const Segmenter = (Intl as unknown as {
-    Segmenter?: new (locale?: string, options?: { granularity: "grapheme" }) => {
-      segment(input: string): Iterable<unknown>;
-    };
-  }).Segmenter;
-  return Segmenter
-    ? Array.from(new Segmenter(undefined, { granularity: "grapheme" }).segment(value)).length
-    : Array.from(value).length;
+  return profileVisibleLength(value);
 }
 
 export function validateProfileEditDraft(
@@ -122,7 +116,8 @@ export function validateProfileEditDraft(
 ): Array<"bio" | "displayName" | "offering" | "seeking"> {
   const invalid: Array<"bio" | "displayName" | "offering" | "seeking"> = [];
   if (!draft.displayName.trim()) invalid.push("displayName");
-  if (profileVisibleCharacterCount(draft.bio) > 80) invalid.push("bio");
+  // Same rule as the server: 80 when the text contains CJK, otherwise 200.
+  if (!profileBioWithinLimit(draft.bio)) invalid.push("bio");
   if (normalizeProfileTagValues(draft.offering).length > 5) invalid.push("offering");
   if (normalizeProfileTagValues(draft.seeking).length > 5) invalid.push("seeking");
   return invalid;

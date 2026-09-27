@@ -11,6 +11,7 @@ import { AppState, Platform } from "react-native";
 
 import { useOrbitApiBaseUrl } from "../api/ApiBaseUrlProvider";
 import { useOrbitAuthSession } from "../api/AuthSessionProvider";
+import { offlineIdentityStorage } from "../api/offline-identity-storage";
 import type { OrbitLanguagePreferenceContract } from "../api/contract/account-language-preference";
 import type { OrbitLanguage } from "../api/contract/language";
 import {
@@ -55,6 +56,13 @@ function readDeviceLanguage(previous: OrbitLanguage = "zh"): {
       language: previous,
     };
   }
+}
+
+// The last preference the server confirmed for this (server, account), kept with the
+// offline identity so an offline start shows the user's language, not the device's.
+function rememberLanguage(scope: LanguagePreferenceScope, preference: OrbitLanguagePreferenceContract): void {
+  void offlineIdentityStorage.writeLanguage(scope.baseUrl, scope.actorId, preference)
+    .catch(() => console.warn("OFFLINE_LANGUAGE_WRITE_FAILED"));
 }
 
 function choiceMatchesPreference(
@@ -181,6 +189,7 @@ export function OrbitLocaleProvider({ children }: { children: ReactNode }) {
       }
       baseline.current = accepted.preference;
       setPreference(accepted.preference);
+      rememberLanguage(requestScope, accepted.preference);
       lastAttempt.current = null;
       if (desiredRevision.current === choiceRevision && desiredChoice.current === choice) {
         setDisplayChoice(choice);
@@ -203,6 +212,7 @@ export function OrbitLocaleProvider({ children }: { children: ReactNode }) {
       }
       baseline.current = latest;
       setPreference(latest);
+      rememberLanguage(requestScope, latest);
       if (choiceMatchesPreference(desiredChoice.current, latest)) {
         setDisplayChoice(desiredChoice.current);
         setSyncState("idle");
@@ -243,6 +253,11 @@ export function OrbitLocaleProvider({ children }: { children: ReactNode }) {
     }
 
     setSyncState("loading");
+    let serverAnswered = false;
+    void offlineIdentityStorage.readLanguage(scope.baseUrl, scope.actorId).then((cached) => {
+      if (!cached || serverAnswered || scopeRevision.current !== revision || currentScope.current.key !== scopeKey) return;
+      publishPreference(cached);
+    }).catch(() => undefined);
     void readPreference(scope, revision).then((next) => {
       if (scopeRevision.current !== revision || currentScope.current.key !== scopeKey) return;
       if (!next) {
@@ -250,7 +265,9 @@ export function OrbitLocaleProvider({ children }: { children: ReactNode }) {
         setSyncError("LANGUAGE_PREFERENCE_READ_FAILED");
         return;
       }
+      serverAnswered = true;
       publishPreference(next);
+      rememberLanguage(scope, next);
       setSyncState("idle");
     });
     return () => requestRef.current?.abort();
@@ -272,6 +289,7 @@ export function OrbitLocaleProvider({ children }: { children: ReactNode }) {
           return;
         }
         publishPreference(next);
+        rememberLanguage(requestScope, next);
         setSyncState("idle");
       });
     });

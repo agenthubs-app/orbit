@@ -76,3 +76,12 @@ test("saved goal text round-trips back into chips, focus and horizon when the lo
   // 不是引导写出的格式（例如个人中心手写的目标）：整段保留为「一句话」，不丢内容。
   assert.deepEqual(parseRelationshipGoal("三个月内认识 3 位日本渠道伙伴"), { goals: [], focus: "三个月内认识 3 位日本渠道伙伴", horizon: "" });
 });
+
+test("intro counter follows the shared bio rule: 200 for non-CJK text, 80 once CJK appears (0127)", async () => {
+  const { bioCounter } = await import("../../app/(app)/app/profile/onboarding-0918/onboarding-model");
+  assert.deepEqual(bioCounter(""), { count: 0, limit: 200, over: false });
+  assert.deepEqual(bioCounter(`  ${"a".repeat(180)}  `), { count: 180, limit: 200, over: false });
+  assert.deepEqual(bioCounter("a".repeat(201)), { count: 201, limit: 200, over: true });
+  assert.deepEqual(bioCounter("界".repeat(81)), { count: 81, limit: 80, over: true });
+  assert.deepEqual(bioCounter(`${"a".repeat(90)}界`), { count: 91, limit: 80, over: true });
+});

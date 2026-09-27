@@ -23,7 +23,7 @@ test("the Web locale hydrates with the static language before reading the device
     plugins: [{
       name: "web-locale-hydration-boundaries",
       setup(plugin) {
-        plugin.onResolve({ filter: /^fixture$|^expo-localization$|^react-native$|\/(ApiBaseUrlProvider|AuthSessionProvider|useOrbitApiClient)$/ }, () => ({ path: "fixture", namespace: "locale-hydration" }));
+        plugin.onResolve({ filter: /^fixture$|^expo-localization$|^react-native$|\/(ApiBaseUrlProvider|AuthSessionProvider|useOrbitApiClient|offline-identity-storage)$/ }, () => ({ path: "fixture", namespace: "locale-hydration" }));
         plugin.onLoad({ filter: /.*/, namespace: "locale-hydration" }, () => ({
           contents: `
             export const Platform = { OS: "web" };
@@ -31,6 +31,7 @@ test("the Web locale hydrates with the static language before reading the device
             export function getLocales() { return [{ languageCode: "en", languageTag: "en-US" }]; }
             export function useOrbitApiBaseUrl() { return { baseUrl: "", ready: false }; }
             export function useOrbitAuthSession() { return { actorId: null, cookieHeader: "", ready: false, signedIn: false, user: null }; }
+            export const offlineIdentityStorage = { async readLanguage() { return null; }, async writeLanguage() {} };
             export function useOrbitApiClient() { return { get: async () => ({ success: false, status: 503 }), put: async () => ({ success: false, status: 503 }) }; }
           `,
           loader: "js",

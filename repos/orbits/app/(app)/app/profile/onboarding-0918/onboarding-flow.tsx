@@ -32,7 +32,7 @@ import {
 } from "./onboarding-client";
 import { CardBatchReminders, OnboardingCardImport, useOnboardingCardBatch } from "./onboarding-card-import";
 import {
-  BIO_LIMIT,
+  bioCounter,
   FOCUS_LIMIT,
   GOAL_GROUPS,
   GOAL_LIMIT,
@@ -271,8 +271,8 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
     && validateIndustrySelection({ primaryIndustryId: basic.primaryIndustryId, secondaryIndustryId: basic.secondaryIndustryId }).valid;
   const birthValid = isValidProfileBirthDate(basic.birthDate, todayIso);
   const profileValid = Boolean(name) && industryValid && birthValid;
-  const bioCount = visibleCharacterCount(bio.trim());
-  const introValid = bioCount <= BIO_LIMIT && visibleCharacterCount(headline.trim()) <= HEADLINE_LIMIT;
+  const bioCount = bioCounter(bio);
+  const introValid = !bioCount.over && visibleCharacterCount(headline.trim()) <= HEADLINE_LIMIT;
 
   async function save(fields: ProfileFields): Promise<boolean> {
     setSaving(true);
@@ -954,7 +954,7 @@ function IntroStep({
   bio, bioCount, error, headline, onRegenerate, regenerationsLeft, setBio, setHeadline, status, t,
 }: {
   bio: string;
-  bioCount: number;
+  bioCount: { count: number; limit: number; over: boolean };
   error: string;
   headline: string;
   onRegenerate: () => void;
@@ -1009,7 +1009,7 @@ function IntroStep({
             <label className="ob-field">
               <span className="ob-field-label">{t({ zh: "关于我", en: "About me" })}</span>
               <textarea className="ob-input" onChange={event => setBio(event.target.value)} rows={3} value={bio} />
-              <span className={`ob-count${bioCount > BIO_LIMIT ? " ob-count-over" : ""}`}>{bioCount}/{BIO_LIMIT}</span>
+              <span className={`ob-count${bioCount.over ? " ob-count-over" : ""}`}>{bioCount.count}/{bioCount.limit}</span>
             </label>
           </>
         )}

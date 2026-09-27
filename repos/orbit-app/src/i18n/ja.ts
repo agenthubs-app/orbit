@@ -325,7 +325,7 @@ export const ja = {
   "profile.previewMessage": "メッセージ（プレビュー）",
   "profile.previewConnect": "つながる（プレビュー）",
   "profile.noEditSession": "編集下書きを準備できません。プロフィール画面からやり直してください。",
-  "profile.bioCount": "{count}/80",
+  "profile.bioCount": "{count}/{limit}",
   "account.title": "アカウントとワークスペース",
   "account.workspace": "ワークスペース",
   "account.plan": "プラン",

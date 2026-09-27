@@ -59,6 +59,14 @@ export const nativeAuthSessionStorage = {
     state.clears.push(baseUrl); state.storedCookie = null; return true;
   }
 };
+export const offlineIdentityStorage = {
+  async read() { return state.offlineIdentity ?? null; },
+  async write(value) { state.offlineIdentity = value; },
+  async clear() { state.offlineIdentity = null; },
+  async readLanguage() { return null; },
+  async writeLanguage() {},
+  key(baseUrl) { return "orbit.offlineIdentity." + baseUrl; }
+};
 export async function registerOrbitAccount() { return { success: true }; }
 export const syncLifecycle = {
   async setScope(scope) {
@@ -100,11 +108,11 @@ const root = createRoot(document.getElementById("root")); window.fixture.unmount
     write: false,
     format: "iife",
     jsx: "automatic",
-    define: { "process.env.NODE_ENV": '"test"', __DEV__: "false" },
+    define: { "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
     plugins: [{
       name: "auth-provider-boundaries",
       setup(plugin) {
-        plugin.onResolve({ filter: /^fixture$|\/ApiBaseUrlProvider$|\/mobile-auth$|\/native-auth-session-storage$|\/sync-lifecycle$/ }, () => ({ path: "fixture", namespace: "auth-race" }));
+        plugin.onResolve({ filter: /^fixture$|\/ApiBaseUrlProvider$|\/mobile-auth$|\/native-auth-session-storage$|\/offline-identity-storage$|\/sync-lifecycle$/ }, () => ({ path: "fixture", namespace: "auth-race" }));
         plugin.onResolve({ filter: /^expo-crypto$/ }, () => ({ path: "crypto", namespace: "auth-race" }));
         plugin.onResolve({ filter: /^expo-router$/ }, () => ({ path: "router", namespace: "auth-race" }));
         plugin.onResolve({ filter: /^expo-web-browser$/ }, () => ({ path: "browser", namespace: "auth-race" }));
@@ -115,7 +123,7 @@ const root = createRoot(document.getElementById("root")); window.fixture.unmount
           if (args.path === "crypto") return { contents: "export const CryptoDigestAlgorithm = { SHA256: 'SHA256' }; export async function digest(_, value) { return value; } export async function getRandomBytesAsync() { return new Uint8Array(32); }", loader: "js" };
           if (args.path === "router") return { contents: "export const router = { replace() {} };", loader: "js" };
           if (args.path === "browser") return { contents: "export async function openAuthSessionAsync() { return { type: 'cancel' }; }", loader: "js" };
-          if (args.path === "native") return { contents: "export const Platform = { get OS() { return window.initialFixture?.platform ?? 'ios'; } };", loader: "js" };
+          if (args.path === "native") return { contents: "export const Platform = { get OS() { return window.initialFixture?.platform ?? 'ios'; } }; export const AppState = { addEventListener() { return { remove() {} }; } };", loader: "js" };
           if (args.path.endsWith("/auth-session")) return { contents: "export { registerOrbitAccount, signOutOrbitSession } from 'fixture';", loader: "js", resolveDir: process.cwd() };
           if (args.path.endsWith("/session-expiry")) return { contents: "export { onSessionExpired } from 'fixture';", loader: "js", resolveDir: process.cwd() };
           if (args.path.endsWith("/client")) return { contents: "export { createOrbitApiClient } from 'fixture';", loader: "js", resolveDir: process.cwd() };
