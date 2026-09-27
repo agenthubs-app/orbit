@@ -29,12 +29,12 @@
 | 0129 名片交换通知 | ① 部署 orbits（web 与 event-operations worker 一起），之后的交换通知直接进入新收件箱；② `npm run db:migrate:exchange-notifications` 预演，查看数量与跳过的行；③ 确认后 `-- --apply --confirm-remote=<workspace id>`（**需用户确认**）；④ 再预演应为 0；⑤ 发布新版 App | 旧行只归档不删除，改回 active 即可回退。不迁移不影响新通知，只是部署前的旧交换通知在收件箱里看不到。旧版 App（0104 之后）会跳过这类通知，但角标会把它们算进去 |
 | 0125 浏览器笔记离线 | 无迁移；重新导出并发布 phoneweb（`npm run web:export`） | 已有浏览器下次同步多拉一次笔记，不需要清库；升级前删掉的旧行可能还留在空闲页里，要等下次换身份删库时才消失 |
 | 0130 恢复会话保留副本 | 无迁移；重新发布 phoneweb 和 App | 已有本地库直接沿用；浏览器退出登录现在会删掉本地库 |
+| 0109 消息三张表 | ① 只读查行数（REPORT 第 8 节的 SQL，或不带 `--apply` 的 `npm run db:migrate:relationship-messages`）；② 建表（`db:migrate:live`，或第 ③ 步 `--apply` 时自动建）；③ `npm run db:migrate:relationship-messages -- --apply --confirm-remote=<workspace>`（**需用户确认**）；④ 再预演 create 应为 0；⑤ 部署；⑥ 再预演，若 appendedMessages>0 就再 `--apply`，直到 0；⑦ 冒烟：列表、发送、已读 | **须先迁移后部署**：新代码只读新表，表不存在时消息接口返回 503（通知投递会跳过消息类，不受连带）。回滚：重新部署旧代码即可，旧集合没动过，但切换后发的消息只在新表里 |
 
 ## 后续 Sprint 预告（合并后在上表补充具体命令）
 
 | Sprint | 预计的生产步骤 |
 |---|---|
-| 0109 | 只读统计关系沟通五类集合的生产行数；建三张表并搬迁数据（可重复执行）；旧集合保留 |
 | 0111 | 保留期任务随部署自动运行；存量清理：预演统计 → 导出备份 → 删除 → 再预演，确认为 0 |
 | 0113 | 活动专用表加 `sync_revision` 并回填；通用 upsert 行为改变（不再清空主人） |
 | 0114 | 补写主人：预演 → 导出备份 → 执行 → 再预演；**要在 0116 上线之前完成** |
