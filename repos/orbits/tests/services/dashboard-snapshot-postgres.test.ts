@@ -33,7 +33,7 @@ import type { LiveRecord } from "../../shared/storage/live-record-store";
 import { ORBIT_RECORDS_SCHEMA_SQL } from "../../shared/storage/migrations";
 import { createPostgresLiveRecordStore, type LiveRecordSqlClient } from "../../shared/storage/postgres-live-record-store";
 import { createTransactionalPostgresClient, type TransactionalPostgresClient } from "../../shared/storage/transactional-postgres";
-import { SYNC_REVISION_ASSIGN_ONLY_SQL } from "../support/sync-revision-fixture";
+import { STRICT_SYNC_REVISION_SQL } from "../support/sync-revision-fixture";
 
 // Sprint 0102 (dashboard D2). Gaps and opportunities are served from a
 // per-user snapshot keyed by the relationship-graph version. The oracle is the
@@ -149,7 +149,7 @@ async function withSchema(options: { syncRevision: boolean }, run: (harness: Har
   try {
     await admin.query(`create schema ${schema}`);
     await client.query(ORBIT_RECORDS_SCHEMA_SQL);
-    if (options.syncRevision) await client.query(SYNC_REVISION_ASSIGN_ONLY_SQL);
+    if (options.syncRevision) await client.query(STRICT_SYNC_REVISION_SQL);
     const store = createPostgresLiveRecordStore({ client });
     for (const record of fixture()) await store.upsertRecord(record);
     const newProvider = (sqlClient: LiveRecordSqlClient = client) =>

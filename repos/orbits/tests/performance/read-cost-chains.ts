@@ -27,7 +27,7 @@ import { createTaskService } from "../../features/tasks/service";
 import { createConfiguredPostgresLiveRecordStore } from "../../shared/storage/configured-live-record-store";
 import { seedGeneratedRelationshipFixturesIntoLiveStore } from "../../shared/storage/seed-generated-fixtures";
 import type { TransactionalPostgresClient } from "../../shared/storage/transactional-postgres";
-import { SYNC_REVISION_ASSIGN_ONLY_SQL } from "../support/sync-revision-fixture";
+import { STRICT_SYNC_REVISION_SQL } from "../support/sync-revision-fixture";
 import { withConversationTurnSteps } from "../../features/agent/runtime/conversation-run-steps";
 import { createAgentExecutorRegistry } from "../../features/agent/runtime/executor-registry";
 import { createAgentRuntimeService } from "../../features/agent/runtime/service";
@@ -131,7 +131,7 @@ export async function seedReadCostChains({
   assert.ok(configured);
   const { store } = configured;
   // sync_revision as on the development database: the dashboard graph version needs it (0102).
-  await client.query(SYNC_REVISION_ASSIGN_ONLY_SQL);
+  await client.query(STRICT_SYNC_REVISION_SQL);
   await seedGeneratedRelationshipFixturesIntoLiveStore({ store, workspaceId, now: () => READ_COST_SEEDED_AT });
   const notes = createNoteService({
     repository: createNoteRepository({ store, workspaceId }),

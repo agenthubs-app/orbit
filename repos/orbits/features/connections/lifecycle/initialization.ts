@@ -6,6 +6,7 @@ import type { TransactionalPostgresClient, TransactionalSqlExecutor } from "../.
 import { RelationshipLifecycleError } from "./contract";
 import { createPostgresRelationshipLifecycleRepository } from "./postgres-repository";
 import { normalizeRelationshipLifecycleInstant } from "./transition";
+import { acquireSyncCommitOrderLock, isSyncCollection } from "../../sync/commit-order-lock";
 
 interface Row { record_id: string; collection_name: string; user_id: string; payload: Record<string, unknown> }
 interface Acquisition { connection: Row; contact: Row; connectionId: string; pending: boolean; revision: string }
@@ -140,6 +141,9 @@ export function createRelationshipInitializationService({ client, workspaceId, n
             dueAt: normalizeRelationshipLifecycleInstant(next.dueAt, "INVALID_TASK"), purpose: choice.stage === "nurture" ? "maintenance" : "follow_up",
             status: "open", version: 1, createdAt: timestamp, updatedAt: timestamp });
         }
+        // Tasks (and any patched row in a sync collection) take revisions: hold the
+        // commit-order lock before the first write of this transaction.
+        if (snapshot.tasks.length > 0 || [connection, contact].some(row => isSyncCollection(row.collection_name))) await acquireSyncCommitOrderLock(sql);
         // Both owner-scoped projections advance in the same transaction. All
         // private profile data and event evidence remain untouched.
         for (const row of [connection, contact]) {

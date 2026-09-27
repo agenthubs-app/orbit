@@ -21,6 +21,7 @@ import type {
   LiveRecordStoreLike,
 } from "../../../shared/storage/live-record-store";
 import type { LiveRecordSqlClient } from "../../../shared/storage/postgres-live-record-store";
+import { assertNoSyncCollectionRecords } from "../../sync/commit-order-lock";
 import type {
   ContactDraftConfirmationWriteResult,
 } from "./contact-draft-live-record-provider";
@@ -248,6 +249,7 @@ export function createPostgresReferralContactDraftAtomicWriter(
   client: LiveRecordSqlClient,
 ): AtomicReferralContactDraftWriter {
   return async (records) => {
+    assertNoSyncCollectionRecords(records, "contact draft atomic writer");
     if (records.length === 0) {
       return;
     }

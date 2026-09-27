@@ -7,7 +7,10 @@ import type { SyncChangeKind } from "../../shared/contract/sync";
  * per-actor visibility is derived, not stored, and belongs to a later sprint.
  */
 export const SYNC_REGISTRY_VERSION = 1;
-export const SYNC_DOMAIN_SCHEMA_VERSION = 1;
+// 2 (sprint 0108): personal-schedule pages carry the full personal DTO and a
+// recurring series' occurrence exceptions. The bump rotates every generation,
+// so existing device mirrors rebuild once instead of keeping v1 payloads.
+export const SYNC_DOMAIN_SCHEMA_VERSION = 2;
 
 export interface SyncDomainDefinition {
   domainId: string;

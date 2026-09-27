@@ -8,6 +8,7 @@ import type {
   LiveRecordStoreLike,
 } from "./live-record-store";
 import { resolveListLimit } from "./live-record-store";
+import { isSyncCollection, SYNC_COMMIT_ORDER_LOCK_CTE } from "../../features/sync/commit-order-lock";
 import {
   createPostgresReadMetricsRunner,
   type PostgresReadMetricsConfig,
@@ -93,6 +94,31 @@ const recordColumns = `
   updated_at,
   deleted_at
 `;
+
+const recordPlaceholders = `
+  $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
+  $11, $12, $13, $14, $15, $16, $17, $18, $19
+`;
+
+/**
+ * Sprint 0108: a write to a sync collection takes the commit-order lock in the
+ * same statement (see features/sync/commit-order-lock.ts), so it holds the lock
+ * whether the client is a pool (autocommit) or a transaction. Other collections
+ * keep the plain statement.
+ */
+function lockedWith(collectionName: string): string {
+  return isSyncCollection(collectionName) ? `with ${SYNC_COMMIT_ORDER_LOCK_CTE}\n` : "";
+}
+
+function insertedRows(collectionName: string): string {
+  return isSyncCollection(collectionName)
+    ? `select ${recordPlaceholders} from sync_write_lock`
+    : `values (${recordPlaceholders})`;
+}
+
+function lockedFrom(collectionName: string): string {
+  return isSyncCollection(collectionName) ? "from sync_write_lock" : "";
+}
 
 function cloneJson<TValue>(value: TValue): TValue {
   return JSON.parse(JSON.stringify(value)) as TValue;
@@ -323,11 +349,12 @@ export function createPostgresLiveRecordStore<
       if ((record.userId ?? null) !== expected.userId ||
           !(Date.parse(record.updatedAt) > Date.parse(expected.updatedAt))) return null;
       const result = await client.query<PostgresLiveRecordRow>(`
-        update orbit_records set
+        ${lockedWith(record.collectionName)}update orbit_records set
           source_type=$5, source_id=$6, source_label=$7, provider=$8,
           provider_record_id=$9, evidence_ids=$10, target_type=$11,
           target_id=$12, occurred_at=$13, lifecycle_state=$14,
           search_text=$15, payload=$16, updated_at=$18, deleted_at=$19
+        ${lockedFrom(record.collectionName)}
         where workspace_id=$1 and collection_name=$2 and record_id=$3
           and user_id is not distinct from $4::text
           and updated_at=$20::timestamptz and lifecycle_state <> 'deleted'
@@ -341,10 +368,11 @@ export function createPostgresLiveRecordStore<
     ): Promise<LiveRecord<TPayload> | null> {
       const result = await client.query<PostgresLiveRecordRow>(
         `
-          update orbit_records
+          ${lockedWith(input.collectionName)}update orbit_records
           set lifecycle_state = 'deleted',
             deleted_at = $4,
             updated_at = $4
+          ${lockedFrom(input.collectionName)}
           where workspace_id = $1
             and collection_name = $2
             and record_id = $3
@@ -407,11 +435,8 @@ export function createPostgresLiveRecordStore<
     async insertRecordIfAbsent(record: LiveRecord<TPayload>): Promise<LiveRecord<TPayload> | null> {
       const result = await client.query<PostgresLiveRecordRow>(
         `
-          insert into orbit_records (${recordColumns})
-          values (
-            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
-            $11, $12, $13, $14, $15, $16, $17, $18, $19
-          )
+          ${lockedWith(record.collectionName)}insert into orbit_records (${recordColumns})
+          ${insertedRows(record.collectionName)}
           on conflict (workspace_id, collection_name, record_id)
           do nothing
           returning ${recordColumns}
@@ -424,11 +449,8 @@ export function createPostgresLiveRecordStore<
     async upsertRecord(record: LiveRecord<TPayload>): Promise<LiveRecord<TPayload>> {
       const result = await client.query<PostgresLiveRecordRow>(
         `
-          insert into orbit_records (${recordColumns})
-          values (
-            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
-            $11, $12, $13, $14, $15, $16, $17, $18, $19
-          )
+          ${lockedWith(record.collectionName)}insert into orbit_records (${recordColumns})
+          ${insertedRows(record.collectionName)}
           on conflict (workspace_id, collection_name, record_id)
           do update set
             user_id = excluded.user_id,

@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { Pool } from "pg";
 import type { LiveRecord } from "../../shared/storage/live-record-store";
 import { ORBIT_RECORDS_SCHEMA_SQL } from "../../shared/storage/migrations";
+import { STRICT_SYNC_REVISION_SQL, testRawWrite } from "./sync-revision-fixture";
 import { createTransactionalPostgresClient, type TransactionalPostgresClient } from "../../shared/storage/transactional-postgres";
 import type { LifecycleMigrationPlan } from "../../features/connections/lifecycle/migration-plan";
 import { runLifecycleMigrationSchema } from "../../features/connections/lifecycle/migration-schema";
@@ -45,16 +46,19 @@ export async function withLifecycleMigrationDatabase(operation: (fixture: Lifecy
   try {
     await admin.query(`create schema ${schema}`);
     await client.query(ORBIT_RECORDS_SCHEMA_SQL);
+    // Sprint 0108: the strict sync trigger, so task owner repairs must hold the lock.
+    await client.query(STRICT_SYNC_REVISION_SQL);
     await runLifecycleMigrationSchema(client);
     await runLifecycleMigrationSchema(client);
     const insert = async (row: LiveRecord) => {
-      await client.query("insert into orbit_records (workspace_id,collection_name,record_id,user_id,source_type,source_id,source_label,provider,provider_record_id,evidence_ids,target_type,target_id,occurred_at,lifecycle_state,search_text,payload,created_at,updated_at,deleted_at) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)", [row.workspaceId,row.collectionName,row.recordId,row.userId ?? null,row.sourceType,row.sourceId,row.sourceLabel ?? null,row.provider ?? null,row.providerRecordId ?? null,[...row.evidenceIds],row.targetType ?? null,row.targetId ?? null,row.occurredAt ?? null,row.lifecycleState,row.searchText ?? "",row.payload,row.createdAt,row.updatedAt,row.deletedAt ?? null]);
+      await testRawWrite(client, row.collectionName, "insert into orbit_records (workspace_id,collection_name,record_id,user_id,source_type,source_id,source_label,provider,provider_record_id,evidence_ids,target_type,target_id,occurred_at,lifecycle_state,search_text,payload,created_at,updated_at,deleted_at) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)", [row.workspaceId,row.collectionName,row.recordId,row.userId ?? null,row.sourceType,row.sourceId,row.sourceLabel ?? null,row.provider ?? null,row.providerRecordId ?? null,[...row.evidenceIds],row.targetType ?? null,row.targetId ?? null,row.occurredAt ?? null,row.lifecycleState,row.searchText ?? "",row.payload,row.createdAt,row.updatedAt,row.deletedAt ?? null]);
     };
     await insert(lifecycleMigrationFixtureRecord("contacts", "contact:a", { id: "contact:a", stage: "active", displayName: "PRIVATE CONTACT", createdAt: migrationNow, updatedAt: migrationNow }));
     await insert(lifecycleMigrationFixtureRecord("connections", "connection:a", { id: "connection:a", contactId: "contact:a", accountId: migrationActorId, stage: "active", activeGoal: "PRIVATE GOAL", createdAt: migrationNow, updatedAt: migrationNow }));
     await operation({
       client, insert,
-      records: async () => (await client.query<{ record: Awaited<ReturnType<LifecycleMigrationDatabaseFixture["records"]>>[number] }>("select to_jsonb(r) as record from orbit_records r order by workspace_id,collection_name,record_id")).rows.map(row => row.record),
+      // sync_revision is trigger-maintained metadata that every update advances.
+      records: async () => (await client.query<{ record: Awaited<ReturnType<LifecycleMigrationDatabaseFixture["records"]>>[number] }>("select to_jsonb(r) - 'sync_revision' as record from orbit_records r order by workspace_id,collection_name,record_id")).rows.map(row => row.record),
       receiptCount: async () => Number((await client.query<{ count: string }>("select count(*)::text as count from relationship_lifecycle_migration_receipts")).rows[0].count),
     });
   } finally {

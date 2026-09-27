@@ -8,6 +8,14 @@ import { join } from "node:path";
 import { parseArgs } from "node:util";
 import pg from "pg";
 
+const SYNC_COMMIT_ORDER_LOCK_SQL = `with sync_write_lock as materialized (
+  select set_config('orbit.sync_write_lock_key', held.key::text, true) as acquired_key
+  from (
+    select lock_key.key, pg_advisory_xact_lock(lock_key.key) as acquired
+    from (select hashtextextended('orbit:sync:commit-order:v1:' || 'orbit_records'::regclass::oid::text, 0) as key) lock_key
+  ) held
+) select acquired_key from sync_write_lock`;
+
 const { values } = parseArgs({ options: { actor: { type: "string" }, task: { type: "string" }, write: { type: "boolean", default: false } } });
 assert.ok(values.actor && values.task && process.env.ORBIT_WORKSPACE_ID && process.env.ORBIT_EVENT_DATABASE_URL);
 const client = new pg.Client({ connectionString: process.env.ORBIT_EVENT_DATABASE_URL });
@@ -39,6 +47,10 @@ try {
     const directory = await mkdtemp(join(tmpdir(), "orbit-lifecycle-metadata-before-"));
     snapshotPath = join(directory, "record.json");
     await writeFile(snapshotPath, JSON.stringify({ capturedAt: new Date().toISOString(), record }, null, 2), { mode: 0o600, flag: "wx" });
+    // tasks is a sync collection: take the commit-order lock first. This is a
+    // copy of SYNC_COMMIT_ORDER_LOCK_SQL (features/sync/commit-order-lock.ts);
+    // plain node cannot import it, and the sync write audit test pins the copy.
+    await client.query(SYNC_COMMIT_ORDER_LOCK_SQL);
     const result = await client.query("update orbit_records set payload=jsonb_set(payload,'{accountId}',to_jsonb($3::text)), evidence_ids=$4 where workspace_id=$1 and collection_name='tasks' and record_id=$2 and user_id=$3 returning record_id", [...scope, payload.evidenceIds]);
     assert.equal(result.rowCount, 1);
   }

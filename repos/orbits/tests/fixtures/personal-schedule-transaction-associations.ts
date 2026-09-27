@@ -1,5 +1,6 @@
 import { createTransactionalPostgresClient, type TransactionalPostgresPool } from "../../shared/storage/transactional-postgres";
 import { createPostgresLiveRecordStore } from "../../shared/storage/postgres-live-record-store";
+import { withoutSyncLock } from "./personal-schedule-sql";
 
 // Only the SQL/pool boundary is simulated. Production transactions, store,
 // contact graph, note decoding, ACL, schedule mutations and receipts stay real.
@@ -14,7 +15,7 @@ export function personalScheduleTransactionAssociationsFixture() {
   const columns = ["workspace_id", "collection_name", "record_id", "user_id", "source_type", "source_id", "source_label", "provider", "provider_record_id", "evidence_ids", "target_type", "target_id", "occurred_at", "lifecycle_state", "search_text", "payload", "created_at", "updated_at", "deleted_at"];
   const key = (values: readonly unknown[]) => JSON.stringify(values.slice(0, 3));
   async function query(data: Map<string, Record<string, unknown>>, sql: string, values: readonly unknown[] = []) {
-    const text = sql.trim();
+    const text = withoutSyncLock(sql).text;
     if (text.startsWith("insert into orbit_records")) {
       if (values[1] === failCollection) throw Error("injected association schedule SQL failure");
       const row = Object.fromEntries(columns.map((column, index) => [column, structuredClone(values[index])]));
@@ -90,7 +91,7 @@ export function personalScheduleTransactionAssociationsFixture() {
           }
           const data = new Map([...rows, ...writes]);
           const result = await query(data, sql, values);
-          if (sql.trim().startsWith("insert into orbit_records")) writes.set(key(values), data.get(key(values))!);
+          if (withoutSyncLock(sql).text.startsWith("insert into orbit_records")) writes.set(key(values), data.get(key(values))!);
           return result;
         },
         release() { unlock.splice(0).forEach(release => release()); leased--; },

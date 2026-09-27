@@ -1,5 +1,14 @@
 import { createTransactionalPostgresClient, type TransactionalPostgresPool } from "../../shared/storage/transactional-postgres";
 import { createPostgresLiveRecordStore } from "../../shared/storage/postgres-live-record-store";
+import { SYNC_COMMIT_ORDER_LOCK_CTE } from "../../features/sync/commit-order-lock";
+
+const SYNC_LOCK_PREFIX = `with ${SYNC_COMMIT_ORDER_LOCK_CTE}`;
+/** Store writes to sync collections take the commit-order lock in a leading CTE (sprint 0108). */
+export function withoutSyncLock(sql: string): { text: string; locked: boolean } {
+  const text = sql.trim();
+  if (!text.startsWith(SYNC_LOCK_PREFIX)) return { text, locked: false };
+  return { text: text.slice(SYNC_LOCK_PREFIX.length).trim().replace(/^insert into orbit_records \(([\s\S]*?)\)\s*select ([\s\S]*?) from sync_write_lock/, "insert into orbit_records ($1) values ($2)"), locked: true };
+}
 
 // SQL-boundary fixture: production transaction/store/service remain real.
 // This is not PostgreSQL evidence. Unsupported SQL fails instead of succeeding.
@@ -7,9 +16,12 @@ export function personalScheduleSqlFixture() {
   let rows = new Map<string, Record<string, unknown>>();
   let failCollection: string | null = null;
   const locks: string[] = [];
+  const syncLockedWrites: string[] = [];
   const columns = ["workspace_id", "collection_name", "record_id", "user_id", "source_type", "source_id", "source_label", "provider", "provider_record_id", "evidence_ids", "target_type", "target_id", "occurred_at", "lifecycle_state", "search_text", "payload", "created_at", "updated_at", "deleted_at"];
   async function query(data: typeof rows, sql: string, values: readonly unknown[] = []) {
-    const text = sql.trim();
+    const unlocked = withoutSyncLock(sql);
+    const text = unlocked.text;
+    if (unlocked.locked) syncLockedWrites.push(String(values[1]));
     if (text.startsWith("select pg_advisory_xact_lock")) { locks.push(String(values[0])); return { rows: [] }; }
     if (text.startsWith("insert into orbit_records")) {
       if (values[1] === failCollection) throw new Error("injected plan storage failure");
@@ -130,5 +142,5 @@ export function personalScheduleSqlFixture() {
     }, async end() {},
   };
   const client = createTransactionalPostgresClient({ connectionString: "postgres://fixture.invalid/no-network", pool });
-  return { client, store: createPostgresLiveRecordStore({ client }), locks, failPlans: () => { failCollection = "reminderPlans"; } };
+  return { client, store: createPostgresLiveRecordStore({ client }), locks, syncLockedWrites, failPlans: () => { failCollection = "reminderPlans"; } };
 }
