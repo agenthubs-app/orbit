@@ -25,6 +25,7 @@ import { loadAppHomeRouteViewModel } from "../home/compose-app-home-from-previou
 import { presentOrbitEvents } from "../orbit-event-presentation";
 import { readRuntimeEventRegistrationStates } from "../../../../features/events/registration/runtime";
 import { resolveConfiguredActorEventCanonicalIds } from "../canonical-event-detail-view";
+import { readCommunityJoinedForActor } from "../../../../features/community/service-factory";
 
 export type AppAgentSearchParams = AppChatSearchParams & {
   /** `?history=1`：strategy / contacts 两屏页头的「◷ 历史记录」落点（任务 5）。 */
@@ -168,6 +169,8 @@ export default async function AppAgentPage({
       ];
     }),
   );
+  // W0003：「已报名活动」栏首行的社群状态由服务端读，SSR 首帧即正确。
+  const communityJoined = await readCommunityJoinedForActor({ actorId });
   const entryModel = composeOrbitAgentEntryViewModel(routeModel);
   const language =
     entryModel.state === "ready"
@@ -181,6 +184,7 @@ export default async function AppAgentPage({
       {entryModel.state === "ready" ? (
         <div data-orbit-route="app-agent-route">
           <IOrbitShell
+            communityJoined={communityJoined}
             initialDeepLink={Boolean(
               firstSearchParam(resolvedSearchParams, "q") ||
                 firstSearchParam(resolvedSearchParams, "session"),

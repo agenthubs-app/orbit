@@ -50,6 +50,8 @@ import { useAgentChat } from "./use-agent-chat";
 import { useAgentHistory } from "./use-agent-history";
 
 export interface IOrbitShellProps {
+  /** 服务端读取的本人社群加入状态（W0003），下传给概览的「已报名活动」栏。 */
+  communityJoined?: boolean;
   home: OrbitHomeViewModel | null;
   /** 服务端解析出的 `?q=`／`?session=`：任一存在即直接落在对话分支（SSR 与首帧一致）。 */
   initialDeepLink?: boolean;
@@ -64,6 +66,7 @@ export interface IOrbitShellProps {
 }
 
 export function IOrbitShell({
+  communityJoined = false,
   home,
   initialDeepLink = false,
   initialHistoryOpen = false,
@@ -293,6 +296,7 @@ export function IOrbitShell({
             />
           ) : (
             <IOrbitHome
+              communityJoined={communityJoined}
               home={home}
               navigate={(href) => {
                 if (typeof window !== "undefined") window.location.href = href;

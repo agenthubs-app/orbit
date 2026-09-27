@@ -25,6 +25,7 @@ import {
   IORBIT_PLAN_OPTIMIZE_PROMPT,
 } from "../../app/(app)/app/agent/iorbit-0918/iorbit-plan";
 import { IOrbitStrategy } from "../../app/(app)/app/agent/iorbit-0918/iorbit-strategy";
+import { OrbitLanguageProvider } from "../../app/(app)/app/orbit-language-context";
 import { IORBIT_STYLES } from "../../app/(app)/app/agent/iorbit-0918/iorbit-styles";
 import {
   iorbitPlanWeeks,
@@ -861,4 +862,97 @@ test("the contacts cards show the real why-now and keep the unsourced rows on th
     decodeURIComponent(String(prepare.props.href)),
     "/app/agent?q=帮我准备联系QA 测试联系人的内容",
   );
+});
+
+/* ── W0003 SC-04：推荐理由只写真实匹配词 ───────────────────────────────── */
+
+function strategyWithTokens(matchedTokens: readonly string[]) {
+  const snapshot = SNAPSHOT as unknown as {
+    recommendations: { items: Array<Record<string, unknown>>; state: string };
+  };
+  return {
+    ...snapshot,
+    recommendations: {
+      ...snapshot.recommendations,
+      items: snapshot.recommendations.items.map((item) => ({ ...item, matchedTokens })),
+    },
+  } as never;
+}
+
+function matchReasons(root: ReactTestRenderer) {
+  return root.root.findAll(
+    (node) => typeof node.type === "string" && node.props?.["data-orbit-iorbit-match-reason"] !== undefined,
+  );
+}
+
+test("the recommendation reason is only the matched goal words", async (t) => {
+  const mounted = await mount(
+    t,
+    <IOrbitStrategy loadSnapshot={async () => strategyWithTokens(["开拓新市场", "日本"])} />,
+  );
+  await mounted.settle();
+
+  const reasons = matchReasons(mounted.root);
+  assert.equal(reasons.length, 1);
+  assert.equal(reasons[0]!.children.join(""), "匹配你的目标：『开拓新市场』『日本』");
+  // 活动行里不再有单独的灰色词块。
+  for (const row of mounted.root.root.findAll((node) => node.props?.className === "ir-event-row")) {
+    assert.equal(row.findAll((node) => node.props?.className === "ir-pill-grey").length, 0);
+  }
+});
+
+test("no matched words means no reason line at all", async (t) => {
+  const mounted = await mount(t, <IOrbitStrategy loadSnapshot={async () => strategyWithTokens([])} />);
+  await mounted.settle();
+
+  assert.ok(JSON.stringify(mounted.root.toJSON()).includes("QA 冒烟活动"), "the event itself still renders");
+  assert.equal(matchReasons(mounted.root).length, 0);
+  assert.doesNotMatch(JSON.stringify(mounted.root.toJSON()), /匹配你的目标/);
+});
+
+test("the event-recommendation areas make no unsupported attendee or effect claims", async (t) => {
+  const FORBIDDEN = /潜在联系人|决策层|更高效地结识|更快接触|potential contacts?|decision[- ]makers?|fastest way to meet|people you are missing/i;
+  const eventSections = (html: string) =>
+    [...html.matchAll(/<section[^>]*data-orbit-agent-strategy-section="(?:next-events|related-events)"[\s\S]*?<\/section>/g)]
+      .map((match) => match[0])
+      .join("\n");
+
+  // SSR：两种语言 × 两屏的区块标题与说明（静态文案）。
+  for (const language of ["zh", "en"] as const) {
+    for (const view of ["strategy", "contacts"] as const) {
+      const area = eventSections(
+        renderToStaticMarkup(
+          <OrbitLanguageProvider initialLanguage={language}>
+            <IOrbitStrategy view={view} />
+          </OrbitLanguageProvider>,
+        ),
+      );
+      assert.ok(area.length > 0, `${language}/${view}: event area must render`);
+      assert.doesNotMatch(area, FORBIDDEN, `${language}/${view}`);
+    }
+  }
+
+  // 挂载后带真实推荐行：理由行同样不带效果承诺。
+  for (const view of ["strategy", "contacts"] as const) {
+    await t.test(`mounted ${view}`, async (sub) => {
+    const mounted = await mount(
+      sub,
+      <IOrbitStrategy loadSnapshot={async () => strategyWithTokens(["日本"])} view={view} />,
+    );
+    await mounted.settle();
+    const sections = mounted.root.root.findAll(
+      (node) =>
+        node.type === "section" &&
+        ["next-events", "related-events"].includes(node.props?.["data-orbit-agent-strategy-section"]),
+    );
+    assert.ok(sections.length > 0);
+    for (const section of sections) {
+      const flat = (node: unknown): string =>
+        typeof node === "string" ? node : (node as { children: unknown[] }).children.map(flat).join("");
+      const text = flat(section);
+      assert.match(text, /匹配你的目标/);
+      assert.doesNotMatch(text, FORBIDDEN, view);
+    }
+    });
+  }
 });

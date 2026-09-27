@@ -14,6 +14,9 @@
  *
  * 数据全部真实，写操作一个不丢：
  *   - 已报名活动 / 目标：服务端注入的 home route view model
+ *   - 社群加入状态（W0003）：服务端读取后注入的 `communityJoined`。社群不是活动（D6）：
+ *     未加入时栏首是指向活动页社群卡片的入口，已加入时栏首是「已加入社群」，都标「社群」，
+ *     不占真实报名活动的两个名额
  *   - 日程 / 月历 / 跟进：`refreshHomeDashboardAction()` 的 D25 facts
  *   - 信号：`POST /api/agent/signals?view=home`，完成 / 明天提醒走 `PATCH /api/agent/signals/{id}`
  *   - 本周推进进度：`GET /api/agent/ledger`
@@ -25,6 +28,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { AgentLedgerEntry } from "../../../../../features/agent/ledger/contract";
+import { COMMUNITY_CONFIG } from "../../../../../features/community/config";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import type { OrbitHomeViewModel } from "../../orbit-home-route-view-model";
 import type { HomeDashboardSnapshot } from "../home-dashboard-route-service";
@@ -62,6 +66,8 @@ export interface IOrbitHomeSession {
 }
 
 export interface IOrbitHomeProps {
+  /** 本人是否已加入 iOrbit 用户社群（服务端读取，W0003）。 */
+  communityJoined?: boolean;
   home: OrbitHomeViewModel | null;
   /** 覆盖点，仅测试使用：默认动态 import `home-dashboard-actions`（server action）。 */
   loadSnapshot?: () => Promise<Loadable<HomeDashboardSnapshot>>;
@@ -194,6 +200,7 @@ function OrbitMark() {
 }
 
 export function IOrbitHome({
+  communityJoined = false,
   home,
   loadSnapshot,
   navigate,
@@ -1034,6 +1041,30 @@ export function IOrbitHome({
             <h3>{t({ en: "Registered events", zh: "已报名活动" })}</h3>
             <a href="/app/events">{t({ en: "All events →", zh: "全部活动 →" })}</a>
           </div>
+          {/* 社群行（W0003）：永远在栏首，标「社群」而不是日期，不计入下面两场真实活动。 */}
+          <a
+            className="ir-m-event ir-m-community"
+            data-orbit-iorbit-community={communityJoined ? "joined" : "invite"}
+            href="/app/events#iorbit-community"
+          >
+            <span className="ir-m-event-date">
+              {t({ en: "Always", zh: "常驻" })}
+              <small>{t({ en: "Community", zh: "社群" })}</small>
+            </span>
+            <span className="ir-m-event-copy">
+              {communityJoined ? (
+                <>
+                  <strong>{t({ en: "Joined the community", zh: "已加入社群" })}</strong>
+                  <span>{t({ en: "iOrbit user community", zh: "iOrbit 用户社群" })}</span>
+                </>
+              ) : (
+                <>
+                  <strong>{t(COMMUNITY_CONFIG.name)}</strong>
+                  <span>{t({ en: "Community · free · always open", zh: "社群 · 免费 · 长期有效" })}</span>
+                </>
+              )}
+            </span>
+          </a>
           {registeredEvents.length > 0 ? (
             registeredEvents.slice(0, 2).map((event) => {
               const start = new Date(event.startsAt);
@@ -1070,7 +1101,7 @@ export function IOrbitHome({
             <h3>{t({ en: "Recent chats", zh: "最近对话" })}</h3>
             <span className="ir-m-col-acts">
               <button className="btn ir-history-btn" onClick={onOpenHistory} type="button">
-                {t({ en: "History", zh: "历史" })}
+                {t({ en: "History", zh: "历史记录" })}
               </button>
               <button className="btn ir-enter-btn" onClick={onOpenChat} type="button">
                 {t({ en: "Open chat →", zh: "进入对话 →" })}

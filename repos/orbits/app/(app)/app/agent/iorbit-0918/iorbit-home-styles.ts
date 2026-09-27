@@ -101,6 +101,7 @@ ${S} .ir-m-cal { padding-top: 18px; border-top: 1px solid #DDDEFA; }
 ${S} .ir-m-cal-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px; }
 ${S} .ir-m-cal-head strong { font-family: 'Noto Serif SC', serif; font-weight: 600; font-size: 15px; }
 ${S} .ir-m-cal-link { font-size: 12.5px; color: #4B4FC7; }
+${S} .ir-m-cal-link:hover { color: #2E3270; }
 ${S} .ir-m-cal-head-side { display: inline-flex; align-items: baseline; gap: 14px; }
 ${S} .btn.ir-m-link.ir-m-cal-toggle { display: none; }
 ${S} .ir-m-cal-wd, ${S} .ir-m-cal-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); text-align: center; font-variant-numeric: tabular-nums; }
@@ -144,6 +145,8 @@ ${S} .ir-m-event-date small { display: block; margin-top: 3px; font-family: "Not
 ${S} .ir-m-event-copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 ${S} .ir-m-event-copy strong { font-size: 14.5px; font-weight: 500; line-height: 1.45; }
 ${S} .ir-m-event-copy span { font-size: 12.5px; color: #6B6F99; }
+${S} .ir-m-community .ir-m-event-date { font-size: 17px; color: #4B4FC7; }
+${S} .ir-m-community .ir-m-event-date small { color: #4B4FC7; }
 ${S} .ir-m-sessions { display: flex; flex-direction: column; }
 ${S} .btn.ir-m-session { justify-content: space-between; gap: 12px; width: 100%; padding: 9px 0; border: 0; border-top: 1px solid #E8E9F6; border-radius: 0; background: transparent; color: #0E1225; font-size: 14px; text-align: left; }
 ${S} .ir-m-sessions .btn.ir-m-session:first-child { border-top: 0; padding-top: 0; }
