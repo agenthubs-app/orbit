@@ -381,11 +381,18 @@ function textOf(node: { children: readonly unknown[] }): string {
 interface Mounted {
   calls: Array<{ body: unknown; method: string; url: string }>;
   pushedUrls: string[];
+  replacedUrls: string[];
   root: ReactTestRenderer;
   settle: (rounds?: number) => Promise<void>;
 }
 
 interface MountOptions {
+  /** W0004：`PATCH /api/guide/state` 的应答（默认 404）。 */
+  guidePatch?: (body: unknown) => Promise<Response>;
+  /** W0004：地址栏的初始查询串（如 `?q=…`）。 */
+  search?: string;
+  /** W0004：可读写的 sessionStorage 内容（默认恒为空）。 */
+  sessionStore?: Map<string, string>;
   ledger?: unknown;
   signalPatchFails?: boolean;
   signalsFail?: boolean;
@@ -407,8 +414,10 @@ async function mountHome(
     href: "https://orbit.test/app/agent",
     origin: "https://orbit.test",
     pathname: "/app/agent",
-    search: "",
+    search: options.search ?? "",
   };
+  const replacedUrls: string[] = [];
+  const sessionStore = options.sessionStore;
 
   Object.defineProperty(globalThis, "document", {
     configurable: true,
@@ -429,7 +438,13 @@ async function mountHome(
         pushState(_state: unknown, _title: string, url: string) {
           pushedUrls.push(url);
         },
-        replaceState() {},
+        replaceState(_state: unknown, _title: string, url: string) {
+          replacedUrls.push(url);
+          const parsed = new URL(url, location.origin);
+          location.pathname = parsed.pathname;
+          location.search = parsed.search;
+          location.href = parsed.href;
+        },
       },
       localStorage: {
         getItem: () => null,
@@ -439,11 +454,17 @@ async function mountHome(
       location,
       matchMedia: () => ({ addEventListener() {}, matches: false, removeEventListener() {} }),
       removeEventListener() {},
-      sessionStorage: {
-        getItem: () => null,
-        removeItem: () => undefined,
-        setItem: () => undefined,
-      },
+      sessionStorage: sessionStore
+        ? {
+            getItem: (key: string) => sessionStore.get(key) ?? null,
+            removeItem: (key: string) => void sessionStore.delete(key),
+            setItem: (key: string, value: string) => void sessionStore.set(key, value),
+          }
+        : {
+            getItem: () => null,
+            removeItem: () => undefined,
+            setItem: () => undefined,
+          },
       setInterval: () => 0,
       setTimeout: (handler: () => void, delay: number) =>
         setTimeout(handler, delay) as unknown as number,
@@ -464,6 +485,9 @@ async function mountHome(
       method: (init?.method ?? "GET").toUpperCase(),
       url,
     });
+    if (url === "/api/guide/state" && options.guidePatch) {
+      return options.guidePatch(init?.body ? JSON.parse(String(init.body)) : undefined);
+    }
     if (url.startsWith("/api/agent/ledger")) {
       return Response.json({
         data: { entries: options.ledger ?? [] },
@@ -508,7 +532,7 @@ async function mountHome(
   };
   await settle();
 
-  return { calls, pushedUrls, root: root!, settle };
+  return { calls, pushedUrls, replacedUrls, root: root!, settle };
 }
 
 function homeElement(
@@ -1122,4 +1146,392 @@ test("the shell hands the server-read community state down to the home column", 
   assert.match(joined, /data-orbit-iorbit-community="joined"/);
   const invite = renderToStaticMarkup(<IOrbitShell home={HOME as never} viewModel={VIEW_MODEL} />);
   assert.match(invite, /data-orbit-iorbit-community="invite"/);
+});
+
+/* ── 6. 引导期示例模式（W0004）───────────────────────────────────────── */
+
+const GUIDE_NEW = {
+  bannerCollapsed: false,
+  completed: 0,
+  confirmedContacts: 0,
+  nextStep: "contacts" as const,
+  steps: { contacts: false, goal: false, plan: false },
+};
+
+const GUIDE_STEP_TWO = {
+  bannerCollapsed: false,
+  completed: 1,
+  confirmedContacts: 3,
+  nextStep: "goal" as const,
+  steps: { contacts: true, goal: false, plan: false },
+};
+
+/** 示例模式下不许出现的读取／写入：逐个接口列出（SC-W0004-04）。 */
+const FORBIDDEN_IN_DEMO = [
+  "/api/agent/signals",
+  "/api/agent/ledger",
+  "/api/ai/conversations",
+] as const;
+
+function assertNoDemoRequests(calls: Mounted["calls"], when: string) {
+  for (const endpoint of FORBIDDEN_IN_DEMO) {
+    const hits = calls.filter((call) => call.url.startsWith(endpoint));
+    assert.deepEqual(hits, [], `${when}: demo mode must not call ${endpoint}`);
+  }
+}
+
+function demoShellMarkup(guide: typeof GUIDE_NEW | typeof GUIDE_STEP_TWO | null): string {
+  return renderToStaticMarkup(
+    <IOrbitShell guide={guide} home={HOME as never} viewModel={VIEW_MODEL} />,
+  );
+}
+
+test("flag off / not in the guide: no demo banner, tag or persona reaches the real home", () => {
+  const html = demoShellMarkup(null);
+  for (const leak of ["示例预览", "data-orbit-guide-demo", "王砚", "佐藤美咲", "JETRO", "/app/start"]) {
+    assert.ok(!html.includes(leak), `demo content leaked into the real home: ${leak}`);
+  }
+  // 真实首页照旧：进页先是读取中的导语。
+  assert.ok(html.includes("正在整理今天的事…"));
+});
+
+test("demo mode renders the persona's day through the real home layout", () => {
+  const html = demoShellMarkup(GUIDE_NEW);
+
+  // 顶部横条：说明、零进度文案、三枚进度格、开始引导链接、收起。
+  assert.match(html, /data-orbit-guide-demo-banner/);
+  assert.ok(html.includes("示例预览"));
+  assert.ok(html.includes("完成引导后，这里会是你自己的今日要事和计划。"));
+  assert.ok(html.includes("3 步就能换成你的数据"));
+  assert.equal((html.match(/class="ir-demo-pip"/g) ?? []).length, 3);
+  assert.match(html, /href="\/app\/start"[^>]*>开始引导 →</);
+  assert.ok(html.includes(">收起<"));
+
+  // 今日要事：主稿（带依据）+ 短讯 + 「还有 1 件」。
+  assert.ok(html.includes("14:00 和王砚见面，请他介绍 IT 部门的铃木"));
+  assert.ok(html.includes("王砚是采购部长，上次通话时提到铃木才是系统采购的决策人。"));
+  assert.ok(html.includes("2 位新联系人可能对应你计划里的人脉需求"));
+  assert.ok(html.includes("约佐藤美咲见面"));
+  assert.ok(html.includes("还有 1 件"));
+  assert.ok(html.includes("今天有 <strong>4 件事</strong>"));
+  // 时间线（示例时钟 11:40，14:00 与 18:30 两项、「现在」线在前）。
+  assert.ok(html.includes("现在 11:40"));
+  assert.ok(html.includes("和王砚见面 · 北辰精工（丸之内）"));
+  assert.ok(html.includes("JETRO 东京创业者交流会"));
+  // 本周推进、已报名活动、最近对话。
+  assert.ok(html.includes("本季度找到 5 家日本中小企业试用我们的 AI 会议纪要，先从东京开始。"));
+  assert.match(html, /class="ir-progress-value">2\/9</);
+  assert.ok(html.includes("在 JETRO 交流会认识 2 位 IT 负责人"));
+  assert.ok(html.includes("JETRO 外资企业商务交流会"));
+  assert.match(html, /data-orbit-iorbit-community="joined"/);
+  assert.ok(html.includes("王砚提到的铃木，怎么请他引荐？"));
+  // 示例人名旁的「示例」角标：主稿、两条短讯、两条时间线。
+  assert.ok((html.match(/data-orbit-guide-demo-tag/g) ?? []).length >= 5);
+  // 四个来源都已就绪（不是读取中）。
+  assert.match(html, /data-orbit-iorbit-ready="true"/);
+  // 横条展开时导航药丸不出现。
+  assert.doesNotMatch(html, /data-orbit-guide-demo-pill/);
+});
+
+test("the banner shows progress and the next step once part of the guide is done", () => {
+  const html = demoShellMarkup(GUIDE_STEP_TWO);
+  assert.ok(html.includes("进度 1 / 3 · 下一步：设定目标"));
+  assert.equal((html.match(/class="ir-demo-pip ir-demo-pip-on"/g) ?? []).length, 1);
+  assert.match(html, />继续引导 →</);
+  const confirm = demoShellMarkup({ ...GUIDE_NEW, completed: 1, confirmedContacts: 1, steps: { contacts: false, goal: true, plan: false } });
+  assert.ok(confirm.includes("进度 1 / 3 · 下一步：确认名片，凑够 3 位"));
+});
+
+test("a collapsed banner (stored in the guide record) renders as the nav pill on first paint", () => {
+  const html = demoShellMarkup({ ...GUIDE_STEP_TWO, bannerCollapsed: true });
+  assert.doesNotMatch(html, /data-orbit-guide-demo-banner/);
+  assert.match(html, /data-orbit-guide-demo-pill/);
+  assert.ok(html.includes("示例 · 继续引导"));
+});
+
+test("demo mode sends no signals / ledger / conversation requests on mount", async (t) => {
+  const mounted = await mountHome(t, () => (
+    <IOrbitShell guide={GUIDE_NEW} home={HOME as never} viewModel={VIEW_MODEL} />
+  ));
+  assertNoDemoRequests(mounted.calls, "mount");
+  // 示例壳不挂对话 hook：连历史分组也不会读。
+  assert.equal(mounted.calls.filter((call) => call.url.includes("/api/ai/")).length, 0);
+});
+
+test("demo mode never loads the dashboard snapshot either", async (t) => {
+  let snapshotLoads = 0;
+  const { DemoModeProvider } = await import("../../app/(app)/app/_demo/demo-mode-context");
+  const mounted = await mountHome(t, () => (
+    <DemoModeProvider view={GUIDE_NEW}>
+      <IOrbitHome
+        home={HOME as never}
+        loadSnapshot={async () => {
+          snapshotLoads += 1;
+          return "unavailable";
+        }}
+        navigate={() => undefined}
+        onAsk={() => undefined}
+        onOpenChat={() => undefined}
+        onOpenHistory={() => undefined}
+        onOpenSession={() => undefined}
+      />
+    </DemoModeProvider>
+  ));
+  assert.equal(snapshotLoads, 0);
+  assertNoDemoRequests(mounted.calls, "mount");
+});
+
+test("every write in demo mode opens the 「这是示例」 guard instead of calling an API", async (t) => {
+  const mounted = await mountHome(t, () => (
+    <IOrbitShell guide={GUIDE_STEP_TWO} home={HOME as never} viewModel={VIEW_MODEL} />
+  ));
+  const root = mounted.root.root;
+  const byClass = (className: string) =>
+    root.findAll((node) => node.type === "button" && node.props?.className === className);
+
+  const guard = () =>
+    root.findAll((node) => node.props?.["data-orbit-guide-demo-intercept"] !== undefined)[0] ?? null;
+  const expectGuard = async (label: string, click: () => void) => {
+    await act(async () => {
+      click();
+    });
+    await mounted.settle();
+    const layer = guard();
+    assert.ok(layer, `${label}: the demo guard must open`);
+    const text = textOf(layer!);
+    assert.ok(text.includes("这是示例"), `${label}: guard title`);
+    assert.ok(text.includes("现在进度 1 / 3"), `${label}: guard progress`);
+    assert.ok(text.includes("知道了"));
+    assert.ok(text.includes("继续引导 →"));
+    const cta = layer!.findAll((node) => node.type === "a")[0]!;
+    assert.equal(cta.props.href, "/app/start");
+    const dismiss = layer!.findAll(
+      (node) => node.type === "button" && node.props?.["data-orbit-guide-demo-dismiss"] === true,
+    )[0]!;
+    await act(async () => {
+      dismiss.props.onClick();
+    });
+    assert.equal(guard(), null, `${label}: 知道了 closes the guard`);
+    return text;
+  };
+
+  // 完成 / 明天提醒
+  const ops = byClass("btn ir-signal-op");
+  assert.ok(ops.length >= 2);
+  assert.ok((await expectGuard("done", () => ops[0]!.props.onClick())).includes("你自己的今日要事"));
+  await expectGuard("snooze", () => ops[1]!.props.onClick());
+  // 刷新
+  const refresh = root.findAll((node) => node.props?.["data-orbit-agent-signals-refresh"] === true)[0]!;
+  await expectGuard("refresh", () => refresh.props.onClick());
+  // 主稿的「交给 iOrbit」
+  const signalAsk = root.findAll((node) => node.props?.["data-orbit-agent-signal-ask"] !== undefined)[0]!;
+  assert.ok((await expectGuard("signal ask", () => signalAsk.props.onClick())).includes("你自己的对话"));
+  // 主稿跳转（看会面准备）与短讯跳转
+  assert.ok(
+    (await expectGuard("lead primary", () => byClass("btn ir-m-primary")[0]!.props.onClick())).includes("会面准备"),
+  );
+  assert.ok((await expectGuard("brief go", () => byClass("btn ir-m-go")[0]!.props.onClick())).includes("人脉匹配"));
+  // 追问发送
+  const input = root.findAll((node) => node.props?.["data-orbit-iorbit-ask-input"] === true)[0]!;
+  await act(async () => {
+    input.props.onChange({ target: { value: "帮我准备周日的活动" } });
+  });
+  await expectGuard("ask send", () => byClass("btn ir-ask-send")[0]!.props.onClick());
+  await expectGuard("ask enter", () =>
+    input.props.onKeyDown({ key: "Enter", preventDefault: () => undefined }),
+  );
+  // 打开对话、历史、最近会话
+  await expectGuard("open chat icon", () => byClass("btn ir-m-chat")[0]!.props.onClick());
+  await expectGuard("enter chat", () => byClass("btn ir-enter-btn")[0]!.props.onClick());
+  assert.ok((await expectGuard("history", () => byClass("btn ir-history-btn")[0]!.props.onClick())).includes("对话记录"));
+  await expectGuard("session", () => byClass("btn ir-m-session")[0]!.props.onClick());
+  // 示例活动链接：拦下而不是跳到不存在的活动页
+  const eventLink = root.findAll(
+    (node) => node.type === "a" && node.props?.className === "ir-m-event",
+  )[0]!;
+  let prevented = false;
+  await expectGuard("event link", () =>
+    eventLink.props.onClick({ preventDefault: () => {
+      prevented = true;
+    } }),
+  );
+  assert.equal(prevented, true);
+
+  assertNoDemoRequests(mounted.calls, "after every write control");
+  assert.equal(mounted.pushedUrls.length, 0, "demo mode never navigates into the chat branch");
+  assert.ok(root.findAll((node) => node.props?.className === "ir-home").length > 0, "still on the overview");
+});
+
+const GUIDE_OK = async (body: unknown) => Response.json({ data: { ...(body as object), grandfathered: false, version: 1 }, success: true });
+
+test("收起 folds the banner into the nav pill and stores it in the guide record; the pill expands it back", async (t) => {
+  const mounted = await mountHome(
+    t,
+    () => <IOrbitShell guide={GUIDE_NEW} home={HOME as never} viewModel={VIEW_MODEL} />,
+    { guidePatch: GUIDE_OK },
+  );
+  const root = mounted.root.root;
+  const find = (marker: string) => root.findAll((node) => node.props?.[marker] === true);
+
+  await act(async () => {
+    find("data-orbit-guide-demo-collapse")[0]!.props.onClick();
+  });
+  await mounted.settle();
+  assert.equal(find("data-orbit-guide-demo-banner").length, 0);
+  const pills = find("data-orbit-guide-demo-pill");
+  assert.ok(pills.length > 0, "the nav pill appears");
+  assert.ok(textOf(pills[0]!).includes("示例 · 开始引导"));
+
+  const collapseCall = mounted.calls.filter((call) => call.url === "/api/guide/state");
+  assert.deepEqual(collapseCall.map((call) => [call.method, call.body]), [["PATCH", { bannerCollapsed: true }]]);
+
+  await act(async () => {
+    pills[0]!.props.onClick();
+  });
+  await mounted.settle();
+  assert.equal(find("data-orbit-guide-demo-banner").length, 1);
+  assert.equal(find("data-orbit-guide-demo-pill").length, 0);
+  assert.deepEqual(
+    mounted.calls.filter((call) => call.url === "/api/guide/state").map((call) => call.body),
+    [{ bannerCollapsed: true }, { bannerCollapsed: false }],
+  );
+  assertNoDemoRequests(mounted.calls, "collapse / expand");
+});
+
+test("demo banner buttons keep the btn ir-* contract and IORBIT_STYLES neutralises them", () => {
+  const html = demoShellMarkup(GUIDE_NEW).split('<main class="ir-main">')[1] ?? "";
+  for (const tag of html.match(/<button[^>]*>/g) ?? []) {
+    assert.match(tag, /class="btn ir-[a-z-]+/, `button without btn ir-* class: ${tag}`);
+  }
+  const flat = IORBIT_STYLES.replace(/\/\*[\s\S]*?\*\//g, "").split("\n").join(" ");
+  for (const className of ["ir-demo-collapse", "ir-demo-pill", "ir-demo-dismiss"]) {
+    assert.match(flat, new RegExp(`\\.btn\\.${className}(?![-a-z])[^{]*\\{[^}]*height: auto`));
+    assert.match(flat, new RegExp(`\\.btn\\.${className}(?![-a-z]):active[^{]*\\{[^}]*transform: none`));
+  }
+});
+
+test("a failed collapse write keeps this page's state only: nothing in local storage to replay onto another account", async (t) => {
+  const mounted = await mountHome(
+    t,
+    () => <IOrbitShell guide={GUIDE_NEW} home={HOME as never} viewModel={VIEW_MODEL} />,
+    { guidePatch: async () => Response.json({ success: false }, { status: 503 }) },
+  );
+  const storageWrites: string[] = [];
+  const spyStorage = {
+    getItem: (key: string) => {
+      storageWrites.push(`get:${key}`);
+      return "true";
+    },
+    removeItem: (key: string) => void storageWrites.push(`remove:${key}`),
+    setItem: (key: string) => void storageWrites.push(`set:${key}`),
+  };
+  (globalThis as unknown as { window: { localStorage: unknown } }).window.localStorage = spyStorage;
+  const find = (marker: string) => mounted.root.root.findAll((node) => node.props?.[marker] === true);
+
+  await act(async () => {
+    find("data-orbit-guide-demo-collapse")[0]!.props.onClick();
+  });
+  await mounted.settle();
+  // 本次页面里照样收起（不报错、不回弹）。
+  assert.equal(find("data-orbit-guide-demo-banner").length, 0);
+  assert.ok(find("data-orbit-guide-demo-pill").length > 0);
+  assert.deepEqual(storageWrites, [], "no local storage read or write for the collapse state");
+
+  // 同一浏览器换成另一个账号（服务端记录是展开）：挂载时不补写任何东西、横条照常展开。
+  const before = mounted.calls.filter((call) => call.url === "/api/guide/state").length;
+  await act(async () => {
+    mounted.root.update(
+      <IOrbitShell guide={{ ...GUIDE_STEP_TWO }} home={HOME as never} key="bob" viewModel={VIEW_MODEL} />,
+    );
+  });
+  await mounted.settle();
+  assert.equal(mounted.calls.filter((call) => call.url === "/api/guide/state").length, before);
+  assert.equal(find("data-orbit-guide-demo-banner").length, 1);
+  assert.deepEqual(storageWrites, []);
+});
+
+test("rapid collapse / expand clicks leave the server holding the last choice, whatever the response order", async (t) => {
+  let server: boolean | null = null;
+  const pending: Array<{ body: { bannerCollapsed: boolean }; resolve: () => void }> = [];
+  const mounted = await mountHome(
+    t,
+    () => <IOrbitShell guide={GUIDE_NEW} home={HOME as never} viewModel={VIEW_MODEL} />,
+    {
+      guidePatch: (body) =>
+        new Promise<Response>((resolve) => {
+          const typed = body as { bannerCollapsed: boolean };
+          pending.push({
+            body: typed,
+            // 服务端在「处理」请求时生效：按我们决定的应答顺序落库。
+            resolve: () => {
+              server = typed.bannerCollapsed;
+              resolve(Response.json({ data: { ...typed, grandfathered: false, version: 1 }, success: true }));
+            },
+          });
+        }),
+    },
+  );
+  const root = mounted.root.root;
+  const find = (marker: string) => root.findAll((node) => node.props?.[marker] === true);
+  const click = async (marker: string) => {
+    await act(async () => {
+      find(marker)[0]!.props.onClick();
+    });
+  };
+
+  // 收起 → 展开 → 收起 → 展开，全部在第一个应答回来之前点完。
+  await click("data-orbit-guide-demo-collapse");
+  await click("data-orbit-guide-demo-pill");
+  await click("data-orbit-guide-demo-collapse");
+  await click("data-orbit-guide-demo-pill");
+  assert.equal(pending.length, 1, "only one write is in flight at a time");
+
+  // 总是先应答最新发出的那个（倒序），直到没有在路上的请求。
+  let rounds = 0;
+  while (pending.length > 0 && rounds < 10) {
+    rounds += 1;
+    const latest = pending.pop()!;
+    latest.resolve();
+    await mounted.settle();
+    assert.ok(pending.length <= 1, "still at most one write in flight");
+  }
+  assert.equal(pending.length, 0);
+  // 最后一次点击是「展开」：服务端最终必须是 false。
+  assert.equal(server, false);
+  assert.equal(find("data-orbit-guide-demo-banner").length, 1);
+  const bodies = mounted.calls.filter((call) => call.url === "/api/guide/state").map((call) => call.body);
+  assert.deepEqual(bodies.at(-1), { bannerCollapsed: false });
+});
+
+test("a pending global ask and ?q= are consumed by the demo shell and never auto-send in the real shell later", async (t) => {
+  const sessionStore = new Map<string, string>([
+    ["orbit.ask.pending", JSON.stringify({ context: null, from: "/app/events", query: "帮我约王砚" })],
+  ]);
+  const mounted = await mountHome(
+    t,
+    () => <IOrbitShell guide={GUIDE_NEW} home={HOME as never} viewModel={VIEW_MODEL} />,
+    { search: "?q=%E5%B8%AE%E6%88%91%E5%87%86%E5%A4%87&lang=zh", sessionStore },
+  );
+  const root = mounted.root.root;
+
+  // 示例壳：两样都被取走、清掉，改弹拦截层。
+  assert.equal(sessionStore.has("orbit.ask.pending"), false);
+  assert.deepEqual(mounted.replacedUrls, ["/app/agent?lang=zh"]);
+  const layer = root.findAll((node) => node.props?.["data-orbit-guide-demo-intercept"] !== undefined)[0];
+  assert.ok(layer, "the demo guard opens for the consumed ask");
+  assert.ok(textOf(layer!).includes("你自己的对话"));
+  assertNoDemoRequests(mounted.calls, "demo mount with a pending ask");
+
+  // 之后（引导完成）同一标签页挂真实壳：没有任何提问被自动发出。
+  await act(async () => {
+    mounted.root.update(<IOrbitShell guide={null} home={HOME as never} viewModel={VIEW_MODEL} />);
+  });
+  await mounted.settle(8);
+  const asks = mounted.calls.filter(
+    (call) =>
+      call.url.startsWith("/api/ai/conversations") &&
+      (call.method === "POST" || (call.body as { message?: unknown } | undefined)?.message !== undefined),
+  );
+  assert.deepEqual(asks, [], "no question may be sent by the real shell after the demo");
+  assert.ok(root.findAll((node) => node.props?.className === "ir-home").length > 0, "the real shell stays on the overview");
 });

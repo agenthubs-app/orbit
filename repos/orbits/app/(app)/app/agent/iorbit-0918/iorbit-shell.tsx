@@ -27,11 +27,27 @@
  * @media 内，桌面宽度下挂得上却看不见；新抽屉没有这层类。桌面侧原来的常驻 `<aside>`
  * 侧栏与拖拽宽度按计划不再渲染（设计无侧栏，本计划唯一的能力移除），历史能力全部
  * 经这一个抽屉进入。删除二次确认（`AgentHistoryDeleteDialog`）与 toast 仍挂在壳上。
+ *
+ * 示例模式（W0004）：服务端判定本人处于引导期且开关打开时传入 `guide`，壳整个换成
+ * `IOrbitDemoShell`——它**不挂** `useAgentHistory()` / `useAgentChat()`，因此不会自动
+ * 请求 `/api/ai/conversations/**`、不恢复 `?session=`；全局提问框、别处暂存的待发提问
+ * 与 `?q=` 都被取出清掉并改弹拦截层（`DemoAskTarget` / `DemoHandoffGuard`），
+ * 不会留到之后的真实壳里自动发出。
+ * 概览屏由 `DemoModeProvider` 切到示例数据，写操作都被拦下。`guide` 为空时一切照旧。
  */
 "use client";
 
 import { type CSSProperties, useEffect, useRef, useState } from "react";
 
+import {
+  DemoAskTarget,
+  DemoBanner,
+  DemoHandoffGuard,
+  DemoInterceptLayer,
+  DemoModeProvider,
+  DemoNavPill,
+  type DemoModeView,
+} from "../../_demo/demo-mode-context";
 import { AccountTopNav } from "../../orbit-account-shell";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import type { OrbitAgentViewModel } from "../../orbit-agent-route-view-model";
@@ -52,6 +68,8 @@ import { useAgentHistory } from "./use-agent-history";
 export interface IOrbitShellProps {
   /** 服务端读取的本人社群加入状态（W0003），下传给概览的「已报名活动」栏。 */
   communityJoined?: boolean;
+  /** 示例模式（W0004）：非空即渲染示例壳；开关关闭或不在引导期时为空。 */
+  guide?: DemoModeView | null;
   home: OrbitHomeViewModel | null;
   /** 服务端解析出的 `?q=`／`?session=`：任一存在即直接落在对话分支（SSR 与首帧一致）。 */
   initialDeepLink?: boolean;
@@ -65,7 +83,55 @@ export interface IOrbitShellProps {
   viewModel: OrbitAgentViewModel;
 }
 
-export function IOrbitShell({
+export function IOrbitShell(props: IOrbitShellProps) {
+  // 分支放在任何 hook 之前：示例壳与真实壳是两棵不同的组件树，hook 顺序各自稳定。
+  if (props.guide) return <IOrbitDemoShell guide={props.guide} home={props.home} />;
+  return <IOrbitLiveShell {...props} />;
+}
+
+/**
+ * 示例壳：同一套外层作用域、顶栏与概览屏，但没有对话 / 历史的两个 hook。
+ * 概览屏里的「打开对话」「历史」「会话」都经 `guardWrite` 拦下，所以不需要对话分支。
+ */
+function IOrbitDemoShell({ guide, home }: { guide: DemoModeView; home: OrbitHomeViewModel | null }) {
+  const { t } = useOrbitLanguage();
+  return (
+    <DemoModeProvider view={guide}>
+      <DemoAskTarget />
+      <DemoHandoffGuard />
+      <div
+        data-orbit-agent-request-state="idle"
+        data-orbit-ask-clearance="manual"
+        data-orbit-guide-demo="on"
+        data-orbit-real-page="agent"
+        style={{ "--text-3": "#6B6F99", "--text-4": "#9FA3C4" } as CSSProperties}
+      >
+        <style>{CONSOLE_STYLES}</style>
+        <div data-orbit-real-page="iorbit-0918">
+          <style>{IORBIT_STYLES}</style>
+          <h1 className="ir-screen-title" data-orbit-agent-screen-title>
+            {t({ en: "iOrbit workspace", zh: "iOrbit 工作区" })}
+          </h1>
+          <AccountTopNav active="agent" mobileRightExtra={<DemoNavPill />} rightExtra={<DemoNavPill />} />
+          <main className="ir-main">
+            <DemoBanner />
+            <IOrbitHome
+              home={home}
+              navigate={() => undefined}
+              onAsk={() => undefined}
+              onOpenChat={() => undefined}
+              onOpenHistory={() => undefined}
+              onOpenSession={() => undefined}
+            />
+          </main>
+          <DemoInterceptLayer />
+        </div>
+      </div>
+    </DemoModeProvider>
+  );
+}
+
+function IOrbitLiveShell({
   communityJoined = false,
   home,
   initialDeepLink = false,

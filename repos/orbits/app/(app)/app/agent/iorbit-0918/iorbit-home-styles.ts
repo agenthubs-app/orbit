@@ -9,7 +9,18 @@
 const S = '[data-orbit-real-page="iorbit-0918"]';
 
 // 新增 .btn 类的基类中和（与 IORBIT_STYLES 里既有的 .btn.ir-* 同一口径）。
-const NEW_BUTTONS = ["ir-m-primary", "ir-m-link", "ir-m-go", "ir-m-more", "ir-m-chat", "ir-m-session"];
+const NEW_BUTTONS = [
+  "ir-m-primary",
+  "ir-m-link",
+  "ir-m-go",
+  "ir-m-more",
+  "ir-m-chat",
+  "ir-m-session",
+  // W0004 示例模式
+  "ir-demo-collapse",
+  "ir-demo-pill",
+  "ir-demo-dismiss",
+];
 const neutralise =
   NEW_BUTTONS.map((name) => `${S} .btn.${name}`).join(", ") +
   " { height: auto; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; letter-spacing: 0; line-height: normal; transition: none; font-weight: 400; cursor: pointer; }\n" +
@@ -153,7 +164,32 @@ ${S} .ir-m-sessions .btn.ir-m-session:first-child { border-top: 0; padding-top: 
 ${S} .btn.ir-m-session:hover { color: #2E3270; }
 ${S} .ir-m-session-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 ${S} .btn.ir-m-session time { color: #9FA3C4; font-size: 12.5px; }
+/* W0004 示例模式：横条、导航药丸、「示例」角标、拦截层（原型 demoBar / demo-pill / demo-tag / icpt） */
+${S} .ir-demo-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding: 14px 18px; border-radius: 14px; background: #2E3270; color: #FFFFFF; }
+${S} .ir-demo-tagline { font-size: 11.5px; font-weight: 700; letter-spacing: 0.12em; padding: 3px 8px; border-radius: 6px; background: rgba(255,255,255,0.14); }
+${S} .ir-demo-msg { margin: 0; flex: 1; min-width: 220px; font-size: 14.5px; line-height: 1.6; }
+${S} .ir-demo-msg small { display: block; opacity: 0.72; font-size: 12.5px; }
+${S} .ir-demo-prog { display: inline-flex; align-items: center; gap: 4px; }
+${S} .ir-demo-pip { width: 18px; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.22); }
+${S} .ir-demo-pip-on { background: #FFFFFF; }
+${S} a.ir-demo-cta, ${S} a.ir-demo-cta:hover { display: inline-flex; align-items: center; padding: 9px 16px; border: 1px solid #FFFFFF; border-radius: 10px; background: #FFFFFF; color: #2E3270; font-size: 14px; font-weight: 500; white-space: nowrap; text-decoration: none; }
+${S} .btn.ir-demo-collapse { padding: 4px; border: 0; border-radius: 0; background: transparent; color: rgba(255,255,255,0.7); font-size: 13px; }
+${S} .btn.ir-demo-collapse:hover { color: #FFFFFF; }
+${S} .btn.ir-demo-pill { padding: 6px 11px; border: 0; border-radius: 999px; background: #2E3270; color: #FFFFFF; font-size: 12px; font-weight: 500; }
+${S} .btn.ir-demo-pill:hover { background: #4B4FC7; }
+${S} .ir-demo-tag { display: inline-block; margin-left: 6px; padding: 3px 4px; border: 1px dashed #B9BCEB; border-radius: 4px; color: #6B6F99; font-family: "Noto Sans SC", "PingFang SC", sans-serif; font-size: 10.5px; font-weight: 500; line-height: 1; letter-spacing: 0.04em; vertical-align: 3px; }
+${S} .ir-m-pills .ir-demo-tag { margin-left: 0; vertical-align: 0; align-self: center; }
+${S} .ir-demo-scrim { position: fixed; inset: 0; display: flex; align-items: flex-start; justify-content: center; padding: 90px 16px 16px; background: rgba(14,18,37,0.32); }
+${S} .ir-demo-sheet { display: flex; flex-direction: column; gap: 16px; width: 100%; max-width: 420px; padding: 24px 24px 20px; border-radius: 18px; background: #FFFFFF; box-shadow: 0 24px 60px rgba(14,18,37,0.22); outline: none; }
+${S} .ir-demo-sheet h3 { margin: 0; font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 21px; line-height: 1.35; color: #0E1225; }
+${S} .ir-demo-sheet p { margin: 0; font-size: 13.5px; line-height: 1.6; color: #6B6F99; }
+${S} .ir-demo-sheet-acts { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px 16px; }
+${S} .btn.ir-demo-dismiss { padding: 0; border: 0; border-radius: 0; background: transparent; color: #6B6F99; font-size: 14px; }
+${S} .btn.ir-demo-dismiss:hover { color: #2E3270; }
+${S} a.ir-demo-cta.ir-demo-cta-primary, ${S} a.ir-demo-cta.ir-demo-cta-primary:hover { border-color: #4B4FC7; background: #4B4FC7; color: #FFFFFF; }
 @media (max-width: 900px) {
+  ${S} .ir-demo-msg { min-width: 0; flex-basis: 100%; }
+  ${S} .ir-demo-scrim { padding-top: 40px; }
   ${S} .ir-home { gap: 26px; }
   ${S} .ir-m-h1 { font-size: 40px; }
   ${S} .ir-m-lede { font-size: 16px; }
