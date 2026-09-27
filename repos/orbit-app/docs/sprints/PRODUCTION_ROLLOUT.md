@@ -19,7 +19,8 @@
 | 0100 汇总、对账、报警 | ① `db:migrate:live`，建 4 张表（和 0099 同一条命令）；② **先把管理员手机上的 App 更新到 0104 之后的版本**；③ 配置 `ORBIT_READ_COST_ADMIN_ACCOUNT_IDS`，填生产环境 agenthubs 账号的编号；④ 可选：配置 `NEON_API_KEY`、`NEON_PROJECT_ID`，然后看对账表 `neon_status` 是否为 `ok`；⑤ 可选：配置 `AXIOM_TOKEN`、`AXIOM_DATASET` | ②③ 的顺序不能反：旧版 App 碰到未知通知类型时整个收件箱会解析失败，0104 已经修好 |
 | 0101 看板改由数据库算 | 确认 Neon 有 ICU 排序规则：`select 1 from pg_collation where collname='und-x-icu'` | 没有 ICU 时结果仍然正确，只是读得多，日志会出现 `dashboard_activity_collation_missing`；建议尽快发新版 App（带 `roleCounts`） |
 | 0102 看板快照 | ① 只读确认生产 `orbit_records` 有没有 `sync_revision` 列；② 有的话执行 `npm run db:migrate:dashboard-graph-version`，大表建议手工改成 `create index concurrently`；没有的话等 0108 | 没有这一列时代码会自动退回整图计算 |
-| 0103 AI 轨迹 | 部署后执行一次 `npm run db:migrate:agent-run-targets`，给旧行补上所属运行编号；只做 UPDATE，数据多时分批 | **0111 在生产执行之前，这一步必须已经完成** |
+| 0103 AI 轨迹 | **部署前**执行一次 `npm run db:migrate:agent-run-targets`，给旧行补上所属运行编号；只做 UPDATE，数据多时分批。旧代码不依赖这一列，所以先回填没有副作用；部署后再回填，会有一段时间旧运行看不到自己的动作和回执（Codex 审阅意见） | **0111 在生产执行之前，这一步必须已经完成** |
+| 0121 Codex 审阅修复 | 合并后补充：Neon 用量接口所需的密钥与套餐；旧 App 能力声明带来的兼容顺序 | — |
 | 0104 旧 chat 退役 | 部署后先执行 `npm run db:cleanup:legacy-chat` 预演看行数；确认后再执行 `-- --apply --confirm-remote=<workspace id>` | 不执行不影响功能 |
 
 ## 后续 Sprint 预告（合并后在上表补充具体命令）
