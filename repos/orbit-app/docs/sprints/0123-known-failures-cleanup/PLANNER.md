@@ -1,6 +1,6 @@
 # Sprint 0123 — 已知失败清理
 
-**Plan revision:** 1。**模式:** existing-codebase / single-generator。运行状态只在登记表。
+**Plan revision:** 2（2026-09-27 协调者追加范围第 6 条）。**模式:** existing-codebase / single-generator。运行状态只在登记表。
 **原需求:** 用户 2026-09-27 确认的验收口径：以已知失败清单为基线，没有新增即算全量通过；已知失败只减不增。同时决定安排 Sprint 逐步清理。承接历史 0097（partial）没有完成的 SC-0097-03。
 **单一目标:** orbits 已知失败清单缩短；剩下的每条都有机器可识别的分类（带原因和恢复条件的 skip，或单独的 npm 命令），让一次全量就能判断是否有回归。
 **易读目标:** [GOAL.md](GOAL.md)。
@@ -24,6 +24,7 @@
 3. 不稳定用例：找出根因（共享状态、端口、时间、并发）；在查清之前不得标记 skip。
 4. 更新已知清单文件，逐条写明状态。
 5. 修复 `repos/orbits/package.json` 的 `lint` 脚本：它引用了两个早已不存在的路径（`app/(app)/app/contacts/all-actions/...` 与 `today/...`），导致脚本本身跑不通（0105 报告登记）。
+6. Postgres 环境测试的环境绑定（0108 协调者复核登记）：`lifecycle-task-pages-postgres`（4 条）与 `relationship-task-page-postgres`（1 条）要求库名为 `orbit_neon_audit_20260925`，并把 Postgres 版本钉在 16.12（Neon），在本机的 `orbit_test`（PG 18）上必然失败。需要改成机器可识别的分类：满足条件时才运行，否则带原因跳过；或者放宽版本断言。与此同时，`contacts.recommend` 的不稳定来自推荐结果并列时排序不定（Mina Tan / Omar Rahman），单独跑也会偶发失败（7 次中 1 次）。
 - 排除：为了让断言通过而改变产品行为。
 
 ## 验收契约
