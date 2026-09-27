@@ -8,7 +8,7 @@ import type {
 } from "../../shared/domain/contracts";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
 import { createStorageBusinessCardContactWriteProvider } from "../../features/contacts/storage/contact-write-live-record-provider";
-import { createStorageEventContactRequestNotificationWriter } from "../../features/events/event-operations/contact-request-notification-writer";
+import type { EventContactRequestNotificationInput } from "../../features/events/event-operations/contact-request-notification-writer";
 import type { EventOperationsEngine } from "../../features/events/event-operations/engine";
 import {
   createEventOperationsOutboxProjector,
@@ -252,13 +252,20 @@ test("partial projection retry fills the missing connection without overwriting 
   }
 });
 
-test("contact-request lifecycle projects actor-scoped in-app notifications with internal deep links", async () => {
+test("contact-request lifecycle hands each transition to the notification writer for the participant who did not act", async () => {
+  // The writer is the typed-inbox boundary (0129); its database behaviour is
+  // covered by event-contact-request-inbox-postgres. Here: the projector's mapping.
   const store = createMemoryLiveRecordStore<Record<string, unknown>>();
+  const received: EventContactRequestNotificationInput[] = [];
+  let failWriter = false;
   const projector = createEventOperationsOutboxProjector({
-    contactRequestNotifications: createStorageEventContactRequestNotificationWriter({
-      store,
-      workspaceId: WORKSPACE_ID,
-    }),
+    contactRequestNotifications: {
+      async createNotification(input) {
+        if (failWriter) throw new Error("contact not yet projected");
+        received.push(input);
+        return { recordId: `inbox:${received.length}` };
+      },
+    },
     registrationProvider: createEventRegistrationLiveRecordProvider({
       store,
       workspaceId: WORKSPACE_ID,
@@ -274,45 +281,28 @@ test("contact-request lifecycle projects actor-scoped in-app notifications with 
     targetActorId: "actor:target",
     updatedAt: "2026-08-03T10:00:00.000Z",
   };
-  await store.upsertRecord({
-    collectionName: "contacts",
-    createdAt: common.updatedAt,
-    evidenceIds: ["evidence:event-consent:owner-target"],
-    lifecycleState: "active",
-    payload: { displayName: "Aiko Nakamura", id: "contact:target-owned-by-owner" },
-    recordId: "contact:target-owned-by-owner",
-    sourceId: common.requestId,
-    sourceType: "event_import",
-    updatedAt: common.updatedAt,
-    userId: common.requesterActorId,
-    workspaceId: WORKSPACE_ID,
-  });
   const transitions = [
     { eventType: "event.contact_request.created", payload: { ...common, revision: 1 } },
     { eventType: "event.contact_request.declined", payload: { ...common, revision: 2 } },
     { eventType: "event.contact_request.accepted", payload: { ...common, contactIdsByActor: { "actor:owner": "contact:target-owned-by-owner", "actor:target": "contact:owner-owned-by-target" }, revision: 3 } },
     { eventType: "event.contact_request.withdrawn", payload: { ...common, revision: 4 } },
   ] as const;
-  for (const transition of transitions) {
+  for (const [index, transition] of transitions.entries()) {
     const result = await projector.project(relationshipMessage({
       aggregateId: common.requestId,
       aggregateType: "event_contact_request",
       ...transition,
     }));
-    assert.equal(result.policy, "in_app");
-    assert.equal(result.projection, "contact_request_notification");
+    assert.deepEqual(result, { policy: "in_app", projectedIds: [`inbox:${index + 1}`], projection: "contact_request_notification" });
   }
-  const notifications = await store.listRecords({ limit: "unbounded", collectionName: "notifications", workspaceId: WORKSPACE_ID });
-  assert.equal(notifications.length, 4);
-  assert.deepEqual(notifications.map((record) => record.userId), [
-    "actor:target",
-    "actor:owner",
-    "actor:owner",
-    "actor:target",
+  assert.deepEqual(received.map((input) => [input.actorId, input.transition, input.revision, input.contactId]), [
+    ["actor:target", "created", 1, null],
+    ["actor:owner", "declined", 2, null],
+    ["actor:owner", "accepted", 3, "contact:target-owned-by-owner"],
+    ["actor:target", "withdrawn", 4, null],
   ]);
-  assert.equal(notifications[0]?.payload.actionHref, "/app/events/event%3Aoutbox-test#event-matchmaking-title");
-  assert.equal(notifications[2]?.payload.actionHref, "/app/contacts/contact%3Atarget-owned-by-owner?eventId=event%3Aoutbox-test");
-  assert.ok(notifications.every((record) => record.payload.channel === "in_app"));
+  assert.ok(received.every((input) => input.eventId === "event:outbox-test" && input.requestId === common.requestId && input.occurredAt === common.updatedAt));
+  // An acceptance without the requester's contact side can never succeed: not retried.
   await assert.rejects(
     projector.project(relationshipMessage({
       aggregateId: common.requestId,
@@ -324,6 +314,8 @@ test("contact-request lifecycle projects actor-scoped in-app notifications with 
       && error.code === "EVENT_OPERATIONS_OUTBOX_PAYLOAD_INVALID"
       && error.retryable === false,
   );
+  // A writer failure (e.g. the contact is not projected yet) is retried.
+  failWriter = true;
   await assert.rejects(
     projector.project(relationshipMessage({
       aggregateId: common.requestId,
@@ -339,6 +331,7 @@ test("contact-request lifecycle projects actor-scoped in-app notifications with 
       && error.code === "EVENT_OPERATIONS_OUTBOX_PROVIDER_FAILED"
       && error.retryable === true,
   );
+  assert.equal((await store.listRecords({ limit: "unbounded", collectionName: "notifications", workspaceId: WORKSPACE_ID })).length, 0);
   await assert.rejects(
     projector.project(relationshipMessage({ eventType: "event.unknown" })),
     (error: unknown) =>

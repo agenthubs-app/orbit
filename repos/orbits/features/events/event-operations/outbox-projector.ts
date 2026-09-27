@@ -11,7 +11,7 @@ import {
 } from "../registration/profile-contract-repair/audit-outbox-contract";
 import type { EventRegistrationProvider } from "../registration/service";
 import type { EventOperationsCheckIn } from "./contract";
-import type { EventContactRequestNotificationWriter } from "./contact-request-notification-writer";
+import type { EventContactRequestNotificationWriter, EventContactRequestTransition } from "./contact-request-notification-writer";
 import type { EventOperationsOutboxMessage } from "./storage/postgres-outbox-repository";
 
 export interface EventOperationsProjectionResult {
@@ -156,49 +156,27 @@ async function projectContactRequestNotification(input: {
   const requesterContactId = contactIdsByActor && typeof contactIdsByActor === "object" && !Array.isArray(contactIdsByActor)
     ? (contactIdsByActor as Readonly<Record<string, unknown>>)[requesterActorId]
     : null;
-  const transition = input.message.eventType.split(".").at(-1);
-  const notification = input.message.eventType === "event.contact_request.created"
-    ? { actorId: targetActorId, contactId: null, title: "收到新的名片交换申请" }
-    : input.message.eventType === "event.contact_request.accepted"
-      ? {
-          actorId: requesterActorId,
-          contactId: typeof requesterContactId === "string" && requesterContactId.trim() ? requesterContactId : null,
-          title: "名片交换申请已接受",
-        }
-      : input.message.eventType === "event.contact_request.declined"
-        ? { actorId: requesterActorId, contactId: null, title: "名片交换申请未被接受" }
-        : { actorId: targetActorId, contactId: null, title: "名片交换申请已被撤回" };
-  if (input.message.eventType === "event.contact_request.accepted" && !notification.contactId) {
+  const transition = input.message.eventType.split(".").at(-1) as EventContactRequestTransition;
+  // The participant who did not act is told; the writer verifies it against the request row.
+  const actorId = transition === "created" || transition === "withdrawn" ? targetActorId : requesterActorId;
+  const contactId = transition === "accepted" && typeof requesterContactId === "string" && requesterContactId.trim()
+    ? requesterContactId
+    : null;
+  if (transition === "accepted" && !contactId) {
     throw new EventOperationsOutboxProjectionError(
       "EVENT_OPERATIONS_OUTBOX_PAYLOAD_INVALID",
       "An accepted contact-request notification requires the requester's contact side.",
       false,
     );
   }
-  // Deep-link straight to the counterpart's profile drawer so the recipient
-  // can act on the request without hunting through the recommendation list.
-  const focusParticipantKey =
-    notification.actorId === targetActorId
-      ? "requesterParticipantId"
-      : "targetParticipantId";
-  const focusParticipantValue = payload[focusParticipantKey];
-  const focusParticipantId =
-    typeof focusParticipantValue === "string" && focusParticipantValue.trim()
-      ? focusParticipantValue
-      : null;
-  const actionHref = notification.contactId
-    ? `/app/contacts/${encodeURIComponent(notification.contactId)}?eventId=${encodeURIComponent(input.message.eventId)}`
-    : `/app/events/${encodeURIComponent(input.message.eventId)}${focusParticipantId ? `?participant=${encodeURIComponent(focusParticipantId)}` : ""}#event-matchmaking-title`;
-  const notificationId = `notification:event-contact-request:${encodeURIComponent(requestId)}:${revision}:${transition}:${encodeURIComponent(notification.actorId)}`;
-  await input.writer.createNotification({
-    actionHref,
-    actorId: notification.actorId,
-    contactId: notification.contactId,
+  const { recordId: notificationId } = await input.writer.createNotification({
+    actorId,
+    contactId,
     eventId: input.message.eventId,
-    evidenceIds: [`event-contact-request:${requestId}:revision:${revision}`],
-    notificationId,
     occurredAt,
-    title: notification.title,
+    requestId,
+    revision,
+    transition,
   });
   return {
     policy: "in_app",

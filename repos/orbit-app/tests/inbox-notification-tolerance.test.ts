@@ -51,3 +51,17 @@ test('a foreign-account item or an invalid envelope still rejects the whole resp
  assert.equal(notificationInboxData({enabled:true,items:'nope',unreadCount:0,nextCursor:null,asOf:at},'a'),null);
  assert.equal(notificationInboxData({items:[],unreadCount:0,nextCursor:null,asOf:at},'a'),null);
 });
+
+// Sprint 0129: business-card exchange notifications (source kind
+// event_contact_request) render and open the live page's person sheet or the
+// new contact; a build that predates the kind skips them as above.
+test('an exchange notification renders and carries the live-page or contact link',()=>{
+ const exchange=(id:string,title:string,href:string,transition:string)=>({...row(id,title),kind:'update',origin:'business',sources:[{sourceKind:'event_contact_request',sourceId:'event-contact-request:1',sourceRevision:'1:'+transition,objectId:'event_1',occurredAt:at,readAt:at}],target:{kind:'event',id:'event_1',href,status:'available'},actions:['read','dismiss','handle']});
+ const data=notificationInboxData({enabled:true,items:[
+  exchange('x1','Avery Lin 想和你交换名片','/events/event_1/live?participant=p_avery','created'),
+  exchange('x2','佐藤 葵 接受了你的名片交换','/contacts/contact%3Aevent-consent%3A1?eventId=event_1','accepted'),
+ ],unreadCount:2,nextCursor:null,asOf:at},'a');
+ assert.deepEqual(data?.items.map(item=>[item.id,item.target.href]),[['x1','/events/event_1/live?participant=p_avery'],['x2','/contacts/contact%3Aevent-consent%3A1?eventId=event_1']]);
+ const html=renderToHtml(React.createElement(NotificationInboxList,{data:data!,onOpen:()=>{},onRefresh:()=>{},onMore:()=>{},onFilter:()=>{},filter:'all',busy:false,error:''}));
+ assert.ok(html.includes('Avery Lin 想和你交换名片'));assert.ok(html.includes('佐藤 葵 接受了你的名片交换'));
+});
