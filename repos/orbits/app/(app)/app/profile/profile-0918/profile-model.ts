@@ -3,6 +3,7 @@ import type {
   ProfileOnboardingContract,
   ProfileOnboardingFieldCode,
 } from "../../../../../shared/contract/profile";
+import { GOAL_EXAMPLES } from "../goal-editor/goal-editor-model";
 import type { OrbitProfileEditorView } from "../profile-editor-adapter";
 
 type Copy = { zh: string; en: string };
@@ -79,12 +80,8 @@ export interface PersonaGroup {
  * 预设选项按 Orbit 定位编写：「懂你人脉的商务秘书」，服务商业活动参与者（创业者 + 潜客维护者），
  * 中日跨境场景为主。选项只是快捷输入，存入的仍是当前语言的纯文本标签，与手动添加的标签同一口径。
  */
-// 我的目标：一条人脉目标 + 两条商业目标，作为填写示例；点击后可在输入框里继续改。
-export const GOAL_OPTIONS: readonly Copy[] = [
-  { zh: "三个月内认识 3 位日本市场的渠道伙伴", en: "Meet three channel partners for the Japan market within three months" },
-  { zh: "年内在东京开出第一家线下门店", en: "Open our first physical store in Tokyo this year" },
-  { zh: "从 0 到 1 打造自有品牌", en: "Build our own brand from zero to one" },
-];
+// 我的目标：示例句与 onboarding 共用（goal-editor-model GOAL_EXAMPLES，10 条，RW-05）；点击后可在输入框里继续改。
+export const GOAL_OPTIONS: readonly Copy[] = GOAL_EXAMPLES;
 
 export const OFFER_OPTIONS: readonly Copy[] = [
   { zh: "投融资资源", en: "Investment & funding" },
