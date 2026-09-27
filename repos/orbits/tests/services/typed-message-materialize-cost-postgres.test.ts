@@ -3,7 +3,7 @@ import test from 'node:test';
 import {randomUUID} from 'node:crypto';
 import {Pool} from 'pg';
 import {createTransactionalPostgresClient,type TransactionalPostgresClient} from '../../shared/storage/transactional-postgres';
-import {runOrbitRecordsMigration} from '../../shared/storage/migrations';
+import {ORBIT_RECORDS_SCHEMA_SQL,runOrbitRecordsMigration} from '../../shared/storage/migrations';
 import {SYNC_COMMIT_ORDER_LOCK_SQL} from '../../features/sync/commit-order-lock';
 import {createDeliveryPolicyRepository} from '../../features/notifications/delivery-policy-repository';
 import {createTypedDeliveryRuntime} from '../../features/notifications/typed-delivery-factory';
@@ -55,4 +55,27 @@ test('typed delivery materialization reads 50 narrow message references without 
     assert.ok(deliveries.every(d=>d.status==='scheduled'&&d.body==='Message'&&d.policySource?.kind==='message'));
     t.diagnostic(JSON.stringify({fullCandidateBytes:fullBytes,narrowCandidateBytes:pages[0]!.bytes,candidateRows:50,uniqueDeliveries:deliveries.length}));
   }finally{await pool.query(`drop schema if exists ${schema} cascade`);await client.close();}
+});
+
+// Sprint 0109: a database without the relationship message tables (not migrated yet) must not stop
+// notification candidates; message candidates are skipped and their cursor is kept for later.
+test('typed delivery materialization keeps notifications flowing when the message tables are missing', {skip:!url,timeout:30000},async()=>{
+  assert.ok(url);
+  const schema='message_tables_missing_'+randomUUID().replaceAll('-','');
+  const pool=new Pool({connectionString:url,max:3,options:`-c search_path=${schema} -c statement_timeout=5000 -c lock_timeout=1000`});
+  const client=createTransactionalPostgresClient({connectionString:url,pool}),workspaceId='w',actorId='a',now=()=>at;
+  const repository=createDeliveryPolicyRepository({client,workspaceId,now});
+  const devices={listActive:async()=>[],revoke:async()=>null,register:async()=>{throw Error('unused');}};
+  const runtime=createTypedDeliveryRuntime({client,workspaceId,actorId,now,devices,push:null});
+  const warnings:string[]=[];const warn=console.warn;console.warn=(line:string)=>{warnings.push(String(line));};
+  try{
+    await pool.query(`create schema ${schema}`);await pool.query(ORBIT_RECORDS_SCHEMA_SQL);
+    assert.equal((await pool.query("select to_regclass('relationship_messages') as t")).rows[0].t,null);
+    const since='2026-09-25T00:00:00.000Z';
+    await repository.tx(actorId,tx=>repository.save(tx,'notificationCutover',actorId,actorId,{enabled:true,generation:1,since,batchId:'test'}));
+    await repository.tx(actorId,tx=>repository.save(tx,'notificationDeliveryCursor',actorId,actorId,{notifications:null,messages:{at:since,id:'kept'}}));
+    assert.deepEqual(await runtime.materialize(),{notifications:0,messages:0});
+    assert.deepEqual((await repository.get<{messages:unknown}>(client,'notificationDeliveryCursor',actorId))?.messages,{at:since,id:'kept'},'the message cursor waits for the tables');
+    assert.ok(warnings.some(line=>line.includes('typed_delivery_message_tables_missing')),'the skip is logged');
+  }finally{console.warn=warn;await pool.query(`drop schema if exists ${schema} cascade`);await client.close();}
 });
