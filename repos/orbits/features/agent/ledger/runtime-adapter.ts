@@ -242,7 +242,9 @@ export function createRuntimeBackedAgentLedgerService({
           nextCursor: input.scenario === "empty" ? null : nextCursor,
           summary: nextCursor
             ? `本页 ${entries.length} 条记录，还有更早的记录，可继续翻页。`
-            : `账本共 ${entries.length} 条记录，可追溯、可撤销。`,
+            : input.cursor
+              ? `最后一页 ${entries.length} 条记录，可追溯、可撤销。`
+              : `账本共 ${entries.length} 条记录，可追溯、可撤销。`,
           provenance: provenance({
             evidenceIds: entries.flatMap((entry) => entry.evidenceIds),
           }),

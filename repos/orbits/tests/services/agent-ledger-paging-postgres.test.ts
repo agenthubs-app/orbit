@@ -116,6 +116,9 @@ test("0121 the ledger pages explicitly with a bounded read per page and reaches 
   assert.equal(new Set(seen).size, 501, "no entry repeats across pages");
   assert.equal(seen[0], "action:0500", "newest first");
   assert.equal(seen.at(-1), "action:0000", "the old awaiting action is on the last page");
+  const firstPage = await ledger.listEntries({ limit: 200 });
+  assert.ok(firstPage.success);
+  assert.match(firstPage.data.summary, /本页 200 条/u, "a partial page does not claim to be the whole ledger");
 
   // One list page returns at most limit + 1 rows from the database, whatever the history size.
   const { cost } = await readCost.measure("list-page", () => repo.listActionPage({ limit: 50 }));
