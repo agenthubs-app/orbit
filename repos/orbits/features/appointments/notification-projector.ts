@@ -1,5 +1,6 @@
 import type { ReminderActionWriter } from "../notifications/action-writer";
 import type { AppointmentOutboxEvent } from "./contract";
+import { LiveRecordOwnerConflictError } from "../../shared/storage/live-record-store";
 import {
   createConfiguredAppointmentCalendarProjector,
   type AppointmentCalendarProjector,
@@ -164,7 +165,12 @@ async function canonicalReminderIsCurrent(
     && Number((reminders as Record<string, unknown>).currentRevision) === proposalRevision;
 }
 
-async function upsertNotification(input: {
+/**
+ * Exported for the owner test (sprint 0113). The record id carries the actor,
+ * so a row under it always belongs to that actor; a foreign owner is refused
+ * instead of being taken over.
+ */
+export async function upsertAppointmentReminderNotification(input: {
   actionHref: string | null;
   actorId: string;
   contactId: string | null;
@@ -188,7 +194,7 @@ async function upsertNotification(input: {
     evidenceIds: input.evidenceIds,
     createdAt: input.now,
   };
-  await input.transaction.query(`
+  const written = await input.transaction.query(`
     insert into orbit_records (
       workspace_id, collection_name, record_id, user_id, source_type,
       source_id, source_label, provider, provider_record_id, evidence_ids,
@@ -200,7 +206,7 @@ async function upsertNotification(input: {
       $5, $6, $7, 'active', $8, $9::jsonb, $7, $7, null
     )
     on conflict (workspace_id, collection_name, record_id) do update set
-      user_id = excluded.user_id,
+      user_id = coalesce(orbit_records.user_id, excluded.user_id),
       evidence_ids = excluded.evidence_ids,
       occurred_at = excluded.occurred_at,
       lifecycle_state = 'active',
@@ -208,6 +214,8 @@ async function upsertNotification(input: {
       payload = excluded.payload,
       updated_at = excluded.updated_at,
       deleted_at = null
+    where nullif(orbit_records.user_id, '') is null or orbit_records.user_id = excluded.user_id
+    returning record_id
   `, [
     input.runtime.workspaceId,
     input.reminderId,
@@ -219,6 +227,7 @@ async function upsertNotification(input: {
     input.title,
     JSON.stringify(payload),
   ]);
+  if (written.rows.length !== 1) throw new LiveRecordOwnerConflictError("notifications", input.reminderId);
 }
 
 export function createPostgresAppointmentNotificationProjector(
@@ -269,7 +278,7 @@ export function createPostgresAppointmentNotificationProjector(
         for (const actorId of actorIds) {
           const reminderId = `notification:${event.appointmentId}:${proposalRevision}:${suffix}:${actorId}`;
           const contactId = contactIdFor(event, actorId);
-          await upsertNotification({ actionHref: actionHrefFor(event, actorId), actorId, contactId, dueAt: event.availableAt, evidenceIds: [`appointment:${event.appointmentId}:revision:${proposalRevision}`], now: event.createdAt, reminderId, runtime, title, transaction });
+          await upsertAppointmentReminderNotification({ actionHref: actionHrefFor(event, actorId), actorId, contactId, dueAt: event.availableAt, evidenceIds: [`appointment:${event.appointmentId}:revision:${proposalRevision}`], now: event.createdAt, reminderId, runtime, title, transaction });
           notificationIds.push(reminderId);
         }
         return { notificationIds, policy: "in_app" as const };

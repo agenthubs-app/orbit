@@ -1,3 +1,4 @@
+import { writeAsOwner } from "../support/live-record-owner-fixture";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createLiveContactDetailTagStatusService } from "../../features/contacts/live-detail-service";
@@ -13,7 +14,7 @@ test("metadata updates preserve all persisted note kinds, privacy and source wit
   await seedGeneratedRelationshipFixturesIntoLiveStore({ store, workspaceId });
   for (const collectionName of ["contacts", "connections", "evidence"]) {
     for (const record of await store.listRecords({ limit: "unbounded", collectionName, workspaceId })) {
-      await store.upsertRecord({ ...record, userId: actorId, payload: { ...record.payload, accountId: actorId } });
+      await writeAsOwner(store, { ...record, userId: actorId, payload: { ...record.payload, accountId: actorId } });
     }
   }
   for (const record of await store.listRecords({ limit: "unbounded", collectionName: "connections", workspaceId })) {

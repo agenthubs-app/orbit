@@ -1,3 +1,4 @@
+import { writeAsOwner } from "../support/live-record-owner-fixture";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createLiveProfileService } from "../../features/profile/live-service";
@@ -16,7 +17,7 @@ test("conflicting record ownership cannot expose or overwrite a private birth da
   const graph = await provider.readProfileGraph("actor-birth");
   const record = await store.getRecord({ workspaceId: "private-birth-date", collectionName: "profiles", recordId: "profile:actor-birth" });
   assert.ok(record);
-  await store.upsertRecord({ ...record, userId: "actor-other" });
+  await writeAsOwner(store, { ...record, userId: "actor-other" });
   const read = await service.getProfile({ actorId: "actor-birth" });
   assert.equal(read.success, true);
   if (!read.success) throw new Error("Profile read failed");

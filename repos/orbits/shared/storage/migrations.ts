@@ -1,4 +1,5 @@
 import { runEventOperationsMigrations } from "../../features/events/event-operations/storage/migrations";
+import { runEventSyncRevisionMigration } from "../../features/events/event-operations/storage/sync-revision";
 import { runRelationshipLifecycleMigrations } from "../../features/connections/lifecycle/migrations";
 import { runRelationshipMessageMigrations } from "../../features/relationship-communication/message-tables";
 
@@ -216,4 +217,6 @@ export async function runOrbitRecordsMigration(
   // Sprint 0109: relationship conversations, members and messages. Last, so the
   // existing steps keep their order; needs orbit_records (the sync lock key).
   await runRelationshipMessageMigrations(client);
+  // Sprint 0113: sync_revision on the event head tables. Last, for the same reason.
+  await runEventSyncRevisionMigration(client);
 }

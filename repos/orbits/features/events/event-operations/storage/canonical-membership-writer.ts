@@ -1,3 +1,4 @@
+import { acquireSyncCommitOrderLock } from "../../../sync/commit-order-lock";
 import { createHash } from "node:crypto";
 
 import type { EventRegistration } from "../../registration/contract";
@@ -66,6 +67,10 @@ export function canonicalRegistrationId(
 export async function appendCanonicalMembershipVersion(
   input: AppendCanonicalMembershipVersionInput,
 ): Promise<EventRegistration> {
+  // Sprint 0113: the membership head carries sync_revision. Callers take the
+  // commit-order lock at the start of their transaction; taking it again here
+  // is free and keeps any new caller correct.
+  await acquireSyncCommitOrderLock(input.executor);
   if (
     (input.origin === "admission_application" &&
       (!Number.isSafeInteger(input.admissionApplicationVersion) ||

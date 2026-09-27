@@ -12,7 +12,7 @@ const SYNC_COMMIT_ORDER_LOCK_SQL = `with sync_write_lock as materialized (
   select set_config('orbit.sync_write_lock_key', held.key::text, true) as acquired_key
   from (
     select lock_key.key, pg_advisory_xact_lock(lock_key.key) as acquired
-    from (select hashtextextended('orbit:sync:commit-order:v1:' || 'orbit_records'::regclass::oid::text, 0) as key) lock_key
+    from (select hashtextextended('orbit:sync:commit-order:v1:' || coalesce(to_regclass('orbit_records')::oid::text, ''), 0) as key) lock_key
   ) held
 ) select acquired_key from sync_write_lock`;
 

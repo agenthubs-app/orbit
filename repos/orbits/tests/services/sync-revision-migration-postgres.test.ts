@@ -67,7 +67,9 @@ async function assertStrict(h: Awaited<ReturnType<typeof database>>, label: stri
   const counts = await revisions(h.pool);
   assert.equal(counts.filled, counts.total, `${label}: no null revision`);
   assert.equal(counts.distinct, counts.total, `${label}: no duplicate revision`);
-  assert.equal((await inspectSyncRevision(h.session)).state, "strict", `${label}: strict`);
+  const inspection = await inspectSyncRevision(h.session);
+  assert.equal(inspection.state, "strict", `${label}: strict`);
+  assert.equal(inspection.ownerGuardInstalled, true, `${label}: the 0113 owner/identity guard is installed`);
   await h.store.upsertRecord(record("notes", `note:${label}:${randomUUID()}`));
   await assert.rejects(h.pool.query(RAW_NOTE, [W, "notes", `raw:${label}:${randomUUID()}`, NOW]), /SYNC_WRITE_LOCK_REQUIRED/, `${label}: unlocked write refused`);
 }

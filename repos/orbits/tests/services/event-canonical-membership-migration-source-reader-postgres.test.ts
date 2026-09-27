@@ -1,3 +1,5 @@
+import { acquireSyncCommitOrderLock } from "../../features/sync/commit-order-lock";
+import { lockedFixtureQuery } from "../support/sync-revision-fixture";
 import assert from "node:assert/strict";
 import { createHash, randomUUID } from "node:crypto";
 import test from "node:test";
@@ -599,8 +601,7 @@ test(
         /snapshot is no longer active|active runtime-attested database snapshot/u,
       );
       for (const [index, eventId] of allEventIds.entries()) {
-        await scopedPool.query(
-          `insert into event_ops_events (
+        await lockedFixtureQuery(scopedPool, `insert into event_ops_events (
              workspace_id, event_id, organizer_actor_id, lifecycle_state,
              revision, created_at, updated_at, public_code, title, timezone,
              starts_at, ends_at, lifecycle_state_v2, source_payload,
@@ -929,8 +930,8 @@ test(
                where workspace_id = $1 and event_id = $2 and event_version = 1`,
               [workspaceId, "event_06", sha256("event-06-concurrent-head-v2")],
             );
-            await writer.query(
-              `update event_ops_events
+            await acquireSyncCommitOrderLock(writer);
+            await writer.query(`update event_ops_events
                set event_version = 2
                where workspace_id = $1 and event_id = $2`,
               [workspaceId, "event_06"],
@@ -998,8 +999,7 @@ test(
         invalidWrapper,
         { extra: true, registration: invalidWrapper, registrationId: invalidWrapper.id },
       );
-      await scopedPool.query(
-        `update event_ops_events
+      await lockedFixtureQuery(scopedPool, `update event_ops_events
          set registration_migration_count = registration_migration_count + 1
          where workspace_id = $1 and event_id = 'event_signup_01'`,
         [workspaceId],

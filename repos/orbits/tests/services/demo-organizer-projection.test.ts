@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildDemoOrganizerProjection } from "../../scripts/demo-organizer-projection";
+import { applyDemoOrganizerProjection, buildDemoOrganizerProjection } from "../../scripts/demo-organizer-projection";
 import { MOCK_EVENT_ORGANIZER_ACCOUNT_FIXTURES } from "../../shared/mock/event-organizer-fixtures";
 import { createMemoryLiveRecordStore, type LiveRecord } from "../../shared/storage/live-record-store";
 
@@ -24,13 +24,14 @@ function rows(): LiveRecord[] {
   return result;
 }
 
-test("organizer projection consolidates identities without touching login or user edits and replays unchanged", () => {
+test("organizer projection consolidates identities without touching login or user edits and replays unchanged", async () => {
   const source=rows(); const original=structuredClone(source);
   const store=createMemoryLiveRecordStore(source);
   const plan=buildDemoOrganizerProjection({records:source,workspaceId,now});
   assert.equal(plan.length,52);
   assert.deepEqual(source,original);
-  for(const row of plan) store.upsertRecord(row);
+  await applyDemoOrganizerProjection({plan,records:source,store});
+  assert.ok(store.listRecords({ limit: "unbounded", workspaceId,collectionName:"organizers"}).every(r=>r.userId===r.payload.accountId),"organizers now belong to their canonical login (explicit reassign)");
   assert.equal(store.listRecords({ limit: "unbounded", workspaceId,collectionName:"accounts"}).length,13);
   assert.equal(store.listRecords({ limit: "unbounded", workspaceId,collectionName:"profiles"}).length,13);
   assert.ok(store.listRecords({ limit: "unbounded", workspaceId,collectionName:"profiles"}).every(r=>r.payload.role==="User-edited role" && r.payload.organization));

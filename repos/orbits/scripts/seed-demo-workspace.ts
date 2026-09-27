@@ -45,7 +45,7 @@ import { runOrbitRecordsMigration } from "../shared/storage/migrations";
 import { LIVE_SEED_COLLECTION_NAMES, seedGeneratedRelationshipFixturesIntoLiveStore } from "../shared/storage/seed-generated-fixtures";
 import { loadLocalEnv } from "./load-local-env";
 import { ensureDemoCanonicalMemberships } from "./demo-canonical-memberships";
-import { buildDemoOrganizerProjection } from "./demo-organizer-projection";
+import { applyDemoOrganizerProjection, buildDemoOrganizerProjection } from "./demo-organizer-projection";
 import { buildDemoRelationshipProjection } from "./demo-relationship-projection";
 import {
   createPostgresOrganizerMembershipWriter,
@@ -489,7 +489,7 @@ async function main(): Promise<void> {
     try {
       const records = await store.listRecords({ limit: "unbounded", workspaceId, includeDeleted: true });
       const projection = buildDemoOrganizerProjection({ records, workspaceId, now: new Date().toISOString() });
-      for (const record of projection) await store.upsertRecord(record);
+      await applyDemoOrganizerProjection({ plan: projection, records, store });
       const relationships = buildDemoRelationshipProjection({ records, workspaceId, now: new Date().toISOString() });
       for (const record of relationships) await store.upsertRecord(record);
       await client.query("COMMIT");

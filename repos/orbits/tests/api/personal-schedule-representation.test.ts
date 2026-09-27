@@ -1,3 +1,4 @@
+import { writeAsOwner } from "../support/live-record-owner-fixture";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
@@ -154,7 +155,7 @@ test("production association reader uses current notes ownership and workspace a
   await store.upsertRecord(contactRecord);
   assert.deepEqual(await reader.accessibleIds({ actorId: owner, kind: "contact", ids: ["contact:owned"] }), ["contact:owned"]);
   assert.deepEqual(await reader.accessibleIds({ actorId: "other", kind: "contact", ids: ["contact:owned"] }), []);
-  await store.upsertRecord({ ...contactRecord, userId: "other" });
+  await writeAsOwner(store, { ...contactRecord, userId: "other" });
   assert.deepEqual(await reader.accessibleIds({ actorId: owner, kind: "contact", ids: ["contact:owned"] }), []);
   assert.deepEqual(await reader.accessibleIds({ actorId: owner, kind: "note", ids: [note.id, "missing"] }), [note.id]);
   assert.deepEqual(await reader.accessibleIds({ actorId: "other", kind: "note", ids: [note.id] }), []);

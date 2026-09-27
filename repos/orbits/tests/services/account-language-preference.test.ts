@@ -1,3 +1,4 @@
+import { writeAsOwner } from "../support/live-record-owner-fixture";
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -163,7 +164,7 @@ test("a corrupt or foreign-owned preference fails closed instead of becoming sys
     collectionName: "account_language_preferences",
   });
   assert.ok(record);
-  await store.upsertRecord({
+  await writeAsOwner(store, {
     ...record,
     userId: "actor:foreign",
   });

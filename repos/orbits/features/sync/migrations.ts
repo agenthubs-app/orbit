@@ -4,6 +4,7 @@ import {
   SYNC_WRITE_LOCK_KEY_SQL,
   SYNC_WRITE_LOCK_SETTING,
 } from "./commit-order-lock";
+import { SYNC_OWNER_GUARD_SQL } from "./owner-guard";
 
 /**
  * The strict trigger function: every insert/update gets a new revision, and a
@@ -190,6 +191,9 @@ create unique index if not exists orbit_records_sync_revision_uidx
 ${SYNC_REVISION_TRIGGER_SQL}
 ${SYNC_ACTOR_INDEX_SQL}
 ${DASHBOARD_GRAPH_VERSION_INDEX_SQL}
+-- Sprint 0113: an owned sync row cannot change owner or collection outside a
+-- registered handler (features/sync/owner-guard.ts).
+${SYNC_OWNER_GUARD_SQL}
 -- Product deletes are persistent lifecycle_state = 'deleted' updates, so the
 -- UPDATE trigger assigns their tombstone revision without removing the row.
 `;

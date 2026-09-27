@@ -1,3 +1,4 @@
+import { assertRegisteredOwnerChange } from "../../features/sync/owner-guard";
 import type {
   RelationshipTargetType,
   SourceType,
@@ -81,6 +82,42 @@ export interface LiveRecordWritePrecondition {
 
 export type LiveRecordStoreResult<TValue> = TValue | Promise<TValue>;
 
+/**
+ * Sprint 0113: an upsert never moves an existing row to another owner. A row
+ * with an owner keeps it when the update does not name one (userId omitted or
+ * null means "not given", not "clear"), an unowned row may be given its first
+ * owner, and naming a different owner is refused with this error. An intended
+ * owner change goes through reassignRecordOwner.
+ */
+export class LiveRecordOwnerConflictError extends Error {
+  readonly code = "LIVE_RECORD_OWNER_CONFLICT";
+  constructor(readonly collectionName: string, readonly recordId: string) {
+    super(`orbit_records ${collectionName}/${recordId} belongs to another owner; use reassignRecordOwner to change it.`);
+    this.name = "LiveRecordOwnerConflictError";
+  }
+}
+
+export interface LiveRecordReassignOwnerInput {
+  workspaceId: string;
+  collectionName: string;
+  recordId: string;
+  /** The owner the caller expects; a different current owner changes nothing (returns null). */
+  fromUserId: string | null;
+  toUserId: string | null;
+  updatedAt: string;
+  /** Required for a sync-domain collection: one of SYNC_OWNER_CHANGE_HANDLERS. */
+  handler?: string;
+}
+
+/** The owner an upsert leaves on an existing row, or a conflict. */
+export function resolveUpsertOwner(existing: string | null | undefined, incoming: string | null | undefined): { owner: string | null } | "conflict" {
+  const current = existing ?? null;
+  const next = incoming ?? null;
+  if (next === null) return { owner: current };
+  if (current === null || current === "" || current === next) return { owner: next };
+  return "conflict";
+}
+
 /** Validates a list limit; returns null for an explicitly unbounded read. */
 export function resolveListLimit(limit: LiveRecordListQuery["limit"]): number | null {
   if (limit === "unbounded") return null;
@@ -109,6 +146,8 @@ export interface LiveRecordStoreLike<TPayload extends Record<string, unknown> = 
   upsertRecord: (
     record: LiveRecord<TPayload>,
   ) => LiveRecordStoreResult<LiveRecord<TPayload>>;
+  /** The explicit owner-change interface (sprint 0113); upsert never transfers ownership. */
+  reassignRecordOwner?: (input: LiveRecordReassignOwnerInput) => LiveRecordStoreResult<LiveRecord<TPayload> | null>;
 }
 
 export interface LiveRecordStore<TPayload extends Record<string, unknown> = Record<string, unknown>> {
@@ -120,6 +159,7 @@ export interface LiveRecordStore<TPayload extends Record<string, unknown> = Reco
   getRecord: (query: LiveRecordGetQuery) => LiveRecord<TPayload> | null;
   listRecords: (query: LiveRecordListQuery) => readonly LiveRecord<TPayload>[];
   upsertRecord: (record: LiveRecord<TPayload>) => LiveRecord<TPayload>;
+  reassignRecordOwner?: (input: LiveRecordReassignOwnerInput) => LiveRecord<TPayload> | null;
 }
 
 function cloneJson<TValue>(value: TValue): TValue {
@@ -242,11 +282,27 @@ export function createMemoryLiveRecordStore<
         }));
     },
     upsertRecord(record) {
+      const key = recordKey(record);
+      const existing = records.get(key);
       const nextRecord = cloneJson(record);
+      if (existing) {
+        const owner = resolveUpsertOwner(existing.userId, record.userId);
+        if (owner === "conflict") throw new LiveRecordOwnerConflictError(record.collectionName, record.recordId);
+        nextRecord.userId = owner.owner;
+      }
 
-      records.set(recordKey(nextRecord), nextRecord);
+      records.set(key, nextRecord);
 
       return cloneJson(nextRecord);
+    },
+    reassignRecordOwner(input) {
+      assertRegisteredOwnerChange(input.collectionName, input.handler);
+      const key = recordKey(input);
+      const current = records.get(key);
+      if (!current || current.lifecycleState === "deleted" || (current.userId ?? null) !== input.fromUserId) return null;
+      const moved = { ...current, userId: input.toUserId, updatedAt: input.updatedAt };
+      records.set(key, cloneJson(moved));
+      return cloneJson(moved);
     },
   };
 }

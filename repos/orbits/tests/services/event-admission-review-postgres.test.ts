@@ -1,3 +1,5 @@
+import { lockedFixtureQuery } from "../support/sync-revision-fixture";
+import { runEventSyncRevisionMigration } from "../../features/events/event-operations/storage/sync-revision";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import test from "node:test";
@@ -59,8 +61,7 @@ async function insertOperationsConfiguration(input: {
       updatedAt,
     ],
   );
-  await input.pool.query(
-    `insert into event_ops_configuration_heads (
+  await lockedFixtureQuery(input.pool, `insert into event_ops_configuration_heads (
        workspace_id, event_id, configuration_version, revision, updated_at
      ) values ($1, $2, 1, 1, $3)`,
     [input.workspaceId, input.eventId, updatedAt],
@@ -146,6 +147,8 @@ test(
     try {
       await admin.query(`create schema ${schema}`);
       await runEventOperationsMigrations(client);
+      // Sprint 0113: the event head tables carry sync_revision under the strict trigger, as in production.
+      await runEventSyncRevisionMigration(client);
       const plan = buildEventCoreBackfillPlan(
         [eventA, eventB].map((eventId, index) => ({
           description: `完整 canonical 报名审核测试活动 ${index + 1}`,

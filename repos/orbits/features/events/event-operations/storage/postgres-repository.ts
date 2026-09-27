@@ -1,3 +1,4 @@
+import { acquireSyncCommitOrderLock } from "../../../sync/commit-order-lock";
 import { createHash } from "node:crypto";
 
 import {
@@ -934,6 +935,8 @@ export function createPostgresEventOperationsRepository({
     >,
   ): Promise<EventOperationsConfiguration> {
     return client.transaction(async (transaction) => {
+      // Sprint 0113: event head tables carry sync_revision (strict trigger); take the commit-order lock first.
+      await acquireSyncCommitOrderLock(transaction);
       if (authorization) {
         const validated = await requireOperatorCapabilityInTransaction(
           transaction,
@@ -1859,6 +1862,8 @@ export function createPostgresEventOperationsRepository({
         value.generationId,
       ).slice(0, 32)}`;
       return client.transaction(async (transaction) => {
+        // Sprint 0113: event head tables carry sync_revision (strict trigger); take the commit-order lock first.
+        await acquireSyncCommitOrderLock(transaction);
         const validatedAuthorization =
           await requireOperatorCapabilityInTransaction(
             transaction,

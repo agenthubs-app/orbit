@@ -1,3 +1,5 @@
+import { lockedFixtureQuery } from "../support/sync-revision-fixture";
+import { runEventSyncRevisionMigration } from "../../features/events/event-operations/storage/sync-revision";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import test from "node:test";
@@ -30,8 +32,7 @@ async function insertPublishedCanonicalEvent(input: {
   publicCode: string;
   workspaceId: string;
 }): Promise<void> {
-  await input.pool.query(
-    `insert into event_ops_events (
+  await lockedFixtureQuery(input.pool, `insert into event_ops_events (
        workspace_id, event_id, organizer_actor_id, lifecycle_state,
        revision, created_at, updated_at, public_code, title, description,
        venue, timezone, starts_at, ends_at, lifecycle_state_v2,
@@ -90,8 +91,7 @@ async function insertOperationsConfiguration(input: {
       updatedAt,
     ],
   );
-  await input.pool.query(
-    `insert into event_ops_configuration_heads (
+  await lockedFixtureQuery(input.pool, `insert into event_ops_configuration_heads (
        workspace_id, event_id, configuration_version, revision, updated_at
      ) values ($1, $2, 1, 1, $3)`,
     [input.workspaceId, input.eventId, updatedAt],
@@ -163,6 +163,8 @@ test(
     try {
       await adminPool.query(`create schema ${schema}`);
       await runEventOperationsMigrations(operationPool);
+      // Sprint 0113: the event head tables carry sync_revision under the strict trigger, as in production.
+      await runEventSyncRevisionMigration(operationPool);
       await insertPublishedCanonicalEvent({
         eventId: instantEventId,
         pool: operationPool,

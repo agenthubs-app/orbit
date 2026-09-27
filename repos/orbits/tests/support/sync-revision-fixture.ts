@@ -59,3 +59,32 @@ export async function testRawWrite(client: TestTransactionClient, collectionName
   if (!isSyncCollection(collectionName)) { await client.query(text, values); return; }
   await client.transaction(async (tx) => { await acquireSyncCommitOrderLock(tx); await tx.query(text, values); });
 }
+
+type FixtureQueryable =
+  | { transaction<T>(operation: (tx: { query(text: string, values?: readonly unknown[]): Promise<unknown> }) => Promise<T>): Promise<T> }
+  | { connect(): Promise<{ query(text: string, values?: unknown[]): Promise<unknown>; release(): void }> };
+
+/**
+ * Sprint 0113: a test's own raw write to an event table that carries
+ * sync_revision (event_ops_events, *_heads). Under the strict trigger it needs
+ * the commit-order lock like any product writer, so it runs in its own short
+ * transaction that takes the lock first.
+ */
+export async function lockedFixtureQuery(target: FixtureQueryable, text: string, values?: readonly unknown[]): Promise<void> {
+  if ("transaction" in target) {
+    await target.transaction(async (tx) => { await acquireSyncCommitOrderLock(tx); await tx.query(text, values); });
+    return;
+  }
+  const client = await target.connect();
+  try {
+    await client.query("begin");
+    await acquireSyncCommitOrderLock(client);
+    await client.query(text, values === undefined ? undefined : [...values]);
+    await client.query("commit");
+  } catch (error) {
+    await client.query("rollback").catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
+}

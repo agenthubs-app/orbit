@@ -1,3 +1,4 @@
+import { writeAsOwner } from "../support/live-record-owner-fixture";
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -97,7 +98,7 @@ test("contact selections round-trip through storage and reject mismatches before
   await seedGeneratedRelationshipFixturesIntoLiveStore({ store, workspaceId });
   for (const collectionName of ["contacts", "connections", "evidence"]) {
     for (const record of store.listRecords({ limit: "unbounded", collectionName, workspaceId })) {
-      await store.upsertRecord({ ...record, userId: actorId, payload: { ...record.payload, accountId: actorId } });
+      await writeAsOwner(store, { ...record, userId: actorId, payload: { ...record.payload, accountId: actorId } });
     }
   }
   const provider = createStorageContactGraphProvider({ store, workspaceId });

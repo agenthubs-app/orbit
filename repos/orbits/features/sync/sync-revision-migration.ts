@@ -7,6 +7,7 @@ import {
   SYNC_REVISION_RELAXED_FUNCTION_SQL,
   SYNC_REVISION_TRIGGER_SQL,
 } from "./migrations";
+import { SYNC_OWNER_GUARD_SQL } from "./owner-guard";
 
 /**
  * Online sync_revision migration (sprint 0108), for a live database.
@@ -42,6 +43,8 @@ export interface SyncRevisionInspection {
   columnNotNull: boolean;
   triggerInstalled: boolean;
   uniqueIndexValid: boolean;
+  /** Sprint 0113: the owner/identity guard trigger (not part of the strict state). */
+  ownerGuardInstalled: boolean;
 }
 
 export interface SyncRevisionMigrationReport {
@@ -71,7 +74,8 @@ export async function inspectSyncRevision(session: SyncRevisionMigrationSession)
     "select is_nullable from information_schema.columns where table_schema = current_schema() and table_name = 'orbit_records' and column_name = 'sync_revision'",
   )).rows[0];
   const rows = Number((await session.query<{ n: string }>("select count(*)::text as n from orbit_records")).rows[0]?.n ?? 0);
-  if (!column) return { state: "absent", rows, nullRevisions: rows, columnNotNull: false, triggerInstalled: false, uniqueIndexValid: false };
+  const ownerGuardInstalled = await exists(session, "select 1 from pg_trigger where tgrelid = 'orbit_records'::regclass and tgname = 'orbit_records_sync_owner_guard_trigger' and not tgisinternal");
+  if (!column) return { state: "absent", rows, nullRevisions: rows, columnNotNull: false, triggerInstalled: false, uniqueIndexValid: false, ownerGuardInstalled };
   const nullRevisions = Number((await session.query<{ n: string }>("select count(*)::text as n from orbit_records where sync_revision is null")).rows[0]?.n ?? 0);
   const triggerInstalled = await exists(session, "select 1 from pg_trigger where tgrelid = 'orbit_records'::regclass and tgname = 'orbit_records_assign_sync_revision_trigger' and not tgisinternal");
   const uniqueIndexValid = await exists(session, "select 1 from pg_index i join pg_class c on c.oid = i.indexrelid where i.indrelid = 'orbit_records'::regclass and c.relname = $1 and i.indisvalid", [UNIQUE_INDEX]);
@@ -82,7 +86,7 @@ export async function inspectSyncRevision(session: SyncRevisionMigrationSession)
   if (!triggerInstalled) state = "disabled";
   else if (!columnNotNull || nullRevisions > 0 || !uniqueIndexValid) state = "partial";
   else state = strictBody ? "strict" : "relaxed";
-  return { state, rows, nullRevisions, columnNotNull, triggerInstalled, uniqueIndexValid };
+  return { state, rows, nullRevisions, columnNotNull, triggerInstalled, uniqueIndexValid, ownerGuardInstalled };
 }
 
 async function timed(steps: SyncRevisionMigrationReport["steps"], step: string, log: (line: string) => void, run: () => Promise<void>): Promise<void> {
@@ -169,6 +173,11 @@ export async function migrateSyncRevisionOnline(session: SyncRevisionMigrationSe
   await timed(steps, "functions", log, () => inTransaction(session, async () => { await session.query(SYNC_REVISION_FUNCTIONS_SQL); }));
   await timed(steps, "align-sequence", log, () => advanceSequencePastStoredRevisions(session));
   if (!before.triggerInstalled) await timed(steps, "trigger", log, () => inTransaction(session, async () => { await session.query(SYNC_REVISION_TRIGGER_SQL); }));
+  // Sprint 0113: owner/identity guard. Replacing the function locks nothing;
+  // the trigger is created only when missing (brief SHARE ROW EXCLUSIVE).
+  await timed(steps, "owner-guard", log, () => inTransaction(session, async () => {
+    await session.query(before.ownerGuardInstalled ? SYNC_OWNER_GUARD_SQL.replace(/create or replace trigger[\s\S]*$/i, "") : SYNC_OWNER_GUARD_SQL);
+  }));
 
   let backfilledRows = 0;
   let batches = 0;
@@ -221,6 +230,7 @@ export async function migrateSyncRevisionOnline(session: SyncRevisionMigrationSe
   const after = await inspectSyncRevision(session);
   log(`after: ${JSON.stringify(after)}`);
   if (after.state !== "strict") throw new Error(`SYNC_REVISION_MIGRATION_INCOMPLETE:${after.state}`);
+  if (!after.ownerGuardInstalled) throw new Error("SYNC_OWNER_GUARD_MISSING");
   return { before, after, backfilledRows, batches, steps };
 }
 
