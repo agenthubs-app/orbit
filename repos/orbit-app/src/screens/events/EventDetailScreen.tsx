@@ -69,6 +69,8 @@ import {
   eventRegistrationToView,
   type EventRegistrationView
 } from "../../view-models/event-registration";
+import { liveEntryState, liveHref } from "../../view-models/event-live";
+import { LiveEntryCard } from "./live/LiveEntryCard";
 import { CanonicalEventDetailModules, unavailableCanonicalRegistration, type CanonicalRegistrationFooterState } from "./CanonicalEventDetailModules";
 
 const detailFont = Platform.select({ web: '-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Noto Sans SC","Microsoft YaHei",sans-serif', ios: "System", default: "sans-serif" });
@@ -176,6 +178,7 @@ export function EventDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: str
           data={data}
           onNavigate={navigate}
           registrationStatus={registrationStatus}
+          liveEligibility={signedIn && canonical ? footerState?.registration.eligibilityState : undefined}
           rosterScopeKey={JSON.stringify([scopeKey, personalizedRefreshKey])}
           isScopeCurrent={isCurrent}
           personalizedModules={signedIn
@@ -286,48 +289,12 @@ function publicEventDetailSummary(summary: string): string {
   return normalized;
 }
 
-function EventActionButton({
-  accessibilityLabel,
-  detail,
-  icon,
-  onPress,
-  title
-}: {
-  accessibilityLabel: string;
-  detail: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  onPress: () => void;
-  title: string;
-}) {
-  const { colors, styles } = useStyles();
-  return (
-    <Pressable
-      accessibilityLabel={accessibilityLabel}
-      accessibilityRole="button"
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.actionButton,
-        pressed ? styles.actionButtonPressed : null
-      ]}
-    >
-      <View style={styles.actionIcon}>
-        <Ionicons color={colors.accent} name={icon} size={18} />
-      </View>
-      <Text style={styles.actionTitle}>
-        {title}
-      </Text>
-      <Text style={styles.actionDetail}>
-        {detail}
-      </Text>
-    </Pressable>
-  );
-}
-
 function EventDetailCard({
   baseUrl,
   data,
   onNavigate,
   registrationStatus,
+  liveEligibility,
   rosterScopeKey,
   isScopeCurrent,
   personalizedModules
@@ -336,6 +303,7 @@ function EventDetailCard({
   data: PublicEventDetail;
   onNavigate: (href: Href) => void;
   registrationStatus?: string | undefined;
+  liveEligibility?: string | undefined;
   rosterScopeKey: string;
   isScopeCurrent: () => boolean;
   personalizedModules: ReactNode;
@@ -348,8 +316,8 @@ function EventDetailCard({
   const hero = eventDetailHeroToView(event);
   const heroStatus = registrationStatus ?? publicEventDetailStatus(hero.status);
   const heroSummary = publicEventDetailSummary(hero.summary);
-  const attendeesHref = `/events/${encodeURIComponent(event.id)}/attendees` as Href;
-  const partyHref = data.event.sourceMetadata?.label === "event-core-postgres" ? attendeesHref : `/party?eventId=${encodeURIComponent(event.id)}` as Href;
+  const liveEntry = liveEntryState({ eligibilityState: liveEligibility, startsAt: data.event.startsAt, endsAt: data.event.endsAt, now: Date.now(), timeZone });
+  const liveCard = liveEntry ? <LiveEntryCard language={locale.language} pinned={liveEntry.pinned} inProgress={liveEntry.inProgress} startTime={eventDetailTiming(data.event.startsAt, data.event.endsAt, timeZone).start} onEnter={() => onNavigate(liveHref(event.id) as Href)} /> : null;
   const timing = eventDetailTiming(data.event.startsAt, data.event.endsAt, timeZone);
   const narrow = width < 360 || fontScale >= 1.4;
   const attendeeCount = data.event.stats?.count ?? data.event.participantCount;
@@ -392,6 +360,7 @@ function EventDetailCard({
           <EventOrganizerModule event={event} narrow={narrow} />
         </View>
       </View>
+      {liveEntry?.pinned ? liveCard : null}
       <View style={styles.publicSection}>
         <Text accessibilityRole="header" style={styles.sectionTitle}>{locale.t("events.about")}</Text>
         <Text style={styles.publicBody}>{heroSummary}</Text>
@@ -404,7 +373,7 @@ function EventDetailCard({
         {event.attendeePreview.length > 0 ? <View style={styles.attendeePreviewRow}>{event.attendeePreview.map(attendee => <EventAttendeePreviewPill attendee={attendee} key={attendee.id} />)}</View> : null}
       </View>
       <View style={styles.additionalDetails}>
-      <EventActionButton accessibilityLabel="打开活动现场" title="现场" detail="签到和介绍" icon="ticket-outline" onPress={() => onNavigate(partyHref)} />
+      {liveEntry && !liveEntry.pinned ? liveCard : null}
       <View style={styles.feeRow}><Text style={styles.infoTileDetail}>费用</Text><Text style={styles.attendeesTitle}>{event.feeLabel}</Text></View>
       <Text style={styles.registrationHint}>{event.registrationDetail}</Text>
       {event.sourceLabel || event.evidenceExcerpts.length > 0 ? (

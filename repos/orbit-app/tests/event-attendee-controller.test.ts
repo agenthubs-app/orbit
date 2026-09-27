@@ -84,3 +84,11 @@ test("future timegate never allows a card request even via retained direct actio
   const s = setup(); const w = attendeeFixture(); w.configuration.eventStartsAt = "2099-01-01T00:00:00Z";
   await loaded(s, w); await s.c.act("request"); assert.equal(s.calls.length, 2);
 });
+test("a refused workspace read keeps the server message and its 403 status; a later good read clears it", async () => {
+  const s = setup(); const pending = s.c.load();
+  s.calls[0]!.resolve({ success: false as const, status: 403, error: { code: "FORBIDDEN", message: "Only registered attendees can open this workspace." }, meta: { featureMode: null, privacy: null, runtimeBoundary: null } });
+  await pending;
+  assert.deepEqual([s.c.getSnapshot().workspace, s.c.getSnapshot().error, s.c.getSnapshot().errorStatus], [null, "Only registered attendees can open this workspace.", 403]);
+  const again = s.c.load(); s.calls[1]!.resolve(ok(attendeeFixture())); await tick(); s.calls[2]!.resolve(ok(participantFixture())); await again;
+  assert.deepEqual([s.c.getSnapshot().error, s.c.getSnapshot().errorStatus], [null, null]);
+});

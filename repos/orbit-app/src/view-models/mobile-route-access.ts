@@ -82,7 +82,7 @@ function pathParamKeysForMobileRoute(pathname: string): ReadonlySet<string> {
     !STATIC_EVENT_ROUTES.has(detail) &&
     (segments.length === 2 ||
       (segments.length === 3 &&
-        (leaf === "analytics" || leaf === "attendees" || leaf === "register" || leaf === "operations")) ||
+        (leaf === "analytics" || leaf === "attendees" || leaf === "live" || leaf === "register" || leaf === "operations")) ||
       (segments.length === 4 &&
         segments[2] === "operations" &&
         (segments[3] === "admission" ||

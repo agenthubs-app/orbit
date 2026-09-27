@@ -20,12 +20,10 @@ test('private portrait reads and saves never inherit ordinary registration persi
   assert.throws(() => resolveReadSurface('GET', '/api/events/event%3A1/registration/portrait/other'), /UNREGISTERED_READ/);
 });
 
-test('roster qualification registers the same durable event read policy as the party detail consumer', () => {
-  const owner = surfaces.find(row => row.consumerFile === 'src/screens/party/PartyModeScreen.tsx' && row.method === 'GET' && row.endpointTemplate === '/api/events/:id');
+test('roster qualification keeps the durable event read policy after the party consumer was removed', () => {
   const qualification = surfaces.find(row => row.consumerFile === 'src/screens/events/EventAttendeeRosterLink.tsx' && row.method === 'GET' && row.endpointTemplate === '/api/events/:id');
-  assert.ok(owner);
   assert.ok(qualification);
-  assert.deepEqual({ ...qualification, consumerFile: owner.consumerFile }, owner);
+  assert.equal(surfaces.some(row => row.consumerFile.includes('/party/')), false);
   assert.equal(qualification.domainId, 'events');
   assert.equal(qualification.selector, 'events:GET:/api/events/:id');
   assert.equal(qualification.readPersistence, 'durable_normalized');
@@ -45,6 +43,10 @@ test('canonical lifecycle and participant consumers are registered without offli
     ['src/view-models/event-attendee-controller.ts', 'POST', '/api/events/:id/operations/check-in', 'event-operations'],
     ['src/view-models/event-attendee-controller.ts', 'POST', '/api/events/:id/operations/contact-requests', 'event-operations'],
     ['src/view-models/event-attendee-controller.ts', 'POST', '/api/events/:id/operations/contact-requests/:id/:id', 'event-operations'],
+    ['src/api/event-live-actions.ts', 'POST', '/api/encounters', 'event-goals'],
+    ['src/api/event-live-actions.ts', 'GET', '/api/appointments', 'appointments'],
+    ['src/api/event-live-actions.ts', 'POST', '/api/appointments', 'appointments'],
+    ['src/api/event-live-actions.ts', 'POST', '/api/appointments/:id/commands', 'appointments'],
   ];
   for (const [file, method, path, domain] of expected) {
     const surface = surfaces.find(row => row.consumerFile === file && row.method === method && row.endpointTemplate === path);

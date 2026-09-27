@@ -3,9 +3,10 @@ import type { ApiResult } from "../api/types";
 import { attendeeOperationsPath, exchangeCommand, readAttendeeWorkspace, readParticipantDetail, validateCheckInReceipt, validateExchangeReceipt, type AttendeeWorkspace, type ParticipantDetail, type ExchangeIntent } from "../api/event-attendee-operations";
 
 export type AttendeeAction = "check-in" | "request" | "accept" | "decline" | "withdraw";
-export interface AttendeeState { workspace: AttendeeWorkspace | null; detail: ParticipantDetail | null; loading: boolean; busy: boolean; error: string | null }
+export interface AttendeeState { workspace: AttendeeWorkspace | null; detail: ParticipantDetail | null; loading: boolean; busy: boolean; error: string | null; /** HTTP status of the failed read (403 = not a registered attendee). */ errorStatus: number | null }
+class AttendeeHttpError extends Error { constructor(message: string, readonly status: number) { super(message); } }
 export function createAttendeeController(input: { client: OrbitApiClient; eventId: string; participantId: string | null; operationsActorId: string; isCurrent: () => boolean }) {
-  let state: AttendeeState = { workspace: null, detail: null, loading: true, busy: false, error: null };
+  let state: AttendeeState = { workspace: null, detail: null, loading: true, busy: false, error: null, errorStatus: null };
   let active = true;
   let locked = false;
   let epoch = 0;
@@ -14,13 +15,13 @@ export function createAttendeeController(input: { client: OrbitApiClient; eventI
   const current = () => active && input.isCurrent();
   const publish = (patch: Partial<AttendeeState>) => { if (!current()) return; state = { ...state, ...patch }; listeners.forEach(fn => fn()); };
   function data(result: ApiResult<unknown>): unknown {
-    if (!result.success) throw new Error(result.error.message);
+    if (!result.success) throw new AttendeeHttpError(result.error.message, result.status);
     if (result.status < 200 || result.status >= 300) throw new Error("服务未确认请求，请重新读取。");
     return result.data;
   }
   async function read(signal: AbortSignal, token: number, retainedError: string | null = null) {
     const valid = () => current() && epoch === token && !signal.aborted;
-    publish({ workspace: null, detail: null, loading: true, error: retainedError });
+    publish({ workspace: null, detail: null, loading: true, error: retainedError, errorStatus: null });
     try {
       const response = await input.client.get<unknown>(attendeeOperationsPath(input.eventId), { signal });
       if (!valid()) return;
@@ -34,7 +35,7 @@ export function createAttendeeController(input: { client: OrbitApiClient; eventI
       }
       if (valid()) publish({ workspace, detail, error: retainedError });
     } catch (error) {
-      if (valid()) publish({ workspace: null, detail: null, error: error instanceof Error && !("issues" in error) ? error.message : "返回的数据无法验证，请重新读取。" });
+      if (valid()) publish({ workspace: null, detail: null, error: error instanceof Error && !("issues" in error) ? error.message : "返回的数据无法验证，请重新读取。", errorStatus: error instanceof AttendeeHttpError ? error.status : null });
     } finally { if (valid()) publish({ loading: false }); }
   }
   return {

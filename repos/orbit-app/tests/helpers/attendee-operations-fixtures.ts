@@ -1,6 +1,6 @@
 export function attendeeFixture() {
   const person = (participantId: string, displayName: string) => ({ participantId, displayName, company: "Orbit", role: "Engineer", industry: "Technology", topics: ["AI"], experienceHighlight: null, languages: ["zh"], needs: ["Partners"], offers: ["Engineering"] });
-  const table = (seat: string) => ({ tableNumber: 1, theme: "Collaboration", rationale: "Shared interests", icebreakers: ["What are you building?"], memberPrompts: { p_me: ["My question"] }, memberRationales: { p_me: "Your interests" }, members: [{ participantId: "p_me", seat }, { participantId: "p_other", seat: "A2" }] });
+  const table = (seat: string) => ({ tableNumber: 1, theme: "Collaboration", rationale: "Shared interests", icebreakers: ["What are you building?"], memberPrompts: { p_me: ["My question"] }, memberRationales: { p_me: "Your interests", p_other: "Their interests" }, members: [{ participantId: "p_me", seat }, { participantId: "p_other", seat: "A2" }] });
   return {
     eventId: "event_1", configuration: { eventId: "event_1", checkInOpensAt: "2026-09-17T00:00:00Z", eventStartsAt: "2026-09-17T01:00:00Z", eventEndsAt: "2026-09-17T23:00:00Z", profileEditDeadlineAt: "2026-09-16T00:00:00Z", resultsAvailableAt: "2026-09-17T00:00:00Z", roundOneStartsAt: "2026-09-17T01:00:00Z", roundTwoStartsAt: "2026-09-17T02:00:00Z" },
     me: person("p_me", "My name"), directory: [person("p_me", "My name"), person("p_other", "Other person")],
