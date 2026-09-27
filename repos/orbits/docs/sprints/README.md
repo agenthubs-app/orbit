@@ -37,7 +37,7 @@
 | [W0004](W0004-demo-mode-iorbit/GOAL.md) | 新用户打开 iOrbit 看到示例人物的完整一天，写操作被拦下并引到引导 | RW-03（iOrbit 首页部分） | W0001；开关默认关（D1） | planned |
 | [W0005](W0005-demo-mode-network/GOAL.md) | 新用户打开人脉页看到 30 位示例联系人和详情，扫名片仍是真实操作 | RW-03 | W0004 | planned |
 | [W0006](W0006-start-guide/GOAL.md) | 新用户在 /app/start 按顺序完成名片、目标、计划、活动，中途离开回来能续做 | RW-04、RW-05 第 3 步部分 | W0002、W0003、W0004；开关默认关（D1） | planned |
-| [W0007](W0007-plan-storage/GOAL.md) | 计划能按阶段、行动、人脉需求、信息、活动结构化保存和更新 | RW-09 | 无；本地测试库已核对（localhost），H 档 | ready |
+| [W0007](W0007-plan-storage/GOAL.md) | 计划能按阶段、行动、人脉需求、信息、活动结构化保存和更新 | RW-09 | 无；本地测试库已核对（localhost），H 档 | completed |
 | [W0008](W0008-plan-generation/GOAL.md) | 问一次固定问题，看到「生成中 → 已完成」的结构化计划并保存（先用 mock 数据，不接 AI） | RW-08（AI 部分延后） | W0006、W0007 | planned |
 | [W0009](W0009-my-plan-page/GOAL.md) | 在「我的计划」里按周打勾，iOrbit 本周推进跟着更新；有计划时活动推荐理由改为对应阶段 | RW-10、RW-07（有计划时） | W0007、W0008 | planned |
 | [W0010](W0010-network-need-matching/GOAL.md) | 扫进来的名片自动提示能填上计划里的哪类人，确认后本周多一条「约 TA」 | RW-11 | W0007、W0009、W0013 | planned |
@@ -59,3 +59,4 @@
 | W0002 | run-01（2026-09-28） | `fa7ab0b0` | `3f417abc` | [REPORT](W0002-goal-editor/REPORT.md) |
 | W0003 | run-01（2026-09-28） | `0ff45703` | `d54949f5` | [REPORT](W0003-community-event/REPORT.md) |
 | W0013 | run-01（2026-09-28） | `04fb477e` | `4f79d810` | [REPORT](W0013-card-industry/REPORT.md) |
+| W0007 | run-01（2026-09-28） | `52ba4e40` | `7b8085cf` | [REPORT](W0007-plan-storage/REPORT.md) |
