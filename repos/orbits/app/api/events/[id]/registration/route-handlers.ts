@@ -32,6 +32,11 @@ import { attachPortraitQuestionProofs } from "../../../../../features/events/reg
 import { portraitErrorResponse } from "./portrait/route-handlers";
 import { loadEventForRegistration } from "../../../../../features/events/registration/event-loader";
 import { generateEventRegistrationQuestions } from "../../../../../features/events/registration/question-generator";
+import {
+  createPostgresRegistrationQuestionCache,
+  type RegistrationQuestionCache,
+} from "../../../../../features/events/registration/question-cache";
+import type { EventOperationsPostgresRuntime } from "../../../../../features/events/event-operations/storage/postgres-client";
 import { eventRegistrationRuntimeService } from "../../../../../features/events/registration/runtime";
 import { resolveEventRegistrationEligibility } from "../../../../../features/events/registration/eligibility";
 import type { EventRegistrationService } from "../../../../../features/events/registration/service";
@@ -255,6 +260,11 @@ export function createEventRegistrationRouteHandlers(input: {
   ) => Promise<EventExperiencePublishedQuestionSet | null>;
   loadEvent?: typeof loadEventForRegistration;
   now?: () => Date;
+  /**
+   * Durable store for generated questions (0128). Without it the route never
+   * calls the model: an uncached generation on every read is a paid-call leak.
+   */
+  questionCacheRuntime?: () => EventOperationsPostgresRuntime | null;
   readRegistrationAvailability?: (
     eventId: string,
   ) => Promise<EventRegistrationAvailability>;
@@ -276,6 +286,29 @@ export function createEventRegistrationRouteHandlers(input: {
     input.readRegistrationAvailability ?? (async () => "open" as const);
   const resolveAdmissionState =
     input.resolveAdmissionState ?? (async () => ({ state: "legacy" as const }));
+  let questionCache: RegistrationQuestionCache | null | undefined;
+  function readQuestionCache(): RegistrationQuestionCache | null {
+    if (questionCache === undefined) {
+      const runtime = input.questionCacheRuntime?.() ?? null;
+      questionCache = runtime ? createPostgresRegistrationQuestionCache(runtime) : null;
+    }
+    return questionCache;
+  }
+  async function resolveGeneratedQuestions(
+    event: NonNullable<Awaited<ReturnType<typeof loadEventForRegistration>>>,
+    language: "en" | "zh",
+  ) {
+    try {
+      const cache = readQuestionCache();
+      if (cache) return await cache.resolve(event, language);
+    } catch (error) {
+      // e.g. 42P01 when the web was deployed before the 0128 migration ran.
+      const code = typeof (error as { code?: unknown } | null)?.code === "string" ? (error as { code: string }).code : null;
+      console.warn(JSON.stringify({ event: "registration_question_cache_unavailable", eventId: event.id, language, code }));
+    }
+    const questionSet = await generateEventRegistrationQuestions({ event, language, allowModelGeneration: false });
+    return { ...questionSet, provenance: { ...questionSet.provenance, fallbackReason: "QUESTION_CACHE_UNAVAILABLE" } };
+  }
   async function GET(
     request: Request,
     context: EventRegistrationRouteContext,
@@ -342,13 +375,18 @@ export function createEventRegistrationRouteHandlers(input: {
       const shouldGenerateQuestions = questionsRequested && eligibility.allowedActions.some(action =>
         action === "register" || action === "reactivate" || action === "update" || action === "apply");
       const publishedQuestionSet = shouldGenerateQuestions ? await getPublishedQuestionSet(event.id) : null;
+      const questionLanguage = searchParams.get("language") === "en" ? "en" : "zh";
+      // Published sets always win; portrait proofs sign deterministic questions and
+      // never generate; everything else reads the shared per-event cache (0128).
       let questionSet = shouldGenerateQuestions
-        ? await generateEventRegistrationQuestions({
-            event,
-            language: searchParams.get("language") === "en" ? "en" : "zh",
-            publishedQuestionSet,
-            allowModelGeneration: searchParams.get("portraitProofs") !== "true",
-          })
+        ? publishedQuestionSet || searchParams.get("portraitProofs") === "true" || !["confirmed", "imported"].includes(event.status)
+          ? await generateEventRegistrationQuestions({
+              event,
+              language: questionLanguage,
+              publishedQuestionSet,
+              allowModelGeneration: false,
+            })
+          : await resolveGeneratedQuestions(event, questionLanguage)
         : {
             provenance: {
               aiProviderRequested: false,
@@ -370,7 +408,7 @@ export function createEventRegistrationRouteHandlers(input: {
               const { snapshot } = await runtime.repository.readSources({ actorId: actor.id, eventId: event.id });
               return { workspaceId: runtime.workspaceId, snapshot };
             })();
-        questionSet = attachPortraitQuestionProofs({ ...source, actorId: actor.id, eventId: event.id, registrationVersion: registration?.updatedAt ?? null, questionSet, language: searchParams.get("language") === "en" ? "en" : "zh", now: () => Date.parse(evaluatedAt) });
+        questionSet = attachPortraitQuestionProofs({ ...source, actorId: actor.id, eventId: event.id, registrationVersion: registration?.updatedAt ?? null, questionSet, language: questionLanguage, now: () => Date.parse(evaluatedAt) });
       }
 
       return NextResponse.json(
@@ -491,6 +529,18 @@ export function createEventRegistrationRouteHandlers(input: {
           "CONFLICT",
           "The registration changed before this action could be applied. Refresh before trying again.",
         );
+      }
+      // A generated set (no published one) is identified by its cache hash. Every
+      // generation of this event stays valid, so a form opened before a content
+      // change still submits; only an identity this event never served is refused.
+      if (!publishedQuestionSet && payload.questionSetHash !== undefined) {
+        const cache = readQuestionCache();
+        if (!cache || !(await cache.hasQuestionSet(event.id, payload.questionSetHash))) {
+          throw new AppError(
+            "CONFLICT",
+            "The registration questions changed. Refresh the form before submitting.",
+          );
+        }
       }
       if (
         publishedQuestionSet &&

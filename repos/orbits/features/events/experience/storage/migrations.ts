@@ -48,11 +48,53 @@ create index event_ops_experience_versions_created_idx
   on event_ops_experience_versions (workspace_id, event_id, created_at desc);
 `;
 
+// Sprint 0128: registration questions generated for an event that has no
+// published question set. Platform data scoped to one event, never to a user:
+// every reader of the event shares a row. The primary key is the single-flight
+// claim (insert-or-take-over, then fill); ready rows are immutable and old
+// generations stay so a form opened before a content change can still submit.
+const EVENT_EXPERIENCE_V2_SQL = `
+create table event_ops_registration_question_cache (
+  workspace_id text not null,
+  event_id text not null,
+  language text not null check (language in ('en', 'zh')),
+  content_digest text not null check (content_digest ~ '^[0-9a-f]{64}$'),
+  state text not null check (state in ('generating', 'ready', 'failed')),
+  question_set jsonb check (question_set is null or jsonb_typeof(question_set) = 'object'),
+  question_set_hash text check (question_set_hash is null or question_set_hash ~ '^[0-9a-f]{64}$'),
+  provider text,
+  model text,
+  claim_token text,
+  claim_expires_at timestamptz,
+  attempt_count integer not null default 0 check (attempt_count >= 0),
+  retry_after timestamptz,
+  last_error_code text,
+  generated_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  primary key (workspace_id, event_id, language, content_digest),
+  foreign key (workspace_id, event_id)
+    references event_ops_events (workspace_id, event_id) on delete cascade,
+  check ((state = 'ready') = (question_set is not null and question_set_hash is not null and generated_at is not null)),
+  check (state <> 'generating' or (claim_token is not null and claim_expires_at is not null)),
+  check (state <> 'failed' or retry_after is not null)
+);
+
+create unique index event_ops_registration_question_cache_hash_idx
+  on event_ops_registration_question_cache (workspace_id, event_id, question_set_hash)
+  where question_set_hash is not null;
+`;
+
 export const EVENT_EXPERIENCE_MIGRATIONS: readonly EventExperienceMigration[] = [
   {
     name: "event-experience-v1-versioned-heads",
     sql: EVENT_EXPERIENCE_V1_SQL,
     version: 1,
+  },
+  {
+    name: "event-experience-v2-registration-question-cache",
+    sql: EVENT_EXPERIENCE_V2_SQL,
+    version: 2,
   },
 ];
 

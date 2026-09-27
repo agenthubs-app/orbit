@@ -68,7 +68,11 @@ test("experience migration is versioned, idempotent, and anchored to event opera
     const ledger = await migrationPool.query<{ count: string }>(
       "select count(*)::text as count from event_ops_experience_schema_migrations",
     );
-    assert.equal(ledger.rows[0]?.count, "1");
+    assert.equal(ledger.rows[0]?.count, String(EVENT_EXPERIENCE_MIGRATIONS.length));
+    assert.equal(
+      (await migrationPool.query("select to_regclass('event_ops_registration_question_cache') as relation")).rows[0]?.relation,
+      "event_ops_registration_question_cache",
+    );
     assert.equal(
       (await migrationPool.query("select to_regclass('event_ops_experience_versions') as relation")).rows[0]?.relation,
       "event_ops_experience_versions",
