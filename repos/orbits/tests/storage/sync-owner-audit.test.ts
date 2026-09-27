@@ -22,8 +22,11 @@ export const OWNER_WRITE_MANIFEST: Readonly<Record<string, OwnerWritePolicy>> = 
   "scripts/seed-demo-workspace.ts": { policy: "non-registered", statements: 1, collections: "events (demo seed resets reviewed event owners before the owner plan)" },
 };
 
-// Callers of the explicit owner-change interface. Each must be a registered handler; none exist.
-export const REASSIGN_CALL_MANIFEST: Readonly<Record<string, ReassignCallPolicy>> = {};
+// Callers of the explicit owner-change interface. A sync-domain owner change must be a
+// registered handler (none exist); the rest move rows outside every sync domain.
+export const REASSIGN_CALL_MANIFEST: Readonly<Record<string, ReassignCallPolicy>> = {
+  "scripts/demo-organizer-projection.ts": { calls: 1, nonSyncCollections: "organizers (demo seed hands fixture organizers to their canonical login)" },
+};
 
 const ROOT = join(__dirname, "../..");
 

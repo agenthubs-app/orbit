@@ -27,7 +27,12 @@ export type OwnerWritePolicy =
   /** A registered handler (SYNC_OWNER_CHANGE_HANDLERS). */
   | { policy: "handler"; statements: number; handler: string };
 
-export interface ReassignCallPolicy { calls: number; handler: string }
+/**
+ * A reassignRecordOwner caller: a registered handler, or a caller that only
+ * moves rows outside every sync domain (the store's assertRegisteredOwnerChange
+ * refuses a sync-domain collection at runtime either way).
+ */
+export type ReassignCallPolicy = { calls: number; handler: string } | { calls: number; nonSyncCollections: string };
 
 export const OWNER_AUDIT_ROOTS = ["app", "features", "shared", "scripts", "lib"] as const;
 const SOURCE_FILE = /\.(ts|tsx|mjs|cjs|js|sql)$/;
@@ -173,7 +178,8 @@ export function auditOwnerWrites(
   for (const [file, count] of calls) {
     const entry = reassignCalls[file];
     if (!entry) problems.push(`UNREGISTERED_REASSIGN ${file}: ${count} reassignRecordOwner call(s); each owner change must be a registered handler.`);
-    else if (!SYNC_OWNER_CHANGE_HANDLERS.includes(entry.handler)) problems.push(`UNREGISTERED ${file}: reassign handler ${entry.handler} is not in SYNC_OWNER_CHANGE_HANDLERS.`);
+    else if ("handler" in entry && !SYNC_OWNER_CHANGE_HANDLERS.includes(entry.handler)) problems.push(`UNREGISTERED ${file}: reassign handler ${entry.handler} is not in SYNC_OWNER_CHANGE_HANDLERS.`);
+    else if ("nonSyncCollections" in entry && ownerGuardedCollections(domains).some((name) => entry.nonSyncCollections.split(/[^a-z_]+/).includes(name))) problems.push(`SYNC_DOMAIN ${file}: a non-sync reassign lists a sync collection.`);
     else if (entry.calls !== count) problems.push(`CHANGED ${file}: ${count} reassignRecordOwner call(s), manifest says ${entry.calls}.`);
   }
   for (const file of Object.keys(reassignCalls)) if (!calls.has(file)) problems.push(`STALE ${file}: in the reassign manifest but has no reassignRecordOwner call any more.`);
