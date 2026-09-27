@@ -325,7 +325,7 @@ export const zh = {
   "profile.previewMessage": "发消息（预览）",
   "profile.previewConnect": "加入人脉（预览）",
   "profile.noEditSession": "编辑草稿尚未准备好，请返回资料页重试。",
-  "profile.bioCount": "{count}/80",
+  "profile.bioCount": "{count}/{limit}",
   "account.title": "账号与工作区",
   "account.workspace": "工作区",
   "account.plan": "方案",

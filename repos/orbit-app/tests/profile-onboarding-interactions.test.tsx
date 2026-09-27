@@ -42,7 +42,7 @@ window.fetch = async (input, init = {}) => {
     state.detail = { ...d, state: "success", profile, editor: { ...d.editor, canSave: true, lastSavedAt: updatedAt } };
     return json(200, { success: true, data: { ...state.detail, onboarding: onboarding(profile), mutationId } });
   }
-  if (url.pathname === "/api/profile/intro-draft") { state.aiCalls++; return state.ai === "ok" ? json(200, { success: true, data: { bio: "第" + state.aiCalls + "版：做 AI 会议纪要的产品负责人。", headline: "产品负责人 " + state.aiCalls } }) : json(422, { success: false, error: { code: "MODEL_FAILED", message: "no" } }); }
+  if (url.pathname === "/api/profile/intro-draft") { state.aiCalls++; if (state.aiBio) return json(200, { success: true, data: { bio: state.aiBio, headline: "Product lead" } }); return state.ai === "ok" ? json(200, { success: true, data: { bio: "第" + state.aiCalls + "版：做 AI 会议纪要的产品负责人。", headline: "产品负责人 " + state.aiCalls } }) : json(422, { success: false, error: { code: "MODEL_FAILED", message: "no" } }); }
   if (url.pathname.endsWith("/batches/v2")) return json(200, { success: true, data: { batches: [] } });
   return json(404, { success: false, error: { code: "NOT_FOUND", message: "missing" } });
 };
@@ -304,4 +304,24 @@ test("the show-more control is translated in English and Japanese", async t => {
     await page.getByRole("heading", { name: heading }).waitFor();
     assert.equal(await page.getByRole("button", { name: label }).count(), 3, language);
   }
+});
+
+test("English intro: a 180-character draft fits the 200 cap, saves, and CJK text switches the counter to 80 (0127)", async t => {
+  const englishBio = `I lead AI products at Orbit and help teams turn meeting notes into follow-ups. ${"I want to meet founders and investors building tools for Japan. ".repeat(2)}`.trim().slice(0, 180);
+  assert.equal(englishBio.length, 180);
+  const page = await open(t, { ...withProfile({ ...complete, ...blank, relationshipGoal: "Find customers", offering: ["Intros"] }), language: "en", aiBio: englishBio });
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await page.getByText("180/200").waitFor();
+  assert.equal(await page.getByRole("alert").count(), 0, "no over-limit warning");
+  await page.getByRole("textbox", { name: "About me" }).fill("界".repeat(81));
+  await page.getByText("81/80").waitFor();
+  await page.getByRole("alert").waitFor();
+  await page.getByRole("textbox", { name: "About me" }).fill(englishBio);
+  await page.getByText("180/200").waitFor();
+  await shot(page, "05-intro-english");
+  await page.getByRole("button", { name: "Use this introduction" }).click();
+  await page.getByRole("heading", { name: /Bring in the people/u }).waitFor();
+  const { profile, requests } = await fx(page);
+  assert.equal(profile.bio, englishBio);
+  assert.deepEqual(requests.filter((r: any) => r.path === "/api/profile/intro-draft").map((r: any) => r.body), [{ language: "en" }]);
 });

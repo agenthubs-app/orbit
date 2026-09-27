@@ -70,13 +70,15 @@ test("profile normalizes tag whitespace and Unicode before stable dedupe", async
   assert.deepEqual(result.data.profile?.seeking, ["前端合作者", "早期用户"]);
 });
 
-test("profile rejects bio over 80 visible characters and tag groups over five before writing", async () => {
-  const exact = fixture();
-  const exactLimit = await exact.service.updateProfile({ displayName: "程川", bio: "👨‍👩‍👧‍👦".repeat(80) }, { actorId: "actor:exact-visible-limit" });
-  assert.equal(exactLimit.success, true);
+test("profile rejects bio over its visible-character cap (80 with CJK, else 200) and tag groups over five before writing", async () => {
+  for (const bio of ["界".repeat(80), "👨‍👩‍👧‍👦".repeat(200)]) {
+    const exact = fixture();
+    const exactLimit = await exact.service.updateProfile({ displayName: "程川", bio }, { actorId: "actor:exact-visible-limit" });
+    assert.equal(exactLimit.success, true);
+  }
   for (const update of [
     { displayName: "程川", bio: "界".repeat(81) },
-    { displayName: "程川", bio: "👨‍👩‍👧‍👦".repeat(81) },
+    { displayName: "程川", bio: "👨‍👩‍👧‍👦".repeat(201) },
     { displayName: "程川", offering: ["一", "二", "三", "四", "五", "六"] },
     { displayName: "程川", seeking: ["一", "二", "三", "四", "五", "六"] },
   ]) {

@@ -28,7 +28,7 @@ import { useOrbitApiClient } from "../../../hooks/useOrbitApiClient";
 import { useOrbitLocale } from "../../../i18n/OrbitLocaleContext";
 import type { MessageKey } from "../../../i18n/messages";
 import {
-  BIO_LIMIT,
+  bioCounter,
   EMPTY_BASIC,
   FOCUS_LIMIT,
   GOAL_GROUPS,
@@ -162,8 +162,8 @@ export function ProfileOnboardingScreen({ next }: { next?: string | string[] | u
   }
 
   const profileValid = basicDraftValid(basic, today);
-  const bioCount = profileVisibleCharacterCount(bio.trim());
-  const introValid = bioCount <= BIO_LIMIT && profileVisibleCharacterCount(headline.trim()) <= HEADLINE_LIMIT;
+  const bioCount = bioCounter(bio);
+  const introValid = !bioCount.over && profileVisibleCharacterCount(headline.trim()) <= HEADLINE_LIMIT;
 
   function onContinue() {
     if (view === "profile" && profileValid) {
@@ -550,7 +550,7 @@ function PersonaStep({ offer, seek, setOffer, setSeek, setTopics, topics }: {
 
 function IntroStep({ bio, bioCount, headline, message, onRegenerate, regenerationsLeft, setBio, setHeadline, status }: {
   bio: string;
-  bioCount: number;
+  bioCount: { count: number; limit: number; over: boolean };
   headline: string;
   message: string | null;
   onRegenerate: () => void;
@@ -593,8 +593,8 @@ function IntroStep({ bio, bioCount, headline, message, onRegenerate, regeneratio
       </Field>
       <Field label={t("onboarding.bio")}>
         <TextInput accessibilityLabel={t("onboarding.bio")} editable={!generating} multiline onChangeText={setBio} style={styles.bioInput} value={bio} />
-        <Text style={[styles.counter, bioCount > BIO_LIMIT && styles.counterOver]}>{t("onboarding.charCount", { count: bioCount, limit: BIO_LIMIT })}</Text>
-        {bioCount > BIO_LIMIT ? <Text accessibilityRole="alert" style={styles.warning}>{t("onboarding.bioTooLong", { limit: BIO_LIMIT })}</Text> : null}
+        <Text style={[styles.counter, bioCount.over && styles.counterOver]}>{t("onboarding.charCount", { count: bioCount.count, limit: bioCount.limit })}</Text>
+        {bioCount.over ? <Text accessibilityRole="alert" style={styles.warning}>{t("onboarding.bioTooLong", { limit: bioCount.limit })}</Text> : null}
       </Field>
     </>
   );

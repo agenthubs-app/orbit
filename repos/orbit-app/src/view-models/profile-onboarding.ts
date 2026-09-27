@@ -8,6 +8,7 @@ import type { IndustryIdCode, SecondaryIndustryIdCode } from "../api/contract/in
 import type { OrbitLanguage } from "../api/contract/language";
 import { isIndustryIdCode, validateIndustrySelection } from "../api/domain/industries";
 import type { ProfileDetail } from "../api/profile-detail-contract";
+import { profileBioLimit, profileVisibleLength } from "../api/schema/profile-bio";
 import { ingestCards } from "./business-card-ingest";
 import { safeProfileContinuationNext } from "./profile-continuation-route";
 
@@ -22,7 +23,14 @@ export const OFFER_LIMIT = 5;
 export const SEEK_LIMIT = 5;
 export const TOPIC_LIMIT = 8;
 export const FOCUS_LIMIT = 80;
-export const BIO_LIMIT = 80;
+
+/** About-me counter: 80 when the text contains CJK, otherwise 200 (shared with the server). */
+export function bioCounter(bio: string): { count: number; limit: number; over: boolean } {
+  const text = bio.trim();
+  const count = profileVisibleLength(text);
+  const limit = profileBioLimit(text);
+  return { count, limit, over: count > limit };
+}
 export const HEADLINE_LIMIT = 80;
 export const CUSTOM_TAG_LIMIT = 24;
 // 「换一版」 attempts; the automatic first draft and failed attempts do not count.

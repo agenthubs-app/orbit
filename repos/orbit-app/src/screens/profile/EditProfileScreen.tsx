@@ -4,6 +4,7 @@ import { type Href, useRouter } from "expo-router";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { ORBIT_API_ENDPOINTS } from "../../api/endpoints";
+import { profileBioLimit } from "../../api/schema/profile-bio";
 import { profileSaveReceiptSchema, type ProfileSaveRequest } from "../../api/profile-detail-contract";
 import {
   completeProfileEditSave,
@@ -53,7 +54,7 @@ export function EditProfileScreen() {
     if (!state.scope || !session || !state.baseProfile || saving) return;
     const invalid = validateProfileEditDraft(session.draft);
     if (invalid.length > 0) {
-      setFeedback(invalid.includes("displayName") ? locale.t("profile.nameRequired") : invalid.includes("bio") ? locale.t("profile.bioCount", { count: profileVisibleCharacterCount(session.draft.bio) }) : locale.t("profile.tagLimit"));
+      setFeedback(invalid.includes("displayName") ? locale.t("profile.nameRequired") : invalid.includes("bio") ? locale.t("profile.bioCount", { count: profileVisibleCharacterCount(session.draft.bio), limit: profileBioLimit(session.draft.bio) }) : locale.t("profile.tagLimit"));
       return;
     }
     let attempt;
@@ -127,7 +128,7 @@ export function EditProfileScreen() {
         <View accessibilityLabel={`${locale.t("profile.completeness")} ${completeness}%`} accessibilityRole="progressbar" style={styles.progressTrack}>
           <View style={[styles.progressValue, { width: `${completeness}%` }]} />
         </View>
-        <ProfileTextField helper={locale.t("profile.bioCount", { count: profileVisibleCharacterCount(session.draft.bio) })} label={locale.t("profile.currentWork")} multiline maxLength={320} onChangeText={value => patch({ bio: value })} value={session.draft.bio} />
+        <ProfileTextField helper={locale.t("profile.bioCount", { count: profileVisibleCharacterCount(session.draft.bio), limit: profileBioLimit(session.draft.bio) })} label={locale.t("profile.currentWork")} multiline maxLength={320} onChangeText={value => patch({ bio: value })} value={session.draft.bio} />
       </ProfileSection>
       <ProfileSection detail={locale.t("profile.selectedCount", { count: session.draft.offering.length })} title={locale.t("profile.offering")}>
         <ProfileTags values={session.draft.offering} />

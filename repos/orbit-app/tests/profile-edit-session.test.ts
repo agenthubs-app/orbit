@@ -134,13 +134,18 @@ test("tag normalization is stable and validation counts visible bio characters",
     ["AI", "产品 研究"],
   );
   openProfileEditSession(scope, profile);
+  // 0127: the shared rule caps text containing CJK at 80 and anything else at 200 visible characters.
   updateProfileEditDraft(scope, {
-    bio: "👨‍👩‍👧‍👦".repeat(80),
+    bio: "👨‍👩‍👧‍👦".repeat(200),
     offering: ["一", "二", "三", "四", "五"],
   });
   assert.deepEqual(validateProfileEditDraft(getProfileEditSession(scope)!.draft), []);
+  updateProfileEditDraft(scope, { bio: "界".repeat(80) });
+  assert.deepEqual(validateProfileEditDraft(getProfileEditSession(scope)!.draft), []);
+  updateProfileEditDraft(scope, { bio: `${"a".repeat(80)}界` });
+  assert.deepEqual(validateProfileEditDraft(getProfileEditSession(scope)!.draft), ["bio"]);
   updateProfileEditDraft(scope, {
-    bio: "👨‍👩‍👧‍👦".repeat(81),
+    bio: "👨‍👩‍👧‍👦".repeat(201),
     offering: ["一", "二", "三", "四", "五", "六"],
   });
   assert.deepEqual(validateProfileEditDraft(getProfileEditSession(scope)!.draft), ["bio", "offering"]);

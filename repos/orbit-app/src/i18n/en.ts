@@ -325,7 +325,7 @@ export const en = {
   "profile.previewMessage": "Message (preview)",
   "profile.previewConnect": "Connect (preview)",
   "profile.noEditSession": "The edit draft is not ready. Return to your profile and try again.",
-  "profile.bioCount": "{count}/80",
+  "profile.bioCount": "{count}/{limit}",
   "account.title": "Account & workspace",
   "account.workspace": "Workspace",
   "account.plan": "Plan",
