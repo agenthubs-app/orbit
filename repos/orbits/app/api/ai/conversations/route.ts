@@ -607,36 +607,11 @@ function entityDraftKindLabel(kind: string): string {
   return { event: "活动", note: "笔记", schedule: "日程", task: "待办" }[kind] ?? "记录";
 }
 
-// Sprint 0103 (AI trace A1): the turn's timing spans stay on the reliable
-// request record (result.data.diagnostics.timings) and GET /api/ai/runs/[id]
-// derives the run's steps from there. No agentRunSteps or agentAnalyticsEvents
-// rows are written, and a new run is recorded with one write, no pre-read.
-async function persistConversationRunTrace(
-  result: OrbitAgentConversationResult,
-  runtime: AgentRuntimeService,
-): Promise<OrbitAgentConversationResult> {
-  if (result.success === false) return result;
-  const existingRunId = result.data.runId?.trim();
-  if (existingRunId) {
-    // An action run was already recorded for this turn; it stays as it is.
-    return { success: true, data: { ...result.data, runId: existingRunId } };
-  }
-  const runId = `run:conversation:${crypto.randomUUID()}`;
-  await runtime.recordCompletedRun({
-    conversationId: result.data.activeConversationId?.trim() || undefined,
-    runId,
-    trigger: "chat",
-    workflowKey: "agent_conversation_v1",
-    workflowVersion: 1,
-  });
-  return {
-    success: true,
-    data: {
-      ...result.data,
-      runId,
-    },
-  };
-}
+// Sprint 0110 (AI trace A2): a plain answer writes no run record. Only a turn
+// that proposes actions (or runs a known workflow) has a run, recorded by that
+// path under its own runId. The turn's timing spans stay on the reliable request
+// record (result.data.diagnostics.timings); GET /api/ai/runs/[id] derives an
+// action run's conversation steps from there (0103).
 
 export async function GET(request: Request): Promise<Response> {
   // GET 只读取会话列表/状态，不触发模型 provider。
@@ -812,10 +787,7 @@ export async function POST(request: Request): Promise<Response> {
                 contactsAnalysis,
               }
             : { ...trustedInput, history: prepared?.history };
-          const executed = await persistConversationRunTrace(
-            await executeConversation(executionInput),
-            agentContext.runtime,
-          );
+          const executed = await executeConversation(executionInput);
           if (executed.success === false) return { result: executed };
           const originVerification = prepared?.trustedOriginVerification && contactsAnalysis &&
             isSuccessfulContactsAnalysisExecution(executed, contactsAnalysis, input.message ?? "")
@@ -869,10 +841,7 @@ export async function POST(request: Request): Promise<Response> {
       return reliableSendErrorResponse(mode, error);
     }
   } else {
-    result = await persistConversationRunTrace(
-      await executeConversation(),
-      agentContext.runtime,
-    );
+    result = await executeConversation();
   }
   timing.finish("orbit-service", serviceStartedAt);
 

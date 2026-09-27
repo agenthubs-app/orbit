@@ -84,7 +84,11 @@ export interface OrbitAiTraceStage {
 
 export interface OrbitAiTraceDatabaseCollection {
   collectionName: string;
-  recordCount: number;
+  /**
+   * Present only when the count came for free (the local in-memory snapshot).
+   * Remote collections are not scanned to count them (0110).
+   */
+  recordCount?: number;
   selectedForTools: boolean;
 }
 

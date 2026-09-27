@@ -7,7 +7,6 @@ import type {
 import type { LiveRecordSqlClient } from "../../../shared/storage/postgres-live-record-store";
 import type {
   AgentActionRecord,
-  AgentAnalyticsEvent,
   AgentExecutionReceipt,
   AgentOutboxEvent,
   AgentRun,
@@ -75,6 +74,7 @@ export const AGENT_RUNTIME_LIVE_RECORD_COLLECTIONS = {
   actions: "agentActionsV2",
   outbox: "agentOutbox",
   receipts: "agentExecutionReceipts",
+  /** Legacy rows only: nothing writes or reads this since 0110; 0111 removes them. */
   analytics: "agentAnalyticsEvents",
 } as const;
 
@@ -456,12 +456,6 @@ export function createStorageAgentRuntimeRepository({
         AGENT_RUNTIME_LIVE_RECORD_COLLECTIONS.receipts,
         receipt.receiptId,
         receipt as unknown as Record<string, unknown>,
-      ),
-    saveAnalyticsEvent: (event) =>
-      save(
-        AGENT_RUNTIME_LIVE_RECORD_COLLECTIONS.analytics,
-        event.eventId,
-        event as unknown as Record<string, unknown>,
       ),
     async claimReadyOutbox(input) {
       if (sqlClient) {

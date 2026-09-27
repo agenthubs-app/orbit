@@ -1,6 +1,5 @@
 import type {
   AgentActionRecord,
-  AgentAnalyticsEvent,
   AgentExecutionReceipt,
   AgentOutboxEvent,
   AgentRun,
@@ -109,7 +108,6 @@ export interface AgentRuntimeRepository {
   ) => Promise<void>;
   saveOutbox: (event: AgentOutboxEvent) => Promise<void>;
   saveReceipt: (receipt: AgentExecutionReceipt) => Promise<void>;
-  saveAnalyticsEvent: (event: AgentAnalyticsEvent) => Promise<void>;
   claimReadyOutbox: (input: {
     now: string;
     limit: number;
@@ -138,7 +136,6 @@ export function createMemoryAgentRuntimeRepository(): AgentRuntimeRepository {
   const actions = new Map<string, AgentActionRecord>();
   const outbox = new Map<string, AgentOutboxEvent>();
   const receipts = new Map<string, AgentExecutionReceipt>();
-  const analytics = new Map<string, AgentAnalyticsEvent>();
 
   return {
     async getRun(runId) {
@@ -189,9 +186,6 @@ export function createMemoryAgentRuntimeRepository(): AgentRuntimeRepository {
     },
     async saveReceipt(receipt) {
       receipts.set(receipt.receiptId, clone(receipt));
-    },
-    async saveAnalyticsEvent(event) {
-      analytics.set(event.eventId, clone(event));
     },
     async claimReadyOutbox(input) {
       const leaseExpiredBefore = new Date(
