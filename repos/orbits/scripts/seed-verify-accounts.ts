@@ -217,18 +217,29 @@ export interface VerifyFingerprint {
   verifyRows: Record<string, number>;
 }
 
-/** 非 verify-* 行：按表计数 + 内容哈希（逐行 md5 排序后再 md5）。另记每表 verify-* 行数。 */
+/**
+ * 非 verify-* 行：按表计数 + 内容哈希（逐行 md5 排序后再 md5）。另记每表 verify-* 行数。
+ * 名片条目（bc_ingest_items）行里只有批次 id，没有账号标记：在页面上真实上传产生的批次 id 是随机的，
+ * 所以条目按所属批次判定——批次属于 verify-* 账号，条目也算 verify-* 行（W0018：否则重置时级联删除
+ * 这些条目会被误报为「非 verify-* 行变化」）。
+ */
 async function fingerprint(sql: Client): Promise<VerifyFingerprint> {
   const tables: VerifyFingerprint["tables"] = {};
   const verifyRows: VerifyFingerprint["verifyRows"] = {};
   for (const table of await listPublicTables(sql)) {
+    const marked =
+      table === "bc_ingest_items"
+        ? `(row_to_json(t)::text ~ $1 or exists (
+             select 1 from bc_ingest_batches b
+              where b.workspace_id = t.workspace_id and b.id = t.batch_id and row_to_json(b)::text ~ $1))`
+        : "row_to_json(t)::text ~ $1";
     const result = await sql.query<{ rows: string; hash: string | null; verify_rows: string }>(
       `select
          count(*) filter (where not marked)::text as rows,
          md5(coalesce(string_agg(row_hash, '' order by row_hash) filter (where not marked), '')) as hash,
          count(*) filter (where marked)::text as verify_rows
        from (
-         select md5(row_to_json(t)::text) as row_hash, row_to_json(t)::text ~ $1 as marked
+         select md5(row_to_json(t)::text) as row_hash, ${marked} as marked
          from ${quoteIdent(table)} t
        ) rows`,
       [GLOBAL_VERIFY_MARKER],
@@ -603,7 +614,7 @@ function itemId(snapshot: { items: readonly { id: string; title: string }[] }, t
 }
 
 /** verify-plan：3 个月计划处于第 2 周；1 条已延后行动、已关联的人脉需求、1 个已报名活动。 */
-async function seedPlanInProgress(runtime: Runtime, spec: AccountSpec, contactIds: string[], registration: EventRegistration) {
+async function seedPlanInProgress(runtime: Runtime, spec: AccountSpec, contactIds: string[], registration: EventRegistration, event: VerifyEventSpec) {
   const service = planServiceFor(spec.actorId);
   const items: NewPlanItemInput[] = [
     { kind: "action", phaseKey: "p1", suggestedWeek: 1, title: "给 3 位旧同事发近况更新，说明新产品方向" },
@@ -624,10 +635,12 @@ async function seedPlanInProgress(runtime: Runtime, spec: AccountSpec, contactId
     {
       kind: "event",
       linkedEventId: EVENT_UPCOMING_ID,
+      // 与生成器写法一致（mock-generator：标题即活动名，meta 带开始时间与地点），计划页才显示日期（W0018）。
+      meta: { startsAt: event.startsAt, venue: event.venue },
       phaseKey: "p1",
       status: "recommended",
       suggestedWeek: 3,
-      title: "参加「验收用：企业软件创业者交流会」",
+      title: event.title,
     },
   ];
   const snapshot = await service.createVersion({
@@ -702,7 +715,7 @@ async function seedExpiredPlan(runtime: Runtime, spec: AccountSpec, contactIds: 
 }
 
 /** verify-event：含今天这场已报名活动的计划 + 与名片行业对得上的人脉需求。 */
-async function seedEventPlan(runtime: Runtime, spec: AccountSpec, registration: EventRegistration) {
+async function seedEventPlan(runtime: Runtime, spec: AccountSpec, registration: EventRegistration, event: VerifyEventSpec) {
   const service = planServiceFor(spec.actorId);
   await service.createVersion({
     basePlanId: null,
@@ -736,10 +749,11 @@ async function seedEventPlan(runtime: Runtime, spec: AccountSpec, registration: 
       {
         kind: "event",
         linkedEventId: EVENT_TODAY_ID,
+        meta: { startsAt: event.startsAt, venue: event.venue },
         phaseKey: "p1",
         status: "recommended",
         suggestedWeek: 1,
-        title: "参加「验收用：金融科技创业者之夜」",
+        title: event.title,
       },
     ],
     phases: [
@@ -906,7 +920,7 @@ async function seedAccount(runtime: Runtime, name: VerifyAccountName): Promise<v
       return;
     case "verify-plan": {
       const eventDay = tokyoDateOffset(runtime.now, 10);
-      const registration = await seedEvent(runtime, {
+      const event: VerifyEventSpec = {
         description: "验收用合成活动：企业软件创业者与投资人的小型交流会。不是真实活动。",
         endsAt: tokyoAt(eventDay, 22),
         eventId: EVENT_UPCOMING_ID,
@@ -914,15 +928,16 @@ async function seedAccount(runtime: Runtime, name: VerifyAccountName): Promise<v
         startsAt: tokyoAt(eventDay, 19),
         title: "验收用：企业软件创业者交流会",
         venue: "东京·涩谷（合成会场）",
-      }, spec);
-      await seedPlanInProgress(runtime, spec, contactIds, registration);
+      };
+      const registration = await seedEvent(runtime, event, spec);
+      await seedPlanInProgress(runtime, spec, contactIds, registration, event);
       return;
     }
     case "verify-expired":
       await seedExpiredPlan(runtime, spec, contactIds);
       return;
     case "verify-event": {
-      const registration = await seedEvent(runtime, {
+      const event: VerifyEventSpec = {
         description: "验收用合成活动：金融科技创业者之夜。不是真实活动。",
         endsAt: tokyoAt(tokyoDateOffset(runtime.now, 1), 0),
         eventId: EVENT_TODAY_ID,
@@ -930,8 +945,9 @@ async function seedAccount(runtime: Runtime, name: VerifyAccountName): Promise<v
         startsAt: tokyoAt(today, 18),
         title: "验收用：金融科技创业者之夜",
         venue: "东京·丸之内（合成会场）",
-      }, spec);
-      await seedEventPlan(runtime, spec, registration);
+      };
+      const registration = await seedEvent(runtime, event, spec);
+      await seedEventPlan(runtime, spec, registration, event);
       await seedCardBatch(runtime, spec);
       return;
     }
