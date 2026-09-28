@@ -26,7 +26,8 @@ import {
 } from "../../contacts/card-batch-0918/card-batch-store";
 import { INGEST_V2_API_BASE } from "../../contacts/ingest-v2/ingest-v2-client";
 import { groupIngestItemsByCardId } from "../../contacts/ingest-v2/ingest-v2-route-view-model";
-import { sharedRead, useSharedReadAccount } from "../../orbit-shared-read";
+import { sharedRead } from "../../orbit-shared-read";
+import { useSharedReadAccount } from "../../orbit-shared-read-account";
 
 export interface PendingCardBatch {
   batchId: string;

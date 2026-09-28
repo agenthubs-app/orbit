@@ -12,11 +12,10 @@
  * - key 含账号：`setSharedReadAccount` 换账号或登出（null）时 abort 并清掉所有进行中的读取。
  *
  * 模块级状态只在浏览器里使用（服务端组件不 import 本文件）；服务端没有跨请求、跨账号的缓存。
+ * 账号从 next-auth 的会话同步：`orbit-shared-read-account.ts` 的 `useSharedReadAccount`（分开放，
+ * 这样只用读取函数的模块不会把 next-auth 客户端打进包里）。
  */
 "use client";
-
-import { useContext } from "react";
-import { SessionContext } from "next-auth/react";
 
 interface Entry {
   account: string;
@@ -54,18 +53,6 @@ export function setSharedReadAccount(next: string | null): void {
 }
 
 export function getSharedReadAccount(): string | null {
-  return account;
-}
-
-/**
- * 在读取前同步账号：从 next-auth 的 SessionContext 取登录用户 id（没有 SessionProvider 时什么都不做）。
- * 在组件渲染时调用（幂等），这样同一组件后面的 effect 发请求时账号已经就位。
- */
-export function useSharedReadAccount(): string | null {
-  const session = useContext(SessionContext);
-  if (session && session.status !== "loading") {
-    setSharedReadAccount(session.status === "authenticated" ? session.data?.user?.id ?? null : null);
-  }
   return account;
 }
 

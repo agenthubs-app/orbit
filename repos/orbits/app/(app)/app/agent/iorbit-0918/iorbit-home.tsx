@@ -79,7 +79,7 @@ import {
 } from "./iorbit-plan-client";
 import { fetchPlanMatches, withoutCandidate, type PlanMatchCandidate, type PlanMatchList } from "./plan-match-client";
 import { PlanMatchDialog, PlanMatchSheet } from "./plan-match-sheet";
-import { useSharedReadAccount } from "../../orbit-shared-read";
+import { useSharedReadAccount } from "../../orbit-shared-read-account";
 import { usePendingCards } from "./use-pending-cards";
 
 const TZ = "Asia/Tokyo";

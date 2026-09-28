@@ -65,7 +65,7 @@ import {
   withServerItem,
 } from "./iorbit-plan-client";
 import { IOrbitScreenFrame } from "./iorbit-screen-frame";
-import { useSharedReadAccount } from "../../orbit-shared-read";
+import { useSharedReadAccount } from "../../orbit-shared-read-account";
 import { fetchPlanMatches, withoutCandidate, type PlanMatchList } from "./plan-match-client";
 import { MatchActionButtons, PLAN_MATCH_STYLES, PlanMatchDialog, PlanMatchSheet } from "./plan-match-sheet";
 

@@ -15,7 +15,7 @@ import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 
 import { useOrbitLanguage } from "../../orbit-language-context";
-import { useSharedReadAccount } from "../../orbit-shared-read";
+import { useSharedReadAccount } from "../../orbit-shared-read-account";
 import { CardBatchReminders } from "./card-batch-ui";
 import {
   dispatchCardBatchChange,
