@@ -295,6 +295,11 @@ export interface PlanService {
   getPlan(planId: string): Promise<PlanSnapshot | null>;
   listVersions(): Promise<Plan[]>;
   createVersion(input: CreatePlanVersionInput): Promise<PlanSnapshot>;
+  /**
+   * 同 `createVersion`，另外告诉调用方这次是新建（created）还是同一 `creationKey` 已保存过的那份。
+   * 判定与保存在同一个按人串行的事务里，并发重复提交恰好一份 created（W0008 bootstrap 用）。
+   */
+  createVersionWithOutcome(input: CreatePlanVersionInput): Promise<{ snapshot: PlanSnapshot; created: boolean }>;
   updateItem(input: UpdatePlanItemInput): Promise<UpdatePlanItemResult>;
   addManualLog(input: AddManualLogInput): Promise<{ entry: PlanLogEntry; replayed: boolean }>;
 }

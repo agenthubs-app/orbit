@@ -61,6 +61,8 @@ import { IOrbitChat } from "./iorbit-chat";
 import { IOrbitChatAside } from "./iorbit-chat-aside";
 import { IOrbitHistoryDrawer } from "./iorbit-history-drawer";
 import { IOrbitHome } from "./iorbit-home";
+import type { AgentMessage } from "./iorbit-model";
+import type { IOrbitPlanCardView } from "./iorbit-plan-card-model";
 import { IORBIT_STYLES } from "./iorbit-styles";
 import { useAgentChat } from "./use-agent-chat";
 import { useAgentHistory } from "./use-agent-history";
@@ -71,8 +73,15 @@ export interface IOrbitShellProps {
   /** 示例模式（W0004）：非空即渲染示例壳；开关关闭或不在引导期时为空。 */
   guide?: DemoModeView | null;
   home: OrbitHomeViewModel | null;
-  /** 服务端解析出的 `?q=`／`?session=`：任一存在即直接落在对话分支（SSR 与首帧一致）。 */
+  /** 服务端解析出的 `?q=`／`?session=`／`?plan=`：任一存在即直接落在对话分支（SSR 与首帧一致）。 */
   initialDeepLink?: boolean;
+  /**
+   * W0008：`?plan=<id>` 读到的本人计划（服务端映射成页面视图模型）。非空时对话线程以
+   * 「固定问题 + 计划回答卡片」开头；`initialPlanReveal`（`&reveal=1`，第 3 步生成完跳来时带）
+   * 让卡片按「生成中 → 已完成」揭示一次，刷新后就是已完成的卡片。
+   */
+  initialPlanCard?: IOrbitPlanCardView | null;
+  initialPlanReveal?: boolean;
   /**
    * 服务端解析出的 `?history=1`：进页即把历史抽屉打开。
    * 任务 5：设计 509 / 673 在 strategy / contacts 两屏的页头上也画了「◷ 历史记录」，
@@ -131,11 +140,34 @@ function IOrbitDemoShell({ guide, home }: { guide: DemoModeView; home: OrbitHome
   );
 }
 
+/** 计划回合：用户的固定问题（带补充）+ 助手的计划回答卡片。只在前端，不进对话历史。 */
+function planThreadMessages(view: IOrbitPlanCardView, reveal: boolean, fallbackQuestion: string): AgentMessage[] {
+  return [
+    {
+      id: `plan-question:${view.planId}`,
+      role: "user",
+      ...(view.supplement ? { supplement: view.supplement } : {}),
+      text: view.question || fallbackQuestion,
+    },
+    {
+      id: `plan-card:${view.planId}`,
+      items: [],
+      kind: "todos",
+      panelTitle: "",
+      planCard: { reveal, view },
+      role: "assistant",
+      text: "",
+    },
+  ];
+}
+
 function IOrbitLiveShell({
   communityJoined = false,
   home,
   initialDeepLink = false,
   initialHistoryOpen = false,
+  initialPlanCard = null,
+  initialPlanReveal = false,
   viewModel,
 }: IOrbitShellProps) {
   const { language, t } = useOrbitLanguage();
@@ -219,8 +251,29 @@ function IOrbitLiveShell({
     setThinking,
   });
 
-  const [view, setView] = useState<"chat" | "home">(initialDeepLink ? "chat" : "home");
+  const [view, setView] = useState<"chat" | "home">(initialDeepLink || initialPlanCard ? "chat" : "home");
   const inChat = view === "chat";
+
+  // W0008：计划回合排在 hook 的消息前面显示；hook 自己的消息（对话历史、重试下标）不含它们。
+  const [planThread, setPlanThread] = useState<AgentMessage[]>(() =>
+    initialPlanCard
+      ? planThreadMessages(
+          initialPlanCard,
+          initialPlanReveal,
+          t({ en: "Based on my goal and my network, how should I achieve my goal?", zh: "根据我的目标和人脉信息，我该如何实现目标？" }),
+        )
+      : [],
+  );
+  const threadMessages = planThread.length ? [...planThread, ...messages] : messages;
+
+  // `&reveal=1` 只用一次：揭示开始后从地址栏去掉，刷新时直接显示已完成的卡片。
+  useEffect(() => {
+    if (!initialPlanReveal || typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    if (!url.searchParams.has("reveal")) return;
+    url.searchParams.delete("reveal");
+    window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+  }, [initialPlanReveal]);
 
   // `chatOpen` 由 hook 自己置起的三条路径（pendingAsk 交接单、`?session=` 恢复、
   // 历史记录里挑一条）都必须把视图带到对话。只认**上升沿**：返回概览是非破坏性的
@@ -250,7 +303,7 @@ function IOrbitLiveShell({
     if (typeof window === "undefined") return;
     const onPopState = () => {
       const search = new URLSearchParams(window.location.search);
-      setView(search.get("q") || search.get("session") ? "chat" : "home");
+      setView(search.get("q") || search.get("session") || search.get("plan") ? "chat" : "home");
     };
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
@@ -296,16 +349,26 @@ function IOrbitLiveShell({
     dropPrefill();
     void ask(query, retryAssistantIndex);
   };
+  // 对话屏的重试下标来自显示列表（计划回合在前），换算回 hook 自己的消息下标。
+  const askFromThread = (query: string, retryAssistantIndex?: number) =>
+    askWithoutPrefill(
+      query,
+      typeof retryAssistantIndex === "number" ? retryAssistantIndex - planThread.length : undefined,
+    );
+  // 开新对话 / 切到别的会话：计划回合属于当前这个线程，一起让开。
   const startNewChat = () => {
     dropPrefill();
+    setPlanThread([]);
     newChat();
   };
   const startNewChatInGroup = (groupId: string) => {
     dropPrefill();
+    setPlanThread([]);
     newChatInGroup(groupId);
   };
   const openHistoryEntry = (item: Parameters<typeof pickHistory>[0]) => {
     dropPrefill();
+    setPlanThread([]);
     pickHistory(item);
   };
 
@@ -340,7 +403,7 @@ function IOrbitLiveShell({
         <main className="ir-main">
           {inChat ? (
             <IOrbitChat
-              ask={askWithoutPrefill}
+              ask={askFromThread}
               aside={
                 <IOrbitChatAside
                   home={home}
@@ -349,7 +412,7 @@ function IOrbitLiveShell({
                 />
               }
               chatDraft={chatDraft}
-              messages={messages}
+              messages={threadMessages}
               navigate={navigate}
               onBack={() => setView("home")}
               onDraftChange={setChatDraft}

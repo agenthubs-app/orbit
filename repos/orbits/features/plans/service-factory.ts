@@ -134,6 +134,22 @@ export function resolvePlanService(input: {
   };
 }
 
+/**
+ * 与 `resolvePlanService` 同一后端、同一 actor 的引用校验器（W0008 生成结果保存前的
+ * `validate.ts` 用：`analysis` 里的联系人／活动引用不经过条目校验，需要单独核对）。
+ */
+export function resolvePlanReferenceValidator(input: {
+  actorId: string;
+  mode?: ModuleMode | string;
+}): ServiceResolution<PlanReferenceValidator> {
+  const resolution = planServiceFactory.create(input.mode);
+  if (resolution.success === false) return resolution;
+  if (!resolution.service) {
+    return createNotImplementedFailure(PLANS_CAPABILITY_ID, resolution.mode, planServiceFactory.availableModes);
+  }
+  return { mode: resolution.mode, service: resolution.service.referencesFor(input.actorId), success: true };
+}
+
 export function resetPlansMockRepositoryForTests(): void {
   delete plansGlobal.__orbitPlansMockRepository;
   delete plansGlobal.__orbitPlansMockAllowList;

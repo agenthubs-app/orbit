@@ -6,6 +6,9 @@
  *   - 开关关：`guide` 为 null，引导记录 / 联系人计数 / 计划一个都不读；
  *   - 开关开 + 新用户：`guide` 带进度（0 / 3，下一步名片），读取都以 canonical actor 进行；
  *   - 开关开 + D2 老用户：`guide` 为 null（真实首页）。
+ *   - W0008 `?plan=<id>`：开关关、或开关开且前 3 步已完成（刚生成完计划）时，以 canonical actor 读这份
+ *     计划并把回答卡片交给壳（直接落在对话，`reveal=1` 时揭示一次）；读不到的计划落回概览；
+ *     仍在示例期时不读计划。
  */
 import assert from "node:assert/strict";
 import Module, { createRequire } from "node:module";
@@ -18,10 +21,14 @@ const root = join(fileURLToPath(import.meta.url), "../../..");
 const require = createRequire(import.meta.url);
 
 interface Scenario {
+  /** W0008：本人是否已有生效计划（第 3 步）。 */
+  activePlan?: boolean;
   contacts: number;
   createdAt?: string | null;
   flag: string | undefined;
   goal?: string;
+  /** W0008：`getPlan(id)` 能读到的本人计划。 */
+  plans?: Record<string, unknown>;
   since?: string;
 }
 
@@ -103,7 +110,17 @@ function loadPage(t: TestContext, scenario: Scenario) {
     [join(root, "features/plans/service-factory.ts")]: {
       resolvePlanService: ({ actorId }: { actorId: string }) => {
         calls.push({ input: actorId, operation: "plan" });
-        return { mode: "mock", service: { getCurrent: async () => null }, success: true };
+        return {
+          mode: "mock",
+          service: {
+            getCurrent: async () => (scenario.activePlan ? Object.values(scenario.plans ?? {})[0] ?? null : null),
+            getPlan: async (planId: string) => {
+              calls.push({ input: [actorId, planId], operation: "plan-read" });
+              return scenario.plans?.[planId] ?? null;
+            },
+          },
+          success: true,
+        };
       },
     },
     [join(root, "features/account/storage/account-live-record-provider.ts")]: {
@@ -147,7 +164,7 @@ function loadPage(t: TestContext, scenario: Scenario) {
   return {
     calls,
     guideRecords,
-    page: require(pagePath).default as () => Promise<ReactElement>,
+    page: require(pagePath).default as (input?: { searchParams?: Promise<Record<string, string>> }) => Promise<ReactElement>,
     shellProps,
   };
 }
@@ -227,4 +244,61 @@ test("flag on + registered after SINCE with ≥3 contacts and a goal: still in t
   const guide = shellPropsOf(await page()).guide as { completed: number; nextStep: string } | null;
   assert.equal(guide?.completed, 2);
   assert.equal(guide?.nextStep, "plan");
+});
+
+/* ── W0008：?plan=<id> ─────────────────────────────────────────────── */
+
+async function planScenario() {
+  const { savedBootstrapPlan } = await import("../support/plan-bootstrap-fixture");
+  const snapshot = await savedBootstrapPlan();
+  return { planId: snapshot.plan.id, plans: { [snapshot.plan.id]: snapshot } };
+}
+
+test("flag off + ?plan=<id>&reveal=1: the actor's plan reaches the shell as the answer card, straight into the chat", async (t) => {
+  const { planId, plans } = await planScenario();
+  const { calls, page } = loadPage(t, { contacts: 0, flag: undefined, plans });
+  const props = shellPropsOf(await page({ searchParams: Promise.resolve({ plan: planId, reveal: "1" }) }));
+  assert.equal(props.guide, null);
+  assert.equal(props.initialDeepLink, true);
+  assert.equal(props.initialPlanReveal, true);
+  const card = props.initialPlanCard as { planId: string; version: number; phases: unknown[] };
+  assert.equal(card.planId, planId);
+  assert.equal(card.version, 1);
+  assert.equal(card.phases.length, 3);
+  assert.deepEqual(calls.find((call) => call.operation === "plan-read")?.input, ["account:canonical", planId]);
+
+  // 刷新（没有 reveal）：直接是已完成的卡片。
+  const refreshed = shellPropsOf(await loadPage(t, { contacts: 0, flag: undefined, plans }).page({ searchParams: Promise.resolve({ plan: planId }) }));
+  assert.equal(refreshed.initialPlanReveal, false);
+  assert.ok(refreshed.initialPlanCard);
+});
+
+test("?plan= for a plan the actor cannot read falls back to the overview", async (t) => {
+  const { page } = loadPage(t, { contacts: 0, flag: undefined, plans: {} });
+  const props = shellPropsOf(await page({ searchParams: Promise.resolve({ plan: "plan:someone-elses", reveal: "1" }) }));
+  assert.equal(props.initialPlanCard, null);
+  assert.equal(props.initialDeepLink, false);
+  assert.equal(props.initialPlanReveal, false);
+});
+
+test("flag on: right after step 3 saves the plan the user leaves the demo and sees the card; still in the demo, no plan is read", async (t) => {
+  const { planId, plans } = await planScenario();
+  const done = loadPage(t, {
+    activePlan: true,
+    contacts: 3,
+    createdAt: "2026-10-20T00:00:00.000Z",
+    flag: "on",
+    goal: "三个月内拿到 10 家企业客户的试用",
+    plans,
+    since: "2026-10-15",
+  });
+  const props = shellPropsOf(await done.page({ searchParams: Promise.resolve({ plan: planId, reveal: "1" }) }));
+  assert.equal(props.guide, null, "steps 1–3 are done, so the demo is over");
+  assert.equal((props.initialPlanCard as { planId: string }).planId, planId);
+
+  const demo = loadPage(t, { contacts: 0, flag: "on", plans });
+  const demoProps = shellPropsOf(await demo.page({ searchParams: Promise.resolve({ plan: planId }) }));
+  assert.ok(demoProps.guide, "a user still in the demo keeps the demo shell");
+  assert.equal(demoProps.initialPlanCard, null);
+  assert.equal(demo.calls.filter((call) => call.operation === "plan-read").length, 0);
 });

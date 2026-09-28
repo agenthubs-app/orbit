@@ -219,6 +219,15 @@ test("concurrent version creation through the service yields exactly one active 
     ]);
     assert.equal(keyed[0].plan.id, keyed[1].plan.id);
     assert.equal(await count(pool, "plans where actor_id = $1", ["actor:alice"]), 5);
+
+    // W0008：并发同 key 时恰好一份报告 created，另一份是复用。
+    const outcomes = await Promise.all([
+      service.createVersionWithOutcome(planInput({ creationKey: "bootstrap:k2" })),
+      service.createVersionWithOutcome(planInput({ creationKey: "bootstrap:k2" })),
+    ]);
+    assert.equal(outcomes[0].snapshot.plan.id, outcomes[1].snapshot.plan.id);
+    assert.deepEqual(outcomes.map((outcome) => outcome.created).sort(), [false, true]);
+    assert.equal(await count(pool, "plans where actor_id = $1", ["actor:alice"]), 6);
   });
 });
 

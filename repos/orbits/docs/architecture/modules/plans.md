@@ -23,11 +23,13 @@ Plans 负责「我的计划」的结构化存储（RW-09，Sprint W0007）：计
 - 引用归属：创建版本、关联联系人、手动记录时，新引用的联系人／活动经按 actor 构造的 `PlanReferenceValidator` 校验。live：联系人必须是本人未删除的 `orbit_records/contacts`；活动必须是 canonical 活动目录里已发布的活动（`getPublishedEvent`，只认 canonical id）。找不到或属于别人 → `REFERENCE_NOT_FOUND`（404），不写库、不回显 id。从旧版本带入的条目不重新校验。
 - 新版本（`createVersion`）：在按 actor 串行的事务里归档旧版、写入新版；`basePlanId` 做乐观并发（`null` = 只在没有计划时创建），`creationKey` 让同一次生成只保存一份。继承规则：`inheritsFromItemId` 指定的旧条目并入新条目；同一活动自动并入；其余完成的行动、有答案的信息、已报名／已参加的活动、有联系人的人脉需求原样带入（旧周次清空，阶段不存在时 `phase` 为空）。旧版本只读、可按 id 读取。
 - 接口（`app/api/agent/plans/**`，统一 envelope，需要登录）：`GET /api/agent/plans/current`、`POST /api/agent/plans`（新版本）、`PATCH /api/agent/plans/items/:itemId`（`{ change: { op, ... }, idempotencyKey? }`）、`POST /api/agent/plans/log`（手动记录）。他人条目与不属于本人的引用 404，坏输入 400，非法转移与幂等键冲突 409，服务不可用（含身份／服务解析时抛错）503，统一 JSON envelope。
+- 第一份计划的生成（W0008，RW-08；D3 不接 AI）：`POST /api/agent/plans/bootstrap`（`{ idempotencyKey, supplement?, locale? }`）。不走 `/api/ai/conversations`——回答是一份要落库、可跟踪的结构化计划，对话接口的共享契约也没有「意图」字段。一次请求内完成：已有生效计划时，同一幂等键直接返回那份（200，`replayed`），否则 409 `PLAN_ALREADY_EXISTS`（`context.planId`）；读本人已确认联系人（`input-source.ts`，与联系人计数同一归属谓词，带本人记录的最后互动）与真实活动目录（已发布、未开始，canonical id），超过 200 位时只保留近 90 天有互动的与和目标相关的（`input-selector.ts`）；生成器出骨架 + 各阶段细节（`generator.ts`，有界并行、按阶段顺序拼装，任一阶段失败整份失败 503 `PLAN_GENERATION_FAILED`、不保存）；`validate.ts` 校验结构、阶段数（一个月 2–3 段、3 个月 3 段、一年 4 段）与引用（只能引用输入里的、且经 `PlanReferenceValidator` 核对属于本人的联系人／活动，否则 404）；最后 `createVersion({ basePlanId: null, creationKey: "bootstrap:<key>" })` 一个事务保存为生效的 v1。目标从服务端资料读，不信任请求体。回答卡片数据（一句话回答、3 个关键数字、这周 3 件事、现有人脉、还缺的人、最大风险、30 秒自我介绍、每阶段跟进方式、请求与幂等键）存在 `plans.analysis`（`PlanAnalysisV1`）。
+- 生成器替换点：`generator-service-factory.ts` 的 `resolvePlanGenerator()`，按 `ORBIT_PLAN_GENERATOR`（缺省 `mock`）选择，不跟随 `ORBIT_MODULE_MODE`——mock 生成器只把用户自己的真实数据套进模板，是 D3 下的产品行为，live 环境同样使用；其他取值在实现注册前 fail closed（503）。接真实 AI：新增实现 `PlanGenerator` 的 provider 并在 factory 注册，另开 Sprint 引入持久化生成任务与预算。
 - 迁移入口：`scripts/migrate-web-runtime.ts` 与 `scripts/setup-minimal-staging.ts`。live 模式不在请求时自动建表；生产库执行需要用户单独授权。
 
 ## Mock 行为
 
-Mock 的引用校验是可配置白名单（联系人按 actor 分组、活动为公开目录）；mock 模式没有可核对的数据源，默认接受任意格式合法的 id，测试用 `setPlansMockReferenceAllowListForTests` 或直接注入白名单。Mock 使用进程内内存仓储（挂在 `globalThis`，dev 热重载后仍在），与 Postgres 仓储实现同一个 `PlanRepository` 接口：每个人一条串行队列，事务在副本上执行、失败即回滚，同样拒绝第二份 active 计划和重复的幂等键。不访问数据库或网络。hybrid 未单独注册，按约定回落到 mock。
+计划生成的 mock 生成器（`mock-generator.ts`）是确定性的模板：同样的输入永远得到同样的计划，周期按期限切分（一个月内 2–3 段按周，现有人脉 ≥3 位时 3 段；3 个月内 3 段共 12 周；一年内 4 个季度段、只有第一段细到周），人脉需求的行业条件与职位关键词来自 `goal-signals.ts`（行业 id 取自 `shared/domain/industries.ts`），不发任何网络请求。Mock 的引用校验是可配置白名单（联系人按 actor 分组、活动为公开目录）；mock 模式没有可核对的数据源，默认接受任意格式合法的 id，测试用 `setPlansMockReferenceAllowListForTests` 或直接注入白名单。Mock 使用进程内内存仓储（挂在 `globalThis`，dev 热重载后仍在），与 Postgres 仓储实现同一个 `PlanRepository` 接口：每个人一条串行队列，事务在副本上执行、失败即回滚，同样拒绝第二份 active 计划和重复的幂等键。不访问数据库或网络。hybrid 未单独注册，按约定回落到 mock。
 
 ## 热拔插边界
 
