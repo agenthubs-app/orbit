@@ -12,7 +12,7 @@ import { auditDerivedDomainSources, auditEventTableWrites, auditMessageTableWrit
 // statement in a listed file, fails this test until it is classified.
 export const SYNC_WRITE_MANIFEST: Readonly<Record<string, SyncWritePolicy>> = {
   "shared/storage/postgres-live-record-store.ts": { policy: "locked", statements: 5, how: "upsert/insertIfAbsent/updateIfCurrent/delete/reassignRecordOwner wrap sync collections in SYNC_COMMIT_ORDER_LOCK_CTE" },
-  "features/connections/lifecycle/postgres-repository.ts": { policy: "locked", statements: 5, how: "acquireSyncCommitOrderLock before the first write when the plan touches tasks" },
+  "features/connections/lifecycle/postgres-repository.ts": { policy: "locked", statements: 5, how: "acquireSyncCommitOrderLock before the first write of every command (connections, evidence and tasks are sync collections)" },
   "features/connections/lifecycle/initialization.ts": { policy: "locked", statements: 2, how: "acquireSyncCommitOrderLock before the first write when a task is created" },
   "features/connections/lifecycle/migration-repository.ts": { policy: "locked", statements: 2, how: "acquireSyncCommitOrderLock when an owner repair touches a sync collection" },
   "features/sync/migrations.ts": { policy: "locked", statements: 1, how: "one-shot backfill joins sync_write_lock" },
@@ -30,7 +30,7 @@ export const SYNC_WRITE_MANIFEST: Readonly<Record<string, SyncWritePolicy>> = {
   "features/auth/password-reset-store.ts": { policy: "non-sync", statements: 4, collections: "auth_users" },
   "features/auth/storage/mobile-auth-exchange-provider.ts": { policy: "non-sync", statements: 1, collections: "mobile_auth_exchanges" },
   "features/dashboard/storage/dashboard-snapshot.ts": { policy: "non-sync", statements: 1, collections: "dashboard analysis snapshots" },
-  "features/encounters/projection-repository.ts": { policy: "non-sync", statements: 4, collections: "contact_detail_states, human_encounters" },
+  "features/encounters/projection-repository.ts": { policy: "locked", statements: 4, how: "complete() takes acquireSyncCommitOrderLock first; writeContactDetailState takes it again before writing contact_detail_states (0116)" },
   "features/events/organizer-accounts/owner-migration.ts": { policy: "non-sync", statements: 2, collections: "event_organizer_owner_migrations, events" },
   "features/events/post-event-artifact/task-repository.ts": { policy: "non-sync", statements: 4, collections: "attendee post-event AI artifact jobs (not tasks)" },
   "features/integrations/oauth-state-store.ts": { policy: "non-sync", statements: 1, collections: "integrationOAuthStates" },
@@ -40,7 +40,7 @@ export const SYNC_WRITE_MANIFEST: Readonly<Record<string, SyncWritePolicy>> = {
   "features/notifications/notification-cutover-migration.ts": { policy: "non-sync", statements: 3, collections: "notification collections" },
   "features/notifications/event-contact-request-inbox-migration.ts": { policy: "non-sync", statements: 1, collections: "notifications (archives migrated legacy exchange rows; inbox writes go through the live-record store)" },
   "scripts/backfill-event-display-fields.ts": { policy: "non-sync", statements: 1, collections: "events" },
-  "scripts/backfill-test-secondary-industries.ts": { policy: "non-sync", statements: 1, collections: "contacts" },
+  "scripts/backfill-test-secondary-industries.ts": { policy: "locked", statements: 1, how: "applyTestIndustryBackfillPlan takes acquireSyncCommitOrderLock at the start of its transaction (contacts, 0116)" },
   "scripts/bootstrap-event-organizer-accounts.ts": { policy: "non-sync", statements: 2, collections: "organizer accounts and events" },
   "scripts/diagnostics/notification-source-read-cost.ts": { policy: "non-sync", statements: 2, collections: "reminderPlans and notification fixtures" },
   "scripts/diagnostics/schedule-exception-window-cost.ts": { policy: "non-sync", statements: 1, collections: "personal_schedule_occurrence_exceptions (the series rows go through the store)" },

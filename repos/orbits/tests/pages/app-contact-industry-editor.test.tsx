@@ -1,4 +1,4 @@
-import { writeAsOwner } from "../support/live-record-owner-fixture";
+import { seedAsOwner, writeAsOwner } from "../support/live-record-owner-fixture";
 import assert from "node:assert/strict";
 import test, { type TestContext } from "node:test";
 import { act, create, type ReactTestRenderer } from "react-test-renderer";
@@ -107,7 +107,7 @@ test("the editor payload works through the real authenticated handler and surviv
   const store = createMemoryLiveRecordStore<Record<string, unknown>>();
   const workspaceId = "workspace:industry-editor";
   const actorId = "actor:industry-editor";
-  await seedGeneratedRelationshipFixturesIntoLiveStore({ store, workspaceId });
+  await seedGeneratedRelationshipFixturesIntoLiveStore({ store: seedAsOwner(store, actorId, ["contacts", "connections", "evidence"]), workspaceId });
   for (const collectionName of ["contacts", "connections", "evidence"]) {
     for (const record of await store.listRecords({ limit: "unbounded", collectionName, workspaceId })) {
       await writeAsOwner(store, { ...record, userId: actorId, payload: { ...record.payload, accountId: actorId } });

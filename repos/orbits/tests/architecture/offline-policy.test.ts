@@ -38,6 +38,10 @@ const APPROVED_POLICY_MATRIX = [
   ["GET", "/api/events/public/:id", "read", "registered_event", "durable_normalized", "online_only", "metadata_only"],
   ["GET", "/api/events/:id/registration", "read", "event_registration", "durable_normalized", "online_only", "metadata_only"],
   ["GET", "/api/events/:id/operations", "read", "event_published_result", "durable_normalized", "online_only", "metadata_only"],
+  // Sprint 0116: the account's contacts read the device copy first (sync domain contacts).
+  ["GET", "/api/contacts/page", "read", "contact", "durable_normalized", "online_only", "metadata_only"],
+  ["GET", "/api/contacts/summary", "read", "contact", "durable_normalized", "online_only", "metadata_only"],
+  ["GET", "/api/contacts/:id", "read", "contact", "durable_normalized", "online_only", "metadata_only"],
   ["POST", "/api/auth/mobile/credentials", "authenticate", "account_secret", "online_only_secret", "online_only", "never_local"],
 ] as const;
 

@@ -321,9 +321,9 @@ export function createStorageFollowupTaskProvider({
           ...actorConnectionRecords,
         ].flatMap((record) => record.evidenceIds),
       );
+      // Sprint 0116: only the sources these records cite (the scoped reader reads no others).
       const actorEvidenceRecords = evidenceRecords.filter(
-        (record) =>
-          belongsToActor(record) || actorEvidenceIds.has(record.recordId),
+        (record) => actorEvidenceIds.has(record.recordId),
       );
 
       return {

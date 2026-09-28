@@ -518,9 +518,12 @@ interface BootstrapRecordCollections {
   tasks: readonly LiveRecord<Record<string, unknown>>[];
 }
 
+// Sprint 0116: the bootstrap needs no source rows. Its evidence ids are the ones
+// the records it reads cite (record.evidenceIds); reading every source row the
+// account owns only made the read grow with sources nothing here shows.
 const bootstrapProjectionCollections = Object.values(
   APP_BOOTSTRAP_LIVE_RECORD_COLLECTIONS,
-);
+).filter((collectionName) => collectionName !== APP_BOOTSTRAP_LIVE_RECORD_COLLECTIONS.evidence);
 
 const bootstrapProjectionSql = `
   select
@@ -754,7 +757,6 @@ export function createStorageAppBootstrapProvider({
               actionRecords,
               permissionRecords,
               notificationRecords,
-              evidenceRecords,
             ] = await Promise.all([
               listCollection(store, workspaceId, APP_BOOTSTRAP_LIVE_RECORD_COLLECTIONS.accounts, accountId),
               listCollection(store, workspaceId, APP_BOOTSTRAP_LIVE_RECORD_COLLECTIONS.profiles, accountId),
@@ -765,8 +767,9 @@ export function createStorageAppBootstrapProvider({
               listCollection(store, workspaceId, APP_BOOTSTRAP_LIVE_RECORD_COLLECTIONS.actions, accountId),
               listCollection(store, workspaceId, APP_BOOTSTRAP_LIVE_RECORD_COLLECTIONS.permissions, accountId),
               listCollection(store, workspaceId, APP_BOOTSTRAP_LIVE_RECORD_COLLECTIONS.notifications, accountId),
-              listCollection(store, workspaceId, APP_BOOTSTRAP_LIVE_RECORD_COLLECTIONS.evidence, accountId),
             ]);
+            // Sprint 0116: no source rows (see bootstrapProjectionCollections).
+            const evidenceRecords: readonly LiveRecord<Record<string, unknown>>[] = [];
 
             return {
               accounts: accountRecords,

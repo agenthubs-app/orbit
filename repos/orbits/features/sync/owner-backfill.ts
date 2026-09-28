@@ -336,8 +336,12 @@ async function applyPlan(tx: TransactionalSqlExecutor, workspaceId: string, plan
     for (const ref of copy.repoints) touched.set(key(ref.collectionName, ref.recordId), ref);
   }
   for (const ref of touched.values()) {
-    // The plan only rewrites contact rows; a sync collection is never touched.
-    if (isSyncCollection(ref.collectionName) || ownerGuardedCollections().includes(ref.collectionName)) throw new Error(`OWNER_BACKFILL_REFUSED: the plan would write ${ref.collectionName}/${ref.recordId}.`);
+    // The plan only rewrites contact rows; no other sync collection is ever
+    // touched. Sprint 0116 made the contact rows themselves a sync domain: they
+    // stay writable here because this handler only fills an empty owner (the
+    // guard never fires for that) and its one transaction holds the lock.
+    const ownCollection = (OWNER_BACKFILL_COLLECTIONS as readonly string[]).includes(ref.collectionName);
+    if (!ownCollection && (isSyncCollection(ref.collectionName) || ownerGuardedCollections().includes(ref.collectionName))) throw new Error(`OWNER_BACKFILL_REFUSED: the plan would write ${ref.collectionName}/${ref.recordId}.`);
   }
 
   // 1. Export every row the writes will touch, exactly as it is now.

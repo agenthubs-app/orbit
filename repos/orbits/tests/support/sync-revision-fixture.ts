@@ -60,6 +60,27 @@ export async function testRawWrite(client: TestTransactionClient, collectionName
   await client.transaction(async (tx) => { await acquireSyncCommitOrderLock(tx); await tx.query(text, values); });
 }
 
+const RESEED_COLUMNS = "workspace_id, collection_name, record_id, user_id, source_type, source_id, source_label, provider, provider_record_id, evidence_ids, target_type, target_id, occurred_at, lifecycle_state, search_text, payload, created_at, updated_at, deleted_at";
+
+/**
+ * Sprint 0116: a test's own "this row belongs to someone else" setup for a row
+ * of an owner-guarded sync collection (e.g. a contact another account owns).
+ * The owner guard refuses moving an owned row, so the fixture removes it and
+ * writes it again under the other owner (or none) in one locked transaction —
+ * the row a fixture seeded that way from the start would hold.
+ */
+export async function testReseedOwner(client: TestTransactionClient, collectionName: string, where: string, owner: string | null, values: readonly unknown[] = []): Promise<void> {
+  const columns = RESEED_COLUMNS.split(", ");
+  await client.transaction(async (tx) => {
+    await acquireSyncCommitOrderLock(tx);
+    const selected = await tx.query(`select ${RESEED_COLUMNS} from orbit_records where collection_name = $${values.length + 1} and (${where})`, [...values, collectionName]) as { rows: Record<string, unknown>[] };
+    for (const row of selected.rows) {
+      await tx.query("delete from orbit_records where workspace_id = $1 and collection_name = $2 and record_id = $3", [row.workspace_id, row.collection_name, row.record_id]);
+      await tx.query(`insert into orbit_records (${RESEED_COLUMNS}) values (${columns.map((_, index) => `$${index + 1}`).join(", ")})`, columns.map((column) => column === "user_id" ? owner : row[column]));
+    }
+  });
+}
+
 type FixtureQueryable =
   | { transaction<T>(operation: (tx: { query(text: string, values?: readonly unknown[]): Promise<unknown> }) => Promise<T>): Promise<T> }
   | { connect(): Promise<{ query(text: string, values?: unknown[]): Promise<unknown>; release(): void }> };

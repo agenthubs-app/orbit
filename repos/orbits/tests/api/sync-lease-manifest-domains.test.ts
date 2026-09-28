@@ -33,6 +33,10 @@ function scriptedClient(state: Scripted) {
           // Sprint 0115: an actor with no event registrations: every event watermark is 0, nothing released.
           return { rows: [{ registrations: "0", events: "0", results: "0", released: "" } as T] };
         }
+        if (text.includes("sync:contact-domain:high-watermark")) {
+          // Sprint 0116: the contacts domain; an actor with no contact rows has watermark 0.
+          return { rows: [{ high_watermark: "0" } as T] };
+        }
         if (text.includes("sync:domain:high-watermark")) {
           const rows = state.rows[String(values?.[2])] ?? [];
           return { rows: [{ high_watermark: String(rows.reduce((max, row) => Math.max(max, row.sync_revision), 0)) } as T] };
@@ -171,12 +175,12 @@ test("manifest is a conditional read: unchanged data answers 304 from one waterm
   assert.ok(calls.some((sql) => sql.includes("sync:domain:high-watermark")), "a changed manifest re-reads the domain watermarks");
 });
 
-test("the production registry leases the event domains too; an unchanged manifest costs the event summary and one watermark row", async () => {
+test("the production registry leases the contacts and event domains too; an unchanged manifest costs the event summary and one watermark row", async () => {
   const state: Scripted = { auth: { max: "2026-09-18T07:00:00Z", count: 3, identity: 1 }, rows: { tasks: [await task("task:e1", 1)] } };
   const { handlers, calls } = harness(state, { conditional: true, domains: SYNC_DOMAINS });
   const lease = offlineReadEnvelopeSchema.parse(((await (await handlers.lease(new Request("https://orbit.local/api/sync/lease?baseUrl=https%3A%2F%2Fapp.orbit.local"))).json()) as { data: unknown }).data);
   assert.deepEqual(lease.grants.map((grant) => grant.domainId).sort(), SYNC_DOMAINS.map((domain) => domain.domainId).sort());
-  assert.ok(["event-registrations", "registered-events", "event-published-results"].every((id) => lease.grants.some((grant) => grant.domainId === id)));
+  assert.ok(["contacts", "event-registrations", "registered-events", "event-published-results"].every((id) => lease.grants.some((grant) => grant.domainId === id)));
   const first = await handlers.manifest(new Request("https://orbit.local/api/sync/manifest"));
   assert.equal(first.status, 200);
   const manifest = domainManifestSchema.parse(((await first.json()) as { data: unknown }).data);
