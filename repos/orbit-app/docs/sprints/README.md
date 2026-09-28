@@ -59,7 +59,7 @@ E 结构（0079–0080，需单独批准）依次领取，不并行。
 | [0118](0118-local-inbox-ai-sessions/GOAL.md) | 通知与 AI 对话放进手机（断网 3a = AI B3）：收件箱通知 + AI 会话列表 + 打开过的会话消息本地优先；失效通知也要从手机消失 | 依赖 0113、0112。Planner SHA 3e16b779（revision 1，开工时追加基线） | planned |
 | [0117](0117-dashboard-on-device/GOAL.md) | 看板在手机上算（看板 D3）：建立允许共用的目录并调整共用规则，缺口/机会纯函数，补齐 `events` 集合同步，App 本地计算且与服务器逐项一致 | 依赖 0116。Planner SHA ae310a9f（revision 1，开工时追加基线） | planned |
 | [0116](0116-local-contacts/GOAL.md) | 联系人放进手机（断网 1b）：联系人 + 关系 + 来源 + 详情状态（以 0114 清单为准）本地优先，本机搜索与服务端一致 | 依赖 0114；生产启用前须已执行 0114 补写。Planner SHA ce077538（revision 1，开工时追加基线） | planned |
-| [0115](0115-local-event-day/GOAL.md) | 活动现场放进手机（断网 1a）：已报名活动的公开信息、报名状态、签到窗口、发布给我的座位与推荐；取消/被拒后撤下；议程仅在有数据时显示 | 依赖 0113、0107。Planner SHA dc1c3e1f（revision 1，开工时追加基线） | planned |
+| [0115](0115-local-event-day/GOAL.md) | 活动现场放进手机（断网 1a）：已报名活动的公开信息、报名状态、签到窗口、发布给我的座位与推荐；取消/被拒后撤下；议程仅在有数据时显示 | 依赖 0113、0107。Planner SHA dc1c3e1f（revision 1，基线 cc4c3daf5） run-01 | in-progress |
 | [0114](0114-owner-backfill/GOAL.md) | 补写主人：联系人及附属数据按引用补写，共用来源每人复制一份，演示数据补合理主人，修种子脚本；平台公共数据不补 | 依赖 0113；生产执行需确认。Planner SHA 4ddae886（revision 1，基线 2b00eee0a） run-01 · 报告 [REPORT](0114-owner-backfill/REPORT.md)；孤立来源不补（协调者决定） | completed |
 | [0113](0113-sync-foundation/GOAL.md) | 同步地基：注册表 v2 说明书、修通用 upsert 清空主人、改主人/身份检查（含脚本）、活动专用表取号与专用表读取、App 按租约类别同步 | 依赖 0108。Planner SHA 4dd17235（revision 1，基线 cbd09c5fe） run-01 · 报告 [REPORT](0113-sync-foundation/REPORT.md) | completed |
 | [0112](0112-ai-session-paging/GOAL.md) | AI 会话分页（B1+B2）：首屏 20 条、上翻加载、卡片按需；问答只追加（现每轮读约 7N 写 2N）；客户端不再上传整会话；读取上限审计恢复通过 | 依赖 0110。Planner SHA 505a18ae（revision 1，基线 5d6ef0b65） run-01 · 报告 [REPORT](0112-ai-session-paging/REPORT.md)；棘轮 156→150；付费 1 次 | completed |
