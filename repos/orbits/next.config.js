@@ -9,6 +9,9 @@
 const apiCorsOrigin = process.env.ORBIT_API_CORS_ORIGIN ?? "*";
 
 const nextConfig = {
+  // W0016：同一目录跑第二个 dev server（验收 server，端口 3001）时用独立构建目录，
+  // 避免与 3000 端口 server 争用 `.next`。不设环境变量时仍是 `.next`，行为不变。
+  distDir: process.env.ORBIT_NEXT_DIST_DIR || ".next",
   outputFileTracingRoot: __dirname,
   typescript: {
     tsconfigPath:
