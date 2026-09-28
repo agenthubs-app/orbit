@@ -273,9 +273,18 @@ test("any unreadable source fails closed (null = real home) and does not lock in
   assert.equal(await w.read("actor:z", null, { guideState: null }), null);
 
   const failingWrite: GuideStateService = {
-    get: async () => ({ bannerCollapsed: false, grandfathered: null, version: 1 }),
+    get: async () => ({
+      bannerCollapsed: false,
+      completedAt: null,
+      currentStep: null,
+      grandfathered: null,
+      step1Skipped: false,
+      version: 2,
+    }),
+    markCompleted: boom,
     recordGrandfathered: boom,
     setBannerCollapsed: boom,
+    update: boom,
   };
   assert.equal(await w.read("actor:w", null, { guideState: failingWrite }), null);
 });
@@ -305,15 +314,25 @@ test("two users: counts, decisions and banner state never leak across actors", a
 test("guide state: grandfathered is write-once, bannerCollapsed toggles, both survive each other", async () => {
   const w = world();
   const service = w.stateFor("actor:rec");
-  assert.deepEqual(await service.get(), { bannerCollapsed: false, grandfathered: null, version: 1 });
+  assert.deepEqual(await service.get(), {
+    bannerCollapsed: false,
+    completedAt: null,
+    currentStep: null,
+    grandfathered: null,
+    step1Skipped: false,
+    version: 2,
+  });
   await service.setBannerCollapsed(true);
   assert.equal((await service.recordGrandfathered(false)).grandfathered, false);
   // 第二次判定不改写。
   assert.equal((await service.recordGrandfathered(true)).grandfathered, false);
   const state = await service.get();
-  assert.deepEqual(state, { bannerCollapsed: true, grandfathered: false, version: 1 });
+  assert.equal(state.bannerCollapsed, true);
+  assert.equal(state.grandfathered, false);
   await service.setBannerCollapsed(false);
-  assert.deepEqual(await service.get(), { bannerCollapsed: false, grandfathered: false, version: 1 });
+  const toggled = await service.get();
+  assert.equal(toggled.bannerCollapsed, false);
+  assert.equal(toggled.grandfathered, false);
 
   // 一人一条，按 actor 分片的 workspace、userId 都是本人。
   const rows = await w.store.listRecords({
@@ -323,5 +342,5 @@ test("guide state: grandfathered is write-once, bannerCollapsed toggles, both su
   });
   assert.equal(rows.length, 1);
   assert.equal(rows[0]!.userId, "actor:rec");
-  assert.equal(rows[0]!.payload.version, 1);
+  assert.equal(rows[0]!.payload.version, 2);
 });

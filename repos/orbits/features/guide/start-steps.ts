@@ -1,0 +1,134 @@
+/**
+ * 引导页 `/app/start` 的步骤规则（W0006，RW-04）。纯函数、零依赖，服务端（`progress.ts`）
+ * 与客户端（`start-guide.tsx`）共用同一套判定，不会各算各的。
+ *
+ * 四步：1 名片 → 2 目标 → 3 计划 → 4 活动。
+ *   - 第 1 步完成：已确认联系人 ≥ 3，或点过「先这样，继续」（`step1Skipped`），或 D2 老用户；
+ *   - 第 2 步完成：资料里有目标（relationshipGoal 非空），或 D2 老用户；
+ *   - 第 3 步完成：有生效中的计划；
+ *   - 第 4 步完成：报名过任意真实活动，或有 W0003 社群加入记录。
+ * 第 1–3 步严格按顺序解锁；第 4 步随时可开，不参与「前 3 步完成」的判定。
+ */
+
+export type GuideStartStep = 1 | 2 | 3 | 4;
+export const GUIDE_START_STEPS: readonly GuideStartStep[] = [1, 2, 3, 4];
+
+/** 第 1 步需要的已确认联系人数（与 `progress.ts` 的 `GUIDE_REQUIRED_CONTACTS` 同值）。 */
+export const START_REQUIRED_CONTACTS = 3;
+
+export function isGuideStartStep(value: unknown): value is GuideStartStep {
+  return value === 1 || value === 2 || value === 3 || value === 4;
+}
+
+export interface StartGuideFlags {
+  contacts: boolean;
+  events: boolean;
+  goal: boolean;
+  plan: boolean;
+}
+
+export interface StartGuideFlagInput {
+  confirmedContacts: number;
+  eventsDone: boolean;
+  grandfathered: boolean;
+  hasActivePlan: boolean;
+  relationshipGoal: string | null | undefined;
+  step1Skipped: boolean;
+}
+
+/** 第 1 步：≥3 位已确认联系人、跳过、或 D2 老用户。 */
+export function contactsStepDone(input: {
+  confirmedContacts: number;
+  grandfathered?: boolean;
+  step1Skipped?: boolean;
+}): boolean {
+  return (
+    input.grandfathered === true ||
+    input.step1Skipped === true ||
+    Math.max(0, Math.floor(input.confirmedContacts)) >= START_REQUIRED_CONTACTS
+  );
+}
+
+/** 第 2 步：有目标，或 D2 老用户。 */
+export function goalStepDone(input: { grandfathered?: boolean; relationshipGoal: string | null | undefined }): boolean {
+  return input.grandfathered === true || Boolean(input.relationshipGoal?.trim());
+}
+
+export function deriveStartGuideFlags(input: StartGuideFlagInput): StartGuideFlags {
+  return {
+    contacts: contactsStepDone(input),
+    events: input.eventsDone,
+    goal: goalStepDone(input),
+    plan: input.hasActivePlan,
+  };
+}
+
+const KEY_BY_STEP = { 1: "contacts", 2: "goal", 3: "plan", 4: "events" } as const;
+
+export function startStepDone(flags: StartGuideFlags, step: GuideStartStep): boolean {
+  return flags[KEY_BY_STEP[step]];
+}
+
+/** 第 1–3 步里第一个没完成的；都完成为 null。 */
+export function firstIncompleteStartStep(flags: StartGuideFlags): 1 | 2 | 3 | null {
+  if (!flags.contacts) return 1;
+  if (!flags.goal) return 2;
+  if (!flags.plan) return 3;
+  return null;
+}
+
+export function firstThreeStepsDone(flags: StartGuideFlags): boolean {
+  return firstIncompleteStartStep(flags) === null;
+}
+
+/**
+ * 步骤状态：done 已完成；current 第 1–3 步中正在做的那一步；locked 前一步没完成；
+ * open 第 4 步未完成（随时可做）。
+ */
+export type StartStepStatus = "current" | "done" | "locked" | "open";
+
+export function startStepStatus(flags: StartGuideFlags, step: GuideStartStep): StartStepStatus {
+  if (startStepDone(flags, step)) return "done";
+  if (step === 4) return "open";
+  return firstIncompleteStartStep(flags) === step ? "current" : "locked";
+}
+
+/** 能不能切到这一步：锁定的不行，其余（已完成、进行中、第 4 步）都可以。 */
+export function canOpenStartStep(flags: StartGuideFlags, step: GuideStartStep): boolean {
+  return startStepStatus(flags, step) !== "locked";
+}
+
+/** 页面主体：某一步的模块，或前 3 步完成后的「完成」卡片。 */
+export type StartView = GuideStartStep | "finish";
+
+/**
+ * 进页面时显示哪一步：引导记录里的 `currentStep` 能打开就用它（刷新、换设备停在同一步）；
+ * 记录为空或指向锁定的步骤时，前 3 步没完成就停在第一个没完成的，完成了就显示完成卡片。
+ */
+export function resolveStartView(flags: StartGuideFlags, recorded: GuideStartStep | null): StartView {
+  if (recorded !== null && canOpenStartStep(flags, recorded)) return recorded;
+  return firstIncompleteStartStep(flags) ?? "finish";
+}
+
+/** 当前这一步刚完成后去哪：下一个没完成的第 1–3 步；前 3 步都完成则是完成卡片。 */
+export function viewAfterStepDone(flags: StartGuideFlags): StartView {
+  return firstIncompleteStartStep(flags) ?? "finish";
+}
+
+/** 服务端读到的已确认联系人示例（第 1 步的名片槽位）。 */
+export interface StartContactSample {
+  displayName: string;
+  organization: string | null;
+  role: string | null;
+}
+
+/** `/app/start` 服务端下传给客户端的引导快照（可序列化）。 */
+export interface StartGuideSnapshot {
+  completedAt: string | null;
+  confirmedContacts: number;
+  contactSamples: readonly StartContactSample[];
+  currentStep: GuideStartStep | null;
+  grandfathered: boolean;
+  hasActivePlan: boolean;
+  step1Skipped: boolean;
+}

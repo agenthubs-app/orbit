@@ -8,6 +8,11 @@ const APP_ROUTE_PREFIX = "/app";
 const ACCOUNT_ROUTE_PREFIX = "/app/account";
 const PROFILE_ROUTE = "/app/profile";
 const PROFILE_CONTINUE_ROUTE = "/app/profile/continue";
+/**
+ * W0006 引导页：资料未完成的新用户也要能进（它本身就是引导的一部分）。只豁免这一条路径，
+ * 不含子路径；开关关闭时页面自己重定向到 `/app/agent`，那里照常走门禁。
+ */
+const START_GUIDE_ROUTE = "/app/start";
 
 function matchesRoutePrefix(pathname: string, prefix: string): boolean {
   return pathname === prefix || pathname.startsWith(`${prefix}/`);
@@ -21,6 +26,7 @@ export function isProfileOnboardingNavigationExemptPath(
     pathname === PROFILE_ROUTE ||
     pathname === PROFILE_CONTINUE_ROUTE ||
     pathname === PROFILE_ONBOARDING_FLOW_ROUTE ||
+    pathname === START_GUIDE_ROUTE ||
     pathname === "/app/admin/access" ||
     pathname === "/app/login-admin"
   );

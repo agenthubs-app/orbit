@@ -26,6 +26,14 @@ const EXCLUDED_PREFIXES = [
   "/app/o",
 ] as const;
 
+/**
+ * 只在这条路径本身不挂的路由（不含子路径）。
+ *
+ * - start：引导页 `/app/start`（W0006）是全屏的步骤流程，浮层会盖住当前步骤、抢走注意力；
+ *   第 3 步本身就是「向 iOrbit 提问」，不需要第二个入口。
+ */
+const EXCLUDED_EXACT_PATHS = ["/app/start"] as const;
+
 /** 活动运营下的 kiosk 子路由（`/app/events/[id]/operations/...`）。 */
 const EXCLUDED_SEGMENTS = ["/operations/check-in", "/operations/admission"] as const;
 
@@ -50,6 +58,7 @@ export function allowsOrbitAsk(pathname: string): boolean {
 
   if (!hasPathPrefix(path, "/app")) return false;
   if (EXCLUDED_PREFIXES.some((prefix) => hasPathPrefix(path, prefix))) return false;
+  if (EXCLUDED_EXACT_PATHS.some((excluded) => path === excluded)) return false;
 
   return !EXCLUDED_SEGMENTS.some((segment) => path.includes(segment));
 }

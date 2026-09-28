@@ -12,7 +12,10 @@ import {
   createStorageGuideStateService,
   type GuideStatePayload,
 } from "../../features/guide/guide-state";
-import { createPostgresConfirmedContactCounter } from "../../features/guide/progress";
+import {
+  createPostgresConfirmedContactCounter,
+  createPostgresConfirmedContactSampler,
+} from "../../features/guide/progress";
 import { ORBIT_RECORDS_SCHEMA_SQL } from "../../shared/storage/migrations";
 import { createPostgresLiveRecordStore } from "../../shared/storage/postgres-live-record-store";
 
@@ -108,6 +111,42 @@ test("confirmed contact count only sees the actor's own, initialised, undeleted 
   });
 });
 
+test("W0006 contact samples: oldest 3 of the actor's own confirmed contacts, display fields only", databaseTest, async () => {
+  await withSchema(async (pool, workspaceId) => {
+    const store = createPostgresLiveRecordStore({ client: pool });
+    const contact = (recordId: string, userId: string, createdAt: string, payload: Record<string, unknown>) =>
+      store.upsertRecord({
+        collectionName: "contacts",
+        createdAt,
+        evidenceIds: ["evidence:test"],
+        lifecycleState: "active",
+        payload: { id: recordId, ...payload },
+        recordId,
+        sourceId: "test",
+        sourceType: "manual",
+        updatedAt: createdAt,
+        userId,
+        workspaceId,
+      });
+    await contact("s4", "actor:alice", "2026-10-04T00:00:00.000Z", { accountId: "actor:alice", displayName: "第四位" });
+    await contact("s1", "actor:alice", "2026-10-01T00:00:00.000Z", { accountId: "actor:alice", displayName: "王砚", organization: "北辰精工", role: "采购部长", primaryEmail: "hidden@example.test" });
+    await contact("s2", "actor:alice", "2026-10-02T00:00:00.000Z", { displayName: "佐藤美咲" });
+    await contact("s0", "actor:alice", "2026-09-30T00:00:00.000Z", { accountId: "actor:alice", displayName: "初始化中", lifecycleInitialization: "pending" });
+    await contact("s3", "actor:alice", "2026-10-03T00:00:00.000Z", { accountId: "actor:alice", displayName: "林志远", organization: " " });
+    await contact("b1", "actor:bob", "2026-09-01T00:00:00.000Z", { accountId: "actor:bob", displayName: "Bob 的联系人" });
+
+    const sample = createPostgresConfirmedContactSampler({ client: pool, workspaceId });
+    assert.deepEqual(await sample("actor:alice"), [
+      { displayName: "王砚", organization: "北辰精工", role: "采购部长" },
+      { displayName: "佐藤美咲", organization: null, role: null },
+      { displayName: "林志远", organization: null, role: null },
+    ]);
+    assert.deepEqual(await sample("actor:bob"), [{ displayName: "Bob 的联系人", organization: null, role: null }]);
+    assert.deepEqual(await sample("actor:nobody"), []);
+    await assert.rejects(() => sample(" "), /ACTOR_REQUIRED/);
+  });
+});
+
 test("guide state rows are one per actor and concurrent writes keep both fields", databaseTest, async () => {
   await withSchema(async (pool, workspaceId) => {
     const store = createPostgresLiveRecordStore<GuideStatePayload>({ client: pool });
@@ -122,7 +161,9 @@ test("guide state rows are one per actor and concurrent writes keep both fields"
 
     const alice = serviceFor("actor:alice");
     await Promise.all([alice.recordGrandfathered(true), alice.setBannerCollapsed(true)]);
-    assert.deepEqual(await alice.get(), { bannerCollapsed: true, grandfathered: true, version: 1 });
+    const aliceState = await alice.get();
+    assert.equal(aliceState.bannerCollapsed, true);
+    assert.equal(aliceState.grandfathered, true);
 
     // 并发的第二次判定不改写第一次的结果。
     await Promise.all([alice.recordGrandfathered(false), alice.recordGrandfathered(false)]);
@@ -130,8 +171,11 @@ test("guide state rows are one per actor and concurrent writes keep both fields"
 
     assert.deepEqual(await serviceFor("actor:bob").get(), {
       bannerCollapsed: false,
+      completedAt: null,
+      currentStep: null,
       grandfathered: null,
-      version: 1,
+      step1Skipped: false,
+      version: 2,
     });
     const rows = await pool.query<{ count: string }>(
       "select count(*)::text as count from orbit_records where collection_name = 'guideState'",

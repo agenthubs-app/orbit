@@ -1,5 +1,5 @@
 /**
- * W0004 SC-02：`GET/PATCH /api/guide/state`。
+ * W0004 SC-02 / W0006 SC-04：`GET/PATCH /api/guide/state`。
  * 未登录 401（统一 envelope、不写库）、只读写本人记录（请求体里的身份字段不采信）、
  * PATCH 只接受 `{ bannerCollapsed: boolean }`、服务解析失败 503、存储抛错仍是 envelope。
  */
@@ -82,8 +82,11 @@ test("GET returns the default state; PATCH bannerCollapsed persists and reads ba
   assert.equal(first.status, 200);
   assert.deepEqual(((await first.json()) as { data: unknown }).data, {
     bannerCollapsed: false,
+    completedAt: null,
+    currentStep: null,
     grandfathered: null,
-    version: 1,
+    step1Skipped: false,
+    version: 2,
   });
 
   const collapsed = await handlersFor("actor:alice").PATCH(patch({ bannerCollapsed: true }));
@@ -104,7 +107,7 @@ test("PATCH only writes the signed-in actor's own record", async () => {
   assert.equal(((await bob.json()) as { data: { bannerCollapsed: boolean } }).data.bannerCollapsed, false);
 });
 
-test("PATCH accepts exactly { bannerCollapsed: boolean }: grandfathered, identity and extra fields are 400", async () => {
+test("PATCH accepts only client fields: grandfathered, completedAt, identity and extra fields are 400", async () => {
   const { handlersFor, recordsFor } = harness();
   const handlers = handlersFor("actor:alice");
   for (const body of [
@@ -112,6 +115,18 @@ test("PATCH accepts exactly { bannerCollapsed: boolean }: grandfathered, identit
     { bannerCollapsed: true, grandfathered: false },
     { bannerCollapsed: true, actorId: "actor:bob" },
     { bannerCollapsed: "yes" },
+    // W0006：服务端字段、非法跳过值、非法步骤值；一个非法字段让整个请求都不写。
+    { completedAt: "2026-10-20T00:00:00.000Z" },
+    { version: 3 },
+    { currentStep: 2, completedAt: "2026-10-20T00:00:00.000Z" },
+    { step1Skipped: false },
+    { step1Skipped: "true" },
+    { currentStep: 0 },
+    { currentStep: 5 },
+    { currentStep: 2.5 },
+    { currentStep: "2" },
+    { currentStep: null },
+    { currentStep: 3, bannerCollapsed: "no" },
     {},
     [true],
     null,
@@ -147,7 +162,13 @@ test("an unresolvable service fails closed with 503; a storage error is still an
         recordGrandfathered: async () => {
           throw new Error("storage down");
         },
+        markCompleted: async () => {
+          throw new Error("storage down");
+        },
         setBannerCollapsed: async () => {
+          throw new Error("storage down");
+        },
+        update: async () => {
           throw new Error("storage down");
         },
       },
@@ -180,4 +201,54 @@ test("the mock factory keeps one store per process and isolates actors", async (
   assert.equal((await again.service.get()).bannerCollapsed, true);
   assert.equal((await bob.service.get()).bannerCollapsed, false);
   resetGuideStateMockStoreForTests();
+});
+
+/* ── W0006：step1Skipped / currentStep ──────────────────────────────── */
+
+test("W0006 PATCH writes step1Skipped and currentStep together and GET reads them back", async () => {
+  const { handlersFor, recordsFor } = harness();
+  const response = await handlersFor("actor:alice").PATCH(patch({ currentStep: 2, step1Skipped: true }));
+  assert.equal(response.status, 200);
+  const data = ((await response.json()) as { data: { currentStep: number; step1Skipped: boolean } }).data;
+  assert.equal(data.currentStep, 2);
+  assert.equal(data.step1Skipped, true);
+  const readBack = ((await (await handlersFor("actor:alice").GET()).json()) as {
+    data: { bannerCollapsed: boolean; completedAt: string | null; currentStep: number; step1Skipped: boolean };
+  }).data;
+  assert.equal(readBack.bannerCollapsed, false);
+  assert.equal(readBack.completedAt, null);
+  assert.equal(readBack.currentStep, 2);
+  assert.equal(readBack.step1Skipped, true);
+  assert.equal((await recordsFor("actor:alice")).length, 1);
+});
+
+test("W0006 SC-04: two independent clients of the same actor see the same currentStep", async () => {
+  const { handlersFor } = harness();
+  // 两个客户端 = 两组独立的 handler（各自一次身份解析，模拟不同 cookie 会话），同一个 actor。
+  const laptop = handlersFor("actor:alice");
+  const phone = handlersFor("actor:alice");
+  const stepOf = async (response: Response) =>
+    ((await response.json()) as { data: { currentStep: number | null } }).data.currentStep;
+
+  assert.equal(await stepOf(await phone.GET()), null);
+  assert.equal(await stepOf(await laptop.PATCH(patch({ currentStep: 4 }))), 4);
+  assert.equal(await stepOf(await phone.GET()), 4, "the phone opens on the laptop's step");
+  assert.equal(await stepOf(await phone.PATCH(patch({ currentStep: 1 }))), 1);
+  assert.equal(await stepOf(await laptop.GET()), 1, "and back again");
+});
+
+test("W0006: another actor's currentStep and skip flag are never touched", async () => {
+  const { handlersFor, recordsFor } = harness();
+  await handlersFor("actor:alice").PATCH(patch({ currentStep: 3, step1Skipped: true }));
+  const bob = ((await (await handlersFor("actor:bob").GET()).json()) as {
+    data: { currentStep: number | null; step1Skipped: boolean };
+  }).data;
+  assert.equal(bob.currentStep, null);
+  assert.equal(bob.step1Skipped, false);
+  assert.equal((await recordsFor("actor:bob")).length, 0);
+  // 请求体里的身份字段不采信：以 bob 的身份提交 actorId=alice 是 400，alice 的记录不变。
+  const spoof = await handlersFor("actor:bob").PATCH(patch({ actorId: "actor:alice", currentStep: 1 }));
+  assert.equal(spoof.status, 400);
+  const alice = ((await (await handlersFor("actor:alice").GET()).json()) as { data: { currentStep: number } }).data;
+  assert.equal(alice.currentStep, 3);
 });
