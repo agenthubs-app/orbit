@@ -222,4 +222,6 @@ test("AI conversation online: the server page replaces the device copy and its c
   await page.getByText("服务器上的最新回答").waitFor();
   assert.equal(await page.getByText(/显示截至/).count(), 0);
   await page.waitForFunction(() => (window as any).fixture.savedCards.includes("s1"));
+  await page.waitForTimeout(500);
+  assert.deepEqual(await fixtureValue(page, "savedCards"), ["s1"], "one server read saves its cards once (no write loop per render)");
 });

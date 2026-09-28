@@ -275,9 +275,11 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
     : null;
   const conversationOffline = Boolean(localSession) && serverUnreachable;
   const saveLocalCards = localConversation.saveCards;
+  // Keyed on the read itself (a new object only when the server answered again), not on the parsed
+  // session, which is a new object on every render.
   useEffect(() => {
     if (loadedSession && sessionRead?.success && sessionRead.data.artifactRecovery !== undefined) saveLocalCards(sessionRead.data.artifactRecovery);
-  }, [loadedSession, saveLocalCards]);
+  }, [loadedData, saveLocalCards]);
   const conversationRead = loadedData && !isStoredAgentSession ? aiConversationListSchema.safeParse(loadedData) : null;
   const readInvalid = loadedData !== null && (isStoredAgentSession ? !loadedSession : !conversationRead?.success);
   const previousSession = sessionSnapshot ?? loadedSession;

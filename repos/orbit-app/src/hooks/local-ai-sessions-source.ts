@@ -61,7 +61,7 @@ export function useLocalAiConversationSource(available: boolean, sessionId: stri
       setCards({ sessionId: opened, cards: kept });
       // A newly opened session is fetched by a sync that names it: finish any sync already running, then start one.
       if (receipt?.added) { await refresh(); if (active) void refresh(); }
-    })();
+    })().catch((error: unknown) => console.warn("AI_SESSION_OPEN_FAILED", error instanceof Error ? error.message : String(error)));
     return () => { active = false; };
   }, [opened, currentSession, refresh]);
   const messages = useMemo(() => (available && sessionId ? aiSessionMessages(state.records, sessionId) : []), [available, sessionId, state.records]);
