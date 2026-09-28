@@ -83,3 +83,59 @@ export async function readPlanContactNames(
     contactIds,
   );
 }
+
+/**
+ * W0012 到期回顾：计划期间（`sinceIso` 起）本人新增的已确认联系人数，以及其中记着「在哪场活动认识」
+ * （W0015 写入的 `metEventId`／`metEventTitle`）的按活动分组人数。同一归属谓词；只返回计数，有上限。
+ */
+export const PLAN_PERIOD_CONTACTS_SQL = `select c.payload->>'metEventId' as met_event_id,
+       max(c.payload->>'metEventTitle') as met_event_title,
+       count(*)::integer as count
+  from orbit_records c
+ where c.workspace_id = $1
+   and c.collection_name = 'contacts'
+   and c.lifecycle_state <> 'deleted'
+   and c.user_id = $2
+   and (c.payload->'accountId' is null or c.payload->'accountId' = 'null'::jsonb
+        or c.payload->'accountId' = to_jsonb($2::text))
+   and c.payload->>'lifecycleInitialization' is distinct from 'pending'
+   and c.created_at >= $3::timestamptz
+ group by c.payload->>'metEventId'
+ order by count(*) desc
+ limit 200`;
+
+export interface PlanPeriodContactCounts {
+  total: number;
+  byEvent: Array<{ eventId: string; title: string | null; count: number }>;
+}
+
+export function createPostgresPlanPeriodContactReader(input: {
+  client: Pick<LiveRecordSqlClient, "query">;
+  workspaceId: string;
+}): (actorId: string, sinceIso: string) => Promise<PlanPeriodContactCounts> {
+  return async (actorId, sinceIso) => {
+    const actor = actorId.trim();
+    if (!actor) return { byEvent: [], total: 0 };
+    const result = await input.client.query<{ met_event_id: string | null; met_event_title: string | null; count: number }>(
+      PLAN_PERIOD_CONTACTS_SQL,
+      [input.workspaceId, actor, sinceIso],
+    );
+    let total = 0;
+    const byEvent: PlanPeriodContactCounts["byEvent"] = [];
+    for (const row of result.rows) {
+      const count = Number(row.count) || 0;
+      total += count;
+      const eventId = text(row.met_event_id);
+      if (eventId) byEvent.push({ count, eventId, title: text(row.met_event_title) });
+    }
+    return { byEvent, total };
+  };
+}
+
+/** 按当前配置的联系人存储读取；存储未配置时返回 null（回顾退回计划里的关联人数）。 */
+export async function readPlanPeriodContacts(actorId: string, sinceIso: string): Promise<PlanPeriodContactCounts | null> {
+  const configured = createConfiguredPostgresLiveRecordStore();
+  if (!configured) return null;
+  resolveSharedReadBudgetGate()?.assertAllowed({ collectionName: "contacts" });
+  return createPostgresPlanPeriodContactReader({ client: configured.client, workspaceId: configured.workspaceId })(actorId, sinceIso);
+}

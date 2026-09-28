@@ -60,19 +60,27 @@ async function get(route: ReturnType<typeof handlers>, batchId: string | null) {
 }
 
 test("the registered event is the candidate only for cards scanned on its start day or the next day", async () => {
-  const result = await get(handlers({ id: "actor:alice", userId: "user:alice" }, { "user:alice": [MIXER.eventId] }), "batch:alice");
+  const result = await get(handlers({ id: "actor:alice", userId: "user:alice" }, { "actor:alice": [MIXER.eventId] }), "batch:alice");
   assert.equal(result.status, 200);
   assert.deepEqual(result.body.data, { cards: { c1: MIXER.eventId, c2: null }, events: [MIXER] });
 });
 
+test("registrations are read by account id: a registration kept only under the session user id is not a candidate", async () => {
+  // 报名路由以 actor.id（账号 id）写报名；账号 id 与 Auth.js 会话 id 不同时，必须按账号 id 读。
+  const underSession = await get(handlers({ id: "actor:alice", userId: "user:alice" }, { "user:alice": [MIXER.eventId] }), "batch:alice");
+  assert.deepEqual(underSession.body.data, { cards: { c1: null, c2: null }, events: [] });
+  const underAccount = await get(handlers({ id: "actor:alice", userId: "user:alice" }, { "actor:alice": [MIXER.eventId] }), "batch:alice");
+  assert.deepEqual(underAccount.body.data, { cards: { c1: MIXER.eventId, c2: null }, events: [MIXER] });
+});
+
 test("another user's registration is invisible: no candidate for the signed-in user", async () => {
-  const result = await get(handlers({ id: "actor:alice", userId: "user:alice" }, { "user:bob": [MIXER.eventId] }), "batch:alice");
+  const result = await get(handlers({ id: "actor:alice", userId: "user:alice" }, { "actor:bob": [MIXER.eventId] }), "batch:alice");
   assert.equal(result.status, 200);
   assert.deepEqual(result.body.data, { cards: { c1: null, c2: null }, events: [] });
 });
 
 test("another actor's batch is 404, a missing batchId is 400, and signed-out is 401", async () => {
-  const route = handlers({ id: "actor:alice", userId: "user:alice" }, { "user:alice": [MIXER.eventId] });
+  const route = handlers({ id: "actor:alice", userId: "user:alice" }, { "actor:alice": [MIXER.eventId] });
   assert.equal((await get(route, "batch:bob")).status, 404);
   assert.equal((await get(route, null)).status, 400);
   assert.equal((await get(handlers(null, {}), "batch:alice")).status, 401);

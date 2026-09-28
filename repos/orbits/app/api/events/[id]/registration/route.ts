@@ -5,6 +5,7 @@ import {
   resolveConfiguredEventAdmissionRegistrationState,
 } from "../../../../../features/events/admission/registration-control";
 import { readRuntimeEventRegistrationWindow } from "../../../../../features/events/registration/runtime";
+import { syncPlanEventRegistrationForActor } from "../../../../../features/plans/event-attribution-runtime";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,7 @@ const handlers = createEventRegistrationRouteHandlers({
   async resolveActor() {
     return resolveAuthenticatedApiActor();
   },
+  syncPlanRegistration: syncPlanEventRegistrationForActor,
 });
 
 export const GET = handlers.GET;

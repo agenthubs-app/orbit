@@ -18,7 +18,11 @@
  * 今日要事共用的确认组件（`plan-match-sheet.tsx`）；确认后重新读计划，本周多出的「约 TA」行动
  * 行上带 定时间／起草邮件（即将开放）／记一次互动。
  *
- * 不做（后续 Sprint）：重新分析（W0012，按钮先禁用）、进展记录里的 @ 联系人解析与周一小结（W0012）。
+ * W0012：报头的「重新分析 · 本月剩 N 次」可用（每个东京自然月 1 次，额度由服务端记）；四种触发里
+ * 目标被改／阶段提前完成／延后行动累计 3 条时显示「要不要重新分析」提示条（只提示、不自动重做）；
+ * 计划到期时显示回顾（完成行动、新认识人数、在哪些活动认识）和「制定下一份计划」（不占额度）。
+ * 手动进展可以 @ 计划里的联系人或活动，引用作为结构化字段提交（不从正文反解）；@ 某人后
+ * TA 在人脉需求里变为已建立联系（服务端同一事务），成功后重新读计划。
  *
  * W0014 示例模式：服务端判定本人在引导期示例里时传入 `guide`，本屏挂上 `DemoModeProvider`，
  * 计划换成示例人物的计划（`_demo/demo-persona.ts` 的 `buildDemoPlanSnapshot`，同一套视图模型
@@ -43,15 +47,19 @@ import { buildDemoPlanContactNames, buildDemoPlanSnapshot } from "../../_demo/de
 import { useOrbitLanguage } from "../../orbit-language-context";
 import {
   buildMyPlanViewModel,
+  buildPlanTrackingView,
   type MyPlanContactName,
   type MyPlanPhase,
+  type MyPlanTrackingView,
   type MyPlanView,
+  type PlanTrackingInput,
 } from "../plan/plan-route-view-model";
 import {
   fetchCurrentPlan,
   newPlanIdempotencyKey,
   patchPlanActionDone,
   postPlanNote,
+  postPlanReanalyze,
   withActionDone,
   withLogEntry,
   withServerItem,
@@ -71,6 +79,8 @@ export interface IOrbitPlanProps {
   now?: Date;
   /** W0014 示例模式：非空即渲染示例人物的计划（开关关闭或不在引导期时为空）。 */
   guide?: DemoModeView | null;
+  /** W0012：服务端读到的额度、资料里的目标、计划期间新增的联系人（到期回顾用）。 */
+  tracking?: PlanTrackingInput | null;
 }
 
 const PLAN_DEMO_MESSAGE = {
@@ -87,7 +97,13 @@ export function IOrbitPlan({ guide, ...props }: IOrbitPlanProps) {
   );
 }
 
-function IOrbitPlanScreen({ contactNames: liveContactNames, guideEnabled, initialSnapshot, now }: Omit<IOrbitPlanProps, "guide">) {
+function IOrbitPlanScreen({
+  contactNames: liveContactNames,
+  guideEnabled,
+  initialSnapshot,
+  now,
+  tracking: initialTracking,
+}: Omit<IOrbitPlanProps, "guide">) {
   const { language, t } = useOrbitLanguage();
   const lang = language === "zh" ? "zh" : "en";
   const demo = useDemoMode();
@@ -112,6 +128,21 @@ function IOrbitPlanScreen({ contactNames: liveContactNames, guideEnabled, initia
     snapshot,
     stickyActionIds: sticky,
   });
+  // W0012：额度在重新分析成功后以服务端返回为准；示例里没有真实额度，按每月 1 次显示（点了会被拦下）。
+  const [quotaRemaining, setQuotaRemaining] = useState<number | null>(
+    demoActive ? 1 : initialTracking?.quotaRemaining ?? null,
+  );
+  const trackingView: MyPlanTrackingView | null =
+    snapshot && snapshot !== "unavailable"
+      ? buildPlanTrackingView({
+          currentGoal: demoActive ? null : initialTracking?.currentGoal ?? null,
+          language: lang,
+          now: clock,
+          periodContacts: demoActive ? null : initialTracking?.periodContacts ?? null,
+          quotaRemaining,
+          snapshot,
+        })
+      : null;
   const screenTitle = t({ en: "My plan", zh: "我的计划" });
   // W0010：待确认的匹配候选（读不到就不显示角标）；弹层打开时固定这条需求的候选。
   const [matches, setMatches] = useState<PlanMatchList | null>(null);
@@ -149,6 +180,12 @@ function IOrbitPlanScreen({ contactNames: liveContactNames, guideEnabled, initia
               setSnapshot((current) => (current && current !== "unavailable" ? update(current) : current))
             }
             onInteraction={reloadPlan}
+            onReanalysed={(remaining) => {
+              if (remaining !== null) setQuotaRemaining(remaining);
+              setSticky([]);
+              reloadPlan();
+            }}
+            tracking={trackingView}
             onOpenMatches={(needId) => {
               setSheetCandidates((matches?.candidates ?? []).filter((candidate) => candidate.needId === needId));
               setMatchNeedId(needId);
@@ -204,17 +241,22 @@ function PlanBody({
   items,
   onInteraction,
   onOpenMatches,
+  onReanalysed,
   onSnapshot,
   onTicked,
   pendingByNeed,
+  tracking,
   view,
 }: {
   items: PlanSnapshot["items"];
   onInteraction: () => void;
   onOpenMatches: (needId: string) => void;
+  /** 新版本已保存：带回服务端的本月剩余次数（下一份计划不占额度时照样带回）。 */
+  onReanalysed: (quotaRemaining: number | null) => void;
   onTicked: (itemId: string) => void;
   onSnapshot: (update: (current: PlanSnapshot) => PlanSnapshot) => void;
   pendingByNeed: Readonly<Record<string, number>>;
+  tracking: MyPlanTrackingView | null;
   view: MyPlanView;
 }) {
   const { language, t } = useOrbitLanguage();
@@ -230,8 +272,59 @@ function PlanBody({
   const [noteBusy, setNoteBusy] = useState(false);
   const [noteError, setNoteError] = useState<string | null>(null);
   // 一次「记下」的幂等键：失败后重试沿用同一个（服务端可能已经写入、只是响应丢了），
-  // 成功或改了文字才换新的。
+  // 成功或改了文字／@ 才换新的。
   const noteKey = useRef<string | null>(null);
+  // W0012：@ 的联系人（可多选）与活动（一条记录最多一个）。
+  const [mentionOpen, setMentionOpen] = useState(false);
+  const [mentionContacts, setMentionContacts] = useState<readonly string[]>([]);
+  const [mentionEvent, setMentionEvent] = useState<string | null>(null);
+  // W0012：重新分析／下一份计划。一次点击持有一个幂等键，失败重试沿用。
+  const [promptDismissed, setPromptDismissed] = useState(false);
+  const [followUpBusy, setFollowUpBusy] = useState(false);
+  const [followUpError, setFollowUpError] = useState<string | null>(null);
+  const followUpKey = useRef<{ origin: "reanalysis" | "next_plan"; key: string } | null>(null);
+
+  const createFollowUp = async (origin: "reanalysis" | "next_plan") => {
+    if (guardWrite) {
+      guardWrite(t({ en: "plan", zh: "计划" }));
+      return;
+    }
+    if (followUpBusy) return;
+    setFollowUpBusy(true);
+    setFollowUpError(null);
+    if (followUpKey.current?.origin !== origin) {
+      followUpKey.current = { key: newPlanIdempotencyKey(origin === "next_plan" ? "plan-next" : "plan-reanalyze"), origin };
+    }
+    try {
+      const result = await postPlanReanalyze({
+        basePlanId: view.planId,
+        idempotencyKey: followUpKey.current.key,
+        locale: zh ? "zh" : "en",
+        origin,
+      });
+      followUpKey.current = null;
+      setPromptDismissed(true);
+      onReanalysed(result.quota?.remaining ?? null);
+    } catch (error) {
+      setFollowUpError(
+        t({
+          en: `Couldn't create the new plan. Nothing was changed. (${(error as Error).message})`,
+          zh: `没能生成新计划，原计划没有变化。（${(error as Error).message}）`,
+        }),
+      );
+    } finally {
+      setFollowUpBusy(false);
+    }
+  };
+
+  const toggleMention = (kind: "contact" | "event", id: string) => {
+    noteKey.current = null;
+    if (kind === "event") {
+      setMentionEvent((current) => (current === id ? null : id));
+      return;
+    }
+    setMentionContacts((current) => (current.includes(id) ? current.filter((entry) => entry !== id) : [...current, id]));
+  };
 
   const toggleAction = async (itemId: string, done: boolean) => {
     if (guardWrite) {
@@ -280,10 +373,16 @@ function PlanBody({
     setNoteError(null);
     try {
       noteKey.current ??= newPlanIdempotencyKey("plan-note");
-      const entry = await postPlanNote(body, noteKey.current);
+      const mentioned = mentionContacts.length > 0;
+      const entry = await postPlanNote(body, noteKey.current, { contactIds: mentionContacts, eventId: mentionEvent });
       onSnapshot((current) => withLogEntry(current, entry));
       noteKey.current = null;
       setNote("");
+      setMentionContacts([]);
+      setMentionEvent(null);
+      setMentionOpen(false);
+      // @ 了人：服务端已把 TA 在人脉需求里改为已建立联系，重新读一次计划。
+      if (mentioned) onInteraction();
     } catch (error) {
       setNoteError(
         t({
@@ -303,6 +402,13 @@ function PlanBody({
       else next.add(key);
       return next;
     });
+
+  const remaining = tracking?.quotaRemaining ?? null;
+  const reanalyseDisabled = followUpBusy || view.week.ended || (!guardWrite && (remaining === null || remaining <= 0));
+  const prompts = tracking && !promptDismissed && !view.week.ended ? tracking.prompts : [];
+  const selectedMentions = view.mentionOptions.filter((option) =>
+    option.kind === "event" ? option.id === mentionEvent : mentionContacts.includes(option.id),
+  );
 
   const weekText = zh
     ? `第 ${view.week.current} 周 / 共 ${view.week.total} 周`
@@ -339,19 +445,28 @@ function PlanBody({
                   : t({ en: "Goal analysis ▾", zh: "目标分析 ▾" })}
               </button>
             ) : null}
-            {/* 重新分析（生成新版本）在长期跟踪 Sprint（W0012）开放：先放一个不可点的占位标记，
-                不做没有行为的假按钮；title 说明它还没开放。 */}
-            <span
-              aria-disabled="true"
-              className="ir-p-soon"
+            {/* W0012：重新分析生成新版本（已完成的内容带过去），每个东京自然月 1 次。
+                到期的计划走下方回顾里的「制定下一份计划」（不占额度），这里不再可点。 */}
+            <button
+              className="btn ir-p-link"
               data-orbit-plan-reanalyse
-              title={t({
-                en: "Re-analysis is coming soon: it will create a new version and carry over what you've done.",
-                zh: "重新分析即将开放：会生成新版本，已完成的内容会带过去。",
-              })}
+              data-orbit-plan-quota={remaining ?? undefined}
+              disabled={reanalyseDisabled}
+              onClick={() => void createFollowUp("reanalysis")}
+              title={
+                view.week.ended
+                  ? t({ en: "This plan has ended — use “Make the next plan” below.", zh: "计划已到期，请用下方的「制定下一份计划」。" })
+                  : t({
+                      en: "Creates a new version and carries over what you've done. Once per calendar month.",
+                      zh: "生成新版本，已完成的内容会带过去。每个自然月 1 次。",
+                    })
+              }
+              type="button"
             >
-              {t({ en: "Re-analyse · 1 left this month", zh: "重新分析 · 本月剩 1 次" })}
-            </span>
+              {remaining === null
+                ? t({ en: "Re-analyse", zh: "重新分析" })
+                : t({ en: `Re-analyse · ${remaining} left this month`, zh: `重新分析 · 本月剩 ${remaining} 次` })}
+            </button>
           </span>
         </div>
         {view.analysis && analysisOpen ? (
@@ -412,6 +527,71 @@ function PlanBody({
             <span>{view.ruler.endLabel}</span>
           </div>
         </div>
+        {followUpError ? (
+          <p className="ir-p-alert" data-orbit-plan-followup-error role="alert">
+            {followUpError}
+          </p>
+        ) : null}
+        {tracking?.review ? (
+          <section className="ir-p-track" data-orbit-plan-review>
+            <h3>{t({ en: "Plan review", zh: "计划到期回顾" })}</h3>
+            <ul>
+              {tracking.review.lines.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+            <p>
+              {t({
+                en: "The next plan carries over what you've done and doesn't use this month's re-analysis.",
+                zh: "下一份计划会带上已完成的内容，不占本月的重新分析次数。",
+              })}
+            </p>
+            <div className="ir-p-track-acts">
+              <button
+                className="btn ir-p-track-btn"
+                data-orbit-plan-next
+                disabled={followUpBusy}
+                onClick={() => void createFollowUp("next_plan")}
+                type="button"
+              >
+                {followUpBusy ? t({ en: "Making the plan…", zh: "正在生成…" }) : t({ en: "Make the next plan", zh: "制定下一份计划" })}
+              </button>
+            </div>
+          </section>
+        ) : null}
+        {prompts.length > 0 ? (
+          <section className="ir-p-track" data-orbit-plan-reanalysis-prompt>
+            <h3>{t({ en: "Re-analyse the plan?", zh: "要不要重新分析？" })}</h3>
+            <ul>
+              {prompts.map((prompt) => (
+                <li data-orbit-plan-trigger={prompt.key} key={prompt.key}>
+                  {prompt.text}
+                </li>
+              ))}
+            </ul>
+            <div className="ir-p-track-acts">
+              <button
+                className="btn ir-p-track-btn"
+                data-orbit-plan-reanalyse-confirm
+                disabled={reanalyseDisabled}
+                onClick={() => void createFollowUp("reanalysis")}
+                type="button"
+              >
+                {remaining === null
+                  ? t({ en: "Re-analyse", zh: "重新分析" })
+                  : t({ en: `Re-analyse (${remaining} left this month)`, zh: `重新分析（本月剩 ${remaining} 次）` })}
+              </button>
+              <button
+                className="btn ir-p-track-ghost"
+                data-orbit-plan-reanalyse-dismiss
+                onClick={() => setPromptDismissed(true)}
+                type="button"
+              >
+                {t({ en: "Not now", zh: "先不用" })}
+              </button>
+            </div>
+          </section>
+        ) : null}
       </header>
 
       <div className="ir-p-spread">
@@ -615,6 +795,32 @@ function PlanBody({
             {t({ en: "Save", zh: "记下" })}
           </button>
         </form>
+        {view.mentionOptions.length > 0 ? (
+          <div className="ir-p-mentions" data-orbit-plan-mentions>
+            <button
+              aria-expanded={mentionOpen}
+              className="btn ir-p-mention"
+              data-orbit-plan-mention-toggle
+              onClick={() => setMentionOpen((open) => !open)}
+              type="button"
+            >
+              {t({ en: "@ Mention a contact or event", zh: "@ 提及联系人或活动" })}
+            </button>
+            {(mentionOpen ? view.mentionOptions : selectedMentions).map((option) => (
+              <button
+                aria-pressed={option.kind === "event" ? option.id === mentionEvent : mentionContacts.includes(option.id)}
+                className="btn ir-p-mention"
+                data-orbit-plan-mention={option.id}
+                data-orbit-plan-mention-kind={option.kind}
+                key={`${option.kind}:${option.id}`}
+                onClick={() => toggleMention(option.kind, option.id)}
+                type="button"
+              >
+                @{option.label}
+              </button>
+            ))}
+          </div>
+        ) : null}
         {noteError ? (
           <p className="ir-p-alert" role="alert">
             {noteError}
@@ -632,6 +838,11 @@ function PlanBody({
                 <i className="ir-p-log-k" />
                 <span>
                   {line.text}
+                  {line.mentions.length > 0 ? (
+                    <span className="ir-p-log-mention" data-orbit-plan-log-mentions>
+                      {line.mentions.join(" ")}
+                    </span>
+                  ) : null}
                   {line.kind === "manual" ? <small>{t({ en: "manual", zh: "手动" })}</small> : null}
                 </span>
               </li>

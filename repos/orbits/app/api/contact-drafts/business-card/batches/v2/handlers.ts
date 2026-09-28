@@ -167,8 +167,6 @@ async function withAuthedRuntime(
   deps: IngestV2HandlerDeps,
   fn: (context: {
     actorId: string;
-    /** Auth.js 用户 id（活动报名按它记）；缺省同 actorId。 */
-    userId: string;
     runtime: IngestV2Runtime;
     mode: FeatureMode;
   }) => Promise<Response>,
@@ -185,7 +183,7 @@ async function withAuthedRuntime(
   }
   await runtime.ready;
   try {
-    return await fn({ actorId: actor.id, userId: actor.userId ?? actor.id, runtime, mode });
+    return await fn({ actorId: actor.id, runtime, mode });
   } catch (error) {
     return mapIngestError(error, mode);
   }
@@ -717,7 +715,7 @@ function createConfirmLikeHandler(
     request: Request,
     context: { params: Promise<{ id: string; itemId: string }> },
   ): Promise<Response> {
-    return withAuthedRuntime(deps, async ({ actorId, userId, runtime, mode }) => {
+    return withAuthedRuntime(deps, async ({ actorId, runtime, mode }) => {
       const { id, itemId } = await context.params;
       const parsedBody: unknown = await request.json().catch(() => ({}));
       const body = isRecord(parsedBody) ? parsedBody : {};
@@ -766,7 +764,7 @@ function createConfirmLikeHandler(
         const attribution = deps.eventAttribution ?? liveIngestEventAttribution;
         const source = await attribution.source();
         const resolved = source
-          ? await resolveEventAttribution(source, { cards: attributionCardsFromItems(cardItems), userId })
+          ? await resolveEventAttribution(source, { cards: attributionCardsFromItems(cardItems), userId: actorId })
           : null;
         const event = resolved?.byCard[item.cardId] === rawMetEventId.trim()
           ? resolved.events.find((entry) => entry.eventId === rawMetEventId.trim()) ?? null

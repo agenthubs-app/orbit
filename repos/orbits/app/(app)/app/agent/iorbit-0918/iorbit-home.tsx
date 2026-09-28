@@ -25,6 +25,8 @@
  *     乐观更新、失败回滚并提示）、行动完成数与已建立联系人数；没有计划（或读不到）时保持
  *     原来的账本进度显示（`GET /api/agent/ledger`）
  *   - 最近对话：`GET /api/ai/conversations/sessions?limit=3`
+ *   - 周一小结（W0012）：东京时间周一且有生效计划时读 `GET /api/agent/plans/weekly-summary`，
+ *     报头导语换成规则拼出的上周小结（不调 AI）；其他日子、读取中或读不到时保持今日导语
  * 无数据一律走空态文案，不伪造数字。
  *
  * 示例模式（W0004）：壳挂了 `DemoModeProvider` 时，上面每个来源都换成
@@ -50,7 +52,12 @@ import type {
   HomeFactsPersonalItem,
 } from "../home-facts-route-service";
 import type { HomeFactsViewItem } from "../home-facts-view-model";
-import { buildPlanWeekSummary } from "../plan/plan-route-view-model";
+import {
+  buildPlanWeekSummary,
+  isTokyoMonday,
+  weeklySummaryLede,
+  type PlanWeeklySummary,
+} from "../plan/plan-route-view-model";
 import {
   agentSignalsToNextActionRows,
   type AgentTodaySignalView,
@@ -63,7 +70,13 @@ import {
   iorbitRelativeDayLabel,
   iorbitSelectedDayLabel,
 } from "./iorbit-model";
-import { fetchCurrentPlan, patchPlanActionDone, withActionDone, withServerItem } from "./iorbit-plan-client";
+import {
+  fetchCurrentPlan,
+  fetchWeeklySummary,
+  patchPlanActionDone,
+  withActionDone,
+  withServerItem,
+} from "./iorbit-plan-client";
 import { fetchPlanMatches, withoutCandidate, type PlanMatchCandidate, type PlanMatchList } from "./plan-match-client";
 import { PlanMatchDialog, PlanMatchSheet } from "./plan-match-sheet";
 import { usePendingCards } from "./use-pending-cards";
@@ -357,6 +370,18 @@ export function IOrbitHome({
   }, [demoActive]);
 
   const hasPlan = planState !== "pending" && planState !== "unavailable" && planState !== null;
+  // W0012：东京周一才读上周小结（示例模式不读）；读不到就保持今日导语。
+  const [weeklySummary, setWeeklySummary] = useState<PlanWeeklySummary | null>(null);
+  const monday = isTokyoMonday(now);
+  useEffect(() => {
+    if (typeof window === "undefined" || demoActive || !hasPlan || !monday) return;
+    const controller = new AbortController();
+    void fetchWeeklySummary(controller.signal)
+      .then((value) => setWeeklySummary(value))
+      .catch(() => undefined);
+    return () => controller.abort();
+  }, [demoActive, hasPlan, monday]);
+
   useEffect(() => {
     if (typeof window === "undefined" || demoActive || !hasPlan) return;
     const controller = new AbortController();
@@ -845,7 +870,9 @@ export function IOrbitHome({
 
   // 导语：一句话概括今天，只用真实计数（Q9）。最紧的一件若有时间压力，钟点用暖色。
   // 暖色一屏不超过 3 处（主稿序号、倒计时、「现在」线），导语只用墨色强调。
-  const lede = !itemsSettled ? (
+  const lede = weeklySummary && monday && !demoActive ? (
+    weeklySummaryLede(weeklySummary, lang)
+  ) : !itemsSettled ? (
     t({ en: "Reading your day…", zh: "正在整理今天的事…" })
   ) : lead ? (
     <>
@@ -935,7 +962,9 @@ export function IOrbitHome({
             <small>{weekday}</small>
           </span>
         </div>
-        <p className="ir-m-lede">{lede}</p>
+        <p className="ir-m-lede" data-orbit-home-lede={weeklySummary && monday && !demoActive ? "weekly" : "today"}>
+          {lede}
+        </p>
       </header>
 
       <div className="ir-m-spread">

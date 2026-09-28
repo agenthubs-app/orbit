@@ -50,9 +50,13 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
  * `/api/agent/plans/**`：本人的结构化计划（RW-09）。
  *
  * - `GET  /api/agent/plans/current`          → `{ plan, items, log } | null`
- * - `POST /api/agent/plans`                  → 新版本（旧版归档，已完成内容带入），201
+ * - `POST /api/agent/plans`                  → 第一份计划，201；已有生效计划时 409（换版本走 reanalyze，W0012）
  * - `PATCH /api/agent/plans/items/:itemId`   → 单个条目变化 `{ change, idempotencyKey? }`
- * - `POST /api/agent/plans/log`              → 手动进展记录，201
+ * - `POST /api/agent/plans/log`              → 手动进展记录，201（`linkedContactIds`／`linkedEventId` 是结构化的 @）
+ * - `GET  /api/agent/plans/weekly-summary`   → 东京周一：上周小结；其他日子 null（W0012）
+ *
+ * W0012：读当前计划前先按东京周次惰性判定「进入新阶段」（幂等写一条记录，一年期同时补周级行动）；
+ * 这一步失败不影响读取（每日 `plan-phase` 维护任务兜底）。
  *
  * 只读写当前登录者自己的计划：他人的条目一律 404；非法转移 409、坏输入 400，都不写库。
  */
@@ -106,10 +110,24 @@ export function createPlanRouteHandlers(dependencies: PlanRouteDependencies = {}
   }
 
   return {
-    GET_CURRENT: () => run((service) => service.getCurrent()),
+    GET_CURRENT: () =>
+      run(async (service) => {
+        await service.enterCurrentPhase().catch(() => undefined);
+        return service.getCurrent();
+      }),
 
+    GET_WEEKLY_SUMMARY: () => run((service) => service.weeklySummary()),
+
+    // W0012：通用创建只能建第一份计划。已有生效计划时一律 409 `BASE_PLAN_MISMATCH`、不写库——
+    // 换版本只能走 `/api/agent/plans/reanalyze`（服务端决定的 origin：`reanalysis` 占本月额度，
+    // `next_plan` 要求计划已到期），否则这里就是绕过额度的后门。`basePlanId` 由服务端强制为 null，
+    // 请求体里的值被忽略；同一 `creationKey` 的重放在服务里先于这项检查，照常返回已保存的那份。
     POST_VERSION: (request: Request) =>
-      run(async (service) => service.createVersion((await readJson(request)) as CreatePlanVersionInput), 201),
+      run(async (service) => {
+        const body = await readJson(request);
+        if (!isPlainObject(body)) throw new AppError("VALIDATION_ERROR", "Request body must be an object.");
+        return service.createVersion({ ...(body as unknown as CreatePlanVersionInput), basePlanId: null });
+      }, 201),
 
     PATCH_ITEM: (request: Request, context: ItemContext) =>
       run(async (service) => {

@@ -22,3 +22,13 @@ test("W0015: production maintenance registers exactly one plan-event-attendance 
   const tasks = createConfiguredMaintenanceTasks({ env: { NODE_ENV: "test" }, workerId: "wiring-test" });
   assert.equal(tasks.filter((task) => task.name === "plan-event-attendance").length, 1);
 });
+
+test("W0012: production maintenance registers exactly one bounded plan-phase task", () => {
+  const tasks = createConfiguredMaintenanceTasks({ env: { NODE_ENV: "test" }, workerId: "wiring-test" });
+  assert.equal(tasks.filter((task) => task.name === "plan-phase").length, 1);
+});
+
+test("W0012: production maintenance registers exactly one plan-event-registration reconcile task", () => {
+  const tasks = createConfiguredMaintenanceTasks({ env: { NODE_ENV: "test" }, workerId: "wiring-test" });
+  assert.equal(tasks.filter((task) => task.name === "plan-event-registration").length, 1);
+});

@@ -25,6 +25,16 @@ import type {
 import { PLAN_MATCH_ACTION_SOURCE } from "../../../../../features/plans/contract";
 import type { PlanAnalysisV1 } from "../../../../../features/plans/generator";
 import {
+  buildPlanReview,
+  reanalysisTriggers,
+  type PlanPeriodContacts,
+  type ReanalysisTrigger,
+} from "../../../../../features/plans/reanalysis";
+import { isTokyoMonday, weeklySummaryText, type PlanWeeklySummary } from "../../../../../features/plans/weekly-summary";
+
+export { isTokyoMonday };
+export type { PlanWeeklySummary };
+import {
   comparePlanWeekActions,
   planTokyoDate,
   planWeekActions,
@@ -117,6 +127,15 @@ export interface MyPlanLogLine {
   kind: PlanLogEntry["kind"];
   timeLabel: string;
   text: string;
+  /** W0012：手动记录里结构化的 @ 联系人／活动（显示名，取自快照；不从正文反解）。 */
+  mentions: string[];
+}
+
+/** W0012：手动记录可以 @ 的人和活动（计划里关联过的联系人、计划里的活动）。 */
+export interface MyPlanMentionOption {
+  kind: "contact" | "event";
+  id: string;
+  label: string;
 }
 
 export interface MyPlanView {
@@ -151,6 +170,7 @@ export interface MyPlanView {
   events: MyPlanEvent[];
   log: MyPlanLogLine[];
   counts: { actionsDone: number; actionsTotal: number; contactsEstablished: number };
+  mentionOptions: MyPlanMentionOption[];
 }
 
 export type MyPlanViewModel =
@@ -331,10 +351,54 @@ export function planLogText(
     case "plan_created":
       if (lang === "en") return "Plan created";
       break;
+    case "phase_entered": {
+      const title = typeof entry.payload.phaseTitle === "string" ? entry.payload.phaseTitle : null;
+      const count = typeof entry.payload.refinedCount === "number" ? entry.payload.refinedCount : 0;
+      if (!title) break;
+      if (lang === "zh") return count > 0 ? `进入新阶段${quote(title)}，补充了 ${count} 条周级行动` : `进入新阶段${quote(title)}`;
+      return count > 0 ? `Moved into ${quote(title)} and added ${count} weekly action(s)` : `Moved into ${quote(title)}`;
+    }
     default:
       break;
   }
   return entry.body;
+}
+
+/** 手动记录的 @：联系人名取快照里的名字，活动名取计划里的活动条目；认不出的给占位。 */
+function logMentions(
+  entry: PlanLogEntry,
+  items: readonly PlanItem[],
+  names: ReadonlyMap<string, MyPlanContactName>,
+  lang: Lang,
+): string[] {
+  const mentions = entry.linkedContactIds.map(
+    (id) => `@${names.get(id)?.name ?? (lang === "zh" ? "联系人" : "contact")}`,
+  );
+  if (entry.linkedEventId) {
+    const event = items.find((item) => item.kind === "event" && item.linkedEventId === entry.linkedEventId);
+    mentions.push(`@${event?.title ?? (lang === "zh" ? "活动" : "event")}`);
+  }
+  return mentions;
+}
+
+/** 可以 @ 的对象：计划里关联过的联系人（有名字的）+ 计划里的活动（去重）。 */
+function mentionOptions(items: readonly PlanItem[], names: ReadonlyMap<string, MyPlanContactName>): MyPlanMentionOption[] {
+  const options: MyPlanMentionOption[] = [];
+  const seen = new Set<string>();
+  for (const item of items) {
+    for (const link of item.contactLinks) {
+      const name = names.get(link.contactId)?.name;
+      if (!name || seen.has(`c:${link.contactId}`)) continue;
+      seen.add(`c:${link.contactId}`);
+      options.push({ id: link.contactId, kind: "contact", label: name });
+    }
+  }
+  for (const item of items) {
+    if (item.kind !== "event" || !item.linkedEventId || seen.has(`e:${item.linkedEventId}`)) continue;
+    seen.add(`e:${item.linkedEventId}`);
+    options.push({ id: item.linkedEventId, kind: "event", label: item.title });
+  }
+  return options;
 }
 
 export function buildMyPlanViewModel(input: {
@@ -463,9 +527,11 @@ export function buildMyPlanViewModel(input: {
       log: log.map((entry) => ({
         id: entry.id,
         kind: entry.kind,
+        mentions: entry.kind === "manual" ? logMentions(entry, items, names, lang) : [],
         text: planLogText(entry, itemsById, names, lang),
         timeLabel: logTimeLabel(entry.createdAt, input.now, lang),
       })),
+      mentionOptions: mentionOptions(items, names),
       needs,
       phases,
       planId: plan.id,
@@ -580,4 +646,81 @@ export function planEventReasons(snapshot: PlanSnapshot): Record<string, PlanEve
       : { isNeed: false, phaseNo, target: phaseTitleByKey.get(item.phaseKey!) ?? "" };
   }
   return reasons;
+}
+
+/* ------------------------------------------------------------------ */
+/* W0012：重新分析提示、到期回顾、周一小结                               */
+/* ------------------------------------------------------------------ */
+
+const TRIGGER_TEXT: Record<Exclude<ReanalysisTrigger, "period_ended">, { en: string; zh: string }> = {
+  deferred_actions: { en: "3 or more actions have slipped by 2+ weeks", zh: "已有 3 条以上行动延后 2 周及以上" },
+  goal_changed: { en: "your goal has changed since this plan was made", zh: "目标和生成计划时不一样了" },
+  phase_done_early: { en: "you finished a phase ahead of schedule", zh: "有一个阶段提前完成了" },
+};
+
+/** 页面服务端读到、交给计划屏的长期跟踪输入（W0012）。 */
+export interface PlanTrackingInput {
+  /** 本月剩余的重新分析次数；null = 读不到。 */
+  quotaRemaining: number | null;
+  /** 资料里现在的目标原文；null = 读不到（不据此提示）。 */
+  currentGoal: string | null;
+  /** 计划期间新增的联系人（只在计划到期时读）。 */
+  periodContacts: PlanPeriodContacts | null;
+}
+
+export interface MyPlanTrackingView {
+  /** 重新分析提示的理由（不含到期；到期走回顾）。空 = 不提示。 */
+  prompts: Array<{ key: ReanalysisTrigger; text: string }>;
+  /** 本月剩余的重新分析次数；null = 读不到（按钮不可用）。 */
+  quotaRemaining: number | null;
+  /** 计划已到期：先回顾，再「制定下一份计划」（不占额度）。 */
+  review: {
+    lines: string[];
+  } | null;
+}
+
+export function buildPlanTrackingView(input: {
+  snapshot: PlanSnapshot;
+  now: Date;
+  language: Lang;
+  currentGoal: string | null;
+  quotaRemaining: number | null;
+  periodContacts: PlanPeriodContacts | null;
+}): MyPlanTrackingView {
+  const lang = input.language;
+  const zh = lang === "zh";
+  const triggers = reanalysisTriggers({ currentGoal: input.currentGoal, now: input.now, snapshot: input.snapshot });
+  const prompts = triggers
+    .filter((key): key is Exclude<ReanalysisTrigger, "period_ended"> => key !== "period_ended")
+    .map((key) => ({ key, text: TRIGGER_TEXT[key][lang] }));
+  let review: MyPlanTrackingView["review"] = null;
+  if (triggers.includes("period_ended")) {
+    const summary = buildPlanReview(input.snapshot, input.periodContacts);
+    const eventText = summary.events
+      .map((event) => (event.count > 0 ? (zh ? `「${event.title}」${event.count} 位` : `“${event.title}” (${event.count})`) : zh ? `「${event.title}」` : `“${event.title}”`))
+      .join(zh ? "、" : ", ");
+    review = {
+      lines: [
+        zh
+          ? `完成了 ${summary.actionsDone} / ${summary.actionsTotal} 件行动`
+          : `Completed ${summary.actionsDone} of ${summary.actionsTotal} actions`,
+        zh
+          ? `新认识 ${summary.newPeople} 位，其中 ${summary.established} 位已建立联系`
+          : `Met ${summary.newPeople} new people; connected with ${summary.established}`,
+        eventText
+          ? zh
+            ? `在这些活动认识：${eventText}`
+            : `Met them at: ${eventText}`
+          : zh
+            ? "这段时间没有记下在活动上认识的人"
+            : "No one was recorded as met at an event",
+      ],
+    };
+  }
+  return { prompts, quotaRemaining: input.quotaRemaining, review };
+}
+
+/** iOrbit 首页周一导语（规则拼出，不调 AI）。 */
+export function weeklySummaryLede(summary: PlanWeeklySummary, language: Lang): string {
+  return weeklySummaryText(summary, language);
 }

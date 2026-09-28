@@ -13,6 +13,10 @@ import { NotificationDeliveryUnconfigured, runNotificationDeliveryPass } from ".
 import { createConfiguredCanonicalReminderMaintenanceTask } from "../../notifications/configured-canonical-reminder-maintenance";
 import { createPlanEventAttendanceMaintenanceTask } from "../../plans/event-attendance-reconcile";
 import { createPlanMatchMaintenanceTask } from "../../plans/match-maintenance-task";
+import { createPlanPhaseMaintenanceTask } from "../../plans/phase-refinement";
+import { createPlanEventRegistrationMaintenanceTask } from "../../plans/event-registration-reconcile";
+import { readRuntimeRegistrationsForPlanActor } from "../../plans/event-attribution-runtime";
+import { planTokyoDate } from "../../plans/week";
 import { resolvePlanService } from "../../plans/service-factory";
 import { getConfiguredPlanMatchingRuntime } from "../../plans/matching-runtime";
 import type { MaintenanceTask } from "./pass";
@@ -136,6 +140,41 @@ export function createConfiguredMaintenanceTasks({
             return resolution.service;
           },
           repository: runtime.repository,
+        };
+      },
+    }),
+    // W0012: writes the "entered a new phase" progress entry (and, for a one-year plan,
+    // the week-level actions of the new quarter) for plans nobody opened this week.
+    // Idempotent per plan + phase, bounded per pass.
+    createPlanPhaseMaintenanceTask({
+      resolve: () => {
+        const runtime = getConfiguredPlanMatchingRuntime();
+        if (!runtime) return null;
+        return {
+          listActorsEnteringPhase: (input) => runtime.repository.listActorsEnteringPhase(input),
+          planServiceFor: (actorId) => {
+            const resolution = resolvePlanService({ actorId, mode: "live" });
+            if (resolution.success === false) throw new Error(resolution.error.message);
+            return resolution.service;
+          },
+        };
+      },
+      tokyoDate: planTokyoDate,
+    }),
+    // W0012: replays the registration state onto plan event items when the inline best-effort
+    // sync after a registration / cancellation failed. Idempotent, version-guarded, ≤50 per pass.
+    createPlanEventRegistrationMaintenanceTask({
+      resolve: () => {
+        const runtime = getConfiguredPlanMatchingRuntime();
+        if (!runtime) return null;
+        return {
+          listActiveEventItems: (input) => runtime.repository.listActiveEventItems(input),
+          planServiceFor: (actorId) => {
+            const resolution = resolvePlanService({ actorId, mode: "live" });
+            if (resolution.success === false) throw new Error(resolution.error.message);
+            return resolution.service;
+          },
+          readRegistrations: readRuntimeRegistrationsForPlanActor,
         };
       },
     }),

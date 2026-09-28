@@ -35,8 +35,11 @@ import {
   type PlanService,
   type PlanSnapshot,
 } from "./contract";
+import { defaultPhaseRefiner, phaseEnteredKey, phaseNeedsRefinement, phaseToEnter, PLAN_PHASE_REFINEMENT_SOURCE, type PhaseRefiner } from "./phase-refinement";
+import { REANALYSIS_MONTHLY_LIMIT, reanalysisQuotaKey, tokyoMonthKey } from "./reanalysis";
 import type { PlanReader, PlanRepository, PlanScope, PlanTransaction } from "./repository";
-import { planWeekAt } from "./week";
+import { planWeekAt, planWeekState } from "./week";
+import { isTokyoMonday, previousTokyoWeek, summarizePlanWeek } from "./weekly-summary";
 import {
   PlanServiceError,
   parseCreatePlanVersionInput,
@@ -55,7 +58,12 @@ export interface CreatePlanServiceOptions {
   references: PlanReferenceValidator;
   now?: () => string;
   newId?: () => string;
+  /** W0012：一年期进入新季度段时补细的实现（默认经生成器 factory 用 mock 生成器）。 */
+  phaseRefiner?: PhaseRefiner;
 }
+
+/** W0012：周一小结一次最多读的记录数（一周的进展远低于此）。 */
+const WEEKLY_SUMMARY_LOG_LIMIT = 1000;
 
 /** 人脉需求的状态由联系人关联推导。 */
 export function networkNeedStatus(links: readonly PlanContactLink[]): PlanItemStatus {
@@ -298,6 +306,14 @@ function contactLabel(value: unknown): string {
   return name ? name.slice(0, 80) : "TA";
 }
 
+/** W0012：报名版本（`updatedAt`，ISO 时间）比较；解析不了时按字符串比较。 */
+function isNewerVersion(candidate: string, current: string): boolean {
+  const a = Date.parse(candidate);
+  const b = Date.parse(current);
+  if (Number.isFinite(a) && Number.isFinite(b)) return a > b;
+  return candidate > current;
+}
+
 /** 请求指纹：同一幂等键只能对应同一个请求。 */
 function fingerprint(value: unknown): string {
   return createHash("sha256").update(JSON.stringify(value)).digest("hex");
@@ -321,6 +337,7 @@ export function createPlanService(options: CreatePlanServiceOptions): PlanServic
   const now = options.now ?? (() => new Date().toISOString());
   const newId = options.newId ?? (() => randomUUID());
   const { references } = options;
+  const phaseRefiner = options.phaseRefiner ?? defaultPhaseRefiner();
 
   async function assertReferences(contactIds: readonly string[], eventIds: readonly string[]): Promise<void> {
     const uniqueContacts = [...new Set(contactIds)];
@@ -481,8 +498,9 @@ export function createPlanService(options: CreatePlanServiceOptions): PlanServic
       return (await service.createVersionWithOutcome(rawInput)).snapshot;
     },
 
-    async createVersionWithOutcome(rawInput) {
+    async createVersionWithOutcome(rawInput, options = {}) {
       const input = parseCreatePlanVersionInput(rawInput);
+      const origin = options.origin ?? null;
       return repository.transact(scope, async (tx) => {
         if (input.creationKey) {
           const existing = await tx.planByCreationKey(input.creationKey);
@@ -497,6 +515,21 @@ export function createPlanService(options: CreatePlanServiceOptions): PlanServic
               ? "An active plan already exists."
               : "The active plan changed; reload before creating a new version.",
           );
+        }
+        // W0012：重新分析与到期后的下一份都必须基于一份生效计划。
+        // 重新分析每个东京自然月 1 次：额度键在这个按人串行的事务里先查，唯一约束兜底。
+        // 下一份不占额度，但只有计划已过最后一周才允许（否则就是绕过额度的重新分析）。
+        let quotaKey: string | null = null;
+        if (origin) {
+          if (!active) throw new PlanServiceError("NO_ACTIVE_PLAN", "There is no active plan to follow up on.");
+          if (origin === "reanalysis") {
+            quotaKey = reanalysisQuotaKey(tokyoMonthKey(new Date(now())));
+            if (await tx.logByIdempotencyKey(quotaKey)) {
+              throw new PlanServiceError("REANALYSIS_QUOTA_EXHAUSTED", "This month's re-analysis has already been used.");
+            }
+          } else if (!planWeekState(active, new Date(now())).ended) {
+            throw new PlanServiceError("PLAN_NOT_ENDED", "The current plan has not reached its end yet.");
+          }
         }
 
         await assertReferences(
@@ -580,7 +613,7 @@ export function createPlanService(options: CreatePlanServiceOptions): PlanServic
           createdAt: at,
           event: "plan_created",
           fromStatus: null,
-          idempotencyKey: `plan-created:${planId}`,
+          idempotencyKey: quotaKey ?? `plan-created:${planId}`,
           itemId: null,
           kind: "auto",
           linkedContactIds: [],
@@ -588,6 +621,7 @@ export function createPlanService(options: CreatePlanServiceOptions): PlanServic
           payload: {
             carriedCount: carried.length,
             inheritedCount,
+            ...(origin ? { origin } : {}),
             previousPlanId: active?.id ?? null,
             version,
           },
@@ -707,6 +741,32 @@ export function createPlanService(options: CreatePlanServiceOptions): PlanServic
           targetItemId: input.targetItemId,
           toStatus: null,
         });
+        // W0012：@ 某人 = 和 TA 有了真实往来。TA 在本计划里所属的人脉需求上（已关联的）变为已建立联系，
+        // 每条需求写一条 auto 记录；只读结构化的 linkedContactIds，不从正文反解。
+        for (const contactId of input.linkedContactIds) {
+          for (const need of await tx.items(plan.id)) {
+            if (need.kind !== "network_need" || !need.linkedContactIds.includes(contactId)) continue;
+            const applied = applyItemChange(need, { contactId, op: "establish_contact" }, at);
+            if (!applied) continue;
+            await tx.updateItem(applied.item);
+            await writeLog(tx, {
+              author: "user",
+              body: applied.body,
+              createdAt: at,
+              event: applied.event,
+              fromStatus: applied.fromStatus,
+              idempotencyKey: `mention:${entry.id}:${need.id}:${contactId}`,
+              itemId: need.id,
+              kind: "auto",
+              linkedContactIds: applied.linkedContactIds,
+              linkedEventId: null,
+              payload: { ...applied.payload, noteLogId: entry.id, source: "manual_mention" },
+              planId: plan.id,
+              targetItemId: null,
+              toStatus: applied.toStatus,
+            });
+          }
+        }
         if (idempotencyKey) {
           await tx.insertCommandReceipt({
             createdAt: at,
@@ -938,6 +998,164 @@ export function createPlanService(options: CreatePlanServiceOptions): PlanServic
         });
         return { item: current, logs: [log] };
       });
+    },
+
+    async markEventRegistration(rawInput) {
+      const eventId = parseId(rawInput?.eventId, "eventId");
+      const registrationVersion = parseId(rawInput?.registrationVersion, "registrationVersion");
+      const registered = rawInput?.registered === true;
+      const target: EventItemStatus = registered ? "registered" : "recommended";
+      return repository.transact(scope, async (tx) => {
+        const plan = await tx.activePlan();
+        if (!plan) return { item: null, log: null };
+        const item = (await tx.items(plan.id)).find((entry) => entry.kind === "event" && entry.linkedEventId === eventId);
+        if (!item) return { item: null, log: null };
+        // 已参加是终态。
+        if (item.status === "attended") return { item, log: null };
+        // 乱序到达：条目上记着最近一次同步的报名版本；不比它新的同步一律忽略（例如取消已同步后，
+        // 更早的那次报名才到——不能把状态改回去）。
+        const syncedVersion = typeof item.meta.registrationVersion === "string" ? item.meta.registrationVersion : null;
+        if (syncedVersion !== null && !isNewerVersion(registrationVersion, syncedVersion)) return { item, log: null };
+        const at = now();
+        // 状态已一致（重复提交、报名信息更新）：只记下版本，不写进展记录。
+        if (item.status === target) {
+          const synced: PlanItem = { ...item, meta: { ...item.meta, registrationVersion }, updatedAt: at };
+          await tx.updateItem(synced);
+          return { item: synced, log: null };
+        }
+        const change = applyItemChange(item, { op: "set_status", status: target }, at);
+        if (!change) return { item, log: null };
+        const applied = { ...change, item: { ...change.item, meta: { ...change.item.meta, registrationVersion } } };
+        const idempotencyKey = `${registered ? "event-registered" : "event-cancelled"}:${item.id}:${registrationVersion}`;
+        // 同一次报名／取消（同一个版本）已经记过：不再写（并发由按人串行的事务与唯一键兜底）。
+        if (await tx.logByIdempotencyKey(idempotencyKey)) return { item, log: null };
+        await tx.updateItem(applied.item);
+        const log = await writeLog(tx, {
+          author: "user",
+          body: applied.body,
+          createdAt: at,
+          event: applied.event,
+          fromStatus: applied.fromStatus,
+          idempotencyKey,
+          itemId: item.id,
+          kind: "auto",
+          linkedContactIds: [],
+          linkedEventId: eventId,
+          payload: { ...applied.payload, source: "event_registration" },
+          planId: plan.id,
+          targetItemId: null,
+          toStatus: applied.toStatus,
+        });
+        return { item: applied.item, log };
+      });
+    },
+
+    async enterCurrentPhase() {
+      const nothing = { entered: null, refined: [] };
+      // 先只读判定：绝大多数读取时要么还在第 1 段、要么这一段已经记过，不取锁、不开写事务。
+      const pending = await repository.read(scope, async (reader) => {
+        const plan = await reader.activePlan();
+        if (!plan) return false;
+        const target = phaseToEnter(plan, new Date(now()));
+        if (!target) return false;
+        return !(await reader.logByIdempotencyKey(phaseEnteredKey(plan.id, target.phase.key)));
+      });
+      if (!pending) return nothing;
+      return repository.transact(scope, async (tx) => {
+        const plan = await tx.activePlan();
+        if (!plan) return nothing;
+        const at = now();
+        const target = phaseToEnter(plan, new Date(at));
+        if (!target) return nothing;
+        const key = phaseEnteredKey(plan.id, target.phase.key);
+        if (await tx.logByIdempotencyKey(key)) return nothing;
+        const items = await tx.items(plan.id);
+        const refined: PlanItem[] = [];
+        if (phaseNeedsRefinement(plan, target.phase)) {
+          const refinement = await phaseRefiner({ items, phase: target.phase, plan });
+          for (const update of refinement.weekUpdates) {
+            const existing = items.find((item) => item.id === update.itemId);
+            if (!existing) continue;
+            const next: PlanItem = { ...existing, suggestedWeek: update.suggestedWeek, updatedAt: at };
+            await tx.updateItem(next);
+            refined.push(next);
+          }
+          let sortKey = items.reduce((max, item) => Math.max(max, item.sortKey), -1);
+          const room = Math.max(0, PLAN_LIMITS.itemsPerPlan - items.length);
+          const inserts = refinement.inserts.slice(0, room).map((entry): PlanItem => {
+            sortKey += 1;
+            return {
+              answer: null,
+              carriedFromItemId: null,
+              completedAt: null,
+              contactLinks: [],
+              createdAt: at,
+              criteria: null,
+              deferralCount: 0,
+              detail: entry.detail === null ? null : clip(entry.detail),
+              id: newId(),
+              kind: "action",
+              linkedContactIds: [],
+              linkedEventId: null,
+              meta: { phaseKey: target.phase.key, source: PLAN_PHASE_REFINEMENT_SOURCE },
+              phaseKey: target.phase.key,
+              planId: plan.id,
+              sortKey,
+              status: "not_started",
+              suggestedWeek: entry.suggestedWeek,
+              title: entry.title,
+              updatedAt: at,
+            };
+          });
+          if (inserts.length > 0) await tx.insertItems(inserts);
+          refined.push(...inserts);
+        }
+        const entered = await writeLog(tx, {
+          author: "system",
+          body: clip(
+            refined.length > 0
+              ? `进入第 ${target.index + 1} 阶段「${target.phase.title}」，补充了 ${refined.length} 条周级行动`
+              : `进入第 ${target.index + 1} 阶段「${target.phase.title}」`,
+          ),
+          createdAt: at,
+          event: "phase_entered",
+          fromStatus: plan.phases[target.index - 1]?.key ?? null,
+          idempotencyKey: key,
+          itemId: null,
+          kind: "auto",
+          linkedContactIds: [],
+          linkedEventId: null,
+          payload: {
+            phaseIndex: target.index,
+            phaseKey: target.phase.key,
+            phaseTitle: target.phase.title,
+            refinedCount: refined.length,
+            refinedItemIds: refined.map((item) => item.id),
+          },
+          planId: plan.id,
+          targetItemId: null,
+          toStatus: target.phase.key,
+        });
+        return { entered, refined };
+      });
+    },
+
+    async weeklySummary() {
+      const at = new Date(now());
+      if (!isTokyoMonday(at)) return null;
+      const window = previousTokyoWeek(at);
+      return repository.read(scope, async (reader) => {
+        if (!(await reader.activePlan())) return null;
+        return summarizePlanWeek(await reader.logBetween(window.fromIso, window.toIso, WEEKLY_SUMMARY_LOG_LIMIT), window);
+      });
+    },
+
+    async reanalysisQuota() {
+      const month = tokyoMonthKey(new Date(now()));
+      const used = await repository.read(scope, async (reader) =>
+        (await reader.logByIdempotencyKey(reanalysisQuotaKey(month))) ? 1 : 0,
+      );
+      return { limit: REANALYSIS_MONTHLY_LIMIT, month, remaining: Math.max(0, REANALYSIS_MONTHLY_LIMIT - used), used };
     },
   };
   return service;

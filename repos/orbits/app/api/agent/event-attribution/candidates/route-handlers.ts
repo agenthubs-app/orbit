@@ -74,7 +74,9 @@ export function createEventAttributionCandidateRouteHandlers(dependencies: Event
         try {
           result = await resolveEventAttribution(attributionSource, {
             cards: attributionCardsFromItems(detail.items),
-            userId: actor.userId ?? actor.id,
+            // 报名按账号 id（actor.id）记（报名路由 `registrationService.register({ userId: actor.id })`），
+            // 不能用 Auth.js 会话 id：两者不同时会永远找不到候选。
+            userId: actor.id,
           });
         } catch (error) {
           // 已配置的活动目录／报名读取出错：503，让客户端当作读取失败（重试一次），而不是「没有候选」。
