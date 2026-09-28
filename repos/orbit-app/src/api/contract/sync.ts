@@ -26,7 +26,8 @@ export interface SyncRecord<TPayload = unknown> {
   aiVisibility: AiSyncVisibility;
 }
 
-export type SyncChangeKind = "note" | "task" | "personal_schedule" | "event_registration" | "registered_event" | "event_published_result";
+// Sprint 0116: "contact" — the contacts domain (a contact with its relationships, detail state and cited sources).
+export type SyncChangeKind = "note" | "task" | "personal_schedule" | "event_registration" | "registered_event" | "event_published_result" | "contact";
 
 export interface SyncChange<TPayload = unknown> {
   kind: SyncChangeKind;

@@ -148,7 +148,7 @@ test("Web mirror: OPFS-backed, encrypted at rest, survives reload, isolates iden
   assert.equal(await call(page, "window.__mirror.open()"), true);
   assert.deepEqual(await call(page, "window.__mirror.reports"), []);
   const digest = await call<string>(page, "window.__mirror.status().scopeDigest");
-  assert.deepEqual(await call(page, "window.__mirror.status()"), { mode: "local-mirror", scopeDigest: digest, domains: ["notes", "tasks", "personal-schedule", "event-registrations", "registered-events", "event-published-results"] });
+  assert.deepEqual(await call(page, "window.__mirror.status()"), { mode: "local-mirror", scopeDigest: digest, domains: ["notes", "tasks", "personal-schedule", "event-registrations", "registered-events", "event-published-results", "contacts"] });
   assert.match(digest, /^[a-f0-9]{64}$/);
   assert.equal(await call(page, "window.__mirror.readable()"), true);
 
