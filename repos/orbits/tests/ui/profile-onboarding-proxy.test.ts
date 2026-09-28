@@ -142,6 +142,36 @@ test("route policy gates only authenticated app GET/HEAD paths and keeps exact e
   // 新用户引导本身必须豁免，否则门禁会把未完成的用户无限重定向回自己。
   assert.equal(isProfileOnboardingNavigationExemptPath("/app/profile/onboarding"), true);
   assert.equal(isProfileOnboardingNavigationExemptPath("/app/profile/onboardingX"), false);
+  // W0006：引导页本身豁免（资料未完成的新用户也能进），只豁免这一条路径。
+  assert.equal(isProfileOnboardingNavigationExemptPath("/app/start"), true);
+  assert.equal(isProfileOnboardingNavigationExemptPath("/app/startX"), false);
+  assert.equal(isProfileOnboardingNavigationExemptPath("/app/start/anything"), false);
+  assert.equal(
+    shouldGateProfileOnboardingRequest({ authenticated: true, method: "GET", pathname: "/app/start" }),
+    false,
+  );
+  assert.equal(
+    shouldGateProfileOnboardingRequest({ authenticated: true, method: "GET", pathname: "/app/agent" }),
+    true,
+  );
+});
+
+test("W0006: an incomplete profile reaches /app/start through the real proxy while /app/agent stays gated", async () => {
+  const { proxy, accessCalls } = loadProxy("incomplete");
+  const start = await proxy(request("/app/start"));
+  assert.equal(start.status, 200);
+  assert.equal(start.headers.get("x-middleware-next"), "1");
+  assert.equal(accessCalls(), 0, "the exempt guide page never loads onboarding access");
+
+  const agent = await proxy(request("/app/agent"));
+  assert.equal(agent.status, 307);
+  assert.equal(
+    agent.headers.get("location"),
+    "https://test/app/profile/onboarding?next=%2Fapp%2Fagent",
+  );
+  const nested = await proxy(request("/app/start/elsewhere"));
+  assert.equal(nested.status, 307, "only the exact /app/start path is exempt");
+  assert.equal(accessCalls(), 2);
 });
 
 test("gate next preserves business query while removing RSC transport", () => {

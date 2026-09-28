@@ -59,10 +59,13 @@ type StatusState = "idle" | "copied" | "selected" | "joined";
 export function CommunityCard({
   joined: initialJoined,
   loginHref = "/app/account/login?next=%2Fapp%2Fevents",
+  onJoined,
   signedIn,
 }: {
   joined: boolean;
   loginHref?: string;
+  /** 加入记录写成功后回调（W0006 引导页第 4 步据此标记完成）。 */
+  onJoined?: () => void;
   signedIn: boolean;
 }) {
   const { t } = useOrbitLanguage();
@@ -103,6 +106,7 @@ export function CommunityCard({
       if (response.ok && body?.success === true && body.data?.joined === true) {
         setJoined(true);
         setStatus("joined");
+        onJoined?.();
       } else if (response.status === 401) {
         setError(t({ en: "Sign in first, then mark yourself as joined.", zh: "请先登录，再标记已加入。" }));
       } else {

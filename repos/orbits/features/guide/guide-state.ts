@@ -4,39 +4,64 @@
  * 写法沿用 `features/community/membership.ts` 的单记录模式：workspaceId 按 actor 分片
  * （`<workspace>:guide-actor:<actorId>`），同时写 userId 作为第二道隔离，每人一条，读不到别人的。
  *
- * 本 Sprint 只有三个字段：
+ * 字段：
  *   - `grandfathered`：D2 老用户判定的**首次**结果（true / false 都落库），写入后不再改变；
  *     null 表示还没判定过。
  *   - `bannerCollapsed`：示例横条是否收起成导航药丸（换浏览器也一致）。
- *   - `version`：记录结构版本（当前为 1），W0006 扩展字段时据此迁移。
+ *   - `step1Skipped`（W0006）：第 1 步点过「先这样，继续」；只能置为 true。
+ *   - `currentStep`（W0006）：`/app/start` 停在第几步（1–4）。用户切换步骤、某一步完成后
+ *     前进到下一步时由页面写入；前 3 步完成时服务端清空（null = 显示完成卡片）。
+ *   - `completedAt`（W0006）：服务端第一次看到前 3 步全部完成的时间，写入后不再改变。
+ *   - `version`：记录结构版本（当前为 2）。v1 记录没有 W0006 的三个字段，读取时按默认值
+ *     （未跳过、未记录步骤、未完成）补齐，不需要改写存量数据。
  *
  * 写入走 compare-and-swap（`insertRecordIfAbsent` / `updateRecordIfCurrent`），两个字段并发
  * 更新时不会互相覆盖；存储不支持时回落到 upsert。
  */
 import type { LiveRecord, LiveRecordStoreLike } from "../../shared/storage/live-record-store";
+import { isGuideStartStep, type GuideStartStep } from "./start-steps";
 
 export const GUIDE_STATE_COLLECTION = "guideState";
 export const GUIDE_STATE_RECORD_ID = "current";
-export const GUIDE_STATE_VERSION = 1;
+export const GUIDE_STATE_VERSION = 2;
 
 /** `GET /api/guide/state` 的 data 形状。 */
 export interface GuideState {
   bannerCollapsed: boolean;
+  /** null：前 3 步还没全部完成过。 */
+  completedAt: string | null;
+  /** null：没有记录（页面按进度推导停在哪一步）。 */
+  currentStep: GuideStartStep | null;
   /** null：尚未做过首次判定。 */
   grandfathered: boolean | null;
+  step1Skipped: boolean;
   version: number;
+}
+
+/** 客户端可写的字段（`PATCH /api/guide/state`）；`grandfathered`、`completedAt` 只由服务端写。 */
+export interface GuideStatePatch {
+  bannerCollapsed?: boolean;
+  currentStep?: GuideStartStep;
+  step1Skipped?: true;
 }
 
 export interface GuideStateService {
   get: () => Promise<GuideState>;
+  /** 只在尚未完成过时写入 completedAt 并清空 currentStep；已完成时原样返回。 */
+  markCompleted: () => Promise<GuideState>;
   /** 只在尚未判定时写入；已判定时原样返回第一次的结果。 */
   recordGrandfathered: (value: boolean) => Promise<GuideState>;
   setBannerCollapsed: (value: boolean) => Promise<GuideState>;
+  /** 一次写入多个客户端字段（同一次 compare-and-swap）；值没变时不写。 */
+  update: (patch: GuideStatePatch) => Promise<GuideState>;
 }
 
 export interface GuideStatePayload extends Record<string, unknown> {
   bannerCollapsed?: boolean;
+  completedAt?: string;
+  currentStep?: number | null;
   grandfathered?: boolean;
+  step1Skipped?: boolean;
   version: number;
 }
 
@@ -44,11 +69,20 @@ export function guideStateWorkspaceId(workspaceId: string, actorId: string): str
   return `${workspaceId}:guide-actor:${actorId}`;
 }
 
+function completedAtFrom(payload: GuideStatePayload | null | undefined): string | null {
+  const value = payload?.completedAt;
+  return typeof value === "string" && Number.isFinite(Date.parse(value)) ? value : null;
+}
+
 function stateFrom(record: LiveRecord<GuideStatePayload> | null): GuideState {
   const payload = record?.payload;
   return {
     bannerCollapsed: payload?.bannerCollapsed === true,
+    completedAt: completedAtFrom(payload),
+    // 存量数据里的非法值（不是 1–4）按「没有记录」处理。
+    currentStep: isGuideStartStep(payload?.currentStep) ? payload.currentStep : null,
     grandfathered: typeof payload?.grandfathered === "boolean" ? payload.grandfathered : null,
+    step1Skipped: payload?.step1Skipped === true,
     version: GUIDE_STATE_VERSION,
   };
 }
@@ -143,6 +177,34 @@ export function createStorageGuideStateService(input: {
           ? null
           : { ...current, bannerCollapsed: value, version: GUIDE_STATE_VERSION },
       );
+    },
+    update(patch) {
+      return mutate((current) => {
+        const next: GuideStatePayload = { ...current, version: GUIDE_STATE_VERSION };
+        let changed = false;
+        if (patch.bannerCollapsed !== undefined && current?.bannerCollapsed !== patch.bannerCollapsed) {
+          next.bannerCollapsed = patch.bannerCollapsed;
+          changed = true;
+        }
+        if (patch.step1Skipped === true && current?.step1Skipped !== true) {
+          next.step1Skipped = true;
+          changed = true;
+        }
+        if (patch.currentStep !== undefined) {
+          if (!isGuideStartStep(patch.currentStep)) throw new Error("currentStep must be 1–4.");
+          if (current?.currentStep !== patch.currentStep) {
+            next.currentStep = patch.currentStep;
+            changed = true;
+          }
+        }
+        return changed ? next : null;
+      });
+    },
+    markCompleted() {
+      return mutate((current) => {
+        if (completedAtFrom(current)) return null;
+        return { ...current, completedAt: now(), currentStep: null, version: GUIDE_STATE_VERSION };
+      });
     },
   };
 }
