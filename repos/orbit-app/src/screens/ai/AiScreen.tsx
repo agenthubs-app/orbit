@@ -62,6 +62,9 @@ import { todaySummaryPath, todaySummaryQuestions, todaySummaryToHomeView } from 
 import { OrbitNextActions } from "./OrbitNextActions";
 import { homeQuestionSnapshot, type HomeQuestionSnapshot } from "../../view-models/home-question-snapshot";
 import { AiSessionOrganizationPanel } from "./AiSessionOrganization";
+import { OfflineNotice } from "../../components/OfflineNotice";
+import { useLocalAiSessions } from "../../hooks/useLocalAiSessions";
+import { localAiSessionPage } from "../../view-models/ai-sessions-local";
 
 type CapabilityTone = "accent" | "amber" | "live" | "sky";
 
@@ -261,11 +264,19 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
     () => false,
     { scopeKey: JSON.stringify([readScope, conversationAttempt]) }
   ), aiConversationListSchema);
+  // Sprint 0118 (AI B3): where the device mirror holds the AI sessions (native always, the browser with
+  // its mirror) the list, search and group filter read it; the network list stays inert.
+  const localSessions = useLocalAiSessions();
+  const historyFromDevice = localSessions.available && localSessions.freshness.readable;
+  const aiOffline = historyFromDevice && localSessions.freshness.offline;
   const historyState = validateApiResourceState(useApiResource<unknown>(
     historyPath,
     data => { const parsed = aiSessionSummaryPageSchema.safeParse(data); return parsed.success && parsed.data.items.length === 0; },
-    { scopeKey: historyFilterIdentity, cachePolicy: "network-only" }
+    { scopeKey: historyFilterIdentity, cachePolicy: "network-only", enabled: !localSessions.available }
   ), aiSessionSummaryPageSchema);
+  const historyKind: typeof historyState.kind = localSessions.available
+    ? (historyFromDevice ? "success" : localSessions.freshness.failure ? "failure" : "loading")
+    : historyState.kind;
   const groupsState = validateApiResourceState(useApiResource<unknown>(
     ORBIT_API_ENDPOINTS.aiConversationGroups,
     () => false,
@@ -281,7 +292,7 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
   );
   // Sprint 0092: neither region may say "still reading" without end. A retry
   // bumps the attempt counter, which restarts the clock for that region.
-  const recentLoading = state.kind === "loading" || historyState.kind === "loading";
+  const recentLoading = state.kind === "loading" || historyKind === "loading";
   const recentOverdue = useLoadingDeadline(recentLoading, JSON.stringify([readScope, conversationAttempt, historyAttempt]));
   const todayOverdue = useLoadingDeadline(todayState.kind === "loading", JSON.stringify([readScope, todayAttempt]));
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -313,9 +324,11 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
   const [deletingHistoryId, setDeletingHistoryId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<AiDrawerHistoryItem | null>(null);
   const [deletedIds, setDeletedIds] = useState<string[]>([]);
-  const firstHistoryPage = historyState.kind === "success" || historyState.kind === "empty"
-    ? historyState.data
-    : null;
+  const firstHistoryPage = historyFromDevice
+    ? localAiSessionPage(localSessions.rows, { q: historyQueryParam, groupId: selectedGroupId })
+    : !localSessions.available && (historyState.kind === "success" || historyState.kind === "empty")
+      ? historyState.data
+      : null;
   const activeHistoryContinuation = historyContinuation?.identity === historyFilterIdentity ? historyContinuation : null;
   const displaySessionPage = firstHistoryPage ? {
     ...firstHistoryPage,
@@ -402,10 +415,10 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
   const historyNotices: { message: string; retryLabel?: string; onRetry?: () => void }[] = [];
   if (recentLoading && !recentOverdue) historyNotices.push({ message: locale.t("ai.loadingRecent") });
   if (recentOverdue) historyNotices.push({ message: locale.t("ai.recentTimedOut"), retryLabel: locale.t("common.retry"), onRetry: () => { if (owns()) { setConversationAttempt(value => value + 1); setHistoryAttempt(value => value + 1); } } });
-  if (state.kind === "failure" || state.kind === "offline") historyNotices.push({ message: locale.t("ai.conversationsUnreadable"), retryLabel: locale.t("ai.retryConversations"), onRetry: () => { if (owns()) setConversationAttempt(value => value + 1); } });
-  if (historyState.kind === "failure" || historyState.kind === "offline") historyNotices.push({ message: locale.t("ai.historyUnreadable"), retryLabel: locale.t("ai.retryHistory"), onRetry: () => { if (owns()) setHistoryAttempt(value => value + 1); } });
+  if (!aiOffline && (state.kind === "failure" || state.kind === "offline")) historyNotices.push({ message: locale.t("ai.conversationsUnreadable"), retryLabel: locale.t("ai.retryConversations"), onRetry: () => { if (owns()) setConversationAttempt(value => value + 1); } });
+  if (historyKind === "failure" || historyKind === "offline") historyNotices.push({ message: locale.t("ai.historyUnreadable"), retryLabel: locale.t("ai.retryHistory"), onRetry: () => { if (owns()) { setHistoryAttempt(value => value + 1); if (localSessions.available) void localSessions.refresh(); } } });
   if ((state.kind === "success" || state.kind === "empty") && state.data.state === "pending") historyNotices.push({ message: locale.t("ai.conversationPreparing") });
-  if ((historyState.kind === "success" || historyState.kind === "empty") && !historyState.data.storage.configured) historyNotices.push({ message: locale.t("ai.historyUnavailable") });
+  if (!localSessions.available && (historyState.kind === "success" || historyState.kind === "empty") && !historyState.data.storage.configured) historyNotices.push({ message: locale.t("ai.historyUnavailable") });
   const todayPayload =
     todayState.kind === "success" || todayState.kind === "empty"
       ? todayState.data
@@ -477,6 +490,10 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
       setSendError(locale.t("ai.enterQuestion"));
       return;
     }
+    if (aiOffline) {
+      setSendError(locale.t("sync.needsNetwork"));
+      return;
+    }
 
     let sendIntent: string;
     try {
@@ -545,6 +562,7 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
     patch: { customTitle?: string | null; groupId?: string | null; pinned?: boolean },
   ) {
     if (!owns() || organizationOperation.current || item.source !== "session") return;
+    if (aiOffline) { setOrganizationError(locale.t("sync.needsNetwork")); return; }
     const operation = new AbortController();
     organizationOperation.current = operation;
     setOrganizationBusy(true);
@@ -631,6 +649,7 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
   async function deleteHistoryItem(item: AiDrawerHistoryItem) {
     if (!owns() || deleteOperation.current || item.source !== "session" || confirmDelete?.id !== item.id
       || !historyItems.some(row => row.source === "session" && row.id === item.id)) return;
+    if (aiOffline) { setHistoryDeleteError(locale.t("sync.needsNetwork")); return; }
     const operation = new AbortController();
     deleteOperation.current = operation;
 
@@ -645,6 +664,7 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
       setDeletedIds(ids => [...ids, item.id]);
       setConfirmDelete(null);
       setHistoryAttempt(value => value + 1);
+      if (localSessions.available) void localSessions.refresh();
     } else {
       setHistoryDeleteError(locale.t("ai.deleteUnconfirmed"));
     }
@@ -697,6 +717,7 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
                   <Text style={styles.allHistoryText}>{locale.t("ai.all")}</Text><Ionicons name="chevron-forward" color={colors.accent} size={14} />
                 </Pressable>
               </View>
+              {aiOffline ? <OfflineNotice lastSyncedAt={localSessions.freshness.lastSyncedAt} /> : null}
               {historyItems.slice(0, 3).map(item => (
                 <Pressable accessibilityLabel={locale.t("ai.continueChat", { title: item.title })} accessibilityRole="button" key={`${item.source}:${item.id}`} onPress={() => openHistoryItem(item)} style={({ pressed }) => [styles.recentRow, pressed ? styles.pressed : null]}>
                   <View style={styles.recentCopy}><Text numberOfLines={2} style={styles.recentTitle}>{item.title}</Text><Text numberOfLines={1} style={styles.recentPreview}>{item.preview}</Text></View>
@@ -706,10 +727,10 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
               {recentLoading && !recentOverdue ? <Text accessibilityLiveRegion="polite" style={styles.recentState}>{locale.t("ai.loadingRecent")}</Text> : null}
               {recentOverdue ? <View style={styles.recentFailure}><Text style={styles.errorText}>{locale.t("ai.recentTimedOut")}</Text><Pressable accessibilityLabel={locale.t("common.retry")} accessibilityRole="button" onPress={() => { if (owns()) { setConversationAttempt(value => value + 1); setHistoryAttempt(value => value + 1); } }} style={styles.retryButton}><Text style={styles.allHistoryText}>{locale.t("common.retry")}</Text></Pressable></View> : null}
               {(state.kind === "success" || state.kind === "empty") && state.data.state === "pending" ? <Text accessibilityLiveRegion="polite" style={styles.recentState}>{locale.t("ai.conversationPreparing")}</Text> : null}
-              {state.kind === "failure" || state.kind === "offline" ? <View style={styles.recentFailure}><Text style={styles.errorText}>{locale.t("ai.conversationsUnreadable")}</Text><Pressable accessibilityLabel={locale.t("ai.retryConversations")} accessibilityRole="button" onPress={() => { if (owns()) setConversationAttempt(value => value + 1); }} style={styles.retryButton}><Text style={styles.allHistoryText}>{locale.t("common.retry")}</Text></Pressable></View> : null}
-              {historyState.kind === "failure" || historyState.kind === "offline" ? <View style={styles.recentFailure}><Text style={styles.errorText}>{locale.t("ai.historyUnreadable")}</Text><Pressable accessibilityLabel={locale.t("ai.retryHistory")} accessibilityRole="button" onPress={() => { if (owns()) setHistoryAttempt(value => value + 1); }} style={styles.retryButton}><Text style={styles.allHistoryText}>{locale.t("common.retry")}</Text></Pressable></View> : null}
-              {(historyState.kind === "success" || historyState.kind === "empty") && !historyState.data.storage.configured ? <Text style={styles.recentState}>{locale.t("ai.historyUnavailable")}</Text> : null}
-              {historyItems.length === 0 && (state.kind === "success" || state.kind === "empty") && state.data.state !== "pending" && (historyState.kind === "success" || historyState.kind === "empty") && historyState.data.storage.configured ? <Text style={styles.recentState}>{locale.t("ai.noConversations")}</Text> : null}
+              {!aiOffline && (state.kind === "failure" || state.kind === "offline") ? <View style={styles.recentFailure}><Text style={styles.errorText}>{locale.t("ai.conversationsUnreadable")}</Text><Pressable accessibilityLabel={locale.t("ai.retryConversations")} accessibilityRole="button" onPress={() => { if (owns()) setConversationAttempt(value => value + 1); }} style={styles.retryButton}><Text style={styles.allHistoryText}>{locale.t("common.retry")}</Text></Pressable></View> : null}
+              {historyKind === "failure" || historyKind === "offline" ? <View style={styles.recentFailure}><Text style={styles.errorText}>{locale.t("ai.historyUnreadable")}</Text><Pressable accessibilityLabel={locale.t("ai.retryHistory")} accessibilityRole="button" onPress={() => { if (owns()) { setHistoryAttempt(value => value + 1); if (localSessions.available) void localSessions.refresh(); } }} style={styles.retryButton}><Text style={styles.allHistoryText}>{locale.t("common.retry")}</Text></Pressable></View> : null}
+              {!localSessions.available && (historyState.kind === "success" || historyState.kind === "empty") && !historyState.data.storage.configured ? <Text style={styles.recentState}>{locale.t("ai.historyUnavailable")}</Text> : null}
+              {historyItems.length === 0 && (aiOffline || ((state.kind === "success" || state.kind === "empty") && state.data.state !== "pending")) && (historyFromDevice || ((historyState.kind === "success" || historyState.kind === "empty") && historyState.data.storage.configured)) ? <Text style={styles.recentState}>{locale.t("ai.noConversations")}</Text> : null}
             </View>
             <OrbitNextActions
               error={todayError}
@@ -754,10 +775,11 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
         historyItems={historyItems}
         historyQuery={historyQuery}
         groupFilterName={groups.find(group => group.id === selectedGroupId)?.name ?? null}
-        historyStateKind={historyState.kind}
-        conversationStateKind={state.kind}
+        historyStateKind={historyKind}
+        conversationStateKind={aiOffline ? "success" : state.kind}
+        offlineLastSyncedAt={aiOffline ? localSessions.freshness.lastSyncedAt : undefined}
         conversationPending={(state.kind === "success" || state.kind === "empty") && state.data.state === "pending"}
-        historyUnavailable={(historyState.kind === "success" || historyState.kind === "empty") && !historyState.data.storage.configured}
+        historyUnavailable={!localSessions.available && (historyState.kind === "success" || historyState.kind === "empty") && !historyState.data.storage.configured}
         onRetryConversation={() => { if (owns()) setConversationAttempt(value => value + 1); }}
         onRetryHistory={() => { if (owns()) setHistoryAttempt(value => value + 1); }}
         confirmDelete={confirmDelete}
@@ -1300,6 +1322,7 @@ function OrbitAiHistoryPanel({
   historyQuery,
   groupFilterName,
   historyStateKind,
+  offlineLastSyncedAt,
   onClose,
   onDismiss,
   onCancelDelete,
@@ -1328,6 +1351,8 @@ function OrbitAiHistoryPanel({
   historyQuery: string;
   groupFilterName: string | null;
   historyStateKind: ApiResourceState<unknown>["kind"];
+  /** Sprint 0118: set while offline (the list is the device copy as of this time). */
+  offlineLastSyncedAt?: string | null | undefined;
   onClose: () => void;
   onDismiss: () => void;
   onCancelDelete: () => void;
@@ -1379,6 +1404,7 @@ function OrbitAiHistoryPanel({
             </Pressable>
             </View>
           </View>
+          {offlineLastSyncedAt !== undefined ? <OfflineNotice lastSyncedAt={offlineLastSyncedAt} /> : null}
           {groupFilterName ? <Pressable accessibilityLabel={locale.t("ai.showAllHistory")} accessibilityRole="button" onPress={onClearGroupFilter} style={styles.retryButton}><Text style={styles.allHistoryText}>{locale.t("ai.all")}</Text></Pressable> : null}
           {loading ? <Text accessibilityLiveRegion="polite" style={styles.recentState}>{locale.t("ai.loadingHistory")}</Text> : null}
           {conversationPending ? <Text accessibilityLiveRegion="polite" style={styles.recentState}>{locale.t("ai.conversationPreparing")}</Text> : null}

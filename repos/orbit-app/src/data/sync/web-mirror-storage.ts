@@ -7,7 +7,8 @@ import type { LocalSyncDatabase, LocalSyncSqlValue } from "./local-sync-database
  * attendee's own registration status, and the results published to them) —
  * argued per domain in the same document, section 2.
  */
-export const WEB_MIRROR_DOMAIN_IDS: readonly string[] = ["notes", "tasks", "personal-schedule", "event-registrations", "registered-events", "event-published-results", "contacts", "dashboard-graph"];
+// Sprint 0118: the typed inbox and the AI sessions (list and opened sessions' messages), argued in the threat model section 2.
+export const WEB_MIRROR_DOMAIN_IDS: readonly string[] = ["notes", "tasks", "personal-schedule", "event-registrations", "registered-events", "event-published-results", "contacts", "dashboard-graph", "inbox-notifications", "ai-sessions", "ai-session-messages"];
 
 /**
  * Browser mirror storage: expo-sqlite's web build (wa-sqlite in a Worker, OPFS

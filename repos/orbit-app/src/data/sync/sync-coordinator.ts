@@ -13,7 +13,7 @@ import {
   type SyncClient,
   SyncResetRequiredError,
 } from "./sync-client";
-import { kindOfSyncDomain, KNOWN_SYNC_DOMAINS, syncDomainOfKind } from "./sync-domains";
+import { kindOfSyncDomain, KNOWN_SYNC_DOMAINS, PARTITIONED_SYNC_DOMAINS, syncDomainOfKind } from "./sync-domains";
 import {
   shouldSynchronize,
   type SyncRefreshReason,
@@ -101,6 +101,10 @@ export interface SyncCoordinatorSession {
     kind: SyncChangeKind,
     options?: SyncOptions,
   ): SyncRequest<TPayload>;
+  /** Sprint 0118: the device opened an AI session (its messages sync from now on); null without a mirror. */
+  openAiSession(sessionId: string): Promise<{ opened: string[]; evicted: string[]; added: boolean } | null>;
+  readAiSessionCards(sessionId: string): Promise<unknown | null>;
+  saveAiSessionCards(sessionId: string, cards: unknown): Promise<void>;
 }
 
 interface ActiveScope extends SyncScopeInput {
@@ -397,7 +401,16 @@ export function createSyncCoordinator(input: {
         let pageCount = 0;
         for (const readScope of readScopesOf(scope)) {
           const stored = await withRepository(scope, (repository) => repository.getScopeCursor(readScope));
-          if (stored && manifestProvesUnchanged(manifest, readScope, stored)) {
+          // Sprint 0118: a partitioned domain (the opened AI sessions' messages) names its
+          // partitions on every page; a newly opened session must be fetched even when the
+          // manifest says the domain did not move, so the walk also compares the set it named.
+          const partitions = PARTITIONED_SYNC_DOMAINS.includes(readScope.domainId)
+            ? await withRepository(scope, (repository) => repository.getOpenedAiSessions(readScope.workspaceId))
+            : undefined;
+          const partitionKey = partitions ? JSON.stringify([...partitions].sort()) : null;
+          const partitionsUnchanged = partitionKey === null
+            || (await withRepository(scope, (repository) => repository.getPartitionKey(readScope))) === partitionKey;
+          if (stored && partitionsUnchanged && manifestProvesUnchanged(manifest, readScope, stored)) {
             await withRepository(scope, (repository) => repository.confirmScopeCursor(readScope, new Date(now()).toISOString()));
             if (!isCurrent(scope) || flight.abandoned) return null;
             continue;
@@ -412,6 +425,7 @@ export function createSyncCoordinator(input: {
               page = await scope.client.getDomainPage({
                 domainId: readScope.domainId,
                 ...(requestCursor === undefined ? {} : { cursor: requestCursor }),
+                ...(partitions?.length ? { sessions: partitions } : {}),
                 limit: PAGE_LIMIT,
                 signal: controller.signal,
               });
@@ -434,7 +448,11 @@ export function createSyncCoordinator(input: {
             await withRepository(scope, (repository) => repository.applyDomainPage(readScope, page));
             if (!isCurrent(scope) || flight.abandoned) return null;
             requestCursor = page.nextCursor;
-            if (!page.hasMore || flight.stopAfterCurrent) break;
+            if (!page.hasMore) {
+              if (partitionKey !== null) await withRepository(scope, (repository) => repository.setPartitionKey(readScope, partitionKey));
+              break;
+            }
+            if (flight.stopAfterCurrent) break;
           }
           if (flight.stopAfterCurrent) return { error: null };
         }
@@ -517,6 +535,24 @@ export function createSyncCoordinator(input: {
       },
       readCollection<TPayload = unknown>(kind: SyncChangeKind) {
         return readCollection<TPayload>(bound, kind);
+      },
+      async openAiSession(sessionId: string) {
+        await bound.ready;
+        if (!isCurrent(bound) || bound.workspaceId === null) return null;
+        const workspaceId = bound.workspaceId;
+        try { return await withRepository(bound, (repository) => repository.openAiSession(workspaceId, sessionId)); } catch (error) { if (error instanceof LocalMirrorUnavailableError) return null; throw error; }
+      },
+      async readAiSessionCards(sessionId: string) {
+        await bound.ready;
+        if (!isCurrent(bound) || bound.workspaceId === null) return null;
+        const workspaceId = bound.workspaceId;
+        try { return await withRepository(bound, (repository) => repository.getAiSessionCards(workspaceId, sessionId)); } catch (error) { if (error instanceof LocalMirrorUnavailableError) return null; throw error; }
+      },
+      async saveAiSessionCards(sessionId: string, cards: unknown) {
+        await bound.ready;
+        if (!isCurrent(bound) || bound.workspaceId === null) return;
+        const workspaceId = bound.workspaceId;
+        try { await withRepository(bound, (repository) => repository.setAiSessionCards(workspaceId, sessionId, cards)); } catch (error) { if (!(error instanceof LocalMirrorUnavailableError)) throw error; }
       },
       synchronize<TPayload = unknown>(
         kind: SyncChangeKind,

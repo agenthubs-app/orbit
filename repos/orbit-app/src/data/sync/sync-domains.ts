@@ -20,7 +20,14 @@ export const KNOWN_SYNC_DOMAINS: Readonly<Record<string, SyncChangeKind>> = {
   contacts: "contact",
   // Sprint 0117: the account's dashboard graph (the dashboard and contacts analysis are computed on the device).
   "dashboard-graph": "dashboard_graph",
+  // Sprint 0118: the typed inbox, the AI session list, and the messages of the AI sessions this device opened.
+  "inbox-notifications": "inbox_notification",
+  "ai-sessions": "ai_session",
+  "ai-session-messages": "ai_session_message",
 };
+
+/** Sprint 0118: domains whose pages are named by partitions the device keeps (the opened AI sessions). */
+export const PARTITIONED_SYNC_DOMAINS: readonly string[] = ["ai-session-messages"];
 
 export function kindOfSyncDomain(domainId: string): SyncChangeKind | null {
   return Object.hasOwn(KNOWN_SYNC_DOMAINS, domainId) ? KNOWN_SYNC_DOMAINS[domainId]! : null;

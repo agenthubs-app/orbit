@@ -18,6 +18,11 @@ const summary = (messages: number, notices = 1, actor = "actor:one", mode: "lega
 // Real badge hook, HTTP client and view-model. Only auth, navigation focus,
 // native lifecycle, snapshot I/O and network transport are controlled here.
 const fixture = `
+// Sprint 0118: this harness exercises the network path; the device mirror is not available here.
+export const useLocalInbox = () => ({ available: false, rows: [], freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh: async () => null });
+export const useLocalAiSessions = () => ({ available: false, rows: [], freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh: async () => null });
+export const useLocalAiConversation = () => ({ available: false, messages: [], cards: null, saveCards() {}, freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh: async () => null });
+
 import { useSyncExternalStore } from "react";
 import { onSessionExpired } from "./src/api/session-expiry";
 let revision = 0; const subscribers = new Set(); const nativeListeners = new Set();
@@ -56,7 +61,7 @@ function Badge({second=false}) { const s = useFixture(); const count = useRelati
 function App() { const s = useFixture(); return s.mounted ? <><Badge />{s.multiple && <Badge second />}</> : null; } createRoot(document.getElementById("root")).render(<App />);`, loader: "tsx", resolveDir: process.cwd() },
     bundle: true, write: false, format: "iife", jsx: "automatic", define: { "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
     plugins: [{ name: "badge-boundaries", setup(plugin) {
-      plugin.onResolve({ filter: /^(fixture|expo-router|react-native)$|\/(ApiBaseUrlProvider|AuthSessionProvider|snapshot-store)$/ }, () => ({ path: "fixture", namespace: "badge" }));
+      plugin.onResolve({ filter: /^(fixture|expo-router|react-native)$|\/(ApiBaseUrlProvider|AuthSessionProvider|snapshot-store|useLocalInbox)$/ }, () => ({ path: "fixture", namespace: "badge" }));
       plugin.onLoad({ filter: /.*/, namespace: "badge" }, () => ({ contents: fixture, loader: "jsx", resolveDir: process.cwd() }));
       plugin.onResolve({ filter: /^react-native-web$/ }, () => ({ path: require.resolve("react-native-web") }));
     } }]
