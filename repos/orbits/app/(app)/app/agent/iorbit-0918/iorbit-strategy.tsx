@@ -36,6 +36,7 @@ import { useEffect, useState } from "react";
 
 import { useOrbitLanguage } from "../../orbit-language-context";
 import type { HomeDashboardSnapshot } from "../home-dashboard-route-service";
+import type { PlanEventReason } from "../plan/plan-route-view-model";
 import {
   buildAgentStrategyViewModel,
   type AgentStrategyNextEventsState,
@@ -49,10 +50,15 @@ type Loadable<T> = T | "pending" | "unavailable";
 export interface IOrbitStrategyProps {
   /** 覆盖点，仅测试使用：默认动态 import `home-dashboard-actions`（server action）。 */
   loadSnapshot?: () => Promise<Loadable<HomeDashboardSnapshot>>;
+  /**
+   * RW-07（W0009）：有生效计划时，活动 id → 它在计划里对应的阶段（`planEventReasons`，服务端读取）。
+   * 命中的活动理由改为「对应你计划第 n 阶段：认识 ___」；没有计划或没命中时仍用目标词理由。
+   */
+  planReasons?: Readonly<Record<string, PlanEventReason>> | null;
   view?: IOrbitStrategyView;
 }
 
-export function IOrbitStrategy({ loadSnapshot, view = "strategy" }: IOrbitStrategyProps = {}) {
+export function IOrbitStrategy({ loadSnapshot, planReasons = null, view = "strategy" }: IOrbitStrategyProps = {}) {
   const { language, t } = useOrbitLanguage();
   const zh = language === "zh";
   const [snapshot, setSnapshot] = useState<Loadable<HomeDashboardSnapshot>>("pending");
@@ -100,6 +106,16 @@ export function IOrbitStrategy({ loadSnapshot, view = "strategy" }: IOrbitStrate
     }
     return section.description;
   };
+  const planReasonText = (reason: PlanEventReason) =>
+    reason.isNeed
+      ? t({
+          en: `Phase ${reason.phaseNo} of your plan: meet ${reason.target}`,
+          zh: `对应你计划第 ${reason.phaseNo} 阶段：认识 ${reason.target}`,
+        })
+      : t({
+          en: `Phase ${reason.phaseNo} of your plan: ${reason.target}`,
+          zh: `对应你计划第 ${reason.phaseNo} 阶段：${reason.target}`,
+        });
   const waitingBadge = t({
     en: "Coming with the W4 strategy capability",
     zh: "随 W4 策略能力上线",
@@ -236,8 +252,13 @@ export function IOrbitStrategy({ loadSnapshot, view = "strategy" }: IOrbitStrate
           <span className="ir-row-copy">
             <strong className="ir-row-title">{event.title}</strong>
             <span className="ir-row-desc">◎ {event.venue}</span>
-            {/* RW-07：推荐理由只写真实匹配到的目标词（matchedTokens），没有就不显示理由行。 */}
-            {event.matchedTokens.length > 0 ? (
+            {/* RW-07：有计划且这场活动在计划里时，理由写它对应的阶段与要认识的人（W0009）；
+                否则只写真实匹配到的目标词（matchedTokens），没有就不显示理由行。 */}
+            {planReasons?.[event.id] ? (
+              <span className="ir-match" data-orbit-iorbit-match-reason="plan">
+                {planReasonText(planReasons[event.id]!)}
+              </span>
+            ) : event.matchedTokens.length > 0 ? (
               <span className="ir-match" data-orbit-iorbit-match-reason>
                 {t({
                   en: `Matches your goal: ${event.matchedTokens.map((token) => `“${token}”`).join(" ")}`,

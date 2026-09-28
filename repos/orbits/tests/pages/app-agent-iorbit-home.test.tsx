@@ -26,6 +26,7 @@ import {
 import { IOrbitHome } from "../../app/(app)/app/agent/iorbit-0918/iorbit-home";
 import { createOrbitAgentStarterViewModel } from "../../app/(app)/app/orbit-agent-route-view-model";
 import { OrbitLanguageProvider } from "../../app/(app)/app/orbit-language-context";
+import { PLAN_NOW, planSnapshotFixture } from "../support/plan-snapshot-fixture";
 
 /* ── 1. 纯函数 ─────────────────────────────────────────────────────────── */
 
@@ -394,6 +395,10 @@ interface MountOptions {
   /** W0004：可读写的 sessionStorage 内容（默认恒为空）。 */
   sessionStore?: Map<string, string>;
   ledger?: unknown;
+  /** W0009：`GET /api/agent/plans/current` 的 data（undefined = 接口 404，走账本回退）。 */
+  plan?: unknown;
+  /** W0009：`PATCH /api/agent/plans/items/:id` 的应答。 */
+  planPatch?: (url: string, body: unknown) => Promise<Response> | Response;
   signalPatchFails?: boolean;
   signalsFail?: boolean;
   sessions?: unknown;
@@ -487,6 +492,12 @@ async function mountHome(
     });
     if (url === "/api/guide/state" && options.guidePatch) {
       return options.guidePatch(init?.body ? JSON.parse(String(init.body)) : undefined);
+    }
+    if (url === "/api/agent/plans/current" && options.plan !== undefined) {
+      return Response.json({ data: options.plan, success: true });
+    }
+    if (url.startsWith("/api/agent/plans/items/") && options.planPatch) {
+      return options.planPatch(url, init?.body ? JSON.parse(String(init.body)) : undefined);
     }
     if (url.startsWith("/api/agent/ledger")) {
       return Response.json({
@@ -1170,6 +1181,7 @@ const GUIDE_STEP_TWO = {
 const FORBIDDEN_IN_DEMO = [
   "/api/agent/signals",
   "/api/agent/ledger",
+  "/api/agent/plans",
   "/api/ai/conversations",
 ] as const;
 
@@ -1534,4 +1546,118 @@ test("a pending global ask and ?q= are consumed by the demo shell and never auto
   );
   assert.deepEqual(asks, [], "no question may be sent by the real shell after the demo");
   assert.ok(root.findAll((node) => node.props?.className === "ir-home").length > 0, "the real shell stays on the overview");
+});
+
+/* ── W0009 SC-04：本周推进读计划 ───────────────────────────────────────── */
+
+function weekColumn(mounted: Mounted) {
+  return mounted.root.root.findAll(
+    (node) => typeof node.type === "string" && node.props?.["data-orbit-iorbit-week"] === "plan",
+  );
+}
+
+function planBox(mounted: Mounted, itemId: string) {
+  return mounted.root.root.findAll(
+    (node) =>
+      node.type === "button" &&
+      node.props.role === "checkbox" &&
+      node.props["aria-label"] !== undefined &&
+      node.parent?.props?.["data-orbit-iorbit-plan-action"] === itemId,
+  )[0]!;
+}
+
+test("with an active plan, 本周推进 shows the phase, week n of N, three checkable actions and the counts", async (t) => {
+  const mounted = await mountHome(t, homeElement({ clock: () => PLAN_NOW }), {
+    plan: planSnapshotFixture(),
+    snapshot: EMPTY_SNAPSHOT,
+  });
+
+  const [column] = weekColumn(mounted);
+  assert.ok(column, "the plan-backed column must render");
+  const text = textOf(column);
+  assert.ok(text.includes("本周推进"));
+  assert.ok(text.includes("第 3 周 / 共 12 周"));
+  assert.ok(text.includes("第 1 阶段 · 摸清需求"));
+  const actions = column!.findAll(
+    (node) => typeof node.type === "string" && node.props?.["data-orbit-iorbit-plan-action"] !== undefined,
+  );
+  // 3 个名额只给未完成的：本周刚完成的那件不占位，逾期 2 周的那件因此不会被挤掉。
+  assert.deepEqual(
+    actions.map((node) => node.props["data-orbit-iorbit-plan-action"]),
+    ["a-this-week", "a-overdue-1", "a-overdue-2"],
+  );
+  assert.ok(actions.every((node) => !node.props.className.includes("ir-m-plan-act-done")));
+  assert.ok(text.includes("已延后 1 周"));
+  assert.ok(text.includes("已延后 2 周"));
+  assert.ok(text.includes("行动 2/6"));
+  assert.ok(text.includes("已建立联系 1 位"));
+  const link = column!.findAll((node) => node.type === "a" && node.props.href === "/app/agent/plan")[0]!;
+  assert.equal(textOf(link), "查看完整计划 →");
+  // 账本版的进度条与「执行计划 →」不再出现。
+  assert.equal(column!.findAll((node) => node.props?.className === "ir-m-bar").length, 0);
+  assert.ok(!text.includes("执行计划 →"));
+  // 计划也算就绪来源之一。
+  assert.ok(mounted.calls.some((call) => call.url === "/api/agent/plans/current"));
+});
+
+test("ticking a plan action on the home PATCHes W0007 optimistically and rolls back on failure", async (t) => {
+  let fail = false;
+  const mounted = await mountHome(t, homeElement({ clock: () => PLAN_NOW }), {
+    plan: planSnapshotFixture(),
+    planPatch: (url, body) => {
+      if (fail) {
+        return Response.json({ error: { code: "CONFLICT", message: "请刷新后再试" }, success: false }, { status: 409 });
+      }
+      const itemId = decodeURIComponent(url.slice("/api/agent/plans/items/".length));
+      const item = planSnapshotFixture().items.find((entry) => entry.id === itemId)!;
+      const status = (body as { change: { status: string } }).change.status;
+      return Response.json({
+        data: { item: { ...item, completedAt: status === "done" ? PLAN_NOW.toISOString() : null, status }, log: null, replayed: false },
+        success: true,
+      });
+    },
+    snapshot: EMPTY_SNAPSHOT,
+  });
+
+  await act(async () => {
+    planBox(mounted, "a-this-week").props.onClick();
+  });
+  await mounted.settle();
+  const patch = mounted.calls.find((call) => call.method === "PATCH")!;
+  assert.equal(patch.url, "/api/agent/plans/items/a-this-week");
+  assert.deepEqual((patch.body as { change: unknown }).change, { op: "set_status", status: "done" });
+  // 刚勾掉的那行暂留（可撤销），另外 2 件未完成的照常显示。
+  assert.equal(planBox(mounted, "a-this-week").props["aria-checked"], true);
+  assert.deepEqual(
+    weekColumn(mounted)[0]!
+      .findAll((node) => typeof node.type === "string" && node.props?.["data-orbit-iorbit-plan-action"] !== undefined)
+      .map((node) => node.props["data-orbit-iorbit-plan-action"]),
+    ["a-this-week", "a-overdue-1", "a-overdue-2"],
+  );
+  assert.ok(textOf(weekColumn(mounted)[0]!).includes("行动 3/6"));
+
+  fail = true;
+  await act(async () => {
+    planBox(mounted, "a-overdue-1").props.onClick();
+  });
+  await mounted.settle();
+  assert.equal(planBox(mounted, "a-overdue-1").props["aria-checked"], false);
+  const alert = weekColumn(mounted)[0]!.findAll((node) => node.props?.role === "alert")[0]!;
+  assert.ok(textOf(alert).includes("没能保存，已恢复原状"));
+  assert.ok(textOf(alert).includes("请刷新后再试"));
+  assert.ok(textOf(weekColumn(mounted)[0]!).includes("行动 3/6"));
+});
+
+test("without a plan, 本周推进 keeps the W0001 ledger display", async (t) => {
+  const mounted = await mountHome(t, homeElement(), {
+    ledger: [{ entryId: "e1", status: "approved", title: "账本里的任务" }],
+    plan: null,
+    snapshot: EMPTY_SNAPSHOT,
+  });
+  assert.equal(weekColumn(mounted).length, 0);
+  const html = JSON.stringify(mounted.root.toJSON());
+  assert.ok(html.includes("执行计划 →"));
+  assert.ok(html.includes("账本里的任务"));
+  assert.ok(mounted.root.root.findAll((node) => node.props?.className === "ir-m-bar").length > 0);
+  assert.ok(!html.includes("查看完整计划"));
 });

@@ -19,7 +19,10 @@
  *     不占真实报名活动的两个名额
  *   - 日程 / 月历 / 跟进：`refreshHomeDashboardAction()` 的 D25 facts
  *   - 信号：`POST /api/agent/signals?view=home`，完成 / 明天提醒走 `PATCH /api/agent/signals/{id}`
- *   - 本周推进进度：`GET /api/agent/ledger`
+ *   - 本周推进（W0009）：有生效计划时读 `GET /api/agent/plans/current`，显示当前阶段、
+ *     「第 n 周 / 共 N 周」、本周最多 3 件可打勾的行动（`PATCH /api/agent/plans/items/{id}`，
+ *     乐观更新、失败回滚并提示）、行动完成数与已建立联系人数；没有计划（或读不到）时保持
+ *     原来的账本进度显示（`GET /api/agent/ledger`）
  *   - 最近对话：`GET /api/ai/conversations/sessions?limit=3`
  * 无数据一律走空态文案，不伪造数字。
  *
@@ -33,6 +36,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { AgentLedgerEntry } from "../../../../../features/agent/ledger/contract";
+import type { PlanSnapshot } from "../../../../../features/plans/contract";
 import { COMMUNITY_CONFIG } from "../../../../../features/community/config";
 import { buildDemoHomeData } from "../../_demo/demo-persona";
 import { DemoTag, useDemoMode } from "../../_demo/demo-mode-context";
@@ -45,6 +49,7 @@ import type {
   HomeFactsPersonalItem,
 } from "../home-facts-route-service";
 import type { HomeFactsViewItem } from "../home-facts-view-model";
+import { buildPlanWeekSummary } from "../plan/plan-route-view-model";
 import {
   agentSignalsToNextActionRows,
   type AgentTodaySignalView,
@@ -57,6 +62,7 @@ import {
   iorbitRelativeDayLabel,
   iorbitSelectedDayLabel,
 } from "./iorbit-model";
+import { fetchCurrentPlan, patchPlanActionDone, withActionDone, withServerItem } from "./iorbit-plan-client";
 
 const TZ = "Asia/Tokyo";
 /** 日程在多久之内开始才进今日要事（Q6：2 小时）。 */
@@ -228,6 +234,11 @@ export function IOrbitHome({
   const [draft, setDraft] = useState("");
   const [snapshotState, setSnapshot] = useState<Loadable<HomeDashboardSnapshot>>("pending");
   const [ledgerState, setLedger] = useState<Loadable<readonly AgentLedgerEntry[]>>("pending");
+  const [planState, setPlan] = useState<Loadable<PlanSnapshot | null>>("pending");
+  const [planBusyId, setPlanBusyId] = useState<string | null>(null);
+  const [planError, setPlanError] = useState<string | null>(null);
+  // 首页上刚打过勾的行动暂留一行（可撤销），不占「最多 3 件」的名额；刷新后消失。
+  const [planSticky, setPlanSticky] = useState<readonly string[]>([]);
   const [signalsState, setSignals] = useState<Loadable<readonly AgentTodaySignalView[]>>("pending");
   const [sessionsState, setSessions] = useState<Loadable<readonly IOrbitHomeSession[]>>("pending");
   const [signalBusyId, setSignalBusyId] = useState<string | null>(null);
@@ -274,6 +285,8 @@ export function IOrbitHome({
   const sessions: Loadable<readonly IOrbitHomeSession[]> = demoData ? demoData.sessions : sessionsState;
   const home = demoData ? demoData.home : homeProp;
   const communityJoined = demoData ? demoData.communityJoined : communityJoinedProp;
+  // 示例模式保留示例的账本显示，不读计划。
+  const plan: Loadable<PlanSnapshot | null> = demoData ? null : planState;
 
   useEffect(() => {
     if (typeof window === "undefined" || demoActive) return;
@@ -315,6 +328,17 @@ export function IOrbitHome({
         setLedger(body.data.entries);
       })
       .catch(() => setLedger("unavailable"));
+    return () => controller.abort();
+  }, [demoActive]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || demoActive) return;
+    const controller = new AbortController();
+    void fetchCurrentPlan(controller.signal)
+      .then((value) => setPlan(value))
+      .catch(() => {
+        if (!controller.signal.aborted) setPlan("unavailable");
+      });
     return () => controller.abort();
   }, [demoActive]);
 
@@ -605,6 +629,36 @@ export function IOrbitHome({
 
   const recentSessions = Array.isArray(sessions) ? sessions.slice(0, 3) : [];
 
+  const planSnapshot = plan !== "pending" && plan !== "unavailable" ? plan : null;
+  const planSummary = planSnapshot ? buildPlanWeekSummary(planSnapshot, now, lang, planSticky) : null;
+  // 打勾：先改本地，服务端确认后换成返回的条目；失败只把这一条回滚并提示。
+  const togglePlanAction = async (itemId: string, done: boolean) => {
+    if (!planSnapshot || planBusyId) return;
+    const previous = planSnapshot.items.find((item) => item.id === itemId);
+    setPlanError(null);
+    setPlanBusyId(itemId);
+    setPlanSticky((current) => (current.includes(itemId) ? current : [...current, itemId]));
+    setPlan((current) => (current && current !== "pending" && current !== "unavailable" ? withActionDone(current, itemId, done, new Date()) : current));
+    try {
+      const result = await patchPlanActionDone(itemId, done);
+      setPlan((current) => (current && current !== "pending" && current !== "unavailable" ? withServerItem(current, result.item, result.log) : current));
+    } catch (error) {
+      setPlan((current) =>
+        current && current !== "pending" && current !== "unavailable" && previous
+          ? { ...current, items: current.items.map((item) => (item.id === itemId ? previous : item)) }
+          : current,
+      );
+      setPlanError(
+        t({
+          en: `Couldn't save that — it has been put back. (${(error as Error).message})`,
+          zh: `没能保存，已恢复原状。（${(error as Error).message}）`,
+        }),
+      );
+    } finally {
+      setPlanBusyId(null);
+    }
+  };
+
   const dateMain = new Intl.DateTimeFormat(locale, {
     day: "numeric",
     month: "long",
@@ -657,6 +711,7 @@ export function IOrbitHome({
   const ready =
     snapshot !== "pending" &&
     ledger !== "pending" &&
+    plan !== "pending" &&
     signals !== "pending" &&
     sessions !== "pending";
   const itemsSettled = snapshot !== "pending" && signals !== "pending";
@@ -1055,51 +1110,120 @@ export function IOrbitHome({
 
       {/* 栏目区（Q14） */}
       <section aria-label={t({ en: "Columns", zh: "栏目" })} className="ir-m-cols">
-        <div className="ir-m-col">
-          <div className="ir-m-col-head">
-            <h3>{t({ en: "This week", zh: "本周推进" })}</h3>
-            <a href="/app/agent/plan">{t({ en: "Plan →", zh: "执行计划 →" })}</a>
-          </div>
-          <p className="ir-m-goal">
-            {home?.account.relationshipGoal?.trim() ||
-              t({ en: "No goal on your profile yet.", zh: "还没有设定目标。" })}
-          </p>
-          <span className="ir-m-bar">
-            <span className="ir-m-bar-track">
-              <span className="ir-m-bar-fill" style={{ width: progress ? `${progress.percent}%` : "0%" }} />
-            </span>
-            <strong className="ir-progress-value">
-              {progress ? `${progress.done}/${progress.total}` : "—"}
-            </strong>
-          </span>
-          {focusTasks.length > 0 ? (
-            <ul className="ir-m-tasks">
-              {focusTasks.map((entry) => {
-                const done = entry.status === "completed";
-                return (
-                  // 账本任务没有写接口：渲染为静态状态标记，不做假按钮。
-                  <li className={done ? "ir-m-task ir-m-task-done" : "ir-m-task"} key={entry.entryId}>
-                    {entry.title}
+        {planSummary ? (
+          <div className="ir-m-col" data-orbit-iorbit-week="plan">
+            <div className="ir-m-col-head">
+              <h3>{t({ en: "This week", zh: "本周推进" })}</h3>
+              <em className="ir-m-plan-week">
+                {lang === "zh"
+                  ? `第 ${planSummary.week} 周 / 共 ${planSummary.totalWeeks} 周`
+                  : `Week ${planSummary.week} of ${planSummary.totalWeeks}`}
+              </em>
+            </div>
+            {planSummary.phaseTitle ? (
+              <p className="ir-m-plan-phase">
+                {lang === "zh" ? `第 ${planSummary.phaseNo} 阶段 · ` : `Phase ${planSummary.phaseNo} · `}
+                <b>{planSummary.phaseTitle}</b>
+              </p>
+            ) : null}
+            {planError ? (
+              <p className="ir-m-plan-alert" role="alert">
+                {planError}
+              </p>
+            ) : null}
+            {planSummary.actions.length > 0 ? (
+              <ul className="ir-m-plan-acts">
+                {planSummary.actions.map((action) => (
+                  <li
+                    className={action.done ? "ir-m-plan-act ir-m-plan-act-done" : "ir-m-plan-act"}
+                    data-orbit-iorbit-plan-action={action.id}
+                    key={action.id}
+                  >
+                    <button
+                      aria-checked={action.done}
+                      aria-label={action.title}
+                      className="btn ir-m-plan-box"
+                      disabled={planBusyId === action.id}
+                      onClick={() => void togglePlanAction(action.id, !action.done)}
+                      role="checkbox"
+                      type="button"
+                    />
+                    <span>{action.title}</span>
+                    {action.weeksOverdue > 0 ? (
+                      <small>
+                        {lang === "zh" ? `已延后 ${action.weeksOverdue} 周` : `Pushed back ${action.weeksOverdue} wk`}
+                      </small>
+                    ) : null}
                   </li>
-                );
-              })}
-            </ul>
-          ) : (
-            <p className="ir-m-empty">
-              {ledger === "pending"
-                ? t({ en: "Reading your plan…", zh: "正在读取执行计划…" })
-                : ledger === "unavailable"
-                  ? t({ en: "The plan source is unavailable right now.", zh: "执行计划来源暂时不可用。" })
-                  : t({ en: "No task is in progress this week.", zh: "这周还没有进行中的任务。" })}
-            </p>
-          )}
-          <span className="ir-m-strategy">
-            <a href="/app/agent/strategy?view=contacts">
-              {t({ en: "Who should I contact first? →", zh: "我该先联系谁 →" })}
+                ))}
+              </ul>
+            ) : (
+              <p className="ir-m-empty">{t({ en: "Nothing left to do this week.", zh: "这周没有待办的行动。" })}</p>
+            )}
+            <span className="ir-m-plan-counts">
+              <span>
+                {t({ en: "Actions ", zh: "行动 " })}
+                <b>
+                  {planSummary.actionsDone}/{planSummary.actionsTotal}
+                </b>
+              </span>
+              <span>
+                {t({ en: "Connected ", zh: "已建立联系 " })}
+                <b>{planSummary.contactsEstablished}</b>
+                {t({ en: "", zh: " 位" })}
+              </span>
+            </span>
+            <a className="ir-m-plan-link" href="/app/agent/plan">
+              {t({ en: "See the full plan →", zh: "查看完整计划 →" })}
             </a>
-            <a href="/app/agent/strategy">{t({ en: "Draft a plan →", zh: "帮我制定推进计划 →" })}</a>
-          </span>
-        </div>
+          </div>
+        ) : (
+          <div className="ir-m-col">
+            <div className="ir-m-col-head">
+              <h3>{t({ en: "This week", zh: "本周推进" })}</h3>
+              <a href="/app/agent/plan">{t({ en: "Plan →", zh: "执行计划 →" })}</a>
+            </div>
+            <p className="ir-m-goal">
+              {home?.account.relationshipGoal?.trim() ||
+                t({ en: "No goal on your profile yet.", zh: "还没有设定目标。" })}
+            </p>
+            <span className="ir-m-bar">
+              <span className="ir-m-bar-track">
+                <span className="ir-m-bar-fill" style={{ width: progress ? `${progress.percent}%` : "0%" }} />
+              </span>
+              <strong className="ir-progress-value">
+                {progress ? `${progress.done}/${progress.total}` : "—"}
+              </strong>
+            </span>
+            {focusTasks.length > 0 ? (
+              <ul className="ir-m-tasks">
+                {focusTasks.map((entry) => {
+                  const done = entry.status === "completed";
+                  return (
+                    // 账本任务没有写接口：渲染为静态状态标记，不做假按钮。
+                    <li className={done ? "ir-m-task ir-m-task-done" : "ir-m-task"} key={entry.entryId}>
+                      {entry.title}
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <p className="ir-m-empty">
+                {ledger === "pending"
+                  ? t({ en: "Reading your plan…", zh: "正在读取执行计划…" })
+                  : ledger === "unavailable"
+                    ? t({ en: "The plan source is unavailable right now.", zh: "执行计划来源暂时不可用。" })
+                    : t({ en: "No task is in progress this week.", zh: "这周还没有进行中的任务。" })}
+              </p>
+            )}
+            <span className="ir-m-strategy">
+              <a href="/app/agent/strategy?view=contacts">
+                {t({ en: "Who should I contact first? →", zh: "我该先联系谁 →" })}
+              </a>
+              <a href="/app/agent/strategy">{t({ en: "Draft a plan →", zh: "帮我制定推进计划 →" })}</a>
+            </span>
+          </div>
+        )}
 
         <div className="ir-m-col">
           <div className="ir-m-col-head">
