@@ -48,6 +48,8 @@ export interface PlanReader {
   items(planId: string): Promise<PlanItem[]>;
   item(itemId: string): Promise<PlanItem | null>;
   log(planId: string, limit: number): Promise<PlanLogEntry[]>;
+  /** W0012：本人所有版本在 [fromIso, toIso) 里写下的进展记录（按时间正序，有上限），周一小结用。 */
+  logBetween(fromIso: string, toIso: string, limit: number): Promise<PlanLogEntry[]>;
   logByIdempotencyKey(idempotencyKey: string): Promise<PlanLogEntry | null>;
   logById(logId: string): Promise<PlanLogEntry | null>;
   commandReceipt(idempotencyKey: string): Promise<PlanCommandReceipt | null>;
@@ -242,6 +244,14 @@ function postgresReader(client: PlanQueryClient, scope: PlanScope): PlanReader {
          where workspace_id = $1 and actor_id = $2 and plan_id = $3
          order by seq desc limit $4`,
         [ws, actor, planId, limit],
+      )).map(logFromRow);
+    },
+    async logBetween(fromIso, toIso, limit) {
+      return (await rows(
+        `select ${LOG_COLUMNS} from plan_log
+         where workspace_id = $1 and actor_id = $2 and created_at >= $3 and created_at < $4
+         order by created_at, seq limit $5`,
+        [ws, actor, fromIso, toIso, limit],
       )).map(logFromRow);
     },
     async logByIdempotencyKey(idempotencyKey) {
@@ -513,6 +523,17 @@ function memoryReader(state: MemoryScopeState): PlanReader {
       return state.log
         .filter((entry) => entry.planId === planId)
         .reverse()
+        .slice(0, limit)
+        .map(clone);
+    },
+    async logBetween(fromIso, toIso, limit) {
+      const from = Date.parse(fromIso);
+      const to = Date.parse(toIso);
+      return state.log
+        .filter((entry) => {
+          const at = Date.parse(entry.createdAt);
+          return at >= from && at < to;
+        })
         .slice(0, limit)
         .map(clone);
     },

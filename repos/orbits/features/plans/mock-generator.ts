@@ -404,8 +404,11 @@ export function createMockPlanGenerator(): PlanGenerator {
     async phaseDetail(input, phase): Promise<PlanPhaseDetail> {
       const plan = derive(input);
       const index = plan.frames.findIndex((frame) => frame.key === phase.key);
-      const frame = plan.frames[index];
-      if (!frame) throw new Error(`Unknown phase ${phase.key}.`);
+      const base = plan.frames[index];
+      if (!base) throw new Error(`Unknown phase ${phase.key}.`);
+      // W0012：一年期进入后面的季度段时，以 `detailed: true` 重新请求这一段，补出周级行动
+      // （`phase-refinement.ts`）。第一次生成时 phase.detailed 与模板一致，结果不变。
+      const frame = { ...base, detailed: phase.detailed };
       return phaseDetail(input, plan, frame, index);
     },
   };
@@ -487,6 +490,19 @@ function phaseDetail(input: PlanGeneratorInput, plan: Plan, frame: PhaseFrame, i
     needs.push(plan.needs.connector);
   }
 
+  // W0012：一年期后面的季度段在进入时补细（detailed），先安排一条承上启下的行动。
+  if (index > 0 && frame.detailed && frame.granularity === "quarter") {
+    items.push({
+      kind: "action",
+      phaseKey: frame.key,
+      suggestedWeek: at(frame.startWeek),
+      title: pick(locale, {
+        en: "Review last quarter and pick the three people to meet first",
+        zh: "回顾上一季度，定下这一季度最先要见的 3 个人",
+      }),
+    });
+  }
+
   if (frame.role === "meet") {
     items.push(
       {
@@ -535,7 +551,7 @@ function phaseDetail(input: PlanGeneratorInput, plan: Plan, frame: PhaseFrame, i
     items.push({
       kind: "action",
       phaseKey: frame.key,
-      suggestedWeek: null,
+      suggestedWeek: at(frame.endWeek),
       title: pick(locale, { en: "Review the year and pick what to repeat", zh: "复盘这一年，选出值得重复的做法" }),
     });
   }

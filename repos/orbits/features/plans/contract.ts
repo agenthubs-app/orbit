@@ -17,6 +17,7 @@ import type {
   IndustryIdCode,
   SecondaryIndustryIdCode,
 } from "../../shared/contract/industries";
+import type { PlanWeeklySummary } from "./weekly-summary";
 
 /** 与目标编辑器的期限键一致（`goal-editor-model.ts` 的 `GoalHorizon`）：一个月内／3 个月内／一年内。 */
 export const PLAN_HORIZONS = ["month", "quarter", "year"] as const;
@@ -94,6 +95,8 @@ export const PLAN_LOG_EVENTS = [
   "contact_unlinked",
   "answer_updated",
   "action_deferred",
+  /** W0012：计划进入新阶段（第 2 段起）；一年期同时补充该阶段的周级行动。每份计划每个阶段只一条。 */
+  "phase_entered",
   "note",
 ] as const;
 export type PlanLogEvent = (typeof PLAN_LOG_EVENTS)[number];
@@ -359,6 +362,47 @@ export interface MarkEventAttendedResult {
   logs: PlanLogEntry[];
 }
 
+/**
+ * W0012：活动报名／取消报名后，本人生效计划里对应活动（`linkedEventId`）跟着变：
+ * 报名 推荐 → 已报名；取消 已报名 → 推荐（W0007 的回退迁移）。已参加是终态，不再变。
+ * 每次真实变化写一条 auto 记录，幂等键 `event-registered|event-cancelled:<item>:<registrationVersion>`；
+ * 状态已一致（重复提交、已参加）时不写库。没有生效计划或计划里没有这场活动时什么都不做。
+ */
+export interface MarkEventRegistrationInput {
+  eventId: string;
+  registered: boolean;
+  /** 报名记录的版本（`updatedAt`），让同一次报名的重试落在同一个幂等键上。 */
+  registrationVersion: string;
+}
+
+export interface MarkEventRegistrationResult {
+  item: PlanItem | null;
+  log: PlanLogEntry | null;
+}
+
+/** W0012：进入新阶段的生产者结果（没有进入新阶段或已记过时 entered 为 null）。 */
+export interface EnterPhaseResult {
+  entered: PlanLogEntry | null;
+  /** 一年期补充的周级行动（新增或补上周次的条目）。 */
+  refined: PlanItem[];
+}
+
+/**
+ * W0012：新版本的来历。
+ * - `reanalysis`：重新分析，每个东京自然月 1 次（额度记在 `plan_log` 的唯一幂等键 `reanalysis:<YYYY-MM>` 上）；
+ * - `next_plan`：周期到期后制定下一份，不占额度，但当前计划必须已过最后一周。
+ * 只能由服务端的调用方传入（`createVersionWithOutcome` 第二个参数），请求体无法指定。
+ */
+export type PlanVersionOrigin = "reanalysis" | "next_plan";
+
+export interface ReanalysisQuota {
+  /** 东京自然月 YYYY-MM。 */
+  month: string;
+  limit: number;
+  used: number;
+  remaining: number;
+}
+
 export interface PlanService {
   getCurrent(): Promise<PlanSnapshot | null>;
   /** 本人任一版本（含已归档）；他人的计划一律视为不存在。 */
@@ -369,13 +413,22 @@ export interface PlanService {
    * 同 `createVersion`，另外告诉调用方这次是新建（created）还是同一 `creationKey` 已保存过的那份。
    * 判定与保存在同一个按人串行的事务里，并发重复提交恰好一份 created（W0008 bootstrap 用）。
    */
-  createVersionWithOutcome(input: CreatePlanVersionInput): Promise<{ snapshot: PlanSnapshot; created: boolean }>;
+  createVersionWithOutcome(
+    input: CreatePlanVersionInput,
+    options?: { origin?: PlanVersionOrigin },
+  ): Promise<{ snapshot: PlanSnapshot; created: boolean }>;
   updateItem(input: UpdatePlanItemInput): Promise<UpdatePlanItemResult>;
   addManualLog(input: AddManualLogInput): Promise<{ entry: PlanLogEntry; replayed: boolean }>;
   linkNeedContact(input: LinkNeedContactInput): Promise<LinkNeedContactResult>;
   decideMatchCandidate(input: DecideMatchCandidateInput): Promise<DecideMatchCandidateResult>;
   recordInteraction(input: RecordInteractionInput): Promise<RecordInteractionResult>;
   markEventAttended(input: MarkEventAttendedInput): Promise<MarkEventAttendedResult>;
+  markEventRegistration(input: MarkEventRegistrationInput): Promise<MarkEventRegistrationResult>;
+  /** 按东京周次惰性判定是否进入了新阶段；进入了就幂等写日志（一年期同时补充周级行动）。 */
+  enterCurrentPhase(): Promise<EnterPhaseResult>;
+  /** 东京周一才有：上周（周一 00:00 到周日 24:00，东京）的进展小结；其他日子或没有计划时为 null。 */
+  weeklySummary(): Promise<PlanWeeklySummary | null>;
+  reanalysisQuota(): Promise<ReanalysisQuota>;
 }
 
 /**
@@ -400,5 +453,7 @@ export const PLAN_ERROR_REASONS = [
   "IDEMPOTENCY_KEY_REUSED",
   "REFERENCE_NOT_FOUND",
   "MATCH_ALREADY_DECIDED",
+  "REANALYSIS_QUOTA_EXHAUSTED",
+  "PLAN_NOT_ENDED",
 ] as const;
 export type PlanErrorReason = (typeof PLAN_ERROR_REASONS)[number];

@@ -26,7 +26,7 @@ export interface AttributionEvent {
 export interface EventAttributionSource {
   /** 已发布、开始时间落在 [fromIso, toIso) 的活动。 */
   listEventsStartingBetween(fromIso: string, toIso: string): Promise<readonly AttributionEvent[]>;
-  /** 这些活动里本人（Auth.js 用户 id）已报名的那些。 */
+  /** 这些活动里本人已报名的那些。`userId` 是账号 id（actor.id），与报名路由写入时一致。 */
   registeredEventIds(input: { userId: string; eventIds: readonly string[] }): Promise<ReadonlySet<string>>;
 }
 

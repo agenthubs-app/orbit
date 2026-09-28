@@ -9,7 +9,10 @@ import test from "node:test";
 
 import { Pool } from "pg";
 
+import { createPostgresPlanMatchRepository } from "../../features/plans/matching-repository";
 import { PLAN_MIGRATIONS, runPlanMigrations } from "../../features/plans/migrations";
+import { createMockPlanGenerator } from "../../features/plans/mock-generator";
+import { createPhaseRefiner } from "../../features/plans/phase-refinement";
 import { createPostgresPlanRepository, type PlanRepository } from "../../features/plans/repository";
 import { createPostgresPlanReferenceValidator } from "../../features/plans/reference-validator";
 import { createPlanService, PlanServiceError } from "../../features/plans/service";
@@ -490,5 +493,231 @@ test("W0015: markEventAttended on PostgreSQL is idempotent under concurrency and
     // bob 的同一场活动不受 alice 的确认影响。
     assert.deepEqual(status.rows.map((row) => [row.actor_id, row.status]), [["actor:alice", "attended"], ["actor:bob", "recommended"]]);
     assert.deepEqual((await alice.markEventAttended({ eventId: "event:tokyo-saas-night" })).logs, []);
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* W0012：长期跟踪的生产者、额度与事务（真实 PostgreSQL）                  */
+/* ------------------------------------------------------------------ */
+
+function timedService(harness: Harness, actorId: string, clock: { now: string }, repository: PlanRepository = harness.repository): PlanService {
+  let tick = 0;
+  return createPlanService({
+    now: () => new Date(Date.parse(clock.now) + tick++).toISOString(),
+    phaseRefiner: createPhaseRefiner(createMockPlanGenerator()),
+    references: createPostgresPlanReferenceValidator({
+      actorId,
+      client: harness.pool,
+      eventCore: PUBLISHED_EVENT_CATALOGUE,
+      workspaceId: WORKSPACE,
+    }),
+    repository,
+    scope: { actorId, workspaceId: WORKSPACE },
+  });
+}
+
+test("W0012: two simultaneous re-analyses on PostgreSQL — exactly one version, one quota row per Tokyo month", databaseTest, async () => {
+  await withDatabase(async (harness) => {
+    const { pool } = harness;
+    const clock = { now: "2026-09-30T14:30:00.000Z" }; // 9/30 23:30 JST
+    const alice = timedService(harness, "actor:alice", clock);
+    await alice.createVersion(planInput());
+    const results = await Promise.allSettled([
+      alice.createVersionWithOutcome(planInput(), { origin: "reanalysis" }),
+      alice.createVersionWithOutcome(planInput(), { origin: "reanalysis" }),
+    ]);
+    assert.equal(results.filter((result) => result.status === "fulfilled").length, 1);
+    const rejected = results.find((result) => result.status === "rejected") as PromiseRejectedResult;
+    assert.equal((rejected.reason as PlanServiceError).reason, "REANALYSIS_QUOTA_EXHAUSTED");
+    assert.equal(await count(pool, "plans where workspace_id = $1 and actor_id = 'actor:alice'", [WORKSPACE]), 2);
+    assert.equal(
+      await count(pool, "plan_log where workspace_id = $1 and actor_id = 'actor:alice' and idempotency_key = 'reanalysis:2026-09'", [WORKSPACE]),
+      1,
+    );
+    assert.equal((await alice.reanalysisQuota()).remaining, 0);
+    // 东京 10/1 起新的一个月；bob 的额度与 alice 无关。
+    clock.now = "2026-09-30T15:00:00.000Z";
+    assert.equal((await alice.reanalysisQuota()).remaining, 1);
+    const bob = timedService(harness, "actor:bob", clock);
+    await bob.createVersion(planInput());
+    await bob.createVersionWithOutcome(planInput(), { origin: "reanalysis" });
+    assert.equal((await alice.reanalysisQuota()).remaining, 1);
+  });
+});
+
+test("W0012: a failing next-plan transaction on PostgreSQL leaves no half version", databaseTest, async () => {
+  await withDatabase(async (harness) => {
+    const { pool } = harness;
+    const clock = { now: "2026-09-28T03:00:00.000Z" };
+    const alice = timedService(harness, "actor:alice", clock);
+    const v1 = await alice.createVersion(planInput()); // 13 周
+    const failing: PlanRepository = {
+      read: (scope, operation) => harness.repository.read(scope, operation),
+      transact: (scope, operation) =>
+        harness.repository.transact(scope, (tx) =>
+          operation({
+            ...tx,
+            async insertLog(entry) {
+              if (entry.event === "plan_created") throw new Error("injected failure");
+              return tx.insertLog(entry);
+            },
+          }),
+        ),
+    };
+    clock.now = "2027-01-05T03:00:00.000Z";
+    const broken = timedService(harness, "actor:alice", clock, failing);
+    const before = {
+      items: await count(pool, "plan_items where workspace_id = $1", [WORKSPACE]),
+      log: await count(pool, "plan_log where workspace_id = $1", [WORKSPACE]),
+      plans: await count(pool, "plans where workspace_id = $1", [WORKSPACE]),
+    };
+    await assert.rejects(broken.createVersionWithOutcome(planInput({ basePlanId: v1.plan.id }), { origin: "next_plan" }), /injected failure/);
+    assert.deepEqual(
+      {
+        items: await count(pool, "plan_items where workspace_id = $1", [WORKSPACE]),
+        log: await count(pool, "plan_log where workspace_id = $1", [WORKSPACE]),
+        plans: await count(pool, "plans where workspace_id = $1", [WORKSPACE]),
+      },
+      before,
+    );
+    assert.equal((await alice.getCurrent())?.plan.id, v1.plan.id);
+    assert.equal((await alice.getCurrent())?.plan.status, "active");
+    // 正常重试成功，且不占额度。
+    const next = await timedService(harness, "actor:alice", clock).createVersionWithOutcome(planInput({ basePlanId: v1.plan.id }), {
+      origin: "next_plan",
+    });
+    assert.equal(next.snapshot.plan.version, 2);
+    assert.equal((await alice.reanalysisQuota()).remaining, 1);
+  });
+});
+
+test("W0012: registration sync on PostgreSQL writes once under concurrency and only for the actor", databaseTest, async () => {
+  await withDatabase(async ({ pool, serviceFor }) => {
+    const alice = serviceFor("actor:alice");
+    const bob = serviceFor("actor:bob");
+    const v1 = await alice.createVersion(planInput());
+    await bob.createVersion(planInput());
+    const event = v1.items.find((item) => item.kind === "event")!;
+    await Promise.all(
+      [1, 2, 3].map(() => alice.markEventRegistration({ eventId: "event:tokyo-saas-night", registered: true, registrationVersion: "r1" })),
+    );
+    await alice.markEventRegistration({ eventId: "event:tokyo-saas-night", registered: false, registrationVersion: "r2" });
+    await alice.markEventRegistration({ eventId: "event:tokyo-saas-night", registered: false, registrationVersion: "r2" });
+    const logs = await pool.query<{ idempotency_key: string; to_status: string }>(
+      `select idempotency_key, to_status from plan_log
+       where workspace_id = $1 and actor_id = 'actor:alice' and item_id = $2 order by seq`,
+      [WORKSPACE, event.id],
+    );
+    assert.deepEqual(logs.rows.map((row) => [row.idempotency_key, row.to_status]), [
+      [`event-registered:${event.id}:r1`, "registered"],
+      [`event-cancelled:${event.id}:r2`, "recommended"],
+    ]);
+    assert.equal(
+      await count(pool, "plan_log where workspace_id = $1 and actor_id = 'actor:bob' and event = 'item_status_changed'", [WORKSPACE]),
+      0,
+    );
+  });
+});
+
+test("W0012: phase entry on PostgreSQL is written once, refines a year plan once, and the plan-phase scan finds only pending actors", databaseTest, async () => {
+  await withDatabase(async (harness) => {
+    const { pool } = harness;
+    const clock = { now: "2026-09-28T03:00:00.000Z" };
+    const yearInput = planInput({
+      horizon: "year",
+      items: [
+        { kind: "action", phaseKey: "q1", suggestedWeek: 1, title: "列出 10 位目标客户" },
+        { kind: "action", phaseKey: "q2", title: "完成 8 次 20 分钟的交流" },
+      ],
+      phases: [
+        { endWeek: 13, granularity: "quarter", key: "q1", startWeek: 1, title: "摸清需求" },
+        { endWeek: 26, granularity: "quarter", key: "q2", startWeek: 14, title: "集中接触" },
+        { endWeek: 39, granularity: "quarter", key: "q3", startWeek: 27, title: "推进落地" },
+        { endWeek: 52, granularity: "quarter", key: "q4", startWeek: 40, title: "复盘放大" },
+      ],
+    });
+    const alice = timedService(harness, "actor:alice", clock);
+    const bob = timedService(harness, "actor:bob", clock);
+    const aliceV1 = await alice.createVersion(yearInput);
+    await bob.createVersion(planInput({ ...yearInput, startsOn: "2026-12-21" })); // bob 还在第一季度
+    const scanner = createPostgresPlanMatchRepository({ pool, workspaceId: WORKSPACE });
+
+    assert.deepEqual(await scanner.listActorsEnteringPhase({ limit: 10, today: "2026-12-27" }), []);
+    assert.deepEqual(await scanner.listActorsEnteringPhase({ limit: 10, today: "2026-12-28" }), ["actor:alice"]);
+
+    clock.now = "2026-12-28T03:00:00.000Z";
+    const results = await Promise.all([alice.enterCurrentPhase(), alice.enterCurrentPhase(), alice.enterCurrentPhase()]);
+    assert.equal(results.filter((result) => result.entered).length, 1);
+    const refined = results.find((result) => result.entered)!.refined;
+    assert.ok(refined.length > 0);
+    assert.equal(
+      await count(pool, "plan_log where workspace_id = $1 and idempotency_key = $2", [WORKSPACE, `phase-entered:${aliceV1.plan.id}:q2`]),
+      1,
+    );
+    const q2 = await pool.query<{ suggested_week: number | null }>(
+      `select suggested_week from plan_items where workspace_id = $1 and actor_id = 'actor:alice' and plan_id = $2 and phase = 'q2' and kind = 'action'`,
+      [WORKSPACE, aliceV1.plan.id],
+    );
+    // 补出来的周级行动都落在第二季度内；手工建的、模板里没有的同阶段行动保持原样（不猜周次）。
+    const weeked = q2.rows.filter((row) => row.suggested_week !== null);
+    assert.ok(weeked.length >= 1);
+    assert.ok(weeked.every((row) => row.suggested_week! >= 14 && row.suggested_week! <= 26));
+    assert.equal(q2.rows.length - weeked.length, 1);
+    const itemCount = await count(pool, "plan_items where workspace_id = $1 and actor_id = 'actor:alice'", [WORKSPACE]);
+    assert.deepEqual(await alice.enterCurrentPhase(), { entered: null, refined: [] });
+    assert.equal(await count(pool, "plan_items where workspace_id = $1 and actor_id = 'actor:alice'", [WORKSPACE]), itemCount);
+    assert.deepEqual(await scanner.listActorsEnteringPhase({ limit: 10, today: "2026-12-28" }), []);
+    // alice 第 27 周（q3）要进入；52 周结束后（2027-09-27 起）到期的计划不再列出。
+    // bob 从 12/21 起：这些日子分别在 q2／q4，照常列出。
+    assert.deepEqual(await scanner.listActorsEnteringPhase({ limit: 10, today: "2027-03-29" }), ["actor:alice", "actor:bob"]);
+    assert.deepEqual(await scanner.listActorsEnteringPhase({ limit: 10, today: "2027-09-26" }), ["actor:alice", "actor:bob"]);
+    assert.deepEqual(await scanner.listActorsEnteringPhase({ limit: 10, today: "2027-09-27" }), ["actor:bob"]);
+    // bob 的计划没有被写入。
+    assert.equal(await count(pool, "plan_log where workspace_id = $1 and actor_id = 'actor:bob' and event = 'phase_entered'", [WORKSPACE]), 0);
+    assert.deepEqual((await bob.enterCurrentPhase()).entered, null);
+  });
+});
+
+test("W0012: the weekly summary on PostgreSQL reads only the actor's log inside last Tokyo week", databaseTest, async () => {
+  await withDatabase(async (harness) => {
+    const clock = { now: "2026-09-28T03:00:00.000Z" };
+    const alice = timedService(harness, "actor:alice", clock);
+    const bob = timedService(harness, "actor:bob", clock);
+    const v1 = await alice.createVersion(planInput());
+    const bobV1 = await bob.createVersion(planInput());
+    const action = v1.items.find((item) => item.kind === "action")!;
+    clock.now = "2026-10-04T14:59:59.000Z"; // 周日 23:59:59 JST
+    await alice.updateItem({ change: { op: "set_status", status: "done" }, itemId: action.id });
+    await bob.updateItem({ change: { op: "set_status", status: "done" }, itemId: bobV1.items.find((item) => item.kind === "action")!.id });
+    clock.now = "2026-10-04T15:00:00.000Z"; // 周一 00:00 JST（下一周）
+    await alice.addManualLog({ body: "这一条属于本周" });
+    const summary = await alice.weeklySummary();
+    assert.equal(summary?.window.start, "2026-09-28");
+    assert.equal(summary?.counts.actionsCompleted, 1);
+    assert.equal(summary?.counts.notes, 0);
+  });
+});
+
+test("W0012: stale registration versions are ignored on PostgreSQL and the reconcile scan lists only unattended active event items", databaseTest, async () => {
+  await withDatabase(async ({ pool, serviceFor }) => {
+    const alice = serviceFor("actor:alice");
+    const bob = serviceFor("actor:bob");
+    const v1 = await alice.createVersion(planInput());
+    await bob.createVersion(planInput());
+    const event = v1.items.find((item) => item.kind === "event")!;
+    await alice.markEventRegistration({ eventId: "event:tokyo-saas-night", registered: false, registrationVersion: "2030-01-02T00:00:00.000Z" });
+    const stale = await alice.markEventRegistration({ eventId: "event:tokyo-saas-night", registered: true, registrationVersion: "2030-01-01T00:00:00.000Z" });
+    assert.equal(stale.log, null);
+    const row = await pool.query<{ status: string; version: string }>(
+      `select status, meta->>'registrationVersion' as version from plan_items where workspace_id = $1 and id = $2`,
+      [WORKSPACE, event.id],
+    );
+    assert.deepEqual(row.rows[0], { status: "recommended", version: "2030-01-02T00:00:00.000Z" });
+
+    await bob.markEventAttended({ eventId: "event:tokyo-saas-night" });
+    const scanner = createPostgresPlanMatchRepository({ pool, workspaceId: WORKSPACE });
+    assert.deepEqual(await scanner.listActiveEventItems({ limit: 10 }), [
+      { actorId: "actor:alice", eventId: "event:tokyo-saas-night", status: "recommended" },
+    ]);
   });
 });

@@ -12,6 +12,10 @@
  * W0014 示例模式：开关打开且本人在引导期示例里时（`readDemoModeViewForActor`，与人脉页同一套
  * 判定），不读计划也不读联系人名字，直接让计划屏渲染示例人物的计划；开关关闭时那次判定不做
  * 任何读取，下面的真实路径与改动前一致。
+ *
+ * W0012：读计划前先惰性判定「进入新阶段」（幂等；失败不影响读取）；另读本月重新分析额度、资料里的
+ * 目标（「目标被改」提示）以及——只在计划到期时——计划期间新增的联系人（到期回顾）。这些读取失败
+ * 都只降级为不提示／回退口径，不影响计划本身。
  */
 import { redirect } from "next/navigation";
 
@@ -19,28 +23,64 @@ import { auth } from "../../../../../auth";
 import {
   planContactIds,
   readPlanContactNames,
+  readPlanPeriodContacts,
   type PlanContactName,
 } from "../../../../../features/plans/contact-names";
-import type { PlanSnapshot } from "../../../../../features/plans/contract";
+import type { PlanService, PlanSnapshot } from "../../../../../features/plans/contract";
 import { resolvePlanService } from "../../../../../features/plans/service-factory";
+import { planWeekState } from "../../../../../features/plans/week";
+import { createProfileService } from "../../../../../features/profile/service-factory";
+import { resolveModuleMode } from "../../../../../shared/services/module-mode";
 import { readGuideDemoConfig } from "../../../../../shared/config/guide-demo";
 import { resolveAuthenticatedApiActorFromSession } from "../../../../api/_shared/authenticated-actor";
 import { readDemoModeViewForActor } from "../../_demo/demo-guide-view";
 import { OrbitReferenceStyles } from "../../orbit-reference-styles";
 import { OrbitVisualFreezeRuntime } from "../../orbit-visual-freeze-runtime";
 import { IOrbitPlan } from "../iorbit-0918/iorbit-plan";
+import type { PlanTrackingInput } from "./plan-route-view-model";
 
 export const dynamic = "force-dynamic";
 
 /** 本人的当前生效计划；没有为 null，服务不可用或读取失败为 "unavailable"。 */
-async function readCurrentPlan(actorId: string): Promise<PlanSnapshot | null | "unavailable"> {
+async function readCurrentPlan(actorId: string): Promise<{ service: PlanService | null; snapshot: PlanSnapshot | null | "unavailable" }> {
   try {
     const resolution = resolvePlanService({ actorId });
-    if (resolution.success === false) return "unavailable";
-    return await resolution.service.getCurrent();
+    if (resolution.success === false) return { service: null, snapshot: "unavailable" };
+    // W0012：进入新阶段的惰性生产者（幂等；失败由每日 plan-phase 维护任务兜底，不影响读取）。
+    const service = resolution.service;
+    await Promise.resolve()
+      .then(() => service.enterCurrentPhase())
+      .catch(() => undefined);
+    return { service: resolution.service, snapshot: await resolution.service.getCurrent() };
   } catch {
-    return "unavailable";
+    return { service: null, snapshot: "unavailable" };
   }
+}
+
+async function readTracking(
+  actorId: string,
+  service: PlanService | null,
+  snapshot: PlanSnapshot | null | "unavailable",
+): Promise<PlanTrackingInput | null> {
+  if (!service || !snapshot || snapshot === "unavailable") return null;
+  // 每一项单独降级：读不到额度 → 按钮不可用；读不到目标 → 不据此提示；读不到联系人 → 回顾退回计划口径。
+  const settle = <T,>(read: () => Promise<T>): Promise<T | null> =>
+    Promise.resolve()
+      .then(read)
+      .catch(() => null);
+  const [quota, goal, periodContacts] = await Promise.all([
+    settle(async () => (await service.reanalysisQuota()).remaining),
+    settle(async () => {
+      const result = await createProfileService(resolveModuleMode()).getProfile({ actorId });
+      return result.success ? result.data.profile?.relationshipGoal ?? null : null;
+    }),
+    settle(async () =>
+      planWeekState(snapshot.plan, new Date()).ended
+        ? readPlanPeriodContacts(actorId, new Date(`${snapshot.plan.startsOn}T00:00:00+09:00`).toISOString())
+        : null,
+    ),
+  ]);
+  return { currentGoal: goal, periodContacts, quotaRemaining: quota };
 }
 
 async function readContactNames(
@@ -81,8 +121,11 @@ export default async function AgentPlanPage() {
       </>
     );
   }
-  const snapshot = await readCurrentPlan(actor.id);
-  const contactNames = await readContactNames(actor.id, snapshot);
+  const { service, snapshot } = await readCurrentPlan(actor.id);
+  const [contactNames, tracking] = await Promise.all([
+    readContactNames(actor.id, snapshot),
+    readTracking(actor.id, service, snapshot),
+  ]);
 
   return (
     <>
@@ -92,6 +135,7 @@ export default async function AgentPlanPage() {
         contactNames={contactNames}
         guideEnabled={readGuideDemoConfig().enabled}
         initialSnapshot={snapshot}
+        tracking={tracking}
       />
     </>
   );

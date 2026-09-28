@@ -774,12 +774,13 @@ test("W0015 confirm records the verified met-at event on new and merged contacts
     const events = [
       { eventId: "event:mixer", startsAt: hourAgo, title: "Tokyo Startup Mixer" },
       { eventId: "event:bob-only", startsAt: hourAgo, title: "Bob's Meetup" },
+      { eventId: "event:session-only", startsAt: hourAgo, title: "Session-id Registration" },
     ];
     const attended: Array<{ actorId: string; eventId: string }> = [];
     const registrationLookups: string[] = [];
     const deps = {
       ...baseDeps,
-      // 报名按 Auth.js 用户 id 记，联系人与计划按 actor（账户）id 记。
+      // 账号 id 与 Auth.js 会话 id 不同：报名、联系人与计划都按账号 id（actor.id）记。
       resolveActor: async () => ({ id: "actor:test", userId: "user:test" }),
       eventAttribution: {
         async markAttended(input: { actorId: string; eventId: string }) {
@@ -792,7 +793,12 @@ test("W0015 confirm records the verified met-at event on new and merged contacts
             },
             async registeredEventIds({ eventIds, userId }: { eventIds: readonly string[]; userId: string }) {
               registrationLookups.push(userId);
-              return new Set(eventIds.filter(id => (userId === "user:test" ? id === "event:mixer" : id === "event:bob-only")));
+              // 账号 id 下报名了 mixer；只挂在会话 id 下的报名（session-only）不算本人的。
+              return new Set(
+                eventIds.filter(id =>
+                  userId === "actor:test" ? id === "event:mixer" : userId === "user:test" ? id === "event:session-only" : id === "event:bob-only",
+                ),
+              );
             },
           };
         },
@@ -843,10 +849,12 @@ test("W0015 confirm records the verified met-at event on new and merged contacts
     assert.equal(foreign.status, 409);
     assert.match(String(foreign.data.message), /EVENT_ATTRIBUTION_REJECTED/);
     assert.equal((await post("a", body("a", { displayName: "青空 太郎", metEventId: "event:unknown" }))).status, 409);
+    assert.equal((await post("a", body("a", { displayName: "青空 太郎", metEventId: "event:session-only" }))).status, 409);
     assert.equal(await contactCount(), 0);
     assert.deepEqual(attended, []);
     assert.equal(itemFor("a").status, "extracted");
-    assert.ok(registrationLookups.every(userId => userId === "user:test"), "registration is read for the signed-in user only");
+    assert.ok(registrationLookups.length > 0);
+    assert.ok(registrationLookups.every(userId => userId === "actor:test"), "registration is read by the account id only");
 
     // 新建：记下来源活动，OCR 来源 source 不变；计划里这场活动标为已参加。
     const createdA = await post("a", body("a", { displayName: "青空 太郎", metEventId: "event:mixer" }));

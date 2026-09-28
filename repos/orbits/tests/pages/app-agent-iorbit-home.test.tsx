@@ -406,6 +406,8 @@ interface MountOptions {
   ledger?: unknown;
   /** W0009：`GET /api/agent/plans/current` 的 data（undefined = 接口 404，走账本回退）。 */
   plan?: unknown;
+  /** W0012：`GET /api/agent/plans/weekly-summary` 的 data（undefined = 接口 404）。 */
+  weeklySummary?: unknown;
   /** W0010：`GET /api/agent/plans/candidates` 的 data（undefined = 接口 404）。 */
   matches?: unknown;
   /** W0010：`POST /api/agent/plans/candidates` 的应答。 */
@@ -523,6 +525,9 @@ async function mountHome(
     }
     if (url === "/api/agent/plans/current" && options.plan !== undefined) {
       return Response.json({ data: options.plan, success: true });
+    }
+    if (url === "/api/agent/plans/weekly-summary" && options.weeklySummary !== undefined) {
+      return Response.json({ data: options.weeklySummary, success: true });
     }
     if (url === "/api/agent/plans/candidates" && (init?.method ?? "GET") === "GET" && options.matches !== undefined) {
       return Response.json({ data: options.matches, success: true });
@@ -2082,4 +2087,59 @@ test("W0011: a failed card-batch read (5xx) marks the day as partial, never as a
   const html = textOf(mounted.root.root as unknown as { children: readonly unknown[] });
   assert.ok(!html.includes("今天没有要紧的事"));
   assert.ok(html.includes("今天的部分数据暂时读取不到。"));
+});
+
+/* ── W0012 SC-02：周一导语换成上周小结 ─────────────────────────────────── */
+
+const WEEKLY_SUMMARY = {
+  counts: {
+    actionsCompleted: 3,
+    contactsEstablished: 2,
+    contactsLinked: 0,
+    eventsAttended: 1,
+    eventsRegistered: 0,
+    notes: 1,
+    phasesEntered: [],
+  },
+  window: { end: "2026-09-27", fromIso: "2026-09-20T15:00:00.000Z", start: "2026-09-21", toIso: "2026-09-27T15:00:00.000Z" },
+};
+
+function ledeOf(mounted: Mounted) {
+  return mounted.root.root.findAll((node) => node.type === "p" && node.props?.className === "ir-m-lede")[0]!;
+}
+
+test("W0012: on a Tokyo Monday the lede is last week's rule-built summary", async (t) => {
+  // 周一 00:00 JST（UTC 仍是周日）。
+  const mounted = await mountHome(t, homeElement({ clock: () => new Date("2026-09-27T15:00:00.000Z") }), {
+    plan: planSnapshotFixture(),
+    snapshot: EMPTY_SNAPSHOT,
+    weeklySummary: WEEKLY_SUMMARY,
+  });
+  const lede = ledeOf(mounted);
+  assert.equal(lede.props["data-orbit-home-lede"], "weekly");
+  assert.equal(textOf(lede), "上周（9/21–9/27）你完成 3 件行动、新建立联系 2 位、参加 1 场活动、记了 1 笔进展。");
+  assert.equal(mounted.calls.filter((call) => call.url === "/api/agent/plans/weekly-summary").length, 1);
+});
+
+test("W0012: on other days (Sunday 23:59 JST) the today lede stays and the summary is not read", async (t) => {
+  const mounted = await mountHome(t, homeElement({ clock: () => new Date("2026-09-27T14:59:00.000Z") }), {
+    plan: planSnapshotFixture(),
+    snapshot: EMPTY_SNAPSHOT,
+    weeklySummary: WEEKLY_SUMMARY,
+  });
+  const lede = ledeOf(mounted);
+  assert.equal(lede.props["data-orbit-home-lede"], "today");
+  assert.ok(!textOf(lede).includes("上周"));
+  assert.equal(mounted.calls.filter((call) => call.url === "/api/agent/plans/weekly-summary").length, 0);
+});
+
+test("W0012: a Monday without a plan, or with an unreadable summary, keeps the today lede", async (t) => {
+  const monday = () => new Date("2026-09-28T03:00:00.000Z");
+  const noPlan = await mountHome(t, homeElement({ clock: monday }), { plan: null, snapshot: EMPTY_SNAPSHOT, weeklySummary: WEEKLY_SUMMARY });
+  assert.equal(ledeOf(noPlan).props["data-orbit-home-lede"], "today");
+  assert.equal(noPlan.calls.filter((call) => call.url === "/api/agent/plans/weekly-summary").length, 0);
+  // 小结接口 404：读过一次，导语保持今日导语。
+  const unreadable = await mountHome(t, homeElement({ clock: monday }), { plan: planSnapshotFixture(), snapshot: EMPTY_SNAPSHOT });
+  assert.equal(unreadable.calls.filter((call) => call.url === "/api/agent/plans/weekly-summary").length, 1);
+  assert.equal(ledeOf(unreadable).props["data-orbit-home-lede"], "today");
 });

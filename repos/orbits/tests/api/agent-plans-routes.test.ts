@@ -259,3 +259,30 @@ test("an unavailable plan service fails closed with 503", async () => {
   assert.equal(body.error.code, "SERVICE_UNAVAILABLE");
   assert.equal(body.error.context.capabilityId, "plans");
 });
+
+test("W0012: the legacy POST /api/agent/plans creates only the first plan; with an active plan it is 409 and writes nothing", async () => {
+  const { handlersFor, rows } = harness();
+  const me = handlersFor("actor:me");
+  const first = await me.POST_VERSION(jsonRequest("POST", { ...planInput(), creationKey: "first-plan" }));
+  assert.equal(first.status, 201);
+  const firstPlan = (await first.json()).data as { plan: { id: string } };
+
+  // 同一 creationKey 的重放照常返回那一份（不新建）。
+  const replay = await me.POST_VERSION(jsonRequest("POST", { ...planInput(), creationKey: "first-plan" }));
+  assert.equal(replay.status, 201);
+  assert.equal(((await replay.json()).data as { plan: { id: string } }).plan.id, firstPlan.plan.id);
+
+  const before = rows("actor:me");
+  // 带上正确的 basePlanId、或不带、或带 origin 都不能绕过额度换版本。
+  for (const body of [
+    { ...planInput(), basePlanId: firstPlan.plan.id },
+    planInput(),
+    { ...planInput(), basePlanId: firstPlan.plan.id, origin: "next_plan" },
+  ]) {
+    const response = await me.POST_VERSION(jsonRequest("POST", body));
+    assert.equal(response.status, 409);
+    assert.equal((await response.json()).error.context.reason, "BASE_PLAN_MISMATCH");
+  }
+  assert.deepEqual(rows("actor:me"), before);
+  assert.equal(rows("actor:me").plans.length, 1);
+});

@@ -12,7 +12,17 @@ const S = '[data-orbit-real-page="iorbit-0918"]';
 const SERIF = "'Noto Serif SC', 'Songti SC', serif";
 
 // 新增 .btn 类的基类中和（与 IORBIT_HOME_STYLES 的 NEW_BUTTONS 同一口径）。
-const NEW_BUTTONS = ["ir-p-box", "ir-p-link", "ir-p-phase-h", "ir-p-log-btn", "ir-m-plan-box", "ir-p-match"];
+const NEW_BUTTONS = [
+  "ir-p-box",
+  "ir-p-link",
+  "ir-p-phase-h",
+  "ir-p-log-btn",
+  "ir-m-plan-box",
+  "ir-p-match",
+  "ir-p-track-btn",
+  "ir-p-track-ghost",
+  "ir-p-mention",
+];
 const neutralise =
   NEW_BUTTONS.map((name) => `${S} .btn.${name}`).join(", ") +
   " { height: auto; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; letter-spacing: 0; line-height: normal; transition: none; font-weight: 400; cursor: pointer; }\n" +
@@ -136,6 +146,23 @@ ${S} .ir-p-empty h2 { margin: 0; font-family: ${SERIF}; font-weight: 900; font-s
 ${S} .ir-p-empty p { margin: 0; font-size: 15px; line-height: 1.7; color: #3B3F7A; }
 ${S} .ir-p-empty-link { align-self: flex-start; padding: 11px 20px; border-radius: 10px; background: #2E3270; color: #FFFFFF; font-size: 14px; font-weight: 500; }
 ${S} .ir-p-empty-link:hover { background: #0E1225; color: #FFFFFF; }
+/* W0012：重新分析提示条、到期回顾、@ 提及 */
+${S} .ir-p-track { display: flex; flex-direction: column; gap: 10px; padding: 16px 18px; border-radius: 12px; background: #F4F5FE; box-shadow: inset 0 0 0 1px #DDDEFA; }
+${S} .ir-p-track h3 { margin: 0; font-family: ${SERIF}; font-weight: 900; font-size: 18px; color: #0E1225; }
+${S} .ir-p-track ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; font-size: 14px; line-height: 1.6; color: #3B3F7A; }
+${S} .ir-p-track p { margin: 0; font-size: 13px; color: #6B6F99; }
+${S} .ir-p-track-acts { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+${S} .btn.ir-p-track-btn { min-height: 40px; padding: 0 18px; border: 0; border-radius: 10px; background: #2E3270; color: #FFFFFF; font-size: 14px; font-weight: 500; }
+${S} .btn.ir-p-track-btn:hover { background: #0E1225; color: #FFFFFF; }
+${S} .btn.ir-p-track-btn:disabled { background: #B9BCEB; color: #FFFFFF; cursor: not-allowed; }
+${S} .btn.ir-p-track-ghost { min-height: 40px; padding: 0 14px; border: 0; border-radius: 10px; background: transparent; color: #4B4FC7; font-size: 14px; }
+${S} .btn.ir-p-track-ghost:hover { background: #ECEEFB; color: #2E3270; }
+${S} .btn.ir-p-track-ghost:disabled { color: #9FA3C4; background: transparent; cursor: not-allowed; }
+${S} .ir-p-mentions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px; font-size: 12.5px; color: #6B6F99; }
+${S} .btn.ir-p-mention { min-height: 32px; padding: 4px 12px; border: 1px solid #DDDEFA; border-radius: 999px; background: #FFFFFF; color: #3B3F7A; font-size: 12.5px; }
+${S} .btn.ir-p-mention:hover { border-color: #4B4FC7; color: #2E3270; background: #FFFFFF; }
+${S} .btn.ir-p-mention[aria-pressed="true"] { border-color: #4B4FC7; background: #EEEFFD; color: #2E3270; font-weight: 500; }
+${S} .ir-p-log-mention { margin-left: 6px; font-size: 12.5px; color: #4B4FC7; }
 /* 首页「本周推进」读计划时 */
 ${S} .ir-m-plan-week { font-style: normal; font-size: 12.5px; color: #6B6F99; font-variant-numeric: tabular-nums; white-space: nowrap; }
 ${S} .ir-m-plan-phase { margin: 0; font-size: 14px; line-height: 1.6; color: #3B3F7A; }
