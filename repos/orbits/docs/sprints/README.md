@@ -45,7 +45,7 @@
 | [W0013](W0013-card-industry/GOAL.md) | 批量扫名片时 AI 顺便给出一级／二级行业，审阅页可改，确认后存进联系人 | RW-11（补行业部分） | 无 | completed |
 | [W0012](W0012-long-term-tracking/GOAL.md) | 进展记录、每周一小结、重新分析与到期回顾 | RW-12 | W0008、W0009、W0010 | planned |
 | [W0014](W0014-demo-mode-plan-chat/GOAL.md) | 引导期间打开「我的计划」和示例对话，看到示例人物的计划和一段示例问答 | RW-03（我的计划、示例对话部分） | W0004、W0008、W0009 | completed |
-| [W0015](W0015-event-attribution/GOAL.md) | 活动当天或次日扫的名片，审阅时问「是在 X 活动认识的吗」，确认后记来源、活动标已参加 | RW-11（活动归属） | W0007、W0010 | planned |
+| [W0015](W0015-event-attribution/GOAL.md) | 活动当天或次日扫的名片，审阅时问「是在 X 活动认识的吗」，确认后记来源、活动标已参加 | RW-11（活动归属） | W0007、W0010 | completed |
 
 全部 Sprint 都已有 GOAL 与 PLANNER（2026-09-28 编制；同日经 Codex `gpt-5.6-sol` review 后修订为 revision 2，review 意见与处理见 [REVIEW-2026-09-28.md](REVIEW-2026-09-28.md)）。`planned` 表示前置 Sprint 尚未 completed；前置完成后改为 `ready`。
 
@@ -68,3 +68,4 @@
 | W0010 | run-01（2026-09-28） | `7719d89c` | `9981c2f7` | [REPORT](W0010-network-need-matching/REPORT.md) |
 | W0011 | run-01（2026-09-28） | `25263402` | `25436ab0` | [REPORT](W0011-card-review-in-today/REPORT.md) |
 | W0014 | run-01（2026-09-28） | `8e159ed2` | `17aa8606` | [REPORT](W0014-demo-mode-plan-chat/REPORT.md) |
+| W0015 | run-01（2026-09-28） | `70d038e6` | `feac7477` | [REPORT](W0015-event-attribution/REPORT.md) |
