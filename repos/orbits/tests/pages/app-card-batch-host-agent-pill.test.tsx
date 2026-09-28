@@ -108,6 +108,8 @@ function stubBrowser(t: TestContext, options: { detail: unknown; later?: string[
     const url = String(input);
     const method = (init?.method ?? "GET").toUpperCase();
     if (url.includes("/batches/")) requests.push({ method, url });
+    // W0021 review：SessionProvider 没有预置会话时自己 GET /api/auth/session（先 loading）。
+    if (url.includes("/api/auth/session")) return Response.json(SESSION);
     if (url.endsWith("/duplicates")) return Response.json({ data: { matches: { "card-1": null, "card-2": null } } });
     // W0021：今日要事读 `?view=cards`（分组与状态列）；夹具的完整详情是它的超集。
     if (method === "GET" && (url.endsWith(`/${BATCH}`) || url.endsWith(`/${BATCH}?view=cards`))) {
@@ -304,5 +306,27 @@ test("W0021: a host event with the state the reader already has does not re-read
   });
   await wait(PENDING_CARDS_COALESCE_MS + 30);
   assert.equal(reads(), 2);
+  act(() => root.unmount());
+});
+
+test("W0021 review: when the session resolves from loading to authenticated, readers pick up the account-scoped batches (still one read each)", async (t) => {
+  const { requests, store } = stubBrowser(t, { detail: detail("ready_for_review"), notified: true });
+  // 批次只登记在账号 key 下（旧全局 key 不存在）。
+  store.delete("orbit.cardBatches.active.v1");
+  store.set("orbit.cardBatches.active.v1:subject:a", JSON.stringify([BATCH]));
+  let seen: readonly { batchId: string; pending: number }[] = [];
+  let root!: ReactTestRenderer;
+  await act(async () => {
+    root = create(
+      <SessionProvider refetchOnWindowFocus={false}>
+        <PathnameContext.Provider value="/app/contacts">{hostWithReader((value) => (seen = value))}</PathnameContext.Provider>
+      </SessionProvider>,
+    );
+  });
+  await wait(450);
+  assert.deepEqual(seen.map((entry) => [entry.batchId, entry.pending]), [[BATCH, 1]], "the today reader sees the account's batch");
+  assert.match(textOf(root), /1 张名片待你确认/, "the host watches the account's batch");
+  const cardsReads = requests.filter((request) => request.method === "GET" && request.url.endsWith(`/${BATCH}?view=cards`));
+  assert.equal(cardsReads.length, 1, JSON.stringify(requests));
   act(() => root.unmount());
 });

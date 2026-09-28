@@ -138,12 +138,18 @@ export const PENDING_CARDS_COALESCE_MS = 150;
  * - 一段时间内的连续事件合并成一次；读取中收到的事件在这次读取结束后再判断。
  */
 export function usePendingCards(enabled: boolean): PendingCardsState {
-  useSharedReadAccount();
+  // 登记表按账号分 key：会话还在 loading 时不读（保持读取中），会话已定或换账号时重新读（W0021 review P1）。
+  const { account, ready: accountReady } = useSharedReadAccount();
   const [state, setState] = useState<PendingCardsState>(enabled ? LOADING : DISABLED);
 
   useEffect(() => {
     if (!enabled || typeof window === "undefined") {
       setState(DISABLED);
+      return;
+    }
+    if (!accountReady) {
+      setState(LOADING);
+      publishPendingCardsReaderState("pending");
       return;
     }
     let active = true;
@@ -218,7 +224,7 @@ export function usePendingCards(enabled: boolean): PendingCardsState {
       window.removeEventListener("storage", onChange);
       publishPendingCardsReaderState("absent");
     };
-  }, [enabled]);
+  }, [account, accountReady, enabled]);
 
   return state;
 }

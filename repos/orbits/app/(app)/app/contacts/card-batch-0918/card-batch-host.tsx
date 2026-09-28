@@ -57,10 +57,15 @@ export function CardBatchHost() {
   const pathname = usePathname() ?? "";
   const { status } = useSession();
   // W0021：登记表与浏览器端读取按账号隔离，读登记表之前先同步账号。
-  useSharedReadAccount();
+  // 会话从 loading 变为已定（或换账号）时重新读登记表（W0021 review P1）。
+  const { account, ready: accountReady } = useSharedReadAccount();
   const [batchId, setBatchId] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!accountReady) {
+      setBatchId(null);
+      return;
+    }
     const sync = () => setBatchId(listActiveBatches().at(-1) ?? null);
     sync();
     window.addEventListener("orbit-card-batches", sync);
@@ -69,7 +74,7 @@ export function CardBatchHost() {
       window.removeEventListener("orbit-card-batches", sync);
       window.removeEventListener("storage", sync);
     };
-  }, []);
+  }, [account, accountReady]);
 
   const reader = useSyncExternalStore(subscribePendingCardsReaderState, getPendingCardsReaderState, () => "absent" as const);
 
