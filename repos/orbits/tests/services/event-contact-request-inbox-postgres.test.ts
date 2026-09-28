@@ -146,7 +146,17 @@ test("a live exchange puts one typed notification in each side's inbox, with the
     assert.equal(contact?.userId, "actor:a");
     assert.equal(accepted.target.href, `/contacts/${encodeURIComponent(contactId)}?eventId=${encodeURIComponent(eventId)}`);
     // B still has exactly the one "received" notification; acceptance does not duplicate it.
-    assert.equal((await ctx.inbox.service.list("actor:b", { limit: 50 })).items.length, 1);
+    // Sprint 0118 (from 0129, P2): B answered on the live page without opening it, so it is
+    // handled and read: out of the default list and the unread count, kept in history.
+    const bAfter = await ctx.inbox.service.list("actor:b", { limit: 50, history: true });
+    assert.equal(bAfter.items.length, 1);
+    assert.equal(bAfter.items[0]!.id, received.id);
+    assert.equal(bAfter.items[0]!.disposition, "handled");
+    assert.ok(bAfter.items[0]!.readAt, "answered means read");
+    assert.equal((await ctx.inbox.service.list("actor:b", { limit: 50 })).items.length, 0);
+    assert.equal(await ctx.inbox.service.unreadCount("actor:b"), 0);
+    await ctx.drain(); // a replayed acceptance changes nothing more
+    assert.equal((await ctx.inbox.service.get("actor:b", received.id)).revision, bAfter.items[0]!.revision);
 
     // Isolation: the bystander sees nothing, and A cannot open B's notification.
     assert.equal((await ctx.inbox.service.list("actor:x", { history: true, limit: 50 })).items.length, 0);

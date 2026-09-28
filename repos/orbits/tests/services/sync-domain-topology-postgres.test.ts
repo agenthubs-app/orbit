@@ -136,7 +136,7 @@ test("an unchanged manifest is a 304 from one watermark row; a new task under th
   h.sql.length = 0;
   const unchanged = await a.manifest(new Request("https://orbit.local/api/sync/manifest", { headers: { "If-None-Match": etag } }));
   assert.equal(unchanged.status, 304);
-  assert.deepEqual(h.sql.map((text) => (text.includes("domain:watermark:user") ? "watermark" : "business")), ["watermark"], "304 costs exactly one watermark statement and no business read");
+  assert.deepEqual(h.sql.map((text) => (text.includes("domain:watermark:revision") ? "watermark" : "business")), ["watermark"], "304 costs exactly one watermark statement and no business read");
 
   await h.taskUnderLock(A, "task:a:5", "2026-09-18T09:20:00.000Z");
   const changed = await a.manifest(new Request("https://orbit.local/api/sync/manifest", { headers: { "If-None-Match": etag } }));

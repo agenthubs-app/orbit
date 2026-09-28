@@ -65,6 +65,9 @@ test("a product writer or a batch script that changes a registered owner, a dish
     // Sprint 0115: the owner heads of the derived event domains (actor and identity columns).
     writeFileSync(join(root, "scripts/move-applications.ts"), "await client.query(`update event_ops_admission_application_heads set actor_id = $3 where workspace_id = $1 and event_id = $2`);");
     writeFileSync(join(root, "features/demo/move-membership-event.ts"), "await tx.query(\"update event_ops_membership_heads set event_id = $2, updated_at = now() where workspace_id = $1\");");
+    // Sprint 0118: an AI session row moved to another personal sub-workspace, an inbox row re-owned.
+    writeFileSync(join(root, "scripts/move-ai-sessions.ts"), "await client.query(`update orbit_records set workspace_id = $2 where workspace_id = $1 and collection_name = 'orbit_agent_chat_messages'`);");
+    writeFileSync(join(root, "features/demo/hand-over-inbox.ts"), "await sql.query(\"update orbit_records set user_id = $2 where collection_name = 'inboxNotifications' and record_id = $1\");");
     // A status change keeps the owner: the device hears about it through the row's new revision.
     writeFileSync(join(root, "features/demo/cancel-membership.ts"), "await tx.query(\"update event_ops_membership_heads set status = 'cancelled' where workspace_id = $1 and actor_id = $2\");");
     // Payload-only writes filtered by owner are not owner changes.
@@ -99,6 +102,8 @@ test("a product writer or a batch script that changes a registered owner, a dish
     assert.ok(has("OWNER_OVERWRITE features/demo/claims-first.ts"), "assigns-first-owner without an owner guard");
     assert.ok(has("UNREGISTERED_REASSIGN features/demo/reassign-caller.ts"), "an explicit reassign outside a registered handler");
     assert.ok(has("STALE features/demo/removed.ts"), "a manifest entry without a writer");
+    assert.ok(has("UNCLASSIFIED scripts/move-ai-sessions.ts"), "a script moving AI session rows to another personal sub-workspace");
+    assert.ok(has("UNCLASSIFIED features/demo/hand-over-inbox.ts"), "product code re-owning an inbox notification");
     assert.ok(has("OWNER_OVERWRITE scripts/backfill-overwrites.ts"), "a first-owner handler statement without a user_id is null guard");
   } finally {
     rmSync(root, { recursive: true, force: true });

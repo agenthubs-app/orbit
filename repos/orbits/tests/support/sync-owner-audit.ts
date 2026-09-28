@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative, sep } from "node:path";
-import { derivedOwnerTables, findSyncOwnerChangeHandler, ownerGuardedCollections, SYNC_OWNER_CHANGE_HANDLERS, type SyncDomainDefinition } from "../../features/sync/domain-registry";
+import { derivedOwnerTables, findSyncOwnerChangeHandler, ownerGuardedCollections, personalSubspaceCollections, SYNC_OWNER_CHANGE_HANDLERS, type SyncDomainDefinition } from "../../features/sync/domain-registry";
 
 /**
  * Sprint 0113 (offline design step 5, method two; decision 4): static audit of
@@ -105,7 +105,8 @@ export interface OwnerWriteFinding { file: string; statements: Statement[] }
 export function scanOwnerWrites(root: string, domains: readonly SyncDomainDefinition[]): OwnerWriteFinding[] {
   const files = sourceFiles(root);
   const statements: Statement[] = [];
-  const recordsInputs = new Set(domains.filter((domain) => domain.source.kind === "orbit_records").flatMap((domain) => domain.visibilityInputs));
+  // Sprint 0118: every source that reads orbit_records contributes its inputs; the personal sub-workspace domains add workspace_id.
+  const recordsInputs = new Set(domains.filter((domain) => ["orbit_records", "inbox_records", "personal_subspace"].includes(domain.source.kind)).flatMap((domain) => domain.visibilityInputs));
   if (recordsInputs.size) {
     statements.push(...writeStatements(files, "orbit_records").filter((statement) => setTargets(statement.text).some((target) => recordsInputs.has(target))));
   }
@@ -145,6 +146,7 @@ export function auditOwnerWrites(
   const findings = scanOwnerWrites(root, domains);
   const registeredLiterals = [
     ...ownerGuardedCollections(domains),
+    ...personalSubspaceCollections(domains),
     ...domains.flatMap((domain) => domain.source.kind === "dedicated_table" ? [domain.source.table] : []),
     ...derivedOwnerTables(domains).map((owner) => owner.table),
   ];

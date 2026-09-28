@@ -1,4 +1,4 @@
-import { derivedOwnerTables, ownerGuardedCollections, reassigningOwnerChangeHandlers, SYNC_OWNER_CHANGE_HANDLER_DEFINITIONS } from "./domain-registry";
+import { derivedOwnerTables, ownerGuardedCollections, personalSubspaceCollections, reassigningOwnerChangeHandlers, SYNC_OWNER_CHANGE_HANDLER_DEFINITIONS } from "./domain-registry";
 
 /**
  * Owner/identity guard (sprint 0113).
@@ -105,15 +105,27 @@ const unregisteredHandler = reassigners.length
  * The trigger fires only when an update names user_id or collection_name and
  * one of them actually changes, so ordinary writes pay nothing. Idempotent.
  */
+/**
+ * Sprint 0118: a personal sub-workspace row (the AI sessions) is owned by its
+ * workspace, not by user_id, so moving it to another workspace or collection is
+ * the owner change the guard refuses.
+ */
+const subspaceCollections = personalSubspaceCollections();
+const subspaceDeparture = subspaceCollections.length
+  ? `(old.collection_name in (${literalList(subspaceCollections)}) or new.collection_name in (${literalList(subspaceCollections)}))
+      and (old.workspace_id is distinct from new.workspace_id or old.collection_name is distinct from new.collection_name)`
+  : "false";
+
 export const SYNC_OWNER_GUARD_SQL = `
 create or replace function orbit_records_sync_owner_guard()
 returns trigger
 language plpgsql
 as $$
 begin
-  if nullif(old.user_id, '') is not null
+  if ((nullif(old.user_id, '') is not null
     and (old.collection_name in (${literalList(ownerGuardedCollections())})
-      or new.collection_name in (${literalList(ownerGuardedCollections())}))
+      or new.collection_name in (${literalList(ownerGuardedCollections())})))
+    or (${subspaceDeparture}))
     and ${unregisteredHandler}
   then
     raise exception 'SYNC_OWNER_CHANGE_UNREGISTERED'
@@ -125,11 +137,15 @@ end;
 $$;
 
 create or replace trigger orbit_records_sync_owner_guard_trigger
-  before update of user_id, collection_name on orbit_records
+  before update of user_id, collection_name, workspace_id on orbit_records
   for each row
-  when (old.user_id is distinct from new.user_id or old.collection_name is distinct from new.collection_name)
+  when (old.user_id is distinct from new.user_id or old.collection_name is distinct from new.collection_name or old.workspace_id is distinct from new.workspace_id)
   execute function orbit_records_sync_owner_guard();
 `;
+
+/** Sprint 0118: an owner guard trigger installed before workspace_id became a watched column must be replaced. */
+export const SYNC_OWNER_GUARD_WATCHES_WORKSPACE_SQL =
+  "select pg_get_triggerdef(oid) ~ 'workspace_id' as watches from pg_trigger where tgrelid = 'orbit_records'::regclass and tgname = 'orbit_records_sync_owner_guard_trigger' and not tgisinternal";
 
 /**
  * Sprint 0115: the same guard on the dedicated tables that decide who owns a

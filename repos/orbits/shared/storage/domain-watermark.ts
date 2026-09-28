@@ -52,6 +52,48 @@ const USER_WATERMARK_SQL = `
       or collection_name = any($4::text[]))
 `;
 
+/**
+ * Sprint 0118 (from 0117): the sync manifest's watermark. Every insert and
+ * update of an orbit_records row takes a new sync_revision from one sequence,
+ * so max(sync_revision) moves on every write, whatever the write does to
+ * updated_at (a replayed save or a backfill can set an earlier time, which
+ * max(updated_at) + count(*) never saw). count(*) still catches a hard delete
+ * of a row that is not the latest. One statement: the actor's own rows in
+ * `collections`, the workspace-wide `sharedCollections` (authorization) and the
+ * actor's personal sub-workspace rows in `subspaceCollections`.
+ */
+export interface RevisionWatermarkInput {
+  client: DomainWatermarkSqlClient;
+  workspaceId: string;
+  userId: string;
+  collections: readonly string[];
+  sharedCollections?: readonly string[];
+  subspace?: { workspaceId: string; collections: readonly string[] };
+}
+
+const REVISION_WATERMARK_SQL = `
+  /* domain:watermark:revision */
+  select max(sync_revision)::text as max_revision, count(*)::text as count
+  from orbit_records
+  where (workspace_id = $1
+      and ((collection_name = any($2::text[]) and user_id = $3) or collection_name = any($4::text[])))
+    or (workspace_id = $5 and collection_name = any($6::text[]))
+`;
+
+export async function readRevisionWatermark({ client, workspaceId, userId, collections, sharedCollections = [], subspace }: RevisionWatermarkInput): Promise<{ maxRevision: string | null; count: number; fingerprint: string }> {
+  if (!workspaceId.trim() || !userId.trim()) throw new Error("A workspace and a user are required for a revision watermark.");
+  const own = [...new Set(collections)].sort();
+  const shared = [...new Set(sharedCollections)].sort();
+  const personal = subspace ? [...new Set(subspace.collections)].sort() : [];
+  const result = await client.query<{ max_revision: string | null; count: string }>(REVISION_WATERMARK_SQL, [workspaceId, own, userId, shared, subspace?.workspaceId ?? null, personal]);
+  const maxRevision = result.rows[0]?.max_revision ?? null;
+  const count = Number(result.rows[0]?.count ?? 0);
+  const fingerprint = createHash("sha256")
+    .update(JSON.stringify(["revision", workspaceId, userId, own, shared, subspace?.workspaceId ?? null, personal, maxRevision, count]))
+    .digest("hex");
+  return { maxRevision, count, fingerprint };
+}
+
 export async function readDomainWatermark({
   client,
   workspaceId,

@@ -257,6 +257,26 @@ export function createInboxEventContactRequestNotificationWriter(input: {
         readAt: now(),
         contactId: notification.contactId,
       }));
+      // Sprint 0118 (from 0129, P2): an acceptance or a decline means the target
+      // answered, usually on the live page without opening the notification. Their
+      // "wants to exchange" notice for this request is then handled and read, so it
+      // leaves the unread count and the default list (history keeps it).
+      if (notification.transition === 'accepted' || notification.transition === 'declined') {
+        await client.transaction(async (executor) => {
+          const inbox = await createPostgresInboxRecordTransaction({ executor, workspaceId: input.workspaceId, actorId: facts.targetActorId });
+          const found = await executor.query<{ record_id: string }>(`select record_id from orbit_records
+            where workspace_id=$1 and collection_name='inboxNotifications' and user_id=$2 and lifecycle_state='active'
+              and payload->'notification'->>'semanticKey' like $3
+              and payload->'notification'->>'disposition'='open'
+            order by record_id limit 20`, [input.workspaceId, facts.targetActorId, `event-contact-request:${facts.requestId.replace(/[\\%_]/g, (c) => `\\${c}`)}:%:created`]);
+          for (const row of found.rows) {
+            const stored = await inbox.get(row.record_id);
+            if (!stored || stored.notification.disposition !== 'open') continue;
+            const at = now();
+            await inbox.save({ ...stored, notification: { ...stored.notification, disposition: 'handled', readAt: stored.notification.readAt ?? at, revision: stored.notification.revision + 1, updatedAt: at } });
+          }
+        });
+      }
       return { recordId: saved.id };
     },
   };

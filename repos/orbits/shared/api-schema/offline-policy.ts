@@ -61,6 +61,11 @@ export const OFFLINE_POLICY_REGISTRATIONS = [
   { method: "GET", pathname: "/api/dashboard/distributions", action: "read", policy: policy("dashboard_graph", "durable_normalized", "online_only") },
   { method: "GET", pathname: "/api/mobile/contacts-dashboard", action: "read", policy: policy("dashboard_graph", "durable_normalized", "online_only") },
   { method: "GET", pathname: "/api/dashboard/structure/:dimension/:bucketId", action: "read", policy: policy("dashboard_graph", "durable_normalized", "online_only") },
+  // Sprint 0118: the typed inbox (sync domain inbox-notifications) and the AI sessions (ai-sessions, and ai-session-messages for opened sessions) read the device copy first; every action needs the network.
+  { method: "GET", pathname: "/api/inbox/notifications", action: "read", policy: policy("inbox_notification", "durable_normalized", "online_only") },
+  { method: "GET", pathname: "/api/inbox/notifications/:id", action: "read", policy: policy("inbox_notification", "durable_normalized", "online_only") },
+  { method: "GET", pathname: "/api/ai/conversations/sessions", action: "read", policy: policy("ai_session", "durable_normalized", "online_only") },
+  { method: "GET", pathname: "/api/ai/conversations/sessions/:id", action: "read", policy: policy("ai_session_message", "durable_normalized", "online_only") },
   { method: "POST", pathname: "/api/auth/mobile/credentials", action: "authenticate", policy: policy("account_secret", "online_only_secret", "online_only", "never_local") },
 ] satisfies readonly OfflinePolicyRegistration[];
 

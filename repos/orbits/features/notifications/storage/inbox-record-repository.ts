@@ -7,6 +7,12 @@ export const INBOX_RECORD_COLLECTION = 'inboxNotifications';
 export interface InboxStoredRecord {
   notification: InboxNotificationDTO;
   operations: Record<string, { fingerprint: string; receipt: InboxNotificationActionReceipt }>;
+  /**
+   * Sprint 0118: the server's last read-time decision about the notification's
+   * sources, written back by the sync path (reconcileInboxSourceStates) so a
+   * device copy learns that a source went away. Absent means available.
+   */
+  sourceState?: 'available' | 'changed' | 'unavailable';
 }
 export interface InboxRecordTransaction {
   get(id:string):Promise<InboxStoredRecord|null>;

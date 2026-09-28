@@ -90,6 +90,14 @@ function readQueryKind(text: string): PostgresReadQueryKind | null {
 
   const keyword = remaining.match(/^[a-z]+/i)?.[0].toLowerCase();
 
+  // Sprint 0118: a sync-collection write takes the commit-order lock in a
+  // leading CTE (features/sync/commit-order-lock.ts). The statement is the
+  // write that follows the CTE list, not a read.
+  if (keyword === "with" && /\bsync_write_lock\b/.test(remaining)) {
+    const write = /\b(insert)\s+into\b|\b(update)\s+[a-z_]+\s+set\b|\b(delete)\s+from\b/i.exec(remaining);
+    if (write) return (write[1] ?? write[2] ?? write[3])!.toLowerCase() as "insert" | "update" | "delete";
+  }
+
   switch (keyword) {
     case "select":
     case "with":

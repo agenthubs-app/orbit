@@ -68,7 +68,8 @@ test('real wake and legacy dispatch enqueue atomically; projection retries indep
     for(const m of retryClaim.messages)await processCanonicalReminderWakeMessage(m,runtime);
     let fail=true;
     const faulty:TransactionalPostgresClient={...client,transaction:operation=>client.transaction(tx=>operation({query:async(sql,values)=>{
-      if(fail&&sql.trim().startsWith('insert into orbit_records')&&values?.includes('inboxNotifications')){fail=false;throw Error('write unavailable');}
+      // Since 0118 an inbox write starts with the commit-order lock CTE (inboxNotifications is a sync collection).
+      if(fail&&/\binsert into orbit_records\b/.test(sql)&&values?.includes('inboxNotifications')){fail=false;throw Error('write unavailable');}
       return tx.query(sql,values);
     }}))};
     assert.equal((await runInboxProjectionPass({client:faulty,workspaceId,now,enabled:true})).projectionFailed,1);
