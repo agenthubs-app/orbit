@@ -122,6 +122,31 @@ cross join lateral unnest(j.batch_ids) as b(batch_id)
 on conflict do nothing;
 `,
   },
+  {
+    // W0017：计划维护日任务（plan-phase / plan-event-attendance / plan-event-registration）的逐任务、
+    // 按东京自然日的持久领取记录。一行 = (workspace, 东京日, 任务)；running 必带租约，租约过期可被重新领取；
+    // cursor 是同一天续批的位置；failure_count 到上限后当天记 failed，第二天重新开始。
+    name: "plan-maintenance-daily-runs",
+    version: 3,
+    sql: `
+create table plan_maintenance_daily_runs (
+  workspace_id text not null,
+  run_day date not null,
+  task_name text not null check (length(task_name) between 1 and 100),
+  status text not null check (status in ('pending', 'running', 'completed', 'failed')),
+  lease_token text,
+  lease_expires_at timestamptz,
+  cursor text check (cursor is null or length(cursor) <= 2000),
+  run_count integer not null default 0 check (run_count >= 0),
+  failure_count integer not null default 0 check (failure_count >= 0),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  completed_at timestamptz,
+  primary key (workspace_id, run_day, task_name),
+  check ((status = 'running') = (lease_token is not null and lease_expires_at is not null))
+);
+`,
+  },
 ];
 
 function checksum(sql: string): string {

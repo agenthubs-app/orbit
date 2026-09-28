@@ -109,7 +109,7 @@ RW-01～RW-12 已由 W0001～W0015 实现并合并到 `chat-agent`，但示例�
 ### RV-01 验收环境与测试数据
 
 - 本地先验收，最后在 Preview 复验（用户 Q1 选 C）。本地 dev 读 `ORBIT_EVENT_DATABASE_URL`（localhost），不产生 Neon 流量。
-- 另起一个开示例开关（`ORBIT_GUIDE_DEMO=on`）的验收 server，与现有 3000 端口互不影响；按根 `CLAUDE.md` 只能在 `/Volumes/ORICO` 建 worktree，外接盘未挂载时停下询问。
+- 另起一个开示例开关（`ORBIT_GUIDE_DEMO=on`）的验收 server（3001），与现有 3000 端口互不影响：同一目录、独立构建目录（`next.config.js` 可选 `distDir`），不建 worktree（用户没有外接盘）。
 - 在本地库建专用测试账号并用脚本造数据，不碰用户自己的账号（用户 Q2 同意）：全新用户、老用户（D2 口径）、有计划处于第 N 周、计划已到期、今天报名的活动 + 今天扫描的名片批次。
 - 真实名片：`docs/designs/arranged_meishi.heic`、`random_meishi.heic`（约 17 张）裁成单张后上传测试账号，触发真实 DeepSeek 识别（用户 Q3 同意；每次调用记录次数与 token）。
 

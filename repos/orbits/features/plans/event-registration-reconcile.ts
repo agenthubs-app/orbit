@@ -13,18 +13,23 @@
  */
 import type { MaintenanceTask } from "../operations/maintenance/pass";
 import type { PlanService } from "./contract";
+import type { PlanDailyBatch, PlanDailyGate } from "./maintenance-daily-gate";
 
 export const PLAN_EVENT_REGISTRATION_TASK = "plan-event-registration";
 /** 每次维护最多重放的 (actor, 活动) 数。 */
 export const PLAN_EVENT_REGISTRATION_LIMIT = 50;
-/** 每次最多检查的计划活动条目数（查询按随机顺序取，多次维护后覆盖全部）。 */
+/** 每批最多检查的计划活动条目数（按固定顺序分批，同一东京日续批直到扫完）。 */
 export const PLAN_EVENT_REGISTRATION_SCAN = 200;
 
 export interface PlanEventItemState {
   actorId: string;
   eventId: string;
+  /** 计划条目 id（续批排序的最后一键）；内存实现可以不给。 */
+  itemId?: string;
   status: "recommended" | "registered";
 }
+
+type ItemCursor = { actorId: string; eventId: string; itemId: string };
 
 export interface CurrentRegistration {
   eventId: string;
@@ -33,7 +38,7 @@ export interface CurrentRegistration {
 }
 
 export interface PlanEventRegistrationDeps {
-  listActiveEventItems(input: { limit: number }): Promise<PlanEventItemState[]>;
+  listActiveEventItems(input: { limit: number; after?: ItemCursor | null }): Promise<PlanEventItemState[]>;
   /** 本人在这些活动上的当前报名（只读本人）。 */
   readRegistrations(input: { actorId: string; eventIds: readonly string[] }): Promise<CurrentRegistration[]>;
   planServiceFor: (actorId: string) => PlanService;
@@ -43,29 +48,62 @@ function isUndefinedTable(error: unknown): boolean {
   return typeof error === "object" && error !== null && (error as { code?: unknown }).code === "42P01";
 }
 
-export async function reconcileEventRegistrations(
+function encodeCursor(item: PlanEventItemState): string {
+  return JSON.stringify([item.actorId, item.eventId, item.itemId ?? ""]);
+}
+
+function decodeCursor(cursor: string | null | undefined): ItemCursor | null {
+  if (!cursor) return null;
+  try {
+    const parsed: unknown = JSON.parse(cursor);
+    if (Array.isArray(parsed) && parsed.length === 3 && parsed.every((part) => typeof part === "string")) {
+      return { actorId: parsed[0] as string, eventId: parsed[1] as string, itemId: parsed[2] as string };
+    }
+  } catch {
+    // 无法识别的 cursor：从头扫，重放按版本比较，结果仍然幂等。
+  }
+  return null;
+}
+
+/**
+ * 一批：按 (actor, 活动, 条目) 顺序从 cursor 之后取最多 `scan` 条，重放最多 `limit` 条。
+ * `hasMore` = 取满 `scan`、重放到上限或到截止时间停下；cursor 是最后检查过的条目（同一东京日续批）。
+ */
+export async function reconcileEventRegistrationsBatch(
   deps: PlanEventRegistrationDeps,
-  input: { limit: number; scan?: number; deadline?: number; now?: () => number },
-): Promise<{ examined: number; replayed: number; failed: number }> {
+  input: { limit: number; scan?: number; cursor?: string | null; deadline?: number; now?: () => number },
+): Promise<PlanDailyBatch & { summary: { examined: number; replayed: number; failed: number } }> {
   const now = input.now ?? Date.now;
+  const scan = input.scan ?? PLAN_EVENT_REGISTRATION_SCAN;
   const summary = { examined: 0, failed: 0, replayed: 0 };
-  const items = await deps.listActiveEventItems({ limit: input.scan ?? PLAN_EVENT_REGISTRATION_SCAN });
+  const after = decodeCursor(input.cursor);
+  const items = await deps.listActiveEventItems({ after, limit: scan });
   const byActor = new Map<string, PlanEventItemState[]>();
   for (const item of items) byActor.set(item.actorId, [...(byActor.get(item.actorId) ?? []), item]);
-  for (const [actorId, actorItems] of byActor) {
-    if (summary.replayed + summary.failed >= input.limit) break;
-    if (input.deadline !== undefined && now() >= input.deadline) break;
+  let cursor = input.cursor && after ? input.cursor : null;
+  let stopped = false;
+  outer: for (const [actorId, actorItems] of byActor) {
+    if (summary.replayed + summary.failed >= input.limit || (input.deadline !== undefined && now() >= input.deadline)) {
+      stopped = true;
+      break;
+    }
     let registrations: CurrentRegistration[];
     try {
       registrations = await deps.readRegistrations({ actorId, eventIds: actorItems.map((item) => item.eventId) });
     } catch {
       summary.failed += 1;
+      // 这个人的条目算检查过（第二天的扫描再遇到）；不挡住其他人。
+      cursor = encodeCursor(actorItems[actorItems.length - 1]!);
       continue;
     }
     const current = new Map(registrations.map((registration) => [registration.eventId, registration]));
     for (const item of actorItems) {
-      if (summary.replayed + summary.failed >= input.limit) break;
+      if (summary.replayed + summary.failed >= input.limit) {
+        stopped = true;
+        break outer;
+      }
       summary.examined += 1;
+      cursor = encodeCursor(item);
       const registration = current.get(item.eventId);
       if (!registration) continue;
       const registered = registration.status === "rsvped";
@@ -82,28 +120,45 @@ export async function reconcileEventRegistrations(
       }
     }
   }
-  return summary;
+  return { cursor, hasMore: stopped || items.length >= scan, summary };
 }
 
+export async function reconcileEventRegistrations(
+  deps: PlanEventRegistrationDeps,
+  input: { limit: number; scan?: number; deadline?: number; now?: () => number },
+): Promise<{ examined: number; replayed: number; failed: number }> {
+  return (await reconcileEventRegistrationsBatch(deps, input)).summary;
+}
+
+/** `gate` 存在时（生产装配）每个东京自然日最多真正执行一次、同一天续批扫完，见 `maintenance-daily-gate.ts`。 */
 export function createPlanEventRegistrationMaintenanceTask(input: {
   resolve: () => PlanEventRegistrationDeps | null;
   limit?: number;
+  scan?: number;
+  gate?: PlanDailyGate;
 }): MaintenanceTask {
   return {
     name: PLAN_EVENT_REGISTRATION_TASK,
-    async run({ deadline, now }) {
+    async run(context) {
       const deps = input.resolve();
       if (!deps) return { skipped: "database_unconfigured" };
-      try {
-        return await reconcileEventRegistrations(deps, {
-          deadline,
-          limit: input.limit ?? PLAN_EVENT_REGISTRATION_LIMIT,
-          now: () => now().getTime(),
-        });
-      } catch (error) {
-        if (isUndefinedTable(error)) return { skipped: "schema_missing" };
-        throw error;
-      }
+      const execute = async (cursor: string | null): Promise<PlanDailyBatch | { skipped: string }> => {
+        try {
+          return await reconcileEventRegistrationsBatch(deps, {
+            cursor,
+            deadline: context.deadline,
+            limit: input.limit ?? PLAN_EVENT_REGISTRATION_LIMIT,
+            now: () => context.now().getTime(),
+            scan: input.scan,
+          });
+        } catch (error) {
+          if (isUndefinedTable(error)) return { skipped: "schema_missing" };
+          throw error;
+        }
+      };
+      if (input.gate) return input.gate.run(PLAN_EVENT_REGISTRATION_TASK, context, execute);
+      const outcome = await execute(null);
+      return "skipped" in outcome ? outcome : outcome.summary;
     },
   };
 }

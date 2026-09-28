@@ -11,10 +11,11 @@ import { redispatchPendingAgentActions } from "../../agent/runtime/dispatch-scan
 import { dispatchPasswordResetMail } from "../../auth/password-reset-dispatch";
 import { NotificationDeliveryUnconfigured, runNotificationDeliveryPass } from "../../notifications/delivery-pass";
 import { createConfiguredCanonicalReminderMaintenanceTask } from "../../notifications/configured-canonical-reminder-maintenance";
-import { createPlanEventAttendanceMaintenanceTask } from "../../plans/event-attendance-reconcile";
+import { createPlanEventAttendanceMaintenanceTask, PLAN_EVENT_ATTENDANCE_TASK } from "../../plans/event-attendance-reconcile";
 import { createPlanMatchMaintenanceTask } from "../../plans/match-maintenance-task";
-import { createPlanPhaseMaintenanceTask } from "../../plans/phase-refinement";
-import { createPlanEventRegistrationMaintenanceTask } from "../../plans/event-registration-reconcile";
+import { createPlanPhaseMaintenanceTask, PLAN_PHASE_TASK } from "../../plans/phase-refinement";
+import { createPlanEventRegistrationMaintenanceTask, PLAN_EVENT_REGISTRATION_TASK } from "../../plans/event-registration-reconcile";
+import { createPlanDailyRunGate } from "../../plans/maintenance-daily-gate";
 import { readRuntimeRegistrationsForPlanActor } from "../../plans/event-attribution-runtime";
 import { planTokyoDate } from "../../plans/week";
 import { resolvePlanService } from "../../plans/service-factory";
@@ -31,6 +32,12 @@ export function createConfiguredMaintenanceTasks({
   workerId = "maintenance",
 }: { env?: NodeJS.ProcessEnv; workerId?: string } = {}): MaintenanceTask[] {
   const queueAvailable = env.VERCEL === "1";
+  // W0017：3 个计划日任务共用一个把关（每个东京自然日最多真正执行一次，一轮 pass 只读一次当日状态）。
+  const planDailyGate = createPlanDailyRunGate({
+    resolveStore: () => getConfiguredPlanMatchingRuntime()?.dailyRuns ?? null,
+    taskNames: [PLAN_EVENT_ATTENDANCE_TASK, PLAN_PHASE_TASK, PLAN_EVENT_REGISTRATION_TASK],
+    tokyoDate: planTokyoDate,
+  });
   return [
     createConfiguredCanonicalReminderMaintenanceTask({ env, workerId }),
     {
@@ -124,12 +131,16 @@ export function createConfiguredMaintenanceTasks({
     },
     // W0010: runs network-need match jobs whose review page was closed (or whose
     // single-card day has ended). Bounded per pass; each job bills at most one AI call.
+    // W0017: stays on every pass (the retry must not wait a day); an idle pass is one
+    // indexed due-claim statement that returns no rows.
     createPlanMatchMaintenanceTask({
       resolveWorker: () => getConfiguredPlanMatchingRuntime()?.worker ?? null,
     }),
     // W0015: marks the plan's event attended for contacts confirmed as met at it when the
     // inline best-effort plan write after the contact commit failed. Idempotent, bounded.
+    // W0017: at most one real run per Tokyo day (continued batches the same day when capped).
     createPlanEventAttendanceMaintenanceTask({
+      gate: planDailyGate,
       resolve: () => {
         const runtime = getConfiguredPlanMatchingRuntime();
         if (!runtime) return null;
@@ -145,8 +156,9 @@ export function createConfiguredMaintenanceTasks({
     }),
     // W0012: writes the "entered a new phase" progress entry (and, for a one-year plan,
     // the week-level actions of the new quarter) for plans nobody opened this week.
-    // Idempotent per plan + phase, bounded per pass.
+    // Idempotent per plan + phase, bounded per batch; W0017: one real run per Tokyo day.
     createPlanPhaseMaintenanceTask({
+      gate: planDailyGate,
       resolve: () => {
         const runtime = getConfiguredPlanMatchingRuntime();
         if (!runtime) return null;
@@ -162,8 +174,10 @@ export function createConfiguredMaintenanceTasks({
       tokyoDate: planTokyoDate,
     }),
     // W0012: replays the registration state onto plan event items when the inline best-effort
-    // sync after a registration / cancellation failed. Idempotent, version-guarded, ≤50 per pass.
+    // sync after a registration / cancellation failed. Idempotent, version-guarded, ≤50 per batch;
+    // W0017: one ordered sweep per Tokyo day, continued across passes until it reaches the end.
     createPlanEventRegistrationMaintenanceTask({
+      gate: planDailyGate,
       resolve: () => {
         const runtime = getConfiguredPlanMatchingRuntime();
         if (!runtime) return null;

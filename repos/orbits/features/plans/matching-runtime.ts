@@ -16,11 +16,14 @@ import { resolveLiveDatabaseConnectionConfig } from "../../shared/storage/live-d
 import { createConfiguredPlanAiMatcher } from "./ai-matcher";
 import { createPlanMatchingService, type PlanMatchingService } from "./matching-service";
 import { createPostgresPlanMatchRepository, type PlanMatchRepository } from "./matching-repository";
+import { createPostgresPlanDailyRunStore, type PlanDailyRunStore } from "./maintenance-daily-gate";
 import type { PlanMatchWorkerDeps } from "./match-worker";
 import { resolvePlanService } from "./service-factory";
 
 export interface PlanMatchingRuntime {
   repository: PlanMatchRepository;
+  /** W0017：计划维护日任务的逐任务、按东京日的持久领取记录（同一个连接池）。 */
+  dailyRuns: PlanDailyRunStore;
   worker: PlanMatchWorkerDeps;
   service: PlanMatchingService;
 }
@@ -59,7 +62,8 @@ export function getConfiguredPlanMatchingRuntime(): PlanMatchingRuntime | null {
     repository,
     worker,
   });
-  const runtime: PlanMatchingRuntime = { repository, service, worker };
+  const dailyRuns = createPostgresPlanDailyRunStore({ pool, workspaceId: config.workspaceId });
+  const runtime: PlanMatchingRuntime = { dailyRuns, repository, service, worker };
   matchingGlobal.__orbitPlanMatchingRuntime = { key, runtime };
   return runtime;
 }

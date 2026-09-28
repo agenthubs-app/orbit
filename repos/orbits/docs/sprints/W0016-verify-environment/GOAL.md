@@ -6,12 +6,12 @@
 
 ## 做完能看到什么
 
-- `http://localhost:3001` 开着 `ORBIT_GUIDE_DEMO`，连本机库；3000 端口的现有 server 不受影响。
+- `http://localhost:3001` 开着 `ORBIT_GUIDE_DEMO`，连本机库，和 3000 端口共用同一份代码（改了代码两边都会热更新）；3000 端口的现有 server 不受影响。
 - 一条命令造好（可重复执行）以下测试账号，一条命令拿到各账号的登录 cookie：全新用户、老用户、计划进行中、计划已到期、今天报了活动并扫了名片。
 - 名片合照裁成单张图片，放在仓库外。
 
 ## 前置
 
-大目标 1 全部 completed；外接盘 `/Volumes/ORICO` 已挂载（按根 `CLAUDE.md`，worktree 只能建在外接盘）。
+大目标 1 全部 completed。验收 server 与现有 server 在同一目录运行，用独立的构建目录，不需要额外的代码副本。
 
 完整验收项见 [PLANNER.md](PLANNER.md)。当前状态见[登记表](../README.md#sprint-登记表)。
