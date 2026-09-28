@@ -34,6 +34,9 @@ window.fetch = async (input, init = {}) => { const url = new URL(String(input));
 export const useFixture = () => { observe(); return state; };
 export const useOrbitAuthSession = () => { observe(); return { ready: true, signedIn: true, actorId: state.actorId, accountId: state.actorId, user: { id: "raw-auth-id", name: "Raw auth name", email: "person@example.test" }, cookieHeader: "" }; };
 export const useOrbitApiBaseUrl = () => { observe(); return { ready: true, baseUrl: state.baseUrl }; };
+// Sprint 0131: the screen also reads the device mirror / page copies; this harness tests the network path (no mirror).
+export const useSyncedCollection = () => ({ status: "unsynced", error: null, lastSyncedAt: null, workspaceId: null, records: [], refresh: async () => null, invalidate: async () => null, currentSession: () => null });
+export const useSyncCoordinatorSession = () => null;
 const t = (key, params) => interpolate(zh[key], params); t.literal = value => value;
 export const useOrbitLocale = () => ({ choice: "zh", language: "zh", t });
 export const useRouter = () => ({ canGoBack: () => true, back() { state.update({ route: "/profile/edit" }); }, replace(href) { state.update({ route: String(href) }); }, push(href) { state.update({ route: String(href) }); } });
@@ -56,7 +59,7 @@ function App(){ const s = useFixture(); const path = s.route.split("?")[0]; cons
       plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "profile-pages" }));
       plugin.onResolve({ filter: /^react-native-web$/ }, () => ({ path: require.resolve("react-native-web") }));
       plugin.onResolve({ filter: /^react-native-svg$/ }, () => ({ path: require.resolve("react-native-svg/lib/module/ReactNativeSVG.web.js") }));
-      plugin.onResolve({ filter: /^(fixture|expo-router|expo-crypto|expo-image-picker|expo-document-picker|@expo\/vector-icons|react-native-safe-area-context)$|\/(ApiBaseUrlProvider|AuthSessionProvider|OrbitLocaleContext|snapshot-store)$/ }, () => ({ path: "fixture", namespace: "profile-pages" }));
+      plugin.onResolve({ filter: /^(fixture|expo-router|expo-crypto|expo-image-picker|expo-document-picker|@expo\/vector-icons|react-native-safe-area-context)$|\/(ApiBaseUrlProvider|AuthSessionProvider|OrbitLocaleContext|snapshot-store|useSyncedCollection)$/ }, () => ({ path: "fixture", namespace: "profile-pages" }));
       plugin.onLoad({ filter: /.*/, namespace: "profile-pages" }, args => ({ contents: args.path === "native" ? `import React from "react"; import { Pressable as RealPressable, Text as RealText, TextInput as RealTextInput, StyleSheet, useWindowDimensions as realDimensions } from "react-native-web"; export * from "react-native-web"; export const useWindowDimensions = () => ({ ...realDimensions(), width: window.innerWidth, fontScale: window.fixture.fontScale || 1 }); export const Pressable = props => <RealPressable {...props} />; const scaled = props => { const style = StyleSheet.flatten(props.style) || {}; const scale = window.fixture.fontScale || 1; return !style.fontSize ? props.style : [props.style, { fontSize: style.fontSize * scale, ...(style.lineHeight && !window.fixture.nativeLineHeight ? { lineHeight: style.lineHeight * scale } : {}) }]; }; export const Text = props => <RealText {...props} style={scaled(props)} />; export const TextInput = props => <RealTextInput {...props} style={scaled(props)} />;` : fixture, loader: "jsx", resolveDir: process.cwd() }));
     } }],
   });

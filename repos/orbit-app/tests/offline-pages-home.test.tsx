@@ -7,9 +7,12 @@ import { OFFLINE_BANNER, fixtureValue, requestsOf, startOfflinePageHarness } fro
 // recommended events and the meetings of the last schedule answer from page
 // copies — so it paints at once and stays readable offline with 「截至」.
 const A = "account:one";
-const inOneHour = new Date(Date.now() + 60 * 60_000).toISOString();
-const inTwoHours = new Date(Date.now() + 2 * 60 * 60_000).toISOString();
-const inThreeHours = new Date(Date.now() + 3 * 60 * 60_000).toISOString();
+// Times inside today (Tokyo), whatever the hour the test runs at.
+const todayTokyo = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+const todayAt = (hour: number) => new Date(`${todayTokyo}T${String(hour).padStart(2, "0")}:00:00+09:00`).toISOString();
+const inOneHour = todayAt(9);
+const inTwoHours = todayAt(12);
+const inThreeHours = todayAt(15);
 const task = (id: string, title: string, plannedDate: string) => ({ id, accountId: A, ownerUserId: A, title, status: "open", category: "relationship", priority: "normal", source: "manual", plannedDate, createdAt: "2026-09-20T00:00:00.000Z", updatedAt: "2026-09-27T00:00:00.000Z" });
 const records = {
   task: [task("t1", "给张伟回电话", "2026-09-01"), task("t2", "整理储能资料", "2026-09-02")],

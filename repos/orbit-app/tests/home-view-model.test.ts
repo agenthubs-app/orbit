@@ -58,7 +58,7 @@ test("the mounted HomeScreen is the events page and has no profile or contacts s
   assert.match(source, /export function HomeScreen\(\)/u);
   assert.match(
     source,
-    /useApiResource<unknown>\(\s*ORBIT_API_ENDPOINTS\.publicEvents/u
+    /usePageCopyResource<unknown>\(\s*ORBIT_API_ENDPOINTS\.publicEvents/u
   );
   assert.doesNotMatch(source, /ORBIT_API_ENDPOINTS\.(?:profile|contacts)/u);
   assert.doesNotMatch(source, /HomeHub|homeToView|HomeProfilePanel|PipelineRail/u);
@@ -137,7 +137,7 @@ test("home and schedule consume the same canonical public event count", () => {
   );
   assert.match(
     source,
-    /const eventsState = useApiResource<unknown>\(\s*ORBIT_API_ENDPOINTS\.publicEvents/u
+    /const eventsState = usePageCopyResource<unknown>\(\s*ORBIT_API_ENDPOINTS\.publicEvents/u
   );
 
   const events = {

@@ -20,6 +20,9 @@ import { radius, spacing, typography, textStyles } from "../../design/tokens";
 import { createControlStyles } from "../../design/controls";
 import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
+import { usePageCopyResource } from "../../hooks/usePageCopyResource";
+import { OfflineNotice } from "../../components/OfflineNotice";
+import { NeedsNetworkState } from "../../components/NeedsNetworkState";
 import {
   eventDiscoveryFilterCounts,
   eventDiscoveryTopics,
@@ -77,9 +80,11 @@ export function HomeScreen() {
   const [filter, setFilter] = useState<HomeEventFilter>("all");
   const [eventQuery, setEventQuery] = useState("");
   const [eventTopicFilter, setEventTopicFilter] = useState("");
-  const eventsState = useApiResource<unknown>(
+  // Sprint 0131: the public catalogue as last seen (page copy "public-events"), offline with 截至.
+  const eventsState = usePageCopyResource<unknown>(
     ORBIT_API_ENDPOINTS.publicEvents,
-    () => false
+    () => false,
+    { copy: { id: "public-events" } }
   );
   const events = isReady(eventsState)
     ? homeEventsToView({ events: eventsState.data })
@@ -96,10 +101,9 @@ export function HomeScreen() {
       }
       title="我的活动"
     >
+      {eventsState.copy?.offline ? <OfflineNotice lastSyncedAt={eventsState.copy.lastSyncedAt} reason={eventsState.copy.reason} /> : null}
       {eventsState.kind === "loading" ? <LoadingState /> : null}
-      {eventsState.kind === "offline" ? (
-        <ErrorState message={eventsState.error.message} title="服务器连不上" />
-      ) : null}
+      {eventsState.kind === "offline" ? <NeedsNetworkState message="这项内容还没保存在这台设备上，联网打开一次后断网也能看。" onRetry={eventsState.refresh} /> : null}
       {eventsState.kind === "failure" ? (
         <ErrorState message={eventsState.error.message} title="首页不可用" />
       ) : null}

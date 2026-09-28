@@ -81,7 +81,7 @@ export const PAGE_OFFLINE_INVENTORY: readonly PageOfflineEntry[] = [
   { file: 'app/(app)/contacts.tsx', path: '/contacts', title: '联系人标签', classification: 'local-first', sprint: '0116', reads: '域 contacts；关系搜索建议 /api/search/suggestions 改为点开搜索时才读（0131）', offline: '「截至」；本机搜索；关系搜索、深度搜索需要联网' },
   { file: 'app/contacts/list.tsx', path: '/contacts/list', title: '联系人列表', classification: 'local-first', sprint: '0116', reads: '域 contacts', offline: '「截至」；本机搜索' },
   { file: 'app/contacts/[id].tsx', path: '/contacts/:id', title: '联系人详情', classification: 'local-first', sprint: '0116', reads: '域 contacts；关系价值 /api/analysis/relationship-value/:id、聊天资格在线读', offline: '「截至」；编辑、起草消息、聊天资格需要联网' },
-  { file: 'app/dashboard.tsx', path: '/dashboard', title: '看板', classification: 'local-first', sprint: '0117', reads: '域 dashboard-graph，本机计算；来源审计改为点「运行审计」才读 /api/audit/provenance（0131）', offline: '「截至」；重新计算、运行审计需要联网' },
+  { file: 'app/dashboard.tsx', path: '/dashboard', title: '看板', classification: 'local-first', sprint: '0117', reads: '域 dashboard-graph，本机计算；来源审计改为点「运行来源审计」才读 /api/audit/provenance，上次结果是页面副本 provenance-audit（0131）', offline: '「截至」；重新计算、运行审计需要联网' },
   { file: 'app/contacts/dashboard.tsx', path: '/contacts/dashboard', title: '联系人分析', classification: 'local-first', sprint: '0117', reads: '域 dashboard-graph；AI 报告读 /api/mobile/contacts-dashboard?view=analysis', offline: '「截至」；去 AI 分析需要联网' },
   { file: 'app/contacts/graph.tsx', path: '/contacts/graph', title: '联系人分析（结构分段）', classification: 'local-first', sprint: '0117', reads: '域 dashboard-graph', offline: '「截至」' },
   { file: 'app/contacts/analysis/[dimension]/[bucketId].tsx', path: '/contacts/analysis/:dimension/:bucketId', title: '分组详情', classification: 'local-first', sprint: '0117', reads: '域 dashboard-graph，本机计算（非 ASCII 分组编号只解码一次，0131）', offline: '「截至」' },
@@ -98,7 +98,7 @@ export const PAGE_OFFLINE_INVENTORY: readonly PageOfflineEntry[] = [
   { file: 'app/notes/new.tsx', path: '/notes/new', title: '新建笔记', classification: 'local-first', sprint: '0108', reads: '域 notes（草稿存本机）', offline: '可以写草稿；保存需要联网' },
 
   // ── this sprint: local-first ──
-  { file: 'app/home.tsx', path: '/home', title: '首页（日程、待办、推荐活动、收件箱角标）', classification: 'local-first', sprint: '0131', reads: '日程读域 personal-schedule + registered-events；待办读域 tasks；角标读域 inbox-notifications 的本机未读数；推荐活动读页面副本 event-recommendations', offline: '「截至」；推荐活动显示最近一次同步的结果；勾选完成待办需要联网' },
+  { file: 'app/home.tsx', path: '/home', title: '首页（日程、待办、推荐活动、收件箱角标）', classification: 'local-first', sprint: '0131', reads: '日程读域 personal-schedule + registered-events，约谈读页面副本 home-schedule；待办读域 tasks；角标读域 inbox-notifications 的本机未读数；推荐活动读页面副本 event-recommendations', offline: '「截至」；推荐活动显示最近一次同步的结果；勾选完成待办需要联网' },
   { file: 'app/today.tsx', path: '/today', title: '今日待办', classification: 'local-first', sprint: '0131', reads: '页面副本 today-page（/api/today 第一页）', offline: '「截至」；新建、完成、接受建议需要联网' },
   { file: 'app/tasks.tsx', path: '/tasks', title: '待办（全部 / 关系 / 个人），含关系待办和待办建议', classification: 'local-first', sprint: '0131', reads: '列表读域 tasks（0087/0108）；关系待办读页面副本 relationship-tasks（/api/relationship-tasks/page 第一页）；待办建议读页面副本 task-suggestions（/api/task-suggestions/page 第一页）', offline: '「截至」；完成、重开需要联网' },
   { file: 'app/tasks/[id].tsx', path: '/tasks/:id', title: '待办详情', classification: 'local-first', sprint: '0131', reads: '域 tasks 的这一行；活动记录和提醒读网络', offline: '「截至」；待办内容来自本机；活动记录、提醒和所有修改需要联网' },
@@ -113,7 +113,6 @@ export const PAGE_OFFLINE_INVENTORY: readonly PageOfflineEntry[] = [
   { file: 'app/schedule/events/[id].tsx', path: '/schedule/events/:id', title: '日历里的活动预览', classification: 'local-first', sprint: '0131', reads: '已报名的活动直接跳到 /events/:id（域 registered-events）；其他活动读 /api/events/public/:id', offline: '已报名的活动跳转后可离线；其他活动显示「需要联网」' },
   { file: 'app/(app)/events.tsx', path: '/events', title: '活动标签：活动列表和推荐', classification: 'local-first', sprint: '0131', reads: '页面副本 public-events（公开活动目录）和 event-recommendations', offline: '「截至」；显示最近一次看到的列表；报名需要联网' },
   { file: 'app/home/events.tsx', path: '/home/events', title: '推荐活动（旧入口）', classification: 'local-first', sprint: '0131', reads: '页面副本 public-events', offline: '「截至」；显示最近一次看到的列表' },
-  { file: 'app/platform.tsx', path: '/platform', title: '平台活动目录', classification: 'local-first', sprint: '0131', reads: '页面副本 public-events', offline: '「截至」；显示最近一次看到的列表' },
 
   // ── online-only ──
   { file: 'app/account.tsx', path: '/account', title: '账号与会话', classification: 'online-only', reasonCategory: 'credentials', reason: '账号、登录会话和退出都在服务器上确认', reads: '/api/account/me', offline: NEEDS_NETWORK },
@@ -145,6 +144,7 @@ export const PAGE_OFFLINE_INVENTORY: readonly PageOfflineEntry[] = [
   { file: 'app/invitations/[token].tsx', path: '/invitations/:token', title: '关系邀请', classification: 'online-only', reasonCategory: 'server-token', reason: '邀请链接由服务器验证后才能接受', reads: '/api/relationship-communication/invitations/:id', offline: NEEDS_NETWORK },
   { file: 'app/register.tsx', path: '/register', title: '邀请注册', classification: 'online-only', reasonCategory: 'server-token', reason: '邀请码由服务器验证', reads: '/api/events/public/:id、/api/profile', offline: NEEDS_NETWORK },
   { file: 'app/register/[code].tsx', path: '/register/:code', title: '邀请注册（带邀请码）', classification: 'online-only', reasonCategory: 'server-token', reason: '邀请码由服务器验证', reads: '同 /register', offline: NEEDS_NETWORK },
+  { file: 'app/platform.tsx', path: '/platform', title: '平台工作台（公开活动审核队列）', classification: 'online-only', reasonCategory: 'admin', reason: '平台运营工具：审核导入的公开活动', reads: '/api/events/public', offline: NEEDS_NETWORK },
   { file: 'app/o/[slug].tsx', path: '/o/:slug', title: '主办方公开页', classification: 'online-only', reasonCategory: 'public-visitor', reason: '给未登录访客看的公开页，不属于任何账号的本机副本', reads: '/api/events/public', offline: NEEDS_NETWORK },
   { file: 'app/profile/edit.tsx', path: '/profile/edit', title: '编辑资料', classification: 'online-only', reasonCategory: 'credentials', reason: '编辑会话从服务器取最新版本并保存，离线编辑属于 0120 断网写', reads: '/api/profile', offline: NEEDS_NETWORK },
   { file: 'app/profile/more.tsx', path: '/profile/more', title: '补充资料（上传名片、简历）', classification: 'online-only', reasonCategory: 'paid-ai', reason: '名片和简历由付费 AI 抽取', reads: '/api/profile/extractions/*', offline: NEEDS_NETWORK },

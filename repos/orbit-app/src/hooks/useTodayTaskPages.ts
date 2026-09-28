@@ -15,7 +15,7 @@ import {
 } from "../view-models/today-task-pages";
 import { taskPageSchema } from "../api/schema/task-page";
 import type { PageCopyStatus } from "../data/sync/page-copies";
-import { keepsPageCopy } from "./usePageCopyResource";
+import { keepsPageCopy } from "../data/sync/page-copies";
 import { usePageCopySession } from "./usePageCopySession";
 
 export interface TodayTaskPagesData {

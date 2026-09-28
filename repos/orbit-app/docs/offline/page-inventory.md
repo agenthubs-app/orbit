@@ -7,15 +7,15 @@
 
 | 归属 | 数量 |
 | --- | --- |
-| 能断网看（本地优先） | 42 |
+| 能断网看（本地优先） | 41 |
 | └ 由 Sprint 0108 实现 | 8 |
 | └ 由 Sprint 0115 实现 | 3 |
 | └ 由 Sprint 0116 实现 | 3 |
 | └ 由 Sprint 0117 实现 | 4 |
 | └ 由 Sprint 0118 实现 | 4 |
 | └ 由 Sprint 0119 实现 | 4 |
-| └ 由 Sprint 0131 实现 | 16 |
-| 只能在线 | 34 |
+| └ 由 Sprint 0131 实现 | 15 |
+| 只能在线 | 35 |
 | 不读账号数据（布局、跳转、本机设置） | 15 |
 | 合计（路由文件） | 91 |
 
@@ -37,7 +37,7 @@
 | `/contacts` | 联系人标签 | 0116 | 域 contacts；关系搜索建议 /api/search/suggestions 改为点开搜索时才读（0131） | 「截至」；本机搜索；关系搜索、深度搜索需要联网 |
 | `/contacts/list` | 联系人列表 | 0116 | 域 contacts | 「截至」；本机搜索 |
 | `/contacts/:id` | 联系人详情 | 0116 | 域 contacts；关系价值 /api/analysis/relationship-value/:id、聊天资格在线读 | 「截至」；编辑、起草消息、聊天资格需要联网 |
-| `/dashboard` | 看板 | 0117 | 域 dashboard-graph，本机计算；来源审计改为点「运行审计」才读 /api/audit/provenance（0131） | 「截至」；重新计算、运行审计需要联网 |
+| `/dashboard` | 看板 | 0117 | 域 dashboard-graph，本机计算；来源审计改为点「运行来源审计」才读 /api/audit/provenance，上次结果是页面副本 provenance-audit（0131） | 「截至」；重新计算、运行审计需要联网 |
 | `/contacts/dashboard` | 联系人分析 | 0117 | 域 dashboard-graph；AI 报告读 /api/mobile/contacts-dashboard?view=analysis | 「截至」；去 AI 分析需要联网 |
 | `/contacts/graph` | 联系人分析（结构分段） | 0117 | 域 dashboard-graph | 「截至」 |
 | `/contacts/analysis/:dimension/:bucketId` | 分组详情 | 0117 | 域 dashboard-graph，本机计算（非 ASCII 分组编号只解码一次，0131） | 「截至」 |
@@ -52,7 +52,7 @@
 | `/notes/:id` | 笔记详情 | 0108 | 域 notes；关联联系人读域 contacts（0116） | 「截至」；编辑需要联网 |
 | `/notes/:id/edit` | 编辑笔记 | 0108 | 域 notes | 表单显示本机内容；保存需要联网 |
 | `/notes/new` | 新建笔记 | 0108 | 域 notes（草稿存本机） | 可以写草稿；保存需要联网 |
-| `/home` | 首页（日程、待办、推荐活动、收件箱角标） | 0131 | 日程读域 personal-schedule + registered-events；待办读域 tasks；角标读域 inbox-notifications 的本机未读数；推荐活动读页面副本 event-recommendations | 「截至」；推荐活动显示最近一次同步的结果；勾选完成待办需要联网 |
+| `/home` | 首页（日程、待办、推荐活动、收件箱角标） | 0131 | 日程读域 personal-schedule + registered-events，约谈读页面副本 home-schedule；待办读域 tasks；角标读域 inbox-notifications 的本机未读数；推荐活动读页面副本 event-recommendations | 「截至」；推荐活动显示最近一次同步的结果；勾选完成待办需要联网 |
 | `/today` | 今日待办 | 0131 | 页面副本 today-page（/api/today 第一页） | 「截至」；新建、完成、接受建议需要联网 |
 | `/tasks` | 待办（全部 / 关系 / 个人），含关系待办和待办建议 | 0131 | 列表读域 tasks（0087/0108）；关系待办读页面副本 relationship-tasks（/api/relationship-tasks/page 第一页）；待办建议读页面副本 task-suggestions（/api/task-suggestions/page 第一页） | 「截至」；完成、重开需要联网 |
 | `/tasks/:id` | 待办详情 | 0131 | 域 tasks 的这一行；活动记录和提醒读网络 | 「截至」；待办内容来自本机；活动记录、提醒和所有修改需要联网 |
@@ -67,7 +67,6 @@
 | `/schedule/events/:id` | 日历里的活动预览 | 0131 | 已报名的活动直接跳到 /events/:id（域 registered-events）；其他活动读 /api/events/public/:id | 已报名的活动跳转后可离线；其他活动显示「需要联网」 |
 | `/events` | 活动标签：活动列表和推荐 | 0131 | 页面副本 public-events（公开活动目录）和 event-recommendations | 「截至」；显示最近一次看到的列表；报名需要联网 |
 | `/home/events` | 推荐活动（旧入口） | 0131 | 页面副本 public-events | 「截至」；显示最近一次看到的列表 |
-| `/platform` | 平台活动目录 | 0131 | 页面副本 public-events | 「截至」；显示最近一次看到的列表 |
 
 ## 只能在线
 
@@ -102,6 +101,7 @@
 | `/invitations/:token` | 关系邀请 | 需要服务器验证链接或邀请码：邀请链接由服务器验证后才能接受 | /api/relationship-communication/invitations/:id | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/register` | 邀请注册 | 需要服务器验证链接或邀请码：邀请码由服务器验证 | /api/events/public/:id、/api/profile | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/register/:code` | 邀请注册（带邀请码） | 需要服务器验证链接或邀请码：邀请码由服务器验证 | 同 /register | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
+| `/platform` | 平台工作台（公开活动审核队列） | 管理员工具：平台运营工具：审核导入的公开活动 | /api/events/public | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/o/:slug` | 主办方公开页 | 公开访客页面（不属于账号）：给未登录访客看的公开页，不属于任何账号的本机副本 | /api/events/public | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/profile/edit` | 编辑资料 | 涉及凭据或会话：编辑会话从服务器取最新版本并保存，离线编辑属于 0120 断网写 | /api/profile | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/profile/more` | 补充资料（上传名片、简历） | 付费 AI：名片和简历由付费 AI 抽取 | /api/profile/extractions/* | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
@@ -201,7 +201,7 @@
 | `app/party.tsx` | `/party` | device-only |
 | `app/party/checkin.tsx` | `/party/checkin` | device-only |
 | `app/party/graph.tsx` | `/party/graph` | device-only |
-| `app/platform.tsx` | `/platform` | local-first (0131) |
+| `app/platform.tsx` | `/platform` | online-only |
 | `app/profile/continue.tsx` | `/profile/continue` | device-only |
 | `app/profile/edit.tsx` | `/profile/edit` | online-only |
 | `app/profile/more.tsx` | `/profile/more` | online-only |

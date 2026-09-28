@@ -280,7 +280,8 @@ function localRows(membershipStatus: "rsvped" | "cancelled") {
 
 test("offline: a registered event opens from the device copy with the 截至 notice, the attendee's status and check-in time, and no action that needs the network", async t => {
   const page = await open(t, { statuses: { "/api/events/public/event_signup_03": 503 }, local: localRows("rsvped"), localSyncedAt: "2026-10-26T00:00:00Z" });
-  await page.getByText(/无法连接 · 显示截至 .+ 的内容/).waitFor();
+  // Sprint 0131: a 5xx is not "no connection": the service is unavailable, the device copy stays with its time.
+  await page.getByText(/服务暂时不可用 · 显示截至 .+ 的内容/).waitFor();
   await page.getByText("东京 · 本机", { exact: true }).first().waitFor();
   await page.getByText("本机副本里的活动介绍", { exact: true }).first().waitFor();
   await page.getByTestId("event-registration-status").filter({ hasText: "已报名" }).waitFor();
@@ -292,14 +293,15 @@ test("offline: a registered event opens from the device copy with the 截至 not
   assert.deepEqual(seen, [{ path: "/api/events/public/event_signup_03", method: "GET" }], "the registration and operations reads are not attempted from the device copy");
 });
 
-test("offline after a cancellation: the event is gone from the device, the page says so next to the error", async t => {
+test("offline after a cancellation: the event is gone from the device, and the page says so neutrally with a way back (0131: no error box)", async t => {
   const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
   t.after(async () => { await page.close(); });
   await page.route("**/*", r => r.abort());
   await page.setContent('<div id="root"></div>');
   await page.evaluate(patch => { (window as any).initialFixture = patch; }, { statuses: { "/api/events/public/event_signup_03": 503 }, local: localRows("cancelled"), localSyncedAt: "2026-10-26T00:00:00Z" });
   await page.addScriptTag({ content: script });
-  await page.getByText("暂时取不到活动详情", { exact: true }).waitFor();
   await page.getByText("报名已取消 · 这场活动的资料已从本机移除", { exact: true }).waitFor();
+  assert.equal(await page.getByText("暂时取不到活动详情", { exact: true }).count(), 0, "no red error box");
+  await page.getByRole("button", { name: "返回", exact: true }).last().waitFor();
   assert.equal(await page.getByText("东京 · 本机", { exact: true }).count(), 0);
 });

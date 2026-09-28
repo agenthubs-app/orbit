@@ -16,7 +16,7 @@ import { homeDateView, homeRecommendedEventsToView, homeScheduleToView } from ".
 import { homeTaskPagePath, homeTaskPageToView } from "../../view-models/home-task-page";
 import { localHomeScheduleItems, localHomeTaskPage } from "../../view-models/home-local";
 import { OfflineNotice } from "../../components/OfflineNotice";
-import { keepsPageCopy } from "../../hooks/usePageCopyResource";
+import { keepsPageCopy } from "../../data/sync/page-copies";
 import { useMirrorProbe } from "../../hooks/useMirrorProbe";
 import { useSyncedCollection } from "../../hooks/useSyncedCollection";
 import { usePageCopySession } from "../../hooks/usePageCopySession";

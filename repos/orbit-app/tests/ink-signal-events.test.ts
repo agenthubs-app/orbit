@@ -40,6 +40,9 @@ window.fetch = async (input, init) => {
 export const useFixture = () => { observe(); return state; };
 export const useOrbitAuthSession = () => { observe(); return { ready: state.ready, signedIn: state.signedIn, user: state.signedIn ? { id: state.actor } : null, cookieHeader: state.cookieHeader }; };
 export const useOrbitApiBaseUrl = () => { observe(); return { ready: state.baseReady, baseUrl: state.baseUrl }; };
+// Sprint 0131: the screen also reads the device mirror / page copies; this harness tests the network path (no mirror).
+export const useSyncedCollection = () => ({ status: "unsynced", error: null, lastSyncedAt: null, workspaceId: null, records: [], refresh: async () => null, invalidate: async () => null, currentSession: () => null });
+export const useSyncCoordinatorSession = () => null;
 export const useOrbitLocale = () => { observe(); return { language: state.language, t: createTranslator(state.language) }; };
 export const useIsFocused = () => { observe(); return state.focused; };
 export const useLocalSearchParams = () => ({});
@@ -59,7 +62,7 @@ test.before(async () => {
     plugins: [{ name: "ink-events-boundaries", setup(plugin) {
       plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "events" }));
       plugin.onResolve({ filter: /^react-native-svg$/ }, () => ({ path: require.resolve("react-native-svg/lib/module/ReactNativeSVG.web.js") }));
-      plugin.onResolve({ filter: /^(fixture|expo-router|@expo\/vector-icons|react-native-safe-area-context)$|\/(ApiBaseUrlProvider|AuthSessionProvider|OrbitLocaleContext|snapshot-store)$/ }, () => ({ path: "fixture", namespace: "events" }));
+      plugin.onResolve({ filter: /^(fixture|expo-router|@expo\/vector-icons|react-native-safe-area-context)$|\/(ApiBaseUrlProvider|AuthSessionProvider|OrbitLocaleContext|snapshot-store|useSyncedCollection)$/ }, () => ({ path: "fixture", namespace: "events" }));
       plugin.onLoad({ filter: /.*/, namespace: "events" }, args => ({ contents: args.path === "native" ? `
 import React from "react"; import { Pressable as RealPressable, Text as RealText, TextInput as RealTextInput, RefreshControl as RealRefreshControl, StyleSheet, useWindowDimensions as realDimensions } from "react-native-web";
 import { useFixture } from "fixture"; export * from "react-native-web";
@@ -396,6 +399,8 @@ for (const patch of [{ invalid: true }, { badField: true }, { badField: "tags" }
   assert.equal(await p.getByText("暂无活动", { exact: true }).count(), 0);
   assert.equal(await p.getByRole("button", { name: "重新读取活动", exact: true }).count(), 1);
   await update(p, { invalid: false, badField: false, duplicate: false, failure: false }); await press(p, "重新读取活动");
+  // Sprint 0131: the catalogue is a network-only page-copy read, so a retry passes through loading first.
+  await p.getByRole("button", { name: /^周末产品交流会，/ }).waitFor();
   assert.equal(await p.getByRole("button", { name: /^周末产品交流会，/ }).count(), 1); assert.deepEqual(await writes(p), []);
 });
 

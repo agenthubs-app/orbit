@@ -3,11 +3,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useOrbitAuthSession } from "../api/AuthSessionProvider";
 import { useOrbitApiBaseUrl } from "../api/ApiBaseUrlProvider";
 import { serverReachability } from "../api/server-reachability";
-import type { ApiResult } from "../api/types";
-import type { PageCopyId, PageCopyStatus } from "../data/sync/page-copies";
+import type { PageCopy, PageCopyId, PageCopyStatus } from "../data/sync/page-copies";
 import { resultToRouteState, type RouteState } from "../view-models/route-state";
-import type { ApiResourceState } from "./useApiResource";
-import { useOrbitApiClient } from "./useOrbitApiClient";
+import { useApiResource, type ApiResourceState } from "./useApiResource";
 import { usePageCopySession } from "./usePageCopySession";
 
 export type PageCopyResourceState<TData> = ApiResourceState<TData> & {
@@ -17,23 +15,25 @@ export type PageCopyResourceState<TData> = ApiResourceState<TData> & {
 
 const META = { featureMode: null, privacy: null, runtimeBoundary: null } as const;
 
-/** 0 (no connection) and 5xx keep the copy on screen; any other answer is the server's word. */
-export function keepsPageCopy(result: ApiResult<unknown>): "unreachable" | "unavailable" | null {
-  if (result.success) return null;
-  if (result.status === 0 || result.error.code === "ORBIT_APP_NETWORK_ERROR") return "unreachable";
-  return result.status >= 500 ? "unavailable" : null;
+export { keepsPageCopy } from "../data/sync/page-copies";
+
+function keepsCopyState(state: RouteState<unknown>): "unreachable" | "unavailable" | null {
+  if (state.kind === "offline") return "unreachable";
+  return state.kind === "failure" && state.status >= 500 ? "unavailable" : null;
 }
 
 /**
- * Sprint 0131: a server-computed page that is readable offline. The device's
- * page copy (the last successful online read, bound to the lease) is shown at
- * once; this visit's server answer replaces it and becomes the new copy. When
- * the server cannot be reached (or answers 5xx) the copy stays on screen and
- * `copy.offline` turns on, so the page can show the 「截至」 notice and disable
- * writes. A 4xx answer is authoritative and replaces the copy on screen.
- * Without a device mirror (a browser without OPFS, a non-secure origin) there is
- * no copy and the page behaves as a plain network read. When the server
- * answers again after being unreachable, the page reads again at once.
+ * Sprint 0131: a server-computed page that is readable offline. The page's
+ * network read is the ordinary network-only useApiResource; around it, the
+ * device's page copy (the last successful online read, bound to the lease) is
+ * shown while the server has not answered, and stays on screen with
+ * `copy.offline` when the server cannot be reached (or answers 5xx), so the page
+ * can show the 「截至」 notice and turn writes off. Every 2xx answer is shown (the
+ * page validates it) and an accepted one becomes the new copy; a 4xx answer is
+ * the server's word and replaces the copy. Without a device mirror (signed out,
+ * a browser without OPFS or on a non-secure origin) there is no copy and the page
+ * is a plain network read. When the server answers again after being
+ * unreachable, the page reads again at once.
  */
 export function usePageCopyResource<TData>(
   path: string,
@@ -50,107 +50,62 @@ export function usePageCopyResource<TData>(
   const { baseUrl } = useOrbitApiBaseUrl();
   const enabled = options.enabled ?? true;
   const signedIn = auth.ready && auth.signedIn && Boolean(auth.actorId);
+  const network = useApiResource<TData>(path, isEmpty, {
+    cachePolicy: "network-only",
+    enabled,
+    ...(options.scopeKey === undefined ? {} : { scopeKey: options.scopeKey }),
+  });
   const { session, whenReady } = usePageCopySession(enabled && signedIn);
-  // A new session object (the same scope reopened) must not re-read the page.
-  const sessionRef = useRef(session);
-  sessionRef.current = session;
-  const client = useOrbitApiClient({ scopeKey: JSON.stringify([options.scopeKey ?? null, path]) });
   const copyId = options.copy.id;
   const variant = options.copy.variant ?? "main";
   const accept = useRef(options.accept);
   accept.current = options.accept;
-  const isEmptyRef = useRef(isEmpty);
-  isEmptyRef.current = isEmpty;
-  const [refreshIndex, setRefreshIndex] = useState(0);
-  const [refreshing, setRefreshing] = useState(false);
-  const [view, setView] = useState<{ key: string; state: RouteState<TData>; copy: PageCopyStatus | null }>({ key: "", state: { kind: "loading" }, copy: null });
-  const viewKey = JSON.stringify([options.scopeKey ?? null, path, copyId, variant, auth.actorId, baseUrl]);
-  const offlineRef = useRef(false);
-  const refresh = useCallback(() => setRefreshIndex((value) => value + 1), []);
-  // The attempt in flight: whether the server answered, and the copy shown meanwhile. The copy is read
-  // as soon as the coordinator session exists (it may open after the request started).
-  const attempt = useRef<{ key: string; answered: boolean; shown: { syncedAt: string; state: RouteState<TData> } | null; copyRead: Promise<void> | null } | null>(null);
-  const readCopy = useCallback((current: NonNullable<typeof attempt.current>, wait = false): Promise<void> => {
-    const activeSession = sessionRef.current;
-    if (current.copyRead) return current.copyRead;
-    if (!activeSession) {
-      // Offline answers can come before the session opens; wait for it (briefly) rather than miss the copy.
-      return wait ? whenReady().then((ready) => (ready && attempt.current === current ? readCopy(current) : undefined)) : Promise.resolve();
-    }
-    current.copyRead = activeSession.readPageCopy(copyId, variant).then((copy) => {
-      if (attempt.current !== current || current.answered || !copy || !(accept.current ? accept.current(copy.data) : true)) return;
-      const state = resultToRouteState({ success: true, data: copy.data as TData, meta: META, status: 200 }, isEmptyRef.current);
-      current.shown = { syncedAt: copy.syncedAt, state };
-      setView({ key: current.key, state, copy: { lastSyncedAt: copy.syncedAt, offline: false, reason: null } });
-    }).catch(() => undefined);
-    return current.copyRead;
-  }, [copyId, variant, whenReady]);
+  const accepts = useCallback((data: unknown) => (accept.current ? accept.current(data) : true), []);
+  const copyKey = JSON.stringify([baseUrl, auth.actorId, copyId, variant]);
+  // The copy read for this key: `settled` once a read finished (or there is no session to read from).
+  const [stored, setStored] = useState<{ key: string; copy: PageCopy | null; settled: boolean }>({ key: "", copy: null, settled: false });
+  const current = stored.key === copyKey ? stored : { key: copyKey, copy: null, settled: false };
 
   useEffect(() => {
-    if (!enabled || !auth.ready) {
-      attempt.current = null;
-      setView({ key: viewKey, state: { kind: "loading" }, copy: null });
-      return;
-    }
-    let active = true;
-    const controller = new AbortController();
-    const isRefresh = refreshIndex > 0;
-    if (isRefresh) setRefreshing(true);
-    else setView((current) => current.key === viewKey ? current : { key: viewKey, state: { kind: "loading" }, copy: null });
-    const accepts = (data: unknown) => accept.current ? accept.current(data) : true;
-    const current: NonNullable<typeof attempt.current> = { key: viewKey, answered: false, shown: null, copyRead: null };
-    attempt.current = current;
-    void readCopy(current);
+    if (!enabled) return;
+    let live = true;
+    // The session opens in an effect; wait for it (briefly) so an early offline answer does not miss the copy.
+    void whenReady().then((ready) => ready ? ready.readPageCopy(copyId, variant) : null).then((copy) => {
+      if (live) setStored({ key: copyKey, copy: copy && accepts(copy.data) ? copy : null, settled: true });
+    }).catch(() => { if (live) setStored({ key: copyKey, copy: null, settled: true }); });
+    return () => { live = false; };
+  }, [accepts, copyId, copyKey, enabled, session, variant, whenReady]);
 
-    void (async () => {
-      try {
-        const result = await client.get<unknown>(path, { signal: controller.signal });
-        if (!active) return;
-        // Any 2xx answer is shown (the page validates it itself); only an accepted one becomes the copy.
-        const ok = result.success && result.status >= 200 && result.status < 300;
-        if (ok) {
-          current.answered = true;
-          offlineRef.current = false;
-          setView({ key: viewKey, state: resultToRouteState({ success: true, data: result.data as TData, meta: META, status: 200 }, isEmptyRef.current), copy: null });
-          if (accepts(result.data)) void whenReady().then((ready) => ready?.savePageCopy(copyId, variant, result.data)).catch(() => undefined);
-          return;
-        }
-        // Offline the copy is what the page shows: let a pending (or late-starting) copy read land first.
-        await readCopy(current, true);
-        if (!active) return;
-        current.answered = true;
-        const reason = keepsPageCopy(result);
-        const copy = current.shown;
-        if (copy && reason) {
-          offlineRef.current = true;
-          setView({ key: viewKey, state: copy.state, copy: { lastSyncedAt: copy.syncedAt, offline: true, reason } });
-          return;
-        }
-        offlineRef.current = reason === "unreachable";
-        const failed: ApiResult<TData> = result.success
-          ? { success: false, error: { code: "ORBIT_APP_UNEXPECTED_STATUS", message: "请求暂时无法完成，请稍后重试。" }, meta: result.meta, status: result.status }
-          : result as ApiResult<TData>;
-        if (!isRefresh || !copy) setView({ key: viewKey, state: resultToRouteState(failed, isEmptyRef.current), copy: null });
-      } finally {
-        if (active) setRefreshing(false);
-      }
-    })();
-    return () => {
-      active = false;
-      controller.abort();
-    };
-  }, [auth.ready, client, copyId, enabled, path, readCopy, refreshIndex, variant, viewKey, whenReady]);
-
-  // The session opened after the request started: show the copy while the server has not answered.
+  // A 2xx answer becomes the copy (once per answer).
+  const saved = useRef<unknown>(null);
+  const answer = network.kind === "success" || network.kind === "empty" ? network.data : undefined;
   useEffect(() => {
-    if (session && attempt.current && !attempt.current.answered) void readCopy(attempt.current);
-  }, [readCopy, session]);
+    if (answer === undefined || saved.current === answer || !accepts(answer)) return;
+    saved.current = answer;
+    void whenReady().then((ready) => ready?.savePageCopy(copyId, variant, answer)).catch(() => undefined);
+  }, [accepts, answer, copyId, variant, whenReady]);
 
+  const reason = keepsCopyState(network);
+  const refresh = network.refresh;
   // Back online: read again at once instead of leaving the 「截至」 copy up.
+  const offlineRef = useRef(false);
+  offlineRef.current = reason !== null;
   useEffect(() => serverReachability.subscribe((url, state, previous) => {
     if (state === "reachable" && previous === "unreachable" && offlineRef.current && url === baseUrl.trim().replace(/\/+$/u, "")) refresh();
   }), [baseUrl, refresh]);
 
-  const current = view.key === viewKey ? view : { state: { kind: "loading" } as RouteState<TData>, copy: null };
-  return { ...current.state, refresh, refreshing, copy: current.copy };
+  if (network.kind === "success" || network.kind === "empty") return { ...network, copy: null };
+  const fromCopy = current.copy
+    ? resultToRouteState({ success: true, data: current.copy.data as TData, meta: META, status: 200 }, isEmpty)
+    : null;
+  if (network.kind === "loading") {
+    return fromCopy ? { ...fromCopy, refresh, refreshing: network.refreshing, copy: { lastSyncedAt: current.copy!.syncedAt, offline: false, reason: null } }
+      : { ...network, copy: null };
+  }
+  if (reason && fromCopy) {
+    return { ...fromCopy, refresh, refreshing: network.refreshing, copy: { lastSyncedAt: current.copy!.syncedAt, offline: true, reason } };
+  }
+  // Offline before the copy read finished: keep reading rather than flash "not on this device".
+  if (reason && enabled && signedIn && !current.settled) return { kind: "loading", refresh, refreshing: network.refreshing, copy: null };
+  return { ...network, copy: null };
 }

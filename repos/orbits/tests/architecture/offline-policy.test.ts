@@ -58,6 +58,17 @@ const APPROVED_POLICY_MATRIX = [
   ["GET", "/api/inbox/notifications/:id", "read", "inbox_notification", "durable_normalized", "online_only", "metadata_only"],
   ["GET", "/api/ai/conversations/sessions", "read", "ai_session", "durable_normalized", "online_only", "metadata_only"],
   ["GET", "/api/ai/conversations/sessions/:id", "read", "ai_session_message", "durable_normalized", "online_only", "metadata_only"],
+  ["GET", "/api/profile", "read", "self_profile", "encrypted_ttl_snapshot", "online_only", "metadata_only"],
+  ["GET", "/api/agent/actions", "read", "agent_actions", "encrypted_ttl_snapshot", "online_only", "metadata_only"],
+  ["GET", "/api/agent/ledger", "read", "agent_ledger", "encrypted_ttl_snapshot", "online_only", "metadata_only"],
+  ["GET", "/api/relationship-tasks/page", "read", "relationship_tasks", "encrypted_ttl_snapshot", "online_only", "metadata_only"],
+  ["GET", "/api/task-suggestions/page", "read", "task_suggestions", "encrypted_ttl_snapshot", "online_only", "metadata_only"],
+  ["GET", "/api/today", "read", "today", "encrypted_ttl_snapshot", "online_only", "metadata_only"],
+  ["GET", "/api/connections/:id/lifecycle", "read", "relationship_lifecycle", "encrypted_ttl_snapshot", "online_only", "metadata_only"],
+  ["GET", "/api/schedule-items/:id/meeting-details", "read", "meeting_details", "encrypted_ttl_snapshot", "online_only", "metadata_only"],
+  ["GET", "/api/appointments/:id", "read", "meeting_details", "encrypted_ttl_snapshot", "online_only", "metadata_only"],
+  ["GET", "/api/audit/provenance", "read", "provenance_audit", "encrypted_ttl_snapshot", "online_only", "metadata_only"],
+  ["GET", "/api/recommendations/events", "read", "event_recommendations", "encrypted_ttl_snapshot", "online_only", "metadata_only"],
   ["POST", "/api/auth/mobile/credentials", "authenticate", "account_secret", "online_only_secret", "online_only", "never_local"],
 ] as const;
 

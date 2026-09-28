@@ -15,6 +15,10 @@ import { createControlStyles } from "../../design/controls";
 import { radius, spacing, textStyles } from "../../design/tokens";
 import { createThemedStyles } from "../../design/theme";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
+import { keepsPageCopy } from "../../data/sync/page-copies";
+import { usePageCopySession } from "../../hooks/usePageCopySession";
+import { OfflineNotice } from "../../components/OfflineNotice";
+import type { PageCopyStatus } from "../../data/sync/page-copies";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { meetingDetailsToView } from "../../view-models/meeting-details";
 
@@ -51,6 +55,12 @@ function MeetingDetailEditor({ appointmentId, ready, scopeKey, source }: { appoi
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [revision, setRevision] = useState(0);
+  // Sprint 0131: the last online read of this meeting is the page copy "meeting-details" (20 most recently opened kept);
+  // offline it is shown read-only with 截至.
+  const { whenReady } = usePageCopySession(ready);
+  const [copy, setCopy] = useState<PageCopyStatus | null>(null);
+  const offline = copy?.offline === true;
+  const copyVariant = `${source}:${appointmentId}`;
   const dirty = !!baseline && draft !== baseline.details;
   const stale = !!baseline && !!latest && baseline.version !== latest.version;
   const stateRef = useRef({ baseline, dirty });
@@ -65,14 +75,29 @@ function MeetingDetailEditor({ appointmentId, ready, scopeKey, source }: { appoi
   useEffect(() => {
     if (!ready) { setLoading(false); return; }
     let active = true;
+    let answered = false;
     setLoading(true);
-    void client.get<unknown>(meetingDetailsPath(appointmentId, false, source), { signal: requestScope.controller.signal }).then((result) => {
+    const fromCopy = whenReady().then((session) => session?.readPageCopy("meeting-details", copyVariant) ?? null).then((stored) => {
+      const value = stored ? readMeetingDetails(stored.data) : null;
+      if (!stored || !value || value.appointmentId !== appointmentId) return null;
+      if (active && !answered && !stateRef.current.baseline) { setBaseline(value); setLatest(value); setDraft(value.details); setCopy({ lastSyncedAt: stored.syncedAt, offline: false, reason: null }); }
+      return { value, syncedAt: stored.syncedAt };
+    }).catch(() => null);
+    void client.get<unknown>(meetingDetailsPath(appointmentId, false, source), { signal: requestScope.controller.signal }).then(async (result) => {
       if (!active || !requestScope.active || currentScope.current !== requestScope) return;
       const value = result.success ? readMeetingDetails(result.data) : null;
       if (!value || value.appointmentId !== appointmentId) {
-        setError(result.success ? locale.t("meetingDetails.readUnconfirmed") : result.error.message);
+        const reason = keepsPageCopy(result);
+        const stored = reason ? await fromCopy : null;
+        answered = true;
+        if (!active || !requestScope.active) return;
+        if (stored && reason) { setBaseline(stored.value); setLatest(stored.value); setDraft(stored.value.details); setEditing(false); setCopy({ lastSyncedAt: stored.syncedAt, offline: true, reason }); setError(""); return; }
+        setError(reason === "unreachable" ? locale.t("sync.notOnDevice") : result.success ? locale.t("meetingDetails.readUnconfirmed") : result.error.message);
         return;
       }
+      answered = true;
+      setCopy(null);
+      if (result.success) void whenReady().then((session) => session?.savePageCopy("meeting-details", copyVariant, result.data)).catch(() => undefined);
       setLatest(value);
       setError("");
       if (!stateRef.current.baseline || !stateRef.current.dirty) {
@@ -85,7 +110,7 @@ function MeetingDetailEditor({ appointmentId, ready, scopeKey, source }: { appoi
       if (active && requestScope.active) setLoading(false);
     });
     return () => { active = false; };
-  }, [appointmentId, client, locale, ready, requestScope, revision, source]);
+  }, [appointmentId, client, copyVariant, locale, ready, requestScope, revision, source, whenReady]);
 
   const loadLatest = () => {
     if (!latest) return;
@@ -103,7 +128,7 @@ function MeetingDetailEditor({ appointmentId, ready, scopeKey, source }: { appoi
   };
 
   async function save() {
-    if (!ready || !baseline || stale || requestScope.busy || !requestScope.active || currentScope.current !== requestScope || !dirty) return;
+    if (!ready || !baseline || stale || offline || requestScope.busy || !requestScope.active || currentScope.current !== requestScope || !dirty) return;
     const body = { details: draft, expectedVersion: baseline.version };
     const path = meetingDetailsPath(appointmentId, true, source);
     const fingerprint = JSON.stringify([path, body]);
@@ -152,6 +177,7 @@ function MeetingDetailEditor({ appointmentId, ready, scopeKey, source }: { appoi
       refreshControl={<RefreshControl onRefresh={() => setRevision(value => value + 1)} refreshing={loading} tintColor={colors.accent} />}
       title={locale.t("meetingDetails.title")}
     >
+      {offline ? <OfflineNotice lastSyncedAt={copy?.lastSyncedAt ?? null} reason={copy?.reason ?? null} /> : null}
       {loading && !baseline ? <LoadingState /> : null}
       {baseline && view ? (
         <>
@@ -194,7 +220,7 @@ function MeetingDetailEditor({ appointmentId, ready, scopeKey, source }: { appoi
               <>
                 <Text style={[styles.body, !baseline.details ? styles.empty : null]}>{baseline.details || locale.t("meetingDetails.empty")}</Text>
                 {view.updatedLabel ? <Text style={styles.meta}>{view.updatedLabel}</Text> : null}
-                <Pressable accessibilityRole="button" onPress={() => { setEditing(true); setError(""); setMessage(""); }} style={styles.secondaryButton}><Text style={styles.secondaryText}>{locale.t("meetingDetails.edit")}</Text></Pressable>
+                <Pressable accessibilityRole="button" accessibilityState={{ disabled: offline }} disabled={offline} onPress={() => { setEditing(true); setError(""); setMessage(""); }} style={[styles.secondaryButton, offline ? styles.disabled : null]}><Text style={styles.secondaryText}>{locale.t("meetingDetails.edit")}{offline ? ` · ${locale.t("sync.needsNetwork")}` : ""}</Text></Pressable>
               </>
             )}
           </DataCard>

@@ -33,8 +33,6 @@ export const useApiResource = path => { useFixture(); if (!state.reads.includes(
 async function request(method, path, options) { state.requests.push({ method, path, ...options }); if (state.hold) await new Promise(resolve => state.release = resolve); if (state.thrown) throw Error("transport"); if (state.failure) return { success: false, error: { message: "保存失败，请重试。" } }; const record = state.tasks.find(task => path === "/api/tasks/" + encodeURIComponent(task.id)) ?? state.task; return { success: true, status: 200, data: { task: { ...record, ...options.body.patch, status: options.body.action === "complete" ? "completed" : options.body.action === "reopen" ? "open" : record.status, updatedAt: "2026-09-11T05:30:00Z" } } }; }
 const client = { async get(path, options) {
   const url = new URL(path, "https://orbit.example");
-  // Sprint 0131: the first relationship follow-up and suggestion pages are page-copy reads through the client.
-  if (url.pathname === "/api/relationship-tasks/page" || url.pathname === "/api/task-suggestions/page") { if (!state.reads.includes(path)) state.reads.push(path); return state.kinds?.[path] === "offline" ? { success: false, status: 0, error: { code: "ORBIT_APP_NETWORK_ERROR", message: "暂时无法读取，请重试。" } } : { success: true, status: 200, data: { task: state.task } }; }
   if (url.pathname !== "/api/schedule-items" || url.searchParams.get("scope") !== "personal") throw Error("Unsupported task fixture GET");
   const read = { method: "GET", path, headers: options?.headers, hasSignal: options?.signal instanceof AbortSignal, aborted: options?.signal?.aborted ?? false, body: options?.body };
   state.httpReads.push(read);
@@ -153,8 +151,7 @@ test("list blocks same-turn double completion and keeps the row after a rejected
   await page.evaluate(() => (window as any).fixture.release());
   await page.getByRole("alert").filter({ hasText: "保存失败" }).waitFor();
   assert.equal(await checkbox.getAttribute("aria-checked"), "false");
-  // Sprint 0131: the first follow-up page is a page-copy read through the client (its focus refresh is not a useApiResource refresh).
-  assert.deepEqual(await page.evaluate(() => (window as any).fixture.refreshes), []);
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.refreshes), ["/api/relationship-tasks/page?mode=open&limit=30"]);
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.httpReads), initialReads);
 });
 
@@ -168,7 +165,7 @@ test("list transport rejection unlocks actions and visibly preserves the unchang
   assert.equal(await checkbox.getAttribute("aria-checked"), "false");
   await page.evaluate(() => (window as any).fixture.update({ thrown: false }));
   await checkbox.click(); assert.equal((await requests(page)).length, 2);
-  assert.deepEqual(await page.evaluate(() => (window as any).fixture.refreshes), ["/api/tasks/page?status=open&scope=all&limit=30"]);
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.refreshes), ["/api/relationship-tasks/page?mode=open&limit=30", "/api/tasks/page?status=open&scope=all&limit=30"]);
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.httpReads), initialReads);
 });
 

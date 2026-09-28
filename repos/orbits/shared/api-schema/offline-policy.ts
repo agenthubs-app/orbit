@@ -69,6 +69,19 @@ export const OFFLINE_POLICY_REGISTRATIONS = [
   { method: "GET", pathname: "/api/inbox/notifications/:id", action: "read", policy: policy("inbox_notification", "durable_normalized", "online_only") },
   { method: "GET", pathname: "/api/ai/conversations/sessions", action: "read", policy: policy("ai_session", "durable_normalized", "online_only") },
   { method: "GET", pathname: "/api/ai/conversations/sessions/:id", action: "read", policy: policy("ai_session_message", "durable_normalized", "online_only") },
+  // Sprint 0131: page copies — the device keeps the last successful read of these server-computed pages (bound to
+  // the offline read lease epoch, AES-GCM per value in the browser; App src/data/sync/page-copies.ts). Writes stay online.
+  { method: "GET", pathname: "/api/profile", action: "read", policy: policy("self_profile", "encrypted_ttl_snapshot", "online_only") },
+  { method: "GET", pathname: "/api/agent/actions", action: "read", policy: policy("agent_actions", "encrypted_ttl_snapshot", "online_only") },
+  { method: "GET", pathname: "/api/agent/ledger", action: "read", policy: policy("agent_ledger", "encrypted_ttl_snapshot", "online_only") },
+  { method: "GET", pathname: "/api/relationship-tasks/page", action: "read", policy: policy("relationship_tasks", "encrypted_ttl_snapshot", "online_only") },
+  { method: "GET", pathname: "/api/task-suggestions/page", action: "read", policy: policy("task_suggestions", "encrypted_ttl_snapshot", "online_only") },
+  { method: "GET", pathname: "/api/today", action: "read", policy: policy("today", "encrypted_ttl_snapshot", "online_only") },
+  { method: "GET", pathname: "/api/connections/:id/lifecycle", action: "read", policy: policy("relationship_lifecycle", "encrypted_ttl_snapshot", "online_only") },
+  { method: "GET", pathname: "/api/schedule-items/:id/meeting-details", action: "read", policy: policy("meeting_details", "encrypted_ttl_snapshot", "online_only") },
+  { method: "GET", pathname: "/api/appointments/:id", action: "read", policy: policy("meeting_details", "encrypted_ttl_snapshot", "online_only") },
+  { method: "GET", pathname: "/api/audit/provenance", action: "read", policy: policy("provenance_audit", "encrypted_ttl_snapshot", "online_only") },
+  { method: "GET", pathname: "/api/recommendations/events", action: "read", policy: policy("event_recommendations", "encrypted_ttl_snapshot", "online_only") },
   { method: "POST", pathname: "/api/auth/mobile/credentials", action: "authenticate", policy: policy("account_secret", "online_only_secret", "online_only", "never_local") },
 ] satisfies readonly OfflinePolicyRegistration[];
 

@@ -13,6 +13,8 @@ let url: string;
 const fixture = `
 // Sprint 0125: these tests cover the browser network source (no browser mirror available).
 export const useWebMirrorStatus = () => ({ mode: "online-only", reason: "no-opfs" });
+// Sprint 0131: page copies / row-id reads open the coordinator session; this harness has none.
+export const useSyncCoordinatorSession = () => null;
 export const useSyncedCollection = () => ({ status: "unsynced", error: null, lastSyncedAt: null, records: [], workspaceId: null, refresh: async () => null, invalidate: async () => null });
 import React, { useEffect, useSyncExternalStore } from "react";
 import { View } from "react-native";

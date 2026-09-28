@@ -35,6 +35,9 @@ window.fetch = (input) => {
   return Promise.resolve(respond());
 };
 export const useOrbitAuthSession = () => ({ ready: true, signedIn: true, cookieHeader: "", accountId: state.actor, actorId: state.actor, user: { id: state.actor } });
+// Sprint 0131: the screen reads page copies / the device mirror; this harness tests the network path (no mirror).
+export const useSyncedCollection = () => ({ status: "unsynced", error: null, lastSyncedAt: null, workspaceId: null, records: [], refresh: async () => null, invalidate: async () => null, currentSession: () => null });
+export const useSyncCoordinatorSession = () => null;
 export const useOrbitApiBaseUrl = () => ({ ready: true, baseUrl: "https://orbit.example" });
 export const readSnapshot = async () => null;
 export const writeSnapshot = async () => {};
@@ -51,7 +54,7 @@ test.before(async () => {
     define: { "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
     plugins: [{ name: "ledger-boundaries", setup(plugin) {
       plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: require.resolve("react-native-web") }));
-      plugin.onResolve({ filter: /^(expo-router|@expo\/vector-icons|react-native-safe-area-context)$|\/(AuthSessionProvider|ApiBaseUrlProvider|snapshot-store)$/ }, () => ({ path: "fixture", namespace: "ledger" }));
+      plugin.onResolve({ filter: /^(expo-router|@expo\/vector-icons|react-native-safe-area-context)$|\/(AuthSessionProvider|ApiBaseUrlProvider|snapshot-store|useSyncedCollection)$/ }, () => ({ path: "fixture", namespace: "ledger" }));
       plugin.onLoad({ filter: /.*/, namespace: "ledger" }, () => ({ contents: fixture, loader: "jsx", resolveDir: process.cwd() }));
     } }],
   });

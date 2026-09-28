@@ -453,8 +453,9 @@ function canonicalScheduleTimelineItems(scheduleItems: unknown, timeZone: string
         durationMinutes: endsAt !== null && endsAt > startsAt
           ? kind === "personal" ? Math.round((endsAt - startsAt) / 60_000) : Math.max(30, Math.min(240, Math.round((endsAt - startsAt) / 60_000)))
           : kind === "personal" ? 0 : 60,
+        // Sprint 0131 (coordinator decision from 0115): an event opens its detail page, readable offline for a registered one.
         href: kind === "event"
-          ? `/schedule/events/${encodeURIComponent(sourceId)}`
+          ? `/events/${encodeURIComponent(sourceId)}`
           : kind === "meeting"
             ? id === `schedule:${sourceId}`
               ? `/schedule/meetings/${encodeURIComponent(sourceId)}?source=appointment`
@@ -522,7 +523,7 @@ function eventTimelineItems(
           .filter(Boolean)
           .join(" · "),
         durationMinutes,
-        href: `/schedule/events/${encodeURIComponent(id)}`,
+        href: `/events/${encodeURIComponent(id)}`,
         id,
         kind: "event",
         ...(location ? { location } : {}),

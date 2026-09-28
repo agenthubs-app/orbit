@@ -1,6 +1,6 @@
 import { useOrbitTimeZone } from "../../time/OrbitTimeZoneProvider";
 import { Ionicons } from "@expo/vector-icons";
-import { type Href, useLocalSearchParams, useRouter } from "expo-router";
+import { type Href, Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import { Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
 import { publicEventDetailPath } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
@@ -11,6 +11,9 @@ import { textStyles, radius, spacing, typography } from "../../design/tokens";
 import { createControlStyles } from "../../design/controls";
 import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
+import { useSyncedCollection } from "../../hooks/useSyncedCollection";
+import { NeedsNetworkState } from "../../components/NeedsNetworkState";
+import { localRegisteredEvents } from "../../view-models/event-day-local";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import {
   scheduleEventPreviewToView,
@@ -31,10 +34,15 @@ export function ScheduleEventPreviewScreen() {
   const { colors } = useOrbitTheme();
   const { id } = useLocalSearchParams<{ id?: string | string[] }>();
   const eventId = firstParam(id);
+  // Sprint 0131: an event the account registered for opens its detail page (the device copy, readable offline).
+  const registered = useSyncedCollection<Record<string, unknown>>({ kind: "registered_event" });
+  const isRegistered = localRegisteredEvents(registered.records).some((event) => event.eventId === eventId);
   const state = useApiResource<unknown>(
     publicEventDetailPath(eventId),
-    () => false
+    () => false,
+    { enabled: !isRegistered }
   );
+  if (isRegistered) return <Redirect href={`/events/${encodeURIComponent(eventId)}` as Href} />;
 
   return (
     <AppScreen
@@ -51,9 +59,7 @@ export function ScheduleEventPreviewScreen() {
       title={locale.t("schedule.previewTitle")}
     >
       {state.kind === "loading" ? <LoadingState /> : null}
-      {state.kind === "offline" ? (
-        <ErrorState message={state.error.message} title={locale.t("schedule.serverUnavailable")} />
-      ) : null}
+      {state.kind === "offline" ? <NeedsNetworkState onRetry={state.refresh} /> : null}
       {state.kind === "failure" ? <PreviewFailure data={null} /> : null}
       {state.kind === "success" || state.kind === "empty" ? (
         <PreviewContent data={state.data} />

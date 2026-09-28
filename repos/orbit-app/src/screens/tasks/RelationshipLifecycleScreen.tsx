@@ -9,7 +9,7 @@ import { buildRelationshipCompletion, readRelationshipSnapshot, relationshipLife
 import { AppScreen } from "../../components/AppScreen";
 import { DataCard } from "../../components/DataCard";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
-import { keepsPageCopy } from "../../hooks/usePageCopyResource";
+import { keepsPageCopy } from "../../data/sync/page-copies";
 import { usePageCopySession } from "../../hooks/usePageCopySession";
 import { OfflineNotice } from "../../components/OfflineNotice";
 import type { PageCopyStatus } from "../../data/sync/page-copies";

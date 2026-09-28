@@ -54,6 +54,9 @@ export const PAGE_COPY_DEFINITIONS: readonly PageCopyDefinition[] = [
   { id: "meeting-details", endpoint: "/api/schedule-items/:id/meeting-details", variants: "keyed", maxVariants: 20, maxBytes: 128 * KB, audience: "account", description: "A meeting's details, per meeting; the 20 most recently opened are kept." },
   // Meetings (appointments) have no sync domain; the home schedule keeps the meeting rows of its last online answer.
   { id: "home-schedule", endpoint: "/api/schedule-items", variants: "single", maxVariants: 1, maxBytes: 256 * KB, audience: "account", description: "The home schedule card's last answer (its confirmed meetings are shown offline next to the personal-schedule and registered-event domains)." },
+  // Sprint 0131 (coordinator item from 0117): the source audit reads every audited collection, so it runs on demand;
+  // the dashboard shows the last result and its time.
+  { id: "provenance-audit", endpoint: "/api/audit/provenance", variants: "single", maxVariants: 1, maxBytes: 256 * KB, audience: "account", description: "The last source audit the user ran (shown on the dashboard with its time)." },
   { id: "public-events", endpoint: "/api/events/public", variants: "single", maxVariants: 1, maxBytes: 512 * KB, audience: "platform", description: "The public event catalogue as last seen (platform data, stored per identity so one clearing rule applies)." },
   { id: "event-recommendations", endpoint: "/api/recommendations/events", variants: "single", maxVariants: 2, maxBytes: 256 * KB, audience: "account", description: "The account's event recommendations as last seen (variants: home card, events tab)." },
 ];
@@ -88,4 +91,11 @@ export function assertPageCopyKey(id: string, variant: string): PageCopyDefiniti
   if (!definition) throw new TypeError("page copy is not registered");
   if (typeof variant !== "string" || variant.length === 0 || variant.length > PAGE_COPY_VARIANT_MAX_LENGTH) throw new TypeError("page copy variant is invalid");
   return definition;
+}
+
+/** 0 (no connection) and 5xx keep a copy on screen; any other answer is the server's word. */
+export function keepsPageCopy(result: { success: true } | { success: false; status: number; error: { code: string } }): "unreachable" | "unavailable" | null {
+  if (result.success) return null;
+  if (result.status === 0 || result.error.code === "ORBIT_APP_NETWORK_ERROR") return "unreachable";
+  return result.status >= 500 ? "unavailable" : null;
 }

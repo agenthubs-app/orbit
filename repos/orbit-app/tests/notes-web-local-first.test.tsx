@@ -27,6 +27,8 @@ export const useLocalSearchParams = () => window.fixture.params ?? {};
 export const usePathname = () => "/notes";
 export const useRouter = () => ({ canGoBack: () => Boolean(state.canGoBack), back() { state.navigation.push("back"); }, push(href) { state.navigation.push(href); }, replace(href) { state.navigation.push("replace:" + href); } });
 export const useWebMirrorStatus = () => state.mirror === "local-mirror" ? { mode: "local-mirror", scopeDigest: "d".repeat(64), domains: ["notes", "tasks", "personal-schedule"] } : { mode: "online-only", reason: state.mirror };
+// Sprint 0131: page copies / row-id reads open the coordinator session; this harness has none.
+export const useSyncCoordinatorSession = () => null;
 export const useSyncedCollection = ({ kind }) => ({
   status: state.status, error: state.status === "stale" ? "Network request failed" : null,
   lastSyncedAt: "2026-09-27T05:40:00.000Z", workspaceId: "workspace:one",

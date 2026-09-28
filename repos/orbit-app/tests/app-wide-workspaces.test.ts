@@ -107,6 +107,7 @@ export const useLocalSearchParams = () => ({
 });
 export const useIsFocused = () => true;
 export const usePathname = () => "/" + screen;
+export const Redirect = ({ href }) => { state.navigation.push("redirect:" + String(href)); return null; };
 export const useRouter = () => ({ canGoBack: () => true, back() { state.navigation.push("back"); }, push(path) { state.navigation.push(path); }, replace(path) { state.navigation.push(path); } });
 export const useNavigation = () => ({ addListener: () => () => {}, dispatch() {} });
 export const usePreventRemove = () => {};
@@ -121,6 +122,8 @@ export const notifyReminderPlansChanged = () => {};
 export const requestNotificationPermission = async () => "denied";
 // Sprint 0078: the Web task source is mirror-first; these screen fixtures keep the network read authoritative.
 export const useWebMirrorStatus = () => ({ mode: "online-only", reason: "no-opfs" });
+// Sprint 0131: page copies / row-id reads open the coordinator session; this harness has none.
+export const useSyncCoordinatorSession = () => null;
 export const useSyncedCollection = () => ({ status: "local-ready", records: [], error: null, lastSyncedAt: null, workspaceId: null, refresh: async () => null, invalidate: async () => null });
 `;
 
@@ -353,7 +356,9 @@ test("workspace actions grow with doubled text while keeping labels inside the p
 });
 for (const screen of ["tasks", "task", "chat", "thread", "schedule", "today", "followups", "ledger", "actions", "conversation"]) {
   test(`${screen}: resource failure remains visible without write effects`, async t => {
-    const page = await open(t, screen); await page.evaluate(() => (window as any).fixture.update({ kind: "offline" })); await page.getByText("连接暂时失败", { exact: true }).first().waitFor(); await noWrites(page);
+    // Sprint 0131: offline pages with no device copy yet say so calmly (the read is not an error); the others still show the read failure.
+    const offlineCopyPage = ["task", "today", "ledger", "actions"].includes(screen);
+    const page = await open(t, screen); await page.evaluate(() => (window as any).fixture.update({ kind: "offline" })); await page.getByText(offlineCopyPage ? "这项内容还没保存在这台设备上，联网打开一次后断网也能看。" : "连接暂时失败", { exact: true }).first().waitFor(); await noWrites(page);
   });
 }
 test("AI resource fallback keeps its return action on the same page inset", async t => {

@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { normalizeProfileTagValues, updateProfileEditDraft } from "../../data/profile-edit-session";
 import { createThemedStyles } from "../../design/theme";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
+import { OfflineNotice } from "../../components/OfflineNotice";
 import { ProfileNotice, ProfilePageFrame, ProfilePrimaryButton, ProfileSection, ProfileTextField } from "./ProfilePagePrimitives";
 import { profileSeekingCandidates } from "./profile-page-model";
 import { useProfileEditSessionScreen } from "./useProfileEditSessionScreen";
@@ -14,7 +15,7 @@ export function ProfileTagPickerScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ field?: string | string[] }>();
   const field = (Array.isArray(params.field) ? params.field[0] : params.field) === "seeking" ? "seeking" : "offering";
-  const state = useProfileEditSessionScreen();
+  const state = useProfileEditSessionScreen({ readOffline: true });
   const session = state.session;
   const selected = session?.draft[field] ?? [];
   const [query, setQuery] = useState("");
@@ -44,6 +45,7 @@ export function ProfileTagPickerScreen() {
   }
 
   return <ProfilePageFrame backLabel={locale.t("profile.editPageTitle")} onBack={() => router.back()} title={locale.t("profile.tagsTitle")} footer={<ProfilePrimaryButton label={locale.t("profile.done")} onPress={() => router.back()} />}>
+    {state.copy?.offline ? <OfflineNotice lastSyncedAt={state.copy.lastSyncedAt} reason={state.copy.reason} /> : null}
     {!session ? <ProfileNotice error>{locale.t("profile.noEditSession")}</ProfileNotice> : <>
       <ProfileSection detail={locale.t("profile.selectedCount", { count: selected.length })} title={locale.t(field === "offering" ? "profile.offering" : "profile.seeking")}>
         <View accessibilityRole="list" style={styles.tags}>
