@@ -5,7 +5,7 @@
 ## 先读哪里
 
 1. [RULES.md](RULES.md)：执行规则（分档验证、提交与合并、证据、预算）。
-2. [REQUIREMENTS.md](REQUIREMENTS.md)：需求清单 RW-01～RW-12，来自 2026-09-27～28 的设计讨论和两个原型。
+2. [REQUIREMENTS.md](REQUIREMENTS.md)：需求清单 RW-01～RW-12（大目标 1：iOrbit 改版与计划），RV-01～RV-04（大目标 2：上线前验收）。
 3. 对应 Sprint 的 `GOAL.md`（易读目标）和 `PLANNER.md`（唯一契约）。模板在 [templates/](templates/)。
 
 ## 用户决定
@@ -19,6 +19,10 @@
 | D6 | 社群活动怎么建模（现有活动模型强制开始／结束时间，报名到开始时间即关闭） | **不做成活动**：做成活动页置顶的「社群卡片」，iOrbit 推荐与引导第 4 步第一位；「我已加入」记在本人的社群加入记录里，「已报名活动」栏显示「已加入社群」；不改活动核心模型（取代原 Q18A） | W0003、W0006 |
 | D7 | onboarding 设目标页的 16 个方向 chip 是否保留 | **去掉**：onboarding 也换成资料页同款「输入框 + 10 条示例句」编辑器，全站只有一种设目标方式；chip 拼进目标文字的旧格式退役，但解析仍兼容已存的旧文字 | W0002 |
 | D4 | 社群二维码／微信号／群介绍素材 | 暂时占位 | W0003 |
+| D8 | 上线前验收在哪做 | 本地先验收修问题，最后在 Preview 复验；**注意线上流量**（2026-09-28） | W0016～W0020 |
+| D9 | 验收用的账号与数据 | 本地库建专用测试账号、脚本造数据，不碰用户账号；真实名片用 `docs/designs/*_meishi.heic`，允许真实识别调用（按 D5 记录） | W0016、W0018 |
+| D10 | 验收结果怎么交付 | 逐场景截图，修完交一份验收报告页面，用户抽查 | W0018 |
+| D11 | 验收中发现的问题 | 小问题在验收 Sprint 内直接修，较大问题单开 Sprint | W0018 |
 
 ## 发布动作（需要单独授权）
 
@@ -46,8 +50,13 @@
 | [W0012](W0012-long-term-tracking/GOAL.md) | 进展记录、每周一小结、重新分析与到期回顾 | RW-12 | W0008、W0009、W0010 | completed |
 | [W0014](W0014-demo-mode-plan-chat/GOAL.md) | 引导期间打开「我的计划」和示例对话，看到示例人物的计划和一段示例问答 | RW-03（我的计划、示例对话部分） | W0004、W0008、W0009 | completed |
 | [W0015](W0015-event-attribution/GOAL.md) | 活动当天或次日扫的名片，审阅时问「是在 X 活动认识的吗」，确认后记来源、活动标已参加 | RW-11（活动归属） | W0007、W0010 | completed |
+| [W0016](W0016-verify-environment/GOAL.md) | 另起开示例开关的验收 server，建测试账号并造好各场景数据，名片照片裁成单张 | RV-01 | 大目标 1 全部 completed；`/Volumes/ORICO` 已挂载 | planned |
+| [W0017](W0017-traffic-guard/GOAL.md) | 3 个计划维护任务改为每天最多一次（持久、跨实例），名片匹配补跑空闲时只做轻查询；新增读取路径逐一测量并估算月流量 | RV-03 | 无 | ready |
+| [W0018](W0018-scenario-acceptance/GOAL.md) | 逐场景真实页面验收（桌面＋手机），修小问题，交验收报告页面 | RV-02 | W0016、W0017 | planned |
+| [W0019](W0019-release-checklist/GOAL.md) | 生产上线清单 + 大目标收口的本地全量对照 | RV-04 | W0018 | planned |
+| [W0020](W0020-preview-verify/GOAL.md) | Preview 复验关键场景并测量 Neon 流量 | RV-04 | W0019；用户授权 Preview 部署、迁移、开关、测试数据 | planned |
 
-全部 Sprint 都已有 GOAL 与 PLANNER（2026-09-28 编制；同日经 Codex `gpt-5.6-sol` review 后修订为 revision 2，review 意见与处理见 [REVIEW-2026-09-28.md](REVIEW-2026-09-28.md)）。`planned` 表示前置 Sprint 尚未 completed；前置完成后改为 `ready`。
+全部 Sprint 都已有 GOAL 与 PLANNER（2026-09-28 编制；大目标 1 与大目标 2 各经 Codex `gpt-5.6-sol` 方案 review 后修订为 revision 2，review 意见与处理见 [REVIEW-2026-09-28.md](REVIEW-2026-09-28.md)）。`planned` 表示前置 Sprint 尚未 completed；前置完成后改为 `ready`。
 
 ## 运行记录
 
