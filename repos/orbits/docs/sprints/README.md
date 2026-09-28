@@ -5,7 +5,7 @@
 ## 先读哪里
 
 1. [RULES.md](RULES.md)：执行规则（分档验证、提交与合并、证据、预算）。
-2. [REQUIREMENTS.md](REQUIREMENTS.md)：需求清单 RW-01～RW-12（大目标 1：iOrbit 改版与计划），RV-01～RV-04（大目标 2：上线前验收）。
+2. [REQUIREMENTS.md](REQUIREMENTS.md)：需求清单 RW-01～RW-12（大目标 1：iOrbit 改版与计划），RV-01～RV-05（大目标 2：上线前验收）。
 3. 对应 Sprint 的 `GOAL.md`（易读目标）和 `PLANNER.md`（唯一契约）。模板在 [templates/](templates/)。
 
 ## 用户决定
@@ -23,6 +23,7 @@
 | D9 | 验收用的账号与数据 | 本地库建专用测试账号、脚本造数据，不碰用户账号；真实名片用 `docs/designs/*_meishi.heic`，允许真实识别调用（按 D5 记录） | W0016、W0018 |
 | D10 | 验收结果怎么交付 | 逐场景截图，修完交一份验收报告页面，用户抽查 | W0018 |
 | D11 | 验收中发现的问题 | 小问题在验收 Sprint 内直接修，较大问题单开 Sprint | W0018 |
+| D12 | W0017 发现的用户读取流量（1000 人约 2.08 GB／月、活动目录全量读取） | 排进后续 Sprint：新开 W0021，放在 W0018 之前（2026-09-29） | W0021、W0018 |
 
 ## 发布动作（需要单独授权）
 
@@ -53,9 +54,10 @@
 | [W0015](W0015-event-attribution/GOAL.md) | 活动当天或次日扫的名片，审阅时问「是在 X 活动认识的吗」，确认后记来源、活动标已参加 | RW-11（活动归属） | W0007、W0010 | completed |
 | [W0016](W0016-verify-environment/GOAL.md) | 另起开示例开关的验收 server，建测试账号并造好各场景数据，名片照片裁成单张 | RV-01 | 大目标 1 全部 completed | completed |
 | [W0017](W0017-traffic-guard/GOAL.md) | 3 个计划维护任务改为每天最多一次（持久、跨实例），名片匹配补跑空闲时只做轻查询；新增读取路径逐一测量并估算月流量 | RV-03 | 无 | completed |
-| [W0018](W0018-scenario-acceptance/GOAL.md) | 逐场景真实页面验收（桌面＋手机），修小问题，交验收报告页面 | RV-02 | W0016、W0017 | ready |
+| [W0018](W0018-scenario-acceptance/GOAL.md) | 逐场景真实页面验收（桌面＋手机），修小问题，交验收报告页面 | RV-02 | W0016、W0017、W0021 | planned |
 | [W0019](W0019-release-checklist/GOAL.md) | 生产上线清单 + 大目标收口的本地全量对照 | RV-04 | W0018 | planned |
 | [W0020](W0020-preview-verify/GOAL.md) | Preview 复验关键场景并测量 Neon 流量 | RV-04 | W0019；用户授权 Preview 部署、迁移、开关、测试数据 | planned |
+| [W0021](W0021-read-traffic-trim/GOAL.md) | 计划／匹配／名片／活动归属读取瘦身，1000 人月出站 ≤1.0 GB，活动归属按时间窗口读取，页面不变 | RV-05 | W0017 | ready |
 
 全部 Sprint 都已有 GOAL 与 PLANNER（2026-09-28 编制；大目标 1 与大目标 2 各经 Codex `gpt-5.6-sol` 方案 review 后修订为 revision 2，review 意见与处理见 [REVIEW-2026-09-28.md](REVIEW-2026-09-28.md)）。`planned` 表示前置 Sprint 尚未 completed；前置完成后改为 `ready`。
 
