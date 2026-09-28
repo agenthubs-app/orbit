@@ -1518,7 +1518,7 @@ function ContactsListContent({
           onSelectRecentRelationshipSearch={onSelectRecentRelationshipSearch}
           searches={recentRelationshipSearches}
         /> : null}
-        {primary ? <ContactNeedsHomeEntry /> : null}
+        {primary ? <ContactNeedsHomeEntry offline={offline} /> : null}
         {!directoryEmpty ? <ContactFilterToolbar
           actionStateOptions={actionStateOptions}
           advancedFilterSections={advancedFilterSections}

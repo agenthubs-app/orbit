@@ -142,6 +142,7 @@ test("offline: the list keeps the device copy with 截至, and the server-only s
   const page = await open(t, { status: "stale" });
   await page.getByText("张伟", { exact: true }).waitFor();
   await page.getByText(/^无法连接 · 显示截至 .+ 的内容；新建和编辑需要联网$/).waitFor();
+  await page.getByText("需要联网", { exact: true }).first().waitFor(); // 我的人脉需求 is a server read
   await page.getByRole("button", { name: "搜索选项" }).click();
   const deep = page.getByRole("button", { name: /深度搜索 · 需要联网/ });
   const relationship = page.getByRole("button", { name: /关系搜索 · 需要联网/ });
