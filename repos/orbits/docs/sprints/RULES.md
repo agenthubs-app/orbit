@@ -18,6 +18,19 @@
 
 每个 Sprint 最多一次 Generator run，执行前登记为 run-01。Generator 可正常阅读、TDD、编辑、运行命令和有限修复；不能以自评或「再优化一版」为理由重开生成阶段。
 
+## 1.1 成本控制（2026-09-28 用户决定，从 W0012 之后的下一个大目标起执行）
+
+目的不变：每个大目标拆成多个 Sprint，GOAL／PLANNER／REPORT 全部落库，事后可查。省的是执行开销，不省文档。
+
+- **主会话只做调度，保持很薄。** 主会话不读源码、不跑长日志：派发 Generator、裁决 review、提交合并、登记。一个大目标做完就结束会话；下一个大目标新开会话，从本 README 和上一目标的 REPORT 接续。
+- **Generator 只读 PLANNER 的「上下文包」。** 每个 PLANNER 必须有「上下文包」一节（见模板）：必读文件与关键符号签名、前序 Sprint 交接要点（几行）、易错边界。Generator 从它起步，**不通读其他 REPORT、README 或全库**；上下文包是起点不是上限——改动实际需要的额外文件先用 GitNexus 查调用方再读，并在 REPORT「假设与额外阅读」里列出。
+- **易错边界写成验收项。** 「不能做什么」（例如示例期对真实接口 0 调用、查询失败时的行为、自动路径不得替用户做决定）写进 SC 并要求测试证明，而不是只写在说明里。
+- **review 放在方案阶段。** 每个大目标的全部 PLANNER（含上下文包）写完后，用 Codex 做一次方案 review 再开工。代码 review 只给 H 档 Sprint 做一次，不做复查；review 意见交回同一个 Generator 修（它还带着上下文），协调者只裁决。L 档靠测试与协调者抽查。
+- **合并小 Sprint 的执行。** 同一大目标里无依赖冲突的 L 档 Sprint 可以两三个交给同一个 Generator 依次做；每个 Sprint 仍各自提交、各写 REPORT、各自合并登记。
+- **模型。** Generator 用 Opus 5.5（用户 2026-09-28 决定，不降级到 Sonnet）。
+- **全量测试。** 只在 H 档收口跑一次；一个大目标全部合并后再跑一次。
+- **REPORT 用短模板。** 不逐文件复述改动（看 git diff），只写结果、SHA、SC 表、review 处理、假设与未完成项。
+
 ## 2. 角色与并行
 
 - Planner 是每个 Sprint 的 `PLANNER.md`，定义目标、输入、范围、SC 和必要检查；运行时不再启动 Planner 模型。
@@ -111,7 +124,7 @@
 ## 9. 启动指令（给后续 AI）
 
 ```text
-执行 Web Sprint WNNNN。先读 repos/orbits/docs/sprints/README.md、RULES.md 和对应 PLANNER.md，
+执行 Web Sprint WNNNN。先读 RULES.md（含 1.1 成本控制）和对应 PLANNER.md（从「上下文包」起步），
 确认进入条件；未就绪不启动，记录缺项并继续其他独立工作。
 按第 0 节复用已定稿的设计决定，登记必要的文件补充，不重新索要批准。
 本 Sprint 只进行一个 Generator run，不启动 Evaluator 或返工循环。
