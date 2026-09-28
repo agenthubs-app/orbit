@@ -34,6 +34,7 @@ import { ORBIT_RECORDS_SCHEMA_SQL } from "../../shared/storage/migrations";
 import { createPostgresLiveRecordStore, type LiveRecordSqlClient } from "../../shared/storage/postgres-live-record-store";
 import { createTransactionalPostgresClient, type TransactionalPostgresClient } from "../../shared/storage/transactional-postgres";
 import { STRICT_SYNC_REVISION_SQL } from "../support/sync-revision-fixture";
+import { SYNC_COMMIT_ORDER_LOCK_SQL } from "../../features/sync/commit-order-lock";
 
 // Sprint 0102 (dashboard D2). Gaps and opportunities are served from a
 // per-user snapshot keyed by the relationship-graph version. The oracle is the
@@ -469,7 +470,12 @@ test("contacts analysis page and its AI entry: current version reads no graph, a
   });
 });
 
-test("an update that commits after a later revision is visible still invalidates the snapshot", { skip, timeout: 120_000 }, async () => {
+// Sprint 0116: connections and evidence are sync collections now, so every
+// writer holds the commit-order lock from its revision to its commit. The
+// state this test used to build (T1 takes a revision first and commits after a
+// later one) can no longer occur for them: an unlocked update is refused, and a
+// later writer waits for T1. The snapshot read after both matches the oracle.
+test("a connection update and a later write commit in revision order, so the snapshot never misses the earlier one", { skip, timeout: 120_000 }, async () => {
   await withSchema({ syncRevision: true }, async ({ client, store, newProvider, oracle }) => {
     assert.ok(databaseUrl);
     const schema = (await client.query<{ schema: string }>("select current_schema() as schema")).rows[0]!.schema;
@@ -477,23 +483,26 @@ test("an update that commits after a later revision is visible still invalidates
     const connectionClient = await slow.connect();
     try {
       await analytics(newProvider(), A, NOW);
-      // T1 takes its revision first but commits last.
+      const before = await analytics(newProvider(), A, NOW);
+      const update = `update orbit_records set payload = jsonb_set(payload, '{businessRelevanceScore}', '98'::jsonb), updated_at = updated_at
+         where workspace_id = $1 and collection_name = 'connections' and record_id = 'k3'`;
+      await assert.rejects(client.query(update, [WORKSPACE]), /SYNC_WRITE_LOCK_REQUIRED/, "an unlocked connection write is refused");
+      // T1 takes the lock and its revision, and has not committed yet.
       await connectionClient.query("begin");
-      await connectionClient.query(
-        `update orbit_records set payload = jsonb_set(payload, '{businessRelevanceScore}', '98'::jsonb), updated_at = updated_at
-         where workspace_id = $1 and collection_name = 'connections' and record_id = 'k3'`,
-        [WORKSPACE],
-      );
-      // T2 commits a later revision; a read now stores a snapshot without T1.
-      await store.upsertRecord(evidence("evd-late"));
-      const withoutT1 = await analytics(newProvider(), A, NOW);
-      assert.deepEqual(withoutT1, await analytics(oracle, A, NOW));
+      await connectionClient.query(SYNC_COMMIT_ORDER_LOCK_SQL);
+      await connectionClient.query(update, [WORKSPACE]);
+      // T2 waits for T1: it cannot commit a later revision first.
+      let t2Done = false;
+      const t2 = Promise.resolve(store.upsertRecord(evidence("evd-late"))).then(() => { t2Done = true; });
+      await new Promise((resolve) => setTimeout(resolve, 400));
+      assert.equal(t2Done, false, "the later writer waits for T1's commit");
       await connectionClient.query("commit");
+      await t2;
       const measured = recordingClient(client);
-      const afterT1 = await analytics(newProvider(measured), A, NOW);
-      assert.ok(measured.texts.some((text) => text.includes(GRAPH_READ)), "T1's commit changes the version although max(sync_revision) did not move");
-      assert.deepEqual(afterT1, await analytics(oracle, A, NOW));
-      assert.notDeepEqual(afterT1, withoutT1);
+      const afterBoth = await analytics(newProvider(measured), A, NOW);
+      assert.ok(measured.texts.some((text) => text.includes(GRAPH_READ)), "both commits change the version");
+      assert.deepEqual(afterBoth, await analytics(oracle, A, NOW));
+      assert.notDeepEqual(afterBoth, before);
     } finally {
       connectionClient.release();
       await slow.end();

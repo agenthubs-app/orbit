@@ -43,7 +43,8 @@ async function fixture(run: (f: { client: TransactionalPostgresClient; service: 
         const payload = { id, stage: legacy ? "active" : "captured", ...(legacy ? {} : { version: 1, lifecycleInitialization: "pending" }),
           ...(collection === "connections" ? { accountId: actor, contactId: `contact:${actor}` } : { displayName: `Contact ${actor}` }),
           source: { type: "event_import", id: "event:test" }, evidenceIds: ["evidence:consent"], notes: "preserve private data", createdAt: now, updatedAt: now };
-        await client.query("insert into orbit_records (workspace_id,collection_name,record_id,user_id,source_type,source_id,payload,created_at,updated_at) values ($1,$2,$3,$4,'event_import','event:test',$5,$6,$6)", [workspaceId, collection, id, actor, payload, now]);
+        // Sprint 0116: contacts and connections are sync collections; a raw seed takes the commit-order lock.
+        await testRawWrite(client, collection, "insert into orbit_records (workspace_id,collection_name,record_id,user_id,source_type,source_id,payload,created_at,updated_at) values ($1,$2,$3,$4,'event_import','event:test',$5,$6,$6)", [workspaceId, collection, id, actor, payload, now]);
       }
     }
     const service = createRelationshipInitializationService({ client, workspaceId, now: () => now });
@@ -107,7 +108,7 @@ test("stale revision, unknown keys, no goal, missing/invalid date, and existing 
   }
   await assert.rejects(service.initialize("a", "contact:a", { ...command, expectedRevision: "0".repeat(64) }), { code: "CONFLICT" });
   assert.deepEqual(await records(), before);
-  await client.query("update orbit_records set payload=payload || '{\"notes\":\"new private note\"}'::jsonb where record_id='contact:a'");
+  await testRawWrite(client, "contacts", "update orbit_records set payload=payload || '{\"notes\":\"new private note\"}'::jsonb where record_id='contact:a'");
   await assert.rejects(service.initialize("a", "contact:a", command), { code: "CONFLICT" });
   await testRawWrite(client, "tasks", "insert into orbit_records (workspace_id,collection_name,record_id,user_id,source_type,source_id,payload,created_at,updated_at) values ($1,'tasks','old','a','manual','test',$2,$3,$3)", [workspaceId, { id: "old", connectionId: "connection:a" }, now]);
   await assert.rejects(service.read("a", "contact:a"), { code: "INVALID_TRANSITION" });
@@ -144,7 +145,7 @@ test("malformed ready snapshots and damaged receipt fail closed instead of claim
   await service.initialize("a", "contact:a", command);
   await client.query("update relationship_lifecycle_command_receipts set response_snapshot=jsonb_set(response_snapshot,'{connection,activeGoal}','null'::jsonb)");
   await assert.rejects(service.initialize("a", "contact:a", command), { code: "INVALID_TRANSITION" });
-  await client.query("update orbit_records set payload=payload || '{\"activeGoal\":null}'::jsonb where record_id='connection:a'");
+  await testRawWrite(client, "connections", "update orbit_records set payload=payload || '{\"activeGoal\":null}'::jsonb where record_id='connection:a'");
   await assert.rejects(service.read("a", "contact:a"), { code: "INVALID_TRANSITION" });
 }));
 test("trigger-altered contact projection aborts the entire initialization", db, async () => fixture(async ({ client, service, input, records }) => {
