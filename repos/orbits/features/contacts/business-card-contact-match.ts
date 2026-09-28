@@ -179,6 +179,15 @@ function fillEmptyIndustry(payload: Record<string, unknown>, industry: IndustryS
   }
 }
 
+/** W0015：「在该活动认识」只补空：联系人已经记着一场活动（哪怕是别的）就不动。 */
+function fillEmptyMetEvent(payload: Record<string, unknown>, metEvent: { eventId: string; title: string } | null | undefined): void {
+  const eventId = metEvent?.eventId.trim();
+  if (!eventId || !emptyValue(payload.metEventId)) return;
+  payload.metEventId = eventId;
+  const title = metEvent?.title.trim();
+  if (title) payload.metEventTitle = title;
+}
+
 /**
  * 把名片并入已有联系人：联系人空着的字段（含行业）用名片补上；两边都有且不同的不覆盖，
  * 写进备注「名片补充」一段；名片备注里联系人还没有的行（传真、微信…）也补进去。
@@ -194,6 +203,8 @@ export async function mergeCardIntoContact(input: {
   evidenceIds: readonly string[];
   /** 审阅页确认的行业；只补联系人空着的行业字段。 */
   industry?: IndustrySelectionContract;
+  /** 服务端核实过的「在该活动认识」；只补联系人空着的来源活动。 */
+  metEvent?: { eventId: string; title: string } | null;
   now?: () => Date;
 }): Promise<string> {
   const record = await input.store.getRecord({ collectionName: "contacts", recordId: input.contactId, workspaceId: input.workspaceId });
@@ -217,6 +228,7 @@ export async function mergeCardIntoContact(input: {
     else if (!sameField(field, existing[field], value)) supplements.push(`${FIELD_LABEL[field]}: ${value}`);
   }
   fillEmptyIndustry(payload, input.industry);
+  fillEmptyMetEvent(payload, input.metEvent);
 
   const currentNotes = text(payload.notes);
   // 按「值」去重：同一个号码换了标签（「传真」/「传真(Fax)」）不算新信息；

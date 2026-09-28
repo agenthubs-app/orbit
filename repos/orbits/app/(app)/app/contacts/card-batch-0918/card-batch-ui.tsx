@@ -37,7 +37,7 @@ import {
 import { BatchPlanMatch } from "../../agent/iorbit-0918/plan-match-sheet";
 import { CARD_BATCH_STYLES } from "./card-batch-styles";
 import { CardBatchUploader } from "./card-batch-uploader";
-import type { CardBatch, ContactCandidate } from "./use-card-batch";
+import type { CardBatch, CardBatchAttributionEvent, ContactCandidate } from "./use-card-batch";
 
 type T = (copy: Copy) => string;
 export type BrowseTarget = "home" | "events";
@@ -62,14 +62,17 @@ function industryPairLabel(pair: { primaryIndustryId: string; secondaryIndustryI
 type EnterTarget = { tagName?: string; getAttribute?: (name: string) => string | null; closest?: (selector: string) => unknown } | null;
 
 /**
- * 回车确认（设计稿 ↵）只在单行输入框和页面空白处生效：多行文本、按钮、下拉框（含 combobox / listbox
- * 角色及其选项）里的回车属于控件本身——在行业下拉上按回车是选中选项，不能顺手把整张名片确认掉。
+ * 回车确认（设计稿 ↵）只在单行输入框和页面空白处生效：多行文本、按钮、勾选框、下拉框（含 combobox /
+ * listbox 角色及其选项）里的回车属于控件本身——在行业下拉上按回车是选中选项，不能顺手把整张名片确认掉。
  */
 export function enterConfirmsReview(event: { key: string; isComposing?: boolean; target: unknown }): boolean {
   if (event.key !== "Enter" || event.isComposing) return false;
   const target = event.target as EnterTarget;
   const tag = target?.tagName?.toUpperCase();
   if (tag === "TEXTAREA" || tag === "BUTTON" || tag === "SELECT" || tag === "OPTION") return false;
+  // 勾选框（活动归属询问）上的回车不能顺手确认整张名片。
+  const type = target?.getAttribute?.("type")?.toLowerCase();
+  if (tag === "INPUT" && (type === "checkbox" || type === "radio")) return false;
   const role = target?.getAttribute?.("role");
   if (role === "combobox" || role === "listbox" || role === "option") return false;
   return !target?.closest?.('[role="listbox"], [role="combobox"]');
@@ -152,6 +155,49 @@ export function IndustryField({ baseline, busy, candidates = [], draft, onChange
   );
 }
 
+const ATTRIBUTION_TIME_ZONE = "Asia/Tokyo";
+
+function attributionDate(startsAt: string, t: T): string {
+  const date = new Date(startsAt);
+  if (!Number.isFinite(date.getTime())) return "";
+  const parts = new Intl.DateTimeFormat("en-US", { day: "numeric", month: "numeric", timeZone: ATTRIBUTION_TIME_ZONE }).formatToParts(date);
+  const month = parts.find(part => part.type === "month")?.value ?? "";
+  const day = parts.find(part => part.type === "day")?.value ?? "";
+  return t({
+    zh: `${month}月${day}日`,
+    en: new Intl.DateTimeFormat("en-US", { day: "numeric", month: "short", timeZone: ATTRIBUTION_TIME_ZONE }).format(date),
+  });
+}
+
+/**
+ * W0015 审阅页顶部的活动归属询问：当前这张名片的扫描时间落在本人已报名活动开始日当天或次日（东京时间）
+ * 时出现，默认勾选，决定只属于这张名片。勾选时确认后联系人记下「在该活动认识」、计划里这场活动标为已参加；
+ * 取消勾选则都不写。有候选的名片不会被自动导入，一定经过这里。
+ */
+export function EventAttributionPrompt({ busy, event, on, onChange, t }: {
+  busy: boolean;
+  event: CardBatchAttributionEvent;
+  on: boolean;
+  onChange: (on: boolean) => void;
+  t: T;
+}) {
+  const date = attributionDate(event.startsAt, t);
+  return (
+    <label className="cb-attr" data-event-attribution={event.eventId}>
+      <input checked={on} disabled={busy} onChange={changeEvent => onChange(changeEvent.target.checked)} type="checkbox" />
+      <span className="cb-attr-copy">
+        <strong>{t({ zh: `这张名片是在「${event.title}」认识的吗？`, en: `Did you meet this person at “${event.title}”?` })}</strong>
+        <span>
+          {t({
+            zh: `你报名了这场活动（${date}），这张名片是在当天或次日扫的。勾选后，确认的联系人会记下来源活动，计划里这场活动标为已参加。`,
+            en: `You registered for this event (${date}) and scanned this card that day or the next. If ticked, the confirmed contact records it as where you met, and the event is marked attended in your plan.`,
+          })}
+        </span>
+      </span>
+    </label>
+  );
+}
+
 /** 名片导入区：无批次时是上传区，有批次时依次是正在解析 → 确认 → 小结。自带作用域样式 .cbx。 */
 export function CardBatchImport(props: {
   available: boolean;
@@ -201,7 +247,7 @@ function CardBatchImportBody({
 
 function BatchView({ batch, onBrowse, onReset, t }: { batch: CardBatch; onBrowse?: (target: BrowseTarget) => void; onReset: () => void; t: T }) {
   const {
-    act, active, autoCount, autoRunning, busy, cards, detail, drafts, duplicates, error, finished, isHandled,
+    act, active, attributed, attribution, attributionDecisions, setAttributionDecision, autoCount, autoRunning, busy, cards, detail, drafts, duplicates, error, finished, isHandled,
     matches, mergedCount, laterCount, laterSet, loadFailed, missing, openCard, pending, pumpUploads, queue, reattach, reviewing, setAside,
     setDrafts, setSide, setZoom, settledCount, side, stage, status, uploadFailed, userCount, zoom,
   } = batch;
@@ -251,9 +297,23 @@ function BatchView({ batch, onBrowse, onReset, t }: { batch: CardBatch; onBrowse
   }
 
   if (finished || !active) {
+    // 按每张名片实际写入的来源活动分组（确认回执里的 metEventId）。
+    const attributedByEvent = new Map<string, number>();
+    for (const eventId of Object.values(attributed)) attributedByEvent.set(eventId, (attributedByEvent.get(eventId) ?? 0) + 1);
     return (
       <>
         <FinishedPanel autoCount={autoCount} laterCount={laterCount} mergedCount={mergedCount} onReset={onReset} setAside={setAside} t={t} total={cards.length} userCount={userCount} />
+        {[...attributedByEvent].map(([eventId, count]) => {
+          const title = attribution.events.find(event => event.eventId === eventId)?.title ?? eventId;
+          return (
+            <p className="cb-attr-done" data-event-attribution-done={eventId} key={eventId}>
+              {t({
+                zh: `${count} 位联系人记为在「${title}」认识；你的计划里有这场活动时，已标为已参加。`,
+                en: `${count} contact(s) recorded as met at “${title}”; if it's in your plan, it's now marked attended.`,
+              })}
+            </p>
+          );
+        })}
         {/* W0010：服务端批次已完成（没有「稍后处理」的名片）才有匹配任务；最多等 8 秒。 */}
         {status === "completed" ? <BatchPlanMatch batchId={batchId} /> : null}
       </>
@@ -271,6 +331,9 @@ function BatchView({ batch, onBrowse, onReset, t }: { batch: CardBatch; onBrowse
     + (industryNeedsReview(draft) ? 1 : 0);
   const shownItem = active.items.find(item => item.side === side) ?? active.items[0]!;
   const reason = cardReason(active, draft, duplicate);
+  // 只问当前这张名片自己的候选活动；没有候选就不问（不回落到本批其他名片的活动）。
+  const activeEventId = attribution.cards[active.cardId] ?? null;
+  const attributionEvent = activeEventId ? attribution.events.find(event => event.eventId === activeEventId) ?? null : null;
 
   return (
     <div className="cb-review" data-screen-label="10 名片确认">
@@ -288,6 +351,17 @@ function BatchView({ batch, onBrowse, onReset, t }: { batch: CardBatch; onBrowse
           <span className="cb-stat cb-stat-indigo"><strong>{handledCount} / {queue.length}</strong><span>{t({ zh: "已确认", en: "Checked" })}</span></span>
         </div>
       </div>
+
+      {attributionEvent ? (
+        <EventAttributionPrompt
+          busy={busy}
+          event={attributionEvent}
+          key={active.cardId}
+          on={attributionDecisions[active.cardId] !== false}
+          onChange={on => setAttributionDecision(active.cardId, on)}
+          t={t}
+        />
+      ) : null}
 
       <div className="cb-queue">
         {queue.map((card, index) => {

@@ -343,6 +343,22 @@ export interface DecideMatchCandidateResult {
   replayed: boolean;
 }
 
+/**
+ * W0015：名片确认时核实「在已报名的活动 X 认识」后，把本人生效计划里对应活动（`linkedEventId`）
+ * 标为已参加。状态只按 `EVENT_ITEM_TRANSITIONS` 推进：已报名 → 已参加；只是「推荐」时（服务端已核实
+ * 本人报名了这场）内部先经过「已报名」。无论从哪一状态出发，只写一条「参加活动」进展记录。
+ * 已参加是终态，重复调用不再写库；没有生效计划或计划里没有这场活动时什么都不做（`item: null`）。
+ */
+export interface MarkEventAttendedInput {
+  eventId: string;
+}
+
+export interface MarkEventAttendedResult {
+  item: PlanItem | null;
+  /** 这次真实写入的 auto 记录（0 或 1 条）。 */
+  logs: PlanLogEntry[];
+}
+
 export interface PlanService {
   getCurrent(): Promise<PlanSnapshot | null>;
   /** 本人任一版本（含已归档）；他人的计划一律视为不存在。 */
@@ -359,6 +375,7 @@ export interface PlanService {
   linkNeedContact(input: LinkNeedContactInput): Promise<LinkNeedContactResult>;
   decideMatchCandidate(input: DecideMatchCandidateInput): Promise<DecideMatchCandidateResult>;
   recordInteraction(input: RecordInteractionInput): Promise<RecordInteractionResult>;
+  markEventAttended(input: MarkEventAttendedInput): Promise<MarkEventAttendedResult>;
 }
 
 /**

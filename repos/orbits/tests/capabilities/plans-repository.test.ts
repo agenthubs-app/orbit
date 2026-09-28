@@ -465,3 +465,30 @@ test("the live reference validator only accepts the actor's own, undeleted conta
     assert.equal(entry.linkedEventId, "event:tokyo-saas-night");
   });
 });
+
+test("W0015: markEventAttended on PostgreSQL is idempotent under concurrency and scoped to the actor", databaseTest, async () => {
+  await withDatabase(async ({ pool, serviceFor }) => {
+    const alice = serviceFor("actor:alice");
+    const bob = serviceFor("actor:bob");
+    const v1 = await alice.createVersion(planInput());
+    const event = v1.items.find((item) => item.kind === "event")!;
+    await bob.createVersion(planInput());
+
+    // 三张同一场活动的名片几乎同时确认：推荐 → 已参加，只写一条「参加活动」。
+    await Promise.all([1, 2, 3].map(() => alice.markEventAttended({ eventId: "event:tokyo-saas-night" })));
+    const logs = await pool.query<{ from_status: string; to_status: string }>(
+      `select from_status, to_status from plan_log
+       where workspace_id = $1 and actor_id = 'actor:alice' and item_id = $2 and payload->>'source' = 'event_attribution'
+       order by seq`,
+      [WORKSPACE, event.id],
+    );
+    assert.deepEqual(logs.rows.map((row) => [row.from_status, row.to_status]), [["recommended", "attended"]]);
+    const status = await pool.query<{ actor_id: string; status: string }>(
+      `select actor_id, status from plan_items where workspace_id = $1 and kind = 'event' order by actor_id`,
+      [WORKSPACE],
+    );
+    // bob 的同一场活动不受 alice 的确认影响。
+    assert.deepEqual(status.rows.map((row) => [row.actor_id, row.status]), [["actor:alice", "attended"], ["actor:bob", "recommended"]]);
+    assert.deepEqual((await alice.markEventAttended({ eventId: "event:tokyo-saas-night" })).logs, []);
+  });
+});

@@ -155,6 +155,9 @@ export interface ContactDTO {
   networkCategory?: NetworkCategory;
   primaryIndustryId?: IndustryIdCode;
   secondaryIndustryId?: SecondaryIndustryIdCode;
+  /** W0015：在哪场已报名的活动上认识（名片审阅时确认）。与 OCR 来源 `source` 无关，互不覆盖。 */
+  metEventId?: OrbitId;
+  metEventTitle?: string;
   customTags?: readonly string[];
   nextAction?: NextActionDTO;
   source: SourceReferenceDTO;

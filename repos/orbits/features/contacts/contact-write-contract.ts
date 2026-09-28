@@ -38,6 +38,8 @@ export interface ConfirmBusinessCardContactInput {
   /** 审阅页确认的行业（名片识别时 AI 给出、用户可改）；缺省或 null 时不写。 */
   primaryIndustryId?: IndustryIdCode | null;
   secondaryIndustryId?: SecondaryIndustryIdCode | null;
+  /** W0015：服务端核实过的「在该活动认识」；缺省或 null 时不写。 */
+  metEvent?: { eventId: string; title: string } | null;
   relationshipContext: string;
   role: string;
 }

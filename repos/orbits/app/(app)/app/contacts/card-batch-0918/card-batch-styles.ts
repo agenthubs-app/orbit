@@ -113,6 +113,13 @@ ${S} .btn.cb-btn-soft[disabled] { background: #FFFFFF; color: #2E3270; border-co
 ${S} .cb-review { display: flex; flex-direction: column; gap: 22px; animation: orbit-fade .3s ease; }
 ${S} .cb-review-top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 20px; }
 ${S} .cb-review-head { display: flex; flex-direction: column; gap: 10px; min-width: 0; flex: 1 1 320px; }
+/* W0015 活动归属询问：审阅页顶部一行，默认勾选。 */
+${S} .cb-attr { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; border-radius: 12px; background: #ECEEFB; color: #0E1225; cursor: pointer; }
+${S} .cb-attr input { flex: none; width: 18px; height: 18px; margin: 3px 0 0; accent-color: #4B4FC7; cursor: pointer; }
+${S} .cb-attr-copy { display: flex; flex-direction: column; gap: 4px; min-width: 0; font-size: 14px; line-height: 1.6; }
+${S} .cb-attr-copy strong { font-weight: 600; overflow-wrap: anywhere; }
+${S} .cb-attr-copy span { color: #3B3F7A; font-size: 13px; }
+${S} .cb-attr-done { padding: 12px 16px; border-radius: 12px; background: #ECEEFB; color: #2E3270; font-size: 14px; line-height: 1.6; }
 ${S} .cb-review-h { margin: 0; font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: clamp(26px, 2.8vw, 34px); line-height: 1.15; letter-spacing: -0.03em; }
 ${S} .cb-review-stats { display: flex; gap: 10px; }
 ${S} .cb-stat { padding: 12px 16px; border-radius: 14px; display: flex; flex-direction: column; gap: 2px; min-width: 96px; }

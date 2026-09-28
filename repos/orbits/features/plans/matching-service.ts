@@ -5,12 +5,12 @@
  * 候选只在读取时对照当前生效计划：需求不在生效计划里（换了版本）、联系人已经关联在这条需求上、
  * 联系人已删除或不属于本人的候选一律不显示。确认／忽略走计划服务的 `decideMatchCandidate`：
  * 一个按 actor 串行的事务里对候选做严格 CAS，接受时同一事务关联联系人、生成本周「约 TA」行动、写进展记录。
- * 候选列表按新到旧排列。
+ * 候选列表按新到旧排列；W0015：联系人在与需求关联的活动上认识的候选排在最前。
  */
 import { industryLabel, secondaryIndustryLabel } from "../../shared/domain/industries";
 import { PLAN_MATCH_ACTION_SOURCE, type LinkNeedContactResult, type PlanService } from "./contract";
 import { resolvePlanEmailDraftProvider, type PlanEmailDraft, type PlanEmailDraftProvider } from "./email-draft";
-import type { PlanMatchContact, PlanMatchNeed } from "./matching";
+import { eventLinked, type PlanMatchContact, type PlanMatchNeed } from "./matching";
 import type { PlanMatchCandidate, PlanMatchRepository } from "./matching-repository";
 import { runMatchJobForBatch, type PlanMatchBatchRun, type PlanMatchWorkerDeps } from "./match-worker";
 import { PlanServiceError } from "./validators";
@@ -105,6 +105,10 @@ export function createPlanMatchingService(deps: {
         tier: candidate.tier,
       });
     }
+    // W0015：在与需求关联的活动上认识的人排在前面（稳定排序，其余保持新到旧）。
+    const eventFirst = (candidate: PlanMatchCandidateView) =>
+      eventLinked(contactsById.get(candidate.contactId), needsById.get(candidate.needId));
+    candidates.sort((a, b) => Number(eventFirst(b)) - Number(eventFirst(a)));
     const pendingByNeed: Record<string, number> = {};
     for (const candidate of candidates) pendingByNeed[candidate.needId] = (pendingByNeed[candidate.needId] ?? 0) + 1;
     return { candidates, contactCount: new Set(candidates.map((candidate) => candidate.contactId)).size, pendingByNeed };

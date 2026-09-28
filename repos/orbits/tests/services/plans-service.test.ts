@@ -256,6 +256,62 @@ test("event items move recommended → registered → attended and back to recom
   await rejectsWith(service.updateItem({ change: { op: "set_status", status: "recommended" }, itemId: event.id }), "ILLEGAL_TRANSITION");
 });
 
+test("W0015: markEventAttended moves a registered event to attended once, with one auto log", async () => {
+  const { service } = harness();
+  const v1 = await service.createVersion(planInput());
+  const event = itemOf(v1.items, "Tokyo SaaS Night");
+  await service.updateItem({ change: { op: "set_status", status: "registered" }, itemId: event.id });
+  const before = await logCount(service);
+
+  const first = await service.markEventAttended({ eventId: "event:tokyo-saas-night" });
+  assert.equal(first.item?.status, "attended");
+  assert.deepEqual(first.logs.map((log) => [log.event, log.fromStatus, log.toStatus, log.linkedEventId, log.itemId]), [
+    ["item_status_changed", "registered", "attended", "event:tokyo-saas-night", event.id],
+  ]);
+  assert.equal(first.logs[0]!.payload.source, "event_attribution");
+
+  // 再确认一张同一场活动的名片：已参加是终态，不再写记录。
+  const again = await service.markEventAttended({ eventId: "event:tokyo-saas-night" });
+  assert.equal(again.item?.status, "attended");
+  assert.deepEqual(again.logs, []);
+  assert.equal(await logCount(service), before + 1);
+});
+
+test("W0015: a recommended event ends attended with exactly one progress entry", async () => {
+  const { service } = harness();
+  await service.createVersion(planInput());
+  const before = await logCount(service);
+  const result = await service.markEventAttended({ eventId: "event:tokyo-saas-night" });
+  assert.equal(result.item?.status, "attended");
+  assert.deepEqual(result.logs.map((log) => [log.fromStatus, log.toStatus, log.body, log.payload.source]), [
+    ["recommended", "attended", "参加活动：Tokyo SaaS Night", "event_attribution"],
+  ]);
+  assert.equal(await logCount(service), before + 1);
+});
+
+test("W0015: concurrent confirmations of the same event write the attended log once", async () => {
+  const { service } = harness();
+  await service.createVersion(planInput());
+  const results = await Promise.all([1, 2, 3].map(() => service.markEventAttended({ eventId: "event:tokyo-saas-night" })));
+  assert.equal(results.flatMap((result) => result.logs).length, 1);
+  const log = (await service.getCurrent())!.log.filter((entry) => entry.payload.source === "event_attribution");
+  assert.equal(log.length, 1);
+});
+
+test("W0015: without a plan, without the event, or for another actor nothing is written", async () => {
+  const repository = createMemoryPlanRepository();
+  const alice = harness("actor:alice", repository).service;
+  const bob = harness("actor:bob", repository).service;
+  assert.deepEqual(await alice.markEventAttended({ eventId: "event:tokyo-saas-night" }), { item: null, logs: [] });
+
+  await alice.createVersion(planInput());
+  assert.deepEqual(await alice.markEventAttended({ eventId: "event:other" }), { item: null, logs: [] });
+  // bob 没有计划：alice 计划里的活动不会因为 bob 的确认而变化。
+  assert.deepEqual(await bob.markEventAttended({ eventId: "event:tokyo-saas-night" }), { item: null, logs: [] });
+  assert.equal(itemOf((await alice.getCurrent())!.items, "Tokyo SaaS Night").status, "recommended");
+  await rejectsWith(alice.markEventAttended({ eventId: "  " }), "INVALID_INPUT");
+});
+
 test("network needs link contacts in two levels and derive their status", async () => {
   const { service } = harness();
   const v1 = await service.createVersion(planInput());
