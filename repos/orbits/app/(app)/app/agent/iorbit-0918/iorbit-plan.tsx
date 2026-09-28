@@ -19,12 +19,27 @@
  * 行上带 定时间／起草邮件（即将开放）／记一次互动。
  *
  * 不做（后续 Sprint）：重新分析（W0012，按钮先禁用）、进展记录里的 @ 联系人解析与周一小结（W0012）。
+ *
+ * W0014 示例模式：服务端判定本人在引导期示例里时传入 `guide`，本屏挂上 `DemoModeProvider`，
+ * 计划换成示例人物的计划（`_demo/demo-persona.ts` 的 `buildDemoPlanSnapshot`，同一套视图模型
+ * 与渲染路径）、时钟换成示例时钟；页头上方是「示例预览」横条，人名带「示例」角标；打勾与
+ * 「记下」改弹「这是示例」拦截层，也不读匹配候选——整屏不发任何计划请求。`guide` 为空时一切照旧。
  */
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 
 import type { PlanSnapshot } from "../../../../../features/plans/contract";
+import {
+  DemoBanner,
+  DemoInterceptLayer,
+  DemoModeProvider,
+  DemoNavPill,
+  DemoTag,
+  useDemoMode,
+  type DemoModeView,
+} from "../../_demo/demo-mode-core";
+import { buildDemoPlanContactNames, buildDemoPlanSnapshot } from "../../_demo/demo-persona";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import {
   buildMyPlanViewModel,
@@ -54,15 +69,41 @@ export interface IOrbitPlanProps {
   contactNames?: Readonly<Record<string, MyPlanContactName>>;
   /** 覆盖点，仅测试使用：可注入的时钟。 */
   now?: Date;
+  /** W0014 示例模式：非空即渲染示例人物的计划（开关关闭或不在引导期时为空）。 */
+  guide?: DemoModeView | null;
 }
 
-export function IOrbitPlan({ contactNames, guideEnabled, initialSnapshot, now }: IOrbitPlanProps) {
+const PLAN_DEMO_MESSAGE = {
+  en: "Once you finish the guide, this becomes your own plan.",
+  zh: "完成引导后，这里会是你自己的计划。",
+};
+
+export function IOrbitPlan({ guide, ...props }: IOrbitPlanProps) {
+  if (!guide) return <IOrbitPlanScreen {...props} />;
+  return (
+    <DemoModeProvider view={guide}>
+      <IOrbitPlanScreen {...props} />
+    </DemoModeProvider>
+  );
+}
+
+function IOrbitPlanScreen({ contactNames: liveContactNames, guideEnabled, initialSnapshot, now }: Omit<IOrbitPlanProps, "guide">) {
   const { language, t } = useOrbitLanguage();
   const lang = language === "zh" ? "zh" : "en";
-  const [snapshot, setSnapshot] = useState(initialSnapshot);
+  const demo = useDemoMode();
+  const demoActive = demo !== null;
+  const demoClock = demo?.clock;
+  const [liveSnapshot, setSnapshot] = useState(initialSnapshot);
   // 本次打开页面后打过勾（或取消）的行动：已完成也暂留在本周列表里方便撤销，刷新后消失。
   const [sticky, setSticky] = useState<readonly string[]>([]);
-  const clock = useMemo(() => now ?? new Date(), [now]);
+  const clock = useMemo(() => now ?? (demoClock ? demoClock() : new Date()), [demoClock, now]);
+  // 示例：整份计划与人名来自示例人物（只读，写操作都被拦下，所以不进 state）。
+  const demoPlan = useMemo(
+    () => (demoActive ? { names: buildDemoPlanContactNames(lang), snapshot: buildDemoPlanSnapshot(clock, lang) } : null),
+    [clock, demoActive, lang],
+  );
+  const snapshot = demoPlan ? demoPlan.snapshot : liveSnapshot;
+  const contactNames = demoPlan ? demoPlan.names : liveContactNames;
   const model = buildMyPlanViewModel({
     contactNames,
     guideEnabled,
@@ -77,13 +118,13 @@ export function IOrbitPlan({ contactNames, guideEnabled, initialSnapshot, now }:
   const [matchNeedId, setMatchNeedId] = useState<string | null>(null);
   const hasPlan = snapshot !== null && snapshot !== "unavailable";
   useEffect(() => {
-    if (typeof window === "undefined" || !hasPlan) return;
+    if (typeof window === "undefined" || !hasPlan || demoActive) return;
     const controller = new AbortController();
     void fetchPlanMatches(controller.signal)
       .then((value) => setMatches(value))
       .catch(() => undefined);
     return () => controller.abort();
-  }, [hasPlan]);
+  }, [demoActive, hasPlan]);
   const reloadPlan = () => {
     void fetchCurrentPlan()
       .then((value) => {
@@ -94,8 +135,9 @@ export function IOrbitPlan({ contactNames, guideEnabled, initialSnapshot, now }:
   const [sheetCandidates, setSheetCandidates] = useState<PlanMatchList["candidates"]>([]);
 
   return (
-    <IOrbitScreenFrame ready screenTitle={screenTitle}>
-      <div className="ir-screen" data-orbit-iorbit-screen="plan">
+    <IOrbitScreenFrame navExtra={demoActive ? <DemoNavPill /> : undefined} ready screenTitle={screenTitle}>
+      {demoActive ? <DemoBanner message={PLAN_DEMO_MESSAGE} /> : null}
+      <div className="ir-screen" data-orbit-guide-demo={demoActive ? "on" : undefined} data-orbit-iorbit-screen="plan">
         <span className="ir-crumb">
           <a href="/app/agent">iOrbit</a> / {screenTitle}
         </span>
@@ -153,6 +195,7 @@ export function IOrbitPlan({ contactNames, guideEnabled, initialSnapshot, now }:
           />
         </PlanMatchDialog>
       ) : null}
+      <DemoInterceptLayer />
     </IOrbitScreenFrame>
   );
 }
@@ -176,6 +219,8 @@ function PlanBody({
 }) {
   const { language, t } = useOrbitLanguage();
   const zh = language === "zh";
+  // W0014：示例里打勾与「记下」改弹「这是示例」，不发请求。
+  const guardWrite = useDemoMode()?.guardWrite;
   const [analysisOpen, setAnalysisOpen] = useState(false);
   const currentKey = view.phases.find((phase) => phase.current)?.key ?? null;
   const [openPhases, setOpenPhases] = useState<ReadonlySet<string>>(() => new Set(currentKey ? [currentKey] : []));
@@ -189,6 +234,10 @@ function PlanBody({
   const noteKey = useRef<string | null>(null);
 
   const toggleAction = async (itemId: string, done: boolean) => {
+    if (guardWrite) {
+      guardWrite(t({ en: "plan", zh: "计划" }));
+      return;
+    }
     if (busy.has(itemId)) return;
     setCheckError(null);
     setBusy((current) => new Set(current).add(itemId));
@@ -221,6 +270,10 @@ function PlanBody({
 
   const submitNote = async (event: FormEvent) => {
     event.preventDefault();
+    if (guardWrite) {
+      guardWrite(t({ en: "progress log", zh: "进展记录" }));
+      return;
+    }
     const body = note.trim();
     if (!body || noteBusy) return;
     setNoteBusy(true);
@@ -267,6 +320,7 @@ function PlanBody({
       <header className="ir-p-mast">
         <h2 className="ir-p-goal" data-orbit-plan-goal>
           {view.goal}
+          {guardWrite ? <DemoTag /> : null}
         </h2>
         <div className="ir-p-meta">
           <span>{meta}</span>
@@ -477,7 +531,10 @@ function PlanBody({
                           >
                             <span className="ir-p-ini">{person.initial}</span>
                             <span>
-                              <b>{person.name}</b>
+                              <b>
+                                {person.name}
+                                {guardWrite ? <DemoTag /> : null}
+                              </b>
                               {person.subtitle ? <small>{person.subtitle}</small> : null}
                             </span>
                             <span className={person.state === "established" ? "ir-p-st ir-p-st-est" : "ir-p-st"}>

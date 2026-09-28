@@ -22,10 +22,13 @@ import { IORBIT_STYLES } from "./iorbit-styles";
 
 export function IOrbitScreenFrame({
   children,
+  navExtra,
   ready,
   screenTitle,
 }: {
   children: ReactNode;
+  /** 顶栏右侧的附加内容（W0014：示例模式横条收起后的导航药丸）；缺省时顶栏与改动前相同。 */
+  navExtra?: ReactNode;
   /** 全部数据源都不再 pending 时为 true；像素比对等的就是它（「审阅修订」37）。 */
   ready: boolean;
   screenTitle: string;
@@ -40,7 +43,7 @@ export function IOrbitScreenFrame({
         <h1 className="ir-screen-title" data-orbit-agent-screen-title>
           {screenTitle}
         </h1>
-        <AccountTopNav active="agent" />
+        <AccountTopNav active="agent" mobileRightExtra={navExtra} rightExtra={navExtra} />
         <main className="ir-main">{children}</main>
       </div>
     </div>

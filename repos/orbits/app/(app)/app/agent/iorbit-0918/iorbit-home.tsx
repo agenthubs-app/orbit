@@ -799,7 +799,9 @@ export function IOrbitHome({
   const openChat = () => (guardWrite ? guardWrite(chatLabel) : onOpenChat());
   const openHistory = () =>
     guardWrite ? guardWrite(t({ en: "conversation history", zh: "对话记录" })) : onOpenHistory();
-  const openSession = (sessionId: string) => (guardWrite ? guardWrite(chatLabel) : onOpenSession(sessionId));
+  // W0014：示例里只有那条示例问答（`openableSessions`）能打开——壳以只读对话显示它；其余照旧拦下。
+  const openSession = (sessionId: string) =>
+    guardWrite && !demoData?.openableSessions.includes(sessionId) ? guardWrite(chatLabel) : onOpenSession(sessionId);
   // 示例条目指向的是示例人物的数据，跳过去只会是别人的页面或 404：一律拦下。
   const openItem = (item: TodayItem) => {
     if (!item.primary) return;

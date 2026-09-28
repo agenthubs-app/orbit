@@ -1412,6 +1412,146 @@ test("every write in demo mode opens the 「这是示例」 guard instead of cal
   assert.ok(root.findAll((node) => node.props?.className === "ir-home").length > 0, "still on the overview");
 });
 
+/* ── W0014：示例问答以只读对话打开 ─────────────────────────────────────── */
+
+test("W0014: the demo plan Q&A opens as a read-only chat with the W0008 plan card built from demo data", async (t) => {
+  const mounted = await mountHome(t, () => (
+    <IOrbitShell guide={GUIDE_STEP_TWO} home={HOME as never} viewModel={VIEW_MODEL} />
+  ));
+  const root = mounted.root.root;
+  const session = root.findAll(
+    (node) => node.type === "button" && node.props?.["data-orbit-iorbit-session"] === "demo-session-plan",
+  )[0]!;
+  assert.ok(session, "the demo plan Q&A is one of the recent chats");
+  await act(async () => {
+    session.props.onClick();
+  });
+  await mounted.settle();
+
+  // 切到对话分支：同一个 IOrbitChat，线程 = 示例问题 + 计划卡片（已完成态）。
+  assert.equal(root.findAll((node) => node.props?.className === "ir-home").length, 0, "left the overview");
+  assert.equal(root.findAll((node) => node.props?.["data-orbit-guide-demo-intercept"] !== undefined).length, 0);
+  const thread = root.findAll((node) => node.props?.["data-orbit-iorbit-thread"] !== undefined)[0]!;
+  const text = textOf(thread);
+  assert.ok(text.includes("根据我的目标和人脉信息，我该如何实现目标？"), "the demo question bubble");
+  const card = root.findAll((node) => node.type === "div" && node.props?.["data-orbit-plan-card"] !== undefined)[0]!;
+  assert.equal(card.props["data-plan-card-state"], "done");
+  const cardText = textOf(card);
+  for (const copy of ["王砚和中村惠", "摸清需求", "集中接触", "推进落地", "已保存为你的计划 v1"]) {
+    assert.ok(cardText.includes(copy), `demo plan card: ${copy}`);
+  }
+  assert.equal(
+    root.findAll((node) => node.type === "div" && node.props?.["data-plan-card-phase"] !== undefined).length,
+    3,
+  );
+  // 横条仍在；右栏上下文用示例人物的资料，不显示真实账号的。
+  assert.equal(root.findAll((node) => node.props?.["data-orbit-guide-demo-banner"] !== undefined).length, 1);
+  assert.ok(textOf(root.findAll((node) => node.props?.["data-orbit-guide-demo-chat"] !== undefined)[0]!).includes("中小企业 IT 负责人"));
+  assertNoDemoRequests(mounted.calls, "after opening the demo Q&A");
+  assert.equal(mounted.calls.filter((call) => call.url.includes("/api/ai/")).length, 0);
+  assert.equal(mounted.pushedUrls.length, 0, "the read-only chat does not touch the address bar");
+  assert.equal(mounted.replacedUrls.length, 0);
+});
+
+test("W0014: in the demo Q&A every follow-up, send, suggestion and history control opens the guard", async (t) => {
+  const mounted = await mountHome(t, () => (
+    <IOrbitShell guide={GUIDE_STEP_TWO} home={HOME as never} viewModel={VIEW_MODEL} />
+  ));
+  const root = mounted.root.root;
+  await act(async () => {
+    root
+      .findAll((node) => node.type === "button" && node.props?.["data-orbit-iorbit-session"] === "demo-session-plan")[0]!
+      .props.onClick();
+  });
+  await mounted.settle();
+  const byClass = (className: string) =>
+    root.findAll((node) => node.type === "button" && node.props?.className === className);
+  const guard = () => root.findAll((node) => node.props?.["data-orbit-guide-demo-intercept"] !== undefined)[0] ?? null;
+  const expectGuard = async (label: string, click: () => void) => {
+    await act(async () => {
+      click();
+    });
+    await mounted.settle();
+    const layer = guard();
+    assert.ok(layer, `${label}: the demo guard must open`);
+    const text = textOf(layer!);
+    assert.ok(text.includes("这是示例"), `${label}: guard title`);
+    await act(async () => {
+      layer!
+        .findAll((node) => node.type === "button" && node.props?.["data-orbit-guide-demo-dismiss"] === true)[0]!
+        .props.onClick();
+    });
+    assert.equal(guard(), null);
+    return text;
+  };
+
+  // 追问输入：可以打字，发送被拦下。
+  const input = root.findAll((node) => node.type === "input" && node.props?.["data-orbit-agent-chat-input"] !== undefined)[0]!;
+  await act(async () => {
+    input.props.onChange({ target: { value: "那第 2 阶段我该先找谁？" } });
+  });
+  const form = root.findAll((node) => node.type === "form" && node.props?.["data-orbit-agent-chat-composer"] !== undefined)[0]!;
+  let prevented = false;
+  assert.ok(
+    (await expectGuard("composer send", () => form.props.onSubmit({ preventDefault: () => (prevented = true) }))).includes("你自己的对话"),
+  );
+  assert.equal(prevented, true);
+  await expectGuard("follow-up chip", () => byClass("btn ir-followup")[0]!.props.onClick());
+  const tryChips = byClass("btn ir-try-chip");
+  if (tryChips.length > 0) await expectGuard("try chip", () => tryChips[0]!.props.onClick());
+  assert.ok((await expectGuard("history", () => byClass("btn ir-chat-history-btn")[0]!.props.onClick())).includes("对话记录"));
+
+  assertNoDemoRequests(mounted.calls, "after every chat control");
+  assert.equal(mounted.calls.filter((call) => call.url.includes("/api/ai/")).length, 0);
+
+  // 「← 返回概览」回到示例概览。
+  await act(async () => {
+    byClass("btn ir-back-btn")[0]!.props.onClick();
+  });
+  assert.ok(root.findAll((node) => node.props?.className === "ir-home").length > 0, "back on the overview");
+});
+
+test("W0014: a polluted real viewModel / home never reaches the demo overview, the demo Q&A thread or its aside", async (t) => {
+  const REAL = "甲斐真由美";
+  const pollutedViewModel = {
+    ...VIEW_MODEL,
+    suggests: [
+      { icon: "users", label: `约${REAL}聊聊`, q: `给${REAL}（真实公司）写草稿` },
+      ...VIEW_MODEL.suggests,
+    ],
+  };
+  const pollutedHome = {
+    ...HOME,
+    account: { ...HOME.account, fullName: REAL, targetRelationshipTypes: [`${REAL}的同事`], topics: [`${REAL}的话题`] },
+  };
+  const element = () => (
+    <IOrbitShell guide={GUIDE_STEP_TWO} home={pollutedHome as never} viewModel={pollutedViewModel as never} />
+  );
+  // 概览首帧（SSR）。
+  assert.ok(!renderToStaticMarkup(element()).includes(REAL), "demo overview SSR");
+  const mounted = await mountHome(t, element);
+  const root = mounted.root.root;
+  const allText = () => JSON.stringify(mounted.root.toJSON());
+  assert.ok(!allText().includes(REAL), "demo overview");
+  await act(async () => {
+    root
+      .findAll((node) => node.type === "button" && node.props?.["data-orbit-iorbit-session"] === "demo-session-plan")[0]!
+      .props.onClick();
+  });
+  await mounted.settle();
+  assert.ok(root.findAll((node) => node.props?.["data-orbit-guide-demo-chat"] !== undefined).length > 0, "in the demo Q&A");
+  assert.ok(!allText().includes(REAL), "demo Q&A thread and aside");
+  // 「试试这些问题」与右栏提问是示例人物的问题。
+  assert.ok(allText().includes("我的人脉里谁能引荐中小企业 IT 负责人？"));
+});
+
+test("W0014: flag off, no demo chat branch or demo plan content reaches the real shell", () => {
+  const html = demoShellMarkup(null);
+  for (const leak of ["data-orbit-guide-demo-chat", "demo-session-plan", "王砚和中村惠"]) {
+    assert.ok(!html.includes(leak), `demo chat content leaked into the real shell: ${leak}`);
+  }
+});
+
 const GUIDE_OK = async (body: unknown) => Response.json({ data: { ...(body as object), grandfathered: false, version: 1 }, success: true });
 
 test("收起 folds the banner into the nav pill and stores it in the guide record; the pill expands it back", async (t) => {

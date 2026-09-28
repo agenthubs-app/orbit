@@ -278,3 +278,49 @@ test("RW-07 honesty: a phase with several network needs names the phase, not one
     ],
   );
 });
+
+/* ── W0014：示例人物的计划（`_demo/demo-persona.ts`）走同一套视图模型 ─────────────── */
+
+test("W0014 demo plan: same PlanSnapshot shape, week 2 of 12 in phase 1, consistent with the W0004/W0005 story", async () => {
+  const { buildDemoPlanContactNames, buildDemoPlanSnapshot, buildDemoHomeData, DEMO_GOAL, DEMO_PLAN_SESSION_ID } = await import(
+    "../../app/(app)/app/_demo/demo-persona"
+  );
+  const { buildDemoNetworkViewModel } = await import("../../app/(app)/app/_demo/demo-network");
+  const { demoNow } = await import("../../app/(app)/app/_demo/demo-clock");
+  const { planCardViewFromSnapshot } = await import("../../app/(app)/app/agent/iorbit-0918/iorbit-plan-card-model");
+  const now = demoNow(new Date("2026-09-28T03:00:00.000Z"));
+
+  for (const lang of ["zh", "en"] as const) {
+    const snapshot = buildDemoPlanSnapshot(now, lang);
+    const names = buildDemoPlanContactNames(lang);
+    const model = buildMyPlanViewModel({ contactNames: names, guideEnabled: true, language: lang, now, snapshot });
+    assert.equal(model.state, "ready");
+    const view = (model as Extract<typeof model, { state: "ready" }>).view;
+    assert.equal(view.goal, DEMO_GOAL[lang]);
+    assert.deepEqual([view.week.current, view.week.total, view.week.phaseNo], [2, 12, 1]);
+    assert.deepEqual(view.phases.map((phase) => phase.key), ["p1", "p2", "p3"]);
+    assert.equal(view.thisWeek.length, 5);
+    assert.equal(view.thisWeek.filter((action) => action.weeksOverdue === 1).length, 1);
+    assert.equal(view.needs.length, 3);
+    assert.ok(view.log.length >= 5);
+    // 每个关联的联系人都有示例名字（不落到「联系人」占位），且都是 W0005 示例人脉里的人。
+    const networkIds = new Set(buildDemoNetworkViewModel(now, lang).connections.map((contact) => contact.id));
+    const linked = snapshot.items.flatMap((item) => item.linkedContactIds);
+    assert.ok(linked.length > 0);
+    for (const id of linked) {
+      assert.ok(id.startsWith("demo:"), id);
+      assert.ok(networkIds.has(id), `${id} is one of the W0005 demo contacts`);
+      assert.ok(names[id], `${id} has a demo name`);
+    }
+    for (const need of view.needs) for (const person of need.people) assert.notEqual(person.name, lang === "zh" ? "联系人" : "Contact");
+    // 同一份快照映射成对话里的 W0008 计划卡片；问题就是最近对话里那条示例问答的标题。
+    const card = planCardViewFromSnapshot(snapshot);
+    assert.ok(card, "the demo plan maps to a plan card");
+    const session = buildDemoHomeData(now, lang).sessions.find((item) => item.id === DEMO_PLAN_SESSION_ID);
+    assert.equal(card!.question, session!.title);
+    assert.equal(card!.phases.length, 3);
+    assert.equal(card!.figures.length, 3);
+    assert.equal(card!.thisWeek.length, 3);
+    assert.equal(snapshot.plan.createdAt, session!.createdAt, "the plan was generated in that demo Q&A");
+  }
+});

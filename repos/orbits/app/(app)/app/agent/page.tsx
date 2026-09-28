@@ -13,6 +13,12 @@
  * W0008：`?plan=<id>` 以本人身份读这份计划（他人的计划一律视为不存在），映射成回答卡片的
  * 视图模型交给壳，直接落在对话分支；`&reveal=1`（第 3 步生成完跳来）让卡片揭示一次。
  * 示例壳没有对话分支，处于示例期时不读计划。
+ *
+ * W0014：示例判定挪到最前（`readDemoModeViewForActor`，判定口径不变：目标仍取首页数据的
+ * relationshipGoal，首页数据读不到时按真实页面处理）。处于示例期时只读了判定所需的首页数据，
+ * 对话路由模型、活动报名／canonical id、社群状态、计划卡片一概不读——示例壳不用它们，真实
+ * `viewModel` 的 suggests 还带真实人名与草稿，不能进示例；那些读取出错也不影响示例渲染。
+ * 开关关闭时判定零读取，下面的真实路径与改动前一致。
  */
 import { getOrbitServerLanguage, localizeOrbitTree } from "../orbit-language-server";
 import type { OrbitLanguage } from "../orbit-language-core";
@@ -34,8 +40,9 @@ import { presentOrbitEvents } from "../orbit-event-presentation";
 import { readRuntimeEventRegistrationStates } from "../../../../features/events/registration/runtime";
 import { resolveConfiguredActorEventCanonicalIds } from "../canonical-event-detail-view";
 import { readCommunityJoinedForActor } from "../../../../features/community/service-factory";
-import { readGuideStatusForActor, type GuideStatus } from "../../../../features/guide/progress";
-import type { DemoModeView } from "../_demo/demo-mode-context";
+import { readGuideStatusForActor } from "../../../../features/guide/progress";
+import { readDemoModeViewForActor } from "../_demo/demo-guide-view";
+import { createOrbitAgentStarterViewModel } from "../orbit-agent-route-view-model";
 import { resolvePlanService } from "../../../../features/plans/service-factory";
 import {
   planCardViewFromSnapshot,
@@ -121,18 +128,6 @@ function AgentRouteStateBoundary({
   );
 }
 
-/** 引导状态 → 壳的示例视图（只有「在示例里」才非空）。 */
-function guideDemoView(status: GuideStatus | null): DemoModeView | null {
-  if (!status?.inDemo || !status.progress) return null;
-  return {
-    bannerCollapsed: status.bannerCollapsed,
-    completed: status.progress.completed,
-    confirmedContacts: status.progress.confirmedContacts,
-    nextStep: status.progress.nextStep,
-    steps: status.progress.steps,
-  };
-}
-
 function firstSearchParam(
   searchParams: AppAgentSearchParams | undefined,
   key: string,
@@ -172,19 +167,52 @@ export default async function AppAgentPage({
 
   const resolvedSearchParams = await searchParams;
   const requestedLanguage = languageSearchParam(resolvedSearchParams);
+  // iOrbit 工作台首屏（dashboard）与旧 /app/home 同源的数据：账户、统计、活动旅程。
+  // 同一次请求只读一次：示例判定（目标）与真实首页共用。
+  let loadedHomeModel: Awaited<ReturnType<typeof loadAppHomeRouteViewModel>> | null = null;
+  const loadHomeModel = async () =>
+    (loadedHomeModel ??= await loadAppHomeRouteViewModel(undefined, {
+      displayName:
+        session?.user?.name?.trim() ||
+        session?.user?.email?.trim() ||
+        "Orbit member",
+      email: session?.user?.email,
+      id: actorId,
+      rawSubject: session.user.id,
+    }));
+  // W0004／W0014：开关关闭时不读任何东西，返回 null。首页数据读不到时目标未知，按真实首页处理。
+  const guide = await readDemoModeViewForActor(
+    { actorId, userId: session.user.id },
+    {
+      readGuideStatus: readGuideStatusForActor,
+      readRelationshipGoal: async () => {
+        const model = await loadHomeModel();
+        if (model.state !== "success") throw new Error("Home data is unavailable.");
+        return model.home.account?.relationshipGoal ?? "";
+      },
+    },
+  );
+  if (guide) {
+    // 示例壳只吃引导视图；home／viewModel 一律不带真实数据（起步模型不含任何人物）。
+    return (
+      <>
+        <OrbitReferenceStyles />
+        <OrbitVisualFreezeRuntime />
+        <div data-orbit-route="app-agent-route">
+          <IOrbitShell
+            guide={guide}
+            home={null}
+            initialPlanCard={null}
+            viewModel={createOrbitAgentStarterViewModel()}
+          />
+        </div>
+      </>
+    );
+  }
   const routeModel = await loadAppChatRouteViewModel(resolvedSearchParams, {
     actorId,
   });
-  // iOrbit 工作台首屏（dashboard）与旧 /app/home 同源的数据：账户、统计、活动旅程。
-  const homeModel = await loadAppHomeRouteViewModel(undefined, {
-    displayName:
-      session?.user?.name?.trim() ||
-      session?.user?.email?.trim() ||
-      "Orbit member",
-    email: session?.user?.email,
-    id: actorId,
-    rawSubject: session.user.id,
-  });
+  const homeModel = await loadHomeModel();
   const registrationEventIds =
     homeModel.state === "success"
       ? homeModel.home.events.map((event) => event.id)
@@ -213,19 +241,8 @@ export default async function AppAgentPage({
   );
   // W0003：「已报名活动」栏首行的社群状态由服务端读，SSR 首帧即正确。
   const communityJoined = await readCommunityJoinedForActor({ actorId });
-  // W0004：开关关闭时不读任何东西，返回 null。首页数据读不到时目标未知，按真实首页处理。
-  const guide =
-    homeModel.state === "success"
-      ? guideDemoView(
-          await readGuideStatusForActor({
-            actorId,
-            relationshipGoal: homeModel.home.account?.relationshipGoal,
-            userId: session.user.id,
-          }),
-        )
-      : null;
   const requestedPlanId = firstSearchParam(resolvedSearchParams, "plan");
-  const planCard = requestedPlanId && !guide ? await readPlanCard(actorId, requestedPlanId) : null;
+  const planCard = requestedPlanId ? await readPlanCard(actorId, requestedPlanId) : null;
   const entryModel = composeOrbitAgentEntryViewModel(routeModel);
   const language =
     entryModel.state === "ready"
@@ -240,7 +257,7 @@ export default async function AppAgentPage({
         <div data-orbit-route="app-agent-route">
           <IOrbitShell
             communityJoined={communityJoined}
-            guide={guide}
+            guide={null}
             initialDeepLink={Boolean(
               firstSearchParam(resolvedSearchParams, "q") ||
                 firstSearchParam(resolvedSearchParams, "session") ||
