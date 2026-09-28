@@ -36,6 +36,9 @@ import {
   useApiResource,
   type ApiResourceState
 } from "../../hooks/useApiResource";
+import { usePageCopyResource } from "../../hooks/usePageCopyResource";
+import { OfflineNotice } from "../../components/OfflineNotice";
+import { NeedsNetworkState } from "../../components/NeedsNetworkState";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import {
@@ -476,11 +479,13 @@ export function EventsScreen({ scopeKey, isScopeCurrent }: { scopeKey?: string; 
   const { baseUrl } = useOrbitApiBaseUrl();
   const { signedIn } = useOrbitAuthSession();
   const { timeZone } = useOrbitTimeZone();
-  const rawState = useApiResource<unknown>(
+  // Sprint 0131: the public catalogue as last seen (page copy "public-events"; platform data kept per identity), offline with 截至.
+  const rawState = usePageCopyResource<unknown>(
     ORBIT_API_ENDPOINTS.publicEvents,
     (data) => eventsToSummaries(data, timeZone).length === 0,
-    { scopeKey: scopeKey ?? "public-events" }
+    { scopeKey: scopeKey ?? "public-events", copy: { id: "public-events" }, accept: (data) => publicEventsSchema.safeParse(data).success }
   );
+  const catalogueOffline = rawState.copy?.offline === true;
   const state = validateApiResourceState(rawState, publicEventsSchema);
   const mounted = useRef(true);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
@@ -590,14 +595,15 @@ export function EventsScreen({ scopeKey, isScopeCurrent }: { scopeKey?: string; 
       }
     >
       <View style={styles.pageHeader}><Text accessibilityRole="header" style={styles.pageTitle}>{locale.t("events.title")}</Text>{signedIn ? <EventCenterEntry onPress={() => { if (isCurrent()) router.push("/events/center" as Href); }} /> : null}</View>
+      {catalogueOffline ? <OfflineNotice lastSyncedAt={rawState.copy?.lastSyncedAt ?? null} reason={rawState.copy?.reason ?? null} /> : null}
       {state.kind === "loading" ? <LoadingState /> : null}
       {state.kind === "offline" ? (
-        <ErrorState message={state.error.message} title="服务器连不上" />
+        <NeedsNetworkState message={locale.t("sync.notOnDevice")} onRetry={refreshAll} />
       ) : null}
       {state.kind === "failure" ? (
         <ErrorState message={state.error.message} />
       ) : null}
-      {state.kind === "failure" || state.kind === "offline" ? <Pressable accessibilityRole="button" accessibilityLabel="重新读取活动" onPress={refreshAll} style={styles.secondaryButton}><Text style={styles.secondaryButtonText}>重新读取</Text></Pressable> : null}
+      {state.kind === "failure" ? <Pressable accessibilityRole="button" accessibilityLabel="重新读取活动" onPress={refreshAll} style={styles.secondaryButton}><Text style={styles.secondaryButtonText}>重新读取</Text></Pressable> : null}
       {state.kind === "empty" ? (
         <EmptyState message="报名、导入或推荐的活动会出现在这里。" title="暂无活动" />
       ) : null}
@@ -695,11 +701,12 @@ function AuthenticatedEventValueRecommendations({
 }) {
   const client = useOrbitApiClient({ scopeKey });
   const [readAttempt, setReadAttempt] = useState(0);
-  const rawState = useApiResource<unknown>(
+  const rawState = usePageCopyResource<unknown>(
     eventValueRecommendationsPath({ limit: 3 }),
     (data) => eventValueRecommendationsToView(data).recommendations.length === 0,
-    { scopeKey: JSON.stringify([scopeKey, readAttempt]) }
+    { scopeKey: JSON.stringify([scopeKey, readAttempt]), copy: { id: "event-recommendations", variant: "events" }, accept: (data) => eventRecommendationsSchema.safeParse(data).success }
   );
+  const recommendationsOffline = rawState.copy?.offline === true;
   const recommendationsState = validateApiResourceState(rawState, eventRecommendationsSchema);
   const mounted = useRef(true);
   const activeScope = useRef(isScopeCurrent);
@@ -759,6 +766,8 @@ function AuthenticatedEventValueRecommendations({
       onAcceptEvent={acceptEventRecommendation}
       onOpenEvent={id => { if (isCurrent()) onOpenEvent(id); }}
       onRegisterEvent={id => { if (isCurrent()) onRegisterEvent(id); }}
+      offline={recommendationsOffline}
+      offlineAsOf={rawState.copy?.lastSyncedAt ?? null}
       onRetry={retryRecommendations}
       pendingAcceptEventId={pendingAcceptEventId}
       state={recommendationsState}
@@ -774,6 +783,8 @@ function EventValueRecommendationsModule({
   onAcceptEvent,
   onOpenEvent,
   onRegisterEvent,
+  offline = false,
+  offlineAsOf = null,
   onRetry,
   pendingAcceptEventId,
   state
@@ -785,6 +796,9 @@ function EventValueRecommendationsModule({
   onAcceptEvent: (recommendation: EventValueRecommendationCardView) => void;
   onOpenEvent: (id: string) => void;
   onRegisterEvent: (id: string) => void;
+  /** Sprint 0131: the recommendations shown are the device copy (as of offlineAsOf); recording one needs the network. */
+  offline?: boolean;
+  offlineAsOf?: string | null;
   onRetry: () => void;
   pendingAcceptEventId: string | null;
   state: ApiResourceState<z.infer<typeof eventRecommendationsSchema>>;
@@ -815,9 +829,11 @@ function EventValueRecommendationsModule({
         detail="根据你的目标和时间安排"
         title="为你推荐"
       />
+      {offline ? <OfflineNotice lastSyncedAt={offlineAsOf} /> : null}
       <EventRecommendationRail
         baseUrl={baseUrl}
         eventById={eventById}
+        offline={offline}
         onAcceptEvent={onAcceptEvent}
         onOpenEvent={onOpenEvent}
         pendingAcceptEventId={pendingAcceptEventId}
@@ -839,6 +855,7 @@ function EventValueRecommendationsModule({
 function EventRecommendationRail({
   baseUrl,
   eventById,
+  offline,
   onAcceptEvent,
   onOpenEvent,
   pendingAcceptEventId,
@@ -846,6 +863,7 @@ function EventRecommendationRail({
 }: {
   baseUrl: string;
   eventById: Map<string, EventSummary>;
+  offline: boolean;
   onAcceptEvent: (recommendation: EventValueRecommendationCardView) => void;
   onOpenEvent: (id: string) => void;
   pendingAcceptEventId: string | null;
@@ -871,6 +889,7 @@ function EventRecommendationRail({
             key={recommendation.id}
             onAccept={() => onAcceptEvent(recommendation)}
             onOpen={() => onOpenEvent(recommendation.id)}
+            offline={offline}
             pending={pendingAcceptEventId === recommendation.id}
             recommendation={recommendation}
           />
@@ -884,6 +903,7 @@ function EventRecommendationCard({
   baseUrl,
   coverPath,
   event,
+  offline,
   onAccept,
   onOpen,
   pending,
@@ -892,6 +912,7 @@ function EventRecommendationCard({
   baseUrl: string;
   coverPath?: string | undefined;
   event?: EventSummary | undefined;
+  offline: boolean;
   onAccept: () => void;
   onOpen: () => void;
   pending: boolean;
@@ -958,16 +979,17 @@ function EventRecommendationCard({
           </Pressable>
           <Pressable
             accessibilityRole="button"
-            disabled={pending}
+            accessibilityState={{ disabled: pending || offline }}
+            disabled={pending || offline}
             onPress={onAccept}
             style={({ pressed }) => [
               styles.primaryButton,
-              pending ? styles.disabled : null,
+              pending || offline ? styles.disabled : null,
               pressed ? styles.eventCardPressed : null
             ]}
           >
             <Text style={styles.primaryButtonText}>
-              {pending ? "记录中" : "记下推荐"}
+              {pending ? "记录中" : offline ? "记下推荐 · 需要联网" : "记下推荐"}
             </Text>
           </Pressable>
         </View>

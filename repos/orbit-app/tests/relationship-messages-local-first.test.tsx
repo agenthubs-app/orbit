@@ -45,6 +45,9 @@ const refresherFor = (kind) => refreshers[kind] ??= async () => { state.syncs[ki
 const session = { isCurrent: () => true };
 const currentSession = () => session;
 const snapshots = {};
+// Sprint 0131: a conversation page is read by row id from the device (the relationship_message rows of this fixture).
+const rowSession = { isCurrent: () => true, readRecordsById: async (kind, ids) => records(kind).filter((row) => ids.includes(row.id)), readPageCopy: async () => null, savePageCopy: async () => {} };
+export const useSyncCoordinatorSession = () => rowSession;
 export const useSyncedCollection = ({ kind }) => {
   // Stable per kind while nothing changes, like the real hook's snapshot.
   const key = kind + ":" + state.status;

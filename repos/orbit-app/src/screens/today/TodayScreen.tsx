@@ -18,6 +18,8 @@ import {
 } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
 import { ErrorState } from "../../components/ErrorState";
+import { OfflineNotice } from "../../components/OfflineNotice";
+import { NeedsNetworkState } from "../../components/NeedsNetworkState";
 import { LoadingState } from "../../components/LoadingState";
 import { textStyles, radius, spacing, typography } from "../../design/tokens";
 import { createControlStyles } from "../../design/controls";
@@ -59,6 +61,8 @@ export function TodayScreen() {
   const [creating, setCreating] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [mutationError, setMutationError] = useState<string | null>(null);
+  // Sprint 0131: offline the page is today's device copy (page copy "today-page"); writing needs the network.
+  const offline = todayState.copy?.offline === true;
   const view = todayState.data
     ? todayTaskPageToView(todayState.data.today, todayState.data.page.actorId, date, clock, timeZone, locale.language,
       todayState.data.page.items, todayState.data.page)
@@ -67,7 +71,7 @@ export function TodayScreen() {
   async function createTask() {
     if (!canSave) { setMutationError(locale.t("today.timezoneUnavailable")); return; }
     const title = draft.trim();
-    if (!title || creating) return;
+    if (!title || creating || offline) return;
     setCreating(true);
     setMutationError(null);
     const result = await client.post<unknown>(ORBIT_API_ENDPOINTS.tasks, {
@@ -88,6 +92,7 @@ export function TodayScreen() {
   }
 
   async function completeTask(taskId: string) {
+    if (offline) return;
     setUpdatingId(taskId);
     setMutationError(null);
     const result = await client.patch<unknown>(taskPath(taskId), {
@@ -105,6 +110,7 @@ export function TodayScreen() {
   }
 
   async function acceptSuggestion(suggestionId: string) {
+    if (offline) return;
     setUpdatingId(suggestionId);
     setMutationError(null);
     const result = await client.post<unknown>(taskSuggestionAcceptPath(suggestionId), {
@@ -129,8 +135,10 @@ export function TodayScreen() {
       }
       title={locale.t("today.title")}
     >
+      {offline ? <OfflineNotice lastSyncedAt={todayState.copy?.lastSyncedAt ?? null} reason={todayState.copy?.reason ?? null} /> : null}
       {todayState.state.kind === "loading" ? <LoadingState /> : null}
-      {todayState.state.kind === "failure" || todayState.state.kind === "offline" ? (
+      {todayState.state.kind === "offline" ? <NeedsNetworkState message={locale.t("sync.notOnDevice")} onRetry={todayState.state.refresh} /> : null}
+      {todayState.state.kind === "failure" ? (
         <View>
           <ErrorState message={todayState.state.error.message} title={locale.t("today.unavailable")} />
           <Pressable accessibilityRole="button" onPress={todayState.state.refresh} style={styles.headerAction}>
@@ -149,6 +157,7 @@ export function TodayScreen() {
           onChangeDraft={setDraft}
           onCompleteTask={completeTask}
           onCreateTask={createTask}
+          offline={offline}
           onLoadMoreTasks={todayState.loadMore}
           onOpenCompleted={() =>
             router.push({ pathname: "/tasks", params: { view: "completed" } })
@@ -170,6 +179,7 @@ export function TodayScreen() {
 function TodayWorkspace({
   creating,
   draft,
+  offline,
   onAcceptSuggestion,
   onChangeDraft,
   onCompleteTask,
@@ -186,6 +196,7 @@ function TodayWorkspace({
 }: {
   creating: boolean;
   draft: string;
+  offline: boolean;
   onAcceptSuggestion: (id: string) => void;
   onChangeDraft: (value: string) => void;
   onCompleteTask: (id: string) => void;
@@ -211,11 +222,12 @@ function TodayWorkspace({
       <View style={styles.quickAdd}>
         <Ionicons color={colors.text3} name="add-circle-outline" size={21} />
         <TextInput
-          accessibilityLabel={locale.t("today.addTask")}
+          accessibilityLabel={offline ? `${locale.t("today.addTask")} · ${locale.t("sync.needsNetwork")}` : locale.t("today.addTask")}
+          editable={!offline}
           blurOnSubmit={false}
           onChangeText={onChangeDraft}
           onSubmitEditing={onCreateTask}
-          placeholder={locale.t("today.addTask")}
+          placeholder={offline ? `${locale.t("today.addTask")} · ${locale.t("sync.needsNetwork")}` : locale.t("today.addTask")}
           placeholderTextColor={colors.text4}
           returnKeyType="done"
           style={styles.quickAddInput}
@@ -234,13 +246,14 @@ function TodayWorkspace({
               key={task.id}
               last={index === view.tasks.length - 1}
               loading={updatingId === task.id}
+              offline={offline}
               onComplete={() => onCompleteTask(task.id)}
               onOpen={() => onOpenTask(task.id)}
               task={task}
             />
           ))
         )}
-        {view.hasMore ? (
+        {view.hasMore && !offline ? (
           <View style={styles.moreTasks}>
             {taskLoadError ? <Text accessibilityRole="alert" style={styles.errorText}>{taskLoadError}</Text> : null}
             <Pressable accessibilityRole="button" disabled={taskLoadingMore} onPress={onLoadMoreTasks} style={styles.moreTasksButton}>
@@ -276,9 +289,10 @@ function TodayWorkspace({
                   <Text numberOfLines={2} style={styles.rowDetail}>{item.reason}</Text>
                 </View>
                 <Pressable
-                  accessibilityLabel={locale.t("today.addNamed", { title: item.title })}
+                  accessibilityLabel={locale.t("today.addNamed", { title: item.title }) + (offline ? " · " + locale.t("sync.needsNetwork") : "")}
                   accessibilityRole="button"
-                  disabled={updatingId === item.id}
+                  accessibilityState={{ disabled: offline || updatingId === item.id }}
+                  disabled={offline || updatingId === item.id}
                   onPress={() => onAcceptSuggestion(item.id)}
                   style={({ pressed }) => [
                     styles.addSuggestionButton,
@@ -286,7 +300,7 @@ function TodayWorkspace({
                   ]}
                 >
                   <Text style={styles.addSuggestionText}>
-                    {locale.t(updatingId === item.id ? "today.adding" : "today.add")}
+                    {offline ? locale.t("sync.needsNetwork") : locale.t(updatingId === item.id ? "today.adding" : "today.add")}
                   </Text>
                 </Pressable>
               </View>
@@ -351,12 +365,14 @@ function SectionHeader({
 function TaskRow({
   last,
   loading,
+  offline,
   onComplete,
   onOpen,
   task,
 }: {
   last: boolean;
   loading: boolean;
+  offline: boolean;
   onComplete: () => void;
   onOpen: () => void;
   task: TodayTaskCardRowView;
@@ -366,9 +382,10 @@ function TaskRow({
   return (
     <View style={[styles.taskRow, !last ? styles.rowBorder : null]}>
       <Pressable
-        accessibilityLabel={locale.t("today.completeNamed", { title: task.titlePreview })}
+        accessibilityLabel={locale.t("today.completeNamed", { title: task.titlePreview }) + (offline ? " · " + locale.t("sync.needsNetwork") : "")}
         accessibilityRole="checkbox"
-        disabled={loading}
+        accessibilityState={{ disabled: loading || offline }}
+        disabled={loading || offline}
         onPress={onComplete}
         style={styles.checkButton}
       >

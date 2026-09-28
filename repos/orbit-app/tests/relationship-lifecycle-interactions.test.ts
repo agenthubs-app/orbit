@@ -14,6 +14,9 @@ let revision = 0, next = 0; const listeners = new Set();
 const state = window.fixture = { actor: 'owner', signedIn: true, requests: [], update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); } };
 const useFixture = () => { useSyncExternalStore(fn => { listeners.add(fn); return () => listeners.delete(fn); }, () => revision); return state; };
 export const useOrbitAuthSession = () => { useFixture(); return { ready: true, signedIn: state.signedIn, actorId: state.actor, cookieHeader: '' }; };
+// Sprint 0131: the screen reads the device mirror / page copies; this harness tests the network path (no mirror).
+export const useSyncedCollection = () => ({ status: "unsynced", error: null, lastSyncedAt: null, workspaceId: null, records: [], refresh: async () => null, invalidate: async () => null, currentSession: () => null });
+export const useSyncCoordinatorSession = () => null;
 export const useOrbitApiBaseUrl = () => ({ ready: true, baseUrl: 'https://orbit.example' });
 export const useLocalSearchParams = () => ({ id: 'connection:1' });
 export const useGlobalSearchParams = useLocalSearchParams;
@@ -33,7 +36,7 @@ test.before(async () => {
   ({ createRelationshipLifecycleService: serviceFactory } = await load("features/connections/lifecycle/service.ts"));
   const result = await build({ stdin: { contents: 'import React from "react"; import { createRoot } from "react-dom/client"; import { RelationshipLifecycleScreen } from "./src/screens/tasks/RelationshipLifecycleScreen"; createRoot(document.getElementById("root")).render(<RelationshipLifecycleScreen />);', loader: "tsx", resolveDir: process.cwd() }, bundle: true, write: false, format: "iife", jsx: "automatic", define: { "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" }, plugins: [{ name: "lifecycle-native-boundaries", setup(plugin) {
     plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: require.resolve("react-native-web") }));
-    plugin.onResolve({ filter: /^(expo-router|expo-crypto)$|\/(AuthSessionProvider|ApiBaseUrlProvider|OrbitTimeZoneProvider|OrbitLocaleContext|AppScreen)$/ }, () => ({ path: "fixture", namespace: "lifecycle" }));
+    plugin.onResolve({ filter: /^(expo-router|expo-crypto)$|\/(AuthSessionProvider|ApiBaseUrlProvider|OrbitTimeZoneProvider|OrbitLocaleContext|AppScreen|useSyncedCollection)$/ }, () => ({ path: "fixture", namespace: "lifecycle" }));
     plugin.onLoad({ filter: /.*/, namespace: "lifecycle" }, () => ({ contents: fixture, loader: "jsx", resolveDir: process.cwd() }));
   } }] });
   script = result.outputFiles[0]!.text;

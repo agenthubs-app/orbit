@@ -135,6 +135,15 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/hooks/useContactNeeds.ts","GET","/api/profile"],
   ["src/hooks/useContactNeeds.ts","PUT","/api/profile"],
   ["src/api/inbox-summary.ts","GET","/api/inbox/summary"],
+  // Sprint 0131: the reconnect probe and the online-only boundary's retry read the unauthenticated health route.
+  ["src/components/OnlineOnlyBoundary.tsx","GET","/api/health"],
+  ["src/hooks/useSyncedCollection.ts","GET","/api/health"],
+  // Sprint 0131: the profile edit session (preview, tags, edit, more, suggestions) reads the profile through its hook.
+  ["src/screens/profile/EditProfileScreen.tsx","GET","/api/profile"],
+  ["src/screens/profile/ProfileMoreScreen.tsx","GET","/api/profile"],
+  ["src/screens/profile/ProfilePreviewScreen.tsx","GET","/api/profile"],
+  ["src/screens/profile/ProfileSuggestionsScreen.tsx","GET","/api/profile"],
+  ["src/screens/profile/ProfileTagPickerScreen.tsx","GET","/api/profile"],
   ["src/hooks/useContactCardPages.ts","GET","/api/contacts/page"],
   ["src/hooks/useContactCardPages.ts","GET","/api/contacts/summary"],
   ["src/i18n/OrbitLocaleProvider.tsx","GET","/api/account/language-preference"],

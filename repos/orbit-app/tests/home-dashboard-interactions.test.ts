@@ -23,6 +23,9 @@ const fixture = `
 export const useLocalInbox = () => ({ available: false, rows: [], freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh: async () => null });
 export const useLocalRelationshipConversations = () => ({ available: false, conversations: [], freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh: async () => null });
 export const useLocalRelationshipThread = () => ({ available: false, conversations: [], messages: [], freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh: async () => null });
+// Sprint 0131: the home cards also read the device mirror; this harness tests the network path (no mirror yet).
+export const useSyncedCollection = () => ({ status: "unsynced", error: null, lastSyncedAt: null, workspaceId: null, records: [], refresh: async () => null, invalidate: async () => null, currentSession: () => null });
+export const useSyncCoordinatorSession = () => null;
 export const useLocalAiSessions = () => ({ available: false, rows: [], freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh: async () => null });
 export const useLocalAiConversation = () => ({ available: false, messages: [], cards: null, saveCards() {}, freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh: async () => null });
 
@@ -132,7 +135,7 @@ test.before(async () => {
     plugins: [{ name: "home-boundaries", setup(plugin) {
       plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "home" }));
       plugin.onResolve({ filter: /^react-native-svg$/ }, () => ({ path: require.resolve("react-native-svg/lib/module/ReactNativeSVG.web.js") }));
-      plugin.onResolve({ filter: /^(fixture|expo-router|@expo\/vector-icons|react-native-safe-area-context)$|\/(ApiBaseUrlProvider|AuthSessionProvider|snapshot-store|useLocalInbox|useLocalAiSessions|useLocalRelationshipMessages)$/ },
+      plugin.onResolve({ filter: /^(fixture|expo-router|@expo\/vector-icons|react-native-safe-area-context)$|\/(ApiBaseUrlProvider|AuthSessionProvider|snapshot-store|useLocalInbox|useLocalAiSessions|useLocalRelationshipMessages|useSyncedCollection)$/ },
         () => ({ path: "fixture", namespace: "home" }));
       plugin.onLoad({ filter: /.*/, namespace: "home" }, args => ({
         contents: args.path === "native" ? `
@@ -251,7 +254,7 @@ test("search, shortcuts, inbox and real record destinations work without implici
   for (const name of ["收件箱", "扫名片", "查看日程", "新建待办", "记笔记", "查看待办：发送项目介绍", "查看日程：设计分享会", "查看活动：周末产品交流会"]) await press(p, name);
   assert.deepEqual(await p.evaluate(() => (window as any).fixture.navigation), [
     "/contacts/list?q=%E6%9E%97%20%E6%82%A6", "/inbox", "/contacts/new", "/schedule", "/today", "/notes/new",
-    "/tasks/task%3A%2Fone", "/schedule/events/event%3A%2Fone", "/events/event%3A%2Fone"
+    "/tasks/task%3A%2Fone", "/events/event%3A%2Fone", "/events/event%3A%2Fone"
   ]);
   assert.equal(await p.getByRole("button", { name: "联系跟进", exact: true }).count(), 0);
   assert.deepEqual(await writes(p), []);

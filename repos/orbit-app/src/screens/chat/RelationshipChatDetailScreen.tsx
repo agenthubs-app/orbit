@@ -66,7 +66,7 @@ function ScopedChatDetailScreen({ actorId, conversationId, scopeKey }: {
   const [cursor, setCursor] = useState<string | null>(null);
   // Sprint 0119: the device mirror holds the whole history (native always, the browser while its mirror is
   // active); older pages are read from it too. Sending needs the network.
-  const local = useLocalRelationshipThread(conversationId);
+  const local = useLocalRelationshipThread(conversationId, cursor);
   const fromDevice = local.available && local.freshness.readable;
   const offline = fromDevice && local.freshness.offline;
   const localPage = useMemo(() => fromDevice

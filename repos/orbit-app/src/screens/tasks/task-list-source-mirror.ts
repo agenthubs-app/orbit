@@ -25,8 +25,11 @@ export function mirrorTaskListSource(state: SyncedTasks, input: TaskListSourceIn
   const everSynced = state.lastSyncedAt !== null
     || state.status === "fresh" || state.status === "local-ready" || state.status === "stale";
   // A failed first sync has no list either — 0078 already settled that it shows
-  // the error rather than an empty page, and an empty array here would show both.
-  const readable = everSynced && !(state.status === "failure" && state.records.length === 0);
+  // the error rather than an empty page (everSynced is false then). Sprint 0131: a
+  // failed attempt after a successful sync is an offline copy even when it is empty
+  // (the coordinator reports an empty mirror's failed attempt as "failure";
+  // lastSyncedAt is the evidence), the same rule as mirrorFreshness.
+  const readable = everSynced;
   const canonical = input.ready && readable ? itemsFrom(state.records, input.actorId) : null;
   const selection=input.selection??{scope:"all",view:"open"};
   const open=canonical?selectTaskListItems(canonical,{...selection,view:"open"}):null;
@@ -44,12 +47,13 @@ export function mirrorTaskListSource(state: SyncedTasks, input: TaskListSourceIn
     counts:open&&completed?{open:open.length,completed:completed.length}:null,
     nextCursor:selected&&validOffset+30<selected.length?`local:${validOffset+30}`:null,
     loading: input.ready && !everSynced && state.status !== "failure",
-    failure: state.status === "failure" ? state.error ?? "sync.failure" : null,
+    failure: state.status === "failure" && !readable ? state.error ?? "sync.failure" : null,
     refreshing: state.status === "syncing",
     // A never-synced collection reads as syncing: from the user's side the page
     // is fetching, and there is no separate thing for them to do about it.
     syncLabelKey: `sync.${state.status === "local-ready" ? "localReady" : state.status === "unsynced" ? "syncing" : state.status}` as MessageKey,
     tasksPayload: undefined,
+    offline: input.ready && readable && (state.status === "stale" || state.status === "failure") ? { lastSyncedAt: state.lastSyncedAt } : null,
     refresh: () => { void state.refresh(); },
     async confirmMutation(taskId, action) {
       const mirror = await state.invalidate();

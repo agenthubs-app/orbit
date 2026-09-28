@@ -1340,6 +1340,7 @@ function ContactsListContent({
   onClearQuery,
   onOpenContact,
   onQueryChange,
+  onSearchIntent,
   onRunDeepSearch,
   onRunRelationshipSearch,
   onSelectRecentRelationshipSearch,
@@ -1381,6 +1382,8 @@ function ContactsListContent({
   onClearQuery: () => void;
   onOpenContact: (id: string) => void;
   onQueryChange: (text: string) => void;
+  /** Sprint 0131: the user started searching (the suggestions are read from now on). */
+  onSearchIntent?: () => void;
   onRunDeepSearch: () => void;
   onRunRelationshipSearch: () => void;
   onSelectRecentRelationshipSearch: (search: RecentRelationshipSearch) => void;
@@ -1442,6 +1445,7 @@ function ContactsListContent({
             autoCapitalize="none"
             autoCorrect={false}
             onChangeText={onQueryChange}
+            onFocus={onSearchIntent}
             onSubmitEditing={onRunDeepSearch}
             placeholder={locale.t("contacts.searchPlaceholder")}
             placeholderTextColor={colors.text4}
@@ -1460,7 +1464,7 @@ function ContactsListContent({
             </Pressable>
           ) : null}
           {primary ? <Pressable accessibilityRole="button" accessibilityLabel={locale.t("contacts.searchOptions")} accessibilityState={{ expanded: searchOptionsOpen }} aria-expanded={searchOptionsOpen}
-            onPress={() => setSearchOptionsOpen(open => !open)} style={styles.mainSearchOptionsButton}>
+            onPress={() => { onSearchIntent?.(); setSearchOptionsOpen(open => !open); }} style={styles.mainSearchOptionsButton}>
             <Ionicons name="options-outline" size={18} color={colors.text3} />
           </Pressable> : null}
         </View>
@@ -1726,10 +1730,13 @@ function ContactsListScreen({ primary = false, scopeKey, isScopeCurrent }: { pri
     valueFilters: selectedValueFilters
   }, scopeKey);
   const state = contactPages.state;
+  // Sprint 0131 (coordinator item from 0116): the relationship search suggestions (~100KB) are read only
+  // once the user starts searching (focuses the search box or opens the search options), not on every open.
+  const [suggestionsRequested, setSuggestionsRequested] = useState(false);
   const relationshipSuggestionsState = useApiResource<unknown>(
     ORBIT_API_ENDPOINTS.relationshipSearchSuggestions,
     (data) => relationshipSearchSuggestionsToView(data).suggestions.length === 0,
-    scopeKey === undefined ? {} : { scopeKey }
+    { ...(scopeKey === undefined ? {} : { scopeKey }), enabled: suggestionsRequested }
   );
   const relationshipSuggestions =
     hasContactData(relationshipSuggestionsState)
@@ -2038,6 +2045,7 @@ function ContactsListScreen({ primary = false, scopeKey, isScopeCurrent }: { pri
         relationshipSearchResult={relationshipSearchResult}
         relationshipSearching={relationshipSearching}
         relationshipSuggestions={relationshipSuggestions}
+        onSearchIntent={() => setSuggestionsRequested(true)}
         relationshipProgressOptions={dimensionFilterOptions.relationshipProgress}
         searchError={searchError}
         searchResult={searchResult}

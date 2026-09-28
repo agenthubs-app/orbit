@@ -594,7 +594,7 @@ function ScopedRelationshipInboxThreadScreen({ actorId, conversationId, scopeKey
   const [historyCursor, setHistoryCursor] = useState<string | null>(null);
   // Sprint 0119: where the device mirror holds relationship messages the conversation and its whole history
   // are read from it (older pages too); sending, saving a draft and marking read need the network.
-  const localThread = useLocalRelationshipThread(conversationId);
+  const localThread = useLocalRelationshipThread(conversationId, historyCursor);
   const fromDevice = localThread.available && localThread.freshness.readable;
   const offline = fromDevice && localThread.freshness.offline;
   const localConversation = fromDevice ? localThread.conversations.find(row => row.conversationId === conversationId) ?? null : null;

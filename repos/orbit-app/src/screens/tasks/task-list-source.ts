@@ -31,6 +31,8 @@ export interface TaskListSource {
   refreshing: boolean;
   /** Mirror freshness label for the screen; null where there is no mirror (Web). */
   syncLabelKey: MessageKey | null;
+  /** Sprint 0131: set while the list is the device copy and the last sync failed (the page shows 截至 and turns writes off). */
+  offline: { lastSyncedAt: string | null } | null;
   /**
    * The raw /api/tasks payload when the source is the network (it also carries
    * unconfirmed legacy suggestions); undefined when the source is the mirror.

@@ -1,3 +1,4 @@
+import { serverReachability } from "./server-reachability";
 import type {
   ApiEnvelope,
   ApiErrorBody,
@@ -317,6 +318,8 @@ async function request<TData>(
       requestInit(method, conditionalOptions, authCookieHeader)
     );
   } catch {
+    // Sprint 0131: an aborted request says nothing about the server; any other thrown fetch means it could not be reached.
+    if (!options.signal?.aborted) serverReachability.markUnreachable(baseUrl);
     return failureResult(
       0,
       { featureMode: null, privacy: null, runtimeBoundary: null },
@@ -324,6 +327,8 @@ async function request<TData>(
       NETWORK_ERROR_MESSAGE
     );
   }
+
+  serverReachability.markReachable(baseUrl);
 
   // 401 说明这次请求带的会话已经失效。这里只广播事实，
   // 登出与跳转由 AuthSessionProvider 决定（它才知道当前是否处于登录态）。

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { AgentLedgerTransitionContract } from "../../api/agent-ledger-contract";
 import { DataCard } from "../../components/DataCard";
@@ -22,6 +23,8 @@ export interface AgentLedgerContentProps {
   feedback: string | null;
   loadingMore?: boolean | undefined;
   loadMoreError?: string | null | undefined;
+  /** Sprint 0131: the content is the device copy and the server is unreachable; transitions need the network. */
+  offline?: boolean | undefined;
   onLoadMore?: (() => void) | undefined;
   onTransition: (
     entry: AgentLedgerEntryView,
@@ -38,6 +41,7 @@ export function AgentLedgerContent({
   feedback,
   loadingMore = false,
   loadMoreError = null,
+  offline = false,
   onLoadMore,
   onTransition,
   pending,
@@ -88,6 +92,7 @@ export function AgentLedgerContent({
               <AgentLedgerEntryCard
                 entry={entry}
                 key={`${entry.id}:${entry.updatedLabel}:${entry.status}`}
+                offline={offline}
                 onTransition={onTransition}
                 pending={pending}
                 selected={entry.id === selectedEntryId}
@@ -114,11 +119,13 @@ export function AgentLedgerContent({
 
 function AgentLedgerEntryCard({
   entry,
+  offline,
   onTransition,
   pending,
   selected
 }: {
   entry: AgentLedgerEntryView;
+  offline: boolean;
   onTransition: AgentLedgerContentProps["onTransition"];
   pending: PendingTransition | null;
   selected: boolean;
@@ -239,6 +246,7 @@ function AgentLedgerEntryCard({
           {entry.transitions.map((transition) => (
             <TransitionButton
               disabled={
+                offline ||
                 Boolean(pending) ||
                 (transition.transition === "confirm" &&
                   selectedOperationIds.length === 0)
@@ -251,6 +259,7 @@ function AgentLedgerEntryCard({
                   selectedOperationIds
                 )
               }
+              needsNetwork={offline}
               pending={
                 entryPending && pending?.transition === transition.transition
               }
@@ -265,21 +274,25 @@ function AgentLedgerEntryCard({
 
 function TransitionButton({
   disabled,
+  needsNetwork,
   onPress,
   pending,
   transition
 }: {
   disabled: boolean;
+  needsNetwork: boolean;
   onPress: () => void;
   pending: boolean;
   transition: AgentLedgerTransitionView;
 }) {
   const { styles } = useStyles();
+  const locale = useOrbitLocale();
   const primary = transition.tone === "primary";
 
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityState={{ disabled }}
       disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => [
@@ -293,7 +306,7 @@ function TransitionButton({
           primary ? styles.primaryButtonText : styles.secondaryButtonText
         }
       >
-        {pending ? "处理中" : transition.label}
+        {pending ? "处理中" : needsNetwork ? `${transition.label} · ${locale.t("sync.needsNetwork")}` : transition.label}
       </Text>
     </Pressable>
   );

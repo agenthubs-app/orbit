@@ -1,4 +1,6 @@
 import { RelationshipInvitationScreen } from "../../src/screens/contacts/RelationshipInvitationScreen";
 import { withOrbitPrivateRoute } from "../../src/components/OrbitRouteAccessBoundary";
+import { withOnlineOnlyRoute } from "../../src/components/OnlineOnlyBoundary";
 
-export default withOrbitPrivateRoute(RelationshipInvitationScreen);
+// Sprint 0131: online-only page (docs/offline/page-inventory.md); offline it shows 「需要联网」, not an error page.
+export default withOrbitPrivateRoute(withOnlineOnlyRoute(RelationshipInvitationScreen));

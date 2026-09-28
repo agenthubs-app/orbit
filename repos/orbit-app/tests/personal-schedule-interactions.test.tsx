@@ -69,6 +69,8 @@ export const useFixture = () => { observe(); return state; };
 export const useOrbitLocale = () => { observe(); const language = state.language ?? "zh"; return React.useMemo(() => ({ language, t: createTranslator(language) }), [language]); };
 // Sprint 0108: the browser source is mirror-first; like the tasks tests, this suite covers its online-only branch.
 export const useWebMirrorStatus = () => ({ mode: "online-only", reason: "no-opfs" });
+// Sprint 0131: page copies / row-id reads open the coordinator session; this harness has none.
+export const useSyncCoordinatorSession = () => null;
 export const useSyncedCollection = () => ({ status: "unsynced", records: [], error: null, lastSyncedAt: null, workspaceId: null, refresh: async () => null, invalidate: async () => null });
 export const useOrbitAuthSession = () => { observe(); return { ready: state.ready, signedIn: state.signedIn, accountId: state.signedIn ? state.actor : null, actorId: state.signedIn ? state.actor : null, user: state.signedIn ? { id: state.rawUserId } : null, cookieHeader: state.cookieHeader }; };
 export const useOrbitApiBaseUrl = () => { observe(); return { ready: state.baseReady, baseUrl: state.baseUrl }; };

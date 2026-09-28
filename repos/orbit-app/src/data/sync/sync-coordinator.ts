@@ -13,6 +13,7 @@ import {
   type SyncClient,
   SyncResetRequiredError,
 } from "./sync-client";
+import { findPageCopyDefinition, PAGE_COPY_DEFINITIONS, type PageCopy } from "./page-copies";
 import { kindOfSyncDomain, KNOWN_SYNC_DOMAINS, PARTITIONED_SYNC_DOMAINS, syncDomainOfKind } from "./sync-domains";
 import {
   shouldSynchronize,
@@ -40,6 +41,8 @@ export interface SyncCoordinatorLifecycle {
   registeredDomainIds?: readonly string[];
   /** At-rest codec for payload_json; the browser mirror encrypts per record, native relies on SQLCipher. */
   payloadCodec?: PayloadCodec;
+  /** Sprint 0131: page copies this platform may keep; defaults to every registered copy. The browser lists its whitelist. */
+  registeredPageCopyIds?: readonly string[];
   setScope(scope: SyncSessionScope | null): Promise<boolean>;
   withDatabase<T>(
     scope: SyncSessionScope | null,
@@ -96,15 +99,25 @@ export interface SyncCoordinatorSession {
   isCurrent(): boolean;
   readCollection<TPayload = unknown>(
     kind: SyncChangeKind,
+    options?: { records?: boolean },
   ): Promise<SyncedCollectionSnapshot<TPayload> | null>;
+  /** Sprint 0131: the named rows of a kind from the device (at most 200); null without a mirror or grant. */
+  readRecordsById<TPayload = unknown>(kind: SyncChangeKind, ids: readonly string[]): Promise<readonly SyncRecord<TPayload>[] | null>;
   synchronize<TPayload = unknown>(
     kind: SyncChangeKind,
-    options?: SyncOptions,
+    options?: SyncOptions & { records?: boolean },
   ): SyncRequest<TPayload>;
   /** Sprint 0118: the device opened an AI session (its messages sync from now on); null without a mirror. */
   openAiSession(sessionId: string): Promise<{ opened: string[]; evicted: string[]; added: boolean } | null>;
   readAiSessionCards(sessionId: string): Promise<unknown | null>;
   saveAiSessionCards(sessionId: string, cards: unknown): Promise<void>;
+  /**
+   * Sprint 0131: the last successful online read of a registered page, bound to
+   * the accepted lease (workspace, authorization epoch). Null without an accepted
+   * lease, a mirror, or a copy; saving without one is a no-op.
+   */
+  readPageCopy<TData = unknown>(id: string, variant: string): Promise<PageCopy<TData> | null>;
+  savePageCopy(id: string, variant: string, data: unknown): Promise<void>;
 }
 
 interface ActiveScope extends SyncScopeInput {
@@ -160,6 +173,15 @@ export function createSyncCoordinator(input: {
   // Known to this build and allowed on this platform; the lease picks from these.
   const registeredDomainIds: readonly string[] = (input.lifecycle.registeredDomainIds ?? Object.keys(KNOWN_SYNC_DOMAINS))
     .filter((domainId) => kindOfSyncDomain(domainId) !== null);
+
+  const registeredPageCopyIds: readonly string[] = (input.lifecycle.registeredPageCopyIds ?? PAGE_COPY_DEFINITIONS.map((definition) => definition.id))
+    .filter((id) => findPageCopyDefinition(id) !== null);
+
+  /** Sprint 0131: page copies are bound to the accepted lease's workspace and authorization epoch (one per actor and workspace). */
+  function pageCopyBinding(scope: ActiveScope): { workspaceId: string; authorizationEpoch: string } | null {
+    const grant = scope.lease?.grants[0];
+    return grant ? { workspaceId: grant.workspaceId, authorizationEpoch: grant.authorizationEpoch } : null;
+  }
 
   function readScopesOf(scope: ActiveScope): ReadScope[] {
     if (!scope.lease) return [];
@@ -259,6 +281,7 @@ export function createSyncCoordinator(input: {
   async function readCollection<TPayload>(
     scope: ActiveScope,
     kind: SyncChangeKind,
+    withRecords = true,
   ): Promise<SyncedCollectionSnapshot<TPayload> | null> {
     await scope.ready;
     if (!isCurrent(scope)) return null;
@@ -275,10 +298,11 @@ export function createSyncCoordinator(input: {
     try {
       const value = await withRepository(scope, async (repository) => ({
         cursor: await repository.getScopeCursor(readScope),
-        records: await repository.listRecords({
+        // Sprint 0131: a consumer that reads rows by id (a conversation's page) needs only the sync state.
+        records: withRecords ? await repository.listRecords({
           workspaceId: scope.workspaceId!,
           kind,
-        }),
+        }) : [],
       }));
       if (!isCurrent(scope)) return null;
       return {
@@ -304,8 +328,9 @@ export function createSyncCoordinator(input: {
     scope: ActiveScope,
     kind: SyncChangeKind,
     result: SyncRunResult,
+    withRecords = true,
   ): Promise<SyncedCollectionSnapshot<TPayload> | null> {
-    const mirror = await readCollection<TPayload>(scope, kind);
+    const mirror = await readCollection<TPayload>(scope, kind, withRecords);
     if (mirror === null) return null;
     if (result.error !== null) {
       return {
@@ -374,6 +399,9 @@ export function createSyncCoordinator(input: {
           }
           scope.workspaceId = workspaceId;
         }
+        // Sprint 0131: page copies of any other epoch go with the rotation; a lease without grants keeps none.
+        await withRepository(scope, (repository) => repository.retirePageCopies(pageCopyBinding(scope)));
+        if (!isCurrent(scope) || flight.abandoned) return null;
         if (!workspaceId) return { error: null };
 
         // Revocation drops every epoch of the domain; rotation keeps only the granted one.
@@ -533,8 +561,16 @@ export function createSyncCoordinator(input: {
       isCurrent(): boolean {
         return isCurrent(bound);
       },
-      readCollection<TPayload = unknown>(kind: SyncChangeKind) {
-        return readCollection<TPayload>(bound, kind);
+      readCollection<TPayload = unknown>(kind: SyncChangeKind, options: { records?: boolean } = {}) {
+        return readCollection<TPayload>(bound, kind, options.records ?? true);
+      },
+      async readRecordsById<TPayload = unknown>(kind: SyncChangeKind, ids: readonly string[]) {
+        if (ids.length > 200) throw new TypeError("row id reads take at most 200 ids");
+        await bound.ready;
+        const readScope = readScopeFor(bound, kind);
+        if (!isCurrent(bound) || bound.workspaceId === null || !readScope) return null;
+        const workspaceId = bound.workspaceId;
+        try { return await withRepository(bound, (repository) => repository.listRecordsByIds({ workspaceId, kind, ids })) as readonly SyncRecord<TPayload>[]; } catch (error) { if (error instanceof LocalMirrorUnavailableError) return null; throw error; }
       },
       async openAiSession(sessionId: string) {
         await bound.ready;
@@ -554,9 +590,22 @@ export function createSyncCoordinator(input: {
         const workspaceId = bound.workspaceId;
         try { await withRepository(bound, (repository) => repository.setAiSessionCards(workspaceId, sessionId, cards)); } catch (error) { if (!(error instanceof LocalMirrorUnavailableError)) throw error; }
       },
+      async readPageCopy<TData = unknown>(id: string, variant: string): Promise<PageCopy<TData> | null> {
+        await bound.ready;
+        const binding = pageCopyBinding(bound);
+        if (!isCurrent(bound) || !binding || !registeredPageCopyIds.includes(id)) return null;
+        try { return await withRepository(bound, (repository) => repository.getPageCopy(binding, id, variant)) as PageCopy<TData> | null; } catch (error) { if (error instanceof LocalMirrorUnavailableError) return null; throw error; }
+      },
+      async savePageCopy(id: string, variant: string, data: unknown): Promise<void> {
+        if (!findPageCopyDefinition(id)) throw new TypeError("page copy is not registered");
+        await bound.ready;
+        const binding = pageCopyBinding(bound);
+        if (!isCurrent(bound) || !binding || !registeredPageCopyIds.includes(id)) return;
+        try { await withRepository(bound, (repository) => repository.setPageCopy(binding, id, variant, { data, syncedAt: new Date(now()).toISOString() })); } catch (error) { if (!(error instanceof LocalMirrorUnavailableError)) throw error; }
+      },
       synchronize<TPayload = unknown>(
         kind: SyncChangeKind,
-        options: SyncOptions = {},
+        options: SyncOptions & { records?: boolean } = {},
       ): SyncRequest<TPayload> {
         if (!isCurrent(bound)) {
           return {
@@ -619,7 +668,7 @@ export function createSyncCoordinator(input: {
           promise: flight.promise.then((result) =>
             result === null
               ? null
-              : finalSnapshot<TPayload>(bound, kind, result),
+              : finalSnapshot<TPayload>(bound, kind, result, options.records ?? true),
           ),
           started: flight.started,
         };

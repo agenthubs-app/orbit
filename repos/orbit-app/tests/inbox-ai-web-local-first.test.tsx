@@ -63,6 +63,9 @@ const session = { isCurrent: () => true,
 const refreshers = {};
 const refresherFor = (kind) => refreshers[kind] ??= async () => { state.syncs[kind] = (state.syncs[kind] ?? 0) + 1; return null; };
 const currentSession = () => session;
+// Sprint 0131: a conversation page is read by row id from the device (the relationship_message rows of this fixture).
+const rowSession = { isCurrent: () => true, readRecordsById: async (kind, ids) => records(kind).filter((row) => ids.includes(row.id)), readPageCopy: async () => null, savePageCopy: async () => {} };
+export const useSyncCoordinatorSession = () => rowSession;
 export const useSyncedCollection = ({ kind }) => ({
   status: state.status, error: state.status === "stale" ? "Network request failed" : null,
   lastSyncedAt: "2026-09-28T08:40:00.000Z", workspaceId: "workspace:one", records: records(kind),

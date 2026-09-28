@@ -9,6 +9,10 @@ import { buildRelationshipCompletion, readRelationshipSnapshot, relationshipLife
 import { AppScreen } from "../../components/AppScreen";
 import { DataCard } from "../../components/DataCard";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
+import { keepsPageCopy } from "../../data/sync/page-copies";
+import { usePageCopySession } from "../../hooks/usePageCopySession";
+import { OfflineNotice } from "../../components/OfflineNotice";
+import type { PageCopyStatus } from "../../data/sync/page-copies";
 import { useOrbitTimeZone } from "../../time/OrbitTimeZoneProvider";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { useOrbitTheme as useTheme } from "../../design/theme";
@@ -31,6 +35,13 @@ function LifecycleEditor({ scopeKey, ready, actorId, connectionId }: { scopeKey:
   const [snapshot, setSnapshot] = useState<RelationshipLifecycleSnapshotDTO | null>(null);
   const [draft, setDraft] = useState(emptyDraft);
   const [busy, setBusy] = useState(false), [message, setMessage] = useState("");
+  // Sprint 0131: the last online read of this relationship is the page copy "relationship-lifecycle" (the 20 most
+  // recently opened are kept); offline it is shown with 截至 and saving needs the network.
+  const { session: copySession, whenReady } = usePageCopySession(ready);
+  const copySessionRef = useRef(copySession);
+  copySessionRef.current = copySession;
+  const [copy, setCopy] = useState<PageCopyStatus | null>(null);
+  const offline = copy?.offline === true;
   const scope = useRef({ active: true, busy: false, controller: new AbortController() });
   const intent = useRef<{ fingerprint: string; body: RelationshipCompletionInput } | null>(null);
   useEffect(() => { const current = scope.current; current.active = true; if (current.controller.signal.aborted) current.controller = new AbortController(); return () => { current.active = false; current.controller.abort(); }; }, []);
@@ -38,21 +49,45 @@ function LifecycleEditor({ scopeKey, ready, actorId, connectionId }: { scopeKey:
     const current = scope.current;
     if (!ready || current.busy || !current.active) return;
     current.busy = true; setBusy(true);
+    const session = copySessionRef.current;
+    let saved: { value: RelationshipLifecycleSnapshotDTO; syncedAt: string } | null = null;
+    let answered = false;
+    const readFrom = (from: NonNullable<typeof session>) => from.readPageCopy("relationship-lifecycle", connectionId).then((stored) => {
+      const value = stored ? readRelationshipSnapshot(stored.data, actorId, connectionId) : null;
+      if (!stored || !value || answered || !current.active) return;
+      saved = { value, syncedAt: stored.syncedAt };
+      setSnapshot((previous) => previous ?? value);
+      setCopy({ lastSyncedAt: stored.syncedAt, offline: false, reason: null });
+    }).catch(() => undefined);
+    // The session may open only after this request started: offline, wait for it briefly rather than miss the copy.
+    const copyRead = session ? readFrom(session) : null;
     try {
       const result = await client.get<unknown>(relationshipLifecyclePath(connectionId), { signal: current.controller.signal });
       if (!current.active) return;
       const value = result.success ? readRelationshipSnapshot(result.data, actorId, connectionId) : null;
-      if (!value) { setSnapshot(null); setMessage(result.success ? "返回的关系不一致，请重试。" : result.error.message); return; }
+      if (!value) {
+        if (copyRead) await copyRead;
+        else { const ready = await whenReady(); if (ready) await readFrom(ready); }
+        answered = true;
+        const reason = keepsPageCopy(result);
+        const kept = saved as { value: RelationshipLifecycleSnapshotDTO; syncedAt: string } | null;
+        if (kept && reason && current.active) { setSnapshot(kept.value); setCopy({ lastSyncedAt: kept.syncedAt, offline: true, reason }); setMessage(""); return; }
+        setCopy(null);
+        setSnapshot(null); setMessage(reason === "unreachable" ? text("这项内容还没保存在这台设备上，联网打开一次后断网也能看。", "This isn't stored on this device yet. Open it once while connected and it will be readable offline.", "この内容はまだこの端末に保存されていません。接続中に一度開くと、オフラインでも読めます。") : result.success ? "返回的关系不一致，请重试。" : result.error.message); return;
+      }
+      answered = true;
+      setCopy(null);
+      if (result.success) void whenReady().then((ready) => ready?.savePageCopy("relationship-lifecycle", connectionId, result.data)).catch(() => undefined);
       setSnapshot(value); intent.current = null;
       setDraft(previous => ({ ...previous, taskId: value.tasks.find(task => ["open", "scheduled"].includes(task.status))?.taskId ?? "" }));
       setMessage("");
-    } catch { if (current.active) { setSnapshot(null); setMessage("读取失败，请重试。"); } }
+    } catch { if (current.active) { setSnapshot(null); setCopy(null); setMessage("读取失败，请重试。"); } }
     finally { current.busy = false; if (current.active) setBusy(false); }
-  }, [ready, client, actorId, connectionId]);
+  }, [ready, client, actorId, connectionId, whenReady]);
   useEffect(() => { void load(); }, [load]);
   async function save() {
     const current = scope.current;
-    if (!snapshot || !ready || !canSave || current.busy || !current.active) return;
+    if (!snapshot || !ready || !canSave || offline || current.busy || !current.active) return;
     current.busy = true; setBusy(true); setMessage("");
     try {
       const fingerprint = JSON.stringify([snapshot.connection.version, draft, timeZone]);
@@ -75,15 +110,16 @@ function LifecycleEditor({ scopeKey, ready, actorId, connectionId }: { scopeKey:
   return <AppScreen title={text("处理人脉跟进", "Resolve follow-up", "フォローアップを完了")} backLabel={text("待办", "Tasks", "タスク")} refreshControl={<RefreshControl onRefresh={() => void load()} refreshing={busy} />}>
     <Text style={{ color: colors.text3 }}>{text("选择关系下一步；不会向联系人发送消息。", "Choose the next step. No message will be sent.", "次のステップを選択します。相手には送信されません。")}</Text>
     <Pressable accessibilityRole="button" disabled={busy} onPress={() => void load()}><Text style={{ color: colors.accent }}>{text("刷新关系状态", "Refresh relationship", "関係を更新")}</Text></Pressable>
+    {offline ? <OfflineNotice lastSyncedAt={copy?.lastSyncedAt ?? null} reason={copy?.reason ?? null} /> : null}
     {message ? <Text accessibilityRole="alert" style={{ color: colors.ink }}>{message}</Text> : null}
     {snapshot ? <><DataCard title={text("本次完成的跟进", "Follow-up to complete", "完了するフォローアップ")}>
       {open.length ? open.map(task => <Pressable key={task.taskId} disabled={busy} accessibilityRole="radio" accessibilityState={{ checked: draft.taskId === task.taskId }} onPress={() => setDraft(previous => ({ ...previous, taskId: task.taskId }))}><Text style={{ color: draft.taskId === task.taskId ? colors.accent : colors.ink, paddingVertical: 10 }}>{draft.taskId === task.taskId ? "● " : "○ "}{task.title}</Text></Pressable>) : <Text style={{ color: colors.text3 }}>{text("没有待处理的跟进", "No open follow-ups", "未完了のフォローアップはありません")}</Text>}
     </DataCard>{open.length ? <DataCard title={text("关系下一步", "Relationship next step", "関係の次のステップ")}>
       {([ ["next_task", text("继续跟进", "Continue following up", "フォローアップを継続")], ["active", text("转为进行中", "Set active goal", "進行中にする")], ["nurture", text("定期维护", "Keep in touch", "定期的に連絡")], ["archived", text("归档关系", "Archive relationship", "関係をアーカイブ")] ] as const).map(([kind, label]) => <Pressable key={kind} disabled={busy || (kind === "next_task" && !["needs_follow_up", "nurture"].includes(snapshot.connection.stage))} accessibilityRole="radio" accessibilityState={{ checked: draft.kind === kind }} onPress={() => setDraft(previous => ({ ...previous, kind }))}><Text style={{ color: draft.kind === kind ? colors.accent : colors.ink, paddingVertical: 8 }}>{draft.kind === kind ? "● " : "○ "}{label}</Text></Pressable>)}
-      {fields.map(([field, label, placeholder]) => <View key={field}><Text style={{ color: colors.ink }}>{label}</Text><TextInput accessibilityLabel={label} placeholder={placeholder} placeholderTextColor={colors.text3} editable={!busy} value={draft[field]} onChangeText={value => setDraft(previous => ({ ...previous, [field]: value }))} style={{ color: colors.ink, borderColor: colors.border, borderWidth: 1, borderRadius: 8, padding: 12 }} /></View>)}
+      {fields.map(([field, label, placeholder]) => <View key={field}><Text style={{ color: colors.ink }}>{label}</Text><TextInput accessibilityLabel={label} placeholder={placeholder} placeholderTextColor={colors.text3} editable={!busy && !offline} value={draft[field]} onChangeText={value => setDraft(previous => ({ ...previous, [field]: value }))} style={{ color: colors.ink, borderColor: colors.border, borderWidth: 1, borderRadius: 8, padding: 12 }} /></View>)}
       {draft.kind === "next_task" || draft.kind === "nurture" ? <Text style={{ color: colors.text3 }}>{timeZone}</Text> : null}
       {draft.kind === "archived" ? <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: draft.archiveConfirmed }} disabled={busy} onPress={() => setDraft(previous => ({ ...previous, archiveConfirmed: !previous.archiveConfirmed }))}><Text style={{ color: colors.ink }}>{draft.archiveConfirmed ? "☑ " : "☐ "}{text(`确认归档，并忽略其余 ${Math.max(0, open.length - 1)} 条未完成跟进`, `Archive and dismiss the other ${Math.max(0, open.length - 1)} open follow-ups`, `アーカイブし、残り${Math.max(0, open.length - 1)}件を終了`)}</Text></Pressable> : null}
-      <Pressable accessibilityRole="button" disabled={busy || !draft.taskId || !canSave} onPress={() => void save()} style={{ padding: 14, backgroundColor: colors.accent, borderRadius: 8, opacity: busy || !draft.taskId ? 0.5 : 1 }}><Text style={{ color: colors.onAccent }}>{text("完成并保存下一步", "Complete and save next step", "完了して次を保存")}</Text></Pressable>
+      <Pressable accessibilityRole="button" accessibilityState={{ disabled: busy || offline || !draft.taskId || !canSave }} disabled={busy || offline || !draft.taskId || !canSave} onPress={() => void save()} style={{ padding: 14, backgroundColor: colors.accent, borderRadius: 8, opacity: busy || offline || !draft.taskId ? 0.5 : 1 }}><Text style={{ color: colors.onAccent }}>{text("完成并保存下一步", "Complete and save next step", "完了して次を保存")}{offline ? " · " + text("需要联网", "Needs a connection", "接続が必要です") : ""}</Text></Pressable>
     </DataCard> : null}<DataCard title={text("历史跟进", "Follow-up history", "フォローアップ履歴")}>{snapshot.tasks.filter(task => !["open", "scheduled"].includes(task.status)).map(task => <Text key={task.taskId} style={{ color: colors.text3 }}>{task.title} · {task.status === "completed" ? text("已完成", "Completed", "完了") : text("已忽略", "Dismissed", "終了")}</Text>)}</DataCard></> : null}
   </AppScreen>;
 }

@@ -56,6 +56,9 @@ window.fetch = async (input, init) => { const index = state.requests.length; con
 export const useFixture = () => { observe(); return state; };
 export const useOrbitAuthSession = () => { observe(); return { ready: state.ready, signedIn: state.signedIn, accountId: state.signedIn ? state.actor : null, actorId: state.signedIn ? state.actor : null, user: state.signedIn ? { id: state.actor, name: state.name, email: "person@example.test" } : null, cookieHeader: state.cookieHeader }; };
 export const useOrbitApiBaseUrl = () => { observe(); return { ready: state.baseReady, baseUrl: state.baseUrl }; };
+// Sprint 0131: the screen also reads the device mirror / page copies; this harness tests the network path (no mirror).
+export const useSyncedCollection = () => ({ status: "unsynced", error: null, lastSyncedAt: null, workspaceId: null, records: [], refresh: async () => null, invalidate: async () => null, currentSession: () => null });
+export const useSyncCoordinatorSession = () => null;
 export const useIsFocused = () => { observe(); return state.focused; };
 export const AppState = { get currentState() { return state.appState; }, addEventListener(event, fn) { nativeListeners.add(fn); return { remove() { nativeListeners.delete(fn); } }; } };
 export const useGlobalSearchParams = () => ({});
@@ -78,7 +81,7 @@ test.before(async () => {
     plugins: [{ name: "ai-http-boundaries", setup(plugin) {
       plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "ai" }));
       plugin.onResolve({ filter: /^react-native-svg$/ }, () => ({ path: require.resolve("react-native-svg/lib/module/ReactNativeSVG.web.js") }));
-      plugin.onResolve({ filter: /^(fixture|expo-router|expo-crypto|@expo\/vector-icons|react-native-safe-area-context)$|\/(ApiBaseUrlProvider|AuthSessionProvider|snapshot-store|useLocalInbox|useLocalAiSessions|useLocalRelationshipMessages)$/ }, () => ({ path: "fixture", namespace: "ai" }));
+      plugin.onResolve({ filter: /^(fixture|expo-router|expo-crypto|@expo\/vector-icons|react-native-safe-area-context)$|\/(ApiBaseUrlProvider|AuthSessionProvider|snapshot-store|useLocalInbox|useLocalAiSessions|useLocalRelationshipMessages|useSyncedCollection)$/ }, () => ({ path: "fixture", namespace: "ai" }));
       plugin.onLoad({ filter: /.*/, namespace: "ai" }, args => ({ contents: args.path === "native" ? `
 import React from "react"; import { Pressable as RealPressable, Text as RealText, TextInput as RealTextInput, RefreshControl as RealRefreshControl, StyleSheet, useWindowDimensions as realDimensions } from "react-native-web";
 import { useFixture } from "fixture"; export * from "react-native-web"; export { AppState } from "fixture";

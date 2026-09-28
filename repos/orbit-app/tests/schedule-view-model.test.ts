@@ -190,7 +190,7 @@ test("scheduleToTimelineView combines followups and upcoming events into a Chine
       },
       {
         actionLabel: "查看活动安排",
-        href: "/schedule/events/event_signup_03",
+        href: "/events/event_signup_03",
         kind: "event",
         statusLabel: "已确认",
         timeLabel: "15:00",
@@ -323,7 +323,7 @@ test("scheduleToTimelineView keeps stale today followups from hiding upcoming ev
     [
       {
         coverPath: "/orbit-covers/events/tokyo-ai-partner-meetup.jpg",
-        href: "/schedule/events/event_signup_02",
+        href: "/events/event_signup_02",
         kind: "event",
         statusLabel: "已确认",
         timeLabel: "14:00",
@@ -467,7 +467,7 @@ test("calendar rows expose stable detail destinations for every canonical schedu
   assert.deepEqual(Object.fromEntries(view.items.map((item) => [item.title, item.href])), {
     "人脉会面": "/schedule/meetings/appointment%3Aone?source=appointment",
     "客户会面": "/schedule/meetings/seed%3Ameeting?source=schedule",
-    "行业交流会": "/schedule/events/public%3Aevent%2Fone",
+    "行业交流会": "/events/public%3Aevent%2Fone",
     "联系伙伴": "/tasks/task%3Aone",
     "整理资料": "/schedule/personal/personal%3Aone",
   });

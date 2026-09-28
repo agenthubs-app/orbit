@@ -15,6 +15,9 @@ const state=window.fixture={actor:'account:one',signedIn:true,cookieHeader:'sess
 const observe=()=>useSyncExternalStore(fn=>{listeners.add(fn);return()=>listeners.delete(fn)},()=>revision);
 export const useFixture=()=>{observe();return state};
 export const useOrbitAuthSession=()=>{observe();return {actorId:state.actor,ready:true,signedIn:state.signedIn,cookieHeader:state.cookieHeader}};
+// Sprint 0131: the screen reads the device mirror / page copies; this harness tests the network path (no mirror).
+export const useSyncedCollection = () => ({ status: "unsynced", error: null, lastSyncedAt: null, workspaceId: null, records: [], refresh: async () => null, invalidate: async () => null, currentSession: () => null });
+export const useSyncCoordinatorSession = () => null;
 export const useOrbitApiBaseUrl=()=>{observe();return {baseUrl:state.baseUrl,ready:true}};
 window.fetch=(input,init)=>new Promise((resolve,reject)=>{const index=state.requests.length;state.requests.push({url:String(input),signal:init.signal});state.pending[index]=resolve;init.signal?.addEventListener('abort',()=>reject(new Error('aborted')),{once:true})});
 `;
@@ -32,7 +35,7 @@ test.before(async () => {
     jsx: "automatic",
     define: { "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
     plugins: [{ name: "today-page-boundaries", setup(plugin) {
-      plugin.onResolve({ filter: /^fixture$|\/(ApiBaseUrlProvider|AuthSessionProvider)$/ }, () => ({ path: "fixture", namespace: "today-pages" }));
+      plugin.onResolve({ filter: /^fixture$|\/(ApiBaseUrlProvider|AuthSessionProvider|useSyncedCollection)$/ }, () => ({ path: "fixture", namespace: "today-pages" }));
       plugin.onLoad({ filter: /.*/, namespace: "today-pages" }, () => ({ contents: fixture, loader: "jsx", resolveDir: process.cwd() }));
     } }],
   });
@@ -108,6 +111,8 @@ test("Today retries a first-page failure, preserves loaded cards on continuation
   assert.equal(firstUrl.searchParams.get("limit"), "20");
 
   await reply(page, 0, null, 503);
+  // Sprint 0131: a 5xx first checks the device copy (today-page), briefly waiting for the coordinator session.
+  await page.waitForFunction(() => document.querySelector("[aria-label=state]")?.textContent === "failure");
   assert.equal(await page.getByLabel("state").innerText(), "failure");
   assert.equal(await page.getByLabel("ids").innerText(), "", "an initial failure is not rendered as an empty task list");
 

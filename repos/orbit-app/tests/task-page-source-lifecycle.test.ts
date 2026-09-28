@@ -13,6 +13,8 @@ const observe=()=>useSyncExternalStore(fn=>{listeners.add(fn);return()=>listener
 export const useFixture=()=>{observe();return state};
 export const useOrbitAuthSession=()=>{observe();return {actorId:state.actor,ready:state.ready,signedIn:state.signedIn,cookieHeader:state.cookie}};
 export const useOrbitApiBaseUrl=()=>{observe();return {baseUrl:state.baseUrl,ready:state.ready}};
+// Sprint 0131: page copies / row-id reads open the coordinator session; this harness has none.
+export const useSyncCoordinatorSession = () => null;
 export const useSyncedCollection=()=>({status:'unsynced',records:[],lastSyncedAt:null,error:null});
 export const useWebMirrorStatus=()=>({mode:'online-only'});
 export const readSnapshot=async()=>{state.snapshots++;throw Error('no private snapshots')};

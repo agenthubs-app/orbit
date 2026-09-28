@@ -1097,6 +1097,18 @@ function emptyGapPayload(input: {
   };
 }
 
+/** An id as it reads after one and two URI decodings (a form that cannot be decoded is left out). */
+function decodedForms(id: string): string[] {
+  const forms: string[] = [];
+  let current = id;
+  for (let round = 0; round < 2; round += 1) {
+    try { current = decodeURIComponent(current); } catch { break; }
+    if (forms.includes(current) || current === id) break;
+    forms.push(current);
+  }
+  return forms;
+}
+
 function structureDetailSuccess(
   data: NetworkStructureDetailPayload,
 ): NetworkStructureDetailResult {
@@ -1108,11 +1120,13 @@ function structureDetailPayload(
   provider: LiveNetworkDistributionAnalyticsProvider,
   input: NetworkStructureDetailInput & { dimension: NetworkStructureDimensionId },
 ): NetworkStructureDetailPayload | null {
-  const bucket = structureDistribution(graph, input.dimension).find(
-    (item) => item.bucketId === input.bucketId,
-  );
+  const buckets = structureDistribution(graph, input.dimension);
+  // Sprint 0131: a non-ASCII location id carries percent escapes, and a route parameter can reach here
+  // decoded one or two times; match each real id in those forms rather than decoding the input blindly.
+  const bucket = buckets.find((item) => item.bucketId === input.bucketId)
+    ?? buckets.find((item) => decodedForms(item.bucketId).includes(input.bucketId));
   if (!bucket) return null;
-  const contacts = contactsForStructureBucket(graph, input.dimension, input.bucketId);
+  const contacts = contactsForStructureBucket(graph, input.dimension, bucket.bucketId);
   const connections = connectionByContactId(graph);
   const strengths: readonly NetworkRelationshipStrength[] = ["strong", "warm", "weak"];
   const qualityCounts = strengths.map(

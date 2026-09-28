@@ -102,7 +102,7 @@ test("home schedules show real start time, duration and escaped existing destina
   assert.equal(rows[0].timeLabel, "14:30");
   assert.equal(rows[0].detail, "线上 · 30 分钟");
   assert.equal(rows[0].href, "/schedule");
-  assert.equal(rows[1].href, "/schedule/events/event%3A%2F%20%E7%A9%BA");
+  assert.equal(rows[1].href, "/events/event%3A%2F%20%E7%A9%BA");
   assert.equal(rows[1].detail, "东京 · 45 分钟");
 });
 

@@ -41,6 +41,14 @@ import {
   type ApiResourceState,
   useApiResource
 } from "../../hooks/useApiResource";
+import { usePageCopyResource } from "../../hooks/usePageCopyResource";
+import { useLocalContacts } from "../../hooks/useLocalContacts";
+import { useSyncedCollection } from "../../hooks/useSyncedCollection";
+import { mirrorFreshness } from "../../data/sync/mirror-freshness";
+import { localContactCardSummary } from "../../view-models/contacts-local";
+import { localHomeScheduleItems, localHomeTaskPage } from "../../view-models/home-local";
+import { OfflineNotice } from "../../components/OfflineNotice";
+import { NeedsNetworkState } from "../../components/NeedsNetworkState";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import type { IndustrySelectionContract } from "../../api/contract/industries";
 import type { ManualProfileContract } from "../../api/contract/profile";
@@ -239,7 +247,10 @@ export function ProfileScreen({ scopeKey = "profile", isScopeCurrent = () => tru
   const fieldRevisions = useRef<Partial<Record<keyof ProfileDraft, number>>>({});
   const [appliedProfileExtraction, setAppliedProfileExtraction] =
     useState<ProfileExtraction | null>(null);
-  const state = validateApiResourceState(useApiResource<unknown>(ORBIT_API_ENDPOINTS.profile, () => false, { scopeKey: readScope }), profileDetailSchema);
+  // Sprint 0131: the own profile is the page copy "self-profile" (offline with 截至; editing needs the network).
+  const profileResource = usePageCopyResource<unknown>(ORBIT_API_ENDPOINTS.profile, () => false, { scopeKey: readScope, copy: { id: "self-profile" }, accept: (value) => profileDetailSchema.safeParse(value).success });
+  const profileOffline = profileResource.copy?.offline === true;
+  const state = validateApiResourceState(profileResource, profileDetailSchema);
   const [suggestionAttempt, setSuggestionAttempt] = useState(0);
   const suggestionsResource = validateApiResourceState(useApiResource<unknown>(
     ORBIT_API_ENDPOINTS.profileUpdateSuggestions,
@@ -253,7 +264,7 @@ export function ProfileScreen({ scopeKey = "profile", isScopeCurrent = () => tru
   const freshData = savedData?.scope === readScope ? savedData.data : loadedData;
   if (freshData) lastData.current = freshData;
   const data = freshData ?? lastData.current;
-  const canEdit = loadedData !== null && loadedData.state !== "pending" && (loadedData.state === "empty" || loadedData.editor.canSave);
+  const canEdit = !profileOffline && loadedData !== null && loadedData.state !== "pending" && (loadedData.state === "empty" || loadedData.editor.canSave);
   const editable = useRef(canEdit); editable.current = canEdit;
   const canAct = () => current() && editable.current;
   const completionHandled = useRef(false);
@@ -474,11 +485,13 @@ export function ProfileScreen({ scopeKey = "profile", isScopeCurrent = () => tru
           </Pressable>
         </DataCard>
       ) : null}
+      {auth.signedIn && profileOffline ? <OfflineNotice lastSyncedAt={profileResource.copy?.lastSyncedAt ?? null} reason={profileResource.copy?.reason ?? null} /> : null}
       {auth.signedIn && state.kind === "loading" ? <Text accessibilityLiveRegion="polite" style={styles.pageNotice}>{locale.t("profile.loading")}</Text> : null}
       {auth.signedIn && loadedData?.state === "pending" ? <Text accessibilityLiveRegion="polite" style={styles.pageNotice}>{locale.t("profile.pending")}</Text> : null}
       {auth.signedIn && completionNext && loadedData && !loadedData.onboarding ? <Text accessibilityRole="alert" style={styles.profileActionError}>{locale.t("profile.completionUnconfirmed")}</Text> : null}
       {auth.signedIn && completionNext && data?.onboarding?.status === "incomplete" ? <Text style={styles.pageNotice}>{locale.t("profile.missingPrefix")}{data.onboarding.missingFields.map(field => locale.t(missingFieldKeys[field])).join("、")}</Text> : null}
-      {auth.signedIn && (state.kind === "offline" || state.kind === "failure") ? (
+      {auth.signedIn && state.kind === "offline" ? <NeedsNetworkState message={locale.t("sync.notOnDevice")} onRetry={() => { if (current()) setRefreshKey(value => value + 1); }} /> : null}
+      {auth.signedIn && state.kind === "failure" ? (
         <View style={styles.pageNotice}>
           <Text accessibilityRole="alert" style={styles.profileActionError}>{locale.t("profile.readError")}</Text>
           <Pressable accessibilityRole="button" accessibilityLabel={locale.t("profile.retry")} onPress={() => { if (current()) setRefreshKey(value => value + 1); }} style={styles.profileExtractionButton}>
@@ -1347,22 +1360,34 @@ function ProfileStatistics({ scopeKey, isScopeCurrent }: { scopeKey: string; isS
   }, [isScopeCurrent, timeZone]);
   const { width, fontScale } = useWindowDimensions();
   const narrow = width < 360 || fontScale > 1.2;
+  // Sprint 0131: the three counts from the device copy (contacts, tasks, personal schedule + registered events),
+  // shown while the server reads and when it cannot be reached.
+  const contacts = useLocalContacts(false);
+  const taskMirror = useSyncedCollection<Record<string, unknown>>({ kind: "task" });
+  const scheduleMirror = useSyncedCollection<Record<string, unknown>>({ kind: "personal_schedule" });
+  const eventMirror = useSyncedCollection<Record<string, unknown>>({ kind: "registered_event" });
+  const localContacts = contacts.available && contacts.freshness.readable ? localContactCardSummary(contacts.rows, {}, contacts.freshness.lastSyncedAt ?? new Date(0).toISOString()).total : null;
+  const localTasks = mirrorFreshness(taskMirror, true).readable ? localHomeTaskPage(taskMirror.records, auth.actorId ?? "", day, timeZone, new Date(), locale.language)?.total ?? null : null;
+  const localSchedule = mirrorFreshness(scheduleMirror, true).readable && mirrorFreshness(eventMirror, true).readable
+    ? profileUpcomingScheduleCount(localHomeScheduleItems({ personal: scheduleMirror.records, events: eventMirror.records, lastAnswer: null })) : null;
   return <View style={[styles.statistics, narrow && styles.statisticsNarrow]}>
-    <ProfileStatistic label={locale.t("profile.contacts")} path="/api/contacts/summary" href="/contacts" count={profileContactSummaryCount} scopeKey={scopeKey} isScopeCurrent={isScopeCurrent} first narrow={narrow} networkOnly />
-    <ProfileStatistic label={locale.t("profile.todayTasks")} path={profileTaskDayPath(day, timeZone)} href="/tasks" count={data => profileTaskDayCount(data, auth.actorId ?? "", day, timeZone)} scopeKey={scopeKey} isScopeCurrent={isScopeCurrent} narrow={narrow} networkOnly />
-    <ProfileStatistic label={locale.t("profile.upcomingSchedule")} path={ORBIT_API_ENDPOINTS.scheduleItems} href="/schedule" count={profileUpcomingScheduleCount} scopeKey={scopeKey} isScopeCurrent={isScopeCurrent} narrow={narrow} />
+    <ProfileStatistic label={locale.t("profile.contacts")} path="/api/contacts/summary" href="/contacts" count={profileContactSummaryCount} local={localContacts} scopeKey={scopeKey} isScopeCurrent={isScopeCurrent} first narrow={narrow} networkOnly />
+    <ProfileStatistic label={locale.t("profile.todayTasks")} path={profileTaskDayPath(day, timeZone)} href="/tasks" count={data => profileTaskDayCount(data, auth.actorId ?? "", day, timeZone)} local={localTasks} scopeKey={scopeKey} isScopeCurrent={isScopeCurrent} narrow={narrow} networkOnly />
+    <ProfileStatistic label={locale.t("profile.upcomingSchedule")} path={ORBIT_API_ENDPOINTS.scheduleItems} href="/schedule" count={profileUpcomingScheduleCount} local={localSchedule} scopeKey={scopeKey} isScopeCurrent={isScopeCurrent} narrow={narrow} />
   </View>;
 }
 
-function ProfileStatistic({ label, path, href, count, scopeKey, isScopeCurrent, first = false, narrow, networkOnly = false }: {
-  label: string; path: string; href: Href; count: (data: unknown) => number | null; scopeKey: string; isScopeCurrent: () => boolean; first?: boolean; narrow: boolean; networkOnly?: boolean;
+function ProfileStatistic({ label, path, href, count, local = null, scopeKey, isScopeCurrent, first = false, narrow, networkOnly = false }: {
+  label: string; path: string; href: Href; count: (data: unknown) => number | null; local?: number | null; scopeKey: string; isScopeCurrent: () => boolean; first?: boolean; narrow: boolean; networkOnly?: boolean;
 }) {
   const { styles } = useStyles();
   const locale = useOrbitLocale();
   const router = useRouter();
   const [attempt, setAttempt] = useState(0);
   const state = useApiResource<unknown>(path, () => false, { scopeKey: JSON.stringify([scopeKey, path, attempt]), cachePolicy: networkOnly ? "network-only" : "default" });
-  const value = state.kind === "success" || state.kind === "empty" ? count(state.data) : null;
+  const server = state.kind === "success" || state.kind === "empty" ? count(state.data) : null;
+  // The device count stands in while the server reads, when it cannot be reached or answers 5xx.
+  const value = server ?? (state.kind === "loading" || state.kind === "offline" || (state.kind === "failure" && state.status >= 500) ? local : null);
   const cellStyles = [styles.statistic, narrow && styles.statisticNarrow, !first && !narrow && styles.statisticNext, !first && narrow && styles.statisticNextNarrow];
   if (value !== null) return <Pressable accessibilityRole="button" accessibilityLabel={label + " " + value} onPress={() => { if (isScopeCurrent()) router.push(href); }} style={({ pressed }) => [...cellStyles, pressed && styles.pressed]}>
     <Text style={styles.statisticValue}>{value}</Text><Text style={styles.statisticLabel}>{label}</Text>

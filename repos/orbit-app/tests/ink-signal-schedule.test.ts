@@ -21,6 +21,8 @@ export const useFixture = () => { useSyncExternalStore(fn => { listeners.add(fn)
 export const useApiResource = (path, _empty, options) => { useFixture(); if (options?.enabled !== false) (state.reads ??= []).includes(path) || state.reads.push(path); return { kind: state.kinds?.[path] || "success", data: state.payloads[path], error: { message: "暂时无法读取，请重试。" }, refreshing: false, refresh() { state.refreshes.push(path); } }; };
 // Sprint 0115: the calendar source is mirror-first in the browser when the mirror is active.
 export const useWebMirrorStatus = () => { useFixture(); return state.mirror === "local-mirror" ? { mode: "local-mirror", scopeDigest: "d", domains: [] } : { mode: "online-only", reason: "no-opfs" }; };
+// Sprint 0131: page copies / row-id reads open the coordinator session; this harness has none.
+export const useSyncCoordinatorSession = () => null;
 export const useSyncedCollection = ({ kind }) => { useFixture(); const synced = state.synced?.[kind]; return { status: synced?.status ?? "unsynced", records: synced?.records ?? [], error: synced?.error ?? null, lastSyncedAt: synced?.lastSyncedAt ?? null, workspaceId: "w", refresh: async () => { (state.syncRefreshes ??= []).push(kind); return null; }, invalidate: async () => null }; };
 export const useOrbitAuthSession = () => ({ ready: true, signedIn: true, actorId: "actor", user: { id: "actor" } });
 export const useRouter = () => ({ canGoBack: () => false, push(href) { state.navigation.push(href); }, replace(href) { state.navigation.push(href); }, back() { state.navigation.push("back"); } });
@@ -90,7 +92,7 @@ test("day view shows compact source date, Monday strip and distinct ink selectio
   await page.getByRole("button", { name: "下一天", exact: true }).click(); await page.getByRole("heading", { name: "9.12", exact: true }).waitFor();
   await page.getByRole("button", { name: "回到今天", exact: true }).click(); await page.getByRole("heading", { name: "9.11", exact: true }).waitFor();
   await page.getByRole("button", { name: /AI 创业者交流/ }).click();
-  assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), ["/schedule/events/event-fri"]);
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), ["/events/event-fri"]); // Sprint 0131: a calendar event opens its detail page
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.writes), []);
 });
 

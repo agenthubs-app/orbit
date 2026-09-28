@@ -58,6 +58,9 @@ export const usePathname = () => attendeeMode ? "/events/event%3Astyle/live" : "
 export const useIsFocused = () => true;
 export const useRouter = () => ({ canGoBack: () => false, back() { state.navigation.push("back"); }, replace(path) { state.navigation.push(path); }, push(path) { state.navigation.push(path); } });
 export const useOrbitAuthSession = () => ({ ready: true, signedIn, actorId: signedIn ? "account:style" : null, user: signedIn ? { id: "actor:style" } : null, cookieHeader: "" });
+// Sprint 0131: the screen reads page copies / the device mirror; this harness tests the network path (no mirror).
+export const useSyncedCollection = () => ({ status: "unsynced", error: null, lastSyncedAt: null, workspaceId: null, records: [], refresh: async () => null, invalidate: async () => null, currentSession: () => null });
+export const useSyncCoordinatorSession = () => null;
 export const useOrbitApiBaseUrl = () => ({ baseUrl: "http://fixture", ready: true });
 const record = method => async (path, options) => {
   state.requests.push({ method, path, body: options?.body });
@@ -127,7 +130,7 @@ createRoot(document.getElementById("root")).render(<Screen />);`, resolveDir: pr
       // Optional retrospective replay; never replaces the working production file.
       if (process.env.APP_STYLE_HOME_BASELINE === "1") plugin.onLoad({ filter: /\/src\/screens\/home\/HomeScreen\.tsx$/ }, () => ({ contents: readFileSync("../../.superpowers/sdd/2026-09-08-app-wide-style/baseline-src/screens/home/HomeScreen.tsx", "utf8"), loader: "tsx" }));
       plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: require.resolve("react-native-web") }));
-      plugin.onResolve({ filter: /^(event-fixture|expo-router|@expo\/vector-icons|react-native-safe-area-context)$|\/(useApiResource|useOrbitApiClient|ApiBaseUrlProvider|AuthSessionProvider|useRelationshipInboxBadgeCount|useLocalEventDay)$/ }, () => ({ path: "fixture", namespace: "event-test" }));
+      plugin.onResolve({ filter: /^(event-fixture|expo-router|@expo\/vector-icons|react-native-safe-area-context)$|\/(useApiResource|useOrbitApiClient|ApiBaseUrlProvider|AuthSessionProvider|useRelationshipInboxBadgeCount|useLocalEventDay|useSyncedCollection)$/ }, () => ({ path: "fixture", namespace: "event-test" }));
       plugin.onLoad({ filter: /.*/, namespace: "event-test" }, () => ({ contents: fixture, loader: "jsx", resolveDir: process.cwd() }));
     } }]
   });

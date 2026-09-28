@@ -1,11 +1,12 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { RelationshipDeviceConversation, RelationshipDeviceMessage } from "../api/compute/relationship-local";
 import { useOrbitAuthSession } from "../api/AuthSessionProvider";
 import { mirrorFreshness, type MirrorFreshness } from "../data/sync/mirror-freshness";
-import { relationshipDeviceConversations, relationshipDeviceMessages } from "../view-models/relationship-local";
+import { relationshipDeviceConversations, relationshipDeviceMessages, relationshipMessagePageSeqs } from "../view-models/relationship-local";
+import { relationshipMessageRowId } from "../api/compute/relationship-local";
 import { useMirrorProbe } from "./useMirrorProbe";
-import { useSyncedCollection } from "./useSyncedCollection";
+import { useSyncCoordinatorSession, useSyncedCollection } from "./useSyncedCollection";
 
 /**
  * Sprint 0119 (offline 3b = message plan M3): the relationship conversations
@@ -38,19 +39,37 @@ export function useLocalRelationshipConversationsSource(available: boolean, prob
 }
 
 export interface LocalRelationshipThreadState extends LocalRelationshipConversationsState {
-  /** This conversation's messages on the device (its whole history once the first sync finished). */
+  /**
+   * The messages of this conversation's page for `cursor` (the newest without one), read from the device by
+   * row id — one window plus one more to know an older page exists (sprint 0131; the whole history stays on
+   * the device, the page never loads it all).
+   */
   messages: readonly RelationshipDeviceMessage[];
 }
 
-export function useLocalRelationshipThreadSource(available: boolean, conversationId: string): LocalRelationshipThreadState {
+export function useLocalRelationshipThreadSource(available: boolean, conversationId: string, cursor: string | null = null): LocalRelationshipThreadState {
   const list = useLocalRelationshipConversationsSource(available, false);
-  const state = useSyncedCollection<Record<string, unknown>>({ kind: "relationship_message" });
+  // The message domain's sync state only; the page's rows are read by id below.
+  const state = useSyncedCollection<Record<string, unknown>>({ kind: "relationship_message", records: false });
+  const session = useSyncCoordinatorSession(available);
+  const conversation = list.conversations.find((row) => row.conversationId === conversationId) ?? null;
+  const seqs = useMemo(() => (conversation ? relationshipMessagePageSeqs(conversation, cursor) : []), [conversation?.lastMessageSeq, cursor]);
+  const [page, setPage] = useState<{ key: string; records: readonly Record<string, unknown>[] }>({ key: "", records: [] });
+  const pageKey = JSON.stringify([conversationId, seqs[0] ?? null, seqs.at(-1) ?? null, state.lastSyncedAt, state.status]);
+  useEffect(() => {
+    if (!available || !session || !conversationId || seqs.length === 0) return;
+    let live = true;
+    void session.readRecordsById<Record<string, unknown>>("relationship_message", seqs.map((seq) => relationshipMessageRowId(conversationId, seq)))
+      .then((rows) => { if (live) setPage({ key: pageKey, records: (rows ?? []) as never }); })
+      .catch(() => { if (live) setPage({ key: pageKey, records: [] }); });
+    return () => { live = false; };
+  }, [available, conversationId, pageKey, session]);
   const messageFreshness = mirrorFreshness(state, available);
   const listRefresh = list.refresh;
   const messagesRefresh = state.refresh;
   const refresh = useCallback(() => Promise.all([listRefresh(), messagesRefresh()]), [listRefresh, messagesRefresh]);
   useMirrorProbe(refresh, available);
-  const messages = useMemo(() => (available && conversationId ? relationshipDeviceMessages(state.records, conversationId) : []), [available, conversationId, state.records]);
+  const messages = useMemo(() => (available && conversationId && page.key === pageKey ? relationshipDeviceMessages(page.records as never, conversationId) : []), [available, conversationId, page, pageKey]);
   const freshness: MirrorFreshness = {
     ...list.freshness,
     readable: list.freshness.readable && messageFreshness.readable,

@@ -38,6 +38,7 @@ import { validateApiResourceState } from "../../api/validated-resource-state";
 import { DataCard } from "../../components/DataCard";
 import { ErrorState } from "../../components/ErrorState";
 import { OfflineNotice } from "../../components/OfflineNotice";
+import { NeedsNetworkState } from "../../components/NeedsNetworkState";
 import { LoadingState } from "../../components/LoadingState";
 import { layout, radius, spacing, typography, textStyles } from "../../design/tokens";
 import { createControlStyles } from "../../design/controls";
@@ -108,7 +109,11 @@ export function EventDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: str
   const local = useLocalEventDay(signedIn && Boolean(eventId));
   const day = useMemo(() => localEventDay(local.records, eventId), [local.records, eventId]);
   const networkData = state.kind === "success" || state.kind === "empty" ? state.data : null;
-  const localData = !networkData && day.event ? localPublicEventDetail(day.event) : null;
+  // Sprint 0131: a 404 means the event is gone (the device copy is not shown); a 5xx keeps the copy with
+  // 「服务暂时不可用」; no connection keeps it with 「无法连接」.
+  const gone = state.kind === "failure" && state.status === 404;
+  const unavailable = state.kind === "failure" && state.status >= 500;
+  const localData = !networkData && !gone && day.event ? localPublicEventDetail(day.event) : null;
   const data = networkData ?? localData;
   const fromDevice = !networkData && localData !== null;
   const unreachable = state.kind === "offline" || state.kind === "failure";
@@ -181,12 +186,15 @@ export function EventDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: str
         keyboardDismissMode="interactive" keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}
         refreshControl={<RefreshControl onRefresh={refreshAll} refreshing={state.refreshing} tintColor={colors.accent} />}>
         {state.kind === "loading" && !fromDevice ? <LoadingState /> : null}
-        {fromDevice && unreachable ? <OfflineNotice lastSyncedAt={local.freshness.lastSyncedAt} /> : null}
-        {unreachable && !fromDevice ? <View style={styles.stack}>
+        {fromDevice && unreachable ? <OfflineNotice lastSyncedAt={local.freshness.lastSyncedAt} reason={unavailable ? "unavailable" : "unreachable"} /> : null}
+        {unreachable && !fromDevice ? (gone || (localStatusKey && localStatusKey !== "events.localStatusRsvped") ? <View style={styles.stack}>
+          {/* A removed registration or a deleted event is a fact, not an error: a neutral note and a way back. */}
+          <Text style={styles.bodyText}>{gone ? locale.t("events.gone") : locale.t("events.localRemoved", { status: locale.t(localStatusKey!) })}</Text>
+          <Pressable accessibilityRole="button" onPress={() => { if (isCurrent()) canGoBack ? router.back() : router.replace("/events"); }} style={styles.inlineButton}><Text style={styles.inlineButtonText}>{locale.t("common.back")}</Text></Pressable>
+        </View> : state.kind === "offline" ? <NeedsNetworkState onRetry={refreshAll} /> : <View style={styles.stack}>
           <ErrorState message={state.error.message} title="暂时取不到活动详情" />
-          {localStatusKey && localStatusKey !== "events.localStatusRsvped" ? <Text style={styles.bodyText}>{locale.t("events.localRemoved", { status: locale.t(localStatusKey) })}</Text> : null}
           <Pressable accessibilityRole="button" onPress={refreshAll} style={styles.inlineButton}><Text style={styles.inlineButtonText}>重新读取活动</Text></Pressable>
-        </View> : null}
+        </View>) : null}
         {shareError ? <Text accessibilityRole="alert" style={styles.errorText}>{shareError}</Text> : null}
         {data && event ? <EventDetailCard
           baseUrl={baseUrl}
