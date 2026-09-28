@@ -71,3 +71,9 @@ L 档，按 RULES §1.1 不做代码 review；协调者合并后跑 typecheck �
 - 真实名片单张图：`~/orbit-sprint-evidence/web/sprint-W0016/run-01/cards/card-01…13.jpg`。
 - 待用户决定：浏览器检查时误写的引导记录（账号 `onboarding-1790423522@orbit.test`，`guideState`，2026-09-28 23:18 JST 创建，内容 `{"version":2,"grandfathered":false}`）删除恢复原状，还是保留。删除后该账号下次在示例开关打开时重新判定。
 - 回退：`git revert d02be606`；数据用各账号 `--reset`，或按上面的标记删除全部 verify-* 行。
+
+## 协调者合并验证（追加）
+
+- 合并 `93cf669f` 后：`npx tsc --noEmit -p .` 通过；`tests/api/cors-config.test.ts` 2/2。
+- 已知现象（交 W0018）：3001 验收 server 启动时 Next 会把 `next-env.d.ts` 改成引用 `.next-verify/dev/types/routes.d.ts`，工作树出现一处修改；**不要提交它**，收尾时 `git checkout -- next-env.d.ts`。另外 `.next-verify` 重建后 `tsconfig.tsbuildinfo` 可能过期导致 typecheck 报 TS6053 找不到文件，删掉 `tsconfig.tsbuildinfo`（已 gitignore）再跑即可。
+
