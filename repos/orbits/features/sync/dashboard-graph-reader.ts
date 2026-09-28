@@ -22,11 +22,36 @@ import { SyncReadError } from "./read-service";
  * delete. A first pull (bookmark 0) sends no tombstones.
  *
  * Payload: the graph read's projection of the payload (DASHBOARD_GRAPH_
- * PROJECTION_SQL) plus the record's occurred_at/updated_at in UTC with
+ * PROJECTION_SQL) without the fields no computation reads
+ * (DASHBOARD_GRAPH_DEVICE_OMITTED_FIELDS), plus the record's occurred_at/updated_at in UTC with
  * microseconds, which order the rows like the server's SQL. A source
  * (evidence) row sends no payload at all: no dashboard computation reads a
  * source's content, only its record time (the graph's generatedAt).
  */
+/**
+ * Fields of the graph read's projection that no dashboard computation reads
+ * (neither the record-to-graph validation nor any section): they never leave
+ * the server. The parity test seeds them, so a computation that starts reading
+ * one of them fails there before a device can differ from the server.
+ */
+export const DASHBOARD_GRAPH_DEVICE_OMITTED_FIELDS = {
+  contacts: ["personId", "primaryEmail", "primaryPhone", "profileSnippet"],
+  connections: ["trustLevel", "sharedTopics"],
+  events: ["location", "endsAt"],
+} as const;
+
+function omitted(collection: keyof typeof DASHBOARD_GRAPH_DEVICE_OMITTED_FIELDS): string {
+  return `array[${DASHBOARD_GRAPH_DEVICE_OMITTED_FIELDS[collection].map((field) => `'${field}'`).join(", ")}]`;
+}
+
+const DEVICE_PROJECTION_SQL = `case collection_name
+      when 'evidence' then null
+      when 'contacts' then (${DASHBOARD_GRAPH_PROJECTION_SQL}) - ${omitted("contacts")}
+      when 'connections' then (${DASHBOARD_GRAPH_PROJECTION_SQL}) - ${omitted("connections")}
+      when 'events' then (${DASHBOARD_GRAPH_PROJECTION_SQL}) - ${omitted("events")}
+      else ${DASHBOARD_GRAPH_PROJECTION_SQL}
+    end`;
+
 const TIME = (column: string) => `to_char(${column} at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`;
 
 function collectionList(source: DashboardGraphSyncSource): string {
@@ -52,7 +77,7 @@ function pageSql(source: DashboardGraphSyncSource): string {
         or payload->'accountId' is null or payload->'accountId' = 'null'::jsonb or payload->'accountId' = to_jsonb($2::text))) as visible,
     ${TIME("occurred_at")} as occurred_at,
     ${TIME("updated_at")} as updated_at,
-    case when collection_name = 'evidence' then null else ${DASHBOARD_GRAPH_PROJECTION_SQL} end as data
+    ${DEVICE_PROJECTION_SQL} as data
   from orbit_records
   where workspace_id = $1
     and user_id = $2

@@ -408,8 +408,8 @@ export function dashboardGraphFromRecords(collections: DashboardRecordCollection
 /**
  * One row of the sync domain "dashboard-graph" (features/sync/
  * dashboard-graph-reader.ts): one stored record of the actor's six graph
- * collections. `data` is exactly the projection the server's graph read
- * selects; a source (evidence) row carries none, because no dashboard
+ * collections. `data` is the projection the server's graph read selects,
+ * without the fields no computation reads; a source (evidence) row carries none, because no dashboard
  * computation reads a source's content, only its record time. The two times
  * are the record's columns in UTC with microseconds
  * ("2026-09-28T01:02:03.123456Z"), so the device can order rows exactly as the

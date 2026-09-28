@@ -87,37 +87,10 @@ export interface MobileContactsDashboardRoleCount {
   count: number;
 }
 
-function stringValue(value: unknown): string | null {
-  return typeof value === "string" && value.trim() ? value : null;
-}
-
-/** Contact ids that the contacts-analysis page (App and web) displays or links. */
-export function referencedContactIds(sections: {
-  aggregate: unknown;
-  opportunities: unknown;
-}): readonly string[] {
-  const ids = new Set<string>();
-  const add = (value: unknown) => {
-    const id = stringValue(value);
-    if (id) ids.add(id);
-  };
-  const list = (value: unknown): readonly Record<string, unknown>[] =>
-    Array.isArray(value)
-      ? value.filter((item): item is Record<string, unknown> => typeof item === "object" && item !== null)
-      : [];
-  const aggregate = (sections.aggregate ?? {}) as Record<string, any>;
-  for (const item of list(aggregate.newContacts?.contacts)) add(item.contactId);
-  for (const item of list(aggregate.dormantContacts?.contacts)) add(item.contactId);
-  const opportunities = (sections.opportunities ?? {}) as Record<string, any>;
-  for (const item of list(opportunities.highPriorityOpportunities)) {
-    add(item.contactId);
-    const brief = (item.actionBrief ?? {}) as Record<string, any>;
-    add(brief.primaryAction?.contactId);
-    add(brief.secondaryAction?.contactId);
-  }
-  for (const item of list(opportunities.dormantHighValueContacts)) add(item.contactId);
-  return [...ids];
-}
+// Sprint 0117: the page's referenced contacts are chosen by the shared code, so
+// the App (computing the page on the device) names the same contacts.
+import { referencedContactIds } from "../../shared/compute/dashboard-local";
+export { referencedContactIds };
 
 export interface MobileContactsDashboardInput {
   actorId: string;

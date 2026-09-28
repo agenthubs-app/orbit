@@ -90,7 +90,8 @@ const detailState = (contactId: string, tags: string[], options: Parameters<type
 function corpus(): Row[] {
   const tieAt = "2026-09-10T10:10:10.123Z";
   return [
-    contact("c01", { displayName: "张伟", role: "CEO", location: "東京都 港区", organization: "星河能源", primaryIndustryId: "technology_internet", stage: "nurture" }),
+    // Fields no computation reads are seeded (and never sent): a computation that starts reading one fails the parity test.
+    contact("c01", { displayName: "张伟", role: "CEO", location: "東京都 港区", organization: "星河能源", primaryIndustryId: "technology_internet", stage: "nurture", personId: "person:zhang", primaryEmail: "zhang@example.com", primaryPhone: "+81-90-0000-0000", profileSnippet: "储能创业者" }),
     contact("c02", { displayName: "佐藤 花子", role: " 销售总监 ", location: "Tokyo", organization: "Acme", primaryIndustryId: "finance_investment", source: source("event_import", "src:c02") }),
     contact("c03", { displayName: "Émile Zola", role: "   ", location: "  ", organization: "Acme", primaryIndustryId: "not_an_industry", stage: "nurture", source: source("business_card_ocr", "src:c03", "  ") }),
     contact("c04", { displayName: "李娜", role: "Founder", location: "osaka", organization: " Acme ", primaryIndustryId: "technology_internet", evidenceIds: ["e:c04", "", 7, "e:c04", "e:shared"] }),
@@ -112,7 +113,7 @@ function corpus(): Row[] {
     contact("c-invalid-stage", { stage: "unknown" }),
     contact("c-foreign-account", { displayName: "secret-foreign-account", accountId: B, stage: "nurture" }),
 
-    connection("k01", "c01", { businessRelevanceScore: 69.5, relationshipStrength: 90, valueTypes: ["commercial_opportunity"], summary: "储能试点合作伙伴" }),
+    connection("k01", "c01", { businessRelevanceScore: 69.5, relationshipStrength: 90, valueTypes: ["commercial_opportunity"], summary: "储能试点合作伙伴", trustLevel: "warm", sharedTopics: ["储能", "出海"] }),
     connection("k02", "c02", { businessRelevanceScore: 69.49999999999999, valueTypes: ["strategic_fit"] }),
     connection("k03", "c04", { valueTypes: ["commercial_opportunity", "referral_path", "bogus"] }),
     connection("k04", "c05", { businessRelevanceScore: 0, relationshipStrength: 95, valueTypes: ["referral_path"], trustLevel: "trusted" }),
@@ -129,7 +130,7 @@ function corpus(): Row[] {
 
     event("ev1", { name: "储能论坛" }),
     event("ev2", { source: source("manual", "src:ev2") }),
-    event("ev3", { name: "東京 AI Night", location: "東京" }),
+    event("ev3", { name: "東京 AI Night", location: "東京", endsAt: "2026-10-01T03:00:00.000Z" }),
     event("ev-deleted", {}, { lifecycleState: "deleted" }),
     event("ev-invalid", { name: "" }),
 
@@ -303,6 +304,10 @@ test("isolation: A's device holds only A's own records; B's, ownerless and other
     if (payload.collection === "evidence") assert.equal(payload.data, null, "a source row carries only its record time");
   }
   assert.equal(JSON.stringify(a.rows.get("events/ev1")?.data).includes("organizerNote"), false, "only the projected event fields leave the server");
+  // Fields no computation reads never leave the server.
+  const omittedText = JSON.stringify([a.rows.get("contacts/c01"), a.rows.get("connections/k01"), a.rows.get("events/ev3")]);
+  for (const secret of ["zhang@example.com", "+81-90-0000-0000", "储能创业者", "person:zhang", "\"warm\"", "出海", "2026-10-01T03:00:00.000Z"]) assert.ok(!omittedText.includes(secret), `${secret} is not sent`);
+  assert.deepEqual(Object.keys(a.rows.get("events/ev3")!.data as object).sort(), ["evidenceIds", "id", "name", "source", "startsAt"]);
   assert.deepEqual([...b.rows.keys()].sort(), ["connections/k-b1", "contacts/c01@actor:graph-b", "events/ev-b1", "evidence/evd-b1", "tasks/t-b1"]);
 });
 

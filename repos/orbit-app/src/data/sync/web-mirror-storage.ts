@@ -7,7 +7,7 @@ import type { LocalSyncDatabase, LocalSyncSqlValue } from "./local-sync-database
  * attendee's own registration status, and the results published to them) —
  * argued per domain in the same document, section 2.
  */
-export const WEB_MIRROR_DOMAIN_IDS: readonly string[] = ["notes", "tasks", "personal-schedule", "event-registrations", "registered-events", "event-published-results", "contacts"];
+export const WEB_MIRROR_DOMAIN_IDS: readonly string[] = ["notes", "tasks", "personal-schedule", "event-registrations", "registered-events", "event-published-results", "contacts", "dashboard-graph"];
 
 /**
  * Browser mirror storage: expo-sqlite's web build (wa-sqlite in a Worker, OPFS
