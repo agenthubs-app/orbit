@@ -10,11 +10,11 @@ function harness(responses:{status:number;data?:unknown}[]){
  return {paths,controller,read:()=>readUnifiedInboxCount({client,actorId:'a',signal:controller.signal})};
 }
 test('unified legacy count requires one request and no legacy list',async()=>{
- const h=harness([{status:200,data:legacy}]);assert.deepEqual(await h.read(),{kind:'count',count:5});assert.equal(h.paths.length,1);
+ const h=harness([{status:200,data:legacy}]);assert.deepEqual(await h.read(),{kind:'count',count:5,messages:2,notifications:3});assert.equal(h.paths.length,1);
 });
 test('typed count is complete in the one bounded summary request',async()=>{
  const h=harness([{status:200,data:{...legacy,notificationMode:'typed',notificationsUnread:4}}]);
- assert.deepEqual(await h.read(),{kind:'count',count:6});assert.equal(h.paths.length,1);
+ assert.deepEqual(await h.read(),{kind:'count',count:6,messages:2,notifications:4});assert.equal(h.paths.length,1);
 });
 test('missing, forbidden, failed, foreign, and malformed summaries stay unknown without fallback reads',async()=>{
  for(const r of [{status:404},{status:403},{status:503},{status:200,data:{...legacy,actorId:'foreign'}},{status:200,data:{...legacy,messagesUnread:-1}}]){

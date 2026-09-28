@@ -62,6 +62,24 @@ create index if not exists orbit_records_graph_version_idx
     and collection_name in ('connections', 'contact_detail_states', 'contacts', 'events', 'evidence', 'tasks');
 `;
 
+/**
+ * Sprint 0118: the inbox domain pages one actor's inboxNotifications rows by
+ * sync_revision, and the personal sub-workspace domains page a sub-workspace's
+ * AI session rows by sync_revision. Partial indexes keep both off the user's
+ * other rows (and, for the inbox, off other users' notifications).
+ */
+export const INBOX_SYNC_INDEX_SQL = `
+create index if not exists orbit_records_inbox_sync_idx
+  on orbit_records (workspace_id, user_id, sync_revision)
+  where collection_name = 'inboxNotifications';
+`;
+
+export const PERSONAL_SUBSPACE_SYNC_INDEX_SQL = `
+create index if not exists orbit_records_personal_subspace_sync_idx
+  on orbit_records (workspace_id, collection_name, sync_revision)
+  where collection_name in ('orbit_agent_chat_sessions', 'orbit_agent_chat_messages');
+`;
+
 /** Sequence and nullable column. Idempotent. */
 export const SYNC_REVISION_COLUMN_SQL = `
 create sequence if not exists orbit_records_sync_revision_seq;
@@ -196,6 +214,8 @@ create unique index if not exists orbit_records_sync_revision_uidx
 ${SYNC_REVISION_TRIGGER_SQL}
 ${SYNC_ACTOR_INDEX_SQL}
 ${DASHBOARD_GRAPH_VERSION_INDEX_SQL}
+${INBOX_SYNC_INDEX_SQL}
+${PERSONAL_SUBSPACE_SYNC_INDEX_SQL}
 -- Sprint 0113: an owned sync row cannot change owner or collection outside a
 -- registered handler (features/sync/owner-guard.ts).
 ${SYNC_OWNER_GUARD_SQL}

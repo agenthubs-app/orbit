@@ -19,6 +19,11 @@ const inputTask = (patch: Record<string, unknown> = {}) => ({
   plannedDate: "2026-09-11", source: "manual", ...patch
 });
 const fixture = `
+// Sprint 0118: this harness exercises the network path; the device mirror of the inbox and AI sessions is not available here.
+export const useLocalInbox = () => ({ available: false, rows: [], freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh: async () => null });
+export const useLocalAiSessions = () => ({ available: false, rows: [], freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh: async () => null });
+export const useLocalAiConversation = () => ({ available: false, messages: [], cards: null, saveCards() {}, freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh: async () => null });
+
 import React, { useEffect, useSyncExternalStore } from "react";
 import { View } from "react-native-web";
 import { onSessionExpired } from "./src/api/session-expiry";
@@ -125,7 +130,7 @@ test.before(async () => {
     plugins: [{ name: "home-boundaries", setup(plugin) {
       plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "home" }));
       plugin.onResolve({ filter: /^react-native-svg$/ }, () => ({ path: require.resolve("react-native-svg/lib/module/ReactNativeSVG.web.js") }));
-      plugin.onResolve({ filter: /^(fixture|expo-router|@expo\/vector-icons|react-native-safe-area-context)$|\/(ApiBaseUrlProvider|AuthSessionProvider|snapshot-store)$/ },
+      plugin.onResolve({ filter: /^(fixture|expo-router|@expo\/vector-icons|react-native-safe-area-context)$|\/(ApiBaseUrlProvider|AuthSessionProvider|snapshot-store|useLocalInbox|useLocalAiSessions)$/ },
         () => ({ path: "fixture", namespace: "home" }));
       plugin.onLoad({ filter: /.*/, namespace: "home" }, args => ({
         contents: args.path === "native" ? `

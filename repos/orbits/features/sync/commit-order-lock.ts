@@ -23,7 +23,13 @@
 // Sprint 0117: the dashboard graph domain adds the universal-table events
 // collection (the actor's own event records the dashboard counts); its writers
 // take the same lock.
-export const SYNC_COLLECTION_NAMES = ["notes", "tasks", "personal_schedule_items", "contacts", "connections", "contact_detail_states", "evidence", "events"] as const;
+// Sprint 0118: the inbox (inboxNotifications, per user_id) and the AI sessions
+// (orbit_agent_chat_sessions/messages in the actor's personal sub-workspace, and
+// the session organizations in the base workspace per user_id) sync to devices.
+export const SYNC_COLLECTION_NAMES = [
+  "notes", "tasks", "personal_schedule_items", "contacts", "connections", "contact_detail_states", "evidence", "events",
+  "inboxNotifications", "orbit_agent_chat_sessions", "orbit_agent_chat_messages", "orbit_agent_chat_session_organizations",
+] as const;
 export type SyncCollectionName = (typeof SYNC_COLLECTION_NAMES)[number];
 
 export function isSyncCollection(collectionName: string): collectionName is SyncCollectionName {

@@ -36,6 +36,8 @@ import {
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
+import { OfflineNotice } from "../../components/OfflineNotice";
+import { useLocalAiConversation, useLocalAiSessions } from "../../hooks/useLocalAiSessions";
 import { layout, textStyles, radius, spacing, typography } from "../../design/tokens";
 import { createControlStyles } from "../../design/controls";
 import { createThemedStyles } from "../../design/theme";
@@ -258,6 +260,26 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
   const loadedData = !isDraftConversation && (state.kind === "success" || state.kind === "empty") ? state.data : null;
   const sessionRead = loadedData && isStoredAgentSession ? aiSessionReadSchema.safeParse(loadedData) : null;
   const loadedSession = sessionRead?.success && sessionRead.data.storage.configured && sessionRead.data.session?.id === conversationId ? sessionRead.data.session : null;
+  // Sprint 0118 (AI B3): an opened stored session is kept on the device. Opening marks it opened; the
+  // device copy shows at once and whenever the server cannot be read, with the cards of the last online read.
+  const localConversation = useLocalAiConversation(isStoredAgentSession && !isDraftConversation ? conversationId : null);
+  const localSessionList = useLocalAiSessions(false);
+  const serverUnreachable = state.kind === "offline" || state.kind === "failure";
+  const localSummary = localSessionList.rows.find((row) => row.id === conversationId) ?? null;
+  const localSession: AiSession | null = isStoredAgentSession && !loadedSession && localConversation.messages.length > 0 && (state.kind === "loading" || serverUnreachable)
+    ? {
+        id: conversationId, title: localSummary?.title ?? locale.t("aiConversation.sessionTitle"), createdAt: localSummary?.createdAt ?? new Date(0).toISOString(),
+        updatedAt: localSummary?.updatedAt ?? new Date(0).toISOString(), ...(localSummary?.organization.customTitle ? { customTitle: localSummary.organization.customTitle } : {}),
+        messages: localConversation.messages.map((message) => ({ id: message.id, role: message.role, text: message.text, ...(message.references ? { references: message.references } : {}) })),
+      } as AiSession
+    : null;
+  const conversationOffline = Boolean(localSession) && serverUnreachable;
+  const saveLocalCards = localConversation.saveCards;
+  // Keyed on the read itself (a new object only when the server answered again), not on the parsed
+  // session, which is a new object on every render.
+  useEffect(() => {
+    if (loadedSession && sessionRead?.success && sessionRead.data.artifactRecovery !== undefined) saveLocalCards(sessionRead.data.artifactRecovery);
+  }, [loadedData, saveLocalCards]);
   const conversationRead = loadedData && !isStoredAgentSession ? aiConversationListSchema.safeParse(loadedData) : null;
   const readInvalid = loadedData !== null && (isStoredAgentSession ? !loadedSession : !conversationRead?.success);
   const previousSession = sessionSnapshot ?? loadedSession;
@@ -291,6 +313,7 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
       ? { ...generatedThread, title: previousThread.title, messages: previousThread.messages, entityCardTurns: previousThread.entityCardTurns ?? [] }
       : generatedThread
     : loadedSession ? rawSessionThread(withEarlier(loadedSession), combinedRecovery, locale.t, locale.language)
+    : localSession ? rawSessionThread(localSession, localConversation.cards, locale.t, locale.language)
     : conversationRead?.success ? rawConversationThread(conversationRead.data, locale.t("aiConversation.sessionTitle"), locale.language)
     : initialThread && failedRequest ? { ...initialThread, title: locale.t("aiConversation.noAnswer"), messages: initialThread.messages.filter(item => item.role === "user") } : initialThread;
   const resultScopeReady = owns() && (isDraftConversation || (!state.refreshing && (state.kind === "success" || state.kind === "empty") && !readInvalid));
@@ -654,11 +677,12 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
       {!thread ? <Pressable accessibilityLabel={locale.t("aiConversation.back")} accessibilityRole="button" onPress={() => { if (owns()) router.back(); }} style={styles.backButton}>
         <Ionicons color={colors.ink} name="arrow-back-outline" size={24} />
       </Pressable> : null}
-      {!isDraftConversation && state.kind === "loading" ? <LoadingState /> : null}
-      {!isDraftConversation && state.kind === "offline" ? (
+      {!isDraftConversation && state.kind === "loading" && !localSession ? <LoadingState /> : null}
+      {conversationOffline ? <OfflineNotice lastSyncedAt={localConversation.freshness.lastSyncedAt} /> : null}
+      {!isDraftConversation && !conversationOffline && state.kind === "offline" ? (
         <ErrorState message={state.error.message} title={locale.t("aiConversation.serverUnavailable")} />
       ) : null}
-      {!isDraftConversation && state.kind === "failure" ? (
+      {!isDraftConversation && !conversationOffline && state.kind === "failure" ? (
         <ErrorState message={state.error.message} />
       ) : null}
       {readInvalid ? <ErrorState title={locale.t("aiConversation.readUnreadable")} message={locale.t("aiConversation.readInvalid")} /> : null}
@@ -689,7 +713,8 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
           saveError={saveError}
           saveNotice={saveNotice}
           saving={saving}
-          writingBlocked={!!pendingSave || saving || taskInteractionBusy}
+          writingBlocked={!!pendingSave || saving || taskInteractionBusy || conversationOffline}
+          sendLabelSuffix={conversationOffline ? locale.t("sync.needsNetwork") : undefined}
           retrySendLabel={locale.t(failedRequest?.reliable && ["OUTCOME_UNKNOWN", "pending", "outcome_unknown"].includes(sendCode ?? "") ? "aiConversation.checkResult" : "aiConversation.regenerate")}
           onRetrySend={() => { if (failedRequest) void recoverRequest(failedRequest); }}
           onEditQuestion={() => { if (failedRequest && owns()) { changeDraft(failedRequest.message); setSendError(null); setSendCode(null); } }}
@@ -734,6 +759,7 @@ function ConversationThread({
   saveNotice,
   saving,
   writingBlocked,
+  sendLabelSuffix,
   onRetrySend,
   retrySendLabel,
   onEditQuestion,
@@ -770,6 +796,8 @@ function ConversationThread({
   saveNotice: string | null;
   saving: boolean;
   writingBlocked: boolean;
+  /** Sprint 0118: "needs a connection" while the conversation shows its offline device copy. */
+  sendLabelSuffix?: string | undefined;
   onRetrySend: () => void;
   retrySendLabel: string;
   onEditQuestion: () => void;
@@ -1003,6 +1031,7 @@ function ConversationThread({
       </ScrollView>
       {saveNotice ? <Text accessibilityLiveRegion="polite" style={[styles.errorText, { marginHorizontal: layout.pageInset }]}>{saveNotice}</Text> : null}
       <View testID="conversation-composer" style={styles.composerPanel}>
+        {sendLabelSuffix ? <Text style={styles.threadNextAction}>{`${locale.t("aiConversation.sendMessage")} · ${sendLabelSuffix}`}</Text> : null}
         {selectedReferences.length > 0 ? <View style={styles.referenceRow}>{selectedReferences.map(reference => (
           <ContactReferenceChip key={`${reference.type}:${reference.id}`} id={reference.id} knownName={referenceNames[reference.id]} scopeKey={scopeKey}
             onRemove={() => onRemoveReference(reference)} style={styles.referenceChip} textStyle={styles.referenceChipText} />
@@ -1030,7 +1059,7 @@ function ConversationThread({
           <Ionicons color={colors.ink} name="add" size={22} />
         </Pressable>
         <Pressable
-          accessibilityLabel={locale.t("aiConversation.sendMessage")}
+          accessibilityLabel={sendLabelSuffix ? `${locale.t("aiConversation.sendMessage")} · ${sendLabelSuffix}` : locale.t("aiConversation.sendMessage")}
           accessibilityRole="button"
           accessibilityState={{ disabled: sending || writingBlocked || !draftMessage.trim(), busy: sending || saving }}
           disabled={sending || writingBlocked || !draftMessage.trim()}

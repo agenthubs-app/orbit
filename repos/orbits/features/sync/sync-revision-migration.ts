@@ -1,13 +1,15 @@
 import { SYNC_COMMIT_ORDER_LOCK_CTE } from "./commit-order-lock";
 import {
   DASHBOARD_GRAPH_VERSION_INDEX_SQL,
+  INBOX_SYNC_INDEX_SQL,
+  PERSONAL_SUBSPACE_SYNC_INDEX_SQL,
   SYNC_ACTOR_INDEX_SQL,
   SYNC_REVISION_COLUMN_SQL,
   SYNC_REVISION_FUNCTIONS_SQL,
   SYNC_REVISION_RELAXED_FUNCTION_SQL,
   SYNC_REVISION_TRIGGER_SQL,
 } from "./migrations";
-import { SYNC_OWNER_GUARD_SQL } from "./owner-guard";
+import { SYNC_OWNER_GUARD_SQL, SYNC_OWNER_GUARD_WATCHES_WORKSPACE_SQL } from "./owner-guard";
 
 /**
  * Online sync_revision migration (sprint 0108), for a live database.
@@ -175,8 +177,11 @@ export async function migrateSyncRevisionOnline(session: SyncRevisionMigrationSe
   if (!before.triggerInstalled) await timed(steps, "trigger", log, () => inTransaction(session, async () => { await session.query(SYNC_REVISION_TRIGGER_SQL); }));
   // Sprint 0113: owner/identity guard. Replacing the function locks nothing;
   // the trigger is created only when missing (brief SHARE ROW EXCLUSIVE).
+  // Sprint 0118: a trigger installed before it watched workspace_id is replaced once.
+  const watchesWorkspace = before.ownerGuardInstalled
+    && (await session.query<{ watches: boolean }>(SYNC_OWNER_GUARD_WATCHES_WORKSPACE_SQL)).rows[0]?.watches === true;
   await timed(steps, "owner-guard", log, () => inTransaction(session, async () => {
-    await session.query(before.ownerGuardInstalled ? SYNC_OWNER_GUARD_SQL.replace(/create or replace trigger[\s\S]*$/i, "") : SYNC_OWNER_GUARD_SQL);
+    await session.query(watchesWorkspace ? SYNC_OWNER_GUARD_SQL.replace(/create or replace trigger[\s\S]*$/i, "") : SYNC_OWNER_GUARD_SQL);
   }));
 
   let backfilledRows = 0;
@@ -222,7 +227,7 @@ export async function migrateSyncRevisionOnline(session: SyncRevisionMigrationSe
     await session.query(`create unique index concurrently if not exists ${UNIQUE_INDEX} on orbit_records (sync_revision)`);
   });
   await timed(steps, "sync-indexes", log, async () => {
-    for (const statement of [SYNC_ACTOR_INDEX_SQL, DASHBOARD_GRAPH_VERSION_INDEX_SQL]) {
+    for (const statement of [SYNC_ACTOR_INDEX_SQL, DASHBOARD_GRAPH_VERSION_INDEX_SQL, INBOX_SYNC_INDEX_SQL, PERSONAL_SUBSPACE_SYNC_INDEX_SQL]) {
       await session.query(statement.replace(/create index if not exists/i, "create index concurrently if not exists"));
     }
   });

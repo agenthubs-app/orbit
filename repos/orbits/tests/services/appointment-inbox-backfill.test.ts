@@ -48,7 +48,8 @@ test('explicit appointment inbox backfill fences old history, checkpoints, and q
       writes.push('appointment-outbox');
       return { rowCount: 1, rows: [] as TRow[] };
     }
-    if (text.includes('pg_advisory_xact_lock')) return { rowCount: 1, rows: [] as TRow[] };
+    // Since 0118 an inbox write takes the commit-order lock in its own statement (a CTE calling pg_advisory_xact_lock).
+    if (text.includes('pg_advisory_xact_lock') && !text.includes('insert into orbit_records')) return { rowCount: 1, rows: [] as TRow[] };
     if (text.includes('insert into orbit_records')) {
       const [workspace_id, collection_name, record_id, user_id, source_type, source_id, source_label, provider, provider_record_id, evidence_ids, target_type, target_id, occurred_at, lifecycle_state, search_text, payload, created_at, updated_at, deleted_at] = values ?? [];
       const parsedPayload = typeof payload === 'string' ? JSON.parse(payload) : payload;

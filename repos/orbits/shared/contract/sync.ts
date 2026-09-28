@@ -10,7 +10,11 @@ export type SyncEntityKind =
   | "registered_event"
   | "event_published_result"
   // Sprint 0117: one stored record of the account's dashboard graph (sync domain dashboard-graph).
-  | "dashboard_graph";
+  | "dashboard_graph"
+  // Sprint 0118: a typed inbox notification; an AI session (list row); a message of an opened AI session.
+  | "inbox_notification"
+  | "ai_session"
+  | "ai_session_message";
 
 export type LocalSyncState = "synced" | "pending" | "conflicted" | "failed";
 export type AiSyncVisibility = "available_when_synced" | "excluded";
@@ -30,7 +34,8 @@ export interface SyncRecord<TPayload = unknown> {
 
 // Sprint 0116: "contact" — the contacts domain (a contact with its relationships, detail state and cited sources).
 // Sprint 0117: "dashboard_graph" — one stored record of the account's dashboard graph.
-export type SyncChangeKind = "note" | "task" | "personal_schedule" | "event_registration" | "registered_event" | "event_published_result" | "contact" | "dashboard_graph";
+// Sprint 0118: "inbox_notification", "ai_session", "ai_session_message" (sync domains inbox-notifications, ai-sessions, ai-session-messages).
+export type SyncChangeKind = "note" | "task" | "personal_schedule" | "event_registration" | "registered_event" | "event_published_result" | "contact" | "dashboard_graph" | "inbox_notification" | "ai_session" | "ai_session_message";
 
 export interface SyncChange<TPayload = unknown> {
   kind: SyncChangeKind;

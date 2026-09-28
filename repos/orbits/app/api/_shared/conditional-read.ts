@@ -6,6 +6,7 @@ import { createConfiguredPostgresLiveRecordStore } from "../../../shared/storage
 import {
   READ_AUTHORIZATION_COLLECTIONS,
   readDomainWatermark,
+  readRevisionWatermark,
   type DomainWatermarkSqlClient,
 } from "../../../shared/storage/domain-watermark";
 import { resolveFeatureMode } from "../../../shared/config/feature-mode";
@@ -28,6 +29,12 @@ export interface ConditionalReadScope {
   userScoped?: boolean;
   /** Workspace-wide collections a private read also depends on (e.g. contacts for a note search). */
   sharedCollections?: readonly string[];
+  /**
+   * Sprint 0118: key the ETag on max(sync_revision) instead of max(updated_at)
+   * (the sync manifest). Requires userScoped. `subspace` adds the actor's
+   * personal sub-workspace collections to the same statement.
+   */
+  revisionWatermark?: { subspace?: { workspaceId: string; collections: readonly string[] } };
 }
 
 export interface ConditionalReadDependencies {
@@ -70,12 +77,17 @@ export async function conditionalJsonRead(
   try {
     const url = new URL(scope.request.url);
     const shared = [...(scope.sharedCollections ?? []), ...READ_AUTHORIZATION_COLLECTIONS];
-    const watermark = await readDomainWatermark({
-      client: dependencies.client,
-      workspaceId,
-      collections: scope.userScoped ? scope.collections : [...scope.collections, ...shared],
-      ...(scope.userScoped ? { userId: scope.actorId, sharedCollections: shared } : {}),
-    });
+    const watermark = scope.revisionWatermark && scope.userScoped
+      ? await readRevisionWatermark({
+          client: dependencies.client, workspaceId, userId: scope.actorId, collections: scope.collections, sharedCollections: shared,
+          ...(scope.revisionWatermark.subspace ? { subspace: scope.revisionWatermark.subspace } : {}),
+        })
+      : await readDomainWatermark({
+          client: dependencies.client,
+          workspaceId,
+          collections: scope.userScoped ? scope.collections : [...scope.collections, ...shared],
+          ...(scope.userScoped ? { userId: scope.actorId, sharedCollections: shared } : {}),
+        });
     const digest = createHash("sha256")
       .update(JSON.stringify([
         scope.routeKey, url.pathname, url.search, scope.actorId, workspaceId,

@@ -1,11 +1,20 @@
 import { createHash } from "node:crypto";
 import type { DomainChange, DomainManifest, DomainPage, OfflineReadEnvelope } from "../../shared/contract/universal-read";
 import { resolveAuthorizationEpoch, type AuthorizationEpoch, type AuthorizationEpochSqlClient } from "./authorization-epoch";
-import { createDomainCursorCodec, type DomainCursorScope } from "./domain-cursor";
+import { createDomainCursorCodec, type DecodedDomainCursor, type DomainCursorPosition, type DomainCursorScope } from "./domain-cursor";
 import { findSyncDomain, SYNC_DOMAIN_SCHEMA_VERSION, SYNC_DOMAINS, SYNC_REGISTRY_VERSION, type DedicatedTableSyncSource, type SyncDomainDefinition } from "./domain-registry";
 import { readContactDomainHighWatermark, readContactDomainPage } from "./contact-domain-reader";
 import { readDashboardGraphHighWatermark, readDashboardGraphPage } from "./dashboard-graph-reader";
 import { readEventDomainPage, readEventDomainSummary, type EventDomainSummary } from "./event-domain-reader";
+import { readInboxDomainHighWatermark, readInboxDomainPage, type InboxReconcileResult } from "./inbox-domain-reader";
+import {
+  aiSessionPartitionKey,
+  openedAiSessions,
+  readAiSessionMessagesHighWatermark,
+  readAiSessionMessagesPage,
+  readAiSessionsHighWatermark,
+  readAiSessionsPage,
+} from "./ai-session-domain-reader";
 import { issueOfflineReadLease } from "./offline-read-lease";
 import { changeFromRow, SYNC_MAX_LIMIT, SYNC_MAX_PAGE_BYTES, SyncReadError, type SyncReadRow } from "./read-service";
 
@@ -20,6 +29,14 @@ export interface DomainReadServiceOptions {
   now?: () => string;
   /** The manuals this service leases and reads; production uses the registry's device domains. */
   domains?: readonly SyncDomainDefinition[];
+  /**
+   * Sprint 0118: writes the server's current source decisions back onto the
+   * actor's inbox rows (features/sync/inbox-domain-reader.ts). Runs before the
+   * manifest and before a first inbox page, so a device hears about a
+   * notification whose source went away. Without it the inbox domain still
+   * pages, but read-time invalidation never reaches a device.
+   */
+  inboxReconciler?: (input: { actorId: string; workspaceId: string }) => Promise<InboxReconcileResult>;
 }
 
 export class DomainNotAuthorizedError extends Error {
@@ -178,7 +195,7 @@ function domainChange(change: ReturnType<typeof changeFromRow>): DomainChange {
   };
 }
 
-export function createDomainReadService({ client, cursorSecret, now = () => new Date().toISOString(), domains = SYNC_DOMAINS }: DomainReadServiceOptions) {
+export function createDomainReadService({ client, cursorSecret, now = () => new Date().toISOString(), domains = SYNC_DOMAINS, inboxReconciler }: DomainReadServiceOptions) {
   const cursors = createDomainCursorCodec({ secret: cursorSecret });
   // Production passes nothing and gets the device domains; a test adds the probe explicitly.
   const leased = [...domains];
@@ -203,6 +220,12 @@ export function createDomainReadService({ client, cursorSecret, now = () => new 
     }
     if (source.kind === "contact_graph") return readContactDomainHighWatermark(client, { workspaceId, actorId });
     if (source.kind === "dashboard_graph") return readDashboardGraphHighWatermark(client, source, { workspaceId, actorId });
+    if (source.kind === "inbox_records") return readInboxDomainHighWatermark(client, { workspaceId, actorId });
+    if (source.kind === "personal_subspace") {
+      return source.view === "ai-sessions"
+        ? readAiSessionsHighWatermark(client, { workspaceId, actorId })
+        : readAiSessionMessagesHighWatermark(client, { workspaceId, actorId });
+    }
     const result = source.kind === "orbit_records"
       ? await client.query<{ high_watermark: string }>(HIGH_WATERMARK_SQL, [workspaceId, actorId, source.collectionName])
       : await client.query<{ high_watermark: string }>(dedicatedSql(source, ownerColumnOf(domain)).highWatermark, [workspaceId, actorId]);
@@ -212,6 +235,48 @@ export function createDomainReadService({ client, cursorSecret, now = () => new 
   }
 
   type PageInput = { actorId: string; workspaceId: string; limit: number };
+  const hasInboxDomain = leased.some((domain) => domain.source.kind === "inbox_records");
+
+  async function reconcileInbox(actorId: string, workspaceId: string): Promise<InboxReconcileResult | null> {
+    return hasInboxDomain && inboxReconciler ? inboxReconciler({ actorId, workspaceId }) : null;
+  }
+
+  type OpenedPosition = Omit<DomainCursorPosition, keyof DomainCursorScope>;
+  /**
+   * Sprint 0118: "ai-session-messages" pages only the sessions the request names.
+   * The cursor keeps short keys of the sessions its bookmark covers; a newly
+   * named session is caught up first (its latest window, up to the bookmark),
+   * then joins the others. A session no longer named is dropped.
+   */
+  async function readOpenedSessionMessages(
+    input: PageInput & { partitions?: readonly string[] },
+    decoded: DecodedDomainCursor | null,
+    afterRevision: string,
+    high: string,
+  ): Promise<{ read: PageRead; position: OpenedPosition }> {
+    const ids = openedAiSessions(input.partitions);
+    const byKey = new Map(ids.map((id) => [aiSessionPartitionKey(id), id]));
+    const sorted = (keys: Iterable<string>) => [...new Set(keys)].sort();
+    const idsOf = (keys: readonly string[]) => keys.map((key) => byKey.get(key)!);
+    const base = { workspaceId: input.workspaceId, actorId: input.actorId, limit: input.limit };
+    if (!decoded) {
+      const read = await readAiSessionMessagesPage(client, { ...base, sessionIds: ids, afterRevision: "0", highWatermark: high, window: true });
+      return { read, position: { afterRevision: read.hasMore ? read.lastRevision! : high, highWatermark: high, partitions: sorted(byKey.keys()) } };
+    }
+    const known = (decoded.partitions ?? []).filter((key) => byKey.has(key));
+    const catching = (decoded.catchUp ? decoded.catchUp.partitions : [...byKey.keys()]).filter((key) => byKey.has(key) && !known.includes(key));
+    if (catching.length > 0) {
+      const read = await readAiSessionMessagesPage(client, {
+        ...base, sessionIds: idsOf(catching), afterRevision: decoded.catchUp?.afterRevision ?? "0", highWatermark: decoded.afterRevision, window: true,
+      });
+      const bookmark = { afterRevision: decoded.afterRevision, highWatermark: decoded.highWatermark };
+      if (read.hasMore) return { read, position: { ...bookmark, partitions: sorted(known), catchUp: { partitions: sorted(catching), afterRevision: read.lastRevision! } } };
+      // Caught up to the bookmark: from the next page on they move with the others.
+      return { read: { ...read, hasMore: true }, position: { ...bookmark, partitions: sorted([...known, ...catching]) } };
+    }
+    const read = await readAiSessionMessagesPage(client, { ...base, sessionIds: idsOf(known), afterRevision, highWatermark: high, window: false });
+    return { read, position: { afterRevision: read.hasMore ? read.lastRevision! : high, highWatermark: high, partitions: sorted(known) } };
+  }
   type PageRead = { changes: DomainChange[]; hasMore: boolean; lastRevision: string | null };
 
   async function readRecordsPage(collectionName: string, input: PageInput, afterRevision: string, high: string): Promise<PageRead> {
@@ -300,7 +365,19 @@ export function createDomainReadService({ client, cursorSecret, now = () => new 
       return { registryVersion: SYNC_REGISTRY_VERSION, domains: entries };
     },
 
-    async readDomainPage(input: { actorId: string; workspaceId: string; domainId: string; cursor?: string; limit: number }): Promise<DomainPage> {
+    /** Sprint 0118: bring the actor's inbox rows up to the server's current source decisions (before a manifest). */
+    async reconcile(input: { actorId: string; workspaceId: string }): Promise<InboxReconcileResult | null> {
+      if (!input.actorId.trim() || !input.workspaceId.trim()) throw new SyncReadError("SYNC_SCOPE_MISMATCH", "Authenticated sync scope is required.");
+      return reconcileInbox(input.actorId, input.workspaceId);
+    },
+
+    /**
+     * `partitions` names the partitions a partitioned domain should send (for
+     * "ai-session-messages": the sessions the device opened). The cursor records
+     * which of them its bookmark covers; a newly named one is first caught up
+     * (its latest window, up to the bookmark), then everything moves together.
+     */
+    async readDomainPage(input: { actorId: string; workspaceId: string; domainId: string; cursor?: string; limit: number; partitions?: readonly string[] }): Promise<DomainPage> {
       const domain = findSyncDomain(input.domainId, leased);
       if (!domain) throw new DomainUnknownError(input.domainId);
       if (!Number.isSafeInteger(input.limit) || input.limit < 1 || input.limit > SYNC_MAX_LIMIT) throw new SyncReadError("SYNC_SCOPE_MISMATCH", "Sync limit is invalid.");
@@ -314,10 +391,15 @@ export function createDomainReadService({ client, cursorSecret, now = () => new 
         schemaVersion: SYNC_DOMAIN_SCHEMA_VERSION, registryVersion: SYNC_REGISTRY_VERSION,
       };
       const decoded = input.cursor ? cursors.decode(input.cursor, scope, issuedAt) : null;
+      // A first inbox page starts from the server's current source decisions.
+      if (domain.source.kind === "inbox_records" && !decoded) await reconcileInbox(input.actorId, input.workspaceId);
       let afterRevision = decoded?.afterRevision ?? "0";
       let high = decoded?.highWatermark ?? "0";
       if (!decoded || decoded.afterRevision === decoded.highWatermark) high = await highWatermark(input.actorId, input.workspaceId, domain, summary);
-      const read = domain.source.kind === "orbit_records"
+      const partitioned = domain.source.kind === "personal_subspace" && domain.source.view === "ai-session-messages";
+      if (!partitioned && input.partitions?.length) throw new SyncReadError("SYNC_SCOPE_MISMATCH", `Domain ${domain.domainId} is not partitioned.`);
+      const opened = partitioned ? await readOpenedSessionMessages(input, decoded, afterRevision, high) : null;
+      const read = opened ? opened.read : domain.source.kind === "orbit_records"
         ? await readRecordsPage(domain.source.collectionName, input, afterRevision, high)
         : domain.source.kind === "event_derived"
           ? await readEventDomainPage(client, domain.source, { workspaceId: input.workspaceId, actorId: input.actorId, afterRevision, highWatermark: high, limit: input.limit })
@@ -325,7 +407,11 @@ export function createDomainReadService({ client, cursorSecret, now = () => new 
             ? await readContactDomainPage(client, domain.source, { workspaceId: input.workspaceId, actorId: input.actorId, afterRevision, highWatermark: high, limit: input.limit, issuedAt: new Date(issuedAt).toISOString() })
             : domain.source.kind === "dashboard_graph"
               ? await readDashboardGraphPage(client, domain.source, { workspaceId: input.workspaceId, actorId: input.actorId, afterRevision, highWatermark: high, limit: input.limit })
-              : await readDedicatedPage(domain, domain.source, input, afterRevision, high);
+              : domain.source.kind === "inbox_records"
+                ? await readInboxDomainPage(client, { workspaceId: input.workspaceId, actorId: input.actorId, afterRevision, highWatermark: high, limit: input.limit })
+                : domain.source.kind === "personal_subspace"
+                  ? await readAiSessionsPage(client, { workspaceId: input.workspaceId, actorId: input.actorId, afterRevision, highWatermark: high, limit: input.limit })
+                  : await readDedicatedPage(domain, domain.source, input, afterRevision, high);
       const { hasMore, lastRevision } = read;
       const changes = read.changes;
       if (domain.attachments.some((attachment) => attachment.collectionName === "personal_schedule_occurrence_exceptions")) {
@@ -338,14 +424,15 @@ export function createDomainReadService({ client, cursorSecret, now = () => new 
       }
       for (const change of changes) if (change.payload) change.payload = declaredFields(domain, change.payload);
       afterRevision = hasMore ? (lastRevision ?? afterRevision) : high;
+      const position: DomainCursorPosition = opened ? { ...scope, ...opened.position } : { ...scope, afterRevision, highWatermark: high };
       const page: DomainPage = {
         domainId: domain.domainId,
         schemaVersion: SYNC_DOMAIN_SCHEMA_VERSION,
         registryVersion: SYNC_REGISTRY_VERSION,
         authorizationEpoch: epoch.epoch,
         changes,
-        nextCursor: cursors.encode({ ...scope, afterRevision, highWatermark: high }, issuedAt),
-        highWatermark: high,
+        nextCursor: cursors.encode(position, issuedAt),
+        highWatermark: position.highWatermark,
         hasMore,
         generation: scope.generation,
         serverTime: new Date(issuedAt).toISOString(),

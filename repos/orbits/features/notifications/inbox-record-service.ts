@@ -3,6 +3,7 @@ import type { InboxNotificationDTO, InboxNotificationKind, InboxNotificationActi
 import { inboxNotificationSchema, inboxNotificationActionSchema, inboxNotificationReadBatchSchema } from '../../shared/api-schema/inbox-notifications';
 import type { InboxRecordRepository, InboxRecordTransaction } from './storage/inbox-record-repository';
 import { countAuthorizedUnread, readBoundedInbox } from './inbox-bounded-list';
+import { presentInboxNotification } from '../../shared/compute/inbox-local';
 
 export class InboxRecordError extends Error {
   constructor(readonly code:'NOT_FOUND'|'CONFLICT'|'SOURCE_UNAVAILABLE'|'VALIDATION_ERROR'|'INTEGRITY_VIOLATION',message:string){super(message);}
@@ -16,7 +17,16 @@ export interface InboxBusinessEffects {
 }
 export interface InboxListQuery {cursor?:string;limit?:number;kind?:InboxNotificationKind;history?:boolean;language?:'zh'|'en'|'ja'}
 const digest=(value:unknown)=>createHash('sha256').update(JSON.stringify(value)).digest('hex');
-const unavailable={zh:{title:'来源已不可用',reason:'来源已变更、不可访问，或此通知已不再适用。'},en:{title:'Source unavailable',reason:'The source changed, access is unavailable, or this notification no longer applies.'},ja:{title:'参照元を利用できません',reason:'参照元が変更されたか、アクセスできないか、この通知が対象外になりました。'}};
+/** JSON with object keys sorted at every level. A stored payload comes back
+ * from jsonb in its own key order (shorter keys first), so comparing a
+ * producer's object with the stored one by plain JSON.stringify saw a change on
+ * every redelivery (Sprint 0118, from 0129). */
+export function canonicalJson(value:unknown):string {
+  if(Array.isArray(value))return '['+value.map(item=>item===undefined?'null':canonicalJson(item)).join(',')+']';
+  if(value&&typeof value==='object')return '{'+Object.keys(value).filter(key=>(value as Record<string,unknown>)[key]!==undefined).sort().map(key=>JSON.stringify(key)+':'+canonicalJson((value as Record<string,unknown>)[key])).join(',')+'}';
+  return JSON.stringify(value)??'null';
+}
+const contentDigest=(value:unknown)=>createHash('sha256').update(canonicalJson(value)).digest('hex');
 const KINDS=new Set<InboxNotificationKind>(['reminder','suggestion','update']);
 
 /**
@@ -50,10 +60,12 @@ export function createInboxRecordUpserter(input:{transaction:InboxRecordReposito
       if(existing) {
         // Producer replays never resurrect a disposition or reset reading.
         const old=existing.notification;
-        const changed=digest([old.sources.map(s=>[s.sourceKind,s.sourceId,s.sourceRevision]),old.dueAt,old.scheduledFor,old.title,old.reason,old.copy])!==digest([raw.sources.map(s=>[s.sourceKind,s.sourceId,s.sourceRevision]),raw.dueAt,raw.scheduledFor,raw.title,raw.reason,raw.copy]);
+        const changed=contentDigest([old.sources.map(s=>[s.sourceKind,s.sourceId,s.sourceRevision]),old.dueAt,old.scheduledFor,old.title,old.reason,old.copy])!==contentDigest([raw.sources.map(s=>[s.sourceKind,s.sourceId,s.sourceRevision]),raw.dueAt,raw.scheduledFor,raw.title,raw.reason,raw.copy]);
         if(!changed)return old;
         const notification={...parsed.data,revision:old.revision+1,readAt:old.readAt,disposition:old.disposition,occurredAt:old.occurredAt,expiresAt:old.expiresAt??parsed.data.expiresAt};
-        await tx.save({...existing,notification});return notification;
+        // New sources: the sync path decides their availability again (sourceState, Sprint 0118).
+        const {sourceState:_decided,...kept}=existing;
+        await tx.save({...kept,notification});return notification;
       }
       await tx.save({notification:parsed.data,operations:{}});return parsed.data;
     });
@@ -71,12 +83,8 @@ export function createInboxRecordService(input:{repository:InboxRecordRepository
     const states=checked??await Promise.all(n.sources.map(s=>input.sourceAccess(n.actorId,s,transaction)));
     if(states.length!==n.sources.length)throw new InboxRecordError('INTEGRITY_VIOLATION','Incomplete source authorization');
     const access=states.includes('unavailable')?'unavailable':states.includes('changed')?'changed':'available';
-    const expired=n.expiresAt && Date.parse(n.expiresAt)<=Date.parse(now()) && n.disposition==='open';
-    if(access!=='available') {
-      const {object:_object,copy:_copy,createdTaskId:_task,...safe}=n;
-      return {...safe,...unavailable[language],target:{...n.target,href:null,status:access},sources:n.sources.map(({excerpt:_excerpt,authorId:_author,objectId:_object,...s})=>s),actions:[]};
-    }
-    return {...n,...n.copy?.[language],...(expired?{disposition:'expired' as const}:{}),actions:expired||n.disposition!=='open'?n.actions.filter(a=>a==='read'):n.actions};
+    // Sprint 0118: the App presents its device copy with the same function.
+    return presentInboxNotification(n,access,language,Date.parse(now()));
   }
   const service={
     upsert:createInboxRecordUpserter({transaction:(actorId,operation)=>input.repository.transaction(actorId,operation),now}),
@@ -158,7 +166,7 @@ export function createInboxRecordService(input:{repository:InboxRecordRepository
           await input.effects.snooze(notification,request.scheduledFor,request.idempotencyKey,tx);notification.scheduledFor=request.scheduledFor;
         }
         const receipt={notification,...(notification.createdTaskId?{createdTaskId:notification.createdTaskId}:{})};
-        await tx.save({notification,operations:{...row.operations,[request.idempotencyKey]:{fingerprint,receipt}}});return receipt;
+        await tx.save({...row,notification,operations:{...row.operations,[request.idempotencyKey]:{fingerprint,receipt}}});return receipt;
       });
     },
     async readBatch(actorId:string,raw:InboxNotificationReadBatchInput) {

@@ -50,6 +50,11 @@ const APPROVED_POLICY_MATRIX = [
   ["GET", "/api/dashboard/distributions", "read", "dashboard_graph", "durable_normalized", "online_only", "metadata_only"],
   ["GET", "/api/mobile/contacts-dashboard", "read", "dashboard_graph", "durable_normalized", "online_only", "metadata_only"],
   ["GET", "/api/dashboard/structure/:dimension/:bucketId", "read", "dashboard_graph", "durable_normalized", "online_only", "metadata_only"],
+  // Sprint 0118: the typed inbox and the AI sessions read the device copy first.
+  ["GET", "/api/inbox/notifications", "read", "inbox_notification", "durable_normalized", "online_only", "metadata_only"],
+  ["GET", "/api/inbox/notifications/:id", "read", "inbox_notification", "durable_normalized", "online_only", "metadata_only"],
+  ["GET", "/api/ai/conversations/sessions", "read", "ai_session", "durable_normalized", "online_only", "metadata_only"],
+  ["GET", "/api/ai/conversations/sessions/:id", "read", "ai_session_message", "durable_normalized", "online_only", "metadata_only"],
   ["POST", "/api/auth/mobile/credentials", "authenticate", "account_secret", "online_only_secret", "online_only", "never_local"],
 ] as const;
 

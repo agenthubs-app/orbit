@@ -248,9 +248,16 @@ export function useSyncedCollection<TPayload = unknown>(input: {
     );
   }, [startSync]);
 
+  /** Sprint 0118: the current coordinator session (opened AI sessions and their cached cards), or null before one is open. */
+  const currentSession = useCallback(() => {
+    const session = sessionRef.current;
+    return session && session.isCurrent() ? session : null;
+  }, []);
+
   return {
     ...snapshot,
     invalidate,
     refresh,
+    currentSession,
   };
 }

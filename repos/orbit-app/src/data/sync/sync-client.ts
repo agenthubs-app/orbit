@@ -64,6 +64,8 @@ export interface SyncDomainPageInput {
   cursor?: string;
   limit?: number;
   signal?: AbortSignal;
+  /** Sprint 0118: a partitioned domain's partitions (the opened AI sessions). */
+  sessions?: readonly string[];
 }
 
 export interface SyncClient {
@@ -147,6 +149,7 @@ export function createSyncClient(
       const query = new URLSearchParams();
       if (input.cursor !== undefined) { assertNonempty(input.cursor, "cursor"); query.set("cursor", input.cursor); }
       query.set("limit", String(limit));
+      if (input.sessions?.length) query.set("sessions", input.sessions.join(","));
       const result = await client.get<unknown>(`/api/sync/domains/${encodeURIComponent(input.domainId)}?${query.toString()}`, input.signal ? { signal: input.signal } : undefined);
       if (!result.success) failed(result);
       const parsed = domainPageSchema.safeParse(result.data);

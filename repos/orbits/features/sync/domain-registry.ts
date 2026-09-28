@@ -35,7 +35,15 @@ export type SyncOwnership =
    * reader joins the viewer's own head rows); any other source with a derived
    * owner is refused with SYNC_DOMAIN_SOURCE_UNSUPPORTED.
    */
-  | { rule: "derived"; description: string };
+  | { rule: "derived"; description: string }
+  /**
+   * Sprint 0118: the row lives in the actor's personal sub-workspace
+   * (`${workspaceId}:actor:${encodeURIComponent(actorId)}`, see
+   * orbitAgentChatSessionActorWorkspaceId). The workspace is the owner; the rows
+   * carry no user_id. Moving a row to another workspace (or collection) would
+   * leave it on the old owner's device, so the database guard refuses it.
+   */
+  | { rule: "personal_subspace"; description: string };
 
 export interface SyncAttachment {
   /** Where the attached rows live. */
@@ -126,7 +134,37 @@ export interface DashboardGraphSyncSource {
   collections: readonly string[];
 }
 
-export type SyncDomainSource = OrbitRecordsSyncSource | DedicatedTableSyncSource | EventDerivedSyncSource | ContactGraphSyncSource | DashboardGraphSyncSource;
+/**
+ * Inbox source (sprint 0118): one row per stored typed notification of the
+ * actor (orbit_records inboxNotifications, user_id = owner). The server decides
+ * at read time whether a notification's sources are still available (a deleted
+ * contact, a cancelled appointment, a revoked request...). A device copy cannot
+ * see that, so the sync path writes the decision back onto the row
+ * (features/sync/inbox-domain-reader.ts, reconcileInboxSourceStates): a changed
+ * decision is a new sync revision, and a row whose sources are no longer
+ * available is sent without its content.
+ */
+export interface InboxRecordsSyncSource {
+  kind: "inbox_records";
+  collectionName: "inboxNotifications";
+}
+
+/**
+ * Personal sub-workspace source (sprint 0118, reserved by 0113): rows in the
+ * actor's own sub-workspace, optionally joined with base-workspace rows the
+ * actor owns (user_id). `view` picks the reader
+ * (features/sync/ai-session-domain-reader.ts).
+ */
+export interface PersonalSubspaceSyncSource {
+  kind: "personal_subspace";
+  view: "ai-sessions" | "ai-session-messages";
+  /** Collections read from the personal sub-workspace; the sub-workspace is the owner. */
+  subspaceCollections: readonly string[];
+  /** Base-workspace collections owned by user_id that a row is built from (their sync_revision moves the row). */
+  ownedCollections: readonly string[];
+}
+
+export type SyncDomainSource = OrbitRecordsSyncSource | DedicatedTableSyncSource | EventDerivedSyncSource | ContactGraphSyncSource | DashboardGraphSyncSource | InboxRecordsSyncSource | PersonalSubspaceSyncSource;
 
 export interface SyncDomainDefinition {
   domainId: string;
@@ -228,6 +266,69 @@ export const DASHBOARD_SYNC_DOMAINS: readonly SyncDomainDefinition[] = [
   },
 ];
 
+/** The inbox fields a device receives: the notification without its owner id, plus the server's source decision. */
+export const INBOX_DEVICE_FIELDS = [
+  "id", "revision", "kind", "origin", "semanticKey", "title", "reason", "object", "sources", "target", "actions", "occurredAt", "updatedAt",
+  "readAt", "dueAt", "scheduledFor", "expiresAt", "disposition", "legacyId", "createdTaskId", "copy", "sourceState",
+] as const;
+
+/**
+ * Sprint 0118 (offline 3a): the account's typed inbox. Every notification row
+ * of the actor, history included, so the inbox list, its detail, the history
+ * filter and the unread badge read the device copy.
+ */
+export const INBOX_SYNC_DOMAINS: readonly SyncDomainDefinition[] = [
+  {
+    domainId: "inbox-notifications",
+    exposure: "device",
+    ownership: OWNER_COLUMN,
+    visibilityInputs: ["user_id", "collection_name"],
+    attachments: [],
+    fields: INBOX_DEVICE_FIELDS,
+    source: { kind: "inbox_records", collectionName: "inboxNotifications" },
+  },
+];
+
+const PERSONAL_SUBSPACE_OWNERSHIP = {
+  rule: "personal_subspace",
+  description: "orbit_agent_chat_sessions / orbit_agent_chat_messages rows in the actor's personal sub-workspace (workspace_id = `${workspaceId}:actor:${encodeURIComponent(actorId)}`); the session's organization row is owned by user_id = actor in the base workspace.",
+} as const;
+/** How many of an opened session's latest messages a device receives when it starts holding the session. */
+export const AI_SESSION_MESSAGE_DEVICE_WINDOW = 50;
+/** How many opened sessions a device may name in one messages page request (it keeps the most recently opened). */
+export const AI_SESSION_OPENED_LIMIT = 20;
+
+/**
+ * Sprint 0118 (AI B3): the AI session list and the messages of the sessions a
+ * device has opened. The list row is the session row joined with the actor's
+ * organization row (pinned, custom title, group). Messages are sent only for
+ * the sessions the device names (the ones it opened), starting from the latest
+ * AI_SESSION_MESSAGE_DEVICE_WINDOW of each; cards are not synced (the App keeps
+ * the cards of its last online page read).
+ */
+export const AI_SESSION_SYNC_DOMAINS: readonly SyncDomainDefinition[] = [
+  {
+    domainId: "ai-sessions",
+    exposure: "device",
+    ownership: PERSONAL_SUBSPACE_OWNERSHIP,
+    visibilityInputs: ["workspace_id", "collection_name"],
+    attachments: [
+      { collectionName: "orbit_agent_chat_session_organizations", join: "payload.sessionId = session record_id, base workspace, user_id = actor", field: "organization" },
+    ],
+    fields: ["id", "title", "firstUserText", "lastMessagePreview", "createdAt", "updatedAt", "messageCount", "messageRevision", "organization"],
+    source: { kind: "personal_subspace", view: "ai-sessions", subspaceCollections: ["orbit_agent_chat_sessions"], ownedCollections: ["orbit_agent_chat_session_organizations"] },
+  },
+  {
+    domainId: "ai-session-messages",
+    exposure: "device",
+    ownership: PERSONAL_SUBSPACE_OWNERSHIP,
+    visibilityInputs: ["workspace_id", "collection_name"],
+    attachments: [],
+    fields: ["sessionId", "id", "role", "text", "references", "index", "createdAt"],
+    source: { kind: "personal_subspace", view: "ai-session-messages", subspaceCollections: ["orbit_agent_chat_messages", "orbit_agent_chat_sessions"], ownedCollections: [] },
+  },
+];
+
 const EVENT_OWNER_TABLES: readonly DerivedOwnerTable[] = [
   { table: "event_ops_membership_heads", ownerColumn: "actor_id", identityColumns: ["workspace_id", "event_id"] },
   { table: "event_ops_admission_application_heads", ownerColumn: "actor_id", identityColumns: ["workspace_id", "event_id"] },
@@ -308,7 +409,7 @@ export const EVENT_MEMBERSHIP_PROBE_DOMAIN: SyncDomainDefinition = {
 };
 
 /** Every device domain, leased to each authorized account. */
-export const SYNC_DOMAINS: readonly SyncDomainDefinition[] = [...RECORD_SYNC_DOMAINS, ...CONTACT_SYNC_DOMAINS, ...EVENT_SYNC_DOMAINS, ...DASHBOARD_SYNC_DOMAINS];
+export const SYNC_DOMAINS: readonly SyncDomainDefinition[] = [...RECORD_SYNC_DOMAINS, ...CONTACT_SYNC_DOMAINS, ...EVENT_SYNC_DOMAINS, ...DASHBOARD_SYNC_DOMAINS, ...INBOX_SYNC_DOMAINS, ...AI_SESSION_SYNC_DOMAINS];
 
 /** Every declared manual, leased or not: the owner/identity audit covers all of them. */
 export const DECLARED_SYNC_DOMAINS: readonly SyncDomainDefinition[] = [...SYNC_DOMAINS, EVENT_MEMBERSHIP_PROBE_DOMAIN];
@@ -377,6 +478,17 @@ export function findSyncDomain(domainId: string, domains: readonly SyncDomainDef
   return domains.find((domain) => domain.domainId === domainId) ?? null;
 }
 
+/**
+ * Sprint 0118: orbit_records collections owned by their personal sub-workspace
+ * (no user_id). The database guard refuses moving one of their rows to another
+ * workspace or collection unless a registered handler runs (none).
+ */
+export function personalSubspaceCollections(domains: readonly SyncDomainDefinition[] = DECLARED_SYNC_DOMAINS): string[] {
+  const names = new Set<string>();
+  for (const domain of domains) if (domain.source.kind === "personal_subspace") for (const name of domain.source.subspaceCollections) names.add(name);
+  return [...names].sort();
+}
+
 /** orbit_records collections whose owner is a visibility input: the domains' own and their attachments (sprint 0116: the contact graph's four; sprint 0117: the dashboard graph's six, events included). */
 export function ownerGuardedCollections(domains: readonly SyncDomainDefinition[] = DECLARED_SYNC_DOMAINS): string[] {
   const names = new Set<string>();
@@ -385,7 +497,12 @@ export function ownerGuardedCollections(domains: readonly SyncDomainDefinition[]
       for (const name of domain.source.collections) names.add(name);
       continue;
     }
-    if (domain.source.kind !== "orbit_records" && domain.source.kind !== "contact_graph") continue;
+    if (domain.source.kind === "personal_subspace") {
+      // The sub-workspace rows carry no user_id (see personalSubspaceCollections); their owned base-workspace rows do.
+      for (const name of domain.source.ownedCollections) names.add(name);
+      continue;
+    }
+    if (domain.source.kind !== "orbit_records" && domain.source.kind !== "contact_graph" && domain.source.kind !== "inbox_records") continue;
     names.add(domain.source.collectionName);
     if (domain.source.kind === "contact_graph") for (const name of domain.source.collections) names.add(name);
     for (const attachment of domain.attachments) names.add(attachment.collectionName);

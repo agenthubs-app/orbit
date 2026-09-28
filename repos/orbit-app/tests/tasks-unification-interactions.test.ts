@@ -24,6 +24,11 @@ const tasks = Array.from({ length: 61 }, (_, index) => ({
 // Actual private route, screen, resource hook, HTTP client and decoders. Only
 // native/session integrations, snapshot persistence and transport are fixtures.
 const fixture = `
+// Sprint 0118: this harness exercises the network path; the device mirror of the inbox and AI sessions is not available here.
+export const useLocalInbox = () => ({ available: false, rows: [], freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh: async () => null });
+export const useLocalAiSessions = () => ({ available: false, rows: [], freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh: async () => null });
+export const useLocalAiConversation = () => ({ available: false, messages: [], cards: null, saveCards() {}, freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh: async () => null });
+
 import React, { useEffect, useSyncExternalStore } from "react";
 import { View } from "react-native-web";
 let revision = 0, nextId = 0; const listeners = new Set();
@@ -66,7 +71,7 @@ test.before(async () => {
     plugins: [{ name: "unified-tasks-boundaries", setup(plugin) {
       plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: require.resolve("react-native-web") }));
       plugin.onResolve({ filter: /^react-native-svg$/ }, () => ({ path: require.resolve("react-native-svg/lib/module/ReactNativeSVG.web.js") }));
-      plugin.onResolve({ filter: /^(c0022-fixture|expo-router|expo-crypto|@expo\/vector-icons|react-native-safe-area-context)$|\/(AuthSessionProvider|ApiBaseUrlProvider|snapshot-store|useRelationshipInboxBadgeCount|useWebMirrorStatus|useSyncedCollection)$/ }, () => ({ path: "fixture", namespace: "unified-tasks" }));
+      plugin.onResolve({ filter: /^(c0022-fixture|expo-router|expo-crypto|@expo\/vector-icons|react-native-safe-area-context)$|\/(AuthSessionProvider|ApiBaseUrlProvider|snapshot-store|useRelationshipInboxBadgeCount|useWebMirrorStatus|useSyncedCollection|useLocalInbox|useLocalAiSessions)$/ }, () => ({ path: "fixture", namespace: "unified-tasks" }));
       plugin.onLoad({ filter: /.*/, namespace: "unified-tasks" }, () => ({ contents: fixture, loader: "jsx", resolveDir: process.cwd() }));
     } }],
   });
