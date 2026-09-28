@@ -34,10 +34,15 @@
  * 与 `?q=` 都被取出清掉并改弹拦截层（`DemoAskTarget` / `DemoHandoffGuard`），
  * 不会留到之后的真实壳里自动发出。
  * 概览屏由 `DemoModeProvider` 切到示例数据，写操作都被拦下。`guide` 为空时一切照旧。
+ *
+ * W0014：最近对话里那条示例问答（`DEMO_PLAN_SESSION_ID`）在示例壳里以**只读对话**打开——
+ * 同一个 `IOrbitChat`，线程是「示例问题 + W0008 计划卡片」（卡片由示例计划
+ * `buildDemoPlanSnapshot` 经 `planCardViewFromSnapshot` 映射，与「我的计划」页同一份数据）。
+ * 追问、发送、试试这些问题、历史记录都经 `guardWrite` 拦下；仍然不挂对话 hook、不改地址栏。
  */
 "use client";
 
-import { type CSSProperties, useEffect, useRef, useState } from "react";
+import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   DemoAskTarget,
@@ -49,6 +54,13 @@ import {
   type DemoModeView,
 } from "../../_demo/demo-mode-context";
 import { AccountTopNav } from "../../orbit-account-shell";
+import {
+  DEMO_PLAN_SESSION_ID,
+  buildDemoAgentViewModel,
+  buildDemoHomeData,
+  buildDemoPlanSnapshot,
+} from "../../_demo/demo-persona";
+import { useDemoMode } from "../../_demo/demo-mode-core";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import type { OrbitAgentViewModel } from "../../orbit-agent-route-view-model";
 import type { OrbitHomeViewModel } from "../../orbit-home-route-view-model";
@@ -57,12 +69,12 @@ import { Icon } from "../../orbit-reference-primitives";
 import { ORBIT_Z } from "../../orbit-z";
 import { CONSOLE_STYLES } from "./console-styles";
 import { AgentHistoryDeleteDialog } from "./iorbit-rich-components";
-import { IOrbitChat } from "./iorbit-chat";
+import { IOrbitChat, type IOrbitChatProps } from "./iorbit-chat";
 import { IOrbitChatAside } from "./iorbit-chat-aside";
 import { IOrbitHistoryDrawer } from "./iorbit-history-drawer";
 import { IOrbitHome } from "./iorbit-home";
-import type { AgentMessage } from "./iorbit-model";
-import type { IOrbitPlanCardView } from "./iorbit-plan-card-model";
+import { iorbitDayKey, type AgentMessage } from "./iorbit-model";
+import { planCardViewFromSnapshot, type IOrbitPlanCardView } from "./iorbit-plan-card-model";
 import { IORBIT_STYLES } from "./iorbit-styles";
 import { useAgentChat } from "./use-agent-chat";
 import { useAgentHistory } from "./use-agent-history";
@@ -94,18 +106,55 @@ export interface IOrbitShellProps {
 
 export function IOrbitShell(props: IOrbitShellProps) {
   // 分支放在任何 hook 之前：示例壳与真实壳是两棵不同的组件树，hook 顺序各自稳定。
-  if (props.guide) return <IOrbitDemoShell guide={props.guide} home={props.home} />;
+  // 示例期间不把任何真实数据（`home`、`viewModel`——后者的 suggests 带真实人名与草稿）交给示例壳。
+  if (props.guide) return <IOrbitDemoShell guide={props.guide} />;
   return <IOrbitLiveShell {...props} />;
 }
 
 /**
  * 示例壳：同一套外层作用域、顶栏与概览屏，但没有对话 / 历史的两个 hook。
- * 概览屏里的「打开对话」「历史」「会话」都经 `guardWrite` 拦下，所以不需要对话分支。
+ * 概览屏里的「打开对话」「历史」和其余会话都经 `guardWrite` 拦下；只有示例问答
+ * （W0014）切到只读对话分支。
  */
-function IOrbitDemoShell({ guide, home }: { guide: DemoModeView; home: OrbitHomeViewModel | null }) {
-  const { t } = useOrbitLanguage();
+function IOrbitDemoShell({ guide }: { guide: DemoModeView }) {
   return (
     <DemoModeProvider view={guide}>
+      <IOrbitDemoBody />
+    </DemoModeProvider>
+  );
+}
+
+/** 只读对话里的任务建议补丁：示例线程没有任务卡，不会被调用。 */
+const NO_TASK_SUGGESTIONS: IOrbitChatProps["taskSuggestions"] = {
+  forInteraction: () => ({ busy: false, error: undefined, onResolve: async () => undefined }),
+};
+
+/** 示例壳的内容：概览与只读示例问答的全部数据都来自示例人物（`_demo/demo-persona.ts`）。 */
+function IOrbitDemoBody() {
+  const { language, t } = useOrbitLanguage();
+  const demo = useDemoMode();
+  const guardWrite = demo?.guardWrite;
+  const [view, setView] = useState<"chat" | "home">("home");
+  const [draft, setDraft] = useState("");
+  const lang = language === "zh" ? "zh" : "en";
+  const viewModel = useMemo(() => buildDemoAgentViewModel(lang), [lang]);
+  const chatLabel = t({ en: "conversation", zh: "对话" });
+  const guardChat = () => guardWrite?.(chatLabel);
+  // 示例问答：问题 + 计划卡片（已完成态，不揭示）；右栏上下文用示例人物的资料。
+  const demoChat = useMemo(() => {
+    if (view !== "chat") return null;
+    const now = demo?.clock() ?? new Date();
+    const card = planCardViewFromSnapshot(buildDemoPlanSnapshot(now, lang));
+    const persona = buildDemoHomeData(new Date(`${iorbitDayKey(now)}T12:00:00+09:00`), lang).home;
+    return {
+      home: persona,
+      messages: card
+        ? planThreadMessages(card, false, t({ en: "Based on my goal and my network, how should I achieve my goal?", zh: "根据我的目标和人脉信息，我该如何实现目标？" }))
+        : [],
+    };
+  }, [demo, lang, t, view]);
+  return (
+    <>
       <DemoAskTarget />
       <DemoHandoffGuard />
       <div
@@ -124,19 +173,41 @@ function IOrbitDemoShell({ guide, home }: { guide: DemoModeView; home: OrbitHome
           <AccountTopNav active="agent" mobileRightExtra={<DemoNavPill />} rightExtra={<DemoNavPill />} />
           <main className="ir-main">
             <DemoBanner />
-            <IOrbitHome
-              home={home}
-              navigate={() => undefined}
-              onAsk={() => undefined}
-              onOpenChat={() => undefined}
-              onOpenHistory={() => undefined}
-              onOpenSession={() => undefined}
-            />
+            {demoChat ? (
+              <div data-orbit-guide-demo-chat>
+                <IOrbitChat
+                  ask={guardChat}
+                  aside={<IOrbitChatAside home={demoChat.home} onAsk={guardChat} viewModel={viewModel} />}
+                  chatDraft={draft}
+                  messages={demoChat.messages}
+                  navigate={() => undefined}
+                  onBack={() => setView("home")}
+                  onDraftChange={setDraft}
+                  onOpenHistory={() => guardWrite?.(t({ en: "conversation history", zh: "对话记录" }))}
+                  onSubmitDraft={guardChat}
+                  taskSuggestions={NO_TASK_SUGGESTIONS}
+                  thinking={false}
+                  userInitial={demoChat.home.account.initial || "A"}
+                  viewModel={viewModel}
+                />
+              </div>
+            ) : (
+              <IOrbitHome
+                home={null}
+                navigate={() => undefined}
+                onAsk={() => undefined}
+                onOpenChat={() => undefined}
+                onOpenHistory={() => undefined}
+                onOpenSession={(sessionId) => {
+                  if (sessionId === DEMO_PLAN_SESSION_ID) setView("chat");
+                }}
+              />
+            )}
           </main>
           <DemoInterceptLayer />
         </div>
       </div>
-    </DemoModeProvider>
+    </>
   );
 }
 

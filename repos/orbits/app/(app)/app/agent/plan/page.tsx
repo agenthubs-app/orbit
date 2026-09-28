@@ -8,6 +8,10 @@
  *
  * 人脉需求里的联系人名字：按快照里关联的 id 列表一次批量读取（本人归属谓词，
  * `features/plans/contact-names.ts`）；读失败只降级为占位名，不影响计划本身。
+ *
+ * W0014 示例模式：开关打开且本人在引导期示例里时（`readDemoModeViewForActor`，与人脉页同一套
+ * 判定），不读计划也不读联系人名字，直接让计划屏渲染示例人物的计划；开关关闭时那次判定不做
+ * 任何读取，下面的真实路径与改动前一致。
  */
 import { redirect } from "next/navigation";
 
@@ -21,6 +25,7 @@ import type { PlanSnapshot } from "../../../../../features/plans/contract";
 import { resolvePlanService } from "../../../../../features/plans/service-factory";
 import { readGuideDemoConfig } from "../../../../../shared/config/guide-demo";
 import { resolveAuthenticatedApiActorFromSession } from "../../../../api/_shared/authenticated-actor";
+import { readDemoModeViewForActor } from "../../_demo/demo-guide-view";
 import { OrbitReferenceStyles } from "../../orbit-reference-styles";
 import { OrbitVisualFreezeRuntime } from "../../orbit-visual-freeze-runtime";
 import { IOrbitPlan } from "../iorbit-0918/iorbit-plan";
@@ -65,6 +70,16 @@ export default async function AgentPlanPage() {
   });
   if (!actor) {
     throw new Error("Authenticated Orbit account membership is unavailable.");
+  }
+  const guide = await readDemoModeViewForActor({ actorId: actor.id, userId: session.user.id });
+  if (guide) {
+    return (
+      <>
+        <OrbitReferenceStyles />
+        <OrbitVisualFreezeRuntime />
+        <IOrbitPlan guide={guide} guideEnabled initialSnapshot={null} />
+      </>
+    );
   }
   const snapshot = await readCurrentPlan(actor.id);
   const contactNames = await readContactNames(actor.id, snapshot);

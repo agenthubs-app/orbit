@@ -741,7 +741,7 @@ interface Mounted {
   settle: (rounds?: number) => Promise<void>;
 }
 
-async function mount(t: TestContext, element: React.ReactElement): Promise<Mounted> {
+async function mount(t: TestContext, element: React.ReactElement, fetchImpl?: typeof fetch): Promise<Mounted> {
   const previousWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
   const previousFetch = Object.getOwnPropertyDescriptor(globalThis, "fetch");
   Object.defineProperty(globalThis, "window", {
@@ -758,11 +758,13 @@ async function mount(t: TestContext, element: React.ReactElement): Promise<Mount
   });
   Object.defineProperty(globalThis, "fetch", {
     configurable: true,
-    value: async () =>
-      ({
-        json: async () => ({ data: { entries: [] }, success: true }),
-        ok: true,
-      }) as never,
+    value:
+      fetchImpl ??
+      (async () =>
+        ({
+          json: async () => ({ data: { entries: [] }, success: true }),
+          ok: true,
+        }) as never),
     writable: true,
   });
   let root!: ReactTestRenderer;
@@ -1240,4 +1242,129 @@ test("the plan checkboxes keep a 44×44 hit area and draw the 15px box with a ps
     // 可见的方框在 ::before 上，15px。
     assert.match(flat, new RegExp(`\\.btn\\.${name}::before[^{]*\\{[^}]*width: 15px; height: 15px;`));
   }
+});
+
+/* ── W0014：「我的计划」的示例模式 ─────────────────────────────────────── */
+
+const PLAN_GUIDE = {
+  bannerCollapsed: false,
+  completed: 1,
+  confirmedContacts: 3,
+  nextStep: "goal" as const,
+  steps: { contacts: true, goal: false, plan: false },
+};
+
+test("W0014 my plan (demo): the persona's plan with banner, demo tags, this week, phases, needs and log", () => {
+  // 即使误传了真实快照，示例期间也只渲染示例人物的计划。
+  const html = renderToStaticMarkup(
+    <IOrbitPlan guide={PLAN_GUIDE} guideEnabled initialSnapshot={planSnapshotFixture()} />,
+  );
+  const body = bodyOf(html);
+  assert.match(body, /data-orbit-guide-demo-banner/);
+  assert.ok(body.includes("完成引导后，这里会是你自己的计划。"));
+  assert.match(body, /data-orbit-guide-demo="on"/);
+  assert.match(body, /data-orbit-plan-goal="true"[^>]*>本季度找到 5 家日本中小企业试用我们的 AI 会议纪要，先从东京开始。<span class="ir-demo-tag"/);
+  assert.ok(!body.includes("三个月内找到 5 家日本中小企业试用我们的产品"), "no real snapshot content");
+  // 周进度：示例计划 8 天前生成，今天是第 2 周。
+  assert.ok(body.includes("第 2 周 / 共 12 周"));
+  // 本周：逾期 1 周的一条 + 本周的 4 条。
+  const thisWeek = body.split("data-orbit-plan-this-week")[1]!.split("ir-p-label")[0]!;
+  for (const copy of ["请中村惠推荐 3 家试点会员企业", "和王砚见面，请他介绍 IT 部门的铃木", "约佐藤美咲聊 20 分钟试用", "发 1 分钟演示视频"]) {
+    assert.ok(thisWeek.includes(copy), `this week: ${copy}`);
+  }
+  assert.match(thisWeek, /data-orbit-plan-overdue="1"/);
+  assert.ok(!thisWeek.includes("整理 3 家目标企业的 IT 痛点"), "done actions are not in this week");
+  // 阶段：三段，当前是第 1 段。
+  assert.equal((body.match(/data-orbit-plan-phase="p\d"/g) ?? []).length, 3);
+  assert.match(body, /class="ir-p-phase ir-p-phase-cur" data-orbit-plan-phase="p1"/);
+  // 人脉需求：名字来自示例人脉（demo: id），每个人名旁有「示例」角标。
+  for (const name of ["佐藤美咲", "铃木健", "中村惠", "山田太郎", "林志远"]) {
+    assert.ok(body.includes(`<b>${name}<span class="ir-demo-tag"`), `demo person with tag: ${name}`);
+  }
+  assert.match(body, /href="\/app\/contacts\/demo%3Asato-misaki"/);
+  // 进展记录。
+  assert.ok(body.includes("和王砚通了电话：IT 部门的铃木才是系统采购的决策人"));
+  assert.ok(body.includes("与 佐藤美咲 建立联系（「中小企业 IT 负责人」）"));
+  assert.ok(body.includes("生成计划 v1"));
+});
+
+test("W0014 my plan (demo) is localised with the interface language", () => {
+  const html = renderToStaticMarkup(
+    <OrbitLanguageProvider initialLanguage="en">
+      <IOrbitPlan guide={PLAN_GUIDE} guideEnabled initialSnapshot={null} />
+    </OrbitLanguageProvider>,
+  );
+  assert.ok(html.includes("Get 5 Japanese SMEs trialling our AI meeting notes this quarter, starting in Tokyo."));
+  assert.ok(html.includes("Week 2 of 12"));
+  assert.ok(html.includes("Sato Misaki"));
+});
+
+test("W0014 my plan: without a guide the screen is unchanged (no banner, tag or persona)", () => {
+  const withNull = renderToStaticMarkup(<IOrbitPlan guide={null} guideEnabled initialSnapshot={planSnapshotFixture()} now={PLAN_NOW} />);
+  assert.equal(withNull, myPlanMarkup());
+  for (const leak of ["data-orbit-guide-demo", "ir-demo-", "王砚", "示例预览"]) {
+    assert.ok(!bodyOf(withNull).includes(leak), `demo content leaked: ${leak}`);
+  }
+});
+
+test("W0014 my plan (demo): no plan / ledger requests on mount; ticking and noting open the guard instead", async (t) => {
+  const calls: string[] = [];
+  // 拦截层用弹窗无障碍 hook（读 document）；与首页测试同一最小桩。
+  const previousDocument = Object.getOwnPropertyDescriptor(globalThis, "document");
+  Object.defineProperty(globalThis, "document", {
+    configurable: true,
+    value: { activeElement: null, addEventListener() {}, documentElement: { lang: "zh" }, removeEventListener() {} },
+  });
+  t.after(() => {
+    if (previousDocument) Object.defineProperty(globalThis, "document", previousDocument);
+    else Reflect.deleteProperty(globalThis, "document");
+  });
+  const mounted = await mount(
+    t,
+    <IOrbitPlan guide={PLAN_GUIDE} guideEnabled initialSnapshot={null} />,
+    (async (input: unknown) => {
+      calls.push(String(input));
+      return Response.json({ success: false }, { status: 404 });
+    }) as typeof fetch,
+  );
+  await mounted.settle();
+  const guard = () => mounted.root.root.findAll((node) => node.props?.["data-orbit-guide-demo-intercept"] !== undefined)[0] ?? null;
+  const dismiss = async () => {
+    await act(async () => {
+      guard()!
+        .findAll((node) => node.type === "button" && node.props?.["data-orbit-guide-demo-dismiss"] === true)[0]!
+        .props.onClick();
+    });
+    assert.equal(guard(), null);
+  };
+
+  // 打勾：弹拦截层，勾不变。
+  await act(async () => {
+    actionBox(mounted.root, "demo-plan-a-wang").props.onClick();
+  });
+  assert.ok(guard(), "ticking opens the demo guard");
+  assert.ok(flatText(guard()!).includes("你自己的计划"));
+  assert.equal(actionBox(mounted.root, "demo-plan-a-wang").props["aria-checked"], false);
+  await dismiss();
+
+  // 记下进展：弹拦截层，不写入。
+  const input = mounted.root.root.findAll((node) => node.type === "input" && node.props.id === "ir-p-log-input")[0]!;
+  await act(async () => {
+    input.props.onChange({ target: { value: "约好了下周二通电话" } });
+  });
+  let prevented = false;
+  await act(async () => {
+    mounted.root.root.findAll((node) => node.type === "form")[0]!.props.onSubmit({ preventDefault: () => (prevented = true) });
+  });
+  assert.ok(prevented);
+  assert.ok(guard(), "saving a note opens the demo guard");
+  assert.ok(flatText(guard()!).includes("你自己的进展记录"));
+  await dismiss();
+
+  await mounted.settle();
+  for (const endpoint of ["/api/agent/plans", "/api/agent/ledger", "/api/ai/conversations"]) {
+    assert.deepEqual(calls.filter((url) => url.startsWith(endpoint)), [], `demo plan must not call ${endpoint}`);
+  }
+  // 剩下的只有全站顶栏自己的账号读取（共用外壳，与 W0004 的口径相同）。
+  assert.deepEqual(calls.filter((url) => url !== "/api/account/me"), []);
 });
