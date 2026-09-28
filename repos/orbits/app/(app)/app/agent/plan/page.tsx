@@ -1,19 +1,54 @@
 /**
- * 执行计划 route adapter — Orbit_0918 iOrbit plan 屏（设计 429–501）。
+ * 「我的计划」route adapter（`/app/agent/plan`，RW-10，Sprint W0009）。
  *
- * 任务 5：视觉组件换成 iOrbit 壳下的 `iorbit-0918/iorbit-plan.tsx`；
- * 数据仍由客户端经既有通道加载（facts 快照 server action + 账本只读 API），
- * `plan-route-view-model.ts` 一行未改。
+ * 服务端以本人身份读当前生效计划（W0007 `PlanService.getCurrent()`）作为首帧交给
+ * `iorbit-0918/iorbit-plan.tsx`；读不到时显示「暂时读不到」，不伪造内容。打勾与手动记录
+ * 由客户端走 W0007 的接口。引导开关（`ORBIT_GUIDE_DEMO`）决定无计划时的落点：
+ * 打开 → `/app/start`（第 3 步生成计划），关闭 → `/app/agent`。
+ *
+ * 人脉需求里的联系人名字：按快照里关联的 id 列表一次批量读取（本人归属谓词，
+ * `features/plans/contact-names.ts`）；读失败只降级为占位名，不影响计划本身。
  */
 import { redirect } from "next/navigation";
 
 import { auth } from "../../../../../auth";
+import {
+  planContactIds,
+  readPlanContactNames,
+  type PlanContactName,
+} from "../../../../../features/plans/contact-names";
+import type { PlanSnapshot } from "../../../../../features/plans/contract";
+import { resolvePlanService } from "../../../../../features/plans/service-factory";
+import { readGuideDemoConfig } from "../../../../../shared/config/guide-demo";
 import { resolveAuthenticatedApiActorFromSession } from "../../../../api/_shared/authenticated-actor";
 import { OrbitReferenceStyles } from "../../orbit-reference-styles";
 import { OrbitVisualFreezeRuntime } from "../../orbit-visual-freeze-runtime";
 import { IOrbitPlan } from "../iorbit-0918/iorbit-plan";
 
 export const dynamic = "force-dynamic";
+
+/** 本人的当前生效计划；没有为 null，服务不可用或读取失败为 "unavailable"。 */
+async function readCurrentPlan(actorId: string): Promise<PlanSnapshot | null | "unavailable"> {
+  try {
+    const resolution = resolvePlanService({ actorId });
+    if (resolution.success === false) return "unavailable";
+    return await resolution.service.getCurrent();
+  } catch {
+    return "unavailable";
+  }
+}
+
+async function readContactNames(
+  actorId: string,
+  snapshot: PlanSnapshot | null | "unavailable",
+): Promise<Record<string, PlanContactName>> {
+  if (!snapshot || snapshot === "unavailable") return {};
+  try {
+    return await readPlanContactNames(actorId, planContactIds(snapshot));
+  } catch {
+    return {};
+  }
+}
 
 export default async function AgentPlanPage() {
   const session = await auth();
@@ -31,12 +66,18 @@ export default async function AgentPlanPage() {
   if (!actor) {
     throw new Error("Authenticated Orbit account membership is unavailable.");
   }
+  const snapshot = await readCurrentPlan(actor.id);
+  const contactNames = await readContactNames(actor.id, snapshot);
 
   return (
     <>
       <OrbitReferenceStyles />
       <OrbitVisualFreezeRuntime />
-      <IOrbitPlan />
+      <IOrbitPlan
+        contactNames={contactNames}
+        guideEnabled={readGuideDemoConfig().enabled}
+        initialSnapshot={snapshot}
+      />
     </>
   );
 }

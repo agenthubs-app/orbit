@@ -11,6 +11,7 @@
  */
 // 每条规则 = 设计稿一个 style="" 原样搬入；顺序与值不得改动。前缀 [data-orbit-real-page="iorbit-0918"]。
 import { IORBIT_HOME_STYLES } from "./iorbit-home-styles";
+import { IORBIT_MY_PLAN_STYLES } from "./iorbit-my-plan-styles";
 import { IORBIT_PLAN_CARD_STYLES } from "./iorbit-plan-card-styles";
 
 export const IORBIT_STYLES = `
@@ -574,4 +575,4 @@ export const IORBIT_STYLES = `
   [data-orbit-real-page="iorbit-0918"] .ir-two-col { grid-template-columns: minmax(0, 1fr); }
   [data-orbit-real-page="iorbit-0918"] .ir-contact-grid { grid-template-columns: minmax(0, 1fr); }
 }
-` + IORBIT_HOME_STYLES + IORBIT_PLAN_CARD_STYLES;
+` + IORBIT_HOME_STYLES + IORBIT_PLAN_CARD_STYLES + IORBIT_MY_PLAN_STYLES;
