@@ -12,6 +12,8 @@ export function useValidatedApiResource<TData>(
   options: {
     cachePolicy?: "default" | "network-only";
     scopeKey?: string | null;
+    /** Sprint 0117: false keeps the resource inert while the device copy is the source. */
+    enabled?: boolean;
   } = {},
 ): ApiResourceState<TData> {
   const state = useApiResource<unknown>(path, (data) => {

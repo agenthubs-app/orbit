@@ -11,16 +11,18 @@ import { auditOwnerWrites, setTargets, type OwnerWritePolicy, type ReassignCallP
 // column, and why it cannot make a row silently leave a device. A new writer,
 // or a new statement in a listed file, fails this test until it is classified.
 // Registered owner-change handlers: one first-owner handler, the 0114 owner
-// backfill (it never re-owns a row); no "reassign" handler exists.
+// backfill (it never re-owns a row), and one "reassign" handler, the 0117 demo
+// seed's event owner reset (it rotates the previous owners' epochs).
 export const OWNER_WRITE_MANIFEST: Readonly<Record<string, OwnerWritePolicy>> = {
   "shared/storage/postgres-live-record-store.ts": { policy: "owner-interface", statements: 2, how: "upsert keeps the stored owner (coalesce + conflict guard → LiveRecordOwnerConflictError); reassignRecordOwner is the explicit interface and calls assertRegisteredOwnerChange" },
   "features/appointments/notification-projector.ts": { policy: "preserves-owner", statements: 1, how: "reminder notifications: record id carries the actor; a foreign owner is refused" },
   "features/encounters/projection-repository.ts": { policy: "preserves-owner", statements: 1, how: "contact_detail_states: record id carries the actor; a foreign owner is refused" },
   "scripts/sync-cloud-records.ts": { policy: "preserves-owner", statements: 1, how: "cloud copy keeps local owners; conflicts are skipped and fail the run" },
   "features/connections/lifecycle/migration-repository.ts": { policy: "assigns-first-owner", statements: 1, how: "owner repair gives an unowned lifecycle row its actor (plan rejects an owned row with CONFLICT)" },
-  "scripts/bootstrap-event-organizer-accounts.ts": { policy: "assigns-first-owner", statements: 1, how: "organizer bootstrap only claims events with user_id is null" },
-  "features/events/organizer-accounts/owner-migration.ts": { policy: "non-registered", statements: 1, collections: "events (orbit_records 'events' is not a sync domain)" },
-  "scripts/seed-demo-workspace.ts": { policy: "non-registered", statements: 1, collections: "events (demo seed resets reviewed event owners before the owner plan)" },
+  "scripts/bootstrap-event-organizer-accounts.ts": { policy: "assigns-first-owner", statements: 1, how: "organizer bootstrap only claims accounts, contacts or profiles with user_id is null" },
+  // Sprint 0117: events is a sync collection (dashboard graph domain).
+  "features/events/organizer-accounts/owner-migration.ts": { policy: "assigns-first-owner", statements: 1, how: "the reviewed organizer owner plan sets an event's owner only where user_id is null or already the planned account (the plan refuses a drifted owner)" },
+  "scripts/seed-demo-workspace.ts": { policy: "handler", statements: 1, handler: "demo-event-owner-reset" },
   "features/sync/owner-backfill.ts": { policy: "handler", statements: 1, handler: "owner-backfill-0114" },
 };
 
@@ -35,8 +37,11 @@ const ROOT = join(__dirname, "../..");
 test("every statement that sets a sync owner/visibility column is classified, and no owner change is unregistered", () => {
   assert.deepEqual(
     SYNC_OWNER_CHANGE_HANDLER_DEFINITIONS.map(({ name, scope, collections }) => ({ name, scope, collections })),
-    [{ name: "owner-backfill-0114", scope: "first-owner", collections: ["contacts", "connections", "contact_detail_states", "evidence"] }],
-    "the only registered handler gives first owners to contact rows; nothing may re-own a sync row",
+    [
+      { name: "owner-backfill-0114", scope: "first-owner", collections: ["contacts", "connections", "contact_detail_states", "evidence"] },
+      { name: "demo-event-owner-reset", scope: "reassign", collections: ["events"] },
+    ],
+    "first owners for contact rows, and only the demo seed may re-own a sync row (events, with the epoch rotation)",
   );
   assert.deepEqual(auditOwnerWrites(ROOT, DECLARED_SYNC_DOMAINS, OWNER_WRITE_MANIFEST, REASSIGN_CALL_MANIFEST), []);
 });

@@ -1,8 +1,10 @@
 import { resolveFeatureMode, type FeatureMode } from "../../shared/config/feature-mode";
 import {
+  mobileContactsAnalysisOverviewPayloadSchema,
   mobileContactsDashboardPayloadSchema,
   mobileContactsDashboardSectionSchemas,
   MOBILE_CONTACTS_DASHBOARD_OPTIONAL_SECTIONS,
+  type MobileContactsAnalysisOverviewPayload,
   type MobileContactsDashboardOptionalSection,
   type MobileContactsDashboardPayload,
 } from "../../shared/api-schema/mobile-contacts-dashboard";
@@ -85,37 +87,10 @@ export interface MobileContactsDashboardRoleCount {
   count: number;
 }
 
-function stringValue(value: unknown): string | null {
-  return typeof value === "string" && value.trim() ? value : null;
-}
-
-/** Contact ids that the contacts-analysis page (App and web) displays or links. */
-export function referencedContactIds(sections: {
-  aggregate: unknown;
-  opportunities: unknown;
-}): readonly string[] {
-  const ids = new Set<string>();
-  const add = (value: unknown) => {
-    const id = stringValue(value);
-    if (id) ids.add(id);
-  };
-  const list = (value: unknown): readonly Record<string, unknown>[] =>
-    Array.isArray(value)
-      ? value.filter((item): item is Record<string, unknown> => typeof item === "object" && item !== null)
-      : [];
-  const aggregate = (sections.aggregate ?? {}) as Record<string, any>;
-  for (const item of list(aggregate.newContacts?.contacts)) add(item.contactId);
-  for (const item of list(aggregate.dormantContacts?.contacts)) add(item.contactId);
-  const opportunities = (sections.opportunities ?? {}) as Record<string, any>;
-  for (const item of list(opportunities.highPriorityOpportunities)) {
-    add(item.contactId);
-    const brief = (item.actionBrief ?? {}) as Record<string, any>;
-    add(brief.primaryAction?.contactId);
-    add(brief.secondaryAction?.contactId);
-  }
-  for (const item of list(opportunities.dormantHighValueContacts)) add(item.contactId);
-  return [...ids];
-}
+// Sprint 0117: the page's referenced contacts are chosen by the shared code, so
+// the App (computing the page on the device) names the same contacts.
+import { referencedContactIds } from "../../shared/compute/dashboard-local";
+export { referencedContactIds };
 
 export interface MobileContactsDashboardInput {
   actorId: string;
@@ -141,6 +116,10 @@ export type MobileContactsDashboardResult =
       };
     };
 
+export type MobileContactsAnalysisOverviewResult =
+  | { success: true; data: MobileContactsAnalysisOverviewPayload }
+  | { success: false; error: { code: MobileContactsDashboardFailureCode; section: "aggregate" } };
+
 export type MobileContactsAnalysisSourceResult =
   | { success: true; source: ContactsAnalysisSource }
   | { success: false; error: "conflict" | "unavailable" };
@@ -159,6 +138,13 @@ export interface MobileContactsDashboardService {
     actorId: string;
     claimedSourceDataVersion: string;
   }) => Promise<MobileContactsAnalysisSourceResult>;
+  /**
+   * Sprint 0117 (dashboard D3): the AI report and the profile it is bound to,
+   * for a client that computes every section itself (the App, from its
+   * dashboard-graph copy). With a graph version this costs the version query,
+   * the profile and the report sessions — no section, graph or contact read.
+   */
+  getAnalysisOverview?: (input: { actorId: string }) => Promise<MobileContactsAnalysisOverviewResult>;
 }
 
 function optionalSection(
@@ -328,6 +314,49 @@ export function createMobileContactsDashboardService(
           ? { success: true, source: assembled.analysisSource }
           : { success: false, error: "unavailable" };
       });
+    },
+
+    async getAnalysisOverview({ actorId }) {
+      const [graphVersion, profile] = await withDashboardLiveReadScope(() => Promise.all([
+        loadGraphVersion(actorId),
+        settle(() => dependencies.loadProfile(actorId)),
+      ]));
+      const profileSection = optionalSection("profile", profile);
+      let source: ContactsAnalysisSource;
+      if (graphVersion === null) {
+        // Without a graph version the report's version is the content hash of
+        // the whole page source, so the sections are read as for the full page.
+        const assembled = assemble(await withDashboardLiveReadScope(() => loadSections(actorId, profile)));
+        if (!assembled.success) return { success: false, error: assembled.error };
+        source = assembled.analysisSource;
+      } else {
+        // The version binds only the graph version and the profile (0121).
+        source = { graphVersion, profile: profileSection.data } as unknown as ContactsAnalysisSource;
+      }
+      let analysis: ReturnType<typeof optionalSection> | undefined;
+      if (dependencies.loadAnalysis) {
+        let analysisResult: MobileContactsDashboardSectionResult;
+        try {
+          analysisResult = await dependencies.loadAnalysis(actorId, source);
+        } catch (error) {
+          analysisResult = { success: false, error };
+        }
+        analysis = optionalSection("analysis", analysisResult);
+      }
+      const payload = mobileContactsAnalysisOverviewPayloadSchema.safeParse({
+        schemaVersion: 1,
+        generatedAt: now(),
+        ...(analysis ? { analysis: analysis.data } : {}),
+        profile: profileSection.data,
+        unavailableSections: [
+          ...(analysis?.unavailable ? ["analysis" as const] : []),
+          ...(profileSection.unavailable ? ["profile" as const] : []),
+        ],
+      });
+      if (!payload.success) {
+        return { success: false, error: { code: "MOBILE_CONTACTS_DASHBOARD_CONTRACT_MISMATCH", section: "aggregate" } };
+      }
+      return { success: true, data: payload.data };
     },
 
     async getDashboard({ actorId, contactsScope = "referenced" }) {

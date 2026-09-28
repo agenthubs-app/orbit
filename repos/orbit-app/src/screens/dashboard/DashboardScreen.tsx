@@ -20,11 +20,14 @@ import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
+import { OfflineNotice } from "../../components/OfflineNotice";
 import { textStyles, radius, spacing } from "../../design/tokens";
 import { createControlStyles } from "../../design/controls";
 import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useLoadingDeadline } from "../../hooks/useLoadingDeadline";
+import { useLocalDashboard } from "../../hooks/useLocalDashboard";
+import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import {
   dashboardAuditRunToView,
@@ -57,25 +60,42 @@ export function DashboardScreen() {
     useState<DashboardAuditRunView | null>(null);
   const [auditError, setAuditError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
+  /**
+   * Sprint 0117 (dashboard D3): the sections are computed on the device from
+   * its copy of the dashboard graph (sync domain "dashboard-graph") with the
+   * server's own code, so the five dashboard reads stay inert while the mirror
+   * is this platform's source (always on native; in a browser when its mirror
+   * is active). The source audit is not a dashboard computation and is still
+   * read online.
+   */
+  const local = useLocalDashboard();
+  const localMode = local.available;
+  const localSections = localMode ? local.sections : null;
+  const offline = localMode && local.freshness.offline;
   const aggregateState = useApiResource<unknown>(
     dashboardAggregatePath(4),
-    (data) => dashboardToView({ aggregate: data }).metrics.every((item) => item.value === "0")
+    (data) => isEmptyDashboard(data),
+    { enabled: !localMode }
   );
   const summaryState = useApiResource<unknown>(
     ORBIT_API_ENDPOINTS.dashboardSummary,
-    () => false
+    () => false,
+    { enabled: !localMode }
   );
   const opportunitiesState = useApiResource<unknown>(
     ORBIT_API_ENDPOINTS.dashboardOpportunities,
-    () => false
+    () => false,
+    { enabled: !localMode }
   );
   const gapsState = useApiResource<unknown>(
     ORBIT_API_ENDPOINTS.dashboardNetworkGaps,
-    () => false
+    () => false,
+    { enabled: !localMode }
   );
   const distributionsState = useApiResource<unknown>(
     ORBIT_API_ENDPOINTS.dashboardDistributions,
-    () => false
+    () => false,
+    { enabled: !localMode }
   );
   const auditState = useApiResource<unknown>(
     dashboardProvenanceAuditPath(),
@@ -88,7 +108,7 @@ export function DashboardScreen() {
    * first paint waited on `aggregate` alone. Past the ceiling each unfinished
    * read says so and can be retried, and the sections that did land render.
    */
-  const coverageOverdue = useLoadingDeadline(aggregateState.kind === "loading", String(retryCount));
+  const coverageOverdue = useLoadingDeadline(!localMode && aggregateState.kind === "loading", String(retryCount));
   const landed =
     aggregateState.kind !== "loading" ||
     [summaryState, opportunitiesState, gapsState, distributionsState, auditState]
@@ -96,6 +116,7 @@ export function DashboardScreen() {
 
   function refreshAll() {
     setRecomputeError(null);
+    if (localMode) local.refresh();
     setAuditError(null);
     // Restarts the coverage ceiling: a retry must not inherit the timeout the
     // user just dismissed.
@@ -109,6 +130,7 @@ export function DashboardScreen() {
   }
 
   async function recomputeDashboardOpportunities() {
+    if (offline) return;
     setRecomputing(true);
     setRecomputeResult(null);
     setRecomputeError(null);
@@ -136,6 +158,7 @@ export function DashboardScreen() {
   }
 
   async function runDashboardAudit() {
+    if (offline) return;
     setAuditing(true);
     setAuditRunResult(null);
     setAuditError(null);
@@ -165,6 +188,7 @@ export function DashboardScreen() {
         <RefreshControl
           onRefresh={refreshAll}
           refreshing={
+            (localMode && local.freshness.refreshing) ||
             aggregateState.refreshing ||
             summaryState.refreshing ||
             opportunitiesState.refreshing ||
@@ -177,24 +201,65 @@ export function DashboardScreen() {
       }
       title="关系仪表盘"
     >
-      {!landed ? <LoadingState /> : null}
-      {aggregateState.kind === "offline" ? (
+      {localMode ? (
+        <>
+          {offline ? <OfflineNotice lastSyncedAt={local.freshness.lastSyncedAt} /> : null}
+          {local.freshness.failure ? (
+            <ErrorState message={local.freshness.failure} title="服务器连不上" />
+          ) : null}
+          {local.error ? <ErrorState message={local.error} /> : null}
+          {!local.freshness.failure && !local.error && !localSections ? <LoadingState /> : null}
+          {!offline && auditState.kind === "failure" ? (
+            <ErrorState message={auditState.error.message} title="来源审计不可用" />
+          ) : null}
+          {localSections && isEmptyDashboard(localSections.aggregate) ? (
+            <EmptyState
+              message="先补一位联系人或一项待办，仪表盘会开始显示关系覆盖。"
+              title="暂无关系数据"
+            />
+          ) : null}
+          {localSections && !isEmptyDashboard(localSections.aggregate) ? (
+            <DashboardContent
+              aggregate={localSections.aggregate}
+              audit={auditState.kind === "success" || auditState.kind === "empty" ? auditState.data : null}
+              auditError={auditError}
+              auditRunResult={auditRunResult}
+              auditing={auditing}
+              coverageState="ready"
+              distributions={localSections.distributions}
+              gaps={localSections.gaps}
+              offline={offline}
+              onRetryCoverage={refreshAll}
+              onRunAudit={runDashboardAudit}
+              onRecompute={recomputeDashboardOpportunities}
+              opportunities={localSections.opportunities}
+              recomputeError={recomputeError}
+              recomputeResult={recomputeResult}
+              recomputing={recomputing}
+              summary={localSections.summary}
+            />
+          ) : null}
+        </>
+      ) : null}
+      {!localMode && !landed ? <LoadingState /> : null}
+      {!localMode && aggregateState.kind === "offline" ? (
         <ErrorState message={aggregateState.error.message} title="服务器连不上" />
       ) : null}
-      {aggregateState.kind === "failure" ? (
+      {!localMode && aggregateState.kind === "failure" ? (
         <ErrorState message={aggregateState.error.message} />
       ) : null}
-      {auditState.kind === "failure" ? (
+      {!localMode && auditState.kind === "failure" ? (
         <ErrorState message={auditState.error.message} title="来源审计不可用" />
       ) : null}
-      {aggregateState.kind === "empty" ? (
+      {!localMode && aggregateState.kind === "empty" ? (
         <EmptyState
           message="先补一位联系人或一项待办，仪表盘会开始显示关系覆盖。"
           title="暂无关系数据"
         />
       ) : null}
-      {landed && aggregateState.kind !== "empty" ? (
+      {!localMode && landed && aggregateState.kind !== "empty" ? (
         <DashboardContent
+          offline={false}
           aggregate={aggregateState.kind === "success" ? aggregateState.data : null}
           coverageState={
             aggregateState.kind === "success"
@@ -233,6 +298,11 @@ export function DashboardScreen() {
   );
 }
 
+/** The dashboard's own "nothing yet" rule: every metric is zero. */
+function isEmptyDashboard(aggregate: unknown): boolean {
+  return dashboardToView({ aggregate }).metrics.every((item) => item.value === "0");
+}
+
 /** Sprint 0088: the coverage card states its own outcome, so one unfinished read cannot blank the page. */
 type CoverageState = "ready" | "loading" | "overdue" | "unavailable";
 
@@ -248,6 +318,7 @@ function DashboardContent({
   onRetryCoverage,
   onRunAudit,
   onRecompute,
+  offline,
   opportunities,
   recomputeError,
   recomputeResult,
@@ -265,6 +336,8 @@ function DashboardContent({
   gaps: unknown;
   onRunAudit: () => void;
   onRecompute: () => void;
+  /** Sprint 0117: the device copy is shown offline; recomputing and the audit run need the server. */
+  offline: boolean;
   opportunities: unknown;
   recomputeError: string | null;
   recomputeResult: DashboardOpportunitiesRecomputeView | null;
@@ -273,6 +346,8 @@ function DashboardContent({
 }) {
   const { colors, styles } = useStyles();
   const router = useRouter();
+  const locale = useOrbitLocale();
+  const needsNetwork = locale.t("sync.needsNetwork");
   const view = dashboardToView({
     aggregate,
     distributions,
@@ -320,17 +395,18 @@ function DashboardContent({
         )}
         <Pressable
           accessibilityRole="button"
-          disabled={recomputing}
+          accessibilityState={{ disabled: recomputing || offline }}
+          disabled={recomputing || offline}
           onPress={onRecompute}
           style={({ pressed }) => [
             styles.recomputeButton,
-            recomputing ? styles.disabled : null,
+            recomputing || offline ? styles.disabled : null,
             pressed ? styles.pressed : null
           ]}
         >
           <Ionicons color={colors.onAccent} name="refresh-outline" size={17} />
           <Text style={styles.recomputeButtonText}>
-            {recomputing ? "计算中" : "重新计算机会"}
+            {recomputing ? "计算中" : offline ? `重新计算机会 · ${needsNetwork}` : "重新计算机会"}
           </Text>
         </Pressable>
       </DataCard>
@@ -356,6 +432,7 @@ function DashboardContent({
           auditError={auditError}
           auditRunResult={auditRunResult}
           auditing={auditing}
+          offline={offline}
           onRunAudit={onRunAudit}
         />
       ) : null}
@@ -411,15 +488,18 @@ function DashboardAuditCard({
   auditError,
   auditRunResult,
   auditing,
+  offline,
   onRunAudit
 }: {
   audit: DashboardAuditView;
   auditError: string | null;
   auditRunResult: DashboardAuditRunView | null;
   auditing: boolean;
+  offline: boolean;
   onRunAudit: () => void;
 }) {
   const { colors, styles } = useStyles();
+  const locale = useOrbitLocale();
   const collections = audit.collections.slice(0, 4);
   const findings = audit.findings.slice(0, 2);
 
@@ -464,17 +544,18 @@ function DashboardAuditCard({
       {auditError ? <Text style={styles.errorText}>{auditError}</Text> : null}
       <Pressable
         accessibilityRole="button"
-        disabled={auditing}
+        accessibilityState={{ disabled: auditing || offline }}
+        disabled={auditing || offline}
         onPress={onRunAudit}
         style={({ pressed }) => [
           styles.recomputeButton,
-          auditing ? styles.disabled : null,
+          auditing || offline ? styles.disabled : null,
           pressed ? styles.pressed : null
         ]}
       >
         <Ionicons color={colors.onAccent} name="refresh-outline" size={17} />
         <Text style={styles.recomputeButtonText}>
-          {auditing ? "审计中" : "运行来源审计"}
+          {auditing ? "审计中" : offline ? `运行来源审计 · ${locale.t("sync.needsNetwork")}` : "运行来源审计"}
         </Text>
       </Pressable>
     </DataCard>

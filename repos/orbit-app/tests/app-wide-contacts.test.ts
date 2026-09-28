@@ -31,6 +31,9 @@ const mobile = {
   unavailableSections: []
 };
 export const useLocalSearchParams = () => ({ dimension: "industry", bucketId: "industry:technology" });
+// Sprint 0117: these cases cover the server-read path (a browser without its mirror); the device path has its own tests.
+export const useLocalContacts = () => ({ available: false, rows: [], freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh() {} });
+export const useLocalDashboard = () => ({ available: false, sections: null, error: null, freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh() {} });
 export const usePathname = () => "/contacts";
 export const useRouter = () => ({ canGoBack: () => false, back() { state.navigation.push("back"); }, replace(path) { state.navigation.push(path); }, push(path) { state.navigation.push(path); } });
 const structure = { dimension: "industry", bucket: { label: "科技合作伙伴", contactCount: 1, percentage: 100 }, contacts: [{ ...contacts.contacts[0], relationshipStrength: "strong" }], commonTags: [{ label: "日本市场", contactCount: 1 }], relationshipQuality: [{ id: "strong", label: "强关系", contactCount: 1, percentage: 100 }], insight: "科技合作伙伴已有交流基础。" };
@@ -82,7 +85,7 @@ createRoot(document.getElementById("root")).render(<Screen />);`, resolveDir: pr
     plugins: [{ name: "contacts-boundaries", setup(plugin) {
       plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: require.resolve("react-native-web") }));
       plugin.onResolve({ filter: /^react-native-svg$/ }, () => ({ path: require.resolve("react-native-svg/lib/module/ReactNativeSVG.web.js") }));
-      plugin.onResolve({ filter: /^(expo-router|expo-crypto|@expo\/vector-icons|react-native-safe-area-context|expo-camera|expo-image-picker)$|\/(useApiResource|useValidatedApiResource|useOrbitApiClient|ApiBaseUrlProvider|AuthSessionProvider|useRelationshipInboxBadgeCount)$/ }, () => ({ path: "fixture", namespace: "contacts-test" }));
+      plugin.onResolve({ filter: /^(expo-router|expo-crypto|@expo\/vector-icons|react-native-safe-area-context|expo-camera|expo-image-picker)$|\/(useApiResource|useValidatedApiResource|useOrbitApiClient|ApiBaseUrlProvider|AuthSessionProvider|useRelationshipInboxBadgeCount|useLocalDashboard|useLocalContacts)$/ }, () => ({ path: "fixture", namespace: "contacts-test" }));
       plugin.onLoad({ filter: /.*/, namespace: "contacts-test" }, () => ({ contents: fixture, loader: "jsx", resolveDir: process.cwd() }));
     } }]
   });

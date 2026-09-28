@@ -79,10 +79,14 @@ async function seedHost({ client }: Host) {
   for (let n = 1; n <= SEED.b.tasks; n += 1) await insertTaskUnderLock(client, B, `task:b:${n}`);
   for (let n = 1; n <= SEED.organizer.tasks; n += 1) await insertTaskUnderLock(client, ORGANIZER, `task:organizer:${n}`);
   for (let n = 1; n <= SEED.organizer.events; n += 1) {
-    await client.query(INSERT, [WORKSPACE, "events", `event:${n}`, ORGANIZER, JSON.stringify({
-      id: `event:${n}`, name: `Event ${n}`, location: "Tokyo", startsAt: NOW, endsAt: NOW, organizerId: ORGANIZER,
-      source: { type: "manual", id: "flow-topology" }, evidenceIds: ["evidence:seed"],
-    }), NOW]);
+    // Sprint 0117: events is a sync collection too (dashboard graph), so its writers hold the lock.
+    await client.transaction(async (tx) => {
+      await tx.query("select orbit_records_acquire_sync_write_lock('events')");
+      await tx.query(INSERT, [WORKSPACE, "events", `event:${n}`, ORGANIZER, JSON.stringify({
+        id: `event:${n}`, name: `Event ${n}`, location: "Tokyo", startsAt: NOW, endsAt: NOW, organizerId: ORGANIZER,
+        source: { type: "manual", id: "flow-topology" }, evidenceIds: ["evidence:seed"],
+      }), NOW]);
+    });
   }
 }
 

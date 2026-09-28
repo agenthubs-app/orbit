@@ -1,3 +1,4 @@
+import { DashboardSummaryRequiresGraphFallback } from "../../../shared/compute/dashboard-aggregate";
 import {
   DASHBOARD_AGGREGATE_ERROR_DEFINITIONS,
   DASHBOARD_SHORT_LIST_LIMIT,
@@ -714,12 +715,8 @@ export async function queryWithActivityCollation<TResult>(
   }
 }
 
-export class DashboardSummaryRequiresGraphFallback extends Error {
-  constructor() {
-    super("Dashboard summary activity strings require the full graph ordering fallback");
-    this.name = "DashboardSummaryRequiresGraphFallback";
-  }
-}
+// Sprint 0117: the class lives with the shared aggregate service that catches it.
+export { DashboardSummaryRequiresGraphFallback };
 
 export function createDashboardSummaryPostgresReader({
   client,

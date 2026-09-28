@@ -26,7 +26,8 @@ test("同步命令不会复制未授权的 domain 文件，并清理过期副本
   const source = join(root, "orbits", "shared");
   mkdirSync(join(app, "scripts"), { recursive: true });
   copyFileSync(join(appRoot, "scripts", "sync-contract.mjs"), join(app, "scripts", "sync-contract.mjs"));
-  for (const directory of ["contract", "api-schema", "domain"]) {
+  // Sprint 0117: the sync also copies the shared compute directory, so the fixture has one.
+  for (const directory of ["contract", "api-schema", "domain", "compute"]) {
     mkdirSync(join(source, directory), { recursive: true });
   }
   writeFileSync(join(source, "contract", "index.ts"), "export type Identifier = string;\n");
@@ -34,6 +35,7 @@ test("同步命令不会复制未授权的 domain 文件，并清理过期副本
   writeFileSync(join(source, "domain", "industries.ts"), "export const INDUSTRY_IDS = ['other'] as const;\n");
   writeFileSync(join(source, "domain", "language.ts"), "export const ORBIT_LANGUAGES = ['zh'] as const;\n");
   writeFileSync(join(source, "domain", "server-only.ts"), "export const privateRuntime = true;\n");
+  writeFileSync(join(source, "compute", "compute-text.ts"), "export const compareText = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);\n");
   const target = join(app, "src", "api", "domain");
   mkdirSync(target, { recursive: true });
   writeFileSync(join(target, "stale.ts"), "export const stale = true;\n");

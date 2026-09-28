@@ -109,7 +109,24 @@ export interface ContactGraphSyncSource {
   collections: readonly string[];
 }
 
-export type SyncDomainSource = OrbitRecordsSyncSource | DedicatedTableSyncSource | EventDerivedSyncSource | ContactGraphSyncSource;
+/**
+ * Dashboard graph source (sprint 0117): one row per stored record of the
+ * actor's six dashboard graph collections (user_id = owner; a contact whose
+ * payload accountId names another account is not in the owner's graph). A row's
+ * revision is the record's own sync_revision; a soft-deleted record, or a
+ * contact that leaves the owner's account, is sent as a delete. The payload is
+ * the projection the server's own graph read selects (a source row carries only
+ * its record time), so the device computes the dashboard with the server's code
+ * on the same records (features/sync/dashboard-graph-reader.ts,
+ * shared/compute/dashboard-graph.ts).
+ */
+export interface DashboardGraphSyncSource {
+  kind: "dashboard_graph";
+  /** Every collection the rows come from; all are owner guarded and take the commit-order lock. */
+  collections: readonly string[];
+}
+
+export type SyncDomainSource = OrbitRecordsSyncSource | DedicatedTableSyncSource | EventDerivedSyncSource | ContactGraphSyncSource | DashboardGraphSyncSource;
 
 export interface SyncDomainDefinition {
   domainId: string;
@@ -189,6 +206,25 @@ export const CONTACT_SYNC_DOMAINS: readonly SyncDomainDefinition[] = [
     ],
     fields: ["id", "card", "tags", "search", "detail"],
     source: { kind: "contact_graph", collectionName: "contacts", collections: ["contacts", "connections", "contact_detail_states", "evidence"] },
+  },
+];
+
+/**
+ * Sprint 0117 (dashboard D3): the account's relationship graph as the
+ * dashboard reads it, so the App computes the dashboard and the contacts
+ * analysis on the device. The universal-table events collection (per user_id)
+ * joins the sync collections here; it is not the dedicated event tables the
+ * 0115 event domains read.
+ */
+export const DASHBOARD_SYNC_DOMAINS: readonly SyncDomainDefinition[] = [
+  {
+    domainId: "dashboard-graph",
+    exposure: "device",
+    ownership: OWNER_COLUMN,
+    visibilityInputs: ["user_id", "collection_name"],
+    attachments: [],
+    fields: ["collection", "recordId", "occurredAt", "updatedAt", "data"],
+    source: { kind: "dashboard_graph", collections: ["connections", "contact_detail_states", "contacts", "events", "evidence", "tasks"] },
   },
 ];
 
@@ -272,7 +308,7 @@ export const EVENT_MEMBERSHIP_PROBE_DOMAIN: SyncDomainDefinition = {
 };
 
 /** Every device domain, leased to each authorized account. */
-export const SYNC_DOMAINS: readonly SyncDomainDefinition[] = [...RECORD_SYNC_DOMAINS, ...CONTACT_SYNC_DOMAINS, ...EVENT_SYNC_DOMAINS];
+export const SYNC_DOMAINS: readonly SyncDomainDefinition[] = [...RECORD_SYNC_DOMAINS, ...CONTACT_SYNC_DOMAINS, ...EVENT_SYNC_DOMAINS, ...DASHBOARD_SYNC_DOMAINS];
 
 /** Every declared manual, leased or not: the owner/identity audit covers all of them. */
 export const DECLARED_SYNC_DOMAINS: readonly SyncDomainDefinition[] = [...SYNC_DOMAINS, EVENT_MEMBERSHIP_PROBE_DOMAIN];
@@ -316,6 +352,12 @@ export const SYNC_OWNER_CHANGE_HANDLER_DEFINITIONS: readonly SyncOwnerChangeHand
     collections: ["contacts", "connections", "contact_detail_states", "evidence"],
     description: "Sprint 0114 owner backfill (scripts/backfill-owners.ts): gives owner-less contact rows their owner by reference or by the demo account that generated them, and gives a shared source a per-owner copy (a new row, not an owner change).",
   },
+  {
+    name: "demo-event-owner-reset",
+    scope: "reassign",
+    collections: ["events"],
+    description: "Sprint 0117: the demo workspace seed (scripts/seed-demo-workspace.ts) clears the reviewed catalogue events' owners before re-applying the reviewed organizer owner plan. Events became a sync collection (dashboard graph). In the same transaction it rotates each previous owner's authorization epoch (rotateAuthorizationEpochs in features/sync/owner-guard.ts), so every device of theirs rebuilds its domains without the events it no longer owns.",
+  },
 ];
 
 export const SYNC_OWNER_CHANGE_HANDLERS: readonly string[] = SYNC_OWNER_CHANGE_HANDLER_DEFINITIONS.map((handler) => handler.name);
@@ -335,10 +377,14 @@ export function findSyncDomain(domainId: string, domains: readonly SyncDomainDef
   return domains.find((domain) => domain.domainId === domainId) ?? null;
 }
 
-/** orbit_records collections whose owner is a visibility input: the domains' own and their attachments (sprint 0116: the contact graph's four). */
+/** orbit_records collections whose owner is a visibility input: the domains' own and their attachments (sprint 0116: the contact graph's four; sprint 0117: the dashboard graph's six, events included). */
 export function ownerGuardedCollections(domains: readonly SyncDomainDefinition[] = DECLARED_SYNC_DOMAINS): string[] {
   const names = new Set<string>();
   for (const domain of domains) {
+    if (domain.source.kind === "dashboard_graph") {
+      for (const name of domain.source.collections) names.add(name);
+      continue;
+    }
     if (domain.source.kind !== "orbit_records" && domain.source.kind !== "contact_graph") continue;
     names.add(domain.source.collectionName);
     if (domain.source.kind === "contact_graph") for (const name of domain.source.collections) names.add(name);

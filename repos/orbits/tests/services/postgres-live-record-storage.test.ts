@@ -81,10 +81,13 @@ function createFakeSqlClient(
 }
 
 test("insert-if-absent uses one atomic SQL statement and never updates on conflict", async () => {
-  const client = createFakeSqlClient([[rowFromRecord(baseRecord)], []]);
+  // Sprint 0117: events is a sync collection (its writes take the commit-order
+  // lock CTE); the plain statement shape is checked on a non-sync collection.
+  const record = { ...baseRecord, collectionName: "organizers" };
+  const client = createFakeSqlClient([[rowFromRecord(record)], []]);
   const store = createPostgresLiveRecordStore({ client });
-  assert.deepEqual(await store.insertRecordIfAbsent!(baseRecord), { ...baseRecord, deletedAt: null });
-  assert.equal(await store.insertRecordIfAbsent!(baseRecord), null);
+  assert.deepEqual(await store.insertRecordIfAbsent!(record), { ...record, deletedAt: null });
+  assert.equal(await store.insertRecordIfAbsent!(record), null);
   assert.equal(client.calls.length, 2);
   for (const call of client.calls) {
     assert.match(call.text, /on conflict \(workspace_id, collection_name, record_id\)\s+do nothing/i);

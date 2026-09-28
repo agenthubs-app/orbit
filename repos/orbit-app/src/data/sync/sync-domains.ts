@@ -18,6 +18,8 @@ export const KNOWN_SYNC_DOMAINS: Readonly<Record<string, SyncChangeKind>> = {
   "event-published-results": "event_published_result",
   // Sprint 0116: the account's contacts (list, search, detail, linked-contact chips).
   contacts: "contact",
+  // Sprint 0117: the account's dashboard graph (the dashboard and contacts analysis are computed on the device).
+  "dashboard-graph": "dashboard_graph",
 };
 
 export function kindOfSyncDomain(domainId: string): SyncChangeKind | null {

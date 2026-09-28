@@ -24,6 +24,50 @@ import { derivedOwnerTables, ownerGuardedCollections, reassigningOwnerChangeHand
  */
 export const SYNC_OWNER_CHANGE_SETTING = "orbit.sync_owner_change_handler";
 
+interface OwnerChangeExecutor {
+  query(text: string, values?: readonly unknown[]): Promise<unknown>;
+}
+
+/**
+ * Sprint 0117: run the rest of the current transaction as a registered
+ * "reassign" handler (the database guard then lets it move rows of the
+ * handler's collections). The caller must also rotate the previous owners'
+ * authorization epochs in the same transaction (rotateAuthorizationEpochs).
+ */
+export async function actAsOwnerChangeHandler(executor: OwnerChangeExecutor, handler: string): Promise<void> {
+  if (!reassigningOwnerChangeHandlers().includes(handler)) throw new SyncOwnerChangeUnregisteredError("(any)", handler);
+  await executor.query(`select set_config('${SYNC_OWNER_CHANGE_SETTING}', $1, true)`, [handler]);
+}
+
+/**
+ * Sprint 0117: a "reassign" handler's duty to the previous owners. A device is
+ * never told that a row left it, so the handler moves each previous owner's
+ * authorization epoch (features/sync/authorization-epoch.ts: the latest
+ * updated_at of the actor's account, auth user and permission rows): their
+ * cursors are refused (409) and their devices rebuild every domain from what
+ * they own now. Touches only the account row's updated_at.
+ */
+export const ROTATE_AUTHORIZATION_EPOCH_SQL = `
+  update orbit_records as account
+  set updated_at = greatest(now(), latest.max_updated_at + interval '1 millisecond')
+  from (
+    select actor.id, max(auth.updated_at) as max_updated_at
+    from unnest($2::text[]) as actor(id)
+    join orbit_records auth on auth.workspace_id = $1
+      and ((auth.collection_name in ('auth_users', 'accounts', 'permissions') and auth.user_id = actor.id)
+        or (auth.collection_name = 'accounts' and auth.record_id = actor.id))
+    group by actor.id
+  ) latest
+  where account.workspace_id = $1
+    and account.collection_name = 'accounts'
+    and account.record_id = latest.id
+`;
+
+export async function rotateAuthorizationEpochs(executor: OwnerChangeExecutor, workspaceId: string, actorIds: readonly string[]): Promise<void> {
+  const ids = [...new Set(actorIds.filter((id) => id.trim().length > 0))];
+  if (ids.length > 0) await executor.query(ROTATE_AUTHORIZATION_EPOCH_SQL, [workspaceId, ids]);
+}
+
 export class SyncOwnerChangeUnregisteredError extends Error {
   readonly code = "SYNC_OWNER_CHANGE_UNREGISTERED";
   constructor(readonly collectionName: string, readonly handler: string | undefined) {

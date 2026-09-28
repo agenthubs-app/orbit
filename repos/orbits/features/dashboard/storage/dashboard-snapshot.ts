@@ -1,12 +1,7 @@
+import type { DashboardAnalysisSnapshot } from "../../../shared/compute/dashboard-aggregate";
 import type { LiveRecordSqlClient } from "../../../shared/storage/postgres-live-record-store";
-import {
-  networkGapCoreFromGraph,
-  type NetworkGapCore,
-} from "../live-distribution-service";
-import {
-  opportunityCoreFromGraph,
-  type OpportunityCore,
-} from "../live-opportunity-service";
+import { networkGapCoreFromGraph } from "../live-distribution-service";
+import { opportunityCoreFromGraph } from "../live-opportunity-service";
 import type { LiveDashboardGraph } from "./dashboard-live-record-provider";
 
 /**
@@ -34,11 +29,8 @@ export const DASHBOARD_SNAPSHOT_COLLECTION = "dashboard_snapshots";
 /** Bump when gap or opportunity rules change so stored snapshots are recomputed. */
 export const DASHBOARD_SNAPSHOT_SCHEMA_VERSION = 1;
 
-export interface DashboardAnalysisSnapshot {
-  graphVersion: string;
-  gaps: NetworkGapCore;
-  opportunities: OpportunityCore;
-}
+// Sprint 0117: the snapshot shape lives with the shared computations.
+export type { DashboardAnalysisSnapshot };
 
 interface StoredDashboardSnapshotPayload extends DashboardAnalysisSnapshot {
   schemaVersion: number;

@@ -188,7 +188,8 @@ function hasChineseCopy(value: string): boolean {
   return /[\u3400-\u9fff]/u.test(value);
 }
 
-function localizedApiErrorMessage(
+/** Sprint 0117: exported so a device-computed failure shows the text the server's answer would. */
+export function localizedApiErrorMessage(
   error: ApiErrorBody,
   status: number
 ): string {

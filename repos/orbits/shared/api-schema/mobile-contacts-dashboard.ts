@@ -427,6 +427,31 @@ export const mobileContactsDashboardPayloadSchema = z.object({
   unavailableSections: z.array(z.enum(MOBILE_CONTACTS_DASHBOARD_OPTIONAL_SECTIONS)),
 });
 
+/**
+ * Sprint 0117 (dashboard D3): GET /api/mobile/contacts-dashboard?view=analysis.
+ * The App computes every section on the device (sync domain dashboard-graph)
+ * and reads only what it cannot compute: the AI analysis report (with the
+ * version the page asks the AI with) and the profile the report is bound to.
+ */
+export const MOBILE_CONTACTS_DASHBOARD_VIEW_PARAM = "view";
+export const MOBILE_CONTACTS_DASHBOARD_ANALYSIS_VIEW = "analysis";
+export const MOBILE_CONTACTS_ANALYSIS_OVERVIEW_QUERY =
+  `${MOBILE_CONTACTS_DASHBOARD_VIEW_PARAM}=${MOBILE_CONTACTS_DASHBOARD_ANALYSIS_VIEW}`;
+
+export const mobileContactsAnalysisOverviewPayloadSchema = z.object({
+  schemaVersion: z.literal(1),
+  generatedAt: nonEmptyString,
+  analysis: dashboardAnalysisSchema.nullable().optional(),
+  profile: profilePayloadSchema.nullable(),
+  unavailableSections: z.array(z.enum(["analysis", "profile"])),
+});
+
+export type MobileContactsAnalysisOverviewPayload = z.infer<typeof mobileContactsAnalysisOverviewPayloadSchema>;
+
+export function mobileContactsDashboardRequestsAnalysisView(searchParams: URLSearchParams): boolean {
+  return searchParams.get(MOBILE_CONTACTS_DASHBOARD_VIEW_PARAM) === MOBILE_CONTACTS_DASHBOARD_ANALYSIS_VIEW;
+}
+
 export type MobileContactsDashboardPayload = z.infer<
   typeof mobileContactsDashboardPayloadSchema
 >;
