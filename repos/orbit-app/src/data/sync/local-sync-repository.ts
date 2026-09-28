@@ -12,6 +12,7 @@ import { z } from "zod";
 import type { DomainPage, ReadScope } from "../../api/contract/universal-read";
 import { domainPageSchema, readScopeSchema } from "../../api/schema/universal-read";
 import { IDENTITY_PAYLOAD_CODEC, type PayloadCodec } from "./payload-codec";
+import { assertPageCopyKey, type PageCopy } from "./page-copies";
 
 const LEGACY_DOMAINS: Record<SyncEntityKind, string> = {
   contact: "contacts", note: "notes", task: "tasks", relationship_followup: "followups",
@@ -74,6 +75,11 @@ const aiCardsKey = (workspaceId: string, sessionId: string) => `ai_session_cards
 /** Sprint 0119: a conversation that leaves the device takes its messages (row ids `${conversationId}/${seq}`) with it. */
 const RELATIONSHIP_CONVERSATIONS_DOMAIN = "relationship-conversations";
 const RELATIONSHIP_MESSAGES_DOMAIN = "relationship-messages";
+/** Sprint 0131: page copies live in sync_meta under their lease binding (JSON keys keep ids with any characters unambiguous). */
+const PAGE_COPY_PREFIX = "page_copy:";
+const PAGE_COPY_INDEX_PREFIX = "page_copy_index:";
+const pageCopyKey = (workspaceId: string, epoch: string, id: string, variant: string) => PAGE_COPY_PREFIX + JSON.stringify([workspaceId, epoch, id, variant]);
+const pageCopyIndexKey = (workspaceId: string, epoch: string, id: string) => PAGE_COPY_INDEX_PREFIX + JSON.stringify([workspaceId, epoch, id]);
 const partitionKeyOf = (scope: ReadScope) => `sync_partitions:${scope.workspaceId}:${scope.domainId}:${scope.authorizationEpoch}`;
 
 export type LocalSyncBootstrapState = "pending" | "complete";
@@ -424,6 +430,73 @@ export function createLocalSyncRepository(input: {
       const row = await database.get<{ value: string }>("SELECT value FROM sync_meta WHERE key = ?", [aiCardsKey(workspaceId, sessionId)]);
       if (!row) return null;
       try { return JSON.parse(await codec.decode(row.value)) as unknown; } catch { return null; }
+    },
+
+    /**
+     * Sprint 0131: the last successful online read of a registered page, stored
+     * under the accepted lease binding (workspace, authorization epoch) and
+     * encoded like payloads (AES-GCM per value in the browser). A response
+     * larger than the copy's maxBytes is not kept (an older copy is removed, so
+     * a page never shows an outdated copy as current). Each copy keeps its
+     * maxVariants most recently saved variants.
+     */
+    async setPageCopy(binding: { workspaceId: string; authorizationEpoch: string }, id: string, variant: string, copy: PageCopy): Promise<boolean> {
+      assertNonEmptyString(binding.workspaceId, "workspaceId");
+      assertNonEmptyString(binding.authorizationEpoch, "authorizationEpoch");
+      const definition = assertPageCopyKey(id, variant);
+      assertTimestamp(copy.syncedAt, "syncedAt");
+      const parsed = PLAIN_JSON.safeParse(copy.data);
+      if (!parsed.success) throw new TypeError("page copy must be plain JSON");
+      const serialized = JSON.stringify({ syncedAt: copy.syncedAt, data: parsed.data });
+      const key = pageCopyKey(binding.workspaceId, binding.authorizationEpoch, id, variant);
+      const indexKey = pageCopyIndexKey(binding.workspaceId, binding.authorizationEpoch, id);
+      const indexRow = await database.get<{ value: string }>("SELECT value FROM sync_meta WHERE key = ?", [indexKey]);
+      let index: string[] = [];
+      try { const value = indexRow ? JSON.parse(indexRow.value) as unknown : []; index = Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === "string") : []; } catch { index = []; }
+      if (new TextEncoder().encode(serialized).byteLength > definition.maxBytes) {
+        await database.transaction(async () => {
+          await database.run("DELETE FROM sync_meta WHERE key = ?", [key]);
+          await database.run(`INSERT INTO sync_meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`, [indexKey, JSON.stringify(index.filter((entry) => entry !== variant))]);
+        });
+        return false;
+      }
+      const next = [variant, ...index.filter((entry) => entry !== variant)];
+      const kept = next.slice(0, definition.maxVariants);
+      const evicted = next.slice(definition.maxVariants);
+      const encodedCopy = await codec.encode(serialized);
+      await database.transaction(async () => {
+        await database.run(`INSERT INTO sync_meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`, [key, encodedCopy]);
+        await database.run(`INSERT INTO sync_meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`, [indexKey, JSON.stringify(kept)]);
+        for (const old of evicted) await database.run("DELETE FROM sync_meta WHERE key = ?", [pageCopyKey(binding.workspaceId, binding.authorizationEpoch, id, old)]);
+      });
+      return true;
+    },
+
+    async getPageCopy(binding: { workspaceId: string; authorizationEpoch: string }, id: string, variant: string): Promise<PageCopy | null> {
+      assertPageCopyKey(id, variant);
+      const row = await database.get<{ value: string }>("SELECT value FROM sync_meta WHERE key = ?", [pageCopyKey(binding.workspaceId, binding.authorizationEpoch, id, variant)]);
+      if (!row) return null;
+      try {
+        const value = JSON.parse(await codec.decode(row.value)) as { syncedAt?: unknown; data?: unknown };
+        return typeof value.syncedAt === "string" && "data" in value ? { syncedAt: value.syncedAt, data: value.data } : null;
+      } catch { return null; }
+    },
+
+    /** Sprint 0131: drop every page copy not bound to (workspaceId, keepAuthorizationEpoch); a revoked lease keeps none. */
+    async retirePageCopies(keep: { workspaceId: string; authorizationEpoch: string } | null): Promise<number> {
+      const rows = await database.all<{ key: string }>("SELECT key FROM sync_meta WHERE substr(key, 1, ?) = ? OR substr(key, 1, ?) = ?", [PAGE_COPY_PREFIX.length, PAGE_COPY_PREFIX, PAGE_COPY_INDEX_PREFIX.length, PAGE_COPY_INDEX_PREFIX]);
+      let removed = 0;
+      await database.transaction(async () => {
+        for (const row of rows) {
+          let binding: unknown;
+          try { binding = JSON.parse(row.key.slice(row.key.startsWith(PAGE_COPY_INDEX_PREFIX) ? PAGE_COPY_INDEX_PREFIX.length : PAGE_COPY_PREFIX.length)); } catch { binding = null; }
+          const bound = Array.isArray(binding) && keep !== null && binding[0] === keep.workspaceId && binding[1] === keep.authorizationEpoch;
+          if (bound) continue;
+          await database.run("DELETE FROM sync_meta WHERE key = ?", [row.key]);
+          if (row.key.startsWith(PAGE_COPY_PREFIX)) removed += 1;
+        }
+      });
+      return removed;
     },
 
     /** Sprint 0118: which partitions (opened sessions) the scope's last complete walk named. */

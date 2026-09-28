@@ -27,7 +27,7 @@ test('an unregistered new route, a stale entry and an ownerless entry are all re
   const broken = [
     ...PAGE_OFFLINE_INVENTORY,
     { ...PAGE_OFFLINE_INVENTORY.find((entry) => entry.classification === 'online-only')!, file: 'app/no-reason.tsx', reason: '' },
-    { ...PAGE_OFFLINE_INVENTORY.find((entry) => entry.classification === 'local-first')!, file: 'app/no-sprint.tsx', sprint: undefined },
+    (({ sprint: _sprint, ...rest }) => ({ ...rest, file: 'app/no-sprint.tsx' }))(PAGE_OFFLINE_INVENTORY.find((entry) => entry.classification === 'local-first')!),
   ];
   const findings = auditPageOfflineInventory([...routes, 'app/no-reason.tsx', 'app/no-sprint.tsx'], broken);
   assert.ok(findings.includes('UNREGISTERED:app/brand-new-page.tsx'), findings.join('\n'));

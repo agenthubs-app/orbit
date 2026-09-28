@@ -49,7 +49,7 @@ const REASON_LABELS: Record<OnlineOnlyReason, string> = {
   'server-token': '需要服务器验证链接或邀请码',
 };
 
-const NEEDS_NETWORK = '显示「需要联网」空状态（不是报错页），联网后点「重试」';
+export const NEEDS_NETWORK = '显示「需要联网」空状态（不是报错页），联网后点「重试」';
 
 export const PAGE_OFFLINE_INVENTORY: readonly PageOfflineEntry[] = [
   // ── structure ──

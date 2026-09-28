@@ -17,6 +17,7 @@ import {
   probeWebMirror,
   sha256Hex,
   WEB_MIRROR_DOMAIN_IDS,
+  WEB_MIRROR_PAGE_COPY_IDS,
   webMirrorDatabaseName,
   type WebMirrorEnvironment,
   type WebMirrorUnavailableReason,
@@ -230,6 +231,7 @@ export function createWebSyncLifecycle(input: {
 
   return {
     registeredDomainIds: WEB_MIRROR_DOMAIN_IDS,
+    registeredPageCopyIds: WEB_MIRROR_PAGE_COPY_IDS,
     payloadCodec,
     status,
     subscribe(listener: () => void): () => void {
