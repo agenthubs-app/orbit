@@ -31,6 +31,9 @@ import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import type { RelationshipCommunicationMessageView } from "../../view-models/contact-communication";
 import { decodeRelationshipMessagePage } from "../../view-models/relationship-pages";
 import { relationshipChatWindowView } from "../../view-models/relationship-chat-window";
+import { OfflineNotice } from "../../components/OfflineNotice";
+import { useLocalRelationshipThread } from "../../hooks/useLocalRelationshipMessages";
+import { localRelationshipMessagePage } from "../../view-models/relationship-local";
 
 function firstParam(value: string | string[] | undefined): string {
   return Array.isArray(value) ? value[0] ?? "" : value ?? "";
@@ -61,13 +64,26 @@ function ScopedChatDetailScreen({ actorId, conversationId, scopeKey }: {
   const { colors, styles } = useStyles();
   const [deliveryNotice, setDeliveryNotice] = useState("");
   const [cursor, setCursor] = useState<string | null>(null);
-  const state = useApiResource<unknown>(
+  // Sprint 0119: the device mirror holds the whole history (native always, the browser while its mirror is
+  // active); older pages are read from it too. Sending needs the network.
+  const local = useLocalRelationshipThread(conversationId);
+  const fromDevice = local.available && local.freshness.readable;
+  const offline = fromDevice && local.freshness.offline;
+  const localPage = useMemo(() => fromDevice
+    ? localRelationshipMessagePage(local.conversations, local.messages, actorId, conversationId, { cursor, asOf: local.freshness.lastSyncedAt ?? new Date(0).toISOString() })
+    : null, [fromDevice, local.conversations, local.messages, actorId, conversationId, cursor, local.freshness.lastSyncedAt]);
+  const network = useApiResource<unknown>(
     `${relationshipCommunicationConversationPath(conversationId)}/messages?limit=30&direction=older${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`,
     () => false,
-    { scopeKey: `${scopeKey}:window:${cursor ?? "latest"}`, cachePolicy: "network-only" }
+    { scopeKey: `${scopeKey}:window:${cursor ?? "latest"}`, cachePolicy: "network-only", enabled: !local.available }
   );
+  const localGone = fromDevice && !localPage && !local.freshness.refreshing;
+  const state = local.available
+    ? { kind: fromDevice && localPage ? "success" as const : local.freshness.failure || localGone ? "failure" as const : "loading" as const, refreshing: local.freshness.refreshing,
+        error: { code: "ORBIT_APP_SYNC_FAILURE", message: localGone ? "这段对话已不在本机（关系已撤销或对话不可用）。" : "没有同步到当前账号的会话，请稍后重试。" }, data: localPage, refresh: () => { void local.refresh(); } }
+    : network;
   const loaded = state.kind === "success" || state.kind === "empty" ? state.data : null;
-  const freshData = decodeRelationshipMessagePage(loaded, actorId, conversationId);
+  const freshData = local.available ? localPage : decodeRelationshipMessagePage(loaded, actorId, conversationId);
 
   function refreshAll() {
     setCursor(null);
@@ -80,6 +96,7 @@ function ScopedChatDetailScreen({ actorId, conversationId, scopeKey }: {
       refreshControl={<RefreshControl onRefresh={refreshAll} refreshing={state.refreshing} tintColor={colors.accent} />}
       title="对话详情"
     >
+      {offline ? <OfflineNotice lastSyncedAt={local.freshness.lastSyncedAt} /> : null}
       {state.kind === "loading" ? <LoadingState /> : null}
       {state.kind === "offline" ? <ErrorState message={state.error.message} title="服务器连不上" /> : null}
       {state.kind === "failure" ? <ErrorState message={state.error.message} /> : null}
@@ -92,6 +109,7 @@ function ScopedChatDetailScreen({ actorId, conversationId, scopeKey }: {
           actorId={actorId}
           page={freshData}
           deliveryNotice={deliveryNotice}
+          offline={offline}
           onDelivered={() => {
             setDeliveryNotice("消息已送达已验证的 Orbit 账号。");
             refreshAll();
@@ -102,10 +120,12 @@ function ScopedChatDetailScreen({ actorId, conversationId, scopeKey }: {
   );
 }
 
-function ThreadContent({ actorId, page, deliveryNotice, onDelivered, scopeKey }: {
+function ThreadContent({ actorId, page, deliveryNotice, onDelivered, scopeKey, offline = false }: {
   actorId: string;
   page: RelationshipMessagePageDTO | null;
   deliveryNotice: string;
+  /** Sprint 0119: offline the history shows as of the last sync and sending needs the network. */
+  offline?: boolean;
   onDelivered: () => void;
   scopeKey: string;
 }) {
@@ -139,7 +159,7 @@ function ThreadContent({ actorId, page, deliveryNotice, onDelivered, scopeKey }:
   }, []);
 
   async function sendVerifiedMessage() {
-    if (!mounted.current || !active.current || request.current || !view?.canSend) return;
+    if (!mounted.current || !active.current || request.current || !view?.canSend || offline) return;
     const normalizedBody = draftBody.trim();
     const currentAttempt = attempt.current?.body === normalizedBody && attempt.current.qualificationVersion === view.qualificationVersion
       ? attempt.current
@@ -226,11 +246,12 @@ function ThreadContent({ actorId, page, deliveryNotice, onDelivered, scopeKey }:
         {deliveryNotice || feedback ? <Text style={deliveryNotice ? styles.successText : styles.errorText}>{deliveryNotice || feedback}</Text> : null}
         <Pressable
           accessibilityRole="button"
-          disabled={pending || !view.canSend || !draftBody.trim()}
+          accessibilityLabel={offline ? "发送消息 · 需要联网" : undefined}
+          disabled={offline || pending || !view.canSend || !draftBody.trim()}
           onPress={() => void sendVerifiedMessage()}
-          style={({ pressed }) => [styles.primaryButton, pending || !view.canSend || !draftBody.trim() ? styles.disabled : null, pressed ? styles.pressed : null]}
+          style={({ pressed }) => [styles.primaryButton, offline || pending || !view.canSend || !draftBody.trim() ? styles.disabled : null, pressed ? styles.pressed : null]}
         >
-          <Text style={styles.primaryButtonText}>{pending ? "发送中" : "发送消息"}</Text>
+          <Text style={styles.primaryButtonText}>{offline ? "发送消息 · 需要联网" : pending ? "发送中" : "发送消息"}</Text>
         </Pressable>
       </DataCard>
     </>

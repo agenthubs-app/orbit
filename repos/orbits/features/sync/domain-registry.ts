@@ -164,7 +164,26 @@ export interface PersonalSubspaceSyncSource {
   ownedCollections: readonly string[];
 }
 
-export type SyncDomainSource = OrbitRecordsSyncSource | DedicatedTableSyncSource | EventDerivedSyncSource | ContactGraphSyncSource | DashboardGraphSyncSource | InboxRecordsSyncSource | PersonalSubspaceSyncSource;
+/**
+ * Relationship message source (sprint 0119): the dedicated message tables
+ * (0109). The owner is derived from the account's own member row
+ * (relationship_conversation_members.account_id). "conversations" sends one row
+ * per member row (with its conversation); a member row that left, or a revoked
+ * conversation, is sent as a delete. "messages" sends every message of the
+ * conversations the account is an active member of (full history), id
+ * `${conversationId}/${seq}`; a device removes a conversation's messages with
+ * the conversation (features/sync/relationship-message-domain-reader.ts).
+ */
+export interface RelationshipMessagesSyncSource {
+  kind: "relationship_messages";
+  view: "conversations" | "messages";
+  /** The member row decides ownership; a conversation or a message is reached through it and never moves (database guard). */
+  ownerTables: readonly DerivedOwnerTable[];
+  /** Every table whose sync_revision moves a row (all three draw from the orbit_records sequence under the commit-order lock). */
+  revisionTables: readonly string[];
+}
+
+export type SyncDomainSource = OrbitRecordsSyncSource | DedicatedTableSyncSource | EventDerivedSyncSource | ContactGraphSyncSource | DashboardGraphSyncSource | InboxRecordsSyncSource | PersonalSubspaceSyncSource | RelationshipMessagesSyncSource;
 
 export interface SyncDomainDefinition {
   domainId: string;
@@ -388,6 +407,49 @@ export const EVENT_SYNC_DOMAINS: readonly SyncDomainDefinition[] = [
 
 export const EVENT_SYNC_DOMAIN_IDS: readonly string[] = EVENT_SYNC_DOMAINS.map((domain) => domain.domainId);
 
+const RELATIONSHIP_OWNER_TABLES: readonly DerivedOwnerTable[] = [
+  { table: "relationship_conversation_members", ownerColumn: "account_id", identityColumns: ["workspace_id", "conversation_id"] },
+  { table: "relationship_conversations", ownerColumn: "conversation_id", identityColumns: ["workspace_id", "inviter_account_id", "invitee_account_id"] },
+  { table: "relationship_messages", ownerColumn: "conversation_id", identityColumns: ["workspace_id"] },
+];
+const RELATIONSHIP_OWNERSHIP = {
+  rule: "derived",
+  description: "The account's own relationship_conversation_members row (account_id = viewer). Revocation marks both member rows 'left' (each takes a new revision, the owner stays), so both devices hear about it and delete the conversation with its messages.",
+} as const;
+
+/**
+ * Sprint 0119 (offline 3b = message plan M3): the account's relationship
+ * conversations and their full message history. Registered in the order the
+ * App pulls them: a conversation arrives before (or with) its messages, and a
+ * conversation delete removes its messages on the device.
+ */
+export const RELATIONSHIP_MESSAGE_SYNC_DOMAINS: readonly SyncDomainDefinition[] = [
+  {
+    domainId: "relationship-conversations",
+    exposure: "device",
+    ownership: RELATIONSHIP_OWNERSHIP,
+    visibilityInputs: ["account_id", "workspace_id", "conversation_id", "state", "status"],
+    attachments: [
+      { collectionName: "relationship_conversations", join: "conversation_id = member conversation_id, same workspace", field: "identity, lastMessageSeq" },
+      { collectionName: "relationship_messages", join: "seq = conversation last_message_seq", field: "lastMessage" },
+    ],
+    fields: [
+      "conversationId", "contactId", "participantAccountIds", "participantDisplayNames", "qualificationVersion", "status", "createdAt", "updatedAt",
+      "unreadCount", "lastMessage", "readSeq", "lastMessageSeq",
+    ],
+    source: { kind: "relationship_messages", view: "conversations", ownerTables: RELATIONSHIP_OWNER_TABLES, revisionTables: ["relationship_conversation_members", "relationship_conversations"] },
+  },
+  {
+    domainId: "relationship-messages",
+    exposure: "device",
+    ownership: RELATIONSHIP_OWNERSHIP,
+    visibilityInputs: ["account_id", "workspace_id", "conversation_id", "state", "status"],
+    attachments: [],
+    fields: ["conversationId", "seq", "messageId", "senderAccountId", "senderDisplayName", "body", "sentAt"],
+    source: { kind: "relationship_messages", view: "messages", ownerTables: RELATIONSHIP_OWNER_TABLES, revisionTables: ["relationship_messages"] },
+  },
+];
+
 /**
  * Probe domain (sprint 0113, SC-04): proves the dedicated-table source end to
  * end on the real event tables. Never leased; not visible to any account.
@@ -409,16 +471,22 @@ export const EVENT_MEMBERSHIP_PROBE_DOMAIN: SyncDomainDefinition = {
 };
 
 /** Every device domain, leased to each authorized account. */
-export const SYNC_DOMAINS: readonly SyncDomainDefinition[] = [...RECORD_SYNC_DOMAINS, ...CONTACT_SYNC_DOMAINS, ...EVENT_SYNC_DOMAINS, ...DASHBOARD_SYNC_DOMAINS, ...INBOX_SYNC_DOMAINS, ...AI_SESSION_SYNC_DOMAINS];
+export const SYNC_DOMAINS: readonly SyncDomainDefinition[] = [...RECORD_SYNC_DOMAINS, ...CONTACT_SYNC_DOMAINS, ...EVENT_SYNC_DOMAINS, ...DASHBOARD_SYNC_DOMAINS, ...INBOX_SYNC_DOMAINS, ...AI_SESSION_SYNC_DOMAINS, ...RELATIONSHIP_MESSAGE_SYNC_DOMAINS];
 
 /** Every declared manual, leased or not: the owner/identity audit covers all of them. */
 export const DECLARED_SYNC_DOMAINS: readonly SyncDomainDefinition[] = [...SYNC_DOMAINS, EVENT_MEMBERSHIP_PROBE_DOMAIN];
 
-/** Dedicated tables whose owner/identity columns are visibility inputs of a derived domain (guarded in the database, audited statically). */
-export function derivedOwnerTables(domains: readonly SyncDomainDefinition[] = DECLARED_SYNC_DOMAINS): DerivedOwnerTable[] {
+/**
+ * Dedicated tables whose owner/identity columns are visibility inputs of a derived domain (guarded in the database, audited statically).
+ * Sprint 0119: the relationship message tables join the event heads; `kinds` narrows to one source kind (each installs its own trigger).
+ */
+export function derivedOwnerTables(
+  domains: readonly SyncDomainDefinition[] = DECLARED_SYNC_DOMAINS,
+  kinds: readonly ("event_derived" | "relationship_messages")[] = ["event_derived", "relationship_messages"],
+): DerivedOwnerTable[] {
   const found = new Map<string, DerivedOwnerTable>();
   for (const domain of domains) {
-    if (domain.source.kind !== "event_derived") continue;
+    if ((domain.source.kind !== "event_derived" && domain.source.kind !== "relationship_messages") || !kinds.includes(domain.source.kind)) continue;
     for (const owner of domain.source.ownerTables) found.set(owner.table, owner);
   }
   return [...found.values()].sort((left, right) => left.table.localeCompare(right.table));

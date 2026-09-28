@@ -8,6 +8,7 @@ import { createDomainReadService } from "../../features/sync/domain-read-service
 import { SYNC_DOMAINS } from "../../features/sync/domain-registry";
 import { domainManifestSchema } from "../../shared/api-schema/universal-read";
 import { ORBIT_RECORDS_SCHEMA_SQL } from "../../shared/storage/migrations";
+import { RELATIONSHIP_MESSAGE_SCHEMA_SQL } from "../../features/relationship-communication/message-tables";
 import { createPostgresLiveRecordStore } from "../../shared/storage/postgres-live-record-store";
 import { createTransactionalPostgresClient } from "../../shared/storage/transactional-postgres";
 import { STRICT_SYNC_REVISION_SQL } from "../support/sync-revision-fixture";
@@ -39,6 +40,8 @@ async function host(t: TestContext) {
   await admin.query(`create schema ${schema}`);
   await client.query(ORBIT_RECORDS_SCHEMA_SQL);
   await client.query(STRICT_SYNC_REVISION_SQL);
+  // Sprint 0119: the registry's message domains are read from the 0109 tables.
+  await client.query(RELATIONSHIP_MESSAGE_SCHEMA_SQL);
   const store = createPostgresLiveRecordStore({ client });
   for (const actor of [A, B]) {
     await store.upsertRecord({

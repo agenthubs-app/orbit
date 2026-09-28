@@ -43,7 +43,10 @@ export const OFFLINE_POLICY_REGISTRATIONS = [
   { method: "POST", pathname: "/api/schedule-items", action: "create", policy: policy("personal_schedule", "durable_normalized", "offline_queue") },
   { method: "PATCH", pathname: "/api/schedule-items/:id", action: "update", policy: policy("personal_schedule", "durable_normalized", "offline_queue") },
   { method: "DELETE", pathname: "/api/schedule-items/:id", action: "delete", policy: policy("personal_schedule", "durable_normalized", "offline_queue") },
-  { method: "GET", pathname: "/api/relationship-communication/conversations/:id/messages", action: "read", policy: policy("message", "durable_normalized", "online_only") },
+  // Sprint 0119: relationship messages (sync domains relationship-conversations, relationship-messages): the inbox list, the unread badge and the chat read the device copy first; sending, drafts and marking read need the network.
+  { method: "GET", pathname: "/api/relationship-communication/conversations/:id/messages", action: "read", policy: policy("relationship_message", "durable_normalized", "online_only") },
+  { method: "GET", pathname: "/api/relationship-communication/conversation-summaries", action: "read", policy: policy("relationship_conversation", "durable_normalized", "online_only") },
+  { method: "GET", pathname: "/api/relationship-communication/unread-summary", action: "read", policy: policy("relationship_conversation", "durable_normalized", "online_only") },
   { method: "GET", pathname: "/api/events/public", action: "read", policy: policy("public_event", "encrypted_ttl_snapshot", "online_only", "on_demand_encrypted") },
   // Sprint 0115: the registered attendee's event day (sync domains registered-events, event-registrations, event-published-results).
   { method: "GET", pathname: "/api/events/public/:id", action: "read", policy: policy("registered_event", "durable_normalized", "online_only") },

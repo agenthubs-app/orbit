@@ -1168,6 +1168,7 @@ export const ja = {
   "inbox.messageTitle": "メッセージ",
   "inbox.missingConversation": "会話IDがありません。",
   "inbox.conversationUnavailable": "会話を開けません",
+  "inbox.conversationGone": "この会話はこの端末にありません。関係が取り消されたか、会話を利用できません。",
   "inbox.serverUnavailable": "サーバーに接続できません",
   "inbox.emptyMessagesTitle": "メッセージはありません",
   "inbox.emptyMessagesBody": "このやり取りには表示できるメッセージがまだありません。",

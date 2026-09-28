@@ -20,7 +20,7 @@ const usedComputedPathKeys = new Set<string>();
 
 const computedPathFamilies: Readonly<Record<string, readonly string[]>> = {
   'src/screens/ai/AiConversationScreen.tsx:448': ['/api/ai/conversations', '/api/ai/conversations/:id'],
-  'src/screens/chat/RelationshipChatDetailScreen.tsx:158': ['/api/relationship-communication/conversations/:id/messages'],
+  'src/screens/chat/RelationshipChatDetailScreen.tsx:178': ['/api/relationship-communication/conversations/:id/messages'],
   'src/screens/contacts/ContactAcquisitionScreen.tsx:401': ['/api/contact-drafts/:id'],
   'src/screens/contacts/ContactAcquisitionScreen.tsx:440': ['/api/contact-drafts/manual', '/api/contact-drafts/qr/scan', '/api/contact-drafts/business-card/scan'],
   'src/screens/contacts/ContactAcquisitionScreen.tsx:542': ['/api/contacts/business-card/confirm'],
@@ -29,8 +29,8 @@ const computedPathFamilies: Readonly<Record<string, readonly string[]>> = {
   'src/screens/contacts/ContactAcquisitionScreen.tsx:692': ['/api/contact-drafts/referral'],
   'src/screens/contacts/ContactAcquisitionScreen.tsx:725': ['/api/contact-drafts/recommended/:id/confirm'],
   'src/screens/contacts/ContactIntrosScreen.tsx:146': ['/api/relationship-communication/invitations'],
-  'src/screens/inbox/RelationshipInboxScreen.tsx:1191': ['/api/relationship-communication/conversations/:id/messages'],
-  'src/screens/inbox/RelationshipInboxScreen.tsx:1380': ['/api/chat/relationship-inbox'],
+  'src/screens/inbox/RelationshipInboxScreen.tsx:1265': ['/api/relationship-communication/conversations/:id/messages'],
+  'src/screens/inbox/RelationshipInboxScreen.tsx:1454': ['/api/chat/relationship-inbox'],
   'src/screens/profile/ProfileMoreScreen.tsx:78': ['/api/profile/extractions/business-card', '/api/profile/extractions/resume'],
   'src/screens/profile/ProfileScreen.tsx:335': ['/api/profile/extractions/business-card', '/api/profile/extractions/resume'],
   'src/screens/tasks/TaskDetailScreen.tsx:81': ['/api/tasks/:id'],

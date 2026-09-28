@@ -10,6 +10,7 @@ import { SYNC_DOMAIN_SCHEMA_VERSION, SYNC_DOMAINS, SYNC_REGISTRY_VERSION } from 
 import { eventDomainSummaryKey } from "../../../features/sync/event-domain-reader";
 import { aiSubspaceOf } from "../../../features/sync/ai-session-domain-reader";
 import { reconcileInboxSourceStates } from "../../../features/sync/inbox-domain-reader";
+import { relationshipDomainSummaryKey } from "../../../features/sync/relationship-message-domain-reader";
 import { createConfiguredInboxRuntime, isTypedInboxEnabled } from "../../../features/notifications/inbox-record-service-factory";
 
 // The conditional manifest fingerprints the orbit_records watermarks (the
@@ -26,13 +27,16 @@ import { createConfiguredInboxRuntime, isTypedInboxEnabled } from "../../../feat
 // organizations (the actor's rows in the base workspace) and the AI sessions and
 // messages in the actor's personal sub-workspace are covered too, and the key is
 // built from max(sync_revision) (readRevisionWatermark), not max(updated_at).
+// Sprint 0119: the relationship message domains read the dedicated message
+// tables; their two watermarks (one statement, relationshipSummary) are folded
+// into the route key like the event summary.
 const MANIFEST_COLLECTIONS = [...new Set(SYNC_DOMAINS.flatMap((domain) => domain.source.kind === "orbit_records" || domain.source.kind === "inbox_records"
   ? [domain.source.collectionName]
   : domain.source.kind === "contact_graph" || domain.source.kind === "dashboard_graph"
     ? [...domain.source.collections]
     : domain.source.kind === "personal_subspace" ? [...domain.source.ownedCollections] : []))];
 const MANIFEST_SUBSPACE_COLLECTIONS = [...new Set(SYNC_DOMAINS.flatMap((domain) => domain.source.kind === "personal_subspace" ? [...domain.source.subspaceCollections] : []))];
-const MANIFEST_IS_CONDITIONAL = SYNC_DOMAINS.every((domain) => ["orbit_records", "event_derived", "contact_graph", "dashboard_graph", "inbox_records", "personal_subspace"].includes(domain.source.kind));
+const MANIFEST_IS_CONDITIONAL = SYNC_DOMAINS.every((domain) => ["orbit_records", "event_derived", "contact_graph", "dashboard_graph", "inbox_records", "personal_subspace", "relationship_messages"].includes(domain.source.kind));
 // A new registry or page schema must never replay a cached manifest.
 const MANIFEST_ROUTE_KEY = `sync.manifest:r${SYNC_REGISTRY_VERSION}:s${SYNC_DOMAIN_SCHEMA_VERSION}`;
 import { SYNC_DEFAULT_LIMIT, SYNC_MAX_LIMIT } from "../../../features/sync/read-service";
@@ -175,12 +179,17 @@ export function createSyncDomainHandlers(dependencies: SyncDomainRouteDependenci
         // decision written back first, so the watermark below sees the write.
         await service.reconcile({ actorId, workspaceId });
         const eventSummary = await service.eventSummary({ actorId, workspaceId });
+        const relationshipSummary = await service.relationshipSummary({ actorId, workspaceId });
         const produce = async () => {
-          const manifest = await service.manifest({ actorId, workspaceId, eventSummary });
+          const manifest = await service.manifest({ actorId, workspaceId, eventSummary, relationshipSummary });
           return NextResponse.json(success(manifest), { headers: noStore(mode), status: 200 });
         };
         if (!MANIFEST_IS_CONDITIONAL) return produce();
-        const routeKey = eventSummary ? `${MANIFEST_ROUTE_KEY}:events:${eventDomainSummaryKey(eventSummary)}` : MANIFEST_ROUTE_KEY;
+        const routeKey = [
+          MANIFEST_ROUTE_KEY,
+          ...(eventSummary ? [`events:${eventDomainSummaryKey(eventSummary)}`] : []),
+          ...(relationshipSummary ? [`messages:${relationshipDomainSummaryKey(relationshipSummary)}`] : []),
+        ].join(":");
         return conditionalJsonRead(
           {
             routeKey, request, actorId, workspaceId, collections: MANIFEST_COLLECTIONS, userScoped: true,

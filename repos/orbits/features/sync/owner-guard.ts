@@ -158,8 +158,8 @@ export const SYNC_OWNER_GUARD_WATCHES_WORKSPACE_SQL =
  * never refused. One statement each (the event operations client accepts one
  * per query); idempotent.
  */
-function derivedGuardCondition(): string {
-  const reassigning = reassigners.filter((handler) => handler.collections.some((name) => derivedOwnerTables().some((owner) => owner.table === name)));
+function derivedGuardCondition(kind: "event_derived" | "relationship_messages" = "event_derived"): string {
+  const reassigning = reassigners.filter((handler) => handler.collections.some((name) => derivedOwnerTables(undefined, [kind]).some((owner) => owner.table === name)));
   return reassigning.length
     ? `not (${reassigning.map((handler) => `(coalesce(current_setting('${SYNC_OWNER_CHANGE_SETTING}', true), '') = '${handler.name.replaceAll("'", "''")}' and tg_table_name in (${literalList(handler.collections)}))`).join(" or ")})`
     : "true";
@@ -179,7 +179,7 @@ begin
   return new;
 end;
 $$`,
-  ...derivedOwnerTables().map((owner) => {
+  ...derivedOwnerTables(undefined, ["event_derived"]).map((owner) => {
     const columns = [owner.ownerColumn, ...owner.identityColumns];
     return `create or replace trigger ${owner.table}_sync_owner_guard_trigger
   before update of ${columns.join(", ")} on ${owner.table}
@@ -188,3 +188,58 @@ $$`,
   execute function sync_derived_owner_guard()`;
   }),
 ];
+
+/**
+ * Sprint 0119: the same guard on the relationship message tables, whose rows
+ * the message domains reach through the account's own member row
+ * (derivedOwnerTables kind "relationship_messages"). Refused, unless a
+ * registered "reassign" handler lists the table (none):
+ *   - moving a member row to another account, conversation or workspace;
+ *   - a member row coming back from 'left', or a revoked conversation becoming
+ *     active again: the devices deleted that history when it left and would
+ *     never be sent it again (its rows keep their old revisions);
+ *   - moving a conversation (id, workspace, participants) or a message (to
+ *     another conversation or workspace).
+ * Leaving ('active' -> 'left') and revoking keep the owner and take a new
+ * revision, which is how both devices hear about it. Appended to the tables'
+ * idempotent schema (features/relationship-communication/message-tables.ts).
+ */
+const RELATIONSHIP_GUARDS: readonly { table: string; columns: readonly string[]; departure: string }[] = [
+  {
+    table: "relationship_conversation_members",
+    columns: ["workspace_id", "conversation_id", "account_id", "state"],
+    departure: "old.workspace_id is distinct from new.workspace_id or old.conversation_id is distinct from new.conversation_id or old.account_id is distinct from new.account_id or (old.state = 'left' and new.state is distinct from 'left')",
+  },
+  {
+    table: "relationship_conversations",
+    columns: ["workspace_id", "conversation_id", "inviter_account_id", "invitee_account_id", "status"],
+    departure: "old.workspace_id is distinct from new.workspace_id or old.conversation_id is distinct from new.conversation_id or old.inviter_account_id is distinct from new.inviter_account_id or old.invitee_account_id is distinct from new.invitee_account_id or (old.status = 'revoked' and new.status is distinct from 'revoked')",
+  },
+  {
+    table: "relationship_messages",
+    columns: ["workspace_id", "conversation_id"],
+    departure: "old.workspace_id is distinct from new.workspace_id or old.conversation_id is distinct from new.conversation_id",
+  },
+];
+
+export const SYNC_RELATIONSHIP_OWNER_GUARD_SQL = `
+create or replace function relationship_messaging_sync_owner_guard()
+returns trigger
+language plpgsql
+as $$
+begin
+  if ${derivedGuardCondition("relationship_messages")} then
+    raise exception 'SYNC_OWNER_CHANGE_UNREGISTERED'
+      using errcode = '55000',
+        detail = format('%s: a relationship row may not move or come back', tg_table_name);
+  end if;
+  return new;
+end;
+$$;
+${RELATIONSHIP_GUARDS.map((guard) => `
+create or replace trigger ${guard.table}_sync_owner_guard_trigger
+  before update of ${guard.columns.join(", ")} on ${guard.table}
+  for each row
+  when (${guard.departure})
+  execute function relationship_messaging_sync_owner_guard();`).join("\n")}
+`;

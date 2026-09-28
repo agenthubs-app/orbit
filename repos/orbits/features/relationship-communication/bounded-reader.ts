@@ -22,6 +22,20 @@ const IDENTITY = `jsonb_build_object(
   'createdAt', ${iso("c.created_at")}, 'updatedAt', ${iso("c.last_message_at")}
 )`;
 
+// The newest message's preview; $1 is the workspace, c the conversation row.
+const LAST_MESSAGE = `(select jsonb_build_object('messageId',left(lm.message_id,512),
+    'senderAccountId',left(lm.sender_account_id,512),'sentAt',${iso("lm.sent_at")},
+    'bodyPreview',left(lm.body,320)) from relationship_messages lm
+    where lm.workspace_id=$1 and lm.conversation_id=c.conversation_id and lm.seq=c.last_message_seq)`;
+
+/**
+ * Sprint 0119: the device's conversation row (features/sync/relationship-message-
+ * domain-reader.ts) is built from the same identity and preview SQL as the
+ * summary page, so the list a phone computes is the server's list.
+ */
+export const RELATIONSHIP_CONVERSATION_IDENTITY_SQL = IDENTITY;
+export const RELATIONSHIP_CONVERSATION_LAST_MESSAGE_SQL = LAST_MESSAGE;
+
 const CONVERSATIONS_SQL = `with candidates as (
   select me.conversation_id, me.unread_count, me.last_message_at from relationship_conversation_members me
   join relationship_conversations c on c.workspace_id=me.workspace_id and c.conversation_id=me.conversation_id and c.status='active'
@@ -33,10 +47,7 @@ const CONVERSATIONS_SQL = `with candidates as (
 ), selected as (select * from candidates order by last_message_at desc, conversation_id asc limit $3)
 select coalesce(jsonb_agg(${IDENTITY} || jsonb_build_object(
   'unreadCount', s.unread_count,
-  'lastMessage', (select jsonb_build_object('messageId',left(lm.message_id,512),
-    'senderAccountId',left(lm.sender_account_id,512),'sentAt',${iso("lm.sent_at")},
-    'bodyPreview',left(lm.body,320)) from relationship_messages lm
-    where lm.workspace_id=$1 and lm.conversation_id=c.conversation_id and lm.seq=c.last_message_seq)
+  'lastMessage', ${LAST_MESSAGE}
 ) order by s.last_message_at desc, s.conversation_id asc),'[]'::jsonb) as items,
 exists(select 1 from candidates offset $3 limit 1) as has_more
 from selected s join relationship_conversations c on c.workspace_id=$1 and c.conversation_id=s.conversation_id`;

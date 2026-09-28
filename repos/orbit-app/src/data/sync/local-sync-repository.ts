@@ -22,6 +22,8 @@ const LEGACY_DOMAINS: Record<SyncEntityKind, string> = {
   dashboard_graph: "dashboard-graph",
   // Sprint 0118: the typed inbox, the AI session list and the messages of opened AI sessions.
   inbox_notification: "inbox-notifications", ai_session: "ai-sessions", ai_session_message: "ai-session-messages",
+  // Sprint 0119: relationship conversations and their messages.
+  relationship_conversation: "relationship-conversations", relationship_message: "relationship-messages",
 };
 
 const SYNC_ENTITY_KINDS = new Set<SyncEntityKind>([
@@ -38,6 +40,8 @@ const SYNC_ENTITY_KINDS = new Set<SyncEntityKind>([
   "inbox_notification",
   "ai_session",
   "ai_session_message",
+  "relationship_conversation",
+  "relationship_message",
 ]);
 const LOCAL_SYNC_STATES = new Set<LocalSyncState>([
   "synced",
@@ -67,6 +71,9 @@ export const AI_OPENED_SESSION_LIMIT = 20;
 const AI_MESSAGES_DOMAIN = "ai-session-messages";
 const aiOpenedKey = (workspaceId: string) => `ai_opened_sessions:${workspaceId}`;
 const aiCardsKey = (workspaceId: string, sessionId: string) => `ai_session_cards:${workspaceId}:${sessionId}`;
+/** Sprint 0119: a conversation that leaves the device takes its messages (row ids `${conversationId}/${seq}`) with it. */
+const RELATIONSHIP_CONVERSATIONS_DOMAIN = "relationship-conversations";
+const RELATIONSHIP_MESSAGES_DOMAIN = "relationship-messages";
 const partitionKeyOf = (scope: ReadScope) => `sync_partitions:${scope.workspaceId}:${scope.domainId}:${scope.authorizationEpoch}`;
 
 export type LocalSyncBootstrapState = "pending" | "complete";
@@ -601,6 +608,13 @@ export function createLocalSyncRepository(input: {
             await database.run(`DELETE FROM sync_records WHERE workspace_id=? AND domain_id=? AND authorization_epoch=? AND record_id=? AND sync_state='synced'`, [...scopeParameters(scope), change.id]);
             await database.run(`DELETE FROM local_read_index WHERE workspace_id=? AND domain_id=? AND authorization_epoch=? AND record_id=?`, [...scopeParameters(scope), change.id]);
             await database.run(`DELETE FROM local_read_assets WHERE workspace_id=? AND domain_id=? AND authorization_epoch=? AND record_id=?`, [...scopeParameters(scope), change.id]);
+            if (scope.domainId === RELATIONSHIP_CONVERSATIONS_DOMAIN) {
+              // The member row left (revocation): every message of the conversation leaves this device in the same transaction, in every epoch.
+              const prefix = `${change.id}/`;
+              for (const table of ["sync_records", "local_read_index", "local_read_assets"]) {
+                await database.run(`DELETE FROM ${table} WHERE workspace_id=? AND domain_id=? AND substr(record_id, 1, ?)=?`, [scope.workspaceId, RELATIONSHIP_MESSAGES_DOMAIN, prefix.length, prefix]);
+              }
+            }
           } else {
             const kind = Object.entries(LEGACY_DOMAINS).find(([, domain]) => domain === scope.domainId)?.[0] ?? scope.domainId;
             await database.run(`INSERT INTO sync_records(workspace_id,domain_id,authorization_epoch,kind,record_id,revision,updated_at,payload_json,sync_state,ai_visibility,schema_version,payload_hash,generation)

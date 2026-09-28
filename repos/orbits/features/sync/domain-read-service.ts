@@ -16,6 +16,7 @@ import {
   readAiSessionsPage,
 } from "./ai-session-domain-reader";
 import { issueOfflineReadLease } from "./offline-read-lease";
+import { readRelationshipDomainPage, readRelationshipDomainSummary, type RelationshipDomainSummary } from "./relationship-message-domain-reader";
 import { changeFromRow, SYNC_MAX_LIMIT, SYNC_MAX_PAGE_BYTES, SyncReadError, type SyncReadRow } from "./read-service";
 
 /**
@@ -207,13 +208,19 @@ export function createDomainReadService({ client, cursorSecret, now = () => new 
   }
 
   const hasEventDomains = leased.some((domain) => domain.source.kind === "event_derived");
+  const hasRelationshipDomains = leased.some((domain) => domain.source.kind === "relationship_messages");
+
+  async function relationshipSummary(actorId: string, workspaceId: string): Promise<RelationshipDomainSummary | null> {
+    return hasRelationshipDomains ? readRelationshipDomainSummary(client, { workspaceId, actorId }) : null;
+  }
 
   async function eventSummary(actorId: string, workspaceId: string): Promise<EventDomainSummary | null> {
     return hasEventDomains ? readEventDomainSummary(client, { workspaceId, actorId }) : null;
   }
 
-  async function highWatermark(actorId: string, workspaceId: string, domain: SyncDomainDefinition, summary: EventDomainSummary | null = null): Promise<string> {
+  async function highWatermark(actorId: string, workspaceId: string, domain: SyncDomainDefinition, summary: EventDomainSummary | null = null, messages: RelationshipDomainSummary | null = null): Promise<string> {
     const source = domain.source;
+    if (source.kind === "relationship_messages") return (messages ?? await readRelationshipDomainSummary(client, { workspaceId, actorId })).watermarks[source.view];
     if (source.kind === "event_derived") {
       if (!summary) throw new SyncReadError("SYNC_SCOPE_MISMATCH", "The event sync summary is required.");
       return summary.watermarks[source.view];
@@ -348,17 +355,29 @@ export function createDomainReadService({ client, cursorSecret, now = () => new 
       return eventSummary(input.actorId, input.workspaceId);
     },
 
-    async manifest(input: { actorId: string; workspaceId: string; eventSummary?: EventDomainSummary | null }): Promise<DomainManifest> {
+    /**
+     * Sprint 0119: both relationship message views' watermarks (one statement),
+     * or null when this service leases neither. The manifest route folds it into
+     * its conditional-read key (the message tables are not orbit_records) and
+     * hands it back to manifest().
+     */
+    async relationshipSummary(input: { actorId: string; workspaceId: string }): Promise<RelationshipDomainSummary | null> {
+      if (!input.actorId.trim() || !input.workspaceId.trim()) throw new SyncReadError("SYNC_SCOPE_MISMATCH", "Authenticated sync scope is required.");
+      return relationshipSummary(input.actorId, input.workspaceId);
+    },
+
+    async manifest(input: { actorId: string; workspaceId: string; eventSummary?: EventDomainSummary | null; relationshipSummary?: RelationshipDomainSummary | null }): Promise<DomainManifest> {
       const epoch = await epochFor(input.actorId, input.workspaceId);
       if (!epoch.authorized) return { registryVersion: SYNC_REGISTRY_VERSION, domains: [] };
       const summary = input.eventSummary !== undefined && (input.eventSummary !== null || !hasEventDomains) ? input.eventSummary : await eventSummary(input.actorId, input.workspaceId);
+      const messages = input.relationshipSummary !== undefined && (input.relationshipSummary !== null || !hasRelationshipDomains) ? input.relationshipSummary : await relationshipSummary(input.actorId, input.workspaceId);
       const entries = await Promise.all(leased.map(async (domain) => ({
         domainId: domain.domainId,
         schemaVersion: SYNC_DOMAIN_SCHEMA_VERSION,
         workspaceId: input.workspaceId,
         authorizationEpoch: epoch.epoch,
         generation: generationOf(domain, epoch.epoch, summary),
-        watermark: await highWatermark(input.actorId, input.workspaceId, domain, summary),
+        watermark: await highWatermark(input.actorId, input.workspaceId, domain, summary, messages),
         history: "complete" as const,
         membershipCursor: null,
       })));
@@ -407,6 +426,8 @@ export function createDomainReadService({ client, cursorSecret, now = () => new 
             ? await readContactDomainPage(client, domain.source, { workspaceId: input.workspaceId, actorId: input.actorId, afterRevision, highWatermark: high, limit: input.limit, issuedAt: new Date(issuedAt).toISOString() })
             : domain.source.kind === "dashboard_graph"
               ? await readDashboardGraphPage(client, domain.source, { workspaceId: input.workspaceId, actorId: input.actorId, afterRevision, highWatermark: high, limit: input.limit })
+              : domain.source.kind === "relationship_messages"
+                ? await readRelationshipDomainPage(client, domain.source, { workspaceId: input.workspaceId, actorId: input.actorId, afterRevision, highWatermark: high, limit: input.limit })
               : domain.source.kind === "inbox_records"
                 ? await readInboxDomainPage(client, { workspaceId: input.workspaceId, actorId: input.actorId, afterRevision, highWatermark: high, limit: input.limit })
                 : domain.source.kind === "personal_subspace"

@@ -68,6 +68,11 @@ test("a product writer or a batch script that changes a registered owner, a dish
     // Sprint 0118: an AI session row moved to another personal sub-workspace, an inbox row re-owned.
     writeFileSync(join(root, "scripts/move-ai-sessions.ts"), "await client.query(`update orbit_records set workspace_id = $2 where workspace_id = $1 and collection_name = 'orbit_agent_chat_messages'`);");
     writeFileSync(join(root, "features/demo/hand-over-inbox.ts"), "await sql.query(\"update orbit_records set user_id = $2 where collection_name = 'inboxNotifications' and record_id = $1\");");
+    // Sprint 0119: the relationship message tables (owner derived from the member row): moving a member to another account, a message to another conversation.
+    writeFileSync(join(root, "scripts/move-member.ts"), "await client.query(`update relationship_conversation_members set account_id = $3 where workspace_id = $1 and conversation_id = $2`);");
+    writeFileSync(join(root, "features/demo/move-message.ts"), "await tx.query(\"update relationship_messages set conversation_id = $2 where workspace_id = $1\");");
+    // Leaving keeps the owner (the member row takes a new revision and the device deletes the conversation).
+    writeFileSync(join(root, "features/demo/leave-conversation.ts"), "await tx.query(\"update relationship_conversation_members set state = 'left', updated_at = $3 where workspace_id = $1 and conversation_id = $2\");");
     // A status change keeps the owner: the device hears about it through the row's new revision.
     writeFileSync(join(root, "features/demo/cancel-membership.ts"), "await tx.query(\"update event_ops_membership_heads set status = 'cancelled' where workspace_id = $1 and actor_id = $2\");");
     // Payload-only writes filtered by owner are not owner changes.
@@ -105,6 +110,9 @@ test("a product writer or a batch script that changes a registered owner, a dish
     assert.ok(has("UNCLASSIFIED scripts/move-ai-sessions.ts"), "a script moving AI session rows to another personal sub-workspace");
     assert.ok(has("UNCLASSIFIED features/demo/hand-over-inbox.ts"), "product code re-owning an inbox notification");
     assert.ok(has("OWNER_OVERWRITE scripts/backfill-overwrites.ts"), "a first-owner handler statement without a user_id is null guard");
+    assert.ok(has("UNCLASSIFIED scripts/move-member.ts"), "a script moving a conversation member row to another account");
+    assert.ok(has("UNCLASSIFIED features/demo/move-message.ts"), "product code moving a message to another conversation");
+    assert.ok(!problems.some((line) => line.includes("leave-conversation.ts")), "leaving a conversation keeps the member row's owner");
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
