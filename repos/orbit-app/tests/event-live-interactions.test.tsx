@@ -78,12 +78,14 @@ export const Ionicons = () => null;
 export const randomUUID = () => "uuid-" + (++s.uuid);
 export const readSnapshot = async () => null;
 export const writeSnapshot = async () => {};
+// Sprint 0115: the device copy of the event day (three sync domains); empty unless a test seeds it.
+export const useLocalEventDay = () => { observe(); const local = s.local ?? { registrations: [], events: [], results: [] }; return { records: local, freshness: { readable: true, loading: false, failure: null, refreshing: false, offline: Boolean(s.network), lastSyncedAt: s.localSyncedAt ?? null, syncLabelKey: "sync.fresh" }, refresh() {} }; };
 `;
 async function bundle(route: string) {
   const cached = scripts.get(route); if (cached) return cached;
   const result = await build({ stdin: { contents: `import React from "react"; import { createRoot } from "react-dom/client"; import Route from "./app/${route}"; createRoot(document.getElementById("root")).render(<Route />);`, loader: "tsx", resolveDir: process.cwd() }, bundle: true, write: false, jsx: "automatic", format: "iife", define: { "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" }, resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".js", ".json"], plugins: [{ name: "boundaries", setup(p) {
     p.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "fixture" }));
-    p.onResolve({ filter: /^(fixture|expo-router|expo-crypto|@expo\/vector-icons|react-native-safe-area-context)$|\/(ApiBaseUrlProvider|AuthSessionProvider|snapshot-store)$/ }, () => ({ path: "fixture", namespace: "fixture" }));
+    p.onResolve({ filter: /^(fixture|expo-router|expo-crypto|@expo\/vector-icons|react-native-safe-area-context)$|\/(ApiBaseUrlProvider|AuthSessionProvider|snapshot-store|useLocalEventDay)$/ }, () => ({ path: "fixture", namespace: "fixture" }));
     p.onLoad({ filter: /.*/, namespace: "fixture" }, a => ({ contents: a.path === "fixture" ? fixture : 'export * from "react-native-web";', loader: "jsx", resolveDir: process.cwd() }));
     p.onResolve({ filter: /^react-native-web$/ }, () => ({ path: require.resolve("react-native-web") }));
   } }] });
@@ -249,4 +251,47 @@ test("an exchange write in flight is aborted, not resent and not applied when th
   await p.evaluate(() => { const s = (window as any).fixture; s.hold = false; s.held.forEach((fn: () => void) => fn()); s.held = []; });
   await p.evaluate(() => new Promise(resolve => setTimeout(resolve, 200)));
   assert.equal((await posts(p)).length, 1);
+});
+
+// Sprint 0115: the device copy of the event day, as the three sync domains store it.
+function localDay() {
+  const workspace = attendeeFixture();
+  const row = (kind: string, payload: Record<string, unknown>) => ({ actorId: "account-one", workspaceId: "w", kind, id: "event_1", revision: "9", updatedAt: "2026-09-17T00:40:00Z", deletedAt: null, payload, syncState: "synced", aiVisibility: "excluded" });
+  const c = workspace.configuration;
+  return {
+    registrations: [row("event_registration", { eventId: "event_1", membershipStatus: "rsvped", admissionStatus: null })],
+    events: [row("registered_event", { eventId: "event_1", participantId: "p_me", title: "东京 AI 产品增长夜", description: "Local description", venue: "Shibuya Hall", timeZone: "Asia/Tokyo", startsAt: "2026-09-17T01:00:00Z", endsAt: "2026-09-17T23:00:00Z", lifecycleState: "published", checkInOpensAt: c.checkInOpensAt, eventStartsAt: c.eventStartsAt, eventEndsAt: c.eventEndsAt, profileEditDeadlineAt: c.profileEditDeadlineAt, resultsAvailableAt: c.resultsAvailableAt, roundOneStartsAt: c.roundOneStartsAt, roundTwoStartsAt: c.roundTwoStartsAt })],
+    results: [row("event_published_result", { eventId: "event_1", generationId: "g1", publishedAt: "2026-09-16T23:00:00Z", resultsAvailableAt: c.resultsAvailableAt, me: workspace.me, directory: workspace.directory, directoryComplete: true, recommendations: workspace.recommendations, roundOneTable: workspace.roundOneTable, roundTwoTable: workspace.roundTwoTable })],
+  };
+}
+
+test("offline: the live page renders the device copy with the 截至 notice; check-in, exchange, notes and appointments need a connection and send nothing", async t => {
+  const p = await open(t, { network: true, local: localDay(), localSyncedAt: "2026-09-17T00:40:00Z" });
+  await p.getByText("东京 AI 产品增长夜", { exact: true }).waitFor();
+  await p.getByText(/无法连接 · 显示截至 .+ 的内容/).waitFor();
+  await p.getByText("1 号桌", { exact: true }).waitFor();
+  await p.getByText("90%", { exact: true }).waitFor();
+  await p.getByText("立即签到 · 需要联网", { exact: true }).waitFor();
+  assert.equal(await p.getByRole("button", { name: "立即签到", exact: true }).count(), 0, "no active check-in button");
+  await tab(p, "参会者"); await p.getByRole("button", { name: "Other person", exact: true }).click();
+  await p.getByRole("button", { name: "申请交换名片 · 需要联网", exact: true }).waitFor();
+  await p.getByText("第 1 轮 · 1 号桌", { exact: true }).waitFor();
+  await p.getByRole("button", { name: "记一条笔记 · 需要联网", exact: true }).waitFor();
+  await p.getByRole("button", { name: "约个时间 · 需要联网", exact: true }).waitFor();
+  await p.getByRole("button", { name: "关闭", exact: true }).click();
+  await tab(p, "议程"); for (const text of ["开始签到", "第一轮分桌", "第二轮话题桌"]) await p.getByText(text, { exact: true }).first().waitFor();
+  await tab(p, "分组"); await p.getByText("本组主题：Collaboration", { exact: true }).waitFor();
+  const reads = (await requests(p)).map((r: any) => `${r.method} ${r.path}`);
+  assert.ok(!reads.some((r: string) => r.includes("/participants/")), "the offline person sheet does not ask the network");
+  assert.deepEqual(await posts(p), [], "nothing is written");
+});
+
+test("online, the server's workspace wins over the device copy; a 403 shows the denied page even with a device copy", async t => {
+  const workspace = attendeeFixture(); workspace.roundOneTable.tableNumber = 7; workspace.roundTwoTable.tableNumber = 7;
+  const online = await open(t, { workspace, local: localDay() });
+  await online.getByText("7 号桌", { exact: true }).waitFor();
+  assert.equal(await online.getByText(/无法连接 · 显示截至/).count(), 0);
+  const denied = await open(t, { local: localDay(), statuses: { "GET /api/events/event_1/operations": 403 } });
+  await denied.getByText("现场只对已报名的参会者开放", { exact: true }).waitFor();
+  assert.equal(await denied.getByText("1 号桌", { exact: true }).count(), 0, "a server refusal is never covered by the device copy");
 });

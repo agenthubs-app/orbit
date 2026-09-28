@@ -369,9 +369,10 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/screens/schedule/PersonalScheduleScreen.tsx","POST","/api/schedule-items"],
   ["src/screens/schedule/PersonalScheduleScreen.tsx","POST","/api/schedule-items/:id"],
   ["src/screens/schedule/ScheduleEventPreviewScreen.tsx","GET","/api/events/public/:id"],
-  ["src/screens/schedule/ScheduleScreen.tsx","GET","/api/events/public"],
-  ["src/screens/schedule/ScheduleScreen.tsx","GET","/api/schedule-items"],
-  ["src/screens/schedule/ScheduleScreen.tsx","GET","/api/tasks/page"],
+  // Sprint 0115: the calendar reads the device mirror; these are the browser's fallback reads when its mirror is unavailable.
+  ["src/screens/schedule/schedule-calendar-source.web.ts","GET","/api/events/public"],
+  ["src/screens/schedule/schedule-calendar-source.web.ts","GET","/api/schedule-items"],
+  ["src/screens/schedule/schedule-calendar-source.web.ts","GET","/api/tasks/page"],
   ["src/screens/settings/ApiSettingsScreen.tsx","GET","/api/health"],
   ["src/screens/settings/NotificationDeliverySettings.tsx","GET","/api/inbox/delivery/preferences"],
   ["src/screens/settings/NotificationDeliverySettings.tsx","POST","/api/inbox/delivery/preferences"],

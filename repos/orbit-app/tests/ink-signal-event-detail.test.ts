@@ -29,6 +29,9 @@ let script: string;
 // Only HTTP, native capabilities, auth/focus and the device environment are doubled.
 // Route, resource/client validation, view-models and the complete screen render for real.
 const fixture = `
+// Sprint 0115: the device copy of the event day stays empty in this harness; the network read is authoritative.
+export const useLocalEventDay = () => ({ records: { registrations: [], events: [], results: [] }, freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh() {} });
+
 import React, { useSyncExternalStore } from "react";
 import { View } from "react-native-web";
 import glyphs from "@expo/vector-icons/build/vendor/react-native-vector-icons/glyphmaps/Ionicons.json";
@@ -80,7 +83,7 @@ test.before(async () => {
     plugins: [{ name: "event-detail-http-boundaries", setup(plugin) {
       plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "detail" }));
       plugin.onResolve({ filter: /^react-native-svg$/ }, () => ({ path: require.resolve("react-native-svg/lib/module/ReactNativeSVG.web.js") }));
-      plugin.onResolve({ filter: /^(fixture|expo-router|@expo\/vector-icons|react-native-safe-area-context)$|\/(ApiBaseUrlProvider|AuthSessionProvider|OrbitLocaleContext|snapshot-store)$/ }, () => ({ path: "fixture", namespace: "detail" }));
+      plugin.onResolve({ filter: /^(fixture|expo-router|@expo\/vector-icons|react-native-safe-area-context)$|\/(ApiBaseUrlProvider|AuthSessionProvider|OrbitLocaleContext|snapshot-store|useLocalEventDay)$/ }, () => ({ path: "fixture", namespace: "detail" }));
       plugin.onLoad({ filter: /.*/, namespace: "detail" }, args => ({ contents: args.path === "native" ? `
 import React from "react"; import { Pressable as RealPressable, Text as RealText, TextInput as RealTextInput, RefreshControl as RealRefreshControl, StyleSheet, useWindowDimensions as realDimensions } from "react-native-web";
 import { useFixture } from "fixture"; export * from "react-native-web";

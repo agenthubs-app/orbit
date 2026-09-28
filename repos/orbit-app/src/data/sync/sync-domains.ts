@@ -12,6 +12,10 @@ export const KNOWN_SYNC_DOMAINS: Readonly<Record<string, SyncChangeKind>> = {
   notes: "note",
   tasks: "task",
   "personal-schedule": "personal_schedule",
+  // Sprint 0115: the registered attendee's event day (event detail, live page, calendar).
+  "event-registrations": "event_registration",
+  "registered-events": "registered_event",
+  "event-published-results": "event_published_result",
 };
 
 export function kindOfSyncDomain(domainId: string): SyncChangeKind | null {
