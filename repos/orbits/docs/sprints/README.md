@@ -28,6 +28,7 @@
 
 - D1：W0008 completed 后，在目标环境设置 `ORBIT_GUIDE_DEMO=on`（示例模式与引导一起打开）。代码 Sprint 只验证开关两种状态；未在目标环境实际打开前，不能声称 D1 已落地。
 - W0003／W0007／W0010 等含迁移的 Sprint：生产库执行迁移需要用户授权。
+- W0017：部署前或随部署在生产执行 `scripts/migrate-web-runtime.ts`，建 `plan_maintenance_daily_runs`；不执行则把关放行（日志 `ungated: 1`），省不下流量。
 
 ## Sprint 登记表
 
@@ -51,7 +52,7 @@
 | [W0014](W0014-demo-mode-plan-chat/GOAL.md) | 引导期间打开「我的计划」和示例对话，看到示例人物的计划和一段示例问答 | RW-03（我的计划、示例对话部分） | W0004、W0008、W0009 | completed |
 | [W0015](W0015-event-attribution/GOAL.md) | 活动当天或次日扫的名片，审阅时问「是在 X 活动认识的吗」，确认后记来源、活动标已参加 | RW-11（活动归属） | W0007、W0010 | completed |
 | [W0016](W0016-verify-environment/GOAL.md) | 另起开示例开关的验收 server，建测试账号并造好各场景数据，名片照片裁成单张 | RV-01 | 大目标 1 全部 completed | ready |
-| [W0017](W0017-traffic-guard/GOAL.md) | 3 个计划维护任务改为每天最多一次（持久、跨实例），名片匹配补跑空闲时只做轻查询；新增读取路径逐一测量并估算月流量 | RV-03 | 无 | ready |
+| [W0017](W0017-traffic-guard/GOAL.md) | 3 个计划维护任务改为每天最多一次（持久、跨实例），名片匹配补跑空闲时只做轻查询；新增读取路径逐一测量并估算月流量 | RV-03 | 无 | completed |
 | [W0018](W0018-scenario-acceptance/GOAL.md) | 逐场景真实页面验收（桌面＋手机），修小问题，交验收报告页面 | RV-02 | W0016、W0017 | planned |
 | [W0019](W0019-release-checklist/GOAL.md) | 生产上线清单 + 大目标收口的本地全量对照 | RV-04 | W0018 | planned |
 | [W0020](W0020-preview-verify/GOAL.md) | Preview 复验关键场景并测量 Neon 流量 | RV-04 | W0019；用户授权 Preview 部署、迁移、开关、测试数据 | planned |
@@ -79,3 +80,4 @@
 | W0014 | run-01（2026-09-28） | `8e159ed2` | `17aa8606` | [REPORT](W0014-demo-mode-plan-chat/REPORT.md) |
 | W0015 | run-01（2026-09-28） | `70d038e6` | `feac7477` | [REPORT](W0015-event-attribution/REPORT.md) |
 | W0012 | run-01（2026-09-28） | `8c087099` | `639d35ad` | [REPORT](W0012-long-term-tracking/REPORT.md) |
+| W0017 | run-01（2026-09-28） | `4a52e3ca`（报告 `fd68af5c`） | `892c1558` | [REPORT](W0017-traffic-guard/REPORT.md) |
