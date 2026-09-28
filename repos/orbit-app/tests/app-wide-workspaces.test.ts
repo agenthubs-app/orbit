@@ -10,6 +10,11 @@ let browser: Browser, server: Server, url: string;
 // Only native services, routing and HTTP are replaced. Real screen state,
 // presentation, view-model decoding and action handlers run in the browser.
 const fixture = `
+// Sprint 0118: this harness exercises the network path; the device mirror of the inbox and AI sessions is not available here.
+export const useLocalInbox = () => ({ available: false, rows: [], freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh: async () => null });
+export const useLocalAiSessions = () => ({ available: false, rows: [], freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh: async () => null });
+export const useLocalAiConversation = () => ({ available: false, messages: [], cards: null, saveCards() {}, freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh: async () => null });
+
 import React, { useEffect, useSyncExternalStore } from "react";
 export const useFocusEffect = effect => useEffect(effect, [effect]);
 import { View } from "react-native";
@@ -129,7 +134,7 @@ test.before(async () => {
     // RN Web hardcodes fontScale=1. Replace this native dimension value only;
     // the real native-web elements, press handlers and layout stay intact.
     plugin.onLoad({ filter: /.*/, namespace: "workspace-native" }, () => ({ contents: `export * from ${JSON.stringify(require.resolve("react-native-web"))}; import { useWindowDimensions as realDimensions } from ${JSON.stringify(require.resolve("react-native-web"))}; import { useSyncExternalStore } from "react"; export function useWindowDimensions() { const dimensions = realDimensions(); const fontScale = useSyncExternalStore(listener => { window.addEventListener("workspace-fontscale", listener); return () => window.removeEventListener("workspace-fontscale", listener); }, () => window.fixture?.fontScale || 1); return { ...dimensions, fontScale }; }`, loader: "js", resolveDir: process.cwd() }));
-    plugin.onResolve({ filter: /^(expo-router|expo-router\/react-navigation|@expo\/vector-icons|react-native-safe-area-context|expo-crypto)$|\/(useApiResource|useOrbitApiClient|ApiBaseUrlProvider|AuthSessionProvider|useRelationshipInboxBadgeCount|native-notifications|useWebMirrorStatus|useSyncedCollection)$/ }, () => ({ path: "fixture", namespace: "workspace-test" }));
+    plugin.onResolve({ filter: /^(expo-router|expo-router\/react-navigation|@expo\/vector-icons|react-native-safe-area-context|expo-crypto)$|\/(useApiResource|useOrbitApiClient|ApiBaseUrlProvider|AuthSessionProvider|useRelationshipInboxBadgeCount|native-notifications|useWebMirrorStatus|useSyncedCollection|useLocalInbox|useLocalAiSessions)$/ }, () => ({ path: "fixture", namespace: "workspace-test" }));
     plugin.onLoad({ filter: /.*/, namespace: "workspace-test" }, () => ({ contents: fixture, loader: "jsx", resolveDir: process.cwd() }));
   } }] });
   server = createServer((_request, response) => { response.setHeader("content-type", "text/html; charset=utf-8"); response.end(`<style>html,body,#root{margin:0;height:100%}</style><div id="root"></div><script>${result.outputFiles[0]!.text}</script>`); });
