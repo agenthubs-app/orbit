@@ -34,6 +34,7 @@ import {
   isCardSkipped,
   type Copy,
 } from "./card-batch-model";
+import { BatchPlanMatch } from "../../agent/iorbit-0918/plan-match-sheet";
 import { CARD_BATCH_STYLES } from "./card-batch-styles";
 import { CardBatchUploader } from "./card-batch-uploader";
 import type { CardBatch, ContactCandidate } from "./use-card-batch";
@@ -250,7 +251,13 @@ function BatchView({ batch, onBrowse, onReset, t }: { batch: CardBatch; onBrowse
   }
 
   if (finished || !active) {
-    return <FinishedPanel autoCount={autoCount} laterCount={laterCount} mergedCount={mergedCount} onReset={onReset} setAside={setAside} t={t} total={cards.length} userCount={userCount} />;
+    return (
+      <>
+        <FinishedPanel autoCount={autoCount} laterCount={laterCount} mergedCount={mergedCount} onReset={onReset} setAside={setAside} t={t} total={cards.length} userCount={userCount} />
+        {/* W0010：服务端批次已完成（没有「稍后处理」的名片）才有匹配任务；最多等 8 秒。 */}
+        {status === "completed" ? <BatchPlanMatch batchId={batchId} /> : null}
+      </>
+    );
   }
 
   const draft = drafts[active.cardId] ?? initialCardDraft(active);

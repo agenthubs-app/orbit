@@ -289,6 +289,60 @@ export interface AddManualLogInput {
   idempotencyKey?: string | null;
 }
 
+/** W0010：由人脉需求关联生成的「约 TA」行动在 `meta.source` 上的标记。 */
+export const PLAN_MATCH_ACTION_SOURCE = "network_match";
+
+/**
+ * W0010：把联系人关联到人脉需求（确认匹配候选或手动关联），并在本周生成「约 TA」行动。
+ * 同一需求 + 同一联系人只生成一条行动；重复提交（含同一幂等键回放）不再写库。
+ */
+export interface LinkNeedContactInput {
+  needItemId: string;
+  contactId: string;
+  /** 行动标题里的称呼（服务端按本人联系人解析后传入）；缺省为「TA」。 */
+  contactName?: string | null;
+  idempotencyKey?: string | null;
+}
+
+export interface LinkNeedContactResult {
+  need: PlanItem;
+  action: PlanItem;
+  /** 这次真实关联时写的 auto 记录（`contact_linked`，`targetItemId` 指向行动）；已关联时为 null。 */
+  log: PlanLogEntry | null;
+  replayed: boolean;
+}
+
+/** W0010：「约 TA」行动上的「记一次互动」：写一条互动记录、需求上的联系人变为已建立联系、行动完成。 */
+export interface RecordInteractionInput {
+  actionItemId: string;
+  idempotencyKey?: string | null;
+}
+
+export interface RecordInteractionResult {
+  action: PlanItem;
+  need: PlanItem | null;
+  entry: PlanLogEntry;
+  replayed: boolean;
+}
+
+/**
+ * W0010：确认／忽略一条匹配候选。一个按 actor 串行的事务里锁住候选、严格 CAS（只从 pending 转出），
+ * 接受时同一事务关联联系人并生成「约 TA」行动。输掉并发的一方 `MATCH_ALREADY_DECIDED`（409）；
+ * 同一决定重复提交回放现状（`replayed: true`）。
+ */
+export interface DecideMatchCandidateInput {
+  candidateId: string;
+  decision: "accept" | "dismiss";
+  contactName?: string | null;
+}
+
+export interface DecideMatchCandidateResult {
+  candidateId: string;
+  status: "accepted" | "dismissed";
+  link: LinkNeedContactResult | null;
+  replayed: boolean;
+}
+
 export interface PlanService {
   getCurrent(): Promise<PlanSnapshot | null>;
   /** 本人任一版本（含已归档）；他人的计划一律视为不存在。 */
@@ -302,6 +356,9 @@ export interface PlanService {
   createVersionWithOutcome(input: CreatePlanVersionInput): Promise<{ snapshot: PlanSnapshot; created: boolean }>;
   updateItem(input: UpdatePlanItemInput): Promise<UpdatePlanItemResult>;
   addManualLog(input: AddManualLogInput): Promise<{ entry: PlanLogEntry; replayed: boolean }>;
+  linkNeedContact(input: LinkNeedContactInput): Promise<LinkNeedContactResult>;
+  decideMatchCandidate(input: DecideMatchCandidateInput): Promise<DecideMatchCandidateResult>;
+  recordInteraction(input: RecordInteractionInput): Promise<RecordInteractionResult>;
 }
 
 /**
@@ -325,5 +382,6 @@ export const PLAN_ERROR_REASONS = [
   "BASE_PLAN_MISMATCH",
   "IDEMPOTENCY_KEY_REUSED",
   "REFERENCE_NOT_FOUND",
+  "MATCH_ALREADY_DECIDED",
 ] as const;
 export type PlanErrorReason = (typeof PLAN_ERROR_REASONS)[number];

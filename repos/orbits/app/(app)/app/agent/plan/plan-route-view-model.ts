@@ -22,6 +22,7 @@ import type {
   PlanLogEntry,
   PlanSnapshot,
 } from "../../../../../features/plans/contract";
+import { PLAN_MATCH_ACTION_SOURCE } from "../../../../../features/plans/contract";
 import type { PlanAnalysisV1 } from "../../../../../features/plans/generator";
 import {
   comparePlanWeekActions,
@@ -52,6 +53,8 @@ export interface MyPlanAction {
   /** 逾期周数（本周为 0）：「已延后 N 周」。 */
   weeksOverdue: number;
   weekLabel: string;
+  /** W0010：由人脉需求关联生成的「约 TA」行动带上联系人 id（行上显示 定时间／起草邮件／记一次互动）。 */
+  matchContactId?: string;
 }
 
 export interface MyPlanRulerPhase {
@@ -225,6 +228,9 @@ function toAction(entry: PlanWeekAction, lang: Lang, fallbackWeek: number): MyPl
     title: entry.item.title,
     weekLabel: weekLabel(lang, entry.item.suggestedWeek ?? fallbackWeek),
     weeksOverdue: entry.weeksOverdue,
+    ...(entry.item.meta.source === PLAN_MATCH_ACTION_SOURCE && typeof entry.item.meta.contactId === "string"
+      ? { matchContactId: entry.item.meta.contactId }
+      : {}),
   };
 }
 

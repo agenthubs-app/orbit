@@ -20,6 +20,7 @@ import {
   EVENT_ITEM_STATUSES,
   EVENT_ITEM_TRANSITIONS,
   PLAN_LIMITS,
+  PLAN_MATCH_ACTION_SOURCE,
   type ActionStatus,
   type EventItemStatus,
   type Plan,
@@ -27,6 +28,7 @@ import {
   type PlanItem,
   type PlanItemChange,
   type PlanItemStatus,
+  type LinkNeedContactResult,
   type PlanLogEntry,
   type PlanLogEvent,
   type PlanReferenceValidator,
@@ -34,6 +36,7 @@ import {
   type PlanSnapshot,
 } from "./contract";
 import type { PlanReader, PlanRepository, PlanScope, PlanTransaction } from "./repository";
+import { planWeekAt } from "./week";
 import {
   PlanServiceError,
   parseCreatePlanVersionInput,
@@ -266,6 +269,35 @@ export function applyItemChange(item: PlanItem, change: PlanItemChange, now: str
   }
 }
 
+/** W0010：某条需求 + 某个联系人生成的「约 TA」行动（同一对只有一条）。 */
+export function findMatchAction(items: readonly PlanItem[], needItemId: string, contactId: string): PlanItem | null {
+  return (
+    items.find(
+      (item) =>
+        item.kind === "action" &&
+        item.meta.source === PLAN_MATCH_ACTION_SOURCE &&
+        item.meta.needItemId === needItemId &&
+        item.meta.contactId === contactId,
+    ) ?? null
+  );
+}
+
+/** 「约 TA」行动对应的需求：优先 meta 里记的那条；新版本里换了 id 时取同一计划里关联着这个人的需求。 */
+function needForMatchAction(items: readonly PlanItem[], action: PlanItem, contactId: string): PlanItem | null {
+  const needs = items.filter((item) => item.kind === "network_need");
+  return (
+    needs.find((item) => item.id === action.meta.needItemId) ??
+    needs.find((item) => item.carriedFromItemId === action.meta.needItemId) ??
+    needs.find((item) => item.linkedContactIds.includes(contactId)) ??
+    null
+  );
+}
+
+function contactLabel(value: unknown): string {
+  const name = typeof value === "string" ? value.replace(/\s+/g, " ").trim() : "";
+  return name ? name.slice(0, 80) : "TA";
+}
+
 /** 请求指纹：同一幂等键只能对应同一个请求。 */
 function fingerprint(value: unknown): string {
   return createHash("sha256").update(JSON.stringify(value)).digest("hex");
@@ -346,6 +378,83 @@ export function createPlanService(options: CreatePlanServiceOptions): PlanServic
     const full: PlanLogEntry = { ...entry, createdAt: entry.createdAt ?? now(), id: newId() };
     await tx.insertLog(full);
     return full;
+  }
+
+  /**
+   * W0010：在已开启的事务里把联系人关联到人脉需求，并确保本周有一条「约 TA」行动
+   * （同一需求 + 同一联系人只一条）。真实关联时写 `contact_linked`，`targetItemId` 指向行动。
+   */
+  async function linkWithin(
+    tx: PlanTransaction,
+    input: { needItemId: string; contactId: string; name: string; logKey: string | null },
+  ): Promise<{ need: PlanItem; action: PlanItem; log: PlanLogEntry | null; at: string }> {
+    const { contactId, name } = input;
+    const need = await tx.item(input.needItemId);
+    if (!need || need.kind !== "network_need") throw new PlanServiceError("ITEM_NOT_FOUND", "Network need not found.");
+    const plan = await tx.plan(need.planId);
+    if (!plan) throw new PlanServiceError("PLAN_NOT_FOUND", "Plan not found.");
+    if (plan.status !== "active") throw new PlanServiceError("PLAN_ARCHIVED", "Archived plan versions are read-only.");
+    // 已关联也要校验：联系人必须是本人的（他人的联系人与不存在的对外一样是 404）。
+    await assertReferences([contactId], []);
+
+    const at = now();
+    const items = await tx.items(plan.id);
+    let action = findMatchAction(items, need.id, contactId);
+    if (!action) {
+      if (items.length >= PLAN_LIMITS.itemsPerPlan) illegal("This plan has too many items.");
+      const week = Math.min(PLAN_LIMITS.maxWeek, planWeekAt(plan.startsOn, new Date(at)));
+      action = withLinks(
+        {
+          answer: null,
+          carriedFromItemId: null,
+          completedAt: null,
+          contactLinks: [],
+          createdAt: at,
+          criteria: null,
+          deferralCount: 0,
+          detail: clip(`人脉需求：${need.title}`),
+          id: newId(),
+          kind: "action",
+          linkedContactIds: [],
+          linkedEventId: null,
+          meta: { contactId, needItemId: need.id, source: PLAN_MATCH_ACTION_SOURCE },
+          phaseKey: need.phaseKey,
+          planId: plan.id,
+          sortKey: items.reduce((max, item) => Math.max(max, item.sortKey), -1) + 1,
+          status: "not_started",
+          suggestedWeek: week,
+          title: `约 ${name}`,
+          updatedAt: at,
+        },
+        [{ contactId, establishedAt: null, linkedAt: at, state: "linked" }],
+      );
+      await tx.insertItems([action]);
+    }
+
+    let nextNeed = need;
+    let log: PlanLogEntry | null = null;
+    const applied = applyItemChange(need, { contactId, op: "link_contact" }, at);
+    if (applied) {
+      await tx.updateItem(applied.item);
+      nextNeed = applied.item;
+      log = await writeLog(tx, {
+        author: "user",
+        body: applied.body,
+        createdAt: at,
+        event: applied.event,
+        fromStatus: applied.fromStatus,
+        idempotencyKey: input.logKey ?? `link:auto:${newId()}`,
+        itemId: need.id,
+        kind: "auto",
+        linkedContactIds: applied.linkedContactIds,
+        linkedEventId: null,
+        payload: { ...applied.payload, actionItemId: action.id },
+        planId: plan.id,
+        targetItemId: action.id,
+        toStatus: applied.toStatus,
+      });
+    }
+    return { action, at, log, need: nextNeed };
   }
 
   const service: PlanService = {
@@ -611,6 +720,184 @@ export function createPlanService(options: CreatePlanServiceOptions): PlanServic
           });
         }
         return { entry, replayed: false };
+      });
+    },
+
+    async linkNeedContact(rawInput) {
+      const needItemId = parseId(rawInput?.needItemId, "needItemId");
+      const contactId = parseId(rawInput?.contactId, "contactId");
+      const name = contactLabel(rawInput?.contactName);
+      const clientKey = rawInput?.idempotencyKey == null ? null : parseId(rawInput.idempotencyKey, "idempotencyKey");
+      const idempotencyKey = clientKey ? `link:${clientKey}` : null;
+      const requestFingerprint = fingerprint({ contactId, kind: "link_need_contact", needItemId });
+      return repository.transact(scope, async (tx) => {
+        if (idempotencyKey) {
+          const receipt = await tx.commandReceipt(idempotencyKey);
+          if (receipt) {
+            if (receipt.kind !== "item_change" || receipt.fingerprint !== requestFingerprint) keyReused();
+            const need = await tx.item(needItemId);
+            if (!need) throw new PlanServiceError("ITEM_NOT_FOUND", "Plan item not found.");
+            const action = findMatchAction(await tx.items(need.planId), need.id, contactId);
+            if (!action) throw new Error("Plan command receipt has no matching action.");
+            return { action, log: receipt.logId ? await tx.logById(receipt.logId) : null, need, replayed: true };
+          }
+        }
+        const linked = await linkWithin(tx, { contactId, logKey: idempotencyKey, name, needItemId });
+        if (idempotencyKey) {
+          await tx.insertCommandReceipt({
+            createdAt: linked.at,
+            fingerprint: requestFingerprint,
+            idempotencyKey,
+            itemId: linked.need.id,
+            kind: "item_change",
+            logId: linked.log?.id ?? null,
+            outcome: linked.log ? "applied" : "noop",
+            planId: linked.need.planId,
+          });
+        }
+        return { action: linked.action, log: linked.log, need: linked.need, replayed: false };
+      });
+    },
+
+    async decideMatchCandidate(rawInput) {
+      const candidateId = parseId(rawInput?.candidateId, "candidateId");
+      const decision = rawInput?.decision;
+      if (decision !== "accept" && decision !== "dismiss") {
+        throw new PlanServiceError("INVALID_INPUT", 'decision must be "accept" or "dismiss".');
+      }
+      const name = contactLabel(rawInput?.contactName);
+      const target = decision === "accept" ? "accepted" : "dismissed";
+      // 一个按 actor 串行的事务：锁住候选 → 严格 CAS（只从 pending 转出）→ 接受时在同一事务里
+      // 关联联系人、生成「约 TA」行动、写进展记录。并发的 是 / 不是 只有一个成功，另一个 409。
+      return repository.transact(scope, async (tx) => {
+        if (!tx.matchCandidateForUpdate || !tx.decideMatchCandidate) {
+          throw new Error("Match candidates require the live plan store.");
+        }
+        const candidate = await tx.matchCandidateForUpdate(candidateId);
+        if (!candidate) throw new PlanServiceError("ITEM_NOT_FOUND", "Match candidate not found.");
+        if (candidate.status !== "pending") {
+          if (candidate.status !== target) {
+            throw new PlanServiceError("MATCH_ALREADY_DECIDED", `This candidate was already ${candidate.status}.`);
+          }
+          // 同一决定重复提交（响应丢失后重试）：回放现状，不再写库。
+          if (target === "dismissed") return { candidateId, link: null, replayed: true, status: target };
+          const need = await tx.item(candidate.needItemId);
+          const action = need ? findMatchAction(await tx.items(need.planId), need.id, candidate.contactId) : null;
+          if (!need || !action) {
+            throw new PlanServiceError("MATCH_ALREADY_DECIDED", "This candidate was already accepted.");
+          }
+          return { candidateId, link: { action, log: null, need, replayed: true }, replayed: true, status: target };
+        }
+        let link: LinkNeedContactResult | null = null;
+        if (target === "accepted") {
+          const linked = await linkWithin(tx, {
+            contactId: candidate.contactId,
+            logKey: `match:${candidateId}`,
+            name,
+            needItemId: candidate.needItemId,
+          });
+          link = { action: linked.action, log: linked.log, need: linked.need, replayed: false };
+        }
+        if (!(await tx.decideMatchCandidate(candidateId, target, now()))) {
+          throw new PlanServiceError("MATCH_ALREADY_DECIDED", "This candidate was already decided.");
+        }
+        return { candidateId, link, replayed: false, status: target };
+      });
+    },
+
+    async recordInteraction(rawInput) {
+      const actionItemId = parseId(rawInput?.actionItemId, "actionItemId");
+      const clientKey = rawInput?.idempotencyKey == null ? null : parseId(rawInput.idempotencyKey, "idempotencyKey");
+      const idempotencyKey = clientKey ? `interaction:${clientKey}` : null;
+      const requestFingerprint = fingerprint({ actionItemId, kind: "record_interaction" });
+      return repository.transact(scope, async (tx) => {
+        const loadAction = async () => {
+          const action = await tx.item(actionItemId);
+          if (!action) throw new PlanServiceError("ITEM_NOT_FOUND", "Plan item not found.");
+          const contactId = action.meta.contactId;
+          if (action.kind !== "action" || action.meta.source !== PLAN_MATCH_ACTION_SOURCE || typeof contactId !== "string") {
+            illegal("Only actions created from a network need can log an interaction.");
+          }
+          return { action, contactId };
+        };
+        if (idempotencyKey) {
+          const receipt = await tx.commandReceipt(idempotencyKey);
+          if (receipt) {
+            if (receipt.kind !== "manual_log" || receipt.fingerprint !== requestFingerprint) keyReused();
+            const { action, contactId } = await loadAction();
+            const entry = receipt.logId ? await tx.logById(receipt.logId) : null;
+            if (!entry) throw new Error("Plan command receipt has no log entry.");
+            return { action, entry, need: needForMatchAction(await tx.items(action.planId), action, contactId), replayed: true };
+          }
+        }
+        const { action, contactId } = await loadAction();
+        const plan = await tx.plan(action.planId);
+        if (!plan) throw new PlanServiceError("PLAN_NOT_FOUND", "Plan not found.");
+        if (plan.status !== "active") throw new PlanServiceError("PLAN_ARCHIVED", "Archived plan versions are read-only.");
+        const at = now();
+        const autoLog = (item: PlanItem, applied: AppliedChange, targetItemId: string | null) =>
+          writeLog(tx, {
+            author: "user",
+            body: applied.body,
+            createdAt: at,
+            event: applied.event,
+            fromStatus: applied.fromStatus,
+            idempotencyKey: `interaction:auto:${newId()}`,
+            itemId: item.id,
+            kind: "auto",
+            linkedContactIds: applied.linkedContactIds,
+            linkedEventId: null,
+            payload: applied.payload,
+            planId: plan.id,
+            targetItemId,
+            toStatus: applied.toStatus,
+          });
+
+        let need = needForMatchAction(await tx.items(plan.id), action, contactId);
+        if (need && need.linkedContactIds.includes(contactId)) {
+          const established = applyItemChange(need, { contactId, op: "establish_contact" }, at);
+          if (established) {
+            await tx.updateItem(established.item);
+            await autoLog(need, established, action.id);
+            need = established.item;
+          }
+        }
+        let nextAction = action;
+        const done = applyItemChange(action, { op: "set_status", status: "done" }, at);
+        if (done) {
+          await tx.updateItem(done.item);
+          await autoLog(action, done, null);
+          nextAction = done.item;
+        }
+        const entry = await writeLog(tx, {
+          author: "user",
+          body: clip(`记一次互动：${action.title}`),
+          createdAt: at,
+          event: "note",
+          fromStatus: null,
+          idempotencyKey: idempotencyKey ?? `interaction:note:${newId()}`,
+          itemId: action.id,
+          kind: "manual",
+          linkedContactIds: [contactId],
+          linkedEventId: null,
+          payload: { interaction: true },
+          planId: plan.id,
+          targetItemId: need?.id ?? null,
+          toStatus: null,
+        });
+        if (idempotencyKey) {
+          await tx.insertCommandReceipt({
+            createdAt: at,
+            fingerprint: requestFingerprint,
+            idempotencyKey,
+            itemId: null,
+            kind: "manual_log",
+            logId: entry.id,
+            outcome: "applied",
+            planId: plan.id,
+          });
+        }
+        return { action: nextAction, entry, need, replayed: false };
       });
     },
   };

@@ -11,6 +11,8 @@ import { redispatchPendingAgentActions } from "../../agent/runtime/dispatch-scan
 import { dispatchPasswordResetMail } from "../../auth/password-reset-dispatch";
 import { NotificationDeliveryUnconfigured, runNotificationDeliveryPass } from "../../notifications/delivery-pass";
 import { createConfiguredCanonicalReminderMaintenanceTask } from "../../notifications/configured-canonical-reminder-maintenance";
+import { createPlanMatchMaintenanceTask } from "../../plans/match-maintenance-task";
+import { getConfiguredPlanMatchingRuntime } from "../../plans/matching-runtime";
 import type { MaintenanceTask } from "./pass";
 
 // The production task list. Each task checks its own configuration and reports
@@ -114,6 +116,11 @@ export function createConfiguredMaintenanceTasks({
         return { deleted: await ingest.store.reapUnattachedWrites() };
       },
     },
+    // W0010: runs network-need match jobs whose review page was closed (or whose
+    // single-card day has ended). Bounded per pass; each job bills at most one AI call.
+    createPlanMatchMaintenanceTask({
+      resolveWorker: () => getConfiguredPlanMatchingRuntime()?.worker ?? null,
+    }),
     {
       name: "notification_redelivery",
       async run({ deadline }) {

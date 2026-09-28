@@ -3,6 +3,8 @@
  * 数据只来自详情路由的 OrbitContactView（真实 notes / editableTags / lastInteraction / publicProfile）。
  * 关闭 = 真实导航到 closeHref；「记录互动」「更新状态」都打开记录跟进弹窗。
  * 省略（无数据源 / 死链接，见台账）：「···」「✎ 编辑资料」「▦ 约时间」「查看全部 →」、概览「联系频率」。
+ * W0010：右栏「下一步建议」下方有「关联到计划人脉需求」（手动关联，只能关联本人的计划与本人的联系人；
+ * 点开才读计划，示例模式下被拦截）。
  *
  * W0005 示例模式（`useDemoMode()` 非空）：名字旁带「示例」角标，「记录互动」「更新状态」改走
  * `guardWrite`，弹「这是示例」、不打开记录跟进、不发请求。`useNetworkDemoDetail` 让列表／概览／
@@ -18,6 +20,7 @@ import { DemoTag, useDemoMode } from "../../_demo/demo-mode-core";
 import type { OrbitContactView } from "../../orbit-contacts-route-view-model";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { useOrbitModalA11y } from "../../orbit-modal-a11y";
+import { PlanNeedLinkPanel } from "../../agent/iorbit-0918/plan-match-sheet";
 import { ContactRelationshipInitializationPanel, useContactRelationshipInitialization } from "../contact-relationship-initialization";
 import { SOURCE_LABEL, STAGE_CHIP, STAGE_LABEL, STAGE_STYLE, metSummary, sourceOf, stageOf } from "./network-model";
 
@@ -214,6 +217,13 @@ export function NetworkDetailModal({ contact, closeHref, onFollow: openFollow, e
             <div className="nw-panel nw-panel-12">
               <strong className="nw-panel-t">{t({ en: "Suggested next steps", zh: "下一步建议" })}</strong>
               <span className="nw-step"><span className="nw-step-n">1</span><span className="nw-step-text">{next?.text || dash}{next?.reason && next.reason.trim() !== interactionSummary ? <span className="nw-step-reason">{next.reason}</span> : null}</span></span>
+            </div>
+            <div className="nw-panel nw-panel-12" data-network-detail-plan-link>
+              <strong className="nw-panel-t">{t({ en: "My plan", zh: "我的计划" })}</strong>
+              <PlanNeedLinkPanel
+                contactId={contact.id}
+                guard={guardWrite ? () => (guardWrite(t({ en: "plan link", zh: "计划关联" })), true) : undefined}
+              />
             </div>
           </div>
         </div>
