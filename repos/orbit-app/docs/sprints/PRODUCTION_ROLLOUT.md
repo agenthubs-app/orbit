@@ -37,8 +37,13 @@
 | 0114 补写主人 | ① 部署后只读统计：`npm run db:backfill:owners`（默认 dry-run），再 `-- --preview --out-dir=<外接盘目录>` 保存逐条计划；② **需用户确认**：`npm run db:backfill:owners -- --apply --out-dir=<外接盘目录> --confirm-remote=<host>/<db>`（先导出备份，写库后自检，不通过就回滚）；③ 再 dry-run，assign 和 copy 都应为 0；④ 冒烟：两个账号打开联系人列表和详情 | **必须在 0116 上线之前执行并确认**：0116 把这几类纳入守卫以后，就不能再用备份回滚。孤立来源默认不补（协调者决定）；要按原计划全补，就加 `--assign-generated-sources`。待决：孤立来源和已删除关系要不要清理，需要用户决定 |
 | 0115 活动现场放进手机 | ① 部署；② `npm run db:migrate:live`（在报名记录表和申请记录表上装守卫触发器；产品代码不会改这些记录的人、活动或 workspace，所以先部署还是先迁移都安全）；③ 只读确认 `select tgname from pg_trigger where tgname like '%sync_owner_guard%'` 有 3 行；④ 发布 App 和 phoneweb | 已有设备会给三个新类别各拉一次首页。回滚：删掉这两个守卫触发器，再回退代码 |
 | 0116 联系人放进手机 | ⓪ **先确认 0114 补写已在生产执行并确认**（再跑 dry-run，assign 和 copy 都应为 0）；① 部署代码（跟进、提醒、启动接口立即改为只读被引用的来源）；② `npm run db:migrate:sync-revision`，再用 `--check` 确认 strict 和守卫已装；③ 冒烟：联系人列表、详情，改标签，推进一次关系生命周期，见面投影，名片确认；④ 发布 App 和 phoneweb | **顺序不能反**：先迁移后部署，旧代码写联系人不取锁，会报 `SYNC_WRITE_LOCK_REQUIRED`。回滚：先 `--rollback=relax` 再回退代码。上线后，联系人写入也会和笔记、消息一起排队 |
+| 0117 看板在手机上算 | ① 部署（同步分页的排序修复随部署生效）；② `npm run db:migrate:sync-revision`，再用 `--check` 确认（events 纳入同步类别和守卫）；③ 只读确认 `select 1 from pg_collation where collname='und-x-icu'`；④ 冒烟：网页看板和联系人分析，`GET /api/mobile/contacts-dashboard?view=analysis`，新建或导入活动，活动参会者导入，名片确认；⑤ 发布 App 和 phoneweb | **顺序不能反**：先迁移后部署，旧代码写活动会报 `SYNC_WRITE_LOCK_REQUIRED`。回滚：先 `--rollback=relax`。已有设备会给 dashboard-graph 拉一次首页，重度账号约 5000 行 |
 
 ## 后续 Sprint 预告（合并后在上表补充具体命令）
 
 | Sprint | 预计的生产步骤 |
 |---|---|
+
+## 待用户决定的本机清理
+
+- 本机数据盘在 0117 时只剩 0.7GB。协调者删除了可以重新生成的 Xcode 编译缓存（11GB）。数据库 `orbit_scale_test`（12GB）不是协调者建的，是否删除由用户决定。
