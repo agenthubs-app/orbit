@@ -122,6 +122,36 @@ export function needsReview(card: IngestV2CardViewModel, autoImported: ReadonlyS
   return card.reviewable || card.invalidStructure || card.hasTerminalFailure;
 }
 
+// ── 本机账本（纯解析）：哪些卡是自动导入的、哪些经用户确认、哪些并入了已有联系人、哪些「稍后处理」。
+// 状态机（use-card-batch）读写它；今日要事（W0011 use-pending-cards）只读，用同一套口径算待确认数。
+export interface CardBatchLedger { auto: string[]; user: string[]; merged: string[]; later: string[]; notified: boolean }
+export const EMPTY_CARD_BATCH_LEDGER: CardBatchLedger = { auto: [], later: [], merged: [], notified: false, user: [] };
+export const CARD_BATCH_LEDGER_PREFIX = "orbit.cardBatch.ledger.v1:";
+
+/** 解析 localStorage 里的账本原文；缺失或损坏时退回空账本（只影响计数口径）。 */
+export function parseCardBatchLedger(raw: string | null): CardBatchLedger {
+  try {
+    const parsed = JSON.parse(raw ?? "null") as Partial<CardBatchLedger> | null;
+    const list = (value: unknown) => (Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : []);
+    return { auto: list(parsed?.auto), later: list(parsed?.later), merged: list(parsed?.merged), notified: parsed?.notified === true, user: list(parsed?.user) };
+  } catch {
+    return EMPTY_CARD_BATCH_LEDGER;
+  }
+}
+
+/**
+ * 复核队列与其中仍待确认的卡（全站胶囊「N 张名片待你确认」的 N）：
+ * 队列 = 需要人看的卡 + 用户确认过的卡 + 用户跳过的卡，但不含这次自动导入的；
+ * 待确认 = 队列里未确认、未跳过、也没被「稍后处理」的卡。
+ */
+export function cardReviewQueue(cards: readonly IngestV2CardViewModel[], ledger: CardBatchLedger) {
+  const autoSet = new Set(ledger.auto);
+  const laterSet = new Set(ledger.later);
+  const queue = cards.filter(card => !autoSet.has(card.cardId) && (needsReview(card, autoSet) || ledger.user.includes(card.cardId) || (isCardSkipped(card) && card.items.some(item => item.status === "skipped"))));
+  const isHandled = (card: IngestV2CardViewModel) => card.allConfirmed || isCardSkipped(card) || laterSet.has(card.cardId);
+  return { isHandled, laterSet, pending: queue.filter(card => !isHandled(card)), queue };
+}
+
 export interface FieldTag {
   kind: "edited" | "check" | "empty" | "ok";
   label: Copy;

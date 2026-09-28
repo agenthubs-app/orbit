@@ -381,6 +381,8 @@ function textOf(node: { children: readonly unknown[] }): string {
 
 interface Mounted {
   calls: Array<{ body: unknown; method: string; url: string }>;
+  /** 派发一次 window 事件（W0011：`orbit-card-batches`）。 */
+  dispatch: (type: string) => void;
   pushedUrls: string[];
   replacedUrls: string[];
   root: ReactTestRenderer;
@@ -388,6 +390,13 @@ interface Mounted {
 }
 
 interface MountOptions {
+  /** W0011：本机进行中批次登记表与每批的 GET 详情（null = 404；可在测试中途修改）。 */
+  cardBatches?: {
+    active: string[];
+    details: Record<string, unknown>;
+    /** 自定义某批 GET 的应答（慢响应 / 5xx）；返回 undefined 时按 details 应答。 */
+    respond?: (batchId: string) => Promise<Response | undefined> | Response | undefined;
+  };
   /** W0004：`PATCH /api/guide/state` 的应答（默认 404）。 */
   guidePatch?: (body: unknown) => Promise<Response>;
   /** W0004：地址栏的初始查询串（如 `?q=…`）。 */
@@ -427,6 +436,7 @@ async function mountHome(
   };
   const replacedUrls: string[] = [];
   const sessionStore = options.sessionStore;
+  const listeners = new Map<string, Set<() => void>>();
 
   Object.defineProperty(globalThis, "document", {
     configurable: true,
@@ -440,7 +450,9 @@ async function mountHome(
   Object.defineProperty(globalThis, "window", {
     configurable: true,
     value: {
-      addEventListener() {},
+      addEventListener(type: string, listener: () => void) {
+        listeners.set(type, (listeners.get(type) ?? new Set()).add(listener));
+      },
       clearInterval: () => undefined,
       clearTimeout: () => undefined,
       history: {
@@ -456,13 +468,18 @@ async function mountHome(
         },
       },
       localStorage: {
-        getItem: () => null,
+        getItem: (key: string) =>
+          key === "orbit.cardBatches.active.v1" && options.cardBatches
+            ? JSON.stringify(options.cardBatches.active)
+            : null,
         removeItem: () => undefined,
         setItem: () => undefined,
       },
       location,
       matchMedia: () => ({ addEventListener() {}, matches: false, removeEventListener() {} }),
-      removeEventListener() {},
+      removeEventListener(type: string, listener: () => void) {
+        listeners.get(type)?.delete(listener);
+      },
       sessionStorage: sessionStore
         ? {
             getItem: (key: string) => sessionStore.get(key) ?? null,
@@ -494,6 +511,13 @@ async function mountHome(
       method: (init?.method ?? "GET").toUpperCase(),
       url,
     });
+    const batchPrefix = "/api/contact-drafts/business-card/batches/v2/";
+    if (url.startsWith(batchPrefix) && options.cardBatches) {
+      const custom = await options.cardBatches.respond?.(url.slice(batchPrefix.length));
+      if (custom) return custom;
+      const found = options.cardBatches.details[url.slice(batchPrefix.length)];
+      return found ? Response.json({ data: found, success: true }) : Response.json({ success: false }, { status: 404 });
+    }
     if (url === "/api/guide/state" && options.guidePatch) {
       return options.guidePatch(init?.body ? JSON.parse(String(init.body)) : undefined);
     }
@@ -553,7 +577,11 @@ async function mountHome(
   };
   await settle();
 
-  return { calls, pushedUrls, replacedUrls, root: root!, settle };
+  const dispatch = (type: string) => {
+    for (const listener of listeners.get(type) ?? []) listener();
+  };
+
+  return { calls, dispatch, pushedUrls, replacedUrls, root: root!, settle };
 }
 
 function homeElement(
@@ -1770,4 +1798,148 @@ test("W0010: without a plan the home page never asks for plan matches", async (t
   assert.ok(!mounted.calls.some((call) => call.url === "/api/agent/plans/candidates"));
   const html = textOf(mounted.root.root as unknown as { children: readonly unknown[] });
   assert.ok(!html.includes("可能对应你的计划"));
+});
+
+/* ── W0011：名片待确认并入今日要事 ─────────────────────────────────────── */
+
+const CARD_BATCH_ID = "batch-w0011";
+
+function pendingCardItem(cardId: string, seq: number, status = "extracted", confirmedContactId: string | null = null) {
+  return {
+    attemptCount: 1, batchId: CARD_BATCH_ID, cardId, clientDigest: `sha256:${cardId}`, confirmedContactId, createdAt: "",
+    derivativeObjectKey: "k", derivativeSize: 1, errorCode: null, errorStage: null,
+    extraction: { addresses: [], certifications: [], contactPoints: [], departments: [], detectedLanguages: ["ja"], emails: [], fullName: "山本 健一", nativeFullName: "山本 健一", organization: "ソニック", romanizedFullName: null, title: "部長", website: null },
+    extractionSchemaVersion: 1, id: `item-${cardId}`, imageDigest: "sha256:y", leaseExpiresAt: null, nextRetryAt: null,
+    rawMimeType: "image/png", rawSize: 1, reviewIssues: [{ code: "ORG_SUFFIX_MISSING", field: "organization", message: "" }], seq, side: "front",
+    sourceFileName: `IMG_${seq}.png`, status, updatedAt: "", usage: null, version: 1,
+  };
+}
+
+function cardBatchDetail(items: unknown[]) {
+  return {
+    batch: {
+      actorId: "a", createdAt: "2026-09-28T01:05:00.000Z", expectedItems: items.length, expiresAt: "2026-10-28T00:00:00.000Z",
+      finalizedAt: "2026-09-28T01:06:00.000Z", id: CARD_BATCH_ID, idempotencyKey: "k", manifestFingerprint: "f", reviewGeneration: 1,
+      status: "ready_for_review", statusReason: null, updatedAt: "2026-09-28T01:10:00.000Z", version: 3,
+    },
+    items,
+  };
+}
+
+const todayTitles = (mounted: Mounted) =>
+  mounted.root.root
+    .findAll((node) => node.props?.className === "ir-m-lead-title" || node.props?.className === "ir-m-brief-title")
+    .map((node) => textOf(node));
+
+test("W0011: pending cards become 「确认 N 张新名片」 after critical/high signals, before plan matches and other signals", async (t) => {
+  const navigated: string[] = [];
+  const mounted = await mountHome(t, homeElement({ clock: () => PLAN_NOW, navigate: (href) => navigated.push(href) }), {
+    cardBatches: {
+      active: [CARD_BATCH_ID],
+      details: {
+        [CARD_BATCH_ID]: cardBatchDetail([
+          pendingCardItem("card-1", 1),
+          pendingCardItem("card-2", 2),
+          pendingCardItem("card-3", 3, "confirmed", "contact:done"),
+        ]),
+      },
+    },
+    matches: MATCH_LIST,
+    plan: planSnapshotFixture(),
+    signals: [plainSignal("s-low", "低优先的事", "low"), plainSignal("s-high", "紧急的事", "high")],
+    snapshot: EMPTY_SNAPSHOT,
+  });
+  await mounted.settle(6);
+  assert.deepEqual(todayTitles(mounted).slice(0, 3), ["紧急的事", "确认 2 张新名片", "2 位新联系人可能对应你的计划"]);
+  const batchCalls = mounted.calls.filter((call) => call.url.includes("/business-card/batches/"));
+  assert.ok(batchCalls.length > 0 && batchCalls.every((call) => call.method === "GET"), "the home page only reads batches");
+
+  // 展开后其余信号排在匹配之后。
+  const more = mounted.root.root.findAll((node) => node.type === "button" && node.props?.className === "btn ir-m-more")[0]!;
+  await act(async () => {
+    more.props.onClick();
+  });
+  assert.equal(todayTitles(mounted)[3], "低优先的事");
+
+  // 依据行写批次创建时间（东京 9/28 10:05）；按钮进入该批次审阅。
+  const cardBrief = mounted.root.root.findAll(
+    (node) => node.props?.className === "ir-m-brief-title" && textOf(node) === "确认 2 张新名片",
+  )[0]!;
+  const briefRow = cardBrief.parent!.parent!;
+  assert.match(textOf(briefRow), /9\/28 10:05 上传/);
+  const go = briefRow.findAll((node) => node.type === "button" && textOf(node) === "去确认 →")[0];
+  assert.ok(go, "the card item has its own 去确认 action");
+  await act(async () => {
+    go.props.onClick();
+  });
+  assert.deepEqual(navigated, [`/app/contacts/new?job=${CARD_BATCH_ID}`]);
+});
+
+test("W0011: the card item disappears once the batch is fully confirmed and orbit-card-batches fires", async (t) => {
+  const cardBatches = {
+    active: [CARD_BATCH_ID],
+    details: { [CARD_BATCH_ID]: cardBatchDetail([pendingCardItem("card-1", 1)]) } as Record<string, unknown>,
+  };
+  const mounted = await mountHome(t, homeElement(), { cardBatches, snapshot: EMPTY_SNAPSHOT });
+  await mounted.settle(6);
+  assert.deepEqual(todayTitles(mounted), ["确认 1 张新名片"]);
+
+  cardBatches.details[CARD_BATCH_ID] = cardBatchDetail([pendingCardItem("card-1", 1, "confirmed", "contact:new")]);
+  await act(async () => {
+    mounted.dispatch("orbit-card-batches");
+  });
+  await mounted.settle(6);
+  assert.deepEqual(todayTitles(mounted), []);
+});
+
+test("W0011: demo mode never reads the local card batches", async (t) => {
+  const mounted = await mountHome(t, () => (
+    <IOrbitShell guide={GUIDE_NEW} home={HOME as never} viewModel={VIEW_MODEL} />
+  ), {
+    cardBatches: { active: [CARD_BATCH_ID], details: { [CARD_BATCH_ID]: cardBatchDetail([pendingCardItem("card-1", 1)]) } },
+  });
+  await mounted.settle(6);
+  assert.deepEqual(mounted.calls.filter((call) => call.url.includes("/business-card/batches/")), []);
+  const html = textOf(mounted.root.root as unknown as { children: readonly unknown[] });
+  assert.ok(!html.includes("张新名片"));
+});
+
+test("W0011: while card batches are still loading the home never reads as an all-clear", async (t) => {
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => (release = resolve));
+  const mounted = await mountHome(t, homeElement(), {
+    cardBatches: {
+      active: [CARD_BATCH_ID],
+      details: { [CARD_BATCH_ID]: cardBatchDetail([pendingCardItem("card-1", 1)]) },
+      respond: async () => {
+        await gate;
+        return undefined;
+      },
+    },
+    snapshot: EMPTY_SNAPSHOT,
+  });
+  await mounted.settle(6);
+  const loading = textOf(mounted.root.root as unknown as { children: readonly unknown[] });
+  assert.ok(!loading.includes("今天没有要紧的事"), "no all-clear while the card batch is still loading");
+  assert.ok(loading.includes("正在整理今天的事…"));
+  assert.equal(mounted.root.root.findAll((node) => node.props?.["data-orbit-iorbit-ready"] === "true").length, 0);
+
+  release();
+  await mounted.settle(6);
+  assert.deepEqual(todayTitles(mounted), ["确认 1 张新名片"]);
+});
+
+test("W0011: a failed card-batch read (5xx) marks the day as partial, never as an all-clear", async (t) => {
+  const mounted = await mountHome(t, homeElement(), {
+    cardBatches: {
+      active: [CARD_BATCH_ID],
+      details: {},
+      respond: () => Response.json({ success: false }, { status: 503 }),
+    },
+    snapshot: EMPTY_SNAPSHOT,
+  });
+  await mounted.settle(6);
+  const html = textOf(mounted.root.root as unknown as { children: readonly unknown[] });
+  assert.ok(!html.includes("今天没有要紧的事"));
+  assert.ok(html.includes("今天的部分数据暂时读取不到。"));
 });

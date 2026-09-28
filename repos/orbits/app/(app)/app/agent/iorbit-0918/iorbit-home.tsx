@@ -66,6 +66,7 @@ import {
 import { fetchCurrentPlan, patchPlanActionDone, withActionDone, withServerItem } from "./iorbit-plan-client";
 import { fetchPlanMatches, withoutCandidate, type PlanMatchCandidate, type PlanMatchList } from "./plan-match-client";
 import { PlanMatchDialog, PlanMatchSheet } from "./plan-match-sheet";
+import { usePendingCards } from "./use-pending-cards";
 
 const TZ = "Asia/Tokyo";
 /** 日程在多久之内开始才进今日要事（Q6：2 小时）。 */
@@ -255,6 +256,10 @@ export function IOrbitHome({
   // 确认过的行留在弹层里显示「约 TA」行动卡，计数照常减少。
   const [matches, setMatches] = useState<PlanMatchList | null>(null);
   const [matchSheet, setMatchSheet] = useState<readonly PlanMatchCandidate[] | null>(null);
+  // W0011：本机进行中批次里待确认的名片（只读 GET；示例模式不读，恒为就绪）。
+  // 读取中不算就绪、读不到算部分数据缺失：都不能给出「今天没有要紧的事」。
+  const pendingCardsState = usePendingCards(!demoActive);
+  const pendingCards = pendingCardsState.batches;
 
   // 时钟每分钟前进一次：倒计时、2 小时窗口、「现在」线和跨午夜切日都跟着走。
   // 示例模式用示例时钟（东京的今天 11:40）。
@@ -616,7 +621,55 @@ export function IOrbitHome({
       };
     });
 
+    // W0011：「确认 N 张新名片」取最新一批有待确认卡的批次，依据写它的创建时间，按钮进该批次审阅
+    // （与全站宿主胶囊的「去确认」同一地址）。多批时另注明还有几批。
+    const cardBatch = pendingCards[0] ?? null;
+    const fromCards: TodayItem[] = cardBatch
+      ? [
+          {
+            ask: null,
+            hot: false,
+            key: "card-review",
+            pills: [{ text: t({ en: "Cards", zh: "名片" }) }],
+            primary: {
+              href: `/app/contacts/new?job=${encodeURIComponent(cardBatch.batchId)}`,
+              label: t({ en: "Review cards", zh: "去确认" }),
+            },
+            proof: [
+              [
+                t({ en: "Batch", zh: "批次" }),
+                t({
+                  en: `uploaded ${fmtDay(cardBatch.createdAt)} ${fmtTime(cardBatch.createdAt)}`,
+                  zh: `${fmtDay(cardBatch.createdAt)} ${fmtTime(cardBatch.createdAt)} 上传`,
+                }),
+              ] as const,
+              ...(pendingCards.length > 1
+                ? [
+                    [
+                      t({ en: "Also", zh: "另有" }),
+                      t({
+                        en: `${pendingCards.length - 1} more batch(es) to check`,
+                        zh: `${pendingCards.length - 1} 批待确认`,
+                      }),
+                    ] as const,
+                  ]
+                : []),
+            ],
+            signalId: null,
+            title: t({
+              en: `Confirm ${cardBatch.pending} new card(s)`,
+              zh: `确认 ${cardBatch.pending} 张新名片`,
+            }),
+            why: t({
+              en: "These weren't read with full confidence — check them against the photo.",
+              zh: "这几张识别不太确定，需要你对照照片看一眼。",
+            }),
+          },
+        ]
+      : [];
+
     // W0010：「N 位新联系人可能对应你的计划」排在 critical/high 信号之后、其余信号之前。
+    // W0011：名片待确认排在它前面——名片确认后才会产生新的匹配。
     const urgentCount = signalRows.filter(
       (row) => row.signal.severity === "critical" || row.signal.severity === "high",
     ).length;
@@ -665,11 +718,12 @@ export function IOrbitHome({
     return [
       ...soon,
       ...fromSignals.slice(0, urgentCount),
+      ...fromCards,
       ...fromMatches,
       ...fromSignals.slice(urgentCount),
       ...fromFollowups,
     ];
-  }, [followupItems, fmtDay, matches, now, signalRows, t, todayRows]);
+  }, [followupItems, fmtDay, fmtTime, matches, now, pendingCards, signalRows, t, todayRows]);
 
   const progress = Array.isArray(ledger) ? iorbitLedgerProgress(ledger) : null;
   const focusTasks = Array.isArray(ledger)
@@ -773,10 +827,15 @@ export function IOrbitHome({
     ledger !== "pending" &&
     plan !== "pending" &&
     signals !== "pending" &&
-    sessions !== "pending";
-  const itemsSettled = snapshot !== "pending" && signals !== "pending";
+    sessions !== "pending" &&
+    pendingCardsState.status !== "pending";
+  const itemsSettled =
+    snapshot !== "pending" && signals !== "pending" && pendingCardsState.status !== "pending";
   // 任一核心来源读不到时，不能给出「今天没有要紧的事」这种确定结论。
-  const partial = snapshot === "unavailable" || signals === "unavailable";
+  const partial =
+    snapshot === "unavailable" ||
+    signals === "unavailable" ||
+    pendingCardsState.status === "unavailable";
 
   const lead = items[0] ?? null;
   const briefs = items.slice(1, expanded ? items.length : VISIBLE_ITEMS);
