@@ -93,7 +93,8 @@ async function seededStore(owner?: string) {
 
   await seedGeneratedRelationshipFixturesIntoLiveStore({
     now: () => "2026-07-01T00:00:00.000Z",
-    store: owner ? seedAsOwner(store, owner, ["contacts", "evidence"]) : store,
+    // Sprint 0117: events is a sync collection too (dashboard graph), so the generated events are seeded as the actor's.
+    store: owner ? seedAsOwner(store, owner, ["contacts", "evidence", "events"]) : store,
     workspaceId,
   });
 
