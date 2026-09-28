@@ -60,6 +60,7 @@ export const OFFLINE_POLICY_REGISTRATIONS = [
   { method: "GET", pathname: "/api/dashboard/network-gaps", action: "read", policy: policy("dashboard_graph", "durable_normalized", "online_only") },
   { method: "GET", pathname: "/api/dashboard/distributions", action: "read", policy: policy("dashboard_graph", "durable_normalized", "online_only") },
   { method: "GET", pathname: "/api/mobile/contacts-dashboard", action: "read", policy: policy("dashboard_graph", "durable_normalized", "online_only") },
+  { method: "GET", pathname: "/api/dashboard/structure/:dimension/:bucketId", action: "read", policy: policy("dashboard_graph", "durable_normalized", "online_only") },
   { method: "POST", pathname: "/api/auth/mobile/credentials", action: "authenticate", policy: policy("account_secret", "online_only_secret", "online_only", "never_local") },
 ] satisfies readonly OfflinePolicyRegistration[];
 

@@ -13,7 +13,7 @@ import { isSyncCollection } from "../../features/sync/commit-order-lock";
 import { createDomainReadService } from "../../features/sync/domain-read-service";
 import { DASHBOARD_SYNC_DOMAINS, findSyncDomain, ownerGuardedCollections, SYNC_DOMAINS } from "../../features/sync/domain-registry";
 import { domainManifestSchema, domainPageSchema, offlineReadEnvelopeSchema } from "../../shared/api-schema/universal-read";
-import { computeDashboardSections } from "../../shared/compute/dashboard-local";
+import { computeDashboardSections, computeDashboardStructureDetail } from "../../shared/compute/dashboard-local";
 import { dashboardGraphFromSyncRows, dashboardGraphSyncRow, type DashboardGraphSyncRow } from "../../shared/compute/dashboard-graph";
 import type { LiveRecord } from "../../shared/storage/live-record-store";
 import { ORBIT_RECORDS_SCHEMA_SQL } from "../../shared/storage/migrations";
@@ -417,6 +417,15 @@ test("parity: for every account, the device's dashboard and contacts-analysis se
       assert.ok(measured.texts.some((text) => text.includes(VERSION_READ)), `${phase} ${actor}: gaps/opportunities come from the versioned snapshot`);
       assert.deepEqual(local.gaps, snapshot.gaps, `${phase} ${actor} gaps: device = snapshot`);
       assert.deepEqual(local.opportunities, snapshot.opportunities, `${phase} ${actor} opportunities: device = snapshot`);
+      // The analysis drill-down (one structure bucket's contacts), every bucket plus an unknown one.
+      const provider = h.provider();
+      const serverDistribution = createLiveNetworkDistributionAnalyticsService({ now: () => NOW, provider: networkDistributionProviderForAccount(provider, actor) });
+      const graph = dashboardGraphFromSyncRows(d.graphRows());
+      const buckets = Object.entries(local.distributions.structureDistributions).flatMap(([dimension, list]) => list.map((bucket) => [dimension, bucket.bucketId] as const));
+      for (const [dimension, bucketId] of [...buckets, ["industry", "no-such-bucket"] as const, ["weather", "sunny"] as const]) {
+        const input = { dimension, bucketId };
+        assert.deepEqual(await computeDashboardStructureDetail(graph, { ...input, now: NOW, distribution: IDENTITY }), await serverDistribution.getStructureDetail(input), `${phase} ${actor} drill-down ${dimension}/${bucketId}`);
+      }
     }
   };
   await compare("initial");

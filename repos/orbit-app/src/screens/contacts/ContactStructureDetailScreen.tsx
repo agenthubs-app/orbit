@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { useEffect, useState } from "react";
 import { type Href, useLocalSearchParams, useRouter } from "expo-router";
 import {
   Pressable,
@@ -11,9 +12,12 @@ import { contactStructureDetailPath } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
+import { OfflineNotice } from "../../components/OfflineNotice";
+import type { NetworkStructureDetailResult } from "../../api/compute/dashboard-distribution-contract";
 import { textStyles, radius, spacing, type OrbitColors } from "../../design/tokens";
 import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
+import { useLocalDashboard } from "../../hooks/useLocalDashboard";
 import {
   contactStructureDetailToView,
   type ContactStructureDetailContactView
@@ -32,10 +36,30 @@ export function ContactStructureDetailScreen() {
   }>();
   const bucketId = firstParam(params.bucketId);
   const dimension = firstParam(params.dimension);
+  /**
+   * Sprint 0117 (dashboard D3): the drill-down is computed on the device from
+   * its copy of the dashboard graph with the server's own service, so the
+   * server read stays inert while the mirror is this platform's source.
+   */
+  const local = useLocalDashboard();
+  const localMode = local.available;
   const state = useApiResource<unknown>(
     contactStructureDetailPath(dimension, bucketId),
-    () => false
+    () => false,
+    { enabled: !localMode }
   );
+  const [localDetail, setLocalDetail] = useState<{ key: string; result: NetworkStructureDetailResult } | null>(null);
+  const detailKey = JSON.stringify([dimension, bucketId]);
+  const { structureDetail } = local;
+  useEffect(() => {
+    if (!localMode) return;
+    let active = true;
+    void structureDetail(dimension, bucketId).then((result) => {
+      if (active && result) setLocalDetail({ key: detailKey, result });
+    });
+    return () => { active = false; };
+  }, [bucketId, detailKey, dimension, localMode, structureDetail]);
+  const localResult = localMode && localDetail?.key === detailKey ? localDetail.result : null;
   const router = useRouter();
 
   return (
@@ -43,19 +67,35 @@ export function ContactStructureDetailScreen() {
       eyebrow="人脉结构"
       refreshControl={
         <RefreshControl
-          onRefresh={state.refresh}
-          refreshing={state.refreshing}
+          onRefresh={localMode ? local.refresh : state.refresh}
+          refreshing={localMode ? local.freshness.refreshing : state.refreshing}
           tintColor={colors.accent}
         />
       }
       title="分组详情"
     >
-      {state.kind === "loading" ? <LoadingState /> : null}
-      {state.kind === "offline" ? (
+      {localMode ? (
+        <>
+          {local.freshness.offline ? <OfflineNotice lastSyncedAt={local.freshness.lastSyncedAt} /> : null}
+          {local.freshness.failure ? <ErrorState message={local.freshness.failure} title="服务器连不上" /> : null}
+          {!local.freshness.failure && !localResult ? <LoadingState /> : null}
+          {localResult && localResult.success === false ? <ErrorState message={localResult.error.message} /> : null}
+          {localResult && localResult.success ? (
+            <ContactStructureDetailContent
+              data={localResult.data}
+              onOpenContact={(contactId) =>
+                router.push(`/contacts/${encodeURIComponent(contactId)}` as Href)
+              }
+            />
+          ) : null}
+        </>
+      ) : null}
+      {!localMode && state.kind === "loading" ? <LoadingState /> : null}
+      {!localMode && state.kind === "offline" ? (
         <ErrorState message={state.error.message} title="服务器连不上" />
       ) : null}
-      {state.kind === "failure" ? <ErrorState message={state.error.message} /> : null}
-      {state.kind === "success" || state.kind === "empty" ? (
+      {!localMode && state.kind === "failure" ? <ErrorState message={state.error.message} /> : null}
+      {!localMode && (state.kind === "success" || state.kind === "empty") ? (
         <ContactStructureDetailContent
           data={state.data}
           onOpenContact={(contactId) =>

@@ -5,6 +5,7 @@ import type {
 import type {
   NetworkDistributionAnalyticsPayload,
   NetworkGapAnalysisPayload,
+  NetworkStructureDetailResult,
 } from "./dashboard-distribution-contract";
 import type { OpportunityReminderAnalyticsPayload } from "./dashboard-opportunity-contract";
 import { createLiveDashboardAggregateService } from "./dashboard-aggregate";
@@ -90,6 +91,23 @@ export async function computeDashboardSections(graph: LiveDashboardGraph, input:
     opportunities: expectSuccess(opportunities, "opportunities"),
     roleCounts: dashboardContactRoleCounts(graph),
   };
+}
+
+/**
+ * The contacts analysis drill-down (GET /api/dashboard/structure/:dimension/
+ * :bucketId): one structure bucket's contacts, from the same graph with the
+ * server's own service — a bucket that does not exist is the same
+ * NETWORK_STRUCTURE_BUCKET_NOT_FOUND failure.
+ */
+export async function computeDashboardStructureDetail(
+  graph: LiveDashboardGraph,
+  input: { dimension: string; bucketId: string; now: string; distribution?: DashboardSectionIdentity },
+): Promise<NetworkStructureDetailResult> {
+  const identity = input.distribution ?? DASHBOARD_DEVICE_IDENTITY.distribution;
+  return createLiveNetworkDistributionAnalyticsService({
+    now: () => input.now,
+    provider: { ...identity, readNetworkDistributionGraph: () => graph },
+  }).getStructureDetail({ dimension: input.dimension, bucketId: input.bucketId });
 }
 
 function stringValue(value: unknown): string | null {

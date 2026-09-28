@@ -36,7 +36,7 @@ const card = (id, name, org) => ({ id, card: { id, displayName: name, organizati
   search: { text: name, occurredAt: at(1), updatedAt: at(1), error: null }, detail: { state: "success", contact: { id, displayName: name, organization: org, role: "顾问", location: "东京", status: "active" } } });
 const contacts = () => [card("c1", "张伟", "星河能源"), card("c2", "佐藤 花子", "東京ベンチャーズ"), card("c3", "Émile Zola", "Rougon Labs")].map((payload) => ({ id: payload.id, payload }));
 export const state = window.fixture = { requests: [], navigation: [], syncs: 0, status: "fresh", ...window.initialFixture };
-export const useLocalSearchParams = () => ({});
+export const useLocalSearchParams = () => window.fixture.params ?? {};
 export const usePathname = () => "/dashboard";
 export const useRouter = () => ({ canGoBack: () => false, back() {}, push(href) { state.navigation.push(typeof href === "string" ? href : JSON.stringify(href)); }, replace() {} });
 export const useSyncedCollection = ({ kind }) => ({
@@ -74,11 +74,13 @@ test.before(async () => {
       contents: `import React from "react"; import { createRoot } from "react-dom/client";
         import { DashboardScreen } from "./src/screens/dashboard/DashboardScreen";
         import { ContactsDashboardScreen } from "./src/screens/contacts/ContactsDashboardScreen";
+        import { ContactStructureDetailScreen } from "./src/screens/contacts/ContactStructureDetailScreen";
         import { OrbitLocaleContext } from "./src/i18n/OrbitLocaleContext";
         import { createTranslator } from "./src/i18n/messages";
         const language = "zh";
         const locale = { choice: language, deviceLanguage: language, error: null, language, preference: { mode: "manual", language, updatedAt: null }, retryLanguageSave: async () => {}, setLanguage: async () => {}, source: "account", syncState: "idle", t: createTranslator(language) };
-        const screen = window.initialFixture?.screen === "analysis" ? <ContactsDashboardScreen /> : <DashboardScreen />;
+        const which = window.initialFixture?.screen;
+        const screen = which === "analysis" ? <ContactsDashboardScreen /> : which === "structure" ? <ContactStructureDetailScreen /> : <DashboardScreen />;
         createRoot(document.getElementById("root")).render(<OrbitLocaleContext.Provider value={locale}>{screen}</OrbitLocaleContext.Provider>);`,
       resolveDir: process.cwd(), loader: "tsx",
     },
@@ -166,4 +168,16 @@ test("offline: the contacts analysis keeps the device copy with 截至; the AI r
   assert.equal(await page.getByRole("button", { name: "去 IORBIT 分析" }).count(), 0, "no AI entry without its version");
   assert.equal(await page.getByText("服务器连不上").count(), 0);
   assert.deepEqual(await dashboardReads(page), []);
+});
+
+test("offline: the analysis drill-down (one structure bucket) is computed on the device, with 截至 and no structure read", async (t) => {
+  const page = await open(t, { screen: "structure", status: "stale", params: { dimension: "location", bucketId: "location_osaka" } });
+  await page.getByText(/^无法连接 · 显示截至 .+ 的内容；新建和编辑需要联网$/).waitFor();
+  await page.getByText("佐藤 花子", { exact: false }).first().waitFor();
+  assert.equal(await page.getByText("张伟", { exact: false }).count(), 0, "only the bucket's contacts (大阪)");
+  assert.deepEqual(await dashboardReads(page), [], "no /api/dashboard/structure read");
+  const unknown = await open(t, { screen: "structure", params: { dimension: "location", bucketId: "no-such-bucket" } });
+  // The same failure the server answers for a bucket that does not exist.
+  await unknown.getByText("That network structure group is not available for this actor.").waitFor();
+  assert.deepEqual(await dashboardReads(unknown), []);
 });

@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { DashboardLocalSections } from "../api/compute/dashboard-local";
+import type { NetworkStructureDetailResult } from "../api/compute/dashboard-distribution-contract";
 import { useOrbitAuthSession } from "../api/AuthSessionProvider";
 import { mirrorFreshness, type MirrorFreshness } from "../data/sync/mirror-freshness";
-import { dashboardGraphRows, localDashboardSections } from "../view-models/dashboard-local";
+import { dashboardGraphRows, localDashboardSections, localDashboardStructureDetail } from "../view-models/dashboard-local";
 import { useMirrorProbe } from "./useMirrorProbe";
 import { useSyncedCollection } from "./useSyncedCollection";
 
@@ -23,6 +24,8 @@ export interface LocalDashboardState {
   error: string | null;
   freshness: MirrorFreshness;
   refresh(): void;
+  /** The analysis drill-down for one structure bucket, from the same copy; null before the mirror is readable. */
+  structureDetail(dimension: string, bucketId: string): Promise<NetworkStructureDetailResult | null>;
 }
 
 export function useLocalDashboardSource(available: boolean, probe: boolean): LocalDashboardState {
@@ -43,6 +46,12 @@ export function useLocalDashboardSource(available: boolean, probe: boolean): Loc
     );
     return () => { active = false; };
   }, [actorId, available, freshness.readable, rows]);
+  const structureDetail = useCallback(
+    (dimension: string, bucketId: string) => (available && freshness.readable
+      ? localDashboardStructureDetail(rows, { dimension, bucketId, now: new Date().toISOString() })
+      : Promise.resolve(null)),
+    [available, freshness.readable, rows],
+  );
   // While a new copy is computed the previous result stays on screen, but
   // never another account's.
   const current = available && freshness.readable && computed && computed.actorId === actorId ? computed : null;
@@ -52,5 +61,6 @@ export function useLocalDashboardSource(available: boolean, probe: boolean): Loc
     error: current?.error ?? null,
     freshness,
     refresh: () => { void refresh(); },
-  }), [available, current, freshness.readable, freshness.offline, freshness.loading, freshness.failure, freshness.lastSyncedAt, freshness.refreshing, refresh]);
+    structureDetail,
+  }), [available, current, freshness.readable, freshness.offline, freshness.loading, freshness.failure, freshness.lastSyncedAt, freshness.refreshing, refresh, structureDetail]);
 }

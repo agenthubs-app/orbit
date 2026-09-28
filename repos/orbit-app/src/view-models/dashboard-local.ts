@@ -1,5 +1,6 @@
 import { dashboardGraphFromSyncRows, dashboardGraphSyncRow, type DashboardGraphSyncRow } from "../api/compute/dashboard-graph";
-import { computeDashboardSections, referencedContactIds, type DashboardLocalSections } from "../api/compute/dashboard-local";
+import { computeDashboardSections, computeDashboardStructureDetail, referencedContactIds, type DashboardLocalSections } from "../api/compute/dashboard-local";
+import type { NetworkStructureDetailResult } from "../api/compute/dashboard-distribution-contract";
 import type { ContactSyncPayload } from "../api/contract/contact-local-directory";
 
 /**
@@ -25,6 +26,11 @@ export function dashboardGraphRows(records: readonly LocalDashboardRecord[]): Da
 
 export function localDashboardSections(rows: readonly DashboardGraphSyncRow[], input: { actorId: string; now: string }): Promise<DashboardLocalSections> {
   return computeDashboardSections(dashboardGraphFromSyncRows(rows), { actorId: input.actorId, now: input.now, activityLimit: LOCAL_DASHBOARD_ACTIVITY_LIMIT });
+}
+
+/** The contacts analysis drill-down (one structure bucket's contacts), as the server answers it. */
+export function localDashboardStructureDetail(rows: readonly DashboardGraphSyncRow[], input: { dimension: string; bucketId: string; now: string }): Promise<NetworkStructureDetailResult> {
+  return computeDashboardStructureDetail(dashboardGraphFromSyncRows(rows), input);
 }
 
 /**
