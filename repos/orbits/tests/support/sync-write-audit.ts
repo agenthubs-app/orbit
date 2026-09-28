@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import { SYNC_COLLECTION_NAMES, SYNC_COMMIT_ORDER_LOCK_SQL } from "../../features/sync/commit-order-lock";
+import type { SyncDomainDefinition } from "../../features/sync/domain-registry";
 
 /**
  * Sprint 0108: static audit of every SQL statement in product code and scripts
@@ -184,5 +185,30 @@ export function auditEventTableWrites(root: string, tables: readonly string[], m
   }
   const scanned = new Set(findings.map((finding) => finding.file));
   for (const file of Object.keys(manifest)) if (!scanned.has(file)) problems.push(`STALE ${file}: in the manifest but has no event sync table write any more.`);
+  return problems;
+}
+
+/**
+ * Sprint 0115: a derived device domain (features/sync/event-domain-reader.ts)
+ * resends a row only when one of its source rows takes a new sync_revision.
+ * Every revision table and owner table it declares must therefore carry
+ * sync_revision under the commit-order lock (the event migration's table
+ * list), and every table it joins without a revision must be immutable: no
+ * product code or script updates it in place.
+ */
+export function auditDerivedDomainSources(root: string, domains: readonly SyncDomainDefinition[], revisionTables: readonly string[]): string[] {
+  const problems: string[] = [];
+  const immutable = new Set<string>();
+  for (const domain of domains) {
+    if (domain.source.kind !== "event_derived") continue;
+    const read = new Set([...domain.source.revisionTables, ...domain.source.ownerTables.map((owner) => owner.table)]);
+    for (const table of read) if (!revisionTables.includes(table)) problems.push(`NO_REVISION ${domain.domainId}: ${table} carries no sync_revision under the commit-order lock; a change there would never reach the device.`);
+    for (const table of domain.source.immutableTables) immutable.add(table);
+  }
+  if (immutable.size) {
+    for (const finding of scanTableWrites(root, new RegExp(`\\b(update|merge\\s+into)\\s+(${[...immutable].join("|")})\\b`, "gi"))) {
+      problems.push(`MUTATED ${finding.file}: updates an immutable table a derived sync domain joins without a revision (${finding.statements} statement(s)). Write a new version and move its head instead.`);
+    }
+  }
   return problems;
 }

@@ -1,4 +1,4 @@
-import { ownerGuardedCollections, reassigningOwnerChangeHandlers, SYNC_OWNER_CHANGE_HANDLER_DEFINITIONS } from "./domain-registry";
+import { derivedOwnerTables, ownerGuardedCollections, reassigningOwnerChangeHandlers, SYNC_OWNER_CHANGE_HANDLER_DEFINITIONS } from "./domain-registry";
 
 /**
  * Owner/identity guard (sprint 0113).
@@ -86,3 +86,45 @@ create or replace trigger orbit_records_sync_owner_guard_trigger
   when (old.user_id is distinct from new.user_id or old.collection_name is distinct from new.collection_name)
   execute function orbit_records_sync_owner_guard();
 `;
+
+/**
+ * Sprint 0115: the same guard on the dedicated tables that decide who owns a
+ * derived domain's row (derivedOwnerTables: the membership and admission
+ * application heads of the event domains). Moving a head to another actor,
+ * event or workspace would leave the old owner's device holding the row, so
+ * any such update is refused unless the transaction runs as a registered
+ * "reassign" handler listing that table (none). Cancelling, re-registering,
+ * deciding an application — every product write — keeps these columns and is
+ * never refused. One statement each (the event operations client accepts one
+ * per query); idempotent.
+ */
+function derivedGuardCondition(): string {
+  const reassigning = reassigners.filter((handler) => handler.collections.some((name) => derivedOwnerTables().some((owner) => owner.table === name)));
+  return reassigning.length
+    ? `not (${reassigning.map((handler) => `(coalesce(current_setting('${SYNC_OWNER_CHANGE_SETTING}', true), '') = '${handler.name.replaceAll("'", "''")}' and tg_table_name in (${literalList(handler.collections)}))`).join(" or ")})`
+    : "true";
+}
+
+export const SYNC_DERIVED_OWNER_GUARD_STATEMENTS: readonly string[] = [
+  `create or replace function sync_derived_owner_guard()
+returns trigger
+language plpgsql
+as $$
+begin
+  if ${derivedGuardCondition()} then
+    raise exception 'SYNC_OWNER_CHANGE_UNREGISTERED'
+      using errcode = '55000',
+        detail = format('%s: %s/%s/%s -> %s/%s/%s', tg_table_name, old.workspace_id, old.event_id, old.actor_id, new.workspace_id, new.event_id, new.actor_id);
+  end if;
+  return new;
+end;
+$$`,
+  ...derivedOwnerTables().map((owner) => {
+    const columns = [owner.ownerColumn, ...owner.identityColumns];
+    return `create or replace trigger ${owner.table}_sync_owner_guard_trigger
+  before update of ${columns.join(", ")} on ${owner.table}
+  for each row
+  when (${columns.map((column) => `old.${column} is distinct from new.${column}`).join(" or ")})
+  execute function sync_derived_owner_guard()`;
+  }),
+];

@@ -4,7 +4,11 @@ export type SyncEntityKind =
   | "task"
   | "relationship_followup"
   | "personal_schedule"
-  | "inbox_item";
+  | "inbox_item"
+  // Sprint 0115: the registered attendee's event day (dedicated-table domains).
+  | "event_registration"
+  | "registered_event"
+  | "event_published_result";
 
 export type LocalSyncState = "synced" | "pending" | "conflicted" | "failed";
 export type AiSyncVisibility = "available_when_synced" | "excluded";
@@ -22,7 +26,7 @@ export interface SyncRecord<TPayload = unknown> {
   aiVisibility: AiSyncVisibility;
 }
 
-export type SyncChangeKind = "note" | "task" | "personal_schedule";
+export type SyncChangeKind = "note" | "task" | "personal_schedule" | "event_registration" | "registered_event" | "event_published_result";
 
 export interface SyncChange<TPayload = unknown> {
   kind: SyncChangeKind;

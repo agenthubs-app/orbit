@@ -57,6 +57,11 @@ test("a product writer or a batch script that changes a registered owner, a dish
     writeFileSync(join(root, "features/demo/transfer-note.ts"), "await sql.query(\"update orbit_records set user_id = $2 where collection_name = 'notes' and record_id = $1\");");
     writeFileSync(join(root, "scripts/batch-reassign-tasks.ts"), "await client.query(`insert into orbit_records (workspace_id, collection_name, record_id, user_id) values ($1, 'tasks', $2, $3)\n on conflict (workspace_id, collection_name, record_id) do update set\n -- where the new owner comes from\n user_id = excluded.user_id`);");
     writeFileSync(join(root, "scripts/move-memberships.mjs"), "await client.query(`update event_ops_membership_heads set actor_id = $3, updated_at = now() where workspace_id = $1 and event_id = $2`);");
+    // Sprint 0115: the owner heads of the derived event domains (actor and identity columns).
+    writeFileSync(join(root, "scripts/move-applications.ts"), "await client.query(`update event_ops_admission_application_heads set actor_id = $3 where workspace_id = $1 and event_id = $2`);");
+    writeFileSync(join(root, "features/demo/move-membership-event.ts"), "await tx.query(\"update event_ops_membership_heads set event_id = $2, updated_at = now() where workspace_id = $1\");");
+    // A status change keeps the owner: the device hears about it through the row's new revision.
+    writeFileSync(join(root, "features/demo/cancel-membership.ts"), "await tx.query(\"update event_ops_membership_heads set status = 'cancelled' where workspace_id = $1 and actor_id = $2\");");
     // Payload-only writes filtered by owner are not owner changes.
     writeFileSync(join(root, "features/demo/payload-only.ts"), "await sql.query(\"update orbit_records set payload = $1 where user_id = $2 and collection_name = 'notes'\");");
     // Dishonest classifications.
@@ -80,6 +85,9 @@ test("a product writer or a batch script that changes a registered owner, a dish
     assert.ok(has("UNCLASSIFIED scripts/batch-reassign-tasks.ts"), "a batch script re-owning tasks (a SQL comment does not hide it)");
     assert.ok(has("UNCLASSIFIED scripts/move-memberships.mjs"), "a script moving a dedicated-table domain row to another owner");
     assert.ok(!problems.some((line) => line.includes("payload-only.ts")), "an owner-filtered payload update is not an owner change");
+    assert.ok(has("UNCLASSIFIED scripts/move-applications.ts"), "a script moving an admission application (derived event owner) to another actor");
+    assert.ok(has("UNCLASSIFIED features/demo/move-membership-event.ts"), "moving a membership head to another event (identity column)");
+    assert.ok(!problems.some((line) => line.includes("cancel-membership.ts")), "a status change keeps the owner and is not an owner change");
     assert.ok(has("OWNER_OVERWRITE features/demo/claims-keep.ts"), "preserves-owner that overwrites");
     assert.ok(has("SYNC_DOMAIN features/demo/claims-nonreg.ts"), "non-registered that touches a sync collection");
     assert.ok(has("UNREGISTERED features/demo/claims-handler.ts"), "a handler that is not registered");

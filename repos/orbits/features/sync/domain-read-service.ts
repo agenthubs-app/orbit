@@ -3,6 +3,7 @@ import type { DomainChange, DomainManifest, DomainPage, OfflineReadEnvelope } fr
 import { resolveAuthorizationEpoch, type AuthorizationEpoch, type AuthorizationEpochSqlClient } from "./authorization-epoch";
 import { createDomainCursorCodec, type DomainCursorScope } from "./domain-cursor";
 import { findSyncDomain, SYNC_DOMAIN_SCHEMA_VERSION, SYNC_DOMAINS, SYNC_REGISTRY_VERSION, type DedicatedTableSyncSource, type SyncDomainDefinition } from "./domain-registry";
+import { readEventDomainPage, readEventDomainSummary, type EventDomainSummary } from "./event-domain-reader";
 import { issueOfflineReadLease } from "./offline-read-lease";
 import { changeFromRow, SYNC_MAX_LIMIT, SYNC_MAX_PAGE_BYTES, SyncReadError, type SyncReadRow } from "./read-service";
 
@@ -75,7 +76,7 @@ function dedicatedSql(source: DedicatedTableSyncSource, ownerColumn: string) {
 }
 
 function ownerColumnOf(domain: SyncDomainDefinition): string {
-  if (domain.ownership.rule !== "column") throw new SyncReadError("SYNC_DOMAIN_SOURCE_UNSUPPORTED", `Domain ${domain.domainId} derives its owner; no reader is implemented yet.`);
+  if (domain.ownership.rule !== "column") throw new SyncReadError("SYNC_DOMAIN_SOURCE_UNSUPPORTED", `Domain ${domain.domainId} derives its owner; only the event_derived source implements a derived reader.`);
   return domain.ownership.column;
 }
 
@@ -145,8 +146,24 @@ async function scheduleExceptions(client: AuthorizationEpochSqlClient, input: { 
   return bySeries;
 }
 
-export function domainGeneration(epoch: string): string {
-  return createHash("sha256").update(JSON.stringify([epoch, SYNC_REGISTRY_VERSION, SYNC_DOMAIN_SCHEMA_VERSION])).digest("hex").slice(0, 16);
+/**
+ * The generation a domain's cursors are bound to. `visibility` (sprint 0115)
+ * folds in a visibility that changes with time rather than with a write — the
+ * released set of published event results — so a device holding a cursor from
+ * before the change is told to rebuild; without it the value is unchanged, so
+ * existing record-domain cursors stay valid.
+ */
+export function domainGeneration(epoch: string, visibility?: string): string {
+  const parts = visibility === undefined ? [epoch, SYNC_REGISTRY_VERSION, SYNC_DOMAIN_SCHEMA_VERSION] : [epoch, SYNC_REGISTRY_VERSION, SYNC_DOMAIN_SCHEMA_VERSION, visibility];
+  return createHash("sha256").update(JSON.stringify(parts)).digest("hex").slice(0, 16);
+}
+
+function generationOf(domain: SyncDomainDefinition, epoch: string, summary: EventDomainSummary | null): string {
+  if (domain.source.kind === "event_derived" && domain.source.view === "published-results") {
+    if (!summary) throw new SyncReadError("SYNC_SCOPE_MISMATCH", "The event sync summary is required.");
+    return domainGeneration(epoch, `released:${summary.released}`);
+  }
+  return domainGeneration(epoch);
 }
 
 function domainChange(change: ReturnType<typeof changeFromRow>): DomainChange {
@@ -169,8 +186,18 @@ export function createDomainReadService({ client, cursorSecret, now = () => new 
     return resolveAuthorizationEpoch({ client, actorId, workspaceId });
   }
 
-  async function highWatermark(actorId: string, workspaceId: string, domain: SyncDomainDefinition): Promise<string> {
+  const hasEventDomains = leased.some((domain) => domain.source.kind === "event_derived");
+
+  async function eventSummary(actorId: string, workspaceId: string): Promise<EventDomainSummary | null> {
+    return hasEventDomains ? readEventDomainSummary(client, { workspaceId, actorId }) : null;
+  }
+
+  async function highWatermark(actorId: string, workspaceId: string, domain: SyncDomainDefinition, summary: EventDomainSummary | null = null): Promise<string> {
     const source = domain.source;
+    if (source.kind === "event_derived") {
+      if (!summary) throw new SyncReadError("SYNC_SCOPE_MISMATCH", "The event sync summary is required.");
+      return summary.watermarks[source.view];
+    }
     const result = source.kind === "orbit_records"
       ? await client.query<{ high_watermark: string }>(HIGH_WATERMARK_SQL, [workspaceId, actorId, source.collectionName])
       : await client.query<{ high_watermark: string }>(dedicatedSql(source, ownerColumnOf(domain)).highWatermark, [workspaceId, actorId]);
@@ -241,16 +268,27 @@ export function createDomainReadService({ client, cursorSecret, now = () => new 
       );
     },
 
-    async manifest(input: { actorId: string; workspaceId: string }): Promise<DomainManifest> {
+    /**
+     * What the event domains' manifest entries depend on besides the epoch (one
+     * statement), or null when this service leases none. The manifest route
+     * folds it into its conditional-read key and hands it back to manifest().
+     */
+    async eventSummary(input: { actorId: string; workspaceId: string }): Promise<EventDomainSummary | null> {
+      if (!input.actorId.trim() || !input.workspaceId.trim()) throw new SyncReadError("SYNC_SCOPE_MISMATCH", "Authenticated sync scope is required.");
+      return eventSummary(input.actorId, input.workspaceId);
+    },
+
+    async manifest(input: { actorId: string; workspaceId: string; eventSummary?: EventDomainSummary | null }): Promise<DomainManifest> {
       const epoch = await epochFor(input.actorId, input.workspaceId);
       if (!epoch.authorized) return { registryVersion: SYNC_REGISTRY_VERSION, domains: [] };
+      const summary = input.eventSummary !== undefined && (input.eventSummary !== null || !hasEventDomains) ? input.eventSummary : await eventSummary(input.actorId, input.workspaceId);
       const entries = await Promise.all(leased.map(async (domain) => ({
         domainId: domain.domainId,
         schemaVersion: SYNC_DOMAIN_SCHEMA_VERSION,
         workspaceId: input.workspaceId,
         authorizationEpoch: epoch.epoch,
-        generation: domainGeneration(epoch.epoch),
-        watermark: await highWatermark(input.actorId, input.workspaceId, domain),
+        generation: generationOf(domain, epoch.epoch, summary),
+        watermark: await highWatermark(input.actorId, input.workspaceId, domain, summary),
         history: "complete" as const,
         membershipCursor: null,
       })));
@@ -264,18 +302,21 @@ export function createDomainReadService({ client, cursorSecret, now = () => new 
       const epoch = await epochFor(input.actorId, input.workspaceId);
       if (!epoch.authorized) throw new DomainNotAuthorizedError(input.domainId);
       const issuedAt = Date.parse(now());
+      const summary = domain.source.kind === "event_derived" ? await eventSummary(input.actorId, input.workspaceId) : null;
       const scope: DomainCursorScope = {
         actorId: input.actorId, workspaceId: input.workspaceId, domainId: domain.domainId,
-        authorizationEpoch: epoch.epoch, generation: domainGeneration(epoch.epoch),
+        authorizationEpoch: epoch.epoch, generation: generationOf(domain, epoch.epoch, summary),
         schemaVersion: SYNC_DOMAIN_SCHEMA_VERSION, registryVersion: SYNC_REGISTRY_VERSION,
       };
       const decoded = input.cursor ? cursors.decode(input.cursor, scope, issuedAt) : null;
       let afterRevision = decoded?.afterRevision ?? "0";
       let high = decoded?.highWatermark ?? "0";
-      if (!decoded || decoded.afterRevision === decoded.highWatermark) high = await highWatermark(input.actorId, input.workspaceId, domain);
+      if (!decoded || decoded.afterRevision === decoded.highWatermark) high = await highWatermark(input.actorId, input.workspaceId, domain, summary);
       const read = domain.source.kind === "orbit_records"
         ? await readRecordsPage(domain.source.collectionName, input, afterRevision, high)
-        : await readDedicatedPage(domain, domain.source, input, afterRevision, high);
+        : domain.source.kind === "event_derived"
+          ? await readEventDomainPage(client, domain.source, { workspaceId: input.workspaceId, actorId: input.actorId, afterRevision, highWatermark: high, limit: input.limit })
+          : await readDedicatedPage(domain, domain.source, input, afterRevision, high);
       const { hasMore, lastRevision } = read;
       const changes = read.changes;
       if (domain.attachments.some((attachment) => attachment.collectionName === "personal_schedule_occurrence_exceptions")) {

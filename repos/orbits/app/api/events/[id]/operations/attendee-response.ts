@@ -1,55 +1,11 @@
-import type {
-  EventContactRequest,
-  EventOperationsParticipant,
-  EventOperationsRelationshipGraph,
-  EventOperationsTable,
-} from "../../../../../features/events/event-operations/contract";
+import type { EventOperationsRelationshipGraph } from "../../../../../features/events/event-operations/contract";
+import {
+  publicContactRequest,
+  publicParticipant,
+  publicRecommendations,
+  publicTable,
+} from "../../../../../features/events/event-operations/attendee-public";
 import type { EventOperationsAttendeeWorkspace } from "../../../../../features/events/event-operations/service";
-
-function publicParticipant(participant: EventOperationsParticipant) {
-  return {
-    company: participant.company,
-    displayName: participant.displayName,
-    experienceHighlight: participant.experienceHighlight,
-    industry: participant.industry,
-    languages: [...participant.languages],
-    needs: [...participant.needs],
-    offers: [...participant.offers],
-    participantId: participant.participantId,
-    role: participant.role,
-    topics: [...participant.topics],
-  };
-}
-
-function publicContactRequest(request: EventContactRequest) {
-  return {
-    contactId: request.contactId,
-    requestId: request.requestId,
-    revision: request.revision,
-    requesterParticipantId: request.requesterParticipantId,
-    status: request.status,
-    targetParticipantId: request.targetParticipantId,
-    withdrawnAt: request.withdrawnAt,
-  };
-}
-
-function publicTable(table: EventOperationsTable | null) {
-  if (!table) return null;
-  return {
-    icebreakers: [...table.icebreakers],
-    memberPrompts: Object.fromEntries(
-      Object.entries(table.memberPrompts).map(([participantId, prompts]) => [
-        participantId,
-        [...prompts],
-      ]),
-    ),
-    memberRationales: { ...table.memberRationales },
-    members: table.members.map((member) => ({ ...member })),
-    rationale: table.rationale,
-    tableNumber: table.tableNumber,
-    theme: table.theme,
-  };
-}
 
 function publicGraph(graph: EventOperationsRelationshipGraph | null) {
   if (!graph) return null;
@@ -91,21 +47,7 @@ export function toAttendeeOperationsResponse(
     graph: publicGraph(workspace.graph),
     me: publicParticipant(workspace.me),
     profileEditable: workspace.profileEditable,
-    recommendations: workspace.recommendations
-      ? {
-          noMatchReason: workspace.recommendations.noMatchReason,
-          recommendations: workspace.recommendations.recommendations.map(
-            (recommendation) => ({
-              icebreakers: [...recommendation.icebreakers],
-              memberHint: recommendation.memberHint,
-              reasons: [...recommendation.reasons],
-              score: recommendation.score,
-              targetParticipantId: recommendation.targetParticipantId,
-            }),
-          ),
-          sourceParticipantId: workspace.recommendations.sourceParticipantId,
-        }
-      : null,
+    recommendations: publicRecommendations(workspace.recommendations),
     resultsState: workspace.resultsState,
     roundOneTable: publicTable(workspace.roundOneTable),
     roundTwoTable: publicTable(workspace.roundTwoTable),

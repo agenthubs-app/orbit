@@ -34,6 +34,10 @@ const APPROVED_POLICY_MATRIX = [
   ["DELETE", "/api/schedule-items/:id", "delete", "personal_schedule", "durable_normalized", "offline_queue", "metadata_only"],
   ["GET", "/api/relationship-communication/conversations/:id/messages", "read", "message", "durable_normalized", "online_only", "metadata_only"],
   ["GET", "/api/events/public", "read", "public_event", "encrypted_ttl_snapshot", "online_only", "on_demand_encrypted"],
+  // Sprint 0115: the registered attendee's event day is read from the device mirror; every write needs the network.
+  ["GET", "/api/events/public/:id", "read", "registered_event", "durable_normalized", "online_only", "metadata_only"],
+  ["GET", "/api/events/:id/registration", "read", "event_registration", "durable_normalized", "online_only", "metadata_only"],
+  ["GET", "/api/events/:id/operations", "read", "event_published_result", "durable_normalized", "online_only", "metadata_only"],
   ["POST", "/api/auth/mobile/credentials", "authenticate", "account_secret", "online_only_secret", "online_only", "never_local"],
 ] as const;
 

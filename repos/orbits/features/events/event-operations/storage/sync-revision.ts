@@ -1,4 +1,5 @@
 import { SYNC_WRITE_LOCK_KEY_SQL, SYNC_WRITE_LOCK_SETTING } from "../../../sync/commit-order-lock";
+import { SYNC_DERIVED_OWNER_GUARD_STATEMENTS } from "../../../sync/owner-guard";
 
 /**
  * Sprint 0113 (offline design step 5, method three): the event tables sprint
@@ -73,6 +74,8 @@ export const EVENT_SYNC_REVISION_STATEMENTS: readonly string[] = [
   // "My rows after bookmark N": the owner-scoped heads a device reads.
   "create index if not exists event_ops_membership_heads_sync_actor_idx on event_ops_membership_heads (workspace_id, actor_id, sync_revision)",
   "create index if not exists event_ops_admission_heads_sync_actor_idx on event_ops_admission_application_heads (workspace_id, actor_id, sync_revision)",
+  // Sprint 0115: the owner heads of the event sync domains may not move to another actor, event or workspace.
+  ...SYNC_DERIVED_OWNER_GUARD_STATEMENTS,
 ];
 
 export const EVENT_SYNC_REVISION_SQL = EVENT_SYNC_REVISION_STATEMENTS.map((statement) => `${statement};`).join("\n\n");
