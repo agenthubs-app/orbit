@@ -40,7 +40,7 @@
 | [W0007](W0007-plan-storage/GOAL.md) | 计划能按阶段、行动、人脉需求、信息、活动结构化保存和更新 | RW-09 | 无；本地测试库已核对（localhost），H 档 | completed |
 | [W0008](W0008-plan-generation/GOAL.md) | 问一次固定问题，看到「生成中 → 已完成」的结构化计划并保存（先用 mock 数据，不接 AI） | RW-08（AI 部分延后） | W0006、W0007 | completed |
 | [W0009](W0009-my-plan-page/GOAL.md) | 在「我的计划」里按周打勾，iOrbit 本周推进跟着更新；有计划时活动推荐理由改为对应阶段 | RW-10、RW-07（有计划时） | W0007、W0008 | completed |
-| [W0010](W0010-network-need-matching/GOAL.md) | 扫进来的名片自动提示能填上计划里的哪类人，确认后本周多一条「约 TA」 | RW-11 | W0007、W0009、W0013 | planned |
+| [W0010](W0010-network-need-matching/GOAL.md) | 扫进来的名片自动提示能填上计划里的哪类人，确认后本周多一条「约 TA」 | RW-11 | W0007、W0009、W0013 | completed |
 | [W0011](W0011-card-review-in-today/GOAL.md) | 名片待确认出现在今日要事里，iOrbit 页不再有重复的浮动药丸 | RW-02 | W0001 | planned |
 | [W0013](W0013-card-industry/GOAL.md) | 批量扫名片时 AI 顺便给出一级／二级行业，审阅页可改，确认后存进联系人 | RW-11（补行业部分） | 无 | completed |
 | [W0012](W0012-long-term-tracking/GOAL.md) | 进展记录、每周一小结、重新分析与到期回顾 | RW-12 | W0008、W0009、W0010 | planned |
@@ -65,3 +65,4 @@
 | W0006 | run-01（2026-09-28） | `ccb3a172` | `f04fcd20` | [REPORT](W0006-start-guide/REPORT.md) |
 | W0008 | run-01（2026-09-28） | `26f09869` | `e6bfdb25` | [REPORT](W0008-plan-generation/REPORT.md) |
 | W0009 | run-01（2026-09-28） | `73153d4e` | `374e03bd` | [REPORT](W0009-my-plan-page/REPORT.md) |
+| W0010 | run-01（2026-09-28） | `7719d89c` | `9981c2f7` | [REPORT](W0010-network-need-matching/REPORT.md) |
