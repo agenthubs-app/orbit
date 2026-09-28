@@ -178,6 +178,6 @@ test("offline: the analysis drill-down (one structure bucket) is computed on the
   assert.deepEqual(await dashboardReads(page), [], "no /api/dashboard/structure read");
   const unknown = await open(t, { screen: "structure", params: { dimension: "location", bucketId: "no-such-bucket" } });
   // The same failure the server answers for a bucket that does not exist.
-  await unknown.getByText("That network structure group is not available for this actor.").waitFor();
+  await unknown.getByText("没有找到对应内容，它可能已被移除或不可用。").waitFor();
   assert.deepEqual(await dashboardReads(unknown), []);
 });

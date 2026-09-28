@@ -8,6 +8,7 @@ import {
   Text,
   View
 } from "react-native";
+import { localizedApiErrorMessage } from "../../api/client";
 import { contactStructureDetailPath } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
 import { ErrorState } from "../../components/ErrorState";
@@ -79,7 +80,10 @@ export function ContactStructureDetailScreen() {
           {local.freshness.offline ? <OfflineNotice lastSyncedAt={local.freshness.lastSyncedAt} /> : null}
           {local.freshness.failure ? <ErrorState message={local.freshness.failure} title="服务器连不上" /> : null}
           {!local.freshness.failure && !localResult ? <LoadingState /> : null}
-          {localResult && localResult.success === false ? <ErrorState message={localResult.error.message} /> : null}
+          {localResult && localResult.success === false ? (
+            // The text the server's own answer shows (its NOT_FOUND is a 404).
+            <ErrorState message={localizedApiErrorMessage({ code: localResult.error.appCode, message: localResult.error.message }, localResult.error.appCode === "NOT_FOUND" ? 404 : 503)} />
+          ) : null}
           {localResult && localResult.success ? (
             <ContactStructureDetailContent
               data={localResult.data}
