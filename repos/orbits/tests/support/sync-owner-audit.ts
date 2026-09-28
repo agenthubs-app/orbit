@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative, sep } from "node:path";
-import { ownerGuardedCollections, SYNC_OWNER_CHANGE_HANDLERS, type SyncDomainDefinition } from "../../features/sync/domain-registry";
+import { findSyncOwnerChangeHandler, ownerGuardedCollections, SYNC_OWNER_CHANGE_HANDLERS, type SyncDomainDefinition } from "../../features/sync/domain-registry";
 
 /**
  * Sprint 0113 (offline design step 5, method two; decision 4): static audit of
@@ -24,7 +24,10 @@ export type OwnerWritePolicy =
   | { policy: "non-registered"; statements: number; collections: string }
   /** The explicit owner-change interface itself; it must call assertRegisteredOwnerChange. */
   | { policy: "owner-interface"; statements: number; how: string }
-  /** A registered handler (SYNC_OWNER_CHANGE_HANDLERS). */
+  /**
+   * A registered handler (SYNC_OWNER_CHANGE_HANDLERS). A "first-owner" handler's
+   * statements must each be guarded by `user_id is null` and never set collection_name.
+   */
   | { policy: "handler"; statements: number; handler: string };
 
 /**
@@ -163,6 +166,9 @@ export function auditOwnerWrites(
         if (!text.includes("assertRegisteredOwnerChange(")) problems.push(`UNCHECKED ${finding.file}: an owner-change interface must call assertRegisteredOwnerChange.`);
       } else if (!SYNC_OWNER_CHANGE_HANDLERS.includes(entry.handler)) {
         problems.push(`UNREGISTERED ${finding.file}: handler ${entry.handler} is not in SYNC_OWNER_CHANGE_HANDLERS.`);
+      } else if (findSyncOwnerChangeHandler(entry.handler)?.scope === "first-owner" &&
+        (statement.target !== "orbit_records" || !/\buser_id\s+is\s+null\b/i.test(statement.text) || setTargets(statement.text).includes("collection_name"))) {
+        problems.push(`OWNER_OVERWRITE ${finding.file}: handler ${entry.handler} may only give a first owner, but a statement is not guarded by user_id is null.`);
       }
     }
   }

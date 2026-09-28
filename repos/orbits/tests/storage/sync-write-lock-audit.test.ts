@@ -16,6 +16,7 @@ export const SYNC_WRITE_MANIFEST: Readonly<Record<string, SyncWritePolicy>> = {
   "features/connections/lifecycle/migration-repository.ts": { policy: "locked", statements: 2, how: "acquireSyncCommitOrderLock when an owner repair touches a sync collection" },
   "features/sync/migrations.ts": { policy: "locked", statements: 1, how: "one-shot backfill joins sync_write_lock" },
   "features/sync/sync-revision-migration.ts": { policy: "locked", statements: 1, how: "each backfill batch joins sync_write_lock" },
+  "features/sync/owner-backfill.ts": { policy: "locked", statements: 3, how: "0114 owner backfill: acquireSyncCommitOrderLock at the start of its one transaction; it refuses to write a sync collection" },
   "scripts/sync-cloud-records.ts": { policy: "locked", statements: 1, how: "every copied row is inserted through SYNC_COMMIT_ORDER_LOCK_CTE" },
   "scripts/repair-lifecycle-task-metadata.mjs": { policy: "locked", statements: 1, how: "inline copy of SYNC_COMMIT_ORDER_LOCK_SQL (pinned below)" },
   "features/acquisition/storage/external-import-live-record-provider.ts": { policy: "guarded", statements: 1, how: "atomic contact-draft writer refuses sync collections" },

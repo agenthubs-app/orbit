@@ -1,4 +1,4 @@
-import { ownerGuardedCollections, SYNC_OWNER_CHANGE_HANDLERS } from "./domain-registry";
+import { ownerGuardedCollections, reassigningOwnerChangeHandlers, SYNC_OWNER_CHANGE_HANDLER_DEFINITIONS } from "./domain-registry";
 
 /**
  * Owner/identity guard (sprint 0113).
@@ -8,7 +8,9 @@ import { ownerGuardedCollections, SYNC_OWNER_CHANGE_HANDLERS } from "./domain-re
  * its collection), the old owner's device never learns that the row left: the
  * row simply stops matching its reads. The registry lists the columns that
  * decide visibility; this module refuses any change to them that is not one of
- * the registered handlers (SYNC_OWNER_CHANGE_HANDLERS, empty today).
+ * the registered "reassign" handlers (SYNC_OWNER_CHANGE_HANDLER_DEFINITIONS; none
+ * today). A "first-owner" handler (the 0114 backfill) never needs this guard:
+ * giving an owner-less row its first owner does not fire it.
  *
  * Two layers:
  *   - the database trigger below, on orbit_records, stops product code, scripts
@@ -37,7 +39,7 @@ export function isOwnerGuardedCollection(collectionName: string): boolean {
 /** Throws unless the change is outside every sync domain or runs as a registered handler. */
 export function assertRegisteredOwnerChange(collectionName: string, handler: string | undefined): void {
   if (!isOwnerGuardedCollection(collectionName)) return;
-  if (handler && SYNC_OWNER_CHANGE_HANDLERS.includes(handler)) return;
+  if (handler && reassigningOwnerChangeHandlers(collectionName).includes(handler)) return;
   throw new SyncOwnerChangeUnregisteredError(collectionName, handler);
 }
 
@@ -45,9 +47,14 @@ function literalList(values: readonly string[]): string {
   return values.length ? values.map((value) => `'${value.replaceAll("'", "''")}'`).join(", ") : "";
 }
 
-/** SQL that is true unless the transaction runs as a registered handler (none registered: always true). */
-const unregisteredHandler = SYNC_OWNER_CHANGE_HANDLERS.length
-  ? `coalesce(current_setting('${SYNC_OWNER_CHANGE_SETTING}', true), '') not in (${literalList(SYNC_OWNER_CHANGE_HANDLERS)})`
+/**
+ * SQL that is true unless the transaction runs as a registered "reassign"
+ * handler on a collection in its scope (none registered: always true, so a
+ * first-owner handler name opens nothing).
+ */
+const reassigners = SYNC_OWNER_CHANGE_HANDLER_DEFINITIONS.filter((handler) => handler.scope === "reassign");
+const unregisteredHandler = reassigners.length
+  ? `not (${reassigners.map((handler) => `(coalesce(current_setting('${SYNC_OWNER_CHANGE_SETTING}', true), '') = '${handler.name.replaceAll("'", "''")}' and old.collection_name in (${literalList(handler.collections)}))`).join(" or ")})`
   : "true";
 
 /**

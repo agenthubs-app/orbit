@@ -3,14 +3,15 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { DECLARED_SYNC_DOMAINS, SYNC_OWNER_CHANGE_HANDLERS } from "../../features/sync/domain-registry";
+import { DECLARED_SYNC_DOMAINS, SYNC_OWNER_CHANGE_HANDLER_DEFINITIONS } from "../../features/sync/domain-registry";
 import { auditOwnerWrites, setTargets, type OwnerWritePolicy, type ReassignCallPolicy } from "../support/sync-owner-audit";
 
 // Sprint 0113 (offline design step 5, method two; decision 4): every statement
 // in product code and scripts that sets a sync domain's owner or visibility
 // column, and why it cannot make a row silently leave a device. A new writer,
 // or a new statement in a listed file, fails this test until it is classified.
-// Registered owner-change handlers: none (SYNC_OWNER_CHANGE_HANDLERS is empty).
+// Registered owner-change handlers: one first-owner handler, the 0114 owner
+// backfill (it never re-owns a row); no "reassign" handler exists.
 export const OWNER_WRITE_MANIFEST: Readonly<Record<string, OwnerWritePolicy>> = {
   "shared/storage/postgres-live-record-store.ts": { policy: "owner-interface", statements: 2, how: "upsert keeps the stored owner (coalesce + conflict guard → LiveRecordOwnerConflictError); reassignRecordOwner is the explicit interface and calls assertRegisteredOwnerChange" },
   "features/appointments/notification-projector.ts": { policy: "preserves-owner", statements: 1, how: "reminder notifications: record id carries the actor; a foreign owner is refused" },
@@ -20,6 +21,7 @@ export const OWNER_WRITE_MANIFEST: Readonly<Record<string, OwnerWritePolicy>> = 
   "scripts/bootstrap-event-organizer-accounts.ts": { policy: "assigns-first-owner", statements: 1, how: "organizer bootstrap only claims events with user_id is null" },
   "features/events/organizer-accounts/owner-migration.ts": { policy: "non-registered", statements: 1, collections: "events (orbit_records 'events' is not a sync domain)" },
   "scripts/seed-demo-workspace.ts": { policy: "non-registered", statements: 1, collections: "events (demo seed resets reviewed event owners before the owner plan)" },
+  "features/sync/owner-backfill.ts": { policy: "handler", statements: 1, handler: "owner-backfill-0114" },
 };
 
 // Callers of the explicit owner-change interface. A sync-domain owner change must be a
@@ -31,7 +33,11 @@ export const REASSIGN_CALL_MANIFEST: Readonly<Record<string, ReassignCallPolicy>
 const ROOT = join(__dirname, "../..");
 
 test("every statement that sets a sync owner/visibility column is classified, and no owner change is unregistered", () => {
-  assert.deepEqual(SYNC_OWNER_CHANGE_HANDLERS, [], "the product has no registered owner-change handler yet");
+  assert.deepEqual(
+    SYNC_OWNER_CHANGE_HANDLER_DEFINITIONS.map(({ name, scope, collections }) => ({ name, scope, collections })),
+    [{ name: "owner-backfill-0114", scope: "first-owner", collections: ["contacts", "connections", "contact_detail_states", "evidence"] }],
+    "the only registered handler gives first owners to contact rows; nothing may re-own a sync row",
+  );
   assert.deepEqual(auditOwnerWrites(ROOT, DECLARED_SYNC_DOMAINS, OWNER_WRITE_MANIFEST, REASSIGN_CALL_MANIFEST), []);
 });
 
@@ -59,12 +65,15 @@ test("a product writer or a batch script that changes a registered owner, a dish
     writeFileSync(join(root, "features/demo/claims-handler.ts"), "q(\"update orbit_records set user_id = $1 where collection_name = 'notes'\");");
     writeFileSync(join(root, "features/demo/claims-first.ts"), "q(\"update orbit_records set user_id = $1 where collection_name = 'notes' and record_id = $2\");");
     writeFileSync(join(root, "features/demo/reassign-caller.ts"), "await store.reassignRecordOwner({ collectionName: 'notes' });");
+    // A first-owner handler that overwrites an owner instead of filling an empty one.
+    writeFileSync(join(root, "scripts/backfill-overwrites.ts"), "q(\"update orbit_records set user_id = $1 where collection_name = 'notes' and record_id = any($2)\");");
     const problems = auditOwnerWrites(root, DECLARED_SYNC_DOMAINS, {
       "features/demo/claims-keep.ts": { policy: "preserves-owner", statements: 1, how: "says so" },
       "features/demo/claims-nonreg.ts": { policy: "non-registered", statements: 1, collections: "contacts" },
       "features/demo/claims-handler.ts": { policy: "handler", statements: 1, handler: "contact-handover" },
       "features/demo/claims-first.ts": { policy: "assigns-first-owner", statements: 1, how: "says so" },
       "features/demo/removed.ts": { policy: "non-registered", statements: 1, collections: "contacts" },
+      "scripts/backfill-overwrites.ts": { policy: "handler", statements: 1, handler: "owner-backfill-0114" },
     });
     const has = (prefix: string) => problems.some((line) => line.startsWith(prefix));
     assert.ok(has("UNCLASSIFIED features/demo/transfer-note.ts"), "product code moving a note to another owner");
@@ -77,6 +86,7 @@ test("a product writer or a batch script that changes a registered owner, a dish
     assert.ok(has("OWNER_OVERWRITE features/demo/claims-first.ts"), "assigns-first-owner without an owner guard");
     assert.ok(has("UNREGISTERED_REASSIGN features/demo/reassign-caller.ts"), "an explicit reassign outside a registered handler");
     assert.ok(has("STALE features/demo/removed.ts"), "a manifest entry without a writer");
+    assert.ok(has("OWNER_OVERWRITE scripts/backfill-overwrites.ts"), "a first-owner handler statement without a user_id is null guard");
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

@@ -69,3 +69,21 @@ test("a first owner on an unowned row, payload writes, and owner changes outside
   await pool.query("update orbit_records set user_id = 'actor:b' where collection_name = 'contacts' and record_id = 'c1'");
   assert.equal(await ownerOf(pool, "contacts", "c1"), "actor:b", "contacts are not a sync domain yet");
 });
+
+test("the registered first-owner handler (0114 backfill) opens nothing: it cannot re-own a note or clear an owner, and reassignRecordOwner refuses it", options, async (t) => {
+  const { pool, client } = await database(t);
+  for (const sql of [
+    "update orbit_records set user_id = 'actor:b' from sync_write_lock where collection_name = 'notes' and record_id = 'n1'",
+    "update orbit_records set user_id = null from sync_write_lock where collection_name = 'tasks' and record_id = 't1'",
+  ]) {
+    await assert.rejects(() => client.transaction(async (tx) => {
+      await tx.query("select set_config('orbit.sync_owner_change_handler', 'owner-backfill-0114', true)");
+      await tx.query(`with sync_write_lock as materialized (select set_config('orbit.sync_write_lock_key', (hashtextextended('orbit:sync:commit-order:v1:' || coalesce(to_regclass('orbit_records')::oid::text, ''), 0))::text, true) as k, pg_advisory_xact_lock(hashtextextended('orbit:sync:commit-order:v1:' || coalesce(to_regclass('orbit_records')::oid::text, ''), 0))) ${sql}`);
+    }), refused);
+  }
+  assert.equal(await ownerOf(pool, "notes", "n1"), "actor:a");
+  assert.equal(await ownerOf(pool, "tasks", "t1"), "actor:a");
+  const store = createPostgresLiveRecordStore({ client });
+  await assert.rejects(async () => store.reassignRecordOwner!({ workspaceId: W, collectionName: "notes", recordId: "n1", fromUserId: "actor:a", toUserId: "actor:b", updatedAt: T0, handler: "owner-backfill-0114" }), (error: unknown) => (error as { code?: string }).code === "SYNC_OWNER_CHANGE_UNREGISTERED");
+  assert.equal(await ownerOf(pool, "notes", "n1"), "actor:a");
+});
