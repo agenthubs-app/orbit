@@ -24,7 +24,8 @@ import { act, create, type ReactTestRenderer } from "react-test-renderer";
 
 import { IOrbitActions } from "../../app/(app)/app/agent/iorbit-0918/iorbit-actions";
 import { IOrbitPlan } from "../../app/(app)/app/agent/iorbit-0918/iorbit-plan";
-import { planEventReasons } from "../../app/(app)/app/agent/plan/plan-route-view-model";
+import { buildPlanWeekSummary, planEventReasons } from "../../app/(app)/app/agent/plan/plan-route-view-model";
+import { toPlanView, toPlanViewItem, toPlanViewLogEntry } from "../../features/plans/repository";
 import { PLAN_NOW, planSnapshotFixture } from "../support/plan-snapshot-fixture";
 import { IOrbitStrategy } from "../../app/(app)/app/agent/iorbit-0918/iorbit-strategy";
 import { OrbitLanguageProvider } from "../../app/(app)/app/orbit-language-context";
@@ -1601,4 +1602,27 @@ test("W0021 my plan: the first frame comes from SSR — the client reads no plan
   });
   await mounted.settle();
   assert.deepEqual(after.map((call) => `${call.method} ${call.url}`), ["PATCH /api/agent/plans/items/a-this-week"]);
+});
+
+/* ── W0021 SC-W0021-05：投影快照渲染出的页面与完整快照一致 ─────────────── */
+
+test("W0021: the projected plan snapshot renders the same plan page, week summary and event reasons as the full one", () => {
+  const full = planSnapshotFixture();
+  const projected = {
+    items: full.items.map(toPlanViewItem),
+    log: full.log.map(toPlanViewLogEntry),
+    plan: toPlanView(full.plan),
+  };
+  const render = (snapshot: typeof projected) =>
+    renderToStaticMarkup(
+      <OrbitLanguageProvider initialLanguage="zh">
+        <IOrbitPlan guideEnabled initialSnapshot={snapshot} now={PLAN_NOW} />
+      </OrbitLanguageProvider>,
+    );
+  assert.equal(render(projected), render(full));
+  // 首页的「本周推进」不读进展记录：没有 log 的首页视图给出同样的本周推进。
+  for (const lang of ["zh", "en"] as const) {
+    assert.deepEqual(buildPlanWeekSummary({ ...projected, log: [] }, PLAN_NOW, lang, []), buildPlanWeekSummary(full, PLAN_NOW, lang, []));
+  }
+  assert.deepEqual(planEventReasons({ ...projected, log: [] }), planEventReasons(full));
 });
