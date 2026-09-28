@@ -225,7 +225,8 @@ export default async function AppAgentPage({
     eventIds: registrationEventIds.map(
       (routeId) => canonicalEventIdsByRouteId[routeId] ?? routeId,
     ),
-    userId: session.user.id,
+    // 报名接口以账号 id（actor.id）写入，键为 eventId + actorId；按同一个 id 读（W0018）。
+    userId: actorId,
   });
   const registrationStates = Object.fromEntries(
     registrationEventIds.map((routeId) => {
