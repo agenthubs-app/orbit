@@ -107,3 +107,10 @@ test("detail modal shows the business-card notes without the review page's photo
   const without = renderToStaticMarkup(<NetworkDetailModal contact={contact} closeHref="/app/contacts" onFollow={() => {}} />);
   assert.doesNotMatch(without, /data-network-detail-card-notes/);
 });
+
+test("W0010: the detail modal offers 关联到计划人脉需求 without reading the plan until clicked", () => {
+  const html = renderToStaticMarkup(<NetworkDetailModal contact={contact} closeHref="/app/contacts" onFollow={() => {}} />);
+  assert.match(html, /data-network-detail-plan-link/);
+  assert.match(html, /data-plan-need-link="closed"/);
+  assert.match(html, /data-plan-need-link-open[^>]*>关联到计划人脉需求</);
+});

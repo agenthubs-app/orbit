@@ -8,8 +8,9 @@
  *   右窄栏   时间：选中日的时间线（今天带「现在」线）+ 紧凑月历
  *   栏目区   本周推进 | 已报名活动 | 最近对话，无卡片边框、细线分栏
  *
- * 今日要事的来源与排序：2 小时内开始的日程 → critical/high 信号 → 其余信号 →
- * 跟进队列（仅在信号里没有 followup_due 时补位，避免同一件事出现两次）。
+ * 今日要事的来源与排序：2 小时内开始的日程 → critical/high 信号 →
+ * 「N 位新联系人可能对应你的计划」（W0010，有生效计划且有待确认的匹配时，点开共用确认弹层）→
+ * 其余信号 → 跟进队列（仅在信号里没有 followup_due 时补位，避免同一件事出现两次）。
  * 排序只看 severity 与真实时间戳，不用跟进队列的到期字段（到期时间被夹成「今天」的旧 bug）。
  *
  * 数据全部真实，写操作一个不丢：
@@ -63,6 +64,8 @@ import {
   iorbitSelectedDayLabel,
 } from "./iorbit-model";
 import { fetchCurrentPlan, patchPlanActionDone, withActionDone, withServerItem } from "./iorbit-plan-client";
+import { fetchPlanMatches, withoutCandidate, type PlanMatchCandidate, type PlanMatchList } from "./plan-match-client";
+import { PlanMatchDialog, PlanMatchSheet } from "./plan-match-sheet";
 
 const TZ = "Asia/Tokyo";
 /** 日程在多久之内开始才进今日要事（Q6：2 小时）。 */
@@ -127,6 +130,8 @@ interface TodayItem {
   ask: { label: string; prompt: string } | null;
   /** 信号项才有：完成 / 明天提醒写回。 */
   signalId: string | null;
+  /** 在本页打开（W0010 匹配确认弹层）而不是导航；示例模式下同样被拦下。 */
+  open?: () => void;
 }
 
 const SEVERITY_RANK: Record<AgentTodaySignalView["severity"], number> = {
@@ -246,6 +251,10 @@ export function IOrbitHome({
   const [signalsRefreshing, setSignalsRefreshing] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [calOpen, setCalOpen] = useState(false);
+  // W0010：待确认的人脉需求匹配（只在有生效计划时读取）；弹层打开时固定一份清单，
+  // 确认过的行留在弹层里显示「约 TA」行动卡，计数照常减少。
+  const [matches, setMatches] = useState<PlanMatchList | null>(null);
+  const [matchSheet, setMatchSheet] = useState<readonly PlanMatchCandidate[] | null>(null);
 
   // 时钟每分钟前进一次：倒计时、2 小时窗口、「现在」线和跨午夜切日都跟着走。
   // 示例模式用示例时钟（东京的今天 11:40）。
@@ -341,6 +350,17 @@ export function IOrbitHome({
       });
     return () => controller.abort();
   }, [demoActive]);
+
+  const hasPlan = planState !== "pending" && planState !== "unavailable" && planState !== null;
+  useEffect(() => {
+    if (typeof window === "undefined" || demoActive || !hasPlan) return;
+    const controller = new AbortController();
+    // 读不到就当没有：今日要事不因为匹配接口故障而报错。
+    void fetchPlanMatches(controller.signal)
+      .then((value) => setMatches(value))
+      .catch(() => undefined);
+    return () => controller.abort();
+  }, [demoActive, hasPlan]);
 
   useEffect(() => {
     if (typeof window === "undefined" || demoActive) return;
@@ -596,6 +616,36 @@ export function IOrbitHome({
       };
     });
 
+    // W0010：「N 位新联系人可能对应你的计划」排在 critical/high 信号之后、其余信号之前。
+    const urgentCount = signalRows.filter(
+      (row) => row.signal.severity === "critical" || row.signal.severity === "high",
+    ).length;
+    const matchCount = matches?.contactCount ?? 0;
+    const matchNeeds = matches ? [...new Set(matches.candidates.map((candidate) => candidate.needTitle))] : [];
+    const fromMatches: TodayItem[] =
+      matches && matchCount > 0
+        ? [
+            {
+              ask: null,
+              hot: false,
+              key: "plan-match",
+              open: () => setMatchSheet(matches.candidates),
+              pills: [{ text: t({ en: "Plan", zh: "计划" }) }],
+              primary: { href: "/app/agent/plan", label: t({ en: "Review one by one", zh: "逐个确认" }) },
+              proof: [[t({ en: "Network needs", zh: "人脉需求" }), matchNeeds.slice(0, 3).join(" · ")] as const],
+              signalId: null,
+              title: t({
+                en: `${matchCount} new contact(s) may fit your plan`,
+                zh: `${matchCount} 位新联系人可能对应你的计划`,
+              }),
+              why: t({
+                en: "Only a suggestion — nothing is linked until you confirm.",
+                zh: "只是建议，确认后才会关联到计划。",
+              }),
+            },
+          ]
+        : [];
+
     // 信号里已经有 followup_due 时，跟进队列不再补位（同一件事不出现两次）。
     const hasFollowupSignal = signalRows.some((row) => row.signal.type === "followup_due");
     const fromFollowups: TodayItem[] = hasFollowupSignal
@@ -612,8 +662,14 @@ export function IOrbitHome({
           why: null,
         }));
 
-    return [...soon, ...fromSignals, ...fromFollowups];
-  }, [followupItems, fmtDay, now, signalRows, t, todayRows]);
+    return [
+      ...soon,
+      ...fromSignals.slice(0, urgentCount),
+      ...fromMatches,
+      ...fromSignals.slice(urgentCount),
+      ...fromFollowups,
+    ];
+  }, [followupItems, fmtDay, matches, now, signalRows, t, todayRows]);
 
   const progress = Array.isArray(ledger) ? iorbitLedgerProgress(ledger) : null;
   const focusTasks = Array.isArray(ledger)
@@ -695,6 +751,10 @@ export function IOrbitHome({
     if (!item.primary) return;
     if (guardWrite) {
       guardWrite(demoData?.writeLabels[item.key] ?? t({ en: "today's items", zh: "今日要事" }));
+      return;
+    }
+    if (item.open) {
+      item.open();
       return;
     }
     navigate(item.primary.href);
@@ -1338,6 +1398,22 @@ export function IOrbitHome({
           )}
         </div>
       </section>
+      {matchSheet ? (
+        <PlanMatchDialog label={t({ en: "Plan matches", zh: "计划匹配" })} onClose={() => setMatchSheet(null)}>
+          <PlanMatchSheet
+            candidates={matchSheet}
+            onDecided={(candidateId, decision) => {
+              setMatches((current) => (current ? withoutCandidate(current, candidateId) : current));
+              // 确认后本周多了一条「约 TA」：重新读计划，本周推进跟着更新。
+              if (decision === "accept") {
+                void fetchCurrentPlan()
+                  .then((value) => setPlan(value))
+                  .catch(() => undefined);
+              }
+            }}
+          />
+        </PlanMatchDialog>
+      ) : null}
     </div>
   );
 }

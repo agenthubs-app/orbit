@@ -12,7 +12,7 @@ const S = '[data-orbit-real-page="iorbit-0918"]';
 const SERIF = "'Noto Serif SC', 'Songti SC', serif";
 
 // 新增 .btn 类的基类中和（与 IORBIT_HOME_STYLES 的 NEW_BUTTONS 同一口径）。
-const NEW_BUTTONS = ["ir-p-box", "ir-p-link", "ir-p-phase-h", "ir-p-log-btn", "ir-m-plan-box"];
+const NEW_BUTTONS = ["ir-p-box", "ir-p-link", "ir-p-phase-h", "ir-p-log-btn", "ir-m-plan-box", "ir-p-match"];
 const neutralise =
   NEW_BUTTONS.map((name) => `${S} .btn.${name}`).join(", ") +
   " { height: auto; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; letter-spacing: 0; line-height: normal; transition: none; font-weight: 400; cursor: pointer; }\n" +
@@ -95,6 +95,10 @@ ${S} .ir-p-need:first-child { border-top: 0; padding-top: 2px; }
 ${S} .ir-p-need-h { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
 ${S} .ir-p-need-h b { font-size: 15px; font-weight: 500; line-height: 1.45; color: #0E1225; }
 ${S} .ir-p-need-h small { display: block; font-size: 12px; color: #6B6F99; font-weight: 400; margin-top: 2px; }
+/* W0010：「待确认 N」角标（点开共用的匹配确认组件） */
+${S} .btn.ir-p-match { flex: none; min-height: 32px; padding: 4px 12px; border: 1px solid #4B4FC7; border-radius: 999px; background: #EEEFFD; color: #4B4FC7; font-size: 12.5px; font-weight: 500; }
+${S} .btn.ir-p-match:hover { background: #4B4FC7; color: #FFFFFF; }
+${S} .ir-p-act-x { grid-column: 2; margin-top: 4px; }
 ${S} .ir-p-need-count { display: flex; gap: 14px; font-size: 12.5px; color: #6B6F99; font-variant-numeric: tabular-nums; }
 ${S} .ir-p-need-count b { color: #0E1225; font-weight: 500; }
 ${S} .ir-p-people { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }

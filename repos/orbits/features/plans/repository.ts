@@ -60,6 +60,21 @@ export interface PlanTransaction extends PlanReader {
   updateItem(item: PlanItem): Promise<void>;
   insertLog(entry: PlanLogEntry): Promise<void>;
   insertCommandReceipt(receipt: PlanCommandReceipt): Promise<void>;
+  /**
+   * W0010：在同一个按 actor 串行的事务里锁住并读取本人的一条匹配候选（`plan_match_candidates`，
+   * `for update`）。只有 Postgres 仓储实现；mock 模式没有匹配表（匹配接口在 mock 下不可用）。
+   */
+  matchCandidateForUpdate?(candidateId: string): Promise<PlanMatchCandidateRow | null>;
+  /** 只从 pending 转出（CAS）；返回是否成功。 */
+  decideMatchCandidate?(candidateId: string, status: "accepted" | "dismissed", decidedAt: string): Promise<boolean>;
+}
+
+/** 事务内看到的匹配候选（只取决定所需的字段）。 */
+export interface PlanMatchCandidateRow {
+  id: string;
+  needItemId: string;
+  contactId: string;
+  status: "pending" | "accepted" | "dismissed";
 }
 
 export interface PlanRepository {
@@ -327,6 +342,32 @@ function postgresTransaction(client: PlanQueryClient, scope: PlanScope): PlanTra
 
   return {
     ...reader,
+    async matchCandidateForUpdate(candidateId) {
+      const result = await client.query(
+        `select id, need_item_id, contact_id, status from plan_match_candidates
+         where workspace_id = $1 and actor_id = $2 and id = $3
+         for update`,
+        [ws, actor, candidateId],
+      );
+      const row = result.rows[0] as Row | undefined;
+      return row
+        ? {
+            contactId: String(row.contact_id),
+            id: String(row.id),
+            needItemId: String(row.need_item_id),
+            status: row.status as PlanMatchCandidateRow["status"],
+          }
+        : null;
+    },
+    async decideMatchCandidate(candidateId, status, decidedAt) {
+      const result = await client.query(
+        `update plan_match_candidates set status = $4, decided_at = $5
+         where workspace_id = $1 and actor_id = $2 and id = $3 and status = 'pending'
+         returning id`,
+        [ws, actor, candidateId, status, decidedAt],
+      );
+      return result.rows.length === 1;
+    },
     async archivePlan(planId, archivedAt) {
       await client.query(
         `update plans set status = 'archived', archived_at = $4, updated_at = $4

@@ -7,6 +7,7 @@ import { runEventAnalyticsMigrations } from "../features/events/event-analytics/
 import { runAppointmentMigrations } from "../features/appointments/storage/migrations";
 import { runBusinessCardIngestV2Migrations } from "../features/acquisition/business-card-ingest-v2/migrations";
 import { runPlanMigrations } from "../features/plans/migrations";
+import { runPlanMatchingMigrations } from "../features/plans/matching-migrations";
 import { loadLocalEnv } from "./load-local-env";
 
 async function main() {
@@ -28,6 +29,8 @@ async function main() {
     await runBusinessCardIngestV2Migrations(runtime.client);
     phase = "plans";
     await runPlanMigrations(runtime.client);
+    phase = "plan-matching";
+    await runPlanMatchingMigrations(runtime.client);
     console.info("Web runtime schemas migrated; no demo data seeded.");
   } catch {
     throw new Error(`WEB_MIGRATION_FAILED:${phase}`);

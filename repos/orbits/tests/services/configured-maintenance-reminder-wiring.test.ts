@@ -12,3 +12,8 @@ test("production maintenance includes exactly one canonical reminder task withou
     skipped: "database_unconfigured",
   });
 });
+
+test("W0010: production maintenance registers exactly one bounded plan-match task", () => {
+  const tasks = createConfiguredMaintenanceTasks({ env: { NODE_ENV: "test" }, workerId: "wiring-test" });
+  assert.equal(tasks.filter((task) => task.name === "plan-match").length, 1);
+});

@@ -26,6 +26,7 @@ import {
   type IngestManifestEntry,
 } from "./contract";
 import { sanitizeIndustryPair } from "../../../shared/domain/industries";
+import { enqueuePlanMatchJob } from "../../plans/matching-repository";
 
 // 设计方案：docs/superpowers/plans/2026-08-31-business-card-batch-ingest-v2.md (v2.4)
 //
@@ -422,6 +423,24 @@ export function createBusinessCardIngestRepository(options: {
          where workspace_id = $1 and id = $2`,
         [workspaceId, batchId],
       );
+      // W0010：同一事务写人脉需求匹配任务（outbox）。批次行已持锁、completed 只会转入一次；
+      // 任务表另有 (actor, batch) 唯一约束兜底重放。一张名片的批次按东京自然日聚合。
+      const confirmed = await client.query(
+        `select coalesce(array_agg(distinct confirmed_contact_id)
+                  filter (where confirmed_contact_id is not null), '{}') as contact_ids,
+                count(distinct card_id) as cards
+         from bc_ingest_items
+         where workspace_id = $1 and batch_id = $2`,
+        [workspaceId, batchId],
+      );
+      const summary = confirmed.rows[0] ?? { contact_ids: [], cards: 0 };
+      await enqueuePlanMatchJob(client, {
+        actorId: String(batchRow.actor_id),
+        batchId,
+        contactIds: Array.isArray(summary.contact_ids) ? (summary.contact_ids as string[]) : [],
+        singleCard: Number(summary.cards) === 1,
+        workspaceId,
+      });
       return;
     }
     if (status === "processing" && active === 0) {

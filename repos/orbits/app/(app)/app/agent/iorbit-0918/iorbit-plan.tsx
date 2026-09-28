@@ -14,12 +14,15 @@
  * 视图全部由 `plan-route-view-model.ts` 从快照推导。写操作只走 W0007 的接口
  * （`iorbit-plan-client.ts`）：打勾乐观更新，失败把这一条回滚并提示；手动记录成功后插到最前。
  *
- * 不做（后续 Sprint）：重新分析（W0012，按钮先禁用）、「待确认 N」匹配确认（W0010，
- * 角标位置保留、计数恒为 0 不显示）、进展记录里的 @ 联系人解析与周一小结（W0012）。
+ * W0010：人脉需求标题旁的「待确认 N」角标读 `GET /api/agent/plans/candidates`，点开是与审阅页、
+ * 今日要事共用的确认组件（`plan-match-sheet.tsx`）；确认后重新读计划，本周多出的「约 TA」行动
+ * 行上带 定时间／起草邮件（即将开放）／记一次互动。
+ *
+ * 不做（后续 Sprint）：重新分析（W0012，按钮先禁用）、进展记录里的 @ 联系人解析与周一小结（W0012）。
  */
 "use client";
 
-import { useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 
 import type { PlanSnapshot } from "../../../../../features/plans/contract";
 import { useOrbitLanguage } from "../../orbit-language-context";
@@ -30,6 +33,7 @@ import {
   type MyPlanView,
 } from "../plan/plan-route-view-model";
 import {
+  fetchCurrentPlan,
   newPlanIdempotencyKey,
   patchPlanActionDone,
   postPlanNote,
@@ -38,6 +42,8 @@ import {
   withServerItem,
 } from "./iorbit-plan-client";
 import { IOrbitScreenFrame } from "./iorbit-screen-frame";
+import { fetchPlanMatches, withoutCandidate, type PlanMatchList } from "./plan-match-client";
+import { MatchActionButtons, PLAN_MATCH_STYLES, PlanMatchDialog, PlanMatchSheet } from "./plan-match-sheet";
 
 export interface IOrbitPlanProps {
   /** 服务端读到的当前生效计划：null = 还没有；"unavailable" = 计划服务读不到。 */
@@ -66,6 +72,26 @@ export function IOrbitPlan({ contactNames, guideEnabled, initialSnapshot, now }:
     stickyActionIds: sticky,
   });
   const screenTitle = t({ en: "My plan", zh: "我的计划" });
+  // W0010：待确认的匹配候选（读不到就不显示角标）；弹层打开时固定这条需求的候选。
+  const [matches, setMatches] = useState<PlanMatchList | null>(null);
+  const [matchNeedId, setMatchNeedId] = useState<string | null>(null);
+  const hasPlan = snapshot !== null && snapshot !== "unavailable";
+  useEffect(() => {
+    if (typeof window === "undefined" || !hasPlan) return;
+    const controller = new AbortController();
+    void fetchPlanMatches(controller.signal)
+      .then((value) => setMatches(value))
+      .catch(() => undefined);
+    return () => controller.abort();
+  }, [hasPlan]);
+  const reloadPlan = () => {
+    void fetchCurrentPlan()
+      .then((value) => {
+        if (value) setSnapshot(value);
+      })
+      .catch(() => undefined);
+  };
+  const [sheetCandidates, setSheetCandidates] = useState<PlanMatchList["candidates"]>([]);
 
   return (
     <IOrbitScreenFrame ready screenTitle={screenTitle}>
@@ -80,6 +106,12 @@ export function IOrbitPlan({ contactNames, guideEnabled, initialSnapshot, now }:
             onSnapshot={(update) =>
               setSnapshot((current) => (current && current !== "unavailable" ? update(current) : current))
             }
+            onInteraction={reloadPlan}
+            onOpenMatches={(needId) => {
+              setSheetCandidates((matches?.candidates ?? []).filter((candidate) => candidate.needId === needId));
+              setMatchNeedId(needId);
+            }}
+            pendingByNeed={matches?.pendingByNeed ?? {}}
             view={model.view}
           />
         ) : model.state === "none" ? (
@@ -109,19 +141,37 @@ export function IOrbitPlan({ contactNames, guideEnabled, initialSnapshot, now }:
           </section>
         )}
       </div>
+      {matchNeedId ? (
+        <PlanMatchDialog label={t({ en: "Plan matches", zh: "计划匹配" })} onClose={() => setMatchNeedId(null)}>
+          <PlanMatchSheet
+            candidates={sheetCandidates}
+            heading={t({ en: "Who may fit this need", zh: "可能对应这条需求的人" })}
+            onDecided={(candidateId, decision) => {
+              setMatches((current) => (current ? withoutCandidate(current, candidateId) : current));
+              if (decision === "accept") reloadPlan();
+            }}
+          />
+        </PlanMatchDialog>
+      ) : null}
     </IOrbitScreenFrame>
   );
 }
 
 function PlanBody({
   items,
+  onInteraction,
+  onOpenMatches,
   onSnapshot,
   onTicked,
+  pendingByNeed,
   view,
 }: {
   items: PlanSnapshot["items"];
+  onInteraction: () => void;
+  onOpenMatches: (needId: string) => void;
   onTicked: (itemId: string) => void;
   onSnapshot: (update: (current: PlanSnapshot) => PlanSnapshot) => void;
+  pendingByNeed: Readonly<Record<string, number>>;
   view: MyPlanView;
 }) {
   const { language, t } = useOrbitLanguage();
@@ -323,6 +373,7 @@ function PlanBody({
           ) : null}
           {view.thisWeek.length > 0 ? (
             <div className="ir-p-week-list" data-orbit-plan-this-week>
+              {view.thisWeek.some((action) => action.matchContactId) ? <style>{PLAN_MATCH_STYLES}</style> : null}
               {view.thisWeek.map((action) => (
                 <div
                   className={action.done ? "ir-p-act ir-p-act-done" : "ir-p-act"}
@@ -349,6 +400,11 @@ function PlanBody({
                     )}
                     {action.detail ? <span>{action.detail}</span> : null}
                   </div>
+                  {action.matchContactId && !action.done ? (
+                    <div className="pms ir-p-act-x">
+                      <MatchActionButtons actionItemId={action.id} onLogged={onInteraction} />
+                    </div>
+                  ) : null}
                 </div>
               ))}
             </div>
@@ -390,8 +446,17 @@ function PlanBody({
                       {need.title}
                       {need.industry ? <small>{need.industry}</small> : null}
                     </b>
-                    {/* 「待确认 N」角标的位置（W0010 的匹配确认接入后在这里渲染确认入口）；
-                        本 Sprint 没有匹配来源，`pendingMatches` 恒为 0，不渲染没有行为的按钮。 */}
+                    {/* W0010：「待确认 N」角标，点开共用的确认组件（只列这条需求的候选）。 */}
+                    {(pendingByNeed[need.id] ?? 0) > 0 ? (
+                      <button
+                        className="btn ir-p-match"
+                        data-orbit-plan-need-matches={need.id}
+                        onClick={() => onOpenMatches(need.id)}
+                        type="button"
+                      >
+                        {zh ? `待确认 ${pendingByNeed[need.id]}` : `${pendingByNeed[need.id]} to confirm`}
+                      </button>
+                    ) : null}
                   </div>
                   <div className="ir-p-need-count">
                     <span>

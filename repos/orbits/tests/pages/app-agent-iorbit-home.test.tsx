@@ -397,6 +397,10 @@ interface MountOptions {
   ledger?: unknown;
   /** W0009：`GET /api/agent/plans/current` 的 data（undefined = 接口 404，走账本回退）。 */
   plan?: unknown;
+  /** W0010：`GET /api/agent/plans/candidates` 的 data（undefined = 接口 404）。 */
+  matches?: unknown;
+  /** W0010：`POST /api/agent/plans/candidates` 的应答。 */
+  matchDecision?: (body: unknown) => Response;
   /** W0009：`PATCH /api/agent/plans/items/:id` 的应答。 */
   planPatch?: (url: string, body: unknown) => Promise<Response> | Response;
   signalPatchFails?: boolean;
@@ -495,6 +499,12 @@ async function mountHome(
     }
     if (url === "/api/agent/plans/current" && options.plan !== undefined) {
       return Response.json({ data: options.plan, success: true });
+    }
+    if (url === "/api/agent/plans/candidates" && (init?.method ?? "GET") === "GET" && options.matches !== undefined) {
+      return Response.json({ data: options.matches, success: true });
+    }
+    if (url === "/api/agent/plans/candidates" && init?.method === "POST" && options.matchDecision) {
+      return options.matchDecision(init?.body ? JSON.parse(String(init.body)) : undefined);
     }
     if (url.startsWith("/api/agent/plans/items/") && options.planPatch) {
       return options.planPatch(url, init?.body ? JSON.parse(String(init.body)) : undefined);
@@ -1660,4 +1670,104 @@ test("without a plan, 本周推进 keeps the W0001 ledger display", async (t) =>
   assert.ok(html.includes("账本里的任务"));
   assert.ok(mounted.root.root.findAll((node) => node.props?.className === "ir-m-bar").length > 0);
   assert.ok(!html.includes("查看完整计划"));
+});
+
+/* ── W0010：今日要事里的计划匹配 ────────────────────────────────────────── */
+
+const MATCH_LIST = {
+  candidates: [
+    {
+      aiReason: null,
+      contactId: "contact:sato",
+      contactName: "佐藤 健",
+      contactSubtitle: "Cloudline KK · 事业部长",
+      id: "cand-1",
+      industry: { en: "Industry Associations", zh: "行业协会" },
+      needId: "n-connector",
+      needTitle: "能帮你引荐的行业前辈",
+      strength: "strong",
+      tier: "rule",
+    },
+    {
+      aiReason: "做中小企业 IT 采购",
+      contactId: "contact:ito",
+      contactName: "伊藤 翔",
+      contactSubtitle: null,
+      id: "cand-2",
+      industry: null,
+      needId: "n-target",
+      needTitle: "中小企业的 IT 负责人",
+      strength: "candidate",
+      tier: "ai",
+    },
+  ],
+  contactCount: 2,
+  pendingByNeed: { "n-connector": 1, "n-target": 1 },
+};
+
+test("W0010: plan matches become one today item ranked after critical/high signals and open the shared sheet", async (t) => {
+  const navigated: string[] = [];
+  const decisions: unknown[] = [];
+  const mounted = await mountHome(t, homeElement({ clock: () => PLAN_NOW, navigate: (href) => navigated.push(href) }), {
+    matchDecision: (body) => {
+      decisions.push(body);
+      return Response.json({
+        data: {
+          candidateId: "cand-1",
+          link: { action: { id: "a-new", meta: { contactId: "contact:sato", needItemId: "n-connector" }, title: "约 佐藤 健" }, need: { id: "n-connector" } },
+          status: "accepted",
+        },
+        success: true,
+      });
+    },
+    matches: MATCH_LIST,
+    plan: planSnapshotFixture(),
+    signals: [plainSignal("s-low", "低优先的事", "low"), plainSignal("s-high", "紧急的事", "high")],
+    snapshot: EMPTY_SNAPSHOT,
+  });
+  await mounted.settle(6);
+  assert.ok(mounted.calls.some((call) => call.url === "/api/agent/plans/candidates" && call.method === "GET"));
+  const titles = mounted.root.root
+    .findAll((node) => node.props?.className === "ir-m-lead-title" || node.props?.className === "ir-m-brief-title")
+    .map((node) => textOf(node));
+  assert.deepEqual(titles.slice(0, 3), ["紧急的事", "2 位新联系人可能对应你的计划", "低优先的事"]);
+
+  // 主按钮在本页打开共用的确认弹层，不导航。
+  const go = mounted.root.root.findAll((node) => node.props?.className === "btn ir-m-go")[0]!;
+  await act(async () => {
+    go.props.onClick();
+  });
+  assert.deepEqual(navigated, []);
+  const dialog = mounted.root.root.findAll((node) => node.props?.["data-plan-match-dialog"] === true);
+  assert.equal(dialog.length, 1);
+  assert.equal(mounted.root.root.findAll((node) => node.props?.["data-plan-match-candidate"] !== undefined && node.type === "li").length, 2);
+  const sheetText = textOf(dialog[0]!);
+  assert.ok(sheetText.includes("可能对应「能帮你引荐的行业前辈」"));
+  assert.ok(sheetText.includes("同属二级行业：行业协会"));
+  assert.ok(sheetText.includes("按公司与职位：做中小企业 IT 采购"));
+
+  // 「是」：关联并在弹层里显示本周的「约 TA」行动卡；今日要事的计数随之减少。
+  const yes = mounted.root.root.findAll((node) => node.props?.["data-plan-match-yes"] === true && node.type === "button")[0]!;
+  await act(async () => {
+    yes.props.onClick();
+  });
+  await mounted.settle(4);
+  assert.deepEqual(decisions, [{ candidateId: "cand-1", decision: "accept" }]);
+  const afterText = textOf(mounted.root.root.findAll((node) => node.props?.["data-plan-match-dialog"] === true)[0]!);
+  assert.ok(afterText.includes("已加入本周：约 佐藤 健"));
+  assert.ok(afterText.includes("定时间") && afterText.includes("起草邮件") && afterText.includes("记一次互动"));
+  const titlesAfter = mounted.root.root
+    .findAll((node) => node.props?.className === "ir-m-lead-title" || node.props?.className === "ir-m-brief-title")
+    .map((node) => textOf(node));
+  assert.ok(titlesAfter.includes("1 位新联系人可能对应你的计划"));
+  // 确认后重新读计划（本周推进跟着更新）。
+  assert.ok(mounted.calls.filter((call) => call.url === "/api/agent/plans/current").length >= 2);
+});
+
+test("W0010: without a plan the home page never asks for plan matches", async (t) => {
+  const mounted = await mountHome(t, homeElement(), { matches: MATCH_LIST, plan: null, snapshot: EMPTY_SNAPSHOT });
+  await mounted.settle(4);
+  assert.ok(!mounted.calls.some((call) => call.url === "/api/agent/plans/candidates"));
+  const html = textOf(mounted.root.root as unknown as { children: readonly unknown[] });
+  assert.ok(!html.includes("可能对应你的计划"));
 });
