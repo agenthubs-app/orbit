@@ -35,7 +35,9 @@ window.fetch = async (input, init) => { const index = state.requests.length; con
   if (!(state.holdReads && init.method === "GET") && !(state.holdWrites && init.method !== "GET")) queueMicrotask(() => state.reply(index, init.method !== "GET" ? 503 : (state.failPaths?.includes(url.pathname) ? 503 : 200))); return pending;
 };
 export const useFixture = () => { observe(); return state; };
-export const useOrbitAuthSession = () => { observe(); return { ready: state.ready, signedIn: state.signedIn, accountId: state.signedIn ? state.actor : null, actorId: state.signedIn ? state.actor : null, user: state.signedIn ? { id: state.actor, name: "程川", email: "person@example.test" } : null, cookieHeader: state.cookieHeader }; };
+// Sprint 0116: one user object per actor, like the real provider (useSyncedCollection keys its scope on the object).
+const stableUsers = new Map(); const stableUser = (id, extra = {}) => { const key = JSON.stringify([id, extra]); if (!stableUsers.has(key)) stableUsers.set(key, { id, ...extra }); return stableUsers.get(key); };
+export const useOrbitAuthSession = () => { observe(); return { ready: state.ready, signedIn: state.signedIn, accountId: state.signedIn ? state.actor : null, actorId: state.signedIn ? state.actor : null, user: state.signedIn ? stableUser(state.actor, { name: "程川", email: "person@example.test" }) : null, cookieHeader: state.cookieHeader }; };
 export const useOrbitApiBaseUrl = () => { observe(); return { ready: state.baseReady, baseUrl: state.baseUrl }; };
 export const useIsFocused = () => { observe(); return state.focused; };
 export const useGlobalSearchParams = () => { observe(); return state.params; };
