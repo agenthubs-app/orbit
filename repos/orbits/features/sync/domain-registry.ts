@@ -16,9 +16,9 @@ import type { SyncChangeKind } from "../../shared/contract/sync";
  *                     added by sprint 0118 behind the same interface)
  *
  * Domain ids match the App's LEGACY_DOMAINS so lease grants bind directly to
- * its read scopes. Workspace-wide domains (contacts, events…) are not
- * registered yet: their visibility is derived, and each arrives with its own
- * manual from sprint 0115 on.
+ * its read scopes. Sprint 0115 adds the first derived domains (the registered
+ * attendee's events, EVENT_SYNC_DOMAINS); contacts arrive with their own
+ * manual in 0116.
  */
 export const SYNC_REGISTRY_VERSION = 2;
 // 2 (sprint 0108): personal-schedule pages carry the full personal DTO and a
@@ -31,8 +31,9 @@ export type SyncOwnership =
   | { rule: "column"; column: string }
   /**
    * The owner is computed from other rows (e.g. an event through the viewer's
-   * membership). Declared so a manual can say so; the read service refuses it
-   * until the first derived domain implements its query.
+   * membership). Sprint 0115: implemented for the event_derived source (its
+   * reader joins the viewer's own head rows); any other source with a derived
+   * owner is refused with SYNC_DOMAIN_SOURCE_UNSUPPORTED.
    */
   | { rule: "derived"; description: string };
 
@@ -60,7 +61,39 @@ export interface DedicatedTableSyncSource {
   columns: Readonly<Record<string, string>>;
 }
 
-export type SyncDomainSource = OrbitRecordsSyncSource | DedicatedTableSyncSource;
+/**
+ * A table whose rows decide who owns a derived row (sprint 0115). The owner
+ * column and the identity columns are the visibility inputs: moving a head
+ * row to another actor, event or workspace would leave a copy on the old
+ * owner's device, so the database guard (owner-guard.ts) refuses it and the
+ * owner audit scans every statement that sets one of them.
+ */
+export interface DerivedOwnerTable {
+  table: string;
+  ownerColumn: string;
+  identityColumns: readonly string[];
+}
+
+/**
+ * Derived event source (sprint 0115): one row per event the viewer has a
+ * membership or admission application for, read from the dedicated event
+ * tables (features/sync/event-domain-reader.ts). A row's revision is the
+ * greatest sync_revision of the rows it is built from, so a change to any of
+ * them resends it; a row that stops being visible (cancelled, rejected, a
+ * newer unreleased publication) is sent as a delete, because the owner head
+ * stays with the viewer and takes a new revision.
+ */
+export interface EventDerivedSyncSource {
+  kind: "event_derived";
+  view: "registrations" | "registered-events" | "published-results";
+  ownerTables: readonly DerivedOwnerTable[];
+  /** Every table whose sync_revision moves a row; each carries sync_revision under the commit-order lock (EVENT_SYNC_REVISION_TABLES). */
+  revisionTables: readonly string[];
+  /** Tables read without a revision: immutable versions reached through a head in revisionTables. */
+  immutableTables: readonly string[];
+}
+
+export type SyncDomainSource = OrbitRecordsSyncSource | DedicatedTableSyncSource | EventDerivedSyncSource;
 
 export interface SyncDomainDefinition {
   domainId: string;
@@ -78,7 +111,8 @@ export interface SyncDomainDefinition {
 
 const OWNER_COLUMN = { rule: "column", column: "user_id" } as const;
 
-export const SYNC_DOMAINS: readonly SyncDomainDefinition[] = [
+/** The orbit_records device domains (sprints 0075–0108). */
+export const RECORD_SYNC_DOMAINS: readonly SyncDomainDefinition[] = [
   {
     domainId: "notes",
     exposure: "device",
@@ -118,6 +152,65 @@ export const SYNC_DOMAINS: readonly SyncDomainDefinition[] = [
   },
 ];
 
+const EVENT_OWNER_TABLES: readonly DerivedOwnerTable[] = [
+  { table: "event_ops_membership_heads", ownerColumn: "actor_id", identityColumns: ["workspace_id", "event_id"] },
+  { table: "event_ops_admission_application_heads", ownerColumn: "actor_id", identityColumns: ["workspace_id", "event_id"] },
+];
+const EVENT_OWNERSHIP = {
+  rule: "derived",
+  description: "The viewer's own event_ops_membership_heads / event_ops_admission_application_heads row (actor_id = viewer) for the event. A cancelled membership or a rejected application keeps its owner and takes a new revision, so the device hears about it.",
+} as const;
+/** The attendee-visible public profile of a participant (the operations response's publicParticipant). */
+export const EVENT_PUBLIC_PARTICIPANT_FIELDS = ["company", "displayName", "experienceHighlight", "industry", "languages", "needs", "offers", "participantId", "role", "topics"] as const;
+
+/**
+ * Sprint 0115 (offline 1a): the registered attendee's event day. Registered in
+ * the order the App binds them; the organizer's and staff views (admin
+ * workspace, check-in roster, generations) are never a sync domain.
+ */
+export const EVENT_SYNC_DOMAINS: readonly SyncDomainDefinition[] = [
+  {
+    domainId: "event-registrations",
+    exposure: "device",
+    ownership: EVENT_OWNERSHIP,
+    visibilityInputs: ["actor_id", "workspace_id", "event_id"],
+    attachments: [],
+    fields: ["eventId", "membershipStatus", "admissionStatus"],
+    source: { kind: "event_derived", view: "registrations", ownerTables: EVENT_OWNER_TABLES, revisionTables: ["event_ops_membership_heads", "event_ops_admission_application_heads"], immutableTables: [] },
+  },
+  {
+    domainId: "registered-events",
+    exposure: "device",
+    ownership: EVENT_OWNERSHIP,
+    visibilityInputs: ["actor_id", "workspace_id", "event_id"],
+    attachments: [],
+    fields: [
+      "eventId", "participantId", "title", "description", "venue", "timeZone", "startsAt", "endsAt", "lifecycleState",
+      "checkInOpensAt", "eventStartsAt", "eventEndsAt", "profileEditDeadlineAt", "resultsAvailableAt", "roundOneStartsAt", "roundTwoStartsAt",
+    ],
+    source: {
+      kind: "event_derived", view: "registered-events", ownerTables: EVENT_OWNER_TABLES,
+      revisionTables: ["event_ops_membership_heads", "event_ops_admission_application_heads", "event_ops_events", "event_ops_configuration_heads"],
+      immutableTables: ["event_ops_configurations"],
+    },
+  },
+  {
+    domainId: "event-published-results",
+    exposure: "device",
+    ownership: EVENT_OWNERSHIP,
+    visibilityInputs: ["actor_id", "workspace_id", "event_id"],
+    attachments: [],
+    fields: ["eventId", "generationId", "publishedAt", "resultsAvailableAt", "me", "directory", "directoryComplete", "recommendations", "roundOneTable", "roundTwoTable"],
+    source: {
+      kind: "event_derived", view: "published-results", ownerTables: EVENT_OWNER_TABLES,
+      revisionTables: ["event_ops_membership_heads", "event_ops_admission_application_heads", "event_ops_publication_heads"],
+      immutableTables: ["event_ops_publications"],
+    },
+  },
+];
+
+export const EVENT_SYNC_DOMAIN_IDS: readonly string[] = EVENT_SYNC_DOMAINS.map((domain) => domain.domainId);
+
 /**
  * Probe domain (sprint 0113, SC-04): proves the dedicated-table source end to
  * end on the real event tables. Never leased; not visible to any account.
@@ -138,8 +231,21 @@ export const EVENT_MEMBERSHIP_PROBE_DOMAIN: SyncDomainDefinition = {
   },
 };
 
+/** Every device domain, leased to each authorized account. */
+export const SYNC_DOMAINS: readonly SyncDomainDefinition[] = [...RECORD_SYNC_DOMAINS, ...EVENT_SYNC_DOMAINS];
+
 /** Every declared manual, leased or not: the owner/identity audit covers all of them. */
 export const DECLARED_SYNC_DOMAINS: readonly SyncDomainDefinition[] = [...SYNC_DOMAINS, EVENT_MEMBERSHIP_PROBE_DOMAIN];
+
+/** Dedicated tables whose owner/identity columns are visibility inputs of a derived domain (guarded in the database, audited statically). */
+export function derivedOwnerTables(domains: readonly SyncDomainDefinition[] = DECLARED_SYNC_DOMAINS): DerivedOwnerTable[] {
+  const found = new Map<string, DerivedOwnerTable>();
+  for (const domain of domains) {
+    if (domain.source.kind !== "event_derived") continue;
+    for (const owner of domain.source.ownerTables) found.set(owner.table, owner);
+  }
+  return [...found.values()].sort((left, right) => left.table.localeCompare(right.table));
+}
 
 /**
  * A registered way a write may set a visibility input of a sync domain.

@@ -3,6 +3,9 @@
  * Exchange commands go through the attendee controller for this participant
  * (workspace + participant detail, receipt check, reread; never auto-resent).
  * Notes and appointments use event-live-actions and need an accepted exchange.
+ * Sprint 0115: `offline` (the live page shows the device copy) reads nothing from
+ * the network; the person and their table come from the workspace, and every
+ * action says it needs a connection.
  */
 import { Ionicons } from "@expo/vector-icons";
 import * as Crypto from "expo-crypto";
@@ -27,8 +30,8 @@ import { liveFont } from "./live-theme";
 
 type Mode = "detail" | "note" | "schedule";
 
-export function LivePersonSheet({ eventId, participantId, workspace, venue, now, onClose, onContact }: {
-  eventId: string; participantId: string; workspace: AttendeeWorkspace; venue: string; now: number;
+export function LivePersonSheet({ eventId, participantId, workspace, venue, now, offline = false, onClose, onContact }: {
+  eventId: string; participantId: string; workspace: AttendeeWorkspace; venue: string; now: number; offline?: boolean;
   onClose: (changed: boolean) => void; onContact: (contactId: string) => void;
 }) {
   const auth = useOrbitAuthSession(); const server = useOrbitApiBaseUrl(); const locale = useOrbitLocale();
@@ -41,7 +44,7 @@ export function LivePersonSheet({ eventId, participantId, workspace, venue, now,
   const controller = useMemo(() => createAttendeeController({ client, eventId, participantId, operationsActorId: auth.actorId ?? "", isCurrent: () => mounted.current }), [client, eventId, participantId]);
   const state = useSyncExternalStore(controller.subscribe, controller.getSnapshot, controller.getSnapshot);
   const [mode, setMode] = useState<Mode>("detail");
-  useEffect(() => { mounted.current = true; controller.activate(); void controller.load(); return () => { mounted.current = false; controller.dispose(); }; }, [controller]);
+  useEffect(() => { mounted.current = true; controller.activate(); if (!offline) void controller.load(); return () => { mounted.current = false; controller.dispose(); }; }, [controller, offline]);
   const w = state.workspace ?? workspace;
   const person = w.directory.find(p => p.participantId === participantId);
   const close = () => onClose(changed.current);
@@ -49,7 +52,7 @@ export function LivePersonSheet({ eventId, participantId, workspace, venue, now,
   if (!person) return null;
   const exchange = exchangeState(w, participantId);
   const d = state.detail;
-  const placement = d?.placements.find(p => p.roundNumber === (Date.parse(w.configuration.roundTwoStartsAt) <= now ? 2 : 1)) ?? d?.placements[0] ?? null;
+  const placement = d?.placements.find(p => p.roundNumber === (Date.parse(w.configuration.roundTwoStartsAt) <= now ? 2 : 1)) ?? d?.placements[0] ?? (offline ? sharedTablePlacement(w, participantId, now) : null);
   const shared = sharedTopics(person.topics, w.me.topics);
   const busy = state.busy || state.loading;
   const canExchange = exchangeOpen(w, now);
@@ -71,14 +74,23 @@ export function LivePersonSheet({ eventId, participantId, workspace, venue, now,
             <View style={styles.rows}>
               <InfoRow label={c.sharedTopics} value={shared.length ? shared.join(" · ") : c.none} />
               <InfoRow label={c.placement} value={placement ? c.placementValue(placement.roundNumber, placement.tableNumber) : state.loading ? c.loadingPerson : c.none} />
-              <InfoRow label={c.card} value={c.cardState[exchange.kind]} muted={!accepted} />
+              <InfoRow label={c.card} value={offline ? c.needsNetwork : c.cardState[exchange.kind]} muted={offline || !accepted} />
             </View>
+            {offline ? <>
+              <View accessibilityRole="button" accessibilityState={{ disabled: true }} accessibilityLabel={`${c.request} · ${c.needsNetwork}`} style={styles.inert}><Text style={styles.inertText}>{`${c.request} · ${c.needsNetwork}`}</Text></View>
+              <View style={styles.pair}>
+                <View accessibilityRole="button" accessibilityState={{ disabled: true }} accessibilityLabel={`${c.note} · ${c.needsNetwork}`} style={[styles.secondary, styles.half, styles.disabled]}><Text style={styles.secondaryText}>{c.note}</Text></View>
+                <View accessibilityRole="button" accessibilityState={{ disabled: true }} accessibilityLabel={`${c.schedule} · ${c.needsNetwork}`} style={[styles.secondary, styles.half, styles.disabled]}><Text style={styles.secondaryText}>{c.schedule}</Text></View>
+              </View>
+              <Text style={styles.caption}>{c.needsNetwork}</Text>
+            </> : <>
             <ExchangeButtons c={c} kind={exchange.kind} busy={busy} open={canExchange} contactId={exchange.contactId} onAct={act} onContact={onContact} />
             <View style={styles.pair}>
               <Pressable accessibilityRole="button" accessibilityLabel={c.note} accessibilityState={{ disabled: !accepted || !exchange.contactId }} disabled={!accepted || !exchange.contactId} onPress={() => setMode("note")} style={[styles.secondary, styles.half, (!accepted || !exchange.contactId) && styles.disabled]}><Text style={styles.secondaryText}>{c.note}</Text></Pressable>
               <Pressable accessibilityRole="button" accessibilityLabel={c.schedule} accessibilityState={{ disabled: !accepted || !exchange.requestId }} disabled={!accepted || !exchange.requestId} onPress={() => setMode("schedule")} style={[styles.secondary, styles.half, (!accepted || !exchange.requestId) && styles.disabled]}><Text style={styles.secondaryText}>{c.schedule}</Text></Pressable>
             </View>
             {!accepted && exchange.kind !== "self" ? <Text style={styles.caption}>{c.exchangeFirst}</Text> : null}
+            </>}
           </> : null}
           {mode === "note" && exchange.contactId ? <NoteForm c={c} eventId={eventId} contactId={exchange.contactId} client={client} onDone={() => setMode("detail")} /> : null}
           {mode === "schedule" && exchange.requestId ? <ScheduleForm c={c} eventId={eventId} requestId={exchange.requestId} venue={venue} now={now} client={client} language={locale.language} onDone={() => setMode("detail")} /> : null}
@@ -86,6 +98,14 @@ export function LivePersonSheet({ eventId, participantId, workspace, venue, now,
       </View>
     </View>
   </Modal>;
+}
+
+/** Offline: the round and table this person shares with the attendee, from the attendee's own published tables. */
+function sharedTablePlacement(w: AttendeeWorkspace, participantId: string, now: number): { roundNumber: 1 | 2; tableNumber: number } | null {
+  const rounds = [{ roundNumber: 2 as const, table: w.roundTwoTable }, { roundNumber: 1 as const, table: w.roundOneTable }];
+  const ordered = Date.parse(w.configuration.roundTwoStartsAt) <= now ? rounds : [...rounds].reverse();
+  const shared = ordered.find(entry => entry.table?.members.some(member => member.participantId === participantId));
+  return shared?.table ? { roundNumber: shared.roundNumber, tableNumber: shared.table.tableNumber } : null;
 }
 
 function InfoRow({ label, value, muted = false }: { label: string; value: string; muted?: boolean }) {

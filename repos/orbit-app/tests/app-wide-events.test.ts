@@ -15,6 +15,9 @@ const title = "东京跨境科技与零售伙伴交流会：共同确认未来�
 // Production screens, content, view-models, controls and theme stay real. Only
 // navigation, HTTP and native boundaries are controlled; no business writes occur.
 const fixture = `
+// Sprint 0115: the device copy of the event day stays empty in this harness; the network read is authoritative.
+export const useLocalEventDay = () => ({ records: { registrations: [], events: [], results: [] }, freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh() {} });
+
 import React, { useSyncExternalStore } from "react";
 import { View } from "react-native";
 import { readinessPayload, peoplePayload, reviewPayload } from "./tests/helpers/event-detail-fixtures";
@@ -124,7 +127,7 @@ createRoot(document.getElementById("root")).render(<Screen />);`, resolveDir: pr
       // Optional retrospective replay; never replaces the working production file.
       if (process.env.APP_STYLE_HOME_BASELINE === "1") plugin.onLoad({ filter: /\/src\/screens\/home\/HomeScreen\.tsx$/ }, () => ({ contents: readFileSync("../../.superpowers/sdd/2026-09-08-app-wide-style/baseline-src/screens/home/HomeScreen.tsx", "utf8"), loader: "tsx" }));
       plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: require.resolve("react-native-web") }));
-      plugin.onResolve({ filter: /^(event-fixture|expo-router|@expo\/vector-icons|react-native-safe-area-context)$|\/(useApiResource|useOrbitApiClient|ApiBaseUrlProvider|AuthSessionProvider|useRelationshipInboxBadgeCount)$/ }, () => ({ path: "fixture", namespace: "event-test" }));
+      plugin.onResolve({ filter: /^(event-fixture|expo-router|@expo\/vector-icons|react-native-safe-area-context)$|\/(useApiResource|useOrbitApiClient|ApiBaseUrlProvider|AuthSessionProvider|useRelationshipInboxBadgeCount|useLocalEventDay)$/ }, () => ({ path: "fixture", namespace: "event-test" }));
       plugin.onLoad({ filter: /.*/, namespace: "event-test" }, () => ({ contents: fixture, loader: "jsx", resolveDir: process.cwd() }));
     } }]
   });

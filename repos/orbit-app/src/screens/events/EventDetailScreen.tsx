@@ -37,6 +37,7 @@ import {
 import { validateApiResourceState } from "../../api/validated-resource-state";
 import { DataCard } from "../../components/DataCard";
 import { ErrorState } from "../../components/ErrorState";
+import { OfflineNotice } from "../../components/OfflineNotice";
 import { LoadingState } from "../../components/LoadingState";
 import { layout, radius, spacing, typography, textStyles } from "../../design/tokens";
 import { createControlStyles } from "../../design/controls";
@@ -45,6 +46,7 @@ import {
   type ApiResourceState,
   useApiResource
 } from "../../hooks/useApiResource";
+import { useLocalEventDay } from "../../hooks/useLocalEventDay";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import {
@@ -69,6 +71,7 @@ import {
   eventRegistrationToView,
   type EventRegistrationView
 } from "../../view-models/event-registration";
+import { localEventDay, localPublicEventDetail, localRegistrationStatusKey, type LocalEventDay } from "../../view-models/event-day-local";
 import { liveEntryState, liveHref } from "../../view-models/event-live";
 import { LiveEntryCard } from "./live/LiveEntryCard";
 import { CanonicalEventDetailModules, unavailableCanonicalRegistration, type CanonicalRegistrationFooterState } from "./CanonicalEventDetailModules";
@@ -101,7 +104,14 @@ export function EventDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: str
   const isCurrent = () => mounted.current && latest.current === scope && (currentParent.current?.() ?? true);
   const rawState = useApiResource<unknown>(publicEventDetailPath(eventId), () => false, { scopeKey: JSON.stringify([scopeKey ?? "public-event-detail", eventId]) });
   const state = validateApiResourceState(rawState, publicEventDetailSchema);
-  const data = state.kind === "success" || state.kind === "empty" ? state.data : null;
+  // Sprint 0115: a registered event is on the device; until (or unless) the server answers, show that copy.
+  const local = useLocalEventDay(signedIn && Boolean(eventId));
+  const day = useMemo(() => localEventDay(local.records, eventId), [local.records, eventId]);
+  const networkData = state.kind === "success" || state.kind === "empty" ? state.data : null;
+  const localData = !networkData && day.event ? localPublicEventDetail(day.event) : null;
+  const data = networkData ?? localData;
+  const fromDevice = !networkData && localData !== null;
+  const unreachable = state.kind === "offline" || state.kind === "failure";
   const { timeZone } = useOrbitTimeZone();
   const event = data ? publicEventDetailToSummary(data, timeZone) : null;
   const [personalizedRefreshKey, setPersonalizedRefreshKey] = useState(0);
@@ -112,7 +122,10 @@ export function EventDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: str
     setCanonicalFooter({ key: canonicalFooterKey, state });
   }, [canonicalFooterKey]);
   const footerState = canonicalFooter?.key === canonicalFooterKey ? canonicalFooter.state : null;
-  const registrationStatus = signedIn && canonical
+  const localStatusKey = localRegistrationStatusKey(day.registration);
+  const registrationStatus = fromDevice
+    ? localStatusKey ? locale.t(localStatusKey) : undefined
+    : signedIn && canonical
     ? footerState?.registration.statusLabel ?? (locale.language === "ja" ? "参加登録を確認中" : locale.language === "en" ? "Checking registration" : "正在确认报名状态")
     : undefined;
   const sharing = useRef(false);
@@ -167,9 +180,11 @@ export function EventDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: str
       <ScrollView testID="event-detail-scroll" automaticallyAdjustKeyboardInsets contentInsetAdjustmentBehavior="automatic"
         keyboardDismissMode="interactive" keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}
         refreshControl={<RefreshControl onRefresh={refreshAll} refreshing={state.refreshing} tintColor={colors.accent} />}>
-        {state.kind === "loading" ? <LoadingState /> : null}
-        {state.kind === "offline" || state.kind === "failure" ? <View style={styles.stack}>
+        {state.kind === "loading" && !fromDevice ? <LoadingState /> : null}
+        {fromDevice && unreachable ? <OfflineNotice lastSyncedAt={local.freshness.lastSyncedAt} /> : null}
+        {unreachable && !fromDevice ? <View style={styles.stack}>
           <ErrorState message={state.error.message} title="暂时取不到活动详情" />
+          {localStatusKey && localStatusKey !== "events.localStatusRsvped" ? <Text style={styles.bodyText}>{locale.t("events.localRemoved", { status: locale.t(localStatusKey) })}</Text> : null}
           <Pressable accessibilityRole="button" onPress={refreshAll} style={styles.inlineButton}><Text style={styles.inlineButtonText}>重新读取活动</Text></Pressable>
         </View> : null}
         {shareError ? <Text accessibilityRole="alert" style={styles.errorText}>{shareError}</Text> : null}
@@ -178,10 +193,10 @@ export function EventDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: str
           data={data}
           onNavigate={navigate}
           registrationStatus={registrationStatus}
-          liveEligibility={signedIn && canonical ? footerState?.registration.eligibilityState : undefined}
+          liveEligibility={fromDevice ? day.registration?.membershipStatus === "rsvped" ? "registered" : undefined : signedIn && canonical ? footerState?.registration.eligibilityState : undefined}
           rosterScopeKey={JSON.stringify([scopeKey, personalizedRefreshKey])}
           isScopeCurrent={isCurrent}
-          personalizedModules={signedIn
+          personalizedModules={fromDevice ? <LocalEventDayModule day={day} /> : signedIn
             ? canonical
               ? <CanonicalEventDetailModules
                   key={canonicalFooterKey}
@@ -201,7 +216,7 @@ export function EventDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: str
             : null}
         /> : null}
       </ScrollView>
-      {event ? signedIn ? canonical ? (
+      {event && !fromDevice ? signedIn ? canonical ? (
         <EventRegistrationModule event={event}
           registration={footerState?.registration ?? unavailableCanonicalRegistration}
           verifying={footerState?.verifying ?? true} requireAllowedAction
@@ -220,6 +235,19 @@ export function EventDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: str
       ) : null}
     </SafeAreaView>
   );
+}
+
+/** Sprint 0115: the attendee's own status and check-in window from the device copy; every action needs the network. */
+function LocalEventDayModule({ day }: { day: LocalEventDay }) {
+  const { styles } = useStyles();
+  const locale = useOrbitLocale();
+  const { timeZone } = useOrbitTimeZone();
+  const statusKey = localRegistrationStatusKey(day.registration);
+  const opens = day.event?.checkInOpensAt;
+  const time = opens ? new Intl.DateTimeFormat(locale.language === "en" ? "en-US" : locale.language === "ja" ? "ja-JP" : "zh-CN", { timeZone, month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(opens)) : null;
+  return <DataCard detail={time ? locale.t("events.localCheckInOpens", { time }) : ""} title={statusKey ? locale.t(statusKey) : locale.t("events.detailTitle")}>
+    <Text style={styles.bodyText}>{locale.t("events.localActionsNeedNetwork")}</Text>
+  </DataCard>;
 }
 
 function publicEventDetailToSummary(data: PublicEventDetail, timeZone: string): EventDetailSummary {

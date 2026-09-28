@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import test, { type TestContext } from "node:test";
 import { Pool } from "pg";
+import { RECORD_SYNC_DOMAINS } from "../../features/sync/domain-registry";
 import { createDomainReadService } from "../../features/sync/domain-read-service";
 import { SYNC_WRITE_LOCK_KEY_SQL } from "../../features/sync/commit-order-lock";
 import { SYNC_REVISION_MIGRATION_SQL } from "../../features/sync/migrations";
@@ -38,7 +39,7 @@ async function host(t: TestContext, trigger: "strict" | "relaxed" = "strict") {
   await client.query(ORBIT_RECORDS_SCHEMA_SQL);
   await client.query(trigger === "strict" ? SYNC_REVISION_MIGRATION_SQL : SYNC_REVISION_ASSIGN_ONLY_SQL);
   const store = createPostgresLiveRecordStore({ client });
-  const reader = createDomainReadService({ client, cursorSecret: SECRET, now: () => NOW });
+  const reader = createDomainReadService({ client, cursorSecret: SECRET, now: () => NOW, domains: RECORD_SYNC_DOMAINS });
   // An identity row makes the actor authorized for the domain pages.
   await store.upsertRecord(record("accounts", A, { id: A }));
   return { pool, client, store, reader };

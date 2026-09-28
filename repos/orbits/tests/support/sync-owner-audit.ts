@@ -1,12 +1,14 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative, sep } from "node:path";
-import { findSyncOwnerChangeHandler, ownerGuardedCollections, SYNC_OWNER_CHANGE_HANDLERS, type SyncDomainDefinition } from "../../features/sync/domain-registry";
+import { derivedOwnerTables, findSyncOwnerChangeHandler, ownerGuardedCollections, SYNC_OWNER_CHANGE_HANDLERS, type SyncDomainDefinition } from "../../features/sync/domain-registry";
 
 /**
  * Sprint 0113 (offline design step 5, method two; decision 4): static audit of
  * every SQL statement in product code and scripts that sets a visibility input
- * of a sync domain — orbit_records.user_id / collection_name, or a dedicated
- * table's owner and visibility columns as the registry declares them. A device
+ * of a sync domain — orbit_records.user_id / collection_name, a dedicated
+ * table's owner and visibility columns as the registry declares them, or
+ * (sprint 0115) the owner and identity columns of a derived domain's owner
+ * tables (derivedOwnerTables). A device
  * is never told that a row left it, so such a write is only acceptable when it
  * is classified here. The database trigger (features/sync/owner-guard.ts) stops
  * the same writes at runtime; this audit fails the default test suite first, and
@@ -112,6 +114,11 @@ export function scanOwnerWrites(root: string, domains: readonly SyncDomainDefini
     const inputs = new Set([...domain.visibilityInputs, ...(domain.ownership.rule === "column" ? [domain.ownership.column] : [])]);
     statements.push(...writeStatements(files, domain.source.table).filter((statement) => setTargets(statement.text).some((target) => inputs.has(target))));
   }
+  // Sprint 0115: the owner heads of derived domains — the owner column and the identity columns.
+  for (const owner of derivedOwnerTables(domains)) {
+    const inputs = new Set([owner.ownerColumn, ...owner.identityColumns]);
+    statements.push(...writeStatements(files, owner.table).filter((statement) => setTargets(statement.text).some((target) => inputs.has(target))));
+  }
   const byFile = new Map<string, Statement[]>();
   for (const statement of statements) byFile.set(statement.file, [...(byFile.get(statement.file) ?? []), statement]);
   return [...byFile.entries()].map(([file, list]) => ({ file, statements: list })).sort((left, right) => left.file.localeCompare(right.file));
@@ -139,6 +146,7 @@ export function auditOwnerWrites(
   const registeredLiterals = [
     ...ownerGuardedCollections(domains),
     ...domains.flatMap((domain) => domain.source.kind === "dedicated_table" ? [domain.source.table] : []),
+    ...derivedOwnerTables(domains).map((owner) => owner.table),
   ];
   for (const finding of findings) {
     const entry = manifest[finding.file];

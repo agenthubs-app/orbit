@@ -45,6 +45,10 @@ export const OFFLINE_POLICY_REGISTRATIONS = [
   { method: "DELETE", pathname: "/api/schedule-items/:id", action: "delete", policy: policy("personal_schedule", "durable_normalized", "offline_queue") },
   { method: "GET", pathname: "/api/relationship-communication/conversations/:id/messages", action: "read", policy: policy("message", "durable_normalized", "online_only") },
   { method: "GET", pathname: "/api/events/public", action: "read", policy: policy("public_event", "encrypted_ttl_snapshot", "online_only", "on_demand_encrypted") },
+  // Sprint 0115: the registered attendee's event day (sync domains registered-events, event-registrations, event-published-results).
+  { method: "GET", pathname: "/api/events/public/:id", action: "read", policy: policy("registered_event", "durable_normalized", "online_only") },
+  { method: "GET", pathname: "/api/events/:id/registration", action: "read", policy: policy("event_registration", "durable_normalized", "online_only") },
+  { method: "GET", pathname: "/api/events/:id/operations", action: "read", policy: policy("event_published_result", "durable_normalized", "online_only") },
   { method: "POST", pathname: "/api/auth/mobile/credentials", action: "authenticate", policy: policy("account_secret", "online_only_secret", "online_only", "never_local") },
 ] satisfies readonly OfflinePolicyRegistration[];
 

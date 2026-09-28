@@ -4,7 +4,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { EVENT_SYNC_REVISION_TABLES } from "../../features/events/event-operations/storage/sync-revision";
-import { auditEventTableWrites, auditMessageTableWrites, auditSyncWrites, type MessageTableWritePolicy, type SyncWritePolicy } from "../support/sync-write-audit";
+import { DECLARED_SYNC_DOMAINS, EVENT_SYNC_DOMAINS, type SyncDomainDefinition } from "../../features/sync/domain-registry";
+import { auditDerivedDomainSources, auditEventTableWrites, auditMessageTableWrites, auditSyncWrites, type MessageTableWritePolicy, type SyncWritePolicy } from "../support/sync-write-audit";
 
 // Sprint 0108: every orbit_records writer in product code and scripts, and why
 // it is safe under the strict sync_revision trigger. A new writer, or a new
@@ -142,6 +143,32 @@ test("an unlisted, unlocked, grown or removed event table writer fails the audit
     assert.ok(problems.some((line) => line.startsWith("UNLOCKED features/demo/unlocked.ts")), "a writer without the lock");
     assert.ok(problems.some((line) => line.startsWith("CHANGED features/demo/grew.ts")), "a second statement in a listed file");
     assert.ok(problems.some((line) => line.startsWith("STALE features/demo/removed.ts")), "a manifest entry without a writer");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+// Sprint 0115: a derived event domain moves a row only when one of its source
+// rows takes a new sync_revision, so every table it reads a revision from (and
+// every owner table) must carry sync_revision under the commit-order lock, and
+// every table it joins without a revision must never be updated in place.
+test("every table a derived device domain reads carries sync_revision under the lock or is immutable", () => {
+  assert.deepEqual(auditDerivedDomainSources(ROOT, DECLARED_SYNC_DOMAINS, EVENT_SYNC_REVISION_TABLES), []);
+});
+
+test("a derived domain reading a table without sync_revision, or an in-place update of an immutable joined table, fails the audit", () => {
+  const root = mkdtempSync(join(tmpdir(), "derived-source-audit-"));
+  try {
+    mkdirSync(join(root, "features/demo"), { recursive: true });
+    mkdirSync(join(root, "scripts"), { recursive: true });
+    writeFileSync(join(root, "scripts/fix-publication.ts"), "await client.query(`update event_ops_publications set published_dto = $2 where publication_id = $1`);");
+    writeFileSync(join(root, "features/demo/edit-config.ts"), "await tx.query(\"update event_ops_configurations set round_one_starts_at = $1\");");
+    const base = EVENT_SYNC_DOMAINS[1]!;
+    const checkIns: SyncDomainDefinition = { ...base, domainId: "demo-check-ins", source: { ...(base.source as Extract<SyncDomainDefinition["source"], { kind: "event_derived" }>), revisionTables: ["event_ops_membership_heads", "event_ops_checkins"] } };
+    const problems = auditDerivedDomainSources(root, [...EVENT_SYNC_DOMAINS, checkIns], EVENT_SYNC_REVISION_TABLES);
+    assert.ok(problems.some((line) => line.startsWith("NO_REVISION demo-check-ins: event_ops_checkins")), "a revision table without sync_revision");
+    assert.ok(problems.some((line) => line.startsWith("MUTATED scripts/fix-publication.ts")), "a script updating a publication in place");
+    assert.ok(problems.some((line) => line.startsWith("MUTATED features/demo/edit-config.ts")), "product code updating a configuration version in place");
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

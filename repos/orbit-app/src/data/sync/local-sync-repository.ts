@@ -16,6 +16,8 @@ import { IDENTITY_PAYLOAD_CODEC, type PayloadCodec } from "./payload-codec";
 const LEGACY_DOMAINS: Record<SyncEntityKind, string> = {
   contact: "contacts", note: "notes", task: "tasks", relationship_followup: "followups",
   personal_schedule: "personal-schedule", inbox_item: "notifications",
+  // Sprint 0115: the registered attendee's event day.
+  event_registration: "event-registrations", registered_event: "registered-events", event_published_result: "event-published-results",
 };
 
 const SYNC_ENTITY_KINDS = new Set<SyncEntityKind>([
@@ -25,6 +27,9 @@ const SYNC_ENTITY_KINDS = new Set<SyncEntityKind>([
   "relationship_followup",
   "personal_schedule",
   "inbox_item",
+  "event_registration",
+  "registered_event",
+  "event_published_result",
 ]);
 const LOCAL_SYNC_STATES = new Set<LocalSyncState>([
   "synced",

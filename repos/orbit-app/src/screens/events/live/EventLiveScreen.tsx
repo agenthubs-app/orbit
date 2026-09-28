@@ -5,6 +5,9 @@
  * existing attendee controller (check-in, exchange commands, receipt checks, reread),
  * plus the public event detail for the title and the organizer-published agenda.
  * Replaces the former AttendeeOperationsScreen and PartyModeScreen.
+ * Sprint 0115: without a network workspace (offline, or still loading) the page
+ * renders the device copy of the event day (useLocalEventDay) with the 「截至」
+ * notice; check-in, card exchange, notes and appointments say they need a connection.
  */
 import { Ionicons } from "@expo/vector-icons";
 import { type Href, useIsFocused, useLocalSearchParams, usePathname, useRouter } from "expo-router";
@@ -21,11 +24,14 @@ import { validateApiResourceState } from "../../../api/validated-resource-state"
 import { createControlStyles } from "../../../design/controls";
 import { layout, radius, rowRoleStyles, spacing } from "../../../design/tokens";
 import { createThemedStyles } from "../../../design/theme";
+import { OfflineNotice } from "../../../components/OfflineNotice";
 import { useApiResource } from "../../../hooks/useApiResource";
+import { useLocalEventDay } from "../../../hooks/useLocalEventDay";
 import { useOrbitApiClient } from "../../../hooks/useOrbitApiClient";
 import { useOrbitLocale } from "../../../i18n/OrbitLocaleContext";
 import { useOrbitTimeZone } from "../../../time/OrbitTimeZoneProvider";
 import { createAttendeeController, type AttendeeState } from "../../../view-models/event-attendee-controller";
+import { localAttendeeWorkspace, localEventDay } from "../../../view-models/event-day-local";
 import {
   LIVE_TABS, agendaItems, agendaStatuses, currentPlacement, exchangeState, graphRing, initialFor, liveTabFrom,
   otherAttendees, personRole, placements, recommendedPeople, type LiveTab, type Placement
@@ -67,12 +73,18 @@ export function EventLiveScreen() {
   const [tab, setTab] = useState<LiveTab>(() => liveTabFrom(params.tab));
   const [selected, setSelected] = useState<string | null>(() => first(params.participant) || null);
   const [now, setNow] = useState(Date.now);
+  const local = useLocalEventDay(ready);
+  const day = useMemo(() => localEventDay(local.records, eventId), [local.records, eventId]);
   useEffect(() => { mounted.current = true; controller.activate(); void controller.load(); return () => { mounted.current = false; controller.dispose(); }; }, [controller]);
   useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 30_000); return () => clearInterval(timer); }, []);
   if (!ready) return null;
-  const w = state.workspace;
-  const denied = !w && (state.errorStatus === 403 || state.errorStatus === 404);
+  const denied = !state.workspace && (state.errorStatus === 403 || state.errorStatus === 404);
   const offline = state.errorStatus === 0;
+  // The server's answer wins; until it arrives (or when it cannot) the device copy is shown.
+  const localWorkspace = state.workspace || denied ? null : localAttendeeWorkspace(day, { now, displayName: auth.user?.name ?? "" });
+  const w = state.workspace ?? localWorkspace;
+  const fromDevice = !state.workspace && localWorkspace !== null;
+  const needsNetwork = fromDevice && !state.loading;
   const open = (id: string) => { if (current() && w?.directory.some(p => p.participantId === id && id !== w.me.participantId)) setSelected(id); };
   const goBack = () => { if (!current()) return; if (router.canGoBack()) router.back(); else router.replace(`/events/${encodeURIComponent(eventId)}` as Href); };
 
@@ -85,7 +97,7 @@ export function EventLiveScreen() {
         {!denied ? <View style={styles.liveMark}><View style={styles.liveDot} /><Text style={styles.liveMarkText}>{c.live}</Text></View> : null}
       </View>
       {!denied ? <>
-        <Text accessibilityRole="header" style={styles.title}>{event?.title ?? c.fallbackTitle}</Text>
+        <Text accessibilityRole="header" style={styles.title}>{event?.title ?? day.event?.title ?? c.fallbackTitle}</Text>
         <View accessibilityRole="tablist" style={styles.tabs}>
           {LIVE_TABS.map(key => <Pressable key={key} accessibilityRole="tab" accessibilityLabel={c.tabs[key]} accessibilityState={{ selected: tab === key }} aria-selected={tab === key} onPress={() => setTab(key)} style={styles.tab}>
             <View style={[styles.tabLabel, tab === key && styles.tabSelected]}><Text style={[styles.tabText, tab === key && styles.tabTextSelected]}>{c.tabs[key]}</Text></View>
@@ -95,21 +107,21 @@ export function EventLiveScreen() {
     </View>
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled"
       refreshControl={denied ? undefined : <RefreshControl refreshing={false} onRefresh={() => { if (current()) { void controller.load(); detail.refresh(); } }} tintColor={colors.accent} />}>
-      {offline ? <Text accessibilityRole="alert" style={styles.offline}>{c.offline}</Text> : null}
+      {needsNetwork ? <OfflineNotice lastSyncedAt={local.freshness.lastSyncedAt} /> : offline ? <Text accessibilityRole="alert" style={styles.offline}>{c.offline}</Text> : null}
       {denied ? <LiveDeniedView c={c} message={state.error} onEvent={() => { if (current()) router.replace(`/events/${encodeURIComponent(eventId)}` as Href); }} /> : null}
-      {!denied && state.error && !offline ? <Text accessibilityRole="alert" style={styles.error}>{state.error}</Text> : null}
+      {!denied && state.error && !offline && !fromDevice ? <Text accessibilityRole="alert" style={styles.error}>{state.error}</Text> : null}
       {!denied && !w && !state.loading ? <Pressable accessibilityRole="button" accessibilityLabel={c.retry} onPress={() => { if (current()) void controller.load(); }} style={styles.secondary}><Text style={styles.secondaryText}>{c.retry}</Text></Pressable> : null}
       {state.loading && !w ? <Text style={styles.muted}>{c.loading}</Text> : null}
       {state.busy ? <Text style={styles.muted}>{c.busy}</Text> : null}
       {w ? <>
-        {tab === "home" ? <HomeTab c={c} state={state} w={w} now={now} timeZone={timeZone} onCheckIn={() => { if (current()) void controller.act("check-in"); }} onOpen={open} go={setTab} /> : null}
+        {tab === "home" ? <HomeTab c={c} state={state} w={w} now={now} timeZone={timeZone} needsNetwork={needsNetwork} onCheckIn={() => { if (current()) void controller.act("check-in"); }} onOpen={open} go={setTab} /> : null}
         {tab === "rec" ? <RecTab c={c} w={w} onOpen={open} /> : null}
         {tab === "all" ? <AllTab c={c} w={w} onOpen={open} /> : null}
         {tab === "group" ? <GroupTab c={c} w={w} now={now} onOpen={open} /> : null}
         {tab === "agenda" ? <AgendaTab c={c} w={w} now={now} timeZone={timeZone} published={event?.agenda ?? []} onOpen={open} /> : null}
       </> : null}
     </ScrollView>
-    {w && selected ? <LivePersonSheet key={selected} eventId={eventId} participantId={selected} workspace={w} venue={event?.venue ?? event?.location ?? ""} now={now}
+    {w && selected ? <LivePersonSheet key={selected} eventId={eventId} participantId={selected} workspace={w} venue={event?.venue ?? event?.location ?? day.event?.venue ?? ""} now={now} offline={fromDevice}
       onClose={changed => { setSelected(null); if (changed && current()) void controller.load(); }}
       onContact={id => { setSelected(null); if (current()) router.push(`/contacts/${encodeURIComponent(id)}` as Href); }} /> : null}
   </SafeAreaView>;
@@ -152,7 +164,7 @@ function BigTable({ c, placement, detail }: { c: LiveCopy; placement: Placement;
   return <View style={styles.bigRow}><Text style={styles.big}>{c.table(placement.table.tableNumber)}</Text><Text style={styles.bigDetail}>{detail}</Text></View>;
 }
 
-function HomeTab({ c, state, w, now, timeZone, onCheckIn, onOpen, go }: { c: LiveCopy; state: AttendeeState; w: AttendeeWorkspace; now: number; timeZone: string; onCheckIn: () => void; onOpen: (id: string) => void; go: (tab: LiveTab) => void }) {
+function HomeTab({ c, state, w, now, timeZone, needsNetwork, onCheckIn, onOpen, go }: { c: LiveCopy; state: AttendeeState; w: AttendeeWorkspace; now: number; timeZone: string; needsNetwork: boolean; onCheckIn: () => void; onOpen: (id: string) => void; go: (tab: LiveTab) => void }) {
   const { styles, colors } = useStyles();
   const placement = currentPlacement(w, now);
   const recs = recommendedPeople(w).slice(0, HOME_RECS);
@@ -162,7 +174,8 @@ function HomeTab({ c, state, w, now, timeZone, onCheckIn, onOpen, go }: { c: Liv
       <Text style={styles.groupHeading}>{c.position}</Text>
       {placement ? <BigTable c={c} placement={placement} detail={`${c.round(placement.round)} · ${c.people(placement.members.length + 1)}`} />
         : w.resultsState === "ready" ? <Text style={styles.muted}>{c.noTable}</Text> : <ResultsNotice c={c} w={w} />}
-      {w.checkIn ? <View style={styles.checked} accessibilityRole="summary">
+      {needsNetwork ? <View accessibilityRole="button" accessibilityState={{ disabled: true }} accessibilityLabel={`${c.checkIn} · ${c.needsNetwork}`} style={[styles.disabledButton, styles.top6]}><Text style={styles.disabledButtonText}>{`${c.checkIn} · ${c.needsNetwork}`}</Text></View>
+        : w.checkIn ? <View style={styles.checked} accessibilityRole="summary">
         <Ionicons name="checkmark" size={18} color={colors.live} /><Text style={styles.checkedText}>{c.checkedIn}</Text>
         <Text style={styles.muted}>{c.checkedInAt(formatClock(w.checkIn.checkedInAt, timeZone))}</Text>
       </View> : w.checkInAvailable

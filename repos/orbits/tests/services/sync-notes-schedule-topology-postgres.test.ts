@@ -7,6 +7,7 @@ import { createNoteRepository } from "../../features/notes/repository";
 import { createNoteService } from "../../features/notes/service";
 import { createPersonalScheduleService } from "../../features/personal-schedule/service";
 import { createDomainCursorCodec } from "../../features/sync/domain-cursor";
+import { RECORD_SYNC_DOMAINS } from "../../features/sync/domain-registry";
 import { createDomainReadService, domainGeneration } from "../../features/sync/domain-read-service";
 import { SYNC_REGISTRY_VERSION } from "../../features/sync/domain-registry";
 import { createTaskRepository } from "../../features/tasks/repository";
@@ -47,7 +48,7 @@ async function host(t: TestContext) {
     await store.upsertRecord({ workspaceId: W, collectionName: "accounts", recordId: actor, userId: actor, sourceType: "manual", sourceId: actor, evidenceIds: [], lifecycleState: "active", createdAt: clock, updatedAt: clock, payload: { id: actor } });
   }
   const now = () => clock;
-  const service = createDomainReadService({ client, cursorSecret: SECRET, now });
+  const service = createDomainReadService({ client, cursorSecret: SECRET, now, domains: RECORD_SYNC_DOMAINS });
   const notes = createNoteService({ repository: createNoteRepository({ store, workspaceId: W }) });
   const tasks = createTaskService({ repository: createTaskRepository({ store, workspaceId: W, transactionClient: client }) });
   const schedule = createPersonalScheduleService({ store, client, workspaceId: W, now });

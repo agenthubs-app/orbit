@@ -9,6 +9,9 @@ let browser: Browser;
 let script: string;
 // Real route, screen, resource/client, schemas and adapters; only external boundaries are doubled.
 const boundaries = `
+// Sprint 0115: the device copy of the event day (window.fixture.local); empty unless a test seeds it.
+export const useLocalEventDay = () => ({ records: window.fixture?.local ?? { registrations: [], events: [], results: [] }, freshness: { readable: true, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: window.fixture?.localSyncedAt ?? null, syncLabelKey: "sync.fresh" }, refresh() {} });
+
 import React, { useSyncExternalStore } from "react";
 import { View } from "react-native-web";
 import { createTranslator } from "./src/i18n/messages";
@@ -41,7 +44,7 @@ test.before(async () => {
   const result = await build({ stdin: { contents: 'import React from "react";import {createRoot} from "react-dom/client";import Route from "./app/events/[id]";import {useFixture} from "fixture";function App(){const s=useFixture();return s.mounted?<Route/>:null}createRoot(document.getElementById("root")).render(<App/>);', loader: "tsx", resolveDir: process.cwd() }, bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"], define: { "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" }, plugins: [{ name: "canonical-external-boundaries", setup(plugin) {
     plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "canonical" }));
     plugin.onResolve({ filter: /^react-native-svg$/ }, () => ({ path: require.resolve("react-native-svg/lib/module/ReactNativeSVG.web.js") }));
-    plugin.onResolve({ filter: /^(fixture|expo-router|@expo\/vector-icons|react-native-safe-area-context)$|\/(ApiBaseUrlProvider|AuthSessionProvider|OrbitLocaleContext|snapshot-store)$/ }, () => ({ path: "fixture", namespace: "canonical" }));
+    plugin.onResolve({ filter: /^(fixture|expo-router|@expo\/vector-icons|react-native-safe-area-context)$|\/(ApiBaseUrlProvider|AuthSessionProvider|OrbitLocaleContext|snapshot-store|useLocalEventDay)$/ }, () => ({ path: "fixture", namespace: "canonical" }));
     plugin.onLoad({ filter: /.*/, namespace: "canonical" }, args => ({ contents: args.path === "native" ? 'import React from "react";import {Platform as RealPlatform,Alert as RealAlert,Pressable as RealPressable,RefreshControl as RealRefreshControl} from "react-native-web";export * from "react-native-web";import {Alert as FixtureAlert} from "fixture";export const Platform={...RealPlatform,get OS(){return window.fixture.platform??"ios"}};export const Alert={alert(...args){return window.fixture.platform==="web"?RealAlert.alert(...args):FixtureAlert.alert(...args)}};export const Pressable=props=>{const label=props.accessibilityLabel;if(label)window.fixture.presses[label]=props.onPress;return <RealPressable {...props}/>};export const RefreshControl=props=>{window.fixture.refresh=props.onRefresh;return <RealRefreshControl {...props}/>};export const Share={share:async()=>({})};' : boundaries, loader: "jsx", resolveDir: process.cwd() }));
     plugin.onResolve({ filter: /^react-native-web$/ }, () => ({ path: require.resolve("react-native-web") }));
   } }] });
@@ -263,4 +266,40 @@ test("canonical Web approval writes once and verifies the same registration inde
   assert.deepEqual(await page.evaluate(()=>(window as any).fixture.requests.filter((r:any)=>r.method==="POST").map((r:any)=>r.body)),[{intent:"cancel",expectedRegistrationVersion:"2026-09-16T00:00:00Z"}]);
   assert.ok((await requests(page)).filter(r=>r.path.includes("registration?questions=false")).length>=3);
   assert.equal(await page.getByText("暂时无法核对取消结果，请重新读取报名状态。",{exact:true}).count(),0);
+});
+
+// Sprint 0115: the event detail from the device copy when the server cannot be reached.
+function localRows(membershipStatus: "rsvped" | "cancelled") {
+  const row = (kind: string, payload: Record<string, unknown>) => ({ actorId: "actor-1", workspaceId: "w", kind, id: "event_signup_03", revision: "7", updatedAt: "2026-10-26T00:00:00Z", deletedAt: null, payload, syncState: "synced", aiVisibility: "excluded" });
+  return {
+    registrations: [row("event_registration", { eventId: "event_signup_03", membershipStatus, admissionStatus: null })],
+    events: membershipStatus === "rsvped" ? [row("registered_event", { eventId: "event_signup_03", participantId: "profile-1", title: "日中投资人与创业者沙龙", description: "本机副本里的活动介绍", venue: "东京 · 本机", timeZone: "Asia/Tokyo", startsAt: "2026-10-27T09:00:00Z", endsAt: "2026-10-27T11:00:00Z", lifecycleState: "published", checkInOpensAt: "2026-10-27T08:30:00Z", eventStartsAt: "2026-10-27T09:00:00Z", eventEndsAt: "2026-10-27T11:00:00Z", profileEditDeadlineAt: "2026-10-26T09:00:00Z", resultsAvailableAt: "2026-10-27T08:00:00Z", roundOneStartsAt: "2026-10-27T09:00:00Z", roundTwoStartsAt: "2026-10-27T10:00:00Z" })] : [],
+    results: [],
+  };
+}
+
+test("offline: a registered event opens from the device copy with the 截至 notice, the attendee's status and check-in time, and no action that needs the network", async t => {
+  const page = await open(t, { statuses: { "/api/events/public/event_signup_03": 503 }, local: localRows("rsvped"), localSyncedAt: "2026-10-26T00:00:00Z" });
+  await page.getByText(/无法连接 · 显示截至 .+ 的内容/).waitFor();
+  await page.getByText("东京 · 本机", { exact: true }).first().waitFor();
+  await page.getByText("本机副本里的活动介绍", { exact: true }).first().waitFor();
+  await page.getByTestId("event-registration-status").filter({ hasText: "已报名" }).waitFor();
+  await page.getByText(/签到 .+ 开放/).waitFor();
+  await page.getByText("报名、取消报名、签到和交换名片需要联网", { exact: true }).waitFor();
+  assert.equal(await page.getByText("暂时取不到活动详情", { exact: true }).count(), 0);
+  assert.equal(await page.getByRole("button", { name: "报名参加", exact: true }).count(), 0);
+  const seen = await requests(page);
+  assert.deepEqual(seen, [{ path: "/api/events/public/event_signup_03", method: "GET" }], "the registration and operations reads are not attempted from the device copy");
+});
+
+test("offline after a cancellation: the event is gone from the device, the page says so next to the error", async t => {
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  t.after(async () => { await page.close(); });
+  await page.route("**/*", r => r.abort());
+  await page.setContent('<div id="root"></div>');
+  await page.evaluate(patch => { (window as any).initialFixture = patch; }, { statuses: { "/api/events/public/event_signup_03": 503 }, local: localRows("cancelled"), localSyncedAt: "2026-10-26T00:00:00Z" });
+  await page.addScriptTag({ content: script });
+  await page.getByText("暂时取不到活动详情", { exact: true }).waitFor();
+  await page.getByText("报名已取消 · 这场活动的资料已从本机移除", { exact: true }).waitFor();
+  assert.equal(await page.getByText("东京 · 本机", { exact: true }).count(), 0);
 });

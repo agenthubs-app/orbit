@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import test, { type TestContext } from "node:test";
 import { Pool } from "pg";
 import { createSyncDomainHandlers } from "../../app/api/sync/domain-handlers";
+import { RECORD_SYNC_DOMAINS } from "../../features/sync/domain-registry";
 import { createDomainReadService } from "../../features/sync/domain-read-service";
 import { SYNC_REVISION_MIGRATION_SQL } from "../../features/sync/migrations";
 import { domainManifestSchema, domainPageSchema, offlineReadEnvelopeSchema } from "../../shared/api-schema/universal-read";
@@ -56,7 +57,7 @@ async function host(t: TestContext) {
   const bIds: string[] = [];
   for (let n = 1; n <= 4; n += 1) aIds.push(await taskUnderLock(A, `task:a:${n}`, NOW));
   for (let n = 1; n <= 2; n += 1) bIds.push(await taskUnderLock(B, `task:b:${n}`, NOW));
-  const service = createDomainReadService({ client, cursorSecret: SECRET, now: () => NOW });
+  const service = createDomainReadService({ client, cursorSecret: SECRET, now: () => NOW, domains: RECORD_SYNC_DOMAINS });
   // Every SQL statement the manifest path issues, so a test can prove "unchanged" reads no business row.
   const sql: string[] = [];
   const recording = { query: <T,>(text: string, values?: readonly unknown[]) => { sql.push(text); return client.query<T>(text, values); } };
