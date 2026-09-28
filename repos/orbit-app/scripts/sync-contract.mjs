@@ -1,8 +1,13 @@
-// 把 orbits 的跨客户端契约、运行时 Schema 与受控字典拷贝到 App。
+// 把 orbits 的跨客户端契约、运行时 Schema、受控字典与共用计算代码拷贝到 App。
 //
 // App 不在构建期 import ../orbits（见 AGENTS.md），所以契约以副本形式进来，
 // 由 tests/contract-sync.test.ts 校验副本与源逐字一致。源改了而副本没跟上，
 // npm test 就红——这就是「网页版改 API，手机端立刻知道」的机制。
+//
+// Sprint 0117（看板 D3，设计案决定 3）：shared/compute 是唯一明确允许两端共用的
+// 运行时代码目录（纯函数：只能互相引用、引用契约类型和两个受控字典，不碰 IO、
+// 网络、时钟；规则见 orbits/tests/support/shared-compute-audit.ts，两端测试都跑）。
+// 它整目录逐字拷到 src/api/compute；其他 shared 目录仍然不进 App，domain 仍只放行两个字典。
 //
 // 用法：npm run sync:contract
 
@@ -27,6 +32,11 @@ const syncTargets = [
     sourceDir: join(appRoot, "..", "orbits", "shared", "domain"),
     targetDir: join(appRoot, "src", "api", "domain"),
     fileNames: ["industries.ts", "language.ts"],
+  },
+  {
+    label: "共用计算",
+    sourceDir: join(appRoot, "..", "orbits", "shared", "compute"),
+    targetDir: join(appRoot, "src", "api", "compute"),
   },
 ];
 

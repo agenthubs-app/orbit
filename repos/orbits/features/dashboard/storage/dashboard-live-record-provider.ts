@@ -1,18 +1,10 @@
 import { AsyncLocalStorage } from "node:async_hooks";
-import type {
-  ConnectionDTO,
-  ContactDTO,
-  EventDTO,
-  RelationshipEvidenceDTO,
-  TaskDTO,
-} from "../../../shared/domain/contracts";
 import {
-  isRelationshipStage,
-  isRelationshipTrustLevel,
-  isRelationshipValueType,
-  isSourceType,
-} from "../../../shared/domain/source-types";
-import { isIndustryIdCode } from "../../../shared/domain/industries";
+  DASHBOARD_LIVE_RECORD_COLLECTIONS,
+  dashboardGraphFromRecords,
+  type DashboardRecordCollections,
+  type LiveDashboardGraph,
+} from "../../../shared/compute/dashboard-graph";
 import {
   resolveLiveDatabaseConnectionConfig,
   type LiveDatabaseEnv,
@@ -36,23 +28,15 @@ import {
   DashboardSummaryRequiresGraphFallback,
 } from "./dashboard-summary-postgres-reader";
 
-export interface LiveDashboardGraph {
-  connections: readonly ConnectionDTO[];
-  contacts: readonly ContactDTO[];
-  events: readonly EventDTO[];
-  evidence: readonly RelationshipEvidenceDTO[];
-  generatedAt: string;
-  tasks: readonly TaskDTO[];
-}
-
-export const DASHBOARD_LIVE_RECORD_COLLECTIONS = {
-  connections: "connections",
-  contacts: "contacts",
-  detailStates: "contact_detail_states",
-  events: "events",
-  evidence: "evidence",
-  tasks: "tasks",
-} as const;
+// Sprint 0117 (dashboard D3): the graph types and the record-to-graph mapping
+// live in the shared directory (shared/compute/dashboard-graph.ts), so the App
+// builds its device graph with the same code. Re-exported for existing imports.
+export {
+  DASHBOARD_LIVE_RECORD_COLLECTIONS,
+  dashboardGraphFromRecords,
+  type DashboardRecordCollections,
+  type LiveDashboardGraph,
+};
 
 export interface StorageDashboardAggregateProviderOptions {
   /**
@@ -119,243 +103,6 @@ interface CachedConfiguredStorageDashboardAggregateProvider {
 let cachedDefaultProvider: CachedConfiguredStorageDashboardAggregateProvider | null =
   null;
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function nonEmptyString(value: unknown): value is string {
-  return typeof value === "string" && value.trim().length > 0;
-}
-
-function optionalString(value: unknown): string | undefined {
-  return nonEmptyString(value) ? value : undefined;
-}
-
-function stringArray(value: unknown): readonly string[] {
-  return Array.isArray(value)
-    ? value.filter((item): item is string => nonEmptyString(item))
-    : [];
-}
-
-function evidenceIds(value: unknown): readonly [string, ...string[]] | null {
-  const ids = stringArray(value);
-
-  return ids.length > 0 ? [ids[0], ...ids.slice(1)] : null;
-}
-
-function sourceReference(
-  value: unknown,
-):
-  | ConnectionDTO["source"]
-  | ContactDTO["source"]
-  | EventDTO["source"]
-  | TaskDTO["source"]
-  | null {
-  if (!isRecord(value) || !isSourceType(value.type) || !nonEmptyString(value.id)) {
-    return null;
-  }
-
-  return {
-    type: value.type,
-    id: value.id,
-    label: optionalString(value.label),
-  };
-}
-
-function contactFromRecord(
-  record: LiveRecord<Record<string, unknown>>,
-): ContactDTO | null {
-  const payload = record.payload;
-  const source = sourceReference(payload.source);
-  const ids = evidenceIds(payload.evidenceIds);
-
-  if (
-    !nonEmptyString(payload.id) ||
-    !nonEmptyString(payload.displayName) ||
-    !isRelationshipStage(payload.stage) ||
-    !source ||
-    !ids ||
-    !nonEmptyString(payload.createdAt) ||
-    !nonEmptyString(payload.updatedAt)
-  ) {
-    return null;
-  }
-
-  return {
-    id: payload.id,
-    personId: optionalString(payload.personId),
-    displayName: payload.displayName,
-    organization: optionalString(payload.organization),
-    role: optionalString(payload.role),
-    location: optionalString(payload.location),
-    primaryEmail: optionalString(payload.primaryEmail),
-    primaryPhone: optionalString(payload.primaryPhone),
-    profileSnippet: optionalString(payload.profileSnippet),
-    primaryIndustryId: isIndustryIdCode(payload.primaryIndustryId)
-      ? payload.primaryIndustryId
-      : undefined,
-    customTags: stringArray(payload.customTags),
-    stage: payload.stage,
-    source,
-    evidenceIds: ids,
-    createdAt: payload.createdAt,
-    updatedAt: payload.updatedAt,
-  };
-}
-
-function connectionFromRecord(
-  record: LiveRecord<Record<string, unknown>>,
-): ConnectionDTO | null {
-  const payload = record.payload;
-  const source = sourceReference(payload.source);
-  const ids = evidenceIds(payload.evidenceIds);
-  const valueTypes = stringArray(payload.valueTypes).filter(isRelationshipValueType);
-
-  if (
-    !nonEmptyString(payload.id) ||
-    !nonEmptyString(payload.accountId) ||
-    !nonEmptyString(payload.contactId) ||
-    !isRelationshipStage(payload.stage) ||
-    !nonEmptyString(payload.summary) ||
-    !source ||
-    !ids ||
-    !nonEmptyString(payload.createdAt) ||
-    !nonEmptyString(payload.updatedAt)
-  ) {
-    return null;
-  }
-
-  return {
-    id: payload.id,
-    accountId: payload.accountId,
-    contactId: payload.contactId,
-    stage: payload.stage,
-    valueTypes,
-    summary: payload.summary,
-    relationshipStrength:
-      typeof payload.relationshipStrength === "number"
-        ? payload.relationshipStrength
-        : undefined,
-    trustLevel: isRelationshipTrustLevel(payload.trustLevel)
-      ? payload.trustLevel
-      : undefined,
-    businessRelevanceScore:
-      typeof payload.businessRelevanceScore === "number"
-        ? payload.businessRelevanceScore
-        : undefined,
-    sharedTopics: stringArray(payload.sharedTopics),
-    suggestedActions: stringArray(payload.suggestedActions),
-    source,
-    evidenceIds: ids,
-    createdAt: payload.createdAt,
-    updatedAt: payload.updatedAt,
-  };
-}
-
-function eventFromRecord(
-  record: LiveRecord<Record<string, unknown>>,
-): EventDTO | null {
-  const payload = record.payload;
-  const source = sourceReference(payload.source);
-  const ids = evidenceIds(payload.evidenceIds);
-
-  if (
-    !nonEmptyString(payload.id) ||
-    !nonEmptyString(payload.name) ||
-    !nonEmptyString(payload.startsAt) ||
-    !source ||
-    !ids
-  ) {
-    return null;
-  }
-
-  return {
-    id: payload.id,
-    name: payload.name,
-    location: optionalString(payload.location),
-    startsAt: payload.startsAt,
-    endsAt: optionalString(payload.endsAt),
-    source,
-    evidenceIds: ids,
-  };
-}
-
-function evidenceFromRecord(
-  record: LiveRecord<Record<string, unknown>>,
-): RelationshipEvidenceDTO | null {
-  const payload = record.payload;
-
-  if (
-    !nonEmptyString(payload.id) ||
-    !isSourceType(payload.sourceType) ||
-    !nonEmptyString(payload.sourceId) ||
-    !nonEmptyString(payload.summary) ||
-    !nonEmptyString(payload.occurredAt) ||
-    typeof payload.confidence !== "number" ||
-    !nonEmptyString(payload.createdBy)
-  ) {
-    return null;
-  }
-
-  return {
-    id: payload.id,
-    sourceType: payload.sourceType,
-    sourceId: payload.sourceId,
-    summary: payload.summary,
-    occurredAt: payload.occurredAt,
-    confidence: payload.confidence,
-    createdBy: payload.createdBy,
-  };
-}
-
-function taskFromRecord(
-  record: LiveRecord<Record<string, unknown>>,
-): TaskDTO | null {
-  const payload = record.payload;
-  const source = sourceReference(payload.source);
-  const ids = evidenceIds(payload.evidenceIds);
-
-  if (
-    !nonEmptyString(payload.id) ||
-    !nonEmptyString(payload.title) ||
-    !(
-      payload.status === "open" ||
-      payload.status === "scheduled" ||
-      payload.status === "completed" ||
-      payload.status === "dismissed"
-    ) ||
-    !source ||
-    !ids ||
-    !nonEmptyString(payload.createdAt) ||
-    !nonEmptyString(payload.updatedAt)
-  ) {
-    return null;
-  }
-
-  return {
-    id: payload.id,
-    title: payload.title,
-    status: payload.status,
-    contactId: optionalString(payload.contactId),
-    connectionId: optionalString(payload.connectionId),
-    dueAt: optionalString(payload.dueAt),
-    source,
-    evidenceIds: ids,
-    createdAt: payload.createdAt,
-    updatedAt: payload.updatedAt,
-  };
-}
-
-function latestTimestamp(records: readonly LiveRecord<Record<string, unknown>>[]): string {
-  return (
-    records
-      .map((record) => record.updatedAt)
-      .filter(nonEmptyString)
-      .sort()
-      .at(-1) ?? new Date(0).toISOString()
-  );
-}
-
 interface ProjectedDashboardRow {
   collection_name: string;
   record_id: string;
@@ -365,15 +112,6 @@ interface ProjectedDashboardRow {
   created_at: Date | string;
   updated_at: Date | string;
   payload: Record<string, unknown> | string | null;
-}
-
-export interface DashboardRecordCollections {
-  connections: readonly LiveRecord<Record<string, unknown>>[];
-  contacts: readonly LiveRecord<Record<string, unknown>>[];
-  detailStates: readonly LiveRecord<Record<string, unknown>>[];
-  events: readonly LiveRecord<Record<string, unknown>>[];
-  evidence: readonly LiveRecord<Record<string, unknown>>[];
-  tasks: readonly LiveRecord<Record<string, unknown>>[];
 }
 
 const dashboardProjectionCollections = Object.values(
@@ -539,59 +277,6 @@ async function readProjectedDashboardCollections(
     events: collections.get(DASHBOARD_LIVE_RECORD_COLLECTIONS.events) ?? [],
     evidence: collections.get(DASHBOARD_LIVE_RECORD_COLLECTIONS.evidence) ?? [],
     tasks: collections.get(DASHBOARD_LIVE_RECORD_COLLECTIONS.tasks) ?? [],
-  };
-}
-
-/**
- * Maps the six collections of one actor (or the workspace) to the dashboard
- * graph. Exported for test doubles that hold records in memory.
- */
-export function dashboardGraphFromRecords(collections: DashboardRecordCollections): LiveDashboardGraph {
-  const {
-    contacts: contactRecords,
-    connections: connectionRecords,
-    detailStates: detailStateRecords,
-    events: eventRecords,
-    tasks: taskRecords,
-    evidence: evidenceRecords,
-  } = collections;
-
-  const customTagsByContactId = new Map<string, readonly string[]>();
-  for (const record of detailStateRecords) {
-    const contactId = optionalString(record.payload.contactId);
-    if (contactId) customTagsByContactId.set(contactId, stringArray(record.payload.tags));
-  }
-
-  return {
-    connections: connectionRecords
-      .map(connectionFromRecord)
-      .filter((connection): connection is ConnectionDTO => connection !== null),
-    contacts: contactRecords
-      .map(contactFromRecord)
-      .filter((contact): contact is ContactDTO => contact !== null)
-      .map((contact) => ({
-        ...contact,
-        customTags: customTagsByContactId.get(contact.id) ?? contact.customTags ?? [],
-      })),
-    events: eventRecords
-      .map(eventFromRecord)
-      .filter((event): event is EventDTO => event !== null),
-    evidence: evidenceRecords
-      .map(evidenceFromRecord)
-      .filter(
-        (evidence): evidence is RelationshipEvidenceDTO => evidence !== null,
-      ),
-    generatedAt: latestTimestamp([
-      ...contactRecords,
-      ...connectionRecords,
-      ...detailStateRecords,
-      ...eventRecords,
-      ...taskRecords,
-      ...evidenceRecords,
-    ]),
-    tasks: taskRecords
-      .map(taskFromRecord)
-      .filter((task): task is TaskDTO => task !== null),
   };
 }
 

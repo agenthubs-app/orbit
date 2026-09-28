@@ -100,7 +100,8 @@ test("network distribution analytics contract exports typed fixtures service and
     };
   }>("features/dashboard/distribution-contract.ts");
   const serviceSource = readFileSync(
-    join(projectRoot, "features/dashboard/distribution-contract.ts"),
+    // Sprint 0117: the service interface moved to the shared directory with the DTOs.
+    join(projectRoot, "shared/compute/dashboard-distribution-contract.ts"),
     "utf8",
   );
 

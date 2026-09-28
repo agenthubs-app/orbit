@@ -1,4 +1,4 @@
-import type { NetworkGapCore } from "../live-distribution-service";
+import type { LiveNetworkDistributionAnalyticsProvider } from "../../../shared/compute/dashboard-distribution";
 import {
   createConfiguredStorageDashboardAggregateProvider,
   createStorageDashboardAggregateProvider,
@@ -7,56 +7,13 @@ import {
   type StorageDashboardAggregateProviderOptions,
 } from "./dashboard-live-record-provider";
 
-export interface LiveNetworkDistributionAnalyticsProvider {
-  source: string;
-  sourceLabel: string;
-  readNetworkDistributionGraph: () =>
-    | LiveDashboardGraph
-    | Promise<LiveDashboardGraph>;
-  /** Sprint 0101: grouped distribution rows computed in SQL (no full-graph read). */
-  readNetworkDistributionReadModel?: () => Promise<NetworkDistributionReadModel>;
-  /**
-   * Sprint 0102: gap analysis from the actor's dashboard snapshot; null when
-   * no graph version is available (the service then reads the graph).
-   */
-  readNetworkGapCore?: () => Promise<NetworkGapCore | null>;
-}
-
-export type NetworkStructureDimensionKey = "industry" | "location" | "role" | "relationship";
-
-/**
- * Grouped rows behind /api/dashboard/distributions. Positions are the graph
- * order (contact graph position, evidence ordinal) so the service can merge raw
- * groups (location aliases, role categories) exactly like the JS grouping.
- */
-export interface NetworkDistributionReadModel {
-  generatedAt: string;
-  contactsCount: number;
-  connectionsCount: number;
-  structureGroups: readonly {
-    dimension: NetworkStructureDimensionKey;
-    key: string | null;
-    count: number;
-    firstPosition: number;
-    firstMissing: boolean;
-  }[];
-  structureEvidence: readonly {
-    dimension: NetworkStructureDimensionKey;
-    key: string | null;
-    evidenceId: string;
-    position: readonly number[];
-  }[];
-  industryOrganizations: readonly { key: string | null; organization: string; count: number }[];
-  industrySources: readonly { key: string | null; type: string; id: string; label: string | null }[];
-  valueTypes: readonly {
-    valueType: string;
-    count: number;
-    exampleConnectionIds: readonly string[];
-    evidenceIds: readonly string[];
-  }[];
-  strengths: readonly { strength: string; count: number; evidenceIds: readonly string[] }[];
-  provenanceEvidenceIds: readonly string[];
-}
+// Sprint 0117: the provider and read-model types live with the shared
+// distribution code (shared/compute/dashboard-distribution.ts).
+export type {
+  LiveNetworkDistributionAnalyticsProvider,
+  NetworkDistributionReadModel,
+  NetworkStructureDimensionKey,
+} from "../../../shared/compute/dashboard-distribution";
 
 export type StorageNetworkDistributionAnalyticsProviderOptions =
   StorageDashboardAggregateProviderOptions;

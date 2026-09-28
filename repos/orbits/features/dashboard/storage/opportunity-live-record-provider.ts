@@ -1,4 +1,4 @@
-import type { OpportunityCore } from "../live-opportunity-service";
+import type { LiveOpportunityReminderAnalyticsProvider } from "../../../shared/compute/dashboard-opportunity";
 import {
   createConfiguredStorageDashboardAggregateProvider,
   createStorageDashboardAggregateProvider,
@@ -7,16 +7,9 @@ import {
   type StorageDashboardAggregateProviderOptions,
 } from "./dashboard-live-record-provider";
 
-export interface LiveOpportunityReminderAnalyticsProvider {
-  source: string;
-  sourceLabel: string;
-  readOpportunityGraph: () => LiveDashboardGraph | Promise<LiveDashboardGraph>;
-  /**
-   * Sprint 0102: ranked candidates from the actor's dashboard snapshot; null
-   * when no graph version is available (the service then reads the graph).
-   */
-  readOpportunityCore?: () => Promise<OpportunityCore | null>;
-}
+// Sprint 0117: the provider type lives with the shared opportunity code
+// (shared/compute/dashboard-opportunity.ts).
+export type { LiveOpportunityReminderAnalyticsProvider } from "../../../shared/compute/dashboard-opportunity";
 
 export type StorageOpportunityReminderAnalyticsProviderOptions =
   StorageDashboardAggregateProviderOptions;

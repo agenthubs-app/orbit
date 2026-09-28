@@ -103,7 +103,8 @@ test("opportunity reminder analytics contract exports typed fixtures service and
     };
   }>("features/dashboard/opportunity-contract.ts");
   const contractSource = readFileSync(
-    join(projectRoot, "features/dashboard/opportunity-contract.ts"),
+    // Sprint 0117: the service interface moved to the shared directory with the DTOs.
+    join(projectRoot, "shared/compute/dashboard-opportunity-contract.ts"),
     "utf8",
   );
 

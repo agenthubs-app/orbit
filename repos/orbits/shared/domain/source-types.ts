@@ -7,25 +7,36 @@ import type {
   SourceTypeCode,
 } from "../contract/source";
 
+import {
+  isRelationshipStage,
+  isRelationshipTrustLevel,
+  isRelationshipValueType,
+  isSourceType,
+  RELATIONSHIP_STAGE_VALUES,
+  RELATIONSHIP_TRUST_LEVEL_VALUES,
+  RELATIONSHIP_VALUE_TYPES,
+  SOURCE_TYPES,
+} from "../compute/relationship-values";
+
+// Sprint 0117: the source, stage, value-type and trust-level values (and their
+// guards) are defined in shared/compute/relationship-values.ts — the shared
+// directory the App also runs — and re-exported here unchanged.
+export {
+  isRelationshipStage,
+  isRelationshipTrustLevel,
+  isRelationshipValueType,
+  isSourceType,
+  RELATIONSHIP_STAGE_VALUES,
+  RELATIONSHIP_TRUST_LEVEL_VALUES,
+  RELATIONSHIP_VALUE_TYPES,
+  SOURCE_TYPES,
+};
+
 // shared/domain/source-types 是所有 feature contract 共用的枚举源头。
 // 业务模块应从这里复用 source/stage/value/permission 类型，避免各自发明字符串。
 //
 // 跨客户端可见的那几个枚举在 shared/contract/source.ts 里另有一份纯类型声明，
 // 供 iOS App 拷贝。文件末尾的断言保证两边不会漂移。
-export const SOURCE_TYPES = [
-  "manual",
-  "business_card_ocr",
-  "qr_scan",
-  "event_import",
-  "external_contacts",
-  "email_signal",
-  "calendar_signal",
-  "referral",
-  "chat_summary",
-  "agent_action",
-  "system",
-] as const;
-
 export type SourceType = (typeof SOURCE_TYPES)[number];
 
 export const CONNECTION_STAGE_VALUES = [
@@ -37,24 +48,7 @@ export const CONNECTION_STAGE_VALUES = [
 
 export type ConnectionStage = (typeof CONNECTION_STAGE_VALUES)[number];
 
-export const RELATIONSHIP_STAGE_VALUES = [
-  "captured",
-  "reviewing",
-  "active",
-  "needs_follow_up",
-  "nurture",
-  "archived",
-] as const;
-
 export type RelationshipStage = (typeof RELATIONSHIP_STAGE_VALUES)[number];
-
-export const RELATIONSHIP_VALUE_TYPES = [
-  "strategic_fit",
-  "commercial_opportunity",
-  "knowledge_exchange",
-  "referral_path",
-  "community_context",
-] as const;
 
 export type RelationshipValueType = (typeof RELATIONSHIP_VALUE_TYPES)[number];
 
@@ -66,13 +60,6 @@ export const PREFERRED_LANGUAGE_VALUES = [
 ] as const;
 
 export type PreferredLanguage = (typeof PREFERRED_LANGUAGE_VALUES)[number];
-
-export const RELATIONSHIP_TRUST_LEVEL_VALUES = [
-  "unverified",
-  "emerging",
-  "warm",
-  "trusted",
-] as const;
 
 export type RelationshipTrustLevel =
   (typeof RELATIONSHIP_TRUST_LEVEL_VALUES)[number];
@@ -211,34 +198,12 @@ function includesValue<const TValue extends readonly string[]>(
   return typeof value === "string" && values.includes(value as TValue[number]);
 }
 
-export function isSourceType(value: unknown): value is SourceType {
-  return includesValue(SOURCE_TYPES, value);
-}
-
 export function isConnectionStage(value: unknown): value is ConnectionStage {
   return includesValue(CONNECTION_STAGE_VALUES, value);
 }
 
-export function isRelationshipStage(
-  value: unknown,
-): value is RelationshipStage {
-  return includesValue(RELATIONSHIP_STAGE_VALUES, value);
-}
-
-export function isRelationshipValueType(
-  value: unknown,
-): value is RelationshipValueType {
-  return includesValue(RELATIONSHIP_VALUE_TYPES, value);
-}
-
 export function isPreferredLanguage(value: unknown): value is PreferredLanguage {
   return includesValue(PREFERRED_LANGUAGE_VALUES, value);
-}
-
-export function isRelationshipTrustLevel(
-  value: unknown,
-): value is RelationshipTrustLevel {
-  return includesValue(RELATIONSHIP_TRUST_LEVEL_VALUES, value);
 }
 
 export function isRelationshipTargetType(
