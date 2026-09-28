@@ -92,10 +92,13 @@ test("a relationship's next step: online saved per relationship; offline the cop
   await never.getByText("这项内容还没保存在这台设备上，联网打开一次后断网也能看。").waitFor();
 });
 
-test("task detail reads the server network-only, so offline on native the device copy (with 截至, read-only) is shown, not the snapshot cache", async () => {
-  // Found on the Simulator (0131 runtime pass): with the default policy the native snapshot store answered
-  // offline as if it were the server — no 截至 notice and 标记完成 enabled.
-  const { readFileSync } = await import("node:fs");
-  const source = readFileSync("src/screens/tasks/TaskDetailScreen.tsx", "utf8");
-  assert.match(source, /useApiResource<unknown>\(detailPath, \(\) => false, \{ scopeKey, cachePolicy: "network-only" \}\)/);
+test("task detail on the phone: a snapshot-cache answer while the server is unreachable still shows the device copy with 截至, read-only", async (t) => {
+  // Found on the Simulator (0131 runtime pass): the native snapshot store answered the offline read as if it
+  // were the server (success), so there was no 截至 notice and 标记完成 stayed enabled.
+  const cached = { task: { ...task("t9", "回访佐藤"), title: "缓存里的旧标题" } };
+  const page = await harness.open(t, { screen: "detail", startUnreachable: true, cacheAnswers: true, syncStatus: "stale", params: { id: "t9" }, records: { task: [task("t9", "回访佐藤")] }, responses: { "/api/tasks/t9": cached } });
+  await page.getByText(OFFLINE_BANNER).waitFor();
+  await page.getByText("带上储能资料").waitFor();
+  assert.equal(await page.getByLabel("标题", { exact: false }).first().isEditable(), false);
+  assert.equal(await page.getByText("缓存里的旧标题").count(), 0, "the lease-bound device copy, not the snapshot");
 });

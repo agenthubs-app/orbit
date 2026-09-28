@@ -5,6 +5,7 @@ import * as Crypto from "expo-crypto";
 import { type Href, useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { usePreventRemove } from "expo-router/react-navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { serverReachability, type ServerReachabilityState } from "../../api/server-reachability";
 import { Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -82,7 +83,7 @@ export function TaskDetailScreen() {
   const detailPath = useMemo(() => taskPath(taskId), [taskId]);
   const activitiesPath = useMemo(() => taskActivitiesPath(taskId), [taskId]);
   const reminderResourcePath = useMemo(() => remindersPath("task", taskId), [taskId]);
-  const detailState = useApiResource<unknown>(detailPath, () => false, { scopeKey, cachePolicy: "network-only" }); // 0131: offline shows the lease-bound device copy with 截至, not the snapshot cache
+  const detailState = useApiResource<unknown>(detailPath, () => false, { scopeKey });
   const activitiesState = useApiResource<unknown>(activitiesPath, () => false, { scopeKey });
   const remindersState = useApiResource<unknown>(reminderResourcePath, () => false, { scopeKey });
   const serverDetail = ready && (detailState.kind === "success" || detailState.kind === "empty") ? ownedTaskDetailToView(detailState.data, actorId, locale.language) : null;
@@ -90,11 +91,19 @@ export function TaskDetailScreen() {
   // copy (sync domain tasks); it is read-only with 截至 until the connection is back.
   const taskMirror = useSyncedCollection<Record<string, unknown>>({ kind: "task" });
   const mirrorState = mirrorFreshness(taskMirror, ready);
-  const serverUnreachable = detailState.kind === "offline" || (detailState.kind === "failure" && detailState.status >= 500);
+  // On the phone the snapshot cache can answer an offline read as if it were the server; the
+  // client's reachability record is what says the server was not reached.
+  const reachUrl = server.baseUrl.trim().replace(/\/+$/u, "");
+  const [reach, setReach] = useState<ServerReachabilityState>(() => serverReachability.state(reachUrl));
+  useEffect(() => {
+    setReach(serverReachability.state(reachUrl));
+    return serverReachability.subscribe((url, state) => { if (url === reachUrl) setReach(state); });
+  }, [reachUrl]);
+  const serverUnreachable = reach === "unreachable" || detailState.kind === "offline" || (detailState.kind === "failure" && detailState.status >= 500);
   const mirrorRow = serverUnreachable && mirrorState.readable ? taskMirror.records.find((record) => record.id === taskId && record.deletedAt === null) : undefined;
   const mirrorDetail = mirrorRow ? ownedTaskDetailToView({ task: mirrorRow.payload }, actorId, locale.language) : null;
-  const offline = serverDetail === null && mirrorDetail !== null;
-  const detail = serverDetail ?? mirrorDetail;
+  const offline = mirrorDetail !== null && (serverDetail === null || reach === "unreachable");
+  const detail = offline ? mirrorDetail : serverDetail ?? mirrorDetail;
   const activities = activitiesState.kind === "success" || activitiesState.kind === "empty" ? taskActivitiesToView(activitiesState.data, timeZone, locale.language) : [];
   const reminders = remindersState.kind === "success" || remindersState.kind === "empty"
     ? reminderPlansToView(remindersState.data, timeZone).filter((item) => item.status === "scheduled")
@@ -373,7 +382,7 @@ export function TaskDetailScreen() {
       title={locale.t("taskDetail.title")}
     >
       {detailState.kind === "loading" ? <LoadingState /> : null}
-      {offline ? <OfflineNotice lastSyncedAt={taskMirror.lastSyncedAt} reason={detailState.kind === "offline" ? "unreachable" : "unavailable"} /> : null}
+      {offline ? <OfflineNotice lastSyncedAt={taskMirror.lastSyncedAt} reason={reach === "unreachable" || detailState.kind === "offline" ? "unreachable" : "unavailable"} /> : null}
       {!offline && detailState.kind === "offline" ? <NeedsNetworkState message={locale.t("sync.notOnDevice")} onRetry={detailState.refresh} /> : null}
       {!offline && detailState.kind === "failure" ? <ErrorState message={detailState.error.message} title={locale.t("taskDetail.unavailable")} /> : null}
       {detail ? (

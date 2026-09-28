@@ -49,7 +49,8 @@ export const useRouter = () => ({ canGoBack: () => false, back() {}, push: route
 function answer(method, path) {
   state.requests.push(method + ":" + path);
   if (!state.online) { serverReachability.markUnreachable(base); return { success: false, status: 0, error: { code: "ORBIT_APP_NETWORK_ERROR", message: "暂时无法连接 Orbit 服务，请检查网络后再试。" }, meta: {} }; }
-  serverReachability.markReachable(base);
+  // cacheAnswers: the answer is the phone's snapshot cache, so the server stays unreachable.
+  if (!state.cacheAnswers) serverReachability.markReachable(base);
   if (state.status5xx) return { success: false, status: 503, error: { code: "SERVICE_UNAVAILABLE", message: "service unavailable" }, meta: {} };
   const keys = Object.keys(state.responses).filter((prefix) => path.startsWith(prefix)).sort((a, b) => b.length - a.length);
   const hit = keys.length ? state.responses[keys[0]] : null;
