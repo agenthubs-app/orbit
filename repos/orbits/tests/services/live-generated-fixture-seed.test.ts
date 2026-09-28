@@ -249,24 +249,15 @@ test("generated fixture verification rejects records owned by another account", 
   const workspaceId = "workspace:generated-fixture-live-seed-owner-test";
   const now = () => "2026-07-01T15:00:00.000Z";
 
+  // Sprint 0116: contacts are a sync collection, so the foreign-owned fixture row
+  // is seeded that way instead of being moved to another owner afterwards.
   await seedGeneratedRelationshipFixturesIntoLiveStore({
     now,
-    store,
+    store: { ...store, upsertRecord: (record) => store.upsertRecord(record.collectionName === "contacts" && record.recordId === "contact_001" ? { ...record, userId: "account:other" } : record) },
     workspaceId,
   });
 
-  const contact = store.getRecord({
-    workspaceId,
-    collectionName: "contacts",
-    recordId: "contact_001",
-  });
-
-  assert.ok(contact);
-  await writeAsOwner(store, {
-    ...contact,
-    userId: "account:other",
-    updatedAt: now(),
-  });
+  assert.ok(store.getRecord({ workspaceId, collectionName: "contacts", recordId: "contact_001" }));
 
   const verification = await verifyGeneratedRelationshipFixturesInLiveStore({
     store,

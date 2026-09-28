@@ -23,3 +23,24 @@ export async function writeAsOwner<TPayload extends Record<string, unknown>>(
   }
   return store.upsertRecord(record);
 }
+
+/**
+ * Sprint 0116: contacts, connections, contact detail states and evidence are
+ * sync collections too, so no test may hand those rows to its actor after they
+ * were written. A test that wants the generated fixtures to belong to its actor
+ * seeds them that way: this view of the store writes every row of
+ * `collections` with `actorId` as its owner (and payload accountId, where the
+ * row has one). Later writeAsOwner calls for the same owner are plain upserts.
+ */
+export function seedAsOwner<TPayload extends Record<string, unknown>>(
+  store: LiveRecordStoreLike<TPayload>,
+  actorId: string,
+  collections: readonly string[],
+): LiveRecordStoreLike<TPayload> {
+  return {
+    ...store,
+    upsertRecord: (record) => store.upsertRecord(collections.includes(record.collectionName)
+      ? { ...record, userId: actorId, payload: ("accountId" in record.payload ? { ...record.payload, accountId: actorId } : record.payload) as TPayload }
+      : record),
+  };
+}

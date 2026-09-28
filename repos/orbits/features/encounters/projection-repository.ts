@@ -4,6 +4,7 @@ import type { LiveContactDetailState, LiveContactDetailStoredInteraction, LiveCo
 import type { EventOperationsPostgresRuntime, EventOperationsSqlExecutor } from "../events/event-operations/storage/postgres-client";
 import type { HumanEncounterRecord } from "./service";
 import { LiveRecordOwnerConflictError } from "../../shared/storage/live-record-store";
+import { acquireSyncCommitOrderLock } from "../sync/commit-order-lock";
 
 type Row = Record<string, unknown>;
 
@@ -58,6 +59,9 @@ export async function writeContactDetailState(input: {
   transaction: EventOperationsSqlExecutor;
 }): Promise<void> {
   const recordId = detailRecordId(input.state.actorId, input.state.contactId);
+  // contact_detail_states is a sync collection (sprint 0116). Callers take the
+  // lock first; taking it again in the same transaction is harmless.
+  await acquireSyncCommitOrderLock(input.transaction);
   const written = await input.transaction.query(`
     insert into orbit_records (
       workspace_id, collection_name, record_id, user_id, source_type,
@@ -147,6 +151,9 @@ export function createPostgresHumanEncounterProjectionRepository(runtime: EventO
 
     async complete(input) {
       return runtime.client.transaction(async (transaction) => {
+        // This transaction writes contact_detail_states (a sync collection since
+        // sprint 0116): take the commit-order lock before any row lock.
+        await acquireSyncCommitOrderLock(transaction);
         const encounter = input.claim.encounter;
         const source = await transaction.query<Row>(`select payload from orbit_records
           where workspace_id = $1 and collection_name = 'human_encounters' and record_id = $2

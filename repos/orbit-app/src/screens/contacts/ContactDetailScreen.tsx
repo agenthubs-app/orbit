@@ -31,6 +31,7 @@ import { ContactPage } from "./ContactPage";
 import { validateApiResourceState } from "../../api/validated-resource-state";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
+import { OfflineNotice } from "../../components/OfflineNotice";
 import { radius, spacing, textStyles, type OrbitColors } from "../../design/tokens";
 import { createControlStyles } from "../../design/controls";
 import { createThemedStyles, useOrbitTheme } from "../../design/theme";
@@ -39,6 +40,8 @@ import {
   type ApiResourceState
 } from "../../hooks/useApiResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
+import { useLocalContacts } from "../../hooks/useLocalContacts";
+import { localContactDetail } from "../../view-models/contacts-local";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { contactMessageTemplate, registerAiTemplatePrefill } from "../../data/ai-template-prefill";
 import {
@@ -94,6 +97,18 @@ export function ContactDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: s
     { scopeKey: scopeKey ?? actorId }
   );
   const state = validateApiResourceState(rawState, detailReadSchema.refine(value => value.contact.id === contactId));
+  // Sprint 0116: the device copy (sync domain contacts) shows at once; the
+  // server read still runs and wins when it answers. Without an answer the
+  // page keeps the device copy with the 「截至」 notice and writes need the network.
+  const local = useLocalContacts();
+  const localDetail = useMemo(() => {
+    if (!local.available || !local.freshness.readable) return null;
+    const parsed = detailReadSchema.safeParse(localContactDetail(local.rows, contactId));
+    return parsed.success && parsed.data.contact.id === contactId ? parsed.data : null;
+  }, [local.available, local.freshness.readable, local.rows, contactId]);
+  const unreachable = state.kind === "offline" || state.kind === "failure";
+  const fromDevice = state.kind !== "success" && state.kind !== "empty" && localDetail !== null;
+  const offlineCopy = fromDevice && unreachable;
   const eligibilityState = useApiResource<unknown>(
     relationshipCommunicationEligibilityPath(contactId),
     () => false,
@@ -122,7 +137,8 @@ export function ContactDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: s
   // A malformed refresh must remain visible as an error without discarding a
   // note already being edited. Never reuse this data across identity scopes.
   const detailData = state.kind === "success" || state.kind === "empty" ? state.data
-    : (rawState.kind === "success" || rawState.kind === "empty") && lastValidDetail.current?.scope === scope ? lastValidDetail.current.data : null;
+    : (rawState.kind === "success" || rawState.kind === "empty") && lastValidDetail.current?.scope === scope ? lastValidDetail.current.data
+    : localDetail;
   const mounted = useRef(true);
   const editController = useRef<AbortController | null>(null);
   const valueController = useRef<AbortController | null>(null);
@@ -150,9 +166,11 @@ export function ContactDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: s
   function isCurrent() { return mounted.current && latestScope.current === scope && isScopeCurrent?.() !== false; }
   const initialization = useContactInitialization(contactId, state.kind === "success" || state.kind === "empty" ? focusedConnectionId ?? null : undefined, scopeKey, isCurrent, () => {
     if (!isCurrent()) return;
-    setEditing(null); state.refresh();
+    setEditing(null); state.refresh(); local.refresh();
   });
-  const canEditContact = initialization.state.view.kind === "hidden" || initialization.state.view.kind === "initialized";
+  const canEditContact = !offlineCopy && (initialization.state.view.kind === "hidden" || initialization.state.view.kind === "initialized");
+  // Offline, the relationship state is the device copy's own status; the initializer needs the server.
+  const shownInitialization: ContactInitializationBinding = offlineCopy ? { ...initialization, state: { ...initialization.state, view: { kind: "hidden" } } } : initialization;
 
   useEffect(() => () => {
     valueController.current?.abort();
@@ -166,6 +184,7 @@ export function ContactDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: s
     void initialization.controller.refresh();
     setRelationshipValueOverride(null);
     state.refresh();
+    local.refresh();
     eligibilityState.refresh();
     relationshipValueState.refresh();
   }
@@ -260,14 +279,15 @@ export function ContactDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: s
       }
       title={currentEdit ? locale.t("contacts.editTitle") : locale.t("contacts.detailTitle")}
     >
-      {state.kind === "loading" ? <LoadingState /> : null}
-      {state.kind === "offline" ? (
+      {state.kind === "loading" && !fromDevice ? <LoadingState /> : null}
+      {offlineCopy ? <OfflineNotice lastSyncedAt={local.freshness.lastSyncedAt} /> : null}
+      {state.kind === "offline" && !fromDevice ? (
         <ErrorState message={state.error.message} title={locale.t("contacts.serverUnavailable")} />
       ) : null}
-      {state.kind === "failure" ? (
+      {state.kind === "failure" && !fromDevice ? (
         <ErrorState message={state.error.message} />
       ) : null}
-      {state.kind === "offline" || state.kind === "failure" ? <Pressable accessibilityRole="button" accessibilityLabel={locale.t("contacts.retryDetail")} onPress={refreshAll} style={styles.statusButton}><Text style={styles.statusButtonText}>{locale.t("contacts.readAgain")}</Text></Pressable> : null}
+      {unreachable && !fromDevice ? <Pressable accessibilityRole="button" accessibilityLabel={locale.t("contacts.retryDetail")} onPress={refreshAll} style={styles.statusButton}><Text style={styles.statusButtonText}>{locale.t("contacts.readAgain")}</Text></Pressable> : null}
       {feedback ? <Text style={styles.feedbackText}>{feedback}</Text> : null}
       {actionError ? <Text style={styles.errorText}>{actionError}</Text> : null}
       {valueFeedback?.scope === valueScope ? <Text style={valueFeedback.error ? styles.errorText : styles.feedbackText}>{valueFeedback.message}</Text> : null}
@@ -278,8 +298,9 @@ export function ContactDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: s
           actorId={actorId}
           client={client}
           contactId={contactId}
-          data={applyContactInitializationView(detailData, initialization.state.view)}
-          initialization={initialization}
+          data={applyContactInitializationView(detailData, shownInitialization.state.view)}
+          initialization={shownInitialization}
+          offline={offlineCopy}
           eligibilityState={eligibilityState}
           isScopeCurrent={isCurrent}
           onScrollTo={y => scrollRef.current?.scrollTo({ y: bodyTop.current + y, animated: true })}
@@ -301,6 +322,7 @@ function ContactDetailCard({
   contactId,
   data,
   initialization,
+  offline,
   eligibilityState,
   isScopeCurrent,
   onScrollTo,
@@ -315,6 +337,8 @@ function ContactDetailCard({
   contactId: string;
   data: unknown;
   initialization: ContactInitializationBinding;
+  /** Sprint 0116: showing the device copy without a server answer. */
+  offline: boolean;
   eligibilityState: ApiResourceState<unknown>;
   isScopeCurrent: () => boolean;
   onScrollTo: (y: number) => void;
@@ -355,10 +379,11 @@ function ContactDetailCard({
         sourceLabel={contact.sourceLabel}
         toneStyle={toneStyle}
       />
-      <ContactCommunicationStatus contactId={contactId} state={eligibilityState} />
-      <ContactRelationshipInitializer binding={initialization} />
+      {offline ? <View style={styles.nextStepCard}><Text style={styles.bodyText}>{`${locale.t("contacts.chatEligibility")} · ${locale.t("sync.needsNetwork")}`}</Text></View> : <ContactCommunicationStatus contactId={contactId} state={eligibilityState} />}
+      {offline ? null : <ContactRelationshipInitializer binding={initialization} />}
       {initView.kind === "hidden" || initView.kind === "initialized" ? <NextStepCard
         action={initView.kind === "hidden" ? contact.nextAction : ""}
+        offline={offline}
         onPress={openMessageDraft}
         onSchedule={() => { if (isScopeCurrent()) router.push("/schedule"); }}
         onNotes={() => { if (isScopeCurrent()) { setNotesRequest(value => value + 1); onScrollTo(notesTop.current); } }}
@@ -481,11 +506,14 @@ function ContactIdentityHeader({
 
 function NextStepCard({
   action,
+  offline = false,
   onPress,
   onSchedule,
   onNotes
 }: {
   action: string;
+  /** Drafting a message asks the AI: it needs the network. */
+  offline?: boolean;
   onPress: () => void;
   onSchedule: () => void;
   onNotes: () => void;
@@ -497,13 +525,15 @@ function NextStepCard({
     <View accessibilityHint={action} style={[styles.nextStepCard, (fontScale >= 1.4 || width < 360) && styles.actionStack]}>
       <Pressable
         accessibilityRole="button"
+        disabled={offline}
         onPress={onPress}
         style={({ pressed }) => [
           styles.primaryActionButton,
+          offline ? styles.disabled : null,
           pressed ? styles.pressed : null
         ]}
       >
-        <Text style={styles.primaryActionButtonText}>{locale.t("contacts.draftMessage")}</Text>
+        <Text style={styles.primaryActionButtonText}>{offline ? `${locale.t("contacts.draftMessage")} · ${locale.t("sync.needsNetwork")}` : locale.t("contacts.draftMessage")}</Text>
       </Pressable>
       <Pressable accessibilityRole="button" onPress={onSchedule} style={styles.secondaryActionButton}><Text style={styles.secondaryActionText}>{locale.t("contacts.viewSchedule")}</Text></Pressable>
       <Pressable accessibilityRole="button" onPress={onNotes} style={styles.secondaryActionButton}><Text style={styles.secondaryActionText}>{locale.t("contacts.writeNote")}</Text></Pressable>

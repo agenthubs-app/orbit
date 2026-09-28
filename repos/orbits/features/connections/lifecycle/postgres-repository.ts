@@ -136,9 +136,11 @@ export function createPostgresRelationshipLifecycleRepository({ client, workspac
         const plan = structuredClone(operation(structuredClone(before)));
         const snapshot = applyLifecycleMutationPlan(input, before, plan);
         const connection = snapshot.connection;
-        // Task rows are a sync collection: hold the commit-order lock before this
-        // transaction writes anything, so its revisions commit in order.
-        if (plan.upsertTasks.length + plan.dismissTasks.length > 0) await acquireSyncCommitOrderLock(sql);
+        // Every command writes the connection, and connections, evidence and
+        // tasks are sync collections (connections and evidence since sprint
+        // 0116): hold the commit-order lock before this transaction writes
+        // anything, so its revisions commit in order.
+        await acquireSyncCommitOrderLock(sql);
         const updated = await sql.query("update orbit_records set payload = payload || $4::jsonb, updated_at = $5 where workspace_id = $1 and collection_name = 'connections' and record_id = $2 and user_id = $3 and coalesce((payload ->> 'version')::bigint, 1) = $6 returning record_id", [workspaceId, input.connectionId, input.actorId, { stage: connection.stage, activeGoal: connection.activeGoal, version: connection.version, updatedAt: connection.updatedAt }, connection.updatedAt, input.expectedVersion]);
         if (updated.rows.length !== 1) throw new RelationshipLifecycleError("CONFLICT", "Connection version has changed.");
         for (const task of [...plan.upsertTasks, ...plan.dismissTasks]) {

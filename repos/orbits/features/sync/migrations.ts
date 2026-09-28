@@ -144,11 +144,16 @@ create trigger orbit_records_assign_sync_revision_trigger
   for each row execute function orbit_records_assign_sync_revision();
 `;
 
+// The record domains' actor index keeps its three collections (sprint 0108):
+// the contact collections are served by orbit_records_graph_version_idx, and
+// widening this one would make every notes/tasks page step over contact rows.
+const SYNC_ACTOR_INDEX_COLLECTIONS = ["notes", "tasks", "personal_schedule_items"] as const;
+
 export const SYNC_ACTOR_INDEX_SQL = `
 create index if not exists orbit_records_sync_actor_idx
   on orbit_records (workspace_id, user_id, sync_revision)
   where user_id is not null
-    and collection_name in (${SYNC_COLLECTION_NAMES.map((name) => `'${name}'`).join(", ")});
+    and collection_name in (${SYNC_ACTOR_INDEX_COLLECTIONS.map((name) => `'${name}'`).join(", ")});
 `;
 
 /**

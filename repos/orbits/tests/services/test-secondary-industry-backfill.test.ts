@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
 import { createTransactionalPostgresClient, type TransactionalPostgresClient } from "../../shared/storage/transactional-postgres";
+import { SYNC_COMMIT_ORDER_LOCK_SQL } from "../../features/sync/commit-order-lock";
 import * as inventory from "../support/industry-fixture-inventory";
 
 const beforeVersion = "2026-09-14T00:00:00.000Z";
@@ -47,6 +48,8 @@ function database(record: ReturnType<typeof input>["records"][number], updateRow
     if (text.startsWith("begin")) staged = structuredClone(persisted);
     else if (text === "commit") persisted = structuredClone(staged);
     else if (text === "rollback") staged = structuredClone(persisted);
+    // Sprint 0116: contacts is a sync collection; the transaction takes the commit-order lock first.
+    else if (text === SYNC_COMMIT_ORDER_LOCK_SQL) return { rows: [{ acquired_key: "1" }] };
     else {
       assert.match(text, /workspace_id = \$1/u);
       assert.match(text, /collection_name = \$2/u);
@@ -185,6 +188,8 @@ test("conditional apply preserves other fields and replaying the reviewed plan p
   assert.deepEqual(await api.applyTestIndustryBackfillPlan(db.client, plan, plan.hash), { applied: 1, alreadyValid: 0 });
   assert.deepEqual(await api.applyTestIndustryBackfillPlan(db.client, plan, plan.hash), { applied: 0, alreadyValid: 1 });
   assert.equal(db.queries.filter(query => query.text.startsWith("update")).length, 1);
+  const lock = db.queries.findIndex(query => query.text === SYNC_COMMIT_ORDER_LOCK_SQL);
+  assert.ok(lock >= 0 && lock < db.queries.findIndex(query => query.text.startsWith("update")), "the commit-order lock is taken before the contact update");
   assert.deepEqual(db.value().payload, plan.entries[0].after.payload);
   assert.equal(db.value().updated_at, afterVersion);
 });

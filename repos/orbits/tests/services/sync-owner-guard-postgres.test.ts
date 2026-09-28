@@ -28,7 +28,7 @@ async function database(t: TestContext) {
   await client.query(ORBIT_RECORDS_SCHEMA_SQL);
   await client.query(STRICT_SYNC_REVISION_SQL);
   const store = createPostgresLiveRecordStore({ client });
-  for (const [collection, id, owner] of [["notes", "n1", "actor:a"], ["tasks", "t1", "actor:a"], ["personal_schedule_occurrence_exceptions", "x1", "actor:a"], ["contacts", "c1", "actor:a"], ["notes", "n-unowned", null]] as const) {
+  for (const [collection, id, owner] of [["notes", "n1", "actor:a"], ["tasks", "t1", "actor:a"], ["personal_schedule_occurrence_exceptions", "x1", "actor:a"], ["contacts", "c1", "actor:a"], ["organizers", "o1", "actor:a"], ["notes", "n-unowned", null]] as const) {
     await store.upsertRecord({ workspaceId: W, collectionName: collection, recordId: id, userId: owner, sourceType: "manual", sourceId: id, evidenceIds: [], lifecycleState: "active", createdAt: T0, updatedAt: T0, payload: { id } });
   }
   return { pool, client };
@@ -66,8 +66,11 @@ test("a first owner on an unowned row, payload writes, and owner changes outside
   await testRawWrite(client, "notes", "update orbit_records set user_id = 'actor:a' where collection_name = 'notes' and record_id = 'n-unowned'");
   assert.equal(await ownerOf(pool, "notes", "n-unowned"), "actor:a", "the 0114 owner backfill is not a departure");
   await testRawWrite(client, "notes", "update orbit_records set payload = '{\"id\":\"n1\",\"v\":2}' where collection_name = 'notes' and record_id = 'n1'");
-  await pool.query("update orbit_records set user_id = 'actor:b' where collection_name = 'contacts' and record_id = 'c1'");
-  assert.equal(await ownerOf(pool, "contacts", "c1"), "actor:b", "contacts are not a sync domain yet");
+  await pool.query("update orbit_records set user_id = 'actor:b' where collection_name = 'organizers' and record_id = 'o1'");
+  assert.equal(await ownerOf(pool, "organizers", "o1"), "actor:b", "organizers are not a sync domain");
+  // Sprint 0116: contacts (and their relationships, detail states and sources) are a sync domain now.
+  await assert.rejects(() => testRawWrite(client, "contacts", "update orbit_records set user_id = 'actor:b' where collection_name = 'contacts' and record_id = 'c1'"), refused);
+  assert.equal(await ownerOf(pool, "contacts", "c1"), "actor:a");
 });
 
 test("the registered first-owner handler (0114 backfill) opens nothing: it cannot re-own a note or clear an owner, and reassignRecordOwner refuses it", options, async (t) => {

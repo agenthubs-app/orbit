@@ -14,8 +14,11 @@ import { eventDomainSummaryKey } from "../../../features/sync/event-domain-reade
 // domains' summary (their watermarks and released set, one statement) folded
 // into the route key. A device domain read any other way (a plain dedicated
 // table) is not covered, so its presence turns the 304 path off.
-const MANIFEST_COLLECTIONS = SYNC_DOMAINS.flatMap((domain) => domain.source.kind === "orbit_records" ? [domain.source.collectionName] : []);
-const MANIFEST_IS_CONDITIONAL = SYNC_DOMAINS.every((domain) => domain.source.kind === "orbit_records" || domain.source.kind === "event_derived");
+// Sprint 0116: the contacts domain is built from four orbit_records
+// collections, every row owned by the actor, so the same user-scoped watermark
+// covers it.
+const MANIFEST_COLLECTIONS = SYNC_DOMAINS.flatMap((domain) => domain.source.kind === "orbit_records" ? [domain.source.collectionName] : domain.source.kind === "contact_graph" ? [...domain.source.collections] : []);
+const MANIFEST_IS_CONDITIONAL = SYNC_DOMAINS.every((domain) => domain.source.kind === "orbit_records" || domain.source.kind === "event_derived" || domain.source.kind === "contact_graph");
 // A new registry or page schema must never replay a cached manifest.
 const MANIFEST_ROUTE_KEY = `sync.manifest:r${SYNC_REGISTRY_VERSION}:s${SYNC_DOMAIN_SCHEMA_VERSION}`;
 import { SYNC_DEFAULT_LIMIT, SYNC_MAX_LIMIT } from "../../../features/sync/read-service";

@@ -13,6 +13,8 @@ let url: string;
 // Only HTTP/auth/native/navigation boundaries are replaced. The production screens,
 // view-models, theme, form state and RN Web event handlers run in the browser.
 const fixture = `
+// Sprint 0116: the device mirror is not the source here; these tests cover the network reads.
+export const useLocalContacts = () => ({ available: false, rows: [], freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh() {} });
 import React, { useSyncExternalStore } from "react";
 import { View } from "react-native";
 const listeners = new Set(); let revision = 0;
@@ -72,7 +74,7 @@ test.before(async () => {
     define: { "process.env.NODE_ENV": '"test"', __DEV__: "false" },
     plugins: [{ name: "contacts-boundaries", setup(plugin) {
       plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: require.resolve("react-native-web") }));
-      plugin.onResolve({ filter: /^(expo-router|@expo\/vector-icons|react-native-safe-area-context)$|\/(useApiResource|useOrbitApiClient|ApiBaseUrlProvider|AuthSessionProvider)$/ }, () => ({ path: "fixture", namespace: "contacts-test" }));
+      plugin.onResolve({ filter: /^(expo-router|@expo\/vector-icons|react-native-safe-area-context)$|\/(useApiResource|useOrbitApiClient|ApiBaseUrlProvider|AuthSessionProvider|useLocalContacts)$/ }, () => ({ path: "fixture", namespace: "contacts-test" }));
       plugin.onLoad({ filter: /.*/, namespace: "contacts-test" }, () => ({ contents: fixture, loader: "jsx", resolveDir: process.cwd() }));
     } }],
   });

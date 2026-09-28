@@ -70,7 +70,9 @@ window.fetch = async (input, init) => {
   return pending;
 };
 export const useFixture = () => { observe(); return state; };
-export const useOrbitAuthSession = () => { observe(); return { ready: state.ready, signedIn: state.signedIn, accountId: state.actor, actorId: state.actor, user: { id: state.actor }, cookieHeader: state.cookieHeader }; };
+// Sprint 0116: one user object per actor, like the real provider (useSyncedCollection keys its scope on the object).
+const stableUsers = new Map(); const stableUser = (id, extra = {}) => { const key = JSON.stringify([id, extra]); if (!stableUsers.has(key)) stableUsers.set(key, { id, ...extra }); return stableUsers.get(key); };
+export const useOrbitAuthSession = () => { observe(); return { ready: state.ready, signedIn: state.signedIn, accountId: state.actor, actorId: state.actor, user: stableUser(state.actor), cookieHeader: state.cookieHeader }; };
 export const useOrbitApiBaseUrl = () => { observe(); return { ready: state.baseReady, baseUrl: state.baseUrl }; };
 export const useOrbitLocale = () => { observe(); return { language: state.language, t: createTranslator(state.language) }; };
 export const useIsFocused = () => { observe(); return state.focused; };

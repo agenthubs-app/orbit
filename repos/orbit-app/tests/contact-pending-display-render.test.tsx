@@ -21,6 +21,8 @@ loader._load = (name, ...args) => {
   if (name.endsWith("/api/ApiBaseUrlProvider")) return { useOrbitApiBaseUrl: () => ({ baseUrl: "https://orbit.test", ready: true }) };
   if (name.endsWith("/api/AuthSessionProvider")) return { useOrbitAuthSession: () => ({ actorId: "owner:one", signedIn: true, ready: true }) };
   if (name.endsWith("/hooks/useOrbitApiClient")) return { useOrbitApiClient: () => ({}) };
+  // Sprint 0116: no device mirror in this render; the detail is the server read.
+  if (name.endsWith("/hooks/useLocalContacts")) return { useLocalContacts: () => ({ available: false, rows: [], freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh() {} }) };
   if (name.endsWith("/hooks/useRelationshipInboxBadgeCount")) return { useRelationshipInboxBadgeCount: () => 0 };
   if (name.endsWith("/hooks/useApiResource")) return { useApiResource: (path: string) => ({
     kind: "success", refreshing: false, refresh() {}, data: path === "/api/contacts/pending"

@@ -23,6 +23,11 @@ export function relationshipRecordOwnedByActor(record: LiveRecord<Record<string,
  * Evidence references in these graphs use row metadata, not payload.evidenceIds.
  * No arbitrary JSON ID search is an authorization source. Selection and payload
  * retrieval share one SQL snapshot: no authorization-to-payload ownership race.
+ *
+ * Sprint 0116: only the sources the selected tasks, contacts, relationships and
+ * notifications cite are read. Before, every source row the actor owned was
+ * read too, so the read grew with sources nothing on these pages shows (0114:
+ * 248 → 291 rows for the demo account, and 957 if uncited sources were owned).
  */
 export function createPostgresRelationshipScopeReader(input: {
   client: LiveRecordSqlClient;
@@ -40,7 +45,7 @@ export function createPostgresRelationshipScopeReader(input: {
       with owned as (
         select collection_name,record_id,payload,evidence_ids,target_id,target_type
         from orbit_records r
-        where r.workspace_id=$1 and r.collection_name in ('tasks','contacts','connections','evidence','notifications')
+        where r.workspace_id=$1 and r.collection_name in ('tasks','contacts','connections','notifications')
           and r.lifecycle_state<>'deleted' and ($3='followups' or r.lifecycle_state<>'archived')
           and r.user_id=$2
           and (r.payload->'accountId' is null or r.payload->'accountId'='null'::jsonb or r.payload->'accountId'=to_jsonb($2::text))
@@ -69,8 +74,7 @@ export function createPostgresRelationshipScopeReader(input: {
         select e.collection_name,e.record_id from orbit_records e
         where e.workspace_id=$1 and e.collection_name='evidence' and e.lifecycle_state<>'deleted'
           and ($3='followups' or e.lifecycle_state<>'archived')
-          and (e.record_id in (select record_id from owned where collection_name='evidence')
-            or e.record_id in (select id from evidence_refs))
+          and e.record_id in (select id from evidence_refs)
       ), selected as (
         select collection_name,record_id from sources
         union all select collection_name,record_id from evidence

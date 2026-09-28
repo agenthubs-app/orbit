@@ -3,6 +3,7 @@ import type { DomainChange, DomainManifest, DomainPage, OfflineReadEnvelope } fr
 import { resolveAuthorizationEpoch, type AuthorizationEpoch, type AuthorizationEpochSqlClient } from "./authorization-epoch";
 import { createDomainCursorCodec, type DomainCursorScope } from "./domain-cursor";
 import { findSyncDomain, SYNC_DOMAIN_SCHEMA_VERSION, SYNC_DOMAINS, SYNC_REGISTRY_VERSION, type DedicatedTableSyncSource, type SyncDomainDefinition } from "./domain-registry";
+import { readContactDomainHighWatermark, readContactDomainPage } from "./contact-domain-reader";
 import { readEventDomainPage, readEventDomainSummary, type EventDomainSummary } from "./event-domain-reader";
 import { issueOfflineReadLease } from "./offline-read-lease";
 import { changeFromRow, SYNC_MAX_LIMIT, SYNC_MAX_PAGE_BYTES, SyncReadError, type SyncReadRow } from "./read-service";
@@ -198,6 +199,7 @@ export function createDomainReadService({ client, cursorSecret, now = () => new 
       if (!summary) throw new SyncReadError("SYNC_SCOPE_MISMATCH", "The event sync summary is required.");
       return summary.watermarks[source.view];
     }
+    if (source.kind === "contact_graph") return readContactDomainHighWatermark(client, { workspaceId, actorId });
     const result = source.kind === "orbit_records"
       ? await client.query<{ high_watermark: string }>(HIGH_WATERMARK_SQL, [workspaceId, actorId, source.collectionName])
       : await client.query<{ high_watermark: string }>(dedicatedSql(source, ownerColumnOf(domain)).highWatermark, [workspaceId, actorId]);
@@ -316,7 +318,9 @@ export function createDomainReadService({ client, cursorSecret, now = () => new 
         ? await readRecordsPage(domain.source.collectionName, input, afterRevision, high)
         : domain.source.kind === "event_derived"
           ? await readEventDomainPage(client, domain.source, { workspaceId: input.workspaceId, actorId: input.actorId, afterRevision, highWatermark: high, limit: input.limit })
-          : await readDedicatedPage(domain, domain.source, input, afterRevision, high);
+          : domain.source.kind === "contact_graph"
+            ? await readContactDomainPage(client, domain.source, { workspaceId: input.workspaceId, actorId: input.actorId, afterRevision, highWatermark: high, limit: input.limit, issuedAt: new Date(issuedAt).toISOString() })
+            : await readDedicatedPage(domain, domain.source, input, afterRevision, high);
       const { hasMore, lastRevision } = read;
       const changes = read.changes;
       if (domain.attachments.some((attachment) => attachment.collectionName === "personal_schedule_occurrence_exceptions")) {

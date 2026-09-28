@@ -220,7 +220,7 @@ test("Web notes mirror: ciphertext at rest in OPFS, upgrade pulls notes without 
   // 0. The whitelist now carries notes.
   const opened = await call<{ mode: string; domains: string[] }>(page, `window.__notes.open(${JSON.stringify(A)})`);
   assert.equal(opened.mode, "local-mirror");
-  assert.deepEqual(opened.domains, ["notes", "tasks", "personal-schedule", "event-registrations", "registered-events", "event-published-results"]);
+  assert.deepEqual(opened.domains, ["notes", "tasks", "personal-schedule", "event-registrations", "registered-events", "event-published-results", "contacts"]);
 
   // 1. An existing browser: its mirror holds tasks, and the server has not granted notes yet.
   assert.deepEqual((await call<Snapshot>(page, "window.__notes.sync('task')")).ids, ["task-a1"]);

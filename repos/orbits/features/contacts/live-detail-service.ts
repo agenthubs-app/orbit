@@ -731,6 +731,39 @@ function payloadFor(input: {
   };
 }
 
+/**
+ * Sprint 0116: the detail read of a contact whose graph is already loaded (the
+ * contacts sync domain reads a whole page of graphs at once). The same mapping
+ * getContactDetail runs; null when the contact has more than one owned
+ * relationship candidate (getContactDetail answers CONTACT_DETAIL_AMBIGUOUS_CONNECTION).
+ */
+export function contactDetailPayloadFromGraph(input: {
+  collectedAt: string;
+  contact: ContactDTO;
+  connections: readonly ConnectionDTO[];
+  evidence: readonly RelationshipEvidenceDTO[];
+  persistedState: LiveContactDetailState | null;
+  provider: Pick<LiveContactsGraphProvider, "source" | "sourceLabel">;
+  language?: OrbitLanguage;
+}): ContactDetailTagStatusPayload | null {
+  let connection: ConnectionDTO | null;
+  try {
+    connection = connectionFor(input.contact, input.connections);
+  } catch (error) {
+    if (error instanceof Error && error.message === "CONTACT_DETAIL_AMBIGUOUS_CONNECTION") return null;
+    throw error;
+  }
+  return clonePayload(payloadFor({
+    collectedAt: input.collectedAt,
+    contact: input.contact,
+    connection,
+    evidence: input.evidence,
+    language: resolveOrbitLanguage({ requestLanguage: input.language }),
+    persistedState: input.persistedState,
+    provider: input.provider as LiveContactsGraphProvider,
+  }));
+}
+
 function normalizedValues(
   values?: readonly (string | null | undefined)[] | null,
 ): string[] {

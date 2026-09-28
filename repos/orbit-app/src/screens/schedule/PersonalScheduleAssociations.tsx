@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Image, KeyboardAvoidingView, Modal, PanResponder, Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { useRouter, type Href } from "expo-router";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
+import { useLocalContacts } from "../../hooks/useLocalContacts";
+import { localContactDetail } from "../../view-models/contacts-local";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { contactDetailPath, notePath } from "../../api/endpoints";
 import { personalScheduleAssociationOptionsPageSchema } from "../../api/schema/personal-schedule-associations";
@@ -35,11 +37,17 @@ function AssociationPicker({ actorId, scopeKey, noteIds, kind, disabled = false,
   const drag = useMemo(() => PanResponder.create({ onStartShouldSetPanResponder: () => true, onPanResponderTerminationRequest: () => false, onMoveShouldSetPanResponder: (_event, gesture) => gesture.dy > 8 && Math.abs(gesture.dy) > Math.abs(gesture.dx), onPanResponderRelease: (_event, gesture) => { if (gesture.dy > 60 && Math.abs(gesture.dy) > Math.abs(gesture.dx)) dismiss(); } }), []);
   const pageOperation = useRef<AbortController | null>(null);
   const idsKey = JSON.stringify(noteIds);
+  // Sprint 0116: a linked contact's name comes from the device copy of the contacts (shows offline, no request per contact).
+  const localContacts = useLocalContacts(false);
+  const deviceContacts = kind === "contact" && localContacts.available && localContacts.freshness.readable ? localContacts.rows : null;
+  const waitForDevice = kind === "contact" && localContacts.available && !localContacts.freshness.readable && !localContacts.freshness.failure;
   useEffect(() => {
     const operation = new AbortController(); setNames({}); setUnavailable([]); setImages({});
+    if (waitForDevice) return () => operation.abort();
     void Promise.all(noteIds.map(async (id): Promise<{ id: string; title: string | null; imageUrl?: string }> => {
       try {
-        const result = await client.get<unknown>(kind === "note" ? notePath(id) : contactDetailPath(id), { signal: operation.signal });
+        const deviceDetail = deviceContacts ? localContactDetail(deviceContacts, id) : null;
+        const result = deviceDetail ? { success: true as const, data: deviceDetail as unknown } : await client.get<unknown>(kind === "note" ? notePath(id) : contactDetailPath(id), { signal: operation.signal });
         if (!result.success) return { id, title: null };
         if (kind === "note") return { id, title: noteFromPayload(result.data, actorId, id, locale.language)?.title ?? null };
         const contact = contactDetailToSummary(result.data, locale.language);
@@ -60,7 +68,7 @@ function AssociationPicker({ actorId, scopeKey, noteIds, kind, disabled = false,
       setUnavailable(items.filter(item => item.title === null).map(item => item.id));
     });
     return () => operation.abort();
-  }, [client, actorId, idsKey, locale.language, kind, server.baseUrl]);
+  }, [client, actorId, idsKey, locale.language, kind, server.baseUrl, deviceContacts, waitForDevice]);
   async function search(word: string, next: string | null, signal: AbortSignal) {
     const params = new URLSearchParams({ q: word, limit: "20", ...(next ? { cursor: next } : {}) });
     const result = kind === "note"

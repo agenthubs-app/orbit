@@ -16,6 +16,8 @@ export const KNOWN_SYNC_DOMAINS: Readonly<Record<string, SyncChangeKind>> = {
   "event-registrations": "event_registration",
   "registered-events": "registered_event",
   "event-published-results": "event_published_result",
+  // Sprint 0116: the account's contacts (list, search, detail, linked-contact chips).
+  contacts: "contact",
 };
 
 export function kindOfSyncDomain(domainId: string): SyncChangeKind | null {

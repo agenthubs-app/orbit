@@ -1,4 +1,4 @@
-import { writeAsOwner } from "../support/live-record-owner-fixture";
+import { seedAsOwner, writeAsOwner } from "../support/live-record-owner-fixture";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
@@ -28,7 +28,7 @@ async function createSeedStore() {
 
   await seedGeneratedRelationshipFixturesIntoLiveStore({
     now: () => NOW,
-    store,
+    store: seedAsOwner(store, ACTOR_ID, ["contacts", "evidence"]),
     workspaceId: WORKSPACE_ID,
   });
   const actorRecords = store

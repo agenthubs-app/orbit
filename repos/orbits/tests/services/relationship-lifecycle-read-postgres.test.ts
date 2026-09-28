@@ -3,7 +3,7 @@ import test from "node:test";
 import { readCanonicalContactLifecycles } from "../../features/connections/lifecycle/read-projection";
 import { createPostgresLifecycleMigrationRepository } from "../../features/connections/lifecycle/migration-repository";
 import type { TransactionalPostgresClient } from "../../shared/storage/transactional-postgres";
-import { testRawWrite } from "../support/sync-revision-fixture";
+import { testRawWrite, testReseedOwner } from "../support/sync-revision-fixture";
 import { lifecycleMigrationDatabaseTest as databaseTest, lifecycleMigrationFixtureCommand, lifecycleMigrationFixtureRecord as record, migrationActorId as actorId, migrationManifest as manifest, migrationNow as now, migrationWorkspaceId as workspaceId, withLifecycleMigrationDatabase as withDatabase } from "../support/lifecycle-migration-fixture";
 
 const scope = { actorId, workspaceId, now, timeZone: "Asia/Tokyo" };
@@ -66,7 +66,7 @@ test("foreign payloads never cross SQL even when a foreign task references the a
 for (const defect of ["orphan-contact", "foreign-contact", "foreign-connection", "claimed-connection", "orphan-task", "malformed-task", "null-owner-task"]) test(`batch reads reject ${defect} without a partial result`, databaseTest, async () => withDatabase(async ({ client, insert }) => {
   await canonical(client);
   if (defect === "orphan-contact") await insert(record("contacts", "contact:orphan", { id: "contact:orphan", version: 1 }));
-  if (defect === "foreign-contact") await client.query("update orbit_records set user_id='actor:other' where collection_name='contacts'");
+  if (defect === "foreign-contact") await testReseedOwner(client, "contacts", "true", "actor:other");
   if (defect === "foreign-connection") await insert(record("connections", "connection:foreign", { id: "connection:foreign", accountId: "actor:other", contactId: "contact:a", private: "FOREIGN PRIVATE" }, "actor:other"));
   if (defect === "claimed-connection") await insert(record("connections", "connection:foreign", { id: "connection:foreign", accountId: actorId, contactId: "contact:other", private: "FOREIGN PRIVATE" }, "actor:other"));
   if (defect === "orphan-task") await insert(record("tasks", "task:orphan", { id: "task:orphan", connectionId: "connection:missing" }));
@@ -102,7 +102,7 @@ test("canonical reads require current valid data, never a past migration receipt
   const repo = createPostgresLifecycleMigrationRepository({ client, workspaceId });
   await repo.apply(lifecycleMigrationFixtureCommand(await repo.dryRun(manifest)));
   assert.equal((await read(client)).length, 1);
-  await client.query("update orbit_records set payload=payload-'activeGoal' where collection_name='connections'");
+  await testRawWrite(client, "connections", "update orbit_records set payload=payload-'activeGoal' where collection_name='connections'");
   await assert.rejects(read(client), { code: "INCONSISTENT_STATE" });
 }));
 

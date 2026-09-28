@@ -20,6 +20,7 @@ export const contactNeedsSuccessMessageKeys = {
 
 export function ContactNeedsHomeCard({
   unavailable = false,
+  offline = false,
   goal,
   loading,
   onEdit,
@@ -29,6 +30,8 @@ export function ContactNeedsHomeCard({
   goal: string;
   loading: boolean;
   unavailable?: boolean;
+  /** Sprint 0116: the contacts page shows the device copy offline; the needs read is a server feature. */
+  offline?: boolean;
   onEdit(): void;
   onOpenMatches(): void;
   onRetry?(): void;
@@ -47,7 +50,7 @@ export function ContactNeedsHomeCard({
       >
         <Text style={[styles.label, { color: colors.text3 }]}>{locale.t("contacts.myNeed")}</Text>
         <Text numberOfLines={2} style={[styles.goal, { color: saved ? colors.ink : colors.text3 }]}>
-          {loading ? locale.t("common.loading") : unavailable ? locale.t("contacts.needUnavailable") : saved ? goal : locale.t("contacts.needEmpty")}
+          {loading ? locale.t("common.loading") : unavailable ? (offline ? locale.t("sync.needsNetwork") : locale.t("contacts.needUnavailable")) : saved ? goal : locale.t("contacts.needEmpty")}
         </Text>
       </Pressable>
       <Pressable

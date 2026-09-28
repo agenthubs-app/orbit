@@ -155,8 +155,10 @@ test("production association reader uses current notes ownership and workspace a
   await store.upsertRecord(contactRecord);
   assert.deepEqual(await reader.accessibleIds({ actorId: owner, kind: "contact", ids: ["contact:owned"] }), ["contact:owned"]);
   assert.deepEqual(await reader.accessibleIds({ actorId: "other", kind: "contact", ids: ["contact:owned"] }), []);
-  await writeAsOwner(store, { ...contactRecord, userId: "other" });
-  assert.deepEqual(await reader.accessibleIds({ actorId: owner, kind: "contact", ids: ["contact:owned"] }), []);
+  // Sprint 0116: a contact never changes owner (sync collection); another account's contact is simply not accessible.
+  await store.upsertRecord({ ...contactRecord, recordId: "contact:foreign", sourceId: "contact:foreign", userId: "other", payload: { ...contactRecord.payload, id: "contact:foreign" } });
+  assert.deepEqual(await reader.accessibleIds({ actorId: owner, kind: "contact", ids: ["contact:foreign"] }), []);
+  assert.deepEqual(await reader.accessibleIds({ actorId: "other", kind: "contact", ids: ["contact:foreign"] }), ["contact:foreign"]);
   assert.deepEqual(await reader.accessibleIds({ actorId: owner, kind: "note", ids: [note.id, "missing"] }), [note.id]);
   assert.deepEqual(await reader.accessibleIds({ actorId: "other", kind: "note", ids: [note.id] }), []);
   assert.deepEqual(await createPersonalScheduleAssociationReader({ store, workspaceId: "other-workspace" }).accessibleIds({ actorId: owner, kind: "note", ids: [note.id] }), []);

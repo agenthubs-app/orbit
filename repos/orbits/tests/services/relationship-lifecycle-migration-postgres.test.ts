@@ -3,7 +3,7 @@ import test from "node:test";
 import { lifecycleMigrationHash } from "../../features/connections/lifecycle/migration-plan";
 import { createPostgresLifecycleMigrationRepository } from "../../features/connections/lifecycle/migration-repository";
 import type { TransactionalPostgresClient, TransactionalSqlExecutor } from "../../shared/storage/transactional-postgres";
-import { testRawWrite } from "../support/sync-revision-fixture";
+import { testRawWrite, testReseedOwner } from "../support/sync-revision-fixture";
 import { lifecycleMigrationDatabaseTest as databaseTest, lifecycleMigrationFixtureCommand as command, lifecycleMigrationFixtureRecord as record, migrationActorId as actorId, migrationManifest as manifest, migrationNow as now, migrationWorkspaceId as workspaceId, withLifecycleMigrationDatabase as withDatabase } from "../support/lifecycle-migration-fixture";
 
 const repository = (client: TransactionalPostgresClient) => createPostgresLifecycleMigrationRepository({ client, workspaceId });
@@ -25,8 +25,8 @@ test("migration dry-run reads a complete source snapshot and never writes", data
 }));
 
 test("reviewed minimal patches, owner repair, audit and receipt commit atomically", databaseTest, async () => withDatabase(async ({ client, insert, records, receiptCount }) => {
-  await client.query("update orbit_records set user_id=null where collection_name='contacts'");
-  await client.query("update orbit_records set payload=payload || '{\"stage\":\"legacy\"}'::jsonb where collection_name='connections'");
+  await testReseedOwner(client, "contacts", "true", null);
+  await testRawWrite(client, "connections", "update orbit_records set payload=payload || '{\"stage\":\"legacy\"}'::jsonb where collection_name='connections'");
   await insert(record("contact_detail_states", "detail:a", { actorId, contactId: "contact:a", status: "needs_follow_up", updatedAt: "2026-09-09T01:01:00Z", private: "PRIVATE NOTES" }));
   await insert(record("tasks", "task:a", { id: "task:a", connectionId: "connection:a", contactId: "contact:a", relationshipPurpose: "follow_up", status: "open", title: "PRIVATE TASK", dueAt: "2026-09-12T10:00:00+09:00", createdAt: now, updatedAt: now }));
   await insert({ ...record("contacts", "contact:a", { id: "contact:a", private: "PRIVATE OTHER WORKSPACE" }), workspaceId: "workspace:other" });
@@ -59,7 +59,7 @@ test("source drift including sub-millisecond metadata invalidates external revie
   const repo = repository(client);
   for (const sql of ["update orbit_records set payload=payload || '{\"private\":\"changed\"}'::jsonb where collection_name='contacts'", "update orbit_records set updated_at=updated_at + interval '1 microsecond' where collection_name='contacts'"]) {
     const input = command(await repo.dryRun(manifest));
-    await client.query(sql);
+    await testRawWrite(client, "contacts", sql);
     const changed = await records();
     await assert.rejects(repo.apply(input), { code: "INVALID_REVIEW" });
     assert.deepEqual(await records(), changed);
@@ -75,7 +75,7 @@ test("blocked plans, wrong review identities and foreign references never write"
     await assert.rejects(repo.apply({ ...input, ...patch }));
     assert.deepEqual(await records(), before);
   }
-  await client.query("update orbit_records set payload=payload-'activeGoal' where collection_name='connections'");
+  await testRawWrite(client, "connections", "update orbit_records set payload=payload-'activeGoal' where collection_name='connections'");
   await assert.rejects(repo.apply(command(await repo.dryRun(manifest))), { code: "REVIEW_REQUIRED" });
   await insert(record("tasks", "task:foreign", { id: "task:foreign", connectionId: "connection:a", private: "PRIVATE FOREIGN" }, "actor:other"));
   const blocked = await repo.dryRun(manifest);
@@ -97,7 +97,7 @@ test("same-run replay returns the original receipt and different commands confli
   await assert.rejects(repo.apply({ ...input, review: { ...input.review, sourceHash: "0".repeat(64) } }), { code: "CONFLICT" });
   await assert.rejects(repo.apply({ ...input, now: "2026-09-09T01:00:01.000Z" }), { code: "CONFLICT" });
   assert.equal(await receiptCount(), 1);
-  await client.query("update orbit_records set payload=payload-'activeGoal' where collection_name='connections'");
+  await testRawWrite(client, "connections", "update orbit_records set payload=payload-'activeGoal' where collection_name='connections'");
   assert.deepEqual(await cold.apply(input), { ...first, replayed: true });
   assert.equal((await repo.dryRun(manifest)).applyEligible, false);
 }));

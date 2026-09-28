@@ -16,7 +16,11 @@
  * the lock is simply an unused advisory lock).
  */
 
-export const SYNC_COLLECTION_NAMES = ["notes", "tasks", "personal_schedule_items"] as const;
+// Sprint 0116: the contacts domain (contacts plus the connections, detail
+// states and sources a contact row is built from) syncs to devices, so its
+// writers take the same lock; otherwise a contact revision could commit behind
+// a device's bookmark and never be sent.
+export const SYNC_COLLECTION_NAMES = ["notes", "tasks", "personal_schedule_items", "contacts", "connections", "contact_detail_states", "evidence"] as const;
 export type SyncCollectionName = (typeof SYNC_COLLECTION_NAMES)[number];
 
 export function isSyncCollection(collectionName: string): collectionName is SyncCollectionName {

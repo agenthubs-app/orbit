@@ -1,4 +1,4 @@
-import { writeAsOwner } from "../support/live-record-owner-fixture";
+import { seedAsOwner, writeAsOwner } from "../support/live-record-owner-fixture";
 import assert from "node:assert/strict";
 import test, { type TestContext } from "node:test";
 import { act, create, type ReactTestRenderer } from "react-test-renderer";
@@ -156,7 +156,7 @@ test("real PATCH retries after a lost acknowledgement preserve remote tags and u
   const workspaceId = "workspace:tag-editor";
   const actorId = "actor:tag-editor";
   const contactId = "contact_078";
-  await seedGeneratedRelationshipFixturesIntoLiveStore({ store, workspaceId });
+  await seedGeneratedRelationshipFixturesIntoLiveStore({ store: seedAsOwner(store, actorId, ["contacts", "connections", "evidence"]), workspaceId });
   for (const collectionName of ["contacts", "connections", "evidence"]) {
     for (const record of await store.listRecords({ limit: "unbounded", collectionName, workspaceId })) {
       await writeAsOwner(store, { ...record, userId: actorId, payload: { ...record.payload, accountId: actorId } });

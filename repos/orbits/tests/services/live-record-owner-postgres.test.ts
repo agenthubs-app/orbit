@@ -12,7 +12,7 @@ import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-st
 import { ORBIT_RECORDS_SCHEMA_SQL } from "../../shared/storage/migrations";
 import { createPostgresLiveRecordStore } from "../../shared/storage/postgres-live-record-store";
 import { createTransactionalPostgresClient } from "../../shared/storage/transactional-postgres";
-import { STRICT_SYNC_REVISION_SQL } from "../support/sync-revision-fixture";
+import { STRICT_SYNC_REVISION_SQL, testReseedOwner } from "../support/sync-revision-fixture";
 
 // Sprint 0113, SC-02: the universal upsert used to write `user_id =
 // excluded.user_id` on conflict, so an update that did not pass the owner
@@ -119,11 +119,18 @@ test("an intended owner change goes through reassignRecordOwner; a registered sy
   const { store, pool } = await database(t);
   const reassign = (store as { reassignRecordOwner?: Reassign }).reassignRecordOwner;
   assert.equal(typeof reassign, "function", "the store has an explicit owner-change interface");
-  await store.upsertRecord(record("contacts", "c1", A, { v: 1 }));
-  const moved = await reassign!({ workspaceId: W, collectionName: "contacts", recordId: "c1", fromUserId: A, toUserId: B, updatedAt: T1 });
+  await store.upsertRecord(record("organizers", "o1", A, { v: 1 }));
+  const moved = await reassign!({ workspaceId: W, collectionName: "organizers", recordId: "o1", fromUserId: A, toUserId: B, updatedAt: T1 });
   assert.equal(moved?.userId, B);
-  assert.equal(await owner(pool, "contacts", "c1"), B);
-  assert.equal(await reassign!({ workspaceId: W, collectionName: "contacts", recordId: "c1", fromUserId: A, toUserId: B, updatedAt: T1 }), null, "a stale expected owner changes nothing");
+  assert.equal(await owner(pool, "organizers", "o1"), B);
+  assert.equal(await reassign!({ workspaceId: W, collectionName: "organizers", recordId: "o1", fromUserId: A, toUserId: B, updatedAt: T1 }), null, "a stale expected owner changes nothing");
+  // Sprint 0116: contacts are a sync domain; no registered handler may re-own one.
+  await store.upsertRecord(record("contacts", "c1", A, { v: 1 }));
+  await assert.rejects(
+    () => reassign!({ workspaceId: W, collectionName: "contacts", recordId: "c1", fromUserId: A, toUserId: B, updatedAt: T1 }),
+    (error: unknown) => (error as { code?: string }).code === "SYNC_OWNER_CHANGE_UNREGISTERED",
+  );
+  assert.equal(await owner(pool, "contacts", "c1"), A);
   await store.upsertRecord(record("notes", "n1", A, { v: 1 }));
   await assert.rejects(
     () => reassign!({ workspaceId: W, collectionName: "notes", recordId: "n1", fromUserId: A, toUserId: B, updatedAt: T1 }),
@@ -152,12 +159,13 @@ test("the appointment reminder projector and the encounter projector never move 
   assert.equal(await owner(pool, "notifications", "reminder-1"), A);
 
   const state = { actorId: A, contactId: "contact-1", notes: [], status: "met", tags: [], updatedAt: T1 };
-  await writeContactDetail!({ existingCreatedAt: null, runtime, state, transaction: client });
+  // The projector always writes inside its transaction (the commit-order lock lives there).
+  await client.transaction((tx) => writeContactDetail!({ existingCreatedAt: null, runtime, state, transaction: tx }));
   const recordId = "contact-detail:actor%3Aa:contact-1";
   assert.equal(await owner(pool, "contact_detail_states", recordId), A);
   // A foreign row under the same id (never produced by the product) must not be taken over.
-  await pool.query("update orbit_records set user_id = $1 where record_id = $2", [B, recordId]);
-  await assert.rejects(() => writeContactDetail!({ existingCreatedAt: null, runtime, state, transaction: client }), (error: unknown) => (error as { code?: string }).code === "LIVE_RECORD_OWNER_CONFLICT");
+  await testReseedOwner(client, "contact_detail_states", "record_id = $1", B, [recordId]);
+  await assert.rejects(() => client.transaction((tx) => writeContactDetail!({ existingCreatedAt: null, runtime, state, transaction: tx })), (error: unknown) => (error as { code?: string }).code === "LIVE_RECORD_OWNER_CONFLICT");
   assert.equal(await owner(pool, "contact_detail_states", recordId), B);
 });
 

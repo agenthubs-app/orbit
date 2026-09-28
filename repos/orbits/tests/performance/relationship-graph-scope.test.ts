@@ -5,6 +5,7 @@ import { Pool } from "pg";
 import { createPostgresRelationshipScopeReader } from "../../shared/storage/relationship-read-scope";
 import { createStorageFollowupTaskProvider } from "../../features/followups/storage/followup-live-record-provider";
 import { createStorageReminderScheduleNotificationProvider } from "../../features/notifications/storage/reminder-notification-live-record-provider";
+import { createStorageAppBootstrapProvider } from "../../features/bootstrap/storage/bootstrap-live-record-provider";
 import { ORBIT_RECORDS_SCHEMA_SQL } from "../../shared/storage/migrations";
 import { createPostgresLiveRecordStore } from "../../shared/storage/postgres-live-record-store";
 import { createTransactionalPostgresClient } from "../../shared/storage/transactional-postgres";
@@ -70,6 +71,57 @@ test("followup and legacy scope preserve complete legal graphs without foreign-d
       const read = createPostgresRelationshipScopeReader({ client, workspaceId, purpose });
       assert.ok(!(await read(actorId)).connections.some(record => record.recordId === "forged-owner"));
       assert.deepEqual(await read(""), { tasks: [], contacts: [], connections: [], evidence: [], notifications: [] });
+    }
+    console.log(JSON.stringify({ kind: "local_synthetic_result_json_not_neon_billing", costs: ledger.book() }));
+  } finally {
+    await client.close();
+    await admin.query(`drop schema if exists ${schema} cascade`);
+    await admin.end();
+  }
+});
+
+// Sprint 0116 (coordinator item from 0114): the follow-up, reminder and bootstrap
+// reads fetch only the sources the rows they show cite. Sources the account owns
+// but nothing here cites (0114 left 2,320 uncited rows in the dev database) must
+// not make these reads grow: same result, same rows, same bytes.
+test("sources the account owns but nothing cites are never read by the follow-up, reminder or bootstrap reads", {
+  skip: !databaseUrl, timeout: 120_000,
+}, async () => {
+  assert.ok(databaseUrl);
+  assert.ok(["localhost", "127.0.0.1"].includes(new URL(databaseUrl).hostname), "Local PostgreSQL only");
+  const schema = `graph_cited_${randomUUID().replaceAll("-", "")}`;
+  const admin = new Pool({ connectionString: databaseUrl, max: 1 });
+  const pool = new Pool({ connectionString: databaseUrl, max: 2, options: `-c search_path=${schema} -c statement_timeout=20000` });
+  const ledger = createReadCostLedger();
+  const client = createTransactionalPostgresClient({ connectionString: databaseUrl, pool, readMetrics: ledger.observer });
+  const workspaceId = "workspace:scope-cited", actorId = "account_orbit_generated";
+  const store = createPostgresLiveRecordStore({ client });
+  try {
+    await admin.query(`create schema ${schema}`);
+    await client.query(ORBIT_RECORDS_SCHEMA_SQL);
+    await seedGeneratedRelationshipFixturesIntoLiveStore({ store, workspaceId, now: () => "2026-09-18T00:00:00.000Z" });
+    const followups = createStorageFollowupTaskProvider({ store, workspaceId,
+      scopeRecordReader: createPostgresRelationshipScopeReader({ client, workspaceId, purpose: "followups" }) });
+    const legacy = createStorageReminderScheduleNotificationProvider({ store, workspaceId,
+      scopeRecordReader: createPostgresRelationshipScopeReader({ client, workspaceId, purpose: "legacy-notifications" }) });
+    const bootstrap = createStorageAppBootstrapProvider({ sqlClient: client, store, workspaceId });
+    const chains = [
+      ["followups", () => followups.readFollowupGraph(actorId)],
+      ["legacy", () => legacy.readReminderNotificationGraph(actorId)],
+      ["bootstrap", () => bootstrap.readBootstrapGraphForAccount!(actorId)],
+    ] as const;
+    const before = new Map<string, Awaited<ReturnType<typeof ledger.measure>>>();
+    for (const [name, read] of chains) before.set(name, await ledger.measure(`${name}.before-uncited`, async () => await read()));
+    // Owned by the account, cited by nothing it reads.
+    await client.query(`insert into orbit_records (workspace_id,collection_name,record_id,user_id,source_type,source_id,payload,created_at,updated_at)
+      select $1,'evidence','evidence:uncited:'||n,$2,'manual','test',
+      jsonb_build_object('id','evidence:uncited:'||n,'sourceType','manual','sourceId','test','summary',repeat('u',2048),'occurredAt','2026-09-18T00:00:00.000Z','confidence',0.5,'createdBy',$2::text),now(),now()
+      from generate_series(1,500) n`, [workspaceId, actorId]);
+    for (const [name, read] of chains) {
+      const after = await ledger.measure(`${name}.after-uncited`, async () => await read());
+      const expected = before.get(name)!;
+      assert.equal(canonical(after.result), canonical(expected.result), `${name}: same result`);
+      assert.deepEqual(after.cost, expected.cost, `${name}: uncited owned sources are not read`);
     }
     console.log(JSON.stringify({ kind: "local_synthetic_result_json_not_neon_billing", costs: ledger.book() }));
   } finally {

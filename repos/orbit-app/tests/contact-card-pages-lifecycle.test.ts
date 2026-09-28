@@ -6,6 +6,8 @@ import { chromium, type Browser, type Page } from "playwright";
 let browser: Browser;
 let script: string;
 const fixture = `
+// Sprint 0116: the device mirror is not the source here; these tests cover the network pages.
+export const useLocalContacts = () => ({ available: false, rows: [], freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh() {} });
 import {useSyncExternalStore} from 'react';
 let revision=0;const listeners=new Set();
 const state=window.fixture={actor:'a',signedIn:true,cookieHeader:'',baseUrl:'https://orbit.test',query:'',requests:[],pending:[],snapshots:0,
@@ -25,7 +27,7 @@ test.before(async () => {
     import {useContactCardPages} from './src/hooks/useContactCardPages';
     function App(){const s=useFixture();const r=useContactCardPages({query:s.query});return <><output aria-label="state">{r.state.kind}</output><output aria-label="total">{r.summary?.total??'unknown'}</output><output aria-label="names">{r.page?.items.map(c=>c.displayName).join(',')??''}</output><button onClick={r.nextPage} disabled={!r.page?.hasMore}>next</button><button onClick={r.firstPage}>first</button><button onClick={r.state.refresh}>refresh</button></>};createRoot(document.getElementById('root')).render(<App/>);
   ` }, bundle: true, write: false, format: "iife", jsx: "automatic", define: { "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" }, plugins: [{ name: "boundaries", setup(plugin) {
-    plugin.onResolve({ filter: /^fixture$|\/(ApiBaseUrlProvider|AuthSessionProvider|snapshot-store)$/ }, () => ({ path: "fixture", namespace: "pages" }));
+    plugin.onResolve({ filter: /^fixture$|\/(ApiBaseUrlProvider|AuthSessionProvider|snapshot-store|useLocalContacts)$/ }, () => ({ path: "fixture", namespace: "pages" }));
     plugin.onLoad({ filter: /.*/, namespace: "pages" }, () => ({ contents: fixture, loader: "jsx", resolveDir: process.cwd() }));
   } }] });
   script = bundle.outputFiles[0]!.text; browser = await chromium.launch({ headless: true });

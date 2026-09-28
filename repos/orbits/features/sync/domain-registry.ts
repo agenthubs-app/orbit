@@ -17,8 +17,8 @@ import type { SyncChangeKind } from "../../shared/contract/sync";
  *
  * Domain ids match the App's LEGACY_DOMAINS so lease grants bind directly to
  * its read scopes. Sprint 0115 adds the first derived domains (the registered
- * attendee's events, EVENT_SYNC_DOMAINS); contacts arrive with their own
- * manual in 0116.
+ * attendee's events, EVENT_SYNC_DOMAINS); sprint 0116 adds the contacts
+ * domain (CONTACT_SYNC_DOMAINS), a contact row built from four collections.
  */
 export const SYNC_REGISTRY_VERSION = 2;
 // 2 (sprint 0108): personal-schedule pages carry the full personal DTO and a
@@ -93,7 +93,23 @@ export interface EventDerivedSyncSource {
   immutableTables: readonly string[];
 }
 
-export type SyncDomainSource = OrbitRecordsSyncSource | DedicatedTableSyncSource | EventDerivedSyncSource;
+/**
+ * Contact graph source (sprint 0116): one row per contact the owner holds
+ * (orbit_records contacts, user_id = owner), sent together with its
+ * relationships (connections), the owner's detail state and the sources
+ * (evidence) the contact and its relationships cite — every one of them owned
+ * by the same user_id. A row's revision is the greatest sync_revision of the
+ * rows it is built from, so an edit to any of them resends it; a soft-deleted
+ * contact is sent as a delete (features/sync/contact-domain-reader.ts).
+ */
+export interface ContactGraphSyncSource {
+  kind: "contact_graph";
+  collectionName: "contacts";
+  /** The primary collection and every attachment collection; all are owner guarded and take the commit-order lock. */
+  collections: readonly string[];
+}
+
+export type SyncDomainSource = OrbitRecordsSyncSource | DedicatedTableSyncSource | EventDerivedSyncSource | ContactGraphSyncSource;
 
 export interface SyncDomainDefinition {
   domainId: string;
@@ -149,6 +165,30 @@ export const RECORD_SYNC_DOMAINS: readonly SyncDomainDefinition[] = [
       "details", "contactId", "eventId", "meetingId", "evidenceIds", "occurrenceExceptions",
     ],
     source: { kind: "orbit_records", collectionName: "personal_schedule_items", changeKind: "personal_schedule" },
+  },
+];
+
+/**
+ * Sprint 0116 (offline 1b): the account's contacts. The payload is what the
+ * App's contact screens read: the list card (the server's own card SQL), the
+ * detail state's tags and the search text for the device's local search
+ * (shared/contract/contact-local-directory.ts), and the contact detail (the
+ * server's detail read, without provenance or write flags). No record metadata
+ * (provider, source rows, capture internals) leaves the server.
+ */
+export const CONTACT_SYNC_DOMAINS: readonly SyncDomainDefinition[] = [
+  {
+    domainId: "contacts",
+    exposure: "device",
+    ownership: OWNER_COLUMN,
+    visibilityInputs: ["user_id", "collection_name"],
+    attachments: [
+      { collectionName: "connections", join: "payload.contactId = contact payload.id, same user_id (and payload.accountId)", field: "card, detail, search" },
+      { collectionName: "contact_detail_states", join: "payload.contactId = contact payload.id, same user_id (payload.actorId = owner)", field: "tags, detail" },
+      { collectionName: "evidence", join: "payload.id cited by the contact's or its connections' payload.evidenceIds, same user_id; an uncited, owner-less or foreign row is never sent", field: "detail, search" },
+    ],
+    fields: ["id", "card", "tags", "search", "detail"],
+    source: { kind: "contact_graph", collectionName: "contacts", collections: ["contacts", "connections", "contact_detail_states", "evidence"] },
   },
 ];
 
@@ -232,7 +272,7 @@ export const EVENT_MEMBERSHIP_PROBE_DOMAIN: SyncDomainDefinition = {
 };
 
 /** Every device domain, leased to each authorized account. */
-export const SYNC_DOMAINS: readonly SyncDomainDefinition[] = [...RECORD_SYNC_DOMAINS, ...EVENT_SYNC_DOMAINS];
+export const SYNC_DOMAINS: readonly SyncDomainDefinition[] = [...RECORD_SYNC_DOMAINS, ...CONTACT_SYNC_DOMAINS, ...EVENT_SYNC_DOMAINS];
 
 /** Every declared manual, leased or not: the owner/identity audit covers all of them. */
 export const DECLARED_SYNC_DOMAINS: readonly SyncDomainDefinition[] = [...SYNC_DOMAINS, EVENT_MEMBERSHIP_PROBE_DOMAIN];
@@ -295,12 +335,13 @@ export function findSyncDomain(domainId: string, domains: readonly SyncDomainDef
   return domains.find((domain) => domain.domainId === domainId) ?? null;
 }
 
-/** orbit_records collections whose owner is a visibility input: the domains' own and their attachments. */
+/** orbit_records collections whose owner is a visibility input: the domains' own and their attachments (sprint 0116: the contact graph's four). */
 export function ownerGuardedCollections(domains: readonly SyncDomainDefinition[] = DECLARED_SYNC_DOMAINS): string[] {
   const names = new Set<string>();
   for (const domain of domains) {
-    if (domain.source.kind !== "orbit_records") continue;
+    if (domain.source.kind !== "orbit_records" && domain.source.kind !== "contact_graph") continue;
     names.add(domain.source.collectionName);
+    if (domain.source.kind === "contact_graph") for (const name of domain.source.collections) names.add(name);
     for (const attachment of domain.attachments) names.add(attachment.collectionName);
   }
   return [...names].sort();
