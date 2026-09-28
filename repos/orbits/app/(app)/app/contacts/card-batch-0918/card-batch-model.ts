@@ -9,6 +9,7 @@ import type { IngestItemDTO } from "../../../../../features/acquisition/business
 import {
   INGEST_V2_FIELDS,
   type IngestV2CardDraft,
+  type IngestCardGroupingItem,
   type IngestV2CardViewModel,
   type IngestV2Field,
 } from "../ingest-v2/ingest-v2-route-view-model";
@@ -111,12 +112,12 @@ export function isAutoMergeEligible(card: IngestV2CardViewModel, draft: IngestV2
     && !industryNeedsReview(draft);
 }
 
-export function isCardSkipped(card: IngestV2CardViewModel): boolean {
+export function isCardSkipped(card: IngestV2CardViewModel<IngestCardGroupingItem>): boolean {
   return card.items.length > 0 && card.items.every(item => item.status === "skipped" || item.status === "excluded");
 }
 
 /** 需要人看的卡：可复核（含识别失败可手填的）、未确认、未跳过、不是这次自动导入成功的。 */
-export function needsReview(card: IngestV2CardViewModel, autoImported: ReadonlySet<string>): boolean {
+export function needsReview(card: IngestV2CardViewModel<IngestCardGroupingItem>, autoImported: ReadonlySet<string>): boolean {
   if (autoImported.has(card.cardId)) return false;
   if (card.allConfirmed || isCardSkipped(card)) return false;
   return card.reviewable || card.invalidStructure || card.hasTerminalFailure;
@@ -144,11 +145,11 @@ export function parseCardBatchLedger(raw: string | null): CardBatchLedger {
  * 队列 = 需要人看的卡 + 用户确认过的卡 + 用户跳过的卡，但不含这次自动导入的；
  * 待确认 = 队列里未确认、未跳过、也没被「稍后处理」的卡。
  */
-export function cardReviewQueue(cards: readonly IngestV2CardViewModel[], ledger: CardBatchLedger) {
+export function cardReviewQueue<TCard extends IngestV2CardViewModel<IngestCardGroupingItem>>(cards: readonly TCard[], ledger: CardBatchLedger) {
   const autoSet = new Set(ledger.auto);
   const laterSet = new Set(ledger.later);
   const queue = cards.filter(card => !autoSet.has(card.cardId) && (needsReview(card, autoSet) || ledger.user.includes(card.cardId) || (isCardSkipped(card) && card.items.some(item => item.status === "skipped"))));
-  const isHandled = (card: IngestV2CardViewModel) => card.allConfirmed || isCardSkipped(card) || laterSet.has(card.cardId);
+  const isHandled = (card: TCard) => card.allConfirmed || isCardSkipped(card) || laterSet.has(card.cardId);
   return { isHandled, laterSet, pending: queue.filter(card => !isHandled(card)), queue };
 }
 

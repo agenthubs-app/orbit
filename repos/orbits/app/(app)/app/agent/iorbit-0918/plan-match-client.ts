@@ -8,7 +8,8 @@
  * - `POST /api/agent/plans/items/:itemId/interaction`   「约 TA」行动上的「记一次互动」
  * - `POST /api/agent/plans/items/:itemId/draft`         「起草邮件」：点击才请求，返回可编辑草稿（不发送）
  */
-import { newPlanIdempotencyKey, PlanClientError } from "./iorbit-plan-client";
+import { sharedRead } from "../../orbit-shared-read";
+import { invalidatePlanReads, newPlanIdempotencyKey, PLAN_CANDIDATES_URL, PlanClientError } from "./iorbit-plan-client";
 
 /** 与 `features/plans/matching-service.ts` 的 `PlanMatchCandidateView` 同形（页面自有的视图类型）。 */
 export interface PlanMatchCandidate {
@@ -65,9 +66,12 @@ function asList(value: unknown): PlanMatchList {
   return value;
 }
 
+/** W0021：同账号并发读取共享一个请求（`sharedRead`）。 */
 export async function fetchPlanMatches(signal?: AbortSignal): Promise<PlanMatchList> {
-  const response = await fetch("/api/agent/plans/candidates", { cache: "no-store", signal });
-  return asList(await readEnvelope<unknown>(response));
+  return sharedRead(PLAN_CANDIDATES_URL, async (shared) => {
+    const response = await fetch(PLAN_CANDIDATES_URL, { cache: "no-store", signal: shared });
+    return asList(await readEnvelope<unknown>(response));
+  }, signal);
 }
 
 export async function runPlanMatchForBatch(batchId: string, signal?: AbortSignal): Promise<PlanMatchList> {
@@ -102,6 +106,8 @@ export async function decidePlanMatch(candidateId: string, decision: "accept" | 
     method: "POST",
   });
   const data = await readEnvelope<{ link: unknown | null; status?: unknown }>(response);
+  // 接受会改计划（关联 + 「约 TA」行动）；两种决定都改候选列表。
+  invalidatePlanReads({ candidates: true });
   // 服务端对候选做严格 CAS：返回的状态必须就是这次的决定，否则当作失败（不显示成功）。
   const expected = decision === "accept" ? "accepted" : "dismissed";
   if (data.status !== expected) throw new PlanClientError(`This suggestion was already ${String(data.status ?? "handled")}.`);
@@ -115,7 +121,9 @@ export async function linkContactToNeed(needItemId: string, contactId: string, i
     headers: { "content-type": "application/json" },
     method: "POST",
   });
-  return actionFrom(await readEnvelope<unknown>(response));
+  const action = actionFrom(await readEnvelope<unknown>(response));
+  invalidatePlanReads({ candidates: true });
+  return action;
 }
 
 export async function recordMatchInteraction(actionItemId: string, idempotencyKey = newPlanIdempotencyKey("plan-interaction")): Promise<void> {
@@ -125,6 +133,7 @@ export async function recordMatchInteraction(actionItemId: string, idempotencyKe
     method: "POST",
   });
   await readEnvelope<unknown>(response);
+  invalidatePlanReads();
 }
 
 export interface PlanMatchEmailDraft {

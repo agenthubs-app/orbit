@@ -10,13 +10,21 @@
  */
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 
 import { useOrbitLanguage } from "../../orbit-language-context";
+import { useSharedReadAccount } from "../../orbit-shared-read";
 import { CardBatchReminders } from "./card-batch-ui";
-import { getPendingCardsReaderState, listActiveBatches, subscribePendingCardsReaderState, type PendingCardsReaderState } from "./card-batch-store";
+import {
+  dispatchCardBatchChange,
+  getPendingCardsReaderState,
+  listActiveBatches,
+  subscribePendingCardsReaderState,
+  type CardBatchChangeDetail,
+  type PendingCardsReaderState,
+} from "./card-batch-store";
 import { useCardBatch } from "./use-card-batch";
 
 export const CARD_BATCH_HOST_YIELD_PREFIXES = ["/app/profile/onboarding", "/app/start", "/app/contacts/new", "/app/account"] as const;
@@ -48,6 +56,8 @@ export function CardBatchHost() {
   const { t, preserveHref } = useOrbitLanguage();
   const pathname = usePathname() ?? "";
   const { status } = useSession();
+  // W0021：登记表与浏览器端读取按账号隔离，读登记表之前先同步账号。
+  useSharedReadAccount();
   const [batchId, setBatchId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -67,12 +77,15 @@ export function CardBatchHost() {
   const batch = useCardBatch(yielded ? null : batchId, t);
   // 批次状态、自动导入或待确认数变化时广播一次，让只读的今日要事（use-pending-cards）重新读取。
   // 自己也监听这个事件，但重读的是同一个批次 id，不会触发重渲染。
+  // W0021：事件带上宿主看到的状态与计数（`CardBatchChangeDetail`）；今日要事已经读到同样的值时不再重读。
   const confirmedCount = batch.cards.filter(card => card.allConfirmed).length;
   const signature = yielded || !batchId || !batch.status
     ? ""
     : `${batchId}|${batch.status}|${batch.autoRunning}|${batch.pending.length}|${confirmedCount}`;
+  const changeDetail = useRef<CardBatchChangeDetail | null>(null);
+  changeDetail.current = batchId && batch.status ? { batchId, confirmed: confirmedCount, pending: batch.pending.length, status: batch.status } : null;
   useEffect(() => {
-    if (signature) window.dispatchEvent(new Event("orbit-card-batches"));
+    if (signature) dispatchCardBatchChange(changeDetail.current);
   }, [signature]);
   if (yielded || !batchId) return null;
   return (

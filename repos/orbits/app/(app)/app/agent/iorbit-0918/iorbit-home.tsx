@@ -79,6 +79,7 @@ import {
 } from "./iorbit-plan-client";
 import { fetchPlanMatches, withoutCandidate, type PlanMatchCandidate, type PlanMatchList } from "./plan-match-client";
 import { PlanMatchDialog, PlanMatchSheet } from "./plan-match-sheet";
+import { useSharedReadAccount } from "../../orbit-shared-read";
 import { usePendingCards } from "./use-pending-cards";
 
 const TZ = "Asia/Tokyo";
@@ -272,6 +273,8 @@ export function IOrbitHome({
   // W0011：本机进行中批次里待确认的名片（只读 GET；示例模式不读，恒为就绪）。
   // 读取中不算就绪、读不到算部分数据缺失：都不能给出「今天没有要紧的事」。
   const pendingCardsState = usePendingCards(!demoActive);
+  // W0021：浏览器端读取按账号隔离（换账号、登出时清掉进行中的读取）。
+  useSharedReadAccount();
   const pendingCards = pendingCardsState.batches;
 
   // 时钟每分钟前进一次：倒计时、2 小时窗口、「现在」线和跨午夜切日都跟着走。
@@ -361,7 +364,8 @@ export function IOrbitHome({
   useEffect(() => {
     if (typeof window === "undefined" || demoActive) return;
     const controller = new AbortController();
-    void fetchCurrentPlan(controller.signal)
+    // W0021：首页只要计划与条目（`?view=home`，服务端不读进展记录）。
+    void fetchCurrentPlan(controller.signal, { view: "home" })
       .then((value) => setPlan(value))
       .catch(() => {
         if (!controller.signal.aborted) setPlan("unavailable");
@@ -1496,7 +1500,7 @@ export function IOrbitHome({
               setMatches((current) => (current ? withoutCandidate(current, candidateId) : current));
               // 确认后本周多了一条「约 TA」：重新读计划，本周推进跟着更新。
               if (decision === "accept") {
-                void fetchCurrentPlan()
+                void fetchCurrentPlan(undefined, { view: "home" })
                   .then((value) => setPlan(value))
                   .catch(() => undefined);
               }

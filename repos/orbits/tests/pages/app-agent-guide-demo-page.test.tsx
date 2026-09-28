@@ -356,11 +356,11 @@ function loadPlanPage(t: TestContext, scenario: PlanPageScenario) {
         return {
           mode: "mock",
           service: {
-            enterCurrentPhase: async () => {
-              calls.push({ input: actorId, operation: "phase" });
-              return { entered: null, refined: [] };
+            // W0021：计划页与 API 同一个入口（阶段判定在里面），只调这一次。
+            getCurrentView: async (options?: { includeLog?: boolean }) => {
+              calls.push({ input: actorId, operation: options?.includeLog ? "view+log" : "view" });
+              return snapshot;
             },
-            getCurrent: async () => snapshot,
             reanalysisQuota: async () => {
               calls.push({ input: actorId, operation: "quota" });
               return { limit: 1, month: "2026-09", remaining: 1, used: 0 };
@@ -396,7 +396,9 @@ function loadPlanPage(t: TestContext, scenario: PlanPageScenario) {
   };
   const pagePath = join(root, "app/(app)/app/agent/plan/page.tsx");
   const guideViewPath = join(root, "app/(app)/app/_demo/demo-guide-view.ts");
-  const ids = [...Object.keys(modules), pagePath, guideViewPath].map((id) => require.resolve(id));
+  // W0021：计划读取移到 read-current-plan.ts，它也要按本用例的桩重新加载。
+  const readPlanPath = join(root, "app/(app)/app/agent/plan/read-current-plan.ts");
+  const ids = [...Object.keys(modules), pagePath, guideViewPath, readPlanPath].map((id) => require.resolve(id));
   const before = new Map(ids.map((id) => [id, require.cache[id]]));
   t.after(() => {
     for (const [id, previous] of before) {
@@ -416,6 +418,7 @@ function loadPlanPage(t: TestContext, scenario: PlanPageScenario) {
   }
   delete require.cache[require.resolve(pagePath)];
   delete require.cache[require.resolve(guideViewPath)];
+  delete require.cache[require.resolve(readPlanPath)];
   return { calls, page: require(pagePath).default as () => Promise<ReactElement>, snapshot };
 }
 
@@ -434,8 +437,9 @@ function planPropsOf(tree: ReactElement): Record<string, unknown> {
 test("W0014 plan page, flag off: the real plan and names are read, no guide source is touched, props as before", async (t) => {
   const { calls, page, snapshot } = loadPlanPage(t, { flag: undefined });
   const props = planPropsOf(await page());
-  // W0012：读计划前惰性判定进入新阶段；另读额度与资料里的目标（计划未到期，不读期间联系人）。
-  assert.deepEqual(calls.map((call) => call.operation), ["plan", "phase", "contact-names", "quota", "profile"]);
+  // W0012：读计划前惰性判定进入新阶段（W0021：与读取合在 getCurrentView 里，计划页带进展记录）；
+  // 另读额度与资料里的目标（计划未到期，不读期间联系人）。
+  assert.deepEqual(calls.map((call) => call.operation), ["plan", "view+log", "contact-names", "quota", "profile"]);
   // W0014 的三个 props 不变，没有 `guide`；W0012 另加 `tracking`。
   assert.deepEqual(Object.keys(props).sort(), ["contactNames", "guideEnabled", "initialSnapshot", "tracking"]);
   assert.deepEqual(props.tracking, { currentGoal: "", periodContacts: null, quotaRemaining: 1 });
@@ -447,7 +451,7 @@ test("W0014 plan page, flag off: the real plan and names are read, no guide sour
 test("W0014 plan page, flag on but out of the guide: the real plan page", async (t) => {
   const { calls, page, snapshot } = loadPlanPage(t, { flag: "on", guide: "out" });
   const props = planPropsOf(await page());
-  assert.deepEqual(calls.map((call) => call.operation), ["profile", "guide", "plan", "phase", "contact-names", "quota", "profile"]);
+  assert.deepEqual(calls.map((call) => call.operation), ["profile", "guide", "plan", "view+log", "contact-names", "quota", "profile"]);
   assert.equal(props.guide, undefined);
   assert.equal(props.initialSnapshot, snapshot);
   assert.equal(props.guideEnabled, true);

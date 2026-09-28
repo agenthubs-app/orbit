@@ -379,6 +379,16 @@ export function createIngestV2BatchDetailHandler(deps: IngestV2HandlerDeps = {})
           headers: runtimeBoundaryHeaders(mode),
         });
       }
+      // W0021：今日要事数待确认只要分组与状态列（`IngestBatchCardStates`），不读识别结果等大字段。
+      if (view === "cards") {
+        const states = await runtime.repository.getBatchCardStates({ actorId, batchId: id });
+        if (!states) {
+          return jsonError(new AppError("NOT_FOUND", `batch ${id} was not found`), mode);
+        }
+        return NextResponse.json(success(states), {
+          headers: runtimeBoundaryHeaders(mode),
+        });
+      }
       const detail = await runtime.repository.getBatch({ actorId, batchId: id });
       if (!detail) {
         return jsonError(new AppError("NOT_FOUND", `batch ${id} was not found`), mode);

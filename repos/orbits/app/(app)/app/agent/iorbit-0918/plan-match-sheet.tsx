@@ -405,7 +405,8 @@ export function PlanNeedLinkPanel({ contactId, guard }: { contactId: string; gua
     if (guard?.()) return;
     setState("loading");
     try {
-      const snapshot = await fetchCurrentPlan();
+      // 只要条目（人脉需求），不要进展记录。
+      const snapshot = await fetchCurrentPlan(undefined, { view: "home" });
       const list = (snapshot?.items ?? [])
         .filter((item) => item.kind === "network_need")
         .map((item) => ({ id: item.id, linked: item.linkedContactIds.includes(contactId), title: item.title }));

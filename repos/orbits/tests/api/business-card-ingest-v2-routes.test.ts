@@ -236,6 +236,16 @@ test("v2 ingest flow: manifest → per-item upload → finalize → summary", { 
       1,
       JSON.stringify(summary),
     );
+
+    // W0021 `?view=cards`：只有分组与状态列（今日要事数待确认、活动归属用），没有识别结果与图片键。
+    const cardsResponse = await detail(new Request(`http://test/batches/${batch.id}?view=cards`), params({ id: batch.id }));
+    assert.equal(cardsResponse.status, 200);
+    const cards = await envelope(cardsResponse);
+    assert.deepEqual(Object.keys(cards.batch as object).sort(), ["createdAt", "id", "status"]);
+    const [first] = cards.items as Array<Record<string, unknown>>;
+    assert.deepEqual(Object.keys(first!).sort(), ["cardId", "cardIdentityExplicit", "confirmedContactId", "createdAt", "id", "seq", "side", "status"]);
+    const missing = await detail(new Request("http://test/batches/bcb2:missing?view=cards"), params({ id: "bcb2:missing" }));
+    assert.equal(missing.status, 404);
   });
 });
 

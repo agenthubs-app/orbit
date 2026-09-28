@@ -65,6 +65,7 @@ import {
   withServerItem,
 } from "./iorbit-plan-client";
 import { IOrbitScreenFrame } from "./iorbit-screen-frame";
+import { useSharedReadAccount } from "../../orbit-shared-read";
 import { fetchPlanMatches, withoutCandidate, type PlanMatchList } from "./plan-match-client";
 import { MatchActionButtons, PLAN_MATCH_STYLES, PlanMatchDialog, PlanMatchSheet } from "./plan-match-sheet";
 
@@ -109,6 +110,8 @@ function IOrbitPlanScreen({
   const demo = useDemoMode();
   const demoActive = demo !== null;
   const demoClock = demo?.clock;
+  // W0021：浏览器端读取按账号隔离；首帧计划来自 SSR，客户端只在写之后重读。
+  useSharedReadAccount();
   const [liveSnapshot, setSnapshot] = useState(initialSnapshot);
   // 本次打开页面后打过勾（或取消）的行动：已完成也暂留在本周列表里方便撤销，刷新后消失。
   const [sticky, setSticky] = useState<readonly string[]>([]);

@@ -24,6 +24,7 @@ import {
   IORBIT_STYLES,
 } from "../../app/(app)/app/agent/iorbit-0918/iorbit-shell";
 import { IOrbitHome } from "../../app/(app)/app/agent/iorbit-0918/iorbit-home";
+import { PENDING_CARDS_COALESCE_MS } from "../../app/(app)/app/agent/iorbit-0918/use-pending-cards";
 import { createOrbitAgentStarterViewModel } from "../../app/(app)/app/orbit-agent-route-view-model";
 import { OrbitLanguageProvider } from "../../app/(app)/app/orbit-language-context";
 import { PLAN_NOW, planSnapshotFixture } from "../support/plan-snapshot-fixture";
@@ -515,15 +516,18 @@ async function mountHome(
     });
     const batchPrefix = "/api/contact-drafts/business-card/batches/v2/";
     if (url.startsWith(batchPrefix) && options.cardBatches) {
-      const custom = await options.cardBatches.respond?.(url.slice(batchPrefix.length));
+      // W0021：今日要事只读 `?view=cards`（分组与状态列）；夹具的完整详情是它的超集。
+      const batchId = decodeURIComponent(url.slice(batchPrefix.length).replace(/\?view=cards$/, ""));
+      const custom = await options.cardBatches.respond?.(batchId);
       if (custom) return custom;
-      const found = options.cardBatches.details[url.slice(batchPrefix.length)];
+      const found = options.cardBatches.details[batchId];
       return found ? Response.json({ data: found, success: true }) : Response.json({ success: false }, { status: 404 });
     }
     if (url === "/api/guide/state" && options.guidePatch) {
       return options.guidePatch(init?.body ? JSON.parse(String(init.body)) : undefined);
     }
-    if (url === "/api/agent/plans/current" && options.plan !== undefined) {
+    // W0021：首页读 `?view=home`（不含进展记录）；联系人详情的关联弹层同样读 home 视图。
+    if ((url === "/api/agent/plans/current" || url === "/api/agent/plans/current?view=home") && options.plan !== undefined) {
       return Response.json({ data: options.plan, success: true });
     }
     if (url === "/api/agent/plans/weekly-summary" && options.weeklySummary !== undefined) {
@@ -1779,8 +1783,9 @@ test("with an active plan, 本周推进 shows the phase, week n of N, three chec
   // 账本版的进度条与「执行计划 →」不再出现。
   assert.equal(column!.findAll((node) => node.props?.className === "ir-m-bar").length, 0);
   assert.ok(!text.includes("执行计划 →"));
-  // 计划也算就绪来源之一。
-  assert.ok(mounted.calls.some((call) => call.url === "/api/agent/plans/current"));
+  // 计划也算就绪来源之一。W0021：首页只读一次 `?view=home`（不含进展记录），不读完整快照。
+  assert.equal(mounted.calls.filter((call) => call.url === "/api/agent/plans/current?view=home").length, 1);
+  assert.equal(mounted.calls.filter((call) => call.url === "/api/agent/plans/current").length, 0);
 });
 
 test("ticking a plan action on the home PATCHes W0007 optimistically and rolls back on failure", async (t) => {
@@ -1933,8 +1938,9 @@ test("W0010: plan matches become one today item ranked after critical/high signa
     .findAll((node) => node.props?.className === "ir-m-lead-title" || node.props?.className === "ir-m-brief-title")
     .map((node) => textOf(node));
   assert.ok(titlesAfter.includes("1 位新联系人可能对应你的计划"));
-  // 确认后重新读计划（本周推进跟着更新）。
-  assert.ok(mounted.calls.filter((call) => call.url === "/api/agent/plans/current").length >= 2);
+  // 确认后重新读计划（本周推进跟着更新）：冷启动一次 + 写后一次；候选列表不重读（本地移除这一条）。
+  assert.equal(mounted.calls.filter((call) => call.url === "/api/agent/plans/current?view=home").length, 2);
+  assert.equal(mounted.calls.filter((call) => call.url === "/api/agent/plans/candidates" && call.method === "GET").length, 1);
 });
 
 test("W0010: without a plan the home page never asks for plan matches", async (t) => {
@@ -2032,6 +2038,10 @@ test("W0011: the card item disappears once the batch is fully confirmed and orbi
   cardBatches.details[CARD_BATCH_ID] = cardBatchDetail([pendingCardItem("card-1", 1, "confirmed", "contact:new")]);
   await act(async () => {
     mounted.dispatch("orbit-card-batches");
+  });
+  // W0021：连续事件合并后再读（PENDING_CARDS_COALESCE_MS）。
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, PENDING_CARDS_COALESCE_MS + 20));
   });
   await mounted.settle(6);
   assert.deepEqual(todayTitles(mounted), []);
@@ -2142,4 +2152,70 @@ test("W0012: a Monday without a plan, or with an unreadable summary, keeps the t
   const unreadable = await mountHome(t, homeElement({ clock: monday }), { plan: planSnapshotFixture(), snapshot: EMPTY_SNAPSHOT });
   assert.equal(unreadable.calls.filter((call) => call.url === "/api/agent/plans/weekly-summary").length, 1);
   assert.equal(ledeOf(unreadable).props["data-orbit-home-lede"], "today");
+});
+
+/* ── W0021 SC-W0021-03：首页冷启动的请求上限与连续批次事件合并 ─────────────── */
+
+test("W0021: a cold home start reads plans/current (home view), candidates and each active batch exactly once", async (t) => {
+  const second = "batch-w0021-2";
+  const mounted = await mountHome(t, homeElement(), {
+    cardBatches: {
+      active: [CARD_BATCH_ID, second],
+      details: {
+        [CARD_BATCH_ID]: cardBatchDetail([pendingCardItem("card-1", 1)]),
+        [second]: cardBatchDetail([pendingCardItem("card-9", 1)]),
+      },
+    },
+    matches: MATCH_LIST,
+    plan: planSnapshotFixture(),
+    snapshot: EMPTY_SNAPSHOT,
+  });
+  await mounted.settle(6);
+  const count = (predicate: (call: { method: string; url: string }) => boolean) => mounted.calls.filter(predicate).length;
+  assert.equal(count((call) => call.url === "/api/agent/plans/current?view=home"), 1);
+  assert.equal(count((call) => call.url.startsWith("/api/agent/plans/current")), 1, "never the full snapshot on the home");
+  assert.equal(count((call) => call.url === "/api/agent/plans/candidates" && call.method === "GET"), 1);
+  assert.equal(count((call) => call.url.endsWith(`/${CARD_BATCH_ID}?view=cards`)), 1);
+  assert.equal(count((call) => call.url.endsWith(`/${second}?view=cards`)), 1);
+  assert.equal(count((call) => call.url.includes("/business-card/batches/") && !call.url.endsWith("?view=cards")), 0, "the full batch detail is not read");
+
+  // 连续三个登记表事件合并成一次重读（每批一次）。
+  await act(async () => {
+    mounted.dispatch("orbit-card-batches");
+    mounted.dispatch("storage");
+    mounted.dispatch("orbit-card-batches");
+  });
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, PENDING_CARDS_COALESCE_MS + 20));
+  });
+  await mounted.settle(6);
+  assert.equal(count((call) => call.url.endsWith(`/${CARD_BATCH_ID}?view=cards`)), 2);
+  assert.equal(count((call) => call.url.endsWith(`/${second}?view=cards`)), 2);
+  // 计划与候选不因批次事件重读。
+  assert.equal(count((call) => call.url.startsWith("/api/agent/plans/current")), 1);
+  assert.equal(count((call) => call.url === "/api/agent/plans/candidates" && call.method === "GET"), 1);
+});
+
+test("W0021: a failed batch read is retried by the next event, not cached", async (t) => {
+  let fail = true;
+  const mounted = await mountHome(t, homeElement(), {
+    cardBatches: {
+      active: [CARD_BATCH_ID],
+      details: { [CARD_BATCH_ID]: cardBatchDetail([pendingCardItem("card-1", 1)]) },
+      respond: async () => (fail ? Response.json({ success: false }, { status: 503 }) : undefined),
+    },
+    snapshot: EMPTY_SNAPSHOT,
+  });
+  await mounted.settle(6);
+  assert.deepEqual(todayTitles(mounted).includes("确认 1 张新名片"), false);
+  fail = false;
+  await act(async () => {
+    mounted.dispatch("orbit-card-batches");
+  });
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, PENDING_CARDS_COALESCE_MS + 20));
+  });
+  await mounted.settle(6);
+  assert.deepEqual(todayTitles(mounted), ["确认 1 张新名片"]);
+  assert.equal(mounted.calls.filter((call) => call.url.endsWith(`/${CARD_BATCH_ID}?view=cards`)).length, 2);
 });
