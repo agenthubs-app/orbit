@@ -19,6 +19,10 @@ import { layout, textStyles, radius, spacing, typography } from "../../design/to
 import { createControlStyles } from "../../design/controls";
 import { createThemedStyles } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
+import { useSyncedCollection } from "../../hooks/useSyncedCollection";
+import { mirrorFreshness } from "../../data/sync/mirror-freshness";
+import { OfflineNotice } from "../../components/OfflineNotice";
+import { NeedsNetworkState } from "../../components/NeedsNetworkState";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import type { OrbitTranslator } from "../../i18n/messages";
@@ -81,7 +85,16 @@ export function TaskDetailScreen() {
   const detailState = useApiResource<unknown>(detailPath, () => false, { scopeKey });
   const activitiesState = useApiResource<unknown>(activitiesPath, () => false, { scopeKey });
   const remindersState = useApiResource<unknown>(reminderResourcePath, () => false, { scopeKey });
-  const detail = ready && (detailState.kind === "success" || detailState.kind === "empty") ? ownedTaskDetailToView(detailState.data, actorId, locale.language) : null;
+  const serverDetail = ready && (detailState.kind === "success" || detailState.kind === "empty") ? ownedTaskDetailToView(detailState.data, actorId, locale.language) : null;
+  // Sprint 0131: when the server cannot be reached (or answers 5xx) the task comes from the device
+  // copy (sync domain tasks); it is read-only with 截至 until the connection is back.
+  const taskMirror = useSyncedCollection<Record<string, unknown>>({ kind: "task" });
+  const mirrorState = mirrorFreshness(taskMirror, ready);
+  const serverUnreachable = detailState.kind === "offline" || (detailState.kind === "failure" && detailState.status >= 500);
+  const mirrorRow = serverUnreachable && mirrorState.readable ? taskMirror.records.find((record) => record.id === taskId && record.deletedAt === null) : undefined;
+  const mirrorDetail = mirrorRow ? ownedTaskDetailToView({ task: mirrorRow.payload }, actorId, locale.language) : null;
+  const offline = serverDetail === null && mirrorDetail !== null;
+  const detail = serverDetail ?? mirrorDetail;
   const activities = activitiesState.kind === "success" || activitiesState.kind === "empty" ? taskActivitiesToView(activitiesState.data, timeZone, locale.language) : [];
   const reminders = remindersState.kind === "success" || remindersState.kind === "empty"
     ? reminderPlansToView(remindersState.data, timeZone).filter((item) => item.status === "scheduled")
@@ -132,7 +145,8 @@ export function TaskDetailScreen() {
   ): Promise<boolean> {
     const scope = mutationScope;
     const isCurrent = () => ready && scope.active && scopeRef.current === scope;
-    if (!isCurrent() || scope.busy) return false;
+    // Sprint 0131: a device copy shown offline is read-only.
+    if (!isCurrent() || scope.busy || offline) return false;
     scope.busy = true;
     setSaving(true);
     setMutationError(null);
@@ -353,22 +367,24 @@ export function TaskDetailScreen() {
       backAccessibilityLabel={locale.t("common.backToNamed", { name: locale.t("tasks.title") })}
       backLabel={locale.t("tasks.title")}
       refreshControl={<RefreshControl onRefresh={refresh} refreshing={detailState.refreshing || activitiesState.refreshing || remindersState.refreshing} tintColor={colors.accent} />}
-      headerActions={detail ? <Pressable accessibilityLabel={locale.t("taskDetail.edit")} accessibilityRole="button" disabled={saving} onPress={() => titleInputRef.current?.focus()} style={styles.iconButton}>
+      headerActions={detail ? <Pressable accessibilityLabel={locale.t("taskDetail.edit")} accessibilityRole="button" disabled={saving || offline} onPress={() => titleInputRef.current?.focus()} style={styles.iconButton}>
         {largeText ? <Ionicons color={colors.accent} name="create-outline" size={22} /> : <Text style={styles.editLink}>{locale.t("taskDetail.edit")}</Text>}
       </Pressable> : null}
       title={locale.t("taskDetail.title")}
     >
       {detailState.kind === "loading" ? <LoadingState /> : null}
-      {detailState.kind === "failure" || detailState.kind === "offline" ? <ErrorState message={detailState.error.message} title={locale.t("taskDetail.unavailable")} /> : null}
+      {offline ? <OfflineNotice lastSyncedAt={taskMirror.lastSyncedAt} reason={detailState.kind === "offline" ? "unreachable" : "unavailable"} /> : null}
+      {!offline && detailState.kind === "offline" ? <NeedsNetworkState message={locale.t("sync.notOnDevice")} onRetry={detailState.refresh} /> : null}
+      {!offline && detailState.kind === "failure" ? <ErrorState message={detailState.error.message} title={locale.t("taskDetail.unavailable")} /> : null}
       {detail ? (
         <>
           <View style={styles.hero}>
             <Pressable
               accessibilityLabel={locale.t(detail.status === "completed" ? "tasks.restoreNamed" : "tasks.completeNamed", { title: detail.title })}
               accessibilityRole="checkbox"
-              accessibilityState={{ checked: detail.status === "completed", disabled: saving || detail.status === "cancelled" }}
+              accessibilityState={{ checked: detail.status === "completed", disabled: saving || offline || detail.status === "cancelled" }}
               aria-checked={detail.status === "completed"}
-              disabled={saving || detail.status === "cancelled"}
+              disabled={saving || offline || detail.status === "cancelled"}
               onPress={changeStatus}
               style={styles.heroCheckButton}
             >
@@ -377,7 +393,7 @@ export function TaskDetailScreen() {
               </View>
             </Pressable>
             <View style={styles.heroBody}>
-              <TextInput ref={titleInputRef} accessibilityLabel={locale.t("taskDetail.titleLabel")} editable={!saving} multiline scrollEnabled={false} onBlur={save} onChangeText={setTitle}
+              <TextInput ref={titleInputRef} accessibilityLabel={locale.t("taskDetail.titleLabel")} editable={!saving && !offline} multiline scrollEnabled={false} onBlur={save} onChangeText={setTitle}
                 onContentSizeChange={event => setTitleHeight(event.nativeEvent.contentSize.height)}
                 style={[styles.titleInput, { minHeight: Math.max(32 * fontScale, titleHeight) }]} value={title} />
               <View style={styles.badges}>
@@ -389,13 +405,13 @@ export function TaskDetailScreen() {
 
           {staleDraft && !moreOpen ? <View>
             <Text accessibilityRole="alert" style={styles.errorText}>{locale.t("taskDetail.staleWarning")}</Text>
-            <Pressable accessibilityRole="button" disabled={saving} onPress={discardDraft} style={styles.sheetRow}>
+            <Pressable accessibilityRole="button" disabled={saving || offline} onPress={discardDraft} style={styles.sheetRow}>
               <Text style={styles.sheetRowAction}>{locale.t("taskDetail.discardDraft")}</Text>
             </Pressable>
           </View> : null}
 
           <View style={styles.metadataGroup}>
-            <Pressable accessibilityLabel={locale.t("taskDetail.editDateTime")} accessibilityRole="button" onPress={() => setMoreOpen(true)} style={styles.metadataRow}>
+            <Pressable accessibilityLabel={locale.t("taskDetail.editDateTime")} accessibilityRole="button" disabled={offline} onPress={() => setMoreOpen(true)} style={styles.metadataRow}>
               <Text style={metadataLabelStyle}>{locale.t((latest ?? detail).dueAt ? "taskDetail.due" : "taskDetail.scheduled")}</Text>
               <Text style={styles.metadataValue}>{taskDateLabel(displayedDate, timeZone, locale.language, locale.t)}</Text>
               <Ionicons color={colors.text4} name="chevron-forward" size={17} />
@@ -428,7 +444,7 @@ export function TaskDetailScreen() {
               <Text style={metadataLabelStyle}>{locale.t("taskDetail.category")}</Text>
               <Text style={styles.metadataValue}>{detail.categoryLabel}</Text>
             </View>
-            <Pressable accessibilityLabel={locale.t("taskDetail.moreActions")} accessibilityRole="button" onPress={() => setMoreOpen(true)} style={({ pressed }) => [styles.metadataRow, pressed ? styles.pressed : null]}>
+            <Pressable accessibilityLabel={locale.t("taskDetail.moreActions")} accessibilityRole="button" disabled={offline} onPress={() => setMoreOpen(true)} style={({ pressed }) => [styles.metadataRow, pressed ? styles.pressed : null]}>
               <Text style={metadataLabelStyle}>{locale.t("taskDetail.reminder")}</Text>
               <Text style={styles.metadataValue}>{reminders[0]?.label ?? locale.t("taskDetail.reminderUnset")}</Text>
               <Ionicons color={colors.text4} name="chevron-forward" size={17} />
@@ -437,7 +453,7 @@ export function TaskDetailScreen() {
 
           <View style={styles.contentSection}>
             <Text accessibilityRole="header" style={styles.contentHeading}>{locale.t("taskDetail.content")}</Text>
-            <TextInput accessibilityLabel={locale.t("taskDetail.notes")} editable={!saving} multiline scrollEnabled={false} onBlur={save} onChangeText={setNotes}
+            <TextInput accessibilityLabel={locale.t("taskDetail.notes")} editable={!saving && !offline} multiline scrollEnabled={false} onBlur={save} onChangeText={setNotes}
               onContentSizeChange={event => setNotesHeight(event.nativeEvent.contentSize.height)}
               placeholder={locale.t("taskDetail.notePlaceholder")} placeholderTextColor={colors.text4}
               style={[styles.notesInput, { height: Math.max(72, notesHeight, 24 * fontScale) }]} value={notes} />
@@ -461,7 +477,7 @@ export function TaskDetailScreen() {
                   {timeZone !== editTimeZone ? <Text accessibilityRole="alert">{locale.t("taskDetail.draftTimeZone", { timeZone: editTimeZone })}</Text> : null}
               {staleDraft ? <View>
                     <Text accessibilityRole="alert" style={styles.errorText}>{locale.t("taskDetail.staleWarning")}</Text>
-                    <Pressable accessibilityRole="button" disabled={saving} onPress={discardDraft} style={styles.sheetRow}>
+                    <Pressable accessibilityRole="button" disabled={saving || offline} onPress={discardDraft} style={styles.sheetRow}>
                       <Text style={styles.sheetRowAction}>{locale.t("taskDetail.discardDraft")}</Text>
                     </Pressable>
                   </View> : null}
@@ -480,7 +496,7 @@ export function TaskDetailScreen() {
                   </View>)}
                   <Text style={styles.dateHint}>{locale.t("taskDetail.reminderUnaffected")}</Text>
                   {detail.status === "cancelled" ? <Text style={styles.dateHint}>{locale.t("taskDetail.cancelledNoDate")}</Text> : null}
-                  <Pressable accessibilityLabel={locale.t("taskDetail.saveDateTime")} accessibilityRole="button" disabled={saving || staleDraft || detail.status === "cancelled"} onPress={saveDates}
+                  <Pressable accessibilityLabel={locale.t("taskDetail.saveDateTime")} accessibilityRole="button" disabled={saving || offline || staleDraft || detail.status === "cancelled"} onPress={saveDates}
                     style={[styles.dateSaveButton, (saving || staleDraft || detail.status === "cancelled") && styles.pressed]}>
                     <Text style={styles.completeButtonText}>{locale.t(saving ? "taskDetail.saving" : "taskDetail.saveDateTime")}</Text>
                   </Pressable>
@@ -509,7 +525,7 @@ export function TaskDetailScreen() {
                     </View>
                   ))}
 
-                  <Pressable accessibilityRole="button" disabled={saving} onPress={deleteTask} style={styles.deleteButton}>
+                  <Pressable accessibilityRole="button" disabled={saving || offline} onPress={deleteTask} style={styles.deleteButton}>
                     <Ionicons color={colors.rose} name="trash-outline" size={18} />
                     <Text style={styles.deleteText}>{locale.t("taskDetail.deleteTask")}</Text>
                   </Pressable>
@@ -522,10 +538,10 @@ export function TaskDetailScreen() {
     </AppScreen>
     {detail ? <View testID="task-detail-actions" style={[styles.actionDock, { paddingBottom: Math.max(24, insets.bottom) }]}>
       <View style={styles.actionContent}>
-        {detail.status !== "cancelled" ? <Pressable accessibilityRole="button" disabled={saving} onPress={changeStatus} style={({ pressed }) => [styles.completeButton, detail.status === "completed" ? styles.reopenButton : null, pressed ? styles.pressed : null]}>
+        {detail.status !== "cancelled" ? <Pressable accessibilityRole="button" disabled={saving || offline} onPress={changeStatus} style={({ pressed }) => [styles.completeButton, detail.status === "completed" ? styles.reopenButton : null, pressed ? styles.pressed : null]}>
           <Text style={detail.status === "completed" ? styles.reopenButtonText : styles.completeButtonText}>{locale.t(detail.status === "completed" ? "taskDetail.restore" : "taskDetail.markComplete")}</Text>
         </Pressable> : null}
-        <Pressable accessibilityLabel={locale.t("taskDetail.edit")} accessibilityRole="button" disabled={saving} onPress={() => titleInputRef.current?.focus()} style={({ pressed }) => [styles.editButton, pressed && styles.pressed]}>
+        <Pressable accessibilityLabel={locale.t("taskDetail.edit")} accessibilityRole="button" disabled={saving || offline} onPress={() => titleInputRef.current?.focus()} style={({ pressed }) => [styles.editButton, pressed && styles.pressed]}>
           <Text style={styles.editButtonText}>{locale.t("taskDetail.edit")}</Text>
         </Pressable>
       </View>

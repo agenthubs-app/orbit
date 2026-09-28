@@ -36,6 +36,7 @@ export function useTaskListSource(input: TaskListSourceInput): TaskListSource {
     failure: state.kind === "failure" || state.kind === "offline" ? state.error.message : loaded&&!page?"待办数据无法确认，请刷新重试。":null,
     refreshing: state.refreshing,
     syncLabelKey: null,
+    offline: null,
     // The page API never pretends to contain legacy unconfirmed suggestions.
     tasksPayload: undefined,
     refresh: state.refresh,

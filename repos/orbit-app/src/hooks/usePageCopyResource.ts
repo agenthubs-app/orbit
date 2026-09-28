@@ -8,7 +8,7 @@ import type { PageCopyId, PageCopyStatus } from "../data/sync/page-copies";
 import { resultToRouteState, type RouteState } from "../view-models/route-state";
 import type { ApiResourceState } from "./useApiResource";
 import { useOrbitApiClient } from "./useOrbitApiClient";
-import { useSyncCoordinatorSession } from "./useSyncedCollection";
+import { usePageCopySession } from "./usePageCopySession";
 
 export type PageCopyResourceState<TData> = ApiResourceState<TData> & {
   /** Non-null while the content on screen is the device's page copy rather than this visit's server answer. */
@@ -42,7 +42,7 @@ export function usePageCopyResource<TData>(
     copy: { id: PageCopyId; variant?: string };
     scopeKey?: string | null;
     enabled?: boolean;
-    /** A copy or response that fails this check is neither shown from the copy nor saved. */
+    /** A copy that fails this check is not shown, and a server answer that fails it is shown (the page judges it) but not saved. */
     accept?: (data: unknown) => boolean;
   },
 ): PageCopyResourceState<TData> {
@@ -50,7 +50,7 @@ export function usePageCopyResource<TData>(
   const { baseUrl } = useOrbitApiBaseUrl();
   const enabled = options.enabled ?? true;
   const signedIn = auth.ready && auth.signedIn && Boolean(auth.actorId);
-  const session = useSyncCoordinatorSession(enabled && signedIn);
+  const { session, whenReady } = usePageCopySession(enabled && signedIn);
   // A new session object (the same scope reopened) must not re-read the page.
   const sessionRef = useRef(session);
   sessionRef.current = session;
@@ -67,12 +67,29 @@ export function usePageCopyResource<TData>(
   const viewKey = JSON.stringify([options.scopeKey ?? null, path, copyId, variant, auth.actorId, baseUrl]);
   const offlineRef = useRef(false);
   const refresh = useCallback(() => setRefreshIndex((value) => value + 1), []);
-  // The copy is read through the session, so wait for it when there is a signed-in scope.
-  const sessionReady = !signedIn || session !== null;
+  // The attempt in flight: whether the server answered, and the copy shown meanwhile. The copy is read
+  // as soon as the coordinator session exists (it may open after the request started).
+  const attempt = useRef<{ key: string; answered: boolean; shown: { syncedAt: string; state: RouteState<TData> } | null; copyRead: Promise<void> | null } | null>(null);
+  const readCopy = useCallback((current: NonNullable<typeof attempt.current>, wait = false): Promise<void> => {
+    const activeSession = sessionRef.current;
+    if (current.copyRead) return current.copyRead;
+    if (!activeSession) {
+      // Offline answers can come before the session opens; wait for it (briefly) rather than miss the copy.
+      return wait ? whenReady().then((ready) => (ready && attempt.current === current ? readCopy(current) : undefined)) : Promise.resolve();
+    }
+    current.copyRead = activeSession.readPageCopy(copyId, variant).then((copy) => {
+      if (attempt.current !== current || current.answered || !copy || !(accept.current ? accept.current(copy.data) : true)) return;
+      const state = resultToRouteState({ success: true, data: copy.data as TData, meta: META, status: 200 }, isEmptyRef.current);
+      current.shown = { syncedAt: copy.syncedAt, state };
+      setView({ key: current.key, state, copy: { lastSyncedAt: copy.syncedAt, offline: false, reason: null } });
+    }).catch(() => undefined);
+    return current.copyRead;
+  }, [copyId, variant, whenReady]);
 
   useEffect(() => {
-    if (!enabled || !auth.ready || !sessionReady) {
-      if (!enabled || !auth.ready) setView({ key: viewKey, state: { kind: "loading" }, copy: null });
+    if (!enabled || !auth.ready) {
+      attempt.current = null;
+      setView({ key: viewKey, state: { kind: "loading" }, copy: null });
       return;
     }
     let active = true;
@@ -81,36 +98,29 @@ export function usePageCopyResource<TData>(
     if (isRefresh) setRefreshing(true);
     else setView((current) => current.key === viewKey ? current : { key: viewKey, state: { kind: "loading" }, copy: null });
     const accepts = (data: unknown) => accept.current ? accept.current(data) : true;
-    const fromData = (data: unknown): RouteState<TData> => resultToRouteState({ success: true, data: data as TData, meta: META, status: 200 }, isEmptyRef.current);
+    const current: NonNullable<typeof attempt.current> = { key: viewKey, answered: false, shown: null, copyRead: null };
+    attempt.current = current;
+    void readCopy(current);
 
-    const session = sessionRef.current;
     void (async () => {
-      let shown: { syncedAt: string; state: RouteState<TData> } | null = null;
-      let answered = false;
-      const copyRead = session
-        ? session.readPageCopy(copyId, variant).then((copy) => {
-          if (!active || answered || !copy || !accepts(copy.data)) return;
-          shown = { syncedAt: copy.syncedAt, state: fromData(copy.data) };
-          setView({ key: viewKey, state: shown.state, copy: { lastSyncedAt: copy.syncedAt, offline: false, reason: null } });
-        }).catch(() => undefined)
-        : Promise.resolve();
       try {
         const result = await client.get<unknown>(path, { signal: controller.signal });
         if (!active) return;
-        const ok = result.success && result.status >= 200 && result.status < 300 && accepts(result.data);
+        // Any 2xx answer is shown (the page validates it itself); only an accepted one becomes the copy.
+        const ok = result.success && result.status >= 200 && result.status < 300;
         if (ok) {
-          answered = true;
+          current.answered = true;
           offlineRef.current = false;
-          setView({ key: viewKey, state: fromData(result.data), copy: null });
-          if (session) void session.savePageCopy(copyId, variant, result.data).catch(() => undefined);
+          setView({ key: viewKey, state: resultToRouteState({ success: true, data: result.data as TData, meta: META, status: 200 }, isEmptyRef.current), copy: null });
+          if (accepts(result.data)) void whenReady().then((ready) => ready?.savePageCopy(copyId, variant, result.data)).catch(() => undefined);
           return;
         }
-        // Let a pending copy read land first: offline, the copy is what the page shows.
-        await copyRead;
+        // Offline the copy is what the page shows: let a pending (or late-starting) copy read land first.
+        await readCopy(current, true);
         if (!active) return;
-        answered = true;
+        current.answered = true;
         const reason = keepsPageCopy(result);
-        const copy = shown as { syncedAt: string; state: RouteState<TData> } | null;
+        const copy = current.shown;
         if (copy && reason) {
           offlineRef.current = true;
           setView({ key: viewKey, state: copy.state, copy: { lastSyncedAt: copy.syncedAt, offline: true, reason } });
@@ -129,7 +139,12 @@ export function usePageCopyResource<TData>(
       active = false;
       controller.abort();
     };
-  }, [auth.ready, client, copyId, enabled, path, refreshIndex, sessionReady, variant, viewKey]);
+  }, [auth.ready, client, copyId, enabled, path, readCopy, refreshIndex, variant, viewKey, whenReady]);
+
+  // The session opened after the request started: show the copy while the server has not answered.
+  useEffect(() => {
+    if (session && attempt.current && !attempt.current.answered) void readCopy(attempt.current);
+  }, [readCopy, session]);
 
   // Back online: read again at once instead of leaving the 「截至」 copy up.
   useEffect(() => serverReachability.subscribe((url, state, previous) => {

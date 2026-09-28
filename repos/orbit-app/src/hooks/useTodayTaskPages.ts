@@ -14,6 +14,9 @@ import {
   todayTaskPagePath,
 } from "../view-models/today-task-pages";
 import { taskPageSchema } from "../api/schema/task-page";
+import type { PageCopyStatus } from "../data/sync/page-copies";
+import { keepsPageCopy } from "./usePageCopyResource";
+import { usePageCopySession } from "./usePageCopySession";
 
 export interface TodayTaskPagesData {
   today: NonNullable<ReturnType<typeof parseTodayTaskPageResponse>>["envelope"];
@@ -25,6 +28,8 @@ interface Snapshot {
   scope: string;
   attempt: number;
   state: RouteState<TodayTaskPagesData>;
+  /** Sprint 0131: set while the page shown is the device copy of today's first page. */
+  copy?: PageCopyStatus | null;
   loadingMore: boolean;
   moreError: string | null;
 }
@@ -74,6 +79,12 @@ export function useTodayTaskPages(timeZone: string, date: string) {
   const moreRequest = useRef<symbol | null>(null);
   const current = useRef<CurrentScope>({ scope, attempt, enabled });
   current.current = { scope, attempt, enabled };
+  // Sprint 0131: today's first page is kept as the page copy "today-page" (same day only) and shown offline with 截至.
+  const { session: copySession, whenReady } = usePageCopySession(enabled);
+  const copySessionRef = useRef(copySession);
+  copySessionRef.current = copySession;
+  /** The first-page attempt in flight; its copy is read as soon as the coordinator session exists. */
+  const pending = useRef<{ readCopy: () => Promise<void> } | null>(null);
 
   const cancelRequests = useCallback(() => {
     generation.current += 1;
@@ -96,16 +107,47 @@ export function useTodayTaskPages(timeZone: string, date: string) {
     let active = true;
     const valid = () => active && !controller.signal.aborted && generation.current === requestGeneration &&
       current.current.enabled && current.current.scope === scope && current.current.attempt === attempt;
-    const setResult = (state: RouteState<TodayTaskPagesData>) => {
-      if (valid()) setSnapshot({ scope, attempt, state, loadingMore: false, moreError: null });
+    const setResult = (state: RouteState<TodayTaskPagesData>, copy: PageCopyStatus | null = null) => {
+      if (valid()) setSnapshot({ scope, attempt, state, copy, loadingMore: false, moreError: null });
+    };
+    const fromCopy = (payload: unknown): RouteState<TodayTaskPagesData> | null => {
+      const parsed = parseTodayTaskPageResponse(payload, actorId, date, timeZone);
+      return parsed ? { kind: parsed.page.total === 0 ? "empty" : "success", data: { today: parsed.envelope, page: parsed.page, usedCursors: [] }, meta: { featureMode: null, privacy: null, runtimeBoundary: null }, status: 200 } : null;
+    };
+    let answered = false;
+    let shown: { state: RouteState<TodayTaskPagesData>; syncedAt: string } | null = null;
+    let copyRead: Promise<void> | null = null;
+    const readCopy = (wait = false): Promise<void> => {
+      const session = copySessionRef.current;
+      if (copyRead) return copyRead;
+      if (!session) return wait ? whenReady().then((ready) => (ready && valid() ? readCopy() : undefined)) : Promise.resolve();
+      copyRead = session.readPageCopy("today-page", "main").then((copy) => {
+        const state = copy ? fromCopy(copy.data) : null;
+        if (!copy || !state || answered) return;
+        shown = { state, syncedAt: copy.syncedAt };
+        setResult(state, { lastSyncedAt: copy.syncedAt, offline: false, reason: null });
+      }).catch(() => undefined);
+      return copyRead;
+    };
+    const attemptEntry = { readCopy };
+    pending.current = attemptEntry;
+    const keepCopy = async (reason: "unreachable" | "unavailable" | null): Promise<boolean> => {
+      await readCopy(true);
+      answered = true;
+      const copy = shown as { state: RouteState<TodayTaskPagesData>; syncedAt: string } | null;
+      if (!copy || !reason || !valid()) return false;
+      setResult(copy.state, { lastSyncedAt: copy.syncedAt, offline: true, reason });
+      return true;
     };
 
     setSnapshot({ scope, attempt, state: { kind: "loading" }, loadingMore: false, moreError: null });
+    void readCopy();
     void (async () => {
       try {
         const result = await client.get<unknown>(todayTaskPagePath(timeZone), { signal: controller.signal });
         if (!valid()) return;
         if (!result.success) {
+          if (await keepCopy(keepsPageCopy(result))) return;
           setResult(failureState(result));
           return;
         }
@@ -119,8 +161,11 @@ export function useTodayTaskPages(timeZone: string, date: string) {
           return;
         }
         const data: TodayTaskPagesData = { today: parsed.envelope, page: parsed.page, usedCursors: [] };
+        answered = true;
         setResult({ kind: parsed.page.total === 0 ? "empty" : "success", data, meta: result.meta, status: result.status });
+        void whenReady().then((ready) => ready?.savePageCopy("today-page", "main", result.data)).catch(() => undefined);
       } catch {
+        if (await keepCopy("unreachable")) return;
         if (valid()) setSnapshot({
           scope,
           attempt,
@@ -136,7 +181,10 @@ export function useTodayTaskPages(timeZone: string, date: string) {
       controller.abort();
       requestControllers.current.delete(controller);
     };
-  }, [actorId, attempt, client, date, enabled, scope, timeZone]);
+  }, [actorId, attempt, client, date, enabled, scope, timeZone, whenReady]);
+
+  // The session opened after the first page request started: read the copy now.
+  useEffect(() => { if (copySession) void pending.current?.readCopy(); }, [copySession]);
 
   const visible = snapshot?.scope === scope && snapshot.attempt === attempt ? snapshot : null;
   const visibleState: RouteState<TodayTaskPagesData> = visible?.state ?? { kind: "loading" };
@@ -221,5 +269,6 @@ export function useTodayTaskPages(timeZone: string, date: string) {
     loadingMore: visible?.loadingMore ?? false,
     moreError: visible?.moreError ?? null,
     loadMore,
+    copy: visible?.copy ?? null,
   };
 }

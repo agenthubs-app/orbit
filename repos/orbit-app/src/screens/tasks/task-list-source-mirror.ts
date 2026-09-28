@@ -50,6 +50,7 @@ export function mirrorTaskListSource(state: SyncedTasks, input: TaskListSourceIn
     // is fetching, and there is no separate thing for them to do about it.
     syncLabelKey: `sync.${state.status === "local-ready" ? "localReady" : state.status === "unsynced" ? "syncing" : state.status}` as MessageKey,
     tasksPayload: undefined,
+    offline: input.ready && readable && (state.status === "stale" || state.status === "failure") ? { lastSyncedAt: state.lastSyncedAt } : null,
     refresh: () => { void state.refresh(); },
     async confirmMutation(taskId, action) {
       const mirror = await state.invalidate();

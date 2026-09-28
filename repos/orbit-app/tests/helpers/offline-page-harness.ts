@@ -36,6 +36,9 @@ export const useLocalSearchParams = () => window.fixture.params ?? {};
 export const useGlobalSearchParams = () => window.fixture.params ?? {};
 export const usePathname = () => window.fixture.pathname ?? "/";
 export const useIsFocused = () => true;
+export const usePreventRemove = () => {};
+export const notifyReminderPlansChanged = () => {};
+export const requestNotificationPermission = async () => ({ granted: false });
 export const useFocusEffect = (effect) => { React.useEffect(() => effect(), [effect]); };
 export const useNavigation = () => ({ addListener: () => () => {}, setOptions() {} });
 export const Redirect = ({ href }) => { state.navigation.push("redirect:" + (typeof href === "string" ? href : JSON.stringify(href))); return null; };
@@ -63,6 +66,7 @@ const client = {
   async delete(path) { return answer("delete", path); },
 };
 export const useOrbitApiClient = () => client;
+export const useHomeDashboardClient = () => client;
 export const createOrbitApiClient = () => client;
 export const useApiResource = (path, isEmpty, options) => {
   const [result, setResult] = React.useState({ kind: "loading" });
@@ -81,7 +85,7 @@ export const useApiResource = (path, isEmpty, options) => {
 export const useSyncedCollection = ({ kind }) => ({
   status: state.syncStatus, error: state.syncStatus === "stale" ? "Network request failed" : null,
   lastSyncedAt: "2026-09-28T01:30:00.000Z", workspaceId: "workspace:one",
-  records: (state.records[kind] ?? []).map((payload, index) => ({ id: payload.id ?? String(index), kind, workspaceId: "workspace:one", revision: "1", updatedAt: "2026-09-28T01:00:00.000Z", deletedAt: null, payload })),
+  records: (state.records[kind] ?? []).map((payload, index) => ({ id: payload.id ?? payload.eventId ?? payload.conversationId ?? String(index), kind, workspaceId: "workspace:one", revision: "1", updatedAt: "2026-09-28T01:00:00.000Z", deletedAt: null, payload })),
   refresh: async () => { state.syncs++; return null; },
   invalidate: async () => null,
   currentSession: () => null,
@@ -91,7 +95,8 @@ const session = {
   async readPageCopy(id, variant) { if (state.noMirror) return null; return state.copies[id + "|" + variant] ?? null; },
   async savePageCopy(id, variant, data) { if (state.noMirror) return; state.saves.push(id + "|" + variant); state.copies[id + "|" + variant] = { data, syncedAt: "2026-09-28T02:00:00.000Z" }; },
 };
-export const useSyncCoordinatorSession = () => session;
+// Like the real hook, the session exists only after the first effect (screens must not miss a copy because of it).
+export const useSyncCoordinatorSession = () => { const [value, setValue] = React.useState(null); React.useEffect(() => { setValue(session); }, []); return value; };
 const authSession = { ready: true, signedIn: true, accountId: "account:one", actorId: "account:one", cookieHeader: "", user: { id: "account:one", name: "QA One", email: "qa1@example.test" }, notificationSessionRevision: 0 };
 export const useOrbitAuthSession = () => authSession;
 export const useOrbitApiBaseUrl = () => ({ baseUrl: base, ready: true });
@@ -128,7 +133,7 @@ export async function startOfflinePageHarness(screens: readonly HarnessScreen[],
       name: "offline-page-boundaries",
       setup(plugin) {
         plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "offline-page" }));
-        plugin.onResolve({ filter: /^react-native-safe-area-context$|^expo-router$|\/(useApiResource|useOrbitApiClient|useSyncedCollection|AuthSessionProvider|ApiBaseUrlProvider)$|^@react-native-async-storage\/async-storage$/ }, () => ({ path: "fixture", namespace: "offline-page" }));
+        plugin.onResolve({ filter: /^react-native-safe-area-context$|^expo-router$|^expo-router\/react-navigation$|\/(useApiResource|useOrbitApiClient|useHomeDashboardClient|useSyncedCollection|AuthSessionProvider|ApiBaseUrlProvider|native-notifications)$|^@react-native-async-storage\/async-storage$/ }, () => ({ path: "fixture", namespace: "offline-page" }));
         plugin.onResolve({ filter: /^@expo\/vector-icons$|^react-native-svg$|^expo-crypto$|^expo-camera$|^expo-image-picker$|^expo-localization$|^expo-haptics$|^expo-clipboard$|^expo-linking$/ }, () => ({ path: "icons", namespace: "offline-page" }));
         plugin.onLoad({ filter: /^fixture$/, namespace: "offline-page" }, () => ({ contents: fixture, loader: "jsx", resolveDir: root }));
         plugin.onLoad({ filter: /^native$/, namespace: "offline-page" }, () => ({ contents: `export * from "react-native-web";`, loader: "js", resolveDir: root }));

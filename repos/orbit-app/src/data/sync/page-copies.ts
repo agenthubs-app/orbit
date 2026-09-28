@@ -52,6 +52,8 @@ export const PAGE_COPY_DEFINITIONS: readonly PageCopyDefinition[] = [
   { id: "today-summary", endpoint: "/api/today", variants: "single", maxVariants: 1, maxBytes: 128 * KB, audience: "account", description: "The Today summary block on the AI tab (taskMode=summary)." },
   { id: "relationship-lifecycle", endpoint: "/api/connections/:id/lifecycle", variants: "keyed", maxVariants: 20, maxBytes: 128 * KB, audience: "account", description: "A relationship's next-step page, per connection; the 20 most recently opened are kept." },
   { id: "meeting-details", endpoint: "/api/schedule-items/:id/meeting-details", variants: "keyed", maxVariants: 20, maxBytes: 128 * KB, audience: "account", description: "A meeting's details, per meeting; the 20 most recently opened are kept." },
+  // Meetings (appointments) have no sync domain; the home schedule keeps the meeting rows of its last online answer.
+  { id: "home-schedule", endpoint: "/api/schedule-items", variants: "single", maxVariants: 1, maxBytes: 256 * KB, audience: "account", description: "The home schedule card's last answer (its confirmed meetings are shown offline next to the personal-schedule and registered-event domains)." },
   { id: "public-events", endpoint: "/api/events/public", variants: "single", maxVariants: 1, maxBytes: 512 * KB, audience: "platform", description: "The public event catalogue as last seen (platform data, stored per identity so one clearing rule applies)." },
   { id: "event-recommendations", endpoint: "/api/recommendations/events", variants: "single", maxVariants: 2, maxBytes: 256 * KB, audience: "account", description: "The account's event recommendations as last seen (variants: home card, events tab)." },
 ];

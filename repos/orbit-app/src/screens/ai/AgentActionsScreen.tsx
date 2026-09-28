@@ -21,7 +21,7 @@ import { textStyles, radius, spacing, typography } from "../../design/tokens";
 import { createControlStyles } from "../../design/controls";
 import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { OfflineNotice } from "../../components/OfflineNotice";
-import { NeedsNetworkState } from "../../components/OnlineOnlyBoundary";
+import { NeedsNetworkState } from "../../components/NeedsNetworkState";
 import { usePageCopyResource } from "../../hooks/usePageCopyResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";

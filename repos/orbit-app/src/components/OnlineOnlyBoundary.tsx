@@ -1,16 +1,18 @@
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useOrbitApiBaseUrl } from "../api/ApiBaseUrlProvider";
 import { ORBIT_API_ENDPOINTS } from "../api/endpoints";
 import { serverReachability, type ServerReachabilityState } from "../api/server-reachability";
-import { createControlStyles } from "../design/controls";
 import { createThemedStyles } from "../design/theme";
 import { layout, spacing, textStyles } from "../design/tokens";
 import { useOrbitApiClient } from "../hooks/useOrbitApiClient";
 import { useOrbitLocale } from "../i18n/OrbitLocaleContext";
+import { NeedsNetworkState } from "./NeedsNetworkState";
+
+export { NeedsNetworkState };
 
 /** A cold open decides from the page's own first read: an unreachable answer this soon after opening means offline. */
 export const ONLINE_ONLY_OPEN_WINDOW_MS = 3000;
@@ -76,21 +78,6 @@ function NeedsNetworkPage({ onRetry, retrying }: { onRetry: () => void; retrying
   );
 }
 
-export function NeedsNetworkState({ onRetry, retrying = false, message }: { onRetry?: () => void; retrying?: boolean; message?: string }) {
-  const locale = useOrbitLocale();
-  const { styles } = useStyles();
-  return (
-    <View style={styles.group}>
-      <Text style={styles.body}>{message ?? locale.t("sync.needsNetworkBody")}</Text>
-      {onRetry ? (
-        <Pressable accessibilityRole="button" accessibilityState={{ disabled: retrying, busy: retrying }} disabled={retrying} onPress={onRetry} style={styles.button}>
-          <Text style={styles.buttonText}>{locale.t("common.retry")}</Text>
-        </Pressable>
-      ) : null}
-    </View>
-  );
-}
-
 export function withOnlineOnlyRoute<Props extends object>(Screen: ComponentType<Props>): ComponentType<Props> {
   function OnlineOnlyRoute(props: Props) {
     return <OnlineOnlyBoundary><Screen {...props} /></OnlineOnlyBoundary>;
@@ -105,8 +92,4 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   back: { minHeight: 44, justifyContent: "center", alignSelf: "flex-start" },
   backText: { ...textStyles.body, color: colors.accent },
   title: { ...textStyles.pageTitle, color: colors.ink },
-  group: { gap: spacing.md, paddingVertical: spacing.sm },
-  body: { ...textStyles.small, color: colors.muted },
-  button: { ...createControlStyles(colors).secondaryButton, alignSelf: "flex-start" },
-  buttonText: { ...createControlStyles(colors).secondaryButtonText },
 }));

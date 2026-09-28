@@ -15,7 +15,7 @@ import { AppScreen } from "../../components/AppScreen";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
 import { useOrbitTheme } from "../../design/theme";
-import { NeedsNetworkState } from "../../components/OnlineOnlyBoundary";
+import { NeedsNetworkState } from "../../components/NeedsNetworkState";
 import { OfflineNotice } from "../../components/OfflineNotice";
 import { usePageCopyResource } from "../../hooks/usePageCopyResource";
 import { useSyncCoordinatorSession } from "../../hooks/useSyncedCollection";

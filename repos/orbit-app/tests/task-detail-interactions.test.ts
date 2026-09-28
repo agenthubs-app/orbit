@@ -55,6 +55,9 @@ let client = {
 };
 export const useOrbitApiClient = () => client;
 export const useOrbitAuthSession = () => ({ ready: true, signedIn: true, accountId: "test", actorId: "test", user: { id: "raw-login-test" }, cookieHeader: "" });
+// Sprint 0131: the screen reads the device mirror / page copies; this harness tests the network path (no mirror).
+export const useSyncedCollection = () => ({ status: "unsynced", error: null, lastSyncedAt: null, workspaceId: null, records: [], refresh: async () => null, invalidate: async () => null, currentSession: () => null });
+export const useSyncCoordinatorSession = () => null;
 export const useOrbitApiBaseUrl = () => ({ ready: true, baseUrl: "https://orbit.example" });
 export const useSafeAreaInsets = () => ({ top: 0, bottom: 0, left: 0, right: 0 });
 export const AppScreen = ({ children }) => <main>{children}</main>;
@@ -95,7 +98,7 @@ test.before(async () => {
             });`,
           loader: "jsx", resolveDir: process.cwd(),
         }));
-        plugin.onResolve({ filter: /^(expo-router|expo-router\/react-navigation|expo-crypto|@expo\/vector-icons|react-native-safe-area-context)$|\/(useApiResource|useOrbitApiClient|AuthSessionProvider|ApiBaseUrlProvider|native-notifications|AppScreen|ErrorState|LoadingState)$|\/design\/theme$/ }, () => ({ path: "fixture", namespace: "task-test" }));
+        plugin.onResolve({ filter: /^(expo-router|expo-router\/react-navigation|expo-crypto|@expo\/vector-icons|react-native-safe-area-context)$|\/(useApiResource|useOrbitApiClient|AuthSessionProvider|ApiBaseUrlProvider|native-notifications|AppScreen|ErrorState|LoadingState|useSyncedCollection)$|\/design\/theme$/ }, () => ({ path: "fixture", namespace: "task-test" }));
         plugin.onLoad({ filter: /.*/, namespace: "task-test" }, () => ({ contents: fixture, loader: "jsx", resolveDir: process.cwd() }));
       },
     }],
