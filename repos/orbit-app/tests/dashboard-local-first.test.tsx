@@ -48,11 +48,11 @@ export const useSyncedCollection = ({ kind }) => ({
 });
 const offline = { kind: "offline", error: { code: "NETWORK", message: "Network request failed" }, meta: {}, status: 0, refreshing: false, refresh() {} };
 const report = { current: { analysisVersion: "contacts.analysis@1", sourceDataVersion: "a".repeat(64) },
-  report: { analysisVersion: "contacts.analysis@1", body: "**关系结构**：设备上的报告正文。", generatedAt: "2026-09-27T01:00:00.000Z", messageId: "m1", sessionId: "s1", sourceDataVersion: "a".repeat(64) }, stale: false };
+  report: window.initialFixture?.noReport ? null : { analysisVersion: "contacts.analysis@1", body: "**关系结构**：设备上的报告正文。", generatedAt: "2026-09-27T01:00:00.000Z", messageId: "m1", sessionId: "s1", sourceDataVersion: "a".repeat(64) }, stale: false };
 export const useApiResource = (path, _isEmpty, options) => {
   if (options?.enabled === false) return { kind: "loading", refreshing: false, refresh() {} };
   state.requests.push("resource:" + path);
-  if (state.status !== "stale" && path.includes("view=analysis")) return { kind: "success", data: { schemaVersion: 1, generatedAt: "2026-09-27T01:00:00.000Z", analysis: report, profile: null, unavailableSections: [] }, meta: {}, status: 200, refreshing: false, refresh() {} };
+  if ((state.status !== "stale" || state.overviewCached) && path.includes("view=analysis")) return { kind: "success", data: { schemaVersion: 1, generatedAt: "2026-09-27T01:00:00.000Z", analysis: report, profile: null, unavailableSections: [] }, meta: {}, status: 200, refreshing: false, refresh() {} };
   return offline;
 };
 const client = {
@@ -180,4 +180,14 @@ test("offline: the analysis drill-down (one structure bucket) is computed on the
   // The same failure the server answers for a bucket that does not exist.
   await unknown.getByText("没有找到对应内容，它可能已被移除或不可用。").waitFor();
   assert.deepEqual(await dashboardReads(unknown), []);
+});
+
+test("offline with a last-known report status: asking the AI says 需要联网 and is off", async (t) => {
+  const page = await open(t, { screen: "analysis", status: "stale", overviewCached: true, noReport: true });
+  await page.getByText(/^无法连接 · 显示截至 .+ 的内容；新建和编辑需要联网$/).waitFor();
+  const ask = page.getByRole("button", { name: "去 IORBIT 分析 · 需要联网" });
+  await ask.waitFor();
+  assert.equal(await ask.isDisabled(), true);
+  await ask.click({ force: true });
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), [], "no AI draft is opened offline");
 });

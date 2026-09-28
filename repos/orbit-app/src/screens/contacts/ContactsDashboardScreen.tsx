@@ -541,6 +541,7 @@ function ContactsDashboardContent({
 
       <PersistedAnalysisCard
         error={analysisPrefillError}
+        offline={offline}
         onAnalyze={openAnalysisPrefill}
         view={analysisReport}
       />
@@ -714,10 +715,13 @@ function OpportunityActionBriefSheet({
 
 function PersistedAnalysisCard({
   error,
+  offline,
   onAnalyze,
   view
 }: {
   error: string | null;
+  /** Sprint 0117: offline the page shows its last-known report status; asking the AI needs the network. */
+  offline: boolean;
   onAnalyze: () => void;
   view: ContactsAnalysisReportView;
 }) {
@@ -756,16 +760,19 @@ function PersistedAnalysisCard({
       ) : null}
       {view.action ? (
         <Pressable
-          accessibilityLabel={locale.t("contacts.analysisReportAction")}
+          accessibilityLabel={offline ? `${locale.t("contacts.analysisReportAction")} · ${locale.t("sync.needsNetwork")}` : locale.t("contacts.analysisReportAction")}
           accessibilityRole="button"
+          accessibilityState={{ disabled: offline }}
+          disabled={offline}
           onPress={onAnalyze}
           style={({ pressed }) => [
             styles.saveGoalButton,
+            offline ? styles.disabled : null,
             pressed ? styles.pressed : null
           ]}
         >
           <Ionicons color={colors.onAccent} name="sparkles-outline" size={17} />
-          <Text style={styles.saveGoalButtonText}>{locale.t("contacts.analysisReportAction")}</Text>
+          <Text style={styles.saveGoalButtonText}>{offline ? `${locale.t("contacts.analysisReportAction")} · ${locale.t("sync.needsNetwork")}` : locale.t("contacts.analysisReportAction")}</Text>
         </Pressable>
       ) : null}
       {view.action ? (
