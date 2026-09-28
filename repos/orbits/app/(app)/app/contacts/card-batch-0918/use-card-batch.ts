@@ -44,6 +44,21 @@ type T = (copy: Copy) => string;
 export type ContactCandidate = IngestContactCandidateContract;
 type ConfirmResult = "created" | "merged" | "duplicate" | "blocked" | "failed";
 
+/** W0015：本批名片的活动归属候选（服务端按扫描时间与本人报名算出）。 */
+export interface CardBatchAttributionEvent {
+  eventId: string;
+  title: string;
+  startsAt: string;
+}
+export interface CardBatchAttribution {
+  events: CardBatchAttributionEvent[];
+  /** cardId → 候选活动 id。 */
+  cards: Record<string, string | null>;
+}
+const EMPTY_ATTRIBUTION: CardBatchAttribution = { cards: {}, events: [] };
+const ATTRIBUTION_FETCH_TIMEOUT_MS = 8_000;
+const ATTRIBUTION_RETRY_DELAY_MS = 2_000;
+
 // 复核页比对已有联系人用的字段（与服务端 CardContactFields 一致）。
 function matchFields(draft: IngestV2CardDraft) {
   const { address, displayName, email, organization, phone, role } = draft.fields;
@@ -90,6 +105,17 @@ export function useCardBatch(batchId: string | null, t: T) {
   const finalizingRef = useRef(false);
   const autoAttempted = useRef<Set<string>>(new Set());
   const intents = useRef<Record<string, { seed: string; id: string }>>({});
+  // W0015：活动归属。null = 还没读到（自动导入等它读完，读不到按没有候选处理）。
+  // 决定按名片记：cardId → 是否勾选（没记过 = 默认勾选）。有候选的名片不自动导入，只在审阅页由用户确认。
+  const [attribution, setAttribution] = useState<CardBatchAttribution | null>(null);
+  const [attributionDecisions, setAttributionDecisions] = useState<Record<string, boolean>>({});
+  // cardId → 服务端实际写入的来源活动（确认回执里的 metEventId）；完成页按它分组。
+  const [attributed, setAttributed] = useState<Record<string, string>>({});
+  const attributionRef = useRef<{ decisions: Record<string, boolean>; cards: Record<string, string | null> }>({ cards: {}, decisions: {} });
+  attributionRef.current = { cards: attribution?.cards ?? {}, decisions: attributionDecisions };
+  const setAttributionDecision = useCallback((cardId: string, on: boolean) => {
+    setAttributionDecisions(current => ({ ...current, [cardId]: on }));
+  }, []);
 
   const refresh = useCallback(async () => {
     if (!batchId) return;
@@ -116,6 +142,9 @@ export function useCardBatch(batchId: string | null, t: T) {
     setActiveId(null);
     setError("");
     setUploadFailed(false);
+    setAttribution(null);
+    setAttributionDecisions({});
+    setAttributed({});
     autoAttempted.current = new Set();
     if (!batchId) {
       setLedger(EMPTY_LEDGER);
@@ -233,6 +262,49 @@ export function useCardBatch(batchId: string | null, t: T) {
     void pumpUploads();
   }
 
+  // ── W0015 活动归属候选：识别结束后读一次（审阅页顶部的询问；自动导入也等它读完） ──
+  // 读取失败（非 2xx／超时／抛错）与「成功但没有候选」不同：失败时约 2 秒后重试一次；重试也失败就按
+  // 没有候选处理——核心流程（自动导入）优先，只是不提供归属询问，不会无限期等待。
+  const attributionWanted = status === "ready_for_review" || status === "completed";
+  useEffect(() => {
+    if (!batchId || !attributionWanted || attribution) return;
+    let active = true;
+    let controller: AbortController | null = null;
+    let timer: number | undefined;
+    let retryTimer: number | undefined;
+    const attempt = async (): Promise<CardBatchAttribution | null> => {
+      controller = new AbortController();
+      // 每次最多等 8 秒。
+      timer = window.setTimeout(() => controller?.abort(), ATTRIBUTION_FETCH_TIMEOUT_MS);
+      try {
+        const response = await fetch(`/api/agent/event-attribution/candidates?batchId=${encodeURIComponent(batchId)}`, { signal: controller.signal });
+        if (!response.ok) return null;
+        const body = (await response.json()) as { data?: Partial<CardBatchAttribution> } | null;
+        const events = Array.isArray(body?.data?.events) ? body.data.events : [];
+        const cards = body?.data?.cards && typeof body.data.cards === "object" ? body.data.cards : {};
+        return { cards, events };
+      } catch {
+        return null;
+      } finally {
+        window.clearTimeout(timer);
+      }
+    };
+    void (async () => {
+      let result = await attempt();
+      if (!result && active) {
+        await new Promise<void>(resolve => { retryTimer = window.setTimeout(resolve, ATTRIBUTION_RETRY_DELAY_MS); });
+        if (active) result = await attempt();
+      }
+      if (active) setAttribution(result ?? EMPTY_ATTRIBUTION);
+    })();
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+      window.clearTimeout(retryTimer);
+      controller?.abort();
+    };
+  }, [attribution, attributionWanted, batchId]);
+
   // ── 确认 ──
   const confirmCard = useCallback(async (
     card: IngestV2CardViewModel,
@@ -241,15 +313,21 @@ export function useCardBatch(batchId: string | null, t: T) {
   ): Promise<ConfirmResult> => {
     const allowDuplicate = options.allowDuplicate === true;
     const manual = card.hasTerminalFailure || !card.allExtracted;
-    const seed = JSON.stringify({ allowDuplicate, draft, items: card.items.map(item => [item.id, item.version]), manual, mergeInto: options.mergeInto ?? null });
+    // 这张名片勾选「在该活动认识」（默认勾选）时只提交它自己的候选活动；服务端会按扫描时间重新核实。
+    const metEventId = attributionRef.current.decisions[card.cardId] !== false ? attributionRef.current.cards[card.cardId] ?? null : null;
+    const seed = JSON.stringify({ allowDuplicate, draft, items: card.items.map(item => [item.id, item.version]), manual, mergeInto: options.mergeInto ?? null, metEventId });
     const known = intents.current[card.cardId];
     const intentId = known && known.seed === seed ? known.id : crypto.randomUUID();
     intents.current[card.cardId] = { id: intentId, seed };
     const prepared = buildConfirmationPayload(card, draft, intentId, allowDuplicate, manual);
     if (!batchId || !prepared.payload) return "blocked";
-    const payload = options.mergeInto ? { ...prepared.payload, mergeIntoContactId: options.mergeInto } : prepared.payload;
+    const payload = {
+      ...prepared.payload,
+      ...(options.mergeInto ? { mergeIntoContactId: options.mergeInto } : {}),
+      ...(metEventId ? { metEventId } : {}),
+    };
     const response = await postAction(`/${batchId}/items/${card.items[0]!.id}/${manual ? "manual-entry" : "confirm"}`, payload);
-    const body = (await response.json().catch(() => null)) as { data?: { state?: string; contactId?: string; merged?: boolean; candidate?: ContactCandidate | null; item?: IngestItemDTO; items?: IngestItemDTO[] } } | null;
+    const body = (await response.json().catch(() => null)) as { data?: { state?: string; contactId?: string; merged?: boolean; metEventId?: string | null; candidate?: ContactCandidate | null; item?: IngestItemDTO; items?: IngestItemDTO[] } } | null;
     if (!response.ok) return "failed";
     if (body?.data?.state === "duplicate_review") {
       // 服务端发现了候选（例如复核页还没来得及查到）：交给复核页显示「可能是同一个联系人」。
@@ -261,6 +339,8 @@ export function useCardBatch(batchId: string | null, t: T) {
       return "duplicate";
     }
     if (!readConfirmationReceipt(body?.data ?? {}, card).ok) return "failed";
+    const writtenEventId = body?.data?.metEventId;
+    if (writtenEventId) setAttributed(current => ({ ...current, [card.cardId]: writtenEventId }));
     return body?.data?.merged ? "merged" : "created";
   }, [batchId]);
 
@@ -310,10 +390,12 @@ export function useCardBatch(batchId: string | null, t: T) {
   // 等「可能是同一个联系人」查完再动手：与已有联系人完全一致的卡直接并入（哪怕识别有疑点——
   // 每个字段都和人脉里的记录对得上，疑点已被印证）；有相似但不一致的候选时交给用户。
   useEffect(() => {
-    if (!batchId || status !== "ready_for_review" || autoRunning || !matchesReady) return;
+    if (!batchId || status !== "ready_for_review" || autoRunning || !matchesReady || !attribution) return;
     const eligible = cards.filter(card => {
       const draft = drafts[card.cardId];
       if (!draft || autoAttempted.current.has(card.cardId) || !card.reviewable || card.allConfirmed || isCardSkipped(card)) return false;
+      // W0015：有活动归属候选的名片留给用户在审阅页确认——默认勾选不是用户的决定，后台宿主也不替用户做。
+      if (attribution.cards[card.cardId]) return false;
       const candidate = matches[card.cardId];
       if (candidate) return candidate.identical && isAutoMergeEligible(card, draft);
       return isAutoImportEligible(card, draft);
@@ -336,7 +418,7 @@ export function useCardBatch(batchId: string | null, t: T) {
       await refresh();
       setAutoRunning(false);
     })();
-  }, [autoRunning, cards, confirmCard, drafts, matches, matchesReady, refresh, status]);
+  }, [attribution, autoRunning, cards, confirmCard, drafts, matches, matchesReady, refresh, status]);
 
   // ── 派生：复核队列与小结 ──
   const autoSet = useMemo(() => new Set(ledger.auto), [ledger.auto]);
@@ -451,7 +533,7 @@ export function useCardBatch(batchId: string | null, t: T) {
   }
 
   return {
-    act, active, autoCount, autoRunning, batchId, busy, cards, detail, drafts, duplicates, error, finished, isHandled, matches, mergedCount,
+    act, active, attributed, attribution: attribution ?? EMPTY_ATTRIBUTION, attributionDecisions, setAttributionDecision, autoCount, autoRunning, batchId, busy, cards, detail, drafts, duplicates, error, finished, isHandled, matches, mergedCount,
     laterCount, laterSet, loadFailed, markNotified, missing, notified: ledger.notified, openCard, pending, pumpUploads,
     queue, reattach, refresh, retryRecognition, reviewing, setAside, setDrafts, setSide, setZoom, settledCount, side, stage, status, uploadFailed, userCount, zoom,
   };

@@ -315,6 +315,10 @@ test("the card review final screen appends the plan match only once the server b
     ({
       act: async () => undefined,
       active: null,
+      attributed: {},
+      attribution: { cards: {}, events: [] },
+      attributionDecisions: {},
+      setAttributionDecision: () => undefined,
       autoCount: 2,
       autoRunning: false,
       batchId: "batch-1",

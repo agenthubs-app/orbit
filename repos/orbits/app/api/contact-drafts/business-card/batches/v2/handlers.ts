@@ -51,6 +51,11 @@ import {
   getHttpStatusForAppErrorCode,
 } from "../../../../../../shared/errors/app-error";
 import {
+  attributionCardsFromItems,
+  resolveEventAttribution,
+  type EventAttributionSource,
+} from "../../../../../../features/plans/event-attribution";
+import {
   authenticatedApiActorRequiredResponse,
   resolveAuthenticatedApiActor,
   type ResolveAuthenticatedApiActor,
@@ -65,12 +70,33 @@ export interface IngestV2Runtime {
   ready: Promise<void>;
 }
 
+/**
+ * W0015 活动归属：确认时服务端按名片扫描时间重算本人的候选活动（`source`），核实后把计划里的
+ * 这场活动标为已参加（`markAttended`）。缺省用 live 实现（按需加载，不在模块加载时连库）。
+ */
+export interface IngestEventAttributionDeps {
+  source: () => Promise<EventAttributionSource | null>;
+  markAttended: (input: { actorId: string; eventId: string }) => Promise<void>;
+}
+
 export interface IngestV2HandlerDeps {
   resolveActor?: ResolveAuthenticatedApiActor;
   runtime?: IngestV2Runtime | null;
   gate?: { run<T>(actorId: string, fn: () => Promise<T>): Promise<T> };
   isOcrProviderConfigured?: () => boolean;
+  eventAttribution?: IngestEventAttributionDeps;
 }
+
+export const liveIngestEventAttribution: IngestEventAttributionDeps = {
+  async markAttended(input) {
+    const runtime = await import("../../../../../../features/plans/event-attribution-runtime");
+    await runtime.markPlanEventAttendedForActor(input);
+  },
+  async source() {
+    const runtime = await import("../../../../../../features/plans/event-attribution-runtime");
+    return runtime.createConfiguredEventAttributionSource();
+  },
+};
 
 function currentMode(): FeatureMode {
   return resolveFeatureMode(
@@ -141,6 +167,8 @@ async function withAuthedRuntime(
   deps: IngestV2HandlerDeps,
   fn: (context: {
     actorId: string;
+    /** Auth.js 用户 id（活动报名按它记）；缺省同 actorId。 */
+    userId: string;
     runtime: IngestV2Runtime;
     mode: FeatureMode;
   }) => Promise<Response>,
@@ -157,7 +185,7 @@ async function withAuthedRuntime(
   }
   await runtime.ready;
   try {
-    return await fn({ actorId: actor.id, runtime, mode });
+    return await fn({ actorId: actor.id, userId: actor.userId ?? actor.id, runtime, mode });
   } catch (error) {
     return mapIngestError(error, mode);
   }
@@ -593,10 +621,12 @@ function confirmationFingerprint(body: {
   allowDuplicate?: boolean;
   primaryIndustryId?: string | null;
   secondaryIndustryId?: string | null;
+  metEventId?: string | null;
 }): string {
-  // 地址、合并目标、行业是后加的字段：为空时不进规范化对象，旧确认的指纹保持不变、可安全重放。
+  // 地址、合并目标、行业、来源活动（W0015）是后加的字段：为空时不进规范化对象，旧确认的指纹保持不变、可安全重放。
   const address = body.address?.trim() ? { address: body.address } : {};
   const merge = body.mergeIntoContactId ? { mergeIntoContactId: body.mergeIntoContactId } : {};
+  const metEvent = body.metEventId ? { metEventId: body.metEventId } : {};
   const industry = {
     ...(body.primaryIndustryId ? { primaryIndustryId: body.primaryIndustryId } : {}),
     ...(body.secondaryIndustryId ? { secondaryIndustryId: body.secondaryIndustryId } : {}),
@@ -611,6 +641,7 @@ function confirmationFingerprint(body: {
     fieldSources: Object.fromEntries(Object.entries(body.fieldSources).sort(([a], [b]) => a.localeCompare(b))),
     ...industry,
     ...merge,
+    ...metEvent,
     notes: body.notes,
     organization: body.organization,
     phone: body.phone,
@@ -686,7 +717,7 @@ function createConfirmLikeHandler(
     request: Request,
     context: { params: Promise<{ id: string; itemId: string }> },
   ): Promise<Response> {
-    return withAuthedRuntime(deps, async ({ actorId, runtime, mode }) => {
+    return withAuthedRuntime(deps, async ({ actorId, userId, runtime, mode }) => {
       const { id, itemId } = await context.params;
       const parsedBody: unknown = await request.json().catch(() => ({}));
       const body = isRecord(parsedBody) ? parsedBody : {};
@@ -724,6 +755,27 @@ function createConfirmLikeHandler(
       if (!confirmation.success) {
         return jsonError(new AppError("VALIDATION_ERROR", "Card confirmation intent, source versions, or field provenance is invalid."), mode);
       }
+      // W0015：「在该活动认识」。客户端只提交活动 id；服务端按这张名片的扫描时间（条目 createdAt）
+      // 重算本人的候选，不一致就拒绝且不写库。字段不进共享 schema（Web 独有，App 契约不变）。
+      const rawMetEventId = body.metEventId;
+      if (rawMetEventId !== undefined && rawMetEventId !== null && (typeof rawMetEventId !== "string" || !rawMetEventId.trim() || rawMetEventId.length > 200)) {
+        return jsonError(new AppError("VALIDATION_ERROR", "metEventId must be a non-empty string."), mode);
+      }
+      let metEvent: { eventId: string; title: string } | null = null;
+      if (typeof rawMetEventId === "string") {
+        const attribution = deps.eventAttribution ?? liveIngestEventAttribution;
+        const source = await attribution.source();
+        const resolved = source
+          ? await resolveEventAttribution(source, { cards: attributionCardsFromItems(cardItems), userId })
+          : null;
+        const event = resolved?.byCard[item.cardId] === rawMetEventId.trim()
+          ? resolved.events.find((entry) => entry.eventId === rawMetEventId.trim()) ?? null
+          : null;
+        if (!event) {
+          return jsonError(new AppError("CONFLICT", "EVENT_ATTRIBUTION_REJECTED: this card was not scanned during that registered event."), mode);
+        }
+        metEvent = { eventId: event.eventId, title: event.title };
+      }
       let merged = false;
       try {
         const confirmed = await runtime.repository.confirmCard({
@@ -732,7 +784,7 @@ function createConfirmLikeHandler(
           itemId,
           allowFrom,
           confirmationIntentId: confirmation.data.confirmationIntentId,
-          confirmationFingerprint: confirmationFingerprint(confirmation.data),
+          confirmationFingerprint: confirmationFingerprint({ ...confirmation.data, metEventId: metEvent?.eventId ?? null }),
           expectedItems: confirmation.data.expectedCardItems,
           fieldSources: confirmation.data.fieldSources,
           async createContact(client) {
@@ -759,6 +811,7 @@ function createConfirmLikeHandler(
                 contactId,
                 evidenceIds,
                 industry,
+                metEvent,
                 store,
                 workspaceId: runtime.workspaceId,
               });
@@ -791,6 +844,7 @@ function createConfirmLikeHandler(
               organization: confirmation.data.organization,
               phone: confirmation.data.phone,
               ...industry,
+              metEvent,
               relationshipContext: confirmation.data.relationshipContext,
               role: confirmation.data.role,
             });
@@ -812,6 +866,15 @@ function createConfirmLikeHandler(
             );
           }
         }
+        if (metEvent) {
+          // 联系人已随确认提交（主数据）；计划写入另走计划库的事务，幂等（已参加是终态）。这里只是尽力而为：
+          // 失败或计划服务未配置时，`plan-event-attendance` 维护任务按联系人上的 metEventId 对账补上。
+          await (deps.eventAttribution ?? liveIngestEventAttribution)
+            .markAttended({ actorId, eventId: metEvent.eventId })
+            .catch((error: unknown) => {
+              console.warn("[ingest-v2] event attribution plan update failed", error instanceof Error ? error.message : error);
+            });
+        }
         const confirmedItem = confirmed.items.find((entry) => entry.id === itemId) ?? confirmed.items[0]!;
         return NextResponse.json(
           success({
@@ -819,6 +882,7 @@ function createConfirmLikeHandler(
             item: confirmedItem,
             items: confirmed.items,
             merged,
+            metEventId: metEvent?.eventId ?? null,
             replayed: confirmed.replayed,
             state: "created",
           }),

@@ -476,3 +476,81 @@ test("the day sweep sends all contacts of the day and every active need (no 40-n
     assert.equal(seen[0]!.needs[0], "额外需求 45", "needs are read newest first");
   });
 });
+
+/* ── W0015：在活动上认识的人，与该活动关联的需求优先 ───────────────────── */
+
+test("W0015: needs in the same phase as the event where the contact was met are listed first", databaseTest, async () => {
+  await withMatchingDatabase(async (harness) => {
+    const { ingest, matches, pool } = harness;
+    const { createPlanService } = await import("../../features/plans/service");
+    const { createPostgresPlanRepository } = await import("../../features/plans/repository");
+    const { createAllowListPlanReferenceValidator } = await import("../../features/plans/reference-validator");
+    const { createPlanMatchingService } = await import("../../features/plans/matching-service");
+    const { planInput } = await import("../support/plan-fixture");
+    const plans = createPlanService({
+      references: createAllowListPlanReferenceValidator({ actorId: ALICE, allowList: { contactsByActor: "any", eventIds: ["event:mixer"] } }),
+      repository: createPostgresPlanRepository({ pool }),
+      scope: { actorId: ALICE, workspaceId: WORKSPACE },
+    });
+    const snapshot = await plans.createVersion(planInput({
+      items: [
+        {
+          criteria: { description: null, primaryIndustryId: "technology_internet", secondaryIndustryId: "technology_internet.enterprise_software", titleKeywords: [] },
+          kind: "network_need",
+          phaseKey: "p1",
+          title: NEED_SAAS,
+        },
+        {
+          criteria: { description: null, primaryIndustryId: "technology_internet", secondaryIndustryId: null, titleKeywords: [] },
+          kind: "network_need",
+          phaseKey: "p2",
+          title: "活动上的技术人",
+        },
+        { kind: "event", linkedEventId: "event:mixer", phaseKey: "p2", title: "Tokyo Startup Mixer" },
+      ],
+    }));
+    const saasNeed = snapshot.items.find((item) => item.title === NEED_SAAS)!.id;
+    const eventNeed = snapshot.items.find((item) => item.title === "活动上的技术人")!.id;
+    // 佐藤是在 Mixer 上认识的（名片确认时写入 metEventId）。
+    await pool.query(
+      `update orbit_records set payload = payload || '{"metEventId":"event:mixer","metEventTitle":"Tokyo Startup Mixer"}'::jsonb
+       where workspace_id = $1 and record_id = 'contact:saas'`,
+      [WORKSPACE],
+    );
+
+    const needs = await matches.readActiveNeeds(ALICE);
+    assert.deepEqual(Object.fromEntries(needs.map((need) => [need.id, need.eventIds])), { [eventNeed]: ["event:mixer"], [saasNeed]: [] });
+    const [saas, ai] = await matches.readContacts(ALICE, ["contact:saas", "contact:ai"]);
+    assert.equal(saas!.metEventId, "event:mixer");
+    assert.equal(ai!.metEventId, null);
+
+    const { batch, items } = await extractedBatch(ingest, ALICE, 2);
+    await confirmItem(ingest, { actorId: ALICE, batchId: batch.id, contactId: "contact:ai", itemId: items[0]!.id });
+    await confirmItem(ingest, { actorId: ALICE, batchId: batch.id, contactId: "contact:saas", itemId: items[1]!.id });
+    const service = createPlanMatchingService({
+      planServiceFor: harness.planServiceFor,
+      repository: matches,
+      worker: worker(matches, null),
+    });
+    const { view } = await service.runForBatch({ actorId: ALICE, batchId: batch.id });
+    assert.equal(view.candidates.length, 4);
+    // 佐藤 × 活动那一阶段的需求（只是一级候选）排在最前；其余保持原有顺序。
+    assert.deepEqual([view.candidates[0]!.contactId, view.candidates[0]!.needId], ["contact:saas", eventNeed]);
+    assert.equal(view.candidates.filter((candidate) => candidate.contactId === "contact:saas" && candidate.needId === eventNeed).length, 1);
+
+    // 排序在 LIMIT 之前：把活动关联的候选改成最旧的一条，其余三条更新；只取 1 条时仍是它。
+    await pool.query(
+      `update plan_match_candidates set created_at = case
+         when contact_id = 'contact:saas' and need_item_id = $1 then now() - interval '30 days'
+         else now() end`,
+      [eventNeed],
+    );
+    const page = await matches.listPendingCandidates({ actorId: ALICE, limit: 1 });
+    assert.deepEqual(page.map((candidate) => [candidate.contactId, candidate.needItemId]), [["contact:saas", eventNeed]]);
+    const two = await matches.listPendingCandidates({ actorId: ALICE, limit: 2 });
+    assert.equal(two.length, 2);
+    assert.equal(two[0]!.needItemId, eventNeed);
+    // 他人的查询看不到 alice 的候选，也不会因为 alice 的联系人而改变排序。
+    assert.deepEqual(await matches.listPendingCandidates({ actorId: BOB, limit: 5 }), []);
+  });
+});

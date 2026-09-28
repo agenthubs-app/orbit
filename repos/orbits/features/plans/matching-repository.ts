@@ -259,6 +259,11 @@ export interface PlanMatchRepository {
   /** 手动关联时，把同一对还在待确认的候选一并标为已接受（不再提示）。 */
   acceptPendingPair(input: { actorId: string; needItemId: string; contactId: string }): Promise<void>;
   getJob(input: { actorId: string; jobId: string }): Promise<PlanMatchJob | null>;
+  /**
+   * W0015 对账：生效计划里还没「已参加」、但本人已有联系人记着「在这场活动认识」的 (actor, 活动)。
+   * 联系人与计划条目按同一 actor 连接（与引用校验同一归属谓词），有上限。
+   */
+  listUnattendedAttributedEvents(input: { limit: number }): Promise<Array<{ actorId: string; eventId: string }>>;
 }
 
 const CLAIM_SET = `status = 'running', lease_token = $LEASE, attempt_count = attempt_count + 1,
@@ -270,7 +275,8 @@ const CONTACTS_SQL = `select c.record_id,
        c.payload->>'organization' as organization,
        c.payload->>'role' as role,
        c.payload->>'primaryIndustryId' as primary_industry_id,
-       c.payload->>'secondaryIndustryId' as secondary_industry_id
+       c.payload->>'secondaryIndustryId' as secondary_industry_id,
+       c.payload->>'metEventId' as met_event_id
   from orbit_records c
  where c.workspace_id = $1
    and c.collection_name = 'contacts'
@@ -410,7 +416,11 @@ export function createPostgresPlanMatchRepository(options: {
 
     async readActiveNeeds(actorId) {
       const result = await pool.query(
-        `select i.id, i.plan_id, i.title, i.criteria, i.linked_contact_ids
+        `select i.id, i.plan_id, i.title, i.criteria, i.linked_contact_ids,
+                coalesce((select array_agg(distinct e.linked_event_id) from plan_items e
+                          where e.workspace_id = i.workspace_id and e.actor_id = i.actor_id and e.plan_id = i.plan_id
+                            and e.kind = 'event' and e.linked_event_id is not null
+                            and i.phase is not null and e.phase = i.phase), '{}') as event_ids
          from plan_items i
          join plans p on p.workspace_id = i.workspace_id and p.actor_id = i.actor_id and p.id = i.plan_id
          where i.workspace_id = $1 and i.actor_id = $2 and p.status = 'active' and i.kind = 'network_need'
@@ -419,6 +429,7 @@ export function createPostgresPlanMatchRepository(options: {
       );
       return result.rows.map((row) => ({
         criteria: (row.criteria as NetworkNeedCriteria | null) ?? null,
+        eventIds: strings(row.event_ids),
         id: String(row.id),
         linkedContactIds: strings(row.linked_contact_ids),
         planId: String(row.plan_id),
@@ -438,6 +449,7 @@ export function createPostgresPlanMatchRepository(options: {
             id: String(row.record_id),
             organization: textOrNull(row.organization),
             primaryIndustryId: industry.primaryIndustryId,
+            metEventId: textOrNull(row.met_event_id),
             role: textOrNull(row.role),
             secondaryIndustryId: industry.secondaryIndustryId,
           };
@@ -450,14 +462,26 @@ export function createPostgresPlanMatchRepository(options: {
 
     async listPendingCandidates({ actorId, batchId = null, limit = 100 }) {
       const result = await pool.query(
-        `select c.* from plan_match_candidates c
+        // W0015：联系人在与需求关联的活动（同一阶段的活动条目）上认识的候选排最前——在 LIMIT 之前排序，
+        // 较旧的这类候选不会被截掉。子查询只看同一 workspace、同一 actor 的联系人与计划条目。
+        `select c.*, exists (
+             select 1
+             from plan_items n
+             join plan_items e on e.workspace_id = n.workspace_id and e.actor_id = n.actor_id and e.plan_id = n.plan_id
+               and e.kind = 'event' and n.phase is not null and e.phase = n.phase
+             join orbit_records r on r.workspace_id = c.workspace_id and r.collection_name = 'contacts'
+               and r.record_id = c.contact_id and r.user_id = c.actor_id and r.lifecycle_state <> 'deleted'
+             where n.workspace_id = c.workspace_id and n.actor_id = c.actor_id and n.id = c.need_item_id
+               and e.linked_event_id = r.payload->>'metEventId'
+           ) as event_linked
+         from plan_match_candidates c
          where c.workspace_id = $1 and c.actor_id = $2 and c.status = 'pending'
            and ($3::text is null or exists (
              select 1 from plan_match_job_contacts jc
              where jc.workspace_id = c.workspace_id and jc.actor_id = c.actor_id
                and jc.batch_id = $3 and jc.contact_id = c.contact_id
            ))
-         order by c.created_at desc, case c.strength when 'strong' then 0 else 1 end, c.id
+         order by event_linked desc, c.created_at desc, case c.strength when 'strong' then 0 else 1 end, c.id
          limit $4`,
         [workspaceId, actorId, batchId, Math.max(1, Math.min(200, limit))],
       );
@@ -502,6 +526,27 @@ export function createPostgresPlanMatchRepository(options: {
         [workspaceId, actorId, jobId],
       );
       return result.rows[0] ? mapJob(result.rows[0]) : null;
+    },
+
+    async listUnattendedAttributedEvents({ limit }) {
+      const result = await pool.query(
+        `select distinct i.actor_id, i.linked_event_id
+         from plan_items i
+         join plans p on p.workspace_id = i.workspace_id and p.actor_id = i.actor_id and p.id = i.plan_id
+         where i.workspace_id = $1 and p.status = 'active' and i.kind = 'event' and i.status <> 'attended'
+           and exists (
+             select 1 from orbit_records c
+             where c.workspace_id = i.workspace_id and c.collection_name = 'contacts'
+               and c.lifecycle_state <> 'deleted' and c.user_id = i.actor_id
+               and (c.payload->'accountId' is null or c.payload->'accountId' = 'null'::jsonb
+                    or c.payload->'accountId' = to_jsonb(i.actor_id))
+               and c.payload->>'metEventId' = i.linked_event_id
+           )
+         order by i.actor_id, i.linked_event_id
+         limit $2`,
+        [workspaceId, Math.max(1, Math.min(500, limit))],
+      );
+      return result.rows.map((row) => ({ actorId: String(row.actor_id), eventId: String(row.linked_event_id) }));
     },
   };
 }

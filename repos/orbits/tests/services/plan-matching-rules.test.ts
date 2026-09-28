@@ -14,6 +14,7 @@ import {
 } from "../../features/plans/ai-matcher";
 import {
   acceptedAiPairs,
+  eventLinked,
   ruleStrength,
   scoreRuleMatches,
   type PlanMatchContact,
@@ -207,4 +208,28 @@ test("the DeepSeek matcher maps timeouts, HTTP failures and malformed output to 
   });
   assert.throws(() => parsePlanAiMatchContent('{"pairs":[]}'), PlanAiMatcherError);
   assert.deepEqual(parsePlanAiMatchContent('{"matches":[]}'), []);
+});
+
+test("W0015: needs linked to the event where the contact was met rank first, then strength", () => {
+  const saas = { ...need("n-saas", "technology_internet", "technology_internet.enterprise_software"), eventIds: [] };
+  const eventNeed = { ...need("n-event", "technology_internet"), eventIds: ["event:mixer"] };
+  const met = contact("met", "technology_internet", "technology_internet.enterprise_software", { metEventId: "event:mixer" });
+  const other = contact("other", "technology_internet", "technology_internet.enterprise_software");
+  const pairs = scoreRuleMatches([other, met], [saas, eventNeed]);
+  // met × n-event 只是一级候选，但因为在该活动认识排第一；其余按强候选在前、输入顺序。
+  assert.deepEqual(pairs.map((pair) => [pair.contactId, pair.needId, pair.strength]), [
+    ["met", "n-event", "candidate"],
+    ["other", "n-saas", "strong"],
+    ["met", "n-saas", "strong"],
+    ["other", "n-event", "candidate"],
+  ]);
+  assert.equal(eventLinked(met, eventNeed), true);
+  assert.equal(eventLinked(other, eventNeed), false);
+  assert.equal(eventLinked(met, saas), false);
+  // 没有 W0015 字段的旧数据：行为与之前一致。
+  assert.deepEqual(
+    scoreRuleMatches([contact("x", "technology_internet", "technology_internet.enterprise_software")], [need("n1", "technology_internet"), need("n2", "technology_internet", "technology_internet.enterprise_software")])
+      .map((pair) => pair.needId),
+    ["n2", "n1"],
+  );
 });

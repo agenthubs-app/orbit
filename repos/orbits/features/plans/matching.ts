@@ -10,6 +10,10 @@
  * 输入是本人**所有**生效的人脉需求（不设人数上限，没有「已填满」的概念）；唯一的排除是
  * 这个联系人已经关联在同一条需求上（`linkedContactIds`），已关联的人不重复提示。
  * 第二轮（公司、职位）由 `ai-matcher.ts` 负责，结果同样经过 `acceptedPairs` 的同一套排除。
+ *
+ * W0015：联系人记着「在活动 X 认识」（`metEventId`）时，与 X 关联的需求排在前面
+ * （`eventLinked`）。需求本身没有活动字段；「关联」指需求与计划里 X 这个活动条目同属一个阶段
+ * （`eventIds` 由仓储按阶段算出）。只调整排序，不产生新候选。
  */
 import type { IndustryIdCode, SecondaryIndustryIdCode } from "../../shared/contract/industries";
 import { sanitizeIndustryPair } from "../../shared/domain/industries";
@@ -25,6 +29,8 @@ export interface PlanMatchContact {
   role: string | null;
   primaryIndustryId: IndustryIdCode | null;
   secondaryIndustryId: SecondaryIndustryIdCode | null;
+  /** W0015：在哪场活动认识（名片审阅时确认）；没有为 null／缺省。 */
+  metEventId?: string | null;
 }
 
 export interface PlanMatchNeed {
@@ -34,6 +40,8 @@ export interface PlanMatchNeed {
   criteria: NetworkNeedCriteria | null;
   /** 已关联在这条需求上的联系人：规则层与 AI 层都不再为他们提示这条需求。 */
   linkedContactIds: readonly string[];
+  /** W0015：与这条需求关联的活动（同一阶段里的活动条目的 `linkedEventId`）。 */
+  eventIds?: readonly string[];
 }
 
 export interface PlanMatchPair {
@@ -68,22 +76,29 @@ export function ruleStrength(contact: PlanMatchContact, need: PlanMatchNeed): Pl
   return wanted.primary === actual.primary ? "candidate" : null;
 }
 
+/** W0015：联系人是在与这条需求关联的活动上认识的。 */
+export function eventLinked(contact: Pick<PlanMatchContact, "metEventId"> | undefined, need: Pick<PlanMatchNeed, "eventIds"> | undefined): boolean {
+  const eventId = contact?.metEventId;
+  return Boolean(eventId && need?.eventIds?.includes(eventId));
+}
+
 function isLinked(need: PlanMatchNeed, contactId: string): boolean {
   return need.linkedContactIds.includes(contactId);
 }
 
-/** 规则层：每个（联系人, 需求）至多一条，强候选排在前面，其余保持输入顺序。 */
+/** 规则层：每个（联系人, 需求）至多一条；与联系人认识的活动关联的需求在前，其次强候选，其余保持输入顺序。 */
 export function scoreRuleMatches(
   contacts: readonly PlanMatchContact[],
   needs: readonly PlanMatchNeed[],
 ): PlanMatchPair[] {
-  const pairs: PlanMatchPair[] = [];
+  const pairs: Array<PlanMatchPair & { eventFirst: boolean }> = [];
   for (const contact of contacts) {
     for (const need of needs) {
       if (isLinked(need, contact.id)) continue;
       const strength = ruleStrength(contact, need);
       if (!strength) continue;
       pairs.push({
+        eventFirst: eventLinked(contact, need),
         contactId: contact.id,
         needId: need.id,
         planId: need.planId,
@@ -93,7 +108,9 @@ export function scoreRuleMatches(
       });
     }
   }
-  return pairs.sort((a, b) => (a.strength === b.strength ? 0 : a.strength === "strong" ? -1 : 1));
+  return pairs
+    .sort((a, b) => Number(b.eventFirst) - Number(a.eventFirst) || (a.strength === b.strength ? 0 : a.strength === "strong" ? -1 : 1))
+    .map(({ eventFirst: _eventFirst, ...pair }) => pair);
 }
 
 /**

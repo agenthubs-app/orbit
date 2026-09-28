@@ -17,3 +17,8 @@ test("W0010: production maintenance registers exactly one bounded plan-match tas
   const tasks = createConfiguredMaintenanceTasks({ env: { NODE_ENV: "test" }, workerId: "wiring-test" });
   assert.equal(tasks.filter((task) => task.name === "plan-match").length, 1);
 });
+
+test("W0015: production maintenance registers exactly one plan-event-attendance reconcile task", () => {
+  const tasks = createConfiguredMaintenanceTasks({ env: { NODE_ENV: "test" }, workerId: "wiring-test" });
+  assert.equal(tasks.filter((task) => task.name === "plan-event-attendance").length, 1);
+});

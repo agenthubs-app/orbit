@@ -11,7 +11,9 @@ import { redispatchPendingAgentActions } from "../../agent/runtime/dispatch-scan
 import { dispatchPasswordResetMail } from "../../auth/password-reset-dispatch";
 import { NotificationDeliveryUnconfigured, runNotificationDeliveryPass } from "../../notifications/delivery-pass";
 import { createConfiguredCanonicalReminderMaintenanceTask } from "../../notifications/configured-canonical-reminder-maintenance";
+import { createPlanEventAttendanceMaintenanceTask } from "../../plans/event-attendance-reconcile";
 import { createPlanMatchMaintenanceTask } from "../../plans/match-maintenance-task";
+import { resolvePlanService } from "../../plans/service-factory";
 import { getConfiguredPlanMatchingRuntime } from "../../plans/matching-runtime";
 import type { MaintenanceTask } from "./pass";
 
@@ -120,6 +122,22 @@ export function createConfiguredMaintenanceTasks({
     // single-card day has ended). Bounded per pass; each job bills at most one AI call.
     createPlanMatchMaintenanceTask({
       resolveWorker: () => getConfiguredPlanMatchingRuntime()?.worker ?? null,
+    }),
+    // W0015: marks the plan's event attended for contacts confirmed as met at it when the
+    // inline best-effort plan write after the contact commit failed. Idempotent, bounded.
+    createPlanEventAttendanceMaintenanceTask({
+      resolve: () => {
+        const runtime = getConfiguredPlanMatchingRuntime();
+        if (!runtime) return null;
+        return {
+          planServiceFor: (actorId) => {
+            const resolution = resolvePlanService({ actorId, mode: "live" });
+            if (resolution.success === false) throw new Error(resolution.error.message);
+            return resolution.service;
+          },
+          repository: runtime.repository,
+        };
+      },
     }),
     {
       name: "notification_redelivery",

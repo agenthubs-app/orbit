@@ -127,6 +127,8 @@ function contactFor(input: {
   const profileSnippet = nonEmpty(input.request.relationshipContext);
   const notes = nonEmpty(input.request.notes ?? "");
   const industry = sanitizeIndustryPair(input.request.primaryIndustryId, input.request.secondaryIndustryId);
+  const metEventId = nonEmpty(input.request.metEvent?.eventId ?? "");
+  const metEventTitle = nonEmpty(input.request.metEvent?.title ?? "");
 
   return {
     id: input.contactId,
@@ -140,6 +142,7 @@ function contactFor(input: {
     ...(notes ? { notes } : {}),
     ...(industry.primaryIndustryId ? { primaryIndustryId: industry.primaryIndustryId } : {}),
     ...(industry.secondaryIndustryId ? { secondaryIndustryId: industry.secondaryIndustryId } : {}),
+    ...(metEventId ? { metEventId, ...(metEventTitle ? { metEventTitle } : {}) } : {}),
     stage: "captured",
     // 来源描述的是「这个联系人是怎么进来的」，不是「谁点的确认」。此前这里写的是
     // `Business card confirmed by ${actorLabel}`，而 V2 handler 传的 actorLabel 就是

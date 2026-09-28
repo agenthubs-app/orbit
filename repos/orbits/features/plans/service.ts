@@ -900,6 +900,45 @@ export function createPlanService(options: CreatePlanServiceOptions): PlanServic
         return { action: nextAction, entry, need, replayed: false };
       });
     },
+
+    async markEventAttended(rawInput) {
+      const eventId = parseId(rawInput?.eventId, "eventId");
+      return repository.transact(scope, async (tx) => {
+        const plan = await tx.activePlan();
+        if (!plan) return { item: null, logs: [] };
+        const item = (await tx.items(plan.id)).find((entry) => entry.kind === "event" && entry.linkedEventId === eventId);
+        if (!item) return { item: null, logs: [] };
+        if (item.status === "attended") return { item, logs: [] };
+        const at = now();
+        // 状态只按状态机推进：推荐 → 已报名 → 已参加（调用方已核实本人报名了这场，「推荐」内部先经过「已报名」）。
+        // 进展记录只写一条「参加活动」。
+        let current = item;
+        const steps: EventItemStatus[] = current.status === "recommended" ? ["registered", "attended"] : ["attended"];
+        for (const status of steps) {
+          const applied = applyItemChange(current, { op: "set_status", status }, at);
+          if (applied) current = applied.item;
+        }
+        await tx.updateItem(current);
+        const log = await writeLog(tx, {
+          author: "user",
+          body: clip(`${EVENT_STATUS_BODY.attended}：${item.title}`),
+          createdAt: at,
+          event: "item_status_changed",
+          fromStatus: item.status,
+          // 每个条目只一条；并发的两次确认由按 actor 串行的事务与唯一键兜底。
+          idempotencyKey: `event-attended:${item.id}`,
+          itemId: item.id,
+          kind: "auto",
+          linkedContactIds: [],
+          linkedEventId: eventId,
+          payload: { op: "set_status", source: "event_attribution" },
+          planId: plan.id,
+          targetItemId: null,
+          toStatus: "attended",
+        });
+        return { item: current, logs: [log] };
+      });
+    },
   };
   return service;
 }

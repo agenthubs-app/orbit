@@ -767,3 +767,210 @@ test("v2 confirm writes the reviewed industry, merges only into empty industry f
     assert.equal(contactAAfter.secondaryIndustryId, "professional_services.legal");
   });
 });
+
+test("W0015 confirm records the verified met-at event on new and merged contacts, rejects foreign ids, and marks the plan event attended", { skip }, async () => {
+  await withHarness(async ({ deps: baseDeps, runtime, pool }) => {
+    const hourAgo = new Date(Date.now() - 3_600_000).toISOString();
+    const events = [
+      { eventId: "event:mixer", startsAt: hourAgo, title: "Tokyo Startup Mixer" },
+      { eventId: "event:bob-only", startsAt: hourAgo, title: "Bob's Meetup" },
+    ];
+    const attended: Array<{ actorId: string; eventId: string }> = [];
+    const registrationLookups: string[] = [];
+    const deps = {
+      ...baseDeps,
+      // 报名按 Auth.js 用户 id 记，联系人与计划按 actor（账户）id 记。
+      resolveActor: async () => ({ id: "actor:test", userId: "user:test" }),
+      eventAttribution: {
+        async markAttended(input: { actorId: string; eventId: string }) {
+          attended.push(input);
+        },
+        async source() {
+          return {
+            async listEventsStartingBetween(from: string, to: string) {
+              return events.filter(event => event.startsAt >= from && event.startsAt < to);
+            },
+            async registeredEventIds({ eventIds, userId }: { eventIds: readonly string[]; userId: string }) {
+              registrationLookups.push(userId);
+              return new Set(eventIds.filter(id => (userId === "user:test" ? id === "event:mixer" : id === "event:bob-only")));
+            },
+          };
+        },
+      },
+    };
+    const heic = await readFile(FIXTURE_HEIC);
+    const created = await envelope(await createIngestV2CollectionHandlers(deps).POST(new Request("http://test/api/v2", { method: "POST", body: JSON.stringify({
+      idempotencyKey: "key-attribution",
+      manifest: ["a", "b", "c", "d"].map((card, index) => ({ cardId: `card:${card}`, side: "front", fileName: `${card}.heic`, mimeType: "image/heic", rawSize: heic.length, seq: index + 1, clientDigest: sha256(heic) })),
+    }) })));
+    const batch = created.batch as { id: string };
+    const upload = createIngestV2UploadHandler(deps);
+    for (const item of created.items as Array<{ id: string }>) {
+      assert.equal((await upload(new Request("http://test/upload", { method: "PUT", body: new Uint8Array(heic), headers: { "content-type": "image/heic" } }), params({ id: batch.id, itemId: item.id }))).status, 200);
+    }
+    await createIngestV2FinalizeHandler(deps)(new Request("http://test/finalize", { method: "POST" }), params({ id: batch.id }));
+    const extraction: BusinessCardStructuredExtraction = {
+      fullName: "青空 太郎", nativeFullName: "青空 太郎", romanizedFullName: null, organization: "架空商事", departments: [], title: "部長",
+      emails: [], contactPoints: [], website: null, addresses: [], certifications: [], detectedLanguages: ["ja"],
+    };
+    for (const item of await runtime.repository.claimItems({ limit: 4 })) {
+      await runtime.repository.submitExtraction({ itemId: item.id, leaseToken: item.leaseToken, expectedVersion: item.version, extraction, reviewIssues: [], usage: null });
+    }
+    const items = (await envelope(await createIngestV2BatchDetailHandler(deps)(new Request("http://test/detail"), params({ id: batch.id })))).items as IngestItemDTO[];
+    const itemFor = (card: string) => items.find(entry => entry.cardId === `card:${card}`)!;
+    const body = (card: string, fields: Record<string, unknown>) => {
+      const item = itemFor(card);
+      return {
+        confirmationIntentId: `confirm:${card}:${randomUUID()}`,
+        expectedCardItems: [{ itemId: item.id, version: item.version, imageDigest: item.imageDigest }],
+        fieldSources: { displayName: null, organization: null, role: null, email: null, phone: null },
+        organization: "", role: "", email: "", phone: "", relationshipContext: "", notes: "",
+        ...fields,
+      };
+    };
+    const confirm = createIngestV2ConfirmHandler(deps);
+    const post = async (card: string, payload: Record<string, unknown>) => {
+      const response = await confirm(new Request("http://test/confirm", { method: "POST", body: JSON.stringify(payload) }), params({ id: batch.id, itemId: itemFor(card).id }));
+      return { status: response.status, data: await envelope(response) };
+    };
+    const payloadOf = async (contactId: unknown) =>
+      (await pool.query(`select payload from orbit_records where collection_name = 'contacts' and record_id = $1`, [contactId])).rows[0].payload as Record<string, unknown>;
+    const contactCount = async () => Number((await pool.query(`select count(*) from orbit_records where collection_name = 'contacts'`)).rows[0].count);
+
+    // 非法值与不在重算候选里的活动（他人报名的、不存在的）：拒绝，且不写任何东西。
+    assert.equal((await post("a", body("a", { displayName: "青空 太郎", metEventId: 42 }))).status, 400);
+    const foreign = await post("a", body("a", { displayName: "青空 太郎", metEventId: "event:bob-only" }));
+    assert.equal(foreign.status, 409);
+    assert.match(String(foreign.data.message), /EVENT_ATTRIBUTION_REJECTED/);
+    assert.equal((await post("a", body("a", { displayName: "青空 太郎", metEventId: "event:unknown" }))).status, 409);
+    assert.equal(await contactCount(), 0);
+    assert.deepEqual(attended, []);
+    assert.equal(itemFor("a").status, "extracted");
+    assert.ok(registrationLookups.every(userId => userId === "user:test"), "registration is read for the signed-in user only");
+
+    // 新建：记下来源活动，OCR 来源 source 不变；计划里这场活动标为已参加。
+    const createdA = await post("a", body("a", { displayName: "青空 太郎", metEventId: "event:mixer" }));
+    assert.equal(createdA.data.state, "created");
+    assert.equal(createdA.data.metEventId, "event:mixer");
+    const contactA = await payloadOf(createdA.data.contactId);
+    assert.equal(contactA.metEventId, "event:mixer");
+    assert.equal(contactA.metEventTitle, "Tokyo Startup Mixer");
+    assert.equal((contactA.source as { type: string }).type, "business_card_ocr");
+    assert.deepEqual(attended, [{ actorId: "actor:test", eventId: "event:mixer" }]);
+
+    // 取消勾选（不传）：不写来源活动，也不动计划。
+    const createdB = await post("b", body("b", { displayName: "別の 人" }));
+    assert.equal(createdB.data.metEventId, null);
+    assert.equal((await payloadOf(createdB.data.contactId)).metEventId, undefined);
+    assert.equal(attended.length, 1);
+
+    // 合并到没有来源活动的联系人：补上。
+    const mergedIntoEmpty = await post("c", body("c", { displayName: "別の 人", mergeIntoContactId: createdB.data.contactId, metEventId: "event:mixer" }));
+    assert.equal(mergedIntoEmpty.data.merged, true);
+    assert.equal((await payloadOf(createdB.data.contactId)).metEventId, "event:mixer");
+
+    // 合并到已记着另一场活动的联系人：只补空，不覆盖。
+    await pool.query(
+      `update orbit_records set payload = payload || '{"metEventId":"event:earlier","metEventTitle":"Earlier"}'::jsonb where record_id = $1`,
+      [createdA.data.contactId],
+    );
+    const mergedIntoExisting = await post("d", body("d", { displayName: "青空 太郎", mergeIntoContactId: createdA.data.contactId, metEventId: "event:mixer" }));
+    assert.equal(mergedIntoExisting.data.merged, true);
+    const contactAAfter = await payloadOf(createdA.data.contactId);
+    assert.equal(contactAAfter.metEventId, "event:earlier");
+    assert.equal(contactAAfter.metEventTitle, "Earlier");
+    assert.equal(attended.length, 3, "every verified confirmation asks the plan (idempotent there)");
+  });
+});
+
+test("W0015 contact committed but plan write failed: reconciliation marks the event attended exactly once, and waits while the plan service is unconfigured", { skip }, async () => {
+  await withHarness(async ({ deps: baseDeps, runtime, pool }) => {
+    const { runPlanMigrations } = await import("../../features/plans/migrations");
+    const { createPostgresPlanRepository } = await import("../../features/plans/repository");
+    const { createAllowListPlanReferenceValidator } = await import("../../features/plans/reference-validator");
+    const { createPlanService } = await import("../../features/plans/service");
+    const { createPostgresPlanMatchRepository } = await import("../../features/plans/matching-repository");
+    const { createPlanEventAttendanceMaintenanceTask } = await import("../../features/plans/event-attendance-reconcile");
+    const { planInput } = await import("../support/plan-fixture");
+    await runPlanMigrations(pool);
+    const planServiceFor = (actorId: string) =>
+      createPlanService({
+        references: createAllowListPlanReferenceValidator({ actorId, allowList: { contactsByActor: "any", eventIds: ["event:mixer"] } }),
+        repository: createPostgresPlanRepository({ pool }),
+        scope: { actorId, workspaceId: "workspace:test" },
+      });
+    const planItems = [{ kind: "event" as const, linkedEventId: "event:mixer", phaseKey: "p1", title: "Tokyo Startup Mixer" }];
+    await planServiceFor("actor:test").createVersion(planInput({ items: planItems }));
+    // 另一个人也有这场活动、但没有在活动上认识的联系人：对账不能动他的计划。
+    await planServiceFor("actor:other").createVersion(planInput({ items: planItems }));
+
+    const hourAgo = new Date(Date.now() - 3_600_000).toISOString();
+    let planWrites = 0;
+    const deps = {
+      ...baseDeps,
+      resolveActor: async () => ({ id: "actor:test", userId: "user:test" }),
+      eventAttribution: {
+        async markAttended() {
+          planWrites += 1;
+          throw new Error("plan database unavailable");
+        },
+        async source() {
+          return {
+            async listEventsStartingBetween() { return [{ eventId: "event:mixer", startsAt: hourAgo, title: "Tokyo Startup Mixer" }]; },
+            async registeredEventIds() { return new Set(["event:mixer"]); },
+          };
+        },
+      },
+    };
+    const heic = await readFile(FIXTURE_HEIC);
+    const created = await envelope(await createIngestV2CollectionHandlers(deps).POST(new Request("http://test/api/v2", { method: "POST", body: JSON.stringify({
+      idempotencyKey: "key-attribution-reconcile",
+      manifest: [{ cardId: "card:a", side: "front", fileName: "a.heic", mimeType: "image/heic", rawSize: heic.length, seq: 1, clientDigest: sha256(heic) }],
+    }) })));
+    const batch = created.batch as { id: string };
+    const [createdItem] = created.items as Array<{ id: string }>;
+    await createIngestV2UploadHandler(deps)(new Request("http://test/upload", { method: "PUT", body: new Uint8Array(heic), headers: { "content-type": "image/heic" } }), params({ id: batch.id, itemId: createdItem!.id }));
+    await createIngestV2FinalizeHandler(deps)(new Request("http://test/finalize", { method: "POST" }), params({ id: batch.id }));
+    for (const claimed of await runtime.repository.claimItems({ limit: 1 })) {
+      await runtime.repository.submitExtraction({ itemId: claimed.id, leaseToken: claimed.leaseToken, expectedVersion: claimed.version, reviewIssues: [], usage: null, extraction: {
+        fullName: "青空 太郎", nativeFullName: "青空 太郎", romanizedFullName: null, organization: "架空商事", departments: [], title: "部長",
+        emails: [], contactPoints: [], website: null, addresses: [], certifications: [], detectedLanguages: ["ja"],
+      } });
+    }
+    const item = ((await envelope(await createIngestV2BatchDetailHandler(deps)(new Request("http://test/detail"), params({ id: batch.id })))).items as IngestItemDTO[])[0]!;
+    const response = await createIngestV2ConfirmHandler(deps)(new Request("http://test/confirm", { method: "POST", body: JSON.stringify({
+      confirmationIntentId: "confirm:reconcile",
+      expectedCardItems: [{ itemId: item.id, version: item.version, imageDigest: item.imageDigest }],
+      fieldSources: { displayName: null, organization: null, role: null, email: null, phone: null },
+      displayName: "青空 太郎", organization: "", role: "", email: "", phone: "", relationshipContext: "", notes: "",
+      metEventId: "event:mixer",
+    }) }), params({ id: batch.id, itemId: item.id }));
+    // 联系人是主数据：计划写入失败不影响确认结果。
+    assert.equal(response.status, 200);
+    assert.equal(planWrites, 1);
+    const contactId = (await envelope(response)).contactId;
+    assert.equal((await pool.query(`select payload->>'metEventId' as e from orbit_records where record_id = $1`, [contactId])).rows[0].e, "event:mixer");
+    const eventStatus = async (actorId: string) =>
+      (await pool.query(`select status from plan_items where workspace_id = 'workspace:test' and actor_id = $1 and kind = 'event'`, [actorId])).rows[0].status as string;
+    const attendanceLogs = async () =>
+      Number((await pool.query(`select count(*) from plan_log where workspace_id = 'workspace:test' and payload->>'source' = 'event_attribution'`)).rows[0].count);
+    assert.equal(await eventStatus("actor:test"), "recommended");
+
+    const context = { deadline: Date.now() + 60_000, now: () => new Date() };
+    // 计划服务（数据库）未配置：跳过，不崩溃，也不写。
+    const unconfigured = createPlanEventAttendanceMaintenanceTask({ resolve: () => null });
+    assert.deepEqual(await unconfigured.run(context), { skipped: "database_unconfigured" });
+    assert.equal(await eventStatus("actor:test"), "recommended");
+
+    // 配置好之后：对账把这场活动标为已参加，只写一条记录；再跑一次什么都不做。
+    const task = createPlanEventAttendanceMaintenanceTask({
+      resolve: () => ({ planServiceFor, repository: createPostgresPlanMatchRepository({ pool, workspaceId: "workspace:test" }) }),
+    });
+    assert.deepEqual(await task.run(context), { examined: 1, failed: 0, marked: 1 });
+    assert.equal(await eventStatus("actor:test"), "attended");
+    assert.equal(await attendanceLogs(), 1);
+    assert.deepEqual(await task.run(context), { examined: 0, failed: 0, marked: 0 });
+    assert.equal(await attendanceLogs(), 1);
+    assert.equal(await eventStatus("actor:other"), "recommended", "another actor's plan is untouched");
+  });
+});
