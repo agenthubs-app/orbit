@@ -9,7 +9,7 @@
  * 先是一句话回答、3 个关键数字和阶段骨架（第 1 阶段带内容，后面的是骨架／排队中），
  * 然后每隔 `PLAN_REVEAL_STEP_MS` 补齐一个阶段，最后出现其余各块与「已保存为你的计划 v1」。
  */
-import type { PlanItem, PlanSnapshot } from "../../../../../features/plans/contract";
+import type { PlanViewItem, PlanViewSnapshot } from "../../../../../features/plans/contract";
 import type { PlanAnalysisV1 } from "../../../../../features/plans/generator";
 
 export interface IOrbitPlanCardPhase {
@@ -76,11 +76,11 @@ function isBootstrapAnalysis(value: Record<string, unknown>): value is Record<st
   return value.kind === "plan_bootstrap" && value.version === 1 && Array.isArray(value.answer) && Array.isArray(value.figures);
 }
 
-const byWeek = (a: PlanItem, b: PlanItem) =>
+const byWeek = (a: PlanViewItem, b: PlanViewItem) =>
   (a.suggestedWeek ?? Number.MAX_SAFE_INTEGER) - (b.suggestedWeek ?? Number.MAX_SAFE_INTEGER) || a.sortKey - b.sortKey;
 
 /** 已保存的计划 → 卡片。不是由第一份计划生成（没有回答卡片数据）的计划返回 null。 */
-export function planCardViewFromSnapshot(snapshot: PlanSnapshot): IOrbitPlanCardView | null {
+export function planCardViewFromSnapshot(snapshot: PlanViewSnapshot): IOrbitPlanCardView | null {
   const { plan, items } = snapshot;
   if (!isBootstrapAnalysis(plan.analysis)) return null;
   const analysis = plan.analysis;

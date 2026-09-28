@@ -17,6 +17,7 @@ import {
   IngestConflictError,
   isRetryableIngestError,
   type IngestBatchDTO,
+  type IngestBatchCardStates,
   type IngestBatchSummary,
   type IngestCardConfirmationItem,
   type IngestCardFieldSources,
@@ -62,6 +63,11 @@ export interface BusinessCardIngestRepository {
     actorId: string;
     batchId: string;
   }): Promise<IngestBatchSummary | null>;
+  /** W0021：批次状态 + 每个条目的分组／状态列（见 `IngestBatchCardStates`）；他人的批次为 null。 */
+  getBatchCardStates(input: {
+    actorId: string;
+    batchId: string;
+  }): Promise<IngestBatchCardStates | null>;
   listBatches(input: { actorId: string }): Promise<IngestBatchDTO[]>;
   markItemUploaded(input: {
     actorId: string;
@@ -671,6 +677,43 @@ export function createBusinessCardIngestRepository(options: {
           [workspaceId, batchId],
         );
         return { batch: mapBatch(batchRow), items: itemsResult.rows.map(mapItem) };
+      });
+    },
+
+    async getBatchCardStates({ actorId, batchId }) {
+      return withClient(async (client) => {
+        const batchResult = await client.query(
+          `select id, status, created_at from bc_ingest_batches
+           where workspace_id = $1 and id = $2 and actor_id = $3`,
+          [workspaceId, batchId, actorId],
+        );
+        const batchRow = batchResult.rows[0];
+        if (!batchRow) {
+          return null;
+        }
+        const itemsResult = await client.query(
+          `select id, card_id, card_side, seq, status, confirmed_contact_id, card_identity_explicit, created_at
+           from bc_ingest_items
+           where workspace_id = $1 and batch_id = $2 order by seq`,
+          [workspaceId, batchId],
+        );
+        return {
+          batch: {
+            createdAt: toIso(batchRow.created_at),
+            id: String(batchRow.id),
+            status: batchRow.status as IngestBatchDTO["status"],
+          },
+          items: itemsResult.rows.map((row) => ({
+            cardId: String(row.card_id),
+            cardIdentityExplicit: row.card_identity_explicit === true,
+            confirmedContactId: (row.confirmed_contact_id as string | null) ?? null,
+            createdAt: toIso(row.created_at),
+            id: String(row.id),
+            seq: Number(row.seq),
+            side: row.card_side as IngestItemDTO["side"],
+            status: row.status as IngestItemDTO["status"],
+          })),
+        };
       });
     },
 

@@ -1,7 +1,7 @@
 /**
  * 「我的计划」route adapter（`/app/agent/plan`，RW-10，Sprint W0009）。
  *
- * 服务端以本人身份读当前生效计划（W0007 `PlanService.getCurrent()`）作为首帧交给
+ * 服务端以本人身份读当前生效计划（W0007；W0021 起为投影 `PlanService.getCurrentView()`）作为首帧交给
  * `iorbit-0918/iorbit-plan.tsx`；读不到时显示「暂时读不到」，不伪造内容。打勾与手动记录
  * 由客户端走 W0007 的接口。引导开关（`ORBIT_GUIDE_DEMO`）决定无计划时的落点：
  * 打开 → `/app/start`（第 3 步生成计划），关闭 → `/app/agent`。
@@ -13,7 +13,7 @@
  * 判定），不读计划也不读联系人名字，直接让计划屏渲染示例人物的计划；开关关闭时那次判定不做
  * 任何读取，下面的真实路径与改动前一致。
  *
- * W0012：读计划前先惰性判定「进入新阶段」（幂等；失败不影响读取）；另读本月重新分析额度、资料里的
+ * W0012：读计划前先惰性判定「进入新阶段」（幂等；失败不影响读取；W0021 与 API 共用 `getCurrentView`）；另读本月重新分析额度、资料里的
  * 目标（「目标被改」提示）以及——只在计划到期时——计划期间新增的联系人（到期回顾）。这些读取失败
  * 都只降级为不提示／回退口径，不影响计划本身。
  */
@@ -26,9 +26,9 @@ import {
   readPlanPeriodContacts,
   type PlanContactName,
 } from "../../../../../features/plans/contact-names";
-import type { PlanService, PlanSnapshot } from "../../../../../features/plans/contract";
-import { resolvePlanService } from "../../../../../features/plans/service-factory";
+import type { PlanService, PlanViewSnapshot } from "../../../../../features/plans/contract";
 import { planWeekState } from "../../../../../features/plans/week";
+import { readCurrentPlan } from "./read-current-plan";
 import { createProfileService } from "../../../../../features/profile/service-factory";
 import { resolveModuleMode } from "../../../../../shared/services/module-mode";
 import { readGuideDemoConfig } from "../../../../../shared/config/guide-demo";
@@ -41,26 +41,10 @@ import type { PlanTrackingInput } from "./plan-route-view-model";
 
 export const dynamic = "force-dynamic";
 
-/** 本人的当前生效计划；没有为 null，服务不可用或读取失败为 "unavailable"。 */
-async function readCurrentPlan(actorId: string): Promise<{ service: PlanService | null; snapshot: PlanSnapshot | null | "unavailable" }> {
-  try {
-    const resolution = resolvePlanService({ actorId });
-    if (resolution.success === false) return { service: null, snapshot: "unavailable" };
-    // W0012：进入新阶段的惰性生产者（幂等；失败由每日 plan-phase 维护任务兜底，不影响读取）。
-    const service = resolution.service;
-    await Promise.resolve()
-      .then(() => service.enterCurrentPhase())
-      .catch(() => undefined);
-    return { service: resolution.service, snapshot: await resolution.service.getCurrent() };
-  } catch {
-    return { service: null, snapshot: "unavailable" };
-  }
-}
-
 async function readTracking(
   actorId: string,
   service: PlanService | null,
-  snapshot: PlanSnapshot | null | "unavailable",
+  snapshot: PlanViewSnapshot | null | "unavailable",
 ): Promise<PlanTrackingInput | null> {
   if (!service || !snapshot || snapshot === "unavailable") return null;
   // 每一项单独降级：读不到额度 → 按钮不可用；读不到目标 → 不据此提示；读不到联系人 → 回顾退回计划口径。
@@ -85,7 +69,7 @@ async function readTracking(
 
 async function readContactNames(
   actorId: string,
-  snapshot: PlanSnapshot | null | "unavailable",
+  snapshot: PlanViewSnapshot | null | "unavailable",
 ): Promise<Record<string, PlanContactName>> {
   if (!snapshot || snapshot === "unavailable") return {};
   try {

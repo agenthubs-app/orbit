@@ -10,8 +10,8 @@
 import { industryLabel, secondaryIndustryLabel } from "../../shared/domain/industries";
 import { PLAN_MATCH_ACTION_SOURCE, type LinkNeedContactResult, type PlanService } from "./contract";
 import { resolvePlanEmailDraftProvider, type PlanEmailDraft, type PlanEmailDraftProvider } from "./email-draft";
-import { eventLinked, type PlanMatchContact, type PlanMatchNeed } from "./matching";
-import type { PlanMatchCandidate, PlanMatchRepository } from "./matching-repository";
+import { eventLinked } from "./matching";
+import type { PlanMatchContactView, PlanMatchNeedView, PlanMatchPendingCandidate, PlanMatchRepository } from "./matching-repository";
 import { runMatchJobForBatch, type PlanMatchBatchRun, type PlanMatchWorkerDeps } from "./match-worker";
 import { PlanServiceError } from "./validators";
 
@@ -52,18 +52,18 @@ export interface PlanMatchingService {
   draftEmail(input: { actorId: string; actionItemId: string; language: "zh" | "en" }): Promise<PlanEmailDraft>;
 }
 
-function subtitle(contact: PlanMatchContact): string | null {
+function subtitle(contact: PlanMatchContactView): string | null {
   const value = [contact.organization, contact.role].filter(Boolean).join(" · ");
   return value || null;
 }
 
-function industryOf(need: PlanMatchNeed, candidate: PlanMatchCandidate): PlanMatchCandidateView["industry"] {
-  if (candidate.tier !== "rule" || !need.criteria) return null;
-  if (candidate.strength === "strong" && need.criteria.secondaryIndustryId) {
-    const id = need.criteria.secondaryIndustryId;
+function industryOf(need: PlanMatchNeedView, candidate: PlanMatchPendingCandidate): PlanMatchCandidateView["industry"] {
+  if (candidate.tier !== "rule") return null;
+  if (candidate.strength === "strong" && need.secondaryIndustryId) {
+    const id = need.secondaryIndustryId;
     return { en: secondaryIndustryLabel(id, "en"), zh: secondaryIndustryLabel(id, "zh") };
   }
-  const primary = need.criteria.primaryIndustryId;
+  const primary = need.primaryIndustryId;
   return primary ? { en: industryLabel(primary, "en"), zh: industryLabel(primary, "zh") } : null;
 }
 
@@ -76,16 +76,17 @@ export function createPlanMatchingService(deps: {
   const { repository } = deps;
 
   async function listPending({ actorId, batchId = null }: { actorId: string; batchId?: string | null }) {
+    // W0021：三条读取都只取渲染所需的列（候选、需求的行业 id、联系人的名字／公司／职位／认识的活动）。
     const [pending, needs] = await Promise.all([
       repository.listPendingCandidates({ actorId, batchId }),
-      repository.readActiveNeeds(actorId),
+      repository.readActiveNeedViews(actorId),
     ]);
     const needsById = new Map(needs.map((need) => [need.id, need]));
     const live = pending.filter((candidate) => {
       const need = needsById.get(candidate.needItemId);
       return need !== undefined && !need.linkedContactIds.includes(candidate.contactId);
     });
-    const contacts = await repository.readContacts(actorId, [...new Set(live.map((candidate) => candidate.contactId))]);
+    const contacts = await repository.readContactViews(actorId, [...new Set(live.map((candidate) => candidate.contactId))]);
     const contactsById = new Map(contacts.map((contact) => [contact.id, contact]));
     const candidates: PlanMatchCandidateView[] = [];
     for (const candidate of live) {

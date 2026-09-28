@@ -16,7 +16,7 @@
  * 生成、保存前校验；保存走 `createVersionWithOutcome(..., { origin })`，一个事务里归档旧版、写新版并
  * 带入已完成的内容，任一步失败都不留下半份新版本。
  */
-import type { PlanHorizon, PlanItem, PlanReferenceValidator, PlanService, PlanSnapshot, PlanVersionOrigin } from "./contract";
+import type { PlanHorizon, PlanReferenceValidator, PlanService, PlanSnapshot, PlanVersionOrigin, PlanViewItem, PlanViewSnapshot } from "./contract";
 import { generatePlanDraft, type PlanGenerator, type PlanGeneratorInput, type PlanLocale } from "./generator";
 import { selectPlanContacts } from "./input-selector";
 import type { PlanInputSource } from "./input-source";
@@ -46,7 +46,7 @@ function normalizeGoal(value: string | null | undefined): string {
 }
 
 /** 延后 ≥ 2 周的未完成行动（逾期周数与手动延后次数取大）。 */
-export function deferredActionCount(items: readonly PlanItem[], currentWeek: number): number {
+export function deferredActionCount(items: readonly PlanViewItem[], currentWeek: number): number {
   return items.filter(
     (item) =>
       item.kind === "action" &&
@@ -56,7 +56,7 @@ export function deferredActionCount(items: readonly PlanItem[], currentWeek: num
 }
 
 export function reanalysisTriggers(input: {
-  snapshot: Pick<PlanSnapshot, "plan" | "items">;
+  snapshot: Pick<PlanViewSnapshot, "plan" | "items">;
   /** 资料里现在的目标原文；读不到时传 null（不据此提示）。 */
   currentGoal: string | null;
   now: Date;
@@ -95,7 +95,7 @@ export interface PlanReview {
 }
 
 /** 到期回顾（纯函数）：完成行动、新认识人数、在哪些活动认识。 */
-export function buildPlanReview(snapshot: Pick<PlanSnapshot, "items">, contacts: PlanPeriodContacts | null): PlanReview {
+export function buildPlanReview(snapshot: Pick<PlanViewSnapshot, "items">, contacts: PlanPeriodContacts | null): PlanReview {
   const actions = snapshot.items.filter((item) => item.kind === "action");
   const linked = new Set<string>();
   const established = new Set<string>();

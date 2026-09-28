@@ -7,6 +7,7 @@
  */
 "use client";
 
+import { getSharedReadAccount } from "../../orbit-shared-read";
 import { CARD_BATCH_LEDGER_PREFIX, parseCardBatchLedger, type CardBatchLedger } from "./card-batch-model";
 
 const DB_NAME = "orbit-card-batch";
@@ -97,10 +98,31 @@ export async function deletePendingFiles(batchId: string): Promise<void> {
 }
 
 // ── 进行中批次登记表（最新的在最后）──
+// W0021：登记表按账号分 key（`orbit.cardBatches.active.v1:<账号>`），同一浏览器换账号不会读到上一位的批次。
+// 账号未知（没有 SessionProvider 的环境）时沿用旧的全局 key。旧全局 key 里的批次在第一次知道账号时并入
+// 该账号的 key 并删除旧 key——并错账号的批次读详情时是 404，宿主随后会把它移出登记表。
+function activeKey(): string {
+  const account = getSharedReadAccount();
+  return account ? `${ACTIVE_KEY}:${account}` : ACTIVE_KEY;
+}
+
+function parseIds(raw: string | null): string[] {
+  const parsed = JSON.parse(raw ?? "[]") as unknown;
+  return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string") : [];
+}
+
 export function listActiveBatches(): string[] {
   try {
-    const parsed = JSON.parse(window.localStorage.getItem(ACTIVE_KEY) ?? "[]") as unknown;
-    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string") : [];
+    const key = activeKey();
+    if (key !== ACTIVE_KEY) {
+      const legacy = window.localStorage.getItem(ACTIVE_KEY);
+      if (legacy !== null) {
+        const merged = [...new Set([...parseIds(window.localStorage.getItem(key)), ...parseIds(legacy)])].slice(-10);
+        window.localStorage.setItem(key, JSON.stringify(merged));
+        window.localStorage.removeItem(ACTIVE_KEY);
+      }
+    }
+    return parseIds(window.localStorage.getItem(key));
   } catch {
     return [];
   }
@@ -108,7 +130,7 @@ export function listActiveBatches(): string[] {
 
 function writeActive(ids: readonly string[]): void {
   try {
-    window.localStorage.setItem(ACTIVE_KEY, JSON.stringify(ids.slice(-10)));
+    window.localStorage.setItem(activeKey(), JSON.stringify(ids.slice(-10)));
     window.dispatchEvent(new Event("orbit-card-batches"));
   } catch {
     // 只影响全站提醒能否找到该批次。
@@ -122,6 +144,33 @@ export function registerActiveBatch(batchId: string): void {
 export function unregisterActiveBatch(batchId: string): void {
   const current = listActiveBatches();
   if (current.includes(batchId)) writeActive(current.filter(id => id !== batchId));
+}
+
+// ── W0021：宿主状态变化事件 ──
+/** 宿主（CardBatchHost）看到的批次状态与计数；今日要事据此判断自己读到的是否已经是这个状态。 */
+export interface CardBatchChangeDetail {
+  batchId: string;
+  status: string;
+  /** `cardReviewQueue(...).pending.length`（不按阶段归零）。 */
+  pending: number;
+  /** 全部确认的卡数。 */
+  confirmed: number;
+}
+
+export function dispatchCardBatchChange(detail: CardBatchChangeDetail | null): void {
+  try {
+    window.dispatchEvent(detail ? new CustomEvent<CardBatchChangeDetail>("orbit-card-batches", { detail }) : new Event("orbit-card-batches"));
+  } catch {
+    // 没有 window（SSR）时不需要通知。
+  }
+}
+
+export function cardBatchChangeDetail(event: Event | null | undefined): CardBatchChangeDetail | null {
+  const detail = (event as CustomEvent<unknown> | null | undefined)?.detail as Partial<CardBatchChangeDetail> | null | undefined;
+  return detail && typeof detail.batchId === "string" && typeof detail.status === "string" &&
+    typeof detail.pending === "number" && typeof detail.confirmed === "number"
+    ? { batchId: detail.batchId, confirmed: detail.confirmed, pending: detail.pending, status: detail.status }
+    : null;
 }
 
 // ── 本机账本（只读；写入在 use-card-batch）──

@@ -56,11 +56,19 @@ export interface FrozenManifestSubmission {
   manifest: readonly IngestManifestEntry[];
 }
 
-export interface IngestV2CardViewModel {
+/**
+ * 按名片分组所需的最少字段。W0021：今日要事只读 `?view=cards` 的精简条目（没有识别结果与 imageDigest），
+ * 用同一个分组函数数待确认；精简条目的 `hasMissingImageDigest` 恒为 false（数待确认用不到它）。
+ */
+export type IngestCardGroupingItem = Pick<IngestItemDTO, "id" | "cardId" | "seq" | "side" | "status" | "confirmedContactId" | "cardIdentityExplicit"> & {
+  imageDigest?: string | null;
+};
+
+export interface IngestV2CardViewModel<TItem extends IngestCardGroupingItem = IngestItemDTO> {
   cardId: string;
-  front: IngestItemDTO | null;
-  back: IngestItemDTO | null;
-  items: readonly IngestItemDTO[];
+  front: TItem | null;
+  back: TItem | null;
+  items: readonly TItem[];
   isLegacySingleSide: boolean;
   isTwoSided: boolean;
   allConfirmed: boolean;
@@ -284,8 +292,8 @@ export function freezeManifestSubmission(
   return Object.freeze({ idempotencyKey, manifest: Object.freeze(manifest) });
 }
 
-export function groupIngestItemsByCardId(items: readonly IngestItemDTO[]): IngestV2CardViewModel[] {
-  const groups = new Map<string, IngestItemDTO[]>();
+export function groupIngestItemsByCardId<TItem extends IngestCardGroupingItem = IngestItemDTO>(items: readonly TItem[]): IngestV2CardViewModel<TItem>[] {
+  const groups = new Map<string, TItem[]>();
   for (const item of items) groups.set(item.cardId, [...(groups.get(item.cardId) ?? []), item]);
 
   return [...groups.entries()]
@@ -319,7 +327,7 @@ export function groupIngestItemsByCardId(items: readonly IngestItemDTO[]): Inges
         hasMissingImageDigest: cardItems.some((item) => item.imageDigest === null),
         invalidStructure,
         reviewable: !invalidStructure && cardItems.length > 0 && cardItems.every((item) => item.status === "extracted" || item.status === "terminal_failed"),
-      } satisfies IngestV2CardViewModel;
+      } satisfies IngestV2CardViewModel<TItem>;
     })
     .sort((a, b) => (a.items[0]?.seq ?? 0) - (b.items[0]?.seq ?? 0));
 }

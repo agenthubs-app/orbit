@@ -73,6 +73,22 @@ export interface PlanMatchCandidate {
   decidedAt: string | null;
 }
 
+/** W0021：候选列表只读渲染所需的列（`listPendingCandidates`）。AI 理由只在 AI 层返回。 */
+export type PlanMatchPendingCandidate = Pick<PlanMatchCandidate, "id" | "needItemId" | "contactId" | "tier" | "strength" | "reason">;
+
+/** W0021：候选列表用的需求投影——行业只取一级／二级 id，不读描述与关键词。 */
+export interface PlanMatchNeedView {
+  id: string;
+  title: string;
+  primaryIndustryId: NetworkNeedCriteria["primaryIndustryId"];
+  secondaryIndustryId: NetworkNeedCriteria["secondaryIndustryId"];
+  linkedContactIds: readonly string[];
+  eventIds: readonly string[];
+}
+
+/** W0021：候选列表用的联系人投影（不读行业）。 */
+export type PlanMatchContactView = Pick<PlanMatchContact, "id" | "displayName" | "organization" | "role" | "metEventId">;
+
 function iso(value: unknown): string {
   return value instanceof Date ? value.toISOString() : String(value);
 }
@@ -249,7 +265,10 @@ export interface PlanMatchRepository {
   /** 这一批确认进来的联系人（来源表），审阅页的规则预览与候选列表只看它们。 */
   contactIdsForBatch(input: { actorId: string; batchId: string }): Promise<string[]>;
   readContacts(actorId: string, contactIds: readonly string[]): Promise<PlanMatchContact[]>;
-  listPendingCandidates(input: { actorId: string; batchId?: string | null; limit?: number }): Promise<PlanMatchCandidate[]>;
+  listPendingCandidates(input: { actorId: string; batchId?: string | null; limit?: number }): Promise<PlanMatchPendingCandidate[]>;
+  /** W0021：候选列表用的需求／联系人投影（worker 仍用 `readActiveNeeds`／`readContacts` 的完整形状）。 */
+  readActiveNeedViews(actorId: string): Promise<PlanMatchNeedView[]>;
+  readContactViews(actorId: string, contactIds: readonly string[]): Promise<PlanMatchContactView[]>;
   getCandidate(input: { actorId: string; candidateId: string }): Promise<PlanMatchCandidate | null>;
   decideCandidate(input: {
     actorId: string;
@@ -295,6 +314,21 @@ const CONTACTS_SQL = `select c.record_id,
        c.payload->>'role' as role,
        c.payload->>'primaryIndustryId' as primary_industry_id,
        c.payload->>'secondaryIndustryId' as secondary_industry_id,
+       c.payload->>'metEventId' as met_event_id
+  from orbit_records c
+ where c.workspace_id = $1
+   and c.collection_name = 'contacts'
+   and c.lifecycle_state <> 'deleted'
+   and c.record_id = any($3::text[])
+   and c.user_id = $2
+   and (c.payload->'accountId' is null or c.payload->'accountId' = 'null'::jsonb
+        or c.payload->'accountId' = to_jsonb($2::text))`;
+
+/** W0021：同一归属谓词，只取候选列表渲染所需的列。 */
+const CONTACT_VIEWS_SQL = `select c.record_id,
+       c.payload->>'displayName' as display_name,
+       c.payload->>'organization' as organization,
+       c.payload->>'role' as role,
        c.payload->>'metEventId' as met_event_id
   from orbit_records c
  where c.workspace_id = $1
@@ -483,7 +517,17 @@ export function createPostgresPlanMatchRepository(options: {
       const result = await pool.query(
         // W0015：联系人在与需求关联的活动（同一阶段的活动条目）上认识的候选排最前——在 LIMIT 之前排序，
         // 较旧的这类候选不会被截掉。子查询只看同一 workspace、同一 actor 的联系人与计划条目。
-        `select c.*, exists (
+        // W0021：只返回渲染所需的列；排序键不返回；理由只在 AI 层返回（规则层界面不显示）。
+        `select c.id, c.need_item_id, c.contact_id, c.tier, c.strength,
+                case when c.tier = 'ai' then c.reason end as reason
+         from plan_match_candidates c
+         where c.workspace_id = $1 and c.actor_id = $2 and c.status = 'pending'
+           and ($3::text is null or exists (
+             select 1 from plan_match_job_contacts jc
+             where jc.workspace_id = c.workspace_id and jc.actor_id = c.actor_id
+               and jc.batch_id = $3 and jc.contact_id = c.contact_id
+           ))
+         order by exists (
              select 1
              from plan_items n
              join plan_items e on e.workspace_id = n.workspace_id and e.actor_id = n.actor_id and e.plan_id = n.plan_id
@@ -492,19 +536,63 @@ export function createPostgresPlanMatchRepository(options: {
                and r.record_id = c.contact_id and r.user_id = c.actor_id and r.lifecycle_state <> 'deleted'
              where n.workspace_id = c.workspace_id and n.actor_id = c.actor_id and n.id = c.need_item_id
                and e.linked_event_id = r.payload->>'metEventId'
-           ) as event_linked
-         from plan_match_candidates c
-         where c.workspace_id = $1 and c.actor_id = $2 and c.status = 'pending'
-           and ($3::text is null or exists (
-             select 1 from plan_match_job_contacts jc
-             where jc.workspace_id = c.workspace_id and jc.actor_id = c.actor_id
-               and jc.batch_id = $3 and jc.contact_id = c.contact_id
-           ))
-         order by event_linked desc, c.created_at desc, case c.strength when 'strong' then 0 else 1 end, c.id
+           ) desc, c.created_at desc, case c.strength when 'strong' then 0 else 1 end, c.id
          limit $4`,
         [workspaceId, actorId, batchId, Math.max(1, Math.min(200, limit))],
       );
-      return result.rows.map(mapCandidate);
+      return result.rows.map((row) => ({
+        contactId: String(row.contact_id),
+        id: String(row.id),
+        needItemId: String(row.need_item_id),
+        reason: (row.reason as string | null) ?? null,
+        strength: row.strength as PlanMatchCandidate["strength"],
+        tier: row.tier as PlanMatchCandidate["tier"],
+      }));
+    },
+
+    async readActiveNeedViews(actorId) {
+      const result = await pool.query(
+        `select i.id, i.title,
+                i.criteria->>'primaryIndustryId' as primary_industry_id,
+                i.criteria->>'secondaryIndustryId' as secondary_industry_id,
+                i.linked_contact_ids,
+                coalesce((select array_agg(distinct e.linked_event_id) from plan_items e
+                          where e.workspace_id = i.workspace_id and e.actor_id = i.actor_id and e.plan_id = i.plan_id
+                            and e.kind = 'event' and e.linked_event_id is not null
+                            and i.phase is not null and e.phase = i.phase), '{}') as event_ids
+         from plan_items i
+         join plans p on p.workspace_id = i.workspace_id and p.actor_id = i.actor_id and p.id = i.plan_id
+         where i.workspace_id = $1 and i.actor_id = $2 and p.status = 'active' and i.kind = 'network_need'
+         order by i.created_at desc, i.sort_key desc`,
+        [workspaceId, actorId],
+      );
+      return result.rows.map((row) => ({
+        eventIds: strings(row.event_ids),
+        id: String(row.id),
+        linkedContactIds: strings(row.linked_contact_ids),
+        primaryIndustryId: (row.primary_industry_id as NetworkNeedCriteria["primaryIndustryId"]) ?? null,
+        secondaryIndustryId: (row.secondary_industry_id as NetworkNeedCriteria["secondaryIndustryId"]) ?? null,
+        title: String(row.title),
+      }));
+    },
+
+    async readContactViews(actorId, contactIds) {
+      const ids = [...new Set(contactIds)].slice(0, PLAN_MATCH_MAX_CONTACTS);
+      if (ids.length === 0) return [];
+      const result = await pool.query(CONTACT_VIEWS_SQL, [workspaceId, actorId, ids]);
+      const byId = new Map(
+        result.rows.map((row) => {
+          const contact: PlanMatchContactView = {
+            displayName: textOrNull(row.display_name) ?? "",
+            id: String(row.record_id),
+            metEventId: textOrNull(row.met_event_id),
+            organization: textOrNull(row.organization),
+            role: textOrNull(row.role),
+          };
+          return [contact.id, contact] as const;
+        }),
+      );
+      return ids.flatMap((id) => (byId.has(id) ? [byId.get(id)!] : []));
     },
 
     async getCandidate({ actorId, candidateId }) {

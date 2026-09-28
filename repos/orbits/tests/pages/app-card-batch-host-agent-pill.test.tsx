@@ -18,7 +18,7 @@ import {
   cardBatchHostHidesPendingPill,
   cardBatchHostYields,
 } from "../../app/(app)/app/contacts/card-batch-0918/card-batch-host";
-import { usePendingCards } from "../../app/(app)/app/agent/iorbit-0918/use-pending-cards";
+import { PENDING_CARDS_COALESCE_MS, usePendingCards } from "../../app/(app)/app/agent/iorbit-0918/use-pending-cards";
 
 // next-auth 的 SessionProvider 在 node 里建的 BroadcastChannel 会让进程不退出（同 host-yield 测试）。
 Object.defineProperty(globalThis, "BroadcastChannel", { configurable: true, value: undefined });
@@ -57,6 +57,7 @@ interface Stub {
   /** 之后的批次 GET 一律 503（模拟读取失败）。 */
   failGets: { on: boolean };
   requests: Array<{ method: string; url: string }>;
+  store: Map<string, string>;
 }
 
 function stubBrowser(t: TestContext, options: { detail: unknown; later?: string[]; notified: boolean }): Stub {
@@ -74,7 +75,8 @@ function stubBrowser(t: TestContext, options: { detail: unknown; later?: string[
       clearInterval,
       clearTimeout,
       dispatchEvent(event: Event) {
-        for (const listener of listeners.get(event.type) ?? []) listener();
+        // 与浏览器一样把事件对象交给监听者（W0021：宿主的事件带状态与计数）。
+        for (const listener of listeners.get(event.type) ?? []) (listener as (event: Event) => void)(event);
         return true;
       },
       localStorage: {
@@ -106,13 +108,16 @@ function stubBrowser(t: TestContext, options: { detail: unknown; later?: string[
     const url = String(input);
     const method = (init?.method ?? "GET").toUpperCase();
     if (url.includes("/batches/")) requests.push({ method, url });
+    // W0021 review：SessionProvider 没有预置会话时自己 GET /api/auth/session（先 loading）。
+    if (url.includes("/api/auth/session")) return Response.json(SESSION);
     if (url.endsWith("/duplicates")) return Response.json({ data: { matches: { "card-1": null, "card-2": null } } });
-    if (method === "GET" && url.endsWith(`/${BATCH}`)) {
+    // W0021：今日要事读 `?view=cards`（分组与状态列）；夹具的完整详情是它的超集。
+    if (method === "GET" && (url.endsWith(`/${BATCH}`) || url.endsWith(`/${BATCH}?view=cards`))) {
       return failGets.on ? Response.json({ success: false }, { status: 503 }) : Response.json({ data: options.detail });
     }
     return Response.json({ success: false }, { status: 404 });
   });
-  return { failGets, requests };
+  return { failGets, requests, store };
 }
 
 function textOf(root: ReactTestRenderer): string {
@@ -133,11 +138,11 @@ async function wait(ms: number) {
 
 const SESSION = { expires: "2099-01-01T00:00:00.000Z", user: { email: "a@example.test", id: "subject:a", name: "A" } };
 
-async function mount(pathname: string, children: React.ReactNode = <CardBatchHost />) {
+async function mount(pathname: string, children: React.ReactNode = <CardBatchHost />, session: typeof SESSION = SESSION) {
   let root!: ReactTestRenderer;
   await act(async () => {
     root = create(
-      <SessionProvider refetchOnWindowFocus={false} session={SESSION}>
+      <SessionProvider refetchOnWindowFocus={false} session={session}>
         <PathnameContext.Provider value={pathname}>{children}</PathnameContext.Provider>
       </SessionProvider>,
     );
@@ -202,7 +207,8 @@ test("fallback: when the reader's batch GET fails (5xx), the host shows the pend
   await act(async () => {
     window.dispatchEvent(new Event("orbit-card-batches"));
   });
-  await wait(20);
+  // W0021：连续事件合并后再读。
+  await wait(PENDING_CARDS_COALESCE_MS + 30);
   assert.match(textOf(root), /1 张名片待你确认/, "pending cards are never left without a reminder");
   act(() => root.unmount());
 });
@@ -242,18 +248,85 @@ test("with the host and the today-item reader both on /app/agent, one state mach
   assert.deepEqual(seen.map((entry) => [entry.batchId, entry.pending]), [[BATCH, 1]]);
   const posts = requests.filter((request) => request.method !== "GET");
   assert.deepEqual(posts.map((request) => request.url.split("/").at(-1)), ["duplicates"], "only the host's single state machine writes");
-  assert.ok(requests.filter((request) => request.method === "GET").every((request) => request.url.endsWith(`/${BATCH}`)));
+  const gets = requests.filter((request) => request.method === "GET");
+  // 宿主读完整详情，今日要事只读 `?view=cards`，而且冷启动只读一次（宿主首次广播的状态与它读到的一致，不重读）。
+  assert.ok(gets.every((request) => request.url.endsWith(`/${BATCH}`) || request.url.endsWith(`/${BATCH}?view=cards`)));
+  assert.equal(gets.filter((request) => request.url.endsWith("?view=cards")).length, 1, JSON.stringify(gets));
   act(() => root.unmount());
 
   // 只挂读取器：只有 GET 批次详情，没有上传、识别、查重或确认请求。
   requests.length = 0;
   const alone = await mount("/app/agent", <PendingProbe onValue={(value) => (seen = value)} />);
   assert.ok(requests.length > 0);
-  assert.ok(requests.every((request) => request.method === "GET" && request.url.endsWith(`/${BATCH}`)), JSON.stringify(requests));
+  assert.ok(requests.every((request) => request.method === "GET" && request.url.endsWith(`/${BATCH}?view=cards`)), JSON.stringify(requests));
   act(() => alone.unmount());
 });
 
 test("use-pending-cards never mounts the card-batch state machine", () => {
   const source = readFileSync("app/(app)/app/agent/iorbit-0918/use-pending-cards.ts", "utf8");
   assert.doesNotMatch(source.replace(/\/\*[\s\S]*?\*\//g, ""), /useCardBatch|use-card-batch|postAction|uploadItemContent/);
+});
+
+/* ── W0021 SC-W0021-03：进行中批次登记表按账号隔离 ─────────────────────── */
+
+const SESSION_B = { expires: "2099-01-01T00:00:00.000Z", user: { email: "b@example.test", id: "subject:b", name: "B" } };
+
+test("W0021: the active-batch registry is per account — A's batches are never read after B signs in on the same tab", async (t) => {
+  const { requests, store } = stubBrowser(t, { detail: detail("ready_for_review"), notified: true });
+  let seen: readonly { batchId: string; pending: number }[] = [];
+  const asA = await mount("/app/agent", <PendingProbe onValue={(value) => (seen = value)} />);
+  assert.deepEqual(seen.map((entry) => entry.batchId), [BATCH]);
+  // 旧的全局 key 并入 A 的 key 后删除。
+  assert.equal(store.get("orbit.cardBatches.active.v1"), undefined);
+  assert.equal(store.get("orbit.cardBatches.active.v1:subject:a"), JSON.stringify([BATCH]));
+  act(() => asA.unmount());
+
+  requests.length = 0;
+  const asB = await mount("/app/agent", <PendingProbe onValue={(value) => (seen = value)} />, SESSION_B);
+  assert.deepEqual(seen, []);
+  assert.deepEqual(requests, [], "B's tab never asks for A's batch");
+  act(() => asB.unmount());
+});
+
+test("W0021: a host event with the state the reader already has does not re-read; a changed state re-reads that batch once", async (t) => {
+  const { requests } = stubBrowser(t, { detail: detail("ready_for_review"), notified: true });
+  const root = await mount("/app/agent", <PendingProbe onValue={() => undefined} />);
+  const reads = () => requests.filter((request) => request.url.endsWith("?view=cards")).length;
+  assert.equal(reads(), 1);
+  await act(async () => {
+    window.dispatchEvent(new CustomEvent("orbit-card-batches", { detail: { batchId: BATCH, confirmed: 0, pending: 1, status: "ready_for_review" } }));
+  });
+  await wait(PENDING_CARDS_COALESCE_MS + 30);
+  assert.equal(reads(), 1, "same status and counts: nothing to re-read");
+  // 连续三个事件（状态变了）合并成一次读取。
+  await act(async () => {
+    for (const pending of [0, 0, 0]) {
+      window.dispatchEvent(new CustomEvent("orbit-card-batches", { detail: { batchId: BATCH, confirmed: 1, pending, status: "ready_for_review" } }));
+    }
+  });
+  await wait(PENDING_CARDS_COALESCE_MS + 30);
+  assert.equal(reads(), 2);
+  act(() => root.unmount());
+});
+
+test("W0021 review: when the session resolves from loading to authenticated, readers pick up the account-scoped batches (still one read each)", async (t) => {
+  const { requests, store } = stubBrowser(t, { detail: detail("ready_for_review"), notified: true });
+  // 批次只登记在账号 key 下（旧全局 key 不存在）。
+  store.delete("orbit.cardBatches.active.v1");
+  store.set("orbit.cardBatches.active.v1:subject:a", JSON.stringify([BATCH]));
+  let seen: readonly { batchId: string; pending: number }[] = [];
+  let root!: ReactTestRenderer;
+  await act(async () => {
+    root = create(
+      <SessionProvider refetchOnWindowFocus={false}>
+        <PathnameContext.Provider value="/app/contacts">{hostWithReader((value) => (seen = value))}</PathnameContext.Provider>
+      </SessionProvider>,
+    );
+  });
+  await wait(450);
+  assert.deepEqual(seen.map((entry) => [entry.batchId, entry.pending]), [[BATCH, 1]], "the today reader sees the account's batch");
+  assert.match(textOf(root), /1 张名片待你确认/, "the host watches the account's batch");
+  const cardsReads = requests.filter((request) => request.method === "GET" && request.url.endsWith(`/${BATCH}?view=cards`));
+  assert.equal(cardsReads.length, 1, JSON.stringify(requests));
+  act(() => root.unmount());
 });

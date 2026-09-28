@@ -33,7 +33,7 @@
 
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 
-import type { PlanSnapshot } from "../../../../../features/plans/contract";
+import type { PlanViewSnapshot } from "../../../../../features/plans/contract";
 import {
   DemoBanner,
   DemoInterceptLayer,
@@ -65,12 +65,13 @@ import {
   withServerItem,
 } from "./iorbit-plan-client";
 import { IOrbitScreenFrame } from "./iorbit-screen-frame";
+import { useSharedReadAccount } from "../../orbit-shared-read-account";
 import { fetchPlanMatches, withoutCandidate, type PlanMatchList } from "./plan-match-client";
 import { MatchActionButtons, PLAN_MATCH_STYLES, PlanMatchDialog, PlanMatchSheet } from "./plan-match-sheet";
 
 export interface IOrbitPlanProps {
   /** 服务端读到的当前生效计划：null = 还没有；"unavailable" = 计划服务读不到。 */
-  initialSnapshot: PlanSnapshot | null | "unavailable";
+  initialSnapshot: PlanViewSnapshot | null | "unavailable";
   /** 引导开关（`ORBIT_GUIDE_DEMO`）：打开时无计划引导去 `/app/start` 第 3 步。 */
   guideEnabled: boolean;
   /** 生成快照以外的联系人名字（id → 名字），可选。 */
@@ -109,6 +110,8 @@ function IOrbitPlanScreen({
   const demo = useDemoMode();
   const demoActive = demo !== null;
   const demoClock = demo?.clock;
+  // W0021：浏览器端读取按账号隔离；首帧计划来自 SSR，客户端只在写之后重读。
+  useSharedReadAccount();
   const [liveSnapshot, setSnapshot] = useState(initialSnapshot);
   // 本次打开页面后打过勾（或取消）的行动：已完成也暂留在本周列表里方便撤销，刷新后消失。
   const [sticky, setSticky] = useState<readonly string[]>([]);
@@ -248,13 +251,13 @@ function PlanBody({
   tracking,
   view,
 }: {
-  items: PlanSnapshot["items"];
+  items: PlanViewSnapshot["items"];
   onInteraction: () => void;
   onOpenMatches: (needId: string) => void;
   /** 新版本已保存：带回服务端的本月剩余次数（下一份计划不占额度时照样带回）。 */
   onReanalysed: (quotaRemaining: number | null) => void;
   onTicked: (itemId: string) => void;
-  onSnapshot: (update: (current: PlanSnapshot) => PlanSnapshot) => void;
+  onSnapshot: (update: (current: PlanViewSnapshot) => PlanViewSnapshot) => void;
   pendingByNeed: Readonly<Record<string, number>>;
   tracking: MyPlanTrackingView | null;
   view: MyPlanView;

@@ -24,7 +24,8 @@ import { act, create, type ReactTestRenderer } from "react-test-renderer";
 
 import { IOrbitActions } from "../../app/(app)/app/agent/iorbit-0918/iorbit-actions";
 import { IOrbitPlan } from "../../app/(app)/app/agent/iorbit-0918/iorbit-plan";
-import { planEventReasons } from "../../app/(app)/app/agent/plan/plan-route-view-model";
+import { buildPlanWeekSummary, planEventReasons } from "../../app/(app)/app/agent/plan/plan-route-view-model";
+import { toPlanView, toPlanViewItem, toPlanViewLogEntry } from "../../features/plans/repository";
 import { PLAN_NOW, planSnapshotFixture } from "../support/plan-snapshot-fixture";
 import { IOrbitStrategy } from "../../app/(app)/app/agent/iorbit-0918/iorbit-strategy";
 import { OrbitLanguageProvider } from "../../app/(app)/app/orbit-language-context";
@@ -1438,7 +1439,8 @@ test("W0012 my plan: a changed goal prompts (only prompts) and re-analysis POSTs
   assert.equal(body.basePlanId, "plan:w0009");
   assert.equal(body.origin, "reanalysis");
   assert.equal(typeof body.idempotencyKey, "string");
-  assert.ok(calls.some((call) => call.url === "/api/agent/plans/current"));
+  // W0021：重新分析之后只重读计划一次（计划页带进展记录的完整视图）。
+  assert.equal(calls.filter((call) => call.url === "/api/agent/plans/current").length, 1);
   assert.ok(flatText(mounted.root.toJSON()).includes("计划 v2"));
   assert.equal(flatText(byAttr(mounted.root, "data-orbit-plan-reanalyse")[0]!), "重新分析 · 本月剩 0 次");
   assert.equal(byAttr(mounted.root, "data-orbit-plan-reanalysis-prompt").length, 0);
@@ -1573,4 +1575,54 @@ test("W0012 my plan: manual log lines show their structured mentions", () => {
   snapshot.log[0] = { ...snapshot.log[0]!, linkedContactIds: ["contact:c2"], linkedEventId: "event:founders-night" };
   const html = renderToStaticMarkup(<IOrbitPlan guideEnabled initialSnapshot={snapshot} now={PLAN_NOW} />);
   assert.match(html, /data-orbit-plan-log-mentions="true">@高木一郎 @东京创业者交流之夜</);
+});
+
+/* ── W0021 SC-W0021-03：计划页冷启动与写后的请求次数 ──────────────────── */
+
+test("W0021 my plan: the first frame comes from SSR — the client reads no plan and the candidates once; a tick re-reads nothing", async (t) => {
+  const calls: PlanCall[] = [];
+  const recording = (async (input: unknown, init?: RequestInit) => {
+    calls.push({ body: undefined, method: (init?.method ?? "GET").toUpperCase(), url: String(input) });
+    if (String(input) === "/api/agent/plans/candidates") {
+      return Response.json({ data: { candidates: [], contactCount: 0, pendingByNeed: {} }, success: true });
+    }
+    return Response.json({ success: false }, { status: 404 });
+  }) as typeof fetch;
+  const mounted = await mount(t, <IOrbitPlan guideEnabled initialSnapshot={planSnapshotFixture()} now={PLAN_NOW} />, recording);
+  await mounted.settle();
+  assert.equal(calls.filter((call) => call.url.startsWith("/api/agent/plans/current")).length, 0);
+  assert.equal(calls.filter((call) => call.url === "/api/agent/plans/candidates" && call.method === "GET").length, 1);
+
+  const after = routePlanFetch(() => {
+    const item = { ...planSnapshotFixture().items[0]!, completedAt: "2026-09-28T03:00:00.000Z", status: "done" };
+    return Response.json({ data: { item, log: null, replayed: false }, success: true });
+  });
+  await act(async () => {
+    actionBox(mounted.root, "a-this-week").props.onClick();
+  });
+  await mounted.settle();
+  assert.deepEqual(after.map((call) => `${call.method} ${call.url}`), ["PATCH /api/agent/plans/items/a-this-week"]);
+});
+
+/* ── W0021 SC-W0021-05：投影快照渲染出的页面与完整快照一致 ─────────────── */
+
+test("W0021: the projected plan snapshot renders the same plan page, week summary and event reasons as the full one", () => {
+  const full = planSnapshotFixture();
+  const projected = {
+    items: full.items.map(toPlanViewItem),
+    log: full.log.map(toPlanViewLogEntry),
+    plan: toPlanView(full.plan),
+  };
+  const render = (snapshot: typeof projected) =>
+    renderToStaticMarkup(
+      <OrbitLanguageProvider initialLanguage="zh">
+        <IOrbitPlan guideEnabled initialSnapshot={snapshot} now={PLAN_NOW} />
+      </OrbitLanguageProvider>,
+    );
+  assert.equal(render(projected), render(full));
+  // 首页的「本周推进」不读进展记录：没有 log 的首页视图给出同样的本周推进。
+  for (const lang of ["zh", "en"] as const) {
+    assert.deepEqual(buildPlanWeekSummary({ ...projected, log: [] }, PLAN_NOW, lang, []), buildPlanWeekSummary(full, PLAN_NOW, lang, []));
+  }
+  assert.deepEqual(planEventReasons({ ...projected, log: [] }), planEventReasons(full));
 });

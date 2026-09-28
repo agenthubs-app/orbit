@@ -24,6 +24,9 @@ import {
  * 返回 `{ events: [{ eventId, title, startsAt }], cards: { [cardId]: eventId | null } }`。
  * 活动目录未配置（功能关闭）时返回空候选（不询问），确认接口同样会拒绝任何活动 id；已配置的来源
  * 读取出错时返回 503，客户端当作读取失败处理（重试一次，仍失败才按没有候选继续）。
+ *
+ * W0021：批次只读 `getBatchCardStates`（card_id／seq／created_at 等小列），活动只读开始时间窗口内的
+ * 三列（`EventStartWindowReader`）；返回结果与之前相同。
  */
 export interface EventAttributionCandidateRouteDependencies {
   resolveActor?: () => Promise<AuthenticatedApiActor | null>;
@@ -64,7 +67,8 @@ export function createEventAttributionCandidateRouteHandlers(dependencies: Event
         if (!batchId || batchId.length > ID_MAX) throw new AppError("VALIDATION_ERROR", "batchId is required.");
         const repository = await ingestRepository();
         if (!repository) throw new AppError("SERVICE_UNAVAILABLE", "Business-card batches require a configured live database.");
-        const detail = await repository.getBatch({ actorId: actor.id, batchId });
+        // W0021：只读分组与扫描时间所需的列（不读识别结果等大字段）。
+        const detail = await repository.getBatchCardStates({ actorId: actor.id, batchId });
         if (!detail) throw new AppError("NOT_FOUND", "Batch not found.");
         const attributionSource = await source();
         if (!attributionSource) {

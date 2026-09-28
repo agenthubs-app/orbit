@@ -39,7 +39,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { AgentLedgerEntry } from "../../../../../features/agent/ledger/contract";
-import type { PlanSnapshot } from "../../../../../features/plans/contract";
+import type { PlanViewSnapshot } from "../../../../../features/plans/contract";
 import { COMMUNITY_CONFIG } from "../../../../../features/community/config";
 import { buildDemoHomeData } from "../../_demo/demo-persona";
 import { DemoTag, useDemoMode } from "../../_demo/demo-mode-context";
@@ -79,6 +79,7 @@ import {
 } from "./iorbit-plan-client";
 import { fetchPlanMatches, withoutCandidate, type PlanMatchCandidate, type PlanMatchList } from "./plan-match-client";
 import { PlanMatchDialog, PlanMatchSheet } from "./plan-match-sheet";
+import { useSharedReadAccount } from "../../orbit-shared-read-account";
 import { usePendingCards } from "./use-pending-cards";
 
 const TZ = "Asia/Tokyo";
@@ -253,7 +254,7 @@ export function IOrbitHome({
   const [draft, setDraft] = useState("");
   const [snapshotState, setSnapshot] = useState<Loadable<HomeDashboardSnapshot>>("pending");
   const [ledgerState, setLedger] = useState<Loadable<readonly AgentLedgerEntry[]>>("pending");
-  const [planState, setPlan] = useState<Loadable<PlanSnapshot | null>>("pending");
+  const [planState, setPlan] = useState<Loadable<PlanViewSnapshot | null>>("pending");
   const [planBusyId, setPlanBusyId] = useState<string | null>(null);
   const [planError, setPlanError] = useState<string | null>(null);
   // 首页上刚打过勾的行动暂留一行（可撤销），不占「最多 3 件」的名额；刷新后消失。
@@ -272,6 +273,8 @@ export function IOrbitHome({
   // W0011：本机进行中批次里待确认的名片（只读 GET；示例模式不读，恒为就绪）。
   // 读取中不算就绪、读不到算部分数据缺失：都不能给出「今天没有要紧的事」。
   const pendingCardsState = usePendingCards(!demoActive);
+  // W0021：浏览器端读取按账号隔离（换账号、登出时清掉进行中的读取）。
+  useSharedReadAccount();
   const pendingCards = pendingCardsState.batches;
 
   // 时钟每分钟前进一次：倒计时、2 小时窗口、「现在」线和跨午夜切日都跟着走。
@@ -313,7 +316,7 @@ export function IOrbitHome({
   const home = demoData ? demoData.home : homeProp;
   const communityJoined = demoData ? demoData.communityJoined : communityJoinedProp;
   // 示例模式保留示例的账本显示，不读计划。
-  const plan: Loadable<PlanSnapshot | null> = demoData ? null : planState;
+  const plan: Loadable<PlanViewSnapshot | null> = demoData ? null : planState;
 
   useEffect(() => {
     if (typeof window === "undefined" || demoActive) return;
@@ -361,7 +364,8 @@ export function IOrbitHome({
   useEffect(() => {
     if (typeof window === "undefined" || demoActive) return;
     const controller = new AbortController();
-    void fetchCurrentPlan(controller.signal)
+    // W0021：首页只要计划与条目（`?view=home`，服务端不读进展记录）。
+    void fetchCurrentPlan(controller.signal, { view: "home" })
       .then((value) => setPlan(value))
       .catch(() => {
         if (!controller.signal.aborted) setPlan("unavailable");
@@ -1496,7 +1500,7 @@ export function IOrbitHome({
               setMatches((current) => (current ? withoutCandidate(current, candidateId) : current));
               // 确认后本周多了一条「约 TA」：重新读计划，本周推进跟着更新。
               if (decision === "accept") {
-                void fetchCurrentPlan()
+                void fetchCurrentPlan(undefined, { view: "home" })
                   .then((value) => setPlan(value))
                   .catch(() => undefined);
               }

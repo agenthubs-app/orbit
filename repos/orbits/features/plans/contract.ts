@@ -214,6 +214,22 @@ export interface PlanSnapshot {
   log: PlanLogEntry[];
 }
 
+/**
+ * W0021：页面读取（iOrbit 首页、「我的计划」页）用的计划投影——只含界面实际用到的列。
+ * 完整的 `PlanSnapshot` 是它的超集（结构类型可直接赋值），写接口返回的完整条目照常合并进来。
+ * 数据库出站按列计，这些投影在 SQL 层就只选这些列（`repository.ts` 的 *_VIEW_COLUMNS）。
+ */
+export type PlanView = Omit<Plan, "previousPlanId" | "sourceSessionId" | "archivedAt" | "updatedAt">;
+export type PlanViewItem = Omit<PlanItem, "planId" | "createdAt" | "updatedAt" | "carriedFromItemId">;
+export type PlanViewLogEntry = Omit<PlanLogEntry, "planId" | "author" | "targetItemId" | "fromStatus" | "idempotencyKey">;
+
+export interface PlanViewSnapshot {
+  plan: PlanView;
+  items: PlanViewItem[];
+  /** 最近的进展记录，新的在前；首页读取（`includeLog: false`）为空数组。 */
+  log: PlanViewLogEntry[];
+}
+
 export interface NewPlanItemInput {
   kind: PlanItemKind;
   phaseKey?: string | null;
@@ -405,6 +421,13 @@ export interface ReanalysisQuota {
 
 export interface PlanService {
   getCurrent(): Promise<PlanSnapshot | null>;
+  /**
+   * W0021：页面读取（`GET /api/agent/plans/current` 与「我的计划」页 SSR 共用）。先在只读事务里判定
+   * 「进入新阶段」是否还没记过（绑定 actor + 生效计划 id + 按计划 `startsOn` 东京日算出的目标阶段），
+   * 只有没记过才进入写事务；然后读投影快照。进入失败不影响读取（每日 plan-phase 维护任务兜底）。
+   * `includeLog: false`（首页）不读进展记录。
+   */
+  getCurrentView(options?: { includeLog?: boolean }): Promise<PlanViewSnapshot | null>;
   /** 本人任一版本（含已归档）；他人的计划一律视为不存在。 */
   getPlan(planId: string): Promise<PlanSnapshot | null>;
   listVersions(): Promise<Plan[]>;

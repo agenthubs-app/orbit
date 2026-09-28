@@ -48,3 +48,24 @@ test("same count rule as the host pill: cards deferred with 稍后处理 or auto
   // 损坏的账本退回空账本。
   assert.deepEqual(parseCardBatchLedger("{not json"), EMPTY_CARD_BATCH_LEDGER);
 });
+
+test("W0021: the lean ?view=cards rows give the same count as the full batch detail", () => {
+  const cardState = (entry: IngestItemDTO) => ({
+    cardId: entry.cardId, cardIdentityExplicit: entry.cardIdentityExplicit, confirmedContactId: entry.confirmedContactId,
+    createdAt: entry.createdAt, id: entry.id, seq: entry.seq, side: entry.side, status: entry.status,
+  });
+  const fixtures: Array<[string, IngestItemDTO[], string]> = [
+    ["ready_for_review", [item("c1", 1), item("c2", 2, { extraction: null, status: "terminal_failed" }), item("c3", 3, { confirmedContactId: "contact:1", status: "confirmed" }), item("c4", 4, { status: "skipped" })], "{}"],
+    ["ready_for_review", [item("c1", 1), item("c2", 2), item("c3", 3)], JSON.stringify({ auto: ["c3"], later: ["c1"], merged: [], notified: true, user: [] })],
+    // 正反面：同一张卡两面，其中一面还在识别中。
+    ["ready_for_review", [item("c1", 1), item("c1", 2, { id: "item-c1-back", side: "back", status: "processing" })], "{}"],
+    ["completed", [item("c1", 1, { confirmedContactId: "contact:1", status: "confirmed" })], "{}"],
+    ["processing", [item("c1", 1)], "{}"],
+  ];
+  for (const [status, items, ledgerText] of fixtures) {
+    const ledger = parseCardBatchLedger(ledgerText);
+    const full = countPendingCards(detail(status, items), ledger);
+    const lean = countPendingCards({ batch: { createdAt: "2026-09-28T01:05:00.000Z", id: "b1", status: status as never }, items: items.map(cardState) }, ledger);
+    assert.equal(lean, full, `${status} ${ledgerText}`);
+  }
+});
