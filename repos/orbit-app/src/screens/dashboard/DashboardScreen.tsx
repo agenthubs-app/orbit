@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { type Href, useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Pressable,
   RefreshControl,
@@ -29,6 +29,8 @@ import { useLoadingDeadline } from "../../hooks/useLoadingDeadline";
 import { useLocalDashboard } from "../../hooks/useLocalDashboard";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
+import { usePageCopySession } from "../../hooks/usePageCopySession";
+import type { PageCopy } from "../../data/sync/page-copies";
 import {
   dashboardAuditRunToView,
   dashboardAuditToView,
@@ -97,10 +99,31 @@ export function DashboardScreen() {
     () => false,
     { enabled: !localMode }
   );
+  // Sprint 0131 (coordinator item from 0117): the source audit reads every audited collection of the account,
+  // so it is read only after the user runs it; opening the dashboard shows the last result (page copy
+  // "provenance-audit") and its time.
+  const [auditRequested, setAuditRequested] = useState(false);
   const auditState = useApiResource<unknown>(
     dashboardProvenanceAuditPath(),
-    () => false
+    () => false,
+    { cachePolicy: "network-only", enabled: auditRequested }
   );
+  const auditCopySession = usePageCopySession();
+  const [auditCopy, setAuditCopy] = useState<PageCopy | null>(null);
+  useEffect(() => {
+    if (!auditCopySession.session) return;
+    let live = true;
+    void auditCopySession.session.readPageCopy("provenance-audit", "main").then((copy) => { if (live && copy) setAuditCopy((current) => current ?? copy); }).catch(() => undefined);
+    return () => { live = false; };
+  }, [auditCopySession.session]);
+  const freshAudit = auditRequested && (auditState.kind === "success" || auditState.kind === "empty") ? auditState.data : null;
+  useEffect(() => {
+    if (freshAudit === null) return;
+    setAuditCopy({ data: freshAudit, syncedAt: new Date().toISOString() });
+    void auditCopySession.whenReady().then((ready) => ready?.savePageCopy("provenance-audit", "main", freshAudit)).catch(() => undefined);
+  }, [freshAudit]);
+  const shownAudit = freshAudit ?? auditCopy?.data ?? null;
+  const auditAsOf = freshAudit === null ? auditCopy?.syncedAt ?? null : null;
   /**
    * Sprint 0088: the six reads fire together and normally land within 20ms of
    * each other, so nothing here is worth staggering. What was missing is an
@@ -111,7 +134,7 @@ export function DashboardScreen() {
   const coverageOverdue = useLoadingDeadline(!localMode && aggregateState.kind === "loading", String(retryCount));
   const landed =
     aggregateState.kind !== "loading" ||
-    [summaryState, opportunitiesState, gapsState, distributionsState, auditState]
+    [summaryState, opportunitiesState, gapsState, distributionsState]
       .some((state) => state.kind !== "loading");
 
   function refreshAll() {
@@ -126,7 +149,7 @@ export function DashboardScreen() {
     opportunitiesState.refresh();
     gapsState.refresh();
     distributionsState.refresh();
-    auditState.refresh();
+    if (auditRequested) auditState.refresh();
   }
 
   async function recomputeDashboardOpportunities() {
@@ -170,7 +193,8 @@ export function DashboardScreen() {
 
       if (result.success) {
         setAuditRunResult(dashboardAuditRunToView(result.data));
-        auditState.refresh();
+        if (auditRequested) auditState.refresh();
+        else setAuditRequested(true);
       } else {
         setAuditError(result.error.message);
       }
@@ -209,7 +233,7 @@ export function DashboardScreen() {
           ) : null}
           {local.error ? <ErrorState message={local.error} /> : null}
           {!local.freshness.failure && !local.error && !localSections ? <LoadingState /> : null}
-          {!offline && auditState.kind === "failure" ? (
+          {!offline && auditRequested && auditState.kind === "failure" ? (
             <ErrorState message={auditState.error.message} title="来源审计不可用" />
           ) : null}
           {localSections && isEmptyDashboard(localSections.aggregate) ? (
@@ -221,7 +245,8 @@ export function DashboardScreen() {
           {localSections && !isEmptyDashboard(localSections.aggregate) ? (
             <DashboardContent
               aggregate={localSections.aggregate}
-              audit={auditState.kind === "success" || auditState.kind === "empty" ? auditState.data : null}
+              audit={shownAudit}
+              auditAsOf={auditAsOf}
               auditError={auditError}
               auditRunResult={auditRunResult}
               auditing={auditing}
@@ -248,7 +273,7 @@ export function DashboardScreen() {
       {!localMode && aggregateState.kind === "failure" ? (
         <ErrorState message={aggregateState.error.message} />
       ) : null}
-      {!localMode && auditState.kind === "failure" ? (
+      {!localMode && auditRequested && auditState.kind === "failure" ? (
         <ErrorState message={auditState.error.message} title="来源审计不可用" />
       ) : null}
       {!localMode && aggregateState.kind === "empty" ? (
@@ -271,11 +296,8 @@ export function DashboardScreen() {
                   : "unavailable"
           }
           onRetryCoverage={refreshAll}
-          audit={
-            auditState.kind === "success" || auditState.kind === "empty"
-              ? auditState.data
-              : null
-          }
+          audit={shownAudit}
+          auditAsOf={auditAsOf}
           auditError={auditError}
           auditRunResult={auditRunResult}
           auditing={auditing}
@@ -309,6 +331,7 @@ type CoverageState = "ready" | "loading" | "overdue" | "unavailable";
 function DashboardContent({
   aggregate,
   audit,
+  auditAsOf = null,
   auditError,
   auditRunResult,
   auditing,
@@ -327,6 +350,8 @@ function DashboardContent({
 }: {
   aggregate: unknown;
   audit: unknown;
+  /** Sprint 0131: when the audit shown is the last run kept on the device, when it ran. */
+  auditAsOf?: string | null;
   coverageState: CoverageState;
   onRetryCoverage: () => void;
   auditError: string | null;
@@ -426,8 +451,20 @@ function DashboardContent({
         <Text style={styles.errorText}>{recomputeError}</Text>
       ) : null}
 
+      {!auditView && !offline ? (
+        <DataCard detail="按需运行" title="来源一致性审计">
+          <Text style={styles.bodyText}>审计会检查各类记录的来源是否完整。点「运行来源审计」后才会读取，结果保存在这台设备上。</Text>
+          {auditError ? <Text style={styles.errorText}>{auditError}</Text> : null}
+          <Pressable accessibilityRole="button" accessibilityState={{ disabled: auditing }} disabled={auditing} onPress={onRunAudit}
+            style={({ pressed }) => [styles.recomputeButton, auditing ? styles.disabled : null, pressed ? styles.pressed : null]}>
+            <Ionicons color={colors.onAccent} name="refresh-outline" size={17} />
+            <Text style={styles.recomputeButtonText}>{auditing ? "审计中" : "运行来源审计"}</Text>
+          </Pressable>
+        </DataCard>
+      ) : null}
       {auditView ? (
         <DashboardAuditCard
+          asOf={auditAsOf}
           audit={auditView}
           auditError={auditError}
           auditRunResult={auditRunResult}
@@ -484,6 +521,7 @@ function MetricGrid({ metrics }: { metrics: DashboardMetricView[] }) {
 }
 
 function DashboardAuditCard({
+  asOf = null,
   audit,
   auditError,
   auditRunResult,
@@ -491,6 +529,7 @@ function DashboardAuditCard({
   offline,
   onRunAudit
 }: {
+  asOf?: string | null;
   audit: DashboardAuditView;
   auditError: string | null;
   auditRunResult: DashboardAuditRunView | null;
@@ -509,6 +548,7 @@ function DashboardAuditCard({
       title={audit.title || "来源一致性审计"}
     >
       <Text style={styles.bodyText}>{audit.summary}</Text>
+      {asOf ? <Text style={styles.metaText}>上次审计：{new Date(asOf).toLocaleString(locale.language === "en" ? "en-US" : locale.language === "ja" ? "ja-JP" : "zh-CN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</Text> : null}
       <View style={styles.callout}>
         <Ionicons color={colors.accent} name="shield-checkmark-outline" size={18} />
         <Text style={styles.calloutText}>{audit.nextAction}</Text>

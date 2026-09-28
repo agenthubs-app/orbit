@@ -1,6 +1,7 @@
 import type { SyncRecord } from "../api/contract/sync";
 import type { RelationshipConversationSummaryPageDTO, RelationshipMessagePageDTO } from "../api/contract/relationship-communication";
 import {
+  relationshipLocalCursorSeq,
   relationshipLocalMessagePage,
   relationshipLocalSummaryPage,
   relationshipLocalUnreadTotal,
@@ -51,6 +52,20 @@ export function relationshipDeviceMessages(records: readonly SyncRecord<Record<s
 /** The whole device list as one summary page (nothing to page: the device holds every conversation). */
 export function localConversationSummaryPage(rows: readonly RelationshipDeviceConversation[], actorId: string, asOf: string): RelationshipConversationSummaryPageDTO | null {
   return decodeConversationSummaryPage(relationshipLocalSummaryPage(rows, actorId, { asOf }), actorId);
+}
+
+/**
+ * Sprint 0131: the sequence numbers one message page needs from the device: the window before the cursor
+ * (the newest without one) plus one more, so the page knows whether an older page exists. Pages are read by
+ * row id (`${conversationId}/${seq}`), never by loading the whole history.
+ */
+export const RELATIONSHIP_PAGE_ROWS = 31;
+export function relationshipMessagePageSeqs(conversation: Pick<RelationshipDeviceConversation, "lastMessageSeq">, cursor: string | null | undefined): number[] {
+  const before = relationshipLocalCursorSeq(cursor) ?? conversation.lastMessageSeq + 1;
+  const from = Math.max(1, before - RELATIONSHIP_PAGE_ROWS);
+  const seqs: number[] = [];
+  for (let seq = from; seq < before; seq += 1) seqs.push(seq);
+  return seqs;
 }
 
 export function localRelationshipUnreadTotal(rows: readonly RelationshipDeviceConversation[]): number {

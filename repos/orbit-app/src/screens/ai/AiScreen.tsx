@@ -44,7 +44,7 @@ import {
   useApiResource,
   type ApiResourceState
 } from "../../hooks/useApiResource";
-import { useValidatedApiResource } from "../../hooks/useValidatedApiResource";
+import { usePageCopyResource } from "../../hooks/usePageCopyResource";
 import { useLoadingDeadline } from "../../hooks/useLoadingDeadline";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useRelationshipInboxBadgeCount } from "../../hooks/useRelationshipInboxBadgeCount";
@@ -284,12 +284,15 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
   ), aiSessionGroupListSchema);
   const todayNow = new Date();
   const todayDate = localDateKey("Asia/Tokyo", todayNow);
-  const todayState = useValidatedApiResource(
+  // Sprint 0131 (coordinator item from 0118): the Today block is the page copy "today-summary" (today's only),
+  // so offline it keeps the last summary with the tab's 截至 notice instead of 「暂时无法连接」.
+  const todaySchema = todayTaskSummaryModeSchema.refine(value => value.date === todayDate && value.timeZone === "Asia/Tokyo", { message: "Stale Today summary scope" });
+  const todayCopied = usePageCopyResource<unknown>(
     todaySummaryPath("Asia/Tokyo"),
-    todayTaskSummaryModeSchema.refine(value => value.date === todayDate && value.timeZone === "Asia/Tokyo", { message: "Stale Today summary scope" }),
-    data => data.items.length === 0,
-    { scopeKey: JSON.stringify([readScope, todayAttempt, todayDate]), cachePolicy: "network-only" }
+    () => false,
+    { scopeKey: JSON.stringify([readScope, todayAttempt, todayDate]), copy: { id: "today-summary" }, accept: (data) => todaySchema.safeParse(data).success }
   );
+  const todayState = validateApiResourceState(todayCopied, todaySchema);
   // Sprint 0092: neither region may say "still reading" without end. A retry
   // bumps the attempt counter, which restarts the clock for that region.
   const recentLoading = state.kind === "loading" || historyKind === "loading";
@@ -324,8 +327,24 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
   const [deletingHistoryId, setDeletingHistoryId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<AiDrawerHistoryItem | null>(null);
   const [deletedIds, setDeletedIds] = useState<string[]>([]);
+  // Sprint 0131 (coordinator item from 0118): the device searches only titles, the first question and the latest
+  // message; online, 「搜索更多」 asks the server, whose index also covers older messages.
+  const [serverQuery, setServerQuery] = useState<string | null>(null);
+  const serverSearchActive = historyFromDevice && historyQueryParam.length > 0 && serverQuery === historyQueryParam;
+  const serverSearchState = validateApiResourceState(useApiResource<unknown>(
+    historyPath,
+    () => false,
+    { scopeKey: historyFilterIdentity + ":server-search", cachePolicy: "network-only", enabled: serverSearchActive && !aiOffline }
+  ), aiSessionSummaryPageSchema);
+  const serverSearchPage = serverSearchActive && (serverSearchState.kind === "success" || serverSearchState.kind === "empty") ? serverSearchState.data : null;
+  const searchScope = historyFromDevice && historyQuery.trim().length > 0 ? {
+    offline: aiOffline,
+    searching: serverSearchActive && serverSearchState.kind === "loading",
+    shownFromServer: serverSearchPage !== null,
+    onSearchMore: () => { const query = historyQuery.trim(); if (owns() && query) setServerQuery(query); },
+  } : null;
   const firstHistoryPage = historyFromDevice
-    ? localAiSessionPage(localSessions.rows, { q: historyQueryParam, groupId: selectedGroupId })
+    ? serverSearchPage ?? localAiSessionPage(localSessions.rows, { q: historyQueryParam, groupId: selectedGroupId })
     : !localSessions.available && (historyState.kind === "success" || historyState.kind === "empty")
       ? historyState.data
       : null;
@@ -438,7 +457,9 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
   if (nextQuestionSnapshot !== questionSnapshot) setQuestionSnapshot(nextQuestionSnapshot);
   const suggestedPrompts = [...(nextQuestionSnapshot.questions ?? todaySummaryQuestions(null, locale.language)), { kind: "discussion", label: locale.t("ai.discussionPrompt") }];
   const todayError =
-    todayState.kind === "offline" || todayState.kind === "failure"
+    todayState.kind === "offline"
+      ? locale.t("sync.notOnDevice")
+      : todayState.kind === "failure"
       ? todayState.error.message
       : todayOverdue
         ? locale.t("todayActions.timedOut")
@@ -759,6 +780,7 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
         historyNotices={historyNotices}
         historyQuery={historyQuery}
         todayBadge={todaySummaryView.openTaskCount}
+        searchScope={searchScope}
         onHistoryQueryChange={setHistoryQuery}
         onClose={() => setDrawerOpen(false)}
         onNewChat={startNewChat}
@@ -793,6 +815,7 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
         }}
         onDeleteHistoryItem={item => { if (owns() && !deleteOperation.current) { setHistoryDeleteError(null); setConfirmDelete(item); } }}
         onLoadMoreHistory={() => { void loadMoreHistory(); }}
+        searchScope={searchScope}
         onHistoryQueryChange={setHistoryQuery}
         onManageGroups={() => openOrganization(null)}
         onManageHistoryItem={item => openOrganization(item)}
@@ -1095,6 +1118,7 @@ function OrbitAiDrawer({
   historyQuery,
   inboxBadge,
   todayBadge,
+  searchScope = null,
   onClose,
   onHistoryQueryChange,
   onNewChat,
@@ -1108,6 +1132,7 @@ function OrbitAiDrawer({
   historyQuery: string;
   inboxBadge: number | undefined;
   todayBadge: number;
+  searchScope?: LocalSearchScopeProps | null;
   onClose: () => void;
   onHistoryQueryChange: (value: string) => void;
   onNewChat: () => void;
@@ -1178,6 +1203,7 @@ function OrbitAiDrawer({
                 value={historyQuery}
               />
             </View>
+            {searchScope ? <LocalSearchScope {...searchScope} /> : null}
             <Text style={styles.drawerSectionTitle}>{locale.t("ai.commonEntries")}</Text>
             <View style={styles.drawerRowGroup}>
               {capabilityEntries.map((entry, index) => (
@@ -1329,6 +1355,7 @@ function OrbitAiHistoryPanel({
   onConfirmDelete,
   onDeleteHistoryItem,
   onLoadMoreHistory,
+  searchScope = null,
   onHistoryQueryChange,
   onManageGroups,
   onManageHistoryItem,
@@ -1359,6 +1386,7 @@ function OrbitAiHistoryPanel({
   onConfirmDelete: () => void;
   onDeleteHistoryItem: (item: AiDrawerHistoryItem) => void;
   onLoadMoreHistory: () => void;
+  searchScope?: LocalSearchScopeProps | null;
   onHistoryQueryChange: (value: string) => void;
   onManageGroups: () => void;
   onManageHistoryItem: (item: AiDrawerHistoryItem) => void;
@@ -1432,6 +1460,7 @@ function OrbitAiHistoryPanel({
               value={historyQuery}
             />
           </View>
+          {searchScope ? <LocalSearchScope {...searchScope} /> : null}
           <DrawerHistoryList
             deletingHistoryId={deletingHistoryId}
             historyItems={historyItems}
@@ -1447,6 +1476,26 @@ function OrbitAiHistoryPanel({
       </View>
     </Modal>
   );
+}
+
+interface LocalSearchScopeProps {
+  offline: boolean;
+  searching: boolean;
+  shownFromServer: boolean;
+  onSearchMore: () => void;
+}
+
+/** Sprint 0131: what the device search covers, and 「搜索更多」 (the server) while online. */
+function LocalSearchScope({ offline, searching, shownFromServer, onSearchMore }: LocalSearchScopeProps) {
+  const locale = useOrbitLocale();
+  const { styles } = useStyles();
+  if (shownFromServer) return <Text style={styles.drawerEmptyText}>{locale.t("ai.searchMoreShown")}</Text>;
+  return <View style={styles.recentFailure}>
+    <Text style={styles.drawerEmptyText}>{locale.t("ai.localSearchScope")}</Text>
+    <Pressable accessibilityRole="button" accessibilityState={{ disabled: offline || searching }} disabled={offline || searching} onPress={onSearchMore} style={[styles.retryButton, offline || searching ? styles.disabled : null]}>
+      <Text style={styles.allHistoryText}>{searching ? locale.t("ai.searchingMore") : offline ? `${locale.t("ai.searchMore")} · ${locale.t("sync.needsNetwork")}` : locale.t("ai.searchMore")}</Text>
+    </Pressable>
+  </View>;
 }
 
 function DrawerHistoryList({

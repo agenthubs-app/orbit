@@ -64,6 +64,9 @@ const session = { isCurrent: () => true,
 const refreshers = {};
 const refresherFor = (kind) => refreshers[kind] ??= async () => { state.syncs[kind] = (state.syncs[kind] ?? 0) + 1; return null; };
 const currentSession = () => session;
+// Sprint 0131: a conversation page is read by row id from the device (the relationship_message rows of this fixture).
+const rowSession = { isCurrent: () => true, readRecordsById: async (kind, ids) => records(kind).filter((row) => ids.includes(row.id)), readPageCopy: async () => null, savePageCopy: async () => {} };
+export const useSyncCoordinatorSession = () => rowSession;
 export const useSyncedCollection = ({ kind }) => ({
   status: state.status, error: state.status === "stale" ? "Network request failed" : null,
   lastSyncedAt: "2026-09-28T08:40:00.000Z", workspaceId: "workspace:one", records: records(kind),
@@ -224,4 +227,26 @@ test("AI conversation online: the server page replaces the device copy and its c
   await page.waitForFunction(() => (window as any).fixture.savedCards.includes("s1"));
   await page.waitForTimeout(500);
   assert.deepEqual(await fixtureValue(page, "savedCards"), ["s1"], "one server read saves its cards once (no write loop per render)");
+});
+
+test("AI history search says it covers only titles, first questions and latest messages; 搜索更多 asks the server online and needs the network offline (0131)", async (t) => {
+  const page = await open(t, { screen: "ai" });
+  await page.getByText("置顶的会话").first().waitFor();
+  await page.getByRole("button", { name: "全部会话" }).click();
+  await page.getByPlaceholder("搜索历史").fill("投资人");
+  await page.getByText("本机只搜标题、第一个问题和最近一条消息。").waitFor();
+  assert.deepEqual((await requests(page)).filter((request) => request.includes("/api/ai/conversations/sessions?")), [], "typing searches the device only");
+  await page.getByRole("button", { name: "搜索更多" }).click();
+  await page.waitForFunction(() => (window as any).fixture.requests.some((request: string) => request.includes("/api/ai/conversations/sessions?") && request.includes("q=")));
+  const offline = await open(t, { screen: "ai", status: "stale" });
+  await offline.getByText("东京投资人名单").first().waitFor();
+  await offline.getByRole("button", { name: "全部会话" }).click();
+  await offline.getByPlaceholder("搜索历史").fill("投资人");
+  assert.equal(await offline.getByRole("button", { name: "搜索更多 · 需要联网" }).isDisabled(), true);
+});
+
+test("the Today block offline shows that it is not on this device yet instead of 暂时无法连接 (0131)", async (t) => {
+  const offline = await open(t, { screen: "ai", status: "stale" });
+  await offline.getByText("东京投资人名单").first().waitFor();
+  assert.equal(await offline.getByText("暂时无法连接 Orbit 服务，请检查网络后再试。").count(), 0);
 });

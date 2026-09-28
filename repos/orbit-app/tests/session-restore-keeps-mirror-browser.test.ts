@@ -38,6 +38,8 @@ interface HostState {
   rows: Record<string, Record<string, Row[]>>;
   requests: string[];
   authChecks: number;
+  /** Sprint 0131: the server cannot be reached (the connection is dropped). */
+  down?: boolean;
 }
 
 const ENTRY = `
@@ -264,6 +266,7 @@ async function serve(files: Awaited<ReturnType<typeof bundle>>, state: HostState
     if (url.pathname === "/app.js") return send("text/javascript", files.appJs);
     if (url.pathname.split("/").at(-1) === "worker") return send("text/javascript", files.workerJs);
     if (url.pathname.endsWith(".wasm")) return send("application/wasm", files.wasm);
+    if (state.down && url.pathname.startsWith("/api/")) { req.socket.destroy(); return; }
     const signedIn = state.session === "valid";
     if (url.pathname === "/api/auth/session") {
       state.authChecks += 1;
@@ -328,7 +331,7 @@ const task = (actor: string, id: string): Row => ({ id, revision: `rev:${id}`, p
 
 function freshHost(state: HostState) {
   Object.assign(state, {
-    actor: A, session: "valid", epoch: "e1", grants: ["notes", "tasks", "personal-schedule"], requests: [], authChecks: 0,
+    actor: A, session: "valid", down: false, epoch: "e1", grants: ["notes", "tasks", "personal-schedule"], requests: [], authChecks: 0,
     rows: { [A]: { notes: [note(A, "note-a1"), note(A, "note-a2")], tasks: [task(A, "task-a1")] }, [B]: { notes: [note(B, "note-b1")] } },
   });
 }
@@ -400,6 +403,18 @@ for (const mode of ["web", "native"] as const) {
     await call(page, "(window.__app.failing = false, true)");
     await retry.click();
   }
+
+  test(`${mode}: when the server answers again after being unreachable the mirror syncs at once, without a page asking (0131)`, { timeout: 60_000 }, async (t) => {
+    const { page } = await openApp(t);
+    state.down = true;
+    assert.equal(await call(page, "window.__app.refreshNotes()"), "stale", "the failed sync keeps the device copy");
+    state.requests.length = 0;
+    state.down = false;
+    const deadline = Date.now() + 10_000;
+    while (!state.requests.includes("/api/sync/lease") && Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 100));
+    assert.ok(state.requests.includes("/api/sync/lease"), "the reconnect probe saw the server and the mirror synced: " + JSON.stringify(state.requests));
+    await waitFor(page, "fresh again", settled);
+  });
 
   test(`${mode}: same identity online — provider remount and error-boundary retry keep the database and key and pull no first pages (SC-0130-02)`, { timeout: 90_000 }, async (t) => {
     const { page, errors } = await openApp(t);

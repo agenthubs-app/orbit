@@ -58,7 +58,10 @@ function emptySnapshot<TPayload>(): SyncedCollectionSnapshot<TPayload> {
 
 export function useSyncedCollection<TPayload = unknown>(input: {
   kind: SyncChangeKind;
+  /** Sprint 0131: false keeps only the sync state (a consumer that reads its rows by id, e.g. a conversation page). */
+  records?: boolean;
 }) {
+  const withRecords = input.records ?? true;
   const auth = useOrbitAuthSession();
   const { baseUrl, ready: baseUrlReady } = useOrbitApiBaseUrl();
   const sessionGeneration = useMemo(
@@ -103,6 +106,7 @@ export function useSyncedCollection<TPayload = unknown>(input: {
       const request = session.synchronize<TPayload>(input.kind, {
         ...(backgroundDurationMs === undefined ? {} : { backgroundDurationMs }),
         reason,
+        records: withRecords,
       });
       requests.current.add(request);
       const completion = (async () => {
@@ -167,7 +171,7 @@ export function useSyncedCollection<TPayload = unknown>(input: {
         if (timer !== undefined) clearTimeout(timer);
       }
     },
-    [input.kind],
+    [input.kind, withRecords],
   );
 
   useEffect(() => {
@@ -193,7 +197,7 @@ export function useSyncedCollection<TPayload = unknown>(input: {
     });
     sessionRef.current = session;
     let active = true;
-    void session.readCollection<TPayload>(input.kind).then((mirror) => {
+    void session.readCollection<TPayload>(input.kind, { records: withRecords }).then((mirror) => {
       if (
         !active ||
         !mounted.current ||

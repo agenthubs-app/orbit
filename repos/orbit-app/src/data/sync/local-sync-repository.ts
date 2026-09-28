@@ -598,6 +598,31 @@ export function createLocalSyncRepository(input: {
         );
     },
 
+    /**
+     * Sprint 0131: the named rows of one kind (at most 200), for pages the device reads by row id — a
+     * relationship conversation's messages are `${conversationId}/${seq}`, so one page is one sequence
+     * range — instead of loading and decoding the whole domain.
+     */
+    async listRecordsByIds(query: { workspaceId: string; kind: SyncEntityKind; ids: readonly string[] }): Promise<SyncRecord[]> {
+      assertNonEmptyString(query.workspaceId, "workspaceId");
+      assertSyncEntityKind(query.kind);
+      if (query.ids.length > 200) throw new TypeError("row id reads take at most 200 ids");
+      if (query.ids.length === 0) return [];
+      for (const id of query.ids) assertNonEmptyString(id, "id");
+      const scope = legacyScope(query.workspaceId, query.kind);
+      if (!(await isReadable(scope))) return [];
+      const rows = await database.all<SyncRecordRow>(
+        `SELECT workspace_id, kind, record_id, revision, updated_at, deleted_at,
+                payload_json, sync_state, ai_visibility
+         FROM sync_records
+         WHERE workspace_id = ? AND domain_id = ? AND authorization_epoch = ? AND kind = ? AND visible=1 AND deleted_at IS NULL
+           AND record_id IN (${query.ids.map(() => "?").join(", ")})`,
+        [...scopeParameters(scope), query.kind, ...query.ids],
+      );
+      assertScope(scope);
+      return Promise.all(rows.map((row) => recordFromStoredRow(row)));
+    },
+
     async getCursor(workspaceId: string): Promise<LocalSyncCursor | null> {
       assertNonEmptyString(workspaceId, "workspaceId");
       const scope = legacyScope(workspaceId);

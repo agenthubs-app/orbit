@@ -17,6 +17,6 @@ export function useLocalRelationshipConversations(probe = true): LocalRelationsh
   return useLocalRelationshipConversationsSource(useWebMirrorStatus().mode === "local-mirror", probe);
 }
 
-export function useLocalRelationshipThread(conversationId: string): LocalRelationshipThreadState {
-  return useLocalRelationshipThreadSource(useWebMirrorStatus().mode === "local-mirror", conversationId);
+export function useLocalRelationshipThread(conversationId: string, cursor: string | null = null): LocalRelationshipThreadState {
+  return useLocalRelationshipThreadSource(useWebMirrorStatus().mode === "local-mirror", conversationId, cursor);
 }

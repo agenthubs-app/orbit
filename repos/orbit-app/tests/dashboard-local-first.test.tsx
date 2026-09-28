@@ -39,6 +39,9 @@ export const state = window.fixture = { requests: [], navigation: [], syncs: 0, 
 export const useLocalSearchParams = () => window.fixture.params ?? {};
 export const usePathname = () => "/dashboard";
 export const useRouter = () => ({ canGoBack: () => false, back() {}, push(href) { state.navigation.push(typeof href === "string" ? href : JSON.stringify(href)); }, replace() {} });
+// Sprint 0131: the last source audit is a page copy (fixture copies; no copy unless given).
+const auditSession = { isCurrent: () => true, readPageCopy: async () => window.fixture.auditCopy ?? null, savePageCopy: async () => {} };
+export const useSyncCoordinatorSession = () => window.fixture.auditCopy ? auditSession : null;
 export const useSyncedCollection = ({ kind }) => ({
   status: state.status, error: state.status === "stale" ? "Network request failed" : null,
   lastSyncedAt: "2026-09-27T05:40:00.000Z", workspaceId: "workspace:one",
@@ -134,7 +137,8 @@ test("the dashboard renders from the device copy with the shared computations an
   const body = await page.evaluate(() => document.body.innerText);
   assert.match(body, /\b3\b/, "the relationship-asset metric counts the three device contacts");
   assert.deepEqual(await dashboardReads(page), [], "no /api/dashboard* read on native");
-  assert.ok((await requests(page)).includes("resource:/api/audit/provenance"), "the source audit (not a dashboard computation) is still read online");
+  assert.equal((await requests(page)).includes("resource:/api/audit/provenance"), false, "the source audit is not read on open (0131: on demand)");
+  await page.getByText("来源一致性审计").waitFor();
   assert.ok(await page.evaluate(() => (window as any).fixture.syncs) >= 1, "opening the page probes for changes (a conditional manifest read)");
 });
 
@@ -190,4 +194,26 @@ test("offline with a last-known report status: asking the AI says 需要联网 a
   assert.equal(await ask.isDisabled(), true);
   await ask.click({ force: true });
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), [], "no AI draft is opened offline");
+});
+
+test("a non-ASCII location bucket (上海) opens its drill-down even when the route parameter arrives decoded (0131)", async (t) => {
+  const at = "2026-09-27T00:30:00.000000Z";
+  const src = { type: "manual", id: "src:sh", label: "手动记录" };
+  const contact = (id: string, name: string) => ({ id: "contacts/" + id, payload: { collection: "contacts", recordId: id, occurredAt: at, updatedAt: at, data: { id, displayName: name, organization: "浦东资本", role: "合伙人", location: "上海", stage: "nurture", source: src, evidenceIds: ["e:" + id], createdAt: "2026-09-26T09:00:00.000Z", updatedAt: "2026-09-26T09:00:00.000Z" } } });
+  const graph = [contact("s1", "王磊"), contact("s2", "李娜")];
+  for (const bucketId of [`location_${encodeURIComponent("上海")}`, "location_上海"]) {
+    const page = await open(t, { screen: "structure", graph, params: { dimension: "location", bucketId } });
+    await page.getByText("王磊", { exact: false }).first().waitFor();
+    assert.equal(await page.getByText("没有找到对应内容，它可能已被移除或不可用。").count(), 0, bucketId);
+  }
+});
+
+test("the source audit runs on demand; the dashboard shows the last result and its time without reading (0131)", async (t) => {
+  const audit = { state: "success", title: "来源一致性审计", summary: "上次审计的摘要", collections: [], findings: [], nextAction: "复核待确认来源", coverage: { score: 90 }, status: "ok" };
+  const page = await open(t, { auditCopy: { data: audit, syncedAt: "2026-09-28T01:00:00.000Z" } });
+  await page.getByText(/上次审计：/).waitFor();
+  assert.equal((await requests(page)).includes("resource:/api/audit/provenance"), false);
+  const run = page.getByRole("button", { name: "运行来源审计" });
+  await run.dispatchEvent("click");
+  await page.waitForFunction(() => (window as any).fixture.requests.includes("post:/api/audit/provenance/run"));
 });

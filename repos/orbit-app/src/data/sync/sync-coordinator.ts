@@ -99,10 +99,13 @@ export interface SyncCoordinatorSession {
   isCurrent(): boolean;
   readCollection<TPayload = unknown>(
     kind: SyncChangeKind,
+    options?: { records?: boolean },
   ): Promise<SyncedCollectionSnapshot<TPayload> | null>;
+  /** Sprint 0131: the named rows of a kind from the device (at most 200); null without a mirror or grant. */
+  readRecordsById<TPayload = unknown>(kind: SyncChangeKind, ids: readonly string[]): Promise<readonly SyncRecord<TPayload>[] | null>;
   synchronize<TPayload = unknown>(
     kind: SyncChangeKind,
-    options?: SyncOptions,
+    options?: SyncOptions & { records?: boolean },
   ): SyncRequest<TPayload>;
   /** Sprint 0118: the device opened an AI session (its messages sync from now on); null without a mirror. */
   openAiSession(sessionId: string): Promise<{ opened: string[]; evicted: string[]; added: boolean } | null>;
@@ -278,6 +281,7 @@ export function createSyncCoordinator(input: {
   async function readCollection<TPayload>(
     scope: ActiveScope,
     kind: SyncChangeKind,
+    withRecords = true,
   ): Promise<SyncedCollectionSnapshot<TPayload> | null> {
     await scope.ready;
     if (!isCurrent(scope)) return null;
@@ -294,10 +298,11 @@ export function createSyncCoordinator(input: {
     try {
       const value = await withRepository(scope, async (repository) => ({
         cursor: await repository.getScopeCursor(readScope),
-        records: await repository.listRecords({
+        // Sprint 0131: a consumer that reads rows by id (a conversation's page) needs only the sync state.
+        records: withRecords ? await repository.listRecords({
           workspaceId: scope.workspaceId!,
           kind,
-        }),
+        }) : [],
       }));
       if (!isCurrent(scope)) return null;
       return {
@@ -323,8 +328,9 @@ export function createSyncCoordinator(input: {
     scope: ActiveScope,
     kind: SyncChangeKind,
     result: SyncRunResult,
+    withRecords = true,
   ): Promise<SyncedCollectionSnapshot<TPayload> | null> {
-    const mirror = await readCollection<TPayload>(scope, kind);
+    const mirror = await readCollection<TPayload>(scope, kind, withRecords);
     if (mirror === null) return null;
     if (result.error !== null) {
       return {
@@ -555,8 +561,16 @@ export function createSyncCoordinator(input: {
       isCurrent(): boolean {
         return isCurrent(bound);
       },
-      readCollection<TPayload = unknown>(kind: SyncChangeKind) {
-        return readCollection<TPayload>(bound, kind);
+      readCollection<TPayload = unknown>(kind: SyncChangeKind, options: { records?: boolean } = {}) {
+        return readCollection<TPayload>(bound, kind, options.records ?? true);
+      },
+      async readRecordsById<TPayload = unknown>(kind: SyncChangeKind, ids: readonly string[]) {
+        if (ids.length > 200) throw new TypeError("row id reads take at most 200 ids");
+        await bound.ready;
+        const readScope = readScopeFor(bound, kind);
+        if (!isCurrent(bound) || bound.workspaceId === null || !readScope) return null;
+        const workspaceId = bound.workspaceId;
+        try { return await withRepository(bound, (repository) => repository.listRecordsByIds({ workspaceId, kind, ids })) as readonly SyncRecord<TPayload>[]; } catch (error) { if (error instanceof LocalMirrorUnavailableError) return null; throw error; }
       },
       async openAiSession(sessionId: string) {
         await bound.ready;
@@ -591,7 +605,7 @@ export function createSyncCoordinator(input: {
       },
       synchronize<TPayload = unknown>(
         kind: SyncChangeKind,
-        options: SyncOptions = {},
+        options: SyncOptions & { records?: boolean } = {},
       ): SyncRequest<TPayload> {
         if (!isCurrent(bound)) {
           return {
@@ -654,7 +668,7 @@ export function createSyncCoordinator(input: {
           promise: flight.promise.then((result) =>
             result === null
               ? null
-              : finalSnapshot<TPayload>(bound, kind, result),
+              : finalSnapshot<TPayload>(bound, kind, result, options.records ?? true),
           ),
           started: flight.started,
         };

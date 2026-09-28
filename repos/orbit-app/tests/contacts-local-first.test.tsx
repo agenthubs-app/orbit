@@ -39,6 +39,8 @@ export const state = window.fixture = { requests: [], navigation: [], syncs: 0, 
 export const useLocalSearchParams = () => window.fixture.params ?? {};
 export const usePathname = () => "/contacts";
 export const useRouter = () => ({ canGoBack: () => false, back() { state.navigation.push("back"); }, push(href) { state.navigation.push(typeof href === "string" ? href : JSON.stringify(href)); }, replace(href) { state.navigation.push("replace"); } });
+// Sprint 0131: page copies / row-id reads open the coordinator session; this harness has none.
+export const useSyncCoordinatorSession = () => null;
 export const useSyncedCollection = ({ kind }) => ({
   status: state.status, error: state.status === "stale" ? "Network request failed" : null,
   lastSyncedAt: "2026-09-27T05:40:00.000Z", workspaceId: "workspace:one",
@@ -181,4 +183,14 @@ test("a linked contact the device does not hold yet is the only one asked of the
   await page.getByText("张伟", { exact: false }).first().waitFor();
   await page.waitForFunction(() => (window as any).fixture.requests.some((path: string) => path.includes("contact%3Ab") || path.includes("contact:b")));
   assert.deepEqual(await contactReads(page), ["get:/api/contacts/contact%3Ab"], "only the contact missing from the device is read");
+});
+
+test("the relationship search suggestions are read only once the user starts searching (0131)", async (t) => {
+  const page = await open(t);
+  await page.getByText("张伟", { exact: false }).first().waitFor();
+  const suggestionReads = async () => (await requests(page)).filter((entry) => entry.includes("/api/search/suggestions"));
+  assert.deepEqual(await suggestionReads(), [], "opening the contacts tab does not read the suggestions");
+  await page.getByPlaceholder(/搜索/).first().focus();
+  await page.waitForFunction(() => (window as any).fixture.requests.some((entry: string) => entry.includes("/api/search/suggestions")));
+  assert.ok((await suggestionReads()).length >= 1);
 });

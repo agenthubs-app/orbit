@@ -13,6 +13,6 @@ export function useLocalRelationshipConversations(probe = true): LocalRelationsh
 }
 
 /** Sprint 0119, native: one conversation and its whole history from the device mirror. */
-export function useLocalRelationshipThread(conversationId: string): LocalRelationshipThreadState {
-  return useLocalRelationshipThreadSource(true, conversationId);
+export function useLocalRelationshipThread(conversationId: string, cursor: string | null = null): LocalRelationshipThreadState {
+  return useLocalRelationshipThreadSource(true, conversationId, cursor);
 }
