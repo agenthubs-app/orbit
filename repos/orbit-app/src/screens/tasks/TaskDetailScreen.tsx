@@ -82,7 +82,7 @@ export function TaskDetailScreen() {
   const detailPath = useMemo(() => taskPath(taskId), [taskId]);
   const activitiesPath = useMemo(() => taskActivitiesPath(taskId), [taskId]);
   const reminderResourcePath = useMemo(() => remindersPath("task", taskId), [taskId]);
-  const detailState = useApiResource<unknown>(detailPath, () => false, { scopeKey });
+  const detailState = useApiResource<unknown>(detailPath, () => false, { scopeKey, cachePolicy: "network-only" }); // 0131: offline shows the lease-bound device copy with 截至, not the snapshot cache
   const activitiesState = useApiResource<unknown>(activitiesPath, () => false, { scopeKey });
   const remindersState = useApiResource<unknown>(reminderResourcePath, () => false, { scopeKey });
   const serverDetail = ready && (detailState.kind === "success" || detailState.kind === "empty") ? ownedTaskDetailToView(detailState.data, actorId, locale.language) : null;

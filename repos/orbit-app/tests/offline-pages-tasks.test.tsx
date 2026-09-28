@@ -91,3 +91,11 @@ test("a relationship's next step: online saved per relationship; offline the cop
   const never = await harness.open(t, { screen: "lifecycle", online: false, params: { id: "connection:2" } });
   await never.getByText("这项内容还没保存在这台设备上，联网打开一次后断网也能看。").waitFor();
 });
+
+test("task detail reads the server network-only, so offline on native the device copy (with 截至, read-only) is shown, not the snapshot cache", async () => {
+  // Found on the Simulator (0131 runtime pass): with the default policy the native snapshot store answered
+  // offline as if it were the server — no 截至 notice and 标记完成 enabled.
+  const { readFileSync } = await import("node:fs");
+  const source = readFileSync("src/screens/tasks/TaskDetailScreen.tsx", "utf8");
+  assert.match(source, /useApiResource<unknown>\(detailPath, \(\) => false, \{ scopeKey, cachePolicy: "network-only" \}\)/);
+});
