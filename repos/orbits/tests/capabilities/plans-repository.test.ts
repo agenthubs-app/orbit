@@ -717,7 +717,7 @@ test("W0012: stale registration versions are ignored on PostgreSQL and the recon
     await bob.markEventAttended({ eventId: "event:tokyo-saas-night" });
     const scanner = createPostgresPlanMatchRepository({ pool, workspaceId: WORKSPACE });
     assert.deepEqual(await scanner.listActiveEventItems({ limit: 10 }), [
-      { actorId: "actor:alice", eventId: "event:tokyo-saas-night", status: "recommended" },
+      { actorId: "actor:alice", eventId: "event:tokyo-saas-night", itemId: event.id, status: "recommended" },
     ]);
   });
 });

@@ -263,18 +263,26 @@ export interface PlanMatchRepository {
    * W0015 对账：生效计划里还没「已参加」、但本人已有联系人记着「在这场活动认识」的 (actor, 活动)。
    * 联系人与计划条目按同一 actor 连接（与引用校验同一归属谓词），有上限。
    */
-  listUnattendedAttributedEvents(input: { limit: number }): Promise<Array<{ actorId: string; eventId: string }>>;
+  listUnattendedAttributedEvents(input: {
+    limit: number;
+    /** W0017 续批：只取 (actor, 活动) 严格排在它之后的。 */
+    after?: { actorId: string; eventId: string } | null;
+  }): Promise<Array<{ actorId: string; eventId: string }>>;
   /**
    * W0012 `plan-phase` 兜底：生效计划按东京周次已处在第 2 段及以后、而这一段还没有
    * 「进入新阶段」记录（`phase-entered:<plan>:<phase>`）的 actor。`today` 是东京日历日；有上限。
    * 周次与阶段的判定与 `week.ts` 同一口径（第 1 周从 starts_on 起；取起始周 ≤ 本周的最后一段）。
    */
-  listActorsEnteringPhase(input: { limit: number; today: string }): Promise<string[]>;
+  listActorsEnteringPhase(input: { limit: number; today: string; /** W0017 续批：只取 actor 排在它之后的。 */ afterActorId?: string | null }): Promise<string[]>;
   /**
-   * W0012 `plan-event-registration` 对账：生效计划里还没「已参加」的活动条目（按 actor，有上限，
-   * 随机顺序——多次维护后覆盖全部，不会被固定的前 N 条挡住）。
+   * W0012 `plan-event-registration` 对账：生效计划里还没「已参加」的活动条目（按 actor，有上限）。
+   * W0017 起每个东京日只扫一遍：按 (actor, 活动, 条目) 的固定顺序分批，`after` 是上一批最后一条，
+   * 同一天续批直到扫完（原来的随机顺序靠每 10 分钟重抽覆盖全部，一天一次时覆盖不了）。
    */
-  listActiveEventItems(input: { limit: number }): Promise<Array<{ actorId: string; eventId: string; status: "recommended" | "registered" }>>;
+  listActiveEventItems(input: {
+    limit: number;
+    after?: { actorId: string; eventId: string; itemId: string } | null;
+  }): Promise<Array<{ actorId: string; eventId: string; itemId: string; status: "recommended" | "registered" }>>;
 }
 
 const CLAIM_SET = `status = 'running', lease_token = $LEASE, attempt_count = attempt_count + 1,
@@ -539,7 +547,7 @@ export function createPostgresPlanMatchRepository(options: {
       return result.rows[0] ? mapJob(result.rows[0]) : null;
     },
 
-    async listUnattendedAttributedEvents({ limit }) {
+    async listUnattendedAttributedEvents({ after = null, limit }) {
       const result = await pool.query(
         `select distinct i.actor_id, i.linked_event_id
          from plan_items i
@@ -553,14 +561,15 @@ export function createPostgresPlanMatchRepository(options: {
                     or c.payload->'accountId' = to_jsonb(i.actor_id))
                and c.payload->>'metEventId' = i.linked_event_id
            )
+           and ($3::text is null or (i.actor_id, i.linked_event_id) > ($3::text, $4::text))
          order by i.actor_id, i.linked_event_id
          limit $2`,
-        [workspaceId, Math.max(1, Math.min(500, limit))],
+        [workspaceId, Math.max(1, Math.min(500, limit)), after?.actorId ?? null, after?.eventId ?? null],
       );
       return result.rows.map((row) => ({ actorId: String(row.actor_id), eventId: String(row.linked_event_id) }));
     },
 
-    async listActorsEnteringPhase({ limit, today }) {
+    async listActorsEnteringPhase({ afterActorId = null, limit, today }) {
       const result = await pool.query(
         `with current as (
            select p.actor_id, p.id as plan_id,
@@ -579,6 +588,7 @@ export function createPostgresPlanMatchRepository(options: {
            from phase ph
            join current c on c.plan_id = ph.plan_id
           where ph.latest = 1 and ph.ord > 1
+            and ($4::text is null or ph.actor_id > $4::text)
             -- 已过最后一周的计划不再进入新阶段（与 phaseToEnter 同一口径）。
             and c.week <= (select coalesce(max((e.value->>'endWeek')::int), 1) from jsonb_array_elements(c.phases) as e(value))
             and not exists (
@@ -588,27 +598,29 @@ export function createPostgresPlanMatchRepository(options: {
             )
           order by ph.actor_id
           limit $3`,
-        [workspaceId, today, Math.max(1, Math.min(500, limit))],
+        [workspaceId, today, Math.max(1, Math.min(500, limit)), afterActorId],
       );
       return result.rows.map((row) => String((row as { actor_id: unknown }).actor_id));
     },
 
-    async listActiveEventItems({ limit }) {
+    async listActiveEventItems({ after = null, limit }) {
       const result = await pool.query(
-        `select i.actor_id, i.linked_event_id, i.status
+        `select i.actor_id, i.linked_event_id, i.id, i.status
            from plan_items i
            join plans p on p.workspace_id = i.workspace_id and p.actor_id = i.actor_id and p.id = i.plan_id
           where i.workspace_id = $1 and p.status = 'active' and i.kind = 'event'
             and i.status in ('recommended', 'registered') and i.linked_event_id is not null
-          order by random()
+            and ($3::text is null or (i.actor_id, i.linked_event_id, i.id) > ($3::text, $4::text, $5::text))
+          order by i.actor_id, i.linked_event_id, i.id
           limit $2`,
-        [workspaceId, Math.max(1, Math.min(500, limit))],
+        [workspaceId, Math.max(1, Math.min(500, limit)), after?.actorId ?? null, after?.eventId ?? null, after?.itemId ?? null],
       );
       return result.rows.map((row) => {
-        const value = row as { actor_id: unknown; linked_event_id: unknown; status: unknown };
+        const value = row as { actor_id: unknown; id: unknown; linked_event_id: unknown; status: unknown };
         return {
           actorId: String(value.actor_id),
           eventId: String(value.linked_event_id),
+          itemId: String(value.id),
           status: value.status === "registered" ? ("registered" as const) : ("recommended" as const),
         };
       });

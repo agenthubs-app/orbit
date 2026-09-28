@@ -19,6 +19,7 @@ import type { Plan, PlanItem, PlanPhase, PlanService } from "./contract";
 import { PLAN_LIMITS } from "./contract";
 import type { PlanGenerator, PlanLocale } from "./generator";
 import { resolvePlanGenerator } from "./generator-service-factory";
+import type { PlanDailyBatch, PlanDailyGate } from "./maintenance-daily-gate";
 import { planWeekState } from "./week";
 
 export const PLAN_PHASE_REFINEMENT_SOURCE = "phase_refinement";
@@ -134,8 +135,8 @@ export const PLAN_PHASE_TASK = "plan-phase";
 export const PLAN_PHASE_LIMIT = 50;
 
 export interface PlanPhaseMaintenanceDeps {
-  /** 生效计划的当前阶段（第 2 段起）还没有「进入新阶段」记录的 actor（有上限）。`today` 是东京日历日。 */
-  listActorsEnteringPhase(input: { limit: number; today: string }): Promise<string[]>;
+  /** 生效计划的当前阶段（第 2 段起）还没有「进入新阶段」记录的 actor（按 actor 排序，有上限）。`today` 是东京日历日。 */
+  listActorsEnteringPhase(input: { limit: number; today: string; afterActorId?: string | null }): Promise<string[]>;
   planServiceFor: (actorId: string) => PlanService;
 }
 
@@ -143,48 +144,78 @@ function isUndefinedTable(error: unknown): boolean {
   return typeof error === "object" && error !== null && (error as { code?: unknown }).code === "42P01";
 }
 
-export async function runPlanPhaseEntries(
+/**
+ * 一批：从 `afterActorId` 之后取最多 `limit` 位。`hasMore` = 取满了上限或到截止时间停下（同一东京日续批），
+ * `cursor` 是本批最后处理的 actor。
+ */
+export async function runPlanPhaseEntriesBatch(
   deps: PlanPhaseMaintenanceDeps,
-  input: { limit: number; today: string; deadline?: number; now?: () => number },
-): Promise<{ examined: number; entered: number; failed: number }> {
+  input: { limit: number; today: string; afterActorId?: string | null; deadline?: number; now?: () => number },
+): Promise<PlanDailyBatch & { summary: { examined: number; entered: number; failed: number } }> {
   const now = input.now ?? Date.now;
   const summary = { entered: 0, examined: 0, failed: 0 };
-  const actors = await deps.listActorsEnteringPhase({ limit: input.limit, today: input.today });
-  for (const actorId of actors.slice(0, input.limit)) {
-    if (input.deadline !== undefined && now() >= input.deadline) break;
+  const actors = (
+    await deps.listActorsEnteringPhase({ afterActorId: input.afterActorId ?? null, limit: input.limit, today: input.today })
+  ).slice(0, input.limit);
+  let cursor = input.afterActorId ?? null;
+  let stopped = false;
+  for (const actorId of actors) {
+    if (input.deadline !== undefined && now() >= input.deadline) {
+      stopped = true;
+      break;
+    }
     summary.examined += 1;
+    cursor = actorId;
     try {
       const result = await deps.planServiceFor(actorId).enterCurrentPhase();
       if (result.entered) summary.entered += 1;
     } catch {
-      // 单个 actor 失败不挡住其他人，下次维护再试。
+      // 单个 actor 失败不挡住其他人，下次扫描再试。
       summary.failed += 1;
     }
   }
-  return summary;
+  return { cursor, hasMore: stopped || actors.length >= input.limit, summary };
 }
 
+export async function runPlanPhaseEntries(
+  deps: PlanPhaseMaintenanceDeps,
+  input: { limit: number; today: string; deadline?: number; now?: () => number },
+): Promise<{ examined: number; entered: number; failed: number }> {
+  return (await runPlanPhaseEntriesBatch(deps, input)).summary;
+}
+
+/**
+ * `gate` 存在时（生产装配）每个东京自然日最多真正执行一次、到上限时同一天续批（见 `maintenance-daily-gate.ts`）；
+ * 不传时每次调用都执行一批（测试与本地直接调用）。
+ */
 export function createPlanPhaseMaintenanceTask(input: {
   resolve: () => PlanPhaseMaintenanceDeps | null;
   limit?: number;
   tokyoDate: (at: Date) => string;
+  gate?: PlanDailyGate;
 }): MaintenanceTask {
   return {
     name: PLAN_PHASE_TASK,
-    async run({ deadline, now }) {
+    async run(context) {
       const deps = input.resolve();
       if (!deps) return { skipped: "database_unconfigured" };
-      try {
-        return await runPlanPhaseEntries(deps, {
-          deadline,
-          limit: input.limit ?? PLAN_PHASE_LIMIT,
-          now: () => now().getTime(),
-          today: input.tokyoDate(now()),
-        });
-      } catch (error) {
-        if (isUndefinedTable(error)) return { skipped: "schema_missing" };
-        throw error;
-      }
+      const execute = async (cursor: string | null): Promise<PlanDailyBatch | { skipped: string }> => {
+        try {
+          return await runPlanPhaseEntriesBatch(deps, {
+            afterActorId: cursor,
+            deadline: context.deadline,
+            limit: input.limit ?? PLAN_PHASE_LIMIT,
+            now: () => context.now().getTime(),
+            today: input.tokyoDate(context.now()),
+          });
+        } catch (error) {
+          if (isUndefinedTable(error)) return { skipped: "schema_missing" };
+          throw error;
+        }
+      };
+      if (input.gate) return input.gate.run(PLAN_PHASE_TASK, context, execute);
+      const outcome = await execute(null);
+      return "skipped" in outcome ? outcome : outcome.summary;
     },
   };
 }
