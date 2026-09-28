@@ -142,13 +142,48 @@ export const EVENT_MEMBERSHIP_PROBE_DOMAIN: SyncDomainDefinition = {
 export const DECLARED_SYNC_DOMAINS: readonly SyncDomainDefinition[] = [...SYNC_DOMAINS, EVENT_MEMBERSHIP_PROBE_DOMAIN];
 
 /**
- * Registered ways a write may change a visibility input of a sync domain (an
- * owner transfer, a row leaving a domain). Empty: the product has no contact
- * handover; a revoked relationship keeps its owner (member row "left"); a
- * cancelled registration keeps its owner. A future handler must bump both
- * owners' class version in the same transaction (offline design, step 5).
+ * A registered way a write may set a visibility input of a sync domain.
+ *
+ *   "reassign"     may move an owned row to another owner or out of its
+ *                  collection. It must bump both owners' class version in the
+ *                  same transaction (offline design, step 5). None exist: the
+ *                  product has no contact handover; a revoked relationship
+ *                  keeps its owner (member row "left"); a cancelled
+ *                  registration keeps its owner.
+ *   "first-owner"  may only give an owner-less row its first owner, in the
+ *                  listed collections. It never re-owns a row, so neither the
+ *                  database guard nor reassignRecordOwner accepts it; the
+ *                  owner audit requires every one of its statements to be
+ *                  guarded by `user_id is null`.
  */
-export const SYNC_OWNER_CHANGE_HANDLERS: readonly string[] = [];
+export interface SyncOwnerChangeHandler {
+  name: string;
+  scope: "reassign" | "first-owner";
+  collections: readonly string[];
+  description: string;
+}
+
+export const SYNC_OWNER_CHANGE_HANDLER_DEFINITIONS: readonly SyncOwnerChangeHandler[] = [
+  {
+    name: "owner-backfill-0114",
+    scope: "first-owner",
+    collections: ["contacts", "connections", "contact_detail_states", "evidence"],
+    description: "Sprint 0114 owner backfill (scripts/backfill-owners.ts): gives owner-less contact rows their owner by reference or by the demo account that generated them, and gives a shared source a per-owner copy (a new row, not an owner change).",
+  },
+];
+
+export const SYNC_OWNER_CHANGE_HANDLERS: readonly string[] = SYNC_OWNER_CHANGE_HANDLER_DEFINITIONS.map((handler) => handler.name);
+
+/** Handlers allowed to change an existing owner of `collectionName` (none today). */
+export function reassigningOwnerChangeHandlers(collectionName?: string): string[] {
+  return SYNC_OWNER_CHANGE_HANDLER_DEFINITIONS
+    .filter((handler) => handler.scope === "reassign" && (collectionName === undefined || handler.collections.includes(collectionName)))
+    .map((handler) => handler.name);
+}
+
+export function findSyncOwnerChangeHandler(name: string): SyncOwnerChangeHandler | null {
+  return SYNC_OWNER_CHANGE_HANDLER_DEFINITIONS.find((handler) => handler.name === name) ?? null;
+}
 
 export function findSyncDomain(domainId: string, domains: readonly SyncDomainDefinition[] = SYNC_DOMAINS): SyncDomainDefinition | null {
   return domains.find((domain) => domain.domainId === domainId) ?? null;
