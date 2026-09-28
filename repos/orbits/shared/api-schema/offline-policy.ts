@@ -53,6 +53,13 @@ export const OFFLINE_POLICY_REGISTRATIONS = [
   { method: "GET", pathname: "/api/contacts/page", action: "read", policy: policy("contact", "durable_normalized", "online_only") },
   { method: "GET", pathname: "/api/contacts/summary", action: "read", policy: policy("contact", "durable_normalized", "online_only") },
   { method: "GET", pathname: "/api/contacts/:id", action: "read", policy: policy("contact", "durable_normalized", "online_only") },
+  // Sprint 0117: the dashboard and contacts-analysis sections are computed on the device from the sync domain dashboard-graph.
+  { method: "GET", pathname: "/api/dashboard", action: "read", policy: policy("dashboard_graph", "durable_normalized", "online_only") },
+  { method: "GET", pathname: "/api/dashboard/summary", action: "read", policy: policy("dashboard_graph", "durable_normalized", "online_only") },
+  { method: "GET", pathname: "/api/dashboard/opportunities", action: "read", policy: policy("dashboard_graph", "durable_normalized", "online_only") },
+  { method: "GET", pathname: "/api/dashboard/network-gaps", action: "read", policy: policy("dashboard_graph", "durable_normalized", "online_only") },
+  { method: "GET", pathname: "/api/dashboard/distributions", action: "read", policy: policy("dashboard_graph", "durable_normalized", "online_only") },
+  { method: "GET", pathname: "/api/mobile/contacts-dashboard", action: "read", policy: policy("dashboard_graph", "durable_normalized", "online_only") },
   { method: "POST", pathname: "/api/auth/mobile/credentials", action: "authenticate", policy: policy("account_secret", "online_only_secret", "online_only", "never_local") },
 ] satisfies readonly OfflinePolicyRegistration[];
 

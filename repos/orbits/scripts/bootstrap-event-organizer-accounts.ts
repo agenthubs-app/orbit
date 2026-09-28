@@ -18,6 +18,7 @@ import { createConfiguredPostgresLiveRecordStore } from "../shared/storage/confi
 import type { ClosableLiveRecordSqlClient } from "../shared/storage/postgres-live-record-store";
 import type { LiveRecord } from "../shared/storage/live-record-store";
 import { loadLocalEnv } from "./load-local-env";
+import { SYNC_COMMIT_ORDER_LOCK_CTE } from "../features/sync/commit-order-lock";
 
 export type EventOrganizerAccountBootstrapCommand =
   | { kind: "dry-run"; xiaoyuAuthUserId: string }
@@ -193,9 +194,13 @@ export function createPostgresOrganizerOwnershipWriter({
     },
     async setOwnerIfAbsent(input) {
       const result = await client.query<{ record_id: string }>(
+        // Sprint 0117: a claimed contact is a sync collection row (0116), so the
+        // statement takes the commit-order lock itself (autocommit or not).
         `
+          with ${SYNC_COMMIT_ORDER_LOCK_CTE}
           update orbit_records
           set user_id = $4
+          from sync_write_lock
           where workspace_id = $1
             and collection_name = $2
             and record_id = $3

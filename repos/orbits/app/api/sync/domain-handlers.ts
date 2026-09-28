@@ -17,8 +17,10 @@ import { eventDomainSummaryKey } from "../../../features/sync/event-domain-reade
 // Sprint 0116: the contacts domain is built from four orbit_records
 // collections, every row owned by the actor, so the same user-scoped watermark
 // covers it.
-const MANIFEST_COLLECTIONS = SYNC_DOMAINS.flatMap((domain) => domain.source.kind === "orbit_records" ? [domain.source.collectionName] : domain.source.kind === "contact_graph" ? [...domain.source.collections] : []);
-const MANIFEST_IS_CONDITIONAL = SYNC_DOMAINS.every((domain) => domain.source.kind === "orbit_records" || domain.source.kind === "event_derived" || domain.source.kind === "contact_graph");
+// Sprint 0117: the dashboard graph domain reads six orbit_records collections of
+// the actor (events included), so the same watermark covers it.
+const MANIFEST_COLLECTIONS = [...new Set(SYNC_DOMAINS.flatMap((domain) => domain.source.kind === "orbit_records" ? [domain.source.collectionName] : domain.source.kind === "contact_graph" || domain.source.kind === "dashboard_graph" ? [...domain.source.collections] : []))];
+const MANIFEST_IS_CONDITIONAL = SYNC_DOMAINS.every((domain) => domain.source.kind === "orbit_records" || domain.source.kind === "event_derived" || domain.source.kind === "contact_graph" || domain.source.kind === "dashboard_graph");
 // A new registry or page schema must never replay a cached manifest.
 const MANIFEST_ROUTE_KEY = `sync.manifest:r${SYNC_REGISTRY_VERSION}:s${SYNC_DOMAIN_SCHEMA_VERSION}`;
 import { SYNC_DEFAULT_LIMIT, SYNC_MAX_LIMIT } from "../../../features/sync/read-service";

@@ -107,7 +107,8 @@ const PAGE_SQL = `
     and sync_revision > $3::bigint
     and sync_revision <= $4::bigint
     and collection_name in ('notes', 'tasks', 'personal_schedule_items')
-  order by sync_revision asc
+  -- The table column, not the text alias above: "100" sorts before "99" (sprint 0117).
+  order by orbit_records.sync_revision asc
   limit $5
 `;
 

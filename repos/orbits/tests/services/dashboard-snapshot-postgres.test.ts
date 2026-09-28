@@ -571,3 +571,47 @@ test("0121 an App that does not declare roleCounts keeps the full-contacts contr
     assert.equal(legacy.analysis.current.sourceDataVersion, declared.analysis.current.sourceDataVersion);
   });
 });
+
+// Sprint 0117 (dashboard D3): the App computes every contacts-analysis section
+// on the device and asks the server only for what it cannot compute — the AI
+// report and the profile it is bound to. That read costs the version query,
+// the profile and the report sessions: no section, no graph, no contact list.
+test("0117 the analysis-only read returns the same analysis and profile as the full page with one version query and no section or graph read", { skip, timeout: 120_000 }, async () => {
+  await withSchema({ syncRevision: true }, async (harness) => {
+    const measured = recordingClient(harness.client);
+    const profile = createLiveProfileService({ provider: createStorageProfileProvider({ store: harness.store, workspaceId: WORKSPACE }), now: () => NOW });
+    assert.ok((await profile.updateProfile({ displayName: "Owner A", relationshipGoal: "寻找投资人" }, { actorId: A })).success);
+    const dashboard = () => contactsDashboard(harness, measured, { profile, withAnalysis: true });
+    const full = await dashboard().getDashboard({ actorId: A });
+    assert.ok(full.success);
+    await persistAnalysisReport(harness, A, full.data.analysis!.current.sourceDataVersion);
+    const page = await dashboard().getDashboard({ actorId: A });
+    assert.ok(page.success && page.data.analysis?.report);
+
+    measured.texts.length = 0;
+    const overview = await dashboard().getAnalysisOverview!({ actorId: A });
+    assert.ok(overview.success, JSON.stringify(overview));
+    assert.deepEqual(overview.data.analysis, page.data.analysis, "the same report, version and staleness");
+    assert.deepEqual(overview.data.profile, page.data.profile, "the same profile section (birth date stripped)");
+    assert.deepEqual(overview.data.unavailableSections, []);
+    assert.deepEqual(measured.texts.map((text) => (text.includes(VERSION_READ) ? "version" : text.slice(0, 60))), ["version"], "only the version query touches the dashboard or contact tables");
+
+    // B's overview never carries A's report.
+    const other = await dashboard().getAnalysisOverview!({ actorId: B });
+    assert.ok(other.success);
+    assert.equal(other.data.analysis?.report ?? null, null);
+    assert.notEqual(other.data.analysis?.current.sourceDataVersion, page.data.analysis!.current.sourceDataVersion);
+
+    // Through the route: ?view=analysis answers the overview payload.
+    const handler = createMobileContactsDashboardGetHandler({
+      resolveActor: async () => ({ id: A, userId: A, workspaceId: WORKSPACE }) as never,
+      resolveMode: () => "live",
+      createService: () => dashboard(),
+    });
+    const response = await handler(new Request("https://orbit.local/api/mobile/contacts-dashboard?view=analysis&capabilities=roleCounts"));
+    assert.equal(response.status, 200);
+    const body = (await response.json()) as { data: Record<string, unknown> };
+    assert.deepEqual(Object.keys(body.data).sort(), ["analysis", "generatedAt", "profile", "schemaVersion", "unavailableSections"]);
+    assert.deepEqual(body.data.analysis, page.data.analysis);
+  });
+});

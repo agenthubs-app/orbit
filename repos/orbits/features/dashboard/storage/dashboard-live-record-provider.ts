@@ -118,16 +118,14 @@ const dashboardProjectionCollections = Object.values(
   DASHBOARD_LIVE_RECORD_COLLECTIONS,
 );
 
-const dashboardProjectionSql = `
-  select
-    collection_name,
-    record_id,
-    evidence_ids,
-    occurred_at,
-    lifecycle_state,
-    created_at,
-    updated_at,
-    case collection_name
+/**
+ * The payload fields every dashboard computation reads, per collection (the
+ * graph mapping in shared/compute/dashboard-graph.ts). Sprint 0117: the sync
+ * domain "dashboard-graph" sends the same projection to the device
+ * (features/sync/dashboard-graph-reader.ts), so the device graph is built from
+ * exactly what the server's graph read selects.
+ */
+export const DASHBOARD_GRAPH_PROJECTION_SQL = `case collection_name
       when 'contacts' then jsonb_build_object(
         'id', payload -> 'id',
         'personId', payload -> 'personId',
@@ -197,7 +195,18 @@ const dashboardProjectionSql = `
         'contactId', payload -> 'contactId',
         'tags', payload -> 'tags'
       )
-    end as payload
+    end`;
+
+const dashboardProjectionSql = `
+  select
+    collection_name,
+    record_id,
+    evidence_ids,
+    occurred_at,
+    lifecycle_state,
+    created_at,
+    updated_at,
+    ${DASHBOARD_GRAPH_PROJECTION_SQL} as payload
   from orbit_records
   where workspace_id = $1
     and collection_name = any(__COLLECTIONS__::text[])

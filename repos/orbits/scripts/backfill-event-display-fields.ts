@@ -32,6 +32,7 @@ import { eventCoverPathFor } from "../features/events/storage/event-cover-catalo
 import { createEventOperationsPostgresClient } from "../features/events/event-operations/storage/postgres-client";
 import { resolveLiveDatabaseConnectionConfig } from "../shared/storage/live-database-config";
 import { loadLocalEnv } from "./load-local-env";
+import { acquireSyncCommitOrderLock } from "../features/sync/commit-order-lock";
 
 interface PlannedChange {
   eventId: string;
@@ -118,6 +119,8 @@ async function main(argv: readonly string[]): Promise<void> {
 
   try {
     const receipt = await client.transaction(async (transaction) => {
+      // Sprint 0117: events rows are a sync collection; take the commit-order lock first.
+      await acquireSyncCommitOrderLock(transaction);
       const rows = (await transaction.query(SELECT_SQL, [database.workspaceId])).rows as Parameters<typeof planEventDisplayFields>[0];
       const planned = planEventDisplayFields(rows);
       const withoutCanonical = rows.filter((row) => !row.canonical_title?.trim()).map((row) => row.event_id);

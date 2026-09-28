@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { acquireSyncCommitOrderLock } from "../../sync/commit-order-lock";
 
 import {
   EVENT_ORGANIZER_ACCOUNT_MANIFEST,
@@ -525,6 +526,9 @@ export async function applyEventOrganizerOwnerPlan(input: {
   }
   await input.client.query("BEGIN");
   try {
+    // Sprint 0117: events rows are a sync collection (dashboard graph domain):
+    // the owner update takes the commit-order lock, first in the transaction.
+    await acquireSyncCommitOrderLock(input.client);
     const lockedPlan = await buildPlan({
       client: input.client,
       lockRows: true,
@@ -552,6 +556,8 @@ export async function applyEventOrganizerOwnerPlan(input: {
        where events.workspace_id = $1
          and events.collection_name = 'events'
          and events.record_id = assignments.event_id
+         -- Only a first owner (the plan refuses a drifted owner; an already assigned owner is a no-op).
+         and (events.user_id is null or events.user_id = assignments.account_id)
        returning events.record_id, events.user_id`,
       values,
     );

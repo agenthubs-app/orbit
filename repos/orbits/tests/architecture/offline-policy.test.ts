@@ -42,6 +42,13 @@ const APPROVED_POLICY_MATRIX = [
   ["GET", "/api/contacts/page", "read", "contact", "durable_normalized", "online_only", "metadata_only"],
   ["GET", "/api/contacts/summary", "read", "contact", "durable_normalized", "online_only", "metadata_only"],
   ["GET", "/api/contacts/:id", "read", "contact", "durable_normalized", "online_only", "metadata_only"],
+  // Sprint 0117: the dashboard and contacts analysis are computed on the device (sync domain dashboard-graph).
+  ["GET", "/api/dashboard", "read", "dashboard_graph", "durable_normalized", "online_only", "metadata_only"],
+  ["GET", "/api/dashboard/summary", "read", "dashboard_graph", "durable_normalized", "online_only", "metadata_only"],
+  ["GET", "/api/dashboard/opportunities", "read", "dashboard_graph", "durable_normalized", "online_only", "metadata_only"],
+  ["GET", "/api/dashboard/network-gaps", "read", "dashboard_graph", "durable_normalized", "online_only", "metadata_only"],
+  ["GET", "/api/dashboard/distributions", "read", "dashboard_graph", "durable_normalized", "online_only", "metadata_only"],
+  ["GET", "/api/mobile/contacts-dashboard", "read", "dashboard_graph", "durable_normalized", "online_only", "metadata_only"],
   ["POST", "/api/auth/mobile/credentials", "authenticate", "account_secret", "online_only_secret", "online_only", "never_local"],
 ] as const;
 

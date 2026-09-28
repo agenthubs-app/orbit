@@ -18,6 +18,8 @@ const LEGACY_DOMAINS: Record<SyncEntityKind, string> = {
   personal_schedule: "personal-schedule", inbox_item: "notifications",
   // Sprint 0115: the registered attendee's event day.
   event_registration: "event-registrations", registered_event: "registered-events", event_published_result: "event-published-results",
+  // Sprint 0117: the account's dashboard graph (dashboard and contacts analysis computed on the device).
+  dashboard_graph: "dashboard-graph",
 };
 
 const SYNC_ENTITY_KINDS = new Set<SyncEntityKind>([
@@ -30,6 +32,7 @@ const SYNC_ENTITY_KINDS = new Set<SyncEntityKind>([
   "event_registration",
   "registered_event",
   "event_published_result",
+  "dashboard_graph",
 ]);
 const LOCAL_SYNC_STATES = new Set<LocalSyncState>([
   "synced",

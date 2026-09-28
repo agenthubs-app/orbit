@@ -8,7 +8,9 @@ export type SyncEntityKind =
   // Sprint 0115: the registered attendee's event day (dedicated-table domains).
   | "event_registration"
   | "registered_event"
-  | "event_published_result";
+  | "event_published_result"
+  // Sprint 0117: one stored record of the account's dashboard graph (sync domain dashboard-graph).
+  | "dashboard_graph";
 
 export type LocalSyncState = "synced" | "pending" | "conflicted" | "failed";
 export type AiSyncVisibility = "available_when_synced" | "excluded";
@@ -27,7 +29,8 @@ export interface SyncRecord<TPayload = unknown> {
 }
 
 // Sprint 0116: "contact" — the contacts domain (a contact with its relationships, detail state and cited sources).
-export type SyncChangeKind = "note" | "task" | "personal_schedule" | "event_registration" | "registered_event" | "event_published_result" | "contact";
+// Sprint 0117: "dashboard_graph" — one stored record of the account's dashboard graph.
+export type SyncChangeKind = "note" | "task" | "personal_schedule" | "event_registration" | "registered_event" | "event_published_result" | "contact" | "dashboard_graph";
 
 export interface SyncChange<TPayload = unknown> {
   kind: SyncChangeKind;

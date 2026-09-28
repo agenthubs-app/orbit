@@ -20,7 +20,10 @@
 // states and sources a contact row is built from) syncs to devices, so its
 // writers take the same lock; otherwise a contact revision could commit behind
 // a device's bookmark and never be sent.
-export const SYNC_COLLECTION_NAMES = ["notes", "tasks", "personal_schedule_items", "contacts", "connections", "contact_detail_states", "evidence"] as const;
+// Sprint 0117: the dashboard graph domain adds the universal-table events
+// collection (the actor's own event records the dashboard counts); its writers
+// take the same lock.
+export const SYNC_COLLECTION_NAMES = ["notes", "tasks", "personal_schedule_items", "contacts", "connections", "contact_detail_states", "evidence", "events"] as const;
 export type SyncCollectionName = (typeof SYNC_COLLECTION_NAMES)[number];
 
 export function isSyncCollection(collectionName: string): collectionName is SyncCollectionName {

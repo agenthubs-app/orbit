@@ -31,7 +31,7 @@ export const SYNC_WRITE_MANIFEST: Readonly<Record<string, SyncWritePolicy>> = {
   "features/auth/storage/mobile-auth-exchange-provider.ts": { policy: "non-sync", statements: 1, collections: "mobile_auth_exchanges" },
   "features/dashboard/storage/dashboard-snapshot.ts": { policy: "non-sync", statements: 1, collections: "dashboard analysis snapshots" },
   "features/encounters/projection-repository.ts": { policy: "locked", statements: 4, how: "complete() takes acquireSyncCommitOrderLock first; writeContactDetailState takes it again before writing contact_detail_states (0116)" },
-  "features/events/organizer-accounts/owner-migration.ts": { policy: "non-sync", statements: 2, collections: "event_organizer_owner_migrations, events" },
+  "features/events/organizer-accounts/owner-migration.ts": { policy: "locked", statements: 2, how: "applyEventOrganizerOwnerPlan takes acquireSyncCommitOrderLock first in its transaction (events is a sync collection since 0117; the audit row is event_organizer_owner_migrations)" },
   "features/events/post-event-artifact/task-repository.ts": { policy: "non-sync", statements: 4, collections: "attendee post-event AI artifact jobs (not tasks)" },
   "features/integrations/oauth-state-store.ts": { policy: "non-sync", statements: 1, collections: "integrationOAuthStates" },
   "features/notifications/canonical-reminder-wake.ts": { policy: "non-sync", statements: 4, collections: "canonical_reminder_wakes" },
@@ -39,13 +39,14 @@ export const SYNC_WRITE_MANIFEST: Readonly<Record<string, SyncWritePolicy>> = {
   "features/notifications/discovery/discovery-repository.ts": { policy: "non-sync", statements: 2, collections: "notification discovery work" },
   "features/notifications/notification-cutover-migration.ts": { policy: "non-sync", statements: 3, collections: "notification collections" },
   "features/notifications/event-contact-request-inbox-migration.ts": { policy: "non-sync", statements: 1, collections: "notifications (archives migrated legacy exchange rows; inbox writes go through the live-record store)" },
-  "scripts/backfill-event-display-fields.ts": { policy: "non-sync", statements: 1, collections: "events" },
+  "scripts/backfill-event-display-fields.ts": { policy: "locked", statements: 1, how: "its transaction takes acquireSyncCommitOrderLock first (events, 0117)" },
   "scripts/backfill-test-secondary-industries.ts": { policy: "locked", statements: 1, how: "applyTestIndustryBackfillPlan takes acquireSyncCommitOrderLock at the start of its transaction (contacts, 0116)" },
-  "scripts/bootstrap-event-organizer-accounts.ts": { policy: "non-sync", statements: 2, collections: "organizer accounts and events" },
+  "scripts/bootstrap-event-organizer-accounts.ts": { policy: "locked", statements: 2, how: "setOwnerIfAbsent (accounts, contacts, profiles — contacts is a sync collection) takes SYNC_COMMIT_ORDER_LOCK_CTE in its statement (0117); insertIfAbsent writes organizer memberships (profiles/accounts)" },
   "scripts/diagnostics/notification-source-read-cost.ts": { policy: "non-sync", statements: 2, collections: "reminderPlans and notification fixtures" },
   "scripts/diagnostics/schedule-exception-window-cost.ts": { policy: "non-sync", statements: 1, collections: "personal_schedule_occurrence_exceptions (the series rows go through the store)" },
   "scripts/quarantine-legacy-notifications.ts": { policy: "non-sync", statements: 1, collections: "notifications" },
-  "scripts/seed-demo-workspace.ts": { policy: "non-sync", statements: 2, collections: "event_organizer_owner_migrations, events" },
+  "scripts/seed-demo-workspace.ts": { policy: "locked", statements: 2, how: "the demo event owner reset (events, 0117) runs in a transaction that takes acquireSyncCommitOrderLock first; the other statement updates event_organizer_owner_migrations" },
+  "features/sync/owner-guard.ts": { policy: "non-sync", statements: 1, collections: "accounts (ROTATE_AUTHORIZATION_EPOCH_SQL moves a previous owner's account updated_at)" },
 };
 
 // Sprint 0109: every writer of the relationship message tables (all rows are sync rows).
