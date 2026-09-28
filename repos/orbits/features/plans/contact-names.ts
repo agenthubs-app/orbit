@@ -8,7 +8,7 @@
 import { createConfiguredPostgresLiveRecordStore } from "../../shared/storage/configured-live-record-store";
 import type { LiveRecordSqlClient } from "../../shared/storage/postgres-live-record-store";
 import { resolveSharedReadBudgetGate } from "../sync/read-budget-gate";
-import type { PlanSnapshot } from "./contract";
+import type { PlanViewSnapshot } from "./contract";
 
 export interface PlanContactName {
   name: string;
@@ -43,7 +43,7 @@ function text(value: string | null | undefined): string | null {
 }
 
 /** 快照里所有联系人关联的 id（去重，保持出现顺序）。 */
-export function planContactIds(snapshot: PlanSnapshot): string[] {
+export function planContactIds(snapshot: Pick<PlanViewSnapshot, "items">): string[] {
   const ids = new Set<string>();
   for (const item of snapshot.items) for (const link of item.contactLinks) ids.add(link.contactId);
   return [...ids];

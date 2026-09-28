@@ -49,14 +49,16 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
  *
  * `/api/agent/plans/**`：本人的结构化计划（RW-09）。
  *
- * - `GET  /api/agent/plans/current`          → `{ plan, items, log } | null`
+ * - `GET  /api/agent/plans/current`          → `{ plan, items, log } | null`（W0021：页面投影 `PlanViewSnapshot`；
+ *                                              `?view=home` 时 `log` 为空数组）
  * - `POST /api/agent/plans`                  → 第一份计划，201；已有生效计划时 409（换版本走 reanalyze，W0012）
  * - `PATCH /api/agent/plans/items/:itemId`   → 单个条目变化 `{ change, idempotencyKey? }`
  * - `POST /api/agent/plans/log`              → 手动进展记录，201（`linkedContactIds`／`linkedEventId` 是结构化的 @）
  * - `GET  /api/agent/plans/weekly-summary`   → 东京周一：上周小结；其他日子 null（W0012）
  *
  * W0012：读当前计划前先按东京周次惰性判定「进入新阶段」（幂等写一条记录，一年期同时补周级行动）；
- * 这一步失败不影响读取（每日 `plan-phase` 维护任务兜底）。
+ * 这一步失败不影响读取（每日 `plan-phase` 维护任务兜底）。W0021：判定与读取合在 `getCurrentView` 里，
+ * 这一段已经记过时只多一条存在性查询，不再开写事务。
  *
  * 只读写当前登录者自己的计划：他人的条目一律 404；非法转移 409、坏输入 400，都不写库。
  */
@@ -110,10 +112,12 @@ export function createPlanRouteHandlers(dependencies: PlanRouteDependencies = {}
   }
 
   return {
-    GET_CURRENT: () =>
+    // W0021：页面读取的投影快照（`getCurrentView`，与计划页 SSR 同一个入口）。阶段进入只在还没记过时才进写事务；
+    // `?view=home`（iOrbit 首页）不读进展记录。
+    GET_CURRENT: (request?: Request) =>
       run(async (service) => {
-        await service.enterCurrentPhase().catch(() => undefined);
-        return service.getCurrent();
+        const view = request ? new URL(request.url).searchParams.get("view") : null;
+        return service.getCurrentView({ includeLog: view !== "home" });
       }),
 
     GET_WEEKLY_SUMMARY: () => run((service) => service.weeklySummary()),

@@ -22,6 +22,7 @@ import {
   PLAN_LIMITS,
   PLAN_MATCH_ACTION_SOURCE,
   type ActionStatus,
+  type EnterPhaseResult,
   type EventItemStatus,
   type Plan,
   type PlanContactLink,
@@ -34,6 +35,8 @@ import {
   type PlanReferenceValidator,
   type PlanService,
   type PlanSnapshot,
+  type PlanView,
+  type PlanViewSnapshot,
 } from "./contract";
 import { defaultPhaseRefiner, phaseEnteredKey, phaseNeedsRefinement, phaseToEnter, PLAN_PHASE_REFINEMENT_SOURCE, type PhaseRefiner } from "./phase-refinement";
 import { REANALYSIS_MONTHLY_LIMIT, reanalysisQuotaKey, tokyoMonthKey } from "./reanalysis";
@@ -319,6 +322,18 @@ function fingerprint(value: unknown): string {
   return createHash("sha256").update(JSON.stringify(value)).digest("hex");
 }
 
+/**
+ * W0021：「进入新阶段」还没记过吗？API 读取、计划页 SSR、`enterCurrentPhase` 与每日维护共用这一个判定。
+ * 目标阶段按计划自身 `startsOn` 的东京日周次计算（`phaseToEnter`），跳过条件绑定
+ * actor（reader 的 scope）+ 生效计划 id + 目标阶段（幂等键 `phase-entered:<planId>:<phaseKey>`）：
+ * 同周新建／重新分析的计划 id 不同，照常执行首次进入。
+ */
+async function phaseEntryPending(reader: PlanReader, plan: Pick<Plan, "id" | "startsOn" | "phases">, at: Date): Promise<boolean> {
+  const target = phaseToEnter(plan, at);
+  if (!target) return false;
+  return !(await reader.hasLogIdempotencyKey(phaseEnteredKey(plan.id, target.phase.key)));
+}
+
 async function snapshotOf(reader: PlanReader, plan: Plan): Promise<PlanSnapshot> {
   return {
     items: await reader.items(plan.id),
@@ -472,6 +487,88 @@ export function createPlanService(options: CreatePlanServiceOptions): PlanServic
       });
     }
     return { action, at, log, need: nextNeed };
+  }
+
+  /** 进入新阶段的写事务（取 actor 锁后按同一幂等键再判一次）。 */
+  async function enterPhaseTransaction(): Promise<EnterPhaseResult> {
+    const nothing: EnterPhaseResult = { entered: null, refined: [] };
+    return repository.transact(scope, async (tx) => {
+      const plan = await tx.activePlan();
+      if (!plan) return nothing;
+      const at = now();
+      const target = phaseToEnter(plan, new Date(at));
+      if (!target) return nothing;
+      const key = phaseEnteredKey(plan.id, target.phase.key);
+      if (await tx.hasLogIdempotencyKey(key)) return nothing;
+      const items = await tx.items(plan.id);
+      const refined: PlanItem[] = [];
+      if (phaseNeedsRefinement(plan, target.phase)) {
+        const refinement = await phaseRefiner({ items, phase: target.phase, plan });
+        for (const update of refinement.weekUpdates) {
+          const existing = items.find((item) => item.id === update.itemId);
+          if (!existing) continue;
+          const next: PlanItem = { ...existing, suggestedWeek: update.suggestedWeek, updatedAt: at };
+          await tx.updateItem(next);
+          refined.push(next);
+        }
+        let sortKey = items.reduce((max, item) => Math.max(max, item.sortKey), -1);
+        const room = Math.max(0, PLAN_LIMITS.itemsPerPlan - items.length);
+        const inserts = refinement.inserts.slice(0, room).map((entry): PlanItem => {
+          sortKey += 1;
+          return {
+            answer: null,
+            carriedFromItemId: null,
+            completedAt: null,
+            contactLinks: [],
+            createdAt: at,
+            criteria: null,
+            deferralCount: 0,
+            detail: entry.detail === null ? null : clip(entry.detail),
+            id: newId(),
+            kind: "action",
+            linkedContactIds: [],
+            linkedEventId: null,
+            meta: { phaseKey: target.phase.key, source: PLAN_PHASE_REFINEMENT_SOURCE },
+            phaseKey: target.phase.key,
+            planId: plan.id,
+            sortKey,
+            status: "not_started",
+            suggestedWeek: entry.suggestedWeek,
+            title: entry.title,
+            updatedAt: at,
+          };
+        });
+        if (inserts.length > 0) await tx.insertItems(inserts);
+        refined.push(...inserts);
+      }
+      const entered = await writeLog(tx, {
+        author: "system",
+        body: clip(
+          refined.length > 0
+            ? `进入第 ${target.index + 1} 阶段「${target.phase.title}」，补充了 ${refined.length} 条周级行动`
+            : `进入第 ${target.index + 1} 阶段「${target.phase.title}」`,
+        ),
+        createdAt: at,
+        event: "phase_entered",
+        fromStatus: plan.phases[target.index - 1]?.key ?? null,
+        idempotencyKey: key,
+        itemId: null,
+        kind: "auto",
+        linkedContactIds: [],
+        linkedEventId: null,
+        payload: {
+          phaseIndex: target.index,
+          phaseKey: target.phase.key,
+          phaseTitle: target.phase.title,
+          refinedCount: refined.length,
+          refinedItemIds: refined.map((item) => item.id),
+        },
+        planId: plan.id,
+        targetItemId: null,
+        toStatus: target.phase.key,
+      });
+      return { entered, refined };
+    });
   }
 
   const service: PlanService = {
@@ -1051,92 +1148,35 @@ export function createPlanService(options: CreatePlanServiceOptions): PlanServic
     },
 
     async enterCurrentPhase() {
-      const nothing = { entered: null, refined: [] };
       // 先只读判定：绝大多数读取时要么还在第 1 段、要么这一段已经记过，不取锁、不开写事务。
       const pending = await repository.read(scope, async (reader) => {
-        const plan = await reader.activePlan();
-        if (!plan) return false;
-        const target = phaseToEnter(plan, new Date(now()));
-        if (!target) return false;
-        return !(await reader.logByIdempotencyKey(phaseEnteredKey(plan.id, target.phase.key)));
+        const plan = await reader.activePlanView();
+        return plan ? phaseEntryPending(reader, plan, new Date(now())) : false;
       });
-      if (!pending) return nothing;
-      return repository.transact(scope, async (tx) => {
-        const plan = await tx.activePlan();
-        if (!plan) return nothing;
-        const at = now();
-        const target = phaseToEnter(plan, new Date(at));
-        if (!target) return nothing;
-        const key = phaseEnteredKey(plan.id, target.phase.key);
-        if (await tx.logByIdempotencyKey(key)) return nothing;
-        const items = await tx.items(plan.id);
-        const refined: PlanItem[] = [];
-        if (phaseNeedsRefinement(plan, target.phase)) {
-          const refinement = await phaseRefiner({ items, phase: target.phase, plan });
-          for (const update of refinement.weekUpdates) {
-            const existing = items.find((item) => item.id === update.itemId);
-            if (!existing) continue;
-            const next: PlanItem = { ...existing, suggestedWeek: update.suggestedWeek, updatedAt: at };
-            await tx.updateItem(next);
-            refined.push(next);
-          }
-          let sortKey = items.reduce((max, item) => Math.max(max, item.sortKey), -1);
-          const room = Math.max(0, PLAN_LIMITS.itemsPerPlan - items.length);
-          const inserts = refinement.inserts.slice(0, room).map((entry): PlanItem => {
-            sortKey += 1;
-            return {
-              answer: null,
-              carriedFromItemId: null,
-              completedAt: null,
-              contactLinks: [],
-              createdAt: at,
-              criteria: null,
-              deferralCount: 0,
-              detail: entry.detail === null ? null : clip(entry.detail),
-              id: newId(),
-              kind: "action",
-              linkedContactIds: [],
-              linkedEventId: null,
-              meta: { phaseKey: target.phase.key, source: PLAN_PHASE_REFINEMENT_SOURCE },
-              phaseKey: target.phase.key,
-              planId: plan.id,
-              sortKey,
-              status: "not_started",
-              suggestedWeek: entry.suggestedWeek,
-              title: entry.title,
-              updatedAt: at,
-            };
-          });
-          if (inserts.length > 0) await tx.insertItems(inserts);
-          refined.push(...inserts);
-        }
-        const entered = await writeLog(tx, {
-          author: "system",
-          body: clip(
-            refined.length > 0
-              ? `进入第 ${target.index + 1} 阶段「${target.phase.title}」，补充了 ${refined.length} 条周级行动`
-              : `进入第 ${target.index + 1} 阶段「${target.phase.title}」`,
-          ),
-          createdAt: at,
-          event: "phase_entered",
-          fromStatus: plan.phases[target.index - 1]?.key ?? null,
-          idempotencyKey: key,
-          itemId: null,
-          kind: "auto",
-          linkedContactIds: [],
-          linkedEventId: null,
-          payload: {
-            phaseIndex: target.index,
-            phaseKey: target.phase.key,
-            phaseTitle: target.phase.title,
-            refinedCount: refined.length,
-            refinedItemIds: refined.map((item) => item.id),
-          },
-          planId: plan.id,
-          targetItemId: null,
-          toStatus: target.phase.key,
-        });
-        return { entered, refined };
+      if (!pending) return { entered: null, refined: [] };
+      return enterPhaseTransaction();
+    },
+
+    async getCurrentView(options = {}) {
+      const includeLog = options.includeLog !== false;
+      const readSnapshot = async (reader: PlanReader, plan: PlanView): Promise<PlanViewSnapshot> => ({
+        items: await reader.viewItems(plan.id),
+        log: includeLog ? await reader.viewLog(plan.id, PLAN_LIMITS.logPageSize) : [],
+        plan,
+      });
+      // 一个只读事务：计划行 →（只在第 2 段及以后）这一段的「已进入」记录在不在 → 条目 →（计划页）进展记录。
+      const first = await repository.read(scope, async (reader) => {
+        const plan = await reader.activePlanView();
+        if (!plan) return { pending: false, snapshot: null };
+        if (await phaseEntryPending(reader, plan, new Date(now()))) return { pending: true, snapshot: null };
+        return { pending: false, snapshot: await readSnapshot(reader, plan) };
+      });
+      if (!first.pending) return first.snapshot;
+      // 边界后第一次打开：先写「进入新阶段」（幂等；并发时只有一个真正写入），再读，这次打开就能看到补充的行动。
+      await enterPhaseTransaction().catch(() => undefined);
+      return repository.read(scope, async (reader) => {
+        const plan = await reader.activePlanView();
+        return plan ? readSnapshot(reader, plan) : null;
       });
     },
 
@@ -1152,8 +1192,9 @@ export function createPlanService(options: CreatePlanServiceOptions): PlanServic
 
     async reanalysisQuota() {
       const month = tokyoMonthKey(new Date(now()));
+      // W0021：只判断这个月的额度记录在不在（不读整行）。
       const used = await repository.read(scope, async (reader) =>
-        (await reader.logByIdempotencyKey(reanalysisQuotaKey(month))) ? 1 : 0,
+        (await reader.hasLogIdempotencyKey(reanalysisQuotaKey(month))) ? 1 : 0,
       );
       return { limit: REANALYSIS_MONTHLY_LIMIT, month, remaining: Math.max(0, REANALYSIS_MONTHLY_LIMIT - used), used };
     },

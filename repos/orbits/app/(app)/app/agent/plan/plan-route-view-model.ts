@@ -1,7 +1,7 @@
 /**
  * 「我的计划」（`/app/agent/plan`，RW-10，Sprint W0009）route view-model。
  *
- * 只读当前生效计划（W0007 `PlanService.getCurrent()` 的 `PlanSnapshot`），不再聚合跟进队列
+ * 只读当前生效计划（W0007 `PlanService.getCurrent()` 的 `PlanViewSnapshot`），不再聚合跟进队列
  * 与操作账本；旧版「4 周推进节奏」占位整块拿掉。本文件不 import React，node 测试直接用。
  *
  * - 周次与本周行动：`features/plans/week.ts`（第 1 周 = `startsOn`，东京日历日；逾期滚进本周；
@@ -18,9 +18,9 @@
  */
 import type {
   PlanContactLink,
-  PlanItem,
-  PlanLogEntry,
-  PlanSnapshot,
+  PlanViewItem,
+  PlanViewLogEntry,
+  PlanViewSnapshot,
 } from "../../../../../features/plans/contract";
 import { PLAN_MATCH_ACTION_SOURCE } from "../../../../../features/plans/contract";
 import type { PlanAnalysisV1 } from "../../../../../features/plans/generator";
@@ -87,7 +87,7 @@ export interface MyPlanPhase {
   actions: Array<{ id: string; title: string; weekLabel: string | null; done: boolean }>;
   who: string[];
   infos: Array<{ id: string; title: string; answer: string | null }>;
-  events: Array<{ id: string; title: string; dateLabel: string | null; status: PlanItem["status"] }>;
+  events: Array<{ id: string; title: string; dateLabel: string | null; status: PlanViewItem["status"] }>;
   followups: string[];
   /** 30 秒自我介绍只挂在当前阶段（它是整份计划的一段话）。 */
   pitch: { setting: string; text: string } | null;
@@ -117,14 +117,14 @@ export interface MyPlanEvent {
   eventId: string | null;
   title: string;
   dateLabel: string | null;
-  status: PlanItem["status"];
+  status: PlanViewItem["status"];
   phaseNo: number | null;
   need: string | null;
 }
 
 export interface MyPlanLogLine {
   id: string;
-  kind: PlanLogEntry["kind"];
+  kind: PlanViewLogEntry["kind"];
   timeLabel: string;
   text: string;
   /** W0012：手动记录里结构化的 @ 联系人／活动（显示名，取自快照；不从正文反解）。 */
@@ -202,11 +202,11 @@ function weeksLabel(lang: Lang, start: number, end: number): string {
   return lang === "zh" ? `第 ${start}–${end} 周` : `Weeks ${start}–${end}`;
 }
 
-const byPlanOrder = (a: PlanItem, b: PlanItem) =>
+const byPlanOrder = (a: PlanViewItem, b: PlanViewItem) =>
   (a.suggestedWeek ?? Number.MAX_SAFE_INTEGER) - (b.suggestedWeek ?? Number.MAX_SAFE_INTEGER) || a.sortKey - b.sortKey;
 
 /** 阶段 key → 这一阶段唯一的人脉需求标题（阶段里没有或多于一个人脉需求时不在表里）。 */
-function singleNeedByPhase(items: readonly PlanItem[]): Map<string, string> {
+function singleNeedByPhase(items: readonly PlanViewItem[]): Map<string, string> {
   const byPhase = new Map<string, string[]>();
   for (const item of items) {
     if (item.kind !== "network_need" || !item.phaseKey) continue;
@@ -220,7 +220,7 @@ function singleNeedByPhase(items: readonly PlanItem[]): Map<string, string> {
 /** 本周未完成的行动 + 界面暂留的刚打勾行（去重，同一顺序规则）。 */
 function mergeSticky(
   base: readonly PlanWeekAction[],
-  items: readonly PlanItem[],
+  items: readonly PlanViewItem[],
   stickyIds: readonly string[] | undefined,
   currentWeek: number,
 ): PlanWeekAction[] {
@@ -268,7 +268,7 @@ function contactNameMap(
 }
 
 /** 整份计划里已建立联系的联系人（去重）。 */
-function establishedContacts(items: readonly PlanItem[]): number {
+function establishedContacts(items: readonly PlanViewItem[]): number {
   const ids = new Set<string>();
   for (const item of items) {
     for (const link of item.contactLinks) if (link.state === "established") ids.add(link.contactId);
@@ -276,7 +276,7 @@ function establishedContacts(items: readonly PlanItem[]): number {
   return ids.size;
 }
 
-function needIndustry(item: PlanItem, lang: Lang): string | null {
+function needIndustry(item: PlanViewItem, lang: Lang): string | null {
   const criteria = item.criteria;
   if (!criteria?.primaryIndustryId) return null;
   const primary = industryLabel(criteria.primaryIndustryId, lang);
@@ -317,8 +317,8 @@ const EVENT_STATUS_TEXT: Record<string, { en: string; zh: string }> = {
  * 兜底文字 `body`（中文）。手动记录一律原样显示。
  */
 export function planLogText(
-  entry: PlanLogEntry,
-  itemsById: ReadonlyMap<string, PlanItem>,
+  entry: PlanViewLogEntry,
+  itemsById: ReadonlyMap<string, PlanViewItem>,
   names: ReadonlyMap<string, MyPlanContactName>,
   lang: Lang,
 ): string {
@@ -366,8 +366,8 @@ export function planLogText(
 
 /** 手动记录的 @：联系人名取快照里的名字，活动名取计划里的活动条目；认不出的给占位。 */
 function logMentions(
-  entry: PlanLogEntry,
-  items: readonly PlanItem[],
+  entry: PlanViewLogEntry,
+  items: readonly PlanViewItem[],
   names: ReadonlyMap<string, MyPlanContactName>,
   lang: Lang,
 ): string[] {
@@ -382,7 +382,7 @@ function logMentions(
 }
 
 /** 可以 @ 的对象：计划里关联过的联系人（有名字的）+ 计划里的活动（去重）。 */
-function mentionOptions(items: readonly PlanItem[], names: ReadonlyMap<string, MyPlanContactName>): MyPlanMentionOption[] {
+function mentionOptions(items: readonly PlanViewItem[], names: ReadonlyMap<string, MyPlanContactName>): MyPlanMentionOption[] {
   const options: MyPlanMentionOption[] = [];
   const seen = new Set<string>();
   for (const item of items) {
@@ -404,7 +404,7 @@ function mentionOptions(items: readonly PlanItem[], names: ReadonlyMap<string, M
 export function buildMyPlanViewModel(input: {
   language: Lang;
   /** null = 没有生效计划；"unavailable" = 计划服务读不到。 */
-  snapshot: PlanSnapshot | null | "unavailable";
+  snapshot: PlanViewSnapshot | null | "unavailable";
   now: Date;
   /** 引导开关打开时无计划引导去 `/app/start`（第 3 步），否则回 iOrbit。 */
   guideEnabled: boolean;
@@ -585,7 +585,7 @@ export const PLAN_HOME_ACTION_LIMIT = 3;
  * 首页的 3 个名额只给本周未完成的行动；首页上刚打勾的行（`stickyActionIds`）另外暂留，不占名额。
  */
 export function buildPlanWeekSummary(
-  snapshot: PlanSnapshot,
+  snapshot: PlanViewSnapshot,
   now: Date,
   language: Lang,
   stickyActionIds: readonly string[] = [],
@@ -625,7 +625,7 @@ export interface PlanEventReason {
  * 计划里活动与人脉需求之间没有结构化关联，所以只有阶段里恰好一个人脉需求时才写「认识 ___」。
  * 没有阶段归属的条目不产生理由（推荐页保持原来的目标词理由）。
  */
-export function planEventReasons(snapshot: PlanSnapshot): Record<string, PlanEventReason> {
+export function planEventReasons(snapshot: PlanViewSnapshot): Record<string, PlanEventReason> {
   const { plan, items } = snapshot;
   const phaseNoByKey = new Map(plan.phases.map((phase, index) => [phase.key, index + 1]));
   const phaseTitleByKey = new Map(plan.phases.map((phase) => [phase.key, phase.title]));
@@ -680,7 +680,7 @@ export interface MyPlanTrackingView {
 }
 
 export function buildPlanTrackingView(input: {
-  snapshot: PlanSnapshot;
+  snapshot: PlanViewSnapshot;
   now: Date;
   language: Lang;
   currentGoal: string | null;

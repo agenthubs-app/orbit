@@ -12,7 +12,7 @@
  *
  * 不复用跟进队列的到期时钟：那套逻辑以「最新记录 updatedAt」为参照，会把逾期夹成「今天」。
  */
-import type { PlanItem, PlanPhase } from "./contract";
+import type { PlanItem, PlanPhase, PlanViewItem } from "./contract";
 
 export const PLAN_TIME_ZONE = "Asia/Tokyo";
 
@@ -103,8 +103,8 @@ export function planWeekState(
   };
 }
 
-export interface PlanWeekAction {
-  item: PlanItem;
+export interface PlanWeekAction<TItem extends PlanViewItem = PlanViewItem> {
+  item: TItem;
   /** 逾期的周数（本周的为 0）：界面显示「已延后 N 周」。 */
   weeksOverdue: number;
 }
@@ -127,7 +127,7 @@ export function planWeeksOverdue(item: Pick<PlanItem, "suggestedWeek">, currentW
  * 本周行动：建议周次 ≤ 本周、且未完成的行动（已完成的一律不在这里）。
  * 刚在界面上打勾的行动要不要暂留，是界面自己的本地状态，不由这里决定。
  */
-export function planWeekActions(items: readonly PlanItem[], currentWeek: number): PlanWeekAction[] {
+export function planWeekActions<TItem extends PlanViewItem>(items: readonly TItem[], currentWeek: number): PlanWeekAction<TItem>[] {
   return items
     .filter(
       (item) =>

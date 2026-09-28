@@ -15,6 +15,9 @@ import type {
   PlanItem,
   PlanLogEntry,
   PlanPhase,
+  PlanView,
+  PlanViewItem,
+  PlanViewLogEntry,
   NetworkNeedCriteria,
 } from "./contract";
 
@@ -53,6 +56,12 @@ export interface PlanReader {
   logByIdempotencyKey(idempotencyKey: string): Promise<PlanLogEntry | null>;
   logById(logId: string): Promise<PlanLogEntry | null>;
   commandReceipt(idempotencyKey: string): Promise<PlanCommandReceipt | null>;
+  /** W0021：只判断有没有这条幂等键的记录（不读整行）。 */
+  hasLogIdempotencyKey(idempotencyKey: string): Promise<boolean>;
+  /** W0021：页面读取用的投影（只选界面用到的列，见 `contract.ts` 的 PlanView*）。 */
+  activePlanView(): Promise<PlanView | null>;
+  viewItems(planId: string): Promise<PlanViewItem[]>;
+  viewLog(planId: string, limit: number): Promise<PlanViewLogEntry[]>;
 }
 
 export interface PlanTransaction extends PlanReader {
@@ -118,6 +127,21 @@ const LOG_COLUMNS = `
   id, plan_id, item_id, kind, event, author, body, linked_contact_ids,
   linked_event_id, target_item_id, from_status, to_status, payload,
   idempotency_key, created_at`;
+
+// W0021：页面读取的投影列（与 contract.ts 的 PlanView* 一一对应）。
+const PLAN_VIEW_COLUMNS = `
+  id, version, status, goal_snapshot, horizon,
+  to_char(starts_on, 'YYYY-MM-DD') as starts_on,
+  analysis, phases, created_at`;
+
+const ITEM_VIEW_COLUMNS = `
+  id, kind, phase, title, detail, suggested_week, status,
+  linked_contact_ids, contact_links, linked_event_id, answer, criteria,
+  sort_key, deferral_count, completed_at, meta`;
+
+const LOG_VIEW_COLUMNS = `
+  id, item_id, kind, event, body, linked_contact_ids,
+  linked_event_id, to_status, payload, created_at`;
 
 type Row = Record<string, unknown>;
 
@@ -203,6 +227,107 @@ function logFromRow(row: Row): PlanLogEntry {
   };
 }
 
+function planViewFromRow(row: Row): PlanView {
+  return {
+    analysis: jsonObject(row.analysis),
+    createdAt: iso(row.created_at),
+    goalSnapshot: String(row.goal_snapshot),
+    horizon: row.horizon as Plan["horizon"],
+    id: String(row.id),
+    phases: Array.isArray(row.phases) ? (row.phases as PlanPhase[]) : [],
+    startsOn: String(row.starts_on),
+    status: row.status as Plan["status"],
+    version: Number(row.version),
+  };
+}
+
+function itemViewFromRow(row: Row): PlanViewItem {
+  return {
+    answer: textOrNull(row.answer),
+    completedAt: isoOrNull(row.completed_at),
+    contactLinks: Array.isArray(row.contact_links) ? (row.contact_links as PlanContactLink[]) : [],
+    criteria: (row.criteria as NetworkNeedCriteria | null) ?? null,
+    deferralCount: Number(row.deferral_count),
+    detail: textOrNull(row.detail),
+    id: String(row.id),
+    kind: row.kind as PlanItem["kind"],
+    linkedContactIds: Array.isArray(row.linked_contact_ids) ? (row.linked_contact_ids as string[]) : [],
+    linkedEventId: textOrNull(row.linked_event_id),
+    meta: jsonObject(row.meta),
+    phaseKey: textOrNull(row.phase),
+    sortKey: Number(row.sort_key),
+    status: row.status as PlanItem["status"],
+    suggestedWeek: row.suggested_week === null ? null : Number(row.suggested_week),
+    title: String(row.title),
+  };
+}
+
+function logViewFromRow(row: Row): PlanViewLogEntry {
+  return {
+    body: String(row.body),
+    createdAt: iso(row.created_at),
+    event: row.event as PlanLogEntry["event"],
+    id: String(row.id),
+    itemId: textOrNull(row.item_id),
+    kind: row.kind as PlanLogEntry["kind"],
+    linkedContactIds: Array.isArray(row.linked_contact_ids) ? (row.linked_contact_ids as string[]) : [],
+    linkedEventId: textOrNull(row.linked_event_id),
+    payload: jsonObject(row.payload),
+    toStatus: textOrNull(row.to_status),
+  };
+}
+
+/** 完整行 → 投影（内存实现与测试用；字段与 *_VIEW_COLUMNS 的映射一致）。 */
+export function toPlanView(plan: Plan): PlanView {
+  return {
+    analysis: plan.analysis,
+    createdAt: plan.createdAt,
+    goalSnapshot: plan.goalSnapshot,
+    horizon: plan.horizon,
+    id: plan.id,
+    phases: plan.phases,
+    startsOn: plan.startsOn,
+    status: plan.status,
+    version: plan.version,
+  };
+}
+
+export function toPlanViewItem(item: PlanItem): PlanViewItem {
+  return {
+    answer: item.answer,
+    completedAt: item.completedAt,
+    contactLinks: item.contactLinks,
+    criteria: item.criteria,
+    deferralCount: item.deferralCount,
+    detail: item.detail,
+    id: item.id,
+    kind: item.kind,
+    linkedContactIds: item.linkedContactIds,
+    linkedEventId: item.linkedEventId,
+    meta: item.meta,
+    phaseKey: item.phaseKey,
+    sortKey: item.sortKey,
+    status: item.status,
+    suggestedWeek: item.suggestedWeek,
+    title: item.title,
+  };
+}
+
+export function toPlanViewLogEntry(entry: PlanLogEntry): PlanViewLogEntry {
+  return {
+    body: entry.body,
+    createdAt: entry.createdAt,
+    event: entry.event,
+    id: entry.id,
+    itemId: entry.itemId,
+    kind: entry.kind,
+    linkedContactIds: entry.linkedContactIds,
+    linkedEventId: entry.linkedEventId,
+    payload: entry.payload,
+    toStatus: entry.toStatus,
+  };
+}
+
 function postgresReader(client: PlanQueryClient, scope: PlanScope): PlanReader {
   const ws = scope.workspaceId;
   const actor = scope.actorId;
@@ -216,6 +341,37 @@ function postgresReader(client: PlanQueryClient, scope: PlanScope): PlanReader {
         [ws, actor],
       );
       return row ? planFromRow(row) : null;
+    },
+    async activePlanView() {
+      const [row] = await rows(
+        `select ${PLAN_VIEW_COLUMNS} from plans where workspace_id = $1 and actor_id = $2 and status = 'active'`,
+        [ws, actor],
+      );
+      return row ? planViewFromRow(row) : null;
+    },
+    async viewItems(planId) {
+      return (await rows(
+        `select ${ITEM_VIEW_COLUMNS} from plan_items
+         where workspace_id = $1 and actor_id = $2 and plan_id = $3
+         order by sort_key, id`,
+        [ws, actor, planId],
+      )).map(itemViewFromRow);
+    },
+    async viewLog(planId, limit) {
+      return (await rows(
+        `select ${LOG_VIEW_COLUMNS} from plan_log
+         where workspace_id = $1 and actor_id = $2 and plan_id = $3
+         order by seq desc limit $4`,
+        [ws, actor, planId, limit],
+      )).map(logViewFromRow);
+    },
+    async hasLogIdempotencyKey(idempotencyKey) {
+      const found = await rows(
+        `select 1 as found from plan_log
+         where workspace_id = $1 and actor_id = $2 and idempotency_key = $3 limit 1`,
+        [ws, actor, idempotencyKey],
+      );
+      return found.length > 0;
     },
     async item(itemId) {
       const [row] = await rows(
@@ -505,6 +661,26 @@ function memoryReader(state: MemoryScopeState): PlanReader {
     async activePlan() {
       const found = state.plans.find((plan) => plan.status === "active");
       return found ? publicPlan(found) : null;
+    },
+    async activePlanView() {
+      const found = state.plans.find((plan) => plan.status === "active");
+      return found ? toPlanView(publicPlan(found)) : null;
+    },
+    async viewItems(planId) {
+      return state.items
+        .filter((item) => item.planId === planId)
+        .sort((a, b) => a.sortKey - b.sortKey || a.id.localeCompare(b.id))
+        .map((item) => toPlanViewItem(clone(item)));
+    },
+    async viewLog(planId, limit) {
+      return state.log
+        .filter((entry) => entry.planId === planId)
+        .reverse()
+        .slice(0, limit)
+        .map((entry) => toPlanViewLogEntry(clone(entry)));
+    },
+    async hasLogIdempotencyKey(idempotencyKey) {
+      return state.log.some((entry) => entry.idempotencyKey === idempotencyKey);
     },
     async item(itemId) {
       const found = state.items.find((item) => item.id === itemId);

@@ -39,7 +39,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { AgentLedgerEntry } from "../../../../../features/agent/ledger/contract";
-import type { PlanSnapshot } from "../../../../../features/plans/contract";
+import type { PlanViewSnapshot } from "../../../../../features/plans/contract";
 import { COMMUNITY_CONFIG } from "../../../../../features/community/config";
 import { buildDemoHomeData } from "../../_demo/demo-persona";
 import { DemoTag, useDemoMode } from "../../_demo/demo-mode-context";
@@ -253,7 +253,7 @@ export function IOrbitHome({
   const [draft, setDraft] = useState("");
   const [snapshotState, setSnapshot] = useState<Loadable<HomeDashboardSnapshot>>("pending");
   const [ledgerState, setLedger] = useState<Loadable<readonly AgentLedgerEntry[]>>("pending");
-  const [planState, setPlan] = useState<Loadable<PlanSnapshot | null>>("pending");
+  const [planState, setPlan] = useState<Loadable<PlanViewSnapshot | null>>("pending");
   const [planBusyId, setPlanBusyId] = useState<string | null>(null);
   const [planError, setPlanError] = useState<string | null>(null);
   // 首页上刚打过勾的行动暂留一行（可撤销），不占「最多 3 件」的名额；刷新后消失。
@@ -313,7 +313,7 @@ export function IOrbitHome({
   const home = demoData ? demoData.home : homeProp;
   const communityJoined = demoData ? demoData.communityJoined : communityJoinedProp;
   // 示例模式保留示例的账本显示，不读计划。
-  const plan: Loadable<PlanSnapshot | null> = demoData ? null : planState;
+  const plan: Loadable<PlanViewSnapshot | null> = demoData ? null : planState;
 
   useEffect(() => {
     if (typeof window === "undefined" || demoActive) return;

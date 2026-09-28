@@ -14,7 +14,7 @@
 import type {
   PlanItem,
   PlanLogEntry,
-  PlanSnapshot,
+  PlanViewSnapshot,
   PlanVersionOrigin,
   ReanalysisQuota,
 } from "../../../../../features/plans/contract";
@@ -48,14 +48,14 @@ async function readEnvelope<T>(response: Response): Promise<T> {
   return body.data as T;
 }
 
-function isSnapshot(value: unknown): value is PlanSnapshot {
+function isSnapshot(value: unknown): value is PlanViewSnapshot {
   if (typeof value !== "object" || value === null) return false;
   const record = value as Record<string, unknown>;
   return typeof record.plan === "object" && record.plan !== null && Array.isArray(record.items) && Array.isArray(record.log);
 }
 
 /** 当前生效计划；没有计划时为 null。读不到时抛错（调用方显示「暂时读不到」）。 */
-export async function fetchCurrentPlan(signal?: AbortSignal): Promise<PlanSnapshot | null> {
+export async function fetchCurrentPlan(signal?: AbortSignal): Promise<PlanViewSnapshot | null> {
   const response = await fetch("/api/agent/plans/current", { cache: "no-store", signal });
   const data = await readEnvelope<unknown>(response);
   if (data === null) return null;
@@ -119,7 +119,7 @@ export async function fetchWeeklySummary(signal?: AbortSignal): Promise<PlanWeek
 }
 
 /** 乐观打勾：只改本地快照里的这一条行动。 */
-export function withActionDone(snapshot: PlanSnapshot, itemId: string, done: boolean, now: Date): PlanSnapshot {
+export function withActionDone(snapshot: PlanViewSnapshot, itemId: string, done: boolean, now: Date): PlanViewSnapshot {
   return {
     ...snapshot,
     items: snapshot.items.map((item) =>
@@ -131,7 +131,7 @@ export function withActionDone(snapshot: PlanSnapshot, itemId: string, done: boo
 }
 
 /** 服务端确认后：用返回的条目替换本地那一条，新的进展记录放到最前。 */
-export function withServerItem(snapshot: PlanSnapshot, item: PlanItem, log: PlanLogEntry | null): PlanSnapshot {
+export function withServerItem(snapshot: PlanViewSnapshot, item: PlanItem, log: PlanLogEntry | null): PlanViewSnapshot {
   return {
     ...snapshot,
     items: snapshot.items.map((current) => (current.id === item.id ? item : current)),
@@ -139,7 +139,7 @@ export function withServerItem(snapshot: PlanSnapshot, item: PlanItem, log: Plan
   };
 }
 
-export function withLogEntry(snapshot: PlanSnapshot, entry: PlanLogEntry): PlanSnapshot {
+export function withLogEntry(snapshot: PlanViewSnapshot, entry: PlanLogEntry): PlanViewSnapshot {
   return snapshot.log.some((current) => current.id === entry.id)
     ? snapshot
     : { ...snapshot, log: [entry, ...snapshot.log] };
