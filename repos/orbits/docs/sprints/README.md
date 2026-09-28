@@ -54,10 +54,13 @@
 | [W0015](W0015-event-attribution/GOAL.md) | 活动当天或次日扫的名片，审阅时问「是在 X 活动认识的吗」，确认后记来源、活动标已参加 | RW-11（活动归属） | W0007、W0010 | completed |
 | [W0016](W0016-verify-environment/GOAL.md) | 另起开示例开关的验收 server，建测试账号并造好各场景数据，名片照片裁成单张 | RV-01 | 大目标 1 全部 completed | completed |
 | [W0017](W0017-traffic-guard/GOAL.md) | 3 个计划维护任务改为每天最多一次（持久、跨实例），名片匹配补跑空闲时只做轻查询；新增读取路径逐一测量并估算月流量 | RV-03 | 无 | completed |
-| [W0018](W0018-scenario-acceptance/GOAL.md) | 逐场景真实页面验收（桌面＋手机），修小问题，交验收报告页面 | RV-02 | W0016、W0017、W0021 | ready |
-| [W0019](W0019-release-checklist/GOAL.md) | 生产上线清单 + 大目标收口的本地全量对照 | RV-04 | W0018 | planned |
+| [W0018](W0018-scenario-acceptance/GOAL.md) | 逐场景真实页面验收（桌面＋手机），修小问题，交验收报告页面 | RV-02 | W0016、W0017、W0021 | completed |
+| [W0019](W0019-release-checklist/GOAL.md) | 生产上线清单 + 大目标收口的本地全量对照 | RV-04 | W0018 | ready |
 | [W0020](W0020-preview-verify/GOAL.md) | Preview 复验关键场景并测量 Neon 流量 | RV-04 | W0019；用户授权 Preview 部署、迁移、开关、测试数据 | planned |
 | [W0021](W0021-read-traffic-trim/GOAL.md) | 计划／匹配／名片／活动归属读取瘦身，1000 人月出站 ≤1.0 GB，活动归属按时间窗口读取，页面不变 | RV-05 | W0017 | completed |
+| W0022 | 老用户首页「帮我制定推进计划」改去引导第 3 步；第 4 步在 iOrbit 留提醒（RW-04）；策略页「先联系谁」来源不可用、推荐理由在有匹配活动时可复验 | RW-04、RW-07 | W0018 发现；GOAL／PLANNER 待编制 | planned |
+| W0023 | 到期计划上关联联系人生成的「约 TA」周次不超出计划总周数（`features/plans/service.ts` 写入语义） | RW-11 | W0018 发现；GOAL／PLANNER 待编制 | planned |
+| W0024 | 活动页 `/app/events` 按账号 id 读报名（与 W0018 修的 /app/agent 同类），按流量口径评估多一次读取 | RV-02 | W0018 发现；GOAL／PLANNER 待编制 | planned |
 
 全部 Sprint 都已有 GOAL 与 PLANNER（2026-09-28 编制；大目标 1 与大目标 2 各经 Codex `gpt-5.6-sol` 方案 review 后修订为 revision 2，review 意见与处理见 [REVIEW-2026-09-28.md](REVIEW-2026-09-28.md)）。`planned` 表示前置 Sprint 尚未 completed；前置完成后改为 `ready`。
 
@@ -85,3 +88,4 @@
 | W0017 | run-01（2026-09-28） | `4a52e3ca`（报告 `fd68af5c`） | `892c1558` | [REPORT](W0017-traffic-guard/REPORT.md) |
 | W0016 | run-01（2026-09-28） | `d02be606`（报告 `ca0e031c`） | `93cf669f` | [REPORT](W0016-verify-environment/REPORT.md) |
 | W0021 | run-01（2026-09-29） | `0d746c73`（报告 `ca30ce93`） | `e96fcbc0` | [REPORT](W0021-read-traffic-trim/REPORT.md) |
+| W0018 | run-01（2026-09-29） | `32943ac7`（报告 `b94478f6`） | `d8ed2f7e` | [REPORT](W0018-scenario-acceptance/REPORT.md)；[验收报告页](https://claude.ai/artifact/JCCFpS5zxK9a74ecCwF65i) |
