@@ -2,28 +2,36 @@
  * 活动归属的 live 数据来源（Sprint W0015）：活动取 canonical 已发布目录，报名状态与活动页／iOrbit
  * 同一个读取入口（`listRuntimeEventRegistrationsForUser`，只认 rsvped）。目录不可用时返回 null，
  * 调用方按「没有候选」处理（不询问，也不接受提交的活动 id）。
+ *
+ * W0021：活动改为数据库层按开始时间窗口粗筛（`EventStartWindowReader`，只取 id／标题／开始时间三列），
+ * 不再读整个 workspace 的活动目录后在内存里过滤；逐卡判定与平局规则不变。
  */
-import { createConfiguredEventCoreService } from "../events/core/runtime";
+import { createConfiguredEventStartWindowReader } from "../events/core/runtime";
+import type { EventStartWindowReader } from "../events/core/start-window";
 import { listRuntimeEventRegistrationsForUser } from "../events/registration/runtime";
 import type { AttributionEvent, EventAttributionSource } from "./event-attribution";
 
 export function createConfiguredEventAttributionSource(): EventAttributionSource | null {
-  const core = createConfiguredEventCoreService();
-  if (!core) return null;
+  const startWindow = createConfiguredEventStartWindowReader();
+  if (!startWindow) return null;
+  return createEventAttributionSource({
+    readRegistrations: listRuntimeEventRegistrationsForUser,
+    window: startWindow,
+  });
+}
+
+/** 由窗口读取与报名读取组成的来源（live 装配与 PG 测试共用）。 */
+export function createEventAttributionSource(deps: {
+  window: EventStartWindowReader;
+  readRegistrations: (input: { eventIds: readonly string[]; userId: string }) => Promise<ReadonlyArray<{ eventId: string; status: string }>>;
+}): EventAttributionSource {
   return {
     async listEventsStartingBetween(fromIso, toIso) {
-      const from = Date.parse(fromIso);
-      const to = Date.parse(toIso);
-      const events = await core.listPublishedEvents();
-      return events
-        .filter((event) => {
-          const start = Date.parse(event.startsAt);
-          return start >= from && start < to;
-        })
-        .map((event): AttributionEvent => ({ eventId: event.eventId, startsAt: event.startsAt, title: event.title }));
+      const events = await deps.window.listPublishedStartingBetween(fromIso, toIso);
+      return events.map((event): AttributionEvent => ({ eventId: event.eventId, startsAt: event.startsAt, title: event.title }));
     },
     async registeredEventIds({ eventIds, userId }) {
-      const registrations = await listRuntimeEventRegistrationsForUser({ eventIds, userId });
+      const registrations = await deps.readRegistrations({ eventIds, userId });
       return new Set(
         registrations.filter((registration) => registration.status === "rsvped").map((registration) => registration.eventId),
       );

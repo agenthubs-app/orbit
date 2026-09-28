@@ -26,7 +26,7 @@ const BATCHES: Record<string, Record<string, ReturnType<typeof item>[]>> = {
 
 function ingestRepository(): BusinessCardIngestRepository {
   return {
-    async getBatch({ actorId, batchId }: { actorId: string; batchId: string }) {
+    async getBatchCardStates({ actorId, batchId }: { actorId: string; batchId: string }) {
       const items = BATCHES[actorId]?.[batchId];
       return items ? ({ batch: { id: batchId }, items } as never) : null;
     },

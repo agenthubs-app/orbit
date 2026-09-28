@@ -169,6 +169,27 @@ export interface IngestBatchSummary {
   };
 }
 
+/**
+ * W0021 `?view=cards`：只含按名片分组、数待确认数、判定活动归属所需的列（不含识别结果、图片键、
+ * 用量等大字段）。今日要事的待确认数与活动归属候选都只读它；审阅页仍读完整详情。
+ */
+export interface IngestBatchCardState {
+  id: string;
+  cardId: string;
+  side: IngestItemDTO["side"];
+  seq: number;
+  status: IngestItemDTO["status"];
+  confirmedContactId: string | null;
+  cardIdentityExplicit: boolean;
+  /** 扫描上传时间（活动归属按它判定）。 */
+  createdAt: string;
+}
+
+export interface IngestBatchCardStates {
+  batch: Pick<IngestBatchDTO, "id" | "status" | "createdAt">;
+  items: IngestBatchCardState[];
+}
+
 export class IngestConflictError extends Error {
   constructor(
     public readonly code:
