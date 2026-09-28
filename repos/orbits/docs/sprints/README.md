@@ -38,7 +38,7 @@
 | [W0005](W0005-demo-mode-network/GOAL.md) | 新用户打开人脉页看到 30 位示例联系人和详情，扫名片仍是真实操作 | RW-03 | W0004 | completed |
 | [W0006](W0006-start-guide/GOAL.md) | 新用户在 /app/start 按顺序完成名片、目标、计划、活动，中途离开回来能续做 | RW-04、RW-05 第 3 步部分 | W0002、W0003、W0004；开关默认关（D1） | completed |
 | [W0007](W0007-plan-storage/GOAL.md) | 计划能按阶段、行动、人脉需求、信息、活动结构化保存和更新 | RW-09 | 无；本地测试库已核对（localhost），H 档 | completed |
-| [W0008](W0008-plan-generation/GOAL.md) | 问一次固定问题，看到「生成中 → 已完成」的结构化计划并保存（先用 mock 数据，不接 AI） | RW-08（AI 部分延后） | W0006、W0007 | planned |
+| [W0008](W0008-plan-generation/GOAL.md) | 问一次固定问题，看到「生成中 → 已完成」的结构化计划并保存（先用 mock 数据，不接 AI） | RW-08（AI 部分延后） | W0006、W0007 | completed |
 | [W0009](W0009-my-plan-page/GOAL.md) | 在「我的计划」里按周打勾，iOrbit 本周推进跟着更新；有计划时活动推荐理由改为对应阶段 | RW-10、RW-07（有计划时） | W0007、W0008 | planned |
 | [W0010](W0010-network-need-matching/GOAL.md) | 扫进来的名片自动提示能填上计划里的哪类人，确认后本周多一条「约 TA」 | RW-11 | W0007、W0009、W0013 | planned |
 | [W0011](W0011-card-review-in-today/GOAL.md) | 名片待确认出现在今日要事里，iOrbit 页不再有重复的浮动药丸 | RW-02 | W0001 | planned |
@@ -63,3 +63,4 @@
 | W0004 | run-01（2026-09-28） | `2220b061` | `1ada5684` | [REPORT](W0004-demo-mode-iorbit/REPORT.md) |
 | W0005 | run-01（2026-09-28） | `46e36e3c` | `a8491e1b` | [REPORT](W0005-demo-mode-network/REPORT.md) |
 | W0006 | run-01（2026-09-28） | `ccb3a172` | `f04fcd20` | [REPORT](W0006-start-guide/REPORT.md) |
+| W0008 | run-01（2026-09-28） | `26f09869` | `e6bfdb25` | [REPORT](W0008-plan-generation/REPORT.md) |
