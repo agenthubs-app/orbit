@@ -1168,6 +1168,7 @@ export const en = {
   "inbox.messageTitle": "Messages",
   "inbox.missingConversation": "Conversation ID is missing.",
   "inbox.conversationUnavailable": "Cannot open conversation",
+  "inbox.conversationGone": "This conversation is no longer on this device: the relationship was revoked or the conversation is unavailable.",
   "inbox.serverUnavailable": "Server unavailable",
   "inbox.emptyMessagesTitle": "No messages",
   "inbox.emptyMessagesBody": "This conversation has no messages to display yet.",

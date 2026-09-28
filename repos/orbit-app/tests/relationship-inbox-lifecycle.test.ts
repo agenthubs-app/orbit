@@ -13,6 +13,8 @@ let script: string;
 const fixture = `
 // Sprint 0118: this harness exercises the network path; the device mirror is not available here.
 export const useLocalInbox = () => ({ available: false, rows: [], freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh: async () => null });
+export const useLocalRelationshipConversations = () => ({ available: false, conversations: [], freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh: async () => null });
+export const useLocalRelationshipThread = () => ({ available: false, conversations: [], messages: [], freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh: async () => null });
 export const useLocalAiSessions = () => ({ available: false, rows: [], freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh: async () => null });
 export const useLocalAiConversation = () => ({ available: false, messages: [], cards: null, saveCards() {}, freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh: async () => null });
 
@@ -83,7 +85,7 @@ test.before(async () => {
     define: { "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
     plugins: [{ name: "inbox-lifecycle-boundaries", setup(plugin) {
       plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "inbox-lifecycle" }));
-      plugin.onResolve({ filter: /^(fixture|expo-router|expo-crypto|@expo\/vector-icons|react-native-safe-area-context)$|\/(AuthSessionProvider|ApiBaseUrlProvider|snapshot-store|app-performance|useLocalInbox)$/ }, () => ({ path: "fixture", namespace: "inbox-lifecycle" }));
+      plugin.onResolve({ filter: /^(fixture|expo-router|expo-crypto|@expo\/vector-icons|react-native-safe-area-context)$|\/(AuthSessionProvider|ApiBaseUrlProvider|snapshot-store|app-performance|useLocalInbox|useLocalRelationshipMessages)$/ }, () => ({ path: "fixture", namespace: "inbox-lifecycle" }));
       plugin.onLoad({ filter: /.*/, namespace: "inbox-lifecycle" }, args => ({ contents: args.path === "native" ? `
 import React from "react"; import { Pressable as RealPressable, RefreshControl as RealRefreshControl } from "react-native-web"; export * from "react-native-web";
 export { AppState } from "fixture";

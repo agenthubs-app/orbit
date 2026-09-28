@@ -54,6 +54,8 @@ import { resultToRouteState, type RouteState } from "../../view-models/route-sta
 import { runInboxReadBatch } from "../../view-models/inbox-read-batch";
 import { decodeConversationSummaryPage, conversationSummaryView, conversationSummaryReadItems, decodeRelationshipMessagePage, relationshipMessagePageView } from "../../view-models/relationship-pages";
 import { relationshipUnreadSummarySchema } from "../../api/schema/relationship-unread-summary";
+import { useLocalRelationshipConversations, useLocalRelationshipThread, type LocalRelationshipConversationsState } from "../../hooks/useLocalRelationshipMessages";
+import { localConversationSummaryPage, localRelationshipMessagePage, localRelationshipUnreadTotal } from "../../view-models/relationship-local";
 import {
   buildRelationshipThreadDraftRequest,
   createdRelationshipThreadToView,
@@ -159,6 +161,8 @@ export function useInboxRequests(scopeKey: string) {
 // Keep ordinary refresh behavior without changing other screens' cache policy.
 interface InboxResourceOptions {
   clearOnRefresh?: boolean;
+  /** Sprint 0119: false while the device mirror is the source (no request, no polling). */
+  enabled?: boolean;
   isValid?: (data: unknown) => boolean;
   refreshIntervalMs?: number;
 }
@@ -179,8 +183,9 @@ function useInboxResource(path: string, isEmpty: (data: unknown) => boolean,
     setSnapshot(previous => ({ clientGet, path, state: !options.clearOnRefresh && previous?.clientGet === clientGet && previous.path === path ? previous.state : { kind: "loading" }, refreshing: true }));
     setAttempt(value => value + 1);
   }, [clientGet, isCurrent, options.clearOnRefresh, path]);
+  const enabled = options.enabled !== false;
   useEffect(() => {
-    if (!isCurrent()) return;
+    if (!isCurrent() || !enabled) return;
     const controller = new AbortController();
     pending.current = controller;
     void clientGet(path, { signal: controller.signal }).then(received => {
@@ -196,12 +201,12 @@ function useInboxResource(path: string, isEmpty: (data: unknown) => boolean,
       setSnapshot({ clientGet, path, state: { kind: "failure", status: 0, meta: { featureMode: null, privacy: null, runtimeBoundary: null }, error: { code: "ORBIT_APP_UNEXPECTED_ERROR", message: locale.t("inbox.requestFailed") } }, refreshing: false });
     });
     return () => controller.abort();
-  }, [attempt, clientGet, isCurrent, path]);
+  }, [attempt, clientGet, isCurrent, path, enabled]);
   useEffect(() => {
-    if (!options.refreshIntervalMs || !isCurrent()) return;
+    if (!options.refreshIntervalMs || !isCurrent() || !enabled) return;
     const timer = setInterval(refresh, options.refreshIntervalMs);
     return () => clearInterval(timer);
-  }, [isCurrent, options.refreshIntervalMs, refresh]);
+  }, [isCurrent, options.refreshIntervalMs, refresh, enabled]);
   return { ...(isCurrent() && snapshot?.clientGet === clientGet && snapshot.path === path ? snapshot.state : { kind: "loading" as const }), refresh,
     refreshing: isCurrent() && snapshot?.clientGet === clientGet && snapshot.path === path ? snapshot.refreshing : false };
 }
@@ -212,6 +217,20 @@ function firstParam(value: string | string[] | undefined): string {
   }
 
   return value ?? "";
+}
+
+const LOCAL_META = { featureMode: null, privacy: null, runtimeBoundary: null };
+
+/**
+ * Sprint 0119: a device-mirror read in the shape the inbox's network resources
+ * have, so the screen renders the same states. Readable → the local data;
+ * a first sync that failed → failure; otherwise loading.
+ */
+function localResourceState(local: Pick<LocalRelationshipConversationsState, "freshness" | "refresh">, data: unknown | null, empty: boolean, failureMessage: string): ApiResourceState<unknown> {
+  const refresh = () => { void local.refresh(); };
+  if (local.freshness.readable && data !== null) return { kind: empty ? "empty" : "success", data, meta: LOCAL_META, status: 200, refresh, refreshing: local.freshness.refreshing };
+  if (local.freshness.failure) return { kind: "failure", error: { code: "ORBIT_APP_SYNC_FAILURE", message: failureMessage }, meta: LOCAL_META, status: 0, refresh, refreshing: false };
+  return { kind: "loading", refresh, refreshing: local.freshness.refreshing };
 }
 
 interface DeliveryView {
@@ -324,20 +343,39 @@ function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliv
     | { data: DeliveryView; kind: "success"; signal: AbortSignal }
   >({ kind: "idle" });
   const [conversationCursor, setConversationCursor] = useState<string | null>(null);
-  const state = useInboxResource(
+  // Sprint 0119: where the device mirror holds relationship messages (native always, the browser while its
+  // mirror is active) the thread list and the unread count are computed from it; the 15-second refresh is a sync.
+  const localThreads = useLocalRelationshipConversations();
+  const threadsFromDevice = localThreads.available && localThreads.freshness.readable;
+  const threadsOffline = threadsFromDevice && localThreads.freshness.offline;
+  const localPage = useMemo(() => threadsFromDevice ? localConversationSummaryPage(localThreads.conversations, actorId, localThreads.freshness.lastSyncedAt ?? new Date(0).toISOString()) : null,
+    [threadsFromDevice, localThreads.conversations, actorId, localThreads.freshness.lastSyncedAt]);
+  const networkState = useInboxResource(
     `/api/relationship-communication/conversation-summaries?limit=20${conversationCursor ? `&cursor=${encodeURIComponent(conversationCursor)}` : ""}`,
     (data) => decodeConversationSummaryPage(data, actorId)?.items.length === 0,
     clientGet, isCurrent, {
       isValid: (data) => decodeConversationSummaryPage(data, actorId) !== null,
       refreshIntervalMs: MESSAGE_STATE_FOREGROUND_REFRESH_MS,
+      enabled: !localThreads.available,
     }
   );
+  const state = localThreads.available
+    ? localResourceState(localThreads, localPage, !localPage?.items.length, locale.t("inbox.requestFailed"))
+    : networkState;
   const unreadState = useInboxResource("/api/relationship-communication/unread-summary", () => false, clientGet, isCurrent, {
     isValid: data => { const parsed = relationshipUnreadSummarySchema.safeParse(data); return parsed.success && parsed.data.actorId === actorId; },
     refreshIntervalMs: MESSAGE_STATE_FOREGROUND_REFRESH_MS,
+    enabled: !localThreads.available,
   });
   const unread = relationshipUnreadSummarySchema.safeParse(unreadState.kind === "success" ? unreadState.data : null);
-  const messagesUnread = unread.success && unread.data.actorId === actorId ? unread.data.unreadTotal : 0;
+  const messagesUnread = threadsFromDevice ? localRelationshipUnreadTotal(localThreads.conversations)
+    : unread.success && unread.data.actorId === actorId ? unread.data.unreadTotal : 0;
+  const localThreadsRefresh = localThreads.refresh;
+  useEffect(() => {
+    if (!localThreads.available || !isCurrent()) return;
+    const timer = setInterval(() => { void localThreadsRefresh(); }, MESSAGE_STATE_FOREGROUND_REFRESH_MS);
+    return () => clearInterval(timer);
+  }, [localThreads.available, localThreadsRefresh, isCurrent]);
   const conversationsData = state.kind === "success" || state.kind === "empty" ? state.data : null;
   const messagePage = decodeConversationSummaryPage(conversationsData, actorId);
   const nextCursor = messagePage?.nextCursor;
@@ -443,6 +481,7 @@ function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliv
 
   async function markAllRead() {
     if (!isCurrent() || batchPending || confirmableUnread === 0) return;
+    if (threadsOffline) { setBatchError(locale.t("sync.needsNetwork")); return; }
     const scope = batchScope;
     setBatchPending(true);
     setBatchError("");
@@ -483,8 +522,8 @@ function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliv
       }
       title={locale.t(contentReady && composing ? "inbox.compose" : contentReady && createdThread ? "inbox.draftPreview" : "inbox.title")}
       onMarkAllRead={!composing && !createdThread ? () => void (activeSection === "alerts" ? typedInbox.markRead() : markAllRead()) : undefined}
-      markAllReadLabel={activeSection === "threads" ? locale.t("inbox.markPageRead") : typedInbox.offline ? `${locale.t("inbox.markAllRead")} · ${locale.t("sync.needsNetwork")}` : locale.t("inbox.markAllRead")}
-      markAllReadDisabled={activeSection === "alerts" ? typedInbox.offline || typedInbox.busy || !typedInbox.data?.items.some(item => !item.readAt && item.actions.includes("read")) : batchPending || confirmableUnread === 0}
+      markAllReadLabel={activeSection === "threads" ? threadsOffline ? `${locale.t("inbox.markPageRead")} · ${locale.t("sync.needsNetwork")}` : locale.t("inbox.markPageRead") : typedInbox.offline ? `${locale.t("inbox.markAllRead")} · ${locale.t("sync.needsNetwork")}` : locale.t("inbox.markAllRead")}
+      markAllReadDisabled={activeSection === "alerts" ? typedInbox.offline || typedInbox.busy || !typedInbox.data?.items.some(item => !item.readAt && item.actions.includes("read")) : threadsOffline || batchPending || confirmableUnread === 0}
       hideBack={contentReady && composing}
       onBack={createdThread ? () => setCreatedThread(null) : undefined}
     >
@@ -507,6 +546,7 @@ function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliv
       {!composing && !createdThread ? <InboxSegmentedControl activeSection={activeSection} alertCount={typedInbox.data?.unreadCount ?? 0} messageCount={messagesUnread} onChange={selectSection} /> : null}
       {activeSection === "threads" && conversationCursor && !composing && !createdThread ? <ActionButton icon="arrow-back-outline" label={locale.t("inbox.firstConversationPage")} onPress={() => setConversationCursor(null)} variant="secondary" /> : null}
       {activeSection === "alerts" && typedInbox.offline ? <OfflineNotice lastSyncedAt={typedInbox.lastSyncedAt} /> : null}
+      {activeSection === "threads" && threadsOffline && !composing && !createdThread ? <OfflineNotice lastSyncedAt={localThreads.freshness.lastSyncedAt} /> : null}
       {activeSection === "alerts" ? (typedInbox.data ? <NotificationInboxList data={typedInbox.data} filter={typedInbox.filter} onFilter={typedInbox.setFilter} busy={typedInbox.busy} error={typedInbox.error} onRefresh={typedInbox.refresh} onMore={() => void typedInbox.more()} onOpen={id => router.push(`/inbox/notifications/${encodeURIComponent(id)}` as Href)} /> : typedInbox.error ? <View><ErrorState message={typedInbox.error}/><Pressable accessibilityRole="button" onPress={typedInbox.refresh}><Text>{locale.t("common.retry")}</Text></Pressable></View> : <LoadingState />) : retainedContent.current ? (
         <View style={activeSection === "threads" && !contentReady ? { display: "none" } : undefined}>
         <InboxContent
@@ -552,20 +592,41 @@ function ScopedRelationshipInboxThreadScreen({ actorId, conversationId, scopeKey
   const { colors } = useOrbitTheme();
   const { clientGet, clientPost, clientPut, isCurrent } = useInboxRequests(scopeKey);
   const [historyCursor, setHistoryCursor] = useState<string | null>(null);
-  const summaryState = useInboxResource(`/api/relationship-communication/conversation-summaries?conversationId=${encodeURIComponent(conversationId)}&limit=1`, () => false,
+  // Sprint 0119: where the device mirror holds relationship messages the conversation and its whole history
+  // are read from it (older pages too); sending, saving a draft and marking read need the network.
+  const localThread = useLocalRelationshipThread(conversationId);
+  const fromDevice = localThread.available && localThread.freshness.readable;
+  const offline = fromDevice && localThread.freshness.offline;
+  const localConversation = fromDevice ? localThread.conversations.find(row => row.conversationId === conversationId) ?? null : null;
+  const localAsOf = localThread.freshness.lastSyncedAt ?? new Date(0).toISOString();
+  const localSummaryPage = useMemo(() => localConversation ? localConversationSummaryPage([localConversation], actorId, localAsOf) : null, [localConversation, actorId, localAsOf]);
+  const localMessagePage = useMemo(() => localConversation ? localRelationshipMessagePage([localConversation], localThread.messages, actorId, conversationId, { cursor: historyCursor, asOf: localAsOf }) : null,
+    [localConversation, localThread.messages, actorId, conversationId, historyCursor, localAsOf]);
+  const localGone = fromDevice && !localConversation && !localThread.freshness.refreshing;
+  const networkSummaryState = useInboxResource(`/api/relationship-communication/conversation-summaries?conversationId=${encodeURIComponent(conversationId)}&limit=1`, () => false,
     clientGet, isCurrent, { isValid: data => {
       const page = decodeConversationSummaryPage(data, actorId);
       return !!page && page.items.length === 1 && page.items[0]?.conversationId === conversationId;
-    }, refreshIntervalMs: MESSAGE_STATE_FOREGROUND_REFRESH_MS });
-  const messageState = useInboxResource(
+    }, refreshIntervalMs: MESSAGE_STATE_FOREGROUND_REFRESH_MS, enabled: !localThread.available });
+  const summaryState = localThread.available ? localResourceState(localThread, localSummaryPage, false, locale.t("inbox.requestFailed")) : networkSummaryState;
+  const networkMessageState = useInboxResource(
     `${relationshipCommunicationConversationPath(conversationId)}/messages?limit=30&direction=older${historyCursor ? `&cursor=${encodeURIComponent(historyCursor)}` : ""}`,
     (data) => decodeRelationshipMessagePage(data, actorId, conversationId)?.items.length === 0,
     clientGet, isCurrent, {
       isValid: (data) => decodeRelationshipMessagePage(data, actorId, conversationId)?.direction === "older",
       refreshIntervalMs: MESSAGE_STATE_FOREGROUND_REFRESH_MS,
+      enabled: !localThread.available,
     }
   );
-  const refresh = useCallback(() => { setHistoryCursor(null); summaryState.refresh(); messageState.refresh(); }, [summaryState.refresh, messageState.refresh]);
+  const messageState = localThread.available ? localResourceState(localThread, localMessagePage, !localMessagePage?.items.length, locale.t("inbox.requestFailed")) : networkMessageState;
+  const localThreadRefresh = localThread.refresh;
+  useEffect(() => {
+    if (!localThread.available || !isCurrent()) return;
+    const timer = setInterval(() => { void localThreadRefresh(); }, MESSAGE_STATE_FOREGROUND_REFRESH_MS);
+    return () => clearInterval(timer);
+  }, [localThread.available, localThreadRefresh, isCurrent]);
+  const refresh = useCallback(() => { setHistoryCursor(null); if (localThread.available) void localThreadRefresh(); else { summaryState.refresh(); messageState.refresh(); } },
+    [localThread.available, localThreadRefresh, summaryState.refresh, messageState.refresh]);
   const summary = decodeConversationSummaryPage(summaryState.kind === "success" ? summaryState.data : null, actorId)?.items[0];
   const state = { ...(summaryState.kind === "failure" || summaryState.kind === "offline" ? summaryState
     : messageState.kind === "failure" || messageState.kind === "offline" ? messageState
@@ -596,6 +657,11 @@ function ScopedRelationshipInboxThreadScreen({ actorId, conversationId, scopeKey
       setReadError("");
       return;
     }
+    // Offline the conversation stays unread on the server and on the device until the next online open.
+    if (offline) {
+      setReadError(`${locale.t("inbox.markRead")} · ${locale.t("sync.needsNetwork")}`);
+      return;
+    }
     const key = `${target.conversationId}\u001f${target.lastReadMessageId}`;
     const previousAttempt = readAttempt.current;
     if (previousAttempt && previousAttempt.data === stateData && previousAttempt.key === key) return;
@@ -617,7 +683,7 @@ function ScopedRelationshipInboxThreadScreen({ actorId, conversationId, scopeKey
         setReadError(locale.t("inbox.readUnconfirmed"));
       }
     });
-  }, [actorId, clientPost, isContentCurrent, stateData, historyCursor, summary?.unreadCount]);
+  }, [actorId, clientPost, isContentCurrent, stateData, historyCursor, summary?.unreadCount, offline]);
 
   return (
     <InboxLayout
@@ -633,7 +699,9 @@ function ScopedRelationshipInboxThreadScreen({ actorId, conversationId, scopeKey
       {!conversationId ? (
         <ErrorState message={locale.t("inbox.missingConversation")} title={locale.t("inbox.conversationUnavailable")} />
       ) : null}
-      {conversationId && state.kind === "loading" ? <LoadingState /> : null}
+      {offline ? <OfflineNotice lastSyncedAt={localThread.freshness.lastSyncedAt} /> : null}
+      {localGone ? <ErrorState message={locale.t("inbox.conversationGone")} title={locale.t("inbox.conversationUnavailable")} /> : null}
+      {conversationId && !localGone && state.kind === "loading" ? <LoadingState /> : null}
       {conversationId && state.kind === "offline" ? (
         <ErrorState message={state.error.message} title={locale.t("inbox.serverUnavailable")} />
       ) : null}
@@ -643,7 +711,7 @@ function ScopedRelationshipInboxThreadScreen({ actorId, conversationId, scopeKey
       {page && summary && !detail ? <ErrorState message={locale.t("inbox.invalidMessageState")} /> : null}
       {historyCursor ? <ActionButton icon="arrow-forward-outline" label={locale.t("inbox.latestMessages")} onPress={refresh} variant="secondary" /> : null}
       {detail && page?.nextCursor ? <ActionButton icon="chevron-up-outline" label={locale.t("inbox.olderMessages")} onPress={() => setHistoryCursor(page.nextCursor)} variant="secondary" /> : null}
-      {conversationId && detail ? <NotificationDeliverySettings conversationId={conversationId}/> : null}
+      {conversationId && detail && !offline ? <NotificationDeliverySettings conversationId={conversationId}/> : null}
       {conversationId && readError ? <Text accessibilityRole="alert">{readError}</Text> : null}
       {conversationId && retainedDetail.current ? (
         <View style={!detail ? { display: "none" } : undefined}>
@@ -655,6 +723,7 @@ function ScopedRelationshipInboxThreadScreen({ actorId, conversationId, scopeKey
           isCurrent={isContentCurrent}
           detail={retainedDetail.current}
           delivery={detail && page ? { actorId, qualificationVersion: page.conversation.qualificationVersion } : undefined}
+          offline={offline}
         />
         </View>
       ) : null}
@@ -1074,6 +1143,7 @@ function ThreadDetail({
   detail,
   previewOnly = false,
   delivery,
+  offline = false,
 }: {
   clientGet: ClientGet;
   clientPost: ClientPost;
@@ -1083,6 +1153,8 @@ function ThreadDetail({
   detail: RelationshipThreadDetailView;
   previewOnly?: boolean;
   delivery?: { actorId: string; qualificationVersion: string } | undefined;
+  /** Sprint 0119: the device copy is shown as of its last sync; sending and saving a draft need the network. */
+  offline?: boolean;
 }) {
   const locale = useOrbitLocale();
   const { styles } = useStyles();
@@ -1126,7 +1198,7 @@ function ThreadDetail({
         <Text style={styles.safetyText}>{locale.t("inbox.previewOnly")}</Text>
       ) : (
         <>
-          <ReplyComposer clientGet={clientGet} clientPost={clientPost} clientPut={clientPut} contactId={contactId ?? ""} isCurrent={isCurrent} detail={detail} delivery={delivery} />
+          <ReplyComposer clientGet={clientGet} clientPost={clientPost} clientPut={clientPut} contactId={contactId ?? ""} isCurrent={isCurrent} detail={detail} delivery={delivery} offline={offline} />
         </>
       )}
     </View>
@@ -1141,6 +1213,7 @@ function ReplyComposer({
   detail,
   clientPost,
   delivery,
+  offline = false,
 }: {
   clientGet: ClientGet;
   clientPut?: ClientPut | undefined;
@@ -1149,6 +1222,7 @@ function ReplyComposer({
   detail: RelationshipThreadDetailView;
   clientPost: ClientPost;
   delivery?: { actorId: string; qualificationVersion: string } | undefined;
+  offline?: boolean;
 }) {
   const locale = useOrbitLocale();
   const { colors, styles } = useStyles();
@@ -1181,7 +1255,7 @@ function ReplyComposer({
   useEffect(() => { setRewriteError(null); }, [isCurrent]);
 
   async function sendReply() {
-    if (!delivery || !isCurrent() || sendRequest.current || (!body.trim() && !attempt.current)) return;
+    if (!delivery || offline || !isCurrent() || sendRequest.current || (!body.trim() && !attempt.current)) return;
     const currentAttempt = attempt.current ?? { body: body.trim(), requestId: randomUUID(), qualificationVersion: delivery.qualificationVersion };
     const built = buildRelationshipMessageDeliveryRequest({ ...currentAttempt, conversationId: detail.conversationId });
     if (!built.success) { setSendFailed(true); return; }
@@ -1203,7 +1277,7 @@ function ReplyComposer({
   // Verified conversations keep the participant's own reply draft on the server
   // (Sprint 0104); it is loaded once per conversation unless the user is typing.
   useEffect(() => {
-    if (!delivery || !isCurrent()) return;
+    if (!delivery || offline || !isCurrent()) return;
     let current = true;
     void clientGet(relationshipReplyDraftPath(detail.conversationId)).then(result => {
       if (!current || !isCurrent() || draftEdited.current || !result.success) return;
@@ -1211,10 +1285,10 @@ function ReplyComposer({
       if (draft?.body) setBody(draft.body);
     }).catch(() => {});
     return () => { current = false; };
-  }, [delivery?.actorId, detail.conversationId, isCurrent]);
+  }, [delivery?.actorId, detail.conversationId, isCurrent, offline]);
 
   async function saveDraft() {
-    if (!delivery || !clientPut || !isCurrent() || draftSaveRequest.current) return;
+    if (!delivery || offline || !clientPut || !isCurrent() || draftSaveRequest.current) return;
     const saving = body;
     const request = {};
     draftSaveRequest.current = request;
@@ -1304,17 +1378,17 @@ function ReplyComposer({
         />
         {delivery && clientPut ? (
           <ActionButton
-            disabled={sending || !!attempt.current || draftSaveInFlight}
+            disabled={offline || sending || !!attempt.current || draftSaveInFlight}
             icon="save-outline"
-            label={locale.t(draftSaveInFlight ? "inbox.savingDraft" : "inbox.saveDraft")}
+            label={offline ? `${locale.t("inbox.saveDraft")} · ${locale.t("sync.needsNetwork")}` : locale.t(draftSaveInFlight ? "inbox.savingDraft" : "inbox.saveDraft")}
             onPress={saveDraft}
             variant="secondary"
           />
         ) : null}
         <ActionButton
-          disabled={sending || (!body.trim() && !attempt.current)}
+          disabled={(delivery && offline) || sending || (!body.trim() && !attempt.current)}
           icon="mail-unread-outline"
-          label={locale.t(delivery ? sending ? "inbox.sendingMessage" : sendFailed ? "inbox.retrySend" : "inbox.sendMessage" : "inbox.previewReply")}
+          label={delivery && offline ? `${locale.t("inbox.sendMessage")} · ${locale.t("sync.needsNetwork")}` : locale.t(delivery ? sending ? "inbox.sendingMessage" : sendFailed ? "inbox.retrySend" : "inbox.sendMessage" : "inbox.previewReply")}
           onPress={delivery ? sendReply : () => { draftEdited.current = true; setStaged(body.trim()); }}
         />
       </View>

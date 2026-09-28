@@ -20,6 +20,9 @@ import {
 import type { RelationshipCommunicationConversationView } from "../../view-models/contact-communication";
 import { decodeConversationSummaryPage } from "../../view-models/relationship-pages";
 import { relationshipChatSummaryPageView } from "../../view-models/relationship-chat-pages";
+import { OfflineNotice } from "../../components/OfflineNotice";
+import { useLocalRelationshipConversations } from "../../hooks/useLocalRelationshipMessages";
+import { localConversationSummaryPage } from "../../view-models/relationship-local";
 
 export function RelationshipChatScreen() {
   const auth = useOrbitAuthSession();
@@ -34,13 +37,23 @@ export function RelationshipChatScreen() {
 function ScopedChatList({ actorId, scopeKey }: { actorId: string; scopeKey: string }) {
   const { colors, styles } = useStyles();
   const [cursor, setCursor] = useState<string | null>(null);
-  const state = useApiResource<unknown>(
+  // Sprint 0119: the device mirror is the source where it holds relationship messages (native always, the browser while its mirror is active).
+  const local = useLocalRelationshipConversations();
+  const fromDevice = local.available && local.freshness.readable;
+  const offline = fromDevice && local.freshness.offline;
+  const localPage = useMemo(() => fromDevice ? localConversationSummaryPage(local.conversations, actorId, local.freshness.lastSyncedAt ?? new Date(0).toISOString()) : null,
+    [fromDevice, local.conversations, actorId, local.freshness.lastSyncedAt]);
+  const network = useApiResource<unknown>(
     `/api/relationship-communication/conversation-summaries?limit=20${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`,
     () => false,
-    { scopeKey: `${scopeKey}:page:${cursor ?? "first"}`, cachePolicy: "network-only" }
+    { scopeKey: `${scopeKey}:page:${cursor ?? "first"}`, cachePolicy: "network-only", enabled: !local.available }
   );
+  const state = local.available
+    ? { kind: fromDevice ? "success" as const : local.freshness.failure ? "failure" as const : "loading" as const, refreshing: local.freshness.refreshing,
+        error: { code: "ORBIT_APP_SYNC_FAILURE", message: "没有同步到当前账号的对话，请稍后重试。" }, refresh: () => { void local.refresh(); } }
+    : network;
   const loaded = state.kind === "success" || state.kind === "empty";
-  const page = decodeConversationSummaryPage(loaded ? state.data : null, actorId);
+  const page = local.available ? localPage : decodeConversationSummaryPage(loaded && "data" in state ? state.data : null, actorId);
   function refresh() { setCursor(null); state.refresh(); }
 
   return (
@@ -55,6 +68,7 @@ function ScopedChatList({ actorId, scopeKey }: { actorId: string; scopeKey: stri
       }
       title="关系对话"
     >
+      {offline ? <OfflineNotice lastSyncedAt={local.freshness.lastSyncedAt} /> : null}
       {state.kind === "loading" ? <LoadingState /> : null}
       {state.kind === "offline" ? (
         <ErrorState message={state.error.message} title="服务器连不上" />

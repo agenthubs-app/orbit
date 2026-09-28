@@ -1229,6 +1229,7 @@ export const messageKeys = [
   "inbox.messageTitle",
   "inbox.missingConversation",
   "inbox.conversationUnavailable",
+  "inbox.conversationGone",
   "inbox.serverUnavailable",
   "inbox.emptyMessagesTitle",
   "inbox.emptyMessagesBody",

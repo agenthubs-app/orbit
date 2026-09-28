@@ -24,6 +24,9 @@ export const KNOWN_SYNC_DOMAINS: Readonly<Record<string, SyncChangeKind>> = {
   "inbox-notifications": "inbox_notification",
   "ai-sessions": "ai_session",
   "ai-session-messages": "ai_session_message",
+  // Sprint 0119: the account's relationship conversations and their full message history (inbox threads, chat, unread badge).
+  "relationship-conversations": "relationship_conversation",
+  "relationship-messages": "relationship_message",
 };
 
 /** Sprint 0118: domains whose pages are named by partitions the device keeps (the opened AI sessions). */

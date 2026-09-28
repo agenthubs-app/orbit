@@ -1168,6 +1168,7 @@ export const zh = {
   "inbox.messageTitle": "消息",
   "inbox.missingConversation": "缺少对话 ID。",
   "inbox.conversationUnavailable": "打不开对话",
+  "inbox.conversationGone": "这段对话已不在本机：关系已撤销，或对话已不可用。",
   "inbox.serverUnavailable": "服务器连不上",
   "inbox.emptyMessagesTitle": "暂无消息",
   "inbox.emptyMessagesBody": "这段往来还没有可显示的消息。",
