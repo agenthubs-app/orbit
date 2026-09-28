@@ -1,4 +1,5 @@
 import { SYNC_WRITE_LOCK_KEY_SQL, SYNC_WRITE_LOCK_SETTING } from "../sync/commit-order-lock";
+import { SYNC_RELATIONSHIP_OWNER_GUARD_SQL } from "../sync/owner-guard";
 
 /**
  * Sprint 0109 (message plan M2): relationship messaging moves out of the
@@ -26,6 +27,10 @@ import { SYNC_WRITE_LOCK_KEY_SQL, SYNC_WRITE_LOCK_SETTING } from "../sync/commit
  * SYNC_WRITE_LOCK_REQUIRED (55P03), exactly like the strict orbit_records
  * trigger. The lock key is the orbit_records one, so revisions across all sync
  * tables become visible in the order they were taken.
+ *
+ * Sprint 0119: two sync indexes and the owner/identity guard
+ * (SYNC_RELATIONSHIP_OWNER_GUARD_SQL): the message sync domains derive their
+ * owner from the member row, so no row may move or come back from 'left'.
  *
  * Idempotent: every statement is "if not exists" / "or replace".
  */
@@ -100,6 +105,13 @@ create table if not exists relationship_messages (
 create index if not exists relationship_messages_sent_idx
   on relationship_messages (workspace_id, conversation_id, sent_at, message_id);
 
+-- Sprint 0119 (0109 report 9.6): the message sync domains read an account's
+-- member rows by revision and each conversation's messages by revision.
+create index if not exists relationship_members_sync_idx
+  on relationship_conversation_members (workspace_id, account_id, sync_revision);
+create index if not exists relationship_messages_sync_idx
+  on relationship_messages (workspace_id, conversation_id, sync_revision);
+
 create unique index if not exists relationship_conversations_sync_revision_uidx on relationship_conversations (sync_revision);
 create unique index if not exists relationship_members_sync_revision_uidx on relationship_conversation_members (sync_revision);
 create unique index if not exists relationship_messages_sync_revision_uidx on relationship_messages (sync_revision);
@@ -128,7 +140,7 @@ create or replace trigger relationship_members_sync_revision_trigger
 create or replace trigger relationship_messages_sync_revision_trigger
   before insert or update on relationship_messages
   for each row execute function relationship_messaging_assign_sync_revision();
-`;
+${SYNC_RELATIONSHIP_OWNER_GUARD_SQL}`;
 
 export interface RelationshipMessageMigrationClient {
   query: (text: string) => Promise<unknown>;

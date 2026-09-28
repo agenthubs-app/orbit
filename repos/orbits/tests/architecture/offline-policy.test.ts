@@ -32,7 +32,10 @@ const APPROVED_POLICY_MATRIX = [
   ["POST", "/api/schedule-items", "create", "personal_schedule", "durable_normalized", "offline_queue", "metadata_only"],
   ["PATCH", "/api/schedule-items/:id", "update", "personal_schedule", "durable_normalized", "offline_queue", "metadata_only"],
   ["DELETE", "/api/schedule-items/:id", "delete", "personal_schedule", "durable_normalized", "offline_queue", "metadata_only"],
-  ["GET", "/api/relationship-communication/conversations/:id/messages", "read", "message", "durable_normalized", "online_only", "metadata_only"],
+  // Sprint 0119: relationship messages read the device copy first.
+  ["GET", "/api/relationship-communication/conversations/:id/messages", "read", "relationship_message", "durable_normalized", "online_only", "metadata_only"],
+  ["GET", "/api/relationship-communication/conversation-summaries", "read", "relationship_conversation", "durable_normalized", "online_only", "metadata_only"],
+  ["GET", "/api/relationship-communication/unread-summary", "read", "relationship_conversation", "durable_normalized", "online_only", "metadata_only"],
   ["GET", "/api/events/public", "read", "public_event", "encrypted_ttl_snapshot", "online_only", "on_demand_encrypted"],
   // Sprint 0115: the registered attendee's event day is read from the device mirror; every write needs the network.
   ["GET", "/api/events/public/:id", "read", "registered_event", "durable_normalized", "online_only", "metadata_only"],
@@ -95,7 +98,7 @@ test("read persistence never implies offline mutation permission", () => {
       "read",
     ),
     {
-      domainId: "message",
+      domainId: "relationship_message",
       schemaVersion: 1,
       registryVersion: 1,
       readPersistence: "durable_normalized",

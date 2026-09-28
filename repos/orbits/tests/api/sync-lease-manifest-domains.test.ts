@@ -45,6 +45,10 @@ function scriptedClient(state: Scripted) {
           // Sprint 0118: the inbox and AI session domains; an actor with no rows has watermark 0.
           return { rows: [{ high_watermark: "0" } as T] };
         }
+        if (text.includes("sync:relationship:summary")) {
+          // Sprint 0119: the relationship message domains; an actor with no conversations has watermarks 0.
+          return { rows: [{ conversations: "0", messages: "0" } as T] };
+        }
         if (text.includes("sync:domain:high-watermark")) {
           const rows = state.rows[String(values?.[2])] ?? [];
           return { rows: [{ high_watermark: String(rows.reduce((max, row) => Math.max(max, row.sync_revision), 0)) } as T] };
@@ -184,7 +188,7 @@ test("manifest is a conditional read: unchanged data answers 304 from one waterm
   assert.ok(calls.some((sql) => sql.includes("sync:domain:high-watermark")), "a changed manifest re-reads the domain watermarks");
 });
 
-test("the production registry leases the contacts, event and dashboard graph domains too; an unchanged manifest costs the event summary and one watermark row", async () => {
+test("the production registry leases the contacts, event, dashboard graph and message domains too; an unchanged manifest costs the event summary, the message summary and one watermark row", async () => {
   const state: Scripted = { auth: { max: "2026-09-18T07:00:00Z", count: 3, identity: 1 }, rows: { tasks: [await task("task:e1", 1)] } };
   const { handlers, calls } = harness(state, { conditional: true, domains: SYNC_DOMAINS });
   const lease = offlineReadEnvelopeSchema.parse(((await (await handlers.lease(new Request("https://orbit.local/api/sync/lease?baseUrl=https%3A%2F%2Fapp.orbit.local"))).json()) as { data: unknown }).data);
@@ -198,5 +202,5 @@ test("the production registry leases the contacts, event and dashboard graph dom
   calls.length = 0;
   const unchanged = await handlers.manifest(new Request("https://orbit.local/api/sync/manifest", { headers: { "If-None-Match": first.headers.get("ETag")! } }));
   assert.equal(unchanged.status, 304);
-  assert.deepEqual(calls.map((sql) => sql.includes("domain:watermark:revision") ? "watermark" : sql.includes("sync:event-domains:summary") ? "event-summary" : "other"), ["event-summary", "watermark"]);
+  assert.deepEqual(calls.map((sql) => sql.includes("domain:watermark:revision") ? "watermark" : sql.includes("sync:event-domains:summary") ? "event-summary" : sql.includes("sync:relationship:summary") ? "relationship-summary" : "other"), ["event-summary", "relationship-summary", "watermark"]);
 });

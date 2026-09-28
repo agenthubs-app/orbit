@@ -15,6 +15,7 @@ import { createDomainReadService } from "../../features/sync/domain-read-service
 import { EVENT_SYNC_DOMAIN_IDS, findSyncDomain, SYNC_DOMAINS } from "../../features/sync/domain-registry";
 import { domainManifestSchema, domainPageSchema, offlineReadEnvelopeSchema } from "../../shared/api-schema/universal-read";
 import { ORBIT_RECORDS_SCHEMA_SQL } from "../../shared/storage/migrations";
+import { RELATIONSHIP_MESSAGE_SCHEMA_SQL } from "../../features/relationship-communication/message-tables";
 import { lockedFixtureQuery, STRICT_SYNC_REVISION_SQL } from "../support/sync-revision-fixture";
 
 // Sprint 0115 (offline 1a): the registered attendee's event day on the device.
@@ -54,6 +55,8 @@ async function host(t: TestContext) {
   t.after(async () => { try { await pool.end(); } finally { try { await admin.query(`drop schema if exists ${schema} cascade`); } finally { await admin.end(); } } });
   await admin.query(`create schema ${schema}`);
   await pool.query(ORBIT_RECORDS_SCHEMA_SQL);
+  // Sprint 0119: the production registry leases the message domains, read from the 0109 tables.
+  await pool.query(RELATIONSHIP_MESSAGE_SCHEMA_SQL);
   await pool.query(STRICT_SYNC_REVISION_SQL);
   await runEventOperationsMigrations(client);
   await runEventSyncRevisionMigration(client);
