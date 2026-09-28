@@ -7,6 +7,8 @@
  */
 "use client";
 
+import { CARD_BATCH_LEDGER_PREFIX, parseCardBatchLedger, type CardBatchLedger } from "./card-batch-model";
+
 const DB_NAME = "orbit-card-batch";
 const STORE = "pending-files";
 const ACTIVE_KEY = "orbit.cardBatches.active.v1";
@@ -120,4 +122,42 @@ export function registerActiveBatch(batchId: string): void {
 export function unregisterActiveBatch(batchId: string): void {
   const current = listActiveBatches();
   if (current.includes(batchId)) writeActive(current.filter(id => id !== batchId));
+}
+
+// ── 本机账本（只读；写入在 use-card-batch）──
+export function readCardBatchLedger(batchId: string): CardBatchLedger {
+  try {
+    return parseCardBatchLedger(window.localStorage.getItem(`${CARD_BATCH_LEDGER_PREFIX}${batchId}`));
+  } catch {
+    return parseCardBatchLedger(null);
+  }
+}
+
+// ── 今日要事的待确认读取状态（W0011）──
+// iOrbit 首页挂着只读的 use-pending-cards 时在这里登记它的状态；全站宿主只有在读取器
+// 正在读或已读好（今日要事能显示待确认）时才在 /app/agent 隐藏待确认胶囊。读取器没挂
+// （例如 /app/agent 的对话视图）或读取失败时，胶囊照常显示，待确认的名片不会没人提醒。
+// 用独立的事件名：`orbit-card-batches` 会让读取器重读，若也用它发布状态就会循环。
+export type PendingCardsReaderState = "absent" | "pending" | "ready" | "unavailable";
+export const PENDING_CARDS_READER_EVENT = "orbit-card-pending-reader";
+let readerState: PendingCardsReaderState = "absent";
+
+export function getPendingCardsReaderState(): PendingCardsReaderState {
+  return readerState;
+}
+
+export function publishPendingCardsReaderState(next: PendingCardsReaderState): void {
+  if (readerState === next) return;
+  readerState = next;
+  try {
+    window.dispatchEvent(new Event(PENDING_CARDS_READER_EVENT));
+  } catch {
+    // 没有 window（SSR）时宿主也不渲染。
+  }
+}
+
+export function subscribePendingCardsReaderState(listener: () => void): () => void {
+  if (typeof window === "undefined") return () => undefined;
+  window.addEventListener(PENDING_CARDS_READER_EVENT, listener);
+  return () => window.removeEventListener(PENDING_CARDS_READER_EVENT, listener);
 }

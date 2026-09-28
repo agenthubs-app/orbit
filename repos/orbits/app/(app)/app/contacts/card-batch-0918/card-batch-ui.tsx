@@ -590,7 +590,8 @@ function ParsingPanel({
 }
 
 // ── 解析提醒（新用户引导.dc.html 621–650 行）：离开解析界面时的进度胶囊、解析完成弹窗、待确认胶囊 ──
-export function CardBatchReminders(props: { batch: CardBatch; onOpen: () => void; t: T; viewingImport: boolean }) {
+/** `hidePendingPill`：只不显示「N 张名片待你确认」胶囊（W0011：iOrbit 首页已把它列为今日要事）；解析进度与完成弹窗照常。 */
+export function CardBatchReminders(props: { batch: CardBatch; hidePendingPill?: boolean; onOpen: () => void; t: T; viewingImport: boolean }) {
   return (
     <div className="cbx cbx-float">
       <style>{CARD_BATCH_STYLES}</style>
@@ -599,7 +600,7 @@ export function CardBatchReminders(props: { batch: CardBatch; onOpen: () => void
   );
 }
 
-function CardBatchRemindersBody({ batch, onOpen, t, viewingImport }: { batch: CardBatch; onOpen: () => void; t: T; viewingImport: boolean }) {
+function CardBatchRemindersBody({ batch, hidePendingPill = false, onOpen, t, viewingImport }: { batch: CardBatch; hidePendingPill?: boolean; onOpen: () => void; t: T; viewingImport: boolean }) {
   const { autoCount, autoRunning, cards, markNotified, notified, pending, reviewing, settledCount, status } = batch;
   // 正在看第 5 步时，进度与确认界面就在眼前：进入确认界面即视为已提醒，不再弹窗。
   useEffect(() => {
@@ -650,7 +651,7 @@ function CardBatchRemindersBody({ batch, onOpen, t, viewingImport }: { batch: Ca
     );
   }
 
-  if (pending.length > 0) {
+  if (pending.length > 0 && !hidePendingPill) {
     return (
       <button className="btn cb-float-pill cb-float-pill-dark" onClick={onOpen} type="button">
         {t({ zh: `${pending.length} 张名片待你确认 →`, en: `${pending.length} card(s) to check →` })}

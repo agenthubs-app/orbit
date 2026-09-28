@@ -28,14 +28,17 @@ import {
   type IngestV2CardViewModel,
 } from "../ingest-v2/ingest-v2-route-view-model";
 import {
+  CARD_BATCH_LEDGER_PREFIX,
+  EMPTY_CARD_BATCH_LEDGER,
+  cardReviewQueue,
   isAutoImportEligible,
   isAutoMergeEligible,
   isCardSkipped,
-  needsReview,
   parseStage,
+  type CardBatchLedger,
   type Copy,
 } from "./card-batch-model";
-import { deletePendingFile, deletePendingFiles, loadPendingFiles, unregisterActiveBatch } from "./card-batch-store";
+import { deletePendingFile, deletePendingFiles, loadPendingFiles, readCardBatchLedger, unregisterActiveBatch } from "./card-batch-store";
 
 type T = (copy: Copy) => string;
 export type ContactCandidate = IngestContactCandidateContract;
@@ -49,23 +52,14 @@ function matchFields(draft: IngestV2CardDraft) {
 
 // 本机账本：哪些卡是这次自动导入的、哪些经用户确认、哪些并入了已有联系人、哪些「稍后处理」。
 // 服务端只知道 confirmed/skipped，区分不了来源；刷新后小结要保持一致，所以记在 localStorage（丢了也只影响计数口径）。
-interface Ledger { auto: string[]; user: string[]; merged: string[]; later: string[]; notified: boolean }
-const EMPTY_LEDGER: Ledger = { auto: [], later: [], merged: [], notified: false, user: [] };
-const LEDGER_PREFIX = "orbit.cardBatch.ledger.v1:";
-
-function readLedger(batchId: string): Ledger {
-  try {
-    const parsed = JSON.parse(window.localStorage.getItem(`${LEDGER_PREFIX}${batchId}`) ?? "null") as Partial<Ledger> | null;
-    const list = (value: unknown) => (Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : []);
-    return { auto: list(parsed?.auto), later: list(parsed?.later), merged: list(parsed?.merged), notified: parsed?.notified === true, user: list(parsed?.user) };
-  } catch {
-    return EMPTY_LEDGER;
-  }
-}
+// 解析与待确认口径在 card-batch-model（今日要事的只读计数共用），读取在 card-batch-store。
+type Ledger = CardBatchLedger;
+const EMPTY_LEDGER: Ledger = EMPTY_CARD_BATCH_LEDGER;
+const readLedger = readCardBatchLedger;
 
 function writeLedger(batchId: string, ledger: Ledger): void {
   try {
-    window.localStorage.setItem(`${LEDGER_PREFIX}${batchId}`, JSON.stringify(ledger));
+    window.localStorage.setItem(`${CARD_BATCH_LEDGER_PREFIX}${batchId}`, JSON.stringify(ledger));
   } catch {
     // 存储不可用时只影响刷新后的计数口径。
   }
@@ -346,13 +340,8 @@ export function useCardBatch(batchId: string | null, t: T) {
 
   // ── 派生：复核队列与小结 ──
   const autoSet = useMemo(() => new Set(ledger.auto), [ledger.auto]);
-  const queue = useMemo(
-    () => cards.filter(card => !autoSet.has(card.cardId) && (needsReview(card, autoSet) || ledger.user.includes(card.cardId) || (isCardSkipped(card) && card.items.some(item => item.status === "skipped")))),
-    [autoSet, cards, ledger.user],
-  );
-  const laterSet = useMemo(() => new Set(ledger.later), [ledger.later]);
-  const isHandled = useCallback((card: IngestV2CardViewModel) => card.allConfirmed || isCardSkipped(card) || laterSet.has(card.cardId), [laterSet]);
-  const pending = queue.filter(card => !isHandled(card));
+  // 队列与待确认的口径与今日要事（W0011）共用 card-batch-model 的 cardReviewQueue。
+  const { isHandled, laterSet, pending, queue } = useMemo(() => cardReviewQueue(cards, ledger), [cards, ledger]);
   const stage = parseStage(status);
   const reviewing = Boolean(status) && stage === "review" && !autoRunning && status !== "cancelled" && status !== "expired";
   const finished = reviewing && pending.length === 0;
