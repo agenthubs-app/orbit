@@ -348,7 +348,7 @@ export function createPlanService(options: CreatePlanServiceOptions): PlanServic
     return full;
   }
 
-  return {
+  const service: PlanService = {
     async getCurrent() {
       return repository.read(scope, async (reader) => {
         const plan = await reader.activePlan();
@@ -369,11 +369,16 @@ export function createPlanService(options: CreatePlanServiceOptions): PlanServic
     },
 
     async createVersion(rawInput) {
+      return (await service.createVersionWithOutcome(rawInput)).snapshot;
+    },
+
+    async createVersionWithOutcome(rawInput) {
       const input = parseCreatePlanVersionInput(rawInput);
       return repository.transact(scope, async (tx) => {
         if (input.creationKey) {
           const existing = await tx.planByCreationKey(input.creationKey);
-          if (existing) return snapshotOf(tx, existing);
+          // 同一 creationKey 已保存过：在同一个按人串行的事务里判定，并发重复提交里只有一份是 created。
+          if (existing) return { created: false, snapshot: await snapshotOf(tx, existing) };
         }
         const active = await tx.activePlan();
         if (input.basePlanId !== undefined && (active?.id ?? null) !== input.basePlanId) {
@@ -481,7 +486,7 @@ export function createPlanService(options: CreatePlanServiceOptions): PlanServic
           targetItemId: null,
           toStatus: "active",
         });
-        return snapshotOf(tx, plan);
+        return { created: true, snapshot: await snapshotOf(tx, plan) };
       });
     },
 
@@ -609,4 +614,5 @@ export function createPlanService(options: CreatePlanServiceOptions): PlanServic
       });
     },
   };
+  return service;
 }

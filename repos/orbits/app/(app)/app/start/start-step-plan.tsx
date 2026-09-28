@@ -4,12 +4,15 @@
  * - 显示当前目标，「修改」就地打开 W0002 的同一个编辑器，编辑的是草稿：取消不覆盖，
  *   保存才写资料里的 relationshipGoal；
  * - 固定问题「根据我的目标和人脉信息，我该如何实现目标？」+ 可选的一句补充 + 回答会包含的 6 点；
- * - 「开始分析」：计划生成（W0008）上线前**不伪造计划**、不写任何计划数据——只提示
- *   「计划生成即将上线」，然后带用户去 iOrbit 对话页（/app/agent）。
+ * - 「开始分析」（W0008）：固定问题连同补充直接发给 `POST /api/agent/plans/bootstrap`
+ *   （不走对话接口）。服务端一次生成并保存为「我的计划 v1」，成功后带用户去
+ *   `/app/agent?plan=<id>&reveal=1`，在对话里看「生成中 → 已完成」的回答卡片。
+ *   同一次提问（目标与补充都没变）重试时沿用同一个幂等键，重复提交只保存一份；
+ *   已有计划（409）直接去看那一份；生成失败什么都不保存，提示重试。
  */
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 
 import type { StartContactSample } from "../../../../features/guide/start-steps";
 import { GoalEditor } from "../profile/goal-editor/goal-editor";
@@ -36,8 +39,14 @@ const OUTLINE = [
   { en: "How to introduce yourself there, and how to follow up", zh: "在那种场合怎么介绍自己、之后怎么跟进" },
 ];
 
-/** 提示出现后多久带用户去对话页（留出读完提示的时间；也可以直接点链接）。 */
-export const START_PLAN_REDIRECT_DELAY_MS = 2400;
+export const START_PLAN_BOOTSTRAP_URL = "/api/agent/plans/bootstrap";
+
+function newIdempotencyKey(): string {
+  const id = globalThis.crypto?.randomUUID?.() ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+  return `plan-${id}`;
+}
+
+type AnalysisState = { kind: "idle" } | { kind: "generating" } | { kind: "failed"; reason: string | null };
 
 export function StepPlan({
   confirmedContacts,
@@ -64,12 +73,9 @@ export function StepPlan({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [supplement, setSupplement] = useState("");
-  const [comingSoon, setComingSoon] = useState(false);
-  const redirectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => () => {
-    if (redirectTimer.current) clearTimeout(redirectTimer.current);
-  }, []);
+  const [analysis, setAnalysis] = useState<AnalysisState>({ kind: "idle" });
+  // 同一次提问（目标 + 补充）沿用同一个幂等键：网络失败后的重试不会生成第二份。
+  const attemptRef = useRef<{ basis: string; key: string } | null>(null);
 
   function startEdit() {
     const current = parseRelationshipGoal(goal);
@@ -99,12 +105,37 @@ export function StepPlan({
     }
   }
 
-  function startAnalysis() {
-    if (editing || !parsed.text) return;
-    setComingSoon(true);
-    const href = preserveHref("/app/agent");
-    if (redirectTimer.current) clearTimeout(redirectTimer.current);
-    redirectTimer.current = setTimeout(() => window.location.assign(href), START_PLAN_REDIRECT_DELAY_MS);
+  async function startAnalysis() {
+    if (editing || !parsed.text || analysis.kind === "generating") return;
+    const trimmed = supplement.trim();
+    const basis = JSON.stringify([goal.trim(), trimmed]);
+    if (attemptRef.current?.basis !== basis) attemptRef.current = { basis, key: newIdempotencyKey() };
+    setAnalysis({ kind: "generating" });
+    try {
+      const response = await fetch(START_PLAN_BOOTSTRAP_URL, {
+        body: JSON.stringify({ idempotencyKey: attemptRef.current.key, locale: lang, supplement: trimmed || null }),
+        headers: { "content-type": "application/json" },
+        method: "POST",
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        data?: { planId?: string };
+        error?: { context?: { planId?: string; reason?: string } };
+        success?: boolean;
+      } | null;
+      const planId = payload?.data?.planId;
+      if (response.ok && payload?.success && planId) {
+        window.location.assign(preserveHref(`/app/agent?plan=${encodeURIComponent(planId)}&reveal=1`));
+        return;
+      }
+      const existing = payload?.error?.context?.planId;
+      if (response.status === 409 && existing) {
+        window.location.assign(preserveHref(`/app/agent?plan=${encodeURIComponent(existing)}`));
+        return;
+      }
+      setAnalysis({ kind: "failed", reason: payload?.error?.context?.reason ?? null });
+    } catch {
+      setAnalysis({ kind: "failed", reason: null });
+    }
   }
 
   const names = samples.map((sample) => sample.displayName).join(lang === "en" ? ", " : "、");
@@ -225,26 +256,36 @@ export function StepPlan({
         <button
           className="btn sg-primary"
           data-start-analyze
-          disabled={editing || !parsed.text || comingSoon}
-          onClick={startAnalysis}
+          aria-busy={analysis.kind === "generating" ? "true" : undefined}
+          disabled={editing || !parsed.text || analysis.kind === "generating"}
+          onClick={() => void startAnalysis()}
           type="button"
         >
-          {t({ en: "Start analysis", zh: "开始分析" })}
+          {analysis.kind === "generating"
+            ? t({ en: "Generating…", zh: "正在生成…" })
+            : analysis.kind === "failed"
+              ? t({ en: "Try again", zh: "重试" })
+              : t({ en: "Start analysis", zh: "开始分析" })}
         </button>
       </div>
-      <p aria-live="polite" className="sg-status" data-start-plan-soon role="status">
-        {comingSoon ? (
-          <>
-            {t({
-              en: "Plan generation is coming soon — nothing has been generated yet. Taking you to iOrbit… ",
-              zh: "计划生成即将上线，现在还不会生成计划。正在带你去 iOrbit… ",
-            })}
-            <a className="sg-lk" data-start-plan-soon-link href={preserveHref("/app/agent")}>
-              {t({ en: "Go now →", zh: "现在就去 →" })}
-            </a>
-          </>
-        ) : null}
+      <p aria-live="polite" className="sg-status" data-start-plan-status={analysis.kind} role="status">
+        {analysis.kind === "generating"
+          ? t({
+              en: "iOrbit is making your plan from your goal, contacts and upcoming events…",
+              zh: "iOrbit 正在根据你的目标、联系人和近期活动生成计划…",
+            })
+          : null}
       </p>
+      {analysis.kind === "failed" ? (
+        <p className="sg-error" data-start-plan-error role="alert">
+          {analysis.reason === "GOAL_REQUIRED"
+            ? t({ en: "Write your goal first, then ask again.", zh: "先写一句目标，再来提问。" })
+            : t({
+                en: "The plan couldn't be generated and nothing was saved. Please try again.",
+                zh: "计划没有生成成功，没有保存任何内容。请再试一次。",
+              })}
+        </p>
+      ) : null}
     </article>
   );
 }

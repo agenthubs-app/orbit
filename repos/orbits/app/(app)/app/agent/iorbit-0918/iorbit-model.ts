@@ -19,12 +19,19 @@ import type {
 } from "../../orbit-agent-route-view-model";
 import { gradientFromString } from "../../orbit-reference-primitives";
 import { parseAgentTaskInteraction, type AgentTaskInteractionView } from "../agent-task-interaction-view-model";
+import type { IOrbitPlanCardMessage } from "./iorbit-plan-card-model";
 
 type AgentPanel = Pick<OrbitAgentScenarioView, "items" | "kind" | "panelTitle">;
 type AgentReliableRequest = ReliableAiSendInputContract;
 
 type AgentMessage =
-  | { id?: string; role: "user"; text: string }
+  | {
+      id?: string;
+      role: "user";
+      /** W0008：固定问题的「补充一句」，在气泡里另起一行显示（仅前端）。 */
+      supplement?: string;
+      text: string;
+    }
   | {
       actionIds?: readonly string[];
       evidenceRefs?: readonly AgentEvidenceRef[];
@@ -33,6 +40,11 @@ type AgentMessage =
       id?: string;
       note?: string;
       panelTitle: string;
+      /**
+       * W0008：第一份计划的回答卡片（仅前端类型，不进 `shared/contract/ai-sessions`）。
+       * 这类回合由壳从已保存的计划拼出，不进对话历史、不发给对话接口。
+       */
+      planCard?: IOrbitPlanCardMessage;
       retryRequest?: string;
       reliableRequest?: AgentReliableRequest;
       role: "assistant";

@@ -9,6 +9,10 @@
  * W0004 示例模式：开关 `ORBIT_GUIDE_DEMO` 打开时，服务端按真实数据推导引导进度
  * （`features/guide/progress.ts`），处于引导期的人把 `guide` 下传给壳，壳改渲染示例。
  * 开关关闭时 `readGuideStatusForActor` 不做任何读取、直接返回 null，页面与 W0001 一致。
+ *
+ * W0008：`?plan=<id>` 以本人身份读这份计划（他人的计划一律视为不存在），映射成回答卡片的
+ * 视图模型交给壳，直接落在对话分支；`&reveal=1`（第 3 步生成完跳来）让卡片揭示一次。
+ * 示例壳没有对话分支，处于示例期时不读计划。
  */
 import { getOrbitServerLanguage, localizeOrbitTree } from "../orbit-language-server";
 import type { OrbitLanguage } from "../orbit-language-core";
@@ -32,13 +36,33 @@ import { resolveConfiguredActorEventCanonicalIds } from "../canonical-event-deta
 import { readCommunityJoinedForActor } from "../../../../features/community/service-factory";
 import { readGuideStatusForActor, type GuideStatus } from "../../../../features/guide/progress";
 import type { DemoModeView } from "../_demo/demo-mode-context";
+import { resolvePlanService } from "../../../../features/plans/service-factory";
+import {
+  planCardViewFromSnapshot,
+  type IOrbitPlanCardView,
+} from "./iorbit-0918/iorbit-plan-card-model";
 
 export type AppAgentSearchParams = AppChatSearchParams & {
   /** `?history=1`：strategy / contacts 两屏页头的「◷ 历史记录」落点（任务 5）。 */
   history?: string | string[];
   lang?: string | string[];
+  /** W0008：`?plan=<id>` 打开一份已保存计划的回答卡片；`&reveal=1` 只在刚生成完时带。 */
+  plan?: string | string[];
   q?: string | string[];
+  reveal?: string | string[];
 };
+
+/** 本人的某份计划 → 回答卡片。读不到、不是本人的、不是第一份计划生成的都返回 null（落回概览）。 */
+async function readPlanCard(actorId: string, planId: string): Promise<IOrbitPlanCardView | null> {
+  try {
+    const resolution = resolvePlanService({ actorId });
+    if (resolution.success === false) return null;
+    const snapshot = await resolution.service.getPlan(planId);
+    return snapshot ? planCardViewFromSnapshot(snapshot) : null;
+  } catch {
+    return null;
+  }
+}
 
 async function getAgentPageLanguage(): Promise<OrbitLanguage> {
   try {
@@ -200,6 +224,8 @@ export default async function AppAgentPage({
           }),
         )
       : null;
+  const requestedPlanId = firstSearchParam(resolvedSearchParams, "plan");
+  const planCard = requestedPlanId && !guide ? await readPlanCard(actorId, requestedPlanId) : null;
   const entryModel = composeOrbitAgentEntryViewModel(routeModel);
   const language =
     entryModel.state === "ready"
@@ -217,8 +243,11 @@ export default async function AppAgentPage({
             guide={guide}
             initialDeepLink={Boolean(
               firstSearchParam(resolvedSearchParams, "q") ||
-                firstSearchParam(resolvedSearchParams, "session"),
+                firstSearchParam(resolvedSearchParams, "session") ||
+                planCard,
             )}
+            initialPlanCard={planCard}
+            initialPlanReveal={Boolean(planCard) && firstSearchParam(resolvedSearchParams, "reveal") === "1"}
             initialHistoryOpen={
               firstSearchParam(resolvedSearchParams, "history") === "1"
             }
