@@ -41,6 +41,8 @@
 | D27 | W0029 预算重算：用户路径总账实测 1,106.83 MB | 在 1.0～1.2 GB 之间，按 D20 放宽到 ≤1.2 GB，登记给 W0019（2026-09-29） | W0019 |
 | D28 | W0031 观察 1：每个登录请求的 `auth()` jwt 回调调 `isPasswordSessionCurrent`，整行读 `auth_users`（约 850 B，平均每请求 1.6 次），估算每月数 GB | 发布前另开 W0032：先按生产构建实测，再让会话有效性检查只读判定所需字段（或同一请求只读一次），密码修改后旧会话立即失效的安全行为不变；排在 W0019 前（2026-09-29） | W0032、W0019 |
 | D29 | W0031 观察 2：通知来源页 `/app/inbox/sources/[id]` 因 id 重复编码返回 404（既有问题） | 发布前修，另开 L 档 W0033（2026-09-29） | W0033、W0019 |
+| D30 | W32-1～6 | W32-1 只做字段瘦身，不做同请求只检查一次；W32-2 不允许跨请求缓存；W32-3 单次字节 ≤改前 30% 为硬条件，月上限 ≤2.0 GB 单独记账，实测超出时放宽上限不扩大改动；W32-4 频次沿用 W0031 实测并按实测补齐；W32-5 读库失败即登出保持不变并补 Auth.js 集成测试；W32-6 密码重设提交时驱逐进行中的检查（2026-09-29） | W0032 |
+| D31 | 登录会话有效性检查在多实例下的保证范围 | 所有实例都绝对保证：该检查不参加进程内去重（每次检查唯一 key），只过闸门与计量；取代 D30 的 W32-6 驱逐方案（2026-09-29） | W0032 |
 
 ## 发布动作（需要单独授权）
 
@@ -85,7 +87,7 @@
 | [W0029](W0029-attendee-roster-trim/GOAL.md) | 详情页报名者名单与「谁会来」匿名预览只读所需字段，合计 ≤200 MB/月；按实测重算用户路径总额（D20） | RV-03、RV-05 | W0027、W0028、W0030（D22 顺序）；PLANNER 已刷新（revision 3） | completed |
 | [W0030](W0030-account-session-graph-trim/GOAL.md) | 账号会话图读取（`readAccountSessionGraph`／`resolveAuthenticatedApiActorFromSession`）只返回判定所需字段，22 个调用方行为不变；详情页账号解析单次字节与月流量实测回到上限内 | RV-03、RV-05 | W0027、W0028（D22 顺序）；W30-1～4 已定（D23） | completed |
 | [W0031](W0031-inbox-identity-polling/GOAL.md) | 收件箱轮询与 `/api/account/me` 瘦身：每个轮询周期只确认一次身份，账号会话服务只返回页面所需字段；按生产构建实测频次并估算月流量 | RV-03、RV-05 | W0029（顺序）、W0030（D24）；W31-1～5 已定（D25） | completed |
-| [W0032](W0032-session-revocation-read/GOAL.md) | 登录会话有效性检查（`isPasswordSessionCurrent`）读取瘦身：生产构建实测每请求读取与月流量，只读判定所需字段或同请求只读一次，安全行为不变 | RV-03、RV-05 | W0031（D28）；W32-1～5 待定 | planned |
+| [W0032](W0032-session-revocation-read/GOAL.md) | 登录会话有效性检查（`isPasswordSessionCurrent`）读取瘦身：生产构建实测每请求读取与月流量，只读判定所需字段或同请求只读一次，安全行为不变 | RV-03、RV-05 | W0031（D28）；W32 已定（D30、D31） | ready |
 | [W0033](W0033-notification-source-404/GOAL.md) | 通知来源页 id 重复编码导致 404 的修复（L） | RV-02 | W0031（D29） | completed |
 
 全部 Sprint 都已有 GOAL 与 PLANNER（2026-09-28 编制；大目标 1 与大目标 2 各经 Codex `gpt-5.6-sol` 方案 review 后修订为 revision 2，review 意见与处理见 [REVIEW-2026-09-28.md](REVIEW-2026-09-28.md)）。`planned` 表示前置 Sprint 尚未 completed；前置完成后改为 `ready`。
