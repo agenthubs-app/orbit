@@ -2,7 +2,7 @@ import type { OrbitLanguage } from "../api/contract/language";
 import type { NoteContract, NoteMentionContract } from "../api/contract/notes";
 import { createTranslator } from "../i18n/messages";
 
-export type NoteView = NoteContract;
+export type NoteView = NoteContract & { localMutationState?: "queued" | "conflict" | "failed" };
 
 type NoteRequestResult<TBody> =
   | { success: true; body: TBody }

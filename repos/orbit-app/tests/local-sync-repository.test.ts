@@ -1003,6 +1003,121 @@ test("an outbox mutation persists the exact request body before its first attemp
   assert.equal(retry?.firstAttemptAt, "2026-09-16T00:02:00.000Z");
 });
 
+test("resolving a note conflict replaces its frozen row and keeps dependent edits attached", async (t) => {
+  const setup = await repository();
+  t.after(() => setup.database.close());
+  await setup.repository.enqueueOutboxMutation({
+    actorId: "actor-a", workspaceId: "workspace-a", domainId: "notes", mutationId: "conflicted-note-edit",
+    kind: "note", id: "note-a", operation: "update", patch: { title: "local" },
+    requestJson: JSON.stringify({ title: "local", body: "local body", expectedVersion: 2, idempotencyKey: "conflicted-note-edit" }),
+    baseRevision: "mirror-r1", createdAt: "2026-09-16T00:00:00.000Z", retryCount: 0, nextRetryAt: null, lastErrorCode: null,
+  });
+  const beginAttempt = (setup.repository as unknown as { beginOutboxMutationAttempt(input: unknown): Promise<unknown> }).beginOutboxMutationAttempt;
+  await beginAttempt.call(setup.repository, { mutationId: "conflicted-note-edit", attemptedAt: "2026-09-16T00:00:00.500Z" });
+  const markFailure = (setup.repository as unknown as { markOutboxMutationFailure(input: unknown): Promise<void> }).markOutboxMutationFailure;
+  await markFailure.call(setup.repository, { mutationId: "conflicted-note-edit", state: "conflict", nextRetryAt: null, errorCode: "CONFLICT", serverSnapshot: { version: 3 } });
+  await setup.repository.enqueueOutboxMutation({
+    actorId: "actor-a", workspaceId: "workspace-a", domainId: "notes", mutationId: "dependent-note-edit",
+    kind: "note", id: "note-a", operation: "update", patch: { title: "later" }, requestJson: "{}",
+    baseRevision: "mirror-r1", dependsOn: "conflicted-note-edit", createdAt: "2026-09-16T00:00:01.000Z", retryCount: 0, nextRetryAt: null, lastErrorCode: null,
+  });
+  const resolveConflict = (setup.repository as unknown as { resolveNoteConflict(input: unknown): Promise<void> }).resolveNoteConflict;
+  await resolveConflict.call(setup.repository, {
+    workspaceId: "workspace-a", mutationId: "conflicted-note-edit", resolution: "replace",
+    replacement: {
+      actorId: "actor-a", workspaceId: "workspace-a", domainId: "notes", mutationId: "replacement-note-edit",
+      kind: "note", id: "note-a", operation: "update", patch: { title: "local" },
+      requestJson: JSON.stringify({ title: "local", body: "local body", expectedVersion: 3, idempotencyKey: "replacement-note-edit" }),
+      baseRevision: "mirror-r2", createdAt: "2026-09-16T00:00:02.000Z", retryCount: 0, nextRetryAt: null, lastErrorCode: null,
+    },
+  });
+  const rows = await setup.database.all<{ mutation_id: string; state: string; depends_on: string | null; request_json: string }>(
+    "SELECT mutation_id, state, depends_on, request_json FROM sync_outbox WHERE workspace_id = ? ORDER BY mutation_id", ["workspace-a"],
+  );
+  assert.deepEqual(rows.map(row => ({ ...row })), [
+    { mutation_id: "dependent-note-edit", state: "queued", depends_on: "replacement-note-edit", request_json: "{}" },
+    { mutation_id: "replacement-note-edit", state: "queued", depends_on: null, request_json: JSON.stringify({ title: "local", body: "local body", expectedVersion: 3, idempotencyKey: "replacement-note-edit" }) },
+  ]);
+});
+
+test("choosing the server version removes the conflicted row and its dependent edits", async (t) => {
+  const setup = await repository();
+  t.after(() => setup.database.close());
+  await setup.repository.enqueueOutboxMutation({
+    actorId: "actor-a", workspaceId: "workspace-a", domainId: "notes", mutationId: "conflicted-note-edit",
+    kind: "note", id: "note-a", operation: "update", patch: { title: "local" }, requestJson: "{}",
+    baseRevision: "mirror-r1", createdAt: "2026-09-16T00:00:00.000Z", retryCount: 0, nextRetryAt: null, lastErrorCode: null,
+  });
+  const markFailure = (setup.repository as unknown as { markOutboxMutationFailure(input: unknown): Promise<void> }).markOutboxMutationFailure;
+  await markFailure.call(setup.repository, { mutationId: "conflicted-note-edit", state: "conflict", nextRetryAt: null, errorCode: "CONFLICT" });
+  const resolveConflict = (setup.repository as unknown as { resolveNoteConflict(input: unknown): Promise<void> }).resolveNoteConflict;
+  await resolveConflict.call(setup.repository, { workspaceId: "workspace-a", mutationId: "conflicted-note-edit", resolution: "server" });
+  assert.deepEqual(await setup.database.all<{ mutation_id: string }>("SELECT mutation_id FROM sync_outbox WHERE workspace_id = ?", ["workspace-a"]), []);
+});
+
+test("an unattempted note create absorbs later edits into its original POST receipt", async (t) => {
+  const setup = await repository();
+  t.after(() => setup.database.close());
+  await setup.repository.enqueueOutboxMutation({
+    actorId: "actor-a", workspaceId: "workspace-a", domainId: "notes", mutationId: "create-receipt",
+    kind: "note", id: "local:note-1", operation: "create",
+    patch: { title: "First", body: "First body", manualContactIds: [], mentions: [], eventIds: [] },
+    requestJson: JSON.stringify({ title: "First", body: "First body", manualContactIds: [], mentions: [], eventIds: [], idempotencyKey: "create-receipt" }),
+    baseRevision: null, createdAt: "2026-09-16T00:00:00.000Z", retryCount: 0, nextRetryAt: null, lastErrorCode: null,
+  });
+  await setup.repository.enqueueOutboxMutation({
+    actorId: "actor-a", workspaceId: "workspace-a", domainId: "notes", mutationId: "edit-receipt",
+    kind: "note", id: "local:note-1", operation: "update",
+    patch: { title: "Edited", body: "Edited body", manualContactIds: [], mentions: [], eventIds: [] },
+    requestJson: JSON.stringify({ title: "Edited", body: "Edited body", manualContactIds: [], mentions: [], eventIds: [], expectedVersion: 0, idempotencyKey: "edit-receipt" }),
+    baseRevision: null, createdAt: "2026-09-16T00:00:01.000Z", retryCount: 0, nextRetryAt: null, lastErrorCode: null,
+  });
+
+  const rows = await setup.database.all<{ mutation_id: string; operation: string; attempt_count: number; request_json: string }>(
+    "SELECT mutation_id, operation, attempt_count, request_json FROM sync_outbox WHERE record_id = ?",
+    ["local:note-1"],
+  );
+  assert.deepEqual(rows.map(row => ({ ...row })), [{
+    mutation_id: "create-receipt",
+    operation: "create",
+    attempt_count: 0,
+    request_json: JSON.stringify({ title: "Edited", body: "Edited body", manualContactIds: [], mentions: [], eventIds: [], idempotencyKey: "create-receipt" }),
+  }]);
+});
+
+test("repeated unattempted note edits keep the first server version while replacing the local body", async (t) => {
+  const setup = await repository();
+  t.after(() => setup.database.close());
+  const request = (idempotencyKey: string, title: string, body: string, expectedVersion: number) => ({
+    title, body, manualContactIds: [], mentions: [], eventIds: [], expectedVersion, idempotencyKey,
+  });
+  await setup.repository.enqueueOutboxMutation({
+    actorId: "actor-a", workspaceId: "workspace-a", domainId: "notes", mutationId: "note-edit-first",
+    kind: "note", id: "note-a", operation: "update",
+    patch: { title: "First local title", body: "First local body", manualContactIds: [], mentions: [], eventIds: [] },
+    requestJson: JSON.stringify(request("note-edit-first", "First local title", "First local body", 2)),
+    baseRevision: "opaque-original-revision", createdAt: "2026-09-16T00:00:00.000Z", retryCount: 0,
+    nextRetryAt: null, lastErrorCode: null,
+  });
+  await setup.repository.enqueueOutboxMutation({
+    actorId: "actor-a", workspaceId: "workspace-a", domainId: "notes", mutationId: "note-edit-second",
+    kind: "note", id: "note-a", operation: "update",
+    patch: { title: "Final local title", body: "Final local body", manualContactIds: [], mentions: [], eventIds: [] },
+    requestJson: JSON.stringify(request("note-edit-second", "Final local title", "Final local body", 3)),
+    baseRevision: "opaque-overlay-revision", createdAt: "2026-09-16T00:01:00.000Z", retryCount: 0,
+    nextRetryAt: null, lastErrorCode: null,
+  });
+
+  const rows = await setup.database.all<{ mutation_id: string; base_revision: string; request_json: string; attempt_count: number }>(
+    "SELECT mutation_id, base_revision, request_json, attempt_count FROM sync_outbox WHERE workspace_id = ? AND domain_id = ? AND record_id = ?",
+    ["workspace-a", "notes", "note-a"],
+  );
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0]?.base_revision, "opaque-original-revision");
+  assert.equal(rows[0]?.attempt_count, 0);
+  assert.deepEqual(JSON.parse(rows[0]!.request_json), request(rows[0]!.mutation_id, "Final local title", "Final local body", 2));
+});
+
 test("outbox overlay returns server truth and unconfirmed edits separately", async (t) => {
   const setup = await repository();
   t.after(() => setup.database.close());

@@ -48,7 +48,8 @@ export function useNoteDetailSource(input: { actorId: string; noteId: string; sc
 export function useNotesWriteStatus(actorId: string): NotesWriteStatus {
   const mirrorActive = useWebMirrorStatus().mode === "local-mirror";
   const fromMirror = useMirrorNotesWriteStatus(actorId, mirrorActive);
-  return mirrorActive ? fromMirror : { ...ONLINE_STATUS, async confirmSaved() { return true; } };
+  if (!mirrorActive) return { ...ONLINE_STATUS, queuedCount: 0, async enqueueOfflineMutation() { throw new Error("离线笔记写入仅在 Orbit App 中可用。"); }, async confirmSaved() { return true; } };
+  return { ...fromMirror, async enqueueOfflineMutation() { throw new Error("离线笔记写入仅在 Orbit App 中可用。"); } };
 }
 
 function useNetworkNotesList(input: NotesListSourceInput, enabled: boolean): NotesListSource {
@@ -129,6 +130,8 @@ function useNetworkNoteDetail(input: { actorId: string; noteId: string; scopeKey
   const note = loaded ? noteFromPayload(state.data, input.actorId, input.noteId, locale.language) : null;
   return {
     note,
+    conflictMutation: null,
+    baseRevision: null,
     loading: state.kind === "loading",
     failure: state.kind === "failure" || state.kind === "offline" ? state.error.message : null,
     missing: loaded && !note,
@@ -137,5 +140,6 @@ function useNetworkNoteDetail(input: { actorId: string; noteId: string; scopeKey
     ...ONLINE_STATUS,
     // The network source is the authority: re-read it and accept the receipt.
     async confirmSaved() { state.refresh(); return true; },
+    async resolveConflict() { throw new Error("离线冲突处理仅在 Orbit App 中可用。"); },
   };
 }

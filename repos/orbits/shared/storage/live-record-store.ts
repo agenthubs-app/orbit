@@ -78,6 +78,8 @@ export interface LiveRecordDeleteInput {
 export interface LiveRecordWritePrecondition {
   userId: string | null;
   updatedAt: string;
+  /** Optional payload-level version condition for records whose domain version is authoritative. */
+  expectedPayloadVersion?: { path: readonly string[]; value: number };
 }
 
 export type LiveRecordStoreResult<TValue> = TValue | Promise<TValue>;
@@ -224,11 +226,18 @@ export function createMemoryLiveRecordStore<
   return {
     updateRecordIfCurrent(record, expected) {
       const current = records.get(recordKey(record));
-      if (!(Date.parse(record.updatedAt) > Date.parse(expected.updatedAt)) ||
+      let payloadVersion: unknown = current?.payload;
+      for (const segment of expected.expectedPayloadVersion?.path ?? []) {
+        payloadVersion = typeof payloadVersion === "object" && payloadVersion !== null
+          ? (payloadVersion as Record<string, unknown>)[segment]
+          : undefined;
+      }
+      if ((!expected.expectedPayloadVersion && !(Date.parse(record.updatedAt) > Date.parse(expected.updatedAt))) ||
           !current || current.lifecycleState === "deleted" ||
           (current.userId ?? null) !== expected.userId ||
           (record.userId ?? null) !== expected.userId ||
-          current.updatedAt !== expected.updatedAt) return null;
+          current.updatedAt !== expected.updatedAt ||
+          (expected.expectedPayloadVersion !== undefined && payloadVersion !== expected.expectedPayloadVersion.value)) return null;
       records.set(recordKey(record), cloneJson(record));
       return cloneJson(record);
     },

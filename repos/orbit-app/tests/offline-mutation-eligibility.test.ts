@@ -8,14 +8,15 @@ const facts = { actorPrivate: true, confirmed: true, connectionActive: true };
 const command = { mutationId: "m1", kind: "note", entityId: "local:123e4567-e89b-42d3-a456-426614174000", operation: "create",
   baseRevision: null, patch: { body: "Hello" }, createdAt: "2026-09-16T00:00:00Z" };
 
-test("the offline-write foundation enables no product mutation domain", () => {
+test("only private, confirmed note create and update mutations are offline eligible", () => {
   const productOperations: Record<string, string[]> = {
     note: ["create", "update", "delete"], task: ["create", "update", "complete", "reopen", "cancel", "delete"],
     relationship_followup: ["update", "complete", "reopen", "cancel", "delete"], personal_schedule: ["create", "update", "delete"],
   };
   for (const [kind, operations] of Object.entries(productOperations)) {
     for (const operation of operations) {
-      assert.equal(isOfflineEligible(kind, operation, facts), false, `${kind}.${operation}`);
+      const expected = kind === "note" && (operation === "create" || operation === "update");
+      assert.equal(isOfflineEligible(kind, operation, facts), expected, `${kind}.${operation}`);
       assert.equal(isOfflineEligible(kind, operation, { ...facts, actorPrivate: false }), false);
       assert.equal(isOfflineEligible(kind, operation, { ...facts, confirmed: false }), false);
     }
@@ -48,9 +49,10 @@ test("strict mutation parsing accepts domain patches and retains opaque revision
   for (const kind of ["task", "relationship_followup"]) for (const operation of ["complete", "reopen", "cancel", "delete"]) {
     assert.equal(parseMutation({ ...command, kind, operation, entityId: "t1", baseRevision: "r1", patch: {} }).operation, operation);
   }
-  for (const kind of ["note", "personal_schedule"]) {
-    assert.equal(parseMutation({ ...command, kind, operation: "delete", entityId: "one", baseRevision: "r1", patch: {} }).operation, "delete");
-  }
+  assert.equal(parseMutation({ ...command, kind: "personal_schedule", operation: "delete", entityId: "one", baseRevision: "r1", patch: {} }).operation, "delete");
+  assert.throws(() => parseMutation({ ...command, kind: "note", operation: "delete", entityId: "one", baseRevision: "r1", patch: {} }), /mutation-operation-denied/);
+  assert.equal(parseMutation({ ...command, operation: "update", baseRevision: null, patch: { body: "local follow-up" } }).baseRevision, null,
+    "a local-ID note update can rely on its queued create dependency instead of inventing a server revision");
 });
 
 test("mutation parser rejects authority, credentials, binary, suggestions and unsupported fields", () => {
@@ -76,7 +78,7 @@ test("mutation parser rejects missing revisions, invalid dates, empty patches an
   for (const input of [
     { ...command, mutationId: " " }, { ...command, createdAt: "yesterday" },
     { ...command, entityId: "server-id" }, { ...command, baseRevision: "r1" },
-    { ...command, operation: "update", baseRevision: null },
+    { ...command, operation: "update", baseRevision: null, entityId: "note:one" },
     { ...command, operation: "update", baseRevision: " ", entityId: "n1" },
     { ...command, operation: "update", baseRevision: "r1", entityId: "n1", patch: {} },
     { ...command, operation: "delete", baseRevision: "r1", entityId: "n1", patch: { body: "x" } },
@@ -124,7 +126,7 @@ test("local-read capability never supplies online authority and an unbound regis
   const port: ScopePort = { assertLocalRead: () => {}, storageKey: () => "verified-scope-key", isActive: () => true,
     requireOnline: async () => { throw Error("online-required"); } };
   port.assertLocalRead(scope, "note");
-  assert.equal(isOfflineEligible("note", "create", facts), false);
+  assert.equal(isOfflineEligible("note", "create", facts), true);
   await assert.rejects(port.requireOnline(scope, "note"), /online-required/);
   assert.throws(() => new OfflineDataPolicyRegistry().resolve("GET", "/api/notes", "read"), /policy-not-registered/);
 });

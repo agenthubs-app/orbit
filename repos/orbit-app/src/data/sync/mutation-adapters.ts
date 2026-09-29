@@ -2,15 +2,17 @@ import type { Mutation } from "../../api/contract/offline-mutations";
 import { parseOfflineMutation } from "../../api/schema/offline-mutations";
 
 export function isOfflineEligible(
-  _kind: string,
-  _operation: string,
-  _facts: {
+  kind: string,
+  operation: string,
+  facts: {
     actorPrivate: boolean;
     confirmed: boolean;
     connectionActive: boolean;
   },
 ): boolean {
-  return false;
+  return kind === "note" &&
+    (operation === "create" || operation === "update") &&
+    facts.actorPrivate && facts.confirmed && facts.connectionActive;
 }
 
 export function parseMutation(input: unknown): Mutation {

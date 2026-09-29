@@ -1,4 +1,5 @@
 import type { SyncChangeKind, SyncRecord } from "../../api/contract/sync";
+import type { OrbitApiClient } from "../../api/client";
 import type { DomainManifest, OfflineReadEnvelope, ReadScope } from "../../api/contract/universal-read";
 import { evaluateOfflineRead } from "../../api/offline-read-session";
 import { offlineReadEnvelopeSchema } from "../../api/schema/universal-read";
@@ -8,6 +9,7 @@ import {
   createLocalSyncRepository,
   type LocalSyncCursor,
   type LocalSyncOutboxMutation,
+  type LocalSyncQueuedMutation,
 } from "./local-sync-repository";
 import type { SyncSessionScope } from "./sync-database-key";
 import {
@@ -15,6 +17,8 @@ import {
   SyncResetRequiredError,
 } from "./sync-client";
 import { findPageCopyDefinition, PAGE_COPY_DEFINITIONS, type PageCopy } from "./page-copies";
+import { isOfflineEligible } from "./mutation-adapters";
+import { parseOfflineNoteRequest } from "./note-outbox-mutation";
 import { kindOfSyncDomain, KNOWN_SYNC_DOMAINS, PARTITIONED_SYNC_DOMAINS, syncDomainOfKind } from "./sync-domains";
 import {
   shouldSynchronize,
@@ -80,6 +84,8 @@ export interface SyncScopeInput {
   actorId: string;
   baseUrl: string;
   client: SyncClient;
+  /** Product write transport, absent in sync-only fixtures and online-only platforms. */
+  writeClient?: Pick<OrbitApiClient, "post" | "patch">;
   /** Offline identity may read a renewed lease, but must never upload queued writes. */
   offlineMode?: boolean;
   scopeKey: string;
@@ -106,6 +112,8 @@ export interface SyncCoordinatorSession {
   ): Promise<SyncedCollectionSnapshot<TPayload> | null>;
   /** Sprint 0131: the named rows of a kind from the device (at most 200); null without a mirror or grant. */
   readRecordsById<TPayload = unknown>(kind: SyncChangeKind, ids: readonly string[]): Promise<readonly SyncRecord<TPayload>[] | null>;
+  /** Server mirror overlaid with queued writes for a single authenticated sync scope. */
+  readOutboxOverlay(kind: SyncChangeKind): Promise<{ serverRecords: readonly SyncRecord[]; queuedMutations: readonly LocalSyncQueuedMutation[] } | null>;
   synchronize<TPayload = unknown>(
     kind: SyncChangeKind,
     options?: SyncOptions & { records?: boolean },
@@ -121,9 +129,21 @@ export interface SyncCoordinatorSession {
    */
   readPageCopy<TData = unknown>(id: string, variant: string): Promise<PageCopy<TData> | null>;
   savePageCopy(id: string, variant: string, data: unknown): Promise<void>;
+  /** Resolve an acknowledged local note id through the active actor/workspace alias table. */
+  resolveNoteAlias(localId: string): Promise<string | null>;
   /** Test-only queue insertion; product domains remain closed until their own Sprint adapter exists. */
   enqueueTestOutboxMutation(mutation: LocalSyncOutboxMutation): Promise<void>;
+  /** Sprint 0132: the only product writes admitted to the native offline outbox are private notes. */
+  enqueueOfflineNoteMutation(mutation: OfflineNoteMutationInput): Promise<void>;
+  /** Sprint 0132: resolve only a conflict row inside the currently accepted notes lease. */
+  resolveNoteConflict?(input: {
+    mutationId: string;
+    resolution: "server" | "replace";
+    replacement?: OfflineNoteMutationInput;
+  }): Promise<void>;
 }
+
+export type OfflineNoteMutationInput = Omit<LocalSyncOutboxMutation, "actorId" | "workspaceId">;
 
 interface ActiveScope extends SyncScopeInput {
   /** The last accepted server lease; read scopes derive from its grants. */
@@ -167,7 +187,15 @@ export function createSyncCoordinator(input: {
   /** SHA-256 hex of a serialized payload; required by the v2 mirror for every applied record. */
   hashPayload?: (serialized: string) => Promise<string>;
   /** Runs queued writes only after a valid online lease and before mirrored server rows are pulled. */
-  uploadOutbox?: (scope: { actorId: string; baseUrl: string; workspaceId: string; signal: AbortSignal }) => Promise<void>;
+  uploadOutbox?: (scope: {
+    actorId: string;
+    baseUrl: string;
+    workspaceId: string;
+    signal: AbortSignal;
+    repository: ReturnType<typeof createLocalSyncRepository>;
+    syncClient: SyncClient;
+    writeClient?: Pick<OrbitApiClient, "post" | "patch">;
+  }) => Promise<void>;
   /** Explicit queue namespaces used only by test fixtures; not registered in the app coordinator. */
   testOnlyOutboxDomains?: readonly string[];
   /** A manifest failure is not a sync failure: every domain is pulled as before, and this hears why. */
@@ -254,10 +282,13 @@ export function createSyncCoordinator(input: {
       return;
     }
     try {
-      const { workspaceId, storedLease } = await withRepository(scope, async (repository) => ({
-        workspaceId: await repository.getLastWorkspaceId(),
-        storedLease: await repository.getLease(),
-      }));
+      const { workspaceId, storedLease } = await withRepository(scope, async (repository) => {
+        await repository.recoverInterruptedOutboxAttempts();
+        return {
+          workspaceId: await repository.getLastWorkspaceId(),
+          storedLease: await repository.getLease(),
+        };
+      });
       if (!isCurrent(scope)) return;
       scope.lease = acceptedLease(scope, storedLease);
       scope.workspaceId = scope.lease?.grants[0]?.workspaceId ?? workspaceId;
@@ -429,7 +460,15 @@ export function createSyncCoordinator(input: {
         }
 
         if (input.uploadOutbox && !scope.offlineMode && !controller.signal.aborted) {
-          await input.uploadOutbox({ actorId: scope.actorId, baseUrl: scope.baseUrl, workspaceId, signal: controller.signal });
+          await withRepository(scope, repository => input.uploadOutbox!({
+            actorId: scope.actorId,
+            baseUrl: scope.baseUrl,
+            workspaceId,
+            signal: controller.signal,
+            repository,
+            syncClient: scope.client,
+            ...(scope.writeClient ? { writeClient: scope.writeClient } : {}),
+          }));
           if (!isCurrent(scope) || flight.abandoned) return null;
         }
 
@@ -530,6 +569,8 @@ export function createSyncCoordinator(input: {
       active.actorId === scopeInput.actorId
     ) {
       active.client = scopeInput.client;
+      if (scopeInput.writeClient) active.writeClient = scopeInput.writeClient;
+      else delete active.writeClient;
       active.offlineMode = Boolean(scopeInput.offlineMode);
     } else {
       if (active) supersede(active);
@@ -589,6 +630,16 @@ export function createSyncCoordinator(input: {
         const workspaceId = bound.workspaceId;
         try { return await withRepository(bound, (repository) => repository.listRecordsByIds({ workspaceId, kind, ids })) as readonly SyncRecord<TPayload>[]; } catch (error) { if (error instanceof LocalMirrorUnavailableError) return null; throw error; }
       },
+      async readOutboxOverlay(kind: SyncChangeKind) {
+        await bound.ready;
+        if (!isCurrent(bound) || bound.workspaceId === null || !readScopeFor(bound, kind)) return null;
+        try {
+          return await withRepository(bound, repository => repository.readOutboxOverlay({ workspaceId: bound.workspaceId!, kind }));
+        } catch (error) {
+          if (error instanceof LocalMirrorUnavailableError) return null;
+          throw error;
+        }
+      },
       async openAiSession(sessionId: string) {
         await bound.ready;
         if (!isCurrent(bound) || bound.workspaceId === null) return null;
@@ -620,6 +671,17 @@ export function createSyncCoordinator(input: {
         if (!isCurrent(bound) || !binding || !registeredPageCopyIds.includes(id)) return;
         try { await withRepository(bound, (repository) => repository.setPageCopy(binding, id, variant, { data, syncedAt: new Date(now()).toISOString() })); } catch (error) { if (!(error instanceof LocalMirrorUnavailableError)) throw error; }
       },
+      async resolveNoteAlias(localId: string): Promise<string | null> {
+        await bound.ready;
+        const readScope = readScopeFor(bound, "note");
+        if (!isCurrent(bound) || !readScope || !localId.startsWith("local:")) return null;
+        return withRepository(bound, repository => repository.resolveAlias({
+          workspaceId: readScope.workspaceId,
+          domainId: "notes",
+          localId,
+          now: new Date(now()).toISOString(),
+        }));
+      },
       async enqueueTestOutboxMutation(mutation: LocalSyncOutboxMutation): Promise<void> {
         await bound.ready;
         if (!input.testOnlyOutboxDomains?.includes(mutation.domainId ?? "")) throw new TypeError("only a registered test-only outbox domain may be enqueued in this Sprint");
@@ -627,6 +689,76 @@ export function createSyncCoordinator(input: {
           throw new TypeError("outbox mutation is outside the active actor/workspace");
         }
         await withRepository(bound, repository => repository.enqueueOutboxMutation(mutation));
+      },
+      async enqueueOfflineNoteMutation(mutation: Omit<LocalSyncOutboxMutation, "actorId" | "workspaceId">): Promise<void> {
+        await bound.ready;
+        if (!isCurrent(bound) || bound.workspaceId === null) {
+          throw new TypeError("outbox mutation is outside the active actor/workspace");
+        }
+        const noteScope = readScopeFor(bound, "note");
+        const currentLease = bound.lease ? acceptedLease(bound, bound.lease) : null;
+        const hasCurrentNotesGrant = Boolean(noteScope && currentLease?.grants.some(grant =>
+          grant.workspaceId === noteScope.workspaceId && grant.domainId === noteScope.domainId &&
+          grant.authorizationEpoch === noteScope.authorizationEpoch));
+        if (!hasCurrentNotesGrant || mutation.domainId !== "notes" || mutation.kind !== "note" || !mutation.requestJson) {
+          throw new TypeError("note mutation is not eligible");
+        }
+        let parsed: ReturnType<typeof parseOfflineNoteRequest>;
+        try {
+          parsed = parseOfflineNoteRequest(mutation);
+        } catch {
+          throw new TypeError("note mutation is not eligible");
+        }
+        const { mutation: request } = parsed;
+        if (!isOfflineEligible(request.kind, request.operation, {
+          actorPrivate: true,
+          confirmed: true,
+          connectionActive: isCurrent(bound),
+        }) || request.mutationId !== mutation.mutationId || request.entityId !== mutation.id ||
+            request.operation !== mutation.operation || request.baseRevision !== mutation.baseRevision ||
+            JSON.stringify(request.patch) !== JSON.stringify(mutation.patch)) {
+          throw new TypeError("note mutation is not eligible");
+        }
+        await withRepository(bound, async repository => {
+          let dependsOn = mutation.dependsOn ?? null;
+          if (mutation.operation === "update" && mutation.id.startsWith("local:")) {
+            const pending = await repository.readOutboxOverlay({ workspaceId: bound.workspaceId!, kind: "note" });
+            const attemptedCreate = pending.queuedMutations.find(item =>
+              item.id === mutation.id && item.operation === "create" && (item.state === "queued" || item.state === "sending"));
+            if (mutation.baseRevision === null && !attemptedCreate) {
+              throw new TypeError("local note update requires its queued create");
+            }
+            if (!dependsOn && attemptedCreate?.attemptCount) {
+              dependsOn = attemptedCreate.mutationId;
+            }
+          }
+          await repository.enqueueOutboxMutation({
+            ...mutation,
+            actorId: bound.actorId,
+            workspaceId: bound.workspaceId!,
+            dependsOn,
+          }, { notify: !mutation.requestAttemptedAt });
+        });
+      },
+      async resolveNoteConflict(input: {
+        mutationId: string;
+        resolution: "server" | "replace";
+        replacement?: OfflineNoteMutationInput;
+      }): Promise<void> {
+        await bound.ready;
+        const noteScope = readScopeFor(bound, "note");
+        const currentLease = bound.lease ? acceptedLease(bound, bound.lease) : null;
+        const hasCurrentNotesGrant = Boolean(noteScope && currentLease?.grants.some(grant =>
+          grant.workspaceId === noteScope.workspaceId && grant.domainId === noteScope.domainId &&
+          grant.authorizationEpoch === noteScope.authorizationEpoch));
+        if (!isCurrent(bound) || !noteScope || !hasCurrentNotesGrant) throw new TypeError("note conflict is outside the active lease");
+        await withRepository(bound, repository => repository.resolveNoteConflict({
+          workspaceId: noteScope.workspaceId,
+          mutationId: input.mutationId,
+          resolution: input.resolution,
+          ...(input.replacement ? { replacement: { ...input.replacement, actorId: bound.actorId, workspaceId: noteScope.workspaceId } } : {}),
+        }));
+        if (input.resolution === "replace") bound.onOutboxQueued?.();
       },
       synchronize<TPayload = unknown>(
         kind: SyncChangeKind,

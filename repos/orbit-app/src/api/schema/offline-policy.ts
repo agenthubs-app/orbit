@@ -22,7 +22,6 @@ export const OFFLINE_POLICY_REGISTRATIONS = [
   { method: "GET", pathname: "/api/notes/:id", action: "read", policy: policy("note", "durable_normalized", "online_only") },
   { method: "POST", pathname: "/api/notes", action: "create", policy: policy("note", "durable_normalized", "offline_queue") },
   { method: "PATCH", pathname: "/api/notes/:id", action: "update", policy: policy("note", "durable_normalized", "offline_queue") },
-  { method: "DELETE", pathname: "/api/notes/:id", action: "delete", policy: policy("note", "durable_normalized", "offline_queue") },
   { method: "GET", pathname: "/api/tasks", action: "read", policy: policy("task", "durable_normalized", "online_only") },
   { method: "GET", pathname: "/api/tasks/:id", action: "read", policy: policy("task", "durable_normalized", "online_only") },
   { method: "POST", pathname: "/api/tasks", action: "create", policy: policy("task", "durable_normalized", "offline_queue") },
