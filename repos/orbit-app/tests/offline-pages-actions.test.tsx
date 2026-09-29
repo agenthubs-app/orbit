@@ -18,6 +18,8 @@ test.before(async () => {
     { name: "actions", importPath: "./src/screens/ai/AgentActionsScreen", exportName: "AgentActionsScreen" },
     { name: "ledger", importPath: "./src/screens/agent/AgentLedgerScreen", exportName: "AllActionsAgentLedgerScreen" },
     { name: "boundary", importPath: "./tests/helpers/online-only-probe-screen", exportName: "OnlineOnlyProbeRoute" },
+    { name: "no-read-default", importPath: "./tests/helpers/online-only-probe-screen", exportName: "OnlineOnlyNoReadDefaultRoute" },
+    { name: "no-read-probe", importPath: "./tests/helpers/online-only-probe-screen", exportName: "OnlineOnlyNoReadProbeRoute" },
   ]);
 });
 test.after(async () => { await harness?.close(); });
@@ -82,11 +84,51 @@ test("online-only boundary: a page that opened online keeps its content when a l
   assert.equal(await page.getByText("probe page content").count(), 1, "typed input is not thrown away");
 });
 
+test("online-only guest opt-in probes once from stale reachable and keeps its draft when offline", async (t) => {
+  const page = await harness.open(t, { screen: "no-read-probe", startReachable: true, online: false, healthDelayMs: 300 });
+  const draft = page.getByRole("textbox", { name: "Draft" });
+  await draft.fill("keep this draft");
+  const probeResolved = await page.waitForFunction(() => Boolean((window as unknown as { fixture: { healthResolved?: boolean } }).fixture.healthResolved), null, { timeout: 1500 }).then(() => true).catch(() => false);
+  assert.equal(probeResolved, true, "guest route performs its opt-in health check");
+
+  assert.deepEqual(await requestsOf(page), ["get:/api/health"], "guest route makes one read-only health check");
+  await page.getByText("这个页面要连上 Orbit 服务器才能使用。联网后点「重试」。").waitFor({ timeout: 1000 });
+  assert.equal(await page.getByText("这个页面要连上 Orbit 服务器才能使用。联网后点「重试」。").count(), 1);
+  assert.equal(await draft.inputValue(), "keep this draft", "offline notice does not unmount the guest form");
+  assert.deepEqual((await requestsOf(page)).filter((entry) => entry.startsWith("post:")), []);
+});
+
+test("online-only routes without guest opt-in do not add a health request", async (t) => {
+  const page = await harness.open(t, { screen: "no-read-default", startReachable: true, online: false });
+  await page.getByText("no-read page content").waitFor();
+  assert.deepEqual(await requestsOf(page), []);
+});
+
+test("guest boundary waits for the configured API base URL before probing", async (t) => {
+  const page = await harness.open(t, { screen: "no-read-probe", startReachable: true, apiBaseReady: false, online: false });
+  await page.getByText("no-read page content").waitFor();
+  assert.deepEqual(await requestsOf(page), []);
+});
+
 test("every online-only route is wrapped by the boundary (onboarding keeps its own offline form)", async () => {
   for (const entry of PAGE_OFFLINE_INVENTORY.filter((candidate) => candidate.classification === "online-only")) {
     const source = await readFile(entry.file, "utf8");
     if (entry.offline === NEEDS_NETWORK) assert.match(source, /withOnlineOnlyRoute\(/, entry.file);
     else assert.doesNotMatch(source, /withOnlineOnlyRoute\(/, entry.file);
+  }
+});
+
+test("the five logged-out guest routes opt into the one-shot boundary health check", async () => {
+  const files = [
+    "app/account/login.tsx",
+    "app/account/signup.tsx",
+    "app/account/forgot-password.tsx",
+    "app/account/reset-password.tsx",
+    "app/login-admin.tsx",
+  ];
+  for (const file of files) {
+    const source = await readFile(file, "utf8");
+    assert.match(source, /withOnlineOnlyRoute\([^,]+,\s*\{\s*probeOnOpen:\s*true\s*\}\)/u, file);
   }
 });
 
