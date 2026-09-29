@@ -14,7 +14,9 @@ export async function communicationRequest(path: string, options: RequestInit = 
  *     is reused for INBOX_ACTOR_REUSE_MS (shorter than the 15 s cycle, so the next cycle asks again).
  *   - writes: `readContactMessageActorForWrite` is a barrier. It never reuses a result and never joins
  *     a request that started before it was called; only write confirmations issued in the same batch
- *     (same task, before the request is dispatched) share one request.
+ *     (same task, before the request is dispatched) share one request. Starting a barrier invalidates
+ *     the reusable result and the barrier's own answer is never cached, so every confirmation after a
+ *     write (the post-write check) asks the server again.
  * Every invalidation bumps `generation`. A request may write the reusable result only when it
  * completes in the generation it started in and still has a waiting (not cancelled) consumer, so a
  * late answer from before an account switch, or one nobody waits for, is never remembered.
@@ -83,7 +85,9 @@ function startActorRequest(write: boolean): ActorRequest {
   })().then(({ outcome, issuedAt }) => {
     request.settled = true;
     if ("actor" in outcome) {
-      if (request.generation === generation && request.consumers > 0) reusable = { actor: outcome.actor, issuedAt };
+      // Only ordinary confirmations are reusable. A write confirmation predates the write it guards,
+      // so it must never stand in for a confirmation made after that write (Codex review P2).
+      if (!write && request.generation === generation && request.consumers > 0) reusable = { actor: outcome.actor, issuedAt };
     } else if (request.generation === generation) invalidateInboxActorConfirmation();
     return outcome;
   }, (error: unknown) => {
@@ -131,7 +135,12 @@ function consume(request: ActorRequest, signal?: AbortSignal): Promise<InboxActo
 /** Low-level shared confirmation; callers map failures to their own error types. */
 export function confirmInboxActor(signal?: AbortSignal, { write = false }: { write?: boolean } = {}): Promise<InboxActorOutcome> {
   if (write) {
-    if (!writeBatch?.open) writeBatch = startActorRequest(true);
+    if (!writeBatch?.open) {
+      // A write is about to happen: drop anything reusable (and let no earlier read cache its answer),
+      // so the first confirmation after the write always asks the server again.
+      invalidateInboxActorConfirmation();
+      writeBatch = startActorRequest(true);
+    }
     return consume(writeBatch, signal);
   }
   const now = Date.now();

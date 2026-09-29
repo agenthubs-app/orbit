@@ -74,6 +74,9 @@ export async function confirmMessageWindowRead(actorId: string, conversationId: 
     signal, method: "POST", body: JSON.stringify({ lastReadMessageId: messageId }),
   }) as { conversationId?: unknown; lastReadMessageId?: unknown; readAt?: unknown };
   if (value.conversationId !== conversationId || value.lastReadMessageId !== messageId || typeof value.readAt !== "string" || !Number.isFinite(Date.parse(value.readAt))) throw Error("Read receipt invalid");
+  // The receipt does not name its actor: confirm afterwards (fresh, the barrier cleared the reuse)
+  // that the session did not switch while it was being written.
+  await expectActor(actorId, signal);
 }
 export async function sendWindowMessage(actorId: string, request: { conversationId: string; body: string; id: string; version: string }, signal: AbortSignal) {
   await expectActor(actorId, signal, true);

@@ -39,13 +39,15 @@ test("notifications tab shares the read confirmation and confirms afresh before 
     assert.equal(await me(), 1, "opening the detail inside the same cycle reuses it");
     await page.getByRole("button", { name: "标为已读" }).click();
     await page.waitForFunction(() => (window as any).calls.some((c: any) => c.method === "POST"));
-    assert.equal(await me(), 2, "the action confirmed with its own fresh request");
+    // Barrier before the action, then a fresh post-write confirmation (never the barrier's answer).
+    await page.waitForFunction(() => (window as any).calls.filter((c: any) => c.path === "/api/account/me").length >= 3);
+    assert.equal(await me(), 3, "the action confirmed before and after with fresh requests");
     await page.getByText("已读").first().waitFor();
     // The account changes while the old identity is still reusable: the next action must notice.
     await page.evaluate(() => { (window as any).account = "b"; });
     await page.getByRole("button", { name: "忽略" }).click();
     await page.waitForFunction(() => (window as any).changed > 0);
-    assert.equal(await me(), 3);
+    assert.equal(await me(), 4);
     assert.equal(await posts(), 1, "no action was sent for the switched account");
     assert.deepEqual(errors, []);
   } finally { await browser.close(); }

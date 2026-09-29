@@ -161,9 +161,10 @@ test("(e) writes always confirm with a request issued after the write started", 
   const before = meCalls();
   await sendWindowMessage("a", { conversationId: "c", body: "hi", id: "r1", version: "v" }, signal);
   await confirmMessageWindowRead("a", "c", "m", signal);
-  assert.equal(meCalls(), before + 2, "a reusable result is never used for a write");
+  // send: barrier; read receipt: barrier + fresh post-write confirmation (Codex review P2).
+  assert.equal(meCalls(), before + 3, "a reusable result is never used for a write");
   assert.equal(await readContactMessageActorForWrite(), "a");
-  assert.equal(meCalls(), before + 3);
+  assert.equal(meCalls(), before + 4);
 });
 
 test("(e) race: a pending ordinary confirmation (A), account switch to B, then a write → the write confirms anew and is not sent as A", async () => {
@@ -252,4 +253,26 @@ test("(f) a new caller does not join a request started before an invalidation", 
   assert.equal(meCalls(), 2);
   gate.resolve();
   await Promise.all([oldRead, fresh]);
+});
+
+// Codex review P2 (W0031): a write confirmation must not be reused as the post-write confirmation.
+test("(e) after a write, the next confirmation asks /api/account/me again and sees an account switch", async () => {
+  assert.equal(await readContactMessageActor(), "a", "a reusable read from before the write");
+  assert.equal(await readContactMessageActorForWrite(), "a", "pre-write barrier");
+  account = "b"; // the session switches between the barrier and the write
+  const before = meCalls();
+  assert.equal(await readContactMessageActor(), "b", "the post-write confirmation is fresh");
+  assert.equal(meCalls(), before + 1);
+});
+
+test("(e) a read receipt accepted after an account switch is reported as an identity change", async () => {
+  const signal = new AbortController().signal;
+  const previous = globalThis.fetch;
+  // The switch happens while the read receipt is in flight; the receipt itself carries no actor.
+  globalThis.fetch = (async (url: string | URL | Request, options?: RequestInit) => {
+    if (String(url).endsWith("/read")) account = "b";
+    return previous(url, options);
+  }) as typeof fetch;
+  await assert.rejects(confirmMessageWindowRead("a", "c", "m", signal), (error: unknown) => error instanceof BoundedMessageReadError && error.status === 403);
+  assert.equal(calls.filter(c => c.path === "/api/account/me").length, 2, "one barrier before and one fresh confirmation after the write");
 });
