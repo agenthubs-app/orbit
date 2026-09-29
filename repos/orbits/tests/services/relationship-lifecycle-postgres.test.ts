@@ -319,6 +319,15 @@ test("PostgreSQL normalizes valid stored timestamps to UTC before persisting rec
   assert.deepEqual((await repo.mutate(mutation, () => { throw new Error("must replay"); })).snapshot, first.snapshot);
 }));
 
+test("PostgreSQL lifecycle reads normalize stored microsecond timestamps to milliseconds", databaseTest, async () => withDatabase(async ({ client, repo }) => {
+  await testRawWrite(client, "connections", "update orbit_records set payload=payload || $1::jsonb where collection_name='connections'", [{ createdAt: "2026-08-21T01:00:00.123456Z", updatedAt: "2026-08-21T10:00:00.654321+09:00" }]);
+  const snapshot = await repo.read(actorId, connectionId);
+  assert.equal(snapshot?.connection.createdAt, "2026-08-21T01:00:00.123Z");
+  assert.equal(snapshot?.connection.updatedAt, "2026-08-21T01:00:00.654Z");
+  await testRawWrite(client, "connections", "update orbit_records set payload=payload || $1::jsonb where collection_name='connections'", [{ createdAt: "2026-02-30T01:00:00.123456Z" }]);
+  await assert.rejects(repo.read(actorId, connectionId), { code: "INVALID_TRANSITION" });
+}));
+
 test("configured lifecycle service persists to the configured workspace and replays through a cold service", databaseTest, async () => withDatabase(async ({ client, repo }) => {
   const searchPath = await client.query<{ search_path: string }>("show search_path");
   const url = new URL(databaseUrl!);
