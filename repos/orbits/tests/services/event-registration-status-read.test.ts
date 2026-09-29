@@ -469,8 +469,9 @@ test("SC-02 readRuntimeEventRegistrationStates routes by enrollment through the 
 
 function loadDetail(t: TestContext, own: { status: string | null } | null | "fails") {
   const calls: string[] = [];
+  // W0029: the roster reads the attendee projection (`listCanonicalRosterEntries`).
   const attendee = (displayName: string, status: "rsvped" | "cancelled") => ({
-    participantProfile: { answers: { positioning: `${displayName} role` }, displayName }, status,
+    participantProfile: status === "rsvped" ? { answers: { positioning: `${displayName} role` }, displayName } : null, status,
   });
   const modules: Record<string, unknown> = {
     [join(root, "features/events/registration/runtime.ts")]: {
@@ -488,7 +489,7 @@ function loadDetail(t: TestContext, own: { status: string | null } | null | "fai
     },
     [join(root, "features/events/event-operations/repository.ts")]: {
       createConfiguredEventOperationsRepository: () => ({
-        listCanonicalRegistrations: async (eventId: string) => {
+        listCanonicalRosterEntries: async (eventId: string) => {
           calls.push(`roster:${eventId}`);
           return [attendee("Aiko", "rsvped"), attendee("Gone", "cancelled")];
         },

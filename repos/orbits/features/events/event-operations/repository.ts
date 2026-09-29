@@ -6,6 +6,8 @@ import {
 import type {
   CancelEventRegistrationInput,
   EventRegistration,
+  EventRegistrationRosterEntry,
+  EventRegistrationRosterFields,
   EventRegistrationStatusRecord,
   RegisterForEventInput,
 } from "../registration/contract";
@@ -281,6 +283,15 @@ export interface EventOperationsRepository {
   listCanonicalRegistrations(
     eventId: string,
   ): Promise<readonly EventRegistration[]>;
+  /**
+   * Same rows, order and failure semantics as `listCanonicalRegistrations`,
+   * trimmed to what the roster (`attendees`) or the anonymous preview
+   * (`preview`) reads (W0029).
+   */
+  listCanonicalRosterEntries(
+    eventId: string,
+    fields: EventRegistrationRosterFields,
+  ): Promise<readonly EventRegistrationRosterEntry[]>;
   /** Same rows and failure semantics as `listCanonicalRegistrationsForUser`, event id and status only (W0028). */
   listCanonicalRegistrationStatusesForUser(
     userId: string,

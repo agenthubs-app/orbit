@@ -5,9 +5,9 @@ import {
   registrationClusterPreview,
   type RegistrationClusterPreview,
 } from "../../../../../../features/events/registration/cluster-preview";
-import type { EventRegistration } from "../../../../../../features/events/registration/contract";
+import type { EventRegistrationRosterEntry } from "../../../../../../features/events/registration/contract";
 import { loadEventForRegistration } from "../../../../../../features/events/registration/event-loader";
-import { eventRegistrationRuntimeService } from "../../../../../../features/events/registration/runtime";
+import { listRuntimeEventRosterEntries } from "../../../../../../features/events/registration/runtime";
 
 interface RegistrationPreviewPayload extends RegistrationClusterPreview {
   /** True when the event requires an organizer-reviewed application; the
@@ -22,7 +22,7 @@ const PREVIEW_CACHE_TTL_MS = 60_000;
 export function createEventRegistrationPreviewHandler(input?: {
   listRegistrations?: (
     eventId: string,
-  ) => Promise<readonly EventRegistration[]>;
+  ) => Promise<readonly EventRegistrationRosterEntry[]>;
   now?: () => number;
   resolveAdmissionControlled?: (eventId: string) => Promise<boolean>;
   loadEvent?: typeof loadEventForRegistration;
@@ -30,7 +30,9 @@ export function createEventRegistrationPreviewHandler(input?: {
   const loadEvent = input?.loadEvent ?? loadEventForRegistration;
   const listRegistrations =
     input?.listRegistrations ??
-    ((eventId: string) => eventRegistrationRuntimeService.list({ eventId }));
+    // Status, industry and positioning only; no names (W0029).
+    ((eventId: string) =>
+      listRuntimeEventRosterEntries({ eventId, fields: "preview" }));
   const resolveAdmissionControlled =
     input?.resolveAdmissionControlled ??
     (async (eventId: string) => {

@@ -3,9 +3,16 @@ import { createHash } from "node:crypto";
 import type {
   EventParticipantProfile,
   EventRegistration,
+  EventRegistrationRosterFields,
   EventRegistrationStatusRecord,
   RegisterForEventInput,
 } from "../../registration/contract";
+import {
+  rosterEntryFromRow,
+  rosterEntryLeafColumnsSql,
+  rosterEntryShapeSql,
+  type RosterEntryRow,
+} from "../../registration/roster-entry";
 import {
   answersFromProfileResponses,
   type EventProfileResponseSnapshot,
@@ -38,6 +45,7 @@ type CanonicalRegistrationMethods = Pick<
   | "getCanonicalRegistrationStatus"
   | "listCanonicalRegistrations"
   | "listCanonicalRegistrationStatusesForUser"
+  | "listCanonicalRosterEntries"
   | "listCanonicalRegistrationsForUser"
   | "registerCanonicalParticipant"
   | "seedCanonicalRegistration"
@@ -405,6 +413,26 @@ function registrationStatusFromRow(row: SqlRow): EventRegistrationStatusRecord {
     eventId: text(row.event_id, "event_id"),
     status: text(row.status, "status"),
   };
+}
+
+// Whole-event roster projection (W0029): the same joins, filter and order as
+// the full inventory read, one row per registration. `k` is 'invalid' where
+// `registrationFromRow` would throw (any row, cancelled included), so the
+// projection rejects exactly where the full read does; otherwise it is the
+// rsvped row's profile shape. Leaves stay jsonb (see roster-entry.ts).
+function registrationRosterSelect(fields: EventRegistrationRosterFields): string {
+  const profile = "(profile_version.profile_payload -> 'registrationProfile')";
+  const rsvped = "membership_head.status = 'rsvped'";
+  return `
+    select
+      membership_head.status as s,
+      case when not ${REGISTRATION_ROW_VALID} then 'invalid'
+        else ${rosterEntryShapeSql(profile, rsvped)} end as k,
+      ${rosterEntryLeafColumnsSql(profile, rsvped, fields)}
+    ${REGISTRATION_FROM}
+    where membership_head.workspace_id = $1
+      and membership_head.event_id = $2
+    order by membership_head.participant_id`;
 }
 
 function registrationSelect(): string {
@@ -1015,6 +1043,20 @@ export function createPostgresCanonicalRegistrationMethods({
         executor: client,
         workspaceId,
       });
+    },
+
+    async listCanonicalRosterEntries(eventId, fields) {
+      // Not gated, like the full read it replaces.
+      const result = await client.query<SqlRow>(registrationRosterSelect(fields), [
+        workspaceId,
+        eventId,
+      ]);
+      if (result.rows.some((row) => row.k === "invalid")) {
+        throw new Error("Canonical event registration rows contain invalid data.");
+      }
+      return result.rows.map((row) =>
+        rosterEntryFromRow(row as unknown as RosterEntryRow, fields),
+      );
     },
 
     async listCanonicalRegistrationsForUser(userId, eventIds) {

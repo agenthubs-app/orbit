@@ -1,4 +1,4 @@
-import type { EventRegistration } from "./contract";
+import type { EventRegistrationRosterEntry } from "./contract";
 
 /**
  * Anonymous aggregate preview of who has registered for an event.
@@ -26,7 +26,8 @@ export interface RegistrationClusterPreview {
 }
 
 export function registrationClusterPreview(
-  registrations: readonly EventRegistration[],
+  // Full `EventRegistration`s or the preview projection (W0029); same rules.
+  registrations: readonly EventRegistrationRosterEntry[],
 ): RegistrationClusterPreview {
   const active = registrations.filter(
     (registration) => registration.status === "rsvped",
@@ -35,7 +36,7 @@ export function registrationClusterPreview(
   for (const registration of active) {
     // 桶标签只用用户自己填写的内容：优先行业，缺失时退回定位里的角色段
     // （"role @ organization" 的 @ 前部分）。不做任何推断补齐。
-    const answers = registration.participantProfile.answers;
+    const answers = registration.participantProfile!.answers;
     const industry =
       answers.industry?.trim() ||
       answers.positioning?.split("@")[0]?.trim() ||
