@@ -2,6 +2,10 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { createConfiguredPostgresLiveRecordStore } from "../../../shared/storage/configured-live-record-store";
 import type { LiveRecordSqlClient } from "../../../shared/storage/postgres-live-record-store";
+import {
+  currentNodeSortRuntime, logSortRuntimeRejection, nodeSortRuntimeMatches, pgMajorVersion,
+  type NodeSortRuntimeInput, type NodeSortRuntimeKey, type SortRuntimeCheck,
+} from "../../../shared/storage/sort-runtime";
 import { RELATIONSHIP_LIFECYCLE_FACTS_CTES } from "./relationship-lifecycle-facts-reader";
 import { SOURCE_TYPES, RELATIONSHIP_STAGE_VALUES } from "../../../shared/domain/source-types";
 
@@ -171,26 +175,75 @@ export interface LifecycleTaskPagesReader {
   read(actorId: string, cursors?: LifecycleCursors): Promise<LifecycleTaskPages>;
 }
 
-export const lifecycleSortRuntimeSchema = z.object({ pg: z.literal("160012"), encoding: z.literal("UTF8"), catalog: z.literal("153.136"), actual: z.literal("153.136"), provider: z.literal("i"), deterministic: z.literal(true) }).strict();
-export interface LifecycleNodeSortRuntime { node: string; icu: string; unicode: string }
+export type LifecycleSortRuntimeCheck = Extract<SortRuntimeCheck, "lifecycle_pages" | "lifecycle_home" | "relationship_task_page">;
+export interface LifecyclePgSortRuntimeKey {
+  pgMajor: number; encoding: string; catalog: string; actual: string; provider: string; deterministic: boolean;
+}
+export interface LifecycleSortRuntimeEntry {
+  id: string;
+  node: NodeSortRuntimeKey;
+  pg: LifecyclePgSortRuntimeKey;
+  /** Where the PG differential tests passed for exactly this pair. */
+  evidence: string;
+}
+function lifecycleEntry(entry: LifecycleSortRuntimeEntry): LifecycleSortRuntimeEntry {
+  return Object.freeze({ ...entry, node: Object.freeze({ ...entry.node }), pg: Object.freeze({ ...entry.pg }) });
+}
+const PG16_UND_ICU_153_136 = { pgMajor: 16, encoding: "UTF8", catalog: "153.136", actual: "153.136", provider: "i", deterministic: true } as const;
+const PG16_UND_ICU_153_14 = { pgMajor: 16, encoding: "UTF8", catalog: "153.14", actual: "153.14", provider: "i", deterministic: true } as const;
 /**
- * Node/ICU/Unicode tuples on which the PG differential tests
- * (tests/services/lifecycle-task-pages-postgres.test.ts, relationship-task-page-postgres.test.ts)
- * passed against the PG tuple in lifecycleSortRuntimeSchema. Exact match only: a new tuple
- * (including the production runtime) is added only after those tests pass on it.
+ * (Node side, PG side) pairs on which the PG differential tests
+ * (tests/services/lifecycle-task-pages-postgres.test.ts, relationship-task-page-postgres.test.ts,
+ * app-home-facts-task-summary-reader.test.ts) passed together. Pairs, never a cross product:
+ * a new pair is added only with its own differential evidence. Node patch and PG minor are not
+ * part of the key (D35/W34-2, W34-3).
  */
-export const VERIFIED_LIFECYCLE_NODE_SORT_RUNTIMES: readonly LifecycleNodeSortRuntime[] = Object.freeze([
-  Object.freeze({ node: "25.6.0", icu: "78.2", unicode: "17.0" }),
-  // W0025: local dev/verify runtime, PG 16.0012 / und-x-icu 153.136; differential tests passed 2026-09-29.
-  Object.freeze({ node: "26.10.0", icu: "78.3", unicode: "17.0" }),
+export const VERIFIED_LIFECYCLE_SORT_RUNTIMES: readonly LifecycleSortRuntimeEntry[] = Object.freeze([
+  lifecycleEntry({ id: "icu78.2-u17.0-en-US/pg16-153.136", node: { icu: "78.2", unicode: "17.0", collatorLocale: "en-US" },
+    pg: PG16_UND_ICU_153_136, evidence: "pre-W0025: Node 25.6.0 on Homebrew PG 16.12" }),
+  lifecycleEntry({ id: "icu78.3-u17.0-en-US/pg16-153.136", node: { icu: "78.3", unicode: "17.0", collatorLocale: "en-US" },
+    pg: PG16_UND_ICU_153_136, evidence: "W0025: Node 26.10.0 on Homebrew PG 16.12 (sprint-W0025/run-01/pg-diff-with-candidate.txt)" }),
+  // W0034: production pair (Vercel Node 24.x, Neon PG 16.15 / und-x-icu 153.14), reproduced locally on
+  // PG 16.15 built from source against Debian bullseye libicu67; differentials + probe matrix passed.
+  lifecycleEntry({ id: "icu78.3-u17.0-en-US/pg16-153.14", node: { icu: "78.3", unicode: "17.0", collatorLocale: "en-US" },
+    pg: PG16_UND_ICU_153_14, evidence: "W0034: Node 24.21.0 on repro PG 16.15/ICU 67 (sprint-W0034/run-01/pg-diff-node24-icu783.txt, unicode-probe-node24-icu783.txt)" }),
+  lifecycleEntry({ id: "icu78.2-u17.0-en-US/pg16-153.14", node: { icu: "78.2", unicode: "17.0", collatorLocale: "en-US" },
+    pg: PG16_UND_ICU_153_14, evidence: "W0034: Node 24.15.0 on repro PG 16.15/ICU 67 (sprint-W0034/run-01/pg-diff-node24-icu782.txt, unicode-probe-node24-icu782.txt)" }),
 ]);
-export function assertLifecycleNodeSortRuntimeFor(versions: { node?: string; icu?: string; unicode?: string }) {
-  const verified = VERIFIED_LIFECYCLE_NODE_SORT_RUNTIMES.some(entry =>
-    entry.node === versions.node && entry.icu === versions.icu && entry.unicode === versions.unicode);
-  if (!verified) throw new Error("LIFECYCLE_SORT_RUNTIME_UNVERIFIED");
+
+/** Reads only the six runtime CTE columns; any other shape is simply not verified. */
+function lifecyclePgRuntimeFields(row: unknown) {
+  const read = (key: string): unknown => {
+    if (!row || typeof row !== "object") return undefined;
+    try { return (row as Record<string, unknown>)[key]; } catch { return undefined; }
+  };
+  return { server_version_num: read("pg"), server_encoding: read("encoding"), catalog: read("catalog"),
+    actual: read("actual"), provider: read("provider"), deterministic: read("deterministic") };
+}
+function lifecyclePgMatches(expected: LifecyclePgSortRuntimeKey, row: unknown): boolean {
+  const actual = lifecyclePgRuntimeFields(row);
+  return pgMajorVersion(actual.server_version_num) === expected.pgMajor && actual.server_encoding === expected.encoding &&
+    actual.catalog === expected.catalog && actual.actual === expected.actual &&
+    actual.provider === expected.provider && actual.deterministic === expected.deterministic;
+}
+export function lifecycleSortRuntimeEntryFor(node: NodeSortRuntimeInput, pgRuntime: unknown): LifecycleSortRuntimeEntry | null {
+  return VERIFIED_LIFECYCLE_SORT_RUNTIMES.find(entry => nodeSortRuntimeMatches(entry.node, node) && lifecyclePgMatches(entry.pg, pgRuntime)) ?? null;
+}
+/** Node-side precheck (before any query): some verified pair must have this Node side. */
+export function assertLifecycleNodeSortRuntimeFor(node: NodeSortRuntimeInput, check: LifecycleSortRuntimeCheck = "lifecycle_home") {
+  if (VERIFIED_LIFECYCLE_SORT_RUNTIMES.some(entry => nodeSortRuntimeMatches(entry.node, node))) return;
+  logSortRuntimeRejection("sort_runtime_unverified", check, node, null);
+  throw new Error("LIFECYCLE_SORT_RUNTIME_UNVERIFIED");
+}
+/** Full pair check against the runtime tuple returned by the existing query (no extra query). */
+export function assertLifecycleSortRuntimeFor(node: NodeSortRuntimeInput, pgRuntime: unknown, check: LifecycleSortRuntimeCheck): LifecycleSortRuntimeEntry {
+  const entry = lifecycleSortRuntimeEntryFor(node, pgRuntime);
+  if (entry) return entry;
+  logSortRuntimeRejection("sort_runtime_unverified", check, node, lifecyclePgRuntimeFields(pgRuntime));
+  throw new Error("LIFECYCLE_SORT_RUNTIME_UNVERIFIED");
 }
 export function assertLifecycleNodeSortRuntime() {
-  assertLifecycleNodeSortRuntimeFor(process.versions);
+  assertLifecycleNodeSortRuntimeFor(currentNodeSortRuntime());
 }
 
 function cursorCodec(secret: string, workspaceId: string, actorId: string, category: LifecycleGroup) {
@@ -216,7 +269,7 @@ function cursorCodec(secret: string, workspaceId: string, actorId: string, categ
   };
 }
 
-export function createLifecycleTaskPagesReader(input: { client: LiveRecordSqlClient; workspaceId: string; secret: string }): LifecycleTaskPagesReader {
+export function createLifecycleTaskPagesReader(input: { client: LiveRecordSqlClient; workspaceId: string; secret: string; nodeRuntime?: () => NodeSortRuntimeInput }): LifecycleTaskPagesReader {
   return {
     async read(actorId, cursors = {}) {
       if (!actorId.trim()) throw new Error("ACTOR_REQUIRED");
@@ -229,10 +282,10 @@ export function createLifecycleTaskPagesReader(input: { client: LiveRecordSqlCli
         ok: z.literal(true),
         counts: z.object({ current: z.number().int().nonnegative(), history: z.number().int().nonnegative(), orphan: z.number().int().nonnegative() }).strict(),
         pages: z.object(groupShape).strict(),
-        runtime: lifecycleSortRuntimeSchema,
+        runtime: z.unknown(),
       }).strict().parse(response.rows[0]!.result);
-      // Preserves the old localeCompare order only on the verified runtime tuple.
-      assertLifecycleNodeSortRuntime();
+      // Pages are ordered and compared only in PG; accept them only on a differentially verified pair.
+      assertLifecycleSortRuntimeFor((input.nodeRuntime ?? currentNodeSortRuntime)(), result.runtime, "lifecycle_pages");
       const pages = {} as LifecycleTaskPages["pages"];
       for (const group of lifecycleGroups) {
         const items = result.pages[group].slice(0, 30);
