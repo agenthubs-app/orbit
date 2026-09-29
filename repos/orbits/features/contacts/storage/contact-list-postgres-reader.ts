@@ -14,6 +14,10 @@ import {
 } from "./contact-read-authorization";
 import type { LiveRecordSqlClient } from "../../../shared/storage/postgres-live-record-store";
 import type { LiveRecord } from "../../../shared/storage/live-record-store";
+import {
+  currentNodeSortRuntime, logSortRuntimeRejection, nodeSortRuntimeMatches, pgMajorVersion,
+  type NodeSortRuntimeInput, type NodeSortRuntimeKey,
+} from "../../../shared/storage/sort-runtime";
 
 const CONTACT_COLLECTION = "contacts";
 const CONNECTION_COLLECTION = "connections";
@@ -1100,15 +1104,19 @@ export function createPostgresContactCardReader(input: {
   workspaceId: string;
   cursorSecret: string;
   now?: () => number;
+  nodeRuntime?: () => NodeSortRuntimeInput;
 }) {
   if (Buffer.byteLength(input.cursorSecret) < 32) throw new Error("CONTACT_CURSOR_SECRET_MISSING");
   const now = input.now ?? Date.now;
+  const nodeRuntime = input.nodeRuntime ?? currentNodeSortRuntime;
   const sign = (payload: string) => createHmac("sha256", input.cursorSecret)
     .update("contact-card-page:v1:").update(payload).digest();
-  const seal = (position: ContactPageCursor, query: ContactsListSearchFilterInput, actorId: string) => {
-    const payload = encodeCursor(position, query, actorId, input.workspaceId);
+  const seal = (position: ContactPageCursor, query: ContactsListSearchFilterInput, actorId: string, matchPath: ContactMatchPath) => {
+    const payload = encodeCursor(position, query, actorId, input.workspaceId, matchPath);
     return `${payload}.${sign(payload).toString("base64url")}`;
   };
+  // Signature and scope family are checked before any probe (unchanged ordering and query count);
+  // the exact match path is checked once the runtime is known.
   const unseal = (query: ContactsListSearchFilterInput, actorId: string) => {
     if (!query.cursor) return null;
     if (query.cursor.length > 4096) throw new Error("CONTACT_CURSOR_INVALID");
@@ -1119,9 +1127,11 @@ export function createPostgresContactCardReader(input: {
     if (provided.toString("base64url") !== signature || provided.length !== expected.length || !timingSafeEqual(provided, expected)) {
       throw new Error("CONTACT_CURSOR_INVALID");
     }
-    const position = decodeCursor(payload, query, actorId, input.workspaceId);
-    if (!position) throw new Error("CONTACT_CURSOR_INVALID");
-    return position;
+    const scope = cursorEnvelopeScope(payload);
+    if (!scope || !knownContactMatchPaths().some(path => scope === queryScope(query, actorId, input.workspaceId, path))) {
+      throw new Error("CONTACT_CURSOR_INVALID");
+    }
+    return payload;
   };
   const execute = async (raw: ContactsListSearchFilterInput, actorId: string, summary: boolean) => {
     const query = { ...raw, limit: raw.limit ?? 30 };
@@ -1129,12 +1139,16 @@ export function createPostgresContactCardReader(input: {
       (query.query?.length ?? 0) > 256 || query.contextEventId || query.scenario) {
       throw new Error("CONTACT_PAGE_INPUT_INVALID");
     }
-    const cursor = unseal(query, actorId);
+    const sealedCursor = unseal(query, actorId);
     const search = escapeLikePattern(query.query?.trim().toLowerCase() ?? "");
     const verified = search.length > 0;
-    if (verified && !(await verifiedContactSearchRuntime(input.client, now))) {
+    const runtime = verified ? await verifiedContactSearchRuntime(input.client, now, nodeRuntime) : null;
+    if (verified && !runtime) {
       throw new Error("CONTACT_SEARCH_RUNTIME_UNSUPPORTED");
     }
+    const matchPath: ContactMatchPath = runtime ? `pg-icu:${runtime.id}` : "unfiltered";
+    const cursor = sealedCursor ? decodeCursor(sealedCursor, query, actorId, input.workspaceId, matchPath) : null;
+    if (sealedCursor && !cursor) throw new Error("CONTACT_CURSOR_INVALID");
     const sources = selectedValues(query.sourceFilters);
     const statuses = selectedValues(query.statusFilters);
     const values = [input.workspaceId, CONTACT_COLLECTION, search, actorId, CONNECTION_COLLECTION,
@@ -1151,15 +1165,15 @@ export function createPostgresContactCardReader(input: {
     );
     if (result.rows.length !== 1) throw new Error("CONTACT_PAGE_RESULT_INVALID");
     const row = result.rows[0]!;
-    if (verified && !runtimeTupleMatches(row.runtime_fingerprint as ContactSearchRuntimeTuple)) {
-      invalidateVerifiedContactSearchRuntime(input.client, now);
+    if (verified && runtimeTupleMatches(row.runtime_fingerprint, nodeRuntime())?.id !== runtime?.id) {
+      invalidateVerifiedContactSearchRuntime(input.client, now, nodeRuntime);
       throw new Error("CONTACT_SEARCH_RUNTIME_UNSUPPORTED");
     }
-    return { row, query };
+    return { row, query, matchPath };
   };
   return {
     async page(query: ContactsListSearchFilterInput, actorId: string): Promise<ContactCardPageDTO> {
-      const { row } = await execute(query, actorId, false);
+      const { row, matchPath } = await execute(query, actorId, false);
       if (!Array.isArray(row.page)) throw new Error("CONTACT_PAGE_RESULT_INVALID");
       const projections = row.page as (ContactPageProjection & { card: unknown })[];
       for (const projection of projections) if (projection.error_code) throw new Error(String(projection.error_code));
@@ -1171,7 +1185,7 @@ export function createPostgresContactCardReader(input: {
         const updatedAt = timestampString(last?.sort_updated_at);
         if (!last || typeof last.record_id !== "string" || !occurredAt || !updatedAt ||
           ![0, 1].includes(Number(last.sort_prefix_rank))) throw new Error("CONTACT_PAGE_RESULT_INVALID");
-        nextCursor = seal({ prefixRank: Number(last.sort_prefix_rank), occurredAt, updatedAt, recordId: last.record_id }, query, actorId);
+        nextCursor = seal({ prefixRank: Number(last.sort_prefix_rank), occurredAt, updatedAt, recordId: last.record_id }, query, actorId, matchPath);
       }
       const page = contactCardPageSchema.parse({ items: projections.map(p => p.card), nextCursor, hasMore, asOf: new Date(now()).toISOString() });
       return { ...page, nextCursor: page.nextCursor ?? null };
@@ -1239,24 +1253,54 @@ interface ContactSearchRuntimeTuple {
 }
 
 interface RuntimeProbeCacheEntry {
-  inFlight?: Promise<boolean>;
+  inFlight?: Promise<ContactSearchRuntimeEntry | null>;
   retryAt: number;
-  verified: boolean;
+  verified: ContactSearchRuntimeEntry | null;
 }
 
-const APPROVED_CONTACT_SEARCH_RUNTIME = {
-  actual_collversion: "153.136",
-  catalog_collversion: "153.136",
-  collisdeterministic: true,
-  collation: "und-x-icu",
-  collprovider: "i",
-  matcher_policy_version: CONTACT_SEARCH_MATCHER_POLICY_VERSION,
-  node: "25.6.0",
-  server_encoding: "UTF8",
-  server_version_num: "160012",
-  unicode: "17.0",
-  icu: "78.2",
+export interface ContactSearchPgRuntimeKey {
+  pgMajor: number;
+  server_encoding: string;
+  collation: string;
+  collprovider: string;
+  collisdeterministic: boolean;
+  catalog_collversion: string;
+  actual_collversion: string;
+  matcher_policy_version: string;
+}
+export interface ContactSearchRuntimeEntry {
+  /** Stable path id: fast-path cursors are bound to `pg-icu:<id>`. */
+  id: string;
+  node: NodeSortRuntimeKey;
+  pg: ContactSearchPgRuntimeKey;
+  evidence: string;
+}
+function contactSearchEntry(entry: ContactSearchRuntimeEntry): ContactSearchRuntimeEntry {
+  return Object.freeze({ ...entry, node: Object.freeze({ ...entry.node }), pg: Object.freeze({ ...entry.pg }) });
+}
+const PG16_CONTACT_SEARCH_153_136 = {
+  pgMajor: 16, server_encoding: "UTF8", collation: "und-x-icu", collprovider: "i", collisdeterministic: true,
+  catalog_collversion: "153.136", actual_collversion: "153.136", matcher_policy_version: CONTACT_SEARCH_MATCHER_POLICY_VERSION,
 } as const;
+const PG16_CONTACT_SEARCH_153_14 = { ...PG16_CONTACT_SEARCH_153_136, catalog_collversion: "153.14", actual_collversion: "153.14" } as const;
+/**
+ * (Node side, PG side) pairs on which the contact search PG differential tests
+ * (tests/capabilities/contact-search-pagination.test.ts, tests/services/contact-card-page-postgres.test.ts)
+ * passed together. Pairs only, never a cross product; Node patch and PG minor are not part of the key.
+ */
+export const VERIFIED_CONTACT_SEARCH_RUNTIMES: readonly ContactSearchRuntimeEntry[] = Object.freeze([
+  contactSearchEntry({ id: "icu78.2-u17.0-en-US/pg16-153.136", node: { icu: "78.2", unicode: "17.0", collatorLocale: "en-US" },
+    pg: PG16_CONTACT_SEARCH_153_136, evidence: "pre-W0025: Node 25.6.0 on Homebrew PG 16.12" }),
+  contactSearchEntry({ id: "icu78.3-u17.0-en-US/pg16-153.136", node: { icu: "78.3", unicode: "17.0", collatorLocale: "en-US" },
+    pg: PG16_CONTACT_SEARCH_153_136, evidence: "W0034: Node 26.10.0 on Homebrew PG 16.12 (sprint-W0034/run-01/local-contact-with-candidate.txt)" }),
+  // W0034: production pair (Vercel Node 24.x, Neon PG 16.15 / und-x-icu 153.14). PG lower() here does not
+  // lower 95 capitals added in Unicode 14-17 while JS does; accepted only because cursors are bound to the
+  // matcher path (SC-W0034-03 switch matrix passed), so one paging sequence never mixes the two matchers.
+  contactSearchEntry({ id: "icu78.3-u17.0-en-US/pg16-153.14", node: { icu: "78.3", unicode: "17.0", collatorLocale: "en-US" },
+    pg: PG16_CONTACT_SEARCH_153_14, evidence: "W0034: Node 24.21.0 on repro PG 16.15/ICU 67 (sprint-W0034/run-01/pg-diff-node24-icu783.txt)" }),
+  contactSearchEntry({ id: "icu78.2-u17.0-en-US/pg16-153.14", node: { icu: "78.2", unicode: "17.0", collatorLocale: "en-US" },
+    pg: PG16_CONTACT_SEARCH_153_14, evidence: "W0034: Node 24.15.0 on repro PG 16.15/ICU 67 (sprint-W0034/run-01/pg-diff-node24-icu782.txt)" }),
+]);
 
 const CONTACT_SEARCH_RUNTIME_PROBE_SQL = `
 select
@@ -1279,43 +1323,80 @@ where c.oid = 'pg_catalog."und-x-icu"'::pg_catalog.regcollation
 const CONTACT_SEARCH_RUNTIME_NEGATIVE_BACKOFF_MS = 30_000;
 const runtimeProbeCache = new WeakMap<object, Map<string, RuntimeProbeCacheEntry>>();
 
-function runtimeProbeCacheKey(): string {
+function runtimeProbeCacheKey(node: NodeSortRuntimeInput): string {
+  const read = (key: keyof NodeSortRuntimeInput) => {
+    const value = node[key];
+    return typeof value === "string" ? value : null;
+  };
   return JSON.stringify({
-    icu: process.versions.icu,
+    collatorLocale: read("collatorLocale"),
+    icu: read("icu"),
     matcherPolicy: CONTACT_SEARCH_MATCHER_POLICY_VERSION,
-    node: process.versions.node,
-    unicode: process.versions.unicode,
+    node: read("node"),
+    unicode: read("unicode"),
   });
 }
 
-function runtimeTupleMatches(
-  tuple: ContactSearchRuntimeTuple | null | undefined,
-): boolean {
-  if (!tuple || typeof tuple !== "object" || Array.isArray(tuple)) return false;
-  return tuple.actual_collversion === APPROVED_CONTACT_SEARCH_RUNTIME.actual_collversion &&
-    tuple.catalog_collversion === APPROVED_CONTACT_SEARCH_RUNTIME.catalog_collversion &&
-    tuple.collisdeterministic === APPROVED_CONTACT_SEARCH_RUNTIME.collisdeterministic &&
-    tuple.collation === APPROVED_CONTACT_SEARCH_RUNTIME.collation &&
-    tuple.collprovider === APPROVED_CONTACT_SEARCH_RUNTIME.collprovider &&
-    tuple.matcher_policy_version === APPROVED_CONTACT_SEARCH_RUNTIME.matcher_policy_version &&
-    tuple.server_encoding === APPROVED_CONTACT_SEARCH_RUNTIME.server_encoding &&
-    tuple.server_version_num === APPROVED_CONTACT_SEARCH_RUNTIME.server_version_num &&
-    process.versions.node === APPROVED_CONTACT_SEARCH_RUNTIME.node &&
-    process.versions.icu === APPROVED_CONTACT_SEARCH_RUNTIME.icu &&
-    process.versions.unicode === APPROVED_CONTACT_SEARCH_RUNTIME.unicode;
+function tupleField(tuple: unknown, key: keyof ContactSearchRuntimeTuple): unknown {
+  if (!tuple || typeof tuple !== "object" || Array.isArray(tuple)) return undefined;
+  try {
+    return (tuple as Record<string, unknown>)[key];
+  } catch {
+    return undefined;
+  }
 }
 
-function runtimeProbeState(client: LiveRecordSqlClient): RuntimeProbeCacheEntry {
+/** Pure pair check with injectable Node-side versions. */
+export function contactSearchRuntimeEntryFor(
+  tuple: unknown,
+  node: NodeSortRuntimeInput,
+): ContactSearchRuntimeEntry | null {
+  if (!tuple || typeof tuple !== "object" || Array.isArray(tuple)) return null;
+  return VERIFIED_CONTACT_SEARCH_RUNTIMES.find(({ node: expectedNode, pg }) =>
+    nodeSortRuntimeMatches(expectedNode, node) &&
+    pgMajorVersion(tupleField(tuple, "server_version_num")) === pg.pgMajor &&
+    tupleField(tuple, "server_encoding") === pg.server_encoding &&
+    tupleField(tuple, "collation") === pg.collation &&
+    tupleField(tuple, "collprovider") === pg.collprovider &&
+    tupleField(tuple, "collisdeterministic") === pg.collisdeterministic &&
+    tupleField(tuple, "catalog_collversion") === pg.catalog_collversion &&
+    tupleField(tuple, "actual_collversion") === pg.actual_collversion &&
+    tupleField(tuple, "matcher_policy_version") === pg.matcher_policy_version,
+  ) ?? null;
+}
+
+function logContactSearchRuntimeRejection(node: NodeSortRuntimeInput, tuple: unknown): void {
+  logSortRuntimeRejection("contact_search_runtime_unsupported", "contact_search", node, tuple === null ? null : {
+    server_version_num: tupleField(tuple, "server_version_num"),
+    server_encoding: tupleField(tuple, "server_encoding"),
+    catalog: tupleField(tuple, "catalog_collversion"),
+    actual: tupleField(tuple, "actual_collversion"),
+    provider: tupleField(tuple, "collprovider"),
+    deterministic: tupleField(tuple, "collisdeterministic"),
+  });
+}
+
+/** Verified entry for a returned fingerprint/probe row; logs (best-effort) when it is not verified. */
+function runtimeTupleMatches(
+  tuple: unknown,
+  node: NodeSortRuntimeInput,
+): ContactSearchRuntimeEntry | null {
+  const entry = contactSearchRuntimeEntryFor(parseJson(tuple), node);
+  if (!entry) logContactSearchRuntimeRejection(node, parseJson(tuple) ?? null);
+  return entry;
+}
+
+function runtimeProbeState(client: LiveRecordSqlClient, node: NodeSortRuntimeInput): RuntimeProbeCacheEntry {
   const clientKey = client as object;
   let byPolicy = runtimeProbeCache.get(clientKey);
   if (!byPolicy) {
     byPolicy = new Map();
     runtimeProbeCache.set(clientKey, byPolicy);
   }
-  const key = runtimeProbeCacheKey();
+  const key = runtimeProbeCacheKey(node);
   const existing = byPolicy.get(key);
   if (existing) return existing;
-  const created = { retryAt: 0, verified: false } satisfies RuntimeProbeCacheEntry;
+  const created: RuntimeProbeCacheEntry = { retryAt: 0, verified: null };
   byPolicy.set(key, created);
   return created;
 }
@@ -1323,12 +1404,14 @@ function runtimeProbeState(client: LiveRecordSqlClient): RuntimeProbeCacheEntry 
 async function verifiedContactSearchRuntime(
   client: LiveRecordSqlClient,
   now: () => number,
-): Promise<boolean> {
-  const state = runtimeProbeState(client);
+  nodeRuntime: () => NodeSortRuntimeInput,
+): Promise<ContactSearchRuntimeEntry | null> {
+  const node = nodeRuntime();
+  const state = runtimeProbeState(client, node);
   const currentTime = now();
-  if (state.verified) return true;
+  if (state.verified) return state.verified;
   if (state.inFlight) return state.inFlight;
-  if (state.retryAt > currentTime) return false;
+  if (state.retryAt > currentTime) return null;
 
   const probe = client
     .query<ContactSearchRuntimeTuple>(
@@ -1336,7 +1419,9 @@ async function verifiedContactSearchRuntime(
       [CONTACT_SEARCH_MATCHER_POLICY_VERSION],
     )
     .then((result) => {
-      const verified = result.rows.length === 1 && runtimeTupleMatches(result.rows[0]!);
+      const verified = result.rows.length === 1
+        ? runtimeTupleMatches(result.rows[0]!, node)
+        : (logContactSearchRuntimeRejection(node, null), null);
       state.verified = verified;
       state.retryAt = verified
         ? 0
@@ -1344,9 +1429,10 @@ async function verifiedContactSearchRuntime(
       return verified;
     })
     .catch(() => {
-      state.verified = false;
+      logContactSearchRuntimeRejection(node, null);
+      state.verified = null;
       state.retryAt = now() + CONTACT_SEARCH_RUNTIME_NEGATIVE_BACKOFF_MS;
-      return false;
+      return null;
     });
   state.inFlight = probe;
   try {
@@ -1359,9 +1445,10 @@ async function verifiedContactSearchRuntime(
 function invalidateVerifiedContactSearchRuntime(
   client: LiveRecordSqlClient,
   now: () => number,
+  nodeRuntime: () => NodeSortRuntimeInput,
 ): void {
-  const state = runtimeProbeState(client);
-  state.verified = false;
+  const state = runtimeProbeState(client, nodeRuntime());
+  state.verified = null;
   state.retryAt = now() + CONTACT_SEARCH_RUNTIME_NEGATIVE_BACKOFF_MS;
 }
 
@@ -1384,10 +1471,23 @@ function escapeLikePattern(value: string): string {
     .replaceAll("_", "\\_");
 }
 
+/**
+ * Which matcher produced a page: "unfiltered" (empty query), "js" (fallback projection matched by
+ * JS toLowerCase) or `pg-icu:<runtime id>` (PG lower() on a verified pair). A keyset cursor is only
+ * valid on the path that issued it, so one paging sequence never mixes two matchers.
+ */
+export type ContactMatchPath = "unfiltered" | "js" | `pg-icu:${string}`;
+
+/** Every path a current cursor could carry, plus `null` for cursors issued before path binding. */
+function knownContactMatchPaths(): readonly (ContactMatchPath | null)[] {
+  return [null, "unfiltered", "js", ...VERIFIED_CONTACT_SEARCH_RUNTIMES.map((entry) => `pg-icu:${entry.id}` as const)];
+}
+
 function queryScope(
   input: ContactsListSearchFilterInput,
   actorId: string,
   workspaceId: string,
+  matchPath: ContactMatchPath | null,
 ): string {
   return createHash("sha256")
     .update(JSON.stringify({
@@ -1400,22 +1500,46 @@ function queryScope(
       valueFilters: selectedValues(input.valueFilters),
       contextEventId: input.contextEventId?.trim() ?? "",
       sortVersion: "contact-list-keyset-v1",
+      ...(matchPath === null ? {} : { matchPath }),
     }))
     .digest("base64url");
 }
 
+function cursorEnvelopeScope(cursor: string): string | null {
+  try {
+    const parsed = JSON.parse(Buffer.from(cursor, "base64url").toString("utf8")) as Partial<DecodedCursor>;
+    return typeof parsed.scope === "string" ? parsed.scope : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Returns the position for a cursor of this exact query and match path, or null (restart) for a
+ * cursor of another query/actor/filter or a malformed one. A cursor of this same query issued on a
+ * different match path (or before path binding) is rejected, never silently restarted.
+ */
 function decodeCursor(
   cursor: string | null | undefined,
   input: ContactsListSearchFilterInput,
   actorId: string,
   workspaceId: string,
+  matchPath: ContactMatchPath,
 ): ContactPageCursor | null {
   if (!cursor) return null;
+  const scope = cursorEnvelopeScope(cursor);
+  if (
+    scope !== null &&
+    scope !== queryScope(input, actorId, workspaceId, matchPath) &&
+    knownContactMatchPaths().some((path) => path !== matchPath && scope === queryScope(input, actorId, workspaceId, path))
+  ) {
+    throw new Error("CONTACT_CURSOR_INVALID");
+  }
   try {
     const parsed = JSON.parse(Buffer.from(cursor, "base64url").toString("utf8")) as Partial<DecodedCursor>;
     if (
       parsed.version !== 1 ||
-      parsed.scope !== queryScope(input, actorId, workspaceId) ||
+      parsed.scope !== queryScope(input, actorId, workspaceId, matchPath) ||
       !parsed.last ||
       typeof parsed.last !== "object" ||
       Array.isArray(parsed.last)
@@ -1453,10 +1577,11 @@ function encodeCursor(
   input: ContactsListSearchFilterInput,
   actorId: string,
   workspaceId: string,
+  matchPath: ContactMatchPath,
 ): string {
   return Buffer.from(JSON.stringify({
     version: 1,
-    scope: queryScope(input, actorId, workspaceId),
+    scope: queryScope(input, actorId, workspaceId, matchPath),
     last,
   }), "utf8").toString("base64url");
 }
@@ -1637,7 +1762,7 @@ function parseFallbackContactRecordPage(
     facetCounts: emptyFacetCounts(),
     recordIds: sortKeys.map((sortKey) => sortKey.recordId),
     sortKeys,
-    cursorScope: queryScope(query, actorId, workspaceId),
+    cursorScope: queryScope(query, actorId, workspaceId, "js"),
     total: sortKeys.length,
   };
 }
@@ -1685,19 +1810,24 @@ export function createPostgresContactListPageReader(input: {
   client: LiveRecordSqlClient;
   workspaceId: string;
   now?: () => number;
+  nodeRuntime?: () => NodeSortRuntimeInput;
 }): ContactRecordPageReader {
   const now = input.now ?? (() => Date.now());
+  const nodeRuntime = input.nodeRuntime ?? currentNodeSortRuntime;
 
   return async (query, actorId) => {
     if (!actorId.trim() || !supportsBoundedContactPage(query)) return null;
 
     const limit = Math.min(50, Math.max(1, Math.floor(query.limit!)));
     const search = escapeLikePattern(query.query?.trim().toLowerCase() ?? "");
-    const cursor = decodeCursor(query.cursor, query, actorId, input.workspaceId);
     const hasNonEmptyQuery = search.length > 0;
-    const useFallback = hasNonEmptyQuery
-      ? !(await verifiedContactSearchRuntime(input.client, now))
-      : false;
+    const runtime = hasNonEmptyQuery
+      ? await verifiedContactSearchRuntime(input.client, now, nodeRuntime)
+      : null;
+    const useFallback = hasNonEmptyQuery && !runtime;
+    const matchPath: ContactMatchPath = !hasNonEmptyQuery ? "unfiltered" : runtime ? `pg-icu:${runtime.id}` : "js";
+    // Throws CONTACT_CURSOR_INVALID for a cursor of this query issued on another match path.
+    const cursor = decodeCursor(query.cursor, query, actorId, input.workspaceId, matchPath);
     const sourceFilters = selectedValues(query.sourceFilters);
     const statusFilters = selectedValues(query.statusFilters);
     const tagFilters = selectedValues(query.tagFilters);
@@ -1732,7 +1862,9 @@ export function createPostgresContactListPageReader(input: {
       if (!useVerifiedSearchCollation || !isContactSearchCompatibilitySqlError(error)) {
         throw error;
       }
-      invalidateVerifiedContactSearchRuntime(input.client, now);
+      invalidateVerifiedContactSearchRuntime(input.client, now, nodeRuntime);
+      // The request switched to the JS path: a PG-path cursor must not continue there.
+      if (cursor) throw new Error("CONTACT_CURSOR_INVALID");
       const fallbackResult = await input.client.query<ContactPageQueryRow>(
         CONTACT_FALLBACK_SQL,
         [...values.slice(0, -1), true],
@@ -1744,8 +1876,9 @@ export function createPostgresContactListPageReader(input: {
         input.workspaceId,
       );
     }
-    if (useVerifiedSearchCollation && !runtimeTupleMatches(parseJson(result.rows[0]?.runtime_fingerprint) as ContactSearchRuntimeTuple)) {
-      invalidateVerifiedContactSearchRuntime(input.client, now);
+    if (useVerifiedSearchCollation && runtimeTupleMatches(result.rows[0]?.runtime_fingerprint, nodeRuntime())?.id !== runtime?.id) {
+      invalidateVerifiedContactSearchRuntime(input.client, now, nodeRuntime);
+      if (cursor) throw new Error("CONTACT_CURSOR_INVALID");
       const fallbackResult = await input.client.query<ContactPageQueryRow>(
         CONTACT_FALLBACK_SQL,
         [...values.slice(0, -1), true],
@@ -1799,7 +1932,7 @@ export function createPostgresContactListPageReader(input: {
       recordIds: returnedRows.flatMap((row) => typeof row.record_id === "string" ? [row.record_id] : []),
       total: Number.isFinite(total) ? total : 0,
       ...(firstRow?.has_more === true && last
-        ? { nextCursor: encodeCursor(last, query, actorId, input.workspaceId) }
+        ? { nextCursor: encodeCursor(last, query, actorId, input.workspaceId, matchPath) }
         : {}),
     };
   };

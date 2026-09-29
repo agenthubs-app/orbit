@@ -1,9 +1,10 @@
 import { z } from "zod";
 import { createConfiguredPostgresLiveRecordStore } from "../../../shared/storage/configured-live-record-store";
 import type { LiveRecordSqlClient } from "../../../shared/storage/postgres-live-record-store";
+import { currentNodeSortRuntime, type NodeSortRuntimeInput } from "../../../shared/storage/sort-runtime";
 import {
   LIFECYCLE_TASK_CLASSIFIED_CTES, LIFECYCLE_CARD_JSON_SQL, LIFECYCLE_SORT_RUNTIME_CTE,
-  cardSchema, lifecycleSortRuntimeSchema, assertLifecycleNodeSortRuntime,
+  cardSchema, assertLifecycleNodeSortRuntimeFor, assertLifecycleSortRuntimeFor,
 } from "./lifecycle-task-pages";
 
 // Match the home adapter's strict ISO input, not PostgreSQL's permissive date parser.
@@ -51,7 +52,7 @@ select jsonb_build_object('ok', integrity.ok and not exists (select 1 from dated
 
 const count = z.number().int().nonnegative();
 const summarySchema = z.object({
-  ok: z.literal(true), runtime: lifecycleSortRuntimeSchema,
+  ok: z.literal(true), runtime: z.unknown(),
   counts: z.object({ current: count, history: count, orphan: count }).strict(),
   groups: z.object({ overdue: count, recent: count, undated: count }).strict(),
   items: z.array(cardSchema.extend({ group: z.enum(["overdue", "recent", "undated"]) }).strict()).max(3),
@@ -61,15 +62,18 @@ export interface LifecycleHomeSummaryReader {
   read(actorId: string, window: { snapshotAt: string; from: string; to: string }): Promise<LifecycleHomeSummary>;
 }
 
-export function createLifecycleHomeSummaryReader(input: { client: LiveRecordSqlClient; workspaceId: string }): LifecycleHomeSummaryReader {
+export function createLifecycleHomeSummaryReader(input: { client: LiveRecordSqlClient; workspaceId: string; nodeRuntime?: () => NodeSortRuntimeInput }): LifecycleHomeSummaryReader {
   return { async read(actorId, window) {
     if (!actorId.trim()) throw new Error("ACTOR_REQUIRED");
     const times = [window.snapshotAt, window.from, window.to].map(value => new Date(value).toISOString());
     if (Date.parse(times[1]) > Date.parse(times[0]) || Date.parse(times[0]) >= Date.parse(times[2])) throw new Error("HOME_WINDOW_INVALID");
-    assertLifecycleNodeSortRuntime();
+    const node = (input.nodeRuntime ?? currentNodeSortRuntime)();
+    // Node side is known before the query: an unverified Node never reads the database.
+    assertLifecycleNodeSortRuntimeFor(node, "lifecycle_home");
     const rows = await input.client.query<{ result: unknown }>(LIFECYCLE_HOME_SUMMARY_SQL, [input.workspaceId, actorId, ...times]);
     if (rows.rows.length !== 1) throw new Error("LIFECYCLE_HOME_INVALID");
     const result = summarySchema.parse(rows.rows[0]!.result);
+    assertLifecycleSortRuntimeFor(node, result.runtime, "lifecycle_home");
     return { counts: result.counts, groups: result.groups, items: result.items };
   } };
 }

@@ -4,7 +4,8 @@ import type {RelationshipTaskPageDTO} from '../../../shared/contract/relationshi
 import {relationshipTaskPageSchema,relationshipTaskPageItemSchema} from '../../../shared/api-schema/relationship-lifecycle';
 import type {LiveRecordSqlClient} from '../../../shared/storage/postgres-live-record-store';
 import {createConfiguredPostgresLiveRecordStore} from '../../../shared/storage/configured-live-record-store';
-import {LIFECYCLE_TASK_CLASSIFIED_CTES,LIFECYCLE_SORT_RUNTIME_CTE,lifecycleSortRuntimeSchema,assertLifecycleNodeSortRuntime} from '../../followups/storage/lifecycle-task-pages';
+import {LIFECYCLE_TASK_CLASSIFIED_CTES,LIFECYCLE_SORT_RUNTIME_CTE,assertLifecycleSortRuntimeFor} from '../../followups/storage/lifecycle-task-pages';
+import {currentNodeSortRuntime,type NodeSortRuntimeInput} from '../../../shared/storage/sort-runtime';
 import {resolveSharedReadBudgetGate} from '../../sync/read-budget-gate';
 
 const position=z.object({due:z.string().min(1).max(2048),id:z.string().min(1).max(2048),record:z.string().min(1).max(2048)}).strict();
@@ -26,7 +27,7 @@ select jsonb_build_object('ok',integrity.ok,'runtime',(select to_jsonb(runtime) 
     'status',task->>'status','dueAt',task->>'dueAt','position',jsonb_build_object('due',list_due,'id',id,'record',record_id)
   ) order by list_due collate pg_catalog."und-x-icu",id collate pg_catalog."und-x-icu",record_id collate "C") from page),'[]'::jsonb)) as result from integrity`;
 
-export function createRelationshipTaskPageReader(input:{client:LiveRecordSqlClient;workspaceId:string;secret:string;now?:()=>string}) {
+export function createRelationshipTaskPageReader(input:{client:LiveRecordSqlClient;workspaceId:string;secret:string;now?:()=>string;nodeRuntime?:()=>NodeSortRuntimeInput}) {
   return {async read(actorId:string,query:RelationshipTaskPageQuery):Promise<RelationshipTaskPageDTO> {
     const limit=query.limit??30;
     if(!actorId.trim()||!['open','completed'].includes(query.mode)||!Number.isSafeInteger(limit)||limit<1||limit>50)throw Error('RELATIONSHIP_TASK_PAGE_INPUT_INVALID');
@@ -42,8 +43,8 @@ export function createRelationshipTaskPageReader(input:{client:LiveRecordSqlClie
       before=position.parse(JSON.parse(Buffer.from(payload,'base64url').toString('utf8')));
     }catch{throw Error('RELATIONSHIP_TASK_CURSOR_INVALID');}
     const response=await input.client.query<{result:unknown}>(SQL,[input.workspaceId,actorId,query.mode,before?.due??null,before?.id??null,before?.record??null,limit+1]);
-    const row=z.object({ok:z.literal(true),runtime:lifecycleSortRuntimeSchema,total:z.number().int().nonnegative().safe(),items:z.array(relationshipTaskPageItemSchema.extend({position})).max(51)}).strict().parse(response.rows[0]?.result);
-    assertLifecycleNodeSortRuntime();
+    const row=z.object({ok:z.literal(true),runtime:z.unknown(),total:z.number().int().nonnegative().safe(),items:z.array(relationshipTaskPageItemSchema.extend({position})).max(51)}).strict().parse(response.rows[0]?.result);
+    assertLifecycleSortRuntimeFor((input.nodeRuntime??currentNodeSortRuntime)(),row.runtime,'relationship_task_page');
     const selected=row.items.slice(0,limit),hasMore=row.items.length>limit,last=selected.at(-1);
     const encoded=hasMore&&last?Buffer.from(JSON.stringify(last.position)).toString('base64url'):null;
     return relationshipTaskPageSchema.parse({actorId,mode:query.mode,items:selected.map(({position:_position,...item})=>item),total:row.total,hasMore,
