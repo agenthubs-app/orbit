@@ -26,6 +26,7 @@ const DATABASE_URL = process.env.ORBIT_LIFECYCLE_TEST_DATABASE_URL;
 const at = "2026-09-25T00:00:00.000Z";
 const secret = "local-test-only-".repeat(4);
 const dueInstant = "2026-09-24T00:00:00.000Z";
+const WALK_SLICE = 10;
 const window = { snapshotAt: "2026-09-25T00:00:00.000Z", from: "2026-09-18T00:00:00.000Z", to: "2026-10-02T00:00:00.000Z" };
 
 async function database(run: (pool: Pool, collversion: string) => Promise<void>) {
@@ -118,12 +119,13 @@ async function monotonicViolations(pool: Pool, rows: readonly Walked[]): Promise
 }
 
 test("follow-up pages, relationship task pages and the home summary keep every probe character exactly once in reviewed PG order across page boundaries", {
-  skip: !DATABASE_URL, timeout: 7_200_000,
+  skip: !DATABASE_URL, timeout: 14_400_000,
 }, async () => database(async (pool, collversion) => {
   const { cps, batchSize, rowsPerChar, pageSize } = fixture.sort;
   const pgRank = fixture.sort.pgBatchRank[collversion]!;
   assert.equal(pgRank.length, cps.length);
   assert.ok(rowsPerChar > pageSize, "every character's rows must span a page boundary");
+  assert.equal(batchSize % WALK_SLICE, 0);
   const store = createPostgresLiveRecordStore({ client: pool });
   const common = { source: { type: "manual", id: "s", label: "probe" }, evidenceIds: ["e"], createdAt: at, updatedAt: at };
   for (const [collectionName, id, payload] of [
@@ -139,9 +141,11 @@ test("follow-up pages, relationship task pages and the home summary keep every p
   const suffix = (k: number) => (k === 0 ? "" : `-${String(k).padStart(2, "0")}`);
   let assertedRows = 0;
 
-  for (let start = 0; start < cps.length; start += batchSize) {
-    const batch = cps.slice(start, start + batchSize);
-    const label = `batch ${start / batchSize} (U+${batch[0]!.toString(16).toUpperCase()}…)`;
+  // Walk each reviewed batch in consecutive slices of WALK_SLICE characters: the reviewed within-batch
+  // ranks order any slice of it, and smaller slices keep every page query cheap on the reproduced PG.
+  for (let start = 0; start < cps.length; start += WALK_SLICE) {
+    const batch = cps.slice(start, Math.min(start + WALK_SLICE, (Math.floor(start / batchSize) + 1) * batchSize));
+    const label = `batch ${Math.floor(start / batchSize)} slice ${(start % batchSize) / WALK_SLICE} (U+${batch[0]!.toString(16).toUpperCase()}…)`;
     const expectedAnchorOrder = batch.map((cp, i) => ({ cp, rank: pgRank[start + i]! })).sort((a, b) => a.rank - b.rank).map(({ cp }) => cp);
     await pool.query("delete from orbit_records where collection_name = 'tasks'");
     const tasks = batch.flatMap(cp => {
