@@ -40,3 +40,11 @@
 - 服务/设备收口：3000 保持原 PID `96114`，未停止；3100、32137、8082 已停止。Simulator app 已 terminate，未 erase/清除设备数据，也未在设置页改写服务器地址。系统盘最新空闲 `7.3 GiB`；`git diff --check` 通过。
 - 详细日志、TDD RED/GREEN、phoneweb 与 Simulator 证据均在 ignored `build/harness-state/evidence/sprint-0137/run-01/`；工作区 GitNexus 索引目录不纳入提交。
 - 当前功能文件及新增测试保留在本分支，checkpoint 为事实更正；尚未创建结束 run 的 REPORT。SC-0137-04 的登录后 Simulator 验收、SC-0137-05 的全量 0 失败与 provider-key 清空/0 付费调用证明仍未完成。本记录是部分交付 checkpoint，不表示 Sprint 完成；待 native 环境修复后协调恢复同一 run。
+
+## Native 启动诊断补充（2026-09-29，只读复核）
+
+- 可复用的 8081 启动证据：`simulator-debug-build.log` 记录 `npm run ios -- --device <UDID> --no-bundler` 完成 prebuild、安装 `app.agenthubs.orbit`，并由 Expo CLI 打开 `app.agenthubs.orbit://expo-development-client/?url=http%3A%2F%2F192.168.1.105%3A8081`；`simulator-first-render.png` 证明 JS 已渲染登录页。该日志不包含 8082 启动记录。
+- 可复用的 8082 路径来自本轮较早的运行记录（不是上述保存日志）：在 `repos/orbit-app` 启动 `EXPO_PUBLIC_ORBIT_API_BASE_URL=http://127.0.0.1:3100 node node_modules/.bin/expo start --dev-client --lan --port 8082 --ios`，使用 Expo CLI 输出的 `app.agenthubs.orbit://expo-development-client/?url=<编码后的 http://<当时LAN-IP>:8082>`；app 已运行时先 `xcrun simctl terminate <UDID> app.agenthubs.orbit`，再 `xcrun simctl openurl <UDID> '<Expo CLI输出的完整URI>'`。`192.168.1.105` 仅是旧日志中的地址，现场必须用当前 LAN IP 和 CLI 实际输出。此前没有保存 8082 CLI 原始日志，故其精确现场输出不能由该日志复证。
+- B 当前 `No script URL provided` 的实际启动命令／app 启动入口尚未留在 A 的证据中，不能据此断言其原因。对照时应记录 B 的 Expo CLI URL 和实际 `openurl` 参数；若直接点图标或仅 `simctl launch`，它与显式传 Expo URL 的上述路径不同。不要据此增加依赖：`app.config.ts` 已配置 `orbit` scheme，旧 DerivedData app 注册 `orbit` 与 `app.agenthubs.orbit`；保存的成功 8081 路径也证明该构建曾能打开 dev-client URL 并渲染。
+- 错误分层及证据边界：截图 `simulator-sync-cleanup-blocked.png` 是 JS 登录页之后的 cleanup preflight 阻断，不是 `No script URL provided`。`sync-lifecycle.ts` 的 `prepare()` 对 `loadNative()` 失败和 `readPendingSyncCleanup(native)` 失败分别 catch，但两处都只报告 `SYNC_CLEANUP_STATE_FAILED` 且不保留原异常，所以现有截图／证据日志无法判断究竟是哪一段拒绝；只读复查本轮保存日志及系统日志，没有找到带底层异常的原始记录。`expo-secure-store` 当前包入口为 `build/SecureStore.js`、包含该 JS 文件但无 `SecureStore.bundle`；旧记载的 404 是另一类 bundler 资源请求，既不等于缺少 JS bundle URL，也没有证据证明它导致 cleanup catch。根因仍待 B 在获锁后采集原始异常。
+- 环境锁更正：本段追加时 Simulator、3100 与 Metro 8082 已由 B 持有；A 只做历史工件／源码／系统日志只读核验，未启动或重启服务、未操作 Simulator。
