@@ -14,9 +14,9 @@
 
 ## 运行记录
 
-- 结果：**failed**（SC-03 超上限，等待用户裁决；其余 SC 通过）
+- 结果：**failed**（SC-03 超上限；其余 SC 通过）。用户裁决 D18：先合并，流量由 W0028 在发布前解决
 - Generator：Claude Opus 5.5／2026-09-29；Planner revision 2，`PLANNER.md` SHA256 `93cc80566ea72d858c1d2238989fd3f62e329070537970179d018baad07e0c7c`；run-01
-- 基线：`chat-agent` `eb1910a8`；分支 `sprint/W0024-events-registration-actor-id`；功能 SHA `21beec29`；`chat-agent` 合并 SHA：不合并（等待用户裁决）
+- 基线：`chat-agent` `eb1910a8`；分支 `sprint/W0024-events-registration-actor-id`；功能 SHA `21beec29`；`chat-agent` 合并 SHA：见登记表（按 D18 合并）
 - 档位 H；全量对照：基线 5685 个测试／失败 80，HEAD 5694 个测试／失败 80，新增失败 0（详见下文）
 - 付费 AI 调用 0；未 push、未部署、未碰生产库
 - REPORT 由协调者按 Generator 交回的正文落盘
@@ -96,7 +96,7 @@
 
 | 意见 | 判断 | 处理 |
 | --- | --- | --- |
-| （等待 Codex 代码 review） | | |
+| Codex `codex review --base chat-agent`（全文 `codex-review.txt`）P1：活动页每次打开都整行读报名，按报告测量超 30 MB 上限，应先改成只读 eventId／status 的轻量查询再切换账号 id | 成立，与 SC-03 同一问题 | 用户裁决（D18）：先合并本修正，另开 W0028 裁剪报名读取返回列，W0028 必须在 W0019 发布前完成 |
 
 ## 交接
 
