@@ -879,8 +879,11 @@ export function IOrbitHome({
   const itemsSettled =
     snapshot !== "pending" && signals !== "pending" && pendingCardsState.status !== "pending";
   // 任一核心来源读不到时，不能给出「今天没有要紧的事」这种确定结论。
+  // 跟进来源（排序运行时未验证等）单独失败时 snapshot 仍可用，也要算进来（W0025）。
+  const followupsUnavailable = facts?.followups.state === "unavailable";
   const partial =
     snapshot === "unavailable" ||
+    followupsUnavailable ||
     signals === "unavailable" ||
     pendingCardsState.status === "unavailable";
 
@@ -1019,7 +1022,9 @@ export function IOrbitHome({
             <p className="ir-m-partial" role="status">
               {snapshot === "unavailable"
                 ? t({ en: "Schedule and follow-ups can't be read right now; this list may be incomplete.", zh: "日程与跟进暂时读取不到，下面的要事可能不完整。" })
-                : t({ en: "Relationship signals can't be read right now; this list may be incomplete.", zh: "关系信号暂时读取不到，下面的要事可能不完整。" })}
+                : followupsUnavailable
+                  ? t({ en: "Follow-ups can't be read right now; this list may be incomplete.", zh: "跟进暂时读取不到，下面的要事可能不完整。" })
+                  : t({ en: "Relationship signals can't be read right now; this list may be incomplete.", zh: "关系信号暂时读取不到，下面的要事可能不完整。" })}
             </p>
           ) : null}
           {signalError ? (

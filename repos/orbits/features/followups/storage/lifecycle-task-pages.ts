@@ -172,8 +172,25 @@ export interface LifecycleTaskPagesReader {
 }
 
 export const lifecycleSortRuntimeSchema = z.object({ pg: z.literal("160012"), encoding: z.literal("UTF8"), catalog: z.literal("153.136"), actual: z.literal("153.136"), provider: z.literal("i"), deterministic: z.literal(true) }).strict();
+export interface LifecycleNodeSortRuntime { node: string; icu: string; unicode: string }
+/**
+ * Node/ICU/Unicode tuples on which the PG differential tests
+ * (tests/services/lifecycle-task-pages-postgres.test.ts, relationship-task-page-postgres.test.ts)
+ * passed against the PG tuple in lifecycleSortRuntimeSchema. Exact match only: a new tuple
+ * (including the production runtime) is added only after those tests pass on it.
+ */
+export const VERIFIED_LIFECYCLE_NODE_SORT_RUNTIMES: readonly LifecycleNodeSortRuntime[] = Object.freeze([
+  Object.freeze({ node: "25.6.0", icu: "78.2", unicode: "17.0" }),
+  // W0025: local dev/verify runtime, PG 16.0012 / und-x-icu 153.136; differential tests passed 2026-09-29.
+  Object.freeze({ node: "26.10.0", icu: "78.3", unicode: "17.0" }),
+]);
+export function assertLifecycleNodeSortRuntimeFor(versions: { node?: string; icu?: string; unicode?: string }) {
+  const verified = VERIFIED_LIFECYCLE_NODE_SORT_RUNTIMES.some(entry =>
+    entry.node === versions.node && entry.icu === versions.icu && entry.unicode === versions.unicode);
+  if (!verified) throw new Error("LIFECYCLE_SORT_RUNTIME_UNVERIFIED");
+}
 export function assertLifecycleNodeSortRuntime() {
-  if (process.versions.node !== "25.6.0" || process.versions.icu !== "78.2" || process.versions.unicode !== "17.0") throw new Error("LIFECYCLE_SORT_RUNTIME_UNVERIFIED");
+  assertLifecycleNodeSortRuntimeFor(process.versions);
 }
 
 function cursorCodec(secret: string, workspaceId: string, actorId: string, category: LifecycleGroup) {

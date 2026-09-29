@@ -774,6 +774,30 @@ test("a single unavailable source never reads as an all-clear", async (t) => {
   assert.ok(html.includes("今天的部分数据暂时读取不到"), "the lede does not claim a quiet day");
 });
 
+test("an unavailable follow-up source never reads as an all-clear (SC-W0025-03)", async (t) => {
+  const followupsDown = {
+    facts: { ...EMPTY_SNAPSHOT.facts, followups: { current: { count: null, items: [] }, state: "unavailable" } },
+  };
+  const empty = await mountHome(t, homeElement(), { snapshot: followupsDown });
+  const emptyText = textOf(empty.root.root as unknown as { children: readonly unknown[] });
+  assert.ok(!emptyText.includes("今天没有必须处理的事"), "no all-clear while follow-ups are unreadable");
+  assert.ok(emptyText.includes("部分数据来源暂时不可用"), "the empty state admits the missing source");
+  assert.ok(emptyText.includes("今天的部分数据暂时读取不到"), "the lede does not claim a quiet day");
+
+  const withLead = await mountHome(t, homeElement(), {
+    signals: [plainSignal("s-1", "一件事", "high")],
+    snapshot: followupsDown,
+  });
+  const note = withLead.root.root.findAll((node) => node.props?.className === "ir-m-partial");
+  assert.equal(note.length, 1, "the list is marked as possibly incomplete");
+  assert.match(textOf(note[0]!), /跟进暂时读取不到/, "the note names the follow-up source, not signals");
+
+  const quiet = await mountHome(t, homeElement(), { snapshot: EMPTY_SNAPSHOT });
+  const quietText = textOf(quiet.root.root as unknown as { children: readonly unknown[] });
+  assert.ok(quietText.includes("今天没有必须处理的事"), "a readable empty follow-up source keeps the all-clear");
+  assert.ok(!quietText.includes("部分数据来源暂时不可用"));
+});
+
 test("the now line stays visible after today's items end and on an empty day", async (t) => {
   // 东京 21:00；当天唯一的约谈是 10:30。
   const late = () => new Date("2026-09-28T12:00:00Z");
