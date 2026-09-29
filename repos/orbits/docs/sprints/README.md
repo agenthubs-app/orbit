@@ -78,8 +78,8 @@
 | [W0016](W0016-verify-environment/GOAL.md) | 另起开示例开关的验收 server，建测试账号并造好各场景数据，名片照片裁成单张 | RV-01 | 大目标 1 全部 completed | completed |
 | [W0017](W0017-traffic-guard/GOAL.md) | 3 个计划维护任务改为每天最多一次（持久、跨实例），名片匹配补跑空闲时只做轻查询；新增读取路径逐一测量并估算月流量 | RV-03 | 无 | completed |
 | [W0018](W0018-scenario-acceptance/GOAL.md) | 逐场景真实页面验收（桌面＋手机），修小问题，交验收报告页面 | RV-02 | W0016、W0017、W0021 | completed |
-| [W0019](W0019-release-checklist/GOAL.md) | 生产上线清单 + 大目标收口的本地全量对照 | RV-04 | W0018、W0022～W0034；须含 W0025 发布门（生产 Node/ICU 与 Neon PG/排序规则版本，含联系人搜索） | ready |
-| [W0020](W0020-preview-verify/GOAL.md) | Preview 复验关键场景并测量 Neon 流量 | RV-04 | W0019；用户授权 Preview 部署、迁移、开关、测试数据 | planned |
+| [W0019](W0019-release-checklist/GOAL.md) | 生产上线清单 + 大目标收口的本地全量对照 | RV-04 | W0018、W0022～W0034；须含 W0025 发布门（生产 Node/ICU 与 Neon PG/排序规则版本，含联系人搜索） | completed |
+| [W0020](W0020-preview-verify/GOAL.md) | Preview 复验关键场景并测量 Neon 流量 | RV-04 | W0019；用户授权 Preview 部署、迁移、开关、测试数据 | planned（需重写 PLANNER：staging 库已删除，Preview 用库待用户决定；部署、迁移、开关需用户授权） |
 | [W0021](W0021-read-traffic-trim/GOAL.md) | 计划／匹配／名片／活动归属读取瘦身，1000 人月出站 ≤1.0 GB，活动归属按时间窗口读取，页面不变 | RV-05 | W0017 | completed |
 | [W0022](W0022-home-guide-entry/GOAL.md) | 老用户首页「帮我制定推进计划」改去引导第 3 步（`?step` 不绕过硬顺序）；有计划但第 4 步未完成时首页留提醒 | RW-04、RW-10 | W0018；W22-1～4 已定（D13） | completed |
 | [W0023](W0023-expired-plan-match-week/GOAL.md) | 到期计划上关联联系人只记关联和进展记录、不生成「约 TA」；制定下一份计划时在新计划当周生成；确认接口与组件跟着改 | RW-11、RW-12 | W0026（同改种子脚本）、W0024（顺序）；W23-2 已定（D17） | completed |
@@ -135,3 +135,4 @@
 | W0033 | run-01（2026-09-29） | `921c5d12`（报告 `6f9b8fbb`） | `d7b7247e` | [REPORT](W0033-notification-source-404/REPORT.md) |
 | W0032 | run-01（2026-09-29） | `49df2c77`（报告 `ad9be401`） | `94a18a6a` | [REPORT](W0032-session-revocation-read/REPORT.md)；SC-04 按 D32 放宽 |
 | W0034 | run-01（2026-09-29～30） | `0af468b9`、`b964c37a`（报告 `bf2092d2`） | `af7da1a8` | [REPORT](W0034-runtime-allowlist-prod/REPORT.md)；跟进与联系人生产组合入表 |
+| W0019 | run-01（2026-09-30） | `4d43f2a1`（报告 `36c31566`） | `681f56bb` | [REPORT](W0019-release-checklist/REPORT.md)；[上线清单](W0019-release-checklist/RELEASE-CHECKLIST.md) |

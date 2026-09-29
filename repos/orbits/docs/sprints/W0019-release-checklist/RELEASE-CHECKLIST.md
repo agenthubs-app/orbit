@@ -33,7 +33,7 @@
 | 编号 | 项目 | 状态 | 证据 | 负责人 | 下一步 |
 | --- | --- | --- | --- | --- | --- |
 | R1 | 当前生产部署 | 已核实（部署 id）；SHA 不可得 | `prod/V4.txt`：`dpl_BKnDTsXdhvQrmM2KUqTnTmRaakUB`，2026-09-26T15:37:54Z，READY，`source=cli`，`meta={}`，无 gitSource | 协调者 | 无法从 Vercel 取得 SHA（CLI 直传）。见 R3 的推算 |
-| R2 | 拟发布 SHA | 待核实（W0019 合并后确定） | D34：发布 W0019 合并后的 `chat-agent` HEAD。W0019 开工时 `chat-agent` = `d665ca71` | 协调者填写，用户确认 | 协调者合并 W0019 后把合并 SHA 填到这里 |
+| R2 | 拟发布 SHA | 已确定：`681f56bb`（W0019 合并提交；登记提交在其后只改文档） | D34：发布 W0019 合并后的 `chat-agent` HEAD | 协调者填写，用户确认 | 用户确认后作为发布 SHA |
 | R3 | 生产与拟发布的差距 | 待核实（只能推算） | 部署时间 2026-09-27 00:37 JST。此前最后一个提交是 `76716076`（2026-09-26 23:18 JST），它是 `d665ca71` 的祖先。`76716076..d665ca71` 共 160 个提交，first-parent 80 个。2026-09-25 审计记录的旧部署源码 `02ec26f0` 到 `d665ca71` 共 642 个提交 | 协调者 | 按 `76716076` 算，差距至少包括大目标 1 全部（W0001～W0015）和大目标 2 全部（W0016～W0034）。N4 里没有任何计划表，与「生产不含 W0007 之后的代码或未跑其迁移」一致 |
 | R4 | 生产项目与域名 | 已核实 | `prod/V3.txt`：`orbitailink.com`、`www.orbitailink.com` 挂在 Vercel 项目 `orbit-staging-20260917`（`prj_PFJXRat2a7ADxz6tWVLQU7rNTaIt`）。旧 `orbit` 项目只剩 `orbit-puce-kappa.vercel.app`，最后生产部署是 2026-09-17（`prod/V4.txt`） | 协调者 | `prod/V2.txt` 里旧 `orbit` 项目的 `domains` 字段仍列出 orbitailink.com，与 V3 不一致，以 V3 为准 |
 | R5 | 发布路径 | 待核实（用户决定） | `prod/V2.txt`：生产项目没有 git 关联和 production branch 字段，最近 5 次生产部署都是 CLI 直传 | 用户 | 建议：从拟发布 SHA 的干净导出目录用 CLI 部署，附 `--meta gitCommitSha=<SHA>`，让以后能从部署元数据查到 SHA。不预设合并到 `main`（`main` 停在 2026-06-27，落后 `chat-agent` 2,165 个提交） |
