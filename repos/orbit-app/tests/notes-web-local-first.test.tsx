@@ -22,7 +22,7 @@ const note = (id, title, minute, extra = {}) => ({ id, accountId: "account:one",
   createdAt: "2026-09-27T00:0" + minute + ":00.000Z", updatedAt: "2026-09-27T00:0" + minute + ":00.000Z", ...extra });
 const mirrorNotes = () => [note("note:1", "发布会准备", 3, { manualContactIds: ["contact:a"], contactIds: ["contact:a"] }), note("note:2", "预算确认", 2, { eventIds: ["event:a"] })];
 const serverNotes = () => [note("note:srv", "服务器上的笔记", 4)];
-export const state = window.fixture = { requests: [], navigation: [], syncs: 0, invalidations: 0, status: "fresh", mirror: "local-mirror", ...window.initialFixture };
+export const state = window.fixture = { requests: [], apiClientRefs: [], navigation: [], syncs: 0, invalidations: 0, status: "fresh", mirror: "local-mirror", ...window.initialFixture };
 export const useLocalSearchParams = () => window.fixture.params ?? {};
 export const usePathname = () => "/notes";
 export const useRouter = () => ({ canGoBack: () => Boolean(state.canGoBack), back() { state.navigation.push("back"); }, push(href) { state.navigation.push(href); }, replace(href) { state.navigation.push("replace:" + href); } });
@@ -43,8 +43,9 @@ export const useApiResource = (path, _validate, options = {}) => {
   if (path.startsWith("/api/notes/")) return { kind: "success", data: { note: serverNotes()[0] }, refreshing: false, refresh() {} };
   return { kind: "empty", data: [], refreshing: false, refresh() {} };
 };
-export const useOrbitApiClient = () => ({ async get(path) { state.requests.push("get:" + path); return { success: false, status: 0, error: { message: "offline" } }; }, async post(path, options) { state.requests.push("post:" + path); if (path !== "/api/notes" || state.status === "stale") return { success: false, status: 0, error: { message: "offline" } };
-  const body = options.body; state.created = note("note:new", body.title, 5, { body: body.body }); return { success: true, status: 201, data: { note: state.created } }; } });
+const apiClient = { async get(path) { state.requests.push("get:" + path); return { success: false, status: 0, error: { message: "offline" } }; }, async post(path, options) { state.requests.push("post:" + path); if (path !== "/api/notes" || state.status === "stale") return { success: false, status: 0, error: { message: "offline" } };
+  const body = options.body; state.created = note("note:new", body.title, 5, { body: body.body }); return { success: true, status: 201, data: { note: state.created } }; } };
+export const useOrbitApiClient = () => { state.apiClientRefs.push(apiClient); return apiClient; };
 const memory = new Map();
 export default { getItem: async key => memory.get(key) ?? null, setItem: async (key, value) => { memory.set(key, value); }, removeItem: async key => { memory.delete(key); } };
 export const SafeAreaView = ({ children, ...props }) => <View {...props}>{children}</View>;
@@ -173,6 +174,13 @@ test("non-secure context (mirror online-only): list and detail read the server, 
   assert.equal(await page.getByRole("button", { name: "新建笔记，需要联网" }).count(), 0);
   const { page: detail, errors: detailErrors } = await open(t, { mirror: "insecure-context", screen: "detail", noteId: "note:srv" });
   await detail.getByText("服务器上的笔记", { exact: true }).waitFor();
+  await detail.waitForFunction(() => (window as any).fixture.apiClientRefs.length >= 2);
+  const clientRefs = await detail.evaluate(() => {
+    const refs = (window as any).fixture.apiClientRefs as object[];
+    return { calls: refs.length, unique: new Set(refs).size };
+  });
+  assert.ok(clientRefs.calls >= 2, "the detail's empty-contact effect caused another render");
+  assert.equal(clientRefs.unique, 1, "the fixture preserves the client identity across renders");
   assert.ok((await notesReads(detail)).includes("resource:/api/notes/note%3Asrv") || (await notesReads(detail)).some((path) => path.startsWith("resource:/api/notes/")));
   assert.deepEqual([...errors, ...detailErrors], []);
 });
