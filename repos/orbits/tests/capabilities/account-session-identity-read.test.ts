@@ -301,11 +301,11 @@ test("SC-03 unconfigured database: mock mode keeps the session actor, live mode 
 // PostgreSQL (orbit_test, temporary schema)
 // ---------------------------------------------------------------------------
 
-async function withSchema(run: (input: { pool: Pool; schema: string; schemaUrl: string }) => Promise<void>) {
+async function withSchema(run: (input: { pool: Pool; schema: string; schemaUrl: string }) => Promise<void>, timeZone?: string) {
   assert.ok(databaseUrl);
   const schema = `w0030_identity_${randomUUID().replaceAll("-", "")}`;
   const admin = new Pool({ connectionString: databaseUrl, max: 1 });
-  const pool = new Pool({ connectionString: databaseUrl, max: 4, options: `-c search_path=${schema}` });
+  const pool = new Pool({ connectionString: databaseUrl, max: 4, options: `-c search_path=${schema}${timeZone ? ` -c TimeZone=${timeZone}` : ""}` });
   const schemaUrl = new URL(databaseUrl);
   schemaUrl.searchParams.set("options", `-c search_path=${schema}`);
   try {
@@ -338,6 +338,7 @@ function countingSqlClient(pool: Pool) {
 interface Row {
   collection: "accounts" | "profiles";
   createdAt?: string;
+  deletedAt?: string | null;
   lifecycle?: "active" | "archived" | "deleted";
   occurredAt?: string | null;
   payload: unknown;
@@ -350,11 +351,11 @@ async function insertRows(pool: Pool, workspaceId: string, rows: readonly Row[])
   for (const [index, row] of rows.entries()) {
     await pool.query(
       `insert into orbit_records (workspace_id, collection_name, record_id, user_id, source_type, source_id, source_label, provider,
-         provider_record_id, evidence_ids, payload, search_text, created_at, updated_at, occurred_at, lifecycle_state)
+         provider_record_id, evidence_ids, payload, search_text, created_at, updated_at, occurred_at, lifecycle_state, deleted_at)
        values ($1, $2, $3, 'user:w0030', 'manual', $4, 'W0030 fixture', 'credentials', 'provider:w0030', array['evidence:w0030'],
-         $5::jsonb, 'search text', $6::timestamptz, $7::timestamptz, $8::timestamptz, $9)`,
+         $5::jsonb, 'search text', $6::timestamptz, $7::timestamptz, $8::timestamptz, $9, $10::timestamptz)`,
       [row.workspaceId ?? workspaceId, row.collection, row.recordId ?? `${row.collection}:${index}:${randomUUID()}`, `source:${index}`,
-        JSON.stringify(row.payload), row.createdAt ?? T, row.updatedAt ?? T, row.occurredAt === undefined ? T : row.occurredAt, row.lifecycle ?? "active"],
+        JSON.stringify(row.payload), row.createdAt ?? T, row.updatedAt ?? T, row.occurredAt === undefined ? T : row.occurredAt, row.lifecycle ?? "active", row.deletedAt ?? null],
     );
   }
 }
@@ -434,15 +435,18 @@ const SCENARIOS: Scenario[] = [
   { name: "profile occurred_at infinity does not reject", session: { userId: "profile:p" }, expect: "account:a", rows: () => [{ collection: "profiles", occurredAt: "infinity", payload: P() }, { collection: "accounts", payload: A() }] },
   { name: "account occurred_at -infinity does not reject", session: { userId: "profile:p" }, expect: "account:a", rows: () => [{ collection: "profiles", payload: P() }, { collection: "accounts", occurredAt: "-infinity", payload: A() }] },
   { name: "profile occurred_at beyond the JS Date range rejects", session: { userId: "profile:p" }, expect: "reject", rows: () => [{ collection: "profiles", occurredAt: "275760-09-14T00:00:00Z", payload: P() }, { collection: "accounts", payload: A() }] },
+  { name: "account created_at beyond the JS Date range rejects", session: { userId: "profile:p" }, expect: "reject", rows: () => [{ collection: "profiles", payload: P() }, { collection: "accounts", createdAt: "290000-01-01T00:00:00Z", payload: A() }] },
+  { name: "archived profile deleted_at beyond the JS Date range rejects", session: { userId: "profile:p" }, expect: "reject", rows: () => [{ collection: "profiles", deletedAt: "290000-01-01T00:00:00Z", lifecycle: "archived", payload: P() }, { collection: "accounts", payload: A() }] },
+  { name: "profile deleted_at infinity does not reject", session: { userId: "profile:p" }, expect: "account:a", rows: () => [{ collection: "profiles", deletedAt: "infinity", payload: P() }, { collection: "accounts", payload: A() }] },
+  { name: "occurred_at at the JS Date maximum (time-zone dependent)", session: { userId: "profile:p" }, expect: undefined, rows: () => [{ collection: "profiles", occurredAt: "275760-09-13T00:00:00Z", payload: P() }, { collection: "accounts", payload: A() }] },
   { name: "updated_at at the JS Date maximum (time-zone dependent)", session: { userId: "profile:p" }, expect: undefined, rows: () => [{ collection: "profiles", payload: P(), updatedAt: "275760-09-13T00:00:00Z" }, { collection: "accounts", payload: A() }] },
   { name: "deleted profile with infinite created_at is ignored", session: { userId: "profile:p" }, expect: "account:a", rows: () => [{ collection: "profiles", createdAt: "infinity", lifecycle: "deleted", payload: P() }, { collection: "profiles", payload: P() }, { collection: "accounts", payload: A() }] },
   { name: "account id listed in an invalid fallback profile is still read", session: { userId: "account:a" }, expect: null, rows: () => [{ collection: "profiles", payload: P({ id: "profile:x", displayName: 7 }) }, { collection: "accounts", payload: A() }] },
 ];
 
-test("SC-01 PG equivalence: old graph and new identity resolve to the same actor (incl. null and reject) with the same statement count", pgSkip, async () => {
-  await withSchema(async ({ pool }) => {
-    for (const [index, scenario] of SCENARIOS.entries()) {
-      const ws = `${WORKSPACE}:${index}`;
+async function assertEquivalent(pool: Pool, scenarios: readonly Scenario[], prefix: string) {
+    for (const [index, scenario] of scenarios.entries()) {
+      const ws = `${WORKSPACE}:${prefix}:${index}`;
       await insertRows(pool, ws, scenario.rows(ws));
       const oldSql = countingSqlClient(pool);
       const newSql = countingSqlClient(pool);
@@ -471,7 +475,18 @@ test("SC-01 PG equivalence: old graph and new identity resolve to the same actor
         if (scenario.expectName) assert.equal(before.value?.name, scenario.expectName, scenario.name);
       }
     }
-  });
+}
+
+test("SC-01 PG equivalence: old graph and new identity resolve to the same actor (incl. null and reject) with the same statement count", pgSkip, async () => {
+  await withSchema(async ({ pool }) => assertEquivalent(pool, SCENARIOS, "default"));
+});
+
+test("SC-01 PG equivalence at the JS Date range boundary in several session time zones", pgSkip, async () => {
+  const boundary = SCENARIOS.filter((scenario) => /JS Date|infinity/u.test(scenario.name)).map((scenario) => ({ ...scenario, expect: undefined }));
+  assert.ok(boundary.length >= 5);
+  for (const timeZone of ["UTC", "Asia/Shanghai", "America/Los_Angeles", "Pacific/Kiritimati"]) {
+    await withSchema(async ({ pool }) => assertEquivalent(pool, boundary, timeZone), timeZone);
+  }
 });
 
 test("SC-01/SC-03 PG: identity SQL drops metadata columns and wide payload fields; the full graph read is unchanged", pgSkip, async () => {
