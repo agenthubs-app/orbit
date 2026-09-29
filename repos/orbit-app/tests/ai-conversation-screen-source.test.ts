@@ -84,6 +84,17 @@ test("AI conversation uses typed entity cards without keyword-based collection p
 });
 
 test("an AI session absent from the device uses the existing not-on-device state offline", () => {
+  assert.match(
+    screenSource,
+    /isStoredAgentSession && !localSession\s*&& localConversation\.freshness\.readable && localConversation\.freshness\.offline && serverUnreachable/u
+  );
+  assert.match(
+    screenSource,
+    /!isDraftConversation && !conversationOffline && \(state\.kind === "offline" \|\| missingLocalSessionOffline\)/u
+  );
   assert.match(screenSource, /NeedsNetworkState message=\{locale\.t\("sync\.notOnDevice"\)\}/u);
-  assert.doesNotMatch(screenSource, /!isDraftConversation && !conversationOffline && state\.kind === "offline" \? \(\s*<ErrorState/u);
+  assert.doesNotMatch(
+    screenSource,
+    /!isDraftConversation && !conversationOffline && state\.kind === "failure" \? \(\s*<ErrorState/u
+  );
 });
