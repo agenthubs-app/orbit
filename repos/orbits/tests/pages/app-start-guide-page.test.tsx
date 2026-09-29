@@ -129,7 +129,7 @@ function loadPage(t: TestContext, scenario: Scenario) {
   delete require.cache[require.resolve(pagePath)];
   return {
     calls,
-    page: require(pagePath).default as () => Promise<ReactElement>,
+    page: require(pagePath).default as (input?: { searchParams?: Promise<Record<string, string | string[]>> }) => Promise<ReactElement>,
     StartGuide,
     StartGuideUnavailable,
     snapshot,
@@ -168,6 +168,7 @@ test("flag on: the guide snapshot, goal, community state and events reach the cl
     profileUpdatedAt: "2026-10-01T00:00:00.000Z",
     registeredAnyEvent: false,
     relationshipGoal: "找渠道（3 个月内）",
+    requestedStep: null,
     snapshot,
   });
   assert.deepEqual(calls.find((call) => call.operation === "profile")?.input, [{ actorId: "account:canonical" }]);
@@ -240,4 +241,29 @@ test("step 4 done comes from the actor's registration facts, not the public cata
 
   const none = loadPage(t, { flag: "on", registeredAny: false });
   assert.equal(rendered(await none.page(), none.StartGuide)?.registeredAnyEvent, false);
+});
+
+/* ── W0022：?step= 只把合法的单个 1–4 交给客户端壳，能不能打开由壳按硬顺序判定 ── */
+
+test("W0022: ?step=3 / ?step=4 reach the shell as requestedStep; invalid or repeated values are dropped", async (t) => {
+  const cases: Array<[Record<string, string | string[]> | undefined, number | null]> = [
+    [{ step: "3" }, 3],
+    [{ step: "4" }, 4],
+    [{ step: "abc" }, null],
+    [{ step: "9" }, null],
+    [{ step: ["3", "4"] }, null],
+    [{}, null],
+    [undefined, null],
+  ];
+  for (const [searchParams, expected] of cases) {
+    const { page, StartGuide } = loadPage(t, { flag: "on" });
+    const tree = await page(searchParams ? { searchParams: Promise.resolve(searchParams) } : undefined);
+    assert.equal(rendered(tree, StartGuide)?.requestedStep, expected, JSON.stringify(searchParams));
+  }
+});
+
+test("W0022: flag off with ?step=3 still redirects to /app/agent without reading anything", async (t) => {
+  const { calls, page } = loadPage(t, { flag: undefined });
+  await assert.rejects(page({ searchParams: Promise.resolve({ step: "3" }) }), /redirect:\/app\/agent/);
+  assert.deepEqual(calls, []);
 });

@@ -34,6 +34,13 @@ interface Scenario {
   realLoadersThrow?: boolean;
   /** W0014：真实对话视图模型（suggests 带真实人名，用来验证示例壳不会拿到它）。 */
   realViewModel?: Record<string, unknown>;
+  /** W0022：社群加入状态（默认 false）。 */
+  communityJoined?: boolean;
+  /** W0022：首页活动（route id）与其中本人已报名的。 */
+  homeEvents?: string[];
+  registeredEvents?: string[];
+  /** W0022：`hasAnyActiveRegistration` 的结果；"throw" 表示读取失败。 */
+  registeredAny?: boolean | "throw";
 }
 
 function loadPage(t: TestContext, scenario: Scenario) {
@@ -79,13 +86,32 @@ function loadPage(t: TestContext, scenario: Scenario) {
     },
     [join(root, "app/(app)/app/home/compose-app-home-from-previously-approved-mock-first-capabilities/home-route-view-model.tsx")]: {
       loadAppHomeRouteViewModel: stub("home", {
-        home: { account: { relationshipGoal: scenario.goal ?? "" }, events: [] },
+        home: {
+          account: { relationshipGoal: scenario.goal ?? "" },
+          events: (scenario.homeEvents ?? []).map((id) => ({ id, stats: {} })),
+        },
         state: "success",
       }),
     },
     [join(root, "app/(app)/app/canonical-event-detail-view.ts")]: { resolveConfiguredActorEventCanonicalIds: realStub("events", {}) },
-    [join(root, "features/events/registration/runtime.ts")]: { readRuntimeEventRegistrationStates: realStub("registrations", {}) },
-    [join(root, "features/community/service-factory.ts")]: { readCommunityJoinedForActor: realStub("community", false) },
+    [join(root, "features/events/registration/runtime.ts")]: {
+      readRuntimeEventRegistrationStates: async (input: { eventIds: string[]; userId: string }) => {
+        calls.push({ input: [input], operation: "registrations" });
+        if (scenario.realLoadersThrow) throw new Error("registrations exploded");
+        return Object.fromEntries(
+          input.eventIds.map((id) => [id, { availability: "open", registered: scenario.registeredEvents?.includes(id) ?? false }]),
+        );
+      },
+    },
+    [join(root, "features/community/service-factory.ts")]: { readCommunityJoinedForActor: realStub("community", scenario.communityJoined ?? false) },
+    [join(root, "features/events/registration/active-registration.ts")]: {
+      hasAnyActiveRegistration: async (actorId: string) => {
+        calls.push({ input: actorId, operation: "registered-any" });
+        if (scenario.registeredAny === "throw" || scenario.realLoadersThrow) throw new Error("registered-any exploded");
+        return scenario.registeredAny ?? false;
+      },
+    },
+    [join(root, "app/(app)/app/orbit-event-presentation.ts")]: { presentOrbitEvents: (events: unknown[]) => events },
     // 真实 progress.ts 底下的四个来源：
     [join(root, "features/guide/service-factory.ts")]: {
       resolveGuideStateService: ({ actorId }: { actorId: string }) => {
@@ -475,7 +501,7 @@ test("W0014 plan page, in the guide: no real plan or contact-name read; the scre
 
 /* ── W0014：示例期间 `/app/agent` 不读真实对话／首页业务数据，也不把它们交给示例壳 ─────── */
 
-const REAL_BUSINESS_READS = ["chat", "compose", "events", "registrations", "community", "plan-read"];
+const REAL_BUSINESS_READS = ["chat", "compose", "events", "registrations", "community", "plan-read", "registered-any"];
 const POLLUTED_VIEW_MODEL = {
   history: [],
   scenarios: {},
@@ -508,4 +534,60 @@ test("W0014 flag off: the live path still reads chat, home, events, registration
   }
   assert.deepEqual(calls.filter((call) => GUIDE_OPERATIONS.includes(call.operation)), []);
   assert.equal(props.viewModel, POLLUTED_VIEW_MODEL);
+});
+
+/* ── W0022：首页第 4 步提醒的服务端判定与读取计数 ─────────────────────── */
+
+const step4Reads = (calls: Array<{ operation: string; input?: unknown }>) =>
+  calls.filter((call) => call.operation === "registered-any");
+
+test("W0022 flag off: guideEnabled false, no reminder, and hasAnyActiveRegistration is never called", async (t) => {
+  const { calls, page } = loadPage(t, { contacts: 4, flag: undefined });
+  const props = shellPropsOf(await page());
+  assert.equal(props.guideEnabled, false);
+  assert.equal(props.guideStep4Pending, false);
+  assert.equal(step4Reads(calls).length, 0);
+});
+
+test("W0022 in the demo: no step-4 read and no guide props on the demo shell", async (t) => {
+  const { calls, page } = loadPage(t, { contacts: 0, flag: "on" });
+  const props = shellPropsOf(await page());
+  assert.ok(props.guide);
+  assert.equal(props.guideStep4Pending, undefined);
+  assert.equal(step4Reads(calls).length, 0);
+});
+
+const LEGACY = { contacts: 4, createdAt: "2026-06-01T00:00:00.000Z", flag: "on", goal: "推进日本合作", since: "2026-10-15" } as const;
+
+test("W0022 flag on, out of the demo, nothing joined or registered: one hasAnyActiveRegistration read by the canonical actor → pending", async (t) => {
+  const { calls, page } = loadPage(t, { ...LEGACY, homeEvents: ["ev-1"] });
+  const props = shellPropsOf(await page());
+  assert.equal(props.guide, null);
+  assert.equal(props.guideEnabled, true);
+  assert.equal(props.guideStep4Pending, true);
+  assert.deepEqual(step4Reads(calls).map((call) => call.input), ["account:canonical"]);
+});
+
+test("W0022 flag on: already in the community, or registered for a home event → done with zero extra reads", async (t) => {
+  const joined = loadPage(t, { ...LEGACY, communityJoined: true });
+  const joinedProps = shellPropsOf(await joined.page());
+  assert.equal(joinedProps.guideEnabled, true);
+  assert.equal(joinedProps.guideStep4Pending, false);
+  assert.equal(step4Reads(joined.calls).length, 0);
+
+  const registered = loadPage(t, { ...LEGACY, homeEvents: ["ev-1", "ev-2"], registeredEvents: ["ev-2"] });
+  assert.equal(shellPropsOf(await registered.page()).guideStep4Pending, false);
+  assert.equal(step4Reads(registered.calls).length, 0);
+});
+
+test("W0022 flag on: a registration anywhere (off the home list) clears the reminder; a failed read never shows it", async (t) => {
+  const elsewhere = loadPage(t, { ...LEGACY, registeredAny: true });
+  assert.equal(shellPropsOf(await elsewhere.page()).guideStep4Pending, false);
+  assert.equal(step4Reads(elsewhere.calls).length, 1);
+
+  const failed = loadPage(t, { ...LEGACY, registeredAny: "throw" });
+  const props = shellPropsOf(await failed.page());
+  assert.equal(props.guideStep4Pending, false, "unreadable registration state → no reminder");
+  assert.equal(props.guideEnabled, true);
+  assert.equal(step4Reads(failed.calls).length, 1);
 });

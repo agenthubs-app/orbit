@@ -110,6 +110,28 @@ export function resolveStartView(flags: StartGuideFlags, recorded: GuideStartSte
   return firstIncompleteStartStep(flags) ?? "finish";
 }
 
+/**
+ * `/app/start?step=N`（W0022）：只认单个、恰好是 `1`–`4` 的字符串；非法值（`abc`、`9`、`03`）、
+ * 重复参数（数组）和缺省一律视为没有请求。
+ */
+export function parseStartStepParam(value: unknown): GuideStartStep | null {
+  if (typeof value !== "string" || !/^[1-4]$/.test(value)) return null;
+  return Number(value) as GuideStartStep;
+}
+
+/**
+ * 带 `?step` 进页面时显示哪一步（W0022）：请求的步骤能打开（未锁定）就用它；锁定或没有请求时
+ * 完全按 `resolveStartView` 的原逻辑，不绕过第 1–3 步的硬顺序。只决定显示，不写引导记录。
+ */
+export function resolveRequestedStartView(
+  flags: StartGuideFlags,
+  recorded: GuideStartStep | null,
+  requested: GuideStartStep | null,
+): StartView {
+  if (requested !== null && canOpenStartStep(flags, requested)) return requested;
+  return resolveStartView(flags, recorded);
+}
+
 /** 当前这一步刚完成后去哪：下一个没完成的第 1–3 步；前 3 步都完成则是完成卡片。 */
 export function viewAfterStepDone(flags: StartGuideFlags): StartView {
   return firstIncompleteStartStep(flags) ?? "finish";

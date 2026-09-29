@@ -5,6 +5,8 @@
  * - 资料门禁豁免这一条路径（`profile-onboarding-route-policy.ts`），资料未完成的新用户也能进；
  * - 进度由服务端从真实数据推导（`features/guide/progress.ts` 的 `readStartGuideForActor`），
  *   第 4 步另读社群加入记录与本人的报名事实；客户端只拿到可序列化的快照。
+ * - W0022：`?step=3`／`?step=4` 只解析成合法的单个步骤交给客户端壳，壳按硬顺序决定能否打开，
+ *   加载时不写引导记录；
  * - 所有按人的读取都用服务端解析出的 canonical actor id（不是 Auth.js 的 session.user.id）；
  *   session.user.id 只用于读账号创建时间（D2 判定）。
  */
@@ -17,6 +19,7 @@ import { createConfiguredCanonicalPublicEventCatalogue } from "../../../../featu
 import { hasAnyActiveRegistration } from "../../../../features/events/registration/active-registration";
 import { readRuntimeEventRegistrationStates } from "../../../../features/events/registration/runtime";
 import { readStartGuideForActor } from "../../../../features/guide/progress";
+import { parseStartStepParam } from "../../../../features/guide/start-steps";
 import { createProfileService } from "../../../../features/profile/service-factory";
 import { readGuideDemoConfig } from "../../../../shared/config/guide-demo";
 import { resolveModuleMode } from "../../../../shared/services/module-mode";
@@ -92,7 +95,16 @@ async function readRegisteredAny(actorId: string): Promise<boolean> {
   }
 }
 
-export default async function AppStartPage() {
+export type AppStartSearchParams = {
+  /** W0022：`?step=3`／`?step=4` 请求直接打开某一步；能不能打开由客户端壳按硬顺序判定。 */
+  step?: string | string[];
+};
+
+export default async function AppStartPage({
+  searchParams,
+}: {
+  searchParams?: Promise<AppStartSearchParams>;
+} = {}) {
   if (!readGuideDemoConfig().enabled) redirect("/app/agent");
 
   const session = await auth();
@@ -114,6 +126,8 @@ export default async function AppStartPage() {
     : ({ kind: "unavailable" } as const);
   if (guide.kind === "disabled") redirect("/app/agent");
 
+  const requestedStep = parseStartStepParam((await searchParams)?.step);
+
   let body;
   if (guide.kind === "ready" && profile) {
     const [communityJoined, events, registeredAny] = await Promise.all([
@@ -129,6 +143,7 @@ export default async function AppStartPage() {
         profileUpdatedAt={profile.updatedAt}
         registeredAnyEvent={registeredAny}
         relationshipGoal={profile.relationshipGoal}
+        requestedStep={requestedStep}
         snapshot={guide.snapshot}
       />
     );

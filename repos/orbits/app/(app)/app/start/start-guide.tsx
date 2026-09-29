@@ -20,7 +20,7 @@ import {
   deriveStartGuideFlags,
   firstIncompleteStartStep,
   GUIDE_START_STEPS,
-  resolveStartView,
+  resolveRequestedStartView,
   startStepDone,
   startStepStatus,
   viewAfterStepDone,
@@ -58,6 +58,11 @@ export interface StartGuideProps {
   profileUpdatedAt: string | null;
   registeredAnyEvent: boolean;
   relationshipGoal: string;
+  /**
+   * W0022：`?step=` 请求的步骤（服务端已滤掉非法值）。只在能打开时决定初始显示，锁定时忽略；
+   * 不写引导记录。
+   */
+  requestedStep?: GuideStartStep | null;
   snapshot: StartGuideSnapshot;
 }
 
@@ -228,7 +233,9 @@ export function StartGuide(props: StartGuideProps) {
     [goal, joined, props.registeredAnyEvent, skipped, snapshot.confirmedContacts, snapshot.grandfathered, snapshot.hasActivePlan],
   );
 
-  const [view, setView] = useState<StartView>(() => resolveStartView(flags, snapshot.currentStep));
+  const [view, setView] = useState<StartView>(() =>
+    resolveRequestedStartView(flags, snapshot.currentStep, props.requestedStep ?? null),
+  );
   const [lockedNote, setLockedNote] = useState("");
   const writer = useGuideStateQueue(snapshot.currentStep);
 

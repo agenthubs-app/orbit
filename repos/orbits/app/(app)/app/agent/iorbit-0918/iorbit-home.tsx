@@ -99,6 +99,16 @@ export interface IOrbitHomeSession {
 export interface IOrbitHomeProps {
   /** 本人是否已加入 iOrbit 用户社群（服务端读取，W0003）。 */
   communityJoined?: boolean;
+  /**
+   * W0022：服务端开关 `ORBIT_GUIDE_DEMO` 是否打开。打开时无计划分支的「帮我制定推进计划 →」
+   * 去 `/app/start?step=3`；默认 false（链接保持 `/app/agent/strategy`）。示例期不生效。
+   */
+  guideEnabled?: boolean;
+  /**
+   * W0022：服务端判定的「引导第 4 步未完成」（没加入社群、没有任何报名，且读取成功）。
+   * 与首页已读到的生效计划、`guideEnabled` 同时成立时，「已报名活动」栏首显示一行提醒。
+   */
+  guideStep4Pending?: boolean;
   home: OrbitHomeViewModel | null;
   /** 覆盖点，仅测试使用：默认动态 import `home-dashboard-actions`（server action）。 */
   loadSnapshot?: () => Promise<Loadable<HomeDashboardSnapshot>>;
@@ -234,6 +244,8 @@ function OrbitMark() {
 
 export function IOrbitHome({
   communityJoined: communityJoinedProp = false,
+  guideEnabled: guideEnabledProp = false,
+  guideStep4Pending = false,
   home: homeProp,
   loadSnapshot,
   navigate,
@@ -315,6 +327,8 @@ export function IOrbitHome({
   const sessions: Loadable<readonly IOrbitHomeSession[]> = demoData ? demoData.sessions : sessionsState;
   const home = demoData ? demoData.home : homeProp;
   const communityJoined = demoData ? demoData.communityJoined : communityJoinedProp;
+  // W0022：示例期不出引导入口与提醒（示例壳本来也不传这两个值）。
+  const guideEnabled = guideEnabledProp && !demoActive;
   // 示例模式保留示例的账本显示，不读计划。
   const plan: Loadable<PlanViewSnapshot | null> = demoData ? null : planState;
 
@@ -770,6 +784,8 @@ export function IOrbitHome({
 
   const planSnapshot = plan !== "pending" && plan !== "unavailable" ? plan : null;
   const planSummary = planSnapshot ? buildPlanWeekSummary(planSnapshot, now, lang, planSticky) : null;
+  // W0022：有生效计划、第 4 步未完成时的提醒；无计划时只给第 3 步入口，两者不同时出现。
+  const showGuideStep4 = guideEnabled && guideStep4Pending && planSnapshot !== null;
   // 打勾：先改本地，服务端确认后换成返回的条目；失败只把这一条回滚并提示。
   const togglePlanAction = async (itemId: string, done: boolean) => {
     if (!planSnapshot || planBusyId) return;
@@ -1374,7 +1390,9 @@ export function IOrbitHome({
               <a href="/app/agent/strategy?view=contacts">
                 {t({ en: "Who should I contact first? →", zh: "我该先联系谁 →" })}
               </a>
-              <a href="/app/agent/strategy">{t({ en: "Draft a plan →", zh: "帮我制定推进计划 →" })}</a>
+              <a href={guideEnabled ? "/app/start?step=3" : "/app/agent/strategy"}>
+                {t({ en: "Draft a plan →", zh: "帮我制定推进计划 →" })}
+              </a>
             </span>
           </div>
         )}
@@ -1384,6 +1402,14 @@ export function IOrbitHome({
             <h3>{t({ en: "Registered events", zh: "已报名活动" })}</h3>
             <a href="/app/events">{t({ en: "All events →", zh: "全部活动 →" })}</a>
           </div>
+          {showGuideStep4 ? (
+            <a className="ir-m-guide-step4" data-orbit-iorbit-guide-step4="pending" href="/app/start?step=4">
+              {t({
+                en: "Guide step 4: join the community or register for an event →",
+                zh: "引导第 4 步：加入社群或报名一场活动 →",
+              })}
+            </a>
+          ) : null}
           {/* 社群行（W0003）：永远在栏首，标「社群」而不是日期，不计入下面两场真实活动。 */}
           <a
             className="ir-m-event ir-m-community"
