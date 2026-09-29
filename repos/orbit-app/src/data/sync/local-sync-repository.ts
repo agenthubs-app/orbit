@@ -1275,7 +1275,7 @@ function assertNonEmptyString(
   }
 }
 
-function compareSyncTimestamps(left: string, right: string): number {
+export function compareSyncTimestamps(left: string, right: string): number {
   const leftParts = timestampParts(left);
   const rightParts = timestampParts(right);
   if (leftParts.wholeSecond !== rightParts.wholeSecond) {

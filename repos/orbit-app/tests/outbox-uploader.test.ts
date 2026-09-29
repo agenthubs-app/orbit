@@ -180,6 +180,24 @@ test("same-record FIFO and dependency ordering are preserved with bounded parall
   assert.ok(setup.maxActive <= 4);
 });
 
+test("same-record FIFO compares offset timestamps by instant rather than ISO text", async () => {
+  const setup = harness([
+    queued({ mutationId: "older-offset", id: "record-1", createdAt: "2026-09-16T08:00:00+09:00" }),
+    queued({ mutationId: "newer-zulu", id: "record-1", createdAt: "2026-09-16T00:00:00Z" }),
+  ]);
+  await (await setup.uploader()).run();
+  assert.deepEqual(setup.order.filter(item => item !== "online" && item !== "pull"), ["older-offset", "newer-zulu"]);
+});
+
+test("same-record FIFO preserves microsecond order across equivalent timezone offsets", async () => {
+  const setup = harness([
+    queued({ mutationId: "a-newer", id: "record-1", createdAt: "2026-09-16T00:00:00.000002Z" }),
+    queued({ mutationId: "z-older", id: "record-1", createdAt: "2026-09-16T09:00:00.000001+09:00" }),
+  ]);
+  await (await setup.uploader()).run();
+  assert.deepEqual(setup.order.filter(item => item !== "online" && item !== "pull"), ["z-older", "a-newer"]);
+});
+
 test("concurrent triggers share one active upload round", async () => {
   const setup = harness([queued()]);
   let release!: () => void;
@@ -227,4 +245,64 @@ test("a test-only mutation uploads and acknowledges in real SQLite without enter
   assert.deepEqual(await repository.listQueuedMutations({ workspaceId: "workspace-a" }), []);
   assert.equal((await database.get<{ count: number }>("SELECT COUNT(*) AS count FROM sync_records"))?.count, 0);
   assert.equal(await repository.resolveAlias({ workspaceId: "workspace-a", domainId: "test-offline-write", localId: "local:record-1", now: "2026-09-16T00:00:01.000Z" }), "canonical-1");
+});
+
+test("a lost receipt response replays identical bytes once and resolves its alias in real SQLite", async (t) => {
+  const database = new NodeTestDatabase();
+  t.after(() => database.close());
+  await initializeLocalSyncDatabase(database);
+  const repository = createLocalSyncRepository({ actorId: "actor-a", database, testOnlyOutboxDomains: ["test-offline-write"] });
+  await repository.enqueueOutboxMutation(queued({
+    domainId: "test-offline-write",
+    mutationId: "lost-receipt",
+    id: "local:receipt-fixture",
+    patch: { label: "receipt fixture" },
+    requestJson: '{"mutationId":"lost-receipt","label":"receipt fixture"}',
+  }));
+
+  const receipts = new Map<string, SyncRecord>();
+  const requestBodies: string[] = [];
+  let executions = 0;
+  const uploader = await import("../src/data/sync/outbox-uploader").then(({ createOutboxUploader }) => createOutboxUploader({
+    repository,
+    workspaceId: "workspace-a",
+    confirmOnline: async () => true,
+    uploadOne: async mutation => {
+      const body = mutation.requestJson ?? "";
+      requestBodies.push(body);
+      let record = receipts.get(mutation.mutationId);
+      if (!record) {
+        const parsed = JSON.parse(body) as { mutationId?: string; label?: string };
+        assert.equal(parsed.mutationId, mutation.mutationId);
+        assert.equal(parsed.label, "receipt fixture");
+        record = serverRecord("canonical-receipt-fixture");
+        receipts.set(mutation.mutationId, record);
+        executions += 1;
+        if (executions === 1) throw new Error("response lost after receipt commit");
+      }
+      return { status: 200, record };
+    },
+    pull: async () => undefined,
+    now: () => Date.parse("2026-09-16T00:00:00.000Z"),
+    random: () => 0,
+    sleep: async () => undefined,
+  }));
+
+  const result = await uploader.run();
+  assert.equal(result.sent, 2);
+  assert.equal(result.acknowledged, 1);
+  assert.equal(executions, 1);
+  assert.equal(receipts.size, 1);
+  assert.deepEqual(requestBodies, [
+    '{"mutationId":"lost-receipt","label":"receipt fixture"}',
+    '{"mutationId":"lost-receipt","label":"receipt fixture"}',
+  ]);
+  assert.deepEqual(await repository.listQueuedMutations({ workspaceId: "workspace-a" }), []);
+  assert.equal(await repository.resolveAlias({
+    workspaceId: "workspace-a",
+    domainId: "test-offline-write",
+    localId: "local:receipt-fixture",
+    now: "2026-09-16T00:00:01.000Z",
+  }), "canonical-receipt-fixture");
+  assert.equal((await database.get<{ count: number }>("SELECT COUNT(*) AS count FROM sync_records"))?.count, 0);
 });

@@ -1,5 +1,5 @@
 import type { SyncRecord } from "../../api/contract/sync";
-import type { LocalSyncQueuedMutation } from "./local-sync-repository";
+import { compareSyncTimestamps, type LocalSyncQueuedMutation } from "./local-sync-repository";
 
 const MAX_PARALLEL_UPLOADS = 4;
 const MAX_ATTEMPTS_PER_ROW_PER_ROUND = 5;
@@ -199,5 +199,5 @@ function retryDelayMs(attemptCount: number, retryAfterMs: number | null | undefi
 }
 
 function compareQueueOrder(left: LocalSyncQueuedMutation, right: LocalSyncQueuedMutation): number {
-  return left.createdAt.localeCompare(right.createdAt) || left.mutationId.localeCompare(right.mutationId);
+  return compareSyncTimestamps(left.createdAt, right.createdAt) || left.mutationId.localeCompare(right.mutationId);
 }

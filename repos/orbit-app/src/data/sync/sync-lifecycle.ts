@@ -200,15 +200,15 @@ export function createSyncLifecycle(input: {
     }
   }
 
-  async function pendingWriteSummary(scope: SyncSessionScope): Promise<{ currentAccount: number; otherAccounts: number } | null> {
+  async function pendingWriteSummary(scope?: SyncSessionScope): Promise<{ currentAccount: number; otherAccounts: number } | null> {
     if (input.platform === "web") return { currentAccount: 0, otherAccounts: 0 };
     return enqueue(async () => {
       if (!(await prepare()) || !native) return null;
-      const wantedDigest = await syncScopeDigest(scope, native);
+      const wantedDigest = scope ? await syncScopeDigest(scope, native) : null;
       const summary = { currentAccount: 0, otherAccounts: 0 };
       if (current?.database) {
         const row = await current.database.get<{ count: number }>("SELECT COUNT(*) AS count FROM sync_outbox");
-        const key = current.digest === wantedDigest ? "currentAccount" : "otherAccounts";
+        const key = wantedDigest !== null && current.digest === wantedDigest ? "currentAccount" : "otherAccounts";
         summary[key] += Number(row?.count ?? 0);
       }
       const names = await native.sqlite.listDatabaseNames?.() ?? [];
@@ -226,7 +226,7 @@ export function createSyncLifecycle(input: {
           now: new Date().toISOString(),
           hash: value => native!.crypto.digestStringAsync(native!.crypto.CryptoDigestAlgorithm.SHA256, value),
         }));
-        const bucket = digest === wantedDigest ? "currentAccount" : "otherAccounts";
+        const bucket = wantedDigest !== null && digest === wantedDigest ? "currentAccount" : "otherAccounts";
         summary[bucket] += count;
       }
       return summary;

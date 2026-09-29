@@ -18,6 +18,7 @@ import {
 } from "./auth-session";
 import { useOrbitApiBaseUrl } from "./ApiBaseUrlProvider";
 import { onSessionExpired } from "./session-expiry";
+import { createLocalSyncRepository } from "../data/sync/local-sync-repository";
 import { syncLifecycle } from "../data/sync/sync-lifecycle";
 import {
   createGoogleOAuthAttempt,
@@ -80,6 +81,10 @@ interface AuthSessionContextValue {
   offline: boolean;
   providers: readonly "google"[];
   ready: boolean;
+  readPendingWritesOnDevice: () => Promise<number | null>;
+  enqueueDebugPendingWrite: () => Promise<number | null>;
+  listDebugPendingWriteIds: () => Promise<readonly string[]>;
+  deleteDebugPendingWrite: (mutationId: string) => Promise<number | null>;
   register: (input: RegisterInput) => Promise<AuthActionResult>;
   signIn: (input: SignInInput) => Promise<AuthActionResult>;
   signInWithGoogle: (next?: string) => Promise<AuthActionResult>;
@@ -91,6 +96,7 @@ interface AuthSessionContextValue {
 
 const AuthSessionContext = createContext<AuthSessionContextValue | null>(null);
 const usesBrowserManagedSession = Platform.OS === "web";
+const DEBUG_PENDING_WRITE_PREFIX = "debug-offline-write-0124-";
 // While offline, re-check the session this often; also on every return to the foreground.
 const OFFLINE_REVALIDATE_INTERVAL_MS = 10_000;
 // While online, refresh the 30-day offline window on foreground at most this often.
@@ -662,6 +668,82 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
     return { success: true };
   }, [accountId, baseUrl, clearNotificationSession, cookieHeader, user]);
 
+  const readPendingWritesOnDevice = useCallback(async (): Promise<number | null> => {
+    const summary = await syncLifecycle.pendingWriteSummary();
+    return summary === null ? null : summary.currentAccount + summary.otherAccounts;
+  }, []);
+
+  const enqueueDebugPendingWrite = useCallback(async (): Promise<number | null> => {
+    if (!__DEV__ || usesBrowserManagedSession || !accountId || user === null) return null;
+    const randomBytes = await Crypto.getRandomBytesAsync(16);
+    const suffix = Array.from(randomBytes, value => value.toString(16).padStart(2, "0")).join("");
+    const mutationId = `${DEBUG_PENDING_WRITE_PREFIX}${suffix}`;
+    return syncLifecycle.withDatabase({ baseUrl, actorId: accountId }, async database => {
+      const repository = createLocalSyncRepository({
+        actorId: accountId,
+        database,
+        testOnlyOutboxDomains: ["test-offline-write"],
+      });
+      await repository.enqueueOutboxMutation({
+        actorId: accountId,
+        workspaceId: "debug-test-workspace",
+        domainId: "test-offline-write",
+        mutationId,
+        kind: "contact",
+        id: `local:${mutationId}`,
+        operation: "create",
+        patch: { label: "0124 Debug offline-write fixture" },
+        requestJson: JSON.stringify({
+          endpoint: "debug://test-only/offline-write",
+          mutationId,
+          body: { label: "0124 Debug offline-write fixture" },
+        }),
+        baseRevision: null,
+        createdAt: new Date().toISOString(),
+        retryCount: 0,
+        nextRetryAt: null,
+        lastErrorCode: null,
+      });
+      return (await database.get<{ count: number }>(
+        "SELECT COUNT(*) AS count FROM sync_outbox WHERE domain_id = ?",
+        ["test-offline-write"],
+      ))?.count ?? 0;
+    });
+  }, [accountId, baseUrl, user]);
+
+  const listDebugPendingWriteIds = useCallback(async (): Promise<readonly string[]> => {
+    if (!__DEV__ || usesBrowserManagedSession || !accountId || user === null) return [];
+    return (await syncLifecycle.withDatabase({ baseUrl, actorId: accountId }, async database => {
+      const rows = await database.all<{ mutation_id: string }>(
+        `SELECT mutation_id FROM sync_outbox
+         WHERE workspace_id = ? AND domain_id = ? AND mutation_id LIKE ?
+         ORDER BY created_at ASC, mutation_id ASC`,
+        ["debug-test-workspace", "test-offline-write", `${DEBUG_PENDING_WRITE_PREFIX}%`],
+      );
+      return rows.map(row => row.mutation_id);
+    })) ?? [];
+  }, [accountId, baseUrl, user]);
+
+  const deleteDebugPendingWrite = useCallback(async (mutationId: string): Promise<number | null> => {
+    if (!__DEV__ || usesBrowserManagedSession || !accountId || user === null ||
+      !new RegExp(`^${DEBUG_PENDING_WRITE_PREFIX}[a-f0-9]{32}$`, "u").test(mutationId)) return null;
+    return syncLifecycle.withDatabase({ baseUrl, actorId: accountId }, async database =>
+      database.transaction(async () => {
+        const row = await database.get<{ mutation_id: string }>(
+          `SELECT mutation_id FROM sync_outbox
+           WHERE mutation_id = ? AND domain_id = ? AND workspace_id = ?`,
+          [mutationId, "test-offline-write", "debug-test-workspace"],
+        );
+        if (!row) return 0;
+        await database.run(
+          "DELETE FROM sync_outbox WHERE mutation_id = ? AND domain_id = ? AND workspace_id = ?",
+          [mutationId, "test-offline-write", "debug-test-workspace"],
+        );
+        return 1;
+      }),
+    );
+  }, [accountId, baseUrl, user]);
+
   // The server has rejected this device's session (a 401 on any request, or an explicit
   // rejection when re-checking): forget the cached identity, purge the open mirror and
   // key, then the cookie, and go to login.
@@ -792,6 +874,10 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
       offline,
       providers,
       ready,
+      readPendingWritesOnDevice,
+      enqueueDebugPendingWrite,
+      listDebugPendingWriteIds,
+      deleteDebugPendingWrite,
       register,
       signIn,
       signInWithGoogle,
@@ -808,6 +894,10 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
       offline,
       providers,
       ready,
+      enqueueDebugPendingWrite,
+      listDebugPendingWriteIds,
+      deleteDebugPendingWrite,
+      readPendingWritesOnDevice,
       register,
       signIn,
       signInWithGoogle,

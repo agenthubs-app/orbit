@@ -150,6 +150,7 @@ test("logout archives only pending writes and a same-account reopen restores the
   assert.equal(await f.coordinator.setScope(null), true);
   assert.deepEqual(await f.coordinator.pendingWriteSummary(scope), { currentAccount: 1, otherAccounts: 0 });
   assert.deepEqual(await f.coordinator.pendingWriteSummary({ ...scope, actorId: "other-private-fixture" }), { currentAccount: 0, otherAccounts: 1 });
+  assert.deepEqual(await f.coordinator.pendingWriteSummary(), { currentAccount: 0, otherAccounts: 1 });
   assert.ok(f.keys.has(`orbit.pending-vault.key.${createHash("sha256").update(JSON.stringify([scope.baseUrl, scope.actorId])).digest("hex")}`));
   assert.ok([...f.files.keys()].some(name => name.startsWith("orbit-pending-vault-")));
   assert.equal(await f.coordinator.setScope(scope), true);

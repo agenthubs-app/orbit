@@ -27,6 +27,13 @@ test("account status reads lifecycle and password rotation from isolated local o
     },
   });
   assert.ok(database);
+  const { createAccountStatusGetHandler } = await import("../../app/api/account/status/handler");
+  const input = { email, userId, authenticatedAt: Date.parse("2026-09-01T00:00:00.000Z") };
+  const handler = createAccountStatusGetHandler({
+    resolveClaims: async () => input,
+    getStatus: claims => getPasswordSessionStatus(claims, database),
+  });
+  let clientClosed = false;
   const record = (lifecycleState: "active" | "deleted", passwordChangedAt: string) => ({
     workspaceId,
     collectionName: "auth_users",
@@ -50,14 +57,35 @@ test("account status reads lifecycle and password rotation from isolated local o
   });
   try {
     await database.store.upsertRecord(record("active", "2026-08-01T00:00:00.000Z"));
-    const input = { email, userId, authenticatedAt: Date.parse("2026-09-01T00:00:00.000Z") };
     assert.equal(await getPasswordSessionStatus(input, database), "active");
+    const activeResponse = await handler(new Request("http://localhost/api/account/status"));
+    assert.equal(activeResponse.status, 200);
+    assert.deepEqual(await activeResponse.json(), { status: "active" });
+
     await database.store.upsertRecord(record("deleted", "2026-08-01T00:00:00.000Z"));
     assert.equal(await getPasswordSessionStatus(input, database), "disabled");
+    const disabledResponse = await handler(new Request("http://localhost/api/account/status"));
+    assert.equal(disabledResponse.status, 200);
+    assert.deepEqual(await disabledResponse.json(), { status: "disabled" });
+
     await database.store.upsertRecord(record("active", "2026-09-01T00:00:00.000Z"));
     assert.equal(await getPasswordSessionStatus(input, database), "password_changed");
-  } finally {
+    const changedResponse = await handler(new Request("http://localhost/api/account/status"));
+    assert.equal(changedResponse.status, 200);
+    assert.deepEqual(await changedResponse.json(), { status: "password_changed" });
+
     await database.store.deleteRecord({ workspaceId, collectionName: "auth_users", recordId, deletedAt: new Date().toISOString() });
     await database.client.close();
+    clientClosed = true;
+    const unavailable = await handler(new Request("http://localhost/api/account/status"));
+    assert.equal(unavailable.status, 503);
+    const unavailableBody = await unavailable.json();
+    assert.deepEqual(unavailableBody, { status: "unavailable" });
+    assert.doesNotMatch(JSON.stringify(unavailableBody), /database|client|diagnostic|orbit_test|user-status-0124/u);
+  } finally {
+    if (!clientClosed) {
+      await database.store.deleteRecord({ workspaceId, collectionName: "auth_users", recordId, deletedAt: new Date().toISOString() });
+      await database.client.close();
+    }
   }
 });
