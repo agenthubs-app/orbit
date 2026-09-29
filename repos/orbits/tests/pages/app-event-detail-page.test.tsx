@@ -256,7 +256,9 @@ test("/app/events/[id] resolves public and authorized private details through ca
   );
   assert.match(pageSource, /auth\(\)/);
   assert.match(pageSource, /resolution\.state === "authentication_required"/);
-  assert.match(pageSource, /actorId: session\?\.user\?\.id/);
+  // W0027: detail decisions read by the canonical account id, never the session id.
+  assert.doesNotMatch(pageSource, /actorId: session\?\.user\?\.id/);
+  assert.match(pageSource, /resolveAuthenticatedApiActorFromSession\(/);
   assert.match(
     detailSource,
     /encodeURIComponent\(event\.code \|\| event\.id\)\}\/register/g,

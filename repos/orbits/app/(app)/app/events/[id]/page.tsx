@@ -21,6 +21,7 @@ import { PublicTopNav } from "../../orbit-public-shell";
 import { EventDetail } from "../events-0918/event-detail";
 import { presentOrbitEvent } from "../../orbit-event-presentation";
 import { auth } from "../../../../../auth";
+import { resolveAuthenticatedApiActorFromSession } from "../../../../api/_shared/authenticated-actor";
 import { redirect } from "next/navigation";
 import {
   resolveConfiguredCanonicalEventDetailView,
@@ -113,6 +114,23 @@ function EventDetailRouteStateView({
   );
 }
 
+async function resolveEventDetailActorId(
+  session: { user?: { email?: string | null; id?: string | null; name?: string | null } } | null,
+): Promise<string | null> {
+  const user = session?.user;
+  if (!user?.id) return null;
+  try {
+    const actor = await resolveAuthenticatedApiActorFromSession({
+      email: user.email,
+      name: user.name,
+      userId: user.id,
+    });
+    return actor?.id.trim() || null;
+  } catch {
+    return null;
+  }
+}
+
 export default async function AppEventDetailPage({
   params,
   searchParams,
@@ -129,14 +147,26 @@ export default async function AppEventDetailPage({
   const language = normalizeOrbitLanguage(
     readSearchParam(query, "language") ?? (await getEventDetailPageLanguage()),
   );
+  // Registration, event creation and event-role assignment all write under the
+  // canonical account id (`actor.id`), which can differ from the Auth.js session
+  // id. Every detail decision (registered, roster, organizer, event role,
+  // private access) therefore reads by `actor.id`. A signed-in request whose
+  // account cannot be resolved fails closed as unavailable: it neither falls
+  // back to the session id nor redirects to login (which would loop).
+  const signedIn = Boolean(session?.user?.id);
+  const actorId = signedIn ? await resolveEventDetailActorId(session) : null;
   let resolution: CanonicalEventDetailResolution;
-  try {
-    resolution = await resolveConfiguredCanonicalEventDetailView({
-      actorId: session?.user?.id,
-      routeId: id,
-    });
-  } catch {
+  if (signedIn && !actorId) {
     resolution = { state: "unavailable" } as const;
+  } else {
+    try {
+      resolution = await resolveConfiguredCanonicalEventDetailView({
+        actorId,
+        routeId: id,
+      });
+    } catch {
+      resolution = { state: "unavailable" } as const;
+    }
   }
 
   if (resolution.state === "authentication_required") {
@@ -146,14 +176,21 @@ export default async function AppEventDetailPage({
   }
 
   if (resolution.state === "unavailable") {
+    const accountUnavailable = signedIn && !actorId;
     return (
       <>
         <OrbitReferenceStyles />
         <EventDetailRouteStateView
           eventId={id}
           routeModel={{
-            description: "Canonical Event Core is temporarily unavailable. No legacy event catalogue was used.",
-            evidence: ["event-core-public-catalogue-unavailable"],
+            description: accountUnavailable
+              ? "The signed-in Orbit account could not be resolved. No session-scoped event access was used."
+              : "Canonical Event Core is temporarily unavailable. No legacy event catalogue was used.",
+            evidence: [
+              accountUnavailable
+                ? "event-detail-account-unavailable"
+                : "event-core-public-catalogue-unavailable",
+            ],
             nextStep: "Retry after the event service is restored.",
             recoveryActions: [{ href: `/app/events/${encodeURIComponent(id)}`, label: "Retry current event" }],
             routeState: "failure",
