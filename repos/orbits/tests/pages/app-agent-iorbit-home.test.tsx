@@ -606,6 +606,9 @@ function homeElement(
       onOpenHistory={overrides.onOpenHistory ?? (() => undefined)}
       onOpenSession={overrides.onOpenSession ?? (() => undefined)}
       clock={overrides.clock}
+      communityJoined={overrides.communityJoined}
+      guideEnabled={overrides.guideEnabled}
+      guideStep4Pending={overrides.guideStep4Pending}
     />
   );
 }
@@ -2218,4 +2221,101 @@ test("W0021: a failed batch read is retried by the next event, not cached", asyn
   await mounted.settle(6);
   assert.deepEqual(todayTitles(mounted), ["确认 1 张新名片"]);
   assert.equal(mounted.calls.filter((call) => call.url.endsWith(`/${CARD_BATCH_ID}?view=cards`)).length, 2);
+});
+
+/* ── W0022：老用户首页的引导入口（第 3 步）与第 4 步提醒 ─────────────────── */
+
+const hrefsOf = (mounted: Mounted) =>
+  mounted.root.root
+    .findAll((node) => node.type === "a" && typeof node.props?.href === "string")
+    .map((node) => node.props.href as string);
+const step4Reminders = (mounted: Mounted) =>
+  mounted.root.root.findAll(
+    (node) => typeof node.type === "string" && node.props?.["data-orbit-iorbit-guide-step4"] !== undefined,
+  );
+
+test("W0022: with the guide switch on and no plan, 帮我制定推进计划 → goes to /app/start?step=3; 我该先联系谁 → is unchanged", async (t) => {
+  const mounted = await mountHome(t, homeElement({ guideEnabled: true, guideStep4Pending: true }), {
+    plan: null,
+    snapshot: EMPTY_SNAPSHOT,
+  });
+  const hrefs = hrefsOf(mounted);
+  assert.ok(hrefs.includes("/app/agent/strategy?view=contacts"));
+  assert.ok(hrefs.includes("/app/start?step=3"));
+  assert.ok(!hrefs.includes("/app/agent/strategy"), "the old plan link is replaced, not duplicated");
+  const link = mounted.root.root.findAll((node) => node.type === "a" && node.props.href === "/app/start?step=3")[0]!;
+  assert.equal(textOf(link), "帮我制定推进计划 →");
+  // 无计划时只有第 3 步入口，不同时出第 4 步提醒。
+  assert.equal(step4Reminders(mounted).length, 0);
+});
+
+test("W0022: with the switch off the plan link stays /app/agent/strategy and no reminder is rendered", async (t) => {
+  const off = await mountHome(t, homeElement({ guideEnabled: false, guideStep4Pending: true }), {
+    plan: planSnapshotFixture(),
+    snapshot: EMPTY_SNAPSHOT,
+  });
+  assert.equal(step4Reminders(off).length, 0);
+  assert.ok(!hrefsOf(off).some((href) => href.startsWith("/app/start")));
+  const noPlan = await mountHome(t, homeElement({ guideEnabled: false }), { plan: null, snapshot: EMPTY_SNAPSHOT });
+  assert.deepEqual(
+    hrefsOf(noPlan).filter((href) => href.startsWith("/app/agent/strategy") || href.startsWith("/app/start")),
+    ["/app/agent/strategy?view=contacts", "/app/agent/strategy"],
+  );
+});
+
+test("W0022: with an active plan and step 4 pending, one reminder line heads 已报名活动 and links to /app/start?step=4", async (t) => {
+  const mounted = await mountHome(t, homeElement({ clock: () => PLAN_NOW, guideEnabled: true, guideStep4Pending: true }), {
+    plan: planSnapshotFixture(),
+    snapshot: EMPTY_SNAPSHOT,
+  });
+  const reminders = step4Reminders(mounted);
+  assert.equal(reminders.length, 1);
+  const reminder = reminders[0]!;
+  assert.equal(reminder.type, "a");
+  assert.equal(reminder.props.href, "/app/start?step=4");
+  assert.match(textOf(reminder), /第 4 步/);
+  // 在「已报名活动」栏首、社群行之上。
+  const column = reminder.parent!;
+  assert.ok(textOf(column).includes("已报名活动"));
+  const order = column.children.filter((child): child is typeof reminder => typeof child !== "string");
+  const reminderIndex = order.indexOf(reminder);
+  const communityIndex = order.findIndex((child) => child.props?.["data-orbit-iorbit-community"] !== undefined);
+  assert.ok(reminderIndex >= 0 && communityIndex > reminderIndex, "the reminder sits above the community row");
+  // 有计划时第 3 步入口不出现。
+  assert.ok(!hrefsOf(mounted).includes("/app/start?step=3"));
+});
+
+test("W0022: no reminder once step 4 is done, while the plan is unreadable, or without a plan", async (t) => {
+  const done = await mountHome(t, homeElement({ clock: () => PLAN_NOW, guideEnabled: true, guideStep4Pending: false }), {
+    plan: planSnapshotFixture(),
+    snapshot: EMPTY_SNAPSHOT,
+  });
+  assert.equal(step4Reminders(done).length, 0);
+  // 计划接口 404（读不到）：不能判定有生效计划，不提醒。
+  const unreadable = await mountHome(t, homeElement({ guideEnabled: true, guideStep4Pending: true }), {
+    snapshot: EMPTY_SNAPSHOT,
+  });
+  assert.equal(step4Reminders(unreadable).length, 0);
+  const noPlan = await mountHome(t, homeElement({ guideEnabled: true, guideStep4Pending: true }), {
+    plan: null,
+    snapshot: EMPTY_SNAPSHOT,
+  });
+  assert.equal(step4Reminders(noPlan).length, 0);
+});
+
+test("W0022: the demo shell ignores the guide props — no reminder, no /app/start?step link", () => {
+  const html = renderToStaticMarkup(
+    <IOrbitShell guide={GUIDE_NEW} guideEnabled guideStep4Pending home={HOME as never} viewModel={VIEW_MODEL} />,
+  );
+  assert.ok(!html.includes("data-orbit-iorbit-guide-step4"));
+  assert.ok(!html.includes("/app/start?step="));
+});
+
+test("W0022: the live shell hands guideEnabled / guideStep4Pending down to the home", () => {
+  const html = renderToStaticMarkup(
+    <IOrbitShell guideEnabled guideStep4Pending home={HOME as never} viewModel={VIEW_MODEL} />,
+  );
+  // SSR 首帧计划还在读取中：既不出提醒也不出无计划入口之外的东西；入口已按开关指向第 3 步。
+  assert.ok(html.includes('href="/app/start?step=3"'));
+  assert.ok(!html.includes("data-orbit-iorbit-guide-step4"));
 });

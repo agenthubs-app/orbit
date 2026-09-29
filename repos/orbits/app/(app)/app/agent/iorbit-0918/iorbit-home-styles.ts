@@ -157,6 +157,7 @@ ${S} .ir-m-event-copy { display: flex; flex-direction: column; gap: 2px; min-wid
 ${S} .ir-m-event-copy strong { font-size: 14.5px; font-weight: 500; line-height: 1.45; }
 ${S} .ir-m-event-copy span { font-size: 12.5px; color: #6B6F99; }
 ${S} .ir-m-community .ir-m-event-date { font-size: 17px; color: #4B4FC7; }
+${S} a.ir-m-guide-step4 { display: block; font-size: 13.5px; line-height: 1.5; color: #4B4FC7; }
 ${S} .ir-m-community .ir-m-event-date small { color: #4B4FC7; }
 ${S} .ir-m-sessions { display: flex; flex-direction: column; }
 ${S} .btn.ir-m-session { justify-content: space-between; gap: 12px; width: 100%; padding: 9px 0; border: 0; border-top: 1px solid #E8E9F6; border-radius: 0; background: transparent; color: #0E1225; font-size: 14px; text-align: left; }

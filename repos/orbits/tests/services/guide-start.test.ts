@@ -27,6 +27,8 @@ import {
   canOpenStartStep,
   deriveStartGuideFlags,
   firstIncompleteStartStep,
+  parseStartStepParam,
+  resolveRequestedStartView,
   resolveStartView,
   startStepStatus,
   viewAfterStepDone,
@@ -106,6 +108,39 @@ test("the page opens on the recorded step when it can, otherwise the first unfin
   assert.equal(resolveStartView(complete, 4), 4);
   assert.equal(viewAfterStepDone(flagsOf({ step1Skipped: true })), 2);
   assert.equal(viewAfterStepDone(complete), "finish");
+});
+
+test("W0022: ?step= takes exactly one of 1–4; anything else (abc, 9, 0, 3.0, blank, repeated) is ignored", () => {
+  assert.equal(parseStartStepParam("3"), 3);
+  assert.equal(parseStartStepParam("4"), 4);
+  assert.equal(parseStartStepParam("1"), 1);
+  for (const value of ["abc", "9", "0", "3.0", " 3", "", "03", undefined, null, 3, ["3"], ["3", "4"]]) {
+    assert.equal(parseStartStepParam(value), null, JSON.stringify(value));
+  }
+});
+
+test("W0022: a requested step opens only when it can; a locked or missing one falls back to the recorded / first unfinished step", () => {
+  // D2 老用户，记录停在第 4 步：?step=3 直接回到第 3 步。
+  const legacy = flagsOf({ grandfathered: true });
+  assert.equal(resolveRequestedStartView(legacy, 4, 3), 3);
+  assert.equal(resolveRequestedStartView(legacy, 4, null), 4, "no request keeps the recorded step");
+  // 前 2 步已完成、记录为 4：?step=3 同样放行。
+  const onPlan = flagsOf({ confirmedContacts: 3, relationshipGoal: "x" });
+  assert.equal(resolveRequestedStartView(onPlan, 4, 3), 3);
+  // 新用户：?step=3 锁着，不解锁，按原逻辑（记录可开就用记录，否则第一个未完成）。
+  const fresh = flagsOf({});
+  assert.equal(resolveRequestedStartView(fresh, null, 3), 1);
+  assert.equal(resolveRequestedStartView(fresh, 4, 3), 4);
+  assert.equal(resolveRequestedStartView(fresh, null, 2), 1);
+  // 第 4 步随时可开。
+  assert.equal(resolveRequestedStartView(fresh, null, 4), 4);
+  assert.equal(resolveRequestedStartView(onPlan, 3, 4), 4);
+  // 与原函数一致：没有请求时结果完全等于 resolveStartView。
+  for (const flags of [fresh, legacy, onPlan]) {
+    for (const recorded of [null, 1, 2, 3, 4] as const) {
+      assert.equal(resolveRequestedStartView(flags, recorded, null), resolveStartView(flags, recorded));
+    }
+  }
 });
 
 test("the demo exits once step 1 is skipped and steps 2–3 are done (the skip flag feeds the W0004 progress)", () => {

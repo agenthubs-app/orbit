@@ -252,6 +252,31 @@ test("the recorded currentStep is reopened when allowed; a recorded locked step 
   act(() => locked.unmount());
 });
 
+test("W0022: ?step=3 opens step 3 for a legacy user recorded on step 4, without writing the guide record", async (t) => {
+  const api = stubBrowser(t);
+  const root = await mount(props({ requestedStep: 3, snapshot: { confirmedContacts: 12, currentStep: 4, grandfathered: true } }));
+  assert.equal(view(root), "3");
+  assert.deepEqual(api.patches, [], "loading with ?step never PATCHes /api/guide/state");
+  assert.ok(!api.requests.some((request) => request.startsWith("PATCH /api/guide/state")));
+  act(() => root.unmount());
+  // 同一人不带参数：仍停在记录的第 4 步（原逻辑）。
+  const plain = await mount(props({ snapshot: { confirmedContacts: 12, currentStep: 4, grandfathered: true } }));
+  assert.equal(view(plain), "4");
+  act(() => plain.unmount());
+});
+
+test("W0022: a locked ?step=3 does not unlock anything; ?step=4 opens any time; neither writes the record", async (t) => {
+  const api = stubBrowser(t);
+  const locked = await mount(props({ requestedStep: 3 }));
+  assert.equal(view(locked), "1");
+  assert.deepEqual(stepStatuses(locked), ["current", "locked", "locked", "open"]);
+  act(() => locked.unmount());
+  const four = await mount(props({ requestedStep: 4 }));
+  assert.equal(view(four), "4");
+  act(() => four.unmount());
+  assert.deepEqual(api.patches, []);
+});
+
 test("a D2 legacy user starts on step 3 with steps 1–2 already done", async (t) => {
   stubBrowser(t);
   const root = await mount(props({ snapshot: { confirmedContacts: 12, grandfathered: true } }));

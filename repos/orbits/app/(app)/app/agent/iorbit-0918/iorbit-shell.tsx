@@ -84,6 +84,10 @@ export interface IOrbitShellProps {
   communityJoined?: boolean;
   /** 示例模式（W0004）：非空即渲染示例壳；开关关闭或不在引导期时为空。 */
   guide?: DemoModeView | null;
+  /** W0022：服务端引导开关是否打开（只给真实壳的概览；示例壳不用）。 */
+  guideEnabled?: boolean;
+  /** W0022：服务端判定的引导第 4 步未完成（只给真实壳的概览）。 */
+  guideStep4Pending?: boolean;
   home: OrbitHomeViewModel | null;
   /** 服务端解析出的 `?q=`／`?session=`／`?plan=`：任一存在即直接落在对话分支（SSR 与首帧一致）。 */
   initialDeepLink?: boolean;
@@ -234,6 +238,8 @@ function planThreadMessages(view: IOrbitPlanCardView, reveal: boolean, fallbackQ
 
 function IOrbitLiveShell({
   communityJoined = false,
+  guideEnabled = false,
+  guideStep4Pending = false,
   home,
   initialDeepLink = false,
   initialHistoryOpen = false,
@@ -497,6 +503,8 @@ function IOrbitLiveShell({
           ) : (
             <IOrbitHome
               communityJoined={communityJoined}
+              guideEnabled={guideEnabled}
+              guideStep4Pending={guideStep4Pending}
               home={home}
               navigate={(href) => {
                 if (typeof window !== "undefined") window.location.href = href;
