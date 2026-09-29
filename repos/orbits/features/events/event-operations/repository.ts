@@ -6,6 +6,7 @@ import {
 import type {
   CancelEventRegistrationInput,
   EventRegistration,
+  EventRegistrationStatusRecord,
   RegisterForEventInput,
 } from "../registration/contract";
 import type {
@@ -250,6 +251,11 @@ export interface EventOperationsRepository {
     eventId: string,
     userId: string,
   ): Promise<EventRegistration | null>;
+  /** Same row and failure semantics as `getCanonicalRegistration`, event id and status only (W0028). */
+  getCanonicalRegistrationStatus(
+    eventId: string,
+    userId: string,
+  ): Promise<EventRegistrationStatusRecord | null>;
   getConfiguration(eventId: string): Promise<EventOperationsConfiguration | null>;
   getGeneration(generationId: string): Promise<EventOperationsGeneration | null>;
   getGenerationConfiguration(
@@ -275,6 +281,11 @@ export interface EventOperationsRepository {
   listCanonicalRegistrations(
     eventId: string,
   ): Promise<readonly EventRegistration[]>;
+  /** Same rows and failure semantics as `listCanonicalRegistrationsForUser`, event id and status only (W0028). */
+  listCanonicalRegistrationStatusesForUser(
+    userId: string,
+    eventIds: readonly string[],
+  ): Promise<readonly EventRegistrationStatusRecord[]>;
   listCanonicalRegistrationsForUser(
     userId: string,
     eventIds: readonly string[],

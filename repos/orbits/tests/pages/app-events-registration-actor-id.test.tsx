@@ -65,6 +65,8 @@ function loadPage(t: TestContext, scenario: Scenario) {
   const calls: string[] = [];
   const registrationReads: Array<{ path: ReadPath; userId: string }> = [];
   const communityReads: Array<string | null | undefined> = [];
+  /** W0028：整行读取（旧方法）被页面调用的记录，应始终为空。 */
+  const fullRowCalls: string[] = [];
   const noop = async () => undefined;
   const signedIn = scenario.signedIn ?? true;
   const catalogue = scenario.catalogue ?? "ok";
@@ -135,12 +137,17 @@ function loadPage(t: TestContext, scenario: Scenario) {
     },
     [join(root, "features/events/registration/storage/live-record-provider.ts")]: {
       createConfiguredEventRegistrationProvider: () => ({
-        listRegistrationsForUser: async (userId: string) => {
+        // W0028：页面走轻量读取（eventId／status）；整行方法只记次数。
+        listRegistrationStatusesForUser: async (userId: string) => {
           registrationReads.push({ path: "legacy", userId });
           calls.push(`registrations:legacy:${userId}`);
           return scenario.path === "legacy" && userId === scenario.registeredUnder
             ? [registration(REGISTERED_EVENT.id, userId)]
             : [];
+        },
+        listRegistrationsForUser: async () => {
+          fullRowCalls.push("legacy:listRegistrationsForUser");
+          return [];
         },
       }),
     },
@@ -149,12 +156,16 @@ function loadPage(t: TestContext, scenario: Scenario) {
         cancelCanonicalRegistration: noop,
         getCanonicalRegistration: noop,
         listCanonicalRegistrations: noop,
-        listCanonicalRegistrationsForUser: async (userId: string) => {
+        listCanonicalRegistrationStatusesForUser: async (userId: string) => {
           registrationReads.push({ path: "canonical", userId });
           calls.push(`registrations:canonical:${userId}`);
           return scenario.path === "canonical" && userId === scenario.registeredUnder
             ? [registration(REGISTERED_EVENT.id, userId)]
             : [];
+        },
+        listCanonicalRegistrationsForUser: async () => {
+          fullRowCalls.push("canonical:listCanonicalRegistrationsForUser");
+          return [];
         },
         registerCanonicalParticipant: noop,
       }),
@@ -183,6 +194,7 @@ function loadPage(t: TestContext, scenario: Scenario) {
   return {
     calls,
     communityReads,
+    fullRowCalls,
     page: require(pagePath).default as (props: {
       searchParams?: Promise<{ scope?: string }>;
     }) => Promise<ReactElement>,
@@ -255,6 +267,7 @@ for (const path of ["legacy", "canonical"] as const) {
       [ACCOUNT_ID],
       "registrations are read by the account id only",
     );
+     assert.deepEqual(loaded.fullRowCalls, [], "W0028: the page never uses the full-row registration reads");
   });
 
   test(`${path} read path: a registration kept only under the session user id is not shown`, async (t) => {
@@ -278,6 +291,7 @@ test("signed in: catalogue read, then one actor resolution shared by the registr
     `community:${ACCOUNT_ID}`,
   ]);
   assert.deepEqual(eventsListProps(element).community, { joined: false, signedIn: true });
+  assert.deepEqual(loaded.fullRowCalls, [], "W0028: the page never uses the full-row registration reads");
 });
 
 test("signed out: no actor resolution and no personal registration read", async (t) => {

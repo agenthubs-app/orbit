@@ -17,6 +17,7 @@ import type { EventRegistration } from "../../registration/contract";
 import {
   createEventRegistrationService,
   createMemoryEventRegistrationProvider,
+  eventRegistrationStatusRecord,
 } from "../../registration/service";
 import { EventRegistrationWindowError } from "../../registration/deadline-gated-service";
 import { eventOperationsParticipantFromRegistration } from "../participant";
@@ -953,6 +954,11 @@ export function createMemoryEventOperationsRepository(
       return canonicalRegistrationService.get({ eventId, userId });
     },
 
+    async getCanonicalRegistrationStatus(eventId, userId) {
+      const registration = await canonicalRegistrationService.get({ eventId, userId });
+      return registration ? eventRegistrationStatusRecord(registration) : null;
+    },
+
     async getConfiguration(eventId) {
       const value = configurations.get(eventId);
       return value ? clone(value) : null;
@@ -1127,6 +1133,13 @@ export function createMemoryEventOperationsRepository(
 
     listCanonicalRegistrationsForUser(userId, eventIds) {
       return canonicalRegistrationProvider.listRegistrationsForUser(
+        userId,
+        eventIds,
+      );
+    },
+
+    listCanonicalRegistrationStatusesForUser(userId, eventIds) {
+      return canonicalRegistrationProvider.listRegistrationStatusesForUser(
         userId,
         eventIds,
       );

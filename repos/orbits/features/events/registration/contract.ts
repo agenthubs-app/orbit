@@ -97,6 +97,19 @@ export interface EventRegistration {
   userId: string;
 }
 
+/**
+ * Lightweight own-registration read: which event, and the stored status.
+ *
+ * `status` is deliberately not narrowed: legacy projection records keep
+ * whatever status they were written with (missing, null, any string), and the
+ * full read returns such records too. Callers only treat `"rsvped"` as
+ * registered; a non-string stored status is reported as `null`.
+ */
+export interface EventRegistrationStatusRecord {
+  eventId: string;
+  status: string | null;
+}
+
 export const EVENT_REGISTRATION_ACTIONS = [
   "apply",
   "register",
