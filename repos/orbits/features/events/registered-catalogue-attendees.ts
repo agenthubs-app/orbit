@@ -1,4 +1,4 @@
-import { eventRegistrationRuntimeService } from "./registration/runtime";
+import { readRuntimeEventRegistrationStatus } from "./registration/runtime";
 import { createConfiguredEventOperationsRepository } from "./event-operations/repository";
 
 export interface RegisteredCatalogueAttendee {
@@ -23,7 +23,9 @@ export async function readRegisteredCatalogueAttendees(input: {
     return null;
   }
 
-  const registration = await eventRegistrationRuntimeService.get({
+  // Only "is this actor registered" is needed here: read event id and status,
+  // not the whole registration (W0028). A read failure propagates.
+  const registration = await readRuntimeEventRegistrationStatus({
     eventId,
     userId: actorId,
   });

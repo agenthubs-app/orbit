@@ -39,6 +39,8 @@ function registration(userId: string) {
 
 function loadPage(t: TestContext, scenario: Scenario) {
   const reads: Array<{ path: ReadPath; userId: string }> = [];
+  /** W0028：整行读取（旧方法）被页面调用的记录，应始终为空。 */
+  const fullRowCalls: string[] = [];
   const IOrbitShell = (props: Record<string, unknown>) => {
     void props;
     return null;
@@ -91,9 +93,14 @@ function loadPage(t: TestContext, scenario: Scenario) {
     },
     [join(root, "features/events/registration/storage/live-record-provider.ts")]: {
       createConfiguredEventRegistrationProvider: () => ({
-        listRegistrationsForUser: async (userId: string) => {
+        // W0028：首页走轻量读取（eventId／status）；整行方法只记次数。
+        listRegistrationStatusesForUser: async (userId: string) => {
           reads.push({ path: "legacy", userId });
           return scenario.path === "legacy" && userId === scenario.registeredUnder ? [registration(userId)] : [];
+        },
+        listRegistrationsForUser: async () => {
+          fullRowCalls.push("legacy:listRegistrationsForUser");
+          return [];
         },
       }),
     },
@@ -102,9 +109,13 @@ function loadPage(t: TestContext, scenario: Scenario) {
         cancelCanonicalRegistration: noop,
         getCanonicalRegistration: noop,
         listCanonicalRegistrations: noop,
-        listCanonicalRegistrationsForUser: async (userId: string) => {
+        listCanonicalRegistrationStatusesForUser: async (userId: string) => {
           reads.push({ path: "canonical", userId });
           return scenario.path === "canonical" && userId === scenario.registeredUnder ? [registration(userId)] : [];
+        },
+        listCanonicalRegistrationsForUser: async () => {
+          fullRowCalls.push("canonical:listCanonicalRegistrationsForUser");
+          return [];
         },
         registerCanonicalParticipant: noop,
       }),
@@ -133,6 +144,7 @@ function loadPage(t: TestContext, scenario: Scenario) {
   delete require.cache[require.resolve(pagePath)];
   delete require.cache[require.resolve(runtimePath)];
   return {
+    fullRowCalls,
     page: require(pagePath).default as () => Promise<ReactElement>,
     reads,
   };
@@ -159,13 +171,14 @@ async function registeredOnHome(page: () => Promise<ReactElement>): Promise<bool
 
 for (const path of ["legacy", "canonical"] as const) {
   test(`${path} read path: a registration written under the account id shows as registered`, async (t) => {
-    const { page, reads } = loadPage(t, { path, registeredUnder: ACCOUNT_ID });
+    const { fullRowCalls, page, reads } = loadPage(t, { path, registeredUnder: ACCOUNT_ID });
     assert.equal(await registeredOnHome(page), true);
     assert.deepEqual(
       [...new Set(reads.map((read) => read.userId))],
       [ACCOUNT_ID],
       "registrations are read by the account id only",
     );
+    assert.deepEqual(fullRowCalls, [], "W0028: the page never uses the full-row registration reads");
   });
 
   test(`${path} read path: a registration kept only under the session user id is not shown`, async (t) => {

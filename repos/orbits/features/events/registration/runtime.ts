@@ -10,7 +10,10 @@ import { createConfiguredEventOperationsRepository } from "../event-operations/r
 import { createEventRegistrationService } from "./service";
 import { createConfiguredEventOperationsRegistrationWindowProvider } from "./storage/event-operations-window-provider";
 import { createConfiguredEventRegistrationProvider } from "./storage/live-record-provider";
-import type { EventRegistration } from "./contract";
+import type {
+  EventRegistration,
+  EventRegistrationStatusRecord,
+} from "./contract";
 
 const runtimeProvider = createConfiguredEventRegistrationProvider();
 const runtimeBaseService = createEventRegistrationService({
@@ -110,6 +113,74 @@ export async function listRuntimeEventRegistrationsForUser(input: {
   return registrations;
 }
 
+/**
+ * Lightweight counterpart of `listRuntimeEventRegistrationsForUser` (W0028):
+ * the same three reads and enrollment routing, but storage returns only the
+ * event id and status. Used wherever only "is this actor registered" matters.
+ */
+export async function listRuntimeEventRegistrationStatusesForUser(input: {
+  eventIds: readonly string[];
+  userId: string;
+}): Promise<EventRegistrationStatusRecord[]> {
+  const eventIds = [...new Set(input.eventIds.filter(Boolean))];
+  if (eventIds.length === 0) return [];
+  const [projected, canonical, enrollmentEntries] = await Promise.all([
+    runtimeProvider.listRegistrationStatusesForUser(input.userId, eventIds),
+    eventOperationsRepository
+      ? eventOperationsRepository.listCanonicalRegistrationStatusesForUser(
+          input.userId,
+          eventIds,
+        )
+      : Promise.resolve([]),
+    Promise.all(
+      eventIds.map(async (eventId) => [
+        eventId,
+        await runtimeWindowProvider.getEnrollment(eventId),
+      ] as const),
+    ),
+  ]);
+  const projectedByEventId = new Map<string, EventRegistrationStatusRecord>(
+    projected.map((registration) => [registration.eventId, registration] as const),
+  );
+  const canonicalByEventId = new Map<string, EventRegistrationStatusRecord>(
+    canonical.map((registration) => [registration.eventId, registration] as const),
+  );
+  const enrollmentByEventId = new Map(enrollmentEntries);
+  const registrations: EventRegistrationStatusRecord[] = [];
+  for (const eventId of eventIds) {
+    const enrollment = enrollmentByEventId.get(eventId);
+    const registration =
+      enrollment?.state === "legacy_unenrolled" ||
+      enrollment?.state === "legacy_importing"
+        ? projectedByEventId.get(eventId)
+        : canonicalByEventId.get(eventId);
+    if (registration) registrations.push(registration);
+  }
+  return registrations;
+}
+
+/**
+ * Lightweight counterpart of `eventRegistrationRuntimeService.get` (W0028):
+ * the same routing (one enrollment read, then one storage read), returning
+ * only the event id and status.
+ */
+export async function readRuntimeEventRegistrationStatus(input: {
+  eventId: string;
+  userId: string;
+}): Promise<EventRegistrationStatusRecord | null> {
+  if (!eventOperationsRepository) {
+    return runtimeProvider.getRegistrationStatus(input.eventId, input.userId);
+  }
+  const enrollment = await runtimeWindowProvider.getEnrollment(input.eventId);
+  return enrollment.state === "legacy_unenrolled" ||
+    enrollment.state === "legacy_importing"
+    ? runtimeProvider.getRegistrationStatus(input.eventId, input.userId)
+    : eventOperationsRepository.getCanonicalRegistrationStatus(
+        input.eventId,
+        input.userId,
+      );
+}
+
 export interface RuntimeEventRegistrationState {
   availability: EventRegistrationAvailability;
   registered: boolean;
@@ -130,7 +201,7 @@ export async function readRuntimeEventRegistrationStates(input: {
   const eventIds = [...new Set(input.eventIds.filter(Boolean))];
   const [registrations, availabilityEntries] = await Promise.all([
     input.userId
-      ? listRuntimeEventRegistrationsForUser({
+      ? listRuntimeEventRegistrationStatusesForUser({
           eventIds,
           userId: input.userId,
         })
