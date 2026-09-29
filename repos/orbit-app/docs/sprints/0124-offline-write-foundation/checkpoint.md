@@ -65,3 +65,14 @@
 - SC03 剩余：Root 继续在 AccountScreen 核对恢复后的队列与 vault/mirror 状态，并只清理本轮 `debug-offline-write-0124-` 精确 fixture。B 已释放设备、3100 与 8082 锁，不执行设备或服务操作。
 - B 本轮定向结果：App outbox uploader 14/14，App lifecycle/auth summary 定向集 42/42，Metro symlink/chunk 回归 5/5；App 与 orbits 两端 `npm run typecheck` 通过。Server account-status PostgreSQL 集成 `account-status-postgres.test.ts` 1/1，目标仅为隔离 `orbit_test`。FIFO offset 测试先在字符串排序实现下 RED（`newer-zulu` 排在 `older-offset` 前），使用共享的 `compareSyncTimestamps` 后 14/14 GREEN；真实 SQLite receipt-response-loss 重放断言验证冻结请求字节相同、服务端仅执行一次、ACK 后队列清空及 alias 解析。
 - 没有保存逐行测试 runner stdout 日志；以上 RED→GREEN 命令与计数记录于此 checkpoint。源码定向测试可用命令：`node --test --import tsx tests/outbox-uploader.test.ts`（在 `repos/orbit-app`）；账号状态 PG 测试：`ORBIT_DATABASE_TARGET=local ORBIT_LOCAL_DATABASE_URL=postgresql://localhost/orbit_test npm test -- tests/services/account-status-postgres.test.ts`（在 `repos/orbits`）。
+
+### SC03 非空队列 Provider 补证（2026-09-29）
+
+- 在 `tests/auth-session-provider-races.test.ts` 新增真实 Provider → `createSyncLifecycle` → Node `DatabaseSync` 桥接用例；使用单条测试 outbox mutation `sc03-sqlite-provider-mutation` 和独立 `sync_state='synced'` 镜像标记，覆盖 cold-start 401、runtime 401、其他账号确认继续及取消四个分支。
+- 两种 401 均验证来源镜像库/密钥删除、精确 mutationId 存于 pending vault、vault 不含镜像专属标记；继续账号验证旧镜像清理并保存队列，取消验证原会话/库/密钥/队列原样保留且不建 vault。
+- 原先 Provider race fixture 把摘要固定为 0；`offline-identity.test.ts` 的冷拒绝真实 SQLite 用例只写 cursor，不含 outbox。此前 logout 非空 outbox 的 lifecycle 测试继续覆盖 logout/restore，不重复。
+- RED/产品缺陷：没有。真实 Provider/SQLite 测试首轮通过；无产品代码修改。原测试的缺证据与新增行为补证不是生产失败修复，不通过人为破坏产品制造 RED。
+- 最终定向：在 `repos/orbit-app` 执行 `env -i PATH="$PATH" node --test --test-reporter=spec --test-reporter-destination=/Volumes/ORICO/Dev/MacMovedData/dot-codex/worktrees/offline-write-foundation/orbit/repos/orbit-app/build/harness-logs/sprint-0124-sc03-provider-sqlite.log --import tsx --import ./tests/helpers/register-render-hooks.mjs tests/auth-session-provider-races.test.ts`，22/22、0 fail、0 skip（6.07s）；完整输出见 `build/harness-logs/sprint-0124-sc03-provider-sqlite.log`。`env -i PATH="$PATH" node ./node_modules/typescript/bin/tsc --noEmit` exit 0；`git diff --check` exit 0。逐场景说明见 `build/harness-state/evidence/sprint-0124/run-01/sc03-provider-sqlite-supplement.md`。
+- 补证前冻结树的 3904/3904 App full 不外推到当前树；本轮未重跑全量。GitNexus 本树索引已从 1aa851c 刷新到候选 85fe921；`detect_changes --scope all` 完整返回 46 changed symbols、3 changed files、0 affected processes、LOW。其中包括 Next 构建所有的 `repos/orbits/next-env.d.ts`，没有 stage。Provider upstream 为 LOW、唯一直接调用者 `app/_layout.tsx:RootLayout`；`eraseRejectedIdentity` impact 返回 `partial=true`，不把空 caller 集视为无影响，另以源码确认它由 Provider 的 `restoreSession` 调用。本次只改测试/checkpoint，不改产品调用链。
+- Root 随后报告真实设备 SC03 已完成：正常同账号恢复后 Debug 待同步=1、vault=0、镜像=1；注销三选项选择“取消”后保留登录，再只清理本轮精确 mutationId。证据与四张截图索引：主 checkout `build/harness-state/evidence/sprint-0124/root-qa/sc03-restoration-check.json`。这与 Node SQLite Provider 补证相互补充，不相互替代。
+- 该变化后的组合树未重跑 App/backend full；先前 3904/3904 App full 仅对应补证前冻结树，不外推为当前树结论。当前仍待 Root/A 组合验收和正式 Sprint REPORT。
