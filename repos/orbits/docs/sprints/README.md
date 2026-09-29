@@ -35,6 +35,7 @@
 | D21 | W0023 交接：首页「本周推进」前 3 件是否优先显示新生成的「约 TA」 | 先不改，登记为后续候选（2026-09-29） | W0023 |
 | D22 | W0027 SC-04 账号解析读取超上限（约 118–119 MB/月，上限 60 MB） | 先合并 W0027；另开 W0030 瘦身账号会话图读取返回列（直接调用 23 个入口、依赖注入 2 处、经 `resolveAuthenticatedApiActor` 间接 143 个接口文件；全站受益），发布前完成；执行顺序改为 W0028 → W0030 → W0029 → W0019，W0029 用 W0030 实测值重算总账（2026-09-29） | W0027、W0029、W0030、W0019 |
 | D23 | W30-1～4 | 全部按推荐：W30-1 轻量读取写在账号 provider，不改共享存储契约；W30-2 新方法可选，缺失时退回完整图；W30-3 坏数据失败语义与旧读取完全一致（同 D20）；W30-4 全站受益估算按每人每天口径、轮询按实测端点频次，仅供参考不作通过条件（2026-09-29） | W0030 |
+| D24 | W0030 观察：收件箱轮询每 15 秒调 `/api/account/me` 3–4 次，账号会话服务读完整图（约 1,978 B／次），估算约 9.5 GB／月 | 发布前另开 W0031：轮询每周期只确认一次身份（或复用页面已有身份），账号会话服务只读所需字段；页面内容不变，先按生产构建实测真实频次；排在 W0029 之后、W0019 之前（2026-09-29） | W0031、W0019 |
 
 ## 发布动作（需要单独授权）
 
@@ -66,7 +67,7 @@
 | [W0016](W0016-verify-environment/GOAL.md) | 另起开示例开关的验收 server，建测试账号并造好各场景数据，名片照片裁成单张 | RV-01 | 大目标 1 全部 completed | completed |
 | [W0017](W0017-traffic-guard/GOAL.md) | 3 个计划维护任务改为每天最多一次（持久、跨实例），名片匹配补跑空闲时只做轻查询；新增读取路径逐一测量并估算月流量 | RV-03 | 无 | completed |
 | [W0018](W0018-scenario-acceptance/GOAL.md) | 逐场景真实页面验收（桌面＋手机），修小问题，交验收报告页面 | RV-02 | W0016、W0017、W0021 | completed |
-| [W0019](W0019-release-checklist/GOAL.md) | 生产上线清单 + 大目标收口的本地全量对照 | RV-04 | W0018、W0022～W0030；须含 W0025 发布门（生产 Node/ICU 与 Neon PG/排序规则版本，含联系人搜索） | planned |
+| [W0019](W0019-release-checklist/GOAL.md) | 生产上线清单 + 大目标收口的本地全量对照 | RV-04 | W0018、W0022～W0031；须含 W0025 发布门（生产 Node/ICU 与 Neon PG/排序规则版本，含联系人搜索） | planned |
 | [W0020](W0020-preview-verify/GOAL.md) | Preview 复验关键场景并测量 Neon 流量 | RV-04 | W0019；用户授权 Preview 部署、迁移、开关、测试数据 | planned |
 | [W0021](W0021-read-traffic-trim/GOAL.md) | 计划／匹配／名片／活动归属读取瘦身，1000 人月出站 ≤1.0 GB，活动归属按时间窗口读取，页面不变 | RV-05 | W0017 | completed |
 | [W0022](W0022-home-guide-entry/GOAL.md) | 老用户首页「帮我制定推进计划」改去引导第 3 步（`?step` 不绕过硬顺序）；有计划但第 4 步未完成时首页留提醒 | RW-04、RW-10 | W0018；W22-1～4 已定（D13） | completed |
@@ -77,7 +78,8 @@
 | [W0027](W0027-event-detail-actor-id/GOAL.md) | 活动详情页 `/app/events/[id]` 按账号 id 判定已报名、名单、主办方与私密访问；含访问控制回归 | RV-02 | W0024（复用测试夹具） | completed（SC-04 流量 failed，按 D22 合并，由 W0030 解决） |
 | [W0028](W0028-registration-status-read/GOAL.md) | 本人报名读取（legacy 投影与 canonical）只返回 eventId／status 等页面所需列，活动页与详情页本人报名读取合计 ≤30 MB/月；保持旧失败语义；页面行为不变 | RV-03、RV-05 | W0024、W0027（D18、D19、D20）；PLANNER 已按 W0027 合并结果刷新（revision 4） | completed |
 | [W0029](W0029-attendee-roster-trim/GOAL.md) | 详情页报名者名单与「谁会来」匿名预览只读所需字段，合计 ≤200 MB/月；按实测重算用户路径总额（D20） | RV-03、RV-05 | W0027、W0028、W0030（D22 顺序）；开工前刷新 PLANNER 占位 | planned |
-| [W0030](W0030-account-session-graph-trim/GOAL.md) | 账号会话图读取（`readAccountSessionGraph`／`resolveAuthenticatedApiActorFromSession`）只返回判定所需字段，22 个调用方行为不变；详情页账号解析单次字节与月流量实测回到上限内 | RV-03、RV-05 | W0027、W0028（D22 顺序）；W30-1～4 已定（D23） | ready |
+| [W0030](W0030-account-session-graph-trim/GOAL.md) | 账号会话图读取（`readAccountSessionGraph`／`resolveAuthenticatedApiActorFromSession`）只返回判定所需字段，22 个调用方行为不变；详情页账号解析单次字节与月流量实测回到上限内 | RV-03、RV-05 | W0027、W0028（D22 顺序）；W30-1～4 已定（D23） | completed |
+| W0031 | 收件箱轮询与 `/api/account/me` 瘦身：每个轮询周期只确认一次身份，账号会话服务只返回页面所需字段；按生产构建实测频次并估算月流量（GOAL/PLANNER 待编制） | RV-03、RV-05 | W0030（D24） | planned |
 
 全部 Sprint 都已有 GOAL 与 PLANNER（2026-09-28 编制；大目标 1 与大目标 2 各经 Codex `gpt-5.6-sol` 方案 review 后修订为 revision 2，review 意见与处理见 [REVIEW-2026-09-28.md](REVIEW-2026-09-28.md)）。`planned` 表示前置 Sprint 尚未 completed；前置完成后改为 `ready`。
 
@@ -113,3 +115,4 @@
 | W0023 | run-01（2026-09-29） | `16040227`、`ec4ed7e0`（review P2 修复；报告 `36bf7cfc`） | `b6a6b103` | [REPORT](W0023-expired-plan-match-week/REPORT.md) |
 | W0027 | run-01（2026-09-29） | `bc992826`（报告 `7196945b`） | `2d6bf323` | [REPORT](W0027-event-detail-actor-id/REPORT.md)；SC-04 流量 failed，D22 |
 | W0028 | run-01（2026-09-29） | `1d70b2cd`（报告 `cb5ac353`） | `2ef85b1f` | [REPORT](W0028-registration-status-read/REPORT.md) |
+| W0030 | run-01（2026-09-29） | `3677fd16`、`012c685a`（报告 `03e0f65a`） | `1e8c037d` | [REPORT](W0030-account-session-graph-trim/REPORT.md) |
