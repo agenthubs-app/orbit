@@ -266,3 +266,7 @@ ROOT真实设置保存并AX确认恢复精确`http://127.0.0.1:3000`及小雨MAI
 0063追加：当前主线26f74a55已push且独立远端一致，生产BUILD taZi5Ng0EztLjlmYGnGbA/Next36058；新App编译安装0并实际连接主Metro8082。同小雨Web精确分钟15→37保存/原生回读37→原生picker保存15→Web独立GET及picker回读15实际通过，原规则关联与18取消不变。Main全I仍Web59旧fail/206skip/PW4、App唯一旧视觉fail，无新增，不宣称全绿。Phone精确consumer6d1c771/TREE6ed9私有编译与preview健康，两browser正式保存/公网发布待验，PUBLIC0060暂保回退；正式63报告/文档提交待终验，不关闭到期通知等旧缺项。
 
 0063终验追加：Phone private两browser真实新建/正式GET/重开/精确清理通过，公共52919两browser真实月历/精确37分草稿通过，固定PUBLIC43205/6/7健康/served entry05b与冻结产物相同，ROOT完整receipt读取与目检确认；原ngrok静态helper失败两次及两次真实0060回退保留，repair2闭包只exact18静态GET、不改provider预算/业务fence，公共业务0。privatepreview已正常停止、旧回退完整。旧“待验”解除，仅正式63报告/台账文档Git收口仍待，不冒称通知/全域离线/全I绿。
+
+## BR-030 — 0132 离线笔记写入
+
+本地 `chat-agent` `3c9aaa691` 已合并 App outbox 与服务端笔记幂等／版本契约，原生/phoneweb 同账号双向回读、冷启动、409 冲突和 AI 待同步数量提示已实际验证。合并树受影响 App 116/116、两端 typecheck 与 Web 生产构建通过；原全量失败/skip 未重写为全绿。当前 3100 API、32110 phoneweb、8082 Metro 健康 200；运行源码与最终主线产品源码相同。0133 已获进入条件，使用同一契约；远程部署、生产数据库和实体设备未验。详见 [交接](handoffs.md#br-030--0132-离线笔记写入与跨端回读)与 [Sprint 报告](../repos/orbit-app/docs/sprints/0132-offline-notes/REPORT.md)。
