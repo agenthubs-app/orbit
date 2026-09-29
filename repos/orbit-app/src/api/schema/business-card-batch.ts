@@ -235,6 +235,7 @@ export const ingestItemSchema: z.ZodType<Contract.IngestItemContract> = z.prepro
   usage: businessCardCloudOcrUsageSchema.nullable(),
   confirmedContactId: identity.nullable(),
   confirmedFieldSources: ingestCardFieldSourcesSchema.nullable().optional(),
+  cardIdentityExplicit: z.boolean().optional(),
   attemptCount: count,
   nextRetryAt: timestamp.nullable(),
   leaseExpiresAt: timestamp.nullable(),

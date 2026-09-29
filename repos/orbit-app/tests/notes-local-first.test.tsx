@@ -155,6 +155,12 @@ test("a note the mirror does not hold is reported missing after a sync", async (
   await page.getByText("笔记不存在", { exact: false }).waitFor();
 });
 
+test("a note missing from the mirror while offline uses the existing not-on-device state", async (t) => {
+  const page = await open(t, { screen: "detail", noteId: "note:other-account", status: "stale" });
+  await page.getByText(/还没保存在这台设备上/u).waitFor();
+  assert.equal(await page.getByText("笔记不存在", { exact: false }).count(), 0);
+});
+
 test("an online save pulls the new note into the mirror before opening it", async (t) => {
   const page = await open(t, { screen: "new", online: true });
   await page.getByRole("textbox", { name: "笔记标题" }).fill("会后要点");

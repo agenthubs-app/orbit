@@ -572,6 +572,7 @@ test("route UI inventory follows imported exports instead of sibling components"
 const SCANNER_CROSS_COMPONENT =
   "scanner false positive: behavior is proven across a component boundary it cannot follow; recovery: the scanner resolves it (then delete the entry)";
 export const KNOWN_MISSING_STATIC_BEHAVIOR: ReadonlyMap<string, string> = new Map<string, string>([
+  ['repos/orbit-app/src/screens/contacts/ContactDetailScreen.tsx#{locale.t("sync.needsNetwork")}', "intentional disabled control: device-copy contact detail is read-only offline; the explicit disabled/accessibilityState prevents writes"],
   ["repos/orbits/app/(app)/app/account/auth-0918/auth-form.tsx#{label}", `${SCANNER_CROSS_COMPONENT} (type=submit button rendered inside the parent's <form onSubmit>)`],
   ['repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-home.tsx#t({ en: "Previous month", zh: "上个月" })', "product finding: inert aria-disabled month navigation, no cross-month data source (design deviation noted in source); recovery: wire month paging or render it as a non-button"],
   ['repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-home.tsx#t({ en: "Next month", zh: "下个月" })', "product finding: same as Previous month"],

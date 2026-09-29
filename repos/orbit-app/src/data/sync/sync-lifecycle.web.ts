@@ -234,6 +234,10 @@ export function createWebSyncLifecycle(input: {
     registeredPageCopyIds: WEB_MIRROR_PAGE_COPY_IDS,
     payloadCodec,
     status,
+    async pendingWriteSummary(_scope?: SyncSessionScope): Promise<{ currentAccount: number; otherAccounts: number }> {
+      // Browser offline writes are deliberately out of scope.
+      return { currentAccount: 0, otherAccounts: 0 };
+    },
     subscribe(listener: () => void): () => void {
       listeners.add(listener);
       return () => { listeners.delete(listener); };

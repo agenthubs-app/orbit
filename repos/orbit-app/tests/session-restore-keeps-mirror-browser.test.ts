@@ -182,6 +182,11 @@ export class File {
   get exists() { return window.__native.opened.has(this.name); }
   delete() {}
 }
+export class Directory {
+  constructor(...paths) { this.name = paths[paths.length - 1]; }
+  get exists() { return true; }
+  list() { return [...window.__native.opened].map((name) => ({ name })); }
+}
 `,
   reactNative: `
 export * from "react-native-web-real";
@@ -275,6 +280,10 @@ async function serve(files: Awaited<ReturnType<typeof bundle>>, state: HostState
     if (url.pathname === "/api/account/me") {
       if (!signedIn) return json(res, 401, { success: false, error: { code: "UNAUTHENTICATED", message: "sign in" } });
       return json(res, 200, { success: true, data: { account: { id: state.actor }, session: { status: "signed-in" }, user: { id: `profile:${state.actor}` } } });
+    }
+    if (url.pathname === "/api/account/status") {
+      if (!signedIn) return json(res, 401, { success: false, error: { code: "UNAUTHENTICATED", message: "sign in" } });
+      return json(res, 200, { success: true, data: { status: "active" } });
     }
     if (url.pathname === "/api/account/session/sign-out" && req.method === "POST") {
       state.session = "none";

@@ -72,6 +72,10 @@ test('unknown and secret endpoints never default to persistence', () => {
   }
   assert.throws(() => resolveReadSurface('GET', '/api/new-private-domain'), /UNREGISTERED_READ/);
   assert.equal(resolveReadSurface('GET', '/api/auth/session').readPersistence, 'online_only_secret');
+  const accountStatus = resolveReadSurface('GET', '/api/account/status');
+  assert.equal(accountStatus.readPersistence, 'online_only_secret');
+  assert.equal(accountStatus.mutationPolicy, 'online_only');
+  assert.equal(accountStatus.binaryPolicy, 'never_local');
   assert.equal(resolveReadSurface('GET', '/api/notes/n1').domainId, 'notes');
   assert.equal(resolveReadSurface('GET', '/api/notes?actorId=other').domainId, 'notes');
   assert.equal(resolveReadSurface('POST', '/api/notes').mutationPolicy, 'online_only');

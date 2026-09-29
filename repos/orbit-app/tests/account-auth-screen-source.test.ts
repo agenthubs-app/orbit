@@ -12,6 +12,10 @@ const authProviderSource = readFileSync(
   join(repoRoot, "src", "api", "AuthSessionProvider.tsx"),
   "utf8"
 );
+const accountScreenSource = readFileSync(
+  join(repoRoot, "src", "screens", "profile", "AccountScreen.tsx"),
+  "utf8"
+);
 const mobileGoogleRoutePath = join(
   repoRoot,
   "app",
@@ -28,6 +32,31 @@ test("account auth screen can start the mobile Google login bridge", () => {
   assert.match(screenSource, /googleEnabled/u);
   assert.match(screenSource, /startGoogleSignIn/u);
   assert.match(screenSource, /oauthActions/u);
+});
+
+test("native login shows only an anonymous device-wide pending-write count for the current server view", () => {
+  assert.match(screenSource, /readPendingWritesOnDevice/u);
+  assert.match(screenSource, /mode === "login"/u);
+  assert.match(screenSource, /Platform\.OS !== "web"/u);
+  assert.match(screenSource, /devicePendingWrites\?\.baseUrl === server\.baseUrl/u);
+  assert.match(screenSource, /原账号及原服务器登录后可恢复/u);
+  assert.doesNotMatch(screenSource, /`[^`]*\$\{[^}]*email/u);
+});
+
+test("the Debug outbox fixture is hidden outside signed-in development builds", () => {
+  assert.match(accountScreenSource, /__DEV__ && Platform\.OS !== "web" && signedIn/u);
+  assert.match(accountScreenSource, /Platform\.OS === "web" \|\| !signedIn/u);
+  assert.match(accountScreenSource, /enqueueDebugPendingWrite/u);
+  assert.match(accountScreenSource, /Promise\.all\([\s\S]*?\)\.catch\([\s\S]*?无法读取这台设备上的待同步修改数量/u);
+  assert.match(accountScreenSource, /Debug 测试修改未能写入本机队列/u);
+  assert.match(accountScreenSource, /catch/u);
+  assert.match(authProviderSource, /if \(!__DEV__ \|\| usesBrowserManagedSession \|\| !accountId/u);
+  assert.match(authProviderSource, /domainId: "test-offline-write"/u);
+  assert.match(authProviderSource, /debug-offline-write-0124-/u);
+  assert.match(authProviderSource, /listDebugPendingWriteIds/u);
+  assert.match(authProviderSource, /deleteDebugPendingWrite/u);
+  assert.match(authProviderSource, /DELETE FROM sync_outbox WHERE mutation_id = \? AND domain_id = \? AND workspace_id = \?/u);
+  assert.doesNotMatch(authProviderSource, /endpoint: "\/api\//u);
 });
 
 test("mobile Google PKCE hashes a native typed array", () => {

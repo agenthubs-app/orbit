@@ -31,6 +31,7 @@ import { ContactPage } from "./ContactPage";
 import { validateApiResourceState } from "../../api/validated-resource-state";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
+import { NeedsNetworkState } from "../../components/NeedsNetworkState";
 import { OfflineNotice } from "../../components/OfflineNotice";
 import { radius, spacing, textStyles, type OrbitColors } from "../../design/tokens";
 import { createControlStyles } from "../../design/controls";
@@ -269,7 +270,8 @@ export function ContactDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: s
       toolbarLeft={currentEdit ? <Pressable accessibilityRole="button" accessibilityLabel={locale.language === "zh" ? "取消编辑" : locale.t("common.cancel")} disabled={editPending} onPress={cancelEditor} style={styles.cancelHeaderButton}><Text style={styles.cancelHeaderText}>{locale.t("common.cancel")}</Text></Pressable> : undefined}
       toolbarRight={currentEdit
         ? <Pressable accessibilityRole="button" accessibilityLabel={locale.language === "zh" ? "保存人脉" : locale.t("common.save")} disabled={editPending} onPress={saveEditor} style={[styles.editHeaderButton, editPending && styles.disabled]}><Text style={styles.editHeaderText}>{editPending ? locale.t("contacts.saving") : locale.t("common.save")}</Text></Pressable>
-        : canEditContact && (state.kind === "success" || state.kind === "empty") ? <Pressable accessibilityRole="button" accessibilityLabel={locale.t("contacts.edit")} onPress={openEditor} style={styles.editHeaderButton}><Text style={styles.editHeaderText}>{locale.t("contacts.edit")}</Text></Pressable> : null}
+        : canEditContact && (state.kind === "success" || state.kind === "empty") ? <Pressable accessibilityRole="button" accessibilityLabel={locale.t("contacts.edit")} onPress={openEditor} style={styles.editHeaderButton}><Text style={styles.editHeaderText}>{locale.t("contacts.edit")}</Text></Pressable>
+        : offlineCopy ? <Pressable accessibilityRole="button" accessibilityState={{ disabled: true }} disabled style={[styles.editHeaderButton, styles.disabled]}><Text style={styles.editHeaderText}>{locale.t("sync.needsNetwork")}</Text></Pressable> : null}
       refreshControl={
         <RefreshControl
           onRefresh={refreshAll}
@@ -281,9 +283,7 @@ export function ContactDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: s
     >
       {state.kind === "loading" && !fromDevice ? <LoadingState /> : null}
       {offlineCopy ? <OfflineNotice lastSyncedAt={local.freshness.lastSyncedAt} /> : null}
-      {state.kind === "offline" && !fromDevice ? (
-        <ErrorState message={state.error.message} title={locale.t("contacts.serverUnavailable")} />
-      ) : null}
+      {state.kind === "offline" && !fromDevice ? <NeedsNetworkState message={locale.t("sync.notOnDevice")} onRetry={refreshAll} /> : null}
       {state.kind === "failure" && !fromDevice ? (
         <ErrorState message={state.error.message} />
       ) : null}
@@ -399,6 +399,7 @@ function ContactDetailCard({
       >
         <FullDetailsPanel
           contact={contact}
+          offline={offline}
           onRecompute={onRecompute}
           relationshipValueOverride={relationshipValueOverride}
           relationshipValuePending={relationshipValuePending}
@@ -651,12 +652,14 @@ function DisclosureSection({
 
 function FullDetailsPanel({
   contact,
+  offline,
   onRecompute,
   relationshipValueOverride,
   relationshipValuePending,
   relationshipValueState
 }: {
   contact: ContactDetailSummary;
+  offline: boolean;
   onRecompute: () => void;
   relationshipValueOverride: unknown | null;
   relationshipValuePending: boolean;
@@ -683,6 +686,7 @@ function FullDetailsPanel({
       <DetailSection title={locale.t("contacts.relationshipValue")}>
         <RelationshipValueCard
           onRecompute={onRecompute}
+          offline={offline}
           overrideData={relationshipValueOverride}
           pending={relationshipValuePending}
           state={relationshipValueState}
@@ -1007,17 +1011,22 @@ function EvidenceList({ contact }: { contact: ContactDetailSummary }) {
 
 function RelationshipValueCard({
   onRecompute,
+  offline,
   overrideData,
   pending,
   state
 }: {
   onRecompute: () => void;
+  offline: boolean;
   overrideData: unknown | null;
   pending: boolean;
   state: ApiResourceState<unknown>;
 }) {
   const { styles } = useStyles();
   const locale = useOrbitLocale();
+  if (offline && !overrideData && state.kind !== "success" && state.kind !== "empty") {
+    return <NeedsNetworkState message={locale.t("sync.needsNetwork")} />;
+  }
   if (!overrideData && state.kind === "loading") {
     return (
       <View style={styles.relationshipValueContent}>

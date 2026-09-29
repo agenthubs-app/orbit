@@ -62,6 +62,10 @@ const OUTBOX_OPERATIONS = new Set<LocalSyncOutboxOperation>([
   "create",
   "update",
   "delete",
+  "complete",
+  "reopen",
+  "cancel",
+  "send",
 ]);
 const SYNC_TIMESTAMP = z.iso.datetime({ offset: true });
 const PLAIN_JSON = z.json();
@@ -78,12 +82,14 @@ const RELATIONSHIP_MESSAGES_DOMAIN = "relationship-messages";
 /** Sprint 0131: page copies live in sync_meta under their lease binding (JSON keys keep ids with any characters unambiguous). */
 const PAGE_COPY_PREFIX = "page_copy:";
 const PAGE_COPY_INDEX_PREFIX = "page_copy_index:";
+const OUTBOX_ALIAS_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const pageCopyKey = (workspaceId: string, epoch: string, id: string, variant: string) => PAGE_COPY_PREFIX + JSON.stringify([workspaceId, epoch, id, variant]);
 const pageCopyIndexKey = (workspaceId: string, epoch: string, id: string) => PAGE_COPY_INDEX_PREFIX + JSON.stringify([workspaceId, epoch, id]);
 const partitionKeyOf = (scope: ReadScope) => `sync_partitions:${scope.workspaceId}:${scope.domainId}:${scope.authorizationEpoch}`;
 
 export type LocalSyncBootstrapState = "pending" | "complete";
-export type LocalSyncOutboxOperation = "create" | "update" | "delete";
+export type LocalSyncOutboxOperation = "create" | "update" | "delete" | "complete" | "reopen" | "cancel" | "send";
+export type LocalSyncOutboxState = "queued" | "sending" | "conflict" | "failed";
 
 export interface LocalSyncCursor {
   workspaceId: string;
@@ -99,16 +105,29 @@ export interface LocalSyncCursor {
 export interface LocalSyncOutboxMutation {
   actorId: string;
   workspaceId: string;
+  domainId?: string;
   mutationId: string;
   kind: SyncEntityKind;
   id: string;
   operation: LocalSyncOutboxOperation;
   patch: unknown;
+  requestJson?: string | null;
   baseRevision: string | null;
+  dependsOn?: string | null;
   createdAt: string;
   retryCount: number;
   nextRetryAt: string | null;
   lastErrorCode: string | null;
+}
+
+export interface LocalSyncQueuedMutation extends LocalSyncOutboxMutation {
+  domainId: string;
+  requestJson: string | null;
+  dependsOn: string | null;
+  state: LocalSyncOutboxState;
+  attemptCount: number;
+  firstAttemptAt: string | null;
+  serverSnapshot: unknown | null;
 }
 
 export interface ApplyLocalSyncPageInput {
@@ -167,6 +186,27 @@ interface SyncOutboxRow {
   last_error_code: string | null;
 }
 
+interface SyncQueuedMutationRow {
+  mutation_id: string;
+  workspace_id: string;
+  domain_id: string;
+  kind: SyncEntityKind;
+  record_id: string;
+  operation: LocalSyncOutboxOperation;
+  state: LocalSyncOutboxState;
+  request_json: string | null;
+  depends_on: string | null;
+  patch_json: string | null;
+  base_revision: string | null;
+  created_at: string;
+  retry_count: number;
+  next_retry_at: string | null;
+  last_error_code: string | null;
+  attempt_count: number;
+  first_attempt_at: string | null;
+  server_snapshot_json: string | null;
+}
+
 interface SerializedRecord {
   record: SyncRecord;
   payloadJson: string | null;
@@ -209,11 +249,17 @@ export function createLocalSyncRepository(input: {
   hashPayload?: (serialized: string) => Promise<string>;
   /** At-rest encoding of payload_json; native mirrors rely on SQLCipher and keep the identity default. */
   payloadCodec?: PayloadCodec;
+  /** Called after an outbox transaction commits so its owner can schedule an online upload attempt. */
+  onOutboxQueued?: () => void | Promise<void>;
+  /** Isolated kinds registered only by tests; their ACKs never enter the product mirror. */
+  testOnlyOutboxDomains?: readonly string[];
 }) {
   assertNonEmptyString(input.actorId, "actorId");
   const { actorId, database } = input;
   const codec = input.payloadCodec ?? IDENTITY_PAYLOAD_CODEC;
   const registered = new Set(input.registeredDomainIds ?? []);
+  const testOnlyOutboxDomains = new Set(input.testOnlyOutboxDomains ?? []);
+  for (const domainId of testOnlyOutboxDomains) assertNonEmptyString(domainId, "testOnlyOutboxDomain");
 
   async function encoded(serialized: SerializedRecord): Promise<SerializedRecord> {
     return serialized.payloadJson === null ? serialized : { ...serialized, payloadJson: await codec.encode(serialized.payloadJson) };
@@ -245,6 +291,30 @@ export function createLocalSyncRepository(input: {
   }
 
   const scopeParameters = (scope: ReadScope) => [scope.workspaceId, scope.domainId, scope.authorizationEpoch];
+
+  function queueMutationFromRow(row: SyncQueuedMutationRow): LocalSyncQueuedMutation {
+    return {
+      actorId,
+      workspaceId: row.workspace_id,
+      domainId: row.domain_id,
+      mutationId: row.mutation_id,
+      kind: row.kind,
+      id: row.record_id,
+      operation: row.operation,
+      patch: row.patch_json === null ? null : JSON.parse(row.patch_json),
+      requestJson: row.request_json,
+      baseRevision: row.base_revision,
+      dependsOn: row.depends_on,
+      createdAt: row.created_at,
+      retryCount: row.retry_count,
+      nextRetryAt: row.next_retry_at,
+      lastErrorCode: row.last_error_code,
+      state: row.state,
+      attemptCount: row.attempt_count,
+      firstAttemptAt: row.first_attempt_at,
+      serverSnapshot: row.server_snapshot_json === null ? null : JSON.parse(row.server_snapshot_json),
+    };
+  }
 
   /** Sprint 0118: every message row and cached card set of the given AI sessions, in every epoch. */
   async function deleteAiSessionRows(workspaceId: string, sessionIds: readonly string[]): Promise<void> {
@@ -737,35 +807,212 @@ export function createLocalSyncRepository(input: {
       mutation: LocalSyncOutboxMutation,
     ): Promise<void> {
       const patchJson = validateAndSerializeOutboxMutation(mutation, actorId);
-      await database.run(
-        `INSERT INTO sync_outbox (
-          mutation_id,
-          workspace_id,
-          kind,
-          record_id,
-          operation,
-          patch_json,
-          base_revision,
-          created_at,
-          retry_count,
-          next_retry_at,
-          last_error_code
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT(mutation_id) DO NOTHING`,
-        [
-          mutation.mutationId,
-          mutation.workspaceId,
-          mutation.kind,
-          mutation.id,
-          mutation.operation,
-          patchJson,
-          mutation.baseRevision,
-          mutation.createdAt,
-          mutation.retryCount,
-          mutation.nextRetryAt,
-          mutation.lastErrorCode,
-        ],
-      );
+      await database.transaction(async () => {
+        const domainId = mutation.domainId ?? localDomainForKind(mutation.kind);
+        const unattempted = await database.all<{
+          mutation_id: string;
+          operation: LocalSyncOutboxOperation;
+          patch_json: string | null;
+          request_json: string | null;
+          base_revision: string | null;
+        }>(`SELECT mutation_id, operation, patch_json, request_json, base_revision
+            FROM sync_outbox
+            WHERE workspace_id = ? AND domain_id = ? AND kind = ? AND record_id = ?
+              AND state = 'queued' AND attempt_count = 0
+              AND first_attempt_at IS NULL
+            ORDER BY created_at ASC, mutation_id ASC LIMIT 1`,
+        [mutation.workspaceId, domainId, mutation.kind, mutation.id]);
+        const prior = unattempted[0];
+        if (prior) {
+          if (prior.operation === "create" && mutation.operation === "delete") {
+            await database.run(`UPDATE sync_outbox SET state = 'failed', depends_on = NULL,
+              next_retry_at = NULL, last_error_code = 'DEPENDENCY_CANCELLED'
+              WHERE workspace_id = ? AND domain_id = ? AND depends_on = ?`,
+            [mutation.workspaceId, domainId, prior.mutation_id]);
+            await database.run("DELETE FROM sync_outbox WHERE mutation_id = ?", [prior.mutation_id]);
+            return;
+          }
+          const operation = prior.operation === "create" && mutation.operation === "update"
+            ? "create"
+            : mutation.operation;
+          const mergedPatch = mergeOutboxPatches(prior.patch_json, patchJson);
+          const mergeId = mutation.requestJson ? mutation.mutationId : prior.mutation_id;
+          const requestJson = mutation.requestJson ?? prior.request_json;
+          const dependsOn = mutation.dependsOn ?? null;
+          if (mergeId !== prior.mutation_id) {
+            await database.run("UPDATE sync_outbox SET depends_on = ? WHERE depends_on = ?", [mergeId, prior.mutation_id]);
+          }
+          await database.run(`UPDATE sync_outbox
+            SET mutation_id = ?, operation = ?, patch_json = ?, request_json = ?,
+              depends_on = COALESCE(depends_on, ?)
+            WHERE mutation_id = ?`, [mergeId, operation, mergedPatch, requestJson, dependsOn, prior.mutation_id]);
+          return;
+        }
+        await database.run(
+          `INSERT INTO sync_outbox (
+            mutation_id, workspace_id, domain_id, kind, record_id, operation, state,
+            patch_json, request_json, depends_on, base_revision, created_at,
+            retry_count, next_retry_at, last_error_code
+          ) VALUES (?, ?, ?, ?, ?, ?, 'queued', ?, ?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT(mutation_id) DO NOTHING`,
+          [
+            mutation.mutationId,
+            mutation.workspaceId,
+            domainId,
+            mutation.kind,
+            mutation.id,
+            mutation.operation,
+            patchJson,
+            mutation.requestJson ?? null,
+            mutation.dependsOn ?? null,
+            mutation.baseRevision,
+            mutation.createdAt,
+            mutation.retryCount,
+            mutation.nextRetryAt,
+            mutation.lastErrorCode,
+          ],
+        );
+      });
+      await input.onOutboxQueued?.();
+    },
+
+    async beginOutboxMutationAttempt(input: {
+      mutationId: string;
+      attemptedAt: string;
+    }): Promise<LocalSyncQueuedMutation | null> {
+      assertNonEmptyString(input.mutationId, "mutationId");
+      assertTimestamp(input.attemptedAt, "attemptedAt");
+      return database.transaction(async () => {
+        const current = await database.get<SyncQueuedMutationRow>(`SELECT
+          mutation_id, workspace_id, domain_id, kind, record_id, operation, state,
+          request_json, depends_on, patch_json, base_revision, created_at, retry_count,
+          next_retry_at, last_error_code, attempt_count, first_attempt_at, server_snapshot_json
+          FROM sync_outbox WHERE mutation_id = ?`, [input.mutationId]);
+        if (!current || current.state !== "queued") return null;
+        if (current.request_json === null) throw new Error("OUTBOX_REQUEST_MISSING");
+        const claimed = await database.run(`UPDATE sync_outbox SET
+          state = 'sending', attempt_count = attempt_count + 1,
+          retry_count = retry_count + 1,
+          first_attempt_at = COALESCE(first_attempt_at, ?)
+          WHERE mutation_id = ? AND state = 'queued'`,
+        [input.attemptedAt, input.mutationId]);
+        if (claimed.changes !== 1) return null;
+        const row = await database.get<SyncQueuedMutationRow>(`SELECT
+          mutation_id, workspace_id, domain_id, kind, record_id, operation, state,
+          request_json, depends_on, patch_json, base_revision, created_at, retry_count,
+          next_retry_at, last_error_code, attempt_count, first_attempt_at, server_snapshot_json
+          FROM sync_outbox WHERE mutation_id = ?`, [input.mutationId]);
+        if (!row) return null;
+        return {
+          actorId,
+          workspaceId: row.workspace_id,
+          domainId: row.domain_id,
+          mutationId: row.mutation_id,
+          kind: row.kind,
+          id: row.record_id,
+          operation: row.operation,
+          patch: row.patch_json === null ? null : JSON.parse(row.patch_json),
+          requestJson: row.request_json,
+          baseRevision: row.base_revision,
+          dependsOn: row.depends_on,
+          createdAt: row.created_at,
+          retryCount: row.retry_count,
+          nextRetryAt: row.next_retry_at,
+          lastErrorCode: row.last_error_code,
+          state: row.state,
+          attemptCount: row.attempt_count,
+          firstAttemptAt: row.first_attempt_at,
+          serverSnapshot: row.server_snapshot_json === null ? null : JSON.parse(row.server_snapshot_json),
+        };
+      });
+    },
+
+    async markOutboxMutationFailure(input: {
+      mutationId: string;
+      state: "queued" | "conflict" | "failed";
+      nextRetryAt: string | null;
+      errorCode: string;
+      serverSnapshot?: unknown;
+    }): Promise<void> {
+      assertNonEmptyString(input.mutationId, "mutationId");
+      assertNullableTimestamp(input.nextRetryAt, "nextRetryAt");
+      assertNonEmptyString(input.errorCode, "errorCode");
+      const snapshotJson = input.serverSnapshot === undefined
+        ? null
+        : serializeJson(input.serverSnapshot, "serverSnapshot");
+      await database.run(`UPDATE sync_outbox SET
+        state = ?, next_retry_at = ?, last_error_code = ?, server_snapshot_json = ?
+        WHERE mutation_id = ?`, [
+        input.state,
+        input.state === "queued" ? input.nextRetryAt : null,
+        input.errorCode,
+        snapshotJson,
+        input.mutationId,
+      ]);
+    },
+
+    /** Commit a successful upload, its local-id alias, and dependent request rewrites together. */
+    async acknowledgeOutboxMutation(input: {
+      mutationId: string;
+      record: SyncRecord;
+      localId?: string;
+      acknowledgedAt: string;
+    }): Promise<void> {
+      assertNonEmptyString(input.mutationId, "mutationId");
+      assertTimestamp(input.acknowledgedAt, "acknowledgedAt");
+      const serialized = await encoded(validateAndSerializeRecord(input.record, actorId));
+      if (serialized.record.syncState !== "synced") throw new TypeError("acknowledged record must be synced");
+
+      await database.transaction(async () => {
+        const mutation = await database.get<{ workspace_id: string; domain_id: string; kind: SyncEntityKind; record_id: string }>(
+          "SELECT workspace_id, domain_id, kind, record_id FROM sync_outbox WHERE mutation_id = ?",
+          [input.mutationId],
+        );
+        if (!mutation) throw new Error("OUTBOX_MUTATION_NOT_FOUND");
+        const testOnlyDomain = testOnlyOutboxDomains.has(mutation.domain_id);
+        if (mutation.workspace_id !== serialized.record.workspaceId || mutation.kind !== serialized.record.kind ||
+          (!testOnlyDomain && mutation.domain_id !== LEGACY_DOMAINS[serialized.record.kind])) {
+          throw new TypeError("acknowledged record does not match the queued mutation scope");
+        }
+        if (!testOnlyDomain) {
+          const scope = legacyScope(mutation.workspace_id, mutation.kind);
+          if (scope.domainId !== mutation.domain_id) throw new TypeError("queued mutation domain is not bound");
+          await database.run(UPSERT_RECORD, [...scopeParameters(scope), ...recordParameters(serialized).slice(1)]);
+        }
+        const localId = input.localId ?? mutation.record_id;
+        if (localId !== serialized.record.id) {
+          assertNonEmptyString(localId, "localId");
+          const expiresAt = new Date(Date.parse(input.acknowledgedAt) + OUTBOX_ALIAS_TTL_MS).toISOString();
+          await database.run(`INSERT INTO sync_aliases(workspace_id, domain_id, local_id, canonical_id, created_at, expires_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+            ON CONFLICT(workspace_id, domain_id, local_id) DO UPDATE SET
+              canonical_id = excluded.canonical_id, created_at = excluded.created_at, expires_at = excluded.expires_at`,
+          [mutation.workspace_id, mutation.domain_id, localId, serialized.record.id, input.acknowledgedAt, expiresAt]);
+        }
+        const dependents = await database.all<{ mutation_id: string; patch_json: string | null; request_json: string | null }>(
+          `SELECT mutation_id, patch_json, request_json FROM sync_outbox
+           WHERE workspace_id = ? AND domain_id = ? AND depends_on = ?`,
+          [mutation.workspace_id, mutation.domain_id, input.mutationId],
+        );
+        for (const dependent of dependents) {
+          const patchJson = dependent.patch_json === null ? null : JSON.stringify(rewriteExactIdentifier(JSON.parse(dependent.patch_json), localId, serialized.record.id));
+          const requestJson = dependent.request_json === null ? null : JSON.stringify(rewriteExactIdentifier(JSON.parse(dependent.request_json), localId, serialized.record.id));
+          await database.run(`UPDATE sync_outbox SET patch_json = ?, request_json = ?, depends_on = NULL WHERE mutation_id = ?`,
+            [patchJson, requestJson, dependent.mutation_id]);
+        }
+        await database.run("DELETE FROM sync_outbox WHERE mutation_id = ?", [input.mutationId]);
+      });
+    },
+
+    async resolveAlias(input: { workspaceId: string; domainId: string; localId: string; now: string }): Promise<string | null> {
+      assertNonEmptyString(input.workspaceId, "workspaceId");
+      assertNonEmptyString(input.domainId, "domainId");
+      assertNonEmptyString(input.localId, "localId");
+      assertTimestamp(input.now, "now");
+      const row = await database.get<{ canonical_id: string }>(`SELECT canonical_id FROM sync_aliases
+        WHERE workspace_id = ? AND domain_id = ? AND local_id = ? AND expires_at > ?`,
+      [input.workspaceId, input.domainId, input.localId, input.now]);
+      return row?.canonical_id ?? null;
     },
 
     async listOutboxMutations(
@@ -800,6 +1047,74 @@ export function createLocalSyncRepository(input: {
             compareSyncTimestamps(left.createdAt, right.createdAt) ||
             compareOpaqueStrings(left.mutationId, right.mutationId),
         );
+    },
+
+    async listQueuedMutations(query: {
+      workspaceId: string;
+      domainId?: string;
+      kind?: SyncEntityKind;
+    }): Promise<LocalSyncQueuedMutation[]> {
+      assertNonEmptyString(query.workspaceId, "workspaceId");
+      if (query.domainId !== undefined) assertNonEmptyString(query.domainId, "domainId");
+      if (query.kind !== undefined) assertSyncEntityKind(query.kind);
+      const conditions = ["workspace_id = ?"];
+      const parameters: LocalSyncSqlValue[] = [query.workspaceId];
+      if (query.domainId !== undefined) {
+        conditions.push("domain_id = ?");
+        parameters.push(query.domainId);
+      }
+      if (query.kind !== undefined) {
+        conditions.push("kind = ?");
+        parameters.push(query.kind);
+      }
+      const rows = await database.all<SyncQueuedMutationRow>(`SELECT
+        mutation_id, workspace_id, domain_id, kind, record_id, operation, state,
+        request_json, depends_on, patch_json, base_revision, created_at, retry_count,
+        next_retry_at, last_error_code, attempt_count, first_attempt_at, server_snapshot_json
+        FROM sync_outbox WHERE ${conditions.join(" AND ")}`,
+      parameters);
+      return rows.map(queueMutationFromRow).sort(
+        (left, right) => compareSyncTimestamps(left.createdAt, right.createdAt) ||
+          compareOpaqueStrings(left.mutationId, right.mutationId),
+      );
+    },
+
+    async readOutboxOverlay(query: {
+      workspaceId: string;
+      kind: SyncEntityKind;
+    }): Promise<{ serverRecords: SyncRecord[]; queuedMutations: LocalSyncQueuedMutation[] }> {
+      assertNonEmptyString(query.workspaceId, "workspaceId");
+      assertSyncEntityKind(query.kind);
+      const scope = legacyScope(query.workspaceId, query.kind);
+      if (!(await isReadable(scope))) return { serverRecords: [], queuedMutations: [] };
+      return database.transaction(async () => {
+        const rows = await database.all<SyncRecordRow>(`SELECT workspace_id, kind, record_id,
+          revision, updated_at, deleted_at, payload_json, sync_state, ai_visibility
+          FROM sync_records WHERE workspace_id = ? AND domain_id = ? AND authorization_epoch = ?
+            AND kind = ? AND visible = 1 AND deleted_at IS NULL AND sync_state = 'synced'`,
+        [...scopeParameters(scope), query.kind]);
+        const outboxRows = await database.all<SyncQueuedMutationRow>(`SELECT
+          mutation_id, workspace_id, domain_id, kind, record_id, operation, state,
+          request_json, depends_on, patch_json, base_revision, created_at, retry_count,
+          next_retry_at, last_error_code, attempt_count, first_attempt_at, server_snapshot_json
+          FROM sync_outbox WHERE workspace_id = ? AND domain_id = ? AND kind = ?`,
+        [query.workspaceId, scope.domainId, query.kind]);
+        assertScope(scope);
+        return {
+          serverRecords: await Promise.all(rows.map(row => recordFromStoredRow(row))),
+          queuedMutations: outboxRows.map(queueMutationFromRow).sort(
+            (left, right) => compareSyncTimestamps(left.createdAt, right.createdAt) ||
+              compareOpaqueStrings(left.mutationId, right.mutationId),
+          ),
+        };
+      });
+    },
+
+    async countOutboxMutationsByDomain(workspaceId: string): Promise<Record<string, number>> {
+      assertNonEmptyString(workspaceId, "workspaceId");
+      const rows = await database.all<{ domain_id: string; count: number }>(`SELECT domain_id, COUNT(*) AS count
+        FROM sync_outbox WHERE workspace_id = ? GROUP BY domain_id ORDER BY domain_id`, [workspaceId]);
+      return Object.fromEntries(rows.map(row => [row.domain_id, Number(row.count)]));
     },
   };
 }
@@ -879,6 +1194,12 @@ function validateAndSerializeOutboxMutation(
     throw new TypeError("operation is invalid");
   }
   assertNullableString(value.baseRevision, "baseRevision");
+  if (value.domainId !== undefined) assertNonEmptyString(value.domainId, "domainId");
+  if (value.dependsOn !== undefined) assertNullableString(value.dependsOn, "dependsOn");
+  if (value.requestJson !== undefined && value.requestJson !== null) {
+    if (typeof value.requestJson !== "string") throw new TypeError("requestJson must be a string or null");
+    try { JSON.parse(value.requestJson); } catch { throw new TypeError("requestJson must contain valid JSON"); }
+  }
   assertTimestamp(value.createdAt, "createdAt");
   if (!Number.isSafeInteger(value.retryCount) || value.retryCount < 0) {
     throw new TypeError("retryCount must be a non-negative safe integer");
@@ -886,6 +1207,27 @@ function validateAndSerializeOutboxMutation(
   assertNullableTimestamp(value.nextRetryAt, "nextRetryAt");
   assertNullableString(value.lastErrorCode, "lastErrorCode");
   return value.patch === null ? null : serializeJson(value.patch, "patch");
+}
+
+function localDomainForKind(kind: SyncEntityKind): string {
+  return LEGACY_DOMAINS[kind];
+}
+
+function mergeOutboxPatches(previous: string | null, next: string | null): string | null {
+  if (previous === null || next === null) return next;
+  const oldValue: unknown = JSON.parse(previous);
+  const newValue: unknown = JSON.parse(next);
+  if (isRecord(oldValue) && isRecord(newValue) && !Array.isArray(oldValue) && !Array.isArray(newValue)) {
+    return JSON.stringify({ ...oldValue, ...newValue });
+  }
+  return next;
+}
+
+function rewriteExactIdentifier(value: unknown, from: string, to: string): unknown {
+  if (value === from) return to;
+  if (Array.isArray(value)) return value.map(item => rewriteExactIdentifier(item, from, to));
+  if (isRecord(value)) return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, rewriteExactIdentifier(item, from, to)]));
+  return value;
 }
 
 function recordParameters(serialized: SerializedRecord): LocalSyncSqlValue[] {
@@ -933,7 +1275,7 @@ function assertNonEmptyString(
   }
 }
 
-function compareSyncTimestamps(left: string, right: string): number {
+export function compareSyncTimestamps(left: string, right: string): number {
   const leftParts = timestampParts(left);
   const rightParts = timestampParts(right);
   if (leftParts.wholeSecond !== rightParts.wholeSecond) {

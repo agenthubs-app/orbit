@@ -5,7 +5,7 @@ type SurfaceKey = readonly [consumerFile: string, method: string, endpointTempla
 function domainFor(path: string): string {
   if (path.startsWith('/device/note-drafts')) return 'notes';
   if (path.startsWith('/api/auth/') || path === '/api/account/session/sign-out') return 'account';
-  if (path === '/api/account/me') return 'account';
+  if (path === '/api/account/me' || path === '/api/account/status') return 'account';
   if (path.startsWith('/api/account/language-preference') || path.startsWith('/api/notification-preferences')) return 'preferences';
   if (path.startsWith('/api/profile/update-suggestions')) return 'profile';
   if (path.startsWith('/api/profile')) return 'profile';
@@ -73,7 +73,7 @@ function domainFor(path: string): string {
 function surfaceFrom([consumerFile, method, endpointTemplate]: SurfaceKey): ReadSurface {
   const domainId = domainFor(endpointTemplate);
   const providerTodo = endpointTemplate.startsWith('/api/relationship-signals/email-calendar');
-  const secret = providerTodo || endpointTemplate.startsWith('/api/account/session/')
+  const secret = providerTodo || endpointTemplate === '/api/account/status' || endpointTemplate.startsWith('/api/account/session/')
     || endpointTemplate.startsWith('/api/auth/') || endpointTemplate.startsWith('/api/devices/')
     // Private portraits remain network-only until trusted grant/epoch invalidation is available.
     || endpointTemplate === '/api/events/:id/registration/portrait'
@@ -118,6 +118,7 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/api/auth-session.ts","POST","/api/auth/mobile/credentials"],
   ["src/api/auth-session.ts","POST","/api/auth/mobile/google/exchange"],
   ["src/api/AuthSessionProvider.tsx","GET","/api/account/me"],
+  ["src/api/mobile-auth.ts","GET","/api/account/status"],
   ["src/api/AuthSessionProvider.tsx","POST","/api/auth/mobile/credentials"],
   ["src/api/AuthSessionProvider.tsx","POST","/api/auth/mobile/google/exchange"],
   ["src/api/business-card-import.ts","GET","/api/contact-drafts/business-card/imports/:id"],

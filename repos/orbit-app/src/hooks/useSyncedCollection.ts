@@ -193,6 +193,7 @@ export function useSyncedCollection<TPayload = unknown>(input: {
       actorId: auth.actorId,
       baseUrl,
       client: createSyncClient(apiClient),
+      offlineMode: auth.offline,
       scopeKey,
     });
     sessionRef.current = session;
@@ -242,6 +243,7 @@ export function useSyncedCollection<TPayload = unknown>(input: {
     auth.ready,
     auth.signedIn,
     auth.actorId,
+    auth.offline,
     apiClient,
     baseUrl,
     baseUrlReady,
@@ -297,12 +299,12 @@ export function useSyncCoordinatorSession(enabled = true): SyncCoordinatorSessio
       setSession(null);
       return;
     }
-    const opened = appSyncCoordinator.openScope({ actorId: auth.actorId, baseUrl, client: createSyncClient(apiClient), scopeKey });
+    const opened = appSyncCoordinator.openScope({ actorId: auth.actorId, baseUrl, client: createSyncClient(apiClient), offlineMode: auth.offline, scopeKey });
     setSession(opened);
     return () => {
       opened.deactivate();
       setSession((current) => (current === opened ? null : current));
     };
-  }, [enabled, auth.ready, auth.signedIn, auth.actorId, apiClient, baseUrl, baseUrlReady, scopeKey]);
+  }, [enabled, auth.ready, auth.signedIn, auth.actorId, auth.offline, apiClient, baseUrl, baseUrlReady, scopeKey]);
   return session;
 }

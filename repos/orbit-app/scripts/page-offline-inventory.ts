@@ -29,7 +29,7 @@ export interface PageOfflineEntry {
   title: string;
   classification: PageOfflineClassification;
   /** local-first: the sprint that made it readable offline. */
-  sprint?: '0108' | '0115' | '0116' | '0117' | '0118' | '0119' | '0125' | '0131';
+  sprint?: '0108' | '0115' | '0116' | '0117' | '0118' | '0119' | '0125' | '0131' | '0137';
   /** Where the content comes from: device domains (域), page copies (页面副本) and network reads. */
   reads: string;
   /** What the page does when the server cannot be reached. */
@@ -140,7 +140,7 @@ export const PAGE_OFFLINE_INVENTORY: readonly PageOfflineEntry[] = [
   { file: 'app/contacts/new/import/[id].tsx', path: '/contacts/new/import/:id', title: '名片导入进度', classification: 'online-only', reasonCategory: 'card-scan', reason: '导入任务在服务器运行', reads: '/api/contact-drafts/business-card/imports/:id', offline: NEEDS_NETWORK },
   { file: 'app/contacts/intros.tsx', path: '/contacts/intros', title: '引荐', classification: 'online-only', reasonCategory: 'server-computed', reason: '引荐候选由服务器跨账号实时计算', reads: '/api/contacts/intros/summary', offline: NEEDS_NETWORK },
   { file: 'app/contacts/matches.tsx', path: '/contacts/matches', title: '人脉需求匹配', classification: 'online-only', reasonCategory: 'server-computed', reason: '需求匹配由服务器按最新资料实时排序（0116 已定为需要联网）', reads: '/api/contacts/needs-matches、/api/profile', offline: NEEDS_NETWORK },
-  { file: 'app/contacts/pipeline.tsx', path: '/contacts/pipeline', title: '关系推进看板', classification: 'online-only', reasonCategory: 'server-computed', reason: '按全部关系在服务器分页实时计算阶段', reads: '/api/contacts/pipeline', offline: NEEDS_NETWORK },
+  { file: 'app/contacts/pipeline.tsx', path: '/contacts/pipeline', title: '关系推进看板', classification: 'local-first', sprint: '0137', reads: '域 contacts 的本机卡片；阶段分组使用 shared/compute/contact-pipeline；线上待处理事项仍读 /api/contacts/pipeline', offline: '「截至」；联系人阶段和数量由本机副本计算；待处理事项需要联网' },
   { file: 'app/invitations/[token].tsx', path: '/invitations/:token', title: '关系邀请', classification: 'online-only', reasonCategory: 'server-token', reason: '邀请链接由服务器验证后才能接受', reads: '/api/relationship-communication/invitations/:id', offline: NEEDS_NETWORK },
   { file: 'app/register.tsx', path: '/register', title: '邀请注册', classification: 'online-only', reasonCategory: 'server-token', reason: '邀请码由服务器验证', reads: '/api/events/public/:id、/api/profile', offline: NEEDS_NETWORK },
   { file: 'app/register/[code].tsx', path: '/register/:code', title: '邀请注册（带邀请码）', classification: 'online-only', reasonCategory: 'server-token', reason: '邀请码由服务器验证', reads: '同 /register', offline: NEEDS_NETWORK },
@@ -194,7 +194,7 @@ function cell(value: string): string {
 
 export function renderPageInventoryMarkdown(entries: readonly PageOfflineEntry[]): string {
   const count = (predicate: (entry: PageOfflineEntry) => boolean) => entries.filter(predicate).length;
-  const sprints = ['0108', '0115', '0116', '0117', '0118', '0119', '0125', '0131'] as const;
+  const sprints = ['0108', '0115', '0116', '0117', '0118', '0119', '0125', '0131', '0137'] as const;
   const lines: string[] = [
     '# 全 App 页面离线清单',
     '',

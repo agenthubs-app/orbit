@@ -57,3 +57,11 @@ test('the pages the user named in 0131 are local-first, and online-only pages na
     assert.ok(entry.reasonCategory, entry.file);
   }
 });
+
+test('the contact pipeline route is local-first and is not hidden by an online-only boundary', async () => {
+  const entry = PAGE_OFFLINE_INVENTORY.find(candidate => candidate.file === 'app/contacts/pipeline.tsx');
+  assert.equal(entry?.classification, 'local-first');
+  assert.equal(entry?.sprint, '0137');
+  const route = await readFile(resolve(root, 'app/contacts/pipeline.tsx'), 'utf8');
+  assert.doesNotMatch(route, /withOnlineOnlyRoute/);
+});

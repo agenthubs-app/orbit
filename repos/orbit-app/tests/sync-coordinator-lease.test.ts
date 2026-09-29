@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import test, { type TestContext } from "node:test";
+import type { SyncRecord } from "../src/api/contract/sync";
 import type { DomainManifest, DomainPage, OfflineReadEnvelope } from "../src/api/contract/universal-read";
 import { initializeLocalSyncDatabase } from "../src/data/sync/local-sync-database";
+import { createOutboxUploader } from "../src/data/sync/outbox-uploader";
 import { createSyncCoordinator, type SyncCoordinatorLifecycle } from "../src/data/sync/sync-coordinator";
 import { SyncResetRequiredError, type SyncClient } from "../src/data/sync/sync-client";
 import { NodeTestDatabase } from "./helpers/node-sync-database";
@@ -113,6 +115,115 @@ test("lease → bound scopes → domain pages → readable mirror, without the l
   assert.equal((await session.readCollection("note"))?.records.length, 1);
   const stored = await database.get<{ value: string }>("SELECT value FROM sync_meta WHERE key = 'offline_read_lease'");
   assert.ok(stored, "the lease is kept with the mirror");
+  session.deactivate();
+});
+
+test("online sync triggers the outbox after lease confirmation and before pulling", async (t) => {
+  const state: HostState = { epoch: "e1", grantedDomains: ["tasks"], calls: [], now: T0, rows: { tasks: [] } };
+  const { database, lifecycle } = device(t);
+  await ready(database);
+  const order: string[] = [];
+  const coordinator = createSyncCoordinator({
+    lifecycle,
+    now: () => state.now,
+    hashPayload,
+    uploadOutbox: async ({ actorId, baseUrl: uploadBaseUrl, workspaceId }) => {
+      assert.equal(actorId, A);
+      assert.equal(uploadBaseUrl, baseUrl);
+      assert.equal(workspaceId, W);
+      order.push("upload");
+    },
+  });
+  const host = client(state);
+  const session = coordinator.openScope({ actorId: A, baseUrl, client: {
+    ...host,
+    async getLease(input) { order.push("lease"); return host.getLease(input); },
+    async getManifest(input) { order.push("manifest"); return host.getManifest(input); },
+  }, scopeKey: "outbox-trigger" });
+  const result = await sync(session, "task");
+  assert.equal(result?.error, null);
+  assert.deepEqual(order, ["lease", "upload", "manifest"]);
+  session.deactivate();
+});
+
+test("offline identity can refresh its read lease but never uploads the outbox", async (t) => {
+  const state: HostState = { epoch: "e1", grantedDomains: ["tasks"], calls: [], now: T0, rows: { tasks: [] } };
+  const { database, lifecycle } = device(t);
+  await ready(database);
+  let uploads = 0;
+  const coordinator = createSyncCoordinator({
+    lifecycle,
+    now: () => state.now,
+    hashPayload,
+    uploadOutbox: async () => { uploads += 1; },
+  });
+  const session = coordinator.openScope({
+    actorId: A, baseUrl, client: client(state), scopeKey: "offline-identity",
+    offlineMode: true,
+  });
+  const result = await sync(session, "task");
+  assert.equal(result?.error, null, "online reads can still refresh the lease and mirror");
+  assert.equal(uploads, 0, "offline identity must not upload even when reachability returns");
+  session.deactivate();
+});
+
+test("enqueue in the active test scope starts one online upload→pull cycle", async (t) => {
+  const state: HostState = { epoch: "e1", grantedDomains: ["tasks"], calls: [], now: T0, rows: { tasks: [] } };
+  const { database, lifecycle } = device(t);
+  await ready(database);
+  const order: string[] = [];
+  let uploaded!: () => void;
+  let uploadStarted = new Promise<void>(resolve => { uploaded = resolve; });
+  const localRepository = createLocalSyncRepository({ actorId: A, database, testOnlyOutboxDomains: ["test-offline-write"] });
+  const coordinator = createSyncCoordinator({
+    lifecycle,
+    now: () => state.now,
+    hashPayload,
+    testOnlyOutboxDomains: ["test-offline-write"],
+    uploadOutbox: async ({ signal }) => {
+      order.push("upload");
+      const uploader = createOutboxUploader({
+        repository: localRepository,
+        workspaceId: W,
+        confirmOnline: async () => true,
+        uploadOne: async row => {
+          order.push(`send:${row.mutationId}`);
+          const record: SyncRecord = {
+            actorId: A, workspaceId: W, kind: row.kind, id: "canonical-test-record", revision: "server-r1",
+            updatedAt: new Date(T0).toISOString(), deletedAt: null, payload: { title: "test" },
+            syncState: "synced", aiVisibility: "excluded",
+          };
+          return { status: 200, record };
+        },
+        pull: async () => undefined,
+        now: () => state.now,
+      });
+      signal.addEventListener("abort", () => uploader.cancel(), { once: true });
+      const result = await uploader.run();
+      if (result.acknowledged) uploaded();
+    },
+  });
+  const host = client(state);
+  const session = coordinator.openScope({ actorId: A, baseUrl, client: {
+    ...host,
+    async getLease(input) { order.push("lease"); return host.getLease(input); },
+    async getManifest(input) { order.push("manifest"); return host.getManifest(input); },
+  }, scopeKey: "outbox-enqueue-trigger" });
+  assert.equal((await sync(session, "task"))?.error, null);
+  order.length = 0;
+  uploadStarted = new Promise<void>(resolve => { uploaded = resolve; });
+  await session.enqueueTestOutboxMutation({
+    actorId: A, workspaceId: W, domainId: "test-offline-write", mutationId: "enqueue-trigger",
+    kind: "note", id: "local:queued", operation: "create", patch: { title: "test" },
+    requestJson: '{"mutationId":"enqueue-trigger","title":"test"}', baseRevision: null,
+    createdAt: new Date(T0).toISOString(), retryCount: 0, nextRetryAt: null, lastErrorCode: null,
+  });
+  await uploadStarted;
+  await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(order.slice(0, 3), ["lease", "upload", "send:enqueue-trigger"]);
+  assert.deepEqual(await localRepository.listQueuedMutations({ workspaceId: W }), []);
+  assert.equal(await localRepository.resolveAlias({ workspaceId: W, domainId: "test-offline-write", localId: "local:queued", now: new Date(T0 + 1).toISOString() }), "canonical-test-record");
+  assert.equal((await database.get<{ count: number }>("SELECT COUNT(*) AS count FROM sync_records"))?.count, 0);
   session.deactivate();
 });
 
