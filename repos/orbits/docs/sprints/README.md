@@ -46,6 +46,7 @@
 | D32 | W0032 SC-04 月上限超 2.0 GB；各本账合计约 4.9–6.3 GB | W0032 本路径上限放宽到 ≤3.0 GB；先发布，W0019 加发布门：上线后每周看 Neon 出站，到 3.5 GB 启动下一轮瘦身（收件箱轮询间隔、轮询端点自身账号解析等）或升级套餐（2026-09-29） | W0032、W0019 |
 | D33 | W19-1：生产运行时（Vercel Node 24.x；Neon PG 16.15，`und-x-icu` collversion 153.14）不在排序／联系人搜索白名单 | 发布前另开 H 档 W0034：在与生产同组合的环境跑差分测试后加入白名单；白名单不卡 Node patch；检查失败时服务端日志记下实际版本元组；不碰生产库（2026-09-29） | W0034、W0019 |
 | D34 | W19-2～6 | 发布 W0019 合并后的 chat-agent HEAD；G3 公开目录已只读确认无「已发布未激活」活动；D32 的 3.5 GB 触发口径＝当月累计或按日均外推到月底任一 ≥3.5 GB；读不到精确版本时直接标阻塞；W0019 为文档＋全量对照，不另做 Codex 方案 review。生产缺计划／引导相关表，上线前迁移属写操作，届时单独授权；Vercel 连接器缺 team `liqys-projects-33c8ddec` 权限，用户择时重新授权（2026-09-29） | W0019、W0020 |
+| D35 | W34-1～7 | W34-1 本机 Docker debian:bullseye 源码编译 PG 16.15＋ICU 67 复现（用户授权启动 Docker Desktop 与下载），postgres:16.9-bullseye 仅预检；W34-2 PG 只认主版本 16＋collversion 等（附 minor release notes 核查与拒绝日志兜底）；W34-3 Node 侧按 icu＋unicode＋默认 locale；W34-4 新增字符差异有条件接受——须证明不漏不重，联系人搜索分页路径绑定进游标，证明不了则联系人组合不入表／交用户；W34-5 不加 ICU 77；W34-6 官方 dist＋SHASUMS 下载（用户授权）；W34-7 上线后由 W0020 看日志确认（2026-09-29） | W0034、W0019、W0020 |
 
 ## 发布动作（需要单独授权）
 
@@ -91,7 +92,7 @@
 | [W0030](W0030-account-session-graph-trim/GOAL.md) | 账号会话图读取（`readAccountSessionGraph`／`resolveAuthenticatedApiActorFromSession`）只返回判定所需字段，22 个调用方行为不变；详情页账号解析单次字节与月流量实测回到上限内 | RV-03、RV-05 | W0027、W0028（D22 顺序）；W30-1～4 已定（D23） | completed |
 | [W0031](W0031-inbox-identity-polling/GOAL.md) | 收件箱轮询与 `/api/account/me` 瘦身：每个轮询周期只确认一次身份，账号会话服务只返回页面所需字段；按生产构建实测频次并估算月流量 | RV-03、RV-05 | W0029（顺序）、W0030（D24）；W31-1～5 已定（D25） | completed |
 | [W0032](W0032-session-revocation-read/GOAL.md) | 登录会话有效性检查（`isPasswordSessionCurrent`）读取瘦身：生产构建实测每请求读取与月流量，只读判定所需字段或同请求只读一次，安全行为不变 | RV-03、RV-05 | W0031（D28）；W32 已定（D30、D31） | completed |
-| [W0034](W0034-runtime-allowlist-prod/GOAL.md) | 排序与联系人搜索运行时白名单覆盖生产组合（Node 24.x、PG 16.15／ICU collversion 153.14）：同组合差分测试、白名单不卡 Node patch、失败时记录实际元组 | RV-04 | W0019 只读核查（D33）；W34-1～7 待定 | planned |
+| [W0034](W0034-runtime-allowlist-prod/GOAL.md) | 排序与联系人搜索运行时白名单覆盖生产组合（Node 24.x、PG 16.15／ICU collversion 153.14）：同组合差分测试、白名单不卡 Node patch、失败时记录实际元组 | RV-04 | W0019 只读核查（D33）；W34 已定（D35） | ready |
 | [W0033](W0033-notification-source-404/GOAL.md) | 通知来源页 id 重复编码导致 404 的修复（L） | RV-02 | W0031（D29） | completed |
 
 全部 Sprint 都已有 GOAL 与 PLANNER（2026-09-28 编制；大目标 1 与大目标 2 各经 Codex `gpt-5.6-sol` 方案 review 后修订为 revision 2，review 意见与处理见 [REVIEW-2026-09-28.md](REVIEW-2026-09-28.md)）。`planned` 表示前置 Sprint 尚未 completed；前置完成后改为 `ready`。
