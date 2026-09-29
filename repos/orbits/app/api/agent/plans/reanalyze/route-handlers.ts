@@ -3,7 +3,9 @@ import { NextResponse } from "next/server";
 import type { PlanVersionOrigin, ReanalysisQuota } from "../../../../../features/plans/contract";
 import { resolvePlanGenerator } from "../../../../../features/plans/generator-service-factory";
 import { createConfiguredPlanInputSource } from "../../../../../features/plans/input-source";
+import { getConfiguredPlanMatchingRuntime } from "../../../../../features/plans/matching-runtime";
 import {
+  createLinkedContactNameReader,
   createPlanFollowUpService,
   PlanFollowUpError,
   type PlanFollowUpService,
@@ -75,6 +77,8 @@ export function resolveDefaultPlanFollowUpService(
   if (generator.success === false) return generator;
   const source = createConfiguredPlanInputSource();
   if (!source) return createNotImplementedFailure(PLANS_CAPABILITY_ID, plans.mode, [plans.mode]);
+  // W0023：新版本里「约 TA」的称呼（live 才有匹配表；否则标题用「约 TA」）。
+  const matching = getConfiguredPlanMatchingRuntime();
   return {
     mode: plans.mode,
     service: {
@@ -82,6 +86,7 @@ export function resolveDefaultPlanFollowUpService(
         actorId,
         generator: generator.service,
         plans: plans.service,
+        readLinkedContactNames: matching ? createLinkedContactNameReader(matching.repository) : undefined,
         references: references.service,
         source,
       }),

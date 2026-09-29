@@ -314,6 +314,8 @@ export const PLAN_MATCH_ACTION_SOURCE = "network_match";
 /**
  * W0010：把联系人关联到人脉需求（确认匹配候选或手动关联），并在本周生成「约 TA」行动。
  * 同一需求 + 同一联系人只生成一条行动；重复提交（含同一幂等键回放）不再写库。
+ * W0023：计划已过最后一周时只记关联和进展记录、不生成行动（`action: null`）；
+ * 下一份计划（或重新分析）在新版本当周为这对生成「约 TA」。
  */
 export interface LinkNeedContactInput {
   needItemId: string;
@@ -325,8 +327,12 @@ export interface LinkNeedContactInput {
 
 export interface LinkNeedContactResult {
   need: PlanItem;
-  action: PlanItem;
-  /** 这次真实关联时写的 auto 记录（`contact_linked`，`targetItemId` 指向行动）；已关联时为 null。 */
+  /**
+   * 这一对的「约 TA」行动。W0023：计划已到期、到期前也没生成过时为 null
+   * （只记了关联；下一份计划再安排）。
+   */
+  action: PlanItem | null;
+  /** 这次真实关联时写的 auto 记录（`contact_linked`，`targetItemId` 指向行动，没有行动时为 null）；已关联时为 null。 */
   log: PlanLogEntry | null;
   replayed: boolean;
 }
@@ -438,7 +444,14 @@ export interface PlanService {
    */
   createVersionWithOutcome(
     input: CreatePlanVersionInput,
-    options?: { origin?: PlanVersionOrigin },
+    options?: {
+      origin?: PlanVersionOrigin;
+      /**
+       * W0023：带 `origin` 时，新版本为带入的已关联需求生成「约 TA」，标题里的称呼从这里取
+       * （联系人 id → 称呼，调用方在事务外读一次）；没有的用「TA」。
+       */
+      contactNames?: Readonly<Record<string, string>>;
+    },
   ): Promise<{ snapshot: PlanSnapshot; created: boolean }>;
   updateItem(input: UpdatePlanItemInput): Promise<UpdatePlanItemResult>;
   addManualLog(input: AddManualLogInput): Promise<{ entry: PlanLogEntry; replayed: boolean }>;

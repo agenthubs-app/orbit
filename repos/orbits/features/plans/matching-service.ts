@@ -4,7 +4,8 @@
  *
  * 候选只在读取时对照当前生效计划：需求不在生效计划里（换了版本）、联系人已经关联在这条需求上、
  * 联系人已删除或不属于本人的候选一律不显示。确认／忽略走计划服务的 `decideMatchCandidate`：
- * 一个按 actor 串行的事务里对候选做严格 CAS，接受时同一事务关联联系人、生成本周「约 TA」行动、写进展记录。
+ * 一个按 actor 串行的事务里对候选做严格 CAS，接受时同一事务关联联系人、生成本周「约 TA」行动、写进展记录
+ * （W0023：计划已到期时不生成行动，`link.action` 为 null）。
  * 候选列表按新到旧排列；W0015：联系人在与需求关联的活动上认识的候选排在最前。
  */
 import { industryLabel, secondaryIndustryLabel } from "../../shared/domain/industries";

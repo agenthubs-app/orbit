@@ -13,14 +13,14 @@ import { createPlanReanalyzeRouteHandlers } from "../../app/api/agent/plans/rean
 import { createPlanRouteHandlers } from "../../app/api/agent/plans/route-handlers";
 import { createMockPlanGenerator } from "../../features/plans/mock-generator";
 import { createPhaseRefiner } from "../../features/plans/phase-refinement";
-import { createPlanFollowUpService } from "../../features/plans/reanalysis";
+import { createLinkedContactNameReader, createPlanFollowUpService } from "../../features/plans/reanalysis";
 import { createAllowListPlanReferenceValidator } from "../../features/plans/reference-validator";
 import { createMemoryPlanRepository } from "../../features/plans/repository";
 import { createPlanService } from "../../features/plans/service";
 import { CONTACTS, EVENTS, ME, OTHER } from "../support/plan-bootstrap-fixture";
 import { planInput } from "../support/plan-fixture";
 
-function harness(clock: { now: string }) {
+function harness(clock: { now: string }, names?: Record<string, string>) {
   const repository = createMemoryPlanRepository();
   const goals: string[] = [];
   let tick = 0;
@@ -50,6 +50,7 @@ function harness(clock: { now: string }) {
               generator: createMockPlanGenerator(),
               now: () => new Date(clock.now),
               plans,
+              readLinkedContactNames: names ? async () => names : undefined,
               references,
               source: {
                 listContacts: async () => ({ contacts: CONTACTS.map((entry) => ({ ...entry, ownerId: id })), total: CONTACTS.length }),
@@ -158,4 +159,55 @@ test("GET current enters the new phase lazily; GET weekly-summary is null except
   const summary = await (await routes.GET_WEEKLY_SUMMARY()).json();
   assert.equal(summary.data.window.start, "2026-10-26");
   assert.deepEqual(summary.data.counts.phasesEntered, ["建立渠道"]);
+});
+
+test("W0023: the next plan through the route schedules 约 {name} in week 1 for a need linked after the plan ended", async () => {
+  const clock = { now: "2026-10-05T03:00:00.000Z" };
+  const { plansFor, reanalyzeFor } = harness(clock, { "contact:lin": "林玫" });
+  const v1 = await plansFor(ME).createVersion(planInput({ startsOn: "2026-10-05" }));
+  const need = v1.items.find((item) => item.kind === "network_need")!;
+  clock.now = "2027-01-05T03:00:00.000Z"; // 第 14 周，已到期
+  const linked = await plansFor(ME).linkNeedContact({ contactId: "contact:lin", contactName: "林玫", needItemId: need.id });
+  assert.equal(linked.action, null);
+  assert.equal((await plansFor(ME).getCurrent())!.items.filter((item) => item.meta.source === "network_match").length, 0);
+
+  const response = await reanalyzeFor(ME).POST(post({ basePlanId: v1.plan.id, idempotencyKey: "n-lin", origin: "next_plan" }));
+  assert.equal(response.status, 201);
+  const body = await response.json();
+  assert.deepEqual(Object.keys(body.data).sort(), ["planId", "quota", "replayed", "version"]);
+  const current = (await plansFor(ME).getCurrent())!;
+  assert.equal(current.plan.id, body.data.planId);
+  const meets = current.items.filter((item) => item.meta.source === "network_match");
+  assert.deepEqual(meets.map((item) => [item.title, item.suggestedWeek, item.status]), [["约 林玫", 1, "not_started"]]);
+  const replay = await reanalyzeFor(ME).POST(post({ basePlanId: v1.plan.id, idempotencyKey: "n-lin", origin: "next_plan" }));
+  assert.equal(replay.status, 200);
+  assert.equal((await plansFor(ME).getCurrent())!.items.filter((item) => item.meta.source === "network_match").length, 1);
+});
+
+test("W0023: the linked-contact name reader reads the active needs once and names in one batch", async () => {
+  const calls: Array<[string, unknown]> = [];
+  const reader = createLinkedContactNameReader({
+    async readActiveNeedViews(actorId) {
+      calls.push(["needs", actorId]);
+      return [
+        { eventIds: [], id: "n1", linkedContactIds: ["contact:a", "contact:b"], primaryIndustryId: null, secondaryIndustryId: null, title: "n1" },
+        { eventIds: [], id: "n2", linkedContactIds: ["contact:b"], primaryIndustryId: null, secondaryIndustryId: null, title: "n2" },
+      ];
+    },
+    async readContactViews(actorId, ids) {
+      calls.push(["contacts", [actorId, ids]]);
+      return [
+        { displayName: "阿部", id: "contact:a", metEventId: null, organization: null, role: null },
+        { displayName: " ", id: "contact:b", metEventId: null, organization: null, role: null },
+      ];
+    },
+  });
+  assert.deepEqual(await reader(ME), { "contact:a": "阿部" });
+  assert.deepEqual(calls, [["needs", ME], ["contacts", [ME, ["contact:a", "contact:b"]]]]);
+
+  const none = createLinkedContactNameReader({
+    readActiveNeedViews: async () => [{ eventIds: [], id: "n1", linkedContactIds: [], primaryIndustryId: null, secondaryIndustryId: null, title: "n1" }],
+    readContactViews: async () => assert.fail("no linked contacts means no contact read"),
+  });
+  assert.deepEqual(await none(ME), {});
 });

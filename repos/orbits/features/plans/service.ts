@@ -6,7 +6,10 @@
  * - 版本继承：新条目可用 `inheritsFromItemId` 取代旧条目（完成状态、答案、联系人并入）；
  *   同一活动（`linkedEventId` 相同）自动并入；其余「已完成的内容」——完成的行动、有答案的信息、
  *   已报名／已参加的活动、有联系人的人脉需求——原样带入新版本（`carriedFromItemId` 指向旧条目）。
- *   旧版本保持原样归档，可按 id 读取。
+ *   未完成的行动（含未完成的「约 TA」）不带入。旧版本保持原样归档，可按 id 读取。
+ * - W0023：计划已过最后一周时关联联系人只记关联和进展记录、不生成「约 TA」；下一份计划与重新分析
+ *   （带 `origin` 的新版本）在同一事务里为带入需求上仍是 linked 的每个联系人生成一条当周「约 TA」
+ *   （已建立联系、新版本已有这一对行动、联系人已删除的跳过；总条目不超过 `itemsPerPlan`）。
  * - 条目更新只接受 contract 里的合法转移；非法转移抛 `ILLEGAL_TRANSITION`（409），不写库。
  *   每次真实变化写一条 auto 进展记录；重复提交同一 `idempotencyKey` 只生效一次。
  * - 归档版本只读（`PLAN_ARCHIVED`）。
@@ -41,7 +44,7 @@ import {
 import { defaultPhaseRefiner, phaseEnteredKey, phaseNeedsRefinement, phaseToEnter, PLAN_PHASE_REFINEMENT_SOURCE, type PhaseRefiner } from "./phase-refinement";
 import { REANALYSIS_MONTHLY_LIMIT, reanalysisQuotaKey, tokyoMonthKey } from "./reanalysis";
 import type { PlanReader, PlanRepository, PlanScope, PlanTransaction } from "./repository";
-import { planWeekAt, planWeekState } from "./week";
+import { planTotalWeeks, planWeekAt, planWeekState } from "./week";
 import { isTokyoMonday, previousTokyoWeek, summarizePlanWeek } from "./weekly-summary";
 import {
   PlanServiceError,
@@ -403,6 +406,130 @@ export function createPlanService(options: CreatePlanServiceOptions): PlanServic
     );
   }
 
+  /** 一条「约 TA」行动（W0010 关联时、W0023 新版本当周）：同一需求 + 联系人一条，联系人为 linked。 */
+  function matchAction(input: {
+    need: PlanItem;
+    contactId: string;
+    name: string;
+    planId: string;
+    sortKey: number;
+    week: number;
+    at: string;
+  }): PlanItem {
+    const { at, contactId, need } = input;
+    return withLinks(
+      {
+        answer: null,
+        carriedFromItemId: null,
+        completedAt: null,
+        contactLinks: [],
+        createdAt: at,
+        criteria: null,
+        deferralCount: 0,
+        detail: clip(`人脉需求：${need.title}`),
+        id: newId(),
+        kind: "action",
+        linkedContactIds: [],
+        linkedEventId: null,
+        meta: { contactId, needItemId: need.id, source: PLAN_MATCH_ACTION_SOURCE },
+        phaseKey: need.phaseKey,
+        planId: input.planId,
+        sortKey: input.sortKey,
+        status: "not_started",
+        suggestedWeek: input.week,
+        title: `约 ${input.name}`,
+        updatedAt: at,
+      },
+      [{ contactId, establishedAt: null, linkedAt: at, state: "linked" }],
+    );
+  }
+
+  /**
+   * W0023（review P2）：新版本里带入的「约 TA」行动，`meta.needItemId` 改指新版本里取代旧需求的那条
+   * （旧需求 id = 新需求的 `carriedFromItemId`）。旧行动还指向更早版本的需求时（本修复之前生成的数据），
+   * 先经当前生效版本里的需求多解析一层。找不到对应需求的保持原样。就地替换各数组里的行动。
+   */
+  function reanchorMatchActions(lists: PlanItem[][], oldItems: readonly PlanItem[]): void {
+    const newNeedByOldId = new Map<string, PlanItem>();
+    for (const item of lists.flat()) {
+      if (item.kind === "network_need" && item.carriedFromItemId) newNeedByOldId.set(item.carriedFromItemId, item);
+    }
+    const oldNeedByPreviousId = new Map<string, PlanItem>();
+    for (const item of oldItems) {
+      if (item.kind === "network_need" && item.carriedFromItemId) oldNeedByPreviousId.set(item.carriedFromItemId, item);
+    }
+    for (const list of lists) {
+      list.forEach((item, index) => {
+        if (item.kind !== "action" || item.meta.source !== PLAN_MATCH_ACTION_SOURCE || !item.carriedFromItemId) return;
+        const pointed = String(item.meta.needItemId ?? "");
+        const oldNeedId = oldNeedByPreviousId.get(pointed)?.id ?? pointed;
+        const target = newNeedByOldId.get(oldNeedId);
+        if (target && target.id !== pointed) list[index] = { ...item, meta: { ...item.meta, needItemId: target.id } };
+      });
+    }
+  }
+
+  /**
+   * W0023：新版本（下一份计划、重新分析）为带入的人脉需求上每个仍是 linked 的联系人生成一条当周「约 TA」。
+   * 跳过：已建立联系；新版本里已有这一对的「约 TA」（含带入的已完成行动——带入时已由
+   * `reanchorMatchActions` 锚定到新需求；本修复前生成的旧数据再按两层前驱兜底）；联系人已删除或不属于本人
+   * （一次批量校验）；超出 `itemsPerPlan` 的部分。
+   */
+  async function matchActionsForNewVersion(input: {
+    items: readonly PlanItem[];
+    oldById: ReadonlyMap<string, PlanItem>;
+    names: Readonly<Record<string, string>>;
+    planId: string;
+    startsOn: string;
+    phases: readonly { endWeek: number }[];
+    at: string;
+  }): Promise<PlanItem[]> {
+    const { items } = input;
+    const lineage = (need: PlanItem): Set<string> => {
+      const ids = new Set([need.id]);
+      let previous = need.carriedFromItemId;
+      // 兜底：本修复前带入的行动可能仍指向更早版本的需求，往回看两层（新数据由重新锚定保证一层即可）。
+      if (previous) ids.add(previous);
+      previous = previous ? (input.oldById.get(previous)?.carriedFromItemId ?? null) : null;
+      if (previous) ids.add(previous);
+      return ids;
+    };
+    const pairs: Array<{ need: PlanItem; contactId: string }> = [];
+    for (const need of items) {
+      if (need.kind !== "network_need" || !need.carriedFromItemId) continue;
+      const needIds = lineage(need);
+      for (const link of need.contactLinks) {
+        if (link.state !== "linked") continue;
+        const scheduled = items.some(
+          (item) =>
+            item.kind === "action" &&
+            item.meta.source === PLAN_MATCH_ACTION_SOURCE &&
+            item.meta.contactId === link.contactId &&
+            needIds.has(String(item.meta.needItemId)),
+        );
+        if (!scheduled) pairs.push({ contactId: link.contactId, need });
+      }
+    }
+    if (pairs.length === 0) return [];
+    const missing = new Set(await references.findMissingContactIds([...new Set(pairs.map((pair) => pair.contactId))]));
+    const room = Math.max(0, PLAN_LIMITS.itemsPerPlan - items.length);
+    const week = Math.min(planTotalWeeks(input.phases), planWeekAt(input.startsOn, new Date(input.at)));
+    return pairs
+      .filter((pair) => !missing.has(pair.contactId))
+      .slice(0, room)
+      .map((pair, offset) =>
+        matchAction({
+          at: input.at,
+          contactId: pair.contactId,
+          name: contactLabel(input.names[pair.contactId]),
+          need: pair.need,
+          planId: input.planId,
+          sortKey: items.length + offset,
+          week,
+        }),
+      );
+  }
+
   async function writeLog(
     tx: PlanTransaction,
     entry: Omit<PlanLogEntry, "id" | "createdAt"> & { createdAt?: string },
@@ -415,11 +542,13 @@ export function createPlanService(options: CreatePlanServiceOptions): PlanServic
   /**
    * W0010：在已开启的事务里把联系人关联到人脉需求，并确保本周有一条「约 TA」行动
    * （同一需求 + 同一联系人只一条）。真实关联时写 `contact_linked`，`targetItemId` 指向行动。
+   * W0023：计划已过最后一周时只记关联和进展记录，不生成行动（到期前已生成的那条照常返回、周次不变）；
+   * 下一份计划在 `createVersionWithOutcome` 里为带入的已关联需求生成。
    */
   async function linkWithin(
     tx: PlanTransaction,
     input: { needItemId: string; contactId: string; name: string; logKey: string | null },
-  ): Promise<{ need: PlanItem; action: PlanItem; log: PlanLogEntry | null; at: string }> {
+  ): Promise<{ need: PlanItem; action: PlanItem | null; log: PlanLogEntry | null; at: string }> {
     const { contactId, name } = input;
     const need = await tx.item(input.needItemId);
     if (!need || need.kind !== "network_need") throw new PlanServiceError("ITEM_NOT_FOUND", "Network need not found.");
@@ -432,34 +561,18 @@ export function createPlanService(options: CreatePlanServiceOptions): PlanServic
     const at = now();
     const items = await tx.items(plan.id);
     let action = findMatchAction(items, need.id, contactId);
-    if (!action) {
+    if (!action && !planWeekState(plan, new Date(at)).ended) {
       if (items.length >= PLAN_LIMITS.itemsPerPlan) illegal("This plan has too many items.");
       const week = Math.min(PLAN_LIMITS.maxWeek, planWeekAt(plan.startsOn, new Date(at)));
-      action = withLinks(
-        {
-          answer: null,
-          carriedFromItemId: null,
-          completedAt: null,
-          contactLinks: [],
-          createdAt: at,
-          criteria: null,
-          deferralCount: 0,
-          detail: clip(`人脉需求：${need.title}`),
-          id: newId(),
-          kind: "action",
-          linkedContactIds: [],
-          linkedEventId: null,
-          meta: { contactId, needItemId: need.id, source: PLAN_MATCH_ACTION_SOURCE },
-          phaseKey: need.phaseKey,
-          planId: plan.id,
-          sortKey: items.reduce((max, item) => Math.max(max, item.sortKey), -1) + 1,
-          status: "not_started",
-          suggestedWeek: week,
-          title: `约 ${name}`,
-          updatedAt: at,
-        },
-        [{ contactId, establishedAt: null, linkedAt: at, state: "linked" }],
-      );
+      action = matchAction({
+        at,
+        contactId,
+        name,
+        need,
+        planId: plan.id,
+        sortKey: items.reduce((max, item) => Math.max(max, item.sortKey), -1) + 1,
+        week,
+      });
       await tx.insertItems([action]);
     }
 
@@ -480,9 +593,9 @@ export function createPlanService(options: CreatePlanServiceOptions): PlanServic
         kind: "auto",
         linkedContactIds: applied.linkedContactIds,
         linkedEventId: null,
-        payload: { ...applied.payload, actionItemId: action.id },
+        payload: { ...applied.payload, actionItemId: action?.id ?? null },
         planId: plan.id,
-        targetItemId: action.id,
+        targetItemId: action?.id ?? null,
         toStatus: applied.toStatus,
       });
     }
@@ -683,6 +796,23 @@ export function createPlanService(options: CreatePlanServiceOptions): PlanServic
             updatedAt: at,
           }));
 
+        // W0023（review P2）：带入的「约 TA」把 `meta.needItemId` 重新锚定到新版本里对应的需求，
+        // 保持「行动指向同一版本里的需求」这一不变式；任意多个版本之后仍能认出同一对，不必回读归档版本。
+        reanchorMatchActions([items, carried], oldItems);
+
+        // W0023：下一份计划／重新分析（带 origin）在同一事务里为带入的已关联需求生成当周「约 TA」。
+        const scheduled = origin
+          ? await matchActionsForNewVersion({
+              at,
+              items: [...items, ...carried],
+              names: options.contactNames ?? {},
+              oldById,
+              phases: input.phases,
+              planId,
+              startsOn: input.startsOn,
+            })
+          : [];
+
         if (active) await tx.archivePlan(active.id, at);
         const plan: Plan = {
           analysis: input.analysis,
@@ -700,7 +830,7 @@ export function createPlanService(options: CreatePlanServiceOptions): PlanServic
           version,
         };
         await tx.insertPlan({ ...plan, creationKey: input.creationKey });
-        await tx.insertItems([...items, ...carried]);
+        await tx.insertItems([...items, ...carried, ...scheduled]);
         const inheritedCount = items.filter((item) => item.carriedFromItemId).length;
         await writeLog(tx, {
           author: "system",
@@ -718,6 +848,7 @@ export function createPlanService(options: CreatePlanServiceOptions): PlanServic
           payload: {
             carriedCount: carried.length,
             inheritedCount,
+            ...(origin ? { matchActionCount: scheduled.length } : {}),
             ...(origin ? { origin } : {}),
             previousPlanId: active?.id ?? null,
             version,
@@ -894,8 +1025,8 @@ export function createPlanService(options: CreatePlanServiceOptions): PlanServic
             if (receipt.kind !== "item_change" || receipt.fingerprint !== requestFingerprint) keyReused();
             const need = await tx.item(needItemId);
             if (!need) throw new PlanServiceError("ITEM_NOT_FOUND", "Plan item not found.");
+            // W0023：到期计划上的关联没有行动，回放同样返回 null。
             const action = findMatchAction(await tx.items(need.planId), need.id, contactId);
-            if (!action) throw new Error("Plan command receipt has no matching action.");
             return { action, log: receipt.logId ? await tx.logById(receipt.logId) : null, need, replayed: true };
           }
         }
@@ -939,10 +1070,9 @@ export function createPlanService(options: CreatePlanServiceOptions): PlanServic
           // 同一决定重复提交（响应丢失后重试）：回放现状，不再写库。
           if (target === "dismissed") return { candidateId, link: null, replayed: true, status: target };
           const need = await tx.item(candidate.needItemId);
-          const action = need ? findMatchAction(await tx.items(need.planId), need.id, candidate.contactId) : null;
-          if (!need || !action) {
-            throw new PlanServiceError("MATCH_ALREADY_DECIDED", "This candidate was already accepted.");
-          }
+          if (!need) throw new PlanServiceError("MATCH_ALREADY_DECIDED", "This candidate was already accepted.");
+          // W0023：到期计划上接受的候选没有行动（action: null），回放现状。
+          const action = findMatchAction(await tx.items(need.planId), need.id, candidate.contactId);
           return { candidateId, link: { action, log: null, need, replayed: true }, replayed: true, status: target };
         }
         let link: LinkNeedContactResult | null = null;

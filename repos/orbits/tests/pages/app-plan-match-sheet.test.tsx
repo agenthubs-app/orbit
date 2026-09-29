@@ -434,3 +434,104 @@ test("a decision the server did not apply (lost race) is shown as a failure", as
   assert.ok(text(mounted.root).includes("没能保存"));
   assert.ok(!text(mounted.root).includes("已加入本周"));
 });
+
+/* ------------------------------------------------------------------ */
+/* W0023 SC-04：计划已到期时，确认只记关联，确认处说明下一份计划再安排   */
+/* ------------------------------------------------------------------ */
+
+const ENDED_NOTE = "已关联到「能帮你引荐的行业前辈」；计划已到期，制定下一份计划时会安排「约 TA」";
+
+/** 到期计划上的接受：`link.action` 为 null。 */
+function endedDecision(call: Call): Response {
+  const body = call.body as { candidateId: string; decision: string };
+  return Response.json({
+    data: {
+      candidateId: body.candidateId,
+      link: body.decision === "accept" ? { action: null, log: { id: "log-1" }, need: { id: "n-connector" }, replayed: false } : null,
+      replayed: false,
+      status: body.decision === "accept" ? "accepted" : "dismissed",
+    },
+    success: true,
+  });
+}
+
+function assertEndedRow(root: ReactTestRenderer, candidateId: string) {
+  const row = byData(root, "data-plan-match-candidate").find((node) => node.props["data-plan-match-candidate"] === candidateId)!;
+  const strings = (node: ReactTestInstance | string): string =>
+    typeof node === "string" ? node : node.children.map((child) => strings(child)).join("");
+  const rowText = strings(row);
+  assert.ok(rowText.includes(ENDED_NOTE), rowText);
+  assert.ok(!rowText.includes("已加入本周"));
+  assert.equal(row.findAll((node) => node.props?.["data-plan-match-yes"] !== undefined).length, 0, "no 是 after accepting");
+  assert.equal(row.findAll((node) => node.props?.["data-plan-match-no"] !== undefined).length, 0, "no 不是 after accepting");
+  assert.equal(row.findAll((node) => node.props?.["data-plan-match-action"] !== undefined).length, 0, "no action buttons");
+}
+
+test("W0023: accepting on an ended plan shows the next-plan note instead of the 约 TA card", async (t) => {
+  const decided: Array<[string, string, unknown]> = [];
+  const mounted = await mount(
+    t,
+    <PlanMatchSheet candidates={LIST.candidates} onDecided={(id, decision, action) => decided.push([id, decision, action])} />,
+    (call) => (call.url === "/api/agent/plans/candidates" ? endedDecision(call) : Response.json({ success: false }, { status: 404 })),
+  );
+  await act(async () => byData(mounted.root, "data-plan-match-yes")[0]!.props.onClick());
+  await mounted.settle();
+  assertEndedRow(mounted.root, "cand-1");
+  assert.deepEqual(decided, [["cand-1", "accept", null]]);
+  // 另一行照常可以「是 / 不是」。
+  assert.equal(byData(mounted.root, "data-plan-match-yes").length, 1);
+});
+
+test("W0023: the review screen (BatchPlanMatch) wires the same ended-plan note", async (t) => {
+  const mounted = await mount(t, <BatchPlanMatch batchId="batch-1" run={async () => LIST} waitMs={1_000} />, (call) =>
+    call.url === "/api/agent/plans/candidates" ? endedDecision(call) : Response.json({ success: false }, { status: 404 }),
+  );
+  await mounted.settle();
+  await act(async () => byData(mounted.root, "data-plan-match-yes")[0]!.props.onClick());
+  await mounted.settle();
+  assertEndedRow(mounted.root, "cand-1");
+});
+
+test("W0023: the plan page's 待确认 N sheet shows the ended-plan note after 是", async (t) => {
+  const mounted = await mount(t, <IOrbitPlan guideEnabled initialSnapshot={planSnapshotFixture()} now={PLAN_NOW} />, (call) => {
+    if (call.url === "/api/agent/plans/candidates" && call.method === "POST") return endedDecision(call);
+    if (call.url === "/api/agent/plans/candidates") return Response.json({ data: LIST, success: true });
+    if (call.url.startsWith("/api/agent/plans/current")) return Response.json({ data: planSnapshotFixture(), success: true });
+    return Response.json({ success: false }, { status: 404 });
+  });
+  await mounted.settle();
+  await act(async () => byData(mounted.root, "data-orbit-plan-need-matches")[0]!.props.onClick());
+  await act(async () => byData(mounted.root, "data-plan-match-yes")[0]!.props.onClick());
+  await mounted.settle();
+  assertEndedRow(mounted.root, "cand-1");
+});
+
+test("W0023: the contact detail's manual link on an ended plan says the next plan will schedule 约 TA", async (t) => {
+  const mounted = await mount(t, <PlanNeedLinkPanel contactId="contact:sato" />, (call) => {
+    if (call.url === "/api/agent/plans/current?view=home") return Response.json({ data: planSnapshotFixture(), success: true });
+    if (call.url === "/api/agent/plans/candidates" && call.method === "POST") {
+      return Response.json({ data: { action: null, log: null, need: { id: "n-target" }, replayed: false }, success: true });
+    }
+    return Response.json({ success: false }, { status: 404 });
+  });
+  await act(async () => byData(mounted.root, "data-plan-need-link-open")[0]!.props.onClick());
+  await mounted.settle();
+  const radios = mounted.root.root.findAll((node) => node.type === "input" && node.props.type === "radio");
+  await act(async () => radios[1]!.props.onChange());
+  await act(async () => byData(mounted.root, "data-plan-need-link-submit")[0]!.props.onClick());
+  await mounted.settle();
+  const html = text(mounted.root);
+  assert.ok(html.includes("已关联到「中小企业的 IT 负责人」；计划已到期，制定下一份计划时会安排「约 TA」。"), html);
+  assert.ok(!html.includes("本周多了一条"));
+  assert.ok(!html.includes("Unexpected link payload"));
+});
+
+test("W0023: a link response without a need is still rejected as malformed", async (t) => {
+  const mounted = await mount(t, <PlanMatchSheet candidates={LIST.candidates.slice(0, 1)} />, () =>
+    Response.json({ data: { candidateId: "cand-1", link: null, status: "accepted" }, success: true }),
+  );
+  await act(async () => byData(mounted.root, "data-plan-match-yes")[0]!.props.onClick());
+  await mounted.settle();
+  assert.ok(text(mounted.root).includes("没能保存"));
+  assert.ok(!text(mounted.root).includes("计划已到期"));
+});
