@@ -38,7 +38,10 @@ function receiptObject(value: unknown): Record<string, unknown> {
 }
 
 function receiptDate(value: unknown): string {
-  return normalizeRelationshipLifecycleInstant(value, "INVALID_TRANSITION");
+  const stored = typeof value === "string"
+    ? value.replace(/(\.\d{3})\d+(?=Z|[+-]\d{2}:\d{2}$)/, "$1")
+    : value;
+  return normalizeRelationshipLifecycleInstant(stored, "INVALID_TRANSITION");
 }
 
 function receiptVersion(value: unknown): number {

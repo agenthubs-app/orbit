@@ -16,6 +16,22 @@
 
 ## 下一步
 
+### 最新恢复点（2026-09-29 12:45 UTC；下文保留此前过程记录）
+
+- 同一A run-01继续，原SC不缩减。Root查看真实离开联系人页后重入的失败截图，确认旧API success快照掩盖可读离线镜像，页面下部仍露raw网络错误。A补真实渲染RED 50/51，再以页面窄修复`6fe1f678`保留原fallback、优先采用当前ID/契约校验/可读镜像的离线副本；未改全局hook或服务端。Root独立双文件复核和相关74/74后，合并`52c32db7a649256a8f71e50f38d9731d06f69870`进入chat-agent。
+- 主线fresh App全量3910/3910，0失败/取消/跳过，exit0，312670ms；两端实际typecheck exit0。日志在ignored `build/harness-logs/sprint-0124-0137/main-52c32db-app-full.log`及`main-52c32db-{app,orbits}-types.log`。App没有lint脚本，不报lint通过。服务端源码与c795477ec等价，沿用下述同源隔离5355全量/真实PG33，不反复跑未变化服务源码，也不把488跳过或cutover既有7失败伪报通过。
+- A独立图重建后ContactDetailScreen upstream为LOW/1直接route caller；Root复核A compare9/9两文件。主线提交前all61/61（含7份未纳入提交的用户review）、staged8/8双文件，均无partial/truncated字段。文档目标impact UNKNOWN仍按UNKNOWN记录，经精确文本引用核对，仅更新状态/证据，不视为零调用安全判定或产品符号改动。
+- A授权Root只把8082的旧B运行工作区ff-only至52c32db7a；next-env/.claude保留，Metro仍为PID56364；Root没操作Simulator/3100或用户3000。A负责普通reload确认新bundle，再完成SC02实际「截至」/联网门/下部无raw截图、九个精确路由及日程编辑。不能以新单测代替原生验收。
+- 真实B离线打开A的联系人/笔记/AI三种未存本机空态现均已由Root逐图查看；访客5页、A看板78/分组对照保留。原SC03测试和当前版本SC05须合入最终REPORT，仍不关闭0137。B继续0132真实表单/uploader/不可变重放与冲突冷启动；0124已完成，0133–0136按依赖保持planned。
+
+### 此前恢复点（2026-09-29 12:05 UTC）
+
+- A 仍为同一 run-01 的唯一 Generator，原 SC-01–05 不变。既有产品已进入本地 `chat-agent`；合法存储微秒精度读取修复 `87022df63` 已由 `c795477ec` 合并。原 raw `VALIDATION_ERROR` 截图保留，不倒改为通过。
+- Root 在主线独立验证真实 PG 生命周期与初始化完整两文件：33/33、0 fail/skip、exit 0，日志 `build/harness-logs/sprint-0124-0137/main-87022df-lifecycle-pg-33.log`。服务端 typecheck exit 0。通用服务端完整文件集在同源无 dotenv 的 B 隔离目录得到 5355 tests / 4867 pass / 0 fail/cancelled / 488 skip、exit 0、740194ms，日志 `main-c795477-equivalent-isolated-orbits-full-serial.log`；不是主线物理 cwd 运行结果，也不是跳过的数据库场景已验收。该修复没有改变 App 产品或测试源码，主线原 3908/3908 证据适用相同 App 源码。
+- A 已重构建/重启测试 Web 栈，并回读真实 A 联系人 `contact_108`，在线下部 lifecycle 成功。Root 实际查看 `online-A-contact-108-relationship-fixed.png` 和 `offline-A-contact-108-relationship-fixed.png`：停服务后的同一已挂载页面仍没有「截至」且编辑入口是在线外观；不能作为 SC02 镜像读取通过证据。A 正查验冷启动或实际离开再进入后资源状态及写入门禁，若证实产品缺陷按原范围最小 TDD 修复。
+- 已核对：A 看板 43/19/15/1、总数 78 的同账号 API/网页/原生/冷离线；真实 B 打开 A 联系人的未存本机空态；最终组合退出登录后的五个访客页。剩余：笔记和 AI 真正跨账号空态、九个精确路由与对应截图、个人日程编辑、最终版本的 SC05 和报告。
+- 0124 已完成并合并，不等待 0137 的所有设备证据。B 已在独立 0132 工作区接续。A 已释放 NoteDetailScreen/AiConversationScreen 的产品文件锁，B 不操作 A 冻结运行工作区；A 继续独占 Simulator、phoneweb、3100/8082。Root 只维护台账、集成和核对，不替 A/B 实现，不 push/部署，不动用户 3000。
+
 - 可执行：A 线读取已批准计划、登记必要文件，执行 SC-0137-01–05 的 TDD 与运行时验收；主线程维护登记并核对固定交付 SHA。
 - 可调查：主线程读取已批准断网写设计及后续 Sprint 接口依赖，为 0124 接续准备，不提前实施。
 - 等待决定：生产上线、孤立来源清理和 orbit_scale_test 删除，不阻塞本轮本地开发。

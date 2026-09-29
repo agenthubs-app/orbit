@@ -62,7 +62,7 @@ export const useOrbitApiBaseUrl = () => { observe(); return { ready: state.baseR
 export const useOrbitLocale = () => { observe(); return { language: state.language, t: createTranslator(state.language) }; };
 export const useIsFocused = () => { observe(); return state.focused; };
 export const useLocalSearchParams = () => { observe(); return { id: state.contactId }; };
-export const useLocalContacts = () => { observe(); return state.localContacts ?? (state.localReadable ? { available: true, rows: [{ id: state.contactId, card: null, tags: [], search: { text: "", occurredAt: "", updatedAt: "", error: null }, detail: { state: "success", contact: state.contact } }], freshness: { readable: true, offline: true, loading: false, failure: false, refreshing: false, lastSyncedAt: "2026-09-28T12:00:00.000Z" }, refresh() {} } : { available: true, rows: [], freshness: { readable: true, offline: true, loading: false, failure: false, refreshing: false, lastSyncedAt: "2026-09-28T12:00:00.000Z" }, refresh() {} }); };
+export const useLocalContacts = () => { observe(); return state.localContacts ?? (state.localReadable ? { available: true, rows: [{ id: state.contactId, card: null, tags: [], search: { text: "", occurredAt: "", updatedAt: "", error: null }, detail: { state: "success", contact: state.localContact ?? state.contact } }], freshness: { readable: true, offline: state.localOffline ?? true, loading: false, failure: false, refreshing: false, lastSyncedAt: "2026-09-28T12:00:00.000Z" }, refresh() {} } : { available: true, rows: [], freshness: { readable: true, offline: true, loading: false, failure: false, refreshing: false, lastSyncedAt: "2026-09-28T12:00:00.000Z" }, refresh() {} }); };
 export const useGlobalSearchParams = useLocalSearchParams;
 export const usePathname = () => "/contacts/" + encodeURIComponent(state.contactId);
 export const useRouter = () => ({ canGoBack: () => state.canGoBack, back() { state.navigation.push("back"); }, replace(href) { state.navigation.push(href); }, push(href) { state.navigation.push(href); } });
@@ -113,6 +113,30 @@ async function open(t: { after(fn: () => Promise<void>): void }, patch: Record<s
 async function press(p: Page, name: string) { await p.getByRole("button", { name, exact: true }).click(); await settle(p); }
 async function update(p: Page, patch: object) { await p.evaluate(patch => (window as any).fixture.update(patch), patch); await settle(p); }
 async function writes(p: Page) { return p.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.method !== "GET").map((r: any) => ({ method: r.method, path: r.path, body: r.body }))); }
+const existingRelationshipAssessment = { state: "success", summary: "关系价值已核对", nextAction: "核对证据", assessment: { id: "value-offline", connectionId: "contact:/1", contactId: "contact:/1", contactDisplayName: "林悦", relationshipValueType: "community_bridge", priorityScore: { value: 72, band: "high", calculation: "来源证据", factors: [] }, rationale: { summary: "关系背景", evidence: [], limitations: [] }, suggestedNextAction: { label: "核对证据", dueWindow: "本周", channel: "manual_note", confidence: "medium", reason: "来源" }, sourceEvidenceIds: [], scoredAt: "2026-09-12", createdBy: "live-relationship-value-scoring-service" } };
+
+async function useReadableOfflineMirrorWithExistingAssessment(p: Page) {
+  await p.getByText("林悦", { exact: true }).waitFor();
+  await p.evaluate(assessment => {
+    const s = (window as any).fixture;
+    const detailRead = s.requests.findIndex((r: any) => r.method === "GET" && r.path === "/api/contacts/" + encodeURIComponent(s.contactId));
+    const valueRead = s.requests.findIndex((r: any) => r.method === "GET" && r.path.startsWith("/api/analysis/relationship-value/"));
+    s.reply(detailRead);
+    s.reply(valueRead, 200, assessment);
+  }, existingRelationshipAssessment);
+  await settle(p);
+  await p.getByRole("button", { name: /完整资料/ }).click();
+  await p.getByText("72 分", { exact: true }).waitFor();
+  await p.evaluate(() => {
+    const s = (window as any).fixture;
+    s.oldRecompute = s.presses["重新计算"];
+    s.update({ offlineRead: true, localOffline: true, localContact: { ...s.contact, displayName: "本机镜像联系人" } });
+    s.refresh();
+  });
+  await settle(p);
+  await p.getByText("截至", { exact: false }).waitFor();
+  await p.getByText("本机镜像联系人", { exact: true }).waitFor();
+}
 
 test("unmarked canonical fixture resolves after init404, displays authoritative task and keeps private-only editor", async t => {
   const identity = { actorId: "actor-1", contactId: "contact:/1", connectionId: "connection_0030", version: 2, createdAt: "2026-09-17T00:00:00Z", updatedAt: "2026-09-17T00:00:00Z" };
@@ -192,6 +216,54 @@ test("offline detail uses its device copy, marks unavailable relationship analys
   await p.getByRole("button", { name: /完整资料/ }).click(); await settle(p);
   await p.getByText("需要联网", { exact: true }).last().waitFor();
   assert.doesNotMatch(await p.locator("body").innerText(), /PRIVATE_NETWORK_ERROR_MARKER|UNAVAILABLE|服务器连不上/);
+  assert.deepEqual(await writes(p), []);
+});
+
+test("readable offline mirror wins over a cached successful detail response", async t => {
+  // A mounted API snapshot may remain success after a failed re-entry read.
+  // The local mirror's offline/readable signal is the authoritative freshness
+  // boundary in that case, and must still gate editing.
+  const p = await open(t, { localReadable: true, localOffline: false });
+  await p.getByText("林悦", { exact: true }).waitFor();
+  await p.evaluate(() => { const s = (window as any).fixture; s.update({ offlineRead: true, localOffline: true, localContact: { ...s.contact, displayName: "本机镜像联系人" } }); });
+  await settle(p);
+  await p.evaluate(() => (window as any).fixture.refresh());
+  await settle(p);
+  await p.getByText(/截至/).waitFor();
+  assert.equal(await p.getByText("本机镜像联系人", { exact: true }).count(), 1);
+  assert.equal(await p.getByRole("button", { name: "需要联网", exact: true }).count(), 1);
+  assert.equal(await p.getByRole("heading", { name: "编辑人脉", exact: true }).count(), 0);
+  assert.equal(await p.getByRole("button", { name: "编辑资料", exact: true }).count(), 0);
+  assert.deepEqual(await writes(p), []);
+});
+
+test("a failed detail read can still use a readable mirror before its sync reports offline", async t => {
+  const p = await open(t, { offlineRead: true, localReadable: true, localOffline: false });
+  await p.evaluate(() => { const s = (window as any).fixture; s.update({ localContact: { ...s.contact, displayName: "镜像联系人" } }); });
+  await settle(p);
+  await p.getByText("镜像联系人", { exact: true }).waitFor();
+  await p.getByText(/截至/).waitFor();
+  assert.equal(await p.getByRole("button", { name: "需要联网", exact: true }).count(), 1);
+  assert.equal(await p.getByRole("button", { name: "编辑资料", exact: true }).count(), 0);
+  assert.doesNotMatch(await p.locator("body").innerText(), /PRIVATE_NETWORK_ERROR_MARKER|ORBIT_APP_NETWORK_ERROR|关系状态读取失败/);
+  assert.deepEqual(await writes(p), []);
+});
+
+test("a readable offline contact keeps its relationship assessment read-only and gates recompute", async t => {
+  const p = await open(t, { holdReads: true, localReadable: true, localOffline: false });
+  await useReadableOfflineMirrorWithExistingAssessment(p);
+  assert.equal(await p.getByText("72 分", { exact: true }).count(), 1);
+  const recompute = p.getByTestId("relationship-value-recompute");
+  assert.equal(await recompute.getByText("需要联网", { exact: true }).count(), 1);
+  assert.equal(await recompute.isDisabled(), true);
+  assert.deepEqual(await writes(p), []);
+});
+
+test("a retained recompute callback cannot POST after the contact mirror becomes offline", async t => {
+  const p = await open(t, { holdReads: true, localReadable: true, localOffline: false });
+  await useReadableOfflineMirrorWithExistingAssessment(p);
+  await p.evaluate(() => (window as any).fixture.oldRecompute());
+  await settle(p);
   assert.deepEqual(await writes(p), []);
 });
 
