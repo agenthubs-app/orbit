@@ -36,12 +36,12 @@ class ReadTestDatabase implements LocalSyncDatabase {
 test("real v1 migration quarantines unverifiable canonical data and retains local bytes", async t => {
   const db = new ReadTestDatabase(); t.after(() => db.raw.close()); db.raw.exec(V1);
   const records = await db.all("SELECT * FROM sync_records ORDER BY record_id");
-  const outbox = await db.all("SELECT * FROM sync_outbox");
+  const outbox = await db.all("SELECT mutation_id, workspace_id, kind, record_id, operation, patch_json, base_revision, created_at, retry_count, next_retry_at, last_error_code FROM sync_outbox");
   const drafts = await db.all("SELECT * FROM legacy_api_snapshots");
   await initializeLocalSyncDatabase(db);
-  assert.equal((await db.get<{ value: string }>("SELECT value FROM sync_meta WHERE key='schema_version'"))?.value, "3");
+  assert.equal((await db.get<{ value: string }>("SELECT value FROM sync_meta WHERE key='schema_version'"))?.value, "4");
   assert.deepEqual(await db.all("SELECT * FROM legacy_read_records ORDER BY record_id"), records);
-  assert.deepEqual(await db.all("SELECT * FROM sync_outbox"), outbox);
+  assert.deepEqual(await db.all("SELECT mutation_id, workspace_id, kind, record_id, operation, patch_json, base_revision, created_at, retry_count, next_retry_at, last_error_code FROM sync_outbox"), outbox);
   assert.deepEqual(await db.all("SELECT * FROM legacy_api_snapshots"), drafts);
   assert.deepEqual(await db.all("SELECT * FROM sync_cursors"), []);
   assert.deepEqual(await db.all("SELECT * FROM sync_records"), []);
@@ -77,11 +77,11 @@ INSERT INTO sync_cursors VALUES('w','tasks','epoch-1','cursor-1','2026-09-18T00:
 INSERT INTO sync_records VALUES('w','tasks','epoch-1','task','t1','r1','2026-09-18T00:00:00Z',NULL,'{"id":"t1"}',1,'hash',
   'gen-1',1,'synced','available_when_synced');`;
 
-test("v2 → v3 adds the cursor watermark column in place: rows, cursors and epochs survive, and re-entry is idempotent", async t => {
+test("v2 → v4 adds the cursor watermark and outbox fields in place: rows, cursors and epochs survive, and re-entry is idempotent", async t => {
   const db = new ReadTestDatabase(); t.after(() => db.raw.close()); db.raw.exec(V2);
   const records = await db.all("SELECT * FROM sync_records");
   await initializeLocalSyncDatabase(db);
-  assert.equal((await db.get<{ value: string }>("SELECT value FROM sync_meta WHERE key='schema_version'"))?.value, "3");
+  assert.equal((await db.get<{ value: string }>("SELECT value FROM sync_meta WHERE key='schema_version'"))?.value, "4");
   assert.deepEqual(await db.all("SELECT * FROM sync_records"), records);
   assert.deepEqual((await db.all<object>("SELECT workspace_id, domain_id, authorization_epoch, cursor, bootstrap_state, generation, high_watermark FROM sync_cursors")).map(row => ({ ...row })),
     [{ workspace_id: "w", domain_id: "tasks", authorization_epoch: "epoch-1", cursor: "cursor-1", bootstrap_state: "complete", generation: "gen-1", high_watermark: null }]);

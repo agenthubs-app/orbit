@@ -8,14 +8,14 @@ const facts = { actorPrivate: true, confirmed: true, connectionActive: true };
 const command = { mutationId: "m1", kind: "note", entityId: "local:123e4567-e89b-42d3-a456-426614174000", operation: "create",
   baseRevision: null, patch: { body: "Hello" }, createdAt: "2026-09-16T00:00:00Z" };
 
-test("only confirmed private operations from the four approved domains are eligible", () => {
-  const allowed: Record<string, string[]> = {
+test("the offline-write foundation enables no product mutation domain", () => {
+  const productOperations: Record<string, string[]> = {
     note: ["create", "update", "delete"], task: ["create", "update", "complete", "reopen", "cancel", "delete"],
     relationship_followup: ["update", "complete", "reopen", "cancel", "delete"], personal_schedule: ["create", "update", "delete"],
   };
-  for (const [kind, operations] of Object.entries(allowed)) {
+  for (const [kind, operations] of Object.entries(productOperations)) {
     for (const operation of operations) {
-      assert.equal(isOfflineEligible(kind, operation, facts), true, `${kind}.${operation}`);
+      assert.equal(isOfflineEligible(kind, operation, facts), false, `${kind}.${operation}`);
       assert.equal(isOfflineEligible(kind, operation, { ...facts, actorPrivate: false }), false);
       assert.equal(isOfflineEligible(kind, operation, { ...facts, confirmed: false }), false);
     }
@@ -27,7 +27,7 @@ test("only confirmed private operations from the four approved domains are eligi
     assert.equal(isOfflineEligible(kind, operation, facts), false, `${kind}.${operation}`);
   }
   assert.equal(isOfflineEligible("relationship_followup", "update", { ...facts, connectionActive: false }), false);
-  assert.equal(isOfflineEligible("note", "create", { ...facts, connectionActive: false }), true);
+  assert.equal(isOfflineEligible("note", "create", { ...facts, connectionActive: false }), false);
 });
 
 test("strict mutation parsing accepts domain patches and retains opaque revisions and note text", () => {
@@ -124,7 +124,7 @@ test("local-read capability never supplies online authority and an unbound regis
   const port: ScopePort = { assertLocalRead: () => {}, storageKey: () => "verified-scope-key", isActive: () => true,
     requireOnline: async () => { throw Error("online-required"); } };
   port.assertLocalRead(scope, "note");
-  assert.equal(isOfflineEligible("note", "create", facts), true);
+  assert.equal(isOfflineEligible("note", "create", facts), false);
   await assert.rejects(port.requireOnline(scope, "note"), /online-required/);
   assert.throws(() => new OfflineDataPolicyRegistry().resolve("GET", "/api/notes", "read"), /policy-not-registered/);
 });

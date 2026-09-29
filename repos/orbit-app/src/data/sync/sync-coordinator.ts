@@ -7,6 +7,7 @@ import type { PayloadCodec } from "./payload-codec";
 import {
   createLocalSyncRepository,
   type LocalSyncCursor,
+  type LocalSyncOutboxMutation,
 } from "./local-sync-repository";
 import type { SyncSessionScope } from "./sync-database-key";
 import {
@@ -79,6 +80,8 @@ export interface SyncScopeInput {
   actorId: string;
   baseUrl: string;
   client: SyncClient;
+  /** Offline identity may read a renewed lease, but must never upload queued writes. */
+  offlineMode?: boolean;
   scopeKey: string;
 }
 
@@ -118,6 +121,8 @@ export interface SyncCoordinatorSession {
    */
   readPageCopy<TData = unknown>(id: string, variant: string): Promise<PageCopy<TData> | null>;
   savePageCopy(id: string, variant: string, data: unknown): Promise<void>;
+  /** Test-only queue insertion; product domains remain closed until their own Sprint adapter exists. */
+  enqueueTestOutboxMutation(mutation: LocalSyncOutboxMutation): Promise<void>;
 }
 
 interface ActiveScope extends SyncScopeInput {
@@ -131,6 +136,7 @@ interface ActiveScope extends SyncScopeInput {
   superseded: boolean;
   teardownVersion: number;
   workspaceId: string | null;
+  onOutboxQueued?: () => void;
 }
 
 interface SyncFlight {
@@ -160,6 +166,10 @@ export function createSyncCoordinator(input: {
   now?: () => number;
   /** SHA-256 hex of a serialized payload; required by the v2 mirror for every applied record. */
   hashPayload?: (serialized: string) => Promise<string>;
+  /** Runs queued writes only after a valid online lease and before mirrored server rows are pulled. */
+  uploadOutbox?: (scope: { actorId: string; baseUrl: string; workspaceId: string; signal: AbortSignal }) => Promise<void>;
+  /** Explicit queue namespaces used only by test fixtures; not registered in the app coordinator. */
+  testOnlyOutboxDomains?: readonly string[];
   /** A manifest failure is not a sync failure: every domain is pulled as before, and this hears why. */
   onManifestUnavailable?: (error: unknown) => void;
 }) {
@@ -226,6 +236,8 @@ export function createSyncCoordinator(input: {
             activeReadScopes: () => readScopesOf(scope),
             ...(input.hashPayload ? { hashPayload: input.hashPayload } : {}),
             ...(input.lifecycle.payloadCodec ? { payloadCodec: input.lifecycle.payloadCodec } : {}),
+            onOutboxQueued: () => scope.onOutboxQueued?.(),
+            ...(input.testOnlyOutboxDomains ? { testOnlyOutboxDomains: input.testOnlyOutboxDomains } : {}),
           }),
         ),
       }),
@@ -416,6 +428,11 @@ export function createSyncCoordinator(input: {
           if (!isCurrent(scope) || flight.abandoned) return null;
         }
 
+        if (input.uploadOutbox && !scope.offlineMode && !controller.signal.aborted) {
+          await input.uploadOutbox({ actorId: scope.actorId, baseUrl: scope.baseUrl, workspaceId, signal: controller.signal });
+          if (!isCurrent(scope) || flight.abandoned) return null;
+        }
+
         // One manifest decides which domains moved; an unchanged, complete domain costs no page.
         let manifest: DomainManifest | null = null;
         try {
@@ -513,6 +530,7 @@ export function createSyncCoordinator(input: {
       active.actorId === scopeInput.actorId
     ) {
       active.client = scopeInput.client;
+      active.offlineMode = Boolean(scopeInput.offlineMode);
     } else {
       if (active) supersede(active);
       const next = {
@@ -534,8 +552,7 @@ export function createSyncCoordinator(input: {
     bound.teardownVersion += 1;
     bound.leases += 1;
     let deactivated = false;
-
-    return {
+    const session: SyncCoordinatorSession = {
       deactivate(): void {
         if (deactivated) return;
         deactivated = true;
@@ -602,6 +619,14 @@ export function createSyncCoordinator(input: {
         const binding = pageCopyBinding(bound);
         if (!isCurrent(bound) || !binding || !registeredPageCopyIds.includes(id)) return;
         try { await withRepository(bound, (repository) => repository.setPageCopy(binding, id, variant, { data, syncedAt: new Date(now()).toISOString() })); } catch (error) { if (!(error instanceof LocalMirrorUnavailableError)) throw error; }
+      },
+      async enqueueTestOutboxMutation(mutation: LocalSyncOutboxMutation): Promise<void> {
+        await bound.ready;
+        if (!input.testOnlyOutboxDomains?.includes(mutation.domainId ?? "")) throw new TypeError("only a registered test-only outbox domain may be enqueued in this Sprint");
+        if (!isCurrent(bound) || mutation.actorId !== bound.actorId || mutation.workspaceId !== bound.workspaceId) {
+          throw new TypeError("outbox mutation is outside the active actor/workspace");
+        }
+        await withRepository(bound, repository => repository.enqueueOutboxMutation(mutation));
       },
       synchronize<TPayload = unknown>(
         kind: SyncChangeKind,
@@ -674,6 +699,12 @@ export function createSyncCoordinator(input: {
         };
       },
     };
+    bound.onOutboxQueued = () => {
+      if (!isCurrent(bound)) return;
+      const request = session.synchronize("note", { reason: "explicit" });
+      void request.promise.catch(() => undefined);
+    };
+    return session;
   }
 
   return { openScope };

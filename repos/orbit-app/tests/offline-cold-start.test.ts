@@ -45,6 +45,7 @@ export function useFixture() {
 }
 export function useOrbitApiBaseUrl() { useFixture(); return { baseUrl: state.baseUrl, ready: true }; }
 export async function fetchMobileAuthProviders() { return { success: true, data: { providers: [] } }; }
+export async function fetchMobileAccountStatus() { return { success: false, error: { code: "UNAUTHENTICATED", message: "no", status: 401 } }; }
 export async function signInWithMobileCredentials() { return { success: false, error: { code: "X", message: "x", status: 0 } }; }
 const user = { id: "user:alex", email: "alex@example.test", name: "Alex" };
 export async function validateAuthSession() {
@@ -78,7 +79,9 @@ export async function registerOrbitAccount() { return { success: true }; }
 // 0130: a restore suspends the open scope (recorded as { suspend }) instead of purging it; setScope(null) is a purge.
 export const syncLifecycle = {
   async suspendScope(baseUrl) { state.scopeChanges.push({ suspend: baseUrl }); return true; },
-  async setScope(scope) { state.scopeChanges.push(scope); state.currentScope = scope; return true; }
+  async setScope(scope) { state.scopeChanges.push(scope); state.currentScope = scope; return true; },
+  async pendingWriteSummary() { return { currentAccount: 0, otherAccounts: 0 }; },
+  async withDatabase(_, callback) { return callback({ get: async () => ({ count: 0 }) }); }
 };
 export async function cancelOrbitManagedNotifications() {}
 export function onSessionExpired(handler) { state.expire = handler; return () => { state.expire = null; }; }
@@ -118,7 +121,7 @@ createRoot(document.getElementById("root")).render(<OrbitAuthSessionProvider><Pr
           if (args.path === "crypto") return { contents: "export const CryptoDigestAlgorithm = { SHA256: 'SHA256' }; export async function digest(_, value) { return value; } export async function getRandomBytesAsync() { return new Uint8Array(32); }", loader: "js" };
           if (args.path === "router") return { contents: "export const router = { replace(href) { window.fixture.replaces.push(href); } };", loader: "js" };
           if (args.path === "browser") return { contents: "export async function openAuthSessionAsync() { return { type: 'cancel' }; }", loader: "js" };
-          if (args.path === "native") return { contents: "export const Platform = { get OS() { return window.fixture.platform; } }; export const AppState = { addEventListener(_, listener) { window.fixture.appStateListeners.push(listener); return { remove() { window.fixture.appStateListeners = window.fixture.appStateListeners.filter(item => item !== listener); } }; } };", loader: "js" };
+          if (args.path === "native") return { contents: "export const Alert = { alert() {} }; export const Platform = { get OS() { return window.fixture.platform; } }; export const AppState = { addEventListener(_, listener) { window.fixture.appStateListeners.push(listener); return { remove() { window.fixture.appStateListeners = window.fixture.appStateListeners.filter(item => item !== listener); } }; } };", loader: "js" };
           if (args.path.endsWith("/auth-session")) return { contents: "export { registerOrbitAccount, signOutOrbitSession } from 'fixture';", loader: "js", resolveDir: process.cwd() };
           if (args.path.endsWith("/session-expiry")) return { contents: "export { onSessionExpired } from 'fixture';", loader: "js", resolveDir: process.cwd() };
           if (args.path.endsWith("/client")) return { contents: "export { createOrbitApiClient } from 'fixture';", loader: "js", resolveDir: process.cwd() };

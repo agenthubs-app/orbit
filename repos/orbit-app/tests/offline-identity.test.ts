@@ -8,6 +8,7 @@ import test from "node:test";
 import { validateAuthSession } from "../src/api/mobile-auth";
 import {
   OFFLINE_IDENTITY_MAX_AGE_MS,
+  accountStatusConfirmsRejection,
   classifyAccountCheck,
   classifySessionCheck,
   createOfflineIdentityStorage,
@@ -57,6 +58,14 @@ test("session checks: 401/403 and an empty Auth.js session are rejections; netwo
   assert.equal(classifyAccountCheck({ success: false, status: 403 }), "rejected");
   assert.equal(classifyAccountCheck({ success: false, status: 0 }), "unreachable");
   assert.equal(classifyAccountCheck({ success: false, status: 503 }), "unreachable");
+});
+
+test("account status only confirms rejection for explicit disable/password-change or an unreadable token", () => {
+  assert.equal(accountStatusConfirmsRejection({ success: true, data: { status: "active" } }), false);
+  assert.equal(accountStatusConfirmsRejection({ success: true, data: { status: "disabled" } }), true);
+  assert.equal(accountStatusConfirmsRejection({ success: true, data: { status: "password_changed" } }), true);
+  assert.equal(accountStatusConfirmsRejection({ success: false, error: { code: "unavailable", message: "x", status: 503 } }), false);
+  assert.equal(accountStatusConfirmsRejection({ success: false, error: { code: "rejected", message: "x", status: 401 } }), true);
 });
 
 async function serve(t: { after(fn: () => Promise<void>): void }, respond: (path: string) => { status: number; type: string; body: string }) {

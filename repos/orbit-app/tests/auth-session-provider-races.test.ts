@@ -37,6 +37,7 @@ export function useOrbitApiBaseUrl() {
   return { baseUrl: state.baseUrl, ready: state.baseUrlReady };
 }
 export async function fetchMobileAuthProviders() { return { success: true, data: { providers: state.providerValues ?? [] } }; }
+export async function fetchMobileAccountStatus() { return { success: false, error: { code: "UNAUTHENTICATED", message: "no", status: 401 } }; }
 export async function signInWithMobileCredentials(input) {
   state.requests.push(input);
   return await new Promise(resolve => {
@@ -83,7 +84,9 @@ export const syncLifecycle = {
     if (state.keyDeleteFails) return false;
     state.currentScope = scope;
     return true;
-  }
+  },
+  async pendingWriteSummary() { return { currentAccount: 0, otherAccounts: 0 }; },
+  async withDatabase(_, callback) { return callback({ get: async () => ({ count: 0 }) }); }
 };
 export async function cancelOrbitManagedNotifications() {
   if (state.holdNotificationCleanup) {
@@ -132,7 +135,7 @@ const root = createRoot(document.getElementById("root")); window.fixture.unmount
           if (args.path === "crypto") return { contents: "export const CryptoDigestAlgorithm = { SHA256: 'SHA256' }; export async function digest(_, value) { return value; } export async function getRandomBytesAsync() { return new Uint8Array(32); }", loader: "js" };
           if (args.path === "router") return { contents: "export const router = { replace() {} };", loader: "js" };
           if (args.path === "browser") return { contents: "export async function openAuthSessionAsync() { return { type: 'cancel' }; }", loader: "js" };
-          if (args.path === "native") return { contents: "export const Platform = { get OS() { return window.initialFixture?.platform ?? 'ios'; } }; export const AppState = { addEventListener() { return { remove() {} }; } };", loader: "js" };
+          if (args.path === "native") return { contents: "export const Alert = { alert() {} }; export const Platform = { get OS() { return window.initialFixture?.platform ?? 'ios'; } }; export const AppState = { addEventListener() { return { remove() {} }; } };", loader: "js" };
           if (args.path.endsWith("/auth-session")) return { contents: "export { registerOrbitAccount, signOutOrbitSession } from 'fixture';", loader: "js", resolveDir: process.cwd() };
           if (args.path.endsWith("/session-expiry")) return { contents: "export { onSessionExpired } from 'fixture';", loader: "js", resolveDir: process.cwd() };
           if (args.path.endsWith("/client")) return { contents: "export { createOrbitApiClient } from 'fixture';", loader: "js", resolveDir: process.cwd() };
