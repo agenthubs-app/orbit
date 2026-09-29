@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { auth } from "../../../auth";
 import type {
-  LiveAccountSessionGraph,
+  LiveAccountSessionIdentity,
 } from "../../../features/account/storage/account-live-record-provider";
 import {
   createConfiguredStorageAccountSessionProvider,
@@ -42,7 +42,8 @@ export interface AuthenticatedApiSessionIdentity {
 }
 
 export interface ResolveAuthenticatedApiActorInput {
-  graph: LiveAccountSessionGraph | null;
+  /** A full `LiveAccountSessionGraph` also fits (scripts pass one). */
+  graph: LiveAccountSessionIdentity | null;
   mode: FeatureMode;
   session: AuthenticatedApiSessionIdentity;
   workspaceId: string;
@@ -123,7 +124,12 @@ export async function resolveAuthenticatedApiActorFromSession(
   const config = resolveLiveDatabaseConnectionConfig();
   const workspaceId = config?.workspaceId ?? "workspace:mock-auth";
   const provider = createConfiguredStorageAccountSessionProvider();
-  const graph = provider ? await provider.readAccountSessionGraph({ userId: session.userId }) : null;
+  // Identity fields only (W0030); providers without the lightweight read fall back to the full graph.
+  const graph = provider
+    ? await (provider.readAccountSessionIdentity
+      ? provider.readAccountSessionIdentity({ userId: session.userId })
+      : provider.readAccountSessionGraph({ userId: session.userId }))
+    : null;
 
   return resolveAuthenticatedApiActorIdentity({
     graph,
