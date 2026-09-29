@@ -1,0 +1,9 @@
+- **P1 — `PLANNER.md:29-32, 69-72, 134-136`：canonical 损坏数据语义判断不准确，当前方案会改变行为。** `registrationFromRow` 只验证整个 `profile_payload` 是对象，并不验证 `registrationProfile`、`answers` 或其中字段。缺少 `registrationProfile` 的 cancelled 行目前会先被 `status` 过滤，不会导致名单或预览失败；active 行才会在消费字段时抛错。方案却要求所有此类行（包括 cancelled）统一判 invalid 并整体抛错。同时，旧读取还校验 status、时间戳及多个文本字段，方案所述“W28-4 有效性判断”并未完整覆盖。建议按两个消费者分别建立精确损坏矩阵：区分仓储解析失败、active 行消费失败、cancelled 行不访问画像三类；投影 SQL/JS 必须复现旧行为，并覆盖非法 status、非法时间戳、非对象 `profile_payload`、缺失/非对象 `registrationProfile`、缺失/非对象 `answers` 及非字符串字段。
+
+- **P1 — `PLANNER.md:60-63, 135`：legacy 的“损坏行静默丢弃”描述过宽，无法保证旧语义。** 现有 `isStoredEventRegistration` 只校验报名顶层的 id/eventId/userId；若顶层合格但 `participantProfile`、`answers`、`industry` 或 `positioning` 类型损坏，旧预览可能在 `.answers`、`.trim()` 或 `.split()` 处抛错，并非静默丢弃。JSON `#>>` 还可能把数字等值转换成文本，使旧路径的异常变成公开桶。建议明确只对 `isStoredEventRegistration` 不通过的行静默丢弃；对嵌套画像损坏逐项复现旧结果，并将这些情况加入 legacy PG 等价测试。
+
+- **P1 — `PLANNER.md:60-72, 103, 135`：legacy 投影没有锁定现有读取顺序，预览桶顺序可能变化。** 当前 `listRecords` 按 `coalesce(occurred_at, updated_at) desc, updated_at desc` 排序；`registrationClusterPreview` 对同人数桶使用稳定排序，因此并列桶的输出顺序及大小写合并后的展示 label 取决于首条记录。方案只要求 canonical 按 `participant_id`，未规定 legacy SQL 顺序，SC 也没有并列桶或同一行业不同大小写、不同原始 label 的顺序断言。建议要求 legacy SQL完整复刻现有 WHERE 和 ORDER BY，并增加并列桶、超过 6 桶、大小写合并后 label 选择的深相等测试。
+
+- **P1 — `PLANNER.md:55, 162`：预算余量把 W0027 与 W0028 重复累计，扩容结论依据不成立。** W0028 的目标是替代并压低 W0024/W0027 的本人报名整行读取，其 `≤30 MB/月` 是优化后的同一路径口径，不能再与 W0027 的上限相加后得出只剩 26 MB。W0029 又会继续替换详情页既有名单流量，是否属于新增预算也需按路径重算。建议从 W0021 的 884 MB 基线出发，按最终合并后的互斥路径重新汇总 W0027/W0028/W0029，区分“替代的旧流量”和“净新增流量”，再决定是否需要把总预算提高到 1.2 GB。
+
+- **P2 — `PLANNER.md:68`：声称 `registrationClusterPreview`“逻辑一行不改”与新入参形状矛盾。** 当前函数读取 `registration.participantProfile.answers`，新投影却直接提供 `industry` 和 `positioning`，实现必然要改字段访问逻辑。建议将契约改为“聚合规则不变”，并要求用旧完整 DTO 与新投影 DTO 分别计算后深相等，避免测试只覆盖改后的单一路径。

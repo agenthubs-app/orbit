@@ -30,6 +30,9 @@
 | D16 | W0022～W0027 执行顺序 | W0022 → W0025 → W0026 → W0024 → W0023 → W0027 → W0019（2026-09-29） | W0019、W0022～W0027 |
 | D17 | W23-2：重新分析（reanalysis）是否也为已关联需求在新版本当周生成「约 TA」 | 也生成：与制定下一份计划同一规则（两者共用 `createVersionWithOutcome`）；已建立联系或已完成的不再生成（2026-09-29） | W0023 |
 | D18 | W0024 SC-03 返回字节超上限（按假设约 311–383 MB/月，上限 30 MB） | 先合并 W0024 修正；另开 W0028 裁剪本人报名读取返回列（只要 eventId／status），覆盖活动页与 W0027 的详情页，W0028 必须在 W0019 前完成；执行顺序改为 W0023 → W0027 → W0028 → W0019（2026-09-29） | W0024、W0027、W0028、W0019 |
+| D19 | W0028 开放问题 W28-1～3 | W28-1：详情页报名者名单瘦身另开 W0029（W0019 前），W0028 只实测名单；W28-2：其他整行消费者（活动归属、计划对账、journeys、目标推荐）不切，登记候选；W28-3：活动页＋详情页本人报名读取合计 ≤30 MB/月，按改后绝对字节（2026-09-29） | W0028、W0029 |
+| D20 | W28-4、W29-1～3 | W28-4／W29-3：精简读取保持旧失败语义（坏数据照旧抛错，页面行为不变）；W29-1：名单＋匿名预览合计 ≤200 MB/月，用户路径总额按实测重算，超过 1.0 GB 时可放宽，至多 1.2 GB；W29-2：「谁会来」预览纳入 W0029（2026-09-29） | W0028、W0029、W0019 |
+| D21 | W0023 交接：首页「本周推进」前 3 件是否优先显示新生成的「约 TA」 | 先不改，登记为后续候选（2026-09-29） | W0023 |
 
 ## 发布动作（需要单独授权）
 
@@ -61,16 +64,17 @@
 | [W0016](W0016-verify-environment/GOAL.md) | 另起开示例开关的验收 server，建测试账号并造好各场景数据，名片照片裁成单张 | RV-01 | 大目标 1 全部 completed | completed |
 | [W0017](W0017-traffic-guard/GOAL.md) | 3 个计划维护任务改为每天最多一次（持久、跨实例），名片匹配补跑空闲时只做轻查询；新增读取路径逐一测量并估算月流量 | RV-03 | 无 | completed |
 | [W0018](W0018-scenario-acceptance/GOAL.md) | 逐场景真实页面验收（桌面＋手机），修小问题，交验收报告页面 | RV-02 | W0016、W0017、W0021 | completed |
-| [W0019](W0019-release-checklist/GOAL.md) | 生产上线清单 + 大目标收口的本地全量对照 | RV-04 | W0018、W0022～W0028；须含 W0025 发布门（生产 Node/ICU 与 Neon PG/排序规则版本，含联系人搜索） | planned |
+| [W0019](W0019-release-checklist/GOAL.md) | 生产上线清单 + 大目标收口的本地全量对照 | RV-04 | W0018、W0022～W0029；须含 W0025 发布门（生产 Node/ICU 与 Neon PG/排序规则版本，含联系人搜索） | planned |
 | [W0020](W0020-preview-verify/GOAL.md) | Preview 复验关键场景并测量 Neon 流量 | RV-04 | W0019；用户授权 Preview 部署、迁移、开关、测试数据 | planned |
 | [W0021](W0021-read-traffic-trim/GOAL.md) | 计划／匹配／名片／活动归属读取瘦身，1000 人月出站 ≤1.0 GB，活动归属按时间窗口读取，页面不变 | RV-05 | W0017 | completed |
 | [W0022](W0022-home-guide-entry/GOAL.md) | 老用户首页「帮我制定推进计划」改去引导第 3 步（`?step` 不绕过硬顺序）；有计划但第 4 步未完成时首页留提醒 | RW-04、RW-10 | W0018；W22-1～4 已定（D13） | completed |
-| [W0023](W0023-expired-plan-match-week/GOAL.md) | 到期计划上关联联系人只记关联和进展记录、不生成「约 TA」；制定下一份计划时在新计划当周生成；确认接口与组件跟着改 | RW-11、RW-12 | W0026（同改种子脚本）、W0024（顺序）；W23-2 已定（D17） | ready |
+| [W0023](W0023-expired-plan-match-week/GOAL.md) | 到期计划上关联联系人只记关联和进展记录、不生成「约 TA」；制定下一份计划时在新计划当周生成；确认接口与组件跟着改 | RW-11、RW-12 | W0026（同改种子脚本）、W0024（顺序）；W23-2 已定（D17） | completed |
 | [W0024](W0024-events-registration-actor-id/GOAL.md) | 活动页 `/app/events` 按账号 id 读报名；查询次数不增加，返回字节增量实测且 ≤30 MB/月；目录读取失败时不读账号 | RV-02 | 无代码依赖；按顺序在 W0026 之后 | completed（SC-03 failed，按 D18 合并，流量由 W0028 解决） |
 | [W0025](W0025-lifecycle-sort-runtime/GOAL.md) | 跟进排序运行时从单一组合改为经差分测试的白名单（加入本机组合），「先联系谁」恢复真实数据；首页跟进来源不可用时不下确定结论；给 W0019 写发布门 | RW-01、RV-02 | W0022（同改 iorbit-home.tsx）；本机 PG 测试库 | completed |
 | [W0026](W0026-recommend-reason-fixture/GOAL.md) | 验收种子造出真实可匹配的活动，策略页两种推荐理由可在 3001 复验；不改分词算法 | RW-07、RV-02 | W0025（执行顺序） | completed |
-| [W0027](W0027-event-detail-actor-id/GOAL.md) | 活动详情页 `/app/events/[id]` 按账号 id 判定已报名、名单、主办方与私密访问；含访问控制回归 | RV-02 | W0024（复用测试夹具） | planned |
-| W0028 | 本人报名读取（legacy 投影与 canonical）只返回 eventId／status 等页面所需列，活动页与活动详情页的返回字节增量回到 ≤30 MB/月；页面行为不变（GOAL/PLANNER 待编制） | RV-03、RV-05 | W0024、W0027（D18） | planned |
+| [W0027](W0027-event-detail-actor-id/GOAL.md) | 活动详情页 `/app/events/[id]` 按账号 id 判定已报名、名单、主办方与私密访问；含访问控制回归 | RV-02 | W0024（复用测试夹具） | ready |
+| [W0028](W0028-registration-status-read/GOAL.md) | 本人报名读取（legacy 投影与 canonical）只返回 eventId／status 等页面所需列，活动页与详情页本人报名读取合计 ≤30 MB/月；保持旧失败语义；页面行为不变 | RV-03、RV-05 | W0024、W0027（D18、D19、D20）；开工前协调者按 W0027 合并结果刷新 PLANNER 占位 | planned |
+| [W0029](W0029-attendee-roster-trim/GOAL.md) | 详情页报名者名单与「谁会来」匿名预览只读所需字段，合计 ≤200 MB/月；按实测重算用户路径总额（D20） | RV-03、RV-05 | W0027、W0028；开工前刷新 PLANNER 占位 | planned |
 
 全部 Sprint 都已有 GOAL 与 PLANNER（2026-09-28 编制；大目标 1 与大目标 2 各经 Codex `gpt-5.6-sol` 方案 review 后修订为 revision 2，review 意见与处理见 [REVIEW-2026-09-28.md](REVIEW-2026-09-28.md)）。`planned` 表示前置 Sprint 尚未 completed；前置完成后改为 `ready`。
 
@@ -103,3 +107,4 @@
 | W0025 | run-01（2026-09-29） | `488dd9d6`（报告 `54cbccfb`） | `6921656b` | [REPORT](W0025-lifecycle-sort-runtime/REPORT.md) |
 | W0026 | run-01（2026-09-29） | `f1b82ea9`（报告 `e61afe88`） | `7011f651` | [REPORT](W0026-recommend-reason-fixture/REPORT.md) |
 | W0024 | run-01（2026-09-29） | `21beec29`（报告 `2f19a0e5`、`735df1c3`） | `20e5fea4` | [REPORT](W0024-events-registration-actor-id/REPORT.md)；SC-03 failed，D18 |
+| W0023 | run-01（2026-09-29） | `16040227`、`ec4ed7e0`（review P2 修复；报告 `36bf7cfc`） | `b6a6b103` | [REPORT](W0023-expired-plan-match-week/REPORT.md) |

@@ -1,0 +1,7 @@
+- **P1｜`PLANNER.md`「建议 SQL」「SC-W0028-01」**：legacy 等价条件遗漏了 `status` 的真实旧语义。现有 `isStoredEventRegistration` 只校验 `registrationId`、`registration.id/eventId/userId` 为字符串，**不会校验 `status`**；因此缺失或非法 `status` 的记录仍会进入旧结果，最终因 `status !== "rsvped"` 被视为未报名。计划却笼统写成“非法或缺字段的 payload 被跳过”，且新返回类型强制为合法 status，Generator 很可能改成跳过或抛错，均不等价。建议在方案中明确：结构字段沿用现有校验；legacy 非法/缺失 status 必须保持“记录存在但不算 rsvped”的旧结果，或明确批准改变坏数据语义。SC 增加缺失、`null`、任意字符串 status 的批量与单场对照测试。
+
+- **P1｜`PLANNER.md`「legacy 投影」与 SC-W0028-04**：专用 SQL 直接调用 `configured.client` 绕过的不只有 read-budget gate，还有 `configured.store` 的进程内 in-flight read dedupe。并发相同读取以前可合并成一条 SQL，新方案会各发一条，不能证明“查询次数不增加”，压力下也会放大数据库流量。建议让轻量 SQL 经过等价的“每次逻辑调用先过 gate、相同 in-flight 查询再去重”封装，并增加两个并发相同参数调用只发一条 SQL、但 gate 仍按现有时机检查的测试。
+
+- **P1｜`PLANNER.md`「canonical：只查 heads」与 SC-W0028-01/03**：外键只能证明三表 join 的**行集存在性**相同，不能证明旧读取的失败语义相同。现有 `registrationFromRow` 还会解析和校验 version/profile 行中的时间戳、文本及 `profile_payload.registrationProfile`；这些数据损坏时旧读取会抛错，而 heads-only 会成功返回 status。当前 SC 只测非法 status，而 status 又受数据库 CHECK 约束，实际遗漏了最可能产生差异的 JSON payload。建议增加 canonical version/profile 损坏矩阵，明确选择并测试：要么轻量读取仍以 join/存在性及必要校验保持旧失败语义，要么把“忽略与本人报名状态无关的历史画像损坏”登记为经批准的语义变更，不能宣称完全等价。
+
+- **P2｜`PLANNER.md`「基线」「上下文包」「前序交接要点」**：指定基线 `chat-agent@a25f93ec` 尚未包含 W0027；计划引用的 W0027 REPORT、详情页 actor-id 测试及部分详情实现路径在该分支不存在，因此当前上下文包无法按 RULES 直接执行和复核。虽然进入条件写了“W0027 已合并”，但开工基线和行号仍固定在合并前版本。建议待 W0027 合并后，把基线改为其合并 SHA，并重新填写准确的 REPORT 路径、详情调用点、测试文件及 impact 结果。
