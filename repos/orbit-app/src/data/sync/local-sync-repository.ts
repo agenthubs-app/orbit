@@ -118,6 +118,8 @@ export interface LocalSyncOutboxMutation {
   retryCount: number;
   nextRetryAt: string | null;
   lastErrorCode: string | null;
+  /** A native HTTP write may have reached the server before its response was lost. */
+  requestAttemptedAt?: string | null;
 }
 
 export interface LocalSyncQueuedMutation extends LocalSyncOutboxMutation {
@@ -805,8 +807,12 @@ export function createLocalSyncRepository(input: {
 
     async enqueueOutboxMutation(
       mutation: LocalSyncOutboxMutation,
+      options: { notify?: boolean } = {},
     ): Promise<void> {
       const patchJson = validateAndSerializeOutboxMutation(mutation, actorId);
+      if (mutation.requestAttemptedAt !== undefined && mutation.requestAttemptedAt !== null) {
+        assertTimestamp(mutation.requestAttemptedAt, "requestAttemptedAt");
+      }
       await database.transaction(async () => {
         const domainId = mutation.domainId ?? localDomainForKind(mutation.kind);
         const unattempted = await database.all<{
@@ -836,8 +842,38 @@ export function createLocalSyncRepository(input: {
             ? "create"
             : mutation.operation;
           const mergedPatch = mergeOutboxPatches(prior.patch_json, patchJson);
-          const mergeId = mutation.requestJson ? mutation.mutationId : prior.mutation_id;
-          const requestJson = mutation.requestJson ?? prior.request_json;
+          const coalescedNoteCreate = domainId === "notes" && prior.operation === "create" && mutation.operation === "update" &&
+            prior.request_json !== null && mutation.requestJson !== undefined && mutation.requestJson !== null;
+          const coalescedNoteUpdate = domainId === "notes" && prior.operation === "update" && mutation.operation === "update" &&
+            prior.request_json !== null && mutation.requestJson !== undefined && mutation.requestJson !== null;
+          const mergeId = coalescedNoteCreate ? prior.mutation_id : mutation.requestJson ? mutation.mutationId : prior.mutation_id;
+          let requestJson = mutation.requestJson ?? prior.request_json;
+          if (coalescedNoteCreate) {
+            const createBody: unknown = JSON.parse(prior.request_json!);
+            const updateBody: unknown = JSON.parse(mutation.requestJson!);
+            if (!isRecord(createBody) || !isRecord(updateBody) || createBody.idempotencyKey !== prior.mutation_id || updateBody.idempotencyKey !== mutation.mutationId) {
+              throw new TypeError("note create request receipt does not match its queued mutation");
+            }
+            const mergedRequest: Record<string, unknown> = { ...createBody, ...updateBody, idempotencyKey: prior.mutation_id };
+            delete mergedRequest.expectedVersion;
+            requestJson = JSON.stringify(mergedRequest);
+          } else if (coalescedNoteUpdate) {
+            const firstRequest: unknown = JSON.parse(prior.request_json!);
+            const latestRequest: unknown = JSON.parse(mutation.requestJson!);
+            if (!isRecord(firstRequest) || !isRecord(latestRequest) ||
+                firstRequest.idempotencyKey !== prior.mutation_id || latestRequest.idempotencyKey !== mutation.mutationId ||
+                !Number.isSafeInteger(firstRequest.expectedVersion) || Number(firstRequest.expectedVersion) < 1 ||
+                !Number.isSafeInteger(latestRequest.expectedVersion) || Number(latestRequest.expectedVersion) < 1) {
+              throw new TypeError("note update request receipt or version does not match its queued mutation");
+            }
+            const mergedRequest: Record<string, unknown> = {
+              ...firstRequest,
+              ...latestRequest,
+              expectedVersion: firstRequest.expectedVersion,
+              idempotencyKey: mergeId,
+            };
+            requestJson = JSON.stringify(mergedRequest);
+          }
           const dependsOn = mutation.dependsOn ?? null;
           if (mergeId !== prior.mutation_id) {
             await database.run("UPDATE sync_outbox SET depends_on = ? WHERE depends_on = ?", [mergeId, prior.mutation_id]);
@@ -852,8 +888,8 @@ export function createLocalSyncRepository(input: {
           `INSERT INTO sync_outbox (
             mutation_id, workspace_id, domain_id, kind, record_id, operation, state,
             patch_json, request_json, depends_on, base_revision, created_at,
-            retry_count, next_retry_at, last_error_code
-          ) VALUES (?, ?, ?, ?, ?, ?, 'queued', ?, ?, ?, ?, ?, ?, ?, ?)
+            retry_count, next_retry_at, last_error_code, attempt_count, first_attempt_at
+          ) VALUES (?, ?, ?, ?, ?, ?, 'queued', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           ON CONFLICT(mutation_id) DO NOTHING`,
           [
             mutation.mutationId,
@@ -867,13 +903,15 @@ export function createLocalSyncRepository(input: {
             mutation.dependsOn ?? null,
             mutation.baseRevision,
             mutation.createdAt,
-            mutation.retryCount,
+            mutation.retryCount + (mutation.requestAttemptedAt ? 1 : 0),
             mutation.nextRetryAt,
-            mutation.lastErrorCode,
+            mutation.lastErrorCode ?? (mutation.requestAttemptedAt ? "NETWORK_ERROR" : null),
+            mutation.requestAttemptedAt ? 1 : 0,
+            mutation.requestAttemptedAt ?? null,
           ],
         );
       });
-      await input.onOutboxQueued?.();
+      if (options.notify !== false) await input.onOutboxQueued?.();
     },
 
     async beginOutboxMutationAttempt(input: {
@@ -927,6 +965,15 @@ export function createLocalSyncRepository(input: {
       });
     },
 
+    /** A process can die after claiming a row but before receiving a response; replay its frozen bytes on the next scope. */
+    async recoverInterruptedOutboxAttempts(): Promise<number> {
+      const recovered = await database.run(`UPDATE sync_outbox SET
+        state = 'queued', next_retry_at = NULL,
+        last_error_code = COALESCE(last_error_code, 'UPLOAD_INTERRUPTED')
+        WHERE state = 'sending'`);
+      return recovered.changes;
+    },
+
     async markOutboxMutationFailure(input: {
       mutationId: string;
       state: "queued" | "conflict" | "failed";
@@ -949,6 +996,58 @@ export function createLocalSyncRepository(input: {
         snapshotJson,
         input.mutationId,
       ]);
+    },
+
+    /** Resolve one notes conflict without ever rewriting its attempted request in place. */
+    async resolveNoteConflict(input: {
+      workspaceId: string;
+      mutationId: string;
+      resolution: "server" | "replace";
+      replacement?: LocalSyncOutboxMutation;
+    }): Promise<void> {
+      assertNonEmptyString(input.workspaceId, "workspaceId");
+      assertNonEmptyString(input.mutationId, "mutationId");
+      if (input.resolution === "replace" && !input.replacement) throw new TypeError("replacement note mutation is required");
+      if (input.resolution === "server" && input.replacement) throw new TypeError("server resolution cannot include a replacement");
+      const replacement = input.replacement;
+      const patchJson = replacement ? validateAndSerializeOutboxMutation(replacement, actorId) : null;
+      const replacementRequestJson = replacement?.requestJson;
+      if (replacement && (replacement.workspaceId !== input.workspaceId || replacement.domainId !== "notes" ||
+          replacement.kind !== "note" || (replacement.operation !== "create" && replacement.operation !== "update") ||
+          replacement.mutationId === input.mutationId || replacementRequestJson === undefined || replacementRequestJson === null ||
+          replacement.requestAttemptedAt)) {
+        throw new TypeError("replacement note mutation is invalid");
+      }
+      await database.transaction(async () => {
+        const conflict = await database.get<{ workspace_id: string; domain_id: string; kind: SyncEntityKind; state: string }>(
+          "SELECT workspace_id, domain_id, kind, state FROM sync_outbox WHERE mutation_id = ?", [input.mutationId],
+        );
+        if (!conflict || conflict.workspace_id !== input.workspaceId || conflict.domain_id !== "notes" || conflict.kind !== "note" || conflict.state !== "conflict") {
+          throw new Error("NOTE_CONFLICT_NOT_FOUND");
+        }
+        if (replacement) {
+          if (replacement.actorId !== actorId) throw new TypeError("replacement note mutation is outside the actor scope");
+          await database.run(`INSERT INTO sync_outbox (
+            mutation_id, workspace_id, domain_id, kind, record_id, operation, state,
+            patch_json, request_json, depends_on, base_revision, created_at,
+            retry_count, next_retry_at, last_error_code, attempt_count, first_attempt_at, server_snapshot_json
+          ) VALUES (?, ?, 'notes', 'note', ?, ?, 'queued', ?, ?, ?, ?, ?, ?, ?, NULL, 0, NULL, NULL)`, [
+            replacement.mutationId, replacement.workspaceId, replacement.id, replacement.operation, patchJson,
+            replacementRequestJson!, replacement.dependsOn ?? null, replacement.baseRevision, replacement.createdAt,
+            replacement.retryCount, replacement.nextRetryAt,
+          ]);
+          await database.run("UPDATE sync_outbox SET depends_on = ? WHERE workspace_id = ? AND domain_id = 'notes' AND depends_on = ?",
+            [replacement.mutationId, input.workspaceId, input.mutationId]);
+          await database.run("DELETE FROM sync_outbox WHERE mutation_id = ?", [input.mutationId]);
+          return;
+        }
+        await database.run(`WITH RECURSIVE dependent_mutations(mutation_id) AS (
+          SELECT ?
+          UNION
+          SELECT queued.mutation_id FROM sync_outbox AS queued
+          JOIN dependent_mutations AS dependency ON queued.depends_on = dependency.mutation_id
+        ) DELETE FROM sync_outbox WHERE mutation_id IN (SELECT mutation_id FROM dependent_mutations)`, [input.mutationId]);
+      });
     },
 
     /** Commit a successful upload, its local-id alias, and dependent request rewrites together. */

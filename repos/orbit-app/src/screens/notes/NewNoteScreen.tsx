@@ -1,26 +1,30 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import * as Crypto from "expo-crypto";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { ORBIT_API_ENDPOINTS } from "../../api/endpoints";
 import type { NoteMentionContract } from "../../api/contract/notes";
 import { AppScreen } from "../../components/AppScreen";
 import { OfflineNotice } from "../../components/OfflineNotice";
+import { NotesOfflineNotice } from "./NotesOfflineNotice";
 import { createThemedStyles } from "../../design/theme";
 import { radius, spacing, typography } from "../../design/tokens";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useApiResource } from "../../hooks/useApiResource";
+import { useLocalContacts } from "../../hooks/useLocalContacts";
+import { useLocalEventDay } from "../../hooks/useLocalEventDay";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { noteDraftStorage } from "../../storage/note-draft-storage";
 import { contactsToSummaries, type ContactSummary } from "../../view-models/contacts";
+import { localScheduleEvents } from "../../view-models/event-day-local";
 import { eventsToSummaries } from "../../view-models/events";
 import { buildRichNoteCreateRequest, confirmedNote } from "../../view-models/notes";
+import { buildOfflineNoteMutation } from "../../data/sync/note-outbox-mutation";
 import { NoteContactPicker } from "./NoteContactPicker";
 import { NoteMentionEditor } from "./NoteMentionEditor";
 import { NoteEventPicker } from "./NoteEventPicker";
 import { useNotesWriteStatus } from "./notes-source";
-
-let createSequence = 0;
 
 export function NewNoteScreen({ actorId, draftServer = "local", scopeKey, isScopeCurrent = () => true }: { actorId: string; draftServer?: string; scopeKey: string; isScopeCurrent?: () => boolean }) {
   const router = useRouter();
@@ -28,9 +32,14 @@ export function NewNoteScreen({ actorId, draftServer = "local", scopeKey, isScop
   const initialContactId = (Array.isArray(params.contactId) ? params.contactId[0] : params.contactId)?.trim();
   const client = useOrbitApiClient({ scopeKey });
   const locale = useOrbitLocale();
-  const eventsState = useApiResource<unknown>(ORBIT_API_ENDPOINTS.events, () => false, { scopeKey });
+  const localContacts = useLocalContacts(false);
+  const localEventDay = useLocalEventDay(Platform.OS !== "web");
+  const eventsState = useApiResource<unknown>(ORBIT_API_ENDPOINTS.events, () => false, { scopeKey, enabled: Platform.OS === "web" });
   const writeStatus = useNotesWriteStatus(actorId);
-  const events = eventsState.kind === "success" || eventsState.kind === "empty" ? eventsToSummaries(eventsState.data) : [];
+  const localContactSummaries = useMemo(() => contactsToSummaries({ contacts: localContacts.rows.flatMap((row) => row.card ? [row.card] : []) }, locale.language), [localContacts.rows, locale.language]);
+  const events = Platform.OS === "web"
+    ? eventsState.kind === "success" || eventsState.kind === "empty" ? eventsToSummaries(eventsState.data) : []
+    : eventsToSummaries(localScheduleEvents(localEventDay.records.events));
   const [title, setTitle] = useState("");
   const [draft, setDraft] = useState("");
   const [mentions, setMentions] = useState<NoteMentionContract[]>([]);
@@ -48,7 +57,8 @@ export function NewNoteScreen({ actorId, draftServer = "local", scopeKey, isScop
   const latestDraft = useRef({ value: draftValue, revision: 0 });
   if (latestDraft.current.value !== draftValue) latestDraft.current = { value: draftValue, revision: latestDraft.current.revision + 1 };
   const controller = useRef<AbortController | null>(null);
-  const idempotencyKey = useRef(`ios:note:create:${Date.now()}:${++createSequence}`);
+  const idempotencyKey = useRef(Crypto.randomUUID());
+  const localNoteId = useRef(`local:${Crypto.randomUUID()}`);
   const { styles } = useStyles();
   useEffect(() => () => { mounted.current = false; controller.current?.abort(); }, []);
   useEffect(() => {
@@ -79,6 +89,14 @@ export function NewNoteScreen({ actorId, draftServer = "local", scopeKey, isScop
     setError("");
   };
   const searchContacts = useCallback(async (query: string, cursor: string | undefined, signal: AbortSignal) => {
+    if (Platform.OS !== "web") {
+      if (signal.aborted) return { contacts: [] };
+      const normalized = query.trim().toLocaleLowerCase(locale.language);
+      const matches = localContactSummaries.filter((contact) => [contact.name, contact.organization, contact.role].some((value) => value.toLocaleLowerCase(locale.language).includes(normalized)));
+      const offset = cursor && /^\d+$/.test(cursor) ? Number(cursor) : 0;
+      const contacts = matches.slice(offset, offset + 20);
+      return { contacts, ...(offset + 20 < matches.length ? { nextCursor: String(offset + 20) } : {}) };
+    }
     const result = await client.post<unknown>(ORBIT_API_ENDPOINTS.contactsSearch, { body: { query, limit: 20, ...(cursor ? { cursor } : {}) }, signal });
     if (!result.success || result.status < 200 || result.status >= 300) throw new Error(result.success ? locale.t("notes.searchUnavailable") : result.error.message);
     const contacts = contactsToSummaries(result.data);
@@ -86,7 +104,7 @@ export function NewNoteScreen({ actorId, draftServer = "local", scopeKey, isScop
       ? (result.data as Record<string, unknown>).nextCursor as string
       : undefined;
     return { contacts, ...(nextCursor ? { nextCursor } : {}) };
-  }, [client, locale]);
+  }, [client, locale, localContactSummaries]);
 
   const draftScope = { accountId: actorId, server: draftServer };
   const initialIds = initialContactId ? [initialContactId] : [];
@@ -112,11 +130,40 @@ export function NewNoteScreen({ actorId, draftServer = "local", scopeKey, isScop
   }
 
   async function save() {
-    if (!owns() || pending || writeStatus.offline) return;
+    if (!owns() || pending || (Platform.OS === "web" && writeStatus.offline)) return;
     const request = buildRichNoteCreateRequest({ title, body: draft, manualContactIds: selectedIds, mentions, eventIds }, idempotencyKey.current, locale.language);
     if (!request.success) { setError(request.error); return; }
     const operation = new AbortController(); controller.current = operation; setPending(true); setError("");
-    const result = await client.post<unknown>(ORBIT_API_ENDPOINTS.notes, { body: request.body, signal: operation.signal });
+    const queueLocally = async () => {
+      try {
+        await writeStatus.enqueueOfflineMutation(buildOfflineNoteMutation({
+          mutationId: request.body.idempotencyKey,
+          entityId: localNoteId.current,
+          operation: "create",
+          baseRevision: null,
+          requestBody: request.body,
+          createdAt: new Date().toISOString(),
+        }));
+        autosaveAllowed.current = false;
+        await noteDraftStorage.clear(draftScope);
+        if (owns()) router.replace(`/notes/${encodeURIComponent(localNoteId.current)}`);
+      } catch (queueError) {
+        if (owns()) setError(queueError instanceof Error ? queueError.message : locale.t("sync.mutationPending"));
+      } finally {
+        if (owns()) setPending(false);
+      }
+    };
+    if (Platform.OS !== "web") {
+      await queueLocally();
+      return;
+    }
+    let result;
+    try {
+      result = await client.post<unknown>(ORBIT_API_ENDPOINTS.notes, { body: request.body, signal: operation.signal });
+    } catch {
+      if (owns()) { setError(locale.t("notes.createUnconfirmed")); setPending(false); }
+      return;
+    }
     if (!owns() || operation.signal.aborted) return;
     const note = result.success && result.status >= 200 && result.status < 300
       ? confirmedNote(result.data, { actorId, title: request.body.title, body: request.body.body, manualContactIds: request.body.manualContactIds, mentions: request.body.mentions, contactIds: [...request.body.manualContactIds, ...request.body.mentions.map((item) => item.contactId)], eventIds: request.body.eventIds }, locale.language) : null;
@@ -131,7 +178,7 @@ export function NewNoteScreen({ actorId, draftServer = "local", scopeKey, isScop
     if (controller.current === operation) controller.current = null;
   }
 
-  const saveDisabled = pending || !title.trim() || !draft.trim() || writeStatus.offline;
+  const saveDisabled = pending || !title.trim() || !draft.trim() || (Platform.OS === "web" && writeStatus.offline);
   return <AppScreen title={locale.t("notes.new")} onBack={() => { if (!pending && owns()) hasChanges ? setShowExitPrompt(true) : router.back(); }} backAccessibilityLabel={locale.t("common.backToNamed", { name: locale.t("notes.title") })} backLabel={locale.t("notes.title")} headerActions={<View style={styles.headerActions}><Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.cancelNew")} disabled={pending} onPress={() => hasChanges ? setShowExitPrompt(true) : router.back()} style={styles.cancel}><Text style={styles.cancelText}>{locale.t("common.cancel")}</Text></Pressable><Pressable accessibilityRole="button" accessibilityLabel={locale.t(pending ? "notes.saving" : "notes.saveNote")} accessibilityState={{ disabled: saveDisabled }} disabled={saveDisabled} onPress={() => { void save(); }} style={styles.headerSave}><Text style={[styles.headerSaveText, saveDisabled && styles.headerSaveDisabled]}>{locale.t(pending ? "notes.saving" : "notes.save")}</Text></Pressable></View>}>
     {showExitPrompt ? <View accessibilityRole="alert" style={styles.exitPrompt}>
       <Text style={styles.exitTitle}>{locale.t("notes.keepDraftTitle")}</Text><Text style={styles.exitText}>{locale.t("notes.keepDraftBody")}</Text>
@@ -141,7 +188,7 @@ export function NewNoteScreen({ actorId, draftServer = "local", scopeKey, isScop
         <Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.keepAndExit")} onPress={() => { void preserveAndExit(); }} style={styles.exitPrimary}><Text style={styles.saveText}>{locale.t("notes.keepAndExit")}</Text></Pressable>
       </View>
     </View> : null}
-    {writeStatus.offline ? <OfflineNotice lastSyncedAt={writeStatus.lastSyncedAt} /> : null}
+    {writeStatus.offline ? Platform.OS === "web" ? <OfflineNotice lastSyncedAt={writeStatus.lastSyncedAt} /> : <NotesOfflineNotice lastSyncedAt={writeStatus.lastSyncedAt} /> : null}
     <Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.viewHistory")} disabled={pending} onPress={() => { if (!owns()) return; exitToHistory.current = true; hasChanges ? setShowExitPrompt(true) : router.replace("/notes"); }} style={styles.cancel}><Text style={styles.cancelText}>{locale.t("notes.viewHistory")}</Text></Pressable>
     <View style={styles.paper}>
       <TextInput accessibilityLabel={locale.t("notes.noteTitle")} editable={!pending} maxLength={200} onChangeText={(value) => { setTitle(value); setError(""); }} placeholder={locale.t("notes.noteTitle")} placeholderTextColor={styles.placeholder.color} style={styles.titleInput} value={title} />

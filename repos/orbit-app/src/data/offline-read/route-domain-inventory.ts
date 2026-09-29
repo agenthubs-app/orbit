@@ -112,6 +112,8 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/data/sync/sync-client.ts","GET","/api/sync/lease"],
   ["src/data/sync/sync-client.ts","GET","/api/sync/manifest"],
   ["src/data/sync/sync-client.ts","GET","/api/sync/domains/:domainId"],
+  ["src/data/sync/note-outbox-upload.ts","POST","/api/notes"],
+  ["src/data/sync/note-outbox-upload.ts","PATCH","/api/notes/:id"],
   ["src/api/browser-auth.ts","GET","/api/auth/csrf"],
   ["src/api/browser-auth.ts","POST","/api/auth/callback/credentials"],
   ["src/api/auth-session.ts","POST","/api/auth/register"],
