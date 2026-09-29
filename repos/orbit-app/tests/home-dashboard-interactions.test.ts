@@ -127,7 +127,7 @@ export const writeSnapshot = async () => {};
 
 test.before(async () => {
   const result = await build({
-    stdin: { contents: 'import React from "react"; import { createRoot } from "react-dom/client"; import Route from "./app/home"; import { useFixture } from "fixture"; function App() { const s = useFixture(); return s.mounted ? <Route /> : null; } createRoot(document.getElementById("root")).render(<App />);',
+    stdin: { contents: 'import React from "react"; import { createRoot } from "react-dom/client"; import Route from "./app/home"; import { useFixture } from "fixture"; import { OrbitLocaleContext } from "./src/i18n/OrbitLocaleContext"; import { createTranslator } from "./src/i18n/messages"; function App() { const s = useFixture(); const language = s.language || "zh"; const locale = { choice: language, deviceLanguage: language, error: null, language, preference: { mode: "manual", language, updatedAt: null }, retryLanguageSave: async () => {}, setLanguage: async () => {}, source: "account", syncState: "idle", t: createTranslator(language) }; return s.mounted ? <OrbitLocaleContext.Provider value={locale}><Route /></OrbitLocaleContext.Provider> : null; } createRoot(document.getElementById("root")).render(<App />);',
       loader: "tsx", resolveDir: process.cwd() },
     bundle: true, write: false, format: "iife", jsx: "automatic",
     resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"],
@@ -269,6 +269,24 @@ test("home has one notes shortcut to unfiltered history without writes", async t
   assert.deepEqual(await p.evaluate(() => (window as any).fixture.navigation), ["/notes"]);
   assert.deepEqual(await writes(p), []);
 });
+
+for (const { language, label } of [
+  { language: "zh", label: "笔记" },
+  { language: "ja", label: "メモ" },
+  { language: "en", label: "Notes" },
+]) {
+  test("home shows one translated notes shortcut that stays tappable at narrow large text: " + language, async t => {
+    const p = await open(t, { language, width: 320, fontScale: 1.6 }); await hydrate(p);
+    const notes = p.getByRole("button", { name: label, exact: true });
+    assert.equal(await notes.count(), 1);
+    const box = (await notes.boundingBox())!;
+    assert.ok(box.x >= 0 && box.x + box.width <= 320 && box.width >= 44 && box.height >= 44, JSON.stringify(box));
+    assert.ok(await p.evaluate(() => document.documentElement.scrollWidth <= 320));
+    await notes.click(); await settle(p);
+    assert.deepEqual(await p.evaluate(() => (window as any).fixture.navigation), ["/notes"]);
+    assert.deepEqual(await writes(p), []);
+  });
+}
 
 for (const count of [0, 1, 5, 6]) {
   test("home displays at most five of " + count + " ordered incomplete tasks without changing the real count", async t => {
