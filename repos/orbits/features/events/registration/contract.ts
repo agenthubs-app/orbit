@@ -110,6 +110,31 @@ export interface EventRegistrationStatusRecord {
   status: string | null;
 }
 
+/**
+ * Whole-event read trimmed to what the attendee roster and the anonymous
+ * "who is coming" preview use (W0029), with `EventRegistration`'s paths.
+ *
+ * `participantProfile` is null on rows that are not rsvped (no consumer reads
+ * them). On rsvped rows, stored values that would make the full DTO's
+ * consumers fail are kept as stand-ins that fail the same way (a missing or
+ * null profile/answers → null; any other non-object → 0; a non-string leaf →
+ * 0), so these types only describe well-formed data, as `EventRegistration`'s
+ * do. `status` is not narrowed (see `EventRegistrationStatusRecord`).
+ */
+export interface EventRegistrationRosterEntry {
+  participantProfile: {
+    answers: {
+      industry?: string | null;
+      positioning?: string | null;
+    };
+    displayName?: string | null;
+  } | null;
+  status: string | null;
+}
+
+/** Which consumer a roster read serves: names for the roster, never for the anonymous preview. */
+export type EventRegistrationRosterFields = "attendees" | "preview";
+
 export const EVENT_REGISTRATION_ACTIONS = [
   "apply",
   "register",

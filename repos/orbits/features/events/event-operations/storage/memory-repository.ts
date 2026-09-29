@@ -14,6 +14,7 @@ import {
   type EventOperationsPublishedResult,
 } from "../contract";
 import type { EventRegistration } from "../../registration/contract";
+import { rosterEntryFromRegistration } from "../../registration/roster-entry";
 import {
   createEventRegistrationService,
   createMemoryEventRegistrationProvider,
@@ -1129,6 +1130,12 @@ export function createMemoryEventOperationsRepository(
 
     listCanonicalRegistrations(eventId) {
       return canonicalRegistrationService.list({ eventId });
+    },
+
+    async listCanonicalRosterEntries(eventId, fields) {
+      return (await canonicalRegistrationService.list({ eventId })).map(
+        (registration) => rosterEntryFromRegistration(registration, fields),
+      );
     },
 
     listCanonicalRegistrationsForUser(userId, eventIds) {

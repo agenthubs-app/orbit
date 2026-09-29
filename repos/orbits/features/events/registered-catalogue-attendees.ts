@@ -36,17 +36,19 @@ export async function readRegisteredCatalogueAttendees(input: {
 
   const operationsRepository = createConfiguredEventOperationsRepository();
   if (!operationsRepository) return null;
-  const registrations = await operationsRepository.listCanonicalRegistrations(
+  // Name and positioning only, same rows and failures as the full read (W0029).
+  const registrations = await operationsRepository.listCanonicalRosterEntries(
     eventId,
+    "attendees",
   );
   return {
     attendees: registrations
       .filter((item) => item.status === "rsvped")
       .map((attendee) => ({
         displayName:
-          attendee.participantProfile.displayName?.trim() || "Orbit attendee",
+          attendee.participantProfile!.displayName?.trim() || "Orbit attendee",
         organization: null,
-        role: attendee.participantProfile.answers.positioning?.trim() || null,
+        role: attendee.participantProfile!.answers.positioning?.trim() || null,
       })),
     eventId,
   };

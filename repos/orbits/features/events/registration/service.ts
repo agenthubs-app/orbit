@@ -3,9 +3,12 @@ import {
   type CancelEventRegistrationInput,
   type EventParticipantProfileAnswers,
   type EventRegistration,
+  type EventRegistrationRosterEntry,
+  type EventRegistrationRosterFields,
   type EventRegistrationStatusRecord,
   type RegisterForEventInput,
 } from "./contract";
+import { rosterEntryFromRegistration } from "./roster-entry";
 
 export interface EventRegistrationProvider {
   getRegistration: (
@@ -15,6 +18,14 @@ export interface EventRegistrationProvider {
   listRegistrations: (
     eventId: string,
   ) => Promise<readonly EventRegistration[]>;
+  /**
+   * Same records, order and failure semantics as `listRegistrations`, trimmed
+   * to what the roster or the anonymous preview reads (W0029).
+   */
+  listRegistrationRosterEntries: (
+    eventId: string,
+    fields: EventRegistrationRosterFields,
+  ) => Promise<readonly EventRegistrationRosterEntry[]>;
   listRegistrationsForUser: (
     userId: string,
     eventIds: readonly string[],
@@ -130,6 +141,11 @@ export function createMemoryEventRegistrationProvider(
       return [...registrations.values()]
         .filter((registration) => registration.eventId === eventId)
         .map(clone);
+    },
+    async listRegistrationRosterEntries(eventId, fields) {
+      return (await provider.listRegistrations(eventId)).map((registration) =>
+        rosterEntryFromRegistration(registration, fields),
+      );
     },
     async listRegistrationsForUser(userId, eventIds) {
       const selectedEventIds = new Set(eventIds);

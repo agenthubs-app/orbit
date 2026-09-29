@@ -11,8 +11,17 @@ import { jsDateSafeTimestampSql } from "../../../../shared/storage/postgres-js-d
 import type { LiveRecordSqlClient } from "../../../../shared/storage/postgres-live-record-store";
 import type {
   EventRegistration,
+  EventRegistrationRosterEntry,
+  EventRegistrationRosterFields,
   EventRegistrationStatusRecord,
 } from "../contract";
+import {
+  rosterEntryFromRegistration,
+  rosterEntryFromRow,
+  rosterEntryLeafColumnsSql,
+  rosterEntryShapeSql,
+  type RosterEntryRow,
+} from "../roster-entry";
 import {
   eventRegistrationId,
   eventRegistrationStatusRecord,
@@ -133,6 +142,39 @@ const LEGACY_STATUS_SQL = `
     limit 1
   `;
 
+// Whole-event roster projection (W0029), for the anonymous preview: the full
+// read's WHERE and ORDER BY (`listRecords` with target event, not deleted).
+// Rows the full read cannot parse come back flagged in `k` ('unreadable', or
+// the text of a JSON-string payload); rows `isStoredEventRegistration` or the
+// event id check would drop are not returned at all. For the rest `k` is the
+// rsvped row's profile shape and the leaves stay jsonb (see roster-entry.ts).
+const LEGACY_PROFILE = "(payload #> '{registration,participantProfile}')";
+const LEGACY_RSVPED = `(payload #> '{registration,status}') = '"rsvped"'::jsonb`;
+const LEGACY_ROSTER_SQL = (fields: EventRegistrationRosterFields) => `
+    select
+      case when jsonb_typeof(payload #> '{registration,status}') = 'string'
+        then payload #>> '{registration,status}' end as s,
+      case
+        when ${LEGACY_ROW_UNREADABLE} then 'unreadable'
+        when jsonb_typeof(payload) = 'string' then 'payload:' || (payload #>> '{}')
+        else ${rosterEntryShapeSql(LEGACY_PROFILE, LEGACY_RSVPED)}
+      end as k,
+      ${rosterEntryLeafColumnsSql(LEGACY_PROFILE, `(${LEGACY_RSVPED})`, fields)}
+    from orbit_records
+    where workspace_id = $1
+      and collection_name = '${EVENT_REGISTRATION_COLLECTION}'
+      and lifecycle_state <> 'deleted'
+      and target_type = 'event'
+      and target_id = $2
+      and (
+        (${LEGACY_STORED_REGISTRATION}
+          and payload #>> '{registration,eventId}' = $2)
+        or ${LEGACY_ROW_UNREADABLE}
+        or jsonb_typeof(payload) = 'string'
+      )
+    order by coalesce(occurred_at, updated_at) desc, updated_at desc
+  `;
+
 interface LegacyStatusRow {
   event_id: string | null;
   issue: string | null;
@@ -238,6 +280,36 @@ export function createEventRegistrationLiveRecordProvider({
         const registration = record.payload.registration;
         return registration.eventId === eventId ? [clone(registration)] : [];
       });
+    },
+    async listRegistrationRosterEntries(eventId, fields) {
+      if (!statusSql) {
+        return (await provider.listRegistrations(eventId)).map((registration) =>
+          rosterEntryFromRegistration(registration, fields),
+        );
+      }
+      const rows = await statusSql.read({
+        collectionName: EVENT_REGISTRATION_COLLECTION,
+        key: JSON.stringify(["listRegistrationRosterEntries", workspaceId, eventId, fields]),
+        read: async () =>
+          (await statusSql.client.query<RosterEntryRow>(LEGACY_ROSTER_SQL(fields), [
+            workspaceId,
+            eventId,
+          ])).rows,
+      });
+      const entries: EventRegistrationRosterEntry[] = [];
+      for (const row of rows) {
+        if (row.k === "unreadable") throw new UnreadableEventRegistrationRecordError();
+        if (row.k?.startsWith("payload:")) {
+          // The full read parses a JSON-string payload, then checks it.
+          const payload = JSON.parse(row.k.slice("payload:".length)) as Record<string, unknown>;
+          if (isStoredEventRegistration(payload) && payload.registration.eventId === eventId) {
+            entries.push(rosterEntryFromRegistration(clone(payload.registration), fields));
+          }
+          continue;
+        }
+        entries.push(rosterEntryFromRow(row, fields));
+      }
+      return entries;
     },
     async listRegistrationsForUser(userId, eventIds) {
       if (eventIds.length === 0) return [];

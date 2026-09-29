@@ -12,6 +12,8 @@ import { createConfiguredEventOperationsRegistrationWindowProvider } from "./sto
 import { createConfiguredEventRegistrationProvider } from "./storage/live-record-provider";
 import type {
   EventRegistration,
+  EventRegistrationRosterEntry,
+  EventRegistrationRosterFields,
   EventRegistrationStatusRecord,
 } from "./contract";
 
@@ -178,6 +180,29 @@ export async function readRuntimeEventRegistrationStatus(input: {
     : eventOperationsRepository.getCanonicalRegistrationStatus(
         input.eventId,
         input.userId,
+      );
+}
+
+/**
+ * Trimmed counterpart of `eventRegistrationRuntimeService.list` (W0029): the
+ * same routing (no canonical repository → legacy; otherwise one enrollment
+ * read, then legacy or canonical), returning only what the roster or the
+ * anonymous preview reads.
+ */
+export async function listRuntimeEventRosterEntries(input: {
+  eventId: string;
+  fields: EventRegistrationRosterFields;
+}): Promise<readonly EventRegistrationRosterEntry[]> {
+  if (!eventOperationsRepository) {
+    return runtimeProvider.listRegistrationRosterEntries(input.eventId, input.fields);
+  }
+  const enrollment = await runtimeWindowProvider.getEnrollment(input.eventId);
+  return enrollment.state === "legacy_unenrolled" ||
+    enrollment.state === "legacy_importing"
+    ? runtimeProvider.listRegistrationRosterEntries(input.eventId, input.fields)
+    : eventOperationsRepository.listCanonicalRosterEntries(
+        input.eventId,
+        input.fields,
       );
 }
 
