@@ -251,20 +251,22 @@ test("search, shortcuts, inbox and real record destinations work without implici
   const p = await open(t); await hydrate(p);
   const search = p.getByRole("textbox", { name: "搜索人脉" });
   await search.fill(" 林 悦 "); await search.press("Enter"); await settle(p);
-  for (const name of ["收件箱", "扫名片", "查看日程", "新建待办", "记笔记", "查看待办：发送项目介绍", "查看日程：设计分享会", "查看活动：周末产品交流会"]) await press(p, name);
+  for (const name of ["收件箱", "扫名片", "查看日程", "新建待办", "笔记", "查看待办：发送项目介绍", "查看日程：设计分享会", "查看活动：周末产品交流会"]) await press(p, name);
   assert.deepEqual(await p.evaluate(() => (window as any).fixture.navigation), [
-    "/contacts/list?q=%E6%9E%97%20%E6%82%A6", "/inbox", "/contacts/new", "/schedule", "/today", "/notes/new",
+    "/contacts/list?q=%E6%9E%97%20%E6%82%A6", "/inbox", "/contacts/new", "/schedule", "/today", "/notes",
     "/tasks/task%3A%2Fone", "/events/event%3A%2Fone", "/events/event%3A%2Fone"
   ]);
   assert.equal(await p.getByRole("button", { name: "联系跟进", exact: true }).count(), 0);
   assert.deepEqual(await writes(p), []);
 });
 
-test("home keeps quick create and opens global saved-note history without filters or writes", async t => {
+test("home has one notes shortcut to unfiltered history without writes", async t => {
   const p = await open(t); await hydrate(p);
-  assert.equal(await p.getByRole("button", { name: "所有笔记", exact: true }).count(), 1);
-  await press(p, "所有笔记"); await press(p, "记笔记");
-  assert.deepEqual(await p.evaluate(() => (window as any).fixture.navigation), ["/notes", "/notes/new"]);
+  assert.equal(await p.getByRole("button", { name: "笔记", exact: true }).count(), 1);
+  assert.equal(await p.getByRole("button", { name: "所有笔记", exact: true }).count(), 0);
+  assert.equal(await p.getByRole("button", { name: "记笔记", exact: true }).count(), 0);
+  await press(p, "笔记");
+  assert.deepEqual(await p.evaluate(() => (window as any).fixture.navigation), ["/notes"]);
   assert.deepEqual(await writes(p), []);
 });
 
@@ -449,7 +451,7 @@ test("standard home keeps a two-column editorial layout with real counts and lar
   await hydrate(p);
   assert.equal(await p.getByTestId("home-day-sections").evaluate(el => getComputedStyle(el).flexDirection), "row");
   assert.match(await p.locator("body").innerText(), /3 项日程 · 5 项待办/);
-  for (const name of ["收件箱", "扫名片", "查看日程", "新建待办", "记笔记", "完成待办：发送项目介绍", "查看待办：发送项目介绍", "查看活动：周末产品交流会"]) {
+  for (const name of ["收件箱", "扫名片", "查看日程", "新建待办", "笔记", "完成待办：发送项目介绍", "查看待办：发送项目介绍", "查看活动：周末产品交流会"]) {
     const box = (await p.getByRole("button", { name, exact: true }).boundingBox())!;
     assert.ok(box.width >= 44 && box.height >= 44, name + " is a full touch target");
   }
@@ -491,7 +493,7 @@ test("the source large-text setting stacks day sections and keeps the three avai
   await p.waitForFunction(() => (window as any).fixture.requests.length === 4); await hydrate(p);
   assert.equal(await p.getByTestId("home-day-sections").evaluate(el => getComputedStyle(el).flexDirection), "column");
   const first = (await p.getByRole("button", { name: "扫名片", exact: true }).boundingBox())!;
-  const last = (await p.getByRole("button", { name: "记笔记", exact: true }).boundingBox())!;
+  const last = (await p.getByRole("button", { name: "笔记", exact: true }).boundingBox())!;
   assert.equal(first.y, last.y);
   const textSize = await p.getByRole("button", { name: "查看日程：林悦 · 合作沟通" }).getByText("林悦 · 合作沟通").evaluate(el => parseFloat(getComputedStyle(el).fontSize));
   assert.ok(textSize >= 15.5 && textSize <= 16);

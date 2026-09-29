@@ -120,6 +120,14 @@ test("notes list searches, filters, follows stable ids and appends the next page
   await page.waitForFunction(() => (window as any).fixture.latestPath.includes("association=events"));
 });
 
+test("notes list creates through the new-note route without writing on navigation", async (t) => {
+  const page = await open(t);
+  await page.getByText("发布会准备", { exact: true }).waitFor();
+  await page.getByRole("button", { name: "新建笔记", exact: true }).click();
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), ["/notes/new"]);
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);
+});
+
 test("notes list caps accessibility text at two times and keeps labels readable", async (t) => {
   const page = await open(t, { fontScale: 3.1 });
   await page.getByText("发布会准备", { exact: true }).waitFor();
