@@ -445,9 +445,35 @@ export function createPlanService(options: CreatePlanServiceOptions): PlanServic
   }
 
   /**
+   * W0023（review P2）：新版本里带入的「约 TA」行动，`meta.needItemId` 改指新版本里取代旧需求的那条
+   * （旧需求 id = 新需求的 `carriedFromItemId`）。旧行动还指向更早版本的需求时（本修复之前生成的数据），
+   * 先经当前生效版本里的需求多解析一层。找不到对应需求的保持原样。就地替换各数组里的行动。
+   */
+  function reanchorMatchActions(lists: PlanItem[][], oldItems: readonly PlanItem[]): void {
+    const newNeedByOldId = new Map<string, PlanItem>();
+    for (const item of lists.flat()) {
+      if (item.kind === "network_need" && item.carriedFromItemId) newNeedByOldId.set(item.carriedFromItemId, item);
+    }
+    const oldNeedByPreviousId = new Map<string, PlanItem>();
+    for (const item of oldItems) {
+      if (item.kind === "network_need" && item.carriedFromItemId) oldNeedByPreviousId.set(item.carriedFromItemId, item);
+    }
+    for (const list of lists) {
+      list.forEach((item, index) => {
+        if (item.kind !== "action" || item.meta.source !== PLAN_MATCH_ACTION_SOURCE || !item.carriedFromItemId) return;
+        const pointed = String(item.meta.needItemId ?? "");
+        const oldNeedId = oldNeedByPreviousId.get(pointed)?.id ?? pointed;
+        const target = newNeedByOldId.get(oldNeedId);
+        if (target && target.id !== pointed) list[index] = { ...item, meta: { ...item.meta, needItemId: target.id } };
+      });
+    }
+  }
+
+  /**
    * W0023：新版本（下一份计划、重新分析）为带入的人脉需求上每个仍是 linked 的联系人生成一条当周「约 TA」。
-   * 跳过：已建立联系；新版本里已有这一对的「约 TA」（含带入的已完成行动，其 `meta.needItemId`
-   * 指向旧版本的需求）；联系人已删除或不属于本人（一次批量校验）；超出 `itemsPerPlan` 的部分。
+   * 跳过：已建立联系；新版本里已有这一对的「约 TA」（含带入的已完成行动——带入时已由
+   * `reanchorMatchActions` 锚定到新需求；本修复前生成的旧数据再按两层前驱兜底）；联系人已删除或不属于本人
+   * （一次批量校验）；超出 `itemsPerPlan` 的部分。
    */
   async function matchActionsForNewVersion(input: {
     items: readonly PlanItem[];
@@ -462,7 +488,7 @@ export function createPlanService(options: CreatePlanServiceOptions): PlanServic
     const lineage = (need: PlanItem): Set<string> => {
       const ids = new Set([need.id]);
       let previous = need.carriedFromItemId;
-      // 旧版本里的需求自己也可能是更早版本带入的：只能往回看到当前生效版本的这一层。
+      // 兜底：本修复前带入的行动可能仍指向更早版本的需求，往回看两层（新数据由重新锚定保证一层即可）。
       if (previous) ids.add(previous);
       previous = previous ? (input.oldById.get(previous)?.carriedFromItemId ?? null) : null;
       if (previous) ids.add(previous);
@@ -769,6 +795,10 @@ export function createPlanService(options: CreatePlanServiceOptions): PlanServic
             suggestedWeek: null,
             updatedAt: at,
           }));
+
+        // W0023（review P2）：带入的「约 TA」把 `meta.needItemId` 重新锚定到新版本里对应的需求，
+        // 保持「行动指向同一版本里的需求」这一不变式；任意多个版本之后仍能认出同一对，不必回读归档版本。
+        reanchorMatchActions([items, carried], oldItems);
 
         // W0023：下一份计划／重新分析（带 origin）在同一事务里为带入的已关联需求生成当周「约 TA」。
         const scheduled = origin

@@ -407,7 +407,7 @@ test("W0023 SC-03: the next plan schedules one 约 TA per carried, still-linked 
   const snapshot = next.snapshot;
   const newNeed = snapshot.items.find((item) => item.kind === "network_need" && item.carriedFromItemId === need.id)!;
   assert.ok(newNeed, "the linked need is carried");
-  const generated = matchActionsOf(snapshot).filter((item) => item.meta.needItemId === newNeed.id);
+  const generated = matchActionsOf(snapshot).filter((item) => item.meta.needItemId === newNeed.id && item.carriedFromItemId === null);
   assert.deepEqual(generated.map((item) => [item.title, item.meta.contactId]).sort(), [
     ["约 佐藤", "contact:sato"],
     ["约 加藤", "contact:kato"],
@@ -421,9 +421,11 @@ test("W0023 SC-03: the next plan schedules one 约 TA per carried, still-linked 
     assert.equal(action.meta.source, "network_match");
     assert.deepEqual(action.contactLinks.map((link) => [link.contactId, link.state]), [[action.meta.contactId, "linked"]]);
   }
-  // tanaka 的已完成行动被带入（meta 仍指向旧需求），不再生成；suzuki 已建立联系；gone 已删除。
-  const carriedDone = matchActionsOf(snapshot).filter((item) => item.status === "done").map((item) => item.meta.contactId).sort();
-  assert.deepEqual(carriedDone, ["contact:suzuki", "contact:tanaka"]);
+  // tanaka 的已完成行动被带入，不再生成；suzuki 已建立联系；gone 已删除。
+  // review P2：带入的「约 TA」重新锚定到新版本里的需求。
+  const carriedDone = matchActionsOf(snapshot).filter((item) => item.status === "done");
+  assert.deepEqual(carriedDone.map((item) => item.meta.contactId).sort(), ["contact:suzuki", "contact:tanaka"]);
+  assert.ok(carriedDone.every((item) => item.meta.needItemId === newNeed.id && item.carriedFromItemId !== null));
   assert.equal(matchActionsOf(snapshot).filter((item) => item.meta.contactId === "contact:gone").length, 0);
   assert.equal(matchActionsOf(snapshot).length, 4);
   const created = snapshot.log.find((entry) => entry.event === "plan_created")!;
@@ -498,4 +500,31 @@ test("W0023 SC-03: a failing generation step leaves both versions untouched", as
   await assert.rejects(followUp.create(request(v1.plan.id, "next-x", "next_plan")), /reference lookup failed/);
   assert.deepEqual(tracked.inner.dump({ actorId: ME, workspaceId: "w" }), before);
   assert.equal((await plans.getCurrent())?.plan.id, v1.plan.id);
+});
+
+test("W0023 review P2: a done 约 TA on a still-linked pair is never scheduled again across 4 and 5 versions", async () => {
+  const clock = { now: IN_WEEK_2 };
+  const { plans } = harness({ clock });
+  const v1 = await plans.createVersion(planInput({ startsOn: START }));
+  const need = v1.items.find((item) => item.kind === "network_need")!;
+  // v1 第 2 周：tanaka 关联并生成「约 TA」，直接勾完成（关联仍是 linked）。
+  const tanaka = await plans.linkNeedContact({ contactId: "contact:tanaka", contactName: "田中", needItemId: need.id });
+  await plans.updateItem({ change: { op: "set_status", status: "done" }, itemId: tanaka.action!.id });
+  let current = v1;
+  let startsOn = START;
+  for (let version = 2; version <= 5; version += 1) {
+    // 每一版都到期后再制定下一份（13 周计划，往后推 14 周）。
+    const next = new Date(Date.parse(`${startsOn}T03:00:00.000Z`) + 14 * 7 * 86_400_000);
+    clock.now = next.toISOString();
+    startsOn = clock.now.slice(0, 10);
+    const { snapshot } = await plans.createVersionWithOutcome(
+      planInput({ basePlanId: current.plan.id, startsOn }),
+      { contactNames: { "contact:tanaka": "田中" }, origin: "next_plan" },
+    );
+    const meets = matchActionsOf(snapshot).filter((item) => item.meta.contactId === "contact:tanaka");
+    assert.equal(meets.length, 1, `version ${version}: exactly one 约 TA for the pair`);
+    assert.equal(meets[0]!.status, "done", `version ${version}: it is the carried done action`);
+    assert.equal(snapshot.log.find((entry) => entry.event === "plan_created")!.payload.matchActionCount, 0);
+    current = snapshot;
+  }
 });
