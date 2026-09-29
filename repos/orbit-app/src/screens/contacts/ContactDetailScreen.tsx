@@ -108,8 +108,14 @@ export function ContactDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: s
     return parsed.success && parsed.data.contact.id === contactId ? parsed.data : null;
   }, [local.available, local.freshness.readable, local.rows, contactId]);
   const unreachable = state.kind === "offline" || state.kind === "failure";
-  const fromDevice = state.kind !== "success" && state.kind !== "empty" && localDetail !== null;
-  const offlineCopy = fromDevice && unreachable;
+  // A failed refresh intentionally leaves useApiResource's last successful
+  // snapshot in place. When the account-scoped contacts mirror is readable
+  // and reports an offline sync, that snapshot is not evidence of a live
+  // response: use the validated device detail and keep its write gate.
+  const fromDevice = localDetail !== null && (
+    (state.kind !== "success" && state.kind !== "empty") || local.freshness.offline
+  );
+  const offlineCopy = fromDevice && (unreachable || local.freshness.offline);
   const eligibilityState = useApiResource<unknown>(
     relationshipCommunicationEligibilityPath(contactId),
     () => false,
@@ -137,7 +143,8 @@ export function ContactDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: s
   if (state.kind === "success" || state.kind === "empty") lastValidDetail.current = { scope, data: state.data };
   // A malformed refresh must remain visible as an error without discarding a
   // note already being edited. Never reuse this data across identity scopes.
-  const detailData = state.kind === "success" || state.kind === "empty" ? state.data
+  const detailData = offlineCopy ? localDetail
+    : state.kind === "success" || state.kind === "empty" ? state.data
     : (rawState.kind === "success" || rawState.kind === "empty") && lastValidDetail.current?.scope === scope ? lastValidDetail.current.data
     : localDetail;
   const mounted = useRef(true);

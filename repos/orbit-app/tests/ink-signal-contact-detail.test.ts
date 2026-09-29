@@ -62,7 +62,7 @@ export const useOrbitApiBaseUrl = () => { observe(); return { ready: state.baseR
 export const useOrbitLocale = () => { observe(); return { language: state.language, t: createTranslator(state.language) }; };
 export const useIsFocused = () => { observe(); return state.focused; };
 export const useLocalSearchParams = () => { observe(); return { id: state.contactId }; };
-export const useLocalContacts = () => { observe(); return state.localContacts ?? (state.localReadable ? { available: true, rows: [{ id: state.contactId, card: null, tags: [], search: { text: "", occurredAt: "", updatedAt: "", error: null }, detail: { state: "success", contact: state.contact } }], freshness: { readable: true, offline: true, loading: false, failure: false, refreshing: false, lastSyncedAt: "2026-09-28T12:00:00.000Z" }, refresh() {} } : { available: true, rows: [], freshness: { readable: true, offline: true, loading: false, failure: false, refreshing: false, lastSyncedAt: "2026-09-28T12:00:00.000Z" }, refresh() {} }); };
+export const useLocalContacts = () => { observe(); return state.localContacts ?? (state.localReadable ? { available: true, rows: [{ id: state.contactId, card: null, tags: [], search: { text: "", occurredAt: "", updatedAt: "", error: null }, detail: { state: "success", contact: state.localContact ?? state.contact } }], freshness: { readable: true, offline: state.localOffline ?? true, loading: false, failure: false, refreshing: false, lastSyncedAt: "2026-09-28T12:00:00.000Z" }, refresh() {} } : { available: true, rows: [], freshness: { readable: true, offline: true, loading: false, failure: false, refreshing: false, lastSyncedAt: "2026-09-28T12:00:00.000Z" }, refresh() {} }); };
 export const useGlobalSearchParams = useLocalSearchParams;
 export const usePathname = () => "/contacts/" + encodeURIComponent(state.contactId);
 export const useRouter = () => ({ canGoBack: () => state.canGoBack, back() { state.navigation.push("back"); }, replace(href) { state.navigation.push(href); }, push(href) { state.navigation.push(href); } });
@@ -192,6 +192,36 @@ test("offline detail uses its device copy, marks unavailable relationship analys
   await p.getByRole("button", { name: /完整资料/ }).click(); await settle(p);
   await p.getByText("需要联网", { exact: true }).last().waitFor();
   assert.doesNotMatch(await p.locator("body").innerText(), /PRIVATE_NETWORK_ERROR_MARKER|UNAVAILABLE|服务器连不上/);
+  assert.deepEqual(await writes(p), []);
+});
+
+test("readable offline mirror wins over a cached successful detail response", async t => {
+  // A mounted API snapshot may remain success after a failed re-entry read.
+  // The local mirror's offline/readable signal is the authoritative freshness
+  // boundary in that case, and must still gate editing.
+  const p = await open(t, { localReadable: true, localOffline: false });
+  await p.getByText("林悦", { exact: true }).waitFor();
+  await p.evaluate(() => { const s = (window as any).fixture; s.update({ offlineRead: true, localOffline: true, localContact: { ...s.contact, displayName: "本机镜像联系人" } }); });
+  await settle(p);
+  await p.evaluate(() => (window as any).fixture.refresh());
+  await settle(p);
+  await p.getByText(/截至/).waitFor();
+  assert.equal(await p.getByText("本机镜像联系人", { exact: true }).count(), 1);
+  assert.equal(await p.getByRole("button", { name: "需要联网", exact: true }).count(), 1);
+  assert.equal(await p.getByRole("heading", { name: "编辑人脉", exact: true }).count(), 0);
+  assert.equal(await p.getByRole("button", { name: "编辑资料", exact: true }).count(), 0);
+  assert.deepEqual(await writes(p), []);
+});
+
+test("a failed detail read can still use a readable mirror before its sync reports offline", async t => {
+  const p = await open(t, { offlineRead: true, localReadable: true, localOffline: false });
+  await p.evaluate(() => { const s = (window as any).fixture; s.update({ localContact: { ...s.contact, displayName: "镜像联系人" } }); });
+  await settle(p);
+  await p.getByText("镜像联系人", { exact: true }).waitFor();
+  await p.getByText(/截至/).waitFor();
+  assert.equal(await p.getByRole("button", { name: "需要联网", exact: true }).count(), 1);
+  assert.equal(await p.getByRole("button", { name: "编辑资料", exact: true }).count(), 0);
+  assert.doesNotMatch(await p.locator("body").innerText(), /PRIVATE_NETWORK_ERROR_MARKER|ORBIT_APP_NETWORK_ERROR|关系状态读取失败/);
   assert.deepEqual(await writes(p), []);
 });
 
