@@ -52,6 +52,13 @@ export interface LiveAccountSessionProvider {
    * Optional: callers fall back to the full graph when a provider lacks it.
    */
   readAccountSessionIdentity?: (identity?: LiveAccountSessionIdentityInput) => LiveAccountSessionProviderResult<LiveAccountSessionIdentity>;
+  /**
+   * Deep-equal to `readAccountSessionGraph` for the same data (accounts, profiles, evidenceIds,
+   * generatedAt) with the same statements, order, fallback and failure semantics, but each statement
+   * returns only the session payload fields, `updated_at`, `evidence_ids` and a readability flag
+   * (W0031, used by `/api/account/me`). Optional: callers fall back to the full graph.
+   */
+  readAccountSessionView?: (identity?: LiveAccountSessionIdentityInput) => LiveAccountSessionProviderResult<LiveAccountSessionGraph>;
 }
 
 export const ACCOUNT_SESSION_LIVE_RECORD_COLLECTIONS = {
@@ -267,6 +274,76 @@ function createIdentitySqlReader(
   };
 }
 
+// Session view (W0031): the payload fields `readAccountSessionGraph` projects, plus exactly the
+// row metadata its graph derives from every raw row (valid or not): `updated_at` → generatedAt,
+// `evidence_ids` → evidenceIds. Where, order and parameters are `identitySql`'s (= `listQuery`).
+function sessionViewSql(lookupField: "id" | "accountId"): string {
+  return `
+      select
+        (select coalesce(jsonb_object_agg(field.key, field.value), '{}'::jsonb)
+          from jsonb_each(payload) field where field.key = any($4::text[])) as payload,
+        updated_at,
+        evidence_ids,
+        ${IDENTITY_ROW_READABLE} as readable
+      from orbit_records
+      where workspace_id = $1 and payload ->> '${lookupField}' = $2 and collection_name = $3 and lifecycle_state <> 'deleted'
+      order by coalesce(occurred_at, updated_at) desc, updated_at desc
+    `;
+}
+
+const SESSION_VIEW_BY_ID_SQL = sessionViewSql("id");
+const SESSION_VIEW_BY_ACCOUNT_ID_SQL = sessionViewSql("accountId");
+// Dedupe keys share the configured store's in-flight table with every other custom read (e.g. the
+// W0030 identity read of the same subject): purpose + projection version keep them apart.
+const SESSION_VIEW_READ_PURPOSE = "account-session-view:v1";
+
+interface SessionViewRow {
+  evidence_ids?: readonly string[] | null;
+  payload: Record<string, unknown>;
+  readable: boolean;
+  updated_at: Date | string;
+}
+
+// `rowToRecord`'s updatedAt: Date → ISO string, non-blank string as is.
+function sessionViewUpdatedAt(value: Date | string): string {
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value === "string" && value.trim()) return value;
+  throw new Error("orbit_records.updated_at is required");
+}
+
+function createSessionViewSqlReader(
+  { client, read }: AccountSessionIdentitySql,
+  workspaceId: string,
+) {
+  return (
+    collectionName: "accounts" | "profiles",
+    lookupField: "id" | "accountId",
+    value: string,
+  ): Promise<LiveRecord<Record<string, unknown>>[]> => {
+    const text = lookupField === "accountId" ? SESSION_VIEW_BY_ACCOUNT_ID_SQL : SESSION_VIEW_BY_ID_SQL;
+    const fields = collectionName === "accounts" ? ACCOUNT_SESSION_FIELDS : PROFILE_SESSION_FIELDS;
+
+    return read({
+      collectionName,
+      key: JSON.stringify([SESSION_VIEW_READ_PURPOSE, workspaceId, collectionName, lookupField, value, fields]),
+      read: async () => {
+        const { rows } = await client.query<SessionViewRow>(text, [workspaceId, value, collectionName, fields]);
+
+        return rows.map((row) => {
+          if (row.readable !== true) {
+            throw new Error("orbit_records.created_at/updated_at is required");
+          }
+          return {
+            evidenceIds: row.evidence_ids ? [...row.evidence_ids] : [],
+            payload: row.payload,
+            updatedAt: sessionViewUpdatedAt(row.updated_at),
+          } as unknown as LiveRecord<Record<string, unknown>>; // only the fields the graph derives from
+        });
+      },
+    });
+  };
+}
+
 export function createStorageAccountSessionProvider({
   identitySql: identitySqlOption,
   requireIdentity = false,
@@ -276,6 +353,7 @@ export function createStorageAccountSessionProvider({
   workspaceId,
 }: StorageAccountSessionProviderOptions): LiveAccountSessionProvider {
   const readIdentityRows = identitySqlOption ? createIdentitySqlReader(identitySqlOption, workspaceId) : null;
+  const readSessionViewRows = identitySqlOption ? createSessionViewSqlReader(identitySqlOption, workspaceId) : null;
 
   const provider: LiveAccountSessionProvider = {
     source: source ?? `live-record-store:account-session:${workspaceId}`,
@@ -305,6 +383,27 @@ export function createStorageAccountSessionProvider({
           .map((payload) => profileFromRecord(identityRecord(payload)))
           .filter((item): item is LiveAccountProfileRecord => item !== null)
           .map(profileIdentity),
+      };
+    },
+    async readAccountSessionView(identity): Promise<LiveAccountSessionGraph> {
+      const subject = (identity?.profileId ?? identity?.userId ?? identity?.accountId)?.trim();
+      if (!readSessionViewRows || !subject) {
+        // No SQL (memory stores, scripts, tests) or no subject: the full read decides.
+        return provider.readAccountSessionGraph(identity);
+      }
+      // Statements, order and fallback of the full read; records carry only what it derives from.
+      let profileRecords = await readSessionViewRows("profiles", "id", subject);
+      if (profileRecords.length === 0) {
+        profileRecords = await readSessionViewRows("profiles", "accountId", identity?.accountId ?? subject);
+      }
+      const ids = [...new Set(profileRecords.map(record => record.payload.accountId).filter(nonEmptyString))];
+      const accountRecords = (await Promise.all(ids.map(payloadId => readSessionViewRows("accounts", "id", payloadId)))).flat();
+      const records = [...accountRecords, ...profileRecords];
+      return {
+        accounts: accountRecords.map(accountFromRecord).filter((item): item is AccountDTO => item !== null),
+        profiles: profileRecords.map(profileFromRecord).filter((item): item is LiveAccountProfileRecord => item !== null),
+        evidenceIds: evidenceIdsFor(records),
+        generatedAt: latestTimestamp(records),
       };
     },
     async readAccountSessionGraph(identity): Promise<LiveAccountSessionGraph> {

@@ -272,9 +272,15 @@ async function currentSession(
     );
   }
 
+  // W0031: the session view returns the same graph with far fewer bytes; providers without it
+  // (mock, memory, scripts) keep the full graph.
+  const graph = provider.readAccountSessionView
+    ? await provider.readAccountSessionView(identity)
+    : await provider.readAccountSessionGraph(identity);
+
   return success(
     sessionPayload(
-      await provider.readAccountSessionGraph(identity),
+      graph,
       provider,
       identity,
     ),
