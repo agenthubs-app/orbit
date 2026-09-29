@@ -44,6 +44,8 @@
 | D30 | W32-1～6 | W32-1 只做字段瘦身，不做同请求只检查一次；W32-2 不允许跨请求缓存；W32-3 单次字节 ≤改前 30% 为硬条件，月上限 ≤2.0 GB 单独记账，实测超出时放宽上限不扩大改动；W32-4 频次沿用 W0031 实测并按实测补齐；W32-5 读库失败即登出保持不变并补 Auth.js 集成测试；W32-6 密码重设提交时驱逐进行中的检查（2026-09-29） | W0032 |
 | D31 | 登录会话有效性检查在多实例下的保证范围 | 所有实例都绝对保证：该检查不参加进程内去重（每次检查唯一 key），只过闸门与计量；取代 D30 的 W32-6 驱逐方案（2026-09-29） | W0032 |
 | D32 | W0032 SC-04 月上限超 2.0 GB；各本账合计约 4.9–6.3 GB | W0032 本路径上限放宽到 ≤3.0 GB；先发布，W0019 加发布门：上线后每周看 Neon 出站，到 3.5 GB 启动下一轮瘦身（收件箱轮询间隔、轮询端点自身账号解析等）或升级套餐（2026-09-29） | W0032、W0019 |
+| D33 | W19-1：生产运行时（Vercel Node 24.x；Neon PG 16.15，`und-x-icu` collversion 153.14）不在排序／联系人搜索白名单 | 发布前另开 H 档 W0034：在与生产同组合的环境跑差分测试后加入白名单；白名单不卡 Node patch；检查失败时服务端日志记下实际版本元组；不碰生产库（2026-09-29） | W0034、W0019 |
+| D34 | W19-2～6 | 发布 W0019 合并后的 chat-agent HEAD；G3 公开目录已只读确认无「已发布未激活」活动；D32 的 3.5 GB 触发口径＝当月累计或按日均外推到月底任一 ≥3.5 GB；读不到精确版本时直接标阻塞；W0019 为文档＋全量对照，不另做 Codex 方案 review。生产缺计划／引导相关表，上线前迁移属写操作，届时单独授权；Vercel 连接器缺 team `liqys-projects-33c8ddec` 权限，用户择时重新授权（2026-09-29） | W0019、W0020 |
 
 ## 发布动作（需要单独授权）
 
@@ -75,7 +77,7 @@
 | [W0016](W0016-verify-environment/GOAL.md) | 另起开示例开关的验收 server，建测试账号并造好各场景数据，名片照片裁成单张 | RV-01 | 大目标 1 全部 completed | completed |
 | [W0017](W0017-traffic-guard/GOAL.md) | 3 个计划维护任务改为每天最多一次（持久、跨实例），名片匹配补跑空闲时只做轻查询；新增读取路径逐一测量并估算月流量 | RV-03 | 无 | completed |
 | [W0018](W0018-scenario-acceptance/GOAL.md) | 逐场景真实页面验收（桌面＋手机），修小问题，交验收报告页面 | RV-02 | W0016、W0017、W0021 | completed |
-| [W0019](W0019-release-checklist/GOAL.md) | 生产上线清单 + 大目标收口的本地全量对照 | RV-04 | W0018、W0022～W0033；须含 W0025 发布门（生产 Node/ICU 与 Neon PG/排序规则版本，含联系人搜索） | planned |
+| [W0019](W0019-release-checklist/GOAL.md) | 生产上线清单 + 大目标收口的本地全量对照 | RV-04 | W0018、W0022～W0034；须含 W0025 发布门（生产 Node/ICU 与 Neon PG/排序规则版本，含联系人搜索） | planned |
 | [W0020](W0020-preview-verify/GOAL.md) | Preview 复验关键场景并测量 Neon 流量 | RV-04 | W0019；用户授权 Preview 部署、迁移、开关、测试数据 | planned |
 | [W0021](W0021-read-traffic-trim/GOAL.md) | 计划／匹配／名片／活动归属读取瘦身，1000 人月出站 ≤1.0 GB，活动归属按时间窗口读取，页面不变 | RV-05 | W0017 | completed |
 | [W0022](W0022-home-guide-entry/GOAL.md) | 老用户首页「帮我制定推进计划」改去引导第 3 步（`?step` 不绕过硬顺序）；有计划但第 4 步未完成时首页留提醒 | RW-04、RW-10 | W0018；W22-1～4 已定（D13） | completed |
@@ -89,6 +91,7 @@
 | [W0030](W0030-account-session-graph-trim/GOAL.md) | 账号会话图读取（`readAccountSessionGraph`／`resolveAuthenticatedApiActorFromSession`）只返回判定所需字段，22 个调用方行为不变；详情页账号解析单次字节与月流量实测回到上限内 | RV-03、RV-05 | W0027、W0028（D22 顺序）；W30-1～4 已定（D23） | completed |
 | [W0031](W0031-inbox-identity-polling/GOAL.md) | 收件箱轮询与 `/api/account/me` 瘦身：每个轮询周期只确认一次身份，账号会话服务只返回页面所需字段；按生产构建实测频次并估算月流量 | RV-03、RV-05 | W0029（顺序）、W0030（D24）；W31-1～5 已定（D25） | completed |
 | [W0032](W0032-session-revocation-read/GOAL.md) | 登录会话有效性检查（`isPasswordSessionCurrent`）读取瘦身：生产构建实测每请求读取与月流量，只读判定所需字段或同请求只读一次，安全行为不变 | RV-03、RV-05 | W0031（D28）；W32 已定（D30、D31） | completed |
+| W0034 | 排序与联系人搜索运行时白名单覆盖生产组合（Node 24.x、PG 16.15／ICU collversion 153.14）：同组合差分测试、白名单不卡 Node patch、失败时记录实际元组（GOAL/PLANNER 待编制） | RV-04 | W0019 只读核查（D33） | planned |
 | [W0033](W0033-notification-source-404/GOAL.md) | 通知来源页 id 重复编码导致 404 的修复（L） | RV-02 | W0031（D29） | completed |
 
 全部 Sprint 都已有 GOAL 与 PLANNER（2026-09-28 编制；大目标 1 与大目标 2 各经 Codex `gpt-5.6-sol` 方案 review 后修订为 revision 2，review 意见与处理见 [REVIEW-2026-09-28.md](REVIEW-2026-09-28.md)）。`planned` 表示前置 Sprint 尚未 completed；前置完成后改为 `ready`。
