@@ -54,7 +54,8 @@ export const useRelationshipInboxBadgeCount = () => 0;
 export const randomUUID = () => "unified-task-test-" + ++nextId;
 // Sprint 0078: the Web task source is mirror-first; these screen fixtures keep the network read authoritative.
 export const useWebMirrorStatus = () => ({ mode: "online-only", reason: "no-opfs" });
-export const useSyncedCollection = () => ({ status: "local-ready", records: [], error: null, lastSyncedAt: null, workspaceId: null, refresh: async () => null, invalidate: async () => null });
+const noCoordinatorSession = () => null;
+export const useSyncedCollection = () => ({ status: "local-ready", records: [], error: null, lastSyncedAt: null, workspaceId: null, refresh: async () => null, invalidate: async () => null, currentSession: noCoordinatorSession });
 // Sprint 0131: page copies open the coordinator session; this harness has no device mirror.
 export const useSyncCoordinatorSession = () => null;
 `;

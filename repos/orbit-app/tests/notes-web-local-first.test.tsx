@@ -23,6 +23,11 @@ const note = (id, title, minute, extra = {}) => ({ id, accountId: "account:one",
 const mirrorNotes = () => [note("note:1", "发布会准备", 3, { manualContactIds: ["contact:a"], contactIds: ["contact:a"] }), note("note:2", "预算确认", 2, { eventIds: ["event:a"] })];
 const serverNotes = () => [note("note:srv", "服务器上的笔记", 4)];
 export const state = window.fixture = { requests: [], apiClientRefs: [], navigation: [], syncs: 0, invalidations: 0, status: "fresh", mirror: "local-mirror", ...window.initialFixture };
+const noCoordinatorSession = () => null;
+const syncedRecords = {
+  note: mirrorNotes().map(payload => ({ id: payload.id, payload })),
+  task: (state.tasks ?? []).map(payload => ({ id: payload.id, payload })),
+};
 export const useLocalSearchParams = () => window.fixture.params ?? {};
 export const usePathname = () => "/notes";
 export const useRouter = () => ({ canGoBack: () => Boolean(state.canGoBack), back() { state.navigation.push("back"); }, push(href) { state.navigation.push(href); }, replace(href) { state.navigation.push("replace:" + href); } });
@@ -32,9 +37,10 @@ export const useSyncCoordinatorSession = () => null;
 export const useSyncedCollection = ({ kind }) => ({
   status: state.status, error: state.status === "stale" ? "Network request failed" : null,
   lastSyncedAt: "2026-09-27T05:40:00.000Z", workspaceId: "workspace:one",
-  records: kind === "note" ? mirrorNotes().map(payload => ({ id: payload.id, payload })) : (state.tasks ?? []).map(payload => ({ id: payload.id, payload })),
+  records: kind === "note" ? syncedRecords.note : syncedRecords.task,
   refresh: async () => { state.syncs++; return null; },
   invalidate: async () => { state.invalidations++; const created = state.created ? [{ id: state.created.id, payload: state.created }] : []; return { status: "fresh", records: [...mirrorNotes().map(payload => ({ id: payload.id, payload })), ...created], lastSyncedAt: "2026-09-27T05:41:00.000Z", error: null, workspaceId: "workspace:one" }; },
+  currentSession: noCoordinatorSession,
 });
 export const useApiResource = (path, _validate, options = {}) => {
   if (options.enabled === false) return { kind: "loading", refreshing: false, refresh() {} };
