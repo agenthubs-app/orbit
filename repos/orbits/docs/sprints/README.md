@@ -33,7 +33,8 @@
 | D19 | W0028 开放问题 W28-1～3 | W28-1：详情页报名者名单瘦身另开 W0029（W0019 前），W0028 只实测名单；W28-2：其他整行消费者（活动归属、计划对账、journeys、目标推荐）不切，登记候选；W28-3：活动页＋详情页本人报名读取合计 ≤30 MB/月，按改后绝对字节（2026-09-29） | W0028、W0029 |
 | D20 | W28-4、W29-1～3 | W28-4／W29-3：精简读取保持旧失败语义（坏数据照旧抛错，页面行为不变）；W29-1：名单＋匿名预览合计 ≤200 MB/月，用户路径总额按实测重算，超过 1.0 GB 时可放宽，至多 1.2 GB；W29-2：「谁会来」预览纳入 W0029（2026-09-29） | W0028、W0029、W0019 |
 | D21 | W0023 交接：首页「本周推进」前 3 件是否优先显示新生成的「约 TA」 | 先不改，登记为后续候选（2026-09-29） | W0023 |
-| D22 | W0027 SC-04 账号解析读取超上限（约 118–119 MB/月，上限 60 MB） | 先合并 W0027；另开 W0030 瘦身账号会话图读取返回列（22 个调用方共用，全站受益），发布前完成；执行顺序改为 W0028 → W0030 → W0029 → W0019，W0029 用 W0030 实测值重算总账（2026-09-29） | W0027、W0029、W0030、W0019 |
+| D22 | W0027 SC-04 账号解析读取超上限（约 118–119 MB/月，上限 60 MB） | 先合并 W0027；另开 W0030 瘦身账号会话图读取返回列（直接调用 23 个入口、依赖注入 2 处、经 `resolveAuthenticatedApiActor` 间接 143 个接口文件；全站受益），发布前完成；执行顺序改为 W0028 → W0030 → W0029 → W0019，W0029 用 W0030 实测值重算总账（2026-09-29） | W0027、W0029、W0030、W0019 |
+| D23 | W30-1～4 | 全部按推荐：W30-1 轻量读取写在账号 provider，不改共享存储契约；W30-2 新方法可选，缺失时退回完整图；W30-3 坏数据失败语义与旧读取完全一致（同 D20）；W30-4 全站受益估算按每人每天口径、轮询按实测端点频次，仅供参考不作通过条件（2026-09-29） | W0030 |
 
 ## 发布动作（需要单独授权）
 
@@ -74,9 +75,9 @@
 | [W0025](W0025-lifecycle-sort-runtime/GOAL.md) | 跟进排序运行时从单一组合改为经差分测试的白名单（加入本机组合），「先联系谁」恢复真实数据；首页跟进来源不可用时不下确定结论；给 W0019 写发布门 | RW-01、RV-02 | W0022（同改 iorbit-home.tsx）；本机 PG 测试库 | completed |
 | [W0026](W0026-recommend-reason-fixture/GOAL.md) | 验收种子造出真实可匹配的活动，策略页两种推荐理由可在 3001 复验；不改分词算法 | RW-07、RV-02 | W0025（执行顺序） | completed |
 | [W0027](W0027-event-detail-actor-id/GOAL.md) | 活动详情页 `/app/events/[id]` 按账号 id 判定已报名、名单、主办方与私密访问；含访问控制回归 | RV-02 | W0024（复用测试夹具） | completed（SC-04 流量 failed，按 D22 合并，由 W0030 解决） |
-| [W0028](W0028-registration-status-read/GOAL.md) | 本人报名读取（legacy 投影与 canonical）只返回 eventId／status 等页面所需列，活动页与详情页本人报名读取合计 ≤30 MB/月；保持旧失败语义；页面行为不变 | RV-03、RV-05 | W0024、W0027（D18、D19、D20）；PLANNER 已按 W0027 合并结果刷新（revision 4） | ready |
+| [W0028](W0028-registration-status-read/GOAL.md) | 本人报名读取（legacy 投影与 canonical）只返回 eventId／status 等页面所需列，活动页与详情页本人报名读取合计 ≤30 MB/月；保持旧失败语义；页面行为不变 | RV-03、RV-05 | W0024、W0027（D18、D19、D20）；PLANNER 已按 W0027 合并结果刷新（revision 4） | completed |
 | [W0029](W0029-attendee-roster-trim/GOAL.md) | 详情页报名者名单与「谁会来」匿名预览只读所需字段，合计 ≤200 MB/月；按实测重算用户路径总额（D20） | RV-03、RV-05 | W0027、W0028、W0030（D22 顺序）；开工前刷新 PLANNER 占位 | planned |
-| [W0030](W0030-account-session-graph-trim/GOAL.md) | 账号会话图读取（`readAccountSessionGraph`／`resolveAuthenticatedApiActorFromSession`）只返回判定所需字段，22 个调用方行为不变；详情页账号解析单次字节与月流量实测回到上限内 | RV-03、RV-05 | W0027、W0028（D22 顺序）；W30-1～4 待定 | planned |
+| [W0030](W0030-account-session-graph-trim/GOAL.md) | 账号会话图读取（`readAccountSessionGraph`／`resolveAuthenticatedApiActorFromSession`）只返回判定所需字段，22 个调用方行为不变；详情页账号解析单次字节与月流量实测回到上限内 | RV-03、RV-05 | W0027、W0028（D22 顺序）；W30-1～4 已定（D23） | ready |
 
 全部 Sprint 都已有 GOAL 与 PLANNER（2026-09-28 编制；大目标 1 与大目标 2 各经 Codex `gpt-5.6-sol` 方案 review 后修订为 revision 2，review 意见与处理见 [REVIEW-2026-09-28.md](REVIEW-2026-09-28.md)）。`planned` 表示前置 Sprint 尚未 completed；前置完成后改为 `ready`。
 
@@ -111,3 +112,4 @@
 | W0024 | run-01（2026-09-29） | `21beec29`（报告 `2f19a0e5`、`735df1c3`） | `20e5fea4` | [REPORT](W0024-events-registration-actor-id/REPORT.md)；SC-03 failed，D18 |
 | W0023 | run-01（2026-09-29） | `16040227`、`ec4ed7e0`（review P2 修复；报告 `36bf7cfc`） | `b6a6b103` | [REPORT](W0023-expired-plan-match-week/REPORT.md) |
 | W0027 | run-01（2026-09-29） | `bc992826`（报告 `7196945b`） | `2d6bf323` | [REPORT](W0027-event-detail-actor-id/REPORT.md)；SC-04 流量 failed，D22 |
+| W0028 | run-01（2026-09-29） | `1d70b2cd`（报告 `cb5ac353`） | `2ef85b1f` | [REPORT](W0028-registration-status-read/REPORT.md) |
