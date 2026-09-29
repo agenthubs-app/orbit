@@ -37,3 +37,8 @@ test("native business-card image picking declares the iOS photo usage string", (
 test("native profile document picking has an Expo document picker dependency", () => {
   assert.match(packageJson.dependencies?.["expo-document-picker"] ?? "", /^~/u);
 });
+
+test("iOS release config matches the App Store version and first build number", () => {
+  assert.equal(appConfig.version, "1.0.0");
+  assert.equal(appConfig.ios?.buildNumber, "1");
+});
