@@ -8,7 +8,7 @@ let script: string;
 const fixture = `
 import {useSyncExternalStore} from 'react';
 let revision=0;const listeners=new Set();
-const state=window.fixture={actor:'account:one',signedIn:true,cookieHeader:'session=one',baseUrl:'https://orbit.test',stage:'to_contact',requests:[],pending:[],
+const state=window.fixture={actor:'account:one',signedIn:true,cookieHeader:'session=one',baseUrl:'https://orbit.test',stage:'to_contact',readEnabled:window.fixtureInit?.readEnabled??true,requests:[],pending:[],
  update(patch){Object.assign(state,patch);revision++;listeners.forEach(fn=>fn())},
  reply(index,data,status=200){state.pending[index](new Response(JSON.stringify(status>=200&&status<300?{success:true,data}:{success:false,error:{code:'SERVICE_UNAVAILABLE',message:'读取暂时失败'}}),{status,headers:{'Content-Type':'application/json'}}))}};
 const observe=()=>useSyncExternalStore(fn=>{listeners.add(fn);return()=>listeners.delete(fn)},()=>revision);
@@ -23,7 +23,7 @@ test.before(async () => {
     stdin: { loader: "tsx", resolveDir: process.cwd(), contents: `
       import React from 'react';import {createRoot} from 'react-dom/client';import {useFixture} from 'fixture';
       import {useContactPipelinePages} from './src/hooks/useContactPipelinePages';
-      function App(){const s=useFixture();const r=useContactPipelinePages(s.stage);const data=r.data;return <><output aria-label="state">{r.state.kind}</output><output aria-label="ids">{data?.page.items.map(item=>item.id).join(',')??''}</output><output aria-label="count">{data?.page.stageCounts[s.stage]??'unknown'}</output><output aria-label="more-error">{r.moreError??''}</output><output aria-label="loading-more">{String(r.loadingMore)}</output><button onClick={r.loadMore}>more</button><button onClick={r.state.refresh}>refresh</button></>};createRoot(document.getElementById('root')).render(<App/>);
+      function App(){const s=useFixture();const r=useContactPipelinePages(s.stage,s.readEnabled);const data=r.data;return <><output aria-label="state">{r.state.kind}</output><output aria-label="ids">{data?.page.items.map(item=>item.id).join(',')??''}</output><output aria-label="count">{data?.page.stageCounts[s.stage]??'unknown'}</output><output aria-label="more-error">{r.moreError??''}</output><output aria-label="loading-more">{String(r.loadingMore)}</output><button onClick={r.loadMore}>more</button><button onClick={r.state.refresh}>refresh</button></>};createRoot(document.getElementById('root')).render(<App/>);
     ` },
     bundle: true,
     write: false,
@@ -45,13 +45,14 @@ async function settle(page: Page) {
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
 }
 
-async function open(t: { after(fn: () => Promise<void>): void }) {
+async function open(t: { after(fn: () => Promise<void>): void }, initial?: { readEnabled?: boolean }) {
   const page = await browser.newPage();
   const errors: string[] = [];
   page.on("pageerror", error => errors.push(error.message));
   t.after(async () => { await page.close(); assert.deepEqual(errors, []); });
   await page.route("**/*", route => route.abort());
   await page.setContent('<div id="root"></div>');
+  await page.evaluate(value => { (window as any).fixtureInit = value; }, initial ?? {});
   await page.addScriptTag({ content: script });
   await settle(page);
   return page;
@@ -142,4 +143,9 @@ test("stage and account changes hide old rows, abort the old read, and sign-out 
   await page.getByRole("button", { name: "refresh" }).click();
   await settle(page);
   assert.equal((await requests(page)).length, 3);
+});
+
+test("a readable local mirror can suppress the pipeline network read on first render", async t => {
+  const page = await open(t, { readEnabled: false });
+  assert.deepEqual(await requests(page), []);
 });

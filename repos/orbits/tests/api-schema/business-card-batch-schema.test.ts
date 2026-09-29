@@ -175,6 +175,16 @@ test("nullable extraction fields, labels, leases and usage retain null and full 
   assert.equal((await schema("businessCardBatchReviewInputSchema")).safeParse({ ...reviewInput, allowDuplicate: undefined }).success, true);
 });
 
+test("ingest item schema preserves optional card identity provenance without defaulting legacy items", async () => {
+  const validator = await schema("ingestItemSchema");
+  assert.deepEqual(validator.parse(item), item);
+  for (const cardIdentityExplicit of [false, true]) {
+    const expected = { ...item, cardIdentityExplicit };
+    assert.deepEqual(validator.parse(expected), expected);
+  }
+  assert.equal(validator.safeParse({ ...item, cardIdentityExplicit: "false" }).success, false);
+});
+
 test("all source enum members remain accepted without a second state machine", async () => {
   for (const [name, fixture, field, values] of [
     ["businessCardBatchSchema", legacyBatch, "status", ["processing", "ready_for_review", "completed", "cancelled"]],

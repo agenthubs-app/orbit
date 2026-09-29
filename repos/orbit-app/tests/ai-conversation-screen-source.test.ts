@@ -82,3 +82,8 @@ test("AI conversation uses typed entity cards without keyword-based collection p
   assert.match(screenSource, /ContactMentionPicker/u);
   assert.match(screenSource, /ContactReferenceChip/u);
 });
+
+test("an AI session absent from the device uses the existing not-on-device state offline", () => {
+  assert.match(screenSource, /NeedsNetworkState message=\{locale\.t\("sync\.notOnDevice"\)\}/u);
+  assert.doesNotMatch(screenSource, /!isDraftConversation && !conversationOffline && state\.kind === "offline" \? \(\s*<ErrorState/u);
+});

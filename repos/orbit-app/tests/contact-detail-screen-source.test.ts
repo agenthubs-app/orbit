@@ -98,6 +98,16 @@ test("contact detail screen prioritizes identity, next step, and relationship co
   assert.ok(overviewIndex > nextStepIndex);
 });
 
+test("an uncached contact shows the existing not-on-device state instead of the offline error", () => {
+  assert.match(screenSource, /state\.kind === "offline" && !fromDevice \? <NeedsNetworkState message=\{locale\.t\("sync\.notOnDevice"\)\}/u);
+});
+
+test("an offline contact detail labels editing and missing relationship analysis as needing a connection", () => {
+  assert.match(screenSource, /offlineCopy \? <Pressable[\s\S]*sync\.needsNetwork/u);
+  assert.match(screenSource, /if \(offline && !overrideData && state\.kind !== "success" && state\.kind !== "empty"\)/u);
+  assert.match(screenSource, /return <NeedsNetworkState message=\{locale\.t\("sync\.needsNetwork"\)\}/u);
+});
+
 test("contact detail screen structures exchange value and recent activity as compact rows", () => {
   assert.match(screenSource, /contacts\.aboutCollaboration/u);
   assert.match(screenSource, /contacts\.seeking/u);

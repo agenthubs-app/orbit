@@ -3,6 +3,7 @@ import { type Href, useRouter } from "expo-router";
 import { useState } from "react";
 import {
   Pressable,
+  Platform,
   RefreshControl,
   StyleSheet,
   Text,
@@ -12,10 +13,14 @@ import { AppScreen } from "../../components/AppScreen";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
+import { OfflineNotice } from "../../components/OfflineNotice";
 import { textStyles, radius, spacing, type OrbitColors } from "../../design/tokens";
 import { createControlStyles } from "../../design/controls";
 import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useContactPipelinePages } from "../../hooks/useContactPipelinePages";
+import { useLocalContacts } from "../../hooks/useLocalContacts";
+import type { ContactPipelinePageContract } from "../../api/contract/contact-pipeline-page";
+import { contactPipelineLocalProjection } from "../../view-models/contact-pipeline-local";
 import {
   contactPipelinePageToView,
   type ContactPipelineActionDueTone,
@@ -33,35 +38,58 @@ export function ContactPipelineScreen() {
   const { colors } = useOrbitTheme();
   const [mode, setMode] = useState<"actions" | "stages">("actions");
   const [selectedStageId, setSelectedStageId] = useState<ContactPipelineStageId>("to_contact");
-  const pipeline = useContactPipelinePages(selectedStageId);
-  const view = pipeline.data ? contactPipelinePageToView(pipeline.data.page) : null;
+  const [localPageSize, setLocalPageSize] = useState(20);
+  const local = useLocalContacts();
+  const nativeMirror = Platform.OS !== "web" && local.available && local.freshness.readable;
+  const pipeline = useContactPipelinePages(selectedStageId, !nativeMirror);
+  const projection = contactPipelineLocalProjection(local.rows);
+  const localFallback = Platform.OS !== "web" && local.available && local.freshness.readable &&
+    (nativeMirror || pipeline.state.kind === "offline" || pipeline.state.kind === "failure");
+  const localItems = projection.items[selectedStageId];
+  const localPage: ContactPipelinePageContract = {
+    asOf: local.freshness.lastSyncedAt ?? "",
+    stage: selectedStageId,
+    stageCounts: projection.counts,
+    items: localItems.slice(0, localPageSize),
+    hasMore: localItems.length > localPageSize,
+    nextCursor: localItems.length > localPageSize ? `local:${localPageSize}` : null,
+    actions: [],
+  };
+  const view = localFallback ? contactPipelinePageToView(localPage)
+    : pipeline.data ? contactPipelinePageToView(pipeline.data.page) : null;
+  const page = localFallback ? localPage : pipeline.data?.page;
+  const refresh = () => { pipeline.state.refresh(); local.refresh(); };
+  const loadMore = () => localFallback ? setLocalPageSize(value => value + 20) : pipeline.loadMore();
+  const selectStage = (stageId: ContactPipelineStageId) => { setSelectedStageId(stageId); setLocalPageSize(20); };
 
   return (
     <AppScreen
       refreshControl={
         <RefreshControl
-          onRefresh={pipeline.state.refresh}
+          onRefresh={refresh}
           refreshing={pipeline.state.refreshing}
           tintColor={colors.accent}
         />
       }
       title="关系进展"
     >
-      {pipeline.state.kind === "loading" ? <LoadingState /> : null}
-      {pipeline.state.kind === "offline" ? <ErrorState message={pipeline.state.error.message} title="服务器连不上" /> : null}
-      {pipeline.state.kind === "failure" ? <ErrorState message={pipeline.state.error.message} /> : null}
-      {pipeline.state.kind === "empty" ? <EmptyState message="先添加联系人，再记录关系所处的阶段。" title="暂无关系进展" /> : null}
-      {view && pipeline.data ? (
+      {pipeline.state.kind === "loading" && !localFallback ? <LoadingState /> : null}
+      {localFallback ? <OfflineNotice lastSyncedAt={local.freshness.lastSyncedAt} /> : null}
+      {pipeline.state.kind === "offline" && !localFallback ? <ErrorState message={pipeline.state.error.message} title="服务器连不上" /> : null}
+      {pipeline.state.kind === "failure" && !localFallback ? <ErrorState message={pipeline.state.error.message} /> : null}
+      {(pipeline.state.kind === "empty" && !localFallback || localFallback && Object.values(projection.counts).every(count => count === 0)) ? <EmptyState message="先添加联系人，再记录关系所处的阶段。" title="暂无关系进展" /> : null}
+      {view && page ? (
         <PipelineContent
           actions={view.actions}
           contacts={view.contacts}
-          loadingMore={pipeline.loadingMore}
-          moreError={pipeline.moreError}
-          hasMore={pipeline.data.page.hasMore}
-          loadMore={pipeline.loadMore}
+          loadingMore={localFallback ? false : pipeline.loadingMore}
+          moreError={localFallback ? null : pipeline.moreError}
+          hasMore={page.hasMore}
+          loadMore={loadMore}
+          offline={localFallback}
           mode={mode}
           onModeChange={setMode}
-          onStageChange={setSelectedStageId}
+          onStageChange={selectStage}
           selectedStageId={selectedStageId}
           stages={view.stages}
         />
@@ -78,6 +106,7 @@ function PipelineContent({
   loadMore,
   moreError,
   mode,
+  offline,
   onModeChange,
   onStageChange,
   selectedStageId,
@@ -90,6 +119,7 @@ function PipelineContent({
   loadMore: () => void;
   moreError: string | null;
   mode: "actions" | "stages";
+  offline: boolean;
   onModeChange: (mode: "actions" | "stages") => void;
   onStageChange: (stageId: ContactPipelineStageId) => void;
   selectedStageId: ContactPipelineStageId;
@@ -120,6 +150,7 @@ function PipelineContent({
             onContactPress={(contactId) =>
               router.push(`/contacts/${encodeURIComponent(contactId)}` as Href)
             }
+            offline={offline}
             onViewAll={() => router.push("/tasks?scope=relationship" as Href)}
             tasks={actions}
           />
@@ -169,10 +200,11 @@ function ModeButton({ active, label, onPress }: {
   );
 }
 
-function ActionPanel({ onContactPress, onViewAll, tasks }: {
+function ActionPanel({ onContactPress, onViewAll, tasks, offline }: {
   onContactPress: (contactId: string) => void;
   onViewAll: () => void;
   tasks: ContactPipelineActionView[];
+  offline: boolean;
 }) {
   const { colors, styles } = useStyles();
   return (
@@ -189,7 +221,7 @@ function ActionPanel({ onContactPress, onViewAll, tasks }: {
         ) : null}
       </View>
 
-      {tasks.length === 0 ? (
+      {offline ? <Text style={styles.emptyText}>待处理事项需要联网查看。</Text> : tasks.length === 0 ? (
         <Text style={styles.emptyText}>暂时没有已安排日期的关系待办。</Text>
       ) : null}
       {tasks.map((task, index) => (
