@@ -270,3 +270,7 @@ ROOT真实设置保存并AX确认恢复精确`http://127.0.0.1:3000`及小雨MAI
 ## BR-030 — 0132 离线笔记写入
 
 本地 `chat-agent` `3c9aaa691` 已合并 App outbox 与服务端笔记幂等／版本契约，原生/phoneweb 同账号双向回读、冷启动、409 冲突和 AI 待同步数量提示已实际验证。合并树受影响 App 116/116、两端 typecheck 与 Web 生产构建通过；原全量失败/skip 未重写为全绿。当前 3100 API、32110 phoneweb、8082 Metro 健康 200；运行源码与最终主线产品源码相同。0133 已获进入条件，使用同一契约；远程部署、生产数据库和实体设备未验。详见 [交接](handoffs.md#br-030--0132-离线笔记写入与跨端回读)与 [Sprint 报告](../repos/orbit-app/docs/sprints/0132-offline-notes/REPORT.md)。
+
+## BR-031 — 0138 首页笔记入口
+
+本地 `chat-agent` `51aa23eff` 已完成首页双笔记入口合一，phoneweb 与原生共用源码。实际双向回读、原生大字号点击，以及中／日／英和窄屏交互均已验证；合并树 App 定向 84/84。没有 Web API 改动或远程发布。见 [交接](handoffs.md#br-031--0138-首页笔记入口)与 [Sprint 报告](../repos/orbit-app/docs/sprints/0138-home-notes-entry/REPORT.md)。
