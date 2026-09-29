@@ -36,6 +36,7 @@ import {
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
+import { NeedsNetworkState } from "../../components/NeedsNetworkState";
 import { OfflineNotice } from "../../components/OfflineNotice";
 import { useLocalAiConversation, useLocalAiSessions } from "../../hooks/useLocalAiSessions";
 import { layout, textStyles, radius, spacing, typography } from "../../design/tokens";
@@ -680,7 +681,7 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
       {!isDraftConversation && state.kind === "loading" && !localSession ? <LoadingState /> : null}
       {conversationOffline ? <OfflineNotice lastSyncedAt={localConversation.freshness.lastSyncedAt} /> : null}
       {!isDraftConversation && !conversationOffline && state.kind === "offline" ? (
-        <ErrorState message={state.error.message} title={locale.t("aiConversation.serverUnavailable")} />
+        <NeedsNetworkState message={locale.t("sync.notOnDevice")} onRetry={refresh} />
       ) : null}
       {!isDraftConversation && !conversationOffline && state.kind === "failure" ? (
         <ErrorState message={state.error.message} />

@@ -52,11 +52,11 @@ function validFirstPage(page: ContactPipelinePageContract, stage: ContactPipelin
     page.items.length <= count && (count > 0 || (!page.hasMore && page.items.length === 0));
 }
 
-export function useContactPipelinePages(stage: ContactPipelineStageCode) {
+export function useContactPipelinePages(stage: ContactPipelineStageCode, readEnabled = true) {
   const auth = useOrbitAuthSession();
   const server = useOrbitApiBaseUrl();
   const actorId = auth.actorId ?? "";
-  const enabled = auth.ready && auth.signedIn && server.ready && Boolean(actorId);
+  const enabled = readEnabled && auth.ready && auth.signedIn && server.ready && Boolean(actorId);
   const scope = JSON.stringify([server.baseUrl, actorId, auth.cookieHeader, auth.signedIn, stage]);
   const client = useOrbitApiClient({ scopeKey: scope });
   const [attempt, setAttempt] = useState(0);
@@ -128,7 +128,7 @@ export function useContactPipelinePages(stage: ContactPipelineStageCode) {
       controller.abort();
       requestControllers.current.delete(controller);
     };
-  }, [attempt, client, enabled, scope, stage]);
+  }, [attempt, client, enabled, readEnabled, scope, stage]);
 
   const visible = snapshot?.scope === scope && snapshot.attempt === attempt ? snapshot : null;
   const visibleState: RouteState<ContactPipelinePageData> = visible?.state ?? { kind: "loading" };

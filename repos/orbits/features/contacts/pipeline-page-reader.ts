@@ -6,7 +6,10 @@ import type { LiveRecordSqlClient } from "../../shared/storage/postgres-live-rec
 import { createConfiguredPostgresLiveRecordStore } from "../../shared/storage/configured-live-record-store";
 import { resolveSharedReadBudgetGate } from "../sync/read-budget-gate";
 import { taskRecordsValidityCte, taskTimestampSql } from "../tasks/task-page";
+import { contactPipelineStageCase } from "../../shared/compute/contact-pipeline";
 import { CONTACT_PIPELINE_STAGES, type ContactPipelineStage } from "./pipeline-contract";
+
+export { contactPipelineStageFor } from "../../shared/compute/contact-pipeline";
 
 const MAX_LIMIT = 20;
 const SOURCE_TYPES = ["manual", "business_card_ocr", "qr_scan", "event_import", "external_contacts", "email_signal", "calendar_signal", "referral", "chat_summary", "agent_action", "system"];
@@ -84,14 +87,7 @@ const SQL = `with actor_contacts as materialized (
 ), classified_contacts as materialized (
   select c.record_id,c.contact_id,c.display_name,c.organization,c.role,
     c.sort_occurred_at,c.sort_updated_at,
-    case coalesce(cc.stage,c.contact_stage)
-      when 'captured' then 'to_contact'
-      when 'needs_follow_up' then 'to_contact'
-      when 'reviewing' then 'in_progress'
-      when 'active' then 'in_progress'
-      when 'nurture' then 'nurture'
-      when 'archived' then 'archived'
-    end as stage
+    ${contactPipelineStageCase("coalesce(cc.stage,c.contact_stage)")} as stage
   from valid_contacts c left join canonical_connections cc on cc.contact_id=c.contact_id
   where c.lifecycle_initialization is distinct from 'pending'
 ), stage_counts as (

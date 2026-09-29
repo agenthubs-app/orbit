@@ -7,7 +7,7 @@
 
 | 归属 | 数量 |
 | --- | --- |
-| 能断网看（本地优先） | 41 |
+| 能断网看（本地优先） | 42 |
 | └ 由 Sprint 0108 实现 | 8 |
 | └ 由 Sprint 0115 实现 | 3 |
 | └ 由 Sprint 0116 实现 | 3 |
@@ -15,7 +15,8 @@
 | └ 由 Sprint 0118 实现 | 4 |
 | └ 由 Sprint 0119 实现 | 4 |
 | └ 由 Sprint 0131 实现 | 15 |
-| 只能在线 | 35 |
+| └ 由 Sprint 0137 实现 | 1 |
+| 只能在线 | 34 |
 | 不读账号数据（布局、跳转、本机设置） | 15 |
 | 合计（路由文件） | 91 |
 
@@ -67,6 +68,7 @@
 | `/schedule/events/:id` | 日历里的活动预览 | 0131 | 已报名的活动直接跳到 /events/:id（域 registered-events）；其他活动读 /api/events/public/:id | 已报名的活动跳转后可离线；其他活动显示「需要联网」 |
 | `/events` | 活动标签：活动列表和推荐 | 0131 | 页面副本 public-events（公开活动目录）和 event-recommendations | 「截至」；显示最近一次看到的列表；报名需要联网 |
 | `/home/events` | 推荐活动（旧入口） | 0131 | 页面副本 public-events | 「截至」；显示最近一次看到的列表 |
+| `/contacts/pipeline` | 关系推进看板 | 0137 | 域 contacts 的本机卡片；阶段分组使用 shared/compute/contact-pipeline；线上待处理事项仍读 /api/contacts/pipeline | 「截至」；联系人阶段和数量由本机副本计算；待处理事项需要联网 |
 
 ## 只能在线
 
@@ -97,7 +99,6 @@
 | `/contacts/new/import/:id` | 名片导入进度 | 名片识别（上传图片、OCR）：导入任务在服务器运行 | /api/contact-drafts/business-card/imports/:id | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/contacts/intros` | 引荐 | 需要服务器实时计算：引荐候选由服务器跨账号实时计算 | /api/contacts/intros/summary | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/contacts/matches` | 人脉需求匹配 | 需要服务器实时计算：需求匹配由服务器按最新资料实时排序（0116 已定为需要联网） | /api/contacts/needs-matches、/api/profile | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
-| `/contacts/pipeline` | 关系推进看板 | 需要服务器实时计算：按全部关系在服务器分页实时计算阶段 | /api/contacts/pipeline | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/invitations/:token` | 关系邀请 | 需要服务器验证链接或邀请码：邀请链接由服务器验证后才能接受 | /api/relationship-communication/invitations/:id | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/register` | 邀请注册 | 需要服务器验证链接或邀请码：邀请码由服务器验证 | /api/events/public/:id、/api/profile | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/register/:code` | 邀请注册（带邀请码） | 需要服务器验证链接或邀请码：邀请码由服务器验证 | 同 /register | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
@@ -170,7 +171,7 @@
 | `app/contacts/new/batch2/[id].tsx` | `/contacts/new/batch2/:id` | online-only |
 | `app/contacts/new/batch2/index.tsx` | `/contacts/new/batch2` | online-only |
 | `app/contacts/new/import/[id].tsx` | `/contacts/new/import/:id` | online-only |
-| `app/contacts/pipeline.tsx` | `/contacts/pipeline` | online-only |
+| `app/contacts/pipeline.tsx` | `/contacts/pipeline` | local-first (0137) |
 | `app/dashboard.tsx` | `/dashboard` | local-first (0117) |
 | `app/events/[id].tsx` | `/events/:id` | local-first (0115) |
 | `app/events/[id]/analytics.tsx` | `/events/:id/analytics` | online-only |

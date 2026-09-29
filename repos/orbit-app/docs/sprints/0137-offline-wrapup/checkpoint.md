@@ -12,7 +12,7 @@
 - 环境锁：A 线独占本轮 3100 local-stack、phoneweb、iPhone 17 Pro Debug/Metro 验证；不得停止用户 3000 服务。结束停本轮自建服务，并恢复模拟器 API 地址 `http://127.0.0.1:3000`。
 - 开工检查：主线产品源码干净；用户 codex-review.md、output/ 和 .claude/skills/gitnexus/ 均保留且不提交。系统盘空闲 15GiB；低于 5GB 停止依赖构建动作，不删除 orbit_scale_test。
 - GitNexus：根索引已重建至基线（110460 nodes / 183328 edges）；改符号前须 upstream impact，提交前须完整 detect_changes。
-- 授权边界：只本地实施、验证、提交和合并；不 push、不部署、不写生产库、不 stash。运行时付费调用为 0。
+- 授权边界：只本地实施、验证和提交；不 push、不部署、不写生产库、不 stash。运行时验证前获准要求 provider keys 清空；实际进程核验及本轮请求范围见下方更正，当前不能宣称付费调用门槛已证明。
 
 ## 下一步
 
@@ -20,4 +20,23 @@
 - 可调查：主线程读取已批准断网写设计及后续 Sprint 接口依赖，为 0124 接续准备，不提前实施。
 - 等待决定：生产上线、孤立来源清理和 orbit_scale_test 删除，不阻塞本轮本地开发。
 
-尚无产品改动或功能提交；所有 SC 均待验证。本次为同一 run 的起点，不是完成报告。
+开工时尚无产品改动或功能提交；本次为同一 run 的起点，不是完成报告。
+
+## 当前进度（2026-09-29，同一 run）
+
+**新增必要文件／白名单补充：**
+- 共用阶段算法：`repos/orbits/shared/compute/contact-pipeline.ts`、`repos/orbit-app/src/api/compute/contact-pipeline.ts`；本地投影：`repos/orbit-app/src/view-models/contact-pipeline-local.ts`。
+- 对应测试：`repos/orbits/tests/services/contact-pipeline-compute.test.ts`、`repos/orbit-app/tests/contact-pipeline-local.test.ts`。
+- 已改文件限于 Sprint 0137 的 pipeline、contact detail、未缓存内容空态、离线清单与对应测试；完整路径以当前分支差异为准。未改 Web API 的筛选、权限、canonical qualification、聚合与 cursor/page SQL 职责。
+
+**进度与证据位置（截至 2026-09-29 run-01 收口）：**
+- SC-0137-01：共用阶段纯计算、App 本地镜像优先接线及真实 PostgreSQL parity 的定向证据通过；服务器 SQL 仍承担权限筛选、分页、有界聚合与读取。日志 `postgres-contact-pipeline-parity.log`。代码已实现，但 SC 整体仍待完整运行时验收。
+- SC-0137-02：页面与定向测试已实现/通过。Phoneweb B 的联系人详情真实离线显示设备截至提示、关系信息需联网，截图 `phoneweb-b-contact-online.png`、`phoneweb-b-contact-offline.png`。Simulator 未能登录，故 native 侧此项未验收。
+- SC-0137-03：Phoneweb A 离线 SPA 路由打开 B 未缓存笔记，真实显示“此内容尚未保存在这台设备上”空态；截图 `phoneweb-a-foreign-note-offline-spa.png`。早先未走 SPA 状态切换的错误态截图不作通过证据。外账号 AI 会话的 native/phoneweb 运行时空态尚未确认；定向测试证据 `green-foreign-ai-conversation-empty-state.log`。
+- SC-0137-04：已有 Simulator 截图覆盖登录、注册、找回/重置密码等 auth 状态，但不是要求的登录后产品五页验收。A 的 Simulator 登录停在 `SYNC_CLEANUP_STATE_FAILED unavailable`；本轮未能完成两账号、五页逐页缓存/断网截图，SC 未通过。
+- SC-0137-05：Orbit App 全量 `3861/3861` 通过；现存 Orbits 类型检查/lint 及定向结果按原日志保留。orbit_test PostgreSQL 定向套件 `323` 项，`318` pass、`0` fail、`5` skip；cutover 子集仍有 `7` 个已记录失败，与 HANDOFF 的已知差异一致。对获批 scratch `orbit_merge_verify_20260907_c45a` 先 dry-run、确认旧消息集合为零后应用既有缺表迁移；迁移后 `notification-discovery-worker-postgres` `3/3` 通过。`cardIdentityExplicit` 在当前树及同配置基线 `dda127368a3b62fb8fea44bac8de0b3eddb458ef` 的独立 worktree 得到相同差异，故不能视为已绿或仅凭源文件未改归为非回归。全量 0 失败门槛仍未达成。
+- 本地凭据来源已纠正：A 使用 `/Users/xzhao/Projects/orbit/repos/orbits/.env` 中既有主测试账号配置；B 使用 `/Users/xzhao/Projects/orbit/repos/orbits/.env.local` 中既有测试账号邮箱/密码配置。凭据值不进入 checkpoint 或日志。两者均能在 phoneweb 登录；Simulator A 的 native cleanup preflight 阻断登录。尝试用 idb 输入 B 时邮箱标点未能保持，因此没有输入 B 密码或提交登录。
+- Provider 安全状态更正：对本轮运行进程仅检查环境变量名与是否非空，不打印值。32137 phoneweb、8082 Metro 和 local-stack workers 当时仍继承部分非空 provider-key 变量；3100 web listener 未检测到。期间只做了账号/页面/notes 等读取，没有 AI 生成/提交。为避免后续调用，已停止这些本轮服务；因 keys 并非明确清空，付费调用为零的门槛仍未充分证明。
+- 服务/设备收口：3000 保持原 PID `96114`，未停止；3100、32137、8082 已停止。Simulator app 已 terminate，未 erase/清除设备数据，也未在设置页改写服务器地址。系统盘最新空闲 `7.3 GiB`；`git diff --check` 通过。
+- 详细日志、TDD RED/GREEN、phoneweb 与 Simulator 证据均在 ignored `build/harness-state/evidence/sprint-0137/run-01/`；工作区 GitNexus 索引目录不纳入提交。
+- 当前功能文件及新增测试保留在本分支，checkpoint 为事实更正；尚未创建结束 run 的 REPORT。SC-0137-04 的登录后 Simulator 验收、SC-0137-05 的全量 0 失败与 provider-key 清空/0 付费调用证明仍未完成。本记录是部分交付 checkpoint，不表示 Sprint 完成；待 native 环境修复后协调恢复同一 run。

@@ -39,6 +39,7 @@ onSessionExpired(() => state.expiries++);
 window.fetch = async (input, init) => {
   const index = state.requests.length; const path = new URL(String(input)).pathname;
   state.requests.push({ path, url: String(input), method: init.method, body: init.body ? JSON.parse(init.body) : null, signal: init.signal });
+  if (state.offlineRead && init.method === "GET") throw new TypeError("PRIVATE_NETWORK_ERROR_MARKER");
   const pending = new Promise(resolve => state.pending[index] = resolve);
   // This fixture is an ordinary manual contact, not an accepted event side.
   // Hold detail/analysis reads independently of its authoritative 404 lookup.
@@ -61,6 +62,7 @@ export const useOrbitApiBaseUrl = () => { observe(); return { ready: state.baseR
 export const useOrbitLocale = () => { observe(); return { language: state.language, t: createTranslator(state.language) }; };
 export const useIsFocused = () => { observe(); return state.focused; };
 export const useLocalSearchParams = () => { observe(); return { id: state.contactId }; };
+export const useLocalContacts = () => { observe(); return state.localContacts ?? (state.localReadable ? { available: true, rows: [{ id: state.contactId, card: null, tags: [], search: { text: "", occurredAt: "", updatedAt: "", error: null }, detail: { state: "success", contact: state.contact } }], freshness: { readable: true, offline: true, loading: false, failure: false, refreshing: false, lastSyncedAt: "2026-09-28T12:00:00.000Z" }, refresh() {} } : { available: true, rows: [], freshness: { readable: true, offline: true, loading: false, failure: false, refreshing: false, lastSyncedAt: "2026-09-28T12:00:00.000Z" }, refresh() {} }); };
 export const useGlobalSearchParams = useLocalSearchParams;
 export const usePathname = () => "/contacts/" + encodeURIComponent(state.contactId);
 export const useRouter = () => ({ canGoBack: () => state.canGoBack, back() { state.navigation.push("back"); }, replace(href) { state.navigation.push(href); }, push(href) { state.navigation.push(href); } });
@@ -80,7 +82,7 @@ test.before(async () => {
     plugins: [{ name: "ink-detail-boundaries", setup(plugin) {
       plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "detail" }));
       plugin.onResolve({ filter: /^react-native-svg$/ }, () => ({ path: require.resolve("react-native-svg/lib/module/ReactNativeSVG.web.js") }));
-      plugin.onResolve({ filter: /^(fixture|expo-router|@expo\/vector-icons|react-native-safe-area-context|@react-navigation\/native)$|\/(ApiBaseUrlProvider|AuthSessionProvider|OrbitLocaleContext|snapshot-store)$/ }, () => ({ path: "fixture", namespace: "detail" }));
+      plugin.onResolve({ filter: /^(fixture|expo-router|@expo\/vector-icons|react-native-safe-area-context|@react-navigation\/native)$|\/(ApiBaseUrlProvider|AuthSessionProvider|OrbitLocaleContext|snapshot-store|useLocalContacts)$/ }, () => ({ path: "fixture", namespace: "detail" }));
       plugin.onLoad({ filter: /.*/, namespace: "detail" }, args => ({ contents: args.path === "native" ? `
 import React from "react"; import { Pressable as RealPressable, Text as RealText, TextInput as RealTextInput, RefreshControl as RealRefreshControl, StyleSheet, useWindowDimensions as realDimensions } from "react-native-web";
 import { useFixture } from "fixture"; export * from "react-native-web";
@@ -105,7 +107,7 @@ async function open(t: { after(fn: () => Promise<void>): void }, patch: Record<s
   t.after(async () => { await p.close(); assert.deepEqual(errors, []); });
   await p.route("**/*", r => r.abort());
   await p.setContent('<style>@font-face{font-family:OrbitTestIonicons;src:url(data:font/ttf;base64,' + iconFont + ')}html,body,#root{margin:0;height:100%}#root{display:flex;flex-direction:column}</style><div id="root"></div>');
-  await p.evaluate(patch => { (window as any).initialFixture = patch; }, patch); await p.addScriptTag({ content: script });
+  await p.evaluate(patch => { (window as any).initialFixture = patch; if ((patch as any).offlineRead) Object.defineProperty(navigator, "onLine", { configurable: true, value: false }); }, patch); await p.addScriptTag({ content: script });
   await settle(p); await p.evaluate(() => document.fonts.ready); return p;
 }
 async function press(p: Page, name: string) { await p.getByRole("button", { name, exact: true }).click(); await settle(p); }
@@ -180,6 +182,24 @@ test("detail route presents real identity and basic/cooperation data in the appr
   for (const name of ["编辑资料", "起草消息", "查看日程", "写备注"]) { const box = (await p.getByRole("button", { name, exact: true }).boundingBox())!; assert.ok(box.height >= 44 && box.width >= 44, name); }
   assert.deepEqual(await writes(p), []);
   if (process.env.APP_STYLE_SCREENSHOTS) await p.screenshot({ path: "/tmp/orbit-ink-signal-contact-detail-390-" + (process.env.CONTACT_DETAIL_QA_PASS ?? "current") + ".png" });
+});
+
+test("offline detail uses its device copy, marks unavailable relationship analysis, and disables edits", async t => {
+  const p = await open(t, { offlineRead: true, localReadable: true });
+  await p.getByText("林悦", { exact: true }).waitFor();
+  await p.getByText(/截至/).waitFor();
+  assert.equal(await p.getByRole("button", { name: "需要联网", exact: true }).count(), 1);
+  await p.getByRole("button", { name: /完整资料/ }).click(); await settle(p);
+  await p.getByText("需要联网", { exact: true }).last().waitFor();
+  assert.doesNotMatch(await p.locator("body").innerText(), /PRIVATE_NETWORK_ERROR_MARKER|UNAVAILABLE|服务器连不上/);
+  assert.deepEqual(await writes(p), []);
+});
+
+test("offline uncached contact shows the existing needs-network state without leaking fetch errors", async t => {
+  const p = await open(t, { offlineRead: true, localReadable: false });
+  await p.getByText(/这项内容还没保存在这台设备上/).waitFor();
+  assert.doesNotMatch(await p.locator("body").innerText(), /PRIVATE_NETWORK_ERROR_MARKER|UNAVAILABLE|服务器连不上/);
+  assert.deepEqual(await writes(p), []);
 });
 
 test("detail primary actions keep the real contact and do not send messages or create schedules", async t => {

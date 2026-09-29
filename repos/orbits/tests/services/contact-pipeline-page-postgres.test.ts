@@ -3,6 +3,8 @@ import { randomUUID } from "node:crypto";
 import test from "node:test";
 import { Pool } from "pg";
 import { createPostgresContactPipelineReader } from "../../features/contacts/pipeline-page-reader";
+import { contactPipelineStageFor } from "../../shared/compute/contact-pipeline";
+import { readContactSyncListRows } from "../../features/contacts/storage/contact-list-postgres-reader";
 import { createPostgresLiveRecordStore, type LiveRecordSqlClient } from "../../shared/storage/postgres-live-record-store";
 import { ORBIT_RECORDS_SCHEMA_SQL } from "../../shared/storage/migrations";
 
@@ -169,15 +171,18 @@ test("actor-owned pipeline counts, signed stage pages, and action summaries are 
     }
     await store.upsertRecord(contactRecord({ id: "pending-contact", stage: "active", lifecycleInitialization: "pending" }));
     await store.upsertRecord(contactRecord({ id: "stage-override", stage: "archived" }));
+    await store.upsertRecord(contactRecord({ id: "connection-pending-contact", stage: "nurture" }));
+    await store.upsertRecord(contactRecord({ id: "no-canonical-contact", stage: "nurture" }));
     await store.upsertRecord(contactRecord({ id: "foreign-contact", stage: "captured", userId: "b" }));
     await store.upsertRecord(connectionRecord({ id: "connection-override", contactId: "stage-override", stage: "active", lifecycleInitialization: "ready" }));
+    await store.upsertRecord(connectionRecord({ id: "connection-pending", contactId: "connection-pending-contact", stage: "active", lifecycleInitialization: "pending" }));
 
     const reader = createPostgresContactPipelineReader({ client, workspaceId: "w", cursorSecret: secret });
     responseBytes = 0;
     reads = 0;
     const first = await reader.page({ stage: "to_contact", limit: 20 }, "a");
     assert.equal(reads, 1);
-    assert.deepEqual(first.stageCounts, { to_contact: 25, in_progress: 24, nurture: 8, archived: 3 });
+    assert.deepEqual(first.stageCounts, { to_contact: 25, in_progress: 24, nurture: 10, archived: 3 });
     assert.equal(first.stage, "to_contact");
     assert.equal(first.items.length, 20);
     assert.equal(first.hasMore, true);
@@ -189,6 +194,49 @@ test("actor-owned pipeline counts, signed stage pages, and action summaries are 
     assert.deepEqual(first.actions, []);
     assert.ok(responseBytes < 24_000, `one bounded response used ${responseBytes} bytes`);
     assert.doesNotMatch(JSON.stringify(first), /PRIVATE_CONTACT_HISTORY|PRIVATE_CONNECTION_HISTORY/u);
+
+    const syncRows = await readContactSyncListRows(client, {
+      workspaceId: "w",
+      actorId: "a",
+      contactRecordIds: [
+        ...Array.from({ length: 25 }, (_, index) => `to-${String(index).padStart(3, "0")}`),
+        ...Array.from({ length: 23 }, (_, index) => `active-${String(index).padStart(3, "0")}`),
+        ...Array.from({ length: 8 }, (_, index) => `nurture-${String(index).padStart(3, "0")}`),
+        ...Array.from({ length: 3 }, (_, index) => `archived-${String(index).padStart(3, "0")}`),
+        "pending-contact", "stage-override", "connection-pending-contact", "no-canonical-contact",
+      ],
+    });
+    const deviceGroups = new Map<string, string[]>();
+    for (const row of syncRows) {
+      if (!row.card || row.card.pendingInitialization || row.errorCode !== null) continue;
+      const stage = contactPipelineStageFor(row.card.status);
+      if (!stage) continue;
+      deviceGroups.set(stage, [...(deviceGroups.get(stage) ?? []), row.card.id]);
+    }
+    const compare = (left: string, right: string) => left < right ? -1 : left > right ? 1 : 0;
+    const orderedDeviceGroups = new Map<string, string[]>();
+    for (const stage of ["to_contact", "in_progress", "nurture", "archived"] as const) {
+      const items = syncRows.filter(row => row.card && !row.card.pendingInitialization && row.errorCode === null && contactPipelineStageFor(row.card.status) === stage)
+        .sort((left, right) => compare(right.sortOccurredAt, left.sortOccurredAt) || compare(right.sortUpdatedAt, left.sortUpdatedAt) || compare(left.recordId, right.recordId))
+        .map(row => row.card!.id);
+      orderedDeviceGroups.set(stage, items);
+      assert.deepEqual(deviceGroups.get(stage) ?? [], items);
+    }
+    assert.equal(syncRows.find(row => row.recordId === "pending-contact")?.card?.pendingInitialization, true);
+    assert.equal(syncRows.find(row => row.recordId === "connection-pending-contact")?.card?.status, "nurture");
+    assert.equal(syncRows.find(row => row.recordId === "no-canonical-contact")?.card?.status, "nurture");
+    assert.equal(syncRows.find(row => row.recordId === "stage-override")?.card?.status, "active");
+    for (const stage of ["to_contact", "in_progress", "nurture", "archived"] as const) {
+      const serverItems = [];
+      let page = await reader.page({ stage, limit: 20 }, "a");
+      assert.deepEqual(page.stageCounts, first.stageCounts);
+      serverItems.push(...page.items.map(item => item.id));
+      while (page.hasMore && page.nextCursor) {
+        page = await reader.page({ stage, limit: 20, cursor: page.nextCursor }, "a");
+        serverItems.push(...page.items.map(item => item.id));
+      }
+      assert.deepEqual(serverItems, orderedDeviceGroups.get(stage));
+    }
 
     const second = await reader.page({ stage: "to_contact", limit: 20, cursor: first.nextCursor! }, "a");
     assert.equal(second.items.length, 5);

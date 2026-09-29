@@ -8,6 +8,7 @@ import { OfflineNotice } from "../../components/OfflineNotice";
 import { AppScreen } from "../../components/AppScreen";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
+import { NeedsNetworkState } from "../../components/NeedsNetworkState";
 import { createThemedStyles } from "../../design/theme";
 import { radius, spacing, typography } from "../../design/tokens";
 import { useApiResource } from "../../hooks/useApiResource";
@@ -55,7 +56,7 @@ export function NoteDetailScreen({ actorId, noteId, scopeKey }: { actorId: strin
     {source.offline ? <OfflineNotice lastSyncedAt={source.lastSyncedAt} /> : null}
     {source.loading ? <LoadingState /> : null}
     {source.failure ? <ErrorState message={source.failure} /> : null}
-    {source.missing ? <ErrorState message={locale.t("notes.missing")} /> : null}
+    {source.missing && source.offline ? <NeedsNetworkState message={locale.t("sync.notOnDevice")} /> : source.missing ? <ErrorState message={locale.t("notes.missing")} /> : null}
     {note ? <>
       <View style={styles.heading}>
         <View style={styles.privatePill}><Ionicons color={colors.text3} name="lock-closed-outline" size={13} /><Text style={styles.private}>{locale.t("notes.private")}</Text></View>
