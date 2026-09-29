@@ -91,7 +91,7 @@
 | [W0030](W0030-account-session-graph-trim/GOAL.md) | 账号会话图读取（`readAccountSessionGraph`／`resolveAuthenticatedApiActorFromSession`）只返回判定所需字段，22 个调用方行为不变；详情页账号解析单次字节与月流量实测回到上限内 | RV-03、RV-05 | W0027、W0028（D22 顺序）；W30-1～4 已定（D23） | completed |
 | [W0031](W0031-inbox-identity-polling/GOAL.md) | 收件箱轮询与 `/api/account/me` 瘦身：每个轮询周期只确认一次身份，账号会话服务只返回页面所需字段；按生产构建实测频次并估算月流量 | RV-03、RV-05 | W0029（顺序）、W0030（D24）；W31-1～5 已定（D25） | completed |
 | [W0032](W0032-session-revocation-read/GOAL.md) | 登录会话有效性检查（`isPasswordSessionCurrent`）读取瘦身：生产构建实测每请求读取与月流量，只读判定所需字段或同请求只读一次，安全行为不变 | RV-03、RV-05 | W0031（D28）；W32 已定（D30、D31） | completed |
-| W0034 | 排序与联系人搜索运行时白名单覆盖生产组合（Node 24.x、PG 16.15／ICU collversion 153.14）：同组合差分测试、白名单不卡 Node patch、失败时记录实际元组（GOAL/PLANNER 待编制） | RV-04 | W0019 只读核查（D33） | planned |
+| [W0034](W0034-runtime-allowlist-prod/GOAL.md) | 排序与联系人搜索运行时白名单覆盖生产组合（Node 24.x、PG 16.15／ICU collversion 153.14）：同组合差分测试、白名单不卡 Node patch、失败时记录实际元组 | RV-04 | W0019 只读核查（D33）；W34-1～7 待定 | planned |
 | [W0033](W0033-notification-source-404/GOAL.md) | 通知来源页 id 重复编码导致 404 的修复（L） | RV-02 | W0031（D29） | completed |
 
 全部 Sprint 都已有 GOAL 与 PLANNER（2026-09-28 编制；大目标 1 与大目标 2 各经 Codex `gpt-5.6-sol` 方案 review 后修订为 revision 2，review 意见与处理见 [REVIEW-2026-09-28.md](REVIEW-2026-09-28.md)）。`planned` 表示前置 Sprint 尚未 completed；前置完成后改为 `ready`。
