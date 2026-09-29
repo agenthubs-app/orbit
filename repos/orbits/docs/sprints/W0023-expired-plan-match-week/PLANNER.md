@@ -125,3 +125,7 @@ REPORT 写：W23-1／W23-2 的答复、到期关联前后对照、下一份计�
 | P2-3（`linkNeedContact`／`decideMatchCandidate` 行号不完整） | 接受。按源码分列：`linkNeedContact` 第 883–917 行、`decideMatchCandidate` 第 919–963 行，二者都调用 `linkWithin`（第 415–490 行） |
 | 用户要求查清继承逻辑 | 已查：`mergeInherited`／`isCompletedContent`／`createVersionWithOutcome` 只带入已关联需求（周次置空），不生成「约 TA」，未完成行动不带入；生成规则纳入本 Sprint（SC-03），新增 W23-2 待确认 |
 | 其余 | 不涉及本 Sprint。GitNexus 刷新后相关符号为 CRITICAL（revision 1 记为 LOW），已如实登记 |
+
+## 追加记录（协调者，2026-09-29）
+
+- W23-2 用户决定：**也生成**（README D17）。重新分析与制定下一份计划使用同一规则，在新版本当周为已关联、未建立联系且未完成的（需求, 联系人）生成「约 TA」。进入条件中的 W23-2 已满足。

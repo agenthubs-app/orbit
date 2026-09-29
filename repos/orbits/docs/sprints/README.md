@@ -28,6 +28,7 @@
 | D14 | W23-1：到期计划上关联联系人怎么处理 | 只记「需求↔联系人」和进展记录，不生成「约 TA」；下一份计划带入已关联需求并在当周生成「约 TA」；确认接口返回与三处确认组件跟着改（2026-09-29） | W0023 |
 | D15 | W24-1：活动详情页同类身份问题 | 另开 Sprint（W0027，H，含访问控制回归）（2026-09-29） | W0024、W0027 |
 | D16 | W0022～W0027 执行顺序 | W0022 → W0025 → W0026 → W0024 → W0023 → W0027 → W0019（2026-09-29） | W0019、W0022～W0027 |
+| D17 | W23-2：重新分析（reanalysis）是否也为已关联需求在新版本当周生成「约 TA」 | 也生成：与制定下一份计划同一规则（两者共用 `createVersionWithOutcome`）；已建立联系或已完成的不再生成（2026-09-29） | W0023 |
 
 ## 发布动作（需要单独授权）
 
@@ -63,10 +64,10 @@
 | [W0020](W0020-preview-verify/GOAL.md) | Preview 复验关键场景并测量 Neon 流量 | RV-04 | W0019；用户授权 Preview 部署、迁移、开关、测试数据 | planned |
 | [W0021](W0021-read-traffic-trim/GOAL.md) | 计划／匹配／名片／活动归属读取瘦身，1000 人月出站 ≤1.0 GB，活动归属按时间窗口读取，页面不变 | RV-05 | W0017 | completed |
 | [W0022](W0022-home-guide-entry/GOAL.md) | 老用户首页「帮我制定推进计划」改去引导第 3 步（`?step` 不绕过硬顺序）；有计划但第 4 步未完成时首页留提醒 | RW-04、RW-10 | W0018；W22-1～4 已定（D13） | completed |
-| [W0023](W0023-expired-plan-match-week/GOAL.md) | 到期计划上关联联系人只记关联和进展记录、不生成「约 TA」；制定下一份计划时在新计划当周生成；确认接口与组件跟着改 | RW-11、RW-12 | W0026（同改种子脚本）、W0024（顺序）；W23-2 待确认 | planned |
+| [W0023](W0023-expired-plan-match-week/GOAL.md) | 到期计划上关联联系人只记关联和进展记录、不生成「约 TA」；制定下一份计划时在新计划当周生成；确认接口与组件跟着改 | RW-11、RW-12 | W0026（同改种子脚本）、W0024（顺序）；W23-2 已定（D17） | planned |
 | [W0024](W0024-events-registration-actor-id/GOAL.md) | 活动页 `/app/events` 按账号 id 读报名；查询次数不增加，返回字节增量实测且 ≤30 MB/月；目录读取失败时不读账号 | RV-02 | 无代码依赖；按顺序在 W0026 之后 | planned |
-| [W0025](W0025-lifecycle-sort-runtime/GOAL.md) | 跟进排序运行时从单一组合改为经差分测试的白名单（加入本机组合），「先联系谁」恢复真实数据；首页跟进来源不可用时不下确定结论；给 W0019 写发布门 | RW-01、RV-02 | W0022（同改 iorbit-home.tsx）；本机 PG 测试库 | ready |
-| [W0026](W0026-recommend-reason-fixture/GOAL.md) | 验收种子造出真实可匹配的活动，策略页两种推荐理由可在 3001 复验；不改分词算法 | RW-07、RV-02 | W0025（执行顺序） | planned |
+| [W0025](W0025-lifecycle-sort-runtime/GOAL.md) | 跟进排序运行时从单一组合改为经差分测试的白名单（加入本机组合），「先联系谁」恢复真实数据；首页跟进来源不可用时不下确定结论；给 W0019 写发布门 | RW-01、RV-02 | W0022（同改 iorbit-home.tsx）；本机 PG 测试库 | completed |
+| [W0026](W0026-recommend-reason-fixture/GOAL.md) | 验收种子造出真实可匹配的活动，策略页两种推荐理由可在 3001 复验；不改分词算法 | RW-07、RV-02 | W0025（执行顺序） | ready |
 | [W0027](W0027-event-detail-actor-id/GOAL.md) | 活动详情页 `/app/events/[id]` 按账号 id 判定已报名、名单、主办方与私密访问；含访问控制回归 | RV-02 | W0024（复用测试夹具） | planned |
 
 全部 Sprint 都已有 GOAL 与 PLANNER（2026-09-28 编制；大目标 1 与大目标 2 各经 Codex `gpt-5.6-sol` 方案 review 后修订为 revision 2，review 意见与处理见 [REVIEW-2026-09-28.md](REVIEW-2026-09-28.md)）。`planned` 表示前置 Sprint 尚未 completed；前置完成后改为 `ready`。
@@ -97,3 +98,4 @@
 | W0021 | run-01（2026-09-29） | `0d746c73`（报告 `ca30ce93`） | `e96fcbc0` | [REPORT](W0021-read-traffic-trim/REPORT.md) |
 | W0018 | run-01（2026-09-29） | `32943ac7`（报告 `b94478f6`） | `d8ed2f7e` | [REPORT](W0018-scenario-acceptance/REPORT.md)；[验收报告页](https://claude.ai/artifact/JCCFpS5zxK9a74ecCwF65i) |
 | W0022 | run-01（2026-09-29） | `ec08f8f4`（报告 `223dd397`） | `3b0376e0` | [REPORT](W0022-home-guide-entry/REPORT.md) |
+| W0025 | run-01（2026-09-29） | `488dd9d6`（报告 `54cbccfb`） | `6921656b` | [REPORT](W0025-lifecycle-sort-runtime/REPORT.md) |
