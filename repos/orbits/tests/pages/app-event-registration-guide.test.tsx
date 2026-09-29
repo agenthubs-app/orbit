@@ -61,7 +61,9 @@ test("public event detail stays readable while registration itself requires auth
   assert.doesNotMatch(pageSource, /getOrbitLandingViewModel\(/);
   assert.match(pageSource, /resolution\.state === "success"/);
   assert.match(pageSource, /resolution\.state === "authentication_required"/);
-  assert.match(pageSource, /actorId: session\?\.user\?\.id/);
+  // W0027: detail decisions read by the canonical account id, never the session id.
+  assert.doesNotMatch(pageSource, /actorId: session\?\.user\?\.id/);
+  assert.match(pageSource, /resolveAuthenticatedApiActorFromSession\(/);
   assert.doesNotMatch(pageSource, /readSearchParam\(query, "mode"\)/);
   assert.match(registerSource, /actorContext\.requestScoped/);
   assert.match(registerSource, /loadEventForRegistration\(id, actor\?\.id\)/);

@@ -242,7 +242,9 @@ test("/app/events/[id] serves public and authorized private detail from one cano
   assert.match(pageSource, /auth\(\)/);
   assert.match(pageSource, /const id = eventRouteId\(routeId\)/);
   assert.match(pageSource, /decodeURIComponent\(value\)/);
-  assert.match(pageSource, /actorId: session\?\.user\?\.id/);
+  // W0027: detail decisions read by the canonical account id, never the session id.
+  assert.doesNotMatch(pageSource, /actorId: session\?\.user\?\.id/);
+  assert.match(pageSource, /resolveAuthenticatedApiActorFromSession\(/);
   assert.doesNotMatch(pageSource, /createEventCrudAndImportService/);
   assert.doesNotMatch(
     source(
@@ -320,7 +322,9 @@ test("event detail reads registration state from the authenticated canonical ser
   );
 
   const pageSource = source("app/(app)/app/events/[id]/page.tsx");
-  assert.match(pageSource, /actorId: session\?\.user\?\.id/);
+  // W0027: detail decisions read by the canonical account id, never the session id.
+  assert.doesNotMatch(pageSource, /actorId: session\?\.user\?\.id/);
+  assert.match(pageSource, /resolveAuthenticatedApiActorFromSession\(/);
   assert.match(pageSource, /youRsvped: resolution\.registered/);
   assert.doesNotMatch(detailSource, /registration\?questions=false|setRegistrationStatus/);
   assert.match(detailSource, /registrationStatus/);
