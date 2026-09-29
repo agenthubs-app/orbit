@@ -346,3 +346,9 @@ W0034（合并 `af7da1a8`）已经把生产组合写进跟进白名单 `VERIFIED
 | 日期（周一） | 读数来源 | 当月累计 | 已过天数 | 外推到月底 | 是否触发（≥3.5 GB） | 记录人 |
 | --- | --- | --- | --- | --- | --- | --- |
 | 上线前基线 | Neon 控制台 | 待 U4 | | | | |
+
+## 附录 B：协调者补跑的表外只读查询（2026-09-30）
+
+- **N7**（`prod-readonly/N7.txt`）：生产 `orbit_records` 现有 13 个索引，没有 `orbit_records_search_text_trgm_idx`；与 N6（无 `pg_trgm`）一致。M2 迁移会 `create extension pg_trgm` 并在 `orbit_records` 上建 trgm 索引——这是生产写操作，建索引期间有额外计算与写入，纳入 U2 授权范围。
+- **N8**（`prod-readonly/N8.txt`）：appointment v1–v4、bc_ingest v1–v5、event_analytics v1、event_experience v1 的 name 与 checksum 已记录。与拟发布代码的逐项比对需在 M2 前用迁移脚本的 dry-run／本地校验完成（放进 W0020 或迁移 Sprint 的预检步骤）。
+- **V8**（`prod-readonly/V8.txt`）：`get_deployment` 不返回 crons／functions 配置，仍无法判断当前生产用的是 `vercel.json` 还是 `vercel.staging.json`；需 U1（team 授权）后从构建日志确认。R6 维持「待核实」。
