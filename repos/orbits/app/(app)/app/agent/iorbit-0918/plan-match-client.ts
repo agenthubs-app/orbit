@@ -84,9 +84,14 @@ export async function runPlanMatchForBatch(batchId: string, signal?: AbortSignal
   return asList(await readEnvelope<unknown>(response));
 }
 
-function actionFrom(value: unknown): PlanMatchAction {
-  const link = value as { action?: { id?: unknown; title?: unknown; meta?: Record<string, unknown> }; need?: { id?: unknown } } | null;
+/**
+ * 关联结果里的「约 TA」行动。W0023：计划已到期时服务端只记关联、`action` 为 null（下一份计划再安排），
+ * 这里同样返回 null；缺少需求或行动形状不对仍当作坏响应。
+ */
+function actionFrom(value: unknown): PlanMatchAction | null {
+  const link = value as { action?: { id?: unknown; title?: unknown; meta?: Record<string, unknown> } | null; need?: { id?: unknown } } | null;
   const action = link?.action;
+  if (action === null && typeof link?.need?.id === "string") return null;
   if (!action || typeof action.id !== "string" || typeof action.title !== "string") {
     throw new PlanClientError("Unexpected link payload.");
   }
@@ -98,7 +103,10 @@ function actionFrom(value: unknown): PlanMatchAction {
   };
 }
 
-/** 是：关联并生成本周「约 TA」行动（服务端按候选固定幂等键）；不是：不再提示。 */
+/**
+ * 是：关联并生成本周「约 TA」行动（服务端按候选固定幂等键）；不是：不再提示（返回 null）。
+ * W0023：计划已到期时「是」只记关联，同样返回 null——调用方按这次的决定区分。
+ */
 export async function decidePlanMatch(candidateId: string, decision: "accept" | "dismiss"): Promise<PlanMatchAction | null> {
   const response = await fetch("/api/agent/plans/candidates", {
     body: JSON.stringify({ candidateId, decision }),
@@ -114,8 +122,8 @@ export async function decidePlanMatch(candidateId: string, decision: "accept" | 
   return decision === "accept" ? actionFrom(data.link) : null;
 }
 
-/** 联系人详情：手动关联到本人计划的某条人脉需求（一次提交持有同一个幂等键）。 */
-export async function linkContactToNeed(needItemId: string, contactId: string, idempotencyKey: string): Promise<PlanMatchAction> {
+/** 联系人详情：手动关联到本人计划的某条人脉需求（一次提交持有同一个幂等键）。计划已到期时返回 null（W0023）。 */
+export async function linkContactToNeed(needItemId: string, contactId: string, idempotencyKey: string): Promise<PlanMatchAction | null> {
   const response = await fetch("/api/agent/plans/candidates", {
     body: JSON.stringify({ action: "link", contactId, idempotencyKey, needItemId }),
     headers: { "content-type": "application/json" },

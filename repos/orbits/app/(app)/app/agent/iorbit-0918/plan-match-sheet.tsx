@@ -10,6 +10,7 @@
  * （服务端同时写进展记录），行动卡上有 定时间（打开个人日程页新建）、起草邮件（点击才请求，
  * 当前是模板草稿、不调 AI；就地显示可编辑文字与「复制」，永远不发送）、记一次互动（写互动记录并把
  * 这个人标为已建立联系）。
+ * W0023：计划已过最后一周时「是」只记关联，行里说明「制定下一份计划时会安排『约 TA』」，没有行动卡。
  * 不是 → 这一对以后不再提示。
  *
  * 样式自带（`.pms` 作用域），三处宿主的作用域各不相同；按钮用 `.pms .btn.pms-*` 压过
@@ -191,7 +192,17 @@ interface RowState {
   busy: boolean;
   error: string | null;
   action: PlanMatchAction | null;
+  /** 已接受但没有行动（W0023：计划已到期，下一份计划再安排）。 */
+  linkedOnly: boolean;
   dismissed: boolean;
+}
+
+/** W0023：到期计划上关联后的说明（确认处与联系人详情共用）。 */
+function endedPlanNote(needTitle: string, t: Translate): string {
+  return t({
+    en: `Linked to “${needTitle}”. This plan has ended — your next plan will schedule a meeting with them.`,
+    zh: `已关联到「${needTitle}」；计划已到期，制定下一份计划时会安排「约 TA」`,
+  });
 }
 
 /**
@@ -209,7 +220,7 @@ export function PlanMatchSheet({
 }) {
   const { t } = useOrbitLanguage();
   const [rows, setRows] = useState<Record<string, RowState>>({});
-  const row = (id: string): RowState => rows[id] ?? { action: null, busy: false, dismissed: false, error: null };
+  const row = (id: string): RowState => rows[id] ?? { action: null, busy: false, dismissed: false, error: null, linkedOnly: false };
   const patch = (id: string, next: Partial<RowState>) => setRows((current) => ({ ...current, [id]: { ...row(id), ...current[id], ...next } }));
 
   const decide = async (candidate: PlanMatchCandidate, decision: "accept" | "dismiss") => {
@@ -217,7 +228,7 @@ export function PlanMatchSheet({
     patch(candidate.id, { busy: true, error: null });
     try {
       const action = await decidePlanMatch(candidate.id, decision);
-      patch(candidate.id, { action, busy: false, dismissed: decision === "dismiss" });
+      patch(candidate.id, { action, busy: false, dismissed: decision === "dismiss", linkedOnly: decision === "accept" && !action });
       onDecided?.(candidate.id, decision, action);
     } catch (failure) {
       patch(candidate.id, {
@@ -267,6 +278,10 @@ export function PlanMatchSheet({
                     </span>
                     <MatchActionButtons actionItemId={state.action.id} />
                   </div>
+                ) : state.linkedOnly ? (
+                  <p className="pms-note" data-plan-match-linked-only role="status">
+                    {endedPlanNote(candidate.needTitle, t)}
+                  </p>
                 ) : (
                   <div className="pms-acts">
                     <button className="btn pms-yes" data-plan-match-yes disabled={state.busy} onClick={() => void decide(candidate, "accept")} type="button">
@@ -388,7 +403,8 @@ interface LinkableNeed {
 
 /**
  * 联系人详情「关联到计划人脉需求」（W0010 手动关联）：点开才读本人的生效计划，列出人脉需求，
- * 选一条关联；服务端只接受本人的计划与本人的联系人（其余 404），关联后同样生成本周「约 TA」行动。
+ * 选一条关联；服务端只接受本人的计划与本人的联系人（其余 404），关联后同样生成本周「约 TA」行动
+ * （W0023：计划已到期时只记关联，说明下一份计划再安排）。
  * `guard` 返回 true 表示被示例模式拦下（不发请求）。
  */
 export function PlanNeedLinkPanel({ contactId, guard }: { contactId: string; guard?: () => boolean }) {
@@ -398,7 +414,7 @@ export function PlanNeedLinkPanel({ contactId, guard }: { contactId: string; gua
   const [selected, setSelected] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<{ need: string; action: string } | null>(null);
+  const [result, setResult] = useState<{ need: string; action: string | null } | null>(null);
   const key = useRef<string | null>(null);
 
   const open = async () => {
@@ -426,7 +442,7 @@ export function PlanNeedLinkPanel({ contactId, guard }: { contactId: string; gua
       key.current ??= newPlanIdempotencyKey("plan-link");
       const action = await linkContactToNeed(need.id, contactId, key.current);
       key.current = null;
-      setResult({ action: action.title, need: need.title });
+      setResult({ action: action?.title ?? null, need: need.title });
       setState("linked");
     } catch (failure) {
       setError(t({ en: `Couldn't link. (${(failure as Error).message})`, zh: `没能关联。（${(failure as Error).message}）` }));
@@ -452,10 +468,12 @@ export function PlanNeedLinkPanel({ contactId, guard }: { contactId: string; gua
         <p className="pms-error" role="alert">{t({ en: "Your plan can't be read right now.", zh: "计划暂时读不到。" })}</p>
       ) : state === "linked" && result ? (
         <p className="pms-note" role="status">
-          {t({
-            en: `Linked to “${result.need}”. This week now has “${result.action}”. `,
-            zh: `已关联到「${result.need}」，本周多了一条「${result.action}」。`,
-          })}
+          {result.action === null
+            ? `${endedPlanNote(result.need, t)}${t({ en: " ", zh: "。" })}`
+            : t({
+                en: `Linked to “${result.need}”. This week now has “${result.action}”. `,
+                zh: `已关联到「${result.need}」，本周多了一条「${result.action}」。`,
+              })}
           <a className="pms-inline" href="/app/agent/plan">{t({ en: "Open my plan", zh: "查看计划" })}</a>
         </p>
       ) : (

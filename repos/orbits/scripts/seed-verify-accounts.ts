@@ -711,7 +711,10 @@ async function seedPlanInProgress(
   });
 }
 
-/** verify-expired：一年期计划已过最后一周（第 55 周左右）→ 到期回顾。 */
+/**
+ * verify-expired：一年期计划已过最后一周（第 55 周左右）→ 到期回顾。
+ * W0023：到期后关联林玫只记关联和一条进展记录，不生成「约 林玫」；制定下一份计划时新计划第 1 周才出现。
+ */
 async function seedExpiredPlan(runtime: Runtime, spec: AccountSpec, contactIds: string[]) {
   const service = planServiceFor(spec.actorId);
   const actions = [

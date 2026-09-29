@@ -5,7 +5,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type { PlanItem, PlanSnapshot } from "../../features/plans/contract";
+import type { PlanItem, PlanReferenceValidator, PlanSnapshot } from "../../features/plans/contract";
 import { createMockPlanGenerator } from "../../features/plans/mock-generator";
 import {
   buildPlanReview,
@@ -177,10 +177,17 @@ test("the review counts done actions, new people and where they were met", () =>
 
 /* ------------------------------------------------------------------ */
 
-function harness(options: { clock: { now: string }; repository?: PlanRepository; actorId?: string }) {
+function harness(options: {
+  clock: { now: string };
+  repository?: PlanRepository;
+  actorId?: string;
+  references?: PlanReferenceValidator;
+  readLinkedContactNames?: (actorId: string) => Promise<Readonly<Record<string, string>>>;
+}) {
   const actorId = options.actorId ?? ME;
   const repository = options.repository ?? createMemoryPlanRepository();
-  const references = createAllowListPlanReferenceValidator({ actorId, allowList: { contactsByActor: "any", eventIds: "any" } });
+  const references =
+    options.references ?? createAllowListPlanReferenceValidator({ actorId, allowList: { contactsByActor: "any", eventIds: "any" } });
   let tick = 0;
   const plans = createPlanService({
     // 同一「时刻」里每次调用前进 1 ms，保证记录有先后。
@@ -194,6 +201,7 @@ function harness(options: { clock: { now: string }; repository?: PlanRepository;
     generator: createMockPlanGenerator(),
     now: () => new Date(options.clock.now),
     plans,
+    readLinkedContactNames: options.readLinkedContactNames,
     references,
     source: { listContacts: async () => ({ contacts: CONTACTS, total: CONTACTS.length }), listEvents: async () => EVENTS },
   });
@@ -322,4 +330,172 @@ test("a failure inside the version transaction leaves no half-written new versio
   assert.deepEqual(inner.dump({ actorId: ME, workspaceId: "w" }), before);
   assert.equal((await plans.getCurrent())?.plan.id, v1.plan.id);
   assert.equal((await plans.reanalysisQuota()).remaining, 1);
+});
+
+/* ------------------------------------------------------------------ */
+/* W0023 SC-03：新版本为带入的已关联需求在当周生成「约 TA」               */
+/* ------------------------------------------------------------------ */
+
+/** 除 `deleted` 里的 id 外都是本人的联系人；`explode` 打开时校验 kato 抛错（模拟生成步骤失败）。 */
+function mutableReferences(state: { deleted: Set<string>; explode: boolean }): PlanReferenceValidator {
+  return {
+    async findMissingContactIds(ids) {
+      // 只在校验到带入需求上的联系人（kato）时失败：生成器自己的引用照常通过。
+      if (state.explode && ids.includes("contact:kato")) throw new Error("reference lookup failed");
+      return ids.filter((id) => state.deleted.has(id));
+    },
+    async findMissingEventIds() {
+      return [];
+    },
+  };
+}
+
+/** 包一层仓储：记录当前是否在事务里（称呼必须在事务外读）。 */
+function trackingRepository() {
+  const inner = createMemoryPlanRepository();
+  const state = { inTransaction: false };
+  const repository: PlanRepository = {
+    read: (scope, operation) => inner.read(scope, operation),
+    transact: (scope, operation) =>
+      inner.transact(scope, async (tx) => {
+        state.inTransaction = true;
+        try {
+          return await operation(tx);
+        } finally {
+          state.inTransaction = false;
+        }
+      }),
+  };
+  return { inner, repository, state };
+}
+
+const matchActionsOf = (snapshot: PlanSnapshot) => snapshot.items.filter((item) => item.meta.source === "network_match");
+const START = "2026-10-05"; // 13 周计划，第 14 周从 2027-01-04 起
+const IN_WEEK_2 = "2026-10-13T03:00:00.000Z";
+const AFTER_END = "2027-01-05T03:00:00.000Z";
+
+test("W0023 SC-03: the next plan schedules one 约 TA per carried, still-linked pair in its first week and skips the rest", async () => {
+  const clock = { now: IN_WEEK_2 };
+  const refs = { deleted: new Set<string>(), explode: false };
+  const tracked = trackingRepository();
+  const nameReads: string[] = [];
+  const { followUp, plans, request } = harness({
+    clock,
+    readLinkedContactNames: async (actorId) => {
+      assert.equal(tracked.state.inTransaction, false, "names are read outside the transaction");
+      nameReads.push(actorId);
+      return { "contact:kato": "加藤", "contact:sato": "佐藤", "contact:suzuki": "铃木", "contact:tanaka": "田中" };
+    },
+    references: mutableReferences(refs),
+    repository: tracked.repository,
+  });
+  const v1 = await plans.createVersion(planInput({ startsOn: START }));
+  const need = v1.items.find((item) => item.kind === "network_need")!;
+  // 第 2 周：kato 关联（行动未完成）、tanaka 关联后行动直接勾完成（关联仍是 linked）、suzuki 记一次互动（已建立联系）。
+  await plans.linkNeedContact({ contactId: "contact:kato", contactName: "加藤", needItemId: need.id });
+  const tanaka = await plans.linkNeedContact({ contactId: "contact:tanaka", contactName: "田中", needItemId: need.id });
+  await plans.updateItem({ change: { op: "set_status", status: "done" }, itemId: tanaka.action!.id });
+  const suzuki = await plans.linkNeedContact({ contactId: "contact:suzuki", contactName: "铃木", needItemId: need.id });
+  await plans.recordInteraction({ actionItemId: suzuki.action!.id });
+  // 到期后：sato 与 gone 只记关联；gone 随后被删除。
+  clock.now = AFTER_END;
+  assert.equal((await plans.linkNeedContact({ contactId: "contact:sato", needItemId: need.id })).action, null);
+  assert.equal((await plans.linkNeedContact({ contactId: "contact:gone", needItemId: need.id })).action, null);
+  refs.deleted.add("contact:gone");
+
+  const next = await followUp.create(request(v1.plan.id, "next-1", "next_plan"));
+  const snapshot = next.snapshot;
+  const newNeed = snapshot.items.find((item) => item.kind === "network_need" && item.carriedFromItemId === need.id)!;
+  assert.ok(newNeed, "the linked need is carried");
+  const generated = matchActionsOf(snapshot).filter((item) => item.meta.needItemId === newNeed.id);
+  assert.deepEqual(generated.map((item) => [item.title, item.meta.contactId]).sort(), [
+    ["约 佐藤", "contact:sato"],
+    ["约 加藤", "contact:kato"],
+  ]);
+  for (const action of generated) {
+    assert.equal(action.suggestedWeek, 1);
+    assert.equal(action.status, "not_started");
+    assert.equal(action.planId, snapshot.plan.id);
+    assert.equal(action.phaseKey, newNeed.phaseKey);
+    assert.equal(action.carriedFromItemId, null);
+    assert.equal(action.meta.source, "network_match");
+    assert.deepEqual(action.contactLinks.map((link) => [link.contactId, link.state]), [[action.meta.contactId, "linked"]]);
+  }
+  // tanaka 的已完成行动被带入（meta 仍指向旧需求），不再生成；suzuki 已建立联系；gone 已删除。
+  const carriedDone = matchActionsOf(snapshot).filter((item) => item.status === "done").map((item) => item.meta.contactId).sort();
+  assert.deepEqual(carriedDone, ["contact:suzuki", "contact:tanaka"]);
+  assert.equal(matchActionsOf(snapshot).filter((item) => item.meta.contactId === "contact:gone").length, 0);
+  assert.equal(matchActionsOf(snapshot).length, 4);
+  const created = snapshot.log.find((entry) => entry.event === "plan_created")!;
+  assert.equal(created.payload.matchActionCount, 2);
+  assert.deepEqual(nameReads, [ME], "names are read once");
+
+  // 同一个键重放：回放那一份，不重复生成。
+  const replay = await followUp.create(request(v1.plan.id, "next-1", "next_plan"));
+  assert.equal(replay.replayed, true);
+  assert.equal(matchActionsOf((await plans.getCurrent())!).length, 4);
+});
+
+test("W0023 SC-03 (D17): re-analysis uses the same rule; unreadable names fall back to 约 TA", async () => {
+  for (const reader of [async () => ({}), async () => Promise.reject(new Error("names down"))]) {
+    const clock = { now: IN_WEEK_2 };
+    const { followUp, plans, request } = harness({ clock, readLinkedContactNames: reader });
+    const v1 = await plans.createVersion(planInput({ startsOn: START }));
+    const need = v1.items.find((item) => item.kind === "network_need")!;
+    await plans.linkNeedContact({ contactId: "contact:kato", contactName: "加藤", needItemId: need.id });
+    const v2 = await followUp.create(request(v1.plan.id, "re-1"));
+    const newNeed = v2.snapshot.items.find((item) => item.carriedFromItemId === need.id)!;
+    const generated = matchActionsOf(v2.snapshot).filter((item) => item.meta.needItemId === newNeed.id);
+    assert.deepEqual(generated.map((item) => [item.title, item.suggestedWeek]), [["约 TA", 1]]);
+    // v1 那条未完成的「约 加藤」不带入：新版本只有这一条。
+    assert.equal(matchActionsOf(v2.snapshot).length, 1);
+  }
+});
+
+test("W0023 SC-03: a version without an origin (first plan, plain createVersion) generates nothing", async () => {
+  const clock = { now: IN_WEEK_2 };
+  const { plans } = harness({ clock });
+  const v1 = await plans.createVersion(planInput({ startsOn: START }));
+  assert.equal(matchActionsOf(v1).length, 0);
+  const need = v1.items.find((item) => item.kind === "network_need")!;
+  clock.now = AFTER_END;
+  await plans.linkNeedContact({ contactId: "contact:kato", needItemId: need.id });
+  const v2 = await plans.createVersion(planInput({ startsOn: "2027-01-04" }));
+  assert.equal(matchActionsOf(v2).length, 0);
+});
+
+test("W0023 SC-03: generated actions never push the plan past itemsPerPlan", async () => {
+  const filler = (count: number) =>
+    Array.from({ length: count }, (_, index) => ({ kind: "action" as const, phaseKey: "p1", suggestedWeek: 1, title: `行动 ${index + 1}` }));
+  for (const [fillers, expected] of [[298, 1], [299, 0]] as const) {
+    const clock = { now: IN_WEEK_2 };
+    const { plans } = harness({ clock });
+    const v1 = await plans.createVersion(planInput({ startsOn: START }));
+    const need = v1.items.find((item) => item.kind === "network_need")!;
+    clock.now = AFTER_END;
+    await plans.linkNeedContact({ contactId: "contact:kato", needItemId: need.id });
+    await plans.linkNeedContact({ contactId: "contact:sato", needItemId: need.id });
+    const { snapshot } = await plans.createVersionWithOutcome(
+      planInput({ basePlanId: v1.plan.id, items: filler(fillers), startsOn: "2027-01-04" }),
+      { contactNames: { "contact:kato": "加藤", "contact:sato": "佐藤" }, origin: "next_plan" },
+    );
+    assert.equal(matchActionsOf(snapshot).length, expected);
+    assert.ok(snapshot.items.length <= 300);
+  }
+});
+
+test("W0023 SC-03: a failing generation step leaves both versions untouched", async () => {
+  const clock = { now: IN_WEEK_2 };
+  const refs = { deleted: new Set<string>(), explode: false };
+  const tracked = trackingRepository();
+  const { followUp, plans, request } = harness({ clock, references: mutableReferences(refs), repository: tracked.repository });
+  const v1 = await plans.createVersion(planInput({ startsOn: START }));
+  const need = v1.items.find((item) => item.kind === "network_need")!;
+  clock.now = AFTER_END;
+  await plans.linkNeedContact({ contactId: "contact:kato", needItemId: need.id });
+  const before = tracked.inner.dump({ actorId: ME, workspaceId: "w" });
+  refs.explode = true;
+  await assert.rejects(followUp.create(request(v1.plan.id, "next-x", "next_plan")), /reference lookup failed/);
+  assert.deepEqual(tracked.inner.dump({ actorId: ME, workspaceId: "w" }), before);
+  assert.equal((await plans.getCurrent())?.plan.id, v1.plan.id);
 });

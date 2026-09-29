@@ -200,3 +200,167 @@ test("a manual note @-mentions contacts and an event as structured refs; the men
   await bob.addManualLog({ body: "x", linkedContactIds: ["contact:bob-only"] });
   assert.equal(autoLogs(repository, "actor:alice", (log) => log.event === "contact_established").length, 1);
 });
+
+/* ------------------------------------------------------------------ */
+/* W0023：到期计划上关联联系人只记关联和进展记录，不生成「约 TA」       */
+/* ------------------------------------------------------------------ */
+
+const YEAR_PHASES = [
+  { endWeek: 13, granularity: "quarter" as const, key: "q1", startWeek: 1, title: "Q1" },
+  { endWeek: 26, granularity: "quarter" as const, key: "q2", startWeek: 14, title: "Q2" },
+  { endWeek: 39, granularity: "quarter" as const, key: "q3", startWeek: 27, title: "Q3" },
+  { endWeek: 52, granularity: "quarter" as const, key: "q4", startWeek: 40, title: "Q4" },
+];
+const YEAR_START = "2025-09-01"; // 周一
+
+/** `startsOn` 起第 `week` 周的某个时刻（东京正午）；week ≤ 0 表示开始前。 */
+function weekAt(startsOn: string, week: number): string {
+  return new Date(Date.parse(`${startsOn}T03:00:00.000Z`) + (week - 1) * 7 * 86_400_000).toISOString();
+}
+
+/** 可调时钟；同一时刻内每次调用前进 1 ms。memory 仓储外包一层只在测试里存在的匹配候选表。 */
+function clockedSetup() {
+  const clock = { now: weekAt(YEAR_START, 1) };
+  let tick = 0;
+  const inner = createMemoryPlanRepository();
+  const candidates = new Map<string, { id: string; needItemId: string; contactId: string; status: "pending" | "accepted" | "dismissed" }>();
+  const repository: MemoryPlanRepository = {
+    ...inner,
+    transact: (scope, operation) =>
+      inner.transact(scope, (tx) =>
+        operation({
+          ...tx,
+          async decideMatchCandidate(candidateId, status) {
+            const row = candidates.get(candidateId);
+            if (!row || row.status !== "pending") return false;
+            row.status = status;
+            return true;
+          },
+          async matchCandidateForUpdate(candidateId) {
+            const row = candidates.get(candidateId);
+            return row ? { ...row } : null;
+          },
+        }),
+      ),
+  };
+  const alice = createPlanService({
+    now: () => new Date(Date.parse(clock.now) + tick++).toISOString(),
+    references: createAllowListPlanReferenceValidator({ actorId: "actor:alice", allowList: ALLOW_LIST }),
+    repository,
+    scope: { actorId: "actor:alice", workspaceId: WORKSPACE },
+  });
+  const matchActions = async () => ((await alice.getCurrent())?.items ?? []).filter((item) => item.meta.source === "network_match");
+  const linkedLogs = () => autoLogs(inner, "actor:alice", (entry) => entry.event === "contact_linked");
+  return { alice, candidates, clock, inner, linkedLogs, matchActions };
+}
+
+async function yearPlan(alice: PlanService, startsOn = YEAR_START) {
+  const snapshot = await alice.createVersion(planInput({ horizon: "year", phases: YEAR_PHASES, startsOn, items: [
+    { kind: "action", phaseKey: "q1", suggestedWeek: 2, title: "整理名单" },
+    { criteria: null, kind: "network_need", phaseKey: "q2", title: "支付公司的产品负责人" },
+  ] }));
+  return { need: snapshot.items.find((item) => item.kind === "network_need")!, snapshot };
+}
+
+for (const week of [55, 61]) {
+  test(`W0023 SC-01: linking on a 52-week plan in week ${week} records the link and one log, and schedules no 约 TA`, async () => {
+    const { alice, clock, linkedLogs, matchActions } = clockedSetup();
+    const { need, snapshot } = await yearPlan(alice);
+    clock.now = weekAt(YEAR_START, week);
+    const result = await alice.linkNeedContact({ contactId: "contact:tanaka", contactName: "田中", needItemId: need.id });
+    assert.equal(result.action, null);
+    assert.equal(result.replayed, false);
+    assert.deepEqual(result.need.contactLinks.map((link) => [link.contactId, link.state]), [["contact:tanaka", "linked"]]);
+    const logs = linkedLogs();
+    assert.equal(logs.length, 1);
+    assert.equal(logs[0]!.itemId, need.id);
+    assert.equal(logs[0]!.targetItemId, null);
+    assert.equal(logs[0]!.payload.actionItemId, null);
+    const current = (await alice.getCurrent())!;
+    assert.equal(current.items.length, snapshot.items.length, "no new item");
+    assert.equal((await matchActions()).length, 0);
+    assert.ok(current.items.every((item) => (item.suggestedWeek ?? 0) <= 52), "no week beyond the plan's 52");
+  });
+}
+
+test("W0023 SC-01: an action made before the plan ended is returned unchanged when the pair is linked again after the end", async () => {
+  const { alice, clock, linkedLogs, matchActions } = clockedSetup();
+  const { need } = await yearPlan(alice);
+  clock.now = weekAt(YEAR_START, 5);
+  const first = await alice.linkNeedContact({ contactId: "contact:tanaka", contactName: "田中", needItemId: need.id });
+  assert.equal(first.action?.suggestedWeek, 5);
+  assert.equal(first.action?.title, "约 田中");
+  clock.now = weekAt(YEAR_START, 55);
+  const again = await alice.linkNeedContact({ contactId: "contact:tanaka", contactName: "田中", idempotencyKey: "late-1", needItemId: need.id });
+  assert.equal(again.action?.id, first.action!.id);
+  assert.equal(again.action?.suggestedWeek, 5);
+  assert.equal(again.log, null, "already linked: nothing new is written");
+  assert.equal((await matchActions()).length, 1);
+  assert.equal(linkedLogs().length, 1);
+});
+
+test("W0023 SC-01: a running plan is unchanged — week 5 gets week 5, before the start gets week 1, 13-week plan week 13 vs 14", async () => {
+  {
+    const { alice, clock, matchActions } = clockedSetup();
+    const { need } = await yearPlan(alice);
+    clock.now = weekAt(YEAR_START, 5);
+    const linked = await alice.linkNeedContact({ contactId: "contact:tanaka", needItemId: need.id });
+    assert.equal(linked.action?.suggestedWeek, 5);
+    assert.equal((await matchActions()).length, 1);
+  }
+  {
+    const { alice, clock } = clockedSetup();
+    clock.now = weekAt(YEAR_START, -2); // 开始前两周
+    const { need } = await yearPlan(alice);
+    const linked = await alice.linkNeedContact({ contactId: "contact:tanaka", needItemId: need.id });
+    assert.equal(linked.action?.suggestedWeek, 1);
+  }
+  {
+    const { alice, clock } = clockedSetup();
+    const plan = await alice.createVersion(planInput({ startsOn: YEAR_START })); // 13 周
+    const need = plan.items.find((item) => item.kind === "network_need")!;
+    clock.now = weekAt(YEAR_START, 13);
+    const last = await alice.linkNeedContact({ contactId: "contact:tanaka", needItemId: need.id });
+    assert.equal(last.action?.suggestedWeek, 13);
+    clock.now = weekAt(YEAR_START, 14);
+    const after = await alice.linkNeedContact({ contactId: "contact:sato", needItemId: need.id });
+    assert.equal(after.action, null);
+    assert.deepEqual(after.need.linkedContactIds, ["contact:tanaka", "contact:sato"]);
+  }
+});
+
+test("W0023 SC-01/02: accepting a match on an ended plan links without an action; a repeated accept replays without throwing", async () => {
+  const { alice, candidates, clock, linkedLogs, matchActions } = clockedSetup();
+  const { need } = await yearPlan(alice);
+  candidates.set("cand-1", { contactId: "contact:tanaka", id: "cand-1", needItemId: need.id, status: "pending" });
+  clock.now = weekAt(YEAR_START, 55);
+  const accepted = await alice.decideMatchCandidate({ candidateId: "cand-1", contactName: "田中", decision: "accept" });
+  assert.equal(accepted.status, "accepted");
+  assert.equal(accepted.replayed, false);
+  assert.equal(accepted.link?.action, null);
+  assert.deepEqual(accepted.link?.need.linkedContactIds, ["contact:tanaka"]);
+  assert.equal(accepted.link?.log?.idempotencyKey, "match:cand-1");
+
+  const again = await alice.decideMatchCandidate({ candidateId: "cand-1", contactName: "田中", decision: "accept" });
+  assert.equal(again.replayed, true);
+  assert.equal(again.link?.replayed, true);
+  assert.equal(again.link?.action, null);
+  assert.equal(again.link?.need.id, need.id);
+  await rejectsWith(alice.decideMatchCandidate({ candidateId: "cand-1", decision: "dismiss" }), "MATCH_ALREADY_DECIDED");
+  assert.equal(linkedLogs().length, 1);
+  assert.equal((await matchActions()).length, 0);
+});
+
+test("W0023 SC-02: replaying the same link key on an ended plan returns replayed with no action and writes nothing", async () => {
+  const { alice, clock, inner, linkedLogs } = clockedSetup();
+  const { need } = await yearPlan(alice);
+  clock.now = weekAt(YEAR_START, 55);
+  const first = await alice.linkNeedContact({ contactId: "contact:tanaka", idempotencyKey: "link-x", needItemId: need.id });
+  const before = inner.dump({ actorId: "actor:alice", workspaceId: WORKSPACE });
+  const replay = await alice.linkNeedContact({ contactId: "contact:tanaka", idempotencyKey: "link-x", needItemId: need.id });
+  assert.equal(replay.replayed, true);
+  assert.equal(replay.action, null);
+  assert.equal(replay.log?.id, first.log!.id);
+  assert.deepEqual(inner.dump({ actorId: "actor:alice", workspaceId: WORKSPACE }), before);
+  assert.equal(linkedLogs().length, 1);
+});

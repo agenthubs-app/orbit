@@ -20,6 +20,7 @@ import type { PlanHorizon, PlanReferenceValidator, PlanService, PlanSnapshot, Pl
 import { generatePlanDraft, type PlanGenerator, type PlanGeneratorInput, type PlanLocale } from "./generator";
 import { selectPlanContacts } from "./input-selector";
 import type { PlanInputSource } from "./input-source";
+import type { PlanMatchRepository } from "./matching-repository";
 import { validateGeneratedPlan } from "./validate";
 import { planTokyoDate, planWeekState, planWeeksOverdue } from "./week";
 
@@ -162,12 +163,34 @@ export const PLAN_FOLLOW_UP_KEY_PREFIX: Record<PlanVersionOrigin, string> = {
   reanalysis: "reanalyze:",
 };
 
+/**
+ * W0023：生效计划里人脉需求已关联的联系人 → 称呼。只读需求投影（一次）与这些联系人的称呼（一次批量），
+ * 在新版本事务之外调用；没有已关联的人时不读联系人。读不到称呼的人不在结果里（行动标题用「TA」）。
+ */
+export function createLinkedContactNameReader(
+  repository: Pick<PlanMatchRepository, "readActiveNeedViews" | "readContactViews">,
+): (actorId: string) => Promise<Record<string, string>> {
+  return async (actorId) => {
+    const needs = await repository.readActiveNeedViews(actorId);
+    const ids = [...new Set(needs.flatMap((need) => need.linkedContactIds))];
+    if (ids.length === 0) return {};
+    const names: Record<string, string> = {};
+    for (const contact of await repository.readContactViews(actorId, ids)) {
+      const name = contact.displayName.trim();
+      if (name) names[contact.id] = name;
+    }
+    return names;
+  };
+}
+
 export function createPlanFollowUpService(input: {
   actorId: string;
   plans: PlanService;
   references: PlanReferenceValidator;
   source: PlanInputSource;
   generator: PlanGenerator;
+  /** W0023：新版本里「约 TA」标题用的称呼（事务外读一次）；缺省或读失败时标题用「约 TA」。 */
+  readLinkedContactNames?: (actorId: string) => Promise<Readonly<Record<string, string>>>;
   now?: () => Date;
 }) {
   const now = input.now ?? (() => new Date());
@@ -208,6 +231,15 @@ export function createPlanFollowUpService(input: {
         });
       }
       await validateGeneratedPlan({ draft, generatorInput, references: input.references });
+      // 称呼只影响行动标题：读失败不挡住新计划，退回「约 TA」。
+      let contactNames: Readonly<Record<string, string>> | undefined;
+      if (input.readLinkedContactNames) {
+        try {
+          contactNames = await input.readLinkedContactNames(input.actorId);
+        } catch (error) {
+          console.warn("[plans] linked contact names unavailable; next-plan actions use 约 TA", error);
+        }
+      }
       const outcome = await input.plans.createVersionWithOutcome(
         {
           ...draft,
@@ -216,7 +248,7 @@ export function createPlanFollowUpService(input: {
           creationKey: `${PLAN_FOLLOW_UP_KEY_PREFIX[request.origin]}${request.idempotencyKey}`,
           sourceSessionId: null,
         },
-        { origin: request.origin },
+        { contactNames, origin: request.origin },
       );
       return { replayed: !outcome.created, snapshot: outcome.snapshot };
     },

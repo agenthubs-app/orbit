@@ -1970,6 +1970,38 @@ test("W0010: plan matches become one today item ranked after critical/high signa
   assert.equal(mounted.calls.filter((call) => call.url === "/api/agent/plans/candidates" && call.method === "GET").length, 1);
 });
 
+test("W0023: on an ended plan 是 on Today's sheet shows the next-plan note, no 约 TA card", async (t) => {
+  const mounted = await mountHome(t, homeElement({ clock: () => PLAN_NOW }), {
+    matchDecision: () =>
+      Response.json({
+        data: { candidateId: "cand-1", link: { action: null, log: null, need: { id: "n-connector" }, replayed: false }, replayed: false, status: "accepted" },
+        success: true,
+      }),
+    matches: MATCH_LIST,
+    plan: planSnapshotFixture(),
+    signals: [plainSignal("s-high", "紧急的事", "high")],
+    snapshot: EMPTY_SNAPSHOT,
+  });
+  await mounted.settle(6);
+  const go = mounted.root.root.findAll((node) => node.props?.className === "btn ir-m-go")[0]!;
+  await act(async () => {
+    go.props.onClick();
+  });
+  const yes = mounted.root.root.findAll((node) => node.props?.["data-plan-match-yes"] === true && node.type === "button")[0]!;
+  await act(async () => {
+    yes.props.onClick();
+  });
+  await mounted.settle(4);
+  const sheet = textOf(mounted.root.root.findAll((node) => node.props?.["data-plan-match-dialog"] === true)[0]!);
+  assert.ok(sheet.includes("已关联到「能帮你引荐的行业前辈」；计划已到期，制定下一份计划时会安排「约 TA」"), sheet);
+  assert.ok(!sheet.includes("已加入本周"));
+  assert.ok(!sheet.includes("记一次互动"));
+  const titlesAfter = mounted.root.root
+    .findAll((node) => node.props?.className === "ir-m-lead-title" || node.props?.className === "ir-m-brief-title")
+    .map((node) => textOf(node));
+  assert.ok(titlesAfter.includes("1 位新联系人可能对应你的计划"));
+});
+
 test("W0010: without a plan the home page never asks for plan matches", async (t) => {
   const mounted = await mountHome(t, homeElement(), { matches: MATCH_LIST, plan: null, snapshot: EMPTY_SNAPSHOT });
   await mounted.settle(4);

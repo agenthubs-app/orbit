@@ -6,7 +6,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createPlanCandidateRouteHandlers } from "../../app/api/agent/plans/candidates/route-handlers";
-import type { LinkNeedContactResult, RecordInteractionResult } from "../../features/plans/contract";
+import type { DecideMatchCandidateResult, LinkNeedContactResult, PlanSnapshot, RecordInteractionResult } from "../../features/plans/contract";
+import { PlanServiceError } from "../../features/plans/service";
 import type { PlanMatchCandidatesView } from "../../features/plans/matching-service";
 import { createPlanMatchingService } from "../../features/plans/matching-service";
 import {
@@ -46,8 +47,11 @@ const post = (url: string, body: unknown) =>
   new Request(`https://orbit.test${url}`, { body: JSON.stringify(body), headers: { "content-type": "application/json" }, method: "POST" });
 
 /** alice 的计划 + 一批两张名片（SaaS 强候选、VC 候选），任务已在确认完成时落库。 */
-async function aliceWithBatch(harness: MatchingHarness) {
-  const snapshot = await harness.planServiceFor(ALICE).createVersion(matchingPlanInput());
+async function aliceWithBatch(harness: MatchingHarness, options: { startsOn?: string } = {}) {
+  const snapshot = await harness.planServiceFor(ALICE).createVersion({
+    ...matchingPlanInput(),
+    ...(options.startsOn ? { startsOn: options.startsOn } : {}),
+  });
   await harness.planServiceFor(BOB).createVersion(matchingPlanInput());
   const saasNeed = snapshot.items.find((item) => item.title === NEED_SAAS)!.id;
   const investorNeed = snapshot.items.find((item) => item.title === NEED_INVESTOR)!.id;
@@ -318,5 +322,117 @@ test("two single-card batches on one day: the second finish screen shows only it
     assert.equal(jobs.rows[0].n, 1);
     const all = (await call<PlanMatchCandidatesView>(alice.GET(new Request("https://orbit.test/api/agent/plans/candidates")))).body.data!;
     assert.deepEqual(all.candidates.map((candidate) => candidate.contactId).sort(), ["contact:saas", "contact:vc"]);
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* W0023：到期计划上确认／手动关联只记关联，不生成「约 TA」               */
+/* ------------------------------------------------------------------ */
+
+// 13 周计划从 2025-06-02 开始：测试时钟（2026-09-28）早已过最后一周。
+const ENDED_START = "2025-06-02";
+
+test("W0023 SC-04: on an ended plan, accepting and manual linking return 200 with no action and one log each", databaseTest, async () => {
+  await withMatchingDatabase(async (harness) => {
+    const { batchId, investorNeed, saasNeed } = await aliceWithBatch(harness, { startsOn: ENDED_START });
+    const alice = routes(harness, ALICE);
+    const view = (await call<PlanMatchCandidatesView>(alice.POST_RUN(post("/api/agent/plans/candidates/run", { batchId })))).body.data!;
+    const saas = view.candidates.find((candidate) => candidate.needId === saasNeed)!;
+
+    const accepted = await call<DecideMatchCandidateResult>(alice.POST(post("/api/agent/plans/candidates", { candidateId: saas.id, decision: "accept" })));
+    assert.equal(accepted.status, 200);
+    const data = accepted.body.data!;
+    assert.equal(data.status, "accepted");
+    assert.equal(data.link!.action, null);
+    assert.deepEqual(data.link!.need.linkedContactIds, ["contact:saas"]);
+    assert.equal(data.link!.log?.event, "contact_linked");
+    assert.equal(data.link!.log?.targetItemId, null);
+
+    const replay = await call<DecideMatchCandidateResult>(alice.POST(post("/api/agent/plans/candidates", { candidateId: saas.id, decision: "accept" })));
+    assert.equal(replay.status, 200);
+    assert.equal(replay.body.data!.replayed, true);
+    assert.equal(replay.body.data!.link!.action, null);
+
+    const manual = await call<LinkNeedContactResult>(
+      alice.POST(post("/api/agent/plans/candidates", { action: "link", contactId: "contact:none", idempotencyKey: "late-1", needItemId: investorNeed })),
+    );
+    assert.equal(manual.status, 200);
+    assert.equal(manual.body.data!.action, null);
+    assert.deepEqual(manual.body.data!.need.linkedContactIds, ["contact:none"]);
+    const manualReplay = await call<LinkNeedContactResult>(
+      alice.POST(post("/api/agent/plans/candidates", { action: "link", contactId: "contact:none", idempotencyKey: "late-1", needItemId: investorNeed })),
+    );
+    assert.equal(manualReplay.status, 200);
+    assert.equal(manualReplay.body.data!.replayed, true);
+    assert.equal(manualReplay.body.data!.action, null);
+
+    const snapshot = (await harness.planServiceFor(ALICE).getCurrent())!;
+    assert.equal(snapshot.items.filter((item) => item.meta.source === "network_match").length, 0);
+    assert.equal(snapshot.log.filter((entry) => entry.event === "contact_linked").length, 2);
+    assert.ok(snapshot.items.every((item) => (item.suggestedWeek ?? 0) <= 13));
+  });
+});
+
+test("W0023 SC-02: concurrent accepts of one candidate on an ended plan — one applies, one replays; 0 actions, 1 log", databaseTest, async () => {
+  await withMatchingDatabase(async (harness) => {
+    const { batchId, saasNeed } = await aliceWithBatch(harness, { startsOn: ENDED_START });
+    const alice = routes(harness, ALICE);
+    const view = (await call<PlanMatchCandidatesView>(alice.POST_RUN(post("/api/agent/plans/candidates/run", { batchId })))).body.data!;
+    const target = view.candidates.find((candidate) => candidate.needId === saasNeed)!;
+    const results = await Promise.all([
+      call<DecideMatchCandidateResult>(alice.POST(post("/api/agent/plans/candidates", { candidateId: target.id, decision: "accept" }))),
+      call<DecideMatchCandidateResult>(alice.POST(post("/api/agent/plans/candidates", { candidateId: target.id, decision: "accept" }))),
+    ]);
+    assert.deepEqual(results.map((result) => result.status), [200, 200]);
+    assert.deepEqual(results.map((result) => result.body.data!.replayed).sort(), [false, true]);
+    assert.ok(results.every((result) => result.body.data!.link!.action === null));
+    const snapshot = (await harness.planServiceFor(ALICE).getCurrent())!;
+    assert.equal(snapshot.items.filter((item) => item.meta.source === "network_match").length, 0);
+    assert.equal(snapshot.log.filter((entry) => entry.event === "contact_linked").length, 1);
+
+    // 同一候选并发的「是」与「不是」：仍然只有一个成功，另一个 409。
+    const other = view.candidates.find((candidate) => candidate.needId !== saasNeed)!;
+    const mixed = await Promise.all([
+      call(alice.POST(post("/api/agent/plans/candidates", { candidateId: other.id, decision: "accept" }))),
+      call(alice.POST(post("/api/agent/plans/candidates", { candidateId: other.id, decision: "dismiss" }))),
+    ]);
+    assert.deepEqual(mixed.map((result) => result.status).sort(), [200, 409]);
+    assert.equal((await harness.planServiceFor(ALICE).getCurrent())!.items.filter((item) => item.meta.source === "network_match").length, 0);
+  });
+});
+
+test("W0023 SC-02: linking races the next plan — serialized, the outcome is either carried-and-scheduled or PLAN_ARCHIVED", databaseTest, async () => {
+  await withMatchingDatabase(async (harness) => {
+    const plans = harness.planServiceFor(ALICE);
+    const outcomes = new Set<string>();
+    for (let round = 0; round < 6; round += 1) {
+      const ended = await plans.createVersion({ ...matchingPlanInput(), startsOn: ENDED_START });
+      const need = ended.items.find((item) => item.title === NEED_SAAS)!;
+      const [link, next] = await Promise.allSettled([
+        plans.linkNeedContact({ contactId: "contact:saas", contactName: "佐藤 健", needItemId: need.id }),
+        plans.createVersionWithOutcome(
+          { ...matchingPlanInput(), basePlanId: ended.plan.id, startsOn: "2026-09-28" },
+          { contactNames: { "contact:saas": "佐藤 健" }, origin: "next_plan" },
+        ),
+      ]);
+      assert.equal(next.status, "fulfilled");
+      const { snapshot } = (next as PromiseFulfilledResult<{ snapshot: PlanSnapshot }>).value;
+      // 上一轮的需求（已关联）会一路带入后面的版本：只看这一轮这条需求。
+      const carried = snapshot.items.find((item) => item.carriedFromItemId === need.id);
+      const meets = snapshot.items.filter((item) => item.meta.source === "network_match" && carried && item.meta.needItemId === carried.id);
+      if (link.status === "fulfilled") {
+        assert.equal(link.value.action, null, "the old plan has ended: no action there");
+        assert.ok(carried, "the linked need is carried into the next plan");
+        assert.deepEqual(meets.map((item) => item.title), ["约 佐藤 健"]);
+        outcomes.add("link-first");
+      } else {
+        assert.ok(link.reason instanceof PlanServiceError);
+        assert.equal(link.reason.reason, "PLAN_ARCHIVED");
+        assert.equal(carried, undefined, "an unlinked need is not carried");
+        assert.equal(meets.length, 0);
+        outcomes.add("version-first");
+      }
+    }
+    assert.ok(outcomes.size >= 1);
   });
 });
