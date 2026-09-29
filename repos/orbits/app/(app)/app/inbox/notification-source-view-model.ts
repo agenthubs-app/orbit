@@ -8,3 +8,9 @@ export function verifiedSourceNote(raw:unknown,n:InboxNotificationDTO):{title:st
  if(!note||source?.sourceKind!=='note'||note.id!==source.sourceId||note.ownerUserId!==n.actorId||note.accountId!==n.actorId||String(note.version)!==source.sourceRevision||typeof note.title!=='string'||typeof note.body!=='string')throw new Error('Source changed or unavailable');
  return note as {title:string;body:string};
 }
+/** Next hands `/app/inbox/sources/[id]` the still-encoded segment (`inbox%3A…`): decode exactly once, like `/app/tasks/[id]`. Malformed input is kept for the API's 404; empty and dot segments would escape the detail path, so they are rejected. */
+export function notificationIdFromRouteParam(raw:string):string|null {
+ let id=raw;try{id=decodeURIComponent(raw);}catch{/* keep malformed input */}
+ return id===''||id==='.'||id==='..'?null:id;
+}
+export function notificationDetailPath(id:string):string {return '/api/inbox/notifications/'+encodeURIComponent(id);}

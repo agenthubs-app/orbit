@@ -3,12 +3,12 @@ import {useEffect,useState} from 'react';
 import {useOrbitLanguage} from '../orbit-language-context';
 import {communicationRequest,invalidateInboxActorConfirmation,readContactMessageActor} from './inbox-request';
 import {notificationDetailView,type NotificationRow} from './notification-inbox-view-model';
-import {verifiedSourceNote} from './notification-source-view-model';
+import {notificationDetailPath,verifiedSourceNote} from './notification-source-view-model';
 export function NotificationSourcePage({notificationId}:{notificationId:string}) {
  const {t,language}=useOrbitLanguage(),[record,setRecord]=useState<NotificationRow|null>(null),[note,setNote]=useState<{title:string;body:string}|null>(null),[error,setError]=useState(false),[attempt,setAttempt]=useState(0);
  useEffect(()=>{let controller=new AbortController(),busy=false;setRecord(null);setNote(null);setError(false);
   async function load(){if(busy||document.visibilityState==='hidden')return;busy=true;const active=controller;try{
-   const actor=await readContactMessageActor(active.signal),n=notificationDetailView(await communicationRequest('/api/inbox/notifications/'+encodeURIComponent(notificationId)+'?language='+language,{signal:active.signal}),actor,notificationId);
+   const actor=await readContactMessageActor(active.signal),n=notificationDetailView(await communicationRequest(notificationDetailPath(notificationId)+'?language='+language,{signal:active.signal}),actor,notificationId);
    if(n.target.status!=='available')throw Error();
    const original=n.sources[0]?.sourceKind==='note'?verifiedSourceNote(await communicationRequest('/api/notes/'+encodeURIComponent(n.sources[0].sourceId),{signal:active.signal}),n):null;
    if(await readContactMessageActor(active.signal)!==actor)throw Error();
