@@ -8,6 +8,7 @@ import type { NoteMentionContract } from "../../api/contract/notes";
 import { AppScreen } from "../../components/AppScreen";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
+import { NeedsNetworkState } from "../../components/NeedsNetworkState";
 import { createThemedStyles } from "../../design/theme";
 import { radius, spacing, typography } from "../../design/tokens";
 import { useApiResource } from "../../hooks/useApiResource";
@@ -166,7 +167,7 @@ export function EditNoteScreen({ actorId, draftServer = "local", noteId, scopeKe
     {source.offline ? <OfflineNotice lastSyncedAt={source.lastSyncedAt} /> : null}
     {source.loading && !current ? <LoadingState /> : null}
     {source.failure ? <ErrorState message={source.failure} /> : null}
-    {source.missing && !current ? <ErrorState message={locale.t("notes.missing")} /> : null}
+    {source.missing && !current ? source.offline ? <NeedsNetworkState message={locale.t("sync.notOnDevice")} /> : <ErrorState message={locale.t("notes.missing")} /> : null}
     {current ? <>
       <Text style={styles.private}>{locale.t("notes.privateVersion", { version: current.version })}</Text>
       <View style={styles.paper}>
