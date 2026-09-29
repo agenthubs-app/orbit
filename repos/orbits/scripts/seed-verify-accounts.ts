@@ -80,6 +80,12 @@ interface AccountSpec {
 
 const EVENT_TODAY_ID = "orbit-verify-event-today";
 const EVENT_UPCOMING_ID = "orbit-verify-event-upcoming";
+/**
+ * W0026：「下一步去哪」推荐理由的验收活动（本人不报名）。id 不能是其他账号活动 id 的前缀或包含它们，
+ * 否则按账号标记重置时会误删别的账号的活动。
+ */
+const EVENT_GOAL_LEGACY_ID = "orbit-verify-goal-match-legacy";
+const EVENT_GOAL_PLAN_ID = "orbit-verify-goal-match-plan";
 const HOST_ACTOR_ID = "user_verify_host";
 
 const ACCOUNTS: Readonly<Record<AnyAccountName, AccountSpec>> = {
@@ -115,7 +121,7 @@ const ACCOUNTS: Readonly<Record<AnyAccountName, AccountSpec>> = {
     createdAt: "2026-06-01T01:00:00.000Z",
     displayName: "验收·老用户",
     email: "verify-legacy@orbit.test",
-    eventIds: [],
+    eventIds: [EVENT_GOAL_LEGACY_ID],
     primaryIndustryId: "technology_internet",
     relationshipGoal: "三个月内认识 3 位做跨境支付的产品负责人，找到一个愿意试点的合作方。",
     secondaryIndustryId: "technology_internet.enterprise_software",
@@ -127,7 +133,7 @@ const ACCOUNTS: Readonly<Record<AnyAccountName, AccountSpec>> = {
     createdAt: "2026-03-01T01:00:00.000Z",
     displayName: "验收·计划中",
     email: "verify-plan@orbit.test",
-    eventIds: [EVENT_UPCOMING_ID],
+    eventIds: [EVENT_UPCOMING_ID, EVENT_GOAL_PLAN_ID],
     primaryIndustryId: "technology_internet",
     relationshipGoal: "三个月内为企业软件新产品找到 2 位早期投资人和 3 家试点客户。",
     secondaryIndustryId: "technology_internet.enterprise_software",
@@ -468,16 +474,11 @@ interface VerifyEventSpec {
 }
 
 /**
- * 建一场 canonical 已发布活动（主办方是 verify-host）并让一个测试账号报名。写法与
- * `features/events/event-operations/seed.ts` 相同：活动行 → 配置（`saveConfiguration`）→ 报名影子记录
- * （`saveRegistration`）→ 激活 canonical 报名（`activateCanonicalRegistrations`）。
+ * 只建一场 canonical 已发布活动（主办方是 verify-host），不产生任何报名。写法与
+ * `features/events/event-operations/seed.ts` 相同：活动行 → 配置（`saveConfiguration`）。
  */
-async function seedEvent(
-  runtime: Runtime,
-  event: VerifyEventSpec,
-  registrant: AccountSpec,
-): Promise<EventRegistration> {
-  const { sql, store, workspaceId } = runtime;
+async function seedPublishedEvent(runtime: Runtime, event: VerifyEventSpec) {
+  const { sql, workspaceId } = runtime;
   const seededAt = runtime.now.toISOString();
   const evidenceId = `evidence:orbit-verify:${event.eventId}`;
   const sourcePayload = {
@@ -552,6 +553,30 @@ async function seedEvent(
     tableSize: 2,
     updatedAt: seededAt,
   });
+  return repository;
+}
+
+/**
+ * W0026：建一场 canonical 已发布、0 报名的活动。报名仍要以空列表激活 canonical（`activateCanonicalRegistrations`），
+ * 否则 `registration_migration_state` 停在 legacy，公开目录读不到它的参与人数摘要，整个目录会报错。
+ */
+async function seedUnregisteredEvent(runtime: Runtime, event: VerifyEventSpec): Promise<void> {
+  const repository = await seedPublishedEvent(runtime, event);
+  await repository.activateCanonicalRegistrations(event.eventId, []);
+}
+
+/**
+ * 建一场 canonical 已发布活动并让一个测试账号报名：`seedPublishedEvent` → 报名影子记录
+ * （`saveRegistration`）→ 激活 canonical 报名（`activateCanonicalRegistrations`）。
+ */
+async function seedEvent(
+  runtime: Runtime,
+  event: VerifyEventSpec,
+  registrant: AccountSpec,
+): Promise<EventRegistration> {
+  const { store, workspaceId } = runtime;
+  const seededAt = runtime.now.toISOString();
+  const repository = await seedPublishedEvent(runtime, event);
 
   const registeredAt = addMinutes(event.startsAt, -2 * 24 * 60);
   const participantProfileId = `event-participant-profile:${encodeURIComponent(event.eventId)}:${encodeURIComponent(registrant.actorId)}`;
@@ -613,8 +638,18 @@ function itemId(snapshot: { items: readonly { id: string; title: string }[] }, t
   return found.id;
 }
 
-/** verify-plan：3 个月计划处于第 2 周；1 条已延后行动、已关联的人脉需求、1 个已报名活动。 */
-async function seedPlanInProgress(runtime: Runtime, spec: AccountSpec, contactIds: string[], registration: EventRegistration, event: VerifyEventSpec) {
+/**
+ * verify-plan：3 个月计划处于第 2 周；1 条已延后行动、已关联的人脉需求、1 个已报名活动；
+ * W0026：第 2 阶段挂 1 场未报名、文字含目标词的推荐活动（策略页「对应你计划第 2 阶段：…」）。
+ */
+async function seedPlanInProgress(
+  runtime: Runtime,
+  spec: AccountSpec,
+  contactIds: string[],
+  registration: EventRegistration,
+  event: VerifyEventSpec,
+  goalEvent: VerifyEventSpec,
+) {
   const service = planServiceFor(spec.actorId);
   const items: NewPlanItemInput[] = [
     { kind: "action", phaseKey: "p1", suggestedWeek: 1, title: "给 3 位旧同事发近况更新，说明新产品方向" },
@@ -641,6 +676,15 @@ async function seedPlanInProgress(runtime: Runtime, spec: AccountSpec, contactId
       status: "recommended",
       suggestedWeek: 3,
       title: event.title,
+    },
+    {
+      kind: "event",
+      linkedEventId: goalEvent.eventId,
+      meta: { startsAt: goalEvent.startsAt, venue: goalEvent.venue },
+      phaseKey: "p2",
+      status: "recommended",
+      suggestedWeek: 5,
+      title: goalEvent.title,
     },
   ];
   const snapshot = await service.createVersion({
@@ -916,8 +960,23 @@ async function seedAccount(runtime: Runtime, name: VerifyAccountName): Promise<v
   const today = planTokyoDate(runtime.now);
   switch (name) {
     case "verify-new":
-    case "verify-legacy":
       return;
+    case "verify-legacy": {
+      // W0026：本人不报名；文字原样包含目标切出的词「位做跨境支付的产品负责人」「找到一个愿意试点的合作方」，
+      // 策略页「下一步去哪」显示「匹配你的目标：『…』」。
+      const eventDay = tokyoDateOffset(runtime.now, 14);
+      await seedUnregisteredEvent(runtime, {
+        description:
+          "验收用合成活动：邀请 5 位做跨境支付的产品负责人分享落地经验，帮助参会者找到一个愿意试点的合作方。不是真实活动。",
+        endsAt: tokyoAt(eventDay, 21),
+        eventId: EVENT_GOAL_LEGACY_ID,
+        publicCode: "ORBIT-VERIFY-GOAL-LEGACY",
+        startsAt: tokyoAt(eventDay, 19),
+        title: "验收用：跨境支付产品负责人圆桌",
+        venue: "东京·日本桥（合成会场）",
+      });
+      return;
+    }
     case "verify-plan": {
       const eventDay = tokyoDateOffset(runtime.now, 10);
       const event: VerifyEventSpec = {
@@ -930,7 +989,20 @@ async function seedAccount(runtime: Runtime, name: VerifyAccountName): Promise<v
         venue: "东京·涩谷（合成会场）",
       };
       const registration = await seedEvent(runtime, event, spec);
-      await seedPlanInProgress(runtime, spec, contactIds, registration, event);
+      // W0026：本人不报名；文字原样包含目标切出的词「位早期投资人和」「家试点客户」。
+      const goalEventDay = tokyoDateOffset(runtime.now, 24);
+      const goalEvent: VerifyEventSpec = {
+        description:
+          "验收用合成活动：为想找到 2 位早期投资人和 3 家试点客户的企业软件团队准备的路演会。不是真实活动。",
+        endsAt: tokyoAt(goalEventDay, 21),
+        eventId: EVENT_GOAL_PLAN_ID,
+        publicCode: "ORBIT-VERIFY-GOAL-PLAN",
+        startsAt: tokyoAt(goalEventDay, 19),
+        title: "验收用：企业软件早期路演会",
+        venue: "东京·六本木（合成会场）",
+      };
+      await seedUnregisteredEvent(runtime, goalEvent);
+      await seedPlanInProgress(runtime, spec, contactIds, registration, event, goalEvent);
       return;
     }
     case "verify-expired":
