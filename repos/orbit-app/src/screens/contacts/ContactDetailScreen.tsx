@@ -116,6 +116,8 @@ export function ContactDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: s
     (state.kind !== "success" && state.kind !== "empty") || local.freshness.offline
   );
   const offlineCopy = fromDevice && (unreachable || local.freshness.offline);
+  const latestOfflineCopy = useRef(offlineCopy);
+  latestOfflineCopy.current = offlineCopy;
   const eligibilityState = useApiResource<unknown>(
     relationshipCommunicationEligibilityPath(contactId),
     () => false,
@@ -198,7 +200,7 @@ export function ContactDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: s
   }
 
   async function recomputeRelationshipValue() {
-    if (!isValueCurrent() || valueController.current) return;
+    if (!isValueCurrent() || latestOfflineCopy.current || valueController.current) return;
     const controller = new AbortController();
     valueController.current = controller;
     setPendingValueScope(valueScope);
@@ -1039,7 +1041,7 @@ function RelationshipValueCard({
       <View style={styles.relationshipValueContent}>
         <Text style={styles.sectionDetail}>{locale.t("contacts.valueReading")}</Text>
         <Text style={styles.bodyText}>{locale.t("contacts.valueReadingBody")}</Text>
-        <RelationshipRecomputeButton onPress={onRecompute} pending={pending} />
+        <RelationshipRecomputeButton onPress={onRecompute} offline={offline} pending={pending} />
       </View>
     );
   }
@@ -1049,7 +1051,7 @@ function RelationshipValueCard({
       <View style={styles.relationshipValueContent}>
         <Text style={styles.sectionDetail}>{locale.t("contacts.unavailable")}</Text>
         <Text style={styles.bodyText}>{locale.t("contacts.valueUnavailableBody")}</Text>
-        <RelationshipRecomputeButton onPress={onRecompute} pending={pending} />
+        <RelationshipRecomputeButton onPress={onRecompute} offline={offline} pending={pending} />
       </View>
     );
   }
@@ -1062,7 +1064,7 @@ function RelationshipValueCard({
     return (
       <View style={styles.relationshipValueContent}>
         <Text style={styles.bodyText}>{view.body}</Text>
-        <RelationshipRecomputeButton onPress={onRecompute} pending={pending} />
+        <RelationshipRecomputeButton onPress={onRecompute} offline={offline} pending={pending} />
       </View>
     );
   }
@@ -1077,16 +1079,18 @@ function RelationshipValueCard({
         <Text style={styles.relationshipSafety}>{view.safetyText}</Text>
       </View>
       <Text style={styles.bodyText}>{view.summary}</Text>
-      <RelationshipRecomputeButton onPress={onRecompute} pending={pending} />
+      <RelationshipRecomputeButton onPress={onRecompute} offline={offline} pending={pending} />
     </View>
   );
 }
 
 function RelationshipRecomputeButton({
   onPress,
+  offline,
   pending
 }: {
   onPress: () => void;
+  offline: boolean;
   pending: boolean;
 }) {
   const { colors, styles } = useStyles();
@@ -1094,17 +1098,19 @@ function RelationshipRecomputeButton({
   return (
     <Pressable
       accessibilityRole="button"
-      disabled={pending}
+      accessibilityLabel={offline ? locale.t("sync.needsNetwork") : locale.t("contacts.recalculate")}
+      testID="relationship-value-recompute"
+      disabled={pending || offline}
       onPress={onPress}
       style={({ pressed }) => [
         styles.relationshipRecomputeButton,
-        pending ? styles.disabled : null,
+        pending || offline ? styles.disabled : null,
         pressed ? styles.pressed : null
       ]}
     >
       <Ionicons color={colors.accent} name="refresh-outline" size={16} />
       <Text style={styles.relationshipRecomputeButtonText}>
-        {pending ? locale.t("contacts.calculating") : locale.t("contacts.recalculate")}
+        {offline ? locale.t("sync.needsNetwork") : pending ? locale.t("contacts.calculating") : locale.t("contacts.recalculate")}
       </Text>
     </Pressable>
   );
