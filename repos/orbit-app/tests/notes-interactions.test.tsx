@@ -16,6 +16,8 @@ export const useWebMirrorStatus = () => ({ mode: "online-only", reason: "no-opfs
 // Sprint 0131: page copies / row-id reads open the coordinator session; this harness has none.
 export const useSyncCoordinatorSession = () => null;
 export const useSyncedCollection = () => ({ status: "unsynced", error: null, lastSyncedAt: null, records: [], workspaceId: null, refresh: async () => null, invalidate: async () => null });
+export const useNotesWriteStatus = () => ({ offline: false, lastSyncedAt: null, syncLabelKey: null, queuedCount: 0, async enqueueOfflineMutation() {}, async confirmSaved() { return true; } });
+export const useNoteDetailSource = () => { rerender(); return { note: state.note, conflictMutation: null, baseRevision: null, loading: false, failure: null, missing: !state.note, refreshing: false, offline: state.offline, lastSyncedAt: null, syncLabelKey: null, refresh() {}, async confirmSaved() { return true; }, async resolveConflict() {} }; };
 import React, { useEffect, useSyncExternalStore } from "react";
 import { View } from "react-native";
 const listeners = new Set(); let revision = 0;
@@ -27,7 +29,7 @@ const original = {
 };
 const state = window.fixture = {
   mode: new URLSearchParams(location.search).get("mode") || "new",
-  response: "success", requests: [], reads: [], navigation: [], drafts: [], note: original,
+  offline: false, response: "success", requests: [], reads: [], navigation: [], drafts: [], note: original,
   update(patch) { Object.assign(state, patch); revision++; listeners.forEach(listener => listener()); }
 };
 const contacts = { total: 3, contacts: [
@@ -136,7 +138,7 @@ test.before(async () => {
       name: "note-screen-boundaries",
       setup(plugin) {
         plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: require.resolve("react-native-web") }));
-        plugin.onResolve({ filter: /^react-native-safe-area-context$|^expo-router$|\/(useApiResource|useOrbitApiClient|note-draft-storage|useWebMirrorStatus|useSyncedCollection)$/ }, () => ({ path: "fixture", namespace: "notes-test" }));
+        plugin.onResolve({ filter: /^react-native-safe-area-context$|^expo-router$|^\.\/notes-source$|\/(useApiResource|useOrbitApiClient|note-draft-storage|useWebMirrorStatus|useSyncedCollection)$/ }, () => ({ path: "fixture", namespace: "notes-test" }));
         plugin.onResolve({ filter: /^@expo\/vector-icons$/ }, () => ({ path: "icons", namespace: "notes-test" }));
         plugin.onLoad({ filter: /^fixture$/, namespace: "notes-test" }, () => ({ contents: fixture, loader: "jsx", resolveDir: process.cwd() }));
         plugin.onLoad({ filter: /^icons$/, namespace: "notes-test" }, () => ({ contents: 'export const Ionicons=()=>null;', loader: "js" }));
@@ -165,6 +167,13 @@ async function page(t: { after(fn: () => Promise<void>): void }, mode: "new" | "
   await value.goto(`${url}?mode=${mode}&language=${language}&restore=${restore}`);
   return value;
 }
+
+test("an offline edit without a local note shows the needs-network message", async (t) => {
+  const value = await page(t, "edit");
+  await value.evaluate(() => (window as any).fixture.update({ offline: true, note: null }));
+  await value.getByText("这项内容还没保存在这台设备上，联网打开一次后断网也能看。", { exact: true }).waitFor({ timeout: 1500 });
+  assert.equal(await value.getByText("未找到这篇笔记。", { exact: true }).count(), 0);
+});
 
 test("new note searches only after a word, selects by id, and preserves a failed draft", async (t) => {
   const value = await page(t, "new");
