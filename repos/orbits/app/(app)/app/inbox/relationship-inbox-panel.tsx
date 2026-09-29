@@ -27,7 +27,7 @@ import {
 } from "./inbox-panel-view-model";
 import { ORBIT_Z } from "../orbit-z";
 
-import { readContactMessageActor } from "./inbox-request";
+import { invalidateInboxActorConfirmation, readContactMessageActor } from "./inbox-request";
 import { BoundedContactMessagesTab } from "./bounded-contact-messages-tab";
 
 type InboxTab = "threads" | "alerts";
@@ -130,12 +130,16 @@ export async function readInboxUnreadCounts(language: OrbitLanguage, expectedAct
   const key = JSON.stringify([language, expectedActor ?? null]);
   const existing = activeInboxCountReads.get(key);
   if (existing) return existing;
+  // Both confirmations use the shared per-cycle identity (W0031): within one poll cycle they cost
+  // at most one `/api/account/me` together with the open tab's own confirmations.
   const read = (async () => {
+  try {
   const actor = await readContactMessageActor();
   if (expectedActor && actor !== expectedActor) throw new Error("Account changed");
   const bounded = await readWebInboxSummary(actor, language);
   if (await readContactMessageActor() !== actor) throw new Error("Account changed");
   return bounded;
+  } catch (error) { invalidateInboxActorConfirmation(); throw error; }
   })();
   activeInboxCountReads.set(key, read);
   try { return await read; }
