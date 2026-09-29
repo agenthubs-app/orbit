@@ -275,6 +275,8 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
       } as AiSession
     : null;
   const conversationOffline = Boolean(localSession) && serverUnreachable;
+  const missingLocalSessionOffline = isStoredAgentSession && !localSession
+    && localConversation.freshness.readable && localConversation.freshness.offline && serverUnreachable;
   const saveLocalCards = localConversation.saveCards;
   // Keyed on the read itself (a new object only when the server answered again), not on the parsed
   // session, which is a new object on every render.
@@ -680,10 +682,10 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
       </Pressable> : null}
       {!isDraftConversation && state.kind === "loading" && !localSession ? <LoadingState /> : null}
       {conversationOffline ? <OfflineNotice lastSyncedAt={localConversation.freshness.lastSyncedAt} /> : null}
-      {!isDraftConversation && !conversationOffline && state.kind === "offline" ? (
+      {!isDraftConversation && !conversationOffline && (state.kind === "offline" || missingLocalSessionOffline) ? (
         <NeedsNetworkState message={locale.t("sync.notOnDevice")} onRetry={refresh} />
       ) : null}
-      {!isDraftConversation && !conversationOffline && state.kind === "failure" ? (
+      {!isDraftConversation && !conversationOffline && !missingLocalSessionOffline && state.kind === "failure" ? (
         <ErrorState message={state.error.message} />
       ) : null}
       {readInvalid ? <ErrorState title={locale.t("aiConversation.readUnreadable")} message={locale.t("aiConversation.readInvalid")} /> : null}
