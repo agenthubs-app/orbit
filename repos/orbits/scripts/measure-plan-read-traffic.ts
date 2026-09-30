@@ -15,7 +15,7 @@
  *
  * 运行：ORBIT_EVENT_DATABASE_URL=postgres://…@localhost:5432/orbit_test npx tsx scripts/measure-plan-read-traffic.ts
  */
-import { Client } from "pg";
+import { Client, type Pool } from "pg";
 
 import { createEventCoreService } from "../features/events/core/service";
 import { createPostgresEventStartWindowReader } from "../features/events/core/start-window";
@@ -28,6 +28,7 @@ import { createEventRegistrationLiveRecordProvider } from "../features/events/re
 import { attributionCardsFromItems, resolveEventAttribution, type EventAttributionSource } from "../features/plans/event-attribution";
 import { createEventAttributionSource } from "../features/plans/event-attribution-runtime";
 import { runEventOperationsMigrations } from "../features/events/event-operations/storage/migrations";
+import { acquireSyncCommitOrderLock } from "../features/sync/commit-order-lock";
 import { runMaintenancePass, type MaintenanceTask } from "../features/operations/maintenance/pass";
 import { createPlanEventAttendanceMaintenanceTask } from "../features/plans/event-attendance-reconcile";
 import { createPlanEventRegistrationMaintenanceTask } from "../features/plans/event-registration-reconcile";
@@ -183,6 +184,25 @@ async function registrationReader(pool: import("pg").Pool) {
 }
 const NOW = "2026-10-26T01:00:00.000Z"; // 周一 10:00 JST，计划第 5 周（第 2 阶段）
 
+/**
+ * 写 orbit_records 的同步集合（contacts）和带 sync_revision 的活动表时，按 0108/0113 的约定在同一事务里
+ * 先取 commit-order 锁（严格触发器下不取锁的写入会被拒绝）。只用于本脚本的临时 schema。
+ */
+async function lockedWrite(pool: Pool, text: string, values: unknown[] = []): Promise<void> {
+  const client = await pool.connect();
+  try {
+    await client.query("begin");
+    await acquireSyncCommitOrderLock(client);
+    await client.query(text, values);
+    await client.query("commit");
+  } catch (error) {
+    await client.query("rollback").catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 async function main() {
   const results: Array<{ path: string; statements: number; rows: number; bytes: number; note: string }> = [];
   const push = (path: string, meter: Meter, note = "") => results.push({ ...meter, note, path });
@@ -201,7 +221,7 @@ async function main() {
         role: index < 5 ? "渠道 BD 经理" : "事业开发部 部长",
         secondaryIndustryId: index < 5 ? null : "technology_internet.enterprise_software",
       };
-      await pool.query(
+      await lockedWrite(pool,
         `insert into orbit_records (workspace_id, collection_name, record_id, user_id, source_type, source_id,
            lifecycle_state, payload, created_at, updated_at)
          values ($1, 'contacts', $2, $3, 'manual', 'traffic-measure', 'active', $4::jsonb, now(), now())`,
@@ -231,7 +251,7 @@ async function main() {
     await runEventOperationsMigrations(pool);
     for (const [index, eventId] of EVENT_IDS.entries()) {
       const startsAt = new Date(Date.parse("2026-10-20T09:00:00.000Z") + index * 86_400_000);
-      await pool.query(
+      await lockedWrite(pool,
         `insert into event_ops_events (workspace_id, event_id, organizer_actor_id, created_at, updated_at, public_code, title,
            description, venue, timezone, starts_at, ends_at, lifecycle_state_v2, source_payload)
          values ($1, $2, 'actor:organizer', now(), now(), $3, $4, $5, 'Shibuya, Tokyo', 'Asia/Tokyo', $6, $7, 'published', $8::jsonb)`,
@@ -249,7 +269,7 @@ async function main() {
     }
 
     // W0021：一场刚开始不久的已发布活动（按数据库时钟），让活动归属真的圈出窗口内的活动并读报名状态。
-    await pool.query(
+    await lockedWrite(pool,
       `insert into event_ops_events (workspace_id, event_id, organizer_actor_id, created_at, updated_at, public_code, title,
          description, venue, timezone, starts_at, ends_at, lifecycle_state_v2, source_payload)
        values ($1, 'event:tonight', 'actor:organizer', now(), now(), 'CODE-TONIGHT', '今晚的交流会', $2, 'Shibuya, Tokyo',
@@ -267,7 +287,7 @@ async function main() {
     await pool.query(`update plan_match_jobs set not_before = now() - interval '1 second'`);
     await runDueMatchJobs({ aiMatcher: null, repository: matches }, { deadline: Date.now() + 30_000, limit: 5 });
     const pending = await extractedBatch(ingest, ALICE, 5);
-    await pool.query(
+    await lockedWrite(pool,
       `update orbit_records set payload = payload || '{"metEventId":"event:tokyo-saas-night"}'::jsonb where record_id = 'contact:saas'`,
     );
 
@@ -354,7 +374,7 @@ async function main() {
     for (let index = 0; index < 100; index += 1) {
       const startsAt = new Date(Date.parse("2026-06-01T01:00:00.000Z") + index * 86_400_000);
       const state = states[index % states.length]!;
-      await pool.query(
+      await lockedWrite(pool,
         `insert into event_ops_events (workspace_id, event_id, organizer_actor_id, created_at, updated_at, public_code, title,
            description, venue, timezone, starts_at, ends_at, lifecycle_state_v2, source_payload, cancelled_at, archived_at)
          values ($1, $2, 'actor:organizer', now(), now(), $3, $4, $5, 'Shibuya, Tokyo', 'Asia/Tokyo', $6, $7, $8, $9::jsonb, $10, $11)`,

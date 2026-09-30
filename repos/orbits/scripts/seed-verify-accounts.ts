@@ -33,6 +33,7 @@ import { createEventOperationsPostgresClient } from "../features/events/event-op
 import { createPostgresEventOperationsRepository } from "../features/events/event-operations/storage/postgres-repository";
 import type { NewPlanItemInput, PlanService } from "../features/plans/contract";
 import { resolvePlanService } from "../features/plans/service-factory";
+import { acquireSyncCommitOrderLock } from "../features/sync/commit-order-lock";
 import { planTokyoDate, planWeekState } from "../features/plans/week";
 import { buildAccountContactFixtures } from "../shared/mock/account-contact-fixtures";
 import type { LiveRecordStoreLike } from "../shared/storage/live-record-store";
@@ -494,6 +495,8 @@ async function seedPublishedEvent(runtime: Runtime, event: VerifyEventSpec) {
     .digest("hex");
   await sql.query("begin");
   try {
+    // 0113：event_ops_events 带 sync_revision（严格触发器），同一事务里先取 commit-order 锁。
+    await acquireSyncCommitOrderLock(sql);
     await sql.query(
       `insert into event_ops_events (
          workspace_id, event_id, organizer_actor_id, lifecycle_state, revision, created_at, updated_at,

@@ -45,6 +45,7 @@ export const SYNC_WRITE_MANIFEST: Readonly<Record<string, SyncWritePolicy>> = {
   "scripts/diagnostics/notification-source-read-cost.ts": { policy: "non-sync", statements: 2, collections: "reminderPlans and notification fixtures" },
   "scripts/diagnostics/schedule-exception-window-cost.ts": { policy: "non-sync", statements: 1, collections: "personal_schedule_occurrence_exceptions (the series rows go through the store)" },
   "scripts/quarantine-legacy-notifications.ts": { policy: "non-sync", statements: 1, collections: "notifications" },
+  "scripts/measure-plan-read-traffic.ts": { policy: "locked", statements: 2, how: "W0017/W0021 traffic measurement in a temporary schema: lockedWrite takes acquireSyncCommitOrderLock in the same transaction (contacts)" },
   "scripts/seed-demo-workspace.ts": { policy: "locked", statements: 2, how: "the demo event owner reset (events, 0117) runs in a transaction that takes acquireSyncCommitOrderLock first; the other statement updates event_organizer_owner_migrations" },
   "features/sync/owner-guard.ts": { policy: "non-sync", statements: 1, collections: "accounts (ROTATE_AUTHORIZATION_EPOCH_SQL moves a previous owner's account updated_at)" },
 };
@@ -64,6 +65,8 @@ export const EVENT_TABLE_WRITE_MANIFEST: Readonly<Record<string, MessageTableWri
   "features/events/event-operations/storage/postgres-repository.ts": { statements: 3, how: "saveConfiguration and publishGenerationAtomically take the lock first" },
   "features/events/registration/phoneweb-registration-window-repair.ts": { statements: 3, how: "withRepairTransaction takes the lock before its row and table locks" },
   "features/events/registration/profile-contract-repair/apply-repository.ts": { statements: 1, how: "applyTransaction takes the lock first" },
+  "scripts/measure-plan-read-traffic.ts": { statements: 3, how: "lockedWrite takes the lock first in each write transaction (temporary schema)" },
+  "scripts/seed-verify-accounts.ts": { statements: 1, how: "the verify event seed transaction takes the lock first" },
   "scripts/demo-canonical-memberships.ts": { statements: 1, how: "the demo transaction takes the lock first" },
 };
 

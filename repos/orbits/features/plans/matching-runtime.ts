@@ -6,6 +6,7 @@
  * 表由 `scripts/migrate-web-runtime.ts` 创建，这里不在首次请求时自动建表。
  */
 import { Pool } from "pg";
+import { meterPostgresPool } from "../../shared/storage/metered-postgres-pool";
 
 import { resolveModuleMode } from "../../shared/services/module-mode";
 import {
@@ -42,11 +43,11 @@ export function getConfiguredPlanMatchingRuntime(): PlanMatchingRuntime | null {
   const cached = matchingGlobal.__orbitPlanMatchingRuntime;
   if (cached?.key === key) return cached.runtime;
   const profile = resolveDatabaseRuntimeProfile();
-  const pool = new Pool({
+  const pool = meterPostgresPool(new Pool({
     connectionString: config.connectionString,
     max: Math.min(3, profile.transactionalPoolMax),
     ...poolTimeoutOptions(profile),
-  });
+  }));
   const repository = createPostgresPlanMatchRepository({ pool, workspaceId: config.workspaceId });
   const worker: PlanMatchWorkerDeps = {
     aiMatcher: createConfiguredPlanAiMatcher(),

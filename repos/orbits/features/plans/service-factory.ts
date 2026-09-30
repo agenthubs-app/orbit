@@ -12,6 +12,7 @@
  * API route 与后续的 route service 只通过 `resolvePlanService` 取服务。
  */
 import { Pool } from "pg";
+import { meterPostgresPool } from "../../shared/storage/metered-postgres-pool";
 
 import {
   createModuleServiceFactory,
@@ -78,11 +79,11 @@ function liveBackend(): PlanBackend | null {
   const cached = plansGlobal.__orbitPlansLiveBackend;
   if (cached?.key === key) return cached.backend;
   const profile = resolveDatabaseRuntimeProfile();
-  const pool = new Pool({
+  const pool = meterPostgresPool(new Pool({
     connectionString: config.connectionString,
     max: profile.transactionalPoolMax,
     ...poolTimeoutOptions(profile),
-  });
+  }));
   let eventCore: EventCoreService | null | undefined;
   const backend: PlanBackend = {
     referencesFor: (actorId) => {
