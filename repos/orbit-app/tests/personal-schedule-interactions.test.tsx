@@ -197,7 +197,7 @@ test("time field opens exact minutes and Escape cancels without rounding", async
 });
 
 test("new confirmed 23:45 start defaults to thirty minutes across midnight", async t => {
-  const p = await open(t, { taskId: "" });
+  const p = await open(t, { taskId: "", now: "2026-09-17T00:00:00.000Z" });
   await fill(p, "日程标题", "Picker midnight");
   await press(p, "调整日期和时间");
   await p.getByRole("button", { name: "2026-09-17", exact: true }).click();
