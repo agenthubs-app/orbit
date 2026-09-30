@@ -66,4 +66,10 @@ The approved JS-only, fixed-category SecureStore probe subsequently matched the 
 
 Next native diagnostic: wait for the user's developer-team choice; then use a newly isolated Simulator, unique bundle identifier/keychain group, and separate DerivedData to produce and inspect a properly development-signed scratch build. First run only a read-only `SecItemCopyMatching`/SecureStore probe and confirm the expected signed entitlement keys. Do not overwrite, reinstall, or clear the existing Simulator, and do not perform business writes until the device can explicitly prove pending count zero. No signing/build/install action is authorized by this report.
 
+### Additional strict-trigger PostgreSQL evidence
+
+At B HEAD `a3907a9901071bbfbf1105e7d7efe16422526fc1`, the single filtered test `the note, task and personal-schedule services write under the strict trigger` in `repos/orbits/tests/services/sync-commit-order-lock-postgres.test.ts` passed once (1 test, 1 pass, 0 failures, 0 skips; exit 0). It exercised note, task, and personal-schedule service writes through the strict `sync_revision` trigger and read the resulting sync pages. The filter selected only this test; this is not a full Server run or a complete SC-0133-04 closure.
+
+The run used the already-created local database `orbit_0137_lifecycle_egress_test`. Read-only checks immediately before and after showed the same database identity and owner (`xzhao`), `pg_trgm` in `public`, zero public relations, and zero `commit_order_*` schemas. The test fixture created its own random `commit_order_<uuid>` schema, applied the records and strict sync-revision migrations there, and its `test.after` cleanup dropped that schema. The existing `pg_trgm` extension meant the migration's conditional install path was not needed. Other application database aliases were absent and provider credential variables were blank. No App or Simulator action was part of this evidence.
+
 No credentials, passwords, session tokens, or provider payloads belong in this report.
