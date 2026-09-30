@@ -439,6 +439,25 @@ test("unavailable cleanup storage cannot bypass a pending key after restart", as
   assert.ok(!JSON.stringify(f.logs).includes("secret-shaped"));
 });
 
+test("SecureStore cleanup-marker read failure keeps native scope transitions fail-closed", async t => {
+  const f = await lifecycle(t);
+  f.native.secureStore.getItemAsync = async () => { throw Error("secret-shaped-marker-and-payload"); };
+
+  assert.equal(await f.coordinator.pendingWriteSummary(scope), null);
+  assert.equal(await f.coordinator.setScope(scope), false);
+  assert.equal(await f.coordinator.suspendScope(scope.baseUrl), false);
+
+  assert.deepEqual(f.events, [], "marker-read failure must not open/list/delete the SQLite store or persist key data");
+  assert.equal(f.files.size, 0);
+  assert.equal(f.keys.size, 0);
+  assert.deepEqual(f.logs, [
+    ["SYNC_CLEANUP_STATE_FAILED"],
+    ["SYNC_CLEANUP_STATE_FAILED"],
+    ["SYNC_CLEANUP_STATE_FAILED"],
+  ]);
+  assert.ok(!JSON.stringify(f.logs).includes("secret-shaped"));
+});
+
 test("file deletion failure after crypto erasure permits a separate scope but never reopens the orphan", async t => {
   const f = await lifecycle(t);
   await f.coordinator.setScope(scope);
