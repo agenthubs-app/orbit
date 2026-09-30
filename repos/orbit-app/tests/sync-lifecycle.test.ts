@@ -5,6 +5,7 @@ import test from "node:test";
 import config from "../app.config";
 import { readSnapshot, writeSnapshot, clearSnapshots } from "../src/data/snapshot-store";
 import { syncLifecycle } from "../src/data/sync/sync-lifecycle";
+import { buildOfflineTaskMutation } from "../src/data/sync/task-outbox-mutation";
 
 const scope = { baseUrl: "https://first.example", actorId: "account-private-fixture" };
 
@@ -176,6 +177,65 @@ test("vault write failure refuses logout purge and leaves the only queue copy in
   assert.equal(f.keys.get(`orbit.sync.key.${digest}`), identityKey);
   const queued = await f.coordinator.withDatabase(scope, db => db.get<{ mutation_id: string }>("SELECT mutation_id FROM sync_outbox"));
   assert.equal(queued?.mutation_id, "m-protected");
+});
+
+test("vault write failure keeps a serialized personal-task edit before logout purge", async t => {
+  const f = await lifecycle(t);
+  await f.coordinator.setScope(scope);
+  const requestBody = {
+    action: "update",
+    expectedUpdatedAt: "2026-09-20T00:00:00.000Z",
+    idempotencyKey: "task-update-protected",
+    patch: { title: "Renew passport this week" },
+  };
+  const mutation = buildOfflineTaskMutation({
+    mutationId: "task-update-protected",
+    entityId: "task:pending-edit",
+    operation: "update",
+    baseRevision: "tasks-e1:17",
+    requestBody,
+    createdAt: "2026-09-20T00:00:01.000Z",
+  });
+  assert.equal(mutation.domainId, "tasks");
+  await f.coordinator.withDatabase(scope, db => db.run(`INSERT INTO sync_outbox(
+    mutation_id,workspace_id,domain_id,kind,record_id,operation,state,request_json,patch_json,base_revision,created_at
+  ) VALUES(?, 'workspace', ?, ?, ?, ?, 'queued', ?, ?, ?, ?)`, [
+    mutation.mutationId, mutation.domainId ?? null, mutation.kind, mutation.id, mutation.operation,
+    mutation.requestJson!, JSON.stringify(mutation.patch), mutation.baseRevision, mutation.createdAt,
+  ]));
+  const identityFile = [...f.files.keys()][0]!;
+  const digest = createHash("sha256").update(JSON.stringify([scope.baseUrl, scope.actorId])).digest("hex");
+  const identityKey = f.keys.get(`orbit.sync.key.${digest}`);
+  const identityFileDeleteCount = f.events.filter(event => event === `delete:${identityFile}`).length;
+  f.state.vaultWriteFails = true;
+
+  assert.equal(await f.coordinator.setScope(null), false);
+  assert.ok(f.files.has(identityFile));
+  assert.equal(f.keys.get(`orbit.sync.key.${digest}`), identityKey);
+  assert.equal(f.events.filter(event => event === `delete:${identityFile}`).length, identityFileDeleteCount);
+  const queued = await f.coordinator.withDatabase(scope, db => db.get<{
+    mutation_id: string;
+    domain_id: string;
+    kind: string;
+    record_id: string;
+    operation: string;
+    state: string;
+    request_json: string;
+    patch_json: string;
+    base_revision: string;
+  }>(`SELECT mutation_id,domain_id,kind,record_id,operation,state,request_json,patch_json,base_revision
+     FROM sync_outbox`));
+  assert.deepEqual({ ...queued }, {
+    mutation_id: "task-update-protected",
+    domain_id: "tasks",
+    kind: "task",
+    record_id: "task:pending-edit",
+    operation: "update",
+    state: "queued",
+    request_json: JSON.stringify(requestBody),
+    patch_json: JSON.stringify({ title: "Renew passport this week" }),
+    base_revision: "tasks-e1:17",
+  });
 });
 
 test("key deletion failure blocks switching even after the old handle was closed", async t => {
