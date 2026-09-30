@@ -7,6 +7,8 @@ import { createTransactionalPostgresClient } from "../../shared/storage/transact
 import { createPostgresLiveRecordStore } from "../../shared/storage/postgres-live-record-store";
 import { createTaskRepository } from "../../features/tasks/repository";
 import { createTaskService } from "../../features/tasks/service";
+import { createTaskCollectionHandlers } from "../../app/api/tasks/collection-handler";
+import { createTaskDetailHandlers } from "../../app/api/tasks/[id]/handler";
 
 // Explicit isolated target only; never loads a local application env file.
 const url = process.env.ORBIT_TASKS_TEST_DATABASE_URL;
@@ -138,4 +140,79 @@ test("personal schedule transactions reject concurrent versions and roll back fa
     await assert.rejects(make(faulty).remove("owner", before.id, { expectedUpdatedAt: before.updatedAt, idempotencyKey: "rollback" }), /injected personal receipt failure/);
     assert.deepEqual(await b.get({ actorId: "owner", id: before.id }), before);
   } finally { await Promise.all(clients.map(c => c.close())); await admin.query(`drop schema ${schema} cascade`); await admin.end(); }
+});
+
+test("PostgreSQL task API returns the server snapshot after a stale delete and accepts the confirmed version", { skip: url ? false : "isolated ORBIT_TASKS_TEST_DATABASE_URL not provided" }, async () => {
+  assert.ok(url);
+  const schema = `c0010_task_api_conflict_${randomUUID().replaceAll("-", "")}`;
+  const admin = new Pool({ connectionString: url, max: 1 });
+  const client = createTransactionalPostgresClient({ connectionString: url, pool: new Pool({ connectionString: url, max: 2, options: `-c search_path=${schema}` }) });
+  const actorId = "c0010-api-conflict-owner";
+  const workspaceId = "c0010-api-conflict-workspace";
+  const service = createTaskService({ repository: createTaskRepository({ store: createPostgresLiveRecordStore({ client }), workspaceId, transactionClient: client }) });
+  let now = "2026-09-30T00:00:00.000Z";
+  const dependencies = {
+    now: () => now,
+    resolveActor: async () => ({ id: actorId, workspaceId }),
+    service,
+  };
+  const collection = createTaskCollectionHandlers(dependencies);
+  const detail = createTaskDetailHandlers(dependencies);
+  let schemaCreated = false;
+
+  try {
+    await admin.query(`create schema ${schema}`);
+    schemaCreated = true;
+    await client.query(ORBIT_RECORDS_SCHEMA_SQL);
+
+    const createResponse = await collection.POST(new Request("https://orbit.local/api/tasks", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ category: "personal", idempotencyKey: "phone:create", title: "Original phone title" }),
+    }));
+    assert.equal(createResponse.status, 201);
+    const created = (await createResponse.json() as { data: { task: { id: string; updatedAt: string } } }).data.task;
+    const context = { params: Promise.resolve({ id: created.id }) };
+
+    now = "2026-09-30T00:01:00.000Z";
+    const webEdit = await detail.PATCH(new Request(`https://orbit.local/api/tasks/${created.id}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ action: "update", expectedUpdatedAt: created.updatedAt, idempotencyKey: "web:update", patch: { title: "Web's newer title" } }),
+    }), context);
+    assert.equal(webEdit.status, 200);
+    const current = (await webEdit.json() as { data: { task: { title: string; updatedAt: string } } }).data.task;
+    assert.equal(current.title, "Web's newer title");
+    assert.notEqual(current.updatedAt, created.updatedAt);
+
+    now = "2026-09-30T00:02:00.000Z";
+    const staleDelete = await detail.DELETE(new Request(`https://orbit.local/api/tasks/${created.id}`, {
+      method: "DELETE",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ expectedUpdatedAt: created.updatedAt, idempotencyKey: "phone:delete-stale" }),
+    }), context);
+    assert.equal(staleDelete.status, 409);
+    assert.equal((await staleDelete.json() as { error: { code: string } }).error.code, "CONFLICT");
+    assert.deepEqual(await service.get({ actorId, taskId: created.id }), current);
+
+    const snapshotResponse = await detail.GET(new Request(`https://orbit.local/api/tasks/${created.id}`), context);
+    assert.equal(snapshotResponse.status, 200);
+    const snapshot = (await snapshotResponse.json() as { data: { task: { title: string; updatedAt: string } } }).data.task;
+    assert.equal(snapshot.title, "Web's newer title");
+    assert.equal(snapshot.updatedAt, current.updatedAt);
+
+    now = "2026-09-30T00:03:00.000Z";
+    const confirmedDelete = await detail.DELETE(new Request(`https://orbit.local/api/tasks/${created.id}`, {
+      method: "DELETE",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ expectedUpdatedAt: snapshot.updatedAt, idempotencyKey: "phone:delete-confirmed" }),
+    }), context);
+    assert.equal(confirmedDelete.status, 200);
+    assert.equal(await service.get({ actorId, taskId: created.id }), null);
+    assert.equal((await service.history({ actorId, taskId: created.id })).at(-1)?.type, "deleted");
+  } finally {
+    await client.close();
+    if (schemaCreated) await admin.query(`drop schema ${schema} cascade`);
+    await admin.end();
+  }
 });
