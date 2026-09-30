@@ -6,6 +6,7 @@ import config from "../app.config";
 import { readSnapshot, writeSnapshot, clearSnapshots } from "../src/data/snapshot-store";
 import { syncLifecycle } from "../src/data/sync/sync-lifecycle";
 import { buildOfflineTaskMutation } from "../src/data/sync/task-outbox-mutation";
+import { createSyncCoordinator } from "../src/data/sync/sync-coordinator";
 
 const scope = { baseUrl: "https://first.example", actorId: "account-private-fixture" };
 
@@ -160,6 +161,156 @@ test("logout archives only pending writes and a same-account reopen restores the
   const mirror = await f.coordinator.withDatabase(scope, db => db.get("SELECT record_id FROM sync_records"));
   assert.equal(mirror, null, "vault must never contain or restore the server mirror");
   assert.equal([...f.files.keys()].some(name => name.startsWith("orbit-pending-vault-")), false);
+});
+
+test("logout archives a queued task edit and a same-account reopen restores its frozen request", async t => {
+  const f = await lifecycle(t);
+  const now = Date.parse("2026-09-20T00:00:00.000Z");
+  const epoch = "tasks-e1";
+  const taskId = "task:pending-edit";
+  const updatedAt = "2026-09-20T00:00:00.000Z";
+  const taskRecord = {
+    id: taskId,
+    accountId: scope.actorId,
+    ownerUserId: scope.actorId,
+    title: "Original title",
+    status: "open",
+    category: "personal",
+    priority: "normal",
+    source: "manual",
+    createdAt: updatedAt,
+    updatedAt,
+  };
+  const mutationId = "123e4567-e89b-42d3-a456-426614174091";
+  const requestBody = {
+    action: "update",
+    expectedUpdatedAt: updatedAt,
+    idempotencyKey: mutationId,
+    patch: { title: "Edited while offline" },
+  };
+  const mutation = buildOfflineTaskMutation({
+    mutationId,
+    entityId: taskId,
+    operation: "update",
+    baseRevision: "tasks-e1:17",
+    requestBody,
+    createdAt: "2026-09-20T00:00:01.000Z",
+  });
+  const coordinator = createSyncCoordinator({
+    lifecycle: f.coordinator,
+    now: () => now,
+    hashPayload: async value => createHash("sha256").update(value).digest("hex"),
+  });
+  const session = coordinator.openScope({
+    actorId: scope.actorId,
+    baseUrl: scope.baseUrl,
+    scopeKey: "task-vault-restore",
+    client: {
+      async getLease() {
+        return {
+          version: 2,
+          baseUrl: scope.baseUrl,
+          actorId: scope.actorId,
+          subject: "synthetic-task-vault-user",
+          sessionExpiresAt: now + 30 * 24 * 60 * 60 * 1000,
+          offlineReadExpiresAt: now + 7 * 24 * 60 * 60 * 1000,
+          lastVerifiedAt: now,
+          grants: [{ workspaceId: "workspace-task-vault", domainId: "tasks", authorizationEpoch: epoch }],
+          databaseKeyRef: "synthetic-task-vault-key-ref",
+        };
+      },
+      async getManifest() {
+        return {
+          registryVersion: 1,
+          domains: [{
+            domainId: "tasks",
+            schemaVersion: 1,
+            workspaceId: "workspace-task-vault",
+            authorizationEpoch: epoch,
+            generation: "tasks-e1-generation",
+            watermark: "1",
+            history: "complete",
+            membershipCursor: null,
+          }],
+        };
+      },
+      async getDomainPage(input) {
+        assert.equal(input.domainId, "tasks");
+        return {
+          domainId: "tasks",
+          schemaVersion: 1,
+          registryVersion: 1,
+          authorizationEpoch: epoch,
+          changes: [{ id: taskId, revision: "tasks-e1:17", operation: "upsert", payload: taskRecord }],
+          nextCursor: "tasks-e1:17",
+          highWatermark: "1",
+          hasMore: false,
+          generation: "tasks-e1-generation",
+          serverTime: updatedAt,
+        };
+      },
+      async getPage() {
+        throw new Error("legacy sync endpoint must not be used");
+      },
+    },
+  });
+
+  const syncRequest = session.synchronize("task", { reason: "explicit" });
+  assert.equal(await syncRequest.started, true);
+  assert.equal((await syncRequest.promise)?.error, null);
+  await session.enqueueOfflineTaskMutation(mutation);
+  const queuedBeforeLogout = await session.readOutboxOverlay("task");
+  assert.deepEqual(queuedBeforeLogout?.queuedMutations.map(row => ({
+    mutationId: row.mutationId,
+    kind: row.kind,
+    id: row.id,
+    operation: row.operation,
+    patch: row.patch,
+    requestJson: row.requestJson,
+    baseRevision: row.baseRevision,
+  })), [{
+    mutationId,
+    kind: "task",
+    id: taskId,
+    operation: "update",
+    patch: { title: "Edited while offline" },
+    requestJson: JSON.stringify(requestBody),
+    baseRevision: "tasks-e1:17",
+  }]);
+
+  session.deactivate();
+  await new Promise<void>(resolve => setImmediate(resolve));
+  assert.equal(await f.coordinator.setScope(null), true);
+  assert.deepEqual(await f.coordinator.pendingWriteSummary(scope), { currentAccount: 1, otherAccounts: 0 });
+  assert.equal(await f.coordinator.setScope(scope), true);
+
+  const restored = await f.coordinator.withDatabase(scope, db => db.get<{
+    mutation_id: string;
+    workspace_id: string;
+    domain_id: string;
+    kind: string;
+    record_id: string;
+    operation: string;
+    state: string;
+    request_json: string;
+    patch_json: string;
+    base_revision: string;
+  }>(`SELECT mutation_id,workspace_id,domain_id,kind,record_id,operation,state,request_json,patch_json,base_revision
+     FROM sync_outbox`));
+  assert.deepEqual({ ...restored }, {
+    mutation_id: mutationId,
+    workspace_id: "workspace-task-vault",
+    domain_id: "tasks",
+    kind: "task",
+    record_id: taskId,
+    operation: "update",
+    state: "queued",
+    request_json: JSON.stringify(requestBody),
+    patch_json: JSON.stringify({ title: "Edited while offline" }),
+    base_revision: "tasks-e1:17",
+  });
+  const restoredSummary = await f.coordinator.pendingWriteSummary(scope);
+  assert.deepEqual(restoredSummary, { currentAccount: 1, otherAccounts: 0 });
 });
 
 test("vault write failure refuses logout purge and leaves the only queue copy in place", async t => {
