@@ -16,9 +16,8 @@ export async function POST(
   const agentContext = await resolveAgentRequestContext(resolveFeatureMode());
   if (!agentContext) return agentRequestUnauthorizedResponse();
   const runtime = agentContext.runtime;
-  const action = (await runtime.listActions({})).find(
-    (candidate) => candidate.actionId === id,
-  );
+  // Exact lookup (0121): an action older than the newest list page still exists.
+  const action = await runtime.getAction(id);
   if (!action) {
     return NextResponse.json(
       {
@@ -27,11 +26,6 @@ export async function POST(
       { status: 404 },
     );
   }
-  await runtime.recordAnalytics("today_item_opened", {
-    runId: action.runId,
-    actionId: action.actionId,
-    workflowKey: action.workflowKey,
-  });
   if (
     action.workflowKey === "pre_event_brief_v1" &&
     action.operations.some(
@@ -39,11 +33,6 @@ export async function POST(
     )
   ) {
     await runtime.markActionViewed(action.actionId);
-    await runtime.recordAnalytics("brief_viewed", {
-      runId: action.runId,
-      actionId: action.actionId,
-      workflowKey: action.workflowKey,
-    });
   }
   return NextResponse.json({ data: { recorded: true } });
 }

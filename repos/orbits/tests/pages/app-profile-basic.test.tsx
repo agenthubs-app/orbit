@@ -102,8 +102,8 @@ test("basic screen wraps everything in a form, marks core fields plus WeChat/LIN
   assert.match(html, /<option value="technology_internet\.ai_data" selected=""/);
   // 生日 type=date
   assert.match(html, /<input [^>]*type="date"[^>]*value="1990-01-01"/);
-  // 关于我 textarea + 80 可见字符提示；一句话介绍可编辑（headline）
-  assert.match(html, /关于我（最多 80 个可见字符）/);
+  // 关于我 textarea + 计数器（0127：含中日韩文字 80，其余 200）；一句话介绍可编辑（headline）
+  assert.match(html, /<span class="pc-bio-count">12\/80<\/span>/);
   assert.match(html, /<textarea [^>]*class="pc-input pc-textarea"[^>]*>十年 B2B 产品经验。<\/textarea>/);
   assert.match(html, /一句话介绍/);
   assert.match(html, /<input class="pc-input" maxLength="80" placeholder="例如：帮助中国品牌落地日本市场" value="把 AI 落到业务里"\/>/);
@@ -417,4 +417,11 @@ test("ProfileScreens basic: cancel discards the draft by navigating to /app/prof
   assert.deepEqual(replaced, [], "no in-place view flip");
   assert.equal(root.root.findAllByProps({ "data-profile-view": "profile" }).length, 0, "overview is never rendered from the dirty session");
   assert.equal(root.root.findAll((n) => typeof n.props.children === "string" && n.props.children.includes("最新资料已加载")).length, 0, "no reload notice");
+});
+
+test("About me counter switches to 200 for text without CJK and flags text over its cap (0127)", () => {
+  const english = renderToStaticMarkup(<ProfileBasic session={session({ ...FULL, bio: "a".repeat(150) })} onSubmit={async () => undefined} />);
+  assert.match(english, /<span class="pc-bio-count">150\/200<\/span>/);
+  const over = renderToStaticMarkup(<ProfileBasic session={session({ ...FULL, bio: `${"a".repeat(80)}界` })} onSubmit={async () => undefined} />);
+  assert.match(over, /<span class="pc-bio-count pc-bio-count-over">81\/80<\/span>/);
 });

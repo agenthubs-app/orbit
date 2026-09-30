@@ -20,12 +20,10 @@ test('private portrait reads and saves never inherit ordinary registration persi
   assert.throws(() => resolveReadSurface('GET', '/api/events/event%3A1/registration/portrait/other'), /UNREGISTERED_READ/);
 });
 
-test('roster qualification registers the same durable event read policy as the party detail consumer', () => {
-  const owner = surfaces.find(row => row.consumerFile === 'src/screens/party/PartyModeScreen.tsx' && row.method === 'GET' && row.endpointTemplate === '/api/events/:id');
+test('roster qualification keeps the durable event read policy after the party consumer was removed', () => {
   const qualification = surfaces.find(row => row.consumerFile === 'src/screens/events/EventAttendeeRosterLink.tsx' && row.method === 'GET' && row.endpointTemplate === '/api/events/:id');
-  assert.ok(owner);
   assert.ok(qualification);
-  assert.deepEqual({ ...qualification, consumerFile: owner.consumerFile }, owner);
+  assert.equal(surfaces.some(row => row.consumerFile.includes('/party/')), false);
   assert.equal(qualification.domainId, 'events');
   assert.equal(qualification.selector, 'events:GET:/api/events/:id');
   assert.equal(qualification.readPersistence, 'durable_normalized');
@@ -45,6 +43,10 @@ test('canonical lifecycle and participant consumers are registered without offli
     ['src/view-models/event-attendee-controller.ts', 'POST', '/api/events/:id/operations/check-in', 'event-operations'],
     ['src/view-models/event-attendee-controller.ts', 'POST', '/api/events/:id/operations/contact-requests', 'event-operations'],
     ['src/view-models/event-attendee-controller.ts', 'POST', '/api/events/:id/operations/contact-requests/:id/:id', 'event-operations'],
+    ['src/api/event-live-actions.ts', 'POST', '/api/encounters', 'event-goals'],
+    ['src/api/event-live-actions.ts', 'GET', '/api/appointments', 'appointments'],
+    ['src/api/event-live-actions.ts', 'POST', '/api/appointments', 'appointments'],
+    ['src/api/event-live-actions.ts', 'POST', '/api/appointments/:id/commands', 'appointments'],
   ];
   for (const [file, method, path, domain] of expected) {
     const surface = surfaces.find(row => row.consumerFile === file && row.method === method && row.endpointTemplate === path);
@@ -104,8 +106,9 @@ test('canonical event and personal schedule consumers register exact domains wit
     ['src/screens/schedule/PersonalScheduleAssociations.tsx', 'GET', '/api/schedule-items/association-options/notes', 'notes'],
     ['src/screens/schedule/PersonalScheduleAssociations.tsx', 'GET', '/api/notes/:id', 'notes'],
     ['src/screens/schedule/PersonalScheduleAssociations.tsx', 'GET', '/api/schedule-items/association-options/contacts', 'contacts'],
-    ['src/screens/schedule/PersonalScheduleDetailScreen.tsx', 'GET', '/api/schedule-items', 'personal-schedule'],
-    ['src/screens/schedule/PersonalScheduleDetailScreen.tsx', 'GET', '/api/schedule-items/:id', 'personal-schedule'],
+    // Sprint 0108: the detail reads the mirror on native; the browser source keeps the network fallback.
+    ['src/screens/schedule/personal-schedule-source.web.ts', 'GET', '/api/schedule-items', 'personal-schedule'],
+    ['src/screens/schedule/personal-schedule-source.web.ts', 'GET', '/api/schedule-items/:id', 'personal-schedule'],
   ] as const) {
     const surface = surfaces.find(row => row.consumerFile === consumerFile && row.method === method && row.endpointTemplate === endpointTemplate);
     assert.ok(surface, `${consumerFile} ${method} ${endpointTemplate}`);
@@ -144,9 +147,9 @@ test('the actual native consumers all have explicit versioned policies', async (
     'src/screens/settings/NotificationDiscoverySettings.tsx GET /api/inbox/discovery/preferences',
     'src/screens/settings/NotificationDiscoverySettings.tsx POST /api/inbox/discovery/preferences',
     'src/screens/inbox/RelationshipInboxScreen.tsx POST /api/relationship-communication/conversations/:id/read',
-    'src/screens/inbox/RelationshipInboxScreen.tsx GET /api/chat/privacy',
+    'src/screens/inbox/RelationshipInboxScreen.tsx GET /api/relationship-communication/conversations/:id/draft',
+    'src/screens/inbox/RelationshipInboxScreen.tsx PUT /api/relationship-communication/conversations/:id/draft',
     'src/screens/inbox/RelationshipInboxScreen.tsx PATCH /api/agent/signals/:id',
-    'src/screens/inbox/RelationshipInboxScreen.tsx POST /api/chat/privacy/analysis-toggle',
     'src/screens/inbox/RelationshipInboxScreen.tsx POST /api/chat/relationship-inbox',
     'src/screens/inbox/RelationshipInboxScreen.tsx POST /api/relationship-communication/conversations/:id/messages',
     'src/screens/inbox/useNotificationInbox.ts GET /api/inbox/notifications',
@@ -361,7 +364,11 @@ test('reads and mutations on one endpoint remain separate registered surfaces', 
   assert.equal(read.domainId, 'notification-delivery');
   assert.equal(mutation.mutationPolicy, 'online_only');
   assert.equal(resolveReadSurface('GET', '/api/inbox/discovery/preferences').domainId, 'notification-discovery');
-  assert.equal(resolveReadSurface('GET', '/api/chat/privacy?conversationId=c1').domainId, 'chat-privacy');
+  assert.throws(() => resolveReadSurface('GET', '/api/chat/privacy?conversationId=c1'), /UNREGISTERED_READ/u);
+  const draft = resolveReadSurface('GET', '/api/relationship-communication/conversations/c1/draft');
+  assert.equal(draft.domainId, 'conversations');
+  assert.equal(draft.readPersistence, 'online_only_secret');
+  assert.equal(resolveReadSurface('PUT', '/api/relationship-communication/conversations/c1/draft').mutationPolicy, 'online_only');
   assert.equal(resolveReadSurface('POST', '/api/inbox/notifications/n1/actions').domainId, 'notifications');
   assert.equal(resolveReadSurface('POST', '/api/relationship-communication/conversations/c1/read').domainId, 'message-read-state');
 });

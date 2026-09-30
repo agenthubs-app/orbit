@@ -16,6 +16,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import test, { type TestContext } from "node:test";
 import type { ReactElement } from "react";
+import { createOrbitAgentStarterViewModel } from "../../app/(app)/app/orbit-agent-route-view-model";
 
 const root = join(fileURLToPath(import.meta.url), "../../..");
 const require = createRequire(import.meta.url);
@@ -77,13 +78,6 @@ function loadPage(t: TestContext, scenario: Scenario) {
     [join(root, "app/(app)/app/orbit-reference-styles.tsx")]: { OrbitReferenceStyles: () => null },
     [join(root, "app/(app)/app/orbit-visual-freeze-runtime.tsx")]: { OrbitVisualFreezeRuntime: () => null },
     [join(root, "app/(app)/app/agent/iorbit-0918/iorbit-shell.tsx")]: { IOrbitShell },
-    [join(root, "app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-route-view-model.ts")]: { loadAppChatRouteViewModel: realStub("chat", {}) },
-    [join(root, "app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-view-model-adapter.ts")]: {
-      composeOrbitAgentEntryViewModel: () => {
-        calls.push({ operation: "compose" });
-        return { state: "ready", viewModel: scenario.realViewModel ?? {} };
-      },
-    },
     [join(root, "app/(app)/app/home/compose-app-home-from-previously-approved-mock-first-capabilities/home-route-view-model.tsx")]: {
       loadAppHomeRouteViewModel: stub("home", {
         home: {
@@ -501,7 +495,7 @@ test("W0014 plan page, in the guide: no real plan or contact-name read; the scre
 
 /* ── W0014：示例期间 `/app/agent` 不读真实对话／首页业务数据，也不把它们交给示例壳 ─────── */
 
-const REAL_BUSINESS_READS = ["chat", "compose", "events", "registrations", "community", "plan-read", "registered-any"];
+const REAL_BUSINESS_READS = ["events", "registrations", "community", "plan-read", "registered-any"];
 const POLLUTED_VIEW_MODEL = {
   history: [],
   scenarios: {},
@@ -525,15 +519,16 @@ test("W0014 in the guide: every real chat / home-business loader throws, yet the
   assert.ok(!JSON.stringify(props.viewModel).includes("甲斐真由美"), "no real suggests reach the demo shell");
 });
 
-test("W0014 flag off: the live path still reads chat, home, events, registrations and community exactly once each", async (t) => {
-  const { calls, page } = loadPage(t, { contacts: 0, flag: undefined, realViewModel: POLLUTED_VIEW_MODEL });
+test("W0014 flag off: the live path reads home, events, registrations and community exactly once each (legacy chat retired in 0104)", async (t) => {
+  const { calls, page } = loadPage(t, { contacts: 0, flag: undefined });
   const props = shellPropsOf(await page());
   assert.equal(props.guide, null);
-  for (const operation of ["chat", "home", "events", "registrations", "community"]) {
+  for (const operation of ["home", "events", "registrations", "community"]) {
     assert.equal(calls.filter((call) => call.operation === operation).length, 1, operation);
   }
   assert.deepEqual(calls.filter((call) => GUIDE_OPERATIONS.includes(call.operation)), []);
-  assert.equal(props.viewModel, POLLUTED_VIEW_MODEL);
+  // Sprint 0104: the welcome suggests come from the fixed starter view model, never from a server read.
+  assert.deepEqual(props.viewModel, createOrbitAgentStarterViewModel());
 });
 
 /* ── W0022：首页第 4 步提醒的服务端判定与读取计数 ─────────────────────── */

@@ -1,6 +1,5 @@
 import {
   ORBIT_API_ENDPOINTS,
-  chatPrivacyAnalysisTogglePath,
   relationshipSignalConfirmPath
 } from "../api/endpoints";
 import type { OrbitLanguage } from "../api/contract/language";
@@ -72,28 +71,6 @@ export interface RelationshipCreatedThreadView {
   detail: RelationshipThreadDetailView;
 }
 
-export interface RelationshipRewriteDraftView {
-  body: string;
-  label: string;
-  rationale: string;
-  safetyText: string;
-  sourceLabel: string;
-}
-
-export interface RelationshipPrivacyControlsView {
-  analysisDetail: string;
-  analysisLabel: string;
-  deletionLabel: string;
-  nextEnabled: boolean;
-  privateNotesLabel: string;
-  safetyText: string;
-  shareLabel: string;
-  sourceLabel: string;
-  summary: string;
-  title: string;
-  toggleLabel: string;
-}
-
 export interface RelationshipSignalView {
   canConfirm: boolean;
   confidenceLabel: string;
@@ -134,18 +111,6 @@ interface RelationshipThreadDraftInput {
   subject: string;
 }
 
-interface RelationshipRewriteRequestInput {
-  conversationId: string;
-  organization: string;
-  participantName: string;
-  sourceText: string;
-}
-
-interface RelationshipPrivacyToggleInput {
-  conversationId: string;
-  enabled: boolean;
-}
-
 export type RelationshipThreadDraftRequestResult =
   | {
       error: string;
@@ -160,39 +125,6 @@ export type RelationshipThreadDraftRequestResult =
           participantName: string;
           sourceLabel: string;
           subject: string;
-        };
-        endpoint: string;
-      };
-      success: true;
-    };
-
-export type RelationshipRewriteRequestResult =
-  | {
-      error: string;
-      success: false;
-    }
-  | {
-      request: {
-        body: {
-          conversationId: string;
-          organization: string;
-          participantName: string;
-          sourceText: string;
-        };
-        endpoint: string;
-      };
-      success: true;
-    };
-
-export type RelationshipPrivacyToggleRequestResult =
-  | {
-      error: string;
-      success: false;
-    }
-  | {
-      request: {
-        body: {
-          enabled: boolean;
         };
         endpoint: string;
       };
@@ -891,158 +823,6 @@ export function buildRelationshipThreadDraftRequest(
         subject
       },
       endpoint: ORBIT_API_ENDPOINTS.relationshipInbox
-    },
-    success: true
-  };
-}
-
-export function buildRelationshipRewriteRequest(
-  input: RelationshipRewriteRequestInput,
-  language: OrbitLanguage = "zh"
-): RelationshipRewriteRequestResult {
-  const t = createTranslator(language);
-  const conversationId = trimmed(input.conversationId);
-  const organization = trimmed(input.organization);
-  const participantName = trimmed(input.participantName);
-  const sourceText = trimmed(input.sourceText);
-
-  if (!sourceText) {
-    return {
-      error: t("inboxVm.draftRequired"),
-      success: false
-    };
-  }
-
-  return {
-    request: {
-      body: {
-        conversationId,
-        organization,
-        participantName,
-        sourceText
-      },
-      endpoint: ORBIT_API_ENDPOINTS.chatAssistRewrite
-    },
-    success: true
-  };
-}
-
-export function relationshipRewriteToDraft(
-  payload: unknown
-): RelationshipRewriteDraftView | null {
-  const record = isRecord(payload) ? payload : {};
-  const assist = listField(record, "assists").filter(isRecord)[0];
-
-  if (!assist) {
-    return null;
-  }
-
-  const body = stringField(assist, "suggestedText").trim();
-
-  if (!body) {
-    return null;
-  }
-
-  return {
-    body,
-    label: userFacingText(stringField(assist, "label"), "润色建议"),
-    rationale: userFacingText(
-      stringField(assist, "rationale"),
-      "请检查语气和事实，再决定是否暂存。"
-    ),
-    safetyText: "这里只润色草稿，不会发送消息。",
-    sourceLabel: localizeSourceLabel(
-      stringField(nestedRecord(assist, "source"), "label"),
-      "来源已记录"
-    )
-  };
-}
-
-function privacyDeletionLabel(value: string, t: OrbitTranslator): string {
-  const labels: Record<string, ReturnType<OrbitTranslator>> = {
-    available: t("inboxVm.deletionAvailable"),
-    deleted_mock_only: t("inboxVm.deletionRequested"),
-    pending: t("inboxVm.deletionPending")
-  };
-
-  return labels[value.trim().toLowerCase()] ?? t("inboxVm.deletionAvailable");
-}
-
-function privacyShareLabel(record: UnknownRecord, t: OrbitTranslator): string {
-  const confirmationRequired = record.confirmationRequired === true;
-
-  if (confirmationRequired) {
-    return t("inboxVm.shareRequired");
-  }
-
-  return t("inboxVm.shareConfirmed");
-}
-
-export function relationshipPrivacyControlsToView(
-  payload: unknown,
-  language: OrbitLanguage = "zh"
-): RelationshipPrivacyControlsView {
-  const t = createTranslator(language);
-  const record = isRecord(payload) ? payload : {};
-  const analysis = nestedRecord(record, "analysisOptIn");
-  const deletion = nestedRecord(record, "analysisDeletion");
-  const share = nestedRecord(record, "sensitiveShareConfirmation");
-  const provenance = nestedRecord(record, "provenance");
-  const privateNoteCount = listField(record, "privateNotes").filter(isRecord)
-    .length;
-  const analysisEnabled = analysis.enabled === true;
-  const analysisLabel = analysisEnabled
-    ? t("inboxVm.analysisAllowed")
-    : t("inboxVm.analysisStopped");
-  const privateNotesLabel = privateNoteCount === 1
-    ? t("inboxVm.privateNoteOne")
-    : privateNoteCount
-      ? t("inboxVm.privateNotesCount", { count: privateNoteCount })
-      : t("inboxVm.privateNotesNone");
-
-  return {
-    analysisDetail: analysisEnabled
-      ? t("inboxVm.analysisDetailOn")
-      : t("inboxVm.analysisDetailOff"),
-    analysisLabel,
-    deletionLabel: privacyDeletionLabel(stringField(deletion, "status"), t),
-    nextEnabled: !analysisEnabled,
-    privateNotesLabel,
-    safetyText: t("inboxVm.privacySafety"),
-    shareLabel: privacyShareLabel(share, t),
-    sourceLabel: sourceLabelForLanguage(
-      stringField(provenance, "sourceLabel"),
-      t("inboxVm.sourceRecorded"),
-      language
-    ),
-    summary: `${analysisLabel} · ${privateNotesLabel}`,
-    title: t("inboxVm.privacyTitle"),
-    toggleLabel: analysisEnabled
-      ? t("inboxVm.stopAnalysis")
-      : t("inboxVm.allowAnalysis")
-  };
-}
-
-export function buildRelationshipPrivacyToggleRequest(
-  input: RelationshipPrivacyToggleInput,
-  language: OrbitLanguage = "zh"
-): RelationshipPrivacyToggleRequestResult {
-  const t = createTranslator(language);
-  const conversationId = trimmed(input.conversationId);
-
-  if (!conversationId) {
-    return {
-      error: t("inboxVm.conversationRequired"),
-      success: false
-    };
-  }
-
-  return {
-    request: {
-      body: {
-        enabled: input.enabled
-      },
-      endpoint: chatPrivacyAnalysisTogglePath(conversationId)
     },
     success: true
   };

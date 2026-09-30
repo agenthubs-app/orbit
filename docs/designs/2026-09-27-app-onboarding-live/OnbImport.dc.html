@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>新用户引导 · 带入人脉</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Noto Sans SC","Microsoft YaHei",sans-serif;background:#FFFFFF;color:#0B1220}
+a{color:#0A5CFF}a:hover{color:#084FDE}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #FFFFFF; display: flex; flex-direction: column">
+  <div style="padding: 54px 16px 0 16px; display: flex; flex-direction: column; gap: 14px">
+    <div style="display: flex; align-items: center; justify-content: space-between; min-height: 44px">
+      <a href="OnbIntro.dc.html" style="display: flex; align-items: center; gap: 2px; font-size: 16px; text-decoration: none"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0A5CFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>上一步</a>
+      <div style="font-size: 13px; color: #6B7280; font-variant-numeric: tabular-nums">5 / 5</div>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px">
+      <div style="height: 3px; border-radius: 999px; background: #0B1220"></div>
+      <div style="height: 3px; border-radius: 999px; background: #0B1220"></div>
+      <div style="height: 3px; border-radius: 999px; background: #0B1220"></div>
+      <div style="height: 3px; border-radius: 999px; background: #0B1220"></div>
+      <div style="height: 3px; border-radius: 999px; background: #0B1220"></div>
+    </div>
+  </div>
+  <div style="flex-grow: 1; overflow: hidden; padding: 22px 16px 0 16px; display: flex; flex-direction: column; gap: 18px">
+    <div style="display: flex; flex-direction: column; gap: 8px">
+      <div style="font-size: 30px; line-height: 38px; font-weight: 900; letter-spacing: -0.6px">带入你已有<br>的人脉</div>
+      <div style="font-size: 15px; line-height: 23px; color: #3C4658">不带入也完全可以——Orbit 会通过活动帮你从零建立。拍下手边的名片，iOrbit 就能开始判断谁值得现在联系。</div>
+    </div>
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 26px 16px; border: 1px solid #E6E8EE; border-radius: 12px">
+      <div style="width: 64px; height: 64px; border-radius: 999px; border: 1px solid #0B1220; display: flex; align-items: center; justify-content: center">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#0B1220" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2M8 10h8M8 14h5"/></svg>
+      </div>
+      <div style="font-size: 15px; line-height: 22px; font-weight: 800">一次拍一批名片</div>
+      <div style="font-size: 13px; line-height: 20px; color: #6B7280; text-align: center">识别可靠的直接导入；拿不准的交给你逐张确认。Orbit 不会以你的名义给任何人发消息。</div>
+    </div>
+    <div style="display: flex; flex-direction: column; border-top: 1px solid #EEF0F4">
+      <div style="display: flex; align-items: center; justify-content: space-between; min-height: 48px; border-bottom: 1px solid #EEF0F4">
+        <span style="font-size: 15px">已自动导入</span><span style="font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums">5</span>
+      </div>
+      <div style="display: flex; align-items: center; justify-content: space-between; min-height: 48px; border-bottom: 1px solid #EEF0F4">
+        <span style="font-size: 15px">需要你确认</span><a href="OnbImport.dc.html" style="font-size: 15px; font-weight: 700; text-decoration: none">2 张 ›</a>
+      </div>
+      <div style="display: flex; align-items: center; justify-content: space-between; min-height: 48px; border-bottom: 1px solid #EEF0F4">
+        <span style="font-size: 15px; color: #6B7280">识别中</span><span style="font-size: 15px; color: #6B7280; font-variant-numeric: tabular-nums">1</span>
+      </div>
+    </div>
+  </div>
+  <div style="padding: 12px 16px 34px 16px; display: flex; flex-direction: column; gap: 10px">
+    <button type="button" style="min-height: 46px; border-radius: 12px; border: 1px solid #0B1220; background: #FFFFFF; color: #0B1220; font-size: 15px; font-weight: 600; font-family: inherit">拍名片</button>
+    <a href="LiveEntry.dc.html" style="display: flex; align-items: center; justify-content: center; min-height: 50px; border-radius: 12px; background: #0B1220; color: #FFFFFF; font-size: 15px; font-weight: 700; text-decoration: none">完成设置</a>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

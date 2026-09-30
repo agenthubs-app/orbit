@@ -5,6 +5,8 @@ import type { TaskListEntry } from "./task-list-source";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { INBOX_NOTIFICATIONS_PATH, notificationInboxData } from "../../api/inbox-notifications";
+import { useLocalInbox } from "../../hooks/useLocalInbox";
+import { localInboxListData } from "../../view-models/inbox-local";
 import { ErrorState } from "../../components/ErrorState";
 import { createControlStyles } from "../../design/controls";
 import { createThemedStyles } from "../../design/theme";
@@ -42,7 +44,16 @@ function RelationshipTaskToolsView({ tasks, contacts }: RelationshipTaskToolsPro
   const auth = useOrbitAuthSession(), server = useOrbitApiBaseUrl();
   const actorId = auth.actorId;
   const scopeKey = JSON.stringify([actorId, server.baseUrl]);
-  const notifications = useApiResource<unknown>(`${INBOX_NOTIFICATIONS_PATH}?kind=reminder&limit=20`, () => false, { scopeKey, cachePolicy: "network-only" });
+  // Sprint 0131: where the device holds the inbox (0118), the reminder queue is computed on the device
+  // with the server's list rule (kind=reminder, newest first, 20), so it stays readable offline.
+  const localInbox = useLocalInbox(false);
+  const localList = localInbox.available && localInbox.freshness.readable && actorId
+    ? localInboxListData(localInbox.rows, { actorId, filter: "reminder", language: locale.language, nowMs: Date.now() }) : null;
+  const localReminders = localList ? { ...localList, items: localList.items.slice(0, 20) } : null;
+  const network = useApiResource<unknown>(`${INBOX_NOTIFICATIONS_PATH}?kind=reminder&limit=20`, () => false, { scopeKey, cachePolicy: "network-only", enabled: !localInbox.available });
+  const notifications = localReminders
+    ? { kind: "success" as const, data: localReminders as unknown, refreshing: localInbox.freshness.refreshing, refresh: () => { void localInbox.refresh(); } }
+    : network;
   const notificationData = notifications.kind === "success" || notifications.kind === "empty" ? notifications.data : null;
   const reminders = actorId && notificationData ? notificationInboxData(notificationData, actorId)?.items ?? [] : [];
   const reminderDates = new Map<string, string>();

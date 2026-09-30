@@ -6,13 +6,16 @@ import { canonicalScheduleItemSchema } from '../../personal-schedule/authority-c
 import type { AppointmentAggregate } from '../../appointments/contract';
 import type { DiscoveryCursor, DiscoveryEvidence, DiscoveryPreferences, DiscoverySourceRef } from './contract';
 import { DISCOVERY_LIMITS } from './contract';
+import { createRelationshipMessageReader } from '../../relationship-communication/message-store';
 
-const collections = {note:'notes',task:'tasks',schedule:'personal_schedule_items',contact:'contacts',goal:'profiles',message:'relationship_communication_messages'} as const;
+const collections = {note:'notes',task:'tasks',schedule:'personal_schedule_items',contact:'contacts',goal:'profiles'} as const;
 const text = (v:unknown) => typeof v==='string'?v:'';
 const strings = (v:unknown) => Array.isArray(v)?v.filter((s):s is string=>typeof s==='string'):[];
 export function createDiscoverySourceAdapters(input:{store:LiveRecordStoreLike<Record<string,unknown>>;client:TransactionalSqlExecutor;workspaceId:string;preferences:(actorId:string)=>Promise<DiscoveryPreferences>;now?:()=>string}) {
   const now=input.now??(()=>new Date().toISOString());
   const get=(collectionName:string,recordId:string)=>input.store.getRecord({workspaceId:input.workspaceId,collectionName,recordId});
+  // Sprint 0109: relationship messages come from the message tables, through the actor's own member row.
+  const messages=createRelationshipMessageReader({client:input.client,workspaceId:input.workspaceId});
   async function objects(actorId:string,ids:string[]) {
     const result:{id:string;name:string}[]=[];
     for(const id of [...new Set(ids)].slice(0,10)) {const row=await get('contacts',id);if(row?.userId===actorId&&row.lifecycleState==='active'&&text(row.payload.displayName))result.push({id,name:text(row.payload.displayName)});}
@@ -29,10 +32,19 @@ export function createDiscoverySourceAdapters(input:{store:LiveRecordStoreLike<R
         if(!a||['cancelled','completed'].includes(a.status))return null;
         revision='discovery:'+a.version;body=a.details??'';authorId=a.detailsUpdatedByActorId??a.createdByActorId;occurredAt=a.detailsUpdatedAt??a.updatedAt;
         ids=[a.contactIdsByActor[actorId]].filter(Boolean);href=`/contacts/${encodeURIComponent(ids[0]??'')}?appointmentId=${encodeURIComponent(a.appointmentId)}`;
+      } else if(ref.kind==='message') {
+        if(!prefs.messageAnalysisEnabled||(forExtraction&&ref.at<prefs.messageEnabledSince))return null;
+        const m=await messages.message(ref.id);if(!m)return null;
+        const v=await messages.conversation(m.conversationId),me=v?.members.find(x=>x.accountId===actorId);
+        if(!v||v.status!=='active'||me?.state!=='active'||v.members.length!==2||m.qualificationVersion!==v.qualificationVersion)return null;
+        authorId=m.senderAccountId;if(!v.members.some(x=>x.accountId===authorId))return null;
+        body=m.body;revision=m.sentAt;occurredAt=m.sentAt;ids=v.inviterAccountId===actorId?[v.inviterContactId]:[];
+        if(!ids.length){const remoteId=v.inviterAccountId===actorId?v.inviteeAccountId:v.inviterAccountId;const name=v.members.find(x=>x.accountId===remoteId)?.displayName;if(name)boundObjects=[{id:remoteId,name}];}
+        href=`/inbox/${encodeURIComponent(v.conversationId)}`;
       } else {
         const collection=collections[ref.kind as keyof typeof collections];if(!collection)return null;
         const row=await get(collection,ref.id);if(!row||row.lifecycleState!=='active')return null;
-        if(ref.kind!=='message'&&row.userId!==actorId)return null;
+        if(row.userId!==actorId)return null;
         const p=row.payload;
         if(ref.kind==='note') {
           const note=noteRecordFromLiveRecord(row,actorId)?.note;if(!note)return null;
@@ -52,16 +64,6 @@ export function createDiscoverySourceAdapters(input:{store:LiveRecordStoreLike<R
         } else if(ref.kind==='goal') {
           if(p.accountId!==actorId||!text(p.relationshipGoal))return null;
           body=text(p.relationshipGoal);revision=text(p.updatedAt)||row.updatedAt;href='/profile';
-        } else {
-          if(!prefs.messageAnalysisEnabled||(forExtraction&&ref.at<prefs.messageEnabledSince))return null;
-          const conversation=await get('relationship_communication_conversations',text(p.conversationId));
-          if(!conversation||conversation.lifecycleState!=='active'||conversation.payload.status!=='active'||!strings(conversation.payload.participantAccountIds).includes(actorId))return null;
-          const v=conversation.payload,binding=await get('relationship_communication_bindings',text(v.bindingId)),b=binding?.payload;
-          if(!binding||binding.lifecycleState!=='active'||b?.status!=='confirmed'||![b.inviterAccountId,b.remoteAccountId].includes(actorId)||b.qualificationVersion!==v.qualificationVersion||p.qualificationVersion!==v.qualificationVersion||b.contactId!==v.contactId||b.conversationId!==v.conversationId||!strings(v.participantAccountIds).includes(text(b.inviterAccountId))||!strings(v.participantAccountIds).includes(text(b.remoteAccountId)))return null;
-          authorId=text(p.senderAccountId);if(!strings(v.participantAccountIds).includes(authorId))return null;
-          body=text(p.body);revision=row.updatedAt;occurredAt=text(p.sentAt);ids=b.inviterAccountId===actorId?[text(b.contactId)]:[];
-          if(!ids.length){const remoteId=text(b.inviterAccountId===actorId?b.remoteAccountId:b.inviterAccountId);const names=v.participantDisplayNames as Record<string,unknown>|undefined;const name=text(names?.[remoteId]);if(name)boundObjects=[{id:remoteId,name}];}
-          href=`/inbox/${encodeURIComponent(text(v.conversationId))}`;
         }
       }
       if(revision!==ref.revision||!body.trim()||!Number.isFinite(Date.parse(occurredAt)))return null;
@@ -74,7 +76,10 @@ export function createDiscoverySourceAdapters(input:{store:LiveRecordStoreLike<R
       const rows=await input.client.query<{kind:DiscoverySourceRef['kind'];id:string;revision:string;at:Date|string;key:string}>(`with sources as (
         select case r.collection_name when 'notes' then 'note' when 'tasks' then 'task' when 'personal_schedule_items' then 'schedule' when 'contacts' then 'contact' when 'profiles' then 'goal' else 'message' end as kind,
         r.record_id as id,case when r.collection_name='notes' then r.payload->'note'->>'version' else coalesce(r.payload->'task'->>'updatedAt',r.payload->>'updatedAt',to_char(r.updated_at at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')) end as revision,r.updated_at as at
-        from orbit_records r where r.workspace_id=$1 and ((r.user_id=$2 and r.collection_name in ('notes','tasks','personal_schedule_items','contacts','profiles')) or (r.collection_name='relationship_communication_messages' and exists (select 1 from orbit_records c where c.workspace_id=$1 and c.collection_name='relationship_communication_conversations' and c.record_id=r.payload->>'conversationId' and c.payload->'participantAccountIds' ? $2))) ${appointments})
+        from orbit_records r where r.workspace_id=$1 and r.user_id=$2 and r.collection_name in ('notes','tasks','personal_schedule_items','contacts','profiles')
+        union all select 'message' as kind,m.message_id as id,to_char(m.sent_at at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') as revision,m.sent_at as at
+        from relationship_conversation_members me join relationship_messages m on m.workspace_id=me.workspace_id and m.conversation_id=me.conversation_id
+        where me.workspace_id=$1 and me.account_id=$2 and me.state='active' ${appointments})
         select *,kind||':'||id as key from sources where (at,kind||':'||id)>($3::timestamptz,$4::text) and at<=$5::timestamptz order by at,kind||':'||id limit $6`,[input.workspaceId,actorId,cursor.at,cursor.key,asOf,DISCOVERY_LIMITS.page]);
       const refs=rows.rows.map(r=>({...r,at:r.at instanceof Date?r.at.toISOString():r.at}));
       const last=refs.at(-1);return {refs,cursor:last?{at:last.at,key:last.key}:cursor,hasMore:refs.length===DISCOVERY_LIMITS.page};

@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { isDeepStrictEqual } from "node:util";
 import { validateIndustrySelection } from "../shared/domain/industries";
 import type { TransactionalPostgresClient } from "../shared/storage/transactional-postgres";
+import { acquireSyncCommitOrderLock } from "../features/sync/commit-order-lock";
 
 interface RecordIdentity {
   workspaceId: string;
@@ -153,6 +154,8 @@ export async function applyTestIndustryBackfillPlan(client: Pick<TransactionalPo
   if (reviewedHash !== reviewed.hash || planHash(reviewed) !== reviewedHash) throw new Error("Unchanged reviewed plan hash required");
   if (reviewed.entries.some(entry => !entry.before || !entry.after || entry.status === "conflict" || entry.status === "missing_basis")) throw new Error("Plan has unresolved targets");
   return client.transaction(async sql => {
+    // contacts is a sync collection (sprint 0116): hold the commit-order lock before the first write.
+    await acquireSyncCommitOrderLock(sql);
     let applied = 0;
     let alreadyValid = 0;
     for (const entry of reviewed.entries) {

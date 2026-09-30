@@ -170,7 +170,7 @@ test("conversation POST rejects an authenticated subject without account members
     assert.equal(sent.status, 401);
     assert.equal(h.fixture.calls, 0);
     assert.equal(h.fixture.taskPersistenceCalls, 0);
-    assert.deepEqual(await h.fixture.provider("profile:unknown").listSessions(), []);
+    assert.deepEqual((await h.fixture.provider("profile:unknown").listSessionSummariesPage({ limit: 50 })).items, []);
   } finally {
     if (previous === undefined) delete process.env.ORBIT_MODULE_MODE; else process.env.ORBIT_MODULE_MODE = previous;
     delete (globalThis as typeof globalThis & { __orbitReadbackFixture?: unknown }).__orbitReadbackFixture;
@@ -186,8 +186,9 @@ test("execution-safe retry does not repeat the already-persisted current questio
     requestStore: createMemoryOrbitAgentChatRequestStore(),
     sessionProvider: {
       ...provider,
-      upsertSession: async snapshot => {
-        const saved = await provider.upsertSession(snapshot);
+      // 0112: a send writes by appending; the user message is the first append.
+      appendMessages: async (sessionId, appendInput) => {
+        const saved = await provider.appendMessages(sessionId, appendInput);
         if (++writes === 1) throw new Error("acknowledgement lost after user write");
         return saved;
       },

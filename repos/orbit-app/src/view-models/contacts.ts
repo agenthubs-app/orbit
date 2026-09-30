@@ -1205,10 +1205,18 @@ function businessCardRelationshipText(
     : "通过名片交换认识。";
 }
 
+// The manual contact form stores what the user typed as "Manual note: <note>".
+// It is the user's own text, not seed copy: show it as written (0126).
+const MANUAL_NOTE_PREFIX = /^manual note:\s*/iu;
+
 function localizedRelationshipText(
   contact: Record<string, unknown>,
   value: string
 ): string {
+  if (MANUAL_NOTE_PREFIX.test(value)) {
+    return value.replace(MANUAL_NOTE_PREFIX, "").trim();
+  }
+
   const chinese = preferredChineseSegment(value);
 
   if (segmentLooksChinese(chinese)) {
@@ -1391,6 +1399,34 @@ export function contactLocationsToValues(data: unknown): string[] {
     .filter(isRecord)
     .map((contact) => analysisLocationLabel(stringField(contact, "location")))
     .filter((location) => location.length > 0);
+}
+
+export interface ContactRoleCount {
+  role: string;
+  count: number;
+}
+
+/**
+ * Sprint 0101: the contacts-analysis payload carries only the contacts the
+ * page shows, plus role counts over every contact. Roles get the same label
+ * mapping as contactsToSummaries so role statistics do not change. Returns
+ * null for older servers that still send the full list without counts.
+ */
+export function contactRoleCountsFromPayload(
+  data: unknown,
+  language: OrbitLanguage = "zh"
+): ContactRoleCount[] | null {
+  if (!isRecord(data) || !Array.isArray(data.roleCounts)) {
+    return null;
+  }
+
+  return data.roleCounts.filter(isRecord).flatMap((entry) => {
+    const role = stringField(entry, "role");
+    const count = numberField(entry, "count");
+    return role && count !== null && count > 0
+      ? [{ role: language === "zh" ? roleLabel(role) : role, count }]
+      : [];
+  });
 }
 
 export function contactsToSummaries(

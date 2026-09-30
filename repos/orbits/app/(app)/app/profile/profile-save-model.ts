@@ -1,5 +1,6 @@
 import { validateIndustrySelection } from "../../../../shared/domain/industries";
 import type { ProfilePayload } from "../../../../features/profile/contract";
+import { profileBioLimit, profileVisibleLength } from "../../../../shared/api-schema/profile-bio";
 import {
   profileEditorHandlesWithVisibleDraft,
   type OrbitProfileEditorView,
@@ -15,19 +16,13 @@ const BASIC_SCOPE_FIELDS: readonly ProfileEditorField[] = [
   "bio", "birthDate", "displayName", "handles", "headline", "organization", "primaryIndustryId", "role", "secondaryIndustryId",
 ];
 const MATCHING_SCOPE_FIELDS: readonly ProfileEditorField[] = ["offering", "relationshipGoal", "seeking", "topics"];
-const BIO_VISIBLE_LIMIT = 80;
 
 export function profileSaveScopeFields(scope: ProfileEditorSaveScope): Set<ProfileEditorField> {
   return new Set(scope === "basic" ? BASIC_SCOPE_FIELDS : MATCHING_SCOPE_FIELDS);
 }
 
 export function visibleCharacterCount(text: string): number {
-  const Segmenter = (Intl as unknown as {
-    Segmenter?: new (locale?: string, options?: { granularity: "grapheme" }) => { segment(input: string): Iterable<unknown> };
-  }).Segmenter;
-  return Segmenter
-    ? Array.from(new Segmenter(undefined, { granularity: "grapheme" }).segment(text)).length
-    : Array.from(text).length;
+  return profileVisibleLength(text);
 }
 
 export type ProfileSaveValidation =
@@ -51,8 +46,10 @@ export function validateProfileSaveDraft(input: {
   if (requireDirectHandle && !profile.wechatName.trim() && !profile.lineId.trim()) {
     return { ok: false, message: { en: "Add either WeChat or LINE before saving the basic profile.", zh: "保存基础资料前，请至少填写 WeChat 或 LINE 其中一项。" } };
   }
-  if (scopeDirty.has("bio") && visibleCharacterCount(profile.bio.trim()) > BIO_VISIBLE_LIMIT) {
-    return { ok: false, message: { en: "Keep About me within 80 visible characters.", zh: "关于我不能超过 80 个可见字符。" } };
+  // 含中日韩文字 80，其余 200：与服务端 PUT /api/profile 同一份规则。
+  const bioLimit = profileBioLimit(profile.bio.trim());
+  if (scopeDirty.has("bio") && visibleCharacterCount(profile.bio.trim()) > bioLimit) {
+    return { ok: false, message: { en: `Keep About me within ${bioLimit} visible characters.`, zh: `关于我不能超过 ${bioLimit} 个可见字符。` } };
   }
   return { ok: true };
 }

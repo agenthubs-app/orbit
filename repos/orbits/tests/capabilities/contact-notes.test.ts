@@ -1,3 +1,4 @@
+import { seedAsOwner, writeAsOwner } from "../support/live-record-owner-fixture";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createLiveContactDetailTagStatusService } from "../../features/contacts/live-detail-service";
@@ -11,10 +12,10 @@ async function contactNotesFixture() {
   const contactId = "contact_078";
   const workspaceId = "workspace:contact-notes";
   const store = createMemoryLiveRecordStore<Record<string, unknown>>();
-  await seedGeneratedRelationshipFixturesIntoLiveStore({ store, workspaceId });
+  await seedGeneratedRelationshipFixturesIntoLiveStore({ store: seedAsOwner(store, actorId, ["contacts", "connections", "evidence"]), workspaceId });
   for (const collectionName of ["contacts", "connections", "evidence"]) {
     for (const record of await store.listRecords({ limit: "unbounded", collectionName, workspaceId })) {
-      await store.upsertRecord({ ...record, userId: actorId, payload: { ...record.payload, accountId: actorId } });
+      await writeAsOwner(store, { ...record, userId: actorId, payload: { ...record.payload, accountId: actorId } });
     }
   }
   const provider = createStorageContactGraphProvider({ store, workspaceId });
@@ -79,10 +80,15 @@ test("private notes remain isolated even when another actor has a connection to 
   assert.ok(connection);
   const otherActor = "actor:other-contact-notes";
   await store.upsertRecord({ ...connection, recordId: "connection:other", userId: otherActor, payload: { ...connection.payload, id: "connection:other", accountId: otherActor } });
+  // caf9bd8aa: a relationship reference is no longer a read grant for a private
+  // contact, so B is denied the contact outright (not shown it without notes).
   const other = await service().getContactDetail({ actorId: otherActor, contactId });
-  assert.equal(other.success, true);
+  assert.equal(other.success, false);
+  if (!other.success) assert.equal(other.error.code, "CONTACT_DETAIL_NOT_FOUND");
   assert.doesNotMatch(JSON.stringify(other), /A 的联系人备注|旧版手动备注|双方确认的纪要/u);
-  await service().updateContactDetail({ actorId: otherActor, contactId, note: { body: "B 的联系人备注", authorLabel: "我" } });
+  const otherWrite = await service().updateContactDetail({ actorId: otherActor, contactId, note: { body: "B 的联系人备注", authorLabel: "我" } });
+  assert.equal(otherWrite.success, false);
+  assert.equal(await provider.readContactDetailState!(contactId, otherActor), null);
   assert.doesNotMatch(JSON.stringify(await provider.readContactDetailState!(contactId, actorId)), /B 的联系人备注/u);
   assert.doesNotMatch(JSON.stringify(await service().getContactDetail({ actorId: "actor:no-access", contactId })), /A 的联系人备注|B 的联系人备注/u);
   const missingActor = await service().updateContactDetail({ contactId, note: "无账号写入" });

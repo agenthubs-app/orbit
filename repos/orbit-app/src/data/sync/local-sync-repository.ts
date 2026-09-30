@@ -12,10 +12,19 @@ import { z } from "zod";
 import type { DomainPage, ReadScope } from "../../api/contract/universal-read";
 import { domainPageSchema, readScopeSchema } from "../../api/schema/universal-read";
 import { IDENTITY_PAYLOAD_CODEC, type PayloadCodec } from "./payload-codec";
+import { assertPageCopyKey, type PageCopy } from "./page-copies";
 
 const LEGACY_DOMAINS: Record<SyncEntityKind, string> = {
   contact: "contacts", note: "notes", task: "tasks", relationship_followup: "followups",
   personal_schedule: "personal-schedule", inbox_item: "notifications",
+  // Sprint 0115: the registered attendee's event day.
+  event_registration: "event-registrations", registered_event: "registered-events", event_published_result: "event-published-results",
+  // Sprint 0117: the account's dashboard graph (dashboard and contacts analysis computed on the device).
+  dashboard_graph: "dashboard-graph",
+  // Sprint 0118: the typed inbox, the AI session list and the messages of opened AI sessions.
+  inbox_notification: "inbox-notifications", ai_session: "ai-sessions", ai_session_message: "ai-session-messages",
+  // Sprint 0119: relationship conversations and their messages.
+  relationship_conversation: "relationship-conversations", relationship_message: "relationship-messages",
 };
 
 const SYNC_ENTITY_KINDS = new Set<SyncEntityKind>([
@@ -25,6 +34,15 @@ const SYNC_ENTITY_KINDS = new Set<SyncEntityKind>([
   "relationship_followup",
   "personal_schedule",
   "inbox_item",
+  "event_registration",
+  "registered_event",
+  "event_published_result",
+  "dashboard_graph",
+  "inbox_notification",
+  "ai_session",
+  "ai_session_message",
+  "relationship_conversation",
+  "relationship_message",
 ]);
 const LOCAL_SYNC_STATES = new Set<LocalSyncState>([
   "synced",
@@ -49,6 +67,20 @@ const SYNC_TIMESTAMP = z.iso.datetime({ offset: true });
 const PLAIN_JSON = z.json();
 const LAST_SUCCESSFUL_WORKSPACE_KEY = "last_successful_workspace_id";
 const OFFLINE_READ_LEASE_KEY = "offline_read_lease";
+/** Sprint 0118: how many opened AI sessions a device keeps messages for (the server accepts no more in one request). */
+export const AI_OPENED_SESSION_LIMIT = 20;
+const AI_MESSAGES_DOMAIN = "ai-session-messages";
+const aiOpenedKey = (workspaceId: string) => `ai_opened_sessions:${workspaceId}`;
+const aiCardsKey = (workspaceId: string, sessionId: string) => `ai_session_cards:${workspaceId}:${sessionId}`;
+/** Sprint 0119: a conversation that leaves the device takes its messages (row ids `${conversationId}/${seq}`) with it. */
+const RELATIONSHIP_CONVERSATIONS_DOMAIN = "relationship-conversations";
+const RELATIONSHIP_MESSAGES_DOMAIN = "relationship-messages";
+/** Sprint 0131: page copies live in sync_meta under their lease binding (JSON keys keep ids with any characters unambiguous). */
+const PAGE_COPY_PREFIX = "page_copy:";
+const PAGE_COPY_INDEX_PREFIX = "page_copy_index:";
+const pageCopyKey = (workspaceId: string, epoch: string, id: string, variant: string) => PAGE_COPY_PREFIX + JSON.stringify([workspaceId, epoch, id, variant]);
+const pageCopyIndexKey = (workspaceId: string, epoch: string, id: string) => PAGE_COPY_INDEX_PREFIX + JSON.stringify([workspaceId, epoch, id]);
+const partitionKeyOf = (scope: ReadScope) => `sync_partitions:${scope.workspaceId}:${scope.domainId}:${scope.authorizationEpoch}`;
 
 export type LocalSyncBootstrapState = "pending" | "complete";
 export type LocalSyncOutboxOperation = "create" | "update" | "delete";
@@ -213,6 +245,23 @@ export function createLocalSyncRepository(input: {
   }
 
   const scopeParameters = (scope: ReadScope) => [scope.workspaceId, scope.domainId, scope.authorizationEpoch];
+
+  /** Sprint 0118: every message row and cached card set of the given AI sessions, in every epoch. */
+  async function deleteAiSessionRows(workspaceId: string, sessionIds: readonly string[]): Promise<void> {
+    const rows = await database.all<{ authorization_epoch: string; record_id: string; payload_json: string | null }>(
+      "SELECT authorization_epoch, record_id, payload_json FROM sync_records WHERE workspace_id = ? AND domain_id = ? AND sync_state = 'synced'",
+      [workspaceId, AI_MESSAGES_DOMAIN],
+    );
+    for (const row of rows) {
+      if (row.payload_json === null) continue;
+      let sessionId: unknown;
+      try { sessionId = (JSON.parse(await codec.decode(row.payload_json)) as { sessionId?: unknown }).sessionId; } catch { sessionId = null; }
+      if (typeof sessionId === "string" && sessionIds.includes(sessionId)) {
+        await database.run("DELETE FROM sync_records WHERE workspace_id = ? AND domain_id = ? AND authorization_epoch = ? AND record_id = ?", [workspaceId, AI_MESSAGES_DOMAIN, row.authorization_epoch, row.record_id]);
+      }
+    }
+    for (const sessionId of sessionIds) await database.run("DELETE FROM sync_meta WHERE key = ?", [aiCardsKey(workspaceId, sessionId)]);
+  }
   async function isReadable(scope: ReadScope): Promise<boolean> {
     const row = await database.get<{ readable: number }>("SELECT readable FROM local_read_scope_state WHERE workspace_id=? AND domain_id=? AND authorization_epoch=?", scopeParameters(scope));
     return row?.readable !== 0;
@@ -333,6 +382,134 @@ export function createLocalSyncRepository(input: {
       );
     },
 
+    /**
+     * Sprint 0118: the AI sessions this device opened, most recent first. Their
+     * messages sync (sync domain ai-session-messages names them); the rest stay
+     * on the server.
+     */
+    async getOpenedAiSessions(workspaceId: string): Promise<string[]> {
+      assertNonEmptyString(workspaceId, "workspaceId");
+      const row = await database.get<{ value: string }>("SELECT value FROM sync_meta WHERE key = ?", [aiOpenedKey(workspaceId)]);
+      if (!row) return [];
+      try {
+        const parsed = JSON.parse(row.value) as unknown;
+        return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === "string" && id.length > 0 && id.length <= 160).slice(0, AI_OPENED_SESSION_LIMIT) : [];
+      } catch { return []; }
+    },
+
+    /**
+     * Opening a session moves it to the front. Beyond AI_OPENED_SESSION_LIMIT the
+     * least recently opened one is evicted: its message rows and cached cards
+     * are deleted from the device (the server stops sending it).
+     */
+    async openAiSession(workspaceId: string, sessionId: string): Promise<{ opened: string[]; evicted: string[]; added: boolean }> {
+      assertNonEmptyString(sessionId, "sessionId");
+      if (sessionId.length > 160) throw new TypeError("sessionId is invalid");
+      const current = await this.getOpenedAiSessions(workspaceId);
+      const next = [sessionId, ...current.filter((id) => id !== sessionId)];
+      const opened = next.slice(0, AI_OPENED_SESSION_LIMIT);
+      const evicted = next.slice(AI_OPENED_SESSION_LIMIT);
+      const added = !current.includes(sessionId);
+      if (current.length === opened.length && current.every((id, index) => id === opened[index])) return { opened, evicted, added };
+      await database.transaction(async () => {
+        await database.run(`INSERT INTO sync_meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`, [aiOpenedKey(workspaceId), JSON.stringify(opened)]);
+        if (evicted.length) await deleteAiSessionRows(workspaceId, evicted);
+      });
+      return { opened, evicted, added };
+    },
+
+    /** Sprint 0118: the cards of an opened session's last online page read, for offline display (encoded like payloads). */
+    async setAiSessionCards(workspaceId: string, sessionId: string, cards: unknown): Promise<void> {
+      if (!(await this.getOpenedAiSessions(workspaceId)).includes(sessionId)) return;
+      const encodedCards = await codec.encode(serializeJson(cards, "cards"));
+      await database.run(`INSERT INTO sync_meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`, [aiCardsKey(workspaceId, sessionId), encodedCards]);
+    },
+
+    async getAiSessionCards(workspaceId: string, sessionId: string): Promise<unknown | null> {
+      assertNonEmptyString(workspaceId, "workspaceId");
+      const row = await database.get<{ value: string }>("SELECT value FROM sync_meta WHERE key = ?", [aiCardsKey(workspaceId, sessionId)]);
+      if (!row) return null;
+      try { return JSON.parse(await codec.decode(row.value)) as unknown; } catch { return null; }
+    },
+
+    /**
+     * Sprint 0131: the last successful online read of a registered page, stored
+     * under the accepted lease binding (workspace, authorization epoch) and
+     * encoded like payloads (AES-GCM per value in the browser). A response
+     * larger than the copy's maxBytes is not kept (an older copy is removed, so
+     * a page never shows an outdated copy as current). Each copy keeps its
+     * maxVariants most recently saved variants.
+     */
+    async setPageCopy(binding: { workspaceId: string; authorizationEpoch: string }, id: string, variant: string, copy: PageCopy): Promise<boolean> {
+      assertNonEmptyString(binding.workspaceId, "workspaceId");
+      assertNonEmptyString(binding.authorizationEpoch, "authorizationEpoch");
+      const definition = assertPageCopyKey(id, variant);
+      assertTimestamp(copy.syncedAt, "syncedAt");
+      const parsed = PLAIN_JSON.safeParse(copy.data);
+      if (!parsed.success) throw new TypeError("page copy must be plain JSON");
+      const serialized = JSON.stringify({ syncedAt: copy.syncedAt, data: parsed.data });
+      const key = pageCopyKey(binding.workspaceId, binding.authorizationEpoch, id, variant);
+      const indexKey = pageCopyIndexKey(binding.workspaceId, binding.authorizationEpoch, id);
+      const indexRow = await database.get<{ value: string }>("SELECT value FROM sync_meta WHERE key = ?", [indexKey]);
+      let index: string[] = [];
+      try { const value = indexRow ? JSON.parse(indexRow.value) as unknown : []; index = Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === "string") : []; } catch { index = []; }
+      if (new TextEncoder().encode(serialized).byteLength > definition.maxBytes) {
+        await database.transaction(async () => {
+          await database.run("DELETE FROM sync_meta WHERE key = ?", [key]);
+          await database.run(`INSERT INTO sync_meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`, [indexKey, JSON.stringify(index.filter((entry) => entry !== variant))]);
+        });
+        return false;
+      }
+      const next = [variant, ...index.filter((entry) => entry !== variant)];
+      const kept = next.slice(0, definition.maxVariants);
+      const evicted = next.slice(definition.maxVariants);
+      const encodedCopy = await codec.encode(serialized);
+      await database.transaction(async () => {
+        await database.run(`INSERT INTO sync_meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`, [key, encodedCopy]);
+        await database.run(`INSERT INTO sync_meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`, [indexKey, JSON.stringify(kept)]);
+        for (const old of evicted) await database.run("DELETE FROM sync_meta WHERE key = ?", [pageCopyKey(binding.workspaceId, binding.authorizationEpoch, id, old)]);
+      });
+      return true;
+    },
+
+    async getPageCopy(binding: { workspaceId: string; authorizationEpoch: string }, id: string, variant: string): Promise<PageCopy | null> {
+      assertPageCopyKey(id, variant);
+      const row = await database.get<{ value: string }>("SELECT value FROM sync_meta WHERE key = ?", [pageCopyKey(binding.workspaceId, binding.authorizationEpoch, id, variant)]);
+      if (!row) return null;
+      try {
+        const value = JSON.parse(await codec.decode(row.value)) as { syncedAt?: unknown; data?: unknown };
+        return typeof value.syncedAt === "string" && "data" in value ? { syncedAt: value.syncedAt, data: value.data } : null;
+      } catch { return null; }
+    },
+
+    /** Sprint 0131: drop every page copy not bound to (workspaceId, keepAuthorizationEpoch); a revoked lease keeps none. */
+    async retirePageCopies(keep: { workspaceId: string; authorizationEpoch: string } | null): Promise<number> {
+      const rows = await database.all<{ key: string }>("SELECT key FROM sync_meta WHERE substr(key, 1, ?) = ? OR substr(key, 1, ?) = ?", [PAGE_COPY_PREFIX.length, PAGE_COPY_PREFIX, PAGE_COPY_INDEX_PREFIX.length, PAGE_COPY_INDEX_PREFIX]);
+      let removed = 0;
+      await database.transaction(async () => {
+        for (const row of rows) {
+          let binding: unknown;
+          try { binding = JSON.parse(row.key.slice(row.key.startsWith(PAGE_COPY_INDEX_PREFIX) ? PAGE_COPY_INDEX_PREFIX.length : PAGE_COPY_PREFIX.length)); } catch { binding = null; }
+          const bound = Array.isArray(binding) && keep !== null && binding[0] === keep.workspaceId && binding[1] === keep.authorizationEpoch;
+          if (bound) continue;
+          await database.run("DELETE FROM sync_meta WHERE key = ?", [row.key]);
+          if (row.key.startsWith(PAGE_COPY_PREFIX)) removed += 1;
+        }
+      });
+      return removed;
+    },
+
+    /** Sprint 0118: which partitions (opened sessions) the scope's last complete walk named. */
+    async getPartitionKey(value: ReadScope): Promise<string | null> {
+      const scope = assertScope(value);
+      return (await database.get<{ value: string }>("SELECT value FROM sync_meta WHERE key = ?", [partitionKeyOf(scope)]))?.value ?? null;
+    },
+
+    async setPartitionKey(value: ReadScope, key: string): Promise<void> {
+      const scope = assertScope(value);
+      await database.run(`INSERT INTO sync_meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`, [partitionKeyOf(scope), key]);
+    },
+
     async getLastWorkspaceId(): Promise<string | null> {
       const row = await database.get<{ value: string }>(
         "SELECT value FROM sync_meta WHERE key = ?",
@@ -421,6 +598,31 @@ export function createLocalSyncRepository(input: {
         );
     },
 
+    /**
+     * Sprint 0131: the named rows of one kind (at most 200), for pages the device reads by row id — a
+     * relationship conversation's messages are `${conversationId}/${seq}`, so one page is one sequence
+     * range — instead of loading and decoding the whole domain.
+     */
+    async listRecordsByIds(query: { workspaceId: string; kind: SyncEntityKind; ids: readonly string[] }): Promise<SyncRecord[]> {
+      assertNonEmptyString(query.workspaceId, "workspaceId");
+      assertSyncEntityKind(query.kind);
+      if (query.ids.length > 200) throw new TypeError("row id reads take at most 200 ids");
+      if (query.ids.length === 0) return [];
+      for (const id of query.ids) assertNonEmptyString(id, "id");
+      const scope = legacyScope(query.workspaceId, query.kind);
+      if (!(await isReadable(scope))) return [];
+      const rows = await database.all<SyncRecordRow>(
+        `SELECT workspace_id, kind, record_id, revision, updated_at, deleted_at,
+                payload_json, sync_state, ai_visibility
+         FROM sync_records
+         WHERE workspace_id = ? AND domain_id = ? AND authorization_epoch = ? AND kind = ? AND visible=1 AND deleted_at IS NULL
+           AND record_id IN (${query.ids.map(() => "?").join(", ")})`,
+        [...scopeParameters(scope), query.kind, ...query.ids],
+      );
+      assertScope(scope);
+      return Promise.all(rows.map((row) => recordFromStoredRow(row)));
+    },
+
     async getCursor(workspaceId: string): Promise<LocalSyncCursor | null> {
       assertNonEmptyString(workspaceId, "workspaceId");
       const scope = legacyScope(workspaceId);
@@ -462,6 +664,11 @@ export function createLocalSyncRepository(input: {
           );
           if (table === "sync_records") retired = result.changes;
         }
+        if (domainId === AI_MESSAGES_DOMAIN) {
+          // Sprint 0118: another epoch's partition key means nothing now; a retired epoch takes its cached cards with it.
+          await database.run(`DELETE FROM sync_meta WHERE key LIKE ? AND key <> ?`, [`sync_partitions:${workspaceId}:${domainId}:%`, `sync_partitions:${workspaceId}:${domainId}:${keepAuthorizationEpoch}`]);
+          if (retired > 0) await database.run(`DELETE FROM sync_meta WHERE key LIKE ?`, [`ai_session_cards:${workspaceId}:%`]);
+        }
       });
       return retired;
     },
@@ -474,6 +681,7 @@ export function createLocalSyncRepository(input: {
           await database.run(`DELETE FROM ${table} WHERE workspace_id=? AND domain_id=? AND authorization_epoch=?${canonical}`, scopeParameters(scope));
         }
         await database.run(`INSERT INTO local_read_scope_state VALUES(?,?,?,0) ON CONFLICT(workspace_id,domain_id,authorization_epoch) DO UPDATE SET readable=0`, scopeParameters(scope));
+        await database.run("DELETE FROM sync_meta WHERE key = ?", [partitionKeyOf(scope)]);
       });
     },
 
@@ -498,6 +706,13 @@ export function createLocalSyncRepository(input: {
             await database.run(`DELETE FROM sync_records WHERE workspace_id=? AND domain_id=? AND authorization_epoch=? AND record_id=? AND sync_state='synced'`, [...scopeParameters(scope), change.id]);
             await database.run(`DELETE FROM local_read_index WHERE workspace_id=? AND domain_id=? AND authorization_epoch=? AND record_id=?`, [...scopeParameters(scope), change.id]);
             await database.run(`DELETE FROM local_read_assets WHERE workspace_id=? AND domain_id=? AND authorization_epoch=? AND record_id=?`, [...scopeParameters(scope), change.id]);
+            if (scope.domainId === RELATIONSHIP_CONVERSATIONS_DOMAIN) {
+              // The member row left (revocation): every message of the conversation leaves this device in the same transaction, in every epoch.
+              const prefix = `${change.id}/`;
+              for (const table of ["sync_records", "local_read_index", "local_read_assets"]) {
+                await database.run(`DELETE FROM ${table} WHERE workspace_id=? AND domain_id=? AND substr(record_id, 1, ?)=?`, [scope.workspaceId, RELATIONSHIP_MESSAGES_DOMAIN, prefix.length, prefix]);
+              }
+            }
           } else {
             const kind = Object.entries(LEGACY_DOMAINS).find(([, domain]) => domain === scope.domainId)?.[0] ?? scope.domainId;
             await database.run(`INSERT INTO sync_records(workspace_id,domain_id,authorization_epoch,kind,record_id,revision,updated_at,payload_json,sync_state,ai_visibility,schema_version,payload_hash,generation)

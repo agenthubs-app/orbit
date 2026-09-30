@@ -3,24 +3,7 @@ import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import { Pool } from "pg";
-import { createLiveContactsListSearchAndFilterService } from "../../features/contacts/live-service";
-import {
-  createPostgresContactRecordPageReader,
-  createStorageContactGraphProvider,
-} from "../../features/contacts/storage/contact-live-record-provider";
-import { createPostgresContactScopeRecordReader } from "../../features/contacts/storage/contact-scope-postgres-reader";
-import { createLiveDashboardAggregateService } from "../../features/dashboard/live-service";
-import { createStorageDashboardAggregateProvider } from "../../features/dashboard/storage/dashboard-live-record-provider";
-import { createLiveEventCrudAndImportService } from "../../features/events/event-crud-and-import/live-service";
-import { createStorageEventStoreProvider } from "../../features/events/event-crud-and-import/providers/storage-event-provider";
-import { createNoteAssociationReader } from "../../features/notes/association-reader";
-import { createNoteRepository } from "../../features/notes/repository";
-import { createNoteService } from "../../features/notes/service";
-import { createTaskRepository } from "../../features/tasks/repository";
-import { createTaskService } from "../../features/tasks/service";
-import { createConfiguredPostgresLiveRecordStore } from "../../shared/storage/configured-live-record-store";
 import { ORBIT_RECORDS_SCHEMA_SQL } from "../../shared/storage/migrations";
-import { seedGeneratedRelationshipFixturesIntoLiveStore } from "../../shared/storage/seed-generated-fixtures";
 import { createTransactionalPostgresClient } from "../../shared/storage/transactional-postgres";
 import {
   assertWithinBudget,
@@ -30,6 +13,7 @@ import {
   type ReadCost,
   type ReadCostBook,
 } from "./read-cost-ledger";
+import { seedReadCostChains } from "./read-cost-chains";
 
 const databaseUrl = process.env.ORBIT_LIFECYCLE_TEST_DATABASE_URL;
 const BASELINE_PATH = new URL("./read-cost-baseline.json", import.meta.url);
@@ -37,9 +21,6 @@ const baseline = JSON.parse(readFileSync(BASELINE_PATH, "utf8")) as {
   actorId: string;
   chains: ReadCostBook;
 };
-const SEEDED_AT = "2026-09-18T00:00:00.000Z";
-const NOTE_COUNT = 12;
-const TASK_COUNT = 12;
 
 test("assertWithinBudget bites: one unit under the actual cost fails on that dimension", () => {
   const actual: ReadCostBook = { "contacts.list": { queries: 3, rows: 40, bytes: 9000 } };
@@ -72,87 +53,7 @@ test("operation chains are reproducible and stay within the frozen read-cost bas
   try {
     await admin.query(`create schema ${schema}`);
     await client.query(ORBIT_RECORDS_SCHEMA_SQL);
-    // Production composition (read-dedupe wrapper included); only the SQL client is swapped for the measured one.
-    const configured = createConfiguredPostgresLiveRecordStore({
-      createClient: () => ({ query: client.query.bind(client), close: async () => {} }),
-      env: {
-        ORBIT_DATABASE_TARGET: "local",
-        ORBIT_LOCAL_DATABASE_URL: `${databaseUrl}#${schema}`,
-        ORBIT_LOCAL_WORKSPACE_ID: workspaceId,
-      },
-    });
-    assert.ok(configured);
-    const { store } = configured;
-    await seedGeneratedRelationshipFixturesIntoLiveStore({ store, workspaceId, now: () => SEEDED_AT });
-    const notes = createNoteService({
-      repository: createNoteRepository({ store, workspaceId }),
-      associationReader: createNoteAssociationReader({
-        contactProvider: createStorageContactGraphProvider({ store, workspaceId }),
-        store,
-        workspaceId,
-      }),
-    });
-    for (let index = 0; index < NOTE_COUNT; index += 1) {
-      await notes.create({
-        actorId,
-        title: `Baseline note ${index}`,
-        body: `Deterministic note body ${index}`,
-        idempotencyKey: `read-cost:note:${index}`,
-        now: SEEDED_AT,
-      });
-    }
-
-    // Generated fixture tasks are legacy-shaped and invisible to the canonical task list;
-    // the measured actor's tasks are created through the real service like API traffic.
-    const tasks = createTaskService({ repository: createTaskRepository({ store, workspaceId, transactionClient: client }) });
-    for (let index = 0; index < TASK_COUNT; index += 1) {
-      await tasks.create({
-        actorId,
-        title: `Baseline task ${index}`,
-        category: "work",
-        idempotencyKey: `read-cost:task:${index}`,
-        now: SEEDED_AT,
-      });
-    }
-
-    const contactProvider = createStorageContactGraphProvider({
-      store,
-      workspaceId,
-      contactScopeRecordReader: createPostgresContactScopeRecordReader({ client, workspaceId }),
-      contactRecordPageReader: createPostgresContactRecordPageReader({ client, workspaceId }),
-    });
-    const chains: Record<string, () => Promise<unknown>> = {
-      "contacts.list": async () => {
-        const result = await createLiveContactsListSearchAndFilterService({ provider: contactProvider }).listContacts({ actorId });
-        assert.ok(result.success, "contacts.list must succeed");
-        assert.ok(result.data.contacts.length > 0, "contacts.list must return the actor's contacts");
-        return result.data.contacts.length;
-      },
-      "tasks.list": async () => {
-        const items = await tasks.list({ actorId });
-        assert.equal(items.length, TASK_COUNT);
-        return items.length;
-      },
-      "notes.list": async () => {
-        const items = await notes.list({ actorId });
-        assert.equal(items.length, NOTE_COUNT);
-        return items.length;
-      },
-      "dashboard": async () => {
-        const result = await createLiveDashboardAggregateService({
-          provider: createStorageDashboardAggregateProvider({ store, workspaceId, sqlClient: client }),
-        }).getDashboardAggregate({ actorId });
-        assert.ok(result.success, "dashboard must succeed");
-        return result.success;
-      },
-      "events.list": async () => {
-        const result = await createLiveEventCrudAndImportService({
-          provider: createStorageEventStoreProvider({ store, workspaceId }),
-        }).listEvents({ actorId });
-        assert.ok(result.success, "events.list must succeed");
-        return result.success;
-      },
-    };
+    const chains = await seedReadCostChains({ client, databaseUrl, schema, workspaceId, actorId });
 
     const actual: ReadCostBook = {};
     for (const [chain, run] of Object.entries(chains)) {

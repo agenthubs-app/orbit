@@ -114,6 +114,11 @@ describe("resolveInitialRouteHref", () => {
       "/events/event_signup_03/attendees"
     );
     assert.equal(
+      resolveInitialRouteHref("/app/events/event_signup_03/live"),
+      "/events/event_signup_03/live"
+    );
+    assert.equal(resolveInitialRouteHref("events/..%2F/live"), resolveInitialRouteHref("unknown-route"));
+    assert.equal(
       resolveInitialRouteHref("events/event_signup_03/register"),
       "/events/event_signup_03/register"
     );

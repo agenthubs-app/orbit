@@ -10,22 +10,18 @@ import {
   useWindowDimensions,
   View
 } from "react-native";
-import { ORBIT_API_ENDPOINTS } from "../../api/endpoints";
 import type { OrbitLanguage } from "../../api/contract/language";
-import { taskPageSchema } from "../../api/schema/task-page";
-import { validateApiResourceState } from "../../api/validated-resource-state";
 import { AppScreen } from "../../components/AppScreen";
 import { ErrorState } from "../../components/ErrorState";
+import { OfflineNotice } from "../../components/OfflineNotice";
 import { LoadingState } from "../../components/LoadingState";
 import { layout, textStyles, radius, spacing, typography, type OrbitColors } from "../../design/tokens";
 import { createThemedStyles, useOrbitTheme } from "../../design/theme";
-import { useApiResource } from "../../hooks/useApiResource";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
-import { normalizeTaskPageContract } from "../../view-models/today-task-pages";
+import { useScheduleCalendarSource } from "./schedule-calendar-source";
 import {
   japanCalendarDateInfo,
   scheduleToCalendarView,
-  taskPageToScheduleTasks,
   shiftScheduleDateKey,
   shiftScheduleMonthDateKey,
   type ScheduleCalendarDay,
@@ -44,12 +40,6 @@ function localeTag(language: OrbitLanguage): string {
 
 function localizedWeekday(dateKey: string, language: OrbitLanguage, narrow = false): string {
   return new Intl.DateTimeFormat(localeTag(language), { timeZone: "UTC", weekday: narrow ? "narrow" : "short" }).format(new Date(`${dateKey}T12:00:00Z`));
-}
-
-function usable<TData>(
-  state: ReturnType<typeof useApiResource<TData>>
-): state is Extract<ReturnType<typeof useApiResource<TData>>, { kind: "empty" | "success" }> {
-  return state.kind === "success" || state.kind === "empty";
 }
 
 function minuteOfDay(timeLabel: string): number | null {
@@ -132,22 +122,8 @@ export function ScheduleScreen() {
   const locale = useOrbitLocale();
   const { timeZone } = useOrbitTimeZone();
   const { colors } = useOrbitTheme();
-  const rawTasksState = useApiResource<unknown>(
-    "/api/tasks/page?status=open&scope=all&limit=4",
-    (data) => taskPageSchema.safeParse(data).success && taskPageSchema.parse(data).items.length === 0
-  );
-  const tasksState = validateApiResourceState(
-    rawTasksState,
-    taskPageSchema.refine((page) => page.status === "open" && page.scope === "all" && page.query === "")
-  );
-  const eventsState = useApiResource<unknown>(
-    ORBIT_API_ENDPOINTS.publicEvents,
-    () => false
-  );
-  const scheduleItemsState = useApiResource<unknown>(
-    ORBIT_API_ENDPOINTS.scheduleItems,
-    () => false
-  );
+  // Sprint 0115: registered events, open tasks and schedule items come from the device mirror (web: when available).
+  const source = useScheduleCalendarSource();
   const [selectedDateKey, setSelectedDateKey] = useState<string>();
   const [viewMode, setViewMode] = useState<ScheduleViewMode>("day");
   const [now, setNow] = useState(() => new Date());
@@ -156,26 +132,19 @@ export function ScheduleScreen() {
     return () => clearInterval(timer);
   }, []);
 
-  function refresh() {
-    tasksState.refresh();
-    eventsState.refresh();
-    scheduleItemsState.refresh();
-  }
-
-  const hasAnyData = usable(tasksState) || usable(eventsState) || usable(scheduleItemsState);
+  const { tasks: tasksPart, events: eventsPart, scheduleItems: itemsPart } = source;
+  const hasAnyData = [tasksPart, eventsPart, itemsPart].some((part) => part.kind === "ready");
   const view = hasAnyData
     ? scheduleToCalendarView({ timeZone, language: locale.language,
-        events: usable(eventsState) ? eventsState.data : { events: [] },
+        events: eventsPart.kind === "ready" ? eventsPart.data : { events: [] },
         now,
-        scheduleItems: usable(scheduleItemsState)
-          ? scheduleItemsState.data
-          : { scheduleItems: [] },
+        scheduleItems: itemsPart.kind === "ready" ? itemsPart.data : { scheduleItems: [] },
         ...(selectedDateKey ? { selectedDateKey } : {}),
         weekStartsOn: 1,
-        tasks: usable(tasksState) ? taskPageToScheduleTasks(normalizeTaskPageContract(tasksState.data)) : { tasks: [] }
+        tasks: tasksPart.kind === "ready" ? tasksPart.data : { tasks: [] }
       })
     : null;
-  const loading = tasksState.kind === "loading" || eventsState.kind === "loading" || scheduleItemsState.kind === "loading";
+  const loading = [tasksPart, eventsPart, itemsPart].some((part) => part.kind === "loading");
 
   return (
     <AppScreen
@@ -183,8 +152,8 @@ export function ScheduleScreen() {
       backLabel={locale.t("nav.home")}
       refreshControl={
         <RefreshControl
-          onRefresh={refresh}
-          refreshing={tasksState.refreshing || eventsState.refreshing || scheduleItemsState.refreshing}
+          onRefresh={source.refresh}
+          refreshing={source.refreshing}
           tintColor={colors.accent}
         />
       }
@@ -192,20 +161,21 @@ export function ScheduleScreen() {
       headerActions={<Pressable accessibilityRole="button" accessibilityLabel={locale.t("schedule.newPersonal")} onPress={() => router.push("/schedule/personal/new" as Href)} style={{ minWidth: 44, minHeight: 44, alignItems: "center", justifyContent: "center" }}><Ionicons name="add" size={26} color={colors.accent} /></Pressable>}
     >
       {loading ? <LoadingState /> : null}
-      {tasksState.kind === "offline" ? (
-        <ErrorState message={tasksState.error.message} title={locale.t("schedule.tasksOffline")} />
+      {source.offline ? <OfflineNotice lastSyncedAt={source.offline.lastSyncedAt} /> : null}
+      {tasksPart.kind === "offline" ? (
+        <ErrorState message={tasksPart.message} title={locale.t("schedule.tasksOffline")} />
       ) : null}
-      {eventsState.kind === "offline" ? (
-        <ErrorState message={eventsState.error.message} title={locale.t("schedule.eventsOffline")} />
+      {eventsPart.kind === "offline" ? (
+        <ErrorState message={eventsPart.message} title={locale.t("schedule.eventsOffline")} />
       ) : null}
-      {tasksState.kind === "failure" ? (
-        <ErrorState message={tasksState.error.message} title={locale.t("schedule.tasksFailed")} />
+      {tasksPart.kind === "failure" ? (
+        <ErrorState message={tasksPart.message} title={locale.t("schedule.tasksFailed")} />
       ) : null}
-      {eventsState.kind === "failure" ? (
-        <ErrorState message={eventsState.error.message} title={locale.t("schedule.eventsFailed")} />
+      {eventsPart.kind === "failure" ? (
+        <ErrorState message={eventsPart.message} title={locale.t("schedule.eventsFailed")} />
       ) : null}
-      {scheduleItemsState.kind === "failure" || scheduleItemsState.kind === "offline" ? (
-        <ErrorState message={scheduleItemsState.error.message} title={locale.t("schedule.personalFailed")} />
+      {itemsPart.kind === "failure" || itemsPart.kind === "offline" ? (
+        <ErrorState message={itemsPart.message} title={locale.t("schedule.personalFailed")} />
       ) : null}
       {view ? (
         <ScheduleWorkspace

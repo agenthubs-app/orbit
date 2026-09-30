@@ -11,6 +11,8 @@ import { AppState } from "react-native";
 import type { SyncChangeKind } from "../api/contract/sync";
 import { useOrbitAuthSession } from "../api/AuthSessionProvider";
 import { useOrbitApiBaseUrl } from "../api/ApiBaseUrlProvider";
+import { ORBIT_API_ENDPOINTS } from "../api/endpoints";
+import { serverReachability } from "../api/server-reachability";
 import { createSyncClient } from "../data/sync/sync-client";
 import {
   createSyncCoordinator,
@@ -56,7 +58,10 @@ function emptySnapshot<TPayload>(): SyncedCollectionSnapshot<TPayload> {
 
 export function useSyncedCollection<TPayload = unknown>(input: {
   kind: SyncChangeKind;
+  /** Sprint 0131: false keeps only the sync state (a consumer that reads its rows by id, e.g. a conversation page). */
+  records?: boolean;
 }) {
+  const withRecords = input.records ?? true;
   const auth = useOrbitAuthSession();
   const { baseUrl, ready: baseUrlReady } = useOrbitApiBaseUrl();
   const sessionGeneration = useMemo(
@@ -101,6 +106,7 @@ export function useSyncedCollection<TPayload = unknown>(input: {
       const request = session.synchronize<TPayload>(input.kind, {
         ...(backgroundDurationMs === undefined ? {} : { backgroundDurationMs }),
         reason,
+        records: withRecords,
       });
       requests.current.add(request);
       const completion = (async () => {
@@ -165,7 +171,7 @@ export function useSyncedCollection<TPayload = unknown>(input: {
         if (timer !== undefined) clearTimeout(timer);
       }
     },
-    [input.kind],
+    [input.kind, withRecords],
   );
 
   useEffect(() => {
@@ -191,7 +197,7 @@ export function useSyncedCollection<TPayload = unknown>(input: {
     });
     sessionRef.current = session;
     let active = true;
-    void session.readCollection<TPayload>(input.kind).then((mirror) => {
+    void session.readCollection<TPayload>(input.kind, { records: withRecords }).then((mirror) => {
       if (
         !active ||
         !mounted.current ||
@@ -204,6 +210,13 @@ export function useSyncedCollection<TPayload = unknown>(input: {
       setSnapshot(mirror);
       void startSync("mount");
     });
+    // Sprint 0131: the moment the server answers again after being unreachable, sync
+    // (a lease, the conditional manifest and any moved domain) instead of waiting for
+    // the next poll. While it stays unreachable a cheap health probe watches for it.
+    const unsubscribeReachability = serverReachability.subscribe((url, state, previous) => {
+      if (state === "reachable" && previous === "unreachable" && url === baseUrl.trim().replace(/\/+$/u, "")) void startSync("explicit");
+    });
+    const stopReconnectWatch = serverReachability.watchReconnect(baseUrl, () => apiClient.get(ORBIT_API_ENDPOINTS.health));
     const unsubscribeAppState = subscribeToSyncAppState({
       appState: AppState,
       now: Date.now,
@@ -220,6 +233,8 @@ export function useSyncedCollection<TPayload = unknown>(input: {
       if (sessionRef.current === session) sessionRef.current = null;
       session.deactivate();
       unsubscribeAppState();
+      unsubscribeReachability();
+      stopReconnectWatch();
       for (const request of requests.current) request.cancel();
       requests.current.clear();
     };
@@ -248,9 +263,46 @@ export function useSyncedCollection<TPayload = unknown>(input: {
     );
   }, [startSync]);
 
+  /** Sprint 0118: the current coordinator session (opened AI sessions and their cached cards), or null before one is open. */
+  const currentSession = useCallback(() => {
+    const session = sessionRef.current;
+    return session && session.isCurrent() ? session : null;
+  }, []);
+
   return {
     ...snapshot,
     invalidate,
     refresh,
+    currentSession,
   };
+}
+
+/**
+ * Sprint 0131: the current coordinator session for this signed-in scope, without
+ * binding a collection (page copies use it). It shares the scope any mounted
+ * useSyncedCollection opened; null until the auth session and server are ready.
+ */
+export function useSyncCoordinatorSession(enabled = true): SyncCoordinatorSession | null {
+  const auth = useOrbitAuthSession();
+  const { baseUrl, ready: baseUrlReady } = useOrbitApiBaseUrl();
+  const sessionGeneration = useMemo(() => authSessionGeneration(auth.user), [auth.user]);
+  const scopeKey = useMemo(
+    () => JSON.stringify([baseUrl, auth.actorId, auth.notificationSessionRevision, sessionGeneration]),
+    [auth.actorId, auth.notificationSessionRevision, baseUrl, sessionGeneration],
+  );
+  const apiClient = useOrbitApiClient({ scopeKey });
+  const [session, setSession] = useState<SyncCoordinatorSession | null>(null);
+  useEffect(() => {
+    if (!enabled || !auth.ready || !baseUrlReady || !auth.signedIn || !auth.actorId) {
+      setSession(null);
+      return;
+    }
+    const opened = appSyncCoordinator.openScope({ actorId: auth.actorId, baseUrl, client: createSyncClient(apiClient), scopeKey });
+    setSession(opened);
+    return () => {
+      opened.deactivate();
+      setSession((current) => (current === opened ? null : current));
+    };
+  }, [enabled, auth.ready, auth.signedIn, auth.actorId, apiClient, baseUrl, baseUrlReady, scopeKey]);
+  return session;
 }

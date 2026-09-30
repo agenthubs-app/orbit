@@ -1,3 +1,5 @@
+import { lockedFixtureQuery } from "../support/sync-revision-fixture";
+import { runEventSyncRevisionMigration } from "../../features/events/event-operations/storage/sync-revision";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import test from "node:test";
@@ -157,12 +159,13 @@ test(
     try {
       await admin.query(`create schema ${schema}`);
       await runEventOperationsMigrations(client);
+      // Sprint 0113: the event head tables carry sync_revision under the strict trigger, as in production.
+      await runEventSyncRevisionMigration(client);
       const now = await pool.query<{ value: Date }>("select statement_timestamp() as value");
       const base = now.rows[0]!.value.getTime();
       const config = configuration(eventId, base);
       await repository.saveConfiguration(config);
-      await pool.query(
-        `update event_ops_events
+      await lockedFixtureQuery(pool, `update event_ops_events
             set lifecycle_state_v2 = 'published'
           where workspace_id = $1 and event_id = $2`,
         [workspaceId, eventId],

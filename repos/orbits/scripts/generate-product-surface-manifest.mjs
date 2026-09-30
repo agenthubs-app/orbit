@@ -328,6 +328,19 @@ function collectReachableSources(entryFile) {
   return [...visited].sort();
 }
 
+// A native <form action="/path"> navigates on submit without any JS handler. Only a
+// non-empty string literal counts; an empty or computed action proves nothing statically.
+function hasStaticFormAction(tagName, attributes) {
+  if (tagName !== "form") return false;
+  return attributes.properties.some((property) =>
+    ts.isJsxAttribute(property) &&
+    property.name.getText().toLowerCase() === "action" &&
+    property.initializer !== undefined &&
+    ts.isStringLiteral(property.initializer) &&
+    property.initializer.text.trim().length > 0,
+  );
+}
+
 function attributeMap(attributes, source) {
   const result = new Map();
 
@@ -1012,6 +1025,7 @@ function collectInteractions(filePath, imperativeBindings = []) {
           href !== null ||
           handlerNames.length > 0 ||
           (kind === "button" && isSubmitButton) ||
+          hasStaticFormAction(parts.tagName, parts.attributes) ||
           imperativeBehavior !== null;
         const accessibleName =
           kind === "form-submit" ||

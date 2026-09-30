@@ -1,3 +1,4 @@
+import { lockedFixtureQuery } from "../support/sync-revision-fixture";
 import assert from "node:assert/strict";
 import { createHash, randomUUID } from "node:crypto";
 import { spawnSync, type SpawnSyncReturns } from "node:child_process";
@@ -168,8 +169,7 @@ async function insertEvent(input: {
   pool: Pool;
   workspaceId: string;
 }): Promise<void> {
-  await input.pool.query(
-    `insert into event_ops_events (
+  await lockedFixtureQuery(input.pool, `insert into event_ops_events (
        workspace_id,event_id,organizer_actor_id,lifecycle_state,revision,
        created_at,updated_at,public_code,title,timezone,starts_at,ends_at,
        lifecycle_state_v2,source_payload,event_version

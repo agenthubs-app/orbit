@@ -133,9 +133,6 @@ test("Message draft generator contract does not carry mock fixture records", () 
 test("Chat agent adjacent contracts do not carry mock fixture records", () => {
   for (const pathFromRoot of [
     "features/chat/contract.ts",
-    "features/chat/assist-contract.ts",
-    "features/chat/summary-contract.ts",
-    "features/chat/privacy-contract.ts",
     "features/followups/contract.ts",
     "features/orbit-ai/artifact-contract.ts",
     "features/orbit-ai/conversation-contract.ts",

@@ -26,7 +26,7 @@ const summary = (input: {
   messageRevision: 2,
   organization: { customTitle: input.customTitle ?? null, groupId: input.groupId ?? null, pinned: input.pinned === true, revision: 1 },
 });
-import { chatRouteToOrbitAgentViewModel } from "../../app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-view-model-adapter";
+import { createOrbitAgentStarterViewModel } from "../../app/(app)/app/orbit-agent-route-view-model";
 
 const projectRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -51,51 +51,9 @@ const IORBIT_HISTORY_HOOK_PATH = "app/(app)/app/agent/iorbit-0918/use-agent-hist
 const IORBIT_SHELL_PATH = "app/(app)/app/agent/iorbit-0918/iorbit-shell.tsx";
 const IORBIT_DRAWER_PATH = "app/(app)/app/agent/iorbit-0918/iorbit-history-drawer.tsx";
 
-function minimalChatRouteModel() {
-  return {
-    state: "success",
-    workspace: {
-      conversations: [
-        {
-          conversationId: "conversation-a",
-          evidenceIds: [],
-          lastMessagePreview: "Latest relationship chat",
-          organization: "北星食品",
-          participantName: "佐藤 健一",
-          statusLabel: "Active",
-          title: "佐藤 健一 conversation",
-        },
-      ],
-      primaryAssist: null,
-      relationshipContext: {
-        latestContext: "Recent relationship context",
-        organization: "北星食品",
-        participantName: "佐藤 健一",
-        recommendedFollowup: "Follow up after the event.",
-        relationshipReason: "Existing source-backed relationship.",
-      },
-      selectedConversation: {
-        conversationId: "conversation-a",
-        evidenceIds: [],
-        lastMessagePreview: "Latest relationship chat",
-        organization: "北星食品",
-        participantName: "佐藤 健一",
-        statusLabel: "Active",
-        title: "佐藤 健一 conversation",
-      },
-      threadSummary: "Conversation summary",
-    },
-  };
-}
-
-test("agent sidebar adapter does not expose relationship chat groups as history", () => {
-  const viewModel = chatRouteToOrbitAgentViewModel(
-    minimalChatRouteModel() as unknown as Parameters<
-      typeof chatRouteToOrbitAgentViewModel
-    >[0],
-  );
-
-  assert.deepEqual(viewModel.history, []);
+test("agent entry view model does not expose relationship chat groups as history", () => {
+  // Sprint 0104: the legacy chat adapter is retired; the page uses the starter model.
+  assert.deepEqual(createOrbitAgentStarterViewModel().history, []);
 });
 
 test("agent chat history parser keeps refreshable sessions under the ungrouped section", () => {

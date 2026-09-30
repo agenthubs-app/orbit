@@ -12,7 +12,8 @@ test('typed notification rows render category text and source without inferring 
  assert.equal(notificationInboxData({...data,items:[{...rows[0],actorId:'b'}]},'a'),null);
 });
 test('missing type, unavailable destination, and literal source-only reminders remain explicit',()=>{
- assert.equal(notificationInboxData({enabled:true,items:[{...rows[0],kind:'unknown'}],unreadCount:1,nextCursor:null,asOf:at},'a'),null);
+ // Sprint 0104: an unknown type is skipped (see inbox-notification-tolerance), not a whole-page failure.
+ assert.deepEqual(notificationInboxData({enabled:true,items:[{...rows[0],kind:'unknown'}],unreadCount:1,nextCursor:null,asOf:at},'a')?.items,[]);
  const data=notificationInboxData({enabled:true,items:[{...rows[0],target:{kind:'source',id:'note',href:null,status:'unavailable'},actions:[]}],unreadCount:0,nextCursor:null,asOf:at},'a');assert.ok(data);assert.equal(data.items[0]?.target.href,null);
 });
 test('a source-only reminder labels its scheduled time separately from occurrence',()=>{

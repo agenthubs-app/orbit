@@ -50,32 +50,12 @@ export const AGENT_OUTBOX_STATUSES = [
   "canceled",
 ] as const;
 
-export const AGENT_ANALYTICS_EVENT_NAMES = [
-  "agent_run_started",
-  "agent_run_completed",
-  "agent_run_failed",
-  "agent_action_proposed",
-  "agent_action_approved",
-  "agent_action_completed",
-  "agent_action_failed",
-  "agent_action_undone",
-  "today_item_opened",
-  "today_item_snoozed",
-  "today_item_dismissed",
-  "brief_viewed",
-  "encounter_note_confirmed",
-  "followup_draft_prepared",
-  "relationship_work_completed",
-] as const;
-
 export type AgentRunStatus = (typeof AGENT_RUN_STATUSES)[number];
 export type AgentRunStepKind = (typeof AGENT_RUN_STEP_KINDS)[number];
 export type AgentActionStatus = (typeof AGENT_ACTION_STATUSES)[number];
 export type AgentActionRiskLevel =
   (typeof AGENT_ACTION_RISK_LEVELS)[number];
 export type AgentOutboxStatus = (typeof AGENT_OUTBOX_STATUSES)[number];
-export type AgentAnalyticsEventName =
-  (typeof AGENT_ANALYTICS_EVENT_NAMES)[number];
 
 export interface AgentRun {
   runId: string;
@@ -129,6 +109,8 @@ export interface AgentRunStep {
   };
   startedAt?: string;
   completedAt?: string;
+  /** Measured duration; present on steps derived from a conversation's timing spans (0103). */
+  durationMs?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -221,16 +203,6 @@ export interface AgentExecutionReceipt {
   resultSummary: string;
   createdAt: string;
   updatedAt: string;
-}
-
-export interface AgentAnalyticsEvent {
-  eventId: string;
-  name: AgentAnalyticsEventName;
-  occurredAt: string;
-  runId?: string;
-  actionId?: string;
-  workflowKey?: string;
-  metadata: Readonly<Record<string, string | number | boolean | null>>;
 }
 
 export interface TodayWorkItem {

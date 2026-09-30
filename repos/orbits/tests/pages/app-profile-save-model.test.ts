@@ -52,7 +52,7 @@ test("visibleCharacterCount counts graphemes, not UTF-16 units", () => {
   assert.equal(visibleCharacterCount("一句话介绍"), 5);
 });
 
-test("validateProfileSaveDraft enforces name, industry pair and 80-char bio, plus a direct handle on the basic-profile screen", () => {
+test("validateProfileSaveDraft enforces name, industry pair and the shared bio cap, plus a direct handle on the basic-profile screen", () => {
   const scopeDirty = new Set<ProfileEditorField>(["displayName"]);
   assert.deepEqual(validateProfileSaveDraft({ profile: profile(), scope: "basic", scopeDirty }), { ok: true });
   assert.equal(validateProfileSaveDraft({ profile: profile({ fullName: "  " }), scope: "basic", scopeDirty }).ok, false);
@@ -68,11 +68,16 @@ test("validateProfileSaveDraft enforces name, industry pair and 80-char bio, plu
   });
   assert.equal(validateProfileSaveDraft({ profile: profile({ lineId: "", wechatName: "wx-only" }), requireDirectHandle: true, scope: "basic", scopeDirty }).ok, true);
   assert.equal(validateProfileSaveDraft({ profile: profile({ lineId: "line-only", wechatName: "" }), requireDirectHandle: true, scope: "basic", scopeDirty }).ok, true);
-  const longBio = profile({ bio: "x".repeat(81) });
+  // 0127：含中日韩文字 80，其余 200（与服务端、App 同一份规则）。
+  assert.equal(validateProfileSaveDraft({ profile: profile({ bio: "x".repeat(200) }), scope: "basic", scopeDirty: new Set(["bio"]) }).ok, true);
+  const longBio = profile({ bio: "x".repeat(201) });
   const tooLong = validateProfileSaveDraft({ profile: longBio, scope: "basic", scopeDirty: new Set(["bio"]) });
   assert.equal(tooLong.ok, false);
   // bio 在新屏的标签是「关于我」（设置屏 / 基础资料屏），校验文案与标签一致，不再叫「一句话介绍」（那是 headline）。
-  assert.deepEqual(tooLong.ok ? undefined : tooLong.message, { en: "Keep About me within 80 visible characters.", zh: "关于我不能超过 80 个可见字符。" });
+  assert.deepEqual(tooLong.ok ? undefined : tooLong.message, { en: "Keep About me within 200 visible characters.", zh: "关于我不能超过 200 个可见字符。" });
+  const longChinese = validateProfileSaveDraft({ profile: profile({ bio: "界".repeat(81) }), scope: "basic", scopeDirty: new Set(["bio"]) });
+  assert.equal(longChinese.ok, false);
+  assert.deepEqual(longChinese.message, { en: "Keep About me within 80 visible characters.", zh: "关于我不能超过 80 个可见字符。" });
   assert.equal(validateProfileSaveDraft({ profile: longBio, scope: "basic", scopeDirty }).ok, true, "bio not dirty → not validated");
   assert.equal(validateProfileSaveDraft({ profile: profile({ fullName: "" }), scope: "matching", scopeDirty: new Set(["topics"]) }).ok, true);
 });

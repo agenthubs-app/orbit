@@ -386,7 +386,8 @@ async function discoverRouteSamples(page, created) {
     ["contacts", "/api/contacts", ["contacts"]],
     ["events", "/api/events/public", ["events"]],
     ["ai", "/api/ai/conversations", ["conversations", "items"]],
-    ["chat", "/api/chat/conversations", ["conversations", "items"]],
+    // Sprint 0104: legacy chat retired; /chat/[id] now shows relationship conversations.
+    ["chat", "/api/relationship-communication/conversation-summaries?limit=1", ["items"]],
     ["inbox", "/api/chat/relationship-inbox", ["conversations", "threads", "items"]],
     ["notifications", "/api/notifications", ["notifications", "items"]],
     ["sources", "/api/relationship-signals/email-calendar", ["sources", "items"]],
@@ -404,7 +405,7 @@ async function discoverRouteSamples(page, created) {
   return {
     aiConversationId: records.ai?.id ?? records.ai?.conversationId ?? activeAi?.activeConversationId,
     appointmentId: records.appointments?.id,
-    chatConversationId: records.chat?.id,
+    chatConversationId: records.chat?.conversationId ?? records.chat?.id,
     contactDraftBatchId: records.drafts?.batchId ?? records.drafts?.id,
     contactId: records.contacts?.id,
     eventId: records.events?.id,

@@ -1,4 +1,5 @@
 import { Pool, type PoolClient, type PoolConfig } from "pg";
+import { meterPostgresPool } from "../../../../shared/storage/metered-postgres-pool";
 
 import {
   resolveLiveDatabaseConnectionConfig,
@@ -102,11 +103,13 @@ export function createEventOperationsPostgresClient({
   }
   const pool =
     suppliedPool ??
-    new Pool({
-      connectionString,
-      max,
-      ssl,
-    });
+    meterPostgresPool(
+      new Pool({
+        connectionString,
+        max,
+        ssl,
+      }),
+    );
 
   return {
     close: () => pool.end(),

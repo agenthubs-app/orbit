@@ -233,3 +233,12 @@ test("SC-W0002-04 onboarding: the goal saved on the goals step reads back into t
   assert.deepEqual(pressed(second, "btn ge-horizon"), ["一年内"]);
   act(() => second.unmount());
 });
+
+test("intro counter follows the shared bio rule: 200 for non-CJK text, 80 once CJK appears (0127)", async () => {
+  const { bioCounter } = await import("../../app/(app)/app/profile/onboarding-0918/onboarding-model");
+  assert.deepEqual(bioCounter(""), { count: 0, limit: 200, over: false });
+  assert.deepEqual(bioCounter(`  ${"a".repeat(180)}  `), { count: 180, limit: 200, over: false });
+  assert.deepEqual(bioCounter("a".repeat(201)), { count: 201, limit: 200, over: true });
+  assert.deepEqual(bioCounter("界".repeat(81)), { count: 81, limit: 80, over: true });
+  assert.deepEqual(bioCounter(`${"a".repeat(90)}界`), { count: 91, limit: 80, over: true });
+});

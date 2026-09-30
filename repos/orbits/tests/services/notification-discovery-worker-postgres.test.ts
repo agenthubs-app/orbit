@@ -8,6 +8,7 @@ import {createDiscoverySourceAdapters} from '../../features/notifications/discov
 import {createDiscoveryWorker} from '../../features/notifications/discovery/discovery-worker';
 import {createInboxRuntime} from '../../features/notifications/inbox-record-service-factory';
 import type {DiscoveryExtractor} from '../../features/notifications/discovery/evidence-extractor';
+import {createRelationshipMessageStore} from '../../features/relationship-communication/message-store';
 const url=process.env.ORBIT_EVENT_DATABASE_URL;
 test('saved cloud facts drain in bounded batches; daily quota and ignored identities persist across workers',{skip:!url},async()=>{
  const client=createTransactionalPostgresClient({connectionString:url!,max:4}),workspaceId='qa:discovery-worker:'+randomUUID();let now='2026-09-16T00:00:00.000Z';const actor='a',store=createPostgresLiveRecordStore({client});const repo=createDiscoveryRepository({client,workspaceId,now:()=>now,budgetWorkspaceId:workspaceId});
@@ -49,9 +50,13 @@ test('revoking message analysis removes an already published excerpt on the very
  const save=async(collectionName:string,recordId:string,payload:Record<string,unknown>,userId=actor)=>store.upsertRecord({workspaceId,collectionName,recordId,userId,sourceType:'manual',sourceId:recordId,evidenceIds:[],lifecycleState:'active',payload,createdAt:now,updatedAt:now});
  try {
   await repo.updatePreferences(actor,{enabled:true,messageAnalysisEnabled:true,expectedRevision:0});
-  await save('contacts','c',{id:'c',displayName:'佐藤',updatedAt:now});await save('relationship_communication_bindings','b',{bindingId:'b',conversationId:'v',contactId:'c',status:'confirmed',inviterAccountId:actor,remoteAccountId:'other',qualificationVersion:'q'});await save('relationship_communication_conversations','v',{bindingId:'b',conversationId:'v',contactId:'c',status:'active',participantAccountIds:[actor,'other'],participantDisplayNames:{a:'自己',other:'佐藤'},qualificationVersion:'q'});await save('relationship_communication_messages','m',{messageId:'m',conversationId:'v',senderAccountId:actor,body:'我会发送私密报价资料。',sentAt:now,qualificationVersion:'q'});
+  await save('contacts','c',{id:'c',displayName:'佐藤',updatedAt:now});// Sprint 0109: the message lives in the relationship message tables.
+  const messages=createRelationshipMessageStore({client,workspaceId});
+  await messages.createConversation({conversationId:'v',inviterAccountId:actor,inviterDisplayName:'自己',inviteeAccountId:'other',inviteeDisplayName:'佐藤',inviterContactId:'c',qualificationVersion:'q',createdAt:now});
+  await messages.send({conversationId:'v',senderAccountId:actor,senderDisplayName:'自己',messageId:'m',requestId:'m',body:'我会发送私密报价资料。',qualificationVersion:'q',now:()=>now});
+  
   const inbox=createInboxRuntime({client,workspaceId,now:()=>now});const n=await inbox.service.upsert({actorId:actor,semanticKey:'test-message',kind:'reminder',origin:'automation',title:'发送私密报价资料',reason:'AI 判断与原文',object:{id:'c',name:'佐藤'},sources:[{sourceKind:'message',sourceId:'m',sourceRevision:now,occurredAt:now,readAt:now,objectId:'discovery',excerpt:'我会发送私密报价资料。'}],target:{kind:'source',id:'m',href:'/inbox/threads/v',status:'available'},actions:['read','accept'],occurredAt:now,scheduledFor:now,expiresAt:'2026-09-17T00:00:00.000Z'});
   assert.ok(JSON.stringify(await inbox.service.get(actor,n.id)).includes('私密报价'));
   const p=await repo.preferences(actor);await repo.updatePreferences(actor,{messageAnalysisEnabled:false,expectedRevision:p.revision});const unavailable=await inbox.service.get(actor,n.id);assert.equal(unavailable.target.status,'unavailable');assert.equal(unavailable.target.href,null);assert.equal(unavailable.actions.length,0);assert.equal(JSON.stringify(unavailable).includes('私密报价'),false);assert.equal((await inbox.service.list(actor,{})).unreadCount,0);
- }finally{await client.query('delete from orbit_records where workspace_id=$1',[workspaceId]);await client.close();}
+ }finally{await client.query('delete from orbit_records where workspace_id=$1',[workspaceId]);for(const table of ['relationship_messages','relationship_conversation_members','relationship_conversations'])await client.query(`delete from ${table} where workspace_id=$1`,[workspaceId]);await client.close();}
 });

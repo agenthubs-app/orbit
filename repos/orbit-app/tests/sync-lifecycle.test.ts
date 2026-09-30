@@ -36,6 +36,7 @@ function fixture() {
       },
     },
     sqlite: {
+      async listDatabaseNames() { events.push("list"); return [...files.keys()]; },
       async deleteDatabaseAsync(name: string) {
         events.push(`delete:${name}`);
         if (state.fileDeleteFails && name !== "orbit-cache.db") throw Error("secret-shaped-key-and-payload");
@@ -430,4 +431,130 @@ test("clearing snapshots affects only the active workspace, including the defaul
   }
   assert.equal((await f.coordinator.withDatabase(workspaces[2]!, db => db.all("SELECT * FROM sync_cursors")))?.length, 1);
   assert.equal(f.keys.size, 1);
+});
+
+// Sprint 0130: the session restore suspends instead of purging.
+test("suspending for a re-validation keeps the same identity's file, key and rows, and pauses reads until it is confirmed", async t => {
+  const f = await lifecycle(t);
+  await f.coordinator.setScope(scope);
+  assert.equal(await f.coordinator.withDatabase(scope, async db => { await db.execute("CREATE TABLE qa_marker (value TEXT)"); await db.run("INSERT INTO qa_marker VALUES (?)", ["kept"]); return true; }), true);
+  const name = [...f.files.keys()][0]!;
+  const key = [...f.keys.values()][0];
+  let release!: () => void;
+  const barrier = new Promise<void>(resolve => { release = resolve; });
+  let started!: () => void;
+  const running = new Promise<void>(resolve => { started = resolve; });
+  const inFlight = f.coordinator.withDatabase(scope, async () => { started(); await barrier; return "private"; });
+  await running;
+  const suspend = f.coordinator.suspendScope(`${scope.baseUrl}/`);
+  assert.equal(f.coordinator.isScopeReadable(scope), false, "readiness drops at once");
+  release();
+  assert.equal(await inFlight, null, "a read that started before the suspension returns nothing");
+  assert.equal(await suspend, true);
+  assert.equal(await f.coordinator.withDatabase(scope, async () => "private"), null, "no reads while suspended");
+  assert.deepEqual([f.files.has(name), [...f.keys.values()][0], f.events.includes("key-delete"), f.events.includes("close")], [true, key, false, false], "nothing was closed or deleted");
+  assert.equal(await f.coordinator.setScope(scope), true);
+  assert.equal(f.coordinator.isScopeReadable(scope), true);
+  assert.deepEqual(await f.coordinator.withDatabase(scope, async db => (await db.all<{ value: string }>("SELECT value FROM qa_marker")).map(row => row.value)), ["kept"], "the same rows are back");
+  assert.equal(f.events.filter(event => event.startsWith("open:")).length, 1, "the database was never reopened");
+});
+
+test("a suspension for another server purges; after a suspension another identity or none purges too", async t => {
+  const other = await lifecycle(t);
+  await other.coordinator.setScope(scope);
+  assert.equal(await other.coordinator.suspendScope("https://second.example"), true);
+  assert.deepEqual([other.files.size, other.keys.size], [0, 0], "a server change never keeps the old mirror");
+  for (const next of [{ ...scope, actorId: "other-private-fixture" }, null]) {
+    const f = await lifecycle(t);
+    await f.coordinator.setScope(scope);
+    const name = [...f.files.keys()][0]!;
+    await f.coordinator.suspendScope(scope.baseUrl);
+    assert.equal(await f.coordinator.setScope(next), true);
+    assert.equal(f.files.has(name), false, "the suspended identity's file is deleted");
+    assert.equal([...f.keys.keys()].filter(key => key.startsWith("orbit.sync.key.")).length, next ? 1 : 0);
+    assert.equal(await f.coordinator.withDatabase(scope, async () => "private"), null);
+  }
+});
+
+test("a suspension still finishes a pending erasure first and refuses while it cannot", async t => {
+  const f = await lifecycle(t);
+  await f.coordinator.setScope(scope);
+  f.state.keyDeleteFails = true;
+  assert.equal(await f.coordinator.setScope(null), false);
+  const restarted = (await import("../src/data/sync/sync-lifecycle")).createSyncLifecycle({
+    platform: "ios", loadNative: async () => f.native as any, report: (...args) => f.logs.push(args),
+  });
+  assert.equal(await restarted.suspendScope(scope.baseUrl), false);
+  f.state.keyDeleteFails = false;
+  assert.equal(await restarted.suspendScope(scope.baseUrl), true);
+  assert.equal(f.keys.has("orbit.sync.pending-cleanup"), false);
+});
+
+// Sprint 0113 (from 0130): one identity per device on native, as in the browser since 0125.
+const otherScope = { baseUrl: "https://first.example", actorId: "other-private-fixture" };
+
+async function restartedLifecycle(f: Awaited<ReturnType<typeof lifecycle>>) {
+  return (await import("../src/data/sync/sync-lifecycle")).createSyncLifecycle({ platform: "ios", loadNative: async () => f.native as any, report: (...args) => f.logs.push(args) });
+}
+
+test("opening an identity erases every other identity's database and key on the device, even one this process never opened", async t => {
+  const f = await lifecycle(t);
+  // A previous process opened another identity and was killed without a logout.
+  assert.equal(await f.coordinator.setScope(otherScope), true);
+  const otherFile = [...f.files.keys()][0]!;
+  const otherKey = [...f.keys.keys()].find(key => key.startsWith("orbit.sync.key."))!;
+  f.files.set("unrelated-app.db", new DatabaseSync(":memory:"));
+  const next = await restartedLifecycle(f);
+  assert.equal(await next.setScope(scope), true);
+  assert.equal(f.files.has(otherFile), false, "the other identity's database file is gone");
+  assert.equal(f.keys.has(otherKey), false, "and its key");
+  assert.equal([...f.files.keys()].filter(name => name.startsWith("orbit-sync-")).length, 1, "only the open identity's file remains");
+  assert.equal([...f.keys.keys()].filter(key => key.startsWith("orbit.sync.key.")).length, 1);
+  assert.equal(f.files.has("unrelated-app.db"), true, "files that are not identity mirrors are left alone");
+  assert.equal(f.keys.has("orbit.sync.pending-cleanup"), false, "no erasure is left pending");
+  assert.equal(next.isScopeReadable(scope), true);
+});
+
+test("an interrupted erasure of another identity blocks opening and resumes after a restart", async t => {
+  const f = await lifecycle(t);
+  assert.equal(await f.coordinator.setScope(otherScope), true);
+  const otherFile = [...f.files.keys()][0]!;
+  f.state.keyDeleteFails = true;
+  const first = await restartedLifecycle(f);
+  assert.equal(await first.setScope(scope), false, "a new identity is not opened while another's key cannot be erased");
+  assert.ok(f.keys.has("orbit.sync.pending-cleanup"), "the erasure intent is persisted before deleting");
+  assert.equal(f.files.has(otherFile), true);
+  f.state.keyDeleteFails = false;
+  const second = await restartedLifecycle(f);
+  assert.equal(await second.setScope(scope), true, "a restarted process finishes the erasure, then opens");
+  assert.equal(f.files.has(otherFile), false);
+  assert.equal(f.keys.has("orbit.sync.pending-cleanup"), false);
+  assert.equal([...f.keys.keys()].filter(key => key.startsWith("orbit.sync.key.")).length, 1);
+});
+
+test("resuming the same identity after a suspension erases nothing, and a cold open of the same identity keeps its own file (0130 kept)", async t => {
+  const f = await lifecycle(t);
+  assert.equal(await f.coordinator.setScope(scope), true);
+  const ownFile = [...f.files.keys()][0]!;
+  await f.coordinator.withDatabase(scope, async db => { await db.execute("CREATE TABLE qa_marker (value TEXT)"); await db.run("INSERT INTO qa_marker VALUES (?)", ["kept"]); });
+  assert.equal(await f.coordinator.suspendScope(scope.baseUrl), true);
+  assert.equal(await f.coordinator.setScope(scope), true);
+  assert.equal(f.files.has(ownFile), true);
+  assert.deepEqual(await f.coordinator.withDatabase(scope, async db => (await db.all<{ value: string }>("SELECT value FROM qa_marker")).map(row => row.value)), ["kept"]);
+  assert.equal(f.events.filter(event => event.startsWith("open:")).length, 1, "the database was never reopened");
+  // A cold start of the same identity keeps its own file and key.
+  const cold = await restartedLifecycle(f);
+  assert.equal(await cold.setScope(scope), true);
+  assert.equal(f.files.has(ownFile), true);
+  assert.deepEqual(await cold.withDatabase(scope, async db => (await db.all<{ value: string }>("SELECT value FROM qa_marker")).map(row => row.value)), ["kept"], "the same identity's rows survive a cold open");
+});
+
+test("the native loader lists the SQLite directory's file names, and nothing when the directory does not exist yet", async () => {
+  const { listSyncDatabaseNames } = await import("../src/data/sync/sync-lifecycle");
+  const seen: string[] = [];
+  class Present { exists = true; constructor(path: string) { seen.push(path); } list() { return [{ name: "orbit-sync-a.db" }, { name: "orbit-sync-a.db-wal" }]; } }
+  class Absent { exists = false; list(): { name: string }[] { throw new Error("must not list a missing directory"); } }
+  assert.deepEqual(await listSyncDatabaseNames({ defaultDatabaseDirectory: "/db" }, Present), ["orbit-sync-a.db", "orbit-sync-a.db-wal"]);
+  assert.deepEqual(seen, ["/db"]);
+  assert.deepEqual(await listSyncDatabaseNames({ defaultDatabaseDirectory: "/db" }, Absent), []);
 });

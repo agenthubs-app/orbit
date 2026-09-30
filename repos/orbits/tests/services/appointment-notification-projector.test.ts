@@ -84,7 +84,11 @@ test("T+15m postgres notification persists the ordinary actor-scoped appointment
       if (sql.includes("select status, payload from appointment_aggregates")) {
         return { rowCount: 1, rows: [{ status: "completed", payload: { reminders: { cancelled: false, currentRevision: 3 } } }] as TRow[] };
       }
-      if (sql.includes("insert into orbit_records")) insertedValues = values;
+      if (sql.includes("insert into orbit_records")) {
+        insertedValues = values;
+        // The upsert returns the row it wrote; no row means another owner holds the id (sprint 0113).
+        return { rowCount: 1, rows: [{ record_id: values?.[1] }] as TRow[] };
+      }
       return { rowCount: 1, rows: [] as TRow[] };
     },
   };
@@ -109,7 +113,10 @@ test("postgres action notification persists one row for the other actor with app
   const inserts: (readonly unknown[])[] = [];
   const transaction = {
     async query<TRow = Record<string, unknown>>(sql: string, values?: readonly unknown[]) {
-      if (sql.includes("insert into orbit_records") && values) inserts.push(values);
+      if (sql.includes("insert into orbit_records") && values) {
+        inserts.push(values);
+        return { rowCount: 1, rows: [{ record_id: values[1] }] as TRow[] };
+      }
       return { rowCount: 1, rows: [] as TRow[] };
     },
   };

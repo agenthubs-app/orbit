@@ -4,6 +4,7 @@ import { applyLifecycleMigrationChanges, LifecycleMigrationError, lifecycleMigra
 import { assertLifecycleMigrationReview, parseLifecycleMigrationReview, type LifecycleMigrationReview } from "./migration-review";
 import { lifecycleRecordColumns } from "./record-snapshot";
 import { normalizeRelationshipLifecycleInstant } from "./transition";
+import { acquireSyncCommitOrderLock, isSyncCollection } from "../../sync/commit-order-lock";
 
 export interface LifecycleMigrationReceipt {
   migrationId: "relationship-lifecycle-v1";
@@ -93,6 +94,8 @@ export function createPostgresLifecycleMigrationRepository({ client, workspaceId
         assertLifecycleMigrationReview({ ...input, plan, workspaceId });
         const projected = applyLifecycleMigrationChanges(records, plan.changes);
         const originals = new Map(records.map(row => [JSON.stringify([row.collectionName, row.recordId]), row]));
+        // Owner repairs may touch tasks (a sync collection): lock before the first write.
+        if (plan.changes.some(change => isSyncCollection(change.collectionName))) await acquireSyncCommitOrderLock(sql);
         for (const change of plan.changes) {
           const original = originals.get(JSON.stringify([change.collectionName, change.recordId]));
           if (!original || lifecycleMigrationRecordHash(original) !== change.beforeHash) throw new LifecycleMigrationError("CONFLICT");

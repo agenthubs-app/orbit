@@ -117,3 +117,15 @@ export function relationshipDeliveryReceiptMatches(
     message.senderAccountId === expected.senderAccountId.trim()
   );
 }
+
+/** The signed-in participant's own reply draft for one relationship conversation (Sprint 0104). */
+export function decodeRelationshipReplyDraft(
+  value: unknown,
+  conversationId: string,
+): { body: string; updatedAt: string | null } | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const draft = value as { body?: unknown; conversationId?: unknown; updatedAt?: unknown };
+  if (draft.conversationId !== conversationId.trim() || typeof draft.body !== "string") return null;
+  if (draft.updatedAt !== null && typeof draft.updatedAt !== "string") return null;
+  return { body: draft.body, updatedAt: draft.updatedAt };
+}

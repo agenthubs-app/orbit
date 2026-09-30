@@ -14,15 +14,26 @@ import { useRelationshipInboxBadgeCount } from "../../hooks/useRelationshipInbox
 import { useHomeDashboardClient } from "../../hooks/useHomeDashboardClient";
 import { homeDateView, homeRecommendedEventsToView, homeScheduleToView } from "../../view-models/home-dashboard";
 import { homeTaskPagePath, homeTaskPageToView } from "../../view-models/home-task-page";
+import { localHomeScheduleItems, localHomeTaskPage } from "../../view-models/home-local";
+import { OfflineNotice } from "../../components/OfflineNotice";
+import { keepsPageCopy } from "../../data/sync/page-copies";
+import { useMirrorProbe } from "../../hooks/useMirrorProbe";
+import { useSyncedCollection } from "../../hooks/useSyncedCollection";
+import { usePageCopySession } from "../../hooks/usePageCopySession";
+import { mirrorFreshness } from "../../data/sync/mirror-freshness";
+import type { PageCopy } from "../../data/sync/page-copies";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import type { MessageKey } from "../../i18n/messages";
 
 type Section = "schedule" | "tasks" | "events";
-type Resource = { kind: "loading" } | { kind: "ready"; data: unknown } | { kind: "error"; message: string };
+// Sprint 0131: an error keeps why (no connection / 5xx), so the card can show the device copy with 截至 instead.
+type Resource = { kind: "loading" } | { kind: "ready"; data: unknown } | { kind: "error"; message: string; offline: "unreachable" | "unavailable" | null };
 type Resources = Record<Section, Resource>;
 type Scope = { key: number; actorId: string; ready: boolean; baseUrl: string; client: ReturnType<typeof useHomeDashboardClient> };
 const paths: Record<Section, string> = { schedule: ORBIT_API_ENDPOINTS.scheduleItems, tasks: "/api/tasks/page", events: eventValueRecommendationsPath({ limit: 3 }) };
 const sections: Section[] = ["schedule", "tasks", "events"];
+/** Sprint 0131: the page copies the home page keeps (events: the recommendations card; schedule: the meetings of the last answer). */
+const copyKeys = { schedule: ["home-schedule", "main"], events: ["event-recommendations", "home"] } as const;
 const loading = (): Resources => ({ schedule: { kind: "loading" }, tasks: { kind: "loading" }, events: { kind: "loading" } });
 const homeFont = Platform.select({
   web: '-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Noto Sans SC","Microsoft YaHei",sans-serif',
@@ -74,6 +85,23 @@ function HomeDashboard({ scope, current }: { scope: Scope; current: () => boolea
   const [resources, setResources] = useState<Resources>(loading);
   const [mutationError, setMutationError] = useState("");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  // Sprint 0131: the device copy of every card — the task, personal-schedule and registered-event
+  // domains, and the page copies of the recommendations and the last schedule answer.
+  const taskMirror = useSyncedCollection<Record<string, unknown>>({ kind: "task" });
+  const scheduleMirror = useSyncedCollection<Record<string, unknown>>({ kind: "personal_schedule" });
+  const eventMirror = useSyncedCollection<Record<string, unknown>>({ kind: "registered_event" });
+  const { session: copySession, whenReady: copySessionReady } = usePageCopySession();
+  const [copies, setCopies] = useState<{ schedule?: PageCopy | null; events?: PageCopy | null }>({});
+  const refreshTaskMirror = taskMirror.refresh, refreshScheduleMirror = scheduleMirror.refresh, refreshEventMirror = eventMirror.refresh;
+  const refreshMirrors = useCallback(() => { void refreshTaskMirror(); void refreshScheduleMirror(); void refreshEventMirror(); }, [refreshTaskMirror, refreshScheduleMirror, refreshEventMirror]);
+  useMirrorProbe(refreshMirrors);
+  useEffect(() => {
+    if (!copySession) return;
+    let live = true;
+    void Promise.all([copySession.readPageCopy(...copyKeys.schedule), copySession.readPageCopy(...copyKeys.events)])
+      .then(([schedule, events]) => { if (live) setCopies({ schedule, events }); }).catch(() => undefined);
+    return () => { live = false; };
+  }, [copySession]);
   const runtime = useRef({
     alive: true, focused: false, foreground: AppState.currentState === "active", generation: 0,
     mutating: false, writeSequence: 0, reading: new Set<Section>(), resources: loading(),
@@ -124,12 +152,16 @@ function HomeDashboard({ scope, current }: { scope: Scope; current: () => boolea
       const data = accepted ? (section === "tasks" ? homeTaskPageToView(result.data, scope.actorId, day, time, timeZone, locale.language)
         : section === "schedule" ? homeScheduleToView(result.data, selectedDate.current, time, timeZone, locale.language) : homeRecommendedEventsToView(result.data, timeZone, locale.language)) : null;
       put(section, accepted && data !== null ? { kind: "ready", data: result.data }
-        : { kind: "error", message: result.success ? locale.t("home.invalidData") : result.error.message });
+        : { kind: "error", message: result.success ? locale.t("home.invalidData") : result.error.message, offline: keepsPageCopy(result) });
+      if (accepted && data !== null && section !== "tasks") {
+        const [id, variant] = copyKeys[section];
+        void copySessionReady().then((ready) => ready?.savePageCopy(id, variant, result.data)).catch(() => undefined);
+      }
     } finally {
       if (valid()) r.reading.delete(section);
       ticket.release();
     }
-  }, [capture, isCurrent, locale.language, locale.t, put, scope, timeZone]);
+  }, [capture, copySessionReady, isCurrent, locale.language, locale.t, put, scope, timeZone]);
   const previousTaskDay = useRef(date.selectedDateKey);
   useEffect(() => {
     if (previousTaskDay.current === date.selectedDateKey) return;
@@ -191,15 +223,32 @@ function HomeDashboard({ scope, current }: { scope: Scope; current: () => boolea
     }
   }
   function navigate(href: string) { if (isCurrent()) router.push(href as Href); }
-  const schedules = resources.schedule.kind === "ready" ? homeScheduleToView(resources.schedule.data, date.selectedDateKey, now, timeZone, locale.language) : null;
-  const taskPage = resources.tasks.kind === "ready" ? homeTaskPageToView(resources.tasks.data, scope.actorId, date.selectedDateKey, now, timeZone, locale.language) : null;
-  const taskPending = resources.tasks.kind === "loading" || (resources.tasks.kind === "ready" && taskPage === null);
-  const events = resources.events.kind === "ready" ? homeRecommendedEventsToView(resources.events.data, timeZone, locale.language) : null;
+  // Sprint 0131: while a card reads (or when the server cannot be reached / answers 5xx) it shows the device copy.
+  const taskFresh = mirrorFreshness(taskMirror, true), scheduleFresh = mirrorFreshness(scheduleMirror, true), eventFresh = mirrorFreshness(eventMirror, true);
+  const localFor = (section: Section) => resources[section].kind === "loading" || (resources[section].kind === "error" && resources[section].offline !== null);
+  const localSchedule = localFor("schedule") && scheduleFresh.readable && eventFresh.readable
+    ? homeScheduleToView(localHomeScheduleItems({ personal: scheduleMirror.records, events: eventMirror.records, lastAnswer: copies.schedule?.data ?? null }), date.selectedDateKey, now, timeZone, locale.language) : null;
+  const localTasks = localFor("tasks") && taskFresh.readable ? localHomeTaskPage(taskMirror.records, scope.actorId, date.selectedDateKey, timeZone, now, locale.language) : null;
+  const localEvents = localFor("events") && copies.events ? homeRecommendedEventsToView(copies.events.data, timeZone, locale.language) : null;
+  const schedules = resources.schedule.kind === "ready" ? homeScheduleToView(resources.schedule.data, date.selectedDateKey, now, timeZone, locale.language) : localSchedule;
+  const serverTaskPage = resources.tasks.kind === "ready" ? homeTaskPageToView(resources.tasks.data, scope.actorId, date.selectedDateKey, now, timeZone, locale.language) : null;
+  const taskPage = serverTaskPage ?? localTasks;
+  const tasksFromDevice = serverTaskPage === null && localTasks !== null;
+  const taskPending = taskPage === null && (resources.tasks.kind === "loading" || resources.tasks.kind === "ready");
+  const events = resources.events.kind === "ready" ? homeRecommendedEventsToView(resources.events.data, timeZone, locale.language) : localEvents;
+  const shownLocally: Record<Section, boolean> = { schedule: resources.schedule.kind !== "ready" && localSchedule !== null, tasks: tasksFromDevice, events: resources.events.kind !== "ready" && localEvents !== null };
+  const offlineSections = sections.filter(section => shownLocally[section] && resources[section].kind === "error");
+  const offline = offlineSections.length > 0;
+  const offlineReason = offlineSections.some(section => { const state = resources[section]; return state.kind === "error" && state.offline === "unavailable"; }) ? "unavailable" : "unreachable";
+  // The oldest copy on screen decides what "as of" can honestly say.
+  const asOf = offlineSections.flatMap(section => section === "tasks" ? [taskMirror.lastSyncedAt] : section === "schedule" ? [scheduleMirror.lastSyncedAt, eventMirror.lastSyncedAt] : [copies.events?.syncedAt ?? null])
+    .filter((value): value is string => typeof value === "string").sort()[0] ?? null;
   const visibleTasks = taskPage?.items;
   const highlightedSchedule = schedules?.find(item => item.state === "ongoing") ?? schedules?.find(item => item.state === "upcoming");
 
   function sectionBody(section: Section, label: string, content: ReactNode) {
     const state = resources[section];
+    if (shownLocally[section]) return content;
     if (state.kind === "loading" || (section === "tasks" && taskPending)) return <View accessibilityRole="progressbar" accessibilityLabel={locale.t("home.readingNamed", { name: label })} style={styles.skeleton}>
       {(section === "tasks" ? [0, 1, 2] : [0, 1]).map(index => <View key={index} importantForAccessibility="no-hide-descendants" aria-hidden style={styles.skeletonRow}>
         <View style={section === "tasks" ? styles.skeletonCheckbox : section === "schedule" ? styles.skeletonMarker : styles.skeletonAvatar} />
@@ -210,6 +259,7 @@ function HomeDashboard({ scope, current }: { scope: Scope; current: () => boolea
         </View>
       </View>)}
     </View>;
+    if (state.kind === "error" && state.offline === "unreachable") return <Text style={styles.empty}>{locale.t("sync.notOnDevice")}</Text>;
     if (state.kind === "error") return <View style={styles.errorGroup}>
       <Text accessibilityRole="alert" style={styles.error}>{state.message}</Text>
       <Pressable accessibilityRole="button" accessibilityLabel={locale.t("home.retryNamed", { name: label })} onPress={() => { void read(section); }} style={styles.retry}>
@@ -243,9 +293,10 @@ function HomeDashboard({ scope, current }: { scope: Scope; current: () => boolea
         {active ? <HomeInboxBadge scopeKey={JSON.stringify([scope.key, inboxReadVersion])} /> : null}
       </Pressable>
     </View>}>
+    {offline ? <OfflineNotice lastSyncedAt={asOf} reason={offlineReason} /> : null}
     <View style={styles.dateRow}>
       <Text accessibilityRole="header" style={styles.date}>{date.dateLabel}</Text>
-      {resources.schedule.kind === "loading" && taskPending ?
+      {resources.schedule.kind === "loading" && !shownLocally.schedule && taskPending ?
         <View testID="home-summary-loading" aria-hidden importantForAccessibility="no-hide-descendants" style={styles.summarySkeleton} /> :
         <Text style={styles.dateSummary}>{[date.weekdayLabel, ...(schedules ? [locale.t("home.scheduleCount", { count: schedules.length })] : []), ...(taskPage ? [locale.t("home.taskCount", { count: taskPage.total })] : [])].join(" · ")}</Text>}
     </View>
@@ -266,7 +317,7 @@ function HomeDashboard({ scope, current }: { scope: Scope; current: () => boolea
     </View>
     <View testID="home-day-sections" style={[styles.daySections, singleColumn && styles.singleColumn, singleColumn && styles.largeSections]}>
       <View style={[styles.scheduleColumn, singleColumn && styles.fullSchedule]}>
-        {sectionHeading(date.isToday ? locale.t("home.today") : locale.t("home.schedule"), schedules?.length, "/schedule", locale.t("home.allSchedule"), resources.schedule.kind === "loading")}
+        {sectionHeading(date.isToday ? locale.t("home.today") : locale.t("home.schedule"), schedules?.length, "/schedule", locale.t("home.allSchedule"), resources.schedule.kind === "loading" && !shownLocally.schedule)}
         {sectionBody("schedule", locale.t("home.schedule"), schedules?.length ? schedules.map(item =>
           <Pressable key={item.id} accessibilityRole="button" accessibilityLabel={locale.t("home.openSchedule", { name: item.title })} onPress={() => navigate(item.href)} style={[styles.scheduleRow, singleColumn && styles.largeScheduleRow]}>
             <View style={[styles.scheduleMarker, item.id !== highlightedSchedule?.id && styles.endedMarker]} />
@@ -279,10 +330,10 @@ function HomeDashboard({ scope, current }: { scope: Scope; current: () => boolea
       <View style={[styles.taskColumn, singleColumn && styles.fullTasks]}>
         {sectionHeading(locale.t("home.tasks"), taskPage?.total, "/tasks", locale.t("home.allTasks"), taskPending)}
         {sectionBody("tasks", locale.t("home.tasks"), visibleTasks?.length ? visibleTasks.map(task => <View key={task.id} style={styles.taskRow}>
-          <Pressable accessibilityRole="button" accessibilityLabel={locale.t("home.completeTask", { name: task.title })}
-            accessibilityState={{ disabled: updatingId !== null }} disabled={updatingId !== null}
+          <Pressable accessibilityRole="button" accessibilityLabel={locale.t("home.completeTask", { name: task.title }) + (tasksFromDevice && offline ? " · " + locale.t("sync.needsNetwork") : "")}
+            accessibilityState={{ disabled: updatingId !== null || tasksFromDevice }} disabled={updatingId !== null || tasksFromDevice}
             onPress={() => { void complete(task.id); }} style={styles.checkTarget}>
-            {updatingId === task.id ? <ActivityIndicator size="small" color={colors.accent} /> : <View style={styles.checkbox} />}
+            {updatingId === task.id ? <ActivityIndicator size="small" color={colors.accent} /> : <View style={[styles.checkbox, tasksFromDevice && styles.checkboxDisabled]} />}
           </Pressable>
           <Pressable accessibilityRole="button" accessibilityLabel={locale.t("home.openTask", { name: task.title })} onPress={() => navigate("/tasks/" + encodeURIComponent(task.id))} style={styles.taskContent}>
             <Text style={styles.rowTitle}>{task.title}</Text>
@@ -293,7 +344,7 @@ function HomeDashboard({ scope, current }: { scope: Scope; current: () => boolea
       </View>
     </View>
     <View style={styles.events}>
-      {sectionHeading(locale.t("home.recommendedEvents"), events?.length, "/events", locale.t("home.allEvents"), resources.events.kind === "loading")}
+      {sectionHeading(locale.t("home.recommendedEvents"), events?.length, "/events", locale.t("home.allEvents"), resources.events.kind === "loading" && !shownLocally.events)}
       {sectionBody("events", locale.t("home.events"), events?.length ? <View style={styles.eventList}>
         {events.map(event => {
           const uri = event.imagePath ? (/^https?:\/\//iu.test(event.imagePath) ? event.imagePath : scope.baseUrl.replace(/\/+$/u, "") + "/" + event.imagePath.replace(/^\/+/u, "")) : undefined;
@@ -386,6 +437,7 @@ const useStyles = createThemedStyles(colors => StyleSheet.create({
   taskRow: { flexDirection: "row", alignItems: "flex-start", minHeight: 44, borderBottomWidth: 1, borderBottomColor: colors.border2 },
   checkTarget: { minWidth: 44, minHeight: 44, alignItems: "center", justifyContent: "center", marginLeft: -10 },
   checkbox: { width: 16, height: 16, borderRadius: 4, borderWidth: 1.5, borderColor: colors.ink },
+  checkboxDisabled: { opacity: 0.4 },
   taskContent: { flex: 1, minWidth: 44, minHeight: 44, justifyContent: "center", paddingVertical: 7 },
   events: { borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 8 },
   eventList: { gap: 0 },

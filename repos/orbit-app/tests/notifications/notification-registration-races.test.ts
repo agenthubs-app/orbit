@@ -165,6 +165,7 @@ function harness(input: { blockedPost?: string; optedIn?: boolean; failFirstToke
     frames.delete(key);
   }
   let auth: any;
+  const authForegroundListeners = new Set<(state: string) => void>();
   const scopedClients = new Map<string, typeof api>();
   const cache = new Map<string, any>();
   function load(path: string): any {
@@ -181,8 +182,10 @@ function harness(input: { blockedPost?: string; optedIn?: boolean; failFirstToke
       if (id === "react-native") return {
         Platform: { OS: "ios" }, StyleSheet: { create: (value: unknown) => value }, Pressable: "Pressable", Text: "Text", View: "View", useColorScheme: () => "light",
         AppState: { addEventListener(_event: string, listener: (state: string) => void) {
-          foregroundListeners.add(listener);
-          return { remove() { foregroundListeners.delete(listener); } };
+          // The auth provider's own session re-check (0127) is not a notification listener.
+          const listeners = absolute.endsWith("AuthSessionProvider.tsx") ? authForegroundListeners : foregroundListeners;
+          listeners.add(listener);
+          return { remove() { listeners.delete(listener); } };
         } },
       };
       if (id === "expo-notifications") return notifications;
@@ -245,7 +248,7 @@ function harness(input: { blockedPost?: string; optedIn?: boolean; failFirstToke
         calls.push("logout");
         return input.failLogout ? { success: false, error: { message: "logout unavailable" } } : { success: true };
       } };
-      if (id.endsWith("/sync-lifecycle")) return { syncLifecycle: { setScope: async () => { calls.push("sync-scope-change"); return true; } } };
+      if (id.endsWith("/sync-lifecycle")) return { syncLifecycle: { suspendScope: async () => { calls.push("sync-scope-suspend"); return true; }, setScope: async () => { calls.push("sync-scope-change"); return true; } } };
       if (id.endsWith("/OrbitLocaleContext")) return {
         useOrbitLocale: () => ({
           choice: "system",
@@ -269,7 +272,7 @@ function harness(input: { blockedPost?: string; optedIn?: boolean; failFirstToke
       return require(id);
     };
     runInNewContext("(function(require,module,exports){" + code + "\n})", {
-      console: { ...console, warn: (...args: unknown[]) => warnings.push(args) }, URL,
+      console: { ...console, warn: (...args: unknown[]) => warnings.push(args) }, URL, process: { env: {} },
     })(nativeRequire, module, module.exports);
     cache.set(absolute, module.exports);
     return module.exports;

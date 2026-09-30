@@ -1,3 +1,4 @@
+import { acquireSyncCommitOrderLock } from "../../../sync/commit-order-lock";
 import { createHash } from "node:crypto";
 
 import type { EventOperationsSqlExecutor } from "../../event-operations/storage/postgres-client";
@@ -184,6 +185,8 @@ async function applyTransaction(
   snapshot: Parameters<typeof readProfileContractRepairSource>[0]["snapshot"],
   command: ReturnType<typeof parseApplyProfileContractRepairCommand>,
 ): Promise<ApplyProfileContractRepairResult> {
+  // Sprint 0113: event head tables carry sync_revision (strict trigger); take the commit-order lock first.
+  await acquireSyncCommitOrderLock(executor);
   await executor.query(`select pg_advisory_xact_lock(hashtextextended($1, 0))`, [
     `event-profile-contract-repair:${command.workspaceId}:${command.repairId}`,
   ]);

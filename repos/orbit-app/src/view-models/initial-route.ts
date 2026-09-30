@@ -47,6 +47,7 @@ type InitialRoutePath =
   | `/contacts/${string}`
   | `/events/${string}`
   | `/events/${string}/attendees`
+  | `/events/${string}/live`
   | `/events/${string}/register`;
 
 export type InitialRouteHref =
@@ -226,6 +227,11 @@ function detailRouteHref(routeKey: string): InitialRoutePath | null {
   const chatMatch = /^chat\/([A-Za-z0-9_-]+)$/u.exec(routeKey);
   if (chatMatch) {
     return `/chat/${chatMatch[1]}` as InitialRoutePath;
+  }
+
+  const eventLiveMatch = /^events\/([A-Za-z0-9_-]+)\/live$/u.exec(routeKey);
+  if (eventLiveMatch) {
+    return `/events/${eventLiveMatch[1]}/live` as InitialRoutePath;
   }
 
   const eventAttendeesMatch = /^events\/([A-Za-z0-9_-]+)\/attendees$/u.exec(routeKey);

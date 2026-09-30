@@ -1,0 +1,32 @@
+{
+  "v": 3,
+  "createdOnFiles": {"v": 1, "at": "2026-09-27T11:40:00Z"},
+  "title": "App 新用户引导与活动现场设计稿",
+  "launch": {"view": "canvas"},
+  "pages": [],
+  "boards": {
+    "Main.dc.html": {"x": 0, "y": 0, "w": 390, "h": 844, "title": "0106 · 欢迎"},
+    "OnbProfile.dc.html": {"x": 470, "y": 0, "w": 390, "h": 844, "title": "0106 · 第 1 步 你是谁"},
+    "OnbGoals.dc.html": {"x": 940, "y": 0, "w": 390, "h": 844, "title": "0106 · 第 2 步 最近想推进什么"},
+    "OnbPersona.dc.html": {"x": 1410, "y": 0, "w": 390, "h": 844, "title": "0106 · 第 3 步 提供与寻找"},
+    "OnbIntro.dc.html": {"x": 1880, "y": 0, "w": 390, "h": 844, "title": "0106 · 第 4 步 AI 自我介绍"},
+    "OnbImport.dc.html": {"x": 2350, "y": 0, "w": 390, "h": 844, "title": "0106 · 第 5 步 带入人脉"},
+    "OnbStates.dc.html": {"x": 2820, "y": 0, "w": 390, "h": 844, "title": "0106 · 失败与继续"},
+    "LiveEntry.dc.html": {"x": 0, "y": 1244, "w": 390, "h": 844, "title": "0107 · 活动详情入口"},
+    "LiveHome.dc.html": {"x": 470, "y": 1244, "w": 390, "h": 844, "title": "0107 · 现场首页"},
+    "LiveRec.dc.html": {"x": 940, "y": 1244, "w": 390, "h": 844, "title": "0107 · 为你推荐"},
+    "LiveAll.dc.html": {"x": 1410, "y": 1244, "w": 390, "h": 844, "title": "0107 · 全部参会者"},
+    "LiveGroup.dc.html": {"x": 1880, "y": 1244, "w": 390, "h": 844, "title": "0107 · 我的分组"},
+    "LivePerson.dc.html": {"x": 2350, "y": 1244, "w": 390, "h": 844, "title": "0107 · 对方资料与操作"},
+    "LiveAgenda.dc.html": {"x": 2820, "y": 1244, "w": 390, "h": 844, "title": "0107 · 议程与关系图"},
+    "LiveDenied.dc.html": {"x": 3290, "y": 1244, "w": 390, "h": 844, "title": "0107 · 未报名 / 断网"}
+  },
+  "order": ["Main.dc.html", "OnbProfile.dc.html", "OnbGoals.dc.html", "OnbPersona.dc.html", "OnbIntro.dc.html", "OnbImport.dc.html", "OnbStates.dc.html", "LiveEntry.dc.html", "LiveHome.dc.html", "LiveRec.dc.html", "LiveAll.dc.html", "LiveGroup.dc.html", "LivePerson.dc.html", "LiveAgenda.dc.html", "LiveDenied.dc.html"],
+  "notes": {
+    "t0106": {"x": 0, "y": -300, "text": "0106 App 新用户引导（对齐网页 /profile/onboarding）", "kind": "title1", "maxW": 3210},
+    "q0106": {"x": 3290, "y": 0, "w": 360, "maxH": 700, "fill": "orange", "size": "m", "text": "需要你拍板（0106）\n\n1. 何时进入引导：建议「登录后资料未完成」与「/profile/continue」进入，不像网页那样给所有页面加闸门，避免老用户被锁在外面。\n\n2. 完成后去哪：有 next 回 next，没有就去首页 /home。\n\n3. 扫自己名片、导入人脉：复用 App 现有的名片拍摄与批量导入，不另做一套。\n\n4. AI 自我介绍：进入第 4 步时自动生成，换一版次数与网页相同。\n\n5. 与网页的差异：只有布局（单列、底部固定按钮），字段、校验、文案来源完全一致。"},
+    "t0107": {"x": 0, "y": 984, "text": "0107 App 活动现场（对齐网页 /events/[id]/live）", "kind": "title1", "maxW": 3680},
+    "q0107": {"x": 3760, "y": 1244, "w": 360, "maxH": 760, "fill": "orange", "size": "m", "text": "需要你拍板（0107）\n\n1. 结构：顶部分段切换 首页 / 推荐 / 参会者 / 分组 / 议程，关系图收进首页卡片，点进全屏。\n\n2. 与现有「参会者与名片交换」页：建议现场页取代它，旧地址 /events/[id]/attendees 跳到现场页的「参会者」。\n\n3. 旧派对模式 /party*：网页已用现场页取代，建议 App 也删除或跳转到现场页。\n\n4. 入口：报名成功后活动详情页出现「进入现场」，活动当天置顶高亮。\n\n5. 议程：服务端目前没有议程数据，没有时显示空状态，不编造。"}
+  },
+  "designSystems": []
+}

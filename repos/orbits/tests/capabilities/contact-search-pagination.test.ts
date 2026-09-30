@@ -11,6 +11,8 @@ import {
   createStorageContactGraphProvider,
 } from "../../features/contacts/storage/contact-live-record-provider";
 import { createPostgresContactScopeRecordReader } from "../../features/contacts/storage/contact-scope-postgres-reader";
+import { VERIFIED_CONTACT_SEARCH_RUNTIMES } from "../../features/contacts/storage/contact-list-postgres-reader";
+import { currentNodeSortRuntime, nodeSortRuntimeMatches } from "../../shared/storage/sort-runtime";
 import type { ContactListItem } from "../../features/contacts/contract";
 import { defaultMockFixtures } from "../../shared/mock/fixtures";
 import { ORBIT_RECORDS_SCHEMA_SQL } from "../../shared/storage/migrations";
@@ -2024,7 +2026,16 @@ test("empty bounded query uses the uncollated SQL path without probing", async (
   assert.equal(projectionQueryCount, 1);
 });
 
-test("known ICU SQL incompatibility falls back once while other SQL errors propagate", async () => {
+// The fast ICU path is only attempted when the Node side belongs to a verified
+// (Node, PG) pair (W0034 table), which a stubbed SQL client cannot fake (0123/0126).
+const approvedNodeSortRuntime = VERIFIED_CONTACT_SEARCH_RUNTIMES.some((entry) =>
+  nodeSortRuntimeMatches(entry.node, currentNodeSortRuntime()));
+
+test("known ICU SQL incompatibility falls back once while other SQL errors propagate", {
+  skip: approvedNodeSortRuntime
+    ? false
+    : `fast ICU path requires a Node side in VERIFIED_CONTACT_SEARCH_RUNTIMES, running Node ${process.versions.node} (ICU ${process.versions.icu}, Unicode ${process.versions.unicode}); recovery: run this file under a verified Node runtime`,
+}, async () => {
   let probeCount = 0;
   let fastQueryCount = 0;
   let fallbackQueryCount = 0;

@@ -13,6 +13,13 @@ let url: string;
 // Replace native/navigation and HTTP boundaries only. Real screen, hooks,
 // view-models, styles and RN Web handlers execute in Chromium.
 const fixture = `
+// Sprint 0118: this harness exercises the network path; the device mirror is not available here.
+export const useLocalInbox = () => ({ available: false, rows: [], freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh: async () => null });
+export const useLocalRelationshipConversations = () => ({ available: false, conversations: [], freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh: async () => null });
+export const useLocalRelationshipThread = () => ({ available: false, conversations: [], messages: [], freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh: async () => null });
+export const useLocalAiSessions = () => ({ available: false, rows: [], freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh: async () => null });
+export const useLocalAiConversation = () => ({ available: false, messages: [], cards: null, saveCards() {}, freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh: async () => null });
+
 import React, { useSyncExternalStore } from "react";
 const listeners = new Set(); let revision = 0, uuid = 0;
 const subscribe = listener => { listeners.add(listener); return () => listeners.delete(listener); };
@@ -63,7 +70,12 @@ const client = {
       const items=state.emptyMessages?[{...messages[0],body:''}]:state.history?Array.from({length:30},(_,i)=>({...messages[0],messageId:'history:'+String((cursor?0:30)+i),body:'历史消息 '+String((cursor?0:30)+i)})):messages;
       return {success:true,status:200,data:{actorId:'inbox-test-actor',conversation,items,hasMore:!!state.history&&!cursor,nextCursor:state.history&&!cursor?'older-page':null,newestCursor:'newer',direction:'older',asOf:'2026-09-25T00:00:00Z'},meta:{}};
     }
-    if (path.startsWith("/api/inbox/notifications")) return { success: true, status: 200, data: { enabled: false, items: [], unreadCount: 0, nextCursor: null, asOf: '2026-09-16T00:00:00.000Z' }, meta: { featureMode: null, privacy: null, runtimeBoundary: null } };
+    if (path.startsWith("/api/inbox/notifications")) {
+      const kind = new URL(path, 'http://fixture').searchParams.get('kind');
+      const at = '2026-09-16T02:00:00.000Z';
+      const items = state.typedReminders && (!kind || kind === 'reminder') ? Array.from({ length: 8 }, (_, i) => ({ id: 'inbox:' + i, actorId: 'inbox-test-actor', revision: 1, kind: 'reminder', origin: 'user', semanticKey: 'reminder-' + i, title: '联系提醒' + i, reason: '按约跟进', scheduledFor: at, sources: [{ sourceKind: 'task', sourceId: 'task:' + i, sourceRevision: '1', occurredAt: at, readAt: at }], target: { kind: 'task', id: 'task:' + i, href: '/tasks/task%3A' + i, status: 'available' }, actions: ['read', 'dismiss'], occurredAt: at, updatedAt: at, readAt: null, disposition: 'open' })) : [];
+      return { success: true, status: 200, data: { enabled: Boolean(state.typedReminders), items, unreadCount: items.length, nextCursor: null, asOf: at }, meta: { featureMode: null, privacy: null, runtimeBoundary: null } };
+    }
     if (path.includes("relationship-communication/conversations") || path === "/api/notifications" || path.includes("relationship-signals")) {
       const resource = useApiResource(path); if (resource.kind === "loading") return new Promise(() => {});
       return { success: resource.kind === "success", status: resource.kind === "offline" ? 0 : resource.kind === "failure" ? 503 : 200, data: resource.data, error: { code: "READ_FAILED", ...resource.error }, meta: { featureMode: null, privacy: null, runtimeBoundary: null } };
@@ -93,7 +105,7 @@ test.before(async () => {
     define: { "process.env.NODE_ENV": '"test"', __DEV__: "false" },
     plugins: [{ name: "inbox-boundaries", setup(plugin) {
       plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: require.resolve("react-native-web") }));
-      plugin.onResolve({ filter: /^(expo-router|expo-crypto|@expo\/vector-icons|react-native-safe-area-context)$|\/(useApiResource|useOrbitApiClient|AuthSessionProvider|ApiBaseUrlProvider)$/ }, () => ({ path: "fixture", namespace: "inbox-test" }));
+      plugin.onResolve({ filter: /^(expo-router|expo-crypto|@expo\/vector-icons|react-native-safe-area-context)$|\/(useApiResource|useOrbitApiClient|AuthSessionProvider|ApiBaseUrlProvider|useLocalInbox|useLocalRelationshipMessages)$/ }, () => ({ path: "fixture", namespace: "inbox-test" }));
       plugin.onLoad({ filter: /.*/, namespace: "inbox-test" }, () => ({ contents: fixture, loader: "jsx", resolveDir: process.cwd() }));
     } }],
   });
@@ -189,14 +201,17 @@ test("a contact seed opens a focused editor and cancel restores the inbox withou
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);
 });
 
-test("task filter exposes every task reminder without mixing contact rows", async t => {
+// The legacy 待办 feed filter (reminders from /api/notifications) was retired in
+// fc0569649; task reminders now arrive as typed inbox notifications.
+test("reminder filter exposes every typed task reminder without mixing contact rows", async t => {
   const page = await openScreen(t);
+  await page.evaluate(() => { (window as any).fixture.typedReminders = true; });
   await page.getByRole("tab", { name: /^通知/ }).click();
-  await page.getByRole("tab", { name: "待办", exact: true }).click();
-  assert.equal(await page.getByText("暂无关系线索", { exact: true }).count(), 0);
+  await page.getByRole("tab", { name: "提醒", exact: true }).click();
   assert.equal(await page.getByText("曾伟", { exact: true }).count(), 0);
   await page.getByText("联系提醒7", { exact: true }).waitFor();
   assert.equal(await page.getByText(/^联系提醒/u).count(), 8);
+  assert.ok((await page.evaluate(() => (window as any).fixture.reads)).some((path: string) => path.startsWith("/api/inbox/notifications?") && path.includes("kind=reminder")));
   await page.getByRole("tab", { name: /^消息/u }).click();
   await page.getByText("曾伟", { exact: true }).waitFor();
 });
@@ -252,7 +267,7 @@ for (const kind of ["loading", "offline", "failure"]) {
   });
 }
 
-test("a real reply waits for explicit send and privacy controls do not crowd message reading", async t => {
+test("a real reply waits for explicit send and the retired privacy panel is gone", async t => {
   const page = await openScreen(t);
   await page.evaluate(() => (window as any).openDetail());
   const reply = page.getByRole("textbox", { name: "回复正文", exact: true });
@@ -264,8 +279,9 @@ test("a real reply waits for explicit send and privacy controls do not crowd mes
   assert.equal(await page.getByRole("button", { name: "预览回复", exact: true }).count(), 0);
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);
   assert.equal(await reply.inputValue(), "周四见。");
-  await page.getByRole("button", { name: "隐私设置", exact: true }).click();
-  await page.getByText("隐私控制暂时不可用。", { exact: true }).waitFor();
+  // Sprint 0104: the privacy panel called the legacy chat store with new-system ids and always failed.
+  assert.equal(await page.getByRole("button", { name: "隐私设置", exact: true }).count(), 0);
+  assert.equal(await page.evaluate(() => ((window as any).fixture.reads ?? []).some((path: string) => path.startsWith("/api/chat/"))), false);
 });
 
 test("an empty-body server message fails closed instead of becoming inbox content", async t => {

@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { createStorageBusinessCardContactWriteProvider } from "../../contacts/storage/contact-write-live-record-provider";
 import { createConfiguredPostgresLiveRecordStore } from "../../../shared/storage/configured-live-record-store";
 import { createEventOperationsEngine } from "./engine";
-import { createStorageEventContactRequestNotificationWriter } from "./contact-request-notification-writer";
+import { createInboxEventContactRequestNotificationWriter } from "../../notifications/event-contact-request-inbox";
 import { createConfiguredEventOperationsAiProvider } from "./ai-provider";
 import {
   createEventOperationsOutboxProjector,
@@ -285,9 +285,9 @@ export function getConfiguredEventOperationsCloudWorker(): ConfiguredEventOperat
     outboxHeartbeatMs: positiveInteger("ORBIT_EVENT_OPERATIONS_OUTBOX_HEARTBEAT_MS", 20_000),
     outboxLeaseMs: positiveInteger("ORBIT_EVENT_OPERATIONS_OUTBOX_LEASE_MS", 60_000),
     outboxProjector: createEventOperationsOutboxProjector({
-      contactRequestNotifications: createStorageEventContactRequestNotificationWriter({
-        store: liveRecords.store,
-        workspaceId: liveRecords.workspaceId,
+      contactRequestNotifications: createInboxEventContactRequestNotificationWriter({
+        client: runtime.client,
+        workspaceId: runtime.workspaceId,
       }),
       registrationProvider: createEventRegistrationLiveRecordProvider({
         source: "event-operations-cloud-worker:registration",

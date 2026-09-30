@@ -1,3 +1,4 @@
+import { seedAsOwner, writeAsOwner } from "../support/live-record-owner-fixture";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -83,13 +84,17 @@ async function withoutLiveDatabaseEnv(run: () => Promise<void>): Promise<void> {
   }
 }
 
-async function seededStore() {
+// Sprint 0116: contacts and evidence are sync collections, so a test that wants
+// them to belong to an actor seeds them that way (seedAsOwner) rather than
+// moving them afterwards.
+async function seededStore(owner?: string) {
   const store = createMemoryLiveRecordStore<Record<string, unknown>>();
   const workspaceId = "workspace:event-attendee-live";
 
   await seedGeneratedRelationshipFixturesIntoLiveStore({
     now: () => "2026-07-01T00:00:00.000Z",
-    store,
+    // Sprint 0117: events is a sync collection too (dashboard graph), so the generated events are seeded as the actor's.
+    store: owner ? seedAsOwner(store, owner, ["contacts", "evidence", "events"]) : store,
     workspaceId,
   });
 
@@ -140,8 +145,8 @@ test("live event attendee import reads generated attendees and intents from shar
 });
 
 test("live event attendee import persists actor-owned canonical drafts idempotently without creating contacts", async () => {
-  const { store, workspaceId } = await seededStore();
   const actorId = "account:event-attendee-draft-owner";
+  const { store, workspaceId } = await seededStore(actorId);
 
   for (const collectionName of Object.values(
     EVENT_ATTENDEE_IMPORT_LIVE_RECORD_COLLECTIONS,
@@ -153,7 +158,7 @@ test("live event attendee import persists actor-owned canonical drafts idempoten
     });
 
     for (const item of records) {
-      await store.upsertRecord({
+      await writeAsOwner(store, {
         ...item,
         userId: actorId,
       });
@@ -311,7 +316,7 @@ test("event attendee draft batch rolls back every new draft when the store fails
 });
 
 test("event attendee import graph is isolated by actor ownership metadata", async () => {
-  const { store, workspaceId } = await seededStore();
+  const { store, workspaceId } = await seededStore("account:event-attendee-a");
 
   for (const collectionName of Object.values(
     EVENT_ATTENDEE_IMPORT_LIVE_RECORD_COLLECTIONS,
@@ -323,7 +328,7 @@ test("event attendee import graph is isolated by actor ownership metadata", asyn
     });
 
     for (const item of records) {
-      await store.upsertRecord({
+      await writeAsOwner(store, {
         ...item,
         userId: "account:event-attendee-a",
       });

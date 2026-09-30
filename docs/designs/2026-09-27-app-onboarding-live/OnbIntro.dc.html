@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>新用户引导 · AI 自我介绍</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Noto Sans SC","Microsoft YaHei",sans-serif;background:#FFFFFF;color:#0B1220}
+a{color:#0A5CFF}a:hover{color:#084FDE}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #FFFFFF; display: flex; flex-direction: column">
+  <div style="padding: 54px 16px 0 16px; display: flex; flex-direction: column; gap: 14px">
+    <div style="display: flex; align-items: center; justify-content: space-between; min-height: 44px">
+      <a href="OnbPersona.dc.html" style="display: flex; align-items: center; gap: 2px; font-size: 16px; text-decoration: none"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0A5CFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>上一步</a>
+      <div style="font-size: 13px; color: #6B7280; font-variant-numeric: tabular-nums">4 / 5</div>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px">
+      <div style="height: 3px; border-radius: 999px; background: #0B1220"></div>
+      <div style="height: 3px; border-radius: 999px; background: #0B1220"></div>
+      <div style="height: 3px; border-radius: 999px; background: #0B1220"></div>
+      <div style="height: 3px; border-radius: 999px; background: #0B1220"></div>
+      <div style="height: 3px; border-radius: 999px; background: #EEF0F4"></div>
+    </div>
+  </div>
+  <div style="flex-grow: 1; overflow: hidden; padding: 22px 16px 0 16px; display: flex; flex-direction: column; gap: 18px">
+    <div style="display: flex; flex-direction: column; gap: 8px">
+      <div style="font-size: 30px; line-height: 38px; font-weight: 900; letter-spacing: -0.6px">iOrbit 帮你<br>写好了介绍</div>
+      <div style="font-size: 15px; line-height: 23px; color: #3C4658">根据你刚才填写的身份、目标和画像生成。满意就直接用，也可以改几个字。</div>
+    </div>
+    <div style="display: flex; align-items: center; justify-content: space-between; border-top: 1px solid #EEF0F4; padding-top: 14px">
+      <div style="display: flex; align-items: center; gap: 8px">
+        <div style="width: 22px; height: 22px; border-radius: 6px; background: #0B1220; display: flex; align-items: center; justify-content: center"><div style="width: 7px; height: 7px; border-radius: 2px; background: #0A5CFF"></div></div>
+        <div style="font-size: 12px; font-weight: 600; letter-spacing: 0.96px; color: #6B7280">AI 草稿 · 可以直接修改</div>
+      </div>
+      <button type="button" style="display: flex; align-items: center; gap: 4px; min-height: 44px; padding: 0 4px; border: none; background: transparent; color: #0A5CFF; font-size: 14px; font-weight: 600; font-family: inherit">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0A5CFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 5v6h-6"/></svg>换一版（剩 2 次）
+      </button>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <label for="i-head" style="font-size: 13px; font-weight: 500; color: #3C4658">一句话介绍</label>
+      <input id="i-head" value="帮 AI 会议纪要产品落地日本企业的产品负责人" style="min-height: 44px; box-sizing: border-box; border: 1px solid #B9BDC4; border-radius: 12px; padding: 8px 12px; font-size: 15px; font-weight: 600; font-family: inherit; color: #0B1220">
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <label for="i-bio" style="font-size: 13px; font-weight: 500; color: #3C4658">自我介绍</label>
+      <textarea id="i-bio" style="min-height: 200px; box-sizing: border-box; border: 1px solid #B9BDC4; border-radius: 12px; padding: 12px; font-size: 15px; line-height: 23px; font-family: inherit; resize: none; color: #0B1220">[AI 根据前三步生成的 3–4 句自我介绍：你是谁、在做什么、这个季度想找什么样的人、你能帮对方什么。]</textarea>
+    </div>
+  </div>
+  <div style="padding: 12px 16px 34px 16px">
+    <a href="OnbImport.dc.html" style="display: flex; align-items: center; justify-content: center; min-height: 50px; border-radius: 12px; background: #0B1220; color: #FFFFFF; font-size: 15px; font-weight: 700; text-decoration: none">用这段介绍</a>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

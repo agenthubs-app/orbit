@@ -9,17 +9,13 @@ const screenSource = readFileSync(
   "utf8"
 );
 
-test("relationship chat detail keeps extraction signals and removes summary generation", () => {
-  assert.match(screenSource, /chatConversationExtractionsPath/u);
-  assert.match(screenSource, /relationshipChatExtractionToView/u);
-  assert.match(
-    screenSource,
-    /useApiResource<unknown>\(\s*chatConversationExtractionsPath\(conversationId\)/u
-  );
-  assert.doesNotMatch(screenSource, /chatConversationSummaryPath/u);
-  assert.doesNotMatch(screenSource, /relationshipChatSummaryToView/u);
-  assert.doesNotMatch(screenSource, /生成摘要/u);
-  assert.match(screenSource, /title="提取结果"/u);
+test("relationship chat detail no longer calls the retired legacy chat extraction or summary endpoints", () => {
+  // Sprint 0104: the extraction call used new-system conversation ids against
+  // the legacy chat store and always failed; it was removed with that store.
+  assert.doesNotMatch(screenSource, /chatConversationExtractionsPath|chatConversationSummaryPath/u);
+  assert.doesNotMatch(screenSource, /relationshipChatExtractionToView|relationshipChatSummaryToView/u);
+  assert.doesNotMatch(screenSource, /\/api\/chat\//u);
+  assert.doesNotMatch(screenSource, /提取结果|生成摘要/u);
 });
 
 test("relationship chat detail sends only through a verified delivery receipt", () => {

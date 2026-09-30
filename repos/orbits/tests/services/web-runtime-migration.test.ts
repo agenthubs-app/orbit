@@ -9,8 +9,12 @@ import { EVENT_OPERATIONS_SCHEMA_MIGRATIONS } from "../../features/events/event-
 
 test("the web runtime migration CLI initializes an empty database and preserves data on rerun", async () => {
   loadLocalEnv();
-  const config = resolveLiveDatabaseConnectionConfig();
+  // .env.local sets ORBIT_DATABASE_TARGET=local, which resolves to the developer's
+  // orbit_events; this smoke test belongs on the dedicated test database named by
+  // ORBIT_EVENT_DATABASE_URL, and must never reach a remote host (0123).
+  const config = resolveLiveDatabaseConnectionConfig({ ...process.env, ORBIT_DATABASE_TARGET: undefined });
   assert.ok(config, "The migration smoke test requires a local test database.");
+  assert.ok(["localhost", "127.0.0.1", "::1", "[::1]"].includes(new URL(config.connectionString).hostname), "The migration smoke test only runs against a local database.");
   const schema = `web_migration_${randomUUID().replaceAll("-", "")}`;
   const admin = new Pool({ connectionString: config.connectionString, max: 1 });
   const url = new URL(config.connectionString);
@@ -18,7 +22,8 @@ test("the web runtime migration CLI initializes an empty database and preserves 
   const pool = new Pool({ connectionString: url.toString(), max: 1 });
   const migrate = () => {
     const result = spawnSync(process.execPath, ["--import", "tsx", "scripts/migrate-web-runtime.ts"], {
-      env: { ...process.env, ORBIT_EVENT_DATABASE_URL: url.toString(), ORBIT_WORKSPACE_ID: `test:${schema}` },
+      // Pin both target paths so the CLI's own .env.local load cannot redirect it.
+      env: { ...process.env, ORBIT_DATABASE_TARGET: "local", ORBIT_LOCAL_DATABASE_URL: url.toString(), ORBIT_EVENT_DATABASE_URL: url.toString(), ORBIT_WORKSPACE_ID: `test:${schema}` },
       encoding: "utf8", timeout: 60_000,
     });
     // The CLI deliberately returns phase-only errors, never connection strings.
@@ -30,7 +35,7 @@ test("the web runtime migration CLI initializes an empty database and preserves 
     await admin.query(`create schema ${schema}`);
     migrate();
     const tables = (await pool.query<{ tablename: string }>("select tablename from pg_tables where schemaname=$1", [schema])).rows.map((row) => row.tablename);
-    for (const table of ["orbit_records", "event_ops_events", "event_ops_experience_versions", "event_analytics_roi_snapshots", "appointment_outbox", "bc_ingest_batches", "plans", "plan_items", "plan_log", "plan_commands", "plan_match_jobs", "plan_match_candidates", ...ledgers]) {
+    for (const table of ["orbit_records", "event_ops_events", "event_ops_experience_versions", "event_ops_registration_question_cache", "event_analytics_roi_snapshots", "appointment_outbox", "bc_ingest_batches", "plans", "plan_items", "plan_log", "plan_commands", "plan_match_jobs", "plan_match_candidates", ...ledgers]) {
       assert.ok(tables.includes(table), `missing runtime table ${table}`);
     }
     for (const table of tables.filter((name) => !ledgers.includes(name))) {

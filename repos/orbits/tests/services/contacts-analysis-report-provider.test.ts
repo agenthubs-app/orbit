@@ -296,7 +296,38 @@ async function persistFixtureSession(
   const initial = canVerify ? { ...session, messages: session.messages.slice(0, 2), origin } : { ...session, origin };
   await provider.upsertSession(initial);
   if (verification && canVerify) {
-    await provider.upsertVerifiedAnalysisSession(initial, verification);
+    // 0112: the trusted marker is applied by the append that saves the first answer.
+    await provider.appendMessages(initial.id, { messages: [initial.messages[1] as OrbitAgentChatSessionSnapshot["messages"][number] & { id: string }], updatedAt: initial.updatedAt, verification });
     if (session.messages.length > 2) await provider.upsertSession({ ...session, origin: undefined });
   }
 }
+
+test("0121 with a graph version the AI version also binds the analysis profile fields, not birth date or editor state", () => {
+  const profileSection = (fields: Record<string, unknown>, extra: Record<string, unknown> = {}) => ({
+    state: "success",
+    profile: { id: "profile:a", displayName: "小宇", relationshipGoal: "寻找投资人", targetRelationshipTypes: ["investor"], updatedAt: "2026-09-27T00:00:00.000Z", ...fields },
+    completeness: { score: 80, status: "ready", completedFields: [], missingFields: [], nextBestField: null },
+    editor: { canSave: true, lastSavedAt: "2026-09-27T00:00:00.000Z", dirtyFields: [], validationMessages: [] },
+    nextAction: "",
+    ...extra,
+  });
+  const base = { ...emptySource, graphVersion: "12:3456:789", profile: profileSection({}) };
+  const version = createContactsAnalysisSourceDataVersion(base);
+  assert.match(version, /^[a-f0-9]{64}$/);
+  assert.notEqual(createContactsAnalysisSourceDataVersion({ ...base, profile: profileSection({ relationshipGoal: "寻找客户" }) }), version, "goal change");
+  assert.notEqual(createContactsAnalysisSourceDataVersion({ ...base, profile: profileSection({ targetRelationshipTypes: ["customer"] }) }), version, "target types change");
+  assert.notEqual(createContactsAnalysisSourceDataVersion({ ...base, graphVersion: "13:3456:790" }), version, "graph change");
+  for (const [label, profile] of [
+    ["birth date", profileSection({ birthDate: "1990-01-01" })],
+    ["avatar", profileSection({ avatarUrl: "https://example.test/a.png" })],
+    ["updatedAt", profileSection({ updatedAt: "2026-09-28T00:00:00.000Z" })],
+    ["editor", profileSection({}, { editor: { canSave: false, lastSavedAt: null, dirtyFields: ["x"], validationMessages: [] } })],
+  ] as const) {
+    assert.equal(createContactsAnalysisSourceDataVersion({ ...base, profile }), version, label);
+  }
+  // The profile section temporarily unavailable is a different model input; restored, the version returns.
+  const unavailable = createContactsAnalysisSourceDataVersion({ ...base, profile: null });
+  assert.notEqual(unavailable, version);
+  assert.equal(createContactsAnalysisSourceDataVersion({ ...base, profile: profileSection({}) }), version);
+  assert.equal(verifyContactsAnalysisSourceVersion({ claimed: version, source: { ...base, profile: profileSection({ relationshipGoal: "寻找客户" }) } as never }), null, "the old version is refused after a goal change");
+});

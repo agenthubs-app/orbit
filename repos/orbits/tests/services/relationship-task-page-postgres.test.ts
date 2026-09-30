@@ -8,9 +8,10 @@ import {createStorageFollowupTaskProvider} from '../../features/followups/storag
 import {createPostgresRelationshipScopeReader} from '../../shared/storage/relationship-read-scope';
 import {relationshipTaskSummaries} from '../../features/connections/lifecycle/task-list';
 import {createRelationshipTaskPageReader} from '../../features/connections/lifecycle/task-page';
+import {lifecycleSortRuntimeSkipReason} from '../support/lifecycle-sort-runtime';
 
 const url=process.env.ORBIT_LIFECYCLE_TEST_DATABASE_URL,at='2026-09-25T00:00:00.000Z',secret='local-only-key-'.repeat(4);
-test('relationship task page matches the legacy list, enforces ownership before pagination and bounds growth', {skip:!url,timeout:120000},async()=>{
+test('relationship task page matches the legacy list, enforces ownership before pagination and bounds growth', {skip:!url,timeout:120000},async(t)=>{
   assert.ok(url);const address=new URL(url);assert.ok(['localhost','127.0.0.1'].includes(address.hostname));assert.equal(address.search,'');
   const schema='relationship_task_page_'+randomUUID().replaceAll('-','');
   const pool=new Pool({connectionString:url,max:1,options:`-c search_path=${schema} -c statement_timeout=60000`});
@@ -19,6 +20,8 @@ test('relationship task page matches the legacy list, enforces ownership before 
   let bytes=0,queries=0;
   const client:LiveRecordSqlClient={async query(text,values){const result=await pool.query(text,values as unknown[]);bytes+=Buffer.byteLength(JSON.stringify(result.rows));queries++;return result;}};
   try {
+    // The reader enforces the verified Neon/Node sort runtime; elsewhere skip with the reason (0123).
+    const skipReason=await lifecycleSortRuntimeSkipReason(pool);if(skipReason){t.skip(skipReason);return;}
     await pool.query(`create schema ${schema}`);await pool.query(ORBIT_RECORDS_SCHEMA_SQL);
     await insert('contacts','c',{displayName:'Contact',stage:'active',privateNotes:'PRIVATE_NOTE'},'a');
     await insert('connections','cn',{accountId:'a',contactId:'c',stage:'active',summary:'PRIVATE_RELATIONSHIP'});

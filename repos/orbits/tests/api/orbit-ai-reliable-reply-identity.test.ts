@@ -6,6 +6,7 @@ import ts from "typescript";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
 import { createMemoryOrbitAgentChatRequestStore, createReliableOrbitAgentSendService, ReliableSendError } from "../../features/orbit-ai/reliable-send-service";
 import { createStorageOrbitAgentChatSessionProvider, OrbitAgentChatSessionWriteError } from "../../features/orbit-ai/storage/orbit-agent-chat-session-live-record-provider";
+import { readEntityDraftIntent } from "../../features/orbit-ai/entity-drafts/contract";
 
 test("reliable POST gives each reply a stable request identity and persists the final answer across turns and retry", async () => {
   const requestStore = createMemoryOrbitAgentChatRequestStore();
@@ -15,9 +16,7 @@ test("reliable POST gives each reply a stable request identity and persists the 
   let calls = 0;
   const boundaries: Record<string, unknown> = {
     "../../../../shared/config/feature-mode": { resolveFeatureMode: () => "live" },
-    "./request-context": { resolveOrbitAgentConversationRequestContext: async () => ({ actorId: "actor:qa", runtime: {
-      createRun: async () => ({ runId: "run:qa", status: "completed" }), addRunStep: async () => {},
-    } }) },
+    "./request-context": { resolveOrbitAgentConversationRequestContext: async () => ({ actorId: "actor:qa", runtime: {} }) },
     "../../../../features/orbit-ai/service-factory": { createOrbitAgentConversationServiceForActor: () => ({ sendMessage: async () => {
       calls++;
       return { success: true, data: { activeConversationId: "conversation:legacy", assistantMessage: `final answer ${calls}`,
@@ -35,6 +34,13 @@ test("reliable POST gives each reply a stable request identity and persists the 
     "../../../../features/orbit-ai/storage/orbit-agent-chat-session-provider-factory": { createOrbitAgentChatSessionProvider: () => sessionProvider },
     "../../../../features/orbit-ai/storage/orbit-agent-chat-session-live-record-provider": { OrbitAgentChatSessionWriteError },
     "../../../../features/contacts/service-factory": { createContactDetailTagStatusService: () => ({}) },
+    // f3df1cd93 (sprint 0085) reads a typed draft confirmation on every turn. The
+    // intent reader is pure and runs for real; an ordinary read-only turn must not
+    // build the Postgres-backed draft service.
+    "../../../../features/orbit-ai/entity-drafts/contract": { readEntityDraftIntent },
+    "../../../../features/orbit-ai/entity-drafts/service-factory": { createConfiguredEntityDraftService: () => {
+      throw new Error("an ordinary turn must not build the entity draft service");
+    } },
   };
   const url = new URL("../../app/api/ai/conversations/route.ts", import.meta.url);
   const require = createRequire(url);

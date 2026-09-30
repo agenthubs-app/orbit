@@ -5,6 +5,8 @@ import { chromium,type Browser,type Page } from "playwright";
 
 let browser:Browser,script:string;
 const fixture=`
+// Sprint 0116: the device mirror is not the source here; these tests cover the network labels.
+export const useLocalContacts = () => ({ available: false, rows: [], freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh() {} });
 import {useSyncExternalStore} from 'react';
 let revision=0;const listeners=new Set();
 const state=window.fixture={actor:'a',signedIn:true,cookie:'',baseUrl:'https://orbit.test',ids:[],requests:[],pending:[],snapshots:0,
@@ -22,7 +24,7 @@ test.before(async()=>{
   const output=await build({stdin:{loader:"tsx",resolveDir:process.cwd(),contents:`
 import React from 'react';import {createRoot} from 'react-dom/client';import {useFixture} from 'fixture';import {useContactLabels} from './src/hooks/useContactLabels';
 function App(){const s=useFixture();const result=useContactLabels(s.ids,'task-page');return <><output aria-label="names">{result.items.map(item=>item.name).join(',')}</output><output aria-label="failure">{String(result.failure)}</output><button onClick={result.refresh}>refresh</button></>};createRoot(document.getElementById('root')).render(<App/>);`},bundle:true,write:false,format:"iife",jsx:"automatic",define:{"process.env.NODE_ENV":'"test"',"process.env":"{}",__DEV__:"false"},plugins:[{name:"boundaries",setup(plugin){
-    plugin.onResolve({filter:/^fixture$|\/(AuthSessionProvider|ApiBaseUrlProvider|snapshot-store)$/},()=>({path:"fixture",namespace:"labels"}));
+    plugin.onResolve({filter:/^fixture$|\/(AuthSessionProvider|ApiBaseUrlProvider|snapshot-store|useLocalContacts)$/},()=>({path:"fixture",namespace:"labels"}));
     plugin.onLoad({filter:/.*/,namespace:"labels"},()=>({contents:fixture,loader:"jsx",resolveDir:process.cwd()}));
   }}]});script=output.outputFiles[0]!.text;browser=await chromium.launch({headless:true});
 });

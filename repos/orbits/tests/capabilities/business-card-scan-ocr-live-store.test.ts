@@ -1,3 +1,4 @@
+import { seedAsOwner, writeAsOwner } from "../support/live-record-owner-fixture";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
@@ -27,7 +28,7 @@ async function createSeedStore() {
 
   await seedGeneratedRelationshipFixturesIntoLiveStore({
     now: () => NOW,
-    store,
+    store: seedAsOwner(store, ACTOR_ID, ["contacts", "evidence"]),
     workspaceId: WORKSPACE_ID,
   });
   const actorRecords = store
@@ -40,7 +41,7 @@ async function createSeedStore() {
 
   await Promise.all(
     actorRecords.map((record) =>
-      store.upsertRecord({
+      writeAsOwner(store, {
         ...record,
         userId: ACTOR_ID,
       }),
@@ -475,11 +476,15 @@ test("business card scan API accepts JSON image uploads and reaches the cloud OC
   const previousModuleMode = process.env.ORBIT_MODULE_MODE;
   const previousGeminiApiKey = process.env.GEMINI_API_KEY;
   const previousGoogleApiKey = process.env.GOOGLE_API_KEY;
+  const previousDeepSeekApiKey = process.env.DEEPSEEK_API_KEY;
 
   try {
     process.env.ORBIT_MODULE_MODE = "live";
     delete process.env.GEMINI_API_KEY;
     delete process.env.GOOGLE_API_KEY;
+    // DeepSeek became an OCR provider in eaa274d8e; with a developer key exported
+    // this "unconfigured" case sent a real, paid OCR request (0123).
+    delete process.env.DEEPSEEK_API_KEY;
 
     const response = await createBusinessCardScanHandler(async () => ({
       id: ACTOR_ID,
@@ -506,6 +511,7 @@ test("business card scan API accepts JSON image uploads and reaches the cloud OC
     restoreEnvironmentVariable("ORBIT_MODULE_MODE", previousModuleMode);
     restoreEnvironmentVariable("GEMINI_API_KEY", previousGeminiApiKey);
     restoreEnvironmentVariable("GOOGLE_API_KEY", previousGoogleApiKey);
+    restoreEnvironmentVariable("DEEPSEEK_API_KEY", previousDeepSeekApiKey);
   }
 });
 
@@ -513,11 +519,15 @@ test("business card scan API accepts multipart image uploads and reaches the clo
   const previousModuleMode = process.env.ORBIT_MODULE_MODE;
   const previousGeminiApiKey = process.env.GEMINI_API_KEY;
   const previousGoogleApiKey = process.env.GOOGLE_API_KEY;
+  const previousDeepSeekApiKey = process.env.DEEPSEEK_API_KEY;
 
   try {
     process.env.ORBIT_MODULE_MODE = "live";
     delete process.env.GEMINI_API_KEY;
     delete process.env.GOOGLE_API_KEY;
+    // DeepSeek became an OCR provider in eaa274d8e; with a developer key exported
+    // this "unconfigured" case sent a real, paid OCR request (0123).
+    delete process.env.DEEPSEEK_API_KEY;
 
     const formData = new FormData();
     formData.append(
@@ -544,6 +554,7 @@ test("business card scan API accepts multipart image uploads and reaches the clo
     restoreEnvironmentVariable("ORBIT_MODULE_MODE", previousModuleMode);
     restoreEnvironmentVariable("GEMINI_API_KEY", previousGeminiApiKey);
     restoreEnvironmentVariable("GOOGLE_API_KEY", previousGoogleApiKey);
+    restoreEnvironmentVariable("DEEPSEEK_API_KEY", previousDeepSeekApiKey);
   }
 });
 

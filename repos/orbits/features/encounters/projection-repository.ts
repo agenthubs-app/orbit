@@ -3,6 +3,8 @@ import { randomUUID } from "node:crypto";
 import type { LiveContactDetailState, LiveContactDetailStoredInteraction, LiveContactDetailStoredNote } from "../contacts/live-service";
 import type { EventOperationsPostgresRuntime, EventOperationsSqlExecutor } from "../events/event-operations/storage/postgres-client";
 import type { HumanEncounterRecord } from "./service";
+import { LiveRecordOwnerConflictError } from "../../shared/storage/live-record-store";
+import { acquireSyncCommitOrderLock } from "../sync/commit-order-lock";
 
 type Row = Record<string, unknown>;
 
@@ -46,14 +48,21 @@ function detailRecordId(actorId: string, contactId: string): string {
   return `contact-detail:${encodeURIComponent(actorId)}:${encodeURIComponent(contactId)}`;
 }
 
-async function writeContactDetail(input: {
+/**
+ * Exported for the owner test (sprint 0113). The record id carries the actor,
+ * so the row always belongs to state.actorId; a foreign owner is refused.
+ */
+export async function writeContactDetailState(input: {
   existingCreatedAt: string | null;
   runtime: EventOperationsPostgresRuntime;
   state: LiveContactDetailState;
   transaction: EventOperationsSqlExecutor;
 }): Promise<void> {
   const recordId = detailRecordId(input.state.actorId, input.state.contactId);
-  await input.transaction.query(`
+  // contact_detail_states is a sync collection (sprint 0116). Callers take the
+  // lock first; taking it again in the same transaction is harmless.
+  await acquireSyncCommitOrderLock(input.transaction);
+  const written = await input.transaction.query(`
     insert into orbit_records (
       workspace_id, collection_name, record_id, user_id, source_type,
       source_id, source_label, provider, provider_record_id, evidence_ids,
@@ -65,7 +74,7 @@ async function writeContactDetail(input: {
       'contact', $5, $6, 'active', $7, $8::jsonb, coalesce($9::timestamptz, $6), $6, null
     )
     on conflict (workspace_id, collection_name, record_id) do update set
-      user_id = excluded.user_id,
+      user_id = coalesce(orbit_records.user_id, excluded.user_id),
       source_type = excluded.source_type,
       source_id = excluded.source_id,
       source_label = excluded.source_label,
@@ -79,6 +88,8 @@ async function writeContactDetail(input: {
       payload = excluded.payload,
       updated_at = excluded.updated_at,
       deleted_at = null
+    where nullif(orbit_records.user_id, '') is null or orbit_records.user_id = excluded.user_id
+    returning record_id
   `, [
     input.runtime.workspaceId,
     recordId,
@@ -90,6 +101,7 @@ async function writeContactDetail(input: {
     JSON.stringify(input.state),
     input.existingCreatedAt,
   ]);
+  if (written.rows.length !== 1) throw new LiveRecordOwnerConflictError("contact_detail_states", recordId);
 }
 
 export function createPostgresHumanEncounterProjectionRepository(runtime: EventOperationsPostgresRuntime): HumanEncounterProjectionRepository {
@@ -139,6 +151,9 @@ export function createPostgresHumanEncounterProjectionRepository(runtime: EventO
 
     async complete(input) {
       return runtime.client.transaction(async (transaction) => {
+        // This transaction writes contact_detail_states (a sync collection since
+        // sprint 0116): take the commit-order lock before any row lock.
+        await acquireSyncCommitOrderLock(transaction);
         const encounter = input.claim.encounter;
         const source = await transaction.query<Row>(`select payload from orbit_records
           where workspace_id = $1 and collection_name = 'human_encounters' and record_id = $2
@@ -165,7 +180,7 @@ export function createPostgresHumanEncounterProjectionRepository(runtime: EventO
           tags: currentState?.tags ?? [],
           updatedAt: input.now,
         };
-        await writeContactDetail({ existingCreatedAt: detail.rows[0]?.created_at ? new Date(String(detail.rows[0].created_at)).toISOString() : null, runtime, state, transaction });
+        await writeContactDetailState({ existingCreatedAt: detail.rows[0]?.created_at ? new Date(String(detail.rows[0].created_at)).toISOString() : null, runtime, state, transaction });
         await input.afterContactWrite?.();
         const completed: HumanEncounterRecord = {
           ...currentEncounter,

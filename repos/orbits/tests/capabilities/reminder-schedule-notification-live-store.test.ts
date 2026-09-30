@@ -14,24 +14,17 @@ import { seedGeneratedRelationshipFixturesIntoLiveStore } from "../../shared/sto
 test("live reminder notification service reads generated notifications without delivery side effects", async () => {
   const actorId = "actor:reminder-owner";
   const workspaceId = "workspace:reminder-notification-live-store-test";
-  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
-
+  // Sprint 0113: upsert never moves a row to another owner, and tasks are a sync
+  // domain, so the fixtures are seeded under the test actor instead of re-owned.
+  const fixtures = createMemoryLiveRecordStore<Record<string, unknown>>();
   await seedGeneratedRelationshipFixturesIntoLiveStore({
-    store,
+    store: fixtures,
     workspaceId,
   });
-  for (const collectionName of [
-    "notifications",
-    "tasks",
-    "contacts",
-    "connections",
-    "evidence",
-  ]) {
-    const records = await store.listRecords({ limit: "unbounded", collectionName, workspaceId });
-    for (const record of records) {
-      await store.upsertRecord({ ...record, userId: actorId });
-    }
-  }
+  const store = createMemoryLiveRecordStore<Record<string, unknown>>(
+    (await fixtures.listRecords({ limit: "unbounded", workspaceId, includeDeleted: true })).map((record) =>
+      ["notifications", "tasks", "contacts", "connections", "evidence"].includes(record.collectionName) ? { ...record, userId: actorId } : record),
+  );
 
   const service = createLiveReminderScheduleNotificationService({
     provider: createStorageReminderScheduleNotificationProvider({

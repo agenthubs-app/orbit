@@ -5,6 +5,12 @@ import { useOrbitApiBaseUrl } from "../api/ApiBaseUrlProvider";
 import { useOrbitAuthSession } from "../api/AuthSessionProvider";
 import { subscribeInboxBadge } from "../api/inbox-badge-resource";
 import { useOrbitApiClient } from "./useOrbitApiClient";
+import { useLocalInbox } from "./useLocalInbox";
+import { localInboxUnreadCount } from "../view-models/inbox-local";
+import { useLocalRelationshipConversations } from "./useLocalRelationshipMessages";
+import { localRelationshipUnreadTotal } from "../view-models/relationship-local";
+
+const capped = (count: number) => (count > 0 ? Math.min(count, 99) : undefined);
 
 export function useRelationshipInboxBadgeCount(scopeKey?: string): number | undefined {
   const auth = useOrbitAuthSession();
@@ -22,7 +28,12 @@ export function useRelationshipInboxBadgeCount(scopeKey?: string): number | unde
   const latest = useRef(scope);
   latest.current = scope;
   const client = useOrbitApiClient({ scopeKey: sharedKey });
-  const [snapshot, setSnapshot] = useState<{ scope: typeof scope; count: number | undefined } | null>(null);
+  const [snapshot, setSnapshot] = useState<{ scope: typeof scope; count: number | undefined; messages?: number } | null>(null);
+  // Sprint 0118: where the device mirror holds the inbox, its notification part is counted on the device
+  // (the same rule as the server) and added to the server's message count; offline it stands alone.
+  const local = useLocalInbox(false);
+  // Sprint 0119: the message part is counted on the device too (the sum of the account's member rows, the server's rule).
+  const threads = useLocalRelationshipConversations(false);
 
   useEffect(() => {
     const listener = AppState.addEventListener("change", state => {
@@ -41,13 +52,20 @@ export function useRelationshipInboxBadgeCount(scopeKey?: string): number | unde
     let active = true;
     const refresh = previousScopeKey.current !== scopeKey;
     previousScopeKey.current = scopeKey;
-    const unsubscribe = subscribeInboxBadge({ scope: sharedKey, actorId, client, refresh, listener: count => {
-      if (active && latest.current === scope && nativeActive.current) setSnapshot({ scope, count });
+    const unsubscribe = subscribeInboxBadge({ scope: sharedKey, actorId, client, refresh, listener: (count, messages) => {
+      if (active && latest.current === scope && nativeActive.current) setSnapshot({ scope, count, ...(messages === undefined ? {} : { messages }) });
     } });
     const stop = () => { active = false; unsubscribe(); };
     release.current = stop;
     return () => { stop(); if (release.current === stop) release.current = null; };
   }, [actorId, client, scope, sharedKey]);
 
-  return scope.ready && snapshot?.scope === scope ? snapshot.count : undefined;
+  const summary = scope.ready && snapshot?.scope === scope ? snapshot : null;
+  if (scope.ready && local.available && local.freshness.readable) {
+    const notices = localInboxUnreadCount(local.rows, Date.now());
+    const messages = threads.available && threads.freshness.readable ? localRelationshipUnreadTotal(threads.conversations) : summary?.messages;
+    if (messages !== undefined) return capped(messages + notices);
+    if (local.freshness.offline || summary) return capped(notices);
+  }
+  return summary?.count;
 }

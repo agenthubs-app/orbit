@@ -9,12 +9,24 @@ import type {
   RelationshipInvitationPreviewDTO,
   RelationshipMessageDTO,
   RelationshipReadReceiptDTO,
+  RelationshipReplyDraftDTO,
 } from "../../shared/contract/relationship-communication";
 import type {
   LiveRecord,
   LiveRecordStoreLike,
 } from "../../shared/storage/live-record-store";
+import type {
+  RelationshipConversationRow,
+  RelationshipMessageRow,
+  RelationshipMessageStore,
+} from "./message-store";
 
+/**
+ * Invitations still live in orbit_records. Since sprint 0109 bindings,
+ * conversations, messages and read markers live in the three relationship
+ * message tables (message-tables.ts); the other four collection names below are
+ * only read by the one-time migration (message-migration.ts), never written.
+ */
 export const RELATIONSHIP_COMMUNICATION_COLLECTIONS = {
   bindings: "relationship_communication_bindings",
   conversations: "relationship_communication_conversations",
@@ -22,6 +34,15 @@ export const RELATIONSHIP_COMMUNICATION_COLLECTIONS = {
   messages: "relationship_communication_messages",
   reads: "relationship_communication_reads",
 } as const;
+
+// Reply drafts share the draft collection the relationship inbox already uses;
+// one row per (conversation, account), readable only by that account.
+export const RELATIONSHIP_REPLY_DRAFT_COLLECTION = "relationshipConversationDrafts";
+export const RELATIONSHIP_REPLY_DRAFT_TARGET_TYPE = "relationship_reply_draft";
+const REPLY_DRAFT_MAX_LENGTH = 10_000;
+/** GET conversations/[id] is bounded (sprint 0109): the newest messages only; older ones page through /messages. */
+export const CONVERSATION_MESSAGE_LIMIT = 200;
+const INVITATION_LOOKUP_LIMIT = 50;
 
 export interface RelationshipCommunicationActor {
   accountId: string;
@@ -45,7 +66,10 @@ export interface RelationshipCommunicationServiceOptions {
     contactId: string,
     accountId: string,
   ) => Promise<RelationshipCommunicationContact | null>;
+  /** Invitations and reply drafts. */
   store: LiveRecordStoreLike<Record<string, unknown>>;
+  /** Conversations, members and messages (sprint 0109 tables). */
+  messages: RelationshipMessageStore;
   workspaceId: string;
 }
 
@@ -67,6 +91,11 @@ export interface SendRelationshipMessageInput {
   requestId: string;
 }
 
+export interface SaveRelationshipReplyDraftInput {
+  body: unknown;
+  conversationId: string;
+}
+
 export interface MarkRelationshipConversationReadInput {
   conversationId: string;
   lastReadMessageId: string;
@@ -82,11 +111,13 @@ export interface RelationshipCommunicationService {
   getConversation(conversationId: string): Promise<RelationshipConversationDTO>;
   getEligibility(contactId: string): Promise<RelationshipEligibilityDTO>;
   getInvitationPreview(token: string): Promise<RelationshipInvitationPreviewDTO>;
+  getReplyDraft(conversationId: string): Promise<RelationshipReplyDraftDTO>;
   listConversations(input?: { limit?: number; cursor?: string }): Promise<RelationshipConversationListDTO>;
   markConversationRead(
     input: MarkRelationshipConversationReadInput,
   ): Promise<RelationshipReadReceiptDTO>;
   revokeContactBinding(contactId: string): Promise<RelationshipEligibilityDTO>;
+  saveReplyDraft(input: SaveRelationshipReplyDraftInput): Promise<RelationshipReplyDraftDTO>;
   sendMessage(
     input: SendRelationshipMessageInput,
   ): Promise<RelationshipDeliveryReceiptDTO>;
@@ -107,56 +138,6 @@ interface InvitationPayload extends Record<string, unknown> {
   status: "pending" | "accepted" | "revoked";
   tokenHash: string;
   updatedAt: string;
-}
-
-interface BindingPayload extends Record<string, unknown> {
-  bindingId: string;
-  contactId: string;
-  conversationId: string;
-  createdAt: string;
-  inviterAccountId: string;
-  inviterDisplayName: string;
-  kind: "relationship_binding";
-  qualificationVersion: string;
-  remoteAccountId: string;
-  remoteDisplayName: string;
-  revokedAt?: string;
-  status: "confirmed" | "revoked";
-  updatedAt: string;
-}
-
-interface ConversationPayload extends Record<string, unknown> {
-  bindingId: string;
-  contactId: string;
-  conversationId: string;
-  createdAt: string;
-  kind: "relationship_conversation";
-  participantAccountIds: [string, string];
-  participantDisplayNames: Record<string, string>;
-  qualificationVersion: string;
-  status: "active" | "revoked";
-  updatedAt: string;
-}
-
-interface MessagePayload extends Record<string, unknown> {
-  body: string;
-  conversationId: string;
-  deliveryState: "delivered";
-  kind: "relationship_message";
-  messageId: string;
-  qualificationVersion: string;
-  requestId: string;
-  senderAccountId: string;
-  senderDisplayName: string;
-  sentAt: string;
-}
-
-interface ReadPayload extends Record<string, unknown> {
-  accountId: string;
-  conversationId: string;
-  kind: "relationship_read";
-  lastReadMessageId: string;
-  readAt: string;
 }
 
 function required(value: string, label: string, max = 512): string {
@@ -229,34 +210,9 @@ function invitationFrom(
   return value.payload as InvitationPayload;
 }
 
-function bindingFrom(
-  value: LiveRecord<Record<string, unknown>> | null,
-): BindingPayload | null {
-  if (!isPayload(value, "relationship_binding")) return null;
-  return value.payload as BindingPayload;
-}
 
-function conversationFrom(
-  value: LiveRecord<Record<string, unknown>> | null,
-): ConversationPayload | null {
-  if (!isPayload(value, "relationship_conversation")) return null;
-  return value.payload as ConversationPayload;
-}
 
-function messageFrom(
-  value: LiveRecord<Record<string, unknown>>,
-): MessagePayload | null {
-  return value.payload.kind === "relationship_message"
-    ? (value.payload as MessagePayload)
-    : null;
-}
 
-function readFrom(
-  value: LiveRecord<Record<string, unknown>> | null,
-): ReadPayload | null {
-  if (!isPayload(value, "relationship_read")) return null;
-  return value.payload as ReadPayload;
-}
 
 function invitationRecordId(token: string): string {
   return `relationship-invitation:${digest(token)}`;
@@ -286,37 +242,45 @@ function messageRecordId(
   return `relationship-message:${digest(conversationId, senderAccountId, requestId)}`;
 }
 
-function readRecordId(conversationId: string, accountId: string): string {
-  return `relationship-read:${digest(conversationId, accountId)}`;
+function replyDraftRecordId(conversationId: string, accountId: string): string {
+  return `relationship-reply-draft:${digest(conversationId, accountId)}`;
 }
+
 
 function qualificationVersion(bindingId: string, status: string, updatedAt: string): string {
   return `qv_${digest(bindingId, status, updatedAt).slice(0, 32)}`;
+}
+
+function participants(conversation: RelationshipConversationRow): readonly [string, string] {
+  return [conversation.inviterAccountId, conversation.inviteeAccountId];
+}
+
+function displayNames(conversation: RelationshipConversationRow): Record<string, string> {
+  return Object.fromEntries(participants(conversation).map((id) => [id, conversation.members.find((member) => member.accountId === id)?.displayName ?? ""]));
+}
+
+function messageDto(message: RelationshipMessageRow): RelationshipMessageDTO {
+  return {
+    body: message.body,
+    conversationId: message.conversationId,
+    deliveryState: "delivered",
+    messageId: message.messageId,
+    senderAccountId: message.senderAccountId,
+    senderDisplayName: message.senderDisplayName,
+    sentAt: message.sentAt,
+  };
 }
 
 function addSevenDays(timestamp: string): string {
   return new Date(Date.parse(timestamp) + 7 * 24 * 60 * 60 * 1000).toISOString();
 }
 
-function hasParticipant(conversation: ConversationPayload, accountId: string): boolean {
-  return conversation.participantAccountIds.includes(accountId);
-}
 
-function messageDto(payload: MessagePayload): RelationshipMessageDTO {
-  return {
-    body: payload.body,
-    conversationId: payload.conversationId,
-    deliveryState: "delivered",
-    messageId: payload.messageId,
-    senderAccountId: payload.senderAccountId,
-    senderDisplayName: payload.senderDisplayName,
-    sentAt: payload.sentAt,
-  };
-}
 
 export function createRelationshipCommunicationService({
   actor,
   invitationBaseUrl,
+  messages,
   now = () => new Date().toISOString(),
   randomToken = () => randomBytes(32).toString("base64url"),
   resolveContact,
@@ -328,6 +292,7 @@ export function createRelationshipCommunicationService({
   const email = normalizedEmail(actor.email);
   const baseUrl = required(invitationBaseUrl, "Invitation base URL", 2048).replace(/\/$/, "");
   const scopedWorkspaceId = required(workspaceId, "Workspace");
+  if (messages.workspaceId !== scopedWorkspaceId) throw new Error("Relationship message storage belongs to another workspace.");
 
   async function contactOwnedByActor(contactIdInput: string) {
     const contactId = required(contactIdInput, "Contact");
@@ -336,60 +301,6 @@ export function createRelationshipCommunicationService({
       throw new Error("This contact is not available to the signed-in account.");
     }
     return contact;
-  }
-
-  async function bindingForContact(contactId: string): Promise<BindingPayload | null> {
-    return bindingFrom(
-      await store.getRecord({
-        collectionName: RELATIONSHIP_COMMUNICATION_COLLECTIONS.bindings,
-        recordId: bindingRecordId(accountId, contactId),
-        workspaceId: scopedWorkspaceId,
-      }),
-    );
-  }
-
-  async function messagesFor(conversationId: string): Promise<MessagePayload[]> {
-    const records = await store.listRecords({
-      limit: "unbounded",
-      collectionName: RELATIONSHIP_COMMUNICATION_COLLECTIONS.messages,
-      targetId: conversationId,
-      workspaceId: scopedWorkspaceId,
-    });
-    return records
-      .flatMap((item) => {
-        const payload = messageFrom(item);
-        return payload && payload.conversationId === conversationId ? [payload] : [];
-      })
-      .sort(
-        (left, right) =>
-          left.sentAt.localeCompare(right.sentAt) ||
-          left.messageId.localeCompare(right.messageId),
-      );
-  }
-
-  async function currentBindingForConversation(
-    conversation: ConversationPayload,
-  ): Promise<BindingPayload | null> {
-    const binding = bindingFrom(
-      await store.getRecord({
-        collectionName: RELATIONSHIP_COMMUNICATION_COLLECTIONS.bindings,
-        recordId: conversation.bindingId,
-        workspaceId: scopedWorkspaceId,
-      }),
-    );
-    if (
-      !binding ||
-      binding.status !== "confirmed" ||
-      conversation.status !== "active" ||
-      binding.contactId !== conversation.contactId ||
-      binding.conversationId !== conversation.conversationId ||
-      binding.qualificationVersion !== conversation.qualificationVersion ||
-      !conversation.participantAccountIds.includes(binding.inviterAccountId) ||
-      !conversation.participantAccountIds.includes(binding.remoteAccountId)
-    ) {
-      return null;
-    }
-    return binding;
   }
 
   async function invitationForIntendedAccount(tokenInput: string): Promise<InvitationPayload> {
@@ -413,69 +324,96 @@ export function createRelationshipCommunicationService({
     return invitation;
   }
 
-  async function conversationSnapshot(
-    payload: ConversationPayload,
-  ): Promise<RelationshipConversationDTO> {
-    const messages = await messagesFor(payload.conversationId);
-    const read = readFrom(
-      await store.getRecord({
-        collectionName: RELATIONSHIP_COMMUNICATION_COLLECTIONS.reads,
-        recordId: readRecordId(payload.conversationId, accountId),
-        workspaceId: scopedWorkspaceId,
-      }),
-    );
-    const readIndex = read
-      ? messages.findIndex((item) => item.messageId === read.lastReadMessageId)
-      : -1;
-    const unreadCount = messages.filter(
-      (item, index) => item.senderAccountId !== accountId && index > readIndex,
-    ).length;
+  /** The conversation row when the actor is an active member of an active conversation. */
+  async function visibleConversation(conversationIdInput: string): Promise<RelationshipConversationRow> {
+    const conversationId = required(conversationIdInput, "Conversation");
+    const conversation = await messages.conversation(conversationId);
+    const member = conversation?.members.find((item) => item.accountId === accountId);
+    if (!conversation || conversation.status !== "active" || member?.state !== "active" || conversation.members.length !== 2) {
+      throw new Error("This conversation is not available to the signed-in account.");
+    }
+    return conversation;
+  }
+
+  async function conversationSnapshot(conversation: RelationshipConversationRow): Promise<RelationshipConversationDTO> {
+    const member = conversation.members.find((item) => item.accountId === accountId)!;
+    const history = await messages.recentMessages(conversation.conversationId, CONVERSATION_MESSAGE_LIMIT);
+    const lastReadMessageId = member.readSeq > 0
+      ? history.find((item) => item.seq === member.readSeq)?.messageId
+        ?? (await messages.messageIdAtSeq(conversation.conversationId, member.readSeq)) ?? undefined
+      : undefined;
     return {
-      contactId: payload.contactId,
-      conversationId: payload.conversationId,
-      createdAt: payload.createdAt,
-      lastReadMessageId: read?.lastReadMessageId,
-      messages: messages.map(messageDto),
-      participantAccountIds: payload.participantAccountIds,
-      participantDisplayNames: payload.participantDisplayNames,
-      qualificationVersion: payload.qualificationVersion,
-      status: payload.status,
-      unreadCount,
-      updatedAt: payload.updatedAt,
+      contactId: conversation.inviterContactId,
+      conversationId: conversation.conversationId,
+      createdAt: conversation.createdAt,
+      lastReadMessageId,
+      messages: history.map(messageDto),
+      participantAccountIds: participants(conversation),
+      participantDisplayNames: displayNames(conversation),
+      qualificationVersion: conversation.qualificationVersion,
+      status: "active",
+      unreadCount: member.unreadCount,
+      updatedAt: conversation.lastMessageAt,
     };
   }
 
-  async function conversationDto(payload: ConversationPayload): Promise<RelationshipConversationDTO> {
-    if (
-      !hasParticipant(payload, accountId) ||
-      !(await currentBindingForConversation(payload))
-    ) {
-      throw new Error("This conversation is not available to the signed-in account.");
-    }
-    return conversationSnapshot(payload);
+  // A delivered reply is no longer a draft (Sprint 0122, Codex 104-C). The send
+  // request itself retires the sender's draft saved up to the delivery time, so a
+  // lost client-side clear cannot restore sent text, and text saved after the
+  // send (another device, a retried request) is never erased. A failure here
+  // fails the request; retrying with the same request id is idempotent.
+  async function retireReplyDraftSentBy(conversationId: string, sentAt: string): Promise<void> {
+    const recordId = replyDraftRecordId(conversationId, accountId);
+    const stored = await store.getRecord({
+      workspaceId: scopedWorkspaceId,
+      collectionName: RELATIONSHIP_REPLY_DRAFT_COLLECTION,
+      recordId,
+      userId: accountId,
+    });
+    const payload = stored?.payload;
+    if (!payload || payload.accountId !== accountId || payload.conversationId !== conversationId) return;
+    if (typeof payload.body !== "string" || !payload.body || typeof payload.updatedAt !== "string") return;
+    if (Date.parse(payload.updatedAt) > Date.parse(sentAt)) return;
+    await store.upsertRecord({
+      ...record({
+        collectionName: RELATIONSHIP_REPLY_DRAFT_COLLECTION,
+        payload: { ...payload, body: "", updatedAt: sentAt },
+        recordId,
+        targetId: conversationId,
+        timestamp: sentAt,
+        userId: accountId,
+        workspaceId: scopedWorkspaceId,
+      }),
+      searchText: "",
+      sourceLabel: "Orbit relationship reply draft",
+      targetType: RELATIONSHIP_REPLY_DRAFT_TARGET_TYPE,
+    });
   }
 
   return {
     async getEligibility(contactIdInput) {
       const contact = await contactOwnedByActor(contactIdInput);
-      const binding = await bindingForContact(contact.contactId);
-      if (binding) {
+      const conversation = await messages.conversationForInviterContact(accountId, contact.contactId);
+      if (conversation) {
+        const remote = conversation.members.find((item) => item.accountId === conversation.inviteeAccountId);
         return {
-          canInvite: binding.status === "revoked",
-          canSend: binding.status === "confirmed",
+          canInvite: conversation.status === "revoked",
+          canSend: conversation.status === "active",
           contactId: contact.contactId,
-          conversationId: binding.conversationId,
-          qualificationVersion: binding.qualificationVersion,
+          conversationId: conversation.conversationId,
+          qualificationVersion: conversation.qualificationVersion,
           remoteAccount: {
-            accountId: binding.remoteAccountId,
-            displayName: binding.remoteDisplayName,
+            accountId: conversation.inviteeAccountId,
+            displayName: remote?.displayName ?? "",
           },
-          status: binding.status,
+          status: conversation.status === "active" ? "confirmed" : "revoked",
         };
       }
+      // Bounded: this actor's invitations to this one contact, newest first.
       const invitations = await store.listRecords({
-        limit: "unbounded",
+        limit: INVITATION_LOOKUP_LIMIT,
         collectionName: RELATIONSHIP_COMMUNICATION_COLLECTIONS.invitations,
+        targetId: contact.contactId,
         userId: accountId,
         workspaceId: scopedWorkspaceId,
       });
@@ -585,80 +523,20 @@ export function createRelationshipCommunicationService({
         throw new Error("This invitation has been revoked.");
       }
       const acceptedAt = invitation.acceptedAt ?? now();
-      const bindingId = bindingRecordId(
-        invitation.inviterAccountId,
-        invitation.contactId,
-      );
-      const conversationId = conversationRecordId(
-        invitation.inviterAccountId,
-        accountId,
-        invitation.contactId,
-      );
-      const version = qualificationVersion(bindingId, "confirmed", acceptedAt);
-      const existingBinding = bindingFrom(
-        await store.getRecord({
-          collectionName: RELATIONSHIP_COMMUNICATION_COLLECTIONS.bindings,
-          recordId: bindingId,
-          workspaceId: scopedWorkspaceId,
-        }),
-      );
-      if (
-        existingBinding &&
-        (existingBinding.remoteAccountId !== accountId ||
-          existingBinding.status === "revoked")
-      ) {
-        throw new Error("This contact identity has a conflicting binding.");
-      }
-      const binding: BindingPayload = existingBinding ?? {
-        bindingId,
-        contactId: invitation.contactId,
-        conversationId,
+      const bindingId = bindingRecordId(invitation.inviterAccountId, invitation.contactId);
+      // One transaction creates the conversation and both member rows; replaying
+      // an acceptance returns the stored conversation, a different account or a
+      // revoked conversation for the same (inviter, contact) is a conflict.
+      const conversation = await messages.createConversation({
+        conversationId: conversationRecordId(invitation.inviterAccountId, accountId, invitation.contactId),
         createdAt: acceptedAt,
+        inviteeAccountId: accountId,
+        inviteeDisplayName: displayName,
         inviterAccountId: invitation.inviterAccountId,
+        inviterContactId: invitation.contactId,
         inviterDisplayName: invitation.inviterDisplayName,
-        kind: "relationship_binding",
-        qualificationVersion: version,
-        remoteAccountId: accountId,
-        remoteDisplayName: displayName,
-        status: "confirmed",
-        updatedAt: acceptedAt,
-      };
-      const conversation: ConversationPayload = {
-        bindingId,
-        contactId: invitation.contactId,
-        conversationId,
-        createdAt: binding.createdAt,
-        kind: "relationship_conversation",
-        participantAccountIds: [invitation.inviterAccountId, accountId],
-        participantDisplayNames: {
-          [invitation.inviterAccountId]: invitation.inviterDisplayName,
-          [accountId]: displayName,
-        },
-        qualificationVersion: binding.qualificationVersion,
-        status: "active",
-        updatedAt: binding.updatedAt,
-      };
-      await store.upsertRecord(
-        record({
-          collectionName: RELATIONSHIP_COMMUNICATION_COLLECTIONS.bindings,
-          payload: binding,
-          recordId: bindingId,
-          targetId: invitation.contactId,
-          timestamp: binding.updatedAt,
-          userId: invitation.inviterAccountId,
-          workspaceId: scopedWorkspaceId,
-        }),
-      );
-      await store.upsertRecord(
-        record({
-          collectionName: RELATIONSHIP_COMMUNICATION_COLLECTIONS.conversations,
-          payload: conversation,
-          recordId: conversationId,
-          targetId: conversationId,
-          timestamp: conversation.updatedAt,
-          workspaceId: scopedWorkspaceId,
-        }),
-      );
+        qualificationVersion: qualificationVersion(bindingId, "confirmed", acceptedAt),
+      });
       const acceptedInvitation: InvitationPayload = {
         ...invitation,
         acceptedAt,
@@ -680,9 +558,9 @@ export function createRelationshipCommunicationService({
       return {
         canInvite: false,
         canSend: true,
-        contactId: binding.contactId,
-        conversationId,
-        qualificationVersion: binding.qualificationVersion,
+        contactId: conversation.inviterContactId,
+        conversationId: conversation.conversationId,
+        qualificationVersion: conversation.qualificationVersion,
         remoteAccount: {
           accountId: invitation.inviterAccountId,
           displayName: invitation.inviterDisplayName,
@@ -693,73 +571,33 @@ export function createRelationshipCommunicationService({
 
     async revokeContactBinding(contactIdInput) {
       const contact = await contactOwnedByActor(contactIdInput);
-      const binding = await bindingForContact(contact.contactId);
-      if (!binding) {
+      const conversation = await messages.conversationForInviterContact(accountId, contact.contactId);
+      if (!conversation) {
         throw new Error("No confirmed eligibility exists for this contact.");
       }
-      if (binding.status === "revoked") {
+      if (conversation.status === "revoked") {
         return {
           canInvite: true,
           canSend: false,
-          contactId: binding.contactId,
-          conversationId: binding.conversationId,
-          qualificationVersion: binding.qualificationVersion,
+          contactId: conversation.inviterContactId,
+          conversationId: conversation.conversationId,
+          qualificationVersion: conversation.qualificationVersion,
           status: "revoked",
         };
       }
       const revokedAt = now();
-      const version = qualificationVersion(binding.bindingId, "revoked", revokedAt);
-      const revoked: BindingPayload = {
-        ...binding,
-        qualificationVersion: version,
-        revokedAt,
-        status: "revoked",
-        updatedAt: revokedAt,
-      };
-      await store.upsertRecord(
-        record({
-          collectionName: RELATIONSHIP_COMMUNICATION_COLLECTIONS.bindings,
-          payload: revoked,
-          recordId: binding.bindingId,
-          targetId: binding.contactId,
-          timestamp: revokedAt,
-          userId: accountId,
-          workspaceId: scopedWorkspaceId,
-        }),
-      );
-      const conversation = conversationFrom(
-        await store.getRecord({
-          collectionName: RELATIONSHIP_COMMUNICATION_COLLECTIONS.conversations,
-          recordId: binding.conversationId,
-          workspaceId: scopedWorkspaceId,
-        }),
-      );
-      if (conversation) {
-        await store.upsertRecord(
-          record({
-            collectionName: RELATIONSHIP_COMMUNICATION_COLLECTIONS.conversations,
-            payload: {
-              ...conversation,
-              qualificationVersion: version,
-              status: "revoked",
-              updatedAt: revokedAt,
-            },
-            recordId: conversation.conversationId,
-            targetId: conversation.conversationId,
-            timestamp: revokedAt,
-            workspaceId: scopedWorkspaceId,
-          }),
-        );
-      }
+      const version = qualificationVersion(bindingRecordId(accountId, contact.contactId), "revoked", revokedAt);
+      await messages.revoke({ conversationId: conversation.conversationId, qualificationVersion: version, revokedAt, revokedByAccountId: accountId });
+      const remote = conversation.members.find((item) => item.accountId === conversation.inviteeAccountId);
       return {
         canInvite: true,
         canSend: false,
-        contactId: revoked.contactId,
-        conversationId: revoked.conversationId,
+        contactId: conversation.inviterContactId,
+        conversationId: conversation.conversationId,
         qualificationVersion: version,
         remoteAccount: {
-          accountId: revoked.remoteAccountId,
-          displayName: revoked.remoteDisplayName,
+          accountId: conversation.inviteeAccountId,
+          displayName: remote?.displayName ?? "",
         },
         status: "revoked",
       };
@@ -768,60 +606,31 @@ export function createRelationshipCommunicationService({
     async listConversations(input = {}) {
       const limit = input.limit ?? 50;
       if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw new Error("Invalid conversation page limit");
-      let after: [string, string] | null = null;
+      let after: { at: string; id: string } | null = null;
       if (input.cursor) {
         try {
           const decoded = JSON.parse(Buffer.from(input.cursor, "base64url").toString("utf8"));
           if (!Array.isArray(decoded) || decoded.length !== 3 || decoded[0] !== accountId || !Number.isFinite(Date.parse(decoded[1])) || typeof decoded[2] !== "string") throw new Error();
-          after = [decoded[1], decoded[2]];
+          after = { at: decoded[1], id: decoded[2] };
         } catch { throw new Error("Invalid conversation cursor"); }
       }
-      const records = await store.listRecords({
-        limit: "unbounded",
-        collectionName: RELATIONSHIP_COMMUNICATION_COLLECTIONS.conversations,
-        workspaceId: scopedWorkspaceId,
-      });
-      const candidates = await Promise.all(
-        records.map(async (item) => {
-          const payload = conversationFrom(item);
-          if (
-            !payload ||
-            !hasParticipant(payload, accountId) ||
-            !(await currentBindingForConversation(payload))
-          ) {
-            return null;
-          }
-          return conversationSnapshot(payload);
-        }),
-      );
-      const conversations = candidates.filter(
-        (item): item is RelationshipConversationDTO => item !== null,
-      );
-      conversations.sort((left, right) => right.updatedAt.localeCompare(left.updatedAt) || left.conversationId.localeCompare(right.conversationId));
-      const remaining = after ? conversations.filter(item => item.updatedAt < after![0] || (item.updatedAt === after![0] && item.conversationId.localeCompare(after![1]) > 0)) : conversations;
-      const page = remaining.slice(0, limit);
+      const ids = await messages.memberConversationIds(accountId, limit + 1, after);
+      const page: RelationshipConversationDTO[] = [];
+      for (const id of ids.slice(0, limit)) {
+        const conversation = await messages.conversation(id);
+        if (conversation) page.push(await conversationSnapshot(conversation));
+      }
       const last = page.at(-1);
       return {
         conversations: page,
-        nextCursor: remaining.length > limit && last ? Buffer.from(JSON.stringify([accountId, last.updatedAt, last.conversationId])).toString("base64url") : null,
-        unreadTotal: conversations.reduce((sum, item) => sum + item.unreadCount, 0),
+        nextCursor: ids.length > limit && last ? Buffer.from(JSON.stringify([accountId, last.updatedAt, last.conversationId])).toString("base64url") : null,
+        unreadTotal: await messages.unreadTotal(accountId),
         refreshedAt: now(),
       };
     },
 
     async getConversation(conversationIdInput) {
-      const conversationId = required(conversationIdInput, "Conversation");
-      const payload = conversationFrom(
-        await store.getRecord({
-          collectionName: RELATIONSHIP_COMMUNICATION_COLLECTIONS.conversations,
-          recordId: conversationId,
-          workspaceId: scopedWorkspaceId,
-        }),
-      );
-      if (!payload || !hasParticipant(payload, accountId)) {
-        throw new Error("This conversation is not available to the signed-in account.");
-      }
-      return conversationDto(payload);
+      return conversationSnapshot(await visibleConversation(conversationIdInput));
     },
 
     async sendMessage(input) {
@@ -829,151 +638,79 @@ export function createRelationshipCommunicationService({
       const body = required(input.body, "Message body", 10_000);
       const requestId = required(input.requestId, "Request id");
       const requestedVersion = required(input.qualificationVersion, "Qualification version");
-      const conversation = conversationFrom(
-        await store.getRecord({
-          collectionName: RELATIONSHIP_COMMUNICATION_COLLECTIONS.conversations,
-          recordId: conversationId,
-          workspaceId: scopedWorkspaceId,
-        }),
-      );
-      if (!conversation || !hasParticipant(conversation, accountId)) {
-        throw new Error("This conversation is not available to the signed-in account.");
-      }
-      const binding = await currentBindingForConversation(conversation);
-      if (!binding) {
-        throw new Error("Message eligibility has been revoked.");
-      }
-      if (
-        binding.qualificationVersion !== requestedVersion ||
-        conversation.qualificationVersion !== requestedVersion
-      ) {
-        throw new Error("Message eligibility is stale; refresh before retrying.");
-      }
-      const messageId = messageRecordId(conversationId, accountId, requestId);
-      const existing = messageFrom(
-        (await store.getRecord({
-          collectionName: RELATIONSHIP_COMMUNICATION_COLLECTIONS.messages,
-          recordId: messageId,
-          workspaceId: scopedWorkspaceId,
-        })) ?? ({ payload: {} } as LiveRecord<Record<string, unknown>>),
-      );
-      if (existing) {
-        if (
-          existing.body !== body ||
-          existing.senderAccountId !== accountId ||
-          existing.qualificationVersion !== requestedVersion
-        ) {
-          throw new Error("This request id was already used for a different message.");
-        }
-        return {
-          conversationId,
-          deliveryState: "delivered",
-          message: messageDto(existing),
-          qualificationVersion: requestedVersion,
-        };
-      }
-      const sentAt = now();
-      const message: MessagePayload = {
+      const { message } = await messages.send({
         body,
         conversationId,
-        deliveryState: "delivered",
-        kind: "relationship_message",
-        messageId,
+        messageId: messageRecordId(conversationId, accountId, requestId),
+        now,
         qualificationVersion: requestedVersion,
         requestId,
         senderAccountId: accountId,
         senderDisplayName: displayName,
-        sentAt,
-      };
-      await store.upsertRecord(
-        record({
-          collectionName: RELATIONSHIP_COMMUNICATION_COLLECTIONS.messages,
-          payload: message,
-          recordId: messageId,
-          targetId: conversationId,
-          timestamp: sentAt,
-          workspaceId: scopedWorkspaceId,
-        }),
-      );
-      const persisted = messageFrom(
-        await store.getRecord({
-          collectionName: RELATIONSHIP_COMMUNICATION_COLLECTIONS.messages,
-          recordId: messageId,
-          workspaceId: scopedWorkspaceId,
-        }),
-      );
-      if (
-        !persisted ||
-        persisted.conversationId !== conversationId ||
-        persisted.senderAccountId !== accountId
-      ) {
-        throw new Error("The message could not be confirmed as delivered.");
-      }
-      await store.upsertRecord(
-        record({
-          collectionName: RELATIONSHIP_COMMUNICATION_COLLECTIONS.conversations,
-          payload: { ...conversation, updatedAt: sentAt },
-          recordId: conversationId,
-          targetId: conversationId,
-          timestamp: sentAt,
-          workspaceId: scopedWorkspaceId,
-        }),
-      );
+      });
+      await retireReplyDraftSentBy(conversationId, message.sentAt);
       return {
         conversationId,
         deliveryState: "delivered",
-        message: messageDto(persisted),
+        message: messageDto(message),
         qualificationVersion: requestedVersion,
       };
     },
 
-    async markConversationRead(input) {
-      const conversationId = required(input.conversationId, "Conversation");
-      const conversation = conversationFrom(await store.getRecord({
+    async getReplyDraft(conversationIdInput) {
+      const conversation = await visibleConversation(conversationIdInput);
+      const stored = await store.getRecord({
         workspaceId: scopedWorkspaceId,
-        collectionName: RELATIONSHIP_COMMUNICATION_COLLECTIONS.conversations,
-        recordId: conversationId,
-      }));
-      if (!conversation || !hasParticipant(conversation, accountId) || !(await currentBindingForConversation(conversation))) {
-        throw new Error("This conversation is not available to the signed-in account.");
-      }
-      const lastReadMessageId = required(input.lastReadMessageId, "Last read message");
-      // Membership needs the target message identity, never its body or the
-      // entire history. Canonical message record IDs equal messageId.
-      const [message] = await store.listRecords({
-        workspaceId: scopedWorkspaceId,
-        collectionName: RELATIONSHIP_COMMUNICATION_COLLECTIONS.messages,
-        targetId: conversationId,
-        recordIds: [lastReadMessageId],
-        limit: 1,
-        payloadFields: ["kind", "conversationId", "messageId"],
-        omitSearchText: true,
+        collectionName: RELATIONSHIP_REPLY_DRAFT_COLLECTION,
+        recordId: replyDraftRecordId(conversation.conversationId, accountId),
+        userId: accountId,
       });
-      if (message?.payload.kind !== "relationship_message" || message.payload.conversationId !== conversationId || message.payload.messageId !== lastReadMessageId) {
-        throw new Error("The last read message is not available in this conversation.");
-      }
-      const readAt = now();
-      const payload: ReadPayload = {
-        accountId,
+      const payload = stored?.payload;
+      const owned = payload && payload.accountId === accountId && payload.conversationId === conversation.conversationId;
+      return {
+        body: owned && typeof payload.body === "string" ? payload.body : "",
         conversationId: conversation.conversationId,
-        kind: "relationship_read",
-        lastReadMessageId,
-        readAt,
+        updatedAt: owned && typeof payload.updatedAt === "string" ? payload.updatedAt : null,
       };
-      await store.upsertRecord(
-        record({
-          collectionName: RELATIONSHIP_COMMUNICATION_COLLECTIONS.reads,
+    },
+
+    async saveReplyDraft(input) {
+      if (typeof input.body !== "string" || input.body.length > REPLY_DRAFT_MAX_LENGTH) {
+        throw new Error("Draft body must be text of at most 10000 characters.");
+      }
+      const conversation = await visibleConversation(input.conversationId);
+      const updatedAt = now();
+      const payload = {
+        accountId,
+        body: input.body,
+        conversationId: conversation.conversationId,
+        kind: "relationship_reply_draft",
+        updatedAt,
+      };
+      await store.upsertRecord({
+        ...record({
+          collectionName: RELATIONSHIP_REPLY_DRAFT_COLLECTION,
           payload,
-          recordId: readRecordId(conversation.conversationId, accountId),
+          recordId: replyDraftRecordId(conversation.conversationId, accountId),
           targetId: conversation.conversationId,
-          timestamp: readAt,
+          timestamp: updatedAt,
           userId: accountId,
           workspaceId: scopedWorkspaceId,
         }),
-      );
+        searchText: "",
+        sourceLabel: "Orbit relationship reply draft",
+        targetType: RELATIONSHIP_REPLY_DRAFT_TARGET_TYPE,
+      });
+      return { body: input.body, conversationId: conversation.conversationId, updatedAt };
+    },
+
+    async markConversationRead(input) {
+      const conversationId = required(input.conversationId, "Conversation");
+      const readAt = now();
+      await messages.markRead({ accountId, conversationId, messageId: input.lastReadMessageId, now: readAt });
       return {
-        conversationId: conversation.conversationId,
-        lastReadMessageId,
+        conversationId,
+        lastReadMessageId: input.lastReadMessageId.trim(),
         readAt,
       };
     },

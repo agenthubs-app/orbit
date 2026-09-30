@@ -20,7 +20,9 @@ import { LoadingState } from "../../components/LoadingState";
 import { textStyles, radius, spacing, typography } from "../../design/tokens";
 import { createControlStyles } from "../../design/controls";
 import { createThemedStyles, useOrbitTheme } from "../../design/theme";
-import { useApiResource } from "../../hooks/useApiResource";
+import { OfflineNotice } from "../../components/OfflineNotice";
+import { NeedsNetworkState } from "../../components/NeedsNetworkState";
+import { usePageCopyResource } from "../../hooks/usePageCopyResource";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import {
@@ -40,10 +42,13 @@ export function AgentActionsScreen() {
   const { colors } = useOrbitTheme();
   const locale = useOrbitLocale();
   const client = useOrbitApiClient();
-  const actionsState = useApiResource<unknown>(
+  // Sprint 0131: the device keeps the last online answer (page copy "agent-actions"); offline it stays with 截至.
+  const actionsState = usePageCopyResource<unknown>(
     ORBIT_API_ENDPOINTS.agentActions,
-    (data) => agentActionsToView({ actionsPayload: data }).actions.length === 0
+    (data) => agentActionsToView({ actionsPayload: data }).actions.length === 0,
+    { copy: { id: "agent-actions" } }
   );
+  const offline = actionsState.copy?.offline === true;
   const [pendingDecision, setPendingDecision] =
     useState<PendingAgentActionDecision | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -104,9 +109,10 @@ export function AgentActionsScreen() {
       }
       title={locale.t("agentActions.title")}
     >
+      {offline ? <OfflineNotice lastSyncedAt={actionsState.copy?.lastSyncedAt ?? null} reason={actionsState.copy?.reason ?? null} /> : null}
       {actionsState.kind === "loading" ? <LoadingState /> : null}
       {actionsState.kind === "offline" ? (
-        <ErrorState message={actionsState.error.message} title={locale.t("agentActions.serverUnavailable")} />
+        <NeedsNetworkState message={locale.t("sync.notOnDevice")} onRetry={actionsState.refresh} />
       ) : null}
       {actionsState.kind === "failure" ? (
         <ErrorState message={actionsState.error.message} title={locale.t("agentActions.queueUnavailable")} />
@@ -115,6 +121,7 @@ export function AgentActionsScreen() {
         <AgentActionsContent
           actionError={actionError}
           feedback={feedback}
+          offline={offline}
           onDecision={decideAction}
           pendingDecision={pendingDecision}
           view={agentActionsToView({
@@ -129,12 +136,14 @@ export function AgentActionsScreen() {
 function AgentActionsContent({
   actionError,
   feedback,
+  offline,
   onDecision,
   pendingDecision,
   view
 }: {
   actionError: string | null;
   feedback: string | null;
+  offline: boolean;
   onDecision: (action: AgentActionCardView, decision: AgentActionDecision) => void;
   pendingDecision: PendingAgentActionDecision | null;
   view: AgentActionsView;
@@ -184,6 +193,7 @@ function AgentActionsContent({
           <AgentActionCard
             action={action}
             key={action.id}
+            offline={offline}
             onDecision={onDecision}
             pendingDecision={pendingDecision}
           />
@@ -195,10 +205,12 @@ function AgentActionsContent({
 
 function AgentActionCard({
   action,
+  offline,
   onDecision,
   pendingDecision
 }: {
   action: AgentActionCardView;
+  offline: boolean;
   onDecision: (action: AgentActionCardView, decision: AgentActionDecision) => void;
   pendingDecision: PendingAgentActionDecision | null;
 }) {
@@ -209,6 +221,7 @@ function AgentActionCard({
   const dismissPending =
     pendingDecision?.id === action.id && pendingDecision.decision === "dismiss";
   const actionPending = pendingDecision?.id === action.id;
+  const needsNetwork = offline ? ` · ${locale.t("sync.needsNetwork")}` : "";
 
   return (
     <DataCard
@@ -240,32 +253,34 @@ function AgentActionCard({
       <View style={styles.actionButtonRow}>
         <Pressable
           accessibilityRole="button"
-          disabled={Boolean(pendingDecision)}
+          accessibilityState={{ disabled: offline || Boolean(pendingDecision) }}
+          disabled={offline || Boolean(pendingDecision)}
           onPress={() => onDecision(action, "accept")}
           style={({ pressed }) => [
             styles.primaryButton,
-            actionPending ? styles.disabled : null,
+            actionPending || offline ? styles.disabled : null,
             pressed ? styles.pressed : null
           ]}
         >
           <Ionicons color={colors.onAccent} name="checkmark-outline" size={17} />
           <Text style={styles.primaryButtonText}>
-            {acceptPending ? locale.t("agentActions.confirming") : action.acceptLabel}
+            {acceptPending ? locale.t("agentActions.confirming") : action.acceptLabel + needsNetwork}
           </Text>
         </Pressable>
         <Pressable
           accessibilityRole="button"
-          disabled={Boolean(pendingDecision)}
+          accessibilityState={{ disabled: offline || Boolean(pendingDecision) }}
+          disabled={offline || Boolean(pendingDecision)}
           onPress={() => onDecision(action, "dismiss")}
           style={({ pressed }) => [
             styles.secondaryButton,
-            actionPending ? styles.disabled : null,
+            actionPending || offline ? styles.disabled : null,
             pressed ? styles.pressed : null
           ]}
         >
           <Ionicons color={colors.accent} name="close-outline" size={17} />
           <Text style={styles.secondaryButtonText}>
-            {dismissPending ? locale.t("agentActions.processing") : action.dismissLabel}
+            {dismissPending ? locale.t("agentActions.processing") : action.dismissLabel + needsNetwork}
           </Text>
         </Pressable>
       </View>

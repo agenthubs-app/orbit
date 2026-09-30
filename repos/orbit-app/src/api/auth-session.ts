@@ -293,7 +293,7 @@ function stringField(payload: JsonBody | null, fieldName: string): string {
 }
 
 function callbackUrl(baseUrl: string, redirectTo: string): string {
-  const safeRedirect = redirectTo.startsWith("/") ? redirectTo : "/dashboard";
+  const safeRedirect = redirectTo.startsWith("/") ? redirectTo : "/home";
   return `${normalizeOrbitApiBaseUrl(baseUrl)}/app${safeRedirect}`;
 }
 
@@ -317,7 +317,7 @@ export async function signInWithCredentials({
   email,
   fetchImpl = fetch,
   password,
-  redirectTo = "/dashboard"
+  redirectTo = "/home"
 }: {
   baseUrl: string;
   cookieHeader?: string;

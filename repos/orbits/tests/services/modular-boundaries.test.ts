@@ -172,11 +172,9 @@ test("product presenters consume route view models instead of Orbit AI service p
     "app/(app)/app/agent/iorbit-0918/iorbit-model.ts",
     "app/(app)/app/agent/iorbit-0918/use-agent-chat.ts",
     "app/(app)/app/agent/iorbit-0918/use-agent-history.ts",
-    "app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-view-model-adapter.ts",
   ];
-  const routeViewModelFiles = [
-    "app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-route-view-model.ts",
-  ];
+  // Sprint 0104: the legacy chat route view model was the only entry here.
+  const routeViewModelFiles: string[] = [];
 
   for (const path of presenterFiles) {
     const contents = source(path);

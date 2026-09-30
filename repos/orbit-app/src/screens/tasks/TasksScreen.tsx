@@ -11,6 +11,7 @@ import { Pressable, RefreshControl, StyleSheet, Text, View } from "react-native"
 import { taskPath } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
 import { EmptyState } from "../../components/EmptyState";
+import { OfflineNotice } from "../../components/OfflineNotice";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
 import { layout } from "../../design/tokens";
@@ -85,6 +86,7 @@ export function TasksScreen() {
 
   async function toggleTask(item: TaskListRowView) {
     const baseline = canonical?.find(task => task.id === item.id);
+    if (source.offline) return;
     if (!ready || !baseline || !scope.active || currentScope.current !== scope || scope.busy) return;
     scope.busy = true;
     setUpdatingId(item.id);
@@ -130,7 +132,7 @@ export function TasksScreen() {
         {([ ["all", locale.t("tasks.scopeAll")], ["relationship", locale.t("tasks.scopeRelationship")] ] as const).map(([value, label]) => <Pressable key={value} accessibilityRole="tab" accessibilityLabel={label} aria-selected={selection.scope === value} accessibilityState={{ selected: selection.scope === value }} onPress={() => setSelection(previous => ({ ...previous, scope: value }))} style={[styles.tab, selection.scope === value && styles.tabSelected]}><Text style={[styles.tabText, selection.scope === value && styles.tabTextSelected]}>{label}</Text></Pressable>)}
       </View>
       <TaskModeSwitcher mode={mode} onChange={view => setSelection(previous => ({ ...previous, view }))} openCount={source.counts?.open} completedCount={source.counts?.completed} />
-      {source.syncLabelKey ? <Text accessibilityLiveRegion="polite" style={styles.syncStatus}>{locale.t(source.syncLabelKey)}</Text> : null}
+      {source.offline ? <OfflineNotice lastSyncedAt={source.offline.lastSyncedAt} /> : source.syncLabelKey ? <Text accessibilityLiveRegion="polite" style={styles.syncStatus}>{locale.t(source.syncLabelKey)}</Text> : null}
       {source.loading ? <LoadingState /> : null}
       {source.failure ? (
         <ErrorState message={source.failure} title={locale.t("tasks.unavailable")} />
@@ -157,11 +159,11 @@ export function TasksScreen() {
               style={styles.row}
             >
               <Pressable
-                accessibilityLabel={locale.t(item.status === "completed" ? "tasks.restoreNamed" : "tasks.completeNamed", { title: item.title })}
+                accessibilityLabel={locale.t(item.status === "completed" ? "tasks.restoreNamed" : "tasks.completeNamed", { title: item.title }) + (source.offline ? " · " + locale.t("sync.needsNetwork") : "")}
                 accessibilityRole="checkbox"
                 aria-checked={item.status === "completed"}
-                accessibilityState={{ checked: item.status === "completed", disabled: updatingId !== null, busy: updatingId === item.id }}
-                disabled={updatingId !== null}
+                accessibilityState={{ checked: item.status === "completed", disabled: updatingId !== null || source.offline !== null, busy: updatingId === item.id }}
+                disabled={updatingId !== null || source.offline !== null}
                 onPress={() => void toggleTask(item)}
                 style={styles.checkButton}
               >

@@ -19,7 +19,14 @@ import {
   OrbitAgentChatOrganizationError,
   type OrbitAgentChatOrganizationStore,
 } from "../../../../../../features/orbit-ai/storage/orbit-agent-chat-session-transactions";
-import type { OrbitAgentChatSessionProvider } from "../../../../../../features/orbit-ai/storage/orbit-agent-chat-session-live-record-provider";
+import {
+  OrbitAgentChatSessionCursorError,
+  type OrbitAgentChatSessionProvider,
+} from "../../../../../../features/orbit-ai/storage/orbit-agent-chat-session-live-record-provider";
+import {
+  AI_SESSION_MESSAGE_PAGE_DEFAULT_LIMIT,
+  AI_SESSION_MESSAGE_PAGE_MAX_LIMIT,
+} from "../../../../../../shared/api-schema/ai-session-page";
 import type { OrbitAgentChatRequestStore } from "../../../../../../features/orbit-ai/reliable-send-service";
 import { createOrbitAgentChatRequestStore } from "../../../../../../features/orbit-ai/storage/orbit-agent-chat-request-store";
 import { createOrbitAgentChatSessionArtifactReader, type OrbitAgentChatSessionArtifactReader } from "../../../../../../features/orbit-ai/storage/orbit-agent-chat-session-artifact-reader";
@@ -159,9 +166,28 @@ export function createOrbitAgentChatSessionHandlers(
       }
 
       try {
-        const storedSession = await resolved.provider.getSession(id);
+        // Sprint 0112: one page of messages (latest first; `cursor` goes back),
+        // and cards only for the turns on that page.
+        const params = new URL(request.url).searchParams;
+        const rawLimit = params.get("limit");
+        const limit = rawLimit === null ? AI_SESSION_MESSAGE_PAGE_DEFAULT_LIMIT : Number(rawLimit);
+        const cursor = params.get("cursor");
+        if (!/^\d+$/.test(rawLimit ?? String(limit)) || !Number.isSafeInteger(limit) || limit < 1 || limit > AI_SESSION_MESSAGE_PAGE_MAX_LIMIT
+          || (cursor !== null && (!cursor || cursor.length > 8000))) {
+          return responseForError(mode, new AppError("VALIDATION_ERROR", "Invalid AI session message page query."));
+        }
+        let sessionPage: Awaited<ReturnType<OrbitAgentChatSessionProvider["getSessionPage"]>>;
+        try {
+          sessionPage = await resolved.provider.getSessionPage(id, { cursor, limit });
+        } catch (error) {
+          if (error instanceof OrbitAgentChatSessionCursorError) {
+            return responseForError(mode, new AppError("VALIDATION_ERROR", "Reload the latest messages of this AI session."));
+          }
+          throw error;
+        }
+        const storedSession = sessionPage?.session;
 
-        if (!storedSession) {
+        if (!sessionPage || !storedSession) {
           return responseForError(
             mode,
             new AppError(
@@ -193,7 +219,7 @@ export function createOrbitAgentChatSessionHandlers(
         const artifactReader = artifactReaderForActor(mode, resolved.actor.id);
         // A failed recovery must not erase the already authorized text history.
         const artifactRecovery = artifactReader
-          ? await artifactReader.read(session).catch(() => ({ turns: [], truncated: false, unavailable: true }))
+          ? await artifactReader.read(session, { precedingMessage: sessionPage.precedingMessage }).catch(() => ({ turns: [], truncated: false, unavailable: true }))
           : { turns: [], truncated: false };
         const requestRecord = requestId
           ? await requestStoreForActor(mode, resolved.actor.id)?.get(requestId)
@@ -214,6 +240,7 @@ export function createOrbitAgentChatSessionHandlers(
           success({
             ...(reliableSend ? { reliableSend } : {}),
             artifactRecovery,
+            page: sessionPage.page,
             session,
             storage: {
               configured: true,

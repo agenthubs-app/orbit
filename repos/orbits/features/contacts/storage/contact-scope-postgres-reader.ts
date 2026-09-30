@@ -8,7 +8,10 @@ const ECMASCRIPT_TRIM_CHARS_SQL = [
   "chr(8239)", "chr(8287)", "chr(12288)", "chr(65279)",
 ].join(" || ");
 
-export type ContactScopeRecordReader = (actorId: string, contactIds?: readonly string[]) => Promise<{
+/** `record` matches storage record ids (default); `domain` matches payload ids. */
+export type ContactScopeIdMatch = "record" | "domain";
+
+export type ContactScopeRecordReader = (actorId: string, contactIds?: readonly string[], match?: ContactScopeIdMatch) => Promise<{
   contactIds?: readonly string[];
   connectionIds: readonly string[];
   detailStateIds: readonly string[];
@@ -20,7 +23,7 @@ export function createPostgresContactScopeRecordReader(input: {
   client: LiveRecordSqlClient;
   workspaceId: string;
 }): ContactScopeRecordReader {
-  return async (actorId, contactIds) => {
+  return async (actorId, contactIds, match = "record") => {
     if (!actorId.trim() || contactIds?.length === 0) {
       return { contactIds: [], connectionIds: [], detailStateIds: [], evidenceRecordIds: [] };
     }
@@ -28,7 +31,7 @@ export function createPostgresContactScopeRecordReader(input: {
       select c.record_id, c.payload->>'id' as contact_id from orbit_records c
       where c.workspace_id = $1 and c.collection_name = 'contacts'
         and c.lifecycle_state <> 'deleted'
-        and ($3::text[] is null or c.record_id = any($3::text[]))
+        and ($3::text[] is null or ${match === "domain" ? "c.payload->>'id'" : "c.record_id"} = any($3::text[]))
         and c.user_id = $2
         and (c.payload->'accountId' is null or c.payload->'accountId'='null'::jsonb or c.payload->'accountId'=to_jsonb($2::text))
     `, [input.workspaceId, actorId, contactIds ?? null]);

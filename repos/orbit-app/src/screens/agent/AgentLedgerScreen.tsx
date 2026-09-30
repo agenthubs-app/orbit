@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { RefreshControl } from "react-native";
 import type {
   AgentLedgerListPayloadContract,
@@ -7,6 +7,7 @@ import type {
   AgentLedgerTransitionRequestContract
 } from "../../api/agent-ledger-contract";
 import {
+  agentLedgerPagePath,
   agentLedgerTransitionPath,
   ORBIT_API_ENDPOINTS
 } from "../../api/endpoints";
@@ -14,10 +15,15 @@ import { AppScreen } from "../../components/AppScreen";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
 import { useOrbitTheme } from "../../design/theme";
-import { useApiResource } from "../../hooks/useApiResource";
+import { NeedsNetworkState } from "../../components/NeedsNetworkState";
+import { OfflineNotice } from "../../components/OfflineNotice";
+import { usePageCopyResource } from "../../hooks/usePageCopyResource";
+import { useSyncCoordinatorSession } from "../../hooks/useSyncedCollection";
+import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import {
   agentLedgerToSurfaceView,
+  mergeAgentLedgerPages,
   type AgentLedgerEntryView,
   type AgentLedgerSurfaceMode
 } from "../../view-models/agent-ledger";
@@ -25,6 +31,9 @@ import {
   AgentLedgerContent,
   type PendingTransition
 } from "./AgentLedgerContent";
+
+/** Sprint 0131: ledger pages kept on the device (20 entries each; the first page plus a normal week of agent activity). */
+export const AGENT_LEDGER_COPY_PAGES = 3;
 
 function transitionFeedback(
   transition: AgentLedgerTransitionContract
@@ -54,10 +63,35 @@ export function AgentLedgerScreen({
 }) {
   const { colors } = useOrbitTheme();
   const client = useOrbitApiClient();
-  const ledgerState = useApiResource<AgentLedgerListPayloadContract>(
+  const locale = useOrbitLocale();
+  // Sprint 0131: the device keeps the first AGENT_LEDGER_COPY_PAGES pages (page copies
+  // "agent-ledger" page-1..page-3); offline they are browsable with 截至.
+  const ledgerState = usePageCopyResource<AgentLedgerListPayloadContract>(
     ORBIT_API_ENDPOINTS.agentLedger,
-    (data) => data.entries.length === 0
+    (data) => data.entries.length === 0,
+    { copy: { id: "agent-ledger", variant: "page-1" }, accept: (data) => Array.isArray((data as { entries?: unknown } | null)?.entries) }
   );
+  const offline = ledgerState.copy?.offline === true;
+  const copySession = useSyncCoordinatorSession();
+  // Older pages follow the server cursor (Sprint 0122, Codex 103-A). They
+  // belong to the first page they extend: a refresh, transition or account
+  // change replaces the first page and drops them, including a late reply.
+  const firstPage =
+    ledgerState.kind === "success" || ledgerState.kind === "empty"
+      ? ledgerState.data
+      : null;
+  const [olderPages, setOlderPages] = useState<{
+    base: AgentLedgerListPayloadContract;
+    pages: readonly AgentLedgerListPayloadContract[];
+  } | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
+  const loadMoreRequest = useRef<object | null>(null);
+  useEffect(() => {
+    loadMoreRequest.current = null;
+    setLoadingMore(false);
+    setLoadMoreError(null);
+  }, [firstPage]);
   const [pending, setPending] = useState<PendingTransition | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -104,10 +138,47 @@ export function AgentLedgerScreen({
     }
   }
 
-  const view =
-    ledgerState.kind === "success" || ledgerState.kind === "empty"
-      ? agentLedgerToSurfaceView(ledgerState.data, mode)
-      : null;
+  const loadedPages = firstPage
+    ? [firstPage, ...(olderPages?.base === firstPage ? olderPages.pages : [])]
+    : [];
+  const merged = firstPage ? mergeAgentLedgerPages(loadedPages) : null;
+
+  async function loadMore(): Promise<void> {
+    const cursor = merged?.nextCursor;
+    if (!firstPage || !cursor || loadMoreRequest.current) return;
+    const request = {};
+    const base = firstPage;
+    const previous = loadedPages.slice(1);
+    loadMoreRequest.current = request;
+    setLoadingMore(true);
+    setLoadMoreError(null);
+    let failure: string | null = null;
+    let page: AgentLedgerListPayloadContract | null = null;
+    const pageNumber = loadedPages.length + 1;
+    try {
+      if (offline) {
+        // Offline the older pages come from the device (saved while online), never the network.
+        const copy = pageNumber <= AGENT_LEDGER_COPY_PAGES ? await copySession?.readPageCopy<AgentLedgerListPayloadContract>("agent-ledger", `page-${pageNumber}`) : null;
+        if (copy && Array.isArray(copy.data?.entries)) page = copy.data;
+        else failure = "更早的记录没有保存在这台设备上，需要联网。";
+      } else {
+        const result = await client.get<AgentLedgerListPayloadContract>(agentLedgerPagePath(cursor));
+        if (result.success && Array.isArray(result.data?.entries)) {
+          page = result.data;
+          if (pageNumber <= AGENT_LEDGER_COPY_PAGES) void copySession?.savePageCopy("agent-ledger", `page-${pageNumber}`, result.data).catch(() => undefined);
+        } else failure = result.success ? "更早的记录暂时读不出来。" : result.error.message;
+      }
+    } catch (error) {
+      failure = error instanceof Error ? error.message : "更早的记录暂时读不出来。";
+    }
+    if (loadMoreRequest.current !== request) return;
+    loadMoreRequest.current = null;
+    setLoadingMore(false);
+    if (page) setOlderPages({ base, pages: [...previous, page] });
+    else setLoadMoreError(failure);
+  }
+
+  const view = merged ? agentLedgerToSurfaceView(merged, mode) : null;
 
   return (
     <AppScreen
@@ -120,12 +191,10 @@ export function AgentLedgerScreen({
       }
       title={mode === "today" ? "Today" : "All Actions"}
     >
+      {offline ? <OfflineNotice lastSyncedAt={ledgerState.copy?.lastSyncedAt ?? null} reason={ledgerState.copy?.reason ?? null} /> : null}
       {ledgerState.kind === "loading" ? <LoadingState /> : null}
       {ledgerState.kind === "offline" ? (
-        <ErrorState
-          message={ledgerState.error.message}
-          title="操作账本暂时连不上"
-        />
+        <NeedsNetworkState message={locale.t("sync.notOnDevice")} onRetry={ledgerState.refresh} />
       ) : null}
       {ledgerState.kind === "failure" ? (
         <ErrorState
@@ -137,6 +206,10 @@ export function AgentLedgerScreen({
         <AgentLedgerContent
           error={actionError}
           feedback={feedback}
+          loadMoreError={loadMoreError}
+          loadingMore={loadingMore}
+          offline={offline}
+          onLoadMore={() => void loadMore()}
           onTransition={(entry, transition, selectedOperationIds) =>
             void applyTransition(entry, transition, selectedOperationIds)
           }

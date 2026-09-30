@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { createLiveNetworkDistributionAnalyticsService } from "../../features/dashboard/live-distribution-service";
-import { createStorageNetworkDistributionAnalyticsProvider } from "../../features/dashboard/storage/network-distribution-live-record-provider";
+import { createMemoryNetworkDistributionProvider } from "../support/memory-dashboard-provider";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
 import { seedGeneratedRelationshipFixturesIntoLiveStore } from "../../shared/storage/seed-generated-fixtures";
 import { loadContactsStructureDetail, structureDetailToView } from "../../app/(app)/app/contacts/analysis/contacts-structure-route-service";
@@ -15,7 +15,7 @@ async function fixture() {
   for (const record of store.listRecords({ limit: "unbounded", collectionName: "contacts", workspaceId })) {
     store.upsertRecord({ ...record, payload: { ...record.payload, primaryIndustryId: "technology_internet" } });
   }
-  return createLiveNetworkDistributionAnalyticsService({ provider: createStorageNetworkDistributionAnalyticsProvider({ store, workspaceId }) });
+  return createLiveNetworkDistributionAnalyticsService({ provider: createMemoryNetworkDistributionProvider({ store, workspaceId }) });
 }
 
 test("all four dimensions load the service's matched contacts and actual group proportions", async () => {

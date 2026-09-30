@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createLiveDashboardAggregateService } from "../../features/dashboard/live-service";
-import { createStorageDashboardAggregateProvider } from "../../features/dashboard/storage/dashboard-live-record-provider";
+import { createMemoryDashboardProvider } from "../support/memory-dashboard-provider";
 import { dashboardAggregateFailureContext } from "../../features/dashboard/contract";
 import {
   createDashboardAggregateService,
@@ -22,7 +22,7 @@ test("live dashboard aggregate reads generated relationship graph from shared li
     workspaceId,
   });
 
-  const provider = createStorageDashboardAggregateProvider({
+  const provider = createMemoryDashboardProvider({
     sourceLabel: "Dashboard memory live storage",
     store,
     workspaceId,

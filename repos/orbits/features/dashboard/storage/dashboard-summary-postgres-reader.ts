@@ -1,5 +1,7 @@
+import { DashboardSummaryRequiresGraphFallback } from "../../../shared/compute/dashboard-aggregate";
 import {
   DASHBOARD_AGGREGATE_ERROR_DEFINITIONS,
+  DASHBOARD_SHORT_LIST_LIMIT,
   type DashboardAggregateProvenance,
   type DashboardAggregateScenario,
   type DashboardAggregateSummaryResult,
@@ -31,34 +33,41 @@ const dashboardSummaryCollections = [
 // PostgreSQL btrim() is narrower than ECMAScript String.prototype.trim().
 // This expression is only used to decide whether a string is empty; values
 // returned to the summary remain the original JSON strings.
-const javascriptTrimCharacters =
+// JS sorts activity strings with String.prototype.localeCompare (ICU). The ICU
+// root collation orders printable ASCII exactly like it (checked against Node
+// for timestamp-shaped and random ASCII strings), so any ASCII timestamp format
+// can be ordered in SQL; strings with other characters fall back to the graph.
+export const ACTIVITY_ORDER_COLLATION = '"und-x-icu"';
+export const activityOrderSafeSql = "bool_and(activity_at !~ '[^ -~]')";
+
+export const javascriptTrimCharacters =
   "E'\\t\\n\\f\\r ' || chr(11) || chr(160) || chr(5760) || chr(8192) || chr(8193) || chr(8194) || chr(8195) || chr(8196) || chr(8197) || chr(8198) || chr(8199) || chr(8200) || chr(8201) || chr(8202) || chr(8232) || chr(8233) || chr(8239) || chr(8287) || chr(12288) || chr(65279)";
 
-function jsonStringNonEmpty(
+export function jsonStringNonEmpty(
   jsonExpression: string,
   textExpression: string,
 ): string {
   return `jsonb_typeof(${jsonExpression}) = 'string' and length(translate(${textExpression}, ${javascriptTrimCharacters}, '')) > 0`;
 }
 
-function payloadStringNonEmpty(field: string): string {
+export function payloadStringNonEmpty(field: string): string {
   return jsonStringNonEmpty(
     `payload -> '${field}'`,
     `payload ->> '${field}'`,
   );
 }
 
-function sourceStringNonEmpty(field: string): string {
+export function sourceStringNonEmpty(field: string): string {
   return jsonStringNonEmpty(
     `payload -> 'source' -> '${field}'`,
     `payload -> 'source' ->> '${field}'`,
   );
 }
 
-const evidenceArrayExpression = `case when jsonb_typeof(payload -> 'evidenceIds') = 'array' then payload -> 'evidenceIds' else '[]'::jsonb end`;
-const valueTypesArrayExpression = `case when jsonb_typeof(payload -> 'valueTypes') = 'array' then payload -> 'valueTypes' else '[]'::jsonb end`;
+export const evidenceArrayExpression = `case when jsonb_typeof(payload -> 'evidenceIds') = 'array' then payload -> 'evidenceIds' else '[]'::jsonb end`;
+export const valueTypesArrayExpression = `case when jsonb_typeof(payload -> 'valueTypes') = 'array' then payload -> 'valueTypes' else '[]'::jsonb end`;
 
-function evidenceLateralSql(alias = "recordEvidence"): string {
+export function evidenceLateralSql(alias = "recordEvidence"): string {
   return `
     cross join lateral (
       select coalesce(
@@ -110,7 +119,8 @@ valid_contacts as (
       then payload -> 'source' ->> 'label' end as source_label,
     recordEvidence.evidence_ids,
     coalesce(occurred_at, updated_at) as sort_occurred_at,
-    updated_at as sort_updated_at
+    updated_at as sort_updated_at,
+    record_id as sort_record_id
   from scoped_records
   ${evidenceLateralSql()}
   where collection_name = 'contacts'
@@ -137,7 +147,8 @@ valid_connections as (
     end as priority_raw,
     recordEvidence.evidence_ids,
     coalesce(occurred_at, updated_at) as sort_occurred_at,
-    updated_at as sort_updated_at
+    updated_at as sort_updated_at,
+    record_id as sort_record_id
   from scoped_records
   ${evidenceLateralSql()}
   ${valueTypesLateralSql}
@@ -160,7 +171,8 @@ valid_events as (
   select
     recordEvidence.evidence_ids,
     coalesce(occurred_at, updated_at) as sort_occurred_at,
-    updated_at as sort_updated_at
+    updated_at as sort_updated_at,
+    record_id as sort_record_id
   from scoped_records
   ${evidenceLateralSql()}
   where collection_name = 'events'
@@ -183,7 +195,8 @@ valid_tasks as (
       then payload -> 'source' ->> 'label' end as source_label,
     recordEvidence.evidence_ids,
     coalesce(occurred_at, updated_at) as sort_occurred_at,
-    updated_at as sort_updated_at
+    updated_at as sort_updated_at,
+    record_id as sort_record_id
   from scoped_records
   ${evidenceLateralSql()}
   where collection_name = 'tasks'
@@ -209,7 +222,8 @@ recent_activity_candidates as (
     evidence_ids,
     0 as activity_group_rank,
     sort_occurred_at as record_sort_occurred_at,
-    sort_updated_at as record_sort_updated_at
+    sort_updated_at as record_sort_updated_at,
+    sort_record_id as record_sort_record_id
   from valid_contacts
   union all
   select
@@ -221,7 +235,8 @@ recent_activity_candidates as (
     evidence_ids,
     1 as activity_group_rank,
     sort_occurred_at as record_sort_occurred_at,
-    sort_updated_at as record_sort_updated_at
+    sort_updated_at as record_sort_updated_at,
+    sort_record_id as record_sort_record_id
   from valid_tasks
 ),
 recent_activity as (
@@ -234,8 +249,8 @@ recent_activity as (
         'occurredAt', activity_at,
         'sourceLabel', activity_source_label,
         'evidenceIds', evidence_ids
-      ) order by activity_at collate "C" desc, activity_group_rank asc,
-        record_sort_occurred_at desc, record_sort_updated_at desc
+      ) order by activity_at collate ${ACTIVITY_ORDER_COLLATION} desc, activity_group_rank asc,
+        record_sort_occurred_at desc, record_sort_updated_at desc, record_sort_record_id
     ),
     '[]'::jsonb
   ) as activities
@@ -249,16 +264,17 @@ recent_activity as (
       evidence_ids,
       activity_group_rank,
       record_sort_occurred_at,
-      record_sort_updated_at
+      record_sort_updated_at,
+      record_sort_record_id
     from recent_activity_candidates
-    order by activity_at collate "C" desc, activity_group_rank asc,
-      record_sort_occurred_at desc, record_sort_updated_at desc
+    order by activity_at collate ${ACTIVITY_ORDER_COLLATION} desc, activity_group_rank asc,
+      record_sort_occurred_at desc, record_sort_updated_at desc, record_sort_record_id
     limit 3
   ) as limited_activity
 ),
 activity_order_safety as (
   select coalesce(
-    bool_and(activity_at ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$'),
+    ${activityOrderSafeSql},
     true
   ) as is_safe
   from recent_activity_candidates
@@ -267,9 +283,10 @@ select
   (select coalesce(max(updated_at), to_timestamp(0)) from scoped_records) as generated_at,
   (select count(*)::int from valid_contacts) as contacts_count,
   ${evidenceAggregateSql("valid_contacts")} as contacts_evidence_ids,
-  ${evidenceAggregateSql("valid_connections")} as connections_evidence_ids,
-  ${evidenceAggregateSql("valid_events")} as events_evidence_ids,
-  ${evidenceAggregateSql("valid_tasks")} as tasks_evidence_ids,
+  ${distinctEvidenceAggregateSql("valid_contacts")} as contacts_distinct_evidence_ids,
+  ${distinctEvidenceAggregateSql("valid_connections")} as connections_distinct_evidence_ids,
+  ${distinctEvidenceAggregateSql("valid_events")} as events_distinct_evidence_ids,
+  ${distinctEvidenceAggregateSql("valid_tasks")} as tasks_distinct_evidence_ids,
   -- For the non-negative score range used here, Math.round(score) >= 70 iff score >= 69.5.
   (select count(*)::int from valid_connections where priority_raw >= 69.5) as high_value_count,
   ${evidenceAggregateSql("valid_connections", "priority_raw >= 69.5")} as high_value_evidence_ids,
@@ -281,17 +298,45 @@ select
   (select is_safe from activity_order_safety) as activity_order_safe
 `;
 
+// Sprint 0101: evidence lists are short lists — the first $7 entries in graph
+// order (occurred/updated desc, record id, evidence ordinal).
 function evidenceAggregateSql(
   relation: string,
   condition?: string,
 ): string {
   return `coalesce((
-    select jsonb_agg(evidence_value.value #>> '{}'
-      order by source.sort_occurred_at desc, source.sort_updated_at desc, evidence_value.ordinal)
-    from ${relation} as source
-    cross join lateral jsonb_array_elements(source.evidence_ids) with ordinality
-      as evidence_value(value, ordinal)
-    ${condition ? `where ${condition}` : ""}
+    select jsonb_agg(evidence_id order by sort_occurred_at desc, sort_updated_at desc, sort_record_id, ordinal)
+    from (
+      select evidence_value.value #>> '{}' as evidence_id, source.sort_occurred_at,
+        source.sort_updated_at, source.sort_record_id, evidence_value.ordinal
+      from ${relation} as source
+      cross join lateral jsonb_array_elements(source.evidence_ids) with ordinality
+        as evidence_value(value, ordinal)
+      ${condition ? `where ${condition}` : ""}
+      order by source.sort_occurred_at desc, source.sort_updated_at desc, source.sort_record_id, evidence_value.ordinal
+      limit $7
+    ) as first_evidence
+  ), '[]'::jsonb)`;
+}
+
+/** First $7 distinct evidence ids of a relation, by first occurrence in graph order. */
+function distinctEvidenceAggregateSql(relation: string): string {
+  return `coalesce((
+    select jsonb_agg(evidence_id order by first_rank)
+    from (
+      select evidence_id, min(entry_rank) as first_rank
+      from (
+        select evidence_value.value #>> '{}' as evidence_id,
+          row_number() over (order by source.sort_occurred_at desc, source.sort_updated_at desc,
+            source.sort_record_id, evidence_value.ordinal) as entry_rank
+        from ${relation} as source
+        cross join lateral jsonb_array_elements(source.evidence_ids) with ordinality
+          as evidence_value(value, ordinal)
+      ) as entries
+      group by evidence_id
+      order by first_rank
+      limit $7
+    ) as first_distinct
   ), '[]'::jsonb)`;
 }
 
@@ -299,9 +344,10 @@ interface DashboardSummarySqlRow {
   generated_at: Date | string | null;
   contacts_count: number | string;
   contacts_evidence_ids: unknown;
-  connections_evidence_ids: unknown;
-  events_evidence_ids: unknown;
-  tasks_evidence_ids: unknown;
+  contacts_distinct_evidence_ids: unknown;
+  connections_distinct_evidence_ids: unknown;
+  events_distinct_evidence_ids: unknown;
+  tasks_distinct_evidence_ids: unknown;
   high_value_count: number | string;
   high_value_evidence_ids: unknown;
   pending_followup_count: number | string;
@@ -316,9 +362,13 @@ interface SummaryParts {
   generatedAt: string;
   contactsCount: number;
   contactsEvidenceIds: readonly string[];
-  connectionsEvidenceIds: readonly string[];
-  eventsEvidenceIds: readonly string[];
-  tasksEvidenceIds: readonly string[];
+  /** Per collection, evidence ids in first-occurrence order (may be longer than the limit). */
+  distinctEvidenceIds: {
+    contacts: readonly string[];
+    connections: readonly string[];
+    events: readonly string[];
+    tasks: readonly string[];
+  };
   highValueCount: number;
   highValueEvidenceIds: readonly string[];
   pendingFollowupCount: number;
@@ -412,13 +462,13 @@ function summaryProvenance(
 
 function deduplicatedEvidence(parts: SummaryParts): readonly string[] {
   const evidenceIds = [
-    ...parts.contactsEvidenceIds,
-    ...parts.connectionsEvidenceIds,
-    ...parts.eventsEvidenceIds,
-    ...parts.tasksEvidenceIds,
+    ...parts.distinctEvidenceIds.contacts,
+    ...parts.distinctEvidenceIds.connections,
+    ...parts.distinctEvidenceIds.events,
+    ...parts.distinctEvidenceIds.tasks,
   ];
   return evidenceIds.length > 0
-    ? [...new Set(evidenceIds)]
+    ? [...new Set(evidenceIds)].slice(0, DASHBOARD_SHORT_LIST_LIMIT)
     : ["evidence:dashboard-live-store-empty"];
 }
 
@@ -505,25 +555,25 @@ function summaryFromParts(
           id: "new-contacts",
           label: "New contacts",
           value: parts.contactsCount,
-          evidenceIds: parts.contactsEvidenceIds,
+          evidenceIds: parts.contactsEvidenceIds.slice(0, DASHBOARD_SHORT_LIST_LIMIT),
         },
         {
           id: "high-value",
           label: "High-value relationships",
           value: parts.highValueCount,
-          evidenceIds: parts.highValueEvidenceIds,
+          evidenceIds: parts.highValueEvidenceIds.slice(0, DASHBOARD_SHORT_LIST_LIMIT),
         },
         {
           id: "pending-followups",
           label: "Pending followups",
           value: parts.pendingFollowupCount,
-          evidenceIds: parts.pendingFollowupEvidenceIds,
+          evidenceIds: parts.pendingFollowupEvidenceIds.slice(0, DASHBOARD_SHORT_LIST_LIMIT),
         },
         {
           id: "dormant-contacts",
           label: "Dormant contacts",
           value: parts.dormantContactCount,
-          evidenceIds: parts.dormantContactEvidenceIds,
+          evidenceIds: parts.dormantContactEvidenceIds.slice(0, DASHBOARD_SHORT_LIST_LIMIT),
         },
       ],
       recentActivity: parts.recentActivity.slice(0, 3),
@@ -548,9 +598,12 @@ function partsFromSqlRow(row: DashboardSummarySqlRow): SummaryParts {
     generatedAt: timestampValue(row.generated_at),
     contactsCount: countValue(row.contacts_count),
     contactsEvidenceIds: jsonStrings(row.contacts_evidence_ids),
-    connectionsEvidenceIds: jsonStrings(row.connections_evidence_ids),
-    eventsEvidenceIds: jsonStrings(row.events_evidence_ids),
-    tasksEvidenceIds: jsonStrings(row.tasks_evidence_ids),
+    distinctEvidenceIds: {
+      contacts: jsonStrings(row.contacts_distinct_evidence_ids),
+      connections: jsonStrings(row.connections_distinct_evidence_ids),
+      events: jsonStrings(row.events_distinct_evidence_ids),
+      tasks: jsonStrings(row.tasks_distinct_evidence_ids),
+    },
     highValueCount: countValue(row.high_value_count),
     highValueEvidenceIds: jsonStrings(row.high_value_evidence_ids),
     pendingFollowupCount: countValue(row.pending_followup_count),
@@ -609,9 +662,12 @@ export function buildDashboardSummaryFromGraph(
       generatedAt: graph.generatedAt,
       contactsCount: graph.contacts.length,
       contactsEvidenceIds: graph.contacts.flatMap((contact) => contact.evidenceIds),
-      connectionsEvidenceIds: graph.connections.flatMap((connection) => connection.evidenceIds),
-      eventsEvidenceIds: graph.events.flatMap((event) => event.evidenceIds),
-      tasksEvidenceIds: graph.tasks.flatMap((task) => task.evidenceIds),
+      distinctEvidenceIds: {
+        contacts: graph.contacts.flatMap((contact) => contact.evidenceIds),
+        connections: graph.connections.flatMap((connection) => connection.evidenceIds),
+        events: graph.events.flatMap((event) => event.evidenceIds),
+        tasks: graph.tasks.flatMap((task) => task.evidenceIds),
+      },
       highValueCount: highValue.length,
       highValueEvidenceIds: highValue.flatMap((connection) => connection.evidenceIds),
       pendingFollowupCount: pending.length,
@@ -640,12 +696,27 @@ export interface DashboardSummaryPostgresReader {
   ) => Promise<DashboardAggregateSummaryResult>;
 }
 
-export class DashboardSummaryRequiresGraphFallback extends Error {
-  constructor() {
-    super("Dashboard summary activity strings require the full graph ordering fallback");
-    this.name = "DashboardSummaryRequiresGraphFallback";
+/**
+ * A database without ICU collations (SQLSTATE 42704 for "und-x-icu") cannot
+ * order activity strings like JS; keep answers correct via the graph read and
+ * say so in the log instead of failing the dashboard.
+ */
+export async function queryWithActivityCollation<TResult>(
+  run: () => Promise<TResult>,
+): Promise<TResult> {
+  try {
+    return await run();
+  } catch (error) {
+    if ((error as { code?: unknown })?.code === "42704") {
+      console.warn(JSON.stringify({ event: "dashboard_activity_collation_missing", collation: ACTIVITY_ORDER_COLLATION }));
+      throw new DashboardSummaryRequiresGraphFallback();
+    }
+    throw error;
   }
 }
+
+// Sprint 0117: the class lives with the shared aggregate service that catches it.
+export { DashboardSummaryRequiresGraphFallback };
 
 export function createDashboardSummaryPostgresReader({
   client,
@@ -655,7 +726,7 @@ export function createDashboardSummaryPostgresReader({
 }: DashboardSummaryPostgresReaderOptions): DashboardSummaryPostgresReader {
   return {
     async readForAccount(accountId, scenario = "success") {
-      const result = await client.query<DashboardSummarySqlRow>(
+      const result = await queryWithActivityCollation(() => client.query<DashboardSummarySqlRow>(
         dashboardSummarySql,
         [
           workspaceId,
@@ -664,8 +735,9 @@ export function createDashboardSummaryPostgresReader({
           [...SOURCE_TYPES],
           [...RELATIONSHIP_STAGE_VALUES],
           [...RELATIONSHIP_VALUE_TYPES],
+          DASHBOARD_SHORT_LIST_LIMIT,
         ],
-      );
+      ));
       const row = result.rows[0];
       if (!row) {
         throw new Error("Dashboard summary read model returned no row");

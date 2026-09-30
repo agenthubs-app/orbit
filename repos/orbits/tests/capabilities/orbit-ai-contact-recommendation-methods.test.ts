@@ -69,11 +69,22 @@ async function importProjectModule<TModule>(
   return (await import(pathToFileURL(absolutePath).href)) as TModule;
 }
 
+// The live artifact service injects the language-normalization service, which
+// falls back to the provider key in the environment (DEEPSEEK_API_KEY …). With a
+// developer key exported, these stubbed tests used to send a real, paid keyword
+// extraction request, and the model's varying keywords ("partnerships director"
+// ranks Mina Tan first) made the expected top candidate flaky (0108/0123).
+// Clearing the provider keys keeps them on the deterministic keyword table.
+const providerKeyNames = ["DEEPSEEK_API_KEY", "OPENAI_API_KEY", "GEMINI_API_KEY", "ORBIT_AGENT_PROVIDER"];
+
 async function withMethodEnv<TValue>(
   value: string | undefined,
   run: () => Promise<TValue>,
 ): Promise<TValue> {
   const previousValue = process.env[methodEnvName];
+  const previousProviderEnv = providerKeyNames.map((name) => [name, process.env[name]] as const);
+
+  for (const name of providerKeyNames) delete process.env[name];
 
   if (value === undefined) {
     delete process.env[methodEnvName];
@@ -88,6 +99,10 @@ async function withMethodEnv<TValue>(
       delete process.env[methodEnvName];
     } else {
       process.env[methodEnvName] = previousValue;
+    }
+    for (const [name, previous] of previousProviderEnv) {
+      if (previous === undefined) delete process.env[name];
+      else process.env[name] = previous;
     }
   }
 }

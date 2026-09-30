@@ -6,6 +6,7 @@ import { initializeLocalSyncDatabase } from "../src/data/sync/local-sync-databas
 import { createSyncCoordinator, type SyncCoordinatorLifecycle } from "../src/data/sync/sync-coordinator";
 import { SyncResetRequiredError, type SyncClient } from "../src/data/sync/sync-client";
 import { NodeTestDatabase } from "./helpers/node-sync-database";
+import { createLocalSyncRepository } from "../src/data/sync/local-sync-repository";
 
 // The production path useSyncedCollection walks: lease → mirror scopes → domain pages → reads.
 const baseUrl = "https://host.example";
@@ -22,6 +23,13 @@ interface HostState {
   now: number;
   /** When set, getManifest throws instead of describing the host. */
   manifestFailure?: Error;
+  /** Server registry version (sprint 0113); it is part of every generation and cursor. */
+  registry?: number;
+}
+
+/** Cursor scope as the server binds it: epoch, plus the registry version once it is not 1. */
+function cursorScope(state: HostState): string {
+  return (state.registry ?? 1) === 1 ? state.epoch : `${state.epoch}@r${state.registry}`;
 }
 
 function lease(state: HostState): OfflineReadEnvelope {
@@ -40,25 +48,26 @@ function client(state: HostState): SyncClient {
       state.calls.push("manifest");
       if (state.manifestFailure) throw state.manifestFailure;
       return {
-        registryVersion: 1,
+        registryVersion: state.registry ?? 1,
         domains: state.grantedDomains.map((domainId) => ({
-          domainId, schemaVersion: 1, workspaceId: W, authorizationEpoch: state.epoch, generation: `gen-${state.epoch}`,
+          domainId, schemaVersion: 1, workspaceId: W, authorizationEpoch: state.epoch, generation: `gen-${cursorScope(state)}`,
           watermark: String((state.rows[domainId] ?? []).length), history: "complete", membershipCursor: null,
         })),
       };
     },
     async getDomainPage(input): Promise<DomainPage> {
       state.calls.push(`page:${input.domainId}:${input.cursor ?? "-"}`);
-      if (input.cursor && !input.cursor.startsWith(`${state.epoch}:`)) throw new SyncResetRequiredError({ context: { syncErrorCode: "SYNC_RESET_REQUIRED" }, message: "reset" });
+      if (!state.grantedDomains.includes(input.domainId)) throw new Error(`page for an ungranted domain ${input.domainId}`);
+      if (input.cursor && !input.cursor.startsWith(`${cursorScope(state)}:`)) throw new SyncResetRequiredError({ context: { syncErrorCode: "SYNC_RESET_REQUIRED" }, message: "reset" });
       const rows = state.rows[input.domainId] ?? [];
       const after = input.cursor ? Number(input.cursor.split(":")[1]) : 0;
       const slice = rows.slice(after, after + 2);
       const next = after + slice.length;
       return {
-        domainId: input.domainId, schemaVersion: 1, registryVersion: 1, authorizationEpoch: state.epoch,
+        domainId: input.domainId, schemaVersion: 1, registryVersion: state.registry ?? 1, authorizationEpoch: state.epoch,
         changes: slice.map((row) => ({ id: row.id, revision: row.revision, operation: "upsert", payload: row.payload })),
-        nextCursor: `${state.epoch}:${next}`, highWatermark: String(rows.length), hasMore: next < rows.length,
-        generation: `gen-${state.epoch}`, serverTime: new Date(state.now).toISOString(),
+        nextCursor: `${cursorScope(state)}:${next}`, highWatermark: String(rows.length), hasMore: next < rows.length,
+        generation: `gen-${cursorScope(state)}`, serverTime: new Date(state.now).toISOString(),
       };
     },
     async getPage() { throw new Error("legacy /api/sync must not be used"); },
@@ -232,4 +241,69 @@ test("without a mirror the coordinator makes no network request at all", async (
   assert.equal(result?.status, "failure");
   assert.deepEqual(state.calls, [], "no lease is fetched for a mirror that cannot store it");
   void t;
+});
+
+test("the lease decides which domains sync: an unknown granted domain is ignored, a newly granted known domain starts syncing (0113)", async (t) => {
+  const state: HostState = { epoch: "e1", grantedDomains: ["notes", "future-events"], calls: [], now: T0, rows: {
+    notes: [{ id: "n1", revision: "r1", payload: { id: "n1" } }],
+    "future-events": [{ id: "x1", revision: "r1", payload: { id: "x1" } }],
+    tasks: [{ id: "t1", revision: "r1", payload: { id: "t1" } }],
+  } };
+  const { database, lifecycle } = device(t);
+  await ready(database);
+  const session = createSyncCoordinator({ lifecycle, now: () => state.now, hashPayload }).openScope({ actorId: A, baseUrl, client: client(state), scopeKey: "k1" });
+  const first = await sync(session, "note");
+  assert.equal(first?.error, null, "an unknown grant does not fail the sync");
+  assert.ok(!state.calls.some((call) => call.startsWith("page:future-events")), "no page is pulled for a domain this build does not know");
+  const unknownRows = await database.get<{ n: number }>("SELECT COUNT(*) AS n FROM sync_records WHERE domain_id = 'future-events'");
+  assert.equal(unknownRows?.n, 0, "nothing is stored for it");
+  assert.ok(!state.calls.some((call) => call.startsWith("page:tasks")), "tasks is not granted yet, so it is not pulled");
+  assert.deepEqual((await session.readCollection("task"))?.records, []);
+  // The server starts granting tasks: the next sync pulls it without any App change.
+  state.grantedDomains = ["notes", "tasks", "future-events"];
+  state.now += 60_000;
+  state.calls.length = 0;
+  assert.equal((await sync(session, "task"))?.error, null);
+  assert.ok(state.calls.includes("page:tasks:-"), "a newly granted domain starts from a full pull");
+  assert.deepEqual((await session.readCollection("task"))?.records.map((record) => record.id), ["t1"]);
+  session.deactivate();
+});
+
+test("a server registry version change rebuilds each domain once and keeps pending local rows and the outbox (0113)", async (t) => {
+  const state: HostState = { epoch: "e1", grantedDomains: ["notes", "tasks", "personal-schedule"], calls: [], now: T0, registry: 1, rows: {
+    tasks: [{ id: "t1", revision: "r1", payload: { id: "t1", title: "server" } }, { id: "t2", revision: "r2", payload: { id: "t2" } }],
+    notes: [{ id: "n1", revision: "r1", payload: { id: "n1" } }],
+  } };
+  const { database, lifecycle } = device(t);
+  await ready(database);
+  const session = createSyncCoordinator({ lifecycle, now: () => state.now, hashPayload }).openScope({ actorId: A, baseUrl, client: client(state), scopeKey: "k1" });
+  assert.equal((await sync(session, "task"))?.error, null);
+  // A local edit waiting for upload: a pending row and its outbox mutation.
+  const scope = { baseUrl, actorId: A, workspaceId: W, domainId: "tasks", authorizationEpoch: "e1" };
+  const local = createLocalSyncRepository({ actorId: A, database, baseUrl, registeredDomainIds: ["tasks"], activeReadScopes: () => [scope] });
+  await local.putRecord({ actorId: A, workspaceId: W, kind: "task", id: "t1", revision: "r1", updatedAt: new Date(T0).toISOString(), deletedAt: null, payload: { id: "t1", title: "edited offline" }, syncState: "pending", aiVisibility: "excluded" });
+  await local.enqueueOutboxMutation({ mutationId: "m1", actorId: A, workspaceId: W, kind: "task", id: "t1", operation: "update", patch: { title: "edited offline" }, baseRevision: "r1", createdAt: new Date(T0).toISOString(), retryCount: 0, nextRetryAt: null, lastErrorCode: null });
+  // Deploy: registry v2. Generations change and old cursors are refused (SYNC_RESET_REQUIRED).
+  state.registry = 2;
+  state.rows.tasks!.push({ id: "t3", revision: "r3", payload: { id: "t3" } });
+  state.now += 60_000;
+  state.calls.length = 0;
+  const rebuilt = await sync(session, "task");
+  assert.equal(rebuilt?.error, null, `sync error: ${rebuilt?.error}`);
+  const pages = state.calls.filter((call) => call.startsWith("page:"));
+  for (const domainId of ["notes", "tasks", "personal-schedule"]) {
+    assert.ok(pages.includes(`page:${domainId}:-`), `${domainId} rebuilds from a full pull`);
+  }
+  const tasks = await session.readCollection("task");
+  assert.deepEqual(tasks?.records.map((record) => record.id).sort(), ["t1", "t2", "t3"]);
+  const kept = tasks?.records.find((record) => record.id === "t1");
+  assert.equal(kept?.syncState, "pending", "the pending local row survives the rebuild");
+  assert.deepEqual(kept?.payload, { id: "t1", title: "edited offline" }, "and is not overwritten by the server copy");
+  assert.deepEqual((await local.listOutboxMutations(W)).map((mutation) => mutation.mutationId), ["m1"], "the outbox is untouched");
+  // Once rebuilt, an unchanged registry costs no page.
+  state.now += 60_000;
+  state.calls.length = 0;
+  assert.equal((await sync(session, "task"))?.error, null);
+  assert.deepEqual(state.calls, ["lease", "manifest"]);
+  session.deactivate();
 });

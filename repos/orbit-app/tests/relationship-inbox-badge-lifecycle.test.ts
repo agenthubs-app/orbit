@@ -7,22 +7,24 @@ import { chromium, type Browser, type Page } from "playwright";
 const require = createRequire(import.meta.url);
 let browser: Browser;
 let script: string;
-const inboxPath = "/api/relationship-communication/unread-summary";
-const typedPath = "/api/inbox/notifications";
-const disabledTyped = {enabled:false,items:[],unreadCount:0,nextCursor:null,asOf:"2026-09-16T00:00:00.000Z"};
-const notificationsPath = "/api/notifications/unread-summary";
-const inbox = (count: number, actor = "actor:one") => {
-  return {
-    actorId: actor,
-    unreadTotal: count,
-    refreshedAt: "2026-09-15T00:00:00Z"
-  };
-};
-const notifications = inbox(1);
+// Since fc0569649 the badge reads only the bounded /api/inbox/summary. The old
+// per-source fallback (message unread summary + legacy notifications + typed
+// list probe) was removed, so every case reads exactly one summary per refresh.
+const summaryPath = "/api/inbox/summary";
+const summary = (messages: number, notices = 1, actor = "actor:one", mode: "legacy" | "typed" = "legacy") => ({
+  actorId: actor, messagesUnread: messages, notificationsUnread: notices, notificationMode: mode, notificationRead: "ready", asOf: "2026-09-25T00:00:00Z"
+});
 
 // Real badge hook, HTTP client and view-model. Only auth, navigation focus,
 // native lifecycle, snapshot I/O and network transport are controlled here.
 const fixture = `
+// Sprint 0118: this harness exercises the network path; the device mirror is not available here.
+export const useLocalInbox = () => ({ available: false, rows: [], freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh: async () => null });
+export const useLocalRelationshipConversations = () => ({ available: false, conversations: [], freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh: async () => null });
+export const useLocalRelationshipThread = () => ({ available: false, conversations: [], messages: [], freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh: async () => null });
+export const useLocalAiSessions = () => ({ available: false, rows: [], freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh: async () => null });
+export const useLocalAiConversation = () => ({ available: false, messages: [], cards: null, saveCards() {}, freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh: async () => null });
+
 import { useSyncExternalStore } from "react";
 import { onSessionExpired } from "./src/api/session-expiry";
 let revision = 0; const subscribers = new Set(); const nativeListeners = new Set();
@@ -40,11 +42,9 @@ const state = window.fixture = {
 };
 onSessionExpired(() => state.expiries++);
 window.fetch = async (input, init) => {
-  // Existing cases exercise the old-deployment fallback. New-protocol cases
-  // below record the summary request too; API helper tests count the 404 probe.
-  if (new URL(String(input)).pathname === "/api/inbox/summary" && !state.unified) return new Response(JSON.stringify({success:false,error:{code:"NOT_FOUND",message:"old deployment"}}), {status:404,headers:{"Content-Type":"application/json"}});
   const index = state.requests.length;
   state.requests.push({ path: new URL(String(input)).pathname, url: String(input), method: init.method, headers: init.headers, signal: init.signal });
+  if (state.oldDeployment) return new Response(JSON.stringify({success:false,error:{code:"NOT_FOUND",message:"old deployment"}}), {status:404,headers:{"Content-Type":"application/json"}});
   return new Promise(resolve => state.pending[index] = resolve);
 };
 export const useFixture = () => { observe(); return state; };
@@ -63,7 +63,7 @@ function Badge({second=false}) { const s = useFixture(); const count = useRelati
 function App() { const s = useFixture(); return s.mounted ? <><Badge />{s.multiple && <Badge second />}</> : null; } createRoot(document.getElementById("root")).render(<App />);`, loader: "tsx", resolveDir: process.cwd() },
     bundle: true, write: false, format: "iife", jsx: "automatic", define: { "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
     plugins: [{ name: "badge-boundaries", setup(plugin) {
-      plugin.onResolve({ filter: /^(fixture|expo-router|react-native)$|\/(ApiBaseUrlProvider|AuthSessionProvider|snapshot-store)$/ }, () => ({ path: "fixture", namespace: "badge" }));
+      plugin.onResolve({ filter: /^(fixture|expo-router|react-native)$|\/(ApiBaseUrlProvider|AuthSessionProvider|snapshot-store|useLocalInbox|useLocalRelationshipMessages)$/ }, () => ({ path: "fixture", namespace: "badge" }));
       plugin.onLoad({ filter: /.*/, namespace: "badge" }, () => ({ contents: fixture, loader: "jsx", resolveDir: process.cwd() }));
       plugin.onResolve({ filter: /^react-native-web$/ }, () => ({ path: require.resolve("react-native-web") }));
     } }]
@@ -85,23 +85,27 @@ async function update(p: Page, patch: object) { await p.evaluate(patch => (windo
 async function count(p: Page) { return p.getByLabel("未读数量", { exact: true }).innerText(); }
 async function reads(p: Page): Promise<{ path: string; method: string; aborted: boolean }[]> { return p.evaluate(() => (window as any).fixture.requests.map((r: any) => ({ path: r.path, method: r.method, aborted: Boolean(r.signal?.aborted) }))); }
 async function reply(p: Page, index: number, data: unknown, status = 200, success = status === 200) { await p.evaluate(args => (window as any).fixture.reply(...args), [index, data, status, success]); await settle(p); }
-async function hydrate(p: Page, amount = 2, notices = notifications) {
-  const current = await p.evaluate(() => { const s = (window as any).fixture; return { actor: s.actor, indices: [s.requests.findLastIndex((r: any) => r.path.includes("relationship-communication")), s.requests.findLastIndex((r: any) => r.path === "/api/notifications/unread-summary")] }; });
-  await reply(p, current.indices[0], inbox(amount, current.actor)); await reply(p, current.indices[1], {...notices,actorId:current.actor});
-  const typed = await p.evaluate(() => (window as any).fixture.requests.findLastIndex((r:any)=>r.path === "/api/inbox/notifications"));await reply(p,typed,disabledTyped);
+async function hydrate(p: Page, amount = 2, notices = 1) {
+  const current = await p.evaluate(() => { const s = (window as any).fixture; return { actor: s.actor, index: s.requests.findLastIndex((r: any) => r.path === "/api/inbox/summary") }; });
+  await reply(p, current.index, summary(amount, notices, current.actor));
 }
 
-test("badge reads authoritative message and legacy unread summaries", async t => {
+test("badge reads one authoritative inbox summary", async t => {
   const p = await open(t); assert.equal(await count(p), "unknown");
-  assert.deepEqual((await reads(p)).map(({ path, method }) => ({ path, method })), [{ path: inboxPath, method: "GET" }, { path: notificationsPath, method: "GET" }, {path:typedPath,method:"GET"}]);
-  assert.equal(await p.evaluate(()=>new URL((window as any).fixture.requests[2].url).searchParams.get('limit')), '1');
+  assert.deepEqual((await reads(p)).map(({ path, method }) => ({ path, method })), [{ path: summaryPath, method: "GET" }]);
   await hydrate(p); assert.equal(await count(p), "3");
 });
 
+test("an old deployment without the summary shows no count and never falls back to list reads", async t => {
+  const p = await open(t, { oldDeployment: true }); await settle(p);
+  assert.deepEqual((await reads(p)).map(r => r.path), [summaryPath]);
+  assert.equal(await count(p), "unknown");
+});
+
 test("two real hooks with different screen keys share one summary and one foreground timer", async t => {
-  const p = await open(t, { unified: true, multiple: true, clock: true });
+  const p = await open(t, { multiple: true, clock: true });
   assert.equal((await reads(p)).length, 1);
-  const data = { actorId: "actor:one", messagesUnread: 2, notificationsUnread: 3, notificationMode: "legacy", notificationRead: "ready", asOf: "2026-09-25T00:00:00Z" };
+  const data = summary(2, 3);
   await reply(p, 0, data);
   assert.deepEqual(await p.getByLabel("未读数量", { exact: true }).allTextContents(), ["5", "5"]);
   await p.clock.fastForward(15_001); await settle(p);
@@ -120,7 +124,7 @@ test("foreground polling refreshes within fifteen seconds without clearing the v
   await hydrate(p, 2); assert.equal(await count(p), "3");
   await p.getByLabel("草稿").fill("正在写的内容");
   await p.clock.fastForward(15_001); await settle(p);
-  assert.equal((await reads(p)).length, 6);
+  assert.equal((await reads(p)).length, 2);
   assert.equal(await count(p), "3");
   await hydrate(p, 5);
   assert.equal(await count(p), "6");
@@ -131,9 +135,9 @@ test("a confirmed message or reminder state invalidates the badge immediately", 
   const p = await open(t);
   await hydrate(p, 2); assert.equal(await count(p), "3");
   await p.evaluate(() => (window as any).invalidateMessageState()); await settle(p);
-  assert.equal((await reads(p)).length, 6);
+  assert.equal((await reads(p)).length, 2);
   assert.equal(await count(p), "3");
-  await hydrate(p, 0, inbox(0));
+  await hydrate(p, 0, 0);
   assert.equal(await count(p), "unknown");
 });
 
@@ -145,16 +149,16 @@ for (const patch of [{ ready: false }, { baseReady: false }, { signedIn: false }
 
 test("cached counts are never presented as the current unread state", async t => {
   const p = await open(t, { cached: true }); assert.equal(await count(p), "unknown");
-  await reply(p, 0, {}, 503); await reply(p, 1, {}, 503);
+  await reply(p, 0, {}, 503);
   assert.equal(await count(p), "unknown"); assert.equal(await p.evaluate(() => (window as any).fixture.snapshots), 0);
 });
 
 for (const patch of [{ actor: "actor:two" }, { cookieHeader: "session=changed" }, { baseUrl: "https://other.example" }, { scopeKey: "refreshed" }]) {
   test("identity and explicit refresh revoke old badge responses even with an empty cookie " + JSON.stringify(patch), async t => {
     const p = await open(t); await update(p, patch);
-    const requests = await reads(p); assert.equal(requests.length, 6); assert.ok(requests.slice(0, 3).every(r => r.aborted));
+    const requests = await reads(p); assert.equal(requests.length, 2); assert.ok(requests[0]!.aborted);
     await hydrate(p, 5); assert.equal(await count(p), "6");
-    await reply(p, 0, inbox(90)); await reply(p, 1, {}, 401);
+    await reply(p, 0, {}, 401);
     assert.equal(await count(p), "6"); assert.equal(await p.evaluate(() => (window as any).fixture.expiries), 0);
   });
 }
@@ -163,15 +167,15 @@ for (const [pause, resume] of [[{ focused: false }, { focused: true }], [{ appSt
   test("pause hides the old count and resume requires a new network read " + JSON.stringify(pause), async t => {
     const p = await open(t); await hydrate(p); assert.equal(await count(p), "3");
     await p.getByLabel("草稿").fill("未发送的问题");
-    await update(p, pause); assert.equal(await count(p), "unknown"); assert.equal((await reads(p)).length, 3);
-    await update(p, resume); assert.equal(await count(p), "unknown"); assert.equal((await reads(p)).length, 6);
+    await update(p, pause); assert.equal(await count(p), "unknown"); assert.equal((await reads(p)).length, 1);
+    await update(p, resume); assert.equal(await count(p), "unknown"); assert.equal((await reads(p)).length, 2);
     await hydrate(p, 7); assert.equal(await count(p), "8"); assert.equal(await p.getByLabel("草稿").inputValue(), "未发送的问题");
   });
 }
 
 test("background abort happens synchronously before a stale 401 can expire the session", async t => {
   const p = await open(t);
-  const aborted = await p.evaluate(() => { const s = (window as any).fixture; s.update({ appState: "background" }); const result = s.requests.every((r: any) => r.signal?.aborted); s.reply(0, {}, 401, false); s.reply(1, {}, 401, false); return result; });
+  const aborted = await p.evaluate(() => { const s = (window as any).fixture; s.update({ appState: "background" }); const result = s.requests.every((r: any) => r.signal?.aborted); s.reply(0, {}, 401, false); return result; });
   assert.equal(aborted, true); await settle(p);
   assert.equal(await p.evaluate(() => (window as any).fixture.expiries), 0); assert.equal(await count(p), "unknown");
 });
@@ -179,57 +183,60 @@ test("background abort happens synchronously before a stale 401 can expire the s
 test("batched inactive-active events still invalidate the read while repeated active events do not refetch", async t => {
   const p = await open(t); await hydrate(p);
   await p.evaluate(() => { const s = (window as any).fixture; s.update({ appState: "inactive" }); s.update({ appState: "active" }); }); await settle(p);
-  assert.equal(await count(p), "unknown"); assert.equal((await reads(p)).length, 6);
+  assert.equal(await count(p), "unknown"); assert.equal((await reads(p)).length, 2);
   await hydrate(p, 4); await update(p, { appState: "active" });
-  assert.equal((await reads(p)).length, 6); assert.equal(await count(p), "5");
+  assert.equal((await reads(p)).length, 2); assert.equal(await count(p), "5");
 });
 
 test("returning to foreground while unfocused does not read until the page is focused", async t => {
   const p = await open(t); await update(p, { focused: false }); await update(p, { appState: "background" }); await update(p, { appState: "active" });
-  assert.equal((await reads(p)).length, 3); assert.equal(await count(p), "unknown");
-  await update(p, { focused: true }); assert.equal((await reads(p)).length, 6); await hydrate(p); assert.equal(await count(p), "3");
+  assert.equal((await reads(p)).length, 1); assert.equal(await count(p), "unknown");
+  await update(p, { focused: true }); assert.equal((await reads(p)).length, 2); await hydrate(p); assert.equal(await count(p), "3");
 });
 
 test("failed resumed reads never restore the previous count", async t => {
   const p = await open(t); await hydrate(p);
   await update(p, { appState: "background" }); await update(p, { appState: "active" });
-  assert.equal((await reads(p)).length, 6);
-  await reply(p, 3, inbox(80), 503, true); await reply(p, 4, notifications, 503, true);await reply(p,5,disabledTyped,503,true);
+  assert.equal((await reads(p)).length, 2);
+  await reply(p, 1, summary(80), 503, true);
   assert.equal(await count(p), "unknown");
 });
 
-test("a failed source does not add its previous count to a freshly read other source", async t => {
-  const p = await open(t); await hydrate(p, 8);
+test("a failed refreshed summary does not keep the previous count", async t => {
+  const p = await open(t); await hydrate(p, 8); assert.equal(await count(p), "9");
   await update(p, { scopeKey: "refreshed" });
-  await reply(p, 3, {}, 403); await reply(p, 4, notifications);await reply(p,5,disabledTyped);
-  assert.equal(await count(p), "1");
+  await reply(p, 1, {}, 403);
+  assert.equal(await count(p), "unknown");
+});
+
+test("a summary for another actor is not shown", async t => {
+  const p = await open(t);
+  await reply(p, 0, summary(4, 1, "actor:other"));
+  assert.equal(await count(p), "unknown");
 });
 
 test("unmount releases native listeners and aborts the pending badge reads", async t => {
   const p = await open(t); await update(p, { mounted: false });
   assert.equal(await p.evaluate(() => (window as any).fixture.listenerCount()), 0);
   assert.ok((await reads(p)).every(r => r.aborted));
-  await reply(p, 0, {}, 401); await reply(p, 1, {}, 401); assert.equal(await p.evaluate(() => (window as any).fixture.expiries), 0);
+  await reply(p, 0, {}, 401); assert.equal(await p.evaluate(() => (window as any).fixture.expiries), 0);
 });
 
 for (const [amount, expected] of [[0, "unknown"], [105, "99"]] as const) {
   test("badge retains its zero and upper-bound display rules " + amount, async t => {
-    const p = await open(t); await hydrate(p, amount, inbox(0)); assert.equal(await count(p), expected);
+    const p = await open(t); await hydrate(p, amount, 0); assert.equal(await count(p), expected);
   });
 }
-test('enabled typed count replaces legacy reminders and remains independent of real messages',async t=>{
- const p=await open(t);await hydrate(p,2);
- const index=await p.evaluate(()=>(window as any).fixture.requests.findLastIndex((r:any)=>r.path==='/api/inbox/notifications'));
- // Refresh creates a new authoritative read; an already-resolved fixture cannot change it.
- await p.evaluate(()=>(window as any).invalidateMessageState());await settle(p);
- await reply(p,index+1,inbox(2));await reply(p,index+2,notifications);
- await reply(p,index+3,{...disabledTyped,enabled:true,unreadCount:4});assert.equal(await count(p),'6');
+test('a typed-mode summary counts typed notifications independently of real messages',async t=>{
+ const p=await open(t);
+ await reply(p,0,summary(2,4,'actor:one','typed'));assert.equal(await count(p),'6');
+ assert.deepEqual((await reads(p)).map(r=>r.path),[summaryPath],'typed mode never probes the typed list');
 });
 
 test('new legacy summary renders with one request and refreshes without reading lists',async t=>{
- const p=await open(t,{unified:true,clock:true});
+ const p=await open(t,{clock:true});
  assert.deepEqual((await reads(p)).map(r=>r.path),['/api/inbox/summary']);
- const data={actorId:'actor:one',messagesUnread:2,notificationsUnread:3,notificationMode:'legacy',notificationRead:'ready',asOf:'2026-09-25T00:00:00Z'};
+ const data=summary(2,3);
  await reply(p,0,data);assert.equal(await count(p),'5');
  await p.clock.fastForward(15001);await settle(p);assert.equal((await reads(p)).length,2);
  await reply(p,1,{...data,messagesUnread:6});assert.equal(await count(p),'9');
@@ -237,7 +244,7 @@ test('new legacy summary renders with one request and refreshes without reading 
  await reply(p,2,data);assert.equal(await count(p),'unknown');
 });
 test('new summary failures do not request old lists or expire a revoked identity',async t=>{
- const p=await open(t,{unified:true});await update(p,{appState:'background'});
+ const p=await open(t);await update(p,{appState:'background'});
  assert.ok((await reads(p))[0]!.aborted);await reply(p,0,{},401);
  assert.equal(await p.evaluate(()=>(window as any).fixture.expiries),0);
  await update(p,{appState:'active'});await reply(p,1,{},503);

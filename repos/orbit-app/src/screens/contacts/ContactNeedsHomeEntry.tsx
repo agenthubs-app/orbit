@@ -9,7 +9,7 @@ import {
   contactNeedsSuccessMessageKeys,
 } from "./ContactNeedsEditor";
 
-export function ContactNeedsHomeEntry() {
+export function ContactNeedsHomeEntry({ offline = false }: { offline?: boolean } = {}) {
   const locale = useOrbitLocale();
   const router = useRouter();
   const needs = useContactNeeds();
@@ -22,6 +22,7 @@ export function ContactNeedsHomeEntry() {
         onOpenMatches={() => router.push("/contacts/matches" as Href)}
         onRetry={needs.refresh}
         unavailable={needs.unavailable}
+        offline={offline}
       />
       <ContactNeedsEditor
         draft={needs.draft}

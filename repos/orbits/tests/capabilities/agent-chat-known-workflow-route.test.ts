@@ -252,7 +252,8 @@ test("formal analysis POST keeps its original question, persists the real task r
   assert.equal(dashboard.success, true);
   if (!dashboard.success) return;
   const source = { aggregate: dashboard.data.aggregate, contacts: dashboard.data.contacts, distributions: dashboard.data.distributions, gaps: dashboard.data.gaps, opportunities: dashboard.data.opportunities, profile: dashboard.data.profile, summary: dashboard.data.summary };
-  const anchor = source.contacts?.contacts[0]?.id;
+  // 0101: the contacts section only carries people the page shows; any contactId in the source is an anchor.
+  const anchor = (source.aggregate.newContacts.contacts[0] as { contactId?: string } | undefined)?.contactId;
   assert.ok(anchor);
   const question = "请根据当前已保存的人脉资料，分析关系结构、目标覆盖和下一步建议。";
   const report = `**关系结构**：当前联系人的关系背景可在 ${anchor} 复核。\n**目标覆盖**：依据当前资料识别目标覆盖缺口，不推断未保存关系。\n**下一步建议**：先补齐缺失依据，再决定是否联系。\n**判断依据**：${anchor} 来自当前账号资料；没有执行联系人或任务写入。`;
@@ -335,7 +336,7 @@ test("protocol v2 conversation POST authorizes contact references before planner
   assert.equal(sendCalls, 1);
 });
 
-test("ordinary conversation responses use a fresh progress run and never inherit older actions", async () => {
+test("ordinary conversation responses carry no run and never inherit older actions (0110)", async () => {
   resetOrbitAgentRuntimeServicesForTests();
   const runtime = createOrbitAgentRuntimeService("mock");
   await runtime.createRun({
@@ -385,7 +386,7 @@ test("ordinary conversation responses use a fresh progress run and never inherit
   };
 
   assert.equal(response.status, 200);
-  assert.match(envelope.data?.runId ?? "", /^run:conversation:/);
-  assert.notEqual(envelope.data?.runId, "run:historical");
+  // Sprint 0110: a plain answer records no run, so it names none.
+  assert.equal(envelope.data?.runId, undefined);
   assert.equal(envelope.data?.actionIds, undefined);
 });

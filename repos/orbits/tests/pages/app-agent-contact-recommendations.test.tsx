@@ -102,8 +102,8 @@ test("/app/agent maps contact artifacts into reason, confidence, evidence, and d
   const agentSource = iorbitChatSurfaceSource();
 
   assert.match(pageSource, /searchParams/);
-  assert.match(pageSource, /loadAppChatRouteViewModel/);
-  assert.match(pageSource, /composeOrbitAgentEntryViewModel/);
+  // Sprint 0104: legacy chat route model retired; the entry uses the starter model.
+  assert.match(pageSource, /createOrbitAgentStarterViewModel\(\)/);
   const modelSource = readProjectFile(IORBIT_MODEL_PATH);
   const chatHookSource = readProjectFile(IORBIT_CHAT_HOOK_PATH);
   const historyHookSource = readProjectFile(IORBIT_HISTORY_HOOK_PATH);
@@ -277,7 +277,11 @@ test("contact detail mapping translates live source and relationship tokens into
     adapterModule.contactDetailRouteToOrbitContactsViewModel(routeModel);
   const contact = viewModel.connections[0];
   const encounter = contact?.encounters[0];
+  // b55a7cebe: a QR scan with a person (not "QR scan at <event>") no longer invents
+  // an event, so the localized source label is shown in the 认识于 field (met).
+  assert.equal(viewModel.events.length, 0);
   const visibleText = [
+    contact?.met,
     contact?.note,
     contact?.offering,
     encounter?.context.reason,

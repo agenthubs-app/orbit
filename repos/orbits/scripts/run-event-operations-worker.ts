@@ -14,7 +14,7 @@ import { resolveAttendeePostEventAiProviderConfiguration } from "../features/eve
 import { createAttendeePostEventAiTaskRepository } from "../features/events/post-event-artifact/task-repository";
 import { createConfiguredEventOperationsAiProvider } from "../features/events/event-operations/ai-provider";
 import { createEventOperationsEngine } from "../features/events/event-operations/engine";
-import { createStorageEventContactRequestNotificationWriter } from "../features/events/event-operations/contact-request-notification-writer";
+import { createInboxEventContactRequestNotificationWriter } from "../features/notifications/event-contact-request-inbox";
 import { createEventOperationsOutboxProjector } from "../features/events/event-operations/outbox-projector";
 import { createPostgresEventOperationsRepository } from "../features/events/event-operations/storage/postgres-repository";
 import { createPostgresEventOperationsOutboxRepository } from "../features/events/event-operations/storage/postgres-outbox-repository";
@@ -122,9 +122,9 @@ async function main(): Promise<void> {
       60_000,
     ),
     outboxProjector: createEventOperationsOutboxProjector({
-      contactRequestNotifications: createStorageEventContactRequestNotificationWriter({
-        store: liveRecords.store,
-        workspaceId: liveRecords.workspaceId,
+      contactRequestNotifications: createInboxEventContactRequestNotificationWriter({
+        client: runtime.client,
+        workspaceId: runtime.workspaceId,
       }),
       registrationProvider,
       relationshipProvider,

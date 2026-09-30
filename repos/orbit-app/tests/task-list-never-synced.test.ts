@@ -113,3 +113,16 @@ test("a synced-but-empty list survives a refresh without reverting to loading", 
   assert.deepEqual(source.canonical, []);
   assert.equal(source.loading, false);
 });
+
+test("offline after a sync that found no tasks: an empty list with 截至, not the failure page (0131)", () => {
+  // The coordinator reports an empty mirror whose sync attempt failed as "failure"; the
+  // last successful sync (lastSyncedAt) is what makes it a readable copy (same rule as mirrorFreshness).
+  const source = mirrorTaskListSource(
+    snapshot({ error: "Network request failed", lastSyncedAt: "2026-09-19T00:00:00.000Z", status: "failure" }),
+    INPUT,
+  );
+  assert.deepEqual(source.canonical, []);
+  assert.deepEqual(source.offline, { lastSyncedAt: "2026-09-19T00:00:00.000Z" });
+  assert.equal(source.failure, null, "no 待办暂时打不开 over a list the device has");
+  assert.equal(source.loading, false);
+});

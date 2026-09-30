@@ -1,0 +1,267 @@
+<title>读取量监控</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Serif+SC:wght@600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap">
+<style>
+:root{
+  --paper:#f4f6f3; --surface:#ffffff; --ink:#1c2422; --muted:#5d6a66; --line:#d5ddd8;
+  --accent:#28676a; --accent-soft:#e0eeec; --chalk:#1f3a36; --chalk-ink:#eaf2ee;
+  --warn:#94600f; --warn-soft:#f6ecda; --good:#2e7a4b; --good-soft:#e0f0e5; --bad:#a23a2e; --bad-soft:#f7e2de;
+  --code:#ecf0ee; --hl:#fff4c7;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --paper:#101615; --surface:#172020; --ink:#e1e9e5; --muted:#99a8a3; --line:#2b3937;
+    --accent:#72b7b6; --accent-soft:#1c3230; --chalk:#0c1c1a; --chalk-ink:#dcebe5;
+    --warn:#e0a44e; --warn-soft:#342914; --good:#7cc596; --good-soft:#1b3125; --bad:#e2887c; --bad-soft:#3a211e;
+    --code:#1d2726; --hl:#3a3413;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --paper:#101615; --surface:#172020; --ink:#e1e9e5; --muted:#99a8a3; --line:#2b3937;
+  --accent:#72b7b6; --accent-soft:#1c3230; --chalk:#0c1c1a; --chalk-ink:#dcebe5;
+  --warn:#e0a44e; --warn-soft:#342914; --good:#7cc596; --good-soft:#1b3125; --bad:#e2887c; --bad-soft:#3a211e;
+  --code:#1d2726; --hl:#3a3413;
+}
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font-family:"Noto Sans SC","PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;font-size:16px;line-height:1.85;padding-inline:16px;padding-block:28px 80px}
+main{max-width:740px;margin:0 auto;display:flex;flex-direction:column;gap:56px}
+h1,h2{font-family:"Noto Serif SC","Songti SC",serif;text-wrap:balance;margin:0}
+h1{font-size:32px;line-height:1.3}
+h2{font-size:24px;line-height:1.4}
+h3{font-size:17px;margin:0;font-weight:700}
+p{margin:0;max-width:64ch}
+ul,ol{margin:0;padding-left:1.35em;display:flex;flex-direction:column;gap:6px;max-width:64ch}
+code,.mono{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.86em;background:var(--code);padding:1px 5px;border-radius:4px;word-break:break-all}
+strong{font-weight:700}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.cover{background:var(--chalk);color:var(--chalk-ink);border-radius:10px;padding:28px 24px;display:flex;flex-direction:column;gap:14px}
+.cover .course{font:500 12.5px/1.4 "IBM Plex Mono",monospace;letter-spacing:.1em;text-transform:uppercase;opacity:.8}
+.cover p{color:var(--chalk-ink);opacity:.92}
+.cover ol{gap:4px}
+.cover a{color:var(--chalk-ink)}
+
+.lesson{display:flex;flex-direction:column;gap:18px}
+.lesson-head{display:flex;flex-direction:column;gap:6px;border-top:2px solid var(--ink);padding-top:14px}
+.lesson-no{font:500 13px/1 "IBM Plex Mono",monospace;letter-spacing:.08em;color:var(--accent)}
+.question{font-size:15px;color:var(--muted)}
+.question strong{color:var(--ink)}
+
+.analogy{background:var(--warn-soft);border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:8px}
+.analogy .tag,.terms .tag,.recap .tag{font:500 12px/1.4 "IBM Plex Mono",monospace;letter-spacing:.06em;color:var(--warn)}
+.terms{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.terms .tag{color:var(--accent)}
+.terms dl{margin:0;display:grid;grid-template-columns:minmax(96px,max-content) 1fr;gap:8px 14px}
+.terms dt{font-weight:700}
+.terms dt small{display:block;font:400 12px/1.3 "IBM Plex Mono",monospace;color:var(--muted)}
+.terms dd{margin:0}
+@media (max-width:480px){.terms dl{grid-template-columns:1fr}.terms dd{margin-bottom:6px}}
+.recap{border-left:3px solid var(--accent);padding:4px 0 4px 14px;display:flex;flex-direction:column;gap:4px}
+.recap .tag{color:var(--accent)}
+
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:600px;font-size:14.5px;line-height:1.6}
+th,td{text-align:left;vertical-align:top;padding:9px 12px;border-bottom:1px solid var(--line)}
+th{font-size:13px;color:var(--muted);background:var(--paper);font-weight:600}
+tr:last-child td{border-bottom:0}
+tr.group td{background:var(--accent-soft);font-weight:700;font-size:13.5px;color:var(--accent)}
+td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+.hl{background:var(--hl);padding:0 3px;border-radius:3px}
+
+pre.json{margin:0;background:var(--code);border-radius:8px;padding:14px;overflow-x:auto;font:13px/1.6 "IBM Plex Mono",ui-monospace,monospace;color:var(--ink)}
+pre.json .c{color:var(--muted)}
+figure{margin:0;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px;overflow-x:auto;display:flex;flex-direction:column;gap:8px}
+figcaption{font-size:13.5px;color:var(--muted)}
+.pill{display:inline-block;font-size:12.5px;font-weight:500;padding:1px 9px;border-radius:999px;white-space:nowrap}
+.p-good{background:var(--good-soft);color:var(--good)}
+.p-warn{background:var(--warn-soft);color:var(--warn)}
+.p-bad{background:var(--bad-soft);color:var(--bad)}
+.steps{display:flex;flex-direction:column;gap:10px;counter-reset:s;padding:0;list-style:none;max-width:none}
+.steps li{display:grid;grid-template-columns:30px 1fr;gap:10px;align-items:start}
+.steps li::before{counter-increment:s;content:counter(s);width:26px;height:26px;border-radius:50%;background:var(--accent);color:var(--surface);font:600 13px/26px "IBM Plex Mono",monospace;text-align:center;margin-top:2px}
+.decision{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px 16px;display:flex;flex-direction:column;gap:4px}
+.muted{color:var(--muted)}
+.glossary dl{margin:0;display:grid;grid-template-columns:minmax(110px,max-content) 1fr;gap:8px 16px}
+.glossary dt{font-weight:700}
+.glossary dd{margin:0}
+@media (max-width:480px){.glossary dl{grid-template-columns:1fr}h1{font-size:26px}h2{font-size:21px}body{font-size:15.5px}}
+.callout{background:var(--accent-soft);border-left:3px solid var(--accent);padding:14px 16px;border-radius:0 8px 8px 0;display:flex;flex-direction:column;gap:8px}
+.callout.warn{background:var(--warn-soft);border-left-color:var(--warn)}
+</style>
+<main>
+<section class="cover">
+  <div class="course">设计案 · 已定稿 2026-09-27</div>
+  <h1>读取量监控</h1>
+  <p>这份设计案回答：<strong>在生产环境里，怎样知道每个功能、每个用户，每天从 Neon 读走了多少数据？</strong></p>
+  <p>有了这些数字，之前那些「方案能省多少」就不用靠假设估算，可以直接看改前改后的对比；哪个接口突然变贵了，也能第一时间发现。</p>
+  <ol>
+    <li><a href="#s1">为什么要自己记</a></li>
+    <li><a href="#s2">已经有的零件</a></li>
+    <li><a href="#s3">三层方案</a></li>
+    <li><a href="#s4">每次请求记什么</a></li>
+    <li><a href="#s5">存在哪、存多久</a></li>
+    <li><a href="#s6">怎么看、什么时候报警</a></li>
+    <li><a href="#s7">监控本身的成本和隐私</a></li>
+    <li><a href="#s8">分期和验收</a></li>
+    <li><a href="#s9">已定的决定</a></li>
+  </ol>
+</section>
+
+<section class="lesson" id="s1">
+  <div class="lesson-head"><span class="lesson-no">第 1 步</span><h2>为什么要自己记</h2></div>
+  <p>Neon 控制台能告诉你<strong>每天一共传出去多少数据</strong>（叫「网络传输量」），但它不知道这些数据是哪个接口、哪个用户读走的。就像电费单只有总数，没有分插座的读数。</p>
+  <p>我们要的是「分插座的读数」：</p>
+  <ul>
+    <li>哪个接口最费，比如「首页看板每次 3.5MB」这种情况，要能从生产数据里直接看出来；</li>
+    <li>哪个用户最费，比如一个联系人特别多、AI 问得特别多的用户；</li>
+    <li>一次上线之后，某个接口的读取量有没有突然翻倍。</li>
+  </ul>
+  <p>只有我们自己的服务器知道「这次查询是替哪个接口、哪个用户做的」，所以只能在服务器这一侧记录。</p>
+</section>
+
+<section class="lesson" id="s2">
+  <div class="lesson-head"><span class="lesson-no">第 2 步</span><h2>已经有的零件</h2></div>
+  <p>好消息是，计量的核心零件已经写好了，只是没有在生产环境打开：</p>
+  <div class="tbl"><table>
+    <thead><tr><th>零件</th><th>它做什么</th><th>缺什么</th></tr></thead>
+    <tbody>
+      <tr><td><strong>查询计量器</strong><br><code>postgres-read-metrics.ts</code></td><td>每条读查询结束时，记下返回了几行、约多少字节、花了多少毫秒。不记 SQL 原文、参数和数据内容</td><td>只知道「这条查询」，不知道它属于哪个接口、哪个用户</td></tr>
+      <tr><td>环境开关 <code>ORBIT_PG_READ_METRICS=1</code></td><td>打开后，每条查询往日志里写一行</td><td>一个请求可能有几十条查询，日志会很多，而且拼不回「这个请求一共读了多少」</td></tr>
+      <tr><td>读取成本账本</td><td>在测试里，按「操作」汇总行数和字节数，超过基线就报错</td><td>只在测试里跑，用的是演示数据</td></tr>
+    </tbody>
+  </table></div>
+  <p>还有一个漏洞：代码里有 8 个地方创建数据库连接池，<strong>只有 2 个接上了计量器</strong>（万能表那个，和事务那个）。活动运营、名片识别、后台维护等 6 个没有接，它们读的数据现在完全看不到。</p>
+</section>
+
+<section class="lesson" id="s3">
+  <div class="lesson-head"><span class="lesson-no">第 3 步</span><h2>三层方案</h2></div>
+  <div class="tbl"><table>
+    <thead><tr><th>层</th><th>回答什么</th><th>怎么做</th></tr></thead>
+    <tbody>
+      <tr><td><strong>第一层：每个请求一张小票</strong></td><td>这个请求是哪个接口、替谁读的、一共读了多少</td><td>在请求开始时给它一个「记账本」，计量器每记一条查询就往这个本子上加；请求结束时，把合计写成一张小票</td></tr>
+      <tr><td><strong>第二层：每天一份汇总</strong></td><td>每个接口、每个用户，每天一共读了多少</td><td>每天把小票按接口、按用户加起来，存一行</td></tr>
+      <tr><td><strong>第三层：和 Neon 账单对账</strong></td><td>我们记的总数和 Neon 实际收费的是否对得上</td><td>每天从 Neon 取当天的网络传输量，和第二层的总数比较；再用 Neon 自带的查询统计（<code>pg_stat_statements</code>）找出最费的查询</td></tr>
+    </tbody>
+  </table></div>
+  <p>为什么需要第三层？计量器记的是「服务器解码后的数据大小」，和 Neon 实际传输的字节数不完全一样（协议开销、没接计量器的连接池、后台任务等都会造成差异）。<strong>对账能告诉我们记录覆盖了多少</strong>：如果我们记的只占 Neon 账单的 60%，就说明还有 40% 没找到来源。</p>
+</section>
+
+<section class="lesson" id="s4">
+  <div class="lesson-head"><span class="lesson-no">第 4 步</span><h2>每次请求记什么</h2></div>
+  <p>一张小票大约 200 字节，内容如下：</p>
+  <div class="tbl"><table>
+    <thead><tr><th>字段</th><th>例子</th><th>说明</th></tr></thead>
+    <tbody>
+      <tr><td>时间</td><td>2026-09-28 10:15:03</td><td></td></tr>
+      <tr><td>接口</td><td><code>GET /api/dashboard</code></td><td>用路由模板，不带具体编号，这样同一个接口的调用能加在一起</td></tr>
+      <tr><td>来源</td><td>app / web / 后台任务名</td><td>后台任务（提醒、名片识别等）没有用户，按任务名记</td></tr>
+      <tr><td>用户</td><td>账号编号</td><td>用来找出最费的用户，见第 7 步的隐私说明</td></tr>
+      <tr><td>查询条数</td><td>6</td><td></td></tr>
+      <tr><td>读出行数</td><td>5,068</td><td></td></tr>
+      <tr><td>读出字节数</td><td>3,570,222</td><td>计量器的估算值</td></tr>
+      <tr><td>数据库耗时</td><td>184ms</td><td>所有查询加起来</td></tr>
+      <tr><td>返回给手机的字节数</td><td>41,200</td><td>顺便记下，这是 Vercel 到手机的流量</td></tr>
+      <tr><td>状态码</td><td>200</td><td></td></tr>
+    </tbody>
+  </table></div>
+  <p>每个请求只写一张小票，不是每条查询写一行，所以记录量和请求数成正比，不会因为一个接口查询多就膨胀。</p>
+</section>
+
+<section class="lesson" id="s5">
+  <div class="lesson-head"><span class="lesson-no">第 5 步</span><h2>存在哪、存多久</h2></div>
+  <p>有两个选择：只写日志，或者存进数据库。</p>
+  <div class="tbl"><table>
+    <thead><tr><th></th><th>只写 Vercel 日志</th><th>存进数据库（建议）</th></tr></thead>
+    <tbody>
+      <tr><td>保留多久</td><td>Vercel 自带的运行日志只保留很短时间（按套餐从 1 小时到几天），要长期保存得接第三方日志服务（另外付费）</td><td>我们自己定</td></tr>
+      <tr><td>能不能算汇总</td><td>要在第三方服务里写查询</td><td>一条 SQL</td></tr>
+      <tr><td>额外成本</td><td>第三方服务费</td><td>每个请求多写一行，约 200 字节。写入不算网络传输量</td></tr>
+    </tbody>
+  </table></div>
+  <p><strong>定下的做法：以数据库为准，另发一份到 Axiom。</strong></p>
+  <ul>
+    <li>正式统计用数据库里的表：保留 1 年，还要和 Neon 账单对账，第三方的免费额度不够用。</li>
+    <li>同样的小票由我们的代码<strong>直接发送</strong>到 Axiom（免费额度每月 500GB、保留 30 天），用来实时搜索和排查问题。不走 Vercel 的日志转发，因为那要 Pro 套餐并且按量收费。每天 10 万个请求约 1GB/月，远在免费额度内。</li>
+    <li>发往 Axiom 的小票只放账号指纹，不放原始账号编号。</li>
+    <li>Axiom 的接入密钥由你在 Vercel 环境变量里配置，不进代码、不进文档。没有配置时自动跳过，不影响请求。</li>
+  </ul>
+  <div class="tbl"><table>
+    <thead><tr><th>表</th><th>一行是什么</th><th>保留</th></tr></thead>
+    <tbody>
+      <tr><td>请求小票</td><td>一个请求</td><td>14 天</td></tr>
+      <tr><td>每日汇总</td><td>某天 × 某接口 × 某来源（另有一份按用户的）</td><td>1 年</td></tr>
+      <tr><td>每日对账</td><td>某天：我们记的总字节数、Neon 账单的传输量、覆盖率</td><td>一直保留</td></tr>
+    </tbody>
+  </table></div>
+  <p>小票在<strong>响应发出去之后</strong>才写（Next.js 的 <code>after()</code>），用户不用等它。写失败只记一条警告，不影响请求本身。</p>
+</section>
+
+<section class="lesson" id="s6">
+  <div class="lesson-head"><span class="lesson-no">第 6 步</span><h2>怎么看、什么时候报警</h2></div>
+  <p><strong>看：</strong>在网页管理后台加一个「读取量」页面，只有管理员能看：</p>
+  <ul>
+    <li>最近 7 天每天的总读取量，和 Neon 账单并排显示，附覆盖率；</li>
+    <li>最费的 20 个接口：调用次数、平均每次读多少、合计；</li>
+    <li>最费的 20 个用户；</li>
+    <li>点进一个接口，看它 30 天的趋势。</li>
+  </ul>
+  <p><strong>报警：</strong>每天的汇总任务跑完后检查三条规则，触发就往管理员账号的 Orbit 收件箱写一条通知（开了推送的话手机也会收到）。收件人是 agenthubs.app 的那个账号，用一项配置写明账号编号，以后要加人就改这项配置：</p>
+  <div class="tbl"><table>
+    <thead><tr><th>规则</th><th>意思</th></tr></thead>
+    <tbody>
+      <tr><td>某接口平均每次读取量，比过去 7 天的中位数高出一倍</td><td>多半是一次上线引入了不设上限的读取</td></tr>
+      <tr><td>单个请求读取超过 5MB</td><td>单点过大，不管平均值如何都值得看</td></tr>
+      <tr><td>覆盖率低于 70%</td><td>有较大的读取没被记到，比如新加的连接池没接计量器</td></tr>
+    </tbody>
+  </table></div>
+  <p>阈值写在代码里，以后可以调整。</p>
+</section>
+
+<section class="lesson" id="s7">
+  <div class="lesson-head"><span class="lesson-no">第 7 步</span><h2>监控本身的成本和隐私</h2></div>
+  <p><strong>成本：</strong></p>
+  <ul>
+    <li>计量器只是在查询结束时算一下行数和字节数，不额外查数据库；</li>
+    <li>每个请求多写一行约 200 字节。假设每天 10 万个请求，就是 20MB，14 天约 280MB；</li>
+    <li>如果以后请求量很大，可以用一个开关只记一部分请求（比如 10%），汇总时再按比例放大。</li>
+  </ul>
+  <p><strong>隐私：</strong></p>
+  <ul>
+    <li>小票不记 SQL 原文、参数、数据内容，只记数字；</li>
+    <li>数据库里的小票记账号编号，因为要找出最费的用户，而账号编号本来就在同一个数据库里；</li>
+    <li>日志里那一行只记账号编号的指纹（打乱后的短码），日志会流到 Vercel，不应带原始编号；</li>
+    <li>小票 14 天后自动删除，每日汇总里按用户的那份也只保留 1 年。</li>
+  </ul>
+</section>
+
+<section class="lesson" id="s8">
+  <div class="lesson-head"><span class="lesson-no">第 8 步</span><h2>分期和验收</h2></div>
+  <div class="tbl"><table>
+    <thead><tr><th>期</th><th>做什么</th><th>验收</th></tr></thead>
+    <tbody>
+      <tr><td><strong>O1</strong> 小票</td><td>请求级记账本；8 个连接池都接上计量器，并加一道自动检查：以后新建连接池没接计量器就报错；小票写入数据库、日志和 Axiom（配置了密钥时）</td><td>本机跑一遍账本里的 5 个操作，小票的数字和测试账本完全一致；关掉数据库时请求照常成功</td></tr>
+      <tr><td><strong>O2</strong> 汇总和对账</td><td>每日汇总任务、清理任务；从 Neon 的用量接口取每日传输量（这个接口要看套餐是否提供，不提供就每周从控制台手动抄一次）</td><td>生产环境跑 3 天，覆盖率有数字；汇总之和等于小票之和</td></tr>
+      <tr><td><strong>O3</strong> 页面和报警</td><td>管理后台「读取量」页；三条报警规则</td><td>在测试库里造一个读取量翻倍的接口，第二天收到通知</td></tr>
+    </tbody>
+  </table></div>
+  <p>O1 上线后第一周的数据，就能回答「三份方案能省多少」：先记一周作为基线，每个方案上线后再对比。所以建议<strong>把 O1 排在三份方案之前</strong>。</p>
+</section>
+
+<section class="lesson" id="s9">
+  <div class="lesson-head"><span class="lesson-no">第 9 步</span><h2>已定的决定</h2></div>
+  <div class="tbl"><table>
+    <thead><tr><th>事项</th><th>决定（2026-09-27）</th></tr></thead>
+    <tbody>
+      <tr><td>1. 存在哪</td><td>以数据库为准；另由代码直接发一份到 Axiom（免费额度），用于实时排查</td></tr>
+      <tr><td>2. 数据库小票记原始账号编号</td><td>记。日志和 Axiom 只记指纹</td></tr>
+      <tr><td>3. 全量还是抽样</td><td>全量，抽样开关先做好</td></tr>
+      <tr><td>4. 报警发到哪</td><td>站内通知（Orbit 收件箱），收件人为 agenthubs.app 的账号</td></tr>
+      <tr><td>5. O1 排位</td><td>排在所有方案之前，先记一周作为基线</td></tr>
+    </tbody>
+  </table></div>
+  <p>你要做的：注册 Axiom 免费账号，把接入密钥配置到 Vercel 环境变量（O1 上线前即可，没有配置也不影响 O1 的数据库部分）。</p>
+</section>
+</main>

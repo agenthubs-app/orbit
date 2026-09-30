@@ -41,6 +41,8 @@ loader._load = (name, ...args) => {
   if (name.endsWith("/api/ApiBaseUrlProvider")) return { useOrbitApiBaseUrl: () => ({ baseUrl: "https://orbit.test" }) };
   if (name.endsWith("/hooks/useOrbitApiClient")) return { useOrbitApiClient: () => ({}) };
   if (name.endsWith("/hooks/useRelationshipInboxBadgeCount")) return { useRelationshipInboxBadgeCount: () => 0 };
+  // Sprint 0118: the network path; the device mirror of the AI sessions is not available here.
+  if (name.endsWith("/hooks/useLocalAiSessions")) return { useLocalAiSessions: () => ({ available: false, rows: [], freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh: async () => null }) };
   // The ceiling's own timing is covered in use-loading-deadline.test.ts; this
   // file is about what each region shows once it has or has not expired.
   if (name.endsWith("/hooks/useLoadingDeadline")) return { LOADING_DEADLINE_MS: 8_000, useLoadingDeadline: () => overdue };

@@ -1,3 +1,4 @@
+import { lockedFixtureQuery } from "./sync-revision-fixture";
 import assert from "node:assert/strict";
 import { createHash, randomUUID } from "node:crypto";
 import test from "node:test";
@@ -54,6 +55,8 @@ export function useRegistrationCatalogueFixture(
     loadLocalEnv();
     const databaseUrl = process.env.ORBIT_EVENT_DATABASE_URL;
     assert.ok(databaseUrl, "Registration integration tests require ORBIT_EVENT_DATABASE_URL pointing to a test database.");
+    // .env holds the Neon URL; if .env.local is missing loadLocalEnv() would fall back to it (0123).
+    assert.ok(["localhost", "127.0.0.1", "::1", "[::1]"].includes(new URL(databaseUrl).hostname), "Registration integration tests only run against a local database.");
     schema = `registration_catalogue_${randomUUID().replaceAll("-", "")}`;
     const workspaceId = `workspace:${schema}`;
     const url = new URL(databaseUrl);
@@ -77,7 +80,7 @@ export function useRegistrationCatalogueFixture(
       const startsAt = new Date(event.start).toISOString();
       const endsAt = new Date(event.start + 2 * 60 * 60 * 1000).toISOString();
       const values = [workspaceId, event.id, event.code, event.title, startsAt, endsAt, event.state, event.venue];
-      await pool.query(`insert into event_ops_events (
+      await lockedFixtureQuery(pool, `insert into event_ops_events (
         workspace_id,event_id,organizer_actor_id,created_at,updated_at,public_code,
         title,description,venue,timezone,starts_at,ends_at,lifecycle_state_v2,source_payload,event_version
       ) values ($1,$2,'organizer:registration-test',now(),now(),$3,$4,
@@ -97,6 +100,12 @@ export function useRegistrationCatalogueFixture(
       ORBIT_LIVE_DATABASE_URL: url.toString(),
       ORBIT_DATABASE_URL: url.toString(),
       ORBIT_WORKSPACE_ID: workspaceId,
+      // loadLocalEnv() above may import ORBIT_DATABASE_TARGET=local from .env.local;
+      // the product would then read ORBIT_LOCAL_DATABASE_URL (the dev database)
+      // instead of this schema (8e5bd493a target switch; 0123).
+      ORBIT_DATABASE_TARGET: "",
+      ORBIT_LOCAL_DATABASE_URL: "",
+      ORBIT_LOCAL_WORKSPACE_ID: "",
       OPENAI_API_KEY: "",
       DEEPSEEK_API_KEY: "",
       GEMINI_API_KEY: "",

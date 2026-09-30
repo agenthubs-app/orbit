@@ -33,6 +33,11 @@ try {
   loader._load = originalLoad;
 }
 
+// The screen labels due dates against the device clock, so the action is due at
+// local noon today rather than on a fixed calendar date.
+const dueToday = new Date();
+dueToday.setHours(12, 0, 0, 0);
+
 const pipelinePage: ContactPipelinePageContract = {
   asOf: "2026-09-26T00:00:00.000Z",
   stage: "to_contact",
@@ -40,7 +45,7 @@ const pipelinePage: ContactPipelinePageContract = {
   items: [{ id: "contact:legacy", displayName: "Hana", organization: "Orbit", role: "Partner" }],
   hasMore: false,
   nextCursor: null,
-  actions: [{ taskId: "task:legacy", contactId: "contact:legacy", contactName: "Hana", organization: "Orbit", role: "Partner", title: "复核关系", dueAt: "2026-09-26T00:00:00.000Z" }],
+  actions: [{ taskId: "task:legacy", contactId: "contact:legacy", contactName: "Hana", organization: "Orbit", role: "Partner", title: "复核关系", dueAt: dueToday.toISOString() }],
 };
 
 test("relationship overview renders exact stage counts and bounded action previews", () => {

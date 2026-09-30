@@ -835,7 +835,7 @@ test("workspace reset rolls its row deletion back when cursor deletion fails", a
 test("Web reports online-only with the missing capability, and local-mirror with its whitelist", async () => {
   assert.deepEqual(await getLocalSyncDatabaseCapability(), { mode: "online-only", reason: "insecure-context" });
   const capable = { isSecureContext: true, storage: { getDirectory: async () => ({}) as FileSystemDirectoryHandle }, indexedDB: {} as IDBFactory, subtle: {} as SubtleCrypto, hasWorker: true };
-  assert.deepEqual(await getLocalSyncDatabaseCapability(capable), { mode: "local-mirror", domains: ["tasks", "personal-schedule"] });
+  assert.deepEqual(await getLocalSyncDatabaseCapability(capable), { mode: "local-mirror", domains: ["notes", "tasks", "personal-schedule", "event-registrations", "registered-events", "event-published-results", "contacts", "dashboard-graph", "inbox-notifications", "ai-sessions", "ai-session-messages", "relationship-conversations", "relationship-messages"] });
   assert.deepEqual(await getLocalSyncDatabaseCapability({ ...capable, storage: undefined }), { mode: "online-only", reason: "no-opfs" });
 });
 

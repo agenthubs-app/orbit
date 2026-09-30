@@ -1,3 +1,4 @@
+import { EVENT_SYNC_REVISION_STATEMENTS } from "../../features/events/event-operations/storage/sync-revision";
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -80,10 +81,13 @@ function createFakeSqlClient(
 }
 
 test("insert-if-absent uses one atomic SQL statement and never updates on conflict", async () => {
-  const client = createFakeSqlClient([[rowFromRecord(baseRecord)], []]);
+  // Sprint 0117: events is a sync collection (its writes take the commit-order
+  // lock CTE); the plain statement shape is checked on a non-sync collection.
+  const record = { ...baseRecord, collectionName: "organizers" };
+  const client = createFakeSqlClient([[rowFromRecord(record)], []]);
   const store = createPostgresLiveRecordStore({ client });
-  assert.deepEqual(await store.insertRecordIfAbsent!(baseRecord), { ...baseRecord, deletedAt: null });
-  assert.equal(await store.insertRecordIfAbsent!(baseRecord), null);
+  assert.deepEqual(await store.insertRecordIfAbsent!(record), { ...record, deletedAt: null });
+  assert.equal(await store.insertRecordIfAbsent!(record), null);
   assert.equal(client.calls.length, 2);
   for (const call of client.calls) {
     assert.match(call.text, /on conflict \(workspace_id, collection_name, record_id\)\s+do nothing/i);
@@ -96,7 +100,12 @@ test("orbit records migration can run through an async SQL client", async () => 
 
   await runOrbitRecordsMigration(client);
 
-  assert.equal(client.calls.length, EVENT_OPERATIONS_SCHEMA_MIGRATIONS.length + 3);
+  // +5: orbit_records, lifecycle, event-ops bootstrap, read receipts, (sprint 0109) the relationship
+  // message tables; then (sprint 0113) sync_revision on the event head tables, one statement each.
+  const eventSync = EVENT_SYNC_REVISION_STATEMENTS.length;
+  assert.equal(client.calls.length, EVENT_OPERATIONS_SCHEMA_MIGRATIONS.length + 5 + eventSync);
+  assert.deepEqual(client.calls.slice(-eventSync).map((call) => call.text), [...EVENT_SYNC_REVISION_STATEMENTS]);
+  assert.match(client.calls.at(-eventSync - 1)?.text ?? "", /create table if not exists relationship_messages/i);
   assert.match(
     client.calls[0]?.text ?? "",
     /create table if not exists orbit_records/i,
@@ -111,6 +120,10 @@ test("orbit records migration can run through an async SQL client", async () => 
     /create table if not exists event_ops_schema_migrations/i,
   );
   assert.match(client.calls[3]?.text ?? "", /create table event_ops_events/i);
+  assert.match(
+    client.calls.at(-eventSync - 2)?.text ?? "",
+    /create table if not exists orbit_read_receipts/i,
+  );
   for (const [index, migration] of EVENT_OPERATIONS_SCHEMA_MIGRATIONS.entries()) {
     const sql = client.calls[index + 3]?.text ?? "";
     assert.ok(sql.includes(`where version = ${migration.version};`));

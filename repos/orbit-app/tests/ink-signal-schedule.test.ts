@@ -18,7 +18,13 @@ const state = window.fixture = { width: 390, fontScale: 1, navigation: [], refre
   update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); } };
 window.fetch = async (input, init) => { state.writes.push({ input: String(input), method: init?.method || "GET" }); return new Response("{}", { status: 503 }); };
 export const useFixture = () => { useSyncExternalStore(fn => { listeners.add(fn); return () => listeners.delete(fn); }, () => revision); return state; };
-export const useApiResource = path => { useFixture(); return { kind: state.kinds?.[path] || "success", data: state.payloads[path], error: { message: "暂时无法读取，请重试。" }, refreshing: false, refresh() { state.refreshes.push(path); } }; };
+export const useApiResource = (path, _empty, options) => { useFixture(); if (options?.enabled !== false) (state.reads ??= []).includes(path) || state.reads.push(path); return { kind: state.kinds?.[path] || "success", data: state.payloads[path], error: { message: "暂时无法读取，请重试。" }, refreshing: false, refresh() { state.refreshes.push(path); } }; };
+// Sprint 0115: the calendar source is mirror-first in the browser when the mirror is active.
+export const useWebMirrorStatus = () => { useFixture(); return state.mirror === "local-mirror" ? { mode: "local-mirror", scopeDigest: "d", domains: [] } : { mode: "online-only", reason: "no-opfs" }; };
+// Sprint 0131: page copies / row-id reads open the coordinator session; this harness has none.
+export const useSyncCoordinatorSession = () => null;
+export const useSyncedCollection = ({ kind }) => { useFixture(); const synced = state.synced?.[kind]; return { status: synced?.status ?? "unsynced", records: synced?.records ?? [], error: synced?.error ?? null, lastSyncedAt: synced?.lastSyncedAt ?? null, workspaceId: "w", refresh: async () => { (state.syncRefreshes ??= []).push(kind); return null; }, invalidate: async () => null }; };
+export const useOrbitAuthSession = () => ({ ready: true, signedIn: true, actorId: "actor", user: { id: "actor" } });
 export const useRouter = () => ({ canGoBack: () => false, push(href) { state.navigation.push(href); }, replace(href) { state.navigation.push(href); }, back() { state.navigation.push("back"); } });
 export const usePathname = () => "/schedule";
 export const useRelationshipInboxBadgeCount = () => 0;
@@ -40,7 +46,7 @@ test.before(async () => {
   const result = await build({ stdin: { contents: 'import React from "react"; import { createRoot } from "react-dom/client"; import { ScheduleScreen } from "./src/screens/schedule/ScheduleScreen"; createRoot(document.getElementById("root")).render(<ScheduleScreen />);', loader: "tsx", resolveDir: process.cwd() }, bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"], define: { "process.env.NODE_ENV": '"test"', __DEV__: "false" }, plugins: [{ name: "schedule-boundaries", setup(plugin) {
     plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "schedule-test" }));
     plugin.onResolve({ filter: /^react-native-svg$/ }, () => ({ path: require.resolve("react-native-svg/lib/module/ReactNativeSVG.web.js") }));
-    plugin.onResolve({ filter: /^(fixture|expo-router|@expo\/vector-icons|react-native-safe-area-context)$|\/(useApiResource|useRelationshipInboxBadgeCount)$/ }, () => ({ path: "fixture", namespace: "schedule-test" }));
+    plugin.onResolve({ filter: /^(fixture|expo-router|@expo\/vector-icons|react-native-safe-area-context)$|\/(useApiResource|useRelationshipInboxBadgeCount|useWebMirrorStatus|useSyncedCollection|AuthSessionProvider)$/ }, () => ({ path: "fixture", namespace: "schedule-test" }));
     plugin.onLoad({ filter: /.*/, namespace: "schedule-test" }, args => ({ contents: args.path === "native" ? `
 import React from "react"; import { Text as RealText, StyleSheet, useWindowDimensions as realDimensions } from "react-native-web"; import { useFixture } from "fixture"; export * from "react-native-web";
 export const useWindowDimensions = () => { const s = useFixture(); return { ...realDimensions(), width: s.width, fontScale: s.fontScale }; };
@@ -86,7 +92,7 @@ test("day view shows compact source date, Monday strip and distinct ink selectio
   await page.getByRole("button", { name: "下一天", exact: true }).click(); await page.getByRole("heading", { name: "9.12", exact: true }).waitFor();
   await page.getByRole("button", { name: "回到今天", exact: true }).click(); await page.getByRole("heading", { name: "9.11", exact: true }).waitFor();
   await page.getByRole("button", { name: /AI 创业者交流/ }).click();
-  assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), ["/schedule/events/event-fri"]);
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), ["/events/event-fri"]); // Sprint 0131: a calendar event opens its detail page
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.writes), []);
 });
 
@@ -159,6 +165,28 @@ test("partial-source failure stays visible beside the remaining real agenda", as
   await page.getByRole("button", { name: /AI 创业者交流/ }).waitFor();
   assert.equal(await page.getByRole("button", { name: /给山田发介绍资料/ }).count(), 0);
   await mode(page, "周"); await page.getByRole("button", { name: /整理本周笔记/ }).waitFor();
+});
+
+// Sprint 0115: offline, the calendar reads the device mirror (registered events, tasks, personal schedule).
+function mirrorRecords(kind: string, payloads: Record<string, unknown>[]) {
+  return payloads.map(payload => ({ actorId: "actor", workspaceId: "w", kind, id: String(payload.id ?? payload.eventId), revision: "1", updatedAt: "2026-09-10T00:00:00Z", deletedAt: null, payload, syncState: "synced", aiVisibility: "excluded" }));
+}
+
+test("offline with the browser mirror: registered events, open tasks and schedule items render with the 截至 notice and no network read", async t => {
+  const stale = (records: unknown[]) => ({ status: "stale", records, error: "Network request failed", lastSyncedAt: "2026-09-11T04:00:00Z" });
+  const page = await open(t, { mirror: "local-mirror", synced: {
+    registered_event: stale(mirrorRecords("registered_event", [{ eventId: "event-fri", participantId: "p1", title: "AI 创业者交流", description: null, venue: "渋谷", timeZone: "Asia/Tokyo", startsAt: "2026-09-11T16:00:00+09:00", endsAt: "2026-09-11T17:00:00+09:00", lifecycleState: "published", checkInOpensAt: null, eventStartsAt: null, eventEndsAt: null, profileEditDeadlineAt: null, resultsAvailableAt: null, roundOneStartsAt: null, roundTwoStartsAt: null }])),
+    task: stale(mirrorRecords("task", [{ id: "task-fri", title: "给山田发介绍资料", status: "open", category: "relationship", priority: "normal", plannedDate: "2026-09-11", dueAt: "2026-09-11T09:00:00+09:00", updatedAt: "2026-09-10T00:00:00Z" }, { id: "task-done", title: "已完成的旧事", status: "completed", category: "work", priority: "normal", updatedAt: "2026-09-10T00:00:00Z" }])),
+    personal_schedule: stale(mirrorRecords("personal_schedule", [item])),
+  } });
+  await page.getByText(/无法连接 · 显示截至 .+ 的内容/).waitFor();
+  await page.getByRole("button", { name: /AI 创业者交流/ }).waitFor();
+  await page.getByRole("button", { name: /给山田发介绍资料/ }).waitFor();
+  await page.getByRole("button", { name: /与陈雨辰聊合作/ }).waitFor();
+  assert.equal(await page.getByRole("button", { name: /已完成的旧事/ }).count(), 0, "only open tasks");
+  assert.equal(await page.getByText("暂时连不上", { exact: false }).count(), 0);
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.reads ?? []), [], "the network reads stay inert while the mirror is the source");
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.writes), []);
 });
 
 test("double text keeps the month unit and weekday labels on readable lines", async t => {

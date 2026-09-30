@@ -9,7 +9,15 @@ export const CONTACTS_ANALYSIS_VERSION = "contacts.analysis@1" as const;
 export type ContactsAnalysisSource = Pick<
   MobileContactsDashboardPayload,
   "aggregate" | "contacts" | "distributions" | "gaps" | "opportunities" | "profile" | "summary"
->;
+> & {
+  /**
+   * Sprint 0102: the actor's relationship-graph version when the database
+   * provides one. The source data version is then derived from it and the
+   * bounded profile input (0121), so the AI entry can verify a page's version
+   * with the version query and the profile read, before reading any section.
+   */
+  graphVersion?: string;
+};
 
 export interface ContactsAnalysisReport {
   analysisVersion: typeof CONTACTS_ANALYSIS_VERSION;
@@ -80,7 +88,65 @@ function canonicalize(value: unknown, key?: string): CanonicalValue | undefined 
   return undefined;
 }
 
+/**
+ * Profile fields the analysis model can reason about (goal coverage, next
+ * steps). With a graph version, the AI source data version binds exactly these
+ * plus the section state, so editing the relationship goal makes a report stale
+ * while birth date, avatar, handles, timestamps and editor state do not.
+ */
+export const CONTACTS_ANALYSIS_PROFILE_FIELDS = [
+  "displayName",
+  "headline",
+  "organization",
+  "role",
+  "homeMarket",
+  "relationshipGoal",
+  "targetRelationshipTypes",
+  "preferredFollowUpWindow",
+  "preferredLanguage",
+  "preferredIntroChannels",
+  "industry",
+  "primaryIndustryId",
+  "secondaryIndustryId",
+  "seniorityLevel",
+  "bio",
+  "offering",
+  "seeking",
+  "topics",
+  "spokenLanguages",
+] as const;
+
+/** The bounded profile input of the analysis version; null when the profile section is unavailable. */
+export function contactsAnalysisProfileInput(section: unknown): CanonicalValue {
+  if (!section || typeof section !== "object") return null;
+  const { state, profile } = section as { state?: unknown; profile?: unknown };
+  const fields = profile && typeof profile === "object"
+    ? Object.fromEntries(CONTACTS_ANALYSIS_PROFILE_FIELDS.flatMap((field) => {
+        const value = (profile as Record<string, unknown>)[field];
+        return value === undefined ? [] : [[field, value]];
+      }))
+    : null;
+  return canonicalize({ state: typeof state === "string" ? state : null, profile: fields }) ?? null;
+}
+
+/**
+ * 64-hex AI source data version for a relationship-graph version and the
+ * page's profile section (same format as the content hash). The graph version
+ * alone still keys the gaps/opportunities snapshot (0102); the AI report also
+ * depends on the profile the model reads, so both are bound here (0121).
+ */
+export function contactsAnalysisGraphSourceDataVersion(graphVersion: string, profileSection: unknown): string {
+  return createHash("sha256")
+    .update(JSON.stringify(["contacts.analysis.graph@2", graphVersion, contactsAnalysisProfileInput(profileSection)]))
+    .digest("hex");
+}
+
 export function createContactsAnalysisSourceDataVersion(source: Record<string, unknown>): string {
+  // Without a graph version (mock mode, no sync_revision column) the version
+  // stays the canonical content hash, which already covers the profile.
+  if (typeof source.graphVersion === "string") {
+    return contactsAnalysisGraphSourceDataVersion(source.graphVersion, source.profile);
+  }
   return createHash("sha256")
     .update(JSON.stringify(canonicalize(source) ?? null))
     .digest("hex");

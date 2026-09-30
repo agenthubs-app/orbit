@@ -1,21 +1,18 @@
 import { Ionicons } from "@expo/vector-icons";
 import { type Href, useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from "react-native";
 
-import { notesSearchPath } from "../../api/endpoints";
 import { AppScreen } from "../../components/AppScreen";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
 import { createThemedStyles } from "../../design/theme";
 import { radius, spacing, typography } from "../../design/tokens";
-import { useApiResource } from "../../hooks/useApiResource";
-import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import type { MessageKey } from "../../i18n/messages";
-import { notesPageFromPayload, type NoteView } from "../../view-models/notes";
-import { mergeNotePages } from "../../view-models/note-history-pagination";
+import { OfflineNotice } from "../../components/OfflineNotice";
+import { useNotesListSource } from "./notes-source";
 
 type Filter = "all" | "contacts" | "events" | "unlinked";
 const filters: readonly { value: Filter; labelKey: MessageKey }[] = [
@@ -48,76 +45,28 @@ export function NotesScreen({ actorId, scopeKey }: { actorId: string; scopeKey: 
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [filter, setFilter] = useState<Filter>(contactId ? "contacts" : "all");
-  const [extraNotes, setExtraNotes] = useState<NoteView[]>([]);
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [pageError, setPageError] = useState("");
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedQuery(query.trim()), 250);
     return () => clearTimeout(timer);
   }, [query]);
-  const path = notesSearchPath({ association: filter, ...(contactId ? { contactId } : {}), q: debouncedQuery, limit: 20 });
-  const state = useApiResource<unknown>(path, () => false, { scopeKey, cachePolicy: "network-only" });
-  const client = useOrbitApiClient({ scopeKey });
+  const source = useNotesListSource({ actorId, scopeKey, association: filter, contactId, q: debouncedQuery });
   const locale = useOrbitLocale();
   const { styles, colors } = useStyles();
-  const basePage = state.kind === "success" || state.kind === "empty" ? notesPageFromPayload(state.data, actorId, locale.language) : null;
-  const sourceKey = JSON.stringify([scopeKey, actorId, path, basePage?.total, basePage?.nextCursor, basePage?.notes.map(({ id, version, updatedAt }) => [id, version, updatedAt])]);
-  const activeSource = useRef(sourceKey);
-  const flight = useRef<AbortController | null>(null);
-  activeSource.current = sourceKey;
-  useEffect(() => {
-    flight.current?.abort();
-    flight.current = null;
-    setExtraNotes([]);
-    setNextCursor(basePage?.nextCursor ?? null);
-    setPageError("");
-    setLoadingMore(false);
-    return () => { flight.current?.abort(); };
-  }, [sourceKey]);
-  const notes = useMemo(() => basePage ? mergeNotePages(basePage.notes, extraNotes) : null, [basePage, extraNotes]);
+  const notes = source.notes;
   const groups = useMemo(() => ([
     { value: "today", label: locale.t("notes.groupToday") },
     { value: "week", label: locale.t("notes.groupWeek") },
     { value: "earlier", label: locale.t("notes.groupEarlier") },
   ] as const).map((group) => ({ ...group, notes: notes?.filter((note) => noteGroup(note.updatedAt) === group.value) ?? [] })).filter((group) => group.notes.length), [locale, notes]);
-
-  async function loadMore() {
-    if (!nextCursor || flight.current) return;
-    const controller = new AbortController();
-    const requestedSource = sourceKey;
-    flight.current = controller;
-    const owns = () => !controller.signal.aborted && activeSource.current === requestedSource && flight.current === controller;
-    setLoadingMore(true);
-    setPageError("");
-    try {
-    const result = await client.get<unknown>(notesSearchPath({ association: filter, ...(contactId ? { contactId } : {}), q: debouncedQuery, limit: 20, cursor: nextCursor }), { signal: controller.signal });
-    if (!owns()) return;
-    if (result.success && result.status >= 200 && result.status < 300) {
-      const page = notesPageFromPayload(result.data, actorId, locale.language);
-      if (page && page.total === basePage?.total) {
-        setExtraNotes((items) => mergeNotePages(items, page.notes));
-        setNextCursor(page.nextCursor);
-      } else {
-        setPageError(locale.t("notes.nextPageInvalid"));
-      }
-    } else {
-      setPageError(result.success ? locale.t("notes.nextPageInvalid") : result.error.message);
-    }
-    } catch {
-      if (owns()) setPageError(locale.t("notes.nextPageInvalid"));
-    } finally {
-      if (owns()) { flight.current = null; setLoadingMore(false); }
-    }
-  }
-  return <AppScreen title={locale.t("notes.myNotes")} backAccessibilityLabel={locale.t("common.backToNamed", { name: locale.t("nav.home") })} backLabel={locale.t("nav.home")} refreshControl={<RefreshControl refreshing={state.refreshing} onRefresh={state.refresh} />} headerActions={
-    <Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.new")} onPress={() => router.push((contactId ? `/notes/new?contactId=${encodeURIComponent(contactId)}` : "/notes/new") as Href)} style={styles.add}>
+  return <AppScreen title={locale.t("notes.myNotes")} backAccessibilityLabel={locale.t("common.backToNamed", { name: locale.t("nav.home") })} backLabel={locale.t("nav.home")} onBack={() => router.replace("/home" as Href)} refreshControl={<RefreshControl refreshing={source.refreshing} onRefresh={source.refresh} />} headerActions={
+    <Pressable accessibilityRole="button" accessibilityLabel={source.offline ? `${locale.t("notes.new")}，${locale.t("sync.needsNetwork")}` : locale.t("notes.new")} accessibilityState={{ disabled: source.offline }} disabled={source.offline} onPress={() => router.push((contactId ? `/notes/new?contactId=${encodeURIComponent(contactId)}` : "/notes/new") as Href)} style={[styles.add, source.offline && styles.addDisabled]}>
       <Ionicons color={colors.onAccent} name="add" size={24} />
     </Pressable>
   }>
-    <View style={styles.hero}><Text maxFontSizeMultiplier={2} style={styles.heroTitle}>{locale.t("notes.title")}</Text><Text maxFontSizeMultiplier={2} style={styles.heroCount}>{basePage?.total ?? 0}</Text></View>
+    <View style={styles.hero}><Text maxFontSizeMultiplier={2} style={styles.heroTitle}>{locale.t("notes.title")}</Text><Text maxFontSizeMultiplier={2} style={styles.heroCount}>{source.total ?? 0}</Text></View>
+    {source.offline ? <OfflineNotice lastSyncedAt={source.lastSyncedAt} /> : source.syncLabelKey ? <Text accessibilityLiveRegion="polite" style={styles.sort}>{locale.t(source.syncLabelKey)}</Text> : null}
     {contactId ? <View><Text style={styles.sort}>{locale.t("notes.contactScope")}</Text><Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.allNotes")} onPress={() => router.push("/notes")} style={styles.more}><Text style={styles.moreText}>{locale.t("notes.allNotes")}</Text></Pressable></View> : null}
-    {notes ? <Text accessibilityLiveRegion="polite" style={styles.sort}>{locale.t("notes.loadedCount", { loaded: notes.length, total: basePage!.total })}</Text> : null}
+    {notes ? <Text accessibilityLiveRegion="polite" style={styles.sort}>{locale.t("notes.loadedCount", { loaded: notes.length, total: source.total ?? notes.length })}</Text> : null}
     <View style={styles.searchBox}>
       <Ionicons color={colors.text3} name="search" size={19} />
       <TextInput accessibilityLabel={locale.t("notes.search")} autoCorrect={false} maxFontSizeMultiplier={2} onChangeText={setQuery} placeholder={locale.t("notes.searchPlaceholder")} placeholderTextColor={colors.text4} style={styles.searchInput} value={query} />
@@ -126,10 +75,10 @@ export function NotesScreen({ actorId, scopeKey }: { actorId: string; scopeKey: 
     {!contactId ? <><View accessibilityRole="tablist" style={styles.filters}>{filters.map((item) => <Pressable key={item.value} accessibilityRole="tab" accessibilityState={{ selected: filter === item.value }} onPress={() => setFilter(item.value)} style={[styles.filter, filter === item.value && styles.filterSelected]}>
       <Text maxFontSizeMultiplier={2} style={[styles.filterText, filter === item.value && styles.filterTextSelected]}>{locale.t(item.labelKey)}</Text>
     </Pressable>)}</View><Text maxFontSizeMultiplier={2} style={styles.sort}>{locale.t("notes.sortRecent")}</Text></> : null}
-    {state.kind === "loading" ? <LoadingState /> : null}
-    {state.kind === "offline" || state.kind === "failure" ? <ErrorState message={state.error.message} /> : null}
-    {(state.kind === "success" || state.kind === "empty") && notes === null ? <ErrorState message={locale.t("notes.invalidPayload")} /> : null}
-    {pageError ? <><ErrorState message={pageError} /><Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.reloadHistory")} onPress={state.refresh} style={styles.more}><Text style={styles.moreText}>{locale.t("notes.reloadHistory")}</Text></Pressable></> : null}
+    {source.loading ? <LoadingState /> : null}
+    {source.failure ? <ErrorState message={source.failure} /> : null}
+    {source.invalid ? <ErrorState message={locale.t("notes.invalidPayload")} /> : null}
+    {source.pageError ? <><ErrorState message={source.pageError} /><Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.reloadHistory")} onPress={source.refresh} style={styles.more}><Text style={styles.moreText}>{locale.t("notes.reloadHistory")}</Text></Pressable></> : null}
     {notes?.length === 0 ? <EmptyState title={locale.t(query ? "notes.emptySearch" : contactId ? "notes.emptyLinked" : "notes.empty")} message={locale.t(query ? "notes.emptySearchBody" : "notes.emptyBody")} /> : null}
     <View style={styles.list}>{groups.map((group) => <View key={group.value}><Text maxFontSizeMultiplier={2} style={styles.groupTitle}>{group.label}</Text>{group.notes.map((note) => <Pressable key={note.id} accessibilityRole="button" accessibilityLabel={locale.t("notes.viewNamed", { title: note.title })} onPress={() => router.push(`/notes/${encodeURIComponent(note.id)}` as Href)} style={styles.row}>
       <View style={styles.rowTop}><Text maxFontSizeMultiplier={2} numberOfLines={2} style={styles.title}>{note.title}</Text><Text maxFontSizeMultiplier={2} style={styles.time}>{noteTime(note.updatedAt, locale.language)}</Text></View>
@@ -140,13 +89,14 @@ export function NotesScreen({ actorId, scopeKey }: { actorId: string; scopeKey: 
         {!note.contactIds.length && !note.eventIds.length ? <Text maxFontSizeMultiplier={2} style={styles.meta}>{locale.t("notes.unlinked")}</Text> : null}
       </View>
     </Pressable>)}</View>)}</View>
-    {nextCursor ? <Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.loadMore")} disabled={loadingMore} onPress={() => { void loadMore(); }} style={styles.more}><Text maxFontSizeMultiplier={2} style={styles.moreText}>{locale.t(loadingMore ? "notes.loadingMore" : "notes.loadMore")}</Text></Pressable> : null}
-    {notes && !nextCursor && !loadingMore && !pageError && notes.length === basePage?.total ? <Text accessibilityLiveRegion="polite" style={styles.sort}>{locale.t("notes.historyComplete")}</Text> : null}
+    {source.hasMore ? <Pressable accessibilityRole="button" accessibilityLabel={locale.t("notes.loadMore")} disabled={source.loadingMore} onPress={source.loadMore} style={styles.more}><Text maxFontSizeMultiplier={2} style={styles.moreText}>{locale.t(source.loadingMore ? "notes.loadingMore" : "notes.loadMore")}</Text></Pressable> : null}
+    {notes && !source.hasMore && !source.loadingMore && !source.pageError && notes.length === source.total ? <Text accessibilityLiveRegion="polite" style={styles.sort}>{locale.t("notes.historyComplete")}</Text> : null}
   </AppScreen>;
 }
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
   add: { alignItems: "center", backgroundColor: colors.accent, borderRadius: radius.pill, height: 40, justifyContent: "center", width: 40 },
+  addDisabled: { backgroundColor: colors.text4 },
   hero: { alignItems: "baseline", flexDirection: "row", gap: spacing.sm, paddingTop: spacing.sm },
   heroTitle: { color: colors.ink, fontSize: 34, fontWeight: "900", letterSpacing: -0.8 },
   heroCount: { color: colors.accent, fontSize: 34, fontWeight: "900" },

@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>新用户引导 · 失败与继续</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Noto Sans SC","Microsoft YaHei",sans-serif;background:#FFFFFF;color:#0B1220}
+a{color:#0A5CFF}a:hover{color:#084FDE}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #FFFFFF; display: flex; flex-direction: column; padding: 60px 16px 24px 16px; gap: 22px">
+  <div style="display: flex; flex-direction: column; gap: 8px">
+    <div style="font-size: 30px; line-height: 38px; font-weight: 900; letter-spacing: -0.6px">出错与中途退出</div>
+    <div style="font-size: 15px; line-height: 23px; color: #3C4658">原则：任何失败都不丢已填内容，都能重试。</div>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 10px">
+    <div style="font-size: 12px; font-weight: 600; letter-spacing: 0.96px; color: #6B7280">保存失败</div>
+    <div style="display: flex; align-items: center; gap: 10px; background: #F7E9EC; border-radius: 12px; padding: 12px 14px">
+      <div style="flex-grow: 1; font-size: 14px; line-height: 21px; color: #B42318">没有保存成功，已填内容都还在。</div>
+      <button type="button" style="min-height: 44px; padding: 0 4px; border: none; background: transparent; color: #B42318; font-size: 14px; font-weight: 700; font-family: inherit">重试</button>
+    </div>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 10px">
+    <div style="font-size: 12px; font-weight: 600; letter-spacing: 0.96px; color: #6B7280">没有网络</div>
+    <div style="background: #F5EEDF; border-radius: 12px; padding: 12px 14px; font-size: 14px; line-height: 21px; color: #876020">现在没有网络。可以继续填写，联网后点「继续」保存。</div>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 10px">
+    <div style="font-size: 12px; font-weight: 600; letter-spacing: 0.96px; color: #6B7280">AI 介绍没生成出来</div>
+    <div style="display: flex; flex-direction: column; gap: 6px; border-top: 1px solid #EEF0F4; border-bottom: 1px solid #EEF0F4; padding: 14px 0">
+      <div style="font-size: 15px; line-height: 22px; font-weight: 800">这次没有生成成功</div>
+      <div style="font-size: 13px; line-height: 20px; color: #6B7280">可以再试一次，或直接在下面写几句。</div>
+      <a href="OnbIntro.dc.html" style="font-size: 14px; font-weight: 600; text-decoration: none; min-height: 44px; display: flex; align-items: center">重新生成 ›</a>
+    </div>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 10px">
+    <div style="font-size: 12px; font-weight: 600; letter-spacing: 0.96px; color: #6B7280">中途退出，再次打开 App</div>
+    <div style="display: flex; flex-direction: column; gap: 12px; border: 1px solid #E6E8EE; border-radius: 12px; padding: 16px">
+      <div style="display: flex; flex-direction: column; gap: 4px">
+        <div style="font-size: 15px; line-height: 22px; font-weight: 800">继续设置你的资料</div>
+        <div style="font-size: 13px; line-height: 20px; color: #3C4658">已完成 2 / 5，从「你能提供什么、在找什么」继续。</div>
+      </div>
+      <div style="display: flex; gap: 10px">
+        <a href="OnbPersona.dc.html" style="flex-grow: 1; display: flex; align-items: center; justify-content: center; min-height: 46px; border-radius: 12px; background: #0B1220; color: #FFFFFF; font-size: 15px; font-weight: 700; text-decoration: none">继续</a>
+        <button type="button" style="min-height: 46px; padding: 0 18px; border-radius: 12px; border: 1px solid #0B1220; background: #FFFFFF; color: #0B1220; font-size: 15px; font-weight: 600; font-family: inherit">稍后</button>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

@@ -1,4 +1,5 @@
 import { Pool } from "pg";
+import { meterPostgresPool } from "../../../shared/storage/metered-postgres-pool";
 import { withQueuedCardIngest } from "../business-card-queue-dispatch";
 
 import { resolveLiveDatabaseConnectionConfig } from "../../../shared/storage/live-database-config";
@@ -43,7 +44,7 @@ export function getConfiguredIngestV2(): ConfiguredIngest | null {
     globalCache.__orbitIngestV2 = null;
     return null;
   }
-  const pool = new Pool({ connectionString: config.connectionString, max: 5 });
+  const pool = meterPostgresPool(new Pool({ connectionString: config.connectionString, max: 5 }));
   const repository = createBusinessCardIngestRepository({
     pool,
     workspaceId: config.workspaceId,

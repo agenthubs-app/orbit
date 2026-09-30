@@ -547,6 +547,8 @@ async function readFocusedContactGraph(input: {
   store: LiveRecordStoreLike<Record<string, unknown>>;
   workspaceId: string;
 }): Promise<BoundedContactGraph> {
+  // Sprint 0101: an explicit id list is a focused read, never a list page.
+  const requestedContactIds = input.listInput?.contactIds ?? undefined;
   const actorId = input.actorId?.trim();
   if (!actorId) {
     return graphFromRecords({
@@ -557,7 +559,7 @@ async function readFocusedContactGraph(input: {
     });
   }
 
-  const boundedPage = input.listInput && input.contactRecordPageReader
+  const boundedPage = input.listInput && input.contactRecordPageReader && !requestedContactIds
     ? await input.contactRecordPageReader(input.listInput, actorId)
     : null;
   const usesFastBoundedPage = boundedPage !== null && boundedPage.mode !== "fallback";
@@ -566,7 +568,9 @@ async function readFocusedContactGraph(input: {
   const scope = snapshotPage
     ? null
     : input.contactScopeRecordReader
-    ? await input.contactScopeRecordReader(actorId, focusedIds)
+    ? requestedContactIds
+      ? await input.contactScopeRecordReader(actorId, requestedContactIds, "domain")
+      : await input.contactScopeRecordReader(actorId, focusedIds)
     : null;
   const legacyListQuery = input.listInput?.query?.trim().toLocaleLowerCase();
   const useLegacyListPrefilter =
@@ -716,6 +720,67 @@ async function readFocusedContactGraph(input: {
         },
       }
     : graph;
+}
+
+export interface OwnedContactDetailInputs {
+  graph: LocalRemoteContactGraph;
+  /** The owner's detail state per contact id (the record the detail read uses), or null. */
+  detailStates: ReadonlyMap<string, LiveContactDetailState | null>;
+}
+
+/**
+ * Sprint 0116: the detail inputs of many contacts in one batch, for the
+ * contacts sync domain. The same selection as readContactGraphForContact (the
+ * scoped key reader, owned contacts, owned relationships of those contacts, the
+ * owner's detail state), read once for a whole sync page. Sources are limited
+ * to rows the owner holds: an owner-less or foreign source cited by a contact
+ * is left out of what a device receives.
+ */
+export async function readOwnedContactDetailInputs(input: {
+  actorId: string;
+  contactRecordIds: readonly string[];
+  scopeReader: ContactScopeRecordReader;
+  store: LiveRecordStoreLike<Record<string, unknown>>;
+  workspaceId: string;
+}): Promise<OwnedContactDetailInputs> {
+  const actorId = input.actorId.trim();
+  if (!actorId || input.contactRecordIds.length === 0) {
+    return { graph: graphFromRecords({ contactRecords: [], connectionRecords: [], detailStateRecords: [], evidenceRecords: [] }), detailStates: new Map() };
+  }
+  const scope = await input.scopeReader(actorId, input.contactRecordIds);
+  const read = (collectionName: string, recordIds: readonly string[] | undefined) => recordIds && recordIds.length > 0
+    // Bounded by the scoped id list itself.
+    ? input.store.listRecords({ limit: recordIds.length, workspaceId: input.workspaceId, collectionName, recordIds })
+    : Promise.resolve([] as readonly LiveRecord<Record<string, unknown>>[]);
+  const [contactRecords, connectionRecords, detailStateRecords, evidenceRecords] = await Promise.all([
+    read(CONTACTS_LIVE_RECORD_COLLECTIONS.contacts, scope.contactIds),
+    read(CONTACTS_LIVE_RECORD_COLLECTIONS.connections, scope.connectionIds),
+    read(CONTACTS_LIVE_RECORD_COLLECTIONS.detailStates, scope.detailStateIds),
+    read(CONTACTS_LIVE_RECORD_COLLECTIONS.evidence, scope.evidenceRecordIds),
+  ]);
+  const ownedContacts = contactRecords.filter((record) => contactRecordOwnedByActor(record, actorId));
+  const contactIds = new Set(ownedContacts.map((record) => optionalString(record.payload.id)).filter(nonEmptyString));
+  const ownedConnections = connectionRecords.filter((record) => {
+    const connection = contactRecordOwnedByActor(record, actorId) ? connectionFromRecord(record) : null;
+    return connection ? contactIds.has(connection.contactId) : false;
+  });
+  const ownedDetailStates = detailStateRecords.filter((record) => record.userId === actorId);
+  const citedIds = new Set([...ownedContacts, ...ownedConnections].flatMap((record) => stringArray(record.payload.evidenceIds)));
+  const ownedEvidence = evidenceRecords.filter((record) => record.userId === actorId && nonEmptyString(record.payload.id) && citedIds.has(record.payload.id));
+  const graph = graphFromRecords({
+    actorId,
+    contactRecords: ownedContacts,
+    connectionRecords: ownedConnections,
+    detailStateRecords: ownedDetailStates,
+    evidenceRecords: ownedEvidence,
+    deferAmbiguity: true,
+  });
+  const byRecordId = new Map(ownedDetailStates.map((record) => [record.recordId, record]));
+  const detailStates = new Map<string, LiveContactDetailState | null>();
+  for (const contactId of contactIds) {
+    detailStates.set(contactId, contactDetailStateFromRecord(byRecordId.get(contactDetailStateRecordId(actorId, contactId)) ?? null, actorId, contactId));
+  }
+  return { graph, detailStates };
 }
 
 // Preserve the graph-resolved export used by existing callers while the

@@ -2,6 +2,7 @@ import { useRouter } from "expo-router";
 import { StyleSheet, useWindowDimensions, View } from "react-native";
 import { createThemedStyles } from "../../design/theme";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
+import { OfflineNotice } from "../../components/OfflineNotice";
 import { ProfileNotice, ProfilePageFrame, ProfilePrimaryButton } from "./ProfilePagePrimitives";
 import { profilePreviewFromSession } from "./profile-page-model";
 import { ProfilePublicView } from "./ProfilePublicView";
@@ -12,7 +13,7 @@ export function ProfilePreviewScreen() {
   const locale = useOrbitLocale();
   const router = useRouter();
   const largeText = useWindowDimensions().fontScale > 1.3;
-  const state = useProfileEditSessionScreen();
+  const state = useProfileEditSessionScreen({ readOffline: true });
   const preview = state.session && state.baseProfile
     ? profilePreviewFromSession(state.session, state.baseProfile)
     : null;
@@ -21,6 +22,7 @@ export function ProfilePreviewScreen() {
     <ProfilePrimaryButton disabled label={locale.t("profile.previewConnect")} secondary />
   </View> : undefined;
   return <ProfilePageFrame backLabel={locale.t("profile.backToEdit")} footer={footer} onBack={() => router.back()} title={locale.t("profile.previewTitle")}>
+    {state.copy?.offline ? <OfflineNotice lastSyncedAt={state.copy.lastSyncedAt} reason={state.copy.reason} /> : null}
     <View style={styles.notice}><ProfileNotice>{locale.t("profile.previewNotice")}</ProfileNotice></View>
     {preview ? <ProfilePublicView profile={preview} /> : <ProfileNotice error>{locale.t("profile.noEditSession")}</ProfileNotice>}
   </ProfilePageFrame>;

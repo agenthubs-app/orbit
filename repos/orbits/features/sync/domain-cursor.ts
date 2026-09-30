@@ -11,7 +11,24 @@ import { SyncCursorError, SYNC_CURSOR_MAX_BYTES, SYNC_CURSOR_TTL_MS } from "./cu
 export const DOMAIN_CURSOR_VERSION = 2 as const;
 
 export type DomainCursorScope = Omit<CursorClaims, "afterRevision" | "highWatermark" | "issuedAt">;
-export type DomainCursorPosition = Omit<CursorClaims, "issuedAt">;
+
+/**
+ * Sprint 0118: a partitioned domain (the messages of the AI sessions a device
+ * opened) also records which partitions the bookmark already covers, and a
+ * partition being caught up to it. Partitions are short digests, never ids.
+ */
+export interface DomainCursorPartitions {
+  partitions?: readonly string[];
+  catchUp?: { partitions: readonly string[]; afterRevision: string };
+}
+export type DomainCursorPosition = Omit<CursorClaims, "issuedAt"> & DomainCursorPartitions;
+export type DecodedDomainCursor = CursorClaims & DomainCursorPartitions;
+
+const PARTITION_LIMIT = 40;
+function validPartitions(value: unknown): value is readonly string[] {
+  return Array.isArray(value) && value.length <= PARTITION_LIMIT && value.every((item) => typeof item === "string" && /^[a-f0-9]{12}$/.test(item))
+    && value.every((item, index) => index === 0 || value[index - 1]! < item);
+}
 
 function resetRequired(): never {
   throw new SyncCursorError("SYNC_RESET_REQUIRED", "Sync cursor is invalid or expired.");
@@ -55,12 +72,14 @@ export function createDomainCursorCodec({ secret }: { secret: string }) {
         !validScope(position)
         || !validRevision(position.afterRevision) || !validRevision(position.highWatermark)
         || BigInt(position.afterRevision) > BigInt(position.highWatermark)
+        || (position.partitions !== undefined && !validPartitions(position.partitions))
+        || (position.catchUp !== undefined && (!validPartitions(position.catchUp.partitions) || !validRevision(position.catchUp.afterRevision)))
       ) throw new SyncCursorError("SYNC_RESET_REQUIRED", "Sync cursor position is invalid.");
-      const claims: CursorClaims = { ...position, issuedAt: now };
+      const claims: DecodedDomainCursor = { ...position, issuedAt: now };
       const payload = Buffer.from(JSON.stringify({ version: DOMAIN_CURSOR_VERSION, ...claims }), "utf8").toString("base64url");
       return `${payload}.${signature(payload, key).toString("base64url")}`;
     },
-    decode(token: string, scope: DomainCursorScope, now = Date.now()): CursorClaims {
+    decode(token: string, scope: DomainCursorScope, now = Date.now()): DecodedDomainCursor {
       if (typeof token !== "string" || token.length === 0 || Buffer.byteLength(token, "utf8") > SYNC_CURSOR_MAX_BYTES) return resetRequired();
       const [payload, sig, ...rest] = token.split(".");
       if (!payload || !sig || rest.length > 0) return resetRequired();
@@ -78,7 +97,15 @@ export function createDomainCursorCodec({ secret }: { secret: string }) {
       const issuedAt = decoded.issuedAt;
       if (!Number.isSafeInteger(issuedAt) || (issuedAt as number) > now || now - (issuedAt as number) >= SYNC_CURSOR_TTL_MS) return resetRequired();
       if (!validRevision(decoded.afterRevision) || !validRevision(decoded.highWatermark) || BigInt(decoded.afterRevision) > BigInt(decoded.highWatermark)) return resetRequired();
-      return { ...scope, afterRevision: decoded.afterRevision, highWatermark: decoded.highWatermark, issuedAt: issuedAt as number };
+      const partitions = decoded.partitions;
+      const catchUp = decoded.catchUp as { partitions?: unknown; afterRevision?: unknown } | undefined;
+      if (partitions !== undefined && !validPartitions(partitions)) return resetRequired();
+      if (catchUp !== undefined && (typeof catchUp !== "object" || catchUp === null || !validPartitions(catchUp.partitions) || !validRevision(catchUp.afterRevision))) return resetRequired();
+      return {
+        ...scope, afterRevision: decoded.afterRevision, highWatermark: decoded.highWatermark, issuedAt: issuedAt as number,
+        ...(partitions !== undefined ? { partitions: partitions as string[] } : {}),
+        ...(catchUp !== undefined ? { catchUp: { partitions: catchUp.partitions as string[], afterRevision: catchUp.afterRevision as string } } : {}),
+      };
     },
   };
 }

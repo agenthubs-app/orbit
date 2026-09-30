@@ -13,8 +13,8 @@ const workspaceId = "point-read-tests";
 const actorId = "owner";
 const now = "2026-09-25T00:00:00.000Z";
 
-function setup() {
-  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
+function setup(seed: Parameters<typeof createMemoryLiveRecordStore<Record<string, unknown>>>[0] = []) {
+  const store = createMemoryLiveRecordStore<Record<string, unknown>>(seed);
   const service = createTaskService({ repository: createTaskRepository({ store, workspaceId }) });
   const suggestions = createTaskSuggestionService({
     repository: createTaskSuggestionRepository({ store, workspaceId }), taskService: service,
@@ -57,6 +57,12 @@ test("task point reads reject inconsistent ownership, IDs, history and deleted d
     { ...record, payload: { ...record.payload, activities: [{ ...activity, ownerUserId: "foreign" }] } },
     { ...record, lifecycleState: "deleted" as const, deletedAt: now },
   ]) {
+    // Sprint 0113: upsert never changes an owner, so a row stored under another
+    // (or no) owner is planted in its own store instead of overwritten here.
+    if ((variant.userId ?? null) !== (record.userId ?? null)) {
+      assert.equal(await setup([variant]).service.get({ actorId, taskId: created.task.id }), null);
+      continue;
+    }
     store.upsertRecord(variant);
     assert.equal(await service.get({ actorId, taskId: created.task.id }), null);
   }

@@ -324,3 +324,4 @@ export type { ContactCardDTO, ContactCardPageDTO, ContactCardSummaryDTO } from "
 export type { ContactLabelsContract } from "./contact-labels";
 export type { TaskSuggestionCardContract, TaskSuggestionPageContract } from "./task-suggestion-page";
 export type { NoteTaskCardContract, NoteTaskPageContract } from "./note-task-page";
+export type { ContactSyncPayload, ContactSyncSearch, LocalContactDirectoryQuery } from "./contact-local-directory";

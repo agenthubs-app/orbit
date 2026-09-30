@@ -1,7 +1,7 @@
 import * as Crypto from "expo-crypto";
 import { router, type Href } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
-import { Platform } from "react-native";
+import { AppState, Platform } from "react-native";
 import {
   createContext,
   useCallback,
@@ -30,6 +30,16 @@ import {
   type MobileAuthUser
 } from "./mobile-auth";
 import { nativeAuthSessionStorage } from "./native-auth-session-storage";
+import { offlineIdentityStorage } from "./offline-identity-storage";
+import {
+  OFFLINE_IDENTITY_MAX_AGE_MS,
+  classifyAccountCheck,
+  classifySessionCheck,
+  purgeSyncScope,
+  trustedOfflineIdentity,
+  type OfflineIdentityRecord,
+  type SessionCheck
+} from "./offline-identity";
 import { createOrbitApiClient } from "./client";
 import { signInWithBrowserCredentials } from "./browser-auth";
 import { ORBIT_API_ENDPOINTS } from "./endpoints";
@@ -64,6 +74,8 @@ interface AuthSessionContextValue {
   cookieHeader: string;
   googleEnabled: boolean;
   notificationSessionRevision: number;
+  /** Entered from the last online-validated identity because the server was unreachable. */
+  offline: boolean;
   providers: readonly "google"[];
   ready: boolean;
   register: (input: RegisterInput) => Promise<AuthActionResult>;
@@ -77,6 +89,10 @@ interface AuthSessionContextValue {
 
 const AuthSessionContext = createContext<AuthSessionContextValue | null>(null);
 const usesBrowserManagedSession = Platform.OS === "web";
+// While offline, re-check the session this often; also on every return to the foreground.
+const OFFLINE_REVALIDATE_INTERVAL_MS = 10_000;
+// While online, refresh the 30-day offline window on foreground at most this often.
+const ONLINE_REVALIDATE_AFTER_MS = 12 * 60 * 60 * 1000;
 
 function obsoleteAuthActionResult(): AuthActionResult {
   return { message: "登录服务器已切换，请重新登录。", success: false };
@@ -91,19 +107,55 @@ async function sha256(value: Uint8Array): Promise<Uint8Array> {
   );
 }
 
-async function resolveCanonicalAccountIdentity(input: {
+async function checkCanonicalAccountIdentity(input: {
   baseUrl: string;
   cookieHeader: string;
-}): Promise<CanonicalAccountIdentity | null> {
+}): Promise<{ check: SessionCheck; identity: CanonicalAccountIdentity | null }> {
   const client = createOrbitApiClient({
     authCookieHeader: input.cookieHeader,
     baseUrl: input.baseUrl
   });
   const result = await client.get<unknown>(ORBIT_API_ENDPOINTS.accountMe);
+  const identity = result.success ? canonicalAccountIdentityFromPayload(result.data) : null;
+  if (identity) return { check: "valid", identity };
+  // A 2xx without a usable owner proves nothing about the session: unreachable.
+  return { check: result.success ? "unreachable" : classifyAccountCheck(result), identity: null };
+}
 
-  return result.success
-    ? canonicalAccountIdentityFromPayload(result.data)
-    : null;
+async function resolveCanonicalAccountIdentity(input: {
+  baseUrl: string;
+  cookieHeader: string;
+}): Promise<CanonicalAccountIdentity | null> {
+  return (await checkCanonicalAccountIdentity(input)).identity;
+}
+
+async function rememberValidatedIdentity(record: OfflineIdentityRecord): Promise<void> {
+  try {
+    await offlineIdentityStorage.write(record);
+  } catch {
+    // Without the record an offline cold start shows login; the session itself is unaffected.
+    console.warn("OFFLINE_IDENTITY_WRITE_FAILED");
+  }
+}
+
+/**
+ * The server explicitly rejected the stored session at cold start. Forget the cached
+ * identity first (so no later offline start can use it), then erase that account's
+ * mirror and key through the account-switch purge, then the cookie. As elsewhere, the
+ * cookie is kept if key deletion fails so the pending cleanup is retried.
+ */
+async function eraseRejectedIdentity(baseUrl: string): Promise<void> {
+  const cached = await offlineIdentityStorage.read(baseUrl).catch(() => null);
+  try {
+    await offlineIdentityStorage.clear(baseUrl);
+  } catch {
+    console.warn("OFFLINE_IDENTITY_CLEAR_FAILED");
+  }
+  // Without a record, whatever the restore left suspended is erased the same way.
+  const cleared = cached
+    ? await purgeSyncScope(syncLifecycle, { baseUrl, actorId: cached.accountId })
+    : await syncLifecycle.setScope(null);
+  if (cleared && !usesBrowserManagedSession) await nativeAuthSessionStorage.clear(baseUrl);
 }
 
 export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
@@ -114,6 +166,8 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
   const [ready, setReady] = useState(false);
   const [user, setUser] = useState<MobileAuthUser | null>(null);
   const [notificationSessionRevision, setNotificationSessionRevision] = useState(0);
+  const [offline, setOffline] = useState(false);
+  const lastValidatedAt = useRef(0);
   const authEnvironment = useRef({ baseUrl, baseUrlReady, revision: 0 });
 
   if (
@@ -146,18 +200,26 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
     setReady(false);
     setAccountId(null);
     setCookieHeader("");
+    setOffline(false);
     setProviders([]);
     setUser(null);
 
     const restoreSession = async () => {
       const requestRevision = authEnvironment.current.revision;
+      const current = () => active && authEnvironment.current.revision === requestRevision;
       try {
-        if (!(await syncLifecycle.setScope(null)) || !active) return;
+        // Re-running the restore (provider remount, error-boundary retry, Expo Router root
+        // remount) must not erase the mirror of the identity it is about to confirm (0130):
+        // pause reads and keep the database; only another server's scope is purged here.
+        // The confirmed identity below resumes it (same) or purges it (other); a rejection,
+        // or no stored session at all, purges it.
+        if (!(await syncLifecycle.suspendScope(baseUrl)) || !active) return;
         const storedValue = usesBrowserManagedSession
           ? ""
           : (await nativeAuthSessionStorage.read(baseUrl)) ?? "";
 
         if (!usesBrowserManagedSession && !storedValue) {
+          await syncLifecycle.setScope(null);
           return;
         }
 
@@ -166,39 +228,58 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
           cookieHeader: storedValue
         });
 
-        if (!active || authEnvironment.current.revision !== requestRevision) {
-          return;
-        }
+        if (!current()) return;
 
+        let check = classifySessionCheck(result);
         if (result.success) {
-          const identity = await resolveCanonicalAccountIdentity({
-            baseUrl,
-            cookieHeader: usesBrowserManagedSession ? "" : storedValue
-          });
+          const account = await checkCanonicalAccountIdentity({ baseUrl, cookieHeader: storedValue });
 
-          if (!active || authEnvironment.current.revision !== requestRevision || !identity) {
+          if (!current()) return;
+
+          if (account.identity) {
+            const identity = account.identity;
+            if (!(await syncLifecycle.setScope({ baseUrl, actorId: identity.accountId }))) return;
+            if (!current()) return;
+            const validatedAt = Date.now();
+            await rememberValidatedIdentity({ version: 1, baseUrl, accountId: identity.accountId, user: result.data.user, validatedAt });
+            if (!current()) return;
+
+            lastValidatedAt.current = validatedAt;
+            setCookieHeader(storedValue);
+            setAccountId(identity.accountId);
+            setUser(result.data.user);
+            setOffline(false);
             return;
           }
+          check = account.check === "rejected" ? "rejected" : "unreachable";
+        }
 
-          if (!(await syncLifecycle.setScope({ baseUrl, actorId: identity.accountId }))) return;
-          if (!active || authEnvironment.current.revision !== requestRevision) return;
-
-          setCookieHeader(usesBrowserManagedSession ? "" : storedValue);
-          setAccountId(identity.accountId);
-          setUser(result.data.user);
+        if (check === "rejected") {
+          await eraseRejectedIdentity(baseUrl);
           return;
         }
 
-        if (
-          !usesBrowserManagedSession &&
-          result.error.code !== "ORBIT_APP_AUTH_NETWORK_ERROR"
-        ) {
-          await nativeAuthSessionStorage.clear(baseUrl);
-        }
+        // Unreachable: enter with the last online-validated identity (at most 30 days old).
+        const cached = trustedOfflineIdentity({
+          record: await offlineIdentityStorage.read(baseUrl).catch(() => null),
+          baseUrl,
+          now: Date.now()
+        });
+        if (!cached || !current()) return;
+        if (result.success && result.data.user.id !== cached.user.id) return;
+        if (!(await syncLifecycle.setScope({ baseUrl, actorId: cached.accountId }))) return;
+        if (!current()) return;
+
+        lastValidatedAt.current = cached.validatedAt;
+        setCookieHeader(storedValue);
+        setAccountId(cached.accountId);
+        setUser(cached.user);
+        setOffline(true);
       } catch {
         if (active) {
           setAccountId(null);
           setCookieHeader("");
+          setOffline(false);
           setUser(null);
         }
       }
@@ -339,9 +420,18 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
         }
       }
 
+      const validatedAt = Date.now();
+      await rememberValidatedIdentity({ version: 1, baseUrl, accountId: identity.accountId, user: validation.data.user, validatedAt });
+      if (authEnvironment.current.revision !== requestRevision) {
+        await discardUnacceptedSession(session);
+        return obsoleteAuthActionResult();
+      }
+
+      lastValidatedAt.current = validatedAt;
       setCookieHeader(usesBrowserManagedSession ? "" : session.cookieHeader);
       setAccountId(identity.accountId);
       setUser(validation.data.user);
+      setOffline(false);
       return { success: true };
     },
     [accountId, baseUrl, clearNotificationSession, discardUnacceptedSession, user]
@@ -472,27 +562,58 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
       }
     }
 
-    if (!usesBrowserManagedSession) {
-      try {
-        if (!(await syncLifecycle.setScope(null))) {
-          return { message: "无法安全清除这台设备上的本地数据，请稍后再试。", success: false };
-        }
-        if (authEnvironment.current.revision !== requestRevision) return obsoleteAuthActionResult();
-        await nativeAuthSessionStorage.clear(baseUrl);
-      } catch {
-        return {
-          message: "无法清除这台设备上的登录状态，请稍后再试。",
-          success: false
-        };
+    try {
+      // Before anything else: a signed-out account must never come back offline.
+      await offlineIdentityStorage.clear(baseUrl);
+    } catch {
+      return {
+        message: "无法清除这台设备上的登录状态，请稍后再试。",
+        success: false
+      };
+    }
+
+    try {
+      // The browser mirror is erased on sign-out too (0130); before, only native purged here.
+      if (!(await syncLifecycle.setScope(null))) {
+        return { message: "无法安全清除这台设备上的本地数据，请稍后再试。", success: false };
       }
+      if (authEnvironment.current.revision !== requestRevision) return obsoleteAuthActionResult();
+      if (!usesBrowserManagedSession) await nativeAuthSessionStorage.clear(baseUrl);
+    } catch {
+      return {
+        message: "无法清除这台设备上的登录状态，请稍后再试。",
+        success: false
+      };
     }
 
     if (authEnvironment.current.revision !== requestRevision) return obsoleteAuthActionResult();
     setAccountId(null);
     setCookieHeader("");
+    setOffline(false);
     setUser(null);
     return { success: true };
   }, [baseUrl, clearNotificationSession, cookieHeader, user]);
+
+  // The server has rejected this device's session (a 401 on any request, or an explicit
+  // rejection when re-checking): forget the cached identity, purge the open mirror and
+  // key, then the cookie, and go to login.
+  const endRejectedSession = useCallback(() => {
+    authEnvironment.current.revision += 1;
+    // Keep the old auth storage if key deletion fails: restoring that scope
+    // must retry its cleanup before another account can be accepted.
+    void offlineIdentityStorage.clear(baseUrl)
+      .catch(() => console.warn("OFFLINE_IDENTITY_CLEAR_FAILED"))
+      .then(() => syncLifecycle.setScope(null))
+      .then(async cleared => {
+        if (cleared && !usesBrowserManagedSession) await nativeAuthSessionStorage.clear(baseUrl);
+      })
+      .catch(() => console.warn("SYNC_SESSION_CLEANUP_FAILED"));
+    setAccountId(null);
+    setCookieHeader("");
+    setOffline(false);
+    setUser(null);
+    router.replace("/account/login" as Href);
+  }, [baseUrl]);
 
   // 任何一次请求收到 401，都说明这台设备上保存的会话已经失效。
   //
@@ -507,18 +628,79 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
     }
 
     return onSessionExpired(() => {
-      authEnvironment.current.revision += 1;
-      // Keep the old auth storage if key deletion fails: restoring that scope
-      // must retry its cleanup before another account can be accepted.
-      void syncLifecycle.setScope(null).then(async cleared => {
-        if (cleared && !usesBrowserManagedSession) await nativeAuthSessionStorage.clear(baseUrl);
-      }).catch(() => console.warn("SYNC_SESSION_CLEANUP_FAILED"));
-      setAccountId(null);
-      setCookieHeader("");
-      setUser(null);
-      router.replace("/account/login" as Href);
+      endRejectedSession();
     });
-  }, [baseUrl, user]);
+  }, [endRejectedSession, user]);
+
+  // Re-check the session: every few seconds and on foreground while offline (reconnect
+  // is noticed at once), and on foreground while online when the last validation is old,
+  // so the 30-day offline window follows real use.
+  useEffect(() => {
+    if (user === null || accountId === null) return;
+    let active = true;
+    let running = false;
+    const signedInUserId = user.id;
+    const signedInAccountId = accountId;
+
+    const revalidate = async () => {
+      if (running || !active) return;
+      running = true;
+      const requestRevision = authEnvironment.current.revision;
+      const current = () => active && authEnvironment.current.revision === requestRevision;
+      try {
+        const result = await validateAuthSession({ baseUrl, cookieHeader });
+        if (!current()) return;
+        let check = classifySessionCheck(result);
+        if (result.success) {
+          if (result.data.user.id !== signedInUserId) {
+            check = "rejected";
+          } else {
+            const account = await checkCanonicalAccountIdentity({ baseUrl, cookieHeader });
+            if (!current()) return;
+            if (account.identity && account.identity.accountId === signedInAccountId) {
+              const validatedAt = Date.now();
+              await rememberValidatedIdentity({ version: 1, baseUrl, accountId: signedInAccountId, user: result.data.user, validatedAt });
+              if (!current()) return;
+              lastValidatedAt.current = validatedAt;
+              setOffline(false);
+              return;
+            }
+            check = account.identity || account.check === "rejected" ? "rejected" : "unreachable";
+          }
+        }
+        if (check === "rejected") {
+          active = false;
+          endRejectedSession();
+          return;
+        }
+        if (offline && Date.now() - lastValidatedAt.current > OFFLINE_IDENTITY_MAX_AGE_MS) {
+          // Still unreachable and the 30 days are over: ask for login, erase nothing.
+          active = false;
+          authEnvironment.current.revision += 1;
+          setAccountId(null);
+          setCookieHeader("");
+          setOffline(false);
+          setUser(null);
+          router.replace("/account/login" as Href);
+        }
+      } catch {
+        // A failed check changes nothing; the next tick or foreground tries again.
+      } finally {
+        running = false;
+      }
+    };
+
+    const timer = offline ? setInterval(() => void revalidate(), OFFLINE_REVALIDATE_INTERVAL_MS) : null;
+    const subscription = AppState.addEventListener("change", (next) => {
+      if (next !== "active") return;
+      if (offline || Date.now() - lastValidatedAt.current > ONLINE_REVALIDATE_AFTER_MS) void revalidate();
+    });
+    return () => {
+      active = false;
+      if (timer) clearInterval(timer);
+      subscription.remove();
+    };
+  }, [accountId, baseUrl, cookieHeader, endRejectedSession, offline, user]);
 
   const value = useMemo(
     () => ({
@@ -527,6 +709,7 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
       cookieHeader,
       googleEnabled: providers.includes("google"),
       notificationSessionRevision,
+      offline,
       providers,
       ready,
       register,
@@ -542,6 +725,7 @@ export function OrbitAuthSessionProvider({ children }: PropsWithChildren) {
       accountId,
       cookieHeader,
       notificationSessionRevision,
+      offline,
       providers,
       ready,
       register,

@@ -28,6 +28,16 @@ to `event_ops_events`, and records a checksum in
 `runEventExperienceMigrations`, and `npm run event-experience:migrate` provides
 the same idempotent migration as a standalone deployment step.
 
+Migration v2 (sprint 0128) adds `event_ops_registration_question_cache`: the
+registration questions generated for an event that has no published question
+set. It is platform data scoped to one event, never to a user; every reader of
+the event shares a row. The key is (workspace, event, language, digest of the
+event fields the generator reads), so the model runs once per key; the primary
+key is also the single-flight claim, failures back off exponentially and are
+never stored as questions, and old generations stay so forms opened earlier can
+still submit. `features/events/registration/question-cache.ts` owns the reads
+and writes. A published set always wins and bypasses the cache.
+
 `POST /preview` normalizes and hashes the proposed configuration in memory. It
 does not create a head, write a version, read participants, or call registration.
 

@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>活动现场 · 为你推荐</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Noto Sans SC","Microsoft YaHei",sans-serif;background:#FFFFFF;color:#0B1220}
+a{color:#0A5CFF}a:hover{color:#084FDE}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #FFFFFF; display: flex; flex-direction: column">
+  <div style="padding: 54px 16px 0 16px; display: flex; flex-direction: column; gap: 6px">
+    <div style="display: flex; align-items: center; justify-content: space-between; min-height: 44px">
+      <a href="LiveEntry.dc.html" style="display: flex; align-items: center; gap: 2px; font-size: 16px; text-decoration: none"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0A5CFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>活动详情</a>
+      <div style="display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; letter-spacing: 0.96px; color: #437563"><div style="width: 7px; height: 7px; border-radius: 999px; background: #437563"></div>现场</div>
+    </div>
+    <div style="font-size: 22px; line-height: 30px; font-weight: 800">东京 AI 产品增长夜</div>
+    <div style="display: flex; gap: 6px; border-bottom: 1px solid #E6E8EE; margin-top: 6px">
+      <a href="LiveHome.dc.html" style="min-height: 44px; display: flex; align-items: flex-end; margin-bottom: -1px; text-decoration: none"><span style="padding: 10px 6px; font-size: 14px; line-height: 20px; color: #6B7280">首页</span></a>
+      <a href="LiveRec.dc.html" style="min-height: 44px; display: flex; align-items: flex-end; margin-bottom: -1px; text-decoration: none"><span style="padding: 10px 6px; border-bottom: 2px solid #0B1220; font-size: 14px; line-height: 20px; font-weight: 800; color: #0B1220">推荐</span></a>
+      <a href="LiveAll.dc.html" style="min-height: 44px; display: flex; align-items: flex-end; margin-bottom: -1px; text-decoration: none"><span style="padding: 10px 6px; font-size: 14px; line-height: 20px; color: #6B7280">参会者</span></a>
+      <a href="LiveGroup.dc.html" style="min-height: 44px; display: flex; align-items: flex-end; margin-bottom: -1px; text-decoration: none"><span style="padding: 10px 6px; font-size: 14px; line-height: 20px; color: #6B7280">分组</span></a>
+      <a href="LiveAgenda.dc.html" style="min-height: 44px; display: flex; align-items: flex-end; margin-bottom: -1px; text-decoration: none"><span style="padding: 10px 6px; font-size: 14px; line-height: 20px; color: #6B7280">议程</span></a>
+    </div>
+  </div>
+  <div style="flex-grow: 1; overflow: hidden; padding: 16px 16px 0 16px; display: flex; flex-direction: column">
+    <div style="font-size: 13px; line-height: 20px; color: #6B7280; padding-bottom: 6px">基于你的兴趣、行业和当前场景。只有你主动申请交换，对方才会收到你的信息。</div>
+    <sc-for list="{{recs}}" as="r" hint-placeholder-count="3">
+      <div style="display: flex; flex-direction: column; gap: 12px; padding: 16px 0; border-bottom: 1px solid #EEF0F4">
+        <a href="LivePerson.dc.html" style="display: flex; align-items: center; gap: 12px; text-decoration: none; color: #0B1220">
+          <div style="width: 44px; height: 44px; border-radius: 999px; background: #EEF0F4; font-size: 16px; font-weight: 800; display: flex; align-items: center; justify-content: center; color: #3C4658">{{r.initial}}</div>
+          <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px">
+            <span style="font-size: 15px; line-height: 20px; font-weight: 700">{{r.name}}</span>
+            <span style="font-size: 13px; line-height: 18px; color: #6B7280">{{r.role}}</span>
+          </div>
+          <span style="font-size: 20px; font-weight: 900; letter-spacing: -0.4px; font-variant-numeric: tabular-nums">{{r.match}}</span>
+        </a>
+        <div style="font-size: 14px; line-height: 21px; color: #3C4658">{{r.reason}}</div>
+        <button type="button" style="{{r.btnStyle}}">{{r.btn}}</button>
+      </div>
+    </sc-for>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const primary = 'min-height: 46px; border-radius: 12px; border: 1px solid #0B1220; background: #FFFFFF; color: #0B1220; font-size: 15px; font-weight: 600; font-family: inherit';
+    const pending = 'min-height: 46px; border-radius: 12px; border: none; background: #F5F7FA; color: #6B7280; font-size: 15px; font-weight: 600; font-family: inherit';
+    return { recs: [
+      { initial: '佐', name: '佐藤真理', role: '企业协作工具 · 增长负责人', match: '92%', reason: '[匹配理由，来自已发布的 AI 结果]', btn: '申请交换名片', btnStyle: primary },
+      { initial: '陈', name: '陈以宁', role: '日本市场 · 早期投资人', match: '86%', reason: '[匹配理由，来自已发布的 AI 结果]', btn: '已申请 · 等待对方', btnStyle: pending },
+      { initial: '山', name: '山本健', role: '企业软件投资人 · 大阪', match: '81%', reason: '[匹配理由，来自已发布的 AI 结果]', btn: '申请交换名片', btnStyle: primary }
+    ] };
+  }
+}
+</script>
+</body>
+</html>

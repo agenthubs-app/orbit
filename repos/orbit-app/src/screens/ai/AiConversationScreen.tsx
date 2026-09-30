@@ -36,6 +36,8 @@ import {
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
+import { OfflineNotice } from "../../components/OfflineNotice";
+import { useLocalAiConversation, useLocalAiSessions } from "../../hooks/useLocalAiSessions";
 import { layout, textStyles, radius, spacing, typography } from "../../design/tokens";
 import { createControlStyles } from "../../design/controls";
 import { createThemedStyles } from "../../design/theme";
@@ -51,7 +53,7 @@ import { useMobileViewport } from "../../platform/use-mobile-viewport";
 import { ContactMentionPicker, type MentionContact } from "./ContactMentionPicker";
 import { ContactReferenceChip } from "./ContactReferenceChip";
 import { AiEntityCardList } from "./cards/AiEntityCard";
-import { sessionContactArtifacts, sessionEntityCards } from "../../view-models/ai-artifacts";
+import { sessionContactArtifacts, sessionEntityCardTurns } from "../../view-models/ai-artifacts";
 import { aiSessionArtifactRecoverySchema } from "../../api/schema/ai-artifacts";
 import {
   conversationAiRunReferencesFor,
@@ -104,7 +106,30 @@ type ReliableSendAttempt = {
   sessionId: string;
 };
 type SendRequest = { path: string; message: string; history?: { content: string; role: "user" | "assistant" }[] | undefined; reliable?: ReliableSendAttempt; revision: number; sourceNote?: { id: string; version: number } };
-type PendingSessionSave = { session: AiSession; revision: number; canonicalize: boolean; waitForTask: boolean };
+type PendingSessionSave = { session: AiSession; revision: number; canonicalize: boolean; waitForTask: boolean; delta?: AiSession["messages"] };
+/** Sprint 0112: an older page of the opened session, loaded from the top of the history. */
+type EarlierPage = { cursor: string; hasMore: boolean; messages: AiSession["messages"]; nextCursor: string | null; recovery: unknown };
+type EarlierStatus = "idle" | "loading" | "error";
+export type EarlierMessagesView = { allLoaded: boolean; hasMore: boolean; onLoad: () => void; status: EarlierStatus };
+
+function mergeRecovery(recoveries: readonly unknown[]): unknown {
+  const parsed = recoveries.flatMap((recovery) => {
+    const result = aiSessionArtifactRecoverySchema.safeParse(recovery);
+    return result.success ? [result.data] : [];
+  });
+  if (parsed.length === 0) return recoveries[0];
+  return {
+    turns: parsed.flatMap((recovery) => recovery.turns),
+    truncated: parsed.some((recovery) => recovery.truncated),
+    ...(parsed.some((recovery) => recovery.unavailable) ? { unavailable: true } : {}),
+    ...(parsed.some((recovery) => recovery.oversized) ? { oversized: true } : {}),
+  };
+}
+
+function recoveryIncomplete(recovery: unknown): boolean {
+  const parsed = aiSessionArtifactRecoverySchema.safeParse(recovery);
+  return parsed.success && Boolean(parsed.data.unavailable || parsed.data.oversized);
+}
 type ConversationJournalState = {
   draftMessage: string; latestData: AiConversationPayload | null; resolvedConversationId: string | null;
   savedSessionId: string | null; sessionSnapshot: AiSession | null; pendingSave: PendingSessionSave | null;
@@ -139,7 +164,8 @@ function rawSessionThread(session: AiSession, recovery: unknown, translate: Orbi
     assistantMessage: session.messages.findLast(item => item.role === "assistant")?.text ?? "",
     messages: session.messages.map((item, index) => ({ id: item.id ?? `${session.id}:message:${index}`, role: item.role, content: item.text, createdAt: typeof item.createdAt === "string" ? item.createdAt : session.updatedAt })),
     nextAction: "", proposedToolIntents: [], contactArtifacts: sessionContactArtifacts(session, recovery),
-    entityCards: sessionEntityCards(session, recovery, translate, language),
+    // Sprint 0112: a restored turn's cards render under that turn's reply.
+    entityCards: null, entityCardTurns: sessionEntityCardTurns(session, recovery, translate, language),
     contactArtifactNotice: parsed.success && Boolean(parsed.data.truncated || parsed.data.unavailable || parsed.data.oversized)
   };
 }
@@ -201,6 +227,10 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
   const sendOperation = useRef<AbortController | null>(null);
   const saveOperation = useRef<AbortController | null>(null);
   const taskOperation = useRef<AbortController | null>(null);
+  const earlierOperation = useRef<AbortController | null>(null);
+  const [earlierPages, setEarlierPages] = useState<EarlierPage[]>([]);
+  const [earlierStatus, setEarlierStatus] = useState<EarlierStatus>("idle");
+  const [firstRecoveryOverride, setFirstRecoveryOverride] = useState<unknown>(undefined);
   const refreshOverlay = useRef<unknown>(undefined);
   const owns = () => mounted.current && isScopeCurrent();
   const ownsRequest = (controller: AbortController) => owns() && !controller.signal.aborted;
@@ -217,6 +247,9 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
     };
   }, [client, scopeKey]);
   useEffect(() => {
+    setEarlierPages([]); setEarlierStatus("idle"); setFirstRecoveryOverride(undefined);
+  }, [conversationId]);
+  useEffect(() => {
     if (refreshOverlay.current !== undefined && (state.kind === "success" || state.kind === "empty")
       && state.data !== refreshOverlay.current && !state.refreshing) {
       refreshOverlay.current = undefined;
@@ -227,18 +260,60 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
   const loadedData = !isDraftConversation && (state.kind === "success" || state.kind === "empty") ? state.data : null;
   const sessionRead = loadedData && isStoredAgentSession ? aiSessionReadSchema.safeParse(loadedData) : null;
   const loadedSession = sessionRead?.success && sessionRead.data.storage.configured && sessionRead.data.session?.id === conversationId ? sessionRead.data.session : null;
+  // Sprint 0118 (AI B3): an opened stored session is kept on the device. Opening marks it opened; the
+  // device copy shows at once and whenever the server cannot be read, with the cards of the last online read.
+  const localConversation = useLocalAiConversation(isStoredAgentSession && !isDraftConversation ? conversationId : null);
+  const localSessionList = useLocalAiSessions(false);
+  const serverUnreachable = state.kind === "offline" || state.kind === "failure";
+  const localSummary = localSessionList.rows.find((row) => row.id === conversationId) ?? null;
+  const localSession: AiSession | null = isStoredAgentSession && !loadedSession && localConversation.messages.length > 0 && (state.kind === "loading" || serverUnreachable)
+    ? {
+        id: conversationId, title: localSummary?.title ?? locale.t("aiConversation.sessionTitle"), createdAt: localSummary?.createdAt ?? new Date(0).toISOString(),
+        updatedAt: localSummary?.updatedAt ?? new Date(0).toISOString(), ...(localSummary?.organization.customTitle ? { customTitle: localSummary.organization.customTitle } : {}),
+        messages: localConversation.messages.map((message) => ({ id: message.id, role: message.role, text: message.text, ...(message.references ? { references: message.references } : {}) })),
+      } as AiSession
+    : null;
+  const conversationOffline = Boolean(localSession) && serverUnreachable;
+  const saveLocalCards = localConversation.saveCards;
+  // Keyed on the read itself (a new object only when the server answered again), not on the parsed
+  // session, which is a new object on every render.
+  useEffect(() => {
+    if (loadedSession && sessionRead?.success && sessionRead.data.artifactRecovery !== undefined) saveLocalCards(sessionRead.data.artifactRecovery);
+  }, [loadedData, saveLocalCards]);
   const conversationRead = loadedData && !isStoredAgentSession ? aiConversationListSchema.safeParse(loadedData) : null;
   const readInvalid = loadedData !== null && (isStoredAgentSession ? !loadedSession : !conversationRead?.success);
   const previousSession = sessionSnapshot ?? loadedSession;
+  // Sprint 0112: the first page comes from the resource; older pages are
+  // prepended as the reader asks for them, each with its own turns' cards.
+  const firstPage = sessionRead?.success ? sessionRead.data.page : undefined;
+  const lastEarlierPage = earlierPages.at(-1);
+  const earlierCursor = lastEarlierPage ? lastEarlierPage.nextCursor : firstPage?.nextCursor ?? null;
+  const hasEarlier = Boolean(earlierCursor) && (lastEarlierPage ? lastEarlierPage.hasMore : firstPage?.hasMore === true);
+  const earlierMessages = [...earlierPages].reverse().flatMap((page) => page.messages);
+  const firstRecovery = firstRecoveryOverride ?? (sessionRead?.success ? sessionRead.data.artifactRecovery : undefined);
+  const combinedRecovery = earlierPages.length ? mergeRecovery([firstRecovery, ...earlierPages.map((page) => page.recovery)]) : firstRecovery;
+  const withEarlier = (session: AiSession): AiSession => {
+    if (earlierMessages.length === 0) return session;
+    const ids = new Set(session.messages.flatMap((message) => message.id ? [message.id] : []));
+    return { ...session, messages: [...earlierMessages.filter((message) => !message.id || !ids.has(message.id)), ...session.messages] };
+  };
+  const earlier: EarlierMessagesView = {
+    allLoaded: Boolean(firstPage) && !hasEarlier && earlierPages.length > 0,
+    hasMore: hasEarlier,
+    onLoad: () => { void loadEarlier(); },
+    status: earlierStatus,
+  };
   const generatedThread = latestData ? rawConversationThread(latestData, locale.t("aiConversation.sessionTitle"), locale.language) : null;
+  const previousThread = generatedThread && previousSession ? rawSessionThread(withEarlier(previousSession), combinedRecovery, locale.t, locale.language) : null;
   const submittedMessage = journal.interruptedRequest?.message ?? failedRequest?.message;
   const initialThread: ConversationThreadView | null = !isDraftConversation ? null : submittedMessage ? pendingConversationThreadView(submittedMessage, locale.language)
     : { activeConversationId: null, assistantMessage: "", messages: [], nextAction: "", proposedToolIntents: [], title: locale.t("aiConversation.newChat") };
   const resolvedThread = generatedThread
-    ? previousSession
-      ? { ...generatedThread, title: rawSessionThread(previousSession, undefined, locale.t, locale.language).title, messages: rawSessionThread(previousSession, undefined, locale.t, locale.language).messages }
+    ? previousThread
+      ? { ...generatedThread, title: previousThread.title, messages: previousThread.messages, entityCardTurns: previousThread.entityCardTurns ?? [] }
       : generatedThread
-    : loadedSession ? rawSessionThread(loadedSession, sessionRead?.success ? sessionRead.data.artifactRecovery : undefined, locale.t, locale.language)
+    : loadedSession ? rawSessionThread(withEarlier(loadedSession), combinedRecovery, locale.t, locale.language)
+    : localSession ? rawSessionThread(localSession, localConversation.cards, locale.t, locale.language)
     : conversationRead?.success ? rawConversationThread(conversationRead.data, locale.t("aiConversation.sessionTitle"), locale.language)
     : initialThread && failedRequest ? { ...initialThread, title: locale.t("aiConversation.noAnswer"), messages: initialThread.messages.filter(item => item.role === "user") } : initialThread;
   const resultScopeReady = owns() && (isDraftConversation || (!state.refreshing && (state.kind === "success" || state.kind === "empty") && !readInvalid));
@@ -250,6 +325,47 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
     draftRevision.current++;
     journal.draftRevision = draftRevision.current;
     setDraftMessage(value);
+  }
+
+  async function loadEarlier() {
+    const cursor = earlierCursor;
+    if (!owns() || !cursor || !hasEarlier || earlierOperation.current) return;
+    const controller = new AbortController(); earlierOperation.current = controller; requests.current.add(controller);
+    setEarlierStatus("loading");
+    const result = await client.get<unknown>(`${aiConversationSessionPath(conversationId)}?${new URLSearchParams({ cursor }).toString()}`, { signal: controller.signal });
+    if (!ownsRequest(controller)) return;
+    requests.current.delete(controller); earlierOperation.current = null;
+    const parsed = result.success && result.status >= 200 && result.status < 300 ? aiSessionReadSchema.safeParse(result.data) : null;
+    const read = parsed?.success ? parsed.data : null;
+    if (!read?.session || read.session.id !== conversationId || !read.page) { setEarlierStatus("error"); return; }
+    const page: EarlierPage = { cursor, hasMore: read.page.hasMore, messages: read.session.messages, nextCursor: read.page.nextCursor, recovery: read.artifactRecovery };
+    setEarlierPages(earlierPages.some((existing) => existing.cursor === cursor) ? earlierPages : [...earlierPages, page]);
+    setEarlierStatus("idle");
+  }
+
+  /** Re-reads only the pages whose cards could not all be restored. */
+  async function retryCards() {
+    if (!owns() || earlierOperation.current) return;
+    const controller = new AbortController(); earlierOperation.current = controller; requests.current.add(controller);
+    const reread = async (cursor: string | null) => {
+      const path = cursor ? `${aiConversationSessionPath(conversationId)}?${new URLSearchParams({ cursor }).toString()}` : aiConversationSessionPath(conversationId);
+      const result = await client.get<unknown>(path, { signal: controller.signal });
+      const parsed = result.success && result.status >= 200 && result.status < 300 ? aiSessionReadSchema.safeParse(result.data) : null;
+      return parsed?.success && parsed.data.session?.id === conversationId ? parsed.data.artifactRecovery : undefined;
+    };
+    if (recoveryIncomplete(firstRecovery)) {
+      const recovery = await reread(null);
+      if (!ownsRequest(controller)) return;
+      if (recovery !== undefined) setFirstRecoveryOverride(recovery);
+    }
+    const next: EarlierPage[] = [];
+    for (const page of earlierPages) {
+      const recovery = recoveryIncomplete(page.recovery) ? await reread(page.cursor) : undefined;
+      if (!ownsRequest(controller)) return;
+      next.push(recovery !== undefined ? { ...page, recovery } : page);
+    }
+    setEarlierPages(next);
+    requests.current.delete(controller); earlierOperation.current = null;
   }
 
   function refresh() {
@@ -295,12 +411,16 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
     const controller = new AbortController();
     saveOperation.current = controller; requests.current.add(controller);
     setSaving(true); setSaveError(null);
-    const result = await client.post<unknown>(ORBIT_API_ENDPOINTS.aiConversationSessions, { body: { session: pending.session }, signal: controller.signal });
+    // Sprint 0112: only this turn's messages are sent; the server merges them by
+    // id and never drops messages the client has not loaded.
+    const posted: AiSession = pending.delta ? { ...pending.session, messages: pending.delta } : pending.session;
+    const result = await client.post<unknown>(ORBIT_API_ENDPOINTS.aiConversationSessions, { body: { session: posted }, signal: controller.signal });
     if (!ownsRequest(controller)) return;
-    if (result.success && result.status >= 200 && result.status < 300 && aiSessionReceiptMatches(result.data, pending.session)) {
-      const saved = aiSessionReadSchema.parse(result.data).session!;
-      const limited = pending.session.messages.length > saved.messages.length
-        || pending.session.messages.some(message => message.text.trim().length > 12000)
+    if (result.success && result.status >= 200 && result.status < 300 && aiSessionReceiptMatches(result.data, posted)) {
+      const receipt = aiSessionReadSchema.parse(result.data).session!;
+      const saved: AiSession = pending.delta ? { ...receipt, messages: pending.session.messages } : receipt;
+      const limited = posted.messages.length > receipt.messages.length
+        || posted.messages.some(message => message.text.trim().length > 12000)
         || pending.session.title.trim().length > 120 || (pending.session.customTitle?.trim().length ?? 0) > 120;
       setSavedSessionId(saved.id);
       setSessionSnapshot(saved);
@@ -401,7 +521,7 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
         const session: AiSession = previousSession
           ? { ...previousSession, messages: [...previousSession.messages, ...messages], updatedAt: now }
           : { id: `agent-session-mobile-${identity}`, title: request.message.slice(0, 120), createdAt: now, updatedAt: now, pinned: false, messages };
-        const pending = { session, revision: request.revision, canonicalize: isDraftConversation, waitForTask: ["suggested", "needs_date_confirmation"].includes(nextThread.taskInteraction?.state ?? "") };
+        const pending: PendingSessionSave = { session, delta: messages, revision: request.revision, canonicalize: isDraftConversation, waitForTask: ["suggested", "needs_date_confirmation"].includes(nextThread.taskInteraction?.state ?? "") };
         setSessionSnapshot(session); pendingSaveRef.current = pending; setPendingSave(pending);
         await persistAndCanonicalizeDraftConversation(pending);
       }
@@ -557,11 +677,12 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
       {!thread ? <Pressable accessibilityLabel={locale.t("aiConversation.back")} accessibilityRole="button" onPress={() => { if (owns()) router.back(); }} style={styles.backButton}>
         <Ionicons color={colors.ink} name="arrow-back-outline" size={24} />
       </Pressable> : null}
-      {!isDraftConversation && state.kind === "loading" ? <LoadingState /> : null}
-      {!isDraftConversation && state.kind === "offline" ? (
+      {!isDraftConversation && state.kind === "loading" && !localSession ? <LoadingState /> : null}
+      {conversationOffline ? <OfflineNotice lastSyncedAt={localConversation.freshness.lastSyncedAt} /> : null}
+      {!isDraftConversation && !conversationOffline && state.kind === "offline" ? (
         <ErrorState message={state.error.message} title={locale.t("aiConversation.serverUnavailable")} />
       ) : null}
-      {!isDraftConversation && state.kind === "failure" ? (
+      {!isDraftConversation && !conversationOffline && state.kind === "failure" ? (
         <ErrorState message={state.error.message} />
       ) : null}
       {readInvalid ? <ErrorState title={locale.t("aiConversation.readUnreadable")} message={locale.t("aiConversation.readInvalid")} /> : null}
@@ -583,6 +704,8 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
           onResolveTaskSuggestion={resolveTaskSuggestion}
           onRefresh={refresh}
           refreshing={state.refreshing}
+          earlier={earlier}
+          onRetryCards={recoveryIncomplete(combinedRecovery) ? () => { void retryCards(); } : undefined}
           onSend={sendMessage}
           sendError={sendError}
           sendCode={sendCode}
@@ -590,7 +713,8 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
           saveError={saveError}
           saveNotice={saveNotice}
           saving={saving}
-          writingBlocked={!!pendingSave || saving || taskInteractionBusy}
+          writingBlocked={!!pendingSave || saving || taskInteractionBusy || conversationOffline}
+          sendLabelSuffix={conversationOffline ? locale.t("sync.needsNetwork") : undefined}
           retrySendLabel={locale.t(failedRequest?.reliable && ["OUTCOME_UNKNOWN", "pending", "outcome_unknown"].includes(sendCode ?? "") ? "aiConversation.checkResult" : "aiConversation.regenerate")}
           onRetrySend={() => { if (failedRequest) void recoverRequest(failedRequest); }}
           onEditQuestion={() => { if (failedRequest && owns()) { changeDraft(failedRequest.message); setSendError(null); setSendCode(null); } }}
@@ -625,6 +749,8 @@ function ConversationThread({
   onResolveTaskSuggestion,
   onRefresh,
   refreshing,
+  earlier,
+  onRetryCards,
   onSend,
   sendError,
   sendCode,
@@ -633,6 +759,7 @@ function ConversationThread({
   saveNotice,
   saving,
   writingBlocked,
+  sendLabelSuffix,
   onRetrySend,
   retrySendLabel,
   onEditQuestion,
@@ -659,6 +786,8 @@ function ConversationThread({
   onResolveTaskSuggestion: (action: "accept" | "dismiss") => void;
   onRefresh: () => void;
   refreshing: boolean;
+  earlier?: EarlierMessagesView;
+  onRetryCards?: (() => void) | undefined;
   onSend: () => void;
   sendError: string | null;
   sendCode: string | null;
@@ -667,6 +796,8 @@ function ConversationThread({
   saveNotice: string | null;
   saving: boolean;
   writingBlocked: boolean;
+  /** Sprint 0118: "needs a connection" while the conversation shows its offline device copy. */
+  sendLabelSuffix?: string | undefined;
   onRetrySend: () => void;
   retrySendLabel: string;
   onEditQuestion: () => void;
@@ -691,6 +822,23 @@ function ConversationThread({
   const [inputHeight, setInputHeight] = useState(44);
   const historyScroll = useRef<ScrollView>(null);
   const followNewMessages = useRef(false);
+  // Sprint 0112: when earlier messages are prepended, keep what the reader sees in place.
+  const contentHeight = useRef(0);
+  const scrollOffset = useRef(0);
+  const userDragged = useRef(false);
+  const messageCount = useRef(thread.messages.length);
+  messageCount.current = thread.messages.length;
+  const pendingAnchor = useRef<{ count: number; height: number; offset: number } | null>(null);
+  // Prepended messages can lay out in more than one pass (text, then cards); keep
+  // compensating their growth briefly unless the reader starts scrolling.
+  const settlingAnchor = useRef<{ height: number; until: number } | null>(null);
+  const turnCards = new Map((thread.entityCardTurns ?? []).map((turn) => [turn.assistantMessageId, turn.cards]));
+  const requestEarlier = () => {
+    if (!earlier || earlier.status === "loading" || !earlier.hasMore) return;
+    pendingAnchor.current = { count: thread.messages.length, height: contentHeight.current, offset: scrollOffset.current };
+    earlier.onLoad();
+  };
+  useEffect(() => { if (earlier?.status === "error") pendingAnchor.current = null; }, [earlier?.status]);
   // The latest assistant turn anchors both the inline panels and the entity
   // cards. Matching on message id instead looks tidier but breaks on the
   // reliable-send path, which rebuilds the saved session's messages with
@@ -747,13 +895,59 @@ function ConversationThread({
         onScroll={(event) => {
           const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
           followNewMessages.current = contentSize.height - contentOffset.y - layoutMeasurement.height < 80;
+          // Scrolling back up to the top of the history loads the page before it.
+          const movingUp = contentOffset.y < scrollOffset.current;
+          scrollOffset.current = contentOffset.y;
+          if (userDragged.current && movingUp && contentOffset.y < 48) requestEarlier();
         }}
+        onScrollBeginDrag={() => { userDragged.current = true; settlingAnchor.current = null; }}
         scrollEventThrottle={100}
-        onContentSizeChange={() => { if (followNewMessages.current) historyScroll.current?.scrollToEnd({ animated: true }); }}
+        onContentSizeChange={(_width, height) => {
+          const anchor = pendingAnchor.current;
+          contentHeight.current = height;
+          if (anchor && messageCount.current > anchor.count) {
+            pendingAnchor.current = null;
+            settlingAnchor.current = { height, until: Date.now() + 1500 };
+            const y = Math.max(0, anchor.offset + height - anchor.height);
+            scrollOffset.current = y;
+            historyScroll.current?.scrollTo({ y, animated: false });
+            return;
+          }
+          const settling = settlingAnchor.current;
+          if (settling && Date.now() < settling.until) {
+            const y = Math.max(0, scrollOffset.current + height - settling.height);
+            settlingAnchor.current = { ...settling, height };
+            scrollOffset.current = y;
+            historyScroll.current?.scrollTo({ y, animated: false });
+            return;
+          }
+          settlingAnchor.current = null;
+          if (followNewMessages.current) historyScroll.current?.scrollToEnd({ animated: true });
+        }}
         refreshControl={<RefreshControl onRefresh={onRefresh} refreshing={refreshing} tintColor={colors.accent} />}
         style={styles.readingHistory}
       >
       <View style={styles.messagePanel}>
+        {earlier && (earlier.hasMore || earlier.status === "error") ? (
+          earlier.status === "loading" ? (
+            <View accessibilityLiveRegion="polite" style={styles.earlierRow}>
+              <Text style={styles.earlierMuted}>{locale.t("aiConversation.loadingEarlier")}</Text>
+            </View>
+          ) : earlier.status === "error" ? (
+            <View style={[styles.earlierRow, styles.earlierFailure]}>
+              <Text accessibilityRole="alert" style={styles.earlierError}>{locale.t("aiConversation.loadEarlierFailed")}</Text>
+              <Pressable accessibilityRole="button" hitSlop={8} onPress={requestEarlier} style={({ pressed }) => [styles.earlierInline, pressed ? styles.pressed : null]}>
+                <Text style={styles.earlierLink}>{locale.t("aiConversation.retryEarlier")}</Text>
+              </Pressable>
+            </View>
+          ) : (
+            <Pressable accessibilityRole="button" onPress={requestEarlier} style={({ pressed }) => [styles.earlierRow, styles.earlierButton, pressed ? styles.pressed : null]}>
+              <Text style={styles.earlierLink}>{locale.t("aiConversation.loadEarlier")}</Text>
+            </Pressable>
+          )
+        ) : earlier?.allLoaded ? (
+          <View style={styles.earlierRow}><Text style={styles.earlierMuted}>{locale.t("aiConversation.allMessagesLoaded")}</Text></View>
+        ) : null}
         {thread.messages.length === 0 ? (
           <EmptyState message={locale.t("aiConversation.emptyBody")} title={locale.t("aiConversation.emptyTitle")} />
         ) : (
@@ -761,6 +955,9 @@ function ConversationThread({
             {thread.messages.map((message, index) => (
               <Fragment key={message.id}>
                 <MessageBubble baseUrl={baseUrl} message={message} onOpenHref={onOpenHref} />
+                {turnCards.get(message.id)?.length ? (
+                  <AiEntityCardList onOpenHref={onOpenHref} views={turnCards.get(message.id)!} />
+                ) : null}
                 {/* Sprint 0094: one card shape for all five entities. The contact
                     panel that used to be here rendered only contact recommendations
                     and marked everything else "unsupported", which is why events,
@@ -774,6 +971,11 @@ function ConversationThread({
         )}
       </View>
       {thread.contactArtifactNotice ? <Text accessibilityRole="alert" style={{ ...textStyles.small, color: colors.ink }}>{locale.t("aiContactArtifact.partial")}</Text> : null}
+      {thread.contactArtifactNotice && onRetryCards ? (
+        <Pressable accessibilityRole="button" onPress={onRetryCards} style={({ pressed }) => [styles.earlierInline, pressed ? styles.pressed : null]}>
+          <Text style={styles.earlierLink}>{locale.t("aiConversation.retryCards")}</Text>
+        </Pressable>
+      ) : null}
       {thread.taskInteraction ? (
         <TaskInteractionCard
           busy={taskInteractionBusy}
@@ -829,6 +1031,7 @@ function ConversationThread({
       </ScrollView>
       {saveNotice ? <Text accessibilityLiveRegion="polite" style={[styles.errorText, { marginHorizontal: layout.pageInset }]}>{saveNotice}</Text> : null}
       <View testID="conversation-composer" style={styles.composerPanel}>
+        {sendLabelSuffix ? <Text style={styles.threadNextAction}>{`${locale.t("aiConversation.sendMessage")} · ${sendLabelSuffix}`}</Text> : null}
         {selectedReferences.length > 0 ? <View style={styles.referenceRow}>{selectedReferences.map(reference => (
           <ContactReferenceChip key={`${reference.type}:${reference.id}`} id={reference.id} knownName={referenceNames[reference.id]} scopeKey={scopeKey}
             onRemove={() => onRemoveReference(reference)} style={styles.referenceChip} textStyle={styles.referenceChipText} />
@@ -856,7 +1059,7 @@ function ConversationThread({
           <Ionicons color={colors.ink} name="add" size={22} />
         </Pressable>
         <Pressable
-          accessibilityLabel={locale.t("aiConversation.sendMessage")}
+          accessibilityLabel={sendLabelSuffix ? `${locale.t("aiConversation.sendMessage")} · ${sendLabelSuffix}` : locale.t("aiConversation.sendMessage")}
           accessibilityRole="button"
           accessibilityState={{ disabled: sending || writingBlocked || !draftMessage.trim(), busy: sending || saving }}
           disabled={sending || writingBlocked || !draftMessage.trim()}
@@ -1186,6 +1389,14 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   failurePrimaryText: { color: colors.surface, fontSize: 14, lineHeight: 22, fontWeight: "700" },
   failureSecondary: { minHeight: 44, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: colors.ink, alignItems: "center", justifyContent: "center" },
   failureSecondaryText: { color: colors.ink, fontSize: 14, lineHeight: 22, fontWeight: "600" },
+  // Sprint 0112: the top-of-history row follows the ledger's load-more row (hairline border, link text).
+  earlierRow: { minHeight: 44, alignItems: "center", justifyContent: "center", paddingHorizontal: spacing.md },
+  earlierButton: { borderColor: colors.border, borderRadius: radius.md, borderWidth: StyleSheet.hairlineWidth },
+  earlierFailure: { flexDirection: "row", gap: spacing.sm },
+  earlierInline: { minHeight: 44, justifyContent: "center", alignSelf: "flex-start" },
+  earlierLink: { color: colors.accent, fontSize: typography.small, fontWeight: "700" },
+  earlierMuted: { color: colors.text2, fontSize: typography.small, lineHeight: 20 },
+  earlierError: { color: colors.rose, fontSize: typography.small, lineHeight: 20 },
   routesPanel: { padding: spacing.lg, borderBottomWidth: 1, borderBottomColor: colors.border },
   composerActions: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   mentionButtonText: { color: colors.ink, fontSize: 20, fontWeight: "800" },

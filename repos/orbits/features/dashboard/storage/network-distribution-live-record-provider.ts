@@ -1,3 +1,4 @@
+import type { LiveNetworkDistributionAnalyticsProvider } from "../../../shared/compute/dashboard-distribution";
 import {
   createConfiguredStorageDashboardAggregateProvider,
   createStorageDashboardAggregateProvider,
@@ -6,13 +7,13 @@ import {
   type StorageDashboardAggregateProviderOptions,
 } from "./dashboard-live-record-provider";
 
-export interface LiveNetworkDistributionAnalyticsProvider {
-  source: string;
-  sourceLabel: string;
-  readNetworkDistributionGraph: () =>
-    | LiveDashboardGraph
-    | Promise<LiveDashboardGraph>;
-}
+// Sprint 0117: the provider and read-model types live with the shared
+// distribution code (shared/compute/dashboard-distribution.ts).
+export type {
+  LiveNetworkDistributionAnalyticsProvider,
+  NetworkDistributionReadModel,
+  NetworkStructureDimensionKey,
+} from "../../../shared/compute/dashboard-distribution";
 
 export type StorageNetworkDistributionAnalyticsProviderOptions =
   StorageDashboardAggregateProviderOptions;
@@ -23,13 +24,13 @@ export type ConfiguredStorageNetworkDistributionAnalyticsProviderOptions =
 export function createStorageNetworkDistributionAnalyticsProvider({
   source,
   sourceLabel = "Network distribution shared live storage",
-  store,
+  sqlClient,
   workspaceId,
 }: StorageNetworkDistributionAnalyticsProviderOptions): LiveNetworkDistributionAnalyticsProvider {
   const provider = createStorageDashboardAggregateProvider({
     source: source ?? `live-record-store:network-distribution:${workspaceId}`,
     sourceLabel,
-    store,
+    sqlClient,
     workspaceId,
   });
 

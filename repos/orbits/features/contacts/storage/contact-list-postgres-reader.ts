@@ -1,5 +1,5 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
-import { contactCardPageSchema, contactCardSummarySchema } from "../../../shared/api-schema/contact-card-page";
+import { contactCardPageSchema, contactCardSchema, contactCardSummarySchema } from "../../../shared/api-schema/contact-card-page";
 import type { ContactCardPageDTO, ContactCardSummaryDTO } from "../../../shared/contract/contact-card-page";
 
 import {
@@ -83,8 +83,62 @@ const ECMASCRIPT_TRIM_CHARS_SQL = [
 
 const CONTACT_SEARCH_MATCHER_POLICY_VERSION = "ecmascript-lower-substring-v1";
 
-function createContactListSql(useVerifiedSearchCollation: boolean, output: "records" | "cards" | "summary" = "records", boundedCandidates = false): string {
-  const needsSearchText = output === "records" || useVerifiedSearchCollation;
+/**
+ * The list card of one contact_dto row (alias `p`). One text shared by the
+ * cards output and the sync output (sprint 0116), so the device's card is the
+ * server's card.
+ */
+function contactCardJsonSql(p: string): string {
+  return `jsonb_build_object(
+      'id', left(${p}.contact_id, 512),
+      'displayName', left(${p}.display_name, 128),
+      'organization', left(${p}.organization, 128),
+      'role', left(${p}.role, 128),
+      'sourceType', ${p}.source_type,
+      'status', ${p}.status,
+      'pendingInitialization', ${p}.contact_lifecycle_initialization is not distinct from 'pending',
+      'nextActionPreview', left(${p}.next_action, 320),
+      'valueTypes', (select coalesce(jsonb_agg(v.value order by v.first_position), '[]'::jsonb)
+        from (select value, min(position) as first_position from unnest(${p}.value_types) with ordinality t(value, position) group by value) v),
+      'updatedAt', left(${p}.effective_updated_at, 64)
+    )`;
+}
+
+function contactCardErrorSql(p: string): string {
+  return `coalesce(${p}.contact_error_code, ${p}.connection_error_code,
+      case when length(${p}.record_id) > 512 or length(${p}.contact_id) > 512 or length(${p}.effective_updated_at) > 64 then 'CONTACT_CARD_FIELD_INVALID' end)`;
+}
+
+/** The fields the list search matches, in order (alias `d`); the search SQL lowers their join. */
+function contactSearchFieldsSql(d: string): string {
+  return `array[
+      coalesce(${d}.display_name, ''),
+      coalesce(${d}.role, ''),
+      coalesce(${d}.organization, ''),
+      coalesce(${d}.location, ''),
+      coalesce(${d}.profile_snippet, ''),
+      coalesce(${d}.relationship_context, ''),
+      coalesce(${d}.next_action, ''),
+      coalesce(array_to_string(${d}.tags, ' '), ''),
+      coalesce(array_to_string(${d}.value_types, ' '), ''),
+      coalesce(${d}.evidence_text, ''),
+      case when ${d}.contact_error_code is not null or ${d}.connection_error_code is not null
+        then ${d}.connection_search_text else '' end
+    ]`;
+}
+
+/** Microsecond UTC text that sorts like the timestamp (the device orders by it). */
+function sortTimestampSql(value: string): string {
+  return `to_char(${value} at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`;
+}
+
+// output "sync" (sprint 0116): the contacts sync domain's rows for the contact
+// record ids in $17 — the same card, the unlowered search text (the device
+// lowers it with the same ECMAScript rule, ecmascript-lower-substring-v1), the
+// detail state's tags and the list order keys. Only sources the owner holds
+// ($4) are read, so an owner-less or foreign source never reaches a device.
+function createContactListSql(useVerifiedSearchCollation: boolean, output: "records" | "cards" | "summary" | "sync" = "records", boundedCandidates = false): string {
+  const needsSearchText = output === "records" || output === "sync" || useVerifiedSearchCollation;
   const searchCollation = useVerifiedSearchCollation
     ? ' collate pg_catalog."und-x-icu"'
     : "";
@@ -180,7 +234,7 @@ with base_contacts as materialized (
       or (coalesce(c.occurred_at, c.updated_at) = $11::timestamptz and c.updated_at < $12::timestamptz)
       or (coalesce(c.occurred_at, c.updated_at) = $11::timestamptz and c.updated_at = $12::timestamptz and c.record_id > $13))
     order by coalesce(c.occurred_at, c.updated_at) desc, c.updated_at desc, c.record_id asc
-    limit $14 + 1` : ""}
+    limit $14 + 1` : output === "sync" ? "and c.record_id = any($17::text[])" : ""}
 ), actor_connections as materialized (
   select
     c.record_id,
@@ -205,7 +259,7 @@ with base_contacts as materialized (
     and c.collection_name = '${CONNECTION_COLLECTION}'
     and c.lifecycle_state <> 'deleted'
     and c.user_id = $4 and c.payload->'accountId' = to_jsonb($4::text)
-    ${boundedCandidates ? "and exists (select 1 from base_contacts page_contact where page_contact.payload->>'id' = c.payload->>'contactId')" : ""}
+    ${boundedCandidates || output === "sync" ? "and exists (select 1 from base_contacts page_contact where page_contact.payload->>'id' = c.payload->>'contactId')" : ""}
     and jsonb_typeof(c.payload->'id') = 'string'
     and jsonb_typeof(c.payload->'accountId') = 'string'
     and jsonb_typeof(c.payload->'contactId') = 'string'
@@ -485,7 +539,7 @@ with base_contacts as materialized (
     and nullif(btrim(e.payload->>'occurredAt', ${ECMASCRIPT_TRIM_CHARS_SQL}), '') is not null
     and jsonb_typeof(e.payload->'confidence') = 'number'
     and nullif(btrim(e.payload->>'createdBy', ${ECMASCRIPT_TRIM_CHARS_SQL}), '') is not null
-    and (refs.ids ? (e.payload->>'id')) is true
+    and (refs.ids ? (e.payload->>'id')) is true${output === "sync" ? "\n    and e.user_id = $4" : ""}
 ), evidence_map_rows as (
   select distinct on (evidence_id) *
   from evidence_rows
@@ -713,20 +767,7 @@ with base_contacts as materialized (
 ), contact_search_view as (
   select
     d.*,
-    lower(array_to_string(array[
-      coalesce(d.display_name, ''),
-      coalesce(d.role, ''),
-      coalesce(d.organization, ''),
-      coalesce(d.location, ''),
-      coalesce(d.profile_snippet, ''),
-      coalesce(d.relationship_context, ''),
-      coalesce(d.next_action, ''),
-      coalesce(array_to_string(d.tags, ' '), ''),
-      coalesce(array_to_string(d.value_types, ' '), ''),
-      coalesce(d.evidence_text, ''),
-      case when d.contact_error_code is not null or d.connection_error_code is not null
-        then d.connection_search_text else '' end
-    ], ' ')${searchCollation}) as search_blob,
+    lower(array_to_string(${contactSearchFieldsSql("d")}, ' ')${searchCollation}) as search_blob,
     case
       when $3 = '' then 0
       when lower(d.display_name${searchCollation}) like $15 escape '\\' then 0
@@ -1028,24 +1069,22 @@ ${output === "cards" ? `select
     'sort_prefix_rank', p.sort_prefix_rank,
     'sort_occurred_at', p.sort_occurred_at,
     'sort_updated_at', p.sort_updated_at,
-    'error_code', coalesce(p.contact_error_code, p.connection_error_code,
-      case when length(p.record_id) > 512 or length(p.contact_id) > 512 or length(p.effective_updated_at) > 64 then 'CONTACT_CARD_FIELD_INVALID' end),
-    'card', jsonb_build_object(
-      'id', left(p.contact_id, 512),
-      'displayName', left(p.display_name, 128),
-      'organization', left(p.organization, 128),
-      'role', left(p.role, 128),
-      'sourceType', p.source_type,
-      'status', p.status,
-      'pendingInitialization', p.contact_lifecycle_initialization is not distinct from 'pending',
-      'nextActionPreview', left(p.next_action, 320),
-      'valueTypes', (select coalesce(jsonb_agg(v.value order by v.first_position), '[]'::jsonb)
-        from (select value, min(position) as first_position from unnest(p.value_types) with ordinality t(value, position) group by value) v),
-      'updatedAt', left(p.effective_updated_at, 64)
-    )
+    'error_code', ${contactCardErrorSql("p")},
+    'card', ${contactCardJsonSql("p")}
   ) order by p.page_position) from page_rows p where p.page_position <= $14), '[]'::jsonb) as page,
   exists(select 1 from page_rows p where p.page_position > $14) as has_more,
   r.fingerprint as runtime_fingerprint
+from runtime_fingerprint r` : output === "sync" ? `select
+  coalesce((select jsonb_agg(jsonb_build_object(
+    'record_id', d.record_id,
+    'contact_id', d.contact_id,
+    'error_code', ${contactCardErrorSql("d")},
+    'card', ${contactCardJsonSql("d")},
+    'tags', to_jsonb(d.tags),
+    'search_text', array_to_string(${contactSearchFieldsSql("d")}, ' '),
+    'sort_occurred_at', ${sortTimestampSql("d.sort_occurred_at")},
+    'sort_updated_at', ${sortTimestampSql("d.sort_updated_at")}
+  ) order by d.record_id) from contact_dto d), '[]'::jsonb) as rows
 from runtime_fingerprint r` : output === "summary" ? `select
   m.total,
   coalesce((select jsonb_object_agg(source_type, count) from facet_sources), '{}'::jsonb) as sources,
@@ -1197,6 +1236,55 @@ export function createPostgresContactCardReader(input: {
         asOf: new Date(now()).toISOString() });
     },
   };
+}
+
+const CONTACT_SYNC_SQL = createContactListSql(false, "sync");
+
+export interface ContactSyncListRow {
+  recordId: string;
+  contactId: string;
+  errorCode: string | null;
+  /** null when the card fails the page schema (the server page would refuse it too). */
+  card: ContactCardPageDTO["items"][number] | null;
+  tags: string[];
+  searchText: string;
+  sortOccurredAt: string;
+  sortUpdatedAt: string;
+}
+
+/**
+ * Sprint 0116: the list side of the contacts sync domain for some contact
+ * record ids of one owner — the card, detail-state tags, unlowered search text
+ * and list order keys the device needs to list and search its copy exactly as
+ * the server does. A contact the list SQL does not accept is simply absent.
+ */
+export async function readContactSyncListRows(client: LiveRecordSqlClient, input: {
+  workspaceId: string;
+  actorId: string;
+  contactRecordIds: readonly string[];
+}): Promise<ContactSyncListRow[]> {
+  if (!input.actorId.trim() || input.contactRecordIds.length === 0) return [];
+  const result = await client.query<{ rows: unknown }>(CONTACT_SYNC_SQL, [
+    input.workspaceId, CONTACT_COLLECTION, "", input.actorId, CONNECTION_COLLECTION,
+    null, null, [], [], null, null, null, null, input.contactRecordIds.length, "%", false, [...input.contactRecordIds],
+  ]);
+  const rows = parseJson(result.rows[0]?.rows);
+  if (!Array.isArray(rows)) throw new Error("CONTACT_SYNC_RESULT_INVALID");
+  return rows.map((raw) => {
+    const row = raw as Record<string, unknown>;
+    const card = contactCardSchema.safeParse(row.card);
+    if (typeof row.record_id !== "string" || typeof row.contact_id !== "string" || typeof row.search_text !== "string" ||
+      typeof row.sort_occurred_at !== "string" || typeof row.sort_updated_at !== "string" || !Array.isArray(row.tags)) {
+      throw new Error("CONTACT_SYNC_RESULT_INVALID");
+    }
+    return {
+      recordId: row.record_id, contactId: row.contact_id,
+      errorCode: typeof row.error_code === "string" ? row.error_code : card.success ? null : "CONTACT_CARD_FIELD_INVALID",
+      card: card.success ? card.data as ContactCardPageDTO["items"][number] : null,
+      tags: row.tags.filter((tag): tag is string => typeof tag === "string"),
+      searchText: row.search_text, sortOccurredAt: row.sort_occurred_at, sortUpdatedAt: row.sort_updated_at,
+    };
+  });
 }
 
 interface ContactPageQueryRow {

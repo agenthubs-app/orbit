@@ -13,9 +13,11 @@ import type {
   LiveSourceConsistencyProvenanceGraph,
 } from "../live-provenance-audit-service";
 
+// Sprint 0109: chat_summary ("conversations") is no longer read. That legacy
+// chat collection has had no writer since sprint 0104; the audit reports the
+// entity kind with zero audited records.
 export const SOURCE_CONSISTENCY_PROVENANCE_AUDIT_LIVE_RECORD_COLLECTIONS = {
   agent_action: "agentActions",
-  chat_summary: "conversations",
   connection: "connections",
   contact: "contacts",
   evidence: "evidence",

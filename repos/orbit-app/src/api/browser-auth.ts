@@ -132,7 +132,7 @@ export async function signInWithBrowserCredentials({
       fetchImpl
     });
     if (!session.success) {
-      if (session.error.code === "ORBIT_APP_AUTH_NETWORK_ERROR") return session;
+      if (session.error.code === "ORBIT_APP_AUTH_NETWORK_ERROR" || session.error.code === "ORBIT_APP_AUTH_SERVER_UNAVAILABLE") return session;
       return failure(
         "ORBIT_APP_AUTH_INVALID_CREDENTIALS",
         "邮箱或密码不正确。",

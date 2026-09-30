@@ -1,5 +1,7 @@
 import { createHash } from "node:crypto";
 
+import { readReceiptsEnabled, recordReadReceiptMetric } from "../observability/read-receipts";
+
 export const POSTGRES_READ_METRICS_ENV = "ORBIT_PG_READ_METRICS";
 
 export type PostgresReadQueryKind =
@@ -88,6 +90,14 @@ function readQueryKind(text: string): PostgresReadQueryKind | null {
 
   const keyword = remaining.match(/^[a-z]+/i)?.[0].toLowerCase();
 
+  // Sprint 0118: a sync-collection write takes the commit-order lock in a
+  // leading CTE (features/sync/commit-order-lock.ts). The statement is the
+  // write that follows the CTE list, not a read.
+  if (keyword === "with" && /\bsync_write_lock\b/.test(remaining)) {
+    const write = /\b(insert)\s+into\b|\b(update)\s+[a-z_]+\s+set\b|\b(delete)\s+from\b/i.exec(remaining);
+    if (write) return (write[1] ?? write[2] ?? write[3])!.toLowerCase() as "insert" | "update" | "delete";
+  }
+
   switch (keyword) {
     case "select":
     case "with":
@@ -168,8 +178,17 @@ function observerFor(
   config: PostgresReadMetricsConfig | undefined,
   env: PostgresReadMetricsEnv,
 ): PostgresReadMetricsObserver | undefined {
-  if (typeof config === "function") return config;
-  return config?.observer ?? (enabledByEnv(env) ? safeConsoleObserver : undefined);
+  const configured = typeof config === "function"
+    ? config
+    : config?.observer ?? (enabledByEnv(env) ? safeConsoleObserver : undefined);
+  // Every metered client also feeds the request read receipt, so no pool can
+  // be measured by one path and missed by the other.
+  if (!readReceiptsEnabled(env)) return configured;
+  if (!configured) return recordReadReceiptMetric;
+  return (metric) => {
+    recordReadReceiptMetric(metric);
+    return configured(metric);
+  };
 }
 
 export function createPostgresReadMetricsRunner(

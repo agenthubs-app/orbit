@@ -85,3 +85,23 @@ export async function sendWindowMessage(actorId: string, request: { conversation
   }) as { conversationId?: unknown; deliveryState?: unknown; message?: { body?: unknown; senderAccountId?: unknown } };
   if (value.conversationId !== request.conversationId || value.deliveryState !== "delivered" || value.message?.body !== request.body || value.message.senderAccountId !== actorId) throw Error("Delivery receipt invalid");
 }
+// Reply drafts (Sprint 0104): the signed-in participant's own unsent reply,
+// stored on the relationship conversation. The server only ever returns the
+// caller's draft; the response is still checked against the requested id.
+function replyDraftFrom(value: unknown, conversationId: string): { body: string; updatedAt: string | null } {
+  const draft = value as { body?: unknown; conversationId?: unknown; updatedAt?: unknown } | null;
+  if (!draft || draft.conversationId !== conversationId || typeof draft.body !== "string" || (draft.updatedAt !== null && typeof draft.updatedAt !== "string")) throw Error("Reply draft invalid");
+  return { body: draft.body, updatedAt: draft.updatedAt as string | null };
+}
+export async function readReplyDraft(actorId: string, conversationId: string, signal: AbortSignal) {
+  if (await readContactMessageActor(signal) !== actorId) throw new BoundedMessageReadError(403);
+  return replyDraftFrom(await communicationFetch(`/api/relationship-communication/conversations/${encodeURIComponent(conversationId)}/draft`, { signal }), conversationId);
+}
+export async function saveReplyDraft(actorId: string, conversationId: string, body: string, signal: AbortSignal) {
+  if (await readContactMessageActor(signal) !== actorId) throw new BoundedMessageReadError(403);
+  const saved = replyDraftFrom(await communicationFetch(`/api/relationship-communication/conversations/${encodeURIComponent(conversationId)}/draft`, {
+    signal, method: "PUT", body: JSON.stringify({ body }),
+  }), conversationId);
+  if (saved.body !== body) throw Error("Reply draft not saved");
+  return saved;
+}

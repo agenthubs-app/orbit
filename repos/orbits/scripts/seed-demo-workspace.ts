@@ -34,6 +34,8 @@ import {
   EVENT_ORGANIZER_ASSIGNMENTS,
 } from "../features/events/organizer-accounts/manifest";
 import { seedEventsMockDataIntoLiveStore } from "../features/events/storage/seed-live-events";
+import { acquireSyncCommitOrderLock } from "../features/sync/commit-order-lock";
+import { actAsOwnerChangeHandler, rotateAuthorizationEpochs } from "../features/sync/owner-guard";
 import {
   createStorageContactActorLinkProvider,
 } from "../features/contacts/contact-actor-links/storage-provider";
@@ -42,11 +44,10 @@ import {
 } from "../shared/storage/configured-live-record-store";
 import { resolveLiveDatabaseConnectionConfig } from "../shared/storage/live-database-config";
 import { runOrbitRecordsMigration } from "../shared/storage/migrations";
-import { seedGeneratedRelationshipFixturesIntoLiveStore } from "../shared/storage/seed-generated-fixtures";
-import { MOCK_FIXTURE_COLLECTION_NAMES } from "../shared/mock/fixtures";
+import { LIVE_SEED_COLLECTION_NAMES, seedGeneratedRelationshipFixturesIntoLiveStore } from "../shared/storage/seed-generated-fixtures";
 import { loadLocalEnv } from "./load-local-env";
 import { ensureDemoCanonicalMemberships } from "./demo-canonical-memberships";
-import { buildDemoOrganizerProjection } from "./demo-organizer-projection";
+import { applyDemoOrganizerProjection, buildDemoOrganizerProjection } from "./demo-organizer-projection";
 import { buildDemoRelationshipProjection } from "./demo-relationship-projection";
 import {
   createPostgresOrganizerMembershipWriter,
@@ -304,7 +305,7 @@ async function main(): Promise<void> {
     });
     const generatedSeed = await seedGeneratedRelationshipFixturesIntoLiveStore({
       collectionNames: existingEvents.length === 0
-        ? MOCK_FIXTURE_COLLECTION_NAMES
+        ? LIVE_SEED_COLLECTION_NAMES
         : ["accounts", "profiles", "organizers"],
       store,
       workspaceId,
@@ -372,19 +373,38 @@ async function main(): Promise<void> {
         store,
         workspaceId,
       });
-      const resetOwners = await client.query<{ record_id: string }>(
-        `
-          update orbit_records
-          set user_id = null
-          where workspace_id = $1
-            and collection_name = $2
-            and record_id = any($3::text[])
-          returning record_id
-        `,
-        [workspaceId, "events", [...eventOwnerById.keys()]],
-      );
-      if (resetOwners.rows.length !== eventOwnerById.size) {
-        throw new Error("Demo event seed did not reset exactly the reviewed event owners.");
+      // Sprint 0117: events are a sync collection (dashboard graph domain).
+      // Clearing their owners is the registered reassign handler
+      // "demo-event-owner-reset": it takes the commit-order lock, runs under
+      // the handler name the database guard checks, and rotates the previous
+      // owners' authorization epochs so their devices drop these events.
+      await client.query("BEGIN");
+      try {
+        await acquireSyncCommitOrderLock(client);
+        await actAsOwnerChangeHandler(client, "demo-event-owner-reset");
+        const previousOwners = await client.query<{ user_id: string | null }>(
+          "select user_id from orbit_records where workspace_id = $1 and collection_name = 'events' and record_id = any($2::text[]) for update",
+          [workspaceId, [...eventOwnerById.keys()]],
+        );
+        const resetOwners = await client.query<{ record_id: string }>(
+          `
+            update orbit_records
+            set user_id = null
+            where workspace_id = $1
+              and collection_name = 'events'
+              and record_id = any($2::text[])
+            returning record_id
+          `,
+          [workspaceId, [...eventOwnerById.keys()]],
+        );
+        if (resetOwners.rows.length !== eventOwnerById.size) {
+          throw new Error("Demo event seed did not reset exactly the reviewed event owners.");
+        }
+        await rotateAuthorizationEpochs(client, workspaceId, previousOwners.rows.flatMap((row) => (row.user_id ? [row.user_id] : [])));
+        await client.query("COMMIT");
+      } catch (error) {
+        await client.query("ROLLBACK");
+        throw error;
       }
     }
 
@@ -490,7 +510,7 @@ async function main(): Promise<void> {
     try {
       const records = await store.listRecords({ limit: "unbounded", workspaceId, includeDeleted: true });
       const projection = buildDemoOrganizerProjection({ records, workspaceId, now: new Date().toISOString() });
-      for (const record of projection) await store.upsertRecord(record);
+      await applyDemoOrganizerProjection({ plan: projection, records, store });
       const relationships = buildDemoRelationshipProjection({ records, workspaceId, now: new Date().toISOString() });
       for (const record of relationships) await store.upsertRecord(record);
       await client.query("COMMIT");

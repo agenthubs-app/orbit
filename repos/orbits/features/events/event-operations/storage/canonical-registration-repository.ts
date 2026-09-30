@@ -1,3 +1,4 @@
+import { acquireSyncCommitOrderLock } from "../../../sync/commit-order-lock";
 import { createHash } from "node:crypto";
 
 import type {
@@ -688,6 +689,8 @@ async function activatePreparedCanonicalRegistrationsWithExecutor(input: {
     workspaceId,
   } = input;
 
+  // Sprint 0113: event head tables carry sync_revision (strict trigger); take the commit-order lock first.
+  await acquireSyncCommitOrderLock(transaction);
   const event = await transaction.query<SqlRow>(
     `
       select
@@ -956,6 +959,8 @@ export function createPostgresCanonicalRegistrationMethods({
 
     async cancelCanonicalRegistration({ eventId, userId }) {
       return client.transaction(async (transaction) => {
+        // Sprint 0113: event head tables carry sync_revision (strict trigger); take the commit-order lock first.
+        await acquireSyncCommitOrderLock(transaction);
         await transaction.query(
           `select pg_advisory_xact_lock(hashtextextended($1, 0))`,
           [`event-operations-registration:${workspaceId}:${eventId}:${userId}`],
@@ -1095,6 +1100,8 @@ export function createPostgresCanonicalRegistrationMethods({
       userId,
     }: RegisterForEventInput) {
       return client.transaction(async (transaction) => {
+        // Sprint 0113: event head tables carry sync_revision (strict trigger); take the commit-order lock first.
+        await acquireSyncCommitOrderLock(transaction);
         const window = await lockRegistrationScope(
           transaction,
           workspaceId,
@@ -1302,6 +1309,8 @@ export function createPostgresCanonicalRegistrationMethods({
 
     async seedCanonicalRegistration(value) {
       return client.transaction(async (transaction) => {
+        // Sprint 0113: event head tables carry sync_revision (strict trigger); take the commit-order lock first.
+        await acquireSyncCommitOrderLock(transaction);
         const window = await lockRegistrationScope(
           transaction,
           workspaceId,

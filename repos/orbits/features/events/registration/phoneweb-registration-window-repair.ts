@@ -1,3 +1,4 @@
+import { acquireSyncCommitOrderLock } from "../../sync/commit-order-lock";
 import { createHash } from "node:crypto";
 import type { EventOperationsPostgresClient, EventOperationsSqlExecutor } from "../event-operations/storage/postgres-client";
 
@@ -242,6 +243,8 @@ async function withRepairTransaction<T>(client: EventOperationsPostgresClient, o
     requireRepairTarget(identity.rows[0]?.database ?? "", REPAIR_WORKSPACE);
     await transaction.query("set local lock_timeout='5s'");
     await transaction.query("set local statement_timeout='30s'");
+    // Sprint 0113: event head tables carry sync_revision (strict trigger); take the commit-order lock first.
+    await acquireSyncCommitOrderLock(transaction);
     // Missing heads/policies need a phantom-safe boundary, not only existing-row locks.
     await transaction.query("select event_id from event_ops_events where workspace_id=$1 and event_id=any($2::text[]) order by event_id for update", [REPAIR_WORKSPACE, REPAIR_EVENT_IDS]);
     // Existing saveConfiguration locks the event before its head: retain that order.

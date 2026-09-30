@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createSyncDomainHandlers } from "../../app/api/sync/domain-handlers";
 import { createDomainCursorCodec } from "../../features/sync/domain-cursor";
-import { SYNC_DOMAINS, SYNC_REGISTRY_VERSION, SYNC_DOMAIN_SCHEMA_VERSION } from "../../features/sync/domain-registry";
+import { RECORD_SYNC_DOMAINS, SYNC_DOMAINS, SYNC_REGISTRY_VERSION, SYNC_DOMAIN_SCHEMA_VERSION, type SyncDomainDefinition } from "../../features/sync/domain-registry";
 import { createDomainReadService } from "../../features/sync/domain-read-service";
 import { createTaskRepository } from "../../features/tasks/repository";
 import { createTaskService } from "../../features/tasks/service";
@@ -28,6 +28,26 @@ function scriptedClient(state: Scripted) {
         calls.push(text);
         if (text.includes("sync:authorization-epoch")) {
           return { rows: [{ max_updated_at: state.auth.max, count: String(state.auth.count), identity_count: String(state.auth.identity) } as T] };
+        }
+        if (text.includes("sync:event-domains:summary")) {
+          // Sprint 0115: an actor with no event registrations: every event watermark is 0, nothing released.
+          return { rows: [{ registrations: "0", events: "0", results: "0", released: "" } as T] };
+        }
+        if (text.includes("sync:contact-domain:high-watermark")) {
+          // Sprint 0116: the contacts domain; an actor with no contact rows has watermark 0.
+          return { rows: [{ high_watermark: "0" } as T] };
+        }
+        if (text.includes("sync:dashboard-graph:high-watermark")) {
+          // Sprint 0117: the dashboard graph domain; an actor with no graph rows has watermark 0.
+          return { rows: [{ high_watermark: "0" } as T] };
+        }
+        if (text.includes("sync:inbox:high-watermark") || text.includes("sync:ai-sessions:high-watermark") || text.includes("sync:ai-session-messages:high-watermark")) {
+          // Sprint 0118: the inbox and AI session domains; an actor with no rows has watermark 0.
+          return { rows: [{ high_watermark: "0" } as T] };
+        }
+        if (text.includes("sync:relationship:summary")) {
+          // Sprint 0119: the relationship message domains; an actor with no conversations has watermarks 0.
+          return { rows: [{ conversations: "0", messages: "0" } as T] };
         }
         if (text.includes("sync:domain:high-watermark")) {
           const rows = state.rows[String(values?.[2])] ?? [];
@@ -57,18 +77,20 @@ async function task(id: string, sync_revision: number) {
   return { record_id: record.recordId, sync_revision, payload: record.payload };
 }
 
-function harness(state: Scripted, options: { conditional?: boolean } = {}) {
+// The record domains unless a test asks for the production registry (sprint 0115 adds the event domains).
+function harness(state: Scripted, options: { conditional?: boolean; domains?: readonly SyncDomainDefinition[] } = {}) {
   const { client, calls } = scriptedClient(state);
-  const service = createDomainReadService({ client, cursorSecret: SECRET, now: () => NOW });
+  const service = createDomainReadService({ client, cursorSecret: SECRET, now: () => NOW, domains: options.domains ?? RECORD_SYNC_DOMAINS });
   // The manifest watermark covers the actor's registered collections plus the shared authorization rows.
+  // Sprint 0118: one max(sync_revision) statement (domain:watermark:revision), not max(updated_at).
   const watermarkClient = {
     async query<T>(text: string, values?: readonly unknown[]) {
       calls.push(text);
-      if (!text.includes("domain:watermark:user")) throw new Error(`unexpected watermark SQL: ${text.slice(0, 60)}`);
+      if (!text.includes("domain:watermark:revision")) throw new Error(`unexpected watermark SQL: ${text.slice(0, 60)}`);
       const own = values?.[1] as string[];
       const business = own.flatMap((collection) => state.rows[collection] ?? []);
-      const max = business.length ? `2026-09-18T07:${String(Math.max(...business.map((row) => row.sync_revision))).padStart(2, "0")}:00Z` : state.auth.max;
-      return { rows: [{ max_updated_at: max, count: String(business.length + state.auth.count) } as T] };
+      const max = business.length ? String(Math.max(...business.map((row) => row.sync_revision))) : null;
+      return { rows: [{ max_revision: max, count: String(business.length + state.auth.count) } as T] };
     },
   };
   const handlers = createSyncDomainHandlers({
@@ -86,7 +108,7 @@ test("lease covers the registry with epochs derived from the actor's authorizati
   const envelope = offlineReadEnvelopeSchema.parse(body.data);
   assert.equal(envelope.actorId, A);
   assert.equal(envelope.baseUrl, "https://app.orbit.local");
-  assert.deepEqual(envelope.grants.map((grant) => grant.domainId).sort(), SYNC_DOMAINS.map((domain) => domain.domainId).sort());
+  assert.deepEqual(envelope.grants.map((grant) => grant.domainId).sort(), RECORD_SYNC_DOMAINS.map((domain) => domain.domainId).sort());
   assert.ok(envelope.grants.every((grant) => grant.workspaceId === W && /^[a-f0-9]{32}$/.test(grant.authorizationEpoch)));
   assert.ok(envelope.offlineReadExpiresAt <= envelope.sessionExpiresAt);
   assert.equal(envelope.lastVerifiedAt, Date.parse(NOW));
@@ -155,7 +177,7 @@ test("manifest is a conditional read: unchanged data answers 304 from one waterm
   const unchanged = await handlers.manifest(new Request("https://orbit.local/api/sync/manifest", { headers: { "If-None-Match": etag! } }));
   assert.equal(unchanged.status, 304);
   assert.equal(unchanged.headers.get("ETag"), etag);
-  assert.deepEqual(calls.map((sql) => sql.includes("domain:watermark:user") ? "watermark" : "other"), ["watermark"], "an unchanged manifest costs exactly one watermark row");
+  assert.deepEqual(calls.map((sql) => sql.includes("domain:watermark:revision") ? "watermark" : "other"), ["watermark"], "an unchanged manifest costs exactly one watermark row");
 
   state.rows.tasks!.push(await task("task:2", 2));
   calls.length = 0;
@@ -164,4 +186,21 @@ test("manifest is a conditional read: unchanged data answers 304 from one waterm
   assert.notEqual(changed.headers.get("ETag"), etag);
   assert.equal(domainManifestSchema.parse(((await changed.json()) as { data: unknown }).data).domains.find((entry) => entry.domainId === "tasks")?.watermark, "2");
   assert.ok(calls.some((sql) => sql.includes("sync:domain:high-watermark")), "a changed manifest re-reads the domain watermarks");
+});
+
+test("the production registry leases the contacts, event, dashboard graph and message domains too; an unchanged manifest costs the event summary, the message summary and one watermark row", async () => {
+  const state: Scripted = { auth: { max: "2026-09-18T07:00:00Z", count: 3, identity: 1 }, rows: { tasks: [await task("task:e1", 1)] } };
+  const { handlers, calls } = harness(state, { conditional: true, domains: SYNC_DOMAINS });
+  const lease = offlineReadEnvelopeSchema.parse(((await (await handlers.lease(new Request("https://orbit.local/api/sync/lease?baseUrl=https%3A%2F%2Fapp.orbit.local"))).json()) as { data: unknown }).data);
+  assert.deepEqual(lease.grants.map((grant) => grant.domainId).sort(), SYNC_DOMAINS.map((domain) => domain.domainId).sort());
+  assert.ok(["contacts", "event-registrations", "registered-events", "event-published-results", "dashboard-graph"].every((id) => lease.grants.some((grant) => grant.domainId === id)));
+  const first = await handlers.manifest(new Request("https://orbit.local/api/sync/manifest"));
+  assert.equal(first.status, 200);
+  const manifest = domainManifestSchema.parse(((await first.json()) as { data: unknown }).data);
+  assert.deepEqual(manifest.domains.map((entry) => entry.domainId).sort(), SYNC_DOMAINS.map((domain) => domain.domainId).sort());
+  assert.equal(manifest.domains.find((entry) => entry.domainId === "registered-events")?.watermark, "0");
+  calls.length = 0;
+  const unchanged = await handlers.manifest(new Request("https://orbit.local/api/sync/manifest", { headers: { "If-None-Match": first.headers.get("ETag")! } }));
+  assert.equal(unchanged.status, 304);
+  assert.deepEqual(calls.map((sql) => sql.includes("domain:watermark:revision") ? "watermark" : sql.includes("sync:event-domains:summary") ? "event-summary" : sql.includes("sync:relationship:summary") ? "relationship-summary" : "other"), ["event-summary", "relationship-summary", "watermark"]);
 });

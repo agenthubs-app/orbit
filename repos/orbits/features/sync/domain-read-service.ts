@@ -1,9 +1,22 @@
 import { createHash } from "node:crypto";
 import type { DomainChange, DomainManifest, DomainPage, OfflineReadEnvelope } from "../../shared/contract/universal-read";
 import { resolveAuthorizationEpoch, type AuthorizationEpoch, type AuthorizationEpochSqlClient } from "./authorization-epoch";
-import { createDomainCursorCodec, type DomainCursorScope } from "./domain-cursor";
-import { findSyncDomain, SYNC_DOMAIN_SCHEMA_VERSION, SYNC_DOMAINS, SYNC_REGISTRY_VERSION, type SyncDomainDefinition } from "./domain-registry";
+import { createDomainCursorCodec, type DecodedDomainCursor, type DomainCursorPosition, type DomainCursorScope } from "./domain-cursor";
+import { findSyncDomain, SYNC_DOMAIN_SCHEMA_VERSION, SYNC_DOMAINS, SYNC_REGISTRY_VERSION, type DedicatedTableSyncSource, type SyncDomainDefinition } from "./domain-registry";
+import { readContactDomainHighWatermark, readContactDomainPage } from "./contact-domain-reader";
+import { readDashboardGraphHighWatermark, readDashboardGraphPage } from "./dashboard-graph-reader";
+import { readEventDomainPage, readEventDomainSummary, type EventDomainSummary } from "./event-domain-reader";
+import { readInboxDomainHighWatermark, readInboxDomainPage, type InboxReconcileResult } from "./inbox-domain-reader";
+import {
+  aiSessionPartitionKey,
+  openedAiSessions,
+  readAiSessionMessagesHighWatermark,
+  readAiSessionMessagesPage,
+  readAiSessionsHighWatermark,
+  readAiSessionsPage,
+} from "./ai-session-domain-reader";
 import { issueOfflineReadLease } from "./offline-read-lease";
+import { readRelationshipDomainPage, readRelationshipDomainSummary, type RelationshipDomainSummary } from "./relationship-message-domain-reader";
 import { changeFromRow, SYNC_MAX_LIMIT, SYNC_MAX_PAGE_BYTES, SyncReadError, type SyncReadRow } from "./read-service";
 
 /**
@@ -15,6 +28,16 @@ export interface DomainReadServiceOptions {
   client: AuthorizationEpochSqlClient;
   cursorSecret: string;
   now?: () => string;
+  /** The manuals this service leases and reads; production uses the registry's device domains. */
+  domains?: readonly SyncDomainDefinition[];
+  /**
+   * Sprint 0118: writes the server's current source decisions back onto the
+   * actor's inbox rows (features/sync/inbox-domain-reader.ts). Runs before the
+   * manifest and before a first inbox page, so a device hears about a
+   * notification whose source went away. Without it the inbox domain still
+   * pages, but read-time invalidation never reaches a device.
+   */
+  inboxReconciler?: (input: { actorId: string; workspaceId: string }) => Promise<InboxReconcileResult>;
 }
 
 export class DomainNotAuthorizedError extends Error {
@@ -38,6 +61,55 @@ const HIGH_WATERMARK_SQL = `
   where workspace_id = $1 and user_id = $2 and collection_name = $3
 `;
 
+// Dedicated-table source (sprint 0113): the table's own sync_revision, drawn
+// from the orbit_records sequence under the same commit-order lock, filtered to
+// the owner column the manual declares. Identifiers come from the registry and
+// are validated before any SQL is built.
+const IDENTIFIER = /^[a-z_][a-z0-9_]*$/;
+
+function dedicatedSql(source: DedicatedTableSyncSource, ownerColumn: string) {
+  const identifiers = [source.table, source.recordIdColumn, ownerColumn, ...Object.values(source.columns)];
+  if (!identifiers.every((identifier) => IDENTIFIER.test(identifier)) || !Object.keys(source.columns).every((field) => /^[A-Za-z][A-Za-z0-9]*$/.test(field))) {
+    throw new SyncReadError("SYNC_SCOPE_MISMATCH", "A dedicated sync source is not a plain identifier.");
+  }
+  const columns = Object.entries(source.columns).map(([field, column]) => `${column} as "${field}"`).join(", ");
+  return {
+    highWatermark: `
+  /* sync:domain:dedicated-high-watermark */
+  select coalesce(max(sync_revision), 0)::text as high_watermark
+  from ${source.table}
+  where workspace_id = $1 and ${ownerColumn} = $2
+`,
+    page: `
+  /* sync:domain:dedicated-page */
+  select ${source.recordIdColumn}::text as record_id, ${ownerColumn}::text as owner_id, ${columns},
+    sync_revision::text as sync_revision
+  from ${source.table}
+  where workspace_id = $1
+    and ${ownerColumn} = $2
+    and sync_revision > $3::bigint
+    and sync_revision <= $4::bigint
+  order by ${source.table}.sync_revision asc
+  limit $5
+`,
+  };
+}
+
+function ownerColumnOf(domain: SyncDomainDefinition): string {
+  if (domain.ownership.rule !== "column") throw new SyncReadError("SYNC_DOMAIN_SOURCE_UNSUPPORTED", `Domain ${domain.domainId} derives its owner; only the event_derived source implements a derived reader.`);
+  return domain.ownership.column;
+}
+
+/** Only the manual's fields leave the server. */
+function declaredFields(domain: SyncDomainDefinition, payload: Record<string, unknown>): Record<string, unknown> {
+  const allowed = new Set(domain.fields);
+  return Object.fromEntries(Object.entries(payload).filter(([key]) => allowed.has(key)));
+}
+
+function wireValue(value: unknown): unknown {
+  return value instanceof Date ? value.toISOString() : typeof value === "bigint" ? value.toString() : value;
+}
+
 // Registry v1 mirrors canonical records only. Legacy-shaped task rows (no nested
 // `task`) are invisible to /api/tasks and cannot be mutated through it; mirroring
 // them would show tasks the product cannot act on. The v1 /api/sync page keeps
@@ -53,12 +125,66 @@ const PAGE_SQL = `
     and sync_revision > $4::bigint
     and sync_revision <= $5::bigint
     and (collection_name <> 'tasks' or payload ? 'task')
-  order by sync_revision asc
+  -- The table column, not the text alias above: "100" sorts before "99" (sprint 0117).
+  order by orbit_records.sync_revision asc
   limit $6
 `;
 
-export function domainGeneration(epoch: string): string {
-  return createHash("sha256").update(JSON.stringify([epoch, SYNC_REGISTRY_VERSION, SYNC_DOMAIN_SCHEMA_VERSION])).digest("hex").slice(0, 16);
+// A recurring series' occurrence exceptions live in their own collection. Every
+// exception write also rewrites the series row (new revision), so sending the
+// exceptions with the series keeps the device complete. Exceptions for
+// occurrences that ended before this page was issued are left out: the device
+// never shows those, and the series payload would otherwise grow forever.
+const SCHEDULE_EXCEPTIONS_SQL = `
+  /* sync:domain:schedule-exceptions */
+  select source_id, payload
+  from orbit_records
+  where workspace_id = $1
+    and user_id = $2
+    and collection_name = 'personal_schedule_occurrence_exceptions'
+    and source_id = any($3::text[])
+    and lifecycle_state <> 'deleted'
+    and (payload ->> 'occurrenceDate' >= $4 or left(payload -> 'patch' ->> 'startsAt', 10) >= $4)
+  order by source_id, record_id
+`;
+
+type ScheduleException = { occurrenceDate: string; cancelled: boolean; patch: Record<string, unknown> };
+
+async function scheduleExceptions(client: AuthorizationEpochSqlClient, input: { workspaceId: string; actorId: string; seriesIds: readonly string[]; issuedAt: number }): Promise<Map<string, ScheduleException[]>> {
+  const bySeries = new Map<string, ScheduleException[]>();
+  if (input.seriesIds.length === 0) return bySeries;
+  const cutoff = new Date(input.issuedAt - 2 * 86_400_000).toISOString().slice(0, 10);
+  const result = await client.query<{ source_id: string; payload: Record<string, unknown> }>(SCHEDULE_EXCEPTIONS_SQL, [input.workspaceId, input.actorId, [...input.seriesIds], cutoff]);
+  for (const row of result.rows) {
+    const { occurrenceDate, cancelled, patch } = row.payload;
+    if (typeof occurrenceDate !== "string" || typeof cancelled !== "boolean" || !patch || typeof patch !== "object" || Array.isArray(patch)) {
+      throw new SyncReadError("SYNC_INVALID_RECORD", "A schedule occurrence exception is invalid.");
+    }
+    const list = bySeries.get(row.source_id) ?? [];
+    list.push({ occurrenceDate, cancelled, patch: patch as Record<string, unknown> });
+    bySeries.set(row.source_id, list);
+  }
+  return bySeries;
+}
+
+/**
+ * The generation a domain's cursors are bound to. `visibility` (sprint 0115)
+ * folds in a visibility that changes with time rather than with a write — the
+ * released set of published event results — so a device holding a cursor from
+ * before the change is told to rebuild; without it the value is unchanged, so
+ * existing record-domain cursors stay valid.
+ */
+export function domainGeneration(epoch: string, visibility?: string): string {
+  const parts = visibility === undefined ? [epoch, SYNC_REGISTRY_VERSION, SYNC_DOMAIN_SCHEMA_VERSION] : [epoch, SYNC_REGISTRY_VERSION, SYNC_DOMAIN_SCHEMA_VERSION, visibility];
+  return createHash("sha256").update(JSON.stringify(parts)).digest("hex").slice(0, 16);
+}
+
+function generationOf(domain: SyncDomainDefinition, epoch: string, summary: EventDomainSummary | null): string {
+  if (domain.source.kind === "event_derived" && domain.source.view === "published-results") {
+    if (!summary) throw new SyncReadError("SYNC_SCOPE_MISMATCH", "The event sync summary is required.");
+    return domainGeneration(epoch, `released:${summary.released}`);
+  }
+  return domainGeneration(epoch);
 }
 
 function domainChange(change: ReturnType<typeof changeFromRow>): DomainChange {
@@ -70,19 +196,125 @@ function domainChange(change: ReturnType<typeof changeFromRow>): DomainChange {
   };
 }
 
-export function createDomainReadService({ client, cursorSecret, now = () => new Date().toISOString() }: DomainReadServiceOptions) {
+export function createDomainReadService({ client, cursorSecret, now = () => new Date().toISOString(), domains = SYNC_DOMAINS, inboxReconciler }: DomainReadServiceOptions) {
   const cursors = createDomainCursorCodec({ secret: cursorSecret });
+  // Production passes nothing and gets the device domains; a test adds the probe explicitly.
+  const leased = [...domains];
+  if (leased.length === 0) throw new Error("A domain read service needs at least one domain.");
 
   async function epochFor(actorId: string, workspaceId: string): Promise<AuthorizationEpoch> {
     if (!actorId.trim() || !workspaceId.trim()) throw new SyncReadError("SYNC_SCOPE_MISMATCH", "Authenticated sync scope is required.");
     return resolveAuthorizationEpoch({ client, actorId, workspaceId });
   }
 
-  async function highWatermark(actorId: string, workspaceId: string, domain: SyncDomainDefinition): Promise<string> {
-    const result = await client.query<{ high_watermark: string }>(HIGH_WATERMARK_SQL, [workspaceId, actorId, domain.collectionName]);
+  const hasEventDomains = leased.some((domain) => domain.source.kind === "event_derived");
+  const hasRelationshipDomains = leased.some((domain) => domain.source.kind === "relationship_messages");
+
+  async function relationshipSummary(actorId: string, workspaceId: string): Promise<RelationshipDomainSummary | null> {
+    return hasRelationshipDomains ? readRelationshipDomainSummary(client, { workspaceId, actorId }) : null;
+  }
+
+  async function eventSummary(actorId: string, workspaceId: string): Promise<EventDomainSummary | null> {
+    return hasEventDomains ? readEventDomainSummary(client, { workspaceId, actorId }) : null;
+  }
+
+  async function highWatermark(actorId: string, workspaceId: string, domain: SyncDomainDefinition, summary: EventDomainSummary | null = null, messages: RelationshipDomainSummary | null = null): Promise<string> {
+    const source = domain.source;
+    if (source.kind === "relationship_messages") return (messages ?? await readRelationshipDomainSummary(client, { workspaceId, actorId })).watermarks[source.view];
+    if (source.kind === "event_derived") {
+      if (!summary) throw new SyncReadError("SYNC_SCOPE_MISMATCH", "The event sync summary is required.");
+      return summary.watermarks[source.view];
+    }
+    if (source.kind === "contact_graph") return readContactDomainHighWatermark(client, { workspaceId, actorId });
+    if (source.kind === "dashboard_graph") return readDashboardGraphHighWatermark(client, source, { workspaceId, actorId });
+    if (source.kind === "inbox_records") return readInboxDomainHighWatermark(client, { workspaceId, actorId });
+    if (source.kind === "personal_subspace") {
+      return source.view === "ai-sessions"
+        ? readAiSessionsHighWatermark(client, { workspaceId, actorId })
+        : readAiSessionMessagesHighWatermark(client, { workspaceId, actorId });
+    }
+    const result = source.kind === "orbit_records"
+      ? await client.query<{ high_watermark: string }>(HIGH_WATERMARK_SQL, [workspaceId, actorId, source.collectionName])
+      : await client.query<{ high_watermark: string }>(dedicatedSql(source, ownerColumnOf(domain)).highWatermark, [workspaceId, actorId]);
     const value = result.rows[0]?.high_watermark;
     if (typeof value !== "string" || !/^(?:0|[1-9]\d*)$/.test(value)) throw new SyncReadError("SYNC_INVALID_HIGH_WATERMARK", "The sync high watermark is invalid.");
     return value;
+  }
+
+  type PageInput = { actorId: string; workspaceId: string; limit: number };
+  const hasInboxDomain = leased.some((domain) => domain.source.kind === "inbox_records");
+
+  async function reconcileInbox(actorId: string, workspaceId: string): Promise<InboxReconcileResult | null> {
+    return hasInboxDomain && inboxReconciler ? inboxReconciler({ actorId, workspaceId }) : null;
+  }
+
+  type OpenedPosition = Omit<DomainCursorPosition, keyof DomainCursorScope>;
+  /**
+   * Sprint 0118: "ai-session-messages" pages only the sessions the request names.
+   * The cursor keeps short keys of the sessions its bookmark covers; a newly
+   * named session is caught up first (its latest window, up to the bookmark),
+   * then joins the others. A session no longer named is dropped.
+   */
+  async function readOpenedSessionMessages(
+    input: PageInput & { partitions?: readonly string[] },
+    decoded: DecodedDomainCursor | null,
+    afterRevision: string,
+    high: string,
+  ): Promise<{ read: PageRead; position: OpenedPosition }> {
+    const ids = openedAiSessions(input.partitions);
+    const byKey = new Map(ids.map((id) => [aiSessionPartitionKey(id), id]));
+    const sorted = (keys: Iterable<string>) => [...new Set(keys)].sort();
+    const idsOf = (keys: readonly string[]) => keys.map((key) => byKey.get(key)!);
+    const base = { workspaceId: input.workspaceId, actorId: input.actorId, limit: input.limit };
+    if (!decoded) {
+      const read = await readAiSessionMessagesPage(client, { ...base, sessionIds: ids, afterRevision: "0", highWatermark: high, window: true });
+      return { read, position: { afterRevision: read.hasMore ? read.lastRevision! : high, highWatermark: high, partitions: sorted(byKey.keys()) } };
+    }
+    const known = (decoded.partitions ?? []).filter((key) => byKey.has(key));
+    const catching = (decoded.catchUp ? decoded.catchUp.partitions : [...byKey.keys()]).filter((key) => byKey.has(key) && !known.includes(key));
+    if (catching.length > 0) {
+      const read = await readAiSessionMessagesPage(client, {
+        ...base, sessionIds: idsOf(catching), afterRevision: decoded.catchUp?.afterRevision ?? "0", highWatermark: decoded.afterRevision, window: true,
+      });
+      const bookmark = { afterRevision: decoded.afterRevision, highWatermark: decoded.highWatermark };
+      if (read.hasMore) return { read, position: { ...bookmark, partitions: sorted(known), catchUp: { partitions: sorted(catching), afterRevision: read.lastRevision! } } };
+      // Caught up to the bookmark: from the next page on they move with the others.
+      return { read: { ...read, hasMore: true }, position: { ...bookmark, partitions: sorted([...known, ...catching]) } };
+    }
+    const read = await readAiSessionMessagesPage(client, { ...base, sessionIds: idsOf(known), afterRevision, highWatermark: high, window: false });
+    return { read, position: { afterRevision: read.hasMore ? read.lastRevision! : high, highWatermark: high, partitions: sorted(known) } };
+  }
+  type PageRead = { changes: DomainChange[]; hasMore: boolean; lastRevision: string | null };
+
+  async function readRecordsPage(collectionName: string, input: PageInput, afterRevision: string, high: string): Promise<PageRead> {
+    const result = await client.query<SyncReadRow>(PAGE_SQL, [input.workspaceId, input.actorId, collectionName, afterRevision, high, input.limit + 1]);
+    if (result.rows.some((row) => row.workspace_id !== input.workspaceId || row.user_id !== input.actorId || row.collection_name !== collectionName)) {
+      throw new SyncReadError("SYNC_SCOPE_MISMATCH", "Sync rows must match the authenticated scope.");
+    }
+    const pageRows = result.rows.slice(0, input.limit);
+    return {
+      changes: pageRows.map((row) => domainChange(changeFromRow(row, input.actorId))),
+      hasMore: result.rows.length > input.limit,
+      lastRevision: pageRows.length ? String(pageRows.at(-1)!.sync_revision) : null,
+    };
+  }
+
+  async function readDedicatedPage(domain: SyncDomainDefinition, source: DedicatedTableSyncSource, input: PageInput, afterRevision: string, high: string): Promise<PageRead> {
+    const result = await client.query<Record<string, unknown> & { record_id: string; owner_id: string; sync_revision: string }>(
+      dedicatedSql(source, ownerColumnOf(domain)).page, [input.workspaceId, input.actorId, afterRevision, high, input.limit + 1],
+    );
+    if (result.rows.some((row) => row.owner_id !== input.actorId)) throw new SyncReadError("SYNC_SCOPE_MISMATCH", "Sync rows must match the authenticated scope.");
+    const pageRows = result.rows.slice(0, input.limit);
+    return {
+      changes: pageRows.map((row) => ({
+        id: row.record_id,
+        revision: row.sync_revision,
+        operation: "upsert" as const,
+        payload: Object.fromEntries(Object.keys(source.columns).map((field) => [field, wireValue(row[field])])),
+      })),
+      hasMore: result.rows.length > input.limit,
+      lastRevision: pageRows.length ? pageRows.at(-1)!.sync_revision : null,
+    };
   }
 
   return {
@@ -95,16 +327,16 @@ export function createDomainReadService({ client, cursorSecret, now = () => new 
         input.nowMs,
         input.offlineMaxAgeMs,
         {
-          registeredDomainIds: SYNC_DOMAINS.map((domain) => domain.domainId),
+          registeredDomainIds: leased.map((domain) => domain.domainId),
           authorizer: {
             // One statement, one snapshot: the epoch above is the durable authority for every grant.
             async readAtomicSnapshot(context) {
               return {
                 actorId: context.actorId, subject: context.subject, workspaceId: context.workspaceId,
                 consistency: "atomic", epochAuthority: "durable",
-                coveredDomainIds: SYNC_DOMAINS.map((domain) => domain.domainId),
+                coveredDomainIds: leased.map((domain) => domain.domainId),
                 grants: epoch.authorized
-                  ? SYNC_DOMAINS.map((domain) => ({ workspaceId: context.workspaceId, domainId: domain.domainId, authorizationEpoch: epoch.epoch }))
+                  ? leased.map((domain) => ({ workspaceId: context.workspaceId, domainId: domain.domainId, authorizationEpoch: epoch.epoch }))
                   : [],
               };
             },
@@ -113,53 +345,115 @@ export function createDomainReadService({ client, cursorSecret, now = () => new 
       );
     },
 
-    async manifest(input: { actorId: string; workspaceId: string }): Promise<DomainManifest> {
+    /**
+     * What the event domains' manifest entries depend on besides the epoch (one
+     * statement), or null when this service leases none. The manifest route
+     * folds it into its conditional-read key and hands it back to manifest().
+     */
+    async eventSummary(input: { actorId: string; workspaceId: string }): Promise<EventDomainSummary | null> {
+      if (!input.actorId.trim() || !input.workspaceId.trim()) throw new SyncReadError("SYNC_SCOPE_MISMATCH", "Authenticated sync scope is required.");
+      return eventSummary(input.actorId, input.workspaceId);
+    },
+
+    /**
+     * Sprint 0119: both relationship message views' watermarks (one statement),
+     * or null when this service leases neither. The manifest route folds it into
+     * its conditional-read key (the message tables are not orbit_records) and
+     * hands it back to manifest().
+     */
+    async relationshipSummary(input: { actorId: string; workspaceId: string }): Promise<RelationshipDomainSummary | null> {
+      if (!input.actorId.trim() || !input.workspaceId.trim()) throw new SyncReadError("SYNC_SCOPE_MISMATCH", "Authenticated sync scope is required.");
+      return relationshipSummary(input.actorId, input.workspaceId);
+    },
+
+    async manifest(input: { actorId: string; workspaceId: string; eventSummary?: EventDomainSummary | null; relationshipSummary?: RelationshipDomainSummary | null }): Promise<DomainManifest> {
       const epoch = await epochFor(input.actorId, input.workspaceId);
       if (!epoch.authorized) return { registryVersion: SYNC_REGISTRY_VERSION, domains: [] };
-      const domains = await Promise.all(SYNC_DOMAINS.map(async (domain) => ({
+      const summary = input.eventSummary !== undefined && (input.eventSummary !== null || !hasEventDomains) ? input.eventSummary : await eventSummary(input.actorId, input.workspaceId);
+      const messages = input.relationshipSummary !== undefined && (input.relationshipSummary !== null || !hasRelationshipDomains) ? input.relationshipSummary : await relationshipSummary(input.actorId, input.workspaceId);
+      const entries = await Promise.all(leased.map(async (domain) => ({
         domainId: domain.domainId,
         schemaVersion: SYNC_DOMAIN_SCHEMA_VERSION,
         workspaceId: input.workspaceId,
         authorizationEpoch: epoch.epoch,
-        generation: domainGeneration(epoch.epoch),
-        watermark: await highWatermark(input.actorId, input.workspaceId, domain),
+        generation: generationOf(domain, epoch.epoch, summary),
+        watermark: await highWatermark(input.actorId, input.workspaceId, domain, summary, messages),
         history: "complete" as const,
         membershipCursor: null,
       })));
-      return { registryVersion: SYNC_REGISTRY_VERSION, domains };
+      return { registryVersion: SYNC_REGISTRY_VERSION, domains: entries };
     },
 
-    async readDomainPage(input: { actorId: string; workspaceId: string; domainId: string; cursor?: string; limit: number }): Promise<DomainPage> {
-      const domain = findSyncDomain(input.domainId);
+    /** Sprint 0118: bring the actor's inbox rows up to the server's current source decisions (before a manifest). */
+    async reconcile(input: { actorId: string; workspaceId: string }): Promise<InboxReconcileResult | null> {
+      if (!input.actorId.trim() || !input.workspaceId.trim()) throw new SyncReadError("SYNC_SCOPE_MISMATCH", "Authenticated sync scope is required.");
+      return reconcileInbox(input.actorId, input.workspaceId);
+    },
+
+    /**
+     * `partitions` names the partitions a partitioned domain should send (for
+     * "ai-session-messages": the sessions the device opened). The cursor records
+     * which of them its bookmark covers; a newly named one is first caught up
+     * (its latest window, up to the bookmark), then everything moves together.
+     */
+    async readDomainPage(input: { actorId: string; workspaceId: string; domainId: string; cursor?: string; limit: number; partitions?: readonly string[] }): Promise<DomainPage> {
+      const domain = findSyncDomain(input.domainId, leased);
       if (!domain) throw new DomainUnknownError(input.domainId);
       if (!Number.isSafeInteger(input.limit) || input.limit < 1 || input.limit > SYNC_MAX_LIMIT) throw new SyncReadError("SYNC_SCOPE_MISMATCH", "Sync limit is invalid.");
       const epoch = await epochFor(input.actorId, input.workspaceId);
       if (!epoch.authorized) throw new DomainNotAuthorizedError(input.domainId);
       const issuedAt = Date.parse(now());
+      const summary = domain.source.kind === "event_derived" ? await eventSummary(input.actorId, input.workspaceId) : null;
       const scope: DomainCursorScope = {
         actorId: input.actorId, workspaceId: input.workspaceId, domainId: domain.domainId,
-        authorizationEpoch: epoch.epoch, generation: domainGeneration(epoch.epoch),
+        authorizationEpoch: epoch.epoch, generation: generationOf(domain, epoch.epoch, summary),
         schemaVersion: SYNC_DOMAIN_SCHEMA_VERSION, registryVersion: SYNC_REGISTRY_VERSION,
       };
       const decoded = input.cursor ? cursors.decode(input.cursor, scope, issuedAt) : null;
+      // A first inbox page starts from the server's current source decisions.
+      if (domain.source.kind === "inbox_records" && !decoded) await reconcileInbox(input.actorId, input.workspaceId);
       let afterRevision = decoded?.afterRevision ?? "0";
       let high = decoded?.highWatermark ?? "0";
-      if (!decoded || decoded.afterRevision === decoded.highWatermark) high = await highWatermark(input.actorId, input.workspaceId, domain);
-      const result = await client.query<SyncReadRow>(PAGE_SQL, [input.workspaceId, input.actorId, domain.collectionName, afterRevision, high, input.limit + 1]);
-      if (result.rows.some((row) => row.workspace_id !== input.workspaceId || row.user_id !== input.actorId || row.collection_name !== domain.collectionName)) {
-        throw new SyncReadError("SYNC_SCOPE_MISMATCH", "Sync rows must match the authenticated scope.");
+      if (!decoded || decoded.afterRevision === decoded.highWatermark) high = await highWatermark(input.actorId, input.workspaceId, domain, summary);
+      const partitioned = domain.source.kind === "personal_subspace" && domain.source.view === "ai-session-messages";
+      if (!partitioned && input.partitions?.length) throw new SyncReadError("SYNC_SCOPE_MISMATCH", `Domain ${domain.domainId} is not partitioned.`);
+      const opened = partitioned ? await readOpenedSessionMessages(input, decoded, afterRevision, high) : null;
+      const read = opened ? opened.read : domain.source.kind === "orbit_records"
+        ? await readRecordsPage(domain.source.collectionName, input, afterRevision, high)
+        : domain.source.kind === "event_derived"
+          ? await readEventDomainPage(client, domain.source, { workspaceId: input.workspaceId, actorId: input.actorId, afterRevision, highWatermark: high, limit: input.limit })
+          : domain.source.kind === "contact_graph"
+            ? await readContactDomainPage(client, domain.source, { workspaceId: input.workspaceId, actorId: input.actorId, afterRevision, highWatermark: high, limit: input.limit, issuedAt: new Date(issuedAt).toISOString() })
+            : domain.source.kind === "dashboard_graph"
+              ? await readDashboardGraphPage(client, domain.source, { workspaceId: input.workspaceId, actorId: input.actorId, afterRevision, highWatermark: high, limit: input.limit })
+              : domain.source.kind === "relationship_messages"
+                ? await readRelationshipDomainPage(client, domain.source, { workspaceId: input.workspaceId, actorId: input.actorId, afterRevision, highWatermark: high, limit: input.limit })
+              : domain.source.kind === "inbox_records"
+                ? await readInboxDomainPage(client, { workspaceId: input.workspaceId, actorId: input.actorId, afterRevision, highWatermark: high, limit: input.limit })
+                : domain.source.kind === "personal_subspace"
+                  ? await readAiSessionsPage(client, { workspaceId: input.workspaceId, actorId: input.actorId, afterRevision, highWatermark: high, limit: input.limit })
+                  : await readDedicatedPage(domain, domain.source, input, afterRevision, high);
+      const { hasMore, lastRevision } = read;
+      const changes = read.changes;
+      if (domain.attachments.some((attachment) => attachment.collectionName === "personal_schedule_occurrence_exceptions")) {
+        const recurring = changes.filter((change) => change.payload && change.payload.kind === "personal" && change.payload.recurrence);
+        const exceptions = await scheduleExceptions(client, { workspaceId: input.workspaceId, actorId: input.actorId, seriesIds: recurring.map((change) => change.id), issuedAt });
+        for (const change of recurring) {
+          const list = exceptions.get(change.id);
+          if (list?.length) change.payload = { ...change.payload, occurrenceExceptions: list };
+        }
       }
-      const pageRows = result.rows.slice(0, input.limit);
-      const hasMore = result.rows.length > input.limit;
-      afterRevision = hasMore ? String(pageRows.at(-1)?.sync_revision ?? afterRevision) : high;
+      for (const change of changes) if (change.payload) change.payload = declaredFields(domain, change.payload);
+      afterRevision = hasMore ? (lastRevision ?? afterRevision) : high;
+      const position: DomainCursorPosition = opened ? { ...scope, ...opened.position } : { ...scope, afterRevision, highWatermark: high };
       const page: DomainPage = {
         domainId: domain.domainId,
         schemaVersion: SYNC_DOMAIN_SCHEMA_VERSION,
         registryVersion: SYNC_REGISTRY_VERSION,
         authorizationEpoch: epoch.epoch,
-        changes: pageRows.map((row) => domainChange(changeFromRow(row, input.actorId))),
-        nextCursor: cursors.encode({ ...scope, afterRevision, highWatermark: high }, issuedAt),
-        highWatermark: high,
+        changes,
+        nextCursor: cursors.encode(position, issuedAt),
+        highWatermark: position.highWatermark,
         hasMore,
         generation: scope.generation,
         serverTime: new Date(issuedAt).toISOString(),

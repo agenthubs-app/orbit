@@ -1,0 +1,1917 @@
+{
+ "capturedFrom": "pre-0109 code at fa36f3c7a (universal-table collections)",
+ "conversations": {
+  "ab": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+  "ad": "relationship-conversation:c1dd0ff498c6f3430ae899fd65d0e66083d6f14c785d8ba061ec69406a3c6eb9",
+  "ae": "relationship-conversation:baecb1f85ceddba85e15c16d64199f120facc0eec77b8072a9787d84883aa609"
+ },
+ "legacyRows": [
+  {
+   "workspace_id": "workspace:relationship-parity",
+   "collection_name": "relationship_communication_bindings",
+   "record_id": "relationship-binding:a90e325f6c5b1cceaf543991842540394b2f573c64975f633182b4a1b97f077d",
+   "user_id": "account:parity-a",
+   "source_type": "system",
+   "source_id": "relationship-binding:a90e325f6c5b1cceaf543991842540394b2f573c64975f633182b4a1b97f077d",
+   "source_label": "Orbit relationship communication",
+   "provider": "orbit-relationship-communication",
+   "provider_record_id": "relationship-binding:a90e325f6c5b1cceaf543991842540394b2f573c64975f633182b4a1b97f077d",
+   "evidence_ids": [
+    "evidence:relationship-binding:a90e325f6c5b1cceaf543991842540394b2f573c64975f633182b4a1b97f077d"
+   ],
+   "target_type": "conversation",
+   "target_id": "contact:parity-d",
+   "occurred_at": "2026-09-20T00:00:06.000Z",
+   "lifecycle_state": "active",
+   "search_text": "contact:parity-d",
+   "payload": {
+    "kind": "relationship_binding",
+    "status": "confirmed",
+    "bindingId": "relationship-binding:a90e325f6c5b1cceaf543991842540394b2f573c64975f633182b4a1b97f077d",
+    "contactId": "contact:parity-d",
+    "createdAt": "2026-09-20T00:00:06.000Z",
+    "updatedAt": "2026-09-20T00:00:06.000Z",
+    "conversationId": "relationship-conversation:c1dd0ff498c6f3430ae899fd65d0e66083d6f14c785d8ba061ec69406a3c6eb9",
+    "remoteAccountId": "account:parity-d",
+    "inviterAccountId": "account:parity-a",
+    "remoteDisplayName": "Parity D",
+    "inviterDisplayName": "Parity A",
+    "qualificationVersion": "qv_ccf3e42548e26f6a41ef5210c36daec4"
+   },
+   "created_at": "2026-09-20T00:00:06.000Z",
+   "updated_at": "2026-09-20T00:00:06.000Z",
+   "deleted_at": null
+  },
+  {
+   "workspace_id": "workspace:relationship-parity",
+   "collection_name": "relationship_communication_bindings",
+   "record_id": "relationship-binding:c49fa92b51ee659c30fcdd1b978b54816e7c50ca55695c5730139d50de6af0f5",
+   "user_id": "account:parity-a",
+   "source_type": "system",
+   "source_id": "relationship-binding:c49fa92b51ee659c30fcdd1b978b54816e7c50ca55695c5730139d50de6af0f5",
+   "source_label": "Orbit relationship communication",
+   "provider": "orbit-relationship-communication",
+   "provider_record_id": "relationship-binding:c49fa92b51ee659c30fcdd1b978b54816e7c50ca55695c5730139d50de6af0f5",
+   "evidence_ids": [
+    "evidence:relationship-binding:c49fa92b51ee659c30fcdd1b978b54816e7c50ca55695c5730139d50de6af0f5"
+   ],
+   "target_type": "conversation",
+   "target_id": "contact:parity-b",
+   "occurred_at": "2026-09-20T00:00:03.000Z",
+   "lifecycle_state": "active",
+   "search_text": "contact:parity-b",
+   "payload": {
+    "kind": "relationship_binding",
+    "status": "confirmed",
+    "bindingId": "relationship-binding:c49fa92b51ee659c30fcdd1b978b54816e7c50ca55695c5730139d50de6af0f5",
+    "contactId": "contact:parity-b",
+    "createdAt": "2026-09-20T00:00:03.000Z",
+    "updatedAt": "2026-09-20T00:00:03.000Z",
+    "conversationId": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+    "remoteAccountId": "account:parity-b",
+    "inviterAccountId": "account:parity-a",
+    "remoteDisplayName": "Parity B",
+    "inviterDisplayName": "Parity A",
+    "qualificationVersion": "qv_427d29088b464059c60b02326ffcf4a4"
+   },
+   "created_at": "2026-09-20T00:00:03.000Z",
+   "updated_at": "2026-09-20T00:00:03.000Z",
+   "deleted_at": null
+  },
+  {
+   "workspace_id": "workspace:relationship-parity",
+   "collection_name": "relationship_communication_bindings",
+   "record_id": "relationship-binding:eea93df11c50e7e34dc2d25919c4348d754a4ecba278aa746dafa80f88e7e164",
+   "user_id": "account:parity-a",
+   "source_type": "system",
+   "source_id": "relationship-binding:eea93df11c50e7e34dc2d25919c4348d754a4ecba278aa746dafa80f88e7e164",
+   "source_label": "Orbit relationship communication",
+   "provider": "orbit-relationship-communication",
+   "provider_record_id": "relationship-binding:eea93df11c50e7e34dc2d25919c4348d754a4ecba278aa746dafa80f88e7e164",
+   "evidence_ids": [
+    "evidence:relationship-binding:eea93df11c50e7e34dc2d25919c4348d754a4ecba278aa746dafa80f88e7e164"
+   ],
+   "target_type": "conversation",
+   "target_id": "contact:parity-e",
+   "occurred_at": "2026-09-20T00:00:21.000Z",
+   "lifecycle_state": "active",
+   "search_text": "contact:parity-e",
+   "payload": {
+    "kind": "relationship_binding",
+    "status": "revoked",
+    "bindingId": "relationship-binding:eea93df11c50e7e34dc2d25919c4348d754a4ecba278aa746dafa80f88e7e164",
+    "contactId": "contact:parity-e",
+    "createdAt": "2026-09-20T00:00:09.000Z",
+    "revokedAt": "2026-09-20T00:00:21.000Z",
+    "updatedAt": "2026-09-20T00:00:21.000Z",
+    "conversationId": "relationship-conversation:baecb1f85ceddba85e15c16d64199f120facc0eec77b8072a9787d84883aa609",
+    "remoteAccountId": "account:parity-e",
+    "inviterAccountId": "account:parity-a",
+    "remoteDisplayName": "Parity E",
+    "inviterDisplayName": "Parity A",
+    "qualificationVersion": "qv_1b6b8d9c18f434a9d05c09f3e3b40f5d"
+   },
+   "created_at": "2026-09-20T00:00:09.000Z",
+   "updated_at": "2026-09-20T00:00:21.000Z",
+   "deleted_at": null
+  },
+  {
+   "workspace_id": "workspace:relationship-parity",
+   "collection_name": "relationship_communication_conversations",
+   "record_id": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+   "user_id": null,
+   "source_type": "system",
+   "source_id": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+   "source_label": "Orbit relationship communication",
+   "provider": "orbit-relationship-communication",
+   "provider_record_id": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+   "evidence_ids": [
+    "evidence:relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994"
+   ],
+   "target_type": "conversation",
+   "target_id": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+   "occurred_at": "2026-09-20T00:00:15.000Z",
+   "lifecycle_state": "active",
+   "search_text": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+   "payload": {
+    "kind": "relationship_conversation",
+    "status": "active",
+    "bindingId": "relationship-binding:c49fa92b51ee659c30fcdd1b978b54816e7c50ca55695c5730139d50de6af0f5",
+    "contactId": "contact:parity-b",
+    "createdAt": "2026-09-20T00:00:03.000Z",
+    "updatedAt": "2026-09-20T00:00:15.000Z",
+    "conversationId": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+    "qualificationVersion": "qv_427d29088b464059c60b02326ffcf4a4",
+    "participantAccountIds": [
+     "account:parity-a",
+     "account:parity-b"
+    ],
+    "participantDisplayNames": {
+     "account:parity-a": "Parity A",
+     "account:parity-b": "Parity B"
+    }
+   },
+   "created_at": "2026-09-20T00:00:03.000Z",
+   "updated_at": "2026-09-20T00:00:15.000Z",
+   "deleted_at": null
+  },
+  {
+   "workspace_id": "workspace:relationship-parity",
+   "collection_name": "relationship_communication_conversations",
+   "record_id": "relationship-conversation:baecb1f85ceddba85e15c16d64199f120facc0eec77b8072a9787d84883aa609",
+   "user_id": null,
+   "source_type": "system",
+   "source_id": "relationship-conversation:baecb1f85ceddba85e15c16d64199f120facc0eec77b8072a9787d84883aa609",
+   "source_label": "Orbit relationship communication",
+   "provider": "orbit-relationship-communication",
+   "provider_record_id": "relationship-conversation:baecb1f85ceddba85e15c16d64199f120facc0eec77b8072a9787d84883aa609",
+   "evidence_ids": [
+    "evidence:relationship-conversation:baecb1f85ceddba85e15c16d64199f120facc0eec77b8072a9787d84883aa609"
+   ],
+   "target_type": "conversation",
+   "target_id": "relationship-conversation:baecb1f85ceddba85e15c16d64199f120facc0eec77b8072a9787d84883aa609",
+   "occurred_at": "2026-09-20T00:00:21.000Z",
+   "lifecycle_state": "active",
+   "search_text": "relationship-conversation:baecb1f85ceddba85e15c16d64199f120facc0eec77b8072a9787d84883aa609",
+   "payload": {
+    "kind": "relationship_conversation",
+    "status": "revoked",
+    "bindingId": "relationship-binding:eea93df11c50e7e34dc2d25919c4348d754a4ecba278aa746dafa80f88e7e164",
+    "contactId": "contact:parity-e",
+    "createdAt": "2026-09-20T00:00:09.000Z",
+    "updatedAt": "2026-09-20T00:00:21.000Z",
+    "conversationId": "relationship-conversation:baecb1f85ceddba85e15c16d64199f120facc0eec77b8072a9787d84883aa609",
+    "qualificationVersion": "qv_1b6b8d9c18f434a9d05c09f3e3b40f5d",
+    "participantAccountIds": [
+     "account:parity-a",
+     "account:parity-e"
+    ],
+    "participantDisplayNames": {
+     "account:parity-a": "Parity A",
+     "account:parity-e": "Parity E"
+    }
+   },
+   "created_at": "2026-09-20T00:00:09.000Z",
+   "updated_at": "2026-09-20T00:00:21.000Z",
+   "deleted_at": null
+  },
+  {
+   "workspace_id": "workspace:relationship-parity",
+   "collection_name": "relationship_communication_conversations",
+   "record_id": "relationship-conversation:c1dd0ff498c6f3430ae899fd65d0e66083d6f14c785d8ba061ec69406a3c6eb9",
+   "user_id": null,
+   "source_type": "system",
+   "source_id": "relationship-conversation:c1dd0ff498c6f3430ae899fd65d0e66083d6f14c785d8ba061ec69406a3c6eb9",
+   "source_label": "Orbit relationship communication",
+   "provider": "orbit-relationship-communication",
+   "provider_record_id": "relationship-conversation:c1dd0ff498c6f3430ae899fd65d0e66083d6f14c785d8ba061ec69406a3c6eb9",
+   "evidence_ids": [
+    "evidence:relationship-conversation:c1dd0ff498c6f3430ae899fd65d0e66083d6f14c785d8ba061ec69406a3c6eb9"
+   ],
+   "target_type": "conversation",
+   "target_id": "relationship-conversation:c1dd0ff498c6f3430ae899fd65d0e66083d6f14c785d8ba061ec69406a3c6eb9",
+   "occurred_at": "2026-09-20T00:00:16.000Z",
+   "lifecycle_state": "active",
+   "search_text": "relationship-conversation:c1dd0ff498c6f3430ae899fd65d0e66083d6f14c785d8ba061ec69406a3c6eb9",
+   "payload": {
+    "kind": "relationship_conversation",
+    "status": "active",
+    "bindingId": "relationship-binding:a90e325f6c5b1cceaf543991842540394b2f573c64975f633182b4a1b97f077d",
+    "contactId": "contact:parity-d",
+    "createdAt": "2026-09-20T00:00:06.000Z",
+    "updatedAt": "2026-09-20T00:00:16.000Z",
+    "conversationId": "relationship-conversation:c1dd0ff498c6f3430ae899fd65d0e66083d6f14c785d8ba061ec69406a3c6eb9",
+    "qualificationVersion": "qv_ccf3e42548e26f6a41ef5210c36daec4",
+    "participantAccountIds": [
+     "account:parity-a",
+     "account:parity-d"
+    ],
+    "participantDisplayNames": {
+     "account:parity-a": "Parity A",
+     "account:parity-d": "Parity D"
+    }
+   },
+   "created_at": "2026-09-20T00:00:06.000Z",
+   "updated_at": "2026-09-20T00:00:16.000Z",
+   "deleted_at": null
+  },
+  {
+   "workspace_id": "workspace:relationship-parity",
+   "collection_name": "relationship_communication_invitations",
+   "record_id": "relationship-invitation:0805fd3fc9f6d46b6dcf36d7369d40a4d4c6a549d9d0e47eba5bcd90ee4b7e7c",
+   "user_id": "account:parity-a",
+   "source_type": "system",
+   "source_id": "relationship-invitation:0805fd3fc9f6d46b6dcf36d7369d40a4d4c6a549d9d0e47eba5bcd90ee4b7e7c",
+   "source_label": "Orbit relationship communication",
+   "provider": "orbit-relationship-communication",
+   "provider_record_id": "relationship-invitation:0805fd3fc9f6d46b6dcf36d7369d40a4d4c6a549d9d0e47eba5bcd90ee4b7e7c",
+   "evidence_ids": [
+    "evidence:relationship-invitation:0805fd3fc9f6d46b6dcf36d7369d40a4d4c6a549d9d0e47eba5bcd90ee4b7e7c"
+   ],
+   "target_type": "conversation",
+   "target_id": "contact:parity-e",
+   "occurred_at": "2026-09-20T00:00:09.000Z",
+   "lifecycle_state": "active",
+   "search_text": "contact:parity-e",
+   "payload": {
+    "kind": "relationship_invitation",
+    "status": "accepted",
+    "contactId": "contact:parity-e",
+    "createdAt": "2026-09-20T00:00:07.000Z",
+    "expiresAt": "2026-09-27T00:00:07.000Z",
+    "tokenHash": "0805fd3fc9f6d46b6dcf36d7369d40a4d4c6a549d9d0e47eba5bcd90ee4b7e7c",
+    "updatedAt": "2026-09-20T00:00:09.000Z",
+    "acceptedAt": "2026-09-20T00:00:09.000Z",
+    "invitationId": "relationship-invitation:0805fd3fc9f6d46b6dcf36d7369d40a4d4c6a549d9d0e47eba5bcd90ee4b7e7c",
+    "recipientName": "Parity E",
+    "recipientEmail": "parity-e@example.test",
+    "inviterAccountId": "account:parity-a",
+    "inviterDisplayName": "Parity A",
+    "acceptedByAccountId": "account:parity-e"
+   },
+   "created_at": "2026-09-20T00:00:07.000Z",
+   "updated_at": "2026-09-20T00:00:09.000Z",
+   "deleted_at": null
+  },
+  {
+   "workspace_id": "workspace:relationship-parity",
+   "collection_name": "relationship_communication_invitations",
+   "record_id": "relationship-invitation:c2fcf800a9b573565c013e2a76740e7d933af3f748088b377a717d35d0cf3c8e",
+   "user_id": "account:parity-a",
+   "source_type": "system",
+   "source_id": "relationship-invitation:c2fcf800a9b573565c013e2a76740e7d933af3f748088b377a717d35d0cf3c8e",
+   "source_label": "Orbit relationship communication",
+   "provider": "orbit-relationship-communication",
+   "provider_record_id": "relationship-invitation:c2fcf800a9b573565c013e2a76740e7d933af3f748088b377a717d35d0cf3c8e",
+   "evidence_ids": [
+    "evidence:relationship-invitation:c2fcf800a9b573565c013e2a76740e7d933af3f748088b377a717d35d0cf3c8e"
+   ],
+   "target_type": "conversation",
+   "target_id": "contact:parity-d",
+   "occurred_at": "2026-09-20T00:00:06.000Z",
+   "lifecycle_state": "active",
+   "search_text": "contact:parity-d",
+   "payload": {
+    "kind": "relationship_invitation",
+    "status": "accepted",
+    "contactId": "contact:parity-d",
+    "createdAt": "2026-09-20T00:00:04.000Z",
+    "expiresAt": "2026-09-27T00:00:04.000Z",
+    "tokenHash": "c2fcf800a9b573565c013e2a76740e7d933af3f748088b377a717d35d0cf3c8e",
+    "updatedAt": "2026-09-20T00:00:06.000Z",
+    "acceptedAt": "2026-09-20T00:00:06.000Z",
+    "invitationId": "relationship-invitation:c2fcf800a9b573565c013e2a76740e7d933af3f748088b377a717d35d0cf3c8e",
+    "recipientName": "Parity D",
+    "recipientEmail": "parity-d@example.test",
+    "inviterAccountId": "account:parity-a",
+    "inviterDisplayName": "Parity A",
+    "acceptedByAccountId": "account:parity-d"
+   },
+   "created_at": "2026-09-20T00:00:04.000Z",
+   "updated_at": "2026-09-20T00:00:06.000Z",
+   "deleted_at": null
+  },
+  {
+   "workspace_id": "workspace:relationship-parity",
+   "collection_name": "relationship_communication_invitations",
+   "record_id": "relationship-invitation:eec887adbb6c43eedd703dca3e51e1a438e1dc73395aa1e06d680bcf929a35af",
+   "user_id": "account:parity-a",
+   "source_type": "system",
+   "source_id": "relationship-invitation:eec887adbb6c43eedd703dca3e51e1a438e1dc73395aa1e06d680bcf929a35af",
+   "source_label": "Orbit relationship communication",
+   "provider": "orbit-relationship-communication",
+   "provider_record_id": "relationship-invitation:eec887adbb6c43eedd703dca3e51e1a438e1dc73395aa1e06d680bcf929a35af",
+   "evidence_ids": [
+    "evidence:relationship-invitation:eec887adbb6c43eedd703dca3e51e1a438e1dc73395aa1e06d680bcf929a35af"
+   ],
+   "target_type": "conversation",
+   "target_id": "contact:parity-b",
+   "occurred_at": "2026-09-20T00:00:03.000Z",
+   "lifecycle_state": "active",
+   "search_text": "contact:parity-b",
+   "payload": {
+    "kind": "relationship_invitation",
+    "status": "accepted",
+    "contactId": "contact:parity-b",
+    "createdAt": "2026-09-20T00:00:01.000Z",
+    "expiresAt": "2026-09-27T00:00:01.000Z",
+    "tokenHash": "eec887adbb6c43eedd703dca3e51e1a438e1dc73395aa1e06d680bcf929a35af",
+    "updatedAt": "2026-09-20T00:00:03.000Z",
+    "acceptedAt": "2026-09-20T00:00:03.000Z",
+    "invitationId": "relationship-invitation:eec887adbb6c43eedd703dca3e51e1a438e1dc73395aa1e06d680bcf929a35af",
+    "recipientName": "Parity B",
+    "recipientEmail": "parity-b@example.test",
+    "inviterAccountId": "account:parity-a",
+    "inviterDisplayName": "Parity A",
+    "acceptedByAccountId": "account:parity-b"
+   },
+   "created_at": "2026-09-20T00:00:01.000Z",
+   "updated_at": "2026-09-20T00:00:03.000Z",
+   "deleted_at": null
+  },
+  {
+   "workspace_id": "workspace:relationship-parity",
+   "collection_name": "relationship_communication_messages",
+   "record_id": "relationship-message:1050c9653f3b5936e93892c5326cf9a659d149ffeeac9afe8aeb3a0bd8e4fb17",
+   "user_id": null,
+   "source_type": "system",
+   "source_id": "relationship-message:1050c9653f3b5936e93892c5326cf9a659d149ffeeac9afe8aeb3a0bd8e4fb17",
+   "source_label": "Orbit relationship communication",
+   "provider": "orbit-relationship-communication",
+   "provider_record_id": "relationship-message:1050c9653f3b5936e93892c5326cf9a659d149ffeeac9afe8aeb3a0bd8e4fb17",
+   "evidence_ids": [
+    "evidence:relationship-message:1050c9653f3b5936e93892c5326cf9a659d149ffeeac9afe8aeb3a0bd8e4fb17"
+   ],
+   "target_type": "conversation",
+   "target_id": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+   "occurred_at": "2026-09-20T00:00:14.000Z",
+   "lifecycle_state": "active",
+   "search_text": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+   "payload": {
+    "body": "I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck.",
+    "kind": "relationship_message",
+    "sentAt": "2026-09-20T00:00:14.000Z",
+    "messageId": "relationship-message:1050c9653f3b5936e93892c5326cf9a659d149ffeeac9afe8aeb3a0bd8e4fb17",
+    "requestId": "parity-5",
+    "deliveryState": "delivered",
+    "conversationId": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+    "senderAccountId": "account:parity-b",
+    "senderDisplayName": "Parity B",
+    "qualificationVersion": "qv_427d29088b464059c60b02326ffcf4a4"
+   },
+   "created_at": "2026-09-20T00:00:14.000Z",
+   "updated_at": "2026-09-20T00:00:14.000Z",
+   "deleted_at": null
+  },
+  {
+   "workspace_id": "workspace:relationship-parity",
+   "collection_name": "relationship_communication_messages",
+   "record_id": "relationship-message:81b9454e34e2c7b10d8d03a6db38b2f818fefc4c2a38d7d887525014e9c4ccb5",
+   "user_id": null,
+   "source_type": "system",
+   "source_id": "relationship-message:81b9454e34e2c7b10d8d03a6db38b2f818fefc4c2a38d7d887525014e9c4ccb5",
+   "source_label": "Orbit relationship communication",
+   "provider": "orbit-relationship-communication",
+   "provider_record_id": "relationship-message:81b9454e34e2c7b10d8d03a6db38b2f818fefc4c2a38d7d887525014e9c4ccb5",
+   "evidence_ids": [
+    "evidence:relationship-message:81b9454e34e2c7b10d8d03a6db38b2f818fefc4c2a38d7d887525014e9c4ccb5"
+   ],
+   "target_type": "conversation",
+   "target_id": "relationship-conversation:c1dd0ff498c6f3430ae899fd65d0e66083d6f14c785d8ba061ec69406a3c6eb9",
+   "occurred_at": "2026-09-20T00:00:16.000Z",
+   "lifecycle_state": "active",
+   "search_text": "relationship-conversation:c1dd0ff498c6f3430ae899fd65d0e66083d6f14c785d8ba061ec69406a3c6eb9",
+   "payload": {
+    "body": "Hi A, from D",
+    "kind": "relationship_message",
+    "sentAt": "2026-09-20T00:00:16.000Z",
+    "messageId": "relationship-message:81b9454e34e2c7b10d8d03a6db38b2f818fefc4c2a38d7d887525014e9c4ccb5",
+    "requestId": "parity-7",
+    "deliveryState": "delivered",
+    "conversationId": "relationship-conversation:c1dd0ff498c6f3430ae899fd65d0e66083d6f14c785d8ba061ec69406a3c6eb9",
+    "senderAccountId": "account:parity-d",
+    "senderDisplayName": "Parity D",
+    "qualificationVersion": "qv_ccf3e42548e26f6a41ef5210c36daec4"
+   },
+   "created_at": "2026-09-20T00:00:16.000Z",
+   "updated_at": "2026-09-20T00:00:16.000Z",
+   "deleted_at": null
+  },
+  {
+   "workspace_id": "workspace:relationship-parity",
+   "collection_name": "relationship_communication_messages",
+   "record_id": "relationship-message:91ebc17bc489a45cfdb6cb89e840523d55184a19fe390bf4f368571e48a4d83e",
+   "user_id": null,
+   "source_type": "system",
+   "source_id": "relationship-message:91ebc17bc489a45cfdb6cb89e840523d55184a19fe390bf4f368571e48a4d83e",
+   "source_label": "Orbit relationship communication",
+   "provider": "orbit-relationship-communication",
+   "provider_record_id": "relationship-message:91ebc17bc489a45cfdb6cb89e840523d55184a19fe390bf4f368571e48a4d83e",
+   "evidence_ids": [
+    "evidence:relationship-message:91ebc17bc489a45cfdb6cb89e840523d55184a19fe390bf4f368571e48a4d83e"
+   ],
+   "target_type": "conversation",
+   "target_id": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+   "occurred_at": "2026-09-20T00:00:11.000Z",
+   "lifecycle_state": "active",
+   "search_text": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+   "payload": {
+    "body": "附上议程草稿。",
+    "kind": "relationship_message",
+    "sentAt": "2026-09-20T00:00:11.000Z",
+    "messageId": "relationship-message:91ebc17bc489a45cfdb6cb89e840523d55184a19fe390bf4f368571e48a4d83e",
+    "requestId": "parity-2",
+    "deliveryState": "delivered",
+    "conversationId": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+    "senderAccountId": "account:parity-a",
+    "senderDisplayName": "Parity A",
+    "qualificationVersion": "qv_427d29088b464059c60b02326ffcf4a4"
+   },
+   "created_at": "2026-09-20T00:00:11.000Z",
+   "updated_at": "2026-09-20T00:00:11.000Z",
+   "deleted_at": null
+  },
+  {
+   "workspace_id": "workspace:relationship-parity",
+   "collection_name": "relationship_communication_messages",
+   "record_id": "relationship-message:ab60c875fbeee3d87ff5eb7205cbdfb8a99842dfc4b7d8ae4854012a27f50ecd",
+   "user_id": null,
+   "source_type": "system",
+   "source_id": "relationship-message:ab60c875fbeee3d87ff5eb7205cbdfb8a99842dfc4b7d8ae4854012a27f50ecd",
+   "source_label": "Orbit relationship communication",
+   "provider": "orbit-relationship-communication",
+   "provider_record_id": "relationship-message:ab60c875fbeee3d87ff5eb7205cbdfb8a99842dfc4b7d8ae4854012a27f50ecd",
+   "evidence_ids": [
+    "evidence:relationship-message:ab60c875fbeee3d87ff5eb7205cbdfb8a99842dfc4b7d8ae4854012a27f50ecd"
+   ],
+   "target_type": "conversation",
+   "target_id": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+   "occurred_at": "2026-09-20T00:00:13.000Z",
+   "lifecycle_state": "active",
+   "search_text": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+   "payload": {
+    "body": "周四可以，下午三点？",
+    "kind": "relationship_message",
+    "sentAt": "2026-09-20T00:00:13.000Z",
+    "messageId": "relationship-message:ab60c875fbeee3d87ff5eb7205cbdfb8a99842dfc4b7d8ae4854012a27f50ecd",
+    "requestId": "parity-4",
+    "deliveryState": "delivered",
+    "conversationId": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+    "senderAccountId": "account:parity-b",
+    "senderDisplayName": "Parity B",
+    "qualificationVersion": "qv_427d29088b464059c60b02326ffcf4a4"
+   },
+   "created_at": "2026-09-20T00:00:13.000Z",
+   "updated_at": "2026-09-20T00:00:13.000Z",
+   "deleted_at": null
+  },
+  {
+   "workspace_id": "workspace:relationship-parity",
+   "collection_name": "relationship_communication_messages",
+   "record_id": "relationship-message:e449027306a16e90710d73d66c210378ecd04afdd4a10f1f01f5b07f584d7b89",
+   "user_id": null,
+   "source_type": "system",
+   "source_id": "relationship-message:e449027306a16e90710d73d66c210378ecd04afdd4a10f1f01f5b07f584d7b89",
+   "source_label": "Orbit relationship communication",
+   "provider": "orbit-relationship-communication",
+   "provider_record_id": "relationship-message:e449027306a16e90710d73d66c210378ecd04afdd4a10f1f01f5b07f584d7b89",
+   "evidence_ids": [
+    "evidence:relationship-message:e449027306a16e90710d73d66c210378ecd04afdd4a10f1f01f5b07f584d7b89"
+   ],
+   "target_type": "conversation",
+   "target_id": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+   "occurred_at": "2026-09-20T00:00:12.000Z",
+   "lifecycle_state": "active",
+   "search_text": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+   "payload": {
+    "body": "Agenda v2 attached",
+    "kind": "relationship_message",
+    "sentAt": "2026-09-20T00:00:12.000Z",
+    "messageId": "relationship-message:e449027306a16e90710d73d66c210378ecd04afdd4a10f1f01f5b07f584d7b89",
+    "requestId": "parity-3",
+    "deliveryState": "delivered",
+    "conversationId": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+    "senderAccountId": "account:parity-a",
+    "senderDisplayName": "Parity A",
+    "qualificationVersion": "qv_427d29088b464059c60b02326ffcf4a4"
+   },
+   "created_at": "2026-09-20T00:00:12.000Z",
+   "updated_at": "2026-09-20T00:00:12.000Z",
+   "deleted_at": null
+  },
+  {
+   "workspace_id": "workspace:relationship-parity",
+   "collection_name": "relationship_communication_messages",
+   "record_id": "relationship-message:e5cac6c74c3362fb74ff84ceab4bf50b98ee4681256bd160f4111d11b3c8324f",
+   "user_id": null,
+   "source_type": "system",
+   "source_id": "relationship-message:e5cac6c74c3362fb74ff84ceab4bf50b98ee4681256bd160f4111d11b3c8324f",
+   "source_label": "Orbit relationship communication",
+   "provider": "orbit-relationship-communication",
+   "provider_record_id": "relationship-message:e5cac6c74c3362fb74ff84ceab4bf50b98ee4681256bd160f4111d11b3c8324f",
+   "evidence_ids": [
+    "evidence:relationship-message:e5cac6c74c3362fb74ff84ceab4bf50b98ee4681256bd160f4111d11b3c8324f"
+   ],
+   "target_type": "conversation",
+   "target_id": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+   "occurred_at": "2026-09-20T00:00:10.000Z",
+   "lifecycle_state": "active",
+   "search_text": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+   "payload": {
+    "body": "你好，B。周四方便吗？",
+    "kind": "relationship_message",
+    "sentAt": "2026-09-20T00:00:10.000Z",
+    "messageId": "relationship-message:e5cac6c74c3362fb74ff84ceab4bf50b98ee4681256bd160f4111d11b3c8324f",
+    "requestId": "parity-1",
+    "deliveryState": "delivered",
+    "conversationId": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+    "senderAccountId": "account:parity-a",
+    "senderDisplayName": "Parity A",
+    "qualificationVersion": "qv_427d29088b464059c60b02326ffcf4a4"
+   },
+   "created_at": "2026-09-20T00:00:10.000Z",
+   "updated_at": "2026-09-20T00:00:10.000Z",
+   "deleted_at": null
+  },
+  {
+   "workspace_id": "workspace:relationship-parity",
+   "collection_name": "relationship_communication_messages",
+   "record_id": "relationship-message:f81481340ccffc3c33755d1eea51ac968965442452e8c01de37076aa69e2181c",
+   "user_id": null,
+   "source_type": "system",
+   "source_id": "relationship-message:f81481340ccffc3c33755d1eea51ac968965442452e8c01de37076aa69e2181c",
+   "source_label": "Orbit relationship communication",
+   "provider": "orbit-relationship-communication",
+   "provider_record_id": "relationship-message:f81481340ccffc3c33755d1eea51ac968965442452e8c01de37076aa69e2181c",
+   "evidence_ids": [
+    "evidence:relationship-message:f81481340ccffc3c33755d1eea51ac968965442452e8c01de37076aa69e2181c"
+   ],
+   "target_type": "conversation",
+   "target_id": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+   "occurred_at": "2026-09-20T00:00:15.000Z",
+   "lifecycle_state": "active",
+   "search_text": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+   "payload": {
+    "body": "三点见。",
+    "kind": "relationship_message",
+    "sentAt": "2026-09-20T00:00:15.000Z",
+    "messageId": "relationship-message:f81481340ccffc3c33755d1eea51ac968965442452e8c01de37076aa69e2181c",
+    "requestId": "parity-6",
+    "deliveryState": "delivered",
+    "conversationId": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+    "senderAccountId": "account:parity-a",
+    "senderDisplayName": "Parity A",
+    "qualificationVersion": "qv_427d29088b464059c60b02326ffcf4a4"
+   },
+   "created_at": "2026-09-20T00:00:15.000Z",
+   "updated_at": "2026-09-20T00:00:15.000Z",
+   "deleted_at": null
+  },
+  {
+   "workspace_id": "workspace:relationship-parity",
+   "collection_name": "relationship_communication_messages",
+   "record_id": "relationship-message:f840a1434abc8d9133c2cd50d922a00f9a111296ba5b07665ba5222b34cc20af",
+   "user_id": null,
+   "source_type": "system",
+   "source_id": "relationship-message:f840a1434abc8d9133c2cd50d922a00f9a111296ba5b07665ba5222b34cc20af",
+   "source_label": "Orbit relationship communication",
+   "provider": "orbit-relationship-communication",
+   "provider_record_id": "relationship-message:f840a1434abc8d9133c2cd50d922a00f9a111296ba5b07665ba5222b34cc20af",
+   "evidence_ids": [
+    "evidence:relationship-message:f840a1434abc8d9133c2cd50d922a00f9a111296ba5b07665ba5222b34cc20af"
+   ],
+   "target_type": "conversation",
+   "target_id": "relationship-conversation:baecb1f85ceddba85e15c16d64199f120facc0eec77b8072a9787d84883aa609",
+   "occurred_at": "2026-09-20T00:00:17.000Z",
+   "lifecycle_state": "active",
+   "search_text": "relationship-conversation:baecb1f85ceddba85e15c16d64199f120facc0eec77b8072a9787d84883aa609",
+   "payload": {
+    "body": "E before revoke",
+    "kind": "relationship_message",
+    "sentAt": "2026-09-20T00:00:17.000Z",
+    "messageId": "relationship-message:f840a1434abc8d9133c2cd50d922a00f9a111296ba5b07665ba5222b34cc20af",
+    "requestId": "parity-8",
+    "deliveryState": "delivered",
+    "conversationId": "relationship-conversation:baecb1f85ceddba85e15c16d64199f120facc0eec77b8072a9787d84883aa609",
+    "senderAccountId": "account:parity-e",
+    "senderDisplayName": "Parity E",
+    "qualificationVersion": "qv_57e90ea287ef4d676edfc31e9c3e9e40"
+   },
+   "created_at": "2026-09-20T00:00:17.000Z",
+   "updated_at": "2026-09-20T00:00:17.000Z",
+   "deleted_at": null
+  },
+  {
+   "workspace_id": "workspace:relationship-parity",
+   "collection_name": "relationship_communication_reads",
+   "record_id": "relationship-read:00ba13b2985ab839bdd7b4f2336580bae13e233c9930d3e62c2845e58e5de2e0",
+   "user_id": "account:parity-b",
+   "source_type": "system",
+   "source_id": "relationship-read:00ba13b2985ab839bdd7b4f2336580bae13e233c9930d3e62c2845e58e5de2e0",
+   "source_label": "Orbit relationship communication",
+   "provider": "orbit-relationship-communication",
+   "provider_record_id": "relationship-read:00ba13b2985ab839bdd7b4f2336580bae13e233c9930d3e62c2845e58e5de2e0",
+   "evidence_ids": [
+    "evidence:relationship-read:00ba13b2985ab839bdd7b4f2336580bae13e233c9930d3e62c2845e58e5de2e0"
+   ],
+   "target_type": "conversation",
+   "target_id": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+   "occurred_at": "2026-09-20T00:00:18.000Z",
+   "lifecycle_state": "active",
+   "search_text": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+   "payload": {
+    "kind": "relationship_read",
+    "readAt": "2026-09-20T00:00:18.000Z",
+    "accountId": "account:parity-b",
+    "conversationId": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+    "lastReadMessageId": "relationship-message:91ebc17bc489a45cfdb6cb89e840523d55184a19fe390bf4f368571e48a4d83e"
+   },
+   "created_at": "2026-09-20T00:00:18.000Z",
+   "updated_at": "2026-09-20T00:00:18.000Z",
+   "deleted_at": null
+  },
+  {
+   "workspace_id": "workspace:relationship-parity",
+   "collection_name": "relationship_communication_reads",
+   "record_id": "relationship-read:488dfcce33428d109dce0989062ac24630454df47f1c41128d2ff09f1bb74df0",
+   "user_id": "account:parity-a",
+   "source_type": "system",
+   "source_id": "relationship-read:488dfcce33428d109dce0989062ac24630454df47f1c41128d2ff09f1bb74df0",
+   "source_label": "Orbit relationship communication",
+   "provider": "orbit-relationship-communication",
+   "provider_record_id": "relationship-read:488dfcce33428d109dce0989062ac24630454df47f1c41128d2ff09f1bb74df0",
+   "evidence_ids": [
+    "evidence:relationship-read:488dfcce33428d109dce0989062ac24630454df47f1c41128d2ff09f1bb74df0"
+   ],
+   "target_type": "conversation",
+   "target_id": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+   "occurred_at": "2026-09-20T00:00:19.000Z",
+   "lifecycle_state": "active",
+   "search_text": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+   "payload": {
+    "kind": "relationship_read",
+    "readAt": "2026-09-20T00:00:19.000Z",
+    "accountId": "account:parity-a",
+    "conversationId": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+    "lastReadMessageId": "relationship-message:ab60c875fbeee3d87ff5eb7205cbdfb8a99842dfc4b7d8ae4854012a27f50ecd"
+   },
+   "created_at": "2026-09-20T00:00:19.000Z",
+   "updated_at": "2026-09-20T00:00:19.000Z",
+   "deleted_at": null
+  },
+  {
+   "workspace_id": "workspace:relationship-parity",
+   "collection_name": "relationshipConversationDrafts",
+   "record_id": "relationship-reply-draft:00ba13b2985ab839bdd7b4f2336580bae13e233c9930d3e62c2845e58e5de2e0",
+   "user_id": "account:parity-b",
+   "source_type": "system",
+   "source_id": "relationship-reply-draft:00ba13b2985ab839bdd7b4f2336580bae13e233c9930d3e62c2845e58e5de2e0",
+   "source_label": "Orbit relationship reply draft",
+   "provider": "orbit-relationship-communication",
+   "provider_record_id": "relationship-reply-draft:00ba13b2985ab839bdd7b4f2336580bae13e233c9930d3e62c2845e58e5de2e0",
+   "evidence_ids": [
+    "evidence:relationship-reply-draft:00ba13b2985ab839bdd7b4f2336580bae13e233c9930d3e62c2845e58e5de2e0"
+   ],
+   "target_type": "relationship_reply_draft",
+   "target_id": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+   "occurred_at": "2026-09-20T00:00:20.000Z",
+   "lifecycle_state": "active",
+   "search_text": "",
+   "payload": {
+    "body": "B 的回复草稿",
+    "kind": "relationship_reply_draft",
+    "accountId": "account:parity-b",
+    "updatedAt": "2026-09-20T00:00:20.000Z",
+    "conversationId": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994"
+   },
+   "created_at": "2026-09-20T00:00:20.000Z",
+   "updated_at": "2026-09-20T00:00:20.000Z",
+   "deleted_at": null
+  }
+ ],
+ "responses": {
+  "summaries:account:parity-a": {
+   "status": 200,
+   "body": {
+    "success": true,
+    "data": {
+     "actorId": "account:parity-a",
+     "items": [
+      {
+       "conversationId": "relationship-conversation:c1dd0ff498c6f3430ae899fd65d0e66083d6f14c785d8ba061ec69406a3c6eb9",
+       "contactId": "contact:parity-d",
+       "participantAccountIds": [
+        "account:parity-a",
+        "account:parity-d"
+       ],
+       "participantDisplayNames": {
+        "account:parity-a": "Parity A",
+        "account:parity-d": "Parity D"
+       },
+       "qualificationVersion": "qv_ccf3e42548e26f6a41ef5210c36daec4",
+       "status": "active",
+       "createdAt": "2026-09-20T00:00:06.000Z",
+       "updatedAt": "2026-09-20T00:00:16.000Z",
+       "unreadCount": 1,
+       "lastMessage": {
+        "messageId": "relationship-message:81b9454e34e2c7b10d8d03a6db38b2f818fefc4c2a38d7d887525014e9c4ccb5",
+        "senderAccountId": "account:parity-d",
+        "sentAt": "2026-09-20T00:00:16.000Z",
+        "bodyPreview": "Hi A, from D"
+       }
+      },
+      {
+       "conversationId": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+       "contactId": "contact:parity-b",
+       "participantAccountIds": [
+        "account:parity-a",
+        "account:parity-b"
+       ],
+       "participantDisplayNames": {
+        "account:parity-a": "Parity A",
+        "account:parity-b": "Parity B"
+       },
+       "qualificationVersion": "qv_427d29088b464059c60b02326ffcf4a4",
+       "status": "active",
+       "createdAt": "2026-09-20T00:00:03.000Z",
+       "updatedAt": "2026-09-20T00:00:15.000Z",
+       "unreadCount": 1,
+       "lastMessage": {
+        "messageId": "relationship-message:f81481340ccffc3c33755d1eea51ac968965442452e8c01de37076aa69e2181c",
+        "senderAccountId": "account:parity-a",
+        "sentAt": "2026-09-20T00:00:15.000Z",
+        "bodyPreview": "三点见。"
+       }
+      }
+     ],
+     "nextCursor": null,
+     "hasMore": false,
+     "asOf": "<now>"
+    }
+   }
+  },
+  "unread:account:parity-a": {
+   "status": 200,
+   "body": {
+    "success": true,
+    "data": {
+     "actorId": "account:parity-a",
+     "unreadTotal": 2,
+     "refreshedAt": "<now>"
+    }
+   }
+  },
+  "inbox:account:parity-a": {
+   "status": 200,
+   "body": {
+    "success": true,
+    "data": {
+     "actorId": "account:parity-a",
+     "messagesUnread": 2,
+     "asOf": "<now>",
+     "notificationMode": "typed",
+     "notificationRead": "ready",
+     "notificationsUnread": 0
+    }
+   }
+  },
+  "summaries:account:parity-b": {
+   "status": 200,
+   "body": {
+    "success": true,
+    "data": {
+     "actorId": "account:parity-b",
+     "items": [
+      {
+       "conversationId": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+       "contactId": "contact:parity-b",
+       "participantAccountIds": [
+        "account:parity-a",
+        "account:parity-b"
+       ],
+       "participantDisplayNames": {
+        "account:parity-a": "Parity A",
+        "account:parity-b": "Parity B"
+       },
+       "qualificationVersion": "qv_427d29088b464059c60b02326ffcf4a4",
+       "status": "active",
+       "createdAt": "2026-09-20T00:00:03.000Z",
+       "updatedAt": "2026-09-20T00:00:15.000Z",
+       "unreadCount": 2,
+       "lastMessage": {
+        "messageId": "relationship-message:f81481340ccffc3c33755d1eea51ac968965442452e8c01de37076aa69e2181c",
+        "senderAccountId": "account:parity-a",
+        "sentAt": "2026-09-20T00:00:15.000Z",
+        "bodyPreview": "三点见。"
+       }
+      }
+     ],
+     "nextCursor": null,
+     "hasMore": false,
+     "asOf": "<now>"
+    }
+   }
+  },
+  "unread:account:parity-b": {
+   "status": 200,
+   "body": {
+    "success": true,
+    "data": {
+     "actorId": "account:parity-b",
+     "unreadTotal": 2,
+     "refreshedAt": "<now>"
+    }
+   }
+  },
+  "inbox:account:parity-b": {
+   "status": 200,
+   "body": {
+    "success": true,
+    "data": {
+     "actorId": "account:parity-b",
+     "messagesUnread": 2,
+     "asOf": "<now>",
+     "notificationMode": "typed",
+     "notificationRead": "ready",
+     "notificationsUnread": 0
+    }
+   }
+  },
+  "summaries:account:parity-c": {
+   "status": 200,
+   "body": {
+    "success": true,
+    "data": {
+     "actorId": "account:parity-c",
+     "items": [],
+     "nextCursor": null,
+     "hasMore": false,
+     "asOf": "<now>"
+    }
+   }
+  },
+  "unread:account:parity-c": {
+   "status": 200,
+   "body": {
+    "success": true,
+    "data": {
+     "actorId": "account:parity-c",
+     "unreadTotal": 0,
+     "refreshedAt": "<now>"
+    }
+   }
+  },
+  "inbox:account:parity-c": {
+   "status": 200,
+   "body": {
+    "success": true,
+    "data": {
+     "actorId": "account:parity-c",
+     "messagesUnread": 0,
+     "asOf": "<now>",
+     "notificationMode": "typed",
+     "notificationRead": "ready",
+     "notificationsUnread": 0
+    }
+   }
+  },
+  "summaries:account:parity-d": {
+   "status": 200,
+   "body": {
+    "success": true,
+    "data": {
+     "actorId": "account:parity-d",
+     "items": [
+      {
+       "conversationId": "relationship-conversation:c1dd0ff498c6f3430ae899fd65d0e66083d6f14c785d8ba061ec69406a3c6eb9",
+       "contactId": "contact:parity-d",
+       "participantAccountIds": [
+        "account:parity-a",
+        "account:parity-d"
+       ],
+       "participantDisplayNames": {
+        "account:parity-a": "Parity A",
+        "account:parity-d": "Parity D"
+       },
+       "qualificationVersion": "qv_ccf3e42548e26f6a41ef5210c36daec4",
+       "status": "active",
+       "createdAt": "2026-09-20T00:00:06.000Z",
+       "updatedAt": "2026-09-20T00:00:16.000Z",
+       "unreadCount": 0,
+       "lastMessage": {
+        "messageId": "relationship-message:81b9454e34e2c7b10d8d03a6db38b2f818fefc4c2a38d7d887525014e9c4ccb5",
+        "senderAccountId": "account:parity-d",
+        "sentAt": "2026-09-20T00:00:16.000Z",
+        "bodyPreview": "Hi A, from D"
+       }
+      }
+     ],
+     "nextCursor": null,
+     "hasMore": false,
+     "asOf": "<now>"
+    }
+   }
+  },
+  "unread:account:parity-d": {
+   "status": 200,
+   "body": {
+    "success": true,
+    "data": {
+     "actorId": "account:parity-d",
+     "unreadTotal": 0,
+     "refreshedAt": "<now>"
+    }
+   }
+  },
+  "inbox:account:parity-d": {
+   "status": 200,
+   "body": {
+    "success": true,
+    "data": {
+     "actorId": "account:parity-d",
+     "messagesUnread": 0,
+     "asOf": "<now>",
+     "notificationMode": "typed",
+     "notificationRead": "ready",
+     "notificationsUnread": 0
+    }
+   }
+  },
+  "summaries:account:parity-e": {
+   "status": 200,
+   "body": {
+    "success": true,
+    "data": {
+     "actorId": "account:parity-e",
+     "items": [],
+     "nextCursor": null,
+     "hasMore": false,
+     "asOf": "<now>"
+    }
+   }
+  },
+  "unread:account:parity-e": {
+   "status": 200,
+   "body": {
+    "success": true,
+    "data": {
+     "actorId": "account:parity-e",
+     "unreadTotal": 0,
+     "refreshedAt": "<now>"
+    }
+   }
+  },
+  "inbox:account:parity-e": {
+   "status": 200,
+   "body": {
+    "success": true,
+    "data": {
+     "actorId": "account:parity-e",
+     "messagesUnread": 0,
+     "asOf": "<now>",
+     "notificationMode": "typed",
+     "notificationRead": "ready",
+     "notificationsUnread": 0
+    }
+   }
+  },
+  "summaries:a:limit1:page1": {
+   "status": 200,
+   "body": {
+    "success": true,
+    "data": {
+     "actorId": "account:parity-a",
+     "items": [
+      {
+       "conversationId": "relationship-conversation:c1dd0ff498c6f3430ae899fd65d0e66083d6f14c785d8ba061ec69406a3c6eb9",
+       "contactId": "contact:parity-d",
+       "participantAccountIds": [
+        "account:parity-a",
+        "account:parity-d"
+       ],
+       "participantDisplayNames": {
+        "account:parity-a": "Parity A",
+        "account:parity-d": "Parity D"
+       },
+       "qualificationVersion": "qv_ccf3e42548e26f6a41ef5210c36daec4",
+       "status": "active",
+       "createdAt": "2026-09-20T00:00:06.000Z",
+       "updatedAt": "2026-09-20T00:00:16.000Z",
+       "unreadCount": 1,
+       "lastMessage": {
+        "messageId": "relationship-message:81b9454e34e2c7b10d8d03a6db38b2f818fefc4c2a38d7d887525014e9c4ccb5",
+        "senderAccountId": "account:parity-d",
+        "sentAt": "2026-09-20T00:00:16.000Z",
+        "bodyPreview": "Hi A, from D"
+       }
+      }
+     ],
+     "nextCursor": "eyJzY29wZSI6IltcIndvcmtzcGFjZTpyZWxhdGlvbnNoaXAtcGFyaXR5XCIsXCJhY2NvdW50OnBhcml0eS1hXCIsXCJjb252ZXJzYXRpb25zXCIsXCJcIl0iLCJhdCI6IjIwMjYtMDktMjBUMDA6MDA6MTYuMDAwWiIsImlkIjoicmVsYXRpb25zaGlwLWNvbnZlcnNhdGlvbjpjMWRkMGZmNDk4YzZmMzQzMGFlODk5ZmQ2NWQwZTY2MDgzZDZmMTRjNzg1ZDhiYTA2MWVjNjk0MDZhM2M2ZWI5In0.lQrzzpVITx2xkeEN7uv2cirBKN7MWYIxtPzxhawfB3E",
+     "hasMore": true,
+     "asOf": "<now>"
+    }
+   }
+  },
+  "summaries:a:limit1:page2": {
+   "status": 200,
+   "body": {
+    "success": true,
+    "data": {
+     "actorId": "account:parity-a",
+     "items": [
+      {
+       "conversationId": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+       "contactId": "contact:parity-b",
+       "participantAccountIds": [
+        "account:parity-a",
+        "account:parity-b"
+       ],
+       "participantDisplayNames": {
+        "account:parity-a": "Parity A",
+        "account:parity-b": "Parity B"
+       },
+       "qualificationVersion": "qv_427d29088b464059c60b02326ffcf4a4",
+       "status": "active",
+       "createdAt": "2026-09-20T00:00:03.000Z",
+       "updatedAt": "2026-09-20T00:00:15.000Z",
+       "unreadCount": 1,
+       "lastMessage": {
+        "messageId": "relationship-message:f81481340ccffc3c33755d1eea51ac968965442452e8c01de37076aa69e2181c",
+        "senderAccountId": "account:parity-a",
+        "sentAt": "2026-09-20T00:00:15.000Z",
+        "bodyPreview": "三点见。"
+       }
+      }
+     ],
+     "nextCursor": null,
+     "hasMore": false,
+     "asOf": "<now>"
+    }
+   }
+  },
+  "summaries:a:one-conversation": {
+   "status": 200,
+   "body": {
+    "success": true,
+    "data": {
+     "actorId": "account:parity-a",
+     "items": [
+      {
+       "conversationId": "relationship-conversation:c1dd0ff498c6f3430ae899fd65d0e66083d6f14c785d8ba061ec69406a3c6eb9",
+       "contactId": "contact:parity-d",
+       "participantAccountIds": [
+        "account:parity-a",
+        "account:parity-d"
+       ],
+       "participantDisplayNames": {
+        "account:parity-a": "Parity A",
+        "account:parity-d": "Parity D"
+       },
+       "qualificationVersion": "qv_ccf3e42548e26f6a41ef5210c36daec4",
+       "status": "active",
+       "createdAt": "2026-09-20T00:00:06.000Z",
+       "updatedAt": "2026-09-20T00:00:16.000Z",
+       "unreadCount": 1,
+       "lastMessage": {
+        "messageId": "relationship-message:81b9454e34e2c7b10d8d03a6db38b2f818fefc4c2a38d7d887525014e9c4ccb5",
+        "senderAccountId": "account:parity-d",
+        "sentAt": "2026-09-20T00:00:16.000Z",
+        "bodyPreview": "Hi A, from D"
+       }
+      }
+     ],
+     "nextCursor": null,
+     "hasMore": false,
+     "asOf": "<now>"
+    }
+   }
+  },
+  "summaries:b:cursor-from-a": {
+   "status": 400,
+   "body": {
+    "success": false,
+    "error": {
+     "code": "VALIDATION_ERROR",
+     "message": "Pagination changed. Reload the latest page."
+    }
+   }
+  },
+  "messages:b:ab:page1": {
+   "status": 200,
+   "body": {
+    "success": true,
+    "data": {
+     "actorId": "account:parity-b",
+     "conversation": {
+      "conversationId": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+      "contactId": "contact:parity-b",
+      "participantAccountIds": [
+       "account:parity-a",
+       "account:parity-b"
+      ],
+      "participantDisplayNames": {
+       "account:parity-a": "Parity A",
+       "account:parity-b": "Parity B"
+      },
+      "qualificationVersion": "qv_427d29088b464059c60b02326ffcf4a4",
+      "status": "active",
+      "createdAt": "2026-09-20T00:00:03.000Z",
+      "updatedAt": "2026-09-20T00:00:15.000Z"
+     },
+     "items": [
+      {
+       "messageId": "relationship-message:1050c9653f3b5936e93892c5326cf9a659d149ffeeac9afe8aeb3a0bd8e4fb17",
+       "conversationId": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+       "senderAccountId": "account:parity-b",
+       "senderDisplayName": "Parity B",
+       "body": "I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck.",
+       "sentAt": "2026-09-20T00:00:14.000Z",
+       "deliveryState": "delivered"
+      },
+      {
+       "messageId": "relationship-message:f81481340ccffc3c33755d1eea51ac968965442452e8c01de37076aa69e2181c",
+       "conversationId": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+       "senderAccountId": "account:parity-a",
+       "senderDisplayName": "Parity A",
+       "body": "三点见。",
+       "sentAt": "2026-09-20T00:00:15.000Z",
+       "deliveryState": "delivered"
+      }
+     ],
+     "nextCursor": "eyJzY29wZSI6IltcIndvcmtzcGFjZTpyZWxhdGlvbnNoaXAtcGFyaXR5XCIsXCJhY2NvdW50OnBhcml0eS1iXCIsXCJtZXNzYWdlc1wiLFwicmVsYXRpb25zaGlwLWNvbnZlcnNhdGlvbjoyYmQzZTMxZmVmMzQ1YTJmNGZjYzk1MjU4NTgxMWRlNGQzZTk3ZGIzZTE5NDJmZGNjM2QxYjkzMDlhNTMwOTk0XCIsXCJvbGRlclwiXSIsImF0IjoiMjAyNi0wOS0yMFQwMDowMDoxNC4wMDBaIiwiaWQiOiJyZWxhdGlvbnNoaXAtbWVzc2FnZToxMDUwYzk2NTNmM2I1OTM2ZTkzODkyYzUzMjZjZjlhNjU5ZDE0OWZmZWVhYzlhZmU4YWViM2EwYmQ4ZTRmYjE3In0.edJ17KpTfUaNtIgRMJkeIn3Y0PJr8uRdSxqp8rsdTVE",
+     "newestCursor": "eyJzY29wZSI6IltcIndvcmtzcGFjZTpyZWxhdGlvbnNoaXAtcGFyaXR5XCIsXCJhY2NvdW50OnBhcml0eS1iXCIsXCJtZXNzYWdlc1wiLFwicmVsYXRpb25zaGlwLWNvbnZlcnNhdGlvbjoyYmQzZTMxZmVmMzQ1YTJmNGZjYzk1MjU4NTgxMWRlNGQzZTk3ZGIzZTE5NDJmZGNjM2QxYjkzMDlhNTMwOTk0XCIsXCJuZXdlclwiXSIsImF0IjoiMjAyNi0wOS0yMFQwMDowMDoxNS4wMDBaIiwiaWQiOiJyZWxhdGlvbnNoaXAtbWVzc2FnZTpmODE0ODEzNDBjY2ZmYzNjMzM3NTVkMWVlYTUxYWM5Njg5NjU0NDI0NTJlOGMwMWRlMzcwNzZhYTY5ZTIxODFjIn0.9xRh5Vo8e6wq2Ed15yDWv2pXd05hnnBkLGthEjke8ls",
+     "hasMore": true,
+     "direction": "older",
+     "asOf": "<now>"
+    }
+   }
+  },
+  "messages:b:ab:page2": {
+   "status": 200,
+   "body": {
+    "success": true,
+    "data": {
+     "actorId": "account:parity-b",
+     "conversation": {
+      "conversationId": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+      "contactId": "contact:parity-b",
+      "participantAccountIds": [
+       "account:parity-a",
+       "account:parity-b"
+      ],
+      "participantDisplayNames": {
+       "account:parity-a": "Parity A",
+       "account:parity-b": "Parity B"
+      },
+      "qualificationVersion": "qv_427d29088b464059c60b02326ffcf4a4",
+      "status": "active",
+      "createdAt": "2026-09-20T00:00:03.000Z",
+      "updatedAt": "2026-09-20T00:00:15.000Z"
+     },
+     "items": [
+      {
+       "messageId": "relationship-message:e449027306a16e90710d73d66c210378ecd04afdd4a10f1f01f5b07f584d7b89",
+       "conversationId": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+       "senderAccountId": "account:parity-a",
+       "senderDisplayName": "Parity A",
+       "body": "Agenda v2 attached",
+       "sentAt": "2026-09-20T00:00:12.000Z",
+       "deliveryState": "delivered"
+      },
+      {
+       "messageId": "relationship-message:ab60c875fbeee3d87ff5eb7205cbdfb8a99842dfc4b7d8ae4854012a27f50ecd",
+       "conversationId": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+       "senderAccountId": "account:parity-b",
+       "senderDisplayName": "Parity B",
+       "body": "周四可以，下午三点？",
+       "sentAt": "2026-09-20T00:00:13.000Z",
+       "deliveryState": "delivered"
+      }
+     ],
+     "nextCursor": "eyJzY29wZSI6IltcIndvcmtzcGFjZTpyZWxhdGlvbnNoaXAtcGFyaXR5XCIsXCJhY2NvdW50OnBhcml0eS1iXCIsXCJtZXNzYWdlc1wiLFwicmVsYXRpb25zaGlwLWNvbnZlcnNhdGlvbjoyYmQzZTMxZmVmMzQ1YTJmNGZjYzk1MjU4NTgxMWRlNGQzZTk3ZGIzZTE5NDJmZGNjM2QxYjkzMDlhNTMwOTk0XCIsXCJvbGRlclwiXSIsImF0IjoiMjAyNi0wOS0yMFQwMDowMDoxMi4wMDBaIiwiaWQiOiJyZWxhdGlvbnNoaXAtbWVzc2FnZTplNDQ5MDI3MzA2YTE2ZTkwNzEwZDczZDY2YzIxMDM3OGVjZDA0YWZkZDRhMTBmMWYwMWY1YjA3ZjU4NGQ3Yjg5In0.yB1YbaMRcgjnADy4SLZWVXOU3y9pHTUGZaRcfS6xhXs",
+     "newestCursor": "eyJzY29wZSI6IltcIndvcmtzcGFjZTpyZWxhdGlvbnNoaXAtcGFyaXR5XCIsXCJhY2NvdW50OnBhcml0eS1iXCIsXCJtZXNzYWdlc1wiLFwicmVsYXRpb25zaGlwLWNvbnZlcnNhdGlvbjoyYmQzZTMxZmVmMzQ1YTJmNGZjYzk1MjU4NTgxMWRlNGQzZTk3ZGIzZTE5NDJmZGNjM2QxYjkzMDlhNTMwOTk0XCIsXCJuZXdlclwiXSIsImF0IjoiMjAyNi0wOS0yMFQwMDowMDoxMy4wMDBaIiwiaWQiOiJyZWxhdGlvbnNoaXAtbWVzc2FnZTphYjYwYzg3NWZiZWVlM2Q4N2ZmNWViNzIwNWNiZGZiOGE5OTg0MmRmYzRiN2Q4YWU0ODU0MDEyYTI3ZjUwZWNkIn0.6z6-j4GiPxsoEbAxSCoOyCs2kBeGjDpiiQ_2_IVMlB0",
+     "hasMore": true,
+     "direction": "older",
+     "asOf": "<now>"
+    }
+   }
+  },
+  "messages:b:ab:page3": {
+   "status": 200,
+   "body": {
+    "success": true,
+    "data": {
+     "actorId": "account:parity-b",
+     "conversation": {
+      "conversationId": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+      "contactId": "contact:parity-b",
+      "participantAccountIds": [
+       "account:parity-a",
+       "account:parity-b"
+      ],
+      "participantDisplayNames": {
+       "account:parity-a": "Parity A",
+       "account:parity-b": "Parity B"
+      },
+      "qualificationVersion": "qv_427d29088b464059c60b02326ffcf4a4",
+      "status": "active",
+      "createdAt": "2026-09-20T00:00:03.000Z",
+      "updatedAt": "2026-09-20T00:00:15.000Z"
+     },
+     "items": [
+      {
+       "messageId": "relationship-message:e5cac6c74c3362fb74ff84ceab4bf50b98ee4681256bd160f4111d11b3c8324f",
+       "conversationId": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+       "senderAccountId": "account:parity-a",
+       "senderDisplayName": "Parity A",
+       "body": "你好，B。周四方便吗？",
+       "sentAt": "2026-09-20T00:00:10.000Z",
+       "deliveryState": "delivered"
+      },
+      {
+       "messageId": "relationship-message:91ebc17bc489a45cfdb6cb89e840523d55184a19fe390bf4f368571e48a4d83e",
+       "conversationId": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+       "senderAccountId": "account:parity-a",
+       "senderDisplayName": "Parity A",
+       "body": "附上议程草稿。",
+       "sentAt": "2026-09-20T00:00:11.000Z",
+       "deliveryState": "delivered"
+      }
+     ],
+     "nextCursor": null,
+     "newestCursor": "eyJzY29wZSI6IltcIndvcmtzcGFjZTpyZWxhdGlvbnNoaXAtcGFyaXR5XCIsXCJhY2NvdW50OnBhcml0eS1iXCIsXCJtZXNzYWdlc1wiLFwicmVsYXRpb25zaGlwLWNvbnZlcnNhdGlvbjoyYmQzZTMxZmVmMzQ1YTJmNGZjYzk1MjU4NTgxMWRlNGQzZTk3ZGIzZTE5NDJmZGNjM2QxYjkzMDlhNTMwOTk0XCIsXCJuZXdlclwiXSIsImF0IjoiMjAyNi0wOS0yMFQwMDowMDoxMS4wMDBaIiwiaWQiOiJyZWxhdGlvbnNoaXAtbWVzc2FnZTo5MWViYzE3YmM0ODlhNDVjZmRiNmNiODllODQwNTIzZDU1MTg0YTE5ZmUzOTBiZjRmMzY4NTcxZTQ4YTRkODNlIn0.y5gO1RfyP4dU42ExeWzr-nzMSJMV0SqA7n6ZdIusF5k",
+     "hasMore": false,
+     "direction": "older",
+     "asOf": "<now>"
+    }
+   }
+  },
+  "messages:b:ab:newer": {
+   "status": 200,
+   "body": {
+    "success": true,
+    "data": {
+     "actorId": "account:parity-b",
+     "conversation": {
+      "conversationId": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+      "contactId": "contact:parity-b",
+      "participantAccountIds": [
+       "account:parity-a",
+       "account:parity-b"
+      ],
+      "participantDisplayNames": {
+       "account:parity-a": "Parity A",
+       "account:parity-b": "Parity B"
+      },
+      "qualificationVersion": "qv_427d29088b464059c60b02326ffcf4a4",
+      "status": "active",
+      "createdAt": "2026-09-20T00:00:03.000Z",
+      "updatedAt": "2026-09-20T00:00:15.000Z"
+     },
+     "items": [],
+     "nextCursor": null,
+     "newestCursor": "eyJzY29wZSI6IltcIndvcmtzcGFjZTpyZWxhdGlvbnNoaXAtcGFyaXR5XCIsXCJhY2NvdW50OnBhcml0eS1iXCIsXCJtZXNzYWdlc1wiLFwicmVsYXRpb25zaGlwLWNvbnZlcnNhdGlvbjoyYmQzZTMxZmVmMzQ1YTJmNGZjYzk1MjU4NTgxMWRlNGQzZTk3ZGIzZTE5NDJmZGNjM2QxYjkzMDlhNTMwOTk0XCIsXCJuZXdlclwiXSIsImF0IjoiMjAyNi0wOS0yMFQwMDowMDoxNS4wMDBaIiwiaWQiOiJyZWxhdGlvbnNoaXAtbWVzc2FnZTpmODE0ODEzNDBjY2ZmYzNjMzM3NTVkMWVlYTUxYWM5Njg5NjU0NDI0NTJlOGMwMWRlMzcwNzZhYTY5ZTIxODFjIn0.9xRh5Vo8e6wq2Ed15yDWv2pXd05hnnBkLGthEjke8ls",
+     "hasMore": false,
+     "direction": "newer",
+     "asOf": "<now>"
+    }
+   }
+  },
+  "messages:b:ab:newer-from-page2": {
+   "status": 200,
+   "body": {
+    "success": true,
+    "data": {
+     "actorId": "account:parity-b",
+     "conversation": {
+      "conversationId": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+      "contactId": "contact:parity-b",
+      "participantAccountIds": [
+       "account:parity-a",
+       "account:parity-b"
+      ],
+      "participantDisplayNames": {
+       "account:parity-a": "Parity A",
+       "account:parity-b": "Parity B"
+      },
+      "qualificationVersion": "qv_427d29088b464059c60b02326ffcf4a4",
+      "status": "active",
+      "createdAt": "2026-09-20T00:00:03.000Z",
+      "updatedAt": "2026-09-20T00:00:15.000Z"
+     },
+     "items": [
+      {
+       "messageId": "relationship-message:1050c9653f3b5936e93892c5326cf9a659d149ffeeac9afe8aeb3a0bd8e4fb17",
+       "conversationId": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+       "senderAccountId": "account:parity-b",
+       "senderDisplayName": "Parity B",
+       "body": "I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck.",
+       "sentAt": "2026-09-20T00:00:14.000Z",
+       "deliveryState": "delivered"
+      },
+      {
+       "messageId": "relationship-message:f81481340ccffc3c33755d1eea51ac968965442452e8c01de37076aa69e2181c",
+       "conversationId": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+       "senderAccountId": "account:parity-a",
+       "senderDisplayName": "Parity A",
+       "body": "三点见。",
+       "sentAt": "2026-09-20T00:00:15.000Z",
+       "deliveryState": "delivered"
+      }
+     ],
+     "nextCursor": null,
+     "newestCursor": "eyJzY29wZSI6IltcIndvcmtzcGFjZTpyZWxhdGlvbnNoaXAtcGFyaXR5XCIsXCJhY2NvdW50OnBhcml0eS1iXCIsXCJtZXNzYWdlc1wiLFwicmVsYXRpb25zaGlwLWNvbnZlcnNhdGlvbjoyYmQzZTMxZmVmMzQ1YTJmNGZjYzk1MjU4NTgxMWRlNGQzZTk3ZGIzZTE5NDJmZGNjM2QxYjkzMDlhNTMwOTk0XCIsXCJuZXdlclwiXSIsImF0IjoiMjAyNi0wOS0yMFQwMDowMDoxNS4wMDBaIiwiaWQiOiJyZWxhdGlvbnNoaXAtbWVzc2FnZTpmODE0ODEzNDBjY2ZmYzNjMzM3NTVkMWVlYTUxYWM5Njg5NjU0NDI0NTJlOGMwMWRlMzcwNzZhYTY5ZTIxODFjIn0.9xRh5Vo8e6wq2Ed15yDWv2pXd05hnnBkLGthEjke8ls",
+     "hasMore": false,
+     "direction": "newer",
+     "asOf": "<now>"
+    }
+   }
+  },
+  "messages:a:ab:all": {
+   "status": 200,
+   "body": {
+    "success": true,
+    "data": {
+     "actorId": "account:parity-a",
+     "conversation": {
+      "conversationId": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+      "contactId": "contact:parity-b",
+      "participantAccountIds": [
+       "account:parity-a",
+       "account:parity-b"
+      ],
+      "participantDisplayNames": {
+       "account:parity-a": "Parity A",
+       "account:parity-b": "Parity B"
+      },
+      "qualificationVersion": "qv_427d29088b464059c60b02326ffcf4a4",
+      "status": "active",
+      "createdAt": "2026-09-20T00:00:03.000Z",
+      "updatedAt": "2026-09-20T00:00:15.000Z"
+     },
+     "items": [
+      {
+       "messageId": "relationship-message:e5cac6c74c3362fb74ff84ceab4bf50b98ee4681256bd160f4111d11b3c8324f",
+       "conversationId": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+       "senderAccountId": "account:parity-a",
+       "senderDisplayName": "Parity A",
+       "body": "你好，B。周四方便吗？",
+       "sentAt": "2026-09-20T00:00:10.000Z",
+       "deliveryState": "delivered"
+      },
+      {
+       "messageId": "relationship-message:91ebc17bc489a45cfdb6cb89e840523d55184a19fe390bf4f368571e48a4d83e",
+       "conversationId": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+       "senderAccountId": "account:parity-a",
+       "senderDisplayName": "Parity A",
+       "body": "附上议程草稿。",
+       "sentAt": "2026-09-20T00:00:11.000Z",
+       "deliveryState": "delivered"
+      },
+      {
+       "messageId": "relationship-message:e449027306a16e90710d73d66c210378ecd04afdd4a10f1f01f5b07f584d7b89",
+       "conversationId": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+       "senderAccountId": "account:parity-a",
+       "senderDisplayName": "Parity A",
+       "body": "Agenda v2 attached",
+       "sentAt": "2026-09-20T00:00:12.000Z",
+       "deliveryState": "delivered"
+      },
+      {
+       "messageId": "relationship-message:ab60c875fbeee3d87ff5eb7205cbdfb8a99842dfc4b7d8ae4854012a27f50ecd",
+       "conversationId": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+       "senderAccountId": "account:parity-b",
+       "senderDisplayName": "Parity B",
+       "body": "周四可以，下午三点？",
+       "sentAt": "2026-09-20T00:00:13.000Z",
+       "deliveryState": "delivered"
+      },
+      {
+       "messageId": "relationship-message:1050c9653f3b5936e93892c5326cf9a659d149ffeeac9afe8aeb3a0bd8e4fb17",
+       "conversationId": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+       "senderAccountId": "account:parity-b",
+       "senderDisplayName": "Parity B",
+       "body": "I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck.",
+       "sentAt": "2026-09-20T00:00:14.000Z",
+       "deliveryState": "delivered"
+      },
+      {
+       "messageId": "relationship-message:f81481340ccffc3c33755d1eea51ac968965442452e8c01de37076aa69e2181c",
+       "conversationId": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+       "senderAccountId": "account:parity-a",
+       "senderDisplayName": "Parity A",
+       "body": "三点见。",
+       "sentAt": "2026-09-20T00:00:15.000Z",
+       "deliveryState": "delivered"
+      }
+     ],
+     "nextCursor": null,
+     "newestCursor": "eyJzY29wZSI6IltcIndvcmtzcGFjZTpyZWxhdGlvbnNoaXAtcGFyaXR5XCIsXCJhY2NvdW50OnBhcml0eS1hXCIsXCJtZXNzYWdlc1wiLFwicmVsYXRpb25zaGlwLWNvbnZlcnNhdGlvbjoyYmQzZTMxZmVmMzQ1YTJmNGZjYzk1MjU4NTgxMWRlNGQzZTk3ZGIzZTE5NDJmZGNjM2QxYjkzMDlhNTMwOTk0XCIsXCJuZXdlclwiXSIsImF0IjoiMjAyNi0wOS0yMFQwMDowMDoxNS4wMDBaIiwiaWQiOiJyZWxhdGlvbnNoaXAtbWVzc2FnZTpmODE0ODEzNDBjY2ZmYzNjMzM3NTVkMWVlYTUxYWM5Njg5NjU0NDI0NTJlOGMwMWRlMzcwNzZhYTY5ZTIxODFjIn0.yGQZeK4GhDbgGdD-Uklr3R9Xe0Q4uSj0gn1JyUs4_aw",
+     "hasMore": false,
+     "direction": "older",
+     "asOf": "<now>"
+    }
+   }
+  },
+  "messages:d:ad:all": {
+   "status": 200,
+   "body": {
+    "success": true,
+    "data": {
+     "actorId": "account:parity-d",
+     "conversation": {
+      "conversationId": "relationship-conversation:c1dd0ff498c6f3430ae899fd65d0e66083d6f14c785d8ba061ec69406a3c6eb9",
+      "contactId": "contact:parity-d",
+      "participantAccountIds": [
+       "account:parity-a",
+       "account:parity-d"
+      ],
+      "participantDisplayNames": {
+       "account:parity-a": "Parity A",
+       "account:parity-d": "Parity D"
+      },
+      "qualificationVersion": "qv_ccf3e42548e26f6a41ef5210c36daec4",
+      "status": "active",
+      "createdAt": "2026-09-20T00:00:06.000Z",
+      "updatedAt": "2026-09-20T00:00:16.000Z"
+     },
+     "items": [
+      {
+       "messageId": "relationship-message:81b9454e34e2c7b10d8d03a6db38b2f818fefc4c2a38d7d887525014e9c4ccb5",
+       "conversationId": "relationship-conversation:c1dd0ff498c6f3430ae899fd65d0e66083d6f14c785d8ba061ec69406a3c6eb9",
+       "senderAccountId": "account:parity-d",
+       "senderDisplayName": "Parity D",
+       "body": "Hi A, from D",
+       "sentAt": "2026-09-20T00:00:16.000Z",
+       "deliveryState": "delivered"
+      }
+     ],
+     "nextCursor": null,
+     "newestCursor": "eyJzY29wZSI6IltcIndvcmtzcGFjZTpyZWxhdGlvbnNoaXAtcGFyaXR5XCIsXCJhY2NvdW50OnBhcml0eS1kXCIsXCJtZXNzYWdlc1wiLFwicmVsYXRpb25zaGlwLWNvbnZlcnNhdGlvbjpjMWRkMGZmNDk4YzZmMzQzMGFlODk5ZmQ2NWQwZTY2MDgzZDZmMTRjNzg1ZDhiYTA2MWVjNjk0MDZhM2M2ZWI5XCIsXCJuZXdlclwiXSIsImF0IjoiMjAyNi0wOS0yMFQwMDowMDoxNi4wMDBaIiwiaWQiOiJyZWxhdGlvbnNoaXAtbWVzc2FnZTo4MWI5NDU0ZTM0ZTJjN2IxMGQ4ZDAzYTZkYjM4YjJmODE4ZmVmYzRjMmEzOGQ3ZDg4NzUyNTAxNGU5YzRjY2I1In0.CgnNPGUT-q-8xYEUZO9J0H8gCGTEQdNcD-ZwTwI9J5I",
+     "hasMore": false,
+     "direction": "older",
+     "asOf": "<now>"
+    }
+   }
+  },
+  "messages:c:ab:outsider": {
+   "status": 404,
+   "body": {
+    "success": false,
+    "error": {
+     "code": "NOT_FOUND",
+     "message": "This conversation is unavailable."
+    }
+   }
+  },
+  "messages:e:ae:revoked": {
+   "status": 404,
+   "body": {
+    "success": false,
+    "error": {
+     "code": "NOT_FOUND",
+     "message": "This conversation is unavailable."
+    }
+   }
+  },
+  "messages:a:ae:revoked": {
+   "status": 404,
+   "body": {
+    "success": false,
+    "error": {
+     "code": "NOT_FOUND",
+     "message": "This conversation is unavailable."
+    }
+   }
+  },
+  "messages:b:ab:bad-cursor": {
+   "status": 400,
+   "body": {
+    "success": false,
+    "error": {
+     "code": "VALIDATION_ERROR",
+     "message": "Pagination changed. Reload the latest page."
+    }
+   }
+  },
+  "messages:b:ab:cursor-for-other-conversation": {
+   "status": 400,
+   "body": {
+    "success": false,
+    "error": {
+     "code": "VALIDATION_ERROR",
+     "message": "Pagination changed. Reload the latest page."
+    }
+   }
+  },
+  "conversation:a:ab": {
+   "status": 200,
+   "body": {
+    "success": true,
+    "data": {
+     "contactId": "contact:parity-b",
+     "conversationId": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+     "createdAt": "2026-09-20T00:00:03.000Z",
+     "lastReadMessageId": "relationship-message:ab60c875fbeee3d87ff5eb7205cbdfb8a99842dfc4b7d8ae4854012a27f50ecd",
+     "messages": [
+      {
+       "body": "你好，B。周四方便吗？",
+       "conversationId": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+       "deliveryState": "delivered",
+       "messageId": "relationship-message:e5cac6c74c3362fb74ff84ceab4bf50b98ee4681256bd160f4111d11b3c8324f",
+       "senderAccountId": "account:parity-a",
+       "senderDisplayName": "Parity A",
+       "sentAt": "2026-09-20T00:00:10.000Z"
+      },
+      {
+       "body": "附上议程草稿。",
+       "conversationId": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+       "deliveryState": "delivered",
+       "messageId": "relationship-message:91ebc17bc489a45cfdb6cb89e840523d55184a19fe390bf4f368571e48a4d83e",
+       "senderAccountId": "account:parity-a",
+       "senderDisplayName": "Parity A",
+       "sentAt": "2026-09-20T00:00:11.000Z"
+      },
+      {
+       "body": "Agenda v2 attached",
+       "conversationId": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+       "deliveryState": "delivered",
+       "messageId": "relationship-message:e449027306a16e90710d73d66c210378ecd04afdd4a10f1f01f5b07f584d7b89",
+       "senderAccountId": "account:parity-a",
+       "senderDisplayName": "Parity A",
+       "sentAt": "2026-09-20T00:00:12.000Z"
+      },
+      {
+       "body": "周四可以，下午三点？",
+       "conversationId": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+       "deliveryState": "delivered",
+       "messageId": "relationship-message:ab60c875fbeee3d87ff5eb7205cbdfb8a99842dfc4b7d8ae4854012a27f50ecd",
+       "senderAccountId": "account:parity-b",
+       "senderDisplayName": "Parity B",
+       "sentAt": "2026-09-20T00:00:13.000Z"
+      },
+      {
+       "body": "I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck.",
+       "conversationId": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+       "deliveryState": "delivered",
+       "messageId": "relationship-message:1050c9653f3b5936e93892c5326cf9a659d149ffeeac9afe8aeb3a0bd8e4fb17",
+       "senderAccountId": "account:parity-b",
+       "senderDisplayName": "Parity B",
+       "sentAt": "2026-09-20T00:00:14.000Z"
+      },
+      {
+       "body": "三点见。",
+       "conversationId": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+       "deliveryState": "delivered",
+       "messageId": "relationship-message:f81481340ccffc3c33755d1eea51ac968965442452e8c01de37076aa69e2181c",
+       "senderAccountId": "account:parity-a",
+       "senderDisplayName": "Parity A",
+       "sentAt": "2026-09-20T00:00:15.000Z"
+      }
+     ],
+     "participantAccountIds": [
+      "account:parity-a",
+      "account:parity-b"
+     ],
+     "participantDisplayNames": {
+      "account:parity-a": "Parity A",
+      "account:parity-b": "Parity B"
+     },
+     "qualificationVersion": "qv_427d29088b464059c60b02326ffcf4a4",
+     "status": "active",
+     "unreadCount": 1,
+     "updatedAt": "2026-09-20T00:00:15.000Z"
+    }
+   }
+  },
+  "conversation:b:ab": {
+   "status": 200,
+   "body": {
+    "success": true,
+    "data": {
+     "contactId": "contact:parity-b",
+     "conversationId": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+     "createdAt": "2026-09-20T00:00:03.000Z",
+     "lastReadMessageId": "relationship-message:91ebc17bc489a45cfdb6cb89e840523d55184a19fe390bf4f368571e48a4d83e",
+     "messages": [
+      {
+       "body": "你好，B。周四方便吗？",
+       "conversationId": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+       "deliveryState": "delivered",
+       "messageId": "relationship-message:e5cac6c74c3362fb74ff84ceab4bf50b98ee4681256bd160f4111d11b3c8324f",
+       "senderAccountId": "account:parity-a",
+       "senderDisplayName": "Parity A",
+       "sentAt": "2026-09-20T00:00:10.000Z"
+      },
+      {
+       "body": "附上议程草稿。",
+       "conversationId": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+       "deliveryState": "delivered",
+       "messageId": "relationship-message:91ebc17bc489a45cfdb6cb89e840523d55184a19fe390bf4f368571e48a4d83e",
+       "senderAccountId": "account:parity-a",
+       "senderDisplayName": "Parity A",
+       "sentAt": "2026-09-20T00:00:11.000Z"
+      },
+      {
+       "body": "Agenda v2 attached",
+       "conversationId": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+       "deliveryState": "delivered",
+       "messageId": "relationship-message:e449027306a16e90710d73d66c210378ecd04afdd4a10f1f01f5b07f584d7b89",
+       "senderAccountId": "account:parity-a",
+       "senderDisplayName": "Parity A",
+       "sentAt": "2026-09-20T00:00:12.000Z"
+      },
+      {
+       "body": "周四可以，下午三点？",
+       "conversationId": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+       "deliveryState": "delivered",
+       "messageId": "relationship-message:ab60c875fbeee3d87ff5eb7205cbdfb8a99842dfc4b7d8ae4854012a27f50ecd",
+       "senderAccountId": "account:parity-b",
+       "senderDisplayName": "Parity B",
+       "sentAt": "2026-09-20T00:00:13.000Z"
+      },
+      {
+       "body": "I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck. I'll bring the deck.",
+       "conversationId": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+       "deliveryState": "delivered",
+       "messageId": "relationship-message:1050c9653f3b5936e93892c5326cf9a659d149ffeeac9afe8aeb3a0bd8e4fb17",
+       "senderAccountId": "account:parity-b",
+       "senderDisplayName": "Parity B",
+       "sentAt": "2026-09-20T00:00:14.000Z"
+      },
+      {
+       "body": "三点见。",
+       "conversationId": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+       "deliveryState": "delivered",
+       "messageId": "relationship-message:f81481340ccffc3c33755d1eea51ac968965442452e8c01de37076aa69e2181c",
+       "senderAccountId": "account:parity-a",
+       "senderDisplayName": "Parity A",
+       "sentAt": "2026-09-20T00:00:15.000Z"
+      }
+     ],
+     "participantAccountIds": [
+      "account:parity-a",
+      "account:parity-b"
+     ],
+     "participantDisplayNames": {
+      "account:parity-a": "Parity A",
+      "account:parity-b": "Parity B"
+     },
+     "qualificationVersion": "qv_427d29088b464059c60b02326ffcf4a4",
+     "status": "active",
+     "unreadCount": 2,
+     "updatedAt": "2026-09-20T00:00:15.000Z"
+    }
+   }
+  },
+  "conversation:d:ad": {
+   "status": 200,
+   "body": {
+    "success": true,
+    "data": {
+     "contactId": "contact:parity-d",
+     "conversationId": "relationship-conversation:c1dd0ff498c6f3430ae899fd65d0e66083d6f14c785d8ba061ec69406a3c6eb9",
+     "createdAt": "2026-09-20T00:00:06.000Z",
+     "messages": [
+      {
+       "body": "Hi A, from D",
+       "conversationId": "relationship-conversation:c1dd0ff498c6f3430ae899fd65d0e66083d6f14c785d8ba061ec69406a3c6eb9",
+       "deliveryState": "delivered",
+       "messageId": "relationship-message:81b9454e34e2c7b10d8d03a6db38b2f818fefc4c2a38d7d887525014e9c4ccb5",
+       "senderAccountId": "account:parity-d",
+       "senderDisplayName": "Parity D",
+       "sentAt": "2026-09-20T00:00:16.000Z"
+      }
+     ],
+     "participantAccountIds": [
+      "account:parity-a",
+      "account:parity-d"
+     ],
+     "participantDisplayNames": {
+      "account:parity-a": "Parity A",
+      "account:parity-d": "Parity D"
+     },
+     "qualificationVersion": "qv_ccf3e42548e26f6a41ef5210c36daec4",
+     "status": "active",
+     "unreadCount": 0,
+     "updatedAt": "2026-09-20T00:00:16.000Z"
+    }
+   }
+  },
+  "conversation:c:ab": {
+   "status": 404,
+   "body": {
+    "success": false,
+    "error": {
+     "code": "NOT_FOUND",
+     "message": "This conversation is not available to the signed-in account.",
+     "context": {
+      "boundary": "runtime",
+      "mode": "live",
+      "privacy": "participant-scoped-relationship-communication",
+      "provenance": "The request was validated by the relationship communication service.",
+      "service": "relationship-communication"
+     }
+    }
+   }
+  },
+  "conversation:e:ae": {
+   "status": 404,
+   "body": {
+    "success": false,
+    "error": {
+     "code": "NOT_FOUND",
+     "message": "This conversation is not available to the signed-in account.",
+     "context": {
+      "boundary": "runtime",
+      "mode": "live",
+      "privacy": "participant-scoped-relationship-communication",
+      "provenance": "The request was validated by the relationship communication service.",
+      "service": "relationship-communication"
+     }
+    }
+   }
+  },
+  "conversation:a:ae": {
+   "status": 404,
+   "body": {
+    "success": false,
+    "error": {
+     "code": "NOT_FOUND",
+     "message": "This conversation is not available to the signed-in account.",
+     "context": {
+      "boundary": "runtime",
+      "mode": "live",
+      "privacy": "participant-scoped-relationship-communication",
+      "provenance": "The request was validated by the relationship communication service.",
+      "service": "relationship-communication"
+     }
+    }
+   }
+  },
+  "conversation:a:unknown": {
+   "status": 404,
+   "body": {
+    "success": false,
+    "error": {
+     "code": "NOT_FOUND",
+     "message": "This conversation is not available to the signed-in account.",
+     "context": {
+      "boundary": "runtime",
+      "mode": "live",
+      "privacy": "participant-scoped-relationship-communication",
+      "provenance": "The request was validated by the relationship communication service.",
+      "service": "relationship-communication"
+     }
+    }
+   }
+  },
+  "eligibility:a:b": {
+   "status": 200,
+   "body": {
+    "success": true,
+    "data": {
+     "canInvite": false,
+     "canSend": true,
+     "contactId": "contact:parity-b",
+     "conversationId": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+     "qualificationVersion": "qv_427d29088b464059c60b02326ffcf4a4",
+     "remoteAccount": {
+      "accountId": "account:parity-b",
+      "displayName": "Parity B"
+     },
+     "status": "confirmed"
+    }
+   }
+  },
+  "eligibility:a:d": {
+   "status": 200,
+   "body": {
+    "success": true,
+    "data": {
+     "canInvite": false,
+     "canSend": true,
+     "contactId": "contact:parity-d",
+     "conversationId": "relationship-conversation:c1dd0ff498c6f3430ae899fd65d0e66083d6f14c785d8ba061ec69406a3c6eb9",
+     "qualificationVersion": "qv_ccf3e42548e26f6a41ef5210c36daec4",
+     "remoteAccount": {
+      "accountId": "account:parity-d",
+      "displayName": "Parity D"
+     },
+     "status": "confirmed"
+    }
+   }
+  },
+  "eligibility:a:e": {
+   "status": 200,
+   "body": {
+    "success": true,
+    "data": {
+     "canInvite": true,
+     "canSend": false,
+     "contactId": "contact:parity-e",
+     "conversationId": "relationship-conversation:baecb1f85ceddba85e15c16d64199f120facc0eec77b8072a9787d84883aa609",
+     "qualificationVersion": "qv_1b6b8d9c18f434a9d05c09f3e3b40f5d",
+     "remoteAccount": {
+      "accountId": "account:parity-e",
+      "displayName": "Parity E"
+     },
+     "status": "revoked"
+    }
+   }
+  },
+  "eligibility:b:b": {
+   "status": 404,
+   "body": {
+    "success": false,
+    "error": {
+     "code": "NOT_FOUND",
+     "message": "This contact is not available to the signed-in account.",
+     "context": {
+      "boundary": "runtime",
+      "mode": "live",
+      "privacy": "participant-scoped-relationship-communication",
+      "provenance": "The request was validated by the relationship communication service.",
+      "service": "relationship-communication"
+     }
+    }
+   }
+  },
+  "draft:b:ab": {
+   "status": 200,
+   "body": {
+    "success": true,
+    "data": {
+     "body": "B 的回复草稿",
+     "conversationId": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+     "updatedAt": "2026-09-20T00:00:20.000Z"
+    }
+   }
+  },
+  "draft:a:ab": {
+   "status": 200,
+   "body": {
+    "success": true,
+    "data": {
+     "body": "",
+     "conversationId": "relationship-conversation:2bd3e31fef345a2f4fcc952585811de4d3e97db3e1942fdcc3d1b9309a530994",
+     "updatedAt": null
+    }
+   }
+  },
+  "draft:c:ab": {
+   "status": 404,
+   "body": {
+    "success": false,
+    "error": {
+     "code": "NOT_FOUND",
+     "message": "This conversation is not available to the signed-in account.",
+     "context": {
+      "boundary": "runtime",
+      "mode": "live",
+      "privacy": "participant-scoped-relationship-communication",
+      "provenance": "The request was validated by the relationship communication service.",
+      "service": "relationship-communication"
+     }
+    }
+   }
+  },
+  "draft:e:ae": {
+   "status": 404,
+   "body": {
+    "success": false,
+    "error": {
+     "code": "NOT_FOUND",
+     "message": "This conversation is not available to the signed-in account.",
+     "context": {
+      "boundary": "runtime",
+      "mode": "live",
+      "privacy": "participant-scoped-relationship-communication",
+      "provenance": "The request was validated by the relationship communication service.",
+      "service": "relationship-communication"
+     }
+    }
+   }
+  }
+ }
+}

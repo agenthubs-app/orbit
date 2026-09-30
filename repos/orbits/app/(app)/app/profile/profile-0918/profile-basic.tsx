@@ -4,7 +4,7 @@
  *   - 整屏 `<form onSubmit>` → saveProfile("basic")（既有测试用 findAllByType("form")[0].props.onSubmit 触发）。
  *   - 「快速填充」= 旧 ProfileMethods（手动填写 / 结构化文本提取 ← hook 的 method / extractText / onTextExtract / extracting）。
  *   - 「基础信息」字段顺序：姓名*（表单首个 <input>，editorDisabled 时 disabled）/ 一级行业* / 二级行业*（两个 <select> 从旧
- *     EditSections 原样搬，保留 aria-label）/ 职位 / 公司 / 生日*（type=date）/ 关于我（bio，80 可见字符校验由
+ *     EditSections 原样搬，保留 aria-label）/ 职位 / 公司 / 生日*（type=date）/ 关于我（bio，含中日韩 80 / 其余 200 可见字符，计数器与校验由
  *     validateProfileSaveDraft 提供）/ 一句话介绍（headline，随基础资料保存；公开资料、概览、首页问候都会用到）。
  *   - 「联系方式」：WeChat 与 LINE 可编辑且二选一必填（hook update 只把这两个标记为脏）；Email 只读；其余 handle 只读行；一律「仅自己可见」。
  *   - 必填标记 <span class="pc-required">必填</span>；壳里的保存栏通过 formRef.requestSubmit() 提交本表单。
@@ -16,6 +16,7 @@ import type { FormEvent, ReactNode, RefObject } from "react";
 import type { IndustryIdCode, SecondaryIndustryIdCode } from "../../../../../shared/contract/industries";
 import { INDUSTRY_CATALOG, industryLabel, listSecondaryIndustries, secondaryIndustryLabel } from "../../../../../shared/domain/industries";
 import { useOrbitLanguage } from "../../orbit-language-context";
+import { profileBioLimit, profileVisibleLength } from "../../../../../shared/api-schema/profile-bio";
 import type { ProfileEditorSession } from "./use-profile-editor-session";
 
 type Copy = { zh: string; en: string };
@@ -103,6 +104,9 @@ export function ProfileBasic({
   const { language, t } = useOrbitLanguage();
   const profile = session.profile;
   const editorDisabled = session.editorDisabled;
+  const bioText = profile.bio.trim();
+  const bio = { count: profileVisibleLength(bioText), limit: profileBioLimit(bioText) };
+  const bioOver = bio.count > bio.limit;
   // 旧 OrbitRealProfile.editProps.industryDisabled 原样。
   const industryDisabled = session.saving || session.matchingSaving || !session.industryReady || session.requiresReconcile;
   const scope = t({ en: "Only visible to you", zh: "仅自己可见" });
@@ -159,8 +163,9 @@ export function ProfileBasic({
           {profile.industry.trim() ? (
             <span className="pc-group-hint">{t({ en: "Existing industry text is preserved; choose the structured categories above for new edits:", zh: "已有行业文字会保留；新的修改请使用上面的结构化分类：" })} {profile.industry}</span>
           ) : null}
-          <Field label={{ en: "About me (up to 80 visible characters)", zh: "关于我（最多 80 个可见字符）" }}>
+          <Field label={{ en: "About me", zh: "关于我" }}>
             <span className="pc-input-wrap pc-input-wrap-area"><textarea className="pc-input pc-textarea" disabled={editorDisabled} onChange={(event) => session.update("bio", event.target.value)} rows={3} value={profile.bio} /></span>
+            <span className={`pc-bio-count${bioOver ? " pc-bio-count-over" : ""}`}>{bio.count}/{bio.limit}</span>
           </Field>
           <Field label={{ en: "One-line intro", zh: "一句话介绍" }}>
             <span className="pc-input-wrap"><input className="pc-input" disabled={editorDisabled} maxLength={80} onChange={(event) => session.update("headline", event.target.value)} placeholder={t({ en: "e.g. Helping Chinese brands launch in Japan", zh: "例如：帮助中国品牌落地日本市场" })} value={profile.headline} /></span>

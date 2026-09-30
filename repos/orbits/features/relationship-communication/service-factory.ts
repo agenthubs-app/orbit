@@ -1,5 +1,7 @@
 import type { AuthenticatedApiActor } from "../../app/api/_shared/authenticated-actor";
 import { createConfiguredPostgresLiveRecordStore } from "../../shared/storage/configured-live-record-store";
+import { createConfiguredTransactionalPostgresRuntime } from "../../shared/storage/transactional-postgres";
+import { createRelationshipMessageStore } from "./message-store";
 import {
   createRelationshipCommunicationService,
   type RelationshipCommunicationService,
@@ -15,9 +17,11 @@ function unavailableService(message: string): RelationshipCommunicationService {
     getConversation: unavailable,
     getEligibility: unavailable,
     getInvitationPreview: unavailable,
+    getReplyDraft: unavailable,
     listConversations: unavailable,
     markConversationRead: unavailable,
     revokeContactBinding: unavailable,
+    saveReplyDraft: unavailable,
     sendMessage: unavailable,
   } as RelationshipCommunicationService;
 }
@@ -27,10 +31,11 @@ export function createConfiguredRelationshipCommunicationService(
   invitationBaseUrl: string,
 ): RelationshipCommunicationService {
   const configured = createConfiguredPostgresLiveRecordStore<Record<string, unknown>>();
+  const transactional = createConfiguredTransactionalPostgresRuntime();
   const accountId = actor.accountId ?? actor.id;
   const displayName = actor.name?.trim();
   const email = actor.email?.trim();
-  if (!configured) {
+  if (!configured || !transactional || transactional.workspaceId !== configured.workspaceId) {
     return unavailableService("Relationship communication storage is unavailable.");
   }
   if (!accountId || !displayName || !email) {
@@ -39,10 +44,13 @@ export function createConfiguredRelationshipCommunicationService(
   return createRelationshipCommunicationService({
     actor: { accountId, displayName, email },
     invitationBaseUrl,
+    messages: createRelationshipMessageStore({ client: transactional.client, workspaceId: transactional.workspaceId }),
     async resolveContact(contactId, ownerAccountId) {
+      // Bounded point lookup: the owner's contact with this id (sprint 0109).
       const records = await configured.store.listRecords({
-        limit: "unbounded",
+        limit: 2,
         collectionName: "contacts",
+        payloadId: contactId,
         userId: ownerAccountId,
         workspaceId: configured.workspaceId,
       });

@@ -29,6 +29,10 @@ const originalLoad = loader._load;
 loader._load = (name, ...args) => {
   if (name === "expo-router") return { useLocalSearchParams: () => ({}), usePathname: () => "/dashboard", useRouter: () => ({ back() {}, canGoBack: () => false, push() {}, replace() {} }) };
   if (name.endsWith("/hooks/useOrbitApiClient")) return { useOrbitApiClient: () => ({}) };
+  // Sprint 0117: this covers the server-read path (a browser without its mirror).
+  if (name.endsWith("/hooks/useLocalDashboard")) return { useLocalDashboard: () => ({ available: false, sections: null, error: null, freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh() {} }) };
+  // Sprint 0131: the last source audit is a page copy; this server-read path has no device mirror.
+  if (name.endsWith("/hooks/usePageCopySession")) return { PAGE_COPY_SESSION_WAIT_MS: 300, usePageCopySession: () => ({ session: null, whenReady: async () => null }) };
   if (name.endsWith("/hooks/useLoadingDeadline")) return { LOADING_DEADLINE_MS: 8_000, useLoadingDeadline: () => overdue };
   if (name.endsWith("/hooks/useApiResource")) return {
     useApiResource: (path: string) => {

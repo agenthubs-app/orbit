@@ -1,3 +1,4 @@
+import { acquireSyncCommitOrderLock } from "../../sync/commit-order-lock";
 import { createHash } from "node:crypto";
 
 import { EventCoreDataError, type EventAliasType, type EventLifecycleState } from "./contract";
@@ -390,6 +391,8 @@ export async function applyEventCoreBackfillPlan(input: {
 }): Promise<{ count: number; hash: string }> {
   const now = input.now ?? new Date().toISOString();
   return input.client.transaction(async (transaction) => {
+    // Sprint 0113: event head tables carry sync_revision (strict trigger); take the commit-order lock first.
+    await acquireSyncCommitOrderLock(transaction);
     await transaction.query(
       "select pg_advisory_xact_lock(hashtextextended($1, 0))",
       [`event-core-backfill:${input.workspaceId}`],

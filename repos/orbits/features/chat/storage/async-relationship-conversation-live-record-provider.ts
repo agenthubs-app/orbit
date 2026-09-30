@@ -11,11 +11,7 @@ import type {
 } from "../../../shared/storage/live-record-store";
 
 export const ASYNC_RELATIONSHIP_CONVERSATION_COLLECTIONS = {
-  connections: "connections",
-  contacts: "contacts",
-  conversations: "conversations",
   drafts: "relationshipConversationDrafts",
-  messages: "messages",
 } as const;
 
 export interface StoredAsyncRelationshipMessage {
@@ -104,20 +100,7 @@ function recordBelongsToActor(
   record: LiveRecord<Record<string, unknown>>,
   actorId: string,
 ): boolean {
-  return (
-    record.userId === actorId ||
-    text(record.payload.actorId) === actorId ||
-    text(record.payload.accountId) === actorId ||
-    text(record.payload.userId) === actorId
-  );
-}
-
-async function listCollection(
-  store: LiveRecordStoreLike<Record<string, unknown>>,
-  workspaceId: string,
-  collectionName: string,
-): Promise<readonly LiveRecord<Record<string, unknown>>[]> {
-  return store.listRecords({ limit: "unbounded", collectionName, workspaceId });
+  return record.userId === actorId && text(record.payload.actorId) === actorId;
 }
 
 function stagedThreadFromRecord(
@@ -175,198 +158,35 @@ function stagedThreadFromRecord(
   };
 }
 
+// Staged draft threads are the only threads this inbox lists. The retired
+// legacy chat collections (`conversations`/`messages`) are never read; real
+// person-to-person conversations live in relationship communication.
+export const STAGED_DRAFT_THREAD_LIST_LIMIT = 100;
+
 async function readThreads(
   store: LiveRecordStoreLike<Record<string, unknown>>,
   workspaceId: string,
   actorId: string,
 ): Promise<readonly StoredAsyncRelationshipThread[]> {
-  const [
-    connectionRecords,
-    contactRecords,
-    conversationRecords,
-    draftRecords,
-    messageRecords,
-  ] = await Promise.all([
-    listCollection(
-      store,
-      workspaceId,
-      ASYNC_RELATIONSHIP_CONVERSATION_COLLECTIONS.connections,
-    ),
-    listCollection(
-      store,
-      workspaceId,
-      ASYNC_RELATIONSHIP_CONVERSATION_COLLECTIONS.contacts,
-    ),
-    listCollection(
-      store,
-      workspaceId,
-      ASYNC_RELATIONSHIP_CONVERSATION_COLLECTIONS.conversations,
-    ),
-    listCollection(
-      store,
-      workspaceId,
-      ASYNC_RELATIONSHIP_CONVERSATION_COLLECTIONS.drafts,
-    ),
-    listCollection(
-      store,
-      workspaceId,
-      ASYNC_RELATIONSHIP_CONVERSATION_COLLECTIONS.messages,
-    ),
-  ]);
+  const draftRecords = await store.listRecords({
+    collectionName: ASYNC_RELATIONSHIP_CONVERSATION_COLLECTIONS.drafts,
+    limit: STAGED_DRAFT_THREAD_LIST_LIMIT,
+    targetType: "conversation",
+    userId: actorId,
+    workspaceId,
+  });
 
-  const actorConnections = connectionRecords.filter((record) =>
-    recordBelongsToActor(record, actorId),
-  );
-  const allowedContactIds = new Set(
-    actorConnections.map((record) => text(record.payload.contactId)).filter(Boolean),
-  );
-  const contactById = new Map(
-    contactRecords
-      .filter((record) => allowedContactIds.has(text(record.payload.id)))
-      .map((record) => [text(record.payload.id), record.payload]),
-  );
-  const connectionByContactId = new Map(
-    actorConnections.map((record) => [
-      text(record.payload.contactId),
-      record.payload,
-    ]),
-  );
-  const stagedThreads = draftRecords
+  return draftRecords
     .filter((record) => recordBelongsToActor(record, actorId))
     .map(stagedThreadFromRecord)
     .filter(
       (thread): thread is StoredAsyncRelationshipThread => thread !== null,
+    )
+    .sort(
+      (left, right) =>
+        right.updatedAt.localeCompare(left.updatedAt) ||
+        left.conversationId.localeCompare(right.conversationId),
     );
-  const stagedIds = new Set(
-    stagedThreads.map((thread) => thread.conversationId),
-  );
-  const authorizedConversations = conversationRecords.filter((record) => {
-    if (recordBelongsToActor(record, actorId)) {
-      return true;
-    }
-
-    return stringArray(record.payload.participantContactIds).some((contactId) =>
-      allowedContactIds.has(contactId),
-    );
-  });
-  const authorizedConversationIds = new Set(
-    authorizedConversations.map((record) => text(record.payload.id)).filter(Boolean),
-  );
-  const messagesByConversationId = new Map<
-    string,
-    LiveRecord<Record<string, unknown>>[]
-  >();
-
-  for (const record of messageRecords) {
-    const conversationId = text(record.payload.conversationId);
-
-    if (!authorizedConversationIds.has(conversationId)) {
-      continue;
-    }
-
-    const records = messagesByConversationId.get(conversationId) ?? [];
-    records.push(record);
-    messagesByConversationId.set(conversationId, records);
-  }
-
-  const storedThreads = authorizedConversations.flatMap((record) => {
-    const payload = record.payload;
-    const conversationId = text(payload.id);
-
-    if (!conversationId || stagedIds.has(conversationId)) {
-      return [];
-    }
-
-    const contactId =
-      stringArray(payload.participantContactIds).find((id) =>
-        allowedContactIds.has(id),
-      ) ?? text(payload.contactId);
-    const contact = contactById.get(contactId);
-
-    if (!contactId || !contact) {
-      return [];
-    }
-
-    const participantName = text(contact.displayName) || contactId;
-    const connection = connectionByContactId.get(contactId);
-    const records = [...(messagesByConversationId.get(conversationId) ?? [])]
-      .sort(
-        (left, right) =>
-          text(left.payload.occurredAt).localeCompare(
-            text(right.payload.occurredAt),
-          ) || left.recordId.localeCompare(right.recordId),
-      );
-    const messages = records.flatMap((messageRecord) => {
-      const messagePayload = messageRecord.payload;
-      const body = text(messagePayload.body);
-      const occurredAt = text(messagePayload.occurredAt);
-
-      if (!body || !occurredAt) {
-        return [];
-      }
-
-      const inbound = text(messagePayload.direction) === "inbound";
-
-      return [
-        {
-          body,
-          evidenceIds: stringArray(messagePayload.evidenceIds),
-          messageId: text(messagePayload.id) || messageRecord.recordId,
-          occurredAt,
-          senderName: inbound
-            ? participantName
-            : text(messagePayload.createdBy) || "我",
-          senderRole: inbound ? ("contact" as const) : ("orbit_user" as const),
-          sourceContextLabel:
-            text(messageRecord.sourceLabel) ||
-            text(payload.sourceLabel) ||
-            "关系对话记录",
-        },
-      ];
-    });
-
-    if (messages.length === 0) {
-      return [];
-    }
-
-    const latest = messages[messages.length - 1];
-    const relationshipSummary =
-      text(connection?.summary) ||
-      text(contact.profileSnippet) ||
-      `与${participantName}的关系对话。`;
-    const sourceLabel =
-      text(record.sourceLabel) ||
-      text(payload.sourceLabel) ||
-      "关系对话记录";
-
-    return [
-      {
-        actorId,
-        contactId,
-        conversationId,
-        evidenceIds: [
-          ...new Set([
-            ...stringArray(payload.evidenceIds),
-            ...messages.flatMap((message) => message.evidenceIds),
-          ]),
-        ],
-        messages,
-        organization: text(contact.organization),
-        participantName,
-        relationshipSummary,
-        sourceContextLabels: [sourceLabel],
-        subject:
-          text(payload.subject) || `与${participantName}的关系跟进`,
-        updatedAt: latest?.occurredAt || text(payload.updatedAt),
-      },
-    ];
-  });
-
-  return [...stagedThreads, ...storedThreads].sort(
-    (left, right) =>
-      right.updatedAt.localeCompare(left.updatedAt) ||
-      left.conversationId.localeCompare(right.conversationId),
-  );
 }
 
 async function saveDraftThread(

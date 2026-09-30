@@ -1,3 +1,4 @@
+import { acquireSyncCommitOrderLock } from "../../../sync/commit-order-lock";
 import { randomUUID } from "node:crypto";
 
 import type {
@@ -765,7 +766,11 @@ async function runTransaction<TValue>(
 ): Promise<TValue> {
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     try {
-      return await client.transaction(operation);
+      return await client.transaction(async (executor) => {
+        // Sprint 0113: event head tables carry sync_revision (strict trigger); take the commit-order lock first.
+        await acquireSyncCommitOrderLock(executor);
+        return operation(executor);
+      });
     } catch (error) {
       if (error instanceof EventAdmissionError) throw error;
       const code = error && typeof error === "object"

@@ -33,11 +33,16 @@ export function createTypedDeliveryRuntime(input:{actorId:string;client:Transact
     }
     cursor=list.nextCursor;if(!cursor)break;
    }
-   // Candidate creation only needs references; dispatch still resolves the
-   // current message, binding, membership and read state before sending.
-   const position=state.messages??{at:cutover.since,id:''};const rows=await input.client.query<{payload:{messageId:string;conversationId:string;sentAt:string}}>(`select jsonb_build_object('messageId',m.payload->'messageId','conversationId',m.payload->'conversationId','sentAt',m.payload->'sentAt') as payload from orbit_records m where m.workspace_id=$1 and m.collection_name='relationship_communication_messages' and m.lifecycle_state='active' and m.payload->>'senderAccountId'<>$2 and (m.payload->>'sentAt',m.record_id)>($3,$4) and exists(select 1 from orbit_records c where c.workspace_id=$1 and c.collection_name='relationship_communication_conversations' and c.record_id=m.payload->>'conversationId' and c.payload->'participantAccountIds' ? $2) order by m.payload->>'sentAt',m.record_id limit 50`,[input.workspaceId,input.actorId,position.at,position.id]);
+   // Candidate creation only needs references from the actor's own member rows (sprint 0109);
+   // dispatch still resolves the current message, conversation, membership and read state before sending.
+   const position=state.messages??{at:cutover.since,id:''};
+   // Sprint 0109: messages come from the relationship message tables. If a database has not been migrated yet
+   // (42P01 undefined_table), notification candidates above still go out; message candidates are skipped loudly
+   // and their cursor is left unchanged, so they are picked up once the tables exist.
+   let messagesUnavailable=false;
+   const rows=await input.client.query<{payload:{messageId:string;conversationId:string;sentAt:string}}>(`select jsonb_build_object('messageId',m.message_id,'conversationId',m.conversation_id,'sentAt',to_char(m.sent_at at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')) as payload from relationship_conversation_members me join relationship_messages m on m.workspace_id=me.workspace_id and m.conversation_id=me.conversation_id where me.workspace_id=$1 and me.account_id=$2 and me.state='active' and m.sender_account_id<>$2 and (m.sent_at,m.message_id)>($3::timestamptz,$4::text) order by m.sent_at,m.message_id limit 50`,[input.workspaceId,input.actorId,position.at,position.id]).catch((error:unknown)=>{if((error as {code?:string})?.code!=='42P01')throw error;messagesUnavailable=true;console.warn(JSON.stringify({event:'typed_delivery_message_tables_missing',actorId:input.actorId}));return {rows:[] as {payload:{messageId:string;conversationId:string;sentAt:string}}[]};});
    for(const {payload:m} of rows.rows){await ledger.materialize({signalId:'message:'+m.messageId,signalRevision:m.sentAt,phase:'commitment',title:'Orbit',body:'Message',scheduledFor:m.sentAt,policySource:{kind:'message',id:m.messageId,conversationId:m.conversationId,eventKey:m.messageId}});counts.messages++;}
-   const last=rows.rows.at(-1)?.payload;await repository.tx(input.actorId,db=>repository.save(db,'notificationDeliveryCursor',input.actorId,input.actorId,{notifications:cursor,messages:rows.rows.length===50&&last?{at:last.sentAt,id:last.messageId}:{at:cutover.since,id:''}}));return counts;
+   const last=rows.rows.at(-1)?.payload;await repository.tx(input.actorId,db=>repository.save(db,'notificationDeliveryCursor',input.actorId,input.actorId,{notifications:cursor,messages:messagesUnavailable?state.messages:rows.rows.length===50&&last?{at:last.sentAt,id:last.messageId}:{at:cutover.since,id:''}}));return counts;
   },
  };
 }

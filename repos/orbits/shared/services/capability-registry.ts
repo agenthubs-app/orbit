@@ -176,15 +176,14 @@ const liveReadinessByCapability: Record<CapabilityId, CapabilityReadiness> = {
   },
   chat: {
     evidence: [
-      "tests/capabilities/chat-conversation-message-live-store.test.ts",
       "tests/capabilities/async-relationship-conversation-live-store.test.ts",
       "tests/capabilities/ai-email-draft-service.test.ts",
-      "tests/capabilities/chat-writing-assist-live-store.test.ts",
-      "tests/capabilities/chat-summary-extraction-live-store.test.ts",
+      "tests/api/chat-assist-rewrite-route.test.ts",
+      "tests/services/relationship-drafts-postgres.test.ts",
       "tests/pages/app-relationship-inbox-threads.test.ts",
     ],
     limitations: [
-      "Writing assist and summaries are rule-based even when live mode is selected.",
+      "Polite rewrite is rule-based; the legacy chat conversations, summaries and privacy controls were retired in Sprint 0104.",
     ],
   },
   dashboard: {
@@ -446,24 +445,24 @@ const definitions: readonly CapabilityDefinition[] = [
   },
   {
     id: "chat",
-    label: "Chat and summaries",
+    label: "Relationship inbox drafts",
     description:
-      "Chat, writing assist, summary extraction, and privacy-control services.",
+      "Staged draft threads, polite rewrite and AI email drafts for the relationship inbox.",
     sensitiveActionsRequireConfirmation: true,
     apiRoutes: [
       {
         method: "GET",
-        path: "/api/chat/conversations",
-        purpose: "List conversations with source and evidence provenance.",
+        path: "/api/chat/relationship-inbox",
+        purpose: "List the signed-in account's staged draft threads.",
       },
       {
         method: "POST",
-        path: "/api/chat/assist",
-        purpose: "Draft relationship-aware chat copy without calling a live AI provider.",
+        path: "/api/chat/assist/rewrite",
+        purpose: "Rewrite draft text politely without calling a live AI provider.",
       },
     ],
     debugDescription:
-      "Shows whether chat services are mock, hybrid, or live and whether private context is protected.",
+      "Shows whether the relationship inbox draft services are mock, hybrid, or live.",
   },
   {
     id: "dashboard",

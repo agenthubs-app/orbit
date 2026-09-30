@@ -1,0 +1,659 @@
+<title>断网写设计</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Serif+SC:wght@600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap">
+<style>
+:root{
+  --paper:#f4f6f3; --surface:#ffffff; --ink:#1c2422; --muted:#5d6a66; --line:#d5ddd8;
+  --accent:#28676a; --accent-soft:#e0eeec; --chalk:#1f3a36; --chalk-ink:#eaf2ee;
+  --warn:#94600f; --warn-soft:#f6ecda; --good:#2e7a4b; --good-soft:#e0f0e5; --bad:#a23a2e; --bad-soft:#f7e2de;
+  --code:#ecf0ee; --hl:#fff4c7;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --paper:#101615; --surface:#172020; --ink:#e1e9e5; --muted:#99a8a3; --line:#2b3937;
+    --accent:#72b7b6; --accent-soft:#1c3230; --chalk:#0c1c1a; --chalk-ink:#dcebe5;
+    --warn:#e0a44e; --warn-soft:#342914; --good:#7cc596; --good-soft:#1b3125; --bad:#e2887c; --bad-soft:#3a211e;
+    --code:#1d2726; --hl:#3a3413;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --paper:#101615; --surface:#172020; --ink:#e1e9e5; --muted:#99a8a3; --line:#2b3937;
+  --accent:#72b7b6; --accent-soft:#1c3230; --chalk:#0c1c1a; --chalk-ink:#dcebe5;
+  --warn:#e0a44e; --warn-soft:#342914; --good:#7cc596; --good-soft:#1b3125; --bad:#e2887c; --bad-soft:#3a211e;
+  --code:#1d2726; --hl:#3a3413;
+}
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font-family:"Noto Sans SC","PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;font-size:16px;line-height:1.85;padding-inline:16px;padding-block:28px 80px;overflow-x:hidden}
+main{max-width:740px;margin:0 auto;display:flex;flex-direction:column;gap:56px;min-width:0}
+h1,h2{font-family:"Noto Serif SC","Songti SC",serif;text-wrap:balance;margin:0}
+h1{font-size:32px;line-height:1.3}
+h2{font-size:24px;line-height:1.4}
+h3{font-size:17px;margin:0;font-weight:700}
+p{margin:0;max-width:64ch}
+ul,ol{margin:0;padding-left:1.35em;display:flex;flex-direction:column;gap:6px;max-width:64ch}
+code,.mono{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.86em;background:var(--code);padding:1px 5px;border-radius:4px;word-break:break-all}
+strong{font-weight:700}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.cover{background:var(--chalk);color:var(--chalk-ink);border-radius:10px;padding:28px 24px;display:flex;flex-direction:column;gap:14px}
+.cover .course{font:500 12.5px/1.4 "IBM Plex Mono",monospace;letter-spacing:.1em;text-transform:uppercase;opacity:.8}
+.cover p{color:var(--chalk-ink);opacity:.92}
+.cover ol{gap:4px}
+.cover a{color:var(--chalk-ink)}
+
+.lesson{display:flex;flex-direction:column;gap:18px;min-width:0}
+.lesson-head{display:flex;flex-direction:column;gap:6px;border-top:2px solid var(--ink);padding-top:14px}
+.lesson-no{font:500 13px/1 "IBM Plex Mono",monospace;letter-spacing:.08em;color:var(--accent)}
+.question{font-size:15px;color:var(--muted)}
+.question strong{color:var(--ink)}
+
+.analogy{background:var(--warn-soft);border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:8px}
+.analogy .tag,.terms .tag,.recap .tag{font:500 12px/1.4 "IBM Plex Mono",monospace;letter-spacing:.06em;color:var(--warn)}
+.terms{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.terms .tag{color:var(--accent)}
+.terms dl{margin:0;display:grid;grid-template-columns:minmax(96px,max-content) 1fr;gap:8px 14px}
+.terms dt{font-weight:700}
+.terms dt small{display:block;font:400 12px/1.3 "IBM Plex Mono",monospace;color:var(--muted)}
+.terms dd{margin:0}
+@media (max-width:480px){.terms dl{grid-template-columns:1fr}.terms dd{margin-bottom:6px}}
+.recap{border-left:3px solid var(--accent);padding:4px 0 4px 14px;display:flex;flex-direction:column;gap:4px}
+.recap .tag{color:var(--accent)}
+
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--surface);max-width:100%}
+table{border-collapse:collapse;width:100%;min-width:600px;font-size:14.5px;line-height:1.6}
+th,td{text-align:left;vertical-align:top;padding:9px 12px;border-bottom:1px solid var(--line)}
+th{font-size:13px;color:var(--muted);background:var(--paper);font-weight:600}
+tr:last-child td{border-bottom:0}
+tr.group td{background:var(--accent-soft);font-weight:700;font-size:13.5px;color:var(--accent)}
+td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+.hl{background:var(--hl);padding:0 3px;border-radius:3px}
+
+pre.json,pre.ascii{margin:0;background:var(--code);border-radius:8px;padding:14px;overflow-x:auto;font:13px/1.6 "IBM Plex Mono",ui-monospace,monospace;color:var(--ink);max-width:100%}
+pre.json .c{color:var(--muted)}
+pre.mermaid{margin:0;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px;overflow-x:auto;font:13px/1.5 "IBM Plex Mono",monospace;max-width:100%}
+figure{margin:0;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px;overflow-x:auto;display:flex;flex-direction:column;gap:8px;max-width:100%}
+figcaption{font-size:13.5px;color:var(--muted)}
+.pill{display:inline-block;font-size:12.5px;font-weight:500;padding:1px 9px;border-radius:999px;white-space:nowrap}
+.p-good{background:var(--good-soft);color:var(--good)}
+.p-warn{background:var(--warn-soft);color:var(--warn)}
+.p-bad{background:var(--bad-soft);color:var(--bad)}
+.steps{display:flex;flex-direction:column;gap:10px;counter-reset:s;padding:0;list-style:none;max-width:none}
+.steps li{display:grid;grid-template-columns:30px 1fr;gap:10px;align-items:start}
+.steps li::before{counter-increment:s;content:counter(s);width:26px;height:26px;border-radius:50%;background:var(--accent);color:var(--surface);font:600 13px/26px "IBM Plex Mono",monospace;text-align:center;margin-top:2px}
+.decision{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px 16px;display:flex;flex-direction:column;gap:6px}
+.decision .dno{font:500 12px/1.4 "IBM Plex Mono",monospace;color:var(--accent);letter-spacing:.06em}
+.decision .rec{font-size:14.5px}
+.decision .rec strong{color:var(--good)}
+.muted{color:var(--muted)}
+.glossary dl{margin:0;display:grid;grid-template-columns:minmax(110px,max-content) 1fr;gap:8px 16px}
+.glossary dt{font-weight:700}
+.glossary dd{margin:0}
+@media (max-width:480px){.glossary dl{grid-template-columns:1fr}h1{font-size:26px}h2{font-size:21px}body{font-size:15.5px}}
+.callout{background:var(--accent-soft);border-left:3px solid var(--accent);padding:14px 16px;border-radius:0 8px 8px 0;display:flex;flex-direction:column;gap:8px}
+.callout.warn{background:var(--warn-soft);border-left-color:var(--warn)}
+.callout.bad{background:var(--bad-soft);border-left-color:var(--bad)}
+
+/* App 界面示意：固定用 App 浅色主题的真实数值（controls.ts / tokens.ts），不随本页深浅色变化 */
+.mocks{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px}
+.mock{display:flex;flex-direction:column;gap:8px;min-width:0}
+.mock .cap{font-size:13.5px;color:var(--muted)}
+.phone{width:100%;max-width:320px;margin:0 auto;background:#FFFFFF;color:#0B1220;border:1px solid #B9BDC4;border-radius:22px;padding:16px 14px 18px;font-family:-apple-system,"PingFang SC","Hiragino Sans GB",system-ui,sans-serif;font-size:14px;line-height:1.5;display:flex;flex-direction:column;gap:10px}
+.phone .ptitle{font-size:24px;line-height:1.25;font-weight:900;letter-spacing:-.5px}
+.phone .sec{font-size:11.5px;font-weight:600;letter-spacing:.9px;color:#6B7280}
+.phone .notice{color:#876020;font-size:12.5px;line-height:1.5}
+.phone .row{border-bottom:1px solid #EEF0F4;padding:9px 0;display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.phone .row:last-child{border-bottom:0}
+.phone .rt{font-weight:600;min-width:0}
+.phone .meta{font-size:12px;color:#6B7280;white-space:nowrap}
+.phone .amber{color:#876020}
+.phone .rose{color:#B42318}
+.phone .link{color:#0A5CFF}
+.phone .body{font-size:13.5px;color:#3C4658}
+.phone .btn{background:#0B1220;color:#FFFFFF;border-radius:12px;height:44px;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:14.5px}
+.phone .btn2{background:#FFFFFF;color:#0B1220;border:1px solid #0B1220;border-radius:12px;height:42px;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:14px}
+.phone .btn.off{background:#EEF0F4;color:#8B93A5}
+.phone .side{border-top:1px solid #EEF0F4;padding-top:8px;display:flex;flex-direction:column;gap:4px}
+.phone .bme{align-self:flex-end;max-width:80%;background:#0B1220;color:#FFFFFF;border-radius:14px;padding:7px 11px;font-size:13.5px}
+.phone .bthem{align-self:flex-start;max-width:80%;background:#F5F7FA;color:#0B1220;border-radius:14px;padding:7px 11px;font-size:13.5px}
+.phone .mt{align-self:flex-end;font-size:11.5px;color:#6B7280;margin-top:-6px}
+.phone .input{border:1px solid #B9BDC4;border-radius:12px;height:40px;padding:0 12px;display:flex;align-items:center;color:#8B93A5;font-size:13.5px}
+.phone .tabs{display:flex;gap:16px;font-size:13.5px;border-bottom:1px solid #EEF0F4}
+.phone .tabs span{padding-bottom:6px}
+.phone .tabs .on{border-bottom:2px solid #0B1220;font-weight:600}
+.phone .mt.amber,.phone .meta.amber{color:#876020}
+.phone .mt.rose,.phone .meta.rose{color:#B42318}
+</style>
+<main>
+
+<section class="cover">
+  <div class="course">设计案 · 已批准 2026-09-28 · Sprint 0120</div>
+  <h1>断网写</h1>
+  <p>这份设计案回答一个问题：<strong>断网时在手机上改的东西，怎样在联网后安全地传回服务器？</strong>「安全」指三件事：传两次只算一次、新建的东西联网后编号能对上、手机和电脑都改了同一条时谁的内容都不丢。</p>
+  <p>它接着《断网也能用》第 5 步的办法四和第 6 步的第 4 期往下讲，也兑现《消息数据方案》的 M4（断网发送）。那两份设计案里定下的三条原则，这里不重新讨论，只讲它们落到服务器和手机上具体怎么做。</p>
+  <p>全文十三步：</p>
+  <ol>
+    <li><a href="#s1">先走一遍：断网改一条笔记，会发生什么</a></li>
+    <li><a href="#s2">现状：已经有什么，还差什么</a></li>
+    <li><a href="#s3">原则一：每次修改带唯一编号</a></li>
+    <li><a href="#s4">原则二：临时编号怎么换成正式编号</a></li>
+    <li><a href="#s5">原则三：冲突怎么发现、怎么让你选</a></li>
+    <li><a href="#s6">哪些能断网做，哪些不能</a></li>
+    <li><a href="#s7">界面上看到什么</a></li>
+    <li><a href="#s8">什么时候上传</a></li>
+    <li><a href="#s9">清空本地库时，未上传的修改不能丢</a></li>
+    <li><a href="#s10">和 0034 协议的差别</a></li>
+    <li><a href="#s11">Sprint 划分和验收</a></li>
+    <li><a href="#s12">和两份定稿设计案逐条对照</a></li>
+    <li><a href="#s13">待决事项</a></li>
+  </ol>
+</section>
+
+<!-- 第 1 步 -->
+<section class="lesson" id="s1">
+  <div class="lesson-head">
+    <span class="lesson-no">第 1 步</span>
+    <h2>先走一遍：断网改一条笔记，会发生什么</h2>
+  </div>
+  <p class="question">后面每一步都是在细化这张图。<strong>先有一个整体印象，再看细节。</strong></p>
+  <p>还是《断网也能用》里那个地下会场。你断网写了一条新笔记，又改了一个旧待办的标题。一小时后回到地面，手机连上网：</p>
+  <pre class="mermaid">sequenceDiagram
+  participant 你
+  participant 手机
+  participant 服务器
+  你->>手机: 断网写新笔记、改待办标题
+  手机->>手机: 两条修改进「待上传队列」，各带一个修改编号；新笔记用临时编号 local:…
+  Note over 手机: 列表上这两条标「未同步」
+  手机->>服务器: 联网后先确认登录还有效
+  手机->>服务器: 逐条上传（带修改编号、修改前的版本）
+  服务器->>服务器: 凭修改编号查收据：没见过→执行并记收据；见过→直接返回上次结果
+  服务器-->>手机: 新笔记的正式编号；待办的新版本
+  手机->>手机: 临时编号换成正式编号，删掉队列里这两条
+  手机->>服务器: 再按书签拉一次变化（同步）
+  Note over 手机: 「未同步」消失</pre>
+  <p>如果中途出事——网络断了、服务器没回话、手机被杀掉——队列里的修改都还在，下次再传。因为服务器凭修改编号认得出重复，<strong>重传永远是安全的</strong>。这是整套设计的地基。</p>
+  <div class="terms">
+    <div class="tag">本案用到的词</div>
+    <dl>
+      <dt>待上传队列<small>sync_outbox</small></dt><dd>手机本地库里的一张表，一行是一次还没被服务器确认的修改。</dd>
+      <dt>修改编号<small>mutationId</small></dt><dd>手机给每次修改生成的唯一编号。现有接口里叫 <code>idempotencyKey</code>，消息里叫 <code>requestId</code>，本案统一叫修改编号。</dd>
+      <dt>收据<small>receipt</small></dt><dd>服务器执行一次修改后记下的「这个编号我做过，结果是这样」。重复上传时，服务器直接返回收据里的结果。</dd>
+      <dt>基准版本<small>baseRevision</small></dt><dd>你开始编辑时，这条记录在服务器上的版本。上传时带上，服务器发现版本变了，就知道别人也改过。</dd>
+      <dt>临时编号<small>local:&lt;uuid&gt;</small></dt><dd>断网新建时手机先给的编号，上传成功后换成服务器的正式编号。</dd>
+      <dt>保险箱<small>pending vault</small></dt><dd>本案新增：清空本地库之前，把待上传队列单独加密保存的一个小文件（第 9 步）。</dd>
+    </dl>
+  </div>
+</section>
+
+<!-- 第 2 步 -->
+<section class="lesson" id="s2">
+  <div class="lesson-head">
+    <span class="lesson-no">第 2 步</span>
+    <h2>现状：已经有什么，还差什么</h2>
+  </div>
+  <p>按 2026-09-28 的代码逐项核对。好消息是：<strong>服务器这一侧的去重，大部分已经有了</strong>，只是分散在各类数据自己的代码里，0034 当年没有注意到。</p>
+  <div class="tbl"><table>
+    <thead><tr><th>东西</th><th>现在的样子</th><th>位置</th></tr></thead>
+    <tbody>
+      <tr class="group"><td colspan="3">服务器</td></tr>
+      <tr><td>笔记去重</td><td>新建和编辑都带 <code>idempotencyKey</code>；收据存在<strong>笔记这一行自己的</strong> <code>operations</code> 数组里；同编号同内容返回原结果，内容不同报 <code>NOTE_IDEMPOTENCY_CONFLICT</code>。新建的正式编号由「账号 + 修改编号」算出来</td><td><code>repos/orbits/features/notes/service.ts:96-97</code>、<code>:185-197</code></td></tr>
+      <tr><td>笔记冲突检测</td><td>编辑带 <code>expectedVersion</code>；<span class="hl">先查收据再比版本</span>，所以丢了回执的重传不会误报冲突。但是比版本用的是<strong>进程内</strong>的排队锁，保存是普通 upsert：两台服务器实例同时处理两次编辑，可能都通过版本检查，后写的覆盖先写的</td><td><code>service.ts:82-94</code>、<code>:308-312</code>；<code>notes/repository.ts:44-45</code></td></tr>
+      <tr><td>笔记删除</td><td><strong>没有这个接口</strong>，只有 GET 和 PATCH</td><td><code>app/api/notes/[id]/route.ts:5-6</code></td></tr>
+      <tr><td>待办去重</td><td>收据存在单独的集合 <code>task_mutations</code>，和业务写入在同一个事务里；事务开头按账号取锁</td><td><code>features/tasks/mutations.ts:28-50</code></td></tr>
+      <tr><td>待办冲突检测</td><td>编辑带 <code>expectedUpdatedAt</code>；完成、重新打开、取消、删除都不带版本</td><td><code>app/api/tasks/[id]/handler.ts:74-129</code></td></tr>
+      <tr><td>个人日程去重和冲突</td><td>收据在 <code>personal_schedule_mutations</code>；编辑和删除带 <code>expectedUpdatedAt</code>，也是先查收据再比版本；数据库事务加按账号的锁。保存时顺带生成提醒计划和收件箱投影</td><td><code>features/personal-schedule/service.ts:91-107</code>、<code>:131-158</code></td></tr>
+      <tr><td>消息去重</td><td>消息编号由「对话 + 发送人 + requestId」算出，重发只存一条。但检查顺序是<strong>先查资格、后查重复</strong>：丢了回执、对话恰好被撤销时，重传得到「已撤销」，手机不知道其实已经送达</td><td><code>features/relationship-communication/message-store.ts:252-291</code>（资格 <code>:256-264</code>，查重 <code>:265</code>）</td></tr>
+      <tr><td>提交顺序锁、主人守卫</td><td>笔记、待办、日程、消息的所有产品写入都取提交顺序锁（0108、0109、0113）；数据库触发器拒绝把行改给别人（0113）。<strong>沿用现有接口上传，就自动遵守这两条</strong></td><td><code>features/sync/commit-order-lock.ts:30-33</code>、<code>features/sync/owner-guard.ts</code></td></tr>
+      <tr class="group"><td colspan="3">手机</td></tr>
+      <tr><td>待上传队列表</td><td>表已建好：修改编号、类别、操作、补丁、基准版本、重试字段。<strong>没有产品调用方</strong>。缺：状态列（排队 / 上传中 / 冲突 / 失败）、所属数据类别、依赖关系；操作只允许 create/update/delete，而待办要 complete/reopen/cancel，消息要 send</td><td><code>repos/orbit-app/src/data/sync/local-sync-schema.ts:62-83</code>；写入读出 <code>local-sync-repository.ts:638</code>、<code>:673</code></td></tr>
+      <tr><td>同步时保留待上传</td><td>整类重抄、纪元轮换、单类重置都只删「已同步」的行，队列表不动（《断网也能用》验收第 3 项）</td><td><code>local-sync-repository.ts:451</code>、<code>:554</code>、<code>:578</code></td></tr>
+      <tr><td>本地副本行的 <code>sync_state</code></td><td>有 synced / pending / conflicted / failed 四种，拉取时跳过 pending 和 conflicted 的行。但主键是「类别 + 纪元 + 记录编号」，<strong>同一条记录放不下两个版本</strong>：本机改过的版本占了位置，服务器的新版本就进不来，冲突时没法「两边都保留」</td><td><code>local-sync-schema.ts:10-32</code>；<code>local-sync-repository.ts:192-194</code></td></tr>
+      <tr><td>离线资格表</td><td>笔记、待办、个人日程的写入登记为 <code>offline_queue</code>，但没人用。其中登记了笔记删除（服务器没有）；消息发送没有登记</td><td><code>src/api/schema/offline-policy.ts:23-45</code>；<code>src/data/sync/mutation-adapters.ts:4-24</code></td></tr>
+      <tr><td>清空本地库</td><td>拒绝登录、任何一次 401、退出、换账号、换服务器，都会<strong>整个删掉本地库文件和密钥</strong>，待上传队列也一起没了（第 9 步）</td><td><code>src/data/sync/sync-lifecycle.ts:141</code>；<code>src/api/AuthSessionProvider.tsx:147</code>、<code>:600</code></td></tr>
+      <tr><td>触发同步的时机</td><td>只有打开页面、手动、回前台、失效四种；断网时每 10 秒复核一次登录，复核成功就算「恢复联网」</td><td><code>src/data/sync/sync-freshness.ts:6-10</code>；<code>AuthSessionProvider.tsx:93</code></td></tr>
+    </tbody>
+  </table></div>
+  <div class="recap"><div class="tag">这一步的结论</div><p>服务器的收据和版本检查基本都在，缺的是：笔记的版本比较要落到数据库里、删除要能检测冲突、消息重传要先查重复。手机这边缺得多：队列要能用、冲突要能放下两个版本、清空时要保住队列。</p></div>
+</section>
+
+<!-- 第 3 步 -->
+<section class="lesson" id="s3">
+  <div class="lesson-head">
+    <span class="lesson-no">第 3 步</span>
+    <h2>原则一：每次修改带唯一编号</h2>
+  </div>
+  <p class="question">要回答：<strong>收据存哪、存多久？手机怎么保证重传的内容一字不差？</strong></p>
+  <div class="analogy">
+    <div class="tag">打个比方</div>
+    <p>你去银行汇款，柜员给你一张带流水号的单子。你不确定汇出去没有，拿着同一张单子再去问，柜员查流水号，告诉你「已经汇过了」，不会再汇一次。但如果你拿着同一个流水号、金额却改了，柜员会拒绝：这不是同一笔。</p>
+  </div>
+  <h3>收据存哪</h3>
+  <p><strong>就存在现在各类数据自己存的地方，不新建一张统一的收据表。</strong>理由是它们已经满足「业务结果和收据在同一个事务里提交」这个最关键的要求：</p>
+  <div class="tbl"><table>
+    <thead><tr><th>数据</th><th>收据在哪</th><th>重复的判断</th></tr></thead>
+    <tbody>
+      <tr><td>笔记</td><td>笔记行自己的 <code>operations</code> 数组（这个字段不下发到手机）</td><td>账号 + 修改编号；内容指纹不同 → 永久拒绝</td></tr>
+      <tr><td>待办</td><td><code>task_mutations</code> 集合，一个收据一行</td><td>同上</td></tr>
+      <tr><td>个人日程</td><td><code>personal_schedule_mutations</code> 集合</td><td>同上</td></tr>
+      <tr><td>消息</td><td>消息行本身（消息编号唯一）</td><td>对话 + 发送人 + requestId</td></tr>
+    </tbody>
+  </table></div>
+  <h3>存多久</h3>
+  <p>收据要比手机上一条修改可能等待的最长时间更久。手机上的修改最多能等多久？断网冷启动最多信任 30 天（0127），之后进保险箱最多再留 30 天（第 9 步），合计 <strong>60 天</strong>。所以规则是：<strong>收据至少保留 90 天</strong>。</p>
+  <p>现在三类收据都是永久保留，已经满足。唯一的隐患是笔记的收据数组会随编辑次数一直变长，要不要裁剪列为待决（<a href="#s13">D9</a>）。</p>
+  <p>万一收据真的被清掉了、手机又重传了一次，会怎样？新建：正式编号是算出来的，服务器发现同编号的笔记已经存在，报「编号已用过」，手机标为失败，不会多出一条。编辑：版本已经变了，报冲突，让你选。<strong>最坏情况是一次多余的提示，不会重复执行，也不会丢数据。</strong></p>
+  <h3>手机怎么保证重传一字不差</h3>
+  <ol class="steps">
+    <li><div>修改进队列时，手机就把<strong>要发给服务器的完整请求体</strong>（含修改编号和基准版本）存下来。</div></li>
+    <li><div>第一次尝试上传之前，这条还可以改：你又编辑了同一条，就合并进去（<a href="#s13">D8</a>）；它引用的临时编号也可以替换成正式编号（第 4 步）。</div></li>
+    <li><div>一旦尝试上传过，哪怕没收到回话，这条就<strong>冻结</strong>：以后每次重传都发完全相同的字节。服务器那边它可能已经执行了，改了内容，指纹就对不上了。</div></li>
+    <li><div>冻结之后你再编辑同一条，会排成一条新的修改，跟在它后面。</div></li>
+  </ol>
+  <div class="recap"><div class="tag">这一步的结论</div><p>收据沿用各类现有的存法，至少保留 90 天。手机存下完整请求，第一次上传后就冻结，重传永远一字不差。</p></div>
+</section>
+
+<!-- 第 4 步 -->
+<section class="lesson" id="s4">
+  <div class="lesson-head">
+    <span class="lesson-no">第 4 步</span>
+    <h2>原则二：临时编号怎么换成正式编号</h2>
+  </div>
+  <p class="question">要回答：<strong>断网新建的笔记，先用什么编号？上传后怎么换？别的修改引用了它怎么办？</strong></p>
+  <p>举个例子。断网时你：① 新建笔记「和陈总聊的三件事」；② 又改了一下它的正文；③ 新建一个日程，关联这条笔记。三条修改排进队列：</p>
+  <pre class="ascii">队列（按顺序）
+#1  新建 笔记  local:7f3a…        修改编号 m-01
+#2  编辑 笔记  local:7f3a…        修改编号 m-02   依赖 #1
+#3  新建 日程  local:b21c…        修改编号 m-03   noteIds=[local:7f3a…]  依赖 #1</pre>
+  <p>其中 #2 从没上传过，按第 3 步的规则会直接并进 #1，这里为了讲清楚先分开写。</p>
+  <ol class="steps">
+    <li><div><strong>新建时</strong>：记录编号写成 <code>local:</code> 加一个随机编号。页面照常能打开它（地址也是 <code>/notes/local:7f3a…</code>）。</div></li>
+    <li><div><strong>谁先传</strong>：引用了临时编号的修改（#2、#3）标记「依赖 #1」，#1 没拿到正式编号之前，它们不上传。所以<strong>服务器永远见不到临时编号</strong>。</div></li>
+    <li><div><strong>#1 上传成功</strong>：服务器返回正式编号 <code>note:9c0e…</code>。这个编号是「账号 + 修改编号」算出来的，所以就算回执丢了、重传一次，拿到的还是同一个编号。</div></li>
+    <li><div><strong>一次本地事务里做完四件事</strong>：记下别名 <code>local:7f3a… → note:9c0e…</code>；把 #2、#3 里的 <code>local:7f3a…</code> 换成 <code>note:9c0e…</code>（它们还没上传过，可以改）；把服务器返回的笔记写进本地副本；删掉 #1。要么全做完，要么全没做。</div></li>
+    <li><div><strong>正开着旧地址的页面</strong>：按别名跳到正式编号，不会变成「找不到」。别名保留 30 天，给通知、历史链接用。</div></li>
+    <li><div><strong>#1 永久失败了</strong>（比如服务器说内容不合法）：依赖它的 #2、#3 也标成失败，说明「依赖的新建没有成功」，内容保留，由你决定改了再试还是放弃。</div></li>
+  </ol>
+  <p>还没上传过的新建又被你删掉：新建和删除一起从队列里去掉，服务器上什么都不会发生。</p>
+  <div class="recap"><div class="tag">这一步的结论</div><p>临时编号只活在手机上；引用它的修改排在它后面，拿到正式编号后在发送前替换；替换和删除队列在一个本地事务里完成。</p></div>
+</section>
+
+<!-- 第 5 步 -->
+<section class="lesson" id="s5">
+  <div class="lesson-head">
+    <span class="lesson-no">第 5 步</span>
+    <h2>原则三：冲突怎么发现、怎么让你选</h2>
+  </div>
+  <p class="question">要回答：<strong>谁来判断「两边都改了」？两个版本放在哪？你看到什么、能选什么？</strong></p>
+  <h3>谁来判断：服务器，用基准版本</h3>
+  <p>你开始编辑时，手机记下这条记录当时的版本（笔记用 <code>version</code>，待办和日程用 <code>updatedAt</code>，都是服务器下发的）。上传时带上它。服务器发现当前版本已经不是这个，就回「冲突」（409），不写入。</p>
+  <p>这里有两个要修的地方：</p>
+  <ul>
+    <li><strong>笔记</strong>：版本比较要在数据库里完成（带版本条件的更新，或者在事务里锁住这一行），不能靠进程内排队，否则两台服务器实例会让后写的悄悄覆盖先写的——这正是原则三要防的。</li>
+    <li><strong>删除</strong>：待办删除现在不带版本。你在手机上删掉一条待办，同时电脑上刚改过它，删除会直接生效，电脑上的修改就没了。离线重放的删除要带基准版本，版本对不上就回冲突（<a href="#s13">D5</a>）。</li>
+  </ul>
+  <p>完成、重新打开、取消这三个待办状态操作不检查版本：它们只改状态，不会抹掉别人改的标题或备注，直接生效反而最符合直觉。</p>
+  <h3>两个版本放在哪：本地副本放服务器的，队列放你的</h3>
+  <p>第 2 步说过，本地副本的一行放不下两个版本。解决办法是<strong>本地副本永远只放服务器确认过的内容，你的修改只放在队列里</strong>。页面显示时，拿服务器的版本，再按顺序叠上队列里还没确认的修改。这样：</p>
+  <ul>
+    <li>同步照常把服务器的新版本写进本地副本，不用再跳过「pending」的行；</li>
+    <li>冲突时两个版本天然都在：本地副本里是服务器的，队列里是你的；</li>
+    <li>整类重抄、纪元轮换都不碰队列，你的修改一直在。</li>
+  </ul>
+  <p>冲突发生时，手机把队列里这一条标为「冲突」，并存一份当时服务器版本的快照，这样即使之后服务器又变了，你看到的对比也不会突然跳动。</p>
+  <h3>你能选什么</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>冲突的样子</th><th>你的选项</th><th>选了之后</th></tr></thead>
+    <tbody>
+      <tr><td>两边都改了内容</td><td><strong>保留本机版本</strong> / <strong>使用服务器版本</strong> / 另存为新笔记（只有笔记有，<a href="#s13">D3</a>）</td><td>保留本机：用<strong>新的修改编号</strong>、以服务器当前版本为基准重新上传你的内容；如果服务器又变了，会再提示一次。使用服务器：丢掉队列里这条和依赖它的修改。另存：用你的内容新建一条，原来那条用服务器的</td></tr>
+      <tr><td>你删了，别人改了</td><td>先给你看服务器上现在的内容，再问 <strong>仍然删除</strong> / <strong>保留</strong></td><td>仍然删除：以最新版本为基准重新上传删除</td></tr>
+      <tr><td>你改了，别人删了</td><td><strong>恢复成一条新的</strong> / <strong>放弃修改</strong></td><td>恢复：用你的内容新建一条</td></tr>
+    </tbody>
+  </table></div>
+  <p>第一版不做「改的是不同字段就自动合并」：规则简单、行为可预期，先看真实冲突有多频繁再说（<a href="#s13">D10</a>）。任何情况下，<strong>手机和服务器都不会替你做选择</strong>。</p>
+  <div class="recap"><div class="tag">这一步的结论</div><p>服务器用基准版本判冲突；本地副本只放服务器的内容，你的修改只在队列里，所以两边自然都保留；由你选，选「保留本机」时换新编号重传。</p></div>
+</section>
+
+<!-- 第 6 步 -->
+<section class="lesson" id="s6">
+  <div class="lesson-head">
+    <span class="lesson-no">第 6 步</span>
+    <h2>哪些能断网做，哪些不能</h2>
+  </div>
+  <p>判断标准只有一条：<strong>这个操作的结果，是不是只和你自己的数据有关，而且晚一点生效也不会出错。</strong>满足的才进队列。</p>
+  <div class="tbl"><table>
+    <thead><tr><th>数据</th><th>断网可以</th><th>断网不可以（显示「需要联网」）</th><th>不可以的原因</th></tr></thead>
+    <tbody>
+      <tr><td>笔记</td><td>新建、编辑标题和正文、关联本机已有的联系人和活动</td><td>删除</td><td>服务器没有删除接口，不为离线新增产品功能（<a href="#s13">D4</a>）</td></tr>
+      <tr><td>待办</td><td>个人待办的新建、编辑、完成、重新打开、取消、删除</td><td>接受待办建议、让 AI 生成待办、关系跟进的「完成并记录结果」</td><td>建议和生成要服务器算；关系跟进会同时改关系状态，牵涉对方（<a href="#s13">D6</a>）</td></tr>
+      <tr><td>个人日程</td><td>不重复的日程：新建、编辑、删除</td><td>重复日程的整个系列、单次修改；约见和共享会议</td><td>重复规则的展开和例外要服务器核对；约见涉及别人（<a href="#s13">D7</a>）</td></tr>
+      <tr><td>消息</td><td>在本机有、状态有效的对话里发文字</td><td>标记已读、存草稿、邀请、撤销关系</td><td>已读和草稿断网时价值低；邀请和撤销改的是两个人的关系</td></tr>
+      <tr><td>其余全部</td><td>—</td><td>联系人和个人资料编辑、处理通知、报名和取消报名、签到、交换名片、付款、问 AI、全平台搜索、深度搜索、设置和账号</td><td>《断网也能用》D 类，或本期不开放。以后要开放，另写设计</td></tr>
+    </tbody>
+  </table></div>
+  <p>这张表以代码里的离线资格表为唯一依据（<code>src/api/schema/offline-policy.ts</code>）：每期把对应的行改成 <code>offline_queue</code>，删掉登记了却不支持的笔记删除，补上消息发送。手机在两个时刻各查一次：你点下保存时（不在表里就提示需要联网，不进队列），和真正上传前。</p>
+  <p>还有两个边界：离线读取租约（最长 7 天）过期、本地数据显示为锁定时，写入也关掉；浏览器版第一轮不开放断网写（<a href="#s13">D2</a>），原因是浏览器可能自己清掉站点存储，队列会悄悄消失。</p>
+  <div class="recap"><div class="tag">这一步的结论</div><p>四类可以：笔记新建编辑、个人待办、不重复的日程、消息发送。其余一律需要联网，资格表是唯一依据。</p></div>
+</section>
+
+<!-- 第 7 步 -->
+<section class="lesson" id="s7">
+  <div class="lesson-head">
+    <span class="lesson-no">第 7 步</span>
+    <h2>界面上看到什么</h2>
+  </div>
+  <p>沿用 App 现有的黑白视觉：黑色主按钮、白底黑边的次按钮、细分隔线列表、蓝色只用于文字链接。<strong>不新增组件，也不新增颜色</strong>，所有状态都是现有列表行、详情页、断网提示条上多出的一小段文字：</p>
+  <div class="tbl"><table>
+    <thead><tr><th>状态</th><th>文字</th><th>颜色（现有色值）</th><th>出现在哪</th></tr></thead>
+    <tbody>
+      <tr><td>还没传上去</td><td>未同步</td><td>琥珀 <code>#876020</code>，和断网提示条同色</td><td>列表行右侧、详情页标题下</td></tr>
+      <tr><td>消息还没发出</td><td>待发送</td><td>琥珀</td><td>气泡下方，替代时间</td></tr>
+      <tr><td>两边都改了</td><td>冲突</td><td>红 <code>#B42318</code></td><td>列表行右侧；详情页顶部的选择区</td></tr>
+      <tr><td>服务器拒绝，内容保留</td><td>未能保存 · 未发送</td><td>红</td><td>列表行右侧、气泡下方，附「重试」「放弃」</td></tr>
+    </tbody>
+  </table></div>
+  <div class="mocks">
+    <div class="mock">
+      <div class="phone" aria-label="示意：断网时的笔记列表">
+        <div class="ptitle">笔记</div>
+        <div class="notice">无法连接 · 显示截至 14:02 的内容；2 项修改会在联网后同步</div>
+        <div>
+          <div class="row"><span class="rt">和陈总聊的三件事</span><span class="meta amber">未同步</span></div>
+          <div class="row"><span class="rt">大阪活动复盘</span><span class="meta amber">未同步</span></div>
+          <div class="row"><span class="rt">周三产品会</span><span class="meta">9月26日</span></div>
+          <div class="row"><span class="rt">读书笔记</span><span class="meta">9月20日</span></div>
+        </div>
+        <div class="btn">新建笔记</div>
+      </div>
+      <div class="cap">① 断网时：提示条改为「修改会在联网后同步」，新建按钮照常可用；本机改过的行标「未同步」。</div>
+    </div>
+    <div class="mock">
+      <div class="phone" aria-label="示意：联网后仍有未同步">
+        <div class="ptitle">待办</div>
+        <div class="notice">1 项修改未能保存 · <span class="link">查看</span></div>
+        <div>
+          <div class="row"><span class="rt">下周发资料给林女士</span><span class="meta rose">冲突</span></div>
+          <div class="row"><span class="rt">订大阪的酒店</span><span class="meta rose">未能保存</span></div>
+          <div class="row"><span class="rt">整理名片</span><span class="meta">明天</span></div>
+        </div>
+      </div>
+      <div class="cap">② 联网后：同步完成的行恢复正常；仍需要你处理的，列表顶部一行说明，点「查看」只显示这些行。</div>
+    </div>
+    <div class="mock">
+      <div class="phone" aria-label="示意：笔记冲突选择">
+        <div class="sec">这条笔记在别处也改过</div>
+        <div class="body">你断网时改了它，同一时间它在网页上也被改过。选一个保留；另一个不会被悄悄覆盖。</div>
+        <div class="side">
+          <div class="sec">本机版本 · 未同步</div>
+          <div class="body">三件事：① 下周二前发报价；② 介绍给李工；③ 年底再约。</div>
+        </div>
+        <div class="side">
+          <div class="sec">服务器版本 · 14:15 网页</div>
+          <div class="body">三件事：① 发报价；② 介绍给李工。</div>
+        </div>
+        <div class="btn">保留本机版本</div>
+        <div class="btn2">使用服务器版本</div>
+        <div class="link" style="text-align:center;font-size:13.5px">另存为新笔记</div>
+      </div>
+      <div class="cap">③ 冲突：在详情页顶部并排给出两个版本，黑色主按钮、白底次按钮、一个文字链接，都是现有样式。</div>
+    </div>
+    <div class="mock">
+      <div class="phone" aria-label="示意：删除冲突二次确认">
+        <div class="sec">这条待办在别处改过</div>
+        <div class="body">你在本机删除了它，但它在网页上被改过，现在是：</div>
+        <div class="side">
+          <div class="rt">下周发资料给林女士</div>
+          <div class="body">备注：附上大阪活动的照片 · 10月3日</div>
+        </div>
+        <div class="btn">仍然删除</div>
+        <div class="btn2">保留</div>
+      </div>
+      <div class="cap">④ 删除冲突：先让你看清服务器上现在的内容，再二次确认。</div>
+    </div>
+    <div class="mock">
+      <div class="phone" aria-label="示意：断网发送消息">
+        <div class="notice">无法连接 · 显示截至 14:02；消息会在联网后发送</div>
+        <div class="bthem">明天几点方便？</div>
+        <div class="mt" style="align-self:flex-start">13:58</div>
+        <div class="bme">下午三点可以</div>
+        <div class="mt amber">待发送</div>
+        <div class="bme">我带上资料</div>
+        <div class="mt amber">待发送</div>
+        <div class="input">输入消息</div>
+        <div class="btn">发送</div>
+      </div>
+      <div class="cap">⑤ 断网发消息：发送按钮可用，新消息排在最后，气泡下方写「待发送」；发出后换成服务器时间。</div>
+    </div>
+    <div class="mock">
+      <div class="phone" aria-label="示意：消息未发送与 AI 提示">
+        <div class="bme">我带上资料</div>
+        <div class="mt rose">未发送 · <span class="link">重试</span> · <span class="link">复制</span></div>
+        <div class="tabs"><span class="on">AI</span><span>收件箱</span></div>
+        <div class="notice" style="color:#6B7280">有 3 项修改还没同步，AI 暂时看不到（笔记 2、待办 1）</div>
+        <div class="input">问 Orbit AI</div>
+      </div>
+      <div class="cap">⑥ 上：服务器拒绝时气泡下方写「未发送」，给「重试」「复制」。下：AI 页输入框上方的一行灰字（见下文）。</div>
+    </div>
+  </div>
+  <p class="muted" style="font-size:13.5px">以上是 App 浅色主题的示意，数值取自 <code>src/design/controls.ts</code> 和 <code>tokens.ts</code>；深色主题用对应的深色值。实现时各期按 0108 的做法先截真实界面再对齐。</p>
+  <h3>对话没了，消息还没发出去</h3>
+  <p>断网时写了消息，联网前对方撤销了关系。下一次同步，这个对话会从手机上删除（0119），队列里那几条消息无处显示。这时在收件箱顶部显示一行：「1 条消息未能发送：这段关系已结束 · <span style="color:var(--accent)">复制内容</span> · <span style="color:var(--accent)">放弃</span>」。消息原文只在你自己的手机上，不会发给任何人。</p>
+  <h3>AI 看不到未同步的内容</h3>
+  <p>AI 在服务器上查数据，只能看到已经传上去的内容。所以：</p>
+  <ul>
+    <li><strong>断网时</strong>问 AI 本来就需要联网（D 类），不用额外提示。</li>
+    <li><strong>联网后队列还没清空</strong>（正在上传、有冲突、有失败）：AI 页输入框上方显示一行灰色小字「有 N 项修改还没同步，AI 暂时看不到（笔记 2、待办 1）」，数字直接数队列，按类别分组。队列清空，这行消失。</li>
+    <li>这行字只给出类别和数量，不包含任何内容。手机不会把本机的修改塞给 AI，AI 的权限也不因此扩大。</li>
+  </ul>
+  <div class="recap"><div class="tag">这一步的结论</div><p>四种状态都是现有行上的一小段琥珀或红色文字；冲突在详情页里用现有按钮让你选；AI 页用一行灰字说明「还没同步，AI 看不到」。</p></div>
+</section>
+
+<!-- 第 8 步 -->
+<section class="lesson" id="s8">
+  <div class="lesson-head">
+    <span class="lesson-no">第 8 步</span>
+    <h2>什么时候上传</h2>
+  </div>
+  <p class="question">这一步承接历史 Sprint 0035 里没做完的「恢复时机」。</p>
+  <p>所有时机进同一个入口，顺序永远是：<strong>先确认登录有效 → 上传队列 → 按书签拉取变化</strong>。先传再拉，拉回来的就是服务器执行完你的修改之后的样子，叠加显示自然消失。上传只在「在线已确认」的状态下进行，断网冷启动（用上次身份进入）时一条也不传。</p>
+  <div class="tbl"><table>
+    <thead><tr><th>时机</th><th>怎么发现</th><th>做什么</th></tr></thead>
+    <tbody>
+      <tr><td>冷启动</td><td>恢复登录时联网确认成功</td><td>上传，再同步</td></tr>
+      <tr><td>回到前台</td><td>App 状态变为 active</td><td>队列不空就上传；同步按现有的 60 秒门槛</td></tr>
+      <tr><td>网络恢复</td><td>断网期间每 10 秒复核登录，复核成功的那一刻（0131 同时加上「恢复联网立即同步」）</td><td>立即上传，再同步</td></tr>
+      <tr><td>点通知进入</td><td>通知点击的处理函数，在跳转页面之前</td><td>先发一次「上传 + 同步」，再按原来的规则跳转；不信任通知里带的业务数据</td></tr>
+      <tr><td>刚存下一条修改</td><td>入队时已在线</td><td>立即尝试这一条</td></tr>
+      <tr><td>前台定时同步</td><td>现有的 15 秒周期</td><td>队列不空时先上传</td></tr>
+      <tr><td>手动</td><td>行上的「重试」</td><td>绕过等待时间，立即重试这一条</td></tr>
+    </tbody>
+  </table></div>
+  <p>多个时机同时到来只跑一轮，后到的合并进下一轮（沿用 0035 的单飞规则）。换账号、退出时，正在进行的上传立刻中止，并且<strong>先走第 9 步的保险箱</strong>，再清空。</p>
+  <h3>一轮上传怎么排</h3>
+  <ul>
+    <li>同一条记录的修改严格按顺序，一条确认了才发下一条；</li>
+    <li>不同记录可以并行，最多同时 4 条；</li>
+    <li>有依赖的（第 4 步）等被依赖的先确认；</li>
+    <li>每条一个请求，走现有接口（<a href="#s13">D1</a>）；</li>
+    <li>一轮最多 30 秒，没传完的留到下一个时机。</li>
+  </ul>
+  <h3>服务器回了什么，手机怎么办</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>回应</th><th>当作</th><th>手机的处理</th></tr></thead>
+    <tbody>
+      <tr><td>2xx</td><td>确认</td><td>写入本地副本、替换临时编号、删队列行（一个事务）</td></tr>
+      <tr><td>网络错误、超时、5xx、429</td><td>可重试</td><td>等一会儿再试：等待时间在 0 到「1 秒 × 2 的尝试次数次方」之间随机取，最长 60 秒；服务器给了 Retry-After 就照办，最长 5 分钟。每条每轮最多 5 次，到了就留到下一轮，<strong>永不自动丢弃</strong></td></tr>
+      <tr><td>409</td><td>冲突</td><td>标「冲突」，存服务器快照，等你选（第 5 步）</td></tr>
+      <tr><td>404（编辑、删除的目标不在了）</td><td>冲突：别处删了</td><td>给「恢复成新的一条 / 放弃修改」</td></tr>
+      <tr><td>400、422、编号已用过（内容指纹不同）</td><td>永久失败</td><td>标「未能保存」，内容保留，你可以改了再试或放弃</td></tr>
+      <tr><td>领域 403（比如这类数据的权限被收回）</td><td>暂停这一类</td><td>这一类全部暂停，其他类照常；显示「没有权限」</td></tr>
+      <tr><td>401</td><td>登录失效</td><td>整轮停下，走 0127 的拒绝路径，<strong>但先把队列放进保险箱</strong>（第 9 步）</td></tr>
+    </tbody>
+  </table></div>
+  <div class="recap"><div class="tag">这一步的结论</div><p>七个时机、一个入口；先确认登录、再上传、再拉取；重试参数沿用 0034；401 不再意味着丢数据。</p></div>
+</section>
+
+<!-- 第 9 步 -->
+<section class="lesson" id="s9">
+  <div class="lesson-head">
+    <span class="lesson-no">第 9 步</span>
+    <h2>清空本地库时，未上传的修改不能丢</h2>
+  </div>
+  <div class="callout warn">
+    <p><strong>协调者约束（2026-09-27，来自 0127）</strong>：服务端数据库出错时，Auth.js 也会返回空会话，App 会按「拒绝」清空本地同步库。只读阶段数据都能重新拉取，所以可以接受；有了待上传的本地写入之后，这条清空路径绝不能丢失未上传的数据。</p>
+  </div>
+  <h3>先看清哪些路径会清空</h3>
+  <p>现在清空就是删掉整个本地库文件和它的密钥（<code>sync-lifecycle.ts:141</code> 的 purge）。会走到这里的路径：</p>
+  <div class="tbl"><table>
+    <thead><tr><th>路径</th><th>位置</th><th>可能是误判吗</th></tr></thead>
+    <tbody>
+      <tr><td>冷启动时服务器明确拒绝</td><td><code>AuthSessionProvider.tsx:147</code>（eraseRejectedIdentity）</td><td><strong>是</strong>：数据库出错时 <code>isPasswordSessionCurrent</code> 抛错（<code>repos/orbits/auth.ts:68</code>、<code>features/auth/session-revocation.ts:5-11</code>），Auth.js 返回空会话，手机当成拒绝</td></tr>
+      <tr><td>任何一次请求 401，或运行中复核被拒</td><td><code>:600</code>（endRejectedSession），由 <code>:630</code>、<code>:671</code> 触发</td><td>是，同上；上传请求本身也可能收到 401</td></tr>
+      <tr><td>原生端没有保存的会话</td><td><code>:222</code></td><td>否，但队列仍可能有内容</td></tr>
+      <tr><td>主动退出登录</td><td><code>:549</code></td><td>否</td></tr>
+      <tr><td>换服务器地址</td><td><code>sync-lifecycle.ts:202</code>（suspendScope）</td><td>否</td></tr>
+      <tr><td>换账号（打开另一个身份时删掉其他身份）</td><td><code>sync-lifecycle.ts:215</code>、<code>:118</code></td><td>否</td></tr>
+    </tbody>
+  </table></div>
+  <h3>办法：两道保险</h3>
+  <p><strong>第一道，在服务器上减少误判。</strong>数据库出错时不能再表现为「拒绝」。服务器加一个只回答账号状态的接口：账号有效、已停用、密码已改，分别明确回答；数据库出错回 503。手机收到「空会话」时先问它，只有它明确说「已停用 / 密码已改」才算拒绝，否则按「连不上」处理（<a href="#s13">D11</a>）。</p>
+  <p><strong>第二道，在手机上无论如何保住队列。</strong>误判总有漏网的情况，真实的拒绝（改了密码）也不该丢你的修改。所以所有清空路径统一改成：</p>
+  <ol class="steps">
+    <li><div><strong>队列是空的</strong>：照旧清空，行为和现在完全一样。</div></li>
+    <li><div><strong>队列不空</strong>：先把队列（连同别名、每条的标题摘要）写进一个单独加密的小文件，叫「保险箱」，文件名和密钥都按「服务器 + 账号」区分，密钥放在系统安全存储里。</div></li>
+    <li><div>读回保险箱，条数和指纹对上了，<strong>才</strong>写「待清理」标记、删除本地库。顺序和现在 purge 的防崩溃顺序一样：先记意图、再删除，删到一半重启会补完。</div></li>
+    <li><div><strong>保险箱写不进去</strong>（磁盘满等）：不删本地库，只把它锁住、页面上什么都不显示，回登录页，并明确提示「无法安全保存未同步的修改，本地数据暂时保留」。失败要看得见，不能为了清空而丢数据。</div></li>
+  </ol>
+  <p>保险箱只放你自己断网写的修改，通常几条到几十条；联系人、消息历史这些本地副本照样删掉。所以即使拒绝是真的（比如手机丢了、改了密码），留在手机上的也只是很小一部分你自己写的内容，而且是加密的。</p>
+  <h3>保险箱之后怎么处理</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>接下来发生</th><th>保险箱</th></tr></thead>
+    <tbody>
+      <tr><td>用<strong>同一个账号</strong>重新登录</td><td>打开新库后，在一个事务里把保险箱的内容放回队列，然后删除保险箱；随后正常上传。改了密码的情况也是这样</td></tr>
+      <tr><td>在登录页准备登录<strong>另一个账号</strong></td><td>登录页上先说明：「这台设备上还有 x***@gmail.com 的 3 项未同步修改。用这个账号登录会继续上传；登录其他账号会删除它们。」确认后才删除，保持「一台设备一个身份」（0113、0130）</td></tr>
+      <tr><td>在登录页选「放弃这些修改」</td><td>删除</td></tr>
+      <tr><td>30 天内没有用同一账号登录</td><td>删除（和断网身份的 30 天窗口一致，<a href="#s13">D12</a>）</td></tr>
+    </tbody>
+  </table></div>
+  <p>主动退出登录时，如果队列不空，先弹一次确认：「还有 3 项修改没有同步。退出后会在这台设备上保留 30 天，用同一账号登录会继续上传。」给三个选项：先同步再退出（在线时）、退出、放弃修改并退出。</p>
+  <div class="recap"><div class="tag">这一步的结论</div><p>服务器不再把数据库出错说成拒绝；手机在任何清空之前，先把待上传队列放进按账号加密的保险箱，确认写好了才清空；同一账号回来就接着传。</p></div>
+</section>
+
+<!-- 第 10 步 -->
+<section class="lesson" id="s10">
+  <div class="lesson-head">
+    <span class="lesson-no">第 10 步</span>
+    <h2>和 0034 协议的差别</h2>
+  </div>
+  <p>0034（2026-09-16）写了一份很完整的协议，但被上游接口卡住，只做了策略守卫。本案以它为起点。大部分保留，下面是改动和理由：</p>
+  <div class="tbl"><table>
+    <thead><tr><th>项目</th><th>0034</th><th>本案</th><th>理由</th></tr></thead>
+    <tbody>
+      <tr class="group"><td colspan="4">保留</td></tr>
+      <tr><td>修改编号</td><td>稳定 mutationId，同指纹返回原结果，不同指纹永久拒绝</td><td>相同</td><td>—</td></tr>
+      <tr><td>临时编号</td><td><code>local:&lt;uuid&gt;</code>，依赖的修改在首次发送前换成正式编号；已发送的不改</td><td>相同</td><td>—</td></tr>
+      <tr><td>冲突</td><td>两边都保留、不自动选；保留本机用新编号；删除冲突二次确认</td><td>相同，笔记多一个「另存」</td><td>—</td></tr>
+      <tr><td>队列和云端分离</td><td>待上传内容不改写云端事实</td><td>相同，并落实为「本地副本只放服务器内容」</td><td>第 2 步发现同一行放不下两个版本</td></tr>
+      <tr><td>重试参数</td><td>全随机退避，基数 1 秒、上限 60 秒；Retry-After 最多 5 分钟；每条每轮最多 5 次；每轮 30 秒；同一条按顺序、最多 4 条并行</td><td><strong>全部沿用</strong></td><td>参数合理，而且已经有测试夹具的约定</td></tr>
+      <tr class="group"><td colspan="4">改动</td></tr>
+      <tr><td>收据</td><td>新建全局收据表，现有笔记、待办、日程收据降为兼容</td><td><strong>沿用各类现有收据</strong>，不建全局表</td><td>现有收据已和业务写入同事务提交，已有测试；再建一张就有两个权威，正是 0034 自己想避免的</td></tr>
+      <tr><td>上传通道</td><td>新批量接口，每批最多 50 条</td><td><strong>每条一个请求，走现有接口</strong></td><td>现有接口已经带编号去重、取提交顺序锁、过主人守卫；个人断网修改一般几条到几十条，批量省下的请求数不值得多一条写入路径。实测需要时再加（D1）</td></tr>
+      <tr><td>冲突版本</td><td>用同步流水号做比较，同时保留各类自己的版本规则</td><td><strong>只用各类自己的版本</strong>（笔记 version，待办和日程 updatedAt）</td><td>这些值服务器已经在比较；流水号在领域服务里拿不到，要大改。对这三类，两者变化时机相同</td></tr>
+      <tr><td>纪元变化</td><td>旧纪元的待上传不自动迁移，重新授权后要逐条再确认</td><td><strong>队列不绑纪元</strong>，只绑「服务器 + 账号」；某类权限被收回时这一类暂停</td><td>纪元会因为注册表升级、schema 升级等和你无关的原因轮换；服务器每次写入都重新检查权限，逐条再确认只是打扰</td></tr>
+      <tr><td>合并</td><td>不合并，严格按顺序</td><td>从未上传过的同一条修改<strong>合并</strong>（D8）</td><td>从没发出去的修改不存在收据，合并是安全的；请求更少，冲突也更少</td></tr>
+      <tr><td>删除和状态</td><td>更新、删除都做版本比较</td><td>删除比较版本；完成、重新打开、取消不比较</td><td>状态操作不会抹掉别人的内容</td></tr>
+      <tr><td>范围</td><td>笔记、待办、关系跟进、个人日程；消息发送在线</td><td>笔记（不含删除）、个人待办、不重复的日程、<strong>加上消息发送</strong>；关系跟进暂不开放</td><td>《消息数据方案》M4 要求断网发送；笔记没有删除接口；关系跟进牵涉对方（D4、D6、D7）</td></tr>
+      <tr><td>清空</td><td>账号整体撤销时加密擦除全部</td><td>擦除前<strong>先存保险箱</strong></td><td>0127 发现服务器出错也会被当成撤销；约束要求不能丢</td></tr>
+      <tr><td>快照和二进制缓存</td><td>在 0034 范围内</td><td>不在本案</td><td>和断网写无关，按需另议</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- 第 11 步 -->
+<section class="lesson" id="s11">
+  <div class="lesson-head">
+    <span class="lesson-no">第 11 步</span>
+    <h2>Sprint 划分和验收</h2>
+  </div>
+  <p>按「先有保护，再有数据」排：第一期只搭队列和保险箱，这时还没有任何真实的待上传修改，但清空路径已经保险了；之后按《断网也能用》定的顺序开放笔记、待办、日程，最后是消息。编号从 0124 起，0125–0131 已被占用，所以接着用 0132 往后。</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Sprint</th><th>做什么</th><th>依赖</th></tr></thead>
+    <tbody>
+      <tr><td><strong>0124</strong> 断网写地基</td><td>手机：队列表升级（状态、类别、依赖、冻结的请求体）、别名表、上传执行器（时机、排队、重试、回应分类）、叠加显示的读取接口、保险箱和所有清空路径改造、登录页和退出时的提示。服务器：账号状态接口，数据库出错回 503。<strong>不开放任何类别</strong>，用测试专用类别验证</td><td>0131</td></tr>
+      <tr><td><strong>0132</strong> 笔记</td><td>服务器：笔记版本比较落到数据库。手机：笔记新建、编辑断网可用，「未同步」「冲突」界面，AI 页的提示行；资格表删掉笔记删除</td><td>0124</td></tr>
+      <tr><td><strong>0133</strong> 待办</td><td>服务器：删除可带基准版本，对不上回 409。手机：个人待办六种操作断网可用，删除冲突二次确认</td><td>0132</td></tr>
+      <tr><td><strong>0134</strong> 个人日程</td><td>手机：不重复日程的新建、编辑、删除断网可用；日程引用断网新建的笔记（跨类依赖）。服务器：核对过期提醒不补发</td><td>0133</td></tr>
+      <tr><td><strong>0135</strong> 消息发送</td><td>服务器：重传先查重复再查资格。手机：断网发送、「待发送」「未发送」、对话被撤销后的收件箱提示；离线发送不误删发送之后才存的草稿</td><td>0134</td></tr>
+      <tr><td><strong>0136</strong> 全链验收</td><td>四类同时有待上传时的清空、换账号、重装、杀进程、飞行模式矩阵；回写历史 0034、0035、0036 的登记状态</td><td>0135</td></tr>
+    </tbody>
+  </table></div>
+  <h3>每一期都要通过的检查表</h3>
+  <p>和《断网也能用》第 7 步一样，前几项在「本机数据库扮演服务器」的测试里完成：库里同时有用户 A、用户 B 的数据，严格版提交顺序锁和主人守卫都开着，逐项断言。</p>
+  <div class="tbl"><table>
+    <thead><tr><th>检查项</th><th>要看到的结果</th></tr></thead>
+    <tbody>
+      <tr><td>1. 重复只算一次</td><td>同一修改编号上传两次（包括「服务器已执行、回执丢了」的重放）：服务器只有一次结果、一条收据；手机拿到同一个正式编号。编号相同、内容不同：永久拒绝，原数据不变</td></tr>
+      <tr><td>2. 临时编号替换后引用正确</td><td>断网新建 → 编辑 → 被别的记录引用；上传后服务器上只有正式编号，引用指向正式编号；手机上旧地址跳到新地址；没有一行留着 <code>local:</code></td></tr>
+      <tr><td>3. 冲突两边都保留</td><td>A 的手机断网改、网页同时改：上传得到冲突；两个版本在手机上都能看到；三种选择的结果各自正确；选「保留本机」后服务器上是本机内容，而且用的是新编号</td></tr>
+      <tr><td>4. 断网改动联网后到达服务器</td><td>断网做完操作 → 杀进程 → 冷启动（仍断网）→ 恢复网络：每条修改都到了服务器，网页上能读到；队列清空，「未同步」消失</td></tr>
+      <tr><td>5. 别人的数据不受影响</td><td>A 用 B 的记录编号上传编辑或删除：被拒绝，B 的行和流水号都不变；A 的队列里没有 B 的任何内容</td></tr>
+      <tr><td>6. 清空时不丢</td><td>队列不空时，分别触发「冷启动被拒」「运行中 401」「退出」：本地副本被删、保险箱在；同一账号登录后修改到达服务器。保险箱写失败时本地库不被删</td></tr>
+      <tr><td>7. 锁和守卫</td><td>上传的写入都在严格版触发器下成功（不取锁就报错的那种）；写入锁审计、主人审计照常通过；并发时流水号按提交顺序可见，书签不漏行</td></tr>
+      <tr><td>8. 真机</td><td>同一账号，Simulator 停掉服务器模拟断网，走一遍这一期的操作，恢复后在网页读回；phoneweb 上确认在线写入不变、断网仍显示「需要联网」（浏览器暂不开放断网写）</td></tr>
+    </tbody>
+  </table></div>
+  <p>每期的草稿 GOAL 和 PLANNER 已经写好，批准后按本案放进 <code>docs/sprints</code> 并登记。</p>
+</section>
+
+<!-- 第 12 步 -->
+<section class="lesson" id="s12">
+  <div class="lesson-head">
+    <span class="lesson-no">第 12 步</span>
+    <h2>和两份定稿设计案逐条对照</h2>
+  </div>
+  <div class="tbl"><table>
+    <thead><tr><th>定稿里的原话</th><th>出处</th><th>本案怎么做</th><th>一致吗</th></tr></thead>
+    <tbody>
+      <tr><td>每次修改带一个唯一编号：手机生成，服务器凭它认出重复的上传，只算一次</td><td>《断网也能用》第 5 步办法四</td><td>第 3 步：修改编号 = 现有接口的 idempotencyKey / requestId，收据沿用各类现有存法，至少 90 天</td><td><span class="pill p-good">一致</span></td></tr>
+      <tr><td>新建的东西先用临时编号：上传成功后，服务器返回正式编号，手机把本地的临时编号换掉</td><td>同上</td><td>第 4 步</td><td><span class="pill p-good">一致</span></td></tr>
+      <tr><td>冲突时两边都保留：不偷偷覆盖任何一方的内容，而是提示你选择保留哪一个</td><td>同上</td><td>第 5 步。笔记多一个「另存为新笔记」，两边仍都保留</td><td><span class="pill p-good">一致</span></td></tr>
+      <tr><td>断网时改了、还没传上去的内容，AI 看不到。手机上要标明「未同步」</td><td>同上</td><td>第 7 步：行上「未同步」，AI 页提示行；不把本机内容交给 AI</td><td><span class="pill p-good">一致</span></td></tr>
+      <tr><td>第 4 期断网写：先出单独的设计案，再依次做笔记、待办、日程</td><td>《断网也能用》第 6 步</td><td>本案即设计案；0132 笔记 → 0133 待办 → 0134 日程。前面多一期地基（0124），后面接消息（0135）</td><td><span class="pill p-good">一致</span></td></tr>
+      <tr><td>重抄不丢待上传：整类重抄时，还没传上去的修改都还在</td><td>《断网也能用》第 7 步第 3 项</td><td>队列独立于本地副本，不绑纪元；检查表第 4、6 项</td><td><span class="pill p-good">一致</span></td></tr>
+      <tr><td>A 类（你自己的数据）放进手机；D 类（问 AI、全平台找人、报名付款、实时收发消息）断网时明确提示需要联网</td><td>《断网也能用》第 3 步</td><td>第 6 步只开放 A 类里的个人修改；D 类全部需要联网。「断网发消息」是先排队、联网后发，不是实时收发，和 M4 一致</td><td><span class="pill p-good">一致</span></td></tr>
+      <tr><td>发消息自带去重：消息编号由「对话 + 发送人 + 请求编号」算出</td><td>《消息数据方案》第 2 步</td><td>沿用；只调整检查顺序（先查重复），不改编号算法</td><td><span class="pill p-good">一致</span></td></tr>
+      <tr><td>M4 断网发送：待上传队列 + 「待发送」状态；依赖「断网也能用」第 4 期</td><td>《消息数据方案》第 8 步</td><td>0135，排在统一协议（0124）和三类之后</td><td><span class="pill p-good">一致</span></td></tr>
+      <tr><td>在那之前，断网时发送按钮提示「需要联网」</td><td>《消息数据方案》第 7 步</td><td>0135 之前保持不变</td><td><span class="pill p-good">一致</span></td></tr>
+      <tr><td>撤销关系后双方都看不到这个对话，服务器上不删</td><td>《消息数据方案》第 9 步决定 3</td><td>发往已撤销对话的待发送消息不补发，只在发送人自己手机上留一行「未能发送」可复制或放弃</td><td><span class="pill p-good">一致</span></td></tr>
+      <tr><td>发消息在一个事务里：锁住对话行、检查资格版本、重发返回已有的那条</td><td>《消息数据方案》第 6 步</td><td>事务不变；「已有的那条」提前到资格检查之前返回，仍在同一事务、同一行锁内</td><td><span class="pill p-good">一致</span></td></tr>
+    </tbody>
+  </table></div>
+  <p>没有发现和定稿冲突的地方。和<strong>代码</strong>对不上的地方有几处，都列在第 2 步，由各期修正：离线资格表登记了服务器不存在的笔记删除；待上传队列的操作类型装不下待办的状态操作和消息发送；笔记版本比较只在进程内；待办删除不比较版本；消息重传先查资格后查重复。另外，0120 PLANNER 里引用的 <code>local-sync-repository.ts:521,556</code> 已经下移到 <code>:638</code>、<code>:673</code>。</p>
+</section>
+
+<!-- 第 13 步 -->
+<section class="lesson" id="s13">
+  <div class="lesson-head">
+    <span class="lesson-no">第 13 步</span>
+    <h2>待决事项</h2>
+  </div>
+  <p>每一项都给了建议的默认做法。协调者按用户 2026-09-28 的授权逐项决定，并记在 0120 的 REPORT 里。</p>
+  <div class="callout"><p><strong>决定（2026-09-28，协调者按用户授权）：14 项全部采用下面的建议做法。</strong>另外，第 2 步发现的「笔记版本比较只在单个服务器进程内」是线上已经存在的覆盖风险，列入上线清单的已知风险，由 0132 修复。</p></div>
+  <div class="decision"><div class="dno">D1 · 上传通道</div><p>走现有的各类接口（每条一个请求），还是新建统一的批量接口？</p><p class="rec">建议：<strong>走现有接口</strong>。去重、锁、守卫都已具备；批量接口等实测请求数成为问题再加。</p></div>
+  <div class="decision"><div class="dno">D2 · 浏览器版断网写</div><p>phoneweb 这一轮开不开放断网写？</p><p class="rec">建议：<strong>不开放</strong>，只做原生。浏览器可能自己清掉站点存储，队列会无声消失；多个标签页同时上传也要另外处理。0136 之后按需单独立项。</p></div>
+  <div class="decision"><div class="dno">D3 · 笔记冲突的第三个选项</div><p>除了「保留本机」「使用服务器」，笔记要不要给「另存为新笔记」？</p><p class="rec">建议：<strong>给，只限笔记</strong>。笔记是大段文字，两边都想留的情况最常见；待办和日程只给两个选项。</p></div>
+  <div class="decision"><div class="dno">D4 · 笔记删除</div><p>服务器没有笔记删除接口，离线资格表却登记了。</p><p class="rec">建议：<strong>断网不开放笔记删除</strong>，在 0132 把资格表里这一行去掉。是否给笔记加删除功能是产品问题，不借断网写引入。</p></div>
+  <div class="decision"><div class="dno">D5 · 待办删除和状态操作的版本</div><p>删除、完成、重新打开、取消要不要带基准版本？</p><p class="rec">建议：<strong>删除带版本（可选字段，离线重放时必带），对不上回 409；三个状态操作不带</strong>。在线路径不受影响。</p></div>
+  <div class="decision"><div class="dno">D6 · 关系跟进</div><p>0034 把关系跟进列进了首批，要不要开放？</p><p class="rec">建议：<strong>本轮不开放</strong>。「完成并记录结果」会同时改关系状态和版本，牵涉对方；普通个人待办已覆盖会场场景。</p></div>
+  <div class="decision"><div class="dno">D7 · 重复日程</div><p>重复系列和单次修改断网能不能改？</p><p class="rec">建议：<strong>不能</strong>，只开放不重复的日程。系列和例外的核对都在服务器上，放到手机上容易算错。</p></div>
+  <div class="decision"><div class="dno">D8 · 未上传修改的合并</div><p>同一条记录还没上传过的多次编辑，合并成一条还是逐条发？</p><p class="rec">建议：<strong>合并</strong>，只合并从未尝试上传过的；上传过的冻结不动。</p></div>
+  <div class="decision"><div class="dno">D9 · 笔记收据数组的增长</div><p>笔记的收据存在笔记行里，每次编辑多一条，要不要裁剪？</p><p class="rec">建议：<strong>本轮不裁剪</strong>（现在永久保留，满足「至少 90 天」）。0132 加一条测试钉住「90 天内的收据不会被删」，裁剪等真实数据量出现再议。</p></div>
+  <div class="decision"><div class="dno">D10 · 不同字段自动合并</div><p>两边改的是不同字段（一个改标题，一个改日期），要不要自动合并、不提示冲突？</p><p class="rec">建议：<strong>第一版不自动合并</strong>，任何并发修改都提示。0136 统计真实冲突频率后再决定。</p></div>
+  <div class="decision"><div class="dno">D11 · 服务器出错时的空会话</div><p>要不要在服务器上区分「数据库出错」和「账号被拒」？</p><p class="rec">建议：<strong>要</strong>，在 0124 加账号状态接口（出错回 503）。手机的保险箱仍然必做，两道保险各管一半。</p></div>
+  <div class="decision"><div class="dno">D12 · 保险箱保留多久</div><p>清空后保险箱留多久？登录其他账号时怎么办？</p><p class="rec">建议：<strong>30 天</strong>，和断网身份的窗口一致；登录其他账号前在登录页明确提示并确认后删除。</p></div>
+  <div class="decision"><div class="dno">D13 · 断网消息的时间</div><p>断网写的消息，显示「写下的时间」还是「服务器收到的时间」？</p><p class="rec">建议：<strong>服务器收到的时间</strong>。两个人看到的顺序一致，也不依赖手机时钟；「待发送」期间不显示时间。</p></div>
+  <div class="decision"><div class="dno">D14 · 全链验收单独一期</div><p>0136 要不要单独做，还是把矩阵分散进各期？</p><p class="rec">建议：<strong>单独一期，规模小</strong>。各期只验自己的类别；四类同时待上传时的清空、换账号、重装，只有最后一起跑才看得出问题，历史 0034–0036 的状态也在这里回写。</p></div>
+</section>
+
+</main>

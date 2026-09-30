@@ -1,3 +1,4 @@
+import { lockedFixtureQuery } from "../support/sync-revision-fixture";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import test from "node:test";
@@ -45,8 +46,7 @@ test(
     try {
       await adminPool.query(`create schema ${schema}`);
       await runOrbitRecordsMigration(migrationPool);
-      await migrationPool.query(
-        `insert into event_ops_events (
+      await lockedFixtureQuery(migrationPool, `insert into event_ops_events (
            workspace_id, event_id, organizer_actor_id, lifecycle_state,
            revision, created_at, updated_at, source_payload
          ) values (

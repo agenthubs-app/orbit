@@ -344,6 +344,16 @@ const contactsPayloadSchema = z
     appliedFilters: z.object({}).passthrough(),
     availableFilters: z.object({}).passthrough(),
     contacts: z.array(contactListItemSchema),
+    // Sprint 0101: `contacts` holds only the people the page shows. Role
+    // statistics over every contact travel as trimmed roles with counts.
+    roleCounts: z
+      .array(
+        z.object({
+          role: nonEmptyString,
+          count: finiteNumber.int().positive(),
+        }),
+      )
+      .optional(),
     summary: z.string(),
     nextAction: z.string(),
   })
@@ -417,9 +427,54 @@ export const mobileContactsDashboardPayloadSchema = z.object({
   unavailableSections: z.array(z.enum(MOBILE_CONTACTS_DASHBOARD_OPTIONAL_SECTIONS)),
 });
 
+/**
+ * Sprint 0117 (dashboard D3): GET /api/mobile/contacts-dashboard?view=analysis.
+ * The App computes every section on the device (sync domain dashboard-graph)
+ * and reads only what it cannot compute: the AI analysis report (with the
+ * version the page asks the AI with) and the profile the report is bound to.
+ */
+export const MOBILE_CONTACTS_DASHBOARD_VIEW_PARAM = "view";
+export const MOBILE_CONTACTS_DASHBOARD_ANALYSIS_VIEW = "analysis";
+export const MOBILE_CONTACTS_ANALYSIS_OVERVIEW_QUERY =
+  `${MOBILE_CONTACTS_DASHBOARD_VIEW_PARAM}=${MOBILE_CONTACTS_DASHBOARD_ANALYSIS_VIEW}`;
+
+export const mobileContactsAnalysisOverviewPayloadSchema = z.object({
+  schemaVersion: z.literal(1),
+  generatedAt: nonEmptyString,
+  analysis: dashboardAnalysisSchema.nullable().optional(),
+  profile: profilePayloadSchema.nullable(),
+  unavailableSections: z.array(z.enum(["analysis", "profile"])),
+});
+
+export type MobileContactsAnalysisOverviewPayload = z.infer<typeof mobileContactsAnalysisOverviewPayloadSchema>;
+
+export function mobileContactsDashboardRequestsAnalysisView(searchParams: URLSearchParams): boolean {
+  return searchParams.get(MOBILE_CONTACTS_DASHBOARD_VIEW_PARAM) === MOBILE_CONTACTS_DASHBOARD_ANALYSIS_VIEW;
+}
+
 export type MobileContactsDashboardPayload = z.infer<
   typeof mobileContactsDashboardPayloadSchema
 >;
 
 export type MobileContactsDashboardOptionalSection =
   (typeof MOBILE_CONTACTS_DASHBOARD_OPTIONAL_SECTIONS)[number];
+
+/**
+ * Sprint 0121: capability declaration for GET /api/mobile/contacts-dashboard.
+ * A client that reads `contacts.roleCounts` (instead of deriving role ratios
+ * from `contacts.contacts`) sends `?capabilities=roleCounts` and receives only
+ * the contacts the page shows plus role counts over all contacts. A request
+ * without the declaration (App builds before 0121) keeps the original
+ * contract: the full contacts list.
+ */
+export const MOBILE_CONTACTS_DASHBOARD_CAPABILITIES_PARAM = "capabilities";
+export const MOBILE_CONTACTS_DASHBOARD_ROLE_COUNTS_CAPABILITY = "roleCounts";
+export const MOBILE_CONTACTS_DASHBOARD_ROLE_COUNTS_QUERY =
+  `${MOBILE_CONTACTS_DASHBOARD_CAPABILITIES_PARAM}=${MOBILE_CONTACTS_DASHBOARD_ROLE_COUNTS_CAPABILITY}`;
+
+export function mobileContactsDashboardDeclaresRoleCounts(searchParams: URLSearchParams): boolean {
+  return searchParams
+    .getAll(MOBILE_CONTACTS_DASHBOARD_CAPABILITIES_PARAM)
+    .flatMap((value) => value.split(","))
+    .some((value) => value.trim() === MOBILE_CONTACTS_DASHBOARD_ROLE_COUNTS_CAPABILITY);
+}

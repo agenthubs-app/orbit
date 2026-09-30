@@ -144,6 +144,18 @@ function scenarioResult(
 function runContactsListSearch(
   input: ContactsListSearchFilterInput = {},
 ): ContactsListSearchResult {
+  const result = runUnfilteredContactsListSearch(input);
+  if (!input.contactIds || !result.success) return result;
+  const requested = new Set(input.contactIds);
+  return success({
+    ...result.data,
+    contacts: result.data.contacts.filter((contact) => requested.has(contact.id)),
+  });
+}
+
+function runUnfilteredContactsListSearch(
+  input: ContactsListSearchFilterInput = {},
+): ContactsListSearchResult {
   // listContacts 和 searchContacts 共用这条路径，保持搜索与列表筛选行为一致。
   const resolvedScenario = scenarioResult(normalizeScenario(input.scenario));
 

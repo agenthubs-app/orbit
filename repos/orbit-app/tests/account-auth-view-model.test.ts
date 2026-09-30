@@ -52,7 +52,7 @@ test("accountAuthToView maps each auth mode to Chinese mobile copy", () => {
     assert.equal(view.primaryLabel, expected.primaryLabel);
     assert.equal(view.switchLabel, expected.switchLabel);
     assert.equal(view.switchHref, expected.switchHref);
-    assert.equal(view.defaultNext, "/dashboard");
+    assert.equal(view.defaultNext, "/home");
     assert.equal(view.boundary, "使用网页端同一组邮箱和密码。");
     assert.doesNotMatch(
       flattenedText(view),
@@ -115,7 +115,7 @@ test("nextHrefForAccountAuthSubmit keeps fallback navigation deterministic", () 
       mode: "login",
       next: "/profile"
     }),
-    "/profile?complete=1&next=%2Fprofile"
+    "/profile/onboarding?next=%2Fprofile"
   );
   assert.equal(
     nextHrefForAccountAuthSubmit({
@@ -147,12 +147,12 @@ test("normalizedNext accepts supported app routes and rejects redirect or route-
   );
   assert.equal(normalizedNext("/today"), "/today");
   assert.equal(normalizedNext("/settings"), "/settings");
-  assert.equal(normalizedNext("https://attacker.example"), "/dashboard");
-  assert.equal(normalizedNext("//attacker.example/path"), "/dashboard");
-  assert.equal(normalizedNext("/\\attacker.example/path"), "/dashboard");
-  assert.equal(normalizedNext("/unknown-route"), "/dashboard");
-  assert.equal(normalizedNext("/account/login?next=%2Faccount%2Flogin"), "/dashboard");
-  assert.equal(normalizedNext("/account/signup"), "/dashboard");
-  assert.equal(normalizedNext("/account/reset-password#token=redacted"), "/dashboard");
-  assert.equal(normalizedNext(undefined), "/dashboard");
+  assert.equal(normalizedNext("https://attacker.example"), "/home");
+  assert.equal(normalizedNext("//attacker.example/path"), "/home");
+  assert.equal(normalizedNext("/\\attacker.example/path"), "/home");
+  assert.equal(normalizedNext("/unknown-route"), "/home");
+  assert.equal(normalizedNext("/account/login?next=%2Faccount%2Flogin"), "/home");
+  assert.equal(normalizedNext("/account/signup"), "/home");
+  assert.equal(normalizedNext("/account/reset-password#token=redacted"), "/home");
+  assert.equal(normalizedNext(undefined), "/home");
 });

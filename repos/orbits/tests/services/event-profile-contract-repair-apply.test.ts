@@ -1,3 +1,5 @@
+import { lockedFixtureQuery } from "../support/sync-revision-fixture";
+import { runEventSyncRevisionMigration } from "../../features/events/event-operations/storage/sync-revision";
 import assert from "node:assert/strict";
 import { createHash, randomUUID } from "node:crypto";
 import test from "node:test";
@@ -59,6 +61,8 @@ async function cloneFixture(
     await admin.query(`create schema ${schema}`);
     await runEventOperationsMigrations(client);
     await pool.query(ORBIT_RECORDS_SCHEMA_SQL);
+    // Sprint 0113: the event head tables carry sync_revision under the strict trigger, as in production.
+    await runEventSyncRevisionMigration(pool);
     await seedProfileRepairFixture(pool, workspaceId);
     const admission = (await pool.query(`select event_id,actor_id,membership_version,registered_at
       from event_ops_membership_versions where workspace_id=$1 order by event_id,actor_id limit 1`, [workspaceId])).rows[0]!;
@@ -125,6 +129,8 @@ test(
       await admin.query(`create schema ${schema}`);
       await runEventOperationsMigrations(client);
       await pool.query(ORBIT_RECORDS_SCHEMA_SQL);
+      // Sprint 0113: the event head tables carry sync_revision under the strict trigger, as in production.
+      await runEventSyncRevisionMigration(pool);
       await seedProfileRepairFixture(pool, workspaceId);
       const unaffectedActorIds = ["actor:repair-event-a:12", "actor:repair-event-b:12"];
       const unaffected = await pool.query<{ participant_id: string }>(`select participant_id
@@ -460,7 +466,7 @@ test("exact repair replay remains ledger-idempotent after a later legitimate pro
              late_registration,source_registration_id,statement_timestamp(),statement_timestamp(),origin,admission_application_version
       from event_ops_membership_versions where workspace_id=$1 and event_id=$2 and actor_id=$3 and membership_version=$4`,
       [workspaceId,current.event_id,current.actor_id,current.membership_version,Number(current.membership_version)+1,Number(current.profile_version)+1]);
-    await fixture.pool.query(`update event_ops_membership_heads set membership_version=$4,profile_version=$5,
+    await lockedFixtureQuery(fixture.pool, `update event_ops_membership_heads set membership_version=$4,profile_version=$5,
       revision=revision+1,updated_at=statement_timestamp() where workspace_id=$1 and event_id=$2 and actor_id=$3`,
       [workspaceId,current.event_id,current.actor_id,Number(current.membership_version)+1,Number(current.profile_version)+1]);
     const beforeReplay = JSON.stringify((await fixture.pool.query(`select
@@ -578,7 +584,7 @@ test("apply preserves adaptive and legacy responses, mirror absence, second-canc
           cancelled_at=registered_at+interval '2 minutes',effective_at=registered_at+interval '2 minutes'
       where workspace_id=$1 and event_id=$2 and actor_id=$3 and membership_version=$4`,
     [fixtureWorkspaceId,cancelledTarget.event_id,cancelledTarget.actor_id,cancelledTarget.membership_version]);
-    await pool.query(`update event_ops_membership_heads
+    await lockedFixtureQuery(pool, `update event_ops_membership_heads
       set status='cancelled',updated_at=$5::timestamptz+interval '2 minutes'
       where workspace_id=$1 and event_id=$2 and actor_id=$3 and membership_version=$4`,
     [fixtureWorkspaceId,cancelledTarget.event_id,cancelledTarget.actor_id,

@@ -101,6 +101,22 @@ test("reads and DML returned rows are measured, empty writes are excluded", asyn
   assert.equal(nowCalls, 6);
 });
 
+// Sprint 0118: a write to a sync collection takes the commit-order lock in a
+// leading CTE (with sync_write_lock as ...). It is still a write: its returned
+// row is DML egress, and an empty one is not a read. The AI sessions and the
+// inbox became sync collections, so their writes start with the CTE too.
+test("a sync-collection write behind the commit-order lock CTE is classified as the write it is", async () => {
+  const metrics: PostgresReadMetric[] = [];
+  const runner = createPostgresReadMetricsRunner({ observer: (metric) => { metrics.push(metric); }, now: () => 1 }, {});
+  if (!runner) throw new Error("metrics runner should be enabled");
+  const lock = "with sync_write_lock as materialized (select set_config('orbit.sync_write_lock_key', held.key::text, true) as acquired_key from (select 1 as key) held)";
+  await runner(`${lock}\ninsert into orbit_records (workspace_id) select $1 from sync_write_lock on conflict do update set payload = excluded.payload returning *`, async () => ({ rows: privateRows }));
+  await runner(`${lock}\nupdate orbit_records set payload = $1 from sync_write_lock where record_id = $2 returning *`, async () => ({ rows: [] }));
+  await runner(`${lock}, owner_change as (select 1) update orbit_records set user_id = $1 from owner_change, sync_write_lock returning *`, async () => ({ rows: privateRows }));
+  await runner("with rows as (select 1 as update_count) select * from rows", async () => ({ rows: privateRows }));
+  assert.deepEqual(metrics.map((metric) => metric.queryKind), ["insert", "update", "with"], "the empty locked update is a write with no egress; a plain CTE read stays a read");
+});
+
 test("observer failures and read failures cannot alter database behavior", async () => {
   const observerFailure = new Error("observer failure");
   const metrics = createPostgresReadMetricsRunner(

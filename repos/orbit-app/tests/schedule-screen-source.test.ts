@@ -8,11 +8,23 @@ const screenSource = readFileSync(
   join(repoRoot, "src", "screens", "schedule", "ScheduleScreen.tsx"),
   "utf8"
 );
+// Sprint 0115: the calendar's data comes from a source hook — the device mirror
+// on native, the mirror or (when the browser has none) these network reads on web.
+const webSource = readFileSync(join(repoRoot, "src", "screens", "schedule", "schedule-calendar-source.web.ts"), "utf8");
+const nativeSource = readFileSync(join(repoRoot, "src", "screens", "schedule", "schedule-calendar-source.ts"), "utf8");
 
-test("schedule screen reads the same public event collection as event discovery", () => {
-  assert.match(screenSource, /ORBIT_API_ENDPOINTS\.publicEvents/u);
-  assert.match(screenSource, /ORBIT_API_ENDPOINTS\.scheduleItems/u);
-  assert.doesNotMatch(screenSource, /ORBIT_API_ENDPOINTS\.events\b/u);
+test("schedule screen reads its calendar from the source hook; native reads only the device mirror", () => {
+  assert.match(screenSource, /useScheduleCalendarSource\(\)/u);
+  assert.doesNotMatch(screenSource, /useApiResource/u);
+  assert.doesNotMatch(nativeSource, /useApiResource|ORBIT_API_ENDPOINTS/u);
+  for (const kind of ["task", "personal_schedule", "registered_event"]) assert.match(nativeSource, new RegExp(`kind: "${kind}"`, "u"));
+});
+
+test("the browser fallback reads the same public event collection as event discovery", () => {
+  assert.match(webSource, /ORBIT_API_ENDPOINTS\.publicEvents/u);
+  assert.match(webSource, /ORBIT_API_ENDPOINTS\.scheduleItems/u);
+  assert.doesNotMatch(webSource, /ORBIT_API_ENDPOINTS\.events\b/u);
+  assert.match(webSource, /enabled: !mirrorActive/u);
 });
 
 test("schedule screen uses one title and a calendar-first hierarchy", () => {
@@ -68,26 +80,14 @@ test("schedule calendar marks Japanese holidays and weekends without replacing e
 });
 
 test("schedule screen can render partial timeline data while one source is pending", () => {
-  assert.match(
-    screenSource,
-    /const hasAnyData =\s*usable\(tasksState\) \|\| usable\(eventsState\) \|\| usable\(scheduleItemsState\)/u
-  );
-  assert.match(
-    screenSource,
-    /tasks:\s*usable\(tasksState\)\s*\?\s*taskPageToScheduleTasks\(normalizeTaskPageContract\(tasksState\.data\)\)\s*:\s*\{\s*tasks:\s*\[\]\s*\}/u
-  );
-  assert.match(
-    screenSource,
-    /events:\s*usable\(eventsState\)\s*\?\s*eventsState\.data\s*:\s*\{\s*events:\s*\[\]\s*\}/u
-  );
-  assert.doesNotMatch(
-    screenSource,
-    /usable\(tasksState\) && usable\(eventsState\)\s*\?/u
-  );
+  assert.match(screenSource, /const hasAnyData = \[tasksPart, eventsPart, itemsPart\]\.some\(\(part\) => part\.kind === "ready"\)/u);
+  assert.match(screenSource, /tasks: tasksPart\.kind === "ready" \? tasksPart\.data : \{ tasks: \[\] \}/u);
+  assert.match(screenSource, /events: eventsPart\.kind === "ready" \? eventsPart\.data : \{ events: \[\] \}/u);
 });
 
 test("schedule preview reads four bounded task cards instead of the full task collection", () => {
-  assert.match(screenSource, /\/api\/tasks\/page\?status=open&scope=all&limit=4/u);
-  assert.match(screenSource, /taskPageSchema/u);
-  assert.doesNotMatch(screenSource, /ORBIT_API_ENDPOINTS\.tasks\b/u);
+  assert.match(webSource, /\/api\/tasks\/page\?status=open&scope=all&limit=4/u);
+  assert.match(webSource, /taskPageSchema/u);
+  assert.doesNotMatch(webSource, /ORBIT_API_ENDPOINTS\.tasks\b/u);
+  assert.match(readFileSync(join(repoRoot, "src", "screens", "schedule", "schedule-calendar-source-mirror.ts"), "utf8"), /CALENDAR_TASK_LIMIT = 4/u);
 });

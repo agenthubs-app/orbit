@@ -43,8 +43,45 @@ export const OFFLINE_POLICY_REGISTRATIONS = [
   { method: "POST", pathname: "/api/schedule-items", action: "create", policy: policy("personal_schedule", "durable_normalized", "offline_queue") },
   { method: "PATCH", pathname: "/api/schedule-items/:id", action: "update", policy: policy("personal_schedule", "durable_normalized", "offline_queue") },
   { method: "DELETE", pathname: "/api/schedule-items/:id", action: "delete", policy: policy("personal_schedule", "durable_normalized", "offline_queue") },
-  { method: "GET", pathname: "/api/relationship-communication/conversations/:id/messages", action: "read", policy: policy("message", "durable_normalized", "online_only") },
+  // Sprint 0119: relationship messages (sync domains relationship-conversations, relationship-messages): the inbox list, the unread badge and the chat read the device copy first; sending, drafts and marking read need the network.
+  { method: "GET", pathname: "/api/relationship-communication/conversations/:id/messages", action: "read", policy: policy("relationship_message", "durable_normalized", "online_only") },
+  { method: "GET", pathname: "/api/relationship-communication/conversation-summaries", action: "read", policy: policy("relationship_conversation", "durable_normalized", "online_only") },
+  { method: "GET", pathname: "/api/relationship-communication/unread-summary", action: "read", policy: policy("relationship_conversation", "durable_normalized", "online_only") },
   { method: "GET", pathname: "/api/events/public", action: "read", policy: policy("public_event", "encrypted_ttl_snapshot", "online_only", "on_demand_encrypted") },
+  // Sprint 0115: the registered attendee's event day (sync domains registered-events, event-registrations, event-published-results).
+  { method: "GET", pathname: "/api/events/public/:id", action: "read", policy: policy("registered_event", "durable_normalized", "online_only") },
+  { method: "GET", pathname: "/api/events/:id/registration", action: "read", policy: policy("event_registration", "durable_normalized", "online_only") },
+  { method: "GET", pathname: "/api/events/:id/operations", action: "read", policy: policy("event_published_result", "durable_normalized", "online_only") },
+  // Sprint 0116: the account's contacts (sync domain contacts): list, summary and detail read the device copy first.
+  { method: "GET", pathname: "/api/contacts/page", action: "read", policy: policy("contact", "durable_normalized", "online_only") },
+  { method: "GET", pathname: "/api/contacts/summary", action: "read", policy: policy("contact", "durable_normalized", "online_only") },
+  { method: "GET", pathname: "/api/contacts/:id", action: "read", policy: policy("contact", "durable_normalized", "online_only") },
+  // Sprint 0117: the dashboard and contacts-analysis sections are computed on the device from the sync domain dashboard-graph.
+  { method: "GET", pathname: "/api/dashboard", action: "read", policy: policy("dashboard_graph", "durable_normalized", "online_only") },
+  { method: "GET", pathname: "/api/dashboard/summary", action: "read", policy: policy("dashboard_graph", "durable_normalized", "online_only") },
+  { method: "GET", pathname: "/api/dashboard/opportunities", action: "read", policy: policy("dashboard_graph", "durable_normalized", "online_only") },
+  { method: "GET", pathname: "/api/dashboard/network-gaps", action: "read", policy: policy("dashboard_graph", "durable_normalized", "online_only") },
+  { method: "GET", pathname: "/api/dashboard/distributions", action: "read", policy: policy("dashboard_graph", "durable_normalized", "online_only") },
+  { method: "GET", pathname: "/api/mobile/contacts-dashboard", action: "read", policy: policy("dashboard_graph", "durable_normalized", "online_only") },
+  { method: "GET", pathname: "/api/dashboard/structure/:dimension/:bucketId", action: "read", policy: policy("dashboard_graph", "durable_normalized", "online_only") },
+  // Sprint 0118: the typed inbox (sync domain inbox-notifications) and the AI sessions (ai-sessions, and ai-session-messages for opened sessions) read the device copy first; every action needs the network.
+  { method: "GET", pathname: "/api/inbox/notifications", action: "read", policy: policy("inbox_notification", "durable_normalized", "online_only") },
+  { method: "GET", pathname: "/api/inbox/notifications/:id", action: "read", policy: policy("inbox_notification", "durable_normalized", "online_only") },
+  { method: "GET", pathname: "/api/ai/conversations/sessions", action: "read", policy: policy("ai_session", "durable_normalized", "online_only") },
+  { method: "GET", pathname: "/api/ai/conversations/sessions/:id", action: "read", policy: policy("ai_session_message", "durable_normalized", "online_only") },
+  // Sprint 0131: page copies — the device keeps the last successful read of these server-computed pages (bound to
+  // the offline read lease epoch, AES-GCM per value in the browser; App src/data/sync/page-copies.ts). Writes stay online.
+  { method: "GET", pathname: "/api/profile", action: "read", policy: policy("self_profile", "encrypted_ttl_snapshot", "online_only") },
+  { method: "GET", pathname: "/api/agent/actions", action: "read", policy: policy("agent_actions", "encrypted_ttl_snapshot", "online_only") },
+  { method: "GET", pathname: "/api/agent/ledger", action: "read", policy: policy("agent_ledger", "encrypted_ttl_snapshot", "online_only") },
+  { method: "GET", pathname: "/api/relationship-tasks/page", action: "read", policy: policy("relationship_tasks", "encrypted_ttl_snapshot", "online_only") },
+  { method: "GET", pathname: "/api/task-suggestions/page", action: "read", policy: policy("task_suggestions", "encrypted_ttl_snapshot", "online_only") },
+  { method: "GET", pathname: "/api/today", action: "read", policy: policy("today", "encrypted_ttl_snapshot", "online_only") },
+  { method: "GET", pathname: "/api/connections/:id/lifecycle", action: "read", policy: policy("relationship_lifecycle", "encrypted_ttl_snapshot", "online_only") },
+  { method: "GET", pathname: "/api/schedule-items/:id/meeting-details", action: "read", policy: policy("meeting_details", "encrypted_ttl_snapshot", "online_only") },
+  { method: "GET", pathname: "/api/appointments/:id", action: "read", policy: policy("meeting_details", "encrypted_ttl_snapshot", "online_only") },
+  { method: "GET", pathname: "/api/audit/provenance", action: "read", policy: policy("provenance_audit", "encrypted_ttl_snapshot", "online_only") },
+  { method: "GET", pathname: "/api/recommendations/events", action: "read", policy: policy("event_recommendations", "encrypted_ttl_snapshot", "online_only") },
   { method: "POST", pathname: "/api/auth/mobile/credentials", action: "authenticate", policy: policy("account_secret", "online_only_secret", "online_only", "never_local") },
 ] satisfies readonly OfflinePolicyRegistration[];
 

@@ -26,8 +26,6 @@ function loadPage(t: TestContext, route: "agent" | "tasks/personal" | "home/even
     // iOrbit 任务 6a：`orbit-real-agent.tsx` 已删除，页面挂的是 `IOrbitShell`。
     [join(root, "app/(app)/app/agent/iorbit-0918/iorbit-shell.tsx")]: { IOrbitShell: () => null },
     [join(root, "app/(app)/app/home/orbit-real-home.tsx")]: { OrbitRealHome: () => null },
-    [join(root, "app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-route-view-model.ts")]: { loadAppChatRouteViewModel: stub("chat", {}) },
-    [join(root, "app/(app)/app/chat/compose-app-chat-from-previously-approved-mock-first-capabilities/chat-view-model-adapter.ts")]: { composeOrbitAgentEntryViewModel: () => ({ state: "ready", viewModel: {} }) },
     [join(root, "app/(app)/app/home/compose-app-home-from-previously-approved-mock-first-capabilities/home-route-view-model.tsx")]: { loadAppHomeRouteViewModel: stub("home", { state: "success", home: { events: [] } }) },
     [join(root, "app/(app)/app/canonical-event-detail-view.ts")]: { resolveConfiguredActorEventCanonicalIds: stub("events", {}) },
     [join(root, "features/events/registration/runtime.ts")]: { readRuntimeEventRegistrationStates: stub("registrations", {}) },
@@ -59,7 +57,16 @@ for (const route of ["agent", "tasks/personal", "home/events"] as const) {
     const tree = await page();
     assert.deepEqual(calls.find(call => call.operation === "identity")?.input, [{ userId: "subject:external", email: "owner@example.test", name: "Owner" }]);
     if (route === "agent") {
-      assert.equal(calls.find(call => call.operation === "chat")?.input[1].actorId, "account:canonical");
+      // Sprint 0104: no legacy chat read; the welcome questions come from the starter model.
+      const nodes: any[] = [tree];
+      let suggests: Array<{ label: string }> | undefined;
+      while (nodes.length && !suggests) {
+        const node = nodes.pop();
+        if (!node?.props) continue;
+        suggests = node.props.viewModel?.suggests;
+        nodes.push(...[node.props.children].flat());
+      }
+      assert.deepEqual(suggests?.map(item => item.label), ["找值得跟进的人脉", "推荐可拓展活动", "整理关系待办"]);
       assert.equal(calls.find(call => call.operation === "home")?.input[1].id, "account:canonical");
       assert.equal(calls.find(call => call.operation === "home")?.input[1].rawSubject, "subject:external");
       assert.equal(calls.find(call => call.operation === "events")?.input[0].actorId, "account:canonical");

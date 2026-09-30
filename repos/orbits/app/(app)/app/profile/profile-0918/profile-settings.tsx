@@ -1,7 +1,7 @@
 /**
  * iOrbit 设置屏（Orbit_0918 个人中心 设计稿 209–242 行）+ 既有设置面板。
  *   - 左列 212–215「关于我」textarea ← `bio`（`session.update("bio", …)`，basic scope；保存栏在壳里 → saveProfile("basic")，
- *     `BIO_VISIBLE_LIMIT` 80 可见字符校验沿用 `validateProfileSaveDraft`）。卡头「编辑」→ 基础资料编辑屏（bio 也在那里）。
+ *     可见字符上限（含中日韩 80 / 其余 200）沿用 `validateProfileSaveDraft`）。卡头「编辑」→ 基础资料编辑屏（bio 也在那里）。
  *   - 216–220「当前目标」= `intro`(=relationshipGoal) 段落，无值「未设置」；设计的 4 个目标 chip 无数据源 → 省略；
  *     卡头「编辑」→ 画像编辑屏（目标只读展示处；hook 无 intro 保存通道）。
  *   - 221–228「沟通偏好」（首选语言 / 沟通风格 / 会议时间偏好）`OrbitProfileView` 无字段 → 整卡省略。

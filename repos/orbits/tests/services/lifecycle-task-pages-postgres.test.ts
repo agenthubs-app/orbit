@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
-import test from "node:test";
+import test, { type TestContext } from "node:test";
 import { Pool } from "pg";
 import { createLifecycleTaskPagesReader, lifecycleGroups, LIFECYCLE_TASK_PAGES_SQL, type LifecycleCursors } from "../../features/followups/storage/lifecycle-task-pages";
 import { createRelationshipLifecycleFactsReader } from "../../features/followups/storage/relationship-lifecycle-facts-reader";
@@ -10,17 +10,24 @@ import { createPostgresLiveRecordStore, type LiveRecordSqlClient } from "../../s
 import { ORBIT_RECORDS_SCHEMA_SQL } from "../../shared/storage/migrations";
 import { createLifecycleHomeSummaryReader } from "../../features/followups/storage/lifecycle-home-summary";
 import { loadHomeFacts } from "../../app/(app)/app/agent/home-facts-route-service";
+import { lifecycleSortRuntimeSkipReason } from "../support/lifecycle-sort-runtime";
 
 const at = "2026-09-25T00:00:00.000Z", secret = "local-test-only-".repeat(4);
 const common = { source: { type: "manual", id: "s", label: "\t" }, evidenceIds: [null, "", "\uFEFF", "e"], createdAt: at, updatedAt: at };
-async function database(run: (pool: Pool) => Promise<void>) {
+// The database name used to be pinned to orbit_neon_audit_20260925 as a proxy for
+// "a Neon restore"; what the product actually requires is the verified sort
+// runtime, which is now probed directly and skipped with a reason otherwise (0123).
+async function database(t: TestContext, run: (pool: Pool) => Promise<void>) {
   const url = new URL(process.env.ORBIT_LIFECYCLE_TEST_DATABASE_URL!);
   assert.ok(["localhost", "127.0.0.1", "[::1]"].includes(url.hostname));
   assert.equal(url.search, ""); assert.equal(url.hash, "");
-  assert.equal(url.pathname, "/orbit_neon_audit_20260925");
   const schema = `lifecycle_pages_${randomUUID().replaceAll("-", "")}`;
   const pool = new Pool({ connectionString: url.toString(), max: 1, options: `-c search_path=${schema} -c statement_timeout=60000` });
-  try { await pool.query(`create schema ${schema}`); await pool.query(ORBIT_RECORDS_SCHEMA_SQL); await run(pool); }
+  try {
+    const skipReason = await lifecycleSortRuntimeSkipReason(pool);
+    if (skipReason) { t.skip(skipReason); return; }
+    await pool.query(`create schema ${schema}`); await pool.query(ORBIT_RECORDS_SCHEMA_SQL); await run(pool);
+  }
   finally { await pool.query(`drop schema if exists ${schema} cascade`); await pool.end(); }
 }
 async function insert(pool: Pool, collectionName: string, id: string, payload: Record<string, unknown>, userId: string | null = "a") {
@@ -35,7 +42,7 @@ async function seed(pool: Pool) {
   await insert(pool, "connections", "cn", { accountId: "a", contactId: "c", stage: "active", summary: "PRIVATE_SUMMARY" });
 }
 
-test("bounded lifecycle pages preserve classification/order/counts, duplicates, permissions and cursor boundaries", { skip: !process.env.ORBIT_LIFECYCLE_TEST_DATABASE_URL }, async () => database(async pool => {
+test("bounded lifecycle pages preserve classification/order/counts, duplicates, permissions and cursor boundaries", { skip: !process.env.ORBIT_LIFECYCLE_TEST_DATABASE_URL }, async (t) => database(t, async pool => {
   await seed(pool);
   const ids = ["É", "e", "é", "E", "东京", "東京", "a-2", "a_2", "😀", "z", ...Array.from({ length: 110 }, (_, i) => `task:${String(i).padStart(4, "0")}`)];
   for (const [i, id] of ids.entries()) {
@@ -87,7 +94,7 @@ test("bounded lifecycle pages preserve classification/order/counts, duplicates, 
   assert.equal((await reader.read("a", { current: cursor })).counts.current, 0);
 }));
 
-test("a conflicting duplicate beyond the first page fails closed; malformed optional fields normalize equally", { skip: !process.env.ORBIT_LIFECYCLE_TEST_DATABASE_URL }, async () => database(async pool => {
+test("a conflicting duplicate beyond the first page fails closed; malformed optional fields normalize equally", { skip: !process.env.ORBIT_LIFECYCLE_TEST_DATABASE_URL }, async (t) => database(t, async pool => {
   await seed(pool);
   for (let i = 0; i < 40; i++) await insert(pool, "tasks", `t${String(i).padStart(2, "0")}`, { title: "Same", status: "open", connectionId: "cn", dueAt: 123 });
   const reader = createLifecycleTaskPagesReader({ client: pool, workspaceId: "w", secret });
@@ -97,7 +104,7 @@ test("a conflicting duplicate beyond the first page fails closed; malformed opti
   assert.equal((await loadLifecycleTaskPages({ actorId: "a", reader })).state, "unavailable");
 }));
 
-test("home summary matches full facts across time boundaries, all group counts, and rejects invalid dates outside the visible cards", { skip: !process.env.ORBIT_LIFECYCLE_TEST_DATABASE_URL }, async () => database(async pool => {
+test("home summary matches full facts across time boundaries, all group counts, and rejects invalid dates outside the visible cards", { skip: !process.env.ORBIT_LIFECYCLE_TEST_DATABASE_URL }, async (t) => database(t, async pool => {
   await seed(pool);
   const dates = [undefined, "2026-09-24T23:59:59.999999999Z", at, "2026-09-25T09:00:00+09:00", "2026-10-01T14:59:59.999Z", "2026-10-01T15:00:00Z", "2026-09-24T24:00:00Z", "2026-09-25T09:00:00.000001+09:00", "2026-09-25T23:59:00+23:59", "2026-09-24T00:01:00-23:59"];
   for (let i = 0; i < 64; i++) await insert(pool, "tasks", `home:${String(i).padStart(3, "0")}`, { title: "Follow-up", status: "open", connectionId: "cn", dueAt: dates[i % dates.length] });
@@ -120,7 +127,7 @@ test("home summary matches full facts across time boundaries, all group counts, 
   assert.equal(invalid.followups.state, "unavailable"); assert.equal(invalid.followups.count, null);
 }));
 
-test("normalization matches the legacy decoder and large text remains a preview inside SQL", { skip: !process.env.ORBIT_LIFECYCLE_TEST_DATABASE_URL }, async () => database(async pool => {
+test("normalization matches the legacy decoder and large text remains a preview inside SQL", { skip: !process.env.ORBIT_LIFECYCLE_TEST_DATABASE_URL }, async (t) => database(t, async pool => {
   await seed(pool);
   const fields = ["title", "status", "contactId", "connectionId", "dueAt", "createdAt", "updatedAt", "evidenceIds", "source"];
   const values = [null, 123, {}, [], "", "\t\uFEFF", "x", ["", null, "e", "e"], { type: "manual", id: "s", label: "\uFEFF" }];
@@ -139,7 +146,7 @@ test("normalization matches the legacy decoder and large text remains a preview 
   assert.ok(bytes < 64_000);
 }));
 
-test("growing tasks and associated contacts/connections together stays bounded; unrelated actor growth does not change output", { skip: !process.env.ORBIT_LIFECYCLE_TEST_DATABASE_URL || process.env.ORBIT_FOLLOWUP_PAGE_GROWTH !== "1", timeout: 180_000 }, async () => database(async pool => {
+test("growing tasks and associated contacts/connections together stays bounded; unrelated actor growth does not change output", { skip: !process.env.ORBIT_LIFECYCLE_TEST_DATABASE_URL || process.env.ORBIT_FOLLOWUP_PAGE_GROWTH !== "1", timeout: 180_000 }, async (t) => database(t, async pool => {
   await seed(pool);
   await insert(pool, "tasks", "template", { title: "Task", status: "open", connectionId: "cn", dueAt: at });
   let bytes = 0;
@@ -175,7 +182,7 @@ test("growing tasks and associated contacts/connections together stays bounded; 
   assert.deepEqual(await reader.read("a"), before); assert.equal(bytes, beforeBytes);
 }));
 
-test("same-actor lifecycle growth keeps cold output bounded, measured against old facts", { skip: !process.env.ORBIT_LIFECYCLE_TEST_DATABASE_URL || process.env.ORBIT_FOLLOWUP_PAGE_GROWTH !== "1", timeout: 240_000 }, async () => database(async pool => {
+test("same-actor lifecycle growth keeps cold output bounded, measured against old facts", { skip: !process.env.ORBIT_LIFECYCLE_TEST_DATABASE_URL || process.env.ORBIT_FOLLOWUP_PAGE_GROWTH !== "1", timeout: 240_000 }, async (t) => database(t, async pool => {
   await seed(pool);
   await insert(pool, "tasks", "template", { title: "Task", status: "open", connectionId: "cn", dueAt: at });
   let bytes = 0, queries = 0;

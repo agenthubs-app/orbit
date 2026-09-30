@@ -3,11 +3,13 @@ import test from "node:test";
 import { readCanonicalContactLifecycles } from "../../features/connections/lifecycle/read-projection";
 import { createPostgresLifecycleMigrationRepository } from "../../features/connections/lifecycle/migration-repository";
 import type { TransactionalPostgresClient } from "../../shared/storage/transactional-postgres";
+import { testRawWrite, testReseedOwner } from "../support/sync-revision-fixture";
 import { lifecycleMigrationDatabaseTest as databaseTest, lifecycleMigrationFixtureCommand, lifecycleMigrationFixtureRecord as record, migrationActorId as actorId, migrationManifest as manifest, migrationNow as now, migrationWorkspaceId as workspaceId, withLifecycleMigrationDatabase as withDatabase } from "../support/lifecycle-migration-fixture";
 
 const scope = { actorId, workspaceId, now, timeZone: "Asia/Tokyo" };
 const read = (client: TransactionalPostgresClient) => readCanonicalContactLifecycles({ client, ...scope });
-const canonical = (client: TransactionalPostgresClient) => client.query("update orbit_records set payload=payload || '{\"version\":1}'::jsonb where workspace_id=$1 and user_id=$2", [workspaceId, actorId]);
+// Touches the actor's tasks too, so it runs under the sync lock (sprint 0108).
+const canonical = (client: TransactionalPostgresClient) => testRawWrite(client, "tasks", "update orbit_records set payload=payload || '{\"version\":1}'::jsonb where workspace_id=$1 and user_id=$2", [workspaceId, actorId]);
 function trace(client: TransactionalPostgresClient, afterFirst?: () => Promise<void>) {
   const calls: { sql: string; values?: readonly unknown[]; rows: readonly unknown[] }[] = [];
   let transactions = 0;
@@ -64,13 +66,13 @@ test("foreign payloads never cross SQL even when a foreign task references the a
 for (const defect of ["orphan-contact", "foreign-contact", "foreign-connection", "claimed-connection", "orphan-task", "malformed-task", "null-owner-task"]) test(`batch reads reject ${defect} without a partial result`, databaseTest, async () => withDatabase(async ({ client, insert }) => {
   await canonical(client);
   if (defect === "orphan-contact") await insert(record("contacts", "contact:orphan", { id: "contact:orphan", version: 1 }));
-  if (defect === "foreign-contact") await client.query("update orbit_records set user_id='actor:other' where collection_name='contacts'");
+  if (defect === "foreign-contact") await testReseedOwner(client, "contacts", "true", "actor:other");
   if (defect === "foreign-connection") await insert(record("connections", "connection:foreign", { id: "connection:foreign", accountId: "actor:other", contactId: "contact:a", private: "FOREIGN PRIVATE" }, "actor:other"));
   if (defect === "claimed-connection") await insert(record("connections", "connection:foreign", { id: "connection:foreign", accountId: actorId, contactId: "contact:other", private: "FOREIGN PRIVATE" }, "actor:other"));
   if (defect === "orphan-task") await insert(record("tasks", "task:orphan", { id: "task:orphan", connectionId: "connection:missing" }));
   if (defect === "malformed-task") {
     await insert(record("tasks", "task:malformed", {}));
-    await client.query("update orbit_records set payload='null'::jsonb where collection_name='tasks'");
+    await testRawWrite(client, "tasks", "update orbit_records set payload='null'::jsonb where collection_name='tasks'");
   }
   if (defect === "null-owner-task") await insert(record("tasks", "task:unowned", { id: "task:unowned", connectionId: "connection:a", private: "FOREIGN PRIVATE" }, null));
   const traced = trace(client);
@@ -100,7 +102,7 @@ test("canonical reads require current valid data, never a past migration receipt
   const repo = createPostgresLifecycleMigrationRepository({ client, workspaceId });
   await repo.apply(lifecycleMigrationFixtureCommand(await repo.dryRun(manifest)));
   assert.equal((await read(client)).length, 1);
-  await client.query("update orbit_records set payload=payload-'activeGoal' where collection_name='connections'");
+  await testRawWrite(client, "connections", "update orbit_records set payload=payload-'activeGoal' where collection_name='connections'");
   await assert.rejects(read(client), { code: "INCONSISTENT_STATE" });
 }));
 

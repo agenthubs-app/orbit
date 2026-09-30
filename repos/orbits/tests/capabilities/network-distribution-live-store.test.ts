@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createLiveNetworkDistributionAnalyticsService } from "../../features/dashboard/live-distribution-service";
-import { createStorageNetworkDistributionAnalyticsProvider } from "../../features/dashboard/storage/network-distribution-live-record-provider";
+import { createMemoryNetworkDistributionProvider } from "../support/memory-dashboard-provider";
 import { createStorageContactGraphProvider } from "../../features/contacts/storage/contact-live-record-provider";
 import { defaultMockFixtures } from "../../shared/mock/fixtures";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
@@ -55,7 +55,7 @@ test("live network distribution analytics reads generated graph and remains read
     recordId: "connection_0007",
     workspaceId,
   });
-  const provider = createStorageNetworkDistributionAnalyticsProvider({
+  const provider = createMemoryNetworkDistributionProvider({
     sourceLabel: "Network distribution memory live storage",
     store,
     workspaceId,
@@ -221,7 +221,7 @@ test("live network distribution analytics reads generated graph and remains read
 
   const emptyStore = createMemoryLiveRecordStore<Record<string, unknown>>();
   const emptyService = createLiveNetworkDistributionAnalyticsService({
-    provider: createStorageNetworkDistributionAnalyticsProvider({
+    provider: createMemoryNetworkDistributionProvider({
       sourceLabel: "Empty network distribution memory storage",
       store: emptyStore,
       workspaceId: "workspace:network-distribution-empty",

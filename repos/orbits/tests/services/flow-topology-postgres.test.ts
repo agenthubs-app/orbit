@@ -47,12 +47,16 @@ async function createHost(t: TestContext) {
 const INSERT = `insert into orbit_records (workspace_id,collection_name,record_id,user_id,source_type,source_id,payload,created_at,updated_at)
   values ($1,$2,$3,$4,'manual','flow-topology',$5::jsonb,$6,$6)`;
 
-async function insertContact(client: TransactionalSqlExecutor, owner: string, id: string) {
+// Sprint 0116: contacts and connections are sync collections; the seed holds the commit-order lock.
+async function insertContact(client: { transaction<T>(run: (tx: TransactionalSqlExecutor) => Promise<T>): Promise<T> }, owner: string, id: string) {
   const base = { source: { type: "manual", id: "flow-topology" }, evidenceIds: ["evidence:seed"], createdAt: NOW, updatedAt: NOW };
-  await client.query(INSERT, [WORKSPACE, "contacts", id, owner, JSON.stringify({ ...base, id, displayName: `Contact ${id}`, stage: "captured" }), NOW]);
-  await client.query(INSERT, [WORKSPACE, "connections", `connection:${id}`, owner, JSON.stringify({
-    ...base, id: `connection:${id}`, contactId: id, accountId: owner, summary: `Relationship ${id}`, stage: "active", version: 1, valueTypes: [],
-  }), NOW]);
+  await client.transaction(async (tx) => {
+    await tx.query("select orbit_records_acquire_sync_write_lock('contacts')");
+    await tx.query(INSERT, [WORKSPACE, "contacts", id, owner, JSON.stringify({ ...base, id, displayName: `Contact ${id}`, stage: "captured" }), NOW]);
+    await tx.query(INSERT, [WORKSPACE, "connections", `connection:${id}`, owner, JSON.stringify({
+      ...base, id: `connection:${id}`, contactId: id, accountId: owner, summary: `Relationship ${id}`, stage: "active", version: 1, valueTypes: [],
+    }), NOW]);
+  });
 }
 
 /** Sync collections are trigger-guarded: writers must hold the sync write lock inside the transaction. */
@@ -75,10 +79,14 @@ async function seedHost({ client }: Host) {
   for (let n = 1; n <= SEED.b.tasks; n += 1) await insertTaskUnderLock(client, B, `task:b:${n}`);
   for (let n = 1; n <= SEED.organizer.tasks; n += 1) await insertTaskUnderLock(client, ORGANIZER, `task:organizer:${n}`);
   for (let n = 1; n <= SEED.organizer.events; n += 1) {
-    await client.query(INSERT, [WORKSPACE, "events", `event:${n}`, ORGANIZER, JSON.stringify({
-      id: `event:${n}`, name: `Event ${n}`, location: "Tokyo", startsAt: NOW, endsAt: NOW, organizerId: ORGANIZER,
-      source: { type: "manual", id: "flow-topology" }, evidenceIds: ["evidence:seed"],
-    }), NOW]);
+    // Sprint 0117: events is a sync collection too (dashboard graph), so its writers hold the lock.
+    await client.transaction(async (tx) => {
+      await tx.query("select orbit_records_acquire_sync_write_lock('events')");
+      await tx.query(INSERT, [WORKSPACE, "events", `event:${n}`, ORGANIZER, JSON.stringify({
+        id: `event:${n}`, name: `Event ${n}`, location: "Tokyo", startsAt: NOW, endsAt: NOW, organizerId: ORGANIZER,
+        source: { type: "manual", id: "flow-topology" }, evidenceIds: ["evidence:seed"],
+      }), NOW]);
+    });
   }
 }
 

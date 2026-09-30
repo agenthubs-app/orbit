@@ -38,6 +38,9 @@ window.fetch = async (input, init) => { const index = state.requests.length; con
 export const useFixture = () => { observe(); return state; };
 export const useOrbitAuthSession = () => { observe(); return { ready: state.ready, signedIn: state.signedIn, accountId: state.signedIn ? state.actor : null, actorId: state.signedIn ? state.actor : null, user: state.signedIn ? { id: state.actor, name: state.name, email: "person@example.test" } : null, cookieHeader: state.cookieHeader }; };
 export const useOrbitApiBaseUrl = () => { observe(); return { ready: state.baseReady, baseUrl: state.baseUrl }; };
+// Sprint 0131: the screen also reads the device mirror / page copies; this harness tests the network path (no mirror).
+export const useSyncedCollection = () => ({ status: "unsynced", error: null, lastSyncedAt: null, workspaceId: null, records: [], refresh: async () => null, invalidate: async () => null, currentSession: () => null });
+export const useSyncCoordinatorSession = () => null;
 export const useIsFocused = () => { observe(); return state.focused; };
 export const useGlobalSearchParams = () => ({ complete: state.complete, next: state.next });
 export const usePathname = () => "/profile";
@@ -62,7 +65,7 @@ test.before(async () => {
     plugins: [{ name: "profile-http-boundaries", setup(plugin) {
       plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "profile" }));
       plugin.onResolve({ filter: /^react-native-svg$/ }, () => ({ path: require.resolve("react-native-svg/lib/module/ReactNativeSVG.web.js") }));
-      plugin.onResolve({ filter: /^(fixture|expo-router|expo-crypto|expo-image-picker|expo-document-picker|@expo\/vector-icons|react-native-safe-area-context)$|\/(ApiBaseUrlProvider|AuthSessionProvider|snapshot-store)$/ }, () => ({ path: "fixture", namespace: "profile" }));
+      plugin.onResolve({ filter: /^(fixture|expo-router|expo-crypto|expo-image-picker|expo-document-picker|@expo\/vector-icons|react-native-safe-area-context)$|\/(ApiBaseUrlProvider|AuthSessionProvider|snapshot-store|useSyncedCollection)$/ }, () => ({ path: "fixture", namespace: "profile" }));
       plugin.onLoad({ filter: /.*/, namespace: "profile" }, args => ({ contents: args.path === "native" ? `
 import React from "react"; import { Pressable as RealPressable, Text as RealText, TextInput as RealTextInput, RefreshControl as RealRefreshControl, StyleSheet, useWindowDimensions as realDimensions } from "react-native-web";
 import { useFixture } from "fixture"; export * from "react-native-web";
@@ -153,7 +156,7 @@ test("profile completion opens the existing editor from the server policy withou
   assert.deepEqual(await navigation(p), []);
 });
 
-for (const [next, expected] of [["/events/event-1?tab=details", "/events/event-1?tab=details"], ["https://untrusted.test", "/dashboard"]]) {
+for (const [next, expected] of [["/events/event-1?tab=details", "/events/event-1?tab=details"], ["https://untrusted.test", "/home"]]) {
   test("profile completion already complete returns only to a safe target " + next, async t => {
     const p = await open(t, { complete: "1", next, payloads: { ...profileReadPayloads,
       "/api/profile": { ...profilePayload, onboarding: { policyVersion: 1, status: "complete", missingFields: [] } } } });

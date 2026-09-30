@@ -13,6 +13,7 @@ import {
   type FeatureMode,
 } from "../../../shared/config/feature-mode";
 import { AppError } from "../../../shared/errors/app-error";
+import { noteReadReceiptAccount } from "../../../shared/observability/read-receipts";
 import { resolveLiveDatabaseConnectionConfig } from "../../../shared/storage/live-database-config";
 
 export interface AuthenticatedApiActor {
@@ -131,12 +132,16 @@ export async function resolveAuthenticatedApiActorFromSession(
       : provider.readAccountSessionGraph({ userId: session.userId }))
     : null;
 
-  return resolveAuthenticatedApiActorIdentity({
+  const actor = resolveAuthenticatedApiActorIdentity({
     graph,
     mode,
     session,
     workspaceId,
   });
+  // The single identity boundary for API routes and server pages: tag the
+  // current request read receipt with the account it reads for.
+  noteReadReceiptAccount(actor?.id);
+  return actor;
 }
 
 export function authenticatedApiActorRequiredResponse(

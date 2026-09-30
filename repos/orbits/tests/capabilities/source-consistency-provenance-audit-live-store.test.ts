@@ -10,12 +10,18 @@ import {
 import { defaultMockFixtures } from "../../shared/mock/fixtures";
 import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
 import { seedGeneratedRelationshipFixturesIntoLiveStore } from "../../shared/storage/seed-generated-fixtures";
+import { MOCK_FIXTURE_COLLECTION_NAMES } from "../../shared/mock/fixtures";
+
+// Sprint 0104: the live seed no longer writes the retired legacy chat collections.
+// Sprint 0109: this provider no longer reads the legacy `conversations` collection;
+// these tests still seed it, so its rows demonstrably stay out of the audit.
+const LEGACY_INCLUSIVE_SEED = { collectionNames: MOCK_FIXTURE_COLLECTION_NAMES } as const;
 
 test("live source consistency provenance audit reads seeded live records without audit writes", async () => {
   const workspaceId = "workspace:source-consistency-live-store-test";
   const store = createMemoryLiveRecordStore<Record<string, unknown>>();
 
-  await seedGeneratedRelationshipFixturesIntoLiveStore({
+  await seedGeneratedRelationshipFixturesIntoLiveStore({ ...LEGACY_INCLUSIVE_SEED,
     store,
     workspaceId,
   });
@@ -80,10 +86,8 @@ test("live source consistency provenance audit reads seeded live records without
     recommendationCollection?.auditedCount,
     defaultMockFixtures.matchRecommendations.length,
   );
-  assert.equal(
-    chatSummaryCollection?.auditedCount,
-    defaultMockFixtures.conversations.length,
-  );
+  assert.ok(defaultMockFixtures.conversations.length > 0, "legacy conversations are seeded");
+  assert.equal(chatSummaryCollection?.auditedCount, 0, "the legacy conversations collection is not read (sprint 0109)");
   assert.equal(contactCollection?.sourceConsistent, true);
   assert.equal(contactCollection?.provenanceComplete, true);
   assert.equal(

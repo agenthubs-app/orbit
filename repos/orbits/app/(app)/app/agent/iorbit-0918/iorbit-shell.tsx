@@ -288,7 +288,9 @@ function IOrbitLiveShell({
     ask,
     chatDraft,
     chatOpen,
+    earlier,
     histOpen,
+    loadEarlier,
     messages,
     navigate,
     newChat,
@@ -489,7 +491,9 @@ function IOrbitLiveShell({
                 />
               }
               chatDraft={chatDraft}
+              earlier={earlier}
               messages={threadMessages}
+              onLoadEarlier={() => void loadEarlier()}
               navigate={navigate}
               onBack={() => setView("home")}
               onDraftChange={setChatDraft}

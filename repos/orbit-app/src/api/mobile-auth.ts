@@ -451,7 +451,22 @@ export async function validateAuthSession({
     return networkFailure(error);
   }
 
-  const payload = await readJson(response);
+  let body: unknown;
+  try {
+    body = await response.json();
+  } catch {
+    // A 2xx that is not JSON (captive portal, proxy page) says nothing about the
+    // session: report it as unavailable, never as a rejected session.
+    if (response.ok) {
+      return failure(
+        "ORBIT_APP_AUTH_SERVER_UNAVAILABLE",
+        "暂时无法连接登录服务，请稍后再试。",
+        response.status
+      );
+    }
+    body = null;
+  }
+  const payload = isRecord(body) ? body : null;
   const user = mobileUser(payload?.user);
   const expiresAt = stringField(payload, "expires").trim();
 

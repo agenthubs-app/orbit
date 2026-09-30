@@ -37,6 +37,8 @@ import {
 import { validateApiResourceState } from "../../api/validated-resource-state";
 import { DataCard } from "../../components/DataCard";
 import { ErrorState } from "../../components/ErrorState";
+import { OfflineNotice } from "../../components/OfflineNotice";
+import { NeedsNetworkState } from "../../components/NeedsNetworkState";
 import { LoadingState } from "../../components/LoadingState";
 import { layout, radius, spacing, typography, textStyles } from "../../design/tokens";
 import { createControlStyles } from "../../design/controls";
@@ -45,6 +47,7 @@ import {
   type ApiResourceState,
   useApiResource
 } from "../../hooks/useApiResource";
+import { useLocalEventDay } from "../../hooks/useLocalEventDay";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import {
@@ -69,6 +72,9 @@ import {
   eventRegistrationToView,
   type EventRegistrationView
 } from "../../view-models/event-registration";
+import { localEventDay, localPublicEventDetail, localRegistrationStatusKey, type LocalEventDay } from "../../view-models/event-day-local";
+import { liveEntryState, liveHref } from "../../view-models/event-live";
+import { LiveEntryCard } from "./live/LiveEntryCard";
 import { CanonicalEventDetailModules, unavailableCanonicalRegistration, type CanonicalRegistrationFooterState } from "./CanonicalEventDetailModules";
 
 const detailFont = Platform.select({ web: '-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Noto Sans SC","Microsoft YaHei",sans-serif', ios: "System", default: "sans-serif" });
@@ -99,7 +105,18 @@ export function EventDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: str
   const isCurrent = () => mounted.current && latest.current === scope && (currentParent.current?.() ?? true);
   const rawState = useApiResource<unknown>(publicEventDetailPath(eventId), () => false, { scopeKey: JSON.stringify([scopeKey ?? "public-event-detail", eventId]) });
   const state = validateApiResourceState(rawState, publicEventDetailSchema);
-  const data = state.kind === "success" || state.kind === "empty" ? state.data : null;
+  // Sprint 0115: a registered event is on the device; until (or unless) the server answers, show that copy.
+  const local = useLocalEventDay(signedIn && Boolean(eventId));
+  const day = useMemo(() => localEventDay(local.records, eventId), [local.records, eventId]);
+  const networkData = state.kind === "success" || state.kind === "empty" ? state.data : null;
+  // Sprint 0131: a 404 means the event is gone (the device copy is not shown); a 5xx keeps the copy with
+  // 「服务暂时不可用」; no connection keeps it with 「无法连接」.
+  const gone = state.kind === "failure" && state.status === 404;
+  const unavailable = state.kind === "failure" && state.status >= 500;
+  const localData = !networkData && !gone && day.event ? localPublicEventDetail(day.event) : null;
+  const data = networkData ?? localData;
+  const fromDevice = !networkData && localData !== null;
+  const unreachable = state.kind === "offline" || state.kind === "failure";
   const { timeZone } = useOrbitTimeZone();
   const event = data ? publicEventDetailToSummary(data, timeZone) : null;
   const [personalizedRefreshKey, setPersonalizedRefreshKey] = useState(0);
@@ -110,7 +127,10 @@ export function EventDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: str
     setCanonicalFooter({ key: canonicalFooterKey, state });
   }, [canonicalFooterKey]);
   const footerState = canonicalFooter?.key === canonicalFooterKey ? canonicalFooter.state : null;
-  const registrationStatus = signedIn && canonical
+  const localStatusKey = localRegistrationStatusKey(day.registration);
+  const registrationStatus = fromDevice
+    ? localStatusKey ? locale.t(localStatusKey) : undefined
+    : signedIn && canonical
     ? footerState?.registration.statusLabel ?? (locale.language === "ja" ? "参加登録を確認中" : locale.language === "en" ? "Checking registration" : "正在确认报名状态")
     : undefined;
   const sharing = useRef(false);
@@ -165,20 +185,26 @@ export function EventDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: str
       <ScrollView testID="event-detail-scroll" automaticallyAdjustKeyboardInsets contentInsetAdjustmentBehavior="automatic"
         keyboardDismissMode="interactive" keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}
         refreshControl={<RefreshControl onRefresh={refreshAll} refreshing={state.refreshing} tintColor={colors.accent} />}>
-        {state.kind === "loading" ? <LoadingState /> : null}
-        {state.kind === "offline" || state.kind === "failure" ? <View style={styles.stack}>
+        {state.kind === "loading" && !fromDevice ? <LoadingState /> : null}
+        {fromDevice && unreachable ? <OfflineNotice lastSyncedAt={local.freshness.lastSyncedAt} reason={unavailable ? "unavailable" : "unreachable"} /> : null}
+        {unreachable && !fromDevice ? (gone || (localStatusKey && localStatusKey !== "events.localStatusRsvped") ? <View style={styles.stack}>
+          {/* A removed registration or a deleted event is a fact, not an error: a neutral note and a way back. */}
+          <Text style={styles.bodyText}>{gone ? locale.t("events.gone") : locale.t("events.localRemoved", { status: locale.t(localStatusKey!) })}</Text>
+          <Pressable accessibilityRole="button" onPress={() => { if (isCurrent()) canGoBack ? router.back() : router.replace("/events"); }} style={styles.inlineButton}><Text style={styles.inlineButtonText}>{locale.t("common.back")}</Text></Pressable>
+        </View> : state.kind === "offline" ? <NeedsNetworkState onRetry={refreshAll} /> : <View style={styles.stack}>
           <ErrorState message={state.error.message} title="暂时取不到活动详情" />
           <Pressable accessibilityRole="button" onPress={refreshAll} style={styles.inlineButton}><Text style={styles.inlineButtonText}>重新读取活动</Text></Pressable>
-        </View> : null}
+        </View>) : null}
         {shareError ? <Text accessibilityRole="alert" style={styles.errorText}>{shareError}</Text> : null}
         {data && event ? <EventDetailCard
           baseUrl={baseUrl}
           data={data}
           onNavigate={navigate}
           registrationStatus={registrationStatus}
+          liveEligibility={fromDevice ? day.registration?.membershipStatus === "rsvped" ? "registered" : undefined : signedIn && canonical ? footerState?.registration.eligibilityState : undefined}
           rosterScopeKey={JSON.stringify([scopeKey, personalizedRefreshKey])}
           isScopeCurrent={isCurrent}
-          personalizedModules={signedIn
+          personalizedModules={fromDevice ? <LocalEventDayModule day={day} /> : signedIn
             ? canonical
               ? <CanonicalEventDetailModules
                   key={canonicalFooterKey}
@@ -198,7 +224,7 @@ export function EventDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: str
             : null}
         /> : null}
       </ScrollView>
-      {event ? signedIn ? canonical ? (
+      {event && !fromDevice ? signedIn ? canonical ? (
         <EventRegistrationModule event={event}
           registration={footerState?.registration ?? unavailableCanonicalRegistration}
           verifying={footerState?.verifying ?? true} requireAllowedAction
@@ -217,6 +243,19 @@ export function EventDetailScreen({ scopeKey, isScopeCurrent }: { scopeKey?: str
       ) : null}
     </SafeAreaView>
   );
+}
+
+/** Sprint 0115: the attendee's own status and check-in window from the device copy; every action needs the network. */
+function LocalEventDayModule({ day }: { day: LocalEventDay }) {
+  const { styles } = useStyles();
+  const locale = useOrbitLocale();
+  const { timeZone } = useOrbitTimeZone();
+  const statusKey = localRegistrationStatusKey(day.registration);
+  const opens = day.event?.checkInOpensAt;
+  const time = opens ? new Intl.DateTimeFormat(locale.language === "en" ? "en-US" : locale.language === "ja" ? "ja-JP" : "zh-CN", { timeZone, month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(opens)) : null;
+  return <DataCard detail={time ? locale.t("events.localCheckInOpens", { time }) : ""} title={statusKey ? locale.t(statusKey) : locale.t("events.detailTitle")}>
+    <Text style={styles.bodyText}>{locale.t("events.localActionsNeedNetwork")}</Text>
+  </DataCard>;
 }
 
 function publicEventDetailToSummary(data: PublicEventDetail, timeZone: string): EventDetailSummary {
@@ -286,48 +325,12 @@ function publicEventDetailSummary(summary: string): string {
   return normalized;
 }
 
-function EventActionButton({
-  accessibilityLabel,
-  detail,
-  icon,
-  onPress,
-  title
-}: {
-  accessibilityLabel: string;
-  detail: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  onPress: () => void;
-  title: string;
-}) {
-  const { colors, styles } = useStyles();
-  return (
-    <Pressable
-      accessibilityLabel={accessibilityLabel}
-      accessibilityRole="button"
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.actionButton,
-        pressed ? styles.actionButtonPressed : null
-      ]}
-    >
-      <View style={styles.actionIcon}>
-        <Ionicons color={colors.accent} name={icon} size={18} />
-      </View>
-      <Text style={styles.actionTitle}>
-        {title}
-      </Text>
-      <Text style={styles.actionDetail}>
-        {detail}
-      </Text>
-    </Pressable>
-  );
-}
-
 function EventDetailCard({
   baseUrl,
   data,
   onNavigate,
   registrationStatus,
+  liveEligibility,
   rosterScopeKey,
   isScopeCurrent,
   personalizedModules
@@ -336,6 +339,7 @@ function EventDetailCard({
   data: PublicEventDetail;
   onNavigate: (href: Href) => void;
   registrationStatus?: string | undefined;
+  liveEligibility?: string | undefined;
   rosterScopeKey: string;
   isScopeCurrent: () => boolean;
   personalizedModules: ReactNode;
@@ -348,8 +352,8 @@ function EventDetailCard({
   const hero = eventDetailHeroToView(event);
   const heroStatus = registrationStatus ?? publicEventDetailStatus(hero.status);
   const heroSummary = publicEventDetailSummary(hero.summary);
-  const attendeesHref = `/events/${encodeURIComponent(event.id)}/attendees` as Href;
-  const partyHref = data.event.sourceMetadata?.label === "event-core-postgres" ? attendeesHref : `/party?eventId=${encodeURIComponent(event.id)}` as Href;
+  const liveEntry = liveEntryState({ eligibilityState: liveEligibility, startsAt: data.event.startsAt, endsAt: data.event.endsAt, now: Date.now(), timeZone });
+  const liveCard = liveEntry ? <LiveEntryCard language={locale.language} pinned={liveEntry.pinned} inProgress={liveEntry.inProgress} startTime={eventDetailTiming(data.event.startsAt, data.event.endsAt, timeZone).start} onEnter={() => onNavigate(liveHref(event.id) as Href)} /> : null;
   const timing = eventDetailTiming(data.event.startsAt, data.event.endsAt, timeZone);
   const narrow = width < 360 || fontScale >= 1.4;
   const attendeeCount = data.event.stats?.count ?? data.event.participantCount;
@@ -392,6 +396,7 @@ function EventDetailCard({
           <EventOrganizerModule event={event} narrow={narrow} />
         </View>
       </View>
+      {liveEntry?.pinned ? liveCard : null}
       <View style={styles.publicSection}>
         <Text accessibilityRole="header" style={styles.sectionTitle}>{locale.t("events.about")}</Text>
         <Text style={styles.publicBody}>{heroSummary}</Text>
@@ -404,7 +409,7 @@ function EventDetailCard({
         {event.attendeePreview.length > 0 ? <View style={styles.attendeePreviewRow}>{event.attendeePreview.map(attendee => <EventAttendeePreviewPill attendee={attendee} key={attendee.id} />)}</View> : null}
       </View>
       <View style={styles.additionalDetails}>
-      <EventActionButton accessibilityLabel="打开活动现场" title="现场" detail="签到和介绍" icon="ticket-outline" onPress={() => onNavigate(partyHref)} />
+      {liveEntry && !liveEntry.pinned ? liveCard : null}
       <View style={styles.feeRow}><Text style={styles.infoTileDetail}>费用</Text><Text style={styles.attendeesTitle}>{event.feeLabel}</Text></View>
       <Text style={styles.registrationHint}>{event.registrationDetail}</Text>
       {event.sourceLabel || event.evidenceExcerpts.length > 0 ? (

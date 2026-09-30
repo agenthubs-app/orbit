@@ -10,11 +10,17 @@ let browser: Browser, server: Server, url: string;
 // Only native services, routing and HTTP are replaced. Real screen state,
 // presentation, view-model decoding and action handlers run in the browser.
 const fixture = `
+// Sprint 0118: this harness exercises the network path; the device mirror of the inbox and AI sessions is not available here.
+export const useLocalInbox = () => ({ available: false, rows: [], freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh: async () => null });
+export const useLocalAiSessions = () => ({ available: false, rows: [], freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh: async () => null });
+export const useLocalAiConversation = () => ({ available: false, messages: [], cards: null, saveCards() {}, freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh: async () => null });
+
 import React, { useEffect, useSyncExternalStore } from "react";
 export const useFocusEffect = effect => useEffect(effect, [effect]);
 import { View } from "react-native";
 import { aiConversationPayload, emptyAiConversationPayload, aiSessionListPayload } from "./tests/helpers/ai-fixtures";
 import { taskPageFixture } from "./tests/helpers/task-page-fixture";
+import { todayTaskWindow } from "./src/view-models/today-task-pages";
 let revision = 0; const listeners = new Set();
 const rerender = () => useSyncExternalStore(fn => { listeners.add(fn); return () => listeners.delete(fn); }, () => revision);
 const state = window.fixture = { kind: "success", empty: false, requests: [], navigation: [], refreshes: [], update(patch) { Object.assign(state, patch); revision++; listeners.forEach(fn => fn()); } };
@@ -42,7 +48,6 @@ function dataFor(path) {
   if (finalInsets && path === "/api/contacts") return { contacts: [{ id: "person-one", displayName: "林悦", organization: "Orbit", role: "采购负责人", status: "active" }] };
   if (finalInsets && path === "/api/events") return { events: [event] };
   if (finalInsets && path === "/api/profile") return { profile: { displayName: "资料里的林悦", headline: "连接采购合作", organization: "Orbit", offering: ["本地渠道"], seeking: ["采购伙伴"] } };
-  if (finalInsets && path.includes("extractions")) return { extractedNeeds: [{ needId: "need:style", statement: "寻找日本采购合作伙伴", priority: "high" }], extractedTasks: [], relationshipProfileUpdates: [], confirmationRequiredProfileSuggestions: [], provenance: { sourceLabel: "对话记录" } };
   if (screen === "inboxThread" && path.includes("relationship-inbox")) return { inbox: { conversations: [{ ...conversation, contactId: "person-one", subject: "合作讨论" }] }, currentUser: { displayName: "我" }, selectedThread: { conversationId: "thread-one", subject: "合作讨论", summary: "先复核关系上下文", sourceContextLabels: [], messages: [{ messageId: "message-one", senderRole: "contact", senderName: "林悦", body: "周四讨论合作资料", occurredAt: "2026-09-07T01:00:00Z" }] }, draftReply: { body: "" }, sideEffects: {} };
   if (path === "/api/agent/ledger") return { entries: state.empty ? [] : [entry], state: "success", nextAction: "确认或稍后处理", summary: "1 条待确认" };
   if (path === "/api/agent/actions") return { actions: state.empty ? [] : [{ actionId: "action-one", actionType: "post_event_followup", contactName: "林悦", title: "确认合作资料", recommendedAction: "确认时间", confirmationRequired: true, externalSideEffectExecuted: false, priority: "high" }] };
@@ -51,9 +56,6 @@ function dataFor(path) {
   if (path.includes("relationship-inbox")) return { inbox: { conversations: [{ ...conversation, contactId: "person-one", subject: "合作讨论", preview: "周四讨论合作资料", lastCorrespondenceAt: "2026-09-07T01:00:00Z", nextActionLabel: "", sourceContextLabels: [] }] }, currentUser: { displayName: "我" }, selectedThread: null, sideEffects: {} };
   if (path === "/api/relationship-communication/conversations/thread-one") return { ...relationshipConversation, messages: state.empty ? [] : [relationshipMessage] };
   if (path === "/api/relationship-communication/conversations") return { conversations: state.empty ? [] : [{ ...relationshipConversation, messages: [relationshipMessage] }], refreshedAt: "2026-09-08T03:00:00Z" };
-  if (path.includes("extractions")) return {};
-  if (path.startsWith("/api/chat/conversations/")) return { state: state.empty ? "empty" : "success", conversation, messages: state.empty ? [] : [chatMessage], sendMessageState: chatBoundary };
-  if (path === "/api/chat/conversations") return { conversations: state.empty ? [] : [conversation] };
   if (path.includes("activities")) return { activities: [] };
   if (path.startsWith("/api/tasks/page?")) return taskPageFixture(state.empty?[]:[task,{...task,id:"completed-one",status:"completed",title:"已经完成的资料核对",completedAt:"2026-09-08T01:00:00Z"}],"reader",new URLSearchParams(path.split("?")[1]));
   if (path.startsWith("/api/contacts/labels?")) return {actorId:"reader",items:[],asOf:"2026-09-25T00:00:00Z"};
@@ -73,6 +75,14 @@ const client = Object.fromEntries(["get", "post", "patch", "delete", "put"].map(
     if (state.kind === "loading") return new Promise(() => {});
     return { success: state.kind === "success" || state.kind === "empty", status: state.kind === "offline" ? 0 : state.kind === "failure" ? 503 : 200, data: dataFor(path), error: { code: "READ_FAILED", message: "连接暂时失败" }, meta: { featureMode: null, privacy: null, runtimeBoundary: null } };
   }
+  // Today reads its bounded task page through the API client (taskMode=page).
+  if (method === "get" && path.startsWith("/api/today?")) {
+    if (state.kind === "loading") return new Promise(() => {});
+    const timeZone = new URLSearchParams(path.split("?")[1]).get("timeZone");
+    const taskPage = { ...taskPageFixture(state.empty ? [] : [task], "reader", new URLSearchParams("status=open&scope=all")), dueWindow: todayTaskWindow("2026-09-08", timeZone) };
+    const suggestions = [{ id: "suggestion-one", title: "确认参会伙伴", reason: "安排会面", category: "relationship", status: "pending" }];
+    return { success: state.kind === "success" || state.kind === "empty", status: state.kind === "offline" ? 0 : state.kind === "failure" ? 503 : 200, data: { taskMode: "page", date: "2026-09-08", timeZone, taskPage, completedCount: 1, summary: { openTaskCount: taskPage.total, completedCount: 1, suggestionCount: suggestions.length, scheduleCount: 0 }, suggestions, schedule: [] }, error: { code: "READ_FAILED", message: "连接暂时失败" }, meta: { featureMode: null, privacy: null, runtimeBoundary: null } };
+  }
   state.requests.push({ method, path, body: options?.body });
   if (method === "get" && path.startsWith("/api/schedule-items?")) {
     state.requests[state.requests.length - 1].headers = options?.headers;
@@ -85,8 +95,6 @@ const client = Object.fromEntries(["get", "post", "patch", "delete", "put"].map(
       const message = { ...relationshipMessage, messageId: "message:style", body: options.body.body, senderAccountId: "reader", senderDisplayName: "我", sentAt: "2026-09-08T03:00:00Z" };
       return { success: true, status: 201, data: { conversationId: "thread-one", deliveryState: "delivered", qualificationVersion: "qv:style", message } };
     }
-    if (method === "get" && path === "/api/chat/privacy?conversationId=thread-one") return { success: true, data: { conversationId: "thread-one", participantName: "林悦", organization: "Orbit", analysisOptIn: { enabled: true, status: "opted_in" }, analysisDeletion: { status: "available" }, sensitiveShareConfirmation: { confirmationRequired: true, status: "required" }, privateNotes: [], state: "success" } };
-    if (method === "post" && path === "/api/chat/assist/rewrite") return { success: true, data: { assists: [{ assistId: "assist:style", label: "润色建议", rationale: "先核对时间", source: { label: "合作讨论" }, suggestedText: "周四可以一起核对合作资料。" }], state: "success" } };
   }
   return { success: false, error: { message: "操作暂时失败" } };
 }]));
@@ -99,7 +107,10 @@ export const useLocalSearchParams = () => ({
 });
 export const useIsFocused = () => true;
 export const usePathname = () => "/" + screen;
+export const Redirect = ({ href }) => { state.navigation.push("redirect:" + String(href)); return null; };
 export const useRouter = () => ({ canGoBack: () => true, back() { state.navigation.push("back"); }, push(path) { state.navigation.push(path); }, replace(path) { state.navigation.push(path); } });
+export const useNavigation = () => ({ addListener: () => () => {}, dispatch() {} });
+export const usePreventRemove = () => {};
 export const useOrbitApiBaseUrl = () => ({ ready: true, baseUrl: "https://orbit.test" });
 export const useOrbitAuthSession = () => ({ ready: true, signedIn: true, accountId: "reader", actorId: "reader", user: { id: "reader", name: "林悦", email: "reader@example.test" }, cookieHeader: "" });
 export const useRelationshipInboxBadgeCount = () => 0;
@@ -111,6 +122,8 @@ export const notifyReminderPlansChanged = () => {};
 export const requestNotificationPermission = async () => "denied";
 // Sprint 0078: the Web task source is mirror-first; these screen fixtures keep the network read authoritative.
 export const useWebMirrorStatus = () => ({ mode: "online-only", reason: "no-opfs" });
+// Sprint 0131: page copies / row-id reads open the coordinator session; this harness has none.
+export const useSyncCoordinatorSession = () => null;
 export const useSyncedCollection = () => ({ status: "local-ready", records: [], error: null, lastSyncedAt: null, workspaceId: null, refresh: async () => null, invalidate: async () => null });
 `;
 
@@ -124,7 +137,7 @@ test.before(async () => {
     // RN Web hardcodes fontScale=1. Replace this native dimension value only;
     // the real native-web elements, press handlers and layout stay intact.
     plugin.onLoad({ filter: /.*/, namespace: "workspace-native" }, () => ({ contents: `export * from ${JSON.stringify(require.resolve("react-native-web"))}; import { useWindowDimensions as realDimensions } from ${JSON.stringify(require.resolve("react-native-web"))}; import { useSyncExternalStore } from "react"; export function useWindowDimensions() { const dimensions = realDimensions(); const fontScale = useSyncExternalStore(listener => { window.addEventListener("workspace-fontscale", listener); return () => window.removeEventListener("workspace-fontscale", listener); }, () => window.fixture?.fontScale || 1); return { ...dimensions, fontScale }; }`, loader: "js", resolveDir: process.cwd() }));
-    plugin.onResolve({ filter: /^(expo-router|@expo\/vector-icons|react-native-safe-area-context|expo-crypto)$|\/(useApiResource|useOrbitApiClient|ApiBaseUrlProvider|AuthSessionProvider|useRelationshipInboxBadgeCount|native-notifications|useWebMirrorStatus|useSyncedCollection)$/ }, () => ({ path: "fixture", namespace: "workspace-test" }));
+    plugin.onResolve({ filter: /^(expo-router|expo-router\/react-navigation|@expo\/vector-icons|react-native-safe-area-context|expo-crypto)$|\/(useApiResource|useOrbitApiClient|ApiBaseUrlProvider|AuthSessionProvider|useRelationshipInboxBadgeCount|native-notifications|useWebMirrorStatus|useSyncedCollection|useLocalInbox|useLocalAiSessions)$/ }, () => ({ path: "fixture", namespace: "workspace-test" }));
     plugin.onLoad({ filter: /.*/, namespace: "workspace-test" }, () => ({ contents: fixture, loader: "jsx", resolveDir: process.cwd() }));
   } }] });
   server = createServer((_request, response) => { response.setHeader("content-type", "text/html; charset=utf-8"); response.end(`<style>html,body,#root{margin:0;height:100%}</style><div id="root"></div><script>${result.outputFiles[0]!.text}</script>`); });
@@ -166,33 +179,29 @@ test("personal schedule reads retain v3 audit while every mutation still violate
 });
 
 for (const scheme of ["light", "dark"] as const) {
-  test(`${scheme}: final inset AI artifacts preserve all embedded panels, audit request and navigation`, async t => {
+  test(`${scheme}: final inset AI artifacts preserve the retained embedded panels without collection reads`, async t => {
     const page = await open(t, "conversation&insets=true", scheme);
     const reply = page.getByRole("textbox", { name: "消息", exact: true }); await reply.fill("仍需核对的草稿");
-    const contact = page.getByText("林悦", { exact: true }).locator("xpath=ancestor::*[@role='button'][1]");
-    const event = page.getByText("合作交流会", { exact: true }).locator("xpath=ancestor::*[@role='button'][1]");
-    const profile = page.getByText("资料里的林悦", { exact: true }).locator("xpath=ancestor::*[@role='button'][1]");
-    const followup = page.getByRole("button", { name: "打开待办详情：联系 林悦", exact: true }).first();
-    const schedule = page.getByRole("button", { name: "打开待办详情：确认合作时间", exact: true });
-    await followup.waitFor();
-    // Sprint 0085: the run-evidence panel, its reference row and its result block
-    // are gone with the panel itself, so the shared radius now covers the panels
-    // that remain.
-    assert.equal(await page.getByText("AI 运行依据", { exact: true }).count(), 0);
-    const panels = [contact, event, followup, profile, schedule,
+    // The keyword-driven contact/event/follow-up/profile/schedule panels were
+    // removed with their whole-collection reads (docs/operations/2026-09-26-ai-conversation-bounded-reads.md).
+    // Sprint 0085: the run-evidence panel is gone too. The intent block and the
+    // task interaction card remain and share the inset radius.
+    const panels = [
       page.getByText("核对合作信息", { exact: true }).locator(".."),
       page.getByText("待确认的采购讨论", { exact: true }).locator("..").locator("..").locator("..")];
     const radii = []; for (const panel of panels) { await panel.waitFor(); radii.push(await panel.evaluate(el => getComputedStyle(el).borderRadius)); }
-    assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), [], "no reply fetches a run record on its own");
-    for (const panel of [contact, event, followup, profile, schedule]) await panel.click();
-    assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), ["/contacts/person-one", "/events/event-one", "/tasks/task-one", "/profile", "/tasks/task-one"]);
+    assert.equal(await page.getByText("AI 运行依据", { exact: true }).count(), 0);
+    for (const removed of ["打开待办详情：联系 林悦", "打开待办详情：确认合作时间"]) assert.equal(await page.getByRole("button", { name: removed, exact: true }).count(), 0, removed);
+    assert.equal(await page.getByText("资料里的林悦", { exact: true }).count(), 0, "profile collection is not read into the conversation");
+    assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), [], "no reply fetches a run record or collection on its own");
     assert.equal(await reply.inputValue(), "仍需核对的草稿");
-    assert.deepEqual(radii, ["12px", "12px", "12px", "12px", "12px", "12px", "12px"], "contact/event/followup/profile/schedule suggestions, intentBlock, taskInteractionCard");
+    assert.deepEqual(radii, ["12px", "12px"], "intentBlock, taskInteractionCard");
   });
-  test(`${scheme}: final inset chat extraction and delivered message keep the exact request boundary`, async t => {
+  test(`${scheme}: final inset chat detail and delivered message keep the exact request boundary`, async t => {
     const page = await open(t, "thread&insets=true", scheme);
-    await page.getByText("寻找日本采购合作伙伴", { exact: true }).waitFor();
-    const draft = page.getByPlaceholder("写给已验证联系人"); await draft.fill("周四可以");
+    const draft = page.getByPlaceholder("写给已验证联系人"); await draft.waitFor(); await draft.fill("周四可以");
+    // Sprint 0104: the retired legacy chat extraction card is gone.
+    assert.equal(await page.getByText("提取结果", { exact: true }).count(), 0);
     await page.getByRole("button", { name: "发送消息", exact: true }).click();
     await page.getByText("消息已送达已验证的 Orbit 账号。", { exact: true }).waitFor();
     assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), [{ method: "post", path: "/api/relationship-communication/conversations/thread-one/messages", body: { body: "周四可以", qualificationVersion: "qv:style" } }]);
@@ -201,9 +210,12 @@ for (const scheme of ["light", "dark"] as const) {
   test(`${scheme}: inbox empty filter keeps the compact no-compose boundary`, async t => {
     const page = await open(t, "inbox", scheme);
     await page.getByRole("tab", { name: "通知", exact: true }).click();
-    await page.getByRole("tab", { name: "活动", exact: true }).click();
-    const empty = page.getByText("暂无消息", { exact: true }).locator("..").locator("..");
-    assert.equal(await empty.evaluate(el => getComputedStyle(el).borderRadius), "0px", "emptyInboxSection");
+    // The legacy reminder/signal feed and its filters were retired (fc0569649);
+    // notifications now come only from the typed inbox and its kind filters.
+    await page.getByRole("tab", { name: "动态", exact: true }).click();
+    const empty = page.getByText("暂无通知", { exact: true });
+    await empty.waitFor();
+    assert.equal(await empty.evaluate(el => getComputedStyle(el).borderRadius), "0px", "typed inbox empty state stays flat");
     assert.equal(await page.getByRole("textbox").count(), 0);
     assert.equal(await page.getByRole("button", { name: "写消息", exact: true }).count(), 0);
     await noWrites(page);
@@ -215,20 +227,17 @@ for (const scheme of ["light", "dark"] as const) {
     const bounds = await empty.boundingBox(); assert.ok(bounds && bounds.x >= 0 && bounds.x + bounds.width <= 320);
     await noWrites(page);
   });
-  test(`${scheme}: final inset inbox privacy and IORBIT handoff preserve the reply until explicit send`, async t => {
+  test(`${scheme}: final inset inbox IORBIT handoff preserves the reply until explicit send`, async t => {
     const page = await open(t, "inboxThread&insets=true", scheme);
     const reply = page.getByRole("textbox", { name: "回复正文", exact: true }); await reply.fill("周四可以");
-    await page.getByRole("button", { name: "隐私设置", exact: true }).click();
-    const privacy = page.getByText("隐私控制", { exact: true }).locator("..").locator("..").locator("..");
-    await page.getByText("允许关系分析", { exact: true }).waitFor();
-    const radii = [await privacy.evaluate(el => getComputedStyle(el).borderRadius)];
+    // Sprint 0104: the retired privacy panel (legacy chat) is gone.
+    assert.equal(await page.getByRole("button", { name: "隐私设置", exact: true }).count(), 0);
     await page.getByRole("button", { name: "润色草稿", exact: true }).click();
     const navigation = await page.evaluate(() => (window as any).fixture.navigation);
     assert.equal(navigation[0].pathname, "/ai/[id]"); assert.match(navigation[0].params.prefillIntent, /^ai-prefill-/);
     assert.doesNotMatch(JSON.stringify(navigation[0]), /周四可以|person-one|林悦/);
     assert.equal(await reply.inputValue(), "周四可以");
-    assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), [{ method: "get", path: "/api/chat/privacy?conversationId=thread-one", body: undefined }]);
-    assert.deepEqual(radii, ["12px"], "privacyBox");
+    assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);
     await page.getByRole("button", { name: "发送消息", exact: true }).click();
     await page.waitForFunction(() => (window as any).fixture.requests.some((r:any)=>r.method === "post"));
     assert.equal((await page.evaluate(() => (window as any).fixture.requests)).filter((r:any)=>r.method === "post").length,1);
@@ -347,7 +356,9 @@ test("workspace actions grow with doubled text while keeping labels inside the p
 });
 for (const screen of ["tasks", "task", "chat", "thread", "schedule", "today", "followups", "ledger", "actions", "conversation"]) {
   test(`${screen}: resource failure remains visible without write effects`, async t => {
-    const page = await open(t, screen); await page.evaluate(() => (window as any).fixture.update({ kind: "offline" })); await page.getByText("连接暂时失败", { exact: true }).first().waitFor(); await noWrites(page);
+    // Sprint 0131: offline pages with no device copy yet say so calmly (the read is not an error); the others still show the read failure.
+    const offlineCopyPage = ["task", "today", "ledger", "actions"].includes(screen);
+    const page = await open(t, screen); await page.evaluate(() => (window as any).fixture.update({ kind: "offline" })); await page.getByText(offlineCopyPage ? "这项内容还没保存在这台设备上，联网打开一次后断网也能看。" : "连接暂时失败", { exact: true }).first().waitFor(); await noWrites(page);
   });
 }
 test("AI resource fallback keeps its return action on the same page inset", async t => {

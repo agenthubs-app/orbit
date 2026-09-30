@@ -15,6 +15,9 @@ const title = "东京跨境科技与零售伙伴交流会：共同确认未来�
 // Production screens, content, view-models, controls and theme stay real. Only
 // navigation, HTTP and native boundaries are controlled; no business writes occur.
 const fixture = `
+// Sprint 0115: the device copy of the event day stays empty in this harness; the network read is authoritative.
+export const useLocalEventDay = () => ({ records: { registrations: [], events: [], results: [] }, freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh() {} });
+
 import React, { useSyncExternalStore } from "react";
 import { View } from "react-native";
 import { readinessPayload, peoplePayload, reviewPayload } from "./tests/helpers/event-detail-fixtures";
@@ -51,10 +54,13 @@ function insetData(path) {
 }
 export const useApiResource = path => { useFixture(); if (!state.resourcePaths.includes(path)) state.resourcePaths.push(path); return { kind: state.kind, data: (finalInsets ? insetData(path) : undefined) ?? (path.includes("recommendations/events") ? recommendations : path.endsWith("/center") ? center : path.endsWith("/access/roles") ? rolePayload : path.endsWith("/registration/portrait") ? { portrait: null, registrationSource: null } : path.includes("registration") ? portraitRegistration : path.includes("attendees") ? attendees : path.includes("matches") ? { matches: [] } : path.includes("contacts") ? contacts : path.includes("profile") ? profile : path.endsWith("/events/public") || path.endsWith("/events") ? { events } : { event }), error: { message: "当前账号没有权限" }, refreshing: false, refresh() {} }; };
 export const useLocalSearchParams = () => ({ id: "event:style", eventId: "event:style", code: "event:style", slug: "event:style" });
-export const usePathname = () => attendeeMode ? "/events/event%3Astyle/attendees" : "/events";
+export const usePathname = () => attendeeMode ? "/events/event%3Astyle/live" : "/events";
 export const useIsFocused = () => true;
 export const useRouter = () => ({ canGoBack: () => false, back() { state.navigation.push("back"); }, replace(path) { state.navigation.push(path); }, push(path) { state.navigation.push(path); } });
 export const useOrbitAuthSession = () => ({ ready: true, signedIn, actorId: signedIn ? "account:style" : null, user: signedIn ? { id: "actor:style" } : null, cookieHeader: "" });
+// Sprint 0131: the screen reads page copies / the device mirror; this harness tests the network path (no mirror).
+export const useSyncedCollection = () => ({ status: "unsynced", error: null, lastSyncedAt: null, workspaceId: null, records: [], refresh: async () => null, invalidate: async () => null, currentSession: () => null });
+export const useSyncCoordinatorSession = () => null;
 export const useOrbitApiBaseUrl = () => ({ baseUrl: "http://fixture", ready: true });
 const record = method => async (path, options) => {
   state.requests.push({ method, path, body: options?.body });
@@ -87,8 +93,7 @@ import { EventRegistrationScreen } from "./src/screens/events/EventRegistrationS
 import { HomeScreen } from "./src/screens/home/HomeScreen";
 import { OrganizerPublicScreen } from "./src/screens/organizer/OrganizerPublicScreen";
 import { RegisterInviteScreen } from "./src/screens/register/RegisterInviteScreen";
-import { PartyModeScreen } from "./src/screens/party/PartyModeScreen";
-import { EventAttendeesScreen } from "./src/screens/events/EventAttendeesScreen";
+import { EventLiveScreen } from "./src/screens/events/live/EventLiveScreen";
 import { EventCenterScreen } from "./src/screens/events/EventCenterScreen";
 import { EventRolesScreen } from "./src/screens/events/EventRolesScreen";
 import { EventAdmissionReviewContent } from "./src/screens/events/EventAdmissionReviewContent";
@@ -116,7 +121,7 @@ function AdmissionFixture() {
 }
 const analytics = eventAnalyticsToView({ appointments: { awaitingResponse: 0, cancelled: 0, completed: 0, confirmed: 0, draft: 0, negotiating: 0, reschedulePending: 0 }, checkIns: { checkedIn: 2 }, contactRequests: { accepted: 1, awaitingTargetConsent: 0, declined: 0, withdrawn: 0 }, encounters: { captured: 1, projected: 0 }, eventId: "event:style", grouping: { published: false, roundOne: { assignedParticipants: 0, tables: 0 }, roundTwo: { assignedParticipants: 0, tables: 0 } }, kind: "organizer_aggregate", registrations: { active: 4, cancelled: 0 } });
 function AnalyticsFixture() { useFixture(); const [kind, setKind] = useState("organizer_aggregate"); return <AppScreen title="活动数据报告"><EventAnalyticsContent activeKind={kind} attendeeAvailable organizerAvailable={state.organizerAvailable !== false} onChangeKind={value => { state.navigation.push(value); setKind(value); }} state={{ kind: state.kind, message: "当前账号没有权限" }} view={analytics} /></AppScreen>; }
-const screens = { events: EventsScreen, detail: EventDetailScreen, registration: EventRegistrationScreen, home: () => <HomeScreen />, organizer: OrganizerPublicScreen, invite: RegisterInviteScreen, party: PartyModeScreen, partyGraph: () => <PartyModeScreen variant="graph" />, partyCheckIn: () => <PartyModeScreen variant="checkin" />, attendees: EventAttendeesScreen, center: EventCenterScreen, rolesEditor: EventRolesScreen, admission: AdmissionFixture, analytics: AnalyticsFixture };
+const screens = { events: EventsScreen, detail: EventDetailScreen, registration: EventRegistrationScreen, home: () => <HomeScreen />, organizer: OrganizerPublicScreen, invite: RegisterInviteScreen, attendees: EventLiveScreen, center: EventCenterScreen, rolesEditor: EventRolesScreen, admission: AdmissionFixture, analytics: AnalyticsFixture };
 const Screen = screens[new URLSearchParams(location.search).get("screen")] || ContentFixture;
 createRoot(document.getElementById("root")).render(<Screen />);`, resolveDir: process.cwd(), loader: "tsx" },
     bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"],
@@ -125,7 +130,7 @@ createRoot(document.getElementById("root")).render(<Screen />);`, resolveDir: pr
       // Optional retrospective replay; never replaces the working production file.
       if (process.env.APP_STYLE_HOME_BASELINE === "1") plugin.onLoad({ filter: /\/src\/screens\/home\/HomeScreen\.tsx$/ }, () => ({ contents: readFileSync("../../.superpowers/sdd/2026-09-08-app-wide-style/baseline-src/screens/home/HomeScreen.tsx", "utf8"), loader: "tsx" }));
       plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: require.resolve("react-native-web") }));
-      plugin.onResolve({ filter: /^(event-fixture|expo-router|@expo\/vector-icons|react-native-safe-area-context)$|\/(useApiResource|useOrbitApiClient|ApiBaseUrlProvider|AuthSessionProvider|useRelationshipInboxBadgeCount)$/ }, () => ({ path: "fixture", namespace: "event-test" }));
+      plugin.onResolve({ filter: /^(event-fixture|expo-router|@expo\/vector-icons|react-native-safe-area-context)$|\/(useApiResource|useOrbitApiClient|ApiBaseUrlProvider|AuthSessionProvider|useRelationshipInboxBadgeCount|useLocalEventDay|useSyncedCollection)$/ }, () => ({ path: "fixture", namespace: "event-test" }));
       plugin.onLoad({ filter: /.*/, namespace: "event-test" }, () => ({ contents: fixture, loader: "jsx", resolveDir: process.cwd() }));
     } }]
   });
@@ -160,12 +165,17 @@ for (const scheme of ["light", "dark"] as const) {
   });
   test(`${scheme}: canonical attendee search and identity render without preview encounter writes`, async t => {
     const page = await open(t, "attendees&insets=true", scheme);
+    await page.getByRole("tab", { name: "参会者", exact: true }).click();
     const input = page.getByRole("textbox", { name: "搜索参会者", exact: true });
     await input.fill("佐藤"); await fits(input);
     await page.getByRole("button", { name: "佐藤 葵", exact: true }).last().click();
+    await page.getByRole("button", { name: "关闭", exact: true }).waitFor();
     assert.equal(await page.getByRole("button", { name: "保存现场记录", exact: true }).count(), 0);
-    assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), [{ method: "GET", path: "/api/events/event%3Astyle/operations", body: undefined }]);
-    assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), ["/events/event%3Astyle/participants/p_other"]);
+    const requests = await page.evaluate(() => (window as any).fixture.requests);
+    assert.equal(requests.some((r: any) => r.method !== "GET"), false);
+    assert.deepEqual(requests.map((r: any) => r.path).filter((path: string) => path.includes("/operations")).slice(0, 1), ["/api/events/event%3Astyle/operations"]);
+    assert.ok(requests.some((r: any) => r.path === "/api/events/event%3Astyle/operations/participants/p_other"));
+    assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), []);
   });
   test(`${scheme}: 7a persona preview follows the controlled interview without registering`, async t => {
     const page = await open(t, "registration&insets=true", scheme);
@@ -180,13 +190,6 @@ for (const scheme of ["light", "dark"] as const) {
     assert.deepEqual(requests.map((r: any) => [r.method, r.path]), [["POST", "/api/events/event%3Astyle/registration/interview"], ["POST", "/api/events/event%3Astyle/registration/persona"]]);
     assert.deepEqual(requests[1].body, { mode: "portrait-preview", language: "zh", responses: [{ kind: "registration_question", portraitQuestionToken: "synthetic-formal:value", answer: "采购渠道引荐" }, { kind: "signed_question", questionToken: "synthetic-signed:target", portraitAdaptiveToken: "synthetic-workspace:target", answer: "希望认识东京采购负责人" }] });
     assert.equal(await persona.evaluate(el => getComputedStyle(el).borderRadius), "0px", "7a uses an open result header, not an inset card");
-  });
-  test(`${scheme}: final inset party match and unavailable ticket keep their semantic boundaries`, async t => {
-    const page = await open(t, "party&insets=true", scheme);
-    const match = page.getByText("可以一起讨论零售合作", { exact: true }).locator("..");
-    const ticket = page.getByText("未生成签到码", { exact: true }).locator("..");
-    assert.deepEqual([await match.evaluate(el => getComputedStyle(el).borderRadius), await ticket.evaluate(el => getComputedStyle(el).borderRadius)], ["12px", "12px"], "matchRow, ticketCompact");
-    assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);
   });
 }
 
@@ -212,8 +215,9 @@ for (const scheme of ["light", "dark"] as const) {
     assert.equal(await register.locator("..").evaluate(el => getComputedStyle(el).borderTopWidth), "0px", "registration summary is open");
     assert.ok(await page.locator('img[src*="meeting.jpg"]').count() > 0);
     assert.equal(await page.getByRole("button", { name: "查看参会者", exact: true }).count(), 0, "public signed-out detail does not authorize the private roster");
-    await register.click(); await page.getByRole("button", { name: "打开活动现场", exact: true }).click();
-    assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), ["/events/event%3Astyle/register", "/party?eventId=event%3Astyle"]);
+    await register.click();
+    assert.equal(await page.getByRole("button", { name: "进入现场" }).count(), 0, "signed-out detail has no live entry");
+    assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), ["/events/event%3Astyle/register"]);
     await capture(page, `detail-${scheme}`);
   });
 }
@@ -315,14 +319,12 @@ test("organizer public cover and invite preparation preserve destinations withou
   assert.deepEqual(await invite.evaluate(() => (window as any).fixture.requests), []); await capture(invite, "invite-dark");
 });
 
-test("party variants and attendee content preserve real identity, routes and read-only arrival status", async t => {
-  for (const screen of ["party", "partyGraph", "partyCheckIn", "attendees"]) {
-    const page = await open(t, screen, "dark"); await page.getByText(screen === "attendees" ? "参会者与名片交换" : title, { exact: true }).first().waitFor();
-    for (const action of await page.getByRole("button").all()) await fits(action);
-    assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), screen === "attendees" ? [{ method: "GET", path: "/api/events/event%3Astyle/operations", body: undefined }] : []);
-    if (screen === "partyGraph") await page.getByText("佐藤 葵", { exact: true }).first().waitFor();
-    await capture(page, screen);
-  }
+test("the live page keeps real identity and full-size tab and action targets", async t => {
+  const page = await open(t, "attendees", "dark"); await page.getByText("1 号桌", { exact: true }).waitFor();
+  for (const action of await page.getByRole("tab").all()) await fits(action);
+  for (const action of await page.getByRole("button").all()) await fits(action);
+  assert.equal((await page.evaluate(() => (window as any).fixture.requests)).some((r: any) => r.method !== "GET"), false);
+  await capture(page, "live");
 });
 
 test("event center gives the phase action its own row and keeps all secondary destinations readable", async t => {

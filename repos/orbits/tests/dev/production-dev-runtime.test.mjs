@@ -44,10 +44,6 @@ const registeredCapabilitySlugs = [
   "followup-task-generation-mock",
   "message-draft-generator-mock",
   "reminder-schedule-and-notification-mock",
-  "chat-conversation-and-message-mock",
-  "chat-writing-assist-mock",
-  "chat-summary-and-extraction-mock",
-  "chat-privacy-controls-mock",
   "dashboard-aggregate-mock",
   "network-distribution-analytics-mock",
   "opportunity-reminder-analytics-mock",
@@ -75,7 +71,7 @@ test(
   "production returns 404 for every assigned dev surface and dynamic slug",
   { skip: !baseUrl },
   async () => {
-    assert.equal(registeredCapabilitySlugs.length, 49);
+    assert.equal(registeredCapabilitySlugs.length, 45);
 
     const paths = [
       ...fixedDevPaths,

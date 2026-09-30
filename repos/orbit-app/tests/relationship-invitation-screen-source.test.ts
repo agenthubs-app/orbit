@@ -6,7 +6,7 @@ const source = readFileSync("src/screens/contacts/RelationshipInvitationScreen.t
 const route = readFileSync("app/invitations/[token].tsx", "utf8");
 
 test("native invitation route previews and accepts only after an explicit press", () => {
-  assert.match(route, /withOrbitPrivateRoute\(RelationshipInvitationScreen\)/u);
+  assert.match(route, /withOrbitPrivateRoute\((?:withOnlineOnlyRoute\()?RelationshipInvitationScreen\)\)?/u);
   assert.match(source, /relationshipCommunicationInvitationPath/u);
   assert.match(source, /relationshipCommunicationInvitationAcceptPath/u);
   assert.match(source, /useOrbitAuthSession\(\)\.actorId \?\? ""/u);

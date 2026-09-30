@@ -185,8 +185,11 @@ export function agentActionsToView({
   actionsPayload
 }: AgentActionsViewInput): AgentActionsView {
   const actionsRecord = recordInput(actionsPayload);
+  // "今天需要你决定什么": only entries that still need a decision. The ledger queue
+  // also returns completed/approved entries; those live in All Actions (0126).
   const actions = listField(actionsRecord, "actions")
     .filter(isRecord)
+    .filter((record) => booleanField(record, "confirmationRequired", true))
     .map(actionCard);
   const settings = settingsView();
   const highPriorityCount = actions.filter(

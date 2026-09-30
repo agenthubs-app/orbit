@@ -36,7 +36,7 @@ test("the Orbit AI drawer exposes the relationship inbox with its unread badge",
 
 test("the Orbit AI drawer links Today to its canonical open task count", () => {
   assert.match(aiScreenSource, /href: "\/today" as Href/u);
-  assert.match(aiScreenSource, /todayBadge=\{todaySummary\.openTaskCount\}/u);
+  assert.match(aiScreenSource, /todayBadge=\{todaySummaryView\.openTaskCount\}/u);
   assert.match(aiScreenSource, /badge=\{entry\.href === "\/today" \? todayBadge : undefined\}/u);
   assert.doesNotMatch(aiScreenSource, /entry\.href === "\/schedule"/u);
 });

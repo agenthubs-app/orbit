@@ -33,6 +33,9 @@ export const useLocalSearchParams = () => { observe(); return { id: state.conver
 export const useGlobalSearchParams = useLocalSearchParams;
 export const usePathname = () => "/chat/" + encodeURIComponent(state.conversationId);
 export const useRouter = () => ({ canGoBack: () => false, back() {}, push() {}, replace() {} });
+// Sprint 0119: this harness exercises the network path (no device mirror).
+export const useLocalRelationshipConversations = () => ({ available: false, conversations: [], freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh: async () => null });
+export const useLocalRelationshipThread = () => ({ available: false, conversations: [], messages: [], freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh: async () => null });
 export const Redirect = () => <div role="status">Sign in</div>;
 export const Stack = () => null;
 export const randomUUID = () => "test-uuid-" + (++uuidSequence);
@@ -53,7 +56,7 @@ test.before(async () => {
     define: { "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
     plugins: [{ name: "chat-boundaries", setup(plugin) {
       plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "chat" }));
-      plugin.onResolve({ filter: /^(fixture|expo-router|expo-crypto|@expo\/vector-icons|react-native-safe-area-context)$|\/(ApiBaseUrlProvider|AuthSessionProvider|snapshot-store)$/ }, () => ({ path: "fixture", namespace: "chat" }));
+      plugin.onResolve({ filter: /^(fixture|expo-router|expo-crypto|@expo\/vector-icons|react-native-safe-area-context)$|\/(ApiBaseUrlProvider|AuthSessionProvider|snapshot-store|useLocalRelationshipMessages)$/ }, () => ({ path: "fixture", namespace: "chat" }));
       plugin.onLoad({ filter: /.*/, namespace: "chat" }, args => ({ contents: args.path === "native" ? `
 import React from "react"; import { Pressable as RealPressable, RefreshControl as RealRefreshControl } from "react-native-web"; export * from "react-native-web";
 export const Pressable = props => { const text = React.Children.toArray(props.children).find(child => React.isValidElement(child) && typeof child.props.children === "string"); const label = props.accessibilityLabel || text?.props.children; if (label) window.fixture.presses[label] = props.onPress; return <RealPressable {...props} />; };
@@ -105,6 +108,8 @@ async function writes(page: Page) {
 test("opening a verified conversation never sends and revoked qualification fails closed", async t => {
   const page = await open(t);
   assert.deepEqual(await writes(page), []);
+  // Sprint 0104: the retired legacy chat extraction call is gone.
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.path.startsWith("/api/chat/")).map((r: any) => r.path)), []);
   assert.equal(await page.getByRole("button", { name: "发送消息", exact: true }).isDisabled(), true);
   await fill(page);
   assert.equal(await page.getByRole("button", { name: "发送消息", exact: true }).isEnabled(), true);

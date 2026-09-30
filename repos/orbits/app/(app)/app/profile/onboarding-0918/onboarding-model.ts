@@ -10,6 +10,7 @@ import {
   type GoalHorizon,
 } from "../goal-editor/goal-editor-model";
 import { OFFER_OPTIONS, SEEK_OPTIONS, TOPIC_OPTIONS } from "../profile-0918/profile-model";
+import { profileBioLimit, profileVisibleLength } from "../../../../../shared/api-schema/profile-bio";
 
 export type Copy = { zh: string; en: string };
 export type Lang = "zh" | "en";
@@ -30,7 +31,13 @@ export function isOnboardingView(value: unknown): value is OnboardingView {
 export const OFFER_LIMIT = 5;
 export const SEEK_LIMIT = 5;
 export const TOPIC_LIMIT = 8;
-export const BIO_LIMIT = 80;
+/** 「关于我」计数：含中日韩文字上限 80，其余 200（与服务端同一份规则）。 */
+export function bioCounter(bio: string): { count: number; limit: number; over: boolean } {
+  const text = bio.trim();
+  const count = profileVisibleLength(text);
+  const limit = profileBioLimit(text);
+  return { count, limit, over: count > limit };
+}
 export const HEADLINE_LIMIT = 80;
 
 export { OFFER_OPTIONS, SEEK_OPTIONS, TOPIC_OPTIONS };

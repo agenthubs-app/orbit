@@ -13,8 +13,13 @@ import {
 } from "./sync-database-key";
 
 interface NativeSyncDependencies extends SyncKeyDependencies {
-  sqlite: Pick<typeof import("expo-sqlite"), "openDatabaseAsync" | "deleteDatabaseAsync">;
+  sqlite: Pick<typeof import("expo-sqlite"), "openDatabaseAsync" | "deleteDatabaseAsync"> & {
+    /** Names of the files in the SQLite directory; used to find other identities' mirrors (sprint 0113). */
+    listDatabaseNames?: () => Promise<readonly string[]>;
+  };
 }
+
+const IDENTITY_DATABASE = /^orbit-sync-([a-f0-9]{64})\.db$/u;
 
 type NativeDatabase = Awaited<ReturnType<NativeSyncDependencies["sqlite"]["openDatabaseAsync"]>>;
 interface OpenScope {
@@ -71,6 +76,8 @@ export function createSyncLifecycle(input: {
   let legacyRemoved = false;
   let cleanupRecovered = false;
   let readyToken = -1;
+  // Between suspendScope and the next setScope no read or write reaches the kept database (0130).
+  let suspended = false;
 
   function enqueue<T>(operation: () => Promise<T>): Promise<T> {
     const result = queue.then(operation);
@@ -96,6 +103,37 @@ export function createSyncLifecycle(input: {
     } catch {
       input.report("SYNC_CLEANUP_STATE_FAILED", digest);
       return false;
+    }
+    return true;
+  }
+
+  /**
+   * One identity per device (sprint 0113; the browser has done this since
+   * 0125): opening a scope erases every other identity's database and key,
+   * including ones this process never opened (a session that ended by expiry,
+   * a killed process, an older build). Each erasure persists its intent first,
+   * exactly like purge, so a crash mid-way is finished by the next process
+   * before it accepts any identity. A failed erasure refuses the new identity.
+   */
+  async function eraseOtherIdentities(keep: string): Promise<boolean> {
+    if (!native?.sqlite.listDatabaseNames) return true;
+    let names: readonly string[];
+    try {
+      names = await native.sqlite.listDatabaseNames();
+    } catch {
+      // Enumeration is best effort; the open identity is still isolated by its own key.
+      input.report("SYNC_IDENTITY_SCAN_FAILED", keep);
+      return true;
+    }
+    const others = new Set(names.map(name => IDENTITY_DATABASE.exec(name)?.[1]).filter((digest): digest is string => Boolean(digest) && digest !== keep));
+    for (const digest of others) {
+      try {
+        await persistPendingSyncCleanup(digest, native);
+      } catch {
+        input.report("SYNC_CLEANUP_STATE_FAILED", digest);
+        return false;
+      }
+      if (!(await finishPendingCleanup(digest))) return false;
     }
     return true;
   }
@@ -126,34 +164,62 @@ export function createSyncLifecycle(input: {
     return true;
   }
 
+  /** Loads the native modules and finishes a crash-interrupted erasure before any transition. */
+  async function prepare(): Promise<boolean> {
+    try {
+      native ??= await input.loadNative();
+    } catch {
+      input.report("SYNC_CLEANUP_STATE_FAILED");
+      return false;
+    }
+    if (!cleanupRecovered) {
+      try {
+        const pending = await readPendingSyncCleanup(native);
+        if (pending && !(await finishPendingCleanup(pending))) return false;
+        cleanupRecovered = true;
+      } catch {
+        // An unreadable marker cannot be treated as proof of no pending key.
+        input.report("SYNC_CLEANUP_STATE_FAILED");
+        return false;
+      }
+    }
+    return true;
+  }
+
   return {
     // setScope accepts an identity transition; only this reports initialized storage.
     isScopeReadable(scope: SyncSessionScope | null): boolean {
       return input.platform !== "web" && readyToken === token && Boolean(scope && current?.database && !current.blocked &&
         sameScope(current.scope, scope) && (scope.workspaceId === undefined || scope.workspaceId === current.scope.workspaceId));
     },
+    /**
+     * The session is being re-validated against `baseUrl` (sprint 0130). Reads pause (queued and
+     * later reads return null) until setScope confirms an identity; nothing is deleted. An open
+     * scope of another server is purged here: a server change never keeps the old mirror. After
+     * this, setScope(same identity) resumes the kept database, setScope(other identity) or
+     * setScope(null) purges it.
+     */
+    suspendScope(baseUrl: string): Promise<boolean> {
+      const normalized = normalizeOrbitApiBaseUrl(baseUrl);
+      ++token;
+      return enqueue(async () => {
+        if (input.platform === "web") return true;
+        if (!(await prepare())) return false;
+        suspended = true;
+        if (current && (current.blocked || normalizeOrbitApiBaseUrl(current.scope.baseUrl) !== normalized)) {
+          return purge();
+        }
+        return true;
+      });
+    },
     setScope(scope: SyncSessionScope | null): Promise<boolean> {
       scope = scope ? { ...scope, baseUrl: normalizeOrbitApiBaseUrl(scope.baseUrl) } : null;
       const requestToken = ++token;
       return enqueue(async () => {
         if (input.platform === "web") return true;
-        try {
-          native ??= await input.loadNative();
-        } catch {
-          input.report("SYNC_CLEANUP_STATE_FAILED");
-          return false;
-        }
-        if (!cleanupRecovered) {
-          try {
-            const pending = await readPendingSyncCleanup(native);
-            if (pending && !(await finishPendingCleanup(pending))) return false;
-            cleanupRecovered = true;
-          } catch {
-            // An unreadable marker cannot be treated as proof of no pending key.
-            input.report("SYNC_CLEANUP_STATE_FAILED");
-            return false;
-          }
-        }
+        if (!(await prepare()) || !native) return false;
+        const loaded = native;
+        suspended = false;
         // Purge an old scope even if a newer request superseded this request.
         if (current && (current.blocked || !scope || !sameScope(current.scope, scope))) {
           if (!(await purge())) return false;
@@ -162,7 +228,7 @@ export function createSyncLifecycle(input: {
         try {
           if (!legacyRemoved) {
             // The old implementation no longer opens or owns a plaintext handle.
-            await native.sqlite.deleteDatabaseAsync("orbit-cache.db");
+            await loaded.sqlite.deleteDatabaseAsync("orbit-cache.db");
             legacyRemoved = true;
           }
           if (!scope) return true;
@@ -171,10 +237,11 @@ export function createSyncLifecycle(input: {
             if (current.database) readyToken = requestToken;
             return true;
           }
-          const digest = await syncScopeDigest(scope, native);
+          const digest = await syncScopeDigest(scope, loaded);
+          if (!(await eraseOtherIdentities(digest))) return false;
           current = { scope, digest, name: `orbit-sync-${digest}.db`, handle: null, database: null, blocked: false };
-          const key = await loadSyncDatabaseKey(digest, native, () => native!.sqlite.deleteDatabaseAsync(current!.name));
-          current.handle = await native.sqlite.openDatabaseAsync(current.name, { useNewConnection: true });
+          const key = await loadSyncDatabaseKey(digest, loaded, () => loaded.sqlite.deleteDatabaseAsync(current!.name));
+          current.handle = await loaded.sqlite.openDatabaseAsync(current.name, { useNewConnection: true });
           await current.handle.execAsync(`PRAGMA key = "x'${key}'";`);
           const cipher = await current.handle.getFirstAsync<{ cipher_version: string }>("PRAGMA cipher_version");
           if (!cipher?.cipher_version) throw new Error("SYNC_CIPHER_UNAVAILABLE");
@@ -204,7 +271,7 @@ export function createSyncLifecycle(input: {
     withDatabase<T>(scope: SyncSessionScope | null, operation: (database: LocalSyncDatabase, activeScope: Readonly<SyncSessionScope>) => Promise<T>): Promise<T | null> {
       const requestToken = token;
       return enqueue(async () => {
-        if (requestToken !== token || !current?.database || current.blocked) return null;
+        if (requestToken !== token || suspended || !current?.database || current.blocked) return null;
         if (scope && (!sameScope(current.scope, scope) || (scope.workspaceId !== undefined && scope.workspaceId !== current.scope.workspaceId))) return null;
         try {
           const result = await operation(current.database, { ...current.scope });
@@ -233,6 +300,14 @@ export async function deleteSyncDatabaseFiles(
   }
 }
 
+export async function listSyncDatabaseNames(
+  sqlite: Pick<typeof import("expo-sqlite"), "defaultDatabaseDirectory">,
+  Directory: new (...paths: string[]) => { exists: boolean; list(): { name: string }[] },
+): Promise<string[]> {
+  const directory = new Directory(sqlite.defaultDatabaseDirectory);
+  return directory.exists ? directory.list().map(entry => entry.name) : [];
+}
+
 export const syncLifecycle = createSyncLifecycle({
   platform: Platform.OS,
   loadNative: async () => {
@@ -247,6 +322,7 @@ export const syncLifecycle = createSyncLifecycle({
         sqlite: {
           openDatabaseAsync: sqlite.openDatabaseAsync,
           deleteDatabaseAsync: (name: string) => deleteSyncDatabaseFiles(name, sqlite, fileSystem.File),
+          listDatabaseNames: async () => listSyncDatabaseNames(sqlite, fileSystem.Directory),
         },
         crypto,
         secureStore,

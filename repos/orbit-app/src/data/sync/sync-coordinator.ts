@@ -13,6 +13,8 @@ import {
   type SyncClient,
   SyncResetRequiredError,
 } from "./sync-client";
+import { findPageCopyDefinition, PAGE_COPY_DEFINITIONS, type PageCopy } from "./page-copies";
+import { kindOfSyncDomain, KNOWN_SYNC_DOMAINS, PARTITIONED_SYNC_DOMAINS, syncDomainOfKind } from "./sync-domains";
 import {
   shouldSynchronize,
   type SyncRefreshReason,
@@ -21,13 +23,9 @@ import {
 const PAGE_LIMIT = 100;
 const MAX_PAGES_PER_RUN = 100;
 
-// Registry v1 mirrors the server's SYNC_DOMAINS; a lease grant per domain binds the read scope.
-const REGISTERED_DOMAIN_IDS = ["notes", "tasks", "personal-schedule"] as const;
-const DOMAIN_OF_KIND: Partial<Record<SyncChangeKind, string>> = {
-  note: "notes",
-  task: "tasks",
-  personal_schedule: "personal-schedule",
-};
+// Sprint 0113: the server's lease decides which domains sync (one grant binds one read
+// scope); KNOWN_SYNC_DOMAINS says which of them this build can store, and a
+// platform may narrow that further. Unknown grants are ignored.
 /** True only when the manifest entry for this bound scope matches the complete cursor's watermark and generation. */
 function manifestProvesUnchanged(manifest: DomainManifest | null, readScope: ReadScope, stored: LocalSyncCursor): boolean {
   if (!manifest || stored.bootstrapState !== "complete" || stored.highWatermark === null || stored.generation === null) return false;
@@ -39,10 +37,12 @@ function manifestProvesUnchanged(manifest: DomainManifest | null, readScope: Rea
 const REVOKED_EPOCH = "__revoked__";
 
 export interface SyncCoordinatorLifecycle {
-  /** Domains this platform may mirror; defaults to the full registry. The browser lists a narrower set. */
+  /** Domains this platform may mirror; defaults to every domain this build knows. The browser lists a narrower set. */
   registeredDomainIds?: readonly string[];
   /** At-rest codec for payload_json; the browser mirror encrypts per record, native relies on SQLCipher. */
   payloadCodec?: PayloadCodec;
+  /** Sprint 0131: page copies this platform may keep; defaults to every registered copy. The browser lists its whitelist. */
+  registeredPageCopyIds?: readonly string[];
   setScope(scope: SyncSessionScope | null): Promise<boolean>;
   withDatabase<T>(
     scope: SyncSessionScope | null,
@@ -99,11 +99,25 @@ export interface SyncCoordinatorSession {
   isCurrent(): boolean;
   readCollection<TPayload = unknown>(
     kind: SyncChangeKind,
+    options?: { records?: boolean },
   ): Promise<SyncedCollectionSnapshot<TPayload> | null>;
+  /** Sprint 0131: the named rows of a kind from the device (at most 200); null without a mirror or grant. */
+  readRecordsById<TPayload = unknown>(kind: SyncChangeKind, ids: readonly string[]): Promise<readonly SyncRecord<TPayload>[] | null>;
   synchronize<TPayload = unknown>(
     kind: SyncChangeKind,
-    options?: SyncOptions,
+    options?: SyncOptions & { records?: boolean },
   ): SyncRequest<TPayload>;
+  /** Sprint 0118: the device opened an AI session (its messages sync from now on); null without a mirror. */
+  openAiSession(sessionId: string): Promise<{ opened: string[]; evicted: string[]; added: boolean } | null>;
+  readAiSessionCards(sessionId: string): Promise<unknown | null>;
+  saveAiSessionCards(sessionId: string, cards: unknown): Promise<void>;
+  /**
+   * Sprint 0131: the last successful online read of a registered page, bound to
+   * the accepted lease (workspace, authorization epoch). Null without an accepted
+   * lease, a mirror, or a copy; saving without one is a no-op.
+   */
+  readPageCopy<TData = unknown>(id: string, variant: string): Promise<PageCopy<TData> | null>;
+  savePageCopy(id: string, variant: string, data: unknown): Promise<void>;
 }
 
 interface ActiveScope extends SyncScopeInput {
@@ -156,7 +170,18 @@ export function createSyncCoordinator(input: {
     return active === scope && !scope.superseded;
   }
 
-  const registeredDomainIds: readonly string[] = input.lifecycle.registeredDomainIds ?? REGISTERED_DOMAIN_IDS;
+  // Known to this build and allowed on this platform; the lease picks from these.
+  const registeredDomainIds: readonly string[] = (input.lifecycle.registeredDomainIds ?? Object.keys(KNOWN_SYNC_DOMAINS))
+    .filter((domainId) => kindOfSyncDomain(domainId) !== null);
+
+  const registeredPageCopyIds: readonly string[] = (input.lifecycle.registeredPageCopyIds ?? PAGE_COPY_DEFINITIONS.map((definition) => definition.id))
+    .filter((id) => findPageCopyDefinition(id) !== null);
+
+  /** Sprint 0131: page copies are bound to the accepted lease's workspace and authorization epoch (one per actor and workspace). */
+  function pageCopyBinding(scope: ActiveScope): { workspaceId: string; authorizationEpoch: string } | null {
+    const grant = scope.lease?.grants[0];
+    return grant ? { workspaceId: grant.workspaceId, authorizationEpoch: grant.authorizationEpoch } : null;
+  }
 
   function readScopesOf(scope: ActiveScope): ReadScope[] {
     if (!scope.lease) return [];
@@ -171,7 +196,7 @@ export function createSyncCoordinator(input: {
   }
 
   function readScopeFor(scope: ActiveScope, kind: SyncChangeKind): ReadScope | null {
-    const domainId = DOMAIN_OF_KIND[kind];
+    const domainId = syncDomainOfKind(kind);
     return readScopesOf(scope).find((candidate) => candidate.domainId === domainId) ?? null;
   }
 
@@ -243,7 +268,7 @@ export function createSyncCoordinator(input: {
     if (scope.workspaceId === null || !scope.lease) return null;
     let oldest: LocalSyncCursor | null = null;
     for (const grant of scope.lease.grants) {
-      const kind = (Object.keys(DOMAIN_OF_KIND) as SyncChangeKind[]).find((candidate) => DOMAIN_OF_KIND[candidate] === grant.domainId);
+      const kind = kindOfSyncDomain(grant.domainId);
       // A grant outside this platform's whitelist is never bound, so it never has a cursor and must not force a sync.
       if (!kind || !registeredDomainIds.includes(grant.domainId)) continue;
       const cursor = await readDomainCursor(scope, kind);
@@ -256,6 +281,7 @@ export function createSyncCoordinator(input: {
   async function readCollection<TPayload>(
     scope: ActiveScope,
     kind: SyncChangeKind,
+    withRecords = true,
   ): Promise<SyncedCollectionSnapshot<TPayload> | null> {
     await scope.ready;
     if (!isCurrent(scope)) return null;
@@ -272,10 +298,11 @@ export function createSyncCoordinator(input: {
     try {
       const value = await withRepository(scope, async (repository) => ({
         cursor: await repository.getScopeCursor(readScope),
-        records: await repository.listRecords({
+        // Sprint 0131: a consumer that reads rows by id (a conversation's page) needs only the sync state.
+        records: withRecords ? await repository.listRecords({
           workspaceId: scope.workspaceId!,
           kind,
-        }),
+        }) : [],
       }));
       if (!isCurrent(scope)) return null;
       return {
@@ -301,8 +328,9 @@ export function createSyncCoordinator(input: {
     scope: ActiveScope,
     kind: SyncChangeKind,
     result: SyncRunResult,
+    withRecords = true,
   ): Promise<SyncedCollectionSnapshot<TPayload> | null> {
-    const mirror = await readCollection<TPayload>(scope, kind);
+    const mirror = await readCollection<TPayload>(scope, kind, withRecords);
     if (mirror === null) return null;
     if (result.error !== null) {
       return {
@@ -371,13 +399,17 @@ export function createSyncCoordinator(input: {
           }
           scope.workspaceId = workspaceId;
         }
+        // Sprint 0131: page copies of any other epoch go with the rotation; a lease without grants keeps none.
+        await withRepository(scope, (repository) => repository.retirePageCopies(pageCopyBinding(scope)));
+        if (!isCurrent(scope) || flight.abandoned) return null;
         if (!workspaceId) return { error: null };
 
         // Revocation drops every epoch of the domain; rotation keeps only the granted one.
-        for (const domainId of registeredDomainIds) {
+        // Driven by the lease: every mirrored domain granted now or in the previous lease.
+        const leasedDomainIds = [...new Set([...accepted.grants, ...previousGrants].map((candidate) => candidate.domainId))]
+          .filter((domainId) => registeredDomainIds.includes(domainId));
+        for (const domainId of leasedDomainIds) {
           const grant = accepted.grants.find((candidate) => candidate.domainId === domainId);
-          const previous = previousGrants.find((candidate) => candidate.domainId === domainId);
-          if (!grant && !previous) continue;
           await withRepository(scope, (repository) =>
             repository.retireEpochs(workspaceId, domainId, grant?.authorizationEpoch ?? REVOKED_EPOCH),
           );
@@ -397,7 +429,16 @@ export function createSyncCoordinator(input: {
         let pageCount = 0;
         for (const readScope of readScopesOf(scope)) {
           const stored = await withRepository(scope, (repository) => repository.getScopeCursor(readScope));
-          if (stored && manifestProvesUnchanged(manifest, readScope, stored)) {
+          // Sprint 0118: a partitioned domain (the opened AI sessions' messages) names its
+          // partitions on every page; a newly opened session must be fetched even when the
+          // manifest says the domain did not move, so the walk also compares the set it named.
+          const partitions = PARTITIONED_SYNC_DOMAINS.includes(readScope.domainId)
+            ? await withRepository(scope, (repository) => repository.getOpenedAiSessions(readScope.workspaceId))
+            : undefined;
+          const partitionKey = partitions ? JSON.stringify([...partitions].sort()) : null;
+          const partitionsUnchanged = partitionKey === null
+            || (await withRepository(scope, (repository) => repository.getPartitionKey(readScope))) === partitionKey;
+          if (stored && partitionsUnchanged && manifestProvesUnchanged(manifest, readScope, stored)) {
             await withRepository(scope, (repository) => repository.confirmScopeCursor(readScope, new Date(now()).toISOString()));
             if (!isCurrent(scope) || flight.abandoned) return null;
             continue;
@@ -412,6 +453,7 @@ export function createSyncCoordinator(input: {
               page = await scope.client.getDomainPage({
                 domainId: readScope.domainId,
                 ...(requestCursor === undefined ? {} : { cursor: requestCursor }),
+                ...(partitions?.length ? { sessions: partitions } : {}),
                 limit: PAGE_LIMIT,
                 signal: controller.signal,
               });
@@ -434,7 +476,11 @@ export function createSyncCoordinator(input: {
             await withRepository(scope, (repository) => repository.applyDomainPage(readScope, page));
             if (!isCurrent(scope) || flight.abandoned) return null;
             requestCursor = page.nextCursor;
-            if (!page.hasMore || flight.stopAfterCurrent) break;
+            if (!page.hasMore) {
+              if (partitionKey !== null) await withRepository(scope, (repository) => repository.setPartitionKey(readScope, partitionKey));
+              break;
+            }
+            if (flight.stopAfterCurrent) break;
           }
           if (flight.stopAfterCurrent) return { error: null };
         }
@@ -515,12 +561,51 @@ export function createSyncCoordinator(input: {
       isCurrent(): boolean {
         return isCurrent(bound);
       },
-      readCollection<TPayload = unknown>(kind: SyncChangeKind) {
-        return readCollection<TPayload>(bound, kind);
+      readCollection<TPayload = unknown>(kind: SyncChangeKind, options: { records?: boolean } = {}) {
+        return readCollection<TPayload>(bound, kind, options.records ?? true);
+      },
+      async readRecordsById<TPayload = unknown>(kind: SyncChangeKind, ids: readonly string[]) {
+        if (ids.length > 200) throw new TypeError("row id reads take at most 200 ids");
+        await bound.ready;
+        const readScope = readScopeFor(bound, kind);
+        if (!isCurrent(bound) || bound.workspaceId === null || !readScope) return null;
+        const workspaceId = bound.workspaceId;
+        try { return await withRepository(bound, (repository) => repository.listRecordsByIds({ workspaceId, kind, ids })) as readonly SyncRecord<TPayload>[]; } catch (error) { if (error instanceof LocalMirrorUnavailableError) return null; throw error; }
+      },
+      async openAiSession(sessionId: string) {
+        await bound.ready;
+        if (!isCurrent(bound) || bound.workspaceId === null) return null;
+        const workspaceId = bound.workspaceId;
+        try { return await withRepository(bound, (repository) => repository.openAiSession(workspaceId, sessionId)); } catch (error) { if (error instanceof LocalMirrorUnavailableError) return null; throw error; }
+      },
+      async readAiSessionCards(sessionId: string) {
+        await bound.ready;
+        if (!isCurrent(bound) || bound.workspaceId === null) return null;
+        const workspaceId = bound.workspaceId;
+        try { return await withRepository(bound, (repository) => repository.getAiSessionCards(workspaceId, sessionId)); } catch (error) { if (error instanceof LocalMirrorUnavailableError) return null; throw error; }
+      },
+      async saveAiSessionCards(sessionId: string, cards: unknown) {
+        await bound.ready;
+        if (!isCurrent(bound) || bound.workspaceId === null) return;
+        const workspaceId = bound.workspaceId;
+        try { await withRepository(bound, (repository) => repository.setAiSessionCards(workspaceId, sessionId, cards)); } catch (error) { if (!(error instanceof LocalMirrorUnavailableError)) throw error; }
+      },
+      async readPageCopy<TData = unknown>(id: string, variant: string): Promise<PageCopy<TData> | null> {
+        await bound.ready;
+        const binding = pageCopyBinding(bound);
+        if (!isCurrent(bound) || !binding || !registeredPageCopyIds.includes(id)) return null;
+        try { return await withRepository(bound, (repository) => repository.getPageCopy(binding, id, variant)) as PageCopy<TData> | null; } catch (error) { if (error instanceof LocalMirrorUnavailableError) return null; throw error; }
+      },
+      async savePageCopy(id: string, variant: string, data: unknown): Promise<void> {
+        if (!findPageCopyDefinition(id)) throw new TypeError("page copy is not registered");
+        await bound.ready;
+        const binding = pageCopyBinding(bound);
+        if (!isCurrent(bound) || !binding || !registeredPageCopyIds.includes(id)) return;
+        try { await withRepository(bound, (repository) => repository.setPageCopy(binding, id, variant, { data, syncedAt: new Date(now()).toISOString() })); } catch (error) { if (!(error instanceof LocalMirrorUnavailableError)) throw error; }
       },
       synchronize<TPayload = unknown>(
         kind: SyncChangeKind,
-        options: SyncOptions = {},
+        options: SyncOptions & { records?: boolean } = {},
       ): SyncRequest<TPayload> {
         if (!isCurrent(bound)) {
           return {
@@ -583,7 +668,7 @@ export function createSyncCoordinator(input: {
           promise: flight.promise.then((result) =>
             result === null
               ? null
-              : finalSnapshot<TPayload>(bound, kind, result),
+              : finalSnapshot<TPayload>(bound, kind, result, options.records ?? true),
           ),
           started: flight.started,
         };

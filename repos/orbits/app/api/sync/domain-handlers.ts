@@ -6,7 +6,39 @@ import {
   DomainUnknownError,
   type DomainReadService,
 } from "../../../features/sync/domain-read-service";
-import { SYNC_DOMAINS } from "../../../features/sync/domain-registry";
+import { SYNC_DOMAIN_SCHEMA_VERSION, SYNC_DOMAINS, SYNC_REGISTRY_VERSION } from "../../../features/sync/domain-registry";
+import { eventDomainSummaryKey } from "../../../features/sync/event-domain-reader";
+import { aiSubspaceOf } from "../../../features/sync/ai-session-domain-reader";
+import { reconcileInboxSourceStates } from "../../../features/sync/inbox-domain-reader";
+import { relationshipDomainSummaryKey } from "../../../features/sync/relationship-message-domain-reader";
+import { createConfiguredInboxRuntime, isTypedInboxEnabled } from "../../../features/notifications/inbox-record-service-factory";
+
+// The conditional manifest fingerprints the orbit_records watermarks (the
+// actor's rows and the authorization rows) and, since sprint 0115, the event
+// domains' summary (their watermarks and released set, one statement) folded
+// into the route key. A device domain read any other way (a plain dedicated
+// table) is not covered, so its presence turns the 304 path off.
+// Sprint 0116: the contacts domain is built from four orbit_records
+// collections, every row owned by the actor, so the same user-scoped watermark
+// covers it.
+// Sprint 0117: the dashboard graph domain reads six orbit_records collections of
+// the actor (events included), so the same watermark covers it.
+// Sprint 0118: the inbox (the actor's inboxNotifications rows), the AI session
+// organizations (the actor's rows in the base workspace) and the AI sessions and
+// messages in the actor's personal sub-workspace are covered too, and the key is
+// built from max(sync_revision) (readRevisionWatermark), not max(updated_at).
+// Sprint 0119: the relationship message domains read the dedicated message
+// tables; their two watermarks (one statement, relationshipSummary) are folded
+// into the route key like the event summary.
+const MANIFEST_COLLECTIONS = [...new Set(SYNC_DOMAINS.flatMap((domain) => domain.source.kind === "orbit_records" || domain.source.kind === "inbox_records"
+  ? [domain.source.collectionName]
+  : domain.source.kind === "contact_graph" || domain.source.kind === "dashboard_graph"
+    ? [...domain.source.collections]
+    : domain.source.kind === "personal_subspace" ? [...domain.source.ownedCollections] : []))];
+const MANIFEST_SUBSPACE_COLLECTIONS = [...new Set(SYNC_DOMAINS.flatMap((domain) => domain.source.kind === "personal_subspace" ? [...domain.source.subspaceCollections] : []))];
+const MANIFEST_IS_CONDITIONAL = SYNC_DOMAINS.every((domain) => ["orbit_records", "event_derived", "contact_graph", "dashboard_graph", "inbox_records", "personal_subspace", "relationship_messages"].includes(domain.source.kind));
+// A new registry or page schema must never replay a cached manifest.
+const MANIFEST_ROUTE_KEY = `sync.manifest:r${SYNC_REGISTRY_VERSION}:s${SYNC_DOMAIN_SCHEMA_VERSION}`;
 import { SYNC_DEFAULT_LIMIT, SYNC_MAX_LIMIT } from "../../../features/sync/read-service";
 import { failure, runtimeBoundaryHeaders, success } from "../../../shared/api/envelope";
 import { resolveFeatureMode } from "../../../shared/config/feature-mode";
@@ -41,7 +73,17 @@ function createConfiguredDomainReadService(): DomainReadService | null {
   if (!configured || !cursorSecret) return null;
   const key = `${configured.workspaceId}|${cursorSecret.length}`;
   if (configuredService?.key === key) return configuredService.service;
-  const service = createDomainReadService({ client: configured.client, cursorSecret });
+  const service = createDomainReadService({
+    client: configured.client,
+    cursorSecret,
+    // Sprint 0118: the inbox's read-time source decisions reach devices through a write-back.
+    inboxReconciler: async ({ actorId, workspaceId }) => {
+      if (!isTypedInboxEnabled(actorId)) return { checked: 0, changed: 0 };
+      const inbox = createConfiguredInboxRuntime();
+      if (!inbox || inbox.workspaceId !== workspaceId) throw new Error("The inbox runtime is not configured for this workspace.");
+      return reconcileInboxSourceStates({ client: inbox.client, workspaceId, actorId, access: inbox.sourceAccessBatch });
+    },
+  });
   configuredService = { key, service };
   return service;
 }
@@ -132,21 +174,42 @@ export function createSyncDomainHandlers(dependencies: SyncDomainRouteDependenci
     // collections (or the authorization rows) moved, the client gets a 304 and
     // replays its cached manifest, so an unchanged sync touches no business row.
     manifest(request: Request): Promise<Response> {
-      return guarded(({ actorId, workspaceId, service, mode }) =>
-        conditionalJsonRead(
-          { routeKey: "sync.manifest", request, actorId, workspaceId, collections: SYNC_DOMAINS.map((domain) => domain.collectionName), userScoped: true },
-          dependencies.conditionalRead ?? defaultConditionalReadDependencies(),
-          async () => {
-            const manifest = await service.manifest({ actorId, workspaceId });
-            return NextResponse.json(success(manifest), { headers: noStore(mode), status: 200 });
+      return guarded(async ({ actorId, workspaceId, service, mode }) => {
+        // Sprint 0118: notifications whose sources went away get their new
+        // decision written back first, so the watermark below sees the write.
+        await service.reconcile({ actorId, workspaceId });
+        const eventSummary = await service.eventSummary({ actorId, workspaceId });
+        const relationshipSummary = await service.relationshipSummary({ actorId, workspaceId });
+        const produce = async () => {
+          const manifest = await service.manifest({ actorId, workspaceId, eventSummary, relationshipSummary });
+          return NextResponse.json(success(manifest), { headers: noStore(mode), status: 200 });
+        };
+        if (!MANIFEST_IS_CONDITIONAL) return produce();
+        const routeKey = [
+          MANIFEST_ROUTE_KEY,
+          ...(eventSummary ? [`events:${eventDomainSummaryKey(eventSummary)}`] : []),
+          ...(relationshipSummary ? [`messages:${relationshipDomainSummaryKey(relationshipSummary)}`] : []),
+        ].join(":");
+        return conditionalJsonRead(
+          {
+            routeKey, request, actorId, workspaceId, collections: MANIFEST_COLLECTIONS, userScoped: true,
+            revisionWatermark: MANIFEST_SUBSPACE_COLLECTIONS.length
+              ? { subspace: { workspaceId: aiSubspaceOf({ workspaceId, actorId }), collections: MANIFEST_SUBSPACE_COLLECTIONS } }
+              : {},
           },
-        ));
+          dependencies.conditionalRead ?? defaultConditionalReadDependencies(),
+          produce,
+        );
+      });
     },
     domain(request: Request, domainId: string): Promise<Response> {
       return guarded(async ({ actorId, workspaceId, service, mode }) => {
         const url = new URL(request.url);
         const cursor = url.searchParams.get("cursor");
-        const page = await service.readDomainPage({ actorId, workspaceId, domainId, limit: parseLimit(url), ...(cursor === null ? {} : { cursor }) });
+        // Sprint 0118: a partitioned domain names its partitions (the opened AI sessions), comma separated.
+        const sessions = url.searchParams.get("sessions");
+        const partitions = sessions === null || sessions === "" ? undefined : sessions.split(",");
+        const page = await service.readDomainPage({ actorId, workspaceId, domainId, limit: parseLimit(url), ...(cursor === null ? {} : { cursor }), ...(partitions ? { partitions } : {}) });
         return NextResponse.json(success(page), { headers: noStore(mode), status: 200 });
       });
     },

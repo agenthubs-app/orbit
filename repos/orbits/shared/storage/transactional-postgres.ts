@@ -14,8 +14,17 @@ export interface TransactionalSqlExecutor {
   query<TRow = Record<string, unknown>>(text: string, values?: readonly unknown[]): Promise<{ rows: readonly TRow[] }>;
 }
 
+export interface TransactionOptions {
+  /**
+   * Defaults to serializable. "read committed" is for writers that serialize on
+   * an explicit lock (advisory or row lock) and need each statement after the
+   * lock to see rows committed while they waited (sprint 0109 message sends).
+   */
+  isolation?: "serializable" | "read committed";
+}
+
 export interface TransactionalPostgresClient extends TransactionalSqlExecutor {
-  transaction<T>(operation: (client: TransactionalSqlExecutor) => Promise<T>): Promise<T>;
+  transaction<T>(operation: (client: TransactionalSqlExecutor) => Promise<T>, options?: TransactionOptions): Promise<T>;
   close(): Promise<void>;
 }
 
@@ -62,12 +71,12 @@ export function createTransactionalPostgresClient({ connectionString, max = 2, s
   return {
     ...executor(pool, measureRead),
     close: () => pool.end(),
-    async transaction<T>(operation: (client: TransactionalSqlExecutor) => Promise<T>): Promise<T> {
+    async transaction<T>(operation: (client: TransactionalSqlExecutor) => Promise<T>, options?: TransactionOptions): Promise<T> {
       const connection = await pool.connect();
       let failed = false;
       let destroy = false;
       try {
-        await connection.query("begin isolation level serializable");
+        await connection.query(options?.isolation === "read committed" ? "begin isolation level read committed" : "begin isolation level serializable");
         const result = await operation(executor(connection, measureRead));
         await connection.query("commit");
         return result;

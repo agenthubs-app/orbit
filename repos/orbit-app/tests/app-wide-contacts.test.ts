@@ -31,22 +31,29 @@ const mobile = {
   unavailableSections: []
 };
 export const useLocalSearchParams = () => ({ dimension: "industry", bucketId: "industry:technology" });
+// Sprint 0117: these cases cover the server-read path (a browser without its mirror); the device path has its own tests.
+export const useLocalContacts = () => ({ available: false, rows: [], freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh() {} });
+export const useLocalDashboard = () => ({ available: false, sections: null, error: null, freshness: { readable: false, loading: false, failure: null, refreshing: false, offline: false, lastSyncedAt: null, syncLabelKey: "sync.syncing" }, refresh() {} });
 export const usePathname = () => "/contacts";
 export const useRouter = () => ({ canGoBack: () => false, back() { state.navigation.push("back"); }, replace(path) { state.navigation.push(path); }, push(path) { state.navigation.push(path); } });
 const structure = { dimension: "industry", bucket: { label: "科技合作伙伴", contactCount: 1, percentage: 100 }, contacts: [{ ...contacts.contacts[0], relationshipStrength: "strong" }], commonTags: [{ label: "日本市场", contactCount: 1 }], relationshipQuality: [{ id: "strong", label: "强关系", contactCount: 1, percentage: 100 }], insight: "科技合作伙伴已有交流基础。" };
 const connections = { connections: [{ id: "connection:1", contactId: "contact:1", displayName: "林悦", organization: "红桥科技", relationshipStage: "needs_follow_up", strengthScore: 89, sourceLinks: [{ label: "朋友引荐", type: "referral" }], evidenceTimeline: [{ title: "已有交流记录" }] }] };
 export const useApiResource = path => { rerender(); return { kind: state.kind, error: { message: "连接暂时失败" }, data: path.includes("intros/summary") ? introSummary : path.includes("structure/") ? structure : path.includes("connections") ? connections : path.includes("tasks") ? { tasks: [] } : path.includes("draft") ? {} : path.includes("aggregate") ? mobile.aggregate : path.includes("opportunities") ? mobile.opportunities : path.includes("distributions") ? mobile.distributions : path.includes("gaps") ? mobile.gaps : contacts, refreshing: false, refresh() {} }; };
-export const useValidatedApiResource = (_path, _schema, isEmpty, options = {}) => { rerender(); state.dashboardScopeKey = options.scopeKey; const base = state.zeroContacts ? { ...mobile, aggregate: { ...mobile.aggregate, relationshipAssetTotals: { ...mobile.aggregate.relationshipAssetTotals, contacts: 0 } }, contacts: { contacts: [] } } : mobile; const data = state.remoteGoal === undefined ? base : { ...base, profile: { ...base.profile, profile: { ...base.profile.profile, relationshipGoal: state.remoteGoal, updatedAt: state.remoteUpdatedAt } } }; const scopeCurrent = options.scopeKey === undefined || options.scopeKey === state.resourceScopeKey; return { kind: scopeCurrent ? (isEmpty(data) ? "empty" : state.kind) : "loading", data, error: { message: "连接暂时失败" }, refreshing: false, refresh() { state.refreshes++; state.resourceScopeKey = options.scopeKey; revision++; listeners.forEach(f => f()); } }; };
+export const useValidatedApiResource = (_path, _schema, isEmpty, options = {}) => { rerender(); state.dashboardScopeKey = options.scopeKey; state.dashboardPath = _path; const base = state.zeroContacts ? { ...mobile, aggregate: { ...mobile.aggregate, relationshipAssetTotals: { ...mobile.aggregate.relationshipAssetTotals, contacts: 0 } }, contacts: { contacts: [] } } : mobile; const data = state.remoteGoal === undefined ? base : { ...base, profile: { ...base.profile, profile: { ...base.profile.profile, relationshipGoal: state.remoteGoal, updatedAt: state.remoteUpdatedAt } } }; const scopeCurrent = options.scopeKey === undefined || options.scopeKey === state.resourceScopeKey; return { kind: scopeCurrent ? (isEmpty(data) ? "empty" : state.kind) : "loading", data, error: { message: "连接暂时失败" }, refreshing: false, refresh() { state.refreshes++; state.resourceScopeKey = options.scopeKey; revision++; listeners.forEach(f => f()); } }; };
 const record = method => async (path, options) => {
   state.requests.push({ method, path, body: options?.body });
   if (method === "POST" && state.postMode === "pending") return new Promise(resolve => { state.pendingPost = resolve; });
   if (method === "PUT" && state.putMode === "pending") return new Promise(resolve => { state.pendingPut = resolve; });
   if (method === "PUT" && state.putMode === "conflict") { state.remoteGoal = "服务器上的并发目标"; state.remoteUpdatedAt = "2026-09-15T00:00:05.000Z"; return { success: false, status: 409, error: { message: "关系目标已在另一端更新" } }; }
+  // The relationship overview reads one bounded pipeline page per stage.
+  if (method === "GET" && path.startsWith("/api/contacts/pipeline?")) { const stage = new URLSearchParams(path.split("?")[1]).get("stage"); return { success: true, status: 200, data: { asOf: "2026-09-15T00:00:00.000Z", stage, stageCounts: { to_contact: 1, in_progress: 0, nurture: 0, archived: 0 }, items: stage === "to_contact" ? [{ id: "contact:1", displayName: "林悦", organization: "Orbit", role: "采购负责人" }] : [], hasMore: false, nextCursor: null, actions: [] }, meta: { featureMode: null, privacy: null, runtimeBoundary: null } }; }
   if (method === "GET" && path === "/api/connections/connection%3A1") return { success: true, data: { connection: connections.connections[0], sourceLinks: [{ evidenceId: "source:1", label: "朋友引荐", type: "referral" }], evidenceTimeline: [{ evidenceId: "evidence:1", title: "已有交流记录", excerpt: "上周确认了合作方向。", contribution: "user_note" }] } };
   return { success: false, error: { message: "暂时无法保存，请重试" } };
 };
-export const useOrbitApiClient = (options = {}) => { state.clientScopeKey = options.scopeKey; return { post: record("POST"), put: record("PUT"), patch: record("PATCH"), get: record("GET") }; };
-export const useOrbitApiBaseUrl = () => { rerender(); return { baseUrl: state.baseUrl }; };
+// Like the real hook, the client is stable for a given scope key.
+const clients = new Map();
+export const useOrbitApiClient = (options = {}) => { state.clientScopeKey = options.scopeKey; if (!clients.has(options.scopeKey)) clients.set(options.scopeKey, { post: record("POST"), put: record("PUT"), patch: record("PATCH"), get: record("GET") }); return clients.get(options.scopeKey); };
+export const useOrbitApiBaseUrl = () => { rerender(); return { ready: true, baseUrl: state.baseUrl }; };
 export const useOrbitAuthSession = () => { rerender(); return { ready: true, signedIn: true, accountId: state.actor, actorId: state.actor, cookieHeader: state.cookieHeader, user: { id: state.actor } }; };
 export const randomUUID = () => "fixture-relationship-goal-mutation-" + ++state.uuidSequence;
 export const useRelationshipInboxBadgeCount = () => 0;
@@ -78,7 +85,7 @@ createRoot(document.getElementById("root")).render(<Screen />);`, resolveDir: pr
     plugins: [{ name: "contacts-boundaries", setup(plugin) {
       plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: require.resolve("react-native-web") }));
       plugin.onResolve({ filter: /^react-native-svg$/ }, () => ({ path: require.resolve("react-native-svg/lib/module/ReactNativeSVG.web.js") }));
-      plugin.onResolve({ filter: /^(expo-router|expo-crypto|@expo\/vector-icons|react-native-safe-area-context|expo-camera|expo-image-picker)$|\/(useApiResource|useValidatedApiResource|useOrbitApiClient|ApiBaseUrlProvider|AuthSessionProvider|useRelationshipInboxBadgeCount)$/ }, () => ({ path: "fixture", namespace: "contacts-test" }));
+      plugin.onResolve({ filter: /^(expo-router|expo-crypto|@expo\/vector-icons|react-native-safe-area-context|expo-camera|expo-image-picker)$|\/(useApiResource|useValidatedApiResource|useOrbitApiClient|ApiBaseUrlProvider|AuthSessionProvider|useRelationshipInboxBadgeCount|useLocalDashboard|useLocalContacts)$/ }, () => ({ path: "fixture", namespace: "contacts-test" }));
       plugin.onLoad({ filter: /.*/, namespace: "contacts-test" }, () => ({ contents: fixture, loader: "jsx", resolveDir: process.cwd() }));
     } }]
   });
@@ -230,6 +237,15 @@ test("analysis scopes dashboard reads to actor, session and server and hides old
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);
 });
 
+test("analysis declares the roleCounts capability so the server may send only the page's contacts (0121)", async t => {
+  const page = await openScreen(t, "analysis");
+  await page.getByText(/contacts\.analysis@1/u).first().waitFor();
+  const path = await page.evaluate(() => (window as any).fixture.dashboardPath as string);
+  const [pathname, query] = path.split("?");
+  assert.equal(pathname, "/api/mobile/contacts-dashboard");
+  assert.deepEqual(new URLSearchParams(query).getAll("capabilities"), ["roleCounts"]);
+});
+
 test("analysis ignores an old opportunity recompute after actor and server scope replacement", async t => {
   const page = await openScreen(t, "analysis");
   await page.evaluate(() => (window as any).fixture.update({ postMode: "pending" }));
@@ -307,7 +323,9 @@ test("pipeline mode selection has 44pt targets and does not advance a relationsh
     const mode = page.getByRole("tab", { name, exact: true });
     await touchFits(mode); await mode.click();
   }
-  assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);
+  // Bounded pipeline page reads are expected; switching modes must never write.
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests.filter((request: any) => request.method !== "GET")), []);
+  assert.ok((await page.evaluate(() => (window as any).fixture.requests)).every((request: any) => request.path.startsWith("/api/contacts/pipeline?")));
 });
 
 test("analysis summary shows complete values and explanations on a narrow phone", async t => {

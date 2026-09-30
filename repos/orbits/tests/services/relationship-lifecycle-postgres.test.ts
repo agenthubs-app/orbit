@@ -6,6 +6,7 @@ import { createPostgresRelationshipLifecycleRepository } from "../../features/co
 import { applyRelationshipStageCommand, applyRelationshipTaskCompletion } from "../../features/connections/lifecycle/transition";
 import { runRelationshipLifecycleMigrations } from "../../features/connections/lifecycle/migrations";
 import { ORBIT_RECORDS_SCHEMA_SQL } from "../../shared/storage/migrations";
+import { STRICT_SYNC_REVISION_SQL, testRawWrite, testReseedOwner } from "../support/sync-revision-fixture";
 import { createConfiguredTransactionalPostgresRuntime, createTransactionalPostgresClient, type TransactionalPostgresClient, type TransactionalSqlExecutor } from "../../shared/storage/transactional-postgres";
 import { createConfiguredRelationshipLifecycleService } from "../../features/connections/lifecycle/service-factory";
 import { createPostgresLiveRecordStore } from "../../shared/storage/postgres-live-record-store";
@@ -81,10 +82,12 @@ async function withDatabase(operation: (fixture: {
   try {
     await admin.query(`create schema ${schema}`);
     await client.query(ORBIT_RECORDS_SCHEMA_SQL);
+    // Sprint 0108: lifecycle task writes run under the strict sync trigger.
+    await client.query(STRICT_SYNC_REVISION_SQL);
     await runRelationshipLifecycleMigrations(client);
     await runRelationshipLifecycleMigrations(client);
     const insert = async (collection: string, id: string, owner: string, payload: Record<string, unknown>) => {
-      await client.query("insert into orbit_records (workspace_id, collection_name, record_id, user_id, source_type, source_id, payload, created_at, updated_at) values ($1,$2,$3,$4,'manual','test:source',$5,$6,$6)", [workspaceId, collection, id, owner, payload, now]);
+      await testRawWrite(client, collection, "insert into orbit_records (workspace_id, collection_name, record_id, user_id, source_type, source_id, payload, created_at, updated_at) values ($1,$2,$3,$4,'manual','test:source',$5,$6,$6)", [workspaceId, collection, id, owner, payload, now]);
     };
     await insert("contacts", contactId, actorId, { id: contactId });
     await insert("connections", connectionId, actorId, connectionPayload);
@@ -143,11 +146,11 @@ test("PostgreSQL rejects wrong actors, missing contact ownership, stale versions
   await assert.rejects(repo.mutate({ ...mutation, actorId: "actor:other" }, () => { throw new Error("must not run"); }), { code: "NOT_FOUND" });
   await assert.rejects(repo.mutate({ ...mutation, expectedVersion: 2 }, () => { throw new Error("must not run"); }), { code: "CONFLICT" });
   assert.deepEqual(await counts(client), before);
-  await client.query("update orbit_records set user_id='actor:other' where collection_name='contacts'");
+  await testReseedOwner(client, "contacts", "true", "actor:other");
   await assert.rejects(repo.read(actorId, connectionId), { code: "FORBIDDEN" });
   await assert.rejects(repo.mutate(mutation, () => { throw new Error("must not run"); }), { code: "FORBIDDEN" });
   assert.deepEqual(await counts(client), before);
-  await client.query("update orbit_records set user_id=$1 where collection_name='contacts'", [actorId]);
+  await testReseedOwner(client, "contacts", "true", actorId);
   await repo.mutate(mutation, (snapshot) => applyRelationshipStageCommand({ command, current: snapshot.connection, tasks: snapshot.tasks, now }));
   const committed = await counts(client);
   await assert.rejects(repo.mutate({ ...mutation, requestHash: "different" }, () => { throw new Error("must not run"); }), { code: "IDEMPOTENCY_CONFLICT" });
@@ -192,7 +195,7 @@ test("PostgreSQL rejects task id collisions without overwriting another actor's 
 }));
 
 test("PostgreSQL accepts missing legacy versions as one but persists explicit next versions", databaseTest, async () => withDatabase(async ({ client, repo }) => {
-  await client.query("update orbit_records set payload=payload-'version' where collection_name='connections'");
+  await testRawWrite(client, "connections", "update orbit_records set payload=payload-'version' where collection_name='connections'");
   assert.equal((await repo.read(actorId, connectionId))?.connection.version, 1);
   await repo.mutate({ ...mutation, expectedVersion: 1 }, (snapshot) => applyRelationshipStageCommand({ command: { ...command, expectedVersion: 1 }, current: snapshot.connection, tasks: snapshot.tasks, now }));
   const row = await client.query<{ payload: { version: number } }>("select payload from orbit_records where collection_name='connections'");
@@ -235,7 +238,7 @@ test("PostgreSQL rejects malformed stored stages and versions without receipts o
     { ...connectionPayload, version: 0 }, { ...connectionPayload, stage: "captured" },
     { ...connectionPayload, accountId: "actor:other" },
   ]) {
-    await client.query("update orbit_records set payload=$1 where collection_name='connections'", [payload]);
+    await testRawWrite(client, "connections", "update orbit_records set payload=$1 where collection_name='connections'", [payload]);
     await assert.rejects(repo.mutate(mutation, () => { throw new Error("must not run"); }), (error: unknown) => error instanceof Error && "code" in error);
     const stored = await client.query<{ payload: unknown }>("select payload from orbit_records where collection_name='connections'");
     assert.deepEqual(stored.rows[0].payload, payload);
@@ -247,7 +250,7 @@ test("PostgreSQL preserves generic tasks and existing task provenance while clos
   const generic = { id: "task:generic", connectionId, title: "普通任务", status: "open" };
   await insert("tasks", "task:generic", actorId, generic);
   await repo.mutate(mutation, (snapshot) => applyRelationshipStageCommand({ command, current: snapshot.connection, tasks: snapshot.tasks, now }));
-  await client.query("update orbit_records set payload=payload || $1::jsonb where collection_name='tasks' and record_id='task:1'", [{ evidenceIds: ["evidence:keep"], summary: "保留任务内容" }]);
+  await testRawWrite(client, "tasks", "update orbit_records set payload=payload || $1::jsonb where collection_name='tasks' and record_id='task:1'", [{ evidenceIds: ["evidence:keep"], summary: "保留任务内容" }]);
   await repo.mutate({ ...mutation, expectedVersion: 4, idempotencyKey: "archive", requestHash: "archive" }, (snapshot) => applyRelationshipStageCommand({ command: { actorId, connectionId, expectedVersion: 4, idempotencyKey: "archive", stage: "archived", dismissTaskIds: ["task:1"] }, current: snapshot.connection, tasks: snapshot.tasks, now }));
   const rows = await client.query<{ record_id: string; payload: Record<string, unknown> }>("select record_id,payload from orbit_records where collection_name='tasks'");
   assert.deepEqual(rows.rows.find(({ record_id }) => record_id === "task:generic")?.payload, generic);
@@ -296,9 +299,9 @@ test("PostgreSQL fails closed on malformed or cross-actor stored receipt snapsho
 }));
 
 test("PostgreSQL rejects null record payloads and impossible relationship task dates with domain errors", databaseTest, async () => withDatabase(async ({ client, repo, insert }) => {
-  await client.query("update orbit_records set payload='null'::jsonb where collection_name='connections'");
+  await testRawWrite(client, "connections", "update orbit_records set payload='null'::jsonb where collection_name='connections'");
   await assert.rejects(repo.mutate(mutation, () => { throw new Error("must not run"); }), (error: unknown) => error instanceof Error && error.name === "RelationshipLifecycleError");
-  await client.query("update orbit_records set payload=$1 where collection_name='connections'", [connectionPayload]);
+  await testRawWrite(client, "connections", "update orbit_records set payload=$1 where collection_name='connections'", [connectionPayload]);
   await insert("tasks", "task:bad", actorId, { id: "task:bad", connectionId, contactId, title: "Invalid date", relationshipPurpose: "follow_up", status: "open", dueAt: "2026-02-30T01:00:00Z", createdAt: now, updatedAt: now });
   await assert.rejects(repo.mutate(mutation, (snapshot) => applyRelationshipStageCommand({ command, current: snapshot.connection, tasks: snapshot.tasks, now })), { code: "INVALID_TASK" });
   assert.equal((await counts(client)).receipts, "0");
@@ -310,7 +313,7 @@ test("PostgreSQL rejects relationship tasks with missing contact identity", data
 }));
 
 test("PostgreSQL normalizes valid stored timestamps to UTC before persisting receipt snapshots", databaseTest, async () => withDatabase(async ({ client, repo }) => {
-  await client.query("update orbit_records set payload=payload || $1::jsonb where collection_name='connections'", [{ createdAt: "2026-08-21T10:00:00+09:00", updatedAt: "2026-08-21T10:00:00+09:00" }]);
+  await testRawWrite(client, "connections", "update orbit_records set payload=payload || $1::jsonb where collection_name='connections'", [{ createdAt: "2026-08-21T10:00:00+09:00", updatedAt: "2026-08-21T10:00:00+09:00" }]);
   const first = await repo.mutate(mutation, (snapshot) => applyRelationshipStageCommand({ command, current: snapshot.connection, tasks: snapshot.tasks, now }));
   assert.equal(first.snapshot.connection.createdAt, "2026-08-21T01:00:00.000Z");
   assert.deepEqual((await repo.mutate(mutation, () => { throw new Error("must replay"); })).snapshot, first.snapshot);

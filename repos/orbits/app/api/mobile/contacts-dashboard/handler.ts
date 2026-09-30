@@ -14,6 +14,10 @@ import {
   getHttpStatusForAppErrorCode,
 } from "../../../../shared/errors/app-error";
 import {
+  mobileContactsDashboardDeclaresRoleCounts,
+  mobileContactsDashboardRequestsAnalysisView,
+} from "../../../../shared/api-schema/mobile-contacts-dashboard";
+import {
   createConfiguredMobileContactsDashboardService,
   type MobileContactsDashboardService,
 } from "../../../../features/mobile/contacts-dashboard-service";
@@ -37,7 +41,7 @@ export function createMobileContactsDashboardGetHandler(
   const createService =
     dependencies.createService ?? createConfiguredMobileContactsDashboardService;
 
-  return async function GET(_request: Request): Promise<Response> {
+  return async function GET(request: Request): Promise<Response> {
     const mode = resolveMode();
     const actor = await resolveActor();
 
@@ -45,7 +49,27 @@ export function createMobileContactsDashboardGetHandler(
       return authenticatedApiActorRequiredResponse(mode);
     }
 
-    const result = await createService(mode).getDashboard({ actorId: actor.id });
+    const searchParams = new URL(request.url).searchParams;
+    const service = createService(mode);
+    // Sprint 0117: the App computes every section on the device and asks only
+    // for the AI report and its profile (?view=analysis).
+    if (mobileContactsDashboardRequestsAnalysisView(searchParams) && service.getAnalysisOverview) {
+      const overview = await service.getAnalysisOverview({ actorId: actor.id });
+      if (overview.success === true) {
+        return NextResponse.json(success(overview.data), { headers: runtimeBoundaryHeaders(mode), status: 200 });
+      }
+      const appError = new AppError("SERVICE_UNAVAILABLE", "The contacts analysis report is temporarily unavailable.");
+      return NextResponse.json(
+        failure(appError, { mobileContactsDashboardErrorCode: overview.error.code, mode, section: "analysis" }),
+        { headers: runtimeBoundaryHeaders(mode), status: getHttpStatusForAppErrorCode(appError.code) },
+      );
+    }
+    // Clients that do not declare roleCounts (App builds before 0121) keep the
+    // original full contacts list, so their role ratios stay correct.
+    const contactsScope = mobileContactsDashboardDeclaresRoleCounts(searchParams)
+      ? "referenced"
+      : "all";
+    const result = await service.getDashboard({ actorId: actor.id, contactsScope });
     if (result.success === true) {
       return NextResponse.json(success(result.data), {
         headers: runtimeBoundaryHeaders(mode),

@@ -48,6 +48,8 @@ export interface AgentLedgerSectionView {
 }
 
 export interface AgentLedgerSurfaceView {
+  /** The server has older entries than the ones shown. */
+  hasMore: boolean;
   emptyMessage: string;
   emptyTitle: string;
   metrics: readonly string[];
@@ -227,6 +229,35 @@ function todaySections(
   });
 }
 
+/**
+ * Joins the ledger pages loaded so far (Sprint 0122, Codex 103-A). Entries keep
+ * server order and are de-duplicated by id; the summary describes everything
+ * shown, so the last page's own count is never presented as the whole ledger.
+ */
+export function mergeAgentLedgerPages(
+  pages: readonly AgentLedgerListPayloadContract[]
+): AgentLedgerListPayloadContract {
+  const first = pages[0]!;
+  if (pages.length === 1) return first;
+  const last = pages[pages.length - 1]!;
+  const seen = new Set<string>();
+  const entries = pages.flatMap((page) => page.entries).filter((entry) => {
+    if (seen.has(entry.entryId)) return false;
+    seen.add(entry.entryId);
+    return true;
+  });
+  const nextCursor = last.nextCursor ?? null;
+  return {
+    ...first,
+    entries,
+    nextCursor,
+    state: entries.length > 0 ? "success" : "empty",
+    summary: nextCursor
+      ? `已显示 ${entries.length} 条记录，还有更早的记录，可继续加载。`
+      : `已加载全部 ${entries.length} 条记录，可追溯、可撤销。`
+  };
+}
+
 export function agentLedgerToSurfaceView(
   payload: AgentLedgerListPayloadContract,
   mode: AgentLedgerSurfaceMode
@@ -250,6 +281,7 @@ export function agentLedgerToSurfaceView(
         : [];
 
   return {
+    hasMore: Boolean(payload.nextCursor),
     emptyMessage:
       mode === "today"
         ? "Orbit 会在出现新的联系时机时，把需要决定的操作放到这里。"

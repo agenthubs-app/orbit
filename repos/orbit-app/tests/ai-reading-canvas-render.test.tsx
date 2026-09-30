@@ -33,6 +33,8 @@ moduleLoader._load = (name, ...args) => {
     usePathname: () => "/ai/reading-test"
   };
   if (name.endsWith("/api/ApiBaseUrlProvider")) return { useOrbitApiBaseUrl: () => ({ baseUrl: "https://orbit.test" }) };
+  // The mention picker reads the signed-in actor to scope its contact search.
+  if (name.endsWith("/api/AuthSessionProvider")) return { useOrbitAuthSession: () => ({ ready: true, signedIn: true, accountId: "actor:reading", actorId: "actor:reading", user: { id: "actor:reading" }, cookieHeader: "" }) };
   if (name.endsWith("/hooks/useOrbitApiClient")) return { useOrbitApiClient: () => ({}) };
   if (name.endsWith("/hooks/useApiResource")) return {
     useApiResource: (path: string) => ({ kind: "success", data: path === "/api/ai/conversations/reading-test" ? conversation : {}, refreshing: false, refresh() {} })

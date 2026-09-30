@@ -1,5 +1,7 @@
 import { runEventOperationsMigrations } from "../../features/events/event-operations/storage/migrations";
+import { runEventSyncRevisionMigration } from "../../features/events/event-operations/storage/sync-revision";
 import { runRelationshipLifecycleMigrations } from "../../features/connections/lifecycle/migrations";
+import { runRelationshipMessageMigrations } from "../../features/relationship-communication/message-tables";
 
 export const ORBIT_RECORDS_SCHEMA_SQL = `
 create table if not exists orbit_records (
@@ -103,6 +105,101 @@ create index if not exists orbit_records_reminder_actor_id_idx
 create index if not exists orbit_records_schedule_actor_id_idx
   on orbit_records(workspace_id,user_id,record_id collate "C")
   where collection_name='personal_schedule_items';
+
+-- Sprint 0112: an AI session's messages are read a page at a time, newest
+-- first, by their position (payload.index). The expression must stay identical
+-- to ORBIT_AGENT_CHAT_MESSAGE_POSITION_SQL in the chat session provider.
+create index if not exists orbit_records_agent_chat_message_order_idx
+  on orbit_records(workspace_id,target_id,(case when jsonb_typeof(payload->'index')='number' then (payload->>'index')::numeric end) desc,record_id desc)
+  where collection_name='orbit_agent_chat_messages' and lifecycle_state<>'deleted';
+`;
+
+// Request read receipts (monitoring O1): one row per sampled server request or
+// background task. Written after the response by shared/observability; kept
+// 14 days by the O2 cleanup job (read_cost_rollup maintenance task), which deletes by occurred_at. account_id is
+// the raw Orbit account id; logs and Axiom only ever see a fingerprint.
+export const ORBIT_READ_RECEIPTS_SCHEMA_SQL = `
+create table if not exists orbit_read_receipts (
+  id bigint generated always as identity primary key,
+  occurred_at timestamptz not null,
+  route text,
+  source text not null,
+  account_id text,
+  query_count integer not null,
+  row_count bigint not null,
+  byte_count bigint not null,
+  db_ms double precision not null,
+  failed_query_count integer not null default 0,
+  response_bytes bigint,
+  status_code smallint,
+  sample_rate real not null default 1
+);
+
+create index if not exists orbit_read_receipts_occurred_at_idx
+  on orbit_read_receipts (occurred_at);
+
+-- Monitoring O2/O3 (features/operations/read-cost): daily rollups (kept 1 year),
+-- the daily Neon reconciliation (kept for ever) and the alert ledger that makes
+-- each rule fire once per day and subject. Same statement as the receipts table
+-- so the migration step count and order stay unchanged.
+create table if not exists orbit_read_cost_daily_routes (
+  day date not null,
+  route text not null,
+  source text not null,
+  receipt_count integer not null,
+  requests bigint not null,
+  query_count bigint not null,
+  row_count bigint not null,
+  byte_count bigint not null,
+  db_ms double precision not null,
+  failed_query_count bigint not null,
+  response_bytes bigint not null,
+  max_request_bytes bigint not null,
+  computed_at timestamptz not null default now(),
+  primary key (day, route, source)
+);
+
+create table if not exists orbit_read_cost_daily_accounts (
+  day date not null,
+  account_id text not null,
+  receipt_count integer not null,
+  requests bigint not null,
+  query_count bigint not null,
+  row_count bigint not null,
+  byte_count bigint not null,
+  db_ms double precision not null,
+  computed_at timestamptz not null default now(),
+  primary key (day, account_id)
+);
+
+create table if not exists orbit_read_cost_reconciliation (
+  day date primary key,
+  recorded_bytes bigint not null,
+  neon_status text not null check (neon_status in ('ok', 'unavailable', 'failed')),
+  neon_bytes bigint,
+  coverage double precision,
+  neon_reason text,
+  computed_at timestamptz not null
+);
+
+-- Sprint 0121: Neon reconciliation is tracked apart from the local rollup, so a
+-- failed or not-yet-configured day is retried (bounded, with backoff) without
+-- recomputing receipts. computed_at stays the rollup completion time.
+alter table orbit_read_cost_reconciliation
+  add column if not exists neon_attempts integer not null default 0,
+  add column if not exists neon_retry_after timestamptz;
+
+create table if not exists orbit_read_cost_alerts (
+  alert_id text primary key,
+  rule text not null check (rule in ('route_average_spike', 'large_request', 'low_coverage')),
+  day date not null,
+  subject text not null,
+  observed double precision not null,
+  threshold double precision not null,
+  created_at timestamptz not null default now(),
+  notified_at timestamptz,
+  unique (rule, day, subject)
+);
 `;
 
 export interface OrbitRecordsMigrationClient {
@@ -115,4 +212,11 @@ export async function runOrbitRecordsMigration(
   await client.query(ORBIT_RECORDS_SCHEMA_SQL);
   await runRelationshipLifecycleMigrations(client);
   await runEventOperationsMigrations(client);
+  // Independent of every other table; last so existing migration order is unchanged.
+  await client.query(ORBIT_READ_RECEIPTS_SCHEMA_SQL);
+  // Sprint 0109: relationship conversations, members and messages. Last, so the
+  // existing steps keep their order; needs orbit_records (the sync lock key).
+  await runRelationshipMessageMigrations(client);
+  // Sprint 0113: sync_revision on the event head tables. Last, for the same reason.
+  await runEventSyncRevisionMigration(client);
 }

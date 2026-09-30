@@ -13,6 +13,9 @@ const state=window.fixture={actor:'owner',ready:true,mode:'open',baseUrl:'https:
 update(patch){Object.assign(state,patch);revision++;listeners.forEach(fn=>fn());}};
 export const useFixture=()=>{useSyncExternalStore(fn=>{listeners.add(fn);return()=>listeners.delete(fn);},()=>revision);return state;};
 export const useOrbitAuthSession=()=>{useFixture();return{actorId:state.actor,ready:state.ready,signedIn:Boolean(state.actor),cookieHeader:state.cookie};};
+// Sprint 0131: the screen reads the device mirror / page copies; this harness tests the network path (no mirror).
+export const useSyncedCollection = () => ({ status: "unsynced", error: null, lastSyncedAt: null, workspaceId: null, records: [], refresh: async () => null, invalidate: async () => null, currentSession: () => null });
+export const useSyncCoordinatorSession = () => null;
 export const useOrbitApiBaseUrl=()=>{useFixture();return{ready:true,baseUrl:state.baseUrl};};
 export const useOrbitLocale=()=>({language:'zh'});
 export const useRouter=()=>({push(href){state.navigation.push(href);}});
@@ -24,7 +27,7 @@ export const randomUUID=()=> 'scope-'+ ++next;
 test.before(async()=>{
   const result=await build({stdin:{contents:`import React from 'react';import{createRoot}from'react-dom/client';import{RelationshipLifecycleList}from'./src/screens/tasks/RelationshipLifecycleList';import{useFixture}from'fixture';function App(){const s=useFixture();return <RelationshipLifecycleList scopeKey="caller" ready={s.ready} mode={s.mode}/>;}createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolveDir:process.cwd()},bundle:true,write:false,format:'iife',jsx:'automatic',define:{'process.env.NODE_ENV':'"test"','process.env':'{}',__DEV__:'false'},plugins:[{name:'task-page-boundaries',setup(plugin){
     plugin.onResolve({filter:/^react-native$/},()=>({path:require.resolve('react-native-web')}));
-    plugin.onResolve({filter:/^(fixture|expo-router|expo-crypto)$|\/(AuthSessionProvider|ApiBaseUrlProvider|OrbitLocaleContext|snapshot-store)$/},()=>({path:'fixture',namespace:'task-pages'}));
+    plugin.onResolve({filter:/^(fixture|expo-router|expo-crypto)$|\/(AuthSessionProvider|ApiBaseUrlProvider|OrbitLocaleContext|snapshot-store|useSyncedCollection)$/},()=>({path:'fixture',namespace:'task-pages'}));
     plugin.onLoad({filter:/.*/,namespace:'task-pages'},()=>({contents:fixture,loader:'jsx',resolveDir:process.cwd()}));
   }}]});script=result.outputFiles[0]!.text;browser=await chromium.launch({headless:true});
 });

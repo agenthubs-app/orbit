@@ -32,8 +32,43 @@ const APPROVED_POLICY_MATRIX = [
   ["POST", "/api/schedule-items", "create", "personal_schedule", "durable_normalized", "offline_queue", "metadata_only"],
   ["PATCH", "/api/schedule-items/:id", "update", "personal_schedule", "durable_normalized", "offline_queue", "metadata_only"],
   ["DELETE", "/api/schedule-items/:id", "delete", "personal_schedule", "durable_normalized", "offline_queue", "metadata_only"],
-  ["GET", "/api/relationship-communication/conversations/:id/messages", "read", "message", "durable_normalized", "online_only", "metadata_only"],
+  // Sprint 0119: relationship messages read the device copy first.
+  ["GET", "/api/relationship-communication/conversations/:id/messages", "read", "relationship_message", "durable_normalized", "online_only", "metadata_only"],
+  ["GET", "/api/relationship-communication/conversation-summaries", "read", "relationship_conversation", "durable_normalized", "online_only", "metadata_only"],
+  ["GET", "/api/relationship-communication/unread-summary", "read", "relationship_conversation", "durable_normalized", "online_only", "metadata_only"],
   ["GET", "/api/events/public", "read", "public_event", "encrypted_ttl_snapshot", "online_only", "on_demand_encrypted"],
+  // Sprint 0115: the registered attendee's event day is read from the device mirror; every write needs the network.
+  ["GET", "/api/events/public/:id", "read", "registered_event", "durable_normalized", "online_only", "metadata_only"],
+  ["GET", "/api/events/:id/registration", "read", "event_registration", "durable_normalized", "online_only", "metadata_only"],
+  ["GET", "/api/events/:id/operations", "read", "event_published_result", "durable_normalized", "online_only", "metadata_only"],
+  // Sprint 0116: the account's contacts read the device copy first (sync domain contacts).
+  ["GET", "/api/contacts/page", "read", "contact", "durable_normalized", "online_only", "metadata_only"],
+  ["GET", "/api/contacts/summary", "read", "contact", "durable_normalized", "online_only", "metadata_only"],
+  ["GET", "/api/contacts/:id", "read", "contact", "durable_normalized", "online_only", "metadata_only"],
+  // Sprint 0117: the dashboard and contacts analysis are computed on the device (sync domain dashboard-graph).
+  ["GET", "/api/dashboard", "read", "dashboard_graph", "durable_normalized", "online_only", "metadata_only"],
+  ["GET", "/api/dashboard/summary", "read", "dashboard_graph", "durable_normalized", "online_only", "metadata_only"],
+  ["GET", "/api/dashboard/opportunities", "read", "dashboard_graph", "durable_normalized", "online_only", "metadata_only"],
+  ["GET", "/api/dashboard/network-gaps", "read", "dashboard_graph", "durable_normalized", "online_only", "metadata_only"],
+  ["GET", "/api/dashboard/distributions", "read", "dashboard_graph", "durable_normalized", "online_only", "metadata_only"],
+  ["GET", "/api/mobile/contacts-dashboard", "read", "dashboard_graph", "durable_normalized", "online_only", "metadata_only"],
+  ["GET", "/api/dashboard/structure/:dimension/:bucketId", "read", "dashboard_graph", "durable_normalized", "online_only", "metadata_only"],
+  // Sprint 0118: the typed inbox and the AI sessions read the device copy first.
+  ["GET", "/api/inbox/notifications", "read", "inbox_notification", "durable_normalized", "online_only", "metadata_only"],
+  ["GET", "/api/inbox/notifications/:id", "read", "inbox_notification", "durable_normalized", "online_only", "metadata_only"],
+  ["GET", "/api/ai/conversations/sessions", "read", "ai_session", "durable_normalized", "online_only", "metadata_only"],
+  ["GET", "/api/ai/conversations/sessions/:id", "read", "ai_session_message", "durable_normalized", "online_only", "metadata_only"],
+  ["GET", "/api/profile", "read", "self_profile", "encrypted_ttl_snapshot", "online_only", "metadata_only"],
+  ["GET", "/api/agent/actions", "read", "agent_actions", "encrypted_ttl_snapshot", "online_only", "metadata_only"],
+  ["GET", "/api/agent/ledger", "read", "agent_ledger", "encrypted_ttl_snapshot", "online_only", "metadata_only"],
+  ["GET", "/api/relationship-tasks/page", "read", "relationship_tasks", "encrypted_ttl_snapshot", "online_only", "metadata_only"],
+  ["GET", "/api/task-suggestions/page", "read", "task_suggestions", "encrypted_ttl_snapshot", "online_only", "metadata_only"],
+  ["GET", "/api/today", "read", "today", "encrypted_ttl_snapshot", "online_only", "metadata_only"],
+  ["GET", "/api/connections/:id/lifecycle", "read", "relationship_lifecycle", "encrypted_ttl_snapshot", "online_only", "metadata_only"],
+  ["GET", "/api/schedule-items/:id/meeting-details", "read", "meeting_details", "encrypted_ttl_snapshot", "online_only", "metadata_only"],
+  ["GET", "/api/appointments/:id", "read", "meeting_details", "encrypted_ttl_snapshot", "online_only", "metadata_only"],
+  ["GET", "/api/audit/provenance", "read", "provenance_audit", "encrypted_ttl_snapshot", "online_only", "metadata_only"],
+  ["GET", "/api/recommendations/events", "read", "event_recommendations", "encrypted_ttl_snapshot", "online_only", "metadata_only"],
   ["POST", "/api/auth/mobile/credentials", "authenticate", "account_secret", "online_only_secret", "online_only", "never_local"],
 ] as const;
 
@@ -74,7 +109,7 @@ test("read persistence never implies offline mutation permission", () => {
       "read",
     ),
     {
-      domainId: "message",
+      domainId: "relationship_message",
       schemaVersion: 1,
       registryVersion: 1,
       readPersistence: "durable_normalized",

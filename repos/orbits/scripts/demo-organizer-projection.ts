@@ -1,5 +1,5 @@
 import { MOCK_EVENT_ORGANIZER_ACCOUNT_FIXTURES } from "../shared/mock/event-organizer-fixtures";
-import type { LiveRecord } from "../shared/storage/live-record-store";
+import type { LiveRecord, LiveRecordStoreLike } from "../shared/storage/live-record-store";
 
 function containsIdentity(value: unknown, id: string): boolean {
   if (value === id) return true;
@@ -73,4 +73,29 @@ export function buildDemoOrganizerProjection(input: {
     }
   }
   return changes;
+}
+
+/**
+ * Applies a reviewed plan read from `records`. Sprint 0113: upsertRecord never
+ * moves a row to another owner, so a planned owner change (a fixture organizer
+ * handed to its canonical login) goes through reassignRecordOwner first.
+ * Organizers are not a sync domain; a sync-domain row would be refused.
+ */
+export async function applyDemoOrganizerProjection(input: {
+  plan: readonly LiveRecord[];
+  records: readonly LiveRecord[];
+  store: LiveRecordStoreLike;
+}): Promise<void> {
+  for (const row of input.plan) {
+    const before = input.records.find((record) => record.collectionName === row.collectionName && record.recordId === row.recordId);
+    if (before && (before.userId ?? null) !== (row.userId ?? null) && row.userId) {
+      if (!input.store.reassignRecordOwner) throw new Error("The store cannot reassign an owner.");
+      const moved = await input.store.reassignRecordOwner({
+        workspaceId: row.workspaceId, collectionName: row.collectionName, recordId: row.recordId,
+        fromUserId: before.userId ?? null, toUserId: row.userId, updatedAt: row.updatedAt,
+      });
+      if (!moved) throw new Error(`Organizer projection owner changed concurrently: ${row.collectionName}/${row.recordId}`);
+    }
+    await input.store.upsertRecord(row);
+  }
 }

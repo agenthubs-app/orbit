@@ -121,7 +121,8 @@ test("/app/agent composes calendar proposals through the conversation run and ac
     "features/orbit-ai/CALENDAR_ACTION_LIVE_IMPLEMENTATION.md",
   );
 
-  assert.match(pageSource, /loadAppChatRouteViewModel/);
+  // Sprint 0104: legacy chat route model retired; the entry uses the starter model.
+  assert.match(pageSource, /createOrbitAgentStarterViewModel\(\)/);
   assert.doesNotMatch(pageSource, /calendar-preview/);
   assert.doesNotMatch(pageSource, /app\/api\//);
   // iOrbit 任务 1b：读 actionIds 的是 hook（`use-agent-chat.ts`），渲染卡片的仍是 JSX。

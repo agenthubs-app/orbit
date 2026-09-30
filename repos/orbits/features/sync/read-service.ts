@@ -34,7 +34,8 @@ export type SyncReadErrorCode =
   | "SYNC_INVALID_RECORD"
   | "SYNC_PAYLOAD_TOO_LARGE"
   | "SYNC_PAGE_TOO_LARGE"
-  | "SYNC_SCOPE_MISMATCH";
+  | "SYNC_SCOPE_MISMATCH"
+  | "SYNC_DOMAIN_SOURCE_UNSUPPORTED";
 
 export class SyncReadError extends Error {
   constructor(
@@ -106,7 +107,8 @@ const PAGE_SQL = `
     and sync_revision > $3::bigint
     and sync_revision <= $4::bigint
     and collection_name in ('notes', 'tasks', 'personal_schedule_items')
-  order by sync_revision asc
+  -- The table column, not the text alias above: "100" sorts before "99" (sprint 0117).
+  order by orbit_records.sync_revision asc
   limit $5
 `;
 
@@ -320,8 +322,20 @@ function mapSchedulePayload(row: SyncReadRow, actorId: string) {
     updatedAt: payload.updatedAt,
   };
   if (payload.kind === "personal") {
-    put(result, "endsAt", payload.endsAt);
-    put(result, "location", payload.location);
+    // The owner's personal DTO (personalScheduleSchema), so the App can show
+    // the list and the detail from its mirror (sprint 0108).
+    for (const field of [
+      "endsAt",
+      "location",
+      "allDay",
+      "timeZone",
+      "meetingMethod",
+      "meetingUrl",
+      "contactIds",
+      "noteIds",
+      "recurrence",
+      "reminderMinutes",
+    ] as const) put(result, field, payload[field]);
     return result;
   }
   for (const field of [

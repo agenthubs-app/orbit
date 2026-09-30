@@ -13,7 +13,7 @@ function source(path: string): string {
 const liveStorageProviders = [
   "features/connections/storage/connection-live-record-provider.ts",
   "features/acquisition/storage/event-attendee-live-record-provider.ts",
-  "features/chat/storage/chat-conversation-live-record-provider.ts",
+  "features/chat/storage/async-relationship-conversation-live-record-provider.ts",
   "features/agent/storage/agent-action-live-record-provider.ts",
 ] as const;
 

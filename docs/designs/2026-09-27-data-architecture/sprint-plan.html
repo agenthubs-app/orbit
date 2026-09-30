@@ -1,0 +1,224 @@
+<title>Sprint 路线</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Serif+SC:wght@600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap">
+<style>
+:root{
+  --paper:#f4f6f3; --surface:#ffffff; --ink:#1c2422; --muted:#5d6a66; --line:#d5ddd8;
+  --accent:#28676a; --accent-soft:#e0eeec; --chalk:#1f3a36; --chalk-ink:#eaf2ee;
+  --warn:#94600f; --warn-soft:#f6ecda; --good:#2e7a4b; --good-soft:#e0f0e5; --bad:#a23a2e; --bad-soft:#f7e2de;
+  --code:#ecf0ee; --hl:#fff4c7;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --paper:#101615; --surface:#172020; --ink:#e1e9e5; --muted:#99a8a3; --line:#2b3937;
+    --accent:#72b7b6; --accent-soft:#1c3230; --chalk:#0c1c1a; --chalk-ink:#dcebe5;
+    --warn:#e0a44e; --warn-soft:#342914; --good:#7cc596; --good-soft:#1b3125; --bad:#e2887c; --bad-soft:#3a211e;
+    --code:#1d2726; --hl:#3a3413;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --paper:#101615; --surface:#172020; --ink:#e1e9e5; --muted:#99a8a3; --line:#2b3937;
+  --accent:#72b7b6; --accent-soft:#1c3230; --chalk:#0c1c1a; --chalk-ink:#dcebe5;
+  --warn:#e0a44e; --warn-soft:#342914; --good:#7cc596; --good-soft:#1b3125; --bad:#e2887c; --bad-soft:#3a211e;
+  --code:#1d2726; --hl:#3a3413;
+}
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font-family:"Noto Sans SC","PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;font-size:16px;line-height:1.85;padding-inline:16px;padding-block:28px 80px}
+main{max-width:740px;margin:0 auto;display:flex;flex-direction:column;gap:56px}
+h1,h2{font-family:"Noto Serif SC","Songti SC",serif;text-wrap:balance;margin:0}
+h1{font-size:32px;line-height:1.3}
+h2{font-size:24px;line-height:1.4}
+h3{font-size:17px;margin:0;font-weight:700}
+p{margin:0;max-width:64ch}
+ul,ol{margin:0;padding-left:1.35em;display:flex;flex-direction:column;gap:6px;max-width:64ch}
+code,.mono{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.86em;background:var(--code);padding:1px 5px;border-radius:4px;word-break:break-all}
+strong{font-weight:700}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.cover{background:var(--chalk);color:var(--chalk-ink);border-radius:10px;padding:28px 24px;display:flex;flex-direction:column;gap:14px}
+.cover .course{font:500 12.5px/1.4 "IBM Plex Mono",monospace;letter-spacing:.1em;text-transform:uppercase;opacity:.8}
+.cover p{color:var(--chalk-ink);opacity:.92}
+.cover ol{gap:4px}
+.cover a{color:var(--chalk-ink)}
+
+.lesson{display:flex;flex-direction:column;gap:18px}
+.lesson-head{display:flex;flex-direction:column;gap:6px;border-top:2px solid var(--ink);padding-top:14px}
+.lesson-no{font:500 13px/1 "IBM Plex Mono",monospace;letter-spacing:.08em;color:var(--accent)}
+.question{font-size:15px;color:var(--muted)}
+.question strong{color:var(--ink)}
+
+.analogy{background:var(--warn-soft);border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:8px}
+.analogy .tag,.terms .tag,.recap .tag{font:500 12px/1.4 "IBM Plex Mono",monospace;letter-spacing:.06em;color:var(--warn)}
+.terms{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.terms .tag{color:var(--accent)}
+.terms dl{margin:0;display:grid;grid-template-columns:minmax(96px,max-content) 1fr;gap:8px 14px}
+.terms dt{font-weight:700}
+.terms dt small{display:block;font:400 12px/1.3 "IBM Plex Mono",monospace;color:var(--muted)}
+.terms dd{margin:0}
+@media (max-width:480px){.terms dl{grid-template-columns:1fr}.terms dd{margin-bottom:6px}}
+.recap{border-left:3px solid var(--accent);padding:4px 0 4px 14px;display:flex;flex-direction:column;gap:4px}
+.recap .tag{color:var(--accent)}
+
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:600px;font-size:14.5px;line-height:1.6}
+th,td{text-align:left;vertical-align:top;padding:9px 12px;border-bottom:1px solid var(--line)}
+th{font-size:13px;color:var(--muted);background:var(--paper);font-weight:600}
+tr:last-child td{border-bottom:0}
+tr.group td{background:var(--accent-soft);font-weight:700;font-size:13.5px;color:var(--accent)}
+td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+.hl{background:var(--hl);padding:0 3px;border-radius:3px}
+
+pre.json{margin:0;background:var(--code);border-radius:8px;padding:14px;overflow-x:auto;font:13px/1.6 "IBM Plex Mono",ui-monospace,monospace;color:var(--ink)}
+pre.json .c{color:var(--muted)}
+figure{margin:0;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px;overflow-x:auto;display:flex;flex-direction:column;gap:8px}
+figcaption{font-size:13.5px;color:var(--muted)}
+.pill{display:inline-block;font-size:12.5px;font-weight:500;padding:1px 9px;border-radius:999px;white-space:nowrap}
+.p-good{background:var(--good-soft);color:var(--good)}
+.p-warn{background:var(--warn-soft);color:var(--warn)}
+.p-bad{background:var(--bad-soft);color:var(--bad)}
+.steps{display:flex;flex-direction:column;gap:10px;counter-reset:s;padding:0;list-style:none;max-width:none}
+.steps li{display:grid;grid-template-columns:30px 1fr;gap:10px;align-items:start}
+.steps li::before{counter-increment:s;content:counter(s);width:26px;height:26px;border-radius:50%;background:var(--accent);color:var(--surface);font:600 13px/26px "IBM Plex Mono",monospace;text-align:center;margin-top:2px}
+.decision{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px 16px;display:flex;flex-direction:column;gap:4px}
+.muted{color:var(--muted)}
+.glossary dl{margin:0;display:grid;grid-template-columns:minmax(110px,max-content) 1fr;gap:8px 16px}
+.glossary dt{font-weight:700}
+.glossary dd{margin:0}
+@media (max-width:480px){.glossary dl{grid-template-columns:1fr}h1{font-size:26px}h2{font-size:21px}body{font-size:15.5px}}
+.callout{background:var(--accent-soft);border-left:3px solid var(--accent);padding:14px 16px;border-radius:0 8px 8px 0;display:flex;flex-direction:column;gap:8px}
+.callout.warn{background:var(--warn-soft);border-left-color:var(--warn)}
+</style>
+<main>
+<section class="cover">
+  <div class="course">Sprint 计划 · 已确认 · 2026-09-27 修订</div>
+  <h1>Sprint 路线</h1>
+  <p>把五份定稿设计案（AI 对话、消息、断网也能用、看板读取、读取量监控），加上修复主线测试，排成一条从 <strong>0098</strong> 开始的 sprint 序列（2026-09-27 修订：插入 0105–0107 页面对齐，其后顺延 3 号）。</p>
+  <p>排序遵循四条原则：</p>
+  <ol>
+    <li><strong>先让测试变绿</strong>：规则要求每个 sprint 两端全量测试通过，主线不绿，什么都没法验收；</li>
+    <li><strong>先装计量，再做优化</strong>：先记下基线，之后每个方案都能量出实际效果；</li>
+    <li><strong>先做单次最贵、又不依赖别人的</strong>：看板、AI 轨迹；</li>
+    <li><strong>地基在前，上层在后</strong>：「放进手机」的几期都要等同步地基。</li>
+  </ol>
+</section>
+
+<section class="lesson">
+  <div class="lesson-head"><span class="lesson-no">阶段一</span><h2>让主线可验收</h2></div>
+  <div class="tbl"><table>
+    <thead><tr><th>Sprint</th><th>内容</th><th>完成标准</th></tr></thead>
+    <tbody>
+      <tr><td><strong>0098</strong><br>主线健康</td><td>快进 Li-QY 新推的 6 个提交；修复 App 全量里的 81 条失败（以及新提交带来的新失败）；修复 orbits 里会卡住整个全量测试的 <code>event-registration-readback</code> 测试</td><td>App、orbits 两端全量跑完。除了已登记的环境类失败（0097 D 群，报告里逐条列出），全部通过</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section class="lesson">
+  <div class="lesson-head"><span class="lesson-no">阶段二</span><h2>先装计量</h2></div>
+  <div class="tbl"><table>
+    <thead><tr><th>Sprint</th><th>内容</th><th>来源</th></tr></thead>
+    <tbody>
+      <tr><td><strong>0099</strong><br>请求小票</td><td>请求级记账本；8 个连接池都接上计量器，并加自动检查；小票写入数据库（14 天）、日志（账号指纹），配置了密钥时同时发 Axiom</td><td>监控 O1</td></tr>
+      <tr><td><strong>0100</strong><br>汇总、对账、报警</td><td>每日汇总（1 年）、清理任务、与 Neon 传输量对账；管理后台「读取量」页；三条报警规则，写入 agenthubs.app 账号的收件箱</td><td>监控 O2 + O3</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout"><p><strong>基线周：</strong>0099 部署到生产后，要先记一周数据，0101 起的读取优化再上线生产。这一周里开发不停，照常做 0100 和 0101，只是 0101 晚一点上生产。</p></div>
+</section>
+
+<section class="lesson">
+  <div class="lesson-head"><span class="lesson-no">阶段三</span><h2>去掉最大的浪费</h2></div>
+  <div class="tbl"><table>
+    <thead><tr><th>Sprint</th><th>内容</th><th>来源</th></tr></thead>
+    <tbody>
+      <tr><td><strong>0101</strong><br>看板：数据库算</td><td>总数、短列表（5 条）、分布改用 SQL；联系人分析只按编号读用到的联系人；对照测试；App 登录后默认页改回首页</td><td>看板 D1</td></tr>
+      <tr><td><strong>0102</strong><br>看板：快照</td><td>扩展同步索引；关系图版本；缺口和机会的快照；从联系人分析问 AI 时只核对版本；棘轮减 6</td><td>看板 D2</td></tr>
+      <tr><td><strong>0103</strong><br>AI 轨迹：停写 + 精确读</td><td>不再写步骤和统计记录（运行详情接口改为从计时拼出步骤，返回形状不变）；运行记录按编号精确读</td><td>AI A1 + A3</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section class="lesson">
+  <div class="lesson-head"><span class="lesson-no">阶段三·补</span><h2>页面对齐（2026-09-27 加入）</h2></div>
+  <div class="tbl"><table>
+    <thead><tr><th>Sprint</th><th>内容</th><th>来源</th></tr></thead>
+    <tbody>
+      <tr><td><strong>0121</strong><br>Codex 审阅修复</td><td>修 0099–0103 中审阅确认的缺陷：账本先截断后筛选（待确认动作会消失）、Neon 对账接口与字段错误、失败的对账不补取、AI 报告版本没绑定关系目标、未经批准的报警门槛、旧 App 决策层比例、后台读取不受抽样控制。<strong>执行顺序排在 0105 之前</strong></td><td>Codex 审阅（2026-09-27）</td></tr>
+      <tr><td><strong>0122</strong><br>Codex 第二轮审阅修复</td><td>草稿迟到回执与未读数误扣两个 P2、发送后草稿恢复风险、通知筛选选中状态、账本界面翻页、补齐 0101/0102/0104 的 Simulator 证据。<strong>排在 0105 之前</strong></td><td>Codex 审阅（2026-09-27）</td></tr>
+      <tr><td><strong>0123</strong><br>清理已知失败</td><td>orbits 约 33 条已知失败逐条修复，或落到机器可识别的分类；不稳定用例查根因。验收口径（你已确认）：对照已知清单、没有新增失败即算通过。<strong>排在 0108 之后</strong></td><td>你的决定（2026-09-27）</td></tr>
+      <tr><td><strong>0105</strong><br>页面对齐例外</td><td>页面对齐测试加入「只在网页上有」的例外并写明原因：<code>/admin/read-cost</code>（管理页）、<code>/agent/plan</code>、<code>/agent/strategy</code>（不符合事务管家定位，不原样移植；网页端暂不改）</td><td>用户决定</td></tr>
+      <tr><td><strong>0106</strong><br>App 新用户引导</td><td>设计稿已于 2026-09-27 批准（黑白风格，与现有 App 一致）：登录后资料未完成或经 /profile/continue 进入，不加全局闸门；对齐 Li-QY 的网页版</td><td>用户决定</td></tr>
+      <tr><td><strong>0107</strong><br>App 活动现场页</td><td>设计稿已于 2026-09-27 批准：现场页取代「参会者与名片交换」页，旧派对模式 /party* 跳转到现场页；为后面「断网也能用」的活动现场打基础</td><td>用户决定</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout"><p><strong>待设计的新功能（不在当前路线内）</strong>：首页「今天值得联系」卡片、收件箱跟进提醒、每周一「本周要推进的事」。把 plan/strategy 页面里真正有用的部分拆进 App 已有的入口，需先出设计案。</p></div>
+</section>
+
+<section class="lesson">
+  <div class="lesson-head"><span class="lesson-no">阶段四</span><h2>清理和独立的小改动</h2></div>
+  <div class="tbl"><table>
+    <thead><tr><th>Sprint</th><th>内容</th><th>来源</th></tr></thead>
+    <tbody>
+      <tr><td><strong>0104</strong><br>旧 chat 退役</td><td>草稿改接新系统的对话编号；删除隐私开关、允许分析、提取要点三处坏调用；网页 iOrbit 页不再读旧 chat；删除旧接口、旧服务和演示数据；棘轮减 2</td><td>消息 M1</td></tr>
+      <tr><td><strong>0108</strong><br>日程、笔记读本地</td><td>笔记、个人日程页面改成本地优先；<strong>同时交付同步流水号的生产安全迁移</strong>：所有写入先取提交顺序锁，否则严格版流水号会让写入失败</td><td>断网第 2 期</td></tr>
+      <tr><td><strong>0109</strong><br>消息三张表</td><td>先查生产库行数；建对话（并入绑定）、对话成员（并入已读）、消息三张表并切换；未读数在成员行上维护；接口形状不变；清掉最后两处读旧 chat 集合（0104 遗留）；棘轮再减</td><td>消息 M2</td></tr>
+      <tr><td><strong>0110</strong><br>普通问答不写运行记录</td><td>普通问答不再写运行记录；去掉每轮为计数整类读取数据；<strong>开工前需你决定：是否停写全部统计记录（目前没有任何读取方）</strong></td><td>AI A2</td></tr>
+      <tr><td><strong>0111</strong><br>AI 轨迹保留期限和存量清理</td><td>带动作的运行在动作结束 1 年后整套删除；删除存量的步骤、统计、普通问答运行记录</td><td>AI A4 + A5</td></tr>
+      <tr><td><strong>0112</strong><br>AI 会话分页</td><td>打开会话首屏 20 条，往上翻再加载，卡片按需恢复；<strong>每次问答只追加新消息</strong>（现在每轮读约 7N 行、重写整个会话）；App 和网页不再上传整个会话；读取上限审计恢复通过</td><td>AI B1 + B2</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section class="lesson">
+  <div class="lesson-head"><span class="lesson-no">阶段五</span><h2>断网也能用</h2></div>
+  <div class="tbl"><table>
+    <thead><tr><th>Sprint</th><th>内容</th><th>来源</th></tr></thead>
+    <tbody>
+      <tr><td><strong>0113</strong><br>同步地基</td><td>同步注册表加「说明书」；修掉「通用写入更新时把主人清空」的问题；「改主人 / 身份却没通知手机」的自动检查（覆盖批量脚本）；活动专用表装取号机，同步能从专用表读</td><td>断网第 0 期</td></tr>
+      <tr><td><strong>0114</strong><br>补写主人</td><td>联系人及其附属数据补写主人，被两人共用的来源每人复制一份；没有主人的演示数据补上合理主人；修好种子脚本；平台公共数据不补并说明</td><td>断网第 0 期</td></tr>
+      <tr><td><strong>0115</strong><br>活动现场</td><td>你报名的活动（地点、时间、介绍、议程）和发布给你的座位、推荐放进手机；取消报名后撤下</td><td>断网 1a</td></tr>
+      <tr><td><strong>0116</strong><br>联系人放进手机</td><td>联系人、关系、来源进本地副本；联系人页改为读本地</td><td>断网 1b</td></tr>
+      <tr><td><strong>0117</strong><br>看板在手机上算</td><td>建立允许共用的目录并调整共用规则；缺口、机会抽成纯函数；补齐看板用到但手机上还没有的数据（万能表 events 集合）；App 看板和联系人分析读本地计算</td><td>看板 D3</td></tr>
+      <tr><td><strong>0118</strong><br>通知和 AI 对话放进手机</td><td>收件箱通知、AI 会话列表和打开过的会话进本地副本；失效的通知也要从手机上消失</td><td>断网 3a = AI B3</td></tr>
+      <tr><td><strong>0119</strong><br>消息放进手机</td><td>成员、对话、全部历史消息进本地副本；撤销关系后从手机删除</td><td>断网 3b = 消息 M3</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section class="lesson">
+  <div class="lesson-head"><span class="lesson-no">阶段六</span><h2>断网写</h2></div>
+  <div class="tbl"><table>
+    <thead><tr><th>Sprint</th><th>内容</th><th>来源</th></tr></thead>
+    <tbody>
+      <tr><td><strong>0120</strong><br>断网写设计案</td><td>只出设计案，不写代码：唯一编号去重、临时编号换正式编号、冲突两边都保留。<strong>需要你批准</strong></td><td>断网第 4 期</td></tr>
+      <tr><td>0124 起</td><td>按批准的设计案，依次做笔记、待办、日程的断网写，以及消息的断网发送</td><td>断网第 4 期 + 消息 M4</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section class="lesson">
+  <div class="lesson-head"><span class="lesson-no">执行规则</span><h2>每个 sprint 怎么做</h2></div>
+  <ul>
+    <li>先写会失败的测试，再实现；改动前先做 GitNexus 影响分析，提交前做变更检测；</li>
+    <li>两端全量测试通过；phoneweb 和 Simulator 各验证一次；读取量有变化的，更新读取成本账本；</li>
+    <li>每个 sprint 在独立分支（工作目录放外接盘）完成，合回 <code>chat-agent</code>，写执行报告。</li>
+  </ul>
+  <h3>需要你当场确认的操作</h3>
+  <p class="muted">每个 Sprint 的完整计划（GOAL + PLANNER）已写入 <code>repos/orbit-app/docs/sprints/</code>；生产步骤汇总在 <code>PRODUCTION_ROLLOUT.md</code>。</p>
+  <div class="tbl"><table>
+    <thead><tr><th>操作</th><th>出现在</th></tr></thead>
+    <tbody>
+      <tr><td>推送到远端 / 部署生产</td><td>每个 sprint 合入之后</td></tr>
+      <tr><td>在生产库上删除或补写数据（先备份）</td><td>0109 查行数、0111 删存量、0114 补写主人</td></tr>
+      <tr><td>批准设计案</td><td>0120</td></tr>
+    </tbody>
+  </table></div>
+  <h3>不在这条路线里的事</h3>
+  <ul>
+    <li>0096 私有活动可见性：Li-QY 新提交里有一条「event privacy」，0098 同步时我先看它是否已经解决，再向你汇报；</li>
+    <li>0097 D 群（运行时证据类测试）：0098 里只登记，不改测试的运行方式，是否移出默认测试集另行决定；</li>
+    <li>行级安全：还在待讨论清单上。</li>
+  </ul>
+</section>
+</main>

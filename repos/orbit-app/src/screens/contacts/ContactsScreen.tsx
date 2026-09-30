@@ -33,6 +33,7 @@ import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
+import { OfflineNotice } from "../../components/OfflineNotice";
 import { OrbitNavigationIcon } from "../../components/OrbitNavigationIcon";
 import { layout, radius, spacing, textStyles, type OrbitColors } from "../../design/tokens";
 import { createControlStyles } from "../../design/controls";
@@ -1339,6 +1340,7 @@ function ContactsListContent({
   onClearQuery,
   onOpenContact,
   onQueryChange,
+  onSearchIntent,
   onRunDeepSearch,
   onRunRelationshipSearch,
   onSelectRecentRelationshipSearch,
@@ -1365,6 +1367,8 @@ function ContactsListContent({
   selectedRelationshipProgress,
   state,
   primary = false,
+  offline = false,
+  lastSyncedAt = null,
   onResetFilters,
   onNavigate
 }: {
@@ -1378,6 +1382,8 @@ function ContactsListContent({
   onClearQuery: () => void;
   onOpenContact: (id: string) => void;
   onQueryChange: (text: string) => void;
+  /** Sprint 0131: the user started searching (the suggestions are read from now on). */
+  onSearchIntent?: () => void;
   onRunDeepSearch: () => void;
   onRunRelationshipSearch: () => void;
   onSelectRecentRelationshipSearch: (search: RecentRelationshipSearch) => void;
@@ -1411,6 +1417,9 @@ function ContactsListContent({
   selectedRelationshipProgress: ContactRelationshipProgressFilter | null;
   state: ReturnType<typeof useApiResource<unknown>>;
   primary?: boolean;
+  /** Sprint 0116: the list is the device copy and the server is unreachable; server-only search needs the network. */
+  offline?: boolean;
+  lastSyncedAt?: string | null;
   onResetFilters?: () => void;
   onNavigate?: (href: string) => void;
 }) {
@@ -1427,6 +1436,7 @@ function ContactsListContent({
 
   return (
     <>
+      {offline ? <OfflineNotice lastSyncedAt={lastSyncedAt} /> : null}
       <View style={[styles.searchPanel, primary && styles.mainSearchPanel]}>
         <View style={[styles.searchRow, primary && styles.mainSearchRow]}>
           <Ionicons color={colors.text3} name="search-outline" size={18} />
@@ -1435,6 +1445,7 @@ function ContactsListContent({
             autoCapitalize="none"
             autoCorrect={false}
             onChangeText={onQueryChange}
+            onFocus={onSearchIntent}
             onSubmitEditing={onRunDeepSearch}
             placeholder={locale.t("contacts.searchPlaceholder")}
             placeholderTextColor={colors.text4}
@@ -1453,14 +1464,14 @@ function ContactsListContent({
             </Pressable>
           ) : null}
           {primary ? <Pressable accessibilityRole="button" accessibilityLabel={locale.t("contacts.searchOptions")} accessibilityState={{ expanded: searchOptionsOpen }} aria-expanded={searchOptionsOpen}
-            onPress={() => setSearchOptionsOpen(open => !open)} style={styles.mainSearchOptionsButton}>
+            onPress={() => { onSearchIntent?.(); setSearchOptionsOpen(open => !open); }} style={styles.mainSearchOptionsButton}>
             <Ionicons name="options-outline" size={18} color={colors.text3} />
           </Pressable> : null}
         </View>
         {showSearchOptions ? <View style={styles.searchActionRow}>
           <Pressable
             accessibilityRole="button"
-            disabled={searching || (primary && relationshipSearching)}
+            disabled={offline || searching || (primary && relationshipSearching)}
             onPress={onRunDeepSearch}
             style={({ pressed }) => [
               styles.deepSearchButton,
@@ -1474,12 +1485,12 @@ function ContactsListContent({
               size={17}
             />
             <Text style={styles.deepSearchButtonText}>
-              {searching ? locale.t("contacts.searching") : locale.t("contacts.deepSearch")}
+              {searching ? locale.t("contacts.searching") : offline ? `${locale.t("contacts.deepSearch")} · ${locale.t("sync.needsNetwork")}` : locale.t("contacts.deepSearch")}
             </Text>
           </Pressable>
           <Pressable
             accessibilityRole="button"
-            disabled={relationshipSearching || (primary && searching)}
+            disabled={offline || relationshipSearching || (primary && searching)}
             onPress={onRunRelationshipSearch}
             style={({ pressed }) => [
               styles.relationshipSearchButton,
@@ -1489,7 +1500,7 @@ function ContactsListContent({
           >
             <Ionicons color={colors.accent} name="git-network-outline" size={17} />
             <Text style={styles.relationshipSearchButtonText}>
-              {relationshipSearching ? locale.t("contacts.relationshipSearching") : locale.t("contacts.relationshipSearch")}
+              {relationshipSearching ? locale.t("contacts.relationshipSearching") : offline ? `${locale.t("contacts.relationshipSearch")} · ${locale.t("sync.needsNetwork")}` : locale.t("contacts.relationshipSearch")}
             </Text>
           </Pressable>
           {searchError ? (
@@ -1511,7 +1522,7 @@ function ContactsListContent({
           onSelectRecentRelationshipSearch={onSelectRecentRelationshipSearch}
           searches={recentRelationshipSearches}
         /> : null}
-        {primary ? <ContactNeedsHomeEntry /> : null}
+        {primary ? <ContactNeedsHomeEntry offline={offline} /> : null}
         {!directoryEmpty ? <ContactFilterToolbar
           actionStateOptions={actionStateOptions}
           advancedFilterSections={advancedFilterSections}
@@ -1719,10 +1730,13 @@ function ContactsListScreen({ primary = false, scopeKey, isScopeCurrent }: { pri
     valueFilters: selectedValueFilters
   }, scopeKey);
   const state = contactPages.state;
+  // Sprint 0131 (coordinator item from 0116): the relationship search suggestions (~100KB) are read only
+  // once the user starts searching (focuses the search box or opens the search options), not on every open.
+  const [suggestionsRequested, setSuggestionsRequested] = useState(false);
   const relationshipSuggestionsState = useApiResource<unknown>(
     ORBIT_API_ENDPOINTS.relationshipSearchSuggestions,
     (data) => relationshipSearchSuggestionsToView(data).suggestions.length === 0,
-    scopeKey === undefined ? {} : { scopeKey }
+    { ...(scopeKey === undefined ? {} : { scopeKey }), enabled: suggestionsRequested }
   );
   const relationshipSuggestions =
     hasContactData(relationshipSuggestionsState)
@@ -2031,6 +2045,7 @@ function ContactsListScreen({ primary = false, scopeKey, isScopeCurrent }: { pri
         relationshipSearchResult={relationshipSearchResult}
         relationshipSearching={relationshipSearching}
         relationshipSuggestions={relationshipSuggestions}
+        onSearchIntent={() => setSuggestionsRequested(true)}
         relationshipProgressOptions={dimensionFilterOptions.relationshipProgress}
         searchError={searchError}
         searchResult={searchResult}
@@ -2042,6 +2057,8 @@ function ContactsListScreen({ primary = false, scopeKey, isScopeCurrent }: { pri
         selectedRelationshipProgress={selectedRelationshipProgress}
         state={state}
         primary={primary}
+        offline={contactPages.offline}
+        lastSyncedAt={contactPages.lastSyncedAt}
         onResetFilters={() => {
           cancelSearch();
           setSelectedRelationshipProgress(null); setSelectedActionState(null);

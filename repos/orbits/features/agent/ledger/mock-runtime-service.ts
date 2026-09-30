@@ -51,9 +51,7 @@ function createMockRuntimeLedgerCompatibilityService(): AgentLedgerService {
   const runtimeLedger = createRuntimeBackedAgentLedgerService({ runtime });
 
   async function runtimeHasEntry(entryId: string): Promise<boolean> {
-    return (await runtime.listActions({})).some(
-      (action) => action.actionId === entryId,
-    );
+    return Boolean(await runtime.getAction(entryId));
   }
 
   return {
@@ -80,9 +78,7 @@ function createMockRuntimeLedgerCompatibilityService(): AgentLedgerService {
         limit: 20,
         workerId: "mock-agent-request-worker",
       });
-      const action = (await runtime.listActions({})).find(
-        (candidate) => candidate.actionId === input.entryId,
-      );
+      const action = input.entryId ? await runtime.getAction(input.entryId) : null;
       if (!action) return result;
       return {
         ...result,

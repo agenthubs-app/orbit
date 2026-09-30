@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>新用户引导 · 最近想推进什么</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Noto Sans SC","Microsoft YaHei",sans-serif;background:#FFFFFF;color:#0B1220}
+a{color:#0A5CFF}a:hover{color:#084FDE}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #FFFFFF; display: flex; flex-direction: column">
+  <div style="padding: 54px 16px 0 16px; display: flex; flex-direction: column; gap: 14px">
+    <div style="display: flex; align-items: center; justify-content: space-between; min-height: 44px">
+      <a href="OnbProfile.dc.html" style="display: flex; align-items: center; gap: 2px; font-size: 16px; text-decoration: none"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0A5CFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>上一步</a>
+      <div style="font-size: 13px; color: #6B7280; font-variant-numeric: tabular-nums">2 / 5</div>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px">
+      <div style="height: 3px; border-radius: 999px; background: #0B1220"></div>
+      <div style="height: 3px; border-radius: 999px; background: #0B1220"></div>
+      <div style="height: 3px; border-radius: 999px; background: #EEF0F4"></div>
+      <div style="height: 3px; border-radius: 999px; background: #EEF0F4"></div>
+      <div style="height: 3px; border-radius: 999px; background: #EEF0F4"></div>
+    </div>
+  </div>
+  <div style="flex-grow: 1; overflow: hidden; padding: 22px 16px 0 16px; display: flex; flex-direction: column; gap: 18px">
+    <div style="display: flex; flex-direction: column; gap: 8px">
+      <div style="font-size: 30px; line-height: 38px; font-weight: 900; letter-spacing: -0.6px">你最近想推进什么？</div>
+      <div style="font-size: 15px; line-height: 23px; color: #3C4658">没有联系人时，目标就是 iOrbit 最重要的线索——它决定推荐哪些活动、哪些人。</div>
+    </div>
+    <div style="display: flex; align-items: baseline; justify-content: space-between">
+      <div style="font-size: 12px; font-weight: 600; letter-spacing: 0.96px; color: #6B7280">选择 1–3 个方向</div>
+      <div style="font-size: 12px; font-weight: 700; color: #0A5CFF">2 / 3</div>
+    </div>
+    <sc-for list="{{groups}}" as="g" hint-placeholder-count="3">
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <div style="font-size: 13px; font-weight: 500; color: #3C4658">{{g.name}}</div>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px">
+          <sc-for list="{{g.items}}" as="c" hint-placeholder-count="4">
+            <button type="button" style="{{c.style}}">{{c.label}}</button>
+          </sc-for>
+        </div>
+      </div>
+    </sc-for>
+    <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px">
+      <div style="font-size: 13px; font-weight: 500; color: #3C4658">时间范围</div>
+      <div style="display: flex; gap: 6px">
+        <button type="button" style="min-height: 44px; padding: 8px 12px; border-radius: 12px; border: none; background: #F5F7FA; color: #3C4658; font-size: 13px; font-weight: 600; font-family: inherit">本月</button>
+        <button type="button" style="min-height: 44px; padding: 8px 12px; border-radius: 12px; border: none; background: #0B1220; color: #FFFFFF; font-size: 13px; font-weight: 600; font-family: inherit">本季度</button>
+        <button type="button" style="min-height: 44px; padding: 8px 12px; border-radius: 12px; border: none; background: #F5F7FA; color: #3C4658; font-size: 13px; font-weight: 600; font-family: inherit">今年</button>
+      </div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <label for="g-one" style="font-size: 13px; font-weight: 500; color: #3C4658">具体想做成什么 <span style="color: #8B93A5">可选</span></label>
+      <textarea id="g-one" style="min-height: 68px; box-sizing: border-box; border: 1px solid #B9BDC4; border-radius: 12px; padding: 10px 12px; font-size: 15px; line-height: 21px; font-family: inherit; resize: none; color: #0B1220">把 AI 会议纪要产品推到日本，先找到 5 家愿意试用的企业。</textarea>
+    </div>
+  </div>
+  <div style="padding: 12px 16px 34px 16px">
+    <a href="OnbPersona.dc.html" style="display: flex; align-items: center; justify-content: center; min-height: 50px; border-radius: 12px; background: #0B1220; color: #FFFFFF; font-size: 15px; font-weight: 700; text-decoration: none">继续</a>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const on = 'min-height: 44px; padding: 8px 12px; border-radius: 12px; border: none; background: #0B1220; color: #FFFFFF; font-size: 13px; font-weight: 600; font-family: inherit';
+    const off = 'min-height: 44px; padding: 8px 12px; border-radius: 12px; border: none; background: #F5F7FA; color: #3C4658; font-size: 13px; font-weight: 600; font-family: inherit';
+    const chip = (label, sel) => ({ label, style: sel ? on : off });
+    return {
+      groups: [
+        { name: '业务增长', items: [chip('获取客户', true), chip('寻找合作伙伴', false), chip('开拓新市场', true), chip('出海拓展', false), chip('寻找供应商', false)] },
+        { name: '资金与团队', items: [chip('寻找投资', false), chip('招聘人才', false), chip('寻找联合创始人', false)] },
+        { name: '人脉与成长', items: [chip('拓展行业人脉', false), chip('学习行业趋势', false), chip('寻找导师', false)] }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

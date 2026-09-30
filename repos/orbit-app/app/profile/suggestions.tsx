@@ -1,4 +1,6 @@
 import { withOrbitPrivateRoute } from "../../src/components/OrbitRouteAccessBoundary";
 import { ProfileSuggestionsScreen } from "../../src/screens/profile/ProfileSuggestionsScreen";
+import { withOnlineOnlyRoute } from "../../src/components/OnlineOnlyBoundary";
 
-export default withOrbitPrivateRoute(ProfileSuggestionsScreen);
+// Sprint 0131: online-only page (docs/offline/page-inventory.md); offline it shows 「需要联网」, not an error page.
+export default withOrbitPrivateRoute(withOnlineOnlyRoute(ProfileSuggestionsScreen));

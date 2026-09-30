@@ -4,6 +4,8 @@
 // failure neither aborts the pass nor hides the other results. The pass never
 // throws; callers decide what to do with the aggregate.
 
+import { runWithReadReceiptSource } from "../../../shared/observability/read-receipts";
+
 export type MaintenanceTaskStatus = "ok" | "failed" | "skipped";
 
 export type MaintenanceTaskOutcome =
@@ -66,7 +68,8 @@ export async function runMaintenancePass({
       continue;
     }
     try {
-      const outcome = await task.run({ deadline, now });
+      // Reads are receipted per task (`task:maintenance:<name>`), not mixed into the cron request.
+      const outcome = await runWithReadReceiptSource(`maintenance:${task.name}`, () => task.run({ deadline, now }));
       const durationMs = now().getTime() - taskStarted;
       if (isSkip(outcome)) {
         results.push({ name: task.name, status: "skipped", durationMs, reason: outcome.skipped });

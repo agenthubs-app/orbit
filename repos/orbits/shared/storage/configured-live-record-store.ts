@@ -160,6 +160,16 @@ function createReadDedupedLiveRecordStore<
         }
       },
     } satisfies Pick<LiveRecordStoreLike<TPayload>, "insertRecordIfAbsent"> : {}),
+    ...(store.reassignRecordOwner ? {
+      async reassignRecordOwner(input) {
+        deduper.clear();
+        try {
+          return await store.reassignRecordOwner!(input);
+        } finally {
+          deduper.clear();
+        }
+      },
+    } satisfies Pick<LiveRecordStoreLike<TPayload>, "reassignRecordOwner"> : {}),
     async deleteRecord(input) {
       deduper.clear();
       try {

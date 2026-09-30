@@ -59,8 +59,25 @@ export const nativeAuthSessionStorage = {
     state.clears.push(baseUrl); state.storedCookie = null; return true;
   }
 };
+export const offlineIdentityStorage = {
+  async read() { return state.offlineIdentity ?? null; },
+  async write(value) { state.offlineIdentity = value; },
+  async clear() { state.offlineIdentity = null; },
+  async readLanguage() { return null; },
+  async writeLanguage() {},
+  key(baseUrl) { return "orbit.offlineIdentity." + baseUrl; }
+};
 export async function registerOrbitAccount() { return { success: true }; }
 export const syncLifecycle = {
+  // 0130: the restore suspends (recorded as { suspend }); only another server's open scope is purged there.
+  async suspendScope(baseUrl) {
+    state.scopeChanges.push({ suspend: baseUrl });
+    if (state.currentScope && state.currentScope.baseUrl !== baseUrl) {
+      if (state.keyDeleteFails) return false;
+      state.currentScope = null;
+    }
+    return true;
+  },
   async setScope(scope) {
     state.scopeChanges.push(scope);
     if (state.keyDeleteFails) return false;
@@ -100,11 +117,11 @@ const root = createRoot(document.getElementById("root")); window.fixture.unmount
     write: false,
     format: "iife",
     jsx: "automatic",
-    define: { "process.env.NODE_ENV": '"test"', __DEV__: "false" },
+    define: { "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" },
     plugins: [{
       name: "auth-provider-boundaries",
       setup(plugin) {
-        plugin.onResolve({ filter: /^fixture$|\/ApiBaseUrlProvider$|\/mobile-auth$|\/native-auth-session-storage$|\/sync-lifecycle$/ }, () => ({ path: "fixture", namespace: "auth-race" }));
+        plugin.onResolve({ filter: /^fixture$|\/ApiBaseUrlProvider$|\/mobile-auth$|\/native-auth-session-storage$|\/offline-identity-storage$|\/sync-lifecycle$/ }, () => ({ path: "fixture", namespace: "auth-race" }));
         plugin.onResolve({ filter: /^expo-crypto$/ }, () => ({ path: "crypto", namespace: "auth-race" }));
         plugin.onResolve({ filter: /^expo-router$/ }, () => ({ path: "router", namespace: "auth-race" }));
         plugin.onResolve({ filter: /^expo-web-browser$/ }, () => ({ path: "browser", namespace: "auth-race" }));
@@ -115,7 +132,7 @@ const root = createRoot(document.getElementById("root")); window.fixture.unmount
           if (args.path === "crypto") return { contents: "export const CryptoDigestAlgorithm = { SHA256: 'SHA256' }; export async function digest(_, value) { return value; } export async function getRandomBytesAsync() { return new Uint8Array(32); }", loader: "js" };
           if (args.path === "router") return { contents: "export const router = { replace() {} };", loader: "js" };
           if (args.path === "browser") return { contents: "export async function openAuthSessionAsync() { return { type: 'cancel' }; }", loader: "js" };
-          if (args.path === "native") return { contents: "export const Platform = { get OS() { return window.initialFixture?.platform ?? 'ios'; } };", loader: "js" };
+          if (args.path === "native") return { contents: "export const Platform = { get OS() { return window.initialFixture?.platform ?? 'ios'; } }; export const AppState = { addEventListener() { return { remove() {} }; } };", loader: "js" };
           if (args.path.endsWith("/auth-session")) return { contents: "export { registerOrbitAccount, signOutOrbitSession } from 'fixture';", loader: "js", resolveDir: process.cwd() };
           if (args.path.endsWith("/session-expiry")) return { contents: "export { onSessionExpired } from 'fixture';", loader: "js", resolveDir: process.cwd() };
           if (args.path.endsWith("/client")) return { contents: "export { createOrbitApiClient } from 'fixture';", loader: "js", resolveDir: process.cwd() };
@@ -260,7 +277,7 @@ test("a stored session stays closed when account/me cannot establish an owner", 
 
 test("restoring canonical identity activates the encrypted server/actor scope", async t => {
   const page = await open(t, { storedCookie: "session=restored" });
-  assert.deepEqual(await page.evaluate(() => (window as any).fixture.scopeChanges), [null, { baseUrl: "https://first.example", actorId: "account:canonical" }]);
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.scopeChanges), [{ suspend: "https://first.example" }, { baseUrl: "https://first.example", actorId: "account:canonical" }]);
 });
 
 test("key deletion failure blocks accepting a replacement account before persisting its cookie", async t => {
@@ -285,7 +302,7 @@ test("logout purges encrypted storage once and prevents a pending login from res
   assert.equal(await page.evaluate(() => (window as any).fixture.results[0].success), false);
   await page.waitForFunction(() => (window as any).fixture.auth.signedIn === false);
   assert.equal(await page.evaluate(() => (window as any).fixture.auth.signedIn), false);
-  assert.equal(await page.evaluate(() => (window as any).fixture.scopeChanges.filter((scope: unknown) => scope === null).length), 2);
+  assert.equal(await page.evaluate(() => (window as any).fixture.scopeChanges.filter((scope: unknown) => scope === null).length), 1);
 });
 
 test("logout key deletion failure is visible and keeps the current session from switching", async t => {
@@ -299,7 +316,7 @@ test("session expiry uses one lifecycle purge", async t => {
   const page = await open(t, { storedCookie: "session=restored" });
   await page.evaluate(() => (window as any).fixture.expire());
   await page.waitForFunction(() => (window as any).fixture.auth.signedIn === false);
-  assert.equal(await page.evaluate(() => (window as any).fixture.scopeChanges.filter((scope: unknown) => scope === null).length), 2);
+  assert.equal(await page.evaluate(() => (window as any).fixture.scopeChanges.filter((scope: unknown) => scope === null).length), 1);
 });
 
 test("an old server logout response cannot purge or clear the newly restored server session", async t => {

@@ -11,13 +11,20 @@ import {
   type GeminiOrbitAgentProviderConfig,
   type OrbitAgentModelTextResult,
 } from "../orbit-ai/gemini-provider";
+import {
+  PROFILE_BIO_CJK_LIMIT,
+  PROFILE_BIO_NON_CJK_LIMIT,
+  profileBioLimit,
+  profileBioWithinLimit,
+  profileVisibleLength,
+} from "../../shared/api-schema/profile-bio";
 
 // 新用户引导第 4 步：根据已保存的资料（姓名/行业/职位/公司/目标/画像）
 // 起草「关于我」(bio) 与「一句话介绍」(headline)。只生成草稿、不写库——
 // 用户在引导里确认或修改后，仍经 PUT /api/profile 保存。
 // 输入只取服务端已保存的资料（不信任客户端传来的画像），与邮件草稿同一口径。
 
-export const PROFILE_INTRO_BIO_LIMIT = 80;
+// 「关于我」上限按文本决定：含中日韩文字 80，否则 200（shared/api-schema/profile-bio.ts）。
 export const PROFILE_INTRO_HEADLINE_LIMIT = 40;
 
 export const PROFILE_INTRO_MODEL_DEFAULTS = {
@@ -42,14 +49,7 @@ export interface ProfileIntroDraftServiceOptions {
   runModel?: typeof runOrbitAgentModelText;
 }
 
-export function visibleLength(text: string): number {
-  const Segmenter = (Intl as unknown as {
-    Segmenter?: new (locale?: string, options?: { granularity: "grapheme" }) => { segment(input: string): Iterable<unknown> };
-  }).Segmenter;
-  return Segmenter
-    ? Array.from(new Segmenter(undefined, { granularity: "grapheme" }).segment(text)).length
-    : Array.from(text).length;
-}
+export const visibleLength = profileVisibleLength;
 
 function clean(value: unknown): string {
   return typeof value === "string"
@@ -70,7 +70,7 @@ export function parseProfileIntroDraft(text: string): { bio: string; headline: s
   const bio = clean(record.bio);
   const headline = clean(record.headline);
   if (!bio || !headline) return null;
-  if (visibleLength(bio) > PROFILE_INTRO_BIO_LIMIT || visibleLength(headline) > PROFILE_INTRO_HEADLINE_LIMIT) {
+  if (!profileBioWithinLimit(bio) || visibleLength(headline) > PROFILE_INTRO_HEADLINE_LIMIT) {
     return null;
   }
   return { bio, headline };
@@ -79,7 +79,8 @@ export function parseProfileIntroDraft(text: string): { bio: string; headline: s
 function describeRejection(text: string): string {
   try {
     const record = JSON.parse(text.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "")) as Record<string, unknown>;
-    return `headline ${visibleLength(clean(record.headline))}/${PROFILE_INTRO_HEADLINE_LIMIT}, bio ${visibleLength(clean(record.bio))}/${PROFILE_INTRO_BIO_LIMIT}`;
+    const bio = clean(record.bio);
+    return `headline ${visibleLength(clean(record.headline))}/${PROFILE_INTRO_HEADLINE_LIMIT}, bio ${visibleLength(bio)}/${profileBioLimit(bio)}`;
   } catch {
     return "not valid JSON";
   }
@@ -108,9 +109,10 @@ export function profileIntroModelInput(profile: ManualProfile, language: "zh" | 
 }
 
 // 模型常把「关于我」写到 82–93 字（实测 10 次中 2 次超 80）。提示里给更紧的目标长度，
-// 硬上限仍由 parseProfileIntroDraft 按可见字符校验。
+// 硬上限仍由 parseProfileIntroDraft 按可见字符校验。英文上限 200，目标约 160，仍是一两句话。
 const HEADLINE_TARGET = 28;
-const BIO_TARGET = 60;
+const BIO_TARGET = { en: 160, zh: 60 } as const;
+const BIO_LIMIT = { en: PROFILE_BIO_NON_CJK_LIMIT, zh: PROFILE_BIO_CJK_LIMIT } as const;
 const MAX_ATTEMPTS = 3;
 
 function systemInstruction(language: "zh" | "en"): string {
@@ -119,7 +121,10 @@ function systemInstruction(language: "zh" | "en"): string {
     "You write the self-introduction shown on a business networking profile, in the first person.",
     "Use only facts from the supplied profile. Do not invent employers, achievements, numbers, years of experience, clients or credentials.",
     `"headline" is one short line of about ${HEADLINE_TARGET} ${units} (never more than ${PROFILE_INTRO_HEADLINE_LIMIT}) saying who the person is and what they focus on.`,
-    `"bio" is "About me": about ${BIO_TARGET} ${units} (never more than ${PROFILE_INTRO_BIO_LIMIT}), one or two sentences: what they do, what they can help with and who they want to meet. Pick the most important points instead of listing everything.`,
+    `"bio" is "About me": about ${BIO_TARGET[language]} ${units} (never more than ${BIO_LIMIT[language]}), one or two sentences: what they do, what they can help with and who they want to meet. Pick the most important points instead of listing everything.`,
+    ...(language === "en"
+      ? [`Write every name in Latin letters: any Chinese, Japanese or Korean character lowers the "bio" limit to ${PROFILE_BIO_CJK_LIMIT}.`]
+      : []),
     "Plain, specific and friendly; no emoji, no hashtags, no marketing superlatives.",
     'Return strict JSON only: {"headline":"...","bio":"..."}.',
   ].join(" ");

@@ -1,13 +1,17 @@
 import { Pool, type PoolConfig } from "pg";
 
-import type {
-  LiveRecord,
-  LiveRecordDeleteInput,
-  LiveRecordGetQuery,
-  LiveRecordListQuery,
-  LiveRecordStoreLike,
+import {
+  LiveRecordOwnerConflictError,
+  type LiveRecord,
+  type LiveRecordDeleteInput,
+  type LiveRecordGetQuery,
+  type LiveRecordListQuery,
+  type LiveRecordReassignOwnerInput,
+  type LiveRecordStoreLike,
 } from "./live-record-store";
 import { resolveListLimit } from "./live-record-store";
+import { isSyncCollection, SYNC_COMMIT_ORDER_LOCK_CTE } from "../../features/sync/commit-order-lock";
+import { assertRegisteredOwnerChange, SYNC_OWNER_CHANGE_SETTING } from "../../features/sync/owner-guard";
 import {
   createPostgresReadMetricsRunner,
   type PostgresReadMetricsConfig,
@@ -93,6 +97,31 @@ const recordColumns = `
   updated_at,
   deleted_at
 `;
+
+const recordPlaceholders = `
+  $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
+  $11, $12, $13, $14, $15, $16, $17, $18, $19
+`;
+
+/**
+ * Sprint 0108: a write to a sync collection takes the commit-order lock in the
+ * same statement (see features/sync/commit-order-lock.ts), so it holds the lock
+ * whether the client is a pool (autocommit) or a transaction. Other collections
+ * keep the plain statement.
+ */
+function lockedWith(collectionName: string): string {
+  return isSyncCollection(collectionName) ? `with ${SYNC_COMMIT_ORDER_LOCK_CTE}\n` : "";
+}
+
+function insertedRows(collectionName: string): string {
+  return isSyncCollection(collectionName)
+    ? `select ${recordPlaceholders} from sync_write_lock`
+    : `values (${recordPlaceholders})`;
+}
+
+function lockedFrom(collectionName: string): string {
+  return isSyncCollection(collectionName) ? "from sync_write_lock" : "";
+}
 
 function cloneJson<TValue>(value: TValue): TValue {
   return JSON.parse(JSON.stringify(value)) as TValue;
@@ -323,11 +352,12 @@ export function createPostgresLiveRecordStore<
       if ((record.userId ?? null) !== expected.userId ||
           !(Date.parse(record.updatedAt) > Date.parse(expected.updatedAt))) return null;
       const result = await client.query<PostgresLiveRecordRow>(`
-        update orbit_records set
+        ${lockedWith(record.collectionName)}update orbit_records set
           source_type=$5, source_id=$6, source_label=$7, provider=$8,
           provider_record_id=$9, evidence_ids=$10, target_type=$11,
           target_id=$12, occurred_at=$13, lifecycle_state=$14,
           search_text=$15, payload=$16, updated_at=$18, deleted_at=$19
+        ${lockedFrom(record.collectionName)}
         where workspace_id=$1 and collection_name=$2 and record_id=$3
           and user_id is not distinct from $4::text
           and updated_at=$20::timestamptz and lifecycle_state <> 'deleted'
@@ -341,10 +371,11 @@ export function createPostgresLiveRecordStore<
     ): Promise<LiveRecord<TPayload> | null> {
       const result = await client.query<PostgresLiveRecordRow>(
         `
-          update orbit_records
+          ${lockedWith(input.collectionName)}update orbit_records
           set lifecycle_state = 'deleted',
             deleted_at = $4,
             updated_at = $4
+          ${lockedFrom(input.collectionName)}
           where workspace_id = $1
             and collection_name = $2
             and record_id = $3
@@ -407,11 +438,8 @@ export function createPostgresLiveRecordStore<
     async insertRecordIfAbsent(record: LiveRecord<TPayload>): Promise<LiveRecord<TPayload> | null> {
       const result = await client.query<PostgresLiveRecordRow>(
         `
-          insert into orbit_records (${recordColumns})
-          values (
-            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
-            $11, $12, $13, $14, $15, $16, $17, $18, $19
-          )
+          ${lockedWith(record.collectionName)}insert into orbit_records (${recordColumns})
+          ${insertedRows(record.collectionName)}
           on conflict (workspace_id, collection_name, record_id)
           do nothing
           returning ${recordColumns}
@@ -424,14 +452,14 @@ export function createPostgresLiveRecordStore<
     async upsertRecord(record: LiveRecord<TPayload>): Promise<LiveRecord<TPayload>> {
       const result = await client.query<PostgresLiveRecordRow>(
         `
-          insert into orbit_records (${recordColumns})
-          values (
-            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
-            $11, $12, $13, $14, $15, $16, $17, $18, $19
-          )
+          ${lockedWith(record.collectionName)}insert into orbit_records (${recordColumns})
+          ${insertedRows(record.collectionName)}
           on conflict (workspace_id, collection_name, record_id)
           do update set
-            user_id = excluded.user_id,
+            -- Sprint 0113: an update without an owner keeps the stored one; an
+            -- unowned row may get its first owner; another owner is refused
+            -- by the WHERE below (no row back = LiveRecordOwnerConflictError).
+            user_id = coalesce(excluded.user_id, orbit_records.user_id),
             source_type = excluded.source_type,
             source_id = excluded.source_id,
             source_label = excluded.source_label,
@@ -446,16 +474,43 @@ export function createPostgresLiveRecordStore<
             payload = excluded.payload,
             updated_at = excluded.updated_at,
             deleted_at = excluded.deleted_at
+          where excluded.user_id is null
+            or nullif(orbit_records.user_id, '') is null
+            or orbit_records.user_id = excluded.user_id
           returning ${recordColumns}
         `,
         recordValues(record),
       );
 
       if (!result.rows[0]) {
-        throw new Error("orbit_records upsert returned no row");
+        throw new LiveRecordOwnerConflictError(record.collectionName, record.recordId);
       }
 
       return rowToRecord<TPayload>(result.rows[0]);
+    },
+
+    async reassignRecordOwner(input: LiveRecordReassignOwnerInput): Promise<LiveRecord<TPayload> | null> {
+      assertRegisteredOwnerChange(input.collectionName, input.handler);
+      // A registered handler marks its transaction for the owner guard trigger;
+      // the CTE is joined, so it runs before the row reaches the trigger.
+      const ctes = [
+        ...(isSyncCollection(input.collectionName) ? [SYNC_COMMIT_ORDER_LOCK_CTE] : []),
+        `owner_change as materialized (select set_config('${SYNC_OWNER_CHANGE_SETTING}', $6::text, true) as handler)`,
+      ];
+      const result = await client.query<PostgresLiveRecordRow>(
+        `
+          with ${ctes.join(",\n")}
+          update orbit_records
+          set user_id = $5, updated_at = $7
+          from owner_change${isSyncCollection(input.collectionName) ? ", sync_write_lock" : ""}
+          where workspace_id = $1 and collection_name = $2 and record_id = $3
+            and user_id is not distinct from $4::text
+            and lifecycle_state <> 'deleted'
+          returning ${recordColumns.split(",").map((column) => `orbit_records.${column.trim()}`).join(", ")}
+        `,
+        [input.workspaceId, input.collectionName, input.recordId, input.fromUserId, input.toUserId, input.handler ?? "", input.updatedAt],
+      );
+      return result.rows[0] ? rowToRecord<TPayload>(result.rows[0]) : null;
     },
   };
 }

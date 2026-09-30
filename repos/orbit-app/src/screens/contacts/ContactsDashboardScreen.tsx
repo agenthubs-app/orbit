@@ -17,18 +17,27 @@ import {
   dashboardOpportunitiesRecomputePath,
   ORBIT_API_ENDPOINTS
 } from "../../api/endpoints";
-import { mobileContactsDashboardPayloadSchema } from "../../api/schema/mobile-contacts-dashboard";
+import {
+  MOBILE_CONTACTS_ANALYSIS_OVERVIEW_QUERY,
+  MOBILE_CONTACTS_DASHBOARD_ROLE_COUNTS_QUERY,
+  mobileContactsAnalysisOverviewPayloadSchema,
+  mobileContactsDashboardPayloadSchema
+} from "../../api/schema/mobile-contacts-dashboard";
 import { AppScreen } from "../../components/AppScreen";
 import { AnalysisPieOrbitChart } from "../../components/AnalysisPieOrbitChart";
 import { DataCard } from "../../components/DataCard";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
+import { OfflineNotice } from "../../components/OfflineNotice";
 import { layout, textStyles, radius, spacing, type OrbitColors } from "../../design/tokens";
 import { createControlStyles } from "../../design/controls";
 import { createThemedStyles, useOrbitTheme } from "../../design/theme";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useValidatedApiResource } from "../../hooks/useValidatedApiResource";
+import { useLocalContacts } from "../../hooks/useLocalContacts";
+import { useLocalDashboard } from "../../hooks/useLocalDashboard";
+import { localContactsAnalysisContacts } from "../../view-models/dashboard-local";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import {
   contactsAnalysisTemplate,
@@ -51,6 +60,7 @@ import {
 import {
   contactAvatarFor,
   contactLocationsToValues,
+  contactRoleCountsFromPayload,
   contactsToSummaries,
   type ContactAvatarTone,
   type ContactSummary
@@ -61,6 +71,15 @@ import {
 } from "../../view-models/dashboard";
 
 type AnalysisSegment = "opportunity" | "overview" | "structure";
+
+// This screen reads contacts.roleCounts for its role statistics, so it declares
+// the capability; the server then sends only the contacts the page shows.
+const CONTACTS_DASHBOARD_PATH =
+  `${ORBIT_API_ENDPOINTS.mobileContactsDashboard}?${MOBILE_CONTACTS_DASHBOARD_ROLE_COUNTS_QUERY}`;
+// Sprint 0117: with the device copy as the source the page reads only the AI
+// report and the profile it is bound to.
+const CONTACTS_ANALYSIS_OVERVIEW_PATH =
+  `${ORBIT_API_ENDPOINTS.mobileContactsDashboard}?${MOBILE_CONTACTS_ANALYSIS_OVERVIEW_QUERY}&${MOBILE_CONTACTS_DASHBOARD_ROLE_COUNTS_QUERY}`;
 
 export function ContactsDashboardScreen() {
   const { colors } = useOrbitTheme();
@@ -76,17 +95,48 @@ export function ContactsDashboardScreen() {
   const recomputeAbortController = useRef<AbortController | null>(null);
   const currentDashboardScope = useRef(dashboardScopeKey);
   currentDashboardScope.current = dashboardScopeKey;
+  /**
+   * Sprint 0117 (dashboard D3): every section is computed on the device from
+   * its copy of the dashboard graph with the server's own code; the contacts
+   * the page names come from the device copy of the contacts. Only the AI
+   * report and its profile are read from the server (?view=analysis). The
+   * full page read stays for a browser without its mirror.
+   */
+  const local = useLocalDashboard();
+  const localMode = local.available;
+  const localContacts = useLocalContacts(false);
+  const offline = localMode && local.freshness.offline;
+  const overviewState = useValidatedApiResource(
+    CONTACTS_ANALYSIS_OVERVIEW_PATH,
+    mobileContactsAnalysisOverviewPayloadSchema,
+    () => false,
+    { scopeKey: dashboardScopeKey, enabled: localMode },
+  );
   const dashboardState = useValidatedApiResource(
-    ORBIT_API_ENDPOINTS.mobileContactsDashboard,
+    CONTACTS_DASHBOARD_PATH,
     mobileContactsDashboardPayloadSchema,
     (data) => data.aggregate.relationshipAssetTotals.contacts === 0 && !data.analysis?.report,
-    { scopeKey: dashboardScopeKey },
+    { scopeKey: dashboardScopeKey, enabled: !localMode },
   );
+  const overview = overviewState.kind === "success" ? overviewState.data : null;
+  const localPage = localMode && local.sections
+    ? {
+        aggregate: local.sections.aggregate,
+        summary: local.sections.summary,
+        opportunities: local.sections.opportunities,
+        gaps: local.sections.gaps,
+        distributions: local.sections.distributions,
+        contacts: localContactsAnalysisContacts(local.sections, localContacts.rows),
+        analysis: overview?.analysis ?? null,
+        profile: overview?.profile ?? null,
+        unavailableSections: overview ? overview.unavailableSections : (["analysis", "profile"] as string[]),
+      }
+    : null;
   const dashboard =
     dashboardState.kind === "success" || dashboardState.kind === "empty"
       ? dashboardState.data
       : null;
-  const manualProfile = dashboard?.profile?.profile ?? null;
+  const manualProfile = (localMode ? overview?.profile?.profile : dashboard?.profile?.profile) ?? null;
 
   useEffect(() => {
     recomputeAbortController.current?.abort();
@@ -101,10 +151,16 @@ export function ContactsDashboardScreen() {
 
   function refreshAll() {
     setRecomputeError(null);
+    if (localMode) {
+      local.refresh();
+      overviewState.refresh();
+      return;
+    }
     dashboardState.refresh();
   }
 
   async function recomputeContactDashboardOpportunities() {
+    if (offline) return;
     const requestScope = dashboardScopeKey;
     const controller = new AbortController();
     recomputeAbortController.current?.abort();
@@ -149,27 +205,64 @@ export function ContactsDashboardScreen() {
       refreshControl={
         <RefreshControl
           onRefresh={refreshAll}
-          refreshing={dashboardState.refreshing}
+          refreshing={localMode ? local.freshness.refreshing || overviewState.refreshing : dashboardState.refreshing}
           tintColor={colors.accent}
         />
       }
       title="人脉分析"
     >
-      {dashboardState.kind === "loading" ? <LoadingState /> : null}
-      {dashboardState.kind === "offline" ? (
+      {localMode ? (
+        <>
+          {offline ? <OfflineNotice lastSyncedAt={local.freshness.lastSyncedAt} /> : null}
+          {local.freshness.failure ? (
+            <ErrorState message={local.freshness.failure} title="服务器连不上" />
+          ) : null}
+          {local.error ? <ErrorState message={local.error} /> : null}
+          {!local.freshness.failure && !local.error && !localPage ? <LoadingState /> : null}
+          {localPage && localPage.aggregate.relationshipAssetTotals.contacts === 0 && !localPage.analysis?.report ? (
+            <EmptyState
+              message="先确认联系人，Orbit 才能判断关系覆盖和下一步。"
+              title="暂无人脉资产"
+            />
+          ) : null}
+          {localPage && !(localPage.aggregate.relationshipAssetTotals.contacts === 0 && !localPage.analysis?.report) ? (
+            <ContactsDashboardContent
+              aggregate={localPage.aggregate}
+              actorId={actorId}
+              analysis={localPage.analysis}
+              baseUrl={baseUrl}
+              contactsPayload={localPage.contacts}
+              distributions={localPage.distributions}
+              gaps={localPage.gaps}
+              offline={offline}
+              opportunities={localPage.opportunities}
+              onRecompute={recomputeContactDashboardOpportunities}
+              recomputeError={recomputeError}
+              recomputeResult={recomputeResult}
+              recomputing={recomputing}
+              relationshipGoal={manualProfile?.relationshipGoal ?? ""}
+              summary={localPage.summary}
+              unavailableSections={localPage.unavailableSections}
+            />
+          ) : null}
+        </>
+      ) : null}
+      {!localMode && dashboardState.kind === "loading" ? <LoadingState /> : null}
+      {!localMode && dashboardState.kind === "offline" ? (
         <ErrorState message={dashboardState.error.message} title="服务器连不上" />
       ) : null}
-      {dashboardState.kind === "failure" ? (
+      {!localMode && dashboardState.kind === "failure" ? (
         <ErrorState message={dashboardState.error.message} />
       ) : null}
-      {dashboardState.kind === "empty" ? (
+      {!localMode && dashboardState.kind === "empty" ? (
         <EmptyState
           message="先确认联系人，Orbit 才能判断关系覆盖和下一步。"
           title="暂无人脉资产"
         />
       ) : null}
-      {dashboardState.kind === "success" ? (
+      {!localMode && dashboardState.kind === "success" ? (
         <ContactsDashboardContent
+          offline={false}
           aggregate={dashboardState.data.aggregate}
           actorId={actorId}
           analysis={dashboardState.data.analysis}
@@ -199,6 +292,7 @@ function ContactsDashboardContent({
   contactsPayload,
   distributions,
   gaps,
+  offline,
   onRecompute,
   opportunities,
   recomputeError,
@@ -215,6 +309,8 @@ function ContactsDashboardContent({
   contactsPayload: unknown;
   distributions: unknown;
   gaps: unknown;
+  /** Sprint 0117: the device copy is shown offline; recomputing needs the server. */
+  offline: boolean;
   onRecompute: () => void;
   opportunities: unknown;
   recomputeError: string | null;
@@ -247,7 +343,8 @@ function ContactsDashboardContent({
     },
     relationshipGoal,
     contacts,
-    contactLocations
+    contactLocations,
+    contactRoleCountsFromPayload(contactsPayload)
   );
   const analysisReport = contactsAnalysisReportToView(analysis, unavailableSections);
 
@@ -436,6 +533,7 @@ function ContactsDashboardContent({
           onOpenAction={openRecommendedAction}
           onOpenPath={openGoalPath}
           onOpenSignal={openCoverageSignal}
+          offline={offline}
           onRecompute={onRecompute}
           recomputing={recomputing}
         />
@@ -443,6 +541,7 @@ function ContactsDashboardContent({
 
       <PersistedAnalysisCard
         error={analysisPrefillError}
+        offline={offline}
         onAnalyze={openAnalysisPrefill}
         view={analysisReport}
       />
@@ -616,10 +715,13 @@ function OpportunityActionBriefSheet({
 
 function PersistedAnalysisCard({
   error,
+  offline,
   onAnalyze,
   view
 }: {
   error: string | null;
+  /** Sprint 0117: offline the page shows its last-known report status; asking the AI needs the network. */
+  offline: boolean;
   onAnalyze: () => void;
   view: ContactsAnalysisReportView;
 }) {
@@ -658,16 +760,19 @@ function PersistedAnalysisCard({
       ) : null}
       {view.action ? (
         <Pressable
-          accessibilityLabel={locale.t("contacts.analysisReportAction")}
+          accessibilityLabel={offline ? `${locale.t("contacts.analysisReportAction")} · ${locale.t("sync.needsNetwork")}` : locale.t("contacts.analysisReportAction")}
           accessibilityRole="button"
+          accessibilityState={{ disabled: offline }}
+          disabled={offline}
           onPress={onAnalyze}
           style={({ pressed }) => [
             styles.saveGoalButton,
+            offline ? styles.disabled : null,
             pressed ? styles.pressed : null
           ]}
         >
           <Ionicons color={colors.onAccent} name="sparkles-outline" size={17} />
-          <Text style={styles.saveGoalButtonText}>{locale.t("contacts.analysisReportAction")}</Text>
+          <Text style={styles.saveGoalButtonText}>{offline ? `${locale.t("contacts.analysisReportAction")} · ${locale.t("sync.needsNetwork")}` : locale.t("contacts.analysisReportAction")}</Text>
         </Pressable>
       ) : null}
       {view.action ? (
@@ -1073,6 +1178,7 @@ function OpportunityAnalysisView({
   goalConfigured,
   onOpenAction,
   onOpenPath,
+  offline,
   onOpenSignal,
   onRecompute,
   recomputing
@@ -1082,6 +1188,7 @@ function OpportunityAnalysisView({
   contacts: ContactSummary[];
   coverage: ReturnType<typeof contactsAnalysisToView>["coverage"];
   goalConfigured: boolean;
+  offline: boolean;
   onOpenAction: (action: ContactsAnalysisActionView) => void;
   onOpenPath: () => void;
   onOpenSignal: (signal: ContactsAnalysisCoverageSignalView) => void;
@@ -1092,6 +1199,7 @@ function OpportunityAnalysisView({
     <>
       <GoalCoverageCard
         coverage={coverage}
+        offline={offline}
         onOpenPath={onOpenPath}
         onOpenSignal={onOpenSignal}
         onRecompute={onRecompute}
@@ -1190,6 +1298,7 @@ function activityIcon(
 
 function GoalCoverageCard({
   coverage,
+  offline,
   onOpenPath,
   onOpenSignal,
   onRecompute,
@@ -1197,6 +1306,7 @@ function GoalCoverageCard({
   recomputing
 }: {
   coverage: ReturnType<typeof contactsAnalysisToView>["coverage"];
+  offline: boolean;
   onOpenPath: () => void;
   onOpenSignal: (signal: ContactsAnalysisCoverageSignalView) => void;
   onRecompute: () => void;
@@ -1213,13 +1323,14 @@ function GoalCoverageCard({
           <Text style={styles.analysisSectionDetail}>{coverage.statusLabel}</Text>
         </View>
         <Pressable
-          accessibilityLabel={locale.t("contacts.refreshOpportunities")}
+          accessibilityLabel={offline ? `${locale.t("contacts.refreshOpportunities")} · ${locale.t("sync.needsNetwork")}` : locale.t("contacts.refreshOpportunities")}
           accessibilityRole="button"
-          disabled={recomputing}
+          accessibilityState={{ disabled: recomputing || offline }}
+          disabled={recomputing || offline}
           onPress={onRecompute}
           style={({ pressed }) => [
             styles.refreshAnalysisButton,
-            recomputing ? styles.disabled : null,
+            recomputing || offline ? styles.disabled : null,
             pressed ? styles.pressed : null
           ]}
         >
@@ -1228,7 +1339,7 @@ function GoalCoverageCard({
             name="refresh-outline"
             size={18}
           />
-          <Text style={styles.refreshAnalysisButtonText}>{locale.t("contacts.refreshOpportunities")}</Text>
+          <Text style={styles.refreshAnalysisButtonText}>{offline ? `${locale.t("contacts.refreshOpportunities")} · ${locale.t("sync.needsNetwork")}` : locale.t("contacts.refreshOpportunities")}</Text>
         </Pressable>
       </View>
 

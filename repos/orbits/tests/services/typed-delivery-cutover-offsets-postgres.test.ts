@@ -5,6 +5,7 @@ import { Pool } from 'pg';
 import { createTransactionalPostgresClient } from '../../shared/storage/transactional-postgres';
 import { createPostgresLiveRecordStore } from '../../shared/storage/postgres-live-record-store';
 import { ORBIT_RECORDS_SCHEMA_SQL } from '../../shared/storage/migrations';
+import { RELATIONSHIP_MESSAGE_SCHEMA_SQL } from '../../features/relationship-communication/message-tables';
 import { createConfiguredReminderPlanService } from '../../features/notifications/reminder-plan-service-factory';
 import { INBOX_PROJECTION_WORK_SCHEMA_SQL, createInboxProjectionWorkRepository } from '../../features/notifications/storage/inbox-projection-work';
 import { runInboxProjectionPass } from '../../features/notifications/inbox-projection-worker';
@@ -45,6 +46,8 @@ test('typed delivery cutoff treats offset timestamps as instants and fails close
   try {
     await pool.query(`create schema ${schema}`);
     await pool.query(ORBIT_RECORDS_SCHEMA_SQL);
+    // Sprint 0109: the relationship message tables the materializer reads, as db:migrate:live creates them.
+    await pool.query(RELATIONSHIP_MESSAGE_SCHEMA_SQL);
     await pool.query(INBOX_PROJECTION_WORK_SCHEMA_SQL);
     const store = createPostgresLiveRecordStore({ client });
     await store.upsertRecord({ workspaceId, collectionName: 'tasks', recordId: 'task', userId: actorId, sourceType: 'manual', sourceId: 'task', evidenceIds: [], lifecycleState: 'active', createdAt: now, updatedAt: now,

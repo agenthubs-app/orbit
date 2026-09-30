@@ -607,67 +607,11 @@ function entityDraftKindLabel(kind: string): string {
   return { event: "活动", note: "笔记", schedule: "日程", task: "待办" }[kind] ?? "记录";
 }
 
-async function persistConversationRunTrace(
-  result: OrbitAgentConversationResult,
-  runtime: AgentRuntimeService,
-): Promise<OrbitAgentConversationResult> {
-  if (result.success === false) return result;
-  const existingRunId = result.data.runId?.trim();
-  const runId = existingRunId || `run:conversation:${crypto.randomUUID()}`;
-  const conversationId = result.data.activeConversationId?.trim() || undefined;
-  const run = await runtime.createRun({
-    conversationId,
-    runId,
-    trigger: "chat",
-    workflowKey: "agent_conversation_v1",
-    workflowVersion: 1,
-  });
-  const spans = result.data.diagnostics?.timings ?? [];
-  const traceSteps =
-    spans.length > 0
-      ? spans
-      : [
-          {
-            durationMs: 0,
-            phase: "final_response",
-            skipped: false,
-          },
-        ];
-  for (let index = 0; index < traceSteps.length; index += 1) {
-    const span = traceSteps[index];
-    await runtime.addRunStep({
-      attempt: 1,
-      inputRef:
-        index === 0 && conversationId
-          ? `conversation:${conversationId}`
-          : undefined,
-      kind:
-        span.phase === "planner" || span.phase === "synthesis"
-          ? "ai"
-          : span.phase === "artifact_generation" ||
-              span.phase === "tool_mapping"
-            ? "tool"
-            : "deterministic",
-      name: span.phase,
-      outputRef:
-        index === traceSteps.length - 1 ? `${runId}:response` : undefined,
-      runId,
-      sequence: index + 1,
-      status: span.skipped ? "skipped" : "completed",
-      stepId: `${runId}:step:${index + 1}:${span.phase}`,
-    });
-  }
-  if (!existingRunId && run.status !== "completed") {
-    await runtime.updateRunStatus(runId, "completed");
-  }
-  return {
-    success: true,
-    data: {
-      ...result.data,
-      runId,
-    },
-  };
-}
+// Sprint 0110 (AI trace A2): a plain answer writes no run record. Only a turn
+// that proposes actions (or runs a known workflow) has a run, recorded by that
+// path under its own runId. The turn's timing spans stay on the reliable request
+// record (result.data.diagnostics.timings); GET /api/ai/runs/[id] derives an
+// action run's conversation steps from there (0103).
 
 export async function GET(request: Request): Promise<Response> {
   // GET 只读取会话列表/状态，不触发模型 provider。
@@ -811,19 +755,20 @@ export async function POST(request: Request): Promise<Response> {
         prepareExecution: async () => {
           const origin = reliableInput.data.origin;
           if (origin?.entryPointId !== "contacts.analysis") return {};
-          const dashboard = await createConfiguredMobileContactsDashboardService(mode).getDashboard({ actorId });
-          if (!dashboard.success) {
+          // Sprint 0102: the graph version is checked first (one small query);
+          // a stale page is refused before any section is read, and a current
+          // one is served from the SQL read models and the dashboard snapshot.
+          const analysisSource = await createConfiguredMobileContactsDashboardService(mode).getAnalysisSource!({
+            actorId,
+            claimedSourceDataVersion: origin.sourceDataVersion ?? "",
+          });
+          if (analysisSource.success === false && analysisSource.error === "conflict") {
+            throw new AppError("CONFLICT", "The contacts analysis source changed. Refresh the analysis before sending.");
+          }
+          if (analysisSource.success === false) {
             throw new AppError("SERVICE_UNAVAILABLE", "The current contacts analysis source could not be verified.");
           }
-          const source = {
-              aggregate: dashboard.data.aggregate,
-              contacts: dashboard.data.contacts,
-              distributions: dashboard.data.distributions,
-              gaps: dashboard.data.gaps,
-              opportunities: dashboard.data.opportunities,
-              profile: dashboard.data.profile,
-              summary: dashboard.data.summary,
-          };
+          const source = analysisSource.source;
           const trustedOriginVerification = verifyContactsAnalysisSourceVersion({
             claimed: origin.sourceDataVersion ?? "",
             source,
@@ -842,10 +787,7 @@ export async function POST(request: Request): Promise<Response> {
                 contactsAnalysis,
               }
             : { ...trustedInput, history: prepared?.history };
-          const executed = await persistConversationRunTrace(
-            await executeConversation(executionInput),
-            agentContext.runtime,
-          );
+          const executed = await executeConversation(executionInput);
           if (executed.success === false) return { result: executed };
           const originVerification = prepared?.trustedOriginVerification && contactsAnalysis &&
             isSuccessfulContactsAnalysisExecution(executed, contactsAnalysis, input.message ?? "")
@@ -885,7 +827,8 @@ export async function POST(request: Request): Promise<Response> {
           status: 202,
         });
       }
-      const session = await sessionProvider.getSession(reliableInput.data.sessionId);
+      // The receipt needs only the revision: one header row, never the messages.
+      const session = await sessionProvider.getSessionHeader(reliableInput.data.sessionId);
       result = resultWithReliableReceipt(
         reliable.result,
         reliableReceipt(
@@ -899,10 +842,7 @@ export async function POST(request: Request): Promise<Response> {
       return reliableSendErrorResponse(mode, error);
     }
   } else {
-    result = await persistConversationRunTrace(
-      await executeConversation(),
-      agentContext.runtime,
-    );
+    result = await executeConversation();
   }
   timing.finish("orbit-service", serviceStartedAt);
 

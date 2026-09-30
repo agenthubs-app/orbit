@@ -34,7 +34,7 @@ test("legacy batch login completion handoff preserves context and omits the path
   assert.equal(normalizedNext(next), next);
   assert.equal(
     nextHrefForAccountAuthSubmit({ email: "test@example.invalid", mode: "login", next }),
-    `/profile?complete=1&next=${encodeURIComponent(next)}`
+    `/profile/onboarding?next=${encodeURIComponent(next)}`
   );
 });
 
@@ -53,6 +53,7 @@ test("mobile actor workspaces share one private-route policy", () => {
     "/home/events",
     "/inbox",
     "/events/event-1/attendees",
+    "/events/event-1/live",
     "/events/event-1/operations/admission",
     "/events/event-1/operations/check-in",
     "/events/event-1/operations/roles",
@@ -128,6 +129,7 @@ test("auth return parameter ownership follows the matched route instead of globa
     ["/chat/thread-1", { id: "thread-1", tab: "details" }, "/chat/thread-1?tab=details"],
     ["/contacts/contact-1", { id: "contact-1", q: "林" }, "/contacts/contact-1?q=%E6%9E%97"],
     ["/events/event-1/register", { id: "event-1", step: "questions" }, "/events/event-1/register?step=questions"],
+    ["/events/event-1/live", { id: "event-1", tab: "all", participant: "p 1" }, "/events/event-1/live?participant=p+1&tab=all"],
     ["/events/event-1/operations/admission", { id: "event-1", view: "processed" }, "/events/event-1/operations/admission?view=processed"],
     ["/events/event-1/operations/check-in", { id: "event-1", mode: "pending" }, "/events/event-1/operations/check-in?mode=pending"],
     ["/events/event-1/operations/roles", { id: "event-1", member: "actor:staff" }, "/events/event-1/operations/roles?member=actor%3Astaff"],
@@ -179,7 +181,7 @@ test("party query, duplicate values and fragment survive the login completion ha
       mode: "login",
       next: encodedNext ?? undefined
     }),
-    `/profile?complete=1&next=${encodeURIComponent(expected)}`
+    `/profile/onboarding?next=${encodeURIComponent(expected)}`
   );
 });
 
@@ -257,6 +259,7 @@ test("every root-level private entry uses the shared render gate", () => {
     "contacts/pipeline.tsx",
     "dashboard.tsx",
     "events/[id]/attendees.tsx",
+    "events/[id]/live.tsx",
     "events/[id]/operations/admission.tsx",
     "events/[id]/operations/check-in.tsx",
     "events/[id]/operations/experience.tsx",
@@ -279,6 +282,7 @@ test("every root-level private entry uses the shared render gate", () => {
     "profile/continue.tsx",
     "profile/edit.tsx",
     "profile/more.tsx",
+    "profile/onboarding.tsx",
     "profile/preview.tsx",
     "profile/suggestions.tsx",
     "profile/tags.tsx",

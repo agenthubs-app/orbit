@@ -53,43 +53,12 @@ test("relationship inbox hands reply drafts to an opaque stable-contact IORBIT p
   assert.doesNotMatch(screenSource, /ORBIT_API_ENDPOINTS\.chatAssistRewrite|buildRelationshipRewriteRequest|relationshipRewriteToDraft/u);
 });
 
-test("relationship inbox shows chat privacy controls from the web boundary", () => {
-  assert.match(screenSource, /chatPrivacyControlsPath/u);
-  assert.match(screenSource, /relationshipInboxErrorText/u);
-  assert.match(screenSource, /relationshipPrivacyControlsToView/u);
-  assert.match(screenSource, /buildRelationshipPrivacyToggleRequest/u);
-  assert.match(
-    screenSource,
-    /clientGet\(chatPrivacyControlsPath\(detail\.conversationId\)\)/u
-  );
-  assert.match(
-    screenSource,
-    /clientPost\(request\.request\.endpoint,\s*request\.request\.body\)/u
-  );
-  assert.match(screenSource, /label=\{privacy\.toggleLabel\}/u);
-  assert.match(screenSource, /locale\.t\("inbox\.privacy"\)/u);
-});
-
-test("relationship inbox privacy controls never render raw implementation errors", () => {
-  const panelStart = screenSource.indexOf("function PrivacyControlsPanel");
-  const composerStart = screenSource.indexOf("function ReplyComposer");
-  const panelSource = screenSource.slice(panelStart, composerStart);
-
-  assert.ok(panelStart >= 0);
-  assert.ok(composerStart > panelStart);
-  assert.doesNotMatch(
-    panelSource,
-    /setPrivacyError\(result\.error\?\.message/u
-  );
-  assert.doesNotMatch(panelSource, /setPrivacyError\([\s\S]*requestError\.message/u);
-  assert.match(
-    panelSource,
-    /relationshipInboxErrorText\(\s*result\.error\?\.message,\s*locale\.t\("inbox\.privacyUnavailable"\),\s*locale\.language\s*\)/u
-  );
-  assert.match(
-    panelSource,
-    /relationshipInboxErrorText\(\s*requestError,\s*locale\.t\("inbox\.privacyUpdateFailed"\),\s*locale\.language\s*\)/u
-  );
+test("relationship inbox no longer calls the retired legacy chat privacy endpoints", () => {
+  // Sprint 0104: privacy settings and the analysis toggle sent new-system
+  // conversation ids to the legacy chat store and always failed; both were removed.
+  assert.doesNotMatch(screenSource, /chatPrivacyControlsPath|chatPrivacyAnalysisTogglePath|PrivacyControlsPanel/u);
+  assert.doesNotMatch(screenSource, /relationshipPrivacyControlsToView|buildRelationshipPrivacyToggleRequest/u);
+  assert.doesNotMatch(screenSource, /\/api\/chat\/privacy/u);
 });
 
 test("relationship inbox actions sanitize user-facing error text", () => {
