@@ -1,0 +1,46 @@
+# SC-0137-05 isolated QA facts — 2026-09-30
+
+This is an evidence index for the original 0137 run-01, not a closing report. It records isolated checks without changing the acceptance contract. No connection strings, credentials, user records, or private account identifiers are included.
+
+## Version and overall status
+
+- A worktree HEAD: `849ca0cb11d3e059bd6e9bc1b32f067c0baa56ae`.
+- `repos/orbits` source tree: `c49d7e4acd46805918a6750a4ac9c6029956c7b1`.
+- Orbits `npm run typecheck` and `npm run lint`: both exit 0 at this A HEAD with DB URL aliases/provider credentials absent. Evidence: `build/harness-state/evidence/sprint-0137/run-01/orbits-static-verification-849ca0cb11d3e059bd6e9bc1b32f067c0baa56ae.summary.json`.
+- Database-boundary/local-stack architecture set: 19/19 pass, 0 skipped, exact command recorded in the same summary.
+- App full suite: `npm test` completed 3,873/3,873, 0 fail/skip at source commit `9329a7a0965074eee18c954145d7a9752a302b12`. App source/tests/scripts are unchanged through this A HEAD; only later checkpoint documentation differs. Evidence: `build/harness-state/evidence/sprint-0137/run-01/app-full-9329a7a09650.log`.
+- SC-0137-05 is **not passed**: there is no valid current-source full Orbits run with zero failures. The partitioned evidence below is not a substitute for that gate.
+
+## Historical 21-alias full-suite attempt
+
+The one serialized Orbits attempt was bound to A HEAD `2d85c29ceb9bcb462bb65ccb5f35ebeead95a5a2` and the same Orbits tree `c49d7e4acd46805918a6750a4ac9c6029956c7b1`. Its QA profile sent all 21 recognized database aliases to one scratch database, `orbit_merge_verify_20260907_c45a`. The result was **5,358 tests / 5,174 pass / 120 fail / 64 skipped**, exit 1; paid-AI boundary refusals were 0. PostgreSQL counters recorded 1,188,895 inserts, 85,518 updates, and 794,997 deletes during that run.
+
+Root accepted the all-alias profile as over-unified and invalid for the tests' distinct database identity/configuration contracts. Keep the TAP totals and writes as facts, but do not classify the 120 failures as a product-baseline failure or as a successful SC-05 result. Treat that scratch as potentially cross-domain-mutated and do not reuse it as an isolated target. Evidence: `build/harness-state/evidence/sprint-0137/run-01/orbits-full-2d85c29ceb9bcb462bb65ccb5f35ebeead95a5a2.summary.json` and its redacted stdout/stderr logs.
+
+## Isolated PostgreSQL groups
+
+Each row below is from the exact A HEAD above. `Tests` counts refer only to the selected, serial test scope—not to the full Server suite.
+In evidence references below, `.../filename` abbreviates the common ignored directory `build/harness-state/evidence/sprint-0137/run-01/`.
+
+| Group | Dedicated database and alias | Selected files / result | Schema and public-catalog evidence |
+| --- | --- | --- | --- |
+| Home (3) | `orbit_cutover_test_20260917`; `ORBIT_LIFECYCLE_TEST_DATABASE_URL` | `repos/orbits/tests/pages/app-home-facts-task-summary-reader.test.ts` (2 selected names; the 10k-cost case excluded) + `repos/orbits/tests/services/home-appointment-summary-postgres.test.ts` (1 selected name); 3/3 pass | Both summaries verify owner/identity and zero new prefixed schema residue. No separate public-catalog comparison is claimed. Summaries: `build/harness-state/evidence/sprint-0137/run-01/home-task-summary-cutover-849ca0cb11d3e059bd6e9bc1b32f067c0baa56ae.summary.json`, `.../home-appointment-cutover-849ca0cb11d3e059bd6e9bc1b32f067c0baa56ae.summary.json`. |
+| W5 (9) | `orbit_w5_f_test`; `ORBIT_W5_F_TEST_DATABASE_URL` | `repos/orbits/tests/services/relationship-lifecycle-facts-reader-postgres.test.ts`; 9/9 pass | The test uses generated private schemas and its own `finally` cleanup. The saved TAP/query-plan log has no independent post-run catalog residue count or public-baseline comparison; neither is claimed here. Log: `build/harness-state/evidence/sprint-0137/run-01/w5-relationship-lifecycle-849ca0cb11d3e059bd6e9bc1b32f067c0baa56ae.log`. |
+| Reminder (15) | `orbit_reminder_test`; `ORBIT_MAINTENANCE_TEST_DATABASE_URL` for maintenance heartbeat and `R2_CANONICAL_REMINDER_TEST_DATABASE_URL` for canonical reminder maintenance (each run had only its matching alias) | `repos/orbits/tests/services/maintenance-heartbeat.test.ts` 3/3 + `repos/orbits/tests/services/configured-canonical-reminder-maintenance.test.ts` 12/12 | Both test files use generated private schemas and `finally` cleanup. The saved TAP logs do not include independent post-run catalog residue counts/public comparisons; none is claimed. Logs: `build/harness-state/evidence/sprint-0137/run-01/reminder-maintenance-849ca0cb11d3e059bd6e9bc1b32f067c0baa56ae.log`, `.../reminder-canonical-849ca0cb11d3e059bd6e9bc1b32f067c0baa56ae.log`. |
+| Agent session (3) | `orbit_agent_session_test`; `ORBIT_AGENT_SESSION_TEST_DATABASE_URL` | `repos/orbits/tests/capabilities/ai-session-organization-postgres.test.ts`, `repos/orbits/tests/capabilities/orbit-agent-session-postgres.test.ts`, `repos/orbits/tests/services/ai-session-summary-page-postgres.test.ts`; 3/3 pass | Pre-run baseline records current-role ownership, only the `public` user schema, no public relations, and `pg_trgm` 1.6 in `public`. Tests use private generated schemas with cleanup; no independent post-run catalog comparison is claimed. Baseline: `build/harness-state/evidence/sprint-0137/run-01/agent-session-public-baseline-849ca0cb11d3e059bd6e9bc1b32f067c0baa56ae.json`; per-file logs: `.../agent-session-ai-session-organization-postgres-849ca0cb11d3e059bd6e9bc1b32f067c0baa56ae.log`, `.../agent-session-orbit-agent-session-postgres-849ca0cb11d3e059bd6e9bc1b32f067c0baa56ae.log`, `.../agent-session-ai-session-summary-page-postgres-849ca0cb11d3e059bd6e9bc1b32f067c0baa56ae.log`. |
+| Tasks (2) | `orbit_tasks_test`; `ORBIT_TASKS_TEST_DATABASE_URL` | `repos/orbits/tests/services/task-mutations-postgres.test.ts`; 2/2 pass | Pre-run evidence records owner, only `public`, no public relations, and the one-time `pg_trgm` 1.6 public setup. The test owns generated private schemas and `finally` cleanup; no independent post-run catalog comparison is claimed. Baseline: `build/harness-state/evidence/sprint-0137/run-01/tasks-public-baseline-849ca0cb11d3e059bd6e9bc1b32f067c0baa56ae.json`; log: `.../tasks-task-mutations-849ca0cb11d3e059bd6e9bc1b32f067c0baa56ae.log`. |
+| Demo (1) | `orbit_0137_demo_test`; `ORBIT_DEMO_TEST_DATABASE_URL` | `repos/orbits/tests/services/demo-canonical-memberships-postgres.test.ts`; 1/1 pass | The existing `orbit_demo_test` was not used or changed. The actual target's pre-run baseline records only `public`, no public relations/extensions, and no comment marker. The test drops its generated private schema in `finally`; no independent post-run catalog comparison is claimed. Baseline: `build/harness-state/evidence/sprint-0137/run-01/demo-0137-public-baseline-849ca0cb11d3e059bd6e9bc1b32f067c0baa56ae.json`; log: `.../demo-canonical-memberships-849ca0cb11d3e059bd6e9bc1b32f067c0baa56ae.log`. |
+| Recovery (1) | `orbit_agent_worker_recovery_test`; `ORBIT_DATABASE_TARGET=local` + `ORBIT_LOCAL_DATABASE_URL`, with child `ORBIT_RECOVERY_TEST_DATABASE_URL` | `agent-worker-postgres-recovery.test.ts`; 1/1 pass | Post-extension public baseline remained unchanged; public relations empty, `pg_trgm` 1.6 in `public`, and generated `agent_recovery_*` residue count 0. **Evidence limit:** a read-only snapshot was queried before extension setup, but the harness overwrote that in-memory value before serializing it. Its exact pre-extension schemas/relations/extensions are not persisted; no pre-extension baseline is claimed. Full summary and redacted logs: `agent-worker-postgres-recovery-849ca0cb11d3e059bd6e9bc1b32f067c0baa56ae.*`. |
+
+Home, W5, Reminder, Agent session, Tasks, Demo, and Recovery together account for 34 selected passing tests. These focused groups do not establish that every Orbits test was run under its correct alias/profile.
+
+## Native acceptance still open
+
+The guest5 notice safe-area follow-up has five native screenshots/AX captures for the tested device/build; it does not close the authenticated page matrix or establish 320 px/enlarged-text native coverage. The original nine-page Simulator checks remain incomplete: task detail, inbox source, contacts list, contacts graph, personal tasks/schedule list, notes new/edit, and personal schedule new/edit. Exact foreign-note offline acceptance and native contact-detail relationship behavior also remain unverified on the required frozen composition. Do not treat phoneweb captures or old-session screenshots as substitutes.
+
+Consequently SC-0137-04 and SC-0137-05 remain open, and final `REPORT.md` remains intentionally uncreated. This evidence index does not mark Sprint 0137 complete.
+
+## Staged-document checks
+
+- `git diff --cached --check`: passed.
+- Pinned GitNexus 1.6.12 `detect-changes --scope staged --repo orbit-0137` saw one staged Markdown file and no indexed-symbol overlap, then explicitly reported “not a clean tree.” This is not recorded as a clean graph check or as proof that the index covers the document; no code-symbol impact is inferred from it.
