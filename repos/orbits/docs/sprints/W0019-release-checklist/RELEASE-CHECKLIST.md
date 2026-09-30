@@ -352,3 +352,11 @@ W0034（合并 `af7da1a8`）已经把生产组合写进跟进白名单 `VERIFIED
 - **N7**（`prod-readonly/N7.txt`）：生产 `orbit_records` 现有 13 个索引，没有 `orbit_records_search_text_trgm_idx`；与 N6（无 `pg_trgm`）一致。M2 迁移会 `create extension pg_trgm` 并在 `orbit_records` 上建 trgm 索引——这是生产写操作，建索引期间有额外计算与写入，纳入 U2 授权范围。
 - **N8**（`prod-readonly/N8.txt`）：appointment v1–v4、bc_ingest v1–v5、event_analytics v1、event_experience v1 的 name 与 checksum 已记录。与拟发布代码的逐项比对需在 M2 前用迁移脚本的 dry-run／本地校验完成（放进 W0020 或迁移 Sprint 的预检步骤）。
 - **V8**（`prod-readonly/V8.txt`）：`get_deployment` 不返回 crons／functions 配置，仍无法判断当前生产用的是 `vercel.json` 还是 `vercel.staging.json`；需 U1（team 授权）后从构建日志确认。R6 维持「待核实」。
+
+## 附录 C：Vercel 补查（2026-09-30，用户重连后）
+
+- Vercel MCP 连接器对 team `liqys-projects-33c8ddec` 仍 403；本机 Vercel CLI 已登录该 team，改用 CLI 只读查询（`inspect`、`api` GET、`logs`），证据 `prod-readonly/V5-V8-cli.txt`。
+- **R6／V8 已核实**：当前生产部署带 cron（`/api/internal/maintenance`）与 Queue 触发器，是用 `vercel.json` 构建的。
+- **V5**：构建日志没有 Node 版本行，项目设置为 `nodeVersion=24.x`；精确版本仍需上线后从拒绝日志或运行日志确认（G1、G2 维持「待核实」）。
+- **V7**：近 7 天生产日志中 `LIFECYCLE_SORT_RUNTIME_UNVERIFIED`、`missing participant summary`、`contact search` 均 0 条。
+- **新发现（需立项）**：近 46 分钟的生产日志 100% 是 `/api/queues/maintenance` 的 POST，且落在**旧部署**上（`dpl_5YSX…` 9/17、SHA `02ec26f0` 900 条；`dpl_C7wh…` 100 条），约每分钟 22 次；真正的心跳链（`orbit_maintenance_heartbeat` seq 774，间隔 600 秒）照常每 10 分钟一次。推测是旧部署仍在消费重复／过期的维护消息，每次都读库，使 Neon 计算节点无法休眠并产生持续流量。诊断可只读完成；处理（清理队列、删除或停用旧部署）是生产写操作，需用户授权。列为候选 C36，建议排在上线前。
