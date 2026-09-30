@@ -465,7 +465,7 @@ export function TaskDetailScreen() {
       {detail?.localMutationState && !taskConflict ? <Text style={styles.localMutationLabel}>{locale.t(detail.localMutationState === "conflict" ? "tasks.outboxConflict" : detail.localMutationState === "failed" ? "tasks.outboxFailed" : "tasks.outboxQueued")}</Text> : null}
       {taskConflict ? <View style={styles.conflictPanel}>
         <Text style={styles.conflictText}>{locale.t(taskConflict.operation === "delete" ? "taskDetail.deleteConflict" : "taskDetail.taskConflict")}</Text>
-        {conflictServerDetail && taskConflict.operation !== "delete" ? <Text style={styles.conflictServerText}>{locale.t("taskDetail.serverVersionNamed", { title: conflictServerDetail.title })}</Text> : null}
+        {conflictServerDetail ? <Text style={styles.conflictServerText}>{locale.t("taskDetail.serverVersionNamed", { title: conflictServerDetail.title })}</Text> : null}
         <View style={styles.conflictActions}>
           <Pressable accessibilityRole="button" onPress={() => void resolveTaskConflict("server")} style={styles.conflictAction}><Text style={styles.conflictActionText}>{locale.t("taskDetail.useServerVersion")}</Text></Pressable>
           <Pressable accessibilityRole="button" onPress={() => void resolveTaskConflict("replace")} style={styles.conflictAction}><Text style={styles.conflictActionText}>{locale.t(taskConflict.operation === "delete" && confirmConflictDelete ? "taskDetail.confirmDeleteConflict" : "taskDetail.keepLocalVersion")}</Text></Pressable>
