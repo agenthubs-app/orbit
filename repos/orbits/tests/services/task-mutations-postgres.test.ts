@@ -216,3 +216,111 @@ test("PostgreSQL task API returns the server snapshot after a stale delete and a
     await admin.end();
   }
 });
+
+test("PostgreSQL task routes hide a foreign actor's task from every mutation and bind create to its actor", { skip: url ? false : "isolated ORBIT_TASKS_TEST_DATABASE_URL not provided" }, async () => {
+  assert.ok(url);
+  const schema = `c0010_task_actor_matrix_${randomUUID().replaceAll("-", "")}`;
+  const admin = new Pool({ connectionString: url, max: 1 });
+  const client = createTransactionalPostgresClient({ connectionString: url, pool: new Pool({ connectionString: url, max: 2, options: `-c search_path=${schema}` }) });
+  const workspaceId = "c0010-task-actor-matrix";
+  const ownerId = "c0010-task-owner";
+  const otherActorId = "c0010-task-other-actor";
+  const service = createTaskService({ repository: createTaskRepository({ store: createPostgresLiveRecordStore({ client }), workspaceId, transactionClient: client }) });
+  let actorId = ownerId;
+  const dependencies = {
+    now: () => "2026-10-01T00:00:00.000Z",
+    resolveActor: async () => ({ id: actorId, workspaceId }),
+    service,
+  };
+  const collection = createTaskCollectionHandlers(dependencies);
+  const detail = createTaskDetailHandlers(dependencies);
+  let schemaCreated = false;
+
+  try {
+    await admin.query(`create schema ${schema}`);
+    schemaCreated = true;
+    await client.query(ORBIT_RECORDS_SCHEMA_SQL);
+
+    const ownerCreate = await collection.POST(new Request("https://orbit.local/api/tasks", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ category: "personal", idempotencyKey: "same-create-key", title: "Actor-scoped create" }),
+    }));
+    assert.equal(ownerCreate.status, 201);
+    const ownerTask = (await ownerCreate.json() as { data: { task: { id: string; accountId: string; ownerUserId: string; title: string; status: string; updatedAt: string } } }).data.task;
+    assert.equal(ownerTask.accountId, ownerId);
+    assert.equal(ownerTask.ownerUserId, ownerId);
+    const ownerBefore = await service.get({ actorId: ownerId, taskId: ownerTask.id });
+    assert.ok(ownerBefore);
+    const ownerHistory = await service.history({ actorId: ownerId, taskId: ownerTask.id });
+
+    actorId = otherActorId;
+    const otherCreate = await collection.POST(new Request("https://orbit.local/api/tasks", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ category: "personal", idempotencyKey: "same-create-key", title: "Actor-scoped create" }),
+    }));
+    assert.equal(otherCreate.status, 201);
+    const otherTask = (await otherCreate.json() as { data: { task: { id: string; accountId: string; ownerUserId: string } } }).data.task;
+    assert.notEqual(otherTask.id, ownerTask.id);
+    assert.equal(otherTask.accountId, otherActorId);
+    assert.equal(otherTask.ownerUserId, otherActorId);
+    assert.equal(await service.get({ actorId: otherActorId, taskId: ownerTask.id }), null);
+    const otherBefore = await service.get({ actorId: otherActorId, taskId: otherTask.id });
+    assert.ok(otherBefore);
+    const otherHistory = await service.history({ actorId: otherActorId, taskId: otherTask.id });
+
+    const context = { params: Promise.resolve({ id: ownerTask.id }) };
+    const attempts = [
+      {
+        name: "update",
+        request: () => detail.PATCH(new Request(`https://orbit.local/api/tasks/${ownerTask.id}`, {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ action: "update", expectedUpdatedAt: ownerTask.updatedAt, idempotencyKey: "foreign:update", patch: { title: "Unauthorized edit" } }),
+        }), context),
+      },
+      ...(["complete", "reopen", "cancel"] as const).map(action => ({
+        name: action,
+        request: () => detail.PATCH(new Request(`https://orbit.local/api/tasks/${ownerTask.id}`, {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ action, idempotencyKey: `foreign:${action}` }),
+        }), context),
+      })),
+      {
+        name: "delete",
+        request: () => detail.DELETE(new Request(`https://orbit.local/api/tasks/${ownerTask.id}`, {
+          method: "DELETE",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ expectedUpdatedAt: ownerTask.updatedAt, idempotencyKey: "foreign:delete" }),
+        }), context),
+      },
+    ];
+
+    for (const attempt of attempts) {
+      const response = await attempt.request();
+      assert.equal(response.status, 404, `${attempt.name} must not reveal or mutate another actor's task`);
+      assert.equal((await response.json() as { error: { code: string } }).error.code, "NOT_FOUND");
+    }
+
+    assert.deepEqual(await service.get({ actorId: ownerId, taskId: ownerTask.id }), ownerBefore);
+    assert.deepEqual(await service.history({ actorId: ownerId, taskId: ownerTask.id }), ownerHistory);
+    assert.deepEqual((await service.list({ actorId: ownerId })).map(task => task.id), [ownerTask.id]);
+    assert.deepEqual(await service.get({ actorId: otherActorId, taskId: otherTask.id }), otherBefore);
+    assert.deepEqual(await service.history({ actorId: otherActorId, taskId: otherTask.id }), otherHistory);
+    assert.deepEqual((await service.list({ actorId: otherActorId })).map(task => task.id), [otherTask.id]);
+    const receipts = await client.query<{ user_id: string; count: string }>(
+      "select user_id, count(*)::text as count from orbit_records where workspace_id = $1 and collection_name = 'task_mutations' group by user_id order by user_id",
+      [workspaceId],
+    );
+    assert.deepEqual(receipts.rows, [
+      { user_id: otherActorId, count: "1" },
+      { user_id: ownerId, count: "1" },
+    ]);
+  } finally {
+    await client.close();
+    if (schemaCreated) await admin.query(`drop schema ${schema} cascade`);
+    await admin.end();
+  }
+});
