@@ -119,7 +119,7 @@ export function parseOfflineMutation(input: unknown) {
   if (!allowed[mutation.kind].includes(mutation.operation)) throw new Error("mutation-operation-denied");
   if (mutation.operation === "create") {
     if (mutation.baseRevision !== null || !localEntityId.test(mutation.entityId)) throw new Error("mutation-create-identity-invalid");
-  } else if (!((mutation.kind === "note" || mutation.kind === "task") && localEntityId.test(mutation.entityId) && mutation.baseRevision === null) &&
+  } else if (!(mutation.kind === "note" && localEntityId.test(mutation.entityId) && mutation.baseRevision === null) &&
       (mutation.baseRevision === null || mutation.baseRevision.trim().length === 0)) {
     throw new Error("mutation-base-revision-required");
   }

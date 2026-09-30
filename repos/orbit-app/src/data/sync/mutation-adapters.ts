@@ -18,5 +18,17 @@ export function isOfflineEligible(
 }
 
 export function parseMutation(input: unknown): Mutation {
+  if (isLocalTaskWithoutServerRevision(input)) {
+    const parsed = parseOfflineMutation({ ...input, baseRevision: "local-pending-create" }) as Mutation;
+    return { ...parsed, baseRevision: null };
+  }
   return parseOfflineMutation(input) as Mutation;
+}
+
+function isLocalTaskWithoutServerRevision(input: unknown): input is Record<string, unknown> {
+  if (typeof input !== "object" || input === null || Array.isArray(input)) return false;
+  const mutation = input as Record<string, unknown>;
+  return mutation.kind === "task" && mutation.operation !== "create" && mutation.baseRevision === null &&
+    typeof mutation.entityId === "string" &&
+    /^local:[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[1-8][0-9A-Fa-f]{3}-[89AaBb][0-9A-Fa-f]{3}-[0-9A-Fa-f]{12}$/u.test(mutation.entityId);
 }

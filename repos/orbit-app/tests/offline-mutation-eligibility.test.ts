@@ -3,6 +3,7 @@ import test from "node:test";
 import { isOfflineEligible, parseMutation } from "../src/data/sync/mutation-adapters";
 import { OfflineDataPolicyRegistry } from "../src/data/offline/policy-registry";
 import { OFFLINE_POLICY_REGISTRATIONS } from "../src/api/schema/offline-policy";
+import { parseOfflineMutation } from "../src/api/schema/offline-mutations";
 import type { ScopePort } from "../src/data/offline/ports";
 
 const facts = { actorPrivate: true, confirmed: true, connectionActive: true };
@@ -32,10 +33,27 @@ test("only private, confirmed note and personal task mutations are offline eligi
   assert.equal(isOfflineEligible("relationship_followup", "update", { ...facts, connectionActive: false }), false);
   assert.equal(isOfflineEligible("note", "create", { ...facts, connectionActive: false }), false);
   const policy = new OfflineDataPolicyRegistry(OFFLINE_POLICY_REGISTRATIONS);
+  assert.equal(OFFLINE_POLICY_REGISTRATIONS.find(item => item.action === "relationship_followup.update")?.policy.mutationPolicy, "offline_queue",
+    "the shared generated policy stays canonical; App-specific eligibility is applied by the facade");
   for (const action of ["relationship_followup.update", "relationship_followup.complete", "relationship_followup.reopen", "relationship_followup.cancel", "relationship_followup.delete"]) {
     const method = action.endsWith(".delete") ? "DELETE" : "PATCH";
     assert.equal(policy.resolve(method, "/api/tasks/task-1", action).mutationPolicy, "online_only");
   }
+});
+
+test("App-only queued task revisions do not widen the shared mutation parser", () => {
+  const localTaskUpdate = {
+    ...command,
+    kind: "task",
+    entityId: "local:123e4567-e89b-42d3-a456-426614174000",
+    operation: "update",
+    baseRevision: null,
+    patch: { title: "Updated before first upload" },
+  };
+
+  assert.throws(() => parseOfflineMutation(localTaskUpdate), /mutation-base-revision-required/);
+  assert.deepEqual(parseMutation(localTaskUpdate), localTaskUpdate,
+    "the App adapter permits only the local queued task envelope without changing the shared parser");
 });
 
 test("strict mutation parsing accepts domain patches and retains opaque revisions and note text", () => {
