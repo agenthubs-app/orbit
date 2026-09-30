@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import test from "node:test";
 import { Pool } from "pg";
@@ -14,6 +15,19 @@ import { mockEventRecords } from "../../features/events/event-crud-and-import/fi
 import { createPortraitGetHandler, createPortraitPostHandler } from "../../app/api/events/[id]/registration/portrait/route-handlers";
 import { createRegistrationPersonaPostHandler } from "../../app/api/events/[id]/registration/adaptive-handlers";
 import { signAdaptiveInterviewQuestion } from "../../features/events/registration/interview-question-token.server";
+
+test("portrait fixture teardown drops only its own schema after closing scoped pools", () => {
+  const source = readFileSync(new URL(import.meta.url), "utf8");
+  const finallyBlock = source.slice(source.lastIndexOf("\n  } finally {\n"));
+  const poolShutdown = finallyBlock.indexOf("await Promise.allSettled(pools.map");
+  const schemaDrop = finallyBlock.indexOf("drop schema if exists ${schema} cascade");
+  const closeFailure = finallyBlock.indexOf("result.status === \"rejected\"");
+  const failureSurface = finallyBlock.indexOf("new AggregateError");
+  assert.ok(poolShutdown >= 0, "scoped pools must be closed in finally");
+  assert.ok(schemaDrop > poolShutdown, "only the test-owned schema is dropped after pool shutdown");
+  assert.ok(closeFailure > poolShutdown && closeFailure < schemaDrop, "all pool close results must be observed before schema drop");
+  assert.ok(failureSurface > schemaDrop, "pool or schema cleanup failures must remain visible");
+});
 
 // Sprint 0066 ran this against a ROOT-provisioned isolated instance (127.0.0.1:35436,
 // identity marker table). That instance no longer exists, so the default suite
@@ -36,10 +50,12 @@ test("two physical portrait transactions have one CAS winner, replay once, and r
   const admin = new Pool({ connectionString: raw, max: 1 });
   const schema = `s66_portrait_${randomUUID().replaceAll("-", "")}`;
   const pools: Pool[] = [];
+  let schemaCreated = false;
   try {
     const identity = await admin.query("select current_database() as db, current_user as actor, host(inet_server_addr()) as host, inet_server_port() as port, marker, schema_version from public.orbit_portrait_test_identity");
     assert.deepEqual(identity.rows, [{ db: "orbit_sprint0066_portrait_test", actor: "orbit_portrait_test", host: "127.0.0.1", port: 35436, marker, schema_version: 1 }]);
     await admin.query(`create schema ${schema}`);
+    schemaCreated = true;
     const setup = new Pool({ connectionString: raw, max: 1, options: `-c search_path=${schema}` });
     pools.push(setup);
     await setup.query(ORBIT_RECORDS_SCHEMA_SQL);
@@ -202,7 +218,21 @@ test("two physical portrait transactions have one CAS winner, replay once, and r
     await assert.rejects(service.preview({ actorId: "self", event, language: "en", responses }), (error: unknown) => error instanceof PortraitError && error.code === "PORTRAIT_SOURCE_CHANGED");
     assert.equal(modelCalls, beforeStaleProof, "A held registration answer reference must not be rebound to another physical version before generation.");
   } finally {
-    await Promise.all(pools.map((pool) => pool.end()));
-    await admin.end();
+    const cleanupErrors: unknown[] = [];
+    const poolResults = await Promise.allSettled(pools.map((pool) => pool.end()));
+    cleanupErrors.push(...poolResults
+      .filter((result): result is PromiseRejectedResult => result.status === "rejected")
+      .map((result) => result.reason));
+    try {
+      if (schemaCreated) await admin.query(`drop schema if exists ${schema} cascade`);
+    } catch (error) {
+      cleanupErrors.push(error);
+    }
+    try {
+      await admin.end();
+    } catch (error) {
+      cleanupErrors.push(error);
+    }
+    if (cleanupErrors.length > 0) throw new AggregateError(cleanupErrors, "Portrait PostgreSQL fixture cleanup failed");
   }
 });
