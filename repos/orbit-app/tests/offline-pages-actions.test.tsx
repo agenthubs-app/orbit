@@ -25,7 +25,7 @@ test.before(async () => {
 test.after(async () => { await harness?.close(); });
 
 test("online: the action centre shows the server answer and saves it as the device's page copy", async (t) => {
-  const page = await harness.open(t, { screen: "actions", responses: { "/api/agent/actions": actionsPayload } });
+  const page = await harness.open(t, { screen: "actions", safeAreaTop: 44, responses: { "/api/agent/actions": actionsPayload } });
   await page.getByText("唤醒张伟的储能合作").waitFor();
   assert.deepEqual(await fixtureValue<string[]>(page, "saves"), ["agent-actions|main"]);
   assert.equal(await page.getByText(OFFLINE_BANNER).count(), 0);

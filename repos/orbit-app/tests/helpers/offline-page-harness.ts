@@ -27,7 +27,7 @@ const reachabilityPath = resolve(root, "src/api/server-reachability.ts");
 
 const fixture = `
 import React from "react";
-import { View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { serverReachability } from ${JSON.stringify(reachabilityPath)};
 export const state = window.fixture = { requests: [], navigation: [], syncs: 0, saves: [], online: true, syncStatus: "fresh", records: {}, copies: {}, responses: {}, params: {}, ...window.initialFixture };
 const base = "http://fixture";
@@ -109,7 +109,15 @@ export const useOrbitAuthSession = () => authSession;
 export const useOrbitApiBaseUrl = () => ({ baseUrl: base, ready: state.apiBaseReady ?? true });
 const memory = new Map();
 export default { getItem: async key => memory.get(key) ?? null, setItem: async (key, value) => { memory.set(key, value); }, removeItem: async key => { memory.delete(key); } };
-export const SafeAreaView = ({ children, edges, style, ...props }) => <View {...props} style={edges?.includes("top") ? { ...style, paddingTop: (style?.paddingTop ?? 0) + (window.initialFixture?.safeAreaTop ?? 0) } : style}>{children}</View>;
+export const SafeAreaView = ({ children, edges, style, ...props }) => {
+  const includesTop = Array.isArray(edges)
+    ? edges.includes("top")
+    : edges !== null && typeof edges === "object" && Reflect.get(edges, "top") !== undefined && Reflect.get(edges, "top") !== "off";
+  const inset = includesTop ? window.initialFixture?.safeAreaTop ?? 0 : 0;
+  const flattened = inset ? StyleSheet.flatten(style) ?? {} : null;
+  const adjusted = flattened ? { ...flattened, paddingTop: (flattened.paddingTop ?? 0) + inset } : style;
+  return <View {...props} style={adjusted}>{children}</View>;
+};
 export const useSafeAreaInsets = () => ({ top: window.initialFixture?.safeAreaTop ?? 0, bottom: 0, left: 0, right: 0 });
 export const SafeAreaProvider = ({ children }) => children;
 `;
