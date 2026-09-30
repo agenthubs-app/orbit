@@ -94,11 +94,12 @@ function replyDraftFrom(value: unknown, conversationId: string): { body: string;
   return { body: draft.body, updatedAt: draft.updatedAt as string | null };
 }
 export async function readReplyDraft(actorId: string, conversationId: string, signal: AbortSignal) {
-  if (await readContactMessageActor(signal) !== actorId) throw new BoundedMessageReadError(403);
+  await expectActor(actorId, signal);
   return replyDraftFrom(await communicationFetch(`/api/relationship-communication/conversations/${encodeURIComponent(conversationId)}/draft`, { signal }), conversationId);
 }
 export async function saveReplyDraft(actorId: string, conversationId: string, body: string, signal: AbortSignal) {
-  if (await readContactMessageActor(signal) !== actorId) throw new BoundedMessageReadError(403);
+  // W0031: a write never reuses an earlier (or in-flight) confirmation; it goes through the write barrier.
+  await expectActor(actorId, signal, true);
   const saved = replyDraftFrom(await communicationFetch(`/api/relationship-communication/conversations/${encodeURIComponent(conversationId)}/draft`, {
     signal, method: "PUT", body: JSON.stringify({ body }),
   }), conversationId);

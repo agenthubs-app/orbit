@@ -11,6 +11,7 @@ import {
   confirmMessageWindowRead,
   readMessageCards,
   readMessageWindow,
+  saveReplyDraft,
   sendWindowMessage,
 } from "../../app/(app)/app/inbox/bounded-contact-messages-view-model";
 import { readInboxUnreadCounts } from "../../app/(app)/app/inbox/relationship-inbox-panel";
@@ -53,6 +54,7 @@ beforeEach(() => {
     if (path.startsWith("/api/relationship-communication/conversation-summaries")) return ok({ actorId: account, items: [{ ...conversation, unreadCount: 1, lastMessage: null }], hasMore: false, nextCursor: null, asOf: at });
     if (path.includes("/messages?")) return ok({ actorId: account, conversation, items: [], nextCursor: null, newestCursor: null, hasMore: false, direction: "older", asOf: at });
     if (path.endsWith("/read")) return ok({ conversationId: "c", lastReadMessageId: "m", readAt: at });
+    if (path.endsWith("/draft") && options.method === "PUT") return ok({ conversationId: "c", body: JSON.parse(String(options.body)).body, updatedAt: at });
     if (path.endsWith("/messages") && options.method === "POST") return ok({ conversationId: "c", deliveryState: "delivered", message: { body: "hi", senderAccountId: account } });
     return Response.json({ success: false }, { status: 404 });
   }) as typeof fetch;
@@ -183,6 +185,17 @@ test("(e) race: a pending ordinary confirmation (A), account switch to B, then a
   gate.resolve();
   assert.equal(await ordinary, "a", "the older ordinary caller still gets its own answer");
   assert.equal(await readContactMessageActor(), "b", "the late A answer was not remembered");
+});
+
+test("(e) merge 0104×W0031: saving a reply draft is a write — it passes the barrier and is never sent as the old account", async () => {
+  const signal = new AbortController().signal;
+  assert.equal(await readContactMessageActor(), "a");
+  const before = meCalls();
+  await saveReplyDraft("a", "c", "draft", signal);
+  assert.equal(meCalls(), before + 1, "the reusable confirmation is not used for the draft write");
+  account = "b";
+  await assert.rejects(saveReplyDraft("a", "c", "draft 2", signal), (error: unknown) => error instanceof BoundedMessageReadError && error.status === 403);
+  assert.equal(calls.filter(c => c.method === "PUT").length, 1, "no draft write went out as A after the switch");
 });
 
 test("(e) two write confirmations of the same batch share one request; a later one does not join it", async () => {
