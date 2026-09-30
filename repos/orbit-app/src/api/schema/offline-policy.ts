@@ -35,7 +35,7 @@ export const OFFLINE_POLICY_REGISTRATIONS = [
     method: action === "delete" ? "DELETE" : "PATCH",
     pathname: "/api/tasks/:id",
     action: `relationship_followup.${action}`,
-    policy: policy("relationship_followup", "durable_normalized", "offline_queue"),
+    policy: policy("relationship_followup", "durable_normalized", "online_only"),
   })),
   { method: "GET", pathname: "/api/schedule-items", action: "read", policy: policy("personal_schedule", "durable_normalized", "online_only") },
   { method: "GET", pathname: "/api/schedule-items/:id", action: "read", policy: policy("personal_schedule", "durable_normalized", "online_only") },

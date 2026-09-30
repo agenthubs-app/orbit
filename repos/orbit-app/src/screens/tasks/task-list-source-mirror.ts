@@ -2,6 +2,9 @@ import type { TaskItemContract } from "../../api/contract/tasks";
 import type { useSyncedCollection } from "../../hooks/useSyncedCollection";
 import type { MessageKey } from "../../i18n/messages";
 import { readTaskListItems, selectTaskListItems } from "../../view-models/task-list-scope";
+import { overlayQueuedTasks } from "../../view-models/tasks-mirror";
+import type { LocalSyncQueuedMutation } from "../../data/sync/local-sync-repository";
+import type { OfflineTaskMutationInput } from "../../data/sync/sync-coordinator";
 import type { TaskListSource, TaskListSourceInput } from "./task-list-source";
 
 type SyncedTasks = ReturnType<typeof useSyncedCollection<Record<string, unknown>>>;
@@ -14,7 +17,11 @@ function itemsFrom(records: readonly { payload: unknown }[], actorId: string): T
  * The mirror-backed task list, shared by native and (when the browser mirror is
  * available) Web: the network only advances the mirror, reads never wait on it.
  */
-export function mirrorTaskListSource(state: SyncedTasks, input: TaskListSourceInput): TaskListSource {
+export function mirrorTaskListSource(state: SyncedTasks, input: TaskListSourceInput, outbox?: {
+  queuedMutations: LocalSyncQueuedMutation[];
+  queueFailure: string | null;
+  enqueueOfflineMutation(mutation: OfflineTaskMutationInput): Promise<void>;
+}): TaskListSource {
   // Sprint 0087: an empty list is only a fact once a sync has happened. Until
   // then `canonical` stays null, because the screen renders 暂无待办 from an empty
   // array and cannot tell the difference on its own.
@@ -30,7 +37,10 @@ export function mirrorTaskListSource(state: SyncedTasks, input: TaskListSourceIn
   // (the coordinator reports an empty mirror's failed attempt as "failure";
   // lastSyncedAt is the evidence), the same rule as mirrorFreshness.
   const readable = everSynced;
-  const canonical = input.ready && readable ? itemsFrom(state.records, input.actorId) : null;
+  const serverTasks = input.ready && readable ? itemsFrom(state.records, input.actorId) : null;
+  const overlaid = serverTasks ? overlayQueuedTasks(serverTasks, outbox?.queuedMutations ?? [], input.actorId) : null;
+  const revisions = new Map(state.records.map(record => [record.id, record.revision]));
+  const canonical = overlaid?.map(task => ({ ...task, baseRevision: task.id.startsWith("local:") ? null : revisions.get(task.id) ?? null }));
   const selection=input.selection??{scope:"all",view:"open"};
   const open=canonical?selectTaskListItems(canonical,{...selection,view:"open"}):null;
   const completed=canonical?selectTaskListItems(canonical,{...selection,view:"completed"}):null;
@@ -47,12 +57,15 @@ export function mirrorTaskListSource(state: SyncedTasks, input: TaskListSourceIn
     counts:open&&completed?{open:open.length,completed:completed.length}:null,
     nextCursor:selected&&validOffset+30<selected.length?`local:${validOffset+30}`:null,
     loading: input.ready && !everSynced && state.status !== "failure",
-    failure: state.status === "failure" && !readable ? state.error ?? "sync.failure" : null,
+    failure: (state.status === "failure" && !readable ? state.error ?? "sync.failure" : null) ?? outbox?.queueFailure ?? null,
     refreshing: state.status === "syncing",
     // A never-synced collection reads as syncing: from the user's side the page
     // is fetching, and there is no separate thing for them to do about it.
     syncLabelKey: `sync.${state.status === "local-ready" ? "localReady" : state.status === "unsynced" ? "syncing" : state.status}` as MessageKey,
     tasksPayload: undefined,
+    queuedMutations: outbox?.queuedMutations ?? [],
+    queueFailure: outbox?.queueFailure ?? null,
+    enqueueOfflineMutation: mutation => outbox?.enqueueOfflineMutation(mutation) ?? Promise.reject(new Error("task outbox unavailable")),
     offline: input.ready && readable && (state.status === "stale" || state.status === "failure") ? { lastSyncedAt: state.lastSyncedAt } : null,
     refresh: () => { void state.refresh(); },
     async confirmMutation(taskId, action) {

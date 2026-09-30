@@ -105,7 +105,7 @@ export interface TaskService {
   }) => Promise<TaskMutationResult>;
   reopen: (input: TaskTransitionInput) => Promise<TaskMutationResult>;
   cancel: (input: TaskTransitionInput) => Promise<TaskMutationResult>;
-  delete: (input: TaskTransitionInput) => Promise<TaskMutationResult>;
+  delete: (input: TaskTransitionInput & { expectedUpdatedAt?: string }) => Promise<TaskMutationResult>;
 }
 
 interface TaskTransitionInput {
@@ -566,6 +566,12 @@ export function createTaskService(input: {
       }
       if (stored.deletedAt) {
         throw new TaskServiceError("TASK_NOT_FOUND", "Task was deleted");
+      }
+      if (
+        deleteInput.expectedUpdatedAt !== undefined &&
+        stored.payload.task.updatedAt !== deleteInput.expectedUpdatedAt
+      ) {
+        throw new TaskServiceError("TASK_VERSION_CONFLICT", "Task version is stale");
       }
 
       const task: TaskItemDTO = {

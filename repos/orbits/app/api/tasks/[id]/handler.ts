@@ -122,10 +122,13 @@ export function createTaskDetailHandlers(dependencies?: TaskRouteDependencies) {
       try {
         const { id } = await context.params;
         const body = await readTaskJsonObject(request);
-        requireExactKeys(body, ["idempotencyKey"]);
+        requireExactKeys(body, ["expectedUpdatedAt", "idempotencyKey"]);
         const result = await taskRouteService(dependencies).delete({
           actorId: actor.id,
           taskId: id,
+          ...(body.expectedUpdatedAt === undefined
+            ? {}
+            : { expectedUpdatedAt: requireString(body.expectedUpdatedAt, "expectedUpdatedAt") }),
           idempotencyKey: requireString(body.idempotencyKey, "idempotencyKey"),
           now: taskRouteNow(dependencies),
         });

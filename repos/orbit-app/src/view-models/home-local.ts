@@ -4,6 +4,8 @@ import { localRegisteredEvents } from "./event-day-local";
 import { homeTasksToView } from "./home-dashboard";
 import { homeTaskWindow } from "./home-task-page";
 import { readTaskListItems } from "./task-list-scope";
+import { overlayQueuedTasks } from "./tasks-mirror";
+import type { LocalSyncQueuedMutation } from "../data/sync/local-sync-repository";
 
 /**
  * Sprint 0131: the home page's cards from the device copy, so the page paints
@@ -26,8 +28,10 @@ function livePayloads(records: readonly SyncRecord[]): unknown[] {
  * Null when a mirrored task is not the owner's valid task (the page then waits
  * for the server rather than showing a partial list).
  */
-export function localHomeTaskPage(records: readonly SyncRecord[], actorId: string, date: string, timeZone: string, now: Date, language: OrbitLanguage) {
-  const tasks = readTaskListItems({ tasks: livePayloads(records) }, actorId);
+export function localHomeTaskPage(records: readonly SyncRecord[], actorId: string, date: string, timeZone: string, now: Date, language: OrbitLanguage, queued: readonly LocalSyncQueuedMutation[] = []) {
+  const canonical = readTaskListItems({ tasks: livePayloads(records) }, actorId);
+  if (!canonical) return null;
+  const tasks = overlayQueuedTasks(canonical, queued, actorId);
   if (!tasks) return null;
   const window = homeTaskWindow(date, timeZone);
   const dueBefore = Date.parse(window.dueBefore);

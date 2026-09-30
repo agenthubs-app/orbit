@@ -6,7 +6,7 @@ import { type Href, useLocalSearchParams, useNavigation, useRouter } from "expo-
 import { usePreventRemove } from "expo-router/react-navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { serverReachability, type ServerReachabilityState } from "../../api/server-reachability";
-import { Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from "react-native";
+import { Modal, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ORBIT_API_ENDPOINTS, reminderPath, remindersPath, taskActivitiesPath, taskPath } from "../../api/endpoints";
@@ -21,6 +21,10 @@ import { createControlStyles } from "../../design/controls";
 import { createThemedStyles } from "../../design/theme";
 import { useApiResource } from "../../hooks/useApiResource";
 import { useSyncedCollection } from "../../hooks/useSyncedCollection";
+import { useOfflineTaskOutbox } from "../../data/sync/useOfflineTaskOutbox";
+import { buildOfflineTaskMutation } from "../../data/sync/task-outbox-mutation";
+import { overlayQueuedTasks } from "../../view-models/tasks-mirror";
+import type { TaskItemContract } from "../../api/contract/tasks";
 import { mirrorFreshness } from "../../data/sync/mirror-freshness";
 import { OfflineNotice } from "../../components/OfflineNotice";
 import { NeedsNetworkState } from "../../components/NeedsNetworkState";
@@ -90,6 +94,7 @@ export function TaskDetailScreen() {
   // Sprint 0131: when the server cannot be reached (or answers 5xx) the task comes from the device
   // copy (sync domain tasks); it is read-only with 截至 until the connection is back.
   const taskMirror = useSyncedCollection<Record<string, unknown>>({ kind: "task" });
+  const taskOutbox = useOfflineTaskOutbox(taskMirror, Platform.OS !== "web");
   const mirrorState = mirrorFreshness(taskMirror, ready);
   // On the phone the snapshot cache can answer an offline read as if it were the server; the
   // client's reachability record is what says the server was not reached.
@@ -102,8 +107,23 @@ export function TaskDetailScreen() {
   const serverUnreachable = reach === "unreachable" || detailState.kind === "offline" || (detailState.kind === "failure" && detailState.status >= 500);
   const mirrorRow = serverUnreachable && mirrorState.readable ? taskMirror.records.find((record) => record.id === taskId && record.deletedAt === null) : undefined;
   const mirrorDetail = mirrorRow ? ownedTaskDetailToView({ task: mirrorRow.payload }, actorId, locale.language) : null;
-  const offline = mirrorDetail !== null && (serverDetail === null || reach === "unreachable");
-  const detail = offline ? mirrorDetail : serverDetail ?? mirrorDetail;
+  const isLocalQueuedTask = taskOutbox.queuedMutations.some(item => item.id === taskId && item.operation === "create");
+  const offline = mirrorDetail !== null && (serverDetail === null || reach === "unreachable") || isLocalQueuedTask;
+  const taskConflict = taskOutbox.queuedMutations.find(item => item.id === taskId && item.kind === "task" && item.state === "conflict");
+  const conflictSnapshot = typeof taskConflict?.serverSnapshot === "object" && taskConflict.serverSnapshot !== null && !Array.isArray(taskConflict.serverSnapshot)
+    ? taskConflict.serverSnapshot as Record<string, unknown> : null;
+  const conflictServerDetail = conflictSnapshot ? ownedTaskDetailToView({ task: conflictSnapshot }, actorId, locale.language) : null;
+  const overlayBase = taskConflict?.operation === "delete" && conflictSnapshot
+    ? conflictSnapshot as unknown as TaskItemContract
+    : mirrorRow?.payload as unknown as TaskItemContract | undefined;
+  const projectedTasks = overlayQueuedTasks(
+    overlayBase ? [overlayBase] : serverDetail ? [{ ...serverDetail, accountId: actorId, ownerUserId: actorId, source: "manual", createdAt: serverDetail.createdAt ?? serverDetail.updatedAt } as unknown as TaskItemContract] : [],
+    taskOutbox.queuedMutations,
+    actorId,
+  );
+  const projectedTask = projectedTasks?.find(task => task.id === taskId);
+  const projectedDetail = projectedTask ? ownedTaskDetailToView({ task: projectedTask }, actorId, locale.language) : null;
+  const detail = projectedDetail ?? (offline ? mirrorDetail : serverDetail ?? mirrorDetail);
   const activities = activitiesState.kind === "success" || activitiesState.kind === "empty" ? taskActivitiesToView(activitiesState.data, timeZone, locale.language) : [];
   const reminders = remindersState.kind === "success" || remindersState.kind === "empty"
     ? reminderPlansToView(remindersState.data, timeZone).filter((item) => item.status === "scheduled")
@@ -122,6 +142,7 @@ export function TaskDetailScreen() {
   const [saving, setSaving] = useState(false);
   const [mutationError, setMutationError] = useState<string | null>(null);
   const [reminderMessage, setReminderMessage] = useState<string | null>(null);
+  const [confirmConflictDelete, setConfirmConflictDelete] = useState(false);
   const mutationScope = useMemo(() => ({ active: true, busy: false, keys: new Map<string, string>(), controller: new AbortController() }), [client, scopeKey]);
   const scopeRef = useRef(mutationScope);
   scopeRef.current = mutationScope;
@@ -154,14 +175,31 @@ export function TaskDetailScreen() {
   ): Promise<boolean> {
     const scope = mutationScope;
     const isCurrent = () => ready && scope.active && scopeRef.current === scope;
-    // Sprint 0131: a device copy shown offline is read-only.
-    if (!isCurrent() || scope.busy || offline) return false;
+    const isTaskPath = path === taskPath(taskId);
+    if (!isCurrent() || scope.busy || offline && !isTaskPath) return false;
     scope.busy = true;
     setSaving(true);
     setMutationError(null);
     try {
       const payload = typeof body === "function" ? await body() : body;
       if (!isCurrent()) return false;
+      if (offline && isTaskPath) {
+        if (detail?.category !== "personal") return false;
+        const mutationId = mutationKey();
+        const operation = method === "delete" ? "delete" : method === "patch" ? String(payload.action ?? "update") : "";
+        const requestBody = { ...payload, idempotencyKey: mutationId };
+        const mutation = buildOfflineTaskMutation({
+          mutationId,
+          entityId: taskId,
+          operation,
+          baseRevision: mirrorRow?.revision ?? null,
+          requestBody,
+          createdAt: new Date().toISOString(),
+        });
+        await taskOutbox.enqueueOfflineMutation(mutation);
+        onSuccess({});
+        return true;
+      }
       const fingerprint = JSON.stringify([method, path, payload]);
       const key = scope.keys.get(fingerprint) ?? mutationKey();
       scope.keys.set(fingerprint, key);
@@ -329,11 +367,52 @@ export function TaskDetailScreen() {
   }
 
   async function deleteTask() {
-    await mutate("delete", taskPath(taskId), {}, () => {
+    await mutate("delete", taskPath(taskId), { ...(baseline ? { expectedUpdatedAt: baseline.updatedAt } : {}) }, () => {
       notifyReminderPlansChanged();
       setMoreOpen(false);
       router.replace("/tasks" as Href);
     });
+  }
+
+  async function resolveTaskConflict(resolution: "server" | "replace") {
+    if (!taskConflict) return;
+    if (resolution === "replace" && taskConflict.operation === "delete" && !confirmConflictDelete) {
+      setConfirmConflictDelete(true);
+      return;
+    }
+    const session = taskMirror.currentSession();
+    if (!session?.resolveTaskConflict) { setMutationError(locale.t("taskDetail.conflictUnavailable")); return; }
+    try {
+      if (resolution === "server") {
+        await session.resolveTaskConflict({ mutationId: taskConflict.mutationId, resolution });
+      } else {
+        const serverTask = typeof taskConflict.serverSnapshot === "object" && taskConflict.serverSnapshot !== null && !Array.isArray(taskConflict.serverSnapshot)
+          ? taskConflict.serverSnapshot as Record<string, unknown> : null;
+        if (!serverTask || typeof serverTask.updatedAt !== "string" || typeof serverTask.id !== "string" || serverTask.id !== taskId) {
+          setMutationError(locale.t("taskDetail.conflictUnavailable"));
+          return;
+        }
+        const requestBody = JSON.parse(taskConflict.requestJson ?? "null") as Record<string, unknown>;
+        const mutationId = mutationKey();
+        const replacementBody: Record<string, unknown> = { ...requestBody, idempotencyKey: mutationId };
+        if (taskConflict.operation === "update" || taskConflict.operation === "delete") replacementBody.expectedUpdatedAt = serverTask.updatedAt;
+        const replacement = buildOfflineTaskMutation({
+          mutationId,
+          entityId: taskId,
+          operation: taskConflict.operation,
+          baseRevision: taskMirror.records.find(record => record.id === taskId)?.revision ?? taskConflict.baseRevision,
+          requestBody: replacementBody,
+          createdAt: new Date().toISOString(),
+        });
+        await session.resolveTaskConflict({ mutationId: taskConflict.mutationId, resolution, replacement });
+      }
+      setConfirmConflictDelete(false);
+      setMutationError(null);
+      await taskOutbox.refreshQueued();
+      detailState.refresh();
+    } catch {
+      setMutationError(locale.t("taskDetail.conflictUnavailable"));
+    }
   }
 
   async function addReminder(fireAt: string) {
@@ -376,13 +455,22 @@ export function TaskDetailScreen() {
       backAccessibilityLabel={locale.t("common.backToNamed", { name: locale.t("tasks.title") })}
       backLabel={locale.t("tasks.title")}
       refreshControl={<RefreshControl onRefresh={refresh} refreshing={detailState.refreshing || activitiesState.refreshing || remindersState.refreshing} tintColor={colors.accent} />}
-      headerActions={detail ? <Pressable accessibilityLabel={locale.t("taskDetail.edit")} accessibilityRole="button" disabled={saving || offline} onPress={() => titleInputRef.current?.focus()} style={styles.iconButton}>
+      headerActions={detail ? <Pressable accessibilityLabel={locale.t("taskDetail.edit")} accessibilityRole="button" disabled={saving || offline && detail.category !== "personal"} onPress={() => titleInputRef.current?.focus()} style={styles.iconButton}>
         {largeText ? <Ionicons color={colors.accent} name="create-outline" size={22} /> : <Text style={styles.editLink}>{locale.t("taskDetail.edit")}</Text>}
       </Pressable> : null}
       title={locale.t("taskDetail.title")}
     >
       {detailState.kind === "loading" ? <LoadingState /> : null}
       {offline ? <OfflineNotice lastSyncedAt={taskMirror.lastSyncedAt} reason={reach === "unreachable" || detailState.kind === "offline" ? "unreachable" : "unavailable"} /> : null}
+      {detail?.localMutationState && !taskConflict ? <Text style={styles.localMutationLabel}>{locale.t(detail.localMutationState === "conflict" ? "tasks.outboxConflict" : detail.localMutationState === "failed" ? "tasks.outboxFailed" : "tasks.outboxQueued")}</Text> : null}
+      {taskConflict ? <View style={styles.conflictPanel}>
+        <Text style={styles.conflictText}>{locale.t(taskConflict.operation === "delete" ? "taskDetail.deleteConflict" : "taskDetail.taskConflict")}</Text>
+        {conflictServerDetail && taskConflict.operation !== "delete" ? <Text style={styles.conflictServerText}>{locale.t("taskDetail.serverVersionNamed", { title: conflictServerDetail.title })}</Text> : null}
+        <View style={styles.conflictActions}>
+          <Pressable accessibilityRole="button" onPress={() => void resolveTaskConflict("server")} style={styles.conflictAction}><Text style={styles.conflictActionText}>{locale.t("taskDetail.useServerVersion")}</Text></Pressable>
+          <Pressable accessibilityRole="button" onPress={() => void resolveTaskConflict("replace")} style={styles.conflictAction}><Text style={styles.conflictActionText}>{locale.t(taskConflict.operation === "delete" && confirmConflictDelete ? "taskDetail.confirmDeleteConflict" : "taskDetail.keepLocalVersion")}</Text></Pressable>
+        </View>
+      </View> : null}
       {!offline && detailState.kind === "offline" ? <NeedsNetworkState message={locale.t("sync.notOnDevice")} onRetry={detailState.refresh} /> : null}
       {!offline && detailState.kind === "failure" ? <ErrorState message={detailState.error.message} title={locale.t("taskDetail.unavailable")} /> : null}
       {detail ? (
@@ -391,9 +479,9 @@ export function TaskDetailScreen() {
             <Pressable
               accessibilityLabel={locale.t(detail.status === "completed" ? "tasks.restoreNamed" : "tasks.completeNamed", { title: detail.title })}
               accessibilityRole="checkbox"
-              accessibilityState={{ checked: detail.status === "completed", disabled: saving || offline || detail.status === "cancelled" }}
+              accessibilityState={{ checked: detail.status === "completed", disabled: saving || offline && detail.category !== "personal" || detail.status === "cancelled" }}
               aria-checked={detail.status === "completed"}
-              disabled={saving || offline || detail.status === "cancelled"}
+              disabled={saving || offline && detail.category !== "personal" || detail.status === "cancelled"}
               onPress={changeStatus}
               style={styles.heroCheckButton}
             >
@@ -402,7 +490,7 @@ export function TaskDetailScreen() {
               </View>
             </Pressable>
             <View style={styles.heroBody}>
-              <TextInput ref={titleInputRef} accessibilityLabel={locale.t("taskDetail.titleLabel")} editable={!saving && !offline} multiline scrollEnabled={false} onBlur={save} onChangeText={setTitle}
+              <TextInput ref={titleInputRef} accessibilityLabel={locale.t("taskDetail.titleLabel")} editable={!saving && (!offline || detail.category === "personal")} multiline scrollEnabled={false} onBlur={save} onChangeText={setTitle}
                 onContentSizeChange={event => setTitleHeight(event.nativeEvent.contentSize.height)}
                 style={[styles.titleInput, { minHeight: Math.max(32 * fontScale, titleHeight) }]} value={title} />
               <View style={styles.badges}>
@@ -414,13 +502,13 @@ export function TaskDetailScreen() {
 
           {staleDraft && !moreOpen ? <View>
             <Text accessibilityRole="alert" style={styles.errorText}>{locale.t("taskDetail.staleWarning")}</Text>
-            <Pressable accessibilityRole="button" disabled={saving || offline} onPress={discardDraft} style={styles.sheetRow}>
+            <Pressable accessibilityRole="button" disabled={saving || offline && detail.category !== "personal"} onPress={discardDraft} style={styles.sheetRow}>
               <Text style={styles.sheetRowAction}>{locale.t("taskDetail.discardDraft")}</Text>
             </Pressable>
           </View> : null}
 
           <View style={styles.metadataGroup}>
-            <Pressable accessibilityLabel={locale.t("taskDetail.editDateTime")} accessibilityRole="button" disabled={offline} onPress={() => setMoreOpen(true)} style={styles.metadataRow}>
+            <Pressable accessibilityLabel={locale.t("taskDetail.editDateTime")} accessibilityRole="button" disabled={offline && detail.category !== "personal"} onPress={() => setMoreOpen(true)} style={styles.metadataRow}>
               <Text style={metadataLabelStyle}>{locale.t((latest ?? detail).dueAt ? "taskDetail.due" : "taskDetail.scheduled")}</Text>
               <Text style={styles.metadataValue}>{taskDateLabel(displayedDate, timeZone, locale.language, locale.t)}</Text>
               <Ionicons color={colors.text4} name="chevron-forward" size={17} />
@@ -453,7 +541,7 @@ export function TaskDetailScreen() {
               <Text style={metadataLabelStyle}>{locale.t("taskDetail.category")}</Text>
               <Text style={styles.metadataValue}>{detail.categoryLabel}</Text>
             </View>
-            <Pressable accessibilityLabel={locale.t("taskDetail.moreActions")} accessibilityRole="button" disabled={offline} onPress={() => setMoreOpen(true)} style={({ pressed }) => [styles.metadataRow, pressed ? styles.pressed : null]}>
+            <Pressable accessibilityLabel={locale.t("taskDetail.moreActions")} accessibilityRole="button" disabled={offline && detail.category !== "personal"} onPress={() => setMoreOpen(true)} style={({ pressed }) => [styles.metadataRow, pressed ? styles.pressed : null]}>
               <Text style={metadataLabelStyle}>{locale.t("taskDetail.reminder")}</Text>
               <Text style={styles.metadataValue}>{reminders[0]?.label ?? locale.t("taskDetail.reminderUnset")}</Text>
               <Ionicons color={colors.text4} name="chevron-forward" size={17} />
@@ -462,7 +550,7 @@ export function TaskDetailScreen() {
 
           <View style={styles.contentSection}>
             <Text accessibilityRole="header" style={styles.contentHeading}>{locale.t("taskDetail.content")}</Text>
-            <TextInput accessibilityLabel={locale.t("taskDetail.notes")} editable={!saving && !offline} multiline scrollEnabled={false} onBlur={save} onChangeText={setNotes}
+            <TextInput accessibilityLabel={locale.t("taskDetail.notes")} editable={!saving && (!offline || detail.category === "personal")} multiline scrollEnabled={false} onBlur={save} onChangeText={setNotes}
               onContentSizeChange={event => setNotesHeight(event.nativeEvent.contentSize.height)}
               placeholder={locale.t("taskDetail.notePlaceholder")} placeholderTextColor={colors.text4}
               style={[styles.notesInput, { height: Math.max(72, notesHeight, 24 * fontScale) }]} value={notes} />
@@ -486,7 +574,7 @@ export function TaskDetailScreen() {
                   {timeZone !== editTimeZone ? <Text accessibilityRole="alert">{locale.t("taskDetail.draftTimeZone", { timeZone: editTimeZone })}</Text> : null}
               {staleDraft ? <View>
                     <Text accessibilityRole="alert" style={styles.errorText}>{locale.t("taskDetail.staleWarning")}</Text>
-                    <Pressable accessibilityRole="button" disabled={saving || offline} onPress={discardDraft} style={styles.sheetRow}>
+                    <Pressable accessibilityRole="button" disabled={saving || offline && detail.category !== "personal"} onPress={discardDraft} style={styles.sheetRow}>
                       <Text style={styles.sheetRowAction}>{locale.t("taskDetail.discardDraft")}</Text>
                     </Pressable>
                   </View> : null}
@@ -505,7 +593,7 @@ export function TaskDetailScreen() {
                   </View>)}
                   <Text style={styles.dateHint}>{locale.t("taskDetail.reminderUnaffected")}</Text>
                   {detail.status === "cancelled" ? <Text style={styles.dateHint}>{locale.t("taskDetail.cancelledNoDate")}</Text> : null}
-                  <Pressable accessibilityLabel={locale.t("taskDetail.saveDateTime")} accessibilityRole="button" disabled={saving || offline || staleDraft || detail.status === "cancelled"} onPress={saveDates}
+                  <Pressable accessibilityLabel={locale.t("taskDetail.saveDateTime")} accessibilityRole="button" disabled={saving || offline && detail.category !== "personal" || staleDraft || detail.status === "cancelled"} onPress={saveDates}
                     style={[styles.dateSaveButton, (saving || staleDraft || detail.status === "cancelled") && styles.pressed]}>
                     <Text style={styles.completeButtonText}>{locale.t(saving ? "taskDetail.saving" : "taskDetail.saveDateTime")}</Text>
                   </Pressable>
@@ -534,7 +622,7 @@ export function TaskDetailScreen() {
                     </View>
                   ))}
 
-                  <Pressable accessibilityRole="button" disabled={saving || offline} onPress={deleteTask} style={styles.deleteButton}>
+                  <Pressable accessibilityRole="button" disabled={saving || offline && detail.category !== "personal"} onPress={deleteTask} style={styles.deleteButton}>
                     <Ionicons color={colors.rose} name="trash-outline" size={18} />
                     <Text style={styles.deleteText}>{locale.t("taskDetail.deleteTask")}</Text>
                   </Pressable>
@@ -550,7 +638,7 @@ export function TaskDetailScreen() {
         {detail.status !== "cancelled" ? <Pressable accessibilityRole="button" disabled={saving || offline} onPress={changeStatus} style={({ pressed }) => [styles.completeButton, detail.status === "completed" ? styles.reopenButton : null, pressed ? styles.pressed : null]}>
           <Text style={detail.status === "completed" ? styles.reopenButtonText : styles.completeButtonText}>{locale.t(detail.status === "completed" ? "taskDetail.restore" : "taskDetail.markComplete")}</Text>
         </Pressable> : null}
-        <Pressable accessibilityLabel={locale.t("taskDetail.edit")} accessibilityRole="button" disabled={saving || offline} onPress={() => titleInputRef.current?.focus()} style={({ pressed }) => [styles.editButton, pressed && styles.pressed]}>
+        <Pressable accessibilityLabel={locale.t("taskDetail.edit")} accessibilityRole="button" disabled={saving || offline && detail.category !== "personal"} onPress={() => titleInputRef.current?.focus()} style={({ pressed }) => [styles.editButton, pressed && styles.pressed]}>
           <Text style={styles.editButtonText}>{locale.t("taskDetail.edit")}</Text>
         </Pressable>
       </View>
@@ -582,6 +670,12 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   checkboxCompleted: { backgroundColor: colors.accent, borderColor: colors.accent },
   completeButton: { ...createControlStyles(colors).primaryButton, minHeight: 50 },
   completeButtonText: { ...createControlStyles(colors).primaryButtonText, fontSize: 15, lineHeight: 22 },
+  conflictPanel: { backgroundColor: colors.surface2, borderColor: colors.border, borderWidth: 1, borderRadius: radius.md, gap: spacing.sm, marginVertical: spacing.md, padding: spacing.md },
+  conflictText: { color: colors.ink, fontSize: typography.small, lineHeight: 21 },
+  conflictServerText: { color: colors.text2, fontSize: typography.caption, lineHeight: 19 },
+  conflictActions: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
+  conflictAction: { ...createControlStyles(colors).secondaryButton, flexGrow: 1, minHeight: 42, paddingHorizontal: spacing.sm },
+  conflictActionText: { ...createControlStyles(colors).secondaryButtonText, fontSize: typography.caption, textAlign: "center" },
   contentHeading: { color: colors.ink, fontSize: 15, lineHeight: 22, fontWeight: "800" },
   contentSection: { gap: 6 },
   dateBadge: { color: colors.surface, backgroundColor: colors.ink, borderRadius: 6, paddingVertical: 4, paddingHorizontal: 9, fontSize: 11, lineHeight: 16, fontWeight: "700" },
@@ -601,6 +695,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   heroBody: { flex: 1, minWidth: 0 },
   heroCheckButton: { width: 44, minHeight: 44, justifyContent: "flex-start", paddingTop: 4 },
   linkValue: { color: colors.accent },
+  localMutationLabel: { color: colors.text2, fontSize: typography.caption, marginVertical: spacing.xs },
   metadataGroup: { borderTopColor: colors.border, borderTopWidth: 1, backgroundColor: colors.surface },
   metadataLabel: { color: colors.text3, fontSize: 14, lineHeight: 20, width: 72, flexShrink: 0 },
   metadataLabelLarge: { width: "100%", marginBottom: 6 },

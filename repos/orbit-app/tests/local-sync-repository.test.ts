@@ -1055,6 +1055,41 @@ test("choosing the server version removes the conflicted row and its dependent e
   assert.deepEqual(await setup.database.all<{ mutation_id: string }>("SELECT mutation_id FROM sync_outbox WHERE workspace_id = ?", ["workspace-a"]), []);
 });
 
+test("resolving a task conflict replaces its frozen request and retargets dependent actions", async (t) => {
+  const setup = await repository();
+  t.after(() => setup.database.close());
+  await setup.repository.enqueueOutboxMutation({
+    actorId: "actor-a", workspaceId: "workspace-a", domainId: "tasks", mutationId: "conflicted-task-update",
+    kind: "task", id: "task-a", operation: "update", patch: { title: "Local draft" },
+    requestJson: JSON.stringify({ action: "update", expectedUpdatedAt: "server-v1", idempotencyKey: "conflicted-task-update", patch: { title: "Local draft" } }),
+    baseRevision: "mirror-r1", createdAt: "2026-09-16T00:00:00.000Z", retryCount: 0, nextRetryAt: null, lastErrorCode: null,
+  });
+  const markFailure = (setup.repository as unknown as { markOutboxMutationFailure(input: unknown): Promise<void> }).markOutboxMutationFailure;
+  await markFailure.call(setup.repository, { mutationId: "conflicted-task-update", state: "conflict", nextRetryAt: null, errorCode: "TASK_VERSION_CONFLICT", serverSnapshot: { title: "Remote" } });
+  await setup.repository.enqueueOutboxMutation({
+    actorId: "actor-a", workspaceId: "workspace-a", domainId: "tasks", mutationId: "dependent-task-complete",
+    kind: "task", id: "task-a", operation: "complete", patch: {}, requestJson: JSON.stringify({ action: "complete", idempotencyKey: "dependent-task-complete" }),
+    baseRevision: "mirror-r1", dependsOn: "conflicted-task-update", createdAt: "2026-09-16T00:00:01.000Z", retryCount: 0, nextRetryAt: null, lastErrorCode: null,
+  });
+  const resolveConflict = (setup.repository as unknown as { resolveTaskConflict(input: unknown): Promise<void> }).resolveTaskConflict;
+  await resolveConflict.call(setup.repository, {
+    workspaceId: "workspace-a", mutationId: "conflicted-task-update", resolution: "replace",
+    replacement: {
+      actorId: "actor-a", workspaceId: "workspace-a", domainId: "tasks", mutationId: "replacement-task-update",
+      kind: "task", id: "task-a", operation: "update", patch: { title: "Local draft" },
+      requestJson: JSON.stringify({ action: "update", expectedUpdatedAt: "server-v2", idempotencyKey: "replacement-task-update", patch: { title: "Local draft" } }),
+      baseRevision: "mirror-r2", createdAt: "2026-09-16T00:00:02.000Z", retryCount: 0, nextRetryAt: null, lastErrorCode: null,
+    },
+  });
+  const rows = await setup.database.all<{ mutation_id: string; depends_on: string | null; request_json: string }>(
+    "SELECT mutation_id, depends_on, request_json FROM sync_outbox WHERE workspace_id = ? ORDER BY mutation_id", ["workspace-a"],
+  );
+  assert.deepEqual(rows.map(row => ({ ...row })), [
+    { mutation_id: "dependent-task-complete", depends_on: "replacement-task-update", request_json: JSON.stringify({ action: "complete", idempotencyKey: "dependent-task-complete" }) },
+    { mutation_id: "replacement-task-update", depends_on: null, request_json: JSON.stringify({ action: "update", expectedUpdatedAt: "server-v2", idempotencyKey: "replacement-task-update", patch: { title: "Local draft" } }) },
+  ]);
+});
+
 test("an unattempted note create absorbs later edits into its original POST receipt", async (t) => {
   const setup = await repository();
   t.after(() => setup.database.close());
@@ -1223,6 +1258,34 @@ test("acknowledgement atomically writes the server row, alias, and dependent ref
   assert.equal(await aliasResolver!.call(setup.repository, {
     workspaceId: "workspace-a", domainId: "notes", localId: "local:note-1", now: "2026-10-27T00:03:00.000Z",
   }), null);
+});
+
+test("task outbox preserves ordered create-edit-complete mutations and advances dependent versions from receipts", async (t) => {
+  const database = new NodeTestDatabase();
+  t.after(() => database.close());
+  await initializeLocalSyncDatabase(database);
+  const taskScopes = ["workspace-a", "workspace-b"].map(workspaceId => ({ baseUrl: "https://fixture.example", actorId: "actor-a", workspaceId, domainId: "tasks", authorizationEpoch: "fixture-e1" }));
+  const repository = createLocalSyncRepository({ actorId: "actor-a", database, baseUrl: "https://fixture.example", registeredDomainIds: ["tasks"], activeReadScopes: () => taskScopes });
+  const localId = "local:123e4567-e89b-42d3-a456-426614174000";
+  await repository.enqueueOutboxMutation({ actorId: "actor-a", workspaceId: "workspace-a", domainId: "tasks", mutationId: "task-create", kind: "task", id: localId, operation: "create", patch: { title: "Local", category: "personal" }, requestJson: '{"idempotencyKey":"task-create","title":"Local","category":"personal"}', baseRevision: null, createdAt: "2026-09-16T00:01:00.000Z", retryCount: 0, nextRetryAt: null, lastErrorCode: null });
+  await repository.enqueueOutboxMutation({ actorId: "actor-a", workspaceId: "workspace-a", domainId: "tasks", mutationId: "task-update", kind: "task", id: localId, operation: "update", patch: { title: "Edited" }, requestJson: '{"action":"update","expectedUpdatedAt":"local-v1","idempotencyKey":"task-update","patch":{"title":"Edited"}}', baseRevision: null, dependsOn: "task-create", createdAt: "2026-09-16T00:02:00.000Z", retryCount: 0, nextRetryAt: null, lastErrorCode: null });
+  await repository.enqueueOutboxMutation({ actorId: "actor-a", workspaceId: "workspace-a", domainId: "tasks", mutationId: "task-complete", kind: "task", id: localId, operation: "complete", patch: {}, requestJson: '{"action":"complete","idempotencyKey":"task-complete"}', baseRevision: null, dependsOn: "task-update", createdAt: "2026-09-16T00:03:00.000Z", retryCount: 0, nextRetryAt: null, lastErrorCode: null });
+  const queued = await repository.listQueuedMutations({ workspaceId: "workspace-a", domainId: "tasks" });
+  assert.deepEqual(queued.map(row => row.mutationId), ["task-create", "task-update", "task-complete"]);
+
+  await repository.acknowledgeOutboxMutation({ mutationId: "task-create", localId, acknowledgedAt: "2026-09-16T00:04:00.000Z", record: record({ kind: "task", id: "task-server", revision: "r2", updatedAt: "2026-09-16T00:04:00.000Z", payload: { id: "task-server", category: "personal", ownerUserId: "actor-a", updatedAt: "2026-09-16T00:04:00.000Z" } }) });
+  const afterCreate = await repository.listQueuedMutations({ workspaceId: "workspace-a", domainId: "tasks" });
+  assert.equal(afterCreate[0]?.id, "task-server");
+  assert.equal(afterCreate[0]?.baseRevision, "r2");
+  assert.equal(JSON.parse(afterCreate[0]!.requestJson!).expectedUpdatedAt, "2026-09-16T00:04:00.000Z");
+  assert.equal(afterCreate[0]?.dependsOn, null);
+  assert.equal(afterCreate[1]?.dependsOn, "task-update");
+
+  await repository.acknowledgeOutboxMutation({ mutationId: "task-update", acknowledgedAt: "2026-09-16T00:05:00.000Z", record: record({ kind: "task", id: "task-server", revision: "r3", updatedAt: "2026-09-16T00:05:00.000Z", payload: { id: "task-server", category: "personal", ownerUserId: "actor-a", updatedAt: "2026-09-16T00:05:00.000Z" } }) });
+  const afterUpdate = await repository.listQueuedMutations({ workspaceId: "workspace-a", domainId: "tasks" });
+  assert.equal(afterUpdate.length, 1);
+  assert.equal(afterUpdate[0]?.baseRevision, "r3");
+  assert.equal(afterUpdate[0]?.dependsOn, null);
 });
 
 test("acknowledgement rolls back the canonical row and outbox when alias persistence fails", async (t) => {

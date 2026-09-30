@@ -45,7 +45,7 @@ export function useScheduleCalendarSource(): ScheduleCalendarSource {
   const taskState = validateApiResourceState(rawTasks, taskPageSchema.refine((page) => page.status === "open" && page.scope === "all" && page.query === ""));
   const eventState: Resource = useApiResource<unknown>(ORBIT_API_ENDPOINTS.publicEvents, () => false, network);
   const itemState: Resource = useApiResource<unknown>(ORBIT_API_ENDPOINTS.scheduleItems, () => false, network);
-  const mirror = useMemo(() => mirrorScheduleCalendar({ tasks, schedule, events, ready, refresh: refreshMirror }),
+  const mirror = useMemo(() => mirrorScheduleCalendar({ tasks, schedule, events, ready, actorId: auth.actorId ?? "", refresh: refreshMirror }),
     [tasks.records, tasks.status, tasks.lastSyncedAt, tasks.error, schedule.records, schedule.status, schedule.lastSyncedAt, schedule.error, events.records, events.status, events.lastSyncedAt, events.error, ready, refreshMirror]);
   if (mirrorActive) return mirror;
   return {

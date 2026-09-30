@@ -53,6 +53,64 @@ test("PostgreSQL task version, receipt, rollback and actor isolation across inde
   }
 });
 
+test("PostgreSQL task delete checks an optional version and fingerprints it in the receipt", { skip: url ? false : "isolated ORBIT_TASKS_TEST_DATABASE_URL not provided" }, async () => {
+  assert.ok(url);
+  const schema = `c0010_task_delete_${randomUUID().replaceAll("-", "")}`;
+  const admin = new Pool({ connectionString: url, max: 1 });
+  await admin.query(`create schema ${schema}`);
+  const client = createTransactionalPostgresClient({ connectionString: url, pool: new Pool({ connectionString: url, max: 2, options: `-c search_path=${schema}` }) });
+  const service = createTaskService({ repository: createTaskRepository({ store: createPostgresLiveRecordStore({ client }), workspaceId: "c0010-delete", transactionClient: client }) });
+  try {
+    await client.query(ORBIT_RECORDS_SCHEMA_SQL);
+    const created = await service.create({ actorId: "owner", title: "Delete me", category: "personal", idempotencyKey: "create", now: "2026-09-14T00:00:00Z" });
+    await assert.rejects(service.delete({ actorId: "owner", taskId: created.task.id, expectedUpdatedAt: "2026-01-01T00:00:00Z", idempotencyKey: "delete-stale", now: "2026-09-14T00:01:00Z" }), (error: any) => error.code === "TASK_VERSION_CONFLICT");
+    assert.deepEqual(await service.get({ actorId: "owner", taskId: created.task.id }), created.task);
+    assert.equal((await service.history({ actorId: "owner", taskId: created.task.id })).length, 1);
+
+    const deleted = await service.delete({ actorId: "owner", taskId: created.task.id, expectedUpdatedAt: created.task.updatedAt, idempotencyKey: "delete-fresh", now: "2026-09-14T00:02:00Z" });
+    assert.deepEqual(await service.delete({ actorId: "owner", taskId: created.task.id, expectedUpdatedAt: created.task.updatedAt, idempotencyKey: "delete-fresh", now: "2026-09-14T00:03:00Z" }), deleted);
+    await assert.rejects(service.delete({ actorId: "owner", taskId: created.task.id, expectedUpdatedAt: "different-version", idempotencyKey: "delete-fresh", now: "2026-09-14T00:04:00Z" }), (error: any) => error.code === "TASK_VERSION_CONFLICT");
+  } finally {
+    await client.close();
+    await admin.query(`drop schema ${schema} cascade`);
+    await admin.end();
+  }
+});
+
+test("PostgreSQL replays all six task write receipts exactly once and status actions ignore title-version changes", { skip: url ? false : "isolated ORBIT_TASKS_TEST_DATABASE_URL not provided" }, async () => {
+  assert.ok(url);
+  const schema = `c0010_task_replay_${randomUUID().replaceAll("-", "")}`;
+  const admin = new Pool({ connectionString: url, max: 1 });
+  await admin.query(`create schema ${schema}`);
+  const client = createTransactionalPostgresClient({ connectionString: url, pool: new Pool({ connectionString: url, max: 2, options: `-c search_path=${schema}` }) });
+  const service = createTaskService({ repository: createTaskRepository({ store: createPostgresLiveRecordStore({ client }), workspaceId: "c0010-replay", transactionClient: client }) });
+  const actorId = "owner";
+  try {
+    await client.query(ORBIT_RECORDS_SCHEMA_SQL);
+    const created = await service.create({ actorId, title: "Initial", category: "personal", idempotencyKey: "create-replay", now: "2026-09-14T00:00:00Z" });
+    assert.deepEqual(await service.create({ actorId, title: "Initial", category: "personal", idempotencyKey: "create-replay", now: "2026-09-14T00:01:00Z" }), created);
+    const updated = await service.update({ actorId, taskId: created.task.id, expectedUpdatedAt: created.task.updatedAt, patch: { title: "Remote title" }, idempotencyKey: "update-replay", now: "2026-09-14T00:02:00Z" });
+    assert.deepEqual(await service.update({ actorId, taskId: created.task.id, expectedUpdatedAt: created.task.updatedAt, patch: { title: "Remote title" }, idempotencyKey: "update-replay", now: "2026-09-14T00:03:00Z" }), updated);
+    const completed = await service.complete({ actorId, taskId: created.task.id, completedBy: actorId, completionSource: "user", idempotencyKey: "complete-replay", now: "2026-09-14T00:04:00Z" });
+    assert.equal(completed.task.title, "Remote title", "status actions operate on the latest title without an expectedUpdatedAt guard");
+    assert.deepEqual(await service.complete({ actorId, taskId: created.task.id, completedBy: actorId, completionSource: "user", idempotencyKey: "complete-replay", now: "2026-09-14T00:05:00Z" }), completed);
+    const reopened = await service.reopen({ actorId, taskId: created.task.id, idempotencyKey: "reopen-replay", now: "2026-09-14T00:06:00Z" });
+    assert.deepEqual(await service.reopen({ actorId, taskId: created.task.id, idempotencyKey: "reopen-replay", now: "2026-09-14T00:07:00Z" }), reopened);
+    const cancelled = await service.cancel({ actorId, taskId: created.task.id, idempotencyKey: "cancel-replay", now: "2026-09-14T00:08:00Z" });
+    assert.deepEqual(await service.cancel({ actorId, taskId: created.task.id, idempotencyKey: "cancel-replay", now: "2026-09-14T00:09:00Z" }), cancelled);
+    const deleteTarget = await service.create({ actorId, title: "Delete", category: "personal", idempotencyKey: "delete-target-create", now: "2026-09-14T00:10:00Z" });
+    const deleted = await service.delete({ actorId, taskId: deleteTarget.task.id, expectedUpdatedAt: deleteTarget.task.updatedAt, idempotencyKey: "delete-replay", now: "2026-09-14T00:11:00Z" });
+    assert.deepEqual(await service.delete({ actorId, taskId: deleteTarget.task.id, expectedUpdatedAt: deleteTarget.task.updatedAt, idempotencyKey: "delete-replay", now: "2026-09-14T00:12:00Z" }), deleted);
+    await assert.rejects(service.complete({ actorId, taskId: deleteTarget.task.id, completedBy: actorId, completionSource: "user", idempotencyKey: "complete-replay", now: "2026-09-14T00:13:00Z" }), (error: any) => error.code === "TASK_VERSION_CONFLICT");
+    const receipts = await client.query<{ record_id: string }>("select record_id from orbit_records where workspace_id = $1 and collection_name = 'task_mutations'", ["c0010-replay"]);
+    assert.equal(receipts.rows.length, 7, "one create, update, complete, reopen, cancel, delete-target create, and delete receipt is stored");
+  } finally {
+    await client.close();
+    await admin.query(`drop schema ${schema} cascade`);
+    await admin.end();
+  }
+});
+
 test("personal schedule transactions reject concurrent versions and roll back failed receipts", { skip: url ? false : "isolated ORBIT_TASKS_TEST_DATABASE_URL not provided" }, async () => {
   const { createPersonalScheduleService } = await import("../../features/personal-schedule/service");
   assert.ok(url); const schema = `c0010_schedule_${randomUUID().replaceAll("-", "")}`;

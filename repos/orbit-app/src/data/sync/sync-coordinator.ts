@@ -19,6 +19,7 @@ import {
 import { findPageCopyDefinition, PAGE_COPY_DEFINITIONS, type PageCopy } from "./page-copies";
 import { isOfflineEligible } from "./mutation-adapters";
 import { parseOfflineNoteRequest } from "./note-outbox-mutation";
+import { parseOfflineTaskRequest } from "./task-outbox-mutation";
 import { kindOfSyncDomain, KNOWN_SYNC_DOMAINS, PARTITIONED_SYNC_DOMAINS, syncDomainOfKind } from "./sync-domains";
 import {
   shouldSynchronize,
@@ -85,7 +86,7 @@ export interface SyncScopeInput {
   baseUrl: string;
   client: SyncClient;
   /** Product write transport, absent in sync-only fixtures and online-only platforms. */
-  writeClient?: Pick<OrbitApiClient, "post" | "patch">;
+  writeClient?: Pick<OrbitApiClient, "post" | "patch" | "delete">;
   /** Offline identity may read a renewed lease, but must never upload queued writes. */
   offlineMode?: boolean;
   scopeKey: string;
@@ -133,17 +134,29 @@ export interface SyncCoordinatorSession {
   resolveNoteAlias(localId: string): Promise<string | null>;
   /** Test-only queue insertion; product domains remain closed until their own Sprint adapter exists. */
   enqueueTestOutboxMutation(mutation: LocalSyncOutboxMutation): Promise<void>;
-  /** Sprint 0132: the only product writes admitted to the native offline outbox are private notes. */
+  /** Sprint 0132: private note writes admitted to the native offline outbox. */
   enqueueOfflineNoteMutation(mutation: OfflineNoteMutationInput): Promise<void>;
+  /** Sprint 0133: private personal task writes admitted to the native offline outbox. */
+  enqueueOfflineTaskMutation(mutation: OfflineTaskMutationInput): Promise<void>;
   /** Sprint 0132: resolve only a conflict row inside the currently accepted notes lease. */
   resolveNoteConflict?(input: {
     mutationId: string;
     resolution: "server" | "replace";
     replacement?: OfflineNoteMutationInput;
   }): Promise<void>;
+  /** Sprint 0133: resolve only a conflict row inside the currently accepted tasks lease. */
+  resolveTaskConflict?(input: {
+    mutationId: string;
+    resolution: "server" | "replace";
+    replacement?: OfflineTaskMutationInput;
+  }): Promise<void>;
 }
 
 export type OfflineNoteMutationInput = Omit<LocalSyncOutboxMutation, "actorId" | "workspaceId">;
+export type OfflineTaskMutationInput = Omit<LocalSyncOutboxMutation, "actorId" | "workspaceId" | "kind" | "operation"> & {
+  kind: "task";
+  operation: "create" | "update" | "complete" | "reopen" | "cancel" | "delete";
+};
 
 interface ActiveScope extends SyncScopeInput {
   /** The last accepted server lease; read scopes derive from its grants. */
@@ -194,7 +207,7 @@ export function createSyncCoordinator(input: {
     signal: AbortSignal;
     repository: ReturnType<typeof createLocalSyncRepository>;
     syncClient: SyncClient;
-    writeClient?: Pick<OrbitApiClient, "post" | "patch">;
+    writeClient?: Pick<OrbitApiClient, "post" | "patch" | "delete">;
   }) => Promise<void>;
   /** Explicit queue namespaces used only by test fixtures; not registered in the app coordinator. */
   testOnlyOutboxDomains?: readonly string[];
@@ -740,6 +753,56 @@ export function createSyncCoordinator(input: {
           }, { notify: !mutation.requestAttemptedAt });
         });
       },
+      async enqueueOfflineTaskMutation(mutation: OfflineTaskMutationInput): Promise<void> {
+        await bound.ready;
+        if (!isCurrent(bound) || bound.workspaceId === null) throw new TypeError("outbox mutation is outside the active actor/workspace");
+        const taskScope = readScopeFor(bound, "task");
+        const currentLease = bound.lease ? acceptedLease(bound, bound.lease) : null;
+        const hasCurrentTasksGrant = Boolean(taskScope && currentLease?.grants.some(grant =>
+          grant.workspaceId === taskScope.workspaceId && grant.domainId === taskScope.domainId &&
+          grant.authorizationEpoch === taskScope.authorizationEpoch));
+        if (!hasCurrentTasksGrant || mutation.domainId !== "tasks" || mutation.kind !== "task" || !mutation.requestJson) {
+          throw new TypeError("task mutation is not eligible");
+        }
+        let parsed: ReturnType<typeof parseOfflineTaskRequest>;
+        try { parsed = parseOfflineTaskRequest(mutation); } catch { throw new TypeError("task mutation is not eligible"); }
+        const request = parsed.mutation;
+        if (!isOfflineEligible(request.kind, request.operation, { actorPrivate: true, confirmed: true, connectionActive: isCurrent(bound) }) ||
+            request.mutationId !== mutation.mutationId || request.entityId !== mutation.id || request.operation !== mutation.operation ||
+            request.baseRevision !== mutation.baseRevision || JSON.stringify(request.patch) !== JSON.stringify(mutation.patch)) {
+          throw new TypeError("task mutation is not eligible");
+        }
+        await withRepository(bound, async repository => {
+          let dependsOn = mutation.dependsOn ?? null;
+          const pending = await repository.readOutboxOverlay({ workspaceId: bound.workspaceId!, kind: "task" });
+          const sameTask = pending.queuedMutations.filter(item => item.id === mutation.id && item.kind === "task")
+            .sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.mutationId.localeCompare(b.mutationId));
+          const prior = sameTask.at(-1);
+          if (mutation.operation !== "create") {
+            if (mutation.id.startsWith("local:")) {
+              const localCreate = sameTask.find(item => item.operation === "create");
+              let isPersonalCreate = false;
+              if (localCreate?.actorId === bound.actorId) {
+                try {
+                  const parsedCreate = parseOfflineTaskRequest({ ...localCreate, kind: "task", operation: "create" });
+                  isPersonalCreate = parsedCreate.mutation.patch.category === "personal";
+                } catch { /* Stored queue data is untrusted until its frozen request is revalidated. */ }
+              }
+              if (!isPersonalCreate) {
+                throw new TypeError("local task mutation requires its queued personal create");
+              }
+            } else {
+              const record = await repository.getRecord({ workspaceId: bound.workspaceId!, kind: "task", id: mutation.id });
+              const task = record?.payload && typeof record.payload === "object" ? record.payload as Record<string, unknown> : null;
+              if (!record || record.deletedAt !== null || record.actorId !== bound.actorId || task?.ownerUserId !== bound.actorId || task.category !== "personal") {
+                throw new TypeError("offline task mutation requires a mirrored personal task");
+              }
+            }
+          }
+          if (prior && !dependsOn) dependsOn = prior.mutationId;
+          await repository.enqueueOutboxMutation({ ...mutation, actorId: bound.actorId, workspaceId: bound.workspaceId!, dependsOn }, { notify: !mutation.requestAttemptedAt });
+        });
+      },
       async resolveNoteConflict(input: {
         mutationId: string;
         resolution: "server" | "replace";
@@ -757,6 +820,37 @@ export function createSyncCoordinator(input: {
           mutationId: input.mutationId,
           resolution: input.resolution,
           ...(input.replacement ? { replacement: { ...input.replacement, actorId: bound.actorId, workspaceId: noteScope.workspaceId } } : {}),
+        }));
+        if (input.resolution === "replace") bound.onOutboxQueued?.();
+      },
+      async resolveTaskConflict(input: {
+        mutationId: string;
+        resolution: "server" | "replace";
+        replacement?: OfflineTaskMutationInput;
+      }): Promise<void> {
+        await bound.ready;
+        const taskScope = readScopeFor(bound, "task");
+        const currentLease = bound.lease ? acceptedLease(bound, bound.lease) : null;
+        const hasCurrentTasksGrant = Boolean(taskScope && currentLease?.grants.some(grant =>
+          grant.workspaceId === taskScope.workspaceId && grant.domainId === taskScope.domainId &&
+          grant.authorizationEpoch === taskScope.authorizationEpoch));
+        if (!isCurrent(bound) || !taskScope || !hasCurrentTasksGrant) throw new TypeError("task conflict is outside the active lease");
+        if (input.replacement) {
+          let parsed: ReturnType<typeof parseOfflineTaskRequest>;
+          try { parsed = parseOfflineTaskRequest(input.replacement); } catch { throw new TypeError("task conflict replacement is invalid"); }
+          if (input.replacement.domainId !== "tasks" || input.replacement.kind !== "task" || input.replacement.requestAttemptedAt ||
+              parsed.mutation.entityId !== input.replacement.id || parsed.mutation.mutationId !== input.replacement.mutationId ||
+              parsed.mutation.operation !== input.replacement.operation || parsed.mutation.baseRevision !== input.replacement.baseRevision ||
+              JSON.stringify(parsed.mutation.patch) !== JSON.stringify(input.replacement.patch) ||
+              !isOfflineEligible(parsed.mutation.kind, parsed.mutation.operation, { actorPrivate: true, confirmed: true, connectionActive: true })) {
+            throw new TypeError("task conflict replacement is invalid");
+          }
+        }
+        await withRepository(bound, repository => repository.resolveTaskConflict({
+          workspaceId: taskScope.workspaceId,
+          mutationId: input.mutationId,
+          resolution: input.resolution,
+          ...(input.replacement ? { replacement: { ...input.replacement, actorId: bound.actorId, workspaceId: taskScope.workspaceId } } : {}),
         }));
         if (input.resolution === "replace") bound.onOutboxQueued?.();
       },

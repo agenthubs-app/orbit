@@ -11,9 +11,13 @@ import type {
  * statement so rollback paths can be exercised.
  */
 export class NodeTestDatabase implements LocalSyncDatabase {
-  readonly database = new DatabaseSync(":memory:");
+  readonly database: DatabaseSync;
   statementCount = 0;
   failWhenSqlIncludes: string | null = null;
+
+  constructor(path = ":memory:") {
+    this.database = new DatabaseSync(path);
+  }
 
   async execute(source: string): Promise<void> {
     this.noteStatement(source);

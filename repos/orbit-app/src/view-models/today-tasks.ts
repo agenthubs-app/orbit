@@ -37,6 +37,8 @@ export interface TodayTaskRowView {
 }
 
 export interface TaskListRowView extends TodayTaskRowView {
+  category: TaskCategory;
+  localMutationState?: "queued" | "conflict" | "failed";
   dateLabel: string;
   plannedDate?: string;
   dueAt?: string;
@@ -64,6 +66,7 @@ export interface TaskDetailView {
   sourceNoteVersion?: number;
   priority: TaskItemContract["priority"];
   updatedAt: string;
+  localMutationState?: "queued" | "conflict" | "failed";
 }
 
 export interface TaskActivityView {
@@ -124,7 +127,7 @@ function category(value: unknown): TaskCategory | null {
     : null;
 }
 
-function taskFrom(value: unknown): TaskItemContract | null {
+function taskFrom(value: unknown): (TaskItemContract & { localMutationState?: "queued" | "conflict" | "failed" }) | null {
   if (!isRecord(value)) return null;
   const parsedCategory = category(value.category);
   if (
@@ -137,6 +140,8 @@ function taskFrom(value: unknown): TaskItemContract | null {
   }
   return {
     ...(value as unknown as TaskItemContract),
+    ...(value.localMutationState === "queued" || value.localMutationState === "conflict" || value.localMutationState === "failed"
+      ? { localMutationState: value.localMutationState } : {}),
     id: value.id as string,
     title: value.title as string,
     category: parsedCategory,
@@ -257,7 +262,7 @@ export function todayToView(payload: unknown, now = new Date(), timeZone = "Asia
   const t = createTranslator(language);
   const root = isRecord(payload) ? payload : {};
   const tasks = Array.isArray(root.tasks)
-    ? root.tasks.map(taskFrom).filter((item): item is TaskItemContract => item !== null)
+    ? root.tasks.map(taskFrom).filter((item): item is NonNullable<ReturnType<typeof taskFrom>> => item !== null)
     : [];
   const suggestions = Array.isArray(root.suggestions)
     ? root.suggestions
@@ -320,7 +325,7 @@ export function tasksToListView(
 ) {
   const root = isRecord(payload) ? payload : {};
   const tasks = Array.isArray(root.tasks)
-    ? root.tasks.map(taskFrom).filter((item): item is TaskItemContract => item !== null)
+    ? root.tasks.map(taskFrom).filter((item): item is NonNullable<ReturnType<typeof taskFrom>> => item !== null)
     : [];
   const items: TaskListRowView[] = tasks
     .filter((item) => item.status === view)
@@ -341,6 +346,8 @@ export function tasksToListView(
       ...(item.plannedDate ? { plannedDate: item.plannedDate } : {}),
       ...(item.dueAt ? { dueAt: item.dueAt } : {}),
       status: item.status,
+      category: item.category,
+      ...(item.localMutationState ? { localMutationState: item.localMutationState } : {}),
       dateLabel: item.completedAt
         ? dateTimeLabel(item.completedAt, timeZone, language)
         : item.dueAt
@@ -386,6 +393,7 @@ export function taskDetailToView(payload: unknown, language: OrbitLanguage = "zh
       : {}),
     priority: task.priority,
     updatedAt: task.updatedAt,
+    ...(task.localMutationState ? { localMutationState: task.localMutationState } : {}),
   };
 }
 
