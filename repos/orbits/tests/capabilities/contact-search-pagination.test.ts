@@ -30,7 +30,6 @@ const contactFixtureForeignWorkspaceId = "workspace:w0-b1-contact-foreign";
 const contactFixtureActorOne = "actor:w0-b1:one";
 const contactFixtureActorTwo = "actor:w0-b1:two";
 const contactFixtureActorThree = "actor:w0-b1:three";
-const contactFixtureSharedOwner = "actor:w0-b1:shared-owner";
 const contactFixtureSourceLabel = "W0-B1 local PostgreSQL contact fixture";
 const contactFixtureSource = "postgres:w0-b1-contact-fixture";
 const contactFixtureCreatedBy =
@@ -361,7 +360,7 @@ async function seedContactFixture(
     contactFixtureContact({
       workspaceId: contactFixtureWorkspaceId,
       recordId: "storage:evidence-only",
-      userId: contactFixtureSharedOwner,
+      userId: contactFixtureActorOne,
       id: "contact:evidence-only",
       displayName: "Evidence Person",
       role: "Researcher",
@@ -2310,17 +2309,16 @@ test("live no-limit reads isolate actor and workspace and private shared tags", 
     if (!actorTwoResult.success) return;
 
     assert.deepEqual(actorTwoResult.data.contacts.map((contact) => contact.id), [
-      "contact:evidence-only",
       "contact:actor-two",
     ]);
-    assert.deepEqual(actorTwoResult.data.contacts[0]?.tags, [
-      "shared-private-two",
-    ]);
     assert.equal(
-      actorTwoResult.data.contacts[0]?.tags.includes("shared-private-one"),
+      actorTwoResult.data.contacts.some(
+        (contact) => contact.id === "contact:evidence-only",
+      ),
       false,
+      "a connection to another actor's private contact does not grant read access",
     );
-    assert.deepEqual(actorTwoResult.data.contacts[1]?.tags, [
+    assert.deepEqual(actorTwoResult.data.contacts[0]?.tags, [
       "actor-two-private",
       "actor-two-private",
     ]);
