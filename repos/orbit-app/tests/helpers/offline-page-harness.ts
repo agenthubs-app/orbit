@@ -109,8 +109,8 @@ export const useOrbitAuthSession = () => authSession;
 export const useOrbitApiBaseUrl = () => ({ baseUrl: base, ready: state.apiBaseReady ?? true });
 const memory = new Map();
 export default { getItem: async key => memory.get(key) ?? null, setItem: async (key, value) => { memory.set(key, value); }, removeItem: async key => { memory.delete(key); } };
-export const SafeAreaView = ({ children, edges, ...props }) => <View {...props}>{children}</View>;
-export const useSafeAreaInsets = () => ({ top: 0, bottom: 0, left: 0, right: 0 });
+export const SafeAreaView = ({ children, edges, style, ...props }) => <View {...props} style={edges?.includes("top") ? { ...style, paddingTop: (style?.paddingTop ?? 0) + (window.initialFixture?.safeAreaTop ?? 0) } : style}>{children}</View>;
+export const useSafeAreaInsets = () => ({ top: window.initialFixture?.safeAreaTop ?? 0, bottom: 0, left: 0, right: 0 });
 export const SafeAreaProvider = ({ children }) => children;
 `;
 

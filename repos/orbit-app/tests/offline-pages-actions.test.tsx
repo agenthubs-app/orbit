@@ -98,6 +98,15 @@ test("online-only guest opt-in probes once from stale reachable and keeps its dr
   assert.deepEqual((await requestsOf(page)).filter((entry) => entry.startsWith("post:")), []);
 });
 
+test("guest offline notice starts below the device top safe area", async (t) => {
+  const page = await harness.open(t, { screen: "no-read-probe", startReachable: true, online: false, healthDelayMs: 20, safeAreaTop: 44 });
+  const title = page.getByText("需要联网", { exact: true });
+  await title.waitFor();
+  const bounds = await title.boundingBox();
+  assert.ok(bounds, "guest offline notice title is rendered");
+  assert.ok(bounds.y >= 44, `notice title starts at ${bounds.y}px, inside the 44px device top inset`);
+});
+
 test("online-only routes without guest opt-in do not add a health request", async (t) => {
   const page = await harness.open(t, { screen: "no-read-default", startReachable: true, online: false });
   await page.getByText("no-read page content").waitFor();

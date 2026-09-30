@@ -81,14 +81,12 @@ export function OnlineOnlyBoundary({ children, probeOnOpen = false }: { children
   if (probeOnOpen) {
     return (
       <View style={styles.probeScreen}>
-        <View style={styles.probeNotice}>
-          {offline ? (
-            <>
-              <Text accessibilityRole="header" style={styles.title}>{locale.t("sync.needsNetwork")}</Text>
-              <NeedsNetworkState onRetry={() => { void retry(); }} retrying={retrying} />
-            </>
-          ) : null}
-        </View>
+        {offline ? (
+          <SafeAreaView edges={["top"]} style={styles.probeNotice}>
+            <Text accessibilityRole="header" style={styles.title}>{locale.t("sync.needsNetwork")}</Text>
+            <NeedsNetworkState onRetry={() => { void retry(); }} retrying={retrying} />
+          </SafeAreaView>
+        ) : null}
         {children}
       </View>
     );
