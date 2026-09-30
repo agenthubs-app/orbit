@@ -89,8 +89,14 @@ test("PostgreSQL replays all six task write receipts exactly once and status act
     await client.query(ORBIT_RECORDS_SCHEMA_SQL);
     const created = await service.create({ actorId, title: "Initial", category: "personal", idempotencyKey: "create-replay", now: "2026-09-14T00:00:00Z" });
     assert.deepEqual(await service.create({ actorId, title: "Initial", category: "personal", idempotencyKey: "create-replay", now: "2026-09-14T00:01:00Z" }), created);
-    const updated = await service.update({ actorId, taskId: created.task.id, expectedUpdatedAt: created.task.updatedAt, patch: { title: "Remote title" }, idempotencyKey: "update-replay", now: "2026-09-14T00:02:00Z" });
-    assert.deepEqual(await service.update({ actorId, taskId: created.task.id, expectedUpdatedAt: created.task.updatedAt, patch: { title: "Remote title" }, idempotencyKey: "update-replay", now: "2026-09-14T00:03:00Z" }), updated);
+    const updateInput = { actorId, taskId: created.task.id, expectedUpdatedAt: created.task.updatedAt, patch: { title: "Remote title" }, idempotencyKey: "update-replay", now: "2026-09-14T00:02:00Z" };
+    const updated = await service.update(updateInput);
+    assert.deepEqual(await service.update({ ...updateInput, now: "2026-09-14T00:03:00Z" }), updated);
+    const changedPayload = { ...updateInput, patch: { title: "Conflicting title" }, now: "2026-09-14T00:03:30Z" };
+    await assert.rejects(service.update(changedPayload), (error: any) => error.code === "TASK_VERSION_CONFLICT");
+    await assert.rejects(service.update({ ...changedPayload, now: "2026-09-14T00:03:45Z" }), (error: any) => error.code === "TASK_VERSION_CONFLICT");
+    assert.deepEqual(await service.update({ ...updateInput, now: "2026-09-14T00:03:50Z" }), updated);
+    assert.deepEqual(await service.get({ actorId, taskId: created.task.id }), updated.task);
     const completed = await service.complete({ actorId, taskId: created.task.id, completedBy: actorId, completionSource: "user", idempotencyKey: "complete-replay", now: "2026-09-14T00:04:00Z" });
     assert.equal(completed.task.title, "Remote title", "status actions operate on the latest title without an expectedUpdatedAt guard");
     assert.deepEqual(await service.complete({ actorId, taskId: created.task.id, completedBy: actorId, completionSource: "user", idempotencyKey: "complete-replay", now: "2026-09-14T00:05:00Z" }), completed);
