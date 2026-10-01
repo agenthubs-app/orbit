@@ -15,7 +15,11 @@ import { act, create, type ReactTestRenderer } from "react-test-renderer";
 
 import {
   iorbitCalendarCells,
+  iorbitCalendarDayLabel,
+  iorbitCalendarMarks,
   iorbitLedgerProgress,
+  iorbitMonthRecommendations,
+  iorbitNextEvent,
   iorbitRelativeDayLabel,
   iorbitSelectedDayLabel,
 } from "../../app/(app)/app/agent/iorbit-0918/iorbit-model";
@@ -440,6 +444,8 @@ interface MountOptions {
   planGate?: Promise<unknown>;
   /** W0037：`PUT /api/community/membership` 的应答（默认 404）；抛错即网络错误。 */
   communityPut?: () => Promise<Response> | Response;
+  /** W0038：拿到首页的每分钟时钟回调（用来模拟跨东京午夜）。 */
+  onInterval?: (handler: () => void) => void;
 }
 
 async function mountHome(
@@ -533,7 +539,10 @@ async function mountHome(
             removeItem: () => undefined,
             setItem: () => undefined,
           },
-      setInterval: () => 0,
+      setInterval: (handler: () => void) => {
+        options.onInterval?.(handler);
+        return 0;
+      },
       setTimeout: (handler: () => void, delay: number) =>
         setTimeout(handler, delay) as unknown as number,
     },
@@ -3317,4 +3326,364 @@ test("W0037: the live shell hands the server-read community state down to the ho
   const html = renderToStaticMarkup(<IOrbitShell communityJoined home={HOME as never} viewModel={VIEW_MODEL} />);
   // SSR 首帧还在读取：小模组不渲染（不先闪出卡片）。
   assert.doesNotMatch(html, /data-orbit-today-events/);
+});
+
+
+/* ── W0038：月历两色圆点、时间线条目路由、「下一场活动」 ─────────────────────────── */
+
+const w38Candidate = (code: string, startsAt: string, title = code, venue?: string) => ({
+  eventId: `event:${code}`,
+  publicCode: code,
+  startsAt,
+  title,
+  ...(venue ? { venue } : {}),
+});
+const w38PoolItem = (code: string, startsAt: string) => ({
+  eventId: `event:${code}`,
+  publicCode: code,
+  reason: { kind: "recent" as const },
+  startsAt,
+  title: code,
+});
+const w38Snapshot = (upcoming: unknown[], personal: unknown[] = [], base: object = EMPTY_SNAPSHOT) => {
+  const facts = (base as typeof EMPTY_SNAPSHOT).facts;
+  return {
+    ...base,
+    facts: { ...facts, personal: { items: personal, state: "ready" } },
+    recommendations: { items: [], state: "needs_goal", upcoming },
+  };
+};
+const w38Personal = (key: string, startsAt: string, title: string) => ({ id: key, key, startsAt, state: "active", title });
+const w38DayButton = (mounted: Mounted, day: number) =>
+  mounted.root.root.findAll((node) => node.type === "button" && node.props?.["data-orbit-iorbit-day"] === day)[0]!;
+const w38DotClasses = (mounted: Mounted, day: number) =>
+  w38DayButton(mounted, day)
+    .findAll((node) => typeof node.type === "string" && /\bir-day-dot\b/.test(String(node.props?.className ?? "")))
+    .map((node) => String(node.props.className));
+const w38Legend = (mounted: Mounted) =>
+  mounted.root.root.findAll((node) => typeof node.type === "string" && node.props?.["data-orbit-iorbit-cal-legend"] !== undefined);
+const w38Panel = (mounted: Mounted) =>
+  mounted.root.root.findAll((node) => node.props?.["data-orbit-iorbit-day-panel"] === true)[0]!;
+const w38Timeline = (mounted: Mounted) =>
+  w38Panel(mounted)
+    .findAll((node) => node.type === "a" && node.props?.["data-orbit-iorbit-tl-item"] !== undefined)
+    .map((node) => ({ href: String(node.props.href), kind: String(node.props["data-orbit-iorbit-tl-item"]), node, text: textOf(node) }));
+const w38Empty = (mounted: Mounted) =>
+  textOf(w38Panel(mounted).findAll((node) => node.props?.className === "ir-m-tl-empty")[0]!);
+const w38Next = (mounted: Mounted) =>
+  w38Panel(mounted).findAll((node) => node.type === "a" && node.props?.["data-orbit-iorbit-next-event"] !== undefined);
+const w38Mount = (
+  t: TestContext,
+  options: MountOptions,
+  props: { clock?: () => Date; home?: unknown; language?: "zh" | "en" } = {},
+) => {
+  const element = homeElement({ clock: props.clock ?? (() => PLAN_NOW), ...(props.home ? { home: props.home as never } : {}) });
+  return mountHome(
+    t,
+    (mountOptions) => (
+      <OrbitLanguageProvider initialLanguage={props.language ?? "zh"}>{element(mountOptions)}</OrbitLanguageProvider>
+    ),
+    { plan: null, ...options },
+  );
+};
+
+test("W0038 SC-01: calendar marks take the pool's first five in-month events in pool order, cut by Tokyo date", () => {
+  // 东京 10/31 23:30 算 10 月；11/1 00:30 不算；9/30 15:30Z 是东京 10/1 00:30，算 10 月；9/30 23:30 不算。
+  const pool = [
+    w38PoolItem("NOV-1", "2026-10-31T15:30:00Z"),
+    w38PoolItem("OCT-31", "2026-10-31T14:30:00Z"),
+    w38PoolItem("SEP-30", "2026-09-30T14:30:00Z"),
+    w38PoolItem("OCT-1", "2026-09-30T15:30:00Z"),
+    w38PoolItem("OCT-20", "2026-10-20T01:00:00Z"),
+    w38PoolItem("OCT-20B", "2026-10-20T05:00:00Z"),
+    w38PoolItem("OCT-25", "2026-10-25T01:00:00Z"),
+    // 第 6 场当月活动：日期最早，但在池里排在第 5 场之后，不画。
+    w38PoolItem("OCT-2", "2026-10-02T01:00:00Z"),
+  ];
+  assert.deepEqual(
+    iorbitMonthRecommendations(pool, "2026-10").map((entry) => [entry.item.publicCode, entry.dayKey]),
+    [
+      ["OCT-31", "2026-10-31"],
+      ["OCT-1", "2026-10-01"],
+      ["OCT-20", "2026-10-20"],
+      ["OCT-20B", "2026-10-20"],
+      ["OCT-25", "2026-10-25"],
+    ],
+  );
+
+  const schedule = [{ dayKey: "2026-10-20" }, { dayKey: "2026-10-20" }, { dayKey: "2026-10-03" }, { dayKey: "2026-11-01" }];
+  const marks = iorbitCalendarMarks(schedule, pool, "2026-10");
+  assert.deepEqual([...marks.entries()].sort((a, b) => a[0] - b[0]), [
+    [1, { recommended: 1, schedule: 0 }],
+    [3, { recommended: 0, schedule: 1 }],
+    [20, { recommended: 2, schedule: 2 }],
+    [25, { recommended: 1, schedule: 0 }],
+    [31, { recommended: 1, schedule: 0 }],
+  ]);
+  assert.equal(marks.has(2), false, "only five recommended events are drawn");
+
+  // 空池只剩实心点。
+  assert.deepEqual([...iorbitCalendarMarks(schedule, [], "2026-10").entries()].sort((a, b) => a[0] - b[0]), [
+    [3, { recommended: 0, schedule: 1 }],
+    [20, { recommended: 0, schedule: 2 }],
+  ]);
+});
+
+test("W0038 SC-03: the next event is the earliest unstarted registration, else the pool's earliest start — not pool[0]", () => {
+  const nowMs = Date.parse("2026-09-28T03:00:00Z");
+  const registered = [
+    { id: "late", startsAt: "2026-10-03T09:00:00Z" },
+    { id: "past", startsAt: "2026-09-20T09:00:00Z" },
+    { id: "early", startsAt: "2026-10-02T09:00:00Z" },
+  ];
+  const pool = [w38PoolItem("LATE", "2026-09-30T01:00:00Z"), w38PoolItem("EARLY", "2026-09-29T01:00:00Z")];
+  assert.deepEqual(iorbitNextEvent(registered, pool, nowMs), { event: registered[2], kind: "registered" });
+  assert.deepEqual(iorbitNextEvent([registered[1]!], pool, nowMs), { item: pool[1], kind: "recommended" });
+  assert.equal(iorbitNextEvent([registered[1]!], null, nowMs), null, "an unready pool is not consulted");
+  assert.equal(iorbitNextEvent([], [], nowMs), null);
+});
+
+test("W0038 SC-04: the day button label adds the counts and drops zero counts", () => {
+  assert.equal(iorbitCalendarDayLabel(2026, 9, 29, { recommended: 1, schedule: 2 }, "zh"), "9月29日（周二），2 项日程，1 场推荐活动");
+  assert.equal(iorbitCalendarDayLabel(2026, 9, 29, { recommended: 0, schedule: 1 }, "zh"), "9月29日（周二），1 项日程");
+  assert.equal(iorbitCalendarDayLabel(2026, 9, 29, { recommended: 2, schedule: 0 }, "zh"), "9月29日（周二），2 场推荐活动");
+  assert.equal(iorbitCalendarDayLabel(2026, 9, 29, undefined, "zh"), "9月29日（周二）");
+  assert.equal(
+    iorbitCalendarDayLabel(2026, 9, 29, { recommended: 1, schedule: 2 }, "en"),
+    "Tue, September 29, 2 scheduled, 1 recommended event",
+  );
+  assert.equal(iorbitCalendarDayLabel(2026, 9, 29, { recommended: 2, schedule: 0 }, "en"), "Tue, September 29, 2 recommended events");
+});
+
+test("W0038 SC-01: a pool event an hour away gets a hollow ring but never becomes a 2-hour item or a schedule count", async (t) => {
+  // 东京 12:00；推荐活动 13:00 开始。
+  const soon = w38Candidate("REC-SOON", "2026-09-28T04:00:00Z", "一小时后的推荐活动");
+  const mounted = await w38Mount(t, { snapshot: w38Snapshot([soon]) });
+
+  assert.deepEqual(w38DotClasses(mounted, 28), ["ir-day-dot ir-day-dot-r"]);
+  assert.equal(w38DayButton(mounted, 28).props["aria-label"], "9月28日（周一），1 场推荐活动");
+  // 今日要事里没有这场，也没有「还有 1 小时」的暖色项；右栏计数仍是 0 个日程。
+  assert.ok(!w36Titles(mounted).some((title) => title.includes("一小时后的推荐活动")));
+  assert.ok(!textOf(mounted.root.root).includes("还有 1 小时"));
+  assert.ok(!mounted.root.root.findAll((node) => node.props?.className === "ir-m-lead ir-m-lead-hot").length);
+  assert.ok(textOf(w38Panel(mounted)).includes("0 个日程"));
+  // 时间线列出这场推荐活动（带「推荐」与理由），其余标记只有图例里的推荐项。
+  assert.deepEqual(w38Timeline(mounted).map((row) => [row.kind, row.href]), [["recommended", "/app/events/REC-SOON"]]);
+  assert.equal(w38Legend(mounted).length, 1);
+  const legend = textOf(w38Legend(mounted)[0]!);
+  assert.ok(legend.includes("推荐活动"));
+  assert.ok(!legend.includes("日程与已报名"));
+});
+
+test("W0038 SC-01: schedule and recommended on the same day sit side by side; dots are aria-hidden; no marks → no legend", async (t) => {
+  const snapshot = w38Snapshot(
+    [w38Candidate("REC-29", "2026-09-29T05:00:00Z")],
+    [w38Personal("p29", "2026-09-29T01:00:00Z", "牙医复诊")],
+  );
+  const mounted = await w38Mount(t, { snapshot });
+  assert.deepEqual(w38DotClasses(mounted, 29), ["ir-day-dot ir-day-dot-a", "ir-day-dot ir-day-dot-r"]);
+  const dots = w38DayButton(mounted, 29).findAll((node) => node.props?.className === "ir-day-dots")[0]!;
+  assert.equal(dots.props["aria-hidden"], true);
+  assert.equal(w38DayButton(mounted, 29).props["aria-label"], "9月29日（周二），1 项日程，1 场推荐活动");
+  assert.deepEqual(w38DotClasses(mounted, 27), []);
+  assert.equal(w38DayButton(mounted, 27).props["aria-label"], "9月27日（周日）");
+  const legend = textOf(w38Legend(mounted)[0]!);
+  assert.ok(legend.includes("日程与已报名") && legend.includes("推荐活动"));
+  // 没有任何标记的月份：不渲染图例。
+  const bare = await w38Mount(t, { snapshot: w38Snapshot([]) });
+  assert.equal(w38Legend(bare).length, 0);
+  // 空池但有日程：图例只有实心项。
+  const scheduleOnly = await w38Mount(t, { snapshot: w38Snapshot([], [w38Personal("p29", "2026-09-29T01:00:00Z", "牙医复诊")]) });
+  assert.deepEqual(w38DotClasses(scheduleOnly, 29), ["ir-day-dot ir-day-dot-a"]);
+  assert.ok(!textOf(w38Legend(scheduleOnly)[0]!).includes("推荐活动"));
+});
+
+test("W0038 SC-02: the day timeline lists all four kinds in time order, each as a link to its own page, with the now line", async (t) => {
+  // 约谈 10:30（已过）→ 现在 12:00 → 推荐 13:00 → 个人日程 15:00 → 已报名 18:00。
+  const snapshot = w38Snapshot(
+    [w38Candidate("REC-1", "2026-09-28T04:00:00Z", "推荐的午后场", "渋谷")],
+    [w38Personal("p1", "2026-09-28T06:00:00Z", "牙医复诊")],
+    SNAPSHOT("2026-09-28"),
+  );
+  const home = { ...HOME, events: [registeredEvent("ev-reg", "已报名的晚场", "2026-09-28T09:00:00Z")] };
+  const mounted = await w38Mount(t, { snapshot }, { home });
+
+  assert.deepEqual(
+    w38Timeline(mounted).map((row) => [row.kind, row.href]),
+    [
+      ["appointment", "/app/schedule"],
+      ["recommended", "/app/events/REC-1"],
+      ["personal", "/app/tasks/personal"],
+      ["registered", "/app/events/ev-reg"],
+    ],
+  );
+  const rec = w38Timeline(mounted)[1]!;
+  assert.ok(rec.text.includes("推荐的午后场"));
+  assert.ok(rec.text.includes("推荐"));
+  assert.ok(rec.text.includes(formatHomeEventReason({ kind: "recent" }, "zh")));
+  assert.ok(rec.text.includes("渋谷"));
+  // 「现在」线在第一条未开始的条目（推荐活动）之前。
+  const panel = textOf(w38Panel(mounted));
+  assert.ok(panel.indexOf("已确认约谈") < panel.indexOf("现在 12:00"));
+  assert.ok(panel.indexOf("现在 12:00") < panel.indexOf("推荐的午后场"));
+  // 计数只算日程（3 项），推荐活动不计入。
+  assert.ok(panel.includes("3 个日程"));
+  // 真实期条目都是普通链接，不拦截。
+  for (const row of w38Timeline(mounted)) assert.equal(row.node.props.onClick, undefined);
+  // 点日期只选中那一天。
+  await act(async () => w38DayButton(mounted, 29).props.onClick());
+  assert.equal(w38DayButton(mounted, 29).props["aria-pressed"], true);
+  assert.deepEqual(w38Timeline(mounted), []);
+  assert.ok(w38Empty(mounted).includes("这一天没有日程。"));
+});
+
+test("W0038 SC-03: today empty → the next event line; registered first, else the pool's earliest, else the old copy", async (t) => {
+  const pool = [
+    w38Candidate("LATE", "2026-09-30T01:00:00Z", "晚一场"),
+    w38Candidate("EARLY", "2026-09-29T01:00:00Z", "早一场"),
+  ];
+  const home = {
+    ...HOME,
+    events: [
+      registeredEvent("ev-late", "报名的后一场", "2026-10-03T09:00:00Z"),
+      registeredEvent("ev-past", "报名的已结束", "2026-09-20T09:00:00Z"),
+      registeredEvent("ev-early", "报名的前一场", "2026-10-02T09:00:00Z"),
+    ],
+  };
+  const registered = await w38Mount(t, { snapshot: w38Snapshot(pool) }, { home });
+  assert.equal(w38Empty(registered), "下一场活动：10/2 周五 报名的前一场");
+  assert.deepEqual(w38Next(registered).map((node) => [node.props["data-orbit-iorbit-next-event"], node.props.href]), [
+    ["registered", "/app/events/ev-early"],
+  ]);
+
+  const fromPool = await w38Mount(t, { snapshot: w38Snapshot(pool) });
+  assert.equal(w38Empty(fromPool), "下一场活动：9/29 周二 早一场", "the earliest start, not pool[0]");
+  assert.deepEqual(w38Next(fromPool).map((node) => node.props.href), ["/app/events/EARLY"]);
+  const english = await w38Mount(t, { snapshot: w38Snapshot(pool) }, { language: "en" });
+  assert.equal(w38Empty(english), "Next event: 9/29 Tue 早一场");
+
+  const nothing = await w38Mount(t, { snapshot: w38Snapshot([]) });
+  assert.equal(w38Empty(nothing), "今天没有已确认的日程。");
+  assert.equal(w38Next(nothing).length, 0);
+  // 「现在」线照常在空态前。
+  assert.ok(textOf(w38Panel(fromPool)).includes("现在 12:00"));
+});
+
+test("W0038 SC-03: pending, unavailable and other days keep the old copy; an unready pool draws no rings and only registrations count", async (t) => {
+  const pool = [w38Candidate("EARLY", "2026-09-29T01:00:00Z", "早一场")];
+  const home = { ...HOME, events: [registeredEvent("ev-early", "报名的前一场", "2026-10-02T09:00:00Z")] };
+
+  const pendingElement = homeElement({ clock: () => PLAN_NOW, home: home as never });
+  const pending = await mountHome(t, () => pendingElement({ loadSnapshot: (() => new Promise(() => undefined)) as never }), {
+    plan: null,
+  });
+  assert.equal(w38Empty(pending), "正在读取日程…");
+  assert.equal(w38Next(pending).length, 0);
+
+  const unavailable = await w38Mount(t, {}, { home });
+  assert.equal(w38Empty(unavailable), "日程来源暂时不可用。");
+  assert.equal(w38Next(unavailable).length, 0);
+
+  const otherDay = await w38Mount(t, { snapshot: w38Snapshot(pool) }, { home });
+  await act(async () => w38DayButton(otherDay, 27).props.onClick());
+  assert.equal(w38Empty(otherDay), "这一天没有日程。");
+  assert.equal(w38Next(otherDay).length, 0);
+
+  // 计划还在读 → 活动池未就绪：不画空心圈，「下一场活动」只看已报名。
+  let releasePlan: (value: unknown) => void = () => undefined;
+  const planGate = new Promise((resolve) => {
+    releasePlan = resolve;
+  });
+  const unready = await w38Mount(t, { planGate, snapshot: w38Snapshot(pool) });
+  assert.deepEqual(w38DotClasses(unready, 29), []);
+  assert.equal(w38Empty(unready), "今天没有已确认的日程。");
+  const unreadyRegistered = await w38Mount(t, { planGate, snapshot: w38Snapshot(pool) }, { home });
+  assert.equal(w38Empty(unreadyRegistered), "下一场活动：10/2 周五 报名的前一场");
+  assert.deepEqual(w38DotClasses(unreadyRegistered, 29), []);
+  releasePlan(null);
+  await unready.settle();
+  assert.deepEqual(w38DotClasses(unready, 29), ["ir-day-dot ir-day-dot-r"]);
+  assert.equal(w38Empty(unready), "下一场活动：9/29 周二 早一场");
+});
+
+test("W0038 SC-01: crossing Tokyo midnight into a new month moves the selection and the rings with todayKey", async (t) => {
+  let current = new Date("2026-09-30T14:59:00Z"); // 东京 9/30 23:59
+  const handlers: Array<() => void> = [];
+  const pool = [w38Candidate("OCT-1", "2026-09-30T15:30:00Z", "十月一日凌晨场")]; // 东京 10/1 00:30
+  const mounted = await w38Mount(t, { onInterval: (handler) => handlers.push(handler), snapshot: w38Snapshot(pool) }, {
+    clock: () => current,
+  });
+  assert.equal(w38DayButton(mounted, 30).props["aria-pressed"], true);
+  assert.deepEqual(w38DotClasses(mounted, 1), [], "a 10/1 00:30 event is not drawn on September 1");
+  assert.equal(w38Legend(mounted).length, 0);
+
+  current = new Date("2026-09-30T15:00:30Z"); // 东京 10/1 00:00
+  await act(async () => handlers.at(-1)!());
+  await mounted.settle();
+  assert.equal(w38DayButton(mounted, 1).props["aria-pressed"], true);
+  assert.deepEqual(w38DotClasses(mounted, 1), ["ir-day-dot ir-day-dot-r"]);
+  assert.deepEqual(w38Timeline(mounted).map((row) => row.href), ["/app/events/OCT-1"]);
+});
+
+test("W0038 SC-04: new calendar / timeline rules stay off the warm colour, carry no inline style, and the narrow week row keeps its dots", async (t) => {
+  const newRules = IORBIT_STYLES.split("\n").filter((line) =>
+    /ir-day-dots|ir-day-dot-r|ir-m-cal-legend|ir-m-tl-rec|ir-m-tl-next|a\.ir-m-tl-item/.test(line),
+  );
+  assert.ok(newRules.length >= 6, `expected the W0038 rules, found ${newRules.length}`);
+  for (const rule of newRules) assert.ok(!/C4461B/i.test(rule), `warm colour in ${rule}`);
+  // 选中日上：实心点变白，空心圈换浅色描边。
+  assert.ok(newRules.some((rule) => rule.includes(".ir-day-on .ir-day-dot-r")));
+  assert.match(IORBIT_STYLES, /\.ir-day-on \.ir-day-dot-a \{ background: #FFFFFF; \}/);
+  // 窄屏收起时只隐藏非本周的格子，圆点跟着本周格子显示（没有隐藏圆点的规则）。
+  assert.ok(!/ir-m-cal:not\(\[data-open="true"\]\)[^{]*ir-day-dot/.test(IORBIT_STYLES));
+
+  const snapshot = w38Snapshot(
+    [w38Candidate("REC-29", "2026-09-29T05:00:00Z")],
+    [w38Personal("p28", "2026-09-28T06:00:00Z", "牙医复诊")],
+  );
+  const mounted = await w38Mount(t, { snapshot });
+  const cal = mounted.root.root.findAll((node) => node.props?.className === "ir-m-cal")[0]!;
+  const styled = [...cal.findAll((node) => typeof node.type === "string" && node.props?.style !== undefined),
+    ...w38Panel(mounted).findAll((node) => typeof node.type === "string" && node.props?.style !== undefined)];
+  assert.deepEqual(styled.map((node) => node.type), []);
+  // 本周（9/27–10/3）那一行的格子没有 data-off-week，圆点在格子里。
+  assert.equal(w38DayButton(mounted, 29).props["data-off-week"], undefined);
+  assert.equal(w38DotClasses(mounted, 29).length, 1);
+});
+
+test("W0038 SC-02 (demo body): demo rows open the 这是示例 guard; the real recommended event is a plain link", async (t) => {
+  const todayKey = new Intl.DateTimeFormat("en-CA", { day: "2-digit", month: "2-digit", timeZone: "Asia/Tokyo", year: "numeric" }).format(new Date());
+  const candidate = w38Candidate("DEMO-REC", `${todayKey}T15:00:00+09:00`, "示例期的真实推荐");
+  const mounted = await mountHome(t, () => (
+    <IOrbitShell demoEventCandidates={[candidate]} guide={GUIDE_STEP_TWO} home={HOME as never} viewModel={VIEW_MODEL} />
+  ));
+  const rows = w38Timeline(mounted);
+  const rec = rows.find((row) => row.kind === "recommended")!;
+  assert.ok(rec, "the real recommended event is on the demo timeline");
+  assert.equal(rec.href, "/app/events/DEMO-REC");
+  assert.equal(rec.node.props.onClick, undefined);
+  assert.ok(!rec.node.findAll((node) => node.props?.["data-orbit-guide-demo-tag"] !== undefined).length);
+  const day = Number(todayKey.slice(8, 10));
+  assert.ok(w38DotClasses(mounted, day).includes("ir-day-dot ir-day-dot-r"));
+  assert.ok(w38DotClasses(mounted, day).includes("ir-day-dot ir-day-dot-a"));
+
+  const demoRow = rows.find((row) => row.kind !== "recommended")!;
+  let prevented = false;
+  await act(async () => demoRow.node.props.onClick({ preventDefault: () => (prevented = true) }));
+  await mounted.settle();
+  assert.ok(prevented);
+  const guard = mounted.root.root.findAll((node) => node.props?.["data-orbit-guide-demo-intercept"] !== undefined);
+  assert.equal(guard.length > 0, true);
+  assert.ok(textOf(guard[0]!).includes("这是示例"));
+  assert.deepEqual(mounted.calls.filter((call) => call.url !== "/api/account/me"), [], "no client request");
+});
+
+test("W0038 SC-01 (live shell): registrations from the live home draw solid dots and label the day", () => {
+  const todayKey = new Intl.DateTimeFormat("en-CA", { day: "2-digit", month: "2-digit", timeZone: "Asia/Tokyo", year: "numeric" }).format(new Date());
+  const [year, month] = todayKey.split("-").map(Number) as [number, number];
+  const home = { ...HOME, events: [registeredEvent("ev-live", "月初的报名", `${todayKey.slice(0, 7)}-01T10:00:00+09:00`)] };
+  const html = renderToStaticMarkup(<IOrbitShell home={home as never} viewModel={VIEW_MODEL} />);
+  assert.ok(html.includes(`aria-label="${iorbitSelectedDayLabel(year, month, 1, "zh")}，1 项日程"`));
+  assert.match(html, /class="ir-day-dot ir-day-dot-a"/);
+  assert.match(html, /data-orbit-iorbit-cal-legend/);
 });

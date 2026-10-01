@@ -117,6 +117,13 @@ ${S} .ir-m-tl-sub { font-size: 12.5px; color: #6B6F99; }
 ${S} .ir-m-now { display: flex; align-items: center; gap: 8px; padding: 2px 0; font-size: 11.5px; font-weight: 500; color: #C4461B; font-variant-numeric: tabular-nums; }
 ${S} .ir-m-now::after { content: ""; flex: 1; height: 1px; background: #C4461B; opacity: 0.5; }
 ${S} .ir-m-tl-empty { margin: 0; padding: 6px 0; font-size: 14px; color: #6B6F99; }
+/* W0038：时间线条目是链接（去详情／个人日程页／约谈）；推荐活动带「推荐」与空心记号 */
+${S} a.ir-m-tl-item { color: #0E1225; text-decoration: none; }
+${S} a.ir-m-tl-item:hover .ir-agenda-title { color: #2E3270; }
+${S} .ir-m-tl-rec { display: inline-flex; align-items: center; gap: 4px; margin-left: 6px; padding: 1px 6px; border: 1px solid #DDDEFA; border-radius: 4px; color: #4B4FC7; font-size: 11px; font-weight: 500; line-height: 1.5; vertical-align: 2px; }
+${S} .ir-m-tl-rec-mark { width: 6px; height: 6px; box-sizing: border-box; border: 1px solid #B9BCEB; border-radius: 50%; }
+${S} a.ir-m-tl-next { color: #3B3F7A; text-decoration: none; }
+${S} a.ir-m-tl-next:hover { color: #2E3270; text-decoration: underline; }
 /* 右栏：紧凑月历 */
 ${S} .ir-m-cal { padding-top: 18px; border-top: 1px solid #DDDEFA; }
 ${S} .ir-m-cal-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px; }
@@ -134,6 +141,14 @@ ${S} .ir-m-cal-days .btn.ir-day[data-today="true"]:not(.ir-day-on) { color: #2E3
 ${S} .ir-m-cal-days .btn.ir-day-on, ${S} .ir-m-cal-days .btn.ir-day-on:hover { background: #4B4FC7; color: #FFFFFF; box-shadow: none; }
 ${S} .ir-m-cal-days .ir-day-dot { bottom: 4px; }
 ${S} .ir-m-cal-days .btn.ir-day-on .ir-day-dot-a { background: #FFFFFF; }
+/* W0038：两色点——实心＝日程与已报名，空心圈＝推荐活动；同一天两个并排居中。圆点 aria-hidden。 */
+${S} .ir-m-cal-days .ir-day-dots { position: absolute; left: 50%; bottom: 4px; transform: translateX(-50%); display: inline-flex; align-items: center; gap: 3px; }
+${S} .ir-m-cal-days .ir-day-dots .ir-day-dot { position: static; transform: none; }
+${S} .ir-day-dot.ir-day-dot-r { width: 5px; height: 5px; box-sizing: border-box; border: 1px solid #B9BCEB; background: transparent; }
+${S} .ir-m-cal-days .btn.ir-day-on .ir-day-dot-r { border-color: #DDDEFA; }
+${S} .ir-m-cal-legend { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 10px 0 0; font-size: 11.5px; color: #6B6F99; }
+${S} .ir-m-cal-legend span { display: inline-flex; align-items: center; gap: 6px; }
+${S} .ir-m-cal-legend .ir-day-dot { position: static; transform: none; }
 /* 栏目区 */
 ${S} .ir-m-cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid #DDDEFA; }
 ${S} .ir-m-col { display: flex; flex-direction: column; gap: 12px; min-width: 0; padding: 22px 28px 4px; border-left: 1px solid #E8E9F6; }
