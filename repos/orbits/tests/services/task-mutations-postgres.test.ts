@@ -217,6 +217,93 @@ test("PostgreSQL task API returns the server snapshot after a stale delete and a
   }
 });
 
+test("PostgreSQL task API retains both committed edit versions across a stale update conflict", { skip: url ? false : "isolated ORBIT_TASKS_TEST_DATABASE_URL not provided" }, async () => {
+  assert.ok(url);
+  const schema = `c0010_task_api_edit_conflict_${randomUUID().replaceAll("-", "")}`;
+  const admin = new Pool({ connectionString: url, max: 1 });
+  const client = createTransactionalPostgresClient({ connectionString: url, pool: new Pool({ connectionString: url, max: 2, options: `-c search_path=${schema}` }) });
+  const actorId = "c0010-api-edit-conflict-owner";
+  const workspaceId = "c0010-task-api-edit-conflict";
+  const service = createTaskService({ repository: createTaskRepository({ store: createPostgresLiveRecordStore({ client }), workspaceId, transactionClient: client }) });
+  let now = "2026-09-30T00:00:00.000Z";
+  const dependencies = {
+    now: () => now,
+    resolveActor: async () => ({ id: actorId, workspaceId }),
+    service,
+  };
+  const collection = createTaskCollectionHandlers(dependencies);
+  const detail = createTaskDetailHandlers(dependencies);
+  let schemaCreated = false;
+
+  try {
+    await admin.query(`create schema ${schema}`);
+    schemaCreated = true;
+    await client.query(ORBIT_RECORDS_SCHEMA_SQL);
+
+    const createResponse = await collection.POST(new Request("https://orbit.local/api/tasks", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ category: "personal", idempotencyKey: "phone:create", title: "Original title" }),
+    }));
+    assert.equal(createResponse.status, 201);
+    const created = (await createResponse.json() as { data: { task: { id: string; updatedAt: string } } }).data.task;
+    const context = { params: Promise.resolve({ id: created.id }) };
+
+    now = "2026-09-30T00:01:00.000Z";
+    const webEdit = await detail.PATCH(new Request(`https://orbit.local/api/tasks/${created.id}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ action: "update", expectedUpdatedAt: created.updatedAt, idempotencyKey: "web:update", patch: { title: "Web version" } }),
+    }), context);
+    assert.equal(webEdit.status, 200);
+    const webTask = (await webEdit.json() as { data: { task: { title: string; updatedAt: string } } }).data.task;
+
+    now = "2026-09-30T00:02:00.000Z";
+    const stalePhoneEdit = await detail.PATCH(new Request(`https://orbit.local/api/tasks/${created.id}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ action: "update", expectedUpdatedAt: created.updatedAt, idempotencyKey: "phone:update-stale", patch: { title: "Local draft" } }),
+    }), context);
+    assert.equal(stalePhoneEdit.status, 409);
+    assert.equal((await stalePhoneEdit.json() as { error: { code: string } }).error.code, "CONFLICT");
+    assert.deepEqual(await service.get({ actorId, taskId: created.id }), webTask);
+    const historyAfterConflict = await service.history({ actorId, taskId: created.id });
+    assert.deepEqual(historyAfterConflict.map(activity => ({ type: activity.type, title: activity.taskSnapshot.title })), [
+      { type: "created", title: "Original title" },
+      { type: "updated", title: "Web version" },
+    ]);
+    const receiptsAfterConflict = await client.query<{ count: string }>(
+      "select count(*)::text as count from orbit_records where workspace_id = $1 and collection_name = 'task_mutations'",
+      [workspaceId],
+    );
+    assert.equal(receiptsAfterConflict.rows[0]?.count, "2", "the rejected stale edit must not create a receipt");
+
+    const snapshotResponse = await detail.GET(new Request(`https://orbit.local/api/tasks/${created.id}`), context);
+    assert.equal(snapshotResponse.status, 200);
+    const snapshot = (await snapshotResponse.json() as { data: { task: { title: string; updatedAt: string } } }).data.task;
+    assert.equal(snapshot.title, "Web version");
+    assert.equal(snapshot.updatedAt, webTask.updatedAt);
+
+    now = "2026-09-30T00:03:00.000Z";
+    const confirmedLocalEdit = await detail.PATCH(new Request(`https://orbit.local/api/tasks/${created.id}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ action: "update", expectedUpdatedAt: snapshot.updatedAt, idempotencyKey: "phone:update-rebased", patch: { title: "Local draft" } }),
+    }), context);
+    assert.equal(confirmedLocalEdit.status, 200);
+    assert.equal((await service.get({ actorId, taskId: created.id }))?.title, "Local draft");
+    assert.deepEqual((await service.history({ actorId, taskId: created.id })).map(activity => ({ type: activity.type, title: activity.taskSnapshot.title })), [
+      { type: "created", title: "Original title" },
+      { type: "updated", title: "Web version" },
+      { type: "updated", title: "Local draft" },
+    ]);
+  } finally {
+    await client.close();
+    if (schemaCreated) await admin.query(`drop schema ${schema} cascade`);
+    await admin.end();
+  }
+});
+
 test("PostgreSQL task routes hide a foreign actor's task from every mutation and bind create to its actor", { skip: url ? false : "isolated ORBIT_TASKS_TEST_DATABASE_URL not provided" }, async () => {
   assert.ok(url);
   const schema = `c0010_task_actor_matrix_${randomUUID().replaceAll("-", "")}`;
