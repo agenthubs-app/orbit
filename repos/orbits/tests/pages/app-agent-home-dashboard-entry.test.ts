@@ -8,7 +8,9 @@ import type {
   HomeFactsRouteModel,
 } from "../../app/(app)/app/agent/home-facts-route-service";
 import {
+  HOME_DASHBOARD_UPCOMING_LIMIT,
   loadHomeDashboardSnapshot,
+  resolveHomePlanEventCandidates,
   type HomeDashboardActor,
   type HomeDashboardRouteDependencies,
 } from "../../app/(app)/app/agent/home-dashboard-route-service";
@@ -156,8 +158,19 @@ function recommendationResult(
         } as PublicGoalRecommendationsResult["items"][number] & { privatePayload: string }]
       : [],
     state,
+    // W0036：四种状态都带「近期可报名」候选（读目录失败时由服务给空数组）。
+    upcoming: [UPCOMING_FIXTURE],
   };
 }
+
+const UPCOMING_FIXTURE = {
+  endsAt: "2026-09-20T03:00:00.000Z",
+  eventId: "event:upcoming",
+  publicCode: "upcoming-event",
+  startsAt: "2026-09-20T01:00:00.000Z",
+  title: "近期活动",
+  venue: "Shibuya",
+};
 
 function injectedDependencies(
   facts: HomeFactsRouteModel,
@@ -224,6 +237,9 @@ test("snapshot keeps each facts state and recommendation state independent", asy
     assert.equal(result.facts.appointments.state, "unavailable");
     assert.equal(result.facts.appointments.count, null);
     assert.equal(result.recommendations.state, recommendationState);
+    // W0036：needs_goal／no_match／unavailable 也不清空 upcoming。
+    assert.deepEqual(result.recommendations.upcoming, [UPCOMING_FIXTURE], recommendationState);
+    assert.equal(result.recommendations.upcomingTruncated, false, recommendationState);
     assert.deepEqual(result.recommendations.items, recommendationState === "success"
       ? [{
           description: "公开活动说明",
@@ -437,6 +453,79 @@ test("trusted composition isolates synchronous recommendation-factory failure an
     /snapshot time drifted/i,
   );
   assert.equal(driftCalls.facts.length, 1);
+});
+
+test("W0036: malformed upcoming makes the whole recommendation block unavailable (fail closed), private fields never leak", async () => {
+  const cases: Array<[string, unknown]> = [
+    ["missing", undefined],
+    ["not an array", "nope"],
+    ["missing title", [{ ...UPCOMING_FIXTURE, title: undefined }]],
+    ["numeric startsAt", [{ ...UPCOMING_FIXTURE, startsAt: 1 }]],
+    ["null entry", [null]],
+  ];
+  for (const [label, upcoming] of cases) {
+    const broken = { ...recommendationResult("success"), upcoming } as unknown as PublicGoalRecommendationsResult;
+    const result = await loadHomeDashboardSnapshot({
+      actor,
+      snapshotAt,
+      dependencies: injectedDependencies(factsModel(), broken, { facts: [], recommendationFactory: [], recommendation: [] }),
+    });
+    assert.deepEqual(result.recommendations, { items: [], state: "unavailable", upcoming: [], upcomingTruncated: false }, label);
+  }
+
+  const withPrivate = {
+    ...recommendationResult("needs_goal"),
+    upcoming: [{ ...UPCOMING_FIXTURE, organizerId: "account:secret", privatePayload: "x" }],
+  } as unknown as PublicGoalRecommendationsResult;
+  const result = await loadHomeDashboardSnapshot({
+    actor,
+    snapshotAt,
+    dependencies: injectedDependencies(factsModel(), withPrivate, { facts: [], recommendationFactory: [], recommendation: [] }),
+  });
+  assert.deepEqual(result.recommendations.upcoming, [UPCOMING_FIXTURE]);
+  assert.doesNotMatch(JSON.stringify(result), /secret|privatePayload/u);
+});
+
+test("W0036 SC-07: the snapshot carries at most the 12 earliest upcoming events and flags the cut", async () => {
+  for (const [count, truncated] of [[12, false], [13, true], [100, true]] as const) {
+    const upcoming = Array.from({ length: count }, (_, index) => ({
+      ...UPCOMING_FIXTURE,
+      eventId: `event:upcoming-${String(index + 1).padStart(3, "0")}`,
+    }));
+    const result = await loadHomeDashboardSnapshot({
+      actor,
+      snapshotAt,
+      dependencies: injectedDependencies(
+        factsModel(),
+        { ...recommendationResult("needs_goal"), upcoming },
+        { facts: [], recommendationFactory: [], recommendation: [] },
+      ),
+    });
+    assert.equal(result.recommendations.upcoming.length, Math.min(count, HOME_DASHBOARD_UPCOMING_LIMIT), `${count}`);
+    assert.deepEqual(result.recommendations.upcoming.map((item) => item.eventId), upcoming.slice(0, 12).map((item) => item.eventId));
+    assert.equal(result.recommendations.upcomingTruncated, truncated, `${count}`);
+  }
+  assert.equal(HOME_DASHBOARD_UPCOMING_LIMIT, 12);
+});
+
+test("W0036 SC-07: plan-event resolution reads as the canonical actor and returns only validated, projected candidates", async () => {
+  const reads: unknown[] = [];
+  const items = await resolveHomePlanEventCandidates({
+    actor,
+    dependencies: {
+      readCandidates: async (input) => {
+        reads.push(input);
+        return [{ ...UPCOMING_FIXTURE, extra: "drop-me" } as never];
+      },
+    },
+    eventIds: ["event:upcoming"],
+  });
+  assert.deepEqual(reads, [{ accountId: actor.id, eventIds: ["event:upcoming"] }]);
+  assert.deepEqual(items, [UPCOMING_FIXTURE]);
+  await assert.rejects(
+    resolveHomePlanEventCandidates({ actor: { ...actor, id: " " }, eventIds: ["x"] }),
+    /canonical dashboard actor/u,
+  );
 });
 
 test("snapshot projection drops private and feature-only fields while remaining serializable", async () => {
@@ -1035,4 +1124,79 @@ const { refreshHomeDashboardAction } = req(join(root, "app/(app)/app/agent/home-
     },
   });
   assert.equal(child.status, 0, `${child.stdout}\n${child.stderr}`);
+});
+
+/* ── W0036 SC-07 备选约束：计划点名活动的窄补查 Server Action ─────────────────── */
+
+const planActionPath = testRequire.resolve("../../app/(app)/app/agent/home-plan-events-actions.ts");
+type PlanActionModule = typeof import("../../app/(app)/app/agent/home-plan-events-actions");
+
+async function withPlanActionStubs<T>(
+  options: { auth?: unknown; mode?: "mock" | "live"; resolverThrows?: boolean; readThrows?: boolean },
+  callback: (actions: PlanActionModule, calls: { auth: number; resolve: unknown[] }) => Promise<T>,
+): Promise<T> {
+  const paths = [planActionPath, modePath, configPath, authPath, resolverPath, dashboardPath];
+  const previous = new Map(paths.map((path) => [path, testRequire.cache[path]]));
+  const calls = { auth: 0, resolve: [] as unknown[] };
+  try {
+    installModule(modePath, { resolveFeatureMode: () => options.mode ?? "live" });
+    installModule(configPath, { resolveLiveDatabaseConnectionConfig: () => liveConfig });
+    installModule(authPath, { auth: async () => { calls.auth += 1; return options.auth === undefined ? liveSession : options.auth; } });
+    installModule(resolverPath, {
+      resolveAuthenticatedApiActorFromSession: async () => {
+        if (options.resolverThrows) throw new Error("resolver down");
+        return canonicalActor;
+      },
+    });
+    installModule(dashboardPath, {
+      HOME_PLAN_EVENT_IDS_LIMIT: 20,
+      resolveHomePlanEventCandidates: async (input: unknown) => {
+        calls.resolve.push(input);
+        if (options.readThrows) throw new Error("catalogue down");
+        return [UPCOMING_FIXTURE];
+      },
+    });
+    delete testRequire.cache[planActionPath];
+    return await callback(testRequire(planActionPath) as PlanActionModule, calls);
+  } finally {
+    for (const path of paths) {
+      const old = previous.get(path);
+      if (old) testRequire.cache[path] = old;
+      else delete testRequire.cache[path];
+    }
+  }
+}
+
+test("W0036 the plan-event action is server-only and exports one async action", () => {
+  assert.match(readFileSync(planActionPath, "utf8"), /^"use server";\n/u);
+  const module = testRequire(planActionPath) as PlanActionModule;
+  assert.deepEqual(Object.keys(module).filter((key) => key !== "__esModule"), ["resolveHomePlanEventsAction"]);
+});
+
+test("W0036 the plan-event action rejects bad ids before auth, needs a live canonical session, and fails closed", async () => {
+  await withPlanActionStubs({}, async (actions, calls) => {
+    for (const bad of [undefined, "event:a", [], [""], [" event:a"], [42], Array.from({ length: 21 }, (_, index) => `e${index}`)]) {
+      assert.deepEqual(await actions.resolveHomePlanEventsAction(bad), { state: "invalid" }, JSON.stringify(bad));
+    }
+    assert.equal(calls.auth, 0);
+    assert.deepEqual(await actions.resolveHomePlanEventsAction(["event:upcoming", "event:upcoming"]), {
+      items: [UPCOMING_FIXTURE],
+      state: "events",
+    });
+    assert.deepEqual(calls.resolve, [{ actor: { accountId: actor.id, id: actor.id, workspaceId }, eventIds: ["event:upcoming"] }]);
+  });
+  await withPlanActionStubs({ auth: null }, async (actions, calls) => {
+    assert.deepEqual(await actions.resolveHomePlanEventsAction(["event:a"]), { state: "unauthenticated" });
+    assert.deepEqual(calls.resolve, []);
+  });
+  await withPlanActionStubs({ mode: "mock" }, async (actions, calls) => {
+    assert.deepEqual(await actions.resolveHomePlanEventsAction(["event:a"]), { state: "unavailable" });
+    assert.equal(calls.auth, 0);
+  });
+  await withPlanActionStubs({ resolverThrows: true }, async (actions) => {
+    assert.deepEqual(await actions.resolveHomePlanEventsAction(["event:a"]), { state: "unavailable" });
+  });
+  await withPlanActionStubs({ readThrows: true }, async (actions) => {
+    assert.deepEqual(await actions.resolveHomePlanEventsAction(["event:a"]), { state: "unavailable" });
+  });
 });

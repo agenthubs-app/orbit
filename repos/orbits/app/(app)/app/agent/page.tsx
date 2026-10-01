@@ -24,6 +24,10 @@
  * W0022：开关状态交给壳：首页无计划时「帮我制定推进计划 →」去 `/app/start?step=3`（开关关闭时
  * 仍是 `/app/agent/strategy`）。W0035 删去引导的「活动」一步后，首页不再判定它、不再提醒，
  * 也不再为它读报名事实（`hasAnyActiveRegistration` 0 次）。
+ *
+ * W0036（RH-03「活动始终真实」）：示例期唯一新增的真实读取——「近期可报名」活动（公开目录 1 次 +
+ * 本人报名 1 次），作为 `demoEventCandidates` 交给示例壳组活动池；其余真实数据仍一概不读、不下传。
+ * 真实分支不做这次读取（真实期活动池由首页从 snapshot + 计划算出）。
  */
 import { getOrbitServerLanguage, localizeOrbitTree } from "../orbit-language-server";
 import type { OrbitLanguage } from "../orbit-language-core";
@@ -42,6 +46,7 @@ import { readCommunityJoinedForActor } from "../../../../features/community/serv
 import { readGuideDemoConfig } from "../../../../shared/config/guide-demo";
 import { readGuideStatusForActor } from "../../../../features/guide/progress";
 import { readDemoModeViewForActor } from "../_demo/demo-guide-view";
+import { readDemoHomeEventCandidates } from "../../../../features/agent/home-event-pool-runtime";
 import { resolvePlanService } from "../../../../features/plans/service-factory";
 import {
   planCardViewFromSnapshot,
@@ -153,12 +158,15 @@ export default async function AppAgentPage({
   );
   if (guide) {
     // 示例壳只吃引导视图；home／viewModel 一律不带真实数据（起步模型不含任何人物）。
+    // W0036：例外只有真实的近期可报名活动（读不到时为空数组，示例照常渲染）。
+    const demoEventCandidates = await readDemoHomeEventCandidates({ accountId: actorId });
     return (
       <>
         <OrbitReferenceStyles />
         <OrbitVisualFreezeRuntime />
         <div data-orbit-route="app-agent-route">
           <IOrbitShell
+            demoEventCandidates={demoEventCandidates}
             guide={guide}
             home={null}
             initialPlanCard={null}

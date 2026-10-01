@@ -73,6 +73,7 @@ import { IOrbitChat, type IOrbitChatProps } from "./iorbit-chat";
 import { IOrbitChatAside } from "./iorbit-chat-aside";
 import { IOrbitHistoryDrawer } from "./iorbit-history-drawer";
 import { IOrbitHome } from "./iorbit-home";
+import type { HomeEventPoolCandidate } from "../../../../../features/agent/home-event-pool";
 import { iorbitDayKey, type AgentMessage } from "./iorbit-model";
 import { planCardViewFromSnapshot, type IOrbitPlanCardView } from "./iorbit-plan-card-model";
 import { IORBIT_STYLES } from "./iorbit-styles";
@@ -82,6 +83,11 @@ import { useAgentHistory } from "./use-agent-history";
 export interface IOrbitShellProps {
   /** 服务端读取的本人社群加入状态（W0003），下传给概览的「已报名活动」栏。 */
   communityJoined?: boolean;
+  /**
+   * W0036：示例期服务端读到的「近期可报名」真实活动（只给示例壳；RH-03 活动始终真实）。
+   * 真实壳不用它：真实期的活动池由首页从 snapshot + 计划算出。
+   */
+  demoEventCandidates?: readonly HomeEventPoolCandidate[];
   /** 示例模式（W0004）：非空即渲染示例壳；开关关闭或不在引导期时为空。 */
   guide?: DemoModeView | null;
   /** W0022：服务端引导开关是否打开（只给真实壳的概览；示例壳不用）。 */
@@ -109,7 +115,7 @@ export interface IOrbitShellProps {
 export function IOrbitShell(props: IOrbitShellProps) {
   // 分支放在任何 hook 之前：示例壳与真实壳是两棵不同的组件树，hook 顺序各自稳定。
   // 示例期间不把任何真实数据（`home`、`viewModel`——后者的 suggests 带真实人名与草稿）交给示例壳。
-  if (props.guide) return <IOrbitDemoShell guide={props.guide} />;
+  if (props.guide) return <IOrbitDemoShell demoEventCandidates={props.demoEventCandidates} guide={props.guide} />;
   return <IOrbitLiveShell {...props} />;
 }
 
@@ -118,10 +124,16 @@ export function IOrbitShell(props: IOrbitShellProps) {
  * 概览屏里的「打开对话」「历史」和其余会话都经 `guardWrite` 拦下；只有示例问答
  * （W0014）切到只读对话分支。
  */
-function IOrbitDemoShell({ guide }: { guide: DemoModeView }) {
+function IOrbitDemoShell({
+  demoEventCandidates,
+  guide,
+}: {
+  demoEventCandidates?: readonly HomeEventPoolCandidate[];
+  guide: DemoModeView;
+}) {
   return (
     <DemoModeProvider view={guide}>
-      <IOrbitDemoBody />
+      <IOrbitDemoBody demoEventCandidates={demoEventCandidates} />
     </DemoModeProvider>
   );
 }
@@ -132,7 +144,7 @@ const NO_TASK_SUGGESTIONS: IOrbitChatProps["taskSuggestions"] = {
 };
 
 /** 示例壳的内容：概览与只读示例问答的全部数据都来自示例人物（`_demo/demo-persona.ts`）。 */
-function IOrbitDemoBody() {
+function IOrbitDemoBody({ demoEventCandidates }: { demoEventCandidates?: readonly HomeEventPoolCandidate[] }) {
   const { language, t } = useOrbitLanguage();
   const demo = useDemoMode();
   const guardWrite = demo?.guardWrite;
@@ -195,6 +207,7 @@ function IOrbitDemoBody() {
               </div>
             ) : (
               <IOrbitHome
+                demoEventCandidates={demoEventCandidates}
                 home={null}
                 navigate={() => undefined}
                 onAsk={() => undefined}

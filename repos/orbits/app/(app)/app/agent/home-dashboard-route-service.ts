@@ -18,10 +18,13 @@ import {
 import {
   createConfiguredPublicGoalRecommendationsRuntime,
 } from "../../../../features/events/public-goal-recommendations-runtime";
+import { readHomePlanEventCandidates } from "../../../../features/agent/home-event-pool-runtime";
+import type { HomeEventPoolCandidate } from "../../../../features/agent/home-event-pool";
 import type {
   PublicGoalRecommendationItem,
   PublicGoalRecommendationsResult,
   PublicGoalRecommendationsService,
+  PublicGoalUpcomingEvent,
 } from "../../../../features/events/public-goal-recommendations";
 
 export interface HomeDashboardActor {
@@ -41,6 +44,16 @@ export interface HomeDashboardRecommendationItem {
   venue: string;
 }
 
+/** W0036：首页推荐活动池的「近期可报名」候选（全部，不截断，按开始时间升序）。 */
+export interface HomeDashboardUpcomingItem {
+  endsAt: string;
+  eventId: string;
+  publicCode: string;
+  startsAt: string;
+  title: string;
+  venue: string;
+}
+
 export interface HomeDashboardSnapshot {
   owner: {
     accountId: string;
@@ -49,6 +62,13 @@ export interface HomeDashboardSnapshot {
   recommendations: {
     items: readonly HomeDashboardRecommendationItem[];
     state: PublicGoalRecommendationsResult["state"];
+    /**
+     * W0036：四种状态都复制；目录或报名读失败、或数据形状不对时为空。SC-07 备选约束：只带按开始时间
+     * 最早的 `HOME_DASHBOARD_UPCOMING_LIMIT` 场（100 场时整份约 25 KB，超过 20 KB 判定线），
+     * 截掉了就把 `upcomingTruncated` 置 true，首页再为计划点名的活动补查一次。
+     */
+    upcoming: readonly HomeDashboardUpcomingItem[];
+    upcomingTruncated: boolean;
   };
   snapshotAt: string;
   facts: HomeFactsViewModel;
@@ -301,24 +321,50 @@ function recommendationItem(
   };
 }
 
+function upcomingItem(item: PublicGoalUpcomingEvent): HomeDashboardUpcomingItem {
+  if (!item || typeof item !== "object") throw new Error("Upcoming item is invalid.");
+  return {
+    endsAt: requiredRecommendationString(item.endsAt, "Upcoming endsAt"),
+    eventId: requiredRecommendationString(item.eventId, "Upcoming event id"),
+    publicCode: requiredRecommendationString(item.publicCode, "Upcoming public code"),
+    startsAt: requiredRecommendationString(item.startsAt, "Upcoming startsAt"),
+    title: requiredRecommendationString(item.title, "Upcoming title"),
+    venue: requiredRecommendationString(item.venue, "Upcoming venue"),
+  };
+}
+
+/** SC-07 备选约束：snapshot 里「近期可报名」最多带几场（≥ 活动池 8 场，留 4 场余量给去重与剔除）。 */
+export const HOME_DASHBOARD_UPCOMING_LIMIT = 12;
+
+const UNAVAILABLE_RECOMMENDATIONS: HomeDashboardSnapshot["recommendations"] = {
+  items: [],
+  state: "unavailable",
+  upcoming: [],
+  upcomingTruncated: false,
+};
+
 function copyRecommendations(
   result: PublicGoalRecommendationsResult | null,
 ): HomeDashboardSnapshot["recommendations"] {
   if (
     !result ||
     !["success", "needs_goal", "no_match", "unavailable"].includes(result.state) ||
-    !Array.isArray(result.items)
+    !Array.isArray(result.items) ||
+    !Array.isArray(result.upcoming)
   ) {
-    return { items: [], state: "unavailable" };
+    return { ...UNAVAILABLE_RECOMMENDATIONS };
   }
-  if (result.state !== "success") return { items: [], state: result.state };
+  // W0036：upcoming 对四种状态都复制并逐项校验（投影掉多余字段）；坏数据整体按 unavailable。
   try {
+    const upcoming = result.upcoming.map(upcomingItem);
     return {
-      items: result.items.map(recommendationItem),
+      items: result.state === "success" ? result.items.map(recommendationItem) : [],
       state: result.state,
+      upcoming: upcoming.slice(0, HOME_DASHBOARD_UPCOMING_LIMIT),
+      upcomingTruncated: upcoming.length > HOME_DASHBOARD_UPCOMING_LIMIT,
     };
   } catch {
-    return { items: [], state: "unavailable" };
+    return { ...UNAVAILABLE_RECOMMENDATIONS };
   }
 }
 
@@ -376,4 +422,30 @@ export async function loadHomeDashboardSnapshot(
     snapshotAt: snapshotIso,
     facts,
   };
+}
+
+/** 首页补查计划点名活动一次最多带几个 id（计划里的活动条目本来就少）。 */
+export const HOME_PLAN_EVENT_IDS_LIMIT = 20;
+
+export interface ResolveHomePlanEventsInput {
+  actor: HomeDashboardActor;
+  eventIds: readonly string[];
+  dependencies?: {
+    readCandidates?: (input: { accountId: string; eventIds: readonly string[] }) => Promise<HomeEventPoolCandidate[]>;
+  };
+}
+
+/**
+ * W0036 SC-07 备选约束：按本人身份校验计划点名的活动是否仍可报名（同推荐服务的候选规则），只返回点名的
+ * 那几场。id 由调用方给，只作筛选，不扩大读取范围：读的仍是整份公开目录 + 本人报名。
+ */
+export async function resolveHomePlanEventCandidates(
+  input: ResolveHomePlanEventsInput,
+): Promise<HomeEventPoolCandidate[]> {
+  if (!nonBlank(input.actor.id) || !nonBlank(input.actor.workspaceId)) {
+    throw new Error("A canonical dashboard actor is required.");
+  }
+  const read = input.dependencies?.readCandidates ?? readHomePlanEventCandidates;
+  const items = await read({ accountId: input.actor.id, eventIds: input.eventIds });
+  return items.map((item) => upcomingItem(item as PublicGoalUpcomingEvent));
 }

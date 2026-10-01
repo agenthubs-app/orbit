@@ -20,9 +20,27 @@ export interface PublicGoalRecommendationItem {
   venue: string;
 }
 
+/**
+ * W0036：「近期可报名」候选（首页推荐活动池的近期来源）。已排除已开始、已取消、本人主办、本人已报名；
+ * 按开始时间升序；服务端不截断（计划点名的活动排第几场都要能解析到）。
+ */
+export interface PublicGoalUpcomingEvent {
+  endsAt: string;
+  eventId: string;
+  publicCode: string;
+  startsAt: string;
+  title: string;
+  venue: string;
+}
+
 export interface PublicGoalRecommendationsResult {
   items: readonly PublicGoalRecommendationItem[];
   state: PublicGoalRecommendationsState;
+  /**
+   * W0036：四种状态都带。目标这一段只决定 `state` 与 `items`；目录 + 报名这一段独立求值得到
+   * `upcoming`——没设目标、读目标失败时照样读目录与报名；目录或报名读失败时为空数组。
+   */
+  upcoming: readonly PublicGoalUpcomingEvent[];
 }
 
 export interface PublicGoalRecommendationsInput {
@@ -69,17 +87,21 @@ interface CandidateFacts extends ValidatedCandidate {
 }
 
 const emptyItems: readonly PublicGoalRecommendationItem[] = [];
+const emptyUpcoming: readonly PublicGoalUpcomingEvent[] = [];
 const preferredRecordStatuses = new Set(["cancelled", "confirmed", "imported"]);
 const registrationStatuses = new Set(["cancelled", "rsvped"]);
 
-function unavailable(): PublicGoalRecommendationsResult {
-  return { items: emptyItems, state: "unavailable" };
+function unavailable(
+  upcoming: readonly PublicGoalUpcomingEvent[] = emptyUpcoming,
+): PublicGoalRecommendationsResult {
+  return { items: emptyItems, state: "unavailable", upcoming };
 }
 
 function emptyState(
   state: "needs_goal" | "no_match",
+  upcoming: readonly PublicGoalUpcomingEvent[] = emptyUpcoming,
 ): PublicGoalRecommendationsResult {
-  return { items: emptyItems, state };
+  return { items: emptyItems, state, upcoming };
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -317,6 +339,92 @@ function registeredEventIds(
   return registered;
 }
 
+/** 目录 + 本人报名这一段的结果：可报名候选（已排除已报名，升序）。 */
+interface BookableCandidates {
+  bookable: readonly ValidatedCandidate[];
+}
+
+/**
+ * 读目录并对全部候选读一次本人报名（候选为空时不读报名）。语句与改前的 success／no_match 路径相同：
+ * `readPublicCatalogue` 1 次 + `listMemberships` ≤1 次。任何读取或校验失败都抛错，由调用方决定降级。
+ */
+async function readBookableCandidates(
+  dependencies: Pick<PublicGoalRecommendationsDependencies, "listMemberships" | "readPublicCatalogue">,
+  accountId: string,
+  now: Date,
+): Promise<BookableCandidates> {
+  const catalogue = await dependencies.readPublicCatalogue(now);
+  const candidates = candidatesFromCatalogue(catalogue, accountId, now.getTime());
+  if (candidates.length === 0) return { bookable: [] };
+  const candidateIds = candidates.map((candidate) => candidate.eventId);
+  const memberships = await dependencies.listMemberships({
+    accountId,
+    eventIds: candidateIds,
+  });
+  const registered = registeredEventIds(
+    memberships,
+    accountId,
+    new Set(candidateIds),
+  );
+  return {
+    bookable: candidates
+      .filter((candidate) => !registered.has(candidate.eventId))
+      .sort(
+        (left, right) =>
+          left.startsAtMs - right.startsAtMs ||
+          left.eventId.localeCompare(right.eventId),
+      ),
+  };
+}
+
+function upcomingFrom(bookable: readonly ValidatedCandidate[]): readonly PublicGoalUpcomingEvent[] {
+  return bookable.map((candidate) => ({
+    endsAt: candidate.record.endsAt,
+    eventId: candidate.eventId,
+    publicCode: candidate.publicCode,
+    startsAt: candidate.record.startsAt,
+    title: candidate.record.title,
+    venue: candidate.record.venue,
+  }));
+}
+
+/**
+ * W0036：只读「近期可报名」（不读目标）。首页示例期在服务端用它给真实活动（RH-03）；语句与推荐服务的
+ * 目录 + 报名这一段相同（目录 1 次 + 报名 ≤1 次）。读取或校验失败时抛错，由调用方降级。
+ */
+export async function readPublicUpcomingEvents(
+  dependencies: Pick<PublicGoalRecommendationsDependencies, "listMemberships" | "readPublicCatalogue">,
+  accountId: string,
+  now: Date,
+): Promise<readonly PublicGoalUpcomingEvent[]> {
+  if (typeof accountId !== "string" || !accountId.trim() || accountId !== accountId.trim()) {
+    throw new Error("A canonical account id is required.");
+  }
+  const { bookable } = await readBookableCandidates(dependencies, accountId, now);
+  return upcomingFrom(bookable);
+}
+
+type GoalRead =
+  | { kind: "goal"; goal: string }
+  | { kind: "needs_goal" }
+  | { kind: "unavailable" };
+
+async function readGoal(
+  dependencies: PublicGoalRecommendationsDependencies,
+  accountId: string,
+): Promise<GoalRead> {
+  let goalValue: unknown;
+  try {
+    goalValue = await dependencies.readRelationshipGoal(accountId);
+  } catch {
+    return { kind: "unavailable" };
+  }
+  if (goalValue === null || goalValue === undefined) return { kind: "needs_goal" };
+  if (typeof goalValue !== "string") return { kind: "unavailable" };
+  const goal = goalValue.trim();
+  return goal ? { goal, kind: "goal" } : { kind: "needs_goal" };
+}
+
 async function recommendWithDependencies(
   dependencies: PublicGoalRecommendationsDependencies,
   input: PublicGoalRecommendationsInput,
@@ -333,37 +441,30 @@ async function recommendWithDependencies(
     return unavailable();
   }
 
-  const goalValue = await dependencies.readRelationshipGoal(accountId);
-  if (goalValue === null || goalValue === undefined) {
-    return emptyState("needs_goal");
+  // 目标这一段只决定 state 与 items。没设目标、读目标失败时不再提前返回（W0036 兜底「近期活动」）：
+  // 目录 + 报名照读，只是这两条路径因此各多出目录 1 次、报名 1 次。
+  const goalRead = await readGoal(dependencies, accountId);
+  if (goalRead.kind !== "goal") {
+    let upcoming = emptyUpcoming;
+    try {
+      upcoming = upcomingFrom((await readBookableCandidates(dependencies, accountId, now)).bookable);
+    } catch {
+      // 目录或报名读失败：池为空是如实的。
+    }
+    return goalRead.kind === "needs_goal"
+      ? emptyState("needs_goal", upcoming)
+      : unavailable(upcoming);
   }
-  if (typeof goalValue !== "string") {
-    return unavailable();
-  }
-  const goal = goalValue.trim();
-  if (!goal) {
-    return emptyState("needs_goal");
+  const goal = goalRead.goal;
+
+  // 有目标时目录或报名读失败仍按原样整体 unavailable（upcoming 为空）。
+  const { bookable } = await readBookableCandidates(dependencies, accountId, now);
+  const upcoming = upcomingFrom(bookable);
+  if (bookable.length === 0) {
+    return emptyState("no_match", upcoming);
   }
 
-  const catalogue = await dependencies.readPublicCatalogue(now);
-  const candidates = candidatesFromCatalogue(catalogue, accountId, now.getTime());
-  if (candidates.length === 0) {
-    return emptyState("no_match");
-  }
-
-  const candidateIds = candidates.map((candidate) => candidate.eventId);
-  const memberships = await dependencies.listMemberships({
-    accountId,
-    eventIds: candidateIds,
-  });
-  const registered = registeredEventIds(
-    memberships,
-    accountId,
-    new Set(candidateIds),
-  );
-
-  const scored = candidates
-    .filter((candidate) => !registered.has(candidate.eventId))
+  const scored = bookable
     .map((candidate) => {
       const matchedTokens = matchedTokensForText(
         `${candidate.record.title} ${candidate.record.description}`,
@@ -381,7 +482,7 @@ async function recommendWithDependencies(
     .slice(0, 3);
 
   if (scored.length === 0) {
-    return emptyState("no_match");
+    return emptyState("no_match", upcoming);
   }
 
   return {
@@ -396,6 +497,7 @@ async function recommendWithDependencies(
       venue: candidate.record.venue,
     })),
     state: "success",
+    upcoming,
   };
 }
 

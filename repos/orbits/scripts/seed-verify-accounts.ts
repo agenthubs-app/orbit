@@ -4,6 +4,9 @@
  *   node --import tsx scripts/seed-verify-accounts.ts                 # 造全部测试账号与场景（可重复执行）
  *   node --import tsx scripts/seed-verify-accounts.ts --reset verify-plan   # 只把一个账号重置到初始状态
  *   node --import tsx scripts/seed-verify-accounts.ts --summary       # 只读：各账号当前状态
+ *   node --import tsx scripts/seed-verify-accounts.ts --reset verify-new --guide-step1
+ *       # W0036：重置 verify-new 后再给它 GUIDE_REQUIRED_CONTACTS 位已确认联系人（同一套联系人夹具与写入），
+ *       # 让新用户不经名片识别（付费 AI）也能完成引导第 1 步，接着在浏览器里走第 2、3 步
  *   node --import tsx scripts/seed-verify-accounts.ts --fingerprint   # 只读：非 verify-* 行的指纹
  *   node --import tsx scripts/seed-verify-accounts.ts --assert-only   # 只做本机库断言（verify-server.sh 用）
  *
@@ -36,6 +39,7 @@ import { resolvePlanService } from "../features/plans/service-factory";
 import { acquireSyncCommitOrderLock } from "../features/sync/commit-order-lock";
 import { planTokyoDate, planWeekState } from "../features/plans/week";
 import { buildAccountContactFixtures } from "../shared/mock/account-contact-fixtures";
+import { GUIDE_REQUIRED_CONTACTS } from "../features/guide/progress";
 import type { LiveRecordStoreLike } from "../shared/storage/live-record-store";
 import {
   createPgLiveRecordSqlClient,
@@ -1114,7 +1118,7 @@ type Command =
   | { kind: "fingerprint" }
   | { kind: "summary" }
   | { kind: "seed" }
-  | { kind: "reset"; account: VerifyAccountName };
+  | { kind: "reset"; account: VerifyAccountName; guideStep1?: boolean };
 
 function parseCommand(args: readonly string[]): Command {
   if (args.includes("--assert-only")) return { kind: "assert" };
@@ -1126,7 +1130,9 @@ function parseCommand(args: readonly string[]): Command {
     if (!VERIFY_ACCOUNT_NAMES.includes(account as VerifyAccountName)) {
       throw new Error(`--reset 需要账号名：${VERIFY_ACCOUNT_NAMES.join(" / ")}`);
     }
-    return { account: account as VerifyAccountName, kind: "reset" };
+    const guideStep1 = args.includes("--guide-step1");
+    if (guideStep1 && account !== "verify-new") throw new Error("--guide-step1 只用于 verify-new。");
+    return { account: account as VerifyAccountName, guideStep1, kind: "reset" };
   }
   const unknown = args.filter((arg) => arg !== "seed");
   if (unknown.length > 0) throw new Error(`未知参数：${unknown.join(" ")}`);
@@ -1173,6 +1179,13 @@ async function main(): Promise<void> {
     for (const name of names) {
       purged[name] = await purgeAccount(runtime, ACCOUNTS[name]);
       await seedAccount(runtime, name);
+    }
+    if (command.kind === "reset" && command.guideStep1) {
+      const spec = ACCOUNTS["verify-new"];
+      await seedContacts(runtime, {
+        ...spec,
+        contactFixtureIndexes: Array.from({ length: GUIDE_REQUIRED_CONTACTS }, (_, index) => index),
+      });
     }
     const after = await fingerprint(sql);
     const changed = diffFingerprints(before, after);
