@@ -98,8 +98,8 @@
 | [W0032](W0032-session-revocation-read/GOAL.md) | 登录会话有效性检查（`isPasswordSessionCurrent`）读取瘦身：生产构建实测每请求读取与月流量，只读判定所需字段或同请求只读一次，安全行为不变 | RV-03、RV-05 | W0031（D28）；W32 已定（D30、D31） | completed |
 | [W0034](W0034-runtime-allowlist-prod/GOAL.md) | 排序与联系人搜索运行时白名单覆盖生产组合（Node 24.x、PG 16.15／ICU collversion 153.14）：同组合差分测试、白名单不卡 Node patch、失败时记录实际元组 | RV-04 | W0019 只读核查（D33）；W34 已定（D35） | completed |
 | [W0033](W0033-notification-source-404/GOAL.md) | 通知来源页 id 重复编码导致 404 的修复（L） | RV-02 | W0031（D29） | completed |
-| [W0035](W0035-guide-three-steps/GOAL.md) | 引导只剩名片、目标、计划三步；第 4 步在引导页、首页提醒和测试里全部移除；步骤校验收窄到 1–3，存量 currentStep=4 兼容（H） | RH-01 | 无 | ready |
-| [W0036](W0036-today-plan-actions/GOAL.md) | 今日要事吸收本周计划行动（勾掉／今天先不做）与补人脉提示，头条按首条要事拼接；抽出共享推荐活动池（H） | RH-02、RH-03（活动池） | W0035 | planned |
+| [W0035](W0035-guide-three-steps/GOAL.md) | 引导只剩名片、目标、计划三步；第 4 步在引导页、首页提醒和测试里全部移除；步骤校验收窄到 1–3，存量 currentStep=4 兼容（H） | RH-01 | 无 | completed |
+| [W0036](W0036-today-plan-actions/GOAL.md) | 今日要事吸收本周计划行动（勾掉／今天先不做）与补人脉提示，头条按首条要事拼接；抽出共享推荐活动池（H） | RH-02、RH-03（活动池） | W0035 | ready |
 | [W0037](W0037-today-events-module/GOAL.md) | 今日要事里的活动小模组（社群置顶 + 2 场推荐，有要事时缩成一行）、已报名栏只放报名、示例首页同步（H：IOrbitHome CRITICAL、放宽示例期零读取并新增真实写入） | RH-03、RH-04（已报名栏） | W0036 | planned |
 | [W0038](W0038-calendar-event-dots/GOAL.md) | 月历实心／空心两色圆点与图例，空日程行显示下一场活动（H：IOrbitHome CRITICAL） | RH-04（右栏） | W0036 | planned |
 | [W0039](W0039-home-not-empty-closeout/GOAL.md) | 大目标 3 收口：全量对照基线，3001 走新用户与老用户两条路径截图（I） | RH-05 | W0035～W0038 | planned |
@@ -146,3 +146,4 @@
 | W0034 | run-01（2026-09-29～30） | `0af468b9`、`b964c37a`（报告 `bf2092d2`） | `af7da1a8` | [REPORT](W0034-runtime-allowlist-prod/REPORT.md)；跟进与联系人生产组合入表 |
 | W0019 | run-01（2026-09-30） | `4d43f2a1`（报告 `36c31566`） | `681f56bb` | [REPORT](W0019-release-checklist/REPORT.md)；[上线清单](W0019-release-checklist/RELEASE-CHECKLIST.md) |
 | 集成＋上线 | 2026-09-30～10-01 | `9cb9e55d`（合并 `dda12736`）、`0b847368`、`8b6a1045` | `8b6a1045`（chat-agent 快进） | 生产部署 `dpl_4dgYnCYQc9PuHXcPdaRKNvmSTHDJ`；[上线清单附录 D](W0019-release-checklist/RELEASE-CHECKLIST.md#附录-d上线记录2026-09-3010-01) |
+| W0035 | run-01（2026-10-01） | `7e074834`（报告 `fbbdf954`） | `3dc60dc4` | [REPORT](W0035-guide-three-steps/REPORT.md)；合并树受影响 9 个文件 169 pass／1 skip（PG 缺变量，同 run 内已用本机库补跑 0 skip）、tsc 仅 `.next/types` 过期生成文件 |
