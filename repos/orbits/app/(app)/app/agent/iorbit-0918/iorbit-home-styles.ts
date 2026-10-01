@@ -83,6 +83,12 @@ ${S} .ir-m-brief-body { display: flex; flex-direction: column; gap: 6px; min-wid
 ${S} .ir-m-brief-title { font-size: 16px; font-weight: 500; line-height: 1.45; }
 ${S} .btn.ir-m-go { padding: 4px 2px; border: 0; background: transparent; color: #4B4FC7; font-size: 13.5px; }
 ${S} .btn.ir-m-go:hover { color: #2E3270; text-decoration: underline; text-underline-offset: 3px; }
+/* W0036：今日要事里的计划行动（标题可点，药丸用普通色，「已顺延」不用暖色） */
+${S} .ir-m-title-link { color: inherit; text-decoration: none; }
+${S} .ir-m-title-link:hover { color: #2E3270; text-decoration: underline; text-underline-offset: 4px; }
+${S} .ir-m-title-link:focus-visible { outline: 2px solid #4B4FC7; outline-offset: 2px; border-radius: 4px; }
+${S} .ir-m-brief-body .ir-m-pills { gap: 6px; }
+${S} .ir-m-main > .ir-m-plan-alert { padding: 10px 14px; border-radius: 10px; background: #FBEDE6; font-size: 13.5px; }
 ${S} .btn.ir-m-more { align-self: flex-start; padding: 4px; border: 0; background: transparent; color: #6B6F99; font-size: 13.5px; }
 ${S} .btn.ir-m-more:hover { color: #0E1225; }
 /* 追问条 */

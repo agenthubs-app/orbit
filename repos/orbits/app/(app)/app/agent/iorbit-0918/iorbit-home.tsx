@@ -12,6 +12,10 @@
  * 「N 位新联系人可能对应你的计划」（W0010，有生效计划且有待确认的匹配时，点开共用确认弹层）→
  * 其余信号 → 跟进队列（仅在信号里没有 followup_due 时补位，避免同一件事出现两次）。
  * 排序只看 severity 与真实时间戳，不用跟进队列的到期字段（到期时间被夹成「今天」的旧 bug）。
+ * W0036（RH-02）：原有来源之后补入本周计划行动（≤2，拖期优先）与补人脉提示，**只补到前 3 个
+ * 位置**（`today-plan-items.ts`）；计划行动可勾掉（同一个 `togglePlanAction`，本周推进同步）、
+ * 「今天先不做」（只存本机、按账号与东京日分 key，不补位）、点标题跳转。首页内另算共享的
+ * 推荐活动池 `eventPool`／`eventPoolReady`（W0037／W0038 消费），本 Sprint 只给空日导语用。
  *
  * 数据全部真实，写操作一个不丢：
  *   - 已报名活动 / 目标：服务端注入的 home route view model
@@ -36,11 +40,17 @@
  */
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { AgentLedgerEntry } from "../../../../../features/agent/ledger/contract";
 import type { PlanViewSnapshot } from "../../../../../features/plans/contract";
 import { COMMUNITY_CONFIG } from "../../../../../features/community/config";
+import {
+  buildHomeEventPool,
+  type HomeEventPoolCandidate,
+  type HomeEventPoolItem,
+} from "../../../../../features/agent/home-event-pool";
+import { eventTitleForId } from "../../orbit-event-presentation";
 import { buildDemoHomeData } from "../../_demo/demo-persona";
 import { DemoTag, useDemoMode } from "../../_demo/demo-mode-context";
 import { useOrbitLanguage } from "../../orbit-language-context";
@@ -81,6 +91,17 @@ import { fetchPlanMatches, withoutCandidate, type PlanMatchCandidate, type PlanM
 import { PlanMatchDialog, PlanMatchSheet } from "./plan-match-sheet";
 import { useSharedReadAccount } from "../../orbit-shared-read-account";
 import { usePendingCards } from "./use-pending-cards";
+import {
+  currentPlanPhase,
+  NETWORK_NUDGE_HREF,
+  NETWORK_NUDGE_THRESHOLD,
+  networkNudgeQuiet,
+  networkNudgeStorageKey,
+  planPoolEventIds,
+  selectTodayPlanActions,
+  TODAY_SKIP_KEY_PREFIX,
+  todaySkipStorageKey,
+} from "./today-plan-items";
 
 const TZ = "Asia/Tokyo";
 /** 日程在多久之内开始才进今日要事（Q6：2 小时）。 */
@@ -115,6 +136,16 @@ export interface IOrbitHomeProps {
   onOpenSession: (sessionId: string) => void;
   /** 覆盖点，仅测试使用：可注入的时钟（默认 `new Date()`，每分钟刷新）。 */
   clock?: () => Date;
+  /**
+   * W0036：示例期服务端读到的「近期可报名」真实活动（RH-03「活动始终真实」）。只在示例期用来组
+   * 活动池；真实期活动池由 snapshot + 计划算出。缺省等于空池。
+   */
+  demoEventCandidates?: readonly HomeEventPoolCandidate[];
+  /**
+   * 覆盖点，仅测试使用：SC-07 备选约束下补查计划点名活动（默认动态 import `home-plan-events-actions`）。
+   * 读不到时 reject。
+   */
+  resolvePlanEvents?: (eventIds: readonly string[]) => Promise<readonly HomeEventPoolCandidate[]>;
 }
 
 const isPersonalFact = (item: HomeFactsViewItem): item is HomeFactsPersonalItem =>
@@ -152,6 +183,45 @@ interface TodayItem {
   signalId: string | null;
   /** 在本页打开（W0010 匹配确认弹层）而不是导航；示例模式下同样被拦下。 */
   open?: () => void;
+  /** W0036：计划行动（可勾掉、今天先不做、标题可点）或补人脉提示。 */
+  kind?: "plan" | "nudge";
+  /** 计划行动的条目 id。 */
+  planItemId?: string;
+}
+
+/** W0036：本机存储读写一律包 try/catch；读不到、写不进都只影响这一页的记忆。 */
+function readStoredJson(key: string): unknown {
+  try {
+    const raw = window.localStorage?.getItem(key);
+    return raw ? (JSON.parse(raw) as unknown) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeStored(key: string, value: string): void {
+  try {
+    window.localStorage?.setItem(key, value);
+  } catch {
+    // 写不进（隐私模式、配额、被禁用）：本页内存里照样生效。
+  }
+}
+
+/** 写入「今天先不做」时顺手删掉同一账号其他日期的 key（只留今天）。 */
+function pruneSkipKeys(account: string, keep: string): void {
+  try {
+    const storage = window.localStorage;
+    if (!storage || typeof storage.key !== "function") return;
+    const prefix = `${TODAY_SKIP_KEY_PREFIX}${account}:`;
+    const stale: string[] = [];
+    for (let index = 0; index < storage.length; index += 1) {
+      const key = storage.key(index);
+      if (key && key.startsWith(prefix) && key !== keep) stale.push(key);
+    }
+    for (const key of stale) storage.removeItem(key);
+  } catch {
+    // 清理失败不影响今天的隐藏。
+  }
 }
 
 const SEVERITY_RANK: Record<AgentTodaySignalView["severity"], number> = {
@@ -217,6 +287,20 @@ function snoozeUntilTomorrow(): string {
   return next.toISOString();
 }
 
+/**
+ * W0036：活动池的标题换成按稳定 id 审阅过的三语标题（先 eventId 再 publicCode，未知 id 回退原标题）。
+ * 首页语言只有 zh／en 两档（ja 界面按 en）。地点保持来源原文，不声称已本地化。
+ */
+export function localizeHomeEventPool(
+  pool: readonly HomeEventPoolItem[],
+  lang: "en" | "zh",
+): HomeEventPoolItem[] {
+  return pool.map((item) => ({
+    ...item,
+    title: eventTitleForId(item.eventId, lang) ?? eventTitleForId(item.publicCode, lang) ?? item.title,
+  }));
+}
+
 /** 报头旁的细线轨道：纯装饰（Q13）。 */
 function OrbitMark() {
   return (
@@ -248,6 +332,8 @@ export function IOrbitHome({
   onOpenHistory,
   onOpenSession,
   clock,
+  demoEventCandidates,
+  resolvePlanEvents,
 }: IOrbitHomeProps) {
   const { language, t } = useOrbitLanguage();
   const lang: "en" | "zh" = language === "zh" ? "zh" : "en";
@@ -280,7 +366,9 @@ export function IOrbitHome({
   // 读取中不算就绪、读不到算部分数据缺失：都不能给出「今天没有要紧的事」。
   const pendingCardsState = usePendingCards(!demoActive);
   // W0021：浏览器端读取按账号隔离（换账号、登出时清掉进行中的读取）。
-  useSharedReadAccount();
+  // W0036：「今天先不做」与补人脉免打扰按这个账号分 key；`null`（会话 loading、未登录）才算未知，
+  // 这时只在本页内存里隐藏，不读不写存储。
+  const { account } = useSharedReadAccount();
   const pendingCards = pendingCardsState.batches;
 
   // 时钟每分钟前进一次：倒计时、2 小时窗口、「现在」线和跨午夜切日都跟着走。
@@ -325,6 +413,48 @@ export function IOrbitHome({
   const guideEnabled = guideEnabledProp && !demoActive;
   // 示例模式保留示例的账本显示，不读计划。
   const plan: Loadable<PlanViewSnapshot | null> = demoData ? null : planState;
+  const planSnapshot = plan !== "pending" && plan !== "unavailable" ? plan : null;
+
+  // W0036「今天先不做」：按「账号 + 东京日」记一份隐藏集合。只在 effect 里读存储（服务端渲染不碰
+  // localStorage）；集合带着它所属的范围，账号或日期一变就不再生效（A → B 不沿用 A 的隐藏项）。
+  const skipScope = `${account ?? ""}|${todayKey}`;
+  const [skipState, setSkipState] = useState<{ ids: readonly string[]; scope: string }>({ ids: [], scope: "" });
+  useEffect(() => {
+    if (typeof window === "undefined" || demoActive) return;
+    if (account === null) {
+      setSkipState({ ids: [], scope: `|${todayKey}` });
+      return;
+    }
+    const stored = readStoredJson(todaySkipStorageKey(account, todayKey));
+    const ids = Array.isArray(stored) ? stored.filter((value): value is string => typeof value === "string") : [];
+    setSkipState({ ids, scope: `${account}|${todayKey}` });
+  }, [account, demoActive, todayKey]);
+  const skippedIds = skipState.scope === skipScope ? skipState.ids : [];
+  const skipPlanToday = (itemId: string) => {
+    const ids = skippedIds.includes(itemId) ? skippedIds : [...skippedIds, itemId];
+    setSkipState({ ids, scope: skipScope });
+    if (account === null) return;
+    const key = todaySkipStorageKey(account, todayKey);
+    writeStored(key, JSON.stringify(ids));
+    pruneSkipKeys(account, key);
+  };
+
+  // W0036 补人脉「7 天内不再提示」：按账号记关掉当天的东京日，同样只在 effect 里读。
+  const [nudgeState, setNudgeState] = useState<{ day: string | null; scope: string | null }>({ day: null, scope: null });
+  useEffect(() => {
+    if (typeof window === "undefined" || demoActive) return;
+    if (account === null) {
+      setNudgeState({ day: null, scope: "" });
+      return;
+    }
+    const stored = readStoredJson(networkNudgeStorageKey(account));
+    setNudgeState({ day: typeof stored === "string" ? stored : null, scope: account });
+  }, [account, demoActive]);
+  const nudgeDismissedDay = nudgeState.scope === (account ?? "") ? nudgeState.day : null;
+  const dismissNudge = () => {
+    setNudgeState({ day: todayKey, scope: account ?? "" });
+    if (account !== null) writeStored(networkNudgeStorageKey(account), JSON.stringify(todayKey));
+  };
 
   useEffect(() => {
     if (typeof window === "undefined" || demoActive) return;
@@ -752,7 +882,7 @@ export function IOrbitHome({
           why: null,
         }));
 
-    return [
+    const base: TodayItem[] = [
       ...soon,
       ...fromSignals.slice(0, urgentCount),
       ...fromCards,
@@ -760,7 +890,112 @@ export function IOrbitHome({
       ...fromSignals.slice(urgentCount),
       ...fromFollowups,
     ];
-  }, [followupItems, fmtDay, fmtTime, matches, now, pendingCards, signalRows, t, todayRows]);
+
+    // W0036：原有来源之后补计划行动（≤ min(2, 3 − n)），先选定再去掉「今天先不做」的，不补位。
+    // 示例期 `plan = null`，不加（W36-2）。
+    const fromPlan: TodayItem[] = planSnapshot
+      ? selectTodayPlanActions(planSnapshot, now, { baseCount: base.length, skippedIds }).map((action) => ({
+          ask: null,
+          hot: false,
+          key: `plan:${action.id}`,
+          kind: "plan" as const,
+          pills: [
+            {
+              text: action.phase
+                ? t({
+                    en: `This week's plan · Phase ${action.phase.phaseNo} ${action.phase.phaseTitle}`,
+                    zh: `本周计划 · 第 ${action.phase.phaseNo} 阶段 ${action.phase.phaseTitle}`,
+                  })
+                : t({ en: "This week's plan", zh: "本周计划" }),
+            },
+            ...(action.weeksOverdue > 0
+              ? [{ text: t({ en: `Carried over ${action.weeksOverdue} wk`, zh: `已顺延 ${action.weeksOverdue} 周` }) }]
+              : []),
+          ],
+          planItemId: action.id,
+          primary: {
+            href: action.href,
+            label: action.href.startsWith("/app/contacts/")
+              ? t({ en: "Open contact", zh: "打开联系人" })
+              : action.href.startsWith("/app/events/")
+                ? t({ en: "Open event", zh: "查看活动" })
+                : t({ en: "Open in plan", zh: "在计划里查看" }),
+          },
+          proof: [],
+          signalId: null,
+          title: action.title,
+          why: action.detail,
+        }))
+      : [];
+
+    // W0036 补人脉：已确认联系人 < 10 且还有空位（计划读到之后才判断，免得计划行动到来时被挤走）。
+    // `home` 为 null 时人数未知，不出。
+    const people = home?.stats.people;
+    const phase = planSnapshot ? currentPlanPhase(planSnapshot, now) : null;
+    const nudgeOpen =
+      !demoActive &&
+      plan !== "pending" &&
+      typeof people === "number" &&
+      people < NETWORK_NUDGE_THRESHOLD &&
+      base.length + fromPlan.length < 3 &&
+      !networkNudgeQuiet(nudgeDismissedDay, todayKey);
+    const fromNudge: TodayItem[] = nudgeOpen
+      ? [
+          {
+            ask: null,
+            hot: false,
+            key: "network-nudge",
+            kind: "nudge",
+            // W36-4：有计划时药丸带当前阶段名（主稿与短讯都看得到），没有计划时不提阶段。
+            pills: [
+              {
+                text: phase
+                  ? t({
+                      en: `Grow your network · Phase ${phase.phaseNo} ${phase.phaseTitle}`,
+                      zh: `补人脉 · 第 ${phase.phaseNo} 阶段 ${phase.phaseTitle}`,
+                    })
+                  : t({ en: "Grow your network", zh: "补人脉" }),
+              },
+            ],
+            primary: { href: NETWORK_NUDGE_HREF, label: t({ en: "Scan cards", zh: "去扫名片" }) },
+            proof: [[t({ en: "Confirmed contacts", zh: "已确认联系人" }), t({ en: `${people}`, zh: `${people} 位` })] as const],
+            signalId: null,
+            title: t({
+              en: `Only ${people} confirmed contact(s) so far — add a few business cards`,
+              zh: `已确认的联系人只有 ${people} 位，补几张名片`,
+            }),
+            why: phase
+              ? t({
+                  en: `Phase ${phase.phaseNo} of your plan, ${phase.phaseTitle}, moves faster with more people to reach.`,
+                  zh: `计划第 ${phase.phaseNo} 阶段「${phase.phaseTitle}」需要更多可以联系的人。`,
+                })
+              : t({
+                  en: "The more people you have on file, the more paths iOrbit can find for you.",
+                  zh: "联系人越多，iOrbit 能帮你找到的路越多。",
+                }),
+          },
+        ]
+      : [];
+
+    return [...base, ...fromPlan, ...fromNudge];
+  }, [
+    demoActive,
+    followupItems,
+    fmtDay,
+    fmtTime,
+    home,
+    matches,
+    now,
+    nudgeDismissedDay,
+    pendingCards,
+    plan,
+    planSnapshot,
+    signalRows,
+    skippedIds,
+    t,
+    todayKey,
+    todayRows,
+  ]);
 
   const progress = Array.isArray(ledger) ? iorbitLedgerProgress(ledger) : null;
   const focusTasks = Array.isArray(ledger)
@@ -776,8 +1011,62 @@ export function IOrbitHome({
 
   const recentSessions = Array.isArray(sessions) ? sessions.slice(0, 3) : [];
 
-  const planSnapshot = plan !== "pending" && plan !== "unavailable" ? plan : null;
   const planSummary = planSnapshot ? buildPlanWeekSummary(planSnapshot, now, lang, planSticky) : null;
+
+  // W0036 推荐活动池（RH-03，W0037 小模组与 W0038 月历只消费这两个值）。真实期由 snapshot 的
+  // 目标匹配与「近期可报名」+ 已读到的计划算出，不新增客户端请求；示例期只用服务端读到的真实近期活动。
+  // 标题按当前首页语言换成审阅过的三语标题（ja → en，未知 id 回退原标题）；地点是来源原文。
+  const recommendations =
+    snapshot !== "pending" && snapshot !== "unavailable" ? snapshot.recommendations : undefined;
+  // SC-07 备选约束：snapshot 只带前 12 场时，计划点名却不在其中（也不在目标匹配里）的活动补查一次。
+  const missingPlanEventKey = useMemo(() => {
+    if (demoActive || !recommendations?.upcomingTruncated || !planSnapshot) return "";
+    const known = new Set([
+      ...(recommendations.upcoming ?? []).map((item) => item.eventId),
+      ...(recommendations.state === "success" ? recommendations.items.map((item) => item.eventId) : []),
+    ]);
+    return planPoolEventIds(planSnapshot)
+      .filter((eventId) => !known.has(eventId))
+      .join("\n");
+  }, [demoActive, planSnapshot, recommendations]);
+  const [planEventExtra, setPlanEventExtra] = useState<Loadable<readonly HomeEventPoolCandidate[]> | "idle">("idle");
+  const planEventsRequested = useRef(false);
+  useEffect(() => {
+    if (typeof window === "undefined" || !missingPlanEventKey || planEventsRequested.current) return;
+    planEventsRequested.current = true;
+    const eventIds = missingPlanEventKey.split("\n");
+    setPlanEventExtra("pending");
+    const load = resolvePlanEvents
+      ? resolvePlanEvents(eventIds)
+      : import("../home-plan-events-actions")
+          .then((mod) => mod.resolveHomePlanEventsAction(eventIds))
+          .then((result) => {
+            if (result.state !== "events") throw new Error(result.state);
+            return result.items;
+          });
+    void load.then(
+      (items) => setPlanEventExtra(items),
+      () => setPlanEventExtra("unavailable"),
+    );
+  }, [missingPlanEventKey, resolvePlanEvents]);
+  const eventPool: readonly HomeEventPoolItem[] = useMemo(() => {
+    const pool = buildHomeEventPool({
+      goalMatches: demoActive || recommendations?.state !== "success" ? [] : recommendations.items,
+      now,
+      planEventIds: planSnapshot ? planPoolEventIds(planSnapshot) : [],
+      registeredEventIds: new Set(registeredEvents.map((event) => event.id)),
+      upcoming: demoActive
+        ? (demoEventCandidates ?? [])
+        : [...(recommendations?.upcoming ?? []), ...(Array.isArray(planEventExtra) ? planEventExtra : [])],
+    });
+    return localizeHomeEventPool(pool, lang);
+  }, [demoActive, demoEventCandidates, lang, now, planEventExtra, planSnapshot, recommendations, registeredEvents]);
+  const eventPoolReady =
+    demoActive ||
+    (snapshot !== "pending" &&
+      plan !== "pending" &&
+      planEventExtra !== "pending" &&
+      !(missingPlanEventKey && planEventExtra === "idle"));
   // 打勾：先改本地，服务端确认后换成返回的条目；失败只把这一条回滚并提示。
   const togglePlanAction = async (itemId: string, done: boolean) => {
     if (!planSnapshot || planBusyId) return;
@@ -868,8 +1157,12 @@ export function IOrbitHome({
     signals !== "pending" &&
     sessions !== "pending" &&
     pendingCardsState.status !== "pending";
+  // W0036：计划行动是要事来源，计划读到之前不下「没有要紧的事」的结论。
   const itemsSettled =
-    snapshot !== "pending" && signals !== "pending" && pendingCardsState.status !== "pending";
+    snapshot !== "pending" &&
+    signals !== "pending" &&
+    plan !== "pending" &&
+    pendingCardsState.status !== "pending";
   // 任一核心来源读不到时，不能给出「今天没有要紧的事」这种确定结论。
   // 跟进来源（排序运行时未验证等）单独失败时 snapshot 仍可用，也要算进来（W0025）。
   const followupsUnavailable = facts?.followups.state === "unavailable";
@@ -889,6 +1182,13 @@ export function IOrbitHome({
     weeklySummaryLede(weeklySummary, lang)
   ) : !itemsSettled ? (
     t({ en: "Reading your day…", zh: "正在整理今天的事…" })
+  ) : lead?.kind ? (
+    // W0036：第一条是计划行动或补人脉时，导语只说可以推进的一步。
+    <>
+      {t({ en: "One step you can take today: ", zh: "今天可以推进一步：" })}
+      <strong>{lead.title}</strong>
+      {t({ en: ".", zh: "。" })}
+    </>
   ) : lead ? (
     <>
       {t({ en: "Today there are ", zh: "今天有 " })}
@@ -908,12 +1208,51 @@ export function IOrbitHome({
       en: `Nothing pressing today. ${todayRows.length} item(s) on the schedule.`,
       zh: `今天没有要紧的事，日程上有 ${todayRows.length} 项安排。`,
     })
+  ) : !eventPoolReady ? (
+    // 空日导语要引池里的活动：池还在补查计划活动时先不下「没有要紧的事」的结论，免得导语跳变。
+    t({ en: "Reading your day…", zh: "正在整理今天的事…" })
+  ) : eventPool[0] ? (
+    // W0036：空日导语引一场池里的活动（不写活动类型：目录里没有这个字段）。
+    <>
+      {t({
+        en: `Nothing on today. On ${fmtDay(eventPool[0].startsAt)} there's an event that may suit you: `,
+        zh: `今天没有安排，${fmtDay(eventPool[0].startsAt)} 有一场适合你的活动：`,
+      })}
+      <strong>{eventPool[0].title}</strong>
+      {t({ en: ".", zh: "。" })}
+    </>
   ) : (
     t({ en: "Nothing pressing today.", zh: "今天没有要紧的事。" })
   );
 
   const signalOps = (item: TodayItem) =>
-    item.signalId ? (
+    item.kind === "plan" && item.planItemId ? (
+      <span className="ir-m-ops">
+        <button
+          className="btn ir-signal-op"
+          data-orbit-today-plan-done={item.planItemId}
+          disabled={planBusyId !== null}
+          onClick={() => void togglePlanAction(item.planItemId!, true)}
+          type="button"
+        >
+          {t({ en: "Done", zh: "完成" })}
+        </button>
+        <button
+          className="btn ir-signal-op"
+          data-orbit-today-plan-skip={item.planItemId}
+          onClick={() => skipPlanToday(item.planItemId!)}
+          type="button"
+        >
+          {t({ en: "Not today", zh: "今天先不做" })}
+        </button>
+      </span>
+    ) : item.kind === "nudge" ? (
+      <span className="ir-m-ops">
+        <button className="btn ir-signal-op" data-orbit-today-nudge-dismiss onClick={dismissNudge} type="button">
+          {t({ en: "Don't remind me for 7 days", zh: "7 天内不再提示" })}
+        </button>
+      </span>
+    ) : item.signalId ? (
       <span className="ir-m-ops">
         {item.ask ? (
           <button
@@ -943,6 +1282,24 @@ export function IOrbitHome({
         </button>
       </span>
     ) : null;
+
+  // W0036：计划行动的标题可点，去联系人／活动／计划页对应行（与主按钮同一个去处）。
+  const titleOf = (item: TodayItem) =>
+    item.kind === "plan" && item.primary ? (
+      <a
+        className="ir-m-title-link"
+        data-orbit-today-plan-title={item.planItemId}
+        href={item.primary.href}
+        onClick={(event) => {
+          event.preventDefault();
+          openItem(item);
+        }}
+      >
+        {item.title}
+      </a>
+    ) : (
+      item.title
+    );
 
   const proofLine = (proof: TodayItem["proof"]) =>
     proof.length > 0 ? (
@@ -1024,6 +1381,12 @@ export function IOrbitHome({
               {signalError}
             </p>
           ) : null}
+          {/* W0036：今日要事里勾掉失败时，这里也要看得到（本周推进那一列照旧提示）。 */}
+          {planError && items.some((item) => item.kind === "plan") ? (
+            <p className="ir-m-plan-alert" data-orbit-today-plan-error role="alert">
+              {planError}
+            </p>
+          ) : null}
 
           {lead ? (
             <article
@@ -1042,7 +1405,7 @@ export function IOrbitHome({
                     {demoActive ? <DemoTag /> : null}
                   </span>
                 ) : null}
-                <h2 className="ir-m-lead-title">{lead.title}</h2>
+                <h2 className="ir-m-lead-title">{titleOf(lead)}</h2>
                 {lead.why ? <p className="ir-m-why">{lead.why}</p> : null}
                 {proofLine(lead.proof)}
                 <span className="ir-m-acts">
@@ -1086,9 +1449,18 @@ export function IOrbitHome({
                   <span className="ir-m-brief-n">{index + 2}</span>
                   <span className="ir-m-brief-body">
                     <strong className="ir-m-brief-title">
-                      {item.title}
+                      {titleOf(item)}
                       {demoActive ? <DemoTag /> : null}
                     </strong>
+                    {item.kind && item.pills.length > 0 ? (
+                      <span className="ir-m-pills">
+                        {item.pills.map((pill) => (
+                          <span className="ir-m-pill" key={pill.text}>
+                            {pill.text}
+                          </span>
+                        ))}
+                      </span>
+                    ) : null}
                     {proofLine(item.proof)}
                     {signalOps(item)}
                   </span>

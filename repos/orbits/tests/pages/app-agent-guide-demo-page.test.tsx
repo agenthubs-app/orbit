@@ -42,6 +42,30 @@ interface Scenario {
   registeredEvents?: string[];
   /** W0022：`hasAnyActiveRegistration` 的结果；"throw" 表示读取失败。 */
   registeredAny?: boolean | "throw";
+  /** W0036：示例期「近期可报名」的公开目录（默认一场未来活动）；"throw" 表示读取失败。 */
+  catalogue?: Record<string, unknown> | "throw";
+}
+
+/** W0036：公开目录桩（`readRecords` 的形状，见 `features/events/core/public-catalogue.ts`）。 */
+function demoCatalogue(records: Array<{ id: string; startsAt: string; title: string }>) {
+  const full = records.map((record) => ({
+    description: "公开活动",
+    endsAt: new Date(Date.parse(record.startsAt) + 2 * 3600_000).toISOString(),
+    evidence: [{ evidenceId: `evidence:${record.id}` }],
+    id: record.id,
+    sourceMetadata: {},
+    startsAt: record.startsAt,
+    status: "imported",
+    title: record.title,
+    venue: "渋谷",
+  }));
+  return {
+    generatedAt: new Date().toISOString(),
+    organizerIds: Object.fromEntries(records.map((record) => [record.id, "account:organizer"])),
+    participantCounts: Object.fromEntries(records.map((record) => [record.id, 0])),
+    publicCodes: Object.fromEntries(records.map((record) => [record.id, `CODE-${record.id}`])),
+    records: full,
+  };
 }
 
 function loadPage(t: TestContext, scenario: Scenario) {
@@ -106,6 +130,24 @@ function loadPage(t: TestContext, scenario: Scenario) {
       },
     },
     [join(root, "app/(app)/app/orbit-event-presentation.ts")]: { presentOrbitEvents: (events: unknown[]) => events },
+    // W0036：示例期「近期可报名」的两条底层读取（目录、本人报名），各记一笔。
+    [join(root, "features/events/core/public-catalogue-runtime.ts")]: {
+      createConfiguredCanonicalPublicEventCatalogue: () => ({
+        readRecords: async () => {
+          calls.push({ operation: "catalogue" });
+          if (scenario.catalogue === "throw") throw new Error("catalogue exploded");
+          return scenario.catalogue ?? demoCatalogue([{ id: "event_01", startsAt: "2099-01-01T01:00:00.000Z", title: "未来活动" }]);
+        },
+      }),
+    },
+    [join(root, "features/events/event-operations/repository.ts")]: {
+      createConfiguredEventOperationsRepository: () => ({
+        listCanonicalRegistrationsForUser: async (userId: string, eventIds: readonly string[]) => {
+          calls.push({ input: [userId, eventIds], operation: "demo-registrations" });
+          return [];
+        },
+      }),
+    },
     // 真实 progress.ts 底下的四个来源：
     [join(root, "features/guide/service-factory.ts")]: {
       resolveGuideStateService: ({ actorId }: { actorId: string }) => {
@@ -175,7 +217,8 @@ function loadPage(t: TestContext, scenario: Scenario) {
   };
   const pagePath = join(root, "app/(app)/app/agent/page.tsx");
   const progressPath = join(root, "features/guide/progress.ts");
-  const ids = [...Object.keys(modules), pagePath, progressPath].map((id) => require.resolve(id));
+  const poolRuntimePath = join(root, "features/agent/home-event-pool-runtime.ts");
+  const ids = [...Object.keys(modules), pagePath, progressPath, poolRuntimePath].map((id) => require.resolve(id));
   const before = new Map(ids.map((id) => [id, require.cache[id]]));
   t.after(() => {
     for (const [id, previous] of before) {
@@ -197,6 +240,7 @@ function loadPage(t: TestContext, scenario: Scenario) {
   }
   delete require.cache[require.resolve(pagePath)];
   delete require.cache[require.resolve(progressPath)];
+  delete require.cache[require.resolve(poolRuntimePath)];
   return {
     calls,
     guideRecords,
@@ -578,4 +622,66 @@ test("W0035 flag on: joined or registered changes nothing about step-4 reads (st
   const registered = loadPage(t, { ...LEGACY, homeEvents: ["ev-1", "ev-2"], registeredEvents: ["ev-2"], registeredAny: true });
   assert.ok(!("guideStep4Pending" in shellPropsOf(await registered.page())));
   assert.equal(step4Reads(registered.calls).length, 0);
+});
+
+
+/* ── W0036：示例期调用矩阵——只新增目录 1 次与本人报名 1 次（真实近期活动），其余仍为 0 ─────── */
+
+const DEMO_FORBIDDEN = ["events", "registrations", "community", "plan-read", "registered-any"];
+
+test("W0036 in the demo: one catalogue and one own-registration read, real upcoming events reach the demo shell, nothing else real", async (t) => {
+  const { calls, page } = loadPage(t, { contacts: 0, flag: "on" });
+  const props = shellPropsOf(await page());
+  assert.ok(props.guide, "the demo shell is rendered");
+  // 既有的示例判定复合 home 读取：1 次，且不注入示例壳。
+  assert.equal(calls.filter((call) => call.operation === "home").length, 1);
+  assert.equal(props.home, null);
+  // 本 Sprint 新增：目录 1 次、本人报名 1 次（以 canonical actor 读）。
+  assert.equal(calls.filter((call) => call.operation === "catalogue").length, 1);
+  const registrations = calls.filter((call) => call.operation === "demo-registrations");
+  assert.equal(registrations.length, 1);
+  assert.deepEqual(registrations[0]!.input, ["account:canonical", ["event_01"]]);
+  assert.deepEqual(calls.filter((call) => DEMO_FORBIDDEN.includes(call.operation)), []);
+  assert.deepEqual(props.demoEventCandidates, [
+    {
+      endsAt: "2099-01-01T03:00:00.000Z",
+      eventId: "event_01",
+      publicCode: "CODE-event_01",
+      startsAt: "2099-01-01T01:00:00.000Z",
+      title: "未来活动",
+      venue: "渋谷",
+    },
+  ]);
+});
+
+test("W0036 in the demo: a failed catalogue read leaves an empty list and the demo still renders", async (t) => {
+  const { calls, page } = loadPage(t, { catalogue: "throw", contacts: 0, flag: "on" });
+  const props = shellPropsOf(await page());
+  assert.ok(props.guide);
+  assert.deepEqual(props.demoEventCandidates, []);
+  assert.equal(calls.filter((call) => call.operation === "demo-registrations").length, 0);
+});
+
+test("W0036 the demo list is capped at the pool limit (8), earliest first", async (t) => {
+  const records = Array.from({ length: 12 }, (_, index) => ({
+    id: `event:${String(12 - index).padStart(2, "0")}`,
+    startsAt: `2099-01-${String(12 - index).padStart(2, "0")}T01:00:00.000Z`,
+    title: `活动 ${12 - index}`,
+  }));
+  const { page } = loadPage(t, { catalogue: demoCatalogue(records), contacts: 0, flag: "on" });
+  const props = shellPropsOf(await page());
+  assert.deepEqual(
+    (props.demoEventCandidates as Array<{ eventId: string }>).map((item) => item.eventId),
+    ["event:01", "event:02", "event:03", "event:04", "event:05", "event:06", "event:07", "event:08"],
+  );
+});
+
+test("W0036 the live path never reads the demo upcoming events", async (t) => {
+  for (const scenario of [{ contacts: 0, flag: undefined }, LEGACY]) {
+    const { calls, page } = loadPage(t, scenario);
+    const props = shellPropsOf(await page());
+    assert.equal(props.guide, null);
+    assert.equal(calls.filter((call) => call.operation === "catalogue" || call.operation === "demo-registrations").length, 0);
+    assert.ok(!("demoEventCandidates" in props) || props.demoEventCandidates === undefined);
+  }
 });

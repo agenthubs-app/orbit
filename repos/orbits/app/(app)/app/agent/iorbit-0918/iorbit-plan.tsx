@@ -615,6 +615,8 @@ function PlanBody({
                 <div
                   className={action.done ? "ir-p-act ir-p-act-done" : "ir-p-act"}
                   data-orbit-plan-action={action.id}
+                  // W0036：首页今日要事的计划行动没有联系人／活动时跳到这一行（浏览器原生定位）。
+                  id={`plan-action-${action.id}`}
                   key={action.id}
                 >
                   <button

@@ -65,7 +65,7 @@ ${S} .ir-p-empty-line { margin: 0; font-size: 13.5px; color: #9FA3C4; }
 ${S} .ir-p-alert { margin: 0; padding: 10px 14px; border-radius: 10px; background: #FBEDE6; color: #8A3414; font-size: 13.5px; }
 /* 本周行动 */
 ${S} .ir-p-week-list { display: flex; flex-direction: column; }
-${S} .ir-p-act { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 4px 12px; padding: 14px 0; border-top: 1px solid #E8E9F6; }
+${S} .ir-p-act { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 4px 12px; padding: 14px 0; border-top: 1px solid #E8E9F6; scroll-margin-top: 96px; }
 ${S} .ir-p-act:first-child { border-top: 0; padding-top: 4px; }
 /* 勾选框：真实点击区 44×44（负外边距让它在版面里只占 15px），15px 的方框与勾由伪元素画出。 */
 ${S} .btn.ir-p-box, ${S} .btn.ir-m-plan-box { position: relative; width: 44px; height: 44px; min-width: 44px; min-height: 44px; margin: -14.5px; padding: 0; border: 0; border-radius: 8px; background: transparent; transform: translateY(4px); display: grid; place-items: center; }

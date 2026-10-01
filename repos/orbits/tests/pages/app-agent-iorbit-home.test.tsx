@@ -27,6 +27,10 @@ import { IOrbitHome } from "../../app/(app)/app/agent/iorbit-0918/iorbit-home";
 import { PENDING_CARDS_COALESCE_MS } from "../../app/(app)/app/agent/iorbit-0918/use-pending-cards";
 import { createOrbitAgentStarterViewModel } from "../../app/(app)/app/orbit-agent-route-view-model";
 import { OrbitLanguageProvider } from "../../app/(app)/app/orbit-language-context";
+import { setSharedReadAccount } from "../../app/(app)/app/orbit-shared-read";
+import { SessionContext } from "next-auth/react";
+import { readFileSync } from "node:fs";
+import { localizeHomeEventPool } from "../../app/(app)/app/agent/iorbit-0918/iorbit-home";
 import { PLAN_NOW, planSnapshotFixture } from "../support/plan-snapshot-fixture";
 
 /* ── 1. 纯函数 ─────────────────────────────────────────────────────────── */
@@ -84,7 +88,8 @@ const HOME = {
     relationshipGoal: "推进日本制造业合作",
   },
   events: [],
-  stats: { events: 0, inProgress: 0, people: 0 },
+  // W0036：≥10 位已确认联系人时不出补人脉提示；补人脉自己的用例另给人数。
+  stats: { events: 0, inProgress: 0, people: 10 },
 };
 
 function shellMarkup(props: { initialDeepLink?: boolean } = {}): string {
@@ -420,6 +425,14 @@ interface MountOptions {
   sessions?: unknown;
   signals?: unknown;
   snapshot?: unknown;
+  /** W0036：可读写的 localStorage（`orbit.today.*` 等；名片登记表仍走 `cardBatches`）。 */
+  localStore?: Map<string, string>;
+  /** W0036：`orbit.today.*` 的 getItem／setItem 一律抛错。 */
+  localStorageThrows?: boolean;
+  /** W0036：记录每次对 `orbit.today.*` 的存储访问（方法 + key）。 */
+  storageLog?: Array<[string, string]>;
+  /** W0036：计划读取在这个 Promise 完成后才应答（用来观察计划 pending 期间的导语）。 */
+  planGate?: Promise<unknown>;
 }
 
 async function mountHome(
@@ -471,12 +484,31 @@ async function mountHome(
         },
       },
       localStorage: {
-        getItem: (key: string) =>
-          key === "orbit.cardBatches.active.v1" && options.cardBatches
-            ? JSON.stringify(options.cardBatches.active)
-            : null,
-        removeItem: () => undefined,
-        setItem: () => undefined,
+        getItem: (key: string) => {
+          if (key.startsWith("orbit.today.")) {
+            options.storageLog?.push(["getItem", key]);
+            if (options.localStorageThrows) throw new Error("storage blocked");
+          }
+          if (key === "orbit.cardBatches.active.v1" && options.cardBatches) {
+            return JSON.stringify(options.cardBatches.active);
+          }
+          return options.localStore?.get(key) ?? null;
+        },
+        key: (index: number) => [...(options.localStore?.keys() ?? [])][index] ?? null,
+        get length() {
+          return options.localStore?.size ?? 0;
+        },
+        removeItem: (key: string) => {
+          if (key.startsWith("orbit.today.")) options.storageLog?.push(["removeItem", key]);
+          options.localStore?.delete(key);
+        },
+        setItem: (key: string, value: string) => {
+          if (key.startsWith("orbit.today.")) {
+            options.storageLog?.push(["setItem", key]);
+            if (options.localStorageThrows) throw new Error("storage blocked");
+          }
+          options.localStore?.set(key, value);
+        },
       },
       location,
       matchMedia: () => ({ addEventListener() {}, matches: false, removeEventListener() {} }),
@@ -528,6 +560,7 @@ async function mountHome(
     }
     // W0021：首页读 `?view=home`（不含进展记录）；联系人详情的关联弹层同样读 home 视图。
     if ((url === "/api/agent/plans/current" || url === "/api/agent/plans/current?view=home") && options.plan !== undefined) {
+      if (options.planGate) await options.planGate;
       return Response.json({ data: options.plan, success: true });
     }
     if (url === "/api/agent/plans/weekly-summary" && options.weeklySummary !== undefined) {
@@ -607,7 +640,10 @@ function homeElement(
       onOpenSession={overrides.onOpenSession ?? (() => undefined)}
       clock={overrides.clock}
       communityJoined={overrides.communityJoined}
+      demoEventCandidates={overrides.demoEventCandidates}
+      resolvePlanEvents={overrides.resolvePlanEvents}
       guideEnabled={overrides.guideEnabled}
+      {...("home" in overrides ? { home: overrides.home } : {})}
     />
   );
 }
@@ -2364,4 +2400,563 @@ test("W0022: the live shell hands guideEnabled down to the home", () => {
   assert.ok(html.includes('href="/app/start?step=3"'));
   assert.ok(!html.includes("data-orbit-iorbit-guide-step4"));
   assert.ok(!html.includes("/app/start?step=4"));
+});
+
+
+/* ── W0036：今日要事吸收本周计划行动与补人脉；首页活动池 ─────────────────────── */
+
+const PLAN_DAY = "2026-09-28";
+const NEXT_DAY_CLOCK = () => new Date("2026-09-29T03:00:00.000Z");
+
+function w36Titles(mounted: Mounted): string[] {
+  return mounted.root.root
+    .findAll(
+      (node) =>
+        typeof node.type === "string" &&
+        (node.props?.className === "ir-m-lead-title" || node.props?.className === "ir-m-brief-title"),
+    )
+    .map((node) => textOf(node));
+}
+
+function w36Lede(mounted: Mounted): string {
+  return textOf(mounted.root.root.findAll((node) => node.props?.className === "ir-m-lede")[0]!);
+}
+
+function todayButton(mounted: Mounted, attribute: string, itemId?: string) {
+  return mounted.root.root.findAll(
+    (node) => node.type === "button" && node.props?.[attribute] !== undefined && (itemId === undefined || node.props[attribute] === itemId),
+  )[0];
+}
+
+function withSession(account: string | null, element: React.ReactElement) {
+  const value =
+    account === null
+      ? { data: null, status: "unauthenticated", update: async () => null }
+      : { data: { expires: "2099-01-01T00:00:00.000Z", user: { id: account } }, status: "authenticated", update: async () => null };
+  return <SessionContext.Provider value={value as never}>{element}</SessionContext.Provider>;
+}
+
+const writes = (mounted: Mounted) => mounted.calls.filter((call) => call.method !== "GET" && !call.url.startsWith("/api/agent/signals?"));
+
+test("W0036 SC-01: overdue plan actions fill today's empty slots with phase and carried-over pills; lede says one step", async (t) => {
+  const navigated: string[] = [];
+  const mounted = await mountHome(t, homeElement({ clock: () => PLAN_NOW, navigate: (href) => navigated.push(href) }), {
+    plan: planSnapshotFixture(),
+    snapshot: EMPTY_SNAPSHOT,
+  });
+  // 拖期优先：逾期 2 周的、逾期 1 周的；本周的 a-this-week 不进（名额 2）。
+  assert.deepEqual(w36Titles(mounted), ["整理 10 家目标企业名单", "把了解到的决策方式记下来"]);
+  const text = textOf(mounted.root.root as unknown as { children: readonly unknown[] });
+  assert.ok(text.includes("本周计划 · 第 1 阶段 摸清需求"));
+  assert.ok(text.includes("已顺延 2 周"));
+  assert.ok(text.includes("已顺延 1 周"));
+  assert.equal(w36Lede(mounted), "今天可以推进一步：整理 10 家目标企业名单。");
+  // 「已顺延」是普通药丸，不用暖色。
+  const hotPills = mounted.root.root.findAll((node) => node.props?.className === "ir-m-pill ir-m-pill-hot");
+  assert.equal(hotPills.length, 0);
+  // 点标题去计划页对应行（没有联系人、没有活动）。
+  const title = mounted.root.root.findAll((node) => node.type === "a" && node.props?.["data-orbit-today-plan-title"] === "a-overdue-2")[0]!;
+  assert.equal(title.props.href, "/app/agent/plan#plan-action-a-overdue-2");
+  await act(async () => {
+    title.props.onClick({ preventDefault() {} });
+  });
+  assert.deepEqual(navigated, ["/app/agent/plan#plan-action-a-overdue-2"]);
+  assert.equal(mounted.calls.filter((call) => call.url === "/api/agent/plans/current?view=home").length, 1);
+});
+
+test("W0036 SC-01: only the new items are capped — 0／1／2／≥3 original items leave 2／2／1／0 plan actions, original order and 还有 N 件 unchanged", async (t) => {
+  const signals = [
+    plainSignal("s-1", "第一件", "high"),
+    plainSignal("s-2", "第二件", "high"),
+    plainSignal("s-3", "第三件", "low"),
+    plainSignal("s-4", "第四件", "low"),
+  ];
+  const cases: Array<[number, string[]]> = [
+    [1, ["第一件", "整理 10 家目标企业名单", "把了解到的决策方式记下来"]],
+    [2, ["第一件", "第二件", "整理 10 家目标企业名单"]],
+    [3, ["第一件", "第二件", "第三件"]],
+  ];
+  for (const [count, expected] of cases) {
+    const mounted = await mountHome(t, homeElement({ clock: () => PLAN_NOW }), {
+      plan: planSnapshotFixture(),
+      signals: signals.slice(0, count),
+      snapshot: EMPTY_SNAPSHOT,
+    });
+    assert.deepEqual(w36Titles(mounted), expected, `${count} original item(s)`);
+  }
+  const four = await mountHome(t, homeElement({ clock: () => PLAN_NOW }), {
+    plan: planSnapshotFixture(),
+    signals,
+    snapshot: EMPTY_SNAPSHOT,
+  });
+  assert.deepEqual(w36Titles(four), ["第一件", "第二件", "第三件"]);
+  const text = textOf(four.root.root as unknown as { children: readonly unknown[] });
+  assert.ok(text.includes("还有 1 件"));
+  assert.ok(!text.includes("本周计划 ·"));
+  // 原有来源占满时导语照旧。
+  assert.ok(w36Lede(four).startsWith("今天有 4 件事"));
+});
+
+test("W0036 SC-01: an unreadable plan adds nothing and keeps the old copy; while the plan is pending the lede stays 正在整理", async (t) => {
+  const unreadable = await mountHome(t, homeElement({ clock: () => PLAN_NOW }), { snapshot: EMPTY_SNAPSHOT });
+  assert.deepEqual(w36Titles(unreadable), []);
+  assert.equal(w36Lede(unreadable), "今天没有要紧的事。");
+
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const pending = await mountHome(t, homeElement({ clock: () => PLAN_NOW }), {
+    plan: planSnapshotFixture(),
+    planGate: gate,
+    snapshot: EMPTY_SNAPSHOT,
+  });
+  assert.equal(w36Lede(pending), "正在整理今天的事…");
+  release();
+  await pending.settle();
+  assert.equal(w36Lede(pending), "今天可以推进一步：整理 10 家目标企业名单。");
+});
+
+test("W0036 SC-01: the plan page's this-week rows carry the anchor id and a scroll margin", () => {
+  const source = readFileSync("app/(app)/app/agent/iorbit-0918/iorbit-plan.tsx", "utf8");
+  assert.match(source, /id=\{`plan-action-\$\{action\.id\}`\}/);
+  const styles = readFileSync("app/(app)/app/agent/iorbit-0918/iorbit-my-plan-styles.ts", "utf8");
+  assert.match(styles, /\.ir-p-act \{[^}]*scroll-margin-top:/);
+});
+
+test("W0036 SC-01: the demo home gets no plan actions and keeps its lede", () => {
+  const html = demoShellMarkup(GUIDE_NEW);
+  assert.ok(html.includes("今天有 <strong>4 件事</strong>"));
+  assert.ok(!html.includes("今天可以推进一步"));
+  assert.ok(!html.includes("本周计划 ·"));
+  assert.ok(!html.includes("data-orbit-today-plan"));
+  assert.ok(!html.includes("data-orbit-today-nudge"));
+});
+
+test("W0036 SC-02: 完成 PATCHes the shared toggle; the row leaves Today and is ticked in 本周推进; one request in flight at a time; failure restores both with a note", async (t) => {
+  let fail = false;
+  let hold: Promise<void> | null = null;
+  const mounted = await mountHome(t, homeElement({ clock: () => PLAN_NOW }), {
+    plan: planSnapshotFixture(),
+    planPatch: async (url, body) => {
+      if (hold) await hold;
+      if (fail) return Response.json({ error: { code: "CONFLICT", message: "请刷新后再试" }, success: false }, { status: 409 });
+      const itemId = decodeURIComponent(url.slice("/api/agent/plans/items/".length));
+      const item = planSnapshotFixture().items.find((entry) => entry.id === itemId)!;
+      const status = (body as { change: { status: string } }).change.status;
+      return Response.json({
+        data: { item: { ...item, completedAt: PLAN_NOW.toISOString(), status }, log: null, replayed: false },
+        success: true,
+      });
+    },
+    snapshot: EMPTY_SNAPSHOT,
+  });
+
+  await act(async () => {
+    todayButton(mounted, "data-orbit-today-plan-done", "a-overdue-2")!.props.onClick();
+  });
+  await mounted.settle();
+  const patches = mounted.calls.filter((call) => call.method === "PATCH");
+  assert.equal(patches.length, 1);
+  assert.equal(patches[0]!.url, "/api/agent/plans/items/a-overdue-2");
+  assert.deepEqual((patches[0]!.body as { change: unknown }).change, { op: "set_status", status: "done" });
+  assert.ok(!w36Titles(mounted).includes("整理 10 家目标企业名单"));
+  assert.equal(planBox(mounted, "a-overdue-2").props["aria-checked"], true);
+
+  // 请求进行中：再点另一条的「完成」无效（同一个 planBusyId）。
+  let releaseHold!: () => void;
+  hold = new Promise<void>((resolve) => {
+    releaseHold = resolve;
+  });
+  await act(async () => {
+    todayButton(mounted, "data-orbit-today-plan-done", "a-overdue-1")!.props.onClick();
+  });
+  const next = todayButton(mounted, "data-orbit-today-plan-done", "a-this-week");
+  assert.ok(next, "a-this-week moved up after a-overdue-2 was done");
+  assert.equal(next!.props.disabled, true);
+  await act(async () => {
+    next!.props.onClick();
+  });
+  assert.equal(mounted.calls.filter((call) => call.method === "PATCH").length, 2);
+  releaseHold();
+  hold = null;
+  await mounted.settle();
+
+  // 失败：两处都恢复，今日要事处有提示。
+  fail = true;
+  await act(async () => {
+    todayButton(mounted, "data-orbit-today-plan-done", "a-this-week")!.props.onClick();
+  });
+  await mounted.settle();
+  assert.ok(w36Titles(mounted).includes("约一位老客户聊 20 分钟"));
+  assert.equal(planBox(mounted, "a-this-week").props["aria-checked"], false);
+  const note = mounted.root.root.findAll((node) => node.props?.["data-orbit-today-plan-error"] !== undefined)[0]!;
+  assert.ok(textOf(note).includes("没能保存，已恢复原状"));
+  assert.equal(mounted.calls.filter((call) => call.url === "/api/agent/plans/current?view=home").length, 1);
+});
+
+test("W0036 SC-02: 今天先不做 hides the row for this account and Tokyo day only — no write, no backfill, back tomorrow", async (t) => {
+  const store = new Map<string, string>([["orbit.today.skip.v1:user-a:2026-09-20", "[\"old\"]"]]);
+  const element = homeElement({ clock: () => PLAN_NOW });
+  const mounted = await mountHome(t, (options) => withSession("user-a", element(options)), {
+    localStore: store,
+    plan: planSnapshotFixture(),
+    snapshot: EMPTY_SNAPSHOT,
+  });
+  await act(async () => {
+    todayButton(mounted, "data-orbit-today-plan-skip", "a-overdue-2")!.props.onClick();
+  });
+  await mounted.settle();
+  // 不补位：a-this-week 不上来；0 个写请求。
+  assert.deepEqual(w36Titles(mounted), ["把了解到的决策方式记下来"]);
+  assert.deepEqual(writes(mounted), []);
+  assert.equal(store.get(`orbit.today.skip.v1:user-a:${PLAN_DAY}`), JSON.stringify(["a-overdue-2"]));
+  assert.ok(!store.has("orbit.today.skip.v1:user-a:2026-09-20"), "older days of the same account are pruned");
+  // 本周推进不受影响（不改计划、不算顺延）。
+  assert.equal(planBox(mounted, "a-overdue-2").props["aria-checked"], false);
+
+  const again = await mountHome(t, (options) => withSession("user-a", homeElement({ clock: () => PLAN_NOW })(options)), {
+    localStore: store,
+    plan: planSnapshotFixture(),
+    snapshot: EMPTY_SNAPSHOT,
+  });
+  assert.deepEqual(w36Titles(again), ["把了解到的决策方式记下来"]);
+
+  const tomorrow = await mountHome(t, (options) => withSession("user-a", homeElement({ clock: NEXT_DAY_CLOCK })(options)), {
+    localStore: store,
+    plan: planSnapshotFixture(),
+    snapshot: EMPTY_SNAPSHOT,
+  });
+  assert.ok(w36Titles(tomorrow).includes("整理 10 家目标企业名单"));
+});
+
+test("W0036 SC-02: account A → B → A: B sees the row and only B's key is touched; A still has it hidden", async (t) => {
+  const store = new Map<string, string>();
+  const log: Array<[string, string]> = [];
+  let captured!: { loadSnapshot: () => Promise<never> };
+  const element = homeElement({ clock: () => PLAN_NOW });
+  const mounted = await mountHome(
+    t,
+    (options) => {
+      captured = options;
+      return withSession("user-a", element(options));
+    },
+    { localStore: store, plan: planSnapshotFixture(), snapshot: EMPTY_SNAPSHOT, storageLog: log },
+  );
+  await act(async () => {
+    todayButton(mounted, "data-orbit-today-plan-skip", "a-overdue-2")!.props.onClick();
+  });
+  await mounted.settle();
+  assert.ok(!w36Titles(mounted).includes("整理 10 家目标企业名单"));
+
+  log.length = 0;
+  await act(async () => {
+    mounted.root.update(withSession("user-b", element(captured)));
+  });
+  await mounted.settle();
+  assert.ok(w36Titles(mounted).includes("整理 10 家目标企业名单"), "B is not affected by A's hidden item");
+  assert.ok(log.every(([, key]) => !key.includes("user-a")), `only B's keys are read: ${JSON.stringify(log)}`);
+  await act(async () => {
+    todayButton(mounted, "data-orbit-today-plan-skip", "a-overdue-1")!.props.onClick();
+  });
+  assert.equal(store.get(`orbit.today.skip.v1:user-b:${PLAN_DAY}`), JSON.stringify(["a-overdue-1"]));
+  assert.equal(store.get(`orbit.today.skip.v1:user-a:${PLAN_DAY}`), JSON.stringify(["a-overdue-2"]));
+
+  await act(async () => {
+    mounted.root.update(withSession("user-a", element(captured)));
+  });
+  await mounted.settle();
+  assert.deepEqual(w36Titles(mounted), ["把了解到的决策方式记下来"]);
+});
+
+test("W0036 SC-02: storage that throws, or an unknown account, still hides on this page without errors or storage access", async (t) => {
+  const throwing = await mountHome(t, (options) => withSession("user-a", homeElement({ clock: () => PLAN_NOW })(options)), {
+    localStorageThrows: true,
+    plan: planSnapshotFixture(),
+    snapshot: EMPTY_SNAPSHOT,
+  });
+  await act(async () => {
+    todayButton(throwing, "data-orbit-today-plan-skip", "a-overdue-2")!.props.onClick();
+  });
+  await throwing.settle();
+  assert.deepEqual(w36Titles(throwing), ["把了解到的决策方式记下来"]);
+
+  const log: Array<[string, string]> = [];
+  const store = new Map<string, string>();
+  const anonymous = await mountHome(t, (options) => withSession(null, homeElement({ clock: () => PLAN_NOW })(options)), {
+    localStore: store,
+    plan: planSnapshotFixture(),
+    snapshot: EMPTY_SNAPSHOT,
+    storageLog: log,
+  });
+  await act(async () => {
+    todayButton(anonymous, "data-orbit-today-plan-skip", "a-overdue-2")!.props.onClick();
+  });
+  await anonymous.settle();
+  assert.deepEqual(w36Titles(anonymous), ["把了解到的决策方式记下来"]);
+  assert.deepEqual(log, []);
+  assert.equal(store.size, 0);
+});
+
+test("W0036 SC-02: without a SessionProvider the hook's singleton account is the key — never another account or 'anonymous'", async (t) => {
+  setSharedReadAccount("singleton-a");
+  t.after(() => setSharedReadAccount(null));
+  const store = new Map<string, string>();
+  const mounted = await mountHome(t, homeElement({ clock: () => PLAN_NOW }), {
+    localStore: store,
+    plan: planSnapshotFixture(),
+    snapshot: EMPTY_SNAPSHOT,
+  });
+  await act(async () => {
+    todayButton(mounted, "data-orbit-today-plan-skip", "a-overdue-2")!.props.onClick();
+  });
+  assert.deepEqual([...store.keys()], [`orbit.today.skip.v1:singleton-a:${PLAN_DAY}`]);
+});
+
+test("W0036 SC-02: server rendering never touches localStorage", () => {
+  const touched: string[] = [];
+  const previous = Object.getOwnPropertyDescriptor(globalThis, "window");
+  Object.defineProperty(globalThis, "window", {
+    configurable: true,
+    value: {
+      get localStorage() {
+        touched.push("localStorage");
+        return null;
+      },
+    },
+  });
+  try {
+    renderToStaticMarkup(withSession("user-a", <IOrbitHome home={HOME as never} navigate={() => undefined} onAsk={() => undefined} onOpenChat={() => undefined} onOpenHistory={() => undefined} onOpenSession={() => undefined} />));
+  } finally {
+    if (previous) Object.defineProperty(globalThis, "window", previous);
+    else delete (globalThis as { window?: unknown }).window;
+  }
+  assert.deepEqual(touched, []);
+});
+
+const FEW_PEOPLE_HOME = { ...HOME, stats: { ...HOME.stats, people: 9 } };
+
+test("W0036 SC-03: fewer than 10 contacts and a free slot → one nudge; with a plan it names the phase; the button only navigates", async (t) => {
+  const navigated: string[] = [];
+  const noPlan = await mountHome(
+    t,
+    homeElement({ clock: () => PLAN_NOW, home: FEW_PEOPLE_HOME as never, navigate: (href) => navigated.push(href) }),
+    { plan: null, snapshot: EMPTY_SNAPSHOT },
+  );
+  assert.deepEqual(w36Titles(noPlan), ["已确认的联系人只有 9 位，补几张名片"]);
+  assert.equal(w36Lede(noPlan), "今天可以推进一步：已确认的联系人只有 9 位，补几张名片。");
+  const noPlanText = textOf(noPlan.root.root as unknown as { children: readonly unknown[] });
+  assert.ok(!noPlanText.includes("阶段"), "no phase without a plan (W36-4)");
+  const primary = noPlan.root.root.findAll((node) => node.type === "button" && node.props?.className === "btn ir-m-primary")[0]!;
+  assert.equal(textOf(primary), "去扫名片");
+  await act(async () => {
+    primary.props.onClick();
+  });
+  assert.deepEqual(navigated, ["/app/contacts/new?method=scan"]);
+  assert.deepEqual(writes(noPlan), []);
+
+  const withPlan = await mountHome(t, homeElement({ clock: () => PLAN_NOW, home: FEW_PEOPLE_HOME as never }), {
+    plan: planSnapshotFixture(),
+    snapshot: EMPTY_SNAPSHOT,
+  });
+  assert.deepEqual(w36Titles(withPlan), [
+    "整理 10 家目标企业名单",
+    "把了解到的决策方式记下来",
+    "已确认的联系人只有 9 位，补几张名片",
+  ]);
+  assert.ok(textOf(withPlan.root.root as unknown as { children: readonly unknown[] }).includes("补人脉 · 第 1 阶段 摸清需求"));
+  // 主稿位置的补人脉另有一句依据，同样引用阶段名。
+  const leadNudge = await mountHome(t, homeElement({ clock: () => PLAN_NOW, home: FEW_PEOPLE_HOME as never }), {
+    plan: { ...planSnapshotFixture(), items: [] },
+    snapshot: EMPTY_SNAPSHOT,
+  });
+  assert.deepEqual(w36Titles(leadNudge), ["已确认的联系人只有 9 位，补几张名片"]);
+  assert.ok(textOf(leadNudge.root.root as unknown as { children: readonly unknown[] }).includes("计划第 1 阶段「摸清需求」需要更多可以联系的人。"));
+});
+
+test("W0036 SC-03: no nudge at 10 contacts, without home data, or when original + plan items fill the 3 slots", async (t) => {
+  const ten = await mountHome(t, homeElement({ clock: () => PLAN_NOW }), { plan: null, snapshot: EMPTY_SNAPSHOT });
+  assert.deepEqual(w36Titles(ten), []);
+  const noHome = await mountHome(t, homeElement({ clock: () => PLAN_NOW, home: null }), { plan: null, snapshot: EMPTY_SNAPSHOT });
+  assert.deepEqual(w36Titles(noHome), []);
+  const full = await mountHome(t, homeElement({ clock: () => PLAN_NOW, home: FEW_PEOPLE_HOME as never }), {
+    plan: planSnapshotFixture(),
+    signals: [plainSignal("s-1", "第一件", "high")],
+    snapshot: EMPTY_SNAPSHOT,
+  });
+  assert.deepEqual(w36Titles(full), ["第一件", "整理 10 家目标企业名单", "把了解到的决策方式记下来"]);
+});
+
+test("W0036 SC-03: 7 天内不再提示 is stored per account; quiet through day 7, back on day 8", async (t) => {
+  const store = new Map<string, string>();
+  const mount = (iso: string) =>
+    mountHome(t, (options) => withSession("user-a", homeElement({ clock: () => new Date(iso), home: FEW_PEOPLE_HOME as never })(options)), {
+      localStore: store,
+      plan: null,
+      snapshot: EMPTY_SNAPSHOT,
+    });
+  const first = await mount("2026-10-01T03:00:00.000Z");
+  await act(async () => {
+    todayButton(first, "data-orbit-today-nudge-dismiss")!.props.onClick();
+  });
+  assert.deepEqual(w36Titles(first), []);
+  assert.equal(store.get("orbit.today.networkNudge.v1:user-a"), JSON.stringify("2026-10-01"));
+  assert.deepEqual(writes(first), []);
+  assert.deepEqual(w36Titles(await mount("2026-10-07T14:59:00.000Z")), []);
+  assert.deepEqual(w36Titles(await mount("2026-10-07T15:00:00.000Z")), ["已确认的联系人只有 9 位，补几张名片"]);
+});
+
+test("W0036 SC-03: the home never mounts the card-batch state machine", () => {
+  const source = readFileSync("app/(app)/app/agent/iorbit-0918/iorbit-home.tsx", "utf8");
+  assert.doesNotMatch(source, /useCardBatch\b|CardBatchImport/);
+});
+
+const POOL_SNAPSHOT = (upcoming: unknown[], state = "needs_goal", items: unknown[] = []) => ({
+  ...EMPTY_SNAPSHOT,
+  recommendations: { items, state, upcoming },
+});
+const KNOWN_EVENT = {
+  endsAt: "2026-10-05T12:00:00.000Z",
+  eventId: "event_01",
+  publicCode: "TOKYO-01",
+  startsAt: "2026-10-05T09:00:00.000Z",
+  title: "原始标题",
+  venue: "渋谷ストリーム",
+};
+
+test("W0036 SC-04: a quiet day without a goal leads with the pool's first recent event, titled in the page language", async (t) => {
+  for (const [language, expected] of [
+    ["zh", "今天没有安排，10/5 有一场适合你的活动：东京餐饮入境客增长会。"],
+    ["en", "Nothing on today. On 10/5 there's an event that may suit you: Tokyo Inbound Restaurant Growth Forum."],
+    ["ja", "Nothing on today. On 10/5 there's an event that may suit you: Tokyo Inbound Restaurant Growth Forum."],
+  ] as const) {
+    const mounted = await mountHome(
+      t,
+      (options) => <OrbitLanguageProvider initialLanguage={language}>{homeElement({ clock: () => PLAN_NOW })(options)}</OrbitLanguageProvider>,
+      { plan: null, snapshot: POOL_SNAPSHOT([KNOWN_EVENT]) },
+    );
+    assert.equal(w36Lede(mounted), expected, language);
+    assert.equal(mounted.calls.filter((call) => call.url.includes("events")).length, 0, "no extra client request");
+  }
+  const unknown = await mountHome(t, homeElement({ clock: () => PLAN_NOW }), {
+    plan: null,
+    snapshot: POOL_SNAPSHOT([{ ...KNOWN_EVENT, eventId: "event:unknown", publicCode: "X-1" }]),
+  });
+  assert.equal(w36Lede(unknown), "今天没有安排，10/5 有一场适合你的活动：原始标题。");
+  // 目录为空时照旧。
+  const empty = await mountHome(t, homeElement({ clock: () => PLAN_NOW }), { plan: null, snapshot: POOL_SNAPSHOT([]) });
+  assert.equal(w36Lede(empty), "今天没有要紧的事。");
+});
+
+test("W0036 SC-04: titles are localized by id (ja → en), unknown ids keep the source title, places stay as the source wrote them", () => {
+  const pool = [
+    { eventId: "event_01", place: "渋谷ストリーム", publicCode: "TOKYO-01", reason: { kind: "recent" as const }, startsAt: KNOWN_EVENT.startsAt, title: "原始标题" },
+    { eventId: "event:x", place: "丸之内", publicCode: "event_01", reason: { kind: "recent" as const }, startsAt: KNOWN_EVENT.startsAt, title: "按 code 命中" },
+    { eventId: "event:y", place: "Shibuya", publicCode: "Y", reason: { kind: "recent" as const }, startsAt: KNOWN_EVENT.startsAt, title: "未知" },
+  ];
+  assert.deepEqual(localizeHomeEventPool(pool, "zh").map((item) => [item.title, item.place]), [
+    ["东京餐饮入境客增长会", "渋谷ストリーム"],
+    ["东京餐饮入境客增长会", "丸之内"],
+    ["未知", "Shibuya"],
+  ]);
+  assert.deepEqual(localizeHomeEventPool(pool, "en").map((item) => [item.title, item.place]), [
+    ["Tokyo Inbound Restaurant Growth Forum", "渋谷ストリーム"],
+    ["Tokyo Inbound Restaurant Growth Forum", "丸之内"],
+    ["未知", "Shibuya"],
+  ]);
+});
+
+test("W0036 SC-04: the demo shell's real recent events reach the demo home without any client request", async (t) => {
+  const mounted = await mountHome(t, () => (
+    <IOrbitShell demoEventCandidates={[KNOWN_EVENT]} guide={GUIDE_NEW} home={HOME as never} viewModel={VIEW_MODEL} />
+  ));
+  // 顶栏既有的 `/api/account/me` 之外，示例首页不发任何请求（活动由服务端读好交下来）。
+  assert.deepEqual(mounted.calls.filter((call) => call.url !== "/api/account/me"), []);
+  assert.deepEqual(mounted.root.root.findByType(IOrbitHome).props.demoEventCandidates, [KNOWN_EVENT]);
+  // 示例今日要事不变（有 4 件事，不出空日导语）；池本身由首页内算出，W0037 才渲染。
+  assert.ok(w36Lede(mounted).startsWith("今天有 4 件事"));
+});
+
+
+/* ── W0036 SC-07 备选约束：snapshot 只带前 12 场时，计划点名的第 13 场补查一次后排在池首 ─────── */
+
+const TWELVE_UPCOMING = Array.from({ length: 12 }, (_, index) => ({
+  ...KNOWN_EVENT,
+  eventId: `event:early-${String(index + 1).padStart(2, "0")}`,
+  publicCode: `EARLY-${index + 1}`,
+  startsAt: `2026-10-${String(index + 5).padStart(2, "0")}T09:00:00.000Z`,
+  title: `早场 ${index + 1}`,
+}));
+const THIRTEENTH = {
+  ...KNOWN_EVENT,
+  eventId: "event:thirteenth",
+  publicCode: "LATE-13",
+  startsAt: "2026-10-20T09:00:00.000Z",
+  title: "第 13 场",
+};
+
+function planNamingEvent(eventId: string) {
+  const fixture = planSnapshotFixture();
+  const event = fixture.items.find((item) => item.id === "e-p2")!;
+  return { ...fixture, items: [{ ...event, linkedEventId: eventId, status: "recommended" as const }] };
+}
+
+const truncatedSnapshot = (truncated: boolean) => ({
+  ...EMPTY_SNAPSHOT,
+  recommendations: { items: [], state: "needs_goal", upcoming: TWELVE_UPCOMING, upcomingTruncated: truncated },
+});
+
+test("W0036 SC-07: with a truncated snapshot the plan's 13th event is resolved exactly once and heads the pool", async (t) => {
+  const asked: Array<readonly string[]> = [];
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const mounted = await mountHome(
+    t,
+    homeElement({
+      clock: () => PLAN_NOW,
+      resolvePlanEvents: async (ids) => {
+        asked.push(ids);
+        await gate;
+        return [THIRTEENTH];
+      },
+    }),
+    { plan: planNamingEvent("event:thirteenth"), snapshot: truncatedSnapshot(true) },
+  );
+  // 补查进行中：导语不先下「没有要紧的事」。
+  assert.equal(w36Lede(mounted), "正在整理今天的事…");
+  release();
+  await mounted.settle();
+  assert.equal(w36Lede(mounted), "今天没有安排，10/20 有一场适合你的活动：第 13 场。");
+  await mounted.settle();
+  assert.deepEqual(asked, [["event:thirteenth"]]);
+  // 补查只走注入的窄接口，客户端没有别的新增请求。
+  assert.equal(mounted.calls.filter((call) => call.url.includes("event")).length, 0);
+});
+
+test("W0036 SC-07: no resolution when the snapshot is not truncated or the plan event is already known; a failed resolution falls back quietly", async (t) => {
+  const asked: Array<readonly string[]> = [];
+  const resolvePlanEvents = async (ids: readonly string[]) => {
+    asked.push(ids);
+    return [THIRTEENTH];
+  };
+  const notTruncated = await mountHome(t, homeElement({ clock: () => PLAN_NOW, resolvePlanEvents }), {
+    plan: planNamingEvent("event:thirteenth"),
+    snapshot: truncatedSnapshot(false),
+  });
+  assert.equal(w36Lede(notTruncated), "今天没有安排，10/5 有一场适合你的活动：早场 1。");
+  const known = await mountHome(t, homeElement({ clock: () => PLAN_NOW, resolvePlanEvents }), {
+    plan: planNamingEvent("event:early-07"),
+    snapshot: truncatedSnapshot(true),
+  });
+  assert.equal(w36Lede(known), "今天没有安排，10/11 有一场适合你的活动：早场 7。");
+  assert.deepEqual(asked, []);
+
+  const failed = await mountHome(
+    t,
+    homeElement({ clock: () => PLAN_NOW, resolvePlanEvents: async () => Promise.reject(new Error("down")) }),
+    { plan: planNamingEvent("event:thirteenth"), snapshot: truncatedSnapshot(true) },
+  );
+  assert.equal(w36Lede(failed), "今天没有安排，10/5 有一场适合你的活动：早场 1。");
 });
