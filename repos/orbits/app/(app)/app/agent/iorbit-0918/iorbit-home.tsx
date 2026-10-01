@@ -16,12 +16,14 @@
  * 位置**（`today-plan-items.ts`）；计划行动可勾掉（同一个 `togglePlanAction`，本周推进同步）、
  * 「今天先不做」（只存本机、按账号与东京日分 key，不补位）、点标题跳转。首页内另算共享的
  * 推荐活动池 `eventPool`／`eventPoolReady`（W0037／W0038 消费），本 Sprint 只给空日导语用。
+ * W0037（RH-03）：「还有 N 件」之后、追问条之前是活动小模组（`iorbit-today-events.tsx`）：要事就绪且
+ * 池就绪后才渲染；要事为空（含部分来源读不到）时展开社群卡 + 活动，有要事时只剩「本周还有 N 场」一行；
+ * 示例期固定展开（W37-1）。
  *
  * 数据全部真实，写操作一个不丢：
  *   - 已报名活动 / 目标：服务端注入的 home route view model
- *   - 社群加入状态（W0003）：服务端读取后注入的 `communityJoined`。社群不是活动（D6）：
- *     未加入时栏首是指向活动页社群卡片的入口，已加入时栏首是「已加入社群」，都标「社群」，
- *     不占真实报名活动的两个名额
+ *   - 社群加入状态（W0003）：服务端读取后注入的 `communityJoined`（W0037 起示例期也是真实值）。
+ *     社群不是活动（D6）：只在活动小模组里以紧凑社群卡出现，「已报名活动」栏只列报名
  *   - 日程 / 月历 / 跟进：`refreshHomeDashboardAction()` 的 D25 facts
  *   - 信号：`POST /api/agent/signals?view=home`，完成 / 明天提醒走 `PATCH /api/agent/signals/{id}`
  *   - 本周推进（W0009）：有生效计划时读 `GET /api/agent/plans/current`，显示当前阶段、
@@ -44,7 +46,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { AgentLedgerEntry } from "../../../../../features/agent/ledger/contract";
 import type { PlanViewSnapshot } from "../../../../../features/plans/contract";
-import { COMMUNITY_CONFIG } from "../../../../../features/community/config";
 import {
   buildHomeEventPool,
   type HomeEventPoolCandidate,
@@ -91,6 +92,7 @@ import { fetchPlanMatches, withoutCandidate, type PlanMatchCandidate, type PlanM
 import { PlanMatchDialog, PlanMatchSheet } from "./plan-match-sheet";
 import { useSharedReadAccount } from "../../orbit-shared-read-account";
 import { usePendingCards } from "./use-pending-cards";
+import { IOrbitTodayEvents } from "./iorbit-today-events";
 import {
   currentPlanPhase,
   NETWORK_NUDGE_HREF,
@@ -322,7 +324,8 @@ function OrbitMark() {
 }
 
 export function IOrbitHome({
-  communityJoined: communityJoinedProp = false,
+  // W0037（W37-1）：示例期社群状态也是服务端读到的真实值，不再用示例数据覆盖。
+  communityJoined = false,
   guideEnabled: guideEnabledProp = false,
   home: homeProp,
   loadSnapshot,
@@ -408,7 +411,6 @@ export function IOrbitHome({
   const signals: Loadable<readonly AgentTodaySignalView[]> = demoData ? demoData.signals : signalsState;
   const sessions: Loadable<readonly IOrbitHomeSession[]> = demoData ? demoData.sessions : sessionsState;
   const home = demoData ? demoData.home : homeProp;
-  const communityJoined = demoData ? demoData.communityJoined : communityJoinedProp;
   // W0022：示例期不出引导入口与提醒（示例壳本来也不传这两个值）。
   const guideEnabled = guideEnabledProp && !demoActive;
   // 示例模式保留示例的账本显示，不读计划。
@@ -1500,6 +1502,18 @@ export function IOrbitHome({
             </button>
           ) : null}
 
+          {/* W0037：活动小模组。要事与活动池都就绪才渲染（不先闪出卡片再缩成一行）；
+              要事为空时展开（部分来源读不到也算：小模组不断言「今天没事」），示例期固定展开。 */}
+          {demoActive || (itemsSettled && eventPoolReady) ? (
+            <IOrbitTodayEvents
+              communityJoined={communityJoined}
+              expanded={demoActive || items.length === 0}
+              lang={lang}
+              now={now}
+              pool={eventPool}
+            />
+          ) : null}
+
           {/* 追问条：原顶部大输入框 + chips + 「打开对话」合并（Q11） */}
           <div className="ir-m-ask">
             <span aria-hidden className="ir-m-ask-mark">
@@ -1780,30 +1794,6 @@ export function IOrbitHome({
             <h3>{t({ en: "Registered events", zh: "已报名活动" })}</h3>
             <a href="/app/events">{t({ en: "All events →", zh: "全部活动 →" })}</a>
           </div>
-          {/* 社群行（W0003）：永远在栏首，标「社群」而不是日期，不计入下面两场真实活动。 */}
-          <a
-            className="ir-m-event ir-m-community"
-            data-orbit-iorbit-community={communityJoined ? "joined" : "invite"}
-            href="/app/events#iorbit-community"
-          >
-            <span className="ir-m-event-date">
-              {t({ en: "Always", zh: "常驻" })}
-              <small>{t({ en: "Community", zh: "社群" })}</small>
-            </span>
-            <span className="ir-m-event-copy">
-              {communityJoined ? (
-                <>
-                  <strong>{t({ en: "Joined the community", zh: "已加入社群" })}</strong>
-                  <span>{t({ en: "iOrbit user community", zh: "iOrbit 用户社群" })}</span>
-                </>
-              ) : (
-                <>
-                  <strong>{t(COMMUNITY_CONFIG.name)}</strong>
-                  <span>{t({ en: "Community · free · always open", zh: "社群 · 免费 · 长期有效" })}</span>
-                </>
-              )}
-            </span>
-          </a>
           {registeredEvents.length > 0 ? (
             registeredEvents.slice(0, 2).map((event) => {
               const start = new Date(event.startsAt);
@@ -1837,8 +1827,7 @@ export function IOrbitHome({
             })
           ) : (
             <p className="ir-m-empty">
-              {t({ en: "No registered events yet.", zh: "还没有报名活动。" })}{" "}
-              <a href="/app/events">{t({ en: "See recommendations →", zh: "看看推荐 →" })}</a>
+              {t({ en: "No registered events yet.", zh: "还没有报名活动。" })}
             </p>
           )}
         </div>

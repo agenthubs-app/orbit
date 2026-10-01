@@ -31,6 +31,11 @@ import { setSharedReadAccount } from "../../app/(app)/app/orbit-shared-read";
 import { SessionContext } from "next-auth/react";
 import { readFileSync } from "node:fs";
 import { localizeHomeEventPool } from "../../app/(app)/app/agent/iorbit-0918/iorbit-home";
+import {
+  countHomeEventsThisTokyoWeek,
+  formatHomeEventReason,
+  IOrbitTodayEvents,
+} from "../../app/(app)/app/agent/iorbit-0918/iorbit-today-events";
 import { PLAN_NOW, planSnapshotFixture } from "../support/plan-snapshot-fixture";
 
 /* ── 1. 纯函数 ─────────────────────────────────────────────────────────── */
@@ -433,6 +438,8 @@ interface MountOptions {
   storageLog?: Array<[string, string]>;
   /** W0036：计划读取在这个 Promise 完成后才应答（用来观察计划 pending 期间的导语）。 */
   planGate?: Promise<unknown>;
+  /** W0037：`PUT /api/community/membership` 的应答（默认 404）；抛错即网络错误。 */
+  communityPut?: () => Promise<Response> | Response;
 }
 
 async function mountHome(
@@ -554,6 +561,9 @@ async function mountHome(
       if (custom) return custom;
       const found = options.cardBatches.details[batchId];
       return found ? Response.json({ data: found, success: true }) : Response.json({ success: false }, { status: 404 });
+    }
+    if (url === "/api/community/membership" && options.communityPut) {
+      return options.communityPut();
     }
     if (url === "/api/guide/state" && options.guidePatch) {
       return options.guidePatch(init?.body ? JSON.parse(String(init.body)) : undefined);
@@ -1227,45 +1237,21 @@ function homeMarkup(props: { communityJoined?: boolean; home?: unknown }): strin
   );
 }
 
-test("not joined: the registered-events column opens with a community entry, labelled as a community", () => {
-  for (const home of [HOME, HOME_WITH_EVENTS]) {
-    const column = registeredColumn(homeMarkup({ communityJoined: false, home }));
-    const community = column.indexOf('data-orbit-iorbit-community="invite"');
-    assert.ok(community >= 0, "the community entry must be present");
-    // 第一条：在任何真实活动和空态之前。
-    assert.ok(column.indexOf('class="ir-m-event"') === -1 || community < column.indexOf('class="ir-m-event"'));
-    assert.ok(column.indexOf("还没有报名活动") === -1 || community < column.indexOf("还没有报名活动"));
-    const entry = column.slice(community, column.indexOf("</a>", community));
-    // 标明是社群，不伪装成活动（没有日期、写着「社群」），入口指向活动页的社群卡片。
-    assert.match(entry, /社群/);
-    assert.match(entry, /加入 iOrbit 用户社群/);
-    assert.match(column, /href="\/app\/events#iorbit-community"[^>]*data-orbit-iorbit-community="invite"|data-orbit-iorbit-community="invite"[^>]*href="\/app\/events#iorbit-community"/);
-    assert.doesNotMatch(entry, /已加入社群/);
+test("W0037 SC-05: the registered-events column lists only registrations — no community row, no 看看推荐 →", () => {
+  for (const communityJoined of [false, true]) {
+    const empty = registeredColumn(homeMarkup({ communityJoined }));
+    assert.match(empty, /还没有报名活动。/);
+    assert.doesNotMatch(empty, /data-orbit-iorbit-community/);
+    assert.doesNotMatch(empty, /data-orbit-iorbit-guide-step4/);
+    assert.doesNotMatch(empty, /看看推荐/);
+    assert.doesNotMatch(empty, /社群/);
+    // 有报名时只列前 2 场真实报名。
+    const column = registeredColumn(homeMarkup({ communityJoined, home: HOME_WITH_EVENTS }));
+    assert.match(column, /第一场真实活动/);
+    assert.match(column, /第二场真实活动/);
+    assert.doesNotMatch(column, /第三场真实活动/);
+    assert.doesNotMatch(column, /data-orbit-iorbit-community|看看推荐|还没有报名活动/);
   }
-  // 没有报名活动时空态仍在（社群不冒充报名）。
-  assert.match(registeredColumn(homeMarkup({ communityJoined: false })), /还没有报名活动/);
-});
-
-test("joined: the first line reads 已加入社群 and real events still show up to two", () => {
-  const column = registeredColumn(homeMarkup({ communityJoined: true, home: HOME_WITH_EVENTS }));
-  const joined = column.indexOf('data-orbit-iorbit-community="joined"');
-  assert.ok(joined >= 0);
-  assert.ok(joined < column.indexOf("第一场真实活动"), "已加入社群 must be the first line");
-  assert.match(column, /已加入社群/);
-  assert.doesNotMatch(column, /data-orbit-iorbit-community="invite"/);
-  // 社群行不占真实活动的两个名额。
-  assert.match(column, /第一场真实活动/);
-  assert.match(column, /第二场真实活动/);
-  assert.doesNotMatch(column, /第三场真实活动/);
-});
-
-test("the shell hands the server-read community state down to the home column", () => {
-  const joined = renderToStaticMarkup(
-    <IOrbitShell communityJoined home={HOME as never} viewModel={VIEW_MODEL} />,
-  );
-  assert.match(joined, /data-orbit-iorbit-community="joined"/);
-  const invite = renderToStaticMarkup(<IOrbitShell home={HOME as never} viewModel={VIEW_MODEL} />);
-  assert.match(invite, /data-orbit-iorbit-community="invite"/);
 });
 
 /* ── 6. 引导期示例模式（W0004）───────────────────────────────────────── */
@@ -1344,7 +1330,10 @@ test("demo mode renders the persona's day through the real home layout", () => {
   assert.match(html, /class="ir-progress-value">2\/9</);
   assert.ok(html.includes("在 JETRO 交流会认识 2 位 IT 负责人"));
   assert.ok(html.includes("JETRO 外资企业商务交流会"));
-  assert.match(html, /data-orbit-iorbit-community="joined"/);
+  // W0037：示例社群状态读真实值（这里未传 = 未加入），小模组固定展开，社群卡在今日要事区。
+  assert.doesNotMatch(html, /data-orbit-iorbit-community/);
+  assert.match(html, /data-orbit-today-events="expanded"/);
+  assert.match(html, /data-orbit-today-community/);
   assert.ok(html.includes("王砚提到的铃木，怎么请他引荐？"));
   // 示例人名旁的「示例」角标：主稿、两条短讯、两条时间线。
   assert.ok((html.match(/data-orbit-guide-demo-tag/g) ?? []).length >= 5);
@@ -2358,7 +2347,7 @@ test("W0022: with the switch off the plan link stays /app/agent/strategy and no 
   );
 });
 
-test("W0035: with an active plan and the switch on there is no step-4 reminder; the community row (both states) and 看看推荐 → stay", async (t) => {
+test("W0035: with an active plan and the switch on there is no step-4 reminder (W0037: no community row or 看看推荐 → either)", async (t) => {
   for (const communityJoined of [false, true]) {
     const mounted = await mountHome(t, homeElement({ clock: () => PLAN_NOW, communityJoined, guideEnabled: true }), {
       plan: planSnapshotFixture(),
@@ -2368,17 +2357,8 @@ test("W0035: with an active plan and the switch on there is no step-4 reminder; 
     const community = mounted.root.root.findAll(
       (node) => typeof node.type === "string" && node.props?.["data-orbit-iorbit-community"] !== undefined,
     );
-    assert.equal(community.length, 1);
-    assert.equal(community[0]!.props["data-orbit-iorbit-community"], communityJoined ? "joined" : "invite");
-    assert.equal(community[0]!.props.href, "/app/events#iorbit-community");
-    // 社群行仍在「已报名活动」栏首。
-    const column = community[0]!.parent!;
-    assert.ok(textOf(column).includes("已报名活动"));
-    const first = column.children.filter((child): child is typeof community[0] => typeof child !== "string")[1];
-    assert.equal(first, community[0], "the community row heads the column right under its title");
-    const recommend = mounted.root.root.findAll((node) => node.type === "a" && textOf(node) === "看看推荐 →");
-    assert.equal(recommend.length, 1);
-    assert.equal(recommend[0]!.props.href, "/app/events");
+    assert.equal(community.length, 0);
+    assert.equal(mounted.root.root.findAll((node) => node.type === "a" && textOf(node) === "看看推荐 →").length, 0);
     // 有计划时第 3 步入口不出现。
     assert.ok(!hrefsOf(mounted).includes("/app/start?step=3"));
   }
@@ -3005,4 +2985,336 @@ test("W0036 review P2: when the missing plan-event set changes, the lookup runs 
   await mounted.settle();
   assert.deepEqual(asked, [["event:thirteenth", "event:fourteenth"], ["event:fourteenth"]]);
   assert.equal(w36Lede(mounted), "今天没有安排，10/20 有一场适合你的活动：第 13 场。");
+});
+
+
+/* ── W0037：今日要事下方的活动小模组（RH-03）与紧凑社群卡 ─────────────────────── */
+
+// PLAN_NOW = 东京 2026-09-28（周一）12:00；本周到东京 10-04（周日）24:00 = 2026-10-04T15:00Z 为止。
+const W37_POOL = [
+  { id: "event_01", code: "TOKYO-01", startsAt: "2026-10-01T10:00:00.000Z", title: "原始标题", venue: "渋谷ストリーム" },
+  { id: "event:w37-b", code: "W37-B", startsAt: "2026-10-02T10:00:00.000Z", title: "第二场", venue: "丸の内" },
+  { id: "event:w37-c", code: "W37-C", startsAt: "2026-10-03T10:00:00.000Z", title: "第三场" },
+  { id: "event:w37-d", code: "W37-D", startsAt: "2026-10-06T10:00:00.000Z", title: "第四场", venue: "新宿" },
+  { id: "event:w37-e", code: "W37-E", startsAt: "2026-10-08T10:00:00.000Z", title: "第五场", venue: "品川" },
+].map((row) => ({
+  endsAt: new Date(Date.parse(row.startsAt) + 2 * 3600_000).toISOString(),
+  eventId: row.id,
+  publicCode: row.code,
+  startsAt: row.startsAt,
+  title: row.title,
+  ...(row.venue ? { venue: row.venue } : {}),
+}));
+
+const w37Module = (mounted: Mounted) =>
+  mounted.root.root.findAll((node) => typeof node.type === "string" && node.props?.["data-orbit-today-events"] !== undefined);
+const w37Cards = (mounted: Mounted) =>
+  mounted.root.root.findAll((node) => node.type === "a" && node.props?.["data-orbit-today-event"] !== undefined);
+const w37Community = (mounted: Mounted) =>
+  mounted.root.root.findAll((node) => typeof node.type === "string" && node.props?.["data-orbit-today-community"] !== undefined);
+const w37Status = (mounted: Mounted) =>
+  textOf(mounted.root.root.findAll((node) => node.props?.["data-orbit-today-events-status"] !== undefined)[0]!);
+
+async function w37Mount(
+  t: TestContext,
+  props: { communityJoined?: boolean; pool?: typeof W37_POOL; language?: "zh" | "en" | "ja" } = {},
+  options: MountOptions = {},
+) {
+  const element = homeElement({ clock: () => PLAN_NOW, communityJoined: props.communityJoined });
+  return mountHome(
+    t,
+    (mountOptions) => (
+      <OrbitLanguageProvider initialLanguage={props.language ?? "zh"}>{element(mountOptions)}</OrbitLanguageProvider>
+    ),
+    { plan: null, snapshot: POOL_SNAPSHOT(props.pool ?? W37_POOL), ...options },
+  );
+}
+
+test("W0037 SC-02: formatHomeEventReason has the three real reasons in zh and en; goal takes the first two tokens", () => {
+  assert.equal(formatHomeEventReason({ kind: "plan" }, "zh"), "计划里提到");
+  assert.equal(formatHomeEventReason({ kind: "plan" }, "en"), "In your plan");
+  assert.equal(formatHomeEventReason({ kind: "recent" }, "zh"), "近期活动");
+  assert.equal(formatHomeEventReason({ kind: "recent" }, "en"), "Coming up soon");
+  assert.equal(formatHomeEventReason({ kind: "goal", tokens: ["制造业", "AI", "东京"] }, "zh"), "匹配你目标里的『制造业、AI』");
+  assert.equal(formatHomeEventReason({ kind: "goal", tokens: ["制造业"] }, "en"), "Matches “制造业” in your goal");
+  assert.equal(formatHomeEventReason({ kind: "goal", tokens: ["sales", "AI", "x"] }, "en"), "Matches “sales、AI” in your goal");
+});
+
+test("W0037 SC-01: countHomeEventsThisTokyoWeek counts pool events from now to Sunday 24:00 Tokyo (Mon–Sun)", () => {
+  const item = (startsAt: string) => ({ eventId: startsAt, publicCode: startsAt, reason: { kind: "recent" as const }, startsAt, title: startsAt });
+  // 东京 10-04（周日）23:30：只剩 23:50 这一场还在本周；周一 00:10 的属于下周。
+  const sundayNight = new Date("2026-10-04T14:30:00.000Z");
+  const pool = [
+    item("2026-10-04T14:00:00.000Z"), // 已开始（周日 23:00）
+    item("2026-10-04T14:50:00.000Z"), // 周日 23:50
+    item("2026-10-04T15:00:00.000Z"), // 周一 00:00
+    item("2026-10-04T15:10:00.000Z"), // 周一 00:10
+  ];
+  assert.equal(countHomeEventsThisTokyoWeek(pool, sundayNight), 1);
+  // 东京 10-05（周一）00:10：新的一周到 10-11（周日）24:00。
+  const mondayEarly = new Date("2026-10-04T15:10:00.000Z");
+  const next = [
+    item("2026-10-04T15:20:00.000Z"), // 周一 00:20
+    item("2026-10-11T14:59:00.000Z"), // 周日 23:59
+    item("2026-10-11T15:00:00.000Z"), // 下周一 00:00
+  ];
+  assert.equal(countHomeEventsThisTokyoWeek(next, mondayEarly), 2);
+  assert.equal(countHomeEventsThisTokyoWeek([], mondayEarly), 0);
+});
+
+test("W0037 SC-01: an empty day expands between 还有 N 件 and the ask row — community card + 2 events, or 3 once joined", async (t) => {
+  const invite = await w37Mount(t);
+  const module = w37Module(invite);
+  assert.equal(module.length, 1);
+  assert.equal(module[0]!.props["data-orbit-today-events"], "expanded");
+  assert.equal(w37Community(invite).length, 1);
+  assert.deepEqual(w37Cards(invite).map((card) => card.props.href), ["/app/events/TOKYO-01", "/app/events/W37-B"]);
+  // 位置：今日要事区里，追问条之前。
+  const main = invite.root.root.findAll((node) => node.props?.className === "ir-m-main")[0]!;
+  const kids = main.children.filter((child): child is typeof main => typeof child !== "string");
+  const moduleIndex = kids.findIndex((child) => child.type === IOrbitTodayEvents);
+  const askIndex = kids.findIndex((child) => child.props?.className === "ir-m-ask");
+  assert.ok(moduleIndex >= 0 && askIndex === moduleIndex + 1, "the module sits right before the ask row");
+
+  const joined = await w37Mount(t, { communityJoined: true });
+  assert.equal(w37Community(joined).length, 0);
+  assert.deepEqual(w37Cards(joined).map((card) => card.props.href), ["/app/events/TOKYO-01", "/app/events/W37-B", "/app/events/W37-C"]);
+  // 这两种都不发任何额外请求（活动池来自 snapshot，社群状态来自服务端）。
+  for (const mounted of [invite, joined]) {
+    assert.equal(mounted.calls.filter((call) => call.url.includes("events") || call.url.includes("community")).length, 0);
+  }
+});
+
+test("W0037 SC-01: fewer events than slots show only what exists; an empty pool shows no event card", async (t) => {
+  const one = await w37Mount(t, { pool: W37_POOL.slice(0, 1) });
+  assert.equal(w37Community(one).length, 1);
+  assert.equal(w37Cards(one).length, 1);
+  const oneJoined = await w37Mount(t, { communityJoined: true, pool: W37_POOL.slice(0, 1) });
+  assert.equal(w37Cards(oneJoined).length, 1);
+  const none = await w37Mount(t, { pool: [] });
+  assert.equal(w37Community(none).length, 1, "not joined + empty pool: the community card alone");
+  assert.equal(w37Cards(none).length, 0);
+  const noneJoined = await w37Mount(t, { communityJoined: true, pool: [] });
+  assert.equal(w37Module(noneJoined).length, 0, "joined + empty pool: no module at all");
+});
+
+test("W0037 SC-01: with items today the module is one line — 本周还有 N 场 (Tokyo Mon–Sun) — and disappears at N=0", async (t) => {
+  const busy = await w37Mount(t, {}, { signals: [plainSignal("s1", "回复佐藤", "high")] });
+  assert.equal(w37Module(busy)[0]!.props["data-orbit-today-events"], "collapsed");
+  assert.equal(w37Cards(busy).length, 0);
+  assert.equal(w37Community(busy).length, 0);
+  const line = busy.root.root.findAll((node) => node.type === "a" && node.props?.["data-orbit-today-events-week"] !== undefined);
+  assert.equal(line.length, 1);
+  assert.equal(line[0]!.props.href, "/app/events");
+  assert.equal(textOf(line[0]!), "本周还有 3 场适合你的活动 →");
+  const en = await w37Mount(t, { language: "en" }, { signals: [plainSignal("s1", "Reply", "high")] });
+  assert.equal(textOf(en.root.root.findAll((node) => node.props?.["data-orbit-today-events-week"] !== undefined)[0]!), "3 more events for you this week →");
+  // 池里只有下周的：N=0，整行不显示。
+  const later = await w37Mount(t, { pool: W37_POOL.slice(3) }, { signals: [plainSignal("s1", "回复佐藤", "high")] });
+  assert.equal(w37Module(later).length, 0);
+});
+
+test("W0037 SC-01: not rendered until today's items and the pool are settled; partial with no items still expands", async (t) => {
+  let release: (value: unknown) => void = () => undefined;
+  const gate = new Promise((resolve) => {
+    release = resolve;
+  });
+  const pending = await w37Mount(t, {}, { planGate: gate, plan: null });
+  assert.equal(w37Module(pending).length, 0, "plan still pending");
+  release(null);
+  await pending.settle();
+  assert.equal(w37Module(pending).length, 1);
+
+  const never = await mountHome(
+    t,
+    () => (
+      <IOrbitHome
+        clock={() => PLAN_NOW}
+        home={HOME as never}
+        loadSnapshot={() => new Promise(() => undefined)}
+        navigate={() => undefined}
+        onAsk={() => undefined}
+        onOpenChat={() => undefined}
+        onOpenHistory={() => undefined}
+        onOpenSession={() => undefined}
+      />
+    ),
+    { plan: null },
+  );
+  assert.equal(w37Module(never).length, 0, "snapshot still pending");
+
+  const partial = await w37Mount(t, {}, { signalsFail: true });
+  assert.ok(textOf(partial.root.root).includes("部分数据来源暂时不可用"));
+  assert.equal(w37Module(partial)[0]!.props["data-orbit-today-events"], "expanded");
+  assert.equal(w37Cards(partial).length, 2);
+});
+
+test("W0037 SC-02: each card is one detail link — date, weekday + time, title, place, reason; no register button, no fee", async (t) => {
+  const zh = await w37Mount(t, { communityJoined: true });
+  const cards = w37Cards(zh);
+  for (const card of cards) {
+    assert.equal(card.findAll((node) => node.type === "button").length, 0, "no button inside a card");
+    assert.doesNotMatch(textOf(card), /报名|费用|免费|¥|円/);
+  }
+  assert.equal(textOf(cards[0]!), "10/1周四 19:00东京餐饮入境客增长会渋谷ストリーム近期活动");
+  // 缺地点：没有地点行。
+  assert.equal(textOf(cards[2]!), "10/3周六 19:00第三场近期活动");
+  assert.equal(cards[0]!.props.onClick, undefined);
+
+  const en = await w37Mount(t, { communityJoined: true, language: "en" });
+  assert.equal(textOf(w37Cards(en)[0]!), "10/1Thu 07:00 PMTokyo Inbound Restaurant Growth Forum渋谷ストリームComing up soon");
+  // 未知 id 显示原标题；地点在三种语言下都是来源原文。
+  assert.equal(textOf(w37Cards(en)[1]!), "10/2Fri 07:00 PM第二场丸の内Coming up soon");
+  const ja = await w37Mount(t, { communityJoined: true, language: "ja" });
+  assert.equal(textOf(w37Cards(ja)[0]!), textOf(w37Cards(en)[0]!));
+  assert.equal(textOf(w37Cards(ja)[1]!), "10/2Fri 07:00 PM第二场丸の内Coming up soon");
+});
+
+test("W0037 SC-02: plan and goal reasons from the pool reach the cards", async (t) => {
+  const mounted = await w37Mount(t, { communityJoined: true }, {
+    snapshot: POOL_SNAPSHOT(W37_POOL, "success", [{ eventId: "event:w37-b", matchedTokens: ["餐饮", "入境", "东京"] }]),
+  });
+  const reasons = w37Cards(mounted).map((card) =>
+    textOf(card.findAll((node) => node.props?.className === "ir-te-reason")[0]!),
+  );
+  assert.deepEqual(reasons, ["匹配你目标里的『餐饮、入境』", "近期活动", "近期活动"]);
+});
+
+test("W0037 SC-03: the compact community card — name, WeChat ID with 占位, copy, QR toggle with a 占位 box", async (t) => {
+  const mounted = await w37Mount(t);
+  const card = w37Community(mounted)[0]!;
+  const text = textOf(card);
+  assert.ok(text.includes("加入 iOrbit 用户社群"));
+  assert.ok(text.includes("orbit_helper"));
+  assert.ok(card.findAll((node) => node.props?.["data-community-placeholder"] === "wechat").length === 1);
+  for (const button of card.findAll((node) => node.type === "button")) {
+    assert.match(button.props.className, /^btn ir-te-/);
+  }
+  const qr = card.findAll((node) => node.type === "button" && node.props?.["data-orbit-today-community-qr"] !== undefined)[0]!;
+  assert.equal(qr.props["aria-expanded"], false);
+  assert.equal(card.findAll((node) => node.props?.["data-community-placeholder"] === "qr").length, 0);
+  await act(async () => qr.props.onClick());
+  const reopened = w37Community(mounted)[0]!;
+  assert.equal(reopened.findAll((node) => node.type === "button" && node.props?.["data-orbit-today-community-qr"] !== undefined)[0]!.props["aria-expanded"], true);
+  const box = reopened.findAll((node) => node.props?.["data-community-placeholder"] === "qr");
+  assert.equal(box.length, 1);
+  assert.ok(textOf(box[0]!).includes("占位"));
+
+  // 复制：剪贴板可用 → 已复制；不可用 → 提示选中后自己复制。
+  const previous = Object.getOwnPropertyDescriptor(globalThis, "navigator");
+  t.after(() => {
+    if (previous) Object.defineProperty(globalThis, "navigator", previous);
+  });
+  const written: string[] = [];
+  Object.defineProperty(globalThis, "navigator", { configurable: true, value: { clipboard: { writeText: async (value: string) => void written.push(value) } } });
+  const copy = () => w37Community(mounted)[0]!.findAll((node) => node.type === "button" && node.props?.["data-orbit-today-community-copy"] !== undefined)[0]!;
+  await act(async () => copy().props.onClick());
+  assert.deepEqual(written, ["orbit_helper"]);
+  assert.equal(w37Status(mounted), "微信号已复制。");
+  Object.defineProperty(globalThis, "navigator", { configurable: true, value: {} });
+  await act(async () => copy().props.onClick());
+  assert.equal(w37Status(mounted), "已选中微信号，按 ⌘C / Ctrl+C 复制。");
+  assert.equal(mounted.calls.filter((call) => call.url === "/api/community/membership").length, 0);
+});
+
+test("W0037 SC-03: 我已加入 is optimistic — one PUT, the card leaves and a third event shows; double clicks send one request", async (t) => {
+  let resolve: (response: Response) => void = () => undefined;
+  const mounted = await w37Mount(t, {}, {
+    communityPut: () => new Promise<Response>((done) => {
+      resolve = done;
+    }),
+  });
+  const join = w37Community(mounted)[0]!.findAll((node) => node.type === "button" && node.props?.["data-orbit-today-community-join"] !== undefined)[0]!;
+  const click = join.props.onClick as () => void;
+  await act(async () => {
+    click();
+    click();
+  });
+  assert.equal(w37Community(mounted).length, 0, "the card leaves at once");
+  assert.equal(w37Cards(mounted).length, 3, "the third event shows at once");
+  await act(async () => {
+    resolve(Response.json({ data: { joined: true }, success: true }));
+  });
+  await mounted.settle();
+  const puts = mounted.calls.filter((call) => call.url === "/api/community/membership");
+  assert.deepEqual(puts.map((call) => call.method), ["PUT"]);
+  assert.equal(w37Community(mounted).length, 0);
+  assert.equal(w37Cards(mounted).length, 3);
+  assert.equal(w37Status(mounted), "已加入 iOrbit 用户社群。");
+});
+
+test("W0037 SC-03: a failed join rolls back — card returns, third event leaves, role=status explains (401 has its own copy)", async (t) => {
+  const cases: Array<[string, () => Promise<Response> | Response, string]> = [
+    ["5xx", () => Response.json({ success: false }, { status: 503 }), "没有保存成功，请再试一次。"],
+    ["joined false", () => Response.json({ data: { joined: false }, success: true }), "没有保存成功，请再试一次。"],
+    ["throws", () => Promise.reject(new Error("offline")), "没有保存成功，请再试一次。"],
+    ["401", () => Response.json({ success: false }, { status: 401 }), "请先登录，再标记已加入。"],
+  ];
+  for (const [label, respond, copy] of cases) {
+    const mounted = await w37Mount(t, {}, { communityPut: respond });
+    const join = w37Community(mounted)[0]!.findAll((node) => node.type === "button" && node.props?.["data-orbit-today-community-join"] !== undefined)[0]!;
+    await act(async () => join.props.onClick());
+    await mounted.settle();
+    assert.equal(w37Community(mounted).length, 1, `${label}: the card comes back`);
+    assert.equal(w37Cards(mounted).length, 2, `${label}: the third event is withdrawn`);
+    const status = mounted.root.root.findAll((node) => node.props?.["data-orbit-today-events-status"] !== undefined)[0]!;
+    assert.equal(status.props.role, "status");
+    assert.equal(textOf(status), copy, label);
+    assert.equal(mounted.calls.filter((call) => call.url === "/api/community/membership").length, 1, label);
+  }
+});
+
+test("W0037 SC-03/05: module buttons carry btn ir-te-* and IORBIT_STYLES neutralises them", () => {
+  const flat = IORBIT_STYLES.replace(/\/\*[\s\S]*?\*\//g, "").split("\n").join(" ");
+  for (const className of ["ir-te-copy", "ir-te-qr", "ir-te-join"]) {
+    const match = flat.match(new RegExp(`\\.btn\\.${className}(?![-a-z])[^{]*\\{[^}]*\\}`));
+    assert.ok(match && match[0].includes("height:") && match[0].includes("transition:"), className);
+    const active = flat.match(new RegExp(`\\.btn\\.${className}(?![-a-z]):active[^{]*\\{[^}]*\\}`));
+    assert.ok(active && active[0].includes("transform: none"), `${className}:active`);
+  }
+  const source = readFileSync("app/(app)/app/agent/iorbit-0918/iorbit-today-events.tsx", "utf8");
+  assert.doesNotMatch(source, /style=\{/, "no inline styles");
+});
+
+test("W0037 SC-04: the demo home always expands with real events and the real community state; links are plain, 我已加入 really PUTs", async (t) => {
+  const candidates = W37_POOL.slice(0, 4);
+  const invite = await mountHome(t, () => (
+    <IOrbitShell demoEventCandidates={candidates} guide={GUIDE_NEW} home={HOME as never} viewModel={VIEW_MODEL} />
+  ), { communityPut: () => Response.json({ data: { joined: true }, success: true }) });
+  // 示例今日要事不为空（4 件），小模组仍固定展开；示例内容不变。
+  assert.ok(w36Lede(invite).startsWith("今天有 4 件事"));
+  assert.equal(w37Module(invite)[0]!.props["data-orbit-today-events"], "expanded");
+  assert.equal(w37Community(invite).length, 1);
+  assert.deepEqual(w37Cards(invite).map((card) => card.props.href), ["/app/events/TOKYO-01", "/app/events/W37-B"]);
+  for (const card of w37Cards(invite)) assert.equal(card.props.onClick, undefined, "no 这是示例 guard on real event cards");
+  // 挂载时除顶栏 `/api/account/me` 外 0 请求。
+  assert.deepEqual(invite.calls.filter((call) => call.url !== "/api/account/me"), []);
+  const join = w37Community(invite)[0]!.findAll((node) => node.type === "button" && node.props?.["data-orbit-today-community-join"] !== undefined)[0]!;
+  await act(async () => join.props.onClick());
+  await invite.settle();
+  assert.deepEqual(
+    invite.calls.filter((call) => call.url !== "/api/account/me").map((call) => `${call.method} ${call.url}`),
+    ["PUT /api/community/membership"],
+  );
+  assert.equal(w37Cards(invite).length, 3);
+  assert.equal(invite.root.root.findAll((node) => node.props?.["data-orbit-guide-demo-intercept"] !== undefined).length, 0);
+
+  const joined = await mountHome(t, () => (
+    <IOrbitShell communityJoined demoEventCandidates={candidates} guide={GUIDE_NEW} home={HOME as never} viewModel={VIEW_MODEL} />
+  ));
+  assert.equal(joined.root.root.findByType(IOrbitHome).props.communityJoined, true);
+  assert.equal(w37Community(joined).length, 0);
+  assert.equal(w37Cards(joined).length, 3);
+
+  const empty = await mountHome(t, () => (
+    <IOrbitShell demoEventCandidates={[]} guide={GUIDE_NEW} home={HOME as never} viewModel={VIEW_MODEL} />
+  ));
+  assert.equal(w37Cards(empty).length, 0);
+  assert.equal(w37Community(empty).length, 1);
+});
+
+test("W0037: the live shell hands the server-read community state down to the home", () => {
+  const html = renderToStaticMarkup(<IOrbitShell communityJoined home={HOME as never} viewModel={VIEW_MODEL} />);
+  // SSR 首帧还在读取：小模组不渲染（不先闪出卡片）。
+  assert.doesNotMatch(html, /data-orbit-today-events/);
 });

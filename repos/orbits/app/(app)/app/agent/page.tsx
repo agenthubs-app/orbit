@@ -17,7 +17,7 @@
  *
  * W0014：示例判定挪到最前（`readDemoModeViewForActor`，判定口径不变：目标仍取首页数据的
  * relationshipGoal，首页数据读不到时按真实页面处理）。处于示例期时只读了判定所需的首页数据，
- * 对话路由模型、活动报名／canonical id、社群状态、计划卡片一概不读——示例壳不用它们，真实
+ * 对话路由模型、活动报名／canonical id、计划卡片一概不读（社群状态见 W0037）——示例壳不用它们，真实
  * `viewModel` 的 suggests 还带真实人名与草稿，不能进示例；那些读取出错也不影响示例渲染。
  * 开关关闭时判定零读取，下面的真实路径与改动前一致。
  *
@@ -28,6 +28,9 @@
  * W0036（RH-03「活动始终真实」）：示例期唯一新增的真实读取——「近期可报名」活动（公开目录 1 次 +
  * 本人报名 1 次），作为 `demoEventCandidates` 交给示例壳组活动池；其余真实数据仍一概不读、不下传。
  * 真实分支不做这次读取（真实期活动池由首页从 snapshot + 计划算出）。
+ *
+ * W0037（W37-1）：示例期再放开本人社群状态 1 次（`readCommunityJoinedForActor`，canonical actor），
+ * 交给示例壳的活动小模组；读取失败按未加入处理，示例照常渲染。
  */
 import { getOrbitServerLanguage, localizeOrbitTree } from "../orbit-language-server";
 import type { OrbitLanguage } from "../orbit-language-core";
@@ -158,14 +161,19 @@ export default async function AppAgentPage({
   );
   if (guide) {
     // 示例壳只吃引导视图；home／viewModel 一律不带真实数据（起步模型不含任何人物）。
-    // W0036：例外只有真实的近期可报名活动（读不到时为空数组，示例照常渲染）。
-    const demoEventCandidates = await readDemoHomeEventCandidates({ accountId: actorId });
+    // W0036：例外只有真实的近期可报名活动（读不到时为空数组，示例照常渲染）；
+    // W0037：再加本人社群状态（读不到按未加入）。
+    const [demoEventCandidates, communityJoined] = await Promise.all([
+      readDemoHomeEventCandidates({ accountId: actorId }),
+      readCommunityJoinedForActor({ actorId }).catch(() => false),
+    ]);
     return (
       <>
         <OrbitReferenceStyles />
         <OrbitVisualFreezeRuntime />
         <div data-orbit-route="app-agent-route">
           <IOrbitShell
+            communityJoined={communityJoined}
             demoEventCandidates={demoEventCandidates}
             guide={guide}
             home={null}

@@ -20,6 +20,10 @@ const NEW_BUTTONS = [
   "ir-demo-collapse",
   "ir-demo-pill",
   "ir-demo-dismiss",
+  // W0037 活动小模组的紧凑社群卡
+  "ir-te-copy",
+  "ir-te-qr",
+  "ir-te-join",
 ];
 const neutralise =
   NEW_BUTTONS.map((name) => `${S} .btn.${name}`).join(", ") +
@@ -162,8 +166,30 @@ ${S} .ir-m-event-date small { display: block; margin-top: 3px; font-family: "Not
 ${S} .ir-m-event-copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 ${S} .ir-m-event-copy strong { font-size: 14.5px; font-weight: 500; line-height: 1.45; }
 ${S} .ir-m-event-copy span { font-size: 12.5px; color: #6B6F99; }
-${S} .ir-m-community .ir-m-event-date { font-size: 17px; color: #4B4FC7; }
-${S} .ir-m-community .ir-m-event-date small { color: #4B4FC7; }
+/* W0037 活动小模组：今日要事下方，细线分组；紧凑社群卡用浅靛蓝底，错误提示才用时效色 */
+${S} .ir-te { display: flex; flex-direction: column; gap: 12px; }
+${S} .ir-te-week { align-self: flex-start; padding: 4px; color: #4B4FC7; font-size: 13.5px; }
+${S} .ir-te-week:hover { color: #2E3270; text-decoration: underline; text-underline-offset: 3px; }
+${S} .ir-te-community { display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; border: 1px solid #DDDEFA; border-radius: 12px; background: #F4F5FC; }
+${S} .ir-te-community-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+${S} .ir-te-community-head strong { font-size: 15px; font-weight: 500; color: #0E1225; }
+${S} .ir-te-community-tag { padding: 2px 8px; border-radius: 999px; border: 1px solid #DDDEFA; background: #FFFFFF; color: #3B3F7A; font-size: 11.5px; }
+${S} .ir-te-wx { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 13px; color: #3B3F7A; }
+${S} .ir-te-wx code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12.5px; padding: 2px 8px; border-radius: 6px; border: 1px solid #E8E9F6; background: #FFFFFF; color: #0E1225; user-select: all; }
+${S} .ir-te-ph { color: #6B6F99; font-size: 11.5px; }
+${S} .btn.ir-te-copy, ${S} .btn.ir-te-qr { padding: 0; border: 0; border-radius: 0; background: transparent; color: #4B4FC7; font-size: 13px; }
+${S} .btn.ir-te-copy:hover, ${S} .btn.ir-te-qr:hover { color: #2E3270; }
+${S} .ir-te-qr-box { display: grid; place-items: center; width: 112px; height: 112px; border-radius: 10px; border: 1.5px dashed #B9BCEB; background: #FFFFFF; color: #6B6F99; font-size: 11.5px; line-height: 1.5; text-align: center; object-fit: contain; }
+${S} .ir-te-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+${S} .btn.ir-te-join { padding: 7px 14px; border: 0; border-radius: 10px; background: #4B4FC7; color: #FFFFFF; font-size: 13.5px; font-weight: 500; }
+${S} .btn.ir-te-join:hover { background: #2E3270; color: #FFFFFF; }
+${S} .ir-te-hint { font-size: 12.5px; color: #6B6F99; }
+${S} .ir-te-events { display: flex; flex-direction: column; gap: 14px; padding: 4px 4px 0; }
+${S} .ir-te-event .ir-m-event-copy .ir-te-reason { color: #4B4FC7; }
+${S} .ir-te-status { margin: 0; font-size: 12.5px; color: #6B6F99; }
+/* 状态行常驻 DOM（aria-live 区域要先存在才能播报）；空时不占版面。 */
+${S} .ir-te-status:empty { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+${S} .ir-te-status[data-tone="error"] { color: #C4461B; }
 ${S} .ir-m-sessions { display: flex; flex-direction: column; }
 ${S} .btn.ir-m-session { justify-content: space-between; gap: 12px; width: 100%; padding: 9px 0; border: 0; border-top: 1px solid #E8E9F6; border-radius: 0; background: transparent; color: #0E1225; font-size: 14px; text-align: left; }
 ${S} .ir-m-sessions .btn.ir-m-session:first-child { border-top: 0; padding-top: 0; }
