@@ -2960,3 +2960,49 @@ test("W0036 SC-07: no resolution when the snapshot is not truncated or the plan 
   );
   assert.equal(w36Lede(failed), "今天没有安排，10/5 有一场适合你的活动：早场 1。");
 });
+
+test("W0036 review P2: when the missing plan-event set changes, the lookup runs again for the new key and stale results are dropped", async (t) => {
+  const asked: Array<readonly string[]> = [];
+  const FOURTEENTH = { ...THIRTEENTH, eventId: "event:fourteenth", publicCode: "LATE-14", startsAt: "2026-10-21T09:00:00.000Z", title: "第 14 场" };
+  const resolvePlanEvents = async (ids: readonly string[]) => {
+    asked.push(ids);
+    return [THIRTEENTH, FOURTEENTH].filter((item) => ids.includes(item.eventId));
+  };
+  const fixture = planSnapshotFixture();
+  const event = fixture.items.find((item) => item.id === "e-p2")!;
+  const plan = {
+    ...fixture,
+    items: [
+      { ...event, id: "e-13", linkedEventId: "event:thirteenth", status: "recommended" as const },
+      { ...event, id: "e-14", linkedEventId: "event:fourteenth", status: "recommended" as const },
+    ],
+  };
+  const element = (snapshot: unknown) => (
+    <IOrbitHome
+      clock={() => PLAN_NOW}
+      home={HOME as never}
+      loadSnapshot={async () => snapshot as never}
+      navigate={() => undefined}
+      onAsk={() => undefined}
+      onOpenChat={() => undefined}
+      onOpenHistory={() => undefined}
+      onOpenSession={() => undefined}
+      resolvePlanEvents={resolvePlanEvents}
+    />
+  );
+  const mounted = await mountHome(t, () => element(truncatedSnapshot(true)), { plan });
+  assert.deepEqual(asked, [["event:thirteenth", "event:fourteenth"]]);
+  assert.equal(w36Lede(mounted), "今天没有安排，10/20 有一场适合你的活动：第 13 场。");
+
+  // 新 snapshot 里已有第 13 场：缺的只剩第 14 场 → 按新 key 再查一次。
+  const withThirteenth = {
+    ...EMPTY_SNAPSHOT,
+    recommendations: { items: [], state: "needs_goal", upcoming: [...TWELVE_UPCOMING.slice(0, 11), THIRTEENTH], upcomingTruncated: true },
+  };
+  await act(async () => {
+    mounted.root.update(element(withThirteenth));
+  });
+  await mounted.settle();
+  assert.deepEqual(asked, [["event:thirteenth", "event:fourteenth"], ["event:fourteenth"]]);
+  assert.equal(w36Lede(mounted), "今天没有安排，10/20 有一场适合你的活动：第 13 场。");
+});

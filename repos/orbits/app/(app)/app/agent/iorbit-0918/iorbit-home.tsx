@@ -1029,13 +1029,20 @@ export function IOrbitHome({
       .filter((eventId) => !known.has(eventId))
       .join("\n");
   }, [demoActive, planSnapshot, recommendations]);
-  const [planEventExtra, setPlanEventExtra] = useState<Loadable<readonly HomeEventPoolCandidate[]> | "idle">("idle");
-  const planEventsRequested = useRef(false);
+  // 结果按「缺哪些 id」这把 key 记：同一 key 只查一次；key 变了（换账号、计划刷新后点名了别的活动）
+  // 旧结果立即作废，再按新 key 查一次（review P2）。
+  const [planEventLookup, setPlanEventLookup] = useState<{
+    key: string;
+    value: Loadable<readonly HomeEventPoolCandidate[]>;
+  } | null>(null);
+  const requestedPlanEventKey = useRef<string | null>(null);
   useEffect(() => {
-    if (typeof window === "undefined" || !missingPlanEventKey || planEventsRequested.current) return;
-    planEventsRequested.current = true;
-    const eventIds = missingPlanEventKey.split("\n");
-    setPlanEventExtra("pending");
+    if (typeof window === "undefined" || !missingPlanEventKey) return;
+    if (requestedPlanEventKey.current === missingPlanEventKey) return;
+    requestedPlanEventKey.current = missingPlanEventKey;
+    const key = missingPlanEventKey;
+    const eventIds = key.split("\n");
+    setPlanEventLookup({ key, value: "pending" });
     const load = resolvePlanEvents
       ? resolvePlanEvents(eventIds)
       : import("../home-plan-events-actions")
@@ -1045,10 +1052,12 @@ export function IOrbitHome({
             return result.items;
           });
     void load.then(
-      (items) => setPlanEventExtra(items),
-      () => setPlanEventExtra("unavailable"),
+      (items) => setPlanEventLookup((current) => (current?.key === key ? { key, value: items } : current)),
+      () => setPlanEventLookup((current) => (current?.key === key ? { key, value: "unavailable" } : current)),
     );
   }, [missingPlanEventKey, resolvePlanEvents]);
+  const planEventExtra: Loadable<readonly HomeEventPoolCandidate[]> | "idle" =
+    planEventLookup && planEventLookup.key === missingPlanEventKey ? planEventLookup.value : "idle";
   const eventPool: readonly HomeEventPoolItem[] = useMemo(() => {
     const pool = buildHomeEventPool({
       goalMatches: demoActive || recommendations?.state !== "success" ? [] : recommendations.items,
