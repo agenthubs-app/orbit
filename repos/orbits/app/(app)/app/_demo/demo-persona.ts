@@ -57,7 +57,6 @@ export interface DemoHomeSession {
 
 /** 概览屏的整份示例数据：每一项都是真实数据源的同形状替身。 */
 export interface DemoHomeData {
-  communityJoined: boolean;
   home: OrbitHomeViewModel;
   ledger: readonly AgentLedgerEntry[];
   sessions: readonly DemoHomeSession[];
@@ -327,7 +326,6 @@ export function buildDemoHomeData(real: Date, lang: Lang): DemoHomeData {
   ];
 
   return {
-    communityJoined: true,
     home: {
       account: {
         fullName: L({ en: "Demo founder", zh: "示例创始人" }),

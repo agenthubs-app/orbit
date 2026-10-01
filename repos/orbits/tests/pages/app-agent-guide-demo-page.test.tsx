@@ -539,7 +539,8 @@ test("W0014 plan page, in the guide: no real plan or contact-name read; the scre
 
 /* ── W0014：示例期间 `/app/agent` 不读真实对话／首页业务数据，也不把它们交给示例壳 ─────── */
 
-const REAL_BUSINESS_READS = ["events", "registrations", "community", "plan-read", "registered-any"];
+// W0037：示例期放开社群状态读取（恰好 1 次，单独断言），其余仍为 0。
+const REAL_BUSINESS_READS = ["events", "registrations", "plan-read", "registered-any"];
 const POLLUTED_VIEW_MODEL = {
   history: [],
   scenarios: {},
@@ -556,6 +557,9 @@ test("W0014 in the guide: every real chat / home-business loader throws, yet the
   const props = shellPropsOf(await page({ searchParams: Promise.resolve({ plan: "plan:x", q: "hi" }) }));
   assert.ok(props.guide, "the demo shell is rendered");
   assert.deepEqual(calls.filter((call) => REAL_BUSINESS_READS.includes(call.operation)), []);
+  // W0037：社群读取 1 次；它抛错时示例照常渲染，按未加入处理。
+  assert.equal(calls.filter((call) => call.operation === "community").length, 1);
+  assert.equal(props.communityJoined, false);
   // 首页数据只读一次（示例判定要用目标）；示例壳拿不到真实 home／viewModel。
   assert.equal(calls.filter((call) => call.operation === "home").length, 1);
   assert.equal(props.home, null);
@@ -627,7 +631,8 @@ test("W0035 flag on: joined or registered changes nothing about step-4 reads (st
 
 /* ── W0036：示例期调用矩阵——只新增目录 1 次与本人报名 1 次（真实近期活动），其余仍为 0 ─────── */
 
-const DEMO_FORBIDDEN = ["events", "registrations", "community", "plan-read", "registered-any"];
+// W0037：社群从禁止列表移出（示例期恰好读 1 次，见下方 W0037 用例）。
+const DEMO_FORBIDDEN = ["events", "registrations", "plan-read", "registered-any"];
 
 test("W0036 in the demo: one catalogue and one own-registration read, real upcoming events reach the demo shell, nothing else real", async (t) => {
   const { calls, page } = loadPage(t, { contacts: 0, flag: "on" });
@@ -683,5 +688,27 @@ test("W0036 the live path never reads the demo upcoming events", async (t) => {
     assert.equal(props.guide, null);
     assert.equal(calls.filter((call) => call.operation === "catalogue" || call.operation === "demo-registrations").length, 0);
     assert.ok(!("demoEventCandidates" in props) || props.demoEventCandidates === undefined);
+  }
+});
+
+
+/* ── W0037：示例期再放开社群状态 1 次（canonical actor），只多给示例壳 `communityJoined` ─────── */
+
+test("W0037 in the demo: the community state is read once for the canonical actor and handed to the demo shell", async (t) => {
+  for (const communityJoined of [false, true]) {
+    const { calls, page } = loadPage(t, { communityJoined, contacts: 0, flag: "on" });
+    const props = shellPropsOf(await page());
+    assert.ok(props.guide, "the demo shell is rendered");
+    assert.deepEqual(communityReads(calls).map((call) => call.input), [[{ actorId: "account:canonical" }]]);
+    assert.equal(props.communityJoined, communityJoined);
+    // 其余矩阵不变：复合 home 1 次（不注入）、目录 1 次、本人报名 1 次、其余 0 次。
+    assert.equal(calls.filter((call) => call.operation === "home").length, 1);
+    assert.equal(props.home, null);
+    assert.equal(calls.filter((call) => call.operation === "catalogue").length, 1);
+    assert.equal(calls.filter((call) => call.operation === "demo-registrations").length, 1);
+    assert.deepEqual(calls.filter((call) => DEMO_FORBIDDEN.includes(call.operation)), []);
+    assert.deepEqual(props.viewModel, createOrbitAgentStarterViewModel());
+    // 示例壳相对 W0036 只多收到 communityJoined。
+    assert.deepEqual(Object.keys(props).sort(), ["communityJoined", "demoEventCandidates", "guide", "home", "initialPlanCard", "viewModel"]);
   }
 });

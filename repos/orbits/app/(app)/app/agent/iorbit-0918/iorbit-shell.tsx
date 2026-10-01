@@ -81,7 +81,10 @@ import { useAgentChat } from "./use-agent-chat";
 import { useAgentHistory } from "./use-agent-history";
 
 export interface IOrbitShellProps {
-  /** 服务端读取的本人社群加入状态（W0003），下传给概览的「已报名活动」栏。 */
+  /**
+   * 服务端读取的本人社群加入状态（W0003），下传给概览的活动小模组。W0037：示例壳也收它
+   * （与 `demoEventCandidates` 一起，是示例壳仅有的两个真实字段）。
+   */
   communityJoined?: boolean;
   /**
    * W0036：示例期服务端读到的「近期可报名」真实活动（只给示例壳；RH-03 活动始终真实）。
@@ -115,7 +118,15 @@ export interface IOrbitShellProps {
 export function IOrbitShell(props: IOrbitShellProps) {
   // 分支放在任何 hook 之前：示例壳与真实壳是两棵不同的组件树，hook 顺序各自稳定。
   // 示例期间不把任何真实数据（`home`、`viewModel`——后者的 suggests 带真实人名与草稿）交给示例壳。
-  if (props.guide) return <IOrbitDemoShell demoEventCandidates={props.demoEventCandidates} guide={props.guide} />;
+  if (props.guide) {
+    return (
+      <IOrbitDemoShell
+        communityJoined={props.communityJoined}
+        demoEventCandidates={props.demoEventCandidates}
+        guide={props.guide}
+      />
+    );
+  }
   return <IOrbitLiveShell {...props} />;
 }
 
@@ -125,15 +136,17 @@ export function IOrbitShell(props: IOrbitShellProps) {
  * （W0014）切到只读对话分支。
  */
 function IOrbitDemoShell({
+  communityJoined,
   demoEventCandidates,
   guide,
 }: {
+  communityJoined?: boolean;
   demoEventCandidates?: readonly HomeEventPoolCandidate[];
   guide: DemoModeView;
 }) {
   return (
     <DemoModeProvider view={guide}>
-      <IOrbitDemoBody demoEventCandidates={demoEventCandidates} />
+      <IOrbitDemoBody communityJoined={communityJoined} demoEventCandidates={demoEventCandidates} />
     </DemoModeProvider>
   );
 }
@@ -144,7 +157,13 @@ const NO_TASK_SUGGESTIONS: IOrbitChatProps["taskSuggestions"] = {
 };
 
 /** 示例壳的内容：概览与只读示例问答的全部数据都来自示例人物（`_demo/demo-persona.ts`）。 */
-function IOrbitDemoBody({ demoEventCandidates }: { demoEventCandidates?: readonly HomeEventPoolCandidate[] }) {
+function IOrbitDemoBody({
+  communityJoined,
+  demoEventCandidates,
+}: {
+  communityJoined?: boolean;
+  demoEventCandidates?: readonly HomeEventPoolCandidate[];
+}) {
   const { language, t } = useOrbitLanguage();
   const demo = useDemoMode();
   const guardWrite = demo?.guardWrite;
@@ -207,6 +226,7 @@ function IOrbitDemoBody({ demoEventCandidates }: { demoEventCandidates?: readonl
               </div>
             ) : (
               <IOrbitHome
+                communityJoined={communityJoined}
                 demoEventCandidates={demoEventCandidates}
                 home={null}
                 navigate={() => undefined}
