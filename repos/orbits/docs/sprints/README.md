@@ -47,6 +47,7 @@
 | D33 | W19-1：生产运行时（Vercel Node 24.x；Neon PG 16.15，`und-x-icu` collversion 153.14）不在排序／联系人搜索白名单 | 发布前另开 H 档 W0034：在与生产同组合的环境跑差分测试后加入白名单；白名单不卡 Node patch；检查失败时服务端日志记下实际版本元组；不碰生产库（2026-09-29） | W0034、W0019 |
 | D34 | W19-2～6 | 发布 W0019 合并后的 chat-agent HEAD；G3 公开目录已只读确认无「已发布未激活」活动；D32 的 3.5 GB 触发口径＝当月累计或按日均外推到月底任一 ≥3.5 GB；读不到精确版本时直接标阻塞；W0019 为文档＋全量对照，不另做 Codex 方案 review。生产缺计划／引导相关表，上线前迁移属写操作，届时单独授权；Vercel 连接器缺 team `liqys-projects-33c8ddec` 权限，用户择时重新授权（2026-09-29） | W0019、W0020 |
 | D35 | W34-1～7 | W34-1 本机 Docker debian:bullseye 源码编译 PG 16.15＋ICU 67 复现（用户授权启动 Docker Desktop 与下载），postgres:16.9-bullseye 仅预检；W34-2 PG 只认主版本 16＋collversion 等（附 minor release notes 核查与拒绝日志兜底）；W34-3 Node 侧按 icu＋unicode＋默认 locale；W34-4 新增字符差异有条件接受——须证明不漏不重，联系人搜索分页路径绑定进游标，证明不了则联系人组合不入表／交用户；W34-5 不加 ICU 77；W34-6 官方 dist＋SHASUMS 下载（用户授权）；W34-7 上线后由 W0020 看日志确认（2026-09-29） | W0034、W0019、W0020 |
+| D36 | 远端 `origin/chat-agent`（App 线 0104～0137）与本地 Web 线分叉；W0020 是否保留 | 选 B：先合并远端再上线（集成提交 `9cb9e55d`、`0b847368`、`8b6a1045`，全量新增失败 0）；生产迁移、开关、部署按用户授权执行；W0020 关闭，日志核对改在生产完成，流量由 D32 周检接续（2026-09-30～10-01） | W0019、W0020 |
 
 ## 发布动作（需要单独授权）
 
@@ -79,7 +80,7 @@
 | [W0017](W0017-traffic-guard/GOAL.md) | 3 个计划维护任务改为每天最多一次（持久、跨实例），名片匹配补跑空闲时只做轻查询；新增读取路径逐一测量并估算月流量 | RV-03 | 无 | completed |
 | [W0018](W0018-scenario-acceptance/GOAL.md) | 逐场景真实页面验收（桌面＋手机），修小问题，交验收报告页面 | RV-02 | W0016、W0017、W0021 | completed |
 | [W0019](W0019-release-checklist/GOAL.md) | 生产上线清单 + 大目标收口的本地全量对照 | RV-04 | W0018、W0022～W0034；须含 W0025 发布门（生产 Node/ICU 与 Neon PG/排序规则版本，含联系人搜索） | completed |
-| [W0020](W0020-preview-verify/GOAL.md) | Preview 复验关键场景并测量 Neon 流量 | RV-04 | W0019；用户授权 Preview 部署、迁移、开关、测试数据 | planned（需重写 PLANNER：staging 库已删除，Preview 用库待用户决定；部署、迁移、开关需用户授权） |
+| [W0020](W0020-preview-verify/GOAL.md) | Preview 复验关键场景并测量 Neon 流量 | RV-04 | W0019；用户授权 Preview 部署、迁移、开关、测试数据 | closed（D36：已由 2026-09-30 生产上线取代，不再执行） |
 | [W0021](W0021-read-traffic-trim/GOAL.md) | 计划／匹配／名片／活动归属读取瘦身，1000 人月出站 ≤1.0 GB，活动归属按时间窗口读取，页面不变 | RV-05 | W0017 | completed |
 | [W0022](W0022-home-guide-entry/GOAL.md) | 老用户首页「帮我制定推进计划」改去引导第 3 步（`?step` 不绕过硬顺序）；有计划但第 4 步未完成时首页留提醒 | RW-04、RW-10 | W0018；W22-1～4 已定（D13） | completed |
 | [W0023](W0023-expired-plan-match-week/GOAL.md) | 到期计划上关联联系人只记关联和进展记录、不生成「约 TA」；制定下一份计划时在新计划当周生成；确认接口与组件跟着改 | RW-11、RW-12 | W0026（同改种子脚本）、W0024（顺序）；W23-2 已定（D17） | completed |
@@ -136,3 +137,4 @@
 | W0032 | run-01（2026-09-29） | `49df2c77`（报告 `ad9be401`） | `94a18a6a` | [REPORT](W0032-session-revocation-read/REPORT.md)；SC-04 按 D32 放宽 |
 | W0034 | run-01（2026-09-29～30） | `0af468b9`、`b964c37a`（报告 `bf2092d2`） | `af7da1a8` | [REPORT](W0034-runtime-allowlist-prod/REPORT.md)；跟进与联系人生产组合入表 |
 | W0019 | run-01（2026-09-30） | `4d43f2a1`（报告 `36c31566`） | `681f56bb` | [REPORT](W0019-release-checklist/REPORT.md)；[上线清单](W0019-release-checklist/RELEASE-CHECKLIST.md) |
+| 集成＋上线 | 2026-09-30～10-01 | `9cb9e55d`（合并 `dda12736`）、`0b847368`、`8b6a1045` | `8b6a1045`（chat-agent 快进） | 生产部署 `dpl_4dgYnCYQc9PuHXcPdaRKNvmSTHDJ`；[上线清单附录 D](W0019-release-checklist/RELEASE-CHECKLIST.md#附录-d上线记录2026-09-3010-01) |

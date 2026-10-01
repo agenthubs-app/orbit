@@ -19,12 +19,12 @@
 
 | 发布门 | 状态 | 一句话 |
 | --- | --- | --- |
-| G1 跟进排序运行时 | 待核实 | 生产组合已由 W0034 在本机复现并入表，不再阻塞；等 W0020 在 Preview 日志里确认实际元组 |
-| G2 联系人搜索运行时 | 待核实 | 同 G1 |
+| G1 跟进排序运行时 | 已核实（上线后） | 上线后 14 小时生产日志 `sort_runtime_unverified` 0 条（附录 D） |
+| G2 联系人搜索运行时 | 已核实（上线后） | 上线后 14 小时生产日志 `contact_search_runtime_unsupported` 0 条（附录 D） |
 | G3 公开活动目录 | 已核实 | 已发布活动 9 个，全部 canonical；「已发布但未激活」为 0 |
-| G4 迁移 | **阻塞** | 生产缺计划相关的 10 张表，部署前必须执行 `migrate-web-runtime.ts`。这是生产写操作，需用户授权 |
+| G4 迁移 | 已完成 | 用户授权后已执行；计划、App 线新表与 `sync_revision` 列均已存在（附录 D） |
 | G5 流量总账 | 待核实 | 三本账合计 4.93～6.26 GB/月，上端超过 Neon 免费额度 5 GB。按 D32 先发布、上线后每周检查；Neon 本月出站基线读不到 |
-| G6 环境变量 | **阻塞** | 生产缺 `ORBIT_GUIDE_DEMO`、`ORBIT_GUIDE_DEMO_SINCE`（D1 要求随 W0008 上线打开）。设置属于写操作，需用户授权 |
+| G6 环境变量 | 已完成 | 2026-10-01 设 `ORBIT_GUIDE_DEMO=on`、`ORBIT_GUIDE_DEMO_SINCE=2026-09-30` 并重新部署（附录 D） |
 
 ---
 
@@ -360,3 +360,28 @@ W0034（合并 `af7da1a8`）已经把生产组合写进跟进白名单 `VERIFIED
 - **V5**：构建日志没有 Node 版本行，项目设置为 `nodeVersion=24.x`；精确版本仍需上线后从拒绝日志或运行日志确认（G1、G2 维持「待核实」）。
 - **V7**：近 7 天生产日志中 `LIFECYCLE_SORT_RUNTIME_UNVERIFIED`、`missing participant summary`、`contact search` 均 0 条。
 - **新发现（需立项）**：近 46 分钟的生产日志 100% 是 `/api/queues/maintenance` 的 POST，且落在**旧部署**上（`dpl_5YSX…` 9/17、SHA `02ec26f0` 900 条；`dpl_C7wh…` 100 条），约每分钟 22 次；真正的心跳链（`orbit_maintenance_heartbeat` seq 774，间隔 600 秒）照常每 10 分钟一次。推测是旧部署仍在消费重复／过期的维护消息，每次都读库，使 Neon 计算节点无法休眠并产生持续流量。诊断可只读完成；处理（清理队列、删除或停用旧部署）是生产写操作，需用户授权。列为候选 C36，建议排在上线前。
+
+## 附录 D：上线记录（2026-09-30～10-01）
+
+- **发布对象**：`chat-agent` `8b6a1045`。取代 R2 的 `681f56bb`：上线前合并了远端 `origin/chat-agent`（App 线 0104～0137，`dda12736`），见 README D36。
+  - 集成提交：`9cb9e55d`（合并）、`0b847368`（回复草稿走 W0031 写前确认）、`8b6a1045`（计划连接池接入读取计量；两个 Web 脚本取提交顺序锁）。
+  - 全量对照：本地基线 `857e73f4` 48 项失败，最终 25 项，新增失败 0；tsc 与干净副本生产构建 exit 0。证据 `~/orbit-sprint-evidence/web/integrate-20260930/`。
+- **生产迁移（G4）**：用户授权后由用户侧执行（含 App 线迁移）。2026-10-01 只读核对，以下都已存在：
+  - `plans`、`plan_maintenance_daily_runs`、`relationship_messages`、`orbit_read_receipts`、`event_ops_registration_question_cache`
+  - 9 个 `sync_revision` 列
+  - `relationship_messages` 0 行；`orbit_records` 里只有 6 条 `orbit_agent_chat_messages`（旧 AI 对话，不属于收件箱消息）。
+- **部署**：
+  - 首次：`dpl_3dPiQ6ny8zy937DmLN6MAbqEjmQY`，2026-09-30 23:53 JST，meta `gitCommitSha=8b6a1045`，由用户侧执行。
+  - 开关设置后重新部署：`dpl_4dgYnCYQc9PuHXcPdaRKNvmSTHDJ`，2026-10-01 13:17 JST，同一 SHA，别名 `orbitailink.com`、`www.orbitailink.com`。
+  - 回退：重新 promote `dpl_3dPiQ6ny8zy937DmLN6MAbqEjmQY`（无示例开关）；更早的版本为 `dpl_BKnDTsXdhvQrmM2KUqTnTmRaakUB`（需同时考虑已执行的迁移）。
+- **环境变量（G6）**：2026-10-01 协调者经用户授权设 `ORBIT_GUIDE_DEMO=on`、`ORBIT_GUIDE_DEMO_SINCE=2026-09-30`（东京日期）。首次部署时缺这两个键，新用户登录后看不到示例 iOrbit（用户报告），重新部署后生效。生产另有 `ORBIT_READ_RECEIPTS`（值加密不可读）；`orbit_read_receipts` 0 行，说明当前未写回执。
+- **上线后核对**：
+  - 2026-10-01 生产日志（近 14 小时）：`sort_runtime_unverified` 0 条、`contact_search_runtime_unsupported` 0 条；`/app/agent` 全部 200，无 5xx。
+  - 用户实测注册引导流程正常。
+  - 其余页面冒烟（首页、先联系谁、`/app/tasks`、活动、活动详情、联系人搜索、收件箱）待用户在生产点验。
+- **W0020**：按 D36 关闭。G1、G2 日志核对已在生产完成；流量改由附录 A 每周检查接续。
+- **仍未处理**：
+  - C36：旧部署消费维护队列。
+  - 附录 A 的上线前出站基线（U4）。
+  - 跟进排序 locale 口径与 App 线 0126 不一致：W0034 固定 en-US，App 线测试要求 ja_JP／C 也能跑。
+  - 3001 验收 server 已停，重启前需重新生成 `.next-verify`。
