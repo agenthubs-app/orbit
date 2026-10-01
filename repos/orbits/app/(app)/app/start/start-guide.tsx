@@ -1,10 +1,10 @@
 /**
  * 引导页 `/app/start` 的客户端壳（W0006，RW-04；版式取自已确认原型 iorbit-plan 的 startHtml）。
  *
- * - 顶栏只有 logo 与「引导 · 第 n 步 / 共 4 步」；「← 先回去看看」回 iOrbit，进度随时保留；
- * - 4 格步骤条（手机上缩成 4 段进度线）：已完成 ✓ / 进行中 / 锁定（完成前一步后解锁）/
- *   第 4 步「随时可做」。第 1–3 步严格顺序，点锁定的步骤只提示「先完成第 n 步」，不切换；
- * - 主体只有当前步骤一张卡片；前 3 步都完成后显示「✓ 前 3 步完成了」完成卡片；
+ * - 顶栏只有 logo 与「引导 · 第 n 步 / 共 3 步」；「← 先回去看看」回 iOrbit，进度随时保留；
+ * - 3 格步骤条（手机上缩成 3 段进度线）：已完成 ✓ / 进行中 / 锁定（完成前一步后解锁）。
+ *   严格顺序，点锁定的步骤只提示「先完成第 n 步」，不切换（W0035 删去原来的「活动」一步）；
+ * - 主体只有当前步骤一张卡片；3 步都完成后显示「✓ 3 步都完成了」完成卡片；
  * - 当前停在第几步写进引导记录 `currentStep`（切换步骤、某一步完成后前进时写），刷新或换设备
  *   停在同一步；第 1 步「先这样，继续」写 `step1Skipped`；
  * - 名片批次状态机挂在本页顶层（与 onboarding 在流程内扫名片同一写法），全站 CardBatchHost
@@ -35,28 +35,15 @@ import { useCardBatch } from "../contacts/card-batch-0918/use-card-batch";
 import { useOrbitLanguage } from "../orbit-language-context";
 import { horizonOption, parseRelationshipGoal } from "../profile/goal-editor/goal-editor-model";
 import { StepCards } from "./start-step-cards";
-import { StepEvents } from "./start-step-events";
 import { StepGoal } from "./start-step-goal";
 import { StepPlan } from "./start-step-plan";
 import { START_GUIDE_STYLES } from "./start-guide-styles";
 
 export const START_GUIDE_STATE_ENDPOINT = "/api/guide/state";
 
-/** 第 4 步的一场推荐活动（服务端从公开目录取、本人未报名、还没开始）。 */
-export interface StartEventView {
-  code: string;
-  id: string;
-  name: string;
-  place: string;
-  startsAt: string;
-}
-
 export interface StartGuideProps {
   cardScanAvailable: boolean;
-  communityJoined: boolean;
-  events: readonly StartEventView[];
   profileUpdatedAt: string | null;
-  registeredAnyEvent: boolean;
   relationshipGoal: string;
   /**
    * W0022：`?step=` 请求的步骤（服务端已滤掉非法值）。只在能打开时决定初始显示，锁定时忽略；
@@ -138,7 +125,6 @@ const STEP_TITLES: Record<GuideStartStep, { en: string; zh: string }> = {
   1: { en: "Cards", zh: "名片" },
   2: { en: "Goal", zh: "目标" },
   3: { en: "Plan", zh: "计划" },
-  4: { en: "Events", zh: "活动" },
 };
 
 function LockIcon() {
@@ -154,7 +140,6 @@ function stepSubtitle(input: {
   confirmedContacts: number;
   flags: StartGuideFlags;
   goal: string;
-  joined: boolean;
   skipped: boolean;
   step: GuideStartStep;
   t: T;
@@ -167,7 +152,6 @@ function stepSubtitle(input: {
       text: t({ en: `Unlocks after step ${step - 1}`, zh: `完成第 ${step - 1} 步后解锁` }),
     };
   }
-  if (status === "open") return { lock: false, text: t({ en: "Any time", zh: "随时可做" }) };
   if (status === "current") {
     return {
       lock: false,
@@ -198,11 +182,7 @@ function stepSubtitle(input: {
         : t({ en: "Set", zh: "已设定" }),
     };
   }
-  if (step === 3) return { lock: false, text: t({ en: "Plan ready", zh: "计划已生成" }) };
-  return {
-    lock: false,
-    text: input.joined ? t({ en: "Joined the community", zh: "已加入社群" }) : t({ en: "Done", zh: "已完成" }),
-  };
+  return { lock: false, text: t({ en: "Plan ready", zh: "计划已生成" }) };
 }
 
 export function StartGuide(props: StartGuideProps) {
@@ -214,23 +194,20 @@ export function StartGuide(props: StartGuideProps) {
   const [localSkipped, setLocalSkipped] = useState(false);
   const [savedGoal, setSavedGoal] = useState<string | null>(null);
   const [savedProfileAt, setSavedProfileAt] = useState<string | null>(null);
-  const [localJoined, setLocalJoined] = useState(false);
   const skipped = snapshot.step1Skipped || localSkipped;
   const goal = savedGoal ?? props.relationshipGoal;
-  const joined = props.communityJoined || localJoined;
   const profileUpdatedAt = savedProfileAt ?? props.profileUpdatedAt;
 
   const flags = useMemo(
     () =>
       deriveStartGuideFlags({
         confirmedContacts: snapshot.confirmedContacts,
-        eventsDone: props.registeredAnyEvent || joined,
         grandfathered: snapshot.grandfathered,
         hasActivePlan: snapshot.hasActivePlan,
         relationshipGoal: goal,
         step1Skipped: skipped,
       }),
-    [goal, joined, props.registeredAnyEvent, skipped, snapshot.confirmedContacts, snapshot.grandfathered, snapshot.hasActivePlan],
+    [goal, skipped, snapshot.confirmedContacts, snapshot.grandfathered, snapshot.hasActivePlan],
   );
 
   const [view, setView] = useState<StartView>(() =>
@@ -253,7 +230,7 @@ export function StartGuide(props: StartGuideProps) {
     [flags, t, writer],
   );
 
-  /** 当前步骤做完后前进：下一个没完成的第 1–3 步，或完成卡片（完成时间由服务端写）。 */
+  /** 当前步骤做完后前进：下一个没完成的步骤，或完成卡片（完成时间由服务端写）。 */
   const advance = useCallback(
     (next: StartView) => {
       setLockedNote("");
@@ -268,7 +245,7 @@ export function StartGuide(props: StartGuideProps) {
   useEffect(() => {
     const before = previousFlags.current;
     previousFlags.current = flags;
-    if (view === "finish" || view === 4) return;
+    if (view === "finish") return;
     if (!startStepDone(before, view) && startStepDone(flags, view)) advance(viewAfterStepDone(flags));
   }, [advance, flags, view]);
 
@@ -315,7 +292,6 @@ export function StartGuide(props: StartGuideProps) {
   );
 
   const viewNumber = view === "finish" ? null : view;
-  const firstIncomplete = firstIncompleteStartStep(flags);
 
   return (
     <div className="sg" data-start-guide data-start-view={String(view)}>
@@ -324,8 +300,8 @@ export function StartGuide(props: StartGuideProps) {
         <span className="sg-logo">iOrbit</span>
         <span className="sg-nav-step" data-start-nav-step>
           {viewNumber
-            ? t({ en: `Guide · Step ${viewNumber} of 4`, zh: `引导 · 第 ${viewNumber} 步 / 共 4 步` })
-            : t({ en: "Guide · First 3 steps done", zh: "引导 · 前 3 步已完成" })}
+            ? t({ en: `Guide · Step ${viewNumber} of 3`, zh: `引导 · 第 ${viewNumber} 步 / 共 3 步` })
+            : t({ en: "Guide · All 3 steps done", zh: "引导 · 3 步已完成" })}
         </span>
       </header>
       <main className="sg-wrap">
@@ -336,47 +312,36 @@ export function StartGuide(props: StartGuideProps) {
           <span className="sg-hint">{t({ en: "Leave any time — your progress is kept", zh: "可以随时离开，进度会保留" })}</span>
         </div>
         <header className="sg-mast">
-          <h1 className="sg-title">{t({ en: "4 steps to put iOrbit to work for you", zh: "4 步，让 iOrbit 开始为你工作" })}</h1>
+          <h1 className="sg-title">{t({ en: "3 steps to put iOrbit to work for you", zh: "3 步，让 iOrbit 开始为你工作" })}</h1>
           <p className="sg-lede">
             {t({
-              en: "Finish the first 3 steps and iOrbit and your network switch from the demo to your own data.",
-              zh: "做完前 3 步，iOrbit 和人脉页就会从示例换成你自己的数据。",
+              en: "Finish these 3 steps and iOrbit and your network switch from the demo to your own data.",
+              zh: "做完这 3 步，iOrbit 和人脉页就会从示例换成你自己的数据。",
             })}
           </p>
         </header>
 
         {view === "finish" ? (
           <section className="sg-finish" data-start-finish>
-            <h2>{t({ en: "✓ The first 3 steps are done", zh: "✓ 前 3 步完成了" })}</h2>
+            <h2>{t({ en: "✓ All 3 steps are done", zh: "✓ 3 步都完成了" })}</h2>
             <p>
               {t({
                 en: "iOrbit, your network and your plan now show your own data.",
                 zh: "iOrbit、人脉和计划已经换成你自己的数据。",
               })}
-              {flags.events
-                ? t({ en: " All 4 steps are complete.", zh: "4 步全部完成。" })
-                : t({
-                    en: " One step left: go meet the people your plan needs — any time.",
-                    zh: "还剩第 4 步：去认识计划里需要的人，随时可以做。",
-                  })}
             </p>
             <div className="sg-acts">
               <a className="btn sg-primary" data-start-go-iorbit href={preserveHref("/app/agent")}>
                 {t({ en: "Go to iOrbit →", zh: "去 iOrbit →" })}
               </a>
-              {flags.events ? null : (
-                <button className="btn sg-secondary" data-start-do-step4 onClick={() => openStep(4)} type="button">
-                  {t({ en: "Do step 4", zh: "做第 4 步" })}
-                </button>
-              )}
             </div>
           </section>
         ) : (
           <>
-            <ol aria-label={t({ en: "Guide, 4 steps", zh: "引导 4 步" })} className="sg-steps">
+            <ol aria-label={t({ en: "Guide, 3 steps", zh: "引导 3 步" })} className="sg-steps">
               {GUIDE_START_STEPS.map((step) => {
                 const status = startStepStatus(flags, step);
-                const sub = stepSubtitle({ confirmedContacts: snapshot.confirmedContacts, flags, goal, joined, skipped, step, t });
+                const sub = stepSubtitle({ confirmedContacts: snapshot.confirmedContacts, flags, goal, skipped, step, t });
                 return (
                   <li key={step}>
                     <button
@@ -410,23 +375,14 @@ export function StartGuide(props: StartGuideProps) {
               <span>
                 {language === "en" ? (
                   <>
-                    Step <b>{viewNumber}</b> of 4
+                    Step <b>{viewNumber}</b> of 3
                   </>
                 ) : (
                   <>
-                    第 <b>{viewNumber}</b> 步 / 共 4 步
+                    第 <b>{viewNumber}</b> 步 / 共 3 步
                   </>
                 )}
               </span>
-              {view !== 4 ? (
-                <button className="btn sg-link" onClick={() => openStep(4)} type="button">
-                  {t({ en: "Events first →", zh: "先看活动 →" })}
-                </button>
-              ) : firstIncomplete ? (
-                <button className="btn sg-link" onClick={() => openStep(firstIncomplete)} type="button">
-                  {t({ en: `Back to step ${firstIncomplete}`, zh: `回到第 ${firstIncomplete} 步` })}
-                </button>
-              ) : null}
             </div>
             <p aria-live="polite" className="sg-locked-note" data-start-locked-note role="status">
               {lockedNote}
@@ -470,14 +426,6 @@ export function StartGuide(props: StartGuideProps) {
                 planDone={flags.plan}
                 profileUpdatedAt={profileUpdatedAt}
                 samples={snapshot.contactSamples}
-              />
-            ) : null}
-            {view === 4 ? (
-              <StepEvents
-                communityJoined={joined}
-                done={flags.events}
-                events={props.events}
-                onJoined={() => setLocalJoined(true)}
               />
             ) : null}
           </>

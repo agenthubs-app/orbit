@@ -231,10 +231,55 @@ test("W0006 SC-04: two independent clients of the same actor see the same curren
     ((await response.json()) as { data: { currentStep: number | null } }).data.currentStep;
 
   assert.equal(await stepOf(await phone.GET()), null);
-  assert.equal(await stepOf(await laptop.PATCH(patch({ currentStep: 4 }))), 4);
-  assert.equal(await stepOf(await phone.GET()), 4, "the phone opens on the laptop's step");
+  assert.equal(await stepOf(await laptop.PATCH(patch({ currentStep: 3 }))), 3);
+  assert.equal(await stepOf(await phone.GET()), 3, "the phone opens on the laptop's step");
   assert.equal(await stepOf(await phone.PATCH(patch({ currentStep: 1 }))), 1);
   assert.equal(await stepOf(await laptop.GET()), 1, "and back again");
+});
+
+test("W0035: PATCH currentStep 4 is a 400 VALIDATION_ERROR and leaves the record unchanged", async () => {
+  const { handlersFor, recordsFor } = harness();
+  const handlers = handlersFor("actor:alice");
+  assert.equal((await handlers.PATCH(patch({ currentStep: 2 }))).status, 200);
+  const before = await recordsFor("actor:alice");
+
+  const response = await handlers.PATCH(patch({ currentStep: 4 }));
+  assert.equal(response.status, 400);
+  const body = (await response.json()) as { success: boolean; error: { code: string; message: string } };
+  assert.equal(body.success, false);
+  assert.equal(body.error.code, "VALIDATION_ERROR");
+  assert.match(body.error.message, /1 to 3/);
+
+  assert.deepEqual(await recordsFor("actor:alice"), before);
+  const readBack = ((await (await handlers.GET()).json()) as { data: { currentStep: number | null } }).data;
+  assert.equal(readBack.currentStep, 2);
+});
+
+test("W0035: GET maps a stored currentStep of 4 to null, unfinished or finished", async () => {
+  const { handlersFor, store } = harness();
+  for (const [actorId, completedAt] of [
+    ["actor:open4", null],
+    ["actor:done4", "2026-09-30T00:00:00.000Z"],
+  ] as const) {
+    await store.upsertRecord({
+      collectionName: GUIDE_STATE_COLLECTION,
+      createdAt: "2026-10-01T00:00:00.000Z",
+      evidenceIds: [],
+      lifecycleState: "active",
+      payload: { currentStep: 4, grandfathered: false, version: 2, ...(completedAt ? { completedAt } : {}) },
+      recordId: "current",
+      sourceId: "guide-state",
+      sourceType: "manual",
+      updatedAt: "2026-10-01T00:00:00.000Z",
+      userId: actorId,
+      workspaceId: guideStateWorkspaceId(WORKSPACE, actorId),
+    });
+    const response = await handlersFor(actorId).GET();
+    assert.equal(response.status, 200);
+    const data = ((await response.json()) as { data: { completedAt: string | null; currentStep: number | null } }).data;
+    assert.equal(data.currentStep, null, actorId);
+    assert.equal(data.completedAt, completedAt, actorId);
+  }
 });
 
 test("W0006: another actor's currentStep and skip flag are never touched", async () => {

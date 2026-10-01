@@ -104,11 +104,6 @@ export interface IOrbitHomeProps {
    * 去 `/app/start?step=3`；默认 false（链接保持 `/app/agent/strategy`）。示例期不生效。
    */
   guideEnabled?: boolean;
-  /**
-   * W0022：服务端判定的「引导第 4 步未完成」（没加入社群、没有任何报名，且读取成功）。
-   * 与首页已读到的生效计划、`guideEnabled` 同时成立时，「已报名活动」栏首显示一行提醒。
-   */
-  guideStep4Pending?: boolean;
   home: OrbitHomeViewModel | null;
   /** 覆盖点，仅测试使用：默认动态 import `home-dashboard-actions`（server action）。 */
   loadSnapshot?: () => Promise<Loadable<HomeDashboardSnapshot>>;
@@ -245,7 +240,6 @@ function OrbitMark() {
 export function IOrbitHome({
   communityJoined: communityJoinedProp = false,
   guideEnabled: guideEnabledProp = false,
-  guideStep4Pending = false,
   home: homeProp,
   loadSnapshot,
   navigate,
@@ -784,8 +778,6 @@ export function IOrbitHome({
 
   const planSnapshot = plan !== "pending" && plan !== "unavailable" ? plan : null;
   const planSummary = planSnapshot ? buildPlanWeekSummary(planSnapshot, now, lang, planSticky) : null;
-  // W0022：有生效计划、第 4 步未完成时的提醒；无计划时只给第 3 步入口，两者不同时出现。
-  const showGuideStep4 = guideEnabled && guideStep4Pending && planSnapshot !== null;
   // 打勾：先改本地，服务端确认后换成返回的条目；失败只把这一条回滚并提示。
   const togglePlanAction = async (itemId: string, done: boolean) => {
     if (!planSnapshot || planBusyId) return;
@@ -1407,14 +1399,6 @@ export function IOrbitHome({
             <h3>{t({ en: "Registered events", zh: "已报名活动" })}</h3>
             <a href="/app/events">{t({ en: "All events →", zh: "全部活动 →" })}</a>
           </div>
-          {showGuideStep4 ? (
-            <a className="ir-m-guide-step4" data-orbit-iorbit-guide-step4="pending" href="/app/start?step=4">
-              {t({
-                en: "Guide step 4: join the community or register for an event →",
-                zh: "引导第 4 步：加入社群或报名一场活动 →",
-              })}
-            </a>
-          ) : null}
           {/* 社群行（W0003）：永远在栏首，标「社群」而不是日期，不计入下面两场真实活动。 */}
           <a
             className="ir-m-event ir-m-community"

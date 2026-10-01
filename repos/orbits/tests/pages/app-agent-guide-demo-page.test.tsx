@@ -531,58 +531,51 @@ test("W0014 flag off: the live path reads home, events, registrations and commun
   assert.deepEqual(props.viewModel, createOrbitAgentStarterViewModel());
 });
 
-/* ── W0022：首页第 4 步提醒的服务端判定与读取计数 ─────────────────────── */
+/* ── W0035：首页第 4 步提醒删除后，hasAnyActiveRegistration 在任何情况下都是 0 次 ─────── */
 
 const step4Reads = (calls: Array<{ operation: string; input?: unknown }>) =>
   calls.filter((call) => call.operation === "registered-any");
+const communityReads = (calls: Array<{ operation: string; input?: unknown }>) =>
+  calls.filter((call) => call.operation === "community");
 
-test("W0022 flag off: guideEnabled false, no reminder, and hasAnyActiveRegistration is never called", async (t) => {
-  const { calls, page } = loadPage(t, { contacts: 4, flag: undefined });
+test("W0035 flag off: guideEnabled false, no guideStep4Pending prop, community read once, hasAnyActiveRegistration never called", async (t) => {
+  const { calls, page } = loadPage(t, { contacts: 4, flag: undefined, registeredAny: "throw" });
   const props = shellPropsOf(await page());
   assert.equal(props.guideEnabled, false);
-  assert.equal(props.guideStep4Pending, false);
+  assert.ok(!("guideStep4Pending" in props));
   assert.equal(step4Reads(calls).length, 0);
+  assert.equal(communityReads(calls).length, 1);
 });
 
-test("W0022 in the demo: no step-4 read and no guide props on the demo shell", async (t) => {
+test("W0035 in the demo: no step-4 read and no guide-step-4 prop on the demo shell", async (t) => {
   const { calls, page } = loadPage(t, { contacts: 0, flag: "on" });
   const props = shellPropsOf(await page());
   assert.ok(props.guide);
-  assert.equal(props.guideStep4Pending, undefined);
+  assert.ok(!("guideStep4Pending" in props));
   assert.equal(step4Reads(calls).length, 0);
 });
 
 const LEGACY = { contacts: 4, createdAt: "2026-06-01T00:00:00.000Z", flag: "on", goal: "推进日本合作", since: "2026-10-15" } as const;
 
-test("W0022 flag on, out of the demo, nothing joined or registered: one hasAnyActiveRegistration read by the canonical actor → pending", async (t) => {
-  const { calls, page } = loadPage(t, { ...LEGACY, homeEvents: ["ev-1"] });
+test("W0035 flag on, out of the demo, nothing joined or registered: guideEnabled true, community read once, zero hasAnyActiveRegistration", async (t) => {
+  const { calls, page } = loadPage(t, { ...LEGACY, homeEvents: ["ev-1"], registeredAny: "throw" });
   const props = shellPropsOf(await page());
   assert.equal(props.guide, null);
   assert.equal(props.guideEnabled, true);
-  assert.equal(props.guideStep4Pending, true);
-  assert.deepEqual(step4Reads(calls).map((call) => call.input), ["account:canonical"]);
+  assert.ok(!("guideStep4Pending" in props));
+  assert.equal(step4Reads(calls).length, 0);
+  assert.deepEqual(communityReads(calls).map((call) => call.input), [[{ actorId: "account:canonical" }]]);
 });
 
-test("W0022 flag on: already in the community, or registered for a home event → done with zero extra reads", async (t) => {
+test("W0035 flag on: joined or registered changes nothing about step-4 reads (still zero)", async (t) => {
   const joined = loadPage(t, { ...LEGACY, communityJoined: true });
   const joinedProps = shellPropsOf(await joined.page());
   assert.equal(joinedProps.guideEnabled, true);
-  assert.equal(joinedProps.guideStep4Pending, false);
+  assert.ok(!("guideStep4Pending" in joinedProps));
   assert.equal(step4Reads(joined.calls).length, 0);
+  assert.equal(communityReads(joined.calls).length, 1);
 
-  const registered = loadPage(t, { ...LEGACY, homeEvents: ["ev-1", "ev-2"], registeredEvents: ["ev-2"] });
-  assert.equal(shellPropsOf(await registered.page()).guideStep4Pending, false);
+  const registered = loadPage(t, { ...LEGACY, homeEvents: ["ev-1", "ev-2"], registeredEvents: ["ev-2"], registeredAny: true });
+  assert.ok(!("guideStep4Pending" in shellPropsOf(await registered.page())));
   assert.equal(step4Reads(registered.calls).length, 0);
-});
-
-test("W0022 flag on: a registration anywhere (off the home list) clears the reminder; a failed read never shows it", async (t) => {
-  const elsewhere = loadPage(t, { ...LEGACY, registeredAny: true });
-  assert.equal(shellPropsOf(await elsewhere.page()).guideStep4Pending, false);
-  assert.equal(step4Reads(elsewhere.calls).length, 1);
-
-  const failed = loadPage(t, { ...LEGACY, registeredAny: "throw" });
-  const props = shellPropsOf(await failed.page());
-  assert.equal(props.guideStep4Pending, false, "unreadable registration state → no reminder");
-  assert.equal(props.guideEnabled, true);
-  assert.equal(step4Reads(failed.calls).length, 1);
 });

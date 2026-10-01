@@ -37,7 +37,7 @@ const PATCHABLE_FIELDS = new Set(["bannerCollapsed", "currentStep", "step1Skippe
  * PATCH 只接受客户端可写的三个字段的任意非空子集：
  *   - `bannerCollapsed`：boolean；
  *   - `step1Skipped`：只能是 true（跳过不可撤销）；
- *   - `currentStep`：整数 1–4。
+ *   - `currentStep`：整数 1–3（W0035 删去「活动」一步，4 也是 400）。
  * 多出任何字段（包括 `grandfathered`、`completedAt`、`version`、身份字段）、空对象、类型或取值
  * 不对都是 400，整个请求不写。
  */
@@ -68,7 +68,7 @@ function parsePatch(body: unknown): GuideStatePatch {
   }
   if ("currentStep" in input) {
     if (!isGuideStartStep(input.currentStep)) {
-      throw new AppError("VALIDATION_ERROR", "currentStep must be an integer from 1 to 4.");
+      throw new AppError("VALIDATION_ERROR", "currentStep must be an integer from 1 to 3.");
     }
     patch.currentStep = input.currentStep;
   }
@@ -80,7 +80,7 @@ function parsePatch(body: unknown): GuideStatePatch {
  * GET 返回 `{ bannerCollapsed, completedAt, currentStep, grandfathered, step1Skipped, version }`；
  * PATCH 只能改 `bannerCollapsed`／`step1Skipped`／`currentStep`，只写当前登录者自己的记录。
  * `grandfathered`、`completedAt` 只由服务端判定写入，接口不接受。
- * `currentStep` 只校验取值（1–4）：指向锁定步骤的记录由页面按进度忽略（`resolveStartView`），
+ * `currentStep` 只校验取值（1–3）：指向锁定步骤的记录由页面按进度忽略（`resolveStartView`），
  * 不会让用户越过顺序。
  */
 export function createGuideStateRouteHandlers(

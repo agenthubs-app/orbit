@@ -7,7 +7,7 @@
  * 素材来自 `features/community/config.ts`，占位项逐一标「占位」。
  * 「我已加入」= `PUT /api/community/membership`（幂等，只写本人记录）；
  * 初始状态由服务端读取后传入，刷新或换设备首帧就是「已加入」。
- * 版式按 2026-09 引导原型第 4 步的社群块：112px 二维码 + 标签 / 标题 / 介绍 / 微信号 / 按钮。
+ * 版式按 2026-09 引导原型「活动」一步的社群块（该步已在 W0035 删除，版式保留）：112px 二维码 + 标签 / 标题 / 介绍 / 微信号 / 按钮。
  */
 import { useRef, useState } from "react";
 
@@ -64,7 +64,7 @@ export function CommunityCard({
 }: {
   joined: boolean;
   loginHref?: string;
-  /** 加入记录写成功后回调（W0006 引导页第 4 步据此标记完成）。 */
+  /** 加入记录写成功后回调（可选；W0035 后暂无传入方）。 */
   onJoined?: () => void;
   signedIn: boolean;
 }) {
