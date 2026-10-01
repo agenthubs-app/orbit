@@ -103,8 +103,8 @@
 | [W0036](W0036-today-plan-actions/GOAL.md) | 今日要事吸收本周计划行动（勾掉／今天先不做）与补人脉提示，头条按首条要事拼接；抽出共享推荐活动池（H） | RH-02、RH-03（活动池） | W0035 | completed |
 | [W0037](W0037-today-events-module/GOAL.md) | 今日要事里的活动小模组（社群置顶 + 2 场推荐，有要事时缩成一行）、已报名栏只放报名、示例首页同步（H：IOrbitHome CRITICAL、放宽示例期零读取并新增真实写入） | RH-03、RH-04（已报名栏） | W0036 | completed |
 | [W0038](W0038-calendar-event-dots/GOAL.md) | 月历实心／空心两色圆点与图例，空日程行显示下一场活动（H：IOrbitHome CRITICAL） | RH-04（右栏） | W0036 | completed |
-| [W0039](W0039-home-not-empty-closeout/GOAL.md) | 大目标 3 收口：全量对照基线，3001 走新用户与老用户两条路径截图（I） | RH-05 | W0035～W0038 | ready |
-| [W0040](W0040-home-profile-read-trim/GOAL.md) | 首页不再加载资料「更新建议」图，单次数据库读取去掉整 workspace 五集合扫描；资料页建议行为不变；重算数据库月预算表（H） | RV-03、RV-05 | W0039；W40-1～5 已定（D40） | planned |
+| [W0039](W0039-home-not-empty-closeout/GOAL.md) | 大目标 3 收口：全量对照基线，3001 走新用户与老用户两条路径截图（I） | RH-05 | W0035～W0038 | completed |
+| [W0040](W0040-home-profile-read-trim/GOAL.md) | 首页不再加载资料「更新建议」图，单次数据库读取去掉整 workspace 五集合扫描；资料页建议行为不变；重算数据库月预算表（H） | RV-03、RV-05 | W0039；W40-1～5 已定（D40） | ready |
 
 全部 Sprint 都已有 GOAL 与 PLANNER（2026-09-28 编制；大目标 1 与大目标 2 各经 Codex `gpt-5.6-sol` 方案 review 后修订为 revision 2，review 意见与处理见 [REVIEW-2026-09-28.md](REVIEW-2026-09-28.md)）。`planned` 表示前置 Sprint 尚未 completed；前置完成后改为 `ready`。
 
@@ -152,3 +152,4 @@
 | W0036 | run-01（2026-10-01） | `f7e5e65a`、`775db2e3`、`78a71d8f`（报告 `27aebac6`、`55c0ab3f`） | `31267c09` | [REPORT](W0036-today-plan-actions/REPORT.md)；SC-06 100% 档 1,758 MB 超 1.6 GB 已写入 D32 周检；SC-07 启用备选约束（snapshot 前 12 场 + 计划 id 补查）；合并树 11 个受影响文件 227 pass／0 skip |
 | W0037 | run-01（2026-10-01） | `18d02ae1`（报告 `1edd2b3a`） | `346b3298` | [REPORT](W0037-today-events-module/REPORT.md)；预算第 ④ 行实测 6.24 MB，100% 档 1,761.38 MB 并入 D32 周检；合并树首页相关 4 个文件 158 pass／0 skip |
 | W0038 | run-01（2026-10-01） | `d3f89672`（报告 `b9606c71`） | `990e8d4f` | [REPORT](W0038-calendar-event-dots/REPORT.md)；合并树首页相关 5 个文件 174 pass／0 skip；本周池活动缺样本，本周行空心圈靠组件测试 |
+| W0039 | run-01（2026-10-01） | 无源码改动（报告 `2bbf116b`） | `cfd1cc5e` | [REPORT](W0039-home-not-empty-closeout/REPORT.md)；**大目标 3「首页不再空」completed**：git archive 全量对照 6072→6149 项、新增失败 0；3001 新用户与老用户两条路径（1440／375）通过；子代理写文件被拦，报告由协调者按原文写入 |
