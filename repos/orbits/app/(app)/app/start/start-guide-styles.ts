@@ -38,7 +38,7 @@ ${S} .sg-title { margin: 0; font-family: "Noto Serif SC", "Songti SC", "STSong",
 ${S} .sg-lede { margin: 0; font-size: 18px; line-height: 1.6; color: #3B3F7A; max-width: 44em; }
 
 /* 步骤条 */
-${S} .sg-steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+${S} .sg-steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
 ${S} .btn.sg-step { width: 100%; justify-content: flex-start; text-align: left; white-space: normal; border: 0; border-top: 2px solid #DDDEFA; border-radius: 0; background: none; padding: 12px 2px 4px; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 10px; align-items: baseline; color: #0E1225; font-size: 15px; font-weight: 400; }
 ${S} .sg-step-n { font-family: "Noto Serif SC", "Songti SC", "STSong", serif; font-weight: 900; font-size: 22px; color: #B9BCEB; grid-row: span 2; line-height: 1; font-variant-numeric: tabular-nums; }
 ${S} .sg-step-t { font-size: 15px; font-weight: 500; color: #0E1225; }
@@ -102,16 +102,6 @@ ${S} .sg-outline-list { margin: 0; padding: 0; list-style: none; display: grid; 
 ${S} .sg-outline-list li { display: flex; gap: 8px; align-items: baseline; }
 ${S} .sg-outline-list li::before { content: counter(sg-o); counter-increment: sg-o; font-family: "Noto Serif SC", "Songti SC", "STSong", serif; font-weight: 900; font-size: 12px; color: #B9BCEB; min-width: 14px; }
 
-/* 第 4 步：推荐活动 */
-${S} .sg-recs { display: flex; flex-direction: column; }
-${S} .sg-rec { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; gap: 3px 16px; padding: 14px 0; border-top: 1px solid #E8E9F6; align-items: start; }
-${S} .sg-rec:first-child { border-top: 0; }
-${S} .sg-rec-date { font-family: "Noto Serif SC", "Songti SC", "STSong", serif; font-weight: 900; font-size: 21px; line-height: 1.05; font-variant-numeric: tabular-nums; grid-row: span 2; }
-${S} .sg-rec-date small { display: block; font-family: "Noto Sans SC", "PingFang SC", sans-serif; font-weight: 400; font-size: 11.5px; color: #6B6F99; margin-top: 3px; white-space: nowrap; }
-${S} .sg-rec h4 { margin: 0; font-size: 15.5px; font-weight: 500; line-height: 1.45; }
-${S} .sg-rec-where { font-size: 12.5px; color: #6B6F99; }
-${S} .sg-rec-acts { grid-row: 1 / span 2; grid-column: 3; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
-
 /* 完成卡片 */
 ${S} .sg-finish { display: flex; flex-direction: column; gap: 12px; padding: 24px 26px; border-radius: 18px; background: #E6F3EC; }
 ${S} .sg-finish h2 { margin: 0; font-family: "Noto Serif SC", "Songti SC", "STSong", serif; font-weight: 900; font-size: 24px; color: #0E1225; }
@@ -130,14 +120,11 @@ ${S} .sg-finish p { margin: 0; font-size: 15px; line-height: 1.7; color: #3B3F7A
   ${S} .sg-steps-mini i[data-bar="done"] { background: #4B4FC7; }
   ${S} .sg-steps-mini i[data-bar="current"] { background: #4B4FC7; opacity: .45; }
   ${S} .sg-steps-mini b { color: #0E1225; font-weight: 500; }
-  ${S} .sg-steps-mini .btn.sg-link { margin-left: auto; font-size: 12.5px; }
   ${S} .sg-locked-note { margin-top: -8px; }
   ${S} .sg-slots { grid-template-columns: minmax(0, 1fr); }
   ${S} .sg-slot { min-height: 0; }
   ${S} .sg-question { font-size: 20px; }
   ${S} .sg-outline-list { grid-template-columns: minmax(0, 1fr); }
-  ${S} .sg-rec { grid-template-columns: 56px minmax(0, 1fr); }
-  ${S} .sg-rec-acts { grid-row: auto; grid-column: 2; flex-direction: row; align-items: center; }
   ${S} .sg-foot { flex-direction: column; align-items: stretch; }
   ${S} .sg-foot .btn.sg-primary { justify-content: center; }
 }

@@ -21,9 +21,9 @@
  * `viewModel` 的 suggests 还带真实人名与草稿，不能进示例；那些读取出错也不影响示例渲染。
  * 开关关闭时判定零读取，下面的真实路径与改动前一致。
  *
- * W0022：开关打开且不在示例期时，服务端判定引导第 4 步是否未完成（`readGuideStep4Pending`），
- * 和开关状态一起交给壳：首页无计划时「帮我制定推进计划 →」去 `/app/start?step=3`，有计划且第 4 步
- * 未完成时「已报名活动」栏首提醒。开关关闭时零新增读取。
+ * W0022：开关状态交给壳：首页无计划时「帮我制定推进计划 →」去 `/app/start?step=3`（开关关闭时
+ * 仍是 `/app/agent/strategy`）。W0035 删去引导的「活动」一步后，首页不再判定它、不再提醒，
+ * 也不再为它读报名事实（`hasAnyActiveRegistration` 0 次）。
  */
 import { getOrbitServerLanguage, localizeOrbitTree } from "../orbit-language-server";
 import type { OrbitLanguage } from "../orbit-language-core";
@@ -39,7 +39,6 @@ import { presentOrbitEvents } from "../orbit-event-presentation";
 import { readRuntimeEventRegistrationStates } from "../../../../features/events/registration/runtime";
 import { resolveConfiguredActorEventCanonicalIds } from "../canonical-event-detail-view";
 import { readCommunityJoinedForActor } from "../../../../features/community/service-factory";
-import { hasAnyActiveRegistration } from "../../../../features/events/registration/active-registration";
 import { readGuideDemoConfig } from "../../../../shared/config/guide-demo";
 import { readGuideStatusForActor } from "../../../../features/guide/progress";
 import { readDemoModeViewForActor } from "../_demo/demo-guide-view";
@@ -70,24 +69,6 @@ async function readPlanCard(actorId: string, planId: string): Promise<IOrbitPlan
     return snapshot ? planCardViewFromSnapshot(snapshot) : null;
   } catch {
     return null;
-  }
-}
-
-/**
- * W0022：引导第 4 步是否还没完成（首页「已报名活动」栏首提醒用）。已加入社群、或首页活动里
- * 已有报名时直接判定完成，不再读取；否则按 canonical actor 读一次报名事实（不限于首页活动）。
- * 读取失败时返回 false：读不到就不提醒，也不当成已完成去展示别的东西。
- */
-async function readGuideStep4Pending(input: {
-  actorId: string;
-  communityJoined: boolean;
-  registeredOnHome: boolean;
-}): Promise<boolean> {
-  if (input.communityJoined || input.registeredOnHome) return false;
-  try {
-    return !(await hasAnyActiveRegistration(input.actorId));
-  } catch {
-    return false;
   }
 }
 
@@ -217,16 +198,8 @@ export default async function AppAgentPage({
   );
   // W0003：「已报名活动」栏首行的社群状态由服务端读，SSR 首帧即正确。
   const communityJoined = await readCommunityJoinedForActor({ actorId });
-  // W0022：开关关闭时不做任何新读取（示例期在上面已经提前返回）。「有生效计划」由首页已有的
-  // 计划读取判定，这里只判第 4 步。
+  // W0022：开关只决定无计划时「帮我制定推进计划 →」的去向，不做任何读取。
   const guideEnabled = readGuideDemoConfig().enabled;
-  const guideStep4Pending = guideEnabled
-    ? await readGuideStep4Pending({
-        actorId,
-        communityJoined,
-        registeredOnHome: Object.values(registrationStates).some((state) => state.registered === true),
-      })
-    : false;
   const requestedPlanId = firstSearchParam(resolvedSearchParams, "plan");
   const planCard = requestedPlanId ? await readPlanCard(actorId, requestedPlanId) : null;
   const viewModel = createOrbitAgentStarterViewModel();
@@ -241,7 +214,6 @@ export default async function AppAgentPage({
             communityJoined={communityJoined}
             guide={null}
             guideEnabled={guideEnabled}
-            guideStep4Pending={guideStep4Pending}
             initialDeepLink={Boolean(
               firstSearchParam(resolvedSearchParams, "q") ||
                 firstSearchParam(resolvedSearchParams, "session") ||

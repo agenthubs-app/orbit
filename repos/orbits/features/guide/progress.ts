@@ -5,8 +5,7 @@
  *   第 1 步 名片：本人已确认联系人 ≥ 3，或引导记录 `step1Skipped`（W0006「先这样，继续」）
  *   第 2 步 目标：profile 的 relationshipGoal 非空
  *   第 3 步 计划：有生效中的计划（`features/plans` 的 `getCurrent()`）
- *   第 4 步 活动（W0006，只在 `/app/start` 用）：报名过任意真实活动或有社群加入记录，
- *     由页面读取后传入 `deriveStartGuideFlags`，不影响「前 3 步完成」。
+ * （W0006 的「活动」一步已在 W0035 删除，引导只有这 3 步。）
  *
  * 进入示例 = 开关打开（D1）且第 1–3 步未全部完成且不是 D2 老用户。
  *
@@ -364,7 +363,7 @@ export type StartGuideRead =
  * `/app/agent`）；引导记录、联系人计数、计划任一读不到返回 unavailable（页面显示稍后再试，
  * 不猜进度）。联系人示例读不到只是槽位不显示姓名。
  *
- * 与 `readGuideStatusForActor` 不同，D2 老用户也要读计数与计划：引导页要显示第 3、4 步。
+ * 与 `readGuideStatusForActor` 不同，D2 老用户也要读计数与计划：引导页要显示第 3 步。
  * 第一次看到前 3 步全部完成时写入 `completedAt`（同时清空 `currentStep`，页面显示完成卡片）。
  */
 export async function readStartGuideForActor(
@@ -418,7 +417,6 @@ export async function readStartGuideForActor(
 
   const flags = deriveStartGuideFlags({
     confirmedContacts: contacts.value,
-    eventsDone: false,
     grandfathered,
     hasActivePlan: plan.value,
     relationshipGoal: input.relationshipGoal,

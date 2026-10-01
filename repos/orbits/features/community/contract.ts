@@ -1,6 +1,6 @@
 /**
  * 社群加入记录的对外形状（`GET/PUT /api/community/membership` 的 data）。
- * W0006 引导第 4 步复用同一份记录：`joined` 即「第 4 步视为完成」。
+ * （W0006 的引导曾把 `joined` 当作「活动」一步的完成条件；W0035 删去该步后已无此用途。）
  */
 export interface CommunityMembership {
   joined: boolean;

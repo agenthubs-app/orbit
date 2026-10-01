@@ -1,13 +1,14 @@
 /**
  * W0006 SC-02 / SC-03 / SC-04（组件）：引导页 /app/start 的客户端壳。
  *
- * - 步骤条：完成 ✓ / 进行中 / 锁定（完成前一步后解锁）/ 第 4 步随时可做；点锁定的步骤只提示
+ * - 步骤条（W0035 起只有 3 步）：完成 ✓ / 进行中 / 锁定（完成前一步后解锁）；点锁定的步骤只提示
  *   「先完成第 n 步」不切换、不写记录；切换步骤写 currentStep；
  * - 第 1 步：槽位、「已确认 x / 3」、待确认张数、扫名片入口；「先这样，继续」写 step1Skipped；
  *   接上本机进行中的名片批次（状态机在本页，宿主让位）；
  * - 第 2 步：W0002 编辑器，已有目标自动完成；第 3 步：当前目标、就地修改（草稿，取消不覆盖）、
  *   固定问题与 6 点结构、「开始分析」直接调用计划生成接口（W0008），成功后去对话页看回答卡片；
- * - 前 3 步完成：完成卡片；D2 老用户直接停在第 3 步；记录的 currentStep 能打开就停在那一步。
+ * - 3 步完成：完成卡片；D2 老用户直接停在第 3 步；记录的 currentStep 能打开就停在那一步；
+ *   存量 currentStep = 4 由服务端映射为 null，加载不写记录。
  */
 import assert from "node:assert/strict";
 import test, { type TestContext } from "node:test";
@@ -16,7 +17,7 @@ import { act, create, type ReactTestInstance, type ReactTestRenderer } from "rea
 
 import type { StartGuideSnapshot } from "../../features/guide/start-steps";
 import type { CardBatch } from "../../app/(app)/app/contacts/card-batch-0918/use-card-batch";
-import { StartGuide, type StartEventView, type StartGuideProps } from "../../app/(app)/app/start/start-guide";
+import { StartGuide, type StartGuideProps } from "../../app/(app)/app/start/start-guide";
 import { StepCards } from "../../app/(app)/app/start/start-step-cards";
 import { START_PLAN_BOOTSTRAP_URL } from "../../app/(app)/app/start/start-step-plan";
 
@@ -29,11 +30,6 @@ const SNAPSHOT: StartGuideSnapshot = {
   hasActivePlan: false,
   step1Skipped: false,
 };
-
-const EVENTS: StartEventView[] = [
-  { code: "JETRO1008", id: "ev-1", name: "JETRO 外资企业商务交流会", place: "赤坂", startsAt: "2030-10-08T09:00:00.000Z" },
-  { code: "DX1015", id: "ev-2", name: "中小企业 DX 推进研讨会", place: "大手町", startsAt: "2030-10-15T09:00:00.000Z" },
-];
 
 interface Harness {
   assigned: string[];
@@ -121,9 +117,6 @@ function stubBrowser(
       const next = options.bootstrap?.[bootstraps.length - 1];
       return next ? next() : Response.json({ success: false }, { status: 500 });
     }
-    if (url === "/api/community/membership" && init?.method === "PUT") {
-      return Response.json({ success: true, data: { joined: true, joinedAt: "2026-10-01T00:00:00.000Z" } });
-    }
     return Response.json({ success: false }, { status: 404 });
   });
   return { assigned, bootstraps, patches, profilePuts, refreshes: () => refreshCount, requests };
@@ -146,10 +139,7 @@ function props(
 ): StartGuideProps {
   return {
     cardScanAvailable: true,
-    communityJoined: false,
-    events: EVENTS,
     profileUpdatedAt: "2026-10-01T00:00:00.000Z",
-    registeredAnyEvent: false,
     relationshipGoal: "",
     ...overrides,
     snapshot: { ...SNAPSHOT, ...overrides.snapshot },
@@ -200,80 +190,113 @@ const click = async (node: ReactTestInstance) => {
 
 /* ── 步骤条与顺序锁（SC-02） ───────────────────────────────────────────── */
 
-test("a new user opens on step 1: done / current / locked / any-time statuses and the page chrome", async (t) => {
+/** 页面上不能再出现的第 4 步措辞与入口（W0035）。 */
+function assertNoStepFour(root: ReactTestRenderer) {
+  const all = text(root.root);
+  for (const banned of ["第 4 步", "共 4 步", "4 步，", "做第 4 步", "先看活动", "随时可做", "已加入社群"]) {
+    assert.ok(!all.includes(banned), `should not mention ${banned}`);
+  }
+  assert.equal(byData(root, "data-start-step", "4").length, 0);
+  assert.equal(byData(root, "data-start-do-step4").length, 0);
+  assert.equal(byData(root, "data-start-event").length, 0);
+  assert.equal(byData(root, "data-events-community").length, 0);
+}
+
+test("a new user opens on step 1 of 3: current / locked statuses and the page chrome", async (t) => {
   stubBrowser(t);
   const root = await mount(props());
   assert.equal(view(root), "1");
-  assert.deepEqual(stepStatuses(root), ["current", "locked", "locked", "open"]);
-  assert.equal(text(one(root, "data-start-nav-step")), "引导 · 第 1 步 / 共 4 步");
+  assert.deepEqual(stepStatuses(root), ["current", "locked", "locked"]);
+  assert.equal(text(one(root, "data-start-nav-step")), "引导 · 第 1 步 / 共 3 步");
   assert.equal(one(root, "data-start-back").props.href, "/app/agent");
   const steps = byData(root, "data-start-step");
   assert.match(text(steps[1]!), /完成第 1 步后解锁/);
   assert.equal(steps[1]!.props["aria-disabled"], "true");
-  assert.match(text(steps[3]!), /随时可做/);
   assert.match(text(steps[0]!), /已确认 0 \/ 3 · 进行中/);
+  assert.equal(root.root.find((node) => node.type === "ol").props["aria-label"], "引导 3 步");
+  // 手机进度线：3 段，「第 1 步 / 共 3 步」，没有跳到活动的链接。
+  const mini = one(root, "data-start-steps-mini");
+  assert.equal(mini.findAll((node) => node.type === "i").length, 3);
+  assert.equal(text(mini), "第 1 步 / 共 3 步");
   const all = text(root.root);
-  assert.ok(all.includes("4 步，让 iOrbit 开始为你工作"));
-  assert.ok(all.includes("做完前 3 步，iOrbit 和人脉页就会从示例换成你自己的数据。"));
+  assert.ok(all.includes("3 步，让 iOrbit 开始为你工作"));
+  assert.ok(all.includes("做完这 3 步，iOrbit 和人脉页就会从示例换成你自己的数据。"));
   assert.ok(all.includes("可以随时离开，进度会保留"));
+  assertNoStepFour(root);
   act(() => root.unmount());
 });
 
-test("clicking a locked step only says which step to finish first; step 4 opens any time and records currentStep", async (t) => {
+test("clicking a locked step only says which step to finish first; an open step switches and records currentStep", async (t) => {
   const api = stubBrowser(t);
-  const root = await mount(props());
+  // 有目标、名片没做完：第 2 步已完成（可重开），第 3 步锁着。
+  const root = await mount(props({ relationshipGoal: "找渠道" }));
   await click(one(root, "data-start-step", "3"));
   assert.equal(view(root), "1", "no switch");
   assert.equal(text(one(root, "data-start-locked-note")), "先完成第 1 步");
   assert.deepEqual(api.patches, [], "a locked click writes nothing");
 
-  await click(one(root, "data-start-step", "4"));
-  assert.equal(view(root), "4");
+  await click(one(root, "data-start-step", "2"));
+  assert.equal(view(root), "2");
   assert.equal(text(one(root, "data-start-locked-note")), "");
-  assert.deepEqual(api.patches, [{ currentStep: 4 }]);
-  // 第 4 步：社群卡片置顶 + 两场真实活动 + 更多活动。
-  assert.equal(byData(root, "data-events-community").length, 1);
-  assert.equal(byData(root, "data-start-event").length, 2);
-  assert.equal(one(root, "data-start-more-events").props.href, "/app/events");
+  assert.deepEqual(api.patches, [{ currentStep: 2 }]);
 
   await click(one(root, "data-start-step", "1"));
   assert.equal(view(root), "1");
-  assert.deepEqual(api.patches, [{ currentStep: 4 }, { currentStep: 1 }]);
+  assert.deepEqual(api.patches, [{ currentStep: 2 }, { currentStep: 1 }]);
+  assertNoStepFour(root);
   act(() => root.unmount());
 });
 
 test("the recorded currentStep is reopened when allowed; a recorded locked step falls back to the first unfinished one", async (t) => {
   stubBrowser(t);
-  const onFour = await mount(props({ snapshot: { currentStep: 4 } }));
-  assert.equal(view(onFour), "4");
-  act(() => onFour.unmount());
+  const onTwo = await mount(props({ relationshipGoal: "找渠道", snapshot: { currentStep: 2 } }));
+  assert.equal(view(onTwo), "2");
+  act(() => onTwo.unmount());
   const locked = await mount(props({ snapshot: { currentStep: 3 } }));
   assert.equal(view(locked), "1");
   act(() => locked.unmount());
 });
 
-test("W0022: ?step=3 opens step 3 for a legacy user recorded on step 4, without writing the guide record", async (t) => {
+test("W0035: a stored step 4 (mapped to null by the server) lands on the first unfinished step or the finish card, without a PATCH", async (t) => {
   const api = stubBrowser(t);
-  const root = await mount(props({ requestedStep: 3, snapshot: { confirmedContacts: 12, currentStep: 4, grandfathered: true } }));
+  // 未完成 + 存量 4：停在第一个未完成的步骤。
+  const open = await mount(props({ snapshot: { currentStep: null } }));
+  assert.equal(view(open), "1");
+  assertNoStepFour(open);
+  act(() => open.unmount());
+  // 已完成 + 存量 4：完成卡片。
+  const done = await mount(
+    props({
+      relationshipGoal: "找渠道",
+      snapshot: { completedAt: "2026-09-30T00:00:00.000Z", confirmedContacts: 3, currentStep: null, hasActivePlan: true },
+    }),
+  );
+  assert.equal(view(done), "finish");
+  assertNoStepFour(done);
+  act(() => done.unmount());
+  assert.deepEqual(api.patches, []);
+  assert.ok(!api.requests.some((request) => request.startsWith("PATCH")));
+});
+
+test("W0022: ?step=3 opens step 3 for a legacy user recorded on step 1, without writing the guide record", async (t) => {
+  const api = stubBrowser(t);
+  const root = await mount(props({ requestedStep: 3, snapshot: { confirmedContacts: 12, currentStep: 1, grandfathered: true } }));
   assert.equal(view(root), "3");
   assert.deepEqual(api.patches, [], "loading with ?step never PATCHes /api/guide/state");
   assert.ok(!api.requests.some((request) => request.startsWith("PATCH /api/guide/state")));
   act(() => root.unmount());
-  // 同一人不带参数：仍停在记录的第 4 步（原逻辑）。
-  const plain = await mount(props({ snapshot: { confirmedContacts: 12, currentStep: 4, grandfathered: true } }));
-  assert.equal(view(plain), "4");
+  // 同一人不带参数：仍停在记录的第 1 步（原逻辑）。
+  const plain = await mount(props({ snapshot: { confirmedContacts: 12, currentStep: 1, grandfathered: true } }));
+  assert.equal(view(plain), "1");
   act(() => plain.unmount());
 });
 
-test("W0022: a locked ?step=3 does not unlock anything; ?step=4 opens any time; neither writes the record", async (t) => {
+test("W0022: a locked ?step=3 does not unlock anything and does not write the record", async (t) => {
   const api = stubBrowser(t);
   const locked = await mount(props({ requestedStep: 3 }));
   assert.equal(view(locked), "1");
-  assert.deepEqual(stepStatuses(locked), ["current", "locked", "locked", "open"]);
+  assert.deepEqual(stepStatuses(locked), ["current", "locked", "locked"]);
   act(() => locked.unmount());
-  const four = await mount(props({ requestedStep: 4 }));
-  assert.equal(view(four), "4");
-  act(() => four.unmount());
   assert.deepEqual(api.patches, []);
 });
 
@@ -281,26 +304,22 @@ test("a D2 legacy user starts on step 3 with steps 1–2 already done", async (t
   stubBrowser(t);
   const root = await mount(props({ snapshot: { confirmedContacts: 12, grandfathered: true } }));
   assert.equal(view(root), "3");
-  assert.deepEqual(stepStatuses(root), ["done", "done", "current", "open"]);
+  assert.deepEqual(stepStatuses(root), ["done", "done", "current"]);
   act(() => root.unmount());
 });
 
-test("steps 1–3 done: the finish card offers iOrbit and step 4; with step 4 done only iOrbit", async (t) => {
+test("all 3 steps done: the finish card only offers iOrbit", async (t) => {
   const api = stubBrowser(t);
   const done = { confirmedContacts: 3, hasActivePlan: true };
   const root = await mount(props({ relationshipGoal: "三个月内找到 5 家试用客户（3 个月内）", snapshot: done }));
   assert.equal(view(root), "finish");
-  assert.match(text(one(root, "data-start-finish")), /✓ 前 3 步完成了/);
+  assert.match(text(one(root, "data-start-finish")), /✓ 3 步都完成了/);
+  assert.equal(text(one(root, "data-start-nav-step")), "引导 · 3 步已完成");
   assert.equal(one(root, "data-start-go-iorbit").props.href, "/app/agent");
-  await click(one(root, "data-start-do-step4"));
-  assert.equal(view(root), "4");
-  assert.deepEqual(api.patches, [{ currentStep: 4 }]);
+  assert.equal(one(root, "data-start-finish").findAll((node) => node.type === "button").length, 0);
+  assertNoStepFour(root);
+  assert.deepEqual(api.patches, []);
   act(() => root.unmount());
-
-  const all = await mount(props({ registeredAnyEvent: true, relationshipGoal: "x", snapshot: done }));
-  assert.equal(byData(all, "data-start-do-step4").length, 0);
-  assert.match(text(one(all, "data-start-finish")), /4 步全部完成/);
-  act(() => all.unmount());
 });
 
 /* ── 第 1 步（SC-03） ───────────────────────────────────────────────────── */
@@ -529,23 +548,9 @@ test("step 3: when a plan already exists the button opens that plan instead of m
   act(() => root.unmount());
 });
 
-/* ── 第 4 步 ───────────────────────────────────────────────────────────── */
-
-test("joining the community on step 4 marks the step done", async (t) => {
-  const api = stubBrowser(t);
-  const root = await mount(props({ snapshot: { currentStep: 4 } }));
-  assert.equal(one(root, "data-start-step", "4").props["data-status"], "open");
-  const join = root.root.find((node) => node.type === "button" && node.props.className === "btn ev-community-join");
-  await click(join);
-  assert.ok(api.requests.includes("PUT /api/community/membership"));
-  assert.equal(one(root, "data-start-step", "4").props["data-status"], "done");
-  assert.match(text(one(root, "data-start-step", "4")), /已加入社群/);
-  act(() => root.unmount());
-});
-
 /* ── currentStep 写入顺序（SC-04） ─────────────────────────────────────── */
 
-test("every currentStep write goes through one serial queue: 4 → 1 then skip ends at {step1Skipped: true, currentStep: 2}", async (t) => {
+test("every currentStep write goes through one serial queue: 2 → 1 then skip ends at {step1Skipped: true, currentStep: 3}", async (t) => {
   stubBrowser(t);
   // 覆盖 stubBrowser 的 fetch：PATCH 的响应由测试手动放行，而且总是先放行**最后**发出的那个
   // （模拟网络倒序到达）；服务端按放行顺序落库。串行队列下同一时刻只会有一个请求在路上。
@@ -574,22 +579,23 @@ test("every currentStep write goes through one serial queue: 4 → 1 then skip e
     await settle();
   };
 
-  const root = await mount(props());
-  await click(one(root, "data-start-step", "4"));
+  // 有目标：第 2 步已完成可重开；跳过第 1 步后前进到第 3 步。
+  const root = await mount(props({ relationshipGoal: "找渠道" }));
+  await click(one(root, "data-start-step", "2"));
   await click(one(root, "data-start-step", "1"));
   assert.equal(view(root), "1");
   await act(async () => {
     one(root, "data-start-skip-button").props.onClick();
   });
   await settle();
-  assert.deepEqual(sent, [{ currentStep: 4 }], "later writes wait for the one in flight");
+  assert.deepEqual(sent, [{ currentStep: 2 }], "later writes wait for the one in flight");
 
   while (pending.length) await releaseLatest();
 
-  assert.deepEqual(sent, [{ currentStep: 4 }, { currentStep: 1 }, { currentStep: 2, step1Skipped: true }]);
+  assert.deepEqual(sent, [{ currentStep: 2 }, { currentStep: 1 }, { currentStep: 3, step1Skipped: true }]);
   assert.equal(maxInFlight, 1);
-  assert.deepEqual(server, { currentStep: 2, step1Skipped: true });
-  assert.equal(view(root), "2");
+  assert.deepEqual(server, { currentStep: 3, step1Skipped: true });
+  assert.equal(view(root), "3");
   // 跳过确认后不会再补发更早的 {currentStep: 1}。
   await settle();
   assert.equal(sent.length, 3);

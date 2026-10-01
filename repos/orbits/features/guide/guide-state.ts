@@ -9,9 +9,10 @@
  *     null 表示还没判定过。
  *   - `bannerCollapsed`：示例横条是否收起成导航药丸（换浏览器也一致）。
  *   - `step1Skipped`（W0006）：第 1 步点过「先这样，继续」；只能置为 true。
- *   - `currentStep`（W0006）：`/app/start` 停在第几步（1–4）。用户切换步骤、某一步完成后
- *     前进到下一步时由页面写入；前 3 步完成时服务端清空（null = 显示完成卡片）。
- *   - `completedAt`（W0006）：服务端第一次看到前 3 步全部完成的时间，写入后不再改变。
+ *   - `currentStep`（W0006）：`/app/start` 停在第几步（1–3；W0035 前可能写过 4，读成 null）。
+ *     用户切换步骤、某一步完成后前进到下一步时由页面写入；3 步完成时服务端清空（null = 显示
+ *     完成卡片）。
+ *   - `completedAt`（W0006）：服务端第一次看到 3 步全部完成的时间，写入后不再改变。
  *   - `version`：记录结构版本（当前为 2）。v1 记录没有 W0006 的三个字段，读取时按默认值
  *     （未跳过、未记录步骤、未完成）补齐，不需要改写存量数据。
  *
@@ -79,7 +80,7 @@ function stateFrom(record: LiveRecord<GuideStatePayload> | null): GuideState {
   return {
     bannerCollapsed: payload?.bannerCollapsed === true,
     completedAt: completedAtFrom(payload),
-    // 存量数据里的非法值（不是 1–4）按「没有记录」处理。
+    // 存量数据里的非法值（不是 1–3，包括 W0035 删去「活动」一步之前写下的 4）按「没有记录」处理。
     currentStep: isGuideStartStep(payload?.currentStep) ? payload.currentStep : null,
     grandfathered: typeof payload?.grandfathered === "boolean" ? payload.grandfathered : null,
     step1Skipped: payload?.step1Skipped === true,
@@ -191,7 +192,7 @@ export function createStorageGuideStateService(input: {
           changed = true;
         }
         if (patch.currentStep !== undefined) {
-          if (!isGuideStartStep(patch.currentStep)) throw new Error("currentStep must be 1–4.");
+          if (!isGuideStartStep(patch.currentStep)) throw new Error("currentStep must be 1–3.");
           if (current?.currentStep !== patch.currentStep) {
             next.currentStep = patch.currentStep;
             changed = true;
