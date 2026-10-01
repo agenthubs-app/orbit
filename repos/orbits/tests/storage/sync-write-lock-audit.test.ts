@@ -66,6 +66,7 @@ export const EVENT_TABLE_WRITE_MANIFEST: Readonly<Record<string, MessageTableWri
   "features/events/registration/phoneweb-registration-window-repair.ts": { statements: 3, how: "withRepairTransaction takes the lock before its row and table locks" },
   "features/events/registration/profile-contract-repair/apply-repository.ts": { statements: 1, how: "applyTransaction takes the lock first" },
   "scripts/measure-plan-read-traffic.ts": { statements: 3, how: "lockedWrite takes the lock first in each write transaction (temporary schema)" },
+  "scripts/measure-home-event-pool-traffic.ts": { statements: 1, how: "W0036: lockedWrite takes the lock first in each write transaction (temporary schema)" },
   "scripts/seed-verify-accounts.ts": { statements: 1, how: "the verify event seed transaction takes the lock first" },
   "scripts/demo-canonical-memberships.ts": { statements: 1, how: "the demo transaction takes the lock first" },
 };
