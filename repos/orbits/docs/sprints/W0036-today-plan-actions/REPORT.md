@@ -9,14 +9,13 @@
   - 计划行动可「完成」（复用首页 `togglePlanAction`，本周推进同一行同步打勾，失败两处都回滚并在今日要事处提示）、「今天先不做」（只存本机，按账号 + 东京日分 key，不补位，0 个写请求）、点标题去联系人／活动／计划页对应行（计划页本周行加了 `id="plan-action-<id>"` 与 `scroll-margin-top`）。（SC-01、SC-02）
   - 已确认联系人 <10 且还有空位时出一条补人脉，按钮去 `/app/contacts/new?method=scan`，可「7 天内不再提示」；有计划时药丸带当前阶段名，没有计划时不提阶段。（SC-03）
   - 首页内算出共享活动池 `eventPool`／`eventPoolReady`（计划 → 目标 → 近期，组池后截到 8；标题按 id 换成三语审阅标题，地点原文）；没设目标、读目标失败的真实用户也有「近期活动」兜底；空日导语引池里第一场。示例期在服务端读一次真实近期活动交给示例壳，示例今日要事与导语不变。（SC-04）
-  - 3001 上用 verify-plan／verify-legacy／verify-new 走通，桌面 1440 与手机 375 各看一次。（SC-05）
+  - 3001 上用 verify-new（走完三步引导）／verify-plan／verify-legacy 走通，桌面 1440 与手机 375 各看一次。（SC-05）
 - 仍未实现或未验证：
-  - SC-05 路径 ①「新用户走三步引导到首页」没有完整走：引导第 1 步要识别名片，本机 verify server 的名片识别走真实 DeepSeek（付费 AI，本 Sprint 未授权），也没有手工建联系人的入口。改为：verify-new 示例期首页（今日要事与导语不变、真实近期活动已下传、客户端 0 新增请求）+ verify-plan（有计划、联系人 5 位，等价于刚出引导后的首页状态）验证新句式。是否补走需协调者决定。
   - 活动池本 Sprint 只用于空日导语；小模组与月历圆点在 W0037／W0038。费用没有真实数据（不出 `feeLabel`）；地点是来源原文，未本地化。
 
 ## 运行记录
 
-- 结果：completed（等待协调者合并；SC-05 路径 ① 见上）
+- 结果：completed（等待协调者合并）
 - Generator：Opus 5.5／2026-10-01；Planner revision 3（SHA256 `7518520ddf1ae010dab0ee397938f4e13c154f4a22aa2efe17d54b4767cad8d6`）
 - 分支 `sprint/W0036-today-plan-actions`（基线 `chat-agent` `fe54b31e`）；功能提交 `f7e5e65a`（活动池数据）、`775db2e3`（今日要事 + 首页活动池 + 示例期读取）、`78a71d8f`（review 修复）；`chat-agent` 合并 SHA：等待协调者
 - 档位 H。全量对照（RULES §5.2）：基线 6090 项、9 项失败；改后 6140 项，多出 1 项失败（`sync-write-lock-audit`：新测量脚本写 `event_ops_events` 未登记进清单）——已登记（脚本本来就用 `lockedWrite` 取锁），该文件重跑 8/8 通过，**新增失败 0**。日志 `full-baseline.log`、`full-after.log`、`fail-*.txt`
@@ -32,7 +31,7 @@
 | SC-W0036-02 勾掉与今天先不做 | pass | 首页组件测试 SC-02 组：PATCH `set_status: done`、两处同步、失败回滚 + 今日要事提示、请求中再点无效；今天先不做 0 写请求、key `orbit.today.skip.v1:<account>:<东京日>`、次日重现、同账号旧日期 key 清理；A → B → A 只读写当前账号 key；存储抛错与 `account === null` 仍隐藏且不碰存储；无 SessionProvider 时用单例账号、不写别的 key；SSR 不访问 `localStorage`；截图 02／03 |
 | SC-W0036-03 补人脉 | pass | 首页组件测试 SC-03 组（人数 9／10、`home` 为 null、原有 + 计划占满不出、有计划带阶段名、7 天免打扰第 8 天出现、按钮只导航、首页源码无 `useCardBatch`／`CardBatchImport`）；截图 05／08 |
 | SC-W0036-04 推荐活动池 | pass | `tests/services/home-event-pool.test.ts`；`tests/services/public-goal-recommendations.test.ts`（四种状态都带 `upcoming`、≥13 场不截断、success／no_match 语句数不变、needs_goal／读目标失败各多目录 1 + 报名 1、读失败为空）；`app-agent-home-dashboard-entry`（四种状态复制、坏数据整体 unavailable、截到 12 + `upcomingTruncated`、补查接口鉴权）；首页组件测试（zh／en／ja 标题、未知 id 回退、地点原文、空日导语、截断时补查第 13 场一次并在池首）；`app-agent-guide-demo-page`（示例调用矩阵）；截图 07／09 |
-| SC-W0036-05 回归与真实页面 | pass（路径 ① 部分，见上） | 截图 01–09；控制台只有 `/api/inbox/summary` 503（本机既有，改前同样，与本 Sprint 无关）；verify-plan 已 `--reset`；全量对照新增 0；Codex review 1 条已修 |
+| SC-W0036-05 回归与真实页面 | pass | 路径 ①（协调者裁决后同一 run 补做）：`seed-verify-accounts.ts --reset verify-new --guide-step1` 用现有联系人夹具与写入函数 `seedContacts` 给 verify-new 造 3 位已确认联系人（不调付费 AI、不碰生产／Preview，非 verify 行指纹前后一致）→ 浏览器走第 2 步（点示例目标、保存）→ 第 3 步「开始分析」（`ORBIT_PLAN_GENERATOR` 未设置，走 mock，D3）→ 落到回答卡片 → 回首页：已离开示例期，今日要事 = 2 条计划行动 + 补人脉，导语「今天可以推进一步：约 林玫 聊 20 分钟。」；截图 10（第 2 步）、11（桌面 1440）、12（手机 375，无横向滚动）；随后 `--reset verify-new`（联系人 0、无目标、无计划）。路径 ②：截图 01–06、08、09；示例期：截图 07。控制台只有 `/api/inbox/summary` 503（本机既有，改前同样，与本 Sprint 无关）；verify-plan 已 `--reset`；全量对照新增 0；Codex review 1 条已修 |
 | SC-W0036-06 数据库月预算 | pass（100% 档超 1.6 GB，已登记 D32 风险） | 下表；`sc06-sc07-measure.json` |
 | SC-W0036-07 HTTP 三列 | pass（100 场超 20 KB → 已启用备选约束） | 下表；`sc06-sc07-measure.json`；浏览器实测 server action 应答 |
 
@@ -83,6 +82,7 @@
 ## 假设与额外阅读
 
 - 额外阅读（先查调用方）：相关测试夹具（`app-agent-iorbit-home`、`app-agent-guide-demo-page`、`app-agent-home-dashboard-entry`、`public-goal-recommendations(-runtime)`、`tests/support/plan-snapshot-fixture.ts`）；`features/plans/contract.ts`；`orbit-shared-read.ts`；`home-dashboard-actions.ts`（鉴权口径）；`features/events/core/public-catalogue.ts` 与 event-operations 目录汇总 SQL（测量脚本造数据）；`scripts/measure-plan-read-traffic.ts`（W0017 口径）；`verify-server.sh`、`seed-verify-accounts.ts`、`verify-session-cookie.ts`；`tests/storage/sync-write-lock-audit.test.ts`。
+- 脚本参数（SC-05 路径 ① 补做用）：`scripts/seed-verify-accounts.ts` 新增 `--reset verify-new --guide-step1`——重置 verify-new 后用同一套联系人夹具（`buildAccountContactFixtures`）与同一个写入函数 `seedContacts` 给它 `GUIDE_REQUIRED_CONTACTS`（3）位已确认联系人，只用于本机验收库、只限 verify-new；普通 `--reset verify-new` 行为不变。
 - 新增路径：`features/agent/home-event-pool.ts`、`features/agent/home-event-pool-runtime.ts`、`app/(app)/app/agent/iorbit-0918/today-plan-items.ts`、`app/(app)/app/agent/home-plan-events-actions.ts`（SC-07 备选约束的窄接口）、`scripts/measure-home-event-pool-traffic.ts`、`tests/services/home-event-pool.test.ts`、`tests/services/today-plan-items.test.ts`。
 - 选择：
   - 名额（W36-1／W36-3）：先按 `min(2, 3 − n)` 选定，再去掉「今天先不做」的，不补位；勾掉完成后下一条计划行动自然上来（不算补位）。
@@ -110,6 +110,6 @@
 - snapshot 形状：`recommendations.upcoming`（≤12，升序）+ `recommendations.upcomingTruncated`；补查接口 `resolveHomePlanEventsAction(eventIds)`（1–20 个 id，返回 `{state:"events", items}`）。
 - 示例壳可选 prop `demoEventCandidates`（`IOrbitShell` → `IOrbitDemoShell` → `IOrbitHome`），服务端由 `readDemoHomeEventCandidates` 读。W0037 示例期社群读取请追加到 SC-06 表第 ④ 行。
 - W36-1～W36-5 按 D38 执行（见上）。W35-3：`features/events/registration/active-registration.ts` **未复用、未删除**，活动池的「排除已报名」用推荐服务已读的报名集合；该模块**暂无生产调用方**，作为观察项保留。
-- 需要协调者／用户决定：① SC-06 100% 档 1,758 MB 超 1.6 GB，请写入 D32 周检；② SC-05 路径 ① 是否在授权付费识别或补充种子后补走；③ 观察项：本机 3001 每次 `GET /app/agent` 读库约 9.6 MB（改前同样，非本 Sprint 引入），建议另开任务排查；`/api/inbox/summary` 本机 503 同为既有。
+- 需要协调者／用户决定：① SC-06 100% 档 1,758 MB 超 1.6 GB，请写入 D32 周检；② 观察项：本机 3001 每次 `GET /app/agent` 读库约 9.6 MB（改前同样，非本 Sprint 引入），建议另开任务排查；`/api/inbox/summary` 本机 503 同为既有。
 - `repos/orbits/next-env.d.ts` 被 3001 dev server 改写（`.next-verify`），未提交。
 - 回退：`git revert 78a71d8f 775db2e3 f7e5e65a`（无迁移；本机 `orbit.today.*` localStorage key 可留可删）。
