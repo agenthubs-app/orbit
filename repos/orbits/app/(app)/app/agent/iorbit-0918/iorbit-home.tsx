@@ -75,8 +75,12 @@ import {
 } from "../orbit-agent-next-actions";
 import {
   iorbitCalendarCells,
+  iorbitCalendarDayLabel,
+  iorbitCalendarMarks,
   iorbitDayKey,
   iorbitLedgerProgress,
+  iorbitMonthRecommendations,
+  iorbitNextEvent,
   iorbitRegisteredEvents,
   iorbitRelativeDayLabel,
   iorbitSelectedDayLabel,
@@ -92,7 +96,8 @@ import { fetchPlanMatches, withoutCandidate, type PlanMatchCandidate, type PlanM
 import { PlanMatchDialog, PlanMatchSheet } from "./plan-match-sheet";
 import { useSharedReadAccount } from "../../orbit-shared-read-account";
 import { usePendingCards } from "./use-pending-cards";
-import { IOrbitTodayEvents } from "./iorbit-today-events";
+import { formatHomeEventReason, IOrbitTodayEvents } from "./iorbit-today-events";
+import { eventDetailHref } from "../../events/events-0918/events-model";
 import {
   currentPlanPhase,
   NETWORK_NUDGE_HREF,
@@ -158,11 +163,21 @@ const isFollowupFact = (
   item: HomeFactsViewItem,
 ): item is HomeFactsFollowupItem & { href: string | null } => "contactName" in item;
 
+/**
+ * W0038（W38-1）：个人日程条目的落点。与 facts 契约 `HOME_FACTS_VIEW_HREFS.personal`
+ * （`home-facts-route-service.ts`，服务端模块，不进客户端包）是同一个页面。
+ */
+const PERSONAL_SCHEDULE_HREF = "/app/tasks/personal";
+
 interface ScheduleRow {
   /** 全天项（或时间无法解析）：`time` 不是钟点。 */
   allDay: boolean;
   dayKey: string;
+  /** W0038：时间线条目的去处（约谈 `item.href`、个人日程页、活动详情）。 */
+  href: string;
   id: string;
+  /** W0038：`recommended` 只出现在右栏时间线，从不进 `scheduleRows`。 */
+  kind: "appointment" | "personal" | "registered" | "recommended";
   meta: string;
   /** 排序键：真实时间戳。全天项取当日 00:00（JST），因此排在当天最前。 */
   startMs: number;
@@ -667,7 +682,9 @@ export function IOrbitHome({
       ...appointmentItems.map((item) => ({
         allDay: false,
         dayKey: iorbitDayKey(new Date(item.startsAtUtc)),
+        href: item.href,
         id: `appointment:${item.key}`,
+        kind: "appointment" as const,
         startMs: Date.parse(item.startsAtUtc),
         meta:
           item.medium === "video"
@@ -681,7 +698,9 @@ export function IOrbitHome({
       ...personalItems.map((item) => ({
         allDay: item.allDay === true,
         dayKey: item.occurrenceDate ?? item.startsAt.slice(0, 10),
+        href: PERSONAL_SCHEDULE_HREF,
         id: `personal:${item.key}`,
+        kind: "personal" as const,
         startMs: item.allDay
           ? Date.parse(`${item.occurrenceDate ?? item.startsAt.slice(0, 10)}T00:00:00+09:00`)
           : Date.parse(item.startsAt),
@@ -692,7 +711,9 @@ export function IOrbitHome({
       ...registeredEvents.map((event) => ({
         allDay: false,
         dayKey: iorbitDayKey(new Date(event.startsAt)),
+        href: `/app/events/${encodeURIComponent(event.id)}`,
         id: `event:${event.id}`,
+        kind: "registered" as const,
         startMs: Date.parse(event.startsAt),
         meta: [t({ en: "Registered event", zh: "已报名活动" }), event.venue || event.place]
           .filter(Boolean)
@@ -715,13 +736,6 @@ export function IOrbitHome({
   const selectedKey = `${monthPrefix}-${String(selectedDay).padStart(2, "0")}`;
   const selectedRows = scheduleRows.filter((row) => row.dayKey === selectedKey);
   const isTodaySelected = selectedDay === todayDay;
-  const markedDays = useMemo(() => {
-    const marked = new Set<number>();
-    for (const row of scheduleRows) {
-      if (row.dayKey.startsWith(monthPrefix)) marked.add(Number(row.dayKey.slice(8, 10)));
-    }
-    return marked;
-  }, [monthPrefix, scheduleRows]);
   const cells = useMemo(
     () => iorbitCalendarCells(todayYear, todayMonth),
     [todayMonth, todayYear],
@@ -1078,6 +1092,45 @@ export function IOrbitHome({
       plan !== "pending" &&
       planEventExtra !== "pending" &&
       !(missingPlanEventKey && planEventExtra === "idle"));
+
+  // W0038（RH-04）：月历空心圈 = 活动池里当月的前 5 场（池的顺序、东京日期落位）。
+  // 它们只进右栏时间线与月历标记，不进 `scheduleRows`／`todayRows`／今日要事／「N 个日程」。
+  const monthRecommendations = useMemo(
+    () => (eventPoolReady ? iorbitMonthRecommendations(eventPool, monthPrefix) : []),
+    [eventPool, eventPoolReady, monthPrefix],
+  );
+  const calendarMarks = useMemo(
+    () =>
+      iorbitCalendarMarks(
+        scheduleRows,
+        monthRecommendations.map((entry) => entry.item),
+        monthPrefix,
+      ),
+    [monthPrefix, monthRecommendations, scheduleRows],
+  );
+  const hasScheduleMark = [...calendarMarks.values()].some((mark) => mark.schedule > 0);
+  const hasRecommendedMark = monthRecommendations.length > 0;
+  // 选中日的时间线：日程 + 当天的推荐活动，按真实时间排（与 `scheduleRows` 同一口径）。
+  const timelineRows: readonly ScheduleRow[] = [
+    ...selectedRows,
+    ...monthRecommendations
+      .filter((entry) => entry.dayKey === selectedKey)
+      .map(({ dayKey, item }) => ({
+        allDay: false,
+        dayKey,
+        href: eventDetailHref(item.publicCode),
+        id: `recommended:${item.eventId}`,
+        kind: "recommended" as const,
+        meta: [formatHomeEventReason(item.reason, lang), item.place].filter(Boolean).join(" · "),
+        startMs: Date.parse(item.startsAt),
+        time: fmtTime(item.startsAt),
+        title: item.title,
+      })),
+  ].sort((a, b) => {
+    const left = Number.isFinite(a.startMs) ? a.startMs : Number.POSITIVE_INFINITY;
+    const right = Number.isFinite(b.startMs) ? b.startMs : Number.POSITIVE_INFINITY;
+    return left - right || a.id.localeCompare(b.id);
+  });
   // 打勾：先改本地，服务端确认后换成返回的条目；失败只把这一条回滚并提示。
   const togglePlanAction = async (itemId: string, done: boolean) => {
     if (!planSnapshot || planBusyId) return;
@@ -1327,8 +1380,41 @@ export function IOrbitHome({
   // 时间线：今天在第一条未开始的项前插「现在」线。
   const nowMs = now.getTime();
   const nowIndex = isTodaySelected
-    ? selectedRows.findIndex((row) => !row.allDay && row.startMs > nowMs)
+    ? timelineRows.findIndex((row) => !row.allDay && row.startMs > nowMs)
     : -1;
+  // W38-3：选中今天、snapshot 已读到、时间线为空时，空态行换成「下一场活动」。
+  // 池未就绪时只看已报名；两边都没有就保持原文案。
+  const nextEvent =
+    isTodaySelected && snapshot !== "pending" && snapshot !== "unavailable" && timelineRows.length === 0
+      ? iorbitNextEvent(registeredEvents, eventPoolReady ? eventPool : null, nowMs)
+      : null;
+  const nextEventLink = nextEvent
+    ? (() => {
+        const startsAt = nextEvent.kind === "registered" ? nextEvent.event.startsAt : nextEvent.item.startsAt;
+        const title = nextEvent.kind === "registered" ? nextEvent.event.name : nextEvent.item.title;
+        const href =
+          nextEvent.kind === "registered"
+            ? `/app/events/${encodeURIComponent(nextEvent.event.id)}`
+            : eventDetailHref(nextEvent.item.publicCode);
+        const weekdayShort = new Intl.DateTimeFormat(locale, { timeZone: TZ, weekday: "short" }).format(
+          new Date(startsAt),
+        );
+        const when = `${fmtDay(startsAt)} ${weekdayShort}`;
+        return {
+          href,
+          kind: nextEvent.kind,
+          text: t({ en: `Next event: ${when} ${title}`, zh: `下一场活动：${when} ${title}` }),
+        };
+      })()
+    : null;
+  // 示例期：示例日程、示例报名点了弹「这是示例」；真实推荐活动照常跳转（W38-2）。
+  const guardScheduleLink = (kind: ScheduleRow["kind"]) =>
+    guardWrite && kind !== "recommended"
+      ? (clickEvent: { preventDefault: () => void }) => {
+          clickEvent.preventDefault();
+          guardWrite(t({ en: "schedule", zh: "日程" }));
+        }
+      : undefined;
   const nowLabel = t({ en: `Now ${fmtTime(now.toISOString())}`, zh: `现在 ${fmtTime(now.toISOString())}` });
 
   return (
@@ -1577,27 +1663,37 @@ export function IOrbitHome({
                 ) : null}
               </span>
             </div>
-            {selectedRows.length > 0 ? (
+            {timelineRows.length > 0 ? (
               <div className="ir-m-tl">
-                {selectedRows.map((row, index) => (
+                {timelineRows.map((row, index) => (
                   <div key={row.id}>
                     {index === nowIndex ? <div className="ir-m-now">{nowLabel}</div> : null}
-                    <div
+                    <a
                       className={
                         isTodaySelected && !row.allDay && row.startMs <= nowMs
                           ? "ir-m-tl-item ir-m-tl-past"
                           : "ir-m-tl-item"
                       }
+                      data-orbit-iorbit-tl-item={row.kind}
+                      href={row.href}
+                      onClick={guardScheduleLink(row.kind)}
                     >
                       <span className="ir-m-tl-time">{row.time}</span>
                       <span className="ir-m-tl-copy">
                         <strong className="ir-agenda-title">
                           {row.title}
-                          {demoActive ? <DemoTag /> : null}
+                          {row.kind === "recommended" ? (
+                            <span className="ir-m-tl-rec">
+                              <i aria-hidden className="ir-m-tl-rec-mark" />
+                              {t({ en: "Suggested", zh: "推荐" })}
+                            </span>
+                          ) : demoActive ? (
+                            <DemoTag />
+                          ) : null}
                         </strong>
                         <span className="ir-m-tl-sub">{row.meta}</span>
                       </span>
-                    </div>
+                    </a>
                   </div>
                 ))}
                 {isTodaySelected && nowIndex === -1 ? <div className="ir-m-now">{nowLabel}</div> : null}
@@ -1606,7 +1702,16 @@ export function IOrbitHome({
               <>
               {isTodaySelected && snapshot !== "pending" ? <div className="ir-m-now">{nowLabel}</div> : null}
               <p className="ir-m-tl-empty">
-                {snapshot === "pending"
+                {nextEventLink ? (
+                  <a
+                    className="ir-m-tl-next"
+                    data-orbit-iorbit-next-event={nextEventLink.kind}
+                    href={nextEventLink.href}
+                    onClick={guardScheduleLink(nextEventLink.kind)}
+                  >
+                    {nextEventLink.text}
+                  </a>
+                ) : snapshot === "pending"
                   ? t({ en: "Reading your schedule…", zh: "正在读取日程…" })
                   : snapshot === "unavailable"
                     ? t({ en: "The schedule source is unavailable right now.", zh: "日程来源暂时不可用。" })
@@ -1650,7 +1755,7 @@ export function IOrbitHome({
                   />
                 ) : (
                   <button
-                    aria-label={iorbitSelectedDayLabel(todayYear, todayMonth, day, lang)}
+                    aria-label={iorbitCalendarDayLabel(todayYear, todayMonth, day, calendarMarks.get(day), lang)}
                     aria-pressed={day === selectedDay}
                     className={day === selectedDay ? "btn ir-day ir-day-on" : "btn ir-day"}
                     data-orbit-iorbit-day={day}
@@ -1661,11 +1766,32 @@ export function IOrbitHome({
                     type="button"
                   >
                     {day}
-                    <span className={markedDays.has(day) ? "ir-day-dot ir-day-dot-a" : "ir-day-dot"} />
+                    {calendarMarks.has(day) ? (
+                      <span aria-hidden className="ir-day-dots">
+                        {calendarMarks.get(day)!.schedule > 0 ? <span className="ir-day-dot ir-day-dot-a" /> : null}
+                        {calendarMarks.get(day)!.recommended > 0 ? <span className="ir-day-dot ir-day-dot-r" /> : null}
+                      </span>
+                    ) : null}
                   </button>
                 ),
               )}
             </div>
+            {calendarMarks.size > 0 ? (
+              <p className="ir-m-cal-legend" data-orbit-iorbit-cal-legend>
+                {hasScheduleMark ? (
+                  <span>
+                    <i aria-hidden className="ir-day-dot ir-day-dot-a" />
+                    {t({ en: "Schedule & registered", zh: "日程与已报名" })}
+                  </span>
+                ) : null}
+                {hasRecommendedMark ? (
+                  <span>
+                    <i aria-hidden className="ir-day-dot ir-day-dot-r" />
+                    {t({ en: "Suggested events", zh: "推荐活动" })}
+                  </span>
+                ) : null}
+              </p>
+            ) : null}
           </div>
         </aside>
       </div>
