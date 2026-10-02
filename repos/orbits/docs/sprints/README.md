@@ -119,7 +119,7 @@
 | [W0043](W0043-network-stop-fake-copy/GOAL.md) | 人脉页不再出现调试英文与「来源暂时不可用」误报，空态说实话，文案双语（H：`contactsAnalysisToView` HIGH，D44） | RN-01 | 无 | completed |
 | [W0044](W0044-followup-clock-root-fix/GOAL.md) | 跟进与提醒的到期按请求时刻计算，逾期显示「已逾期 N 天」（H） | RN-02 | 无 | completed |
 | [W0045](W0045-contact-enrichment-seniority-region/GOAL.md) | 名片识别同一调用补角色层级与规范地区，审阅可改，带来源；老联系人回填脚本（H） | RN-03 | 无 | completed |
-| [W0046](W0046-relationship-timeline-memo/GOAL.md) | 联系人详情显示聚合关系时间线；「写 memo」弹窗；memo 经 AI 提取专长／需求／话题（H） | RN-04 | W0045（C-4：补全来源载体） | ready |
+| [W0046](W0046-relationship-timeline-memo/GOAL.md) | 联系人详情显示聚合关系时间线；「写 memo」弹窗；memo 经 AI 提取专长／需求／话题（H） | RN-04 | W0045（C-4：补全来源载体） | running（run-01，2026-10-02，基线 `05965228`，PLANNER SHA256 `ca5c0a5d0e88f32bfd7b60e5ffc91fc73078896d1c07fed798c014d6dcae29ba`） |
 | [W0047](W0047-relationship-strength-tiers/GOAL.md) | 关系强度按站内记录自动分档（新认识／有往来／核心／待唤醒），管线页按档位分组，下线手动阶段（H） | RN-05 | W0046 | planned |
 | [W0048a](W0048a-network-snapshot-quota/GOAL.md) | 共享人脉分析快照（存储、生成与校验、三层更新）与两池 AI 配额账本（H） | RN-06 | W0045、W0046、W0047 | planned |
 | [W0048b](W0048b-plan-ai-generator/GOAL.md) | 计划生成接 DeepSeek 两阶段并基于快照排行动；老模板计划「AI 重新生成」不占月额度；读取路径 0 次模型调用（H） | RN-06 | W0048a | planned |
