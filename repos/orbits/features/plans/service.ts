@@ -1387,6 +1387,21 @@ export function createPlanService(options: CreatePlanServiceOptions): PlanServic
             return buildItem(item, plan.id, sortKey, at);
           });
         if (inserts.length > 0) await tx.insertItems(inserts);
+        // review P2-3：同一事务里把这一阶段标为已细化，并写入跟进规则与要认识的人。
+        const strings = (value: unknown, limit: number) =>
+          (Array.isArray(value) ? value : []).filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0).map((entry) => entry.trim().slice(0, limit)).slice(0, 10);
+        const analysisPhases = Array.isArray(plan.analysis.phases) ? (plan.analysis.phases as Array<Record<string, unknown>>) : [];
+        const nextPhases = plan.phases.map((entry, index) => {
+          const current = analysisPhases.find((candidate) => candidate?.key === entry.key) ?? { followups: [], key: entry.key, who: [] };
+          if (index !== phaseIndex) return current;
+          return {
+            ...current,
+            detailed: true,
+            followups: strings(rawInput.followups, 200),
+            who: rawInput.who ? strings(rawInput.who, 200) : inserts.filter((item) => item.kind === "network_need").map((item) => item.title),
+          };
+        });
+        await tx.updatePlanAnalysis(plan.id, { ...plan.analysis, phases: nextPhases }, at);
         const entry = await writeLog(tx, {
           author: "system",
           body: clip(`补充第 ${phaseIndex + 1} 阶段「${phase.title}」的 ${inserts.length} 项内容`),

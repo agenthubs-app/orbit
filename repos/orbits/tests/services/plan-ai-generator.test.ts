@@ -20,11 +20,13 @@ import {
   createDeepseekPlanGenerator,
   ledgerCallMeter,
   planRuleFigures,
+  planTextLeaksIds,
 } from "../../features/plans/ai-generator";
 import { createPlanBootstrapService, PlanBootstrapError } from "../../features/plans/bootstrap";
 import {
   generatePlanDraft,
   PlanGenerationError,
+  PlanGenerationInProgressError,
   PlanGenerationLimitError,
   type PlanAnalysisV1,
   type PlanGenerator,
@@ -422,4 +424,103 @@ test("SC-02: the validator still rejects a fabricated id that reaches it (REFERE
     service.bootstrap({ goal: GOAL, idempotencyKey: "forged", locale: "zh", supplement: null }),
     (error: unknown) => error instanceof PlanServiceError && error.reason === "REFERENCE_NOT_FOUND",
   );
+});
+
+/* ---------------- review 修复（第二段） ---------------- */
+
+test("review P1: two requests with the same key at once — only the owner generates and settles; the other gets in-progress with 0 calls", async () => {
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => (release = resolve));
+  const h = harness({ decision: "fresh" });
+  const inner = fakeDeepseek({});
+  // 把第一条链卡在第一次 HTTP 上，让第二个同键请求在它保存之前进入。
+  const ledger = h.ledger;
+  const generator = aiGenerator({
+    fetchImplementation: (async (url: string, init?: RequestInit) => {
+      await gate;
+      return inner.fetchImplementation(url, init);
+    }) as unknown as typeof fetch,
+    ledger,
+    snapshots: h.snapshots.port,
+  });
+  const references = createAllowListPlanReferenceValidator({ actorId: ME, allowList: { contactsByActor: "any", eventIds: "any" } });
+  const service = createPlanBootstrapService({
+    actorId: ME,
+    generator,
+    now: () => NOW,
+    plans: h.plans,
+    references,
+    source: { listContacts: async () => ({ contacts: CONTACTS, total: CONTACTS.length }), listEvents: async () => EVENTS },
+  });
+  const request = { goal: GOAL, idempotencyKey: "dup", locale: "zh" as const, supplement: null };
+  const first = service.bootstrap(request);
+  await new Promise((resolve) => setImmediate(resolve));
+  await assert.rejects(service.bootstrap(request), PlanGenerationInProgressError);
+  release();
+  const saved = await first;
+  assert.equal(saved.replayed, false);
+  const [op] = ledger.operations;
+  assert.equal(ledger.operations.length, 1);
+  assert.equal(op!.status, "succeeded");
+  assert.equal(op!.calls.length, inner.requests.length, "HTTP = sub-ledger rows");
+  assert.equal(op!.calls.length, 3);
+  assert.deepEqual(ledger.finishes, [{ operationId: op!.id, outcome: "succeeded" }]);
+  // 稍后用同一个键重试：replay。
+  assert.equal((await service.bootstrap(request)).replayed, true);
+
+  const route = createPlanBootstrapRouteHandlers({
+    isDemo: async () => false,
+    readGoal: async () => GOAL.text,
+    resolveActor: async () => ({ id: ME }) as never,
+    serviceForActor: () => ({ mode: "live", service: { bootstrap: async () => { throw new PlanGenerationInProgressError(); }, metered: true }, success: true }),
+  });
+  const response = await route.POST(new Request("http://localhost/api/agent/plans/bootstrap", { body: JSON.stringify({ idempotencyKey: "dup" }), method: "POST" }));
+  assert.equal(response.status, 409);
+  assert.equal(((await response.json()) as { error: { context: { reason: string } } }).error.context.reason, "GENERATION_IN_PROGRESS");
+});
+
+test("review P2-4: a 12-phase AI skeleton is saved through runPlanGeneration — phases 1–2 detailed, 3–12 as skeletons", async () => {
+  const weeks = Array.from({ length: 12 }, (_, index) => ({ endWeek: index + 1, startWeek: index + 1, summary: `摘要 ${index + 1}`, title: `阶段 ${index + 1}` }));
+  const h = harness({ decision: "fresh", skeleton: () => skeletonReply({ extra: { phases: weeks } }) });
+  const result = await h.bootstrap();
+  assert.equal(result.snapshot.plan.phases.length, 12);
+  assert.deepEqual(analysisOf(result.snapshot).phases.map((phase) => phase.detailed), [true, true, ...Array(10).fill(false)]);
+  assert.ok(result.snapshot.items.every((item) => item.phaseKey === "p1" || item.phaseKey === "p2"));
+  assert.equal(h.http.count, 3);
+  assert.equal(h.ledger.operations[0]!.status, "succeeded");
+});
+
+test("review P2-5: an invalid targetCount from the model (0, 6, 2.5, \"3\") fails the plan end to end; a valid one is saved as given", async () => {
+  for (const bad of [0, 6, 2.5, "3"]) {
+    const h = harness({ decision: "fresh", phase: (request) => phaseReply(request, { needs: [{ description: "d", targetCount: bad, title: "采购负责人" }] }) });
+    await assert.rejects(h.bootstrap(), (error: unknown) => error instanceof PlanBootstrapError && error.reason === "PLAN_GENERATION_FAILED");
+    assert.equal(await h.plans.getCurrent(), null);
+    assert.equal(h.ledger.operations[0]!.status, "failed");
+  }
+  const missing = harness({ decision: "fresh", phase: (request) => phaseReply(request, { needs: [{ description: "d", title: "采购负责人" }] }) });
+  const saved = await missing.bootstrap();
+  const needs = saved.snapshot.items.filter((item) => item.kind === "network_need");
+  assert.ok(needs.length > 0 && needs.every((item) => item.criteria && !("targetCount" in item.criteria)), "missing stays absent (read as 1)");
+  const valid = harness({ decision: "fresh" });
+  const ok = await valid.bootstrap();
+  assert.ok(ok.snapshot.items.filter((item) => item.kind === "network_need").every((item) => item.criteria?.targetCount === 2));
+});
+
+test("review P2-6: model text carrying an id or alias is rejected — answer, risk, pitch, action, need, info, followup", async () => {
+  const leaks: Array<[string, { skeleton?: () => Record<string, unknown>; phase?: (request: Parameters<typeof phaseReply>[0]) => Record<string, unknown> }]> = [
+    ["answer", { skeleton: () => skeletonReply({ extra: { answer: [{ text: "先找 C1 聊聊。" }] } }) }],
+    ["risk", { skeleton: () => skeletonReply({ extra: { risk: "contact:wang 可能没空。" } }) }],
+    ["pitch", { skeleton: () => skeletonReply({ extra: { pitch: { setting: "交流会", text: "参加 E1 时这样介绍。" } } }) }],
+    ["action", { phase: (request) => phaseReply(request, { actions: [{ title: "联系 3f2b8c1e-1d2a-4b3c-9d8e-7f6a5b4c3d2e", week: 1 }] }) }],
+    ["need", { phase: (request) => phaseReply(request, { needs: [{ description: "像 contact:sato 这样的人", title: "采购负责人" }] }) }],
+    ["info", { phase: (request) => phaseReply(request, { infos: [{ title: "event:jetro-1008 的报名截止？" }] }) }],
+    ["followup", { phase: (request) => phaseReply(request, { followups: ["会后给 C2 发感谢"] }) }],
+  ];
+  for (const [label, script] of leaks) {
+    const h = harness({ decision: "fresh", phase: script.phase, skeleton: script.skeleton });
+    await assert.rejects(h.bootstrap(), (error: unknown) => error instanceof PlanBootstrapError && error.reason === "PLAN_GENERATION_FAILED", label);
+    assert.equal(await h.plans.getCurrent(), null, label);
+    assert.equal(h.ledger.operations[0]!.status, "failed", `${label}: settled through the failure path`);
+  }
+  assert.equal(planTextLeaksIds("约王砚聊 20 分钟", generatorInput()), false);
 });

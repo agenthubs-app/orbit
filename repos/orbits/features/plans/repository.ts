@@ -66,6 +66,8 @@ export interface PlanReader {
 
 export interface PlanTransaction extends PlanReader {
   archivePlan(planId: string, archivedAt: string): Promise<void>;
+  /** W0048b：只改生效计划的 `analysis`（阶段补细后更新该阶段的 detailed／followups／who）。 */
+  updatePlanAnalysis(planId: string, analysis: Record<string, unknown>, updatedAt: string): Promise<void>;
   insertPlan(plan: StoredPlan): Promise<void>;
   insertItems(items: readonly PlanItem[]): Promise<void>;
   updateItem(item: PlanItem): Promise<void>;
@@ -534,6 +536,13 @@ function postgresTransaction(client: PlanQueryClient, scope: PlanScope): PlanTra
       );
       return result.rows.length === 1;
     },
+    async updatePlanAnalysis(planId, analysis, updatedAt) {
+      await client.query(
+        `update plans set analysis = $4::jsonb, updated_at = $5
+         where workspace_id = $1 and actor_id = $2 and id = $3 and status = 'active'`,
+        [ws, actor, planId, JSON.stringify(analysis), updatedAt],
+      );
+    },
     async archivePlan(planId, archivedAt) {
       await client.query(
         `update plans set status = 'archived', archived_at = $4, updated_at = $4
@@ -766,6 +775,10 @@ export function createMemoryPlanRepository(): MemoryPlanRepository {
         const reader = memoryReader(draft);
         const tx: PlanTransaction = {
           ...reader,
+          async updatePlanAnalysis(planId, analysis, updatedAt) {
+            const plan = draft.plans.find((entry) => entry.id === planId && entry.status === "active");
+            if (plan) Object.assign(plan, { analysis: clone(analysis), updatedAt });
+          },
           async archivePlan(planId, archivedAt) {
             const plan = draft.plans.find((entry) => entry.id === planId && entry.status === "active");
             if (plan) Object.assign(plan, { archivedAt, status: "archived", updatedAt: archivedAt });

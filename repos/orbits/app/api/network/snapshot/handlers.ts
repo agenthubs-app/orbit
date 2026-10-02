@@ -111,6 +111,8 @@ export function createNetworkSnapshotRouteHandlers(dependencies: NetworkSnapshot
               429,
               { reason: outcome.limit === "manual" ? "MANUAL_REFRESH_LIMIT" : "USER_DAILY_LIMIT", ...(outcome.retryOn ? { retryOn: outcome.retryOn } : {}) },
             );
+          case "in_progress":
+            return fail(new AppError("CONFLICT", "This analysis is still being generated. Try again in a moment."), 409, { reason: "IN_PROGRESS" });
           case "unavailable":
             return unavailable();
           case "failed":

@@ -512,10 +512,12 @@ test("step 3 'Start analysis' sends the fixed question straight to plan bootstra
   act(() => root.unmount());
 });
 
-test("step 3: a failed generation saves nothing, offers a retry with the same key, and a changed question gets a new key", async (t) => {
+test("step 3: a failed generation saves nothing and offers a retry; W0048b: a definite failure gets a new key, an in-progress reply keeps it, a changed question gets a new key", async (t) => {
   const failed = () =>
     Response.json({ error: { code: "SERVICE_UNAVAILABLE", context: { reason: "PLAN_GENERATION_FAILED" } }, success: false }, { status: 503 });
-  const api = stubBrowser(t, { bootstrap: [failed, failed, planCreated("plan:v1")] });
+  const inProgress = () =>
+    Response.json({ error: { code: "CONFLICT", context: { reason: "GENERATION_IN_PROGRESS" } }, success: false }, { status: 409 });
+  const api = stubBrowser(t, { bootstrap: [failed, inProgress, inProgress, planCreated("plan:v1")] });
   const root = await mount(props({ relationshipGoal: "找渠道", snapshot: { confirmedContacts: 3 } }));
 
   await click(one(root, "data-start-analyze"));
@@ -523,14 +525,19 @@ test("step 3: a failed generation saves nothing, offers a retry with the same ke
   assert.equal(text(one(root, "data-start-analyze")), "重试");
   assert.deepEqual(api.assigned, []);
 
+  // 服务端明确失败（AI 生成失败已计次）：重试换新键。
   await click(one(root, "data-start-analyze"));
-  assert.equal(api.bootstraps[1]!.idempotencyKey, api.bootstraps[0]!.idempotencyKey, "a retry of the same question reuses its key");
+  assert.notEqual(api.bootstraps[1]!.idempotencyKey, api.bootstraps[0]!.idempotencyKey, "a retry after a definite failure is a new request");
+  assert.match(text(one(root, "data-start-plan-error")), /还在生成中，请稍后再试/);
+  // 同一个键还在生成：沿用这个键，稍后取回那次的结果。
+  await click(one(root, "data-start-analyze"));
+  assert.equal(api.bootstraps[2]!.idempotencyKey, api.bootstraps[1]!.idempotencyKey, "an in-progress request keeps its key");
 
   await act(async () => {
     one(root, "data-start-supplement").props.onChange({ target: { value: "先做东京" } });
   });
   await click(one(root, "data-start-analyze"));
-  assert.notEqual(api.bootstraps[2]!.idempotencyKey, api.bootstraps[0]!.idempotencyKey, "a different question is a new request");
+  assert.notEqual(api.bootstraps[3]!.idempotencyKey, api.bootstraps[2]!.idempotencyKey, "a different question is a new request");
   assert.deepEqual(api.assigned, ["/app/agent?plan=plan%3Av1&reveal=1"]);
   act(() => root.unmount());
 });

@@ -317,7 +317,12 @@ function PlanBody({
       onReanalysed(result.quota?.remaining ?? null);
     } catch (error) {
       // 服务端明确拒绝（含 AI 生成失败已计次）：下次点击换新的键；只有断线（没有响应）才沿用同一个键重放。
-      if (error instanceof PlanClientError) followUpKey.current = null;
+      // 同一个键的请求还在生成（409 GENERATION_IN_PROGRESS）：保留键，稍后重试会取回那次的结果。
+      if (error instanceof PlanClientError && error.reason !== "GENERATION_IN_PROGRESS") followUpKey.current = null;
+      if (error instanceof PlanClientError && error.reason === "GENERATION_IN_PROGRESS") {
+        setFollowUpError(t({ en: "Still generating — try again in a moment.", zh: "还在生成中，请稍后再试。" }));
+        return;
+      }
       if (error instanceof PlanClientError && error.reason === "USER_DAILY_LIMIT") {
         setDailyLimited(true);
         setFollowUpError(t({ en: "You've used today's AI runs. Try again tomorrow.", zh: "今天次数已用完，明天可用。" }));

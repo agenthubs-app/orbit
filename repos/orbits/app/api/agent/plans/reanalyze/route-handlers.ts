@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import type { PlanVersionOrigin, ReanalysisQuota } from "../../../../../features/plans/contract";
 import {
   isMeteredPlanGenerator,
+  PlanGenerationInProgressError,
   PlanGenerationLimitError,
   PlanGenerationUnavailableError,
 } from "../../../../../features/plans/generator";
@@ -206,6 +207,9 @@ export function createPlanReanalyzeRouteHandlers(dependencies: PlanReanalyzeRout
             failure(new AppError("CONFLICT", error.message), { reason: "USER_DAILY_LIMIT", ...(error.retryOn ? { retryOn: error.retryOn } : {}) }),
             { headers, status: 429 },
           );
+        }
+        if (error instanceof PlanGenerationInProgressError) {
+          return fail(new AppError("CONFLICT", error.message), { reason: "GENERATION_IN_PROGRESS" });
         }
         if (error instanceof PlanGenerationUnavailableError) {
           return fail(new AppError("SERVICE_UNAVAILABLE", error.message), { reason: "AI_UNAVAILABLE" });

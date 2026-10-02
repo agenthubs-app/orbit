@@ -552,7 +552,8 @@ test("W0014 plan page, flag off: the real plan and names are read, no guide sour
   assert.deepEqual(calls.map((call) => call.operation), ["plan", "view+log", "contact-names", "quota", "profile"]);
   // W0014 的三个 props 不变，没有 `guide`；W0012 另加 `tracking`。
   assert.deepEqual(Object.keys(props).sort(), ["contactNames", "guideEnabled", "initialSnapshot", "tracking"]);
-  assert.deepEqual(props.tracking, { currentGoal: "", periodContacts: null, quotaRemaining: 1 });
+  // W0048b：另带 aiProvider（未配置 ORBIT_PLAN_GENERATOR=ai 时为 false）。
+  assert.deepEqual(props.tracking, { aiProvider: false, currentGoal: "", periodContacts: null, quotaRemaining: 1 });
   assert.equal(props.initialSnapshot, snapshot);
   assert.equal(props.guideEnabled, false);
   assert.deepEqual(props.contactNames, { "contact:1": { name: "Real person", subtitle: null } });

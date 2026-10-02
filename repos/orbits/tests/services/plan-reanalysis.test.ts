@@ -8,7 +8,8 @@ import test from "node:test";
 import type { PlanItem, PlanReferenceValidator, PlanSnapshot, PlanVersionOrigin } from "../../features/plans/contract";
 import { AI_PLAN_GENERATOR_ID } from "../../features/plans/ai-generator";
 import type { PlanGenerator } from "../../features/plans/generator";
-import { aiGenerator, fakeDeepseek, MemoryAiLedger } from "../support/plan-ai-fixture";
+import { PlanGenerationInProgressError } from "../../features/plans/generator";
+import { aiGenerator, fakeDeepseek, MemoryAiLedger, skeletonReply as skeletonReplyFor } from "../support/plan-ai-fixture";
 import { createMockPlanGenerator } from "../../features/plans/mock-generator";
 import {
   buildPlanReview,
@@ -562,7 +563,8 @@ test("W0048b SC-04: a template plan regenerated with AI makes a new version with
   assert.equal(all, false, "no reanalysis:<month> key is written");
   // 计入用户主动池 1 次操作（purpose plan）。
   assert.deepEqual(h.ledger.operations.map((op) => [op.pool, op.purpose, op.status]), [["user", "plan", "succeeded"]]);
-  assert.equal(h.ledger.operations[0]!.key, `ai-regenerate:${v1.plan.id}:ai-click-1`);
+  // review P2-2：固定键 + 尝试序号做 single-flight；点击键不进账本键。
+  assert.equal(h.ledger.operations[0]!.key, `ai-regenerate:${v1.plan.id}#1`);
   // 本月的重新分析仍然可用。
   const v3 = await h.followUp.create(h.request(v2.snapshot.plan.id, "re-after-ai", "reanalysis"));
   assert.equal(v3.replayed, false);
@@ -610,4 +612,47 @@ test("W0048b SC-04: AI regeneration carries finished work and schedules 约 TA u
   assert.ok(newNeed, "the linked need is carried");
   const generated = matchActionsOf(v2.snapshot).filter((item) => item.meta.needItemId === newNeed.id);
   assert.deepEqual(generated.map((item) => [item.title, item.suggestedWeek]), [["约 加藤", 1]]);
+});
+
+test("W0048b review P2-2: two different click keys at once share one single-flight claim — one HTTP chain, the other is told it is in progress", async () => {
+  const clock = { now: IN_WEEK_2 };
+  const ledger = new MemoryAiLedger();
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => (release = resolve));
+  const deepseek = fakeDeepseek({});
+  const gated = (async (url: string, init?: RequestInit) => {
+    await gate;
+    return deepseek.fetchImplementation(url, init);
+  }) as unknown as typeof fetch;
+  const h = { ...harness({ clock, generator: aiGenerator({ fetchImplementation: gated, ledger }) }) };
+  const v1 = await h.plans.createVersion(TEMPLATE_PLAN());
+  const first = h.followUp.create(h.request(v1.plan.id, "click-a", "ai_regenerate"));
+  await new Promise((resolve) => setImmediate(resolve));
+  await assert.rejects(h.followUp.create(h.request(v1.plan.id, "click-b", "ai_regenerate")), PlanGenerationInProgressError);
+  release();
+  const saved = await first;
+  assert.equal(saved.replayed, false);
+  assert.equal(ledger.operations.length, 1, "one operation for both clicks");
+  assert.equal(deepseek.requests.length, 3, "one chain: skeleton + 2 phases");
+  assert.equal(ledger.finishes.length, 1);
+  // 之后再点：replay。
+  const again = await h.followUp.create(h.request(v1.plan.id, "click-c", "ai_regenerate"));
+  assert.equal(again.replayed, true);
+});
+
+test("W0048b review P2-2: after a failed AI regeneration the next click claims attempt #2", async () => {
+  const clock = { now: IN_WEEK_2 };
+  const ledger = new MemoryAiLedger();
+  let fail = true;
+  const deepseek = fakeDeepseek({ skeleton: () => (fail ? { status: 500 } : skeletonReplyFor()) });
+  const h = harness({ clock, generator: aiGenerator({ fetchImplementation: deepseek.fetchImplementation, ledger }) });
+  const v1 = await h.plans.createVersion(TEMPLATE_PLAN());
+  await assert.rejects(h.followUp.create(h.request(v1.plan.id, "try-1", "ai_regenerate")));
+  fail = false;
+  const ok = await h.followUp.create(h.request(v1.plan.id, "try-2", "ai_regenerate"));
+  assert.equal(ok.replayed, false);
+  assert.deepEqual(ledger.operations.map((op) => [op.key, op.status]), [
+    [`ai-regenerate:${v1.plan.id}#1`, "failed"],
+    [`ai-regenerate:${v1.plan.id}#2`, "succeeded"],
+  ]);
 });

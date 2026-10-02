@@ -149,8 +149,14 @@ export type PlanDraft = Omit<CreatePlanVersionInput, "analysis"> & { analysis: P
  */
 export interface PlanGenerationSessionContext {
   actorId: string;
-  /** 账本幂等键（计划的 creationKey；`ai_regenerate` 另带一次点击的键）。 */
+  /** 账本幂等键（计划的 creationKey）。 */
   ledgerKey: string;
+  /**
+   * W0048b review P2-2：同一 creationKey 失败后允许再试（`ai_regenerate`：每份老计划只有一个 creationKey）。
+   * 账本键按尝试序号取 `<ledgerKey>#<n>`：同一时刻所有请求认领同一个序号（single-flight），
+   * 只有前一序号已结束且失败才前进到下一个。
+   */
+  retryAfterFailure?: boolean;
   locale: PlanLocale;
   now: Date;
   /** 预先分配的新计划 id：快照 `origin = plan` 时记在快照上，保存时用同一个 id。 */
@@ -185,6 +191,17 @@ export class PlanGenerationLimitError extends Error {
     super("You have used today's AI plan generations. Try again tomorrow.");
     this.name = "PlanGenerationLimitError";
     this.retryOn = retryOn;
+  }
+}
+
+/**
+ * W0048b review P1：同一幂等键的另一次请求正在生成（本请求没有拿到操作所有权）：0 次调用、不结算。
+ * 路由 409 `GENERATION_IN_PROGRESS`，客户端沿用同一个键稍后重试（成功后即 replay）。
+ */
+export class PlanGenerationInProgressError extends Error {
+  constructor() {
+    super("This plan is still being generated. Try again in a moment.");
+    this.name = "PlanGenerationInProgressError";
   }
 }
 
@@ -316,6 +333,7 @@ export async function runPlanGeneration<R>(args: {
   input: PlanGeneratorInput;
   idempotencyKey: string;
   ledgerKey: string;
+  retryAfterFailure?: boolean;
   now: Date;
   /** 生成失败（骨架或阶段）时包装成调用方的错误。 */
   wrapGenerationError: (error: unknown) => Error;
@@ -338,12 +356,13 @@ export async function runPlanGeneration<R>(args: {
       actorId: args.input.actorId,
       ledgerKey: args.ledgerKey,
       locale: args.input.locale,
+      retryAfterFailure: args.retryAfterFailure,
       now: args.now,
       // 不 import node:crypto：本模块经 reanalysis.ts 进入客户端包（只在服务端执行到这里）。
       planId: globalThis.crypto.randomUUID(),
     });
   } catch (error) {
-    if (error instanceof PlanGenerationLimitError || error instanceof PlanGenerationUnavailableError) throw error;
+    if (error instanceof PlanGenerationLimitError || error instanceof PlanGenerationUnavailableError || error instanceof PlanGenerationInProgressError) throw error;
     throw args.wrapGenerationError(error);
   }
   try {

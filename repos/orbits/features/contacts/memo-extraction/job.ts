@@ -143,6 +143,8 @@ export async function runMemoExtraction(input: MemoExtractionJobInput, deps: Mem
     trigger: "auto",
     idempotencyKey: key,
     now: clock(),
+    // W0048b review P1：认领胜者就是这笔操作的所有者（可接管前一个认领者崩溃留下的 reserved 操作）。
+    takeover: true,
   });
   if (reservation.ok !== true) {
     const refusal = reservation as Extract<typeof reservation, { ok: false }>;

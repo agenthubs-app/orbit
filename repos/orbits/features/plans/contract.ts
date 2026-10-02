@@ -429,6 +429,9 @@ export interface ApplyPhaseRefinementInput {
   /** 0 起的阶段序号。 */
   phaseIndex: number;
   items: NewPlanItemInput[];
+  /** review P2-3：这一阶段的跟进规则与要认识的人（写进 `analysis.phases[phaseIndex]`，同时置 `detailed: true`）。 */
+  followups?: string[];
+  who?: string[];
 }
 
 export interface ApplyPhaseRefinementResult {

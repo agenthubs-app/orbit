@@ -88,6 +88,8 @@ export type ManualRecomputeOutcome =
   | { status: "failed" }
   | { status: "insufficient" }
   | { status: "limited"; limit: AiQuotaLimit; retryOn?: string }
+  /** W0048b review P1：同一幂等键的另一次请求还在生成（本请求不执行、不结算，稍后用同一键重试）。 */
+  | { status: "in_progress" }
   | { status: "unavailable" };
 
 export interface NetworkSnapshotService {
@@ -233,6 +235,8 @@ export function createNetworkSnapshotService(deps: NetworkSnapshotServiceDeps): 
         pool: "background",
         purpose: "snapshot",
         trigger: "auto",
+        // W0048b review P1：job 租约持有者就是这笔操作的所有者（下方仍按子账判定是否已花掉）。
+        takeover: true,
       });
       if (result.ok === true && !(await deps.repository.setJobOperation(tx, job.actorId, "snapshot", owner, result.operationId))) {
         throw new LeaseLostError();
@@ -392,6 +396,13 @@ export function createNetworkSnapshotService(deps: NetworkSnapshotServiceDeps): 
         const denial = reservation as Extract<typeof reservation, { ok: false }>;
         if (denial.reason === "disabled") return { status: "unavailable" };
         return { limit: denial.limit ?? "user", retryOn: denial.retryOn, status: "limited" };
+      }
+      // W0048b review P1：同键重放不转让所有权——进行中的返回 in_progress，已结束的返回原结果，都不再执行或结算。
+      if (!reservation.owner) {
+        if (reservation.status === "reserved") return { status: "in_progress" };
+        if (reservation.status === "failed") return { status: "failed" };
+        const current = await deps.repository.getCurrent(actorId);
+        return current ? { snapshot: current, status: "succeeded" } : { status: "failed" };
       }
       try {
         const result = await generateSnapshotNow({ actorId, now, operationId: reservation.operationId, origin: "standalone", trigger: "manual" });

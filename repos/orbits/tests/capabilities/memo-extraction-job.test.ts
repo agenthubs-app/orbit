@@ -74,7 +74,7 @@ test("daily_limit：记 deferred 到 retryOn、0 次调用；retryOn 之前重�
 
 test("放行时：先落 started 再调用；一次 reserve、一组 beginCall／endCall、一次 finish；重试不再调用", async () => {
   const store = memoryStore();
-  const { gate, log } = countingGate({ ok: true, operationId: "op-1" });
+  const { gate, log } = countingGate({ ok: true, operationId: "op-1", owner: true, status: "reserved" });
   const mock = createMockMemoExtractionProvider(OUTPUT);
   let statusAtCall: string | undefined;
   const provider: MemoExtractionProvider = {
@@ -107,7 +107,7 @@ test("放行时：先落 started 再调用；一次 reserve、一组 beginCall�
 
 test("provider 失败：记 failed，有响应的用量照记，finish failed；重试不再调用", async () => {
   const store = memoryStore();
-  const { gate, log } = countingGate({ ok: true, operationId: "op-2" });
+  const { gate, log } = countingGate({ ok: true, operationId: "op-2", owner: true, status: "reserved" });
   let calls = 0;
   const provider: MemoExtractionProvider = {
     model: "m", providerName: "p",
@@ -199,7 +199,7 @@ test("DeepSeek 适配器：json_object、thinking disabled；只发 memo 正文�
 
 test("并发：同一 memo 的两个作业同时跑，只有认领胜者 reserve／调用 provider／finish 各一次", async () => {
   const store = memoryStore();
-  const { gate, log } = countingGate({ ok: true, operationId: "op-c" });
+  const { gate, log } = countingGate({ ok: true, operationId: "op-c", owner: true, status: "reserved" });
   const provider = createMockMemoExtractionProvider(OUTPUT);
   const deps = { gate, provider, store, applyValues: async () => ["offering"] as const, now: () => NOW };
   const [left, right] = await Promise.all([runMemoExtraction(JOB, deps), runMemoExtraction(JOB, deps)]);
@@ -223,7 +223,7 @@ test("beginCall 失败：HTTP 未发出 → finish 释放、转为可重试；�
   const log: string[] = [];
   let failBegin = true;
   const gate: AiQuotaGate = {
-    async reserve() { log.push("reserve"); return { ok: true, operationId: `op-${log.length}` }; },
+    async reserve() { log.push("reserve"); return { ok: true, operationId: `op-${log.length}`, owner: true, status: "reserved" }; },
     async beginCall() { log.push("begin"); if (failBegin) throw new Error("ledger down"); return { callId: "call-x" }; },
     async endCall() { log.push("end"); },
     async finish(_id, outcome) { log.push(`finish:${outcome}`); },

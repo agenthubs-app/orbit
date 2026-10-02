@@ -42,7 +42,11 @@ export class MemoryAiLedger implements AiQuotaGate {
 
   async reserve(input: AiQuotaReserveInput) {
     const existing = this.operations.find((op) => op.actorId === input.actorId && op.key === input.idempotencyKey);
-    if (existing && existing.status !== "released") return { ok: true as const, operationId: existing.id };
+    // 与 ledger.ts 同语义：重放不转让所有权，只有 takeover 能接管仍在 reserved 的操作。
+    if (existing && existing.status !== "released") {
+      const status = existing.status as "reserved" | "succeeded" | "failed";
+      return { ok: true as const, operationId: existing.id, owner: status === "reserved" && input.takeover === true, status };
+    }
     const day = tokyoUsageDay(input.now);
     if (input.pool === "background" && this.used(input.actorId, "background", day) >= BACKGROUND_POOL_DAILY_LIMIT) {
       return { limit: "background" as const, ok: false as const, reason: "daily_limit" as const, retryOn: nextTokyoMidnight(input.now) };
@@ -53,7 +57,7 @@ export class MemoryAiLedger implements AiQuotaGate {
     if (existing) {
       existing.status = "reserved";
       existing.usageDay = day;
-      return { ok: true as const, operationId: existing.id };
+      return { ok: true as const, operationId: existing.id, owner: true, status: "reserved" as const };
     }
     const op: MemoryOperation = {
       actorId: input.actorId,
@@ -68,7 +72,7 @@ export class MemoryAiLedger implements AiQuotaGate {
       usageDay: day,
     };
     this.operations.push(op);
-    return { ok: true as const, operationId: op.id };
+    return { ok: true as const, operationId: op.id, owner: true, status: "reserved" as const };
   }
 
   private op(operationId: string): MemoryOperation {

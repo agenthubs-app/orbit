@@ -260,8 +260,10 @@ export function createPlanFollowUpService(input: {
         generator: input.generator,
         idempotencyKey: request.idempotencyKey,
         input: generatorInput,
-        // ai_regenerate 的 creationKey 每份老计划一个；失败后再点用新的点击键重新预留（成功的那次由 creationKey 防重）。
-        ledgerKey: request.origin === "ai_regenerate" ? `${creationKey}:${request.idempotencyKey}` : creationKey,
+        // review P2-2：ai_regenerate 以固定的 `ai-regenerate:<旧计划 id>` 做 single-flight（不同点击键并发也只有一条 HTTP 链）；
+        // 失败后再点按尝试序号重新认领（`#2`、`#3`…），点击键只用于请求自身的重放。
+        ledgerKey: creationKey,
+        retryAfterFailure: request.origin === "ai_regenerate",
         now: at,
         save: async (draft, planId) => {
           // 称呼只影响行动标题：读失败不挡住新计划，退回「约 TA」。

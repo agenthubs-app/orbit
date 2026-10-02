@@ -30,7 +30,7 @@ function fakeGate(options: { allow?: number } = {}) {
         return { limit: "background", ok: false, reason: "daily_limit", retryOn: nextTokyoMidnight(input.now) };
       }
       reserves.push(input);
-      return { ok: true, operationId: `op-${reserves.length}` };
+      return { ok: true, operationId: `op-${reserves.length}`, owner: true, status: "reserved" };
     },
   };
   return { calls: () => calls, finishes, gate, reserves };

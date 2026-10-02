@@ -10,8 +10,9 @@
  *
  * 任一不满足：`PlanServiceError`（结构 → INVALID_INPUT 400；引用 → REFERENCE_NOT_FOUND 404），不写库。
  */
-import type { PlanHorizon, PlanReferenceValidator } from "./contract";
+import { PLAN_LIMITS, type PlanHorizon, type PlanReferenceValidator } from "./contract";
 import type { PlanDraft, PlanGeneratorInput } from "./generator";
+import { AI_PLAN_GENERATOR_ID } from "./phase-refinement";
 import { PlanServiceError, parseCreatePlanVersionInput } from "./validators";
 
 const PHASE_COUNT_BY_HORIZON: Record<PlanHorizon, readonly number[]> = {
@@ -64,7 +65,13 @@ export async function validateGeneratedPlan(input: {
 }): Promise<void> {
   const { draft, generatorInput, references } = input;
   const parsed = parseCreatePlanVersionInput(draft);
-  if (!PHASE_COUNT_BY_HORIZON[parsed.horizon].includes(parsed.phases.length)) {
+  // W0048b review P2-4：AI 草稿的阶段数由模型给（1–12，D46② 只细化前 2 段、其余骨架保存）；
+  // 顺序、周次、条目与引用照常校验。mock 模板维持按期限的阶段数。
+  if (draft.analysis?.generator === AI_PLAN_GENERATOR_ID) {
+    if (parsed.phases.length < 1 || parsed.phases.length > PLAN_LIMITS.phasesPerPlan) {
+      invalid(`An AI plan cannot have ${parsed.phases.length} phases.`);
+    }
+  } else if (!PHASE_COUNT_BY_HORIZON[parsed.horizon].includes(parsed.phases.length)) {
     invalid(`A ${parsed.horizon} plan cannot have ${parsed.phases.length} phases.`);
   }
   assertAnalysis(draft);

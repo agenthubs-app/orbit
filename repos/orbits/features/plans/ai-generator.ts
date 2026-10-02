@@ -24,11 +24,13 @@ import type { NetworkSnapshotViewBlock } from "../network-analysis/contract";
 import type { SnapshotRefreshDecision } from "../network-analysis/refresh-policy";
 import { getConfiguredNetworkAnalysisRuntime, type NetworkAnalysisRuntime } from "../network-analysis/runtime";
 import type { GenerateSnapshotNowInput, GenerateSnapshotNowResult } from "../network-analysis/service";
+import { snapshotTextLeaksIds } from "../network-analysis/snapshot-validator";
 import { INDUSTRY_IDS, sanitizeIndustryPair } from "../../shared/domain/industries";
 import type { NewPlanItemInput, PlanHorizon, PlanPhase, PlanService } from "./contract";
 import { PLAN_LIMITS } from "./contract";
 import {
   PlanGenerationError,
+  PlanGenerationInProgressError,
   PlanGenerationLimitError,
   PlanGenerationUnavailableError,
   type MeteredPlanGenerator,
@@ -65,6 +67,8 @@ const ACTIONS_PER_PHASE = 6;
 const NEEDS_PER_PHASE = 3;
 const INFOS_PER_PHASE = 3;
 const EVENTS_PER_PHASE = 2;
+/** `ai_regenerate` 失败后再试的尝试序号上限（每次都计入用户池，实际受每日 10 次约束）。 */
+const PLAN_AI_MAX_ATTEMPTS = 20;
 
 /* ------------------------------------------------------------------ */
 /* 单次 HTTP 与子账                                                     */
@@ -267,6 +271,28 @@ function resolveAll(values: unknown, resolve: (value: unknown) => string | null)
   return [...new Set(list(values).map(resolve).filter((id): id is string => id !== null))];
 }
 
+/** 计划提示词用的短期别名（联系人 C…、活动 E…）。 */
+export const PLAN_ALIAS_PATTERN = /\b[CE]\d{1,4}\b/;
+
+/**
+ * review P2-6：模型控制的可见文字不得带 id——本次输入的原始 id、`前缀:值`、UUID（W0048a `snapshotTextLeaksIds`
+ * 同一套规则）以及计划别名 C…／E…。违规即拒绝整次输出（按失败路径结算），不能只靠提示词。
+ */
+export function planTextLeaksIds(textValue: string, input: Pick<PlanGeneratorInput, "contacts" | "events">): boolean {
+  if (PLAN_ALIAS_PATTERN.test(textValue)) return true;
+  return snapshotTextLeaksIds(textValue, {
+    contactIds: new Set(input.contacts.map((contact) => contact.id)),
+    needIds: new Set<string>(),
+    recordIds: new Set(input.events.map((event) => event.id)),
+  });
+}
+
+function assertNoLeaks(values: readonly string[], input: Pick<PlanGeneratorInput, "contacts" | "events">, stage: string, phaseKey: string | null): void {
+  if (values.some((value) => value && planTextLeaksIds(value, input))) {
+    throw new PlanGenerationError(`The model output for the ${stage} contains an id or alias.`, phaseKey);
+  }
+}
+
 export type PlanAiLog = (line: Record<string, unknown>) => void;
 
 const defaultLog: PlanAiLog = (line) => console.info(JSON.stringify(line));
@@ -340,17 +366,34 @@ export function parsePlanSkeleton(content: string, input: PlanGeneratorInput, al
   const risk = text(raw.risk, 500);
   if (!risk || !text(pitch.text, 1000)) throw new PlanGenerationError("The model returned no risk or pitch.", null);
   if (counter.dropped > 0) log({ dropped: counter.dropped, event: "plan_ai_dropped_references", stage: "skeleton" });
+  const gaps = list(raw.gaps).map((gap) => text(gap, 200)).filter(Boolean).slice(0, 5);
+  const pitchValue = { setting: text(pitch.setting, 200), text: text(pitch.text, 1000) };
+  assertNoLeaks(
+    [
+      ...answer.map((segment) => segment.text),
+      risk,
+      pitchValue.setting,
+      pitchValue.text,
+      ...thisWeek.flatMap((action) => [action.title, action.why]),
+      ...allies.map((ally) => ally.help),
+      ...gaps,
+      ...phases.flatMap((phase) => [phase.title, phase.summary ?? ""]),
+    ],
+    input,
+    "skeleton",
+    null,
+  );
 
   return {
     analysis: {
       allies,
       answer,
       figures: [],
-      gaps: list(raw.gaps).map((gap) => text(gap, 200)).filter(Boolean).slice(0, 5),
+      gaps,
       generator: AI_PLAN_GENERATOR_ID,
       kind: "plan_bootstrap",
       locale: input.locale,
-      pitch: { setting: text(pitch.setting, 200), text: text(pitch.text, 1000) },
+      pitch: pitchValue,
       read: { contacts: input.contacts.length, contactsTotal: input.contactsTotal, events: input.events.length },
       risk,
       thisWeek,
@@ -399,14 +442,17 @@ export function parsePlanPhaseDetail(
     const title = text(need.title, 200);
     if (!title) continue;
     const industry = sanitizeIndustryPair(need.primaryIndustryId, need.secondaryIndustryId);
-    const targetCount = int(need.targetCount);
+    // review P2-5：模型给了 targetCount 就必须是 1–5 的整数，否则这一阶段的输出整体失败（不修正）；缺省不写（读取方按 1 计）。
+    const rawTarget = need.targetCount;
+    if (rawTarget !== undefined && rawTarget !== null && (typeof rawTarget !== "number" || !Number.isInteger(rawTarget) || rawTarget < 1 || rawTarget > 5)) {
+      throw new PlanGenerationError(`The model returned an invalid targetCount for phase ${phase.key}.`, phase.key);
+    }
     items.push({
       criteria: {
         description: text(need.description, 1000) || null,
         primaryIndustryId: industry.primaryIndustryId,
         secondaryIndustryId: industry.secondaryIndustryId,
-        // 模型给的数目夹到 1–5（保存前 validators 仍按 1–5 整数校验）。
-        targetCount: Math.min(5, Math.max(1, targetCount ?? 1)),
+        ...(typeof rawTarget === "number" ? { targetCount: rawTarget } : {}),
         titleKeywords: [...new Set(list(need.titleKeywords).map((keyword) => text(keyword, 50)).filter(Boolean))].slice(0, 10),
       },
       kind: "network_need",
@@ -440,8 +486,21 @@ export function parsePlanPhaseDetail(
 
   if (!items.some((item) => item.kind === "action")) throw new PlanGenerationError(`The model returned no action for phase ${phase.key}.`, phase.key);
   if (counter.dropped > 0) log({ dropped: counter.dropped, event: "plan_ai_dropped_references", phaseKey: phase.key, stage: "phase" });
+  const followups = list(raw.followups).map((rule) => text(rule, 200)).filter(Boolean).slice(0, 2);
+  // 活动条目的标题来自输入目录（不是模型文字），不查。
+  assertNoLeaks(
+    [
+      ...items
+        .filter((item) => item.kind !== "event")
+        .flatMap((item) => [item.title, item.detail ?? "", item.criteria?.description ?? "", ...(item.criteria?.titleKeywords ?? [])]),
+      ...followups,
+    ],
+    input,
+    "phase",
+    phase.key,
+  );
   return {
-    followups: list(raw.followups).map((rule) => text(rule, 200)).filter(Boolean).slice(0, 2),
+    followups,
     items,
     phaseKey: phase.key,
     who,
@@ -543,25 +602,37 @@ export function createAiPlanGenerator(deps: {
     phaseDetail: async () => unmetered(),
     skeleton: async () => unmetered(),
     async openSession(context) {
-      const reservation = await deps.ledger.reserve({
-        actorId: context.actorId,
-        idempotencyKey: context.ledgerKey,
-        now: context.now,
-        pool: "user",
-        purpose: "plan",
-        trigger: "plan",
-      });
-      if (reservation.ok !== true) {
-        const denial = reservation as Extract<typeof reservation, { ok: false }>;
-        if (denial.reason === "daily_limit") throw new PlanGenerationLimitError(denial.retryOn ?? null);
-        throw new PlanGenerationUnavailableError();
+      // review P1：只有拿到所有权的请求才执行与结算。同键并发方：进行中 → InProgress（0 次调用、不结算）；
+      // 已成功 → InProgress（保存与结算之间的窗口，重试即 replay）；已失败 → 原结果（失败），除非允许失败后再试。
+      let operationId: string | null = null;
+      for (let attempt = 1; attempt <= PLAN_AI_MAX_ATTEMPTS && operationId === null; attempt += 1) {
+        const reservation = await deps.ledger.reserve({
+          actorId: context.actorId,
+          idempotencyKey: context.retryAfterFailure ? `${context.ledgerKey}#${attempt}` : context.ledgerKey,
+          now: context.now,
+          pool: "user",
+          purpose: "plan",
+          trigger: "plan",
+        });
+        if (reservation.ok !== true) {
+          const denial = reservation as Extract<typeof reservation, { ok: false }>;
+          if (denial.reason === "daily_limit") throw new PlanGenerationLimitError(denial.retryOn ?? null);
+          throw new PlanGenerationUnavailableError();
+        }
+        if (reservation.owner) {
+          operationId = reservation.operationId;
+          break;
+        }
+        if (reservation.status !== "failed") throw new PlanGenerationInProgressError();
+        if (!context.retryAfterFailure) throw new PlanGenerationError("This request already failed; retry with a new key.", null);
       }
-      const operationId = reservation.operationId;
+      if (operationId === null) throw new PlanGenerationError("Too many failed attempts for this plan.", null);
+      const ownedOperationId: string = operationId;
       let finished = false;
       const finish = async (outcome: "succeeded" | "failed") => {
         if (finished) return;
         finished = true;
-        await deps.ledger.finish(operationId, outcome);
+        await deps.ledger.finish(ownedOperationId, outcome);
       };
       let snapshotId: string | null = null;
       let blocks: NetworkSnapshotViewBlock[] = [];
@@ -574,7 +645,7 @@ export function createAiPlanGenerator(deps: {
             const result = await deps.snapshots.generateSnapshotNow({
               actorId: context.actorId,
               now: context.now,
-              operationId,
+              operationId: ownedOperationId,
               origin: "plan",
               planId: context.planId,
               trigger: "plan",
@@ -588,7 +659,7 @@ export function createAiPlanGenerator(deps: {
         await finish("failed").catch(() => undefined);
         throw error;
       }
-      log({ event: "plan_ai_operation_opened", operationId, snapshot: snapshotId ? "attached" : "none" });
+      log({ event: "plan_ai_operation_opened", operationId: ownedOperationId, snapshot: snapshotId ? "attached" : "none" });
       return {
         detailPhases: PLAN_AI_DETAILED_PHASES,
         finalize: (draft, input) => {
@@ -607,7 +678,7 @@ export function createAiPlanGenerator(deps: {
           };
         },
         finish,
-        generator: createDeepseekPlanGenerator({ chat: deps.chat, log, meter: ledgerCallMeter(deps.ledger, operationId, deps.model), snapshotBlocks: blocks }),
+        generator: createDeepseekPlanGenerator({ chat: deps.chat, log, meter: ledgerCallMeter(deps.ledger, ownedOperationId, deps.model), snapshotBlocks: blocks }),
         planId: context.planId,
       };
     },
@@ -657,6 +728,8 @@ export function createAiPhaseRefiner(deps: {
         }
         return outcome;
       }
+      // review P1：同一阶段同一天的操作已在别处进行或已结束：不执行、不结算。
+      if (!reservation.owner) continue;
       const operationId = reservation.operationId;
       try {
         if (!input) {
@@ -683,7 +756,7 @@ export function createAiPhaseRefiner(deps: {
           planPhases: plan.phases,
         });
         const detail = await generator.phaseDetail(input, { ...phase, detailed: true, summary: phase.summary ?? "" });
-        const result = await plans.applyPhaseRefinement({ items: detail.items, phaseIndex, planId: plan.id });
+        const result = await plans.applyPhaseRefinement({ followups: detail.followups, items: detail.items, phaseIndex, planId: plan.id, who: detail.who });
         await deps.ledger.finish(operationId, "succeeded");
         if (result.applied) outcome.refined += 1;
       } catch (error) {
