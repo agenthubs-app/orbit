@@ -93,7 +93,11 @@ export type ManualRecomputeOutcome =
   | { status: "unavailable" };
 
 export interface NetworkSnapshotService {
-  readView(actorId: string, language: SnapshotLanguage): Promise<NetworkSnapshotView>;
+  /**
+   * `enqueue: false`（W0050 机会标签，D46③）：只读——判定为自动重算时不 upsert job、不安排 worker，
+   * `freshness.job` 如实保持现有任务状态（没有任务即 none），`stale` 照常；默认 true（结构标签与 GET 接口行为不变）。
+   */
+  readView(actorId: string, language: SnapshotLanguage, options?: { enqueue?: boolean }): Promise<NetworkSnapshotView>;
   generateSnapshotNow(input: GenerateSnapshotNowInput): Promise<GenerateSnapshotNowResult>;
   runWorker(actorId: string, options?: { owner?: string }): Promise<SnapshotWorkerOutcome>;
   processClaimedJob(job: SnapshotJob, owner: string): Promise<SnapshotWorkerOutcome>;
@@ -330,7 +334,7 @@ export function createNetworkSnapshotService(deps: NetworkSnapshotServiceDeps): 
     },
     generateSnapshotNow,
     processClaimedJob,
-    async readView(actorId, language) {
+    async readView(actorId, language, options = {}) {
       const now = clock();
       const evaluation = await evaluate(actorId);
       const { decision, state } = evaluation;
@@ -340,7 +344,7 @@ export function createNetworkSnapshotService(deps: NetworkSnapshotServiceDeps): 
         job = state.job.status === "running" ? "running" : state.job.status === "deferred" ? "deferred" : "queued";
         if (state.job.status === "deferred") retryOn = state.job.notBefore;
       }
-      if (decision.kind === "auto") {
+      if (decision.kind === "auto" && options.enqueue !== false) {
         if (!state.job) {
           await deps.repository.enqueueSnapshotJob(actorId, decision.trigger, now);
           job = "queued";

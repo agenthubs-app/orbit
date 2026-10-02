@@ -52,8 +52,8 @@ function conic(rows: readonly StructureRow[], total: number): string {
   return `conic-gradient(${stops.join(", ")})`;
 }
 
-/** 依据图标：点开列出联系人姓名链接（只渲染解析到的本人联系人；一个都没有时不渲染）。 */
-function EvidenceToggle({ people }: { people: readonly EvidencePerson[] }) {
+/** 依据图标：点开列出联系人姓名链接（只渲染解析到的本人联系人；一个都没有时不渲染）。W0050 机会标签复用。 */
+export function EvidenceToggle({ people }: { people: readonly EvidencePerson[] }) {
   const { t, preserveHref } = useOrbitLanguage();
   const [open, setOpen] = useState(false);
   const listId = useId();

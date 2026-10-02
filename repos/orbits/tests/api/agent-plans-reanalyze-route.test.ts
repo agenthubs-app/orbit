@@ -23,7 +23,7 @@ import { createPlanService } from "../../features/plans/service";
 import { CONTACTS, EVENTS, ME, OTHER } from "../support/plan-bootstrap-fixture";
 import { planInput } from "../support/plan-fixture";
 
-function harness(clock: { now: string }, names?: Record<string, string>, generatorFor?: () => PlanGenerator) {
+function harness(clock: { now: string }, names?: Record<string, string>, generatorFor?: () => PlanGenerator, afterPlanSaved?: (actorId: string, planId: string) => Promise<void>) {
   const repository = createMemoryPlanRepository();
   const goals: string[] = [];
   let tick = 0;
@@ -42,6 +42,7 @@ function harness(clock: { now: string }, names?: Record<string, string>, generat
         return "三个月内拿到 10 家企业客户的试用（3 个月内）";
       },
       isDemo: async () => false,
+      ...(afterPlanSaved ? { afterPlanSaved } : {}),
       resolveActor: async () => (actorId ? { id: actorId } : null),
       serviceForActor: (id) => {
         const plans = plansFor(id);
@@ -250,4 +251,15 @@ test("W0048b SC-04: ai_regenerate — 400 without the AI provider or on a non-te
   assert.equal(limited.status, 429);
   assert.equal((await limited.json()).error.context.reason, "USER_DAILY_LIMIT");
   assert.equal(deepseek.requests.length, before);
+});
+
+test("W0050: a re-analysed plan version enqueues its 'plan' match job after the save; refusals do not", async () => {
+  const clock = { now: "2026-10-05T03:00:00.000Z" };
+  const saved: Array<[string, string]> = [];
+  const { plansFor, reanalyzeFor } = harness(clock, undefined, undefined, async (actorId, planId) => { saved.push([actorId, planId]); });
+  const v1 = await plansFor(ME).createVersion(planInput({ startsOn: "2026-10-05" }));
+  const created = await (await reanalyzeFor(ME).POST(post({ basePlanId: v1.plan.id, idempotencyKey: "w50" }))).json();
+  assert.deepEqual(saved, [[ME, created.data.planId]]);
+  assert.equal((await reanalyzeFor(ME).POST(post({ basePlanId: created.data.planId, idempotencyKey: "w50-2" }))).status, 409);
+  assert.equal(saved.length, 1);
 });

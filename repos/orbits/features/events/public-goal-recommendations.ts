@@ -404,6 +404,27 @@ export async function readPublicUpcomingEvents(
   return upcomingFrom(bookable);
 }
 
+/** W0050：可报名候选多带一段 description（需求 ↔ 活动按标题 + 简介匹配命中词）。 */
+export interface PublicBookableEvent extends PublicGoalUpcomingEvent {
+  description: string;
+}
+
+/**
+ * W0050：与 `readPublicUpcomingEvents` 同一套候选规则（共用 `readBookableCandidates`：排除已开始、已取消、本人主办、
+ * 已报名，按开始时间升序；目录 1 次 + 本人报名 ≤1 次），只多带 `description`。原函数不动。读取或校验失败时抛错。
+ */
+export async function readPublicBookableEvents(
+  dependencies: Pick<PublicGoalRecommendationsDependencies, "listMemberships" | "readPublicCatalogue">,
+  accountId: string,
+  now: Date,
+): Promise<readonly PublicBookableEvent[]> {
+  if (typeof accountId !== "string" || !accountId.trim() || accountId !== accountId.trim()) {
+    throw new Error("A canonical account id is required.");
+  }
+  const { bookable } = await readBookableCandidates(dependencies, accountId, now);
+  return upcomingFrom(bookable).map((event, index) => ({ ...event, description: bookable[index]!.record.description }));
+}
+
 type GoalRead =
   | { kind: "goal"; goal: string }
   | { kind: "needs_goal" }

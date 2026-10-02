@@ -18,7 +18,7 @@ import { createConfiguredPlanAiMatcher } from "./ai-matcher";
 import { createPlanMatchingService, type PlanMatchingService } from "./matching-service";
 import { createPostgresPlanMatchRepository, type PlanMatchRepository } from "./matching-repository";
 import { createPostgresPlanDailyRunStore, type PlanDailyRunStore } from "./maintenance-daily-gate";
-import type { PlanMatchWorkerDeps } from "./match-worker";
+import { runPlanSourceMatchJob, type PlanMatchWorkerDeps } from "./match-worker";
 import { resolvePlanService } from "./service-factory";
 
 export interface PlanMatchingRuntime {
@@ -67,4 +67,34 @@ export function getConfiguredPlanMatchingRuntime(): PlanMatchingRuntime | null {
   const runtime: PlanMatchingRuntime = { dailyRuns, repository, service, worker };
   matchingGlobal.__orbitPlanMatchingRuntime = { key, runtime };
   return runtime;
+}
+
+/**
+ * W0050（W50-2）：计划版本保存成功后（bootstrap／reanalyze 路由，已提交），为这份计划入队 'plan' 匹配任务
+ * （幂等、只跑规则层、0 次 AI），并在响应之外尝试领取执行（`after`，不在请求作用域时交给 `plan-match` 维护任务）。
+ * 任何失败只记日志，不影响保存结果。
+ */
+export async function enqueuePlanSourceMatchAfterSave(
+  input: { actorId: string; planId: string },
+  options: { runtime?: PlanMatchingRuntime | null; after?: (task: () => Promise<void>) => void } = {},
+): Promise<void> {
+  const runtime = options.runtime === undefined ? getConfiguredPlanMatchingRuntime() : options.runtime;
+  if (!runtime?.repository.enqueuePlanJob) return;
+  try {
+    const result = await runtime.repository.enqueuePlanJob(input);
+    if (result.state !== "enqueued" || !options.after) return;
+    try {
+      options.after(async () => {
+        try {
+          await runPlanSourceMatchJob(runtime.worker, input);
+        } catch (error) {
+          console.error(JSON.stringify({ actorId: input.actorId, error: error instanceof Error ? error.name : "unknown", event: "plan_match_plan_job_after_failed" }));
+        }
+      });
+    } catch {
+      // 不在请求作用域：交给 plan-match 维护任务。
+    }
+  } catch (error) {
+    console.error(JSON.stringify({ actorId: input.actorId, error: error instanceof Error ? error.name : "unknown", event: "plan_match_plan_job_enqueue_failed" }));
+  }
 }

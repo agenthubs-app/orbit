@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 
 import {
   createPlanBootstrapService,
@@ -13,6 +13,7 @@ import {
   PlanGenerationUnavailableError,
 } from "../../../../../features/plans/generator";
 import { resolvePlanGenerator } from "../../../../../features/plans/generator-service-factory";
+import { enqueuePlanSourceMatchAfterSave } from "../../../../../features/plans/matching-runtime";
 import { createConfiguredPlanInputSource } from "../../../../../features/plans/input-source";
 import {
   PLANS_CAPABILITY_ID,
@@ -56,6 +57,8 @@ import {
  * 生成在请求内同步完成（maxDuration 300，见 route.ts）；断线后服务端仍保存，同一幂等键重放取回结果。
  */
 export interface PlanBootstrapRouteDependencies {
+  /** W0050：计划版本保存成功后（已提交）为这份计划入队 'plan' 匹配任务并在响应之外执行；失败只记日志。 */
+  afterPlanSaved?: (actorId: string, planId: string) => Promise<void>;
   /** 身份只在服务端解析；请求体、查询参数、客户端头一律不作为身份来源。 */
   resolveActor?: () => Promise<AuthenticatedApiActor | null>;
   readGoal?: (actorId: string) => Promise<string | null>;
@@ -111,6 +114,8 @@ export function createPlanBootstrapRouteHandlers(dependencies: PlanBootstrapRout
   const readGoal = dependencies.readGoal ?? readProfileGoal;
   const serviceForActor = dependencies.serviceForActor ?? resolveDefaultPlanBootstrapService;
   const isDemo = dependencies.isDemo ?? defaultIsDemo;
+  const afterPlanSaved =
+    dependencies.afterPlanSaved ?? ((actorId: string, planId: string) => enqueuePlanSourceMatchAfterSave({ actorId, planId }, { after }));
 
   return {
     async POST(request: Request): Promise<Response> {
@@ -174,6 +179,7 @@ export function createPlanBootstrapRouteHandlers(dependencies: PlanBootstrapRout
           locale: body.locale === "en" ? "en" : "zh",
           supplement: supplement || null,
         });
+        await afterPlanSaved(actorId, result.snapshot.plan.id).catch(() => undefined);
         return NextResponse.json(
           success({ planId: result.snapshot.plan.id, replayed: result.replayed, version: result.snapshot.plan.version }),
           { headers, status: result.replayed ? 200 : 201 },
