@@ -5,6 +5,7 @@ import { resolveFeatureMode } from "../../../../../shared/config/feature-mode";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import { INDUSTRY_IDS, industryLabel } from "../../../../../shared/domain/industries";
 import type { AnalysisDimension } from "./contacts-analysis-view-model";
+import { structureDetailInsight, systemBucketName } from "./network-copy";
 
 const dimensionSchema = z.enum(["industry", "location", "role", "relationship"]);
 const count = z.number().finite().nonnegative();
@@ -31,12 +32,16 @@ export function structureDetailToView(input: unknown, dimension: string, bucketI
   const parsed = detailSchema.safeParse(input);
   if (!parsed.success || parsed.data.dimension !== dimension || parsed.data.bucket.bucketId !== bucketId) return { state: "error" };
   const data = parsed.data;
+  // W0043：分组名用双语封闭集，洞察句由计数与主要关系质量在 Web 端重拼（后端 insight 只有中文），不用后端句子。
+  const label = data.bucket.primaryIndustryId ? industryLabel(data.bucket.primaryIndustryId, language) : systemBucketName(data.bucket.bucketId, language) ?? data.bucket.label;
+  const strongest = data.relationshipQuality.reduce<(typeof data.relationshipQuality)[number] | null>((best, item) => !best || item.contactCount > best.contactCount ? item : best, null);
   return {
     state: "ready", dimension: data.dimension,
-    label: data.bucket.primaryIndustryId ? industryLabel(data.bucket.primaryIndustryId, language) : data.bucket.label,
+    label,
     count: data.bucket.contactCount, percentage: data.bucket.percentage, total: data.totalContactCount, missingData: data.bucket.missingData,
     quality: data.relationshipQuality.map((item) => ({ id: item.id, count: item.contactCount, percentage: item.percentage })),
-    commonTags: data.commonTags.map((item) => ({ label: item.label, count: item.contactCount })), insight: data.insight,
+    commonTags: data.commonTags.map((item) => ({ label: item.label, count: item.contactCount })),
+    insight: structureDetailInsight({ label, count: data.bucket.contactCount, strongest: strongest?.id ?? "weak" }, language),
     contacts: data.contacts.map((item) => ({ id: item.id, name: item.displayName, organization: item.organization, role: item.role, location: item.location, strength: item.relationshipStrength, tags: item.tags, href: `/app/contacts/${encodeURIComponent(item.id)}` })),
   };
 }

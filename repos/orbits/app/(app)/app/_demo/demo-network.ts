@@ -368,14 +368,12 @@ function demoAction(ctx: DemoContext, input: { id: string; slug: string; title: 
   return {
     contactName: seed ? say(ctx, seed.name) : "",
     dueLabel: say(ctx, input.due),
-    evidence: [],
     id: input.id,
     judgment: say(ctx, input.judgment),
     primary: {
       href: `/app/contacts/${encodeURIComponent(`${DEMO_CONTACT_ID_PREFIX}${input.slug}`)}`,
       label: say(ctx, c("查看联系人", "View contact")),
     },
-    steps: [],
     title: say(ctx, input.title),
   };
 }

@@ -1,6 +1,7 @@
 /**
  * 「关系管线」（Network v2 第 173–256 行）。数据 = OrbitContactsViewModel.connections + ContactsAnalysisView。
  * 设计稿的「↗ +25%」与 AI 建议 mock 文案无真实来源，不渲染；建议 = analysis.opportunities.actions 分页（每页 3 条）。
+ * W0043：真实数据的判断句为空串（后端 reason 不可信），描述行改显示联系人姓名；到期标签为空时不渲染。
  */
 "use client";
 
@@ -28,7 +29,9 @@ export function NetworkPipeline({ viewModel, analysis }: { viewModel: OrbitConta
     ...NETWORK_STAGES.map((stage) => ({ icon: STAGE_STYLE[stage].icon, n: counts[stage], label: t(STAGE_LABEL[stage]), bg: "#F7F7FD" })),
   ];
   const newContacts = analysis.state === "ready" ? String(analysis.metrics.newContacts) : "—";
-  const actions = analysis.state === "ready" && analysis.opportunities.state === "ready" ? analysis.opportunities.data.actions : [];
+  // W0043 review：按区块状态渲染——ready／empty 带数据（empty 显示真实空态），pending 显示生成中，unavailable 与整页 error 显示不可用。
+  const opportunityState = analysis.state === "ready" ? analysis.opportunities.state : analysis.state;
+  const actions = analysis.state === "ready" && "data" in analysis.opportunities ? analysis.opportunities.data.actions : [];
   const pages = Math.max(1, Math.ceil(actions.length / SUGGEST_PAGE));
   // 页码夹取：analysis 重新加载后 actions 变少时 page 可能越界，取模回到有效页。
   const safePage = pages ? page % pages : 0;
@@ -58,7 +61,7 @@ export function NetworkPipeline({ viewModel, analysis }: { viewModel: OrbitConta
               ))}
             </div>
           </div>
-          <div className="nw-ai-card">
+          <div className="nw-ai-card" data-network-section="suggestions">
             <div className="nw-ai-head">
               <div className="nw-ai-title">
                 <span className="nw-ai-star">✦</span>
@@ -76,14 +79,18 @@ export function NetworkPipeline({ viewModel, analysis }: { viewModel: OrbitConta
                 {suggestions.map((sg) => (
                   <a key={sg.id} className="btn nw-suggest" href={sg.primary.href} onClick={(event) => openDemo(event, sg.primary.href)}>
                     <span className="nw-suggest-icon">➶</span>
-                    <span className="nw-suggest-copy"><strong className="nw-suggest-title">{demo && sg.contactName ? <>{sg.contactName}<DemoTag /> · </> : null}{sg.title}</strong><span className="nw-suggest-desc">{sg.judgment}</span></span>
-                    <span className="nw-suggest-tag" style={{ background: "#ECEEFB", color: "#2E3270" }}>{sg.dueLabel}</span>
+                    <span className="nw-suggest-copy"><strong className="nw-suggest-title">{demo && sg.contactName ? <>{sg.contactName}<DemoTag /> · </> : null}{sg.title}</strong>{(sg.judgment || (!demo && sg.contactName)) ? <span className="nw-suggest-desc">{sg.judgment || sg.contactName}</span> : null}</span>
+                    {sg.dueLabel ? <span className="nw-suggest-tag" style={{ background: "#ECEEFB", color: "#2E3270" }}>{sg.dueLabel}</span> : null}
                     <span className="nw-suggest-arrow">›</span>
                   </a>
                 ))}
               </div>
             ) : (
-              <div className="nw-empty">{t({ en: "No suggestions yet", zh: "暂无建议" })}</div>
+              <div className="nw-empty">{opportunityState === "pending"
+                ? t({ en: "Analysis in progress", zh: "分析生成中" })
+                : opportunityState === "unavailable" || opportunityState === "error"
+                ? t({ en: "Source temporarily unavailable", zh: "来源暂时不可用" })
+                : t({ en: "No suggestions yet", zh: "暂无建议" })}</div>
             )}
           </div>
         </div>

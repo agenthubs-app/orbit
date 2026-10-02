@@ -2,6 +2,8 @@
  * 「概览」（Network v2 第 66–171 行）。数据 = OrbitContactsViewModel.connections + ContactsAnalysisView。
  * 设计稿 mock（428/128/85%/「↗ +25%」/AI 文案）一律不渲染；驾驶舱四卡 = cockpit(analysis) 真实计数，
  * 「最近动态」= analysis.activity（真实 occurredAt，后端最多 3 条；活动条目不是联系人，故标题改为「最近动态」）。
+ * W0043：真实动态的标题与来源是视图模型给的双语模板（或任务标题）；「新增联系人」按 contactId 在名单里找姓名，
+ * 找不到（名单只含前 30 位）时只写模板，不解析后端句子取名字。
  */
 "use client";
 
@@ -47,11 +49,14 @@ export function NetworkOverview({ viewModel, analysis }: { viewModel: OrbitConta
   const demoDetail = useNetworkDemoDetail("/app/contacts/dashboard");
   const meta = demo
     ? t({ zh: `示例人物的人脉分析 · 依据 ${people.length} 位示例联系人`, en: `Demo persona's network analysis · based on ${people.length} demo contacts` })
-    : ready
+    : analysis.state === "ready"
     ? t({ zh: `更新于${formatMonthDay(analysis.generatedAt, t, true)} · 依据 ${people.length} 位联系人`, en: `Updated ${formatMonthDay(analysis.generatedAt, t, true)} · based on ${people.length} contacts` })
-    : t({ zh: `分析生成中 · 依据 ${people.length} 位联系人`, en: `Analysis in progress · based on ${people.length} contacts` });
+    : analysis.state === "pending"
+    ? t({ zh: `分析生成中 · 依据 ${people.length} 位联系人`, en: `Analysis in progress · based on ${people.length} contacts` })
+    : t({ zh: `来源暂时不可用 · 依据 ${people.length} 位联系人`, en: `Source temporarily unavailable · based on ${people.length} contacts` });
   const highlights = people.filter((p) => p.stage === "advance").slice(0, 2);
   const activity = ready ? analysis.activity : [];
+  const nameById = useMemo(() => new Map(viewModel.connections.map((contact) => [contact.id, contact.displayName.trim()])), [viewModel.connections]);
 
   return (
     <NetworkShell screen="overview" modal={demoDetail.modal}>
@@ -149,7 +154,7 @@ export function NetworkOverview({ viewModel, analysis }: { viewModel: OrbitConta
           )}
         </div>
 
-        <div className="nw-recent-card">
+        <div className="nw-recent-card" data-network-section="activity">
           <div className="nw-ov-head">
             <h2 className="nw-h2">{t({ en: "Recent activity", zh: "最近动态" })}</h2>
             <a className="nw-link" href="/app/contacts">{t({ en: "View all contacts →", zh: "查看全部人脉 →" })}</a>
@@ -160,7 +165,7 @@ export function NetworkOverview({ viewModel, analysis }: { viewModel: OrbitConta
           {activity.map((a) => (
             <div key={a.id} className="nw-recent-row">
               <NetworkAvatar initial="◷" />
-              <strong className="nw-recent-name">{a.contactName ? <>{a.contactName}{demo ? <DemoTag /> : null} · </> : null}{a.label}</strong>
+              <strong className="nw-recent-name">{a.contactName ? <>{a.contactName}{demo ? <DemoTag /> : null} · </> : null}{a.label}{a.contactId && nameById.get(a.contactId) ? ` · ${nameById.get(a.contactId)}` : null}</strong>
               {/* 来源经 metSummary 清洗：账号邮箱 / 「confirmed by」句不渲染 */}
               <span className="nw-recent-org">{metSummary(a.source) || dash}</span>
               <span className="nw-recent-ind">{dash}</span>
@@ -168,8 +173,13 @@ export function NetworkOverview({ viewModel, analysis }: { viewModel: OrbitConta
               <span className="nw-recent-last">{formatMonthDay(a.occurredAt, t)}</span>
             </div>
           ))}
-          {activity.length === 0 ? (
+          {/* W0043 review：只有 ready 才显示真实空态；pending 显示生成中，整页 error 显示不可用。 */}
+          {analysis.state === "ready" && activity.length === 0 ? (
             <div className="nw-empty">{t({ en: "No activity yet", zh: "还没有互动记录" })}</div>
+          ) : analysis.state === "pending" ? (
+            <div className="nw-empty">{t({ en: "Analysis in progress", zh: "分析生成中" })}</div>
+          ) : analysis.state === "error" ? (
+            <div className="nw-empty" role="status">{t({ en: "Source temporarily unavailable", zh: "来源暂时不可用" })}</div>
           ) : null}
         </div>
       </div>
