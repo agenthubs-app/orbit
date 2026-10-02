@@ -5,6 +5,9 @@ import { renderToStaticMarkup } from "react-dom/server";
 import type { OrbitContactsViewModel } from "../../app/(app)/app/orbit-contacts-route-view-model";
 import type { ContactsAnalysisView } from "../../app/(app)/app/contacts/analysis/contacts-analysis-view-model";
 import { NetworkPipeline } from "../../app/(app)/app/contacts/network-0918/network-pipeline";
+import { contactsAnalysisToView } from "../../app/(app)/app/contacts/analysis/contacts-analysis-view-model";
+import { OrbitLanguageProvider } from "../../app/(app)/app/orbit-language-context";
+import { forbiddenHits, networkDebugPayload } from "../fixtures/network-debug-payload";
 
 const base = { company: "X", encounters: [], email: "", g: "g-violet", industry: "", initial: "A", lineId: "", location: "", lastEventId: "", met: "", note: "", notes: [], offering: "", phone: "", seeking: "", title: "", wechat: "", strength: "medium" as const, valueTags: [], nextAction: null, lastInteraction: "", dormant: false, stage: "" };
 const vm: OrbitContactsViewModel = {
@@ -17,7 +20,7 @@ const vm: OrbitContactsViewModel = {
   events: [], intros: [], pipelineStatuses: [],
 };
 
-const action = (id: string) => ({ id, title: `T${id}`, judgment: `J${id}`, contactName: "", dueLabel: `D${id}`, evidence: [], steps: [], primary: { label: "go", href: `/app/contacts/${id}` } });
+const action = (id: string) => ({ id, title: `T${id}`, judgment: `J${id}`, contactName: "", dueLabel: `D${id}`, primary: { label: "go", href: `/app/contacts/${id}` } });
 const ready: ContactsAnalysisView = {
   state: "ready", generatedAt: "2026-09-21T00:00:00Z", summary: "", activity: [], analysis: { state: "unavailable" },
   metrics: { contacts: 78, newContacts: 6, highValue: 12, pendingFollowups: 9, dormant: 8 },
@@ -56,3 +59,13 @@ test("pipeline renders the AI suggestions empty state when analysis is not ready
   assert.match(html, /nw-empty">暂无建议</);
   assert.match(html, /class="btn nw-shuffle"[^>]*disabled/);
 });
+
+for (const language of ["zh", "en"] as const) {
+  test(`SC-W0043-02 (${language}): pipeline suggestions show task titles, contact names and bilingual due tags, no backend sentences`, () => {
+    const analysis = contactsAnalysisToView(networkDebugPayload(), language);
+    const html = renderToStaticMarkup(<OrbitLanguageProvider initialLanguage={language}><NetworkPipeline viewModel={vm} analysis={analysis} /></OrbitLanguageProvider>).replace(/<style[\s\S]*?<\/style>/g, "");
+    assert.deepEqual(forbiddenHits(html), []);
+    assert.match(html, /nw-suggest-title">给王敏发提案资料<\/strong><span class="nw-suggest-desc">王敏</);
+    assert.match(html, language === "zh" ? /nw-suggest-tag[^>]*>今天到期或已逾期</ : /nw-suggest-tag[^>]*>Today or overdue</);
+  });
+}

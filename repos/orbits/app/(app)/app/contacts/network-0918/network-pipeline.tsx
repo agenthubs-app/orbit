@@ -1,6 +1,7 @@
 /**
  * 「关系管线」（Network v2 第 173–256 行）。数据 = OrbitContactsViewModel.connections + ContactsAnalysisView。
  * 设计稿的「↗ +25%」与 AI 建议 mock 文案无真实来源，不渲染；建议 = analysis.opportunities.actions 分页（每页 3 条）。
+ * W0043：真实数据的判断句为空串（后端 reason 不可信），描述行改显示联系人姓名；到期标签为空时不渲染。
  */
 "use client";
 
@@ -76,8 +77,8 @@ export function NetworkPipeline({ viewModel, analysis }: { viewModel: OrbitConta
                 {suggestions.map((sg) => (
                   <a key={sg.id} className="btn nw-suggest" href={sg.primary.href} onClick={(event) => openDemo(event, sg.primary.href)}>
                     <span className="nw-suggest-icon">➶</span>
-                    <span className="nw-suggest-copy"><strong className="nw-suggest-title">{demo && sg.contactName ? <>{sg.contactName}<DemoTag /> · </> : null}{sg.title}</strong><span className="nw-suggest-desc">{sg.judgment}</span></span>
-                    <span className="nw-suggest-tag" style={{ background: "#ECEEFB", color: "#2E3270" }}>{sg.dueLabel}</span>
+                    <span className="nw-suggest-copy"><strong className="nw-suggest-title">{demo && sg.contactName ? <>{sg.contactName}<DemoTag /> · </> : null}{sg.title}</strong>{(sg.judgment || (!demo && sg.contactName)) ? <span className="nw-suggest-desc">{sg.judgment || sg.contactName}</span> : null}</span>
+                    {sg.dueLabel ? <span className="nw-suggest-tag" style={{ background: "#ECEEFB", color: "#2E3270" }}>{sg.dueLabel}</span> : null}
                     <span className="nw-suggest-arrow">›</span>
                   </a>
                 ))}

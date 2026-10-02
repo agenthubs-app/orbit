@@ -73,3 +73,30 @@ test("malformed and failed details show a recoverable error, not an empty contac
   assert.match(html, /role="alert"/);
   assert.doesNotMatch(html, /暂无联系人/);
 });
+
+test("SC-W0043-03: system group names and the detail insight are bilingual templates built from counts", () => {
+  const input = (bucketId: string, label: string, contactCount: number) => ({
+    state: contactCount ? "success" : "empty", dimension: "role",
+    bucket: { bucketId, label, contactCount, percentage: 40, missingData: false },
+    totalContactCount: 10,
+    relationshipQuality: [{ id: "strong", label: "强关系", contactCount: 1, percentage: 25 }, { id: "warm", label: "保持联系", contactCount: 3, percentage: 75 }, { id: "weak", label: "待重新联系", contactCount: 0, percentage: 0 }],
+    commonTags: [], insight: "经营决策者共有 4 位联系人，当前以保持联系为主。", contacts: [],
+  });
+  const en = structureDetailToView(input("role_decision_maker", "经营决策者", 4), "role", "role_decision_maker", "en");
+  const zh = structureDetailToView(input("role_decision_maker", "经营决策者", 4), "role", "role_decision_maker", "zh");
+  if (en.state !== "ready" || zh.state !== "ready") throw new Error("Missing detail");
+  assert.equal(en.label, "Decision makers");
+  assert.equal(en.insight, "Decision makers has 4 contacts, mostly warm ties.");
+  assert.equal(zh.label, "经营决策者");
+  assert.equal(zh.insight, "经营决策者共有 4 位联系人，当前以中关系为主。");
+  const empty = structureDetailToView(input("unclassified", "未分类", 0), "role", "unclassified", "en");
+  if (empty.state !== "ready") throw new Error("Missing detail");
+  assert.equal(empty.label, "Unclassified");
+  assert.equal(empty.insight, "No contacts in this group yet.");
+  const userLocation = structureDetailToView({ ...input("location_%E6%B7%B1%E5%9C%B3", "深圳南山", 2), dimension: "location" }, "location", "location_%E6%B7%B1%E5%9C%B3", "en");
+  if (userLocation.state !== "ready") throw new Error("Missing detail");
+  assert.equal(userLocation.label, "深圳南山");
+  const html = renderToStaticMarkup(<ContactsStructureDetail view={en} />);
+  assert.match(html, /Decision makers has 4 contacts/);
+  assert.doesNotMatch(html, /经营决策者共有/);
+});

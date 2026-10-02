@@ -2,6 +2,8 @@
  * 「概览」（Network v2 第 66–171 行）。数据 = OrbitContactsViewModel.connections + ContactsAnalysisView。
  * 设计稿 mock（428/128/85%/「↗ +25%」/AI 文案）一律不渲染；驾驶舱四卡 = cockpit(analysis) 真实计数，
  * 「最近动态」= analysis.activity（真实 occurredAt，后端最多 3 条；活动条目不是联系人，故标题改为「最近动态」）。
+ * W0043：真实动态的标题与来源是视图模型给的双语模板（或任务标题）；「新增联系人」按 contactId 在名单里找姓名，
+ * 找不到（名单只含前 30 位）时只写模板，不解析后端句子取名字。
  */
 "use client";
 
@@ -52,6 +54,7 @@ export function NetworkOverview({ viewModel, analysis }: { viewModel: OrbitConta
     : t({ zh: `分析生成中 · 依据 ${people.length} 位联系人`, en: `Analysis in progress · based on ${people.length} contacts` });
   const highlights = people.filter((p) => p.stage === "advance").slice(0, 2);
   const activity = ready ? analysis.activity : [];
+  const nameById = useMemo(() => new Map(viewModel.connections.map((contact) => [contact.id, contact.displayName.trim()])), [viewModel.connections]);
 
   return (
     <NetworkShell screen="overview" modal={demoDetail.modal}>
@@ -160,7 +163,7 @@ export function NetworkOverview({ viewModel, analysis }: { viewModel: OrbitConta
           {activity.map((a) => (
             <div key={a.id} className="nw-recent-row">
               <NetworkAvatar initial="◷" />
-              <strong className="nw-recent-name">{a.contactName ? <>{a.contactName}{demo ? <DemoTag /> : null} · </> : null}{a.label}</strong>
+              <strong className="nw-recent-name">{a.contactName ? <>{a.contactName}{demo ? <DemoTag /> : null} · </> : null}{a.label}{a.contactId && nameById.get(a.contactId) ? ` · ${nameById.get(a.contactId)}` : null}</strong>
               {/* 来源经 metSummary 清洗：账号邮箱 / 「confirmed by」句不渲染 */}
               <span className="nw-recent-org">{metSummary(a.source) || dash}</span>
               <span className="nw-recent-ind">{dash}</span>

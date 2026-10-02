@@ -1,22 +1,27 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import type React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { ContactsAnalysisView } from "../../app/(app)/app/contacts/analysis/contacts-analysis-view-model";
 import { NetworkAnalysis } from "../../app/(app)/app/contacts/network-0918/network-analysis";
 import { NetworkOverview } from "../../app/(app)/app/contacts/network-0918/network-overview";
+import { contactsAnalysisToView } from "../../app/(app)/app/contacts/analysis/contacts-analysis-view-model";
+import { OrbitLanguageProvider } from "../../app/(app)/app/orbit-language-context";
+import type { OrbitContactsViewModel } from "../../app/(app)/app/orbit-contacts-route-view-model";
+import { forbiddenHits, networkDebugPayload, networkEmptyPayload, networkUnavailablePayload } from "../fixtures/network-debug-payload";
 
 const empty = { connections: [], events: [], intros: [], pipelineStatuses: [] };
 const ready: ContactsAnalysisView = {
   state: "ready", generatedAt: "2026-09-21T00:00:00Z", summary: "结构总结句", analysis: { state: "unavailable" },
   activity: [
-    { id: "a1", label: "王敏 added to the live relationship database", occurredAt: "2026-09-18T03:00:00Z", source: "名片导入" },
+    { id: "a1", label: "新增联系人", contactName: "王敏", occurredAt: "2026-09-18T03:00:00Z", source: "名片导入" },
     { id: "a2", label: "李雷 confirmed", occurredAt: "2026-09-17T03:00:00Z", source: "Business card · confirmed by qa@example.invalid" },
   ],
   metrics: { contacts: 7, newContacts: 2, highValue: 3, pendingFollowups: 4, dormant: 5 },
   goal: { state: "ready", data: { id: "profile:1", text: "认识供应链负责人", updatedAt: "2026-09-01T00:00:00Z", canEdit: true } },
   structure: { state: "ready", data: { summary: "维度小结", health: [{ id: "strong", count: 3, percentage: 43, risk: "low" }, { id: "warm", count: 2, percentage: 29, risk: "moderate" }, { id: "weak", count: 2, percentage: 28, risk: "high" }], dimensions: { industry: [{ id: "tech", label: "科技与互联网", count: 5, percentage: 71, missingData: false, href: "/app/contacts/analysis/industry/tech" }, { id: "fin", label: "金融与投资", count: 2, percentage: 29, missingData: false, href: "" }], location: [], role: [], relationship: [] } } },
-  coverage: { state: "ready", data: { score: 40, summary: "覆盖总结", gaps: [{ id: "g1", label: "制造与供应链", severity: "high", current: 1, target: 5, action: "拓展制造业联系人" }] } },
-  opportunities: { state: "ready", data: { summary: "机会总结", actions: [{ id: "o1", title: "跟进王敏", judgment: "近期有互动", contactName: "王敏", dueLabel: "今日", evidence: [], steps: [], primary: { label: "查看联系人", href: "/app/contacts/c1" } }], dormant: [{ id: "d1", name: "李雷", reason: "90 天未联系", action: "发一条问候", href: "/app/contacts/c2" }] } },
+  coverage: { state: "ready", data: { summary: "覆盖总结" } },
+  opportunities: { state: "ready", data: { summary: "机会总结", actions: [{ id: "o1", title: "跟进王敏", judgment: "近期有互动", contactName: "王敏", dueLabel: "今日", primary: { label: "查看联系人", href: "/app/contacts/c1" } }], dormant: [{ id: "d1", name: "李雷", reason: "90 天未联系", action: "发一条问候", href: "/app/contacts/c2" }] } },
 };
 
 test("overview renders donut, cockpit, stage bar and recent list from real data", () => {
@@ -37,7 +42,7 @@ test("overview renders donut, cockpit, stage bar and recent list from real data"
 test("overview renders real activity rows and cockpit counts when ready", () => {
   const html = renderToStaticMarkup(<NetworkOverview viewModel={empty} analysis={ready} />);
   assert.match(html, /nw-cockpit-n">3</);
-  assert.match(html, /王敏 added to the live relationship database/);
+  assert.match(html, /王敏 · 新增联系人/);
   assert.match(html, /9月18日/);
   assert.match(html, /最近新增 2 位/);
   assert.doesNotMatch(html, /\+25%/);
@@ -60,9 +65,9 @@ test("analysis sub-page renders structure and opportunities tabs from real secti
   const opp = renderToStaticMarkup(<NetworkAnalysis viewModel={empty} analysis={ready} initialTab="opp" />);
   assert.match(opp, /机会总结/);
   assert.match(opp, /认识供应链负责人/);
-  assert.match(opp, /nw-goal-score">40 \/ 100</);
-  assert.match(opp, /制造与供应链/);
-  assert.match(opp, /优先拓展/);
+  // W43-2：覆盖度分数与缺口不显示；覆盖区 = 关系目标文字 + 「生成计划」入口
+  assert.doesNotMatch(withoutStyles(opp), /nw-goal-score|覆盖度|优先拓展/);
+  assert.match(opp, /href="\/app\/agent\/plan"[^>]*data-network-coverage-goal[\s\S]*?认识供应链负责人[\s\S]*?生成计划/);
   assert.match(opp, /王敏 · 近期有互动/);
   assert.match(opp, /待唤醒关系[\s\S]*?李雷/);
   assert.match(opp, /尚未生成/);
@@ -72,4 +77,97 @@ test("analysis sub-page renders empty states when analysis is pending", () => {
   const html = renderToStaticMarkup(<NetworkAnalysis viewModel={empty} analysis={{ state: "pending" }} initialTab="struct" />);
   assert.match(html, /分析生成中/);
   assert.doesNotMatch(html, /核心人脉/);
+});
+
+// ---- W0043：空态与失败分开、不出调试英文、双语 ----
+
+const contactBase = { company: "东方制造", encounters: [], email: "", g: "g-violet", industry: "", initial: "王", lineId: "", location: "", lastEventId: "", met: "", note: "", notes: [], offering: "", phone: "", seeking: "", title: "", wechat: "", strength: "medium" as const, valueTags: [], nextAction: null, lastInteraction: "", dormant: false, stage: "" };
+const withWang: OrbitContactsViewModel = {
+  connections: [{ ...contactBase, id: "contact:wang-min", displayName: "王敏", pipelineStatus: "in_progress", relationshipStatus: "active", source: "event" }],
+  events: [], intros: [], pipelineStatuses: [],
+} as OrbitContactsViewModel;
+/** NetworkShell 内联整页 CSS；类名断言只看 DOM，去掉 <style>。 */
+function withoutStyles(html: string) { return html.replace(/<style[\s\S]*?<\/style>/g, ""); }
+const UNAVAILABLE = /来源暂时不可用|Source temporarily unavailable/;
+function inLanguage(language: "zh" | "en", node: React.ReactElement) {
+  return withoutStyles(renderToStaticMarkup(<OrbitLanguageProvider initialLanguage={language}>{node}</OrbitLanguageProvider>));
+}
+
+for (const language of ["zh", "en"] as const) {
+  test(`SC-W0043-01 (${language}): empty sections show their own empty states, never "unavailable"`, () => {
+    const view = contactsAnalysisToView(networkEmptyPayload(), language);
+    const struct = inLanguage(language, <NetworkAnalysis viewModel={withWang} analysis={view} initialTab="struct" />);
+    const opp = inLanguage(language, <NetworkAnalysis viewModel={withWang} analysis={view} initialTab="opp" />);
+    assert.doesNotMatch(struct, UNAVAILABLE);
+    assert.doesNotMatch(opp, UNAVAILABLE);
+    if (language === "zh") {
+      assert.match(struct, /当前维度暂无数据/);
+      assert.match(struct, /暂无关系健康数据/);
+      assert.match(opp, /data-network-coverage-goal[\s\S]*?尚未设置关系目标[\s\S]*?生成计划/);
+      assert.match(opp, /当前没有优先行动建议/);
+      assert.match(opp, /暂无待唤醒关系/);
+      assert.match(opp, /nw-ai-desc">尚未设置关系目标</);
+    } else {
+      assert.match(struct, /No data in this dimension/);
+      assert.match(struct, /No relationship health data yet/);
+      assert.match(opp, /data-network-coverage-goal[\s\S]*?No relationship goal yet[\s\S]*?Generate a plan/);
+      assert.match(opp, /No priority actions right now/);
+      assert.match(opp, /No dormant relationships/);
+    }
+    assert.doesNotMatch(opp, /nw-goal-score|nw-an-hero-opp/);
+    assert.doesNotMatch(struct, /nw-an-hero"|nw-insight"|nw-dim-sum"|暂无总结|No summary yet/);
+  });
+
+  test(`SC-W0043-01 (${language}): failed sections (null + unavailableSections) show "unavailable"`, () => {
+    const view = contactsAnalysisToView(networkUnavailablePayload(), language);
+    const struct = inLanguage(language, <NetworkAnalysis viewModel={withWang} analysis={view} initialTab="struct" />);
+    const opp = inLanguage(language, <NetworkAnalysis viewModel={withWang} analysis={view} initialTab="opp" />);
+    assert.match(struct, UNAVAILABLE);
+    assert.match(opp, UNAVAILABLE);
+    assert.doesNotMatch(struct, /当前维度暂无数据|No data in this dimension/);
+    assert.doesNotMatch(opp, /当前没有优先行动建议|No priority actions right now/);
+  });
+
+  test(`SC-W0043-02 (${language}): debug payload renders no backend debug sentence or fabricated number`, () => {
+    const view = contactsAnalysisToView(networkDebugPayload(), language);
+    const pages = {
+      overview: inLanguage(language, <NetworkOverview viewModel={withWang} analysis={view} />),
+      structure: inLanguage(language, <NetworkAnalysis viewModel={withWang} analysis={view} initialTab="struct" />),
+      opportunities: inLanguage(language, <NetworkAnalysis viewModel={withWang} analysis={view} initialTab="opp" />),
+    };
+    for (const [page, html] of Object.entries(pages)) assert.deepEqual(forbiddenHits(html), [], `${page} (${language})`);
+    // W43-3：没有真实句子的 hero 与洞察卡整块不渲染，不放占位句
+    assert.doesNotMatch(pages.structure, /nw-an-hero"|nw-insight"|nw-dim-sum"|暂无总结|No summary yet/);
+    assert.doesNotMatch(pages.opportunities, /nw-an-hero-opp|暂无总结|No summary yet/);
+    // 图表与列表保留
+    assert.match(pages.structure, /nw-dim-donut/);
+    assert.match(pages.opportunities, /给王敏发提案资料/);
+    assert.match(pages.opportunities, /周杰[\s\S]*?北辰资本/);
+  });
+}
+
+test("SC-W0043-03: recent activity, action tags and group names are bilingual and built from real data", () => {
+  const zh = contactsAnalysisToView(networkDebugPayload(), "zh");
+  const en = contactsAnalysisToView(networkDebugPayload(), "en");
+  const zhOverview = inLanguage("zh", <NetworkOverview viewModel={withWang} analysis={zh} />);
+  const enOverview = inLanguage("en", <NetworkOverview viewModel={withWang} analysis={en} />);
+  assert.match(zhOverview, /nw-recent-name">新增联系人 · 王敏</);
+  assert.match(enOverview, /nw-recent-name">New contact · 王敏</);
+  // 名单里找不到的联系人只写模板，不从后端句子解析名字
+  assert.match(zhOverview, /nw-recent-name">新增联系人</);
+  assert.doesNotMatch(enOverview, /Hidden Person/);
+  assert.match(zhOverview, /nw-recent-name">给王敏发提案资料</);
+  assert.match(zhOverview, /nw-recent-org">联系人</);
+  assert.match(zhOverview, /nw-recent-org">跟进</);
+  assert.match(enOverview, /nw-recent-org">Contact</);
+  assert.match(enOverview, /nw-recent-org">Follow-up</);
+  const enOpp = inLanguage("en", <NetworkAnalysis viewModel={withWang} analysis={en} initialTab="opp" />);
+  assert.match(enOpp, /Today or overdue/);
+  assert.match(enOpp, /Tomorrow/);
+  assert.match(enOpp, /In 5 days/);
+  assert.equal((enOpp.match(/class="nw-act-tag" style="background:#ECEEFB/g) ?? []).length, 4); // Due soon 不显示标签
+  const enStruct = inLanguage("en", <NetworkAnalysis viewModel={withWang} analysis={en} initialTab="struct" />);
+  assert.match(enStruct, /Manufacturing &amp; Supply Chain/);
+  assert.match(enStruct, /Unclassified/);
+  assert.doesNotMatch(enStruct, /未分类/);
 });
