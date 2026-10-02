@@ -123,7 +123,7 @@
 | [W0047](W0047-relationship-strength-tiers/GOAL.md) | 关系强度按站内记录自动分档（新认识／有往来／核心／待唤醒），管线页按档位分组，下线手动阶段（H） | RN-05 | W0046 | completed |
 | [W0048a](W0048a-network-snapshot-quota/GOAL.md) | 共享人脉分析快照（存储、生成与校验、三层更新）与两池 AI 配额账本（H） | RN-06 | W0045、W0046、W0047 | completed |
 | [W0048b](W0048b-plan-ai-generator/GOAL.md) | 计划生成接 DeepSeek 两阶段并基于快照排行动；老模板计划「AI 重新生成」不占月额度；读取路径 0 次模型调用（H） | RN-06 | W0048a | completed |
-| [W0049](W0049-analysis-structure-tab/GOAL.md) | 「结构」标签：AI 诊断、四维分布与目标高亮、健康变化、结构洞察（H） | RN-07 | W0043、W0048a | ready |
+| [W0049](W0049-analysis-structure-tab/GOAL.md) | 「结构」标签：AI 诊断、四维分布与目标高亮、健康变化、结构洞察（H） | RN-07 | W0043、W0048a | running（run-01，2026-10-02，基线 `04369d4c`，PLANNER SHA256 `e81de1ea565ce2b7d91ef758c2474823225518836b878085627d877b1acbb794`） |
 | [W0050](W0050-analysis-opportunities-tab/GOAL.md) | 「机会」标签：规则覆盖度、缺口补法、计划直链、待唤醒、报告卡（H） | RN-08 | W0047、W0048a | ready |
 | [W0051](W0051-contact-insights/GOAL.md) | 每人洞察：「洞察」标签、详情弹窗顶部、所有人脉列表列与档位筛选（H） | RN-09 | W0045～W0047、W0048a、W0050（承接 W50-3 改读洞察） | planned |
 | [W0052](W0052-network-overview-cockpit/GOAL.md) | 概览驾驶舱读快照，管线区改档位，最近动态来自时间线（L） | RN-10 | W0049、W0050 | planned |
