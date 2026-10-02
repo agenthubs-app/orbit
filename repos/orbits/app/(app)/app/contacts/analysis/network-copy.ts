@@ -101,6 +101,6 @@ export function structureDetailInsight(input: { label: string; count: number; st
   const strength = DETAIL_STRENGTH[input.strongest];
   return pickCopy({
     zh: `${input.label}共有 ${input.count} 位联系人，当前以${strength.zh}为主。`,
-    en: `${input.label} has ${input.count} ${input.count === 1 ? "contact" : "contacts"}, mostly ${strength.en}.`,
+    en: `This group has ${input.count} ${input.count === 1 ? "contact" : "contacts"}; most are ${strength.en}.`,
   }, language);
 }

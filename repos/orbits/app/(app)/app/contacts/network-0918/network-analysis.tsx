@@ -136,7 +136,7 @@ export function NetworkAnalysis({ viewModel, analysis, initialTab }: { viewModel
             ) : null}
 
             <div className="nw-pipe-grid">
-              <div className="nw-ov-card">
+              <div className="nw-ov-card" data-network-section="structure">
                 <div className="nw-card-head">
                   <h2 className="nw-h2">{t({ en: `${dimTitle} distribution`, zh: `${dimTitle}分布` })}</h2>
                   <span className="nw-ai-desc">{t({ en: `${buckets.length} groups, ${total} contacts`, zh: `共 ${buckets.length} 个领域，${total} 位联系人` })}</span>
@@ -161,7 +161,7 @@ export function NetworkAnalysis({ viewModel, analysis, initialTab }: { viewModel
                 ) : structure ? <div className="nw-empty">{t({ en: "No data in this dimension", zh: "当前维度暂无数据" })}</div> : emptyBlock(secState("structure"))}
               </div>
 
-              <div className="nw-cockpit">
+              <div className="nw-cockpit" data-network-section="top">
                 <div className="nw-dims">
                   {DIMS.map((dm) => {
                     const on = dim === dm.key;
@@ -203,7 +203,7 @@ export function NetworkAnalysis({ viewModel, analysis, initialTab }: { viewModel
               </div>
             ) : null}
 
-            <div className="nw-cockpit">
+            <div className="nw-cockpit" data-network-section="health">
               <div className="nw-ov-head">
                 <h2 className="nw-h2">{t({ en: "Relationship health", zh: "关系健康" })}</h2>
                 <button type="button" className="btn nw-textlink" onClick={() => setTab("opp")}>{t({ en: "View details →", zh: "查看详细分析 →" })}</button>
@@ -250,7 +250,7 @@ export function NetworkAnalysis({ viewModel, analysis, initialTab }: { viewModel
             ) : null}
 
             <div className="nw-opp-grid">
-              <div className="nw-ov-card">
+              <div className="nw-ov-card" data-network-section="goal">
                 <div className="nw-goal-head">
                   <div className="nw-card-head">
                     <h2 className="nw-h2">{t({ en: "Goal coverage", zh: "目标覆盖" })}</h2>
@@ -279,23 +279,26 @@ export function NetworkAnalysis({ viewModel, analysis, initialTab }: { viewModel
                 )}
               </div>
 
-              <div className="nw-cov-card">
+              <div className="nw-cov-card" data-network-section="coverage">
                 <div className="nw-goal-head">
                   <div className="nw-card-head">
                     <h2 className="nw-h2">{t({ en: "Coverage suggestions", zh: "覆盖建议" })}</h2>
                     <span className="nw-ai-desc">{t({ en: "Generate a relationship plan from your goal; coverage gaps are measured against that plan.", zh: "按你的关系目标生成计划后，覆盖缺口将对照计划来衡量。" })}</span>
                   </div>
                 </div>
-                {/* W43-2：W0050 之前不显示固定阈值的覆盖度分数与缺口；只显示关系目标文字 + 「生成计划」入口。 */}
-                <a className="btn nw-cov-row" href={preserveHref("/app/agent/plan")} data-network-coverage-goal="">
-                  <span className="nw-cov-icon" style={{ background: "#ECEEFB", color: "#4B4FC7" }}>◈</span>
-                  <span className="nw-cov-copy"><strong className="nw-suggest-title">{goal ? goal.text || t({ en: "No relationship goal yet", zh: "尚未设置关系目标" }) : emptyCopy(secState("goal"))}</strong><span className="nw-cov-desc">{t({ en: "Relationship goal", zh: "关系目标" })} · <strong>✦ {t({ en: "Generate a plan", zh: "生成计划" })}</strong></span></span>
-                  <span className="nw-suggest-arrow">›</span>
-                </a>
+                {/* W43-2：W0050 之前不显示固定阈值的覆盖度分数与缺口；只显示关系目标文字 + 「生成计划」入口。
+                    覆盖与目标两个区块都可读（ready／empty）才显示入口；pending／unavailable／error 显示对应状态，不放入口。 */}
+                {coverage && goal ? (
+                  <a className="btn nw-cov-row" href={preserveHref("/app/agent/plan")} data-network-coverage-goal="">
+                    <span className="nw-cov-icon" style={{ background: "#ECEEFB", color: "#4B4FC7" }}>◈</span>
+                    <span className="nw-cov-copy"><strong className="nw-suggest-title">{goal.text || t({ en: "No relationship goal yet", zh: "尚未设置关系目标" })}</strong><span className="nw-cov-desc">{t({ en: "Relationship goal", zh: "关系目标" })} · <strong>✦ {t({ en: "Generate a plan", zh: "生成计划" })}</strong></span></span>
+                    <span className="nw-suggest-arrow">›</span>
+                  </a>
+                ) : emptyBlock(!coverage ? secState("coverage") : secState("goal"))}
               </div>
             </div>
 
-            <div className="nw-cockpit">
+            <div className="nw-cockpit" data-network-section="actions">
               <div className="nw-act-head">
                 <span className="nw-act-title"><h2 className="nw-h2">{t({ en: "Suggested actions", zh: "建议动作" })}</h2><span className="nw-ai-desc">{t({ en: "Recommended from your network structure and goal gap, by priority.", zh: "根据当前人脉结构与目标差距，为你推荐以下行动，按优先级排序。" })}</span></span>
               </div>
@@ -315,7 +318,7 @@ export function NetworkAnalysis({ viewModel, analysis, initialTab }: { viewModel
               {opportunities && opportunities.actions.length === 0 ? <div className="nw-empty">{t({ en: "No priority actions right now", zh: "当前没有优先行动建议" })}</div> : null}
             </div>
 
-            <div className="nw-cockpit">
+            <div className="nw-cockpit" data-network-section="dormant">
               <div className="nw-act-head">
                 <span className="nw-act-title"><h2 className="nw-h2">{t({ en: "Dormant relationships", zh: "待唤醒关系" })}</h2><span className="nw-ai-desc">{t({ en: "High-value contacts you have not reached in a while.", zh: "较久未联系的高价值联系人。" })}</span></span>
               </div>

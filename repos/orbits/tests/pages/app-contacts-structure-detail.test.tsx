@@ -86,7 +86,7 @@ test("SC-W0043-03: system group names and the detail insight are bilingual templ
   const zh = structureDetailToView(input("role_decision_maker", "经营决策者", 4), "role", "role_decision_maker", "zh");
   if (en.state !== "ready" || zh.state !== "ready") throw new Error("Missing detail");
   assert.equal(en.label, "Decision makers");
-  assert.equal(en.insight, "Decision makers has 4 contacts, mostly warm ties.");
+  assert.equal(en.insight, "This group has 4 contacts; most are warm ties.");
   assert.equal(zh.label, "经营决策者");
   assert.equal(zh.insight, "经营决策者共有 4 位联系人，当前以中关系为主。");
   const empty = structureDetailToView(input("unclassified", "未分类", 0), "role", "unclassified", "en");
@@ -97,6 +97,6 @@ test("SC-W0043-03: system group names and the detail insight are bilingual templ
   if (userLocation.state !== "ready") throw new Error("Missing detail");
   assert.equal(userLocation.label, "深圳南山");
   const html = renderToStaticMarkup(<ContactsStructureDetail view={en} />);
-  assert.match(html, /Decision makers has 4 contacts/);
+  assert.match(html, /This group has 4 contacts; most are warm ties/);
   assert.doesNotMatch(html, /经营决策者共有/);
 });

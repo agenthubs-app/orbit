@@ -52,13 +52,35 @@ test("pipeline renders four stage columns with real counts and real stats", () =
   assert.doesNotMatch(html, /97|128/);
 });
 
-test("pipeline renders the AI suggestions empty state when analysis is not ready", () => {
+test("pipeline shows \"in progress\" (not a real empty state) while analysis is pending", () => {
   const html = renderToStaticMarkup(<NetworkPipeline viewModel={vm} analysis={pending} />);
   assert.match(html, /最近新增 — 位/);
   assert.equal((html.match(/class="btn nw-suggest"/g) ?? []).length, 0);
-  assert.match(html, /nw-empty">暂无建议</);
+  assert.match(html, /nw-empty">分析生成中</);
+  assert.doesNotMatch(html, /暂无建议/);
   assert.match(html, /class="btn nw-shuffle"[^>]*disabled/);
 });
+
+// review P1：AI 建议区按状态渲染（zh／en 矩阵）。
+const withOpportunities = (opportunities: Extract<ContactsAnalysisView, { state: "ready" }>["opportunities"]): ContactsAnalysisView => ({ ...(ready as Extract<ContactsAnalysisView, { state: "ready" }>), opportunities });
+const MATRIX: Array<[string, ContactsAnalysisView, { zh: string; en: string }]> = [
+  ["empty", withOpportunities({ state: "empty", data: { summary: "", actions: [], dormant: [] } }), { zh: "暂无建议", en: "No suggestions yet" }],
+  ["pending section", withOpportunities({ state: "pending" }), { zh: "分析生成中", en: "Analysis in progress" }],
+  ["unavailable section", withOpportunities({ state: "unavailable" }), { zh: "来源暂时不可用", en: "Source temporarily unavailable" }],
+  ["page pending", { state: "pending" }, { zh: "分析生成中", en: "Analysis in progress" }],
+  ["page error", { state: "error" }, { zh: "来源暂时不可用", en: "Source temporarily unavailable" }],
+];
+for (const language of ["zh", "en"] as const) {
+  for (const [name, analysis, copy] of MATRIX) {
+    test(`review P1 (${language}): pipeline suggestions for ${name}`, () => {
+      const html = renderToStaticMarkup(<OrbitLanguageProvider initialLanguage={language}><NetworkPipeline viewModel={vm} analysis={analysis} /></OrbitLanguageProvider>);
+      const others = Object.values(MATRIX.reduce<Record<string, string>>((acc, [, , c]) => ({ ...acc, [c[language]]: c[language] }), {})).filter((text) => text !== copy[language]);
+      const area = html.replace(/<style[\s\S]*?<\/style>/g, "").split('data-network-section="suggestions"')[1]?.split('class="nw-pipe-filters"')[0] ?? "";
+      assert.match(area, new RegExp(`nw-empty">${copy[language]}<`));
+      for (const other of others) assert.equal(area.includes(other), false, `${name} must not show ${other}`);
+    });
+  }
+}
 
 for (const language of ["zh", "en"] as const) {
   test(`SC-W0043-02 (${language}): pipeline suggestions show task titles, contact names and bilingual due tags, no backend sentences`, () => {

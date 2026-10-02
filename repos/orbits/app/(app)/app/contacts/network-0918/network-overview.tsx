@@ -49,9 +49,11 @@ export function NetworkOverview({ viewModel, analysis }: { viewModel: OrbitConta
   const demoDetail = useNetworkDemoDetail("/app/contacts/dashboard");
   const meta = demo
     ? t({ zh: `示例人物的人脉分析 · 依据 ${people.length} 位示例联系人`, en: `Demo persona's network analysis · based on ${people.length} demo contacts` })
-    : ready
+    : analysis.state === "ready"
     ? t({ zh: `更新于${formatMonthDay(analysis.generatedAt, t, true)} · 依据 ${people.length} 位联系人`, en: `Updated ${formatMonthDay(analysis.generatedAt, t, true)} · based on ${people.length} contacts` })
-    : t({ zh: `分析生成中 · 依据 ${people.length} 位联系人`, en: `Analysis in progress · based on ${people.length} contacts` });
+    : analysis.state === "pending"
+    ? t({ zh: `分析生成中 · 依据 ${people.length} 位联系人`, en: `Analysis in progress · based on ${people.length} contacts` })
+    : t({ zh: `来源暂时不可用 · 依据 ${people.length} 位联系人`, en: `Source temporarily unavailable · based on ${people.length} contacts` });
   const highlights = people.filter((p) => p.stage === "advance").slice(0, 2);
   const activity = ready ? analysis.activity : [];
   const nameById = useMemo(() => new Map(viewModel.connections.map((contact) => [contact.id, contact.displayName.trim()])), [viewModel.connections]);
@@ -152,7 +154,7 @@ export function NetworkOverview({ viewModel, analysis }: { viewModel: OrbitConta
           )}
         </div>
 
-        <div className="nw-recent-card">
+        <div className="nw-recent-card" data-network-section="activity">
           <div className="nw-ov-head">
             <h2 className="nw-h2">{t({ en: "Recent activity", zh: "最近动态" })}</h2>
             <a className="nw-link" href="/app/contacts">{t({ en: "View all contacts →", zh: "查看全部人脉 →" })}</a>
@@ -171,8 +173,13 @@ export function NetworkOverview({ viewModel, analysis }: { viewModel: OrbitConta
               <span className="nw-recent-last">{formatMonthDay(a.occurredAt, t)}</span>
             </div>
           ))}
-          {activity.length === 0 ? (
+          {/* W0043 review：只有 ready 才显示真实空态；pending 显示生成中，整页 error 显示不可用。 */}
+          {analysis.state === "ready" && activity.length === 0 ? (
             <div className="nw-empty">{t({ en: "No activity yet", zh: "还没有互动记录" })}</div>
+          ) : analysis.state === "pending" ? (
+            <div className="nw-empty">{t({ en: "Analysis in progress", zh: "分析生成中" })}</div>
+          ) : analysis.state === "error" ? (
+            <div className="nw-empty" role="status">{t({ en: "Source temporarily unavailable", zh: "来源暂时不可用" })}</div>
           ) : null}
         </div>
       </div>

@@ -29,7 +29,9 @@ export function NetworkPipeline({ viewModel, analysis }: { viewModel: OrbitConta
     ...NETWORK_STAGES.map((stage) => ({ icon: STAGE_STYLE[stage].icon, n: counts[stage], label: t(STAGE_LABEL[stage]), bg: "#F7F7FD" })),
   ];
   const newContacts = analysis.state === "ready" ? String(analysis.metrics.newContacts) : "—";
-  const actions = analysis.state === "ready" && analysis.opportunities.state === "ready" ? analysis.opportunities.data.actions : [];
+  // W0043 review：按区块状态渲染——ready／empty 带数据（empty 显示真实空态），pending 显示生成中，unavailable 与整页 error 显示不可用。
+  const opportunityState = analysis.state === "ready" ? analysis.opportunities.state : analysis.state;
+  const actions = analysis.state === "ready" && "data" in analysis.opportunities ? analysis.opportunities.data.actions : [];
   const pages = Math.max(1, Math.ceil(actions.length / SUGGEST_PAGE));
   // 页码夹取：analysis 重新加载后 actions 变少时 page 可能越界，取模回到有效页。
   const safePage = pages ? page % pages : 0;
@@ -59,7 +61,7 @@ export function NetworkPipeline({ viewModel, analysis }: { viewModel: OrbitConta
               ))}
             </div>
           </div>
-          <div className="nw-ai-card">
+          <div className="nw-ai-card" data-network-section="suggestions">
             <div className="nw-ai-head">
               <div className="nw-ai-title">
                 <span className="nw-ai-star">✦</span>
@@ -84,7 +86,11 @@ export function NetworkPipeline({ viewModel, analysis }: { viewModel: OrbitConta
                 ))}
               </div>
             ) : (
-              <div className="nw-empty">{t({ en: "No suggestions yet", zh: "暂无建议" })}</div>
+              <div className="nw-empty">{opportunityState === "pending"
+                ? t({ en: "Analysis in progress", zh: "分析生成中" })
+                : opportunityState === "unavailable" || opportunityState === "error"
+                ? t({ en: "Source temporarily unavailable", zh: "来源暂时不可用" })
+                : t({ en: "No suggestions yet", zh: "暂无建议" })}</div>
             )}
           </div>
         </div>

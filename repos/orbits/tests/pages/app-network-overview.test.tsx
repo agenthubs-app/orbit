@@ -8,7 +8,7 @@ import { NetworkOverview } from "../../app/(app)/app/contacts/network-0918/netwo
 import { contactsAnalysisToView } from "../../app/(app)/app/contacts/analysis/contacts-analysis-view-model";
 import { OrbitLanguageProvider } from "../../app/(app)/app/orbit-language-context";
 import type { OrbitContactsViewModel } from "../../app/(app)/app/orbit-contacts-route-view-model";
-import { forbiddenHits, networkDebugPayload, networkEmptyPayload, networkUnavailablePayload } from "../fixtures/network-debug-payload";
+import { forbiddenHits, networkDebugPayload, networkEmptyPayload, networkSectionFailurePayload, networkSections, networkUnavailablePayload } from "../fixtures/network-debug-payload";
 
 const empty = { connections: [], events: [], intros: [], pipelineStatuses: [] };
 const ready: ContactsAnalysisView = {
@@ -32,7 +32,9 @@ test("overview renders donut, cockpit, stage bar and recent list from real data"
   assert.equal((html.match(/class="btn nw-cockpit-card"/g) ?? []).length, 4);
   assert.match(html, /nw-cockpit-n">—</); // 非 ready → —
   assert.match(html, /最近动态/);
-  assert.match(html, /还没有互动记录/);
+  // pending 不显示真实空态（review P1）
+  assert.match(html, /data-network-section="activity"[\s\S]*分析生成中/);
+  assert.doesNotMatch(html, /还没有互动记录/);
   assert.match(html, /没有正在推进的关系/);
   assert.doesNotMatch(html, /本周/);
   assert.equal((html.match(/class="btn nw-stage-seg"/g) ?? []).length, 4);
@@ -171,3 +173,42 @@ test("SC-W0043-03: recent activity, action tags and group names are bilingual an
   assert.match(enStruct, /Unclassified/);
   assert.doesNotMatch(enStruct, /未分类/);
 });
+
+// ---- W0043 review：整页 error、逐区块失败 ----
+for (const language of ["zh", "en"] as const) {
+  test(`review P1 (${language}): overview with a failed analysis says "unavailable", not "in progress" or a real empty state`, () => {
+    const html = inLanguage(language, <NetworkOverview viewModel={withWang} analysis={{ state: "error" }} />);
+    const activity = networkSections(html).activity ?? "";
+    assert.match(activity, UNAVAILABLE);
+    assert.doesNotMatch(activity, /还没有互动记录|No activity yet|分析生成中|Analysis in progress/);
+    assert.match(html, language === "zh" ? /来源暂时不可用 · 依据 1 位联系人/ : /Source temporarily unavailable · based on 1 contacts/);
+    assert.doesNotMatch(html, /分析生成中|Analysis in progress/);
+  });
+
+  test(`review P1 (${language}): each failed section shows "unavailable" in its own area only`, () => {
+    const expect: Record<"distributions" | "gaps" | "opportunities" | "profile", { tab: "struct" | "opp"; failed: string[]; healthy: string[] }> = {
+      distributions: { tab: "struct", failed: ["structure", "top", "health"], healthy: [] },
+      gaps: { tab: "opp", failed: ["coverage"], healthy: ["goal", "actions", "dormant"] },
+      opportunities: { tab: "opp", failed: ["actions", "dormant"], healthy: ["goal", "coverage"] },
+      profile: { tab: "opp", failed: ["goal", "coverage"], healthy: ["actions", "dormant"] },
+    };
+    for (const [section, { tab, failed, healthy }] of Object.entries(expect) as Array<[keyof typeof expect, (typeof expect)[keyof typeof expect]]>) {
+      const view = contactsAnalysisToView(networkSectionFailurePayload(section), language);
+      const sections = networkSections(inLanguage(language, <NetworkAnalysis viewModel={withWang} analysis={view} initialTab={tab} />));
+      for (const key of failed) assert.match(sections[key] ?? "", UNAVAILABLE, `${section} → ${key} should be unavailable`);
+      for (const key of healthy) assert.doesNotMatch(sections[key] ?? "", UNAVAILABLE, `${section} → ${key} should stay available`);
+      // 覆盖区只在 coverage 与 goal 都可读时给「生成计划」入口
+      const coverage = sections.coverage ?? "";
+      if (section === "gaps" || section === "profile") assert.doesNotMatch(coverage, /data-network-coverage-goal|✦ (生成计划|Generate a plan)|\/app\/agent\/plan/);
+      if (section === "opportunities") assert.match(coverage, /data-network-coverage-goal/);
+    }
+  });
+
+  test(`review P1 (${language}): pending coverage shows "in progress" without the plan entry`, () => {
+    const view = contactsAnalysisToView(networkDebugPayload(), language);
+    if (view.state !== "ready") throw new Error("Missing view");
+    const coverage = networkSections(inLanguage(language, <NetworkAnalysis viewModel={withWang} analysis={{ ...view, coverage: { state: "pending" } }} initialTab="opp" />)).coverage ?? "";
+    assert.match(coverage, /分析生成中|Analysis in progress/);
+    assert.doesNotMatch(coverage, /data-network-coverage-goal/);
+  });
+}

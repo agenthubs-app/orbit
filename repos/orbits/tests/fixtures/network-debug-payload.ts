@@ -213,6 +213,20 @@ export function networkUnavailablePayload(): MobileContactsDashboardPayload {
   return data;
 }
 
+/** 夹具 B'：只让一个可选区块读取失败，其余区块正常（review：逐区块断言）。 */
+export function networkSectionFailurePayload(section: "distributions" | "gaps" | "opportunities" | "profile"): MobileContactsDashboardPayload {
+  const data = networkDebugPayload();
+  data[section] = null;
+  data.unavailableSections = [section, "contacts"];
+  return data;
+}
+
+/** 把渲染结果按 `data-network-section` 切成各区块的 HTML（区块互不嵌套）。 */
+export function networkSections(html: string): Record<string, string> {
+  const parts = html.split(/data-network-section="/).slice(1);
+  return Object.fromEntries(parts.map((part) => [part.slice(0, part.indexOf("\"")), part]));
+}
+
 /** 夹具 C：聚合仍在生成。 */
 export function networkPendingPayload(): MobileContactsDashboardPayload {
   const data = networkDebugPayload();
