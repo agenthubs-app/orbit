@@ -68,6 +68,7 @@ const ownedByActor = (alias: string) => `${alias}.user_id = $2
 export const HOME_CONTACTS_SUMMARY_SQL = `with
 owned_contacts as materialized (
   select c.payload, c.payload->>'id' as domain_id,
+    coalesce(c.occurred_at, c.updated_at) as list_order_at, c.updated_at,
     (select count(*) from jsonb_each(c.payload)) as projected_fields
   from orbit_records c
   where c.workspace_id = $1 and c.collection_name = 'contacts'
@@ -84,8 +85,17 @@ owned_contacts as materialized (
       and ${nonEmptyString("payload->'createdAt'")}
       and ${nonEmptyString("payload->'updatedAt'")}) as valid,
     coalesce(jsonb_typeof(payload->'lifecycleInitialization') = 'string' and payload->>'lifecycleInitialization' = 'pending', false) as pending,
-    payload->>'stage' as stage
+    payload->>'stage' as stage,
+    list_order_at, updated_at
   from owned_contacts
+), authoritative_contacts as materialized (
+  -- The page model keys valid contacts by id in a Map over the list read's
+  -- order (coalesce(occurred_at, updated_at) desc, updated_at desc), so the
+  -- last row of a repeated id decides whether a relationship stage applies.
+  select distinct on (domain_id) domain_id, pending
+  from contact_rows
+  where valid
+  order by domain_id, list_order_at asc, updated_at asc
 ), connection_rows as materialized (
   select r.payload->>'contactId' as contact_id,
     ${versionValid("r.payload")} as version_ok,
@@ -128,7 +138,7 @@ owned_contacts as materialized (
     and (connection_group.has_version or connection_group.ready)
     and not connection_group.pending
     and connection_group.stage in (${CONNECTION_STAGES_SQL})
-    and not exists (select 1 from contact_rows contact where contact.valid and contact.domain_id = connection_group.contact_id and contact.pending)
+    and exists (select 1 from authoritative_contacts contact where contact.domain_id = connection_group.contact_id and not contact.pending)
 )
 select
   (select count(*) from contact_rows where not version_ok)::int as invalid_contact_versions,

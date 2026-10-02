@@ -189,6 +189,23 @@ scenarios.push({ actor: "account:array-payload", throws: /jsonb_each/u, rows: (a
   C("contacts:ok", a, contact("contact:ok", a)),
   C("contacts:array", a, [1, 2]),
 ] });
+// Repeated contact ids: the page model's Map keeps the last valid row of the list order (newest first),
+// i.e. the oldest row decides whether the single relationship's stage applies to every copy.
+scenarios.push({ actor: "account:duplicate-id-oldest-ready", throws: null, rows: (a) => [
+  C("contacts:dup-old", a, contact("contact:dup", a, { stage: "active" })),
+  C("contacts:dup-new", a, contact("contact:dup", a, { stage: "active", lifecycleInitialization: "pending" })),
+  R("connections:dup", a, connection("connection:dup", a, "contact:dup", { stage: "archived", version: 1 })),
+] });
+scenarios.push({ actor: "account:duplicate-id-oldest-pending", throws: null, rows: (a) => [
+  C("contacts:dup-old", a, contact("contact:dup", a, { stage: "active", lifecycleInitialization: "pending" })),
+  C("contacts:dup-new", a, contact("contact:dup", a, { stage: "active" })),
+  R("connections:dup", a, connection("connection:dup", a, "contact:dup", { stage: "archived", version: 1 })),
+] });
+scenarios.push({ actor: "account:duplicate-id-oldest-invalid", throws: null, rows: (a) => [
+  C("contacts:dup-old", a, contact("contact:dup", a, { stage: "active", lifecycleInitialization: "pending", displayName: " " })),
+  C("contacts:dup-new", a, contact("contact:dup", a, { stage: "active" })),
+  R("connections:dup", a, connection("connection:dup", a, "contact:dup", { stage: "archived", version: 1 })),
+] });
 scenarios.push({ actor: "account:nobody", throws: null, rows: () => [] });
 
 test("W0041 PG home contacts summary equals the old contacts page model on every boundary (counts and failures)", pgSkip, async () => {
@@ -276,6 +293,8 @@ test("W0041 PG home contacts summary equals the old contacts page model on every
     const rich = await newReader("account:rich");
     assert.equal(rich.knownPeople, 35, "35 counted contacts (a zero-width space is not whitespace), no 30-row window");
     assert.ok(rich.inProgress < rich.knownPeople);
+    assert.deepEqual(await newReader("account:duplicate-id-oldest-ready"), { inProgress: 0, knownPeople: 2 }, "the oldest copy is ready: both copies take the archived stage");
+    assert.deepEqual(await newReader("account:duplicate-id-oldest-pending"), { inProgress: 2, knownPeople: 2 }, "the oldest copy is pending: no copy takes the stage");
     // whitespace around the actor is trimmed by the service, not the reader; a padded id owns nothing
     assert.deepEqual(await newReader(" account:rich "), { inProgress: 0, knownPeople: 0 });
   } finally {
