@@ -21,6 +21,7 @@ import {
   type TransactionalPostgresClient,
 } from "../../../shared/storage/transactional-postgres";
 import type { ProfileSignalSuggestionStatus } from "../signal-contract";
+import { createPostgresProfileSignalGraphRecordReader } from "./profile-signal-graph-postgres-reader";
 
 export interface LiveProfileSignalDecision {
   actorId: string;
@@ -76,6 +77,11 @@ export const PROFILE_SIGNAL_LIVE_RECORD_COLLECTIONS = {
 } as const;
 
 export interface StorageProfileSignalProviderOptions {
+  /**
+   * W0042: an actor-scoped raw record reader (Postgres only). Without it the
+   * provider lists the five signal collections whole and filters in memory.
+   */
+  graphRecordReader?: ProfileSignalGraphRecordReader;
   source?: string;
   sourceLabel?: string;
   store: LiveRecordStoreLike<Record<string, unknown>>;
@@ -166,6 +172,61 @@ function sourceFromValue(value: unknown): SourceReferenceDTO | null {
     label: value.label,
   };
 }
+
+/**
+ * W0042: the payload fields the actor-scoped reader keeps, per collection, in
+ * two columns. `derivation` are the fields the actor selection reads
+ * (ownership `accountId`, the ids it matches and collects, `evidenceIds` for
+ * the evidence references); `parser` are the fields the parser right below
+ * reads. A parser that starts reading another field must add it here, or the
+ * Postgres path silently drops it (the graph parity tests catch this).
+ */
+export const PROFILE_SIGNAL_PAYLOAD_FIELDS = {
+  profiles: {
+    derivation: ["accountId", "evidenceIds"],
+    parser: [
+      "id", "accountId", "displayName", "createdAt", "updatedAt", "role",
+      "timezone", "headline", "homeMarket", "organization", "publicProfile",
+      "preferredFollowUpWindow", "preferredIntroChannels", "relationshipGoal",
+      "targetRelationshipTypes", "evidenceIds",
+    ],
+  },
+  contacts: {
+    derivation: ["accountId", "id", "evidenceIds"],
+    parser: [
+      "source", "id", "displayName", "stage", "createdAt", "updatedAt",
+      "personId", "organization", "role", "location", "primaryEmail",
+      "primaryPhone", "profileSnippet", "evidenceIds",
+    ],
+  },
+  connections: {
+    derivation: ["accountId", "id", "contactId", "evidenceIds"],
+    parser: [
+      "source", "id", "accountId", "contactId", "stage", "summary",
+      "createdAt", "updatedAt", "valueTypes", "relationshipStrength",
+      "trustLevel", "businessRelevanceScore", "sharedTopics",
+      "suggestedActions", "evidenceIds",
+    ],
+  },
+  interactionMemories: {
+    derivation: ["accountId", "contactId", "connectionId", "evidenceIds"],
+    parser: [
+      "source", "id", "contactId", "memoryType", "summary", "occurredAt",
+      "createdAt", "confidence", "connectionId", "conversationId",
+      "messageId", "evidenceIds",
+    ],
+  },
+  evidence: {
+    derivation: ["accountId", "id"],
+    parser: [
+      "id", "sourceType", "sourceId", "summary", "occurredAt", "createdBy",
+      "confidence",
+    ],
+  },
+} as const satisfies Record<
+  keyof ProfileSignalRawRecords,
+  { derivation: readonly string[]; parser: readonly string[] }
+>;
 
 function profileFromRecord(
   record: LiveRecord<Record<string, unknown>>,
@@ -448,11 +509,181 @@ function suggestionDecisionFromRecord(
   };
 }
 
+/** The five signal collections as raw live records, before the actor selection. */
+export interface ProfileSignalRawRecords {
+  connections: readonly LiveRecord<Record<string, unknown>>[];
+  contacts: readonly LiveRecord<Record<string, unknown>>[];
+  evidence: readonly LiveRecord<Record<string, unknown>>[];
+  interactionMemories: readonly LiveRecord<Record<string, unknown>>[];
+  profiles: readonly LiveRecord<Record<string, unknown>>[];
+}
+
+/**
+ * W0042: reads, for one actor, the raw rows of the five signal collections
+ * that `selectActorSignalRecords` can pick. It may return more rows (they are
+ * filtered again) but never fewer, and keeps each collection's list order.
+ */
+export type ProfileSignalGraphRecordReader = (
+  actorId: string,
+) => Promise<ProfileSignalRawRecords>;
+
+/** The actor's connections and the ids they contribute (only connections contribute contact ids). */
+export function actorConnectionReferences(
+  connectionRecords: readonly LiveRecord<Record<string, unknown>>[],
+  actorId: string,
+): {
+  actorConnectionIds: ReadonlySet<string>;
+  actorConnectionRecords: LiveRecord<Record<string, unknown>>[];
+  actorContactIds: ReadonlySet<string>;
+} {
+  const actorConnectionRecords = connectionRecords.filter((record) =>
+    belongsToActor(record, actorId),
+  );
+  const actorConnectionIds = new Set(
+    actorConnectionRecords
+      .map((record) => record.payload.id)
+      .filter(nonEmptyString),
+  );
+  const actorContactIds = new Set(
+    actorConnectionRecords
+      .map((record) => record.payload.contactId)
+      .filter(nonEmptyString),
+  );
+  return { actorConnectionIds, actorConnectionRecords, actorContactIds };
+}
+
+/**
+ * The actor selection of every collection except evidence, plus the evidence
+ * ids those selected (raw, possibly invalid) records reference.
+ */
+export function selectActorRecordsBeforeEvidence(
+  raw: Omit<ProfileSignalRawRecords, "evidence">,
+  actorId: string,
+): Omit<ProfileSignalRawRecords, "evidence"> & {
+  actorEvidenceIds: ReadonlySet<string>;
+} {
+  const actorProfileRecords = raw.profiles.filter((record) =>
+    belongsToActor(record, actorId),
+  );
+  const { actorConnectionIds, actorConnectionRecords, actorContactIds } =
+    actorConnectionReferences(raw.connections, actorId);
+  const actorContactRecords = raw.contacts.filter(
+    (record) =>
+      belongsToActor(record, actorId) ||
+      (nonEmptyString(record.payload.id) &&
+        actorContactIds.has(record.payload.id)),
+  );
+  const actorInteractionMemoryRecords = raw.interactionMemories.filter(
+    (record) =>
+      belongsToActor(record, actorId) ||
+      (nonEmptyString(record.payload.contactId) &&
+        actorContactIds.has(record.payload.contactId)) ||
+      (nonEmptyString(record.payload.connectionId) &&
+        actorConnectionIds.has(record.payload.connectionId)),
+  );
+  // Sprint 0109: the legacy chat `messages` collection has had no writer since
+  // sprint 0104 and is no longer read. Relationship messages between two
+  // accounts are not a profile signal source (message plan decision 1).
+  const actorEvidenceIds = referencedEvidenceIds([
+    ...actorProfileRecords,
+    ...actorContactRecords,
+    ...actorConnectionRecords,
+    ...actorInteractionMemoryRecords,
+  ]);
+  return {
+    actorEvidenceIds,
+    connections: actorConnectionRecords,
+    contacts: actorContactRecords,
+    interactionMemories: actorInteractionMemoryRecords,
+    profiles: actorProfileRecords,
+  };
+}
+
+export function selectActorEvidenceRecords(
+  evidenceRecords: readonly LiveRecord<Record<string, unknown>>[],
+  actorEvidenceIds: ReadonlySet<string>,
+  actorId: string,
+): LiveRecord<Record<string, unknown>>[] {
+  return evidenceRecords.filter(
+    (record) =>
+      belongsToActor(record, actorId) ||
+      (nonEmptyString(record.payload.id) &&
+        actorEvidenceIds.has(record.payload.id)),
+  );
+}
+
+/** The actor's rows of the five signal collections, in input order (the pre-W0042 JavaScript filter). */
+export function selectActorSignalRecords(
+  raw: ProfileSignalRawRecords,
+  actorId: string,
+): ProfileSignalRawRecords {
+  const { actorEvidenceIds, ...selected } = selectActorRecordsBeforeEvidence(
+    raw,
+    actorId,
+  );
+  return {
+    ...selected,
+    evidence: selectActorEvidenceRecords(raw.evidence, actorEvidenceIds, actorId),
+  };
+}
+
+/** Raw records → actor selection → parsed graph. Shared by the whole-workspace path and the W0042 reader. */
+export function buildProfileSignalGraph(
+  raw: ProfileSignalRawRecords,
+  suggestionDecisionRecords: readonly LiveRecord<Record<string, unknown>>[],
+  actorId: string,
+): LiveProfileSignalGraph {
+  const selected = selectActorSignalRecords(raw, actorId);
+  const actorMessageRecords: LiveRecord<Record<string, unknown>>[] = [];
+  const actorRecords = [
+    ...selected.profiles,
+    ...selected.contacts,
+    ...selected.connections,
+    ...actorMessageRecords,
+    ...selected.interactionMemories,
+    ...selected.evidence,
+  ];
+
+  return {
+    connections: selected.connections
+      .map(connectionFromRecord)
+      .filter((connection): connection is ConnectionDTO => connection !== null),
+    contacts: selected.contacts
+      .map(contactFromRecord)
+      .filter((contact): contact is ContactDTO => contact !== null),
+    evidence: selected.evidence
+      .map(evidenceFromRecord)
+      .filter(
+        (evidence): evidence is RelationshipEvidenceDTO => evidence !== null,
+      ),
+    generatedAt: latestTimestamp(actorRecords),
+    interactionMemories: selected.interactionMemories
+      .map(interactionMemoryFromRecord)
+      .filter(
+        (memory): memory is InteractionMemoryDTO => memory !== null,
+      ),
+    messages: actorMessageRecords
+      .map(messageFromRecord)
+      .filter((message): message is MessageDTO => message !== null),
+    profiles: selected.profiles
+      .map(profileFromRecord)
+      .filter(
+        (profile): profile is LiveProfileSignalProfileRecord =>
+          profile !== null,
+      ),
+    suggestionDecisions: suggestionDecisionRecords
+      .map(suggestionDecisionFromRecord)
+      .filter((decision): decision is LiveProfileSignalDecision =>
+        decision !== null && decision.actorId === actorId),
+  };
+}
+
 function suggestionDecisionRecordId(actorId: string, suggestionId: string): string {
   return `profile-suggestion-decision:${encodeURIComponent(actorId)}:${encodeURIComponent(suggestionId)}`;
 }
 
 export function createStorageProfileSignalProvider({
+  graphRecordReader,
   source,
   sourceLabel = "Profile signal shared live storage",
   store,
@@ -462,6 +693,29 @@ export function createStorageProfileSignalProvider({
     source: source ?? `live-record-store:profile-signals:${workspaceId}`,
     sourceLabel,
     async readSignalGraph(actorId): Promise<LiveProfileSignalGraph> {
+      const readDecisionRecords = () =>
+        store.listRecords({
+          limit: "unbounded",
+          workspaceId,
+          collectionName: PROFILE_SIGNAL_LIVE_RECORD_COLLECTIONS.suggestionDecisions,
+          userId: actorId,
+        });
+
+      if (graphRecordReader) {
+        // W0042: the Postgres reader returns only rows the selection below can
+        // pick (plus every non-object payload row), in the same order; the
+        // selection itself is the unchanged JavaScript one.
+        const [candidateRecords, suggestionDecisionRecords] = await Promise.all([
+          graphRecordReader(actorId),
+          readDecisionRecords(),
+        ]);
+        return buildProfileSignalGraph(
+          candidateRecords,
+          suggestionDecisionRecords,
+          actorId,
+        );
+      }
+
       const [
         profileRecords,
         contactRecords,
@@ -496,102 +750,20 @@ export function createStorageProfileSignalProvider({
           workspaceId,
           collectionName: PROFILE_SIGNAL_LIVE_RECORD_COLLECTIONS.evidence,
         }),
-        store.listRecords({
-          limit: "unbounded",
-          workspaceId,
-          collectionName: PROFILE_SIGNAL_LIVE_RECORD_COLLECTIONS.suggestionDecisions,
-          userId: actorId,
-        }),
+        readDecisionRecords(),
       ]);
 
-      const actorProfileRecords = profileRecords.filter((record) =>
-        belongsToActor(record, actorId),
+      return buildProfileSignalGraph(
+        {
+          connections: connectionRecords,
+          contacts: contactRecords,
+          evidence: evidenceRecords,
+          interactionMemories: interactionMemoryRecords,
+          profiles: profileRecords,
+        },
+        suggestionDecisionRecords,
+        actorId,
       );
-      const actorConnectionRecords = connectionRecords.filter((record) =>
-        belongsToActor(record, actorId),
-      );
-      const actorConnectionIds = new Set(
-        actorConnectionRecords
-          .map((record) => record.payload.id)
-          .filter(nonEmptyString),
-      );
-      const actorContactIds = new Set(
-        actorConnectionRecords
-          .map((record) => record.payload.contactId)
-          .filter(nonEmptyString),
-      );
-      const actorContactRecords = contactRecords.filter(
-        (record) =>
-          belongsToActor(record, actorId) ||
-          (nonEmptyString(record.payload.id) &&
-            actorContactIds.has(record.payload.id)),
-      );
-      const actorInteractionMemoryRecords = interactionMemoryRecords.filter(
-        (record) =>
-          belongsToActor(record, actorId) ||
-          (nonEmptyString(record.payload.contactId) &&
-            actorContactIds.has(record.payload.contactId)) ||
-          (nonEmptyString(record.payload.connectionId) &&
-            actorConnectionIds.has(record.payload.connectionId)),
-      );
-      // Sprint 0109: the legacy chat `messages` collection has had no writer since
-      // sprint 0104 and is no longer read. Relationship messages between two
-      // accounts are not a profile signal source (message plan decision 1).
-      const actorMessageRecords: LiveRecord<Record<string, unknown>>[] = [];
-      const actorEvidenceIds = referencedEvidenceIds([
-        ...actorProfileRecords,
-        ...actorContactRecords,
-        ...actorConnectionRecords,
-        ...actorMessageRecords,
-        ...actorInteractionMemoryRecords,
-      ]);
-      const actorEvidenceRecords = evidenceRecords.filter(
-        (record) =>
-          belongsToActor(record, actorId) ||
-          (nonEmptyString(record.payload.id) &&
-            actorEvidenceIds.has(record.payload.id)),
-      );
-      const actorRecords = [
-        ...actorProfileRecords,
-        ...actorContactRecords,
-        ...actorConnectionRecords,
-        ...actorMessageRecords,
-        ...actorInteractionMemoryRecords,
-        ...actorEvidenceRecords,
-      ];
-
-      return {
-        connections: actorConnectionRecords
-          .map(connectionFromRecord)
-          .filter((connection): connection is ConnectionDTO => connection !== null),
-        contacts: actorContactRecords
-          .map(contactFromRecord)
-          .filter((contact): contact is ContactDTO => contact !== null),
-        evidence: actorEvidenceRecords
-          .map(evidenceFromRecord)
-          .filter(
-            (evidence): evidence is RelationshipEvidenceDTO => evidence !== null,
-          ),
-        generatedAt: latestTimestamp(actorRecords),
-        interactionMemories: actorInteractionMemoryRecords
-          .map(interactionMemoryFromRecord)
-          .filter(
-            (memory): memory is InteractionMemoryDTO => memory !== null,
-          ),
-        messages: actorMessageRecords
-          .map(messageFromRecord)
-          .filter((message): message is MessageDTO => message !== null),
-        profiles: actorProfileRecords
-          .map(profileFromRecord)
-          .filter(
-            (profile): profile is LiveProfileSignalProfileRecord =>
-              profile !== null,
-          ),
-        suggestionDecisions: suggestionDecisionRecords
-          .map(suggestionDecisionFromRecord)
-          .filter((decision): decision is LiveProfileSignalDecision =>
-            decision !== null && decision.actorId === actorId),
-      };
     },
     async saveSuggestionDecision(decision, actorId) {
       return withDecisionLock(store, JSON.stringify([workspaceId, actorId, decision.suggestionId]), async () => {
@@ -654,6 +826,12 @@ export function createTransactionalStorageProfileSignalProvider({
   const options = { source, sourceLabel, workspaceId };
   const provider = createStorageProfileSignalProvider({
     ...options,
+    // W0042: the signal graph reads only the actor's rows, through the same
+    // (metered) client the store uses.
+    graphRecordReader: createPostgresProfileSignalGraphRecordReader({
+      client,
+      workspaceId,
+    }),
     store: createPostgresLiveRecordStore({ client }),
   });
   return {
