@@ -167,16 +167,19 @@ export async function ensureRelationshipStrengths(
 
 /**
  * Web 服务端加载器用：刷新失败不影响页面（继续读已有缓存），只写结构化日志。
+ * W0049：顺带返回 state 行（来源戳那条语句里已经读到，不多读）；未配置或失败时为 null。
+ * 结构标签据此显示较 30 天前的变化（`tierCountsAt30d`、`earliestCaptureAt`）。
  */
-export async function ensureRelationshipStrengthsForPage(actorId: string, now: Date = new Date(), deps: RelationshipStrengthDeps = {}): Promise<void> {
+export async function ensureRelationshipStrengthsForPage(actorId: string, now: Date = new Date(), deps: RelationshipStrengthDeps = {}): Promise<RelationshipStrengthState | null> {
   try {
-    await ensureRelationshipStrengths(actorId, now, deps);
+    return (await ensureRelationshipStrengths(actorId, now, deps)).state;
   } catch (error) {
     console.error(JSON.stringify({
       event: "relationship_strength_refresh_failed",
       actorId,
       error: error instanceof Error ? `${error.name}: ${error.message}`.slice(0, 200) : "unknown",
     }));
+    return null;
   }
 }
 

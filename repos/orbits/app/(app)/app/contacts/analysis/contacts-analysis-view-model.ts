@@ -1,13 +1,18 @@
 import { mobileContactsDashboardPayloadSchema } from "../../../../../shared/api-schema/mobile-contacts-dashboard";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import type { RelationshipTierGroup } from "../../../../../shared/contract/relationship-strength";
-import { industryLabel } from "../../../../../shared/domain/industries";
-import { actionLinkLabel, activitySourceLabel, activityTypeLabel, contactActionTitle, contactIdFromActivityId, dueLabelCopy, systemBucketName } from "./network-copy";
+import { actionLinkLabel, activitySourceLabel, activityTypeLabel, contactActionTitle, contactIdFromActivityId, dueLabelCopy, structureBucketLabel } from "./network-copy";
 
-export type AnalysisDimension = "industry" | "location" | "role" | "relationship";
+/**
+ * 分析视图的结构维度。旧四维（industry／location／role／relationship）留给概览与 App 口径；
+ * W0049 结构标签只显示 industry（两级）／region／seniority／tier（W49-4）。
+ */
+export type AnalysisDimension = "industry" | "location" | "role" | "relationship" | "seniority" | "region" | "tier";
+export type LegacyAnalysisDimension = "industry" | "location" | "role" | "relationship";
 export type AnalysisSection<T> = { state: "unavailable" | "pending" } | { state: "ready" | "empty"; data: T };
 export type AnalysisLink = { label: string; href: string };
-export type AnalysisBucket = { id: string; label: string; count: number; percentage: number; missingData: boolean; href: string };
+/** `children`：只在行业一级分组上，为其二级分组（W49-3；百分比分母 = 一级分组人数）。 */
+export type AnalysisBucket = { id: string; label: string; count: number; percentage: number; missingData: boolean; href: string; children?: AnalysisBucket[] };
 /**
  * W0043 白名单：`judgment`、`dueLabel` 只放 Web 端模板或空串（示例期由 demo-network 填示例文案）；
  * 后端句子字段（reason、suggestedAction、actionBrief.judgment／steps／evidence）不进视图。
@@ -43,7 +48,8 @@ export type ContactsAnalysisView = { state: "error" | "pending" } | {
   analysis: { state: "unavailable" } | ({ state: "ready" } & AnalysisReportView);
   goal: AnalysisSection<{ id: string | null; text: string; updatedAt: string; canEdit: boolean }>;
   structure: AnalysisSection<{
-    dimensions: Record<AnalysisDimension, AnalysisBucket[]>;
+    /** W0049 新增的 seniority／region／tier 可缺省（示例期数据不带，按空数组处理）。 */
+    dimensions: Record<LegacyAnalysisDimension, AnalysisBucket[]> & Partial<Record<Exclude<AnalysisDimension, LegacyAnalysisDimension>, AnalysisBucket[]>>;
     /**
      * W0047：关系健康 = 档位分布（新认识／有往来／核心／待唤醒，只由关系时间线推出），读新增的
      * `relationshipTierDistribution`；既有 relationshipStrengthDistribution 留给 App，Web 不再读（R-1）。
@@ -99,16 +105,43 @@ export function contactsAnalysisToView(input: unknown, language: OrbitLanguage):
       stale: data.analysis.stale,
     } : { state: "unavailable" },
     goal: section(data.profile, (value) => ({ id: value.profile?.id ?? null, text: value.profile?.relationshipGoal ?? "", updatedAt: value.profile?.updatedAt ?? "", canEdit: value.editor.canSave && Boolean(value.profile) })),
-    structure: section(data.distributions, (value) => ({
-      dimensions: Object.fromEntries(Object.entries(value.structureDistributions).map(([dimension, buckets]) => [dimension, buckets.map((bucket) => ({
+    structure: section(data.distributions, (value) => {
+      const href = (dimension: string, bucketId: string) => `/app/contacts/analysis/${dimension}/${encodeURIComponent(bucketId)}`;
+      type Bucket = (typeof value.structureDistributions.industry)[number];
+      const buckets = (dimension: Exclude<AnalysisDimension, "tier">, list: readonly Bucket[] | undefined): AnalysisBucket[] => (list ?? []).map((bucket) => ({
         id: bucket.bucketId,
-        label: bucket.primaryIndustryId ? industryLabel(bucket.primaryIndustryId, language) : systemBucketName(bucket.bucketId, language) ?? bucket.label,
+        label: structureBucketLabel(dimension, bucket.bucketId, bucket.label, language),
         count: bucket.contactCount, percentage: bucket.percentage, missingData: bucket.missingData,
-        href: `/app/contacts/analysis/${dimension}/${encodeURIComponent(bucket.bucketId)}`,
-      }))])) as Record<AnalysisDimension, AnalysisBucket[]>,
-      health: (value.relationshipTierDistribution ?? []).map((item) => ({ id: item.tier, count: item.relationshipCount, percentage: item.percentage })),
-      summary: "",
-    })),
+        href: href(dimension, bucket.bucketId),
+        ...(dimension === "industry" && bucket.secondary ? {
+          children: bucket.secondary.map((child) => ({
+            id: child.bucketId,
+            label: structureBucketLabel("industry_secondary", child.bucketId, child.bucketId, language),
+            count: child.contactCount, percentage: child.percentage, missingData: child.missingData,
+            href: href("industry_secondary", child.bucketId),
+          })),
+        } : {}),
+      }));
+      const tiers = value.relationshipTierDistribution ?? [];
+      const distributions = value.structureDistributions;
+      return {
+        dimensions: {
+          industry: buckets("industry", distributions.industry),
+          location: buckets("location", distributions.location),
+          role: buckets("role", distributions.role),
+          relationship: buckets("relationship", distributions.relationship),
+          seniority: buckets("seniority", distributions.seniority),
+          region: buckets("region", distributions.region),
+          // W0049：关系强度档维度与关系健康同源（relationshipTierDistribution），可下钻到 tier 名单。
+          tier: tiers.map((item) => ({
+            id: item.tier, label: structureBucketLabel("tier", item.tier, item.tier, language),
+            count: item.relationshipCount, percentage: item.percentage, missingData: false, href: href("tier", item.tier),
+          })),
+        },
+        health: tiers.map((item) => ({ id: item.tier, count: item.relationshipCount, percentage: item.percentage })),
+        summary: "",
+      };
+    }),
     coverage: section(data.gaps, () => ({ summary: "" })),
     opportunities: section(data.opportunities, (value) => ({
       summary: "",
