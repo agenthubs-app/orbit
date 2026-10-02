@@ -10,9 +10,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { BACKGROUND_POOL_DAILY_LIMIT } from "../../features/ai-quota/constants";
-import { runMemoExtraction } from "../../features/contacts/memo-extraction/job";
+import { memoExtractionKey, runMemoExtraction } from "../../features/contacts/memo-extraction/job";
 import type { MemoExtractionProvider } from "../../features/contacts/memo-extraction/provider";
-import { listMemoExtractionRescanCandidates } from "../../features/contacts/memo-extraction/rescan";
+import { listMemoExtractionRescanCandidates, memoExtractionKeySql } from "../../features/contacts/memo-extraction/rescan";
 import { createLiveRecordMemoExtractionStore } from "../../features/contacts/memo-extraction/store";
 import type { TextEnricher, TextEnrichmentContactInput } from "../../features/contacts/enrichment/text-enrichment";
 import { createNewContactLayersDeps } from "../../features/network-analysis/layers-runtime";
@@ -128,5 +128,31 @@ test("SC-04 maintenance: without the tables the pass is skipped (schema_missing)
     const runtime = runtimeAt(harness, NOW);
     const task = createNetworkSnapshotMaintenanceTask({ resolve: () => ({ layers: createNewContactLayersDeps({ enricher: null, runtime, store: createPostgresLiveRecordStore({ client: harness.pool as never }) }), runtime }) });
     assert.deepEqual(await task.run({ deadline: Date.now() + 30_000, now: () => NOW }), { skipped: "schema_missing" });
+  });
+});
+
+test("SC-04 P2-5 rescan matches memoExtractionKey (noteId + body hash): an edited memo whose old body succeeded is rescanned", databaseTest, async () => {
+  await withNetworkDatabase(async (harness) => {
+    // SQL 与 JS 的键逐字一致（含全角空格、换行等 trim 字符）。
+    for (const body of ["  hello  ", "\u3000会议记录\n", "\ufeffmixed\t", "plain"]) {
+      const sqlKey = (await harness.pool.query(`select ${memoExtractionKeySql("$1::text", "$2::text")} as key`, ["note:x", body])).rows[0].key;
+      assert.equal(sqlKey, memoExtractionKey("note:x", body), JSON.stringify(body));
+    }
+    await harness.addContact(ALICE, "c1");
+    const noteId = "note:live-contact-detail-update:m1";
+    const oldBody = "Old memo body.";
+    const newBody = "Edited memo body — they now look for investors.";
+    await harness.insertRecord({
+      collection: "memo_extractions", id: `memo-extraction:${encodeURIComponent(ALICE)}:${memoExtractionKey(noteId, oldBody)}`, userId: ALICE,
+      payload: { actorId: ALICE, contactId: "c1", key: memoExtractionKey(noteId, oldBody), noteId, status: "succeeded" },
+    });
+    await harness.insertRecord({
+      collection: "contact_detail_states", id: `contact-detail:${ALICE}:c1`, userId: ALICE,
+      payload: { actorId: ALICE, contactId: "c1", notes: [{ body: oldBody, createdAt: "2026-10-01T00:00:00.000Z", kind: "memo", noteId }] },
+    });
+    assert.equal((await listMemoExtractionRescanCandidates(harness.client, { now: NOW, workspaceId: WORKSPACE })).length, 0, "same body already extracted");
+    await harness.updatePayload("contact_detail_states", `contact-detail:${ALICE}:c1`, { notes: [{ body: newBody, createdAt: "2026-10-01T00:00:00.000Z", kind: "memo", noteId }] });
+    const candidates = await listMemoExtractionRescanCandidates(harness.client, { now: NOW, workspaceId: WORKSPACE });
+    assert.deepEqual(candidates.map((candidate) => [candidate.noteId, candidate.body]), [[noteId, newBody]]);
   });
 });

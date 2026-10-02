@@ -122,14 +122,17 @@ export interface NetworkAnalysisRepository {
   writeSnapshot(input: NewSnapshotInput, guard?: { leaseOwner: string }): Promise<NetworkAnalysisSnapshot | null>;
   /** 请求路径判定为自动时只 upsert 一行 pending job（不预留、不写 operation_id）；已有 job 不动。 */
   enqueueSnapshotJob(actorId: string, trigger: string, now: Date): Promise<void>;
-  /** CAS 取得租约：pending／到期 deferred／租约过期的 running → running。 */
+  /** CAS 取得租约：pending／到期 deferred／租约过期的 running → running。租约过期但 job 上的操作仍有进行中的请求
+   *（子账 started 且在租约时窗内）时不回收：原持有者可能还活着（review P1-1，不并发发第二次付费请求）。 */
   claimJob(actorId: string, kind: SnapshotJob["kind"], owner: string, now: Date, leaseMs: number): Promise<SnapshotJob | null>;
   /** 维护任务：领取到期的 job（跳过别人锁住的行）。 */
   claimDueJobs(owner: string, now: Date, leaseMs: number, limit: number): Promise<SnapshotJob[]>;
   /** 在调用方事务里把 operation_id 写回 job（只在仍持有租约时）。 */
   setJobOperation(executor: TransactionalSqlExecutor, actorId: string, kind: SnapshotJob["kind"], owner: string, operationId: string | null): Promise<boolean>;
   deferJob(actorId: string, kind: SnapshotJob["kind"], owner: string, notBefore: string): Promise<void>;
-  /** 回到 pending 待重试（attempt_count + 1，operation_id 清空）；超过上限删除。返回 true 表示已删除。 */
+  /** 上一个持有者的请求仍在进行：交还租约、保留 operation_id、不加 attempt，notBefore 后再看。 */
+  postponeJob(actorId: string, kind: SnapshotJob["kind"], owner: string, notBefore: string): Promise<void>;
+  /** 回到 pending 待重试（attempt_count + 1，保留 operation_id 以便同键重开）；达到上限删除（同一事务）。返回 true 表示已删除。 */
   releaseJob(actorId: string, kind: SnapshotJob["kind"], owner: string, maxAttempts: number): Promise<boolean>;
   deleteJob(actorId: string, kind: SnapshotJob["kind"], owner: string): Promise<void>;
   /** 补全顺延：并入 enrichment job（去重、上限 200），not_before = 次日 00:00 东京。 */
@@ -348,7 +351,11 @@ export function createPostgresNetworkAnalysisRepository(input: { client: Transac
         update network_analysis_jobs
         set status = 'running', lease_owner = $4, lease_expires_at = $5::timestamptz + make_interval(secs => $6::double precision / 1000), updated_at = $5::timestamptz
         where workspace_id = $1 and actor_id = $2 and kind = $3
-          and ((status in ('pending', 'deferred') and not_before <= $5::timestamptz) or (status = 'running' and lease_expires_at <= $5::timestamptz))
+          and ((status in ('pending', 'deferred') and not_before <= $5::timestamptz) or (status = 'running' and lease_expires_at <= $5::timestamptz and not exists (
+            select 1 from ai_usage_calls c
+            where c.workspace_id = network_analysis_jobs.workspace_id and c.operation_id = network_analysis_jobs.operation_id and c.status = 'started'
+              and c.started_at > now() - make_interval(secs => $6::double precision / 1000)
+          )))
         returning ${JOB_COLUMNS}`,
         [workspaceId, actorId, kind, owner, now.toISOString(), leaseMs],
       )).rows[0];
@@ -362,7 +369,11 @@ export function createPostgresNetworkAnalysisRepository(input: { client: Transac
         from (
           select actor_id, kind from network_analysis_jobs
           where workspace_id = $1
-            and ((status in ('pending', 'deferred') and not_before <= $3::timestamptz) or (status = 'running' and lease_expires_at <= $3::timestamptz))
+            and ((status in ('pending', 'deferred') and not_before <= $3::timestamptz) or (status = 'running' and lease_expires_at <= $3::timestamptz and not exists (
+            select 1 from ai_usage_calls c
+            where c.workspace_id = network_analysis_jobs.workspace_id and c.operation_id = network_analysis_jobs.operation_id and c.status = 'started'
+              and c.started_at > now() - make_interval(secs => $4::double precision / 1000)
+          )))
           order by not_before, actor_id, kind
           limit $5
           for update skip locked
@@ -391,22 +402,34 @@ export function createPostgresNetworkAnalysisRepository(input: { client: Transac
       );
     },
     async releaseJob(actorId, kind, owner, maxAttempts) {
-      const row = (await client.query<Row>(
-        `update network_analysis_jobs
-         set status = 'pending', lease_owner = null, lease_expires_at = null, operation_id = null,
-           attempt_count = attempt_count + 1, updated_at = now()
-         where workspace_id = $1 and actor_id = $2 and kind = $3 and lease_owner = $4
-         returning attempt_count`,
-        [workspaceId, actorId, kind, owner],
-      )).rows[0];
-      if (row && Number(row.attempt_count) >= maxAttempts) {
-        await client.query(
-          `delete from network_analysis_jobs where workspace_id = $1 and actor_id = $2 and kind = $3 and status = 'pending' and lease_owner is null`,
-          [workspaceId, actorId, kind],
+      // review P2-6：锁行、加 attempt、决定删除或回 pending 在同一事务里。
+      return transaction(async (tx) => {
+        const row = (await tx.query<Row>(
+          `select attempt_count from network_analysis_jobs
+           where workspace_id = $1 and actor_id = $2 and kind = $3 and lease_owner = $4 for update`,
+          [workspaceId, actorId, kind, owner],
+        )).rows[0];
+        if (!row) return false;
+        if (Number(row.attempt_count) + 1 >= maxAttempts) {
+          await tx.query(`delete from network_analysis_jobs where workspace_id = $1 and actor_id = $2 and kind = $3 and lease_owner = $4`, [workspaceId, actorId, kind, owner]);
+          return true;
+        }
+        await tx.query(
+          `update network_analysis_jobs
+           set status = 'pending', lease_owner = null, lease_expires_at = null, attempt_count = attempt_count + 1, updated_at = now()
+           where workspace_id = $1 and actor_id = $2 and kind = $3 and lease_owner = $4`,
+          [workspaceId, actorId, kind, owner],
         );
-        return true;
-      }
-      return false;
+        return false;
+      });
+    },
+    async postponeJob(actorId, kind, owner, notBefore) {
+      await client.query(
+        `update network_analysis_jobs
+         set status = 'pending', not_before = $5::timestamptz, lease_owner = null, lease_expires_at = null, updated_at = now()
+         where workspace_id = $1 and actor_id = $2 and kind = $3 and lease_owner = $4`,
+        [workspaceId, actorId, kind, owner, notBefore],
+      );
     },
     async deleteJob(actorId, kind, owner) {
       await client.query(

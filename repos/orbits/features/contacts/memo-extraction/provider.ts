@@ -171,15 +171,18 @@ export function createDeepseekMemoExtractionProvider({
           if (controller.signal.aborted) throw new MemoExtractionError("PROVIDER_TIMEOUT", "The memo extraction request timed out.");
           throw new MemoExtractionError("PROVIDER_REQUEST_FAILED", "The memo extraction request failed.");
         }
-        if (!response.ok) throw new MemoExtractionError("PROVIDER_REQUEST_FAILED", `The memo extraction request failed with status ${response.status}.`);
+        // W0048a review P2-2：拿到了 HTTP 响应（含非 2xx、正文不可读）就带 usage（无用量时 token 记 0），
+        // 闸门记 responded 并计次；只有连接失败与超时没有 usage（no_response）。
+        const respondedUsage = (body: unknown) => usageOf(body, Math.max(0, nowMs() - startedAt));
         let payload: unknown;
         try {
           payload = await response.json();
         } catch {
-          if (controller.signal.aborted) throw new MemoExtractionError("PROVIDER_TIMEOUT", "The memo extraction request timed out.");
-          throw new MemoExtractionError("INVALID_OUTPUT", "The memo extractor returned an unreadable response.");
+          if (!response.ok) throw new MemoExtractionError("PROVIDER_REQUEST_FAILED", `The memo extraction request failed with status ${response.status}.`, respondedUsage(null));
+          throw new MemoExtractionError("INVALID_OUTPUT", "The memo extractor returned an unreadable response.", respondedUsage(null));
         }
-        const usage = usageOf(payload, Math.max(0, nowMs() - startedAt));
+        if (!response.ok) throw new MemoExtractionError("PROVIDER_REQUEST_FAILED", `The memo extraction request failed with status ${response.status}.`, respondedUsage(payload));
+        const usage = respondedUsage(payload);
         const content = contentOf(payload);
         if (!content?.trim()) throw new MemoExtractionError("INVALID_OUTPUT", "The memo extractor returned no content.", usage);
         try {

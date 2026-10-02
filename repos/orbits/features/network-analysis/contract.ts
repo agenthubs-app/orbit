@@ -97,4 +97,4 @@ export const SNAPSHOT_TEXT_LIMIT = 600;
 export const SNAPSHOT_EVIDENCE_LIMIT = 12;
 
 /** 当前提示词版本：变了即视为来源变化（sourceDataVersion 覆盖）。 */
-export const SNAPSHOT_PROMPT_VERSION = "network-snapshot-2026-10-v2";
+export const SNAPSHOT_PROMPT_VERSION = "network-snapshot-2026-10-v3";

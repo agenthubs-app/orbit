@@ -64,7 +64,7 @@ export function meteredClient(base: TransactionalPostgresClient, meter: Statemen
 }
 
 export function contactPayload(id: string, actorId: string, extra: Record<string, unknown> = {}) {
-  return { id, accountId: actorId, displayName: `Name ${id}`, organization: `Org ${id}`, role: "Manager", stage: "active", evidenceIds: [], ...extra };
+  return { id, accountId: actorId, displayName: `Name ${id.split(":").pop()}`, organization: `Org ${id.split(":").pop()}`, role: "Manager", stage: "active", evidenceIds: [], ...extra };
 }
 
 export async function withNetworkDatabase(run: (harness: NetworkHarness) => Promise<void>, options: { syncRevision?: boolean } = {}): Promise<void> {

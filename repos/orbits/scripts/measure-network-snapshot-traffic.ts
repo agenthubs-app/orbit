@@ -34,7 +34,10 @@ async function main() {
   await withNetworkDatabase(async (harness) => {
     const industries = ["technology_internet", "finance_investment", "manufacturing", "trade_logistics"];
     for (let index = 0; index < CONTACTS; index += 1) {
+      // 姓名不含 id（真实姓名不会等于记录 id；校验器会丢弃把原始 id 写进文字的块）。
+      const name = `${["佐藤", "田中", "Chen", "Kim"][index % 4]} ${String.fromCharCode(65 + (index % 26))}${String.fromCharCode(97 + Math.floor(index / 26))}`;
       await harness.addContact(ALICE, `c${index}`, {
+        displayName: name,
         primaryIndustryId: industries[index % industries.length],
         publicProfile: { seniorityLevel: ["director", "manager", "vp", "individual_contributor"][index % 4] },
         region: { city: "Tokyo", countryCode: "JP" },

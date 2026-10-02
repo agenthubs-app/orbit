@@ -6,8 +6,8 @@
  *   同一幂等键重放返回原操作（不新增行、不再计次）；原操作已 released（0 次响应、未计次）时按新预留重新开启
  *   （同样受额度约束），这样 memo 提取等「以内容为键」的作业在一次未发出后仍可重试。
  *   不够时返回 daily_limit + 次日 00:00 东京，不调用模型。
- * - `beginCall`：一条语句插入 `started` 子账，同时校验「操作仍在 reserved、可能产生费用的子账（started／responded）
- *   < max_calls」（无响应的不占名额，总条数另有 3×max_calls 硬上限）；超出即拒绝、不发请求。
+ * - `beginCall`：一条语句插入 `started` 子账，同时校验「操作仍在 reserved、当前 epoch 的全部子账（含 no_response）
+ *   < max_calls」；超出即拒绝、不发请求。released 操作同键重开时 epoch + 1，历史子账保留。
  * - `endCall`：拿到响应（含输出无效）记 responded + token；无响应记 no_response。
  * - `finish`：只由持有 operationId 的发起方调用一次：有 ≥1 条 responded → 记 succeeded／failed 并计次；
  *   0 条 → released 不计次；重复调用为 no-op。
@@ -45,7 +45,9 @@ export interface AiQuotaUsageToday {
 export interface AiUsageOperationState {
   id: string;
   status: "reserved" | "succeeded" | "failed" | "released";
+  /** 当前 epoch 的子账数。 */
   calls: number;
+  /** 全部 epoch 中拿到响应的子账数。 */
   responded: number;
   /** 仍在进行（started 且在给定时窗内发出）的子账数：持有者可能还活着。 */
   inflight: number;
@@ -78,15 +80,14 @@ const USAGE_SQL = `/* ai-quota:usage-today */
   where workspace_id = $1 and actor_id = $2 and usage_day = $3::date and status <> 'released'`;
 
 const BEGIN_CALL_SQL = `/* ai-quota:begin-call */
-  insert into ai_usage_calls (workspace_id, operation_id, seq, provider, model, status, started_at)
+  insert into ai_usage_calls (workspace_id, operation_id, seq, epoch, provider, model, status, started_at)
   select l.workspace_id, l.id,
     (select count(*) from ai_usage_calls c where c.workspace_id = l.workspace_id and c.operation_id = l.id)::int + 1,
-    $3, $4, 'started', now()
+    l.epoch, $3, $4, 'started', now()
   from ai_usage_ledger l
   where l.workspace_id = $1 and l.id = $2 and l.status = 'reserved'
-    -- 可能产生费用的子账（started／responded）不超过 max_calls；无响应的不占名额，但总条数另有硬上限。
-    and (select count(*) from ai_usage_calls c where c.workspace_id = l.workspace_id and c.operation_id = l.id and c.status <> 'no_response') < l.max_calls
-    and (select count(*) from ai_usage_calls c where c.workspace_id = l.workspace_id and c.operation_id = l.id) < l.max_calls * 3
+    -- 当前 epoch 的全部子账（含 no_response）严格不超过 max_calls。
+    and (select count(*) from ai_usage_calls c where c.workspace_id = l.workspace_id and c.operation_id = l.id and c.epoch = l.epoch) < l.max_calls
   returning seq`;
 
 export function createPostgresAiUsageLedger(input: { client: TransactionalPostgresClient; workspaceId: string }): AiUsageLedger {
@@ -121,7 +122,7 @@ export function createPostgresAiUsageLedger(input: { client: TransactionalPostgr
     if (replay) {
       await executor.query(
         `/* ai-quota:reopen */
-        update ai_usage_ledger set status = 'reserved', finished_at = null, usage_day = $3::date, created_at = $4::timestamptz
+        update ai_usage_ledger set status = 'reserved', finished_at = null, usage_day = $3::date, created_at = $4::timestamptz, epoch = epoch + 1
         where workspace_id = $1 and id = $2 and status = 'released'`,
         [workspaceId, String(replay.id), day, request.now.toISOString()],
       );
@@ -150,7 +151,7 @@ export function createPostgresAiUsageLedger(input: { client: TransactionalPostgr
     const row = (await client.query<Row>(
       `/* ai-quota:operation */
       select l.id, l.status,
-        (select count(*) from ai_usage_calls c where c.workspace_id = l.workspace_id and c.operation_id = l.id)::int as calls,
+        (select count(*) from ai_usage_calls c where c.workspace_id = l.workspace_id and c.operation_id = l.id and c.epoch = l.epoch)::int as calls,
         (select count(*) from ai_usage_calls c where c.workspace_id = l.workspace_id and c.operation_id = l.id and c.status = 'responded')::int as responded,
         (select count(*) from ai_usage_calls c where c.workspace_id = l.workspace_id and c.operation_id = l.id and c.status = 'started'
            and c.started_at > now() - make_interval(secs => $3::double precision / 1000))::int as inflight

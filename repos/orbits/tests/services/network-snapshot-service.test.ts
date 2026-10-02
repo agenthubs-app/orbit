@@ -19,7 +19,7 @@ import { runNewContactLayers } from "../../features/network-analysis/new-contact
 import { createPostgresSnapshotInputSource } from "../../features/network-analysis/input-source";
 import { createNetworkSnapshotService } from "../../features/network-analysis/service";
 import { createSnapshotSourceVersionReader } from "../../features/network-analysis/source-version";
-import { buildMockSnapshotContent, type NetworkSnapshotGenerator, type SnapshotInput } from "../../features/network-analysis/snapshot-generator";
+import { buildMockSnapshotContent, SnapshotGeneratorError, type NetworkSnapshotGenerator, type SnapshotInput } from "../../features/network-analysis/snapshot-generator";
 import { createPostgresPlanRepository } from "../../features/plans/repository";
 import { createPostgresPlanReferenceValidator } from "../../features/plans/reference-validator";
 import { createPlanService } from "../../features/plans/service";
@@ -343,7 +343,7 @@ test("SC-04 R-2 ③ the second decision is fresh → 0 reservations (a held oper
   });
 });
 
-test("SC-04 R-2 ④ lease reclaimed while the first worker is mid-call → only one worker writes the snapshot; each operation is settled once", databaseTest, async () => {
+test("SC-04 R-2 ④ lease expired while the first worker is mid-call → no reclaim (the call is in flight), the first worker finishes; exactly 1 HTTP and 1 operation", databaseTest, async () => {
   await withNetworkDatabase(async (harness) => {
     await seedContacts(harness, ALICE, 0, 4);
     let release!: () => void;
@@ -356,19 +356,60 @@ test("SC-04 R-2 ④ lease reclaimed while the first worker is mid-call → only 
     await startedPromise; // slow 已预留并发出 HTTP（子账 started）
     await harness.pool.query(`update network_analysis_jobs set lease_expires_at = $1 where workspace_id = $2`, [new Date(NOW.getTime() - 1).toISOString(), WORKSPACE]);
     const fast = runtimeFor(harness, generator, { now: () => new Date(NOW.getTime() + 1_000) });
-    const fastOutcome = await fast.service.runWorker(ALICE, { owner: "fast" });
-    assert.equal(fastOutcome.status, "succeeded");
+    assert.deepEqual(await fast.service.runWorker(ALICE, { owner: "fast" }), { status: "not_claimed" }, "an in-flight call blocks the reclaim");
+    assert.deepEqual(await fast.repository.claimDueJobs("maint", new Date(NOW.getTime() + 1_000), 180_000, 10), [], "the maintenance claim is blocked too");
     release();
-    const slowOutcome = await slow;
-    assert.deepEqual(slowOutcome, { status: "lease_lost" });
-    assert.equal((await harness.pool.query(`select count(*)::int as n from network_analysis_snapshots`)).rows[0].n, 1, "only one snapshot written");
-    const rows = await ledgerRows(harness);
-    // 回收者看到 slow 的请求仍在进行：不复用、不代结算，另预留一次；slow 丢租约后自己结算（它的 HTTP 有响应 → failed 计次）。
-    assert.deepEqual(rows.map((row) => row.status).sort(), ["failed", "succeeded"]);
-    const calls = (await harness.pool.query(`select status from ai_usage_calls order by started_at`)).rows.map((row) => row.status);
-    assert.deepEqual(calls, ["responded", "responded"], "both HTTP calls keep their token records");
-    const settled = (await harness.pool.query(`select count(*)::int as n from ai_usage_ledger where finished_at is not null`)).rows[0].n;
-    assert.equal(settled, 2);
+    assert.equal((await slow).status, "succeeded");
+    assert.equal(generator.calls, 1, "only one paid HTTP request");
+    assert.equal((await harness.pool.query(`select count(*)::int as n from network_analysis_snapshots`)).rows[0].n, 1);
+    assert.deepEqual((await ledgerRows(harness)).map((row) => row.status), ["succeeded"]);
+    assert.deepEqual((await harness.pool.query(`select status from ai_usage_calls`)).rows.map((row) => row.status), ["responded"]);
+  });
+});
+
+test("SC-04 P1-2 an unexpected error after the provider responded (writeSnapshot throws) settles the operation and stops: 1 HTTP, job removed, no endless retries", databaseTest, async () => {
+  await withNetworkDatabase(async (harness) => {
+    await seedContacts(harness, ALICE, 0, 4);
+    const generator = countingGenerator();
+    const base = runtimeFor(harness, generator);
+    const repository = { ...base.repository, writeSnapshot: async () => { throw new Error("database write failed"); } };
+    const service = createNetworkSnapshotService({
+      generator,
+      inputSource: createPostgresSnapshotInputSource({ client: harness.client, readCurrentPlan: async () => null, workspaceId: WORKSPACE }),
+      ledger: base.ledger, log: () => undefined, now: () => NOW, readProfile: PROFILE("goal"), repository,
+      versionReader: createSnapshotSourceVersionReader({ client: harness.client, workspaceId: WORKSPACE }),
+    });
+    await service.readView(ALICE, "zh");
+    const outcomes = [];
+    for (let index = 0; index < 5; index += 1) outcomes.push((await service.runWorker(ALICE)).status);
+    assert.deepEqual(outcomes.slice(0, 3), ["error", "failed", "not_claimed"]);
+    assert.equal(generator.calls, 1);
+    assert.deepEqual((await ledgerRows(harness)).map((row) => row.status), ["failed"], "the responded call is counted once");
+    assert.equal((await harness.pool.query(`select count(*)::int as n from network_analysis_jobs`)).rows[0].n, 0);
+  });
+});
+
+test("SC-04 P2-6 0-response retries reuse the same operation (reopened per attempt) and the job is dropped at the 3rd attempt", databaseTest, async () => {
+  await withNetworkDatabase(async (harness) => {
+    await seedContacts(harness, ALICE, 0, 4);
+    let calls = 0;
+    const failing: NetworkSnapshotGenerator = {
+      billable: true, model: "m", promptVersion: "test-v1", provider: "deepseek",
+      async generate() { calls += 1; throw new SnapshotGeneratorError("PROVIDER_TIMEOUT", "timeout", null); },
+    };
+    const runtime = runtimeFor(harness, failing);
+    await runtime.service.readView(ALICE, "zh");
+    const outcomes = [];
+    for (let index = 0; index < 4; index += 1) outcomes.push(await runtime.service.runWorker(ALICE));
+    assert.deepEqual(outcomes.map((outcome) => outcome.status), ["retry", "retry", "retry", "not_claimed"]);
+    assert.deepEqual(outcomes.slice(0, 3).map((outcome) => (outcome as { dropped: boolean }).dropped), [false, false, true]);
+    assert.equal(calls, 3);
+    const ledger = await ledgerRows(harness);
+    assert.equal(ledger.length, 1, "one operation, reopened per attempt");
+    assert.equal(ledger[0].status, "released");
+    assert.deepEqual((await harness.pool.query(`select epoch, status from ai_usage_calls order by seq`)).rows, [
+      { epoch: 1, status: "no_response" }, { epoch: 2, status: "no_response" }, { epoch: 3, status: "no_response" },
+    ]);
   });
 });
 
@@ -429,5 +470,47 @@ test("SC-01 other actors never see Alice's snapshot", databaseTest, async () => 
     assert.equal(bob.state, "insufficient");
     assert.deepEqual(bob.blocks, []);
     assert.equal(await runtime.repository.getCurrent(BOB), null);
+  });
+});
+
+test("SC-02 P2-2 a non-2xx provider response counts as responded (tokens 0) and is billed; only a missing response is no_response", databaseTest, async () => {
+  await withNetworkDatabase(async (harness) => {
+    await seedContacts(harness, ALICE, 0, 4);
+    const fetchImplementation = (async () => new Response("upstream busy", { status: 503 })) as unknown as typeof fetch;
+    const runtime = runtimeFor(harness, createDeepseekSnapshotGenerator({ apiKey: "k", fetchImplementation, timeoutMs: 500 }));
+    const held = await runtime.ledger.reserve({ actorId: ALICE, idempotencyKey: "m503", now: NOW, pool: "user", purpose: "snapshot", trigger: "manual" });
+    const operationId = held.ok ? held.operationId : "";
+    const result = await runtime.service.generateSnapshotNow({ actorId: ALICE, now: NOW, operationId, origin: "standalone", trigger: "manual" });
+    assert.equal(result.callsResponded, 1);
+    assert.equal(result.error, "provider_failed");
+    await runtime.ledger.finish(operationId, "failed");
+    assert.deepEqual((await harness.pool.query(`select status, input_tokens, output_tokens from ai_usage_calls`)).rows, [{ input_tokens: 0, output_tokens: 0, status: "responded" }]);
+    assert.equal((await runtime.ledger.readOperation(operationId))?.status, "failed");
+    assert.equal((await runtime.ledger.readUsageToday(ALICE, NOW)).manual, 1, "billed");
+  });
+});
+
+test("SC-02 P2-3 the model only sees aliases; the response is mapped back to real ids before validation", databaseTest, async () => {
+  await withNetworkDatabase(async (harness) => {
+    await seedContacts(harness, ALICE, 0, 4);
+    let sent = "";
+    const fetchImplementation = (async (_url: string, init: RequestInit) => {
+      sent = String(init.body);
+      const content = JSON.stringify({ blocks: [
+        { contactIds: ["C1", "C2"], en: "Two of your contacts lead the way.", kind: "diagnosis", zh: "两位联系人走在前面。" },
+        { contactIds: ["C1"], en: "One insight.", kind: "insight", zh: "一条洞察。" },
+        { contactIds: ["C2"], en: "Another insight.", kind: "insight", zh: "另一条洞察。" },
+        { contactIds: ["C3"], en: "Mentions C3 in text.", kind: "insight", zh: "提到了 C3。" },
+      ] });
+      return new Response(JSON.stringify({ choices: [{ message: { content } }], usage: { completion_tokens: 10, prompt_tokens: 20 } }), { status: 200 });
+    }) as unknown as typeof fetch;
+    const runtime = runtimeFor(harness, createDeepseekSnapshotGenerator({ apiKey: "k", fetchImplementation }));
+    const held = await runtime.ledger.reserve({ actorId: ALICE, idempotencyKey: "alias", now: NOW, pool: "user", purpose: "snapshot", trigger: "manual" });
+    const result = await runtime.service.generateSnapshotNow({ actorId: ALICE, now: NOW, operationId: held.ok ? held.operationId : "", origin: "standalone", trigger: "manual" });
+    assert.ok(!sent.includes(`${ALICE}:c`), "no raw contact id leaves the server");
+    assert.ok(result.snapshot);
+    const evidence = result.snapshot!.blocks.flatMap((block) => block.evidence.contactIds);
+    assert.ok(evidence.every((id) => id.startsWith(`${ALICE}:c`)));
+    assert.equal(result.snapshot!.blocks.filter((block) => block.kind === "insight").length, 2, "the block that wrote an alias into its text is dropped");
   });
 });

@@ -79,6 +79,8 @@ export type SnapshotWorkerOutcome =
   | { status: "failed" }
   | { status: "retry"; dropped: boolean }
   | { status: "lease_lost" }
+  | { status: "postponed" }
+  | { status: "error"; dropped: boolean }
   | { status: "unavailable" };
 
 export type ManualRecomputeOutcome =
@@ -168,7 +170,8 @@ export function createNetworkSnapshotService(deps: NetworkSnapshotServiceDeps): 
         if (usage) responded = 1;
       }
       log({ actorId: input.actorId, code: error instanceof SnapshotGeneratorError ? error.code : "unknown", event: "network_snapshot_generation_failed" });
-      return { callsResponded: responded, error: usage ? "invalid_output" : "provider_failed", snapshot: null };
+      const invalid = error instanceof SnapshotGeneratorError && error.code === "INVALID_OUTPUT";
+      return { callsResponded: responded, error: invalid ? "invalid_output" : "provider_failed", snapshot: null };
     }
     let blocks;
     try {
@@ -198,82 +201,122 @@ export function createNetworkSnapshotService(deps: NetworkSnapshotServiceDeps): 
     return { callsResponded: responded, snapshot };
   }
 
-  async function processClaimedJob(job: SnapshotJob, owner: string): Promise<SnapshotWorkerOutcome> {
-    const now = clock();
-    const evaluation = await evaluate(job.actorId);
-    if (evaluation.decision.kind !== "auto") {
-      // 二次判定已不需要生成（fresh／insufficient／stale）：0 次新预留；遗留的操作按 0 响应结算为 released。
-      if (job.operationId) await deps.ledger.finish(job.operationId, "failed");
-      await deps.repository.deleteJob(job.actorId, "snapshot", owner);
-      return { reason: evaluation.decision.kind, status: "skipped" };
-    }
-    const trigger = evaluation.decision.trigger;
-    let operationId: string | null = null;
+  /**
+   * 取得本 job 要用的操作（R-2，review P1-1）：幂等键固定为 `snapshot:auto:<actorId>:<createdKey>`，一个 job 至多一个操作。
+   * - job 上已有操作：仍 reserved 且当前 epoch 没有子账 → 复用；仍有进行中的请求 → 不新预留，job 延后；
+   *   已发过 HTTP 且没有进行中的请求（上一个持有者崩溃）→ 代它结算一次（有响应即计次），0 响应则 released；
+   * - released 的操作同键重放会重新开启（新 epoch），所以 0 响应的重试仍是同一个操作；已计次（succeeded／failed）
+   *   的操作不再发请求，job 结束。
+   * 预留与把 operation_id 写回 job 在同一事务。
+   */
+  async function acquireOperation(job: SnapshotJob, owner: string, now: Date): Promise<
+    | { kind: "ready"; operationId: string }
+    | { kind: "postponed" }
+    | { kind: "deferred"; retryOn: string }
+    | { kind: "spent" }
+    | { kind: "unavailable" }
+    | { kind: "lease_lost" }
+  > {
     if (job.operationId) {
       const previous = await deps.ledger.readOperation(job.operationId, { inflightWindowMs: SNAPSHOT_JOB_LEASE_MS });
-      if (previous?.status === "reserved" && previous.calls === 0) {
-        operationId = previous.id; // 预留后、发 HTTP 前崩溃：复用该操作，不再预留（R-2 ②）。
-      } else if (previous?.status === "reserved" && previous.inflight === 0) {
-        // 上一个持有者已发过 HTTP 且没有仍在进行的请求（崩溃）：代它结算那一次，再为本次预留新操作。
+      if (previous?.status === "reserved") {
+        if (previous.inflight > 0) return { kind: "postponed" };
+        if (previous.calls === 0) return { kind: "ready", operationId: previous.id };
         await deps.ledger.finish(previous.id, "failed");
       }
-      // 仍有进行中的请求：上一个持有者可能还活着，由它在发现丢了租约后自己结算；本次预留新操作。
     }
-    if (!operationId) {
-      const reservation = await deps.repository.transaction(async (tx) => {
-        const result = await deps.ledger.reserveWith(tx, {
-          actorId: job.actorId,
-          idempotencyKey: `snapshot:auto:${job.actorId}:${job.createdKey}:${job.attemptCount}:${owner}`.slice(0, 300),
-          now,
-          pool: "background",
-          purpose: "snapshot",
-          trigger: "auto",
-        });
-        if (result.ok && !(await deps.repository.setJobOperation(tx, job.actorId, "snapshot", owner, result.operationId))) {
-          throw new LeaseLostError();
-        }
-        return result;
-      }).catch((error) => {
-        if (error instanceof LeaseLostError) return null;
-        if ((error as { code?: unknown })?.code === "42P01") return { ok: false as const, reason: "disabled" as const };
-        throw error;
+    const reservation = await deps.repository.transaction(async (tx) => {
+      const result = await deps.ledger.reserveWith(tx, {
+        actorId: job.actorId,
+        idempotencyKey: `snapshot:auto:${job.actorId}:${job.createdKey}`,
+        now,
+        pool: "background",
+        purpose: "snapshot",
+        trigger: "auto",
       });
-      if (!reservation) return { status: "lease_lost" };
-      if (reservation.ok !== true) {
-        const denial = reservation as { ok: false; reason: "disabled" | "daily_limit"; retryOn?: string };
-        if (denial.reason === "daily_limit") {
-          const retryOn = denial.retryOn ?? nextTokyoMidnight(now);
-          await deps.repository.deferJob(job.actorId, "snapshot", owner, retryOn);
-          return { retryOn, status: "deferred" };
+      if (result.ok === true && !(await deps.repository.setJobOperation(tx, job.actorId, "snapshot", owner, result.operationId))) {
+        throw new LeaseLostError();
+      }
+      return result;
+    }).catch((error) => {
+      if (error instanceof LeaseLostError) return null;
+      if ((error as { code?: unknown })?.code === "42P01") return { ok: false as const, reason: "disabled" as const };
+      throw error;
+    });
+    if (!reservation) return { kind: "lease_lost" };
+    if (reservation.ok !== true) {
+      const denial = reservation as { ok: false; reason: "disabled" | "daily_limit"; retryOn?: string };
+      return denial.reason === "daily_limit" ? { kind: "deferred", retryOn: denial.retryOn ?? nextTokyoMidnight(now) } : { kind: "unavailable" };
+    }
+    const operationId = (reservation as { ok: true; operationId: string }).operationId;
+    const state = await deps.ledger.readOperation(operationId, { inflightWindowMs: SNAPSHOT_JOB_LEASE_MS });
+    // 同键重放拿到的是已计次的操作：这个 job 的一次尝试已经花掉，不再发请求。
+    if (!state || state.status !== "reserved" || state.calls > 0) return { kind: "spent" };
+    return { kind: "ready", operationId };
+  }
+
+  async function processClaimedJob(job: SnapshotJob, owner: string): Promise<SnapshotWorkerOutcome> {
+    const now = clock();
+    let operationId: string | null = null;
+    try {
+      const evaluation = await evaluate(job.actorId);
+      if (evaluation.decision.kind !== "auto") {
+        // 二次判定已不需要生成（fresh／insufficient／stale）：0 次新预留；遗留的操作由本 worker 结算（0 响应 → released）。
+        if (job.operationId) {
+          const previous = await deps.ledger.readOperation(job.operationId, { inflightWindowMs: SNAPSHOT_JOB_LEASE_MS });
+          if (previous?.status === "reserved" && previous.inflight > 0) {
+            await deps.repository.postponeJob(job.actorId, "snapshot", owner, new Date(now.getTime() + SNAPSHOT_JOB_LEASE_MS).toISOString());
+            return { status: "postponed" };
+          }
+          await deps.ledger.finish(job.operationId, "failed");
         }
         await deps.repository.deleteJob(job.actorId, "snapshot", owner);
-        return { status: "unavailable" };
+        return { reason: evaluation.decision.kind, status: "skipped" };
       }
-      operationId = (reservation as { ok: true; operationId: string }).operationId;
-    }
-    const result = await generateSnapshotNow({ actorId: job.actorId, leaseOwner: owner, now, operationId, origin: "standalone", trigger });
-    if (result.error === "lease_lost") {
-      // 丢了租约（别的 worker 已回收）：本操作仍由本 worker 持有，结算一次后停手，不写快照。
-      await deps.ledger.finish(operationId, "failed");
-      return { status: "lease_lost" };
-    }
-    if (result.error === "call_rejected") {
-      // 操作已被别处结算或名额已用（并发回收的边角）：不结算别人的操作，回 pending 重试。
+      const acquired = await acquireOperation(job, owner, now);
+      switch (acquired.kind) {
+        case "postponed":
+          await deps.repository.postponeJob(job.actorId, "snapshot", owner, new Date(now.getTime() + SNAPSHOT_JOB_LEASE_MS).toISOString());
+          return { status: "postponed" };
+        case "deferred":
+          await deps.repository.deferJob(job.actorId, "snapshot", owner, acquired.retryOn);
+          return { retryOn: acquired.retryOn, status: "deferred" };
+        case "spent":
+          await deps.repository.deleteJob(job.actorId, "snapshot", owner);
+          return { status: "failed" };
+        case "unavailable":
+          await deps.repository.deleteJob(job.actorId, "snapshot", owner);
+          return { status: "unavailable" };
+        case "lease_lost":
+          return { status: "lease_lost" };
+        case "ready":
+          operationId = acquired.operationId;
+      }
+      const result = await generateSnapshotNow({ actorId: job.actorId, leaseOwner: owner, now, operationId, origin: "standalone", trigger: evaluation.decision.trigger });
+      if (result.error === "lease_lost") {
+        // 丢了租约：本 worker 仍是这个操作的持有者，结算一次后停手，不写快照。
+        await deps.ledger.finish(operationId, "failed");
+        return { status: "lease_lost" };
+      }
+      if (result.snapshot) {
+        await deps.ledger.finish(operationId, "succeeded");
+        await deps.repository.deleteJob(job.actorId, "snapshot", owner);
+        return { snapshotId: result.snapshot.id, status: "succeeded", version: result.snapshot.version };
+      }
+      await deps.ledger.finish(operationId, "failed"); // 0 条 responded → released（同键重试会重新开启）。
+      if (result.callsResponded > 0) {
+        await deps.repository.deleteJob(job.actorId, "snapshot", owner);
+        return { status: "failed" };
+      }
       const dropped = await deps.repository.releaseJob(job.actorId, "snapshot", owner, SNAPSHOT_JOB_MAX_ATTEMPTS);
       return { dropped, status: "retry" };
+    } catch (error) {
+      // review P1-2：任何未预期异常（含写库失败）都结算当前操作，并原子地把 attempt_count + 1，到上限删除 job。
+      log({ actorId: job.actorId, error: error instanceof Error ? error.name : "unknown", event: "network_snapshot_worker_error" });
+      if (operationId) await deps.ledger.finish(operationId, "failed").catch(() => undefined);
+      const dropped = await deps.repository.releaseJob(job.actorId, "snapshot", owner, SNAPSHOT_JOB_MAX_ATTEMPTS).catch(() => false);
+      return { dropped, status: "error" };
     }
-    if (result.snapshot) {
-      await deps.ledger.finish(operationId, "succeeded");
-      await deps.repository.deleteJob(job.actorId, "snapshot", owner);
-      return { snapshotId: result.snapshot.id, status: "succeeded", version: result.snapshot.version };
-    }
-    await deps.ledger.finish(operationId, "failed"); // 0 条 responded → released。
-    if (result.callsResponded > 0) {
-      await deps.repository.deleteJob(job.actorId, "snapshot", owner);
-      return { status: "failed" };
-    }
-    const dropped = await deps.repository.releaseJob(job.actorId, "snapshot", owner, SNAPSHOT_JOB_MAX_ATTEMPTS);
-    return { dropped, status: "retry" };
   }
 
   return {

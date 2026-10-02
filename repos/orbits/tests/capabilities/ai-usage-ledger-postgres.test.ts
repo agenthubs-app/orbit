@@ -19,7 +19,7 @@ import {
 } from "../../features/ai-quota/constants";
 import { AiQuotaCallRejectedError, createPostgresAiUsageLedger, type AiUsageLedger } from "../../features/ai-quota/ledger";
 import { runMemoExtraction, type MemoExtractionRecord, type MemoExtractionStore } from "../../features/contacts/memo-extraction/job";
-import type { MemoExtractionProvider } from "../../features/contacts/memo-extraction/provider";
+import { createDeepseekMemoExtractionProvider, MemoExtractionError, type MemoExtractionProvider } from "../../features/contacts/memo-extraction/provider";
 import { createNetworkAnalysisRuntime } from "../../features/network-analysis/runtime";
 import type { NetworkSnapshotGenerator } from "../../features/network-analysis/snapshot-generator";
 import { buildMockSnapshotContent } from "../../features/network-analysis/snapshot-generator";
@@ -243,4 +243,50 @@ test("SC-04 the W0046 gate replaced by the ledger opens memo extraction (backgro
     assert.equal(second.retryOn, nextTokyoMidnight(NOW));
     assert.equal(provider.calls, 1, "0 calls when the background pool is full");
   });
+});
+
+test("SC-04 P2-1 reservation epochs: each reopen allows exactly max_calls HTTP (no_response included); history is kept; a third replay still works", databaseTest, async () => {
+  await withNetworkDatabase(async (harness) => {
+    const ledger = ledgerOf(harness);
+    const reserve = () => ledger.reserve({ actorId: ALICE, idempotencyKey: "epoch", now: NOW, pool: "background", purpose: "snapshot", trigger: "auto" });
+    const first = await reserve();
+    const operationId = first.ok ? first.operationId : "";
+    for (let round = 1; round <= 3; round += 1) {
+      if (round > 1) assert.equal((await reserve()).ok, true, `replay ${round} reopens`);
+      const { callId } = await ledger.beginCall(operationId, { model: "m", provider: "deepseek" });
+      await ledger.endCall(callId, null);
+      await assert.rejects(ledger.beginCall(operationId, { model: "m", provider: "deepseek" }), (error: unknown) => error instanceof AiQuotaCallRejectedError && error.code === "MAX_CALLS", "no_response still uses the epoch's only call");
+      await ledger.finish(operationId, "failed");
+      assert.equal((await ledger.readOperation(operationId))?.status, "released");
+    }
+    assert.deepEqual((await harness.pool.query(`select seq, epoch, status from ai_usage_calls order by seq`)).rows, [
+      { epoch: 1, seq: 1, status: "no_response" }, { epoch: 2, seq: 2, status: "no_response" }, { epoch: 3, seq: 3, status: "no_response" },
+    ]);
+    assert.equal((await harness.pool.query(`select epoch from ai_usage_ledger where id = $1`, [operationId])).rows[0].epoch, 3);
+  });
+});
+
+test("SC-04 P2-1 different keys that never get a response: each operation sends at most max_calls HTTP and is released (not billed)", databaseTest, async () => {
+  await withNetworkDatabase(async (harness) => {
+    const ledger = ledgerOf(harness);
+    for (let index = 0; index < 3; index += 1) {
+      const reservation = await ledger.reserve({ actorId: ALICE, idempotencyKey: `timeout:${index}`, now: NOW, pool: "user", purpose: "snapshot", trigger: "manual" });
+      const operationId = reservation.ok ? reservation.operationId : "";
+      const { callId } = await ledger.beginCall(operationId, { model: "m", provider: "deepseek" });
+      await ledger.endCall(callId, null);
+      await assert.rejects(ledger.beginCall(operationId, { model: "m", provider: "deepseek" }), AiQuotaCallRejectedError);
+      await ledger.finish(operationId, "failed");
+    }
+    const rows = (await harness.pool.query(`select l.status, count(c.seq)::int as calls from ai_usage_ledger l join ai_usage_calls c on c.operation_id = l.id group by l.id, l.status`)).rows;
+    assert.deepEqual(rows.map((row) => [row.status, row.calls]), [["released", 1], ["released", 1], ["released", 1]]);
+    assert.equal((await ledger.readUsageToday(ALICE, NOW)).manual, 0);
+  });
+});
+
+test("SC-04 P2-2 the memo provider reports a non-2xx response with usage (tokens 0) so the gate bills it; a connection failure has no usage", async () => {
+  const busy = createDeepseekMemoExtractionProvider({ apiKey: "k", fetchImplementation: (async () => new Response("busy", { status: 429 })) as unknown as typeof fetch });
+  await assert.rejects(busy.extract({ contact: {}, memo: "m" }), (error: unknown) =>
+    error instanceof MemoExtractionError && error.code === "PROVIDER_REQUEST_FAILED" && error.usage?.inputTokens === 0 && error.usage?.outputTokens === 0);
+  const down = createDeepseekMemoExtractionProvider({ apiKey: "k", fetchImplementation: (async () => { throw new TypeError("fetch failed"); }) as unknown as typeof fetch });
+  await assert.rejects(down.extract({ contact: {}, memo: "m" }), (error: unknown) => error instanceof MemoExtractionError && error.usage === null);
 });

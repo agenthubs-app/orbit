@@ -2,7 +2,8 @@
  * W0048a：DeepSeek JSON 对话的单次 HTTP（快照与 W0048b 计划共用；写法照 `features/plans/ai-matcher.ts`，不改它）。
  *
  * - `response_format: json_object`、`thinking` 禁用、超时 + 外部 signal；
- * - 拿到响应就带回 usage（含输出无效：计费已经发生）；没有响应（超时、断线、非 2xx 读不到用量）usage 为 null。
+ * - 只要拿到了 HTTP 响应（含非 2xx、输出无效）就带回 usage（没有用量时 token 记 0），调用方记 responded 并计次；
+ *   只有连接失败与超时（没有 Response）usage 为 null，记 no_response。
  * 调用方负责在本次 HTTP 前后登记账本子账（`beginCall`／`endCall`）。
  */
 export const DEEPSEEK_CHAT_COMPLETIONS_ENDPOINT = "https://api.deepseek.com/chat/completions";
@@ -84,19 +85,19 @@ export async function deepseekJsonChat(input: DeepseekJsonChatInput): Promise<{ 
       if (controller.signal.aborted) throw new DeepseekJsonChatError("PROVIDER_TIMEOUT", "The model request timed out.");
       throw new DeepseekJsonChatError("PROVIDER_REQUEST_FAILED", "The model request failed.");
     }
+    // 已经拿到供应商的 HTTP 响应：无论状态码、能否解析，都算「有响应」（计次）；没有 usage 时 token 记 0。
+    const responded = (payload: unknown): DeepseekJsonChatUsage => usageOf(payload, Math.max(0, nowMs() - startedAt)) ?? { inputTokens: 0, latencyMs: Math.max(0, nowMs() - startedAt), outputTokens: 0 };
     let payload: unknown;
     try {
       payload = await response.json();
     } catch {
-      if (controller.signal.aborted) throw new DeepseekJsonChatError("PROVIDER_TIMEOUT", "The model request timed out.");
-      if (!response.ok) throw new DeepseekJsonChatError("PROVIDER_REQUEST_FAILED", `The model request failed with status ${response.status}.`);
-      throw new DeepseekJsonChatError("INVALID_OUTPUT", "The model returned an unreadable response.", { inputTokens: 0, latencyMs: Math.max(0, nowMs() - startedAt), outputTokens: 0 });
+      if (!response.ok) throw new DeepseekJsonChatError("PROVIDER_REQUEST_FAILED", `The model request failed with status ${response.status}.`, responded(null));
+      throw new DeepseekJsonChatError("INVALID_OUTPUT", "The model returned an unreadable response.", responded(null));
     }
-    const latencyMs = Math.max(0, nowMs() - startedAt);
+    const usage = responded(payload);
     if (!response.ok) {
-      throw new DeepseekJsonChatError("PROVIDER_REQUEST_FAILED", `The model request failed with status ${response.status}.`, usageOf(payload, latencyMs));
+      throw new DeepseekJsonChatError("PROVIDER_REQUEST_FAILED", `The model request failed with status ${response.status}.`, usage);
     }
-    const usage = usageOf(payload, latencyMs) ?? { inputTokens: 0, latencyMs, outputTokens: 0 };
     const content = contentOf(payload);
     if (!content?.trim()) throw new DeepseekJsonChatError("INVALID_OUTPUT", "The model returned no content.", usage);
     return { content, usage };

@@ -5,7 +5,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createMockSnapshotGenerator, buildMockSnapshotContent, type SnapshotInput } from "../../features/network-analysis/snapshot-generator";
-import { SnapshotValidationError, validateSnapshotOutput } from "../../features/network-analysis/snapshot-validator";
+import { SnapshotValidationError, snapshotTextHasStatistics, snapshotTextLeaksIds, validateSnapshotOutput } from "../../features/network-analysis/snapshot-validator";
+import { buildSnapshotPromptInput, restoreSnapshotAliases } from "../../features/network-analysis/deepseek-snapshot-generator";
 import { createDeepseekSnapshotGenerator } from "../../features/network-analysis/deepseek-snapshot-generator";
 
 const allowed = {
@@ -105,6 +106,53 @@ test("SC-02 mock and DeepSeek share one interface; mock text is assembled only f
   const result = validateSnapshotOutput(content, allowed);
   assert.equal(result.dropped.contactIds + result.dropped.recordIds, 0, "mock cites only input ids");
   const text = result.blocks.map((entry) => `${entry.text.zh} ${entry.text.en}`).join(" ");
-  for (const fragment of ["佐藤", "Software", "4"]) assert.ok(text.includes(fragment), `mock text uses real data: ${fragment}`);
+  for (const fragment of ["佐藤", "Software"]) assert.ok(text.includes(fragment), `mock text uses real data: ${fragment}`);
+  for (const entry of result.blocks) {
+    assert.equal(snapshotTextHasStatistics(entry.text.zh, ["SaaS 决策人"]), false, entry.text.zh);
+    assert.equal(snapshotTextHasStatistics(entry.text.en), false, entry.text.en);
+    assert.doesNotMatch(`${entry.text.zh} ${entry.text.en}`, /\d/, "the mock narrative stores no counts");
+  }
   assert.equal(result.blocks.find((entry) => entry.kind === "gap")?.needId, "need-1");
+});
+
+test("SC-02 P2-3 text that carries a raw id, a record reference, a UUID or a model alias is dropped", () => {
+  const leaks = [
+    "可以先跟进 c1 以外的人（plan:cf2cafad-a106-4b51-9697-f0923bdbc20b）。",
+    "See note:note:w0047-c8 for details.",
+    "Follow up with C3 first.",
+    "联系人 contact:business-card:9fa66f 很关键。",
+    "id 0f8fad5b-d9cb-469f-a165-70867728950e",
+  ];
+  for (const text of leaks) assert.equal(snapshotTextLeaksIds(text, allowed), true, text);
+  assert.equal(snapshotTextLeaksIds("Note: meet at 10:30, see https://example.com", allowed), false);
+  assert.equal(snapshotTextLeaksIds("林玫是当前最可推进的投资人线索。", allowed), false);
+  const result = validateSnapshotOutput({ blocks: [block("diagnosis"), block("insight"), block("insight", { contactIds: ["c2"] }), block("insight", { contactIds: ["c3"], en: "Mentions memo:n1 here." })] }, allowed);
+  assert.equal(result.blocks.filter((entry) => entry.kind === "insight").length, 2);
+  assert.equal(result.dropped.unsafeText, 1);
+});
+
+test("SC-02 P2-4 statistics in text are rejected (percent, score, people counts) while the goal and need titles may contain numbers", () => {
+  for (const text of ["覆盖率 45%", "百分之三十", "relationship score is high", "你有 12 位联系人", "3人来自金融", "You have 12 contacts in finance", "5 people are dormant"]) {
+    assert.equal(snapshotTextHasStatistics(text), true, text);
+  }
+  for (const text of ["林玫在投资领域最活跃。", "Lin Mei is the most active investor.", "10月有一场活动。"]) assert.equal(snapshotTextHasStatistics(text), false, text);
+  assert.equal(snapshotTextHasStatistics("「认识 2 位关注企业软件的早期投资人」可以先从林玫入手。", ["认识 2 位关注企业软件的早期投资人"]), false);
+  const withPhrases = { ...allowed, phrases: ["认识 2 位投资人"] };
+  const result = validateSnapshotOutput({ blocks: [
+    block("diagnosis", { zh: "你有 20 位联系人。" }),
+    block("diagnosis", { zh: "「认识 2 位投资人」还缺一位。" }),
+    block("insight"), block("insight", { contactIds: ["c2"] }),
+  ] }, withPhrases);
+  assert.equal(result.blocks[0]!.text.zh, "「认识 2 位投资人」还缺一位。");
+});
+
+test("SC-02 P2-3 prompt input carries only aliases; the response maps back to the real ids", () => {
+  const { aliases, payload } = buildSnapshotPromptInput(INPUT);
+  const sent = JSON.stringify(payload);
+  for (const id of ["c1", "c2", "memo:n1", "need-1"]) assert.ok(!sent.includes(`"${id}"`), id);
+  assert.ok(sent.includes('"C1"') && sent.includes('"R1"') && sent.includes('"N1"'));
+  const restored = JSON.parse(restoreSnapshotAliases(JSON.stringify({ blocks: [{ contactIds: ["C1", "C9"], kind: "gap", needId: "N1", recordIds: ["R1"], zh: "x", en: "y" }] }), aliases));
+  assert.deepEqual(restored.blocks[0].contactIds, ["c1", "C9"]);
+  assert.deepEqual(restored.blocks[0].recordIds, ["memo:n1"]);
+  assert.equal(restored.blocks[0].needId, "need-1");
 });

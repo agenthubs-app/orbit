@@ -6,6 +6,10 @@
  * - 同一次调用必须产出 zh 与 en，任一语言为空的块丢弃；
  * - 每种块按上限截取（diagnosis 1、insight 3、gap 6、plan 1）；gap 的 needId 只认本次输入里的需求；
  * - 关键块不足（没有 diagnosis，或 insight 少于 2 条）→ 整份失败（不写库）。
+ * - 文字里出现原始 id（本次输入的任何 id、`前缀:值` 形式的记录引用、UUID）或模型别名（C1／R2／N3）的块丢弃
+ *   （review P2-3）；
+ * - 文字里出现统计数字的块丢弃（review P2-4，统计一律实时规则算）：百分比、score／分数／评分、「数字 + 位／名／人」、
+ *   「数字 + contacts／people／connections」。比对前先去掉本次输入里的目标原文与需求标题（它们本身可能含人数）。
  * 块的 key 由校验器按顺序生成（不信任模型给的 key）。
  */
 import {
@@ -29,12 +33,43 @@ export interface SnapshotAllowedReferences {
   contactIds: ReadonlySet<string>;
   recordIds: ReadonlySet<string>;
   needIds: ReadonlySet<string>;
+  /** 允许原样出现在文字里的输入短语（目标原文、需求标题）：检查统计数字前先去掉。 */
+  phrases?: readonly string[];
+}
+
+/** `plan:…`、`note:note:…`、`contact:business-card:…` 这类记录引用（英文前缀 + 冒号 + 无空格的值）。 */
+const RECORD_REFERENCE = /\b[a-z][a-z_-]*:[A-Za-z0-9][A-Za-z0-9:_.-]{2,}/i;
+const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+/** DeepSeek 输入用的短期别名（见 deepseek-snapshot-generator）。 */
+export const SNAPSHOT_ALIAS_PATTERN = /\b[CRN]\d{1,4}\b/;
+const STATISTICS = [
+  /\d+(?:\.\d+)?\s*[%％]/,
+  /百分之/,
+  /\bscores?\b|分数|得分|评分/i,
+  /\d+\s*(?:位|名|个人|人)/,
+  /\b\d+\s+(?:contacts?|people|persons|connections|members)\b/i,
+];
+
+/** 文字是否带原始 id／别名（不可展示）。 */
+export function snapshotTextLeaksIds(text: string, allowed: Pick<SnapshotAllowedReferences, "contactIds" | "recordIds" | "needIds">): boolean {
+  if (RECORD_REFERENCE.test(text) || UUID.test(text) || SNAPSHOT_ALIAS_PATTERN.test(text)) return true;
+  for (const ids of [allowed.contactIds, allowed.recordIds, allowed.needIds]) {
+    for (const id of ids) if (id.length >= 4 && text.includes(id)) return true;
+  }
+  return false;
+}
+
+/** 文字是否带统计数字（先去掉允许的输入短语）。 */
+export function snapshotTextHasStatistics(text: string, phrases: readonly string[] = []): boolean {
+  let rest = text;
+  for (const phrase of [...phrases].filter((entry) => entry.trim().length > 0).sort((a, b) => b.length - a.length)) rest = rest.split(phrase.trim()).join(" ");
+  return STATISTICS.some((pattern) => pattern.test(rest));
 }
 
 export interface SnapshotValidationResult {
   blocks: SnapshotBlock[];
   /** 被丢弃的块与 id 数（REPORT／日志用，不含内容）。 */
-  dropped: { blocks: number; contactIds: number; recordIds: number; needIds: number };
+  dropped: { blocks: number; contactIds: number; recordIds: number; needIds: number; unsafeText: number };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -71,7 +106,7 @@ function rawBlocks(content: unknown): unknown[] {
 }
 
 export function validateSnapshotOutput(content: unknown, allowed: SnapshotAllowedReferences): SnapshotValidationResult {
-  const dropped = { blocks: 0, contactIds: 0, needIds: 0, recordIds: 0 };
+  const dropped = { blocks: 0, contactIds: 0, needIds: 0, recordIds: 0, unsafeText: 0 };
   const kept: Record<SnapshotBlockKind, SnapshotBlock[]> = { diagnosis: [], gap: [], insight: [], plan: [] };
   for (const raw of rawBlocks(content)) {
     if (!isRecord(raw)) {
@@ -94,6 +129,11 @@ export function validateSnapshotOutput(content: unknown, allowed: SnapshotAllowe
     if (rawNeed && !needId) dropped.needIds += 1;
     if (!kind || !zh || !en || contactIds.length + recordIds.length === 0 || kept[kind].length >= SNAPSHOT_BLOCK_LIMITS[kind]) {
       dropped.blocks += 1;
+      continue;
+    }
+    if ([zh, en].some((text) => snapshotTextLeaksIds(text, allowed) || snapshotTextHasStatistics(text, allowed.phrases))) {
+      dropped.blocks += 1;
+      dropped.unsafeText += 1;
       continue;
     }
     kept[kind].push({

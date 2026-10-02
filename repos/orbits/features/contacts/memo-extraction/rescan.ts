@@ -2,12 +2,22 @@
  * W0048a：memo 提取的有界补扫（W0046 交接：开闸后由维护任务补「没有 memo_extractions 记录」以及
  * 「disabled／到期 deferred／认领租约过期」的 memo，计入后台池）。
  *
+ * 候选判定与 `memoExtractionKey` 完全一致：noteId + 当前正文（与 JS `trim()` 同一组空白字符）sha256 前 24 位，
+ * 所以同一 memo 改了正文、而修改后的 after() 丢失时，旧正文的终态记录不会挡住新正文（review P2-5）。
  * 一条语句取至多 `limit` 条候选（按 memo 所在详情行最近更新倒序），逐条重跑幂等的 `runMemoExtraction`：
  * 作业自己做原子认领与终态判断，补扫与写 memo 后的 after() 并发也只会有一方发请求。
  * 只读候选；写入全部经作业与闸门（后台池满时作业记 deferred 到次日，0 次调用）。
  */
 import { MEMO_NOTE_ID_PREFIX } from "../../relationship-timeline/build";
 import type { MemoExtractionJobInput } from "./job";
+
+/** 与 JavaScript `String.prototype.trim()` 相同的空白字符（PostgreSQL E'' 字符串）。 */
+const JS_TRIM_CHARS = "E' \\t\\n\\u000b\\f\\r\\u00a0\\u1680\\u2000\\u2001\\u2002\\u2003\\u2004\\u2005\\u2006\\u2007\\u2008\\u2009\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff'";
+
+/** SQL 版 memoExtractionKey（noteId 与正文两个表达式）。 */
+export function memoExtractionKeySql(noteId: string, body: string): string {
+  return `'memo:' || ${noteId} || ':' || left(encode(sha256(convert_to(btrim(${body}, ${JS_TRIM_CHARS}), 'UTF8')), 'hex'), 24)`;
+}
 
 export interface MemoRescanSqlClient {
   query<TRow = Record<string, unknown>>(text: string, values?: readonly unknown[]): Promise<{ rows: readonly TRow[] }>;
@@ -31,7 +41,7 @@ export const MEMO_RESCAN_SQL = `/* memo-extraction:rescan */
     and not exists (
       select 1 from orbit_records m
       where m.workspace_id = $1 and m.collection_name = 'memo_extractions' and m.user_id = r.user_id
-        and m.lifecycle_state <> 'deleted' and m.payload->>'noteId' = n->>'noteId'
+        and m.lifecycle_state <> 'deleted' and m.payload->>'key' = ${memoExtractionKeySql("(n->>'noteId')", "(n->>'body')")}
         and not (
           m.payload->>'status' = 'disabled'
           or (m.payload->>'status' = 'deferred' and coalesce(m.payload->>'retryOn', '') <= $2)

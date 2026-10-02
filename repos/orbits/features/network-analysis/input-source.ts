@@ -2,22 +2,23 @@
  * W0048a：快照生成的输入（只读）。
  *
  * - 联系人裁剪复用计划输入的单一来源：`createPostgresPlanContactReader`（PLAN_INPUT_CONTACTS_SQL）+ `selectPlanContacts`，
- *   模型最多看 200 位；另一条小查询补职级（派生 4 档给模型，原值不改）与规范地区，并取本人全部已确认联系人 id
- *   作为快照的 includedContactIds（阈值比较用，避免超过 200 位时被裁掉的人永远算「新增」）。
- * - 每人最近 ≤2 条关系记录（W0046 RelationshipTimelineItem.id 即依据 recordIds），复用 W0047 的按 actor 批量时间线。
+ *   模型最多看 200 位；随后一条窄语句取本人全部已确认联系人 id（快照的 includedContactIds，阈值比较用，避免超过
+ *   200 位时被裁掉的人永远算「新增」），并只为选中的人带上职级（派生 4 档给模型，原值不改）与规范地区三个文本列。
+ * - 每人最近 ≤2 条关系记录（W0046 RelationshipTimelineItem.id 即依据 recordIds）：只读选中的人、每来源每人 2 条
+ *   （`recent-records.ts`，review P3）。
  * - 关系档位读 W0047 缓存（只读，不触发重算）。
  * - 计划里的人脉需求只经只读的 `PlanService.getCurrent()`（R-6，不调 getCurrentView／enterCurrentPhase）。
  */
 import { seniorityGroup } from "../../shared/compute/seniority-group";
 import { industryLabel, isIndustryIdCode, secondaryIndustryLabel } from "../../shared/domain/industries";
-import { readStoredRegion, regionDisplayName } from "../../shared/domain/regions";
+import { normalizeRegion, regionDisplayName } from "../../shared/domain/regions";
 import type { TransactionalPostgresClient } from "../../shared/storage/transactional-postgres";
 import type { PlanSnapshot } from "../plans/contract";
 import { createPostgresPlanContactReader } from "../plans/input-source";
 import { selectPlanContacts } from "../plans/input-selector";
 import { createPostgresRelationshipStrengthStore } from "../relationship-strength/read-model";
-import { readRelationshipTimelinesForActor } from "../relationship-strength/timelines";
-import { SNAPSHOT_INPUT_CONTACT_LIMIT, SNAPSHOT_INPUT_EXCERPT_LIMIT, SNAPSHOT_INPUT_RECORDS_PER_CONTACT } from "./contract";
+import { readRecentRecordsForContacts } from "./recent-records";
+import { SNAPSHOT_INPUT_CONTACT_LIMIT, SNAPSHOT_INPUT_EXCERPT_LIMIT } from "./contract";
 import { confirmedContactPredicate } from "./repository";
 import type { SnapshotInput, SnapshotInputContact, SnapshotInputNeed } from "./snapshot-generator";
 
@@ -28,17 +29,19 @@ export interface SnapshotInputBundle {
   /** 本人全部已确认联系人 id（快照 includedContactIds）。 */
   includedContactIds: string[];
   /** 校验器允许的依据 id。 */
-  allowed: { contactIds: Set<string>; recordIds: Set<string>; needIds: Set<string> };
+  allowed: { contactIds: Set<string>; recordIds: Set<string>; needIds: Set<string>; phrases: string[] };
 }
 
 export interface SnapshotInputSource {
   read(input: { actorId: string; goal: string | null; now: Date }): Promise<SnapshotInputBundle>;
 }
 
-const CONTACT_DETAILS_SQL = `/* network-snapshot:input:contact-details */
+/** 全部已确认联系人 id（窄列）；只为 $3 里选中的人带职级与地区三个文本列。 */
+const CONTACT_IDS_AND_DETAILS_SQL = `/* network-snapshot:input:contact-ids */
   select c.record_id,
-    c.payload->'publicProfile'->>'seniorityLevel' as seniority_level,
-    c.payload->'region' as region
+    case when c.record_id = any($3::text[]) then c.payload->'publicProfile'->>'seniorityLevel' end as seniority_level,
+    case when c.record_id = any($3::text[]) then c.payload->'region'->>'countryCode' end as region_country,
+    case when c.record_id = any($3::text[]) then c.payload->'region'->>'city' end as region_city
   from orbit_records c
   where ${confirmedContactPredicate("c")}
   order by c.record_id
@@ -89,24 +92,23 @@ export function createPostgresSnapshotInputSource(input: {
   return {
     async read({ actorId, goal, now }) {
       const goalText = goal ?? "";
-      const [contactRead, details, plan, timelines] = await Promise.all([
-        readContacts(actorId, { goalText, now }),
-        client.query<Row>(CONTACT_DETAILS_SQL, [workspaceId, actorId]),
-        input.readCurrentPlan(actorId),
-        readRelationshipTimelinesForActor(client, workspaceId, { actorId, now }),
-      ]);
+      const [contactRead, plan] = await Promise.all([readContacts(actorId, { goalText, now }), input.readCurrentPlan(actorId)]);
       const selected = selectPlanContacts({ actorId, contacts: contactRead.contacts, goalText, now, total: contactRead.total }).contacts
         .slice(0, SNAPSHOT_INPUT_CONTACT_LIMIT);
+      const selectedIds = selected.map((contact) => contact.id);
+      const [details, tierRows, recent] = await Promise.all([
+        client.query<Row>(CONTACT_IDS_AND_DETAILS_SQL, [workspaceId, actorId, selectedIds]),
+        strengths.readTiers(actorId, selectedIds),
+        readRecentRecordsForContacts(client, workspaceId, { actorId, contacts: selected.map((contact) => ({ createdAt: contact.createdAt, id: contact.id })), now }),
+      ]);
       const detailById = new Map(details.rows.map((row) => [String(row.record_id), row]));
-      const tiers = new Map((await strengths.readTiers(actorId, selected.map((contact) => contact.id))).map((entry) => [entry.contactId, entry]));
+      const tiers = new Map(tierRows.map((entry) => [entry.contactId, entry]));
       const recordIds = new Set<string>();
       const contacts: SnapshotInputContact[] = selected.map((contact) => {
         const detail = detailById.get(contact.id);
-        const region = readStoredRegion(detail?.region ?? null);
+        const region = normalizeRegion(detail?.region_country ?? null, detail?.region_city ?? null);
         const tier = tiers.get(contact.id);
-        const items = (timelines.timelines.get(contact.id) ?? [])
-          .filter((item) => item.source !== "capture")
-          .slice(0, SNAPSHOT_INPUT_RECORDS_PER_CONTACT);
+        const items = recent.get(contact.id) ?? [];
         for (const item of items) recordIds.add(item.id);
         return {
           dormant: tier?.dormant ?? false,
@@ -133,6 +135,7 @@ export function createPostgresSnapshotInputSource(input: {
         allowed: {
           contactIds: new Set(contacts.map((contact) => contact.id)),
           needIds: new Set(needs.map((need) => need.id)),
+          phrases: [goal ?? "", ...needs.map((need) => need.title)].filter((phrase) => phrase.trim().length > 0),
           recordIds,
         },
         includedContactIds,

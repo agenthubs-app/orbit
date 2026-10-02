@@ -122,6 +122,17 @@ create index network_analysis_jobs_due
   where status in ('pending', 'running', 'deferred');
 `,
   },
+  {
+    // W0048a review P2-1：同键重开（released → reserved）开启新的 epoch；max_calls 只按当前 epoch 的全部子账
+    // （含 no_response）严格计数，历史子账保留。
+    name: "ai-usage-reservation-epoch",
+    version: 2,
+    sql: `
+alter table ai_usage_ledger add column epoch integer not null default 1 check (epoch >= 1);
+alter table ai_usage_calls add column epoch integer not null default 1 check (epoch >= 1);
+create index ai_usage_calls_operation_epoch on ai_usage_calls (workspace_id, operation_id, epoch);
+`,
+  },
 ];
 
 function checksum(sql: string): string {

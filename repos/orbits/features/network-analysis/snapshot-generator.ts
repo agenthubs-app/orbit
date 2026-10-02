@@ -99,12 +99,13 @@ export function buildMockSnapshotContent(input: SnapshotInput): string {
   const seniority = top(contacts, (contact) => (contact.seniorityGroup !== "other" ? contact.seniorityGroup : null));
   const recent = contacts.filter((contact) => contact.records.length > 0);
   const blocks: Record<string, unknown>[] = [];
+  // 只写定性描述：人数、分布等统计一律由页面实时规则算（契约：快照不存统计数字，review P2-4）。
   blocks.push({
-    contactIds: ids(contacts),
-    en: `You have ${input.contactTotal} confirmed contacts${industry ? `; the largest group is ${industry.value} (${industry.members.length})` : ""}.`,
+    contactIds: ids(industry ? industry.members : contacts),
+    en: industry ? `Most of your confirmed contacts are in ${industry.value}.` : "Your confirmed contacts have no industry recorded yet.",
     kind: "diagnosis",
     recordIds: [],
-    zh: `你已确认 ${input.contactTotal} 位联系人${industry ? `，人数最多的是「${industry.value}」（${industry.members.length} 位）` : ""}。`,
+    zh: industry ? `你已确认的联系人里，「${industry.value}」方向的人最多。` : "你已确认的联系人还没有记录行业。",
   });
   blocks.push(industry
     ? {
@@ -124,10 +125,10 @@ export function buildMockSnapshotContent(input: SnapshotInput): string {
   blocks.push(seniority
     ? {
         contactIds: ids(seniority.members),
-        en: `${seniority.members.length} contacts are at the ${seniority.value} level, e.g. ${namesEn(seniority.members)}.`,
+        en: `${namesEn(seniority.members)} are at the ${seniority.value} level.`,
         kind: "insight",
         recordIds: [],
-        zh: `${seniority.members.length} 位处在${SENIORITY_ZH[seniority.value] ?? seniority.value}，例如 ${names(seniority.members)}。`,
+        zh: `${names(seniority.members)} 处在${SENIORITY_ZH[seniority.value] ?? seniority.value}。`,
       }
     : {
         contactIds: ids(contacts.slice(-3)),
