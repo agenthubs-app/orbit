@@ -1,14 +1,16 @@
 # Sprint W0045 — 名片识别顺带补职级与规范地区，补全值带来源
 
+> revision 4：按 D46 修订（①⑦）：改 `shared/*` 的同一提交内执行 App 机械同步脚本 `npm run sync:contract`（只复制、不改 App 逻辑）并跑 App 四个 *-sync 测试为绿，删除「App 副本过期是预期跨端待办」表述；基线行号以开工时 HEAD 为准、按符号重定位。
+>
 > revision 3：按 REVIEW-2026-10-02-network 裁决修订（R-9、R-16，配额口径统一）：删除 App 契约同步 commit 要求，只保证 optional 兼容并在 REPORT 写「App 影响」交 W0055 的 Bridge handoff；按文字补全计次口径改为「一批 ≤20 人 = 1 次操作」；验收契约改为「操作链 + 主证据」+ 必需证据子表。
 >
 > revision 2：按 D44 定稿待定项、W0048 拆分、配额两池（2026-10-02）。补全来源载体按 C-4 统一：offering／seeking／topics 的来源也记在本 Sprint 定稿的 `enrichment.fields` 下（由 W0046 写入）。
 
-**Plan revision:** 3。**模式:** existing-codebase / single-generator。运行状态只在登记表。
+**Plan revision:** 4。**模式:** existing-codebase / single-generator。运行状态只在登记表。
 **原需求:** RN-03（REQUIREMENTS 大目标 4「共享契约 · 补全字段」）；计费口径 D5，D43（名片识别含本补全不计入每日 AI 上限）。
 **单一目标:** 名片识别的同一次文本整理调用多输出 `seniorityLevel` 与规范地区；审阅页可改；确认（新建／合并）按来源规则写入联系人；联系人编辑接口能把行业／职级／地区标为 `user`；交付一个只在本机验证的回填脚本与可复用的「按文字补全」模块（W0048a 三层更新入口与 W0053 导入复用，届时计入后台池、按操作计次：一批 ≤20 人 = 1 次；W0055 回填走系统预算）。
 **易读目标:** [GOAL.md](GOAL.md)。
-**基线:** 编制时 `chat-agent` = `a48e1749`（GitNexus 索引同为 `a48e174`）。下文行号都按 `a48e1749`；W0043、W0044 先于本 Sprint 合并时可能改动 `features/contacts/**`，开工时按符号重新定位并在 REPORT 登记。
+**基线:** 编制时 `chat-agent` = `a48e1749`（GitNexus 索引同为 `a48e174`）。下文行号都按 `a48e1749`；W0043、W0044 先于本 Sprint 合并时可能改动 `features/contacts/**`，开工时按符号重新定位并在 REPORT 登记。 **行号以开工时 HEAD 为准，按符号重定位（D46⑦）。**
 **进入条件:**
 - 无前序依赖（登记表）；W45-1 已定（见下「已定决定」）；W45-2～W45-5 已定（D44，见文末）。
 - 本机 `orbit_test`（`ORBIT_EVENT_DATABASE_URL` → localhost）可用，`node scripts/assert-local-test-databases.mjs` 通过。
@@ -53,7 +55,7 @@ export type EnrichmentField = "industry" | "seniorityLevel" | "region" | "offeri
 - **来源含义：**`ai` = 模型推断（名片识别、按文字补全、memo 提取）；`card` = 不经模型、从原文或已有资料按确定规则得出（名片地址经别名表直接命中、旧的 `publicProfile.seniorityLevel`、vCard 的国家字段等）；`user` = 用户在审阅页改过或在联系人编辑里填写。
 - **写入优先级（唯一规则，纯函数 `canWriteEnrichedValue(current, incomingOrigin)`）：**`user` 永远可写；`card` 只在当前为空或当前来源为 `ai` 时可写；`ai` 只在当前为空或当前来源为 `ai` 时可写。**当前有值但没有来源记录（存量数据）一律按 `user` 对待**（保守：存量行业可能是用户手改的）。
 - **地区校验：**`countryCode` 必须是两位大写字母且 `new Intl.DisplayNames(["en"], { type: "region" }).of(code)` 不等于 code 本身；否则整对丢弃为 null。国家显示名用 `Intl.DisplayNames` 按 zh／en 生成，不手抄表；`shared/domain/regions.ts` 只放城市别名（至少覆盖 `normalizedLocation` 现有的东京／大阪／京都／神户／横滨，再加名古屋、福冈、札幌、上海、北京、深圳、新加坡），供 W0049 统计复用。
-- **派生分组：**`shared/domain/seniority.ts` 导出 `seniorityGroup(level?: SeniorityLevel | null): "decision" | "manager" | "staff" | "other"`。`shared/**` 要能在 App 端运行（不引入 Node 专属 API）。
+- **派生分组：**映射本体放在 `shared/compute/seniority-group.ts`（纯函数，文件内自带六档字符串字面量联合，不 import `shared/domain`，满足 `tests/support/shared-compute-audit.ts`，随 `sync:contract` 进 App）导出 `seniorityGroup(level?: string | null): "decision" | "manager" | "staff" | "other"`；`shared/domain/seniority.ts` 只从它再导出并附六档中英标签，保持唯一来源（协调者 2026-10-02 裁决，避免 W0049 回改本 Sprint 代码）。`shared/**` 要能在 App 端运行（不引入 Node 专属 API）。
 
 ## 上下文包（Generator 从这里起步，不通读其他 REPORT）
 
@@ -101,8 +103,9 @@ export type EnrichmentField = "industry" | "seniorityLevel" | "region" | "offeri
 ## 范围与文件
 
 - 修改：上述识别、校验、契约、schema、v2 handler、写入服务、合并、审阅页 view-model 与 UI、联系人 PATCH handler／detail service／record provider、`shared/domain/contracts.ts`；对应测试。
-- 新建：`shared/domain/seniority.ts`（`seniorityGroup`、六档中英标签复用现有）、`shared/domain/regions.ts`（城市别名、`normalizeRegion`、国家校验）、`shared/domain/enrichment.ts`（`canWriteEnrichedValue`、来源类型）、`features/contacts/enrichment/text-enrichment.ts`（按文字补全：输入联系人 id + 公司／职位／原始地址／名片备注文字，**不送邮箱电话**；每次调用 ≤20 人；DeepSeek 文本模型同 `ai-matcher` 配置；无密钥返回 null；每次供应商 HTTP 返回一份 usage（供调用方逐次登记成本子账）；**不自行扣额度**，由调用方按操作记账（一批 ≤20 人 = 1 次操作）：W0048a 三层入口记后台池、W0055 回填记 `system`）、`scripts/backfill-contact-enrichment.ts`（plan／apply）、测试文件。
+- 新建：`shared/compute/seniority-group.ts`（`seniorityGroup` 映射本体）、`shared/domain/seniority.ts`（再导出 `seniorityGroup`、六档中英标签复用现有）、`shared/domain/regions.ts`（城市别名、`normalizeRegion`、国家校验）、`shared/domain/enrichment.ts`（`canWriteEnrichedValue`、来源类型）、`features/contacts/enrichment/text-enrichment.ts`（按文字补全：输入联系人 id + 公司／职位／原始地址／名片备注文字，**不送邮箱电话**；每次调用 ≤20 人；DeepSeek 文本模型同 `ai-matcher` 配置；无密钥返回 null；每次供应商 HTTP 返回一份 usage（供调用方逐次登记成本子账）；**不自行扣额度**，由调用方按操作记账（一批 ≤20 人 = 1 次操作）：W0048a 三层入口记后台池、W0055 回填记 `system`）、`scripts/backfill-contact-enrichment.ts`（plan／apply）、测试文件。
 - 排除：分布统计改读新字段（W0049）；导入（W0053）；三层更新入口与配额（W0048a）；App 端界面；公司规模（RN-03 明确不做）；`/api/mobile/contacts-dashboard` 与 `shared/compute/*` 现有字段语义不改（只可加字段，本 Sprint 预计不碰）。
+- 同步副本（D46①）：`repos/orbit-app/src/api/{contract,schema,domain}` 中由 `npm run sync:contract` 写出的变化，与本 Sprint 代码同一提交；不改 App 其他文件（注意 `shared/domain` 只有 `industries.ts`／`language.ts` 进 App，本 Sprint 新建的 `seniority.ts`／`regions.ts`／`enrichment.ts` 与改动的 `contracts.ts` 不被同步，被同步的 `shared/contract`、`shared/api-schema` 文件不得引用它们）。
 
 ## 验收契约（最多五项；revision 3 起每项 = 一条操作链 + 一个主证据，其余断言见「必需证据子表」，R-16）
 
@@ -125,7 +128,7 @@ export type EnrichmentField = "industry" | "seniorityLevel" | "region" | "offeri
 | 02 | 正反面冲突同行业做法（不预选、挡自动导入与自动并入） | `app-card-batch-model.test.ts` |
 | 02 | 客户端伪造来源无效；旧客户端不传新字段时不写且确认指纹不变（旧客户端兼容，R-9） | v2 路由测试（指纹重放） |
 | 03 | 新建联系人写 `publicProfile.seniorityLevel`、`region`、`enrichment.fields.*` | `business-card-contact-write.test.ts` |
-| 03 | `seniorityGroup`、`normalizeRegion`、`canWriteEnrichedValue` 纯函数 | `shared/domain` 纯函数测试 |
+| 03 | `seniorityGroup`（`shared/compute`）、`normalizeRegion`、`canWriteEnrichedValue` 纯函数 | 纯函数测试 + `compute-sync` 审计通过 |
 | 03 | 联系人详情读取能读到三项 | `contact-detail` 读取测试 |
 | 04 | 新增 `seniorityLevel`、`region` 白名单字段；改行业沿用 `updateContactPrimaryIndustry` 并记 `user` | handler 测试、`secondary-industry-records.test.ts` 同型来源断言 |
 | 04 | 越权与非法值拒绝 | handler 测试 |
@@ -134,7 +137,7 @@ export type EnrichmentField = "industry" | "seniorityLevel" | "region" | "offeri
 | 05 | 按文字补全每次 ≤20 人、请求体不含邮箱电话；非 localhost 库无 `--confirm-remote` 拒绝 | `text-enrichment` 解析与请求体断言（mock fetch）、回填测试 |
 | 05 | H 档收口：Web typecheck、一次全量基线对照（新增失败 0）、一次 Codex 代码 review | `npm test` 基线对照清单、review 处理 |
 | 05 | 审阅页与详情 1440／375 截图；有样本则跑一批（≥3 张）真实识别并记录次数与 token 前后对照 | 证据目录截图与 usage 查询结果 |
-| 05 | REPORT「App 影响」一节：改动的 `shared/*` 文件、新增 optional 字段、旧客户端行为、未验证范围；本 Sprint diff 不含 `repos/orbit-app`（R-9） | REPORT、`git diff --stat` |
+| 05 | REPORT「App 影响」一节：改动的 `shared/*` 文件、新增 optional 字段、旧客户端行为、未验证范围；**同一提交**含 `npm run sync:contract` 写出的 App 副本，App 端 `contract-sync`／`api-schema-sync`／`compute-sync`／`domain-sync` 四个测试全绿，`repos/orbit-app` 除 `src/api/{contract,schema,compute,domain}` 外无改动（D46①） | REPORT、同步命令输出、App *-sync 测试输出、`git diff --stat` |
 
 ## 一次 Generator 的执行顺序
 
@@ -142,7 +145,7 @@ export type EnrichmentField = "industry" | "seniorityLevel" | "region" | "offeri
 2. 对上文「关键符号」批量 impact；HIGH 先在 REPORT 报告，`UNKNOWN` 用 grep 补查。
 3. 先写 `shared/domain` 纯函数与测试（RED → GREEN），再按 SC-01 → 05 顺序写失败测试 → 最小实现 → 定向 GREEN；最多两轮本地修复。
 4. 可见变化在浏览器 1440／375 验证；截图存 `~/orbit-sprint-evidence/web/sprint-W0045/run-01/`。
-5. 路径限定暂存 → `detect-changes --scope staged` → `sprint/W0045-contact-enrichment-seniority-region` 提交 → REPORT → 交协调者合并回 `chat-agent` 并验证合并树。H 档代码 review（Codex）一次，意见交回本 Generator 修。
+5. 在 `repos/orbit-app` 执行 `npm run sync:contract`，跑 App 四个 *-sync 测试为绿（D46①）→ 路径限定暂存（含同步副本）→ `detect-changes --scope staged` → `sprint/W0045-contact-enrichment-seniority-region` 提交 → REPORT → 交协调者合并回 `chat-agent` 并验证合并树。H 档代码 review（Codex）一次，意见交回本 Generator 修。
 
 ## 最小测试与检查
 
@@ -150,7 +153,7 @@ export type EnrichmentField = "industry" | "seniorityLevel" | "region" | "offeri
 - **开发定向集**（cwd `/Users/li/work/orbit/repos/orbits`）：`tests/capabilities/business-card-industry-extraction.test.ts`、`deepseek-business-card-ocr-provider.test.ts`、`business-card-cloud-ocr.test.ts`、`business-card-contact-write.test.ts`、`business-card-contact-match.test.ts`、`tests/pages/ingest-v2-route-view-model.test.ts`、`app-card-batch-industry-field.test.tsx`、`app-card-batch-model.test.ts`、新增 `shared/domain` 测试与回填测试。
 - **操作链收口集**：上述 + `tests/api/business-card-ingest-v2-routes.test.ts`、`business-card-ingest-v2-repository.test.ts`、`tests/api-schema/business-card-batch-schema.test.ts`、`business-card-two-sided-contract.test.ts`、`business-card-review-and-confirm-flow.test.ts`、`tests/services/business-card-v1-confirm-atomic.test.ts`、`secondary-industry-records.test.ts`、`tests/pages/app-network-detail-modal.test.tsx`、`app-contact-detail-live-route-services.test.ts`、`tests/services/mobile-contacts-dashboard-service.test.ts`（确认只加字段不变语义）；`npx tsc --noEmit -p .`。
 - **全量**：本 Sprint 本地代码收口时一次 `npm test`，按 RULES 5.2 基线对照，不 source `.env`。
-- **App 端（R-9）：**本轮只做 Web，**不产生任何 `repos/orbit-app` commit**，也不以 App 契约同步作为完成条件。`shared/contract/business-card-batch.ts` 与 `shared/domain/contracts.ts` 是跨端契约，本 Sprint 只加 optional 字段、旧响应与旧请求逐字段兼容（SC-01、SC-02 的旧版本回读与旧客户端用例即为证据）。已知后果：App 仓库的副本校验测试（`repos/orbit-app/tests/contract-sync.test.ts` 等，逐字比对本仓库 `shared/*`）在 App 线同步前会报副本过期——这是预期的跨端待办，不是本 Sprint 的失败；Generator 在 REPORT「App 影响」一节列出：改动的 `shared/*` 文件、新增 optional 字段、旧客户端行为、未验证范围（App 端界面与本地计算未跑），由 W0055 汇总进 Bridge handoff。
+- **App 机械同步（D46①，RULES §6）：**本 Sprint 改动 `shared/{contract,api-schema,compute,domain}`，须在**同一提交**里于 `repos/orbit-app` 执行 `npm run sync:contract`（即 `scripts/sync-contract.mjs`：`shared/contract`→`src/api/contract`、`shared/api-schema`→`src/api/schema`、`shared/compute`→`src/api/compute` 整目录逐字复制，`shared/domain` 只复制 `industries.ts`／`language.ts`→`src/api/domain`），只复制、不改 App 逻辑；再在 `repos/orbit-app` 跑 `node --test --import tsx --import ./tests/helpers/register-render-hooks.mjs tests/contract-sync.test.ts tests/api-schema-sync.test.ts tests/compute-sync.test.ts tests/domain-sync.test.ts`，须全绿（2026-10-02 编制时 4 文件 10 例全绿）。被同步的文件只能引用同步范围内的文件：`shared/contract` 只能 `./` 互引（`contract-sync` 的「自包含」用例），`shared/compute` 受 `tests/support/shared-compute-audit.ts` 约束（只可 `./`、`import type` 契约与两个字典），`shared/api-schema` 引 `../domain/*` 只限 `industries`／`language`；违反时改 Web 侧写法，不改 App。除同步脚本写出的副本外，本 Sprint diff 不含 `repos/orbit-app` 其他文件；App 界面与 App typecheck 不在本 Sprint 验收内，在 REPORT「App 影响」写明未验证。
 - **流量：**用户路径新增读取只有联系人详情 payload 多出三项（预计每次 <0.5 KB）与确认时无新增语句。按 D39 口径（每条语句返回行 JSON 字节）实测详情页一次读取改前改后字节，写进 REPORT 的预算表一行；回填与识别不在用户路径预算内。
 - **真实调用：**按 D5 记录每次真实识别的次数、`bc_ingest_items.usage` 的 input／output token；按文字补全若做了真实调用（仅本机回填演练），同样记录。缺样本如实写「未跑」。
 - **不运行：**生产回填、生产迁移（本 Sprint 无迁移）、App 端界面。
@@ -158,7 +161,7 @@ export type EnrichmentField = "industry" | "seniorityLevel" | "region" | "offeri
 ## 失败与交接
 
 外部条件缺失先不启动；run 已开始则按规则产出 failed／blocked 报告。
-REPORT 交接给 W0046／W0048a／W0049／W0051／W0053：`ContactRegionDTO`、`ContactEnrichmentDTO`、`canWriteEnrichedValue`、`seniorityGroup`、`normalizeRegion` 的最终签名与文件；按文字补全模块的入口签名、每次人数上限、usage 形状（每次 HTTP 一份，供调用方登记子账；模块本身不扣额度：W0048a 三层入口按操作记后台池，W0055 回填记 `system`）；每张名片 token 增量实测（或估算）；回填脚本用法与本机演练结果；「App 影响」一节（R-9，交 W0055 汇总进 Bridge handoff，不产生 App commit）。
+REPORT 交接给 W0046／W0048a／W0049／W0051／W0053：`ContactRegionDTO`、`ContactEnrichmentDTO`、`canWriteEnrichedValue`、`seniorityGroup`、`normalizeRegion` 的最终签名与文件；按文字补全模块的入口签名、每次人数上限、usage 形状（每次 HTTP 一份，供调用方登记子账；模块本身不扣额度：W0048a 三层入口按操作记后台池，W0055 回填记 `system`）；每张名片 token 增量实测（或估算）；回填脚本用法与本机演练结果；「App 影响」一节（R-9，交 W0055 汇总进 Bridge handoff；App 侧只有同一提交里的同步副本，D46①）。
 
 ## 已定（D44，2026-10-02）
 

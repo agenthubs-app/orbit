@@ -1,13 +1,15 @@
 # Sprint W0044 — 跟进与提醒按「现在」算到期，逾期说逾期
 
+> revision 4：按 D46 修订（①⑦）：`shared/contract/followups.ts` 注释改动（及可能抽到 `shared/` 的东京日纯函数）在同一提交内执行 App 机械同步脚本 `npm run sync:contract`（只复制、不改 App 逻辑）并跑 App 四个 *-sync 测试为绿；基线行号以开工时 HEAD 为准、按符号重定位。
+>
 > revision 3：按 REVIEW-2026-10-02-network 裁决修订（R-16）：验收契约改为「操作链 + 主证据」，其余断言移入必需证据子表；SC 数与通过条件不变。
 >
 > revision 2：按 D44 定稿待定项、W0048 拆分、配额两池（2026-10-02）。本 Sprint 不涉及 W0048 与 AI 配额，只定稿待定项。
 
-**Plan revision:** 3。**模式:** existing-codebase / single-generator。运行状态只在登记表。
+**Plan revision:** 4。**模式:** existing-codebase / single-generator。运行状态只在登记表。
 **原需求:** RN-02（REQUIREMENTS「大目标 4」）。**单一目标:** 跟进生成链路与提醒链路的「现在」改为显式注入的请求时刻，到期天数按东京日历日、可为负；逾期在展示层说「已逾期 N 天」。
 **易读目标:** [GOAL.md](GOAL.md)。
-**基线:** 开工时的 `chat-agent` HEAD（编制时 `a48e1749`，下文行号以它为准，开工按符号重新定位）。记忆 `orbit-followup-queue-clock-bug`（2026-08-25）是本 Sprint 的来源。
+**基线:** 开工时的 `chat-agent` HEAD（编制时 `a48e1749`，下文行号以它为准，开工按符号重新定位）。记忆 `orbit-followup-queue-clock-bug`（2026-08-25）是本 Sprint 的来源。 **行号以开工时 HEAD 为准，按符号重定位（D46⑦）。**
 **进入条件:**
 - 无前序依赖（登记表）；W44-1～W44-3 已定（D44，见文末）。
 - 不需要云端授权、不调用付费 AI、不做迁移；数据库测试按 RULES 6 用本机测试库。
@@ -59,7 +61,8 @@
 
 - 修改：`features/followups/task-generation-projection.ts`、`features/followups/live-service.ts`、`features/followups/service-factory.ts`、`features/followups/storage/followup-live-record-provider.ts`（仅 `generatedAt` 赋值；若改为删除字段，需证明 hybrid 与所有消费者编译通过）、`features/followups/followup-task-generation-mock/hybrid-service.ts`（若签名变）、`features/notifications/live-service.ts`、`features/notifications/service-factory.ts`、`features/notifications/storage/reminder-notification-live-record-provider.ts`、`features/orbit-ai/followup-review-artifact-service.ts`、`shared/contract/followups.ts`（只改注释：`dueInDays` 可为负、`dueAt` 存在时以它为准）。
 - 测试：上列四个测试文件；必要时新建 `tests/capabilities/followup-clock.test.ts`。
-- 排除：App 端（`repos/orbit-app`）不改；`features/agent/signals/**`、首页 facts、关系生命周期任务页不改；不新增 priority／frequency 枚举值；不改 `/api/tasks` 的请求参数；不碰 W0036 首页今日要事的排序（它已不读到期字段）。
+- 同步副本（D46①）：`shared/contract/followups.ts` 改注释也会让 App 副本逐字比对失败，所以同一提交内执行 `npm run sync:contract`，`repos/orbit-app/src/api/contract/followups.ts` 随之逐字更新（若按事实 6 把东京日函数抽到 `shared/`，放进同步范围时同样随同步更新，且只能 `./` 互引）。
+- 排除：App 端（`repos/orbit-app`）逻辑与界面不改（同步副本除外）；`features/agent/signals/**`、首页 facts、关系生命周期任务页不改；不新增 priority／frequency 枚举值；不改 `/api/tasks` 的请求参数；不碰 W0036 首页今日要事的排序（它已不读到期字段）。
 
 ## 验收契约（五项；revision 3 起每项 = 一条操作链 + 一个主证据，其余断言见「必需证据子表」，R-16）
 
@@ -85,6 +88,7 @@
 | 04 | `npx tsc --noEmit -p .` 与 `npm run lint` 通过；REPORT 列 App 端观察项（事实 4） | 命令输出、REPORT |
 | 05 | 控制台无新错误；不为截图触发付费 AI 对话 | 控制台日志 |
 | 05 | 全量 `npm test` 按 RULES 5.2 对照基线新增失败 0；一次 Codex 代码 review，意见交回本 Generator | 基线／新增失败清单、review 处理（REPORT） |
+| 05 | **D46①**：同一提交含 `npm run sync:contract` 写出的 App 副本，App 端 `contract-sync`／`api-schema-sync`／`compute-sync`／`domain-sync` 四个测试全绿；`repos/orbit-app` 除 `src/api/{contract,schema,compute,domain}` 外无改动 | 同步命令输出、App *-sync 测试输出、`git diff --stat` |
 
 ## 一次 Generator 的执行顺序
 
@@ -92,7 +96,7 @@
 2. 对上表符号跑 impact，报告 `createStorageFollowupTaskProvider` CRITICAL 与 `latestTimestamp`／`priorityFor` 的文本补查结果。
 3. RED：先写 SC-01／02 的纯函数与服务级失败测试，再写 SC-03 的展示断言。
 4. 最小实现：注入时钟 → 改纯函数 → 改两条服务 → 删展示层自算逾期；注释同步（`shared/contract/followups.ts`、artifact service 第 160–163、377–379 行旧注释删掉或改写）。
-5. 定向集 → 收口集 → 浏览器 → 全量对照 → Codex review → 有限修复 → 路径限定提交 → REPORT → 交接。
+5. 定向集 → 收口集 → 浏览器 → 全量对照 → Codex review → 有限修复 → 在 `repos/orbit-app` 执行 `npm run sync:contract` 并跑 App 四个 *-sync 测试为绿（D46①）→ 路径限定提交（含同步副本）→ REPORT → 交接。
 
 ## 最小测试与检查
 
@@ -102,7 +106,8 @@
 - **全量**：本 Sprint 本地代码收口时一次（RULES 5.2 基线对照）。
 - **数据库**：若收口集含 Postgres 测试，先 `node scripts/assert-local-test-databases.mjs`，REPORT 证明未被 skip。
 - **流量**：不新增读取（只改赋值与计算），不需要 D39 总账测算；REPORT 写一句「语句数与返回字节不变」并以既有 read-cost 测试通过为证。
-- **不运行**：App 端测试（不改 App）；付费 AI。
+- **App 机械同步（D46①，RULES §6）：**本 Sprint 改动 `shared/{contract,api-schema,compute,domain}`，须在**同一提交**里于 `repos/orbit-app` 执行 `npm run sync:contract`（即 `scripts/sync-contract.mjs`：`shared/contract`→`src/api/contract`、`shared/api-schema`→`src/api/schema`、`shared/compute`→`src/api/compute` 整目录逐字复制，`shared/domain` 只复制 `industries.ts`／`language.ts`→`src/api/domain`），只复制、不改 App 逻辑；再在 `repos/orbit-app` 跑 `node --test --import tsx --import ./tests/helpers/register-render-hooks.mjs tests/contract-sync.test.ts tests/api-schema-sync.test.ts tests/compute-sync.test.ts tests/domain-sync.test.ts`，须全绿（2026-10-02 编制时 4 文件 10 例全绿）。被同步的文件只能引用同步范围内的文件：`shared/contract` 只能 `./` 互引（`contract-sync` 的「自包含」用例），`shared/compute` 受 `tests/support/shared-compute-audit.ts` 约束（只可 `./`、`import type` 契约与两个字典），`shared/api-schema` 引 `../domain/*` 只限 `industries`／`language`；违反时改 Web 侧写法，不改 App。除同步脚本写出的副本外，本 Sprint diff 不含 `repos/orbit-app` 其他文件；App 界面与 App typecheck 不在本 Sprint 验收内，在 REPORT「App 影响」写明未验证。
+- **不运行**：App 端 *-sync 以外的测试（不改 App 逻辑）；付费 AI。
 
 ## 失败与交接
 

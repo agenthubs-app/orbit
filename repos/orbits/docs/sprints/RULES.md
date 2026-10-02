@@ -95,7 +95,7 @@
 
 ## 6. 边界、预算与证据
 
-- 实施目录 `/Users/li/work/orbit/repos/orbits`。改动 App 端（`repos/orbit-app`）需要在 Planner 里列明并说明跨端影响。
+- 实施目录 `/Users/li/work/orbit/repos/orbits`。改动 App 端（`repos/orbit-app`）需要在 Planner 里列明并说明跨端影响。**唯一窄口子（README D46①）：**改动 `shared/contract`／`shared/api-schema`／`shared/compute`／`shared/domain` 的 Web Sprint，必须在同一提交里执行 App 的机械同步脚本（cwd `repos/orbit-app`：`npm run sync:contract`，即 `scripts/sync-contract.mjs`；只复制、不改 App 逻辑），并跑 App 端 `tests/contract-sync.test.ts`、`api-schema-sync.test.ts`、`compute-sync.test.ts`、`domain-sync.test.ts` 为绿；除同步脚本写出的 `src/api/{contract,schema,compute,domain}` 副本外，不改 `repos/orbit-app` 任何文件。
 - 数据库迁移只写迁移文件和本地验证；在生产库执行迁移、部署、push 需要单独授权。
 - **付费 AI 调用按 README「用户决定」执行**：D3 计划生成不接 AI（只用 mock），自大目标 4 起由 D42 推翻（W0048b 起计划接 DeepSeek；配额按 D44 两池由 W0048a 落地，D43 不含名片识别）；D5 名片识别补行业与批次匹配沿用名片识别现有计费方式，用户于 2026-09-28 明确不另设累计上限，但每次真实调用都要在 REPORT 记录次数与 token 用量。其他付费 AI 场景需要新的用户决定，未定前只用 mock provider 和夹具。
 - 证据（截图、日志、命令输出）放在**所有仓库之外**：`~/orbit-sprint-evidence/web/sprint-WNNNN/run-01/`。`repos/orbits/AGENTS.md` 禁止在 app 仓库生成截图、trace 和日志，根目录 `harness-state/`、`harness-logs/` 属于不可编辑的 harness 项目，都不能用。REPORT 只记录证据路径和摘要。不保留 cookie／token／密钥或完整个人对话。

@@ -1,13 +1,15 @@
 # Sprint W0046 — 关系时间线（只读聚合）与「写 memo」单一写入
 
+> revision 4：按 D46 修订（①⑦）：新建 `shared/contract/relationship-timeline.ts` 的同一提交内执行 App 机械同步脚本 `npm run sync:contract`（只复制、不改 App 逻辑）并跑 App 四个 *-sync 测试为绿；基线行号以开工时 HEAD 为准、按符号重定位。
+>
 > revision 3：按 REVIEW-2026-10-02-network 裁决修订（R-13、R-16，配额口径统一）：进入条件只写登记表依赖 W0045；`AiQuotaGate` 改为按操作计次（`reserve` 一次 = 1 次操作）+ 每次 HTTP 一条成本子账（`beginCall`／`endCall`）、发起方唯一 `finish`；验收契约改为「操作链 + 主证据」+ 必需证据子表。
 >
 > revision 2：按 D44 定稿待定项、W0048 拆分、配额两池（2026-10-02）。补全来源按 C-4 改记在 W0045 的 `enrichment.fields`（不再用 `publicProfile.fieldOrigins`）；memo 提取计入 W0048a 的后台自动池。
 
-**Plan revision:** 3。**模式:** existing-codebase / single-generator。运行状态只在登记表。
+**Plan revision:** 4。**模式:** existing-codebase / single-generator。运行状态只在登记表。
 **原需求:** RN-04；**定稿共享契约「关系时间线 RelationshipTimelineItem」**（W0047 强度、W0051 洞察、W0052 最近动态都读它）。**单一目标:** 详情弹窗「最近互动」改为聚合时间线；「记录跟进」弹窗精简为「写 memo」，memo 只写 `contact_detail_states.notes`；memo 的 AI 提取管线接好但默认不发真实调用。
 **易读目标:** [GOAL.md](GOAL.md)。
-**基线:** 开工时的 `chat-agent` HEAD（编制时 `a48e1749`，行号以它为准）。W0043（RN-01 文案止血）若先合并，会改 `network-detail-modal.tsx` 文案，开工按符号重新定位。
+**基线:** 开工时的 `chat-agent` HEAD（编制时 `a48e1749`，行号以它为准）。W0043（RN-01 文案止血）若先合并，会改 `network-detail-modal.tsx` 文案，开工按符号重新定位。 **行号以开工时 HEAD 为准，按符号重定位（D46⑦）。**
 **进入条件:** **W0045 completed**（登记表依赖，README 为唯一来源，R-13），REPORT 交接 `ContactEnrichmentDTO`／`EnrichmentField`（含 offering／seeking／topics）与 `canWriteEnrichedValue`（W46-3 = C-4）；W46-1～W46-6 已定（D44，见文末）；不需要云端授权、不做 DDL 迁移（新集合走 `orbit_records`）；**本 Sprint 真实 DeepSeek 调用为 0**（后台池由 W0048a 落地后开闸，见 W46-1）。
 
 ## 已查清的事实（按 `a48e1749`）
@@ -115,7 +117,8 @@ export interface AiQuotaGate {
 
 - 新建：`shared/contract/relationship-timeline.ts`；`features/relationship-timeline/`（`build.ts` 纯函数、`reader.ts` 含单人与跨联系人最近动态两个读取器）；`features/contacts/memo-extraction/`（provider、DeepSeek 适配器、mock、作业）；`features/ai-quota/gate.ts`（`AiQuotaGate` 接口 + 「始终拒绝」实现）；对应测试。
 - 修改：`network-follow-modal.tsx`、`network-detail-modal.tsx`、`network-cards.tsx`／`network-all.tsx`（按钮文案与 onSaved）、`contacts/[id]/page.tsx`、`orbit-contacts-route-view-model.ts`、`_demo/demo-network.ts`、`app/api/contacts/[id]/handler.ts`、`features/contacts/detail-contract.ts`、`features/contacts/live-service.ts`（存储类型加可选字段）、`features/contacts/live-detail-service.ts`、`features/contacts/storage/contact-live-record-provider.ts`（加 AI 栏写入函数）、联系人 payload 的 `enrichment.fields.{offering,seeking,topics}`（W0045 已定稿的类型，C-4；**不改** `PublicProfileDTO`、不新增 `fieldOrigins`）、样式（`orbit-reference-styles.tsx` 中 `nw-fu-*`、`nw-tl-*` 段）。
-- 排除：「更新状态」按钮、待设置关系面板、管线页（W0047）；强度计算（W0047）；配额账本与真实调用开闸（W0048a）；NFC 语音 memo；encounters／appointments 写入路径；App 端；不删除旧 note 数据。
+- 排除：「更新状态」按钮、待设置关系面板、管线页（W0047）；强度计算（W0047）；配额账本与真实调用开闸（W0048a）；NFC 语音 memo；encounters／appointments 写入路径；App 端界面与逻辑；不删除旧 note 数据。
+- 同步副本（D46①）：新建 `shared/contract/relationship-timeline.ts` 后，`repos/orbit-app/src/api/contract` 中由 `npm run sync:contract` 写出的变化与本 Sprint 代码同一提交；该契约文件只能 `./` 引用同目录契约（App `contract-sync` 自包含用例），不得引 `shared/domain`。
 
 ## 验收契约（最多五项；revision 3 起每项 = 一条操作链 + 一个主证据，其余断言见「必需证据子表」，R-16）
 
@@ -152,6 +155,7 @@ export interface AiQuotaGate {
 | 04 | REPORT 写「真实调用 0 次」 | REPORT |
 | 05 | 详情页按「每位活跃用户每天 5 次 × 30 天 × 1000 人」折算；`readRecentRelationshipTimelineForActor`（`limit` 10）单次实测 ×「每天打开概览 3 次 × 30 天 × 1000 人」作预估行（W0052 用实测替换）；超 1.6 GB 如实登记 D32 | REPORT 预算表 |
 | 05 | 全量 `npm test` 对照基线新增失败 0；`npx tsc --noEmit -p .`；一次 Codex 代码 review | 全量清单、review 处理 |
+| 05 | **D46①**：同一提交含 `npm run sync:contract` 写出的 App 副本，App 端 `contract-sync`／`api-schema-sync`／`compute-sync`／`domain-sync` 四个测试全绿；`repos/orbit-app` 除 `src/api/{contract,schema,compute,domain}` 外无改动 | 同步命令输出、App *-sync 测试输出、`git diff --stat` |
 
 ## 一次 Generator 的执行顺序
 
@@ -159,7 +163,7 @@ export interface AiQuotaGate {
 2. impact（上表符号 + 实际要改的 handler／provider 函数）；ambiguous／UNKNOWN 用文本搜索补查并记 REPORT。
 3. RED：契约与纯函数 → 读取器隔离／降级 → memo 写入保留 → 弹窗与时间线组件 → 提取作业。
 4. 实现顺序同上；每步定向测试通过再进下一步。
-5. 收口集 → 浏览器 → 流量测量 → 全量对照 → Codex review → 有限修复 → 路径限定提交 → REPORT → 交接。
+5. 收口集 → 浏览器 → 流量测量 → 全量对照 → Codex review → 有限修复 → 在 `repos/orbit-app` 执行 `npm run sync:contract` 并跑 App 四个 *-sync 测试为绿（D46①）→ 路径限定提交（含同步副本）→ REPORT → 交接。
 
 ## 最小测试与检查
 
@@ -168,11 +172,12 @@ export interface AiQuotaGate {
 - **收口集**：定向集 + `tests/pages/app-contact-detail-live-route-services.test.ts`、`tests/services/contact-owner-boundary.test.ts`、`tests/audits/unbounded-list-reads.test.ts`、sync 相关（`grep -rl "contact-domain-reader" tests`）、`npx tsc --noEmit -p .`。
 - **数据库**：Postgres 读取器测试先跑 `node scripts/assert-local-test-databases.mjs`，REPORT 证明未 skip。
 - **全量**：本地代码收口一次（RULES 5.2）。
-- **不运行**：真实 DeepSeek；App 端测试（App 只受「请求体可选字段」影响，用旧形状测试覆盖）。
+- **App 机械同步（D46①，RULES §6）：**本 Sprint 改动 `shared/{contract,api-schema,compute,domain}`，须在**同一提交**里于 `repos/orbit-app` 执行 `npm run sync:contract`（即 `scripts/sync-contract.mjs`：`shared/contract`→`src/api/contract`、`shared/api-schema`→`src/api/schema`、`shared/compute`→`src/api/compute` 整目录逐字复制，`shared/domain` 只复制 `industries.ts`／`language.ts`→`src/api/domain`），只复制、不改 App 逻辑；再在 `repos/orbit-app` 跑 `node --test --import tsx --import ./tests/helpers/register-render-hooks.mjs tests/contract-sync.test.ts tests/api-schema-sync.test.ts tests/compute-sync.test.ts tests/domain-sync.test.ts`，须全绿（2026-10-02 编制时 4 文件 10 例全绿）。被同步的文件只能引用同步范围内的文件：`shared/contract` 只能 `./` 互引（`contract-sync` 的「自包含」用例），`shared/compute` 受 `tests/support/shared-compute-audit.ts` 约束（只可 `./`、`import type` 契约与两个字典），`shared/api-schema` 引 `../domain/*` 只限 `industries`／`language`；违反时改 Web 侧写法，不改 App。除同步脚本写出的副本外，本 Sprint diff 不含 `repos/orbit-app` 其他文件；App 界面与 App typecheck 不在本 Sprint 验收内，在 REPORT「App 影响」写明未验证。
+- **不运行**：真实 DeepSeek；App 端 *-sync 以外的测试（App 只受「请求体可选字段」影响，用旧形状测试覆盖）。
 
 ## 失败与交接
 
-外部条件缺失先不启动；run 已开始按 RULES 产出 failed／blocked 报告。REPORT 写：SC 映射与 SHA；**契约最终字段**（若与上文有偏差须写明原因，W0047 以 REPORT 为准）；三个时间线入口的最终导出签名（W0047 计分、W0052 最近动态直接使用）；`memo_extractions` 记录形状与作业状态机（含 `disabled`／`deferred`）；`AiQuotaGate` 接口与注入点名（交给 W0048a 用账本实现）；流量表；截图；全量清单；review 处理。交接列本线分支、固定最终 SHA、待合并目标 `chat-agent`。
+外部条件缺失先不启动；run 已开始按 RULES 产出 failed／blocked 报告。REPORT 写：SC 映射与 SHA；**契约最终字段**（若与上文有偏差须写明原因，W0047 以 REPORT 为准）；三个时间线入口的最终导出签名（W0047 计分、W0052 最近动态直接使用）；`memo_extractions` 记录形状与作业状态机（含 `disabled`／`deferred`）；`AiQuotaGate` 接口与注入点名（交给 W0048a 用账本实现）；「App 影响」（同步了哪些副本、四个 *-sync 测试结果，D46①）；流量表；截图；全量清单；review 处理。交接列本线分支、固定最终 SHA、待合并目标 `chat-agent`。
 
 ## 已定（D44，2026-10-02）
 

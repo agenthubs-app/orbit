@@ -1,14 +1,16 @@
 # Sprint W0048a — 共享人脉分析快照（存储、生成与校验、三层更新）与两池 AI 配额账本
 
+> revision 4：按 D46 修订（②⑦）：`max_calls` 表中计划生成 14 → 4（骨架 1 + 前 2 个阶段 + 快照 1），「季度补细」改为「未细化阶段到期前补细」（仍计后台池、每阶段 1 次操作）；基线行号以开工时 HEAD 为准、按符号重定位。
+>
 > revision 3：按 REVIEW-2026-10-02-network 裁决修订（R-2、R-3、R-5、R-6、R-11、R-16，配额口径统一）：额度按操作计次、成本按每次 HTTP 一条子账（`ai_usage_calls`，以 operation id 聚合），持有操作者唯一结算，`generateSnapshotNow` 在外部操作下不结算；自动路径排队只 upsert job，worker 取得租约后预留一次并写回 `operation_id`，补崩溃／租约回收用例；`sourceDataVersion` 按来源定义版本算法（`plan_log` 用 `count/sum/max(seq)`）；计划只读 `getCurrent()`；用户主动池总熔断每人每东京日 10 次操作（含手动重新分析 3 次，数值已定（D45，2026-10-02））；验收契约改为「操作链 + 主证据」+ 必需证据子表。
 >
 > revision 2：按 D44 定稿待定项、W0048 拆分、配额两池（2026-10-02）。本 Sprint 由原 W0048 rev 1 的 SC-01～04 拆出（C-2／W48-1），配额按 C-5 改为两池。
 
-**Plan revision:** 3。**模式:** existing-codebase / single-generator。运行状态只在登记表。
+**Plan revision:** 4。**模式:** existing-codebase / single-generator。运行状态只在登记表。
 **原需求:** RN-06 中「快照、三层更新、配额」部分；共享契约「人脉分析快照 NetworkAnalysisSnapshot」「AI 调用配额」在本 Sprint 定稿（rev 3：按操作计次 + 每次 HTTP 一条成本子账）；D43（名片识别不计入）、D44（C-2 拆分、C-5 两池）。计划接 DeepSeek、老模板计划重新生成、读取路径 0 调用在 [W0048b](../W0048b-plan-ai-generator/PLANNER.md)。
 **单一目标:** 快照按人存储、可单独重算、按三层规则更新；全部受账本计量的 AI 操作记在 `ai_usage_ledger`（一行一次操作，按 `pool` 分「用户主动」与「后台自动」两池，额度按操作计），每次供应商 HTTP 记一条成本子账 `ai_usage_calls`；提供三层更新入口供导入、回填复用；W0046 的 memo 提取闸门由本 Sprint 开启。
 **易读目标:** [GOAL.md](GOAL.md)。
-**基线:** 开工时 `chat-agent` HEAD（编制时 `a48e1749`）。W0045／W0046／W0047 合并后才开工，下文行号按 `a48e1749`，开工时按符号重新定位。
+**基线:** 开工时 `chat-agent` HEAD（编制时 `a48e1749`）。W0045／W0046／W0047 合并后才开工，下文行号按 `a48e1749`，开工时按符号重新定位。 **行号以开工时 HEAD 为准，按符号重定位（D46⑦）。**
 **进入条件:**
 - **W0045、W0046、W0047 completed**（登记表依赖），REPORT 交接了补全字段（`enrichment.fields`、`canWriteEnrichedValue`、按文字补全入口）、`RelationshipTimelineItem` 与读取函数、`AiQuotaGate` 接口（`reserve`／`beginCall`／`endCall`／`finish`）及其注入点、`RelationshipStrength` 的存储与读取函数；本文用契约名，**具体字段以其 REPORT 为准**。角色层级唯一存储 `publicProfile.seniorityLevel`（6 档），4 档是派生分组 `seniorityGroup()`，不新增字段。
 - W48-1～W48-10 已定（D44，见文末；W48-9 与 W48-10 在本 Sprint 只涉及「不切生产」与 `plan_refine` 计入后台池）。
@@ -97,10 +99,10 @@ interface NetworkAnalysisSnapshot {
 
 ### E. 两池配额（`features/ai-quota/`，W0046／W0048b／W0051／W0053／W0055 共用）
 
-- **额度按「操作」计次（rev 3 统一口径）**：一次快照生成 = 1，一条 memo 提取 = 1，一批洞察（≤20 人）= 1，一批按文字补全（≤20 人）= 1，一次计划生成（bootstrap／reanalysis／next_plan／ai_regenerate，含同请求快照）= 1，一个阶段的季度补细 = 1，一次单人洞察重新生成 = 1，一次手动重新分析 = 1。一次操作内部可发多次 HTTP，但额度只算 1 次。
-- **成本按「每次供应商 HTTP 一条子账」记**（`ai_usage_calls`），以 `operation_id` 聚合出调用次数与 token；REPORT 的「调用次数与 token」一律从子账聚合。每个操作在 `reserve` 时写定 `max_calls`：快照 1、memo 提取 1、洞察批 1、补全批 1、单人洞察 1、季度补细 1、计划生成 14（骨架 1 + 阶段 ≤12 + 快照 1，W0048b）；子账插入超过 `max_calls` 即拒绝、不发请求。
+- **额度按「操作」计次（rev 3 统一口径）**：一次快照生成 = 1，一条 memo 提取 = 1，一批洞察（≤20 人）= 1，一批按文字补全（≤20 人）= 1，一次计划生成（bootstrap／reanalysis／next_plan／ai_regenerate，含同请求快照）= 1，一个未细化阶段的补细 = 1（D46②），一次单人洞察重新生成 = 1，一次手动重新分析 = 1。一次操作内部可发多次 HTTP，但额度只算 1 次。
+- **成本按「每次供应商 HTTP 一条子账」记**（`ai_usage_calls`），以 `operation_id` 聚合出调用次数与 token；REPORT 的「调用次数与 token」一律从子账聚合。每个操作在 `reserve` 时写定 `max_calls`：快照 1、memo 提取 1、洞察批 1、补全批 1、单人洞察 1、阶段补细 1、计划生成 4（骨架 1 + 前 2 个阶段 + 快照 1，W0048b；D46② 起生成时只细化前 2 个阶段）；子账插入超过 `max_calls` 即拒绝、不发请求。
 - **用户主动池 `pool='user'`**：手动重新分析（`snapshot`／`manual`，每东京日 ≤3 次）、计划生成与重生成（`plan`；频次另由计划侧既有规则约束——bootstrap 幂等、每月一次重新分析、next_plan 到期、ai_regenerate 每份老计划一次）、单人洞察「重新生成」（`insight`／`manual`，W51-2；幂等键 `insight-regen:<contactId>:<sourceDataVersion>`，同版本失败后最多再试 1 次）。**总熔断：每人每东京日 10 次操作（含手动重新分析 3 次）**，用满后相关按钮置灰并提示「今天次数已用完，明天可用」，接口返回 429 `USER_DAILY_LIMIT`、0 次调用。**数值已定（D45，2026-10-02）（R-11）**：10 与 3 写成常量 `USER_POOL_DAILY_LIMIT`、`MANUAL_REANALYSIS_DAILY_LIMIT`，用户改数值只改常量。
-- **后台自动池 `pool='background'`**：memo 提取（`memo_extraction`）、洞察批量（`insight`／`auto`）、导入补全（`enrichment`）、快照自动重算（`snapshot`／`auto`）、一年期计划后续季度补细（`plan_refine`，W48-10，W0048b 接入）。**每人每东京日 60 次操作**，每批 ≤20 人；超限 0 次调用、顺延到次日 00:00 东京，对应位置显示「明天更新」（快照报告卡 W0050、洞察 W0051、导入记录「补全明天继续」W0053、季度条目 W0048b）。
+- **后台自动池 `pool='background'`**：memo 提取（`memo_extraction`）、洞察批量（`insight`／`auto`）、导入补全（`enrichment`）、快照自动重算（`snapshot`／`auto`）、计划未细化阶段到期前补细（`plan_refine`，W48-10／D46②：AI 计划第 3 段起在前一阶段成为当前时补细，W0048b 接入）。**每人每东京日 60 次操作**，每批 ≤20 人；超限 0 次调用、顺延到次日 00:00 东京，对应位置显示「明天更新」（快照报告卡 W0050、洞察 W0051、导入记录「补全明天继续」W0053、未细化阶段 W0048b）。
 - **`pool='system'`**：只给回填脚本（W55-5），不计入任何用户额度，受脚本 `--max-ai-calls` 约束（按子账计 HTTP 次数），仍逐次记子账以便汇总 token。
 - **名片识别（含 RN-03 补全）不经过账本**（D5／D43）。
 - 实现 W0046 定义的 `AiQuotaGate`（只放宽 `purpose`／`trigger` 枚举，不改形状）：
@@ -199,7 +201,7 @@ REPORT 交接（给 W0048b、W0049～W0055）：表名与列（含 `ai_usage_cal
 | 编号 | 定稿结论 | 对标做法 |
 | --- | --- | --- |
 | W48-1 | 原 W0048 拆为 W0048a（本 Sprint：快照、三层更新、配额）与 W0048b（计划接 DeepSeek）；W0049～W0053 不依赖 b（W0052 经 W0049／W0050 间接依赖 a）；b 依赖 a | Linear／Notion 发布 AI 能力都先上「数据层 + 计量」再逐个入口接入，每次可单独回滚 |
-| W48-2（= C-5；rev 3 按 REVIEW R-3／R-11 改为按操作计次） | 两池：用户主动池（手动重新分析 ≤3／东京日、计划生成与重生成、单人洞察「重新生成」；总熔断每人每东京日 10 次操作，数值已定（D45，2026-10-02））与后台自动池（memo 提取、洞察批量、导入补全、快照自动重算、一年期计划季度补细；每人每东京日 60 次操作、每批 ≤20 人，超限顺延次日并显示「明天更新」）；成本按每次 HTTP 一条子账；共用 `ai_usage_ledger`，按 `pool` 区分；名片识别不计入（D43）；回填记 `pool='system'`、不占用户配额（W55-5）；账本由本 Sprint 建并实现 W0046 的闸门 | Notion AI／HubSpot Breeze：用户动作与后台富化分开计量，超额明确告知何时恢复、不静默降级 |
+| W48-2（= C-5；rev 3 按 REVIEW R-3／R-11 改为按操作计次） | 两池：用户主动池（手动重新分析 ≤3／东京日、计划生成与重生成、单人洞察「重新生成」；总熔断每人每东京日 10 次操作，数值已定（D45，2026-10-02））与后台自动池（memo 提取、洞察批量、导入补全、快照自动重算、计划未细化阶段到期前补细（D46②）；每人每东京日 60 次操作、每批 ≤20 人，超限顺延次日并显示「明天更新」）；成本按每次 HTTP 一条子账；共用 `ai_usage_ledger`，按 `pool` 区分；名片识别不计入（D43）；回填记 `pool='system'`、不占用户配额（W55-5）；账本由本 Sprint 建并实现 W0046 的闸门 | Notion AI／HubSpot Breeze：用户动作与后台富化分开计量，超额明确告知何时恢复、不静默降级 |
 | W48-3 | 目标改了自动重算快照（后台池）；计划不自动改，只出现 W0012 既有的「目标已改，要不要重新分析」提示 | HubSpot Goals 改了目标值立即重算达成度，但不自动改已安排的任务 |
 | W48-4 | 快照每人保留最近 12 版（含 current），写新版本时同事务修剪 | Google Analytics 报告快照、HubSpot 报告历史保留有限版本供对比，旧版自动清理 |
 | W48-5 | 已确认联系人 <3 不生成快照，视图 `insufficient`，展示交 W0054 | LinkedIn 在数据不足时显示「再添加 N 位即可解锁洞察」而不是给空洞结论 |
@@ -207,4 +209,4 @@ REPORT 交接（给 W0048b、W0049～W0055）：表名与列（含 `ai_usage_cal
 | W48-7 | 快照依据里编造的 id 在解析层丢弃，校验器兜底；只有关键块（diagnosis、insight ≥2）全丢才整份失败 | Perplexity、Notion AI Q&A 丢掉无出处的引用而不是让整次回答失败 |
 | W48-8 | 快照自动重算用 `after()` + 维护任务 `network-snapshot` 兜底（rev 3：排队只 upsert job，worker 取得租约后才预留，R-2）；手动重新分析请求内同步（`maxDuration` 120）；计划生成的同步方式见 W0048b | Notion AI、Linear AI 长任务靠幂等重试与后台补跑，不新建任务队列系统 |
 | W48-9 | 本 Sprint 不切生产：`ORBIT_NETWORK_ANALYSIS_GENERATOR` 生产仍为 mock，生产迁移不执行；与 W0048b 的计划开关一起放 W0055 收口时授权 | 新 AI 功能用开关灰度（LaunchDarkly 式 feature flag），先迁移再开开关 |
-| W48-10 | 季度补细计入后台池（`purpose='plan_refine'`），接入在 W0048b | Linear Cycles 自动排期在后台任务里做，打开页面不触发重计算 |
+| W48-10（rev 4 按 D46②） | 计划未细化阶段（生成时只细化前 2 段，其余含一年期后续季度）到期前补细计入后台池（`purpose='plan_refine'`，每阶段 1 次操作），接入在 W0048b | Linear Cycles 自动排期在后台任务里做，打开页面不触发重计算 |

@@ -1,15 +1,17 @@
 # Sprint W0051 — 每人洞察（ContactInsight）：增量生成，三处复用
 
+> revision 4：按 D46 修订（①⑦）：改 `shared/{contract,api-schema}` 的同一提交内执行 App 机械同步脚本 `npm run sync:contract`（只复制、不改 App 逻辑）并跑 App 四个 *-sync 测试为绿，删除「App 副本过期是预期跨端待办」表述；基线行号以开工时 HEAD 为准、按符号重定位。
+>
 > revision 3：按 REVIEW-2026-10-02-network 裁决修订（R-8、R-9、R-10、R-11、R-13、R-16，配额口径统一）：白名单加 W0050 待唤醒视图模型与测试，SC-04 明确 ready 读 `nextStep`、其他状态保留规则句、0 次模型调用；删除 App 契约同步 commit 要求，只保证 optional 兼容；强度档移出洞察 `source_data_version`；单人重新生成加 contact 级 CAS／租约、并发 provider 调用 1 次；用户主动池总熔断每人每东京日 10 次操作（含手动重新分析 3 次，已定 D45）；进入条件明列 W0050；批量洞察按「一批 ≤20 人 = 1 次操作」；验收契约改为「操作链 + 主证据」+ 必需证据子表。
 >
 > revision 2：按 D44 定稿待定项、W0048 拆分、配额两池（2026-10-02）。洞察批量计入 W0048a 后台自动池（每人每东京日 60 次调用、≤20 人／批）；单人「重新生成」计入用户主动池；补全来源读 W0045 `enrichment.fields`（C-4）。
 > 协调者补充（2026-10-02）：本 Sprint 承接 W50-3 后半——洞察落地后，W0050 机会标签「待唤醒」的「为什么现在联系」改读该联系人洞察的 `nextStep`（无洞察时保留 W0050 的规则拼句兜底）；进入条件因此加 W0050 completed。改动限于 W0050 交接的待唤醒视图模型及其测试，计入 SC-W0051-04 的接线验证。
 
-**Plan revision:** 3。**模式:** existing-codebase / single-generator。运行状态只在登记表。
+**Plan revision:** 4。**模式:** existing-codebase / single-generator。运行状态只在登记表。
 **原需求:** RN-09（REQUIREMENTS 大目标 4「共享契约 · 每人洞察 ContactInsight」「AI 调用配额」）；D41、D43（洞察计入每日 AI 上限）、D44（C-5 两池）。
 **单一目标:** 新建按 (actor, contact) 存储的 `contact_insights` 读模型；在补全、memo、计划关联三个写入点把相关联系人标为待更新；维护任务在后台池额度内批量调用 DeepSeek 生成双语洞察；「洞察」标签、详情弹窗顶部、所有人脉列表三处只读存储，开页面 0 次模型调用。
 **易读目标:** [GOAL.md](GOAL.md)。
-**基线:** 编制时 `chat-agent` = `a48e1749`（GitNexus 索引 `a48e174`）。本 Sprint 依赖 W0045～W0047、W0048a 先合并，它们会改联系人写入、详情弹窗、列表 SQL 和计划写入；下文行号按 `a48e1749`，开工时按符号重新定位并在 REPORT 登记差异。
+**基线:** 编制时 `chat-agent` = `a48e1749`（GitNexus 索引 `a48e174`）。本 Sprint 依赖 W0045～W0047、W0048a 先合并，它们会改联系人写入、详情弹窗、列表 SQL 和计划写入；下文行号按 `a48e1749`，开工时按符号重新定位并在 REPORT 登记差异。 **行号以开工时 HEAD 为准，按符号重定位（D46⑦）。**
 **进入条件:**
 - **W0045、W0046、W0047、W0048a、W0050 completed**（登记表依赖，README 为唯一来源，R-13；W0050 是因为本 Sprint 改它交接的待唤醒视图模型，W50-3；不依赖 W0048b）。从这四份 REPORT 的「交接」节**只取**下列名字，缺任何一项则不启动、登记 blocked：W0045 的 `ContactEnrichmentDTO`／`seniorityGroup`／`ContactRegionDTO`；W0046 的 memo 写入入口（`contact_detail_states.notes` 唯一写入函数）；W0047 的强度读模型（`orbit_records` 集合 `relationship_strengths`，W47-1；`tier`／`dormant` 字段与 `ensureRelationshipStrengths`）；W0048a 的账本 `reserve`／`beginCall`／`endCall`／`finish`（`pool`、`purpose: "insight"`、`retryOn`、错误码 `USER_DAILY_LIMIT`）、手动重新分析路由与三层更新入口 `runNewContactLayers` 的名字；W0050 的待唤醒视图模型（`OpportunitiesTabView.dormant` 与 `why` 拼句函数）的名字与文件。
 - W51-1～W51-6 已定（D44，见文末）。
@@ -99,7 +101,8 @@
 
 - 新建：`features/contacts/insights/{migrations,repository,generator,worker,maintenance-task,relevance,source-version}.ts`、`shared/contract/contact-insight.ts`（+ api-schema）、洞察标签组件 `app/(app)/app/contacts/network-0918/network-insights.tsx`、详情面板组件、对应测试。
 - 修改：**W0050 待唤醒视图模型** `app/(app)/app/contacts/analysis/opportunities-view-model.ts`（`dormant[].why` 在洞察 `ready` 时取 `nextStep`）与 `opportunities-route-service.ts`（按待唤醒的 ≤5 位联系人读洞察行），及其测试 `tests/services/opportunities-view-model.test.ts`、`tests/pages/app-network-opportunities.test.tsx`（R-8）；`scripts/migrate-web-runtime.ts`、`scripts/setup-minimal-staging.ts`（注册迁移）；维护 pass 注册处（`features/operations/maintenance/**`，按 plan-match 的注册方式）；三个触发点所在文件（v2 confirm handler、W0045 回填 apply、W0046 memo 写入、`features/plans/service.ts` 持久化处）；目标更新标记点（`app/api/network/snapshot/recompute/route.ts`、`app/api/agent/plans/reanalyze/route-handlers.ts`，成功后只追加一次标记调用）；单人重新生成接口（`app/api/contacts/[id]/insight/regenerate/route.ts`，新建）；`contact-list-postgres-reader.ts`（卡片 JSON 加 `strengthTier?`、`insightPreview?: {zh,en}`；新增 `tier` 过滤）、`shared/contract/contact-card-page.ts` 与 schema、`card-service.ts`、`contact-card-route-service.ts`、`contact-card-view-model.ts`、`network-cards.tsx`、`network-detail-modal.tsx`、`[id]/page.tsx`、`dashboard/page.tsx`、`network-analysis.tsx`。
-- 排除：引荐路径；快照叙述（W0048a、W0049、W0050）；概览驾驶舱（W0052）；示例模式的静态洞察（W0054）；App 端界面；`/api/mobile/contacts-dashboard` 现有字段语义。
+- 排除：引荐路径；快照叙述（W0048a、W0049、W0050）；概览驾驶舱（W0052）；示例模式的静态洞察（W0054）；App 端界面与逻辑；`/api/mobile/contacts-dashboard` 现有字段语义。
+- 同步副本（D46①）：`repos/orbit-app/src/api/{contract,schema}` 中由 `npm run sync:contract` 写出的变化（含新契约 `contact-insight.ts` 及其 schema 的副本）与本 Sprint 代码同一提交；新契约只能 `./` 互引。
 
 ## 验收契约（最多五项；revision 3 起每项 = 一条操作链 + 一个主证据，其余断言见「必需证据子表」，R-16）
 
@@ -131,7 +134,7 @@
 | 04 | **R-11**：并发两次点击只有一个执行器经 CAS 领到租约并调用 provider（provider 计数 = 1）；同版本重复点击不重复计次；后台池用满时照常可用；用户主动池当日 10 次操作用满时按钮置灰、提示「今天次数已用完，明天可用」、接口 429 `USER_DAILY_LIMIT`、0 次调用（已定（D45，2026-10-02）） | 路由 Postgres 并发测试、组件测试 |
 | 04 | **R-8**：W0050 待唤醒视图模型——洞察 `ready` 时 `why` = `nextStep`（按界面语言）；`none`／`pending`／`failed`／`no_goal` 时保留 W0050 规则拼句；读取过程 0 次模型调用、0 次配额预留 | `opportunities-view-model.test.ts`（四种状态）、`app-network-opportunities.test.tsx` |
 | 04 | 所有人脉列表把「下一步（预览）」列换成 强度档 + 洞察一句（≤60 字）；强度档筛选为服务端 SQL 过滤，`total`、各来源计数、游标翻页在筛选下一致 | `tests/services/contact-card-page-postgres.test.ts`、`tests/api/contact-card-page.test.ts`、`contact-list-pagination-route.test.ts`、`contact-card-route.test.ts` |
-| 04 | **R-9**：`ContactCardDTO` 只加可选字段，`nextActionPreview` 不变；同步卡片只多可选字段；本 Sprint diff 不含 `repos/orbit-app` | `sync-contact-domain-postgres.test.ts`、`git diff --stat` |
+| 04 | **R-9**：`ContactCardDTO` 只加可选字段，`nextActionPreview` 不变；同步卡片只多可选字段；**D46①**：同一提交含 `npm run sync:contract` 写出的 App 副本，App 端 `contract-sync`／`api-schema-sync`／`compute-sync`／`domain-sync` 四个测试全绿，`repos/orbit-app` 除 `src/api/{contract,schema,compute,domain}` 外无改动 | `sync-contact-domain-postgres.test.ts`、同步命令输出、App *-sync 测试输出、`git diff --stat` |
 | 05 | 按 1000 活跃用户 × 30 天 ×（列表 2 次／天、详情 3 次／天、洞察标签 0.5 次／天，假设写进 REPORT）折算月增量；超 1.6 GB 如实登记 D32 | REPORT 预算表 |
 | 05 | typecheck、一次全量基线对照（新增失败 0）、一次 Codex 代码 review；三处 1440／375 截图 | `npm test` 基线对照清单、截图 |
 | 05 | 若做真实生成演练（本机），按子账记录调用次数与 token；REPORT「App 影响」一节（R-9） | REPORT |
@@ -142,7 +145,7 @@
 2. 批量 impact（上表符号 + 三个触发点函数）；HIGH 先报告，`UNKNOWN` grep 补查。
 3. 迁移与 repository（SC-01）→ 触发点（SC-01）→ generator／worker／任务（SC-02）→ 列表与详情（SC-04）→ 洞察标签（SC-03）；每步 RED → GREEN；最多两轮本地修复。
 4. 测量与浏览器验证（SC-05），证据存 `~/orbit-sprint-evidence/web/sprint-W0051/run-01/`。
-5. 路径限定暂存 → `detect-changes --scope staged` → `sprint/W0051-contact-insights` 提交 → REPORT → 协调者合并回 `chat-agent` 并验证合并树；Codex 代码 review 一次，意见交回本 Generator。
+5. 在 `repos/orbit-app` 执行 `npm run sync:contract`，跑 App 四个 *-sync 测试为绿（D46①）→ 路径限定暂存（含同步副本）→ `detect-changes --scope staged` → `sprint/W0051-contact-insights` 提交 → REPORT → 协调者合并回 `chat-agent` 并验证合并树；Codex 代码 review 一次，意见交回本 Generator。
 
 ## 最小测试与检查
 
@@ -150,13 +153,13 @@
 - **开发定向集**：新增 `tests/services/contact-insights-postgres.test.ts`、insights 单元测试、`tests/pages/app-network-insights.test.tsx`、`app-network-detail-modal.test.tsx`、`tests/services/contact-card-page-postgres.test.ts`。
 - **操作链收口集**：上述 + `tests/api/contact-card-page.test.ts`、`contact-list-pagination-route.test.ts`、`tests/services/sync-contact-domain-postgres.test.ts`、`contact-owner-boundary.test.ts`、`contact-search-runtime.test.ts`、`tests/architecture/offline-policy.test.ts`、`tests/performance/contact-card-growth.test.ts`、`tests/pages/contact-card-route.test.ts`、`app-network-overview.test.tsx`、`app-contacts-dashboard-account-scope.test.ts`、`app-network-demo-mode.test.tsx`、`tests/capabilities/plans-repository.test.ts`、`plan-current-view-postgres.test.ts`、`tests/api/agent-plan-candidates-routes.test.ts`、`tests/capabilities/contact-detail-note-preservation.test.ts`、`tests/api/business-card-ingest-v2-routes.test.ts`；`npx tsc --noEmit -p .`。
 - **全量**：本地代码收口一次 `npm test`，RULES 5.2 基线对照。
-- **App 端（R-9）：**本轮只做 Web，**不产生任何 `repos/orbit-app` commit**，也不以 App 契约同步作为完成条件。`shared/contract/contact-card-page.ts`、新契约 `shared/contract/contact-insight.ts` 与 schema 只加 optional 字段／新文件，`nextActionPreview` 原语义不变，旧响应可被旧 App 解析（SC-04 的同步卡片与 schema 用例即为证据）。已知后果：App 仓库的副本校验测试（`repos/orbit-app/tests/contract-sync.test.ts`、`api-schema-sync.test.ts`）在 App 线同步前会报副本过期，属预期跨端待办；Generator 在 REPORT「App 影响」一节列出改动的 `shared/*` 文件、新增 optional 字段、旧客户端行为、未验证范围，由 W0055 汇总进 Bridge handoff。
+- **App 机械同步（D46①，RULES §6）：**本 Sprint 改动 `shared/{contract,api-schema,compute,domain}`，须在**同一提交**里于 `repos/orbit-app` 执行 `npm run sync:contract`（即 `scripts/sync-contract.mjs`：`shared/contract`→`src/api/contract`、`shared/api-schema`→`src/api/schema`、`shared/compute`→`src/api/compute` 整目录逐字复制，`shared/domain` 只复制 `industries.ts`／`language.ts`→`src/api/domain`），只复制、不改 App 逻辑；再在 `repos/orbit-app` 跑 `node --test --import tsx --import ./tests/helpers/register-render-hooks.mjs tests/contract-sync.test.ts tests/api-schema-sync.test.ts tests/compute-sync.test.ts tests/domain-sync.test.ts`，须全绿（2026-10-02 编制时 4 文件 10 例全绿）。被同步的文件只能引用同步范围内的文件：`shared/contract` 只能 `./` 互引（`contract-sync` 的「自包含」用例），`shared/compute` 受 `tests/support/shared-compute-audit.ts` 约束（只可 `./`、`import type` 契约与两个字典），`shared/api-schema` 引 `../domain/*` 只限 `industries`／`language`；违反时改 Web 侧写法，不改 App。除同步脚本写出的副本外，本 Sprint diff 不含 `repos/orbit-app` 其他文件；App 界面与 App typecheck 不在本 Sprint 验收内，在 REPORT「App 影响」写明未验证。
 - **不运行：**生产迁移；生产真实生成；全量回填（RN-13／W0055）。
 
 ## 失败与交接
 
 依赖未齐或名字取不到：不启动，登记 blocked。run 开始后失败按规则写 failed／blocked 报告。
-REPORT 交接给 W0052／W0054／W0055：`contact_insights` 表结构与迁移版本（含租约列）、`markContactInsightsDirty` 签名与各调用点、维护任务名与每轮上限、`ContactInsight` 契约文件、卡片 DTO 新增字段、W0050 待唤醒改读洞察的接线点、流量实测与预算表行、真实调用次数与 token（按子账聚合，如有）、「App 影响」一节（R-9）。W0055 回填顺序「补全 → 强度 → 洞察 → 快照」中的洞察一步直接把全部联系人标 dirty 交给本任务消化。
+REPORT 交接给 W0052／W0054／W0055：`contact_insights` 表结构与迁移版本（含租约列）、`markContactInsightsDirty` 签名与各调用点、维护任务名与每轮上限、`ContactInsight` 契约文件、卡片 DTO 新增字段、W0050 待唤醒改读洞察的接线点、流量实测与预算表行、真实调用次数与 token（按子账聚合，如有）、「App 影响」一节（R-9；含同步的副本与四个 *-sync 测试结果，D46①）。W0055 回填顺序「补全 → 强度 → 洞察 → 快照」中的洞察一步直接把全部联系人标 dirty 交给本任务消化。
 
 ## 已定（D44，2026-10-02）
 

@@ -1,13 +1,15 @@
 # Sprint W0043 — 人脉页不出调试英文，空态说实话
 
+> revision 4：按 D46 修订（⑦）：基线行号以开工时 HEAD 为准、按符号重定位；本 Sprint 不改 `shared/{contract,api-schema,compute,domain}`，D46① 不适用（若实施中不得不改，按 RULES §6 窄口子同一提交同步）。
+>
 > revision 3：按 REVIEW-2026-10-02-network 裁决修订（R-16）：验收契约改为「操作链 + 主证据」，其余断言移入必需证据子表；SC 数与通过条件不变。
 >
 > revision 2：按 D44 定稿待定项、W0048 拆分、配额两池（2026-10-02）。
 
-**Plan revision:** 3。**模式:** existing-codebase / single-generator。运行状态只在登记表。
+**Plan revision:** 4。**模式:** existing-codebase / single-generator。运行状态只在登记表。
 **原需求:** RN-01 全部（REQUIREMENTS「大目标 4」）。**单一目标:** Web 展示层只渲染真实内容：后端调试句不进用户界面，`empty` 显示真实空态、接口失败才显示「不可用」，文案中英双语。
 **易读目标:** [GOAL.md](GOAL.md)。
-**基线:** 开工时的 `chat-agent` HEAD（编制时 `a48e1749`；GitNexus 索引状态 `behind`，开工先按根 `CLAUDE.md` 刷新索引再复核下文 impact）。下文行号以 `a48e1749` 为准，开工按符号重新定位。
+**基线:** 开工时的 `chat-agent` HEAD（编制时 `a48e1749`；GitNexus 索引状态 `behind`，开工先按根 `CLAUDE.md` 刷新索引再复核下文 impact）。下文行号以 `a48e1749` 为准，开工按符号重新定位。 **行号以开工时 HEAD 为准，按符号重定位（D46⑦）。**
 **档位:** **H**（D44 / W43-1 已定，登记表已同步）。`contactsAnalysisToView` upstream impact = **HIGH**（5 个受影响符号，跨人脉概览／分析页与关系管线页两个路由），按 RULES 5.1 属 H。
 **进入条件:** 无前序依赖（登记表）；W43-1～W43-3 已定（D44，见文末）；不需要云端授权、不调用付费 AI、不做迁移；无新增数据库读取（本 Sprint 只改展示层），不需要 D39 预算 SC。
 

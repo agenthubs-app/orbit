@@ -1,14 +1,16 @@
 # Sprint W0053 — CSV／vCard 与活动导入、去重合并，导入后走三层更新
 
+> revision 4：按 D46 修订（⑦）：基线行号以开工时 HEAD 为准、按符号重定位；本 Sprint 不改 `shared/{contract,api-schema,compute,domain}`，D46① 不适用（若实施中不得不改，按 RULES §6 窄口子同一提交同步）。
+>
 > revision 3：按 REVIEW-2026-10-02-network 裁决修订（R-16，配额口径统一）：导入补全计次改为「一批 ≤20 人 = 1 次后台池操作、每次 HTTP 一条成本子账」；验收契约改为「操作链 + 主证据」+ 必需证据子表；SC 数与通过条件不变。
 >
 > revision 2：按 D44 定稿待定项、W0048 拆分、配额两池（2026-10-02）。三层更新入口来自 W0048a；导入后的 AI 补全计入后台自动池（每人每东京日 60 次调用、≤20 人／批，超限顺延次日）。
 
-**Plan revision:** 3。**模式:** existing-codebase / single-generator。运行状态只在登记表。
+**Plan revision:** 4。**模式:** existing-codebase / single-generator。运行状态只在登记表。
 **原需求:** RN-11（REQUIREMENTS 大目标 4）；导入后流程见 RN-06「新人脉三层」；D41。
 **单一目标:** `/app/contacts/new` 的 CSV、通讯录（vCard 文件）、活动三种方式可用：服务端解析 → 字段对应 → 去重核对（合并需用户确认）→ 幂等写入联系人 → 调用 W0048a 三层更新入口；删掉未实现的静态文案。
 **易读目标:** [GOAL.md](GOAL.md)。
-**基线:** 编制时 `chat-agent` = `a48e1749`（GitNexus 索引 `a48e174`）。依赖的 W0045～W0047、W0048a 会改联系人写入、合并与计划匹配，下文行号按 `a48e1749`，开工时按符号重新定位并登记差异。
+**基线:** 编制时 `chat-agent` = `a48e1749`（GitNexus 索引 `a48e174`）。依赖的 W0045～W0047、W0048a 会改联系人写入、合并与计划匹配，下文行号按 `a48e1749`，开工时按符号重新定位并登记差异。 **行号以开工时 HEAD 为准，按符号重定位（D46⑦）。**
 **进入条件:**
 - **W0045、W0046、W0047、W0048a completed**（登记表依赖；不依赖 W0048b）。从 W0045、W0048a REPORT 交接节**只取**：W0045 的 `canWriteEnrichedValue`／`normalizeRegion`／按文字补全入口；W0048a 的三层更新入口 `runNewContactLayers`（联系人 id 列表 + 来源键 = 批次 id）及其返回的补全状态（`enrichment: "done" | "deferred"` + `retryOn`）。缺任一项则 blocked。
 - W53-1～W53-6 已定（D44，见文末）。

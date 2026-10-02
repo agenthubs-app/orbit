@@ -1,13 +1,15 @@
 # Sprint W0047 — 关系强度规则分档与管线页改档位
 
+> revision 4：按 D46 修订（①⑦）：改 `shared/{contract,compute,api-schema}` 的同一提交内执行 App 机械同步脚本 `npm run sync:contract`（只复制、不改 App 逻辑）并跑 App 四个 *-sync 测试为绿，「App 镜像不改」改为「App 逻辑不改、副本经同步更新」；基线行号以开工时 HEAD 为准、按符号重定位。
+>
 > revision 3：按 REVIEW-2026-10-02-network 裁决修订（R-1、R-7、R-16）：既有 `relationshipStrengthDistribution` 逐字段不动，只新增 `relationshipTierDistribution`，Web 改读新字段，刷新入口不挂 `/api/mobile`，补「旧响应逐字段不变」断言；交接基于完整去重时间线的按时间点计算入口与 `tierCountsAt30d`；验收契约改为「操作链 + 主证据」+ 必需证据子表。
 >
 > revision 2：按 D44 定稿待定项、W0048 拆分、配额两池（2026-10-02）。本 Sprint 不调用付费 AI，与配额无关；强度的下游快照改由 W0048a 消费。
 
-**Plan revision:** 3。**模式:** existing-codebase / single-generator。运行状态只在登记表。
+**Plan revision:** 4。**模式:** existing-codebase / single-generator。运行状态只在登记表。
 **原需求:** RN-05；**定稿共享契约「关系强度 RelationshipStrength」**（W0048a 快照、W0049 健康分布、W0051 洞察、W0052 管线区读它）。**单一目标:** 按 W0046 时间线规则打分、带衰减，得出 新认识／有往来／核心 + 待唤醒；结果存为可重建的读模型，让 `shared/compute` **新增**的档位分布 `relationshipTierDistribution`、管线页、详情、列表读到同一份真实档位（既有 `relationshipStrengthDistribution` 逐字段不动，R-1）；交接一个基于完整去重时间线的按时间点计算入口（30 天变化用，R-7）；下线手动阶段 UI。
 **易读目标:** [GOAL.md](GOAL.md)。
-**基线:** 开工时的 `chat-agent` HEAD（编制时 `a48e1749`，行号以它为准）。**依赖 W0046 已合并**：使用其 `RelationshipTimelineItem`、`buildRelationshipTimeline`、`mergeRelationshipTimelineItems`（名字以 W0046 REPORT 为准）。
+**基线:** 开工时的 `chat-agent` HEAD（编制时 `a48e1749`，行号以它为准）。**依赖 W0046 已合并**：使用其 `RelationshipTimelineItem`、`buildRelationshipTimeline`、`mergeRelationshipTimelineItems`（名字以 W0046 REPORT 为准）。 **行号以开工时 HEAD 为准，按符号重定位（D46⑦）。**
 **进入条件:** W0046 completed（登记表依赖）；W47-1～W47-6 已定（D44，见文末）；不需要云端授权、不调用付费 AI、不做 DDL（读模型走 `orbit_records` 新集合）；数据库测试用本机测试库。
 
 ## 已查清的事实（按 `a48e1749`）
@@ -16,7 +18,7 @@
    - `shared/compute/dashboard-distribution.ts:560 strengthFor(connection)`：`relationshipStrength ?? businessRelevanceScore ?? 0` → `strong／warm／weak`；`:589 strengthDistribution(graph)`；`:841` 读模型路径用 `model.strengths`。
    - `features/dashboard/storage/dashboard-read-model-postgres-reader.ts:348–374`：SQL `strength_score`（先 `relationshipStrength` 后 `businessRelevanceScore`，否则 0）→ `connection_strengths` 分桶 → `connection_by_contact`（按 `contact_id` 取一条）；`createDashboardReadModelPostgresReader` impact **CRITICAL**（5 个流程，经 `dashboard-live-record-provider.ts createStorageDashboardAggregateProvider`）。
    - `features/dashboard/storage/dashboard-summary-postgres-reader.ts:140–147` 的 `priority_raw` 是**排序优先级**不是强度（先 `businessRelevanceScore`），不改。
-   - App 有一份镜像 `repos/orbit-app/src/api/compute/dashboard-distribution.ts`（本地计算），本 Sprint 不改 App。
+   - App 有一份镜像 `repos/orbit-app/src/api/compute/dashboard-distribution.ts`（本地计算）。本 Sprint 不改 App 逻辑；该副本只由同一提交里的 `npm run sync:contract` 逐字更新（D46①）。
    - **App 在消费既有字段**：`/api/mobile/contacts-dashboard` 的 `relationshipStrengthDistribution` 现由上述 `strengthFor`（`dashboard-distribution.ts:560`，`relationshipStrength ?? businessRelevanceScore ?? 0`）与 SQL `strength_score` 算出；改它的数据源或缺行行为就是改 App 已消费字段的语义（R-1），所以本 Sprint 两处都不改。Web 分析页的数据经 `loadContactsAnalysis` 走同一个服务，Web 改读新增字段即可。
 2. **契约与 schema。**`shared/compute/dashboard-distribution-contract.ts:38 NetworkRelationshipStrength = "strong" | "warm" | "weak"`、`:154 RelationshipStrengthDistributionBucket`、`:166 relationshipStrengthDistribution`；手机接口 schema `shared/api-schema/mobile-contacts-dashboard.ts:200–210`（`.passthrough()`，新增可选字段兼容）。分析页 `app/(app)/app/contacts/analysis/contacts-analysis-view-model.ts:87` 把它映射成 `health`。
 3. **列表强弱是猜的。**`contacts-view-model-adapter.ts:75 strengthFor` 与 `contacts-subroute-route-adapter.tsx:74 strengthForContact` 按价值标签正则（commercial|strategic|invest）给 `OrbitContactStrength = "strong" | "medium" | "weak" | "dormant" | "unscored"`（`orbit-contacts-route-view-model.ts:47`）；`orbit-real-cards-dashboard.tsx:83–171、317–319` 渲染强弱点与「沉睡关系」。
@@ -106,6 +108,7 @@ export interface RelationshipStrength {
 - 新建：`shared/contract/relationship-strength.ts`；`features/relationship-strength/`（`rules.ts` 常量表、`compute.ts` 纯函数、`read-model.ts` 刷新与读取、批量时间线读取 `readRelationshipTimelinesForActor`）；测试。
 - 修改：`shared/compute/dashboard-distribution.ts`、`shared/compute/dashboard-distribution-contract.ts`、`shared/api-schema/mobile-contacts-dashboard.ts`（只加可选字段，既有字段计算不动）；`features/dashboard/storage/dashboard-read-model-postgres-reader.ts`（**新增**按 `relationship_strengths` 聚合的档位分组，既有 `strength_score` 不改）、`dashboard-live-record-provider.ts`（图路径同样只新增档位输入）；Web 服务端加载器（刷新入口，见上；`app/api/mobile/**` 不改）；`network-pipeline.tsx`、`network-model.ts`、`network-detail-modal.tsx`、`contacts/pipeline/page.tsx`、`contacts/[id]/page.tsx`；两个列表适配器的强弱函数；`contacts-analysis-view-model.ts`；`_demo/demo-network.ts`；样式。
 - 排除：分析页「结构」标签改版与 30 天变化展示（W0049，本 Sprint 只交接 `tierCountsAt30d` 与按时间点入口）、列表列与档位筛选（W0051）、概览管线区（W0052）；`app/api/mobile/**` 任何文件；既有 `relationshipStrengthDistribution` 的计算；`contact-relationship-initialization.tsx` 与其 API 保留（只是详情不再挂载）；App 端不改；不删除阶段数据；不做拖拽；不让用户手动改档位。
+- 同步副本（D46①）：`repos/orbit-app/src/api/{contract,schema,compute}` 中由 `npm run sync:contract` 写出的变化与本 Sprint 代码同一提交（「App 端不改」指不改 App 逻辑与界面）；新契约 `shared/contract/relationship-strength.ts` 只能 `./` 互引，`shared/compute` 引用它必须 `import type`（`shared-compute-audit`）。
 
 ## 验收契约（最多五项；revision 3 起每项 = 一条操作链 + 一个主证据，其余断言见「必需证据子表」，R-16）
 
@@ -140,13 +143,14 @@ export interface RelationshipStrength {
 | 05 | 按「管线／分析／详情／列表每人每天合计 8 次读缓存 + 每天 2 次重算 × 30 天 × 1000 人」折算，并入开工时 README 最新三档；超 1.6 GB 如实登记 D32 | REPORT 预算表 |
 | 05 | 全量 `npm test` 对照基线新增失败 0；`npx tsc --noEmit -p .`；一次 Codex 代码 review | 全量清单、review 处理 |
 | 05 | REPORT「App 影响」一节（R-9）：新增 optional 字段、SC-03 旧响应逐字段不变的证据、未验证范围 | REPORT |
+| 05 | **D46①**：同一提交含 `npm run sync:contract` 写出的 App 副本，App 端 `contract-sync`／`api-schema-sync`／`compute-sync`／`domain-sync` 四个测试全绿；`repos/orbit-app` 除 `src/api/{contract,schema,compute,domain}` 外无改动 | 同步命令输出、App *-sync 测试输出、`git diff --stat` |
 
 ## 一次 Generator 的执行顺序
 
 1. 复核进入条件（W0046 合并 SHA、契约名以其 REPORT 为准）；记录基线 SHA、Planner SHA256；确认用户未提交文件不动。
 2. impact：上表符号 + 实际修改的 reader／adapter 函数；报告 CRITICAL；ambiguous 用文本搜索补查。
 3. RED → 实现：纯函数 → 批量时间线读取与读模型 → 两个 dashboard 路径与契约 → 管线／详情／列表 UI → 示例。
-4. 收口集 → 浏览器 → 流量测量 → 全量对照 → Codex review → 有限修复 → 路径限定提交 → REPORT → 交接。
+4. 收口集 → 浏览器 → 流量测量 → 全量对照 → Codex review → 有限修复 → 在 `repos/orbit-app` 执行 `npm run sync:contract` 并跑 App 四个 *-sync 测试为绿（D46①）→ 路径限定提交（含同步副本）→ REPORT → 交接。
 
 ## 最小测试与检查
 
@@ -155,11 +159,12 @@ export interface RelationshipStrength {
 - **收口集**：定向集 + 列表适配器测试（`grep -rl "contacts-view-model-adapter\|contacts-subroute-route-adapter" tests`）、`tests/pages/app-contacts-subroutes-live-route-services.test.ts`、`tests/audits/unbounded-list-reads.test.ts`、`tests/performance/read-cost-baseline.test.ts`（若基线变化按其流程更新并在 REPORT 说明）、`npx tsc --noEmit -p .`。
 - **数据库**：先 `node scripts/assert-local-test-databases.mjs`，REPORT 证明未 skip。
 - **全量**：本地代码收口一次（RULES 5.2）。
-- **不运行**：App 端测试（App 镜像不改，手机接口只加可选字段，由 schema 测试覆盖）；付费 AI。
+- **App 机械同步（D46①，RULES §6）：**本 Sprint 改动 `shared/{contract,api-schema,compute,domain}`，须在**同一提交**里于 `repos/orbit-app` 执行 `npm run sync:contract`（即 `scripts/sync-contract.mjs`：`shared/contract`→`src/api/contract`、`shared/api-schema`→`src/api/schema`、`shared/compute`→`src/api/compute` 整目录逐字复制，`shared/domain` 只复制 `industries.ts`／`language.ts`→`src/api/domain`），只复制、不改 App 逻辑；再在 `repos/orbit-app` 跑 `node --test --import tsx --import ./tests/helpers/register-render-hooks.mjs tests/contract-sync.test.ts tests/api-schema-sync.test.ts tests/compute-sync.test.ts tests/domain-sync.test.ts`，须全绿（2026-10-02 编制时 4 文件 10 例全绿）。被同步的文件只能引用同步范围内的文件：`shared/contract` 只能 `./` 互引（`contract-sync` 的「自包含」用例），`shared/compute` 受 `tests/support/shared-compute-audit.ts` 约束（只可 `./`、`import type` 契约与两个字典），`shared/api-schema` 引 `../domain/*` 只限 `industries`／`language`；违反时改 Web 侧写法，不改 App。除同步脚本写出的副本外，本 Sprint diff 不含 `repos/orbit-app` 其他文件；App 界面与 App typecheck 不在本 Sprint 验收内，在 REPORT「App 影响」写明未验证。
+- **不运行**：App 端 *-sync 以外的测试（App 逻辑不改，手机接口只加可选字段，由 schema 测试覆盖）；付费 AI。
 
 ## 失败与交接
 
-外部条件缺失先不启动；run 已开始按 RULES 产出 failed／blocked 报告。REPORT 写：SC 映射与 SHA；**契约最终字段与 `rulesVersion`**、规则表实际取值（W0048a 快照 `sourceDataVersion` 要覆盖它）；`ensureRelationshipStrengths` 签名与调用点（只在 Web 加载器与后台入口）；**按时间点入口**（`computeRelationshipTierCountsAt` 与 state 行 `tierCountsAt30d`／`earliestCaptureAt` 的字段，W0049 直接用，R-7）；`relationshipTierDistribution` 字段形态；「App 影响」一节（新增 optional 字段、旧字段逐字段不变的证据、未验证范围，交 W0055 汇总进 Bridge handoff）；CRITICAL impact 处理；流量表；截图；全量清单；review 处理；App 端观察项（App 本地计算仍无真实强度，需 App 线另议）。交接列本线分支、固定最终 SHA、待合并目标 `chat-agent`。
+外部条件缺失先不启动；run 已开始按 RULES 产出 failed／blocked 报告。REPORT 写：SC 映射与 SHA；**契约最终字段与 `rulesVersion`**、规则表实际取值（W0048a 快照 `sourceDataVersion` 要覆盖它）；`ensureRelationshipStrengths` 签名与调用点（只在 Web 加载器与后台入口）；**按时间点入口**（`computeRelationshipTierCountsAt` 与 state 行 `tierCountsAt30d`／`earliestCaptureAt` 的字段，W0049 直接用，R-7）；`relationshipTierDistribution` 字段形态；「App 影响」一节（新增 optional 字段、旧字段逐字段不变的证据、同步的副本与四个 *-sync 测试结果、未验证范围，交 W0055 汇总进 Bridge handoff）；CRITICAL impact 处理；流量表；截图；全量清单；review 处理；App 端观察项（App 本地计算仍无真实强度，需 App 线另议）。交接列本线分支、固定最终 SHA、待合并目标 `chat-agent`。
 
 ## 已定（D44，2026-10-02）
 

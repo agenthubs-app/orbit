@@ -1,13 +1,15 @@
 # Sprint W0052 — 人脉概览：驾驶舱读快照，管线改档位，动态来自时间线
 
+> revision 4：按 D46 修订（④⑦）：`getCurrent()` 多读字节如实计量，超 D39 预算另加只读瘦身读取（不在本轮默认范围）；基线行号以开工时 HEAD 为准、按符号重定位。
+>
 > revision 3：按 REVIEW-2026-10-02-network 裁决修订（R-6、R-12、R-16、R-17）：计划只读 `getCurrent()` + W0050 纯投影，SC-01 加阶段边界夹具 0 写入／0 生成器断言；快照统一读 `NetworkSnapshotView.blocks` + `freshness.stale`；进入条件写明「任一待改符号 HIGH/CRITICAL 或共享装配链受影响即升 H」，UNKNOWN 补查写入 REPORT；验收契约改为「操作链 + 主证据」+ 必需证据子表。
 >
 > revision 2：按 D44 定稿待定项、W0048 拆分、配额两池（2026-10-02）。快照来自 W0048a；本 Sprint 页面只读，不占任何配额池。
 
-**Plan revision:** 3。**模式:** existing-codebase / single-generator。运行状态只在登记表。
+**Plan revision:** 4。**模式:** existing-codebase / single-generator。运行状态只在登记表。
 **原需求:** RN-10 全部（REQUIREMENTS「大目标 4」）。**单一目标:** 概览三块改接真实来源：驾驶舱 = 快照句子 + 规则数字；管线区 = 强度档；最近动态 = 关系时间线（双语）。
 **易读目标:** [GOAL.md](GOAL.md)。
-**基线:** 开工时 `chat-agent` HEAD（编制时 `a48e1749`；GitNexus 索引 `behind`，开工先刷新）。行号按 `a48e1749`，W0043／W0047／W0049 会先改相关文件，开工按符号重新定位。
+**基线:** 开工时 `chat-agent` HEAD（编制时 `a48e1749`；GitNexus 索引 `behind`，开工先刷新）。行号按 `a48e1749`，W0043／W0047／W0049 会先改相关文件，开工按符号重新定位。 **行号以开工时 HEAD 为准，按符号重定位（D46⑦）。**
 **档位:** 暂列 L（只改概览展示与服务端装配，前序 Sprint 提供全部读取入口），**只有开工影响分析完成后才能保留 L**（R-17，见进入条件）。W52-3 已定：跨联系人「最近 N 条」由 W0046 的 `readRecentRelationshipTimelineForActor` 提供，本 Sprint 不新写时间线读取。
 **进入条件:**
 - **W0049、W0050 completed**（登记表依赖；传递要求 W0043、W0045～W0047、W0048a completed）。W0049 共用 `healthRows`／四档分布与依据解析；W0050 提供规则覆盖度函数与本周动作口径（W52-2）；W0043 同文件 `network-overview.tsx` 的双语模板与白名单沿用。不依赖 W0048b。
@@ -37,7 +39,7 @@
 - **W0048a → `NetworkSnapshotView`（R-12，统一形态）**：当前快照读取入口；只用 `state`、`blocks`（已是请求语言：「结构诊断一句」取 `kind: "diagnosis"`、「缺口叙述」取 `kind: "gap"`、「计划引用」取 `kind: "plan"`）、`generatedAt`、`contactCount`、`freshness.stale`；不读 `language.{zh,en}` 或顶层 `stale`。无快照／读失败的返回形态以 REPORT 为准。打开页面只读，不触发生成。
 - **W0047 → `RelationshipStrength`**：`tier: "new"|"active"|"core"` + `dormant`；全量档位人数来自 `shared/compute` 健康分布的新增字段；每位联系人的档位与最近信号时间（用于挑 2 位重点联系人）由联系人视图模型或 W0047 读模型提供；关系管线页按档位分组的地址与参数（如 `/app/contacts/pipeline?tier=core`）。
 - **W0046 → `RelationshipTimelineItem`**：`source`、`occurredAt`、`id`、`title {zh,en}`、`excerpt`；跨联系人、按 actor 取最近 N 条的读取 `readRecentRelationshipTimelineForActor({ actorId, now, limit })`（W46-6／W52-3），本 Sprint `limit` 5；W0046 SC-05 的预估流量行由本 Sprint 实测替换。
-- **W0049**：四档分布在视图里的形态、`healthRows` 新签名、依据解析函数。**W0050**：规则覆盖度函数 `planNeedCoverage`（已确认关联人数 ÷ 计划人脉需求总人数）、只读投影 `toOpportunityPlanView` 与「本周建议动作」计数口径。**计划读取只用 `PlanService.getCurrent()`（`service.ts:688`，只读）+ 上述纯投影；不得调用会在阶段边界写「进入新阶段」并解析生成器的 `getCurrentView()`（`service.ts:1290`）或 `enterCurrentPhase()`（R-6）。****W0043**：`network-copy.ts` 双语模板、白名单。
+- **W0049**：四档分布在视图里的形态、`healthRows` 新签名、依据解析函数。**W0050**：规则覆盖度函数 `planNeedCoverage`（已确认关联人数 ÷ 计划人脉需求总人数）、只读投影 `toOpportunityPlanView` 与「本周建议动作」计数口径。**计划读取只用 `PlanService.getCurrent()`（`service.ts:688`，只读）+ 上述纯投影；不得调用会在阶段边界写「进入新阶段」并解析生成器的 `getCurrentView()`（`service.ts:1290`）或 `enterCurrentPhase()`（R-6）。`getCurrent()` 比投影所需多读的字节（全部条目、最近 50 条记录）如实计量进 SC-05 预算表；超 D39 预算时另加只读瘦身读取方法，不在本 Sprint 默认范围，REPORT 登记 D32 并建议后续 Sprint（D46④）。****W0043**：`network-copy.ts` 双语模板、白名单。
 
 ### 方案要点（单一事实来源、存细粒度、派生粗粒度）
 1. **驾驶舱 4 卡（W52-1 已定）**：①结构：快照「结构诊断」句 + 全量联系人数 → `?tab=structure`；②目标缺口：快照「缺口叙述」+ 规则覆盖「已有 a／共 b」（W0050 同一函数）→ `?tab=opportunities`，无计划时数字位换成「生成计划」入口；③本周行动：快照「计划引用」句（没有则不显示句子）+ 本周建议动作数（W0050 同一口径：计划本周行动 + 待确认匹配）→ 计划页；④待唤醒：模板句「N 位曾有往来、60 天没有新记录」+ `dormant` 人数（W0047 全量）→ `?tab=opportunities`。**数字全部实时规则计算、与分析页同一函数**，句子只来自快照或由数字拼出的双语模板；没有快照时卡片只显示数字与标题，不放占位句，不加免责灰字（N-Q6）。
@@ -88,7 +90,7 @@
 | 03 | 空时间线 →「还没有互动记录」；时间线读失败 → 仅本区块「来源暂时不可用」，驾驶舱与管线区正常 | 组件测试 |
 | 04 | 行业／地区分段来自全量分布 | 组件测试 |
 | 04 | 示例期：示例数字与示例档位、动态（双语），无快照句；快照、时间线、计划读取 0 次（计调用断言）；示例相关现有测试按新设计改写后通过 | `app-network-demo-pages.test.tsx`、`app-network-demo-mode.test.tsx` |
-| 05 | 拦截 `pg.Client.prototype.query`（W0017 口径）：新增读取 = 快照、时间线最近 5 条、计划 `getCurrent()` 与覆盖度／本周动作、全量来源计数（若需额外语句）；按 1000 位活跃用户 × 每人每天 2 次（假设）× 30 天并入开工时 README 最新总账三档；参考行（不进总账）：改前已有读取的单次字节；W0046 预估行用本实测替换；1.6 GB 不作通过条件，超限登记 D32 | REPORT 预算表 |
+| 05 | 拦截 `pg.Client.prototype.query`（W0017 口径）：新增读取 = 快照、时间线最近 5 条、计划 `getCurrent()`（含多读的条目与最近 50 条记录，如实计量，D46④）与覆盖度／本周动作、全量来源计数（若需额外语句）；按 1000 位活跃用户 × 每人每天 2 次（假设）× 30 天并入开工时 README 最新总账三档；参考行（不进总账）：改前已有读取的单次字节；W0046 预估行用本实测替换；1.6 GB 不作通过条件，超限登记 D32 | REPORT 预算表 |
 | 05 | 浏览器 zh／en × 1440／375 截图，点每张卡与一个档位段确认跳转；示例账号概览 1440 一张；控制台无新增错误 | 截图与控制台日志 |
 | 05 | **R-17**：REPORT 列逐符号 impact、共享装配链是否受影响、`UNKNOWN` 文本补查；升 H 时另有全量对照（新增失败 0）与一次 Codex 代码 review | REPORT |
 
