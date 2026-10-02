@@ -1008,10 +1008,23 @@ export function createStorageContactGraphProvider({
       if (region === null && update.region !== null && update.region !== undefined) {
         throw new Error("Contact region is invalid.");
       }
+      if (update.industry && !validateIndustrySelection(update.industry).valid) {
+        throw new Error("Contact industry selection is invalid.");
+      }
       const nextPayload: Record<string, unknown> = { ...contactRecord.payload };
       const updatedAt = new Date(Math.max(Date.now(), Date.parse(contactRecord.updatedAt) + 1)).toISOString();
       let enrichment = readStoredEnrichment(nextPayload.enrichment);
       const provenance = { origin: "user" as const, updatedAt, via: "contact_edit" as const };
+      let searchText = contactRecord.searchText;
+      if (update.industry) {
+        if (update.industry.primaryIndustryId) nextPayload.primaryIndustryId = update.industry.primaryIndustryId;
+        else delete nextPayload.primaryIndustryId;
+        if (update.industry.primaryIndustryId && update.industry.secondaryIndustryId) nextPayload.secondaryIndustryId = update.industry.secondaryIndustryId;
+        else delete nextPayload.secondaryIndustryId;
+        enrichment = withEnrichmentProvenance(enrichment, "industry", provenance);
+        // 与 updateContactPrimaryIndustry 同口径：行业 id 追加进 searchText。
+        searchText = [contactRecord.searchText, update.industry.primaryIndustryId ?? ""].filter(Boolean).join(" ");
+      }
       if (seniorityLevel !== undefined) {
         const profile = isRecord(nextPayload.publicProfile) ? { ...nextPayload.publicProfile } : {};
         if (seniorityLevel) profile.seniorityLevel = seniorityLevel;
@@ -1029,7 +1042,7 @@ export function createStorageContactGraphProvider({
       if (!store.updateRecordIfCurrent) {
         throw new AppError("SERVICE_UNAVAILABLE", "Contact storage requires conditional update support.");
       }
-      const record = await store.updateRecordIfCurrent({ ...contactRecord, updatedAt, payload: nextPayload }, {
+      const record = await store.updateRecordIfCurrent({ ...contactRecord, updatedAt, searchText, payload: nextPayload }, {
         userId: contactRecord.userId ?? null,
         updatedAt: contactRecord.updatedAt,
       });

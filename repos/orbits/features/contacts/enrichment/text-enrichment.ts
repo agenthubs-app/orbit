@@ -68,35 +68,42 @@ export class TextEnrichmentError extends Error {
   }
 }
 
-const EMAIL = /[^\s@]+@[^\s@]+\.[^\s@]+/g;
-const PHONE_RUN = /\+?\d[\d\s().-]*\d/g;
+// 请求边界统一清洗（W0045 review P1）：所有文本字段都去掉邮箱、电话、传真与分机。
+// 口径：连成一串的数字 ≥7 位即可能是电话（邮编「〒123-4567」除外）；带 TEL／FAX／電話／携帯等标签的号码连同标签去掉。
+const EMAIL = /[^\s@]+@[^\s@]+\.[^\s@]+/gu;
+const EXTENSION = /(?:\bext\.?|\bextension|(?<=\d)\s*x|内線|内线|分机|分機)\s*[:：.#]?\s*\d{1,6}/giu;
+const LABELLED_PHONE = /(?:\b(?:tel|phone|mobile|mob|cell|fax|facsimile)\b|携帯|電話|电话|手机|手機|传真|傳真|ファックス|ＦＡＸ)\s*(?:\([^)]*\))?\s*[:：.]?\s*[+\d][\d\s().\-]*/giu;
+const DIGIT_RUN = /\+?\d[\d\s().\-]*\d/gu;
+const POSTAL_PREFIX = /〒\s*$/u;
+const PHONE_MIN_DIGITS = 7;
 
-/** 9 位以上数字连成的一串视为电话／传真号（邮编 7 位、门牌号不算）。 */
-function phoneRuns(text: string): string[] {
-  return (text.match(PHONE_RUN) ?? []).filter((run) => run.replace(/\D/g, "").length >= 9);
-}
-
-function hasContactPoint(line: string): boolean {
-  return new RegExp(EMAIL.source).test(line) || phoneRuns(line).length > 0;
-}
-
-/** 地址文字里去掉邮箱与电话号码本身，保留其余地址内容。 */
-function stripContactPoints(text: string): string {
-  let result = text.replace(EMAIL, " ");
-  for (const run of phoneRuns(result)) result = result.replace(run, " ");
-  return result;
+/** 去掉文字里的邮箱、电话号码与分机号；其余内容保留。 */
+export function scrubContactText(value: string | null | undefined): string {
+  let text = (value ?? "").normalize("NFKC");
+  text = text.replace(EMAIL, " ");
+  text = text.replace(LABELLED_PHONE, " ");
+  text = text.replace(EXTENSION, " ");
+  text = text.replace(DIGIT_RUN, (run: string, offset: number, whole: string) => {
+    const digits = run.replace(/\D/g, "").length;
+    if (digits < PHONE_MIN_DIGITS) return run;
+    if (digits === PHONE_MIN_DIGITS && POSTAL_PREFIX.test(whole.slice(0, offset))) return run;
+    return " ";
+  });
+  return text;
 }
 
 function clean(value: string | null | undefined): string {
-  return (value ?? "").replace(/\s+/g, " ").trim().slice(0, TEXT_LIMIT);
+  return scrubContactText(value).replace(/\s+/g, " ").trim().slice(0, TEXT_LIMIT);
 }
 
-/** 备注里含邮箱或电话号码的行整行丢弃（含「传真」「微信」等联系方式行的号码部分）。 */
+/** 备注：含邮箱、电话、传真或分机的行整行丢弃；其余行同样经过清洗。 */
 export function scrubContactPoints(text: string | null | undefined): string {
   return (text ?? "")
+    .normalize("NFKC")
     .split(/\r?\n/)
     .map((line) => line.trim())
-    .filter((line) => line && !hasContactPoint(line) && !/^(正面|反面) · /.test(line))
+    .filter((line) => line && !/^(正面|反面) · /.test(line))
+    .filter((line) => scrubContactText(line).replace(/\s+/g, " ").trim() === line.replace(/\s+/g, " ").trim())
     .join("\n")
     .slice(0, TEXT_LIMIT);
 }
@@ -111,7 +118,7 @@ export function buildTextEnrichmentInput(contacts: readonly TextEnrichmentContac
       id: contact.contactId,
       organization: clean(contact.organization),
       title: clean(contact.role),
-      address: clean(stripContactPoints(contact.location ?? "")),
+      address: clean(contact.location),
       cardNotes: scrubContactPoints(contact.cardNotes),
     })),
   };

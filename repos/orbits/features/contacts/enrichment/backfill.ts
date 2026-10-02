@@ -20,7 +20,6 @@ import { regionFromLocationText } from "../../../shared/domain/regions";
 import type { TransactionalPostgresClient } from "../../../shared/storage/transactional-postgres";
 import {
   applyEnrichedValues,
-  canApplyEnrichedValue,
   enrichedFieldHasValue,
   type CardEnrichmentField,
   type EnrichedValue,
@@ -127,7 +126,8 @@ export async function buildContactEnrichmentBackfillPlan(input: BuildEnrichmentB
       marks.push({ field: "seniorityLevel", origin: "card", via: "legacy_profile" });
     }
     const region = regionFromLocationText(working.location);
-    if (region && canApplyEnrichedValue(working, "region", "card")) {
+    // 回填只补空：地址规则同样不替换已有地区（包括 ai 来源的地区）。
+    if (region && !enrichedFieldHasValue(working, "region")) {
       values.push({ field: "region", value: region, origin: "card", via: "rule" });
     }
     applyEnrichedValues(working, values, input.appliedAt);
@@ -240,15 +240,19 @@ export async function applyContactEnrichmentBackfillPlan(
     await acquireSyncCommitOrderLock(sql);
     const result: EnrichmentBackfillApplyResult = { applied: 0, alreadyApplied: 0, skippedChanged: 0, skippedMissing: 0 };
     for (const entry of plan.entries) {
+      // 只写计划时的所有者：SELECT 与条件 UPDATE 都绑定 user_id（owner-backfill 可能只改 user_id 而不动 payload）。
       const scope = "workspace_id = $1 and collection_name = 'contacts' and record_id = $2 and lifecycle_state = 'active' and deleted_at is null";
+      const owner = "user_id is not distinct from $3";
       // updated_at 是微秒精度、计划里是毫秒 ISO：比较按毫秒截断；条件更新用同一事务锁住的原值文本，精确相等。
       const current = await sql.query<{ payload: Record<string, unknown>; updated_at: string | Date; version_text: string }>(
-        `select payload, updated_at, updated_at::text as version_text from orbit_records where ${scope} for update`,
-        [plan.workspaceId, entry.recordId],
+        `select payload, updated_at, updated_at::text as version_text from orbit_records where ${scope} and ${owner} for update`,
+        [plan.workspaceId, entry.recordId, entry.userId],
       );
       const row = current.rows[0];
       if (!row) {
-        result.skippedMissing += 1;
+        const exists = await sql.query(`select 1 from orbit_records where ${scope}`, [plan.workspaceId, entry.recordId]);
+        if (exists.rows.length) result.skippedChanged += 1;
+        else result.skippedMissing += 1;
         continue;
       }
       const version = row.updated_at instanceof Date ? row.updated_at.toISOString() : new Date(row.updated_at).toISOString();
@@ -265,8 +269,8 @@ export async function applyContactEnrichmentBackfillPlan(
       const updatedAt = new Date(Math.max(Date.parse(plan.appliedAt), Date.parse(version) + 1)).toISOString();
       payload.updatedAt = updatedAt;
       const updated = await sql.query(
-        `update orbit_records set payload = $3::jsonb, updated_at = $4::timestamptz where ${scope} and updated_at = $5::timestamptz returning record_id`,
-        [plan.workspaceId, entry.recordId, JSON.stringify(payload), updatedAt, row.version_text],
+        `update orbit_records set payload = $4::jsonb, updated_at = $5::timestamptz where ${scope} and ${owner} and updated_at = $6::timestamptz returning record_id`,
+        [plan.workspaceId, entry.recordId, entry.userId, JSON.stringify(payload), updatedAt, row.version_text],
       );
       if (updated.rows.length === 1) result.applied += 1;
       else result.skippedChanged += 1;

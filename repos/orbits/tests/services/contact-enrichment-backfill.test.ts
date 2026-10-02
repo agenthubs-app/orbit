@@ -86,7 +86,9 @@ test("text enrichment sends at most 20 contacts and never an email or phone numb
 });
 
 test("the plan only fills empty fields, marks legacy seniority as card, batches ≤20 per serial call ≥1s apart, and caps calls", async () => {
-  const records = [...fixtures(), ...Array.from({ length: 24 }, (_, index) => contact(`z-${String(index).padStart(2, "0")}`, { organization: `Org ${index}` }))];
+  // 已有 ai 地区、location 又能命中别名：规则地区不得替换（回填只补空）。
+  const aiRegion = contact("f-ai-region", { location: "東京都港区", region: { countryCode: "SG", city: "Singapore" }, enrichment: { version: 1, fields: { region: AI } } });
+  const records = [...fixtures(), aiRegion, ...Array.from({ length: 23 }, (_, index) => contact(`z-${String(index).padStart(2, "0")}`, { organization: `Org ${index}` }))];
   const { bodies, enricher } = mockProvider();
   const sleeps: number[] = [];
   const plan = await buildContactEnrichmentBackfillPlan({ appliedAt: "2026-10-02T00:00:00.000Z", enricher, records, sleep: async (ms) => { sleeps.push(ms); }, workspaceId: WS });
@@ -101,6 +103,7 @@ test("the plan only fills empty fields, marks legacy seniority as card, batches 
   assert.deepEqual(values("c-empty"), { industry: "ai/text_enrichment", seniorityLevel: "ai/text_enrichment", region: "ai/text_enrichment" });
   assert.deepEqual(values("d-ai"), { industry: "ai/text_enrichment" }, "backfill never replaces an existing ai value");
   assert.equal(entry("e-blank"), undefined);
+  assert.equal(values("f-ai-region").region, undefined, "an existing ai region is never replaced by the location rule");
 
   const capped = await buildContactEnrichmentBackfillPlan({ appliedAt: "2026-10-02T00:00:00.000Z", enricher, maxCalls: 1, records, sleep: async () => {}, workspaceId: WS });
   assert.equal(capped.ai.calls, 1);
@@ -108,6 +111,21 @@ test("the plan only fills empty fields, marks legacy seniority as card, batches 
   const ruleOnly = await buildContactEnrichmentBackfillPlan({ appliedAt: "2026-10-02T00:00:00.000Z", records: fixtures(), workspaceId: WS });
   assert.equal(ruleOnly.ai.calls, 0);
   assert.deepEqual(ruleOnly.entries.map((candidate) => candidate.recordId), ["a-legacy"]);
+});
+
+test("every text field is scrubbed at the request boundary: 7/8-digit, unseparated and labelled numbers, extensions, polluted organization/title", async () => {
+  const { bodies, enricher } = mockProvider();
+  await enricher.enrich({ contacts: [
+    { contactId: "c-empty", organization: "架空商事 TEL 6123-4567 info@example.test", role: "部長 携帯 090-1111-2222", location: "〒100-0001 東京都千代田区1-1-1 Tel: 123-4567", cardNotes: "FAX(代表): 6123 4567\n直通 0312345678 内線 1234\nOffice ext. 89\n展示会で名刺交換" },
+    { contactId: "b-user", organization: "ＴＥＬ：０３－１２３４－５６７８ 架空法律事務所", role: "弁護士", location: "+81 3 1234 5678" },
+  ] });
+  const sent = (JSON.parse((JSON.parse(bodies[0]!) as { messages: { content: string }[] }).messages[1]!.content) as { contacts: Record<string, string>[] }).contacts;
+  const text = JSON.stringify(sent);
+  for (const leaked of ["6123-4567", "6123 4567", "info@example.test", "090-1111-2222", "123-4567", "0312345678", "1234", "ext", "89", "03-1234-5678", "81 3 1234 5678"]) {
+    assert.ok(!text.includes(leaked), `${leaked} must not reach the provider`);
+  }
+  assert.deepEqual(sent[0], { id: "c-empty", organization: "架空商事", title: "部長", address: "〒100-0001 東京都千代田区1-1-1", cardNotes: "展示会で名刺交換" });
+  assert.deepEqual(sent[1], { id: "b-user", organization: "架空法律事務所", title: "弁護士", address: "", cardNotes: "" });
 });
 
 test("a non-localhost database is refused without an explicit --confirm-remote", () => {
@@ -145,11 +163,15 @@ test("apply needs the reviewed hash, holds the commit-order lock, skips records 
 
     // 计划之后、apply 之前用户改了 d-ai：这条跳过。
     await pool.query(`update orbit_records set payload = jsonb_set(payload, '{role}', '"部長"'), updated_at = '2026-09-30T00:00:00.000Z' where record_id = 'd-ai'`);
+    // 计划之后所有者被改（owner-backfill 只改 user_id、不动 payload 与 updated_at）：不得跨所有者写入。
+    await pool.query(`update orbit_records set user_id = 'actor:other' where record_id = 'c-empty'`);
     queries.length = 0;
     const first = await applyContactEnrichmentBackfillPlan(spying, plan, plan.hash);
     assert.equal(queries[0], SYNC_COMMIT_ORDER_LOCK_SQL, "the commit-order lock is taken before the first write");
     assert.ok(queries.filter((text) => /for update/.test(text)).length === 4);
-    assert.deepEqual(first, { applied: 3, alreadyApplied: 0, skippedChanged: 1, skippedMissing: 0 });
+    assert.deepEqual(first, { applied: 2, alreadyApplied: 0, skippedChanged: 2, skippedMissing: 0 });
+    const c = (await pool.query(`select payload from orbit_records where record_id = 'c-empty'`)).rows[0].payload as Record<string, unknown>;
+    assert.equal(c.enrichment, undefined, "the record now owned by someone else is untouched");
 
     const payload = async (id: string) => (await pool.query(`select payload from orbit_records where record_id = $1`, [id])).rows[0].payload as Record<string, unknown>;
     const a = await payload("a-legacy");
@@ -166,7 +188,7 @@ test("apply needs the reviewed hash, holds the commit-order lock, skips records 
     assert.equal(d.primaryIndustryId, undefined, "the changed record was skipped");
 
     const second = await applyContactEnrichmentBackfillPlan(spying, plan, plan.hash);
-    assert.deepEqual(second, { applied: 0, alreadyApplied: 3, skippedChanged: 1, skippedMissing: 0 }, "re-applying changes nothing");
+    assert.deepEqual(second, { applied: 0, alreadyApplied: 2, skippedChanged: 2, skippedMissing: 0 }, "re-applying changes nothing");
   } finally {
     await pool.query(`drop schema if exists ${schema} cascade`).catch(() => {});
     await pool.end();

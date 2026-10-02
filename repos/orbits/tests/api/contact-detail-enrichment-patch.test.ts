@@ -29,9 +29,18 @@ function fixtures(): LiveRecord[] {
   ] as LiveRecord[];
 }
 
-function harness(t: { mock: { method: (...args: never[]) => unknown } }) {
+function harness(t: { mock: { method: (...args: never[]) => unknown } }, options: { conflict?: boolean } = {}) {
   const store = createMemoryLiveRecordStore(fixtures());
-  const service = createLiveContactDetailTagStatusService({ provider: createStorageContactGraphProvider({ store, workspaceId: "w" }) });
+  const writes = { count: 0 };
+  // 计数并可模拟「期间被别人改过」：条件更新返回 null。
+  const counted = Object.assign(Object.create(store) as typeof store, {
+    async updateRecordIfCurrent(...args: Parameters<NonNullable<typeof store.updateRecordIfCurrent>>) {
+      writes.count += 1;
+      if (options.conflict) return null;
+      return store.updateRecordIfCurrent!(...args);
+    },
+  });
+  const service = createLiveContactDetailTagStatusService({ provider: createStorageContactGraphProvider({ store: counted, workspaceId: "w" }) });
   const resolution = contactDetailTagStatusServiceFactory.create("mock");
   (t.mock.method as (object: object, name: string, impl: () => unknown) => unknown)(contactDetailTagStatusServiceFactory, "create", () => ({ ...resolution, service }));
   const patch = (id: string, body: unknown) => createContactDetailPatchHandler(async () => ({ id: "a" }))(
@@ -39,7 +48,7 @@ function harness(t: { mock: { method: (...args: never[]) => unknown } }) {
     { params: Promise.resolve({ id }) },
   );
   const payloadOf = async (id: string) => (await store.getRecord({ workspaceId: "w", collectionName: "contacts", recordId: id }))!.payload as Record<string, unknown>;
-  return { patch, payloadOf, store };
+  return { patch, payloadOf, store, writes };
 }
 
 test("PATCH writes seniority and canonical region and marks both as user edits", async (t) => {
@@ -79,6 +88,22 @@ test("PATCH writes seniority and canonical region and marks both as user edits",
   );
 });
 
+test("industry, seniority and region in one PATCH are one conditional update; a conflict saves nothing and returns 409", async (t) => {
+  const ok = harness(t);
+  assert.equal((await ok.patch("own", { primaryIndustryId: "finance_investment", secondaryIndustryId: "finance_investment.banking", seniorityLevel: "vp", region: { countryCode: "JP", city: "Kyoto" } })).status, 200);
+  assert.equal(ok.writes.count, 1, "a single CAS for the whole contact payload");
+  const saved = await ok.payloadOf("own");
+  assert.deepEqual([saved.primaryIndustryId, (saved.publicProfile as Record<string, unknown>).seniorityLevel, saved.region], ["finance_investment", "vp", { countryCode: "JP", city: "Kyoto" }]);
+
+  t.mock.restoreAll();
+  const racing = harness(t, { conflict: true });
+  const before = JSON.stringify(await racing.store.listRecords({ workspaceId: "w", limit: "unbounded" }));
+  const response = await racing.patch("own", { primaryIndustryId: "finance_investment", secondaryIndustryId: "finance_investment.banking", seniorityLevel: "vp" });
+  assert.equal(response.status, 409);
+  assert.equal(((await response.json()) as { error: { code: string } }).error.code, "CONFLICT");
+  assert.equal(JSON.stringify(await racing.store.listRecords({ workspaceId: "w", limit: "unbounded" })), before, "the industry is not saved when the seniority write conflicts");
+});
+
 test("PATCH rejects invalid seniority or region values without writing", async (t) => {
   const { patch, store } = harness(t);
   const before = JSON.stringify(await store.listRecords({ workspaceId: "w", limit: "unbounded" }));
@@ -86,6 +111,7 @@ test("PATCH rejects invalid seniority or region values without writing", async (
     { seniorityLevel: "boss" },
     { seniorityLevel: 5 },
     { region: { countryCode: "XX", city: "Tokyo" } },
+    { region: { countryCode: "US", city: "Tokyo" } },
     { region: { countryCode: "JP", city: 7 } },
     { region: "JP" },
     { region: { city: "Tokyo" } },

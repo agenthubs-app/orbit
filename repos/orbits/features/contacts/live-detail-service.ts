@@ -11,6 +11,7 @@ import {
   type SourceType,
 } from "../../shared/domain/source-types";
 import { normalizeRegion } from "../../shared/domain/regions";
+import { AppError } from "../../shared/errors/app-error";
 import type { OrbitLanguage } from "../../shared/contract/language";
 import type { IndustrySelectionContract } from "../../shared/contract/industries";
 import {
@@ -1324,11 +1325,20 @@ export function createLiveContactDetailTagStatusService({
         return failure("CONTACT_DETAIL_INDUSTRY_NOT_SUPPORTED", { collectedAt, provider });
       }
 
-      const writesEnrichment = enrichmentEdit !== null;
+      // W0045 review P1：同一联系人 payload 的行业／职级／地区合并为一次条件更新（一次 CAS），
+      // 不会出现「行业已保存、职级冲突」的部分落库。
+      const payloadEdit: ContactEnrichmentEdit = {
+        ...(enrichmentEdit ?? {}),
+        ...(writesPrimaryIndustry
+          ? { industry: { primaryIndustryId: selection.primaryIndustryId ?? null, secondaryIndustryId: selection.primaryIndustryId ? selection.secondaryIndustryId ?? null : null } }
+          : {}),
+      };
+      const writesPayload = Object.keys(payloadEdit).length > 0;
+      // 只改行业、provider 又没有合并写入方法时（旧 provider），沿用 updateContactPrimaryIndustry。
+      const legacyIndustryOnly = writesPrimaryIndustry && enrichmentEdit === null && !provider?.updateContactEnrichment;
       if (
         (writesDetailState && !provider?.upsertContactDetailState) ||
-        (writesPrimaryIndustry && !provider?.updateContactPrimaryIndustry) ||
-        (writesEnrichment && !provider?.updateContactEnrichment)
+        (writesPayload && !provider?.updateContactEnrichment && !(legacyIndustryOnly && provider?.updateContactPrimaryIndustry))
       ) {
         return failure("CONTACT_DETAIL_LIVE_STORE_WRITE_FAILED", {
           collectedAt,
@@ -1357,17 +1367,18 @@ export function createLiveContactDetailTagStatusService({
         });
       }
       try {
-        if (writesPrimaryIndustry) {
+        if (legacyIndustryOnly) {
           await provider.updateContactPrimaryIndustry?.(
             input.contactId.trim(),
             actorId,
             selection.primaryIndustryId ?? null,
             selection.secondaryIndustryId ?? null,
           );
+        } else if (writesPayload) {
+          await provider.updateContactEnrichment?.(input.contactId.trim(), actorId, payloadEdit);
         }
-        if (enrichmentEdit) {
-          await provider.updateContactEnrichment?.(input.contactId.trim(), actorId, enrichmentEdit);
-        }
+        // 详情状态（标签／状态／备注／最近互动）在另一条记录（contact_detail_states），由另一个 provider 方法写入，
+        // 与上面的 payload 更新不在同一事务：payload 先提交，详情状态写失败时 payload 已保存（W0045 前即如此，REPORT 已登记）。
         if (writesDetailState) {
           await provider.upsertContactDetailState?.(
             persistedStateFor({
@@ -1379,7 +1390,10 @@ export function createLiveContactDetailTagStatusService({
             }),
           );
         }
-      } catch {
+      } catch (error) {
+        if (error instanceof AppError && error.code === "CONFLICT") {
+          return failure("CONTACT_DETAIL_CONFLICT", { collectedAt, databaseReadExecuted: true, provider });
+        }
         return failure("CONTACT_DETAIL_LIVE_STORE_WRITE_FAILED", {
           collectedAt,
           databaseReadExecuted: true,

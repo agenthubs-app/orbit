@@ -45,6 +45,7 @@ export const CONTACT_DETAIL_TAG_STATUS_ERROR_CODES = [
   "CONTACT_DETAIL_TAG_NOT_SUPPORTED",
   "CONTACT_DETAIL_INDUSTRY_NOT_SUPPORTED",
   "CONTACT_DETAIL_ENRICHMENT_NOT_SUPPORTED",
+  "CONTACT_DETAIL_CONFLICT",
   "CONTACT_DETAIL_STATUS_NOT_SUPPORTED",
   "CONTACT_DETAIL_CANONICAL_STATUS_LIFECYCLE_ONLY",
   "CONTACT_DETAIL_AMBIGUOUS_CONNECTION",
@@ -113,6 +114,12 @@ export const CONTACT_DETAIL_TAG_STATUS_ERROR_DEFINITIONS = {
     appCode: "VALIDATION_ERROR",
     message: "That seniority level or region is not supported.",
     recovery: "Choose one of the six seniority levels and an ISO country code, or clear the field.",
+  },
+  CONTACT_DETAIL_CONFLICT: {
+    code: "CONTACT_DETAIL_CONFLICT",
+    appCode: "CONFLICT",
+    message: "The contact changed while saving; nothing was saved.",
+    recovery: "Refresh the contact and apply the edit again.",
   },
   CONTACT_DETAIL_STATUS_NOT_SUPPORTED: {
     code: "CONTACT_DETAIL_STATUS_NOT_SUPPORTED",

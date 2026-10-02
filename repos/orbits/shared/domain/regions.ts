@@ -70,14 +70,15 @@ function aliasForCityName(value: string): RegionCityAlias | null {
 
 /**
  * 把模型或用户给出的一对值清洗成规范地区：国家码不合法 → 整对丢弃为 null；
- * 城市按别名表归一，不认识时保留去空白后的原值（≤64 字，超长丢弃城市）。不改大小写外的任何内容。
+ * 城市按别名表归一（别名所属国家与国家码不一致 → 整对 null），不认识时保留去空白后的原值（≤64 字，超长丢弃城市）。
  */
 export function normalizeRegion(countryCode: unknown, city: unknown): ContactRegionDTO | null {
   const code = typeof countryCode === "string" ? countryCode.trim().toUpperCase() : countryCode;
   if (!isValidCountryCode(code)) return null;
   if (typeof city !== "string" || !city.trim()) return { countryCode: code, city: null };
   const alias = aliasForCityName(city);
-  if (alias) return { countryCode: code, city: alias.city };
+  // 别名表认识的城市必须属于给出的国家（如 US + 東京）：自相矛盾的一对整对判非法。
+  if (alias) return alias.countryCode === code ? { countryCode: code, city: alias.city } : null;
   const trimmed = city.trim().replace(/\s+/g, " ");
   return { countryCode: code, city: trimmed.length <= REGION_CITY_MAX_LENGTH ? trimmed : null };
 }

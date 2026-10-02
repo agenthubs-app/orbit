@@ -39,6 +39,10 @@ test("normalizeRegion validates the ISO country and canonicalizes known city ali
   for (const invalid of ["XX", "ZZ", "EU", "JPN", "", null, 7, "J"]) {
     assert.equal(normalizeRegion(invalid, "Tokyo"), null, `country ${String(invalid)} drops the whole pair`);
   }
+  assert.equal(normalizeRegion("US", "Tokyo"), null, "a known city in another country is a contradiction, not a region");
+  assert.equal(normalizeRegion("CN", "東京"), null);
+  assert.equal(normalizeRegion("SG", "上海"), null);
+  assert.deepEqual(normalizeRegion("US", "Austin"), { countryCode: "US", city: "Austin" }, "unknown cities are not cross-checked");
   assert.equal(isValidCountryCode("SG"), true);
   assert.equal(readStoredRegion({ countryCode: "XX", city: "Tokyo" }), null);
   assert.deepEqual(readStoredRegion({ countryCode: "JP", city: "Osaka" }), { countryCode: "JP", city: "Osaka" });

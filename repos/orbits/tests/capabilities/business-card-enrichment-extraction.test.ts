@@ -72,6 +72,11 @@ const CASES: readonly {
     expected: { seniorityLevel: null, regionCountryCode: null, regionCity: null },
   },
   {
+    name: "a known city that contradicts the country",
+    enrichment: { seniorityLevel: "vp", regionCountryCode: "US", regionCity: "東京" },
+    expected: { seniorityLevel: "vp", regionCountryCode: null, regionCity: null },
+  },
+  {
     name: "wrong types",
     enrichment: { seniorityLevel: 3, regionCountryCode: ["JP"], regionCity: {} },
     expected: { seniorityLevel: null, regionCountryCode: null, regionCity: null },
