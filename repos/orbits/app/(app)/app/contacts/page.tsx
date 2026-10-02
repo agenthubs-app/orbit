@@ -27,6 +27,7 @@ import { NetworkCards } from "./network-0918/network-cards";
 import { loadContactCardRoute } from "./contact-card-route-service";
 import { readDemoModeViewForActor } from "../_demo/demo-guide-view";
 import { buildDemoNetworkViewModel } from "../_demo/demo-network";
+import { ensureRelationshipStrengthsForPage, readRelationshipTierLookup } from "../../../../features/relationship-strength/read-model";
 import { NetworkDemoFrame } from "./network-0918/network-demo-frame";
 import { NETWORK_SOURCES, type NetworkSource } from "./network-0918/network-model";
 
@@ -99,6 +100,8 @@ export default async function AppContactsPage({
       </NetworkDemoFrame>
     </>;
   }
+  // W0047：所有人脉列表的服务端加载先刷新关系强度读模型（来源戳与东京日未变时只读一条语句；失败不影响页面）。
+  await ensureRelationshipStrengthsForPage(actor.id, new Date());
   const cards = await loadContactCardRoute(params ?? {}, actor);
   if (cards) return <>
     <OrbitReferenceStyles /><OrbitVisualFreezeRuntime />
@@ -114,6 +117,9 @@ export default async function AppContactsPage({
   );
   const language =
     routeModel.state === "success" ? await getOrbitServerLanguage() : null;
+  const tiers = routeModel.state === "success"
+    ? await readRelationshipTierLookup({ actorId: actor.id, contactIds: routeModel.payload.contacts.map((contact) => contact.id) })
+    : undefined;
 
   return (
     <>
@@ -126,7 +132,7 @@ export default async function AppContactsPage({
           <NetworkAll
             viewModel={localizeOrbitTree(
               applyOrbitContactsPresentation(
-                contactsRouteToOrbitContactsViewModel(routeModel),
+                contactsRouteToOrbitContactsViewModel(routeModel, tiers),
                 language ?? "zh",
               ),
               language ?? "zh",

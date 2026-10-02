@@ -1,4 +1,5 @@
-import type { RelationshipTimelineResult } from "../../../shared/contract/relationship-timeline";
+import type { RelationshipStrength } from "../../../shared/contract/relationship-strength";
+import type { RelationshipTimelineItem, RelationshipTimelineResult } from "../../../shared/contract/relationship-timeline";
 
 // pending_initialization is display-only, not a canonical lifecycle stage.
 export type OrbitContactPipelineStatus = "to_contact" | "in_progress" | "partnered" | "archived" | "pending_initialization";
@@ -50,6 +51,10 @@ export interface OrbitContactView {
   timeline?: RelationshipTimelineResult;
   /** W0046：「写 memo」的关联活动推荐来源——近期已报名活动日程（服务端读取，读失败为空）。 */
   memoEventOptions?: readonly { eventId: string; title: string; startsAt: string }[];
+  /** W0047：关系强度（读模型缓存，详情页服务端读好；null = 还没有算出）。示例为前端静态数据。 */
+  relationshipStrength?: RelationshipStrength | null;
+  /** W0047：依据里不在最近 20 条时间线中的信号对应的时间线条目（按信号 id 读回，至多 12 条）。 */
+  relationshipSignalItems?: readonly RelationshipTimelineItem[];
 }
 
 export type OrbitContactStrength =

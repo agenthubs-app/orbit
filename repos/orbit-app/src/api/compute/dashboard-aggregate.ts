@@ -26,6 +26,7 @@ import type {
   LiveDashboardGraph,
 } from "./dashboard-graph";
 import type { NetworkDistributionReadModel, NetworkGapCore } from "./dashboard-distribution";
+import type { RelationshipTierAssignment } from "./dashboard-distribution-contract";
 import type { OpportunityCore } from "./dashboard-opportunity";
 import { compareText, parseTimestamp } from "./compute-text";
 
@@ -268,6 +269,10 @@ export interface LiveDashboardAggregateProvider {
   readNetworkDistributionReadModelForAccount?: (
     accountId: string,
   ) => Promise<NetworkDistributionReadModel>;
+  /** W0047: each contact's tier from the relationship_strengths read model (graph-path input of relationshipTierDistribution). */
+  readRelationshipTiersForAccount?: (
+    accountId: string,
+  ) => Promise<readonly RelationshipTierAssignment[]>;
   /**
    * Sprint 0102: the actor's relationship-graph version (one small aggregate
    * query), or null when the database has no sync_revision column.

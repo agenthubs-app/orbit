@@ -28,6 +28,7 @@ import { NetworkDemoFrame } from "../network-0918/network-demo-frame";
 import { NetworkDemoAnalysisNotice } from "../network-0918/network-shell";
 import { readDemoModeViewForActor } from "../../_demo/demo-guide-view";
 import { buildDemoNetworkAnalysis, buildDemoNetworkViewModel } from "../../_demo/demo-network";
+import { ensureRelationshipStrengthsForPage, readRelationshipTierLookup } from "../../../../../features/relationship-strength/read-model";
 
 export default async function AppContactsDashboardPage({ searchParams }: {
   searchParams?: Promise<{ tab?: string | string[] }>;
@@ -66,13 +67,18 @@ export default async function AppContactsDashboardPage({ searchParams }: {
       </>
     );
   }
+  // W0047：先刷新关系强度读模型（来源戳与东京日未变时只读一条语句；失败不影响页面），分析里的档位分布读它。
+  await ensureRelationshipStrengthsForPage(actor.id, new Date());
   const [analysis, routeModel] = await Promise.all([
     loadContactsAnalysis(actor.id, language),
     loadAppContactsRouteViewModel({}, actor.id),
   ]);
+  const tiers = routeModel.state === "success"
+    ? await readRelationshipTierLookup({ actorId: actor.id, contactIds: routeModel.payload.contacts.map((contact) => contact.id) })
+    : undefined;
   const tab = params?.tab === "structure" || params?.tab === "opportunities" ? params.tab : "overview";
   const toViewModel = (payload: Parameters<typeof contactsRouteToOrbitContactsViewModel>[0]) =>
-    localizeOrbitTree(applyOrbitContactsPresentation(contactsRouteToOrbitContactsViewModel(payload), language), language);
+    localizeOrbitTree(applyOrbitContactsPresentation(contactsRouteToOrbitContactsViewModel(payload, tiers), language), language);
 
   return (
     <>

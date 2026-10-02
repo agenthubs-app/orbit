@@ -197,9 +197,7 @@ export const NETWORK_STYLES = `
 [data-orbit-real-page="network"] .nw-suggest-tag { padding: 4px 10px; border-radius: 999px; font-size: 12px; white-space: nowrap; }
 [data-orbit-real-page="network"] .nw-suggest-arrow { color: #9FA3C4; }
 [data-orbit-real-page="network"] .nw-pipe-filters { display: flex; flex-wrap: wrap; gap: 12px; padding: 14px; border: 1px solid #E8E9F6; border-radius: 16px; background: #FFFFFF; }
-[data-orbit-real-page="network"] .nw-pipe-filter { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border: 1px solid #E8E9F6; border-radius: 10px; font-size: 14px; color: #3B3F7A; }
-[data-orbit-real-page="network"] .nw-pipe-filter-v { font-weight: 500; color: #0E1225; }
-[data-orbit-real-page="network"] .nw-pipe-filter-caret { font-size: 11px; }
+[data-orbit-real-page="network"] .nw-pipe-note { display: flex; align-items: center; padding: 10px 4px; font-size: 13px; color: #6B6F99; }
 [data-orbit-real-page="network"] .nw-pipe-search { flex: 1; min-width: 220px; padding: 10px 16px; border: 1px solid #E8E9F6; border-radius: 10px; background: #F7F7FD; font-size: 14px; outline: none; }
 [data-orbit-real-page="network"] .nw-pipe-search:focus { border-color: #4B4FC7; background: #FFFFFF; }
 [data-orbit-real-page="network"] .nw-kanban { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)); gap: 16px; align-items: start; }
@@ -233,6 +231,8 @@ export const NETWORK_STYLES = `
 [data-orbit-real-page="network"] .btn.nw-kanban-more:active { transform: none; }
 [data-orbit-real-page="network"] .nw-kanban-foot { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #6B6F99; padding-top: 8px; border-top: 1px solid #EEEFF8; }
 [data-orbit-real-page="network"] .nw-kanban-v { color: #3B3F7A; }
+[data-orbit-real-page="network"] .nw-tier-dot { display: inline-block; width: 7px; height: 7px; margin-right: 6px; border-radius: 50%; vertical-align: middle; }
+[data-orbit-real-page="network"] .nw-kanban-more-note { padding: 2px 4px; font-size: 12px; color: #6B6F99; }
 [data-orbit-real-page="network"] .nw-kanban-next { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* ── 概览（设计稿 66–171 行）── */
 [data-orbit-real-page="network"] .nw-dist-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
@@ -537,6 +537,16 @@ export const NETWORK_STYLES = `
 [data-orbit-real-page="network"] .nw-enrich-error { margin: 0; font-size: 12px; color: #B42318; }
 [data-orbit-real-page="network"] .nw-enrich-actions { display: flex; justify-content: flex-end; gap: 8px; }
 [data-orbit-real-page="network"] .nw-detail-stage { padding: 5px 12px; border-radius: 999px; font-size: 12px; }
+[data-orbit-real-page="network"] .btn.nw-basis-toggle { padding: 4px 10px; border: 1px solid #DDDEFA; border-radius: 999px; background: #FFFFFF; color: #3B3F7A; font-size: 12px; cursor: pointer;
+  /* 覆盖 .btn 基类（orbit-reference-styles.tsx:594–611）非设计声明 */
+  height: auto; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; letter-spacing: 0; line-height: normal; transition: none; font-weight: 400; }
+[data-orbit-real-page="network"] .btn.nw-basis-toggle:hover { background: #ECEEFB; color: #2E3270; }
+[data-orbit-real-page="network"] .btn.nw-basis-toggle:active { transform: none; }
+[data-orbit-real-page="network"] .nw-basis { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; padding: 12px 14px; border: 1px solid #E8E9F6; border-radius: 12px; background: #FAFAFF; font-size: 13px; }
+[data-orbit-real-page="network"] .nw-basis-head { color: #6B6F99; font-size: 12px; }
+[data-orbit-real-page="network"] .nw-basis-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+[data-orbit-real-page="network"] .nw-basis-title { flex: 1 1 160px; min-width: 0; color: #0E1225; overflow-wrap: anywhere; }
+[data-orbit-real-page="network"] .nw-basis-foot { color: #8A6420; font-size: 12px; }
 [data-orbit-real-page="network"] .nw-panel { border: 1px solid #E8E9F6; border-radius: 16px; padding: 22px; display: flex; flex-direction: column; }
 [data-orbit-real-page="network"] .nw-panel-16 { gap: 16px; }
 [data-orbit-real-page="network"] .nw-panel-14 { gap: 14px; }
@@ -584,11 +594,11 @@ export const NETWORK_STYLES = `
   /* 覆盖 .btn 基类（orbit-reference-styles.tsx:594–611）非设计声明 */
   height: auto; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; text-align: center; letter-spacing: 0; line-height: normal; transition: none; font-weight: 400; }
 [data-orbit-real-page="network"] .btn.nw-detail-close:active { transform: none; }
-[data-orbit-real-page="network"] .btn.nw-detail-follow, [data-orbit-real-page="network"] .btn.nw-detail-status { padding: 13px 22px; border: 1px solid #DDDEFA; border-radius: 10px; background: #FFFFFF; color: #0E1225; font-size: 14px; cursor: pointer;
+[data-orbit-real-page="network"] .btn.nw-detail-follow { padding: 13px 22px; border: 1px solid #DDDEFA; border-radius: 10px; background: #FFFFFF; color: #0E1225; font-size: 14px; cursor: pointer;
   /* 覆盖 .btn 基类（orbit-reference-styles.tsx:594–611）非设计声明 */
   height: auto; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; text-align: center; letter-spacing: 0; line-height: normal; transition: none; font-weight: 400; }
-[data-orbit-real-page="network"] .btn.nw-detail-follow:hover, [data-orbit-real-page="network"] .btn.nw-detail-status:hover { background: #ECEEFB; }
-[data-orbit-real-page="network"] .btn.nw-detail-follow:active, [data-orbit-real-page="network"] .btn.nw-detail-status:active { transform: none; }
+[data-orbit-real-page="network"] .btn.nw-detail-follow:hover { background: #ECEEFB; }
+[data-orbit-real-page="network"] .btn.nw-detail-follow:active { transform: none; }
 [data-orbit-real-page="network"] .nw-fu-head { display: flex; align-items: flex-start; justify-content: space-between; }
 [data-orbit-real-page="network"] .nw-fu-head-copy { display: flex; flex-direction: column; gap: 6px; }
 [data-orbit-real-page="network"] .nw-fu-title { font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 26px; letter-spacing: -0.02em; }

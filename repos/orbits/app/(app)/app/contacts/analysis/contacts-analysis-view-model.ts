@@ -1,5 +1,6 @@
 import { mobileContactsDashboardPayloadSchema } from "../../../../../shared/api-schema/mobile-contacts-dashboard";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
+import type { RelationshipTierGroup } from "../../../../../shared/contract/relationship-strength";
 import { industryLabel } from "../../../../../shared/domain/industries";
 import { actionLinkLabel, activitySourceLabel, activityTypeLabel, contactActionTitle, contactIdFromActivityId, dueLabelCopy, systemBucketName } from "./network-copy";
 
@@ -43,7 +44,11 @@ export type ContactsAnalysisView = { state: "error" | "pending" } | {
   goal: AnalysisSection<{ id: string | null; text: string; updatedAt: string; canEdit: boolean }>;
   structure: AnalysisSection<{
     dimensions: Record<AnalysisDimension, AnalysisBucket[]>;
-    health: Array<{ id: "strong" | "warm" | "weak"; count: number; percentage: number; risk: "low" | "moderate" | "high" }>;
+    /**
+     * W0047：关系健康 = 档位分布（新认识／有往来／核心／待唤醒，只由关系时间线推出），读新增的
+     * `relationshipTierDistribution`；既有 relationshipStrengthDistribution 留给 App，Web 不再读（R-1）。
+     */
+    health: Array<{ id: RelationshipTierGroup; count: number; percentage: number }>;
     summary: string;
   }>;
   /** W43-2：W0050 之前不显示固定阈值的覆盖度分数与缺口，视图只保留区块状态与（暂为空串的）结构洞察句。 */
@@ -101,7 +106,7 @@ export function contactsAnalysisToView(input: unknown, language: OrbitLanguage):
         count: bucket.contactCount, percentage: bucket.percentage, missingData: bucket.missingData,
         href: `/app/contacts/analysis/${dimension}/${encodeURIComponent(bucket.bucketId)}`,
       }))])) as Record<AnalysisDimension, AnalysisBucket[]>,
-      health: value.relationshipStrengthDistribution.map((item) => ({ id: item.strength, count: item.relationshipCount, percentage: item.percentage, risk: item.followupRisk })),
+      health: (value.relationshipTierDistribution ?? []).map((item) => ({ id: item.tier, count: item.relationshipCount, percentage: item.percentage })),
       summary: "",
     })),
     coverage: section(data.gaps, () => ({ summary: "" })),

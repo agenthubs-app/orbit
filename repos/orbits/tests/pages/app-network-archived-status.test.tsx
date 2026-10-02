@@ -79,16 +79,17 @@ test("all and pipeline screens render the archive group without dropping its con
   assert.match(all, /href="\/app\/contacts\/active"/);
   assert.doesNotMatch(all, /undefined/);
 
-  const pipeline = renderToStaticMarkup(createElement(NetworkPipeline, { viewModel: model, analysis: pendingAnalysis }));
+  // W0047：管线列是自动档位（读模型），不再按手动阶段分列；归档联系人照样按它的档位出现，不丢人、不丢数。
+  const board = { counts: { new: 0, active: 1, core: 0, dormant: 1 }, columns: { new: [], active: ["active"], core: [], dormant: ["archived"] } };
+  const pipeline = renderToStaticMarkup(createElement(NetworkPipeline, { viewModel: model, analysis: pendingAnalysis, board }));
   assert.match(pipeline, /href="\/app\/contacts\/archived"/);
   assert.match(pipeline, /href="\/app\/contacts\/active"/);
-  assert.doesNotMatch(pipeline, /undefined/);
-  // 已归档 column and stat both carry the real count of 1.
-  assert.match(pipeline, /nw-pstat-n">1<\/strong><span class="nw-pstat-label">已归档/);
-  assert.match(pipeline, /nw-pstat-n">1<\/strong><span class="nw-pstat-label">正在推进/);
+  assert.doesNotMatch(pipeline, /undefined|已归档|正在推进/);
+  assert.match(pipeline, /nw-pstat-n">1<\/strong><span class="nw-pstat-label">待唤醒/);
+  assert.match(pipeline, /nw-pstat-n">1<\/strong><span class="nw-pstat-label">有往来/);
 });
 
-test("detail displays archived instead of an advancing stage for an archived contact", async () => {
+test("detail never displays the retired manual stage for an archived contact", async () => {
   const route = await loadAppContactDetailRoute({ contactId: "demo-contact-1", mode: "mock" });
   assert.equal(route.routeState, "success");
   if (route.routeState !== "success") throw new Error("Expected mock contact detail");
@@ -99,8 +100,27 @@ test("detail displays archived instead of an advancing stage for an archived con
   const html = renderToStaticMarkup(createElement(NetworkDetailModal, {
     contact: model.connections[0], closeHref: "/app/contacts", onFollow: () => {},
   }));
-  assert.match(html, /class="nw-detail-stage"[^>]*>已归档</);
-  assert.match(html, /关系阶段<\/span><strong class="nw-ov-v">已归档</);
-  assert.doesNotMatch(html, /nw-ov-v">正在推进</);
+  // W0047：详情不再显示手动阶段；没有强度缓存时档位显示「暂未评估」，不编造。
+  assert.doesNotMatch(html, /class="nw-detail-stage"/);
+  assert.match(html, /关系档位<\/span><strong class="nw-ov-v">暂未评估</);
+  assert.doesNotMatch(html, /nw-ov-v">正在推进<|nw-ov-v">已归档</);
   assert.doesNotMatch(html, /已合作|已建立合作/);
+});
+
+test("SC-W0047-04: list strength dots read the tier cache in both adapters (core→strong, active→medium, new→weak, dormant→dormant, no row→unscored)", () => {
+  const contacts = (["active", "nurture", "needs_follow_up", "archived"] as const).map((status) => contact(status, status));
+  const valued = { ...contact("active", "x"), id: "valued", relationshipValueLabels: ["Commercial opportunity"] };
+  const tiers = new Map([
+    ["active", { tier: "core" as const, dormant: false }],
+    ["nurture", { tier: "active" as const, dormant: false }],
+    ["needs_follow_up", { tier: "new" as const, dormant: false }],
+    ["archived", { tier: "active" as const, dormant: true }],
+  ]);
+  const expected = [["active", "strong", false], ["nurture", "medium", false], ["needs_follow_up", "weak", false], ["archived", "dormant", true], ["valued", "unscored", false]];
+  for (const model of [listView({ state: "success", payload: payload([...contacts, valued]) }, tiers), subrouteView(payload([...contacts, valued]), tiers)]) {
+    assert.deepEqual(model.connections.map((item) => [item.id, item.strength, item.dormant]), expected);
+  }
+  // 不传档位表：全部「未评估」，不再按价值标签猜强弱。
+  assert.deepEqual(subrouteView(payload([valued])).connections.map((item) => item.strength), ["unscored"]);
+  assert.deepEqual(listView({ state: "success", payload: payload([valued]) }).connections.map((item) => item.strength), ["unscored"]);
 });

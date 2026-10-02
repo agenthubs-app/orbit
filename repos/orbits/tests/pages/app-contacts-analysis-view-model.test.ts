@@ -229,3 +229,19 @@ test("SC-W0043-01: empty sections stay empty (with data), failed sections are un
   assert.deepEqual(contactsAnalysisToView(networkPendingPayload(), "zh"), { state: "pending" });
   assert.deepEqual(contactsAnalysisToView({ schemaVersion: 1 }, "en"), { state: "error" });
 });
+
+test("W0047 SC-04: Web relationship health reads relationshipTierDistribution, never the App's strength distribution", () => {
+  const view = contactsAnalysisToView(networkDebugPayload(), "zh");
+  if (view.state !== "ready" || view.structure.state !== "ready") throw new Error("Missing structure");
+  assert.deepEqual(view.structure.data.health, [
+    { id: "new", count: 6, percentage: 67 },
+    { id: "active", count: 2, percentage: 22 },
+    { id: "dormant", count: 1, percentage: 11 },
+  ]);
+  // 旧响应（没有新增字段）：健康分布为空，不退回 relationshipStrengthDistribution。
+  const legacy = networkDebugPayload() as { distributions: Record<string, unknown> };
+  delete legacy.distributions.relationshipTierDistribution;
+  const legacyView = contactsAnalysisToView(legacy, "zh");
+  if (legacyView.state !== "ready" || legacyView.structure.state !== "ready") throw new Error("Missing structure");
+  assert.deepEqual(legacyView.structure.data.health, []);
+});

@@ -8,7 +8,7 @@ const ready: ContactsAnalysisView = {
   state: "ready", generatedAt: "2026-09-21T00:00:00Z", summary: "", activity: [], analysis: { state: "unavailable" },
   metrics: { contacts: 78, newContacts: 6, highValue: 12, pendingFollowups: 9, dormant: 8 },
   goal: { state: "empty", data: { id: null, text: "", updatedAt: "", canEdit: true } },
-  structure: { state: "ready", data: { summary: "", health: [{ id: "strong", count: 3, percentage: 30, risk: "low" }, { id: "weak", count: 7, percentage: 70, risk: "high" }], dimensions: { industry: [{ id: "tech", label: "科技与互联网", count: 21, percentage: 27, missingData: false, href: "" }], location: [{ id: "tokyo", label: "东京", count: 38, percentage: 49, missingData: false, href: "" }], role: [], relationship: [] } } },
+  structure: { state: "ready", data: { summary: "", health: [{ id: "core", count: 3, percentage: 30 }, { id: "dormant", count: 7, percentage: 70 }], dimensions: { industry: [{ id: "tech", label: "科技与互联网", count: 21, percentage: 27, missingData: false, href: "" }], location: [{ id: "tokyo", label: "东京", count: 38, percentage: 49, missingData: false, href: "" }], role: [], relationship: [] } } },
   coverage: { state: "unavailable" }, opportunities: { state: "unavailable" },
 };
 
@@ -31,10 +31,11 @@ test("distributionRows reads industry/location from analysis and source from peo
 
 test("healthRows renders only the health rows the analysis returns, with design icons and colours", () => {
   const rows = healthRows(ready);
-  assert.deepEqual(rows.map((r) => [r.icon, r.label.zh, r.n, r.tag.zh]), [["◎", "核心人脉", 3, "稳定"], ["◌", "外圈人脉", 7, "待唤醒"]]);
+  // W0047：行 = 自动档位（核心／有往来／新认识／待唤醒）。
+  assert.deepEqual(rows.map((r) => [r.icon, r.label.zh, r.n, r.tag.zh]), [["◎", "核心", 3, "稳定"], ["◷", "待唤醒", 7, "需要留意"]]);
   // 文案为 {zh,en}，渲染方 t()
-  assert.deepEqual(rows.map((r) => [r.label.en, r.tag.en]), [["Core network", "Stable"], ["Outer circle", "To re-engage"]]);
-  assert.equal(rows[1].desc.zh, "有潜力重新建立联系");
+  assert.deepEqual(rows.map((r) => [r.label.en, r.tag.en]), [["Core", "Stable"], ["To re-engage", "Needs attention"]]);
+  assert.equal(rows[1].desc.zh, "曾经热络，60 天没有往来");
   assert.equal(rows[0].iconBg, "#E6F1EC");
   assert.deepEqual(healthRows({ state: "pending" }), []);
 });

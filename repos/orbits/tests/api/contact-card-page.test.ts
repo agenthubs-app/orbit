@@ -21,3 +21,17 @@ test("card errors fail closed; duplicate inputs and unsigned cursors are not sil
     assert.equal(response.status, status); assert.doesNotMatch(await response.text(), /private database failure/);
   }
 });
+
+test("W0047: the page response carries this page's tiers only when the Web client asks (tiers=1); the App's response is unchanged", async () => {
+  const page = { items: [{ id: "c1", displayName: "A", organization: "", role: "", sourceType: "manual", status: "active", pendingInitialization: false, nextActionPreview: "", valueTypes: [], updatedAt: "2026-09-25T00:00:00Z" }], nextCursor: null, hasMore: false, asOf: "2026-09-25T00:00:00Z" };
+  const lookups: (readonly string[])[] = [];
+  const handler = createContactCardGetHandler({ resolveActor: async () => actor,
+    readTiers: async (actorId, ids) => { assert.equal(actorId, "a"); lookups.push(ids); return [{ contactId: "c1", tier: "core", dormant: false }]; },
+    service: () => ({ page: async () => page as never, summary: async () => { throw Error("unused"); } }) });
+  const plain = await (await handler(new Request("http://localhost/api/contacts/page"))).json();
+  assert.deepEqual(plain.data, page);
+  assert.deepEqual(lookups, []);
+  const withTiers = await (await handler(new Request("http://localhost/api/contacts/page?tiers=1"))).json();
+  assert.deepEqual(withTiers.data, { ...page, relationshipTiers: [{ contactId: "c1", tier: "core", dormant: false }] });
+  assert.deepEqual(lookups, [["c1"]]);
+});

@@ -15,6 +15,7 @@ export const SYNC_WRITE_MANIFEST: Readonly<Record<string, SyncWritePolicy>> = {
   "features/connections/lifecycle/postgres-repository.ts": { policy: "locked", statements: 5, how: "acquireSyncCommitOrderLock before the first write of every command (connections, evidence and tasks are sync collections)" },
   "features/connections/lifecycle/initialization.ts": { policy: "locked", statements: 2, how: "acquireSyncCommitOrderLock before the first write when a task is created" },
   "features/connections/lifecycle/migration-repository.ts": { policy: "locked", statements: 2, how: "acquireSyncCommitOrderLock when an owner repair touches a sync collection" },
+  "features/relationship-strength/read-model.ts": { policy: "non-sync", statements: 2, collections: "relationship_strengths and relationship_strength_state (W0047 rebuildable cache, never synced)" },
   "features/sync/migrations.ts": { policy: "locked", statements: 1, how: "one-shot backfill joins sync_write_lock" },
   "features/sync/sync-revision-migration.ts": { policy: "locked", statements: 1, how: "each backfill batch joins sync_write_lock" },
   "features/sync/owner-backfill.ts": { policy: "locked", statements: 3, how: "0114 owner backfill: acquireSyncCommitOrderLock at the start of its one transaction; it refuses to write a sync collection" },

@@ -462,3 +462,71 @@ test("contacts analysis reads referenced contacts by id and role counts equal th
     try { await admin.query(`drop schema if exists ${schema} cascade`); } finally { await admin.end(); }
   }
 });
+
+// W0047 SC-03：新增的 relationshipTierDistribution 在 SQL 读模型路径与图路径对同一夹具输出相同（含 dormant），
+// 四组人数之和 = 有缓存行的（有效）联系人数；缓存行不影响既有 relationshipStrengthDistribution。
+function tierRow(actorId: string, contactId: string, tier: "new" | "active" | "core", dormant: boolean): Row {
+  return record("relationship_strengths", `relationship-strength:${actorId}:${contactId}`, {
+    contactId, tier, dormant, score: 0, peakScore: 0, lastSignalAt: null, signals: [], computedAt: "2026-09-20T00:00:00.000Z", rulesVersion: "rs-2026-10-v1",
+  }, { userId: actorId });
+}
+
+test("W0047: relationshipTierDistribution is equal on the SQL read model and the graph path; the old strength distribution ignores the cache", {
+  skip: databaseUrl ? false : "Explicit isolated PostgreSQL URL required",
+  timeout: 120_000,
+}, async () => {
+  assert.ok(databaseUrl);
+  assert.ok(["localhost", "127.0.0.1"].includes(new URL(databaseUrl).hostname), "Local equivalence test only");
+  const schema = `w47_tiers_${randomUUID().replaceAll("-", "")}`;
+  const admin = new Pool({ connectionString: databaseUrl, max: 1 });
+  const pool = new Pool({ connectionString: databaseUrl, max: 2, options: `-c search_path=${schema} -c statement_timeout=20000` });
+  const client = createTransactionalPostgresClient({ connectionString: databaseUrl, pool });
+  try {
+    await admin.query(`create schema ${schema}`);
+    await client.query(ORBIT_RECORDS_SCHEMA_SQL);
+    const store = createPostgresLiveRecordStore({ client });
+    for (const row of fixtureRecords()) await store.upsertRecord(row);
+    const fixedNow = () => "2026-09-27T00:00:00.000Z";
+    const sqlProvider = createStorageDashboardAggregateProvider({ store, workspaceId: WORKSPACE, sqlClient: client, source: "test:d1", sourceLabel: "D1 storage" });
+    const graphProvider: LiveDashboardAggregateProvider = {
+      ...oracleProvider(sqlProvider),
+      readRelationshipTiersForAccount: (accountId) => sqlProvider.readRelationshipTiersForAccount!(accountId),
+    };
+    const distributions = async (provider: LiveDashboardAggregateProvider, actorId: string) => {
+      const result = await createLiveNetworkDistributionAnalyticsService({ now: fixedNow, provider: networkDistributionProviderForAccount(provider, actorId) }).getDistributions();
+      assert.ok(result.success);
+      return result.data;
+    };
+    const before = new Map<string, unknown>();
+    for (const actorId of ACTORS) before.set(actorId, (await distributions(sqlProvider, actorId)).relationshipStrengthDistribution);
+    for (const actorId of ACTORS) assert.deepEqual((await distributions(sqlProvider, actorId)).relationshipTierDistribution, [], `empty cache ${actorId}`);
+
+    // 缓存行：c01（有重复记录）core、c02 active、c05 dormant、c04/c06/c08 new、c10 core+dormant；
+    // 无效／已删除／他人／不存在的联系人行不计；OTHER 自己的 c01 active。
+    for (const row of [
+      tierRow(OWNER, "c01", "core", false), tierRow(OWNER, "c02", "active", false), tierRow(OWNER, "c05", "active", true),
+      tierRow(OWNER, "c04", "new", false), tierRow(OWNER, "c06", "new", false), tierRow(OWNER, "c08", "new", false),
+      tierRow(OWNER, "c09", "new", false), tierRow(OWNER, "c12", "new", false), tierRow(OWNER, "c13", "new", false),
+      tierRow(OWNER, "c10", "core", true),
+      tierRow(OWNER, "c-deleted", "core", false), tierRow(OWNER, "c-invalid-stage", "core", false), tierRow(OWNER, "contact:missing", "core", false),
+      tierRow(OTHER, "c01", "active", false),
+    ]) await store.upsertRecord(row);
+
+    for (const actorId of ACTORS) {
+      const sql = await distributions(sqlProvider, actorId);
+      const graph = await distributions(graphProvider, actorId);
+      assert.deepEqual(sql.relationshipTierDistribution, graph.relationshipTierDistribution, `tiers ${actorId}`);
+      assert.deepEqual(sql.relationshipStrengthDistribution, before.get(actorId), `old strength distribution unchanged ${actorId}`);
+      assert.deepEqual(graph.relationshipStrengthDistribution, before.get(actorId), `graph old strength distribution unchanged ${actorId}`);
+    }
+    const owner = await distributions(sqlProvider, OWNER);
+    assert.deepEqual(owner.relationshipTierDistribution!.map((bucket) => [bucket.tier, bucket.relationshipCount]), [["new", 6], ["active", 1], ["core", 1], ["dormant", 2]]);
+    assert.equal(owner.relationshipTierDistribution!.reduce((sum, bucket) => sum + bucket.relationshipCount, 0), 10);
+    assert.deepEqual(owner.relationshipTierDistribution!.find((bucket) => bucket.tier === "new")!.contactIds.length, DASHBOARD_SHORT_LIST_LIMIT);
+    const other = await distributions(sqlProvider, OTHER);
+    assert.deepEqual(other.relationshipTierDistribution, [{ tier: "active", relationshipCount: 1, percentage: 100, contactIds: ["c01"] }]);
+  } finally {
+    await client.close();
+    try { await admin.query(`drop schema if exists ${schema} cascade`); } finally { await admin.end(); }
+  }
+});

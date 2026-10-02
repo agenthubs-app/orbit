@@ -143,6 +143,12 @@ export function networkDebugPayload(): MobileContactsDashboardPayload {
         { strength: "warm", relationshipCount: 3, percentage: 33, followupRisk: "moderate", evidenceIds: [] },
         { strength: "weak", relationshipCount: 5, percentage: 56, followupRisk: "high", evidenceIds: [] },
       ],
+      // W0047：Web 读这个新增字段（只由关系时间线推出的档位）；旧 relationshipStrengthDistribution 留给 App。
+      relationshipTierDistribution: [
+        { tier: "new", relationshipCount: 6, percentage: 67, contactIds: [] },
+        { tier: "active", relationshipCount: 2, percentage: 22, contactIds: [] },
+        { tier: "dormant", relationshipCount: 1, percentage: 11, contactIds: [] },
+      ],
       structureDistributions: {
         industry: [
           bucket("manufacturing_supply_chain", DEBUG_INDUSTRY_LABEL, 1, 11, { primaryIndustryId: "manufacturing_supply_chain" }),
@@ -194,7 +200,7 @@ export function networkEmptyPayload(): MobileContactsDashboardPayload {
   data.opportunities = { ...data.opportunities!, state: "empty", highPriorityOpportunities: [], dormantHighValueContacts: [], summary: "No live relationships are available for opportunity analytics." };
   data.gaps = { ...data.gaps!, state: "empty", coverageScore: 0, gaps: [], summary: "No live relationships are available for network gap analysis." };
   data.distributions = {
-    ...data.distributions!, state: "empty", relationshipStrengthDistribution: [],
+    ...data.distributions!, state: "empty", relationshipStrengthDistribution: [], relationshipTierDistribution: [],
     structureDistributions: { industry: [], location: [], role: [], relationship: [] },
     summary: "No live relationships are available for network distribution analytics.",
   };

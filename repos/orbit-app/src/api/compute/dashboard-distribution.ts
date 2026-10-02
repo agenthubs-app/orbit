@@ -34,6 +34,8 @@ import {
   type NetworkStructureDistributionBucket,
   type NetworkStructureDistributions,
   type RelationshipStrengthDistributionBucket,
+  type RelationshipTierAssignment,
+  type RelationshipTierDistributionBucket,
   type ValueTypeDistributionBucket,
 } from "./dashboard-distribution-contract";
 import { compareText, lowerText } from "./compute-text";
@@ -59,6 +61,14 @@ export interface LiveNetworkDistributionAnalyticsProvider {
    * no graph version is available (the service then reads the graph).
    */
   readNetworkGapCore?: () => Promise<NetworkGapCore | null>;
+  /**
+   * W0047: each contact's tier from the relationship_strengths read model (graph
+   * path only; the SQL read model carries `relationshipTiers`). Absent → the
+   * tier distribution is empty. Never feeds relationshipStrengthDistribution.
+   */
+  readRelationshipTiers?: () =>
+    | readonly RelationshipTierAssignment[]
+    | Promise<readonly RelationshipTierAssignment[]>;
 }
 
 export type NetworkStructureDimensionKey = "industry" | "location" | "role" | "relationship";
@@ -94,6 +104,8 @@ export interface NetworkDistributionReadModel {
     evidenceIds: readonly string[];
   }[];
   strengths: readonly { strength: string; count: number; evidenceIds: readonly string[] }[];
+  /** W0047: tier groups (new/active/core/dormant) of contacts that have a relationship_strengths row; contactIds in graph order. */
+  relationshipTiers?: readonly { tier: string; count: number; contactIds: readonly string[] }[];
   provenanceEvidenceIds: readonly string[];
 }
 
@@ -626,6 +638,71 @@ function strengthDistribution(
     .filter((bucket) => bucket.relationshipCount > 0);
 }
 
+const orderedTierGroups: readonly RelationshipTierDistributionBucket["tier"][] = [
+  "new",
+  "active",
+  "core",
+  "dormant",
+];
+
+/**
+ * W0047: tier groups over the graph's contacts that have a tier row (dormant
+ * first: a dormant contact counts only in "dormant"). Percentages are of the
+ * contacts that have a row; contacts without one count in no group.
+ */
+function tierDistributionFromGraph(
+  graph: LiveDashboardGraph,
+  assignments: readonly RelationshipTierAssignment[],
+): readonly RelationshipTierDistributionBucket[] {
+  const byContact = new Map(assignments.map((assignment) => [assignment.contactId, assignment]));
+  const groups = new Map<RelationshipTierDistributionBucket["tier"], string[]>();
+  const seen = new Set<string>();
+  let total = 0;
+  for (const contact of graph.contacts) {
+    const assignment = byContact.get(contact.id);
+    if (!assignment || seen.has(contact.id)) continue;
+    seen.add(contact.id);
+    const group = assignment.dormant ? "dormant" : assignment.tier;
+    if (!orderedTierGroups.includes(group)) continue;
+    const members = groups.get(group) ?? [];
+    members.push(contact.id);
+    groups.set(group, members);
+    total += 1;
+  }
+  return orderedTierGroups
+    .map((tier) => {
+      const members = groups.get(tier) ?? [];
+      return {
+        tier,
+        relationshipCount: members.length,
+        percentage: percentage(members.length, total),
+        contactIds: members.slice(0, DASHBOARD_SHORT_LIST_LIMIT),
+      };
+    })
+    .filter((bucket) => bucket.relationshipCount > 0);
+}
+
+function tierDistributionFromReadModel(
+  model: NetworkDistributionReadModel,
+): readonly RelationshipTierDistributionBucket[] {
+  const rows = model.relationshipTiers ?? [];
+  const total = rows
+    .filter((row) => orderedTierGroups.includes(row.tier as RelationshipTierDistributionBucket["tier"]))
+    .reduce((sum, row) => sum + row.count, 0);
+  return orderedTierGroups
+    .map((tier) => {
+      const row = rows.find((item) => item.tier === tier);
+      const relationshipCount = row?.count ?? 0;
+      return {
+        tier,
+        relationshipCount,
+        percentage: percentage(relationshipCount, total),
+        contactIds: (row?.contactIds ?? []).slice(0, DASHBOARD_SHORT_LIST_LIMIT),
+      };
+    })
+    .filter((bucket) => bucket.relationshipCount > 0);
+}
+
 function evidenceIdsFor(graph: LiveDashboardGraph): readonly string[] {
   const ids = uniqueStrings([
     ...graph.contacts.flatMap((contact) => contact.evidenceIds),
@@ -638,6 +715,7 @@ function evidenceIdsFor(graph: LiveDashboardGraph): readonly string[] {
 function distributionPayload(
   graph: LiveDashboardGraph,
   provider: LiveNetworkDistributionAnalyticsProvider,
+  tiers: readonly RelationshipTierAssignment[] = [],
 ): NetworkDistributionAnalyticsPayload {
   return {
     state: graph.contacts.length > 0 ? "success" : "empty",
@@ -645,6 +723,7 @@ function distributionPayload(
     structureDistributions: structureDistributions(graph),
     valueTypeDistribution: valueTypeDistribution(graph),
     relationshipStrengthDistribution: strengthDistribution(graph),
+    relationshipTierDistribution: tierDistributionFromGraph(graph, tiers),
     summary:
       "Live network distribution analytics grouped source-backed contacts and relationships from shared live storage.",
     provenance: provenance({
@@ -678,6 +757,14 @@ function projectDistributionShortLists(
     ) as unknown as NetworkStructureDistributions,
     valueTypeDistribution: payload.valueTypeDistribution.map(shortEvidence),
     relationshipStrengthDistribution: payload.relationshipStrengthDistribution.map(shortEvidence),
+    ...(payload.relationshipTierDistribution
+      ? {
+          relationshipTierDistribution: payload.relationshipTierDistribution.map((bucket) => ({
+            ...bucket,
+            contactIds: bucket.contactIds.slice(0, DASHBOARD_SHORT_LIST_LIMIT),
+          })),
+        }
+      : {}),
     provenance: shortEvidence(payload.provenance),
   };
 }
@@ -867,6 +954,7 @@ function distributionPayloadFromReadModel(
     ) as unknown as NetworkStructureDistributions,
     valueTypeDistribution,
     relationshipStrengthDistribution,
+    relationshipTierDistribution: tierDistributionFromReadModel(model),
     summary:
       "Live network distribution analytics grouped source-backed contacts and relationships from shared live storage.",
     provenance: provenance({
@@ -902,6 +990,7 @@ function emptyDistributionPayload(input: {
     },
     valueTypeDistribution: [],
     relationshipStrengthDistribution: [],
+    relationshipTierDistribution: [],
     summary: input.summary,
     provenance: provenance({
       collectedAt: input.now,
@@ -1256,6 +1345,7 @@ export function createLiveNetworkDistributionAnalyticsService({
                   distributionPayload(
                     await provider.readNetworkDistributionGraph(),
                     provider,
+                    (await provider.readRelationshipTiers?.()) ?? [],
                   ),
                 ),
           );

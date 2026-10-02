@@ -334,3 +334,11 @@ export type {
   RelationshipTimelineResult,
   RelationshipTimelineSource
 } from "./relationship-timeline";
+export type {
+  RelationshipStrength,
+  RelationshipStrengthSignal,
+  RelationshipStrengthState,
+  RelationshipTier,
+  RelationshipTierCounts,
+  RelationshipTierGroup
+} from "./relationship-strength";

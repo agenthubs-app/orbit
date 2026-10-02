@@ -26,6 +26,8 @@ import type {
   OrbitContactsViewModel,
 } from "../orbit-contacts-route-view-model";
 import { DEMO_CONTACT_ID_PREFIX, isDemoContactId } from "../../../../shared/domain/guide-demo-contact";
+import type { RelationshipStrength, RelationshipTier } from "../../../../shared/contract/relationship-strength";
+import type { NetworkTierBoardView, NetworkTierGroup } from "../contacts/network-0918/network-model";
 
 type Lang = "en" | "zh";
 type Copy = { en: string; zh: string };
@@ -192,12 +194,19 @@ const STATUS: Record<DemoStatus, {
   relationship: NonNullable<OrbitContactView["relationshipStatus"]>;
   stage: Copy;
   strength: OrbitContactStrength;
+  /** W0047：示例的静态档位（不计算、不读任何来源）。 */
+  tier: RelationshipTier;
+  dormant: boolean;
 }> = {
-  1: { pipeline: "to_contact", relationship: "needs_follow_up", stage: c("待了解", "Explore"), strength: "weak" },
-  2: { pipeline: "in_progress", relationship: "nurture", stage: c("保持联系", "Keep in touch"), strength: "medium" },
-  3: { pipeline: "in_progress", relationship: "active", stage: c("正在推进", "Advancing"), strength: "strong" },
-  4: { pipeline: "archived", relationship: "archived", stage: c("已归档", "Archived"), strength: "dormant" },
+  1: { pipeline: "to_contact", relationship: "needs_follow_up", stage: c("待了解", "Explore"), strength: "weak", tier: "new", dormant: false },
+  2: { pipeline: "in_progress", relationship: "nurture", stage: c("保持联系", "Keep in touch"), strength: "medium", tier: "active", dormant: false },
+  3: { pipeline: "in_progress", relationship: "active", stage: c("正在推进", "Advancing"), strength: "strong", tier: "core", dormant: false },
+  4: { pipeline: "archived", relationship: "archived", stage: c("已归档", "Archived"), strength: "dormant", tier: "active", dormant: true },
 };
+
+function demoTierGroup(status: DemoStatus): NetworkTierGroup {
+  return STATUS[status].dormant ? "dormant" : STATUS[status].tier;
+}
 
 /* ── 日期（东京日） ─────────────────────────────────────────────────── */
 
@@ -288,6 +297,20 @@ export function buildDemoNetworkViewModel(real: Date, lang: Lang): OrbitContacts
 }
 
 /**
+ * W0047：示例管线看板（静态档位，前端数据，0 请求）。列头人数统计全部示例联系人，卡片按最近往来倒序至多 30。
+ */
+export function buildDemoNetworkTierBoard(): NetworkTierBoardView {
+  const counts: Record<NetworkTierGroup, number> = { new: 0, active: 0, core: 0, dormant: 0 };
+  const columns: Record<NetworkTierGroup, string[]> = { new: [], active: [], core: [], dormant: [] };
+  for (const seed of [...SEEDS].sort((a, b) => a.daysAgo - b.daysAgo)) {
+    const group = demoTierGroup(seed.status);
+    counts[group] += 1;
+    if (columns[group].length < 30) columns[group].push(`${DEMO_CONTACT_ID_PREFIX}${seed.slug}`);
+  }
+  return { counts, columns };
+}
+
+/**
  * 详情弹窗数据：8 位完整（时间线、话题、我能提供、对方需求、下一步），其余是简版
  * （一条上次互动、行业小类作话题、需求「待了解」），与原型 `personModal` 一致。
  * 不认识的 id 返回 null。
@@ -367,6 +390,23 @@ export function buildDemoNetworkDetail(id: string, real: Date, lang: Lang): Orbi
       ].sort((a, b) => (a.occurredAt < b.occurredAt ? 1 : a.occurredAt > b.occurredAt ? -1 : 0)),
       unavailableSources: [],
     },
+    relationshipStrength: demoStrength(id, seed, notes),
+  };
+}
+
+/** W0047：示例详情的静态强度——档位来自示例状态，依据 = 示例互动（memo）与建立联系，不显示分数。 */
+function demoStrength(id: string, seed: DemoSeed, notes: readonly OrbitContactNoteView[]): RelationshipStrength {
+  const status = STATUS[seed.status];
+  return {
+    contactId: id,
+    tier: status.tier,
+    dormant: status.dormant,
+    score: 0,
+    peakScore: 0,
+    lastSignalAt: notes[0]?.createdAt ?? null,
+    signals: notes.slice(0, 12).map((note) => ({ timelineItemId: `memo:${note.id}`, source: "memo" as const, occurredAt: note.createdAt, basePoints: 15, points: 15 })),
+    computedAt: notes[0]?.createdAt ?? "",
+    rulesVersion: "demo",
   };
 }
 
@@ -414,14 +454,11 @@ export function buildDemoNetworkAnalysis(real: Date, lang: Lang): ContactsAnalys
   const other = say(ctx, c("其他", "Other"));
   const live = SEEDS.filter((seed) => seed.status !== 4);
   const count = (predicate: (seed: DemoSeed) => boolean) => SEEDS.filter(predicate).length;
-  const health = ([
-    ["strong", 3, "low"],
-    ["warm", 2, "moderate"],
-    ["weak", 1, "high"],
-  ] as const).map(([id, status, risk]) => {
-    const n = live.filter((seed) => seed.status === status).length;
-    return { count: n, id, percentage: Math.round((n / live.length) * 100), risk };
-  });
+  // W0047：关系健康 = 静态档位分布（与示例管线同一口径）。
+  const health = (["core", "active", "new", "dormant"] as const).map((id) => {
+    const n = SEEDS.filter((seed) => demoTierGroup(seed.status) === id).length;
+    return { count: n, id, percentage: Math.round((n / SEEDS.length) * 100) };
+  }).filter((row) => row.count > 0);
   const at = (daysAgo: number, time: string) => new Date(`${shiftDay(ctx.today, -daysAgo)}T${time}:00+09:00`).toISOString();
 
   return {

@@ -12,6 +12,7 @@ import type {
   DashboardContactRoleCount,
 } from "../live-service";
 import type { NetworkDistributionReadModel } from "./network-distribution-live-record-provider";
+import type { RelationshipTierAssignment } from "../../../shared/compute/dashboard-distribution-contract";
 import type { ConnectionDTO, TaskDTO } from "../../../shared/domain/contracts";
 import { INDUSTRY_IDS } from "../../../shared/domain/industries";
 import {
@@ -437,6 +438,20 @@ value_type_members as (
         'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz') ~ '(investor|capital|投资|资本)')
   ) as member(value_type, is_member)
   where member.is_member
+),
+/* W0047: tier groups from the relationship_strengths read model (built only from the relationship timeline;
+   never feeds strength_score). One row per valid contact that has a cache row; dormant first. */
+relationship_tier_members as (
+  select distinct on (contact.id) contact.id, contact.graph_pos,
+    case when (strength.payload ->> 'dormant')::boolean then 'dormant' else strength.payload ->> 'tier' end as tier_group
+  from valid_contacts as contact
+  join orbit_records as strength
+    on strength.workspace_id = $1
+    and strength.collection_name = 'relationship_strengths'
+    and strength.record_id = 'relationship-strength:' || $2 || ':' || contact.id
+    and strength.user_id = $2
+    and strength.lifecycle_state <> 'deleted'
+  order by contact.id, contact.graph_pos
 )
 select
   (select coalesce(max(updated_at), to_timestamp(0)) from scoped_records) as generated_at,
@@ -510,7 +525,29 @@ select
       group by outer_connection.strength
     ) as strengths
   ), '[]'::jsonb) as strengths,
+  coalesce((
+    select jsonb_agg(jsonb_build_object('tier', tier_group, 'count', count, 'contactIds', contact_ids) order by tier_group)
+    from (
+      select tier_group, count(*)::int as count, to_jsonb((array_agg(id order by graph_pos))[1:$8]) as contact_ids
+      from relationship_tier_members
+      where tier_group in ('new', 'active', 'core', 'dormant')
+      group by tier_group
+    ) as tiers
+  ), '[]'::jsonb) as relationship_tiers,
   ${firstDistinctEvidenceSql(["valid_contacts", "valid_connections"], "$8")} as provenance_evidence_ids
+`;
+
+/** W0047: the actor's tier rows, projected (no signals); bounded like the read model it reads. */
+const relationshipTiersSql = `
+/* relationship-strength:tiers-for-graph */
+select payload ->> 'contactId' as contact_id, payload ->> 'tier' as tier, (payload ->> 'dormant')::boolean as dormant
+from orbit_records
+where workspace_id = $1
+  and collection_name = 'relationship_strengths'
+  and user_id = $2
+  and lifecycle_state <> 'deleted'
+order by record_id collate "C"
+limit 5000
 `;
 
 function jsonArray(value: unknown): readonly unknown[] {
@@ -682,6 +719,11 @@ function distributionModelFromRow(row: Record<string, unknown>): NetworkDistribu
       count: count(item.count),
       evidenceIds: strings(item.evidenceIds),
     })),
+    relationshipTiers: records(row.relationship_tiers).map((item) => ({
+      tier: text(item.tier),
+      count: count(item.count),
+      contactIds: strings(item.contactIds),
+    })),
     provenanceEvidenceIds: strings(row.provenance_evidence_ids),
   };
 }
@@ -697,6 +739,10 @@ export interface DashboardReadModelPostgresReader {
   readDistributionForAccount: (
     accountId: string,
   ) => Promise<NetworkDistributionReadModel>;
+  /** W0047: every relationship_strengths row of the actor projected to its tier (graph-path input). */
+  readRelationshipTiersForAccount: (
+    accountId: string,
+  ) => Promise<readonly RelationshipTierAssignment[]>;
 }
 
 export function createDashboardReadModelPostgresReader({
@@ -745,6 +791,16 @@ export function createDashboardReadModelPostgresReader({
       const row = result.rows[0];
       if (!row) throw new Error("Network distribution read model returned no row");
       return distributionModelFromRow(row);
+    },
+    async readRelationshipTiersForAccount(accountId) {
+      const result = await client.query<{ contact_id: string; tier: string; dormant: boolean | null }>(
+        relationshipTiersSql,
+        [workspaceId, accountId],
+      );
+      return result.rows.flatMap((row) =>
+        row.tier === "new" || row.tier === "active" || row.tier === "core"
+          ? [{ contactId: row.contact_id, tier: row.tier, dormant: row.dormant === true }]
+          : []);
     },
   };
 }

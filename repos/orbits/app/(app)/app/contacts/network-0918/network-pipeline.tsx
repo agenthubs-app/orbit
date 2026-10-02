@@ -1,7 +1,10 @@
 /**
- * 「关系管线」（Network v2 第 173–256 行）。数据 = OrbitContactsViewModel.connections + ContactsAnalysisView。
+ * 「关系管线」（Network v2 第 173–256 行）。数据 = 档位看板（NetworkTierBoardView）+ 看板卡片联系人（OrbitContactsViewModel）
+ * + ContactsAnalysisView。
  * 设计稿的「↗ +25%」与 AI 建议 mock 文案无真实来源，不渲染；建议 = analysis.opportunities.actions 分页（每页 3 条）。
  * W0043：真实数据的判断句为空串（后端 reason 不可信），描述行改显示联系人姓名；到期标签为空时不渲染。
+ * W0047：四列改为自动档位 新认识／有往来／核心／待唤醒（只由关系时间线推出，D44 W47-1～6）。列头人数统计全部联系人，
+ * 每列卡片按最近往来倒序至多 30（W47-5）；不显示分数（W47-6）；无拖拽、不能手改档位；下线手动阶段与四个假筛选 chip，只留搜索。
  */
 "use client";
 
@@ -11,22 +14,32 @@ import { DemoTag, useDemoMode } from "../../_demo/demo-mode-core";
 import type { OrbitContactsViewModel } from "../../orbit-contacts-route-view-model";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import type { ContactsAnalysisView } from "../analysis/contacts-analysis-view-model";
-import { NETWORK_STAGES, SOURCE_LABEL, STAGE_LABEL, STAGE_STYLE, matchesQuery, stageCounts, toPerson } from "./network-model";
+import { NETWORK_TIER_GROUPS, SOURCE_LABEL, TIER_LABEL, TIER_STYLE, matchesQuery, toPerson, type NetworkPerson, type NetworkTierBoardView } from "./network-model";
 import { useNetworkDemoDetail } from "./network-detail-modal";
-import { NetworkChip, NetworkShell } from "./network-shell";
+import { NetworkShell } from "./network-shell";
 
 const SUGGEST_PAGE = 3;
 
-export function NetworkPipeline({ viewModel, analysis }: { viewModel: OrbitContactsViewModel; analysis: ContactsAnalysisView }) {
+export function NetworkPipeline({ viewModel, analysis, board }: { viewModel: OrbitContactsViewModel; analysis: ContactsAnalysisView; board: NetworkTierBoardView }) {
   const { t } = useOrbitLanguage();
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(0);
-  const people = useMemo(() => viewModel.connections.map(toPerson), [viewModel.connections]);
-  const counts = useMemo(() => stageCounts(people), [people]);
-  const columns = NETWORK_STAGES.map((stage) => ({ stage, ...STAGE_STYLE[stage], label: t(STAGE_LABEL[stage]), n: counts[stage], people: people.filter((p) => p.stage === stage && matchesQuery(p, query)) }));
+  const people = useMemo(() => new Map(viewModel.connections.map((contact) => [contact.id, toPerson(contact)])), [viewModel.connections]);
+  const columns = NETWORK_TIER_GROUPS.map((tier) => ({
+    tier,
+    ...TIER_STYLE[tier],
+    label: t(TIER_LABEL[tier]),
+    n: board.counts[tier],
+    // 卡片顺序 = 看板顺序（最近往来倒序）；读不到资料的联系人不渲染空卡。
+    people: board.columns[tier].flatMap((id): NetworkPerson[] => {
+      const person = people.get(id);
+      return person && matchesQuery(person, query) ? [person] : [];
+    }),
+  }));
+  const total = NETWORK_TIER_GROUPS.reduce((sum, tier) => sum + board.counts[tier], 0);
   const pstats = [
-    { icon: "◎", n: people.length, label: t({ en: "All contacts", zh: "总联系人" }), bg: "#ECEEFB" },
-    ...NETWORK_STAGES.map((stage) => ({ icon: STAGE_STYLE[stage].icon, n: counts[stage], label: t(STAGE_LABEL[stage]), bg: "#F7F7FD" })),
+    { icon: "◎", n: total, label: t({ en: "All contacts", zh: "总联系人" }), bg: "#ECEEFB" },
+    ...NETWORK_TIER_GROUPS.map((tier) => ({ icon: TIER_STYLE[tier].icon, n: board.counts[tier], label: t(TIER_LABEL[tier]), bg: "#F7F7FD" })),
   ];
   const newContacts = analysis.state === "ready" ? String(analysis.metrics.newContacts) : "—";
   // W0043 review：按区块状态渲染——ready／empty 带数据（empty 显示真实空态），pending 显示生成中，unavailable 与整页 error 显示不可用。
@@ -96,16 +109,13 @@ export function NetworkPipeline({ viewModel, analysis }: { viewModel: OrbitConta
         </div>
 
         <div className="nw-pipe-filters">
-          <span className="nw-pipe-filter">{t({ en: "Stage", zh: "阶段" })} <strong className="nw-pipe-filter-v">{t({ en: "All stages", zh: "全部阶段" })}</strong> <span className="nw-pipe-filter-caret">⌄</span></span>
-          <span className="nw-pipe-filter">{t({ en: "Source", zh: "来源" })} <strong className="nw-pipe-filter-v">{t({ en: "All sources", zh: "全部来源" })}</strong> <span className="nw-pipe-filter-caret">⌄</span></span>
-          <span className="nw-pipe-filter">{t({ en: "Reminders", zh: "提醒" })} <strong className="nw-pipe-filter-v">{t({ en: "All reminders", zh: "全部提醒" })}</strong> <span className="nw-pipe-filter-caret">⌄</span></span>
-          <span className="nw-pipe-filter">{t({ en: "Sort", zh: "排序" })} <strong className="nw-pipe-filter-v">{t({ en: "Recent activity", zh: "最近互动" })}</strong> <span className="nw-pipe-filter-caret">⌄</span></span>
+          <span className="nw-pipe-note">{t({ en: "Tiers update automatically from your meetings, memos and follow-ups.", zh: "档位根据见面、会议、memo 和跟进记录自动更新。" })}</span>
           <input className="nw-pipe-search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t({ en: "Search name, company or title…", zh: "搜索联系人姓名、公司或职位…" })} />
         </div>
 
         <div className="nw-kanban">
           {columns.map((col) => (
-            <div key={col.stage} className="nw-kanban-col" style={{ background: col.bg }}>
+            <div key={col.tier} className="nw-kanban-col" data-network-tier={col.tier} style={{ background: col.bg }}>
               <div className="nw-kanban-head">
                 <div className="nw-kanban-title">
                   <span className="nw-kanban-icon" style={{ color: col.fg }}>{col.icon}</span>
@@ -122,7 +132,6 @@ export function NetworkPipeline({ viewModel, analysis }: { viewModel: OrbitConta
                       <strong className="nw-kanban-name">{p.name}{demo ? <DemoTag /> : null}</strong>
                       <span className="nw-kanban-org">{p.orgTitle}</span>
                       <span className="nw-kanban-source">{t(SOURCE_LABEL[p.source])}</span>
-                      {p.pendingInit ? <NetworkChip bg="#F0F1F8" fg="#3B3F7A">{t({ en: "Status not set", zh: "待设置关系" })}</NetworkChip> : null}
                     </a>
                     <a className="btn nw-kanban-more" href={p.href} onClick={(event) => openDemo(event, p.href)} title={t({ en: "Log a follow-up", zh: "记录跟进" })}>···</a>
                   </div>
@@ -132,6 +141,9 @@ export function NetworkPipeline({ viewModel, analysis }: { viewModel: OrbitConta
                   </div>
                 </div>
               ))}
+              {col.n > board.columns[col.tier].length ? (
+                <span className="nw-kanban-more-note">{t({ en: `Showing the ${board.columns[col.tier].length} most recent of ${col.n}`, zh: `显示最近往来的 ${board.columns[col.tier].length} 位，共 ${col.n} 位` })}</span>
+              ) : null}
             </div>
           ))}
         </div>

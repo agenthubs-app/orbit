@@ -1,13 +1,16 @@
 /**
  * 联系人详情弹窗（Network v2 第 708–788 行）。
  * 数据只来自详情路由的 OrbitContactView（真实 notes / editableTags / lastInteraction / publicProfile）。
- * 关闭 = 真实导航到 closeHref；「写 memo」「更新状态」都打开「写 memo」弹窗。
+ * 关闭 = 真实导航到 closeHref；「写 memo」打开「写 memo」弹窗。
+ * W0047：手动阶段 UI 下线——「更新状态」按钮与「待设置关系」面板不再渲染（接口与阶段数据保留）；
+ * 改为显示自动档位标签（新认识／有往来／核心／待唤醒，只由关系时间线推出）与「依据」面板（信号的日期、来源、时间线标题），
+ * 不显示数字分数（W47-6），用户不能手改档位。
  * W0046：「最近互动」是聚合关系时间线（contact.timeline，详情页服务端读好；七种来源，最近 20 条）。
  * 省略（无数据源 / 死链接，见台账）：「···」「✎ 编辑资料」「▦ 约时间」「查看全部 →」、概览「联系频率」。
  * W0010：右栏「下一步建议」下方有「关联到计划人脉需求」（手动关联，只能关联本人的计划与本人的联系人；
  * 点开才读计划，示例模式下被拦截）。
  *
- * W0005 示例模式（`useDemoMode()` 非空）：名字旁带「示例」角标，「写 memo」「更新状态」改走
+ * W0005 示例模式（`useDemoMode()` 非空）：名字旁带「示例」角标，「写 memo」改走
  * `guardWrite`，弹「这是示例」、不打开记录跟进、不发请求。`useNetworkDemoDetail` 让列表／概览／
  * 管线在示例里点联系人时直接在本页打开示例详情（前端数据，不导航、不发请求）；传了 `onClose`
  * 时关闭只收起弹窗，不再导航。
@@ -23,9 +26,8 @@ import type { OrbitContactView } from "../../orbit-contacts-route-view-model";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { useOrbitModalA11y } from "../../orbit-modal-a11y";
 import { PlanNeedLinkPanel } from "../../agent/iorbit-0918/plan-match-sheet";
-import { ContactRelationshipInitializationPanel, useContactRelationshipInitialization } from "../contact-relationship-initialization";
 import { ContactEnrichmentInline } from "./contact-enrichment-inline";
-import { SOURCE_LABEL, STAGE_CHIP, STAGE_LABEL, STAGE_STYLE, metSummary, sourceOf, stageOf } from "./network-model";
+import { SOURCE_LABEL, TIER_CHIP, TIER_LABEL, TIER_STYLE, metSummary, sourceOf, tierGroupOf } from "./network-model";
 
 type Translate = (copy: { en: string; zh: string }) => string;
 const EN_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -42,12 +44,6 @@ export function formatNoteTime(iso: string, t: Translate = (copy) => copy.zh): s
   const day = d.getUTCDate();
   const hm = `${p(d.getUTCHours())}:${p(d.getUTCMinutes())}`;
   return t({ zh: `${m}月${day}日 ${hm}`, en: `${EN_MONTHS[m - 1]} ${day} ${hm}` });
-}
-
-/** 待设置关系（pipelineStatus === "pending_initialization"）：在时间线上方挂既有的关系初始化面板（同 extra 槽位）。 */
-function DetailInitializationPanel({ contactId, language }: { contactId: string; language: "zh" | "en" }) {
-  const controller = useContactRelationshipInitialization(contactId);
-  return <ContactRelationshipInitializationPanel controller={controller} language={language} />;
 }
 
 const TOKYO_OFFSET_MS = 9 * 60 * 60 * 1000;
@@ -117,6 +113,33 @@ function RecentInteractions({ contact, t }: { contact: OrbitContactView; t: Tran
   );
 }
 
+/**
+ * W0047「依据」：强度缓存里的信号（按贡献降序，至多 12 条）。标题取同 id 的时间线条目——最近 20 条之外的
+ * 由详情页按信号 id 读回（relationshipSignalItems）；仍找不到（来源已删除）才退回来源名。日期按东京时间。不显示分数。
+ */
+function RelationshipBasis({ contact, t }: { contact: OrbitContactView; t: Translate }) {
+  const strength = contact.relationshipStrength;
+  const byId = new Map([...(contact.timeline?.items ?? []), ...(contact.relationshipSignalItems ?? [])].map((item) => [item.id, item]));
+  const signals = strength?.signals ?? [];
+  return (
+    <div className="nw-basis" data-network-basis role="region" aria-label={t({ en: "Why this tier", zh: "档位依据" })}>
+      <span className="nw-basis-head">{t({ en: "Based on these records (updated automatically):", zh: "根据以下记录自动判断：" })}</span>
+      {signals.length === 0 ? <span className="nw-tl-empty">{t({ en: "No interaction records yet", zh: "还没有往来记录" })}</span> : null}
+      {signals.map((signal) => {
+        const item = byId.get(signal.timelineItemId);
+        return (
+          <span key={signal.timelineItemId} className="nw-basis-row" data-basis-source={signal.source}>
+            <span className="nw-tl-time">{formatTimelineTime({ occurredAt: signal.occurredAt, occurredAtPrecision: item?.occurredAtPrecision ?? "instant" }, t)}</span>
+            <strong className="nw-tl-kind">{t(TIMELINE_SOURCE_LABEL[signal.source])}</strong>
+            <span className="nw-basis-title">{item ? t(item.title) : t(TIMELINE_SOURCE_LABEL[signal.source])}</span>
+          </span>
+        );
+      })}
+      {strength?.dormant ? <span className="nw-basis-foot">{t({ en: "No interactions in the last 60 days.", zh: "最近 60 天没有往来。" })}</span> : null}
+    </div>
+  );
+}
+
 export function sortedNotes(notes: OrbitContactView["notes"]): OrbitContactView["notes"] {
   return [...notes].sort((a, b) => (Date.parse(b.createdAt) || 0) - (Date.parse(a.createdAt) || 0));
 }
@@ -125,9 +148,9 @@ export function NetworkDetailModal({ contact, closeHref, onFollow: openFollow, e
   const { t, language } = useOrbitLanguage();
   const demo = useDemoMode();
   const guardWrite = demo?.guardWrite;
-  // 示例里两个写按钮各自弹拦截层（标签不同）；真实页面都打开「写 memo」弹窗（「更新状态」由 W0047 改造）。
+  // 示例里「写 memo」弹拦截层；真实页面打开「写 memo」弹窗。
   const onFollow = guardWrite ? () => guardWrite(t({ en: "memo", zh: "memo" })) : openFollow;
-  const onUpdateStatus = guardWrite ? () => guardWrite(t({ en: "relationship status", zh: "关系状态" })) : openFollow;
+  const [basisOpen, setBasisOpen] = useState(false);
   const close = useCallback(() => {
     if (onClose) onClose();
     else window.location.assign(closeHref);
@@ -139,7 +162,7 @@ export function NetworkDetailModal({ contact, closeHref, onFollow: openFollow, e
       }
     : undefined;
   const dash = "—";
-  const stage = stageOf(contact);
+  const tier = tierGroupOf(contact.relationshipStrength);
   const source = sourceOf(contact);
   const org = contact.company.trim();
   const title = contact.title.trim();
@@ -175,7 +198,7 @@ export function NetworkDetailModal({ contact, closeHref, onFollow: openFollow, e
 
   // 设计 selOverview：图标 / 标签 / 值 / 说明；「联系频率」无数据源不渲染。
   const overview: { icon: string; label: string; value: string; desc: string }[] = [
-    { icon: "⇢", label: t({ en: "Stage", zh: "关系阶段" }), value: t(STAGE_LABEL[stage]), desc: t(STAGE_STYLE[stage].desc) },
+    { icon: "⇢", label: t({ en: "Relationship tier", zh: "关系档位" }), value: tier ? t(TIER_LABEL[tier]) : t({ en: "Not scored yet", zh: "暂未评估" }), desc: tier ? t(TIER_STYLE[tier].desc) : t({ en: "Updates automatically after the next visit", zh: "下次打开时自动更新" }) },
     // 上次互动：值 = 互动时间，说明 = 互动摘要（无则下一步）；下次计划的 reason 与互动摘要相同时不重复。
     { icon: "◷", label: t({ en: "Last contact", zh: "上次互动" }), value: interactionAt, desc: interactionSummary || next?.text || dash },
     { icon: "▦", label: t({ en: "Next plan", zh: "下次计划" }), value: next?.text || dash, desc: next?.reason && next.reason.trim() !== interactionSummary ? next.reason : "" },
@@ -217,8 +240,14 @@ export function NetworkDetailModal({ contact, closeHref, onFollow: openFollow, e
             <div className="nw-detail-meta">
               {location ? <span>◎ {location}</span> : null}
               <span>⇢ {t({ en: "From", zh: "来自" })} {t(SOURCE_LABEL[source])}</span>
-              <span className="nw-detail-stage" style={{ background: STAGE_CHIP[stage].bg, color: STAGE_CHIP[stage].fg }}>{t(STAGE_LABEL[stage])}</span>
+              {tier ? (
+                <>
+                  <span className="nw-detail-stage" data-network-tier={tier} style={{ background: TIER_CHIP[tier].bg, color: TIER_CHIP[tier].fg }}>{t(TIER_LABEL[tier])}</span>
+                  <button type="button" className="btn nw-basis-toggle" aria-expanded={basisOpen} onClick={() => setBasisOpen((open) => !open)}>{t({ en: "Why?", zh: "依据" })} {basisOpen ? "▴" : "▾"}</button>
+                </>
+              ) : null}
             </div>
+            {tier && basisOpen ? <RelationshipBasis contact={contact} t={t} /> : null}
             {/* W0045（W45-2）：行业／职级／地区轻量编辑，保存走 PATCH 并标为手动值。 */}
             <ContactEnrichmentInline key={contact.id} contact={contact} guardWrite={guardWrite} language={language} t={t} />
           </div>
@@ -255,7 +284,6 @@ export function NetworkDetailModal({ contact, closeHref, onFollow: openFollow, e
         ) : null}
         <div className="nw-detail-cols">
           <div className="nw-detail-col">
-            {contact.pipelineStatus === "pending_initialization" ? <DetailInitializationPanel contactId={contact.id} language={language === "en" ? "en" : "zh"} /> : null}
             {extra}
             <div className="nw-panel nw-panel-16">
               <div className="nw-panel-head"><strong className="nw-panel-t">{t({ en: "Recent interactions", zh: "最近互动" })}</strong></div>
@@ -294,7 +322,6 @@ export function NetworkDetailModal({ contact, closeHref, onFollow: openFollow, e
           <a className="btn nw-detail-close" href={closeHref} onClick={onCloseLink}>{t({ en: "Close", zh: "关闭" })}</a>
           <div className="nw-detail-foot-actions">
             <button type="button" className="btn nw-detail-follow" onClick={onFollow}>▤ {t({ en: "Write memo", zh: "写 memo" })}</button>
-            <button type="button" className="btn nw-detail-status" onClick={onUpdateStatus}>⇢ {t({ en: "Update status", zh: "更新状态" })}</button>
           </div>
         </div>
       </div>

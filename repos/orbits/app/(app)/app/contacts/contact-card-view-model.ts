@@ -1,15 +1,29 @@
 import type { ContactCardPageDTO, ContactCardSummaryDTO } from "../../../../features/contacts/contract";
 import { contactCardPageSchema } from "../../../../shared/api-schema/contact-card-page";
-import type { NetworkSource, NetworkStage } from "./network-0918/network-model";
+import { z } from "zod";
+import type { NetworkSource, NetworkTierGroup } from "./network-0918/network-model";
 
 export const CARD_SOURCE_GROUPS: Record<NetworkSource, string[]> = {
   event: ["event_import"], referral: ["referral"], contact: ["external_contacts"],
   scan: ["business_card_ocr"], other: ["manual", "qr_scan", "email_signal", "calendar_signal"],
 };
+/**
+ * W0047（review P1-2）：live「所有人脉」卡片的强弱点读关系档位缓存（只由关系时间线推出）；
+ * 手动阶段与「待设置关系」不再显示。`tier` = 待唤醒优先的档位分组，没有缓存行为 null（显示「未评估」）。
+ */
 export interface ContactCardView {
   id: string; name: string; initial: string; org: string; title: string;
-  source: NetworkSource; stage: NetworkStage; pending: boolean; next: string; href: string;
+  source: NetworkSource; tier: NetworkTierGroup | null; next: string; href: string;
 }
+/** 一页联系人的档位（读模型投影）。 */
+export interface ContactCardTierEntry { contactId: string; tier: "new" | "active" | "core"; dormant: boolean }
+/** 翻页接口带 `tiers=1` 时 data 里附带的本页档位（Web 专用；App 不带这个参数，响应不变）。 */
+export const contactCardTiersSchema = z.array(z.object({
+  contactId: z.string().min(1).max(512),
+  tier: z.enum(["new", "active", "core"]),
+  dormant: z.boolean(),
+})).max(50);
+export const CONTACT_CARD_TIERS_PARAM = "tiers";
 export interface ContactCardListView {
   items: ContactCardView[]; nextPath: string | null;
 }
@@ -21,17 +35,20 @@ export interface ContactCardRouteView {
   source: NetworkSource | "all";
   params: string;
 }
-export function contactCardsToView(page: ContactCardPageDTO, params: string): ContactCardListView {
+export function contactCardsToView(page: ContactCardPageDTO, params: string, tiers: readonly ContactCardTierEntry[] = []): ContactCardListView {
   const next = new URLSearchParams(params);
   next.delete("cursor");
   if (page.nextCursor) next.set("cursor", page.nextCursor);
+  // 下一页同样按本页联系人 id 合并档位（每页一条只读语句，不触发重算）。
+  next.set(CONTACT_CARD_TIERS_PARAM, "1");
+  const tierById = new Map(tiers.map((entry) => [entry.contactId, entry]));
   return {
     items: page.items.map(card => ({
       id: card.id, name: card.displayName, initial: Array.from(card.displayName)[0] ?? "",
       org: card.organization, title: card.role,
       source: (Object.entries(CARD_SOURCE_GROUPS).find(([, codes]) => codes.includes(card.sourceType))?.[0] ?? "other") as NetworkSource,
-      stage: card.pendingInitialization || card.status === "needs_follow_up" ? "explore" : card.status === "nurture" ? "keep" : card.status === "archived" ? "archived" : "advance",
-      pending: card.pendingInitialization, next: card.nextActionPreview,
+      tier: tierById.has(card.id) ? (tierById.get(card.id)!.dormant ? "dormant" : tierById.get(card.id)!.tier) : null,
+      next: card.nextActionPreview,
       href: `/app/contacts/${encodeURIComponent(card.id)}`,
     })),
     nextPath: page.hasMore && page.nextCursor ? `/api/contacts/page?${next}` : null,
@@ -53,5 +70,6 @@ export async function fetchContactCardView(path: string, params: string, signal:
   const body = await response.json();
   if (!response.ok || body.success !== true) throw new Error("联系人页面暂时无法读取，请刷新重试。");
   const page = contactCardPageSchema.parse(body.data);
-  return contactCardsToView({ ...page, nextCursor: page.nextCursor ?? null }, params);
+  const tiers = contactCardTiersSchema.safeParse(body.data?.relationshipTiers ?? []);
+  return contactCardsToView({ ...page, nextCursor: page.nextCursor ?? null }, params, tiers.success ? tiers.data : []);
 }

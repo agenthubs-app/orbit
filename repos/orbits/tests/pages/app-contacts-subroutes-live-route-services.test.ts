@@ -34,7 +34,8 @@ test("contacts pipeline exposes only source-backed read behavior", () => {
     "app/(app)/app/contacts/network-0918/network-pipeline.tsx",
   );
 
-  assert.match(pipelineSource, /viewModel\.connections\.map\(toPerson\)/);
+  // W0047：卡片资料仍只来自 viewModel.connections（按看板里的 id 取）。
+  assert.match(pipelineSource, /viewModel\.connections\.map\(\(contact\) => \[contact\.id, toPerson\(contact\)\]\)/);
   assert.ok(pipelineSource.includes("href={p.href}"));
   assert.doesNotMatch(pipelineSource, /AI Summit 2026/);
   assert.doesNotMatch(pipelineSource, /triageQueue|statusMap|const reminders/);
