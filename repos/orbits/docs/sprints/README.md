@@ -121,7 +121,7 @@
 | [W0045](W0045-contact-enrichment-seniority-region/GOAL.md) | 名片识别同一调用补角色层级与规范地区，审阅可改，带来源；老联系人回填脚本（H） | RN-03 | 无 | completed |
 | [W0046](W0046-relationship-timeline-memo/GOAL.md) | 联系人详情显示聚合关系时间线；「写 memo」弹窗；memo 经 AI 提取专长／需求／话题（H） | RN-04 | W0045（C-4：补全来源载体） | completed |
 | [W0047](W0047-relationship-strength-tiers/GOAL.md) | 关系强度按站内记录自动分档（新认识／有往来／核心／待唤醒），管线页按档位分组，下线手动阶段（H） | RN-05 | W0046 | completed |
-| [W0048a](W0048a-network-snapshot-quota/GOAL.md) | 共享人脉分析快照（存储、生成与校验、三层更新）与两池 AI 配额账本（H） | RN-06 | W0045、W0046、W0047 | ready |
+| [W0048a](W0048a-network-snapshot-quota/GOAL.md) | 共享人脉分析快照（存储、生成与校验、三层更新）与两池 AI 配额账本（H） | RN-06 | W0045、W0046、W0047 | running（run-01，2026-10-02，基线 `d7284e21`，PLANNER SHA256 `84964e424c99184ed472eff0e877ef9357260b45aec6fc0fb0a1c04c6cadbab0`） |
 | [W0048b](W0048b-plan-ai-generator/GOAL.md) | 计划生成接 DeepSeek 两阶段并基于快照排行动；老模板计划「AI 重新生成」不占月额度；读取路径 0 次模型调用（H） | RN-06 | W0048a | planned |
 | [W0049](W0049-analysis-structure-tab/GOAL.md) | 「结构」标签：AI 诊断、四维分布与目标高亮、健康变化、结构洞察（H） | RN-07 | W0043、W0048a | planned |
 | [W0050](W0050-analysis-opportunities-tab/GOAL.md) | 「机会」标签：规则覆盖度、缺口补法、计划直链、待唤醒、报告卡（H） | RN-08 | W0047、W0048a | planned |
