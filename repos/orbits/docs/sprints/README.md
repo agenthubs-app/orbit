@@ -126,7 +126,7 @@
 | [W0049](W0049-analysis-structure-tab/GOAL.md) | 「结构」标签：AI 诊断、四维分布与目标高亮、健康变化、结构洞察（H） | RN-07 | W0043、W0048a | completed |
 | [W0050](W0050-analysis-opportunities-tab/GOAL.md) | 「机会」标签：规则覆盖度、缺口补法、计划直链、待唤醒、报告卡（H） | RN-08 | W0047、W0048a | completed |
 | [W0051](W0051-contact-insights/GOAL.md) | 每人洞察：「洞察」标签、详情弹窗顶部、所有人脉列表列与档位筛选（H） | RN-09 | W0045～W0047、W0048a、W0050（承接 W50-3 改读洞察） | completed（真实 DeepSeek 演练 pending：PLANNER 未写上限，待用户批准） |
-| [W0052](W0052-network-overview-cockpit/GOAL.md) | 概览驾驶舱读快照，管线区改档位，最近动态来自时间线（L） | RN-10 | W0049、W0050 | ready |
+| [W0052](W0052-network-overview-cockpit/GOAL.md) | 概览驾驶舱读快照，管线区改档位，最近动态来自时间线（L） | RN-10 | W0049、W0050 | running（run-01，2026-10-03，基线 `685d8fe2`，PLANNER SHA256 `54fc9813fb0960a2735513314a351ff8e0f81ee23720a642d2284ad6c1294870`） |
 | [W0053](W0053-contacts-import-csv-event/GOAL.md) | CSV／vCard 与活动导入、去重合并，导入后走三层更新（H） | RN-11 | W0045～W0047、W0048a | ready |
 | [W0054](W0054-network-threshold-demo/GOAL.md) | 引导第 1 步满 3 张才完成；完成后不足 3 人的分析卡；示例静态完整快照（H） | RN-12 | W0048b、W0049～W0051、W0053（导入入口须真实可用，R-13） | planned |
 | [W0055](W0055-network-closeout/GOAL.md) | 大目标 4 收口：回填脚本、下线 contact-needs、死代码清理、全量对照与两条路径截图（I） | RN-13 | W0043～W0054（含 W0048a／b） | planned |
