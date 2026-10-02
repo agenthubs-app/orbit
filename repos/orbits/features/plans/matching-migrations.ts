@@ -147,6 +147,27 @@ create table plan_maintenance_daily_runs (
 );
 `,
   },
+  {
+    // W0050（W50-2）：现有联系人在生成计划后也进「待确认」——计划保存后（及 plan-match 维护任务兜底）按计划入队一条
+    // source_kind = 'plan' 的规则层任务（source_key = 计划 id，入队即 ai_state = 'skipped'，worker 永不调 AI）。
+    // 只放宽 source_kind 的 check 约束；按定义找约束名（库里是默认名，但不依赖它）。
+    name: "plan-matching-plan-source",
+    version: 4,
+    sql: `
+declare
+  source_check record;
+begin
+  for source_check in
+    select conname from pg_constraint
+    where conrelid = 'plan_match_jobs'::regclass and contype = 'c' and pg_get_constraintdef(oid) like '%source_kind%'
+  loop
+    execute format('alter table plan_match_jobs drop constraint %I', source_check.conname);
+  end loop;
+  alter table plan_match_jobs add constraint plan_match_jobs_source_kind_check
+    check (source_kind in ('batch', 'day', 'plan'));
+end;
+`,
+  },
 ];
 
 function checksum(sql: string): string {

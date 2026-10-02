@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 
 import type { PlanVersionOrigin, ReanalysisQuota } from "../../../../../features/plans/contract";
 import {
@@ -9,7 +9,7 @@ import {
 } from "../../../../../features/plans/generator";
 import { resolvePlanGenerator } from "../../../../../features/plans/generator-service-factory";
 import { createConfiguredPlanInputSource } from "../../../../../features/plans/input-source";
-import { getConfiguredPlanMatchingRuntime } from "../../../../../features/plans/matching-runtime";
+import { enqueuePlanSourceMatchAfterSave, getConfiguredPlanMatchingRuntime } from "../../../../../features/plans/matching-runtime";
 import {
   createLinkedContactNameReader,
   createPlanFollowUpService,
@@ -61,6 +61,8 @@ import {
  *   示例模式 403 `DEMO_MODE`。生成在请求内同步完成（maxDuration 300）。
  */
 export interface PlanReanalyzeRouteDependencies {
+  /** W0050：计划版本保存成功后（已提交）为这份计划入队 'plan' 匹配任务并在响应之外执行；失败只记日志。 */
+  afterPlanSaved?: (actorId: string, planId: string) => Promise<void>;
   resolveActor?: () => Promise<AuthenticatedApiActor | null>;
   readGoal?: (actorId: string) => Promise<string | null>;
   serviceForActor?: (actorId: string) => ServiceResolution<PlanFollowUpServices>;
@@ -124,6 +126,8 @@ export function createPlanReanalyzeRouteHandlers(dependencies: PlanReanalyzeRout
   const readGoal = dependencies.readGoal ?? readProfileGoal;
   const serviceForActor = dependencies.serviceForActor ?? resolveDefaultPlanFollowUpService;
   const isDemo = dependencies.isDemo ?? defaultIsDemo;
+  const afterPlanSaved =
+    dependencies.afterPlanSaved ?? ((actorId: string, planId: string) => enqueuePlanSourceMatchAfterSave({ actorId, planId }, { after }));
 
   return {
     async POST(request: Request): Promise<Response> {
@@ -192,6 +196,7 @@ export function createPlanReanalyzeRouteHandlers(dependencies: PlanReanalyzeRout
           locale: body.locale === "en" ? "en" : "zh",
           origin,
         });
+        await afterPlanSaved(actorId, result.snapshot.plan.id).catch(() => undefined);
         return NextResponse.json(
           success({
             planId: result.snapshot.plan.id,

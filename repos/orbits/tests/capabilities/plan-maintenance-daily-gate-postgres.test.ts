@@ -175,7 +175,7 @@ function meteredClient(pool: Pool) {
   return { client, metrics, statements };
 }
 
-test("SC-W0017-03: once today is done a pass reads the database once for the three daily tasks; idle plan-match is one due-claim statement", databaseTest, async () => {
+test("SC-W0017-03: once today is done a pass reads the database once for the three daily tasks; idle plan-match is the W0050 backfill scan plus one due-claim, both returning 0 rows", databaseTest, async () => {
   await withMatchingDatabase(async ({ pool }) => {
     const planServiceFor = (actorId: string) => plansFor(pool, actorId);
     // 真实数据：alice 与 bob 各一份计划（含一场活动），alice 的联系人记着「在这场活动认识」。
@@ -237,10 +237,12 @@ test("SC-W0017-03: once today is done a pass reads the database once for the thr
       const later = await runMaintenancePass({ log: () => undefined, now: () => now, tasks: tasks() });
       assert.deepEqual(later.tasks.map((task) => task.reason ?? task.status), ["ok", "done_today", "done_today", "done_today"]);
       assert.deepEqual(metered.statements.map((statement) => statement.sql), [
+        "/* plan-match:enqueue-missing-plan */", // W0050（insert … select，空闲时 0 行、不计入读取计量）（D46③）：每轮先补入队缺 'plan' 任务的生效计划；都已入队时返回 0 行
         "update plan_match_jobs set", // plan-match：空闲时一条 due-claim，返回 0 行
         "select task_name, status,", // 3 个日任务合计一次当日状态读取
       ]);
       assert.equal(metered.statements[0]!.rows, 0);
+      assert.equal(metered.statements[1]!.rows, 0);
       assert.equal(registrationReads + planWrites, 0);
       // 读取计量：空的 DML 没有返回行，不计入；日任务的状态读取返回 3 行小记录。
       assert.deepEqual(metered.metrics.map((metric) => [metric.queryKind, metric.returnedRows]), [["select", 3]]);

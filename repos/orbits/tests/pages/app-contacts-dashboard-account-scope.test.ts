@@ -43,6 +43,18 @@ function loadDashboardPage(t: TestContext, options: { signedIn?: boolean; actorI
     [join(projectRoot, "app/(app)/app/orbit-account-shell.tsx")]: { AccountTopNav: () => null },
     [join(projectRoot, "app/(app)/app/contacts/network-0918/network-overview.tsx")]: { NetworkOverview: () => null },
     [join(projectRoot, "app/(app)/app/contacts/network-0918/network-analysis.tsx")]: { NetworkAnalysis: () => null },
+    [join(projectRoot, "features/relationship-strength/read-model.ts")]: {
+      ensureRelationshipStrengthsForPage: async () => null,
+      readRelationshipTierLookup: async () => new Map(),
+    },
+    [join(projectRoot, "app/(app)/app/contacts/analysis/structure-tab-loader.ts")]: { loadStructureTabExtras: async (input: unknown) => {
+      calls.push({ operation: "structureTab", input });
+      return { highlights: null, snapshot: { state: "none" }, tierHistory: null };
+    } },
+    [join(projectRoot, "app/(app)/app/contacts/analysis/opportunities-route-service.ts")]: { loadOpportunitiesTab: async (input: { actorId: string; goal: Promise<string | null>; language: string }) => {
+      calls.push({ operation: "opportunitiesTab", input: { actorId: input.actorId, goal: await input.goal, language: input.language } });
+      return { coverage: { state: "no_plan" }, dormant: [], report: { state: "none" }, weekActions: { pendingMatches: null, planActions: [] } };
+    } },
   };
   const pagePath = join(projectRoot, "app/(app)/app/contacts/dashboard/page.tsx");
   const routePath = join(projectRoot, "app/(app)/app/contacts/analysis/contacts-analysis-route-service.ts");
@@ -66,7 +78,7 @@ function loadDashboardPage(t: TestContext, options: { signedIn?: boolean; actorI
   delete testRequire.cache[testRequire.resolve(routePath)];
   const page = testRequire(pagePath).default as (input?: {
     searchParams?: Promise<{ tab?: string | string[] }>;
-  }) => Promise<ReactElement<{ children: Array<ReactElement<{ children: Array<ReactElement<{ analysis: unknown; initialTab?: string }>> }>> }>>;
+  }) => Promise<ReactElement<{ children: Array<ReactElement<{ children: Array<ReactElement<{ analysis: unknown; initialTab?: string; opportunities?: unknown; structureExtras?: unknown }>> }>> }>>;
   return { calls, page, redirected };
 }
 
@@ -79,11 +91,34 @@ test("contacts dashboard loads analysis for the resolved account rather than the
     { operation: "language" },
     { operation: "dashboard", input: { actorId: "account:canonical" } },
     { operation: "contacts", input: { actorId: "account:canonical", params: {} } },
+    { operation: "structureTab", input: { actorId: "account:canonical", language: "en", strengthState: null } },
   ]);
   // 外层 div → [AccountTopNav, 屏组件]；?tab=structure 进分析子页并把同一份 analysis 传下去。
   const screen = rendered.props.children[2].props.children[1];
   assert.deepEqual(screen.props.analysis, { state: "error" });
   assert.equal(screen.props.initialTab, "struct");
+});
+
+test("W0050 (W50-5): only the open analysis tab loads its extra data — opportunities reads opportunities, structure reads structure, overview reads neither", async (t) => {
+  const opportunities = loadDashboardPage(t);
+  const rendered = await opportunities.page({ searchParams: Promise.resolve({ tab: "opportunities" }) });
+  const ops = opportunities.calls.map((call) => call.operation);
+  assert.ok(ops.includes("opportunitiesTab"));
+  assert.ok(!ops.includes("structureTab"), "the opportunities tab does not load structure extras");
+  assert.deepEqual(opportunities.calls.find((call) => call.operation === "opportunitiesTab")?.input, { actorId: "account:canonical", goal: null, language: "en" });
+  const screen = rendered.props.children[2].props.children[1];
+  assert.equal(screen.props.initialTab, "opp");
+  assert.deepEqual(screen.props.opportunities, { coverage: { state: "no_plan" }, dormant: [], report: { state: "none" }, weekActions: { pendingMatches: null, planActions: [] } });
+  assert.equal(screen.props.structureExtras, undefined);
+
+  const structure = loadDashboardPage(t);
+  await structure.page({ searchParams: Promise.resolve({ tab: "structure" }) });
+  assert.ok(structure.calls.some((call) => call.operation === "structureTab"));
+  assert.ok(!structure.calls.some((call) => call.operation === "opportunitiesTab"), "the structure tab does not read opportunity data");
+
+  const overview = loadDashboardPage(t);
+  await overview.page();
+  assert.ok(!overview.calls.some((call) => call.operation === "structureTab" || call.operation === "opportunitiesTab"));
 });
 
 test("contacts dashboard without a tab renders the overview screen for the resolved account", async (t) => {

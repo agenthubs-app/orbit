@@ -30,7 +30,7 @@ const PAGE_PATHS: Record<PageName, string> = {
   pipeline: "app/(app)/app/contacts/pipeline/page.tsx",
 };
 
-const REAL_READS = ["cards", "contacts", "analysis", "detail", "structure"];
+const REAL_READS = ["cards", "contacts", "analysis", "detail", "structure", "structureTab", "opportunitiesTab"];
 const GUIDE_READS = ["profile", "guide"];
 
 interface Scenario {
@@ -104,6 +104,9 @@ function loadPage(t: TestContext, name: PageName, scenario: Scenario = {}) {
     },
     [join(root, "app/(app)/app/orbit-contacts-presentation.ts")]: { applyOrbitContactsPresentation: (vm: unknown) => vm },
     [join(root, "app/(app)/app/contacts/analysis/contacts-analysis-route-service.ts")]: { loadContactsAnalysis: stub("analysis", { state: "pending" }) },
+    // W0049／W0050：分析子页两个标签的附加读取（示例期间同样一个都不许调用）。
+    [join(root, "app/(app)/app/contacts/analysis/structure-tab-loader.ts")]: { loadStructureTabExtras: stub("structureTab", undefined) },
+    [join(root, "app/(app)/app/contacts/analysis/opportunities-route-service.ts")]: { loadOpportunitiesTab: stub("opportunitiesTab", undefined) },
     [join(root, "app/(app)/app/contacts/compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-route-service.ts")]: {
       loadAppContactDetailRoute: stub("detail", detailSuccess),
       localizeAppContactDetailBoundaryModel: (model: unknown) => model,

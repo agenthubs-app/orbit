@@ -421,10 +421,13 @@ test("the plan-match maintenance task completes a pending job without any browse
     });
     assert.equal(pass.ok, 1);
     assert.equal(pass.tasks[0]!.name, "plan-match");
-    assert.deepEqual(pass.tasks[0]!.summary, { aiCalls: 1, completed: 1, examined: 1, retried: 0 });
-    const [job] = await jobRows(pool);
-    assert.equal(job!.status, "completed");
-    assert.equal((await candidates(pool)).length, 2);
+    // W0050（D46③）：同一轮先为生效计划补入队一条 'plan' 任务（只跑规则层、不调 AI），再领取两条任务。
+    assert.deepEqual(pass.tasks[0]!.summary, { aiCalls: 1, completed: 2, examined: 2, planJobsEnqueued: 1, retried: 0 });
+    const jobs = await jobRows(pool);
+    assert.deepEqual(jobs.map((job) => [job.source_kind, job.status]), [["batch", "completed"], ["plan", "completed"]]);
+    assert.equal(jobs[1]!.ai_state, "skipped");
+    // 批次的两位（saas、vc）+ 'plan' 任务对照现有联系人新增的 ai（SaaS 需求同一级行业）；同一对不重复。
+    assert.deepEqual((await candidates(pool)).map((row) => row.contact_id), ["contact:ai", "contact:saas", "contact:vc"]);
 
     // 表不存在（生产迁移尚未授权执行）：跳过，不报警。
     await pool.query("drop table plan_match_candidates; drop table plan_match_job_contacts; drop table plan_match_jobs");

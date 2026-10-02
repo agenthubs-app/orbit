@@ -7,8 +7,10 @@
  * W0005 示例模式：本人在引导期示例里时概览用示例人物的数据渲染，分析子页只显示横条与说明；
  * 两者都不调用 `loadContactsAnalysis`／`loadAppContactsRouteViewModel`。
  *
- * W0049：分析子页另外并行读「结构」标签的附加数据（快照诊断与洞察、计划需求高亮、依据姓名），
+ * W0049：「结构」标签另外并行读附加数据（快照诊断与洞察、计划需求高亮、依据姓名），
  * 30 天变化用刷新强度读模型时拿到的 state 行；概览不读这些。
+ * W0050：标签由 URL 驱动（W50-5），结构附加数据只在 `?tab=structure` 读；「机会」标签只在 `?tab=opportunities` 读
+ * `loadOpportunitiesTab`（对任何表 0 写入、计划只读、0 次 AI）。示例模式两个标签都 0 次读取。
  */
 import { redirect } from "next/navigation";
 
@@ -33,6 +35,7 @@ import { readDemoModeViewForActor } from "../../_demo/demo-guide-view";
 import { buildDemoNetworkAnalysis, buildDemoNetworkViewModel } from "../../_demo/demo-network";
 import { ensureRelationshipStrengthsForPage, readRelationshipTierLookup } from "../../../../../features/relationship-strength/read-model";
 import { loadStructureTabExtras } from "../analysis/structure-tab-loader";
+import { loadOpportunitiesTab } from "../analysis/opportunities-route-service";
 
 export default async function AppContactsDashboardPage({ searchParams }: {
   searchParams?: Promise<{ tab?: string | string[] }>;
@@ -71,13 +74,25 @@ export default async function AppContactsDashboardPage({ searchParams }: {
       </>
     );
   }
-  // W0047：先刷新关系强度读模型（来源戳与东京日未变时只读一条语句；失败不影响页面），分析里的档位分布读它。
-  const strengthState = await ensureRelationshipStrengthsForPage(actor.id, new Date());
   const tab = params?.tab === "structure" || params?.tab === "opportunities" ? params.tab : "overview";
-  const [analysis, routeModel, structureExtras] = await Promise.all([
-    loadContactsAnalysis(actor.id, language),
+  // W0047：先刷新关系强度读模型（来源戳与东京日未变时只读一条语句；失败不影响页面），分析里的档位分布读它。
+  // W0050（D46③、review P1）：机会标签对任何表 0 写入——不刷新强度缓存，直接读上次算好的结果（待唤醒、档位分布），
+  // 刷新交给概览、结构、管线等其他入口；缓存为空时待唤醒如实显示空态。
+  const strengthState = tab === "opportunities" ? null : await ensureRelationshipStrengthsForPage(actor.id, new Date());
+  const analysisPromise = loadContactsAnalysis(actor.id, language);
+  // W0050（W50-5）：标签由 URL 驱动，服务端只读当前标签的数据——结构附加数据只在 ?tab=structure，机会数据只在 ?tab=opportunities。
+  const [analysis, routeModel, structureExtras, opportunities] = await Promise.all([
+    analysisPromise,
     loadAppContactsRouteViewModel({}, actor.id),
-    tab === "overview" ? Promise.resolve(undefined) : loadStructureTabExtras({ actorId: actor.id, language, strengthState }),
+    tab === "structure" ? loadStructureTabExtras({ actorId: actor.id, language, strengthState }) : Promise.resolve(undefined),
+    tab === "opportunities"
+      ? loadOpportunitiesTab({
+        actorId: actor.id,
+        goal: analysisPromise.then((value) => (value.state === "ready" && "data" in value.goal ? value.goal.data.text || null : null)),
+        language,
+        now: new Date(),
+      })
+      : Promise.resolve(undefined),
   ]);
   const tiers = routeModel.state === "success"
     ? await readRelationshipTierLookup({ actorId: actor.id, contactIds: routeModel.payload.contacts.map((contact) => contact.id) })
@@ -95,7 +110,7 @@ export default async function AppContactsDashboardPage({ searchParams }: {
           <AccountTopNav active="cards" />
           {tab === "overview"
             ? <NetworkOverview viewModel={toViewModel(routeModel.payload)} analysis={analysis} />
-            : <NetworkAnalysis viewModel={toViewModel(routeModel.payload)} analysis={analysis} initialTab={tab === "opportunities" ? "opp" : "struct"} structureExtras={structureExtras} />}
+            : <NetworkAnalysis viewModel={toViewModel(routeModel.payload)} analysis={analysis} initialTab={tab === "opportunities" ? "opp" : "struct"} structureExtras={structureExtras} opportunities={opportunities} />}
         </div>
       ) : (
         <ContactsSubrouteStateBoundary

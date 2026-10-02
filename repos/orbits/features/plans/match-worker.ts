@@ -18,6 +18,7 @@ import type { PlanAiMatcher, PlanAiMatchUsage } from "./ai-matcher";
 import { PlanAiMatcherError } from "./ai-matcher";
 import { acceptedAiPairs, scoreRuleMatches } from "./matching";
 import type { PlanMatchJob, PlanMatchRepository } from "./matching-repository";
+import { capPlanJobPairs } from "./plan-match-plan-job";
 
 export interface PlanMatchWorkerDeps {
   repository: PlanMatchRepository;
@@ -54,7 +55,9 @@ export async function runClaimedMatchJob(deps: PlanMatchWorkerDeps, job: PlanMat
       repository.readActiveNeeds(job.actorId),
       repository.readContacts(job.actorId, job.contactIds),
     ]);
-    const rulePairs = scoreRuleMatches(contacts, needs);
+    // W0050：'plan' 任务（现有联系人对照生效计划）每条需求最多 3 个，强匹配优先、再按添加时间新到旧。
+    const scored = scoreRuleMatches(contacts, needs);
+    const rulePairs = job.sourceKind === "plan" ? capPlanJobPairs(scored, job.contactIds) : scored;
     ruleHits = await repository.insertCandidates({ actorId: job.actorId, jobId: job.id, pairs: rulePairs });
 
     if (job.aiState === "none") {
@@ -149,4 +152,16 @@ export async function runDueMatchJobs(
     }
   }
   return summary;
+}
+
+/**
+ * W0050：计划保存后（`after()`）领取并执行这份计划的 'plan' 任务。任务入队即 ai_state = skipped，只跑规则层；
+ * 领取不到（已完成、正在执行、迁移未执行）时什么都不做，维护任务兜底。
+ */
+export async function runPlanSourceMatchJob(
+  deps: PlanMatchWorkerDeps,
+  input: { actorId: string; planId: string },
+): Promise<PlanMatchJobOutcome | null> {
+  const job = await deps.repository.claimPlanJob?.(input);
+  return job ? runClaimedMatchJob(deps, job) : null;
 }

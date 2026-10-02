@@ -23,7 +23,7 @@ import { steppingClock } from "../support/plan-fixture";
 const WORKSPACE = "workspace:plan-bootstrap-route";
 const THEIRS = contact({ createdAt: "2026-09-27T00:00:00.000Z", displayName: "别人的", id: "contact:theirs", ownerId: OTHER });
 
-function harness(options: { goal?: string | null; generator?: PlanGenerator; contactsFor?: (actorId: string) => typeof CONTACTS } = {}) {
+function harness(options: { goal?: string | null; generator?: PlanGenerator; contactsFor?: (actorId: string) => typeof CONTACTS; afterPlanSaved?: (actorId: string, planId: string) => Promise<void> } = {}) {
   const repository = createMemoryPlanRepository();
   const clock = steppingClock();
   const calls: string[] = [];
@@ -60,6 +60,7 @@ function harness(options: { goal?: string | null; generator?: PlanGenerator; con
       },
       resolveActor: async () => (actorId ? { id: actorId } : null),
       serviceForActor,
+      ...(options.afterPlanSaved ? { afterPlanSaved: options.afterPlanSaved } : {}),
     });
   const plans = (actorId = ME) => repository.dump({ actorId, workspaceId: WORKSPACE }).plans;
   return { calls, handlersFor, plans };
@@ -214,4 +215,21 @@ test("service resolution failures and thrown identity errors stay inside the env
   const thrown = await throwing.POST(post({ idempotencyKey: "k1" }));
   assert.equal(thrown.status, 503);
   assert.equal((await json(thrown)).success, false);
+});
+
+test("W0050: after a plan version is saved (and on replay) the route enqueues the plan's 'plan' match job; a failure there never fails the save", async () => {
+  const saved: Array<[string, string]> = [];
+  const { handlersFor, plans } = harness({ afterPlanSaved: async (actorId, planId) => { saved.push([actorId, planId]); } });
+  const first = await json(await handlersFor(ME).POST(post({ idempotencyKey: "plan-w50" })));
+  await handlersFor(ME).POST(post({ idempotencyKey: "plan-w50" }));
+  assert.deepEqual(saved, [[ME, first.data!.planId], [ME, first.data!.planId]]);
+  // 未登录、校验失败都不会触发
+  await handlersFor(null).POST(post({ idempotencyKey: "plan-w50" }));
+  await handlersFor(ME).POST(post({}));
+  assert.equal(saved.length, 2);
+  const failing = harness({ afterPlanSaved: async () => { throw new Error("queue down"); } });
+  const response = await failing.handlersFor(ME).POST(post({ idempotencyKey: "plan-w50-fail" }));
+  assert.equal(response.status, 201);
+  assert.equal(failing.plans().length, 1);
+  assert.equal(plans().length, 1);
 });

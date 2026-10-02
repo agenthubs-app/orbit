@@ -66,15 +66,12 @@ test("analysis sub-page renders structure and opportunities tabs from real secti
   assert.match(struct, /核心关系占比[\s\S]*?43%/);
   // 环形图中心 = 分布全量（5 + 2），不是名单条数（empty 名单为 0）。
   assert.match(struct, /nw-dim-donut-n">7</);
-  const opp = renderToStaticMarkup(<NetworkAnalysis viewModel={empty} analysis={ready} initialTab="opp" />);
-  assert.match(opp, /机会总结/);
-  assert.match(opp, /认识供应链负责人/);
-  // W43-2：覆盖度分数与缺口不显示；覆盖区 = 关系目标文字 + 「生成计划」入口
-  assert.doesNotMatch(withoutStyles(opp), /nw-goal-score|覆盖度|优先拓展/);
-  assert.match(opp, /href="\/app\/agent\/plan"[^>]*data-network-coverage-goal[\s\S]*?认识供应链负责人[\s\S]*?生成计划/);
-  assert.match(opp, /王敏 · 近期有互动/);
-  assert.match(opp, /待唤醒关系[\s\S]*?李雷/);
-  assert.match(opp, /尚未生成/);
+  // W0050：机会标签不再读 ContactsAnalysisView 的机会／覆盖区块（数据来自 loadOpportunitiesTab，见 app-network-opportunities.test.tsx）；
+  // 未加载时各块如实「暂时读不到」，旧的机会总结、规则重排动作、旧沉睡名单都不渲染，关系目标文字仍在。
+  const opp = withoutStyles(renderToStaticMarkup(<NetworkAnalysis viewModel={empty} analysis={ready} initialTab="opp" />));
+  assert.match(opp, /关系目标：认识供应链负责人/);
+  assert.doesNotMatch(opp, /机会总结|覆盖总结|跟进王敏|李雷|刷新机会|去 iOrbit|nw-goal-score/);
+  assert.match(opp, /计划暂时读不到/);
 });
 
 test("analysis sub-page renders empty states when analysis is pending", () => {
@@ -101,35 +98,22 @@ for (const language of ["zh", "en"] as const) {
   test(`SC-W0043-01 (${language}): empty sections show their own empty states, never "unavailable"`, () => {
     const view = contactsAnalysisToView(networkEmptyPayload(), language);
     const struct = inLanguage(language, <NetworkAnalysis viewModel={withWang} analysis={view} initialTab="struct" />);
-    const opp = inLanguage(language, <NetworkAnalysis viewModel={withWang} analysis={view} initialTab="opp" />);
     assert.doesNotMatch(struct, UNAVAILABLE);
-    assert.doesNotMatch(opp, UNAVAILABLE);
     if (language === "zh") {
       assert.match(struct, /当前维度暂无数据/);
       assert.match(struct, /暂无关系健康数据/);
-      assert.match(opp, /data-network-coverage-goal[\s\S]*?尚未设置关系目标[\s\S]*?生成计划/);
-      assert.match(opp, /当前没有优先行动建议/);
-      assert.match(opp, /暂无待唤醒关系/);
-      assert.match(opp, /nw-ai-desc">尚未设置关系目标</);
     } else {
       assert.match(struct, /No data in this dimension/);
       assert.match(struct, /No relationship health data yet/);
-      assert.match(opp, /data-network-coverage-goal[\s\S]*?No relationship goal yet[\s\S]*?Generate a plan/);
-      assert.match(opp, /No priority actions right now/);
-      assert.match(opp, /No dormant relationships/);
     }
-    assert.doesNotMatch(opp, /nw-goal-score|nw-an-hero-opp/);
     assert.doesNotMatch(struct, /nw-an-hero"|nw-insight"|nw-dim-sum"|暂无总结|No summary yet/);
   });
 
   test(`SC-W0043-01 (${language}): failed sections (null + unavailableSections) show "unavailable"`, () => {
     const view = contactsAnalysisToView(networkUnavailablePayload(), language);
     const struct = inLanguage(language, <NetworkAnalysis viewModel={withWang} analysis={view} initialTab="struct" />);
-    const opp = inLanguage(language, <NetworkAnalysis viewModel={withWang} analysis={view} initialTab="opp" />);
     assert.match(struct, UNAVAILABLE);
-    assert.match(opp, UNAVAILABLE);
     assert.doesNotMatch(struct, /当前维度暂无数据|No data in this dimension/);
-    assert.doesNotMatch(opp, /当前没有优先行动建议|No priority actions right now/);
   });
 
   test(`SC-W0043-02 (${language}): debug payload renders no backend debug sentence or fabricated number`, () => {
@@ -143,10 +127,9 @@ for (const language of ["zh", "en"] as const) {
     // W43-3：没有真实句子的 hero 与洞察卡整块不渲染，不放占位句
     assert.doesNotMatch(pages.structure, /nw-an-hero"|nw-insight"|nw-dim-sum"|暂无总结|No summary yet/);
     assert.doesNotMatch(pages.opportunities, /nw-an-hero-opp|暂无总结|No summary yet/);
-    // 图表与列表保留
+    // 图表保留；W0050 起机会标签不再渲染后端的机会／沉睡名单（数据改来自计划与快照）
     assert.match(pages.structure, /nw-dim-donut/);
-    assert.match(pages.opportunities, /给王敏发提案资料/);
-    assert.match(pages.opportunities, /周杰[\s\S]*?北辰资本/);
+    assert.doesNotMatch(pages.opportunities, /给王敏发提案资料|北辰资本/);
   });
 }
 
@@ -165,11 +148,6 @@ test("SC-W0043-03: recent activity, action tags and group names are bilingual an
   assert.match(zhOverview, /nw-recent-org">跟进</);
   assert.match(enOverview, /nw-recent-org">Contact</);
   assert.match(enOverview, /nw-recent-org">Follow-up</);
-  const enOpp = inLanguage("en", <NetworkAnalysis viewModel={withWang} analysis={en} initialTab="opp" />);
-  assert.match(enOpp, /Today or overdue/);
-  assert.match(enOpp, /Tomorrow/);
-  assert.match(enOpp, /In 5 days/);
-  assert.equal((enOpp.match(/class="nw-act-tag" style="background:#ECEEFB/g) ?? []).length, 4); // Due soon 不显示标签
   const enStruct = inLanguage("en", <NetworkAnalysis viewModel={withWang} analysis={en} initialTab="struct" />);
   assert.match(enStruct, /Manufacturing &amp; Supply Chain/);
   assert.match(enStruct, /Unclassified/);
@@ -188,29 +166,15 @@ for (const language of ["zh", "en"] as const) {
   });
 
   test(`review P1 (${language}): each failed section shows "unavailable" in its own area only`, () => {
-    const expect: Record<"distributions" | "gaps" | "opportunities" | "profile", { tab: "struct" | "opp"; failed: string[]; healthy: string[] }> = {
+    // W0050：机会标签不再读这些区块（gaps／opportunities／profile 的失败只影响概览与结构），只留结构的分布区块。
+    const expect: Record<"distributions", { tab: "struct" | "opp"; failed: string[]; healthy: string[] }> = {
       distributions: { tab: "struct", failed: ["structure", "top", "health"], healthy: [] },
-      gaps: { tab: "opp", failed: ["coverage"], healthy: ["goal", "actions", "dormant"] },
-      opportunities: { tab: "opp", failed: ["actions", "dormant"], healthy: ["goal", "coverage"] },
-      profile: { tab: "opp", failed: ["goal", "coverage"], healthy: ["actions", "dormant"] },
     };
     for (const [section, { tab, failed, healthy }] of Object.entries(expect) as Array<[keyof typeof expect, (typeof expect)[keyof typeof expect]]>) {
       const view = contactsAnalysisToView(networkSectionFailurePayload(section), language);
       const sections = networkSections(inLanguage(language, <NetworkAnalysis viewModel={withWang} analysis={view} initialTab={tab} />));
       for (const key of failed) assert.match(sections[key] ?? "", UNAVAILABLE, `${section} → ${key} should be unavailable`);
       for (const key of healthy) assert.doesNotMatch(sections[key] ?? "", UNAVAILABLE, `${section} → ${key} should stay available`);
-      // 覆盖区只在 coverage 与 goal 都可读时给「生成计划」入口
-      const coverage = sections.coverage ?? "";
-      if (section === "gaps" || section === "profile") assert.doesNotMatch(coverage, /data-network-coverage-goal|✦ (生成计划|Generate a plan)|\/app\/agent\/plan/);
-      if (section === "opportunities") assert.match(coverage, /data-network-coverage-goal/);
     }
-  });
-
-  test(`review P1 (${language}): pending coverage shows "in progress" without the plan entry`, () => {
-    const view = contactsAnalysisToView(networkDebugPayload(), language);
-    if (view.state !== "ready") throw new Error("Missing view");
-    const coverage = networkSections(inLanguage(language, <NetworkAnalysis viewModel={withWang} analysis={{ ...view, coverage: { state: "pending" } }} initialTab="opp" />)).coverage ?? "";
-    assert.match(coverage, /分析生成中|Analysis in progress/);
-    assert.doesNotMatch(coverage, /data-network-coverage-goal/);
   });
 }

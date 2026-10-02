@@ -18,6 +18,11 @@ import { randomUUID } from "node:crypto";
 import { sanitizeIndustryPair } from "../../shared/domain/industries";
 import type { NetworkNeedCriteria } from "./contract";
 import type { PlanMatchContact, PlanMatchNeed, PlanMatchPair } from "./matching";
+import {
+  enqueueMissingPlanSourceMatchJobs,
+  enqueuePlanSourceMatchJob,
+  type EnqueuePlanSourceJobResult,
+} from "./plan-match-plan-job";
 
 interface QueryResultLike {
   rowCount?: number | null;
@@ -41,7 +46,8 @@ export type PlanMatchCandidateStatus = "pending" | "accepted" | "dismissed";
 export interface PlanMatchJob {
   id: string;
   actorId: string;
-  sourceKind: "batch" | "day";
+  /** W0050：'plan' = 现有联系人对照一份生效计划（source_key = 计划 id，只跑规则层）。 */
+  sourceKind: "batch" | "day" | "plan";
   sourceKey: string;
   batchIds: string[];
   contactIds: string[];
@@ -248,6 +254,12 @@ export interface PlanMatchRepository {
   claimDueJobs(input: { limit: number }): Promise<PlanMatchJob[]>;
   /** 审阅页：按 (actor, batch) 领取这一批的任务；只有本人的批次能找到。 */
   claimJobForBatch(input: { actorId: string; batchId: string }): Promise<ClaimForBatchResult>;
+  /** W0050：计划保存后为本人的生效计划入队 'plan' 任务（幂等；见 plan-match-plan-job.ts）。 */
+  enqueuePlanJob?(input: { actorId: string; planId: string }): Promise<EnqueuePlanSourceJobResult>;
+  /** W0050（D46③）：维护任务兜底，跨用户补入队还没有 'plan' 任务的生效计划，返回新入队份数。 */
+  enqueueMissingPlanJobs?(input: { limit: number }): Promise<number>;
+  /** W0050：领取本人某份计划的 'plan' 任务（到期的 pending 或租约过期的 running）；没有可领的返回 null。 */
+  claimPlanJob?(input: { actorId: string; planId: string }): Promise<PlanMatchJob | null>;
   /** CAS：ai_state none → started，并已提交。false = 已经发起过（或租约已失效），不得再调用。 */
   markAiStarted(input: { jobId: string; leaseToken: string }): Promise<boolean>;
   finishAi(input: {
@@ -401,6 +413,27 @@ export function createPostgresPlanMatchRepository(options: {
       if (job.status === "failed" || job.attemptCount >= PLAN_MATCH_MAX_ATTEMPTS) return { job, state: "failed" };
       if (row.not_due === true) return { job, state: "not_due" };
       return { job, state: "running" };
+    },
+
+    enqueuePlanJob({ actorId, planId }) {
+      return enqueuePlanSourceMatchJob(pool, { actorId, planId, workspaceId });
+    },
+
+    enqueueMissingPlanJobs({ limit }) {
+      return enqueueMissingPlanSourceMatchJobs(pool, { limit, workspaceId });
+    },
+
+    async claimPlanJob({ actorId, planId }) {
+      const result = await pool.query(
+        `update plan_match_jobs set ${CLAIM_SET.replace("$LEASE", "$4")}
+         where workspace_id = $1 and actor_id = $2 and source_kind = 'plan' and source_key = $3
+           and not_before <= now()
+           and attempt_count < ${PLAN_MATCH_MAX_ATTEMPTS}
+           and (status = 'pending' or (status = 'running' and lease_expires_at < now()))
+         returning *`,
+        [workspaceId, actorId, planId, randomUUID()],
+      );
+      return result.rows[0] ? mapJob(result.rows[0]) : null;
     },
 
     async markAiStarted({ jobId, leaseToken }) {
