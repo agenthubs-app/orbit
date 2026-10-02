@@ -3286,6 +3286,8 @@ test("W0037 SC-03/05: module buttons carry btn ir-te-* and IORBIT_STYLES neutral
 });
 
 test("W0037 SC-04: the demo home always expands with real events and the real community state; links are plain, 我已加入 really PUTs", async (t) => {
+  // 示例壳用真实时钟（demo clock 缺省为 new Date()）；固定到 PLAN_NOW，否则 W37_POOL 的写死日期过期后会被当成已开始。
+  t.mock.timers.enable({ apis: ["Date"], now: PLAN_NOW });
   const candidates = W37_POOL.slice(0, 4);
   const invite = await mountHome(t, () => (
     <IOrbitShell demoEventCandidates={candidates} guide={GUIDE_NEW} home={HOME as never} viewModel={VIEW_MODEL} />
