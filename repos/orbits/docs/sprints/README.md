@@ -118,7 +118,7 @@
 | [W0042](W0042-profile-suggestion-read-scope/GOAL.md) | 资料「更新建议」图只读本人相关行：Postgres 专用读取器三轮按 id 读 + payload 投影，结果与旧过滤逐项等价；接口与 App 端不变（H） | RV-03、RV-05 | W0041；W42 已定（D48，⑨ 待授权不阻塞）；排在 W0043 之前，不与 W0043～W0055 并行 | completed |
 | [W0043](W0043-network-stop-fake-copy/GOAL.md) | 人脉页不再出现调试英文与「来源暂时不可用」误报，空态说实话，文案双语（H：`contactsAnalysisToView` HIGH，D44） | RN-01 | 无 | completed |
 | [W0044](W0044-followup-clock-root-fix/GOAL.md) | 跟进与提醒的到期按请求时刻计算，逾期显示「已逾期 N 天」（H） | RN-02 | 无 | completed |
-| [W0045](W0045-contact-enrichment-seniority-region/GOAL.md) | 名片识别同一调用补角色层级与规范地区，审阅可改，带来源；老联系人回填脚本（H） | RN-03 | 无 | ready |
+| [W0045](W0045-contact-enrichment-seniority-region/GOAL.md) | 名片识别同一调用补角色层级与规范地区，审阅可改，带来源；老联系人回填脚本（H） | RN-03 | 无 | running（run-01，2026-10-02，基线 `412c51d8`，PLANNER SHA256 `a7123800d855270950d5d164b8ec4050b17f27b609bf4bfecbfe6d738fde5370`） |
 | [W0046](W0046-relationship-timeline-memo/GOAL.md) | 联系人详情显示聚合关系时间线；「写 memo」弹窗；memo 经 AI 提取专长／需求／话题（H） | RN-04 | W0045（C-4：补全来源载体） | planned |
 | [W0047](W0047-relationship-strength-tiers/GOAL.md) | 关系强度按站内记录自动分档（新认识／有往来／核心／待唤醒），管线页按档位分组，下线手动阶段（H） | RN-05 | W0046 | planned |
 | [W0048a](W0048a-network-snapshot-quota/GOAL.md) | 共享人脉分析快照（存储、生成与校验、三层更新）与两池 AI 配额账本（H） | RN-06 | W0045、W0046、W0047 | planned |
