@@ -22,6 +22,12 @@ import { planTokyoDate } from "../../plans/week";
 import { resolvePlanService } from "../../plans/service-factory";
 import { getConfiguredPlanMatchingRuntime } from "../../plans/matching-runtime";
 import { createReadCostMaintenanceTask } from "../read-cost/maintenance-task";
+import { createConfiguredMemoExtractionProvider } from "../../contacts/memo-extraction/provider";
+import { listMemoExtractionRescanCandidates } from "../../contacts/memo-extraction/rescan";
+import { runConfiguredMemoExtraction } from "../../contacts/memo-extraction/store";
+import { createNewContactLayersDeps } from "../../network-analysis/layers-runtime";
+import { createNetworkSnapshotMaintenanceTask } from "../../network-analysis/maintenance-task";
+import { getConfiguredNetworkAnalysisRuntime } from "../../network-analysis/runtime";
 import type { MaintenanceTask } from "./pass";
 
 // The production task list. Each task checks its own configuration and reports
@@ -191,6 +197,26 @@ export function createConfiguredMaintenanceTasks({
             return resolution.service;
           },
           readRegistrations: readRuntimeRegistrationsForPlanActor,
+        };
+      },
+    }),
+    // W0048a: network-analysis snapshot jobs (auto recompute claimed by a leased worker that reserves
+    // one background-pool operation), deferred enrichment batches, and the bounded memo-extraction
+    // rescan opened by the AI usage ledger. Each pass handles at most 10 jobs and 10 memos; an idle
+    // pass is one indexed due-claim statement. Skipped until the tables are migrated.
+    createNetworkSnapshotMaintenanceTask({
+      resolve: () => {
+        const runtime = getConfiguredNetworkAnalysisRuntime();
+        const records = createConfiguredPostgresLiveRecordStore();
+        if (!runtime || !records) return null;
+        const memoProvider = createConfiguredMemoExtractionProvider();
+        return {
+          layers: createNewContactLayersDeps({ runtime, store: records.store }),
+          listMemoCandidates: memoProvider
+            ? (now) => listMemoExtractionRescanCandidates(runtime.client, { now, workspaceId: runtime.workspaceId })
+            : undefined,
+          runMemoExtraction: memoProvider ? (job) => runConfiguredMemoExtraction(job, { provider: memoProvider }) : undefined,
+          runtime,
         };
       },
     }),
