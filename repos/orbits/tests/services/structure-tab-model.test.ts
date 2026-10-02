@@ -30,7 +30,7 @@ import { computeActorRelationshipStrengths } from "../../features/relationship-s
 import { computeRelationshipTierCountsAt } from "../../features/relationship-strength/compute";
 import { mobileContactsDashboardPayloadSchema } from "../../shared/api-schema/mobile-contacts-dashboard";
 import type { RelationshipTimelineItem } from "../../shared/contract/relationship-timeline";
-import { analysisView, NOW, snapshotFixture } from "../support/structure-tab-fixture";
+import { analysisView, evidenceNames, NOW, snapshotFixture } from "../support/structure-tab-fixture";
 
 const PROJECT_ROOT = join(dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -47,7 +47,7 @@ test("SC-02 main: four dimensions over 35 contacts each sum to 35 (not the 30-ro
     const model = structureDimensionView(structure, dimension, null);
     assert.ok(model);
     assert.equal(model.total, 35, `${dimension} total`);
-    if (dimension !== "tier") assert.equal(model.rows.reduce((sum, row) => sum + row.percentage, 0), 100, `${dimension} percentages (denominator 35)`);
+    assert.equal(model.rows.reduce((sum, row) => sum + row.percentage, 0), 100, `${dimension} percentages (denominator 35)`);
     assert.deepEqual(model.rows.map((row) => row.count), [...model.rows.map((row) => row.count)].sort((left, right) => right - left), `${dimension} sorted by count`);
     for (const row of model.rows) {
       const [, , , , dimensionInHref, bucketId] = row.href.split("/");
@@ -213,7 +213,7 @@ test("SC-04 R-7: the 30-days-ago counts come from the full deduped timeline (one
 test("SC-01: blocks map to diagnosis + up to 3 insights; evidence keeps only names resolved in the actor's scope, linked to /app/contacts/{id}", () => {
   const view = snapshotFixture();
   assert.deepEqual(evidenceContactIds(view), ["c00", "c15", "c01", "bob:c99", "deleted:c50", "c02", "c03"]);
-  const names = new Map([["c00", "王敏"], ["c15", "李雷"], ["c01", "佐藤"], ["c02", "Ana"], ["c03", "Émile"]]);
+  const names = evidenceNames([["c00", "王敏"], ["c15", "李雷"], ["c01", "佐藤"], ["c02", "Ana"], ["c03", "Émile"]]);
   const result = structureSnapshotView(view, names);
   assert.equal(result.state, "ready");
   if (result.state !== "ready") return;
@@ -251,4 +251,32 @@ test("SC-01 R-12 / SC-03 R-6 source scan: no language.zh/en or top-level stale r
   const loader = readFileSync(join(PROJECT_ROOT, "app/(app)/app/contacts/analysis/structure-tab-loader.ts"), "utf8");
   assert.match(loader, /readCurrentPlanForSnapshot/);
   assert.match(readFileSync(join(PROJECT_ROOT, "features/network-analysis/runtime.ts"), "utf8"), /resolution\.service\.getCurrent\(\)/);
+});
+
+test("review P2-3: tier percentages shown in the structure tab always add up to 100 (largest remainder), the shared field stays as is", async () => {
+  const { view } = await analysisView();
+  if (view.state !== "ready" || view.structure.state !== "ready") throw new Error("structure");
+  const three = { ...view.structure, data: { ...view.structure.data, dimensions: { ...view.structure.data.dimensions, tier: (["new", "active", "core"] as const).map((id) => ({ id, label: id, count: 1, percentage: 33, missingData: false, href: `/app/contacts/analysis/tier/${id}` })) } } };
+  const model = structureDimensionView(three, "tier", null)!;
+  assert.deepEqual(model.rows.map((row) => row.percentage), [34, 33, 33]);
+  assert.equal(three.data.dimensions.tier.reduce((sum, row) => sum + row.percentage, 0), 99, "the shared rounding is untouched");
+});
+
+test("review P2-2: blocks without a visible contact are hidden (recordIds only, every id dropped); a failed name read makes ①④ unavailable", () => {
+  const view = snapshotFixture();
+  view.blocks = [
+    { key: "diagnosis", kind: "diagnosis", text: "只有记录依据", evidence: { contactIds: [], recordIds: ["memo:1"] } },
+    { key: "insight-1", kind: "insight", text: "依据都不在本人范围", evidence: { contactIds: ["bob:c99", "deleted:c50"], recordIds: [] } },
+    { key: "insight-2", kind: "insight", text: "有据的洞察", evidence: { contactIds: ["c00", "bob:c99"], recordIds: [] } },
+  ];
+  const names = evidenceNames([["c00", "王敏"]]);
+  const result = structureSnapshotView(view, names);
+  assert.equal(result.state, "ready");
+  if (result.state !== "ready") return;
+  assert.equal(result.diagnosis, null);
+  assert.deepEqual(result.insights.map((block) => [block.key, block.evidence.map((person) => person.name)]), [["insight-2", ["王敏"]]]);
+  // 全部被剔除 → 整块不显示（none），不是空依据的句子。
+  assert.deepEqual(structureSnapshotView(view, evidenceNames([])), { state: "none" });
+  // 姓名读取失败 → unavailable。
+  assert.deepEqual(structureSnapshotView(view, null), { state: "unavailable" });
 });

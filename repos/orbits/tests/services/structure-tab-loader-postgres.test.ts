@@ -19,8 +19,8 @@ import { createPostgresPlanReferenceValidator } from "../../features/plans/refer
 import { createPostgresPlanRepository } from "../../features/plans/repository";
 import { createPlanService } from "../../features/plans/service";
 import { PAID_AI_HOSTS } from "../../scripts/test-paid-ai-boundary.mjs";
-import { ALICE, BOB, databaseTest, withNetworkDatabase, WORKSPACE, type NetworkHarness } from "../support/network-analysis-harness";
-import { snapshotFixture } from "../support/structure-tab-fixture";
+import { ALICE, BOB, contactPayload, databaseTest, withNetworkDatabase, WORKSPACE, type NetworkHarness } from "../support/network-analysis-harness";
+import { evidenceNames, snapshotFixture } from "../support/structure-tab-fixture";
 
 const NOW = new Date("2026-10-02T03:00:00.000Z");
 
@@ -156,13 +156,21 @@ test("SC-01: evidence names are read only within the actor's scope; other actors
     await harness.addContact(BOB, "bob:c99", { displayName: "Bob 的联系人" });
     await harness.addContact(ALICE, "deleted:c50", { displayName: "已删除" });
     await harness.deleteRecord("contacts", "deleted:c50");
+    // 记录 id 与领域 id 不同的合法联系人：快照依据用记录 id，链接用领域 id（review P2-1）。
+    await harness.insertRecord({ collection: "contacts", id: "record:c77", payload: { ...contactPayload("contact:c77", ALICE), displayName: "高桥" }, userId: ALICE });
+    // 反过来：领域 id 恰好等于某个依据 id、但记录 id 不同 → 不能按领域 id 命中。
+    await harness.insertRecord({ collection: "contacts", id: "record:shadow", payload: { ...contactPayload("c88", ALICE), displayName: "影子" }, userId: ALICE });
     const values: unknown[][] = [];
     const client = { query: (text: string, params?: readonly unknown[]) => { values.push([...(params ?? [])]); return harness.client.query(text, params); } };
-    const names = await readEvidenceContactNames({ client: client as never, workspaceId: WORKSPACE }, ALICE, ["c00", "c15", "c01", "bob:c99", "deleted:c50", "missing", "c00"]);
-    assert.deepEqual([...names.entries()].sort(), [["c00", "王敏"], ["c15", "李雷"]]);
+    const names = await readEvidenceContactNames({ client: client as never, workspaceId: WORKSPACE }, ALICE, ["c00", "c15", "c01", "bob:c99", "deleted:c50", "missing", "record:c77", "c88", "c00"]);
+    assert.deepEqual([...names.entries()].sort(), [
+      ["c00", { contactId: "c00", name: "王敏" }],
+      ["c15", { contactId: "c15", name: "李雷" }],
+      ["record:c77", { contactId: "contact:c77", name: "高桥" }],
+    ]);
     assert.equal(values.length, 1, "one bounded read");
     assert.equal(values[0]![1], ALICE, "the read carries only the actor");
-    assert.deepEqual(values[0]![2], ["c00", "c15", "c01", "bob:c99", "deleted:c50", "missing"]);
+    assert.deepEqual(values[0]![2], ["c00", "c15", "c01", "bob:c99", "deleted:c50", "missing", "record:c77", "c88"]);
     // 加载器把解析结果交给视图：他人与已删除的 id 不进依据。
     const extras = await loadStructureTabExtras({ actorId: ALICE, language: "zh", strengthState: null }, {
       readSnapshot: async () => ({ ...snapshotFixture(), quota: { background: { limit: 60, usedToday: 0 }, manual: { limit: 3, usedToday: 0 }, user: { limit: 10, usedToday: 0 } } }),
@@ -171,19 +179,28 @@ test("SC-01: evidence names are read only within the actor's scope; other actors
     });
     assert.equal(extras.snapshot.state, "ready");
     assert.doesNotMatch(JSON.stringify(extras), /bob:c99|deleted:c50|佐藤/);
+    const withRecordId = snapshotFixture();
+    withRecordId.blocks = [{ key: "diagnosis", kind: "diagnosis", text: "诊断", evidence: { contactIds: ["record:c77"], recordIds: [] } }];
+    const linked = await loadStructureTabExtras({ actorId: ALICE, language: "zh", strengthState: null }, {
+      readSnapshot: async () => ({ ...withRecordId, quota: { background: { limit: 60, usedToday: 0 }, manual: { limit: 3, usedToday: 0 }, user: { limit: 10, usedToday: 0 } } }),
+      readPlan: async () => null,
+      readContactNames: (actorId, ids) => readEvidenceContactNames({ client: harness.client, workspaceId: WORKSPACE }, actorId, ids),
+    });
+    assert.ok(linked.snapshot.state === "ready" && linked.snapshot.diagnosis);
+    assert.deepEqual(linked.snapshot.diagnosis.evidence, [{ id: "contact:c77", name: "高桥", href: "/app/contacts/contact%3Ac77" }]);
     assert.deepEqual(extras.highlights, { primary: [], secondary: [] }, "no plan → no highlight");
     assert.equal(await readEvidenceContactNames({ client: harness.client, workspaceId: WORKSPACE }, ALICE, []).then((map) => map.size), 0);
   });
 });
 
-test("failure isolation: snapshot failure → unavailable with highlights intact; plan failure → no highlight with the snapshot intact; no runtime → unavailable", async () => {
+test("failure isolation: snapshot or evidence-name failure → ①④ unavailable with highlights intact; plan failure → no highlight with the snapshot intact; no runtime → unavailable", async () => {
   const errors: string[] = [];
   const originalError = console.error;
   console.error = (line: string) => { errors.push(String(line)); };
   try {
     const snapshot = { ...snapshotFixture(), quota: { background: { limit: 60, usedToday: 0 }, manual: { limit: 3, usedToday: 0 }, user: { limit: 10, usedToday: 0 } } };
     const plan = { items: [{ kind: "network_need", status: "open", criteria: { primaryIndustryId: "technology_internet", secondaryIndustryId: null } }] };
-    const names = async () => new Map([["c00", "王敏"]]);
+    const names = async () => evidenceNames([["c00", "王敏"]]);
     const snapshotFailed = await loadStructureTabExtras({ actorId: ALICE, language: "zh", strengthState: null }, {
       readSnapshot: async () => { throw new Error("db down"); }, readPlan: async () => plan, readContactNames: names,
     });
@@ -194,6 +211,11 @@ test("failure isolation: snapshot failure → unavailable with highlights intact
     });
     assert.equal(planFailed.highlights, null);
     assert.equal(planFailed.snapshot.state, "ready");
+    const namesFailed = await loadStructureTabExtras({ actorId: ALICE, language: "zh", strengthState: null }, {
+      readSnapshot: async () => snapshot, readPlan: async () => plan, readContactNames: async () => { throw new Error("names down"); },
+    });
+    assert.deepEqual(namesFailed.snapshot, { state: "unavailable" }, "no unsupported sentence when names cannot be read");
+    assert.deepEqual(namesFailed.highlights, { primary: ["technology_internet"], secondary: [] });
     const noRuntime = await loadStructureTabExtras({ actorId: ALICE, language: "zh", strengthState: null }, {
       readSnapshot: null, readPlan: async () => null, readContactNames: names,
     });
@@ -207,4 +229,5 @@ test("failure isolation: snapshot failure → unavailable with highlights intact
   }
   assert.ok(errors.some((line) => line.includes("structure_tab_snapshot_failed")));
   assert.ok(errors.some((line) => line.includes("structure_tab_plan_failed")));
+  assert.ok(errors.some((line) => line.includes("structure_tab_evidence_failed")));
 });

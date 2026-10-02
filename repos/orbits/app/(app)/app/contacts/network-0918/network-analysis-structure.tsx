@@ -2,8 +2,8 @@
  * W0049：「AI 人脉分析」的「结构」标签（从 network-analysis.tsx 抽出；机会标签仍在原文件）。
  *
  * 从上到下：① 结构诊断（快照 `diagnosis` 块，带依据）② 四维分布（行业两级／地区／角色层级／关系强度，
- * 环形图 + Top5，与计划人脉需求相关的行业分组高亮，点分组进名单）③ 关系健康四档与较 30 天前的变化
- * ④ 2–3 条结构洞察（快照 `insight` 块，每条可展开依据联系人）。
+ * 环形图 + Top5，与计划人脉需求相关的行业分组高亮，每个图例项与 Top5 都可进名单）③ 关系健康四档与较 30 天前的变化
+ * ④ 2–3 条结构洞察（快照 `insight` 块，每条可展开依据联系人；没有可见依据的块不显示）。
  *
  * 数字只来自 ContactsAnalysisView.structure（全量规则计算），不来自名单（名单最多 30 条）；
  * 文字只来自快照块（已是界面语言）与本文件模板；依据只列本人范围内解析到的联系人。
@@ -161,10 +161,16 @@ export function NetworkAnalysisStructure({ view, extras = NO_EXTRAS, onOpenOppor
                       <span className="nw-dim-row-copy"><strong className="nw-dim-row-label">{row.label}{row.highlighted ? mark : null}</strong><span className="nw-ai-desc">{t({ en: `${row.count} · ${pct(row.percentage)}`, zh: `${row.count} 人 · ${pct(row.percentage)}` })}</span></span>
                     </>
                   );
-                  return selectable ? (
-                    <button key={row.id} type="button" className={`btn nw-dim-row nw-dim-row-btn${primary?.id === row.id ? " nw-dim-row-on" : ""}`} aria-pressed={primary?.id === row.id} onClick={() => setSelectedPrimary(row.id)} data-network-bucket={row.id} data-network-highlight={row.highlighted ? "" : undefined}>{content}</button>
-                  ) : (
-                    <div key={row.id} className="nw-dim-row" data-network-bucket={row.id} data-network-highlight={row.highlighted ? "" : undefined}>{content}</div>
+                  // 每个图例项都能进名单（不止 Top 5）；行业一级另有「看二级分布」按钮，两个控件并列、不嵌套。
+                  return (
+                    <div key={row.id} className="nw-dim-row nw-dim-legend-row" data-network-bucket={row.id} data-network-highlight={row.highlighted ? "" : undefined}>
+                      {selectable ? (
+                        <button type="button" className={`btn nw-dim-row-btn${primary?.id === row.id ? " nw-dim-row-on" : ""}`} aria-pressed={primary?.id === row.id} aria-label={t({ zh: `查看「${row.label}」的二级分布`, en: `Show ${row.label} sub-industries` })} onClick={() => setSelectedPrimary(row.id)}>{content}</button>
+                      ) : (
+                        <span className="nw-dim-row-main">{content}</span>
+                      )}
+                      <a className="nw-dim-row-link" href={preserveHref(row.href)} data-network-list={row.id} aria-label={t({ zh: `「${row.label}」名单`, en: `${row.label} contacts` })}>{t({ zh: "名单 →", en: "List →" })}</a>
+                    </div>
                   );
                 })}
                 {primary?.children?.length ? (
@@ -206,23 +212,6 @@ export function NetworkAnalysisStructure({ view, extras = NO_EXTRAS, onOpenOppor
         </div>
       </div>
 
-      {snapshot.state === "ready" && snapshot.insights.length > 0 ? (
-        <div className="nw-cockpit" data-network-section="insights">
-          <div className="nw-ov-head">
-            <h2 className="nw-h2">{t({ en: "Structure insights", zh: "结构洞察" })}</h2>
-            <button type="button" className="btn nw-textlink" onClick={onOpenOpportunities}>{t({ en: "View suggestions →", zh: "查看具体建议 →" })}</button>
-          </div>
-          <div className="nw-insight-list">
-            {snapshot.insights.map((block) => <InsightCard key={block.key} block={block} />)}
-          </div>
-        </div>
-      ) : snapshot.state === "unavailable" ? (
-        <div className="nw-cockpit" data-network-section="insights">
-          <h2 className="nw-h2">{t({ en: "Structure insights", zh: "结构洞察" })}</h2>
-          <div className="nw-empty">{unavailable}</div>
-        </div>
-      ) : null}
-
       <div className="nw-cockpit" data-network-section="health">
         <div className="nw-ov-head">
           <h2 className="nw-h2">{t({ en: "Relationship health", zh: "关系健康" })}</h2>
@@ -252,6 +241,23 @@ export function NetworkAnalysisStructure({ view, extras = NO_EXTRAS, onOpenOppor
           <a className="btn nw-textlink nw-textlink-end" href={preserveHref("/app/contacts")}>{t({ en: "View all data →", zh: "查看完整数据 →" })}</a>
         </div>
       </div>
+      {snapshot.state === "ready" && snapshot.insights.length > 0 ? (
+        <div className="nw-cockpit" data-network-section="insights">
+          <div className="nw-ov-head">
+            <h2 className="nw-h2">{t({ en: "Structure insights", zh: "结构洞察" })}</h2>
+            <button type="button" className="btn nw-textlink" onClick={onOpenOpportunities}>{t({ en: "View suggestions →", zh: "查看具体建议 →" })}</button>
+          </div>
+          <div className="nw-insight-list">
+            {snapshot.insights.map((block) => <InsightCard key={block.key} block={block} />)}
+          </div>
+        </div>
+      ) : snapshot.state === "unavailable" ? (
+        <div className="nw-cockpit" data-network-section="insights">
+          <h2 className="nw-h2">{t({ en: "Structure insights", zh: "结构洞察" })}</h2>
+          <div className="nw-empty">{unavailable}</div>
+        </div>
+      ) : null}
+
     </div>
   );
 }

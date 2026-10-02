@@ -82,3 +82,8 @@ export function snapshotFixture(state: SnapshotReadView["state"] = "ready"): Sna
   };
 }
 
+
+/** 依据姓名读取结果（key = 快照里的记录 id；contactId 默认同 id）。 */
+export function evidenceNames(entries: ReadonlyArray<readonly [string, string, string?]>) {
+  return new Map(entries.map(([id, name, contactId]) => [id, { contactId: contactId ?? id, name }]));
+}

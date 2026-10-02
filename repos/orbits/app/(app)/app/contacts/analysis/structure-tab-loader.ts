@@ -7,10 +7,11 @@
  *    由维护任务在后台池执行），本加载器不安排 after() 领取；
  * 2. 计划：只经 `PlanService.getCurrent()`（只读事务）+ 纯投影 `planNeedHighlights`；
  *    不调用会写「进入新阶段」的读取入口（R-6）；
- * 3. 依据姓名：诊断与洞察依据里的联系人 id 去重 ≤30，一次按 id 读取，只解析本人范围内的联系人。
+ * 3. 依据姓名：诊断与洞察依据里的联系人记录 id 去重 ≤30，一次按 id 读取，只解析本人范围内的联系人；
+ *    读取失败时①④降级为 unavailable；没有可见依据的块不显示。
  * 30 天变化读 W0047 state 行，由页面在刷新强度读模型时一并拿到（`strengthState`），这里不再读。
  */
-import { readEvidenceContactNames } from "../../../../../features/network-analysis/evidence-contacts";
+import { readEvidenceContactNames, type EvidenceContactName } from "../../../../../features/network-analysis/evidence-contacts";
 import type { NetworkSnapshotView, SnapshotLanguage } from "../../../../../features/network-analysis/contract";
 import { getConfiguredNetworkAnalysisRuntime, readCurrentPlanForSnapshot } from "../../../../../features/network-analysis/runtime";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
@@ -26,7 +27,7 @@ export interface StructureTabLoaderDeps {
   /** null = 快照服务不可用（非 live、未配置数据库）。抛错 = 读取失败。 */
   readSnapshot: ((actorId: string, language: SnapshotLanguage) => Promise<NetworkSnapshotView>) | null;
   readPlan: (actorId: string) => Promise<Parameters<typeof planNeedHighlights>[0]>;
-  readContactNames: (actorId: string, contactIds: readonly string[]) => Promise<Map<string, string>>;
+  readContactNames: (actorId: string, contactIds: readonly string[]) => Promise<Map<string, EvidenceContactName>>;
 }
 
 export function defaultStructureTabLoaderDeps(): StructureTabLoaderDeps {
@@ -58,9 +59,10 @@ export async function loadStructureTabExtras(
       .catch((error: unknown) => { log("structure_tab_plan_failed", input.actorId, error); return null; }),
   ]);
   const ids = evidenceContactIds(snapshot);
-  const names = ids.length > 0
-    ? await deps.readContactNames(input.actorId, ids).catch((error: unknown) => { log("structure_tab_evidence_failed", input.actorId, error); return new Map<string, string>(); })
-    : new Map<string, string>();
+  // 姓名读取失败 → null：①④整体降级为 unavailable（不显示无据的句子），②③不受影响。
+  const names: Map<string, EvidenceContactName> | null = ids.length > 0
+    ? await deps.readContactNames(input.actorId, ids).catch((error: unknown) => { log("structure_tab_evidence_failed", input.actorId, error); return null; })
+    : new Map<string, EvidenceContactName>();
   const history = input.strengthState?.tierCountsAt30d
     ? { tierCountsAt30d: input.strengthState.tierCountsAt30d, earliestCaptureAt: input.strengthState.earliestCaptureAt ?? null }
     : null;

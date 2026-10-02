@@ -19,11 +19,11 @@ import { NetworkAnalysis } from "../../app/(app)/app/contacts/network-0918/netwo
 import { OrbitLanguageProvider } from "../../app/(app)/app/orbit-language-context";
 import type { OrbitContactsViewModel } from "../../app/(app)/app/orbit-contacts-route-view-model";
 import { networkSections } from "../fixtures/network-debug-payload";
-import { analysisView, snapshotFixture } from "../support/structure-tab-fixture";
+import { analysisView, evidenceNames, snapshotFixture } from "../support/structure-tab-fixture";
 
 /** 名单只有 30 条（与真实 `loadAppContactsRouteViewModel` 默认分页一致），结构标签不得用它计数。 */
 const list30 = { connections: Array.from({ length: 30 }, (_, index) => ({ id: `c${index}`, displayName: `联系人 ${index}` })), events: [], intros: [], pipelineStatuses: [] } as unknown as OrbitContactsViewModel;
-const NAMES = new Map([["c00", "王敏"], ["c15", "李雷"], ["c01", "佐藤"], ["c02", "Ana"], ["c03", "Émile"]]);
+const NAMES = evidenceNames([["c00", "王敏"], ["c15", "李雷"], ["c01", "佐藤"], ["c02", "Ana"], ["c03", "Émile"]]);
 const HISTORY = { tierCountsAt30d: { asOf: "2026-09-02T03:00:00.000Z", counts: { new: 14, active: 10, core: 4, dormant: 5 }, contactCount: 33 }, earliestCaptureAt: "2026-01-01T00:00:00.000Z" };
 
 function extras(overrides: Partial<StructureTabExtras> = {}): StructureTabExtras {
@@ -138,7 +138,7 @@ test("SC-03: related industry groups are highlighted with the legend; the select
   assert.match(plain, /nw-dim-donut-n">35</);
   // 选中另一个一级：在图例下展开它的二级。
   const renderer = await mount(t, <NetworkAnalysis viewModel={list30} analysis={view} initialTab="struct" structureExtras={extras()} />);
-  const finance = renderer.root.find((node) => node.type === "button" && node.props["data-network-bucket"] === "finance_investment");
+  const finance = renderer.root.find((node) => node.props["data-network-bucket"] === "finance_investment" && node.type === "div").find((node) => node.type === "button");
   await act(async () => { finance.props.onClick(); });
   assert.equal(renderer.root.find((node) => node.props["data-network-secondary"] !== undefined).props["data-network-secondary"], "finance_investment");
 });
@@ -153,4 +153,30 @@ test("SC-04: relationship health shows four tiers with the change vs 30 days ago
   const insufficient = networkSections(render("en", (await analysisView("en")).view, extras({ tierHistory: { ...HISTORY, earliestCaptureAt: "2026-09-20T00:00:00.000Z" } }))).health!;
   assert.equal((insufficient.match(/vs 30 days ago Not enough data/g) ?? []).length, 4);
   assert.doesNotMatch(insufficient, /vs 30 days ago [+−]?0</);
+});
+
+test("review P2-4 / P3-6: every legend group links to its list (6th group included), industry primaries have separate select and list controls, and sections run diagnosis → distribution → health → insights", async (t) => {
+  const { view } = await analysisView("zh");
+  if (view.state !== "ready" || view.structure.state !== "ready") throw new Error("structure");
+  const extra = ["region_US", "region_FR", "region_KR"].map((id, index) => ({ id, label: id, count: 1 + index, percentage: 0, missingData: false, href: `/app/contacts/analysis/region/${id}` }));
+  const wide: ContactsAnalysisView = { ...view, structure: { ...view.structure, data: { ...view.structure.data, dimensions: { ...view.structure.data.dimensions, region: [...view.structure.data.dimensions.region!, ...extra] } } } };
+  const industryHtml = render("zh", wide, extras());
+  // 一级行业：按钮（看二级）与名单链接是两个并列控件，不嵌套。
+  assert.match(industryHtml, /data-network-bucket="technology_internet" data-network-highlight=""><button[^>]*aria-pressed="true"[\s\S]*?<\/button><a class="nw-dim-row-link" href="\/app\/contacts\/analysis\/industry\/technology_internet"/);
+  assert.doesNotMatch(industryHtml, /<button[^>]*>(?:(?!<\/button>)[\s\S])*<a /);
+  assert.doesNotMatch(industryHtml, /<a [^>]*>(?:(?!<\/a>)[\s\S])*<button/);
+  // 顺序：诊断 → 分布 → Top5 → 关系健康 → 洞察。
+  const order = [...industryHtml.matchAll(/data-network-section="(\w+)"/g)].map((match) => match[1]);
+  assert.deepEqual(order, ["diagnosis", "structure", "top", "health", "insights"]);
+  // 地区有 7 个分组：Top5 之外的第 6、7 名在图例里也有名单链接。
+  const renderer = await mount(t, <NetworkAnalysis viewModel={list30} analysis={wide} initialTab="struct" structureExtras={extras()} />);
+  const regionButton = renderer.root.find((node) => node.type === "button" && textOf(node) === "地区");
+  await act(async () => { regionButton.props.onClick(); });
+  const links = renderer.root.findAll((node) => node.type === "a" && node.props.className === "nw-dim-row-link").map((node) => node.props.href);
+  assert.equal(links.length, 7);
+  const top = renderer.root.findAll((node) => node.type === "a" && node.props.className === "nw-top-row").map((node) => node.props.href);
+  assert.equal(top.length, 5);
+  const beyondTop5 = links.filter((href: string) => !top.includes(href));
+  assert.equal(beyondTop5.length, 2);
+  assert.ok(beyondTop5.every((href: string) => href.startsWith("/app/contacts/analysis/region/")));
 });

@@ -10,6 +10,7 @@
  * - 关系健康四档的 30 天变化 = 当前档位人数 − W0047 state 行的 `tierCountsAt30d`（完整去重时间线算出，R-7）。
  */
 import type { NetworkSnapshotView } from "../../../../../features/network-analysis/contract";
+import type { EvidenceContactName } from "../../../../../features/network-analysis/evidence-contacts";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import type { RelationshipStrengthState, RelationshipTierGroup } from "../../../../../shared/contract/relationship-strength";
 import type { AnalysisBucket, ContactsAnalysisView } from "./contacts-analysis-view-model";
@@ -62,6 +63,19 @@ function byCount<T extends { count: number }>(rows: readonly T[]): T[] {
     .map(({ row }) => row);
 }
 
+/** 最大余数法：把人数换成合计恰为 100 的整数百分比（同余数时靠前的优先）。 */
+function allocatedPercentages(counts: readonly number[]): number[] {
+  const total = counts.reduce((sum, count) => sum + count, 0);
+  if (total <= 0) return counts.map(() => 0);
+  const exact = counts.map((count) => (count / total) * 100);
+  const values = exact.map(Math.floor);
+  let remainder = 100 - values.reduce((sum, value) => sum + value, 0);
+  const order = exact.map((value, index) => ({ fraction: value - Math.floor(value), index }))
+    .sort((left, right) => right.fraction - left.fraction || left.index - right.index);
+  for (let index = 0; index < order.length && remainder > 0; index += 1, remainder -= 1) values[order[index]!.index]! += 1;
+  return values;
+}
+
 function toRow(bucket: AnalysisBucket, highlighted: (bucket: AnalysisBucket, child: boolean) => boolean): StructureRow {
   return {
     id: bucket.id,
@@ -82,7 +96,10 @@ export function structureDimensionView(
   highlights: PlanNeedHighlights | null,
 ): StructureDimensionView | null {
   if (structure.state !== "ready" && structure.state !== "empty") return null;
-  const buckets = structure.data.dimensions[dimension] ?? [];
+  const raw = structure.data.dimensions[dimension] ?? [];
+  // 关系强度档沿用共享层逐项四舍五入的旧字段（App 在用，不改）；只在这里按人数重新分配，保证展示合计 100%。
+  const tierPercentages = dimension === "tier" ? allocatedPercentages(raw.map((bucket) => bucket.count)) : null;
+  const buckets = tierPercentages ? raw.map((bucket, index) => ({ ...bucket, percentage: tierPercentages[index] ?? 0 })) : raw;
   const primary = new Set(highlights?.primary ?? []);
   const secondary = new Set(highlights?.secondary ?? []);
   const highlighted = (bucket: AnalysisBucket, child: boolean) =>
@@ -192,24 +209,35 @@ export function evidenceContactIds(view: SnapshotReadView | null, limit = 30): s
   return [...ids].slice(0, limit);
 }
 
-/** 快照视图 → 结构标签的诊断／洞察；依据只保留姓名解析得到的（本人范围内、未删除）联系人。 */
-export function structureSnapshotView(view: SnapshotReadView | null, names: ReadonlyMap<string, string>): StructureSnapshotView {
+/**
+ * 快照视图 → 结构标签的诊断／洞察（处处有据）：
+ * - 依据只保留姓名解析得到的（本人范围内、未删除）联系人；key 为快照里的记录 id，链接用联系人 id；
+ * - 解析后一位可见联系人都没有的块（只有 recordIds、依据全被剔除）不显示；
+ * - `names` 为 null（姓名读取失败）→ ①④整体 unavailable，不显示无据的句子。
+ */
+export function structureSnapshotView(view: SnapshotReadView | null, names: ReadonlyMap<string, EvidenceContactName> | null): StructureSnapshotView {
   if (!view || view.state === "unavailable") return { state: "unavailable" };
   if (view.state !== "ready") return { state: "none" };
   const { diagnosis, insights } = structureBlocks(view);
+  if ((diagnosis || insights.length > 0) && !names) return { state: "unavailable" };
+  const resolved = names ?? new Map<string, EvidenceContactName>();
   const toBlock = (block: NonNullable<typeof diagnosis>): StructureBlockView => ({
     key: block.key,
     text: block.text,
     evidence: [...new Set(block.evidence.contactIds)].flatMap((id) => {
-      const name = names.get(id);
-      return name ? [{ id, name, href: `/app/contacts/${encodeURIComponent(id)}` }] : [];
+      const person = resolved.get(id);
+      return person ? [{ id: person.contactId, name: person.name, href: `/app/contacts/${encodeURIComponent(person.contactId)}` }] : [];
     }),
   });
-  if (!diagnosis && insights.length === 0) return { state: "none" };
+  const visible = (block: StructureBlockView) => block.evidence.length > 0;
+  const shownDiagnosis = diagnosis ? toBlock(diagnosis) : null;
+  const shownInsights = insights.map(toBlock).filter(visible);
+  const diagnosisView = shownDiagnosis && visible(shownDiagnosis) ? shownDiagnosis : null;
+  if (!diagnosisView && shownInsights.length === 0) return { state: "none" };
   return {
     state: "ready",
-    diagnosis: diagnosis ? toBlock(diagnosis) : null,
-    insights: insights.map(toBlock),
+    diagnosis: diagnosisView,
+    insights: shownInsights,
     contactCount: view.contactCount,
     generatedAt: view.generatedAt,
     outdated: view.freshness.stale,

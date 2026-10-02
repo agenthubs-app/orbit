@@ -442,6 +442,11 @@ export const NETWORK_STYLES = `
   height: auto; justify-content: flex-start; letter-spacing: 0; line-height: normal; transition: background .2s; }
 [data-orbit-real-page="network"] .btn.nw-dim-row-btn:hover, [data-orbit-real-page="network"] .btn.nw-dim-row-btn.nw-dim-row-on { background: #F3F4FC; }
 [data-orbit-real-page="network"] .btn.nw-dim-row-btn:active { transform: none; }
+[data-orbit-real-page="network"] .nw-dim-legend-row { justify-content: space-between; }
+[data-orbit-real-page="network"] .nw-dim-legend-row > .btn.nw-dim-row-btn { width: auto; flex: 1; margin: -6px 0 -6px -8px; display: flex; align-items: center; gap: 12px; }
+[data-orbit-real-page="network"] .nw-dim-row-main { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
+[data-orbit-real-page="network"] .nw-dim-row-link { flex-shrink: 0; font-size: 12px; color: #4B4FC7; text-decoration: none; white-space: nowrap; }
+[data-orbit-real-page="network"] .nw-dim-row-link:hover { text-decoration: underline; }
 [data-orbit-real-page="network"] .nw-plan-mark { margin-left: 6px; color: #B07A1E; font-size: 12px; }
 [data-orbit-real-page="network"] .nw-plan-legend { font-size: 12px; color: #6B6F99; }
 [data-orbit-real-page="network"] .nw-sub-top { display: flex; flex-direction: column; gap: 6px; padding: 12px; border-radius: 12px; background: #F7F7FD; }
