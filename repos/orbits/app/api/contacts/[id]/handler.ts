@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import {
   failure,
   runtimeBoundaryHeaders,
@@ -15,6 +15,9 @@ import {
   type ContactDetailUpdateInput,
 } from "../../../../features/contacts/detail-contract";
 import { createContactDetailTagStatusService } from "../../../../features/contacts/service-factory";
+import { parseStrictTokyoInstant } from "../../../../shared/compute/tokyo-calendar-days";
+import type { MemoExtractionJobInput } from "../../../../features/contacts/memo-extraction/job";
+import { runConfiguredMemoExtraction } from "../../../../features/contacts/memo-extraction/store";
 import { isDemoContactRouteId } from "../../../../shared/domain/guide-demo-contact";
 import {
   authenticatedApiActorRequiredResponse,
@@ -78,8 +81,11 @@ function readStringList(value: unknown): readonly string[] | undefined {
     .filter(Boolean);
 }
 
-function readNote(value: unknown): ContactDetailNoteInput | string | undefined {
-  // note 既可传纯文本，也可传带 authorLabel 的结构化对象。
+const MEMO_DAY = /^\d{4}-\d{2}-\d{2}$/;
+const MEMO_EVENT_ID_MAX = 256;
+
+function readNote(value: unknown): ContactDetailNoteInput | string | undefined | "invalid" {
+  // note 既可传纯文本，也可传带 authorLabel 的结构化对象（App 与旧编辑器的写法，照常可用）。
   if (typeof value === "string") {
     return value;
   }
@@ -88,10 +94,21 @@ function readNote(value: unknown): ContactDetailNoteInput | string | undefined {
     return undefined;
   }
 
-  return {
+  const base = {
     body: value.body,
     authorLabel:
       typeof value.authorLabel === "string" ? value.authorLabel : undefined,
+  };
+  if (value.kind === undefined || value.kind === null) return base;
+  // W0046「写 memo」：kind = "memo"，日期必填（东京日期 YYYY-MM-DD），关联活动可选；形状不对整条 PATCH 拒绝。
+  if (value.kind !== "memo") return "invalid";
+  if (typeof value.occurredAt !== "string" || !MEMO_DAY.test(value.occurredAt) || parseStrictTokyoInstant(value.occurredAt) === null) return "invalid";
+  if (value.eventId !== undefined && value.eventId !== null && (typeof value.eventId !== "string" || value.eventId.length > MEMO_EVENT_ID_MAX)) return "invalid";
+  return {
+    ...base,
+    kind: "memo",
+    occurredAt: value.occurredAt,
+    ...(typeof value.eventId === "string" && value.eventId.trim() ? { eventId: value.eventId.trim() } : {}),
   };
 }
 
@@ -141,13 +158,17 @@ async function readPatchBody(request: Request): Promise<PatchBodyResult> {
     if (region === "invalid") {
       return { success: false };
     }
+    const note = readNote(body.note);
+    if (note === "invalid") {
+      return { success: false };
+    }
 
     return {
       success: true,
       body: {
         addTags: readStringList(body.addTags ?? body.addTag),
         lastInteraction: readLastInteraction(body.lastInteraction),
-        note: readNote(body.note),
+        note,
         primaryIndustryId:
           body.primaryIndustryId === null
             ? null
@@ -245,8 +266,36 @@ export function createContactDetailGetHandler(
   };
 }
 
+/**
+ * W0046：memo 保存成功后在响应之外排一次提取作业（next/server `after`）。保存请求本身只写
+ * contact_detail_states；作业经「始终拒绝」闸门只落一条 disabled 记录，provider 0 次调用。
+ */
+export function scheduleMemoExtractionAfterResponse(job: MemoExtractionJobInput): void {
+  try {
+    after(() => runConfiguredMemoExtraction(job).then(() => undefined));
+  } catch {
+    // 不在请求作用域（脚本、测试直接调用）：不排作业。
+  }
+}
+
+function savedMemoJob(input: ContactDetailUpdateInput, result: ContactDetailTagStatusResult, actorId: string): MemoExtractionJobInput | null {
+  const note = input.note;
+  if (!result.success || typeof note !== "object" || note === null || note.kind !== "memo") return null;
+  const contact = result.data.contact;
+  const saved = contact?.notes.find((item) => item.noteWriteExecuted && item.body === note.body.trim());
+  if (!contact || !saved) return null;
+  return {
+    actorId,
+    contactId: contact.id,
+    noteId: saved.noteId,
+    body: saved.body,
+    contact: { organization: contact.organization, role: contact.role },
+  };
+}
+
 export function createContactDetailPatchHandler(
   resolveActor: ResolveAuthenticatedApiActor = resolveAuthenticatedApiActor,
+  dependencies: { onMemoSaved?: (job: MemoExtractionJobInput) => void } = {},
 ) {
   return async function PATCH(
     request: Request,
@@ -285,6 +334,8 @@ export function createContactDetailPatchHandler(
       tags: body.tags,
     };
     const result = await contactDetailService.updateContactDetail(input);
+    const memoJob = savedMemoJob(input, result, actor.id);
+    if (memoJob) (dependencies.onMemoSaved ?? scheduleMemoExtractionAfterResponse)(memoJob);
 
     return responseForResult(result, mode);
   };

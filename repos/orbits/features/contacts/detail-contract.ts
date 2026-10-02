@@ -360,6 +360,12 @@ export interface ContactDetailLookupInput {
 export interface ContactDetailNoteInput {
   body: string;
   authorLabel?: string | null;
+  /** W0046 memo：用户选的东京日期 `YYYY-MM-DD`（仅 kind = "memo" 时有效）。 */
+  occurredAt?: string | null;
+  /** W0046 memo：可选的关联活动 id。 */
+  eventId?: string | null;
+  /** W0046：`"memo"` = 「写 memo」弹窗写入；不传 = 旧写法（App 与旧编辑器）。 */
+  kind?: "memo" | null;
 }
 
 export interface ContactDetailLastInteractionInput {

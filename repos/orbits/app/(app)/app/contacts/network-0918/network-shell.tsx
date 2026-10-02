@@ -564,6 +564,9 @@ export const NETWORK_STYLES = `
 [data-orbit-real-page="network"] .nw-tl-meta { display: flex; gap: 12px; font-size: 14px; }
 [data-orbit-real-page="network"] .nw-tl-time { color: #6B6F99; }
 [data-orbit-real-page="network"] .nw-tl-kind { font-weight: 500; }
+[data-orbit-real-page="network"] .nw-tl-title { font-size: 14px; color: #0E1225; line-height: 1.5; }
+[data-orbit-real-page="network"] .nw-tl-partial { font-size: 12px; color: #8A5A00; background: #FFF6E5; border-radius: 8px; padding: 6px 10px; margin-bottom: 12px; }
+[data-orbit-real-page="network"] .nw-tl-more { font-size: 12px; color: #6B6F99; }
 [data-orbit-real-page="network"] .nw-tl-text { font-size: 13px; color: #6B6F99; line-height: 1.6;
   /* 非设计声明：跟进备注按行拼接（总结/需求/下一步），保留换行 */
   white-space: pre-wrap; }
@@ -622,6 +625,12 @@ export const NETWORK_STYLES = `
   display: inline-flex; align-items: center; justify-content: center; white-space: nowrap; text-align: center; line-height: normal; cursor: default; }
 [data-orbit-real-page="network"] .nw-fu-stage-on { background: #2E3270; color: #FFFFFF; font-weight: 500; }
 [data-orbit-real-page="network"] .nw-fu-hint { font-size: 12px; color: #6B6F99; }
+[data-orbit-real-page="network"] .nw-fu-events { display: flex; flex-wrap: wrap; gap: 8px; }
+[data-orbit-real-page="network"] .btn.nw-fu-event { padding: 6px 12px; border: 1px solid #DDDEFA; border-radius: 999px; background: #FFFFFF; color: #3B3F7A; font-size: 13px; cursor: pointer; }
+[data-orbit-real-page="network"] .btn.nw-fu-event:hover { background: #ECEEFB; }
+[data-orbit-real-page="network"] .btn.nw-fu-event:active { transform: none; }
+[data-orbit-real-page="network"] .btn.nw-fu-event.nw-fu-event-on, [data-orbit-real-page="network"] .btn.nw-fu-event.nw-fu-event-on:hover { background: #2E3270; border-color: #2E3270; color: #FFFFFF; }
+@media (max-width: 600px) { [data-orbit-real-page="network"] .nw-fu-form { grid-template-columns: 1fr; gap: 8px; } [data-orbit-real-page="network"] .nw-fu-label { padding-top: 4px; } }
 [data-orbit-real-page="network"] .nw-fu-tagbox { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid #DDDEFA; border-radius: 10px; }
 [data-orbit-real-page="network"] .nw-fu-tag { display: flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 8px; background: #ECEEFB; color: #2E3270; font-size: 13px; }
 [data-orbit-real-page="network"] .btn.nw-fu-tag-x { border: 0; background: transparent; color: #6B6F99; cursor: pointer; padding: 0; font-size: 13px;

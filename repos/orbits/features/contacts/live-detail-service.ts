@@ -12,6 +12,7 @@ import {
 } from "../../shared/domain/source-types";
 import { normalizeRegion } from "../../shared/domain/regions";
 import { AppError } from "../../shared/errors/app-error";
+import { parseStrictTokyoInstant, tokyoCalendarDaysUntil } from "../../shared/compute/tokyo-calendar-days";
 import type { OrbitLanguage } from "../../shared/contract/language";
 import type { IndustrySelectionContract } from "../../shared/contract/industries";
 import {
@@ -567,7 +568,10 @@ function detailFor(input: {
     relationshipContext,
     source,
   });
-  const persistedNotes = (input.persistedState?.notes ?? []).map((note) => {
+  const persistedNotes = (input.persistedState?.notes ?? []).map((stored) => {
+    // W0046：memo 的 occurredAt／eventId／kind 只在存储与时间线里用；详情 payload（App 同步）的 notes 字段保持不变。
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { occurredAt: _occurredAt, eventId: _eventId, kind: _kind, ...note } = stored;
     const manual = note.noteId.startsWith("note:live-contact-detail-update:") && note.privacy !== "relationship_shared";
     return {
       ...note,
@@ -877,9 +881,55 @@ function normalizeNoteInput(
     return null;
   }
 
+  const memo = memoFieldsFor(note);
   return {
     body,
     authorLabel: note.authorLabel?.trim() || "Orbit operator",
+    ...(memo ?? {}),
+  };
+}
+
+const MEMO_DAY = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * W0046：「写 memo」的附加字段。kind = "memo" 且日期是合法东京日期时才生效（handler 已拒绝非法形状）；
+ * 其余写法（App 的 `{ note: "文本" }`／`{ body, authorLabel }`）返回 null，行为与改前一致。
+ */
+function memoFieldsFor(note: ContactDetailNoteInput): { kind: "memo"; occurredAt: string; eventId?: string } | null {
+  if (note.kind !== "memo") return null;
+  const day = note.occurredAt?.trim() ?? "";
+  if (!MEMO_DAY.test(day) || parseStrictTokyoInstant(day) === null) return null;
+  const eventId = note.eventId?.trim();
+  return { kind: "memo", occurredAt: day, ...(eventId ? { eventId } : {}) };
+}
+
+/** memo 选的东京日期 → 该日东京 00:00 的 UTC ISO。 */
+function memoDayStartIso(day: string): string {
+  return new Date(parseStrictTokyoInstant(day) as number).toISOString();
+}
+
+/**
+ * W0046：memo 推进「上次互动」——只有 memo 日期（东京日）≥ 现有 lastInteraction 的东京日才推进，
+ * 补记旧事不覆盖更新的互动。当天的 memo 用写入时刻；同一天但现有时刻更晚时保留现有时刻。
+ */
+function memoLastInteraction(input: {
+  current: ContactDetailLastInteractionMetadata;
+  explicit?: ContactDetailLastInteractionInput | null;
+  memo: { occurredAt: string; body: string };
+  now: string;
+}): ContactDetailLastInteractionInput | null {
+  const currentAt = input.current.occurredAt;
+  const days = tokyoCalendarDaysUntil(input.memo.occurredAt, currentAt);
+  if (days !== null && days < 0) return null;
+  const today = tokyoCalendarDaysUntil(input.memo.occurredAt, input.now) === 0;
+  const candidate = today ? input.now : memoDayStartIso(input.memo.occurredAt);
+  const currentTime = parseStrictTokyoInstant(currentAt);
+  const occurredAt = days === 0 && currentTime !== null && currentTime > (parseStrictTokyoInstant(candidate) ?? 0) ? currentAt : candidate;
+  const firstLine = input.memo.body.split(/\r?\n/).map((line) => line.trim()).find(Boolean) ?? input.memo.body.trim();
+  return {
+    channel: input.explicit?.channel ?? "manual_note",
+    occurredAt,
+    summary: input.explicit?.summary?.trim() || Array.from(firstLine).slice(0, 120).join(""),
   };
 }
 
@@ -902,6 +952,8 @@ function buildNote(input: {
         input.contact.id,
         noteInput.authorLabel || "Orbit operator",
         noteInput.body,
+        // W0046：memo 的日期参与身份——同正文不同日是两条；旧写法哈希不变（App 重试仍幂等）。
+        ...(noteInput.kind === "memo" && noteInput.occurredAt ? [`memo@${noteInput.occurredAt}`] : []),
       ].join("\u0000"),
     )
     .digest("hex")
@@ -909,6 +961,7 @@ function buildNote(input: {
 
   const id = `note:live-contact-detail-update:${noteId}`;
   const existing = input.contact.notes.find((note) => note.noteId === id || (
+    noteInput.kind !== "memo" &&
     note.noteId.startsWith("note:live-contact-detail-update:") &&
     note.privacy === "private" &&
     note.body.trim() === noteInput.body &&
@@ -989,9 +1042,13 @@ function previewUpdatePayload(input: {
         note,
       ]
     : contact.notes;
+  const noteInput = normalizeNoteInput(input.update.note);
+  const lastInteractionInput = noteInput?.kind === "memo" && noteInput.occurredAt
+    ? memoLastInteraction({ current: contact.lastInteraction, explicit: input.update.lastInteraction, memo: { occurredAt: noteInput.occurredAt, body: noteInput.body }, now: input.collectedAt })
+    : input.update.lastInteraction;
   const lastInteraction = buildLastInteraction(
     contact,
-    input.update.lastInteraction,
+    lastInteractionInput,
   );
   const updatedContact: ContactDetail = {
     ...contact,
@@ -1036,12 +1093,28 @@ function persistedStateFor(input: {
   actorId: string;
   collectedAt: string;
   contact: ContactDetail;
+  /** W0046：本次写入的 memo（noteId + 附加字段）。 */
+  memo?: { noteId: string; occurredAt: string; eventId?: string } | null;
   persistedState: LiveContactDetailState | null;
   statusRequested: boolean;
 }): LiveContactDetailState {
   const storedNoteIds = new Set(
     input.persistedState?.notes.map((note) => note.noteId),
   );
+  // 详情 payload 的 notes 不带 memo 字段，这里按 noteId 从存储行（或本次写入）补回，任何 PATCH 都不丢。
+  const memoFields = new Map<string, { occurredAt?: string; eventId?: string; kind?: "memo" }>();
+  for (const note of input.persistedState?.notes ?? []) {
+    if (note.occurredAt || note.eventId || note.kind) {
+      memoFields.set(note.noteId, {
+        ...(note.occurredAt ? { occurredAt: note.occurredAt } : {}),
+        ...(note.eventId ? { eventId: note.eventId } : {}),
+        ...(note.kind ? { kind: note.kind } : {}),
+      });
+    }
+  }
+  if (input.memo && !memoFields.has(input.memo.noteId)) {
+    memoFields.set(input.memo.noteId, { occurredAt: input.memo.occurredAt, ...(input.memo.eventId ? { eventId: input.memo.eventId } : {}), kind: "memo" });
+  }
   return {
     actorId: input.actorId,
     contactId: input.contact.id,
@@ -1060,6 +1133,7 @@ function persistedStateFor(input: {
         createdAt: note.createdAt,
         privacy: note.privacy,
         sourceLabel: note.sourceLabel,
+        ...(memoFields.get(note.noteId) ?? {}),
       })),
     lastInteraction: {
       channel: input.contact.lastInteraction.channel,
@@ -1366,6 +1440,13 @@ export function createLiveContactDetailTagStatusService({
           provider,
         });
       }
+      const memoNoteInput = normalizeNoteInput(input.note);
+      const memoNote = memoNoteInput?.kind === "memo" && memoNoteInput.occurredAt
+        ? buildNote({ actorId, contact: loaded.data.contact ?? preview.contact, note: input.note, now: collectedAt })
+        : null;
+      const memoWrite = memoNote && memoNoteInput?.occurredAt
+        ? { noteId: memoNote.noteId, occurredAt: memoNoteInput.occurredAt, ...(memoNoteInput.eventId ? { eventId: memoNoteInput.eventId } : {}) }
+        : null;
       try {
         if (legacyIndustryOnly) {
           await provider.updateContactPrimaryIndustry?.(
@@ -1385,6 +1466,7 @@ export function createLiveContactDetailTagStatusService({
               actorId,
               collectedAt,
               contact: preview.contact,
+              memo: memoWrite,
               persistedState,
               statusRequested: input.status !== undefined,
             }),

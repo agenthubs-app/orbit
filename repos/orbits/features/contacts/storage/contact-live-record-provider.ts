@@ -1,5 +1,6 @@
 import { AppError } from "../../../shared/errors/app-error";
 import { contactRecordOwnedByActor } from "./contact-read-authorization";
+import { applyEnrichedValues, type EnrichedValue } from "../enrichment/apply-enrichment";
 
 import type {
   ConnectionDTO,
@@ -142,6 +143,10 @@ function storedNote(value: unknown): LiveContactDetailStoredNote | null {
         ? value.privacy
         : undefined,
     sourceLabel: optionalString(value.sourceLabel),
+    // W0046 memo 字段：原样保留，下一次任何 PATCH／encounters 投影都不丢。
+    ...(typeof value.occurredAt === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value.occurredAt) ? { occurredAt: value.occurredAt } : {}),
+    ...(nonEmptyString(value.eventId) ? { eventId: value.eventId } : {}),
+    ...(value.kind === "memo" ? { kind: "memo" as const } : {}),
   };
 }
 
@@ -1052,6 +1057,38 @@ export function createStorageContactGraphProvider({
         throw new Error("Persisted contact enrichment failed validation.");
       }
       return contact;
+    },
+    async applyContactMemoExtraction(contactId: string, actorId: string, values: readonly EnrichedValue[], at: string) {
+      const normalizedActorId = actorId.trim();
+      const normalizedContactId = contactId.trim();
+      if (!normalizedActorId || !normalizedContactId) {
+        throw new Error("Memo extraction write-back requires actor and contact identifiers.");
+      }
+      const contactRecord = await store.getRecord({
+        workspaceId,
+        collectionName: CONTACTS_LIVE_RECORD_COLLECTIONS.contacts,
+        recordId: normalizedContactId,
+      });
+      if (!contactRecord || !contactRecordOwnedByActor(contactRecord, normalizedActorId)) {
+        throw new Error("Memo extraction write-back is outside the actor boundary.");
+      }
+      // 只接受三个列表字段、来源 ai（memo 提取永远是推断值）。
+      const allowed = values.filter((entry) =>
+        (entry.field === "offering" || entry.field === "seeking" || entry.field === "topics") && entry.origin === "ai" && entry.via === "memo_extraction");
+      const nextPayload: Record<string, unknown> = { ...contactRecord.payload };
+      const written = applyEnrichedValues(nextPayload, allowed, at);
+      if (!written.length) return [];
+      const updatedAt = new Date(Math.max(Date.now(), Date.parse(contactRecord.updatedAt) + 1)).toISOString();
+      nextPayload.updatedAt = updatedAt;
+      if (!store.updateRecordIfCurrent) {
+        throw new AppError("SERVICE_UNAVAILABLE", "Contact storage requires conditional update support.");
+      }
+      const record = await store.updateRecordIfCurrent({ ...contactRecord, updatedAt, payload: nextPayload }, {
+        userId: contactRecord.userId ?? null,
+        updatedAt: contactRecord.updatedAt,
+      });
+      if (!record) throw new AppError("CONFLICT", "Contact changed while applying memo extraction.");
+      return written;
     },
   };
 }

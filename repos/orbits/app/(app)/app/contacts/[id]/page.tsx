@@ -42,6 +42,8 @@ import { OrbitAppointmentNegotiation } from "../../events/[id]/orbit-appointment
 import { readDemoModeViewForActor } from "../../_demo/demo-guide-view";
 import { buildDemoNetworkDetail, buildDemoNetworkViewModel, isDemoContactId } from "../../_demo/demo-network";
 import { NetworkDemoFrame } from "../network-0918/network-demo-frame";
+import { RELATIONSHIP_TIMELINE_SOURCES } from "../../../../../features/relationship-timeline/build";
+import { readMemoEventOptions, readRelationshipTimelineForContact } from "../../../../../features/relationship-timeline/reader";
 
 function decodeContactRouteId(id: string): string {
   try {
@@ -191,10 +193,20 @@ export default async function AppContactDetailPage({
     listRoute?.state === "success"
       ? localizeOrbitTree(applyOrbitContactsPresentation(contactsRouteToOrbitContactsViewModel(listRoute), language), language)
       : { connections: [], events: [], intros: [], pipelineStatuses: [] };
-  const detail = contactDetailPageViewModel(routeModel, language).connections[0];
-  if (!detail) {
+  const detailBase = contactDetailPageViewModel(routeModel, language).connections[0];
+  if (!detailBase) {
     throw new Error("Contact detail route succeeded without a connection.");
   }
+  // W0046：「最近互动」聚合时间线与「写 memo」关联活动推荐在服务端读好随详情下发（不另发客户端请求）。
+  const now = new Date();
+  const [timeline, memoEventOptions] = await Promise.all([
+    readRelationshipTimelineForContact({ actorId: actor.id, contactId, now }).catch(() => ({
+      items: [],
+      unavailableSources: [...RELATIONSHIP_TIMELINE_SOURCES],
+    })),
+    readMemoEventOptions({ actorId: actor.id, now }),
+  ]);
+  const detail = { ...detailBase, timeline, memoEventOptions };
 
   // 会后纪要 / 约谈核验附加态渲染在弹窗时间线上方（props 原样）。
   const extra = (

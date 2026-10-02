@@ -30,10 +30,10 @@ test("detail modal renders overview rows, timeline from notes, and next steps", 
   assert.ok(html.indexOf("讨论合作模式") < html.indexOf("较早的备注"));
   assert.match(html, /background:#4B4FC7[^>]*><\/span>[\s\S]*?9月18日 07:30/);
   assert.match(html, /备注/);
-  // 按钮：关闭（链接）、记录互动、更新状态
+  // 按钮：关闭（链接）、写 memo（W0046 改名）、更新状态
   assert.match(html, /class="btn nw-detail-close" href="\/app\/contacts"/);
   assert.match(html, /class="btn nw-modal-close" href="\/app\/contacts"/);
-  assert.match(html, /class="btn nw-detail-follow"[^>]*>▤ 记录互动/);
+  assert.match(html, /class="btn nw-detail-follow"[^>]*>▤ 写 memo/);
   assert.match(html, /class="btn nw-detail-status"[^>]*>⇢ 更新状态/);
   assert.doesNotMatch(html, /平均 2–3 周一次|1 周后（9月25日）|编辑资料|约时间|查看全部/);
 });

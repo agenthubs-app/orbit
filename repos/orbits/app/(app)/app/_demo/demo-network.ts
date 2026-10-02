@@ -340,6 +340,32 @@ export function buildDemoNetworkDetail(id: string, real: Date, lang: Lang): Orbi
     lastInteraction: latest?.body ?? "",
     nextAction: nextSteps[0] ? { reason: nextSteps[1] ?? "", text: nextSteps[0] } : null,
     notes,
+    // W0046：示例时间线是前端静态数据（memo 由示例互动生成，外加「建立联系」一条），不读任何来源。
+    timeline: {
+      items: [
+        ...notes.map((note) => ({
+          id: `memo:${note.id}`,
+          source: "memo" as const,
+          contactId: id,
+          occurredAt: note.createdAt,
+          occurredAtPrecision: "instant" as const,
+          title: { zh: "写了 memo", en: "Wrote a memo" },
+          excerpt: note.body,
+          ref: { store: "contact_detail_states" as const, recordId: `demo:${id}`, subId: note.id },
+        })),
+        {
+          id: `capture:${id}`,
+          source: "capture" as const,
+          contactId: id,
+          occurredAt: noteAt(ctx, seed.daysAgo + 30, "10:00"),
+          occurredAtPrecision: "instant" as const,
+          title: { zh: "在活动中交换名片", en: "Exchanged cards at an event" },
+          ref: { store: "contacts" as const, recordId: id },
+          detail: { captureMethod: "event_exchange" as const },
+        },
+      ].sort((a, b) => (a.occurredAt < b.occurredAt ? 1 : a.occurredAt > b.occurredAt ? -1 : 0)),
+      unavailableSources: [],
+    },
   };
 }
 

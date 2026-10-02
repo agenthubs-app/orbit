@@ -1,0 +1,54 @@
+/**
+ * W0046：AI 配额闸门接口（D44 / W46-1；revision 3 配额口径）。
+ *
+ * - 额度按「操作」计：一次 `reserve` = 1 次操作；
+ * - 成本按「每次供应商 HTTP 一条子账」记（`beginCall`／`endCall`），以 operationId 聚合；
+ * - 只由持有 operationId 的发起方调用一次 `finish`；没有任何子账拿到响应时账本记 released（不计次）。
+ *
+ * 本 Sprint 只提供「始终拒绝」实现（`reason: "disabled"`）：功能上线前闸门关闭，真实调用 0 次。
+ * W0048a 用 `ai_usage_ledger` 账本实现同一接口后开闸（只放宽 purpose／trigger 枚举，不改其余形状）。
+ */
+export type AiQuotaPool = "user" | "background" | "system";
+
+export interface AiQuotaReserveInput {
+  actorId: string;
+  pool: AiQuotaPool;
+  purpose: "memo_extraction";
+  trigger: "auto";
+  idempotencyKey: string;
+  now: Date;
+}
+
+export type AiQuotaReservation =
+  | { ok: true; operationId: string }
+  | { ok: false; reason: "disabled" | "daily_limit"; retryOn?: string };
+
+export interface AiQuotaGate {
+  reserve(input: AiQuotaReserveInput): Promise<AiQuotaReservation>;
+  /** 每次供应商 HTTP 发出前登记一条子账。 */
+  beginCall(operationId: string, call: { provider: string; model: string }): Promise<{ callId: string }>;
+  /** 拿到响应（含输出无效）后补 token；无响应记 null（no_response）。 */
+  endCall(callId: string, usage: { inputTokens: number; outputTokens: number } | null): Promise<void>;
+  /** 只由持有 operationId 的发起方调用一次。 */
+  finish(operationId: string, outcome: "succeeded" | "failed"): Promise<void>;
+}
+
+/** 「始终拒绝」实现：不计次、不记账、不放行任何调用。 */
+export function createAlwaysDenyAiQuotaGate(): AiQuotaGate {
+  const refuse = (): never => {
+    throw new Error("The always-deny AI quota gate never grants an operation.");
+  };
+  return {
+    async reserve() {
+      return { ok: false, reason: "disabled" };
+    },
+    async beginCall() { return refuse(); },
+    async endCall() { return refuse(); },
+    async finish() { return refuse(); },
+  };
+}
+
+/** 注入点：当前一律返回「始终拒绝」；W0048a 在这里换成账本实现。 */
+export function createConfiguredAiQuotaGate(): AiQuotaGate {
+  return createAlwaysDenyAiQuotaGate();
+}
