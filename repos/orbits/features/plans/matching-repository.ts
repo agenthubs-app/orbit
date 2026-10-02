@@ -294,6 +294,11 @@ export interface PlanMatchRepository {
    */
   listActorsEnteringPhase(input: { limit: number; today: string; /** W0017 续批：只取 actor 排在它之后的。 */ afterActorId?: string | null }): Promise<string[]>;
   /**
+   * W0048b（D46②）：生效 AI 计划（`analysis.generator = aiGeneratorId`）里有骨架阶段（`analysis.phases[i].detailed = false`）
+   * 的前一阶段已经开始、且还没有补细记录（`plan-refine:<planId>:<i>`）的 actor；已到期的计划不算。按 actor 排序，有上限。
+   */
+  listActorsNeedingPhaseRefinement?(input: { limit: number; today: string; aiGeneratorId: string; afterActorId?: string | null }): Promise<string[]>;
+  /**
    * W0012 `plan-event-registration` 对账：生效计划里还没「已参加」的活动条目（按 actor，有上限）。
    * W0017 起每个东京日只扫一遍：按 (actor, 活动, 条目) 的固定顺序分批，`after` 是上一批最后一条，
    * 同一天续批直到扫完（原来的随机顺序靠每 10 分钟重抽覆盖全部，一天一次时覆盖不了）。
@@ -687,6 +692,37 @@ export function createPostgresPlanMatchRepository(options: {
           order by ph.actor_id
           limit $3`,
         [workspaceId, today, Math.max(1, Math.min(500, limit)), afterActorId],
+      );
+      return result.rows.map((row) => String((row as { actor_id: unknown }).actor_id));
+    },
+
+    async listActorsNeedingPhaseRefinement({ afterActorId = null, aiGeneratorId, limit, today }) {
+      const result = await pool.query(
+        `with current as (
+           select p.actor_id, p.id as plan_id, p.phases, p.analysis->'phases' as analysis_phases,
+                  case when $2::date < p.starts_on then 1 else (($2::date - p.starts_on) / 7) + 1 end as week
+             from plans p
+            where p.workspace_id = $1 and p.status = 'active' and p.analysis->>'generator' = $5
+         )
+         select distinct c.actor_id
+           from current c
+           cross join lateral jsonb_array_elements(c.phases) with ordinality as ph(value, ord)
+          where ph.ord >= 2
+            and c.analysis_phases->(ph.ord::int - 1)->>'detailed' = 'false'
+            -- 前一阶段（0 起下标 ord-2）已经开始。
+            and (c.phases->(ph.ord::int - 2)->>'startWeek')::int <= c.week
+            -- 已经过去的阶段不补（与 phaseRefinementCandidates 同一口径：只补当前与下一阶段）。
+            and (ph.value->>'endWeek')::int >= c.week
+            and c.week <= (select coalesce(max((e.value->>'endWeek')::int), 1) from jsonb_array_elements(c.phases) as e(value))
+            and ($4::text is null or c.actor_id > $4::text)
+            and not exists (
+              select 1 from plan_log l
+               where l.workspace_id = $1 and l.actor_id = c.actor_id
+                 and l.idempotency_key = 'plan-refine:' || c.plan_id || ':' || (ph.ord - 1)::text
+            )
+          order by c.actor_id
+          limit $3`,
+        [workspaceId, today, Math.max(1, Math.min(500, limit)), afterActorId, aiGeneratorId],
       );
       return result.rows.map((row) => String((row as { actor_id: unknown }).actor_id));
     },

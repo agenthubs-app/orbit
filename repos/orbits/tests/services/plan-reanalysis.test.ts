@@ -5,7 +5,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type { PlanItem, PlanReferenceValidator, PlanSnapshot } from "../../features/plans/contract";
+import type { PlanItem, PlanReferenceValidator, PlanSnapshot, PlanVersionOrigin } from "../../features/plans/contract";
+import { AI_PLAN_GENERATOR_ID } from "../../features/plans/ai-generator";
+import type { PlanGenerator } from "../../features/plans/generator";
+import { aiGenerator, fakeDeepseek, MemoryAiLedger } from "../support/plan-ai-fixture";
 import { createMockPlanGenerator } from "../../features/plans/mock-generator";
 import {
   buildPlanReview,
@@ -183,6 +186,7 @@ function harness(options: {
   actorId?: string;
   references?: PlanReferenceValidator;
   readLinkedContactNames?: (actorId: string) => Promise<Readonly<Record<string, string>>>;
+  generator?: PlanGenerator;
 }) {
   const actorId = options.actorId ?? ME;
   const repository = options.repository ?? createMemoryPlanRepository();
@@ -198,14 +202,14 @@ function harness(options: {
   });
   const followUp = createPlanFollowUpService({
     actorId,
-    generator: createMockPlanGenerator(),
+    generator: options.generator ?? createMockPlanGenerator(),
     now: () => new Date(options.clock.now),
     plans,
     readLinkedContactNames: options.readLinkedContactNames,
     references,
     source: { listContacts: async () => ({ contacts: CONTACTS, total: CONTACTS.length }), listEvents: async () => EVENTS },
   });
-  const request = (basePlanId: string, key: string, origin: "reanalysis" | "next_plan" = "reanalysis") => ({
+  const request = (basePlanId: string, key: string, origin: PlanVersionOrigin = "reanalysis") => ({
     basePlanId,
     goal: { horizon: "quarter" as const, snapshot: "三个月内拿到 10 家企业客户的试用", text: "三个月内拿到 10 家企业客户的试用" },
     idempotencyKey: key,
@@ -527,4 +531,83 @@ test("W0023 review P2: a done 约 TA on a still-linked pair is never scheduled a
     assert.equal(snapshot.log.find((entry) => entry.event === "plan_created")!.payload.matchActionCount, 0);
     current = snapshot;
   }
+});
+
+/* ------------------------------------------------------------------ */
+/* W0048b SC-04：老模板计划「AI 重新生成」                                    */
+/* ------------------------------------------------------------------ */
+
+function aiHarness(clock: { now: string }) {
+  const ledger = new MemoryAiLedger();
+  const deepseek = fakeDeepseek({});
+  const generator = aiGenerator({ fetchImplementation: deepseek.fetchImplementation, ledger });
+  return { deepseek, ledger, ...harness({ clock, generator, readLinkedContactNames: async () => ({ "contact:kato": "加藤" }) }) };
+}
+
+const TEMPLATE_PLAN = () => planInput({ analysis: { generator: "mock-template-v1", kind: "plan_bootstrap" }, startsOn: START });
+
+test("W0048b SC-04: a template plan regenerated with AI makes a new version without touching this month's re-analysis quota", async () => {
+  const clock = { now: IN_WEEK_2 };
+  const h = aiHarness(clock);
+  const v1 = await h.plans.createVersion(TEMPLATE_PLAN());
+  const before = await h.plans.reanalysisQuota();
+  const v2 = await h.followUp.create(h.request(v1.plan.id, "ai-click-1", "ai_regenerate"));
+  assert.equal(v2.replayed, false);
+  assert.equal(v2.snapshot.plan.analysis.generator, AI_PLAN_GENERATOR_ID);
+  assert.equal(v2.snapshot.plan.analysis.origin, "ai_regenerate");
+  assert.equal(v2.snapshot.plan.previousPlanId, v1.plan.id);
+  assert.deepEqual(await h.plans.reanalysisQuota(), before);
+  assert.equal(before.used, 0);
+  const all = await h.repository.read({ actorId: ME, workspaceId: "w" }, (reader) => reader.hasLogIdempotencyKey(reanalysisQuotaKey(tokyoMonthKey(new Date(clock.now)))));
+  assert.equal(all, false, "no reanalysis:<month> key is written");
+  // 计入用户主动池 1 次操作（purpose plan）。
+  assert.deepEqual(h.ledger.operations.map((op) => [op.pool, op.purpose, op.status]), [["user", "plan", "succeeded"]]);
+  assert.equal(h.ledger.operations[0]!.key, `ai-regenerate:${v1.plan.id}:ai-click-1`);
+  // 本月的重新分析仍然可用。
+  const v3 = await h.followUp.create(h.request(v2.snapshot.plan.id, "re-after-ai", "reanalysis"));
+  assert.equal(v3.replayed, false);
+  assert.equal((await h.plans.reanalysisQuota()).used, 1);
+});
+
+test("W0048b SC-04: a second click (new click key, stale page) replays without generating", async () => {
+  const clock = { now: IN_WEEK_2 };
+  const h = aiHarness(clock);
+  const v1 = await h.plans.createVersion(TEMPLATE_PLAN());
+  const first = await h.followUp.create(h.request(v1.plan.id, "click-a", "ai_regenerate"));
+  const http = h.deepseek.requests.length;
+  const second = await h.followUp.create(h.request(v1.plan.id, "click-b", "ai_regenerate"));
+  assert.equal(second.replayed, true);
+  assert.equal(second.snapshot.plan.id, first.snapshot.plan.id);
+  assert.equal(h.deepseek.requests.length, http);
+  assert.equal(h.ledger.operations.length, 1);
+});
+
+test("W0048b SC-04: not a template plan (or no AI provider) → INVALID_INPUT before any call", async () => {
+  const clock = { now: IN_WEEK_2 };
+  const h = aiHarness(clock);
+  const v1 = await h.plans.createVersion(planInput({ analysis: { generator: AI_PLAN_GENERATOR_ID }, startsOn: START }));
+  await rejectsWith(h.followUp.create(h.request(v1.plan.id, "nope", "ai_regenerate")), "INVALID_INPUT");
+  assert.equal(h.deepseek.requests.length, 0);
+  assert.equal(h.ledger.operations.length, 0);
+  // 服务层兜底：即使绕过预检，保存事务也只接受模板计划。
+  await rejectsWith(
+    h.plans.createVersionWithOutcome({ ...planInput({ startsOn: START }), basePlanId: v1.plan.id }, { origin: "ai_regenerate" }),
+    "INVALID_INPUT",
+  );
+  const mock = harness({ clock });
+  const t1 = await mock.plans.createVersion(TEMPLATE_PLAN());
+  await rejectsWith(mock.followUp.create(mock.request(t1.plan.id, "mock", "ai_regenerate")), "INVALID_INPUT");
+});
+
+test("W0048b SC-04: AI regeneration carries finished work and schedules 约 TA under the same rule as re-analysis", async () => {
+  const clock = { now: IN_WEEK_2 };
+  const h = aiHarness(clock);
+  const v1 = await h.plans.createVersion(TEMPLATE_PLAN());
+  const need = v1.items.find((item) => item.kind === "network_need")!;
+  await h.plans.linkNeedContact({ contactId: "contact:kato", contactName: "加藤", needItemId: need.id });
+  const v2 = await h.followUp.create(h.request(v1.plan.id, "ai-carry", "ai_regenerate"));
+  const newNeed = v2.snapshot.items.find((item) => item.carriedFromItemId === need.id)!;
+  assert.ok(newNeed, "the linked need is carried");
+  const generated = matchActionsOf(v2.snapshot).filter((item) => item.meta.needItemId === newNeed.id);
+  assert.deepEqual(generated.map((item) => [item.title, item.suggestedWeek]), [["约 加藤", 1]]);
 });

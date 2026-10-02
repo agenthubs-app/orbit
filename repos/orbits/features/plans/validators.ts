@@ -166,11 +166,17 @@ function parseCriteria(value: unknown): NetworkNeedCriteria {
     if (!Array.isArray(raw.titleKeywords) || raw.titleKeywords.length > 20) invalid("criteria.titleKeywords must be an array of at most 20.");
     titleKeywords = raw.titleKeywords.map((keyword) => requiredText(keyword, "criteria.titleKeywords", 50));
   }
+  // W0048b：要认识几位（1–5 的整数）；缺省不写（读取方按 1 计）。
+  const targetCount = raw.targetCount ?? null;
+  if (targetCount !== null && (typeof targetCount !== "number" || !Number.isInteger(targetCount) || targetCount < 1 || targetCount > 5)) {
+    invalid("criteria.targetCount must be an integer from 1 to 5.");
+  }
   return {
     description: optionalText(raw.description, "criteria.description", 1000),
     primaryIndustryId: primaryIndustryId as NetworkNeedCriteria["primaryIndustryId"],
     secondaryIndustryId: secondaryIndustryId as NetworkNeedCriteria["secondaryIndustryId"],
     titleKeywords,
+    ...(targetCount !== null ? { targetCount: targetCount as number } : {}),
   };
 }
 

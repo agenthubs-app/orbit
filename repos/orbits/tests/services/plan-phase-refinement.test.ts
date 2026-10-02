@@ -8,9 +8,16 @@ import test from "node:test";
 import { createPlanBootstrapService } from "../../features/plans/bootstrap";
 import type { PlanSnapshot } from "../../features/plans/contract";
 import { createMockPlanGenerator } from "../../features/plans/mock-generator";
+import { BACKGROUND_POOL_DAILY_LIMIT } from "../../features/ai-quota/constants";
+import { bindDeepseekPlanChat, createAiPhaseRefiner } from "../../features/plans/ai-generator";
+import type { PlanGenerator } from "../../features/plans/generator";
 import {
   createPhaseRefiner,
   createPlanPhaseMaintenanceTask,
+  defaultPhaseRefiner,
+  PLAN_AI_REFINE_SOURCE,
+  planRefineKey,
+  runPlanPhaseEntriesBatch,
   phaseEnteredKey,
   phaseToEnter,
   planPhaseRefinement,
@@ -21,6 +28,7 @@ import { buildPlanReview } from "../../features/plans/reanalysis";
 import { createMemoryPlanRepository, type MemoryPlanRepository } from "../../features/plans/repository";
 import { createPlanService } from "../../features/plans/service";
 import { planWeekActions, planWeekAt } from "../../features/plans/week";
+import { aiGenerator, fakeDeepseek, MemoryAiLedger, skeletonReply } from "../support/plan-ai-fixture";
 import { CONTACTS, EVENTS, ME, OTHER } from "../support/plan-bootstrap-fixture";
 
 // 2026-09-28 起：第 14 周从 12/28 开始（一年期 q2），第 27 周从 2027-03-29 开始（q3）。
@@ -219,4 +227,176 @@ test("after the period ends the first read writes nothing: no phase entry, no re
   assert.deepEqual(await plans.enterCurrentPhase(), { entered: null, refined: [] });
   assert.deepEqual(repository.dump({ actorId: ME, workspaceId: "w" }), before);
   assert.deepEqual(buildPlanReview((await plans.getCurrent())!, null), reviewBefore);
+});
+
+/* ------------------------------------------------------------------ */
+/* W0048b SC-03：AI 计划——读取路径 0 次调用；骨架阶段只在维护任务里、到期前补细（后台池）     */
+/* ------------------------------------------------------------------ */
+
+const YEAR_PHASES = [[1, 13], [14, 26], [27, 39], [40, 52]].map(([startWeek, endWeek], index) => ({
+  endWeek,
+  startWeek,
+  summary: `季度 ${index + 1} 摘要`,
+  title: `季度 ${index + 1}`,
+}));
+
+/** 用计次的 AI 生成器（假 fetch、内存账本）建一份一年期 AI 计划；读取路径用默认补细器包一个计数 spy。 */
+async function aiYearPlan(clock: { now: string }) {
+  const ledger = new MemoryAiLedger();
+  const state = { inTransaction: false, fetchInTransaction: 0 };
+  const deepseek = fakeDeepseek({
+    onRequest: () => {
+      if (state.inTransaction) state.fetchInTransaction += 1;
+    },
+    skeleton: () => skeletonReply({ extra: { phases: YEAR_PHASES } }),
+  });
+  const inner = createMemoryPlanRepository();
+  const repository = {
+    read: inner.read.bind(inner),
+    transact: <T,>(scope: Parameters<typeof inner.transact>[0], operation: Parameters<typeof inner.transact<T>>[1]) =>
+      inner.transact(scope, async (tx) => {
+        state.inTransaction = true;
+        try {
+          return await operation(tx);
+        } finally {
+          state.inTransaction = false;
+        }
+      }),
+  };
+  const spy = { calls: 0 };
+  const mock = createMockPlanGenerator();
+  const counted: PlanGenerator = {
+    id: mock.id,
+    phaseDetail: async (input, phase) => {
+      spy.calls += 1;
+      return mock.phaseDetail(input, phase);
+    },
+    skeleton: (input) => mock.skeleton(input),
+  };
+  const references = createAllowListPlanReferenceValidator({ actorId: ME, allowList: { contactsByActor: "any", eventIds: "any" } });
+  let tick = 0;
+  const plans = createPlanService({
+    now: () => new Date(Date.parse(clock.now) + tick++).toISOString(),
+    phaseRefiner: defaultPhaseRefiner(counted),
+    references,
+    repository,
+    scope: { actorId: ME, workspaceId: "w" },
+  });
+  const source = { listContacts: async () => ({ contacts: CONTACTS, total: CONTACTS.length }), listEvents: async () => EVENTS };
+  const bootstrap = createPlanBootstrapService({
+    actorId: ME,
+    generator: aiGenerator({ fetchImplementation: deepseek.fetchImplementation, ledger }),
+    now: () => new Date(clock.now),
+    plans,
+    references,
+    source,
+  });
+  const { snapshot } = await bootstrap.bootstrap({
+    goal: { horizon: "year", snapshot: "一年内拿到 10 家企业客户（一年内）", text: "一年内拿到 10 家企业客户" },
+    idempotencyKey: "ai-year",
+    locale: "zh",
+    supplement: null,
+  });
+  const refineActor = createAiPhaseRefiner({
+    chat: bindDeepseekPlanChat({ apiKey: "k", fetchImplementation: deepseek.fetchImplementation, model: "m" }),
+    ledger,
+    log: () => undefined,
+    model: "m",
+    now: () => new Date(clock.now),
+    planServiceFor: () => plans,
+    source,
+  });
+  const maintenance = () =>
+    runPlanPhaseEntriesBatch(
+      {
+        listActorsEnteringPhase: async () => [ME],
+        planServiceFor: () => plans,
+        refinement: { listActorsNeedingRefinement: async () => [ME], refineActor },
+      },
+      { limit: 50, today: clock.now.slice(0, 10) },
+    );
+  return { deepseek, ledger, maintenance, plans, snapshot, spy, state };
+}
+
+const refineOps = (ledger: MemoryAiLedger) => ledger.operations.filter((op) => op.purpose === "plan_refine");
+
+test("W0048b SC-03: opening an AI plan at a phase boundary makes 0 model calls and only logs the phase entry; mock plans still refine", async () => {
+  const clock = { now: "2026-09-28T03:00:00.000Z" };
+  const ai = await aiYearPlan(clock);
+  assert.deepEqual((ai.snapshot.plan.analysis.phases as Array<{ detailed: boolean }>).map((phase) => phase.detailed), [true, true, false, false]);
+  const httpAfterCreate = ai.deepseek.requests.length;
+  clock.now = WEEK_14;
+  const view = await ai.plans.getCurrentView();
+  assert.ok(view);
+  assert.equal(ai.spy.calls, 0);
+  assert.equal(ai.deepseek.requests.length, httpAfterCreate);
+  assert.ok(view.log.some((entry) => entry.event === "phase_entered"));
+  assert.equal(refineOps(ai.ledger).length, 0);
+
+  // mock 年计划：行为与改前相同（读取路径用 mock 生成器补细季度段）。
+  const repository = createMemoryPlanRepository();
+  const mockClock = { now: "2026-09-28T03:00:00.000Z" };
+  const { plans } = harness(ME, mockClock, repository);
+  await yearPlan(ME, mockClock, repository);
+  mockClock.now = WEEK_14;
+  const refined = await plans.enterCurrentPhase();
+  assert.ok(refined.refined.length > 0);
+});
+
+test("W0048b SC-03: plan-phase refines the next skeleton phase when the previous one becomes current — outside the transaction, one background operation, once", async () => {
+  const clock = { now: "2026-09-28T03:00:00.000Z" };
+  const ai = await aiYearPlan(clock);
+  const before = ai.deepseek.requests.length;
+
+  // 第 1 段：第 3 段的前一阶段还没开始 → 不补。
+  clock.now = WEEK_13;
+  await ai.maintenance();
+  assert.equal(ai.deepseek.requests.length, before);
+  assert.equal(refineOps(ai.ledger).length, 0);
+
+  // 第 2 段成为当前 → 补第 3 段（到期前一整段）。
+  clock.now = WEEK_14;
+  const batch = await ai.maintenance();
+  assert.equal(batch.summary.refined, 1);
+  assert.equal(ai.deepseek.requests.length, before + 1);
+  assert.equal(ai.state.fetchInTransaction, 0, "the model is called outside any plan transaction");
+  const [op] = refineOps(ai.ledger);
+  assert.deepEqual([op!.pool, op!.purpose, op!.trigger, op!.maxCalls, op!.status, op!.calls.length], ["background", "plan_refine", "auto", 1, "succeeded", 1]);
+  const current = (await ai.plans.getCurrent())!;
+  const p3 = current.items.filter((item) => item.phaseKey === "p3");
+  assert.ok(p3.length > 0 && p3.every((item) => item.meta.source === PLAN_AI_REFINE_SOURCE));
+  assert.ok(p3.some((item) => item.kind === "network_need"));
+  assert.ok(current.log.some((entry) => entry.event === "phase_refined" && entry.idempotencyKey === planRefineKey(current.plan.id, 2)));
+
+  // 同一天重跑：0 次调用（已补细的阶段按幂等键挡住）。
+  await ai.maintenance();
+  assert.equal(ai.deepseek.requests.length, before + 1);
+  assert.equal(refineOps(ai.ledger).length, 1);
+
+  // 第 3 段成为当前：不再二次补细第 3 段，只补第 4 段。
+  clock.now = WEEK_27;
+  await ai.maintenance();
+  assert.equal(ai.deepseek.requests.length, before + 2);
+  const titles = ai.deepseek.requests.slice(before).map((request) => (request.payload.phase as { title: string }).title);
+  assert.deepEqual(titles, ["季度 3", "季度 4"]);
+  assert.equal((await ai.plans.getCurrent())!.items.filter((item) => item.phaseKey === "p3").length, p3.length);
+});
+
+test("W0048b SC-03: a full background pool (60) → 0 calls, deferred to the next Tokyo midnight; the next day's run refines", async () => {
+  const clock = { now: "2026-09-28T03:00:00.000Z" };
+  const ai = await aiYearPlan(clock);
+  const before = ai.deepseek.requests.length;
+  ai.ledger.preset.background = BACKGROUND_POOL_DAILY_LIMIT;
+  clock.now = WEEK_14; // 2026-12-28 12:00 JST
+  const batch = await ai.maintenance();
+  assert.equal(batch.summary.refined, 0);
+  assert.equal(batch.summary.refineDeferred, 1);
+  assert.equal(ai.deepseek.requests.length, before);
+  assert.equal(refineOps(ai.ledger).length, 0);
+  // 用户主动的计划生成不受后台池影响（见 plan-ai-generator.test.ts）；次日后台池重新计数。
+  ai.ledger.preset.background = 0;
+  clock.now = "2026-12-29T03:00:00.000Z";
+  const next = await ai.maintenance();
+  assert.equal(next.summary.refined, 1);
+  assert.equal(ai.deepseek.requests.length, before + 1);
 });

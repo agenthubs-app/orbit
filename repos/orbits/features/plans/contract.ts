@@ -97,6 +97,8 @@ export const PLAN_LOG_EVENTS = [
   "action_deferred",
   /** W0012：计划进入新阶段（第 2 段起）；一年期同时补充该阶段的周级行动。每份计划每个阶段只一条。 */
   "phase_entered",
+  /** W0048b：AI 计划第 3 段起的骨架阶段由 `plan-phase` 维护任务补细。每份计划每个阶段只一条（幂等键 `plan-refine:<planId>:<phaseIndex>`）。 */
+  "phase_refined",
   "note",
 ] as const;
 export type PlanLogEvent = (typeof PLAN_LOG_EVENTS)[number];
@@ -134,6 +136,8 @@ export interface NetworkNeedCriteria {
   secondaryIndustryId: SecondaryIndustryIdCode | null;
   titleKeywords: string[];
   description: string | null;
+  /** W0048b：要认识几位（1–5）；缺省按 1（W0050 覆盖度用）。 */
+  targetCount?: number;
 }
 
 export interface PlanContactLink {
@@ -413,9 +417,26 @@ export interface EnterPhaseResult {
  * W0012：新版本的来历。
  * - `reanalysis`：重新分析，每个东京自然月 1 次（额度记在 `plan_log` 的唯一幂等键 `reanalysis:<YYYY-MM>` 上）；
  * - `next_plan`：周期到期后制定下一份，不占额度，但当前计划必须已过最后一周。
+ * - `ai_regenerate`（W0048b）：老模板计划（`analysis.generator = "mock-template-v1"`）用 AI 重新生成，
+ *   不写 `reanalysis:<月>` 键、不占月额度；生效计划不是模板计划时 400。
  * 只能由服务端的调用方传入（`createVersionWithOutcome` 第二个参数），请求体无法指定。
  */
-export type PlanVersionOrigin = "reanalysis" | "next_plan";
+export type PlanVersionOrigin = "reanalysis" | "next_plan" | "ai_regenerate";
+
+/** W0048b：维护任务补细一个骨架阶段（事务外生成后，在这里幂等写入）。 */
+export interface ApplyPhaseRefinementInput {
+  planId: string;
+  /** 0 起的阶段序号。 */
+  phaseIndex: number;
+  items: NewPlanItemInput[];
+}
+
+export interface ApplyPhaseRefinementResult {
+  applied: boolean;
+  reason?: "already_refined" | "plan_changed" | "phase_missing";
+  items: PlanItem[];
+  entry: PlanLogEntry | null;
+}
 
 export interface ReanalysisQuota {
   /** 东京自然月 YYYY-MM。 */
@@ -451,6 +472,8 @@ export interface PlanService {
        * （联系人 id → 称呼，调用方在事务外读一次）；没有的用「TA」。
        */
       contactNames?: Readonly<Record<string, string>>;
+      /** W0048b：预先分配的新计划 id（AI 生成时快照先记下它）；缺省由服务生成。 */
+      planId?: string;
     },
   ): Promise<{ snapshot: PlanSnapshot; created: boolean }>;
   updateItem(input: UpdatePlanItemInput): Promise<UpdatePlanItemResult>;
@@ -462,6 +485,13 @@ export interface PlanService {
   markEventRegistration(input: MarkEventRegistrationInput): Promise<MarkEventRegistrationResult>;
   /** 按东京周次惰性判定是否进入了新阶段；进入了就幂等写日志（一年期同时补充周级行动）。 */
   enterCurrentPhase(): Promise<EnterPhaseResult>;
+  /**
+   * W0048b：AI 计划里待补细的骨架阶段（当前阶段与下一阶段中 `analysis.phases[i].detailed === false`、
+   * 还没有补细记录的）；没有生效计划、不是 AI 计划、或计划已到期时为 null。只读。
+   */
+  phaseRefinementTargets(): Promise<{ plan: Plan; targets: number[] } | null>;
+  /** W0048b：幂等写入一个阶段的补细结果（幂等键 `plan-refine:<planId>:<phaseIndex>`）。 */
+  applyPhaseRefinement(input: ApplyPhaseRefinementInput): Promise<ApplyPhaseRefinementResult>;
   /** 东京周一才有：上周（周一 00:00 到周日 24:00，东京）的进展小结；其他日子或没有计划时为 null。 */
   weeklySummary(): Promise<PlanWeeklySummary | null>;
   reanalysisQuota(): Promise<ReanalysisQuota>;

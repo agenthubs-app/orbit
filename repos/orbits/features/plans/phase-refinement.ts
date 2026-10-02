@@ -18,11 +18,38 @@ import type { MaintenanceTask } from "../operations/maintenance/pass";
 import type { Plan, PlanItem, PlanPhase, PlanService } from "./contract";
 import { PLAN_LIMITS } from "./contract";
 import type { PlanGenerator, PlanLocale } from "./generator";
-import { resolvePlanGenerator } from "./generator-service-factory";
 import type { PlanDailyBatch, PlanDailyGate } from "./maintenance-daily-gate";
+import { createMockPlanGenerator, MOCK_PLAN_GENERATOR_ID } from "./mock-generator";
 import { planWeekState } from "./week";
 
 export const PLAN_PHASE_REFINEMENT_SOURCE = "phase_refinement";
+
+/** W0048b：AI（DeepSeek 两阶段）生成的计划写在 `analysis.generator` 里的 id。 */
+export const AI_PLAN_GENERATOR_ID = "deepseek-plan-v1";
+/** D46②：AI 生成时只细化前 2 个阶段；其余由 `plan-phase` 维护任务在前一阶段成为当前时补细。 */
+export const PLAN_AI_DETAILED_PHASES = 2;
+/** W0048b：维护任务补细写入的条目 `meta.source`。 */
+export const PLAN_AI_REFINE_SOURCE = "plan_refine";
+
+/** 补细的幂等键（plan_log），每份计划每个阶段一条。 */
+export function planRefineKey(planId: string, phaseIndex: number): string {
+  return `plan-refine:${planId}:${phaseIndex}`;
+}
+
+/**
+ * 待补细的阶段（纯函数）：AI 计划、未到期，当前阶段与下一阶段里 `analysis.phases[i].detailed === false` 的。
+ * 还早于「前一阶段成为当前」的阶段不补；已经过去的阶段不补。是否已补细由调用方按幂等键再过滤。
+ */
+export function phaseRefinementCandidates(plan: Pick<Plan, "analysis" | "phases" | "startsOn">, now: Date): number[] {
+  if (plan.analysis.generator !== AI_PLAN_GENERATOR_ID) return [];
+  const week = planWeekState(plan, now);
+  if (week.ended) return [];
+  const analysisPhases = Array.isArray(plan.analysis.phases) ? (plan.analysis.phases as Array<{ detailed?: unknown }>) : [];
+  const current = Math.max(0, week.phaseIndex);
+  return [current, current + 1].filter(
+    (index) => index < plan.phases.length && analysisPhases[index]?.detailed === false,
+  );
+}
 
 export function phaseEnteredKey(planId: string, phaseKey: string): string {
   return `phase-entered:${planId}:${phaseKey}`;
@@ -117,12 +144,16 @@ export function createPhaseRefiner(generator: PlanGenerator): PhaseRefiner {
   };
 }
 
-/** 服务默认的补细器：经生成器 factory 取（D3：只有 mock）；未配置时 fail closed（抛错，事务回滚，下次再试）。 */
-export function defaultPhaseRefiner(): PhaseRefiner {
+/**
+ * 服务默认的补细器（读取路径与 `enterCurrentPhase` 共用）。W0048b（W48-10）：只给 mock 模板计划用 mock 生成器补细，
+ * 与 provider 无关；其他计划（AI 生成、手工建的）在这里**不调用任何生成器**，只记「进入新阶段」——
+ * AI 计划的骨架阶段只在 `plan-phase` 维护任务里补细（事务外、计入后台池）。打开页面永远 0 次模型调用。
+ */
+export function defaultPhaseRefiner(generator: PlanGenerator = createMockPlanGenerator()): PhaseRefiner {
+  const refine = createPhaseRefiner(generator);
   return async (input) => {
-    const resolution = resolvePlanGenerator();
-    if (resolution.success === false) throw new Error(resolution.error.message);
-    return createPhaseRefiner(resolution.service)(input);
+    if (input.plan.analysis.generator !== MOCK_PLAN_GENERATOR_ID) return { inserts: [], weekUpdates: [] };
+    return refine(input);
   };
 }
 
@@ -138,11 +169,30 @@ export interface PlanPhaseMaintenanceDeps {
   /** 生效计划的当前阶段（第 2 段起）还没有「进入新阶段」记录的 actor（按 actor 排序，有上限）。`today` 是东京日历日。 */
   listActorsEnteringPhase(input: { limit: number; today: string; afterActorId?: string | null }): Promise<string[]>;
   planServiceFor: (actorId: string) => PlanService;
+  /** W0048b（D46②）：AI 计划骨架阶段的补细；不配置（未切 AI 或无账本）时不做。 */
+  refinement?: PlanPhaseRefinementDeps;
+}
+
+/** 一位 actor 一轮补细的结果：每个阶段 1 次后台池操作；后台池满时 0 次调用、顺延到 `retryOn`（次日 00:00 东京）。 */
+export interface PlanPhaseRefineOutcome {
+  refined: number;
+  deferred: number;
+  failed: number;
+  retryOn?: string;
+}
+
+export interface PlanPhaseRefinementDeps {
+  /** 生效 AI 计划里「前一阶段已开始」且还没补细的骨架阶段所属的 actor（按 actor 排序，有上限）。 */
+  listActorsNeedingRefinement(input: { limit: number; today: string; afterActorId?: string | null }): Promise<string[]>;
+  refineActor(actorId: string): Promise<PlanPhaseRefineOutcome>;
 }
 
 function isUndefinedTable(error: unknown): boolean {
   return typeof error === "object" && error !== null && (error as { code?: unknown }).code === "42P01";
 }
+
+/** examined／entered／failed；W0048b 配置了补细时另有 refined／refineDeferred／refineFailed（补细、后台池满顺延、失败的阶段数）。 */
+export type PlanPhaseSummary = Record<string, number> & { examined: number; entered: number; failed: number };
 
 /**
  * 一批：从 `afterActorId` 之后取最多 `limit` 位。`hasMore` = 取满了上限或到截止时间停下（同一东京日续批），
@@ -151,9 +201,9 @@ function isUndefinedTable(error: unknown): boolean {
 export async function runPlanPhaseEntriesBatch(
   deps: PlanPhaseMaintenanceDeps,
   input: { limit: number; today: string; afterActorId?: string | null; deadline?: number; now?: () => number },
-): Promise<PlanDailyBatch & { summary: { examined: number; entered: number; failed: number } }> {
+): Promise<PlanDailyBatch & { summary: PlanPhaseSummary }> {
   const now = input.now ?? Date.now;
-  const summary = { entered: 0, examined: 0, failed: 0 };
+  const summary: PlanPhaseSummary = { entered: 0, examined: 0, failed: 0 };
   const actors = (
     await deps.listActorsEnteringPhase({ afterActorId: input.afterActorId ?? null, limit: input.limit, today: input.today })
   ).slice(0, input.limit);
@@ -174,13 +224,32 @@ export async function runPlanPhaseEntriesBatch(
       summary.failed += 1;
     }
   }
+  // W0048b：AI 计划骨架阶段补细（事务外调用、每阶段 1 次后台池操作）。候选由 SQL 先筛（已补细的不出现），
+  // 超过上限的留到下一轮（每个东京日一轮，与「顺延次日」同一节奏）。
+  if (deps.refinement && !stopped) {
+    summary.refined = 0;
+    summary.refineDeferred = 0;
+    summary.refineFailed = 0;
+    const refineActors = (await deps.refinement.listActorsNeedingRefinement({ limit: input.limit, today: input.today })).slice(0, input.limit);
+    for (const actorId of refineActors) {
+      if (input.deadline !== undefined && now() >= input.deadline) break;
+      try {
+        const outcome = await deps.refinement.refineActor(actorId);
+        summary.refined = (summary.refined ?? 0) + outcome.refined;
+        summary.refineDeferred = (summary.refineDeferred ?? 0) + outcome.deferred;
+        summary.refineFailed = (summary.refineFailed ?? 0) + outcome.failed;
+      } catch {
+        summary.refineFailed = (summary.refineFailed ?? 0) + 1;
+      }
+    }
+  }
   return { cursor, hasMore: stopped || actors.length >= input.limit, summary };
 }
 
 export async function runPlanPhaseEntries(
   deps: PlanPhaseMaintenanceDeps,
   input: { limit: number; today: string; deadline?: number; now?: () => number },
-): Promise<{ examined: number; entered: number; failed: number }> {
+): Promise<PlanPhaseSummary> {
   return (await runPlanPhaseEntriesBatch(deps, input)).summary;
 }
 

@@ -41,7 +41,18 @@ import {
   type PlanView,
   type PlanViewSnapshot,
 } from "./contract";
-import { defaultPhaseRefiner, phaseEnteredKey, phaseNeedsRefinement, phaseToEnter, PLAN_PHASE_REFINEMENT_SOURCE, type PhaseRefiner } from "./phase-refinement";
+import { MOCK_PLAN_GENERATOR_ID } from "./mock-generator";
+import {
+  defaultPhaseRefiner,
+  phaseEnteredKey,
+  phaseNeedsRefinement,
+  phaseRefinementCandidates,
+  phaseToEnter,
+  PLAN_AI_REFINE_SOURCE,
+  PLAN_PHASE_REFINEMENT_SOURCE,
+  planRefineKey,
+  type PhaseRefiner,
+} from "./phase-refinement";
 import { REANALYSIS_MONTHLY_LIMIT, reanalysisQuotaKey, tokyoMonthKey } from "./reanalysis";
 import type { PlanReader, PlanRepository, PlanScope, PlanTransaction } from "./repository";
 import { planTotalWeeks, planWeekAt, planWeekState } from "./week";
@@ -737,6 +748,11 @@ export function createPlanService(options: CreatePlanServiceOptions): PlanServic
             if (await tx.logByIdempotencyKey(quotaKey)) {
               throw new PlanServiceError("REANALYSIS_QUOTA_EXHAUSTED", "This month's re-analysis has already been used.");
             }
+          } else if (origin === "ai_regenerate") {
+            // W0048b：只有老模板计划能用 AI 重新生成；不写 reanalysis:<月> 键、不占月额度。
+            if (active.analysis.generator !== MOCK_PLAN_GENERATOR_ID) {
+              throw new PlanServiceError("INVALID_INPUT", "Only a template-generated plan can be regenerated with AI.");
+            }
           } else if (!planWeekState(active, new Date(now())).ended) {
             throw new PlanServiceError("PLAN_NOT_ENDED", "The current plan has not reached its end yet.");
           }
@@ -748,7 +764,7 @@ export function createPlanService(options: CreatePlanServiceOptions): PlanServic
         );
 
         const at = now();
-        const planId = newId();
+        const planId = options.planId === undefined ? newId() : parseId(options.planId, "planId");
         const version = (await tx.maxVersion()) + 1;
         const oldItems = active ? await tx.items(active.id) : [];
         const oldById = new Map(oldItems.map((item) => [item.id, item]));
@@ -1307,6 +1323,87 @@ export function createPlanService(options: CreatePlanServiceOptions): PlanServic
       return repository.read(scope, async (reader) => {
         const plan = await reader.activePlanView();
         return plan ? readSnapshot(reader, plan) : null;
+      });
+    },
+
+    async phaseRefinementTargets() {
+      const at = new Date(now());
+      return repository.read(scope, async (reader) => {
+        const plan = await reader.activePlan();
+        if (!plan) return null;
+        const candidates = phaseRefinementCandidates(plan, at);
+        if (candidates.length === 0) return null;
+        const targets: number[] = [];
+        for (const index of candidates) {
+          if (!(await reader.hasLogIdempotencyKey(planRefineKey(plan.id, index)))) targets.push(index);
+        }
+        if (targets.length === 0) return null;
+        // 只回计划行：补细只需要阶段与目标（不读条目与进展记录，R-14）。
+        return { plan, targets };
+      });
+    },
+
+    async applyPhaseRefinement(rawInput) {
+      const planId = parseId(rawInput?.planId, "planId");
+      const phaseIndex = rawInput?.phaseIndex;
+      if (typeof phaseIndex !== "number" || !Number.isInteger(phaseIndex) || phaseIndex < 0) {
+        throw new PlanServiceError("INVALID_INPUT", "phaseIndex must be a non-negative integer.");
+      }
+      return repository.transact(scope, async (tx) => {
+        const plan = await tx.activePlan();
+        if (!plan || plan.id !== planId) return { applied: false, entry: null, items: [], reason: "plan_changed" as const };
+        const phase = plan.phases[phaseIndex];
+        if (!phase) return { applied: false, entry: null, items: [], reason: "phase_missing" as const };
+        const key = planRefineKey(plan.id, phaseIndex);
+        if (await tx.hasLogIdempotencyKey(key)) return { applied: false, entry: null, items: [], reason: "already_refined" as const };
+        // 复用整份计划的结构校验（阶段、周次在阶段内、四类条目、行业分类、targetCount）；条目一律归到这一段。
+        const parsed = parseCreatePlanVersionInput({
+          analysis: {},
+          goalSnapshot: plan.goalSnapshot,
+          horizon: plan.horizon,
+          items: (Array.isArray(rawInput.items) ? rawInput.items : []).map((item) => ({
+            ...item,
+            meta: { ...(item.meta ?? {}), source: PLAN_AI_REFINE_SOURCE },
+            phaseKey: phase.key,
+          })),
+          phases: plan.phases,
+          startsOn: plan.startsOn,
+        });
+        await assertReferences(
+          parsed.items.flatMap((item) => item.contactIds),
+          parsed.items.flatMap((item) => (item.linkedEventId ? [item.linkedEventId] : [])),
+        );
+        const existing = await tx.items(plan.id);
+        const knownEvents = new Set(existing.filter((item) => item.kind === "event" && item.linkedEventId).map((item) => item.linkedEventId));
+        const at = now();
+        let sortKey = existing.reduce((max, item) => Math.max(max, item.sortKey), -1);
+        const room = Math.max(0, PLAN_LIMITS.itemsPerPlan - existing.length);
+        const inserts = parsed.items
+          // 同一活动在计划里只出现一次。
+          .filter((item) => item.kind !== "event" || !knownEvents.has(item.linkedEventId))
+          .slice(0, room)
+          .map((item) => {
+            sortKey += 1;
+            return buildItem(item, plan.id, sortKey, at);
+          });
+        if (inserts.length > 0) await tx.insertItems(inserts);
+        const entry = await writeLog(tx, {
+          author: "system",
+          body: clip(`补充第 ${phaseIndex + 1} 阶段「${phase.title}」的 ${inserts.length} 项内容`),
+          createdAt: at,
+          event: "phase_refined",
+          fromStatus: null,
+          idempotencyKey: key,
+          itemId: null,
+          kind: "auto",
+          linkedContactIds: [],
+          linkedEventId: null,
+          payload: { itemCount: inserts.length, itemIds: inserts.map((item) => item.id), phaseIndex, phaseKey: phase.key, phaseTitle: phase.title },
+          planId: plan.id,
+          targetItemId: null,
+          toStatus: phase.key,
+        });
+        return { applied: true, entry, items: inserts };
       });
     },
 

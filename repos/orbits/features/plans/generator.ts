@@ -16,7 +16,7 @@
  * 里面引用的联系人／活动一律是 id + 生成时的显示名快照，同样经过引用校验。
  */
 import type { IndustryIdCode, SecondaryIndustryIdCode } from "../../shared/contract/industries";
-import type { CreatePlanVersionInput, NewPlanItemInput, PlanHorizon, PlanPhase } from "./contract";
+import { PLAN_LIMITS, type CreatePlanVersionInput, type NewPlanItemInput, type PlanHorizon, type PlanPhase } from "./contract";
 
 export type PlanLocale = "en" | "zh";
 
@@ -109,6 +109,8 @@ export interface PlanAnalysisV1 {
   allies: PlanAnalysisAlly[];
   gaps: string[];
   phases: PlanAnalysisPhase[];
+  /** W0048b：AI 生成时同一操作产出或复用的人脉分析快照（`network_analysis_snapshots.id`）；mock 计划没有。 */
+  snapshotId?: string;
 }
 
 /** 骨架里的一个阶段：保存用的阶段字段 + 生成细节需要的提示。 */
@@ -138,6 +140,61 @@ export interface PlanGenerator {
 }
 
 export type PlanDraft = Omit<CreatePlanVersionInput, "analysis"> & { analysis: PlanAnalysisV1 };
+
+/**
+ * W0048b：按操作计次的生成器（`ai` provider）。一次计划生成 = 用户主动池 1 次操作：
+ * `openSession` 先向账本预留（并按 W0048a 判定产出或复用快照），返回本次操作专用的生成器（每次 HTTP 前登记子账）；
+ * 调用方（`runPlanGeneration`）是该操作的唯一结算者：保存成功 `finish("succeeded")`，其余任一失败 `finish("failed")`
+ * （账本据「是否拿到过响应」记 failed 或 released）。
+ */
+export interface PlanGenerationSessionContext {
+  actorId: string;
+  /** 账本幂等键（计划的 creationKey；`ai_regenerate` 另带一次点击的键）。 */
+  ledgerKey: string;
+  locale: PlanLocale;
+  now: Date;
+  /** 预先分配的新计划 id：快照 `origin = plan` 时记在快照上，保存时用同一个 id。 */
+  planId: string;
+}
+
+export interface PlanGenerationSession {
+  generator: PlanGenerator;
+  /** 生成时只细化前几个阶段（D46②：AI 为 2）；null = 全部。 */
+  detailPhases: number | null;
+  planId: string;
+  /** 保存前由服务端补的字段（规则数字、快照 id）。 */
+  finalize(draft: PlanDraft, input: PlanGeneratorInput): PlanDraft;
+  /** 只生效一次（重复调用为 no-op）。 */
+  finish(outcome: "succeeded" | "failed"): Promise<void>;
+}
+
+export interface MeteredPlanGenerator extends PlanGenerator {
+  readonly metered: true;
+  openSession(context: PlanGenerationSessionContext): Promise<PlanGenerationSession>;
+}
+
+export function isMeteredPlanGenerator(generator: PlanGenerator): generator is MeteredPlanGenerator {
+  return (generator as Partial<MeteredPlanGenerator>).metered === true && typeof (generator as Partial<MeteredPlanGenerator>).openSession === "function";
+}
+
+/** 用户主动池（每人每东京日 10 次操作）用满：0 次调用，路由返回 429 `USER_DAILY_LIMIT`。 */
+export class PlanGenerationLimitError extends Error {
+  readonly retryOn: string | null;
+
+  constructor(retryOn: string | null) {
+    super("You have used today's AI plan generations. Try again tomorrow.");
+    this.name = "PlanGenerationLimitError";
+    this.retryOn = retryOn;
+  }
+}
+
+/** 账本不可用（表未迁移等）：0 次调用，fail closed（路由 503）。 */
+export class PlanGenerationUnavailableError extends Error {
+  constructor(message = "AI plan generation is temporarily unavailable.") {
+    super(message);
+    this.name = "PlanGenerationUnavailableError";
+  }
+}
 
 /** 生成失败（任一阶段）：不保存半份，界面提示重试。 */
 export class PlanGenerationError extends Error {
@@ -190,16 +247,24 @@ export async function mapBounded<T, R>(
 export async function generatePlanDraft(
   generator: PlanGenerator,
   input: PlanGeneratorInput,
-  options: { concurrency?: number; idempotencyKey?: string | null } = {},
+  options: { concurrency?: number; idempotencyKey?: string | null; detailPhases?: number | null } = {},
 ): Promise<PlanDraft> {
   let skeleton: PlanSkeleton;
   try {
     skeleton = await generator.skeleton(input);
   } catch (error) {
-    throw new PlanGenerationError("The plan skeleton could not be generated.", null, { cause: error });
+    throw error instanceof PlanGenerationError
+      ? error
+      : new PlanGenerationError("The plan skeleton could not be generated.", null, { cause: error });
+  }
+  // W0048b R-4：骨架解析后、任何阶段请求之前核对阶段数上限，超出整份失败（不发阶段请求）。
+  if (skeleton.phases.length === 0 || skeleton.phases.length > PLAN_LIMITS.phasesPerPlan) {
+    throw new PlanGenerationError(`A plan cannot have ${skeleton.phases.length} phases.`, null);
   }
 
-  const details = await mapBounded(skeleton.phases, options.concurrency ?? PLAN_PHASE_CONCURRENCY, async (phase) => {
+  // D46②：只细化前 `detailPhases` 个阶段；其余以骨架形态保存（标题与摘要，无条目），到期前由维护任务补细。
+  const detailCount = options.detailPhases == null ? skeleton.phases.length : Math.max(0, Math.min(options.detailPhases, skeleton.phases.length));
+  const detailed = await mapBounded(skeleton.phases.slice(0, detailCount), options.concurrency ?? PLAN_PHASE_CONCURRENCY, async (phase) => {
     try {
       const detail = await generator.phaseDetail(input, phase);
       if (detail.phaseKey !== phase.key) throw new Error(`Detail for ${detail.phaseKey} returned for phase ${phase.key}.`);
@@ -211,12 +276,16 @@ export async function generatePlanDraft(
     }
   });
 
+  const details: PlanPhaseDetail[] = skeleton.phases.map(
+    (phase, index) => detailed[index] ?? { followups: [], items: [], phaseKey: phase.key, who: [] },
+  );
+
   return {
     analysis: {
       ...skeleton.analysis,
       generator: generator.id,
       phases: skeleton.phases.map((phase, index) => ({
-        detailed: phase.detailed,
+        detailed: index < detailCount ? phase.detailed : false,
         followups: details[index]!.followups,
         key: phase.key,
         who: details[index]!.who,
@@ -233,4 +302,67 @@ export async function generatePlanDraft(
     phases: skeleton.phases.map(({ detailed: _detailed, ...phase }) => phase),
     startsOn: input.startsOn,
   };
+}
+
+/**
+ * W0048b：bootstrap／重新分析／下一份／AI 重新生成共用的「生成 → 校验 → 保存」流水线。
+ * - mock：与改前相同（不预留、不结算）；
+ * - 按操作计次的生成器：先 `openSession`（预留 1 次操作；额度不够 → `PlanGenerationLimitError`，0 次调用），
+ *   生成只细化前 `detailPhases` 段，`finalize` 补规则数字与快照 id，保存成功后结算 succeeded；
+ *   生成、校验、保存任一失败结算 failed（账本按是否拿到过响应记 failed／released）。本函数是唯一结算者。
+ */
+export async function runPlanGeneration<R>(args: {
+  generator: PlanGenerator;
+  input: PlanGeneratorInput;
+  idempotencyKey: string;
+  ledgerKey: string;
+  now: Date;
+  /** 生成失败（骨架或阶段）时包装成调用方的错误。 */
+  wrapGenerationError: (error: unknown) => Error;
+  validate: (draft: PlanDraft) => Promise<void>;
+  save: (draft: PlanDraft, planId: string | undefined) => Promise<R>;
+}): Promise<R> {
+  if (!isMeteredPlanGenerator(args.generator)) {
+    let draft: PlanDraft;
+    try {
+      draft = await generatePlanDraft(args.generator, args.input, { idempotencyKey: args.idempotencyKey });
+    } catch (error) {
+      throw args.wrapGenerationError(error);
+    }
+    await args.validate(draft);
+    return args.save(draft, undefined);
+  }
+  let session: PlanGenerationSession;
+  try {
+    session = await args.generator.openSession({
+      actorId: args.input.actorId,
+      ledgerKey: args.ledgerKey,
+      locale: args.input.locale,
+      now: args.now,
+      // 不 import node:crypto：本模块经 reanalysis.ts 进入客户端包（只在服务端执行到这里）。
+      planId: globalThis.crypto.randomUUID(),
+    });
+  } catch (error) {
+    if (error instanceof PlanGenerationLimitError || error instanceof PlanGenerationUnavailableError) throw error;
+    throw args.wrapGenerationError(error);
+  }
+  try {
+    let draft: PlanDraft;
+    try {
+      draft = await generatePlanDraft(session.generator, args.input, {
+        detailPhases: session.detailPhases,
+        idempotencyKey: args.idempotencyKey,
+      });
+    } catch (error) {
+      throw args.wrapGenerationError(error);
+    }
+    draft = session.finalize(draft, args.input);
+    await args.validate(draft);
+    const result = await args.save(draft, session.planId);
+    await session.finish("succeeded");
+    return result;
+  } catch (error) {
+    await session.finish("failed").catch(() => undefined);
+    throw error;
+  }
 }

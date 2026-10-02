@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 
 import type { PlanVersionOrigin, ReanalysisQuota } from "../../../../../features/plans/contract";
+import {
+  isMeteredPlanGenerator,
+  PlanGenerationLimitError,
+  PlanGenerationUnavailableError,
+} from "../../../../../features/plans/generator";
 import { resolvePlanGenerator } from "../../../../../features/plans/generator-service-factory";
 import { createConfiguredPlanInputSource } from "../../../../../features/plans/input-source";
 import { getConfiguredPlanMatchingRuntime } from "../../../../../features/plans/matching-runtime";
@@ -26,6 +31,7 @@ import {
   type ServiceResolution,
 } from "../../../../../shared/services/module-mode";
 import { parseRelationshipGoal } from "../../../../(app)/app/profile/goal-editor/goal-editor-model";
+import { readDemoModeViewForActor } from "../../../../(app)/app/_demo/demo-guide-view";
 import {
   authenticatedApiActorRequiredResponse,
   resolveAuthenticatedApiActor,
@@ -45,13 +51,30 @@ import {
  * 生成仍用 mock 生成器（D3）。保存在一个事务里：归档旧版、写新版、带入已完成的内容、（重新分析时）
  * 记下本月额度；任一步失败什么都不留下。本月额度用完 409 `REANALYSIS_QUOTA_EXHAUSTED`。
  * 响应 `{ planId, version, replayed, quota }`。
+ *
+ * W0048b：
+ * - `origin: "ai_regenerate"`：生效计划是老模板计划（`analysis.generator = "mock-template-v1"`）且 provider 是 `ai`
+ *   时用 AI 重新生成；不写 `reanalysis:<月>` 键、不占月额度；每份老计划只生成一次（creationKey
+ *   `ai-regenerate:<旧计划 id>`，重复点击 replay）。provider 不是 `ai` 或生效计划不是模板计划 400。
+ * - provider 为 `ai` 时一次生成 = 用户主动池 1 次操作：当日用满 429 `USER_DAILY_LIMIT`（0 次调用）；
+ *   示例模式 403 `DEMO_MODE`。生成在请求内同步完成（maxDuration 300）。
  */
 export interface PlanReanalyzeRouteDependencies {
   resolveActor?: () => Promise<AuthenticatedApiActor | null>;
   readGoal?: (actorId: string) => Promise<string | null>;
-  serviceForActor?: (
-    actorId: string,
-  ) => ServiceResolution<{ followUp: PlanFollowUpService; quota: () => Promise<ReanalysisQuota> }>;
+  serviceForActor?: (actorId: string) => ServiceResolution<PlanFollowUpServices>;
+  isDemo?: (actor: AuthenticatedApiActor) => Promise<boolean>;
+}
+
+export interface PlanFollowUpServices {
+  followUp: PlanFollowUpService;
+  quota: () => Promise<ReanalysisQuota>;
+  /** W0048b：生成器按操作计次（provider `ai`）——只有这时 `ai_regenerate` 可用。 */
+  metered?: boolean;
+}
+
+async function defaultIsDemo(actor: AuthenticatedApiActor): Promise<boolean> {
+  return (await readDemoModeViewForActor({ actorId: actor.id, userId: actor.userId ?? null })) !== null;
 }
 
 const KEY_PATTERN = /^[A-Za-z0-9:_-]{1,100}$/;
@@ -66,9 +89,7 @@ async function readProfileGoal(actorId: string): Promise<string | null> {
   return result.data.profile?.relationshipGoal ?? null;
 }
 
-export function resolveDefaultPlanFollowUpService(
-  actorId: string,
-): ServiceResolution<{ followUp: PlanFollowUpService; quota: () => Promise<ReanalysisQuota> }> {
+export function resolveDefaultPlanFollowUpService(actorId: string): ServiceResolution<PlanFollowUpServices> {
   const plans = resolvePlanService({ actorId });
   if (plans.success === false) return plans;
   const references = resolvePlanReferenceValidator({ actorId });
@@ -90,6 +111,7 @@ export function resolveDefaultPlanFollowUpService(
         references: references.service,
         source,
       }),
+      metered: isMeteredPlanGenerator(generator.service),
       quota: () => plans.service.reanalysisQuota(),
     },
     success: true,
@@ -100,6 +122,7 @@ export function createPlanReanalyzeRouteHandlers(dependencies: PlanReanalyzeRout
   const resolveActor = dependencies.resolveActor ?? resolveAuthenticatedApiActor;
   const readGoal = dependencies.readGoal ?? readProfileGoal;
   const serviceForActor = dependencies.serviceForActor ?? resolveDefaultPlanFollowUpService;
+  const isDemo = dependencies.isDemo ?? defaultIsDemo;
 
   return {
     async POST(request: Request): Promise<Response> {
@@ -112,7 +135,7 @@ export function createPlanReanalyzeRouteHandlers(dependencies: PlanReanalyzeRout
         });
 
       let actorId: string;
-      let services: { followUp: PlanFollowUpService; quota: () => Promise<ReanalysisQuota> };
+      let services: PlanFollowUpServices;
       try {
         const actor = await resolveActor();
         if (!actor?.id) return authenticatedApiActorRequiredResponse(mode);
@@ -126,6 +149,12 @@ export function createPlanReanalyzeRouteHandlers(dependencies: PlanReanalyzeRout
           });
         }
         services = resolution.service;
+        if (services.metered && (await isDemo(actor))) {
+          return NextResponse.json(failure(new AppError("FORBIDDEN", "The example plan cannot be regenerated."), { reason: "DEMO_MODE" }), {
+            headers,
+            status: 403,
+          });
+        }
       } catch (error) {
         return fail(
           error instanceof AppError
@@ -145,10 +174,14 @@ export function createPlanReanalyzeRouteHandlers(dependencies: PlanReanalyzeRout
         if (typeof body.basePlanId !== "string" || !body.basePlanId.trim() || body.basePlanId.length > 200) {
           throw new AppError("VALIDATION_ERROR", "basePlanId is required.");
         }
-        if (body.origin !== undefined && body.origin !== "reanalysis" && body.origin !== "next_plan") {
-          throw new AppError("VALIDATION_ERROR", 'origin must be "reanalysis" or "next_plan".');
+        if (body.origin !== undefined && body.origin !== "reanalysis" && body.origin !== "next_plan" && body.origin !== "ai_regenerate") {
+          throw new AppError("VALIDATION_ERROR", 'origin must be "reanalysis", "next_plan" or "ai_regenerate".');
         }
-        const origin: PlanVersionOrigin = body.origin === "next_plan" ? "next_plan" : "reanalysis";
+        const origin: PlanVersionOrigin =
+          body.origin === "next_plan" ? "next_plan" : body.origin === "ai_regenerate" ? "ai_regenerate" : "reanalysis";
+        if (origin === "ai_regenerate" && !services.metered) {
+          return fail(new AppError("VALIDATION_ERROR", "AI regeneration is not available."), { reason: "AI_REGENERATE_UNAVAILABLE" });
+        }
         const rawGoal = ((await readGoal(actorId)) ?? "").trim();
         const parsed = parseRelationshipGoal(rawGoal);
         const result = await services.followUp.create({
@@ -168,6 +201,15 @@ export function createPlanReanalyzeRouteHandlers(dependencies: PlanReanalyzeRout
           { headers, status: result.replayed ? 200 : 201 },
         );
       } catch (error) {
+        if (error instanceof PlanGenerationLimitError) {
+          return NextResponse.json(
+            failure(new AppError("CONFLICT", error.message), { reason: "USER_DAILY_LIMIT", ...(error.retryOn ? { retryOn: error.retryOn } : {}) }),
+            { headers, status: 429 },
+          );
+        }
+        if (error instanceof PlanGenerationUnavailableError) {
+          return fail(new AppError("SERVICE_UNAVAILABLE", error.message), { reason: "AI_UNAVAILABLE" });
+        }
         if (error instanceof PlanFollowUpError) {
           return fail(
             new AppError(error.reason === "GOAL_REQUIRED" ? "VALIDATION_ERROR" : "SERVICE_UNAVAILABLE", error.message, {

@@ -132,6 +132,9 @@ export function StepPlan({
         window.location.assign(preserveHref(`/app/agent?plan=${encodeURIComponent(existing)}`));
         return;
       }
+      // W0048b：服务端已给出明确的失败（含 AI 生成失败已计次）：下次点击换新的幂等键重新生成；
+      // 只有没收到响应（断线）时沿用同一个键，服务端可能已经保存、重放即可取回。
+      attemptRef.current = null;
       setAnalysis({ kind: "failed", reason: payload?.error?.context?.reason ?? null });
     } catch {
       setAnalysis({ kind: "failed", reason: null });
@@ -280,7 +283,9 @@ export function StepPlan({
         <p className="sg-error" data-start-plan-error role="alert">
           {analysis.reason === "GOAL_REQUIRED"
             ? t({ en: "Write your goal first, then ask again.", zh: "先写一句目标，再来提问。" })
-            : t({
+            : analysis.reason === "USER_DAILY_LIMIT"
+              ? t({ en: "You've used today's AI runs. Try again tomorrow.", zh: "今天次数已用完，明天可用。" })
+              : t({
                 en: "The plan couldn't be generated and nothing was saved. Please try again.",
                 zh: "计划没有生成成功，没有保存任何内容。请再试一次。",
               })}

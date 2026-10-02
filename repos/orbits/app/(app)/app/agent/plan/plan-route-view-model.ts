@@ -24,6 +24,7 @@ import type {
 } from "../../../../../features/plans/contract";
 import { PLAN_MATCH_ACTION_SOURCE } from "../../../../../features/plans/contract";
 import type { PlanAnalysisV1 } from "../../../../../features/plans/generator";
+import { AI_PLAN_GENERATOR_ID, PLAN_AI_REFINE_SOURCE } from "../../../../../features/plans/phase-refinement";
 import {
   buildPlanReview,
   reanalysisTriggers,
@@ -91,6 +92,11 @@ export interface MyPlanPhase {
   followups: string[];
   /** 30 秒自我介绍只挂在当前阶段（它是整份计划的一段话）。 */
   pitch: { setting: string; text: string } | null;
+  /**
+   * W0048b（D46②）：AI 计划第 3 段起的骨架阶段。`upcoming` = 还没到（前一阶段开始后由维护任务补细）；
+   * `pending` = 已经开始仍未补细（后台池顺延等），显示骨架 +「明天更新」；`none` = 已有细节或不是 AI 骨架阶段。
+   */
+  refinement: "none" | "upcoming" | "pending";
 }
 
 export interface MyPlanNeed {
@@ -351,6 +357,12 @@ export function planLogText(
     case "plan_created":
       if (lang === "en") return "Plan created";
       break;
+    case "phase_refined": {
+      const title = typeof entry.payload.phaseTitle === "string" ? entry.payload.phaseTitle : null;
+      const count = typeof entry.payload.itemCount === "number" ? entry.payload.itemCount : 0;
+      if (!title) break;
+      return lang === "zh" ? `补充了阶段${quote(title)}的 ${count} 项内容` : `Added ${count} item(s) to ${quote(title)}`;
+    }
     case "phase_entered": {
       const title = typeof entry.payload.phaseTitle === "string" ? entry.payload.phaseTitle : null;
       const count = typeof entry.payload.refinedCount === "number" ? entry.payload.refinedCount : 0;
@@ -438,11 +450,15 @@ export function buildMyPlanViewModel(input: {
     week.currentWeek,
   ).map((entry) => toAction(entry, lang, week.displayWeek));
 
+  const aiPlan = analysis?.generator === AI_PLAN_GENERATOR_ID;
   const phases: MyPlanPhase[] = plan.phases.map((phase, index) => {
     const own = items.filter((item) => item.phaseKey === phase.key).sort(byPlanOrder);
     const ownActions = own.filter((item) => item.kind === "action");
     const current = index === week.phaseIndex;
+    const skeleton =
+      aiPlan && analysisPhases.get(phase.key)?.detailed === false && !own.some((item) => item.meta.source === PLAN_AI_REFINE_SOURCE);
     return {
+      refinement: skeleton ? (index <= week.phaseIndex ? "pending" : "upcoming") : "none",
       actions: ownActions.map((item) => ({
         done: item.status === "done",
         id: item.id,
@@ -666,6 +682,8 @@ export interface PlanTrackingInput {
   currentGoal: string | null;
   /** 计划期间新增的联系人（只在计划到期时读）。 */
   periodContacts: PlanPeriodContacts | null;
+  /** W0048b：计划生成器是 AI（`ORBIT_PLAN_GENERATOR=ai`）——模板计划可「AI 重新生成」。缺省 false。 */
+  aiProvider?: boolean;
 }
 
 export interface MyPlanTrackingView {
@@ -677,6 +695,8 @@ export interface MyPlanTrackingView {
   review: {
     lines: string[];
   } | null;
+  /** W0048b：生效计划由模板生成且 provider 是 AI：显示「AI 重新生成」提示行（不占本月重新分析次数）。 */
+  aiRegenerate: boolean;
 }
 
 export function buildPlanTrackingView(input: {
@@ -686,6 +706,7 @@ export function buildPlanTrackingView(input: {
   currentGoal: string | null;
   quotaRemaining: number | null;
   periodContacts: PlanPeriodContacts | null;
+  aiProvider?: boolean;
 }): MyPlanTrackingView {
   const lang = input.language;
   const zh = lang === "zh";
@@ -717,8 +738,12 @@ export function buildPlanTrackingView(input: {
       ],
     };
   }
-  return { prompts, quotaRemaining: input.quotaRemaining, review };
+  const aiRegenerate = input.aiProvider === true && input.snapshot.plan.analysis.generator === MOCK_TEMPLATE_GENERATOR_ID;
+  return { aiRegenerate, prompts, quotaRemaining: input.quotaRemaining, review };
 }
+
+/** 老模板计划在 `analysis.generator` 里的 id（与 `mock-generator.ts` 的 MOCK_PLAN_GENERATOR_ID 一致）。 */
+const MOCK_TEMPLATE_GENERATOR_ID = "mock-template-v1";
 
 /** iOrbit 首页周一导语（规则拼出，不调 AI）。 */
 export function weeklySummaryLede(summary: PlanWeeklySummary, language: Lang): string {

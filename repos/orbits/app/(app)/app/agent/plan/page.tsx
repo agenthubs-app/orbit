@@ -27,6 +27,7 @@ import {
   type PlanContactName,
 } from "../../../../../features/plans/contact-names";
 import type { PlanService, PlanViewSnapshot } from "../../../../../features/plans/contract";
+import { isAiPlanGeneratorConfigured } from "../../../../../features/plans/generator-service-factory";
 import { planWeekState } from "../../../../../features/plans/week";
 import { readCurrentPlan } from "./read-current-plan";
 import { createProfileService } from "../../../../../features/profile/service-factory";
@@ -64,7 +65,8 @@ async function readTracking(
         : null,
     ),
   ]);
-  return { currentGoal: goal, periodContacts, quotaRemaining: quota };
+  // W0048b：provider 是 AI 时，模板计划显示「AI 重新生成」（只看配置，不额外读库）。
+  return { aiProvider: isAiPlanGeneratorConfigured(), currentGoal: goal, periodContacts, quotaRemaining: quota };
 }
 
 async function readContactNames(
