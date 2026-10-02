@@ -79,16 +79,25 @@ const USAGE_SQL = `/* ai-quota:usage-today */
   from ai_usage_ledger
   where workspace_id = $1 and actor_id = $2 and usage_day = $3::date and status <> 'released'`;
 
-const BEGIN_CALL_SQL = `/* ai-quota:begin-call */
+/**
+ * W0048b 合并后修复：同一操作并发 beginCall 时序号竞争（两边都算出 count+1，主键冲突被误报为 MAX_CALLS）。
+ * 现在在一个事务里先 `for update` 锁住操作行，再数当前 epoch 的子账、分配序号、插入：同一操作的登记串行，
+ * 上限在并发下严格成立，序号连续。
+ */
+const LOCK_OPERATION_SQL = `/* ai-quota:begin-call-lock */
+  select status, epoch, max_calls from ai_usage_ledger where workspace_id = $1 and id = $2 for update`;
+
+/**
+ * 计数必须是锁之后的**另一条语句**：read committed 下被锁阻塞的语句醒来后只重查被锁的行，
+ * 同一语句里的子查询仍用旧快照（会算出重复序号）。新语句取新快照，看得到前一个持锁者已提交的子账。
+ */
+const COUNT_CALLS_SQL = `/* ai-quota:begin-call-count */
+  select count(*) filter (where epoch = $3)::int as epoch_calls, coalesce(max(seq), 0)::int as max_seq
+  from ai_usage_calls where workspace_id = $1 and operation_id = $2`;
+
+const INSERT_CALL_SQL = `/* ai-quota:begin-call */
   insert into ai_usage_calls (workspace_id, operation_id, seq, epoch, provider, model, status, started_at)
-  select l.workspace_id, l.id,
-    (select count(*) from ai_usage_calls c where c.workspace_id = l.workspace_id and c.operation_id = l.id)::int + 1,
-    l.epoch, $3, $4, 'started', now()
-  from ai_usage_ledger l
-  where l.workspace_id = $1 and l.id = $2 and l.status = 'reserved'
-    -- 当前 epoch 的全部子账（含 no_response）严格不超过 max_calls。
-    and (select count(*) from ai_usage_calls c where c.workspace_id = l.workspace_id and c.operation_id = l.id and c.epoch = l.epoch) < l.max_calls
-  returning seq`;
+  values ($1, $2, $3, $4, $5, $6, 'started', now())`;
 
 export function createPostgresAiUsageLedger(input: { client: TransactionalPostgresClient; workspaceId: string }): AiUsageLedger {
   const { client, workspaceId } = input;
@@ -178,20 +187,18 @@ export function createPostgresAiUsageLedger(input: { client: TransactionalPostgr
       }
     },
     async beginCall(operationId, call) {
-      let rows: readonly Row[];
-      try {
-        rows = (await client.query<Row>(BEGIN_CALL_SQL, [workspaceId, operationId, call.provider.slice(0, 100), call.model.slice(0, 200)])).rows;
-      } catch (error) {
-        // 并发登记同一操作的同一序号：主键挡住第二条，视为超出上限。
-        if ((error as { code?: unknown })?.code === "23505") throw new AiQuotaCallRejectedError("MAX_CALLS", "This AI operation has no calls left.");
-        throw error;
-      }
-      if (!rows[0]) {
-        const state = await readOperation(operationId);
-        if (!state || state.status !== "reserved") throw new AiQuotaCallRejectedError("OPERATION_NOT_OPEN", "This AI operation is not open.");
-        throw new AiQuotaCallRejectedError("MAX_CALLS", "This AI operation has no calls left.");
-      }
-      return { callId: `${operationId}#${count(rows[0].seq)}` };
+      // 主键冲突等真实错误原样抛出，不再映射成 MAX_CALLS。
+      const seq = await client.transaction(async (tx) => {
+        const row = (await tx.query<Row>(LOCK_OPERATION_SQL, [workspaceId, operationId])).rows[0];
+        if (!row || row.status !== "reserved") throw new AiQuotaCallRejectedError("OPERATION_NOT_OPEN", "This AI operation is not open.");
+        const counts = (await tx.query<Row>(COUNT_CALLS_SQL, [workspaceId, operationId, count(row.epoch)])).rows[0];
+        // 当前 epoch 的全部子账（含 no_response）严格不超过 max_calls。
+        if (count(counts?.epoch_calls) >= count(row.max_calls)) throw new AiQuotaCallRejectedError("MAX_CALLS", "This AI operation has no calls left.");
+        const next = count(counts?.max_seq) + 1;
+        await tx.query(INSERT_CALL_SQL, [workspaceId, operationId, next, count(row.epoch), call.provider.slice(0, 100), call.model.slice(0, 200)]);
+        return next;
+      }, { isolation: "read committed" });
+      return { callId: `${operationId}#${seq}` };
     },
     async endCall(callId, usage) {
       const at = callId.lastIndexOf("#");
