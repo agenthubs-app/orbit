@@ -16,7 +16,8 @@ import { act, create, type ReactTestInstance, type ReactTestRenderer } from "rea
 import type { ReactElement } from "react";
 
 import { DemoInterceptLayer, DemoModeProvider, type DemoModeView } from "../../app/(app)/app/_demo/demo-mode-core";
-import { buildDemoNetworkAnalysis, buildDemoNetworkDetail, buildDemoNetworkTierBoard, buildDemoNetworkViewModel } from "../../app/(app)/app/_demo/demo-network";
+import { buildDemoNetworkAnalysis, buildDemoNetworkDetail, buildDemoNetworkOverviewParts, buildDemoNetworkTierBoard, buildDemoNetworkViewModel } from "../../app/(app)/app/_demo/demo-network";
+import { buildNetworkOverviewData } from "../../app/(app)/app/contacts/network-0918/network-overview-cockpit-model";
 import { NetworkAll } from "../../app/(app)/app/contacts/network-0918/network-all";
 import { NetworkDemoFrame } from "../../app/(app)/app/contacts/network-0918/network-demo-frame";
 import { NetworkFollowModal } from "../../app/(app)/app/contacts/network-0918/network-follow-modal";
@@ -28,6 +29,8 @@ const NOW = new Date("2026-09-28T03:00:00.000Z");
 const VM = buildDemoNetworkViewModel(NOW, "zh");
 const ANALYSIS = buildDemoNetworkAnalysis(NOW, "zh");
 const BOARD = buildDemoNetworkTierBoard();
+// W0052：示例概览 = 示例分析 + 示例驾驶舱附加数据（同一组装函数，0 请求）。
+const OVERVIEW = buildNetworkOverviewData(buildDemoNetworkOverviewParts(NOW, "zh"), ANALYSIS);
 const VIEW: DemoModeView = {
   bannerCollapsed: false,
   completed: 1,
@@ -75,13 +78,13 @@ test("without the demo provider the same list has no banner and no demo tags", (
   const pipeline = renderToStaticMarkup(<NetworkPipeline viewModel={VM} analysis={ANALYSIS} board={BOARD} />);
   assert.match(pipeline, /基于你的关系管线、互动记录和行业动态/);
   assert.match(pipeline, /class="nw-suggest-title">14:00 见面，请他引荐 IT 决策人</);
-  const overview = renderToStaticMarkup(<NetworkOverview viewModel={VM} analysis={ANALYSIS} />);
+  const overview = renderToStaticMarkup(<NetworkOverview analysis={ANALYSIS} overview={OVERVIEW} />);
   assert.match(overview, /基于你的人脉数据/);
   assert.doesNotMatch(overview, /data-orbit-guide-demo-tag/);
 });
 
-test("overview in the demo: advancing highlights tagged, cockpit and distribution from the demo data", () => {
-  const html = renderToStaticMarkup(inDemo(<NetworkOverview viewModel={VM} analysis={ANALYSIS} />));
+test("overview in the demo: core highlights tagged, cockpit numbers, tiers and activity from the demo data, no snapshot sentence", () => {
+  const html = renderToStaticMarkup(inDemo(<NetworkOverview analysis={ANALYSIS} overview={OVERVIEW} />));
   assert.match(html, /完成引导后，这里换成你自己的人脉。/);
   assert.match(html, /王砚<span class="ir-demo-tag"/);
   assert.match(html, /佐藤美咲<span class="ir-demo-tag"/);
@@ -89,12 +92,32 @@ test("overview in the demo: advancing highlights tagged, cockpit and distributio
   assert.match(html, /示例人物的人脉分析 · 依据 30 位示例联系人/);
   assert.match(html, /示例人物的人脉分析：/);
   assert.doesNotMatch(html, /基于你的人脉数据/);
-  assert.match(html, /正在推进<\/span><strong class="nw-stage-n">5</);
-  // 最近动态里的人名是结构化字段，带「示例」角标。
-  for (const name of ["铃木健", "高桥由美", "王砚", "佐藤美咲"]) {
-    assert.match(html, new RegExp(`class="nw-recent-name">${name}<span class="ir-demo-tag"`), name);
+  // W0052：示例数字 + 示例档位（新认识 9／有往来 13／核心 5／待唤醒 3），没有快照句子；手动阶段不再出现。
+  assert.match(html, /30 位联系人[\s\S]*?已有 3／共 8[\s\S]*?6 项建议动作[\s\S]*?3 位待唤醒/);
+  assert.doesNotMatch(html.replace(/<style[\s\S]*?<\/style>/g, ""), /nw-cockpit-sentence/);
+  for (const [label, n] of [["新认识", 9], ["有往来", 13], ["核心", 5], ["待唤醒", 3]] as const) {
+    assert.match(html, new RegExp(`${label}</span><strong class="nw-stage-n">${n}<`), label);
   }
+  assert.doesNotMatch(html, /正在推进|待了解|保持联系/);
+  // 最近动态里的人名是结构化字段，带「示例」角标。
+  for (const name of ["铃木健", "高桥由美", "王砚", "佐藤美咲", "中村惠"]) {
+    assert.match(html, new RegExp(`class="nw-recent-link" href="/app/contacts/demo%3A[a-z-]+">${name}</a><span class="ir-demo-tag"`), name);
+  }
+  assert.match(html, /nw-recent-org">电话：确认了 IT 部门的系统采购决策人</);
   assert.match(html, /制造/);
+});
+
+test("overview in the demo (en): demo tiers and activity are English", () => {
+  const analysis = buildDemoNetworkAnalysis(NOW, "en");
+  const overview = buildNetworkOverviewData(buildDemoNetworkOverviewParts(NOW, "en"), analysis);
+  assert.deepEqual(overview.activity.state === "ready" ? overview.activity.rows.map((row) => [row.name, row.summary.en]) : [], [
+    ["Suzuki Ken", "Added from a business card"],
+    ["Takahashi Yumi", "Added from a business card"],
+    ["Wang Yan", "Call: found out who in IT decides on systems"],
+    ["Sato Misaki", "Replied: 30 minutes of notes after each meeting"],
+    ["Nakamura Megumi", "Met at an event"],
+  ]);
+  assert.deepEqual(overview.highlights?.map((row) => row.name), ["Wang Yan", "Sato Misaki"]);
 });
 
 test("pipeline in the demo: four columns from the demo stages, AI suggestions point at demo contacts", () => {
@@ -311,7 +334,7 @@ test("pipeline and overview open demo details in place too (cards and suggestion
 });
 
 test("overview highlights open the demo detail in place", async (t) => {
-  const overview = await mount(t, inDemo(<NetworkOverview viewModel={VM} analysis={ANALYSIS} />));
+  const overview = await mount(t, inDemo(<NetworkOverview analysis={ANALYSIS} overview={OVERVIEW} />));
   await act(async () => {
     anchor(overview.root, "btn nw-hl", "/app/contacts/demo%3Awang-yan").props.onClick(clickEvent());
   });

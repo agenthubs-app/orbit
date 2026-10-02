@@ -29,15 +29,12 @@ import {
 } from "../analysis/structure-tab-model";
 import { DONUT_COLORS } from "./network-model";
 import { formatMonthDay } from "./network-overview";
+import { TIER_HEALTH_META } from "./network-overview-model";
 
 const RANK_COLORS = [["#4B4FC7", "#FFFFFF"], ["#6B8FB5", "#FFFFFF"], ["#9C7A3E", "#FFFFFF"], ["#8A8FB0", "#FFFFFF"], ["#C9CBEA", "#2E3270"]] as const;
 
-const HEALTH_META = {
-  new: { icon: "◌", label: { zh: "新认识", en: "New" }, desc: { zh: "刚建立联系，往来还不多", en: "Recently connected, few interactions yet" }, bg: "#F0F1F8", fg: "#3B3F7A" },
-  active: { icon: "▦", label: { zh: "有往来", en: "Active" }, desc: { zh: "近期有见面、会议或 memo 往来", en: "Recent meetings, encounters or memos" }, bg: "#ECEEFB", fg: "#2E3270" },
-  core: { icon: "◎", label: { zh: "核心", en: "Core" }, desc: { zh: "往来频繁、互动深入的关系", en: "Frequent, in-depth interactions" }, bg: "#E6F1EC", fg: "#2F6B4F" },
-  dormant: { icon: "◷", label: { zh: "待唤醒", en: "To re-engage" }, desc: { zh: "曾经热络，60 天没有往来", en: "Was active, quiet for 60 days" }, bg: "#FBF1DC", fg: "#8A6420" },
-} as const;
+// W0052：档位图标、文案与配色和概览共用 TIER_HEALTH_META（原本两处重复）。
+const HEALTH_META = TIER_HEALTH_META;
 
 const NO_EXTRAS: StructureTabExtras = { highlights: null, snapshot: { state: "none" }, tierHistory: null };
 

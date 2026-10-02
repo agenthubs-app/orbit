@@ -1,21 +1,24 @@
 /**
- * 「概览」（Network v2 第 66–171 行）。数据 = OrbitContactsViewModel.connections + ContactsAnalysisView。
- * 设计稿 mock（428/128/85%/「↗ +25%」/AI 文案）一律不渲染；驾驶舱四卡 = cockpit(analysis) 真实计数，
- * 「最近动态」= analysis.activity（真实 occurredAt，后端最多 3 条；活动条目不是联系人，故标题改为「最近动态」）。
- * W0043：真实动态的标题与来源是视图模型给的双语模板（或任务标题）；「新增联系人」按 contactId 在名单里找姓名，
- * 找不到（名单只含前 30 位）时只写模板，不解析后端句子取名字。
+ * 「概览」（Network v2 第 66–171 行）。
+ *
+ * W0052（RN-10）：三块改接真实来源，数据由服务端组装成 `NetworkOverviewData`（`network-overview-cockpit-model.ts`）：
+ * - AI 人脉驾驶舱 4 卡 = 快照句子（只来自快照 blocks 或数字模板）+ 规则数字（与分析页同一函数）；无快照不放占位句；
+ * - 关系档位 = 新认识／有往来／核心／待唤醒全量人数（来自分析的全量档位分布，不来自名单），重点联系人 2 位；
+ * - 最近动态 = 关系时间线最近 5 条（姓名链接、来源徽标、摘要、时间），时间线读失败只让这一块显示「来源暂时不可用」。
+ * 人数（环形图中心、按来源、卡片、meta）全部是全量口径；手动阶段（待了解／推进中……）不再出现在概览。
+ * 示例期由 `buildDemoNetworkOverview` 给同一形态的示例数据（不读快照、时间线与计划）。
  */
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 import { DemoTag, useDemoMode } from "../../_demo/demo-mode-core";
-import type { OrbitContactsViewModel } from "../../orbit-contacts-route-view-model";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import type { ContactsAnalysisView } from "../analysis/contacts-analysis-view-model";
-import { NETWORK_STAGES, STAGE_BAR_BG, STAGE_BAR_FG, STAGE_CHIP, STAGE_LABEL, donut, metSummary, stageClip, stageCounts, toPerson } from "./network-model";
-import { useNetworkDemoDetail } from "./network-detail-modal";
-import { cockpit, distributionRows, type DistKey } from "./network-overview-model";
+import { formatTimelineTime, TIMELINE_SOURCE_LABEL, useNetworkDemoDetail } from "./network-detail-modal";
+import { NETWORK_TIER_GROUPS, STAGE_BAR_BG, STAGE_BAR_FG, TIER_CHIP, TIER_LABEL, donut, stageClip } from "./network-model";
+import type { NetworkOverviewData, OverviewMeta } from "./network-overview-cockpit-model";
+import { distributionRows, type DistKey } from "./network-overview-model";
 import { NetworkAvatar, NetworkShell } from "./network-shell";
 
 const DIST_SEGS: { key: DistKey; zh: string; en: string }[] = [
@@ -24,8 +27,10 @@ const DIST_SEGS: { key: DistKey; zh: string; en: string }[] = [
   { key: "source", zh: "按来源", en: "By source" },
 ];
 
+type Translate = (copy: { en: string; zh: string }) => string;
+
 // 只用 UTC 分量，服务端与客户端渲染结果一致（避免 hydration 差异）。
-export function formatMonthDay(iso: string, t: (copy: { en: string; zh: string }) => string, relative = false): string {
+export function formatMonthDay(iso: string, t: Translate, relative = false): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "—";
   if (relative && d.toISOString().slice(0, 10) === new Date().toISOString().slice(0, 10)) return t({ zh: "今天", en: "today" });
@@ -34,29 +39,35 @@ export function formatMonthDay(iso: string, t: (copy: { en: string; zh: string }
   return t({ zh: `${m}月${day}日`, en: `${m}/${day}` });
 }
 
-export function NetworkOverview({ viewModel, analysis }: { viewModel: OrbitContactsViewModel; analysis: ContactsAnalysisView }) {
+const contactsEn = (n: number) => `${n} ${n === 1 ? "contact" : "contacts"}`;
+
+function metaText(meta: OverviewMeta, t: Translate): string {
+  switch (meta.kind) {
+    case "snapshot": {
+      const at = formatMonthDay(meta.generatedAt, t, true);
+      return t({ zh: `生成于${at} · 基于 ${meta.contactCount} 人`, en: `Generated ${at} · based on ${contactsEn(meta.contactCount)}` });
+    }
+    case "total": return t({ zh: `依据 ${meta.total} 位联系人`, en: `Based on ${contactsEn(meta.total)}` });
+    case "ai_unavailable": return t({ zh: "AI 分析暂时不可用", en: "AI analysis temporarily unavailable" });
+    case "pending": return t({ zh: "分析生成中", en: "Analysis in progress" });
+    default: return t({ zh: "来源暂时不可用", en: "Source temporarily unavailable" });
+  }
+}
+
+export function NetworkOverview({ analysis, overview }: { analysis: ContactsAnalysisView; overview: NetworkOverviewData }) {
   const { t, language } = useOrbitLanguage();
   const [dist, setDist] = useState<DistKey>("industry");
-  const people = useMemo(() => viewModel.connections.map(toPerson), [viewModel.connections]);
-  const counts = useMemo(() => stageCounts(people), [people]);
-  const dd = donut(distributionRows(dist, analysis, people, language));
-  const cards = cockpit(analysis);
-  const ready = analysis.state === "ready";
+  const dd = donut(distributionRows(dist, analysis, overview.sources, language));
   const dash = "—";
-  const newContacts = ready ? String(analysis.metrics.newContacts) : dash;
+  const newContacts = analysis.state === "ready" ? String(analysis.metrics.newContacts) : dash;
   // W0005 示例模式：名字带「示例」角标、点开在本页弹示例详情；分析文案说明是示例人物的，不说「你的人脉」。
   const demo = useDemoMode();
   const demoDetail = useNetworkDemoDetail("/app/contacts/dashboard");
+  const total = overview.total;
   const meta = demo
-    ? t({ zh: `示例人物的人脉分析 · 依据 ${people.length} 位示例联系人`, en: `Demo persona's network analysis · based on ${people.length} demo contacts` })
-    : analysis.state === "ready"
-    ? t({ zh: `更新于${formatMonthDay(analysis.generatedAt, t, true)} · 依据 ${people.length} 位联系人`, en: `Updated ${formatMonthDay(analysis.generatedAt, t, true)} · based on ${people.length} contacts` })
-    : analysis.state === "pending"
-    ? t({ zh: `分析生成中 · 依据 ${people.length} 位联系人`, en: `Analysis in progress · based on ${people.length} contacts` })
-    : t({ zh: `来源暂时不可用 · 依据 ${people.length} 位联系人`, en: `Source temporarily unavailable · based on ${people.length} contacts` });
-  const highlights = people.filter((p) => p.stage === "advance").slice(0, 2);
-  const activity = ready ? analysis.activity : [];
-  const nameById = useMemo(() => new Map(viewModel.connections.map((contact) => [contact.id, contact.displayName.trim()])), [viewModel.connections]);
+    ? t({ zh: `示例人物的人脉分析 · 依据 ${total ?? dash} 位示例联系人`, en: `Demo persona's network analysis · based on ${total ?? dash} demo contacts` })
+    : metaText(overview.meta, t);
+  const highlights = overview.highlights;
 
   return (
     <NetworkShell screen="overview" modal={demoDetail.modal}>
@@ -74,7 +85,7 @@ export function NetworkOverview({ viewModel, analysis }: { viewModel: OrbitConta
             <div className="nw-donut-wrap">
               <div className="nw-donut" style={{ background: dd.bg }}>
                 <div className="nw-donut-inner">
-                  <strong className="nw-donut-n">{people.length}</strong>
+                  <strong className="nw-donut-n">{total ?? dash}</strong>
                   <span className="nw-ai-desc">{t({ en: "contacts", zh: "联系人" })}</span>
                 </div>
               </div>
@@ -92,7 +103,7 @@ export function NetworkOverview({ viewModel, analysis }: { viewModel: OrbitConta
             <div className="nw-dist-foot">{t({ en: `${newContacts} new recently`, zh: `最近新增 ${newContacts} 位` })}</div>
           </div>
 
-          <div className="nw-cockpit">
+          <div className="nw-cockpit" data-network-section="cockpit">
             <div className="nw-cockpit-head">
               <div className="nw-cockpit-title">
                 <span className="nw-ai-star">✦</span>
@@ -106,14 +117,14 @@ export function NetworkOverview({ viewModel, analysis }: { viewModel: OrbitConta
               <span className="nw-cockpit-meta">{meta}</span>
             </div>
             <div className="nw-suggest-list">
-              {cards.map((c) => (
-                <a key={c.href + c.icon} className="btn nw-cockpit-card" href={c.href}>
+              {overview.cards.map((c) => (
+                <a key={c.id} className="btn nw-cockpit-card" href={c.href} data-overview-card={c.id}>
                   <span className="nw-suggest-icon">{c.icon}</span>
                   <span className="nw-suggest-copy">
-                    <strong className="nw-suggest-title"><span className="nw-cockpit-n">{c.n ?? dash}</span>{t({ zh: " 位", en: " " })}{t(c.title)}</strong>
-                    <span className="nw-suggest-desc">{t(c.desc)}</span>
+                    <span className="nw-cockpit-label">{t(c.title)}</span>
+                    <strong className={c.cta ? "nw-suggest-title nw-cockpit-plan-cta" : "nw-suggest-title nw-cockpit-n"}>{c.value ? t(c.value) : dash}</strong>
+                    {c.sentence ? <span className="nw-suggest-desc nw-cockpit-sentence">{t(c.sentence)}</span> : null}
                   </span>
-                  <span className="nw-suggest-tag" style={{ background: c.tagBg, color: c.tagFg }}>{t(c.tag)}</span>
                   <span className="nw-suggest-arrow">›</span>
                 </a>
               ))}
@@ -125,32 +136,41 @@ export function NetworkOverview({ viewModel, analysis }: { viewModel: OrbitConta
           </div>
         </div>
 
-        <div className="nw-ov-card">
+        <div className="nw-ov-card" data-network-section="tiers">
           <div className="nw-ov-head">
-            <h2 className="nw-h2">{t({ en: "Relationship pipeline", zh: "关系推进管线" })}</h2>
+            <h2 className="nw-h2">{t({ en: "Relationship tiers", zh: "关系档位" })}</h2>
             <a className="nw-link" href="/app/contacts/pipeline">{t({ en: "View full pipeline →", zh: "查看完整管线 →" })}</a>
           </div>
           <div className="nw-stage-bar">
-            {NETWORK_STAGES.map((stage, i) => (
-              <a key={stage} className="btn nw-stage-seg" href="/app/contacts/pipeline" style={{ background: STAGE_BAR_BG[i], color: STAGE_BAR_FG[i], clipPath: stageClip(i as 0 | 1 | 2 | 3) }}>
-                <span className="nw-stage-label">{t(STAGE_LABEL[stage])}</span>
-                <strong className="nw-stage-n">{counts[stage]}</strong>
+            {overview.tiers.map((segment, i) => (
+              <a key={segment.id} className="btn nw-stage-seg" href={segment.href} data-network-tier={segment.id} style={{ background: STAGE_BAR_BG[i], color: STAGE_BAR_FG[i], clipPath: stageClip(i as 0 | 1 | 2 | 3) }}>
+                <span className="nw-stage-label">{t(TIER_LABEL[segment.id])}</span>
+                <strong className="nw-stage-n">{segment.count ?? dash}</strong>
               </a>
             ))}
           </div>
-          {highlights.length > 0 ? (
+          {overview.tierPending !== null ? (
+            <div className="nw-tier-pending" role="status">{t({
+              zh: `${overview.tierPending} 人待统计（档位统计更新中）`,
+              en: `${overview.tierPending} ${overview.tierPending === 1 ? "contact" : "contacts"} not yet tiered (tiers updating)`,
+            })}</div>
+          ) : null}
+          {highlights === null ? null : highlights.length > 0 ? (
             <div className="nw-hl-grid">
               {highlights.map((p) => (
-                <a key={p.id} className="btn nw-hl" href={p.href} onClick={(event) => demoDetail.openFromHref(event, p.href)}>
-                  <NetworkAvatar initial={p.initial} size={44} />
-                  <span className="nw-hl-copy"><strong className="nw-suggest-title">{p.name}{demo ? <DemoTag /> : null}</strong><span className="nw-ai-desc">{p.next || dash}</span></span>
-                  <span className="nw-hl-stage" style={{ background: STAGE_CHIP.advance.bg, color: STAGE_CHIP.advance.fg }}>{t(STAGE_LABEL.advance)}</span>
+                <a key={p.contactId} className="btn nw-hl" href={p.href} data-network-highlight={p.tier} onClick={(event) => demoDetail.openFromHref(event, p.href)}>
+                  <NetworkAvatar initial={p.name.slice(0, 1)} size={44} />
+                  <span className="nw-hl-copy">
+                    <strong className="nw-suggest-title">{p.name}{demo ? <DemoTag /> : null}</strong>
+                    <span className="nw-ai-desc">{p.lastSignalAt ? t({ zh: `最近往来 ${formatMonthDay(p.lastSignalAt, t)}`, en: `Last in touch ${formatMonthDay(p.lastSignalAt, t)}` }) : dash}</span>
+                  </span>
+                  <span className="nw-hl-stage" style={{ background: TIER_CHIP[p.tier].bg, color: TIER_CHIP[p.tier].fg }}>{t(TIER_LABEL[p.tier])}</span>
                   <span className="nw-suggest-arrow">›</span>
                 </a>
               ))}
             </div>
           ) : (
-            <div className="nw-empty">{t({ en: "No relationships advancing", zh: "没有正在推进的关系" })}</div>
+            <div className="nw-empty">{t({ en: "No core or active relationships yet", zh: "还没有核心或有往来的关系" })}</div>
           )}
         </div>
 
@@ -159,28 +179,31 @@ export function NetworkOverview({ viewModel, analysis }: { viewModel: OrbitConta
             <h2 className="nw-h2">{t({ en: "Recent activity", zh: "最近动态" })}</h2>
             <a className="nw-link" href="/app/contacts">{t({ en: "View all contacts →", zh: "查看全部人脉 →" })}</a>
           </div>
-          <div className="nw-recent-thead">
-            <span></span><span>{t({ en: "Activity", zh: "动态" })}</span><span>{t({ en: "Source", zh: "来源" })}</span><span>{t({ en: "Industry", zh: "行业" })}</span><span>{t({ en: "Status", zh: "关系状态" })}</span><span>{t({ en: "When", zh: "最近互动" })}</span><span></span>
-          </div>
-          {activity.map((a) => (
-            <div key={a.id} className="nw-recent-row">
-              <NetworkAvatar initial="◷" />
-              <strong className="nw-recent-name">{a.contactName ? <>{a.contactName}{demo ? <DemoTag /> : null} · </> : null}{a.label}{a.contactId && nameById.get(a.contactId) ? ` · ${nameById.get(a.contactId)}` : null}</strong>
-              {/* 来源经 metSummary 清洗：账号邮箱 / 「confirmed by」句不渲染 */}
-              <span className="nw-recent-org">{metSummary(a.source) || dash}</span>
-              <span className="nw-recent-ind">{dash}</span>
-              <span></span>
-              <span className="nw-recent-last">{formatMonthDay(a.occurredAt, t)}</span>
-            </div>
-          ))}
-          {/* W0043 review：只有 ready 才显示真实空态；pending 显示生成中，整页 error 显示不可用。 */}
-          {analysis.state === "ready" && activity.length === 0 ? (
-            <div className="nw-empty">{t({ en: "No activity yet", zh: "还没有互动记录" })}</div>
-          ) : analysis.state === "pending" ? (
-            <div className="nw-empty">{t({ en: "Analysis in progress", zh: "分析生成中" })}</div>
-          ) : analysis.state === "error" ? (
+          {overview.activity.state === "unavailable" ? (
             <div className="nw-empty" role="status">{t({ en: "Source temporarily unavailable", zh: "来源暂时不可用" })}</div>
-          ) : null}
+          ) : overview.activity.rows.length === 0 ? (
+            <div className="nw-empty">{t({ en: "No activity yet", zh: "还没有互动记录" })}</div>
+          ) : (
+            <>
+              <div className="nw-recent-thead">
+                <span></span><span>{t({ en: "Contact", zh: "联系人" })}</span><span>{t({ en: "Source", zh: "来源" })}</span><span>{t({ en: "Summary", zh: "摘要" })}</span><span>{t({ en: "When", zh: "时间" })}</span>
+              </div>
+              {overview.activity.rows.map((row) => (
+                <div key={row.id} className="nw-recent-row" data-timeline-source={row.source}>
+                  <NetworkAvatar initial={row.name ? row.name.slice(0, 1) : "◷"} />
+                  <strong className="nw-recent-name">
+                    {row.name && row.href
+                      ? <a className="nw-recent-link" href={row.href} onClick={(event) => demoDetail.openFromHref(event, row.href!)}>{row.name}</a>
+                      : dash}
+                    {row.name && demo ? <DemoTag /> : null}
+                  </strong>
+                  <span className="nw-recent-badge">{t(TIMELINE_SOURCE_LABEL[row.source])}</span>
+                  <span className="nw-recent-org">{t(row.summary)}</span>
+                  <span className="nw-recent-last">{formatTimelineTime(row, t)}</span>
+                </div>
+              ))}
+            </>
+          )}
         </div>
       </div>
     </NetworkShell>

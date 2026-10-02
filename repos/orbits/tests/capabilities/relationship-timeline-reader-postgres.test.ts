@@ -231,6 +231,27 @@ test("跨联系人最近动态：合并倒序、limit 生效、他人与已删�
   });
 });
 
+test("W0052 review P3：最近 N 条每个来源只读前 N 条（仍 8 条语句、归并结果与全量读一致）；单人详情每来源仍读 50 条", databaseTest, async () => {
+  await withTimelineDatabase(async (pool) => {
+    const full = await readRecentRelationshipTimelineForActor({ actorId: ALICE, now: NOW, limit: 50 }, { runtime: runtimeFor(pool, { statements: [], writes: 0, bytes: 0 }) });
+    const meter: Meter = { bytes: 0, params: [], statements: [], writes: 0 };
+    const top = await readRecentRelationshipTimelineForActor({ actorId: ALICE, now: NOW, limit: 3 }, { runtime: runtimeFor(pool, meter) });
+    assert.equal(meter.statements.length, 8);
+    assertReadOnlyBounded(meter);
+    // 六个来源（memo／活动／笔记／计划／日程／跟进）的 LIMIT 参数 = 3，不再是 50；建立联系本来就按 limit 读。
+    const sourceLimits = meter.statements.flatMap((text, index) => (/collection_name = 'contacts'/.test(text) && /order by created_at desc, record_id/.test(text) ? [] : [meter.params![index]]))
+      .filter((values) => values.includes(3) || values.includes(50));
+    assert.ok(sourceLimits.length >= 6, JSON.stringify(sourceLimits));
+    assert.ok(sourceLimits.every((values) => !values.includes(50)), JSON.stringify(sourceLimits));
+    assert.deepEqual(top.items.map((item) => item.id), full.items.slice(0, 3).map((item) => item.id), "top 3 unchanged");
+
+    const detailMeter: Meter = { bytes: 0, params: [], statements: [], writes: 0 };
+    const detail = await readRelationshipTimelineForContact({ actorId: ALICE, contactId: C1, now: NOW, limit: 3 }, { runtime: runtimeFor(pool, detailMeter) });
+    assert.equal(detail.total, 8, "detail 「共 N 条」 still counts every source up to 50");
+    assert.equal(detailMeter.params!.filter((values) => values.includes(50)).length, 6, "detail keeps 50 per source");
+  });
+});
+
 test("「写 memo」关联活动推荐：本人近 30 天已报名活动日程，有上限、只读", databaseTest, async () => {
   await withTimelineDatabase(async (pool) => {
     const meter: Meter = { statements: [], writes: 0, bytes: 0 };

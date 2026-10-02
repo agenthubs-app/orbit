@@ -61,6 +61,11 @@ interface Scope {
   contactId?: string;
   now: Date;
   limit: number;
+  /**
+   * 每个来源 SQL 至多读几条。详情（单人）保持 TIMELINE_PER_SOURCE_LIMIT（合并后的「共 N 条」口径不变）；
+   * 跨联系人最近 N 条（W0052 review P3）只需每来源前 N 条：全局 top N 不可能需要某一来源超过 N 条。
+   */
+  perSourceLimit: number;
 }
 
 function text(value: unknown): string {
@@ -112,7 +117,7 @@ async function readContacts(sql: EventOperationsSqlExecutor, workspaceId: string
 }
 
 async function readMemos(sql: EventOperationsSqlExecutor, workspaceId: string, scope: Scope): Promise<TimelineDetailStateRow[]> {
-  const values: unknown[] = [workspaceId, scope.actorId, `${MEMO_NOTE_ID_PREFIX}%`, TIMELINE_PER_SOURCE_LIMIT];
+  const values: unknown[] = [workspaceId, scope.actorId, `${MEMO_NOTE_ID_PREFIX}%`, scope.perSourceLimit];
   if (scope.contactId) values.push(detailRecordId(scope.actorId, scope.contactId));
   const result = await sql.query<Row>(`select r.payload->>'contactId' as contact_id, n->>'noteId' as note_id, left(n->>'body', ${EXCERPT_SQL_CHARS}) as body,
       n->>'createdAt' as created_at, n->>'occurredAt' as occurred_at, n->>'eventId' as event_id
@@ -140,7 +145,7 @@ async function readMemos(sql: EventOperationsSqlExecutor, workspaceId: string, s
 }
 
 async function readEncounters(sql: EventOperationsSqlExecutor, workspaceId: string, scope: Scope): Promise<TimelineEncounterRow[]> {
-  const values: unknown[] = [workspaceId, scope.actorId, TIMELINE_PER_SOURCE_LIMIT];
+  const values: unknown[] = [workspaceId, scope.actorId, scope.perSourceLimit];
   if (scope.contactId) values.push(scope.contactId);
   const result = await sql.query<Row>(`select record_id, payload->>'contactId' as contact_id, payload->>'observedAt' as observed_at,
       payload->>'eventId' as event_id, left(payload->>'noteText', ${EXCERPT_SQL_CHARS}) as note_text
@@ -160,7 +165,7 @@ async function readEncounters(sql: EventOperationsSqlExecutor, workspaceId: stri
 }
 
 async function readNotes(sql: EventOperationsSqlExecutor, workspaceId: string, scope: Scope): Promise<TimelineNoteRow[]> {
-  const values: unknown[] = [workspaceId, scope.actorId, TIMELINE_PER_SOURCE_LIMIT];
+  const values: unknown[] = [workspaceId, scope.actorId, scope.perSourceLimit];
   if (scope.contactId) values.push(scope.contactId);
   // 单人：行已按该联系人过滤，只回传它本身；最近动态：关联 id 在 SQL 里截到前 TIMELINE_CONTACTS_PER_RECORD 个。
   const contactIdsSql = scope.contactId
@@ -187,7 +192,7 @@ async function readNotes(sql: EventOperationsSqlExecutor, workspaceId: string, s
 }
 
 async function readPlanLog(sql: EventOperationsSqlExecutor, workspaceId: string, scope: Scope): Promise<TimelinePlanLogRow[]> {
-  const values: unknown[] = [workspaceId, scope.actorId, TIMELINE_PER_SOURCE_LIMIT];
+  const values: unknown[] = [workspaceId, scope.actorId, scope.perSourceLimit];
   if (scope.contactId) values.push([scope.contactId]);
   const linkedSql = scope.contactId ? "$4::text[]" : `linked_contact_ids[1:${TIMELINE_CONTACTS_PER_RECORD}]`;
   const result = await sql.query<Row>(`select id, event, kind, left(body, ${EXCERPT_SQL_CHARS}) as body, ${linkedSql} as linked_contact_ids, linked_event_id, created_at
@@ -208,7 +213,7 @@ async function readPlanLog(sql: EventOperationsSqlExecutor, workspaceId: string,
 }
 
 async function readSchedule(sql: EventOperationsSqlExecutor, workspaceId: string, scope: Scope): Promise<TimelineScheduleRow[]> {
-  const values: unknown[] = [workspaceId, scope.actorId, TIMELINE_PER_SOURCE_LIMIT, scope.now.toISOString()];
+  const values: unknown[] = [workspaceId, scope.actorId, scope.perSourceLimit, scope.now.toISOString()];
   if (scope.contactId) values.push(scope.contactId);
   // 只列已开始的日程（「互动」是已发生的事）；startsAt 不是 ISO 的脏数据不进时间线。
   const result = await sql.query<Row>(`select record_id, payload->>'kind' as kind, left(payload->>'title', ${EXCERPT_SQL_CHARS}) as title,
@@ -244,7 +249,7 @@ async function readSchedule(sql: EventOperationsSqlExecutor, workspaceId: string
 }
 
 async function readTasks(sql: EventOperationsSqlExecutor, workspaceId: string, scope: Scope): Promise<TimelineTaskRow[]> {
-  const values: unknown[] = [workspaceId, scope.actorId, TIMELINE_PER_SOURCE_LIMIT];
+  const values: unknown[] = [workspaceId, scope.actorId, scope.perSourceLimit];
   if (scope.contactId) values.push(scope.contactId);
   const result = await sql.query<Row>(`select record_id, payload->>'contactId' as contact_id, payload->>'status' as status,
       left(payload->>'title', ${EXCERPT_SQL_CHARS}) as title, payload->>'updatedAt' as updated_at
@@ -327,7 +332,7 @@ export async function readRelationshipTimelineForContact(
   const runtime = resolveRuntime(deps);
   if (!runtime) return allUnavailable();
   const limit = clampLimit(input.limit, TIMELINE_DETAIL_DEFAULT_LIMIT);
-  const { sources, unavailable } = await readSources(runtime, { actorId, contactId, now: input.now, limit });
+  const { sources, unavailable } = await readSources(runtime, { actorId, contactId, now: input.now, limit, perSourceLimit: TIMELINE_PER_SOURCE_LIMIT });
   if (unavailable.length === RELATIONSHIP_TIMELINE_SOURCES.length) return allUnavailable();
   // 联系人读到了却不属于本人（或已删除）：整条时间线为空，不给出任何来源的条目。
   if (sources.contacts && !sources.contacts.some((contact) => contact.id === contactId)) {
@@ -346,7 +351,7 @@ export async function readRecentRelationshipTimelineForActor(
   const runtime = resolveRuntime(deps);
   if (!runtime) return allUnavailable();
   const limit = clampLimit(input.limit, TIMELINE_DETAIL_DEFAULT_LIMIT);
-  const { sources, unavailable } = await readSources(runtime, { actorId, now: input.now, limit });
+  const { sources, unavailable } = await readSources(runtime, { actorId, now: input.now, limit, perSourceLimit: limit });
   if (unavailable.length === RELATIONSHIP_TIMELINE_SOURCES.length) return allUnavailable();
 
   const contactIds = new Set<string>();

@@ -30,7 +30,7 @@ const PAGE_PATHS: Record<PageName, string> = {
   pipeline: "app/(app)/app/contacts/pipeline/page.tsx",
 };
 
-const REAL_READS = ["cards", "contacts", "analysis", "detail", "structure", "structureTab", "opportunitiesTab"];
+const REAL_READS = ["cards", "contacts", "analysis", "detail", "structure", "structureTab", "opportunitiesTab", "overviewCockpit"];
 const GUIDE_READS = ["profile", "guide"];
 
 interface Scenario {
@@ -38,6 +38,8 @@ interface Scenario {
   /** readGuideStatusForActor 的结果：in-demo / out（已完成或老用户）。 */
   guide?: "in-demo" | "out";
   profileFails?: boolean;
+  /** 界面语言（缺省 zh）。 */
+  language?: "zh" | "en" | "ja";
 }
 
 function named<T extends (props: Record<string, unknown>) => null>(name: string, fn: T): T {
@@ -64,7 +66,7 @@ function loadPage(t: TestContext, name: PageName, scenario: Scenario = {}) {
     steps: { contacts: true, goal: false, plan: false },
   };
   const contactsSuccess = {
-    payload: { contacts: [] },
+    payload: { availableFilters: { sources: [], statuses: [], values: [] }, contacts: [] },
     state: "success",
   };
   const detailSuccess = { routeState: "success" };
@@ -83,7 +85,7 @@ function loadPage(t: TestContext, name: PageName, scenario: Scenario = {}) {
     [join(root, "auth.ts")]: { auth: stub("auth", { user: { email: "owner@example.test", id: "subject:external", name: "Owner" } }) },
     [join(root, "app/api/_shared/authenticated-actor.ts")]: { resolveAuthenticatedApiActorFromSession: stub("identity", { id: "account:canonical" }) },
     [join(root, "app/(app)/app/orbit-language-server.ts")]: {
-      getOrbitServerLanguage: async () => "zh",
+      getOrbitServerLanguage: async () => scenario.language ?? "zh",
       localizeOrbitTree: (tree: unknown) => tree,
       makeOrbitServerT: () => (copy: { zh: string }) => copy.zh,
     },
@@ -107,6 +109,14 @@ function loadPage(t: TestContext, name: PageName, scenario: Scenario = {}) {
     // W0049／W0050：分析子页两个标签的附加读取（示例期间同样一个都不许调用）。
     [join(root, "app/(app)/app/contacts/analysis/structure-tab-loader.ts")]: { loadStructureTabExtras: stub("structureTab", undefined) },
     [join(root, "app/(app)/app/contacts/analysis/opportunities-route-service.ts")]: { loadOpportunitiesTab: stub("opportunitiesTab", undefined) },
+    // W0052：概览驾驶舱附加数据（快照、时间线、计划……）：示例期间一个都不许调用。
+    [join(root, "app/(app)/app/contacts/analysis/overview-cockpit-loader.ts")]: {
+      loadOverviewCockpit: stub("overviewCockpit", {
+        board: null, names: null, pendingMatches: null, plan: undefined,
+        snapshot: { blocks: [], contactCount: 0, freshness: { job: "none", newContactCount: 0, stale: false }, generatedAt: null, state: "unavailable" },
+        timeline: null,
+      }),
+    },
     [join(root, "app/(app)/app/contacts/compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-route-service.ts")]: {
       loadAppContactDetailRoute: stub("detail", detailSuccess),
       localizeAppContactDetailBoundaryModel: (model: unknown) => model,
@@ -201,7 +211,7 @@ type DemoVm = { connections: Array<{ id: string; displayName: string }> };
 
 for (const [name, reads] of [
   ["contacts", ["cards", "contacts"]],
-  ["dashboard", ["analysis", "contacts"]],
+  ["dashboard", ["analysis", "contacts", "overviewCockpit"]],
   ["pipeline", ["contacts", "analysis"]],
 ] as const) {
   test(`flag off: /${name} reads real contacts as before and reads no guide state`, async (t) => {
@@ -315,8 +325,22 @@ test("demo: the overview renders demo contacts + demo analysis without loadConta
   assert.deepEqual(operations(calls, REAL_READS), []);
   assert.equal(find(tree, "NetworkDemoFrame")?.route, "app-contacts-dashboard-route");
   const overview = find(tree, "NetworkOverview");
-  assert.equal((overview?.viewModel as DemoVm).connections.length, 30);
   assert.equal((overview?.analysis as { state: string }).state, "ready");
+  // W0052：示例驾驶舱 = 示例数字与示例档位、动态（双语），没有快照句子；快照、时间线、计划读取 0 次（overviewCockpit 不在 calls 里）。
+  const data = overview?.overview as { total: number; meta: unknown; cards: Array<{ n: number | null; sentence: unknown }>; tiers: Array<{ id: string; count: number }>; activity: { state: string; rows: Array<{ name: string }> } };
+  assert.equal(data.total, 30);
+  assert.deepEqual(data.cards.map((card) => card.n), [30, 3, 6, 3]);
+  assert.deepEqual(data.cards.map((card) => card.sentence), [null, null, null, null]);
+  assert.deepEqual(data.tiers.map((tier) => [tier.id, tier.count]), [["new", 9], ["active", 13], ["core", 5], ["dormant", 3]]);
+  assert.deepEqual(data.activity.rows.map((row) => row.name), ["铃木健", "高桥由美", "王砚", "佐藤美咲", "中村惠"]);
+});
+
+test("demo (ja, review P2): the overview falls back to the English demo data like t() does", async (t) => {
+  const { calls, page } = loadPage(t, "dashboard", { flag: "on", language: "ja" });
+  const tree = await page({ searchParams: Promise.resolve({}) });
+  assert.deepEqual(operations(calls, REAL_READS), []);
+  const data = find(tree, "NetworkOverview")?.overview as { activity: { rows: Array<{ name: string; summary: { en: string } }> } };
+  assert.deepEqual(data.activity.rows.map((row) => row.name), ["Suzuki Ken", "Takahashi Yumi", "Wang Yan", "Sato Misaki", "Nakamura Megumi"]);
 });
 
 test("demo: the analysis sub-tabs show only the banner + notice, no fabricated analysis", async (t) => {

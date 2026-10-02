@@ -1,8 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { ContactsAnalysisView } from "../../app/(app)/app/contacts/analysis/contacts-analysis-view-model";
-import { cockpit, distributionRows, healthRows } from "../../app/(app)/app/contacts/network-0918/network-overview-model";
-import { toPerson } from "../../app/(app)/app/contacts/network-0918/network-model";
+import { TIER_HEALTH_META, distributionRows } from "../../app/(app)/app/contacts/network-0918/network-overview-model";
 
 const ready: ContactsAnalysisView = {
   state: "ready", generatedAt: "2026-09-21T00:00:00Z", summary: "", activity: [], analysis: { state: "unavailable" },
@@ -12,30 +11,21 @@ const ready: ContactsAnalysisView = {
   coverage: { state: "unavailable" }, opportunities: { state: "unavailable" },
 };
 
-test("cockpit uses real metrics and never design placeholders", () => {
-  const cards = cockpit(ready);
-  assert.equal(cards.length, 4);
-  assert.deepEqual(cards.map((c) => c.n), [12, 9, 6, 8]);
-  assert.deepEqual(cockpit({ state: "pending" }).map((c) => c.n), [null, null, null, null]);
+const SOURCES = { contact: 2, event: 30, other: 6, referral: 10, scan: 30 };
+
+test("distributionRows reads industry/location from the full analysis distribution and source from the full source facets (W0052)", () => {
+  assert.deepEqual(distributionRows("industry", ready, SOURCES, "zh"), [["科技与互联网", 21]]);
+  assert.deepEqual(distributionRows("region", ready, SOURCES, "zh"), [["东京", 38]]);
+  assert.deepEqual(distributionRows("industry", { state: "pending" }, SOURCES, "zh"), []);
+  assert.deepEqual(distributionRows("source", ready, SOURCES, "zh"), [["活动认识", 30], ["朋友引荐", 10], ["通讯录", 2], ["名片导入", 30], ["其他来源", 6]]);
+  assert.deepEqual(distributionRows("source", ready, SOURCES, "en").map((r) => r[0]), ["Met at events", "Referred", "Address book", "Business cards", "Other"]);
+  // ja 跟 t() 一样回退英文。
+  assert.equal(distributionRows("source", ready, SOURCES, "ja")[0][0], "Met at events");
+  assert.deepEqual(distributionRows("source", ready, null, "zh"), [], "source facets unavailable → no rows");
 });
 
-test("distributionRows reads industry/location from analysis and source from people", () => {
-  assert.deepEqual(distributionRows("industry", ready, [], "zh"), [["科技与互联网", 21]]);
-  assert.deepEqual(distributionRows("region", ready, [], "zh"), [["东京", 38]]);
-  assert.deepEqual(distributionRows("industry", { state: "pending" }, [], "zh"), []);
-  const people = [toPerson({ company: "", encounters: [], displayName: "A", email: "", g: "", id: "a", industry: "", initial: "A", lineId: "", location: "", lastEventId: "", met: "", note: "", notes: [], offering: "", phone: "", pipelineStatus: "in_progress", relationshipStatus: "active", seeking: "", source: "scan", stage: "Active", title: "", wechat: "", strength: "medium", valueTags: [], nextAction: null, lastInteraction: "", dormant: false })];
-  assert.deepEqual(distributionRows("source", ready, people, "zh"), [["活动认识", 0], ["朋友引荐", 0], ["通讯录", 0], ["名片导入", 1], ["其他来源", 0]]);
-  assert.deepEqual(distributionRows("source", ready, people, "en").map((r) => r[0]), ["Met at events", "Referred", "Address book", "Business cards", "Other"]);
-  assert.equal(distributionRows("source", ready, people, "ja")[0][0], "活动认识");
-});
-
-test("healthRows renders only the health rows the analysis returns, with design icons and colours", () => {
-  const rows = healthRows(ready);
-  // W0047：行 = 自动档位（核心／有往来／新认识／待唤醒）。
-  assert.deepEqual(rows.map((r) => [r.icon, r.label.zh, r.n, r.tag.zh]), [["◎", "核心", 3, "稳定"], ["◷", "待唤醒", 7, "需要留意"]]);
-  // 文案为 {zh,en}，渲染方 t()
-  assert.deepEqual(rows.map((r) => [r.label.en, r.tag.en]), [["Core", "Stable"], ["To re-engage", "Needs attention"]]);
-  assert.equal(rows[1].desc.zh, "曾经热络，60 天没有往来");
-  assert.equal(rows[0].iconBg, "#E6F1EC");
-  assert.deepEqual(healthRows({ state: "pending" }), []);
+test("TIER_HEALTH_META is the one tier icon/copy/colour table shared by the overview and the structure tab", () => {
+  assert.deepEqual(Object.keys(TIER_HEALTH_META), ["new", "active", "core", "dormant"]);
+  assert.deepEqual([TIER_HEALTH_META.core.icon, TIER_HEALTH_META.core.label.zh, TIER_HEALTH_META.core.bg], ["◎", "核心", "#E6F1EC"]);
+  assert.equal(TIER_HEALTH_META.dormant.desc.zh, "曾经热络，60 天没有往来");
 });

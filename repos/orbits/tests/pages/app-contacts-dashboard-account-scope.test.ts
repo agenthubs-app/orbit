@@ -38,15 +38,27 @@ function loadDashboardPage(t: TestContext, options: { signedIn?: boolean; actorI
     [join(projectRoot, "app/(app)/app/orbit-visual-freeze-runtime.tsx")]: { OrbitVisualFreezeRuntime: () => null },
     [join(projectRoot, "app/(app)/app/contacts/compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-route-view-model.ts")]: { loadAppContactsRouteViewModel: async (params: unknown, actorId: string) => {
       calls.push({ operation: "contacts", input: { actorId, params } });
-      return { state: "success", payload: { contacts: [] } };
+      return { state: "success", payload: { availableFilters: { sources: [{ count: 31, label: "Business card", selected: false, value: "business_card_ocr" }, { count: 4, label: "Manual", selected: false, value: "manual" }], statuses: [], values: [] }, contacts: [] } };
     } },
     [join(projectRoot, "app/(app)/app/orbit-account-shell.tsx")]: { AccountTopNav: () => null },
     [join(projectRoot, "app/(app)/app/contacts/network-0918/network-overview.tsx")]: { NetworkOverview: () => null },
     [join(projectRoot, "app/(app)/app/contacts/network-0918/network-analysis.tsx")]: { NetworkAnalysis: () => null },
     [join(projectRoot, "features/relationship-strength/read-model.ts")]: {
       ensureRelationshipStrengthsForPage: async () => null,
-      readRelationshipTierLookup: async () => new Map(),
+      readRelationshipTierLookup: async () => { calls.push({ operation: "tierLookup" }); return new Map(); },
     },
+    // W0052：概览驾驶舱附加数据（只在概览读）。
+    [join(projectRoot, "app/(app)/app/contacts/analysis/overview-cockpit-loader.ts")]: { loadOverviewCockpit: async (input: { actorId: string; language: string }) => {
+      calls.push({ operation: "overviewCockpit", input: { actorId: input.actorId, language: input.language } });
+      return {
+        board: { active: [], core: [] },
+        names: new Map(),
+        pendingMatches: 0,
+        plan: null,
+        snapshot: { blocks: [], contactCount: 0, freshness: { job: "none", newContactCount: 0, stale: false }, generatedAt: null, state: "none" },
+        timeline: { items: [], unavailable: false },
+      };
+    } },
     [join(projectRoot, "app/(app)/app/contacts/analysis/structure-tab-loader.ts")]: { loadStructureTabExtras: async (input: unknown) => {
       calls.push({ operation: "structureTab", input });
       return { highlights: null, snapshot: { state: "none" }, tierHistory: null };
@@ -96,6 +108,7 @@ test("contacts dashboard loads analysis for the resolved account rather than the
     { operation: "dashboard", input: { actorId: "account:canonical" } },
     { operation: "contacts", input: { actorId: "account:canonical", params: {} } },
     { operation: "structureTab", input: { actorId: "account:canonical", language: "en", strengthState: null } },
+    { operation: "tierLookup" },
   ]);
   // 外层 div → [AccountTopNav, 屏组件]；?tab=structure 进分析子页并把同一份 analysis 传下去。
   const screen = rendered.props.children[2].props.children[1];
@@ -123,6 +136,9 @@ test("W0050 (W50-5): only the open analysis tab loads its extra data — opportu
   const overview = loadDashboardPage(t);
   await overview.page();
   assert.ok(!overview.calls.some((call) => call.operation === "structureTab" || call.operation === "opportunitiesTab" || call.operation === "insightsTab"));
+  // W0052：概览只读驾驶舱附加数据；分析标签不读它。
+  assert.ok(overview.calls.some((call) => call.operation === "overviewCockpit"));
+  for (const tab of [structure, opportunities]) assert.ok(!tab.calls.some((call) => call.operation === "overviewCockpit"));
   assert.ok(!structure.calls.some((call) => call.operation === "insightsTab"));
   assert.ok(!opportunities.calls.some((call) => call.operation === "insightsTab"));
 });
@@ -142,10 +158,16 @@ test("W0051 SC-03: ?tab=insight loads only the insights page (with its sort/filt
 test("contacts dashboard without a tab renders the overview screen for the resolved account", async (t) => {
   const { calls, page } = loadDashboardPage(t);
   const rendered = await page();
-  assert.deepEqual(calls.map((call) => call.operation), ["auth", "resolveActor", "language", "dashboard", "contacts"]);
-  const screen = rendered.props.children[2].props.children[1];
+  // W0052：概览读驾驶舱附加数据，不再读本页档位表（档位与重点联系人来自全量分布与档位看板）。
+  assert.deepEqual(calls.map((call) => call.operation), ["auth", "resolveActor", "language", "dashboard", "contacts", "overviewCockpit"]);
+  assert.deepEqual(calls.at(-1)?.input, { actorId: "account:canonical", language: "en" });
+  const screen = rendered.props.children[2].props.children[1] as unknown as ReactElement<{ analysis: unknown; initialTab?: string; overview: { sources: unknown; total: unknown; meta: unknown } }>;
   assert.deepEqual(screen.props.analysis, { state: "error" });
   assert.equal(screen.props.initialTab, undefined);
+  // 「按来源」= 名单读取已有的全量分面（不是名单条数）；分析读失败时总数为 null，meta 说明来源不可用。
+  assert.deepEqual(screen.props.overview.sources, { contact: 0, event: 0, other: 4, referral: 0, scan: 31 });
+  assert.equal(screen.props.overview.total, null);
+  assert.deepEqual(screen.props.overview.meta, { kind: "error" });
 });
 
 test("contacts dashboard redirects anonymous users before resolving an account or reading analysis", async (t) => {
