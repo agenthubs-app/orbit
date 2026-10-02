@@ -117,7 +117,7 @@
 | [W0041](W0041-home-ssr-read-narrow/GOAL.md) | 首页服务端读取收窄：联系人改数据库计数、旧活动「本人」筛选下推 SQL、已报名活动按已发布范围读取；单次 58.8 KB→约 2.5 KB，首页各块显示不变（H） | RV-03、RV-05 | W0040；W41-1～6 已定（D47）；不与改 `contact-live-record-provider.ts` 的 W0045／W0046 并行 | completed |
 | [W0042](W0042-profile-suggestion-read-scope/GOAL.md) | 资料「更新建议」图只读本人相关行：Postgres 专用读取器三轮按 id 读 + payload 投影，结果与旧过滤逐项等价；接口与 App 端不变（H） | RV-03、RV-05 | W0041；W42 已定（D48，⑨ 待授权不阻塞）；排在 W0043 之前，不与 W0043～W0055 并行 | completed |
 | [W0043](W0043-network-stop-fake-copy/GOAL.md) | 人脉页不再出现调试英文与「来源暂时不可用」误报，空态说实话，文案双语（H：`contactsAnalysisToView` HIGH，D44） | RN-01 | 无 | completed |
-| [W0044](W0044-followup-clock-root-fix/GOAL.md) | 跟进与提醒的到期按请求时刻计算，逾期显示「已逾期 N 天」（H） | RN-02 | 无 | ready |
+| [W0044](W0044-followup-clock-root-fix/GOAL.md) | 跟进与提醒的到期按请求时刻计算，逾期显示「已逾期 N 天」（H） | RN-02 | 无 | running（run-01，2026-10-02，基线 `deabf40f`，PLANNER SHA256 `147831f51c0ee53de94099ffc8cab633f262ef673ee38ecd0bfa91a51960345d`） |
 | [W0045](W0045-contact-enrichment-seniority-region/GOAL.md) | 名片识别同一调用补角色层级与规范地区，审阅可改，带来源；老联系人回填脚本（H） | RN-03 | 无 | ready |
 | [W0046](W0046-relationship-timeline-memo/GOAL.md) | 联系人详情显示聚合关系时间线；「写 memo」弹窗；memo 经 AI 提取专长／需求／话题（H） | RN-04 | W0045（C-4：补全来源载体） | planned |
 | [W0047](W0047-relationship-strength-tiers/GOAL.md) | 关系强度按站内记录自动分档（新认识／有往来／核心／待唤醒），管线页按档位分组，下线手动阶段（H） | RN-05 | W0046 | planned |
