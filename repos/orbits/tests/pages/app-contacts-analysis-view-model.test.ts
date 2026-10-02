@@ -245,3 +245,37 @@ test("W0047 SC-04: Web relationship health reads relationshipTierDistribution, n
   if (legacyView.state !== "ready" || legacyView.structure.state !== "ready") throw new Error("Missing structure");
   assert.deepEqual(legacyView.structure.data.health, []);
 });
+
+test("W0049: structure view maps seniority, region, tier and industry secondary children; a response without the new keys still parses (empty lists)", async () => {
+  const data = await payload();
+  const distributions = data.distributions!;
+  const base = distributions.structureDistributions.industry[0]!;
+  distributions.structureDistributions = {
+    ...distributions.structureDistributions,
+    industry: [{ ...base, bucketId: "technology_internet", primaryIndustryId: "technology_internet", secondary: [
+      { bucketId: "technology_internet.ai_data", secondaryIndustryId: "technology_internet.ai_data", contactCount: 2, percentage: 67, missingData: false },
+      { bucketId: "technology_internet.unspecified", contactCount: 1, percentage: 33, missingData: true },
+    ] }],
+    seniority: [{ bucketId: "seniority_decision", label: "决策层", contactCount: 3, percentage: 100, evidenceIds: [], missingData: false }],
+    region: [{ bucketId: "region_JP_Tokyo", label: "JP · Tokyo", contactCount: 3, percentage: 100, evidenceIds: [], missingData: false }],
+  };
+  distributions.relationshipTierDistribution = [{ tier: "dormant", relationshipCount: 3, percentage: 100, contactIds: ["c1"] }];
+  const en = contactsAnalysisToView(data, "en");
+  assert.equal(en.state, "ready");
+  if (en.state !== "ready" || en.structure.state !== "ready") throw new Error("structure");
+  const dims = en.structure.data.dimensions;
+  assert.deepEqual(dims.industry[0]!.children!.map((child) => [child.label, child.href]), [
+    ["Artificial Intelligence & Data", "/app/contacts/analysis/industry_secondary/technology_internet.ai_data"],
+    ["Unspecified", "/app/contacts/analysis/industry_secondary/technology_internet.unspecified"],
+  ]);
+  assert.deepEqual(dims.seniority!.map((bucket) => [bucket.label, bucket.href]), [["Decision makers", "/app/contacts/analysis/seniority/seniority_decision"]]);
+  assert.deepEqual(dims.region!.map((bucket) => [bucket.label, bucket.href]), [["Japan · Tokyo", "/app/contacts/analysis/region/region_JP_Tokyo"]]);
+  assert.deepEqual(dims.tier!.map((bucket) => [bucket.label, bucket.count, bucket.href]), [["To re-engage", 3, "/app/contacts/analysis/tier/dormant"]]);
+  // 旧响应（没有新键）：照常解析，新维度为空。
+  const old = await payload();
+  delete (old.distributions!.structureDistributions as { seniority?: unknown }).seniority;
+  delete (old.distributions!.structureDistributions as { region?: unknown }).region;
+  const zh = contactsAnalysisToView(old, "zh");
+  if (zh.state !== "ready" || zh.structure.state !== "ready") throw new Error("structure");
+  assert.deepEqual([zh.structure.data.dimensions.seniority, zh.structure.data.dimensions.region], [[], []]);
+});

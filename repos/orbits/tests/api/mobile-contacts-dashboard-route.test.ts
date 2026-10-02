@@ -208,6 +208,25 @@ async function w0047Body(withTiers: boolean): Promise<Record<string, unknown>> {
   return (await response.json()) as Record<string, unknown>;
 }
 
+/**
+ * W0049：结构标签新增的可选维度（seniority、region）与行业分组上的 `secondary` 子分组。
+ * 从响应里取出并删掉，余下部分必须与 W0047 前的 golden 逐字段相同（旧键 industry／location／role／relationship
+ * 与 relationshipStrengthDistribution 不变）。
+ */
+function takeW0049Additions(distributions: Record<string, unknown>) {
+  const structure = distributions.structureDistributions as Record<string, unknown>;
+  const added = { region: structure.region, seniority: structure.seniority, secondary: [] as unknown[] };
+  delete structure.region;
+  delete structure.seniority;
+  for (const bucket of [...(structure.industry as Record<string, unknown>[]), ...(distributions.industryDistribution as Record<string, unknown>[])]) {
+    if ("secondary" in bucket) {
+      added.secondary.push(bucket.secondary);
+      delete bucket.secondary;
+    }
+  }
+  return added;
+}
+
 test("W0047 SC-03: the mobile response is field-for-field unchanged apart from the new optional relationshipTierDistribution", async () => {
   if (process.env.W0047_WRITE_GOLDEN === "1") {
     writeFileSync(W0047_GOLDEN, `${JSON.stringify(await w0047Body(false), null, 2)}\n`);
@@ -217,6 +236,11 @@ test("W0047 SC-03: the mobile response is field-for-field unchanged apart from t
     const body = (await w0047Body(withTiers)) as { data: { distributions: Record<string, unknown> } };
     const tiers = body.data.distributions.relationshipTierDistribution;
     delete body.data.distributions.relationshipTierDistribution;
+    const added = takeW0049Additions(body.data.distributions);
+    // 夹具五人都没有职级、地区与行业：新维度各一个「缺数据」分组，未分类行业没有二级子分组。
+    assert.deepEqual(added.seniority, [{ bucketId: "seniority_other", label: "其他", contactCount: 5, percentage: 100, evidenceIds: [], missingData: true }]);
+    assert.deepEqual(added.region, [{ bucketId: "region_unknown", label: "地区待完善", contactCount: 5, percentage: 100, evidenceIds: [], missingData: true }]);
+    assert.deepEqual(added.secondary, []);
     assert.deepEqual(body, golden, `withTiers=${withTiers}`);
     if (withTiers) {
       assert.deepEqual(tiers, [

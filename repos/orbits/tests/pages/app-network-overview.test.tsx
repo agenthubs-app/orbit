@@ -58,12 +58,14 @@ test("analysis sub-page renders structure and opportunities tabs from real secti
   const struct = renderToStaticMarkup(<NetworkAnalysis viewModel={empty} analysis={ready} initialTab="struct" />);
   assert.match(struct, /data-network-screen="analysis"/);
   assert.match(struct, /AI 人脉分析/);
-  assert.match(struct, /结构总结句/);
-  assert.match(struct, /维度小结/);
-  assert.match(struct, /覆盖总结/);
-  assert.equal((struct.match(/class="nw-health-item"/g) ?? []).length, 3);
+  // W0049：结构诊断与洞察只来自快照（structureExtras）；视图里的 summary／coverage.summary 不再在结构标签渲染。
+  assert.doesNotMatch(struct, /结构总结句|维度小结|覆盖总结/);
+  // 关系健康固定四档（没有人的「待唤醒」显示 0），数字来自全量档位分布。
+  assert.equal((struct.match(/class="nw-health-item"/g) ?? []).length, 4);
   assert.doesNotMatch(struct, /决策层占比|62%|37%|3\.2 次/);
-  assert.match(struct, /强关系占比[\s\S]*?43%/);
+  assert.match(struct, /核心关系占比[\s\S]*?43%/);
+  // 环形图中心 = 分布全量（5 + 2），不是名单条数（empty 名单为 0）。
+  assert.match(struct, /nw-dim-donut-n">7</);
   const opp = renderToStaticMarkup(<NetworkAnalysis viewModel={empty} analysis={ready} initialTab="opp" />);
   assert.match(opp, /机会总结/);
   assert.match(opp, /认识供应链负责人/);

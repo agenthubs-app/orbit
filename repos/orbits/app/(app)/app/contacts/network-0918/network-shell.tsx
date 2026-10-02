@@ -435,6 +435,34 @@ export const NETWORK_STYLES = `
 [data-orbit-real-page="network"] .nw-an-hero-copy-opp { display: flex; gap: 14px; align-items: flex-start; min-width: 0; flex: 1; }
 [data-orbit-real-page="network"] .nw-an-hero-star-28 { color: #4B4FC7; font-size: 28px; line-height: 1; }
 [data-orbit-real-page="network"] .nw-an-hero-p { margin: 0; font-size: 14px; line-height: 1.7; color: #6B6F99; max-width: 640px; }
+/* W0049 结构标签：分组选择、二级 Top5、计划相关标记、依据展开、洞察列表、30 天变化 */
+[data-orbit-real-page="network"] .btn.nw-dim-btn { background: #FFFFFF; color: #3B3F7A; border-color: #E8E9F6; }
+[data-orbit-real-page="network"] .btn.nw-dim-btn.nw-dim-btn-on { background: #0E1225; color: #FFFFFF; border-color: #0E1225; }
+[data-orbit-real-page="network"] .btn.nw-dim-row-btn { width: 100%; padding: 6px 8px; margin: -6px -8px; border: 0; border-radius: 10px; background: transparent; color: inherit; cursor: pointer; text-align: left;
+  height: auto; justify-content: flex-start; letter-spacing: 0; line-height: normal; transition: background .2s; }
+[data-orbit-real-page="network"] .btn.nw-dim-row-btn:hover, [data-orbit-real-page="network"] .btn.nw-dim-row-btn.nw-dim-row-on { background: #F3F4FC; }
+[data-orbit-real-page="network"] .btn.nw-dim-row-btn:active { transform: none; }
+[data-orbit-real-page="network"] .nw-plan-mark { margin-left: 6px; color: #B07A1E; font-size: 12px; }
+[data-orbit-real-page="network"] .nw-plan-legend { font-size: 12px; color: #6B6F99; }
+[data-orbit-real-page="network"] .nw-sub-top { display: flex; flex-direction: column; gap: 6px; padding: 12px; border-radius: 12px; background: #F7F7FD; }
+[data-orbit-real-page="network"] .nw-sub-top-t { font-size: 13px; color: #2E3270; }
+[data-orbit-real-page="network"] .nw-sub-top-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; font-size: 13px; color: #0E1225; text-decoration: none; }
+[data-orbit-real-page="network"] .nw-sub-top-row:hover { color: #4B4FC7; }
+[data-orbit-real-page="network"] .nw-an-hero-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+[data-orbit-real-page="network"] .nw-evidence { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+[data-orbit-real-page="network"] .btn.nw-evidence-btn { padding: 4px 10px; border: 1px solid #DDDEFA; border-radius: 999px; background: #FFFFFF; color: #4B4FC7; font-size: 12px; cursor: pointer;
+  height: auto; display: inline-block; letter-spacing: 0; line-height: normal; transition: none; }
+[data-orbit-real-page="network"] .btn.nw-evidence-btn:active { transform: none; }
+[data-orbit-real-page="network"] .nw-evidence-list { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+[data-orbit-real-page="network"] .nw-evidence-link { padding: 3px 10px; border-radius: 999px; background: #ECEEFB; color: #2E3270; font-size: 12px; text-decoration: none; }
+[data-orbit-real-page="network"] .nw-evidence-link:hover { background: #DDDEFA; }
+[data-orbit-real-page="network"] .nw-insight-list { display: flex; flex-direction: column; gap: 14px; }
+[data-orbit-real-page="network"] .nw-insight-item { display: flex; gap: 14px; align-items: flex-start; padding: 16px; border: 1px solid #E8E9F6; border-radius: 14px; }
+[data-orbit-real-page="network"] a.nw-health-item { color: inherit; text-decoration: none; }
+[data-orbit-real-page="network"] a.nw-health-item:hover { border-color: #B9BCEB; }
+@media (max-width: 600px) { [data-orbit-real-page="network"] .nw-dims { grid-template-columns: repeat(2, minmax(0, 1fr)); } [data-orbit-real-page="network"] .btn.nw-dim-btn { white-space: normal; } [data-orbit-real-page="network"] .nw-dim-donut { width: 180px; height: 180px; } [data-orbit-real-page="network"] .nw-dim-donut-inner { width: 112px; height: 112px; }
+  [data-orbit-real-page="network"] .nw-an-hero .nw-h2-26 { font-size: 20px; line-height: 1.4; } [data-orbit-real-page="network"] .nw-an-hero { padding: 20px; }
+  [data-orbit-real-page="network"] .nw-top-thead, [data-orbit-real-page="network"] .nw-top-row { grid-template-columns: 28px minmax(0, 1fr) 44px 44px; gap: 8px; padding-left: 8px; padding-right: 8px; } }
 [data-orbit-real-page="network"] .nw-hero-chips { display: flex; flex-direction: column; gap: 10px; align-items: flex-end; }
 [data-orbit-real-page="network"] .nw-hero-chip { padding: 8px 14px; border-radius: 999px; background: #FFFFFF; border: 1px solid #E8E9F6; font-size: 13px; color: #3B3F7A; }
 [data-orbit-real-page="network"] .nw-opp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); gap: 20px; align-items: start; }

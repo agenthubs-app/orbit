@@ -27,6 +27,7 @@ import {
   DashboardSummaryRequiresGraphFallback,
   evidenceLateralSql,
   javascriptTrimCharacters,
+  jsonStringNonEmpty,
   payloadStringNonEmpty,
   queryWithActivityCollation,
   sourceStringNonEmpty,
@@ -59,6 +60,21 @@ function jsTrimmed(field: string): string {
 function rawIfNonEmpty(field: string): string {
   return `case when ${payloadStringNonEmpty(field)} then payload ->> '${field}' end`;
 }
+
+/**
+ * W0049：结构标签新维度的原始 key，与 shared/compute/dashboard-graph.ts 的 structureFields 一一对应
+ * （非空判断用同一 ECMAScript trim；值本身不 trim）。
+ * - 职级：`publicProfile.seniorityLevel` 原值（六档 → 四组在 compute 里用 seniorityGroup 派生）；
+ * - 地区：`region.countryCode` 为两位大写字母时 `<CC>|<city 原值或空串>`；
+ * - 二级行业：`secondaryIndustryId` 原值（是否属于该一级由 compute 的 sanitizeIndustryPair 判定）。
+ */
+const seniorityKeySql = `case when ${jsonStringNonEmpty("payload -> 'publicProfile' -> 'seniorityLevel'", "payload -> 'publicProfile' ->> 'seniorityLevel'")}
+      then payload -> 'publicProfile' ->> 'seniorityLevel' end`;
+const regionKeySql = `case when jsonb_typeof(payload -> 'region') = 'object'
+      and jsonb_typeof(payload -> 'region' -> 'countryCode') = 'string'
+      and (payload -> 'region' ->> 'countryCode') ~ '^[ABCDEFGHIJKLMNOPQRSTUVWXYZ]{2}$'
+      then (payload -> 'region' ->> 'countryCode') || '|' || coalesce(case when ${jsonStringNonEmpty("payload -> 'region' -> 'city'", "payload -> 'region' ->> 'city'")}
+        then payload -> 'region' ->> 'city' end, '') end`;
 
 const scopedRecordsSql = `
 scoped_records as (
@@ -335,6 +351,9 @@ valid_contacts as (
     ${jsTrimmed("organization")} as organization_key,
     ${rawIfNonEmpty("role")} as role_raw,
     ${rawIfNonEmpty("organization")} as organization_raw,
+    ${seniorityKeySql} as seniority_key,
+    ${regionKeySql} as region_key,
+    ${rawIfNonEmpty("secondaryIndustryId")} as secondary_key,
     case when payload -> 'source' ->> 'type' in
       ('manual', 'event_import', 'email_signal', 'calendar_signal', 'chat_summary', 'referral')
       then payload -> 'source' ->> 'type' else 'system' end as source_type,
@@ -391,12 +410,18 @@ dimension_rows as (
   union all select 'location', location_key, graph_pos, evidence_ids, location_key is null from contact_dimensions
   union all select 'role', role_key, graph_pos, evidence_ids, role_key is null from contact_dimensions
   union all select 'relationship', strength_key, graph_pos, evidence_ids, strength_missing from contact_dimensions
+  /* W0049: new dimensions; their groups carry no evidence (excluded from dimension_evidence). */
+  union all select 'seniority', seniority_key, graph_pos, evidence_ids, seniority_key is null from contact_dimensions
+  union all select 'region', region_key, graph_pos, evidence_ids, region_key is null from contact_dimensions
+  union all select 'industry_secondary', industry_key || '|' || coalesce(secondary_key, ''), graph_pos, evidence_ids, secondary_key is null
+    from contact_dimensions where industry_key is not null
 ),
 dimension_evidence as (
   select dimension, key, evidence_value.value #>> '{}' as evidence_id,
     min(array[dimension_rows.graph_pos, evidence_value.ordinal]) as position
   from dimension_rows
   cross join lateral jsonb_array_elements(dimension_rows.evidence_ids) with ordinality as evidence_value(value, ordinal)
+  where dimension in ('industry', 'location', 'role', 'relationship')
   group by dimension, key, evidence_value.value #>> '{}'
 ),
 ranked_dimension_evidence as (

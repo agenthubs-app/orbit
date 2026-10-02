@@ -10,41 +10,35 @@
  */
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type { OrbitContactsViewModel } from "../../orbit-contacts-route-view-model";
 import { stashAgentPrefill } from "../../orbit-global-ask/orbit-ask-draft";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { AnalysisGoalEditor } from "../analysis/analysis-goal-editor";
-import { contactsAnalysisToView, type AnalysisDimension, type ContactsAnalysisView } from "../analysis/contacts-analysis-view-model";
-import { donut, toPerson } from "./network-model";
+import { contactsAnalysisToView, type ContactsAnalysisView } from "../analysis/contacts-analysis-view-model";
+import type { StructureTabExtras } from "../analysis/structure-tab-model";
 import { formatMonthDay } from "./network-overview";
-import { healthRows } from "./network-overview-model";
 import { MOBILE_CONTACTS_DASHBOARD_ROLE_COUNTS_QUERY } from "../../../../../shared/api-schema/mobile-contacts-dashboard";
+import { NetworkAnalysisStructure } from "./network-analysis-structure";
 import { NetworkShell } from "./network-shell";
 
 export type AnalysisTabKey = "struct" | "opp";
 
-const RANK_COLORS = [["#4B4FC7", "#FFFFFF"], ["#6B8FB5", "#FFFFFF"], ["#9C7A3E", "#FFFFFF"], ["#8A8FB0", "#FFFFFF"], ["#C9CBEA", "#2E3270"]] as const;
-const DIMS: { key: AnalysisDimension; zh: string; en: string }[] = [
-  { key: "industry", zh: "行业", en: "Industry" },
-  { key: "location", zh: "地区", en: "Region" },
-  { key: "role", zh: "角色", en: "Role" },
-  { key: "relationship", zh: "关系", en: "Relationship" },
-];
-
-export function NetworkAnalysis({ viewModel, analysis, initialTab }: { viewModel: OrbitContactsViewModel; analysis: ContactsAnalysisView; initialTab: AnalysisTabKey }) {
+/**
+ * `viewModel`（名单，最多 30 条）在 W0049 之后只留给示例期与后续标签；结构标签的人数一律来自 `analysis` 的全量分布。
+ * `structureExtras`：服务端加载的快照诊断／洞察、计划需求高亮与 30 天变化；缺省时①④不渲染、无高亮、变化显示「—」。
+ */
+export function NetworkAnalysis({ analysis, initialTab, structureExtras }: { viewModel: OrbitContactsViewModel; analysis: ContactsAnalysisView; initialTab: AnalysisTabKey; structureExtras?: StructureTabExtras }) {
   const { t, language, preserveHref } = useOrbitLanguage();
   const [view, setView] = useState(analysis);
   const [tab, setTab] = useState<AnalysisTabKey>(initialTab);
-  const [dim, setDim] = useState<AnalysisDimension>("industry");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [editingGoal, setEditingGoal] = useState(false);
   const pending = useRef(false);
   const mounted = useRef(true);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
-  const people = useMemo(() => viewModel.connections.map(toPerson), [viewModel.connections]);
   const dash = "—";
   const ready = view.state === "ready";
   const emptyCopy = (state: string) => state === "pending" ? t({ en: "Analysis in progress", zh: "分析生成中" }) : t({ en: "Source temporarily unavailable", zh: "来源暂时不可用" });
@@ -89,11 +83,6 @@ export function NetworkAnalysis({ viewModel, analysis, initialTab }: { viewModel
   const coverage = ready && "data" in view.coverage ? view.coverage.data : null;
   const opportunities = ready && "data" in view.opportunities ? view.opportunities.data : null;
   const goal = ready && "data" in view.goal ? view.goal.data : null;
-  const total = people.length;
-  const dimTitle = t(DIMS.find((d) => d.key === dim) ?? DIMS[0]);
-  const buckets = structure ? structure.dimensions[dim] : [];
-  const dimD = donut(buckets.map((b) => [b.label, b.count] as const));
-  const health = healthRows(view);
   const strong = structure?.health.find((h) => h.id === "core");
   const secState = (key: "structure" | "coverage" | "opportunities" | "goal") => (view.state === "ready" ? view[key].state : view.state);
 
@@ -121,115 +110,7 @@ export function NetworkAnalysis({ viewModel, analysis, initialTab }: { viewModel
         {error ? <div className="nw-empty" role="alert">{error}</div> : null}
 
         {tab === "struct" ? (
-          <div className="nw-an-sec">
-            {view.state === "ready" && view.summary ? (
-              <div className="nw-an-hero">
-                <div className="nw-an-hero-copy">
-                  <span className="nw-an-hero-star">✦</span>
-                  <div className="nw-an-hero-text">
-                    <span className="nw-an-eyebrow">{t({ en: "Structure diagnosis", zh: "结构诊断" })}</span>
-                    <h2 className="nw-h2-26">{view.summary}</h2>
-                  </div>
-                </div>
-                <button type="button" className="btn nw-an-outline" onClick={() => setTab("opp")}>{t({ en: "View related insights →", zh: "查看相关洞察 →" })}</button>
-              </div>
-            ) : null}
-
-            <div className="nw-pipe-grid">
-              <div className="nw-ov-card" data-network-section="structure">
-                <div className="nw-card-head">
-                  <h2 className="nw-h2">{t({ en: `${dimTitle} distribution`, zh: `${dimTitle}分布` })}</h2>
-                  <span className="nw-ai-desc">{t({ en: `${buckets.length} groups, ${total} contacts`, zh: `共 ${buckets.length} 个领域，${total} 位联系人` })}</span>
-                </div>
-                {structure && buckets.length > 0 ? (
-                  <div className="nw-dim-wrap">
-                    <div className="nw-dim-donut" style={{ background: dimD.bg }}>
-                      <div className="nw-dim-donut-inner">
-                        <strong className="nw-dim-donut-n">{total}</strong>
-                        <span className="nw-ai-desc">{t({ en: "contacts", zh: "联系人" })}</span>
-                      </div>
-                    </div>
-                    <div className="nw-dim-legend">
-                      {dimD.rows.map((d) => (
-                        <div key={d.label} className="nw-dim-row">
-                          <span className="nw-dim-dot" style={{ background: d.color }}></span>
-                          <span className="nw-dim-row-copy"><strong className="nw-dim-row-label">{d.label}</strong><span className="nw-ai-desc">{t({ en: `${d.n} · ${d.pct}`, zh: `${d.n} 人 · ${d.pct}` })}</span></span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : structure ? <div className="nw-empty">{t({ en: "No data in this dimension", zh: "当前维度暂无数据" })}</div> : emptyBlock(secState("structure"))}
-              </div>
-
-              <div className="nw-cockpit" data-network-section="top">
-                <div className="nw-dims">
-                  {DIMS.map((dm) => {
-                    const on = dim === dm.key;
-                    return <button key={dm.key} type="button" className="btn nw-dim-btn" onClick={() => setDim(dm.key)} style={{ background: on ? "#0E1225" : "#FFFFFF", color: on ? "#FFFFFF" : "#3B3F7A", borderColor: on ? "#0E1225" : "#E8E9F6" }}>{t(dm)}</button>;
-                  })}
-                </div>
-                <div className="nw-top-head">
-                  <h3 className="nw-h3">{dimTitle} Top 5</h3>
-                  <span className="nw-ai-desc">{t({ en: "Sorted by contact count", zh: "按联系人数量排序" })}</span>
-                </div>
-                <div className="nw-top-thead"><span>#</span><span>{dimTitle}</span><span className="nw-right">{t({ en: "Contacts", zh: "联系人" })}</span><span className="nw-right">{t({ en: "Share", zh: "占比" })}</span></div>
-                {dimD.rows.slice(0, 5).map((r, i) => (
-                  <a key={r.label} className="nw-top-row" href={buckets[i]?.href}>
-                    <span className="nw-top-rank" style={{ background: RANK_COLORS[i][0], color: RANK_COLORS[i][1] }}>{i + 1}</span>
-                    <span>{r.label}</span><strong className="nw-top-n">{r.n}</strong><span className="nw-top-pct">{r.pct}</span>
-                  </a>
-                ))}
-                {structure && dimD.rows.length === 0 ? <div className="nw-empty">{t({ en: "No data in this dimension", zh: "当前维度暂无数据" })}</div> : null}
-                {!structure ? emptyBlock(secState("structure")) : null}
-                {structure?.summary ? (
-                  <div className="nw-dim-sum">
-                    <span className="nw-dim-sum-icon">▮</span>
-                    <span className="nw-card-head"><strong className="nw-dim-sum-t">{t({ en: `${dimTitle} summary`, zh: `${dimTitle}分布小结` })}</strong><span className="nw-dim-sum-p">{structure.summary}</span></span>
-                  </div>
-                ) : null}
-              </div>
-            </div>
-
-            {coverage?.summary ? (
-              <div className="nw-insight">
-                <div className="nw-insight-copy">
-                  <span className="nw-insight-icon">✦</span>
-                  <div className="nw-insight-text">
-                    <strong className="nw-insight-t">{t({ en: "Structure insight", zh: "结构洞察" })}</strong>
-                    <p className="nw-insight-p">{coverage.summary}</p>
-                  </div>
-                </div>
-                <button type="button" className="btn nw-an-outline" onClick={() => setTab("opp")}>{t({ en: "View suggestions →", zh: "查看具体建议 →" })}</button>
-              </div>
-            ) : null}
-
-            <div className="nw-cockpit" data-network-section="health">
-              <div className="nw-ov-head">
-                <h2 className="nw-h2">{t({ en: "Relationship health", zh: "关系健康" })}</h2>
-                <button type="button" className="btn nw-textlink" onClick={() => setTab("opp")}>{t({ en: "View details →", zh: "查看详细分析 →" })}</button>
-              </div>
-              {health.length > 0 ? (
-                <div className="nw-health-grid">
-                  {health.map((h) => (
-                    <div key={h.icon} className="nw-health-item">
-                      <span className="nw-health-icon" style={{ background: h.iconBg, color: h.iconFg }}>{h.icon}</span>
-                      <span className="nw-health-copy">
-                        <span className="nw-ai-desc">{t(h.label)}</span>
-                        <span className="nw-health-row"><strong className="nw-health-n">{h.n}</strong><span className="nw-health-tag" style={{ background: h.iconBg, color: h.iconFg }}>{t(h.tag)}</span></span>
-                        <span className="nw-health-desc">{t(h.desc)}</span>
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              ) : structure ? <div className="nw-empty">{t({ en: "No relationship health data yet", zh: "暂无关系健康数据" })}</div> : emptyBlock(secState("structure"))}
-              <div className="nw-health-foot">
-                <strong className="nw-suggest-title">{t({ en: "More metrics", zh: "更多关键指标" })}</strong>
-                <span className="nw-health-kv">{t({ en: "Strong ties", zh: "强关系占比" })} <strong className="nw-health-kv-v">{strong ? `${strong.percentage}%` : dash}</strong></span>
-                <span className="nw-health-kv">{t({ en: "New contacts", zh: "最近新增联系人" })} <strong className="nw-health-kv-v">{ready ? t({ en: String(view.metrics.newContacts), zh: `${view.metrics.newContacts} 位` }) : dash}</strong></span>
-                <a className="btn nw-textlink nw-textlink-end" href="/app/contacts">{t({ en: "View all data →", zh: "查看完整数据 →" })}</a>
-              </div>
-            </div>
-          </div>
+          <NetworkAnalysisStructure view={view} extras={structureExtras} onOpenOpportunities={() => setTab("opp")} />
         ) : (
           <div className="nw-an-sec">
             {opportunities?.summary ? (

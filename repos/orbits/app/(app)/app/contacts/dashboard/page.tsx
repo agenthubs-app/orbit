@@ -6,6 +6,9 @@
  *
  * W0005 示例模式：本人在引导期示例里时概览用示例人物的数据渲染，分析子页只显示横条与说明；
  * 两者都不调用 `loadContactsAnalysis`／`loadAppContactsRouteViewModel`。
+ *
+ * W0049：分析子页另外并行读「结构」标签的附加数据（快照诊断与洞察、计划需求高亮、依据姓名），
+ * 30 天变化用刷新强度读模型时拿到的 state 行；概览不读这些。
  */
 import { redirect } from "next/navigation";
 
@@ -29,6 +32,7 @@ import { NetworkDemoAnalysisNotice } from "../network-0918/network-shell";
 import { readDemoModeViewForActor } from "../../_demo/demo-guide-view";
 import { buildDemoNetworkAnalysis, buildDemoNetworkViewModel } from "../../_demo/demo-network";
 import { ensureRelationshipStrengthsForPage, readRelationshipTierLookup } from "../../../../../features/relationship-strength/read-model";
+import { loadStructureTabExtras } from "../analysis/structure-tab-loader";
 
 export default async function AppContactsDashboardPage({ searchParams }: {
   searchParams?: Promise<{ tab?: string | string[] }>;
@@ -68,15 +72,16 @@ export default async function AppContactsDashboardPage({ searchParams }: {
     );
   }
   // W0047：先刷新关系强度读模型（来源戳与东京日未变时只读一条语句；失败不影响页面），分析里的档位分布读它。
-  await ensureRelationshipStrengthsForPage(actor.id, new Date());
-  const [analysis, routeModel] = await Promise.all([
+  const strengthState = await ensureRelationshipStrengthsForPage(actor.id, new Date());
+  const tab = params?.tab === "structure" || params?.tab === "opportunities" ? params.tab : "overview";
+  const [analysis, routeModel, structureExtras] = await Promise.all([
     loadContactsAnalysis(actor.id, language),
     loadAppContactsRouteViewModel({}, actor.id),
+    tab === "overview" ? Promise.resolve(undefined) : loadStructureTabExtras({ actorId: actor.id, language, strengthState }),
   ]);
   const tiers = routeModel.state === "success"
     ? await readRelationshipTierLookup({ actorId: actor.id, contactIds: routeModel.payload.contacts.map((contact) => contact.id) })
     : undefined;
-  const tab = params?.tab === "structure" || params?.tab === "opportunities" ? params.tab : "overview";
   const toViewModel = (payload: Parameters<typeof contactsRouteToOrbitContactsViewModel>[0]) =>
     localizeOrbitTree(applyOrbitContactsPresentation(contactsRouteToOrbitContactsViewModel(payload, tiers), language), language);
 
@@ -90,7 +95,7 @@ export default async function AppContactsDashboardPage({ searchParams }: {
           <AccountTopNav active="cards" />
           {tab === "overview"
             ? <NetworkOverview viewModel={toViewModel(routeModel.payload)} analysis={analysis} />
-            : <NetworkAnalysis viewModel={toViewModel(routeModel.payload)} analysis={analysis} initialTab={tab === "opportunities" ? "opp" : "struct"} />}
+            : <NetworkAnalysis viewModel={toViewModel(routeModel.payload)} analysis={analysis} initialTab={tab === "opportunities" ? "opp" : "struct"} structureExtras={structureExtras} />}
         </div>
       ) : (
         <ContactsSubrouteStateBoundary

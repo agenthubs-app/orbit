@@ -7,7 +7,10 @@
  * 与本文件的模板 × 结构化字段（计数、id、type、bucketId、dueLabel 封闭集）。
  * 语言：zh 用中文，其余（en、ja）用英文，沿用 `t()` 的 ja→en 回退惯例。
  */
+import type { SecondaryIndustryIdCode } from "../../../../../shared/contract/industries";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
+import { industryLabel, isIndustryIdCode, SECONDARY_INDUSTRY_CATALOG, secondaryIndustryLabel } from "../../../../../shared/domain/industries";
+import { regionDisplayName } from "../../../../../shared/domain/regions";
 
 export type NetworkCopy = { zh: string; en: string };
 
@@ -33,6 +36,56 @@ const SYSTEM_BUCKET_NAMES: Readonly<Record<string, NetworkCopy>> = {
   warm: { zh: "保持联系", en: "Keep in touch" },
   weak: { zh: "待重新联系", en: "To reconnect" },
 };
+
+/** W0049：结构标签新维度的系统分组名（职级四组、地区缺失、关系强度四档、行业未细分）。 */
+const STRUCTURE_BUCKET_NAMES: Readonly<Record<string, NetworkCopy>> = {
+  seniority_decision: { zh: "决策层", en: "Decision makers" },
+  seniority_manager: { zh: "管理层", en: "Managers" },
+  seniority_staff: { zh: "执行层", en: "Individual contributors" },
+  seniority_other: { zh: "其他", en: "Other" },
+  region_unknown: { zh: "地区待完善", en: "Region missing" },
+  new: { zh: "新认识", en: "New" },
+  active: { zh: "有往来", en: "Active" },
+  core: { zh: "核心", en: "Core" },
+  dormant: { zh: "待唤醒", en: "To re-engage" },
+};
+
+const SECONDARY_IDS = new Set<string>(SECONDARY_INDUSTRY_CATALOG.map((item) => item.id));
+
+/** 后端地区分组 id（`region_<CC>` 或 `region_<CC>_<encodeURIComponent(city)>`）→ 规范地区；不认识返回 null。 */
+function regionFromBucketId(bucketId: string): { countryCode: string; city: string | null } | null {
+  const match = /^region_([A-Z]{2})(?:_(.+))?$/.exec(bucketId);
+  if (!match) return null;
+  if (!match[2]) return { countryCode: match[1]!, city: null };
+  try {
+    return { countryCode: match[1]!, city: decodeURIComponent(match[2]) };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * W0049：结构分组的显示名（结构标签与名单下钻共用）。只用封闭集模板、行业字典、规范地区显示名；
+ * 都不认识时回退到后端分组名（用户填写的地区原文等用户数据）。
+ */
+export function structureBucketLabel(dimension: string, bucketId: string, fallback: string, language: OrbitLanguage): string {
+  const lang = language === "zh" ? "zh" : "en";
+  if (dimension === "industry" && isIndustryIdCode(bucketId)) return industryLabel(bucketId, lang);
+  if (dimension === "industry_secondary") {
+    return SECONDARY_IDS.has(bucketId)
+      ? secondaryIndustryLabel(bucketId as SecondaryIndustryIdCode, lang)
+      : pickCopy({ zh: "未细分", en: "Unspecified" }, language);
+  }
+  if (dimension === "region") {
+    const region = regionFromBucketId(bucketId);
+    if (region) return regionDisplayName(region, lang);
+  }
+  if (dimension === "seniority" || dimension === "region" || dimension === "tier") {
+    const copy = Object.prototype.hasOwnProperty.call(STRUCTURE_BUCKET_NAMES, bucketId) ? STRUCTURE_BUCKET_NAMES[bucketId] : undefined;
+    if (copy) return pickCopy(copy, language);
+  }
+  return systemBucketName(bucketId, language) ?? fallback;
+}
 
 /** 系统分组返回双语名；其余（用户填写的地区原文等）返回 null，由调用方原样显示。 */
 export function systemBucketName(bucketId: string, language: OrbitLanguage): string | null {

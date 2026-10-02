@@ -7,6 +7,7 @@ import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-st
 import { seedGeneratedRelationshipFixturesIntoLiveStore } from "../../shared/storage/seed-generated-fixtures";
 import { loadContactsStructureDetail, structureDetailToView } from "../../app/(app)/app/contacts/analysis/contacts-structure-route-service";
 import { ContactsStructureDetail } from "../../app/(app)/app/contacts/analysis/contacts-structure-detail";
+import { distributionService } from "../support/structure-tab-fixture";
 
 async function fixture() {
   const workspaceId = "workspace:web-analysis-detail";
@@ -99,4 +100,34 @@ test("SC-W0043-03: system group names and the detail insight are bilingual templ
   const html = renderToStaticMarkup(<ContactsStructureDetail view={en} />);
   assert.match(html, /This group has 4 contacts; most are warm ties/);
   assert.doesNotMatch(html, /经营决策者共有/);
+});
+
+// ---- W0049：结构标签新维度的名单下钻 ----
+
+test("W0049 SC-02: seniority, region, industry secondary and tier groups open lists whose size equals the group on the chart", async () => {
+  const service = distributionService();
+  const distributions = await service.getDistributions();
+  if (!distributions.success) throw new Error("Missing fixture");
+  const structure = distributions.data.structureDistributions;
+  // 分母随维度：二级 = 所在一级人数（科技 15），其余 = 35（夹具里 35 人都有档位行）。
+  const cases: Array<[string, string, number, string, number]> = [
+    ["seniority", structure.seniority![0]!.bucketId, structure.seniority![0]!.contactCount, "Decision makers", 35],
+    ["region", structure.region![0]!.bucketId, structure.region![0]!.contactCount, "Japan · Tokyo", 35],
+    ["industry_secondary", structure.industry[0]!.secondary![0]!.bucketId, structure.industry[0]!.secondary![0]!.contactCount, "Enterprise Software & SaaS", 15],
+    ["tier", "dormant", distributions.data.relationshipTierDistribution!.find((bucket) => bucket.tier === "dormant")!.relationshipCount, "To re-engage", 35],
+  ];
+  for (const [dimension, bucketId, count, label, total] of cases) {
+    const view = await loadContactsStructureDetail({ actorId: "actor:one", dimension, bucketId, language: "en", service });
+    assert.equal(view.state, "ready", dimension);
+    if (view.state !== "ready") continue;
+    assert.equal(view.count, count, dimension);
+    assert.equal(view.contacts.length, count, dimension);
+    assert.equal(view.label, label, dimension);
+    assert.equal(view.total, total, dimension);
+    const html = renderToStaticMarkup(<ContactsStructureDetail view={view} />);
+    for (const contact of view.contacts) assert.ok(html.includes(contact.href));
+  }
+  // 不在白名单的维度与不存在的分组仍是错误态。
+  assert.deepEqual(await loadContactsStructureDetail({ actorId: "actor:one", dimension: "secondary", bucketId: "x", language: "zh", service }), { state: "error" });
+  assert.deepEqual(await loadContactsStructureDetail({ actorId: "actor:one", dimension: "tier", bucketId: "warm", language: "zh", service }), { state: "error" });
 });
