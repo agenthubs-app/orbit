@@ -71,6 +71,8 @@ export function cardReason(card: IngestV2CardViewModel, draft: IngestV2CardDraft
   if (card.hasTerminalFailure) return { zh: "识别失败", en: "Recognition failed" };
   if (draft.conflictedFields.length) return { zh: "正反面不一致", en: "Sides disagree" };
   if (industryNeedsReview(draft)) return { zh: "正反面行业不一致", en: "Sides disagree on industry" };
+  if (draft.seniority?.conflicted) return { zh: "正反面职级不一致", en: "Sides disagree on seniority" };
+  if (draft.region?.conflicted) return { zh: "正反面地区不一致", en: "Sides disagree on region" };
   const issue = cardIssues(card)[0];
   if (issue?.code === "VERIFICATION_MISMATCH") return MISREAD_COPY[issue.field] ?? { zh: "可能有字读错", en: "May be misread" };
   if (issue) return REASON_COPY[issue.code] ?? { zh: "需要核对", en: "Needs a check" };
@@ -81,6 +83,11 @@ export function cardReason(card: IngestV2CardViewModel, draft: IngestV2CardDraft
 /** 正反面行业冲突且用户还没选定或清空：这张卡必须人工确认。 */
 export function industryNeedsReview(draft: IngestV2CardDraft): boolean {
   return draft.industry?.conflicted === true;
+}
+
+/** W0045：行业、职级、地区任一行正反面冲突且未处理——同行业做法：挡自动导入与自动并入。 */
+export function enrichmentNeedsReview(draft: IngestV2CardDraft): boolean {
+  return industryNeedsReview(draft) || draft.seniority?.conflicted === true || draft.region?.conflicted === true;
 }
 
 /**
@@ -97,7 +104,7 @@ export function isAutoImportEligible(card: IngestV2CardViewModel, draft: IngestV
     && cardIssues(card).length === 0
     && draft.conflictedFields.length === 0
     && draft.staleFields.length === 0
-    && !industryNeedsReview(draft)
+    && !enrichmentNeedsReview(draft)
     && Boolean(draft.fields.displayName.trim());
 }
 
@@ -109,7 +116,7 @@ export function isAutoMergeEligible(card: IngestV2CardViewModel, draft: IngestV2
   return card.allExtracted
     && !card.hasTerminalFailure
     && draft.conflictedFields.length === 0
-    && !industryNeedsReview(draft);
+    && !enrichmentNeedsReview(draft);
 }
 
 export function isCardSkipped(card: IngestV2CardViewModel<IngestCardGroupingItem>): boolean {

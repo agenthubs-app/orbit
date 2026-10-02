@@ -15,7 +15,9 @@ export const INGEST_V2_COLLECTING_TTL_HOURS = 24;
 export const INGEST_V2_REVIEW_TTL_DAYS = 7;
 // v2（W0013）：extraction 增加 primaryIndustryId / secondaryIndustryId。v1 行缺这两个键，
 // 读取时由 repository 映射为 null，旧批次照常打开与确认。
-export const INGEST_V2_EXTRACTION_SCHEMA_VERSION = 2;
+// v3（W0045）：再增加 seniorityLevel / regionCountryCode / regionCity（同一次文本整理顺带推断）；
+// v1／v2 行缺这三个键，读取时同样映射为 null。
+export const INGEST_V2_EXTRACTION_SCHEMA_VERSION = 3;
 export const INGEST_V2_DERIVATIVE_TARGET_EDGE_PX = 2048;
 export const INGEST_V2_DERIVATIVE_HARD_MAX_BYTES = 2 * 1024 * 1024;
 

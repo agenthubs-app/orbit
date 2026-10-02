@@ -7,8 +7,10 @@ import type {
 } from "../../shared/domain/contracts";
 import {
   isConnectionStage,
+  isSeniorityLevel,
   type SourceType,
 } from "../../shared/domain/source-types";
+import { normalizeRegion } from "../../shared/domain/regions";
 import type { OrbitLanguage } from "../../shared/contract/language";
 import type { IndustrySelectionContract } from "../../shared/contract/industries";
 import {
@@ -45,6 +47,7 @@ import {
   type ContactDetailUpdateInput,
 } from "./detail-contract";
 import type {
+  ContactEnrichmentEdit,
   LiveContactDetailState,
   LiveContactsGraphProvider,
 } from "./live-service";
@@ -603,6 +606,9 @@ function detailFor(input: {
     primaryIndustryLabel: input.contact.primaryIndustryId
       ? industryLabel(input.contact.primaryIndustryId, input.language)
       : undefined,
+    ...(input.contact.publicProfile?.seniorityLevel ? { seniorityLevel: input.contact.publicProfile.seniorityLevel } : {}),
+    ...(input.contact.region ? { region: { ...input.contact.region } } : {}),
+    ...(input.contact.enrichment ? { enrichment: { version: 1 as const, fields: { ...input.contact.enrichment.fields } } } : {}),
     primaryEmail:
       input.contact.primaryEmail ?? input.contact.handles?.email ?? "",
     primaryPhone:
@@ -1107,6 +1113,26 @@ function persistedUpdatePayload(input: {
   };
 }
 
+/** W0045：PATCH 里的职级／地区 → provider 编辑输入；都没传返回 null，不合法返回 "invalid"。 */
+function contactEnrichmentEditFor(input: ContactDetailUpdateInput): ContactEnrichmentEdit | null | "invalid" {
+  const edit: ContactEnrichmentEdit = {};
+  if (input.seniorityLevel !== undefined) {
+    const level = input.seniorityLevel;
+    if (level === null) edit.seniorityLevel = null;
+    else if (isSeniorityLevel(level)) edit.seniorityLevel = level;
+    else return "invalid";
+  }
+  if (input.region !== undefined) {
+    if (input.region === null) edit.region = null;
+    else {
+      const region = normalizeRegion(input.region.countryCode, input.region.city ?? null);
+      if (!region) return "invalid";
+      edit.region = region;
+    }
+  }
+  return Object.keys(edit).length ? edit : null;
+}
+
 export function createLiveContactDetailTagStatusService({
   now = () => new Date().toISOString(),
   provider = null,
@@ -1257,6 +1283,12 @@ export function createLiveContactDetailTagStatusService({
         });
       }
 
+      // W0045：职级只收六档、地区国家码须是合法 ISO 码（城市可空）；null 表示清空。
+      const enrichmentEdit = contactEnrichmentEditFor(input);
+      if (enrichmentEdit === "invalid") {
+        return failure("CONTACT_DETAIL_ENRICHMENT_NOT_SUPPORTED", { collectedAt, provider });
+      }
+
       const { connection, result: loaded, persistedState } = await loadPayload({
         actorId: input.actorId,
         contactId: input.contactId,
@@ -1292,9 +1324,11 @@ export function createLiveContactDetailTagStatusService({
         return failure("CONTACT_DETAIL_INDUSTRY_NOT_SUPPORTED", { collectedAt, provider });
       }
 
+      const writesEnrichment = enrichmentEdit !== null;
       if (
         (writesDetailState && !provider?.upsertContactDetailState) ||
-        (writesPrimaryIndustry && !provider?.updateContactPrimaryIndustry)
+        (writesPrimaryIndustry && !provider?.updateContactPrimaryIndustry) ||
+        (writesEnrichment && !provider?.updateContactEnrichment)
       ) {
         return failure("CONTACT_DETAIL_LIVE_STORE_WRITE_FAILED", {
           collectedAt,
@@ -1330,6 +1364,9 @@ export function createLiveContactDetailTagStatusService({
             selection.primaryIndustryId ?? null,
             selection.secondaryIndustryId ?? null,
           );
+        }
+        if (enrichmentEdit) {
+          await provider.updateContactEnrichment?.(input.contactId.trim(), actorId, enrichmentEdit);
         }
         if (writesDetailState) {
           await provider.upsertContactDetailState?.(

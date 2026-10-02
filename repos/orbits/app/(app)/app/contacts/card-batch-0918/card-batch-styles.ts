@@ -195,6 +195,7 @@ ${S} .cb-rinput:focus { border-color: #4B4FC7; }
 ${S} .cb-rindustry { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 ${S} .cb-rindustry .cb-rinput { flex: 1 1 140px; min-width: 0; width: auto; }
 ${S} .cb-rindustry-sep { color: #8A8DB8; font-size: 15px; }
+${S} .cb-rhint { flex: 0 0 auto; font-size: 12px; color: #6B6FA8; }
 ${S} .cb-alts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 12px; color: #8A6420; }
 ${S} .btn.cb-alt { padding: 5px 11px; border: 1px solid #E9D3A4; border-radius: 999px; background: #FFFFFF; color: #0E1225; font-size: 13px; cursor: pointer; }
 ${S} .btn.cb-alt:hover { background: #FBF1DC; }

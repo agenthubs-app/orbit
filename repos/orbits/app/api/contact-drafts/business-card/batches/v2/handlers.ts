@@ -16,6 +16,7 @@ import {
   type IngestManifestEntry,
 } from "../../../../../../features/acquisition/business-card-ingest-v2/contract";
 import type { IngestDerivativeStore } from "../../../../../../features/acquisition/business-card-ingest-v2/derivative-store";
+import { reviewedEnrichmentValues } from "../../../../../../features/acquisition/business-card-ingest-v2/review-enrichment";
 import {
   IngestImageInvalidError,
   isIngestUploadMimeType,
@@ -629,15 +630,24 @@ function confirmationFingerprint(body: {
   allowDuplicate?: boolean;
   primaryIndustryId?: string | null;
   secondaryIndustryId?: string | null;
+  seniorityLevel?: string | null;
+  regionCountryCode?: string | null;
+  regionCity?: string | null;
   metEventId?: string | null;
 }): string {
-  // 地址、合并目标、行业、来源活动（W0015）是后加的字段：为空时不进规范化对象，旧确认的指纹保持不变、可安全重放。
+  // 地址、合并目标、行业、来源活动（W0015）、职级与地区（W0045）是后加的字段：
+  // 为空时不进规范化对象，旧确认的指纹保持不变、可安全重放。
   const address = body.address?.trim() ? { address: body.address } : {};
   const merge = body.mergeIntoContactId ? { mergeIntoContactId: body.mergeIntoContactId } : {};
   const metEvent = body.metEventId ? { metEventId: body.metEventId } : {};
   const industry = {
     ...(body.primaryIndustryId ? { primaryIndustryId: body.primaryIndustryId } : {}),
     ...(body.secondaryIndustryId ? { secondaryIndustryId: body.secondaryIndustryId } : {}),
+  };
+  const enrichment = {
+    ...(body.seniorityLevel ? { seniorityLevel: body.seniorityLevel } : {}),
+    ...(body.regionCountryCode ? { regionCountryCode: body.regionCountryCode } : {}),
+    ...(body.regionCity ? { regionCity: body.regionCity } : {}),
   };
   const canonical = {
     ...address,
@@ -651,6 +661,7 @@ function confirmationFingerprint(body: {
     ...merge,
     ...metEvent,
     notes: body.notes,
+    ...enrichment,
     organization: body.organization,
     phone: body.phone,
     relationshipContext: body.relationshipContext,
@@ -784,6 +795,12 @@ function createConfirmLikeHandler(
         }
         metEvent = { eventId: event.eventId, title: event.title };
       }
+      // W0045：行业／职级／地区的来源由服务端比较提交值与该卡识别结果判定；客户端不传来源（schema 已剥掉多余键）。
+      const reviewed = reviewedEnrichmentValues(confirmation.data, cardItems.map((entry) => entry.extraction));
+      if (!reviewed.ok) {
+        return jsonError(new AppError("VALIDATION_ERROR", "Card confirmation seniority or region is invalid."), mode);
+      }
+      const enrichment = { values: reviewed.values };
       let merged = false;
       try {
         const confirmed = await runtime.repository.confirmCard({
@@ -817,6 +834,7 @@ function createConfirmLikeHandler(
                 card,
                 cardNotes: confirmation.data.notes,
                 contactId,
+                enrichment,
                 evidenceIds,
                 industry,
                 metEvent,
@@ -852,6 +870,7 @@ function createConfirmLikeHandler(
               organization: confirmation.data.organization,
               phone: confirmation.data.phone,
               ...industry,
+              enrichment,
               metEvent,
               relationshipContext: confirmation.data.relationshipContext,
               role: confirmation.data.role,

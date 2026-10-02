@@ -2,9 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import type { IngestItemDTO } from "../../features/acquisition/business-card-ingest-v2/contract";
-import { groupIngestItemsByCardId, initialCardDraft, setDraftIndustry, setManualDraftField } from "../../app/(app)/app/contacts/ingest-v2/ingest-v2-route-view-model";
+import { groupIngestItemsByCardId, initialCardDraft, setDraftIndustry, setDraftRegion, setDraftSeniority, setManualDraftField } from "../../app/(app)/app/contacts/ingest-v2/ingest-v2-route-view-model";
 import {
   cardReason,
+  enrichmentNeedsReview,
   fieldTag,
   flaggedFields,
   industryNeedsReview,
@@ -120,4 +121,37 @@ test("matching industries, or one side missing the secondary, are not a conflict
   const oneSide = twoSided([null, null], ["finance_investment", "finance_investment.fintech"]);
   assert.equal(oneSide.draft.industry.primaryIndustryId, "finance_investment");
   assert.equal(isAutoMergeEligible(oneSide.card, oneSide.draft), true);
+});
+
+// W0045：职级／地区正反面冲突同行业做法——不预选、挡自动导入与自动并入，选定或清空后放行。
+function twoSidedEnrichment(front: Record<string, unknown>, back: Record<string, unknown>) {
+  const side = (which: "front" | "back", values: Record<string, unknown>) => {
+    const base = item({ id: `item-${which}`, side: which, seq: which === "front" ? 1 : 2 });
+    return { ...base, extraction: { ...base.extraction!, ...values } as IngestItemDTO["extraction"] };
+  };
+  const card = groupIngestItemsByCardId([side("front", front), side("back", back)])[0]!;
+  return { card, draft: initialCardDraft(card) };
+}
+
+test("W0045 disagreeing seniority or region blocks auto import and auto merge until resolved", () => {
+  const seniority = twoSidedEnrichment({ seniorityLevel: "director" }, { seniorityLevel: "manager" });
+  assert.equal(enrichmentNeedsReview(seniority.draft), true);
+  assert.equal(seniority.draft.seniority.value, null, "no side is silently preferred");
+  assert.equal(isAutoImportEligible(seniority.card, seniority.draft), false);
+  assert.equal(isAutoMergeEligible(seniority.card, seniority.draft), false);
+  assert.deepEqual(cardReason(seniority.card, seniority.draft, false), { zh: "正反面职级不一致", en: "Sides disagree on seniority" });
+  const picked = setDraftSeniority(seniority.draft, "manager");
+  assert.equal(isAutoImportEligible(seniority.card, picked), true);
+  assert.equal(isAutoMergeEligible(seniority.card, picked), true);
+
+  const region = twoSidedEnrichment({ regionCountryCode: "JP", regionCity: "Tokyo" }, { regionCountryCode: "JP", regionCity: "Osaka" });
+  assert.equal(isAutoImportEligible(region.card, region.draft), false);
+  assert.deepEqual(cardReason(region.card, region.draft, false), { zh: "正反面地区不一致", en: "Sides disagree on region" });
+  const cleared = setDraftRegion(region.draft, { countryCode: null, city: null });
+  assert.equal(enrichmentNeedsReview(cleared), false, "clearing also resolves the conflict");
+  assert.equal(isAutoMergeEligible(region.card, cleared), true);
+
+  const agreeing = twoSidedEnrichment({ seniorityLevel: "vp", regionCountryCode: "JP", regionCity: "Tokyo" }, { seniorityLevel: "vp", regionCountryCode: "JP", regionCity: null });
+  assert.equal(enrichmentNeedsReview(agreeing.draft), false);
+  assert.equal(isAutoImportEligible(agreeing.card, agreeing.draft), true);
 });

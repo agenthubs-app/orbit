@@ -13,6 +13,7 @@ import type {
   BusinessCardStructuredExtraction,
 } from "./business-card-cloud-ocr";
 import { sanitizeIndustryPair } from "../../shared/domain/industries";
+import { sanitizeCardEnrichment } from "./business-card-enrichment-prompt";
 
 const nullableStringSchema = {
   type: ["string", "null"],
@@ -71,8 +72,11 @@ export const BUSINESS_CARD_EXTRACTION_JSON_SCHEMA = {
     nativeFullName: nullableStringSchema,
     organization: nullableStringSchema,
     primaryIndustryId: nullableStringSchema,
+    regionCity: nullableStringSchema,
+    regionCountryCode: nullableStringSchema,
     romanizedFullName: nullableStringSchema,
     secondaryIndustryId: nullableStringSchema,
+    seniorityLevel: nullableStringSchema,
     title: nullableStringSchema,
     website: nullableStringSchema,
   },
@@ -91,6 +95,9 @@ export const BUSINESS_CARD_EXTRACTION_JSON_SCHEMA = {
     "detectedLanguages",
     "primaryIndustryId",
     "secondaryIndustryId",
+    "seniorityLevel",
+    "regionCountryCode",
+    "regionCity",
   ],
   type: "object",
 } as const;
@@ -265,5 +272,7 @@ export function parseBusinessCardStructuredExtraction(
     detectedLanguages,
     // 行业是推断值：缺失、分类外或一二级不匹配只清空行业，绝不让整张名片失败。
     ...sanitizeIndustryPair(value.primaryIndustryId, value.secondaryIndustryId),
+    // W0045：职级与地区同样是推断值，规则同行业：不合法清成 null，不让整张名片失败。
+    ...sanitizeCardEnrichment(value.seniorityLevel, value.regionCountryCode, value.regionCity),
   };
 }

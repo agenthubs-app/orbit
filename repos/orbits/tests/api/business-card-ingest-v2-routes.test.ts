@@ -721,7 +721,7 @@ test("v2 confirm writes the reviewed industry, merges only into empty industry f
     const detail = await envelope(await createIngestV2BatchDetailHandler(deps)(new Request("http://test/detail"), params({ id: batch.id })));
     const items = detail.items as IngestItemDTO[];
     const itemFor = (card: string) => items.find(entry => entry.cardId === `card:${card}`)!;
-    assert.equal(itemFor("a").extractionSchemaVersion, 2);
+    assert.equal(itemFor("a").extractionSchemaVersion, 3);
     assert.equal(itemFor("a").extraction?.secondaryIndustryId, "professional_services.legal");
     assert.equal(itemFor("d").extractionSchemaVersion, 1);
     assert.equal(itemFor("d").extraction?.primaryIndustryId, null, "v1 JSON without industry reads back as null");
@@ -768,13 +768,111 @@ test("v2 confirm writes the reviewed industry, merges only into empty industry f
     assert.equal(contactB.primaryIndustryId, "finance_investment");
     assert.equal(contactB.secondaryIndustryId, "finance_investment.insurance");
 
-    // v1 旧卡合并到已有行业的联系人：确认成功，已有行业不被覆盖。
+    // v1 旧卡合并到已有行业的联系人：确认成功。W0045 起按来源规则：联系人 A 的行业是识别值（ai），
+    // 可被新值替换；存量无来源或用户填写的行业不动（见 W0045 来源测试）。
     const mergedIntoExisting = await post("d", body("d", { displayName: "青空 太郎", mergeIntoContactId: createdA.data.contactId, primaryIndustryId: "technology_internet", secondaryIndustryId: "technology_internet.ai_data" }));
     assert.equal(mergedIntoExisting.status, 200);
     assert.equal(mergedIntoExisting.data.state, "created");
     const contactAAfter = await payloadOf(createdA.data.contactId);
-    assert.equal(contactAAfter.primaryIndustryId, "professional_services");
-    assert.equal(contactAAfter.secondaryIndustryId, "professional_services.legal");
+    assert.equal((contactA.enrichment as { fields: Record<string, { origin: string }> }).fields.industry!.origin, "ai");
+    assert.equal(contactAAfter.primaryIndustryId, "technology_internet");
+    assert.equal((contactAAfter.enrichment as { fields: Record<string, { origin: string }> }).fields.industry!.origin, "user");
+  });
+});
+
+// W0045 SC-02：职级／地区的来源由服务端判定（提交值 = 识别值 → ai，否则 user）；客户端伪造的来源无效；
+// 旧客户端不传新字段时不写、确认指纹不变；v2 旧行的新字段读成 null，旧批次照常确认。
+test("W0045 confirm judges seniority and region provenance on the server and keeps old clients' fingerprints", { skip }, async () => {
+  await withHarness(async ({ deps, runtime, pool }) => {
+    const heic = await readFile(FIXTURE_HEIC);
+    const created = await envelope(await createIngestV2CollectionHandlers(deps).POST(new Request("http://test/api/v2", { method: "POST", body: JSON.stringify({
+      idempotencyKey: "key-enrichment",
+      manifest: ["a", "b", "c"].map((card, index) => ({ cardId: `card:${card}`, side: "front", fileName: `${card}.heic`, mimeType: "image/heic", rawSize: heic.length, seq: index + 1, clientDigest: sha256(heic) })),
+    }) })));
+    const batch = created.batch as { id: string };
+    const upload = createIngestV2UploadHandler(deps);
+    for (const item of created.items as Array<{ id: string }>) {
+      assert.equal((await upload(new Request("http://test/upload", { method: "PUT", body: new Uint8Array(heic), headers: { "content-type": "image/heic" } }), params({ id: batch.id, itemId: item.id }))).status, 200);
+    }
+    await createIngestV2FinalizeHandler(deps)(new Request("http://test/finalize", { method: "POST" }), params({ id: batch.id }));
+    const extraction: BusinessCardStructuredExtraction = {
+      fullName: "架空 花子", nativeFullName: "架空 花子", romanizedFullName: null, organization: "架空商事株式会社", departments: ["営業本部"], title: "営業本部長",
+      emails: [], contactPoints: [], website: null, addresses: [], certifications: [], detectedLanguages: ["ja"],
+      primaryIndustryId: "professional_services", secondaryIndustryId: "professional_services.legal",
+      seniorityLevel: "director", regionCountryCode: "JP", regionCity: "Tokyo",
+    };
+    for (const item of await runtime.repository.claimItems({ limit: 3 })) {
+      await runtime.repository.submitExtraction({ itemId: item.id, leaseToken: item.leaseToken, expectedVersion: item.version, extraction, reviewIssues: [], usage: null });
+    }
+    // card:c 改回提取结构 v2（没有职级与地区键），模拟升级前识别完的旧批次。
+    await pool.query(
+      `update bc_ingest_items set extraction = extraction - 'seniorityLevel' - 'regionCountryCode' - 'regionCity', extraction_schema_version = 2 where card_id = 'card:c'`,
+    );
+    const detail = await envelope(await createIngestV2BatchDetailHandler(deps)(new Request("http://test/detail"), params({ id: batch.id })));
+    const items = detail.items as IngestItemDTO[];
+    const itemFor = (card: string) => items.find(entry => entry.cardId === `card:${card}`)!;
+    assert.equal(itemFor("a").extractionSchemaVersion, 3);
+    assert.deepEqual([itemFor("a").extraction?.seniorityLevel, itemFor("a").extraction?.regionCountryCode, itemFor("a").extraction?.regionCity], ["director", "JP", "Tokyo"]);
+    assert.equal(itemFor("c").extractionSchemaVersion, 2);
+    assert.deepEqual([itemFor("c").extraction?.seniorityLevel, itemFor("c").extraction?.regionCountryCode, itemFor("c").extraction?.regionCity], [null, null, null], "v2 JSON reads back as null");
+
+    const body = (card: string, fields: Record<string, unknown>) => {
+      const item = itemFor(card);
+      return {
+        confirmationIntentId: `confirm:${card}`,
+        expectedCardItems: [{ itemId: item.id, version: item.version, imageDigest: item.imageDigest }],
+        fieldSources: { displayName: null, organization: null, role: null, email: null, phone: null },
+        organization: "", role: "", email: "", phone: "", relationshipContext: "", notes: "",
+        ...fields,
+      };
+    };
+    const confirm = createIngestV2ConfirmHandler(deps);
+    const post = async (card: string, payload: Record<string, unknown>) => {
+      const response = await confirm(new Request("http://test/confirm", { method: "POST", body: JSON.stringify(payload) }), params({ id: batch.id, itemId: itemFor(card).id }));
+      return { status: response.status, data: await envelope(response) };
+    };
+    const payloadOf = async (contactId: unknown) =>
+      (await pool.query(`select payload from orbit_records where collection_name = 'contacts' and record_id = $1`, [contactId])).rows[0].payload as Record<string, unknown>;
+    const origins = (payload: Record<string, unknown>) => Object.fromEntries(Object.entries((payload.enrichment as { fields: Record<string, { origin: string; via: string }> } | undefined)?.fields ?? {})
+      .map(([field, provenance]) => [field, `${provenance.origin}/${provenance.via}`]));
+
+    assert.equal((await post("a", body("a", { displayName: "架空 花子", regionCountryCode: "XX", regionCity: "Tokyo" }))).status, 400, "an unknown country is rejected before any write");
+    assert.equal((await post("a", body("a", { displayName: "架空 花子", seniorityLevel: "boss" }))).status, 400);
+
+    // 改了职级、地区未改；客户端顺带伪造来源——无效。
+    const createdA = await post("a", body("a", {
+      displayName: "架空 花子",
+      primaryIndustryId: "professional_services", secondaryIndustryId: "professional_services.legal",
+      seniorityLevel: "vp", regionCountryCode: "JP", regionCity: "東京",
+      enrichment: { version: 1, fields: { seniorityLevel: { origin: "ai", via: "card_ocr", updatedAt: "2026-01-01T00:00:00.000Z" } } },
+      seniorityOrigin: "ai",
+    }));
+    assert.equal(createdA.data.state, "created");
+    const contactA = await payloadOf(createdA.data.contactId);
+    assert.equal((contactA.publicProfile as Record<string, unknown>).seniorityLevel, "vp");
+    assert.deepEqual(contactA.region, { countryCode: "JP", city: "Tokyo" });
+    assert.deepEqual(origins(contactA), { industry: "ai/card_ocr", seniorityLevel: "user/card_review", region: "ai/card_ocr" });
+
+    // 旧客户端：不传新字段 → 不写职级／地区；重放时带上全空的新字段，指纹不变（replayed）。
+    const legacyBody = body("b", { displayName: "別の 人" });
+    const createdB = await post("b", legacyBody);
+    assert.equal(createdB.data.state, "created");
+    const contactB = await payloadOf(createdB.data.contactId);
+    assert.equal(contactB.region, undefined);
+    assert.equal(contactB.enrichment, undefined);
+    assert.equal((contactB.publicProfile as Record<string, unknown> | undefined)?.seniorityLevel, undefined);
+    const replay = await post("b", { ...legacyBody, seniorityLevel: null, regionCountryCode: null, regionCity: null });
+    assert.equal(replay.status, 200);
+    assert.equal(replay.data.replayed, true, "empty new fields keep the old confirmation fingerprint");
+    assert.equal(replay.data.contactId, createdB.data.contactId);
+    assert.equal((await post("b", { ...legacyBody, seniorityLevel: "manager" })).status, 409, "a different value under the same intent is a conflict, not a silent rewrite");
+
+    // v2 旧卡：识别结果没有地区，提交的地区记 user。
+    const createdC = await post("c", body("c", { displayName: "三人目", regionCountryCode: "JP", regionCity: "Osaka" }));
+    assert.equal(createdC.data.state, "created");
+    const contactC = await payloadOf(createdC.data.contactId);
+    assert.deepEqual(contactC.region, { countryCode: "JP", city: "Osaka" });
+    assert.deepEqual(origins(contactC), { region: "user/card_review" });
   });
 });
 

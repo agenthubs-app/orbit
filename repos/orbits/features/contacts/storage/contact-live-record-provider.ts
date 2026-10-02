@@ -8,12 +8,15 @@ import type {
 } from "../../../shared/domain/contracts";
 import type { IndustryIdCode, SecondaryIndustryIdCode } from "../../../shared/contract/industries";
 import { isIndustryIdCode, mergeIndustrySelection, validateIndustrySelection } from "../../../shared/domain/industries";
+import { readStoredEnrichment, withEnrichmentProvenance } from "../../../shared/domain/enrichment";
+import { normalizeRegion, readStoredRegion } from "../../../shared/domain/regions";
 import {
   isNetworkCategory,
   isConnectionStage,
   isRelationshipStage,
   isRelationshipTrustLevel,
   isRelationshipValueType,
+  isSeniorityLevel,
   isSourceType,
 } from "../../../shared/domain/source-types";
 import {
@@ -34,6 +37,7 @@ import type {
   LiveContactDetailStoredInteraction,
   LiveContactDetailStoredNote,
   LiveContactsGraphProvider,
+  ContactEnrichmentEdit,
 } from "../live-service";
 import type { LocalRemoteContactGraph } from "../contact-graph-provider";
 import type { ContactsFacetCounts } from "../contact-graph-query";
@@ -267,6 +271,10 @@ function contactFromRecord(
             payload.publicProfile.selfIntroduction,
           ),
           industry: optionalString(payload.publicProfile.industry),
+          // W0045：职级唯一存储；白名单映射，漏了详情就读不到。
+          seniorityLevel: isSeniorityLevel(payload.publicProfile.seniorityLevel)
+            ? payload.publicProfile.seniorityLevel
+            : undefined,
           offering: stringArray(payload.publicProfile.offering),
           seeking: stringArray(payload.publicProfile.seeking),
           topics: stringArray(payload.publicProfile.topics),
@@ -284,6 +292,8 @@ function contactFromRecord(
     secondaryIndustryId: typeof payload.secondaryIndustryId === "string" && validateIndustrySelection(payload).valid
       ? payload.secondaryIndustryId as SecondaryIndustryIdCode
       : undefined,
+    region: readStoredRegion(payload.region) ?? undefined,
+    enrichment: readStoredEnrichment(payload.enrichment) ?? undefined,
     nextAction: isRecord(payload.nextAction) && nonEmptyString(payload.nextAction.text)
       ? {
           text: payload.nextAction.text,
@@ -945,6 +955,12 @@ export function createStorageContactGraphProvider({
       }
       const updatedAt = new Date(Math.max(Date.now(), Date.parse(contactRecord.updatedAt) + 1)).toISOString();
       nextPayload.updatedAt = updatedAt;
+      // W0045：联系人编辑里改（含清空）行业 = 用户值，补全不再覆盖。
+      nextPayload.enrichment = withEnrichmentProvenance(readStoredEnrichment(nextPayload.enrichment), "industry", {
+        origin: "user",
+        updatedAt,
+        via: "contact_edit",
+      });
       const nextRecord = {
         ...contactRecord,
         updatedAt,
@@ -966,6 +982,62 @@ export function createStorageContactGraphProvider({
         throw new Error("Persisted contact industry failed validation.");
       }
 
+      return contact;
+    },
+    async updateContactEnrichment(contactId: string, actorId: string, update: ContactEnrichmentEdit) {
+      const normalizedActorId = actorId.trim();
+      const normalizedContactId = contactId.trim();
+      if (!normalizedActorId || !normalizedContactId) {
+        throw new Error("Contact enrichment update requires actor and contact identifiers.");
+      }
+      const contactRecord = await store.getRecord({
+        workspaceId,
+        collectionName: CONTACTS_LIVE_RECORD_COLLECTIONS.contacts,
+        recordId: normalizedContactId,
+      });
+      if (!contactRecord || !contactRecordOwnedByActor(contactRecord, normalizedActorId)) {
+        throw new Error("Contact enrichment update is outside the actor boundary.");
+      }
+      const seniorityLevel = update.seniorityLevel;
+      if (seniorityLevel !== undefined && seniorityLevel !== null && !isSeniorityLevel(seniorityLevel)) {
+        throw new Error("Contact seniority level is invalid.");
+      }
+      const region = update.region === undefined || update.region === null
+        ? update.region
+        : normalizeRegion(update.region.countryCode, update.region.city ?? null);
+      if (region === null && update.region !== null && update.region !== undefined) {
+        throw new Error("Contact region is invalid.");
+      }
+      const nextPayload: Record<string, unknown> = { ...contactRecord.payload };
+      const updatedAt = new Date(Math.max(Date.now(), Date.parse(contactRecord.updatedAt) + 1)).toISOString();
+      let enrichment = readStoredEnrichment(nextPayload.enrichment);
+      const provenance = { origin: "user" as const, updatedAt, via: "contact_edit" as const };
+      if (seniorityLevel !== undefined) {
+        const profile = isRecord(nextPayload.publicProfile) ? { ...nextPayload.publicProfile } : {};
+        if (seniorityLevel) profile.seniorityLevel = seniorityLevel;
+        else delete profile.seniorityLevel;
+        nextPayload.publicProfile = profile;
+        enrichment = withEnrichmentProvenance(enrichment, "seniorityLevel", provenance);
+      }
+      if (region !== undefined) {
+        if (region) nextPayload.region = region;
+        else delete nextPayload.region;
+        enrichment = withEnrichmentProvenance(enrichment, "region", provenance);
+      }
+      if (enrichment) nextPayload.enrichment = enrichment;
+      nextPayload.updatedAt = updatedAt;
+      if (!store.updateRecordIfCurrent) {
+        throw new AppError("SERVICE_UNAVAILABLE", "Contact storage requires conditional update support.");
+      }
+      const record = await store.updateRecordIfCurrent({ ...contactRecord, updatedAt, payload: nextPayload }, {
+        userId: contactRecord.userId ?? null,
+        updatedAt: contactRecord.updatedAt,
+      });
+      if (!record) throw new AppError("CONFLICT", "Contact changed. Refresh and retry your edit.");
+      const contact = contactFromRecord(record);
+      if (!contact) {
+        throw new Error("Persisted contact enrichment failed validation.");
+      }
       return contact;
     },
   };

@@ -1,7 +1,8 @@
 import type { ApiErrorContext } from "../../shared/api/envelope";
 import { RUNTIME_BOUNDARY_HEADER_VALUES } from "../../shared/api/envelope";
 import type { FeatureMode } from "../../shared/config/feature-mode";
-import type { SourceReferenceDTO, SourceType } from "../../shared/domain/source-types";
+import type { SeniorityLevel, SourceReferenceDTO, SourceType } from "../../shared/domain/source-types";
+import type { ContactEnrichmentDTO, ContactRegionDTO } from "../../shared/domain/contracts";
 import type { AppErrorCode } from "../../shared/errors/app-error";
 import type { OrbitLanguage } from "../../shared/contract/language";
 import type { IndustryIdCode, SecondaryIndustryIdCode } from "../../shared/contract/industries";
@@ -43,6 +44,7 @@ export const CONTACT_DETAIL_TAG_STATUS_ERROR_CODES = [
   "CONTACT_DETAIL_INVALID_PATCH_BODY",
   "CONTACT_DETAIL_TAG_NOT_SUPPORTED",
   "CONTACT_DETAIL_INDUSTRY_NOT_SUPPORTED",
+  "CONTACT_DETAIL_ENRICHMENT_NOT_SUPPORTED",
   "CONTACT_DETAIL_STATUS_NOT_SUPPORTED",
   "CONTACT_DETAIL_CANONICAL_STATUS_LIFECYCLE_ONLY",
   "CONTACT_DETAIL_AMBIGUOUS_CONNECTION",
@@ -105,6 +107,12 @@ export const CONTACT_DETAIL_TAG_STATUS_ERROR_DEFINITIONS = {
     appCode: "VALIDATION_ERROR",
     message: "That contact industry is not part of the fixed industry catalog.",
     recovery: "Choose a supported primary industry or clear the field.",
+  },
+  CONTACT_DETAIL_ENRICHMENT_NOT_SUPPORTED: {
+    code: "CONTACT_DETAIL_ENRICHMENT_NOT_SUPPORTED",
+    appCode: "VALIDATION_ERROR",
+    message: "That seniority level or region is not supported.",
+    recovery: "Choose one of the six seniority levels and an ISO country code, or clear the field.",
   },
   CONTACT_DETAIL_STATUS_NOT_SUPPORTED: {
     code: "CONTACT_DETAIL_STATUS_NOT_SUPPORTED",
@@ -263,6 +271,12 @@ export interface ContactDetail {
   primaryIndustryLabel?: string;
   secondaryIndustryId?: SecondaryIndustryIdCode;
   secondaryIndustryLabel?: string;
+  /** W0045：职级（唯一存储 publicProfile.seniorityLevel）；缺省 = 未填。 */
+  seniorityLevel?: SeniorityLevel;
+  /** W0045：规范地区；原始 location 另在上面。 */
+  region?: ContactRegionDTO;
+  /** W0045：补全值来源（行业／职级／地区…）；展示「AI 推断／手动」用。 */
+  enrichment?: ContactEnrichmentDTO;
   primaryEmail?: string;
   primaryPhone?: string;
   wechatId?: string;
@@ -352,6 +366,10 @@ export interface ContactDetailLastInteractionInput {
 export interface ContactDetailUpdateInput extends ContactDetailLookupInput {
   primaryIndustryId?: IndustryIdCode | string | null;
   secondaryIndustryId?: SecondaryIndustryIdCode | string | null;
+  /** W0045：职级（六档之一）或 null 清空；写入后来源记 `user`。 */
+  seniorityLevel?: SeniorityLevel | string | null;
+  /** W0045：规范地区（国家码必填、城市可空）或 null 清空；写入后来源记 `user`。 */
+  region?: { countryCode: string; city?: string | null } | null;
   tags?: readonly (ContactDetailTagOption | string)[] | null;
   addTags?: readonly (ContactDetailTagOption | string)[] | null;
   removeTags?: readonly (ContactDetailTagOption | string)[] | null;

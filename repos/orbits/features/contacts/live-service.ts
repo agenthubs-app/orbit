@@ -12,7 +12,8 @@ import {
   type ContactsGraphQueryContext,
 } from "./contact-graph-query";
 import type { LocalRemoteContactGraph } from "./contact-graph-provider";
-import type { ContactDTO } from "../../shared/domain/contracts";
+import type { ContactDTO, ContactRegionDTO } from "../../shared/domain/contracts";
+import type { SeniorityLevel } from "../../shared/domain/source-types";
 import type { IndustryIdCode, SecondaryIndustryIdCode } from "../../shared/contract/industries";
 import type { ContactsListSearchAndFilterService } from "./service";
 
@@ -70,6 +71,17 @@ export interface LiveContactsGraphProvider {
     primaryIndustryId: IndustryIdCode | null,
     secondaryIndustryId?: SecondaryIndustryIdCode | null,
   ) => LiveContactsProviderResult<ContactDTO>;
+  /** W0045：联系人编辑改职级／地区；写入值并把来源记为 `user`（via contact_edit）。null = 清空。 */
+  updateContactEnrichment?: (
+    contactId: string,
+    actorId: string,
+    update: ContactEnrichmentEdit,
+  ) => LiveContactsProviderResult<ContactDTO>;
+}
+
+export interface ContactEnrichmentEdit {
+  seniorityLevel?: SeniorityLevel | null;
+  region?: ContactRegionDTO | null;
 }
 
 export interface LiveContactsListSearchAndFilterServiceOptions {

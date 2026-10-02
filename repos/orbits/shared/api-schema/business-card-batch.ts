@@ -8,6 +8,27 @@ const timestamp = z.iso.datetime({ offset: true });
 const count = z.number().int().nonnegative();
 const positiveInteger = z.number().int().positive();
 const digest = z.string().regex(/^sha256:[0-9a-f]{64}$/);
+// W0045：与 shared/contract/profile.ts 的 SeniorityLevelCode 同一组六档（App 副本不含 shared/domain/seniority）。
+const SENIORITY_LEVEL_CODES = ["individual_contributor", "manager", "director", "vp", "c_level", "founder"] as const;
+const REGION_COUNTRY_CODE = /^[A-Z]{2}$/;
+const REGION_CITY_MAX_LENGTH = 64;
+
+/** 读取识别结果里的职级与地区：不合法清成 null（国家码不合法时城市一起清空），不让整条响应失败。 */
+function sanitizeExtractionEnrichment(seniorityLevel: unknown, regionCountryCode: unknown, regionCity: unknown): {
+  seniorityLevel: Contract.BusinessCardStructuredExtractionContract["seniorityLevel"];
+  regionCountryCode: string | null;
+  regionCity: string | null;
+} {
+  const country = typeof regionCountryCode === "string" && REGION_COUNTRY_CODE.test(regionCountryCode) ? regionCountryCode : null;
+  const city = country && typeof regionCity === "string" && regionCity.trim() && regionCity.length <= REGION_CITY_MAX_LENGTH ? regionCity : null;
+  return {
+    seniorityLevel: (SENIORITY_LEVEL_CODES as readonly unknown[]).includes(seniorityLevel)
+      ? seniorityLevel as Contract.BusinessCardStructuredExtractionContract["seniorityLevel"]
+      : null,
+    regionCountryCode: country,
+    regionCity: city,
+  };
+}
 
 const labeledValueSchema = z.object({ label: z.string().nullable(), value: z.string() })
   .transform((value): Contract.BusinessCardLabeledValueContract => ({ ...value, label: value.label }));
@@ -35,6 +56,10 @@ export const businessCardStructuredExtractionSchema: z.ZodType<Contract.Business
   // 提取结构 v2 起才有。分类外或不匹配的值按分类清空，不让整条响应解析失败。
   primaryIndustryId: z.unknown().optional(),
   secondaryIndustryId: z.unknown().optional(),
+  // 提取结构 v3（W0045）起才有；规则同行业。
+  seniorityLevel: z.unknown().optional(),
+  regionCountryCode: z.unknown().optional(),
+  regionCity: z.unknown().optional(),
 }).transform((value) => ({
   fullName: value.fullName,
   nativeFullName: value.nativeFullName,
@@ -52,6 +77,10 @@ export const businessCardStructuredExtractionSchema: z.ZodType<Contract.Business
   ...(value.primaryIndustryId === undefined && value.secondaryIndustryId === undefined
     ? {}
     : sanitizeIndustryPair(value.primaryIndustryId, value.secondaryIndustryId)),
+  // v1／v2 数据三个键都缺省时保持缺省。
+  ...(value.seniorityLevel === undefined && value.regionCountryCode === undefined && value.regionCity === undefined
+    ? {}
+    : sanitizeExtractionEnrichment(value.seniorityLevel, value.regionCountryCode, value.regionCity)),
 }));
 
 export const businessCardReviewIssueSchema: z.ZodType<Contract.BusinessCardReviewIssueContract> = z.object({
@@ -335,9 +364,15 @@ export const ingestCardConfirmationInputSchema: z.ZodType<Contract.IngestCardCon
   allowDuplicate: z.boolean().optional(),
   primaryIndustryId: z.enum(INDUSTRY_IDS).nullable().optional(),
   secondaryIndustryId: z.string().nullable().optional(),
+  seniorityLevel: z.enum(SENIORITY_LEVEL_CODES).nullable().optional(),
+  regionCountryCode: z.string().regex(REGION_COUNTRY_CODE).nullable().optional(),
+  regionCity: z.string().max(REGION_CITY_MAX_LENGTH).nullable().optional(),
 }).superRefine((value, context) => {
   if (!validateIndustrySelection(value).valid) {
     context.addIssue({ code: "custom", path: ["secondaryIndustryId"], message: "Secondary industry must belong to the selected primary industry." });
+  }
+  if (value.regionCity?.trim() && !value.regionCountryCode) {
+    context.addIssue({ code: "custom", path: ["regionCity"], message: "A region city needs a country code." });
   }
   const itemIds = value.expectedCardItems.map((item) => item.itemId);
   if (new Set(itemIds).size !== itemIds.length) {
@@ -365,6 +400,11 @@ export const ingestCardConfirmationInputSchema: z.ZodType<Contract.IngestCardCon
     // 旧客户端不传行业：保持缺省，确认时不写行业。
     ...(value.primaryIndustryId !== undefined || value.secondaryIndustryId !== undefined
       ? sanitizeIndustryPair(value.primaryIndustryId, value.secondaryIndustryId)
+      : {}),
+    // W0045：旧客户端不传职级／地区：保持缺省，确认时不写。
+    ...(value.seniorityLevel !== undefined ? { seniorityLevel: value.seniorityLevel } : {}),
+    ...(value.regionCountryCode !== undefined || value.regionCity !== undefined
+      ? { regionCountryCode: value.regionCountryCode ?? null, regionCity: value.regionCountryCode ? value.regionCity?.trim() || null : null }
       : {}),
   };
   const { allowDuplicate } = value;
