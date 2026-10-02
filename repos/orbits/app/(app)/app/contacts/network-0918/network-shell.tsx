@@ -446,7 +446,7 @@ export const NETWORK_STYLES = `
 [data-orbit-real-page="network"] .nw-dim-legend-row > .btn.nw-dim-row-btn { width: auto; flex: 1; margin: -6px 0 -6px -8px; display: flex; align-items: center; gap: 12px; }
 [data-orbit-real-page="network"] .nw-dim-row-main { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
 [data-orbit-real-page="network"] .nw-dim-row-link { flex-shrink: 0; font-size: 12px; color: #4B4FC7; text-decoration: none; white-space: nowrap; }
-[data-orbit-real-page="network"] .nw-dim-row-link:hover { text-decoration: underline; }
+[data-orbit-real-page="network"] .nw-dim-row-link:hover { color: #2E3270; text-decoration: underline; }
 [data-orbit-real-page="network"] .nw-plan-mark { margin-left: 6px; color: #B07A1E; font-size: 12px; }
 [data-orbit-real-page="network"] .nw-plan-legend { font-size: 12px; color: #6B6F99; }
 [data-orbit-real-page="network"] .nw-sub-top { display: flex; flex-direction: column; gap: 6px; padding: 12px; border-radius: 12px; background: #F7F7FD; }
@@ -460,11 +460,12 @@ export const NETWORK_STYLES = `
 [data-orbit-real-page="network"] .btn.nw-evidence-btn:active { transform: none; }
 [data-orbit-real-page="network"] .nw-evidence-list { display: inline-flex; flex-wrap: wrap; gap: 6px; }
 [data-orbit-real-page="network"] .nw-evidence-link { padding: 3px 10px; border-radius: 999px; background: #ECEEFB; color: #2E3270; font-size: 12px; text-decoration: none; }
-[data-orbit-real-page="network"] .nw-evidence-link:hover { background: #DDDEFA; }
+[data-orbit-real-page="network"] .nw-evidence-link:hover { background: #DDDEFA; color: #0E1225; }
 [data-orbit-real-page="network"] .nw-insight-list { display: flex; flex-direction: column; gap: 14px; }
 [data-orbit-real-page="network"] .nw-insight-item { display: flex; gap: 14px; align-items: flex-start; padding: 16px; border: 1px solid #E8E9F6; border-radius: 14px; }
-[data-orbit-real-page="network"] a.nw-health-item { color: inherit; text-decoration: none; }
-[data-orbit-real-page="network"] a.nw-health-item:hover { border-color: #B9BCEB; }
+[data-orbit-real-page="network"] .nw-health-item { color: #0E1225; }
+[data-orbit-real-page="network"] a.nw-health-item { text-decoration: none; }
+[data-orbit-real-page="network"] .nw-health-item:hover { border-color: #B9BCEB; color: #0E1225; }
 @media (max-width: 600px) { [data-orbit-real-page="network"] .nw-dims { grid-template-columns: repeat(2, minmax(0, 1fr)); } [data-orbit-real-page="network"] .btn.nw-dim-btn { white-space: normal; } [data-orbit-real-page="network"] .nw-dim-donut { width: 180px; height: 180px; } [data-orbit-real-page="network"] .nw-dim-donut-inner { width: 112px; height: 112px; }
   [data-orbit-real-page="network"] .nw-an-hero .nw-h2-26 { font-size: 20px; line-height: 1.4; } [data-orbit-real-page="network"] .nw-an-hero { padding: 20px; }
   [data-orbit-real-page="network"] .nw-top-thead, [data-orbit-real-page="network"] .nw-top-row { grid-template-columns: 28px minmax(0, 1fr) 44px 44px; gap: 8px; padding-left: 8px; padding-right: 8px; } }
