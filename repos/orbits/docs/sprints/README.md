@@ -117,7 +117,7 @@
 | [W0041](W0041-home-ssr-read-narrow/GOAL.md) | 首页服务端读取收窄：联系人改数据库计数、旧活动「本人」筛选下推 SQL、已报名活动按已发布范围读取；单次 58.8 KB→约 2.5 KB，首页各块显示不变（H） | RV-03、RV-05 | W0040；W41-1～6 已定（D47）；不与改 `contact-live-record-provider.ts` 的 W0045／W0046 并行 | completed |
 | [W0042](W0042-profile-suggestion-read-scope/GOAL.md) | 资料「更新建议」图只读本人相关行：Postgres 专用读取器三轮按 id 读 + payload 投影，结果与旧过滤逐项等价；接口与 App 端不变（H） | RV-03、RV-05 | W0041；W42 已定（D48，⑨ 待授权不阻塞）；排在 W0043 之前，不与 W0043～W0055 并行 | completed |
 | [W0043](W0043-network-stop-fake-copy/GOAL.md) | 人脉页不再出现调试英文与「来源暂时不可用」误报，空态说实话，文案双语（H：`contactsAnalysisToView` HIGH，D44） | RN-01 | 无 | completed |
-| [W0044](W0044-followup-clock-root-fix/GOAL.md) | 跟进与提醒的到期按请求时刻计算，逾期显示「已逾期 N 天」（H） | RN-02 | 无 | running（run-01，2026-10-02，基线 `deabf40f`，PLANNER SHA256 `147831f51c0ee53de94099ffc8cab633f262ef673ee38ecd0bfa91a51960345d`） |
+| [W0044](W0044-followup-clock-root-fix/GOAL.md) | 跟进与提醒的到期按请求时刻计算，逾期显示「已逾期 N 天」（H） | RN-02 | 无 | completed |
 | [W0045](W0045-contact-enrichment-seniority-region/GOAL.md) | 名片识别同一调用补角色层级与规范地区，审阅可改，带来源；老联系人回填脚本（H） | RN-03 | 无 | ready |
 | [W0046](W0046-relationship-timeline-memo/GOAL.md) | 联系人详情显示聚合关系时间线；「写 memo」弹窗；memo 经 AI 提取专长／需求／话题（H） | RN-04 | W0045（C-4：补全来源载体） | planned |
 | [W0047](W0047-relationship-strength-tiers/GOAL.md) | 关系强度按站内记录自动分档（新认识／有往来／核心／待唤醒），管线页按档位分组，下线手动阶段（H） | RN-05 | W0046 | planned |
@@ -183,3 +183,4 @@
 | W0041 | run-01（2026-10-02） | `d5d5ae58`、`365d8375`（报告 `2fb20c88`） | `3b24e00e` | [REPORT](W0041-home-ssr-read-narrow/REPORT.md)；首页单次 58,808 B→2,378 B（−95.96%），过硬门槛 3,143 B 与目标线 2,644 B；合并树 10 个文件 201 pass／0 skip（PG 指向本机 orbit_test）；报告由协调者按 Generator 原文写入 |
 | W0042 | run-01（2026-10-02） | `9a464f11`（报告 `f1321996`） | `e9caf5ca` | [REPORT](W0042-profile-suggestion-read-scope/REPORT.md)；建议图单次 9,534,477 B→31,079 B（普通账号 −99.67%，重账号 −23%）；与旧过滤逐项等价、接口与 App 不变；合并树 6 个文件 63 pass／0 skip（PG 指向本机 orbit_test）；报告由协调者按 Generator 原文写入；待授权：W42-9、W42-10、W42-3 |
 | W0043 | run-01（2026-10-02） | `e493eff3`、`ecd8214c`（review 修复；报告 `2117599a`） | `738f13ae` | [REPORT](W0043-network-stop-fake-copy/REPORT.md)；Codex review 3×P1＋1×P3 全采纳；全量对照新增失败 0；合并树 14 个文件 133 pass／0 skip、tsc 仅 `.next/types` 过期产物；报告由协调者按 Generator 原文写入；遗留：英文界面 `localizeOrbitTree` 改坏姓名等 5 项（见 REPORT） |
+| W0044 | run-01（2026-10-02） | `be2676f5`、`dfda6f92`（review 修复；报告 `f0bc40f6`） | `7fd27123` | [REPORT](W0044-followup-clock-root-fix/REPORT.md)；Codex review 1×P1（`/api/tasks` 死入口，不采纳为代码改动、登记 W0055 候选）＋3×P2 采纳；东京日纯函数入 `shared/compute` 并同步 App 副本；全量对照新增失败 0；合并树 15 个文件 100 pass／1 skip（PG 用例以本机库补跑 2 pass／0 skip）、tsc 源码 0 错、lint 0、App 四个 *-sync 10/10；报告由协调者按 Generator 原文写入；候选：bootstrap 同类时钟问题、App 逾期显示（C-6） |
