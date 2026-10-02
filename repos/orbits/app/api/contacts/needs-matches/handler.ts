@@ -1,3 +1,7 @@
+/**
+ * 仅供 App：手机端「人脉需求匹配」（ContactNeedsMatchesScreen）仍在调用本接口，保留到 App 迁移完成再按版本下线。
+ * Web 已改用计划匹配器（RN-08），网页端 0 使用，由 tests/pages/web-contact-needs-retired-gate.test.ts 锁住（W0055／W55-1）。
+ */
 import { NextResponse } from "next/server";
 
 import { success, failure, runtimeBoundaryHeaders } from "../../../../shared/api/envelope";

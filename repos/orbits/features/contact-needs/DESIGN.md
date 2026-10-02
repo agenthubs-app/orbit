@@ -1,5 +1,7 @@
 # Contact needs ranking
 
+> **仅供 App（W0055／W55-1）。** Web 已改用计划匹配器（RN-08），网页端页面与客户端代码 0 使用本模块和 `/api/contacts/needs-matches`，由 `tests/pages/web-contact-needs-retired-gate.test.ts` 锁住。模块与接口原样保留给手机 App（`ContactNeedsMatchesScreen`），通知发现仍复用 `criteriaForNeed`；App 迁移完成后再按版本下线。
+
 `GET /api/contacts/needs-matches` ranks the authenticated actor's complete contact list against the current `profile.relationshipGoal`. The endpoint is read-only and deterministic. It does not call an AI provider, reuse relationship value scores, write contact state, or accept an actor ID from the client.
 
 `needs-evidence-v2` recognizes Chinese/Japanese/English concepts, including restaurant and ordering synonyms, without scoring conversational fillers. Project context supplies the business scenario, while an explicit counterpart clause supplies specific requested capabilities. A restaurant collaboration goal without a specific role accepts both technical delivery and store-pilot evidence; it does not assume an investor-only or developer-only request.

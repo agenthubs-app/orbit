@@ -74,7 +74,9 @@ test("archive maps to its own network stage and never to the advancing stage", (
 test("all and pipeline screens render the archive group without dropping its contact or count", () => {
   const model = subrouteView(payload([contact("archived", "Archived"), contact("active", "Active")]));
   const all = renderToStaticMarkup(createElement(NetworkAll, { viewModel: model }));
-  assert.match(all, /已归档/);
+  // W0055：所有人脉列表的「关系档位」列也只显示自动档位（这里没有档位缓存 → 未评估），归档联系人照样在列表里。
+  assert.doesNotMatch(all.replace(/<style>[\s\S]*?<\/style>/g, ""), /已归档|正在推进/);
+  assert.match(all, /data-network-tier="unscored"/);
   assert.match(all, /href="\/app\/contacts\/archived"/);
   assert.match(all, /href="\/app\/contacts\/active"/);
   assert.doesNotMatch(all, /undefined/);
