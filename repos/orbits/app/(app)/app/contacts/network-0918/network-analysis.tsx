@@ -5,6 +5,8 @@
  * - 结构（W0049）：`NetworkAnalysisStructure`，数据 = ContactsAnalysisView + `structureExtras`；
  * - 机会（W0050）：`NetworkOpportunities`，数据 = `loadOpportunitiesTab` 的 `OpportunitiesTabView`；缺省（未加载）时各块如实「来源暂时不可用」。
  * 「⟳ 刷新机会」「✦ 去 iOrbit 分析」与旧覆盖拨盘在 W0050 下线；「◈ 设置关系目标」沿用 AnalysisGoalEditor。
+ * W0054：`insightGate`（门槛未达）时洞察标签整块换成一张门槛卡（服务端不读洞察）；结构／机会的替换卡分别在
+ * `structureExtras.gate`／`opportunities.gate`。示例期三标签的数据都是前端静态示例快照。
  */
 "use client";
 
@@ -21,6 +23,8 @@ import { NetworkAnalysisStructure } from "./network-analysis-structure";
 import { NetworkOpportunities } from "./network-opportunities";
 import { NetworkInsights } from "./network-insights";
 import { NetworkShell } from "./network-shell";
+import { NetworkAnalysisGateCard } from "./network-analysis-gate";
+import type { AnalysisGateView } from "../../../../../features/network-analysis/analysis-threshold";
 
 export type AnalysisTabKey = "struct" | "opp" | "insight";
 
@@ -63,7 +67,7 @@ const UNLOADED_INSIGHTS: InsightsTabView = {
  * `structureExtras`：服务端加载的快照诊断／洞察、计划需求高亮与 30 天变化；缺省时①④不渲染、无高亮、变化显示「—」。
  * `opportunities`：服务端只在 `?tab=opportunities` 时加载。
  */
-export function NetworkAnalysis({ analysis, initialTab, structureExtras, opportunities, insights }: { viewModel: OrbitContactsViewModel; analysis: ContactsAnalysisView; initialTab: AnalysisTabKey; structureExtras?: StructureTabExtras; opportunities?: OpportunitiesTabView; insights?: InsightsTabView }) {
+export function NetworkAnalysis({ analysis, initialTab, structureExtras, opportunities, insights, insightGate }: { viewModel: OrbitContactsViewModel; analysis: ContactsAnalysisView; initialTab: AnalysisTabKey; structureExtras?: StructureTabExtras; opportunities?: OpportunitiesTabView; insights?: InsightsTabView; insightGate?: AnalysisGateView | null }) {
   const { t, preserveHref } = useOrbitLanguage();
   const [view, setView] = useState(analysis);
   const [editingGoal, setEditingGoal] = useState(false);
@@ -96,6 +100,8 @@ export function NetworkAnalysis({ analysis, initialTab, structureExtras, opportu
 
         {tab === "struct" ? (
           <NetworkAnalysisStructure view={view} extras={structureExtras} onOpenOpportunities={openOpportunities} />
+        ) : tab === "insight" && insightGate ? (
+          <NetworkAnalysisGateCard gate={insightGate} />
         ) : tab === "insight" ? (
           <NetworkInsights
             view={insights ?? UNLOADED_INSIGHTS}

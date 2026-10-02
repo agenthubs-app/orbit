@@ -9,6 +9,7 @@
  * - 高亮 = 当前计划未满足（open／linked）的人脉需求的结构化行业条件（只经 PlanService.getCurrent() 读取，W49-2）；
  * - 关系健康四档的 30 天变化 = 当前档位人数 − W0047 state 行的 `tierCountsAt30d`（完整去重时间线算出，R-7）。
  */
+import type { AnalysisGateView } from "../../../../../features/network-analysis/analysis-threshold";
 import type { NetworkSnapshotView } from "../../../../../features/network-analysis/contract";
 import type { EvidenceContactName } from "../../../../../features/network-analysis/evidence-contacts";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
@@ -247,6 +248,8 @@ export function structureSnapshotView(view: SnapshotReadView | null, names: Read
 /** 服务端加载器交给结构标签组件的全部附加数据（可序列化）。 */
 export interface StructureTabExtras {
   snapshot: StructureSnapshotView;
+  /** W0054：AI 块的替换卡（门槛未达／正在更新／明天更新）；null／缺省 = 照常显示快照。 */
+  gate?: AnalysisGateView | null;
   /** null = 计划读取失败（无高亮，其余照常）；无计划 = 两个空数组。 */
   highlights: PlanNeedHighlights | null;
   /** null = 强度读模型不可用。 */

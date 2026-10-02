@@ -158,6 +158,45 @@ test("SC-03 goal changed → exactly 1 call; fewer than 3 contacts → insuffici
   });
 });
 
+test("W0054 SC-03（W54-4）: back from 2 to 3 contacts the view drops the old snapshot (state none, recovering) and queues a recompute; after it runs the new snapshot shows", databaseTest, async () => {
+  await withNetworkDatabase(async (harness) => {
+    await seedContacts(harness, ALICE, 0, 4);
+    const generator = countingGenerator();
+    const runtime = runtimeFor(harness, generator);
+    assert.equal((await openOnce(runtime, generator)).calls, 1);
+    const ready = await runtime.service.readView(ALICE, "zh");
+    assert.equal(ready.state, "ready");
+    assert.ok(ready.blocks.length > 0);
+    assert.equal(ready.freshness.recovering, undefined);
+    // 删到 2 位：insufficient，不带叙述、不排队。
+    await harness.deleteRecord("contacts", `${ALICE}:c0`);
+    await harness.deleteRecord("contacts", `${ALICE}:c1`);
+    const low = await runtime.service.readView(ALICE, "zh");
+    assert.equal(low.state, "insufficient");
+    assert.deepEqual(low.blocks, []);
+    assert.equal(low.freshness.job, "none");
+    assert.equal(generator.calls, 1);
+    // 补回到 3 位：快照纳入的人里只剩 2 位 → 恢复，排队重算；完成前不回显旧快照。
+    await seedContacts(harness, ALICE, 10, 1);
+    const recovering = await runtime.service.readView(ALICE, "zh");
+    assert.equal(recovering.state, "none");
+    assert.deepEqual(recovering.blocks, []);
+    assert.equal(recovering.generatedAt, null);
+    assert.equal(recovering.freshness.recovering, true);
+    assert.equal(recovering.freshness.job, "queued");
+    // 只读入口（机会标签、概览）同样不回显旧快照，也不排队。
+    const readOnly = await runtime.service.readView(ALICE, "en", { enqueue: false });
+    assert.equal(readOnly.state, "none");
+    assert.equal(readOnly.freshness.recovering, true);
+    await runtime.service.runWorker(ALICE);
+    assert.equal(generator.calls, 2);
+    const fresh = await runtime.service.readView(ALICE, "zh");
+    assert.equal(fresh.state, "ready");
+    assert.equal(fresh.contactCount, 3);
+    assert.equal(fresh.freshness.recovering, undefined);
+  });
+});
+
 test("SC-03 two concurrent opens generate once (single-flight job)", databaseTest, async () => {
   await withNetworkDatabase(async (harness) => {
     await seedContacts(harness, ALICE, 0, 5);

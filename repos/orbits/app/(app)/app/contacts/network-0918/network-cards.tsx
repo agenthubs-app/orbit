@@ -54,7 +54,7 @@ export function NetworkCards({ view, openDetail }: { view: ContactCardRouteView;
       <div className="nw-source-grid">{NETWORK_SOURCES.map(source => <a key={source} className="btn nw-source-card" href={listHref(source)} style={{ background: source === view.source ? "#ECEEFB" : "#FFFFFF" }}>
         <span className="nw-source-icon">{SOURCE_ICON[source]}</span><span className="nw-source-copy"><span className="nw-source-label">{t(SOURCE_LABEL[source])}</span><strong className="nw-source-n">{view.counts[source]}</strong></span>
       </a>)}</div>
-      <div className="nw-table"><div className="nw-thead"><span></span><span></span><span>{t({ zh: "姓名", en: "Name" })}</span><span>{t({ zh: "公司与职位", en: "Company & title" })}</span><span>{t({ zh: "来源", en: "Source" })}</span><span>{t({ zh: "关系档位", en: "Tier" })}</span><span></span><span>{t({ zh: "洞察", en: "Insight" })}</span><span></span></div>
+      <div className="nw-table"><div className="nw-thead"><span></span><span></span><span>{t({ zh: "姓名", en: "Name" })}</span><span>{t({ zh: "公司与职位", en: "Company & title" })}</span><span>{t({ zh: "来源", en: "Source" })}</span><span>{t({ zh: "关系档位", en: "Tier" })}</span><span></span><span>{view.insightsHidden ? null : t({ zh: "洞察", en: "Insight" })}</span><span></span></div>
         {list.items.map(p => <a key={p.id} className="btn nw-row" href={p.href}><span></span><NetworkAvatar initial={p.initial} /><strong className="nw-row-name">{p.name}</strong>
           <span className="nw-row-org"><span className="nw-row-org-1">{p.org}</span><span className="nw-row-org-2">{p.title}</span></span>
           <span><NetworkChip bg="#ECEEFB" fg="#2E3270">{t(SOURCE_LABEL[p.source])}</NetworkChip></span>
@@ -62,8 +62,11 @@ export function NetworkCards({ view, openDetail }: { view: ContactCardRouteView;
           <span data-network-tier={p.tier ?? "unscored"}>{p.tier
             ? <NetworkChip bg={TIER_CHIP[p.tier].bg} fg={TIER_CHIP[p.tier].fg}><span className="nw-tier-dot" aria-hidden="true" style={{ background: TIER_STYLE[p.tier].fg }}></span>{t(TIER_LABEL[p.tier])}</NetworkChip>
             : <NetworkChip bg="#F7F7FD" fg="#6B6F99">{t({ zh: "未评估", en: "Not scored" })}</NetworkChip>}</span>
-          <span></span>{/* W0051：洞察一句（「和你目标的关系」，≤60 字）；还没有洞察显示「暂无洞察」。 */}
-          <span className="nw-row-next" data-network-insight={p.insight ? "ready" : "none"}>{p.insight ? t(p.insight) : t({ zh: "暂无洞察", en: "No insight yet" })}</span><span className="nw-row-arrow">›</span></a>)}
+          <span></span>{/* W0051：洞察一句（「和你目标的关系」，≤60 字）；还没有洞察显示「暂无洞察」。W0054：不足 3 位时整列隐藏。 */}
+          {view.insightsHidden
+            ? <span className="nw-row-next" data-network-insight="hidden"></span>
+            : <span className="nw-row-next" data-network-insight={p.insight ? "ready" : "none"}>{p.insight ? t(p.insight) : t({ zh: "暂无洞察", en: "No insight yet" })}</span>}
+          <span className="nw-row-arrow">›</span></a>)}
         {!list.items.length && <div className="nw-empty">{t({ zh: "没有匹配的联系人", en: "No matching contacts" })}</div>}
       </div>
       <div className="nw-filters"><a href={listHref(view.source)}>{t({ zh: "返回第一页", en: "First page" })}</a>

@@ -73,6 +73,11 @@ export interface NetworkSnapshotView {
     newContactCount: number;
     job: NetworkSnapshotJobState;
     retryOn?: string;
+    /**
+     * W0054（W54-4）：从不足 3 人恢复（快照纳入的人里仍是本人已确认联系人的 < 3、当前 ≥ 3）——
+     * 这时视图不带旧快照（state none、blocks 空），页面显示「正在更新分析」直到重算完成。
+     */
+    recovering?: boolean;
   };
   quota: NetworkSnapshotQuotaView;
 }

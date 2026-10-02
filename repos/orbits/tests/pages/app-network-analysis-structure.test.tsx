@@ -20,6 +20,7 @@ import { OrbitLanguageProvider } from "../../app/(app)/app/orbit-language-contex
 import type { OrbitContactsViewModel } from "../../app/(app)/app/orbit-contacts-route-view-model";
 import { networkSections } from "../fixtures/network-debug-payload";
 import { analysisView, evidenceNames, snapshotFixture } from "../support/structure-tab-fixture";
+import { belowThresholdSnapshotView } from "../../features/network-analysis/analysis-threshold";
 
 /** 名单只有 30 条（与真实 `loadAppContactsRouteViewModel` 默认分页一致），结构标签不得用它计数。 */
 const list30 = { connections: Array.from({ length: 30 }, (_, index) => ({ id: `c${index}`, displayName: `联系人 ${index}` })), events: [], intros: [], pipelineStatuses: [] } as unknown as OrbitContactsViewModel;
@@ -179,4 +180,52 @@ test("review P2-4 / P3-6: every legend group links to its list (6th group includ
   const beyondTop5 = links.filter((href: string) => !top.includes(href));
   assert.equal(beyondTop5.length, 2);
   assert.ok(beyondTop5.every((href: string) => href.startsWith("/app/contacts/analysis/region/")));
+});
+
+/* ── W0054（W54-3／W54-4）：门槛卡与「正在更新」 ───────────────────── */
+
+test("W0054 SC-03: 2 confirmed contacts → one 「再添加 1 位联系人即可更新分析」 card with scan / import in place of ①④; distribution and health still render", async () => {
+  const html = render("zh", (await analysisView("zh")).view, extras({ gate: { kind: "threshold", missing: 1 }, snapshot: { state: "none" } }));
+  assert.equal((html.match(/data-network-analysis-gate=/g) ?? []).length, 1, "one card per page");
+  assert.match(html, /data-network-analysis-gate="threshold"[\s\S]*?再添加 1 位联系人即可更新分析/);
+  assert.match(html, /href="\/app\/contacts\/new\?method=scan"[^>]*data-network-gate-scan=""[^>]*>扫名片</);
+  assert.match(html, /href="\/app\/contacts\/new\?method=csv"[^>]*data-network-gate-import=""[^>]*>导入人脉</);
+  assert.doesNotMatch(html, /data-network-section="diagnosis"|data-network-section="insights"/);
+  assert.match(html, /nw-dim-donut-n">35</, "distribution counts are unchanged");
+  assert.match(html, /data-network-section="health"/);
+  const en = render("en", (await analysisView("en")).view, extras({ gate: { kind: "threshold", missing: 2 }, snapshot: { state: "none" } }));
+  assert.match(en, /Add 2 more contacts to update your analysis/);
+});
+
+test("W0054 SC-03（W54-4）: back to 3 → 「正在更新分析」 instead of the old snapshot; background pool used up → 「明天更新分析」", async () => {
+  const { view } = await analysisView("zh");
+  const updating = render("zh", view, extras({ gate: { kind: "updating" }, snapshot: { state: "none" } }));
+  assert.match(updating, /data-network-analysis-gate="updating"[\s\S]*?正在更新分析/);
+  assert.doesNotMatch(updating, /data-network-section="diagnosis"/);
+  const deferred = render("zh", view, extras({ gate: { kind: "deferred", retryOn: "2026-10-04T15:00:00.000Z" }, snapshot: { state: "none" } }));
+  assert.match(deferred, /data-network-analysis-gate="deferred"[\s\S]*?明天更新分析/);
+  // 门槛卡出现时，即使附加数据里还有一份就绪快照也不渲染它的句子（不只靠 CSS 隐藏）。
+  const guarded = render("zh", view, extras({ gate: { kind: "threshold", missing: 1 } }));
+  assert.doesNotMatch(guarded, /data-network-section="diagnosis"|data-network-insight="/);
+});
+
+test("W0054 SC-03: the structure loader below the threshold reads no snapshot and no evidence names, still reads the plan (getCurrent) for highlights", async () => {
+  const { loadStructureTabExtras } = await import("../../app/(app)/app/contacts/analysis/structure-tab-loader");
+  const calls: string[] = [];
+  const result = await loadStructureTabExtras({ actorId: "actor:a", language: "zh", strengthState: null, threshold: { confirmed: 2, met: false, missing: 1 } }, {
+    readContactNames: async () => { calls.push("names"); return new Map(); },
+    readPlan: async () => { calls.push("plan"); return null; },
+    readSnapshot: async () => { calls.push("snapshot"); throw new Error("must not read"); },
+  });
+  assert.deepEqual(calls, ["plan"]);
+  assert.deepEqual(result.gate, { kind: "threshold", missing: 1 });
+  assert.deepEqual(result.snapshot, { state: "none" });
+  // 达到门槛（或门槛未知）照旧读快照。
+  calls.length = 0;
+  await loadStructureTabExtras({ actorId: "actor:a", language: "zh", strengthState: null, threshold: null }, {
+    readContactNames: async () => { calls.push("names"); return new Map(); },
+    readPlan: async () => { calls.push("plan"); return null; },
+    readSnapshot: async () => { calls.push("snapshot"); return { ...belowThresholdSnapshotView(), state: "none" }; },
+  });
+  assert.ok(calls.includes("snapshot"));
 });

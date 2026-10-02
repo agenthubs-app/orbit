@@ -12,6 +12,7 @@ import { createConfiguredCanonicalPublicEventCatalogue } from "../../../../../fe
 import { createConfiguredEventOperationsRepository } from "../../../../../features/events/event-operations/repository";
 import { readPublicBookableEvents, type PublicBookableEvent } from "../../../../../features/events/public-goal-recommendations";
 import type { NetworkSnapshotView, SnapshotLanguage } from "../../../../../features/network-analysis/contract";
+import { analysisGate, belowThresholdSnapshotView, type AnalysisThreshold } from "../../../../../features/network-analysis/analysis-threshold";
 import { readEvidenceContactNames, type EvidenceContactName } from "../../../../../features/network-analysis/evidence-contacts";
 import { getConfiguredNetworkAnalysisRuntime, readCurrentPlanForSnapshot } from "../../../../../features/network-analysis/runtime";
 import { unavailableSnapshotView } from "../../../../../features/network-analysis/service";
@@ -155,7 +156,14 @@ function log(event: string, actorId: string, error: unknown) {
 }
 
 export async function loadOpportunitiesTab(
-  input: { actorId: string; language: OrbitLanguage; now: Date; goal: Promise<string | null> | string | null },
+  input: {
+    actorId: string;
+    language: OrbitLanguage;
+    now: Date;
+    goal: Promise<string | null> | string | null;
+    /** W0054：门槛读数；未达时不读快照、不读待唤醒洞察（报告卡换成门槛卡）。null／缺省 = 未知，照旧。 */
+    threshold?: AnalysisThreshold | null;
+  },
   deps: OpportunitiesTabLoaderDeps = defaultOpportunitiesTabLoaderDeps(),
 ): Promise<OpportunitiesTabView> {
   const { actorId, now } = input;
@@ -168,7 +176,10 @@ export async function loadOpportunitiesTab(
     deps.readPlan(actorId).then((snapshot) => (snapshot ? toOpportunityPlanView(snapshot, now) : null)),
     undefined,
   );
-  const reportPromise = deps.readSnapshot
+  const below = Boolean(input.threshold && !input.threshold.met);
+  const reportPromise = below
+    ? Promise.resolve(belowThresholdSnapshotView())
+    : deps.readSnapshot
     ? guard("opportunities_tab_snapshot_failed", deps.readSnapshot(actorId, language), unavailableSnapshotView())
     : Promise.resolve(unavailableSnapshotView());
   const dormantPromise = guard<DormantCandidate[] | null>("opportunities_tab_dormant_failed", deps.readDormant(actorId), null);
@@ -196,12 +207,15 @@ export async function loadOpportunitiesTab(
     { bookable, dormant, gapNames, goal, pending: pending ? { candidates: pending.candidates, contactCount: pending.contactCount } : null, plan, report },
     { language: input.language, now },
   );
+  const gated: OpportunitiesTabView = { ...view, gate: analysisGate(input.threshold, report) };
   // W0051（W50-3 后半）：待唤醒的「为什么现在联系」在洞察 ready 时改读 nextStep；读失败保留规则拼句。
-  if (!view.dormant?.length || !deps.readInsights) return view;
+  // W0054：门槛未达时洞察文字不进页面数据（不读，保留规则拼句）。
+  const rows = gated.dormant;
+  if (below || !rows?.length || !deps.readInsights) return gated;
   const insights = await guard<Map<string, DormantInsight>>(
     "opportunities_tab_insights_failed",
-    deps.readInsights(actorId, view.dormant.map((row) => row.recordId ?? row.contactId), goal || plan?.goal || null, now),
+    deps.readInsights(actorId, rows.map((row) => row.recordId ?? row.contactId), goal || plan?.goal || null, now),
     new Map(),
   );
-  return { ...view, dormant: applyDormantInsights(view.dormant, insights, input.language) };
+  return { ...gated, dormant: applyDormantInsights(rows, insights, input.language) };
 }

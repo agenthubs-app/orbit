@@ -351,8 +351,10 @@ export function createNetworkSnapshotService(deps: NetworkSnapshotServiceDeps): 
         }
         if (job === "queued") deps.scheduleWorker?.(actorId);
       }
+      // W0054（W54-4）：从不足 3 人恢复时不回显旧快照（引用的人大多已不在），等重算出新的一版。
+      const recovering = Boolean(state.snapshot) && state.confirmedCount >= SNAPSHOT_MIN_CONTACTS && (state.snapshot?.retainedCount ?? 0) < SNAPSHOT_MIN_CONTACTS;
       const [view, usage] = await Promise.all([
-        state.confirmedCount >= SNAPSHOT_MIN_CONTACTS && state.snapshot ? deps.repository.readView(actorId, language) : Promise.resolve(null),
+        state.confirmedCount >= SNAPSHOT_MIN_CONTACTS && state.snapshot && !recovering ? deps.repository.readView(actorId, language) : Promise.resolve(null),
         deps.ledger.readUsageToday(actorId, now),
       ]);
       const quota = emptyQuotaView();
@@ -364,7 +366,7 @@ export function createNetworkSnapshotService(deps: NetworkSnapshotServiceDeps): 
       return {
         blocks: view?.blocks ?? [],
         contactCount: view?.contactCount ?? 0,
-        freshness: { job, newContactCount: state.snapshot?.newContactCount ?? 0, stale, ...(retryOn ? { retryOn } : {}) },
+        freshness: { job, newContactCount: state.snapshot?.newContactCount ?? 0, stale, ...(retryOn ? { retryOn } : {}), ...(recovering ? { recovering: true } : {}) },
         generatedAt: view?.generatedAt ?? null,
         quota,
         state: state.confirmedCount < SNAPSHOT_MIN_CONTACTS ? "insufficient" : view ? "ready" : "none",

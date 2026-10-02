@@ -14,7 +14,7 @@ function source(path: string): string {
   return readFileSync(join(projectRoot, path), "utf8");
 }
 
-function loadDashboardPage(t: TestContext, options: { signedIn?: boolean; actorId?: string | null } = {}) {
+function loadDashboardPage(t: TestContext, options: { signedIn?: boolean; actorId?: string | null; confirmed?: number | null } = {}) {
   const calls: Array<{ operation: string; input?: unknown }> = [];
   const redirected = new Error("Test redirect");
   const modules: Record<string, unknown> = {
@@ -34,6 +34,12 @@ function loadDashboardPage(t: TestContext, options: { signedIn?: boolean; actorI
         return { success: false, error: { code: "MOBILE_CONTACTS_DASHBOARD_REQUIRED_SECTION_FAILED", section: "aggregate" } };
       },
     }) },
+    // W0054：人脉分析门槛（与引导第 1 步同一计数）；null = 读失败。
+    [join(projectRoot, "features/network-analysis/analysis-threshold-reader.ts")]: { readAnalysisThreshold: async (actorId: string) => {
+      calls.push({ operation: "threshold", input: actorId });
+      const confirmed = options.confirmed === undefined ? 5 : options.confirmed;
+      return confirmed === null ? null : { confirmed, met: confirmed >= 3, missing: Math.max(0, 3 - confirmed) };
+    } },
     [join(projectRoot, "app/(app)/app/orbit-reference-styles.tsx")]: { OrbitReferenceStyles: () => null },
     [join(projectRoot, "app/(app)/app/orbit-visual-freeze-runtime.tsx")]: { OrbitVisualFreezeRuntime: () => null },
     [join(projectRoot, "app/(app)/app/contacts/compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-route-view-model.ts")]: { loadAppContactsRouteViewModel: async (params: unknown, actorId: string) => {
@@ -48,8 +54,9 @@ function loadDashboardPage(t: TestContext, options: { signedIn?: boolean; actorI
       readRelationshipTierLookup: async () => { calls.push({ operation: "tierLookup" }); return new Map(); },
     },
     // W0052：概览驾驶舱附加数据（只在概览读）。
-    [join(projectRoot, "app/(app)/app/contacts/analysis/overview-cockpit-loader.ts")]: { loadOverviewCockpit: async (input: { actorId: string; language: string }) => {
+    [join(projectRoot, "app/(app)/app/contacts/analysis/overview-cockpit-loader.ts")]: { loadOverviewCockpit: async (input: { actorId: string; language: string; threshold?: unknown }) => {
       calls.push({ operation: "overviewCockpit", input: { actorId: input.actorId, language: input.language } });
+      calls.push({ operation: "overviewThreshold", input: input.threshold });
       return {
         board: { active: [], core: [] },
         names: new Map(),
@@ -67,8 +74,9 @@ function loadDashboardPage(t: TestContext, options: { signedIn?: boolean; actorI
       calls.push({ operation: "insightsTab", input: { actorId: input.actorId, goal: await input.goal, search: input.search } });
       return { rows: [], state: "ready" };
     } },
-    [join(projectRoot, "app/(app)/app/contacts/analysis/opportunities-route-service.ts")]: { loadOpportunitiesTab: async (input: { actorId: string; goal: Promise<string | null>; language: string }) => {
+    [join(projectRoot, "app/(app)/app/contacts/analysis/opportunities-route-service.ts")]: { loadOpportunitiesTab: async (input: { actorId: string; goal: Promise<string | null>; language: string; threshold?: unknown }) => {
       calls.push({ operation: "opportunitiesTab", input: { actorId: input.actorId, goal: await input.goal, language: input.language } });
+      calls.push({ operation: "opportunitiesThreshold", input: input.threshold });
       return { coverage: { state: "no_plan" }, dormant: [], report: { state: "none" }, weekActions: { pendingMatches: null, planActions: [] } };
     } },
   };
@@ -105,9 +113,10 @@ test("contacts dashboard loads analysis for the resolved account rather than the
     { operation: "auth" },
     { operation: "resolveActor", input: { email: "account@example.test", name: "Account fixture", userId: "auth:external" } },
     { operation: "language" },
+    { operation: "threshold", input: "account:canonical" },
     { operation: "dashboard", input: { actorId: "account:canonical" } },
     { operation: "contacts", input: { actorId: "account:canonical", params: {} } },
-    { operation: "structureTab", input: { actorId: "account:canonical", language: "en", strengthState: null } },
+    { operation: "structureTab", input: { actorId: "account:canonical", language: "en", strengthState: null, threshold: { confirmed: 5, met: true, missing: 0 } } },
     { operation: "tierLookup" },
   ]);
   // 外层 div → [AccountTopNav, 屏组件]；?tab=structure 进分析子页并把同一份 analysis 传下去。
@@ -159,8 +168,8 @@ test("contacts dashboard without a tab renders the overview screen for the resol
   const { calls, page } = loadDashboardPage(t);
   const rendered = await page();
   // W0052：概览读驾驶舱附加数据，不再读本页档位表（档位与重点联系人来自全量分布与档位看板）。
-  assert.deepEqual(calls.map((call) => call.operation), ["auth", "resolveActor", "language", "dashboard", "contacts", "overviewCockpit"]);
-  assert.deepEqual(calls.at(-1)?.input, { actorId: "account:canonical", language: "en" });
+  assert.deepEqual(calls.map((call) => call.operation), ["auth", "resolveActor", "language", "threshold", "dashboard", "contacts", "overviewCockpit", "overviewThreshold"]);
+  assert.deepEqual(calls.find((call) => call.operation === "overviewCockpit")?.input, { actorId: "account:canonical", language: "en" });
   const screen = rendered.props.children[2].props.children[1] as unknown as ReactElement<{ analysis: unknown; initialTab?: string; overview: { sources: unknown; total: unknown; meta: unknown } }>;
   assert.deepEqual(screen.props.analysis, { state: "error" });
   assert.equal(screen.props.initialTab, undefined);
@@ -226,4 +235,34 @@ test("contacts dashboard responsive roots do not occupy or flow beside each othe
     dashboardSource,
     /className="orbit-page" data-orbit-real-page="contacts-dashboard"/,
   );
+});
+
+/* ── W0054：门槛（已确认联系人 < 3）只换 AI 块 ───────────────────── */
+
+test("W0054 SC-03: with 2 confirmed contacts every tab reads the threshold once for the canonical actor and passes it on; the insight tab reads no insights and gets a threshold card", async (t) => {
+  for (const tab of ["structure", "opportunities", "insight", undefined] as const) {
+    const loaded = loadDashboardPage(t, { confirmed: 2 });
+    const rendered = await loaded.page(tab ? { searchParams: Promise.resolve({ tab }) } : undefined);
+    assert.deepEqual(loaded.calls.filter((call) => call.operation === "threshold"), [{ operation: "threshold", input: "account:canonical" }], String(tab));
+    const below = { confirmed: 2, met: false, missing: 1 };
+    const screen = rendered.props.children[2].props.children[1] as unknown as ReactElement<Record<string, unknown>>;
+    if (tab === "structure") assert.deepEqual((loaded.calls.find((call) => call.operation === "structureTab")?.input as { threshold: unknown }).threshold, below);
+    if (tab === "opportunities") assert.deepEqual(loaded.calls.find((call) => call.operation === "opportunitiesThreshold")?.input, below);
+    if (tab === undefined) assert.deepEqual(loaded.calls.find((call) => call.operation === "overviewThreshold")?.input, below);
+    if (tab === "insight") {
+      assert.ok(!loaded.calls.some((call) => call.operation === "insightsTab"), "no insight read below the threshold");
+      assert.equal(screen.props.insights, undefined);
+      assert.deepEqual(screen.props.insightGate, { kind: "threshold", missing: 1 });
+    } else if (tab) {
+      assert.equal(screen.props.insightGate, null);
+    }
+  }
+});
+
+test("W0054: a failed threshold read is treated as unknown — the insight tab still loads and shows no gate", async (t) => {
+  const loaded = loadDashboardPage(t, { confirmed: null });
+  const rendered = await loaded.page({ searchParams: Promise.resolve({ tab: "insight" }) });
+  assert.ok(loaded.calls.some((call) => call.operation === "insightsTab"));
+  const screen = rendered.props.children[2].props.children[1] as unknown as ReactElement<Record<string, unknown>>;
+  assert.equal(screen.props.insightGate, null);
 });

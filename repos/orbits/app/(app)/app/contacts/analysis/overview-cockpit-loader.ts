@@ -8,8 +8,10 @@
  * - 时间线最近 5 条 = W0046 `readRecentRelationshipTimelineForActor`；重点联系人 = W0047 档位看板每列前 2 位；
  * - 依据、动态、重点联系人的姓名合并成一次只读语句（W0049 `readEvidenceContactNames`）。
  * 整个加载 0 次 INSERT／UPDATE／DELETE、计划生成器 0 次解析、付费 AI 0 次。各部分失败互不影响：失败的那块按「读不到」处理，其余照常。
+ * W0054：门槛（已确认联系人 < 3）未达时不读快照（句子换成门槛卡），数字照常。
  */
 import type { NetworkSnapshotView, SnapshotLanguage } from "../../../../../features/network-analysis/contract";
+import { belowThresholdSnapshotView, type AnalysisThreshold } from "../../../../../features/network-analysis/analysis-threshold";
 import { readEvidenceContactNames, type EvidenceContactName } from "../../../../../features/network-analysis/evidence-contacts";
 import { getConfiguredNetworkAnalysisRuntime, readCurrentPlanForSnapshot } from "../../../../../features/network-analysis/runtime";
 import { unavailableSnapshotView } from "../../../../../features/network-analysis/service";
@@ -61,7 +63,7 @@ function log(event: string, actorId: string, error: unknown) {
 
 /** 概览附加数据（不含分析与名单——它们由页面已有的并行读取给出）。 */
 export async function loadOverviewCockpit(
-  input: { actorId: string; language: OrbitLanguage; now: Date },
+  input: { actorId: string; language: OrbitLanguage; now: Date; threshold?: AnalysisThreshold | null },
   deps: OverviewCockpitLoaderDeps = defaultOverviewCockpitLoaderDeps(),
 ): Promise<Omit<OverviewCockpitParts, "sourceFacets">> {
   const { actorId, now } = input;
@@ -74,7 +76,10 @@ export async function loadOverviewCockpit(
     async () => { const snapshot = await deps.readPlan(actorId); return snapshot ? toOpportunityPlanView(snapshot, now) : null; },
     undefined,
   );
-  const snapshotPromise: Promise<NetworkSnapshotView> = deps.readSnapshot
+  const below = Boolean(input.threshold && !input.threshold.met);
+  const snapshotPromise: Promise<NetworkSnapshotView> = below
+    ? Promise.resolve(belowThresholdSnapshotView())
+    : deps.readSnapshot
     ? guard("overview_cockpit_snapshot_failed", () => deps.readSnapshot!(actorId, language), unavailableSnapshotView())
     : Promise.resolve(unavailableSnapshotView());
   const timelinePromise = guard<OverviewCockpitParts["timeline"]>(
@@ -108,5 +113,5 @@ export async function loadOverviewCockpit(
     ? guard<Map<string, EvidenceContactName> | null>("overview_cockpit_names_failed", () => deps.readContactNames(actorId, ids), null)
     : Promise.resolve(new Map<string, EvidenceContactName>());
   const [pendingMatches, names] = await Promise.all([pendingPromise, namesPromise]);
-  return { board, names, pendingMatches, plan, snapshot, timeline };
+  return { board, names, pendingMatches, plan, snapshot, threshold: input.threshold ?? null, timeline };
 }

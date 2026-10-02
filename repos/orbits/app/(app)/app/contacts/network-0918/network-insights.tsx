@@ -4,9 +4,11 @@
  * 每人一条：关系一句（和目标的关系）、依据（可点开）、下一步、强度档；服务端分页 30 条，
  * 排序 相关度／强度档／最近往来，筛选 行业／地区／强度档（GET 表单，URL 驱动，可分享、可回退）。
  * 状态行：待生成／明天更新／未设目标／失败各有真实文案。本组件只读，不调用任何模型。
+ * W0054：示例期（DemoModeProvider）姓名旁带「示例」角标；数据是前端静态示例（30 位示例联系人）。
  */
 "use client";
 
+import { DemoTag, useDemoMode } from "../../_demo/demo-mode-core";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import type { InsightsTabRow, InsightsTabView } from "../analysis/insights-tab";
 import { INSIGHT_EVIDENCE_ICON, INSIGHT_EVIDENCE_LABEL, INSIGHT_STATE_COPY, insightEvidenceHref } from "./network-insight-copy";
@@ -37,12 +39,14 @@ function InsightStatus({ row }: { row: InsightsTabRow }) {
 
 function InsightRow({ row }: { row: InsightsTabRow }) {
   const { t } = useOrbitLanguage();
+  const demo = useDemoMode();
   const view = row.insight;
   const showText = view.goalRelation && view.nextStep && view.state !== "no_goal";
   return (
     <div className="nw-insight-row" data-network-insight-row={row.contactId} data-insight-state={view.state}>
       <div className="nw-insight-who">
         <a className="nw-insight-name" href={row.href}>{row.name}</a>
+        {demo ? <DemoTag /> : null}
         {row.subtitle ? <span className="nw-row-org-2">{row.subtitle}</span> : null}
         <span data-network-tier={row.tier ?? "unscored"}>
           {row.tier

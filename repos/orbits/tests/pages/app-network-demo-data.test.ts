@@ -206,3 +206,35 @@ test("guide view: passes the goal to the progress check and maps only in-demo st
   assert.equal(demoModeViewFromGuideStatus(null), null);
   assert.equal(demoModeViewFromGuideStatus({ bannerCollapsed: false, grandfathered: true, inDemo: false, progress: null }), null);
 });
+
+/* ── W0054：示例完整快照（结构／机会／洞察） ─────────────────────── */
+
+test("W0054 SC-04: the demo snapshot's evidence and every insight row trace back to the 30 demo contacts; texts are bilingual and carry no digits", async () => {
+  const { buildDemoNetworkSnapshotView, buildDemoInsightsView, buildDemoOpportunitiesView, buildDemoStructureExtras } = await import("../../app/(app)/app/_demo/demo-network-analysis");
+  const ids = new Set(buildDemoNetworkViewModel(NOW, "zh").connections.map((contact) => contact.id));
+  for (const lang of ["zh", "en"] as const) {
+    const snapshot = buildDemoNetworkSnapshotView(NOW, lang);
+    assert.equal(snapshot.state, "ready");
+    assert.deepEqual([...new Set(snapshot.blocks.map((block) => block.kind))].sort(), ["diagnosis", "gap", "insight", "plan"]);
+    for (const block of snapshot.blocks) {
+      assert.ok(block.evidence.contactIds.length > 0, block.key);
+      assert.ok(block.evidence.contactIds.every((id) => ids.has(id)), `${block.key} evidence is a demo contact`);
+      assert.doesNotMatch(block.text, /\d/, `${block.key}: a snapshot sentence carries no statistics`);
+    }
+    const extras = buildDemoStructureExtras(NOW, lang);
+    assert.equal(extras.snapshot.state, "ready");
+    const insights = buildDemoInsightsView(NOW, lang, {});
+    assert.equal(insights.rows.length, 30);
+    assert.deepEqual(new Set(insights.rows.map((row) => row.contactId)), ids);
+    for (const row of insights.rows) {
+      assert.ok(row.insight.goalRelation?.zh && row.insight.goalRelation.en, row.contactId);
+      assert.ok(row.insight.nextStep?.zh && row.insight.nextStep.en, row.contactId);
+      assert.ok(row.insight.evidence.length > 0);
+    }
+    const opportunities = buildDemoOpportunitiesView(NOW, lang);
+    assert.ok((opportunities.dormant ?? []).every((row) => ids.has(row.contactId)));
+  }
+  // 默认按相关度排序，最相关的是要找的 IT 负责人／商会对接人。
+  const sorted = buildDemoInsightsView(NOW, "zh", {}).rows.map((row) => row.insight.relevance ?? 0);
+  assert.deepEqual(sorted, [...sorted].sort((a, b) => b - a));
+});

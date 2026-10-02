@@ -24,6 +24,7 @@ import type { OrbitContactsViewModel } from "../../app/(app)/app/orbit-contacts-
 import type { NetworkSnapshotView } from "../../features/network-analysis/contract";
 import { toOpportunityPlanView } from "../../features/plans/coverage";
 import { networkSections } from "../fixtures/network-debug-payload";
+import { loadOpportunitiesTab } from "../../app/(app)/app/contacts/analysis/opportunities-route-service";
 
 const NOW = new Date("2026-10-03T03:00:00.000Z");
 const empty = { connections: [], events: [], intros: [], pipelineStatuses: [] } as unknown as OrbitContactsViewModel;
@@ -343,4 +344,32 @@ test("W0051 R-8: a dormant row whose why came from the insight renders that next
   ] });
   assert.match(html, /data-network-dormant-why="insight"[^>]*>问问新基金的进展。/);
   assert.match(html, /data-network-dormant-why="rule"[^>]*>上次往来：/);
+});
+
+/* ── W0054（W54-3）：门槛卡 ─────────────────────────────────────── */
+
+test("W0054 SC-03: below the threshold the report card becomes one threshold card; coverage numbers, gaps, week actions and dormant still render", () => {
+  const html = render({ ...fullView({ report: report({ blocks: [], state: "insufficient" }) }), gate: { kind: "threshold", missing: 1 } });
+  assert.equal((html.match(/data-network-analysis-gate=/g) ?? []).length, 1);
+  assert.match(html, /再添加 1 位联系人即可更新分析/);
+  assert.doesNotMatch(html, /data-network-section="report"/);
+  for (const section of ["coverage", "gaps", "actions", "dormant"]) assert.match(html, new RegExp(`data-network-section="${section}"`), section);
+});
+
+test("W0054 SC-03: the opportunities loader below the threshold reads no snapshot and no dormant insight text (rule sentence stays)", async () => {
+  const calls: string[] = [];
+  const view = await loadOpportunitiesTab({ actorId: "actor:a", goal: null, language: "zh", now: NOW, threshold: { confirmed: 2, met: false, missing: 1 } }, {
+    readBookableEvents: async () => [],
+    readContactNames: async () => { calls.push("names"); return new Map(); },
+    readDormant: async () => [{ contactId: "d-1", dormant: true, lastSignal: { occurredAt: "2026-07-01T03:00:00.000Z", recordId: "memo:1", source: "memo" }, linkId: "d-1", name: "周杰", organization: "北辰资本", primaryIndustryId: "finance_investment", role: "Partner" }],
+    readInsights: async () => { calls.push("insights"); return new Map([["d-1", { nextStep: { en: "OLD INSIGHT", zh: "旧洞察下一步" }, state: "ready" as const }]]); },
+    readPending: null,
+    readPlan: async () => planSnapshot() as never,
+    readSnapshot: async () => { calls.push("snapshot"); throw new Error("must not read"); },
+  });
+  assert.deepEqual(calls, []);
+  assert.equal(view.report.state, "insufficient");
+  assert.deepEqual(view.gate, { kind: "threshold", missing: 1 });
+  assert.doesNotMatch(JSON.stringify(view), /旧洞察下一步|OLD INSIGHT/);
+  assert.equal(view.coverage.state, "ready");
 });

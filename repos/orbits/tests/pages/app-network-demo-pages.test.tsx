@@ -9,6 +9,8 @@
  *   - 开关关（SC-01）：真实读取照常发生，引导进度与资料一个都不读，页面结构与改动前相同；
  *   - 开关开 + 在引导期（SC-02／SC-03）：真实读取一个都不调用，渲染示例外框与 30 位示例联系人；
  *   - `demo:` id（SC-03）：开关关或不在引导期一律 404，且不交给真实详情读取。
+ * W0054：示例期「AI 人脉分析」三个标签渲染前端静态的完整示例快照（结构／机会／洞察），概览驾驶舱带示例快照句子；
+ * 门槛读数、洞察标签与详情洞察读取同样算真实读取，示例期 0 次。
  */
 import assert from "node:assert/strict";
 import Module, { createRequire } from "node:module";
@@ -30,7 +32,7 @@ const PAGE_PATHS: Record<PageName, string> = {
   pipeline: "app/(app)/app/contacts/pipeline/page.tsx",
 };
 
-const REAL_READS = ["cards", "contacts", "analysis", "detail", "structure", "structureTab", "opportunitiesTab", "overviewCockpit"];
+const REAL_READS = ["cards", "contacts", "analysis", "detail", "structure", "structureTab", "opportunitiesTab", "overviewCockpit", "threshold", "insightsTab", "insightDetail"];
 const GUIDE_READS = ["profile", "guide"];
 
 interface Scenario {
@@ -132,8 +134,19 @@ function loadPage(t: TestContext, name: PageName, scenario: Scenario = {}) {
     [join(root, "app/(app)/app/contacts/network-0918/network-pipeline.tsx")]: { NetworkPipeline: component("NetworkPipeline") },
     [join(root, "app/(app)/app/contacts/network-0918/network-demo-frame.tsx")]: { NetworkDemoFrame: component("NetworkDemoFrame") },
     [join(root, "app/(app)/app/contacts/network-0918/network-shell.tsx")]: {
-      NetworkDemoAnalysisNotice: component("NetworkDemoAnalysisNotice"),
       NetworkShell: component("NetworkShell"),
+    },
+    // W0054：门槛读数、洞察标签与详情洞察（示例期间一个都不许调用）。
+    [join(root, "features/network-analysis/analysis-threshold-reader.ts")]: {
+      readAnalysisThreshold: stub("threshold", { confirmed: 5, met: true, missing: 0 }),
+    },
+    // 纯函数（查询解析、视图组装）照用真实实现，只把读取换成记录调用的桩。
+    [join(root, "app/(app)/app/contacts/analysis/insights-tab.ts")]: {
+      ...(require(join(root, "app/(app)/app/contacts/analysis/insights-tab.ts")) as Record<string, unknown>),
+      loadInsightsTab: stub("insightsTab", undefined),
+    },
+    [join(root, "features/contacts/insights/read.ts")]: {
+      readContactInsightDetail: stub("insightDetail", { goal: null, goalKnown: false, quotaExhausted: false, row: null }),
     },
     [join(root, "app/(app)/app/contacts/analysis/contacts-structure-route-service.ts")]: { loadContactsStructureDetail: stub("structure", { state: "pending" }) },
     [join(root, "app/(app)/app/contacts/analysis/contacts-structure-detail.tsx")]: { ContactsStructureDetail: component("ContactsStructureDetail") },
@@ -211,7 +224,7 @@ type DemoVm = { connections: Array<{ id: string; displayName: string }> };
 
 for (const [name, reads] of [
   ["contacts", ["cards", "contacts"]],
-  ["dashboard", ["analysis", "contacts", "overviewCockpit"]],
+  ["dashboard", ["analysis", "contacts", "overviewCockpit", "threshold"]],
   ["pipeline", ["contacts", "analysis"]],
 ] as const) {
   test(`flag off: /${name} reads real contacts as before and reads no guide state`, async (t) => {
@@ -226,7 +239,8 @@ for (const [name, reads] of [
 test("flag off: a real contact detail id goes through the real detail read, no guide read", async (t) => {
   const { calls, page } = loadPage(t, "detail");
   const tree = await page({ params: Promise.resolve({ id: "contact-1" }), searchParams: Promise.resolve({}) });
-  assert.deepEqual(operations(calls, REAL_READS), ["detail", "cards", "contacts"]);
+  // W0054：详情的「和你目标的关系」先读门槛，达到 3 位才读洞察。
+  assert.deepEqual(operations(calls, REAL_READS), ["detail", "cards", "contacts", "threshold", "insightDetail"]);
   assert.deepEqual(operations(calls, GUIDE_READS), []);
   assert.equal(find(tree, "NetworkDemoFrame"), null);
   assert.ok(find(tree, "NetworkAll"));
@@ -242,7 +256,7 @@ test("demo: a real contact id redirects to the demo list before any real read", 
 test("flag on but out of the guide: a real contact id takes the real path (one guide read is allowed)", async (t) => {
   const { calls, page } = loadPage(t, "detail", { flag: "on", guide: "out" });
   const tree = await page({ params: Promise.resolve({ id: "contact-1" }), searchParams: Promise.resolve({}) });
-  assert.deepEqual(operations(calls, REAL_READS), ["detail", "cards", "contacts"]);
+  assert.deepEqual(operations(calls, REAL_READS), ["detail", "cards", "contacts", "threshold", "insightDetail"]);
   assert.deepEqual(operations(calls, GUIDE_READS), ["profile", "guide"]);
   assert.equal(find(tree, "NetworkDemoFrame"), null);
 });
@@ -255,7 +269,7 @@ test("flag off: the analysis drill-down reads the real bucket and no guide state
   assert.ok(find(tree, "ContactsStructureDetail"));
 });
 
-test("demo: the analysis drill-down redirects to the demo analysis notice before any real read", async (t) => {
+test("demo: the analysis drill-down redirects back to the demo structure tab before any real read (W54-6: no demo list page)", async (t) => {
   const { calls, page } = loadPage(t, "drilldown", { flag: "on" });
   await assert.rejects(page({ params: Promise.resolve({ bucketId: "b1", dimension: "industry" }) }), /redirect:\/app\/contacts\/dashboard\?tab=structure$/);
   assert.deepEqual(operations(calls, REAL_READS), []);
@@ -326,11 +340,17 @@ test("demo: the overview renders demo contacts + demo analysis without loadConta
   assert.equal(find(tree, "NetworkDemoFrame")?.route, "app-contacts-dashboard-route");
   const overview = find(tree, "NetworkOverview");
   assert.equal((overview?.analysis as { state: string }).state, "ready");
-  // W0052：示例驾驶舱 = 示例数字与示例档位、动态（双语），没有快照句子；快照、时间线、计划读取 0 次（overviewCockpit 不在 calls 里）。
+  // W0052：示例驾驶舱 = 示例数字与示例档位、动态（双语）；快照、时间线、计划读取 0 次（overviewCockpit 不在 calls 里）。
+  // W0054：句子来自示例静态快照（诊断、第一条有据的缺口补法、本周计划句）与待唤醒数字模板。
   const data = overview?.overview as { total: number; meta: unknown; cards: Array<{ n: number | null; sentence: unknown }>; tiers: Array<{ id: string; count: number }>; activity: { state: string; rows: Array<{ name: string }> } };
   assert.equal(data.total, 30);
   assert.deepEqual(data.cards.map((card) => card.n), [30, 3, 6, 3]);
-  assert.deepEqual(data.cards.map((card) => card.sentence), [null, null, null, null]);
+  assert.deepEqual(data.cards.map((card) => (card.sentence as { zh: string } | null)?.zh ?? null), [
+    "能直接推进试用的 IT 负责人只有铃木健和佐藤美咲两位，渠道代理和商会这两类关键人脉还很薄。",
+    "铃木健、佐藤美咲已经对上；还差一位，可以请王砚引荐北辰精工的 IT 决策人。",
+    "本周先见王砚、约佐藤美咲聊试用，再请中村惠推荐试点企业。",
+    "3 位曾有往来、60 天没有新记录",
+  ]);
   assert.deepEqual(data.tiers.map((tier) => [tier.id, tier.count]), [["new", 9], ["active", 13], ["core", 5], ["dormant", 3]]);
   assert.deepEqual(data.activity.rows.map((row) => row.name), ["铃木健", "高桥由美", "王砚", "佐藤美咲", "中村惠"]);
 });
@@ -343,14 +363,79 @@ test("demo (ja, review P2): the overview falls back to the English demo data lik
   assert.deepEqual(data.activity.rows.map((row) => row.name), ["Suzuki Ken", "Takahashi Yumi", "Wang Yan", "Sato Misaki", "Nakamura Megumi"]);
 });
 
-test("demo: the analysis sub-tabs show only the banner + notice, no fabricated analysis", async (t) => {
-  for (const tab of ["structure", "opportunities"]) {
+test("W0054 SC-04: the three demo analysis tabs render the static demo snapshot through the real NetworkAnalysis with zero real reads", async (t) => {
+  type Props = {
+    analysis: { state: string; structure: { data: { dimensions: Record<string, Array<{ id: string; count: number; children?: unknown[] }>> } }; goal: { data: { canEdit: boolean } } };
+    initialTab: string;
+    structureExtras?: { gate: unknown; snapshot: { state: string; diagnosis: { text: string; evidence: Array<{ id: string }> } | null; insights: Array<{ evidence: Array<{ id: string }> }> }; highlights: { primary: string[] }; tierHistory: unknown };
+    opportunities?: { gate: unknown; coverage: { state: string; percent: number; needs: Array<{ needId: string; have: number; target: number; missing: number; gapNote?: { text: string; evidence: Array<{ id: string }> } }> }; weekActions: { planActions: Array<{ href: string }> }; dormant: Array<{ contactId: string; draftAvailable: boolean }>; report: { state: string; blocks: unknown[]; contactCount: number } };
+    insights?: { state: string; total: number; rows: Array<{ contactId: string; insight: { state: string; goalRelation: { zh: string; en: string } } }>; hasGoal: boolean };
+    insightGate?: unknown;
+  };
+  const tabs = { insight: "insight", opportunities: "opp", structure: "struct" } as const;
+  for (const [tab, key] of Object.entries(tabs)) {
     const { calls, page } = loadPage(t, "dashboard", { flag: "on" });
     const tree = await page({ searchParams: Promise.resolve({ tab }) });
-    assert.deepEqual(operations(calls, REAL_READS), [], tab);
-    assert.ok(find(tree, "NetworkDemoAnalysisNotice"), tab);
-    assert.equal(find(tree, "NetworkAnalysis"), null, tab);
+    assert.deepEqual(operations(calls, REAL_READS), [], `${tab}: zero real reads (analysis, route model, snapshot/insight loaders, threshold)`);
+    assert.ok(find(tree, "NetworkDemoFrame"), tab);
+    const props = find(tree, "NetworkAnalysis") as unknown as Props;
+    assert.ok(props, tab);
+    assert.equal(props.initialTab, key);
+    assert.equal(props.analysis.state, "ready");
+    assert.equal(props.analysis.goal.data.canEdit, false, "the demo goal is read-only");
+    if (tab === "structure") {
+      const dims = props.analysis.structure.data.dimensions;
+      for (const dimension of ["industry", "region", "seniority", "tier"]) {
+        assert.ok(dims[dimension]!.length > 0, dimension);
+        assert.equal(dims[dimension]!.reduce((sum, bucket) => sum + bucket.count, 0), 30, `${dimension} covers all 30 demo contacts`);
+      }
+      assert.ok(dims.industry!.some((bucket) => (bucket.children ?? []).length > 0), "industry has a second level");
+      const extras = props.structureExtras!;
+      assert.equal(extras.gate, null);
+      assert.equal(extras.snapshot.state, "ready");
+      assert.ok(extras.snapshot.diagnosis?.text);
+      assert.ok(extras.snapshot.insights.length >= 2 && extras.snapshot.insights.length <= 3);
+      const evidence = [extras.snapshot.diagnosis!, ...extras.snapshot.insights].flatMap((block) => block.evidence.map((person) => person.id));
+      assert.ok(evidence.length > 0 && evidence.every((id) => id.startsWith("demo:")), "evidence points at demo contacts");
+      assert.ok(extras.highlights.primary.length > 0);
+      assert.ok(extras.tierHistory);
+    }
+    if (tab === "opportunities") {
+      const view = props.opportunities!;
+      assert.equal(view.gate, null);
+      assert.equal(view.coverage.state, "ready");
+      assert.deepEqual(view.coverage.needs.map((need) => [need.needId, need.have, need.target, need.missing]), [["demo-need-it", 2, 3, 1], ["demo-need-channel", 1, 3, 2], ["demo-need-chamber", 0, 2, 2]]);
+      assert.ok(view.coverage.needs.every((need) => need.gapNote && need.gapNote.evidence.every((person) => person.id.startsWith("demo:"))), "every need has a demo gap note with evidence");
+      assert.ok(view.weekActions.planActions.length > 0 && view.weekActions.planActions.every((action) => action.href.startsWith("/app/agent/plan#plan-action-")));
+      assert.ok(view.dormant.length > 0 && view.dormant.every((row) => row.contactId.startsWith("demo:") && row.draftAvailable));
+      assert.equal(view.report.state, "ready");
+      assert.equal(view.report.contactCount, 30);
+    }
+    if (tab === "insight") {
+      const view = props.insights!;
+      assert.equal(view.state, "ready");
+      assert.equal(view.hasGoal, true);
+      assert.equal(view.total, 30);
+      assert.equal(view.rows.length, 30);
+      assert.ok(view.rows.every((row) => row.contactId.startsWith("demo:") && row.insight.state === "ready" && row.insight.goalRelation.zh && row.insight.goalRelation.en));
+      assert.equal(props.insightGate, undefined);
+    }
   }
+});
+
+test("W0054 SC-04: demo insight tab sorts and filters by URL like the real tab (tier / region / industry), still with zero reads", async (t) => {
+  const { calls, page } = loadPage(t, "dashboard", { flag: "on", language: "en" });
+  const tree = await page({ searchParams: Promise.resolve({ country: "CN", tab: "insight" }) });
+  assert.deepEqual(operations(calls, REAL_READS), []);
+  const insights = (find(tree, "NetworkAnalysis") as { insights: { rows: Array<{ name: string }>; total: number; query: { country: string } } }).insights;
+  assert.equal(insights.query.country, "CN");
+  assert.deepEqual(insights.rows.map((row) => row.name), ["Zhang Hao"]);
+  const byTier = (find(await loadPage(t, "dashboard", { flag: "on" }).page({ searchParams: Promise.resolve({ tab: "insight", tier: "core" }) }), "NetworkAnalysis") as { insights: { rows: Array<{ tier: string }> } }).insights;
+  assert.ok(byTier.rows.length > 0 && byTier.rows.every((row) => row.tier === "core"));
+  const recent = (find(await loadPage(t, "dashboard", { flag: "on" }).page({ searchParams: Promise.resolve({ sort: "recent", tab: "insight" }) }), "NetworkAnalysis") as { insights: { rows: Array<{ contactId: string }> } }).insights;
+  assert.ok(["demo:wang-yan", "demo:suzuki-ken", "demo:takahashi-yumi"].includes(recent.rows[0]!.contactId), "most recent contact first");
+  const industry = (find(await loadPage(t, "dashboard", { flag: "on" }).page({ searchParams: Promise.resolve({ industry: "finance_investment", tab: "insight" }) }), "NetworkAnalysis") as { insights: { rows: Array<{ contactId: string }> } }).insights;
+  assert.deepEqual(industry.rows.map((row) => row.contactId), ["demo:chen-siyuan"]);
 });
 
 test("demo: the pipeline renders demo data without a real loader", async (t) => {

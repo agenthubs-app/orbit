@@ -3,6 +3,8 @@ import { resolveModuleMode } from "../../../../shared/services/module-mode";
 import { readRelationshipTierLookup } from "../../../../features/relationship-strength/read-model";
 import { readContactInsightPreviewTexts } from "../../../../features/contacts/insights/read";
 import { contactInsightPreview } from "../../../../features/contacts/insights/view";
+import { readAnalysisThreshold } from "../../../../features/network-analysis/analysis-threshold-reader";
+import type { AnalysisThreshold } from "../../../../features/network-analysis/analysis-threshold";
 import type { ContactCardPageDTO } from "../../../../features/contacts/contract";
 import { NETWORK_TIER_GROUPS, type NetworkTierGroup } from "./network-0918/network-model";
 import { CARD_SOURCE_GROUPS, contactCardsToView, contactCardCounts, type ContactCardInsightPreviews, type ContactCardRouteView, type ContactCardTierEntry } from "./contact-card-view-model";
@@ -26,6 +28,25 @@ export async function readContactCardInsightPreviews(actorId: string, contactIds
   return previews;
 }
 
+/**
+ * W0054（W54-3）：门槛把关的洞察一句——先读门槛（与引导第 1 步同一计数语句），已确认联系人不足 3 位时不读、
+ * 返回空表并标 `hidden`（列表把洞察列整列隐藏，不显示「暂无洞察」）；门槛读不到按未知照旧读。
+ */
+export async function readGatedInsightPreviews(
+  actorId: string,
+  contactIds: readonly string[],
+  deps: {
+    readThreshold?: (actorId: string) => Promise<AnalysisThreshold | null>;
+    readPreviews?: (actorId: string, contactIds: readonly string[]) => Promise<ContactCardInsightPreviews>;
+  } = {},
+): Promise<{ hidden: boolean; previews: ContactCardInsightPreviews }> {
+  if (!contactIds.length) return { hidden: false, previews: new Map() };
+  const threshold = await (deps.readThreshold ?? readAnalysisThreshold)(actorId);
+  if (threshold && !threshold.met) return { hidden: true, previews: new Map() };
+  const previews = await (deps.readPreviews ?? readContactCardInsightPreviews)(actorId, contactIds).catch((): ContactCardInsightPreviews => new Map());
+  return { hidden: false, previews };
+}
+
 /** 把洞察一句并进卡片（DTO 可选字段 `insightPreview`）。 */
 export function withInsightPreviews(page: ContactCardPageDTO, previews: ContactCardInsightPreviews): ContactCardPageDTO {
   if (!previews.size) return page;
@@ -39,6 +60,8 @@ export async function loadContactCardRoute(
     live?: boolean;
     readTiers?: (actorId: string, contactIds: readonly string[]) => Promise<readonly ContactCardTierEntry[]>;
     readInsightPreviews?: (actorId: string, contactIds: readonly string[]) => Promise<ContactCardInsightPreviews>;
+    /** W0054：门槛读数（缺省 = 一条计数语句）。 */
+    readThreshold?: (actorId: string) => Promise<AnalysisThreshold | null>;
   } = {},
 ): Promise<{ state: "ready"; view: ContactCardRouteView } | { state: "error"; message: string } | null> {
   if (!(options.live ?? resolveModuleMode() === "live")) return null; // Preserve explicit local mock/dev surfaces.
@@ -63,13 +86,12 @@ export async function loadContactCardRoute(
     const service = options.service ?? createContactCardService(actor);
     const [page, summary] = await Promise.all([service.page(query, actor.id), service.summary(query, actor.id)]);
     const ids = page.items.map((card) => card.id);
-    const [tiers, previews] = ids.length
-      ? await Promise.all([
-        (options.readTiers ?? readContactCardTiers)(actor.id, ids),
-        (options.readInsightPreviews ?? readContactCardInsightPreviews)(actor.id, ids).catch((): ContactCardInsightPreviews => new Map()),
-      ])
-      : [[], new Map() as ContactCardInsightPreviews];
-    return { state: "ready", view: { list: contactCardsToView(withInsightPreviews(page, previews), params.toString(), tiers), total: summary.total,
-      counts: contactCardCounts(summary), query: query.query ?? "", source, tier, params: params.toString() } };
+    const [tiers, insight] = await Promise.all([
+      ids.length ? (options.readTiers ?? readContactCardTiers)(actor.id, ids) : Promise.resolve([]),
+      readGatedInsightPreviews(actor.id, ids, { readPreviews: options.readInsightPreviews, readThreshold: options.readThreshold }),
+    ]);
+    return { state: "ready", view: { list: contactCardsToView(withInsightPreviews(page, insight.previews), params.toString(), tiers), total: summary.total,
+      counts: contactCardCounts(summary), query: query.query ?? "", source, tier, params: params.toString(),
+      ...(insight.hidden ? { insightsHidden: true } : {}) } };
   } catch (error) { return { state: "error", message: contactCardReadError(error).message }; }
 }

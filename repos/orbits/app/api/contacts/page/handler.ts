@@ -11,10 +11,13 @@ async function defaultReadTiers(actorId: string, contactIds: readonly string[]) 
   return [...(await readRelationshipTierLookup({ actorId, contactIds })).values()];
 }
 
-/** W0051：同一 Web 请求（`tiers=1`）另附本页洞察一句（一条只读语句，0 次模型调用）；App 不带此参数，响应不变。 */
+/**
+ * W0051：同一 Web 请求（`tiers=1`）另附本页洞察一句（一条只读语句，0 次模型调用）；App 不带此参数，响应不变。
+ * W0054（W54-3）：已确认联系人不足 3 位时不读、不附（与列表首屏同一门槛，先读一条计数语句）。
+ */
 async function defaultReadInsightPreviews(actorId: string, contactIds: readonly string[]) {
-  const { readContactCardInsightPreviews } = await import("../../../(app)/app/contacts/contact-card-route-service");
-  return readContactCardInsightPreviews(actorId, contactIds);
+  const { readGatedInsightPreviews } = await import("../../../(app)/app/contacts/contact-card-route-service");
+  return (await readGatedInsightPreviews(actorId, contactIds)).previews;
 }
 
 export function createContactCardGetHandler(options: {

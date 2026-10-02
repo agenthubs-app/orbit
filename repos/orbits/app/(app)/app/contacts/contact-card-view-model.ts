@@ -40,6 +40,8 @@ export interface ContactCardRouteView {
   /** W0051：关系档位筛选（服务端 SQL）。 */
   tier: NetworkTierGroup | "all";
   params: string;
+  /** W0054（W54-3）：已确认联系人不足 3 位时整列隐藏洞察一句（服务端也不读、不下发）。 */
+  insightsHidden?: boolean;
 }
 export function contactCardsToView(page: ContactCardPageDTO, params: string, tiers: readonly ContactCardTierEntry[] = []): ContactCardListView {
   const next = new URLSearchParams(params);

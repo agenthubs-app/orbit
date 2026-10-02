@@ -147,6 +147,11 @@ export function createPostgresConfirmedContactCounter(input: {
   };
 }
 
+/** W0054：人脉分析门槛与引导第 1 步共用这一条计数（同一谓词、同一常量）。 */
+export function createConfiguredConfirmedContactCounter(): ConfirmedContactCounter {
+  return configuredConfirmedContactCounter();
+}
+
 function configuredConfirmedContactCounter(): ConfirmedContactCounter {
   return async (actorId) => {
     const configured = createConfiguredPostgresLiveRecordStore();
