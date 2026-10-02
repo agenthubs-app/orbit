@@ -9,11 +9,14 @@
  *
  * 不再有：「⟳ 刷新机会」、固定阈值覆盖拨盘、「高价值／核心关系」两行、规则重排的建议动作、「去 iOrbit 分析」。
  * 本组件不请求 `/api/dashboard/opportunities/recompute`、`/api/contacts/needs-matches`，也不调用任何模型。
+ * W0054：`view.gate`（门槛未达／正在更新／明天更新）时⑤报告卡的位置换成替换卡；示例期「重新分析」「起草邮件」
+ * 走 `guardWrite` 拦截（W54-6），待唤醒姓名与报告卡带「示例」角标。
  */
 "use client";
 
 import { useState } from "react";
 
+import { DemoTag, useDemoMode } from "../../_demo/demo-mode-core";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { PlanMatchDialog, PlanMatchSheet } from "../../agent/iorbit-0918/plan-match-sheet";
 import type { PlanMatchCandidate } from "../../agent/iorbit-0918/plan-match-client";
@@ -22,6 +25,7 @@ import type { NetworkSnapshotView } from "../../../../../features/network-analys
 import type { DormantRow, NeedCoverageRow, OpportunitiesTabView } from "../analysis/opportunities-view-model";
 import { PLAN_HREF, reportCardModel, type ReportCardLimit } from "../analysis/opportunities-report-card";
 import { EvidenceToggle } from "./network-analysis-structure";
+import { NetworkAnalysisGateCard } from "./network-analysis-gate";
 
 type Translate = ReturnType<typeof useOrbitLanguage>["t"];
 
@@ -183,10 +187,15 @@ function ActionsSection({ actions, onOpenAllMatches }: { actions: OpportunitiesT
 
 function DormantItem({ row, index }: { row: DormantRow; index: number }) {
   const { t, language, preserveHref } = useOrbitLanguage();
+  const demo = useDemoMode();
   const [state, setState] = useState<"idle" | "loading" | "error">("idle");
   const [draft, setDraft] = useState<{ subject: string; body: string } | null>(null);
   const [copied, setCopied] = useState(false);
   const requestDraft = async () => {
+    if (demo) {
+      demo.guardWrite(t({ zh: "邮件草稿", en: "email draft" }));
+      return;
+    }
     if (state === "loading") return;
     setState("loading");
     try {
@@ -219,6 +228,7 @@ function DormantItem({ row, index }: { row: DormantRow; index: number }) {
       <span className="nw-act-copy nw-op-dormant-copy">
         <span className="nw-act-row">
           <a className="nw-op-name" href={preserveHref(`/app/contacts/${encodeURIComponent(row.contactId)}`)}>{row.name}</a>
+          {demo ? <DemoTag /> : null}
           <span className="nw-act-tag" style={{ background: "#FBF1DC", color: "#8A6420" }}>{t({ en: "To re-engage", zh: "待唤醒" })}</span>
         </span>
         <span className="nw-act-desc" data-network-dormant-why={row.whySource ?? "rule"}>
@@ -261,11 +271,16 @@ function DormantSection({ rows }: { rows: OpportunitiesTabView["dormant"] }) {
 
 function ReportSection({ report, onReport }: { report: NetworkSnapshotView; onReport: (next: NetworkSnapshotView) => void }) {
   const { t, language } = useOrbitLanguage();
+  const demo = useDemoMode();
   const [busy, setBusy] = useState(false);
   const [limit, setLimit] = useState<ReportCardLimit>(null);
   const [error, setError] = useState(false);
   const card = reportCardModel(report, language, limit);
   const recompute = async () => {
+    if (demo) {
+      demo.guardWrite(t({ zh: "人脉分析", en: "network analysis" }));
+      return;
+    }
     if (busy || !card.button || card.button.disabled) return;
     setBusy(true);
     setError(false);
@@ -294,7 +309,7 @@ function ReportSection({ report, onReport }: { report: NetworkSnapshotView; onRe
       <div className="nw-report-copy">
         <span className="nw-report-icon">▤</span>
         <span className="nw-card-head">
-          <strong className="nw-report-t">{t({ en: "Network analysis report", zh: "人脉分析报告" })}</strong>
+          <strong className="nw-report-t">{t({ en: "Network analysis report", zh: "人脉分析报告" })}{demo ? <> <DemoTag /></> : null}</strong>
           <span className="nw-report-status" data-network-report-status="">{card.status}</span>
           {card.note ? <span className="nw-report-desc" data-network-report-note="">{card.note}</span> : null}
           {card.button?.hint ? <span className="nw-report-desc" data-network-report-hint="">{card.button.hint}</span> : null}
@@ -348,7 +363,7 @@ export function NetworkOpportunities({ view, goal, onEditGoal }: { view: Opportu
       <GapsSection view={coverage} onOpenMatches={(need) => setSheet({ candidates: need.candidates, heading: t({ en: `Who may fit “${need.title}”`, zh: `可能对应「${need.title}」的人` }) })} />
       <ActionsSection actions={{ ...view.weekActions, pendingMatches }} onOpenAllMatches={() => setSheet({ candidates: allCandidates, heading: t({ en: "Who may fit your plan", zh: "可能对应你的计划的人" }) })} />
       <DormantSection rows={view.dormant} />
-      <ReportSection report={report} onReport={setReport} />
+      {view.gate ? <NetworkAnalysisGateCard gate={view.gate} /> : <ReportSection report={report} onReport={setReport} />}
       {sheet ? (
         <PlanMatchDialog label={t({ en: "Plan matches", zh: "计划匹配" })} onClose={() => setSheet(null)}>
           <PlanMatchSheet candidates={sheet.candidates} heading={sheet.heading} onDecided={(candidateId, decision) => onDecided(candidateId, decision)} />

@@ -49,6 +49,7 @@ import { readConfiguredRelationshipSignalItems } from "../../../../../features/r
 import { readContactInsightDetail } from "../../../../../features/contacts/insights/read";
 import { contactInsightView } from "../../../../../features/contacts/insights/view";
 import { NetworkInsightPanel } from "../network-0918/network-insight-panel";
+import { readAnalysisThreshold } from "../../../../../features/network-analysis/analysis-threshold-reader";
 
 function decodeContactRouteId(id: string): string {
   try {
@@ -195,7 +196,9 @@ export default async function AppContactDetailPage({
   const now = new Date();
   await ensureRelationshipStrengthsForPage(actor.id, now);
   // 列表屏在弹窗后面：列表 VM 只喂列表，详情弹窗只吃详情路由的 VM（真实 notes / editableTags / lastInteraction）。
-  const cards = await loadContactCardRoute({}, actor);
+  // W0054（review P3-2）：门槛计数整页只读一次——列表的洞察一句与详情顶部「和你目标的关系」共用这一个结果。
+  const thresholdPromise = readAnalysisThreshold(actor.id);
+  const cards = await loadContactCardRoute({}, actor, { readThreshold: () => thresholdPromise });
   const listRoute = cards ? null : await loadAppContactsRouteViewModel({}, actor.id);
   const listTiers = listRoute?.state === "success"
     ? await readRelationshipTierLookup({ actorId: actor.id, contactIds: listRoute.payload.contacts.map((contact) => contact.id) })
@@ -211,6 +214,7 @@ export default async function AppContactDetailPage({
   // W0046：「最近互动」聚合时间线与「写 memo」关联活动推荐在服务端读好随详情下发（不另发客户端请求）。
   // W0047：关系强度（档位与依据）同样服务端读好。
   // W0051：「和你目标的关系」按 (actor, contactId) 读一行洞察（只读，0 次模型调用）。
+  // W0054（W54-3）：已确认联系人不足 3 位时这块只隐藏——先读门槛（一条计数语句），未达时不读洞察、不渲染面板。
   const [timeline, memoEventOptions, strengths, insightRead] = await Promise.all([
     readRelationshipTimelineForContact({ actorId: actor.id, contactId, now }).catch(() => ({
       items: [],
@@ -218,9 +222,11 @@ export default async function AppContactDetailPage({
     })),
     readMemoEventOptions({ actorId: actor.id, now }),
     readRelationshipStrengths({ actorId: actor.id, contactIds: [contactId] }).catch(() => new Map()),
-    readContactInsightDetail({ actorId: actor.id, contactId, now }).catch(() => ({ goal: null, goalKnown: false, quotaExhausted: false, row: null })),
+    thresholdPromise.then((threshold) => (threshold && !threshold.met
+      ? null
+      : readContactInsightDetail({ actorId: actor.id, contactId, now }).catch(() => ({ goal: null, goalKnown: false, quotaExhausted: false, row: null })))),
   ]);
-  const insight = (
+  const insight = insightRead && (
     <NetworkInsightPanel
       key={`insight:${contactId}`}
       view={contactInsightView(insightRead.row, { contactId, goal: insightRead.goal, goalKnown: insightRead.goalKnown, now })}

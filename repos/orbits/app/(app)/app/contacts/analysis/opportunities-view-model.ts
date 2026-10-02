@@ -11,6 +11,7 @@
  * 文案：network-copy 的双语模板 × 结构化字段；后端句子字段不进 ContactsAnalysisView 的规则不变（W0043）。
  * 快照 gap 块的文字来自共享快照（与结构标签同一来源），只在依据可见时显示。
  */
+import type { AnalysisGateView } from "../../../../../features/network-analysis/analysis-threshold";
 import type { NetworkSnapshotView, NetworkSnapshotViewBlock } from "../../../../../features/network-analysis/contract";
 import type { EvidenceContactName } from "../../../../../features/network-analysis/evidence-contacts";
 import type { PublicBookableEvent } from "../../../../../features/events/public-goal-recommendations";
@@ -117,6 +118,8 @@ export interface OpportunitiesTabView {
   /** null = 待唤醒读取失败。 */
   dormant: DormantRow[] | null;
   report: NetworkSnapshotView;
+  /** W0054：报告卡位置的替换卡（门槛未达／正在更新／明天更新）；null／缺省 = 照常显示报告卡。 */
+  gate?: AnalysisGateView | null;
 }
 
 // ---------------------------------------------------------------------------

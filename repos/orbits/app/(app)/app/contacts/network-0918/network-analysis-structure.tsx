@@ -8,11 +8,14 @@
  * 数字只来自 ContactsAnalysisView.structure（全量规则计算），不来自名单（名单最多 30 条）；
  * 文字只来自快照块（已是界面语言）与本文件模板；依据只列本人范围内解析到的联系人。
  * 快照不存在 → ①④不渲染；快照读取失败 → ①④显示「来源暂时不可用」；②③照常。
+ * W0054：`extras.gate`（门槛未达／正在更新／明天更新）时①的位置换成一张替换卡，①④不渲染（数据里也没有快照文字）；
+ * 示例期（DemoModeProvider）诊断带「示例」角标，点分组／档位进名单走 `guardWrite` 拦截（W54-6，不新建示例名单页）。
  */
 "use client";
 
 import { useId, useState } from "react";
 
+import { DemoTag, useDemoMode } from "../../_demo/demo-mode-core";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import type { ContactsAnalysisView } from "../analysis/contacts-analysis-view-model";
 import {
@@ -30,6 +33,7 @@ import {
 import { DONUT_COLORS } from "./network-model";
 import { formatMonthDay } from "./network-overview";
 import { TIER_HEALTH_META } from "./network-overview-model";
+import { NetworkAnalysisGateCard } from "./network-analysis-gate";
 
 const RANK_COLORS = [["#4B4FC7", "#FFFFFF"], ["#6B8FB5", "#FFFFFF"], ["#9C7A3E", "#FFFFFF"], ["#8A8FB0", "#FFFFFF"], ["#C9CBEA", "#2E3270"]] as const;
 
@@ -89,6 +93,11 @@ export function NetworkAnalysisStructure({ view, extras = NO_EXTRAS, onOpenOppor
   onOpenOpportunities: () => void;
 }) {
   const { t, language, preserveHref } = useOrbitLanguage();
+  const demo = useDemoMode();
+  // W54-6：示例期点分组／档位进名单 = 示例拦截（不发请求、不跳到真实名单页）。
+  const guardList = demo
+    ? (event: { preventDefault: () => void }) => { event.preventDefault(); demo.guardWrite(t({ zh: "分组名单", en: "group list" })); }
+    : undefined;
   const [dim, setDim] = useState<StructureTabDimension>("industry");
   const [selectedPrimary, setSelectedPrimary] = useState<string | null>(null);
   const ready = view.state === "ready";
@@ -112,12 +121,14 @@ export function NetworkAnalysisStructure({ view, extras = NO_EXTRAS, onOpenOppor
 
   return (
     <div className="nw-an-sec">
-      {snapshot.state === "ready" && snapshot.diagnosis ? (
+      {extras.gate ? (
+        <NetworkAnalysisGateCard gate={extras.gate} />
+      ) : snapshot.state === "ready" && snapshot.diagnosis ? (
         <div className="nw-an-hero" data-network-section="diagnosis">
           <div className="nw-an-hero-copy">
             <span className="nw-an-hero-star">✦</span>
             <div className="nw-an-hero-text">
-              <span className="nw-an-eyebrow">{t({ en: "Structure diagnosis", zh: "结构诊断" })}</span>
+              <span className="nw-an-eyebrow">{t({ en: "Structure diagnosis", zh: "结构诊断" })}{demo ? <> <DemoTag /></> : null}</span>
               <h2 className="nw-h2-26">{snapshot.diagnosis.text}</h2>
               <span className="nw-an-hero-meta">
                 <span className="nw-ai-desc">
@@ -166,7 +177,7 @@ export function NetworkAnalysisStructure({ view, extras = NO_EXTRAS, onOpenOppor
                       ) : (
                         <span className="nw-dim-row-main">{content}</span>
                       )}
-                      <a className="nw-dim-row-link" href={preserveHref(row.href)} data-network-list={row.id} aria-label={t({ zh: `「${row.label}」名单`, en: `${row.label} contacts` })}>{t({ zh: "名单 →", en: "List →" })}</a>
+                      <a className="nw-dim-row-link" href={preserveHref(row.href)} onClick={guardList} data-network-list={row.id} aria-label={t({ zh: `「${row.label}」名单`, en: `${row.label} contacts` })}>{t({ zh: "名单 →", en: "List →" })}</a>
                     </div>
                   );
                 })}
@@ -174,7 +185,7 @@ export function NetworkAnalysisStructure({ view, extras = NO_EXTRAS, onOpenOppor
                   <div className="nw-sub-top" data-network-secondary={primary.id}>
                     <strong className="nw-sub-top-t">{t({ zh: `${primary.label} · 细分 Top 5`, en: `${primary.label} · Top 5 sub-industries` })}</strong>
                     {primary.children.slice(0, 5).map((child) => (
-                      <a key={child.id} className="nw-sub-top-row" href={preserveHref(child.href)} data-network-bucket={child.id} data-network-highlight={child.highlighted ? "" : undefined}>
+                      <a key={child.id} className="nw-sub-top-row" href={preserveHref(child.href)} onClick={guardList} data-network-bucket={child.id} data-network-highlight={child.highlighted ? "" : undefined}>
                         <span>{child.label}{child.highlighted ? mark : null}</span>
                         <span className="nw-ai-desc">{t({ en: `${child.count} · ${pct(child.percentage)}`, zh: `${child.count} 人 · ${pct(child.percentage)}` })}</span>
                       </a>
@@ -199,7 +210,7 @@ export function NetworkAnalysisStructure({ view, extras = NO_EXTRAS, onOpenOppor
           </div>
           <div className="nw-top-thead"><span>#</span><span>{dimTitle}</span><span className="nw-right">{t({ en: "Contacts", zh: "联系人" })}</span><span className="nw-right">{t({ en: "Share", zh: "占比" })}</span></div>
           {rows.slice(0, 5).map((row, index) => (
-            <a key={row.id} className="nw-top-row" href={preserveHref(row.href)} data-network-bucket={row.id} data-network-highlight={row.highlighted ? "" : undefined}>
+            <a key={row.id} className="nw-top-row" href={preserveHref(row.href)} onClick={guardList} data-network-bucket={row.id} data-network-highlight={row.highlighted ? "" : undefined}>
               <span className="nw-top-rank" style={{ background: RANK_COLORS[index]![0], color: RANK_COLORS[index]![1] }}>{index + 1}</span>
               <span>{row.label}{row.highlighted ? mark : null}</span><strong className="nw-top-n">{row.count}</strong><span className="nw-top-pct">{pct(row.percentage)}</span>
             </a>
@@ -219,7 +230,7 @@ export function NetworkAnalysisStructure({ view, extras = NO_EXTRAS, onOpenOppor
             {tiles.map((tile) => {
               const meta = HEALTH_META[tile.id];
               return (
-                <a key={tile.id} className="nw-health-item" href={preserveHref(`/app/contacts/analysis/tier/${tile.id}`)} data-network-tier={tile.id}>
+                <a key={tile.id} className="nw-health-item" href={preserveHref(`/app/contacts/analysis/tier/${tile.id}`)} onClick={guardList} data-network-tier={tile.id}>
                   <span className="nw-health-icon" style={{ background: meta.bg, color: meta.fg }}>{meta.icon}</span>
                   <span className="nw-health-copy">
                     <span className="nw-ai-desc">{t(meta.label)}</span>
@@ -238,7 +249,7 @@ export function NetworkAnalysisStructure({ view, extras = NO_EXTRAS, onOpenOppor
           <a className="btn nw-textlink nw-textlink-end" href={preserveHref("/app/contacts")}>{t({ en: "View all data →", zh: "查看完整数据 →" })}</a>
         </div>
       </div>
-      {snapshot.state === "ready" && snapshot.insights.length > 0 ? (
+      {!extras.gate && snapshot.state === "ready" && snapshot.insights.length > 0 ? (
         <div className="nw-cockpit" data-network-section="insights">
           <div className="nw-ov-head">
             <h2 className="nw-h2">{t({ en: "Structure insights", zh: "结构洞察" })}</h2>
@@ -248,7 +259,7 @@ export function NetworkAnalysisStructure({ view, extras = NO_EXTRAS, onOpenOppor
             {snapshot.insights.map((block) => <InsightCard key={block.key} block={block} />)}
           </div>
         </div>
-      ) : snapshot.state === "unavailable" ? (
+      ) : !extras.gate && snapshot.state === "unavailable" ? (
         <div className="nw-cockpit" data-network-section="insights">
           <h2 className="nw-h2">{t({ en: "Structure insights", zh: "结构洞察" })}</h2>
           <div className="nw-empty">{unavailable}</div>

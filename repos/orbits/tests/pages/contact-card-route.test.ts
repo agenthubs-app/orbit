@@ -28,7 +28,7 @@ test("loader errors are explicit, not an unbounded legacy fallback", async () =>
 test("W0047 review P1-2: the live loader merges one tier lookup for the page's contact ids; cards show tiers, never the manual stage", async () => {
   const lookups: (readonly string[])[] = [];
   const card = (id: string, status: "active" | "archived", pendingInitialization = false) => ({ id, displayName: id, organization: "", role: "", sourceType: "manual" as const, status, pendingInitialization, nextActionPreview: "", valueTypes: [], updatedAt: "2026-09-25T00:00:00Z" });
-  const result = await loadContactCardRoute({}, { id: "a" }, { live: true,
+  const result = await loadContactCardRoute({}, { id: "a" }, { live: true, readThreshold: async () => ({ confirmed: 5, met: true, missing: 0 }), 
     readTiers: async (actorId, ids) => { assert.equal(actorId, "a"); lookups.push(ids); return [{ contactId: "c1", tier: "core", dormant: false }, { contactId: "c2", tier: "active", dormant: true }]; },
     service: {
       page: async () => ({ items: [card("c1", "active"), card("c2", "archived"), card("c3", "active", true)], hasMore: true, nextCursor: "signed", asOf: "2026-09-25T00:00:00Z" }),
@@ -61,7 +61,7 @@ test("W0051 SC-04: 所有人脉 replaces 下一步（预览） with the insight 
   const card = (id: string) => ({ id, displayName: id, organization: "", role: "", sourceType: "manual" as const, status: "active" as const, pendingInitialization: false, nextActionPreview: "Review the next follow-up", valueTypes: [], updatedAt: "2026-09-25T00:00:00Z" });
   const queries: unknown[] = [];
   const previewReads: (readonly string[])[] = [];
-  const result = await loadContactCardRoute({ sourceGroup: "scan", tier: "core" }, { id: "a" }, { live: true,
+  const result = await loadContactCardRoute({ sourceGroup: "scan", tier: "core" }, { id: "a" }, { live: true, readThreshold: async () => ({ confirmed: 5, met: true, missing: 0 }), 
     readInsightPreviews: async (_actorId, ids) => { previewReads.push(ids); return new Map([["c1", { en: "Opens channels in Japan.", zh: "能打开日本渠道。" }]]); },
     readTiers: async () => [{ contactId: "c1", tier: "core", dormant: false }],
     service: {
@@ -92,4 +92,47 @@ test("W0051 SC-04: 所有人脉 replaces 下一步（预览） with the insight 
   } });
   assert.equal(unknown?.state === "ready" ? unknown.view.tier : null, "all");
   assert.deepEqual(previewReads, []);
+});
+
+test("W0054 SC-03（W54-3）: below 3 confirmed contacts the list reads no insight previews and hides the insight column (no 「暂无洞察」 either)", async () => {
+  const card = (id: string) => ({ id, displayName: id, organization: "", role: "", sourceType: "manual" as const, status: "active" as const, pendingInitialization: false, nextActionPreview: "", valueTypes: [], updatedAt: "2026-09-25T00:00:00Z" });
+  const previewReads: (readonly string[])[] = [];
+  const thresholdReads: string[] = [];
+  const service = {
+    page: async () => ({ items: [card("c1"), card("c2")], hasMore: false, nextCursor: null, asOf: "2026-09-25T00:00:00Z" }),
+    summary: async () => ({ total: 2, sources: { manual: 2 }, statuses: {}, values: {}, tags: [], hasMoreTags: false, asOf: "2026-09-25T00:00:00Z" }),
+  };
+  const readInsightPreviews = async (_actorId: string, ids: readonly string[]) => { previewReads.push(ids); return new Map([["c1", { en: "Old insight sentence.", zh: "旧的洞察一句。" }]]); };
+  const result = await loadContactCardRoute({}, { id: "a" }, { live: true, readInsightPreviews, readTiers: async () => [], service,
+    readThreshold: async (actorId) => { thresholdReads.push(actorId); return { confirmed: 2, met: false, missing: 1 }; } });
+  if (result?.state !== "ready") throw Error("Missing result");
+  assert.deepEqual(thresholdReads, ["a"]);
+  assert.deepEqual(previewReads, [], "previews are not read below the threshold");
+  assert.equal(result.view.list.insightsHidden, true);
+  assert.deepEqual(result.view.list.items.map((item) => item.insight), [null, null]);
+  assert.doesNotMatch(JSON.stringify(result), /旧的洞察一句|Old insight sentence/);
+  const { renderToStaticMarkup } = await import("react-dom/server");
+  const { createElement } = await import("react");
+  const { NetworkCards } = await import("../../app/(app)/app/contacts/network-0918/network-cards");
+  const html = renderToStaticMarkup(createElement(NetworkCards, { view: result.view }));
+  assert.doesNotMatch(html, /<span>洞察<\/span>|暂无洞察|旧的洞察一句/);
+  assert.match(html, /data-network-insight="hidden"/);
+
+  // 门槛读不到 = 未知：照旧读洞察一句。
+  previewReads.length = 0;
+  const unknown = await loadContactCardRoute({}, { id: "a" }, { live: true, readInsightPreviews, readTiers: async () => [], service, readThreshold: async () => null });
+  if (unknown?.state !== "ready") throw Error("Missing result");
+  assert.deepEqual(previewReads, [["c1", "c2"]]);
+  assert.equal(unknown.view.list.insightsHidden, undefined);
+});
+
+test("W0054: the paged API (tiers=1) uses the same gate — below 3 contacts no preview is read or attached", async () => {
+  const { readGatedInsightPreviews } = await import("../../app/(app)/app/contacts/contact-card-route-service");
+  const reads: (readonly string[])[] = [];
+  const below = await readGatedInsightPreviews("a", ["c1"], { readPreviews: async (_a, ids) => { reads.push(ids); return new Map(); }, readThreshold: async () => ({ confirmed: 0, met: false, missing: 3 }) });
+  assert.deepEqual(below, { hidden: true, previews: new Map() });
+  assert.deepEqual(reads, []);
+  const met = await readGatedInsightPreviews("a", ["c1"], { readPreviews: async (_a, ids) => { reads.push(ids); return new Map([["c1", { en: "x", zh: "x" }]]); }, readThreshold: async () => ({ confirmed: 3, met: true, missing: 0 }) });
+  assert.equal(met.hidden, false);
+  assert.equal(met.previews.size, 1);
 });

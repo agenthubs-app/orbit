@@ -20,6 +20,7 @@ import { NETWORK_TIER_GROUPS, STAGE_BAR_BG, STAGE_BAR_FG, TIER_CHIP, TIER_LABEL,
 import type { NetworkOverviewData, OverviewMeta } from "./network-overview-cockpit-model";
 import { distributionRows, type DistKey } from "./network-overview-model";
 import { NetworkAvatar, NetworkShell } from "./network-shell";
+import { NetworkAnalysisGateCard } from "./network-analysis-gate";
 
 const DIST_SEGS: { key: DistKey; zh: string; en: string }[] = [
   { key: "industry", zh: "按行业", en: "By industry" },
@@ -116,6 +117,8 @@ export function NetworkOverview({ analysis, overview }: { analysis: ContactsAnal
               </div>
               <span className="nw-cockpit-meta">{meta}</span>
             </div>
+            {/* W0054：门槛未达／正在更新时驾驶舱放一张替换卡（4 卡数字照常，句子不下发）。 */}
+            {overview.gate ? <NetworkAnalysisGateCard gate={overview.gate} /> : null}
             <div className="nw-suggest-list">
               {overview.cards.map((c) => (
                 <a key={c.id} className="btn nw-cockpit-card" href={c.href} data-overview-card={c.id}>

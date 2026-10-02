@@ -8,7 +8,8 @@
  *   - `grandfathered`：D2 老用户判定的**首次**结果（true / false 都落库），写入后不再改变；
  *     null 表示还没判定过。
  *   - `bannerCollapsed`：示例横条是否收起成导航药丸（换浏览器也一致）。
- *   - `step1Skipped`（W0006）：第 1 步点过「先这样，继续」；只能置为 true。
+ *   - `step1Skipped`（W0006）：第 1 步点过「先这样，继续」。W0054（W54-1）起跳过关闭：只读兼容存量 true
+ *     （照算第 1 步完成），服务层与接口都不再写入。
  *   - `currentStep`（W0006）：`/app/start` 停在第几步（1–3；W0035 前可能写过 4，读成 null）。
  *     用户切换步骤、某一步完成后前进到下一步时由页面写入；3 步完成时服务端清空（null = 显示
  *     完成卡片）。
@@ -39,11 +40,13 @@ export interface GuideState {
   version: number;
 }
 
-/** 客户端可写的字段（`PATCH /api/guide/state`）；`grandfathered`、`completedAt` 只由服务端写。 */
+/**
+ * 客户端可写的字段（`PATCH /api/guide/state`）；`grandfathered`、`completedAt` 只由服务端写。
+ * W0054：`step1Skipped` 不再可写（存量值只读）。
+ */
 export interface GuideStatePatch {
   bannerCollapsed?: boolean;
   currentStep?: GuideStartStep;
-  step1Skipped?: true;
 }
 
 export interface GuideStateService {
@@ -185,10 +188,6 @@ export function createStorageGuideStateService(input: {
         let changed = false;
         if (patch.bannerCollapsed !== undefined && current?.bannerCollapsed !== patch.bannerCollapsed) {
           next.bannerCollapsed = patch.bannerCollapsed;
-          changed = true;
-        }
-        if (patch.step1Skipped === true && current?.step1Skipped !== true) {
-          next.step1Skipped = true;
           changed = true;
         }
         if (patch.currentStep !== undefined) {

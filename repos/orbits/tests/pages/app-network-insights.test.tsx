@@ -158,3 +158,13 @@ test("review P3: an out-of-range page is re-read as the last page by the real to
   assert.equal(view.total, 45);
   assert.equal(view.rows.length, 5);
 });
+
+/* ── W0054（W54-3）：门槛卡 ─────────────────────────────────────── */
+
+test("W0054 SC-03: below the threshold the whole insight tab is one threshold card (no rows, no filters)", () => {
+  const html = renderToStaticMarkup(<OrbitLanguageProvider initialLanguage="zh"><NetworkAnalysis viewModel={empty} analysis={analysis} initialTab="insight" insightGate={{ kind: "threshold", missing: 3 }} /></OrbitLanguageProvider>);
+  assert.equal((html.match(/data-network-analysis-gate=/g) ?? []).length, 1);
+  assert.match(html, /再添加 3 位联系人即可更新分析/);
+  assert.doesNotMatch(html, /data-network-insight-row|data-insights-filters|洞察暂时读不到/);
+  assert.match(html, /data-network-analysis-tab="insight"[^>]*aria-current="page"|aria-current="page"[^>]*data-network-analysis-tab="insight"/);
+});

@@ -10,9 +10,12 @@
  * 3. 依据姓名：诊断与洞察依据里的联系人记录 id 去重 ≤30，一次按 id 读取，只解析本人范围内的联系人；
  *    读取失败时①④降级为 unavailable；没有可见依据的块不显示。
  * 30 天变化读 W0047 state 行，由页面在刷新强度读模型时一并拿到（`strengthState`），这里不再读。
+ * W0054：门槛（已确认联系人 < 3）未达时不读快照、不解析依据（0 次快照读取、0 次排队），①④换成门槛卡（`gate`）；
+ * 快照处于「从不足 3 人恢复」时 `gate` = 正在更新／明天更新，①④不回显旧快照（服务端视图已不带）。
  */
 import { readEvidenceContactNames, type EvidenceContactName } from "../../../../../features/network-analysis/evidence-contacts";
 import type { NetworkSnapshotView, SnapshotLanguage } from "../../../../../features/network-analysis/contract";
+import { analysisGate, type AnalysisThreshold } from "../../../../../features/network-analysis/analysis-threshold";
 import { getConfiguredNetworkAnalysisRuntime, readCurrentPlanForSnapshot } from "../../../../../features/network-analysis/runtime";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import type { RelationshipStrengthState } from "../../../../../shared/contract/relationship-strength";
@@ -46,12 +49,21 @@ function log(event: string, actorId: string, error: unknown) {
 }
 
 export async function loadStructureTabExtras(
-  input: { actorId: string; language: OrbitLanguage; strengthState: RelationshipStrengthState | null },
+  input: {
+    actorId: string;
+    language: OrbitLanguage;
+    strengthState: RelationshipStrengthState | null;
+    /** W0054：门槛读数；null／缺省 = 未知（照旧读快照）。 */
+    threshold?: AnalysisThreshold | null;
+  },
   deps: StructureTabLoaderDeps = defaultStructureTabLoaderDeps(),
 ): Promise<StructureTabExtras> {
   const language: SnapshotLanguage = input.language === "zh" ? "zh" : "en";
+  const below = Boolean(input.threshold && !input.threshold.met);
   const [snapshot, highlights] = await Promise.all([
-    deps.readSnapshot
+    below
+      ? Promise.resolve(null)
+      : deps.readSnapshot
       ? deps.readSnapshot(input.actorId, language).catch((error: unknown) => { log("structure_tab_snapshot_failed", input.actorId, error); return null; })
       : Promise.resolve(null),
     deps.readPlan(input.actorId)
@@ -66,5 +78,10 @@ export async function loadStructureTabExtras(
   const history = input.strengthState?.tierCountsAt30d
     ? { tierCountsAt30d: input.strengthState.tierCountsAt30d, earliestCaptureAt: input.strengthState.earliestCaptureAt ?? null }
     : null;
-  return { highlights, snapshot: structureSnapshotView(snapshot, names), tierHistory: history };
+  return {
+    gate: analysisGate(input.threshold, snapshot),
+    highlights,
+    snapshot: below ? { state: "none" } : structureSnapshotView(snapshot, names),
+    tierHistory: history,
+  };
 }

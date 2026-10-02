@@ -537,7 +537,7 @@ const DEMO_SOURCE_FACET: Record<OrbitContactSource, string> = {
 
 /**
  * W0052：示例期概览的驾驶舱、档位与最近动态（前端数据，0 请求；快照、时间线、计划都不读）。
- * 没有快照（示例静态快照是 W0054），所以 4 卡只有示例数字、没有句子；档位与动态是双语示例数据，
+ * W0054：`snapshot` 由页面换成示例静态快照（`buildDemoNetworkSnapshotView`）后 4 卡带句子；这里默认仍是 none。档位与动态是双语示例数据，
  * 人名与 30 位示例联系人一致。交给 `buildNetworkOverviewData` 按真实同一规则组装。
  */
 export function buildDemoNetworkOverviewParts(real: Date, lang: Lang): OverviewCockpitParts {
@@ -587,6 +587,56 @@ export function buildDemoNetworkOverviewParts(real: Date, lang: Lang): OverviewC
     sourceFacets,
     timeline: { items: timeline, unavailable: false },
   };
+}
+
+/* ── W0054：示例完整快照用的只读种子视图 ─────────────────────────── */
+
+/** 一位示例联系人（已按界面语言取值）；W0054 的示例分析快照（`demo-network-analysis.ts`）只从这里取人。 */
+export interface DemoContactSeed {
+  id: string;
+  slug: string;
+  name: string;
+  company: string;
+  title: string;
+  /** 「大类 › 小类」原文（中文，作行业映射键）。 */
+  industryKey: string;
+  location: string;
+  /** 中文地名（作地区映射键）。 */
+  locationKey: string;
+  source: OrbitContactSource;
+  tier: NetworkTierGroup;
+  daysAgo: number;
+  next: string | null;
+  rich: boolean;
+  /** 公司与职位的中英原值（W0054 review P3-3：示例洞察按 slug 同时构造两种语言，不用已按界面语言投影的值）。 */
+  companyCopy: Copy;
+  titleCopy: Copy;
+}
+
+export function demoContactSeeds(real: Date, lang: Lang): DemoContactSeed[] {
+  const ctx = context(real, lang);
+  return SEEDS.map((seed) => ({
+    company: say(ctx, seed.company),
+    companyCopy: seed.company,
+    daysAgo: seed.daysAgo,
+    id: `${DEMO_CONTACT_ID_PREFIX}${seed.slug}`,
+    industryKey: seed.industry.zh,
+    location: say(ctx, seed.location),
+    locationKey: seed.location.zh,
+    name: say(ctx, seed.name),
+    next: seed.next ? say(ctx, seed.next) : null,
+    rich: Boolean(RICH[seed.slug]),
+    slug: seed.slug,
+    source: seed.source,
+    tier: demoTierGroup(seed.status),
+    title: say(ctx, seed.title),
+    titleCopy: seed.title,
+  }));
+}
+
+/** 东京「今天 − daysAgo」那天的某个钟点（ISO）。 */
+export function demoTokyoAt(real: Date, daysAgo: number, time: string): string {
+  return new Date(`${shiftDay(tokyoDayKey(real), -daysAgo)}T${time}:00+09:00`).toISOString();
 }
 
 /** 从 `/app/contacts/<encoded id>` 取出示例联系人 id；不是示例联系人返回 null。 */

@@ -3,7 +3,8 @@
  * 与客户端（`start-guide.tsx`）共用同一套判定，不会各算各的。
  *
  * 三步（W0035 删去原来排在最后的「活动」一步，RH-01）：1 名片 → 2 目标 → 3 计划。
- *   - 第 1 步完成：已确认联系人 ≥ 3，或点过「先这样，继续」（`step1Skipped`），或 D2 老用户；
+ *   - 第 1 步完成：已确认联系人 ≥ 3，或 D2 老用户；W0054（RN-12）起不能再跳过，引导记录里存量的
+ *     `step1Skipped = true`（W0006 时点过「先这样，继续」）只读兼容、照算完成（W54-1）；
  *   - 第 2 步完成：资料里有目标（relationshipGoal 非空），或 D2 老用户；
  *   - 第 3 步完成：有生效中的计划。
  * 严格按顺序解锁。引导记录里 W0035 之前写下的 `currentStep = 4` 不再是合法步骤：读取时按
@@ -34,7 +35,7 @@ export interface StartGuideFlagInput {
   step1Skipped: boolean;
 }
 
-/** 第 1 步：≥3 位已确认联系人、跳过、或 D2 老用户。 */
+/** 第 1 步：≥3 位已确认联系人、D2 老用户，或存量跳过（W54-1，只读兼容；新的跳过已关闭）。 */
 export function contactsStepDone(input: {
   confirmedContacts: number;
   grandfathered?: boolean;
@@ -123,6 +124,23 @@ export function resolveRequestedStartView(
 ): StartView {
   if (requested !== null && canOpenStartStep(flags, requested)) return requested;
   return resolveStartView(flags, recorded);
+}
+
+/**
+ * W0054（W54-5）：进页面时显示哪一步，带完成闩锁。引导记录有 `completedAt` 的人永远算完成：
+ * 默认显示完成卡片（即使联系人后来删到不足 3 位）；只有显式请求或记录里能打开的步骤才打开它。
+ * 没有 `completedAt` 时与 `resolveRequestedStartView` 完全一致。
+ */
+export function resolveStartEntryView(
+  flags: StartGuideFlags,
+  recorded: GuideStartStep | null,
+  requested: GuideStartStep | null,
+  completedAt: string | null,
+): StartView {
+  if (!completedAt) return resolveRequestedStartView(flags, recorded, requested);
+  if (requested !== null && canOpenStartStep(flags, requested)) return requested;
+  if (recorded !== null && canOpenStartStep(flags, recorded)) return recorded;
+  return "finish";
 }
 
 /** 当前这一步刚完成后去哪：下一个没完成的步骤；3 步都完成则是完成卡片。 */

@@ -8,6 +8,8 @@
  * - SC-04：「写 memo」、memo 弹窗的「保存 memo」都被拦下，不发请求（W0046 改名；W0047 下线「更新状态」）；
  * - W0047 SC-04：示例管线四列是静态档位、详情档位标签与依据面板是前端数据，0 请求；
  *   「扫描名片」「导入人脉」仍是真实链接。
+ * - W0054 SC-04：示例期「AI 人脉分析」三个标签用真实组件渲染示例静态完整快照（带「示例」角标），
+ *   「示例里没有 AI 人脉分析」不再出现；点分组、重新分析、起草邮件走 guardWrite，0 请求（W54-6）。
  */
 import assert from "node:assert/strict";
 import test, { type TestContext } from "node:test";
@@ -23,14 +25,21 @@ import { NetworkDemoFrame } from "../../app/(app)/app/contacts/network-0918/netw
 import { NetworkFollowModal } from "../../app/(app)/app/contacts/network-0918/network-follow-modal";
 import { NetworkOverview } from "../../app/(app)/app/contacts/network-0918/network-overview";
 import { NetworkPipeline } from "../../app/(app)/app/contacts/network-0918/network-pipeline";
-import { NetworkDemoAnalysisNotice } from "../../app/(app)/app/contacts/network-0918/network-shell";
+import { NetworkAnalysis } from "../../app/(app)/app/contacts/network-0918/network-analysis";
+import {
+  buildDemoAnalysisForTabs,
+  buildDemoInsightsView,
+  buildDemoNetworkSnapshotView,
+  buildDemoOpportunitiesView,
+  buildDemoStructureExtras,
+} from "../../app/(app)/app/_demo/demo-network-analysis";
 
 const NOW = new Date("2026-09-28T03:00:00.000Z");
 const VM = buildDemoNetworkViewModel(NOW, "zh");
 const ANALYSIS = buildDemoNetworkAnalysis(NOW, "zh");
 const BOARD = buildDemoNetworkTierBoard();
-// W0052：示例概览 = 示例分析 + 示例驾驶舱附加数据（同一组装函数，0 请求）。
-const OVERVIEW = buildNetworkOverviewData(buildDemoNetworkOverviewParts(NOW, "zh"), ANALYSIS);
+// W0052：示例概览 = 示例分析 + 示例驾驶舱附加数据（同一组装函数，0 请求）；W0054：快照换成示例静态快照。
+const OVERVIEW = buildNetworkOverviewData({ ...buildDemoNetworkOverviewParts(NOW, "zh"), snapshot: buildDemoNetworkSnapshotView(NOW, "zh") }, ANALYSIS);
 const VIEW: DemoModeView = {
   bannerCollapsed: false,
   completed: 1,
@@ -83,7 +92,7 @@ test("without the demo provider the same list has no banner and no demo tags", (
   assert.doesNotMatch(overview, /data-orbit-guide-demo-tag/);
 });
 
-test("overview in the demo: core highlights tagged, cockpit numbers, tiers and activity from the demo data, no snapshot sentence", () => {
+test("overview in the demo: core highlights tagged, cockpit numbers, tiers, activity and snapshot sentences from the demo data", () => {
   const html = renderToStaticMarkup(inDemo(<NetworkOverview analysis={ANALYSIS} overview={OVERVIEW} />));
   assert.match(html, /完成引导后，这里换成你自己的人脉。/);
   assert.match(html, /王砚<span class="ir-demo-tag"/);
@@ -92,9 +101,11 @@ test("overview in the demo: core highlights tagged, cockpit numbers, tiers and a
   assert.match(html, /示例人物的人脉分析 · 依据 30 位示例联系人/);
   assert.match(html, /示例人物的人脉分析：/);
   assert.doesNotMatch(html, /基于你的人脉数据/);
-  // W0052：示例数字 + 示例档位（新认识 9／有往来 13／核心 5／待唤醒 3），没有快照句子；手动阶段不再出现。
+  // W0052：示例数字 + 示例档位（新认识 9／有往来 13／核心 5／待唤醒 3）；手动阶段不再出现。
   assert.match(html, /30 位联系人[\s\S]*?已有 3／共 8[\s\S]*?6 项建议动作[\s\S]*?3 位待唤醒/);
-  assert.doesNotMatch(html.replace(/<style[\s\S]*?<\/style>/g, ""), /nw-cockpit-sentence/);
+  // W0054：驾驶舱句子来自示例静态快照（不读真实快照）。
+  assert.match(html, /nw-cockpit-sentence">能直接推进试用的 IT 负责人目前只有铃木健和佐藤美咲/);
+  assert.match(html, /nw-cockpit-sentence">本周先见王砚/);
   for (const [label, n] of [["新认识", 9], ["有往来", 13], ["核心", 5], ["待唤醒", 3]] as const) {
     assert.match(html, new RegExp(`${label}</span><strong class="nw-stage-n">${n}<`), label);
   }
@@ -140,11 +151,81 @@ test("pipeline in the demo: four columns from the demo stages, AI suggestions po
   assert.match(html, /href="\/app\/contacts\/demo%3Awang-yan"/);
 });
 
-test("the analysis sub-page in the demo is only the banner and a notice", () => {
-  const html = renderToStaticMarkup(inDemo(<NetworkDemoAnalysisNotice />));
-  assert.match(html, /data-orbit-guide-demo-banner/);
-  assert.match(html, /data-network-demo-analysis/);
-  assert.match(html, /示例里没有 AI 人脉分析/);
+const demoAnalysisTab = (tab: "struct" | "opp" | "insight", lang: "zh" | "en" = "zh") => (
+  <NetworkAnalysis
+    viewModel={buildDemoNetworkViewModel(NOW, lang)}
+    analysis={buildDemoAnalysisForTabs(NOW, lang)}
+    initialTab={tab}
+    structureExtras={tab === "struct" ? buildDemoStructureExtras(NOW, lang) : undefined}
+    opportunities={tab === "opp" ? buildDemoOpportunitiesView(NOW, lang) : undefined}
+    insights={tab === "insight" ? buildDemoInsightsView(NOW, lang, { tab: "insight" }) : undefined}
+  />
+);
+
+test("W0054 SC-04: the demo analysis tabs show the full demo snapshot with 示例 tags; the old 「示例里没有 AI 人脉分析」 notice is gone", () => {
+  const structure = renderToStaticMarkup(inDemo(demoAnalysisTab("struct")));
+  // 诊断一句（带角标与依据）、四维分布（默认行业，含二级 Top 5）、健康四档、2–3 条结构洞察。
+  assert.match(structure, /data-network-section="diagnosis"/);
+  assert.match(structure, /结构诊断 <span class="ir-demo-tag"/);
+  assert.match(structure, /能直接推进试用的 IT 负责人目前只有铃木健和佐藤美咲/);
+  assert.match(structure, /基于 30 位联系人/);
+  assert.match(structure, /data-network-section="structure"[\s\S]*?共 \d+ 个分组，30 位联系人/);
+  assert.match(structure, /data-network-secondary=/);
+  for (const dimension of ["行业", "地区", "角色层级", "关系强度"]) assert.match(structure, new RegExp(`aria-pressed="(?:true|false)">${dimension}<`), dimension);
+  assert.match(structure, /data-network-tier="core"[\s\S]*?较 30 天前/);
+  assert.equal(count(structure, /data-network-insight="insight-/g), 3);
+  assert.match(structure, /data-network-highlight=""/);
+
+  const opportunities = renderToStaticMarkup(inDemo(demoAnalysisTab("opp")));
+  // 覆盖度（已有／还缺）、补法（快照 gap 句子带依据）、本周建议（计划直链）、待唤醒（带角标）、报告卡（示例快照）。
+  assert.match(opportunities, /data-network-section="coverage"/);
+  assert.match(opportunities, /中小企业 IT 负责人/);
+  assert.match(opportunities, /data-network-section="gaps"[\s\S]*?请王砚引荐北辰精工的 IT 决策人/);
+  assert.match(opportunities, /data-network-week-action="demo-action-wang"/);
+  assert.match(opportunities, /data-network-dormant="demo:[a-z-]+"[\s\S]*?<span class="ir-demo-tag"/);
+  assert.match(opportunities, /data-network-section="report"[\s\S]*?人脉分析报告 <span class="ir-demo-tag"[\s\S]*?基于 30 人/);
+
+  const insights = renderToStaticMarkup(inDemo(demoAnalysisTab("insight")));
+  assert.equal(count(insights, /data-network-insight-row="demo:/g), 30);
+  assert.equal(count(insights, /data-insight-goal-relation/g), 30);
+  assert.equal(count(insights, /data-orbit-guide-demo-tag/g), 30);
+  assert.match(insights, /共 30 位 · 第 1 页/);
+  assert.doesNotMatch(insights, /data-insights-no-goal/);
+
+  for (const html of [structure, opportunities, insights]) {
+    assert.match(html, /data-orbit-guide-demo-banner/);
+    assert.doesNotMatch(html, /data-network-demo-analysis|示例里没有 AI 人脉分析/);
+    assert.doesNotMatch(html, /data-network-analysis-gate/);
+  }
+
+  // 英文：同一份示例快照的英文文字。
+  const en = renderToStaticMarkup(inDemo(demoAnalysisTab("struct", "en")));
+  assert.match(en, /Only Suzuki Ken and Sato Misaki can move a trial forward directly/);
+});
+
+test("W0054 SC-04（W54-6）: in the demo, opening a group list, re-analysing and drafting an email are intercepted with zero requests", async (t) => {
+  const structure = await mount(t, inDemo(<>{demoAnalysisTab("struct")}<DemoInterceptLayer /></>));
+  const listLinks = structure.root.root.findAll((node) => node.type === "a" && typeof node.props.href === "string" && node.props.href.startsWith("/app/contacts/analysis/"));
+  assert.ok(listLinks.length > 5, "legend, top-5 and health tiles link to group lists");
+  for (const link of [listLinks[0]!, listLinks.at(-1)!]) {
+    const event = clickEvent();
+    await act(async () => link.props.onClick(event));
+    assert.equal(event.defaultPrevented, true);
+    assert.ok(has(structure.root, "data-orbit-guide-demo-intercept"));
+    await act(async () => button(structure.root, "btn ir-demo-dismiss").props.onClick());
+  }
+  assert.deepEqual(structure.fetches, []);
+  assert.deepEqual(structure.assigned, []);
+
+  const opportunities = await mount(t, inDemo(<>{demoAnalysisTab("opp")}<DemoInterceptLayer /></>));
+  await act(async () => button(opportunities.root, "btn nw-report-cta").props.onClick());
+  assert.ok(has(opportunities.root, "data-orbit-guide-demo-intercept"), "re-analyse is intercepted");
+  await act(async () => button(opportunities.root, "btn ir-demo-dismiss").props.onClick());
+  assert.equal(has(opportunities.root, "data-orbit-guide-demo-intercept"), false);
+  const draft = opportunities.root.root.findAll((node) => node.type === "button" && node.props["data-network-dormant-draft-button"] !== undefined)[0]!;
+  await act(async () => draft.props.onClick());
+  assert.ok(has(opportunities.root, "data-orbit-guide-demo-intercept"), "draft email is intercepted");
+  assert.deepEqual(opportunities.fetches, [], "no recompute, no reconnect-draft request");
 });
 
 test("the demo frame: banner open → no pill; collapsed → the nav pill instead of the banner", () => {

@@ -200,6 +200,7 @@ function loadPage(t: TestContext, scenario: Scenario) {
         calls.push({ input: actorId, operation: "guide-state" });
         const read = () => ({
           bannerCollapsed: guideRecords.get(actorId)?.bannerCollapsed === true,
+          completedAt: (guideRecords.get(actorId)?.completedAt as string | undefined) ?? null,
           grandfathered: (guideRecords.get(actorId)?.grandfathered as boolean | undefined) ?? null,
           version: 1,
         });
@@ -213,6 +214,12 @@ function loadPage(t: TestContext, scenario: Scenario) {
               return read();
             },
             setBannerCollapsed: async () => read(),
+            // W0054：首页路径第一次推导出 3 步完成时补写闩锁。
+            markCompleted: async () => {
+              calls.push({ input: actorId, operation: "mark-completed" });
+              if (!guideRecords.get(actorId)?.completedAt) guideRecords.set(actorId, { ...guideRecords.get(actorId), completedAt: "2026-10-20T00:00:00.000Z" });
+              return read();
+            },
           },
           success: true,
         };
@@ -370,6 +377,20 @@ test("flag on + registered after SINCE with ≥3 contacts and a goal: still in t
   const guide = shellPropsOf(await page()).guide as { completed: number; nextStep: string } | null;
   assert.equal(guide?.completed, 2);
   assert.equal(guide?.nextStep, "plan");
+});
+
+test("W0054 SC-02: flag on + completedAt recorded + only 2 contacts left: the real home, no contact count or plan read", async (t) => {
+  const { calls, guideRecords, page } = loadPage(t, {
+    contacts: 2,
+    createdAt: "2026-10-20T00:00:00.000Z",
+    flag: "on",
+    goal: "",
+    since: "2026-10-15",
+  });
+  guideRecords.set("account:canonical", { completedAt: "2026-10-01T00:00:00.000Z", grandfathered: false });
+  assert.equal(shellPropsOf(await page()).guide, null);
+  assert.equal(calls.filter((call) => call.operation === "contacts" || call.operation === "plan" || call.operation === "account").length, 0);
+  assert.equal(calls.filter((call) => call.operation === "mark-completed").length, 0);
 });
 
 /* ── W0008：?plan=<id> ─────────────────────────────────────────────── */

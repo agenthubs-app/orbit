@@ -344,3 +344,65 @@ test("guide state: grandfathered is write-once, bannerCollapsed toggles, both su
   assert.equal(rows[0]!.userId, "actor:rec");
   assert.equal(rows[0]!.payload.version, 2);
 });
+
+/* ── W0054（W54-5）：completedAt 是唯一闩锁 ─────────────────────────── */
+
+test("W0054 SC-02: completedAt latches — deleting down to 2 contacts never re-enters the demo and skips count/plan reads", async () => {
+  const w = world();
+  w.contacts.set("actor:latched", 3);
+  w.createdAt.set("actor:latched", "2026-10-20T00:00:00Z");
+  w.plans.add("actor:latched");
+  const done = await w.read("actor:latched", "三个月内找到 5 家试用客户");
+  assert.equal(done?.inDemo, false);
+  // 首页路径第一次推导出 3 步完成：补写 completedAt（即使从没打开过 /app/start）。
+  assert.ok((await w.stateFor("actor:latched").get()).completedAt);
+
+  // 之后删到 2 位、计划到期、目标清空：都不回示例，也不再读联系人计数与计划。
+  w.contacts.set("actor:latched", 2);
+  w.plans.delete("actor:latched");
+  for (const goal of ["三个月内找到 5 家试用客户", null]) {
+    w.calls.length = 0;
+    const later = await w.read("actor:latched", goal);
+    assert.equal(later?.inDemo, false, `goal=${goal}`);
+    assert.equal(later?.progress, null);
+    assert.deepEqual(w.calls, [], "no contact count, plan or account reads once latched");
+  }
+});
+
+test("W0054 SC-02: the first derived completion writes completedAt once; a failed write still returns inDemo:false and never throws", async () => {
+  const w = world();
+  w.contacts.set("actor:once", 3);
+  w.createdAt.set("actor:once", "2026-10-20T00:00:00Z");
+  w.plans.add("actor:once");
+  const real = w.stateFor("actor:once");
+  let marks = 0;
+  const counting: GuideStateService = { ...real, markCompleted: async () => { marks += 1; return real.markCompleted(); } };
+  assert.equal((await w.read("actor:once", "goal", { guideState: counting }))?.inDemo, false);
+  assert.equal((await w.read("actor:once", "goal", { guideState: counting }))?.inDemo, false);
+  assert.equal(marks, 1, "second read sees completedAt and does not write again");
+
+  const failing: GuideStateService = {
+    ...w.stateFor("actor:fails"),
+    markCompleted: async () => { marks += 1; throw new Error("write down"); },
+  };
+  w.contacts.set("actor:fails", 3);
+  w.createdAt.set("actor:fails", "2026-10-20T00:00:00Z");
+  w.plans.add("actor:fails");
+  marks = 0;
+  const status = await w.read("actor:fails", "goal", { guideState: failing });
+  assert.equal(status?.inDemo, false);
+  assert.equal(status?.progress?.completed, 3);
+  assert.equal(marks, 1);
+});
+
+test("W0054: an unfinished user without completedAt behaves exactly as before (no write, still in demo)", async () => {
+  const w = world();
+  w.contacts.set("actor:half", 2);
+  const real = w.stateFor("actor:half");
+  let marks = 0;
+  const counting: GuideStateService = { ...real, markCompleted: async () => { marks += 1; return real.markCompleted(); } };
+  const status = await w.read("actor:half", "goal", { guideState: counting });
+  assert.equal(status?.inDemo, true);
+  assert.equal(status?.progress?.nextStep, "contacts");
+  assert.equal(marks, 0);
+});

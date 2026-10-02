@@ -276,3 +276,17 @@ for (const language of ["zh", "en"] as const) {
     }
   });
 }
+
+/* ── W0054（W54-3）：驾驶舱门槛卡 ─────────────────────────────────── */
+
+test("W0054 SC-03: below the threshold the cockpit shows one threshold card; the four numbers stay and no snapshot sentence renders", () => {
+  const overview = overviewFor(ready, { threshold: { confirmed: 2, met: false, missing: 1 }, snapshot: { blocks: [], contactCount: 0, freshness: { job: "none", newContactCount: 0, stale: false }, generatedAt: null, state: "insufficient" } });
+  assert.deepEqual(overview.gate, { kind: "threshold", missing: 1 });
+  const html = withoutStyles(renderToStaticMarkup(<NetworkOverview analysis={ready} overview={overview} />));
+  assert.equal((html.match(/data-network-analysis-gate=/g) ?? []).length, 1);
+  assert.match(html, /data-network-section="cockpit"[\s\S]*?再添加 1 位联系人即可更新分析/);
+  assert.doesNotMatch(html, /nw-cockpit-sentence/);
+  assert.match(html, /data-overview-card="structure"/);
+  // 达到门槛：没有卡。
+  assert.equal(overviewFor(ready, { threshold: { confirmed: 3, met: true, missing: 0 } }).gate, null);
+});

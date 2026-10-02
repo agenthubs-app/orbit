@@ -43,6 +43,7 @@ test("the loader reads the plan only through getCurrent + toOpportunityPlanView 
   const runtime = read("features/network-analysis/runtime.ts");
   assert.match(runtime, /export async function readCurrentPlanForSnapshot[\s\S]*?\.getCurrent\(\)/);
   const page = read("app/(app)/app/contacts/dashboard/page.tsx");
-  assert.match(page, /tab === "opportunities"\s*\?\s*loadOpportunitiesTab\(/, "only the opportunities tab loads opportunity data");
-  assert.match(page, /tab === "structure" \? loadStructureTabExtras\(/, "the structure tab does not load opportunity data");
+  // W0054：AI 块读取排在门槛读数之后（未达时不读快照）。
+  assert.match(page, /tab === "opportunities"\s*\?\s*thresholdPromise\.then\(\(threshold\) => loadOpportunitiesTab\(/, "only the opportunities tab loads opportunity data");
+  assert.match(page, /tab === "structure" \? thresholdPromise\.then\(\(threshold\) => loadStructureTabExtras\(/, "the structure tab does not load opportunity data");
 });

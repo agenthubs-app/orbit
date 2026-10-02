@@ -206,3 +206,60 @@ test("guide view: passes the goal to the progress check and maps only in-demo st
   assert.equal(demoModeViewFromGuideStatus(null), null);
   assert.equal(demoModeViewFromGuideStatus({ bannerCollapsed: false, grandfathered: true, inDemo: false, progress: null }), null);
 });
+
+/* ── W0054：示例完整快照（结构／机会／洞察） ─────────────────────── */
+
+/**
+ * W0054 review P3-4：示例叙述不带数量（与真实快照「不存统计数字」同一约定）。阿拉伯数字、中文数字字（零一二两三四五六七八九十百千万）
+ * 与英文数量词都算。唯一例外：钟点 `HH:MM` 不是统计数字（真实快照校验器只拦百分比、分数与「数字 + 人／位／contacts」），
+ * 判断前先去掉；当前示例叙述里也没有钟点。
+ */
+const QUANTITY = /\d|[零一二两三四五六七八九十百千万]|\b(?:zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|twenty|thirty|forty|fifty|hundred|thousand|dozen|couple|single|once|twice)\b/i;
+const withoutClock = (text: string) => text.replace(/\b\d{1,2}:\d{2}\b/g, "");
+const CJK = /[\u3040-\u30ff\u3400-\u9fff]/;
+
+test("W0054 SC-04 (review P3-3/P3-4): the demo snapshot and every demo insight are truly bilingual, trace back to the 30 demo contacts and carry no quantity words", async () => {
+  const { buildDemoNetworkSnapshotView, buildDemoInsightsView, buildDemoOpportunitiesView, buildDemoStructureExtras } = await import("../../app/(app)/app/_demo/demo-network-analysis");
+  const ids = new Set(buildDemoNetworkViewModel(NOW, "zh").connections.map((contact) => contact.id));
+  const zhSnapshot = buildDemoNetworkSnapshotView(NOW, "zh");
+  const enSnapshot = buildDemoNetworkSnapshotView(NOW, "en");
+  assert.deepEqual(zhSnapshot.blocks.map((block) => block.key), enSnapshot.blocks.map((block) => block.key));
+  assert.deepEqual([...new Set(zhSnapshot.blocks.map((block) => block.kind))].sort(), ["diagnosis", "gap", "insight", "plan"]);
+  for (const [index, zh] of zhSnapshot.blocks.entries()) {
+    const en = enSnapshot.blocks[index]!;
+    assert.match(zh.text, CJK, `${zh.key} zh is Chinese`);
+    assert.doesNotMatch(en.text, CJK, `${en.key} en is English`);
+    for (const text of [zh.text, en.text]) assert.doesNotMatch(withoutClock(text), QUANTITY, `${zh.key}: ${text}`);
+    assert.ok(zh.evidence.contactIds.length > 0 && zh.evidence.contactIds.every((id) => ids.has(id)), `${zh.key} evidence is a demo contact`);
+  }
+  for (const lang of ["zh", "en"] as const) {
+    assert.equal(buildDemoStructureExtras(NOW, lang).snapshot.state, "ready");
+    assert.ok((buildDemoOpportunitiesView(NOW, lang).dormant ?? []).every((row) => ids.has(row.contactId)));
+    const insights = buildDemoInsightsView(NOW, lang, {});
+    assert.equal(insights.rows.length, 30);
+    assert.deepEqual(new Set(insights.rows.map((row) => row.contactId)), ids);
+    for (const row of insights.rows) {
+      const { goalRelation, nextStep } = row.insight;
+      // 无论界面语言，两种语言都是真值：zh 是中文，en 不含任何中日文字。
+      assert.match(goalRelation!.zh, CJK, `${row.contactId} goalRelation.zh`);
+      assert.match(nextStep!.zh, CJK, `${row.contactId} nextStep.zh`);
+      assert.doesNotMatch(goalRelation!.en, CJK, `${row.contactId} goalRelation.en: ${goalRelation!.en}`);
+      assert.doesNotMatch(nextStep!.en, CJK, `${row.contactId} nextStep.en: ${nextStep!.en}`);
+      for (const text of [goalRelation!.zh, goalRelation!.en, nextStep!.zh, nextStep!.en]) {
+        assert.doesNotMatch(withoutClock(text), QUANTITY, `${row.contactId}: ${text}`);
+      }
+      assert.ok(row.insight.evidence.length > 0);
+    }
+  }
+  // 中英两次构建的洞察文字完全相同（只是界面取哪一种），不随构建语言漂移。
+  const zhRows = buildDemoInsightsView(NOW, "zh", {}).rows.map((row) => [row.contactId, row.insight.goalRelation, row.insight.nextStep]);
+  const enRows = new Map(buildDemoInsightsView(NOW, "en", {}).rows.map((row) => [row.contactId, [row.insight.goalRelation, row.insight.nextStep]]));
+  for (const [id, relation, next] of zhRows) assert.deepEqual(enRows.get(id as string), [relation, next], String(id));
+  // 例：一条模板洞察的英文用英文公司名与职位。
+  const yamaguchi = buildDemoInsightsView(NOW, "zh", {}).rows.find((row) => row.contactId === "demo:yamaguchi-takashi")!;
+  assert.match(yamaguchi.insight.goalRelation!.en, /^IT Lead at Yamaguchi Trading;/);
+  assert.match(yamaguchi.insight.goalRelation!.zh, /^Yamaguchi 商事的IT 负责人/);
+  // 默认按相关度排序。
+  const sorted = buildDemoInsightsView(NOW, "zh", {}).rows.map((row) => row.insight.relevance ?? 0);
+  assert.deepEqual(sorted, [...sorted].sort((a, b) => b - a));
+});

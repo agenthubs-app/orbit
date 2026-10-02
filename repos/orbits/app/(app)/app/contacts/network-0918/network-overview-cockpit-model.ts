@@ -14,6 +14,7 @@
  * 不 import React，不读时钟。
  */
 import type { NetworkSnapshotView } from "../../../../../features/network-analysis/contract";
+import { analysisGate, type AnalysisGateView, type AnalysisThreshold } from "../../../../../features/network-analysis/analysis-threshold";
 import type { EvidenceContactName } from "../../../../../features/network-analysis/evidence-contacts";
 import type { OpportunityPlanView } from "../../../../../features/plans/coverage";
 import type { RelationshipTimelineItem, RelationshipTimelineSource } from "../../../../../shared/contract/relationship-timeline";
@@ -117,6 +118,8 @@ export interface NetworkOverviewData {
   activity: OverviewActivity;
   /** 「按来源」全量计数；null = 读不到。 */
   sources: Record<NetworkSource, number> | null;
+  /** W0054：驾驶舱的替换卡（门槛未达／正在更新／明天更新）；null = 照常显示快照句子。 */
+  gate?: AnalysisGateView | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -143,6 +146,8 @@ export interface OverviewCockpitParts {
   names: ReadonlyMap<string, EvidenceContactName> | null;
   /** 「按来源」全量分面（`CONTACT_SOURCE_FILTERS` 值 → 人数）；null = 读不到。 */
   sourceFacets: Readonly<Record<string, number>> | null;
+  /** W0054：人脉分析门槛读数（null／缺省 = 未知）。未达时驾驶舱放一张门槛卡，句子不显示。 */
+  threshold?: AnalysisThreshold | null;
 }
 
 /** 联系人列表来源分面（8 个过滤值）→ 概览的 5 个来源组；其余（手动、扫码、邮件、日程信号……）并入「其他」。 */
@@ -323,6 +328,7 @@ export function buildNetworkOverviewData(parts: OverviewCockpitParts, analysis: 
     cards: cards(parts, total, tierCount("dormant")),
     highlights: highlights(parts),
     meta: meta(parts, analysis, total),
+    gate: analysisGate(parts.threshold ?? null, parts.snapshot),
     sources: parts.sourceFacets ? overviewSourceCounts(parts.sourceFacets, total) : null,
     tierPending,
     tiers: NETWORK_TIER_GROUPS.map((id) => ({ count: tierCount(id), href: tierHref(id), id })),

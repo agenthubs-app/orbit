@@ -71,25 +71,6 @@ const NETWORK_DEMO_MESSAGE = {
   zh: "完成引导后，这里换成你自己的人脉。",
 };
 
-/** 示例期间的「AI 人脉分析」子页：只有横条与一句说明，不另造分析数据。 */
-export function NetworkDemoAnalysisNotice() {
-  const { t } = useOrbitLanguage();
-  return (
-    <NetworkShell screen="analysis">
-      <div className="nw-card" data-network-demo-analysis>
-        <h2 className="nw-h2">{t({ en: "AI network analysis", zh: "AI 人脉分析" })}</h2>
-        <p className="nw-sub">
-          {t({
-            en: "The demo has no AI analysis. Once you finish the guide, it is generated from your own contacts.",
-            zh: "示例里没有 AI 人脉分析。完成引导后，这里会基于你自己的人脉生成。",
-          })}
-        </p>
-        <a className="nw-link" href="/app/contacts/dashboard">{t({ en: "← Back to the overview", zh: "← 回到概览" })}</a>
-      </div>
-    </NetworkShell>
-  );
-}
-
 // 每条规则 = 设计稿一个 style="" 原样搬入；顺序与值不得改动。
 export const NETWORK_STYLES = `
 @keyframes orbit-fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
@@ -815,4 +796,13 @@ export const NETWORK_STYLES = `
 [data-orbit-real-page="network"] .nw-insight-name:hover { color: #4B4FC7; }
 [data-orbit-real-page="network"] .nw-insight-what { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 @media (max-width: 700px) { [data-orbit-real-page="network"] .nw-insight-row { grid-template-columns: 1fr; gap: 10px; } }
+/* ── W0054 人脉分析门槛卡／正在更新（每页一张，替换 AI 块） ── */
+[data-orbit-real-page="network"] .nw-gate { display: flex; gap: 16px; align-items: flex-start; border: 1px dashed #C9CBEA; border-radius: 18px; background: #F7F7FD; padding: 22px 26px; }
+[data-orbit-real-page="network"] .nw-gate-icon { flex: none; width: 36px; height: 36px; border-radius: 10px; background: #ECEEFB; color: #4B4FC7; display: inline-flex; align-items: center; justify-content: center; font-size: 16px; }
+[data-orbit-real-page="network"] .nw-gate-copy { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+[data-orbit-real-page="network"] .nw-gate-t { margin: 0; font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 19px; letter-spacing: -0.01em; color: #0E1225; }
+[data-orbit-real-page="network"] .nw-gate-d { margin: 0; font-size: 14px; line-height: 1.6; color: #6B6F99; }
+[data-orbit-real-page="network"] .nw-gate-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin-top: 4px; }
+[data-orbit-real-page="network"] .nw-gate-acts .btn.nw-btn-primary { padding: 10px 18px; font-size: 14px; }
+@media (max-width: 600px) { [data-orbit-real-page="network"] .nw-gate { padding: 18px; gap: 12px; } [data-orbit-real-page="network"] .nw-gate-t { font-size: 17px; } }
 `;
