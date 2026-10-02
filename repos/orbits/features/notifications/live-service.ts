@@ -27,11 +27,16 @@ import {
   projectLegacyNotification,
   type LegacyProjectedNotification,
 } from "./legacy-source-projection";
+import { tokyoCalendarDaysUntil } from "../../shared/utils/tokyo-calendar-days";
 
 export interface LiveReminderNotificationGraph {
   connections: readonly ConnectionDTO[];
   contacts: readonly ContactDTO[];
   evidence: readonly RelationshipEvidenceDTO[];
+  /**
+   * 本人相关记录里最新的 updatedAt，只表示数据新鲜度，**不是「现在」**。
+   * 到期天数、provenance.collectedAt 一律用服务注入的请求时刻（W0044）。
+   */
   generatedAt: string;
   notifications: readonly LegacyProjectedNotification[];
   tasks: readonly TaskDTO[];
@@ -50,6 +55,12 @@ export interface LiveReminderScheduleNotificationProvider {
 }
 
 export interface LiveReminderScheduleNotificationServiceOptions {
+  /**
+   * 「现在」的唯一来源（W0044）。每次 listNotifications／generateReminders 调用只取一次，
+   * 同一请求内所有提醒与 provenance.collectedAt 共用它；默认真实时钟。
+   * 不得再用图里记录的 updatedAt（`graph.generatedAt`）推「现在」。
+   */
+  now?: () => Date;
   provider?: LiveReminderScheduleNotificationProvider | null;
 }
 
@@ -170,18 +181,13 @@ function sourceForNotification(
   };
 }
 
-function daysUntil(dueAt: string, generatedAt: string): number {
-  const dueTime = new Date(dueAt).getTime();
-  const baseTime = new Date(generatedAt).getTime();
-
-  if (!Number.isFinite(dueTime) || !Number.isFinite(baseTime)) {
-    return 7;
-  }
-
-  return Math.max(0, Math.ceil((dueTime - baseTime) / 86_400_000));
+// W0044：东京日历日差，逾期为负（不再夹成 0）；时间非法时兜底 7（同改前）。
+export function reminderDaysUntil(dueAt: string, now: string): number {
+  return tokyoCalendarDaysUntil(dueAt, now) ?? 7;
 }
 
-function priorityFor(dueInDays: number): ReminderPriority {
+// 逾期（负数）落在 high／once，不新增枚举值。
+export function reminderPriorityFor(dueInDays: number): ReminderPriority {
   if (dueInDays <= 2) {
     return "high";
   }
@@ -193,7 +199,7 @@ function priorityFor(dueInDays: number): ReminderPriority {
   return "low";
 }
 
-function frequencyFor(dueInDays: number): ReminderFrequency {
+export function reminderFrequencyFor(dueInDays: number): ReminderFrequency {
   if (dueInDays <= 2) {
     return "once";
   }
@@ -223,13 +229,13 @@ function recommendedWindowFor(priority: ReminderPriority): string {
 
 function toReminder(
   notification: LegacyProjectedNotification,
-  graph: LiveReminderNotificationGraph,
+  now: string,
 ): ScheduledReminder {
   const target = notification.verifiedTarget ?? null;
   notification = projectLegacyNotification(notification, target);
   const dueAt = notification.scheduledFor ?? target?.dueAt ?? notification.createdAt;
-  const dueInDays = daysUntil(dueAt, graph.generatedAt);
-  const priority = priorityFor(dueInDays);
+  const dueInDays = reminderDaysUntil(dueAt, now);
+  const priority = reminderPriorityFor(dueInDays);
   const source = sourceForNotification(notification);
 
   return {
@@ -242,7 +248,7 @@ function toReminder(
     href: notification.actionHref,
     dueAt,
     dueInDays,
-    frequency: frequencyFor(dueInDays),
+    frequency: reminderFrequencyFor(dueInDays),
     priority,
     groupedLowPriority: priority === "low",
     recommendedWindow: recommendedWindowFor(priority),
@@ -427,13 +433,14 @@ function provenanceFor(input: {
 function payloadFor(input: {
   generationMethod: ReminderScheduleNotificationProvenance["generationMethod"];
   graph: LiveReminderNotificationGraph;
+  now: string;
   provider: LiveReminderScheduleNotificationProvider;
   request: ReminderScheduleNotificationListInput | ReminderScheduleNotificationGenerateInput;
   sourceLabel: string;
 }): ReminderScheduleNotificationPayload {
   const reminders = filterReminders(
     input.graph.notifications
-      .map((notification) => toReminder(notification, input.graph))
+      .map((notification) => toReminder(notification, input.now))
       .sort(compareReminders),
     input.request,
   );
@@ -459,7 +466,7 @@ function payloadFor(input: {
         ? `${reminders.length} reminder notifications were loaded from shared live storage for review.`
         : "No live reminder notifications matched the current filters.",
     provenance: provenanceFor({
-      collectedAt: input.graph.generatedAt,
+      collectedAt: input.now,
       generationMethod: input.generationMethod,
       provider: input.provider,
       readExecuted: true,
@@ -515,6 +522,7 @@ function failure(
 function scenarioResult(
   input: {
     graph: LiveReminderNotificationGraph;
+    now: string;
     provider: LiveReminderScheduleNotificationProvider;
     request: ReminderScheduleNotificationListInput | ReminderScheduleNotificationGenerateInput;
     scenario: ReminderScheduleNotificationScenario;
@@ -526,6 +534,7 @@ function scenarioResult(
         ...payloadFor({
           generationMethod: "live-store-query",
           graph: input.graph,
+          now: input.now,
           provider: input.provider,
           request: input.request,
           sourceLabel: input.provider.sourceLabel,
@@ -541,6 +550,7 @@ function scenarioResult(
         ...payloadFor({
           generationMethod: "live-store-query",
           graph: input.graph,
+          now: input.now,
           provider: input.provider,
           request: input.request,
           sourceLabel: input.provider.sourceLabel,
@@ -554,7 +564,7 @@ function scenarioResult(
       });
     case "failure":
       return failure("REMINDER_SCHEDULE_NOTIFICATION_MOCK_FAILED", {
-        collectedAt: input.graph.generatedAt,
+        collectedAt: input.now,
         provider: input.provider,
         readExecuted: true,
         sourceLabel: "Live reminder notification controlled failure",
@@ -596,12 +606,14 @@ function isFailure(
 }
 
 export function createLiveReminderScheduleNotificationService({
+  now: clock = () => new Date(),
   provider = null,
 }: LiveReminderScheduleNotificationServiceOptions = {}): ReminderScheduleNotificationService {
   return {
     async listNotifications(
       input: ReminderScheduleNotificationListInput = {},
     ): Promise<ReminderScheduleNotificationResult> {
+      const now = clock().toISOString();
       const graph = await graphOrFailure(provider, input.actorId);
 
       if (isFailure(graph)) {
@@ -611,6 +623,7 @@ export function createLiveReminderScheduleNotificationService({
       const liveProvider = provider as LiveReminderScheduleNotificationProvider;
       const scenario = scenarioResult({
         graph,
+        now,
         provider: liveProvider,
         request: input,
         scenario: normalizeScenario(input.scenario),
@@ -624,6 +637,7 @@ export function createLiveReminderScheduleNotificationService({
         payloadFor({
           generationMethod: "live-store-query",
           graph,
+          now,
           provider: liveProvider,
           request: input,
           sourceLabel: liveProvider.sourceLabel,
@@ -634,6 +648,7 @@ export function createLiveReminderScheduleNotificationService({
     async generateReminders(
       input: ReminderScheduleNotificationGenerateInput = {},
     ): Promise<ReminderScheduleNotificationResult> {
+      const now = clock().toISOString();
       const graph = await graphOrFailure(provider, input.actorId);
 
       if (isFailure(graph)) {
@@ -643,6 +658,7 @@ export function createLiveReminderScheduleNotificationService({
       const liveProvider = provider as LiveReminderScheduleNotificationProvider;
       const scenario = scenarioResult({
         graph,
+        now,
         provider: liveProvider,
         request: input,
         scenario: normalizeScenario(input.scenario),
@@ -656,6 +672,7 @@ export function createLiveReminderScheduleNotificationService({
         payloadFor({
           generationMethod: "live-reminder-schedule",
           graph,
+          now,
           provider: liveProvider,
           request: input,
           sourceLabel: "Live reminder schedule generation",

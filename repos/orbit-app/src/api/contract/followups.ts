@@ -59,7 +59,10 @@ export interface FollowupTaskContract {
   title: string;
   triggerKind: FollowupTriggerKindCode;
   priority: FollowupPriorityCode;
+  // 真实截止时间；存在时以它为准（展示到期日期、判断逾期都看它）。
   dueAt?: string;
+  // 有 dueAt 时 = 截止日与请求时刻的东京日历日差，逾期为负（如 −3 = 已逾期 3 天），
+  // 逾期任务的 priority 仍为 "today"。无 dueAt 的派生建议是按关系阶段查表的正数桶值。
   dueInDays: number;
   contactId?: string | null;
   connectionId: string;
