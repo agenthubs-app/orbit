@@ -257,12 +257,14 @@ async function fingerprint(sql: Client): Promise<VerifyFingerprint> {
   const tables: VerifyFingerprint["tables"] = {};
   const verifyRows: VerifyFingerprint["verifyRows"] = {};
   for (const table of await listPublicTables(sql)) {
-    const marked =
-      table === "bc_ingest_items"
-        ? `(row_to_json(t)::text ~ $1 or exists (
-             select 1 from bc_ingest_batches b
-              where b.workspace_id = t.workspace_id and b.id = t.batch_id and row_to_json(b)::text ~ $1))`
-        : "row_to_json(t)::text ~ $1";
+    // W0055：CSV 导入的逐行表同理（行里只有批次 id，按所属导入批次判定），否则重置 verify-new 时级联删除会被误报。
+    const parentBatch: Record<string, string> = { bc_ingest_items: "bc_ingest_batches", contact_import_rows: "contact_import_batches" };
+    const parent = parentBatch[table];
+    const marked = parent
+      ? `(row_to_json(t)::text ~ $1 or exists (
+           select 1 from ${quoteIdent(parent)} b
+            where b.workspace_id = t.workspace_id and b.id = t.batch_id and row_to_json(b)::text ~ $1))`
+      : "row_to_json(t)::text ~ $1";
     const result = await sql.query<{ rows: string; hash: string | null; verify_rows: string }>(
       `select
          count(*) filter (where not marked)::text as rows,
