@@ -12,10 +12,10 @@ import { DEFAULT_BUSINESS_CARD_TEXT_MODEL } from "../../acquisition/deepseek-bus
 import { DeepseekJsonChatError, deepseekJsonChat } from "../../ai/deepseek-json-chat";
 import { snapshotTextLeaksIds } from "../../network-analysis/snapshot-validator";
 import {
-  CONTACT_INSIGHT_TEXT_LIMIT,
   type ContactInsightEvidence,
   type ContactInsightText,
 } from "../../../shared/contract/contact-insight";
+import { CONTACT_INSIGHT_TEXT_LIMIT } from "./limits";
 import type { RelationshipTimelineSource } from "../../../shared/contract/relationship-timeline";
 import { CONTACT_INSIGHT_PROMPT_VERSION } from "./source-version";
 

@@ -42,7 +42,7 @@ function InsightRow({ row }: { row: InsightsTabRow }) {
   return (
     <div className="nw-insight-row" data-network-insight-row={row.contactId} data-insight-state={view.state}>
       <div className="nw-insight-who">
-        <a className="nw-row-name" href={row.href}>{row.name}</a>
+        <a className="nw-insight-name" href={row.href}>{row.name}</a>
         {row.subtitle ? <span className="nw-row-org-2">{row.subtitle}</span> : null}
         <span data-network-tier={row.tier ?? "unscored"}>
           {row.tier
@@ -58,7 +58,7 @@ function InsightRow({ row }: { row: InsightsTabRow }) {
             {view.evidence.length ? (
               <span className="nw-insight-evidence" aria-label={t({ en: "Evidence", zh: "依据" })}>
                 {view.evidence.map((evidence) => (
-                  <a key={evidence.id} className="nw-topic" href={insightEvidenceHref(evidence, row.href)} data-insight-evidence={evidence.source}>
+                  <a key={evidence.id} className="nw-insight-chip" href={insightEvidenceHref(evidence, row.href)} data-insight-evidence={evidence.source}>
                     {INSIGHT_EVIDENCE_ICON[evidence.source]} {t(INSIGHT_EVIDENCE_LABEL[evidence.source])}
                   </a>
                 ))}

@@ -38,7 +38,4 @@ export interface ContactInsight {
 /** 只读视图状态：ready 已生成；pending 等生成（含顺延到明天）；no_goal 未设关系目标；failed 生成失败；none 还没有洞察。 */
 export type ContactInsightState = "ready" | "pending" | "no_goal" | "failed" | "none";
 
-/** 洞察文字（每种语言）上限。 */
-export const CONTACT_INSIGHT_TEXT_LIMIT = 120;
-/** 列表里的洞察一句（每种语言）上限。 */
-export const CONTACT_INSIGHT_PREVIEW_LIMIT = 60;
+/** 文字上限：洞察每种语言 ≤120 字，列表一句 ≤60 字（常量在 `features/contacts/insights/limits.ts`，契约只放类型）。 */

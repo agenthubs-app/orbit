@@ -58,7 +58,7 @@ export function NetworkInsightPanel({ view, quotaExhausted = false, contactHref 
           {view.evidence.length ? (
             <div className="nw-insight-evidence" aria-label={t({ en: "Evidence", zh: "依据" })}>
               {view.evidence.map((evidence) => (
-                <a key={evidence.id} className="nw-topic" href={insightEvidenceHref(evidence, contactHref)} data-insight-evidence={evidence.source}>
+                <a key={evidence.id} className="nw-insight-chip" href={insightEvidenceHref(evidence, contactHref)} data-insight-evidence={evidence.source}>
                   {INSIGHT_EVIDENCE_ICON[evidence.source]} {t(INSIGHT_EVIDENCE_LABEL[evidence.source])}
                 </a>
               ))}

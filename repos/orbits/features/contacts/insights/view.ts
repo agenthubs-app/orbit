@@ -6,11 +6,11 @@
  * 「重新生成」只在过期或失败时可用（W51-2），正在生成时不可用。
  */
 import {
-  CONTACT_INSIGHT_PREVIEW_LIMIT,
   type ContactInsightEvidence,
   type ContactInsightState,
   type ContactInsightText,
 } from "../../../shared/contract/contact-insight";
+import { CONTACT_INSIGHT_PREVIEW_LIMIT } from "./limits";
 import { contactInsightGoalHash, type ContactInsightRow } from "./repository";
 
 export interface ContactInsightView {
