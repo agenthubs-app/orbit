@@ -69,8 +69,13 @@ export interface LiveContactsGraphProvider {
     contactId: string,
     actorId: string,
   ) => LiveContactsProviderResult<LiveContactDetailState | null>;
+  /**
+   * W0046：`expected` 为乐观锁前提——undefined = 无条件写（旧调用方）；null = 行必须不存在；
+   * `{ updatedAt }` = 存储里的 state.updatedAt 必须仍等于它。前提不成立抛 AppError CONFLICT。
+   */
   upsertContactDetailState?: (
     state: LiveContactDetailState,
+    expected?: { updatedAt: string } | null,
   ) => LiveContactsProviderResult<LiveContactDetailState>;
   updateContactPrimaryIndustry?: (
     contactId: string,

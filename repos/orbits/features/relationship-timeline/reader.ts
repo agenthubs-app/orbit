@@ -34,6 +34,13 @@ import {
 /** 每来源读取上限（W46-5）。 */
 export const TIMELINE_PER_SOURCE_LIMIT = 50;
 export const TIMELINE_DETAIL_DEFAULT_LIMIT = 20;
+/**
+ * 跨联系人最近动态里，一条记录（笔记／计划记录／日程）最多展开的关联联系人数。对标 HubSpot 活动的关联展示：
+ * 一条活动关联的人很多时只展示前若干位。SQL 里就截断，传输与内存都有固定上限。
+ */
+export const TIMELINE_CONTACTS_PER_RECORD = 20;
+/** 最近动态的归属校验一次最多查的联系人数（固定上限，不随数据量变化）：7 来源 × 50 条里的去重 id 远小于它。 */
+export const TIMELINE_RECENT_OWNERSHIP_LIMIT = 200;
 const EXCERPT_SQL_CHARS = 200;
 
 export interface RelationshipTimelineRuntime {
@@ -155,7 +162,11 @@ async function readEncounters(sql: EventOperationsSqlExecutor, workspaceId: stri
 async function readNotes(sql: EventOperationsSqlExecutor, workspaceId: string, scope: Scope): Promise<TimelineNoteRow[]> {
   const values: unknown[] = [workspaceId, scope.actorId, TIMELINE_PER_SOURCE_LIMIT];
   if (scope.contactId) values.push(scope.contactId);
-  const result = await sql.query<Row>(`select payload->'note'->>'id' as id, payload->'note'->'contactIds' as contact_ids,
+  // 单人：行已按该联系人过滤，只回传它本身；最近动态：关联 id 在 SQL 里截到前 TIMELINE_CONTACTS_PER_RECORD 个。
+  const contactIdsSql = scope.contactId
+    ? "jsonb_build_array($4::text)"
+    : `jsonb_path_query_array(payload->'note'->'contactIds', '$[0 to ${TIMELINE_CONTACTS_PER_RECORD - 1}]')`;
+  const result = await sql.query<Row>(`select payload->'note'->>'id' as id, ${contactIdsSql} as contact_ids,
       left(coalesce(payload->'note'->>'title', ''), ${EXCERPT_SQL_CHARS}) as title, left(payload->'note'->>'body', ${EXCERPT_SQL_CHARS}) as body,
       payload->'note'->>'createdAt' as created_at, payload->'note'->'eventIds' as event_ids
     from orbit_records
@@ -178,7 +189,8 @@ async function readNotes(sql: EventOperationsSqlExecutor, workspaceId: string, s
 async function readPlanLog(sql: EventOperationsSqlExecutor, workspaceId: string, scope: Scope): Promise<TimelinePlanLogRow[]> {
   const values: unknown[] = [workspaceId, scope.actorId, TIMELINE_PER_SOURCE_LIMIT];
   if (scope.contactId) values.push([scope.contactId]);
-  const result = await sql.query<Row>(`select id, event, kind, left(body, ${EXCERPT_SQL_CHARS}) as body, linked_contact_ids, linked_event_id, created_at
+  const linkedSql = scope.contactId ? "$4::text[]" : `linked_contact_ids[1:${TIMELINE_CONTACTS_PER_RECORD}]`;
+  const result = await sql.query<Row>(`select id, event, kind, left(body, ${EXCERPT_SQL_CHARS}) as body, ${linkedSql} as linked_contact_ids, linked_event_id, created_at
     from plan_log
     where workspace_id = $1 and actor_id = $2
       ${scope.contactId ? "and linked_contact_ids @> $4::text[]" : "and cardinality(linked_contact_ids) > 0"}
@@ -200,7 +212,10 @@ async function readSchedule(sql: EventOperationsSqlExecutor, workspaceId: string
   if (scope.contactId) values.push(scope.contactId);
   // 只列已开始的日程（「互动」是已发生的事）；startsAt 不是 ISO 的脏数据不进时间线。
   const result = await sql.query<Row>(`select record_id, payload->>'kind' as kind, left(payload->>'title', ${EXCERPT_SQL_CHARS}) as title,
-      payload->>'startsAt' as starts_at, payload->>'state' as state, payload->'contactIds' as contact_ids,
+      payload->>'startsAt' as starts_at, payload->>'state' as state,
+      ${scope.contactId
+        ? "jsonb_build_array($5::text)"
+        : `case when jsonb_typeof(payload->'contactIds') = 'array' then jsonb_path_query_array(payload->'contactIds', '$[0 to ${TIMELINE_CONTACTS_PER_RECORD - 1}]') else '[]'::jsonb end`} as contact_ids,
       payload->>'contactId' as contact_id, payload->>'eventId' as event_id
     from orbit_records
     where workspace_id = $1 and collection_name = 'personal_schedule_items' and user_id = $2 and lifecycle_state <> 'deleted'
@@ -347,11 +362,12 @@ export async function readRecentRelationshipTimelineForActor(
   for (const row of sources.contacts ?? []) contactIds.add(row.id);
   contactIds.delete("");
 
-  // 只留仍属于本人、未删除的联系人的条目：一次带上限的归属读取（id 数 ≤ 7 × 50）。
+  // 只留仍属于本人、未删除的联系人的条目：一次固定上限的归属读取（每条记录至多展开 TIMELINE_CONTACTS_PER_RECORD 个 id，
+  // 总数截到 TIMELINE_RECENT_OWNERSHIP_LIMIT）。
   let owned: Map<string, TimelineContactRow>;
   try {
-    const ids = [...contactIds];
-    const rows = ids.length ? await readContacts(runtime.client, runtime.workspaceId, actorId, ids, ids.length) : [];
+    const ids = [...contactIds].slice(0, TIMELINE_RECENT_OWNERSHIP_LIMIT);
+    const rows = ids.length ? await readContacts(runtime.client, runtime.workspaceId, actorId, ids, TIMELINE_RECENT_OWNERSHIP_LIMIT) : [];
     owned = new Map(rows.map((row) => [row.id, row]));
   } catch {
     return allUnavailable();

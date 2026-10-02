@@ -35,12 +35,13 @@ const C_DELETED = "contact:gone";
 const B1 = "contact:b1";
 const NOW = new Date("2026-10-02T03:00:00.000Z");
 
-interface Meter { statements: string[]; writes: number; bytes: number }
+interface Meter { statements: string[]; writes: number; bytes: number; params?: unknown[][] }
 
 function metered(pool: Pool, meter: Meter, failOn?: RegExp): EventOperationsSqlExecutor {
   return {
     async query<TRow>(text: string, values?: readonly unknown[]) {
       meter.statements.push(text);
+      meter.params?.push([...(values ?? [])]);
       if (/^\s*(insert|update|delete)/i.test(text)) meter.writes += 1;
       if (failOn?.test(text)) throw new Error("injected source failure");
       const result = await pool.query(text, values as unknown[]);
@@ -238,5 +239,33 @@ test("「写 memo」关联活动推荐：本人近 30 天已报名活动日程�
     assertReadOnlyBounded(meter);
     assert.deepEqual(await readMemoEventOptions({ actorId: BOB, now: NOW }, { runtime: runtimeFor(pool, { statements: [], writes: 0, bytes: 0 }) }), []);
     assert.deepEqual(await readMemoEventOptions({ actorId: ALICE, now: NOW }, { runtime: runtimeFor(pool, { statements: [], writes: 0, bytes: 0 }, /./) }), []);
+  });
+});
+
+test("单条笔记关联超多联系人：单人读取仍命中；最近动态每条记录至多展开 20 个 id，归属查询参数与 LIMIT 固定上限", databaseTest, async () => {
+  await withTimelineDatabase(async (pool) => {
+    const many = Array.from({ length: 600 }, (_, index) => `contact:bulk-${String(index).padStart(3, "0")}`);
+    const contactIds = [...many, C2].sort();
+    await insertRecord(pool, {
+      collection: "notes", id: "note-bulk", userId: ALICE,
+      payload: { schemaVersion: 2, note: { id: "note-bulk", accountId: ALICE, ownerUserId: ALICE, title: "群发", body: "很多人", manualContactIds: contactIds, mentions: [], contactIds, eventIds: [], version: 1, createdAt: "2026-10-01T09:00:00.000Z", updatedAt: "2026-10-01T09:00:00.000Z" }, operations: [] },
+    });
+    // C2 排在 600 个 id 之后：单人读取按该联系人过滤，仍能读到。
+    const single = await readRelationshipTimelineForContact({ actorId: ALICE, contactId: C2, now: NOW }, { runtime: runtimeFor(pool, { statements: [], writes: 0, bytes: 0 }) });
+    assert.ok(single.items.some((item) => item.id === "note:note-bulk"));
+
+    const meter: Meter = { statements: [], writes: 0, bytes: 0, params: [] };
+    const recent = await readRecentRelationshipTimelineForActor({ actorId: ALICE, now: NOW, limit: 50 }, { runtime: runtimeFor(pool, meter) });
+    assert.ok(recent.items.length > 0);
+    assert.ok(recent.items.every((item) => item.contactId === C1 || item.contactId === C2));
+    for (const [index, statement] of meter.statements.entries()) {
+      const arrays = (meter.params?.[index] ?? []).filter(Array.isArray) as unknown[][];
+      for (const array of arrays) assert.ok(array.length <= 200, `参数数组 ${array.length} 超过固定上限`);
+      if (/collection_name = 'contacts'/.test(statement) && arrays.length) {
+        assert.equal(meter.params?.[index]?.at(-1), 200, "归属查询 LIMIT 为固定上限");
+      }
+    }
+    assert.ok(meter.bytes < 60_000, `bytes ${meter.bytes}`);
+    assertReadOnlyBounded(meter);
   });
 });

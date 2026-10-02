@@ -1019,6 +1019,8 @@ function previewUpdatePayload(input: {
   base: ContactDetailTagStatusPayload;
   collectedAt: string;
   update: ContactDetailUpdateInput;
+  /** W0046：冲突重试时，「上次互动」单调取大（不让本次的旧日期覆盖并发写入的更新互动）。 */
+  keepNewerLastInteraction?: boolean;
 }): ContactDetailTagStatusPayload {
   const contact = input.base.contact;
 
@@ -1046,10 +1048,14 @@ function previewUpdatePayload(input: {
   const lastInteractionInput = noteInput?.kind === "memo" && noteInput.occurredAt
     ? memoLastInteraction({ current: contact.lastInteraction, explicit: input.update.lastInteraction, memo: { occurredAt: noteInput.occurredAt, body: noteInput.body }, now: input.collectedAt })
     : input.update.lastInteraction;
-  const lastInteraction = buildLastInteraction(
+  const builtLastInteraction = buildLastInteraction(
     contact,
     lastInteractionInput,
   );
+  const lastInteraction = input.keepNewerLastInteraction &&
+    (parseStrictTokyoInstant(contact.lastInteraction.occurredAt) ?? 0) > (parseStrictTokyoInstant(builtLastInteraction.occurredAt) ?? 0)
+    ? clonePayload(contact.lastInteraction)
+    : builtLastInteraction;
   const updatedContact: ContactDetail = {
     ...contact,
     primaryIndustryId:
@@ -1207,6 +1213,9 @@ function contactEnrichmentEditFor(input: ContactDetailUpdateInput): ContactEnric
   }
   return Object.keys(edit).length ? edit : null;
 }
+
+/** W0046：详情状态条件写入的最大尝试次数（首次 + 2 次冲突重试）。 */
+export const CONTACT_DETAIL_STATE_WRITE_ATTEMPTS = 3;
 
 export function createLiveContactDetailTagStatusService({
   now = () => new Date().toISOString(),
@@ -1440,13 +1449,6 @@ export function createLiveContactDetailTagStatusService({
           provider,
         });
       }
-      const memoNoteInput = normalizeNoteInput(input.note);
-      const memoNote = memoNoteInput?.kind === "memo" && memoNoteInput.occurredAt
-        ? buildNote({ actorId, contact: loaded.data.contact ?? preview.contact, note: input.note, now: collectedAt })
-        : null;
-      const memoWrite = memoNote && memoNoteInput?.occurredAt
-        ? { noteId: memoNote.noteId, occurredAt: memoNoteInput.occurredAt, ...(memoNoteInput.eventId ? { eventId: memoNoteInput.eventId } : {}) }
-        : null;
       try {
         if (legacyIndustryOnly) {
           await provider.updateContactPrimaryIndustry?.(
@@ -1457,20 +1459,6 @@ export function createLiveContactDetailTagStatusService({
           );
         } else if (writesPayload) {
           await provider.updateContactEnrichment?.(input.contactId.trim(), actorId, payloadEdit);
-        }
-        // 详情状态（标签／状态／备注／最近互动）在另一条记录（contact_detail_states），由另一个 provider 方法写入，
-        // 与上面的 payload 更新不在同一事务：payload 先提交，详情状态写失败时 payload 已保存（W0045 前即如此，REPORT 已登记）。
-        if (writesDetailState) {
-          await provider.upsertContactDetailState?.(
-            persistedStateFor({
-              actorId,
-              collectedAt,
-              contact: preview.contact,
-              memo: memoWrite,
-              persistedState,
-              statusRequested: input.status !== undefined,
-            }),
-          );
         }
       } catch (error) {
         if (error instanceof AppError && error.code === "CONFLICT") {
@@ -1483,6 +1471,60 @@ export function createLiveContactDetailTagStatusService({
         });
       }
 
+      // 详情状态（标签／状态／备注／最近互动）在另一条记录（contact_detail_states），与上面的 payload 更新不在同一事务：
+      // payload 先提交，详情状态写失败时 payload 已保存（W0045 前即如此，REPORT 已登记）。
+      // W0046：以读到的版本为前提条件写入；冲突时重读，按本次窄 delta（备注追加去重、标签增删、上次互动单调取大）
+      // 重新合并后重试，至多 3 次，仍冲突返回 409。
+      let savedNoteId: string | undefined;
+      if (writesDetailState) {
+        let base = loaded.data;
+        let state = persistedState;
+        let attemptPreview = preview;
+        for (let attempt = 0; ; attempt += 1) {
+          if (attempt > 0) {
+            attemptPreview = previewUpdatePayload({ actorId, base, collectedAt, update: input, keepNewerLastInteraction: true });
+            if (!attemptPreview.contact) {
+              return failure("CONTACT_DETAIL_NOT_FOUND", { collectedAt, databaseReadExecuted: true, provider });
+            }
+          }
+          const noteInput = normalizeNoteInput(input.note);
+          const note = noteInput ? buildNote({ actorId, contact: base.contact ?? attemptPreview.contact!, note: input.note, now: collectedAt }) : null;
+          const memoWrite = note && noteInput?.kind === "memo" && noteInput.occurredAt
+            ? { noteId: note.noteId, occurredAt: noteInput.occurredAt, ...(noteInput.eventId ? { eventId: noteInput.eventId } : {}) }
+            : null;
+          try {
+            await provider.upsertContactDetailState?.(
+              persistedStateFor({
+                actorId,
+                collectedAt,
+                contact: attemptPreview.contact!,
+                memo: memoWrite,
+                persistedState: state,
+                statusRequested: input.status !== undefined,
+              }),
+              state ? { updatedAt: state.updatedAt } : null,
+            );
+            savedNoteId = note?.noteId;
+            break;
+          } catch (error) {
+            const conflict = error instanceof AppError && error.code === "CONFLICT";
+            if (conflict && attempt < CONTACT_DETAIL_STATE_WRITE_ATTEMPTS - 1) {
+              const reread = await loadPayload({ actorId, contactId: input.contactId, collectedAt, language: input.language });
+              if (!reread.result.success) return reread.result;
+              base = reread.result.data;
+              state = reread.persistedState;
+              continue;
+            }
+            if (conflict) return failure("CONTACT_DETAIL_CONFLICT", { collectedAt, databaseReadExecuted: true, provider });
+            return failure("CONTACT_DETAIL_LIVE_STORE_WRITE_FAILED", {
+              collectedAt,
+              databaseReadExecuted: true,
+              provider,
+            });
+          }
+        }
+      }
+
       const { result: reloaded } = await loadPayload({
         actorId,
         contactId: input.contactId,
@@ -1493,12 +1535,13 @@ export function createLiveContactDetailTagStatusService({
 
       return {
         success: true,
-        data: clonePayload(
-          persistedUpdatePayload({
+        data: clonePayload({
+          ...persistedUpdatePayload({
             payload: reloaded.data,
             update: input,
           }),
-        ),
+          ...(savedNoteId ? { savedNoteId } : {}),
+        }),
       };
     },
 

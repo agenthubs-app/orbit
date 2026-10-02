@@ -11,7 +11,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createAlwaysDenyAiQuotaGate, type AiQuotaGate } from "../../features/ai-quota/gate";
-import { memoExtractionKey, runMemoExtraction, type MemoExtractionRecord, type MemoExtractionStore } from "../../features/contacts/memo-extraction/job";
+import { memoExtractionKey, runMemoExtraction } from "../../features/contacts/memo-extraction/job";
 import {
   createDeepseekMemoExtractionProvider,
   createMockMemoExtractionProvider,
@@ -26,15 +26,11 @@ const NOW = new Date("2026-10-02T03:00:00.000Z");
 const JOB = { actorId: "a", contactId: "own", noteId: "note:live-contact-detail-update:m1", body: "她在找 B 轮投资人，可以提供 SaaS 出海经验", contact: { organization: "Nexa", role: "CEO" } };
 const OUTPUT = { offering: ["SaaS 出海经验"], seeking: ["B 轮投资人"], topics: ["融资"], eventTypes: ["met" as const] };
 
-function memoryStore(): MemoExtractionStore & { records: Map<string, MemoExtractionRecord>; puts: MemoExtractionRecord[] } {
-  const records = new Map<string, MemoExtractionRecord>();
-  const puts: MemoExtractionRecord[] = [];
-  return {
-    records,
-    puts,
-    async get({ key }) { return records.get(key) ?? null; },
-    async put(record) { puts.push(structuredClone(record)); records.set(record.key, structuredClone(record)); },
-  };
+function memoryStore() {
+  const live = createMemoryLiveRecordStore();
+  const store = createLiveRecordMemoExtractionStore({ store: live, workspaceId: "w" });
+  const count = async () => (await live.listRecords({ limit: 10, workspaceId: "w", collectionName: "memo_extractions" })).length;
+  return { ...store, live, count, status: async (key: string) => (await store.get({ actorId: "a", key }))?.status };
 }
 
 function countingGate(reply: Awaited<ReturnType<AiQuotaGate["reserve"]>>) {
@@ -61,7 +57,7 @@ test("始终拒绝的闸门：记 disabled、provider 0 次、联系人行 0 次
   assert.equal(second.status, "disabled");
   assert.equal(provider.calls.length, 0);
   assert.equal(writes, 0);
-  assert.equal(store.records.size, 1);
+  assert.equal(await store.count(), 1);
 });
 
 test("daily_limit：记 deferred 到 retryOn、0 次调用；retryOn 之前重跑不再 reserve", async () => {
@@ -84,7 +80,7 @@ test("放行时：先落 started 再调用；一次 reserve、一组 beginCall�
   const provider: MemoExtractionProvider = {
     ...mock,
     async extract(input) {
-      statusAtCall = store.records.get(memoExtractionKey(JOB.noteId, JOB.body))?.status;
+      statusAtCall = await store.status(memoExtractionKey(JOB.noteId, JOB.body));
       const result = await mock.extract(input);
       return { ...result, usage: { inputTokens: 120, outputTokens: 30, latencyMs: 5 } };
     },
@@ -199,4 +195,52 @@ test("DeepSeek 适配器：json_object、thinking disabled；只发 memo 正文�
     })) as typeof fetch,
   });
   await assert.rejects(() => slow.extract({ memo: "x", contact: {} }), (error: unknown) => error instanceof MemoExtractionError && error.code === "PROVIDER_TIMEOUT");
+});
+
+test("并发：同一 memo 的两个作业同时跑，只有认领胜者 reserve／调用 provider／finish 各一次", async () => {
+  const store = memoryStore();
+  const { gate, log } = countingGate({ ok: true, operationId: "op-c" });
+  const provider = createMockMemoExtractionProvider(OUTPUT);
+  const deps = { gate, provider, store, applyValues: async () => ["offering"] as const, now: () => NOW };
+  const [left, right] = await Promise.all([runMemoExtraction(JOB, deps), runMemoExtraction(JOB, deps)]);
+  assert.equal(log.filter((entry) => entry.startsWith("reserve")).length, 1);
+  assert.equal(log.filter((entry) => entry.startsWith("finish")).length, 1);
+  assert.equal(provider.calls.length, 1);
+  assert.ok([left.status, right.status].includes("succeeded"));
+  assert.equal(await store.status(memoExtractionKey(JOB.noteId, JOB.body)), "succeeded");
+  // 闸门关闭时并发也只有一次 reserve。
+  const closed = memoryStore();
+  const deny = countingGate({ ok: false, reason: "disabled" });
+  await Promise.all([1, 2, 3].map(() => runMemoExtraction(JOB, { ...deps, gate: deny.gate, store: closed })));
+  assert.ok(deny.log.length >= 1 && deny.log.length <= 3);
+  assert.equal(await closed.count(), 1);
+  assert.equal(provider.calls.length, 1);
+});
+
+test("beginCall 失败：HTTP 未发出 → finish 释放、转为可重试；之后重跑才调用 provider，且只一次", async () => {
+  const store = memoryStore();
+  const provider = createMockMemoExtractionProvider(OUTPUT);
+  const log: string[] = [];
+  let failBegin = true;
+  const gate: AiQuotaGate = {
+    async reserve() { log.push("reserve"); return { ok: true, operationId: `op-${log.length}` }; },
+    async beginCall() { log.push("begin"); if (failBegin) throw new Error("ledger down"); return { callId: "call-x" }; },
+    async endCall() { log.push("end"); },
+    async finish(_id, outcome) { log.push(`finish:${outcome}`); },
+  };
+  let clock = NOW.getTime();
+  const deps = { gate, provider, store, applyValues: async () => [] as const, now: () => new Date(clock) };
+  const first = await runMemoExtraction(JOB, deps);
+  assert.equal(first.status, "deferred");
+  assert.match(first.error ?? "", /^BEGIN_CALL_FAILED/);
+  assert.equal(provider.calls.length, 0);
+  assert.deepEqual(log, ["reserve", "begin", "finish:failed"]);
+  failBegin = false;
+  clock += 1000;
+  const second = await runMemoExtraction(JOB, deps);
+  assert.equal(second.status, "succeeded");
+  assert.equal(provider.calls.length, 1);
+  clock += 1000;
+  await runMemoExtraction(JOB, deps);
+  assert.equal(provider.calls.length, 1);
 });

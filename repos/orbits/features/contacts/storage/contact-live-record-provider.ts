@@ -861,7 +861,7 @@ export function createStorageContactGraphProvider({
         normalizedContactId,
       );
     },
-    async upsertContactDetailState(state: LiveContactDetailState) {
+    async upsertContactDetailState(state: LiveContactDetailState, expected?: { updatedAt: string } | null) {
       const actorId = state.actorId.trim();
       const contactId = state.contactId.trim();
       if (!actorId || !contactId) {
@@ -876,7 +876,19 @@ export function createStorageContactGraphProvider({
         recordId,
         includeDeleted: true,
       });
-      const record = await store.upsertRecord({
+      const existingActive = existing && existing.lifecycleState !== "deleted" ? existing : null;
+      // W0046：乐观锁——调用方读到的版本必须仍是当前版本，否则 CONFLICT（由详情服务重读合并后重试）。
+      if (expected !== undefined) {
+        const current = contactDetailStateFromRecord(existingActive, actorId, contactId);
+        if (expected === null ? current !== null : current?.updatedAt !== expected.updatedAt) {
+          throw new AppError("CONFLICT", "Contact detail state changed. Re-read and merge.");
+        }
+      }
+      // 版本时间严格递增（CAS 前提，也让并发写入有先后）。
+      const updatedAt = existing
+        ? new Date(Math.max(Date.parse(state.updatedAt), Date.parse(existing.updatedAt) + 1)).toISOString()
+        : state.updatedAt;
+      const nextRecord = {
         workspaceId,
         collectionName: CONTACTS_LIVE_RECORD_COLLECTIONS.detailStates,
         recordId,
@@ -889,11 +901,11 @@ export function createStorageContactGraphProvider({
         evidenceIds: [],
         targetType: "contact",
         targetId: contactId,
-        occurredAt: state.updatedAt,
-        createdAt: existing?.createdAt ?? state.updatedAt,
-        updatedAt: state.updatedAt,
+        occurredAt: updatedAt,
+        createdAt: existing?.createdAt ?? updatedAt,
+        updatedAt,
         deletedAt: null,
-        lifecycleState: "active",
+        lifecycleState: "active" as const,
         searchText: [
           state.status,
           ...state.tags,
@@ -909,9 +921,19 @@ export function createStorageContactGraphProvider({
           lastInteraction: state.lastInteraction
             ? { ...state.lastInteraction }
             : undefined,
-          updatedAt: state.updatedAt,
+          updatedAt,
         },
-      });
+      };
+      let record;
+      if (expected !== undefined && existingActive && store.updateRecordIfCurrent) {
+        record = await store.updateRecordIfCurrent(nextRecord, { userId: existingActive.userId ?? null, updatedAt: existingActive.updatedAt });
+        if (!record) throw new AppError("CONFLICT", "Contact detail state changed. Re-read and merge.");
+      } else if (expected === null && !existing && store.insertRecordIfAbsent) {
+        record = await store.insertRecordIfAbsent(nextRecord);
+        if (!record) throw new AppError("CONFLICT", "Contact detail state changed. Re-read and merge.");
+      } else {
+        record = await store.upsertRecord(nextRecord);
+      }
       const persisted = contactDetailStateFromRecord(record, actorId, contactId);
       if (!persisted) {
         throw new Error("Persisted contact detail state failed validation.");

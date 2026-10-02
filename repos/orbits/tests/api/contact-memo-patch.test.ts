@@ -10,7 +10,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createContactDetailPatchHandler } from "../../app/api/contacts/[id]/handler";
+import { after } from "next/server";
+
+import { createContactDetailPatchHandler, scheduleMemoExtractionAfterResponse } from "../../app/api/contacts/[id]/handler";
 import { contactDetailPayloadFromGraph, createLiveContactDetailTagStatusService } from "../../features/contacts/live-detail-service";
 import type { LiveContactDetailState } from "../../features/contacts/live-service";
 import { contactDetailTagStatusServiceFactory } from "../../features/contacts/service-factory";
@@ -27,15 +29,38 @@ const NOW = "2026-10-02T03:00:00.000Z"; // 东京 2026-10-02 12:00
 const base = { workspaceId: "w", sourceType: "manual", sourceId: "fixture", evidenceIds: ["e"], lifecycleState: "active" as const, createdAt: AT, updatedAt: AT };
 const contactPayload = { id: "own", displayName: "Mine", stage: "active", source: { type: "manual", id: "fixture" }, evidenceIds: ["e"], createdAt: AT, updatedAt: AT };
 
-function harness(t: { mock: { method: (...args: never[]) => unknown } }) {
+function harness(t: { mock: { method: (...args: never[]) => unknown } }, options: { barrier?: number; alwaysConflict?: boolean } = {}) {
   const store = createMemoryLiveRecordStore([
     { ...base, collectionName: "contacts", recordId: "own", userId: "a", payload: contactPayload },
   ] as LiveRecord[]);
   const writes: string[] = [];
+  const casAttempts = { detail: 0 };
+  // 并发夹具：前 N 次详情状态读取互相等待，保证两个 PATCH 都读到同一旧版本后才写。
+  let waiting: (() => void)[] = [];
+  let remaining = options.barrier ?? 0;
   const counted = Object.assign(Object.create(store) as typeof store, {
+    async getRecord(query: Parameters<typeof store.getRecord>[0]) {
+      const record = await store.getRecord(query);
+      if (remaining > 0 && query.collectionName === "contact_detail_states" && !query.includeDeleted) {
+        remaining -= 1;
+        await new Promise<void>((resolve) => {
+          waiting.push(resolve);
+          if (remaining === 0) { for (const release of waiting) release(); waiting = []; }
+        });
+      }
+      return record;
+    },
     async upsertRecord(record: LiveRecord) { writes.push(record.collectionName); return store.upsertRecord(record); },
-    async updateRecordIfCurrent(record: LiveRecord, expected: Parameters<NonNullable<typeof store.updateRecordIfCurrent>>[1]) { writes.push(record.collectionName); return store.updateRecordIfCurrent!(record, expected); },
-    async insertRecordIfAbsent(record: LiveRecord) { writes.push(record.collectionName); return store.insertRecordIfAbsent!(record); },
+    async updateRecordIfCurrent(record: LiveRecord, expected: Parameters<NonNullable<typeof store.updateRecordIfCurrent>>[1]) {
+      writes.push(record.collectionName);
+      if (record.collectionName === "contact_detail_states") { casAttempts.detail += 1; if (options.alwaysConflict) return null; }
+      return store.updateRecordIfCurrent!(record, expected);
+    },
+    async insertRecordIfAbsent(record: LiveRecord) {
+      writes.push(record.collectionName);
+      if (record.collectionName === "contact_detail_states") casAttempts.detail += 1;
+      return store.insertRecordIfAbsent!(record);
+    },
     async deleteRecord(input: Parameters<typeof store.deleteRecord>[0]) { writes.push(input.collectionName); return store.deleteRecord(input); },
   });
   const provider = createStorageContactGraphProvider({ store: counted, workspaceId: "w" });
@@ -48,7 +73,7 @@ function harness(t: { mock: { method: (...args: never[]) => unknown } }) {
     { params: Promise.resolve({ id: "own" }) },
   );
   const stored = async () => (await provider.readContactDetailState!("own", "a"))!;
-  return { jobs, patch, provider, store, stored, writes };
+  return { casAttempts, jobs, patch, provider, store, stored, writes };
 }
 
 const memo = (body: string, occurredAt: string, eventId?: string) => ({ note: { body, occurredAt, ...(eventId ? { eventId } : {}), kind: "memo" } });
@@ -180,4 +205,76 @@ test("contactDetailPayloadFromGraph 输出的 notes 与改前逐字段相同（A
   const before = read(state([legacyNote]));
   const after = read(state([{ ...legacyNote, occurredAt: "2026-09-20", eventId: "event:e1", kind: "memo" }]));
   assert.deepEqual(after, before);
+});
+
+test("同正文不同日期：保存服务返回各自的 savedNoteId，两个提取作业的 noteId 不同", async (t) => {
+  const { jobs, patch, stored } = harness(t);
+  const first = await patch(memo("同一句话", "2026-09-28"));
+  const second = await patch(memo("同一句话", "2026-09-29"));
+  const ids = [await first.json(), await second.json()].map((body) => (body as { data: { savedNoteId?: string } }).data.savedNoteId);
+  assert.equal(jobs.length, 2);
+  assert.notEqual(jobs[0].noteId, jobs[1].noteId);
+  assert.deepEqual(jobs.map((job) => job.noteId), ids);
+  const notes = (await stored()).notes;
+  assert.equal(notes.find((note) => note.noteId === jobs[0].noteId)?.occurredAt, "2026-09-28");
+  assert.equal(notes.find((note) => note.noteId === jobs[1].noteId)?.occurredAt, "2026-09-29");
+});
+
+test("两个并发 PATCH（memo 与标签）都读到旧版本：冲突后重读合并，memo 与标签都不丢", async (t) => {
+  const { casAttempts, patch, stored } = harness(t, { barrier: 2 });
+  const [a, b] = await Promise.all([patch(memo("并发写入的 memo", "2026-10-01")), patch({ addTags: ["investor"] })]);
+  assert.equal(a.status, 200);
+  assert.equal(b.status, 200);
+  const state = await stored();
+  assert.ok(state.notes.some((note) => note.body === "并发写入的 memo" && note.kind === "memo"));
+  assert.ok(state.tags.includes("investor"));
+  assert.equal(casAttempts.detail, 3, "一次胜出、一次冲突、一次重读合并后成功");
+});
+
+test("已有详情状态时两条并发 memo 都保留，上次互动单调取更晚的那条", async (t) => {
+  const { patch, stored } = harness(t, { barrier: 2 });
+  // 先写一行（这次读取消耗不了 barrier：barrier 只拦读，第一次 PATCH 自己的读取会等第二个）。
+  const [later, earlier] = await Promise.all([patch(memo("十月一日的 memo", "2026-10-01")), patch(memo("九月二十八日的 memo", "2026-09-28"))]);
+  assert.equal(later.status, 200);
+  assert.equal(earlier.status, 200);
+  const state = await stored();
+  assert.ok(state.notes.some((note) => note.body === "十月一日的 memo"));
+  assert.ok(state.notes.some((note) => note.body === "九月二十八日的 memo"));
+  assert.equal(state.lastInteraction?.occurredAt, "2026-09-30T15:00:00.000Z");
+  assert.equal(state.lastInteraction?.summary, "十月一日的 memo");
+});
+
+test("一直冲突：有限重试 3 次后返回 409，不无条件覆盖", async (t) => {
+  const { casAttempts, patch } = harness(t, { alwaysConflict: true });
+  // alwaysConflict 夹具：第一次写入是 insert（不受影响），之后的条件更新一律冲突。
+  assert.equal((await patch({ addTags: ["first"] })).status, 200);
+  const response = await patch(memo("不会被写入", "2026-10-01"));
+  assert.equal(response.status, 409);
+  assert.equal(casAttempts.detail, 1 + 3);
+});
+
+test("after() 排队：成功只跑一次；注册失败记 enqueue_failed；回调失败记 job_failed；日志不含正文", async () => {
+  const job = { actorId: "a", contactId: "own", noteId: "note:live-contact-detail-update:x", body: "敏感正文", contact: {} };
+  const logs: { stage: string; ids: unknown }[] = [];
+  const log = (stage: "enqueue_failed" | "job_failed", input: { actorId: string; contactId: string; noteId: string }) => { logs.push({ stage, ids: { actorId: input.actorId, contactId: input.contactId, noteId: input.noteId } }); };
+  const tasks: (() => Promise<void>)[] = [];
+  let runs = 0;
+  scheduleMemoExtractionAfterResponse(job, { after: (task) => { tasks.push(task); }, run: async () => { runs += 1; }, log });
+  await Promise.all(tasks.map((task) => task()));
+  assert.equal(runs, 1);
+  assert.deepEqual(logs, []);
+
+  scheduleMemoExtractionAfterResponse(job, { after: () => { throw new Error("no request scope"); }, run: async () => { runs += 1; }, log });
+  assert.equal(logs.at(-1)?.stage, "enqueue_failed");
+
+  const failing: (() => Promise<void>)[] = [];
+  scheduleMemoExtractionAfterResponse(job, { after: (task) => { failing.push(task); }, run: async () => { throw new Error("db down"); }, log });
+  await Promise.all(failing.map((task) => task()));
+  assert.equal(logs.at(-1)?.stage, "job_failed");
+  assert.equal(runs, 1);
+
+  // 默认 after()：测试里不在请求作用域，注册失败被记录而不是抛出。
+  scheduleMemoExtractionAfterResponse(job, { after, run: async () => { runs += 1; }, log });
+  assert.equal(logs.at(-1)?.stage, "enqueue_failed");
+  assert.ok(!JSON.stringify(logs).includes("敏感正文"));
 });

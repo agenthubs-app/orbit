@@ -348,6 +348,8 @@ export interface ContactDetailTagStatusPayload {
   provenance: ContactDetailTagStatusProvenance;
   nextAction: string;
   updateSummary?: string;
+  /** W0046：本次 PATCH 写入（或去重命中）的备注 noteId；没有写备注时不出现。 */
+  savedNoteId?: string;
 }
 
 export interface ContactDetailLookupInput {

@@ -17,7 +17,7 @@ import {
 import { createContactDetailTagStatusService } from "../../../../features/contacts/service-factory";
 import { parseStrictTokyoInstant } from "../../../../shared/compute/tokyo-calendar-days";
 import type { MemoExtractionJobInput } from "../../../../features/contacts/memo-extraction/job";
-import { runConfiguredMemoExtraction } from "../../../../features/contacts/memo-extraction/store";
+import { logMemoExtractionFailure, runConfiguredMemoExtraction } from "../../../../features/contacts/memo-extraction/store";
 import { isDemoContactRouteId } from "../../../../shared/domain/guide-demo-contact";
 import {
   authenticatedApiActorRequiredResponse,
@@ -270,11 +270,29 @@ export function createContactDetailGetHandler(
  * W0046：memo 保存成功后在响应之外排一次提取作业（next/server `after`）。保存请求本身只写
  * contact_detail_states；作业经「始终拒绝」闸门只落一条 disabled 记录，provider 0 次调用。
  */
-export function scheduleMemoExtractionAfterResponse(job: MemoExtractionJobInput): void {
+export interface MemoExtractionScheduleDeps {
+  after: (task: () => Promise<void>) => void;
+  run: (job: MemoExtractionJobInput) => Promise<unknown>;
+  log: typeof logMemoExtractionFailure;
+}
+
+const defaultScheduleDeps: MemoExtractionScheduleDeps = { after, run: runConfiguredMemoExtraction, log: logMemoExtractionFailure };
+
+/**
+ * memo 保存成功语义不受影响：排队失败（含不在请求作用域）记 enqueue_failed，回调异常记 job_failed，
+ * 都只写结构化日志（不含正文）；没有提取记录的 memo 由 W0048a 开闸时的维护任务有界补扫。
+ */
+export function scheduleMemoExtractionAfterResponse(job: MemoExtractionJobInput, deps: MemoExtractionScheduleDeps = defaultScheduleDeps): void {
   try {
-    after(() => runConfiguredMemoExtraction(job).then(() => undefined));
-  } catch {
-    // 不在请求作用域（脚本、测试直接调用）：不排作业。
+    deps.after(async () => {
+      try {
+        await deps.run(job);
+      } catch (error) {
+        deps.log("job_failed", job, error);
+      }
+    });
+  } catch (error) {
+    deps.log("enqueue_failed", job, error);
   }
 }
 
@@ -282,7 +300,9 @@ function savedMemoJob(input: ContactDetailUpdateInput, result: ContactDetailTagS
   const note = input.note;
   if (!result.success || typeof note !== "object" || note === null || note.kind !== "memo") return null;
   const contact = result.data.contact;
-  const saved = contact?.notes.find((item) => item.noteWriteExecuted && item.body === note.body.trim());
+  // 用保存服务返回的本次 noteId 精确定位（同正文不同日期是两条不同的 memo）。
+  const savedNoteId = result.data.savedNoteId;
+  const saved = savedNoteId ? contact?.notes.find((item) => item.noteId === savedNoteId) : undefined;
   if (!contact || !saved) return null;
   return {
     actorId,
