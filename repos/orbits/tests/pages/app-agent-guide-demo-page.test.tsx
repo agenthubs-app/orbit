@@ -17,6 +17,9 @@ import { fileURLToPath } from "node:url";
 import test, { type TestContext } from "node:test";
 import type { ReactElement } from "react";
 import { createOrbitAgentStarterViewModel } from "../../app/(app)/app/orbit-agent-route-view-model";
+// W0040：真实首页组合函数（在页面桩替换 require.cache 之前载入），用于证明那 1 次首页读取不算资料建议。
+import { loadAppHomeRouteViewModel as realLoadAppHomeRouteViewModel } from "../../app/(app)/app/home/compose-app-home-from-previously-approved-mock-first-capabilities/home-route-view-model";
+import { profileSignalReviewQueueServiceFactory } from "../../features/profile/service-factory";
 
 const root = join(fileURLToPath(import.meta.url), "../../..");
 const require = createRequire(import.meta.url);
@@ -44,6 +47,11 @@ interface Scenario {
   registeredAny?: boolean | "throw";
   /** W0036：示例期「近期可报名」的公开目录（默认一场未来活动）；"throw" 表示读取失败。 */
   catalogue?: Record<string, unknown> | "throw";
+  /**
+   * W0040：首页桩先用页面传入的同一 actor 跑一遍真实 `loadAppHomeRouteViewModel`（mock 模式），
+   * 资料建议 `listUpdateSuggestions` 每次调用记一笔 "profile-suggestions"；桩的返回值不变。
+   */
+  throughRealHomeLoader?: boolean;
 }
 
 /** W0036：公开目录桩（`readRecords` 的形状，见 `features/events/core/public-catalogue.ts`）。 */
@@ -89,6 +97,30 @@ function loadPage(t: TestContext, scenario: Scenario) {
 
   const previousFlag = process.env.ORBIT_GUIDE_DEMO;
   const previousSince = process.env.ORBIT_GUIDE_DEMO_SINCE;
+  if (scenario.throughRealHomeLoader) {
+    const previousMode = process.env.ORBIT_MODULE_MODE;
+    process.env.ORBIT_MODULE_MODE = "mock";
+    t.after(() => {
+      if (previousMode === undefined) delete process.env.ORBIT_MODULE_MODE;
+      else process.env.ORBIT_MODULE_MODE = previousMode;
+    });
+    const create = profileSignalReviewQueueServiceFactory.create;
+    t.mock.method(profileSignalReviewQueueServiceFactory, "create", (mode?: string) => {
+      const resolution = create(mode);
+      if (!resolution.success) return resolution;
+      const service = resolution.service;
+      return {
+        ...resolution,
+        service: {
+          ...service,
+          listUpdateSuggestions(input: Parameters<typeof service.listUpdateSuggestions>[0]) {
+            calls.push({ input, operation: "profile-suggestions" });
+            return service.listUpdateSuggestions(input);
+          },
+        },
+      };
+    });
+  }
   if (scenario.flag === undefined) delete process.env.ORBIT_GUIDE_DEMO;
   else process.env.ORBIT_GUIDE_DEMO = scenario.flag;
   if (scenario.since === undefined) delete process.env.ORBIT_GUIDE_DEMO_SINCE;
@@ -103,13 +135,24 @@ function loadPage(t: TestContext, scenario: Scenario) {
     [join(root, "app/(app)/app/orbit-visual-freeze-runtime.tsx")]: { OrbitVisualFreezeRuntime: () => null },
     [join(root, "app/(app)/app/agent/iorbit-0918/iorbit-shell.tsx")]: { IOrbitShell },
     [join(root, "app/(app)/app/home/compose-app-home-from-previously-approved-mock-first-capabilities/home-route-view-model.tsx")]: {
-      loadAppHomeRouteViewModel: stub("home", {
-        home: {
-          account: { relationshipGoal: scenario.goal ?? "" },
-          events: (scenario.homeEvents ?? []).map((id) => ({ id, stats: {} })),
-        },
-        state: "success",
-      }),
+      loadAppHomeRouteViewModel: async (...args: unknown[]) => {
+        calls.push({ input: args, operation: "home" });
+        if (scenario.throughRealHomeLoader) {
+          const real = await realLoadAppHomeRouteViewModel(
+            args[0] as Parameters<typeof realLoadAppHomeRouteViewModel>[0],
+            args[1] as Parameters<typeof realLoadAppHomeRouteViewModel>[1],
+            { readCanonicalParticipantEventJourneys: async () => [] },
+          );
+          calls.push({ input: real.state, operation: "home-real" });
+        }
+        return {
+          home: {
+            account: { relationshipGoal: scenario.goal ?? "" },
+            events: (scenario.homeEvents ?? []).map((id) => ({ id, stats: {} })),
+          },
+          state: "success",
+        };
+      },
     },
     [join(root, "app/(app)/app/canonical-event-detail-view.ts")]: { resolveConfiguredActorEventCanonicalIds: realStub("events", {}) },
     [join(root, "features/events/registration/runtime.ts")]: {
@@ -711,4 +754,45 @@ test("W0037 in the demo: the community state is read once for the canonical acto
     // 示例壳相对 W0036 只多收到 communityJoined。
     assert.deepEqual(Object.keys(props).sort(), ["communityJoined", "demoEventCandidates", "guide", "home", "initialPlanCard", "viewModel"]);
   }
+});
+
+/* ── W0040：首页那 1 次复合读取不再触发资料建议（整 workspace signal graph） ─────── */
+
+const suggestionReads = (calls: Array<{ operation: string; input?: unknown }>) =>
+  calls.filter((call) => call.operation === "profile-suggestions");
+
+test("W0040 in the demo: still exactly one home read, no home in the demo shell, and zero profile suggestion reads", async (t) => {
+  const { calls, page } = loadPage(t, { contacts: 0, flag: "on", throughRealHomeLoader: true });
+  const props = shellPropsOf(await page());
+  assert.ok(props.guide, "an empty goal keeps the user in the demo");
+  assert.equal(calls.filter((call) => call.operation === "home").length, 1);
+  assert.deepEqual(calls.filter((call) => call.operation === "home-real").map((call) => call.input), ["success"]);
+  assert.equal(props.home, null);
+  assert.deepEqual(suggestionReads(calls), []);
+});
+
+test("W0040 flag off: home, events, registrations and community once each, zero profile suggestion reads", async (t) => {
+  const { calls, page } = loadPage(t, { contacts: 0, flag: undefined, throughRealHomeLoader: true });
+  const props = shellPropsOf(await page());
+  assert.equal(props.guide, null);
+  for (const operation of ["home", "events", "registrations", "community"]) {
+    assert.equal(calls.filter((call) => call.operation === operation).length, 1, operation);
+  }
+  assert.deepEqual(calls.filter((call) => call.operation === "home-real").map((call) => call.input), ["success"]);
+  assert.deepEqual(suggestionReads(calls), []);
+});
+
+test("W0040 flag on + D2 legacy user with a goal: the real home, one home read, zero profile suggestion reads", async (t) => {
+  const { calls, guideRecords, page } = loadPage(t, {
+    contacts: 4,
+    createdAt: "2026-06-01T00:00:00.000Z",
+    flag: "on",
+    goal: "推进日本合作",
+    since: "2026-10-15",
+    throughRealHomeLoader: true,
+  });
+  assert.equal(shellPropsOf(await page()).guide, null);
+  assert.equal(guideRecords.get("account:canonical")?.grandfathered, true);
+  assert.equal(calls.filter((call) => call.operation === "home").length, 1);
+  assert.deepEqual(suggestionReads(calls), []);
 });

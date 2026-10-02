@@ -24,6 +24,14 @@ export interface AppProfileActor {
 export type AppProfileRouteScenario = "empty" | "pending" | "failure";
 export interface AppProfileRouteControls {
   scenario?: AppProfileRouteScenario;
+  /**
+   * Whether to compute the optional profile update suggestions (default
+   * "include"). The live suggestion queue reads the whole workspace signal
+   * graph, so callers that never show suggestions (Home) pass "skip". Service
+   * resolution, getProfile and the onboarding check run the same either way;
+   * "skip" leaves the three suggestion fields at their "unavailable" defaults.
+   */
+  suggestions?: "include" | "skip";
 }
 
 type EvidenceResult =
@@ -576,11 +584,14 @@ export async function loadAppProfileRouteViewModel(
 
   // Extraction is user-triggered from the editor. Suggestions are optional and
   // must never turn an otherwise readable manual profile into a route failure.
-  const suggestionState = await Promise.resolve()
-    .then(() =>
-      services.signalService.listUpdateSuggestions({ actorId: actor?.id }),
-    )
-    .catch(() => null);
+  const suggestionState =
+    controls.suggestions === "skip"
+      ? null
+      : await Promise.resolve()
+          .then(() =>
+            services.signalService.listUpdateSuggestions({ actorId: actor?.id }),
+          )
+          .catch(() => null);
 
   if (!profileState.data.profile) {
     if (!actor) {
