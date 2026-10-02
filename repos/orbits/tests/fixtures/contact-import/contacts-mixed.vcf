@@ -1,0 +1,40 @@
+BEGIN:VCARD
+VERSION:2.1
+N;CHARSET=UTF-8;ENCODING=QUOTED-PRINTABLE:=E7=94=B0=E4=B8=AD;=E4=B8=80=E9=83=8E;;;
+FN;CHARSET=UTF-8;ENCODING=QUOTED-PRINTABLE:=E7=94=B0=E4=B8=AD=20=E4=B8=80=
+=E9=83=8E
+ORG;CHARSET=SHIFT_JIS;QUOTED-PRINTABLE:=89=CB=8B=F3=83=5C=83=74=83=67=8A=94=8E=AE=89=EF=8E=D0;=8A=4A=94=AD=95=94
+TITLE:CTO
+TEL;WORK;VOICE:+81-3-0000-0000
+TEL;CELL:+81-90-1111-2222
+EMAIL;INTERNET:ichiro.tanaka@example.jp
+ADR;WORK:;;1-2-3 Marunouchi;Tokyo;;100-0005;Japan
+END:VCARD
+BEGIN:VCARD
+VERSION:3.0
+N:Okafor;Chidi;;;
+FN:Chidi Okafor
+ORG:Example Ventures\, LLC;Investments
+TITLE:Partner
+EMAIL;TYPE=INTERNET,WORK:chidi@example.com
+TEL;TYPE=CELL:+1 415 555 0100
+ADR;TYPE=WORK:;;500 Example St;San Francisco;CA;94105;United States
+NOTE:Met at a fictional demo day.\nLikes climate tech.
+item1.URL:https://www.linkedin.com/in/chidi-okafor-example
+END:VCARD
+BEGIN:VCARD
+VERSION:4.0
+FN:李 小明
+N:李;小明;;;
+ORG:示例科技
+TITLE:产品经理
+EMAIL:xiaoming.li@example.cn
+TEL;VALUE=uri;TYPE=cell:tel:+86-21-5555-0000
+ADR;TYPE=work:;;示例路 1 号;Shanghai;;200000;中国
+NOTE:This note is folded across two lines and conti
+ nues here.
+END:VCARD
+BEGIN:VCARD
+VERSION:3.0
+EMAIL:no-name@example.com
+END:VCARD
