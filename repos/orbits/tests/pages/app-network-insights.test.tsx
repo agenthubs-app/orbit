@@ -73,7 +73,7 @@ test("the third tab lists one insight per person: relation, evidence links, next
   assert.match(html, /aria-current="page"[^>]*data-network-analysis-tab="insight"|data-network-analysis-tab="insight"[^>]*aria-current="page"|href="\/app\/contacts\/dashboard\?tab=insight" aria-current="page"/);
   assert.match(html, /data-network-insight-row="c-ready"[\s\S]*?负责一家 SaaS 买方的采购。[\s\S]*?data-insight-evidence="memo"[\s\S]*?data-insight-evidence="plan_need"[\s\S]*?约一次 20 分钟通话。/);
   assert.match(html, /href="\/app\/contacts\/c-ready#tl-memo_note_live-contact-detail-update_abc"/);
-  assert.match(html, /href="\/app\/agent\/plan#plan-item-item%3Aneed-1"/);
+  assert.match(html, /href="\/app\/agent\/plan#plan-need-item%3Aneed-1"/);
   assert.match(html, /data-network-insight-row="c-ready"[\s\S]*?data-network-tier="core"[\s\S]*?核心/);
   assert.match(html, /data-network-insight-row="c-unscored"[\s\S]*?data-network-tier="unscored"[\s\S]*?未评估[\s\S]*?目标已更新/);
   assert.match(html, /共 45 位 · 第 1 页/);
@@ -127,4 +127,34 @@ test("URL parsing falls back to defaults for unknown values; the loader reads ex
   const failed = await loadInsightsTab({ actorId: "a", goal: GOAL, now: NOW, search: {} }, { readPage: async () => { throw new Error("boom"); } });
   assert.equal(failed.state, "unavailable");
   assert.equal((await loadInsightsTab({ actorId: "a", goal: GOAL, now: NOW, search: {} }, { readPage: null })).state, "unavailable");
+});
+
+test("review P2: the plan-need evidence link and the plan page share one anchor helper — the plan page renders that id", async () => {
+  const { IOrbitPlan } = await import("../../app/(app)/app/agent/iorbit-0918/iorbit-plan");
+  const { planNeedAnchorId, planNeedHref } = await import("../../app/(app)/app/agent/iorbit-0918/plan-anchors");
+  const { insightEvidenceHref } = await import("../../app/(app)/app/contacts/network-0918/network-insight-copy");
+  const { PLAN_NOW, planSnapshotFixture } = await import("../support/plan-snapshot-fixture");
+  const html = renderToStaticMarkup(<IOrbitPlan guideEnabled initialSnapshot={planSnapshotFixture()} now={PLAN_NOW} />);
+  const needIds = [...html.matchAll(/data-orbit-plan-need="([^"]+)"/g)].map((match) => match[1]!);
+  assert.ok(needIds.length > 0);
+  for (const needId of needIds) {
+    assert.match(html, new RegExp(`data-orbit-plan-need="${needId}" id="${planNeedAnchorId(needId)}"`));
+    const href = insightEvidenceHref({ id: needId, source: "plan_need" }, "/app/contacts/c1");
+    assert.equal(href, planNeedHref(needId));
+    assert.equal(decodeURIComponent(href.split("#")[1]!), planNeedAnchorId(needId));
+  }
+});
+
+test("review P3: an out-of-range page is re-read as the last page by the real total", async () => {
+  const reads: number[] = [];
+  const view = await loadInsightsTab({ actorId: "a", goal: GOAL, now: NOW, search: { page: "9" } }, {
+    readPage: async (_actorId, query) => {
+      reads.push(query.page);
+      return query.page === 9 ? { entries: [], hasNext: false, total: 45 } : { ...page(), hasNext: false, total: 45 };
+    },
+  });
+  assert.deepEqual(reads, [9, 2]);
+  assert.equal(view.page, 2);
+  assert.equal(view.total, 45);
+  assert.equal(view.rows.length, 5);
 });

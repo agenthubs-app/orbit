@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import test from "node:test";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { Pool } from "pg";
 import { createPostgresContactCardReader } from "../../features/contacts/storage/contact-list-postgres-reader";
 import { createPostgresLiveRecordStore, type LiveRecordSqlClient } from "../../shared/storage/postgres-live-record-store";
@@ -123,9 +125,41 @@ test("W0051 SC-04: tier filter is a server-side SQL filter; total, per-source co
     // 选多个档位 = 并集；未知档位拒绝。
     assert.equal((await reader.summary({ tierFilters: ["active", "dormant"] }, "a")).total, 8);
     await assert.rejects(reader.page({ tierFilters: ["vip"] }, "a"), /CONTACT_PAGE_INPUT_INVALID/);
-    // 没有筛选时游标作用域与改前相同（旧游标仍有效）。
-    const plain = await reader.page({}, "a");
-    assert.equal((await reader.page({ cursor: plain.nextCursor }, "a")).items.length, 15);
+    // 没有档位时游标作用域的验证见下一个用例（基线实现生成的固定游标）。
+  } finally {
+    await pool.query(`drop schema ${schema} cascade`);
+    await pool.end();
+  }
+});
+
+test("W0051 review P3: a cursor signed by the baseline implementation (4ea98833, no tier filter) still decodes and pages with the new reader", { skip: !process.env.ORBIT_LIFECYCLE_TEST_DATABASE_URL }, async () => {
+  // 夹具由基线 4ea98833 的 contact-list-postgres-reader 在同样的 35 位联系人上生成（见 tests/fixtures/w0051-baseline-contact-cursor.json）。
+  const fixture = JSON.parse(readFileSync(join(__dirname, "../fixtures/w0051-baseline-contact-cursor.json"), "utf8")) as { cursorSecret: string; cursor: string; firstPageIds: string[] };
+  const schema = `contact_cards_fixture_${randomUUID().replaceAll("-", "")}`;
+  const pool = new Pool({ connectionString: process.env.ORBIT_LIFECYCLE_TEST_DATABASE_URL, max: 1, options: `-c search_path=${schema}` });
+  const client: LiveRecordSqlClient = { async query<T>(sql: string, values?: readonly unknown[]) {
+    const result = await pool.query(sql, values ? [...values] : undefined);
+    return { rows: result.rows as T[] };
+  } };
+  try {
+    await pool.query(`create schema ${schema}`);
+    await pool.query(ORBIT_RECORDS_SCHEMA_SQL);
+    const store = createPostgresLiveRecordStore({ client });
+    const timestamp = "2026-09-17T00:00:00.000Z";
+    const common = { workspaceId: "w", userId: "a", sourceType: "manual", sourceId: "s", evidenceIds: ["e"], createdAt: timestamp, updatedAt: timestamp, lifecycleState: "active" as const };
+    for (let n = 0; n < 35; n++) {
+      const id = `c${String(n).padStart(3, "0")}`;
+      await store.upsertRecord({ ...common, collectionName: "contacts", recordId: id, payload: { id, displayName: `联系人 ${id}`, organization: "Org", role: "designer", stage: "active", source: { type: "manual", id: "s" }, evidenceIds: ["e"], createdAt: timestamp, updatedAt: timestamp } });
+    }
+    const reader = createPostgresContactCardReader({ client, workspaceId: "w", cursorSecret: fixture.cursorSecret });
+    const first = await reader.page({}, "a");
+    assert.deepEqual(first.items.map((item) => item.id), fixture.firstPageIds);
+    assert.equal(first.nextCursor, fixture.cursor, "the new reader signs byte-identical cursors without a tier filter");
+    const second = await reader.page({ cursor: fixture.cursor }, "a");
+    assert.equal(second.items.length, 5);
+    assert.equal(new Set([...fixture.firstPageIds, ...second.items.map((item) => item.id)]).size, 35);
+    // 基线游标不能用在带档位筛选的查询上（作用域不同）。
+    await assert.rejects(reader.page({ cursor: fixture.cursor, tierFilters: ["core"] }, "a"), /CONTACT_CURSOR_INVALID/);
   } finally {
     await pool.query(`drop schema ${schema} cascade`);
     await pool.end();

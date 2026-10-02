@@ -67,6 +67,17 @@ create index contact_insights_dirty
   where dirty_at is not null;
 `,
   },
+  {
+    // review P2：待更新的先后用递增序号判断，不用毫秒时间戳（同一毫秒的再次标记不会被误清）。
+    name: "contact-insights-dirty-fence",
+    version: 2,
+    sql: `
+alter table contact_insights
+  add column dirty_seq bigint not null default 0 check (dirty_seq >= 0),
+  add column claimed_seq bigint;
+update contact_insights set dirty_seq = 1 where dirty_at is not null;
+`,
+  },
 ];
 
 function checksum(sql: string): string {

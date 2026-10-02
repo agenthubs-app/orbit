@@ -495,7 +495,10 @@ test("SC-04 R-11 single regenerate: two concurrent clicks → one CAS lease, one
     assert.equal(userOps[0]?.status, "succeeded");
     const row = await insightRow(pool, "actor:alice", "contact:a");
     assert.equal(row?.status, "ready");
-    assert.equal(row?.dirty_at, null);
+    // 落败的那次点击在对方领取之后才标记（dirty_seq 前进）→ 行保留待更新；下一轮后台任务发现版本没变，0 次调用清掉。
+    await runPass(harness);
+    assert.equal((await insightRow(pool, "actor:alice", "contact:a"))?.dirty_at, null);
+    assert.equal(harness.stub.requests.length, 2);
     // 同一版本再点：数据没变 → unchanged，0 次调用、不新增操作。
     assert.equal((await requestContactInsightRegeneration(deps, { actorId: "actor:alice", contactId: "contact:a" })).status, "unchanged");
     assert.equal(harness.stub.requests.length, 2);
@@ -593,5 +596,90 @@ test("SC-04 regenerate route: concurrent POSTs → 202 + 202(inProgress), provid
     harness.goals.set("actor:bob", null);
     assert.equal((await post("actor:bob", "contact:bob-1")).status, 409);
     assert.equal(tasks.length, 0);
+  });
+});
+
+/* ── 第二段（Codex review 裁决）：故障注入 ─────────────────────────────── */
+
+test("review P2 fence: a re-mark that lands in the same millisecond as the claim survives completion and failure (dirty_seq fence, not timestamps)", databaseTest, async () => {
+  await withDatabase(async ({ pool, client }) => {
+    for (const id of ["contact:a", "contact:b"]) await seedContact(pool, id, "actor:alice");
+    await markContactInsightsDirty(client, { actorId: "actor:alice", contactIds: ["contact:a", "contact:b"], now: NOW, reason: "memo", workspaceId: WORKSPACE });
+    const repository = createPostgresContactInsightRepository({ client, workspaceId: WORKSPACE });
+    const batch = await repository.claimDirtyBatch({ leaseMs: CONTACT_INSIGHT_LEASE_MS, limit: 20, now: NOW, owner: "w1" });
+    assert.equal(batch?.rows.length, 2);
+    // 生成期间同一毫秒又写了 memo。
+    await markContactInsightsDirty(client, { actorId: "actor:alice", contactIds: ["contact:a", "contact:b"], now: NOW, reason: "plan_link", workspaceId: WORKSPACE });
+    const text = { en: "x", zh: "x" };
+    await repository.complete({ actorId: "actor:alice", claimedAt: batch!.claimedAt, goalHash: "g", model: "m", now: NOW, owner: "w1", results: [{ contactId: "contact:a", evidence: [], goalRelation: text, nextStep: text, relevance: 1, sourceDataVersion: "v" }], usage: null });
+    await repository.fail({ actorId: "actor:alice", claimedAt: batch!.claimedAt, code: "INVALID_OUTPUT", contactIds: ["contact:b"], now: NOW, owner: "w1" });
+    assert.deepEqual(await dirtyIds(pool), ["contact:a", "contact:b"], "both re-marks are kept");
+    assert.equal((await insightRow(pool, "actor:alice", "contact:a"))?.status, "ready");
+    // 没有再次标记的领取，完成后清除。
+    const again = await repository.claimDirtyBatch({ leaseMs: CONTACT_INSIGHT_LEASE_MS, limit: 20, now: NOW, owner: "w2" });
+    await repository.markUnchanged({ actorId: "actor:alice", claimedAt: again!.claimedAt, contactIds: ["contact:a", "contact:b"], now: NOW, owner: "w2" });
+    assert.deepEqual(await dirtyIds(pool), []);
+  });
+});
+
+test("review fault injection: the same version failing twice returns RETRY_EXHAUSTED with no third provider call", databaseTest, async () => {
+  await withDatabase(async (harness) => {
+    const { pool, client, runtime } = harness;
+    await seedContact(pool, "contact:a", "actor:alice");
+    const tasks: (() => Promise<void>)[] = [];
+    const deps = { ...runtime, client, schedule: (task: () => Promise<void>) => { tasks.push(task); } };
+    const click = async () => {
+      const outcome = await requestContactInsightRegeneration(deps, { actorId: "actor:alice", contactId: "contact:a" });
+      for (const task of tasks.splice(0)) await task();
+      return outcome.status;
+    };
+    assert.equal(await click(), "scheduled");
+    assert.equal((await insightRow(pool, "actor:alice", "contact:a"))?.status, "failed");
+    assert.equal(await click(), "scheduled");
+    assert.equal(harness.stub.requests.length, 2);
+    assert.equal(await click(), "retry_exhausted");
+    assert.equal(harness.stub.requests.length, 2, "0 extra calls");
+    const userOps = (await ledgerOps(pool)).filter((op) => op.pool === "user");
+    assert.equal(userOps.length, 2);
+    // 租约已释放（下一次资料变化后可以再生成）。
+    assert.equal((await insightRow(pool, "actor:alice", "contact:a"))?.lease_owner, null);
+  }, { fail: true });
+});
+
+test("review fault injection: when marking fails inside the plan transaction the savepoint rolls back only the mark — the user's link is kept", databaseTest, async () => {
+  await withDatabase(async ({ pool }) => {
+    for (const id of ["contact:a", "contact:b"]) await seedContact(pool, id, "actor:alice");
+    // 注入故障：contact:a 的洞察行写不进去。
+    await pool.query(`alter table contact_insights add constraint w0051_fault_injection check (contact_id <> 'contact:a')`);
+    const service = createPlanService({
+      now: steppingClock(),
+      references: createPostgresPlanReferenceValidator({ actorId: "actor:alice", client: pool as never, eventCore: { async getPublishedEvent(id: string) { return { eventId: id } as never; } }, workspaceId: WORKSPACE }),
+      repository: createPostgresPlanRepository({ pool: pool as never }),
+      scope: { actorId: "actor:alice", workspaceId: WORKSPACE },
+    });
+    const plan = await service.createVersion(planInput());
+    const need = plan.items.find((item) => item.kind === "network_need")!;
+    const linked = await service.updateItem({ change: { contactId: "contact:a", op: "link_contact" }, itemId: need.id });
+    assert.deepEqual(linked.item.contactLinks.map((link) => link.contactId), ["contact:a"]);
+    const stored = (await pool.query(`select contact_links from plan_items where id = $1`, [need.id])).rows[0]!.contact_links as { contactId: string }[];
+    assert.deepEqual(stored.map((link) => link.contactId), ["contact:a"], "the plan write committed");
+    assert.equal(await insightRow(pool, "actor:alice", "contact:a"), undefined);
+    // 同一事务之后的写入照常（事务没有进入失败状态）；其他联系人照常标记。
+    await service.updateItem({ change: { contactId: "contact:b", op: "link_contact" }, itemId: need.id });
+    assert.deepEqual(await dirtyIds(pool), ["contact:b"]);
+  });
+});
+
+test("review P3: an out-of-range insights tab page still reports the real total", databaseTest, async () => {
+  await withDatabase(async ({ pool, client }) => {
+    for (let index = 0; index < 3; index += 1) {
+      const id = `contact:${index}`;
+      await seedContact(pool, id, "actor:alice");
+      await pool.query(`insert into contact_insights (workspace_id, actor_id, contact_id, status, relevance) values ($1, 'actor:alice', $2, 'ready', $3)`, [WORKSPACE, id, index]);
+    }
+    const page = await readContactInsightsTabPage({ client, workspaceId: WORKSPACE }, "actor:alice", { country: null, industry: null, page: 5, sort: "relevance", tier: null });
+    assert.deepEqual([page.entries.length, page.total, page.hasNext], [0, 3, false]);
+    const empty = await readContactInsightsTabPage({ client, workspaceId: WORKSPACE }, "actor:bob", { country: null, industry: null, page: 1, sort: "relevance", tier: null });
+    assert.deepEqual([empty.entries.length, empty.total], [0, 0]);
   });
 });

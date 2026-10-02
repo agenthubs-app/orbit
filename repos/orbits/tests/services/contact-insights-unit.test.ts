@@ -188,3 +188,16 @@ test("view states: no goal / none / ready / stale / goal updated / deferred / fa
   assert.ok(preview.zh.endsWith("…"));
   assert.equal(contactInsightPreview({ ...ROW, goalRelation: null }), undefined);
 });
+
+test("review P2: the regenerate idempotency key hashes the full contact id and always keeps the full version digest", async () => {
+  const { insightRegenerationKey } = await import("../../features/contacts/insights/regenerate");
+  const version = "a".repeat(40);
+  const longA = `contact:${"x".repeat(500)}A`;
+  const longB = `contact:${"x".repeat(500)}B`;
+  const keyA = insightRegenerationKey(longA, version);
+  assert.ok(keyA.endsWith(`:${version}`));
+  assert.ok(keyA.length <= 120, `${keyA.length}`);
+  assert.notEqual(keyA, insightRegenerationKey(longB, version), "long ids with a shared prefix do not collide");
+  assert.notEqual(keyA, insightRegenerationKey(longA, "b".repeat(40)), "a new version is a new key");
+  assert.equal(keyA, insightRegenerationKey(longA, version));
+});

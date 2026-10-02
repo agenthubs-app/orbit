@@ -31,6 +31,7 @@
  */
 "use client";
 
+import { planNeedAnchorId } from "./plan-anchors";
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 
 import type { PlanVersionOrigin, PlanViewSnapshot } from "../../../../../features/plans/contract";
@@ -729,7 +730,7 @@ function PlanBody({
           {view.needs.length > 0 ? (
             <div className="ir-p-needs">
               {view.needs.map((need) => (
-                <div className="ir-p-need" data-orbit-plan-need={need.id} key={need.id}>
+                <div className="ir-p-need" data-orbit-plan-need={need.id} id={planNeedAnchorId(need.id)} key={need.id}>
                   <div className="ir-p-need-h">
                     <b>
                       {need.title}

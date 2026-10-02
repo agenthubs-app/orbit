@@ -208,7 +208,7 @@ test("W0051: the goal-relation panel sits between the hero and 关系概览, wit
   const panel = html.indexOf("data-network-insight-panel");
   const overview = html.indexOf("关系概览");
   assert.ok(hero >= 0 && hero < panel && panel < overview, "hero < insight < overview");
-  assert.match(html, /data-network-insight-panel="ready"[\s\S]*?和你目标的关系[\s\S]*?惠子负责一家 AI 公司的合作。[\s\S]*?href="\/app\/contacts\/c1#tl-memo_note_live-contact-detail-update_abc"[\s\S]*?href="\/app\/agent\/plan#plan-item-item%3Aneed-1"[\s\S]*?下一步：<\/strong>约产品演示。/);
+  assert.match(html, /data-network-insight-panel="ready"[\s\S]*?和你目标的关系[\s\S]*?惠子负责一家 AI 公司的合作。[\s\S]*?href="\/app\/contacts\/c1#tl-memo_note_live-contact-detail-update_abc"[\s\S]*?href="\/app\/agent\/plan#plan-need-item%3Aneed-1"[\s\S]*?下一步：<\/strong>约产品演示。/);
   assert.doesNotMatch(html, /data-insight-regenerate/);
   // 旧「下一步建议」区块保留不动（读 contact.nextAction）。
   assert.match(html, /下周约产品演示/);

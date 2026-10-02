@@ -5,14 +5,22 @@
  * 2. 以 CAS 领取这一行的租约——领不到 = 已有执行器在跑，直接返回 in_progress，0 次调用（两路并发只有一个执行器）；
  * 3. 读目标与输入：没有关系目标 → no_goal（0 次调用、不预留）；版本与目标都没变 → unchanged；
  * 4. 向**用户主动池**预留 1 次操作（`purpose: insight`、`trigger: manual`、`max_calls = 1`、幂等键
- *    `insight-regen:<contactId>:<sourceDataVersion>`，同版本失败后最多再试 1 次）；后台池用满不影响这里，
+ *    `insight-regen:<sha256(contactId) 前 32 位>:<sourceDataVersion>`，同版本失败后最多再试 1 次）；后台池用满不影响这里，
  *    用户主动池当日 10 次用满 → limited（接口 429 `USER_DAILY_LIMIT`），释放租约、0 次调用；
  * 5. 预留成功后在响应之外（`after`）由本执行器调用并唯一结算。
  */
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 
 import { markContactInsightsDirty, type InsightSqlExecutor } from "./repository";
 import { CONTACT_INSIGHT_LEASE_MS, executeInsightGeneration, prepareInsightGeneration, type ContactInsightWorkerDeps } from "./worker";
+
+/**
+ * review P2：幂等键 = 完整 contactId 的定长哈希 + 完整版本摘要（不截断）。超长 id 不会把版本挤掉，长前缀相同的两个联系人也不碰撞。
+ */
+export function insightRegenerationKey(contactId: string, sourceDataVersion: string): string {
+  const contact = createHash("sha256").update(contactId).digest("hex").slice(0, 32);
+  return `insight-regen:${contact}:${sourceDataVersion}`;
+}
 
 export type InsightRegenerationOutcome =
   | { status: "scheduled" }
@@ -53,7 +61,7 @@ export async function requestContactInsightRegeneration(
   if (prepared.kind === "no_goal") return { status: "no_goal" };
   if (prepared.kind === "nothing") return prepared.missing ? { status: "not_found" } : { status: "unchanged" };
   const version = prepared.completions.get(input.contactId)?.sourceDataVersion ?? prepared.fingerprint;
-  const baseKey = `insight-regen:${input.contactId}:${version}`.slice(0, 280);
+  const baseKey = insightRegenerationKey(input.contactId, version);
   let reservation = await deps.gate.reserve({ actorId: input.actorId, idempotencyKey: baseKey, now, pool: "user", purpose: "insight", trigger: "manual" });
   if (reservation.ok === true && !reservation.owner && reservation.status === "failed") {
     // 同一版本上一次失败：最多再试 1 次。

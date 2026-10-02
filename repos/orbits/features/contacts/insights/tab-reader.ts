@@ -62,10 +62,14 @@ export function contactInsightsTabSql(sort: ContactInsightsTabSort): string {
       and ($3::text is null or c.payload->>'primaryIndustryId' = $3)
       and ($4::text is null or c.payload->'region'->>'countryCode' = $4)
       and ($5::text is null or (case when (s.payload->>'dormant')::boolean then 'dormant' else s.payload->>'tier' end) = $5)
+  ), counted as (
+    select count(*)::int as total from entries
   )
-  select *, count(*) over ()::int as total from entries
-  order by ${ORDER_BY[sort]}
-  limit $6 offset $7`;
+  -- review P3：总数与分页分开取，越界页码也能拿到真实总数（左连接保证至少一行）。
+  select counted.total, page.* from counted
+  left join lateral (
+    select * from entries order by ${ORDER_BY[sort]} limit $6 offset $7
+  ) page on true`;
 }
 
 function text(value: unknown): string | null {
@@ -84,7 +88,9 @@ export async function readContactInsightsTabPage(
     input.workspaceId, actorId, query.industry, query.country, query.tier,
     CONTACT_INSIGHTS_TAB_PAGE_SIZE + 1, (page - 1) * CONTACT_INSIGHTS_TAB_PAGE_SIZE,
   ]);
-  const rows = result.rows.slice(0, CONTACT_INSIGHTS_TAB_PAGE_SIZE);
+  const total = Number(result.rows[0]?.total ?? 0) || 0;
+  const pageRows = result.rows.filter((row) => row.contact_id !== null && row.contact_id !== undefined);
+  const rows = pageRows.slice(0, CONTACT_INSIGHTS_TAB_PAGE_SIZE);
   return {
     entries: rows.map((row) => ({
       city: text(row.city),
@@ -97,7 +103,7 @@ export async function readContactInsightsTabPage(
       row: toContactInsightRow(row),
       tier: typeof row.tier_group === "string" && TIERS.has(row.tier_group) ? (row.tier_group as RelationshipTierGroup) : null,
     })),
-    hasNext: result.rows.length > CONTACT_INSIGHTS_TAB_PAGE_SIZE,
-    total: Number(result.rows[0]?.total ?? 0) || 0,
+    hasNext: pageRows.length > CONTACT_INSIGHTS_TAB_PAGE_SIZE,
+    total,
   };
 }

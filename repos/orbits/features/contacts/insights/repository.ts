@@ -5,7 +5,8 @@
  *   （与快照同一归属谓词，在同一条语句里校验，他人的联系人 id 不会被标）。表还没迁移时返回 0（不抛错、不中断调用方事务）。
  * - 领取用 CAS：`ai_state <> 'started'`（或租约已过期）才能置为 started 并写租约；只有领到的执行器才能调用模型。
  * - 进程中途退出的 started 行（租约过期）不自动重调：`sweepInterruptedInsights` 标 failed，等下一次待更新。
- * - 完成／失败／顺延都以租约持有者为前提；生成期间又被标记的行（dirty_at > claimed_at）保留待更新。
+ * - 完成／失败／顺延都以租约持有者为前提；生成期间又被标记的行保留待更新：每次标记把 `dirty_seq` 加 1，领取时记下
+ *   `claimed_seq`，只有两者仍相等才清除（review P2：不用毫秒时间戳判断先后，同一毫秒的标记也不会被误清）。
  */
 import { createHash } from "node:crypto";
 
@@ -118,12 +119,13 @@ export const CONTACT_INSIGHT_VIEW_COLUMNS = `contact_id, status, goal_relation, 
 
 /** $1 workspace，$2 actor，$3 联系人 id 数组，$4 reason，$5 now。联系人归属在同一语句里校验。 */
 const MARK_DIRTY_SQL = `/* contact-insights:mark-dirty */
-  insert into contact_insights (workspace_id, actor_id, contact_id, status, dirty_at, dirty_reasons, created_at, updated_at)
-  select $1, $2, c.record_id, 'pending', $5::timestamptz, array[$4::text], $5::timestamptz, $5::timestamptz
+  insert into contact_insights (workspace_id, actor_id, contact_id, status, dirty_at, dirty_seq, dirty_reasons, created_at, updated_at)
+  select $1, $2, c.record_id, 'pending', $5::timestamptz, 1, array[$4::text], $5::timestamptz, $5::timestamptz
   from orbit_records c
   where ${confirmedContactPredicate("c")} and c.record_id = any($3::text[])
   on conflict (workspace_id, actor_id, contact_id) do update set
     dirty_at = excluded.dirty_at,
+    dirty_seq = contact_insights.dirty_seq + 1,
     dirty_reasons = (select coalesce(array_agg(distinct reason order by reason), '{}') from unnest(contact_insights.dirty_reasons || excluded.dirty_reasons) as reason),
     status = case when contact_insights.status = 'ready' or contact_insights.ai_state = 'started' then contact_insights.status else 'pending' end,
     updated_at = excluded.updated_at
@@ -159,6 +161,7 @@ export async function markContactInsightsGoalDirty(
     `/* contact-insights:mark-goal-dirty */
     update contact_insights set
       dirty_at = $4::timestamptz,
+      dirty_seq = dirty_seq + 1,
       dirty_reasons = (select coalesce(array_agg(distinct reason order by reason), '{}') from unnest(dirty_reasons || array['goal']) as reason),
       status = case when status = 'ready' or ai_state = 'started' then status else 'pending' end,
       updated_at = $4::timestamptz
@@ -219,14 +222,14 @@ const CLAIM_BATCH_SQL = `/* contact-insights:claim-batch */
   )
   update contact_insights i set
     ai_state = 'started', lease_owner = $3, lease_expires_at = $2::timestamptz + make_interval(secs => $4::double precision / 1000),
-    claimed_at = $2::timestamptz, attempts = i.attempts + 1, updated_at = $2::timestamptz
+    claimed_at = $2::timestamptz, claimed_seq = i.dirty_seq, attempts = i.attempts + 1, updated_at = $2::timestamptz
   from picked
   where i.workspace_id = $1 and i.actor_id = picked.actor_id and i.contact_id = picked.contact_id and i.ai_state <> 'started'
   returning i.actor_id, ${ROW_COLUMNS.split(",").map((column) => `i.${column.trim()}`).join(", ")}`;
 
-/** 完成／失败时：生成期间又被标记（dirty_at > claimed_at）的保留待更新。 */
-const CLEAR_DIRTY = `dirty_at = case when dirty_at > claimed_at then dirty_at else null end,
-    dirty_reasons = case when dirty_at > claimed_at then dirty_reasons else '{}' end`;
+/** 完成／失败时：领取后又被标记（dirty_seq 已前进）的保留待更新。 */
+const CLEAR_DIRTY = `dirty_at = case when dirty_seq is distinct from claimed_seq then dirty_at else null end,
+    dirty_reasons = case when dirty_seq is distinct from claimed_seq then dirty_reasons else '{}' end`;
 const RELEASE = `ai_state = 'done', lease_owner = null, lease_expires_at = null`;
 
 export function createPostgresContactInsightRepository(input: { client: InsightSqlExecutor; workspaceId: string }): ContactInsightRepository {
@@ -301,7 +304,7 @@ export function createPostgresContactInsightRepository(input: { client: InsightS
         `/* contact-insights:claim-single */
         update contact_insights set ai_state = 'started', lease_owner = $4,
           lease_expires_at = $5::timestamptz + make_interval(secs => $6::double precision / 1000), claimed_at = $5::timestamptz,
-          attempts = attempts + 1, updated_at = $5::timestamptz
+          claimed_seq = dirty_seq, attempts = attempts + 1, updated_at = $5::timestamptz
         where workspace_id = $1 and actor_id = $2 and contact_id = $3 and (ai_state <> 'started' or lease_expires_at < $5::timestamptz)
         returning ${ROW_COLUMNS}`,
         [workspaceId, actorId, contactId, owner, now.toISOString(), leaseMs],

@@ -121,8 +121,8 @@ export async function loadInsightsTab(
   input: { actorId: string; search: Record<string, SearchValue>; goal: Promise<string | null> | string | null; now: Date; language?: OrbitLanguage },
   deps: InsightsTabLoaderDeps = defaultInsightsTabLoaderDeps(),
 ): Promise<InsightsTabView> {
-  const query = parseInsightsTabQuery(input.search);
-  const [page, goal] = await Promise.all([
+  let query = parseInsightsTabQuery(input.search);
+  const [firstPage, goal] = await Promise.all([
     deps.readPage
       ? deps.readPage(input.actorId, query).catch((error: unknown) => {
         console.error(JSON.stringify({ actorId: input.actorId, error: error instanceof Error ? error.name : "unknown", event: "insights_tab_read_failed" }));
@@ -131,5 +131,12 @@ export async function loadInsightsTab(
       : Promise.resolve(null),
     Promise.resolve(input.goal).catch(() => null),
   ]);
+  let page = firstPage;
+  // review P3：页码越过末页（筛选后变少、旧链接）时按真实总数改读最后一页，而不是显示「还没有洞察」。
+  if (page && deps.readPage && page.entries.length === 0 && page.total > 0 && query.page > 1) {
+    const last = Math.max(1, Math.ceil(page.total / CONTACT_INSIGHTS_TAB_PAGE_SIZE));
+    query = { ...query, page: last };
+    page = await deps.readPage(input.actorId, query).catch(() => null);
+  }
   return buildInsightsTabView({ goal, now: input.now, page, query });
 }
