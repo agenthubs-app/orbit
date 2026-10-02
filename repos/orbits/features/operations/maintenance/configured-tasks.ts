@@ -14,7 +14,8 @@ import { NotificationDeliveryUnconfigured, runNotificationDeliveryPass } from ".
 import { createConfiguredCanonicalReminderMaintenanceTask } from "../../notifications/configured-canonical-reminder-maintenance";
 import { createPlanEventAttendanceMaintenanceTask, PLAN_EVENT_ATTENDANCE_TASK } from "../../plans/event-attendance-reconcile";
 import { createPlanMatchMaintenanceTask } from "../../plans/match-maintenance-task";
-import { createPlanPhaseMaintenanceTask, PLAN_PHASE_TASK } from "../../plans/phase-refinement";
+import { AI_PLAN_GENERATOR_ID, createPlanPhaseMaintenanceTask, PLAN_PHASE_TASK } from "../../plans/phase-refinement";
+import { createConfiguredAiPhaseRefiner } from "../../plans/ai-generator";
 import { createPlanEventRegistrationMaintenanceTask, PLAN_EVENT_REGISTRATION_TASK } from "../../plans/event-registration-reconcile";
 import { createPlanDailyRunGate } from "../../plans/maintenance-daily-gate";
 import { readRuntimeRegistrationsForPlanActor } from "../../plans/event-attribution-runtime";
@@ -164,19 +165,33 @@ export function createConfiguredMaintenanceTasks({
     }),
     // W0012: writes the "entered a new phase" progress entry (and, for a one-year plan,
     // the week-level actions of the new quarter) for plans nobody opened this week.
+    // W0048b: also refines the skeleton phases of AI plans one phase ahead (background pool).
     // Idempotent per plan + phase, bounded per batch; W0017: one real run per Tokyo day.
     createPlanPhaseMaintenanceTask({
       gate: planDailyGate,
       resolve: () => {
         const runtime = getConfiguredPlanMatchingRuntime();
         if (!runtime) return null;
+        const planServiceFor = (actorId: string) => {
+          const resolution = resolvePlanService({ actorId, mode: "live" });
+          if (resolution.success === false) throw new Error(resolution.error.message);
+          return resolution.service;
+        };
+        // W0048b（D46②）：ORBIT_PLAN_GENERATOR=ai 时补细 AI 计划的骨架阶段（事务外调用、每阶段 1 次后台池操作）。
+        const refineActor = createConfiguredAiPhaseRefiner(planServiceFor, env);
+        const listRefinement = runtime.repository.listActorsNeedingPhaseRefinement?.bind(runtime.repository);
         return {
           listActorsEnteringPhase: (input) => runtime.repository.listActorsEnteringPhase(input),
-          planServiceFor: (actorId) => {
-            const resolution = resolvePlanService({ actorId, mode: "live" });
-            if (resolution.success === false) throw new Error(resolution.error.message);
-            return resolution.service;
-          },
+          planServiceFor,
+          ...(refineActor && listRefinement
+            ? {
+                refinement: {
+                  listActorsNeedingRefinement: (input: { limit: number; today: string; afterActorId?: string | null }) =>
+                    listRefinement({ ...input, aiGeneratorId: AI_PLAN_GENERATOR_ID }),
+                  refineActor,
+                },
+              }
+            : {}),
         };
       },
       tokyoDate: planTokyoDate,

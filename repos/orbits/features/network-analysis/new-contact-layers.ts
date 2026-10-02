@@ -108,6 +108,11 @@ export async function runEnrichmentPass(input: RunNewContactLayersInput, deps: N
       }
       return { ...result, enrichment: "unavailable" };
     }
+    // W0048b review P1：同键操作已在别处进行或已结束（同一批重放）：不执行、不结算。
+    if (!reservation.owner) {
+      log({ actorId: input.actorId, event: "network_layers_enrichment_not_owner", sourceKey: input.sourceKey, status: reservation.status });
+      continue;
+    }
     result.operations += 1;
     const operationId = reservation.operationId;
     let outcome: "succeeded" | "failed" = "failed";

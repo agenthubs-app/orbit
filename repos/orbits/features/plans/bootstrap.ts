@@ -17,7 +17,7 @@
  */
 import type { PlanHorizon, PlanReferenceValidator, PlanService, PlanSnapshot } from "./contract";
 import {
-  generatePlanDraft,
+  runPlanGeneration,
   type PlanGenerator,
   type PlanGeneratorInput,
   type PlanLocale,
@@ -127,33 +127,37 @@ export function createPlanBootstrapService(input: {
         supplement: request.supplement,
       };
 
-      let draft;
-      try {
-        draft = await generatePlanDraft(input.generator, generatorInput, { idempotencyKey: key });
-      } catch (error) {
-        throw new PlanBootstrapError("PLAN_GENERATION_FAILED", "The plan could not be generated. Nothing was saved; please try again.", {
-          cause: error,
-        });
-      }
-      await validateGeneratedPlan({ draft, generatorInput, references: input.references });
-
-      try {
-        const outcome = await input.plans.createVersionWithOutcome({
-          ...draft,
-          basePlanId: null,
-          creationKey: `${PLAN_BOOTSTRAP_KEY_PREFIX}${key}`,
-          sourceSessionId: null,
-        });
-        // 并发重复提交：后到的那份在事务里命中 creationKey，拿到先保存的那份（replayed）。
-        return { replayed: !outcome.created, snapshot: outcome.snapshot };
-      } catch (error) {
-        // 并发：另一份请求（不同的键）先保存了 v1。
-        if (error instanceof PlanServiceError && error.reason === "BASE_PLAN_MISMATCH") {
-          const current = await input.plans.getCurrent();
-          throw new PlanBootstrapError("PLAN_ALREADY_EXISTS", "You already have a plan.", { planId: current?.plan.id ?? null });
-        }
-        throw error;
-      }
+      const creationKey = `${PLAN_BOOTSTRAP_KEY_PREFIX}${key}`;
+      // W0048b：AI 生成器时，流水线预留用户主动池 1 次操作（幂等键 = creationKey）并唯一结算；mock 与改前相同。
+      return runPlanGeneration({
+        generator: input.generator,
+        idempotencyKey: key,
+        input: generatorInput,
+        ledgerKey: creationKey,
+        now: at,
+        save: async (draft, planId) => {
+          try {
+            const outcome = await input.plans.createVersionWithOutcome(
+              { ...draft, analysis: { ...draft.analysis }, basePlanId: null, creationKey, sourceSessionId: null },
+              planId ? { planId } : undefined,
+            );
+            // 并发重复提交：后到的那份在事务里命中 creationKey，拿到先保存的那份（replayed）。
+            return { replayed: !outcome.created, snapshot: outcome.snapshot };
+          } catch (error) {
+            // 并发：另一份请求（不同的键）先保存了 v1。
+            if (error instanceof PlanServiceError && error.reason === "BASE_PLAN_MISMATCH") {
+              const current = await input.plans.getCurrent();
+              throw new PlanBootstrapError("PLAN_ALREADY_EXISTS", "You already have a plan.", { planId: current?.plan.id ?? null });
+            }
+            throw error;
+          }
+        },
+        validate: (draft) => validateGeneratedPlan({ draft, generatorInput, references: input.references }),
+        wrapGenerationError: (error) =>
+          new PlanBootstrapError("PLAN_GENERATION_FAILED", "The plan could not be generated. Nothing was saved; please try again.", {
+            cause: error,
+          }),
+      });
     },
   };
 }

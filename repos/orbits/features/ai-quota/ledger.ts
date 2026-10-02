@@ -103,8 +103,12 @@ export function createPostgresAiUsageLedger(input: { client: TransactionalPostgr
       [workspaceId, actorId, key],
     );
     // 同键重放返回原操作（不新增行、不再计次）；只有已 released（0 次响应、未计次）的操作按新预留重新开启。
+    // W0048b review P1：重放不转让所有权——只有带 takeover 的租约持有者能接管仍在 reserved 的操作。
     const replay = existing.rows[0];
-    if (replay && replay.status !== "released") return { ok: true, operationId: String(replay.id) };
+    if (replay && replay.status !== "released") {
+      const status = String(replay.status) as "reserved" | "succeeded" | "failed";
+      return { ok: true, operationId: String(replay.id), owner: status === "reserved" && request.takeover === true, status };
+    }
     const day = tokyoUsageDay(request.now);
     if (request.pool !== "system") {
       const usage = (await executor.query<Row>(USAGE_SQL, [workspaceId, actorId, day])).rows[0];
@@ -126,7 +130,7 @@ export function createPostgresAiUsageLedger(input: { client: TransactionalPostgr
         where workspace_id = $1 and id = $2 and status = 'released'`,
         [workspaceId, String(replay.id), day, request.now.toISOString()],
       );
-      return { ok: true, operationId: String(replay.id) };
+      return { ok: true, operationId: String(replay.id), owner: true, status: "reserved" };
     }
     const id = `aiop_${randomUUID()}`;
     const inserted = await executor.query<Row>(
@@ -137,14 +141,15 @@ export function createPostgresAiUsageLedger(input: { client: TransactionalPostgr
       returning id`,
       [workspaceId, id, actorId, day, request.pool, request.purpose, request.trigger, key, AI_QUOTA_MAX_CALLS[request.purpose], request.now.toISOString()],
     );
-    if (inserted.rows[0]) return { ok: true, operationId: id };
-    // 同一键在另一个池的锁下刚刚写入：返回那一行。
+    if (inserted.rows[0]) return { ok: true, operationId: id, owner: true, status: "reserved" };
+    // 同一键在另一个池的锁下刚刚写入：返回那一行（不是本次新建，不转让所有权）。
     const raced = await executor.query<Row>(
-      `select id from ai_usage_ledger where workspace_id = $1 and actor_id = $2 and idempotency_key = $3`,
+      `select id, status from ai_usage_ledger where workspace_id = $1 and actor_id = $2 and idempotency_key = $3`,
       [workspaceId, actorId, key],
     );
     if (!raced.rows[0]) throw new Error("AI quota reservation conflict without an existing row.");
-    return { ok: true, operationId: String(raced.rows[0].id) };
+    const racedStatus = String(raced.rows[0].status) as "reserved" | "succeeded" | "failed";
+    return { ok: true, operationId: String(raced.rows[0].id), owner: racedStatus === "reserved" && request.takeover === true, status: racedStatus };
   }
 
   async function readOperation(operationId: string, options: { inflightWindowMs?: number } = {}): Promise<AiUsageOperationState | null> {

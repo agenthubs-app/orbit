@@ -6,6 +6,12 @@ import {
   PLAN_BOOTSTRAP_SUPPLEMENT_LIMIT,
   type PlanBootstrapService,
 } from "../../../../../features/plans/bootstrap";
+import {
+  isMeteredPlanGenerator,
+  PlanGenerationInProgressError,
+  PlanGenerationLimitError,
+  PlanGenerationUnavailableError,
+} from "../../../../../features/plans/generator";
 import { resolvePlanGenerator } from "../../../../../features/plans/generator-service-factory";
 import { createConfiguredPlanInputSource } from "../../../../../features/plans/input-source";
 import {
@@ -24,6 +30,7 @@ import {
   type ServiceResolution,
 } from "../../../../../shared/services/module-mode";
 import { parseRelationshipGoal } from "../../../../(app)/app/profile/goal-editor/goal-editor-model";
+import { readDemoModeViewForActor } from "../../../../(app)/app/_demo/demo-guide-view";
 import {
   authenticatedApiActorRequiredResponse,
   resolveAuthenticatedApiActor,
@@ -43,12 +50,22 @@ import {
  * 未登录 401；没写目标 400 `GOAL_REQUIRED`；已有计划 409 `PLAN_ALREADY_EXISTS`（context.planId）；
  * 生成失败 503 `PLAN_GENERATION_FAILED`（什么都没保存，可重试）；引用了不存在／别人的联系人或活动 404；
  * 生成器 / 存储未配置 503。
+ *
+ * W0048b：`ORBIT_PLAN_GENERATOR=ai` 时由 DeepSeek 两阶段生成（一次生成 = 用户主动池 1 次操作）；用户池当日用满
+ * 429 `USER_DAILY_LIMIT`（context.retryOn，0 次调用）；示例模式 403 `DEMO_MODE`（不预留、不调用生成器）。
+ * 生成在请求内同步完成（maxDuration 300，见 route.ts）；断线后服务端仍保存，同一幂等键重放取回结果。
  */
 export interface PlanBootstrapRouteDependencies {
   /** 身份只在服务端解析；请求体、查询参数、客户端头一律不作为身份来源。 */
   resolveActor?: () => Promise<AuthenticatedApiActor | null>;
   readGoal?: (actorId: string) => Promise<string | null>;
-  serviceForActor?: (actorId: string) => ServiceResolution<PlanBootstrapService>;
+  serviceForActor?: (actorId: string) => ServiceResolution<PlanBootstrapService & { metered?: boolean }>;
+  /** 示例模式（只在按操作计次的生成器时判定）。 */
+  isDemo?: (actor: AuthenticatedApiActor) => Promise<boolean>;
+}
+
+async function defaultIsDemo(actor: AuthenticatedApiActor): Promise<boolean> {
+  return (await readDemoModeViewForActor({ actorId: actor.id, userId: actor.userId ?? null })) !== null;
 }
 
 const KEY_PATTERN = /^[A-Za-z0-9:_-]{1,100}$/;
@@ -64,7 +81,7 @@ async function readProfileGoal(actorId: string): Promise<string | null> {
 }
 
 /** 默认依赖：计划存储、同一后端的引用校验、生成器、真实数据来源，任一缺失都 fail closed。 */
-export function resolveDefaultPlanBootstrapService(actorId: string): ServiceResolution<PlanBootstrapService> {
+export function resolveDefaultPlanBootstrapService(actorId: string): ServiceResolution<PlanBootstrapService & { metered: boolean }> {
   const plans = resolvePlanService({ actorId });
   if (plans.success === false) return plans;
   const references = resolvePlanReferenceValidator({ actorId });
@@ -75,13 +92,16 @@ export function resolveDefaultPlanBootstrapService(actorId: string): ServiceReso
   if (!source) return createNotImplementedFailure(PLANS_CAPABILITY_ID, plans.mode, [plans.mode]);
   return {
     mode: plans.mode,
-    service: createPlanBootstrapService({
-      actorId,
-      generator: generator.service,
-      plans: plans.service,
-      references: references.service,
-      source,
-    }),
+    service: Object.assign(
+      createPlanBootstrapService({
+        actorId,
+        generator: generator.service,
+        plans: plans.service,
+        references: references.service,
+        source,
+      }),
+      { metered: isMeteredPlanGenerator(generator.service) },
+    ),
     success: true,
   };
 }
@@ -90,6 +110,7 @@ export function createPlanBootstrapRouteHandlers(dependencies: PlanBootstrapRout
   const resolveActor = dependencies.resolveActor ?? resolveAuthenticatedApiActor;
   const readGoal = dependencies.readGoal ?? readProfileGoal;
   const serviceForActor = dependencies.serviceForActor ?? resolveDefaultPlanBootstrapService;
+  const isDemo = dependencies.isDemo ?? defaultIsDemo;
 
   return {
     async POST(request: Request): Promise<Response> {
@@ -102,7 +123,7 @@ export function createPlanBootstrapRouteHandlers(dependencies: PlanBootstrapRout
         });
 
       let actorId: string;
-      let service: PlanBootstrapService;
+      let service: PlanBootstrapService & { metered?: boolean };
       try {
         const actor = await resolveActor();
         if (!actor?.id) return authenticatedApiActorRequiredResponse(mode);
@@ -116,6 +137,13 @@ export function createPlanBootstrapRouteHandlers(dependencies: PlanBootstrapRout
           });
         }
         service = resolution.service;
+        // 示例模式不预留配额、不调用生成器（mock 生成器免费，沿用改前行为）。
+        if (service.metered && (await isDemo(actor))) {
+          return NextResponse.json(failure(new AppError("FORBIDDEN", "The example plan cannot be generated."), { reason: "DEMO_MODE" }), {
+            headers,
+            status: 403,
+          });
+        }
       } catch (error) {
         return fail(
           error instanceof AppError
@@ -151,6 +179,18 @@ export function createPlanBootstrapRouteHandlers(dependencies: PlanBootstrapRout
           { headers, status: result.replayed ? 200 : 201 },
         );
       } catch (error) {
+        if (error instanceof PlanGenerationLimitError) {
+          return NextResponse.json(
+            failure(new AppError("CONFLICT", error.message), { reason: "USER_DAILY_LIMIT", ...(error.retryOn ? { retryOn: error.retryOn } : {}) }),
+            { headers, status: 429 },
+          );
+        }
+        if (error instanceof PlanGenerationInProgressError) {
+          return fail(new AppError("CONFLICT", error.message), { reason: "GENERATION_IN_PROGRESS" });
+        }
+        if (error instanceof PlanGenerationUnavailableError) {
+          return fail(new AppError("SERVICE_UNAVAILABLE", error.message), { reason: "AI_UNAVAILABLE" });
+        }
         if (error instanceof PlanBootstrapError) {
           return fail(error, error.planId ? { planId: error.planId, reason: error.reason } : { reason: error.reason });
         }

@@ -11,7 +11,10 @@ import test from "node:test";
 
 import { createPlanReanalyzeRouteHandlers } from "../../app/api/agent/plans/reanalyze/route-handlers";
 import { createPlanRouteHandlers } from "../../app/api/agent/plans/route-handlers";
+import { USER_POOL_DAILY_LIMIT } from "../../features/ai-quota/constants";
+import type { PlanGenerator } from "../../features/plans/generator";
 import { createMockPlanGenerator } from "../../features/plans/mock-generator";
+import { aiGenerator, fakeDeepseek, MemoryAiLedger } from "../support/plan-ai-fixture";
 import { createPhaseRefiner } from "../../features/plans/phase-refinement";
 import { createLinkedContactNameReader, createPlanFollowUpService } from "../../features/plans/reanalysis";
 import { createAllowListPlanReferenceValidator } from "../../features/plans/reference-validator";
@@ -20,7 +23,7 @@ import { createPlanService } from "../../features/plans/service";
 import { CONTACTS, EVENTS, ME, OTHER } from "../support/plan-bootstrap-fixture";
 import { planInput } from "../support/plan-fixture";
 
-function harness(clock: { now: string }, names?: Record<string, string>) {
+function harness(clock: { now: string }, names?: Record<string, string>, generatorFor?: () => PlanGenerator) {
   const repository = createMemoryPlanRepository();
   const goals: string[] = [];
   let tick = 0;
@@ -38,6 +41,7 @@ function harness(clock: { now: string }, names?: Record<string, string>) {
         goals.push(id);
         return "三个月内拿到 10 家企业客户的试用（3 个月内）";
       },
+      isDemo: async () => false,
       resolveActor: async () => (actorId ? { id: actorId } : null),
       serviceForActor: (id) => {
         const plans = plansFor(id);
@@ -47,7 +51,7 @@ function harness(clock: { now: string }, names?: Record<string, string>) {
           service: {
             followUp: createPlanFollowUpService({
               actorId: id,
-              generator: createMockPlanGenerator(),
+              generator: generatorFor?.() ?? createMockPlanGenerator(),
               now: () => new Date(clock.now),
               plans,
               readLinkedContactNames: names ? async () => names : undefined,
@@ -57,6 +61,7 @@ function harness(clock: { now: string }, names?: Record<string, string>) {
                 listEvents: async () => EVENTS,
               },
             }),
+            metered: Boolean(generatorFor),
             quota: () => plans.reanalysisQuota(),
           },
           success: true as const,
@@ -210,4 +215,39 @@ test("W0023: the linked-contact name reader reads the active needs once and name
     readContactViews: async () => assert.fail("no linked contacts means no contact read"),
   });
   assert.deepEqual(await none(ME), {});
+});
+
+test("W0048b SC-04: ai_regenerate — 400 without the AI provider or on a non-template plan, 201 then replay 200; quota untouched; 429 when the user pool is full", async () => {
+  const clock = { now: "2026-10-05T03:00:00.000Z" };
+  const template = () => planInput({ analysis: { generator: "mock-template-v1", kind: "plan_bootstrap" }, startsOn: "2026-10-05" });
+
+  const mock = harness(clock);
+  const t0 = await mock.plansFor(ME).createVersion(template());
+  const unavailable = await mock.reanalyzeFor(ME).POST(post({ basePlanId: t0.plan.id, idempotencyKey: "a1", origin: "ai_regenerate" }));
+  assert.equal(unavailable.status, 400);
+  assert.equal((await unavailable.json()).error.context.reason, "AI_REGENERATE_UNAVAILABLE");
+
+  const ledger = new MemoryAiLedger();
+  const deepseek = fakeDeepseek({});
+  const ai = harness(clock, undefined, () => aiGenerator({ fetchImplementation: deepseek.fetchImplementation, ledger }));
+  const v1 = await ai.plansFor(ME).createVersion(template());
+  const routes = ai.reanalyzeFor(ME);
+  const created = await routes.POST(post({ basePlanId: v1.plan.id, idempotencyKey: "a1", origin: "ai_regenerate" }));
+  assert.equal(created.status, 201);
+  const body = await created.json();
+  assert.deepEqual(body.data.quota, { limit: 1, month: "2026-10", remaining: 1, used: 0 });
+  const replay = await routes.POST(post({ basePlanId: v1.plan.id, idempotencyKey: "a2", origin: "ai_regenerate" }));
+  assert.equal(replay.status, 200);
+  assert.equal((await replay.json()).data.replayed, true);
+  // 新版本已是 AI 计划：再要求 AI 重新生成 → 400。
+  const notTemplate = await routes.POST(post({ basePlanId: body.data.planId, idempotencyKey: "a3", origin: "ai_regenerate" }));
+  assert.equal(notTemplate.status, 400);
+  assert.equal((await notTemplate.json()).error.context.reason, "INVALID_INPUT");
+
+  ledger.preset.user = USER_POOL_DAILY_LIMIT;
+  const before = deepseek.requests.length;
+  const limited = await routes.POST(post({ basePlanId: body.data.planId, idempotencyKey: "r1", origin: "reanalysis" }));
+  assert.equal(limited.status, 429);
+  assert.equal((await limited.json()).error.context.reason, "USER_DAILY_LIMIT");
+  assert.equal(deepseek.requests.length, before);
 });

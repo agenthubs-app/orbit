@@ -1374,7 +1374,7 @@ test("W0014 my plan (demo): no plan / ledger requests on mount; ticking and noti
 
 function mountTrackedPlan(
   t: TestContext,
-  tracking: { currentGoal: string | null; quotaRemaining: number | null; periodContacts?: null | { total: number; byEvent: Array<{ eventId: string; title: string | null; count: number }> } },
+  tracking: { currentGoal: string | null; quotaRemaining: number | null; aiProvider?: boolean; periodContacts?: null | { total: number; byEvent: Array<{ eventId: string; title: string | null; count: number }> } },
   now: Date = PLAN_NOW,
 ) {
   return mount(
@@ -1625,4 +1625,98 @@ test("W0021: the projected plan snapshot renders the same plan page, week summar
     assert.deepEqual(buildPlanWeekSummary({ ...projected, log: [] }, PLAN_NOW, lang, []), buildPlanWeekSummary(full, PLAN_NOW, lang, []));
   }
   assert.deepEqual(planEventReasons({ ...projected, log: [] }), planEventReasons(full));
+});
+
+/* ── W0048b：老模板计划「AI 重新生成」与 AI 计划的骨架阶段 ─────────────────────── */
+
+test("W0048b my plan: a template plan with the AI provider shows the regenerate hint; without it nothing is shown", async (t) => {
+  const off = await mountTrackedPlan(t, { currentGoal: null, quotaRemaining: 1 });
+  assert.equal(byAttr(off.root, "data-orbit-plan-ai-regenerate").length, 0);
+  const on = await mountTrackedPlan(t, { aiProvider: true, currentGoal: null, quotaRemaining: 1 });
+  const row = byAttr(on.root, "data-orbit-plan-ai-regenerate")[0]!;
+  assert.equal(row.props["data-orbit-plan-ai-regenerate"], "ready");
+  assert.ok(flatText(row).includes("这份计划由模板生成，可用 AI 重新生成（不占本月重新分析次数）"));
+  assert.equal(flatText(byAttr(on.root, "data-orbit-plan-ai-regenerate-button")[0]!), "AI 重新生成");
+});
+
+test("W0048b my plan: AI regenerate POSTs ai_regenerate once, then shows the new version", async (t) => {
+  const mounted = await mountTrackedPlan(t, { aiProvider: true, currentGoal: null, quotaRemaining: 1 });
+  const aiPlan = planSnapshotFixture();
+  const calls = routePlanFetch((call) => {
+    if (call.url === "/api/agent/plans/reanalyze") {
+      return Response.json(
+        { data: { planId: "plan:v2", quota: { limit: 1, month: "2026-09", remaining: 1, used: 0 }, replayed: false, version: 2 }, success: true },
+        { status: 201 },
+      );
+    }
+    if (call.url === "/api/agent/plans/current") {
+      return Response.json({
+        data: { ...aiPlan, plan: { ...aiPlan.plan, analysis: { ...aiPlan.plan.analysis, generator: "deepseek-plan-v1", origin: "ai_regenerate" }, id: "plan:v2", version: 2 } },
+        success: true,
+      });
+    }
+    return Response.json({ success: false }, { status: 404 });
+  });
+  await act(async () => {
+    byAttr(mounted.root, "data-orbit-plan-ai-regenerate-button")[0]!.props.onClick();
+  });
+  await mounted.settle();
+  const posts = calls.filter((call) => call.url === "/api/agent/plans/reanalyze");
+  assert.equal(posts.length, 1);
+  assert.equal((posts[0]!.body as { origin: string }).origin, "ai_regenerate");
+  assert.match((posts[0]!.body as { idempotencyKey: string }).idempotencyKey, /^plan-ai-regenerate:/);
+  const row = byAttr(mounted.root, "data-orbit-plan-ai-regenerate")[0]!;
+  assert.equal(row.props["data-orbit-plan-ai-regenerate"], "done");
+  assert.ok(flatText(row).includes("已用 AI 重新生成，现在是 v2"));
+  // 重新分析额度没有变。
+  assert.equal(flatText(byAttr(mounted.root, "data-orbit-plan-reanalyse")[0]!), "重新分析 · 本月剩 1 次");
+});
+
+test("W0048b my plan: the user pool used up (429 USER_DAILY_LIMIT) greys out the buttons with 今天次数已用完，明天可用", async (t) => {
+  const mounted = await mountTrackedPlan(t, { aiProvider: true, currentGoal: null, quotaRemaining: 1 });
+  routePlanFetch(() =>
+    Response.json(
+      { error: { code: "CONFLICT", context: { reason: "USER_DAILY_LIMIT", retryOn: "2026-09-28T15:00:00.000Z" }, message: "limit" }, success: false },
+      { status: 429 },
+    ),
+  );
+  await act(async () => {
+    byAttr(mounted.root, "data-orbit-plan-ai-regenerate-button")[0]!.props.onClick();
+  });
+  await mounted.settle();
+  const button = byAttr(mounted.root, "data-orbit-plan-ai-regenerate-button")[0]!;
+  assert.equal(button.props.disabled, true);
+  assert.equal(flatText(button), "今天次数已用完，明天可用");
+  assert.ok(flatText(byAttr(mounted.root, "data-orbit-plan-followup-error")[0]!).includes("今天次数已用完，明天可用"));
+  assert.equal(byAttr(mounted.root, "data-orbit-plan-reanalyse")[0]!.props.disabled, true);
+});
+
+test("W0048b my plan: an AI plan's skeleton phase shows its summary; once started and not yet refined it says 明天更新", async (t) => {
+  const base = planSnapshotFixture();
+  const analysis = base.plan.analysis as { phases: Array<{ key: string; detailed: boolean }> };
+  const aiSnapshot = {
+    ...base,
+    items: base.items.filter((item) => item.phaseKey !== "p3"),
+    plan: {
+      ...base.plan,
+      analysis: { ...base.plan.analysis, generator: "deepseek-plan-v1", phases: analysis.phases.map((phase) => (phase.key === "p3" ? { ...phase, detailed: false } : phase)) },
+      phases: base.plan.phases.map((phase) => (phase.key === "p3" ? { ...phase, summary: "把聊过的人推进到试用。" } : phase)),
+    },
+  };
+  const early = await mount(t, <IOrbitPlan guideEnabled initialSnapshot={aiSnapshot} now={PLAN_NOW} />);
+  const upcoming = byAttr(early.root, "data-orbit-plan-phase-refinement");
+  assert.deepEqual(upcoming.map((node) => node.props["data-orbit-plan-phase-refinement"]), []);
+  // 阶段卡默认只展开当前段；展开第 3 段看到骨架提示。
+  const p3 = early.root.root.findAll((node) => node.props?.["data-orbit-plan-phase"] === "p3")[0]!;
+  await act(async () => {
+    p3.findAll((node) => node.type === "button")[0]!.props.onClick();
+  });
+  const note = byAttr(early.root, "data-orbit-plan-phase-refinement")[0]!;
+  assert.equal(note.props["data-orbit-plan-phase-refinement"], "upcoming");
+  assert.ok(flatText(p3).includes("把聊过的人推进到试用。"));
+
+  const late = await mount(t, <IOrbitPlan guideEnabled initialSnapshot={aiSnapshot} now={new Date("2026-11-10T03:00:00.000Z")} />);
+  const pending = byAttr(late.root, "data-orbit-plan-phase-refinement")[0]!;
+  assert.equal(pending.props["data-orbit-plan-phase-refinement"], "pending");
+  assert.ok(flatText(pending).includes("明天更新"));
 });

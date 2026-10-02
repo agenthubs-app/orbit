@@ -21,13 +21,28 @@ export interface AiQuotaReserveInput {
   trigger: AiQuotaTrigger;
   idempotencyKey: string;
   now: Date;
+  /**
+   * W0048b（review P1）：同键已有一笔仍在 reserved 的操作时，调用方是否接管它。只给自带租约／认领的调用方
+   * （memo 提取的认领胜者、快照 worker 的 job 租约持有者）——它们的租约就是所有权，接管的是崩溃的前任。
+   * 请求路径（计划生成、手动重新分析）不传：同键并发方拿到 `owner: false`，不得 beginCall／finish。
+   */
+  takeover?: boolean;
 }
 
 /** 拒绝时是哪一道额度：手动重新分析 3 次、用户池总熔断 10 次、后台池 60 次。 */
 export type AiQuotaLimit = "manual" | "user" | "background";
 
 export type AiQuotaReservation =
-  | { ok: true; operationId: string }
+  | {
+      ok: true;
+      operationId: string;
+      /**
+       * true = 本次调用拥有这笔操作（新建、重开 released 的，或带 `takeover` 接管 reserved 的），可以 beginCall／finish；
+       * false = 同键操作已在别处进行（`status: "reserved"`）或已结束（succeeded／failed），调用方不得执行或结算它。
+       */
+      owner: boolean;
+      status: "reserved" | "succeeded" | "failed";
+    }
   | { ok: false; reason: "disabled" | "daily_limit"; retryOn?: string; limit?: AiQuotaLimit };
 
 export interface AiQuotaGate {

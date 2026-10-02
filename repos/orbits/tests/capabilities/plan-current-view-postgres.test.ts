@@ -20,7 +20,8 @@ import { createPlanRouteHandlers } from "../../app/api/agent/plans/route-handler
 import type { PlanService } from "../../features/plans/contract";
 import { runPlanMigrations } from "../../features/plans/migrations";
 import { createMockPlanGenerator } from "../../features/plans/mock-generator";
-import { createPhaseRefiner } from "../../features/plans/phase-refinement";
+import { AI_PLAN_GENERATOR_ID, createPhaseRefiner, defaultPhaseRefiner } from "../../features/plans/phase-refinement";
+import { createPostgresPlanMatchRepository } from "../../features/plans/matching-repository";
 import { createAllowListPlanReferenceValidator } from "../../features/plans/reference-validator";
 import { createPostgresPlanRepository, type PlanPoolLike } from "../../features/plans/repository";
 import { createPlanService } from "../../features/plans/service";
@@ -223,5 +224,93 @@ test("the API and the plan page SSR read the same snapshot; the home view skips 
     assert.equal("updatedAt" in home.data.plan, false);
     assert.equal("planId" in home.data.items[0], false);
     assert.equal("idempotencyKey" in first.data.log[0], false);
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* W0048b SC-03：AI 计划的读取路径 0 次模型调用；补细候选 SQL                   */
+/* ------------------------------------------------------------------ */
+
+/** 一份一年期 AI 计划：前 2 段已细化，第 3、4 段是骨架（`analysis.phases[i].detailed = false`、无条目）。 */
+const AI_YEAR_PLAN = planInput({
+  analysis: {
+    generator: AI_PLAN_GENERATOR_ID,
+    kind: "plan_bootstrap",
+    locale: "zh",
+    phases: [
+      { detailed: true, followups: [], key: "p1", who: [] },
+      { detailed: true, followups: [], key: "p2", who: [] },
+      { detailed: false, followups: [], key: "p3", who: [] },
+      { detailed: false, followups: [], key: "p4", who: [] },
+    ],
+  },
+  horizon: "year",
+  items: [
+    { kind: "action", phaseKey: "p1", suggestedWeek: 1, title: "列出 10 位目标客户" },
+    { kind: "action", phaseKey: "p2", suggestedWeek: 14, title: "完成 8 次 20 分钟的交流" },
+  ],
+  phases: [
+    { endWeek: 13, granularity: "quarter", key: "p1", startWeek: 1, title: "摸清需求" },
+    { endWeek: 26, granularity: "quarter", key: "p2", startWeek: 14, title: "集中接触" },
+    { endWeek: 39, granularity: "quarter", key: "p3", startWeek: 27, summary: "推进落地", title: "推进落地" },
+    { endWeek: 52, granularity: "quarter", key: "p4", startWeek: 40, summary: "复盘放大", title: "复盘放大" },
+  ],
+  startsOn: "2026-09-28",
+});
+
+test("W0048b SC-03: GET current and the plan page SSR on an AI plan make 0 model calls and only log the phase entry", databaseTest, async () => {
+  await withPlansDatabase(async (pool) => {
+    const clock = { now: "2026-09-28T03:00:00.000Z" };
+    const spy = { calls: 0 };
+    const mock = createMockPlanGenerator();
+    let tick = 0;
+    const plans = createPlanService({
+      now: () => new Date(Date.parse(clock.now) + tick++).toISOString(),
+      phaseRefiner: defaultPhaseRefiner({
+        id: mock.id,
+        phaseDetail: async (input, phase) => {
+          spy.calls += 1;
+          return mock.phaseDetail(input, phase);
+        },
+        skeleton: async (input) => {
+          spy.calls += 1;
+          return mock.skeleton(input);
+        },
+      }),
+      references: createAllowListPlanReferenceValidator({ actorId: ALICE, allowList: { contactsByActor: "any", eventIds: "any" } }),
+      repository: createPostgresPlanRepository({ pool: pool as unknown as PlanPoolLike }),
+      scope: { actorId: ALICE, workspaceId: WORKSPACE },
+    });
+    const created = await plans.createVersion(AI_YEAR_PLAN);
+    clock.now = "2026-12-29T03:00:00.000Z"; // 第 14 周（第 2 段）
+    const resolve = () => ({ mode: "live" as const, service: plans, success: true as const });
+    const ssr = await readCurrentPlan(ALICE, resolve as never);
+    const routes = createPlanRouteHandlers({ resolveActor: async () => ({ id: ALICE }) as never, serviceForActor: resolve as never });
+    const api = await (await routes.GET_CURRENT(new Request("http://test/api/agent/plans/current"))).json();
+    assert.equal(spy.calls, 0, "opening the page never calls a generator for an AI plan");
+    assert.notEqual(ssr.snapshot, "unavailable");
+    assert.equal(await phaseEnteredRows(pool, created.plan.id), 1);
+    assert.equal(api.data.items.filter((item: { phaseKey: string }) => item.phaseKey === "p2").length, 1, "nothing was refined on read");
+    assert.ok(api.data.log.some((entry: { event: string }) => entry.event === "phase_entered"));
+
+    // 补细候选（维护任务用）：第 2 段已开始 → 第 3 段待补；第 4 段的前一阶段还没开始 → 不在列。
+    const matching = createPostgresPlanMatchRepository({ pool: pool as never, workspaceId: WORKSPACE });
+    const today = "2026-12-29";
+    assert.deepEqual(await matching.listActorsNeedingPhaseRefinement!({ aiGeneratorId: AI_PLAN_GENERATOR_ID, limit: 10, today }), [ALICE]);
+    const targets = await plans.phaseRefinementTargets();
+    assert.deepEqual(targets?.targets, [2]);
+    const applied = await plans.applyPhaseRefinement({
+      items: [{ kind: "action", phaseKey: "ignored", suggestedWeek: 27, title: "约 3 位采购负责人" }],
+      phaseIndex: 2,
+      planId: created.plan.id,
+    });
+    assert.equal(applied.applied, true);
+    assert.equal(applied.items[0]!.phaseKey, "p3");
+    // 幂等：同一阶段再写不生效；候选里不再出现。
+    assert.equal((await plans.applyPhaseRefinement({ items: [], phaseIndex: 2, planId: created.plan.id })).reason, "already_refined");
+    assert.deepEqual(await matching.listActorsNeedingPhaseRefinement!({ aiGeneratorId: AI_PLAN_GENERATOR_ID, limit: 10, today }), []);
+    assert.equal(await plans.phaseRefinementTargets(), null);
+    // mock 计划不在候选里。
+    assert.deepEqual(await matching.listActorsNeedingPhaseRefinement!({ aiGeneratorId: "mock-template-v1", limit: 10, today }), []);
   });
 });

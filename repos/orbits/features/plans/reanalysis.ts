@@ -17,11 +17,13 @@
  * 带入已完成的内容，任一步失败都不留下半份新版本。
  */
 import type { PlanHorizon, PlanReferenceValidator, PlanService, PlanSnapshot, PlanVersionOrigin, PlanViewItem, PlanViewSnapshot } from "./contract";
-import { generatePlanDraft, type PlanGenerator, type PlanGeneratorInput, type PlanLocale } from "./generator";
+import { isMeteredPlanGenerator, runPlanGeneration, type PlanGenerator, type PlanGeneratorInput, type PlanLocale } from "./generator";
 import { selectPlanContacts } from "./input-selector";
 import type { PlanInputSource } from "./input-source";
 import type { PlanMatchRepository } from "./matching-repository";
+import { MOCK_PLAN_GENERATOR_ID } from "./mock-generator";
 import { validateGeneratedPlan } from "./validate";
+import { PlanServiceError } from "./validators";
 import { planTokyoDate, planWeekState, planWeeksOverdue } from "./week";
 
 export const REANALYSIS_MONTHLY_LIMIT = 1;
@@ -159,9 +161,29 @@ export class PlanFollowUpError extends Error {
 }
 
 export const PLAN_FOLLOW_UP_KEY_PREFIX: Record<PlanVersionOrigin, string> = {
+  ai_regenerate: "ai-regenerate:",
   next_plan: "next-plan:",
   reanalysis: "reanalyze:",
 };
+
+/**
+ * 新版本的 creationKey。W0048b：`ai_regenerate` 按旧计划 id（每份老模板计划只生成一次，重复点击 replay），
+ * 其余按这次点击的幂等键。
+ */
+export function planFollowUpCreationKey(request: Pick<PlanFollowUpRequest, "origin" | "basePlanId" | "idempotencyKey">): string {
+  return request.origin === "ai_regenerate"
+    ? `${PLAN_FOLLOW_UP_KEY_PREFIX.ai_regenerate}${request.basePlanId}`
+    : `${PLAN_FOLLOW_UP_KEY_PREFIX[request.origin]}${request.idempotencyKey}`;
+}
+
+/** 这份生效计划就是这次请求（同一来历 + 同一幂等键，或同一份老计划的 AI 重新生成）已经保存的结果吗？ */
+function isFollowUpReplay(active: PlanSnapshot | null, request: PlanFollowUpRequest): boolean {
+  if (!active) return false;
+  const analysis = active.plan.analysis as { origin?: unknown; request?: { idempotencyKey?: unknown } };
+  if (analysis.origin !== request.origin) return false;
+  if (request.origin === "ai_regenerate") return active.plan.previousPlanId === request.basePlanId;
+  return analysis.request?.idempotencyKey === request.idempotencyKey;
+}
 
 /**
  * W0023：生效计划里人脉需求已关联的联系人 → 称呼。只读需求投影（一次）与这些联系人的称呼（一次批量），
@@ -198,6 +220,17 @@ export function createPlanFollowUpService(input: {
     async create(request: PlanFollowUpRequest): Promise<PlanFollowUpResult> {
       const goalText = request.goal.text.trim();
       if (!goalText) throw new PlanFollowUpError("GOAL_REQUIRED", "Write a goal before asking for a new plan.");
+      // W0048b：按操作计次的生成器在预留之前先认出重放（0 次调用、不再计次）；mock 仍由 creationKey 在保存事务里认出。
+      if (isMeteredPlanGenerator(input.generator)) {
+        const active = await input.plans.getCurrent();
+        if (isFollowUpReplay(active, request)) return { replayed: true, snapshot: active! };
+        // ai_regenerate 的条件在预留之前核一次（保存事务里再核一次）：不满足不花一次调用。
+        if (request.origin === "ai_regenerate" && (!active || active.plan.id !== request.basePlanId || active.plan.analysis.generator !== MOCK_PLAN_GENERATOR_ID)) {
+          throw new PlanServiceError("INVALID_INPUT", "Only the active template-generated plan can be regenerated with AI.");
+        }
+      } else if (request.origin === "ai_regenerate") {
+        throw new PlanServiceError("INVALID_INPUT", "AI regeneration needs the AI plan generator.");
+      }
       const at = now();
       const selectorGoal = goalText;
       const [read, events] = await Promise.all([
@@ -222,35 +255,44 @@ export function createPlanFollowUpService(input: {
         startsOn: planTokyoDate(at),
         supplement: null,
       };
-      let draft;
-      try {
-        draft = await generatePlanDraft(input.generator, generatorInput, { idempotencyKey: request.idempotencyKey });
-      } catch (error) {
-        throw new PlanFollowUpError("PLAN_GENERATION_FAILED", "The plan could not be generated. Nothing was saved; please try again.", {
-          cause: error,
-        });
-      }
-      await validateGeneratedPlan({ draft, generatorInput, references: input.references });
-      // 称呼只影响行动标题：读失败不挡住新计划，退回「约 TA」。
-      let contactNames: Readonly<Record<string, string>> | undefined;
-      if (input.readLinkedContactNames) {
-        try {
-          contactNames = await input.readLinkedContactNames(input.actorId);
-        } catch (error) {
-          console.warn("[plans] linked contact names unavailable; next-plan actions use 约 TA", error);
-        }
-      }
-      const outcome = await input.plans.createVersionWithOutcome(
-        {
-          ...draft,
-          analysis: { ...draft.analysis, origin: request.origin },
-          basePlanId: request.basePlanId,
-          creationKey: `${PLAN_FOLLOW_UP_KEY_PREFIX[request.origin]}${request.idempotencyKey}`,
-          sourceSessionId: null,
+      const creationKey = planFollowUpCreationKey(request);
+      return runPlanGeneration({
+        generator: input.generator,
+        idempotencyKey: request.idempotencyKey,
+        input: generatorInput,
+        // review P2-2：ai_regenerate 以固定的 `ai-regenerate:<旧计划 id>` 做 single-flight（不同点击键并发也只有一条 HTTP 链）；
+        // 失败后再点按尝试序号重新认领（`#2`、`#3`…），点击键只用于请求自身的重放。
+        ledgerKey: creationKey,
+        retryAfterFailure: request.origin === "ai_regenerate",
+        now: at,
+        save: async (draft, planId) => {
+          // 称呼只影响行动标题：读失败不挡住新计划，退回「约 TA」。
+          let contactNames: Readonly<Record<string, string>> | undefined;
+          if (input.readLinkedContactNames) {
+            try {
+              contactNames = await input.readLinkedContactNames(input.actorId);
+            } catch (error) {
+              console.warn("[plans] linked contact names unavailable; next-plan actions use 约 TA", error);
+            }
+          }
+          const outcome = await input.plans.createVersionWithOutcome(
+            {
+              ...draft,
+              analysis: { ...draft.analysis, origin: request.origin },
+              basePlanId: request.basePlanId,
+              creationKey,
+              sourceSessionId: null,
+            },
+            { contactNames, origin: request.origin, ...(planId ? { planId } : {}) },
+          );
+          return { replayed: !outcome.created, snapshot: outcome.snapshot };
         },
-        { contactNames, origin: request.origin },
-      );
-      return { replayed: !outcome.created, snapshot: outcome.snapshot };
+        validate: (draft) => validateGeneratedPlan({ draft, generatorInput, references: input.references }),
+        wrapGenerationError: (error) =>
+          new PlanFollowUpError("PLAN_GENERATION_FAILED", "The plan could not be generated. Nothing was saved; please try again.", {
+            cause: error,
+          }),
+      });
     },
   };
 }

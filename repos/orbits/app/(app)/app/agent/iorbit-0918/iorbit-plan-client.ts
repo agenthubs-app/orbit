@@ -35,9 +35,13 @@ export function invalidatePlanReads(options: { candidates?: boolean } = {}): voi
 }
 
 export class PlanClientError extends Error {
-  constructor(message: string) {
+  /** 服务端给出的原因（`error.context.reason`，例如 W0048b 的 `USER_DAILY_LIMIT`）；没有时为 null。 */
+  readonly reason: string | null;
+
+  constructor(message: string, reason: string | null = null) {
     super(message);
     this.name = "PlanClientError";
+    this.reason = reason;
   }
 }
 
@@ -52,12 +56,13 @@ export function newPlanIdempotencyKey(prefix: string): string {
 async function readEnvelope<T>(response: Response): Promise<T> {
   const body = (await response.json().catch(() => null)) as {
     data?: T;
-    error?: { message?: unknown };
+    error?: { message?: unknown; context?: { reason?: unknown } };
     success?: boolean;
   } | null;
   if (!response.ok || !body?.success) {
     const message = typeof body?.error?.message === "string" ? body.error.message : `HTTP ${response.status}`;
-    throw new PlanClientError(message);
+    const reason = typeof body?.error?.context?.reason === "string" ? body.error.context.reason : null;
+    throw new PlanClientError(message, reason);
   }
   return body.data as T;
 }
@@ -121,7 +126,10 @@ export async function postPlanNote(
   return entry;
 }
 
-/** 重新分析（`reanalysis`，占本月额度）或到期后的下一份（`next_plan`，不占额度）。键由调用方为一次点击持有。 */
+/**
+ * 重新分析（`reanalysis`，占本月额度）、到期后的下一份（`next_plan`，不占额度）或老模板计划的 AI 重新生成
+ * （`ai_regenerate`，W0048b，不占额度）。键由调用方为一次点击持有。
+ */
 export async function postPlanReanalyze(input: {
   basePlanId: string;
   origin: PlanVersionOrigin;

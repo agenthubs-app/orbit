@@ -33,7 +33,7 @@
 
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 
-import type { PlanViewSnapshot } from "../../../../../features/plans/contract";
+import type { PlanVersionOrigin, PlanViewSnapshot } from "../../../../../features/plans/contract";
 import {
   DemoBanner,
   DemoInterceptLayer,
@@ -59,6 +59,7 @@ import {
   newPlanIdempotencyKey,
   patchPlanActionDone,
   postPlanNote,
+  PlanClientError,
   postPlanReanalyze,
   withActionDone,
   withLogEntry,
@@ -144,6 +145,7 @@ function IOrbitPlanScreen({
           periodContacts: demoActive ? null : initialTracking?.periodContacts ?? null,
           quotaRemaining,
           snapshot,
+          aiProvider: demoActive ? false : initialTracking?.aiProvider === true,
         })
       : null;
   const screenTitle = t({ en: "My plan", zh: "我的计划" });
@@ -285,9 +287,12 @@ function PlanBody({
   const [promptDismissed, setPromptDismissed] = useState(false);
   const [followUpBusy, setFollowUpBusy] = useState(false);
   const [followUpError, setFollowUpError] = useState<string | null>(null);
-  const followUpKey = useRef<{ origin: "reanalysis" | "next_plan"; key: string } | null>(null);
+  const followUpKey = useRef<{ origin: PlanVersionOrigin; key: string } | null>(null);
+  // W0048b：AI 生成当日用满（429 USER_DAILY_LIMIT）后，生成类按钮置灰并提示「今天次数已用完，明天可用」。
+  const [dailyLimited, setDailyLimited] = useState(false);
+  const [aiRegenerated, setAiRegenerated] = useState(false);
 
-  const createFollowUp = async (origin: "reanalysis" | "next_plan") => {
+  const createFollowUp = async (origin: PlanVersionOrigin) => {
     if (guardWrite) {
       guardWrite(t({ en: "plan", zh: "计划" }));
       return;
@@ -296,7 +301,8 @@ function PlanBody({
     setFollowUpBusy(true);
     setFollowUpError(null);
     if (followUpKey.current?.origin !== origin) {
-      followUpKey.current = { key: newPlanIdempotencyKey(origin === "next_plan" ? "plan-next" : "plan-reanalyze"), origin };
+      const prefix = origin === "next_plan" ? "plan-next" : origin === "ai_regenerate" ? "plan-ai-regenerate" : "plan-reanalyze";
+      followUpKey.current = { key: newPlanIdempotencyKey(prefix), origin };
     }
     try {
       const result = await postPlanReanalyze({
@@ -307,8 +313,21 @@ function PlanBody({
       });
       followUpKey.current = null;
       setPromptDismissed(true);
+      if (origin === "ai_regenerate") setAiRegenerated(true);
       onReanalysed(result.quota?.remaining ?? null);
     } catch (error) {
+      // 服务端明确拒绝（含 AI 生成失败已计次）：下次点击换新的键；只有断线（没有响应）才沿用同一个键重放。
+      // 同一个键的请求还在生成（409 GENERATION_IN_PROGRESS）：保留键，稍后重试会取回那次的结果。
+      if (error instanceof PlanClientError && error.reason !== "GENERATION_IN_PROGRESS") followUpKey.current = null;
+      if (error instanceof PlanClientError && error.reason === "GENERATION_IN_PROGRESS") {
+        setFollowUpError(t({ en: "Still generating — try again in a moment.", zh: "还在生成中，请稍后再试。" }));
+        return;
+      }
+      if (error instanceof PlanClientError && error.reason === "USER_DAILY_LIMIT") {
+        setDailyLimited(true);
+        setFollowUpError(t({ en: "You've used today's AI runs. Try again tomorrow.", zh: "今天次数已用完，明天可用。" }));
+        return;
+      }
       setFollowUpError(
         t({
           en: `Couldn't create the new plan. Nothing was changed. (${(error as Error).message})`,
@@ -407,7 +426,7 @@ function PlanBody({
     });
 
   const remaining = tracking?.quotaRemaining ?? null;
-  const reanalyseDisabled = followUpBusy || view.week.ended || (!guardWrite && (remaining === null || remaining <= 0));
+  const reanalyseDisabled = followUpBusy || dailyLimited || view.week.ended || (!guardWrite && (remaining === null || remaining <= 0));
   const prompts = tracking && !promptDismissed && !view.week.ended ? tracking.prompts : [];
   const selectedMentions = view.mentionOptions.filter((option) =>
     option.kind === "event" ? option.id === mentionEvent : mentionContacts.includes(option.id),
@@ -530,6 +549,37 @@ function PlanBody({
             <span>{view.ruler.endLabel}</span>
           </div>
         </div>
+        {tracking?.aiRegenerate || aiRegenerated ? (
+          <section className="ir-p-track" data-orbit-plan-ai-regenerate={aiRegenerated && !tracking?.aiRegenerate ? "done" : followUpBusy ? "busy" : "ready"}>
+            {aiRegenerated && !tracking?.aiRegenerate ? (
+              <p>{t({ en: `This plan was regenerated with AI (v${view.version}).`, zh: `已用 AI 重新生成，现在是 v${view.version}。` })}</p>
+            ) : (
+              <>
+                <p>
+                  {t({
+                    en: "This plan was made from a template. You can regenerate it with AI (doesn't use this month's re-analysis).",
+                    zh: "这份计划由模板生成，可用 AI 重新生成（不占本月重新分析次数）",
+                  })}
+                </p>
+                <div className="ir-p-track-acts">
+                  <button
+                    className="btn ir-p-track-btn"
+                    data-orbit-plan-ai-regenerate-button
+                    disabled={followUpBusy || dailyLimited}
+                    onClick={() => void createFollowUp("ai_regenerate")}
+                    type="button"
+                  >
+                    {followUpBusy
+                      ? t({ en: "Regenerating with AI…", zh: "正在用 AI 重新生成…" })
+                      : dailyLimited
+                        ? t({ en: "Available again tomorrow", zh: "今天次数已用完，明天可用" })
+                        : t({ en: "Regenerate with AI", zh: "AI 重新生成" })}
+                  </button>
+                </div>
+              </>
+            )}
+          </section>
+        ) : null}
         {followUpError ? (
           <p className="ir-p-alert" data-orbit-plan-followup-error role="alert">
             {followUpError}
@@ -553,7 +603,7 @@ function PlanBody({
               <button
                 className="btn ir-p-track-btn"
                 data-orbit-plan-next
-                disabled={followUpBusy}
+                disabled={followUpBusy || dailyLimited}
                 onClick={() => void createFollowUp("next_plan")}
                 type="button"
               >
@@ -973,6 +1023,19 @@ function PhaseBlock({ onToggle, open, phase }: { onToggle: () => void; open: boo
       label: t({ en: "Follow-up", zh: "之后怎么跟进" }),
     });
   }
+  // W0048b（D46②）：AI 计划的骨架阶段——只有标题与摘要；已经开始仍未补细时显示「明天更新」。
+  if (phase.refinement !== "none") {
+    rows.push({
+      body: (
+        <div className="ir-p-info-none" data-orbit-plan-phase-refinement={phase.refinement}>
+          {phase.refinement === "pending"
+            ? t({ en: "Updating tomorrow — the detailed actions for this phase are on their way.", zh: "明天更新：这一段的具体行动正在补充。" })
+            : t({ en: "Detailed actions are added once the previous phase starts.", zh: "上一段开始后会补充这一段的具体行动。" })}
+        </div>
+      ),
+      label: t({ en: "Details", zh: "细节" }),
+    });
+  }
 
   return (
     <div className={phase.current ? "ir-p-phase ir-p-phase-cur" : "ir-p-phase"} data-orbit-plan-phase={phase.key}>
@@ -986,7 +1049,7 @@ function PhaseBlock({ onToggle, open, phase }: { onToggle: () => void; open: boo
         <span className="ir-p-pn">{phase.n}</span>
         <b className="ir-p-phase-name">{phase.title}</b>
         <span className="ir-p-phase-sub">
-          {phase.weeksLabel} · {progress}
+          {phase.weeksLabel} · {phase.refinement === "pending" ? t({ en: "Updating tomorrow", zh: "明天更新" }) : progress}
         </span>
         <i className="ir-p-phase-toggle">
           {open ? t({ en: "Collapse ▴", zh: "收起 ▴" }) : t({ en: "Expand ▾", zh: "展开 ▾" })}
