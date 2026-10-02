@@ -86,6 +86,14 @@ export type EnsureRelationshipStrengthsResult =
   | { status: "skipped"; state: RelationshipStrengthState }
   | { status: "unconfigured"; state: null };
 
+/** 来源行数触顶（RELATIONSHIP_STRENGTH_SOURCE_ROW_LIMIT）：结果不完整，不写缓存。 */
+export class RelationshipStrengthSourceLimitError extends Error {
+  constructor(readonly sources: readonly string[]) {
+    super(`RELATIONSHIP_STRENGTH_SOURCE_LIMIT: ${sources.join(",")}`);
+    this.name = "RelationshipStrengthSourceLimitError";
+  }
+}
+
 export function relationshipStrengthTokyoDate(now: Date): string {
   return new Date(tokyoDayNumber(now.getTime()) * DAY_MS).toISOString().slice(0, 10);
 }
@@ -147,10 +155,12 @@ export async function ensureRelationshipStrengths(
   const key = { sourceStamp, tokyoDate: relationshipStrengthTokyoDate(now), rulesVersion: rules.version };
   if (stateIsCurrent(state, key)) return { status: "fresh", state };
   const timelines = await store.readTimelines(actor, now);
-  const computed = computeActorRelationshipStrengths(actor, timelines, { now, sourceStamp }, rules);
   if (timelines.truncatedSources.length > 0) {
-    console.warn(JSON.stringify({ event: "relationship_strength_sources_truncated", actorId: actor, sources: timelines.truncatedSources }));
+    // W0047 review P2-3：任一来源触顶即视为刷新失败——零写入、保留旧缓存、记日志（游标分页是后续候选）。
+    console.error(JSON.stringify({ event: "relationship_strength_sources_truncated", actorId: actor, sources: timelines.truncatedSources }));
+    throw new RelationshipStrengthSourceLimitError(timelines.truncatedSources);
   }
+  const computed = computeActorRelationshipStrengths(actor, timelines, { now, sourceStamp }, rules);
   const written = await store.replaceIfCurrent(actor, { sourceStamp, strengths: computed.strengths, state: computed.state });
   return written ? { status: "recomputed", state: computed.state } : { status: "skipped", state: computed.state };
 }
@@ -227,33 +237,53 @@ type Row = Record<string, unknown>;
 
 const STAMP_COLLECTIONS_SQL = RELATIONSHIP_STRENGTH_STAMP_COLLECTIONS.map((name) => `'${name}'`).join(", ");
 
-/**
- * 来源戳：七个 orbit_records 集合的行数、最大与总和 updated_at（任何插入、更新、删除都会移动其一），
- * 加上 plan_log 的行数与最大 seq（只追加）。不依赖 sync_revision 列（本机库与部分环境没有）。
- */
-const STAMP_SQL = `/* relationship-strength:stamp */
-  select records.row_count, records.max_updated, records.sum_updated, plan.plan_count, plan.plan_max_seq
-  from (
-    select count(*)::text as row_count,
-      coalesce(max(updated_at), 'epoch'::timestamptz)::text as max_updated,
-      coalesce(sum(extract(epoch from updated_at)), 0)::text as sum_updated
-    from orbit_records
-    where workspace_id = $1 and user_id = $2 and collection_name in (${STAMP_COLLECTIONS_SQL}) and lifecycle_state <> 'deleted'
-  ) records,
-  (
+export type RelationshipStrengthStampMode = "revision" | "timestamp";
+
+const PLAN_STAMP_SQL = `(
     select count(*)::text as plan_count, coalesce(max(seq), 0)::text as plan_max_seq
     from plan_log
     where workspace_id = $1 and actor_id = $2 and cardinality(linked_contact_ids) > 0
   ) plan`;
 
-const STAMP_AND_STATE_SQL = `/* relationship-strength:stamp-and-state */
-  select stamp.*, state.payload as state_payload
-  from (${STAMP_SQL}) stamp
+/**
+ * 来源戳（W0047 review P2-4，按能力选择）：
+ * - `revision`：库里有 sync_revision（Sprint 0108 严格触发器，每次插入／更新都取新值）时，用七个集合的
+ *   行数 + max(sync_revision)——同一 updated_at 覆盖写 payload 也能检测到（与 domain-watermark 同一口径）；
+ * - `timestamp`：没有这一列（本机库、未迁移的环境）时退回行数 + 最大／总和 updated_at。已知局限：调用方用
+ *   相同的 updated_at 覆盖 payload 时检测不到，要到跨东京日才重算。
+ * 两种都加 plan_log 的行数与最大 seq（只追加）。
+ */
+export function relationshipStrengthStampSql(mode: RelationshipStrengthStampMode): string {
+  const records = mode === "revision"
+    ? `select count(*)::text as row_count, coalesce(max(sync_revision), 0)::text as max_revision
+    from orbit_records
+    where workspace_id = $1 and user_id = $2 and collection_name in (${STAMP_COLLECTIONS_SQL})`
+    : `select count(*)::text as row_count,
+      coalesce(max(updated_at), 'epoch'::timestamptz)::text as max_updated,
+      coalesce(sum(extract(epoch from updated_at)), 0)::text as sum_updated
+    from orbit_records
+    where workspace_id = $1 and user_id = $2 and collection_name in (${STAMP_COLLECTIONS_SQL}) and lifecycle_state <> 'deleted'`;
+  return `/* relationship-strength:stamp-and-state:${mode} */
+  select records.*, plan.plan_count, plan.plan_max_seq, state.payload as state_payload
+  from (${records}) records,
+  ${PLAN_STAMP_SQL}
   left join lateral (
     select payload from orbit_records
     where workspace_id = $1 and collection_name = '${RELATIONSHIP_STRENGTH_STATE_COLLECTION}' and record_id = $3 and user_id = $2
       and lifecycle_state <> 'deleted'
   ) state on true`;
+}
+
+export function relationshipStrengthStampFrom(mode: RelationshipStrengthStampMode, row: Record<string, unknown> | undefined): string {
+  const records = mode === "revision"
+    ? ["rev", row?.row_count ?? "0", row?.max_revision ?? "0"]
+    : ["ts", row?.row_count ?? "0", row?.max_updated ?? "", row?.sum_updated ?? "0"];
+  return [...records, row?.plan_count ?? "0", row?.plan_max_seq ?? "0"].map(String).join("|");
+}
+
+function isUndefinedColumn(error: unknown): boolean {
+  return (error as { code?: unknown })?.code === "42703";
+}
 
 function stateRecordId(actorId: string): string {
   return `relationship-strength-state:${actorId}`;
@@ -261,10 +291,6 @@ function stateRecordId(actorId: string): string {
 
 function strengthRecordPrefix(actorId: string): string {
   return `relationship-strength:${actorId}:`;
-}
-
-function stampFrom(row: Row | undefined): string {
-  return ["v1", row?.row_count ?? "0", row?.max_updated ?? "", row?.sum_updated ?? "0", row?.plan_count ?? "0", row?.plan_max_seq ?? "0"].map(String).join("|");
 }
 
 function parsePayload<T>(value: unknown): T | null {
@@ -328,14 +354,27 @@ const READ_TIER_BOARD_SQL = `/* relationship-strength:read-board */
   from ranked where position <= $3
   order by tier_group, position`;
 
-export function createPostgresRelationshipStrengthStore(input: { client: RelationshipStrengthPostgresClient; workspaceId: string }): RelationshipStrengthStore {
+export function createPostgresRelationshipStrengthStore(input: { client: RelationshipStrengthPostgresClient; workspaceId: string }): RelationshipStrengthStore & { stampMode(): RelationshipStrengthStampMode } {
   const { client, workspaceId } = input;
+  // 能力检测：先试 sync_revision；本库没有这一列（42703）时退回 updated_at 口径并记住（进程内）。
+  let mode: RelationshipStrengthStampMode = "revision";
+  async function readStamp(sql: RelationshipStrengthSqlExecutor, actorId: string): Promise<{ stamp: string; row: Row | undefined }> {
+    try {
+      const result = await sql.query<Row>(relationshipStrengthStampSql(mode), [workspaceId, actorId, stateRecordId(actorId)]);
+      return { stamp: relationshipStrengthStampFrom(mode, result.rows[0]), row: result.rows[0] };
+    } catch (error) {
+      if (mode !== "revision" || !isUndefinedColumn(error)) throw error;
+      mode = "timestamp";
+      console.warn(JSON.stringify({ event: "relationship_strength_stamp_fallback", reason: "sync_revision column missing" }));
+      return readStamp(sql, actorId);
+    }
+  }
   return {
+    stampMode: () => mode,
     async readStampAndState(actorId) {
-      const result = await client.query<Row>(STAMP_AND_STATE_SQL, [workspaceId, actorId, stateRecordId(actorId)]);
-      const row = result.rows[0];
+      const { stamp, row } = await readStamp(client, actorId);
       const state = parsePayload<RelationshipStrengthState>(row?.state_payload);
-      return { sourceStamp: stampFrom(row), state: state && state.actorId === actorId ? state : null };
+      return { sourceStamp: stamp, state: state && state.actorId === actorId ? state : null };
     },
     readTimelines(actorId, now) {
       return readRelationshipTimelinesForActor(client, workspaceId, { actorId, now });
@@ -344,8 +383,9 @@ export function createPostgresRelationshipStrengthStore(input: { client: Relatio
       return client.transaction(async (tx) => {
         // 同一 actor 的刷新串行化；锁随事务释放。
         await tx.query(`/* relationship-strength:lock */ select pg_advisory_xact_lock(hashtextextended($1, 47))`, [`relationship-strength:${workspaceId}:${actorId}`]);
-        const current = await tx.query<Row>(STAMP_AND_STATE_SQL, [workspaceId, actorId, stateRecordId(actorId)]);
-        const currentStamp = stampFrom(current.rows[0]);
+        // 模式已由事务外的首次读取确定（42703 会中止事务，所以不在事务里探测）。
+        const current = await tx.query<Row>(relationshipStrengthStampSql(mode), [workspaceId, actorId, stateRecordId(actorId)]);
+        const currentStamp = relationshipStrengthStampFrom(mode, current.rows[0]);
         const stored = parsePayload<RelationshipStrengthState>(current.rows[0]?.state_payload);
         if (currentStamp !== sourceStamp) return false;
         if (stateIsCurrent(stored, state)) return false;

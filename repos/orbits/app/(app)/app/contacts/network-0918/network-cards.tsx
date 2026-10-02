@@ -6,7 +6,7 @@ import type { NetworkOpenDetail } from "./network-all";
 import { NetworkDetailModal } from "./network-detail-modal";
 import { NetworkFollowModal } from "./network-follow-modal";
 import { NetworkAvatar, NetworkChip, NetworkShell } from "./network-shell";
-import { NETWORK_SOURCES, SOURCE_ICON, SOURCE_LABEL, STAGE_CHIP, STAGE_LABEL } from "./network-model";
+import { NETWORK_SOURCES, SOURCE_ICON, SOURCE_LABEL, TIER_CHIP, TIER_LABEL, TIER_STYLE } from "./network-model";
 
 /** Server-filtered cards. Only the explicit Next action reads a second page. */
 export function NetworkCards({ view, openDetail }: { view: ContactCardRouteView; openDetail?: NetworkOpenDetail }) {
@@ -48,11 +48,14 @@ export function NetworkCards({ view, openDetail }: { view: ContactCardRouteView;
       <div className="nw-source-grid">{NETWORK_SOURCES.map(source => <a key={source} className="btn nw-source-card" href={`/app/contacts?${new URLSearchParams({ query: view.query, sourceGroup: source })}`} style={{ background: source === view.source ? "#ECEEFB" : "#FFFFFF" }}>
         <span className="nw-source-icon">{SOURCE_ICON[source]}</span><span className="nw-source-copy"><span className="nw-source-label">{t(SOURCE_LABEL[source])}</span><strong className="nw-source-n">{view.counts[source]}</strong></span>
       </a>)}</div>
-      <div className="nw-table"><div className="nw-thead"><span></span><span></span><span>{t({ zh: "姓名", en: "Name" })}</span><span>{t({ zh: "公司与职位", en: "Company & title" })}</span><span>{t({ zh: "来源", en: "Source" })}</span><span>{t({ zh: "关系状态", en: "Status" })}</span><span></span><span>{t({ zh: "下一步（预览）", en: "Next step (preview)" })}</span><span></span></div>
+      <div className="nw-table"><div className="nw-thead"><span></span><span></span><span>{t({ zh: "姓名", en: "Name" })}</span><span>{t({ zh: "公司与职位", en: "Company & title" })}</span><span>{t({ zh: "来源", en: "Source" })}</span><span>{t({ zh: "关系档位", en: "Tier" })}</span><span></span><span>{t({ zh: "下一步（预览）", en: "Next step (preview)" })}</span><span></span></div>
         {list.items.map(p => <a key={p.id} className="btn nw-row" href={p.href}><span></span><NetworkAvatar initial={p.initial} /><strong className="nw-row-name">{p.name}</strong>
           <span className="nw-row-org"><span className="nw-row-org-1">{p.org}</span><span className="nw-row-org-2">{p.title}</span></span>
           <span><NetworkChip bg="#ECEEFB" fg="#2E3270">{t(SOURCE_LABEL[p.source])}</NetworkChip></span>
-          <span><NetworkChip bg={STAGE_CHIP[p.stage].bg} fg={STAGE_CHIP[p.stage].fg}>{p.pending ? t({ zh: "待设置关系", en: "Status not set" }) : t(STAGE_LABEL[p.stage])}</NetworkChip></span>
+          {/* W0047：档位点 + 档位（只由关系时间线推出，待唤醒优先）；没有缓存行显示「未评估」。 */}
+          <span data-network-tier={p.tier ?? "unscored"}>{p.tier
+            ? <NetworkChip bg={TIER_CHIP[p.tier].bg} fg={TIER_CHIP[p.tier].fg}><span className="nw-tier-dot" aria-hidden="true" style={{ background: TIER_STYLE[p.tier].fg }}></span>{t(TIER_LABEL[p.tier])}</NetworkChip>
+            : <NetworkChip bg="#F7F7FD" fg="#6B6F99">{t({ zh: "未评估", en: "Not scored" })}</NetworkChip>}</span>
           <span></span><span className="nw-row-next">{p.next}</span><span className="nw-row-arrow">›</span></a>)}
         {!list.items.length && <div className="nw-empty">{t({ zh: "没有匹配的联系人", en: "No matching contacts" })}</div>}
       </div>

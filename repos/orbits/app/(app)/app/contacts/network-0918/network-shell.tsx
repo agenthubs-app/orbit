@@ -231,6 +231,7 @@ export const NETWORK_STYLES = `
 [data-orbit-real-page="network"] .btn.nw-kanban-more:active { transform: none; }
 [data-orbit-real-page="network"] .nw-kanban-foot { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #6B6F99; padding-top: 8px; border-top: 1px solid #EEEFF8; }
 [data-orbit-real-page="network"] .nw-kanban-v { color: #3B3F7A; }
+[data-orbit-real-page="network"] .nw-tier-dot { display: inline-block; width: 7px; height: 7px; margin-right: 6px; border-radius: 50%; vertical-align: middle; }
 [data-orbit-real-page="network"] .nw-kanban-more-note { padding: 2px 4px; font-size: 12px; color: #6B6F99; }
 [data-orbit-real-page="network"] .nw-kanban-next { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* ── 概览（设计稿 66–171 行）── */

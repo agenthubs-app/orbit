@@ -111,11 +111,16 @@ const strengthContact = {
     signals: [
       { timelineItemId: "schedule:s1", source: "schedule", occurredAt: "2026-09-25T01:00:00.000Z", basePoints: 25, points: 24.4 },
       { timelineItemId: "memo:m1", source: "memo", occurredAt: "2026-09-19T15:00:00.000Z", basePoints: 15, points: 14.3 },
-      // 不在最近 20 条时间线里的信号：标题退回来源名。
+      // 不在最近 20 条时间线里的信号：详情页按 id 读回的条目给出真实标题（review P2-6）。
       { timelineItemId: "encounter:old", source: "encounter", occurredAt: "2026-06-01T03:00:00.000Z", basePoints: 20, points: 9.1 },
+      // 读回也找不到（来源已删除）：退回来源名。
+      { timelineItemId: "followup_done:gone", source: "followup_done", occurredAt: "2026-05-01T03:00:00.000Z", basePoints: 10, points: 3.2 },
     ],
     computedAt: "2026-10-02T03:00:00.000Z", rulesVersion: "rs-2026-10-v1",
   },
+  relationshipSignalItems: [
+    { id: "encounter:old", source: "encounter", contactId: "c1", occurredAt: "2026-06-01T03:00:00.000Z", occurredAtPrecision: "instant", title: { zh: "在活动上见面", en: "Met at an event" }, ref: { store: "human_encounters", recordId: "old" } },
+  ],
 } as never;
 
 test("SC-W0047-04: detail shows the tier tag and the basis panel lists each signal's date, source and timeline title (no score)", async (t) => {
@@ -147,12 +152,12 @@ test("SC-W0047-04: detail shows the tier tag and the basis panel lists each sign
     const text = (node: { children: unknown[] }): string => node.children.map((child) => (typeof child === "string" ? child : text(child as { children: unknown[] }))).join("");
     const lines = rows.map((row) => text(row as never));
     if (language === "zh") {
-      assert.deepEqual(lines, ["9月25日 10:00日程会面：产品演示", "9月20日memo写了 memo", "6月1日 12:00见面见面"]);
+      assert.deepEqual(lines, ["9月25日 10:00日程会面：产品演示", "9月20日memo写了 memo", "6月1日 12:00见面在活动上见面", "5月1日 12:00跟进跟进"]);
     } else {
-      assert.deepEqual(lines, ["Sep 25 10:00ScheduleMeeting: product demo", "Sep 20MemoWrote a memo", "Jun 1 12:00MetMet"]);
+      assert.deepEqual(lines, ["Sep 25 10:00ScheduleMeeting: product demo", "Sep 20MemoWrote a memo", "Jun 1 12:00MetMet at an event", "May 1 12:00Follow-upFollow-up"]);
     }
     // 不显示分数（W47-6）。
-    assert.doesNotMatch(text(basis as never), /83|24\.4|14\.3|9\.1|分/);
+    assert.doesNotMatch(text(basis as never), /83|24\.4|14\.3|9\.1|3\.2|分/);
     await act(async () => { root!.unmount(); });
   }
 });

@@ -94,7 +94,8 @@ function dedupe(scored: readonly Scored[]): Scored[] {
   }
   const byDay = new Map<string, Scored>();
   for (const entry of byRef.values()) {
-    const key = `${entry.item.source}\u0000${entry.future ? "future" : "past"}\u0000${entry.day}`;
+    // 同一来源同一东京日只计最高的一条（已发生与当天未来的约见也在同一组里比较，W0047 review P2-5）。
+    const key = `${entry.item.source}\u0000${entry.day}`;
     const existing = byDay.get(key);
     if (!existing || better(entry, existing)) byDay.set(key, entry);
   }
@@ -199,8 +200,9 @@ export function relationshipTierGroup(strength: Pick<RelationshipStrength, "tier
 }
 
 /**
- * 时间点 `at` 的档位人数（R-7）：只计 capture.occurredAt ≤ at 的联系人，每人用完整、去重后的时间线
- * 以 `at` 调用 computeRelationshipStrength。不得用缓存里最多 12 条的 signals 回放。
+ * 时间点 `at` 的档位人数（R-7）：只计 capture.occurredAt ≤ at 的联系人，每人用完整、去重后的时间线中
+ * occurredAt ≤ at 的条目以 `at` 调用 computeRelationshipStrength（历史回放不计「未来约见」）。
+ * 不得用缓存里最多 12 条的 signals 回放。
  */
 export function computeRelationshipTierCountsAt(
   timelines: ReadonlyMap<string, readonly RelationshipTimelineItem[]>,
@@ -214,7 +216,12 @@ export function computeRelationshipTierCountsAt(
     const capture = items.find((item) => item.source === "capture");
     const captureMs = capture ? Date.parse(capture.occurredAt) : NaN;
     if (!Number.isFinite(captureMs) || captureMs > atMs) continue;
-    counts[relationshipTierGroup(computeRelationshipStrength(items, at, rules))] += 1;
+    // 历史回放（W0047 review P1-1）：只看截止点当时已发生的条目；截止点之后的约见当时未必已约，不按「未来约见」计分。
+    const asOf = items.filter((item) => {
+      const ms = Date.parse(item.occurredAt);
+      return Number.isFinite(ms) && ms <= atMs;
+    });
+    counts[relationshipTierGroup(computeRelationshipStrength(asOf, at, rules))] += 1;
     contactCount += 1;
   }
   return { asOf: at.toISOString(), counts, contactCount };

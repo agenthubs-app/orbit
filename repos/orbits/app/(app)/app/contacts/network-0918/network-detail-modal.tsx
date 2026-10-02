@@ -114,12 +114,12 @@ function RecentInteractions({ contact, t }: { contact: OrbitContactView; t: Tran
 }
 
 /**
- * W0047「依据」：强度缓存里的信号（按贡献降序，至多 12 条）。标题取详情时间线里同 id 的条目，
- * 不在最近 20 条里的退回来源名；日期按东京时间。不显示分数。
+ * W0047「依据」：强度缓存里的信号（按贡献降序，至多 12 条）。标题取同 id 的时间线条目——最近 20 条之外的
+ * 由详情页按信号 id 读回（relationshipSignalItems）；仍找不到（来源已删除）才退回来源名。日期按东京时间。不显示分数。
  */
 function RelationshipBasis({ contact, t }: { contact: OrbitContactView; t: Translate }) {
   const strength = contact.relationshipStrength;
-  const byId = new Map((contact.timeline?.items ?? []).map((item) => [item.id, item]));
+  const byId = new Map([...(contact.timeline?.items ?? []), ...(contact.relationshipSignalItems ?? [])].map((item) => [item.id, item]));
   const signals = strength?.signals ?? [];
   return (
     <div className="nw-basis" data-network-basis role="region" aria-label={t({ en: "Why this tier", zh: "档位依据" })}>

@@ -221,3 +221,27 @@ test("computeRelationshipTierCountsAt skips contacts captured after the time poi
   const counts = computeRelationshipTierCountsAt(new Map([["c2", newcomer], ["c3", dormantOne], ["c4", fresh]]), at);
   assert.deepEqual(counts, { asOf: at.toISOString(), counts: { new: 1, active: 0, core: 0, dormant: 1 }, contactCount: 2 });
 });
+
+test("review P2-5: a past and a later same-Tokyo-day meeting count once (the higher base points)", () => {
+  // NOW = 东京 12:00；同一东京日 09:00 已发生、20:00 尚未发生。
+  const past = meeting("2026-10-02T00:00:00.000Z");
+  const later = meeting("2026-10-02T11:00:00.000Z");
+  const s = computeRelationshipStrength([capture(daysAgo(30)), past, later], NOW);
+  const meetings = s.signals.filter((signal) => signal.source === "schedule");
+  assert.equal(meetings.length, 1);
+  assert.equal(meetings[0]!.timelineItemId, past.id);
+  assert.equal(meetings[0]!.basePoints, 25);
+});
+
+test("review P1-1: meetings after the time point never count in a historical replay, even when they would cross a threshold", () => {
+  const at = new Date(NOW.getTime() - 30 * DAY);
+  const after = (days: number) => new Date(at.getTime() + days * DAY).toISOString();
+  // 截止点当时：名片 10 + memo 15 = 25（新认识）；截止点之后 6 次约见（各在不同日），按「未来约见」各 5 分就会跨过 45。
+  const timeline = [capture(daysAgo(60)), memo(daysAgo(50)), ...[1, 3, 5, 7, 9, 11].map((d) => meeting(after(d)))];
+  assert.equal(computeRelationshipStrength(timeline, at).tier, "active", "the snapshot rule itself would count them as booked meetings");
+  const counts = computeRelationshipTierCountsAt(new Map([["c1", timeline]]), at);
+  assert.deepEqual(counts.counts, { new: 1, active: 0, core: 0, dormant: 0 });
+  // 当前快照的「未来约见」规则不变。
+  const future = meeting(new Date(NOW.getTime() + 5 * DAY).toISOString());
+  assert.equal(computeRelationshipStrength([capture(daysAgo(10)), future], NOW).signals.find((signal) => signal.timelineItemId === future.id)?.points, 5);
+});

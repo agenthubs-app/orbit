@@ -178,6 +178,9 @@ test("SC-02: first ensure writes every row and the state in one transaction; unc
     assert.equal(second.status, "fresh");
     assert.equal(meter.statements.length, 1);
     assert.match(meter.statements[0]!, /relationship-strength:stamp-and-state/);
+    // 本机库没有 sync_revision：退回 updated_at 口径（review P2-4 已知局限，见 REPORT）。
+    assert.equal(store.stampMode(), "timestamp");
+    assert.match(second.state!.sourceStamp, /^ts\|/);
     assert.equal(meter.writes.length, 0);
 
     // 列头人数统计全部、卡片按 lastSignalAt 倒序。
@@ -253,5 +256,38 @@ test("SC-02: a failing source read writes nothing and leaves the previous cache"
     });
     await assert.rejects(ensureRelationshipStrengths(ALICE, new Date("2026-10-03T03:00:00.000Z"), { store: failing }), /injected/);
     assert.deepEqual(await cacheRows(pool, ALICE), previous);
+  });
+});
+
+test("review P2-6: signals older than the detail's latest 20 timeline items are read back by id with their real bilingual titles (one statement)", databaseTest, async () => {
+  const { readRelationshipTimelineForContact } = await import("../../features/relationship-timeline/reader");
+  const { readRelationshipSignalItems } = await import("../../features/relationship-strength/signal-items");
+  await withDatabase(async ({ pool, url }) => {
+    // 25 条近期笔记（0 分，不是信号）把最近 20 条时间线占满，计分信号全被挤到 20 条之外。
+    for (let index = 0; index < 25; index += 1) {
+      await insertRecord(pool, { collection: "notes", id: `note-flood-${index}`, userId: ALICE, payload: { note: { id: `note-flood-${index}`, accountId: ALICE, ownerUserId: ALICE, title: `flood ${index}`, body: "b", contactIds: ["c-core"], createdAt: new Date(NOW.getTime() - index * 60_000).toISOString() } } });
+    }
+    const meter: Meter = { statements: [], writes: [], bytes: 0 };
+    const client = meteredClient(pool, url, meter);
+    const store = createPostgresRelationshipStrengthStore({ client, workspaceId: WORKSPACE });
+    await ensureRelationshipStrengths(ALICE, NOW, { store });
+    const strength = (await readRelationshipStrengths({ actorId: ALICE, contactIds: ["c-core"] }, { store })).get("c-core")!;
+    const timeline = await readRelationshipTimelineForContact({ actorId: ALICE, contactId: "c-core", now: NOW }, { runtime: { client: pool as never, workspaceId: WORKSPACE } });
+    assert.equal(timeline.items.length, 20);
+    const shown = new Set(timeline.items.map((item) => item.id));
+    const missing = strength.signals.map((signal) => signal.timelineItemId).filter((id) => !shown.has(id));
+    assert.equal(missing.length, strength.signals.length, "every signal is outside the latest 20");
+
+    meter.statements.length = 0;
+    const items = await readRelationshipSignalItems(client, WORKSPACE, { actorId: ALICE, contactId: "c-core", timelineItemIds: missing });
+    assert.equal(meter.statements.length, 1);
+    assert.deepEqual(items.map((item) => item.id).sort(), [...missing].sort());
+    const title = (id: string) => items.find((item) => item.id === id)?.title;
+    assert.deepEqual(title("schedule:s-core"), { zh: "会面：s-core", en: "Meeting: s-core" });
+    assert.deepEqual(title("plan:log-1"), { zh: "计划：确认已建立联系", en: "Plan: connection confirmed" });
+    assert.deepEqual(title("capture:c-core"), { zh: "扫描名片，建立联系", en: "Added from a business card" });
+    assert.deepEqual(title("memo:note:live-contact-detail-update:m1"), { zh: "写了 memo", en: "Wrote a memo" });
+    // 他人 0 条：Bob 读同样的 id 什么都拿不到。
+    assert.deepEqual(await readRelationshipSignalItems(client, WORKSPACE, { actorId: BOB, contactId: "c-core", timelineItemIds: missing }), []);
   });
 });

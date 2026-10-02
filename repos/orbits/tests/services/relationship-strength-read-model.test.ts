@@ -7,6 +7,9 @@ import { fileURLToPath } from "node:url";
 import type { RelationshipTimelineItem } from "../../shared/contract/relationship-timeline";
 import {
   createMemoryRelationshipStrengthStore,
+  createPostgresRelationshipStrengthStore,
+  RelationshipStrengthSourceLimitError,
+  relationshipStrengthStampSql,
   ensureRelationshipStrengths,
   ensureRelationshipStrengthsForPage,
   readRelationshipTierBoard,
@@ -99,4 +102,62 @@ test("R-1: no file under app/api/mobile references the strength refresh entry", 
   assert.ok(files.some((file) => file.endsWith("contacts-dashboard/handler.ts")), "scanned the mobile routes");
   const offenders = files.filter((file) => /ensureRelationshipStrengths|relationship-strength\/read-model/.test(readFileSync(file, "utf8")));
   assert.deepEqual(offenders, []);
+});
+
+test("review P2-3: a source that hits the row limit fails the refresh with zero writes and keeps the previous cache", async () => {
+  const { store, bump } = harness();
+  assert.equal((await ensureRelationshipStrengths("actor:a", NOW, { store })).status, "recomputed");
+  const before = structuredClone([...store.rows.get("actor:a")!.values()]);
+  const stateBefore = structuredClone(store.states.get("actor:a"));
+  bump();
+  let writes = 0;
+  const truncated = {
+    ...store,
+    readTimelines: async (actorId: string, now: Date) => ({ ...(await store.readTimelines(actorId, now)), truncatedSources: ["note" as const] }),
+    replaceIfCurrent: async (...args: Parameters<typeof store.replaceIfCurrent>) => { writes += 1; return store.replaceIfCurrent(...args); },
+  };
+  const original = console.error;
+  const logged: string[] = [];
+  console.error = (line: string) => logged.push(line);
+  try {
+    await assert.rejects(ensureRelationshipStrengths("actor:a", new Date(NOW.getTime() + 3_600_000), { store: truncated }), RelationshipStrengthSourceLimitError);
+  } finally {
+    console.error = original;
+  }
+  assert.equal(writes, 0);
+  assert.deepEqual([...store.rows.get("actor:a")!.values()], before);
+  assert.deepEqual(store.states.get("actor:a"), stateBefore);
+  assert.match(logged[0] ?? "", /relationship_strength_sources_truncated/);
+});
+
+test("review P2-4: the source stamp uses sync_revision when the column exists and falls back to updated_at once when it does not", async () => {
+  const run = async (hasRevision: boolean) => {
+    const seen: string[] = [];
+    const client = {
+      async query(text: string) {
+        seen.push(/stamp-and-state:(\w+)/.exec(text)?.[1] ?? "other");
+        if (text.includes("max(sync_revision)") && !hasRevision) throw Object.assign(new Error('column "sync_revision" does not exist'), { code: "42703" });
+        return { rows: [{ row_count: "3", max_revision: "77", max_updated: "2026-10-01 00:00:00+00", sum_updated: "123", plan_count: "1", plan_max_seq: "9", state_payload: null }] };
+      },
+      transaction: async () => { throw new Error("unused"); },
+    };
+    const store = createPostgresRelationshipStrengthStore({ client: client as never, workspaceId: "w" });
+    const warn = console.warn;
+    console.warn = () => undefined;
+    try {
+      const first = await store.readStampAndState("actor:a");
+      const second = await store.readStampAndState("actor:a");
+      return { seen, first: first.sourceStamp, second: second.sourceStamp, mode: store.stampMode() };
+    } finally {
+      console.warn = warn;
+    }
+  };
+  const withRevision = await run(true);
+  assert.deepEqual(withRevision, { seen: ["revision", "revision"], first: "rev|3|77|1|9", second: "rev|3|77|1|9", mode: "revision" });
+  const without = await run(false);
+  assert.deepEqual(without, { seen: ["revision", "timestamp", "timestamp"], first: "ts|3|2026-10-01 00:00:00+00|123|1|9", second: "ts|3|2026-10-01 00:00:00+00|123|1|9", mode: "timestamp" });
+  // 两种口径的 SQL：revision 不看 updated_at，timestamp 不看 sync_revision。
+  assert.match(relationshipStrengthStampSql("revision"), /max\(sync_revision\)/);
+  assert.doesNotMatch(relationshipStrengthStampSql("revision"), /updated_at/);
+  assert.doesNotMatch(relationshipStrengthStampSql("timestamp"), /sync_revision/);
 });

@@ -45,6 +45,7 @@ import { NetworkDemoFrame } from "../network-0918/network-demo-frame";
 import { RELATIONSHIP_TIMELINE_SOURCES } from "../../../../../features/relationship-timeline/build";
 import { readMemoEventOptions, readRelationshipTimelineForContact } from "../../../../../features/relationship-timeline/reader";
 import { ensureRelationshipStrengthsForPage, readRelationshipStrengths, readRelationshipTierLookup } from "../../../../../features/relationship-strength/read-model";
+import { readConfiguredRelationshipSignalItems } from "../../../../../features/relationship-strength/signal-items";
 
 function decodeContactRouteId(id: string): string {
   try {
@@ -214,7 +215,12 @@ export default async function AppContactDetailPage({
     readMemoEventOptions({ actorId: actor.id, now }),
     readRelationshipStrengths({ actorId: actor.id, contactIds: [contactId] }).catch(() => new Map()),
   ]);
-  const detail = { ...detailBase, timeline, memoEventOptions, relationshipStrength: strengths.get(contactId) ?? null };
+  const relationshipStrength = strengths.get(contactId) ?? null;
+  // 依据里不在最近 20 条时间线中的信号：按信号 id 一条语句读回真实条目（review P2-6）。
+  const shown = new Set(timeline.items.map((item) => item.id));
+  const missingSignalIds = (relationshipStrength?.signals ?? []).map((signal) => signal.timelineItemId).filter((id) => !shown.has(id));
+  const relationshipSignalItems = await readConfiguredRelationshipSignalItems({ actorId: actor.id, contactId, timelineItemIds: missingSignalIds });
+  const detail = { ...detailBase, timeline, memoEventOptions, relationshipStrength, relationshipSignalItems };
 
   // 会后纪要 / 约谈核验附加态渲染在弹窗时间线上方（props 原样）。
   const extra = (
