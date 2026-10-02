@@ -129,7 +129,7 @@
 | [W0052](W0052-network-overview-cockpit/GOAL.md) | 概览驾驶舱读快照，管线区改档位，最近动态来自时间线（L） | RN-10 | W0049、W0050 | completed |
 | [W0053](W0053-contacts-import-csv-event/GOAL.md) | CSV／vCard 与活动导入、去重合并，导入后走三层更新（H） | RN-11 | W0045～W0047、W0048a | completed |
 | [W0054](W0054-network-threshold-demo/GOAL.md) | 引导第 1 步满 3 张才完成；完成后不足 3 人的分析卡；示例静态完整快照（H） | RN-12 | W0048b、W0049～W0051、W0053（导入入口须真实可用，R-13） | completed |
-| [W0055](W0055-network-closeout/GOAL.md) | 大目标 4 收口：回填脚本、下线 contact-needs、死代码清理、全量对照与两条路径截图（I） | RN-13 | W0043～W0054（含 W0048a／b） | ready |
+| [W0055](W0055-network-closeout/GOAL.md) | 大目标 4 收口：回填脚本、下线 contact-needs、死代码清理、全量对照与两条路径截图（I） | RN-13 | W0043～W0054（含 W0048a／b） | running（run-01，2026-10-03，基线 `eafbdb39`，PLANNER SHA256 `0f16efd17ce0640c8280606ddd59cd6d4bf9d3a87a2dfb58f0785b3cb42ca302`；真实 DeepSeek 上限待用户批准） |
 | [W0056](W0056-read-trim-closeout/GOAL.md) | 读取瘦身收尾：首页已报名活动按当月窗口读取（显示不变）、他人坏行不再拖垮建议接口、资料建议图只读本人数据（H） | RV-03、RV-05 | W0055（或协调者届时裁决）；D49；不与大目标 4 并行；开工按届时 HEAD 重定位并重跑 W0041／W0042 并跑测试 | planned |
 
 全部 Sprint 都已有 GOAL 与 PLANNER（2026-09-28 编制；大目标 1 与大目标 2 各经 Codex `gpt-5.6-sol` 方案 review 后修订为 revision 2，review 意见与处理见 [REVIEW-2026-09-28.md](REVIEW-2026-09-28.md)）。`planned` 表示前置 Sprint 尚未 completed；前置完成后改为 `ready`。
