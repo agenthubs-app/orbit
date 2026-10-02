@@ -46,6 +46,7 @@ type CanonicalRegistrationMethods = Pick<
   | "getCanonicalRegistrationStatus"
   | "listCanonicalRegistrations"
   | "listCanonicalRegistrationStatusesForUser"
+  | "listPublishedCanonicalRegistrationStatusesForUser"
   | "listCanonicalRosterEntries"
   | "listCanonicalRegistrationsForUser"
   | "registerCanonicalParticipant"
@@ -1086,6 +1087,24 @@ export function createPostgresCanonicalRegistrationMethods({
            and membership_head.event_id = any($3::text[])
          order by membership_head.event_id`,
         [workspaceId, userId, [...new Set(eventIds)]],
+      );
+      return result.rows.map(registrationStatusFromRow);
+    },
+
+    async listPublishedCanonicalRegistrationStatusesForUser(userId) {
+      // W0041: published events are joined here (same test as the catalogue's
+      // lifecycle_state_v2 = 'published'); every joined row keeps the W28-4 A
+      // validity verdict, so a damaged cancelled row still rejects.
+      const result = await client.query<SqlRow>(
+        `${registrationStatusSelect()}
+         join event_ops_events published_event
+           on published_event.workspace_id = membership_head.workspace_id
+           and published_event.event_id = membership_head.event_id
+           and published_event.lifecycle_state_v2 = 'published'
+         where membership_head.workspace_id = $1
+           and membership_head.actor_id = $2
+         order by membership_head.event_id`,
+        [workspaceId, userId],
       );
       return result.rows.map(registrationStatusFromRow);
     },

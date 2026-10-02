@@ -12,11 +12,15 @@ export interface CanonicalParticipantEventJourneyReader {
 }
 
 export interface CanonicalParticipantEventJourneyDependencies {
-  eventCoreService: Pick<EventCoreService, "listPublishedEvents">;
+  eventCoreService: Pick<
+    EventCoreService,
+    "listPublishedEvents" | "listPublishedEventsByIds"
+  >;
   now?: () => Date;
   operationsRepository: Pick<
     EventOperationsRepository,
-    "listCanonicalRegistrationsForUser"
+    | "listCanonicalRegistrationsForUser"
+    | "listPublishedCanonicalRegistrationStatusesForUser"
   >;
 }
 
@@ -42,6 +46,44 @@ export function createCanonicalParticipantEventJourneyReader(
       if (!normalizedRawSubject) return [];
 
       const now = dependencies.now?.() ?? new Date();
+      const listStatuses =
+        dependencies.operationsRepository
+          .listPublishedCanonicalRegistrationStatusesForUser;
+      const listEventsByIds =
+        dependencies.eventCoreService.listPublishedEventsByIds;
+      if (listStatuses && listEventsByIds) {
+        // W0041: own rows on published events first (every row validated,
+        // cancelled included), then only the rsvped events by id. The whole
+        // catalogue and the registration profiles are never read.
+        const statuses = await listStatuses.call(
+          dependencies.operationsRepository,
+          normalizedRawSubject,
+        );
+        const rsvpedEventIds = [
+          ...new Set(
+            statuses
+              .filter((registration) => registration.status === "rsvped")
+              .map((registration) => registration.eventId.trim())
+              .filter(Boolean),
+          ),
+        ].sort();
+        if (rsvpedEventIds.length === 0) return [];
+        const events = await listEventsByIds.call(
+          dependencies.eventCoreService,
+          rsvpedEventIds,
+          now,
+        );
+        const registeredEventIds = new Set(rsvpedEventIds);
+        const seenEventIds = new Set<string>();
+        return events.filter((event) => {
+          const eventId = event.eventId.trim();
+          if (!eventId || !registeredEventIds.has(eventId)) return false;
+          if (seenEventIds.has(eventId)) return false;
+          seenEventIds.add(eventId);
+          return true;
+        });
+      }
+
       const publishedEvents =
         await dependencies.eventCoreService.listPublishedEvents(now);
       const eventIds = [

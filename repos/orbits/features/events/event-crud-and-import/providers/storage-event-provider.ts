@@ -18,6 +18,10 @@ import type {
   LiveEventStoreRecord,
 } from "../live-service";
 import { slugFromTitle } from "../event-slug";
+import {
+  createPostgresOwnedEventRecordReader,
+  type OwnedEventRecordReader,
+} from "./owned-events-postgres-reader";
 
 export const EVENTS_LIVE_RECORD_COLLECTION = "events" as const;
 
@@ -48,6 +52,12 @@ export interface StorageEventPayload extends Record<string, unknown> {
 export interface StorageEventStoreProviderOptions {
   createdBy?: string;
   now?: () => string;
+  /**
+   * W0041: reads only the actor's own events in the database. Without it
+   * (memory or injected stores) `listEvents` reads the collection and filters
+   * here, as before.
+   */
+  ownedEventRecordReader?: OwnedEventRecordReader;
   source?: string;
   sourceLabel?: string;
   store: LiveRecordStoreLike<StorageEventPayload>;
@@ -237,6 +247,7 @@ function manualRecord(input: {
 export function createStorageEventStoreProvider({
   createdBy = "shared-storage-event-provider",
   now = () => new Date().toISOString(),
+  ownedEventRecordReader,
   source,
   sourceLabel = "Events shared storage",
   store,
@@ -251,12 +262,16 @@ export function createStorageEventStoreProvider({
         return [];
       }
 
-      const records = await store.listRecords({
-          limit: "unbounded",
-          workspaceId,
-          collectionName: EVENTS_LIVE_RECORD_COLLECTION,
-        });
+      const records = ownedEventRecordReader
+        ? await ownedEventRecordReader(normalizedActorId)
+        : await store.listRecords({
+            limit: "unbounded",
+            workspaceId,
+            collectionName: EVENTS_LIVE_RECORD_COLLECTION,
+          });
 
+      // The SQL reader applies the same test; keeping it here is a no-op for
+      // that path and the whole filter for stores without the reader.
       return records
         .filter(
           (record) =>
@@ -333,6 +348,11 @@ export function createConfiguredStorageEventStoreProvider({
   const provider = createStorageEventStoreProvider({
     createdBy,
     now,
+    ownedEventRecordReader: createPostgresOwnedEventRecordReader({
+      client: configured.client,
+      read: configured.customRead,
+      workspaceId: configured.workspaceId,
+    }),
     source: `postgres-live-record-store:events:${configured.workspaceId}`,
     sourceLabel,
     store: configured.store,

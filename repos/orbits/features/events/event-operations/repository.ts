@@ -292,6 +292,17 @@ export interface EventOperationsRepository {
     eventId: string,
     fields: EventRegistrationRosterFields,
   ): Promise<readonly EventRegistrationRosterEntry[]>;
+  /**
+   * W0041: the same rows and failure semantics as
+   * `listCanonicalRegistrationStatusesForUser(userId, <every published event id>)`,
+   * with the published-event restriction joined in SQL instead of reading the
+   * catalogue first. Every row of the user on a published event is validated
+   * (cancelled included) before any status filtering. Optional: only the
+   * PostgreSQL repository knows which events are published.
+   */
+  listPublishedCanonicalRegistrationStatusesForUser?(
+    userId: string,
+  ): Promise<readonly EventRegistrationStatusRecord[]>;
   /** Same rows and failure semantics as `listCanonicalRegistrationsForUser`, event id and status only (W0028). */
   listCanonicalRegistrationStatusesForUser(
     userId: string,

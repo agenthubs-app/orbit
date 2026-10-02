@@ -136,6 +136,21 @@ export function createPostgresEventCoreRepository(input: {
       );
       return result.rows.map(recordFromRow);
     },
+    async listEventsByIds(eventIds) {
+      const ids = [...new Set(eventIds)];
+      if (ids.length === 0) return [];
+      // W0041: the catalogue read narrowed to known ids — same columns, row
+      // mapping and order as listEvents, only the where clause differs.
+      const result = await client.query<SqlRow>(
+        `${canonicalEventSelect()}
+         where workspace_id = $1
+           and event_id = any($2::text[])
+           and lifecycle_state_v2 is not null
+         order by starts_at desc nulls last, event_id`,
+        [workspaceId, ids],
+      );
+      return result.rows.map(recordFromRow);
+    },
     async resolveAlias(alias) {
       const result = await client.query<SqlRow>(
         `
