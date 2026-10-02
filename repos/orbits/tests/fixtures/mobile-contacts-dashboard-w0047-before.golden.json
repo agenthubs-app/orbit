@@ -1,0 +1,811 @@
+{
+  "success": true,
+  "data": {
+    "schemaVersion": 1,
+    "generatedAt": "2026-10-02T03:00:00.000Z",
+    "aggregate": {
+      "state": "success",
+      "relationshipAssetTotals": {
+        "contacts": 5,
+        "connections": 4,
+        "evidenceBackedRelationships": 4,
+        "eventsRepresented": 0
+      },
+      "newContacts": {
+        "count": 5,
+        "windowLabel": "Live relationship database",
+        "contacts": [
+          {
+            "contactId": "c1",
+            "name": "王磊",
+            "organization": "Org c1",
+            "sourceLabel": "手动记录",
+            "source": {
+              "type": "manual",
+              "id": "src:w0047",
+              "label": "手动记录",
+              "providerRecordId": "src:w0047",
+              "generatedBy": "live-store-query"
+            },
+            "evidenceIds": [
+              "e:c1"
+            ]
+          },
+          {
+            "contactId": "c2",
+            "name": "李娜",
+            "organization": "Org c2",
+            "sourceLabel": "手动记录",
+            "source": {
+              "type": "manual",
+              "id": "src:w0047",
+              "label": "手动记录",
+              "providerRecordId": "src:w0047",
+              "generatedBy": "live-store-query"
+            },
+            "evidenceIds": [
+              "e:c2"
+            ]
+          },
+          {
+            "contactId": "c3",
+            "name": "Émile",
+            "organization": "Org c3",
+            "sourceLabel": "手动记录",
+            "source": {
+              "type": "manual",
+              "id": "src:w0047",
+              "label": "手动记录",
+              "providerRecordId": "src:w0047",
+              "generatedBy": "live-store-query"
+            },
+            "evidenceIds": [
+              "e:c3"
+            ]
+          },
+          {
+            "contactId": "c4",
+            "name": "Ana",
+            "organization": "Org c4",
+            "sourceLabel": "手动记录",
+            "source": {
+              "type": "manual",
+              "id": "src:w0047",
+              "label": "手动记录",
+              "providerRecordId": "src:w0047",
+              "generatedBy": "live-store-query"
+            },
+            "evidenceIds": [
+              "e:c4"
+            ]
+          },
+          {
+            "contactId": "c5",
+            "name": "佐藤",
+            "organization": "Org c5",
+            "sourceLabel": "手动记录",
+            "source": {
+              "type": "manual",
+              "id": "src:w0047",
+              "label": "手动记录",
+              "providerRecordId": "src:w0047",
+              "generatedBy": "live-store-query"
+            },
+            "evidenceIds": [
+              "e:c5"
+            ]
+          }
+        ]
+      },
+      "highValueCount": 3,
+      "highValueRelationships": [
+        {
+          "connectionId": "k1",
+          "contactName": "王磊",
+          "organization": "Org c1",
+          "valueType": "commercial_opportunity",
+          "priorityScore": 82,
+          "reason": "",
+          "evidenceIds": [
+            "e:k1"
+          ]
+        },
+        {
+          "connectionId": "k3",
+          "contactName": "Émile",
+          "organization": "Org c3",
+          "valueType": "commercial_opportunity",
+          "priorityScore": 90,
+          "reason": "",
+          "evidenceIds": [
+            "e:k3"
+          ]
+        },
+        {
+          "connectionId": "k4",
+          "contactName": "Ana",
+          "organization": "Org c4",
+          "valueType": "commercial_opportunity",
+          "priorityScore": 70,
+          "reason": "",
+          "evidenceIds": [
+            "e:k4"
+          ]
+        }
+      ],
+      "pendingFollowups": {
+        "count": 0,
+        "tasks": []
+      },
+      "dormantContacts": {
+        "count": 5,
+        "contacts": [
+          {
+            "contactId": "c1",
+            "contactName": "王磊",
+            "organization": "Org c1",
+            "lastTouchpointDays": 30,
+            "suggestedAction": "Review live relationship evidence before restarting this relationship.",
+            "evidenceIds": [
+              "e:c1"
+            ]
+          },
+          {
+            "contactId": "c2",
+            "contactName": "李娜",
+            "organization": "Org c2",
+            "lastTouchpointDays": 30,
+            "suggestedAction": "Review live relationship evidence before restarting this relationship.",
+            "evidenceIds": [
+              "e:c2"
+            ]
+          },
+          {
+            "contactId": "c3",
+            "contactName": "Émile",
+            "organization": "Org c3",
+            "lastTouchpointDays": 30,
+            "suggestedAction": "Review live relationship evidence before restarting this relationship.",
+            "evidenceIds": [
+              "e:c3"
+            ]
+          },
+          {
+            "contactId": "c4",
+            "contactName": "Ana",
+            "organization": "Org c4",
+            "lastTouchpointDays": 30,
+            "suggestedAction": "Review live relationship evidence before restarting this relationship.",
+            "evidenceIds": [
+              "e:c4"
+            ]
+          },
+          {
+            "contactId": "c5",
+            "contactName": "佐藤",
+            "organization": "Org c5",
+            "lastTouchpointDays": 30,
+            "suggestedAction": "Review live relationship evidence before restarting this relationship.",
+            "evidenceIds": [
+              "e:c5"
+            ]
+          }
+        ]
+      },
+      "recentActivity": [
+        {
+          "activityId": "activity:dashboard:contact:c5",
+          "type": "new_contact",
+          "label": "佐藤 added to the live relationship database",
+          "occurredAt": "2026-09-29T03:00:00.000Z",
+          "sourceLabel": "手动记录",
+          "evidenceIds": [
+            "e:c5"
+          ]
+        },
+        {
+          "activityId": "activity:dashboard:contact:c1",
+          "type": "new_contact",
+          "label": "王磊 added to the live relationship database",
+          "occurredAt": "2026-09-27T03:00:00.000Z",
+          "sourceLabel": "手动记录",
+          "evidenceIds": [
+            "e:c1"
+          ]
+        },
+        {
+          "activityId": "activity:dashboard:contact:c2",
+          "type": "new_contact",
+          "label": "李娜 added to the live relationship database",
+          "occurredAt": "2026-08-23T03:00:00.000Z",
+          "sourceLabel": "手动记录",
+          "evidenceIds": [
+            "e:c2"
+          ]
+        },
+        {
+          "activityId": "activity:dashboard:contact:c3",
+          "type": "new_contact",
+          "label": "Émile added to the live relationship database",
+          "occurredAt": "2026-07-14T03:00:00.000Z",
+          "sourceLabel": "手动记录",
+          "evidenceIds": [
+            "e:c3"
+          ]
+        }
+      ],
+      "summary": "Live dashboard aggregate was computed from shared remote relationship records.",
+      "nextAction": "Use the source-backed live dashboard aggregate for agent workflow testing.",
+      "provenance": {
+        "source": "device-mirror:dashboard",
+        "sourceLabel": "Dashboard device copy",
+        "evidenceIds": [
+          "e:c1",
+          "e:c2",
+          "e:c3",
+          "e:c4",
+          "e:c5"
+        ],
+        "collectedAt": "2026-10-02T03:00:00.000Z",
+        "privacy": "live-dashboard-aggregate",
+        "generationMethod": "live-store-query",
+        "liveAnalyticsQueryExecuted": false,
+        "productionAggregateReadExecuted": false,
+        "externalNetworkRequested": false,
+        "databaseReadExecuted": true,
+        "databaseWriteExecuted": false,
+        "aiProviderRequested": false,
+        "calendarProviderRequested": false,
+        "emailProviderRequested": false,
+        "notificationProviderRequested": false,
+        "deviceRequested": false
+      }
+    },
+    "summary": {
+      "state": "success",
+      "metrics": [
+        {
+          "id": "relationship-assets",
+          "label": "Relationship assets",
+          "value": 5,
+          "evidenceIds": [
+            "e:c1",
+            "e:c2",
+            "e:c3",
+            "e:c4",
+            "e:c5"
+          ]
+        },
+        {
+          "id": "new-contacts",
+          "label": "New contacts",
+          "value": 5,
+          "evidenceIds": [
+            "e:c1",
+            "e:c2",
+            "e:c3",
+            "e:c4",
+            "e:c5"
+          ]
+        },
+        {
+          "id": "high-value",
+          "label": "High-value relationships",
+          "value": 3,
+          "evidenceIds": [
+            "e:k1",
+            "e:k3",
+            "e:k4"
+          ]
+        },
+        {
+          "id": "pending-followups",
+          "label": "Pending followups",
+          "value": 0,
+          "evidenceIds": []
+        },
+        {
+          "id": "dormant-contacts",
+          "label": "Dormant contacts",
+          "value": 5,
+          "evidenceIds": [
+            "e:c1",
+            "e:c2",
+            "e:c3",
+            "e:c4",
+            "e:c5"
+          ]
+        }
+      ],
+      "recentActivity": [
+        {
+          "activityId": "activity:dashboard:contact:c5",
+          "type": "new_contact",
+          "label": "佐藤 added to the live relationship database",
+          "occurredAt": "2026-09-29T03:00:00.000Z",
+          "sourceLabel": "手动记录",
+          "evidenceIds": [
+            "e:c5"
+          ]
+        },
+        {
+          "activityId": "activity:dashboard:contact:c1",
+          "type": "new_contact",
+          "label": "王磊 added to the live relationship database",
+          "occurredAt": "2026-09-27T03:00:00.000Z",
+          "sourceLabel": "手动记录",
+          "evidenceIds": [
+            "e:c1"
+          ]
+        },
+        {
+          "activityId": "activity:dashboard:contact:c2",
+          "type": "new_contact",
+          "label": "李娜 added to the live relationship database",
+          "occurredAt": "2026-08-23T03:00:00.000Z",
+          "sourceLabel": "手动记录",
+          "evidenceIds": [
+            "e:c2"
+          ]
+        }
+      ],
+      "summary": "Rule-based summary of the live dashboard aggregate.",
+      "nextAction": "Use the source-backed live dashboard aggregate for agent workflow testing.",
+      "provenance": {
+        "source": "device-mirror:dashboard",
+        "sourceLabel": "Dashboard device copy summary",
+        "evidenceIds": [
+          "e:c1",
+          "e:c2",
+          "e:c3",
+          "e:c4",
+          "e:c5"
+        ],
+        "collectedAt": "2026-10-02T03:00:00.000Z",
+        "privacy": "live-dashboard-aggregate",
+        "generationMethod": "rule-based-summary",
+        "liveAnalyticsQueryExecuted": false,
+        "productionAggregateReadExecuted": false,
+        "externalNetworkRequested": false,
+        "databaseReadExecuted": true,
+        "databaseWriteExecuted": false,
+        "aiProviderRequested": false,
+        "calendarProviderRequested": false,
+        "emailProviderRequested": false,
+        "notificationProviderRequested": false,
+        "deviceRequested": false
+      }
+    },
+    "opportunities": {
+      "state": "success",
+      "highPriorityOpportunities": [],
+      "dormantHighValueContacts": [
+        {
+          "contactId": "c3",
+          "contactName": "Émile",
+          "organization": "Org c3",
+          "valueType": "commercial_opportunity",
+          "valueScore": 90,
+          "lastTouchpointDays": 45,
+          "lastTouchpointLabel": "45 days since last live source-backed touchpoint",
+          "reason": "Émile is a high-value nurture relationship without a current open opportunity.",
+          "suggestedAction": "Send a lightweight context refresh about review evidence before follow-up.",
+          "evidenceIds": [
+            "e:k3",
+            "e:c3"
+          ],
+          "sourceRefs": [
+            {
+              "type": "manual",
+              "id": "src:w0047",
+              "label": "手动记录",
+              "providerRecordId": "src:w0047",
+              "generatedBy": "live-store-query"
+            }
+          ]
+        },
+        {
+          "contactId": "c1",
+          "contactName": "王磊",
+          "organization": "Org c1",
+          "valueType": "commercial_opportunity",
+          "valueScore": 82,
+          "lastTouchpointDays": 59,
+          "lastTouchpointLabel": "59 days since last live source-backed touchpoint",
+          "reason": "王磊 is a high-value nurture relationship without a current open opportunity.",
+          "suggestedAction": "Send a lightweight context refresh about review evidence before follow-up.",
+          "evidenceIds": [
+            "e:k1",
+            "e:c1"
+          ],
+          "sourceRefs": [
+            {
+              "type": "manual",
+              "id": "src:w0047",
+              "label": "手动记录",
+              "providerRecordId": "src:w0047",
+              "generatedBy": "live-store-query"
+            }
+          ]
+        }
+      ],
+      "currentGoalMatches": [
+        {
+          "goalId": "goal:live-dormant-recovery",
+          "label": "Recover dormant high-value relationships",
+          "targetOutcome": "Move the highest-value dormant relationships into reviewed follow-up context.",
+          "coverageScore": 86,
+          "matchedOpportunityIds": [
+            "dormant:c3",
+            "dormant:c1"
+          ],
+          "missingContext": "Dormant recovery still needs explicit operator confirmation before any task or notification is created.",
+          "evidenceIds": [
+            "e:k3",
+            "e:c3",
+            "e:k1",
+            "e:c1"
+          ]
+        }
+      ],
+      "suggestedContactReasons": [
+        {
+          "reasonId": "reason:c3:dormancy",
+          "contactId": "c3",
+          "contactName": "Émile",
+          "reasonType": "dormancy",
+          "reason": "This high-value relationship is in nurture state and needs a context refresh.",
+          "confidence": "high",
+          "sourceRefs": [
+            {
+              "type": "manual",
+              "id": "src:w0047",
+              "label": "手动记录",
+              "providerRecordId": "src:w0047",
+              "generatedBy": "live-store-query"
+            }
+          ],
+          "evidenceIds": [
+            "e:k3",
+            "e:c3"
+          ]
+        },
+        {
+          "reasonId": "reason:c1:referral-path",
+          "contactId": "c1",
+          "contactName": "王磊",
+          "reasonType": "referral_path",
+          "reason": "This dormant relationship can support a targeted referral path after operator review.",
+          "confidence": "medium",
+          "sourceRefs": [
+            {
+              "type": "manual",
+              "id": "src:w0047",
+              "label": "手动记录",
+              "providerRecordId": "src:w0047",
+              "generatedBy": "live-store-query"
+            }
+          ],
+          "evidenceIds": [
+            "e:k1",
+            "e:c1"
+          ]
+        }
+      ],
+      "summary": "Live opportunity reminder analytics ranked open tasks and dormant high-value relationships from shared live storage.",
+      "nextAction": "Review the top live opportunity before creating tasks, messages, or notifications.",
+      "provenance": {
+        "source": "device-mirror:opportunity-reminder",
+        "sourceLabel": "Dashboard device copy",
+        "evidenceIds": [
+          "e:k3",
+          "e:c3",
+          "e:k1",
+          "e:c1"
+        ],
+        "collectedAt": "2026-10-02T03:00:00.000Z",
+        "privacy": "live-opportunity-reminder-analytics",
+        "generationMethod": "live-store-query",
+        "predictiveScoringExecuted": false,
+        "backgroundOpportunityMiningExecuted": false,
+        "liveAnalyticsJobExecuted": false,
+        "externalNetworkRequested": false,
+        "databaseReadExecuted": true,
+        "databaseWriteExecuted": false,
+        "aiProviderRequested": false,
+        "calendarProviderRequested": false,
+        "emailProviderRequested": false,
+        "notificationProviderRequested": false,
+        "deviceRequested": false
+      }
+    },
+    "gaps": {
+      "state": "success",
+      "coverageScore": 17,
+      "gaps": [
+        {
+          "gapId": "gap:investor-access",
+          "label": "Investor access coverage",
+          "severity": "high",
+          "currentCount": 0,
+          "targetCount": 1,
+          "recommendedAction": "Use warm referrals and event recommendations to add more investor access paths.",
+          "evidenceIds": [
+            "evidence:network-distribution:value:investor_access"
+          ],
+          "gapType": "value_type_underrepresented"
+        },
+        {
+          "gapId": "gap:strong-relationships",
+          "label": "Strong relationship coverage",
+          "severity": "high",
+          "currentCount": 1,
+          "targetCount": 2,
+          "recommendedAction": "Move warm relationships with clear business context into explicit follow-up tasks.",
+          "evidenceIds": [
+            "e:k1"
+          ],
+          "gapType": "strength_underrepresented"
+        }
+      ],
+      "summary": "Live network gap analysis compares generated relationship coverage against deterministic target thresholds.",
+      "nextAction": "Use live gap recommendations to tune event goals and follow-up priorities.",
+      "provenance": {
+        "source": "device-mirror:network-distribution",
+        "sourceLabel": "Dashboard device copy",
+        "evidenceIds": [
+          "evidence:network-distribution:value:investor_access",
+          "e:k1"
+        ],
+        "collectedAt": "2026-10-02T03:00:00.000Z",
+        "privacy": "live-network-distribution-analytics",
+        "generationMethod": "rule-based-gap-analysis",
+        "graphAlgorithmExecuted": false,
+        "embeddingSearchExecuted": false,
+        "liveAnalyticsJobExecuted": false,
+        "externalNetworkRequested": false,
+        "databaseReadExecuted": true,
+        "databaseWriteExecuted": false,
+        "aiProviderRequested": false,
+        "calendarProviderRequested": false,
+        "emailProviderRequested": false,
+        "notificationProviderRequested": false,
+        "deviceRequested": false
+      }
+    },
+    "distributions": {
+      "state": "success",
+      "industryDistribution": [
+        {
+          "bucketId": "unclassified",
+          "label": "未分类",
+          "contactCount": 5,
+          "percentage": 100,
+          "topOrganizations": [
+            "Org c1",
+            "Org c2",
+            "Org c3"
+          ],
+          "evidenceIds": [
+            "e:c1",
+            "e:c2",
+            "e:c3",
+            "e:c4",
+            "e:c5"
+          ],
+          "sourceRefs": [
+            {
+              "type": "manual",
+              "id": "src:w0047",
+              "label": "手动记录",
+              "providerRecordId": "src:w0047",
+              "generatedBy": "live-store-query"
+            }
+          ]
+        }
+      ],
+      "valueTypeDistribution": [
+        {
+          "valueType": "commercial_opportunity",
+          "label": "商业机会",
+          "relationshipCount": 4,
+          "percentage": 100,
+          "evidenceIds": [
+            "e:k1",
+            "e:k2",
+            "e:k3",
+            "e:k4"
+          ],
+          "exampleConnectionIds": [
+            "k1",
+            "k2",
+            "k3"
+          ]
+        }
+      ],
+      "relationshipStrengthDistribution": [
+        {
+          "strength": "strong",
+          "relationshipCount": 1,
+          "percentage": 25,
+          "followupRisk": "low",
+          "evidenceIds": [
+            "e:k1"
+          ]
+        },
+        {
+          "strength": "warm",
+          "relationshipCount": 1,
+          "percentage": 25,
+          "followupRisk": "moderate",
+          "evidenceIds": [
+            "e:k2"
+          ]
+        },
+        {
+          "strength": "weak",
+          "relationshipCount": 2,
+          "percentage": 50,
+          "followupRisk": "high",
+          "evidenceIds": [
+            "e:k3",
+            "e:k4"
+          ]
+        }
+      ],
+      "structureDistributions": {
+        "industry": [
+          {
+            "bucketId": "unclassified",
+            "label": "未分类",
+            "contactCount": 5,
+            "percentage": 100,
+            "evidenceIds": [
+              "e:c1",
+              "e:c2",
+              "e:c3",
+              "e:c4",
+              "e:c5"
+            ],
+            "missingData": true
+          }
+        ],
+        "location": [
+          {
+            "bucketId": "location_paris",
+            "label": "Paris",
+            "contactCount": 1,
+            "percentage": 20,
+            "evidenceIds": [
+              "e:c3"
+            ],
+            "missingData": false
+          },
+          {
+            "bucketId": "location_%E4%B8%8A%E6%B5%B7",
+            "label": "上海",
+            "contactCount": 1,
+            "percentage": 20,
+            "evidenceIds": [
+              "e:c1"
+            ],
+            "missingData": false
+          },
+          {
+            "bucketId": "location_tokyo",
+            "label": "东京",
+            "contactCount": 1,
+            "percentage": 20,
+            "evidenceIds": [
+              "e:c2"
+            ],
+            "missingData": false
+          },
+          {
+            "bucketId": "location_osaka",
+            "label": "大阪",
+            "contactCount": 1,
+            "percentage": 20,
+            "evidenceIds": [
+              "e:c5"
+            ],
+            "missingData": false
+          },
+          {
+            "bucketId": "location_%E6%9D%B1%E4%BA%AC",
+            "label": "東京",
+            "contactCount": 1,
+            "percentage": 20,
+            "evidenceIds": [
+              "e:c4"
+            ],
+            "missingData": false
+          }
+        ],
+        "role": [
+          {
+            "bucketId": "role_decision_maker",
+            "label": "经营决策者",
+            "contactCount": 5,
+            "percentage": 100,
+            "evidenceIds": [
+              "e:c1",
+              "e:c2",
+              "e:c3",
+              "e:c4",
+              "e:c5"
+            ],
+            "missingData": false
+          }
+        ],
+        "relationship": [
+          {
+            "bucketId": "strong",
+            "label": "强关系",
+            "contactCount": 1,
+            "percentage": 20,
+            "evidenceIds": [
+              "e:c1"
+            ],
+            "missingData": false
+          },
+          {
+            "bucketId": "warm",
+            "label": "保持联系",
+            "contactCount": 1,
+            "percentage": 20,
+            "evidenceIds": [
+              "e:c2"
+            ],
+            "missingData": false
+          },
+          {
+            "bucketId": "weak",
+            "label": "待重新联系",
+            "contactCount": 3,
+            "percentage": 60,
+            "evidenceIds": [
+              "e:c3",
+              "e:c4",
+              "e:c5"
+            ],
+            "missingData": false
+          }
+        ]
+      },
+      "summary": "Live network distribution analytics grouped source-backed contacts and relationships from shared live storage.",
+      "nextAction": "Use live distribution buckets to choose the next event and follow-up focus.",
+      "provenance": {
+        "source": "fixture:network-distribution",
+        "sourceLabel": "Fixture",
+        "evidenceIds": [
+          "e:c1",
+          "e:c2",
+          "e:c3",
+          "e:c4",
+          "e:c5"
+        ],
+        "collectedAt": "2026-10-02T03:00:00.000Z",
+        "privacy": "live-network-distribution-analytics",
+        "generationMethod": "live-store-query",
+        "graphAlgorithmExecuted": false,
+        "embeddingSearchExecuted": false,
+        "liveAnalyticsJobExecuted": false,
+        "externalNetworkRequested": false,
+        "databaseReadExecuted": true,
+        "databaseWriteExecuted": false,
+        "aiProviderRequested": false,
+        "calendarProviderRequested": false,
+        "emailProviderRequested": false,
+        "notificationProviderRequested": false,
+        "deviceRequested": false
+      }
+    },
+    "profile": null,
+    "contacts": null,
+    "unavailableSections": [
+      "profile",
+      "contacts"
+    ]
+  }
+}

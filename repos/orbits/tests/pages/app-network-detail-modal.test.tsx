@@ -22,7 +22,7 @@ test("detail modal renders overview rows, timeline from notes, and next steps", 
   assert.match(html, /Nexa AI · 合作伙伴负责人/);
   assert.match(html, /◎ 日本 东京/);
   assert.match(html, /⇢ 来自 活动认识/);
-  for (const s of ["关系阶段", "上次互动", "下次计划", "来源", "生成式 AI", "企业级 AI 知识库", "日本市场 AI 方案", "讨论合作模式", "下周约产品演示", "对方对知识库方案有兴趣"]) assert.match(html, new RegExp(s));
+  for (const s of ["关系档位", "上次互动", "下次计划", "来源", "生成式 AI", "企业级 AI 知识库", "日本市场 AI 方案", "讨论合作模式", "下周约产品演示", "对方对知识库方案有兴趣"]) assert.match(html, new RegExp(s));
   // 联系频率无数据源 → 不渲染；四条概览
   assert.doesNotMatch(html, /联系频率/);
   assert.equal((html.match(/class="nw-ov"/g) ?? []).length, 4);
@@ -30,11 +30,14 @@ test("detail modal renders overview rows, timeline from notes, and next steps", 
   assert.ok(html.indexOf("讨论合作模式") < html.indexOf("较早的备注"));
   assert.match(html, /background:#4B4FC7[^>]*><\/span>[\s\S]*?9月18日 07:30/);
   assert.match(html, /备注/);
-  // 按钮：关闭（链接）、写 memo（W0046 改名）、更新状态
+  // 按钮：关闭（链接）、写 memo（W0046 改名）；W0047 下线「更新状态」
   assert.match(html, /class="btn nw-detail-close" href="\/app\/contacts"/);
   assert.match(html, /class="btn nw-modal-close" href="\/app\/contacts"/);
   assert.match(html, /class="btn nw-detail-follow"[^>]*>▤ 写 memo/);
-  assert.match(html, /class="btn nw-detail-status"[^>]*>⇢ 更新状态/);
+  assert.doesNotMatch(html, /nw-detail-status|更新状态/);
+  // 没有强度缓存：档位显示「暂未评估」，不显示依据按钮。
+  assert.match(html, /关系档位<\/span><strong class="nw-ov-v">暂未评估</);
+  assert.doesNotMatch(html, /nw-basis-toggle|关系阶段/);
   assert.doesNotMatch(html, /平均 2–3 周一次|1 周后（9月25日）|编辑资料|约时间|查看全部/);
 });
 
@@ -87,14 +90,71 @@ test("detail modal renders a 联系方式 block only for the non-empty channels,
   assert.equal((html2.match(/class="nw-ov"/g) ?? []).length, 4);
 });
 
-test("detail modal mounts the relationship initialization panel above the timeline for pending contacts", () => {
+test("W0047: the detail modal no longer mounts the manual 待设置关系 panel (API and data stay)", () => {
   const pending = { ...(contact as object), pipelineStatus: "pending_initialization", stage: "待设置关系", nextAction: null } as never;
   const html = renderToStaticMarkup(<NetworkDetailModal contact={pending} closeHref="/app/contacts" onFollow={() => {}} extra={<p data-extra>memo</p>} />);
-  assert.match(html, /aria-label="我的关系设置"/);
-  assert.match(html, /data-initialization-refresh/);
-  assert.ok(html.indexOf("我的关系设置") < html.indexOf("data-extra") && html.indexOf("data-extra") < html.indexOf("最近互动"));
-  const html2 = renderToStaticMarkup(<NetworkDetailModal contact={contact} closeHref="/app/contacts" onFollow={() => {}} />);
-  assert.doesNotMatch(html2, /我的关系设置|data-initialization-refresh/);
+  assert.doesNotMatch(html, /我的关系设置|data-initialization-refresh|待设置关系|更新状态/);
+  assert.ok(html.indexOf("data-extra") < html.indexOf("最近互动"));
+});
+
+const strengthContact = {
+  ...(contact as object),
+  timeline: {
+    items: [
+      { id: "schedule:s1", source: "schedule", contactId: "c1", occurredAt: "2026-09-25T01:00:00.000Z", occurredAtPrecision: "instant", title: { zh: "会面：产品演示", en: "Meeting: product demo" }, ref: { store: "personal_schedule_items", recordId: "s1" } },
+      { id: "memo:m1", source: "memo", contactId: "c1", occurredAt: "2026-09-19T15:00:00.000Z", occurredAtPrecision: "day", title: { zh: "写了 memo", en: "Wrote a memo" }, ref: { store: "contact_detail_states", recordId: "d", subId: "m1" } },
+    ],
+    unavailableSources: [],
+  },
+  relationshipStrength: {
+    contactId: "c1", tier: "core", dormant: false, score: 83, peakScore: 83, lastSignalAt: "2026-09-25T01:00:00.000Z",
+    signals: [
+      { timelineItemId: "schedule:s1", source: "schedule", occurredAt: "2026-09-25T01:00:00.000Z", basePoints: 25, points: 24.4 },
+      { timelineItemId: "memo:m1", source: "memo", occurredAt: "2026-09-19T15:00:00.000Z", basePoints: 15, points: 14.3 },
+      // 不在最近 20 条时间线里的信号：标题退回来源名。
+      { timelineItemId: "encounter:old", source: "encounter", occurredAt: "2026-06-01T03:00:00.000Z", basePoints: 20, points: 9.1 },
+    ],
+    computedAt: "2026-10-02T03:00:00.000Z", rulesVersion: "rs-2026-10-v1",
+  },
+} as never;
+
+test("SC-W0047-04: detail shows the tier tag and the basis panel lists each signal's date, source and timeline title (no score)", async (t) => {
+  const { act, create } = await import("react-test-renderer");
+  const previousWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+  const previousDocument = Object.getOwnPropertyDescriptor(globalThis, "document");
+  Object.defineProperty(globalThis, "window", { configurable: true, value: { addEventListener() {}, removeEventListener() {}, location: { assign() {} } } });
+  Object.defineProperty(globalThis, "document", { configurable: true, value: { activeElement: null, addEventListener() {}, removeEventListener() {}, documentElement: { lang: "zh" } } });
+  t.after(() => {
+    if (previousWindow) Object.defineProperty(globalThis, "window", previousWindow); else delete (globalThis as { window?: unknown }).window;
+    if (previousDocument) Object.defineProperty(globalThis, "document", previousDocument); else delete (globalThis as { document?: unknown }).document;
+  });
+  const { OrbitLanguageProvider } = await import("../../app/(app)/app/orbit-language-context");
+  const closed = renderToStaticMarkup(<NetworkDetailModal contact={strengthContact} closeHref="/app/contacts" onFollow={() => {}} />);
+  assert.match(closed, /class="nw-detail-stage" data-network-tier="core"[^>]*>核心</);
+  assert.match(closed, /关系档位<\/span><strong class="nw-ov-v">核心</);
+  assert.match(closed, /class="btn nw-basis-toggle" aria-expanded="false"/);
+  assert.doesNotMatch(closed, /data-network-basis/);
+
+  for (const language of ["zh", "en"] as const) {
+    let root: ReturnType<typeof create> | undefined;
+    await act(async () => {
+      root = create(<OrbitLanguageProvider initialLanguage={language}><NetworkDetailModal contact={strengthContact} closeHref="/app/contacts" onFollow={() => {}} /></OrbitLanguageProvider>);
+    });
+    const toggle = root!.root.find((node) => node.props?.className === "btn nw-basis-toggle");
+    await act(async () => { toggle.props.onClick(); });
+    const basis = root!.root.find((node) => node.props?.["data-network-basis"] !== undefined);
+    const rows = basis.findAll((node) => node.props?.className === "nw-basis-row");
+    const text = (node: { children: unknown[] }): string => node.children.map((child) => (typeof child === "string" ? child : text(child as { children: unknown[] }))).join("");
+    const lines = rows.map((row) => text(row as never));
+    if (language === "zh") {
+      assert.deepEqual(lines, ["9月25日 10:00日程会面：产品演示", "9月20日memo写了 memo", "6月1日 12:00见面见面"]);
+    } else {
+      assert.deepEqual(lines, ["Sep 25 10:00ScheduleMeeting: product demo", "Sep 20MemoWrote a memo", "Jun 1 12:00MetMet"]);
+    }
+    // 不显示分数（W47-6）。
+    assert.doesNotMatch(text(basis as never), /83|24\.4|14\.3|9\.1|分/);
+    await act(async () => { root!.unmount(); });
+  }
 });
 
 test("detail modal shows the business-card notes without the review page's photo headings, and omits the panel when empty", () => {

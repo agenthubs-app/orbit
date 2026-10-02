@@ -94,7 +94,7 @@ export function NetworkAnalysis({ viewModel, analysis, initialTab }: { viewModel
   const buckets = structure ? structure.dimensions[dim] : [];
   const dimD = donut(buckets.map((b) => [b.label, b.count] as const));
   const health = healthRows(view);
-  const strong = structure?.health.find((h) => h.id === "strong");
+  const strong = structure?.health.find((h) => h.id === "core");
   const secState = (key: "structure" | "coverage" | "opportunities" | "goal") => (view.state === "ready" ? view[key].state : view.state);
 
   return (

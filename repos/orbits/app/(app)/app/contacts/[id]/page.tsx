@@ -44,6 +44,7 @@ import { buildDemoNetworkDetail, buildDemoNetworkViewModel, isDemoContactId } fr
 import { NetworkDemoFrame } from "../network-0918/network-demo-frame";
 import { RELATIONSHIP_TIMELINE_SOURCES } from "../../../../../features/relationship-timeline/build";
 import { readMemoEventOptions, readRelationshipTimelineForContact } from "../../../../../features/relationship-timeline/reader";
+import { ensureRelationshipStrengthsForPage, readRelationshipStrengths, readRelationshipTierLookup } from "../../../../../features/relationship-strength/read-model";
 
 function decodeContactRouteId(id: string): string {
   try {
@@ -186,27 +187,34 @@ export default async function AppContactDetailPage({
     );
   }
 
+  // W0047：先刷新关系强度读模型（来源戳与东京日未变时只读一条语句；失败不影响页面）。
+  const now = new Date();
+  await ensureRelationshipStrengthsForPage(actor.id, now);
   // 列表屏在弹窗后面：列表 VM 只喂列表，详情弹窗只吃详情路由的 VM（真实 notes / editableTags / lastInteraction）。
   const cards = await loadContactCardRoute({}, actor);
   const listRoute = cards ? null : await loadAppContactsRouteViewModel({}, actor.id);
+  const listTiers = listRoute?.state === "success"
+    ? await readRelationshipTierLookup({ actorId: actor.id, contactIds: listRoute.payload.contacts.map((contact) => contact.id) })
+    : undefined;
   const listVm =
     listRoute?.state === "success"
-      ? localizeOrbitTree(applyOrbitContactsPresentation(contactsRouteToOrbitContactsViewModel(listRoute), language), language)
+      ? localizeOrbitTree(applyOrbitContactsPresentation(contactsRouteToOrbitContactsViewModel(listRoute, listTiers), language), language)
       : { connections: [], events: [], intros: [], pipelineStatuses: [] };
   const detailBase = contactDetailPageViewModel(routeModel, language).connections[0];
   if (!detailBase) {
     throw new Error("Contact detail route succeeded without a connection.");
   }
   // W0046：「最近互动」聚合时间线与「写 memo」关联活动推荐在服务端读好随详情下发（不另发客户端请求）。
-  const now = new Date();
-  const [timeline, memoEventOptions] = await Promise.all([
+  // W0047：关系强度（档位与依据）同样服务端读好。
+  const [timeline, memoEventOptions, strengths] = await Promise.all([
     readRelationshipTimelineForContact({ actorId: actor.id, contactId, now }).catch(() => ({
       items: [],
       unavailableSources: [...RELATIONSHIP_TIMELINE_SOURCES],
     })),
     readMemoEventOptions({ actorId: actor.id, now }),
+    readRelationshipStrengths({ actorId: actor.id, contactIds: [contactId] }).catch(() => new Map()),
   ]);
-  const detail = { ...detailBase, timeline, memoEventOptions };
+  const detail = { ...detailBase, timeline, memoEventOptions, relationshipStrength: strengths.get(contactId) ?? null };
 
   // 会后纪要 / 约谈核验附加态渲染在弹窗时间线上方（props 原样）。
   const extra = (

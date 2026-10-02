@@ -5,7 +5,8 @@
  *   没挂 Provider 时一切照旧（无横条、无角标、点行照常导航）；
  * - SC-03：概览与关系管线按示例数据渲染；点任意示例联系人在本页打开详情（8 位完整、其余简版），
  *   不发任何请求、不导航；
- * - SC-04：「写 memo」「更新状态」、memo 弹窗的「保存 memo」都被拦下，不发请求（W0046 改名）；
+ * - SC-04：「写 memo」、memo 弹窗的「保存 memo」都被拦下，不发请求（W0046 改名；W0047 下线「更新状态」）；
+ * - W0047 SC-04：示例管线四列是静态档位、详情档位标签与依据面板是前端数据，0 请求；
  *   「扫描名片」「导入人脉」仍是真实链接。
  */
 import assert from "node:assert/strict";
@@ -15,7 +16,7 @@ import { act, create, type ReactTestInstance, type ReactTestRenderer } from "rea
 import type { ReactElement } from "react";
 
 import { DemoInterceptLayer, DemoModeProvider, type DemoModeView } from "../../app/(app)/app/_demo/demo-mode-core";
-import { buildDemoNetworkAnalysis, buildDemoNetworkDetail, buildDemoNetworkViewModel } from "../../app/(app)/app/_demo/demo-network";
+import { buildDemoNetworkAnalysis, buildDemoNetworkDetail, buildDemoNetworkTierBoard, buildDemoNetworkViewModel } from "../../app/(app)/app/_demo/demo-network";
 import { NetworkAll } from "../../app/(app)/app/contacts/network-0918/network-all";
 import { NetworkDemoFrame } from "../../app/(app)/app/contacts/network-0918/network-demo-frame";
 import { NetworkFollowModal } from "../../app/(app)/app/contacts/network-0918/network-follow-modal";
@@ -26,6 +27,7 @@ import { NetworkDemoAnalysisNotice } from "../../app/(app)/app/contacts/network-
 const NOW = new Date("2026-09-28T03:00:00.000Z");
 const VM = buildDemoNetworkViewModel(NOW, "zh");
 const ANALYSIS = buildDemoNetworkAnalysis(NOW, "zh");
+const BOARD = buildDemoNetworkTierBoard();
 const VIEW: DemoModeView = {
   bannerCollapsed: false,
   completed: 1,
@@ -70,7 +72,7 @@ test("without the demo provider the same list has no banner and no demo tags", (
   assert.doesNotMatch(html, /data-orbit-guide-demo-banner/);
   assert.doesNotMatch(html, /data-orbit-guide-demo-tag/);
   // 真实页的分析文案与建议标题照旧（不前置联系人名）。
-  const pipeline = renderToStaticMarkup(<NetworkPipeline viewModel={VM} analysis={ANALYSIS} />);
+  const pipeline = renderToStaticMarkup(<NetworkPipeline viewModel={VM} analysis={ANALYSIS} board={BOARD} />);
   assert.match(pipeline, /基于你的关系管线、互动记录和行业动态/);
   assert.match(pipeline, /class="nw-suggest-title">14:00 见面，请他引荐 IT 决策人</);
   const overview = renderToStaticMarkup(<NetworkOverview viewModel={VM} analysis={ANALYSIS} />);
@@ -96,10 +98,15 @@ test("overview in the demo: advancing highlights tagged, cockpit and distributio
 });
 
 test("pipeline in the demo: four columns from the demo stages, AI suggestions point at demo contacts", () => {
-  const html = renderToStaticMarkup(inDemo(<NetworkPipeline viewModel={VM} analysis={ANALYSIS} />));
+  const html = renderToStaticMarkup(inDemo(<NetworkPipeline viewModel={VM} analysis={ANALYSIS} board={BOARD} />));
   assert.match(html, /完成引导后，这里换成你自己的人脉。/);
   assert.match(html, /总联系人<\/span>/);
   assert.equal(count(html, /class="nw-kanban-card"/g), 30);
+  // W0047：四列是示例的静态档位（新认识／有往来／核心／待唤醒），列头人数合计 30。
+  const columns = html.split('class="nw-kanban-col"').slice(1);
+  assert.deepEqual(columns.map((col) => /data-network-tier="(\w+)"/.exec(col)?.[1]), ["new", "active", "core", "dormant"]);
+  assert.equal(columns.map((col) => Number(/nw-kanban-n"[^>]*>(\d+)</.exec(col)?.[1])).reduce((a, b) => a + b, 0), 30);
+  assert.ok(columns.every((col) => Number(/nw-kanban-n"[^>]*>(\d+)</.exec(col)?.[1]) > 0));
   // 30 张看板卡片 + 当前页 3 条 AI 建议里的联系人名。
   assert.equal(count(html, /data-orbit-guide-demo-tag/g), 33);
   // AI 建议里的人名带「示例」角标；文案说明是示例人物的分析。
@@ -211,7 +218,7 @@ const has = (root: ReactTestRenderer, attribute: string) => root.root.findAll((n
 const detailOpen = (root: ReactTestRenderer) => root.root.findAll((node) => node.props?.["data-network-modal"] === "detail").length > 0;
 const followOpen = (root: ReactTestRenderer) => root.root.findAll((node) => node.props?.["data-network-modal"] === "follow").length > 0;
 
-test("clicking a demo row opens the full detail in place; log / update status are intercepted and send nothing", async (t) => {
+test("clicking a demo row opens the full detail in place; write memo is intercepted, the tier basis is static, nothing is sent", async (t) => {
   const mounted = await mount(t, inDemo(<NetworkAll viewModel={VM} />));
   const { root } = mounted;
   const event = clickEvent();
@@ -228,10 +235,14 @@ test("clicking a demo row opens the full detail in place; log / update status ar
     button(root, "btn nw-detail-follow").props.onClick();
   });
   assert.equal(followOpen(root), false, "log interaction must not open the real follow-up form");
+  // W0047：「更新状态」下线；档位标签与「依据」面板是示例静态数据。
+  assert.equal(root.root.findAll((node) => node.props?.className === "btn nw-detail-status").length, 0);
+  assert.match(mounted.text(), /核心/);
   await act(async () => {
-    button(root, "btn nw-detail-status").props.onClick();
+    button(root, "btn nw-basis-toggle").props.onClick();
   });
-  assert.equal(followOpen(root), false, "update status must not open the real follow-up form");
+  assert.ok(has(root, "data-network-basis"));
+  assert.match(mounted.text(), /根据以下记录自动判断/);
 
   // 关闭只收起弹窗，不导航。
   const closeEvent = clickEvent();
@@ -244,14 +255,15 @@ test("clicking a demo row opens the full detail in place; log / update status ar
   assert.deepEqual(mounted.fetches, []);
 });
 
-test("both write buttons raise the 这是示例 intercept (with its own label) and never fetch", async (t) => {
+test("the write-memo button raises the 这是示例 intercept and never fetches; there is no update-status button", async (t) => {
   const detail = buildDemoNetworkDetail("demo:sato-misaki", NOW, "zh")!;
   const mounted = await mount(t, inDemo(<>
     <NetworkAll viewModel={VM} openDetail={{ closeHref: "/app/contacts", contact: detail }} />
     <DemoInterceptLayer />
   </>));
   const { root } = mounted;
-  for (const [className, label] of [["btn nw-detail-follow", "memo"], ["btn nw-detail-status", "关系状态"]] as const) {
+  assert.equal(root.root.findAll((node) => node.props?.className === "btn nw-detail-status").length, 0);
+  for (const [className, label] of [["btn nw-detail-follow", "memo"]] as const) {
     await act(async () => {
       button(root, className).props.onClick();
     });
@@ -278,7 +290,7 @@ test("a demo contact without full detail opens the short version", async (t) => 
 });
 
 test("pipeline and overview open demo details in place too (cards and suggestions)", async (t) => {
-  const pipeline = await mount(t, inDemo(<NetworkPipeline viewModel={VM} analysis={ANALYSIS} />));
+  const pipeline = await mount(t, inDemo(<NetworkPipeline viewModel={VM} analysis={ANALYSIS} board={BOARD} />));
   const kanban = clickEvent();
   await act(async () => {
     anchor(pipeline.root, "btn nw-kanban-who", "/app/contacts/demo%3Ayamada-taro").props.onClick(kanban);

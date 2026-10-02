@@ -19,7 +19,7 @@ const ready: ContactsAnalysisView = {
   ],
   metrics: { contacts: 7, newContacts: 2, highValue: 3, pendingFollowups: 4, dormant: 5 },
   goal: { state: "ready", data: { id: "profile:1", text: "认识供应链负责人", updatedAt: "2026-09-01T00:00:00Z", canEdit: true } },
-  structure: { state: "ready", data: { summary: "维度小结", health: [{ id: "strong", count: 3, percentage: 43, risk: "low" }, { id: "warm", count: 2, percentage: 29, risk: "moderate" }, { id: "weak", count: 2, percentage: 28, risk: "high" }], dimensions: { industry: [{ id: "tech", label: "科技与互联网", count: 5, percentage: 71, missingData: false, href: "/app/contacts/analysis/industry/tech" }, { id: "fin", label: "金融与投资", count: 2, percentage: 29, missingData: false, href: "" }], location: [], role: [], relationship: [] } } },
+  structure: { state: "ready", data: { summary: "维度小结", health: [{ id: "core", count: 3, percentage: 43 }, { id: "active", count: 2, percentage: 29 }, { id: "new", count: 2, percentage: 28 }], dimensions: { industry: [{ id: "tech", label: "科技与互联网", count: 5, percentage: 71, missingData: false, href: "/app/contacts/analysis/industry/tech" }, { id: "fin", label: "金融与投资", count: 2, percentage: 29, missingData: false, href: "" }], location: [], role: [], relationship: [] } } },
   coverage: { state: "ready", data: { summary: "覆盖总结" } },
   opportunities: { state: "ready", data: { summary: "机会总结", actions: [{ id: "o1", title: "跟进王敏", judgment: "近期有互动", contactName: "王敏", dueLabel: "今日", primary: { label: "查看联系人", href: "/app/contacts/c1" } }], dormant: [{ id: "d1", name: "李雷", reason: "90 天未联系", action: "发一条问候", href: "/app/contacts/c2" }] } },
 };

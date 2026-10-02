@@ -34,10 +34,12 @@ export function cockpit(analysis: ContactsAnalysisView): CockpitCard[] {
 export interface HealthRow { icon: string; label: { zh: string; en: string }; n: number | string; tag: { zh: string; en: string }; desc: { zh: string; en: string }; iconBg: string; iconFg: string }
 
 // 设计 health 第四块「决策层占比」无数据来源，不渲染；只映射 structure.health 真实返回的行。文案为 {zh,en}，由渲染方 t()。
+// W0047：行 = 自动档位（只由关系时间线推出）；第四块位置给「待唤醒」。
 const HEALTH_META = {
-  strong: { icon: "◎", label: { zh: "核心人脉", en: "Core network" }, tag: { zh: "稳定", en: "Stable" }, desc: { zh: "值得持续维护的核心关系", en: "Core relationships worth maintaining" }, iconBg: "#E6F1EC", iconFg: "#2F6B4F" },
-  warm: { icon: "◷", label: { zh: "进行中", en: "In progress" }, tag: { zh: "需要留意", en: "Needs attention" }, desc: { zh: "有互动但需加强维护", en: "Active, but needs more nurturing" }, iconBg: "#ECEEFB", iconFg: "#2E3270" },
-  weak: { icon: "◌", label: { zh: "外圈人脉", en: "Outer circle" }, tag: { zh: "待唤醒", en: "To re-engage" }, desc: { zh: "有潜力重新建立联系", en: "Worth reconnecting with" }, iconBg: "#FBF1DC", iconFg: "#8A6420" },
+  core: { icon: "◎", label: { zh: "核心", en: "Core" }, tag: { zh: "稳定", en: "Stable" }, desc: { zh: "往来频繁、互动深入的关系", en: "Frequent, in-depth interactions" }, iconBg: "#E6F1EC", iconFg: "#2F6B4F" },
+  active: { icon: "▦", label: { zh: "有往来", en: "Active" }, tag: { zh: "保持节奏", en: "Keep the rhythm" }, desc: { zh: "近期有见面、会议或 memo 往来", en: "Recent meetings, encounters or memos" }, iconBg: "#ECEEFB", iconFg: "#2E3270" },
+  new: { icon: "◌", label: { zh: "新认识", en: "New" }, tag: { zh: "待加深", en: "To deepen" }, desc: { zh: "刚建立联系，往来还不多", en: "Recently connected, few interactions yet" }, iconBg: "#F0F1F8", iconFg: "#3B3F7A" },
+  dormant: { icon: "◷", label: { zh: "待唤醒", en: "To re-engage" }, tag: { zh: "需要留意", en: "Needs attention" }, desc: { zh: "曾经热络，60 天没有往来", en: "Was active, quiet for 60 days" }, iconBg: "#FBF1DC", iconFg: "#8A6420" },
 } as const;
 
 export function healthRows(analysis: ContactsAnalysisView): HealthRow[] {

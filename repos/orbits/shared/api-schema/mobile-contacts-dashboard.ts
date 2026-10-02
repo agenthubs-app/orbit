@@ -208,6 +208,19 @@ const dashboardDistributionsSchema = z
         })
         .passthrough(),
     ),
+    // W0047（R-1）：新增可选的档位分布（只由关系时间线推出）；旧响应没有它也照常解析。
+    relationshipTierDistribution: z
+      .array(
+        z
+          .object({
+            tier: z.enum(["new", "active", "core", "dormant"]),
+            relationshipCount: finiteNumber.nonnegative(),
+            percentage,
+            contactIds: stringList,
+          })
+          .passthrough(),
+      )
+      .optional(),
     structureDistributions: z.object({
       industry: z.array(structureBucketSchema),
       location: z.array(structureBucketSchema),

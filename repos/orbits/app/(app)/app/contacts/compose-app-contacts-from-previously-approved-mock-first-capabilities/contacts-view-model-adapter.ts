@@ -1,3 +1,4 @@
+import { strengthFromTier, type NetworkTierLookup } from "../network-0918/network-model";
 import { industryLabel, isIndustryIdCode } from "../../../../../shared/domain/industries";
 import { hasPendingInitialization } from "../contact-relationship-initialization-view-model";
 import type {
@@ -72,22 +73,6 @@ function eventIdFor(contact: AppContactListItemViewModel): string {
   return `source:${contact.sourceLabel.toLowerCase().replace(/[^a-z0-9]+/g, "-") || "contact"}`;
 }
 
-function strengthFor(contact: AppContactListItemViewModel): OrbitContactStrength {
-  if (contact.relationshipValueLabels.length === 0) {
-    return "unscored";
-  }
-
-  const highValue = contact.relationshipValueLabels.some((label) =>
-    /commercial|strategic|invest/i.test(label),
-  );
-
-  if (highValue) {
-    return "strong";
-  }
-
-  return contact.needsAttention ? "weak" : "medium";
-}
-
 function nextActionFor(
   contact: AppContactListItemViewModel,
 ): OrbitContactView["nextAction"] {
@@ -105,6 +90,7 @@ function nextActionFor(
 function contactToOrbitView(
   contact: AppContactListItemViewModel,
   index: number,
+  tiers?: NetworkTierLookup,
 ): OrbitContactView {
   const eventId = eventIdFor(contact);
   const industry = isIndustryIdCode(contact.primaryIndustryId)
@@ -163,16 +149,21 @@ function contactToOrbitView(
     stage: hasPendingInitialization(contact) ? "待设置关系" : contact.statusLabel,
     title: contact.role,
     wechat: "",
-    strength: strengthFor(contact),
+    strength: strengthFromTier(tiers?.get(contact.id)),
+    dormant: tiers?.get(contact.id)?.dormant === true,
     valueTags: Array.from(contact.relationshipValueLabels).slice(0, 3),
     nextAction: hasPendingInitialization(contact) ? null : nextActionFor(contact),
     lastInteraction: "",
-    dormant: false,
   };
 }
 
+/**
+ * W0047（W47-4）：`tiers` = 这些联系人的档位（relationship_strengths 读模型投影，加载器读好传入）；
+ * 强弱点只读它（core→strong、active→medium、new→weak、dormant→dormant，无行→unscored）。
+ */
 export function contactsRouteToOrbitContactsViewModel(
   model: AppContactsSuccessRouteViewModel,
+  tiers?: NetworkTierLookup,
 ): OrbitContactsViewModel {
   const sourceLabels = Array.from(
     new Set(
@@ -183,7 +174,7 @@ export function contactsRouteToOrbitContactsViewModel(
   );
 
   return {
-    connections: model.payload.contacts.map(contactToOrbitView),
+    connections: model.payload.contacts.map((contact, index) => contactToOrbitView(contact, index, tiers)),
     events: sourceLabels.map((sourceLabel) => ({
       id: `source:${sourceLabel.toLowerCase().replace(/[^a-z0-9]+/g, "-") || "contact"}`,
       name: sourceLabel,

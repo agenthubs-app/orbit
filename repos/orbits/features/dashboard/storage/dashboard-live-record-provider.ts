@@ -387,6 +387,8 @@ export function createStorageDashboardAggregateProvider({
       readModelReader.readAggregateForAccount(accountId, input),
     readNetworkDistributionReadModelForAccount: (accountId) =>
       readModelReader.readDistributionForAccount(accountId),
+    readRelationshipTiersForAccount: (accountId) =>
+      readModelReader.readRelationshipTiersForAccount(accountId),
     readDashboardGraphVersionForAccount: readGraphVersion,
     readDashboardAnalysisSnapshotForAccount: readAnalysisSnapshot,
   };

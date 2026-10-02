@@ -3,7 +3,8 @@
  * 设计稿：docs/designs/Orbit_0918/Network v2.dc.html renderVals()。
  * 所有数值来自 OrbitContactsViewModel，不含设计 mock。
  */
-import type { OrbitContactView } from "../../orbit-contacts-route-view-model";
+import type { RelationshipStrength, RelationshipTierGroup } from "../../../../../shared/contract/relationship-strength";
+import type { OrbitContactStrength, OrbitContactView } from "../../orbit-contacts-route-view-model";
 
 export type NetworkStage = "explore" | "keep" | "advance" | "archived";
 export const NETWORK_STAGES = ["explore", "keep", "advance", "archived"] as const satisfies readonly NetworkStage[];
@@ -45,6 +46,58 @@ export function stageOf(contact: Pick<OrbitContactView, "pipelineStatus" | "rela
   if (contact.pipelineStatus === "archived") return "archived";
   if (contact.pipelineStatus === "to_contact") return "explore";
   return "advance";
+}
+
+/**
+ * W0047：关系档位（只由关系时间线自动推出，用户不能手改）。管线四列与详情档位标签用它；
+ * 待唤醒（dormant）优先：曾达「有往来」且 60 天没有往来记录的人归入待唤醒列。
+ */
+export type NetworkTierGroup = RelationshipTierGroup;
+export const NETWORK_TIER_GROUPS = ["new", "active", "core", "dormant"] as const satisfies readonly NetworkTierGroup[];
+
+export const TIER_LABEL: Record<NetworkTierGroup, { zh: string; en: string }> = {
+  new: { zh: "新认识", en: "New" },
+  active: { zh: "有往来", en: "Active" },
+  core: { zh: "核心", en: "Core" },
+  dormant: { zh: "待唤醒", en: "To re-engage" },
+};
+
+export const TIER_STYLE: Record<NetworkTierGroup, { bg: string; fg: string; icon: string; desc: { zh: string; en: string } }> = {
+  new: { bg: "#F0F1F8", fg: "#6B6F99", icon: "◌", desc: { zh: "刚建立联系，往来还不多", en: "Recently connected, few interactions yet" } },
+  active: { bg: "#ECEEFB", fg: "#4B4FC7", icon: "▦", desc: { zh: "近期有见面、会议或 memo 往来", en: "Recent meetings, encounters or memos" } },
+  core: { bg: "#E4E5FA", fg: "#2E3270", icon: "◈", desc: { zh: "往来频繁、互动深入的关系", en: "Frequent, in-depth interactions" } },
+  dormant: { bg: "#FBF1DC", fg: "#8A6420", icon: "◷", desc: { zh: "曾经热络，60 天没有往来", en: "Was active, quiet for 60 days" } },
+};
+
+export const TIER_CHIP: Record<NetworkTierGroup, { bg: string; fg: string }> = {
+  new: { bg: "#F0F1F8", fg: "#3B3F7A" },
+  active: { bg: "#ECEEFB", fg: "#2E3270" },
+  core: { bg: "#DDDEFA", fg: "#2E3270" },
+  dormant: { bg: "#FBF1DC", fg: "#8A6420" },
+};
+
+/** 管线看板数据：列头人数统计全部联系人；每列卡片（联系人 id）按最近往来倒序至多 30。 */
+export interface NetworkTierBoardView {
+  counts: Record<NetworkTierGroup, number>;
+  columns: Record<NetworkTierGroup, readonly string[]>;
+}
+
+export function tierGroupOf(strength: Pick<RelationshipStrength, "tier" | "dormant"> | null | undefined): NetworkTierGroup | null {
+  if (!strength) return null;
+  return strength.dormant ? "dormant" : strength.tier;
+}
+
+/** 列表里一位联系人的档位（读模型投影）。 */
+export type NetworkTierLookup = ReadonlyMap<string, Pick<RelationshipStrength, "tier" | "dormant">>;
+
+/**
+ * W0047（W47-4）：所有人脉列表的强弱点改读真实档位——core→strong、active→medium、new→weak、dormant→dormant，
+ * 没有缓存行（或没传档位表）→ unscored。不再按价值标签猜。
+ */
+export function strengthFromTier(entry: Pick<RelationshipStrength, "tier" | "dormant"> | undefined): OrbitContactStrength {
+  if (!entry) return "unscored";
+  if (entry.dormant) return "dormant";
+  return entry.tier === "core" ? "strong" : entry.tier === "active" ? "medium" : "weak";
 }
 
 export type NetworkSource = "event" | "referral" | "contact" | "scan" | "other";

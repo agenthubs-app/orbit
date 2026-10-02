@@ -18,6 +18,8 @@ export type AppContactsRouteScenario = "empty" | "pending" | "failure";
 export interface AppContactsRouteControls {
   reviewFilteredContact?: boolean;
   scenario?: AppContactsRouteScenario;
+  /** W0047：只读这些联系人（管线看板的卡片；空数组 = 不读任何联系人）。 */
+  contactIds?: readonly string[];
 }
 
 type SourceType = ContactListItem["source"]["type"];
@@ -481,6 +483,7 @@ export async function loadAppContactsRouteViewModel(
   const input = {
     ...readContactsInput(searchParams),
     actorId,
+    ...(controls?.contactIds ? { contactIds: controls.contactIds } : {}),
   };
   const reviewActionRequested = controls?.reviewFilteredContact === true;
   const result = reviewActionRequested

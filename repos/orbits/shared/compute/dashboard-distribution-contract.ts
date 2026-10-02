@@ -1,5 +1,6 @@
 import type { SourceReferenceContract as SourceReferenceDTO } from "../contract/source";
 import type { IndustryIdCode } from "../contract/industries";
+import type { RelationshipTier, RelationshipTierGroup } from "../contract/relationship-strength";
 import type { DashboardAppErrorCode } from "./dashboard-contract";
 
 // Sprint 0117 (dashboard D3): moved from features/dashboard/distribution-contract.ts into the shared directory
@@ -159,11 +160,32 @@ export interface RelationshipStrengthDistributionBucket {
   evidenceIds: readonly string[];
 }
 
+/**
+ * W0047（R-1）：按 relationship_strengths 缓存（只由关系时间线推出）分组的档位分布。dormant 单独成组且优先；
+ * 四组人数之和 = 有缓存行的联系人数（缺行的联系人不计入任何档）。`contactIds` 是图顺序的短名单
+ * （DASHBOARD_SHORT_LIST_LIMIT 条）。与既有 relationshipStrengthDistribution 相互独立。
+ */
+export interface RelationshipTierDistributionBucket {
+  tier: RelationshipTierGroup;
+  relationshipCount: number;
+  percentage: number;
+  contactIds: readonly string[];
+}
+
+/** 一位联系人的档位（读模型行的投影），图路径的输入。 */
+export interface RelationshipTierAssignment {
+  contactId: string;
+  tier: RelationshipTier;
+  dormant: boolean;
+}
+
 export interface NetworkDistributionAnalyticsPayload {
   state: NetworkDistributionAnalyticsState;
   industryDistribution: readonly IndustryDistributionBucket[];
   valueTypeDistribution: readonly ValueTypeDistributionBucket[];
   relationshipStrengthDistribution: readonly RelationshipStrengthDistributionBucket[];
+  /** W0047：新增可选字段；缓存为空时为空数组（旧客户端忽略）。 */
+  relationshipTierDistribution?: readonly RelationshipTierDistributionBucket[];
   structureDistributions: NetworkStructureDistributions;
   summary: string;
   provenance: NetworkDistributionAnalyticsProvenance;
