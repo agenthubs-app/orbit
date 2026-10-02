@@ -169,8 +169,84 @@ RW-01～RW-12 已由 W0001～W0015 实现并合并到 `chat-agent`，但示例�
 ### RH-05 收口
 - 大目标全部合并后跑一次全量对照基线；3001 验收环境走「新用户三步引导 → 首页非空」与「老用户有计划无人脉」两条路径，1440 与 375 各截图。
 
+## 大目标 4：人脉真分析（2026-10-01 用户 grill 定稿）
+
+来源：用户反馈「人脉分析这部分完全是 mock 的，没有任何功能」。实测（本机 live 模式、真实账号 9 位名片联系人）：页面接线真实，但分析层是空壳——结构诊断显示后端调试英文（`features/dashboard/storage/dashboard-summary-postgres-reader.ts:583`、`shared/compute/dashboard-distribution.ts` 多处）；行业 100% 未分类；覆盖缺口用固定阈值、不读关系目标（目标写着日本市场、联系人全是日本公司，覆盖度 0、无缺口）；关系强度没有任何写入路径，健康区全落「弱」；后端返回 empty 时前端显示「来源暂时不可用」；计划生成器 `ORBIT_PLAN_GENERATOR` 默认 mock 模板，计划里的「分析」是模板填空。决定编号 N-Q1～N-Q36，除下文注明的用户修改外全部按推荐定稿（D41～D43）。
+
+**成功标准（N-Q1，三项都要）**：A 新用户扫 5–10 张、设目标后，人脉页有针对目标、处处有据的判断；B 全程不出假内容、不出调试文案；C 50+ 联系人且有跟进记录的老用户有可长期维护的面板。
+
+### 共享契约（各 Sprint 必须对齐，名字由首个落地的 Sprint 定稿并在 REPORT 交接）
+
+- **人脉分析快照 NetworkAnalysisSnapshot**（RN-06 落地）：按 actor 存一份当前快照 + 历史；含 `sourceDataVersion`（复用 `contactsAnalysisGraphSourceDataVersion` 思路，覆盖联系人、补全字段、强度、计划人脉需求关联）、`generatedAt`、`contactCount`、`includedContactIds`、`language` 双语文字块 `{zh,en}`（结构诊断一句、2–3 条结构洞察、缺口叙述、计划引用）、每条叙述的 `evidence`（联系人 id／记录 id 列表）、`origin: "plan" | "standalone"`、`stale` 判定所需的「上次纳入人数」。统计数字（分布、档位人数、覆盖度）不存快照，实时规则计算。
+  - 读取视图以 W0048a 定稿为准（R-12）：`NetworkSnapshotView = { state, generatedAt, contactCount, blocks（当前语言）, freshness.stale, quota }`；上句的 `language {zh,en}` 指存储层双语列，消费者不直接读。
+- **关系强度 RelationshipStrength**（RN-05 落地）：`tier: "new" | "active" | "core"` + `dormant: boolean`（曾为 active/core 且 60 天无新记录）、`score`、`signals[]`（每条指向时间线记录 id、类型、时间、贡献分）。规则打分 + 时间衰减；不读用户手标、不读站内私信表。
+- **关系时间线 RelationshipTimelineItem**（RN-04 落地）：只读聚合 `contact_detail_states.notes`（用户 memo 唯一写入处）、`notes` 集合（contactIds）、`human_encounters`、`plan_log`、`personal_schedule_items.contactIds`、已完成跟进任务、`metEventId`／名片扫描时间；每条带 `source`、`occurredAt`、`id`、可读摘要。
+- **每人洞察 ContactInsight**（RN-09 落地）：`contactId`、`goalRelation {zh,en}`（一句话和目标的关系）、`evidence[]`、`nextStep {zh,en}`、`relevance`（排序用）、`sourceDataVersion`、`generatedAt`。
+- **补全字段**（RN-03 落地）：沿用 `primaryIndustryId/secondaryIndustryId`；角色层级**复用现有 `publicProfile.seniorityLevel`（6 档）为唯一存储**，「决策层／管理层／执行层／其他」4 档只是派生分组（c_level／vp／founder／director→决策层，manager→管理层，individual_contributor→执行层，空→其他），不新增 seniority 字段（W45-1，对标 Apollo／LinkedIn：存细粒度、派生粗分组）；规范地区（国家／城市）存一处，原始 `location` 文字保留；每个补全值带 `origin: "ai" | "user" | "card"`，`user` 值永不被 AI 覆盖。
+- **AI 调用配额**（W0048a 落地，D44 两池）：用户主动池（手动重新分析 ≤3／日、计划生成与重生成、单人洞察「重新生成」）与后台自动池（memo 提取、洞察批量、导入补全、快照自动重算、计划后续季度补细；每人每东京日 60 次调用、≤20 人／批，超限顺延次日并显示「明天更新」）；用户主动池总熔断每人每东京日 10 次操作（含手动重新分析 3 次，D45）；额度按操作计次，成本按每次供应商 HTTP 子账以 operation id 聚合；共用 `ai_usage_ledger`（`pool` 区分，另有 `system` 只记回填、不计用户额度）。名片识别（含补全）按 D5 不计入此上限。全部用 DeepSeek 现有配置；每次真实调用在 REPORT 记录次数与 token。
+- 本轮只做 Web；`shared/compute/*` 与 `/api/mobile/contacts-dashboard` 只加字段不改现有字段语义（App 在设备上用 shared/compute）。新增读取按 D39 的 1.6 GB 用户路径总账实测估算，超限登记 D32 周检。
+
+### RN-01 止血：不出假内容
+- 删除全部后端调试英文句当用户文案（summary、nextAction、最近动态「X added to the live relationship database」、缺口 label/action、待唤醒 reason/suggestedAction 等）；面向用户的文案一律中英双语，没有真实内容就不显示该句。
+- 修复 section `empty` 被显示成「来源暂时不可用」：empty 显示对应的真实空态（如「暂无覆盖缺口」），只有接口失败才显示不可用。
+- 图表正常显示，不加灰字免责（N-Q6 用户修改）。
+
+### RN-02 跟进时钟根因
+- 把请求时刻显式传入跟进生成链路，取代「最新记录 updatedAt」当现在；去掉 `daysUntil` 的 `Math.max(0, …)`，逾期为负并显示「已逾期 N 天」；同步检查 `features/notifications/live-service.ts` 同类 `priorityFor` 模式（详见记忆 orbit-followup-queue-clock-bug）。
+
+### RN-03 联系人补全扩展
+- 名片识别同一次调用里（扩展现有行业推断）补角色层级（写入 `seniorityLevel`）与规范地区，不增加调用次数（D5 计费口径）；审阅页可改，改过即 `origin=user`。
+- 已有联系人跑一次限流回填（脚本，生产执行需单独授权）。公司规模不做（推不出来就不编）。
+
+### RN-04 关系时间线与 memo
+- 用户 memo 唯一写入处 = `contact_detail_states.notes`；「记录互动」弹窗精简为「写 memo」：自由文字 + 日期（默认今天）+ 可选关联活动（同日参加的活动自动推荐）；删除 aria-disabled 的「同步到 AI 分析」（所有 memo 自动进入分析）；输入框下一行「memo 会用于为你生成人脉分析，仅你可见」。
+- 详情弹窗「最近互动」改为聚合时间线（共享契约），每条标来源。
+- LLM 从 memo 提取结构化关系事件（见面／合作／被引荐等）和对方的专长／需求／话题，写回 `publicProfile.offering/seeking/topics`（`origin=ai`），详情页这几栏不再空。计入 AI 配额。
+- 以后 NFC「碰一下+说一句」语音 memo 进同一时间线（本轮不做 NFC）。
+
+### RN-05 关系强度与管线改档位
+- 按共享契约规则打分：信号 = memo（条数、最近时间、LLM 提取的事件类型）、完成的跟进、同场活动（human_encounters／event_ops 配对、交换）、日程约见、计划关联与「已建立」、名片扫描时间；随时间衰减；每个联系人的档位可点开看是哪些记录撑起来的（依据图标，不铺文字）。
+- 不让用户手标（N-Q5 用户修改）；站内私信表不读（N-Q25 用户修改）。
+- 关系管线页改为按 新认识／有往来／核心／待唤醒 分组，无拖拽、无手动阶段；下线手动阶段 UI（「更新状态」按钮、「待设置关系」面板、管线页假筛选），后端阶段数据不删。
+- 写入 `connections.relationshipStrength` 或独立读模型由 Planner 定，但必须让 `shared/compute` 的健康分布读到真实档位（只加字段）。
+
+### RN-06 计划接 AI 与共享人脉分析快照
+- 计划生成器接 DeepSeek 两阶段生成（plan_bootstrap 独立通道，9/27 设计），校验器继续拒绝不存在的联系人／活动 id；生成时先产出或刷新快照，再据此排行动。**推翻 D3**（见 D42）。
+- 快照也可脱离计划单独重算（无计划、目标改了、老用户）。
+- 新人脉三层（N-Q9）：①事实层（统计图）立即更新；②补全 + 规则匹配进「待确认」（确认后生成「约 TA」，沿用 RW-11）；③ AI 叙述在相对上次快照新增 ≥3 人或 ≥20% 时自动重算，否则报告卡标「新增 N 人未纳入 · 更新分析」；**计划阶段与目标不自动改写**，只在每月重新分析或用户手动重新分析时吸收。
+- 打开页面按 `sourceDataVersion` 判断：未变读缓存不调模型；变了且达阈值后台重算。手动重新分析每天 ≤3 次。叙述同一调用出中英双语。
+- 已有老模板计划不自动重写；计划页提示「可用 AI 重新生成计划」，用户点击触发，不占每月一次的重新分析额度。
+
+### RN-07 「结构」标签页
+- 从上到下：①结构诊断（快照一句，带依据图标）；②四维分布 行业（两级）／地区／角色层级／关系强度档，环形图 + Top5，与目标相关的分组高亮，点分组进名单（现有 `/app/contacts/analysis/[dimension]/[bucketId]`）；③关系健康四档人数 + 较 30 天前变化；④ 2–3 条 AI 结构洞察，每条带依据可点开对应联系人。统计实时规则算，只有①④来自快照。
+
+### RN-08 「机会」标签页
+- ①目标覆盖度 = 已确认关联人数 ÷ 计划人脉需求总人数（规则算，不让 AI 出分数），每条需求「已有 a／还缺 b」；②每个未满足需求的补法：活动池（`features/agent/home-event-pool.ts`）里可能遇到这类人的活动 + 现有联系人里可能接近的（进待确认）；③本周建议动作 = 计划本周行动 + 待确认匹配，直链计划，不另生成；④待唤醒（曾有往来、60 天无记录、与目标相关）附「为什么现在联系」与「起草邮件」（止于草稿）；⑤报告卡「生成于 X · 基于 N 人 · 新增 M 人未纳入」+ 重新分析入口（每天 ≤3 次）。
+- 无计划时：覆盖度区显示去生成计划的入口，其余照常（快照可 standalone）。下线关键词版 `features/contact-needs`（`/api/contacts/needs-matches`）的 web 用途，统一用计划匹配器（RN-13 删除）。
+
+### RN-09 每人洞察
+- 「洞察」作为第三个标签（`?tab=insight`）：每位联系人一条（和目标的关系一句、依据、建议下一步、强度档），可按目标相关度／强度档／最近往来排序，按行业／地区／档位筛选；引荐路径不做（无联系人间图谱）。
+- 生成时机：补全时生成，有新 memo 或新计划关联时增量更新；不在打开页面时全量生成。双语、计入配额。
+- 同一份洞察复用到：联系人详情弹窗顶部「和你目标的关系」；「所有人脉」列表把「下一步（预览）」列换成 强度档 + 洞察一句，并加按档位筛选。
+
+### RN-10 概览
+- 「AI 驾驶舱」4 卡读快照的一句话判断与关键数字；关系管线区改档位；最近动态改为来自时间线、中英双语。
+
+### RN-11 导入
+- CSV 导入（LinkedIn 导出格式 + 通用表头映射；vCard 文件走同一导入器）、活动导入（从参加过活动的配对／交换记录）、去重合并；导入后走 RN-06 三层流程。删除「10,000 条」等静态文案。引荐页本轮不做。
+
+### RN-12 门槛与示例
+- 引导第 1 步必须满 3 张已确认联系人才算完成，取消「可跳过」（修改 RW-04）；中途离开可续做，期间仍示例模式。
+- 引导完成状态永不收回；完成后又少于 3 人：只有 AI 人脉分析块（快照叙述与洞察）换成「再添加 N 位联系人即可更新分析」卡 + 扫名片按钮，旧快照不展示；补回 3 人后按 RN-06 自动重算。其他页面照常。
+- 示例模式给示例人物一份前端静态的完整快照（结构／机会／洞察都有，带「示例」角标，绝不写库），取代现在的「示例里没有 AI 人脉分析」。
+
+### RN-13 收口
+- 限流回填（补全 → 强度 → 洞察 → 快照）脚本与本地验证（生产执行单独授权）；删除 `features/contact-needs` 的 web 用途；死代码清理：`orbit-crm-sidebar.tsx`、未引用组件（`contact-industry-editor`、`business-card-capture-workspace`、`orbit-cards-interactions`、`contacts-command-center`、`ingest-v2/business-card-ingest-v2-{start,view}`）、`NetworkAll` 假筛选；手机端可能使用的 API 不动。
+- 全量对照基线；3001 走「新用户 3 张 → 计划 → 人脉三标签有内容」「老用户 50+ 有跟进记录」两条路径，1440／375 截图。
+
 ## 变更记录
 
+- 2026-10-01：新增大目标 4「人脉真分析」RN-01～RN-13（W0043～W0055），用户 grill N-Q1～N-Q36 定稿；推翻 D3、修改 RW-04「第 1 步可跳过」（D41～D43）。
 - 2026-10-01：起草发现的冲突按 D38 定稿并修订 RH-01～RH-04。
 - 2026-10-01：新增大目标 3「首页不再空」RH-01～RH-05（W0035～W0039），用户 grill 定稿。
 - 2026-09-28：新增大目标 2「上线前验收」RV-01～RV-04（W0016～W0020，方案 review 后拆出 W0020）。
