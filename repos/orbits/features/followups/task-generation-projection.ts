@@ -11,7 +11,7 @@ import type {
   FollowupTaskPriority,
   FollowupTaskTriggerKind,
 } from "./contract";
-import { tokyoCalendarDaysUntil } from "../../shared/utils/tokyo-calendar-days";
+import { tokyoCalendarDaysUntil } from "../../shared/compute/tokyo-calendar-days";
 
 type FollowupTaskGenerationInput =
   | FollowupTaskGenerationListInput

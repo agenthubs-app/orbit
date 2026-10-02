@@ -20,7 +20,7 @@ import {
   type LiveRecord,
 } from "../../shared/storage/live-record-store";
 import { seedGeneratedRelationshipFixturesIntoLiveStore } from "../../shared/storage/seed-generated-fixtures";
-import { tokyoCalendarDaysUntil } from "../../shared/utils/tokyo-calendar-days";
+import { tokyoCalendarDaysUntil } from "../../shared/compute/tokyo-calendar-days";
 
 type AnyRecord = LiveRecord<Record<string, unknown>>;
 
@@ -249,4 +249,83 @@ test("SC-01 reminders depend on the injected now, not on record updatedAt", asyn
   assert.equal(tomorrow.success, true);
   if (!tomorrow.success) return;
   assert.equal(tomorrow.data.reminders[0]?.dueInDays, -28);
+});
+
+// review P2：严格 ISO 解析——日期不归一化、偏移非法即非法、无偏移按东京本地时间。
+test("SC-02 Tokyo day parsing is strict ISO and treats offset-less times as Tokyo local", () => {
+  // 现存 dueAt 写入格式：`+00:00` 偏移与 `.sssZ`
+  assert.equal(tokyoCalendarDaysUntil("2026-07-29T09:00:00+00:00", NOW), -27);
+  assert.equal(tokyoCalendarDaysUntil("2026-07-29T09:00:00.000Z", NOW), -27);
+  assert.equal(tokyoCalendarDaysUntil("2026-08-26T08:00:00+0900", NOW), 1);
+  // 无偏移：东京本地。8/25 23:30（东京）仍是今天；纯日期 = 东京当天
+  assert.equal(tokyoCalendarDaysUntil("2026-08-25T23:30:00", NOW), 0);
+  assert.equal(tokyoCalendarDaysUntil("2026-08-26 00:10", NOW), 1);
+  assert.equal(tokyoCalendarDaysUntil("2026-08-24", NOW), -1);
+  // 被归一化的日期、非法时间、非法偏移、非 ISO → null → 兜底 7
+  for (const invalid of [
+    "2026-02-30T09:00:00Z",
+    "2025-02-29",
+    "2026-13-01",
+    "2026-08-25T24:00:00Z",
+    "2026-08-25T10:60:00Z",
+    "2026-08-25T10:00:00+25:00",
+    "2026-08-25T10:00:00+09:60",
+    "Aug 25 2026",
+    "1756080000000",
+    "",
+  ]) {
+    assert.equal(tokyoCalendarDaysUntil(invalid, NOW), null, invalid);
+    assert.equal(followupDaysUntil(invalid, NOW), 7, invalid);
+    assert.equal(reminderDaysUntil(invalid, NOW), 7, invalid);
+  }
+  assert.equal(tokyoCalendarDaysUntil("2028-02-29", NOW) !== null, true, "leap day is valid");
+});
+
+test("SC-02 Tokyo day results do not depend on the process TZ", async () => {
+  const { spawnSync } = await import("node:child_process");
+  const script = [
+    'const m = require("./shared/compute/tokyo-calendar-days.ts");',
+    'const now = "2026-08-25T00:00:00.000Z";',
+    'console.log(JSON.stringify(["2026-07-29T01:00:00.000Z","2026-08-25T23:30:00","2026-08-24","2026-08-24T14:00:00Z","2026-02-30"].map((v) => m.tokyoCalendarDaysUntil(v, now))));',
+  ].join("\n");
+  const outputs = ["UTC", "Asia/Tokyo", "America/Los_Angeles"].map((tz) => {
+    const result = spawnSync(process.execPath, ["--import", "tsx", "-e", script], {
+      cwd: new URL("../..", import.meta.url).pathname,
+      encoding: "utf8",
+      env: { ...process.env, TZ: tz },
+    });
+    assert.equal(result.status, 0, result.stderr);
+    return result.stdout.trim();
+  });
+  assert.deepEqual(outputs, Array(3).fill(JSON.stringify([-27, 0, -1, -1, null])));
+});
+
+// review P2：缺 actor／未配置时 provenance.collectedAt 也是本次请求时刻，不是 epoch。
+test("SC-01 failure provenance uses the injected now for actor-required and unconfigured", async () => {
+  const now = () => new Date(NOW);
+  const followupNoProvider = createLiveFollowupTaskGenerationService({ now, provider: null });
+  const reminderNoProvider = createLiveReminderScheduleNotificationService({ now, provider: null });
+  const followupWithProvider = followupServiceFor([], "workspace:followup-clock-failure", now);
+  const reminderWithProvider = createLiveReminderScheduleNotificationService({
+    now,
+    provider: createStorageReminderScheduleNotificationProvider({
+      store: createMemoryLiveRecordStore<Record<string, unknown>>([]),
+      workspaceId: "workspace:reminder-clock-failure",
+    }),
+  });
+
+  const results = [
+    ["followup actor-required", await followupWithProvider.listTasks({}), "FOLLOWUP_TASK_GENERATION_ACTOR_REQUIRED"],
+    ["followup actor-required generate", await followupWithProvider.generateTasks({ actorId: "  " }), "FOLLOWUP_TASK_GENERATION_ACTOR_REQUIRED"],
+    ["followup unconfigured", await followupNoProvider.listTasks({ actorId: "actor:x" }), "FOLLOWUP_TASK_GENERATION_LIVE_STORE_UNCONFIGURED"],
+    ["reminder actor-required", await reminderWithProvider.listNotifications({}), "REMINDER_SCHEDULE_NOTIFICATION_ACTOR_REQUIRED"],
+    ["reminder unconfigured", await reminderNoProvider.generateReminders({ actorId: "actor:x" }), "REMINDER_SCHEDULE_NOTIFICATION_LIVE_STORE_UNCONFIGURED"],
+  ] as const;
+
+  for (const [label, result, code] of results) {
+    assert.equal(result.success, false, label);
+    if (result.success) continue;
+    assert.equal(result.error.code, code, label);
+    assert.equal(result.error.provenance.collectedAt, NOW, label);
+  }
 });

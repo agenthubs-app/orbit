@@ -27,7 +27,7 @@ import {
   projectLegacyNotification,
   type LegacyProjectedNotification,
 } from "./legacy-source-projection";
-import { tokyoCalendarDaysUntil } from "../../shared/utils/tokyo-calendar-days";
+import { tokyoCalendarDaysUntil } from "../../shared/compute/tokyo-calendar-days";
 
 export interface LiveReminderNotificationGraph {
   connections: readonly ConnectionDTO[];
@@ -492,7 +492,7 @@ function success(
 function failure(
   code: ReminderScheduleNotificationErrorCode,
   input: {
-    collectedAt?: string;
+    collectedAt: string;
     provider: LiveReminderScheduleNotificationProvider | null;
     readExecuted: boolean;
     sourceLabel?: string;
@@ -500,7 +500,7 @@ function failure(
 ): ReminderScheduleNotificationFailure {
   const definition = REMINDER_SCHEDULE_NOTIFICATION_ERROR_DEFINITIONS[code];
   const provenance = provenanceFor({
-    collectedAt: input.collectedAt ?? new Date(0).toISOString(),
+    collectedAt: input.collectedAt,
     generationMethod: "live-store-query",
     provider: input.provider,
     readExecuted: input.readExecuted,
@@ -577,11 +577,13 @@ function scenarioResult(
 
 async function graphOrFailure(
   provider: LiveReminderScheduleNotificationProvider | null,
-  actorId?: string | null,
+  actorId: string | null | undefined,
+  now: string,
 ): Promise<LiveReminderNotificationGraph | ReminderScheduleNotificationFailure> {
   const normalizedActorId = actorId?.trim();
   if (!normalizedActorId) {
     return failure("REMINDER_SCHEDULE_NOTIFICATION_ACTOR_REQUIRED", {
+      collectedAt: now,
       provider,
       readExecuted: false,
       sourceLabel: "Authenticated reminder notification actor is required",
@@ -590,6 +592,7 @@ async function graphOrFailure(
 
   if (!provider) {
     return failure("REMINDER_SCHEDULE_NOTIFICATION_LIVE_STORE_UNCONFIGURED", {
+      collectedAt: now,
       provider,
       readExecuted: false,
       sourceLabel: "Reminder notification live store is not configured",
@@ -614,7 +617,7 @@ export function createLiveReminderScheduleNotificationService({
       input: ReminderScheduleNotificationListInput = {},
     ): Promise<ReminderScheduleNotificationResult> {
       const now = clock().toISOString();
-      const graph = await graphOrFailure(provider, input.actorId);
+      const graph = await graphOrFailure(provider, input.actorId, now);
 
       if (isFailure(graph)) {
         return graph;
@@ -649,7 +652,7 @@ export function createLiveReminderScheduleNotificationService({
       input: ReminderScheduleNotificationGenerateInput = {},
     ): Promise<ReminderScheduleNotificationResult> {
       const now = clock().toISOString();
-      const graph = await graphOrFailure(provider, input.actorId);
+      const graph = await graphOrFailure(provider, input.actorId, now);
 
       if (isFailure(graph)) {
         return graph;

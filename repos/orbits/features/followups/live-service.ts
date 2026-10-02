@@ -385,11 +385,11 @@ function failure(
   };
 }
 
-function unconfiguredFailure(): FollowupTaskGenerationFailure {
+function unconfiguredFailure(now: string): FollowupTaskGenerationFailure {
   return failure(
     "FOLLOWUP_TASK_GENERATION_LIVE_STORE_UNCONFIGURED",
     provenanceFor({
-      collectedAt: new Date(0).toISOString(),
+      collectedAt: now,
       databaseReadExecuted: false,
       tasks: [],
     }),
@@ -449,14 +449,15 @@ function scenarioResult(
 
 async function graphOrFailure(
   provider: LiveFollowupTaskProvider | null,
-  actorId?: string | null,
+  actorId: string | null | undefined,
+  now: string,
 ): Promise<FollowupTaskGenerationFailure | LiveFollowupGraph> {
   const normalizedActorId = actorId?.trim();
   if (!normalizedActorId) {
     return failure(
       "FOLLOWUP_TASK_GENERATION_ACTOR_REQUIRED",
       provenanceFor({
-        collectedAt: new Date(0).toISOString(),
+        collectedAt: now,
         databaseReadExecuted: false,
         provider,
         tasks: [],
@@ -465,7 +466,7 @@ async function graphOrFailure(
   }
 
   if (!provider) {
-    return unconfiguredFailure();
+    return unconfiguredFailure(now);
   }
 
   return provider.readFollowupGraph(normalizedActorId);
@@ -486,7 +487,7 @@ export function createLiveFollowupTaskGenerationService({
       input: FollowupTaskGenerationGenerateInput = {},
     ): Promise<FollowupTaskGenerationResult> {
       const now = clock().toISOString();
-      const graph = await graphOrFailure(provider, input.actorId);
+      const graph = await graphOrFailure(provider, input.actorId, now);
 
       if (isFailure(graph)) {
         return graph;
@@ -518,7 +519,7 @@ export function createLiveFollowupTaskGenerationService({
       input: FollowupTaskGenerationListInput = {},
     ): Promise<FollowupTaskGenerationResult> {
       const now = clock().toISOString();
-      const graph = await graphOrFailure(provider, input.actorId);
+      const graph = await graphOrFailure(provider, input.actorId, now);
 
       if (isFailure(graph)) {
         return graph;
