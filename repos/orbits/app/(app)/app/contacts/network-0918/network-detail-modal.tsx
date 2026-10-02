@@ -1,12 +1,13 @@
 /**
  * 联系人详情弹窗（Network v2 第 708–788 行）。
  * 数据只来自详情路由的 OrbitContactView（真实 notes / editableTags / lastInteraction / publicProfile）。
- * 关闭 = 真实导航到 closeHref；「记录互动」「更新状态」都打开记录跟进弹窗。
+ * 关闭 = 真实导航到 closeHref；「写 memo」「更新状态」都打开「写 memo」弹窗。
+ * W0046：「最近互动」是聚合关系时间线（contact.timeline，详情页服务端读好；七种来源，最近 20 条）。
  * 省略（无数据源 / 死链接，见台账）：「···」「✎ 编辑资料」「▦ 约时间」「查看全部 →」、概览「联系频率」。
  * W0010：右栏「下一步建议」下方有「关联到计划人脉需求」（手动关联，只能关联本人的计划与本人的联系人；
  * 点开才读计划，示例模式下被拦截）。
  *
- * W0005 示例模式（`useDemoMode()` 非空）：名字旁带「示例」角标，「记录互动」「更新状态」改走
+ * W0005 示例模式（`useDemoMode()` 非空）：名字旁带「示例」角标，「写 memo」「更新状态」改走
  * `guardWrite`，弹「这是示例」、不打开记录跟进、不发请求。`useNetworkDemoDetail` 让列表／概览／
  * 管线在示例里点联系人时直接在本页打开示例详情（前端数据，不导航、不发请求）；传了 `onClose`
  * 时关闭只收起弹窗，不再导航。
@@ -17,6 +18,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent, typ
 
 import { buildDemoNetworkDetail, demoContactIdFromHref } from "../../_demo/demo-network";
 import { DemoTag, useDemoMode } from "../../_demo/demo-mode-core";
+import type { RelationshipTimelineItem, RelationshipTimelineSource } from "../../../../../shared/contract/relationship-timeline";
 import type { OrbitContactView } from "../../orbit-contacts-route-view-model";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { useOrbitModalA11y } from "../../orbit-modal-a11y";
@@ -48,6 +50,73 @@ function DetailInitializationPanel({ contactId, language }: { contactId: string;
   return <ContactRelationshipInitializationPanel controller={controller} language={language} />;
 }
 
+const TOKYO_OFFSET_MS = 9 * 60 * 60 * 1000;
+
+/**
+ * W0046 时间线时间：按东京时间显示（固定 +9，服务端与客户端一致，无 hydration 差异）；
+ * day 精度只显示日期，不编时分。
+ */
+export function formatTimelineTime(item: Pick<RelationshipTimelineItem, "occurredAt" | "occurredAtPrecision">, t: Translate = (copy) => copy.zh): string {
+  const at = Date.parse(item.occurredAt);
+  if (!Number.isFinite(at)) return "—";
+  const d = new Date(at + TOKYO_OFFSET_MS);
+  const p = (n: number) => String(n).padStart(2, "0");
+  const m = d.getUTCMonth() + 1;
+  const day = d.getUTCDate();
+  if (item.occurredAtPrecision === "day") return t({ zh: `${m}月${day}日`, en: `${EN_MONTHS[m - 1]} ${day}` });
+  const hm = `${p(d.getUTCHours())}:${p(d.getUTCMinutes())}`;
+  return t({ zh: `${m}月${day}日 ${hm}`, en: `${EN_MONTHS[m - 1]} ${day} ${hm}` });
+}
+
+export const TIMELINE_SOURCE_LABEL: Record<RelationshipTimelineSource, { zh: string; en: string }> = {
+  memo: { zh: "memo", en: "Memo" },
+  encounter: { zh: "见面", en: "Met" },
+  note: { zh: "笔记", en: "Note" },
+  plan: { zh: "计划", en: "Plan" },
+  schedule: { zh: "日程", en: "Schedule" },
+  followup_done: { zh: "跟进", en: "Follow-up" },
+  capture: { zh: "建立联系", en: "Connected" },
+};
+
+/** 「最近互动」：聚合时间线（W0046）。没有 timeline（旧调用方）时退回详情 notes。 */
+function RecentInteractions({ contact, t }: { contact: OrbitContactView; t: Translate }) {
+  const timeline = contact.timeline;
+  if (!timeline) {
+    const notes = sortedNotes(contact.notes);
+    return (
+      <div className="nw-tl">
+        {notes.length === 0 ? <span className="nw-tl-empty">{t({ en: "No interactions recorded yet", zh: "还没有互动记录" })}</span> : null}
+        {notes.map((note, i) => (
+          <div key={note.id} className="nw-tl-row">
+            <span className="nw-tl-rail"><span className="nw-tl-dot" style={{ background: i === 0 ? "#4B4FC7" : "#B9BCEB" }}></span><span className="nw-tl-line" style={{ background: i === notes.length - 1 ? "transparent" : "#DDDEFA" }}></span></span>
+            <span className="nw-tl-body"><span className="nw-tl-meta"><span className="nw-tl-time">{formatNoteTime(note.createdAt, t)}</span><strong className="nw-tl-kind">{t({ en: "Note", zh: "备注" })}</strong></span><span className="nw-tl-text">{note.body}</span></span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  const items = timeline.items;
+  const total = timeline.total ?? items.length;
+  const partial = timeline.unavailableSources.length > 0;
+  return (
+    <div className="nw-tl" data-network-timeline>
+      {partial ? <span className="nw-tl-partial" role="status">{t({ en: "Some records can't be loaded right now.", zh: "部分记录暂时读不到" })}</span> : null}
+      {items.length === 0 && !partial ? <span className="nw-tl-empty">{t({ en: "No interactions recorded yet", zh: "还没有互动记录" })}</span> : null}
+      {items.map((item, i) => (
+        <div key={item.id} className="nw-tl-row" data-timeline-source={item.source}>
+          <span className="nw-tl-rail"><span className="nw-tl-dot" style={{ background: i === 0 ? "#4B4FC7" : "#B9BCEB" }}></span><span className="nw-tl-line" style={{ background: i === items.length - 1 ? "transparent" : "#DDDEFA" }}></span></span>
+          <span className="nw-tl-body">
+            <span className="nw-tl-meta"><span className="nw-tl-time">{formatTimelineTime(item, t)}</span><strong className="nw-tl-kind">{t(TIMELINE_SOURCE_LABEL[item.source])}</strong></span>
+            <span className="nw-tl-title">{t(item.title)}</span>
+            {item.excerpt ? <span className="nw-tl-text">{item.excerpt}</span> : null}
+          </span>
+        </div>
+      ))}
+      {total > items.length ? <span className="nw-tl-more">{t({ en: `${total} records in total · showing the latest ${items.length}`, zh: `共 ${total} 条 · 显示最近 ${items.length} 条` })}</span> : null}
+    </div>
+  );
+}
+
 export function sortedNotes(notes: OrbitContactView["notes"]): OrbitContactView["notes"] {
   return [...notes].sort((a, b) => (Date.parse(b.createdAt) || 0) - (Date.parse(a.createdAt) || 0));
 }
@@ -56,8 +125,8 @@ export function NetworkDetailModal({ contact, closeHref, onFollow: openFollow, e
   const { t, language } = useOrbitLanguage();
   const demo = useDemoMode();
   const guardWrite = demo?.guardWrite;
-  // 示例里两个写按钮各自弹拦截层（标签不同）；真实页面都打开记录跟进弹窗。
-  const onFollow = guardWrite ? () => guardWrite(t({ en: "interaction log", zh: "互动记录" })) : openFollow;
+  // 示例里两个写按钮各自弹拦截层（标签不同）；真实页面都打开「写 memo」弹窗（「更新状态」由 W0047 改造）。
+  const onFollow = guardWrite ? () => guardWrite(t({ en: "memo", zh: "memo" })) : openFollow;
   const onUpdateStatus = guardWrite ? () => guardWrite(t({ en: "relationship status", zh: "关系状态" })) : openFollow;
   const close = useCallback(() => {
     if (onClose) onClose();
@@ -80,7 +149,6 @@ export function NetworkDetailModal({ contact, closeHref, onFollow: openFollow, e
   const topics = profile?.topics ?? [];
   const offering = profile?.offering ?? [];
   const seeking = profile?.seeking ?? [];
-  const notes = sortedNotes(contact.notes);
   const next = contact.nextAction;
   const interactionAt = contact.editableInteraction?.occurredAt ? formatNoteTime(contact.editableInteraction.occurredAt, t) : dash;
   const interactionSummary = contact.lastInteraction.trim();
@@ -191,15 +259,7 @@ export function NetworkDetailModal({ contact, closeHref, onFollow: openFollow, e
             {extra}
             <div className="nw-panel nw-panel-16">
               <div className="nw-panel-head"><strong className="nw-panel-t">{t({ en: "Recent interactions", zh: "最近互动" })}</strong></div>
-              <div className="nw-tl">
-                {notes.length === 0 ? <span className="nw-tl-empty">{t({ en: "No interactions recorded yet", zh: "还没有互动记录" })}</span> : null}
-                {notes.map((note, i) => (
-                  <div key={note.id} className="nw-tl-row">
-                    <span className="nw-tl-rail"><span className="nw-tl-dot" style={{ background: i === 0 ? "#4B4FC7" : "#B9BCEB" }}></span><span className="nw-tl-line" style={{ background: i === notes.length - 1 ? "transparent" : "#DDDEFA" }}></span></span>
-                    <span className="nw-tl-body"><span className="nw-tl-meta"><span className="nw-tl-time">{formatNoteTime(note.createdAt, t)}</span><strong className="nw-tl-kind">{t({ en: "Note", zh: "备注" })}</strong></span><span className="nw-tl-text">{note.body}</span></span>
-                  </div>
-                ))}
-              </div>
+              <RecentInteractions contact={contact} t={t} />
             </div>
             <div className="nw-panel nw-panel-14">
               <strong className="nw-panel-t">{t({ en: "Shared topics", zh: "共同话题" })}</strong>
@@ -233,7 +293,7 @@ export function NetworkDetailModal({ contact, closeHref, onFollow: openFollow, e
         <div className="nw-detail-foot">
           <a className="btn nw-detail-close" href={closeHref} onClick={onCloseLink}>{t({ en: "Close", zh: "关闭" })}</a>
           <div className="nw-detail-foot-actions">
-            <button type="button" className="btn nw-detail-follow" onClick={onFollow}>▤ {t({ en: "Log interaction", zh: "记录互动" })}</button>
+            <button type="button" className="btn nw-detail-follow" onClick={onFollow}>▤ {t({ en: "Write memo", zh: "写 memo" })}</button>
             <button type="button" className="btn nw-detail-status" onClick={onUpdateStatus}>⇢ {t({ en: "Update status", zh: "更新状态" })}</button>
           </div>
         </div>

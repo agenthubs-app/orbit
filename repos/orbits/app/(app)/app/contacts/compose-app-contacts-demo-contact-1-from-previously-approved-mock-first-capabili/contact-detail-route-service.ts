@@ -502,7 +502,7 @@ function contactProviderForGraph(input: {
           input.provider.readContactDetailState!(contactId, actorId)
       : undefined,
     upsertContactDetailState: input.provider.upsertContactDetailState
-      ? (state) => input.provider.upsertContactDetailState!(state)
+      ? (state, expected) => input.provider.upsertContactDetailState!(state, expected)
       : undefined,
   };
 }

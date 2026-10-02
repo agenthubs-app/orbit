@@ -348,6 +348,8 @@ export interface ContactDetailTagStatusPayload {
   provenance: ContactDetailTagStatusProvenance;
   nextAction: string;
   updateSummary?: string;
+  /** W0046：本次 PATCH 写入（或去重命中）的备注 noteId；没有写备注时不出现。 */
+  savedNoteId?: string;
 }
 
 export interface ContactDetailLookupInput {
@@ -360,6 +362,12 @@ export interface ContactDetailLookupInput {
 export interface ContactDetailNoteInput {
   body: string;
   authorLabel?: string | null;
+  /** W0046 memo：用户选的东京日期 `YYYY-MM-DD`（仅 kind = "memo" 时有效）。 */
+  occurredAt?: string | null;
+  /** W0046 memo：可选的关联活动 id。 */
+  eventId?: string | null;
+  /** W0046：`"memo"` = 「写 memo」弹窗写入；不传 = 旧写法（App 与旧编辑器）。 */
+  kind?: "memo" | null;
 }
 
 export interface ContactDetailLastInteractionInput {

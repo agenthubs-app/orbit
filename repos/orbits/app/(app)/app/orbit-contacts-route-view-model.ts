@@ -1,3 +1,5 @@
+import type { RelationshipTimelineResult } from "../../../shared/contract/relationship-timeline";
+
 // pending_initialization is display-only, not a canonical lifecycle stage.
 export type OrbitContactPipelineStatus = "to_contact" | "in_progress" | "partnered" | "archived" | "pending_initialization";
 export type OrbitIntroStatus = "draft" | "sent";
@@ -44,6 +46,10 @@ export interface OrbitContactView {
   lastInteraction: string;
   editableInteraction?: { channel: string; occurredAt: string; summary: string };
   dormant: boolean;
+  /** W0046：详情弹窗「最近互动」的聚合时间线（详情页服务端读好随详情下发；示例为前端静态数据）。 */
+  timeline?: RelationshipTimelineResult;
+  /** W0046：「写 memo」的关联活动推荐来源——近期已报名活动日程（服务端读取，读失败为空）。 */
+  memoEventOptions?: readonly { eventId: string; title: string; startsAt: string }[];
 }
 
 export type OrbitContactStrength =

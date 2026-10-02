@@ -5,7 +5,7 @@
  *   没挂 Provider 时一切照旧（无横条、无角标、点行照常导航）；
  * - SC-03：概览与关系管线按示例数据渲染；点任意示例联系人在本页打开详情（8 位完整、其余简版），
  *   不发任何请求、不导航；
- * - SC-04：「记录互动」「更新状态」、记录跟进的「保存记录」都被拦下，不发请求；
+ * - SC-04：「写 memo」「更新状态」、memo 弹窗的「保存 memo」都被拦下，不发请求（W0046 改名）；
  *   「扫描名片」「导入人脉」仍是真实链接。
  */
 import assert from "node:assert/strict";
@@ -251,7 +251,7 @@ test("both write buttons raise the 这是示例 intercept (with its own label) a
     <DemoInterceptLayer />
   </>));
   const { root } = mounted;
-  for (const [className, label] of [["btn nw-detail-follow", "互动记录"], ["btn nw-detail-status", "关系状态"]] as const) {
+  for (const [className, label] of [["btn nw-detail-follow", "memo"], ["btn nw-detail-status", "关系状态"]] as const) {
     await act(async () => {
       button(root, className).props.onClick();
     });
@@ -331,7 +331,7 @@ test("the follow-up form's save is intercepted in the demo and sends no PATCH", 
     <NetworkFollowModal contact={contact} onClose={() => undefined} onSaved={() => undefined} />
     <DemoInterceptLayer />
   </>));
-  const summary = mounted.root.root.findAll((node) => node.type === "textarea" && node.props.id === "nw-fu-summary")[0]!;
+  const summary = mounted.root.root.findAll((node) => node.type === "textarea" && node.props.id === "nw-fu-memo")[0]!;
   await act(async () => {
     summary.props.onChange({ target: { value: "聊了试用" } });
   });
