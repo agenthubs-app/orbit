@@ -185,6 +185,38 @@ test("SC-02: an unmet need lists ≤2 events with their reason and “待确认 
   assert.equal(calls.length, 0, "opening the sheet does not fetch");
 });
 
+test("SC-02 / review P2: clicking “是” in the sheet links the contact and the coverage numbers update in place; “不是” only removes the row", async (t) => {
+  const calls = stubFetch(t, (url, init) => {
+    if (url !== "/api/agent/plans/candidates") return { body: {}, status: 500 };
+    const body = JSON.parse(String(init?.body)) as { decision: string };
+    return { body: { data: body.decision === "accept"
+      ? { link: { action: { id: "act-new", meta: { contactId: "contact:m1" }, title: "约 高桥" }, need: { id: "need-c" } }, status: "accepted" }
+      : { link: null, status: "dismissed" }, success: true } };
+  });
+  const renderer = await mount(t, <NetworkAnalysis viewModel={empty} analysis={analysis} initialTab="opp" opportunities={fullView()} />);
+  const percent = () => byData(renderer.root, "data-network-coverage-percent")[0]!.props["data-network-coverage-percent"];
+  const needC = () => textOf(byData(renderer.root, "data-network-need").find((node) => node.props["data-network-need"] === "need-c")!);
+  assert.equal(percent(), 75);
+  assert.match(needC(), /已有 0／1 · 还缺 1/);
+  await act(async () => { byData(renderer.root, "data-network-gap-pending")[0]!.props.onClick(); });
+  // 「不是」：覆盖不变
+  await act(async () => { renderer.root.find((node) => node.props["data-plan-match-candidate"] === "m2").find((node) => node.props["data-plan-match-no"] !== undefined).props.onClick(); });
+  assert.equal(percent(), 75);
+  // 「是」：need-c 0→1，总覆盖 3/4 → 4/4
+  await act(async () => { renderer.root.find((node) => node.props["data-plan-match-candidate"] === "m1").find((node) => node.props["data-plan-match-yes"] !== undefined).props.onClick(); });
+  assert.deepEqual(calls.map((call) => JSON.parse(call.body ?? "{}").decision), ["dismiss", "accept"]);
+  assert.equal(percent(), 100);
+  assert.match(needC(), /已有 1／1 · 已满足/);
+  assert.equal(byData(renderer.root, "data-network-gap").length, 0, "need-c is no longer a gap");
+  assert.match(textOf(byData(renderer.root, "data-network-pending-matches")[0]!), /1 位待确认/);
+});
+
+test("review P3: the English goal line uses an ASCII separator", () => {
+  const en = render(fullView({}, "en"), "en");
+  assert.match(en, /Relationship goal: 认识 SaaS 决策人/);
+  assert.doesNotMatch(en, /Relationship goal：/);
+});
+
 // ---- SC-03 ----
 
 test("SC-03: week actions link to /app/agent/plan#plan-action-<id>, overdue ones say “已延后 N 周”, and “N 位待确认” opens all candidates", async (t) => {

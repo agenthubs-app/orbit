@@ -42,7 +42,7 @@ function CoverageSection({ view, goal, onEditGoal }: { view: OpportunitiesTabVie
         </span>
         {onEditGoal ? <button type="button" className="btn nw-textlink" onClick={onEditGoal}>◈ {t({ en: "Set relationship goal", zh: "设置关系目标" })}</button> : null}
       </div>
-      {goal ? <p className="nw-op-goal">{t({ en: "Relationship goal", zh: "关系目标" })}：{goal}</p> : null}
+      {goal ? <p className="nw-op-goal">{t({ en: "Relationship goal: ", zh: "关系目标：" })}{goal}</p> : null}
       {view.state === "no_plan" ? (
         <div className="nw-op-noplan" data-network-coverage-no-plan="">
           <span className="nw-ai-desc">{t({ en: "No active plan yet. Once you generate one, coverage is measured against its network needs.", zh: "还没有生效的计划。生成计划后，这里按计划的人脉需求计算覆盖度。" })}</span>
@@ -317,13 +317,26 @@ export function NetworkOpportunities({ view, goal, onEditGoal }: { view: Opportu
   const [pendingMatches, setPendingMatches] = useState(view.weekActions.pendingMatches);
   const [sheet, setSheet] = useState<{ heading: string; candidates: PlanMatchCandidate[] } | null>(null);
   const allCandidates = coverage.state === "ready" ? coverage.needs.flatMap((need) => need.candidates) : [];
-  const onDecided = (candidateId: string) => {
+  // 「是」= 服务端已把这位联系人关联到该需求（与覆盖度同一事实来源 contact_links）：本地同步 have／missing 与总百分比；
+  // 「不是」只移除候选。两者都减待确认数。
+  const onDecided = (candidateId: string, decision: "accept" | "dismiss") => {
     const decided = allCandidates.find((candidate) => candidate.id === candidateId);
-    setCoverage((current) => current.state !== "ready" ? current : {
-      ...current,
-      needs: current.needs.map((need) => need.candidates.some((candidate) => candidate.id === candidateId)
-        ? { ...need, candidates: need.candidates.filter((candidate) => candidate.id !== candidateId), pendingCount: Math.max(0, (need.pendingCount ?? 1) - 1) }
-        : need),
+    setCoverage((current) => {
+      if (current.state !== "ready") return current;
+      const needs = current.needs.map((need) => {
+        if (!need.candidates.some((candidate) => candidate.id === candidateId)) return need;
+        const have = decision === "accept" ? need.have + 1 : need.have;
+        return {
+          ...need,
+          candidates: need.candidates.filter((candidate) => candidate.id !== candidateId),
+          have,
+          missing: Math.max(0, need.target - have),
+          pendingCount: Math.max(0, (need.pendingCount ?? 1) - 1),
+        };
+      });
+      const total = needs.reduce((sum, need) => sum + need.target, 0);
+      const covered = needs.reduce((sum, need) => sum + Math.min(need.have, need.target), 0);
+      return { ...current, needs, percent: total > 0 ? Math.round((covered / total) * 100) : null };
     });
     if (decided && !allCandidates.some((candidate) => candidate.id !== candidateId && candidate.contactId === decided.contactId)) {
       setPendingMatches((value) => (value ? Math.max(0, value - 1) : value));
@@ -338,7 +351,7 @@ export function NetworkOpportunities({ view, goal, onEditGoal }: { view: Opportu
       <ReportSection report={report} onReport={setReport} />
       {sheet ? (
         <PlanMatchDialog label={t({ en: "Plan matches", zh: "计划匹配" })} onClose={() => setSheet(null)}>
-          <PlanMatchSheet candidates={sheet.candidates} heading={sheet.heading} onDecided={(candidateId) => onDecided(candidateId)} />
+          <PlanMatchSheet candidates={sheet.candidates} heading={sheet.heading} onDecided={(candidateId, decision) => onDecided(candidateId, decision)} />
         </PlanMatchDialog>
       ) : null}
     </div>

@@ -74,9 +74,11 @@ export default async function AppContactsDashboardPage({ searchParams }: {
       </>
     );
   }
-  // W0047：先刷新关系强度读模型（来源戳与东京日未变时只读一条语句；失败不影响页面），分析里的档位分布读它。
-  const strengthState = await ensureRelationshipStrengthsForPage(actor.id, new Date());
   const tab = params?.tab === "structure" || params?.tab === "opportunities" ? params.tab : "overview";
+  // W0047：先刷新关系强度读模型（来源戳与东京日未变时只读一条语句；失败不影响页面），分析里的档位分布读它。
+  // W0050（D46③、review P1）：机会标签对任何表 0 写入——不刷新强度缓存，直接读上次算好的结果（待唤醒、档位分布），
+  // 刷新交给概览、结构、管线等其他入口；缓存为空时待唤醒如实显示空态。
+  const strengthState = tab === "opportunities" ? null : await ensureRelationshipStrengthsForPage(actor.id, new Date());
   const analysisPromise = loadContactsAnalysis(actor.id, language);
   // W0050（W50-5）：标签由 URL 驱动，服务端只读当前标签的数据——结构附加数据只在 ?tab=structure，机会数据只在 ?tab=opportunities。
   const [analysis, routeModel, structureExtras, opportunities] = await Promise.all([

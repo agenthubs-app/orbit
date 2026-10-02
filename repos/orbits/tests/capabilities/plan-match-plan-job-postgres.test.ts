@@ -10,13 +10,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type { Pool } from "pg";
+import { Pool } from "pg";
 
 import type { PlanAiMatcher } from "../../features/plans/ai-matcher";
 import { createPlanMatchMaintenanceTask } from "../../features/plans/match-maintenance-task";
 import type { PlanMatchWorkerDeps } from "../../features/plans/match-worker";
 import { PLAN_MATCHING_MIGRATIONS, runPlanMatchingMigrations } from "../../features/plans/matching-migrations";
-import type { PlanMatchRepository } from "../../features/plans/matching-repository";
+import { createPostgresPlanMatchRepository, type PlanMatchRepository } from "../../features/plans/matching-repository";
 import { enqueuePlanSourceMatchAfterSave } from "../../features/plans/matching-runtime";
 import { PLAN_MATCH_PLAN_BACKFILL_LIMIT } from "../../features/plans/plan-match-plan-job";
 import { runMaintenancePass } from "../../features/operations/maintenance/pass";
@@ -24,6 +24,7 @@ import {
   ALICE,
   BOB,
   databaseTest,
+  databaseUrl,
   jobRows,
   matchingPlanInput,
   NEED_INVESTOR,
@@ -165,5 +166,30 @@ test("D46③: the plan-match maintenance task enqueues a missing 'plan' job once
     assert.equal(await matches.enqueueMissingPlanJobs!({ limit: 100 }), PLAN_MATCH_PLAN_BACKFILL_LIMIT, "the cap holds even if a larger limit is asked");
     assert.equal(await matches.enqueueMissingPlanJobs!({ limit: PLAN_MATCH_PLAN_BACKFILL_LIMIT }), 2);
     assert.equal(await matches.enqueueMissingPlanJobs!({ limit: PLAN_MATCH_PLAN_BACKFILL_LIMIT }), 0);
+  });
+});
+
+test("review P3: two saves of the same plan version enqueueing at the same time on separate connections leave one 'plan' job and schedule one run", databaseTest, async () => {
+  await withMatchingDatabase(async (harness) => {
+    const { pool } = harness;
+    const { planId } = await planWithNeeds(harness);
+    const schema = (await pool.query(`select current_schema() as s`)).rows[0]!.s as string;
+    const separate = () => new Pool({ connectionString: databaseUrl, max: 1, options: `-c search_path=${schema}` });
+    const pools = [separate(), separate()];
+    try {
+      for (let round = 0; round < 5; round += 1) {
+        await pool.query(`delete from plan_match_jobs where source_kind = 'plan'`);
+        const tasks: Array<() => Promise<void>> = [];
+        await Promise.all(pools.map((connection) => {
+          const repository = createPostgresPlanMatchRepository({ pool: connection, workspaceId: WORKSPACE });
+          return enqueuePlanSourceMatchAfterSave({ actorId: ALICE, planId }, { after: (task) => tasks.push(task), runtime: { repository, worker: worker(repository, countingMatcher()) } as never });
+        }));
+        const jobs = (await jobRows(pool)).filter((job) => job.source_kind === "plan" && job.source_key === planId);
+        assert.equal(jobs.length, 1, `round ${round}: one job`);
+        assert.equal(tasks.length, 1, `round ${round}: one scheduled run`);
+      }
+    } finally {
+      await Promise.all(pools.map((connection) => connection.end()));
+    }
   });
 });
