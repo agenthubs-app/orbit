@@ -29,6 +29,8 @@ import { runConfiguredMemoExtraction } from "../../contacts/memo-extraction/stor
 import { createNewContactLayersDeps } from "../../network-analysis/layers-runtime";
 import { createNetworkSnapshotMaintenanceTask } from "../../network-analysis/maintenance-task";
 import { getConfiguredNetworkAnalysisRuntime } from "../../network-analysis/runtime";
+import { createContactInsightsMaintenanceTask } from "../../contacts/insights/maintenance-task";
+import { getConfiguredContactInsightsRuntime } from "../../contacts/insights/runtime";
 import type { MaintenanceTask } from "./pass";
 
 // The production task list. Each task checks its own configuration and reports
@@ -234,6 +236,13 @@ export function createConfiguredMaintenanceTasks({
           runtime,
         };
       },
+    }),
+    // W0051: per-contact insights. Claims dirty rows per actor (≤20 contacts per batch), reserves one
+    // background-pool operation per batch, defers the whole batch to the next Tokyo day when the pool is
+    // used up, and marks interrupted (lease-expired) rows failed instead of re-calling. ≤10 batches per pass;
+    // an idle pass is one partial-index claim statement. Skipped until the table is migrated.
+    createContactInsightsMaintenanceTask({
+      resolve: () => getConfiguredContactInsightsRuntime(),
     }),
     {
       name: "notification_redelivery",

@@ -11,13 +11,16 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  applyDormantInsights,
   buildOpportunitiesTabView,
   dormantRows,
   gapEvidenceIds,
   gapNoteFor,
   needEventRows,
   type DormantCandidate,
+  type DormantInsight,
 } from "../../app/(app)/app/contacts/analysis/opportunities-view-model";
+import { loadOpportunitiesTab } from "../../app/(app)/app/contacts/analysis/opportunities-route-service";
 import { manualRemaining } from "../../app/(app)/app/contacts/analysis/opportunities-report-card";
 import type { PublicEventRecordCatalogueSnapshot } from "../../features/events/core/public-catalogue";
 import type { EventRecord } from "../../features/events/event-crud-and-import/contract";
@@ -169,4 +172,61 @@ test("SC-04: the reconnect draft is a template — bilingual, uses only the cont
   assert.match(en.body, /^Hi Ana,/);
   assert.match(en.subject, /catch up/);
   assert.doesNotMatch(en.body, /undefined|null/);
+});
+
+/* ── W0051（R-8，W50-3 后半）：待唤醒「为什么现在联系」改读洞察 nextStep ── */
+
+test("W0051 R-8: ready insight → why = its nextStep in the UI language; none / pending / failed / no_goal keep the W0050 rule sentence", () => {
+  const candidates = ["ready", "none", "pending", "failed", "no_goal"].map((id, index) =>
+    dormant(id, { lastSignal: { occurredAt: `2026-07-0${index + 1}T03:00:00.000Z`, recordId: `memo:${id}`, source: "memo" }, primaryIndustryId: "finance_investment" }));
+  const insights = new Map<string, DormantInsight>([
+    ["ready", { nextStep: { en: "Congratulate them on the new fund and ask for 20 minutes.", zh: "祝贺新基金并约 20 分钟。" }, state: "ready" }],
+    ["pending", { nextStep: null, state: "pending" }],
+    ["failed", { nextStep: { en: "stale text", zh: "旧文字" }, state: "failed" }],
+    ["no_goal", { nextStep: { en: "x", zh: "x" }, state: "no_goal" }],
+  ]);
+  for (const language of ["zh", "en"] as const) {
+    const rows = dormantRows({ candidates, goal: "拿到天使轮融资", language, needTitleByContact: new Map() });
+    assert.equal(rows.length, 5);
+    const applied = applyDormantInsights(rows, insights, language);
+    // 洞察按联系人记录 id 查（详情链接用的是领域 id）。
+    const byId = new Map(applied.map((row) => [row.recordId, row]));
+    assert.equal(byId.get("ready")?.why, language === "zh" ? "祝贺新基金并约 20 分钟。" : "Congratulate them on the new fund and ask for 20 minutes.");
+    assert.equal(byId.get("ready")?.whySource, "insight");
+    for (const id of ["none", "pending", "failed", "no_goal"]) {
+      assert.equal(byId.get(id)?.why, rows.find((row) => row.recordId === id)?.why, id);
+      assert.equal(byId.get(id)?.whySource, "rule");
+    }
+    // 顺序与依据不变。
+    assert.deepEqual(applied.map((row) => [row.contactId, row.evidence.recordId]), rows.map((row) => [row.contactId, row.evidence.recordId]));
+  }
+});
+
+test("W0051 R-8: the opportunities loader reads insights only for the ≤5 shown dormant rows (0 model calls, 0 reservations); a failed insight read keeps the rule sentence", async () => {
+  const report = { blocks: [], contactCount: 5, freshness: { job: "none" as const, newContactCount: 0, stale: false }, generatedAt: NOW.toISOString(), quota: { background: { limit: 60, usedToday: 0 }, manual: { limit: 3, usedToday: 0 }, user: { limit: 10, usedToday: 0 } }, state: "ready" as const };
+  const candidates = Array.from({ length: 7 }, (_, index) => dormant(`d${index}`, { lastSignal: { occurredAt: `2026-07-0${index + 1}T03:00:00.000Z`, recordId: `memo:d${index}`, source: "memo" }, primaryIndustryId: "finance_investment" }));
+  const reads: (readonly string[])[] = [];
+  const base = {
+    readBookableEvents: async () => [],
+    readContactNames: async () => new Map(),
+    readDormant: async () => candidates,
+    readPending: null,
+    readPlan: async () => null,
+    readSnapshot: async () => report,
+  };
+  const view = await loadOpportunitiesTab({ actorId: ME, goal: "拿到天使轮融资", language: "zh", now: NOW }, {
+    ...base,
+    readInsights: async (_actorId, ids, goal) => {
+      reads.push(ids);
+      assert.equal(goal, "拿到天使轮融资");
+      return new Map([["d6", { nextStep: { en: "Ping about the fund.", zh: "问问新基金的进展。" }, state: "ready" as const }]]);
+    },
+  });
+  assert.deepEqual(reads, [["d6", "d5", "d4", "d3", "d2"]], "record ids of the 5 shown rows");
+  assert.equal(view.dormant?.[0]?.why, "问问新基金的进展。");
+  assert.equal(view.dormant?.[0]?.whySource, "insight");
+  assert.equal(view.dormant?.[1]?.whySource, "rule");
+  const failed = await loadOpportunitiesTab({ actorId: ME, goal: "拿到天使轮融资", language: "zh", now: NOW }, { ...base, readInsights: async () => { throw new Error("insights down"); } });
+  assert.match(failed.dormant?.[0]?.why ?? "", /^上次往来：/);
+  assert.equal(failed.dormant?.[0]?.whySource, "rule");
 });

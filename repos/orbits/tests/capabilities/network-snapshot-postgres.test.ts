@@ -43,10 +43,12 @@ function runtimeFor(harness: NetworkHarness, generator: NetworkSnapshotGenerator
   });
 }
 
-function routes(runtime: NetworkAnalysisRuntime | null, options: { demo?: boolean; actor?: string; resolved?: { count: number } } = {}) {
+function routes(runtime: NetworkAnalysisRuntime | null, options: { demo?: boolean; actor?: string; resolved?: { count: number }; goalMarks?: string[] } = {}) {
   const tasks: (() => Promise<void>)[] = [];
   const handlers = createNetworkSnapshotRouteHandlers({
     after: (task) => { tasks.push(task); },
+    // W0051：手动重新分析成功后统一标目标已变的洞察（这里只记录调用；真实标记见 contact-insights-postgres）。
+    markInsightsGoalDirty: async (_runtime, actorId) => { options.goalMarks?.push(actorId); },
     isDemo: async () => options.demo ?? false,
     resolveActor: async () => ({ id: options.actor ?? ALICE }),
     runtime: () => {
@@ -204,7 +206,8 @@ test("SC-04 recompute: the 4th manual run is 429 MANUAL_REFRESH_LIMIT and the fu
     await harness.addContact("actor:carol", "carol:c0");
     const generator = generatorOf(buildMockSnapshotContent);
     const runtime = runtimeFor(harness, generator);
-    const post = (actor: string) => routes(runtime, { actor }).handlers.recompute(new Request("http://localhost/api/network/snapshot/recompute?lang=zh", { body: "{}", method: "POST" }));
+    const goalMarks: string[] = [];
+    const post = (actor: string) => routes(runtime, { actor, goalMarks }).handlers.recompute(new Request("http://localhost/api/network/snapshot/recompute?lang=zh", { body: "{}", method: "POST" }));
     for (let index = 0; index < 3; index += 1) {
       const response = await post(ALICE);
       assert.equal(response.status, 200);
@@ -213,6 +216,8 @@ test("SC-04 recompute: the 4th manual run is 429 MANUAL_REFRESH_LIMIT and the fu
       assert.equal(body.data.quota.manual.usedToday, index + 1);
     }
     assert.equal(generator.calls, 3);
+    // W0051（W51-1）：每次成功的手动重新分析后统一标一次目标已变的洞察；被拒的请求不标。
+    assert.deepEqual(goalMarks, [ALICE, ALICE, ALICE]);
     const fourth = await post(ALICE);
     assert.equal(fourth.status, 429);
     assert.equal(((await fourth.json()) as { error: { context: { reason: string } } }).error.context.reason, "MANUAL_REFRESH_LIMIT");
@@ -227,6 +232,7 @@ test("SC-04 recompute: the 4th manual run is 429 MANUAL_REFRESH_LIMIT and the fu
     assert.equal(generator.calls, 3);
     const carol = await post("actor:carol");
     assert.equal(carol.status, 409);
+    assert.deepEqual(goalMarks, [ALICE, ALICE, ALICE]);
     assert.equal((await harness.pool.query(`select count(*)::int as n from ai_usage_ledger where actor_id = 'actor:carol'`)).rows[0].n, 0);
   });
 });

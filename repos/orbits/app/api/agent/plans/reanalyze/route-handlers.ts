@@ -67,6 +67,13 @@ export interface PlanReanalyzeRouteDependencies {
   readGoal?: (actorId: string) => Promise<string | null>;
   serviceForActor?: (actorId: string) => ServiceResolution<PlanFollowUpServices>;
   isDemo?: (actor: AuthenticatedApiActor) => Promise<boolean>;
+  /** W0051（W51-1）：每月重新分析保存成功后把目标哈希不同的洞察统一标待更新（0 次 AI）；失败只记日志。 */
+  markInsightsGoalDirty?: (actorId: string, goal: string) => Promise<void>;
+}
+
+async function defaultMarkInsightsGoalDirty(actorId: string, goal: string): Promise<void> {
+  const { markContactInsightsGoalDirtyBestEffort } = await import("../../../../../features/contacts/insights/mark");
+  await markContactInsightsGoalDirtyBestEffort({ actorId, goal });
 }
 
 export interface PlanFollowUpServices {
@@ -197,6 +204,7 @@ export function createPlanReanalyzeRouteHandlers(dependencies: PlanReanalyzeRout
           origin,
         });
         await afterPlanSaved(actorId, result.snapshot.plan.id).catch(() => undefined);
+        if (!result.replayed) await (dependencies.markInsightsGoalDirty ?? defaultMarkInsightsGoalDirty)(actorId, rawGoal).catch(() => undefined);
         return NextResponse.json(
           success({
             planId: result.snapshot.plan.id,

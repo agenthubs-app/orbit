@@ -21,6 +21,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent, typ
 
 import { buildDemoNetworkDetail, demoContactIdFromHref } from "../../_demo/demo-network";
 import { DemoTag, useDemoMode } from "../../_demo/demo-mode-core";
+import { timelineAnchorId } from "./network-insight-copy";
 import type { RelationshipTimelineItem, RelationshipTimelineSource } from "../../../../../shared/contract/relationship-timeline";
 import type { OrbitContactView } from "../../orbit-contacts-route-view-model";
 import { useOrbitLanguage } from "../../orbit-language-context";
@@ -99,7 +100,7 @@ function RecentInteractions({ contact, t }: { contact: OrbitContactView; t: Tran
       {partial ? <span className="nw-tl-partial" role="status">{t({ en: "Some records can't be loaded right now.", zh: "部分记录暂时读不到" })}</span> : null}
       {items.length === 0 && !partial ? <span className="nw-tl-empty">{t({ en: "No interactions recorded yet", zh: "还没有互动记录" })}</span> : null}
       {items.map((item, i) => (
-        <div key={item.id} className="nw-tl-row" data-timeline-source={item.source}>
+        <div key={item.id} id={timelineAnchorId(item.id)} className="nw-tl-row" data-timeline-source={item.source}>
           <span className="nw-tl-rail"><span className="nw-tl-dot" style={{ background: i === 0 ? "#4B4FC7" : "#B9BCEB" }}></span><span className="nw-tl-line" style={{ background: i === items.length - 1 ? "transparent" : "#DDDEFA" }}></span></span>
           <span className="nw-tl-body">
             <span className="nw-tl-meta"><span className="nw-tl-time">{formatTimelineTime(item, t)}</span><strong className="nw-tl-kind">{t(TIMELINE_SOURCE_LABEL[item.source])}</strong></span>
@@ -144,7 +145,7 @@ export function sortedNotes(notes: OrbitContactView["notes"]): OrbitContactView[
   return [...notes].sort((a, b) => (Date.parse(b.createdAt) || 0) - (Date.parse(a.createdAt) || 0));
 }
 
-export function NetworkDetailModal({ contact, closeHref, onFollow: openFollow, extra, onClose, dialogRef }: { contact: OrbitContactView; closeHref: string; onFollow: () => void; extra?: ReactNode; onClose?: () => void; dialogRef?: Ref<HTMLDivElement> }) {
+export function NetworkDetailModal({ contact, closeHref, onFollow: openFollow, extra, insight, onClose, dialogRef }: { contact: OrbitContactView; closeHref: string; onFollow: () => void; extra?: ReactNode; /** W0051：hero 下方「和你目标的关系」面板。 */ insight?: ReactNode; onClose?: () => void; dialogRef?: Ref<HTMLDivElement> }) {
   const { t, language } = useOrbitLanguage();
   const demo = useDemoMode();
   const guardWrite = demo?.guardWrite;
@@ -252,6 +253,7 @@ export function NetworkDetailModal({ contact, closeHref, onFollow: openFollow, e
             <ContactEnrichmentInline key={contact.id} contact={contact} guardWrite={guardWrite} language={language} t={t} />
           </div>
         </div>
+        {insight}
         <div className="nw-panel nw-panel-16">
           <strong className="nw-panel-t">{t({ en: "Relationship overview", zh: "关系概览" })}</strong>
           <div className="nw-ov-grid">

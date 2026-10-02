@@ -23,10 +23,13 @@ import { RELATIONSHIP_STRENGTH_COLLECTION } from "../../../../../features/relati
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import type { RelationshipTimelineSource } from "../../../../../shared/contract/relationship-timeline";
 import type { LiveRecordSqlClient } from "../../../../../shared/storage/postgres-live-record-store";
+import { readContactInsightNextSteps } from "../../../../../features/contacts/insights/read";
 import {
+  applyDormantInsights,
   buildOpportunitiesTabView,
   gapEvidenceIds,
   type DormantCandidate,
+  type DormantInsight,
   type OpportunitiesTabView,
 } from "./opportunities-view-model";
 
@@ -42,6 +45,25 @@ export interface OpportunitiesTabLoaderDeps {
   readBookableEvents: (actorId: string, now: Date) => Promise<readonly PublicBookableEvent[]>;
   readDormant: (actorId: string) => Promise<DormantCandidate[]>;
   readContactNames: (actorId: string, recordIds: readonly string[]) => Promise<Map<string, EvidenceContactName>>;
+  /** W0051：待唤醒的 ≤5 位联系人的洞察（只读 contact_insights，0 次 AI、0 次配额）。 */
+  readInsights?: (actorId: string, contactIds: readonly string[], goal: string | null, now: Date) => Promise<Map<string, DormantInsight>>;
+}
+
+/** W0051：按待唤醒的 ≤5 位联系人读洞察行，换成视图状态（目标已更新等按当前目标判定）。 */
+export async function readDormantInsights(actorId: string, contactIds: readonly string[], goal: string | null, _now: Date): Promise<Map<string, DormantInsight>> {
+  const result = new Map<string, DormantInsight>();
+  // 没有关系目标：一律 no_goal（不读）。
+  if (!goal?.trim()) {
+    for (const contactId of contactIds) result.set(contactId, { nextStep: null, state: "no_goal" });
+    return result;
+  }
+  const rows = await readContactInsightNextSteps(actorId, contactIds);
+  for (const contactId of contactIds) {
+    const row = rows.get(contactId);
+    const state = !row ? "none" : row.status === "ready" ? "ready" : row.status === "failed" ? "failed" : row.status === "blocked_no_goal" ? "none" : "pending";
+    result.set(contactId, { nextStep: row?.nextStep ?? null, state });
+  }
+  return result;
 }
 
 const SOURCES = new Set<RelationshipTimelineSource>(["memo", "encounter", "note", "plan", "schedule", "followup_done", "capture"]);
@@ -122,6 +144,7 @@ export function defaultOpportunitiesTabLoaderDeps(): OpportunitiesTabLoaderDeps 
       : async () => new Map(),
     readDormant: runtime ? (actorId) => readDormantCandidates({ client: runtime.client, workspaceId: runtime.workspaceId }, actorId) : async () => [],
     readPending: matching ? (actorId) => matching.service.listPending({ actorId }) : null,
+    readInsights: readDormantInsights,
     readPlan: (actorId) => readCurrentPlanForSnapshot(actorId),
     readSnapshot: runtime ? (actorId, language) => runtime.service.readView(actorId, language, { enqueue: false }) : null,
   };
@@ -169,8 +192,16 @@ export async function loadOpportunitiesTab(
   const [plan, report, dormant, pending, bookable, gapNames, goal] = await Promise.all([
     planPromise, reportPromise, dormantPromise, pendingPromise, bookablePromise, gapNamesPromise, goalPromise,
   ]);
-  return buildOpportunitiesTabView(
+  const view = buildOpportunitiesTabView(
     { bookable, dormant, gapNames, goal, pending: pending ? { candidates: pending.candidates, contactCount: pending.contactCount } : null, plan, report },
     { language: input.language, now },
   );
+  // W0051（W50-3 后半）：待唤醒的「为什么现在联系」在洞察 ready 时改读 nextStep；读失败保留规则拼句。
+  if (!view.dormant?.length || !deps.readInsights) return view;
+  const insights = await guard<Map<string, DormantInsight>>(
+    "opportunities_tab_insights_failed",
+    deps.readInsights(actorId, view.dormant.map((row) => row.recordId ?? row.contactId), goal || plan?.goal || null, now),
+    new Map(),
+  );
+  return { ...view, dormant: applyDormantInsights(view.dormant, insights, input.language) };
 }

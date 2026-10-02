@@ -68,12 +68,13 @@ function harness(t: { mock: { method: (...args: never[]) => unknown } }, options
   const resolution = contactDetailTagStatusServiceFactory.create("mock");
   (t.mock.method as (object: object, name: string, impl: () => unknown) => unknown)(contactDetailTagStatusServiceFactory, "create", () => ({ ...resolution, service }));
   const jobs: MemoExtractionJobInput[] = [];
-  const patch = (body: unknown) => createContactDetailPatchHandler(async () => ({ id: "a" }), { onMemoSaved: (job) => jobs.push(job) })(
+  const insightMarks: { actorId: string; contactIds: readonly string[]; reasons: readonly string[] }[] = [];
+  const patch = (body: unknown) => createContactDetailPatchHandler(async () => ({ id: "a" }), { markInsightsDirty: async (input) => { insightMarks.push(input); }, onMemoSaved: (job) => jobs.push(job) })(
     new Request("https://orbit.test/api/contacts/own", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }),
     { params: Promise.resolve({ id: "own" }) },
   );
   const stored = async () => (await provider.readContactDetailState!("own", "a"))!;
-  return { casAttempts, jobs, patch, provider, store, stored, writes };
+  return { casAttempts, insightMarks, jobs, patch, provider, store, stored, writes };
 }
 
 const memo = (body: string, occurredAt: string, eventId?: string) => ({ note: { body, occurredAt, ...(eventId ? { eventId } : {}), kind: "memo" } });
@@ -277,4 +278,14 @@ test("after() 排队：成功只跑一次；注册失败记 enqueue_failed；回
   scheduleMemoExtractionAfterResponse(job, { after, run: async () => { runs += 1; }, log });
   assert.equal(logs.at(-1)?.stage, "enqueue_failed");
   assert.ok(!JSON.stringify(logs).includes("敏感正文"));
+});
+
+test("W0051 SC-01：保存 memo 只把这位联系人的洞察标为待更新（reason memo）；只改标签不标；失败的 PATCH 不标", async (t) => {
+  const { insightMarks, patch } = harness(t);
+  assert.equal((await patch(memo("聊到日本渠道", "2026-10-02"))).status, 200);
+  assert.deepEqual(insightMarks, [{ actorId: "a", contactIds: ["own"], reasons: ["memo"] }]);
+  assert.equal((await patch({ addTags: ["investor"] })).status, 200);
+  assert.equal(insightMarks.length, 1);
+  assert.notEqual((await patch({ note: { body: "x", kind: "memo", occurredAt: "not-a-date" } })).status, 200);
+  assert.equal(insightMarks.length, 1);
 });

@@ -221,7 +221,7 @@ function DormantItem({ row, index }: { row: DormantRow; index: number }) {
           <a className="nw-op-name" href={preserveHref(`/app/contacts/${encodeURIComponent(row.contactId)}`)}>{row.name}</a>
           <span className="nw-act-tag" style={{ background: "#FBF1DC", color: "#8A6420" }}>{t({ en: "To re-engage", zh: "待唤醒" })}</span>
         </span>
-        <span className="nw-act-desc">
+        <span className="nw-act-desc" data-network-dormant-why={row.whySource ?? "rule"}>
           {row.why} <a className="nw-op-evidence" href={preserveHref(row.evidence.href)} data-network-dormant-evidence={row.evidence.recordId}>ⓘ {t({ en: "Evidence", zh: "依据" })}</a>
         </span>
         {draft ? (

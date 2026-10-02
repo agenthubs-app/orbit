@@ -56,3 +56,40 @@ test("W0047 review P1-2: the live loader merges one tier lookup for the page's c
   } });
   assert.deepEqual(lookups, []);
 });
+
+test("W0051 SC-04: 所有人脉 replaces 下一步（预览） with the insight sentence (≤60) next to the tier; the tier filter is a server param kept in source links", async () => {
+  const card = (id: string) => ({ id, displayName: id, organization: "", role: "", sourceType: "manual" as const, status: "active" as const, pendingInitialization: false, nextActionPreview: "Review the next follow-up", valueTypes: [], updatedAt: "2026-09-25T00:00:00Z" });
+  const queries: unknown[] = [];
+  const previewReads: (readonly string[])[] = [];
+  const result = await loadContactCardRoute({ sourceGroup: "scan", tier: "core" }, { id: "a" }, { live: true,
+    readInsightPreviews: async (_actorId, ids) => { previewReads.push(ids); return new Map([["c1", { en: "Opens channels in Japan.", zh: "能打开日本渠道。" }]]); },
+    readTiers: async () => [{ contactId: "c1", tier: "core", dormant: false }],
+    service: {
+      page: async (q) => { queries.push(q); return { items: [card("c1"), card("c2")], hasMore: true, nextCursor: "signed", asOf: "2026-09-25T00:00:00Z" }; },
+      summary: async (q) => { queries.push(q); return { total: 2, sources: { business_card_ocr: 2 }, statuses: {}, values: {}, tags: [], hasMoreTags: false, asOf: "2026-09-25T00:00:00Z" }; },
+    } });
+  if (result?.state !== "ready") throw Error("Missing result");
+  assert.deepEqual(queries.map((q) => (q as { tierFilters?: string[] }).tierFilters), [["core"], ["core"]]);
+  assert.deepEqual(previewReads, [["c1", "c2"]]);
+  assert.equal(result.view.tier, "core");
+  assert.deepEqual(result.view.list.items.map((item) => item.insight), [{ en: "Opens channels in Japan.", zh: "能打开日本渠道。" }, null]);
+  assert.match(result.view.list.nextPath ?? "", /tier=core/);
+  const { renderToStaticMarkup } = await import("react-dom/server");
+  const { createElement } = await import("react");
+  const { NetworkCards } = await import("../../app/(app)/app/contacts/network-0918/network-cards");
+  const html = renderToStaticMarkup(createElement(NetworkCards, { view: result.view }));
+  assert.doesNotMatch(html, /下一步（预览）|Review the next follow-up/);
+  assert.match(html, /<span>关系档位<\/span><span><\/span><span>洞察<\/span>/);
+  assert.match(html, /data-network-insight="ready"[^>]*>能打开日本渠道。/);
+  assert.match(html, /data-network-insight="none"[^>]*>暂无洞察/);
+  assert.match(html, /<select name="tier"[^>]*data-network-tier-filter="true"[\s\S]*?<option value="core" selected="">核心/);
+  assert.match(html, /href="\/app\/contacts\?query=&amp;sourceGroup=event&amp;tier=core"/);
+  // 未知档位回到「全部」；空页不读洞察。
+  previewReads.length = 0;
+  const unknown = await loadContactCardRoute({ tier: "vip" }, { id: "a" }, { live: true, readInsightPreviews: async (_a, ids) => { previewReads.push([...ids]); return new Map(); }, readTiers: async () => [], service: {
+    page: async (q) => { assert.equal("tierFilters" in (q as object), false); return { items: [], hasMore: false, nextCursor: null, asOf: "2026-09-25T00:00:00Z" }; },
+    summary: async () => ({ total: 0, sources: {}, statuses: {}, values: {}, tags: [], hasMoreTags: false, asOf: "2026-09-25T00:00:00Z" }),
+  } });
+  assert.equal(unknown?.state === "ready" ? unknown.view.tier : null, "all");
+  assert.deepEqual(previewReads, []);
+});

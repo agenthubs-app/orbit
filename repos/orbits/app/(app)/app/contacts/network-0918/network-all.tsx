@@ -15,7 +15,7 @@ import { NETWORK_SOURCES, SOURCE_ICON, SOURCE_LABEL, STAGE_CHIP, STAGE_LABEL, ma
 import { NetworkAvatar, NetworkChip, NetworkShell } from "./network-shell";
 
 /** 详情弹窗数据只能来自详情路由（contactDetailPageViewModel），不能用列表 VM 的合成值。 */
-export interface NetworkOpenDetail { contact: OrbitContactView; extra?: ReactNode; closeHref: string }
+export interface NetworkOpenDetail { contact: OrbitContactView; extra?: ReactNode; closeHref: string; /** W0051：「和你目标的关系」面板（服务端读好的洞察）。 */ insight?: ReactNode }
 
 export function NetworkAll({ viewModel, initialSource = "all", openDetail }: { viewModel: OrbitContactsViewModel; initialSource?: NetworkSource | "all"; openDetail?: NetworkOpenDetail }) {
   const { t } = useOrbitLanguage();
@@ -31,7 +31,7 @@ export function NetworkAll({ viewModel, initialSource = "all", openDetail }: { v
   const modal = openDetail ? (
     follow
       ? <NetworkFollowModal contact={openDetail.contact} onClose={closeFollow} onSaved={reload} />
-      : <NetworkDetailModal contact={openDetail.contact} closeHref={openDetail.closeHref} onFollow={openFollow} extra={openDetail.extra} />
+      : <NetworkDetailModal contact={openDetail.contact} closeHref={openDetail.closeHref} onFollow={openFollow} extra={openDetail.extra} insight={openDetail.insight} />
   ) : demoDetail.modal;
   const people = useMemo(() => viewModel.connections.map(toPerson), [viewModel.connections]);
   const counts = useMemo(() => sourceCounts(people), [people]);

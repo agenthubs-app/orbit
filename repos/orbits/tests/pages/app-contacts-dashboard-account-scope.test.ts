@@ -51,6 +51,10 @@ function loadDashboardPage(t: TestContext, options: { signedIn?: boolean; actorI
       calls.push({ operation: "structureTab", input });
       return { highlights: null, snapshot: { state: "none" }, tierHistory: null };
     } },
+    [join(projectRoot, "app/(app)/app/contacts/analysis/insights-tab.ts")]: { loadInsightsTab: async (input: { actorId: string; goal: Promise<string | null>; search: Record<string, unknown> }) => {
+      calls.push({ operation: "insightsTab", input: { actorId: input.actorId, goal: await input.goal, search: input.search } });
+      return { rows: [], state: "ready" };
+    } },
     [join(projectRoot, "app/(app)/app/contacts/analysis/opportunities-route-service.ts")]: { loadOpportunitiesTab: async (input: { actorId: string; goal: Promise<string | null>; language: string }) => {
       calls.push({ operation: "opportunitiesTab", input: { actorId: input.actorId, goal: await input.goal, language: input.language } });
       return { coverage: { state: "no_plan" }, dormant: [], report: { state: "none" }, weekActions: { pendingMatches: null, planActions: [] } };
@@ -78,7 +82,7 @@ function loadDashboardPage(t: TestContext, options: { signedIn?: boolean; actorI
   delete testRequire.cache[testRequire.resolve(routePath)];
   const page = testRequire(pagePath).default as (input?: {
     searchParams?: Promise<{ tab?: string | string[] }>;
-  }) => Promise<ReactElement<{ children: Array<ReactElement<{ children: Array<ReactElement<{ analysis: unknown; initialTab?: string; opportunities?: unknown; structureExtras?: unknown }>> }>> }>>;
+  }) => Promise<ReactElement<{ children: Array<ReactElement<{ children: Array<ReactElement<{ analysis: unknown; initialTab?: string; opportunities?: unknown; structureExtras?: unknown; insights?: unknown }>> }>> }>>;
   return { calls, page, redirected };
 }
 
@@ -118,7 +122,21 @@ test("W0050 (W50-5): only the open analysis tab loads its extra data — opportu
 
   const overview = loadDashboardPage(t);
   await overview.page();
-  assert.ok(!overview.calls.some((call) => call.operation === "structureTab" || call.operation === "opportunitiesTab"));
+  assert.ok(!overview.calls.some((call) => call.operation === "structureTab" || call.operation === "opportunitiesTab" || call.operation === "insightsTab"));
+  assert.ok(!structure.calls.some((call) => call.operation === "insightsTab"));
+  assert.ok(!opportunities.calls.some((call) => call.operation === "insightsTab"));
+});
+
+test("W0051 SC-03: ?tab=insight loads only the insights page (with its sort/filter params) and passes it to the third tab", async (t) => {
+  const insight = loadDashboardPage(t);
+  const rendered = await insight.page({ searchParams: Promise.resolve({ sort: "tier", tab: "insight", tier: "core" }) });
+  const ops = insight.calls.map((call) => call.operation);
+  assert.ok(ops.includes("insightsTab"));
+  assert.ok(!ops.includes("structureTab") && !ops.includes("opportunitiesTab"));
+  assert.deepEqual(insight.calls.find((call) => call.operation === "insightsTab")?.input, { actorId: "account:canonical", goal: null, search: { sort: "tier", tab: "insight", tier: "core" } });
+  const screen = rendered.props.children[2].props.children[1];
+  assert.equal(screen.props.initialTab, "insight");
+  assert.deepEqual(screen.props.insights, { rows: [], state: "ready" });
 });
 
 test("contacts dashboard without a tab renders the overview screen for the resolved account", async (t) => {

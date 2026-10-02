@@ -10,6 +10,7 @@ import { createConfiguredTextEnricher, type TextEnricher } from "../contacts/enr
 import type { AiQuotaGate } from "../ai-quota/gate";
 import type { NetworkAnalysisRuntime } from "./runtime";
 import { confirmedContactPredicate } from "./repository";
+import { markContactInsightsDirty } from "../contacts/insights/repository";
 import { runNewContactLayers, type LayerContactRecord, type NewContactLayersDeps, type RunNewContactLayersInput } from "./new-contact-layers";
 
 type Row = Record<string, unknown>;
@@ -52,6 +53,9 @@ export function createNewContactLayersDeps(input: {
     },
     async refreshSnapshot(actorId) {
       return runtime.service.refreshAfterChange(actorId);
+    },
+    async markInsightsDirty(actorId, contactIds) {
+      await markContactInsightsDirty(client, { actorId, contactIds, reason: "enrichment", workspaceId });
     },
     async writeContact(actorId, record, nextPayload, at) {
       if (!store.updateRecordIfCurrent) throw new Error("Contact storage requires conditional update support.");

@@ -30,6 +30,7 @@ import {
   type TextEnrichmentContactInput,
   type TextEnrichmentUsage,
 } from "./text-enrichment";
+import { markContactInsightsDirty } from "../insights/repository";
 
 export const BACKFILL_DEFAULT_MAX_CALLS = 50;
 export const BACKFILL_MIN_INTERVAL_MS = 1_000;
@@ -272,8 +273,13 @@ export async function applyContactEnrichmentBackfillPlan(
         `update orbit_records set payload = $4::jsonb, updated_at = $5::timestamptz where ${scope} and ${owner} and updated_at = $6::timestamptz returning record_id`,
         [plan.workspaceId, entry.recordId, entry.userId, JSON.stringify(payload), updatedAt, row.version_text],
       );
-      if (updated.rows.length === 1) result.applied += 1;
-      else result.skippedChanged += 1;
+      if (updated.rows.length === 1) {
+        result.applied += 1;
+        // W0051：同一事务里把这位联系人的洞察标为待更新（表未迁移时跳过，不中断回填）。
+        if (typeof entry.userId === "string" && entry.userId) {
+          await markContactInsightsDirty(sql, { actorId: entry.userId, contactIds: [entry.recordId], reason: "enrichment", workspaceId: plan.workspaceId });
+        }
+      } else result.skippedChanged += 1;
     }
     return result;
   });

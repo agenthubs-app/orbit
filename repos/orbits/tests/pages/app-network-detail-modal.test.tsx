@@ -179,3 +179,83 @@ test("W0010: the detail modal offers 关联到计划人脉需求 without reading
   assert.match(html, /data-plan-need-link="closed"/);
   assert.match(html, /data-plan-need-link-open[^>]*>关联到计划人脉需求</);
 });
+
+/* ── W0051 SC-W0051-04：hero 下方「和你目标的关系」 ───────────────────── */
+
+import { NetworkInsightPanel } from "../../app/(app)/app/contacts/network-0918/network-insight-panel";
+import { contactInsightView } from "../../features/contacts/insights/view";
+import { contactInsightGoalHash, type ContactInsightRow } from "../../features/contacts/insights/repository";
+
+const INSIGHT_NOW = new Date("2026-10-03T03:00:00.000Z");
+const INSIGHT_GOAL = "认识 SaaS 决策人";
+const readyRow: ContactInsightRow = {
+  aiState: "done", attempts: 1, contactId: "c1", deferredUntil: null, dirtyAt: null, dirtyReasons: [],
+  evidence: [{ id: "memo:note:live-contact-detail-update:abc", source: "memo" }, { id: "item:need-1", source: "plan_need" }],
+  generatedAt: "2026-10-02T00:00:00.000Z", goalHash: contactInsightGoalHash(INSIGHT_GOAL),
+  goalRelation: { en: "Keiko leads partnerships at an AI vendor.", zh: "惠子负责一家 AI 公司的合作。" }, lastErrorCode: null, leaseExpiresAt: null,
+  model: "m", nextStep: { en: "Book the product demo.", zh: "约产品演示。" }, relevance: 72, sourceDataVersion: "v", status: "ready",
+};
+
+function panelHtml(row: ContactInsightRow | null, options: { goal?: string | null; quotaExhausted?: boolean; goalKnown?: boolean } = {}) {
+  const view = contactInsightView(row, { contactId: "c1", goal: options.goal === undefined ? INSIGHT_GOAL : options.goal, goalKnown: options.goalKnown, now: INSIGHT_NOW });
+  const insight = <NetworkInsightPanel view={view} quotaExhausted={options.quotaExhausted} contactHref="/app/contacts/c1" />;
+  return renderToStaticMarkup(<NetworkDetailModal contact={contact} closeHref="/app/contacts" onFollow={() => {}} insight={insight} />);
+}
+
+test("W0051: the goal-relation panel sits between the hero and 关系概览, with relation, evidence links and next step; no regenerate when fresh", () => {
+  const html = panelHtml(readyRow);
+  const hero = html.indexOf("nw-detail-hero");
+  const panel = html.indexOf("data-network-insight-panel");
+  const overview = html.indexOf("关系概览");
+  assert.ok(hero >= 0 && hero < panel && panel < overview, "hero < insight < overview");
+  assert.match(html, /data-network-insight-panel="ready"[\s\S]*?和你目标的关系[\s\S]*?惠子负责一家 AI 公司的合作。[\s\S]*?href="\/app\/contacts\/c1#tl-memo_note_live-contact-detail-update_abc"[\s\S]*?href="\/app\/agent\/plan#plan-need-item%3Aneed-1"[\s\S]*?下一步：<\/strong>约产品演示。/);
+  assert.doesNotMatch(html, /data-insight-regenerate/);
+  // 旧「下一步建议」区块保留不动（读 contact.nextAction）。
+  assert.match(html, /下周约产品演示/);
+});
+
+test("W0051: four states — pending / no goal / failed / none — each with real copy; regenerate only when stale or failed", () => {
+  const pending = panelHtml({ ...readyRow, goalRelation: null, nextStep: null, status: "pending" });
+  assert.match(pending, /data-network-insight-panel="pending"[\s\S]*?等待生成：下一轮后台任务会生成。/);
+  assert.doesNotMatch(pending, /data-insight-regenerate/);
+  const deferred = panelHtml({ ...readyRow, deferredUntil: "2026-10-03T15:00:00.000Z", goalRelation: null, nextStep: null, status: "pending" });
+  assert.match(deferred, /data-insight-deferred="true"[\s\S]*?明天更新/);
+  const noGoal = panelHtml(readyRow, { goal: "" });
+  assert.match(noGoal, /data-network-insight-panel="no_goal"[\s\S]*?设置关系目标后生成洞察。[\s\S]*?href="\/app\/contacts\/dashboard\?tab=insight"[^>]*data-insight-set-goal/);
+  assert.doesNotMatch(noGoal, /惠子负责一家 AI 公司的合作/);
+  const failed = panelHtml({ ...readyRow, lastErrorCode: "INVALID_OUTPUT", status: "failed" });
+  assert.match(failed, /data-network-insight-panel="failed"[\s\S]*?洞察生成失败。[\s\S]*?data-insight-regenerate[^>]*>重新生成/);
+  const none = panelHtml(null, { goalKnown: false });
+  assert.match(none, /data-network-insight-panel="none"[\s\S]*?暂无洞察：写 memo、补全资料或在计划里关联 TA 后自动生成。/);
+  // 过期：资料有更新／目标已更新角标 + 重新生成。
+  const stale = panelHtml({ ...readyRow, dirtyAt: "2026-10-03T00:00:00.000Z" });
+  assert.match(stale, /data-insight-badge="stale"[^>]*>资料有更新[\s\S]*?data-insight-regenerate/);
+  const goalUpdated = panelHtml(readyRow, { goal: "新的目标" });
+  assert.match(goalUpdated, /data-insight-badge="goal-updated"[^>]*>目标已更新[\s\S]*?data-insight-regenerate/);
+});
+
+test("W0051 R-11: when today's 10 user-pool actions are used the button is disabled with 今天次数已用完，明天可用; a click posts once and a 429 disables it", async (t) => {
+  const exhausted = panelHtml({ ...readyRow, status: "failed" }, { quotaExhausted: true });
+  assert.match(exhausted, /data-insight-regenerate="true" disabled=""[^>]*aria-disabled="true"|data-insight-regenerate=""[^>]*disabled=""/);
+  assert.match(exhausted, /data-insight-quota-used[^>]*>今天次数已用完，明天可用/);
+
+  const { act, create } = await import("react-test-renderer");
+  const previousFetch = globalThis.fetch;
+  const posts: string[] = [];
+  globalThis.fetch = (async (url: string, init: RequestInit) => {
+    posts.push(`${init.method} ${url}`);
+    return new Response(JSON.stringify({ error: { context: { reason: "USER_DAILY_LIMIT" } }, success: false }), { status: 429 });
+  }) as typeof fetch;
+  t.after(() => { globalThis.fetch = previousFetch; });
+  const view = contactInsightView({ ...readyRow, status: "failed" }, { contactId: "c1", goal: INSIGHT_GOAL, now: INSIGHT_NOW });
+  let root: ReturnType<typeof create> | undefined;
+  await act(async () => { root = create(<NetworkInsightPanel view={view} />); });
+  const button = () => root!.root.find((node) => node.type === "button" && node.props?.["data-insight-regenerate"] !== undefined);
+  await act(async () => { await button().props.onClick(); });
+  assert.deepEqual(posts, ["POST /api/contacts/c1/insight/regenerate"]);
+  assert.equal(button().props.disabled, true);
+  assert.ok(root!.root.findAll((node) => node.props?.["data-insight-quota-used"] !== undefined).length === 1);
+  await act(async () => { await button().props.onClick(); });
+  assert.equal(posts.length, 1, "a disabled button never posts again");
+  await act(async () => { root!.unmount(); });
+});
