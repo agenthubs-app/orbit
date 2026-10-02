@@ -20,6 +20,9 @@ import { createOrbitAgentStarterViewModel } from "../../app/(app)/app/orbit-agen
 // W0040：真实首页组合函数（在页面桩替换 require.cache 之前载入），用于证明那 1 次首页读取不算资料建议。
 import { loadAppHomeRouteViewModel as realLoadAppHomeRouteViewModel } from "../../app/(app)/app/home/compose-app-home-from-previously-approved-mock-first-capabilities/home-route-view-model";
 import { profileSignalReviewQueueServiceFactory } from "../../features/profile/service-factory";
+// W0041：首页联系人改读计数服务；联系人列表服务解析时记调用栈，区分是否经过联系人页模型。
+import { homeContactsSummaryServiceFactory } from "../../features/contacts/home-contacts-summary";
+import { contactsListSearchAndFilterServiceFactory } from "../../features/contacts/service-factory";
 
 const root = join(fileURLToPath(import.meta.url), "../../..");
 const require = createRequire(import.meta.url);
@@ -794,5 +797,31 @@ test("W0040 flag on + D2 legacy user with a goal: the real home, one home read, 
   assert.equal(shellPropsOf(await page()).guide, null);
   assert.equal(guideRecords.get("account:canonical")?.grandfathered, true);
   assert.equal(calls.filter((call) => call.operation === "home").length, 1);
+  assert.deepEqual(suggestionReads(calls), []);
+});
+
+/* ── W0041：示例期那 1 次首页读取不再组合联系人页模型（计数服务 1 次） ─────── */
+
+test("W0041 in the demo: the one home read counts contacts through the summary service once and never composes the contacts page model", async (t) => {
+  const listStacks: string[] = [];
+  const listCreate = contactsListSearchAndFilterServiceFactory.create;
+  t.mock.method(contactsListSearchAndFilterServiceFactory, "create", (mode?: string) => {
+    listStacks.push(new Error().stack ?? "");
+    return listCreate.call(contactsListSearchAndFilterServiceFactory, mode);
+  });
+  let summaryCreates = 0;
+  const summaryCreate = homeContactsSummaryServiceFactory.create;
+  t.mock.method(homeContactsSummaryServiceFactory, "create", (mode?: string) => {
+    summaryCreates += 1;
+    return summaryCreate.call(homeContactsSummaryServiceFactory, mode);
+  });
+  const { calls, page } = loadPage(t, { contacts: 0, flag: "on", throughRealHomeLoader: true });
+  const props = shellPropsOf(await page());
+  assert.ok(props.guide, "an empty goal keeps the user in the demo");
+  assert.equal(props.home, null);
+  assert.equal(calls.filter((call) => call.operation === "home").length, 1);
+  assert.deepEqual(calls.filter((call) => call.operation === "home-real").map((call) => call.input), ["success"]);
+  assert.equal(summaryCreates, 1, "the contacts summary service is resolved once");
+  assert.equal(listStacks.filter((stack) => stack.includes("contacts-route-view-model")).length, 0, "no contacts page model composition");
   assert.deepEqual(suggestionReads(calls), []);
 });
