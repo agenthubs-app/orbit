@@ -51,7 +51,9 @@ export const ENQUEUE_PLAN_JOB_SQL = `/* plan-match:enqueue-plan */
   returning id`;
 
 export const ENQUEUE_MISSING_PLAN_JOBS_SQL = `/* plan-match:enqueue-missing-plan */
-  with missing as (
+  insert into plan_match_jobs (workspace_id, id, actor_id, source_kind, source_key, contact_ids, ai_state)
+  select m.workspace_id, gen_random_uuid()::text, m.actor_id, 'plan', m.id, ${RECENT_CONTACT_IDS_SQL("m.actor_id")}, 'skipped'
+  from (
     select p.workspace_id, p.actor_id, p.id from plans p
     where p.workspace_id = $1 and p.status = 'active' and ${HAS_NEEDS_SQL}
       and not exists (
@@ -60,10 +62,7 @@ export const ENQUEUE_MISSING_PLAN_JOBS_SQL = `/* plan-match:enqueue-missing-plan
       )
     order by p.created_at, p.id
     limit $2
-  )
-  insert into plan_match_jobs (workspace_id, id, actor_id, source_kind, source_key, contact_ids, ai_state)
-  select m.workspace_id, gen_random_uuid()::text, m.actor_id, 'plan', m.id, ${RECENT_CONTACT_IDS_SQL("m.actor_id")}, 'skipped'
-  from missing m
+  ) m
   on conflict (workspace_id, actor_id, source_kind, source_key) do nothing
   returning actor_id, id`;
 
