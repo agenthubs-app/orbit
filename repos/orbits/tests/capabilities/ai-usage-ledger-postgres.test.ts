@@ -290,3 +290,44 @@ test("SC-04 P2-2 the memo provider reports a non-2xx response with usage (tokens
   const down = createDeepseekMemoExtractionProvider({ apiKey: "k", fetchImplementation: (async () => { throw new TypeError("fetch failed"); }) as unknown as typeof fetch });
   await assert.rejects(down.extract({ contact: {}, memo: "m" }), (error: unknown) => error instanceof MemoExtractionError && error.usage === null);
 });
+
+/* ── W0048b 合并后修复：同一操作并发 beginCall（行锁分配序号） ───────────────────── */
+
+test("W0048b fix: concurrent beginCall on one operation — all within max_calls succeed with consecutive seqs, the rest are strictly refused", databaseTest, async () => {
+  await withNetworkDatabase(async (harness) => {
+    const ledger = ledgerOf(harness);
+    const reservation = await ledger.reserve({ actorId: ALICE, idempotencyKey: "race:burst", now: NOW, pool: "user", purpose: "plan", trigger: "plan" });
+    assert.ok(reservation.ok === true);
+    const operationId = reservation.operationId;
+    // max_calls(plan) = 4；同时发 7 次登记。
+    const results = await Promise.allSettled(Array.from({ length: 7 }, () => ledger.beginCall(operationId, { model: "m", provider: "deepseek" })));
+    const granted = results.filter((result): result is PromiseFulfilledResult<{ callId: string }> => result.status === "fulfilled");
+    const refused = results.filter((result): result is PromiseRejectedResult => result.status === "rejected");
+    assert.equal(granted.length, 4);
+    assert.deepEqual(granted.map((result) => Number(result.value.callId.split("#")[1])).sort((a, b) => a - b), [1, 2, 3, 4]);
+    assert.equal(refused.length, 3);
+    for (const result of refused) {
+      assert.ok(result.reason instanceof AiQuotaCallRejectedError && result.reason.code === "MAX_CALLS", String(result.reason));
+    }
+    const rows = (await harness.pool.query("select seq from ai_usage_calls where operation_id = $1 order by seq", [operationId])).rows.map((row) => Number(row.seq));
+    assert.deepEqual(rows, [1, 2, 3, 4]);
+  });
+});
+
+test("W0048b fix: 200 rounds of two parallel beginCalls (1 of 4 already used) — 0 false refusals", databaseTest, async () => {
+  await withNetworkDatabase(async (harness) => {
+    const ledger = ledgerOf(harness);
+    let falseRefusals = 0;
+    for (let round = 0; round < 200; round += 1) {
+      const reservation = await ledger.reserve({ actorId: ALICE, idempotencyKey: `race:${round}`, now: NOW, pool: "system", purpose: "plan", trigger: "plan" });
+      assert.ok(reservation.ok === true);
+      await ledger.beginCall(reservation.operationId, { model: "m", provider: "p" });
+      const pair = await Promise.allSettled([
+        ledger.beginCall(reservation.operationId, { model: "m", provider: "p" }),
+        ledger.beginCall(reservation.operationId, { model: "m", provider: "p" }),
+      ]);
+      falseRefusals += pair.filter((result) => result.status === "rejected").length;
+    }
+    assert.equal(falseRefusals, 0);
+  });
+});
