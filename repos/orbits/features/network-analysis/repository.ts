@@ -9,6 +9,8 @@
  */
 import { randomUUID } from "node:crypto";
 
+import { confirmedContactPredicate } from "../contacts/confirmed-contact-predicate";
+
 import type { TransactionalPostgresClient, TransactionalSqlExecutor } from "../../shared/storage/transactional-postgres";
 import {
   SNAPSHOT_RETAINED_VERSIONS,
@@ -23,17 +25,8 @@ import {
 
 type Row = Record<string, unknown>;
 
-/** 本人已确认联系人（与计划输入 PLAN_INPUT_CONTACTS_SQL、引导进度同一归属口径）。$1 workspace，$2 actor。 */
-export function confirmedContactPredicate(alias: string): string {
-  return `${alias}.workspace_id = $1
-    and ${alias}.collection_name = 'contacts'
-    and ${alias}.lifecycle_state <> 'deleted'
-    and ${alias}.user_id = $2
-    and (${alias}.payload->'accountId' is null or ${alias}.payload->'accountId' = 'null'::jsonb or ${alias}.payload->'accountId' = to_jsonb($2::text))
-    and jsonb_typeof(${alias}.payload->'id') = 'string'
-    and ${alias}.payload->>'lifecycleInitialization' is distinct from 'pending'
-    and coalesce(trim(${alias}.payload->>'displayName'), '') <> ''`;
-}
+// W0054 review P2-1：谓词挪到 features/contacts/confirmed-contact-predicate.ts，引导计数、门槛与快照共用；这里转出原名。
+export { confirmedContactPredicate };
 
 export const SNAPSHOT_REFRESH_STATE_SQL = `/* network-snapshot:refresh-state */
   with confirmed as materialized (

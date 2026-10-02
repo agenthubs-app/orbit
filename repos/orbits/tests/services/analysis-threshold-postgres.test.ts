@@ -13,7 +13,11 @@ import { loadOpportunitiesTab, readDormantCandidates, type OpportunitiesTabLoade
 import { loadOverviewCockpit, type OverviewCockpitLoaderDeps } from "../../app/(app)/app/contacts/analysis/overview-cockpit-loader";
 import { loadStructureTabExtras, type StructureTabLoaderDeps } from "../../app/(app)/app/contacts/analysis/structure-tab-loader";
 import { buildNetworkOverviewData } from "../../app/(app)/app/contacts/network-0918/network-overview-cockpit-model";
-import { CONFIRMED_CONTACT_COUNT_SQL, createPostgresConfirmedContactCounter, GUIDE_REQUIRED_CONTACTS } from "../../features/guide/progress";
+import { createStorageGuideStateService, type GuideStatePayload } from "../../features/guide/guide-state";
+import { CONFIRMED_CONTACT_COUNT_SQL, createPostgresConfirmedContactCounter, createPostgresConfirmedContactSampler, GUIDE_REQUIRED_CONTACTS, readGuideStatusForActor, readStartGuideForActor } from "../../features/guide/progress";
+import { confirmedContactPredicate } from "../../features/contacts/confirmed-contact-predicate";
+import { confirmedContactPredicate as snapshotPredicate } from "../../features/network-analysis/repository";
+import { createMemoryLiveRecordStore } from "../../shared/storage/live-record-store";
 import { NETWORK_ANALYSIS_MIN_CONTACTS } from "../../features/network-analysis/analysis-threshold";
 import { readAnalysisThreshold } from "../../features/network-analysis/analysis-threshold-reader";
 import { readEvidenceContactNames } from "../../features/network-analysis/evidence-contacts";
@@ -85,9 +89,60 @@ function countPaidFetch(t: { after: (fn: () => void) => void }) {
   return hits;
 }
 
-test("W0054 SC-03: the threshold uses the guide's count statement and constant", () => {
+test("W0054 SC-03 (review P2-1): guide count, threshold and snapshot share one confirmed-contact predicate (name required) and constant", () => {
   assert.equal(NETWORK_ANALYSIS_MIN_CONTACTS, GUIDE_REQUIRED_CONTACTS);
   assert.match(CONFIRMED_CONTACT_COUNT_SQL, /select count\(\*\)::integer as total/);
+  assert.ok(CONFIRMED_CONTACT_COUNT_SQL.includes(confirmedContactPredicate("c")));
+  assert.equal(snapshotPredicate, confirmedContactPredicate, "the snapshot repository re-exports the same predicate");
+  assert.match(confirmedContactPredicate("c"), /displayName'\), ''\) <> ''/);
+});
+
+test("W0054 review P2-1: 2 named + 1 nameless contact — guide step 1 stays open, the threshold card shows and the snapshot also says insufficient", databaseTest, async () => {
+  await withNetworkDatabase(async (harness) => {
+    await harness.addContact(ALICE, `${ALICE}:n1`);
+    await harness.addContact(ALICE, `${ALICE}:n2`);
+    await harness.addContact(ALICE, `${ALICE}:blank`, { displayName: "   " });
+    const count = createPostgresConfirmedContactCounter({ client: harness.client, workspaceId: WORKSPACE });
+    assert.equal(await count(ALICE), 2, "a nameless record is not a confirmed contact");
+
+    // 引导：新用户（创建晚于 SINCE）、有目标与计划，第 1 步仍未完成 → 仍在示例里，/app/start 停在第 1 步。
+    const guideState = createStorageGuideStateService({ actorId: ALICE, store: createMemoryLiveRecordStore<GuideStatePayload>(), workspaceId: WORKSPACE });
+    const deps = {
+      config: { enabled: true, since: new Date("2026-09-01T00:00:00.000Z") },
+      countConfirmedContacts: count,
+      guideState,
+      hasActivePlan: async () => true,
+      readAccountCreatedAt: async () => "2026-09-20T00:00:00.000Z",
+      sampleConfirmedContacts: createPostgresConfirmedContactSampler({ client: harness.client, workspaceId: WORKSPACE }),
+    };
+    const status = await readGuideStatusForActor({ actorId: ALICE, relationshipGoal: "认识 SaaS 决策人" }, deps);
+    assert.equal(status?.inDemo, true);
+    assert.equal(status?.progress?.steps.contacts, false);
+    assert.equal(status?.progress?.confirmedContacts, 2);
+    const start = await readStartGuideForActor({ actorId: ALICE, relationshipGoal: "认识 SaaS 决策人" }, deps);
+    assert.equal(start.kind, "ready");
+    if (start.kind === "ready") {
+      assert.equal(start.snapshot.confirmedContacts, 2);
+      assert.equal(start.snapshot.completedAt, null);
+      assert.deepEqual(start.snapshot.contactSamples.map((sample) => sample.displayName).sort(), ["Name n1", "Name n2"]);
+    }
+
+    // 门槛与结构标签：还差 1 位，结构页是门槛卡；快照服务同一口径也是 insufficient（两边不再一个认 3、一个认 2）。
+    const threshold = await readAnalysisThreshold(ALICE, count);
+    assert.deepEqual(threshold, { confirmed: 2, met: false, missing: 1 });
+    const generator = countingGenerator();
+    const runtime = createNetworkAnalysisRuntime({
+      client: harness.client, generator, now: () => NOW, readCurrentPlan: async () => null,
+      readProfile: async () => ({ goal: "认识 SaaS 决策人", profileSection: { profile: { relationshipGoal: "认识 SaaS 决策人" }, state: "ready" } }),
+      workspaceId: WORKSPACE,
+    });
+    assert.equal((await runtime.service.readView(ALICE, "zh")).state, "insufficient");
+    const structure = await loadStructureTabExtras({ actorId: ALICE, language: "zh", strengthState: null, threshold }, {
+      readContactNames: async () => new Map(), readPlan: async () => null, readSnapshot: (actorId, language) => runtime.service.readView(actorId, language),
+    });
+    assert.deepEqual(structure.gate, { kind: "threshold", missing: 1 });
+    assert.equal(generator.calls, 0);
+  });
 });
 
 test("W0054 SC-03 main: 2 confirmed contacts on a phase-boundary plan — structure / opportunities / overview read no snapshot, write nothing, resolve no generator and leak no old sentence; back to 3 shows 「正在更新」 then 「明天更新」 when deferred", databaseTest, async (t) => {

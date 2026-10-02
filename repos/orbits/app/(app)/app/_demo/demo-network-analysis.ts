@@ -116,28 +116,28 @@ export function buildDemoNetworkSnapshotView(real: Date, lang: Lang): NetworkSna
   return {
     blocks: [
       block(lang, "diagnosis", "diagnosis", c(
-        "能直接推进试用的 IT 负责人只有铃木健和佐藤美咲两位，渠道代理和商会这两类关键人脉还很薄。",
-        "Only Suzuki Ken and Sato Misaki can move a trial forward directly; channel resellers and chamber contacts are still thin.",
+        "能直接推进试用的 IT 负责人目前只有铃木健和佐藤美咲，渠道代理和商会方面的关键人脉还很薄。",
+        "Only Suzuki Ken and Sato Misaki can move a trial forward directly; your channel-reseller and chamber contacts are still thin.",
       ), ["suzuki-ken", "sato-misaki", "lin-zhiyuan", "nakamura-megumi"]),
       block(lang, "insight-manufacturing", "insight", c(
         "制造业联系人占比最高，但多是采购和管理岗；请王砚这样的部长向 IT 部门引荐，是找到决策人的最快路径。",
         "Manufacturing is your largest group, but mostly procurement and management roles; asking a department head like Wang Yan for an IT intro is the fastest route to decision-makers.",
       ), ["wang-yan", "watanabe-kenji", "fujita-makoto"]),
       block(lang, "insight-channel", "insight", c(
-        "渠道方向有林志远、高桥由美两位 Cloudia 的伙伴营业，但和林志远已经六周没有往来，这条线在变冷。",
-        "Lin Zhiyuan and Takahashi Yumi at Cloudia cover the channel side, but you haven't talked to Lin in six weeks — that line is cooling.",
+        "渠道方向有林志远、高桥由美这对 Cloudia 的伙伴营业，但和林志远已经很久没有往来，这条线在变冷。",
+        "Lin Zhiyuan and Takahashi Yumi at Cloudia cover the channel side, but you haven't talked to Lin in a long while — that line is cooling.",
       ), ["lin-zhiyuan", "takahashi-yumi"]),
       block(lang, "insight-chamber", "insight", c(
-        "商会与公共机构的联系人能一次接触很多中小企业，中村惠和山田太郎值得优先维护。",
-        "Chamber and public-sector contacts reach many SMEs at once; Nakamura Megumi and Yamada Taro are worth keeping close.",
+        "商会与公共机构的联系人能同时接触很多中小企业，中村惠和山田太郎值得优先维护。",
+        "Chamber and public-sector contacts reach many SMEs at the same time; Nakamura Megumi and Yamada Taro are worth keeping close.",
       ), ["nakamura-megumi", "yamada-taro"]),
       block(lang, "gap-it", "gap", c(
-        "铃木健、佐藤美咲已经对上；还差一位，可以请王砚引荐北辰精工的 IT 决策人。",
-        "Suzuki Ken and Sato Misaki already fit; for one more, ask Wang Yan to introduce Hokushin Seiko's IT decision-maker.",
+        "铃木健、佐藤美咲已经对上；还缺人，可以请王砚引荐北辰精工的 IT 决策人。",
+        "Suzuki Ken and Sato Misaki already fit; to fill the gap, ask Wang Yan to introduce Hokushin Seiko's IT decision-maker.",
       ), ["wang-yan", "suzuki-ken", "sato-misaki"], NEED_IT),
       block(lang, "gap-channel", "gap", c(
-        "Cloudia 已有两位伙伴营业；松本彩能帮你交换其他渠道的联系人。",
-        "Cloudia already gives you two partner-sales contacts; Matsumoto Aya can swap introductions to other channels.",
+        "Cloudia 已有伙伴营业可以对接；松本彩能帮你交换其他渠道的联系人。",
+        "Cloudia already gives you partner-sales contacts; Matsumoto Aya can swap introductions to other channels.",
       ), ["takahashi-yumi", "lin-zhiyuan", "matsumoto-aya"], NEED_CHANNEL),
       block(lang, "gap-chamber", "gap", c(
         "还没有确认的对接人；中村惠所在的东京商工会议所和周宁的华人创业会是最近的入口。",
@@ -305,14 +305,14 @@ type InsightCopy = { relation: Copy; next: Copy; relevance: number; need?: strin
 
 /** 8 位有完整详情的示例联系人：逐条写。 */
 const RICH_INSIGHTS: Readonly<Record<string, InsightCopy>> = {
-  "wang-yan": { need: NEED_IT, next: c("今天 14:00 见面时，请他引荐 IT 部门的系统采购决策人。", "At today's 14:00 meeting, ask him to introduce the IT decision-maker."), relation: c("北辰精工的采购部长，上次通话确认了 IT 部门才是系统采购的决策方，是找到 IT 负责人的桥梁。", "Head of procurement at Hokushin Seiko; on the last call he confirmed IT owns system purchases — your bridge to the IT lead."), relevance: 92 },
-  "sato-misaki": { need: NEED_IT, next: c("约 20 分钟聊试用，带上会后整理时间的对比。", "Book 20 minutes for a trial chat and bring a before/after on note-taking time."), relation: c("丸和工业的情报系统课长，她们会后要花 30 分钟手写整理，正是试用要解决的问题。", "IT systems manager at Maruwa; her team spends 30 minutes writing up each meeting — exactly what the trial fixes."), relevance: 95 },
-  "suzuki-ken": { need: NEED_IT, next: c("确认他是不是计划里要找的 IT 负责人，再约一次演示。", "Confirm he is the IT lead the plan needs, then book a demo."), relation: c("丸和工业的情报系统部部长，昨晚导入的名片，职位和「中小企业 IT 负责人」对得上。", "Head of IT at Maruwa, imported last night; the role matches “SME IT lead”."), relevance: 90 },
-  "lin-zhiyuan": { need: NEED_CHANNEL, next: c("发一条问候，顺便问渠道分成和定价。", "Send a quick hello and ask about channel revenue share and pricing."), relation: c("Cloudia 的合作伙伴营业，六周前聊过日本 SaaS 渠道分成，是渠道代理最直接的人选。", "Partner sales at Cloudia; six weeks ago you discussed SaaS channel revenue share in Japan — your most direct reseller lead."), relevance: 88 },
-  "takahashi-yumi": { need: NEED_CHANNEL, next: c("确认她是否负责新产品的渠道引入。", "Check whether she handles onboarding new products into the channel."), relation: c("Cloudia 株式会社的合作伙伴营业，和林志远同一家渠道商，可以两条线一起推进。", "Partner sales at Cloudia K.K., same reseller as Lin Zhiyuan — you can work both lines together."), relevance: 84 },
-  "yamada-taro": { need: NEED_CHAMBER, next: c("在 JETRO 交流会上再见一次，请他介绍对 AI 工具感兴趣的企业。", "See him again at the JETRO mixer and ask for companies interested in AI tools."), relation: c("JETRO 东京的投资咨询顾问，接触大量想进入日本的企业，也认识本地商会的人。", "Investment advisor at JETRO Tokyo; meets many companies entering Japan and knows local chamber people."), relevance: 78 },
-  "chen-siyuan": { next: c("12 月前同步一次试用进展和数据。", "Share trial progress and numbers before December."), relation: c("星桥资本的投资经理，关注 AI 应用出海，想看日本市场的试用数据。", "Investment manager at Starbridge Capital; follows AI apps going abroad and wants Japan trial data."), relevance: 62 },
-  "nakamura-megumi": { need: NEED_CHAMBER, next: c("请她推荐 3 家愿意试点的会员企业。", "Ask her for 3 member companies willing to pilot."), relation: c("东京商工会议所中小企业支援课，手上有一批愿意尝试数字化工具的会员企业。", "SME support at the Tokyo Chamber of Commerce, with member companies open to digital tools."), relevance: 93 },
+  "wang-yan": { need: NEED_IT, next: c("今天下午见面时，请他引荐 IT 部门的系统采购决策人。", "At this afternoon's meeting, ask him to introduce the IT decision-maker."), relation: c("北辰精工的采购部长，上次通话确认了 IT 部门才是系统采购的决策方，是找到 IT 负责人的桥梁。", "Head of procurement at Hokushin Seiko; on the last call he confirmed IT owns system purchases — your bridge to the IT lead."), relevance: 92 },
+  "sato-misaki": { need: NEED_IT, next: c("约个简短的会聊试用，带上会后整理时间的对比。", "Book a short call about a trial and bring a before/after on note-taking time."), relation: c("丸和工业的情报系统课长，她们会后要花不少时间手写整理纪要，正是试用要解决的问题。", "IT systems manager at Maruwa; her team spends a long time writing up each meeting by hand — exactly what the trial fixes."), relevance: 95 },
+  "suzuki-ken": { need: NEED_IT, next: c("确认他是不是计划里要找的 IT 负责人，再约演示。", "Confirm he is the IT lead the plan needs, then book a demo."), relation: c("丸和工业的情报系统部部长，昨晚导入的名片，职位和「中小企业 IT 负责人」对得上。", "Head of IT at Maruwa, imported last night; the role matches “SME IT lead”."), relevance: 90 },
+  "lin-zhiyuan": { need: NEED_CHANNEL, next: c("发个问候，顺便问渠道分成和定价。", "Send a quick hello and ask about channel revenue share and pricing."), relation: c("Cloudia 的合作伙伴营业，之前聊过日本 SaaS 渠道分成，是渠道代理最直接的人选。", "Partner sales at Cloudia; you have discussed SaaS channel revenue share in Japan before — your most direct reseller lead."), relevance: 88 },
+  "takahashi-yumi": { need: NEED_CHANNEL, next: c("确认她是否负责新产品的渠道引入。", "Check whether she handles onboarding new products into the channel."), relation: c("Cloudia 株式会社的合作伙伴营业，和林志远同在这家渠道商，可以并行推进。", "Partner sales at Cloudia K.K., at the same reseller as Lin Zhiyuan — you can work both lines together."), relevance: 84 },
+  "yamada-taro": { need: NEED_CHAMBER, next: c("在 JETRO 交流会上再见面，请他介绍对 AI 工具感兴趣的企业。", "See him again at the JETRO mixer and ask for companies interested in AI tools."), relation: c("JETRO 东京的投资咨询顾问，接触大量想进入日本的企业，也认识本地商会的人。", "Investment advisor at JETRO Tokyo; meets many companies entering Japan and knows local chamber people."), relevance: 78 },
+  "chen-siyuan": { next: c("年底前同步试用进展和数据。", "Share trial progress and data before the year ends."), relation: c("星桥资本的投资经理，关注 AI 应用出海，想看日本市场的试用数据。", "Investment manager at Starbridge Capital; follows AI apps going abroad and wants Japan trial data."), relevance: 62 },
+  "nakamura-megumi": { need: NEED_CHAMBER, next: c("请她推荐愿意试点的会员企业。", "Ask her for member companies willing to pilot."), relation: c("东京商工会议所中小企业支援课，手上有愿意尝试数字化工具的会员企业。", "SME support at the Tokyo Chamber of Commerce, with member companies open to digital tools."), relevance: 93 },
 };
 
 const IT_LEADS = new Set(["yamaguchi-takashi", "yoshida-yu", "fujita-makoto", "hasegawa-jin", "maeda-yu"]);
@@ -320,29 +320,33 @@ const CHANNEL = new Set(["matsumoto-aya", "zhang-hao"]);
 const COMMUNITY = new Set(["zhou-ning"]);
 const ADVISORS = new Set(["ito-naoko", "lin-meiling", "ikeda-wataru", "shimizu-nana", "kato-ryo"]);
 
-function insightCopyFor(seed: DemoContactSeed, lang: Lang): InsightCopy {
+/**
+ * 一位示例联系人的洞察（中英两种语言同时从种子原值构造，与界面语言无关；review P3-3）。
+ * 叙述不写数量词（与真实快照「不带统计数字」同一约定；review P3-4）。
+ */
+function insightCopyFor(seed: DemoContactSeed): InsightCopy {
   const rich = RICH_INSIGHTS[seed.slug];
   if (rich) return rich;
-  const who = c(`${seed.company}的${seed.title}`, `${seed.title} at ${seed.company}`);
-  // 模板句里的公司与职位已是界面语言（seed 已按语言取值），两种语言都用同一个 who。
-  const at = (zh: string, en: string): Copy => c(zh.replace("{who}", who.zh), en.replace("{who}", who.en));
-  const next = seed.next ? c(seed.next, seed.next) : null;
+  const at = (zh: string, en: string): Copy => c(
+    zh.replace("{who}", `${seed.companyCopy.zh}的${seed.titleCopy.zh}`),
+    en.replace("{who}", `${seed.titleCopy.en} at ${seed.companyCopy.en}`),
+  );
   if (IT_LEADS.has(seed.slug)) {
-    return { need: NEED_IT, next: next ?? c("约 20 分钟聊试用。", "Book 20 minutes for a trial chat."), relation: at("{who}，管公司的 IT 系统，对应计划里的「中小企业 IT 负责人」。", "{who}; runs the company's IT systems — matches the plan's “SME IT lead”."), relevance: 80 };
+    return { need: NEED_IT, next: c("约个简短的会聊试用。", "Book a short call about a trial."), relation: at("{who}，管公司的 IT 系统，对应计划里的「中小企业 IT 负责人」。", "{who}; runs the company's IT systems — matches the plan's “SME IT lead”."), relevance: 80 };
   }
   if (CHANNEL.has(seed.slug)) {
-    return { need: NEED_CHANNEL, next: next ?? c("问一句他们是否代理海外 SaaS。", "Ask whether they resell overseas SaaS."), relation: at("{who}，熟悉日本的软件渠道，可能帮你对接代理商。", "{who}; knows Japan's software channels and may connect you with resellers."), relevance: 72 };
+    return { need: NEED_CHANNEL, next: c("问问他们是否代理海外 SaaS。", "Ask whether they resell overseas SaaS."), relation: at("{who}，熟悉日本的软件渠道，可能帮你对接代理商。", "{who}; knows Japan's software channels and may connect you with resellers."), relevance: 72 };
   }
   if (COMMUNITY.has(seed.slug)) {
-    return { need: NEED_CHAMBER, next: next ?? c("下次活动一起办。", "Co-host the next event."), relation: at("{who}，社群里有很多在日本创业的中小企业主。", "{who}; the community includes many SME founders in Japan."), relevance: 70 };
+    return { need: NEED_CHAMBER, next: c("下次活动联合举办。", "Co-host the next event."), relation: at("{who}，社群里有很多在日本创业的中小企业主。", "{who}; the community includes many SME founders in Japan."), relevance: 70 };
   }
   if (ADVISORS.has(seed.slug)) {
-    return { next: next ?? c("请教一次，顺便问能否介绍客户。", "Ask for advice and whether they can introduce clients."), relation: at("{who}，专业服务圈的人，能给出海建议、也可能介绍客户。", "{who}; a professional-services contact who can advise on entering Japan and may refer clients."), relevance: 48 };
+    return { next: c("请教出海问题，顺便问能否介绍客户。", "Ask for advice and whether they can introduce clients."), relation: at("{who}，专业服务圈的人，能给出海建议、也可能介绍客户。", "{who}; a professional-services contact who can advise on entering Japan and may refer clients."), relevance: 48 };
   }
   if (seed.tier === "dormant") {
-    return { next: c("发一条问候，看看对方最近的情况。", "Send a quick hello to see how things are."), relation: at("{who}，曾经有往来，最近很久没联系，可以重新激活。", "{who}; you were in touch before but it has gone quiet — worth reviving."), relevance: 35 };
+    return { next: c("发个问候，看看对方最近的情况。", "Send a quick hello to see how things are."), relation: at("{who}，曾经有往来，最近很久没联系，可以重新激活。", "{who}; you were in touch before but it has gone quiet — worth reviving."), relevance: 35 };
   }
-  return { next: next ?? c("了解他们开会和记录的方式。", "Learn how they run and record meetings."), relation: at("{who}，公司会议多、记录靠手写，是潜在的试用客户。", "{who}; lots of meetings recorded by hand — a potential trial customer."), relevance: 58 };
+  return { next: c("了解他们开会和记录的方式。", "Learn how they run and record meetings."), relation: at("{who}，公司会议多、记录靠手写，是潜在的试用客户。", "{who}; lots of meetings recorded by hand — a potential trial customer."), relevance: 58 };
 }
 
 function evidenceFor(seed: DemoContactSeed, copy: InsightCopy): ContactInsightEvidence[] {
@@ -351,7 +355,7 @@ function evidenceFor(seed: DemoContactSeed, copy: InsightCopy): ContactInsightEv
 }
 
 function demoInsightRow(seed: DemoContactSeed, lang: Lang, generatedAt: string): InsightsTabRow & { daysAgo: number; countryCode: string; primaryIndustryId: string } {
-  const copy = insightCopyFor(seed, lang);
+  const copy = insightCopyFor(seed);
   const insight: ContactInsightView = {
     canRegenerate: false,
     contactId: seed.id,

@@ -2,7 +2,7 @@
  * 引导进度与「是否进入示例」判定（W0004；W0005／W0006／W0014 复用）。
  *
  * 进度从真实数据推导，另加引导记录里的少量标记（规则在 `start-steps.ts`，客户端共用）：
- *   第 1 步 名片：本人已确认联系人 ≥ 3；W0054 起不能再跳过，存量 `step1Skipped = true`（W0006 时点过
+ *   第 1 步 名片：本人已确认联系人（姓名非空，W0054 review P2-1）≥ 3；W0054 起不能再跳过，存量 `step1Skipped = true`（W0006 时点过
  *     「先这样，继续」）只读兼容、照算完成（W54-1）
  *   第 2 步 目标：profile 的 relationshipGoal 非空
  *   第 3 步 计划：有生效中的计划（`features/plans` 的 `getCurrent()`）
@@ -20,6 +20,7 @@
  * 渲染真实首页（宁可少给人看示例，也不把老用户误关进示例）。开关关闭时不做任何读取。
  */
 import { readGuideDemoConfig, type GuideDemoConfig } from "../../shared/config/guide-demo";
+import { confirmedContactPredicate } from "../contacts/confirmed-contact-predicate";
 import { createConfiguredPostgresLiveRecordStore } from "../../shared/storage/configured-live-record-store";
 import type { LiveRecordSqlClient } from "../../shared/storage/postgres-live-record-store";
 import { createConfiguredStorageAccountSessionProvider } from "../account/storage/account-live-record-provider";
@@ -114,19 +115,12 @@ export function decideGuideDemo(input: {
 /* ── 读取器 ─────────────────────────────────────────────────────────── */
 
 /**
- * 本人已确认联系人计数：`orbit_records` 的 contacts，按 actor 过滤（与联系人列表同一套
- * 归属谓词：user_id 是本人，payload.accountId 为空或是本人），排除还在初始化
- * （`lifecycleInitialization = 'pending'`）与已删除的记录。只返回一个整数。
+ * 本人已确认联系人计数：`orbit_records` 的 contacts，按 actor 过滤。W0054（review P2-1）起与人脉分析门槛、
+ * W0048a 快照共用同一个谓词（`confirmedContactPredicate`：归属本人、未删除、已完成初始化、姓名非空）。只返回一个整数。
  */
 export const CONFIRMED_CONTACT_COUNT_SQL = `select count(*)::integer as total
 from orbit_records c
-where c.workspace_id = $1
-  and c.collection_name = 'contacts'
-  and c.lifecycle_state <> 'deleted'
-  and c.user_id = $2
-  and (c.payload->'accountId' is null or c.payload->'accountId' = 'null'::jsonb or c.payload->'accountId' = to_jsonb($2::text))
-  and jsonb_typeof(c.payload->'id') = 'string'
-  and c.payload->>'lifecycleInitialization' is distinct from 'pending'`;
+where ${confirmedContactPredicate("c")}`;
 
 export type ConfirmedContactCounter = (actorId: string) => Promise<number>;
 
@@ -316,14 +310,7 @@ export const CONFIRMED_CONTACT_SAMPLE_SQL = `select c.payload->>'displayName' as
   c.payload->>'organization' as organization,
   c.payload->>'role' as role
 from orbit_records c
-where c.workspace_id = $1
-  and c.collection_name = 'contacts'
-  and c.lifecycle_state <> 'deleted'
-  and c.user_id = $2
-  and (c.payload->'accountId' is null or c.payload->'accountId' = 'null'::jsonb or c.payload->'accountId' = to_jsonb($2::text))
-  and jsonb_typeof(c.payload->'id') = 'string'
-  and c.payload->>'lifecycleInitialization' is distinct from 'pending'
-  and coalesce(trim(c.payload->>'displayName'), '') <> ''
+where ${confirmedContactPredicate("c")}
 order by c.created_at asc, c.record_id asc
 limit 3`;
 

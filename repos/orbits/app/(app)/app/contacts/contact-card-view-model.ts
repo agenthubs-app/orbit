@@ -30,6 +30,11 @@ export const contactCardTiersSchema = z.array(z.object({
 export const CONTACT_CARD_TIERS_PARAM = "tiers";
 export interface ContactCardListView {
   items: ContactCardView[]; nextPath: string | null;
+  /**
+   * W0054（W54-3；review P3-1 按页携带）：这一页按门槛隐藏洞察一句（已确认联系人不足 3 位，服务端不读、不下发）。
+   * 首屏由 SSR 给，翻页由 `/api/contacts/page?tiers=1` 的 `insightsHidden` 给，每页以服务端当次判定为准。
+   */
+  insightsHidden?: boolean;
 }
 export interface ContactCardRouteView {
   list: ContactCardListView;
@@ -40,8 +45,6 @@ export interface ContactCardRouteView {
   /** W0051：关系档位筛选（服务端 SQL）。 */
   tier: NetworkTierGroup | "all";
   params: string;
-  /** W0054（W54-3）：已确认联系人不足 3 位时整列隐藏洞察一句（服务端也不读、不下发）。 */
-  insightsHidden?: boolean;
 }
 export function contactCardsToView(page: ContactCardPageDTO, params: string, tiers: readonly ContactCardTierEntry[] = []): ContactCardListView {
   const next = new URLSearchParams(params);
@@ -80,5 +83,7 @@ export async function fetchContactCardView(path: string, params: string, signal:
   if (!response.ok || body.success !== true) throw new Error("联系人页面暂时无法读取，请刷新重试。");
   const page = contactCardPageSchema.parse(body.data);
   const tiers = contactCardTiersSchema.safeParse(body.data?.relationshipTiers ?? []);
-  return contactCardsToView({ ...page, nextCursor: page.nextCursor ?? null }, params, tiers.success ? tiers.data : []);
+  const hidden = z.boolean().safeParse(body.data?.insightsHidden ?? false);
+  const list = contactCardsToView({ ...page, nextCursor: page.nextCursor ?? null }, params, tiers.success ? tiers.data : []);
+  return hidden.success && hidden.data ? { ...list, insightsHidden: true } : list;
 }

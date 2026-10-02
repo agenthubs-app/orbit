@@ -196,7 +196,9 @@ export default async function AppContactDetailPage({
   const now = new Date();
   await ensureRelationshipStrengthsForPage(actor.id, now);
   // 列表屏在弹窗后面：列表 VM 只喂列表，详情弹窗只吃详情路由的 VM（真实 notes / editableTags / lastInteraction）。
-  const cards = await loadContactCardRoute({}, actor);
+  // W0054（review P3-2）：门槛计数整页只读一次——列表的洞察一句与详情顶部「和你目标的关系」共用这一个结果。
+  const thresholdPromise = readAnalysisThreshold(actor.id);
+  const cards = await loadContactCardRoute({}, actor, { readThreshold: () => thresholdPromise });
   const listRoute = cards ? null : await loadAppContactsRouteViewModel({}, actor.id);
   const listTiers = listRoute?.state === "success"
     ? await readRelationshipTierLookup({ actorId: actor.id, contactIds: listRoute.payload.contacts.map((contact) => contact.id) })
@@ -220,7 +222,7 @@ export default async function AppContactDetailPage({
     })),
     readMemoEventOptions({ actorId: actor.id, now }),
     readRelationshipStrengths({ actorId: actor.id, contactIds: [contactId] }).catch(() => new Map()),
-    readAnalysisThreshold(actor.id).then((threshold) => (threshold && !threshold.met
+    thresholdPromise.then((threshold) => (threshold && !threshold.met
       ? null
       : readContactInsightDetail({ actorId: actor.id, contactId, now }).catch(() => ({ goal: null, goalKnown: false, quotaExhausted: false, row: null })))),
   ]);

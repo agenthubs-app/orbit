@@ -90,8 +90,8 @@ export async function loadContactCardRoute(
       ids.length ? (options.readTiers ?? readContactCardTiers)(actor.id, ids) : Promise.resolve([]),
       readGatedInsightPreviews(actor.id, ids, { readPreviews: options.readInsightPreviews, readThreshold: options.readThreshold }),
     ]);
-    return { state: "ready", view: { list: contactCardsToView(withInsightPreviews(page, insight.previews), params.toString(), tiers), total: summary.total,
-      counts: contactCardCounts(summary), query: query.query ?? "", source, tier, params: params.toString(),
-      ...(insight.hidden ? { insightsHidden: true } : {}) } };
+    const list = contactCardsToView(withInsightPreviews(page, insight.previews), params.toString(), tiers);
+    return { state: "ready", view: { list: insight.hidden ? { ...list, insightsHidden: true } : list, total: summary.total,
+      counts: contactCardCounts(summary), query: query.query ?? "", source, tier, params: params.toString() } };
   } catch (error) { return { state: "error", message: contactCardReadError(error).message }; }
 }

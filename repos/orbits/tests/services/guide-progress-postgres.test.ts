@@ -66,7 +66,7 @@ async function withSchema(run: (pool: Pool, workspaceId: string) => Promise<void
   }
 }
 
-test("confirmed contact count only sees the actor's own, initialised, undeleted contacts", databaseTest, async () => {
+test("confirmed contact count only sees the actor's own, initialised, undeleted, named contacts (W0054 review P2-1: a blank name does not count)", databaseTest, async () => {
   await withSchema(async (pool, workspaceId) => {
     const store = createPostgresLiveRecordStore({ client: pool });
     const stamp = "2026-10-20T00:00:00.000Z";
@@ -83,7 +83,7 @@ test("confirmed contact count only sees the actor's own, initialised, undeleted 
         deletedAt: lifecycleState === "deleted" ? stamp : null,
         evidenceIds: ["evidence:test"],
         lifecycleState,
-        payload: { id: recordId, ...payload },
+        payload: { id: recordId, displayName: `Name ${recordId}`, ...payload },
         recordId,
         sourceId: "test",
         sourceType: "manual",
@@ -99,6 +99,9 @@ test("confirmed contact count only sees the actor's own, initialised, undeleted 
     await contact("a4", "actor:alice", { accountId: "actor:alice", lifecycleInitialization: "pending" });
     await contact("a5", "actor:alice", { accountId: "actor:alice" }, "deleted");
     await contact("a6", "actor:alice", { accountId: "actor:mallory" });
+    // W0054（review P2-1）：姓名为空或只有空白的记录不算已确认联系人（与快照、门槛同一谓词）。
+    await contact("a7", "actor:alice", { accountId: "actor:alice", displayName: "  " });
+    await contact("a8", "actor:alice", { accountId: "actor:alice", displayName: null });
     // bob：1 位；另一个 workspace 里的 alice 记录不算
     await contact("b1", "actor:bob", { accountId: "actor:bob" });
     await contact("x1", "actor:alice", { accountId: "actor:alice" }, "active", `${workspaceId}:other`);

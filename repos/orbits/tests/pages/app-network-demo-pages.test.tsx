@@ -239,11 +239,22 @@ for (const [name, reads] of [
 test("flag off: a real contact detail id goes through the real detail read, no guide read", async (t) => {
   const { calls, page } = loadPage(t, "detail");
   const tree = await page({ params: Promise.resolve({ id: "contact-1" }), searchParams: Promise.resolve({}) });
-  // W0054：详情的「和你目标的关系」先读门槛，达到 3 位才读洞察。
-  assert.deepEqual(operations(calls, REAL_READS), ["detail", "cards", "contacts", "threshold", "insightDetail"]);
+  // W0054：门槛整页读一次（列表与详情共用），达到 3 位才读洞察。
+  assert.deepEqual(operations(calls, REAL_READS), ["detail", "threshold", "cards", "contacts", "insightDetail"]);
   assert.deepEqual(operations(calls, GUIDE_READS), []);
   assert.equal(find(tree, "NetworkDemoFrame"), null);
   assert.ok(find(tree, "NetworkAll"));
+});
+
+test("W0054 review P3-2: the real detail page reads the threshold count once and hands the same result to the list loader (+1 statement, not +2)", async (t) => {
+  const { calls, page } = loadPage(t, "detail");
+  await page({ params: Promise.resolve({ id: "contact-1" }), searchParams: Promise.resolve({}) });
+  assert.equal(calls.filter((call) => call.operation === "threshold").length, 1);
+  const cardsCall = calls.find((call) => call.operation === "cards")!;
+  const options = (cardsCall.input as unknown[])[2] as { readThreshold?: (actorId: string) => Promise<unknown> };
+  assert.equal(typeof options?.readThreshold, "function", "the list loader gets the page's threshold");
+  assert.deepEqual(await options.readThreshold!("account:canonical"), { confirmed: 5, met: true, missing: 0 });
+  assert.equal(calls.filter((call) => call.operation === "threshold").length, 1, "reusing it reads nothing more");
 });
 
 test("demo: a real contact id redirects to the demo list before any real read", async (t) => {
@@ -256,7 +267,7 @@ test("demo: a real contact id redirects to the demo list before any real read", 
 test("flag on but out of the guide: a real contact id takes the real path (one guide read is allowed)", async (t) => {
   const { calls, page } = loadPage(t, "detail", { flag: "on", guide: "out" });
   const tree = await page({ params: Promise.resolve({ id: "contact-1" }), searchParams: Promise.resolve({}) });
-  assert.deepEqual(operations(calls, REAL_READS), ["detail", "cards", "contacts", "threshold", "insightDetail"]);
+  assert.deepEqual(operations(calls, REAL_READS), ["detail", "threshold", "cards", "contacts", "insightDetail"]);
   assert.deepEqual(operations(calls, GUIDE_READS), ["profile", "guide"]);
   assert.equal(find(tree, "NetworkDemoFrame"), null);
 });
@@ -346,8 +357,8 @@ test("demo: the overview renders demo contacts + demo analysis without loadConta
   assert.equal(data.total, 30);
   assert.deepEqual(data.cards.map((card) => card.n), [30, 3, 6, 3]);
   assert.deepEqual(data.cards.map((card) => (card.sentence as { zh: string } | null)?.zh ?? null), [
-    "能直接推进试用的 IT 负责人只有铃木健和佐藤美咲两位，渠道代理和商会这两类关键人脉还很薄。",
-    "铃木健、佐藤美咲已经对上；还差一位，可以请王砚引荐北辰精工的 IT 决策人。",
+    "能直接推进试用的 IT 负责人目前只有铃木健和佐藤美咲，渠道代理和商会方面的关键人脉还很薄。",
+    "铃木健、佐藤美咲已经对上；还缺人，可以请王砚引荐北辰精工的 IT 决策人。",
     "本周先见王砚、约佐藤美咲聊试用，再请中村惠推荐试点企业。",
     "3 位曾有往来、60 天没有新记录",
   ]);

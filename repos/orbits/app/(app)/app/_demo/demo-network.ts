@@ -608,12 +608,16 @@ export interface DemoContactSeed {
   daysAgo: number;
   next: string | null;
   rich: boolean;
+  /** 公司与职位的中英原值（W0054 review P3-3：示例洞察按 slug 同时构造两种语言，不用已按界面语言投影的值）。 */
+  companyCopy: Copy;
+  titleCopy: Copy;
 }
 
 export function demoContactSeeds(real: Date, lang: Lang): DemoContactSeed[] {
   const ctx = context(real, lang);
   return SEEDS.map((seed) => ({
     company: say(ctx, seed.company),
+    companyCopy: seed.company,
     daysAgo: seed.daysAgo,
     id: `${DEMO_CONTACT_ID_PREFIX}${seed.slug}`,
     industryKey: seed.industry.zh,
@@ -626,6 +630,7 @@ export function demoContactSeeds(real: Date, lang: Lang): DemoContactSeed[] {
     source: seed.source,
     tier: demoTierGroup(seed.status),
     title: say(ctx, seed.title),
+    titleCopy: seed.title,
   }));
 }
 

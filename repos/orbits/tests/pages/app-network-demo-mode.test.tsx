@@ -104,7 +104,7 @@ test("overview in the demo: core highlights tagged, cockpit numbers, tiers, acti
   // W0052：示例数字 + 示例档位（新认识 9／有往来 13／核心 5／待唤醒 3）；手动阶段不再出现。
   assert.match(html, /30 位联系人[\s\S]*?已有 3／共 8[\s\S]*?6 项建议动作[\s\S]*?3 位待唤醒/);
   // W0054：驾驶舱句子来自示例静态快照（不读真实快照）。
-  assert.match(html, /nw-cockpit-sentence">能直接推进试用的 IT 负责人只有铃木健和佐藤美咲两位/);
+  assert.match(html, /nw-cockpit-sentence">能直接推进试用的 IT 负责人目前只有铃木健和佐藤美咲/);
   assert.match(html, /nw-cockpit-sentence">本周先见王砚/);
   for (const [label, n] of [["新认识", 9], ["有往来", 13], ["核心", 5], ["待唤醒", 3]] as const) {
     assert.match(html, new RegExp(`${label}</span><strong class="nw-stage-n">${n}<`), label);
@@ -167,7 +167,7 @@ test("W0054 SC-04: the demo analysis tabs show the full demo snapshot with 示�
   // 诊断一句（带角标与依据）、四维分布（默认行业，含二级 Top 5）、健康四档、2–3 条结构洞察。
   assert.match(structure, /data-network-section="diagnosis"/);
   assert.match(structure, /结构诊断 <span class="ir-demo-tag"/);
-  assert.match(structure, /能直接推进试用的 IT 负责人只有铃木健和佐藤美咲两位/);
+  assert.match(structure, /能直接推进试用的 IT 负责人目前只有铃木健和佐藤美咲/);
   assert.match(structure, /基于 30 位联系人/);
   assert.match(structure, /data-network-section="structure"[\s\S]*?共 \d+ 个分组，30 位联系人/);
   assert.match(structure, /data-network-secondary=/);

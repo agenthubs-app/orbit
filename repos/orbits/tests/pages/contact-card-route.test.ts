@@ -108,7 +108,7 @@ test("W0054 SC-03（W54-3）: below 3 confirmed contacts the list reads no insig
   if (result?.state !== "ready") throw Error("Missing result");
   assert.deepEqual(thresholdReads, ["a"]);
   assert.deepEqual(previewReads, [], "previews are not read below the threshold");
-  assert.equal(result.view.insightsHidden, true);
+  assert.equal(result.view.list.insightsHidden, true);
   assert.deepEqual(result.view.list.items.map((item) => item.insight), [null, null]);
   assert.doesNotMatch(JSON.stringify(result), /旧的洞察一句|Old insight sentence/);
   const { renderToStaticMarkup } = await import("react-dom/server");
@@ -123,7 +123,7 @@ test("W0054 SC-03（W54-3）: below 3 confirmed contacts the list reads no insig
   const unknown = await loadContactCardRoute({}, { id: "a" }, { live: true, readInsightPreviews, readTiers: async () => [], service, readThreshold: async () => null });
   if (unknown?.state !== "ready") throw Error("Missing result");
   assert.deepEqual(previewReads, [["c1", "c2"]]);
-  assert.equal(unknown.view.insightsHidden, undefined);
+  assert.equal(unknown.view.list.insightsHidden, undefined);
 });
 
 test("W0054: the paged API (tiers=1) uses the same gate — below 3 contacts no preview is read or attached", async () => {
