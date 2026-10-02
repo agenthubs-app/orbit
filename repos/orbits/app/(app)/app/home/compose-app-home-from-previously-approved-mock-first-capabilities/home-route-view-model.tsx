@@ -256,7 +256,10 @@ export async function loadAppHomeRouteViewModel(
   const [events, contacts, profile, participantEvents] = await Promise.all([
     loadAppEventsRouteViewModel(actor?.id),
     loadAppContactsRouteViewModel(searchParams, actor?.id),
-    loadAppProfileRouteViewModel(actor),
+    // W0040: Home only reads the account fields; skip the profile update
+    // suggestions (a whole-workspace signal graph read) without changing how
+    // profile service resolution or profile load failures surface.
+    loadAppProfileRouteViewModel(actor, { suggestions: "skip" }),
     participantEventsPromise,
   ]);
   const routeState = firstRouteState({ contacts, events, profile });
