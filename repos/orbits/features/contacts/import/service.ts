@@ -81,6 +81,8 @@ export interface ContactImportBatchView {
   kind: ContactImportBatchRecord["kind"];
   format: ContactImportBatchRecord["format"];
   status: ContactImportBatchRecord["status"];
+  /** status = failed 的原因（interrupted_expired：中断后 7 天内没能续写完）。 */
+  failureReason: string | null;
   fileName: string;
   sourceEventId: string | null;
   rowCount: number;
@@ -213,6 +215,7 @@ export function createContactImportService(deps: ContactImportServiceDeps) {
       counts: batch.counts,
       createdAt: batch.createdAt,
       expiresAt: batch.expiresAt,
+      failureReason: batch.failureReason,
       fileName: batch.fileName,
       followUp: { enrichmentDeferredUntil: batch.enrichmentDeferredUntil, state: batch.layersStatus },
       format: batch.format,
@@ -247,7 +250,7 @@ export function createContactImportService(deps: ContactImportServiceDeps) {
       const outcomes: { seq: number; status: "created" | "merged" | "skipped" | "failed"; contactId: string | null }[] = [];
       for (const row of rows) {
         if (row.decision === "skip" || row.decision === null) {
-          const blocked = row.issues.includes("missing_name") || row.issues.includes("decode_failed");
+          const blocked = row.issues.includes("missing_name") || row.issues.includes("decode_failed") || row.issues.includes("malformed_row");
           if (blocked) delta.failed += 1;
           else delta.skipped += 1;
           outcomes.push({ contactId: row.contactId, seq: row.seq, status: blocked ? "failed" : "skipped" });
@@ -293,8 +296,10 @@ export function createContactImportService(deps: ContactImportServiceDeps) {
         }
       }
       await repository.settleRows(tx, batch.id, chunk, outcomes);
-      const hasContacts = outcomes.some((outcome) => outcome.contactId !== null && outcome.status !== "failed");
-      await repository.recordChunk(tx, batch.id, { chunk, delta, hasContacts, now: at });
+      const followIds = [...new Set(outcomes.filter((outcome) => outcome.contactId !== null && outcome.status !== "failed").map((outcome) => outcome.contactId!))];
+      // 三层更新任务与联系人写入同一事务登记（review P1-2：任务行自带联系人 id，解析行清理后不丢）。
+      if (followIds.length) await repository.insertFollowup(tx, { actorId, batchId: batch.id, chunk, contactIds: followIds, now: at });
+      await repository.recordChunk(tx, batch.id, { chunk, delta, hasContacts: followIds.length > 0, now: at });
       return true;
     }, { isolation: "read committed" });
   }
@@ -311,26 +316,62 @@ export function createContactImportService(deps: ContactImportServiceDeps) {
     }, { isolation: "read committed" });
   }
 
-  /** 三层更新：按事务号逐个调用入口；失败标 retry（联系人不回滚）。 */
-  async function runPendingLayers(actorId: string, batchId: string): Promise<"done" | "retry" | "busy"> {
-    const at = now();
-    const pending = await repository.claimLayers(client, actorId, batchId, at, leaseMs);
-    if (!pending) return "busy";
-    for (const chunk of pending) {
-      const contactIds = await repository.chunkContactIds(client, batchId, chunk);
-      try {
-        const result = contactIds.length
-          ? await deps.runLayers({ actorId, contactIds, now: now(), sourceKey: `contact-import:${batchId}:${chunk}` })
-          : null;
-        await repository.completeLayersChunk(client, batchId, chunk, result?.enrichment === "deferred" ? (result.retryOn ?? null) : null, now());
-      } catch (error) {
-        log({ actorId, batchId, chunk, error: error instanceof Error ? error.name : "unknown", event: "contact_import_layers_failed" });
-        await repository.releaseLayers(client, batchId, { failed: error instanceof Error ? error.name.slice(0, 80) : "unknown", now: now() });
-        return "retry";
-      }
+  /**
+   * 执行一条已领取的三层更新任务（review P2-3：逐条领取、带租约令牌；完成／失败都以令牌为前提，
+   * 租约过期被别人重领后，旧执行器的结算不会改动新执行器的任务）。入口失败不回滚联系人。
+   */
+  async function runClaimedFollowup(claim: { batchId: string; chunk: number; actorId: string; contactIds: string[] }, token: string): Promise<"done" | "retry"> {
+    try {
+      const result = await deps.runLayers({ actorId: claim.actorId, contactIds: claim.contactIds, now: now(), sourceKey: `contact-import:${claim.batchId}:${claim.chunk}` });
+      await repository.settleFollowup(client, { batchId: claim.batchId, chunk: claim.chunk, now: now(), outcome: { done: true, retryOn: result.enrichment === "deferred" ? (result.retryOn ?? null) : null }, token });
+      return "done";
+    } catch (error) {
+      log({ actorId: claim.actorId, batchId: claim.batchId, chunk: claim.chunk, error: error instanceof Error ? error.name : "unknown", event: "contact_import_layers_failed" });
+      await repository.settleFollowup(client, { batchId: claim.batchId, chunk: claim.chunk, now: now(), outcome: { done: false, error: error instanceof Error ? error.name : "unknown" }, token });
+      return "retry";
     }
-    await repository.releaseLayers(client, batchId, { failed: null, now: now() });
-    return "done";
+  }
+
+  /** 本批的三层更新：按事务号逐条领取执行；遇到失败停下（标 retry，由重放或维护任务重试）。 */
+  async function runPendingLayers(actorId: string, batchId: string): Promise<"done" | "retry" | "busy"> {
+    let ran = 0;
+    let outcome: "done" | "retry" = "done";
+    for (let guard = 0; guard <= Math.ceil(CONTACT_IMPORT_MAX_ROWS / CONTACT_IMPORT_CHUNK_SIZE) + 1; guard += 1) {
+      const token = randomUUID();
+      const claim = await repository.claimFollowup(client, { actorId, batchId, leaseMs, now: now(), token });
+      if (!claim) break;
+      ran += 1;
+      outcome = await runClaimedFollowup(claim, token);
+      if (outcome === "retry") break;
+    }
+    await repository.refreshFollowUp(client, batchId, now());
+    return ran === 0 ? "busy" : outcome;
+  }
+
+  /** 维护任务：领取任意到期任务逐条执行（≤limit 条），返回汇总。 */
+  async function runDueFollowups(limit: number, deadline: number): Promise<{ done: number; retry: number }> {
+    const summary = { done: 0, retry: 0 };
+    for (let index = 0; index < limit && Date.now() < deadline; index += 1) {
+      const token = randomUUID();
+      const claim = await repository.claimFollowup(client, { leaseMs, now: now(), token });
+      if (!claim) break;
+      summary[await runClaimedFollowup(claim, token)] += 1;
+      await repository.refreshFollowUp(client, claim.batchId, now());
+    }
+    return summary;
+  }
+
+  /** 维护任务（review P1-1）：续写中断的批次（按已持久化的决定与确认指纹逐事务写完），再跑它的三层更新。 */
+  async function resumeStaleCommits(staleMs: number, limit: number, deadline: number): Promise<number> {
+    const stale = await repository.claimStaleCommitting(client, now(), staleMs, limit);
+    let resumed = 0;
+    for (const batch of stale) {
+      if (Date.now() >= deadline) break;
+      await writeAllChunks(batch.actorId, batch.batchId, batch.sourceEventId ? { eventId: batch.sourceEventId, title: batch.fileName } : null);
+      await runPendingLayers(batch.actorId, batch.batchId);
+      resumed += 1;
+    }
+    return resumed;
   }
 
   function scheduleLayers(actorId: string, batchId: string): void {
@@ -346,6 +387,8 @@ export function createContactImportService(deps: ContactImportServiceDeps) {
   return {
     repository,
     runPendingLayers,
+    runDueFollowups,
+    resumeStaleCommits,
 
     async upload(input: { actorId: string; kind: "csv" | "vcard"; fileName: string; bytes: Uint8Array; idempotencyKey: string }): Promise<{ batch: ContactImportBatchView; replayed: boolean }> {
       const existing = await repository.getBatchByKey(client, input.actorId, input.idempotencyKey);
@@ -384,7 +427,7 @@ export function createContactImportService(deps: ContactImportServiceDeps) {
       const batches = await repository.listBatches(client, actorId);
       // 导入记录只要摘要：不读核对计数。
       return batches.map((batch) => ({
-        completedAt: batch.completedAt, counts: batch.counts, createdAt: batch.createdAt, expiresAt: batch.expiresAt, fileName: batch.fileName,
+        completedAt: batch.completedAt, counts: batch.counts, createdAt: batch.createdAt, expiresAt: batch.expiresAt, failureReason: batch.failureReason, fileName: batch.fileName,
         followUp: { enrichmentDeferredUntil: batch.enrichmentDeferredUntil, state: batch.layersStatus }, format: batch.format, headers: [], id: batch.id,
         kind: batch.kind, mapping: null, review: null, rowCount: batch.rowCount, sourceEventId: batch.sourceEventId, status: batch.status,
       }));
@@ -408,7 +451,8 @@ export function createContactImportService(deps: ContactImportServiceDeps) {
         const rows = await repository.readAllRows(tx, batch.id);
         const reviewed: ReviewedRow[] = reviewImportRows(
           rows.map((row) => {
-            const normalized = row.cells ? normalizeCsvRow(row.cells, mapping) : { fields: emptyImportFields(), issues: ["missing_name" as const] };
+            // 结构损坏的行改对应也救不回来：保留 malformed_row。
+            const normalized = row.cells ? normalizeCsvRow(row.cells, mapping, { malformed: row.issues.includes("malformed_row") }) : { fields: emptyImportFields(), issues: ["missing_name" as const] };
             return { fields: normalized.fields, issues: normalized.issues, seq: row.seq };
           }),
           records,

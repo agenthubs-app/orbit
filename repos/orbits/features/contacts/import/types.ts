@@ -49,10 +49,12 @@ export type ContactImportParseIssue =
   | "invalid_email"
   | "field_truncated"
   | "unknown_country"
-  | "decode_failed";
+  | "decode_failed"
+  /** CSV 结构错误（引号未闭合等）：只取第一物理行、不可导入（review P2-2）。 */
+  | "malformed_row";
 
 /** 只缺少会让这一行无法导入的问题（其余是提示，不阻塞）。 */
-export const BLOCKING_PARSE_ISSUES: readonly ContactImportParseIssue[] = ["missing_name", "decode_failed"];
+export const BLOCKING_PARSE_ISSUES: readonly ContactImportParseIssue[] = ["missing_name", "decode_failed", "malformed_row"];
 
 export interface ParsedImportRow {
   /** CSV 原始单元格（字段对应改了要据此重算）；vCard 为 null。 */

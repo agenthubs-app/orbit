@@ -133,8 +133,9 @@ export function normalizeEmail(raw: string, issues: Set<ContactImportParseIssue>
 }
 
 /** 一行 CSV 单元格 → 归一字段与问题。 */
-export function normalizeCsvRow(cells: readonly string[], mapping: ContactImportMapping): ParsedImportRow {
+export function normalizeCsvRow(cells: readonly string[], mapping: ContactImportMapping, options: { malformed?: boolean } = {}): ParsedImportRow {
   const issues = new Set<ContactImportParseIssue>();
+  if (options.malformed) issues.add("malformed_row");
   const cell = (field: ContactImportMappableField, limit = CONTACT_IMPORT_MAX_FIELD_LENGTH) => {
     const index = mapping[field];
     return index === null ? "" : clip(cells[index] ?? "", limit, issues);

@@ -107,7 +107,7 @@ test("review table rows: a non-identical candidate shows the match reason and bo
 });
 
 const batch: ContactImportBatchView = {
-  completedAt: "2026-10-03T03:01:00.000Z", counts: { created: 12, failed: 1, merged: 3, skipped: 2 }, createdAt: "2026-10-03T03:00:00.000Z", expiresAt: "2026-10-10T03:01:00.000Z",
+  completedAt: "2026-10-03T03:01:00.000Z", counts: { created: 12, failed: 1, merged: 3, skipped: 2 }, createdAt: "2026-10-03T03:00:00.000Z", expiresAt: "2026-10-10T03:01:00.000Z", failureReason: null,
   fileName: "Connections.csv", followUp: { enrichmentDeferredUntil: "2026-10-03T15:00:00.000Z", state: "done" }, format: "linkedin", headers: [], id: "contact-import:1",
   kind: "csv", mapping: null, review: null, rowCount: 18, sourceEventId: null, status: "completed",
 };

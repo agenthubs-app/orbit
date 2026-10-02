@@ -129,3 +129,39 @@ test("whole-file rejections: undecodable bytes, empty file, a .vcf without cards
   assert.throws(() => parseImportFile({ bytes: utf8("  \n"), kind: "csv" }), (error: unknown) => error instanceof ContactImportFileRejected && error.reason === "empty");
   assert.throws(() => parseImportFile({ bytes: utf8("Name\nA"), kind: "vcard" }), (error: unknown) => error instanceof ContactImportFileRejected && error.reason === "not_vcard");
 });
+
+test("review P2-2: an unclosed quote does not swallow the following rows — the broken row is marked malformed (blocking) and parsing resumes on the next line", async () => {
+  const { MAX_LINES_PER_RECORD } = await import("../../features/contacts/import/parse/csv");
+  const good = Array.from({ length: MAX_LINES_PER_RECORD + 5 }, (_, i) => `Good ${i},good${i}@example.com`).join("\n");
+  // 文件末尾仍未闭合，和跨过行数上限，两种情况都要恢复。
+  for (const tail of ["", "\nLast One,last@example.com"]) {
+    const text = `Name,Email\nAnn Lee,ann@example.com\nBad "Row,"unclosed@example.com\n${good}${tail}\n`;
+    const parsed = parseImportFile({ bytes: utf8(text), kind: "csv" });
+    const names = parsed.rows.map((row) => row.fields.displayName);
+    assert.equal(names[0], "Ann Lee");
+    assert.deepEqual(parsed.rows[1]!.issues.includes("malformed_row"), true, "broken row flagged");
+    assert.deepEqual(names.slice(2, 4), ["Good 0", "Good 1"], "rows after the broken one are parsed normally");
+    assert.equal(parsed.rows.filter((row) => row.issues.length === 0).length, MAX_LINES_PER_RECORD + 6 + (tail ? 1 : 0));
+  }
+  const atEnd = parseImportFile({ bytes: utf8('Name,Email\nOk,ok@example.com\nX,"never closed\nY,y@example.com\n'), kind: "csv" });
+  assert.deepEqual(atEnd.rows.map((row) => [row.fields.displayName, row.issues.includes("malformed_row")]), [["Ok", false], ["X", true], ["Y", false]]);
+  // 合法的多行引号字段不受影响
+  assert.equal(parseImportFile({ bytes: utf8('Name,Notes\nZed,"a\nb\nc"\n'), kind: "csv" }).rows[0]!.fields.notes, "a\nb\nc");
+});
+
+test("review P2-1: the streaming record counter sees complete records chunk by chunk (CSV quotes and blank lines, UTF-16, vCard END markers)", async () => {
+  const { createStreamingRecordCounter, CSV_STREAM_RECORD_LIMIT } = await import("../../features/contacts/import/parse/stream-limit");
+  assert.equal(CSV_STREAM_RECORD_LIMIT, CONTACT_IMPORT_MAX_ROWS + 3);
+  const csv = createStreamingRecordCounter("csv");
+  const bytes = utf8('Name,Notes\n,,\n\nA,"multi\nline"\nB,x\nC');
+  let count = 0;
+  for (let i = 0; i < bytes.length; i += 3) count = csv.feed(bytes.subarray(i, i + 3));
+  assert.equal(count, 3, "header, A and B are complete; blank and comma-only lines skipped; C not finished");
+  const utf16 = createStreamingRecordCounter("csv");
+  assert.equal(utf16.feed(new Uint8Array([0xff, 0xfe, ...Buffer.from("Name\r\nA\r\nB\r\n", "utf16le")])), 3);
+  const vcard = createStreamingRecordCounter("vcard");
+  const cards = utf8("BEGIN:VCARD\nFN:a\nEND:VCARD\nbegin:vcard\nFN:b\nend:vcard\n");
+  let cardCount = 0;
+  for (const byte of cards) cardCount = vcard.feed(new Uint8Array([byte]));
+  assert.equal(cardCount, 2);
+});

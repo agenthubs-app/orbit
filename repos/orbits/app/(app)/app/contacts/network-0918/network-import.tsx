@@ -53,10 +53,11 @@ const IMPORT_SOURCE: Record<ContactImportBatchView["kind"], Copy> = {
 const IMPORT_STATUS: Record<ContactImportBatchView["status"], { copy: Copy; color: string }> = {
   parsed: { copy: { en: "Ready to review", zh: "待确认" }, color: "#8A6420" },
   reviewing: { copy: { en: "Ready to review", zh: "待确认" }, color: "#8A6420" },
-  committing: { copy: { en: "Importing", zh: "导入中" }, color: "#8A6420" },
+  committing: { copy: { en: "Importing (resumes automatically if interrupted)", zh: "导入中（中断会自动续写）" }, color: "#8A6420" },
   completed: { copy: { en: "Completed", zh: "已完成" }, color: "#2F6B4F" },
   cancelled: { copy: { en: "Cancelled", zh: "已取消" }, color: "#9FA3C4" },
   expired: { copy: { en: "Expired", zh: "已过期" }, color: "#9FA3C4" },
+  failed: { copy: { en: "Interrupted — partly imported", zh: "导入中断（部分已写入）" }, color: "#A33A3A" },
 };
 
 type LogEntry = { kind: "card"; at: string; batch: IngestBatchDTO } | { kind: "import"; at: string; batch: ContactImportBatchView };

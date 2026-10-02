@@ -9,7 +9,9 @@ export const NETWORK_IMPORT_FLOW_CSS = `
 ${R} .nwi-drop { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding: 22px; border: 1.5px dashed #B9BCEB; border-radius: 14px; background: #F7F7FD; }
 ${R} .nwi-drop-title { margin: 0; font-size: 15px; font-weight: 600; color: #0E1225; }
 ${R} .nwi-drop-hint { margin: 0; font-size: 13px; color: #6B6F99; line-height: 1.6; }
-${R} .nwi-file { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+/* 标准 visually-hidden：仍可 Tab 聚焦，焦点环画在外层 label 上（review P3-2）。 */
+${R} .nwi-file { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0; }
+${R} .btn.nwi-primary:focus-within { outline: 2px solid #4B4FC7; outline-offset: 2px; }
 ${R} .btn.nwi-primary, ${R} .btn.nwi-secondary, ${R} .btn.nwi-filter { height: auto; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 9px 18px; border-radius: 10px; font-size: 14px; font-weight: 500; letter-spacing: 0; line-height: normal; white-space: nowrap; cursor: pointer; transition: background .15s, color .15s; position: relative; }
 ${R} .btn.nwi-primary { background: #0E1225; color: #FFFFFF; border: 1px solid #0E1225; }
 ${R} .btn.nwi-primary:hover { background: #2E3270; border-color: #2E3270; color: #FFFFFF; }

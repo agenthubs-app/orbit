@@ -4,7 +4,7 @@
  *
  * - `GET  /api/contacts/import`                 最近导入记录（摘要）
  * - `POST /api/contacts/import`                 上传原始文件体（头：x-orbit-import-kind csv|vcard、x-orbit-import-file-name（URI 编码）、
- *                                               idempotency-key）；超过 5 MB 在读完前 413；→ 批次 + 核对摘要
+ *                                               idempotency-key）；超过 5 MB 或 2,000 条记录在读完前 413；→ 批次 + 核对摘要
  * - `GET  /api/contacts/import/events`          可导入的活动（本人已互换的人，按活动分组）
  * - `POST /api/contacts/import/events`          { eventId, idempotencyKey } 导入一场活动
  * - `GET  /api/contacts/import/:id`             批次 + 核对摘要（含待确认的合并清单）
@@ -17,7 +17,8 @@
 import { after, NextResponse } from "next/server";
 
 import { ContactImportFileRejected } from "../../../../features/contacts/import/parse/index";
-import { CONTACT_IMPORT_MAX_BYTES } from "../../../../features/contacts/import/limits";
+import { CONTACT_IMPORT_MAX_BYTES, CONTACT_IMPORT_MAX_ROWS } from "../../../../features/contacts/import/limits";
+import { createStreamingRecordCounter, type StreamingRecordCounter } from "../../../../features/contacts/import/parse/stream-limit";
 import type { ContactImportRowFilter } from "../../../../features/contacts/import/repository";
 import { getConfiguredContactImportService } from "../../../../features/contacts/import/runtime";
 import { ContactImportError, type ContactImportService } from "../../../../features/contacts/import/service";
@@ -47,7 +48,7 @@ const ERROR_STATUS: Record<ContactImportError["code"], { code: AppErrorCode; sta
   UNDECIDED_ROWS: { code: "CONFLICT", status: 409 },
 };
 
-async function readRawBody(request: Request): Promise<Uint8Array> {
+async function readRawBody(request: Request, counter: StreamingRecordCounter): Promise<Uint8Array> {
   const declared = Number(request.headers.get("content-length") ?? "0");
   if (declared > CONTACT_IMPORT_MAX_BYTES) throw new UploadTooLarge();
   // 不信任 Content-Length：流式读取并执行硬上限（超出立即停止，不读完）。
@@ -62,6 +63,11 @@ async function readRawBody(request: Request): Promise<Uint8Array> {
     if (total > CONTACT_IMPORT_MAX_BYTES) {
       await reader.cancel().catch(() => undefined);
       throw new UploadTooLarge();
+    }
+    // review P2-1：边读边数记录，超过行数上限立即停止读取（不等正文读完）。
+    if (counter.feed(value) > counter.limit) {
+      await reader.cancel().catch(() => undefined);
+      throw new ContactImportFileRejected("too_many_rows", `File has more than ${CONTACT_IMPORT_MAX_ROWS} records.`);
     }
     chunks.push(value);
   }
@@ -137,7 +143,7 @@ export function createContactImportHandlers(dependencies: ContactImportHandlerDe
       } catch {
         fileName = "";
       }
-      const bytes = await readRawBody(request);
+      const bytes = await readRawBody(request, createStreamingRecordCounter(kind));
       const result = await service.upload({ actorId, bytes, fileName, idempotencyKey, kind });
       return ok(result, headers, result.replayed ? 200 : 201);
     }),

@@ -132,6 +132,8 @@ export async function listActorContactRecords(
     collectionName: "contacts",
     lifecycleState: "active",
     limit: CONTACT_MATCH_READ_LIMIT,
+    // W0053 review P3-3：比对不用 search_text，不读它（每人约省数百字节）。
+    omitSearchText: true,
     payloadFields: MATCH_PAYLOAD_FIELDS,
     userId: actorId,
     workspaceId,

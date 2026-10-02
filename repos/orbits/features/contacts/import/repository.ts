@@ -10,7 +10,7 @@ import type { ContactImportFields, ContactImportFormat, ContactImportKind, Conta
 
 type Row = Record<string, unknown>;
 
-export type ContactImportBatchStatus = "parsed" | "reviewing" | "committing" | "completed" | "cancelled" | "expired";
+export type ContactImportBatchStatus = "parsed" | "reviewing" | "committing" | "completed" | "cancelled" | "expired" | "failed";
 export type ContactImportRowStatus = "pending" | "created" | "merged" | "skipped" | "failed";
 export type ContactImportLayersStatus = "none" | "pending" | "retry" | "done";
 
@@ -48,6 +48,8 @@ export interface ContactImportBatchRecord {
   completedAt: string | null;
   expiresAt: string;
   rowsPurgedAt: string | null;
+  /** status = failed 时的原因（例如中断后过期无法续写：interrupted_expired）。 */
+  failureReason: string | null;
 }
 
 export interface ContactImportRowRecord {
@@ -82,7 +84,7 @@ function json<T>(value: unknown, fallback: T): T {
 
 const BATCH_COLUMNS = `id, actor_id, kind, format, status, file_name, source_event_id, encoding, row_count, headers, mapping, idempotency_key,
   version, counts, commit_intent_id, commit_fingerprint, next_chunk, layers_status, layers_pending, layers_last_error,
-  enrichment_deferred_until, created_at, updated_at, completed_at, expires_at, rows_purged_at`;
+  enrichment_deferred_until, created_at, updated_at, completed_at, expires_at, rows_purged_at, failure_reason`;
 
 function mapBatch(row: Row): ContactImportBatchRecord {
   const counts = json<Partial<ContactImportCounts>>(row.counts, {});
@@ -96,6 +98,7 @@ function mapBatch(row: Row): ContactImportBatchRecord {
     encoding: (row.encoding as string | null) ?? null,
     enrichmentDeferredUntil: isoOrNull(row.enrichment_deferred_until),
     expiresAt: iso(row.expires_at),
+    failureReason: (row.failure_reason as string | null) ?? null,
     fileName: String(row.file_name ?? ""),
     format: row.format as ContactImportFormat,
     headers: json<string[]>(row.headers, []),
@@ -303,7 +306,7 @@ export function createContactImportRepository(input: { workspaceId: string }) {
            version = t.version + 1
          from jsonb_to_recordset($3::jsonb) as d(seq integer, decision text)
          where t.workspace_id = $1 and t.batch_id = $2 and t.seq = d.seq and t.status = 'pending'
-           and not (t.parse_issues && array['missing_name', 'decode_failed']::text[])
+           and not (t.parse_issues && array['missing_name', 'decode_failed', 'malformed_row']::text[])
            and (d.decision <> 'merge' or t.candidate is not null)
          returning t.seq`,
         [workspaceId, batchId, JSON.stringify(decisions)],
@@ -324,7 +327,7 @@ export function createContactImportRepository(input: { workspaceId: string }) {
            count(*) filter (where status = 'pending' and decision = 'merge')::int as merge_count,
            count(*) filter (where status = 'pending' and decision = 'skip')::int as skip_count,
            count(*) filter (where status = 'pending' and decision is null)::int as undecided_count,
-           count(*) filter (where parse_issues && array['missing_name', 'decode_failed']::text[])::int as blocked_count,
+           count(*) filter (where parse_issues && array['missing_name', 'decode_failed', 'malformed_row']::text[])::int as blocked_count,
            count(*) filter (where in_file_duplicate_of is not null)::int as in_file_count,
            count(*) filter (where candidate is not null)::int as candidate_count,
            count(*) filter (where cardinality(parse_issues) > 0)::int as issue_count,
@@ -382,7 +385,6 @@ export function createContactImportRepository(input: { workspaceId: string }) {
              'created', (counts->>'created')::int + $3, 'merged', (counts->>'merged')::int + $4,
              'skipped', (counts->>'skipped')::int + $5, 'failed', (counts->>'failed')::int + $6),
            next_chunk = $7 + 1,
-           layers_pending = case when $8 then array_append(layers_pending, $7) else layers_pending end,
            layers_status = case when $8 then (case when layers_status = 'retry' then 'retry' else 'pending' end) else layers_status end,
            version = version + 1,
            updated_at = $9
@@ -412,76 +414,112 @@ export function createContactImportRepository(input: { workspaceId: string }) {
       );
     },
 
-    /** 领取本批的三层更新（租约）；拿不到（没有待办或别人正在做）返回 null。 */
-    async claimLayers(executor: TransactionalSqlExecutor, actorId: string, batchId: string, now: Date, leaseMs: number): Promise<number[] | null> {
-      const result = await executor.query<{ layers_pending: unknown[] }>(
-        `/* contact-import:claim-layers */
-         update contact_import_batches set
-           layers_lease_until = $4::timestamptz + ($5::int * interval '1 millisecond'),
-           layers_attempts = layers_attempts + 1,
-           updated_at = $4
-         where workspace_id = $1 and actor_id = $2 and id = $3
-           and layers_status in ('pending', 'retry')
-           and (layers_lease_until is null or layers_lease_until < $4)
-         returning layers_pending`,
-        [workspaceId, actorId, batchId, now.toISOString(), leaseMs],
+    /** 每个写入事务提交前登记一条三层更新任务（存这一事务的联系人 id；解析行清理后也不丢）。 */
+    async insertFollowup(tx: TransactionalSqlExecutor, input: { batchId: string; chunk: number; actorId: string; contactIds: readonly string[]; now: Date }): Promise<void> {
+      await tx.query(
+        `/* contact-import:insert-followup */
+         insert into contact_import_followups (workspace_id, batch_id, chunk, actor_id, contact_ids, created_at, updated_at)
+         values ($1, $2, $3, $4, $5::text[], $6, $6)
+         on conflict (workspace_id, batch_id, chunk) do nothing`,
+        [workspaceId, input.batchId, input.chunk, input.actorId, [...input.contactIds], input.now.toISOString()],
+      );
+    },
+
+    /**
+     * 领取一条到期的三层更新任务（逐条领取、带租约令牌）：待处理的，或运行中但租约已过期的。
+     * 传 batchId 时只领本人这一批（请求结束后的 after()）；不传时维护任务按更新时间最早领。
+     */
+    async claimFollowup(
+      executor: TransactionalSqlExecutor,
+      input: { now: Date; leaseMs: number; token: string; actorId?: string; batchId?: string },
+    ): Promise<{ batchId: string; chunk: number; actorId: string; contactIds: string[] } | null> {
+      const result = await executor.query<{ batch_id: string; chunk: number; actor_id: string; contact_ids: string[] }>(
+        `/* contact-import:claim-followup */
+         update contact_import_followups f set
+           status = 'running', lease_token = $3, lease_until = $2::timestamptz + ($4::int * interval '1 millisecond'),
+           attempts = f.attempts + 1, updated_at = $2
+         where (f.workspace_id, f.batch_id, f.chunk) = (
+           select workspace_id, batch_id, chunk from contact_import_followups
+           where workspace_id = $1 and ($5::text is null or (batch_id = $5 and actor_id = $6))
+             and (status = 'pending' or (status = 'running' and lease_until < $2))
+           order by case when $5::text is null then updated_at end, chunk
+           limit 1
+           for update skip locked)
+         returning f.batch_id, f.chunk, f.actor_id, f.contact_ids`,
+        [workspaceId, input.now.toISOString(), input.token, input.leaseMs, input.batchId ?? null, input.actorId ?? null],
       );
       const row = result.rows[0];
-      return row ? (row.layers_pending ?? []).map(Number).sort((a, b) => a - b) : null;
+      return row ? { actorId: String(row.actor_id), batchId: String(row.batch_id), chunk: Number(row.chunk), contactIds: (row.contact_ids ?? []).map(String) } : null;
     },
 
-    async chunkContactIds(executor: TransactionalSqlExecutor, batchId: string, chunk: number): Promise<string[]> {
-      const result = await executor.query<{ contact_id: string }>(
-        `/* contact-import:chunk-contacts */
-         select contact_id from contact_import_rows
-         where workspace_id = $1 and batch_id = $2 and layers_chunk = $3 and contact_id is not null and status in ('created', 'merged', 'skipped')
-         order by seq`,
-        [workspaceId, batchId, chunk],
-      );
-      return [...new Set(result.rows.map((row) => String(row.contact_id)))];
-    },
-
-    async completeLayersChunk(executor: TransactionalSqlExecutor, batchId: string, chunk: number, deferredUntil: string | null, now: Date): Promise<void> {
-      await executor.query(
-        `/* contact-import:complete-layers-chunk */
-         update contact_import_batches set
-           layers_pending = array_remove(layers_pending, $3),
-           enrichment_deferred_until = case when $4::timestamptz is null then enrichment_deferred_until
-                                            else greatest(coalesce(enrichment_deferred_until, $4::timestamptz), $4::timestamptz) end,
-           updated_at = $5
-         where workspace_id = $1 and id = $2`,
-        [workspaceId, batchId, chunk, deferredUntil, now.toISOString()],
-      );
-    },
-
-    async releaseLayers(executor: TransactionalSqlExecutor, batchId: string, input: { failed: string | null; now: Date }): Promise<void> {
-      await executor.query(
-        `/* contact-import:release-layers */
-         update contact_import_batches set
-           layers_status = case when $3::text is not null then 'retry'
-                                when cardinality(layers_pending) = 0 then 'done' else layers_status end,
-           layers_last_error = case when $3::text is not null then $3 when cardinality(layers_pending) = 0 then null else layers_last_error end,
-           layers_lease_until = null,
+    /** 完成／失败都以租约令牌为前提：令牌已被别人换掉（租约过期后重领）时什么也不改，返回 false。 */
+    async settleFollowup(
+      executor: TransactionalSqlExecutor,
+      input: { batchId: string; chunk: number; token: string; now: Date; outcome: { done: true; retryOn: string | null } | { done: false; error: string } },
+    ): Promise<boolean> {
+      const done = input.outcome.done;
+      const result = await executor.query(
+        `/* contact-import:settle-followup */
+         update contact_import_followups set
+           status = case when $5 then 'done' else 'pending' end,
+           lease_token = null, lease_until = null,
+           last_error = case when $5 then null else $6 end,
+           enrichment_retry_on = case when $5 then $7::timestamptz else enrichment_retry_on end,
            updated_at = $4
-         where workspace_id = $1 and id = $2`,
-        [workspaceId, batchId, input.failed, input.now.toISOString()],
+         where workspace_id = $1 and batch_id = $2 and chunk = $3 and status = 'running' and lease_token = $8
+         returning chunk`,
+        [workspaceId, input.batchId, input.chunk, input.now.toISOString(), done,
+          done ? null : (input.outcome as { error: string }).error.slice(0, 80), done ? (input.outcome as { retryOn: string | null }).retryOn : null, input.token],
+      );
+      return result.rows.length > 0;
+    },
+
+    /** 由任务行重算批次的后续更新状态（导入记录显示用）。 */
+    async refreshFollowUp(executor: TransactionalSqlExecutor, batchId: string, now: Date): Promise<void> {
+      await executor.query(
+        `/* contact-import:refresh-followup */
+         update contact_import_batches b set
+           layers_status = case when f.total = 0 then b.layers_status when f.open = 0 then 'done' when f.errored > 0 then 'retry' else 'pending' end,
+           layers_last_error = f.last_error,
+           enrichment_deferred_until = coalesce(f.retry_on, b.enrichment_deferred_until),
+           updated_at = case when b.status = 'committing' then b.updated_at else $3 end
+         from (
+           select count(*)::int as total,
+                  count(*) filter (where status <> 'done')::int as open,
+                  count(*) filter (where status <> 'done' and last_error is not null)::int as errored,
+                  max(enrichment_retry_on) as retry_on,
+                  max(last_error) filter (where status <> 'done') as last_error
+           from contact_import_followups where workspace_id = $1 and batch_id = $2
+         ) f
+         where b.workspace_id = $1 and b.id = $2`,
+        [workspaceId, batchId, now.toISOString()],
       );
     },
 
-    /** 维护任务：到期需要（重新）做三层更新的批次（租约空或过期）。 */
-    async dueLayerBatches(executor: TransactionalSqlExecutor, now: Date, limit: number): Promise<{ actorId: string; batchId: string }[]> {
-      const result = await executor.query<{ actor_id: string; id: string }>(
-        `/* contact-import:due-layers */
-         select actor_id, id from contact_import_batches
-         where workspace_id = $1 and layers_status in ('pending', 'retry') and (layers_lease_until is null or layers_lease_until < $2)
-           and updated_at < $2::timestamptz - interval '1 minute'
-         order by updated_at limit $3`,
-        [workspaceId, now.toISOString(), limit],
+    /**
+     * 维护任务（review P1-1）：领取写到一半中断的批次（committing 且久未推进、解析行还在）。
+     * 「领取」= 把 updated_at 推到现在，别的执行器在 staleMs 内不会再领；续写本身在批次行锁下逐事务进行，重复执行也安全。
+     */
+    async claimStaleCommitting(executor: TransactionalSqlExecutor, now: Date, staleMs: number, limit: number) {
+      const result = await executor.query<{ actor_id: string; id: string; source_event_id: string | null; file_name: string }>(
+        `/* contact-import:claim-stale-committing */
+         update contact_import_batches b set updated_at = $2
+         where (b.workspace_id, b.id) in (
+           select workspace_id, id from contact_import_batches
+           where workspace_id = $1 and status = 'committing' and rows_purged_at is null
+             and updated_at < $2::timestamptz - ($3::int * interval '1 millisecond')
+           order by updated_at limit $4
+           for update skip locked)
+         returning b.actor_id, b.id, b.source_event_id, b.file_name`,
+        [workspaceId, now.toISOString(), staleMs, limit],
       );
-      return result.rows.map((row) => ({ actorId: String(row.actor_id), batchId: String(row.id) }));
+      return result.rows.map((row) => ({ actorId: String(row.actor_id), batchId: String(row.id), fileName: String(row.file_name ?? ""), sourceEventId: row.source_event_id ?? null }));
     },
 
-    /** 维护任务：删过期批次的解析行；未完成的批次标 expired。返回清理的批次数。 */
+    /**
+     * 维护任务：删过期批次的解析行；核对中的标 expired，写到一半且没能续写完的标 failed（interrupted_expired）。
+     * 三层更新任务另存在 contact_import_followups（带联系人 id），清理解析行不影响它们（review P1-2）。返回清理的批次数。
+     */
     async purgeExpiredRows(executor: TransactionalSqlExecutor, now: Date, limit: number): Promise<number> {
       const result = await executor.query<{ id: string }>(
         `/* contact-import:purge-expired */
@@ -495,7 +533,9 @@ export function createContactImportRepository(input: { workspaceId: string }) {
          )
          update contact_import_batches b set
            rows_purged_at = $2,
-           status = case when b.status in ('parsed', 'reviewing') then 'expired' else b.status end,
+           status = case when b.status in ('parsed', 'reviewing') then 'expired'
+                         when b.status = 'committing' then 'failed' else b.status end,
+           failure_reason = case when b.status = 'committing' then 'interrupted_expired' else b.failure_reason end,
            updated_at = $2
          from due where b.workspace_id = $1 and b.id = due.id
          returning b.id`,

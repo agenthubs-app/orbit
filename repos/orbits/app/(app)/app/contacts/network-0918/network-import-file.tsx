@@ -46,6 +46,7 @@ const ISSUE: Record<string, Copy> = {
   field_truncated: { en: "A long field was shortened", zh: "过长的字段已截断" },
   invalid_email: { en: "Email not recognised (left empty)", zh: "邮箱无法识别（已留空）" },
   missing_name: { en: "No name — cannot be imported", zh: "缺少姓名，无法导入" },
+  malformed_row: { en: "Broken row (unclosed quote) — cannot be imported", zh: "这一行格式有误（引号未闭合），无法导入" },
   unknown_country: { en: "Country not recognised", zh: "国家无法识别" },
 };
 
@@ -83,7 +84,7 @@ export function followUpCopy(batch: Pick<ContactImportBatchView, "followUp" | "s
 }
 
 function rowStatusCopy(row: ContactImportRowView): Copy {
-  if (row.issues.includes("missing_name") || row.issues.includes("decode_failed")) return { en: "Cannot import", zh: "无法导入" };
+  if (row.issues.includes("missing_name") || row.issues.includes("decode_failed") || row.issues.includes("malformed_row")) return { en: "Cannot import", zh: "无法导入" };
   if (row.inFileDuplicateOf !== null) return { en: `Duplicate of row ${row.inFileDuplicateOf}`, zh: `与第 ${row.inFileDuplicateOf} 行重复` };
   if (row.candidate?.identical) return { en: "Already in your network", zh: "人脉里已有（完全一致）" };
   if (row.candidate) return { en: "Possibly the same person", zh: "可能是同一个联系人" };
@@ -119,7 +120,7 @@ function MappingEditor({ batch, busy, onApply, t }: { batch: ContactImportBatchV
 }
 
 export function ReviewRow({ row, busy, onDecide, t }: { row: ContactImportRowView; busy: boolean; onDecide: (seq: number, decision: "create" | "merge" | "skip") => void; t: T }) {
-  const blocked = row.issues.includes("missing_name") || row.issues.includes("decode_failed");
+  const blocked = row.issues.includes("missing_name") || row.issues.includes("decode_failed") || row.issues.includes("malformed_row");
   const fields = row.fields;
   return (
     <div className="nwi-row" data-import-row={row.seq} data-import-decision={row.decision ?? "undecided"}>
@@ -253,7 +254,7 @@ export function FileImportPanel({ kind, resumeBatchId, onChanged, t }: { kind: "
     return (
       <div className="nwi-done" data-import-result={batch.status}>
         <strong className="nwi-done-title">
-          {batch.status === "completed" ? t({ en: "Import finished", zh: "导入完成" }) : batch.status === "cancelled" ? t({ en: "Import cancelled", zh: "已取消导入" }) : t({ en: "Import in progress", zh: "正在导入" })}
+          {batch.status === "completed" ? t({ en: "Import finished", zh: "导入完成" }) : batch.status === "cancelled" ? t({ en: "Import cancelled", zh: "已取消导入" }) : batch.status === "failed" ? t({ en: "Import interrupted — partly imported", zh: "导入中断，部分已写入" }) : t({ en: "Import in progress — it resumes automatically if interrupted", zh: "正在导入（中断会自动续写）" })}
         </strong>
         <span className="nwi-done-counts">
           {t({ en: `${batch.counts.created} new · ${batch.counts.merged} merged · ${batch.counts.skipped} skipped · ${batch.counts.failed} not importable`, zh: `新建 ${batch.counts.created} · 合并 ${batch.counts.merged} · 跳过 ${batch.counts.skipped} · 无法导入 ${batch.counts.failed}` })}

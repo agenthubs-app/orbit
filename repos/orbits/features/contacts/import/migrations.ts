@@ -96,6 +96,45 @@ create index contact_import_rows_chunk
   where layers_chunk is not null;
 `,
   },
+  {
+    // W0053 review：P1-1 写到一半中断的批次由维护任务续写，无法续写的转终态 failed（带原因）；
+    // P1-2／P2-3 三层更新改为独立的轻量任务行（每个写入事务一行，存联系人 id），按行领取、带租约令牌，
+    // 解析行清理后不丢更新。v1 的 layers_pending／layers_lease_until 不再使用（保留列，旧行无害）。
+    name: "contact-import-followups",
+    version: 2,
+    sql: `
+alter table contact_import_batches drop constraint contact_import_batches_status_check;
+alter table contact_import_batches add constraint contact_import_batches_status_check
+  check (status in ('parsed', 'reviewing', 'committing', 'completed', 'cancelled', 'expired', 'failed'));
+alter table contact_import_batches add column failure_reason text check (failure_reason is null or length(failure_reason) <= 80);
+
+create index contact_import_batches_committing
+  on contact_import_batches (workspace_id, updated_at)
+  where status = 'committing';
+
+create table contact_import_followups (
+  workspace_id text not null,
+  batch_id text not null,
+  chunk integer not null check (chunk >= 0),
+  actor_id text not null check (length(actor_id) between 1 and 200),
+  contact_ids text[] not null check (cardinality(contact_ids) between 1 and 200),
+  status text not null default 'pending' check (status in ('pending', 'running', 'done')),
+  lease_token text,
+  lease_until timestamptz,
+  attempts integer not null default 0 check (attempts >= 0),
+  last_error text check (last_error is null or length(last_error) <= 80),
+  enrichment_retry_on timestamptz,
+  created_at timestamptz not null,
+  updated_at timestamptz not null,
+  primary key (workspace_id, batch_id, chunk),
+  check ((status = 'running') = (lease_token is not null and lease_until is not null))
+);
+
+create index contact_import_followups_due
+  on contact_import_followups (workspace_id, updated_at)
+  where status <> 'done';
+`,
+  },
 ];
 
 function checksum(sql: string): string {

@@ -4,7 +4,7 @@
  */
 import { CONTACT_IMPORT_MAX_BYTES, CONTACT_IMPORT_MAX_ROWS } from "../limits";
 import type { ContactImportFormat, ContactImportMapping, ParsedImportRow } from "../types";
-import { CsvTooManyRecordsError, parseCsv } from "./csv";
+import { CsvTooManyRecordsError, parseCsv, type CsvRecord } from "./csv";
 import { decodeImportText, type ImportTextEncoding } from "./decode";
 import { detectCsvLayout, normalizeCsvRow } from "./mapping";
 import { parseVcards, VcardTooManyCardsError } from "./vcard";
@@ -68,6 +68,6 @@ export function parseImportFile(input: { kind: "csv" | "vcard"; bytes: Uint8Arra
     headers: layout.headers,
     kind: "csv",
     mapping: layout.mapping,
-    rows: layout.dataRows.map((cells) => normalizeCsvRow(cells, layout.mapping)),
+    rows: layout.dataRows.map((cells) => normalizeCsvRow(cells, layout.mapping, { malformed: (cells as CsvRecord).malformed === true })),
   };
 }

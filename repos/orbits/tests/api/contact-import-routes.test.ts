@@ -45,6 +45,9 @@ interface Harness {
   pool: Pool;
   service: ReturnType<typeof createContactImportService>;
   client: ReturnType<typeof createTransactionalPostgresClient>;
+  clock: { now: Date };
+  /** 同一个库上另起一个服务实例（模拟另一个进程；可包一层会「崩溃」的连接）。 */
+  serviceWith(wrap: (client: ReturnType<typeof createTransactionalPostgresClient>) => ReturnType<typeof createTransactionalPostgresClient>): ReturnType<typeof createContactImportService>;
   as(actorId: string): ReturnType<typeof createContactImportHandlers>;
   settle(): Promise<void>;
 }
@@ -64,10 +67,14 @@ async function withDatabase(run: (harness: Harness) => Promise<void>, runLayers:
     await runContactImportMigrations(pool); // 重复执行是空操作（checksum 守卫）
     const client = createTransactionalPostgresClient({ connectionString: databaseUrl, pool: pool as never });
     const scheduled: Promise<void>[] = [];
+    const clock = { now: NOW };
+    const serviceWith = (wrap: (base: typeof client) => typeof client) => createContactImportService({
+      client: wrap(client), log: () => undefined, now: () => clock.now, runLayers, schedule: () => undefined, workspaceId: WORKSPACE,
+    });
     const service = createContactImportService({
       client,
       log: () => undefined,
-      now: () => NOW,
+      now: () => clock.now,
       runLayers,
       schedule: (task) => {
         scheduled.push(task());
@@ -75,7 +82,7 @@ async function withDatabase(run: (harness: Harness) => Promise<void>, runLayers:
       workspaceId: WORKSPACE,
     });
     const as = (actorId: string) => createContactImportHandlers({ resolveActor: async () => ({ id: actorId }) as never, schedule: () => undefined, service: () => service });
-    await run({ as, client, pool, service, settle: async () => void (await Promise.all(scheduled.splice(0))) });
+    await run({ as, client, clock, pool, service, serviceWith, settle: async () => void (await Promise.all(scheduled.splice(0))) });
   } finally {
     await pool.end();
     await admin.query(`drop schema if exists ${schema} cascade`);
@@ -200,6 +207,24 @@ test("SC-01 limits: an oversize body is refused with 413 before it is read to th
       body: utf8("Name\nA"), headers: { "content-length": String(CONTACT_IMPORT_MAX_BYTES + 1), "idempotency-key": "declared", "x-orbit-import-kind": "csv" }, method: "POST",
     }));
     assert.equal(declared.status, 413);
+
+    // review P2-1：2,001 行之后对方还在持续传输（总量远小于 5 MB）——服务端数到上限就停止读取并拒绝。
+    let rowPulls = 0;
+    const header = utf8(`Name,Email\n${Array.from({ length: 2001 }, (_, i) => `P${i},p${i}@example.com`).join("\n")}\n`);
+    const endless = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        rowPulls += 1;
+        if (rowPulls === 1) return controller.enqueue(header);
+        if (rowPulls > 400) return controller.close();
+        controller.enqueue(utf8(`More ${rowPulls},m${rowPulls}@example.com\n`));
+      },
+    });
+    const streamedRows = await h.as(ALICE).upload(new Request("http://localhost/api/contacts/import", {
+      body: endless, duplex: "half", headers: { "idempotency-key": "rows", "x-orbit-import-kind": "csv" }, method: "POST",
+    } as RequestInit));
+    assert.equal(streamedRows.status, 413);
+    assert.equal((await body(streamedRows)).error.context.reason, "too_many_rows");
+    assert.ok(rowPulls < 10, `stopped reading early (pulled ${rowPulls} chunks)`);
 
     const tooMany = await upload(h, ALICE, utf8(`Name\n${Array.from({ length: 2001 }, (_, i) => `P${i}`).join("\n")}`));
     assert.equal(tooMany.status, 413);
@@ -382,7 +407,7 @@ test("SC-03 wiring: one layers call per write transaction (≤200 rows) with a p
   });
 });
 
-test("W53-6 maintenance: parsed rows are deleted 7 days after the batch ends (summary kept, unfinished batches expire); due follow-up updates are retried", databaseTest, async () => {
+test("W53-6 maintenance: parsed rows are deleted 7 days after the batch ends (summary kept, unfinished batches expire); a failed follow-up is retried from its own task row", databaseTest, async () => {
   let calls = 0;
   await withDatabase(async (h) => {
     const done = (await upload(h, ALICE, fixture("linkedin-connections.csv"))).batch;
@@ -391,11 +416,10 @@ test("W53-6 maintenance: parsed rows are deleted 7 days after the batch ends (su
     // 请求结束后的 after() 调入口失败：批次挂 retry；把时间拨到 8 天后跑维护任务。
     await h.settle();
     assert.equal((await h.pool.query("select layers_status from contact_import_batches where id = $1", [done.id])).rows[0].layers_status, "retry");
-    await h.pool.query("update contact_import_batches set updated_at = updated_at - interval '2 minutes'");
     const task = createContactImportMaintenanceTask({ resolve: () => ({ client: h.client, service: h.service }) });
-    const later = new Date(NOW.getTime() + 8 * 24 * 60 * 60 * 1000);
-    const summary = await task.run({ deadline: Date.now() + 30_000, now: () => later });
-    assert.deepEqual(summary, { busy: 0, done: 1, purged: 2, retry: 0 });
+    h.clock.now = new Date(NOW.getTime() + 8 * 24 * 60 * 60 * 1000);
+    const summary = await task.run({ deadline: Date.now() + 30_000, now: () => h.clock.now });
+    assert.deepEqual(summary, { done: 1, purged: 2, resumed: 0, retry: 0 });
     assert.equal(calls, 2, "one failed after() call + one maintenance retry");
     assert.equal((await h.pool.query("select count(*)::int as n from contact_import_rows")).rows[0].n, 0);
     const batches = (await h.pool.query("select id, status, rows_purged_at is not null as purged, counts from contact_import_batches order by status")).rows;
@@ -408,6 +432,112 @@ test("W53-6 maintenance: parsed rows are deleted 7 days after the batch ends (su
   }, async () => {
     calls += 1;
     if (calls === 1) throw new Error("entry down");
+    return DONE;
+  });
+});
+
+test("review P1-2: more than 10 expired batches waiting for a follow-up retry lose no update — rows are purged first, every task row still runs with its own contact ids", databaseTest, async () => {
+  let failing = true;
+  const seen = new Map<string, string[]>();
+  await withDatabase(async (h) => {
+    const batches: string[] = [];
+    for (let index = 0; index < 12; index += 1) {
+      const batch = (await upload(h, ALICE, utf8(`Name,Email\nPerson ${index},p${index}@example.com\n`))).batch;
+      await commit(h, ALICE, batch.id, []);
+      batches.push(batch.id);
+    }
+    await h.settle();
+    assert.equal((await h.pool.query("select count(*)::int as n from contact_import_batches where layers_status = 'retry'")).rows[0].n, 12);
+    failing = false;
+    h.clock.now = new Date(NOW.getTime() + 8 * 24 * 60 * 60 * 1000);
+    const task = createContactImportMaintenanceTask({ resolve: () => ({ client: h.client, service: h.service }) });
+    // 先只清理（模拟上一轮额度只够清理）：解析行全部删掉。
+    assert.equal(await h.service.repository.purgeExpiredRows(h.client, h.clock.now, 50), 12);
+    assert.equal((await h.pool.query("select count(*)::int as n from contact_import_rows")).rows[0].n, 0);
+    const first = await task.run({ deadline: Date.now() + 30_000, now: () => h.clock.now });
+    const second = await task.run({ deadline: Date.now() + 30_000, now: () => h.clock.now });
+    assert.equal((first as Record<string, number>).done + (second as Record<string, number>).done, 12);
+    assert.equal(seen.size, 12);
+    for (const id of batches) {
+      assert.deepEqual(seen.get(`contact-import:${id}:0`), [importContactId(ALICE, id, 1)], "the update ran with the right contact");
+    }
+    assert.equal((await h.pool.query("select count(*)::int as n from contact_import_batches where layers_status = 'done'")).rows[0].n, 12);
+  }, async (input) => {
+    if (failing) throw new Error("entry down");
+    seen.set(input.sourceKey, [...input.contactIds]);
+    return DONE;
+  });
+});
+
+test("review P2-3: follow-up leases are per task row with a token — a stale worker cannot settle or release a task another worker re-claimed", databaseTest, async () => {
+  await withDatabase(async (h) => {
+    const batch = (await upload(h, ALICE, utf8("Name\nSolo Person\n"))).batch;
+    // 用不调度 after() 的实例提交：任务留在 pending。
+    await h.serviceWith((client) => client).commit(ALICE, batch.id, { confirmationIntentId: "i", mergeConfirmations: [] });
+    const repo = h.service.repository;
+    const first = await repo.claimFollowup(h.client, { leaseMs: 60_000, now: NOW, token: "token-old" });
+    assert.equal(first?.chunk, 0);
+    assert.equal(await repo.claimFollowup(h.client, { leaseMs: 60_000, now: NOW, token: "token-other" }), null, "a live lease is not re-claimed");
+    const later = new Date(NOW.getTime() + 120_000);
+    const second = await repo.claimFollowup(h.client, { leaseMs: 60_000, now: later, token: "token-new" });
+    assert.equal(second?.chunk, 0, "expired lease can be re-claimed");
+    assert.equal(await repo.settleFollowup(h.client, { batchId: batch.id, chunk: 0, now: later, outcome: { done: true, retryOn: null }, token: "token-old" }), false);
+    assert.equal(await repo.settleFollowup(h.client, { batchId: batch.id, chunk: 0, now: later, outcome: { done: false, error: "late" }, token: "token-old" }), false);
+    const row = (await h.pool.query("select status, lease_token from contact_import_followups where batch_id = $1", [batch.id])).rows[0];
+    assert.deepEqual(row, { lease_token: "token-new", status: "running" }, "the old worker changed nothing");
+    assert.equal(await repo.settleFollowup(h.client, { batchId: batch.id, chunk: 0, now: later, outcome: { done: true, retryOn: null }, token: "token-new" }), true);
+    assert.equal((await h.pool.query("select status from contact_import_followups where batch_id = $1", [batch.id])).rows[0].status, "done");
+  }, async () => DONE);
+});
+
+test("review P1-1: a commit interrupted mid-way stays visible as 「导入中」 and the maintenance task resumes it from the persisted decisions — no duplicate contacts; unrecoverable ones end as failed", databaseTest, async () => {
+  const calls: string[] = [];
+  await withDatabase(async (h) => {
+    const csv = `Name,Email\n${Array.from({ length: 450 }, (_, i) => `Person ${i},p${i}@example.com`).join("\n")}\n`;
+    const batch = (await upload(h, ALICE, utf8(csv))).batch;
+    // 第二个写入事务时「进程崩溃」：第 1 个事务（200 人）已提交，其余没写。
+    let transactions = 0;
+    const crashing = h.serviceWith((base) => ({
+      ...base,
+      transaction: (operation, options) => {
+        transactions += 1;
+        if (transactions === 3) return Promise.reject(new Error("process crashed"));
+        return base.transaction(operation, options);
+      },
+    }));
+    await assert.rejects(crashing.commit(ALICE, batch.id, { confirmationIntentId: "intent-1", mergeConfirmations: [] }), /process crashed/);
+    assert.equal(await contactCount(h.pool, ALICE), 200);
+    const stuck = (await body(await h.as(ALICE).list())).data.batches[0];
+    assert.equal(stuck.status, "committing");
+    assert.deepEqual(stuck.counts, { created: 200, failed: 0, merged: 0, skipped: 0 });
+
+    const task = createContactImportMaintenanceTask({ resolve: () => ({ client: h.client, service: h.service }) });
+    const tooEarly = await task.run({ deadline: Date.now() + 30_000, now: () => h.clock.now });
+    assert.equal((tooEarly as Record<string, number>).resumed, 0, "a commit still in progress is not taken over");
+    h.clock.now = new Date(NOW.getTime() + 10 * 60 * 1000);
+    await h.pool.query("update contact_import_batches set updated_at = $2 where id = $1", [batch.id, NOW.toISOString()]);
+    const resumed = await task.run({ deadline: Date.now() + 30_000, now: () => h.clock.now });
+    assert.equal((resumed as Record<string, number>).resumed, 1);
+    assert.equal(await contactCount(h.pool, ALICE), 450, "the rest is written once");
+    const view = (await body(await h.as(ALICE).get(new Request("http://localhost/x"), params(batch.id)))).data.batch;
+    assert.equal(view.status, "completed");
+    assert.deepEqual(view.counts, { created: 450, failed: 0, merged: 0, skipped: 0 });
+    assert.equal(view.followUp.state, "done");
+    assert.deepEqual([...new Set(calls)].sort(), [0, 1, 2].map((chunk) => `contact-import:${batch.id}:${chunk}`));
+    // 用户回到页面用原来的意图重放：不重复写。
+    const replay = await commit(h, ALICE, batch.id, [], "intent-1");
+    assert.equal(replay.body.data.replayed, true);
+    assert.equal(await contactCount(h.pool, ALICE), 450);
+
+    // 无法续写（7 天后解析行已到期）的 committing 批次转终态 failed。
+    const other = (await upload(h, ALICE, utf8("Name\nLate Person\n"))).batch;
+    await h.pool.query("update contact_import_batches set status = 'committing', commit_intent_id = 'x', expires_at = $2 where id = $1", [other.id, NOW.toISOString()]);
+    await h.service.repository.purgeExpiredRows(h.client, new Date(NOW.getTime() + 60_000), 50);
+    const failed = (await body(await h.as(ALICE).get(new Request("http://localhost/x"), params(other.id)))).data.batch;
+    assert.equal(failed.status, "failed");
+    assert.equal(failed.failureReason, "interrupted_expired");
+  }, async (input) => {
+    calls.push(input.sourceKey);
     return DONE;
   });
 });
