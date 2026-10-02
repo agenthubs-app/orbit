@@ -349,7 +349,8 @@ export function buildDemoNetworkDetail(id: string, real: Date, lang: Lang): Orbi
           contactId: id,
           occurredAt: note.createdAt,
           occurredAtPrecision: "instant" as const,
-          title: { zh: "写了 memo", en: "Wrote a memo" },
+          // 示例按当前语言单语生成（与示例其余文案一致），两个语言槽放同一句。
+          title: { zh: say(ctx, c("写了 memo", "Wrote a memo")), en: say(ctx, c("写了 memo", "Wrote a memo")) },
           excerpt: note.body,
           ref: { store: "contact_detail_states" as const, recordId: `demo:${id}`, subId: note.id },
         })),
@@ -359,7 +360,7 @@ export function buildDemoNetworkDetail(id: string, real: Date, lang: Lang): Orbi
           contactId: id,
           occurredAt: noteAt(ctx, seed.daysAgo + 30, "10:00"),
           occurredAtPrecision: "instant" as const,
-          title: { zh: "在活动中交换名片", en: "Exchanged cards at an event" },
+          title: { zh: say(ctx, c("在活动中交换名片", "Exchanged cards at an event")), en: say(ctx, c("在活动中交换名片", "Exchanged cards at an event")) },
           ref: { store: "contacts" as const, recordId: id },
           detail: { captureMethod: "event_exchange" as const },
         },
