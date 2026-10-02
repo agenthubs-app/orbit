@@ -1,4 +1,5 @@
 import type { IndustryIdCode, SecondaryIndustryIdCode } from "./industries";
+import type { SeniorityLevelCode } from "./profile";
 
 export type BusinessCardContactPointType =
   | "phone" | "mobile" | "fax" | "wechat" | "line" | "whatsapp" | "website" | "other";
@@ -29,6 +30,12 @@ export interface BusinessCardStructuredExtractionContract {
   primaryIndustryId?: IndustryIdCode | null;
   /** 二级行业，必须属于 primaryIndustryId；规则同上。 */
   secondaryIndustryId?: SecondaryIndustryIdCode | null;
+  /** W0045（提取结构 v3 起）：AI 按职位推断的职级（六档）；不合法或旧数据为 null/缺省。 */
+  seniorityLevel?: SeniorityLevelCode | null;
+  /** W0045：规范地区的 ISO 3166-1 两位国家码（大写）；不合法时与城市一起为 null。 */
+  regionCountryCode?: string | null;
+  /** W0045：规范英文城市名（如 "Tokyo"）；没有国家码时为 null。 */
+  regionCity?: string | null;
 }
 
 export type BusinessCardReviewIssueCode =
@@ -257,6 +264,13 @@ export interface IngestCardConfirmationInputContract extends BusinessCardBatchRe
   /** 审阅页「行业」一行的最终值；旧客户端不传时不写行业。 */
   primaryIndustryId?: IndustryIdCode | null;
   secondaryIndustryId?: SecondaryIndustryIdCode | null;
+  /**
+   * W0045：审阅页「职级」「地区」两行的最终值；旧客户端不传时不写。
+   * 来源（ai／user）由服务端比较提交值与该卡识别结果判定，客户端不传来源。
+   */
+  seniorityLevel?: SeniorityLevelCode | null;
+  regionCountryCode?: string | null;
+  regionCity?: string | null;
 }
 
 export type IngestConfirmationResponseContract =

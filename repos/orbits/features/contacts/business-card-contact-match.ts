@@ -8,6 +8,7 @@ import type { IngestContactCandidateContract } from "../../shared/contract/busin
 import type { IndustrySelectionContract } from "../../shared/contract/industries";
 import { sanitizeIndustryPair } from "../../shared/domain/industries";
 import type { LiveRecord, LiveRecordStoreLike } from "../../shared/storage/live-record-store";
+import { applyEnrichedValues, type EnrichedValue } from "./enrichment/apply-enrichment";
 
 export interface CardContactFields {
   displayName: string;
@@ -205,6 +206,12 @@ export async function mergeCardIntoContact(input: {
   industry?: IndustrySelectionContract;
   /** 服务端核实过的「在该活动认识」；只补联系人空着的来源活动。 */
   metEvent?: { eventId: string; title: string } | null;
+  /**
+   * W0045：服务端判定过来源的补全值（行业／职级／地区），按 canWriteEnrichedValue 写入：
+   * 空栏补上、`ai` 值可被新值替换、`user` 与存量无来源值不动（审阅页改过的 `user` 值在合并时
+   * 也只补空／替换 `ai`，见 ApplyEnrichedValuesOptions.mergeIntoExisting）。含行业项时行业以它为准。
+   */
+  enrichment?: { values: readonly EnrichedValue[] };
   now?: () => Date;
 }): Promise<string> {
   const record = await input.store.getRecord({ collectionName: "contacts", recordId: input.contactId, workspaceId: input.workspaceId });
@@ -227,7 +234,10 @@ export async function mergeCardIntoContact(input: {
     if (!existing[field]) payload[PAYLOAD_KEY[field]] = value;
     else if (!sameField(field, existing[field], value)) supplements.push(`${FIELD_LABEL[field]}: ${value}`);
   }
-  fillEmptyIndustry(payload, input.industry);
+  const now = input.now?.() ?? new Date();
+  const enrichedValues = input.enrichment?.values ?? [];
+  if (!enrichedValues.some((entry) => entry.field === "industry")) fillEmptyIndustry(payload, input.industry);
+  applyEnrichedValues(payload, enrichedValues, now.toISOString(), { mergeIntoExisting: true });
   fillEmptyMetEvent(payload, input.metEvent);
 
   const currentNotes = text(payload.notes);
@@ -244,7 +254,6 @@ export async function mergeCardIntoContact(input: {
       return value && !known.includes(value);
     });
   const added = [...supplements, ...noteLines.filter((line) => !supplements.includes(line))];
-  const now = input.now?.() ?? new Date();
   if (added.length) {
     const block = `名片补充 · ${now.toISOString().slice(0, 10)}\n${added.join("\n")}`;
     payload.notes = currentNotes ? `${currentNotes}\n\n${block}` : block;

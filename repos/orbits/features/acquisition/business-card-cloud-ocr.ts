@@ -7,6 +7,8 @@
 
 import type { IndustryIdCode, SecondaryIndustryIdCode } from "../../shared/contract/industries";
 import { sanitizeIndustryPair } from "../../shared/domain/industries";
+import type { SeniorityLevelValue } from "../../shared/domain/seniority";
+import { sanitizeCardEnrichment } from "./business-card-enrichment-prompt";
 
 export const BUSINESS_CARD_IMAGE_MIME_TYPES = [
   "image/jpeg",
@@ -57,6 +59,13 @@ export interface BusinessCardStructuredExtraction {
    */
   primaryIndustryId?: IndustryIdCode | null;
   secondaryIndustryId?: SecondaryIndustryIdCode | null;
+  /**
+   * W0045（提取结构 v3 起）：同一次文本整理顺带推断的职级（六档）与规范地区。
+   * 不合法时为 null；v1／v2 旧数据缺省，读取方按 null 处理。
+   */
+  seniorityLevel?: SeniorityLevelValue | null;
+  regionCountryCode?: string | null;
+  regionCity?: string | null;
 }
 
 export type BusinessCardReviewIssueCode =
@@ -166,6 +175,7 @@ export function normalizeBusinessCardExtraction(
     certifications: textList(extraction.certifications),
     detectedLanguages: textList(extraction.detectedLanguages),
     ...sanitizeIndustryPair(extraction.primaryIndustryId, extraction.secondaryIndustryId),
+    ...sanitizeCardEnrichment(extraction.seniorityLevel, extraction.regionCountryCode, extraction.regionCity),
   };
 }
 

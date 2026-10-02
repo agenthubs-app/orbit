@@ -36,6 +36,9 @@ type PatchBody = {
   note?: ContactDetailNoteInput | string;
   primaryIndustryId?: string | null;
   secondaryIndustryId?: string | null;
+  /** W0045：职级（六档）／规范地区；null 清空。具体校验在 contact detail service。 */
+  seniorityLevel?: string | null;
+  region?: { countryCode: string; city?: string | null } | null;
   removeTags?: readonly string[];
   scenario?: string;
   status?: string;
@@ -108,6 +111,15 @@ function readLastInteraction(
   };
 }
 
+// W0045：region 只接受 { countryCode: string, city?: string | null } 或 null；其他形状整条 PATCH 拒绝。
+function readRegion(value: unknown): PatchBody["region"] | "invalid" {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  if (!isRecord(value) || typeof value.countryCode !== "string") return "invalid";
+  if (value.city !== undefined && value.city !== null && typeof value.city !== "string") return "invalid";
+  return { countryCode: value.countryCode, city: typeof value.city === "string" ? value.city : null };
+}
+
 async function readPatchBody(request: Request): Promise<PatchBodyResult> {
   // malformed JSON 与空对象分开处理，保证 invalidPatchBody 能被 service 统一返回。
   try {
@@ -120,9 +132,13 @@ async function readPatchBody(request: Request): Promise<PatchBodyResult> {
       };
     }
 
-    if (["primaryIndustryId", "secondaryIndustryId"].some((field) =>
+    if (["primaryIndustryId", "secondaryIndustryId", "seniorityLevel"].some((field) =>
       body[field] !== undefined && body[field] !== null && typeof body[field] !== "string",
     )) {
+      return { success: false };
+    }
+    const region = readRegion(body.region);
+    if (region === "invalid") {
       return { success: false };
     }
 
@@ -144,6 +160,13 @@ async function readPatchBody(request: Request): Promise<PatchBodyResult> {
             : typeof body.secondaryIndustryId === "string"
               ? body.secondaryIndustryId
               : undefined,
+        seniorityLevel:
+          body.seniorityLevel === null
+            ? null
+            : typeof body.seniorityLevel === "string"
+              ? body.seniorityLevel
+              : undefined,
+        region,
         removeTags: readStringList(body.removeTags ?? body.removeTag),
         scenario:
           typeof body.scenario === "string" ? body.scenario : undefined,
@@ -254,6 +277,8 @@ export function createContactDetailPatchHandler(
       note: body.note,
       primaryIndustryId: body.primaryIndustryId,
       secondaryIndustryId: body.secondaryIndustryId,
+      seniorityLevel: body.seniorityLevel,
+      region: body.region,
       removeTags: body.removeTags,
       scenario: searchParams.get("scenario") ?? body.scenario,
       status: body.status,

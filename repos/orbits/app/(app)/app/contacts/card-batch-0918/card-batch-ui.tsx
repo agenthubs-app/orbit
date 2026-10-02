@@ -11,14 +11,20 @@
 import { useEffect, useRef } from "react";
 
 import { INDUSTRY_CATALOG, isIndustryIdCode, listSecondaryIndustries } from "../../../../../shared/domain/industries";
+import { REGION_CITY_ALIASES, REGION_COMMON_COUNTRY_CODES, countryDisplayName, regionDisplayName } from "../../../../../shared/domain/regions";
+import { SENIORITY_GROUP_LABELS, SENIORITY_LEVELS, SENIORITY_LEVEL_LABELS, seniorityGroup } from "../../../../../shared/domain/seniority";
 import { INGEST_V2_API_BASE, postAction } from "../ingest-v2/ingest-v2-client";
 import { IngestV2PrivateImage } from "../ingest-v2/ingest-v2-private-image";
 import {
   fieldCandidates,
   industryCandidates,
   initialCardDraft,
+  regionCandidates,
+  seniorityCandidates,
   setDraftFieldSource,
   setDraftIndustry,
+  setDraftRegion,
+  setDraftSeniority,
   setManualDraftField,
   setManualDraftNotes,
   type IngestV2CardDraft,
@@ -30,7 +36,6 @@ import {
   cardReason,
   fieldTag,
   flaggedFields,
-  industryNeedsReview,
   isCardSkipped,
   type Copy,
 } from "./card-batch-model";
@@ -149,6 +154,109 @@ export function IndustryField({ baseline, busy, candidates = [], draft, onChange
             </button>
           ))}
           <button className="btn cb-alt" onClick={() => onChange({ primaryIndustryId: null, secondaryIndustryId: null })} type="button">{t({ zh: "都不对，留空", en: "Neither — leave empty" })}</button>
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * W0045「职级」一行：六档下拉 + 派生分组提示（决策层／管理层／执行层）。初值是识别时 AI 按职位推断的职级，
+ * 可改可清空；正反面不一致时不预选、标「请核对」。来源（AI／手动）由服务端确认时判定。
+ */
+export function SeniorityField({ baseline, busy, candidates = [], draft, onChange, t }: {
+  baseline: IngestV2CardDraft;
+  busy: boolean;
+  candidates?: readonly string[];
+  draft: IngestV2CardDraft;
+  onChange: (value: string | null) => void;
+  t: T;
+}) {
+  const value = draft.seniority?.value ?? null;
+  const edited = Boolean(draft.seniority?.edited) && value !== (baseline.seniority?.value ?? null);
+  const conflicted = draft.seniority?.conflicted === true;
+  const tag = fieldTag({ edited, flagged: conflicted, value: value ?? "" });
+  const levelLabel = (level: string) => SENIORITY_LEVEL_LABELS[level as keyof typeof SENIORITY_LEVEL_LABELS] ?? { zh: level, en: level };
+  return (
+    <div className={`cb-rfield cb-rfield-${tag.kind}`} data-review-field="seniority">
+      <span className="cb-rfield-head"><span>{t({ zh: "职级", en: "Seniority" })}</span><span className={`cb-rtag cb-rtag-${tag.kind}`}>{t(tag.label)}</span></span>
+      <span className="cb-rindustry">
+        <select aria-label={t({ zh: "职级", en: "Seniority" })} className="cb-rinput" disabled={busy} onChange={event => onChange(event.target.value || null)} value={value ?? ""}>
+          <option value="">{t({ zh: "未填写", en: "Not set" })}</option>
+          {SENIORITY_LEVELS.map(level => <option key={level} value={level}>{t(levelLabel(level))}</option>)}
+        </select>
+        {value ? <span className="cb-rhint" data-seniority-group>{t({ zh: "分组：", en: "Group: " })}{t(SENIORITY_GROUP_LABELS[seniorityGroup(value)])}</span> : null}
+      </span>
+      {conflicted ? (
+        <span className="cb-alts" data-seniority-conflict>
+          {t({ zh: "正反面职级不一致，可能是", en: "The sides disagree — maybe" })}
+          {candidates.map(level => <button className="btn cb-alt" key={level} onClick={() => onChange(level)} type="button">{t(levelLabel(level))}</button>)}
+          <button className="btn cb-alt" onClick={() => onChange(null)} type="button">{t({ zh: "都不对，留空", en: "Neither — leave empty" })}</button>
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * W0045「地区」一行：国家（ISO 两位码，显示名由 Intl 生成）+ 城市（规范英文名，可输入；常见城市有提示）。
+ * 原始地址文字不变；正反面不一致时不预选、标「请核对」。
+ */
+export function RegionField({ baseline, busy, candidates = [], draft, onChange, t }: {
+  baseline: IngestV2CardDraft;
+  busy: boolean;
+  candidates?: readonly { countryCode: string; city: string | null }[];
+  draft: IngestV2CardDraft;
+  onChange: (selection: { countryCode: string | null; city: string | null }) => void;
+  t: T;
+}) {
+  // 本页文案只有中英两种；国家显示名跟随同一语言（Intl.DisplayNames 生成）。
+  const language = t({ zh: "zh", en: "en" }) === "en" ? "en" : "zh";
+  const countryCode = draft.region?.countryCode ?? null;
+  const city = draft.region?.city ?? null;
+  const edited = Boolean(draft.region?.edited)
+    && (countryCode !== (baseline.region?.countryCode ?? null) || (city ?? "") !== (baseline.region?.city ?? ""));
+  const conflicted = draft.region?.conflicted === true;
+  const tag = fieldTag({ edited, flagged: conflicted, value: countryCode ?? "" });
+  const countries = countryCode && !REGION_COMMON_COUNTRY_CODES.includes(countryCode) ? [countryCode, ...REGION_COMMON_COUNTRY_CODES] : REGION_COMMON_COUNTRY_CODES;
+  const cityListId = "cb-region-cities";
+  return (
+    <div className={`cb-rfield cb-rfield-${tag.kind}`} data-review-field="region">
+      <span className="cb-rfield-head"><span>{t({ zh: "地区", en: "Region" })}</span><span className={`cb-rtag cb-rtag-${tag.kind}`}>{t(tag.label)}</span></span>
+      <span className="cb-rindustry">
+        <select
+          aria-label={t({ zh: "国家／地区", en: "Country" })}
+          className="cb-rinput"
+          disabled={busy}
+          onChange={event => onChange({ countryCode: event.target.value || null, city: event.target.value === countryCode ? city : null })}
+          value={countryCode ?? ""}
+        >
+          <option value="">{t({ zh: "未填写", en: "Not set" })}</option>
+          {countries.map(code => <option key={code} value={code}>{countryDisplayName(code, language)}</option>)}
+        </select>
+        <span aria-hidden className="cb-rindustry-sep">›</span>
+        <input
+          aria-label={t({ zh: "城市", en: "City" })}
+          className="cb-rinput"
+          disabled={busy || !countryCode}
+          list={cityListId}
+          onChange={event => onChange({ countryCode, city: event.target.value })}
+          placeholder={t({ zh: "城市（英文，如 Tokyo）", en: "City (e.g. Tokyo)" })}
+          value={city ?? ""}
+        />
+        <datalist id={cityListId}>
+          {REGION_CITY_ALIASES.filter(entry => entry.countryCode === countryCode).map(entry => <option key={entry.city} value={entry.city}>{entry.labels[language]}</option>)}
+        </datalist>
+      </span>
+      {conflicted ? (
+        <span className="cb-alts" data-region-conflict>
+          {t({ zh: "正反面地区不一致，可能是", en: "The sides disagree — maybe" })}
+          {candidates.map(candidate => (
+            <button className="btn cb-alt" key={`${candidate.countryCode}|${candidate.city ?? ""}`} onClick={() => onChange(candidate)} type="button">
+              {regionDisplayName(candidate, language)}
+            </button>
+          ))}
+          <button className="btn cb-alt" onClick={() => onChange({ countryCode: null, city: null })} type="button">{t({ zh: "都不对，留空", en: "Neither — leave empty" })}</button>
         </span>
       ) : null}
     </div>
@@ -328,7 +436,9 @@ function BatchView({ batch, onBrowse, onReset, t }: { batch: CardBatch; onBrowse
   const handledCount = queue.filter(isHandled).length;
   const remainingAfter = pending.filter(card => card.cardId !== active.cardId).length;
   const unresolved = [...flagged].filter(field => draft.fields[field] === baseline.fields[field]).length
-    + (industryNeedsReview(draft) ? 1 : 0);
+    + (draft.industry?.conflicted ? 1 : 0)
+    + (draft.seniority?.conflicted ? 1 : 0)
+    + (draft.region?.conflicted ? 1 : 0);
   const shownItem = active.items.find(item => item.side === side) ?? active.items[0]!;
   const reason = cardReason(active, draft, duplicate);
   // 只问当前这张名片自己的候选活动；没有候选就不问（不回落到本批其他名片的活动）。
@@ -486,6 +596,24 @@ function BatchView({ batch, onBrowse, onReset, t }: { batch: CardBatch; onBrowse
             candidates={industryCandidates(active)}
             draft={draft}
             onChange={selection => setDrafts(current => ({ ...current, [active.cardId]: setDraftIndustry(current[active.cardId] ?? draft, selection) }))}
+            t={t}
+          />
+
+          <SeniorityField
+            baseline={baseline}
+            busy={busy}
+            candidates={seniorityCandidates(active)}
+            draft={draft}
+            onChange={value => setDrafts(current => ({ ...current, [active.cardId]: setDraftSeniority(current[active.cardId] ?? draft, value) }))}
+            t={t}
+          />
+
+          <RegionField
+            baseline={baseline}
+            busy={busy}
+            candidates={regionCandidates(active)}
+            draft={draft}
+            onChange={selection => setDrafts(current => ({ ...current, [active.cardId]: setDraftRegion(current[active.cardId] ?? draft, selection) }))}
             t={t}
           />
 

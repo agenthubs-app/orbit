@@ -22,6 +22,7 @@ import { useOrbitLanguage } from "../../orbit-language-context";
 import { useOrbitModalA11y } from "../../orbit-modal-a11y";
 import { PlanNeedLinkPanel } from "../../agent/iorbit-0918/plan-match-sheet";
 import { ContactRelationshipInitializationPanel, useContactRelationshipInitialization } from "../contact-relationship-initialization";
+import { ContactEnrichmentInline } from "./contact-enrichment-inline";
 import { SOURCE_LABEL, STAGE_CHIP, STAGE_LABEL, STAGE_STYLE, metSummary, sourceOf, stageOf } from "./network-model";
 
 type Translate = (copy: { en: string; zh: string }) => string;
@@ -150,6 +151,8 @@ export function NetworkDetailModal({ contact, closeHref, onFollow: openFollow, e
               <span>⇢ {t({ en: "From", zh: "来自" })} {t(SOURCE_LABEL[source])}</span>
               <span className="nw-detail-stage" style={{ background: STAGE_CHIP[stage].bg, color: STAGE_CHIP[stage].fg }}>{t(STAGE_LABEL[stage])}</span>
             </div>
+            {/* W0045（W45-2）：行业／职级／地区轻量编辑，保存走 PATCH 并标为手动值。 */}
+            <ContactEnrichmentInline key={contact.id} contact={contact} guardWrite={guardWrite} language={language} t={t} />
           </div>
         </div>
         <div className="nw-panel nw-panel-16">

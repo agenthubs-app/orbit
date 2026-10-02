@@ -435,6 +435,12 @@ export function contactDetailRouteToOrbitContactsViewModel(
     primaryIndustryId: model.contact.primaryIndustryId,
     secondaryIndustryId: model.contact.secondaryIndustryId,
     secondaryIndustryLabel: model.contact.secondaryIndustryId ? secondaryIndustryLabel(model.contact.secondaryIndustryId, language) : undefined,
+    ...(model.contact.seniorityLevel ? { seniorityLevel: model.contact.seniorityLevel } : {}),
+    ...(model.contact.region ? { region: { countryCode: model.contact.region.countryCode, city: model.contact.region.city } } : {}),
+    ...(model.contact.enrichment
+      ? { enrichmentOrigins: Object.fromEntries((["industry", "seniorityLevel", "region"] as const)
+          .flatMap((field) => model.contact.enrichment?.fields[field] ? [[field, model.contact.enrichment.fields[field]!.origin]] : [])) }
+      : {}),
     initial:
       model.contact.displayName.trim().slice(0, 1).toUpperCase() ||
       model.contact.id.slice(0, 1).toUpperCase(),

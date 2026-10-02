@@ -25,7 +25,7 @@ export function businessCardIndustryTaxonomyBlock(): string {
 
 export function businessCardIndustryInstruction(): string {
   return [
-    "Also classify the organization on the card into one industry; this is the only field you may infer.",
+    "Also classify the organization on the card into one industry.",
     "Base it on the organization name, title, departments, and any printed products or services.",
     "Set primaryIndustryId to a primary id and secondaryIndustryId to \"<primary id>.<suffix>\" using one of that primary's suffixes; every primary also has the suffix \"other\" for when none fits.",
     "If the text gives no reasonable basis for an industry, set both to null.",

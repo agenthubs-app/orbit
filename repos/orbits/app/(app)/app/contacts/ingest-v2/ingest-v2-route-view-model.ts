@@ -14,6 +14,8 @@ import type {
 import { aggregateBusinessCardNotes } from "../../../../../features/acquisition/business-card-notes-aggregation";
 import type { IndustryIdCode, SecondaryIndustryIdCode } from "../../../../../shared/contract/industries";
 import { sanitizeIndustryPair } from "../../../../../shared/domain/industries";
+import { REGION_CITY_MAX_LENGTH, isValidCountryCode, normalizeRegion } from "../../../../../shared/domain/regions";
+import { isSeniorityLevelValue, type SeniorityLevelValue } from "../../../../../shared/domain/seniority";
 
 export const INGEST_V2_FIELDS = [
   "displayName",
@@ -108,9 +110,26 @@ export interface IngestV2IndustryDraft {
   conflicted: boolean;
 }
 
+/** W0045：审阅页「职级」一行（六档）。规则同行业：初值来自识别结果，正反面不同时不预选、标「请核对」。 */
+export interface IngestV2SeniorityDraft {
+  value: SeniorityLevelValue | null;
+  edited: boolean;
+  conflicted: boolean;
+}
+
+/** W0045：审阅页「地区」一行（国家码 + 规范城市名）。规则同行业。 */
+export interface IngestV2RegionDraft {
+  countryCode: string | null;
+  city: string | null;
+  edited: boolean;
+  conflicted: boolean;
+}
+
 export interface IngestV2CardDraft {
   fields: IngestV2FixedFields;
   industry: IngestV2IndustryDraft;
+  seniority: IngestV2SeniorityDraft;
+  region: IngestV2RegionDraft;
   fieldSources: IngestCardFieldSourcesContract;
   sourceSnapshots: Record<IngestV2Field, IngestV2SourceSnapshot | null>;
   conflictedFields: readonly IngestV2Field[];
@@ -429,6 +448,48 @@ export function initialIndustryDraft(card: IngestV2CardViewModel): IngestV2Indus
   };
 }
 
+function orderedSides(card: IngestV2CardViewModel): IngestV2CardViewModel["items"] {
+  return [...card.items].sort((a, b) => (a.side === b.side ? a.seq - b.seq : a.side === "front" ? -1 : 1));
+}
+
+/** W0045：各面识别出的有效职级（按正反面顺序、去重）。 */
+export function seniorityCandidates(card: IngestV2CardViewModel): SeniorityLevelValue[] {
+  return [...new Set(orderedSides(card).flatMap((item) => {
+    const level = item.extraction?.seniorityLevel;
+    return isSeniorityLevelValue(level) ? [level] : [];
+  }))];
+}
+
+/** W0045：各面识别出的有效地区（按正反面顺序、去重；国家码不合法的整对丢弃）。 */
+export function regionCandidates(card: IngestV2CardViewModel): { countryCode: string; city: string | null }[] {
+  const seen = new Set<string>();
+  return orderedSides(card).flatMap((item) => {
+    const region = normalizeRegion(item.extraction?.regionCountryCode, item.extraction?.regionCity ?? null);
+    if (!region) return [];
+    const key = `${region.countryCode}|${region.city ?? ""}`;
+    if (seen.has(key)) return [];
+    seen.add(key);
+    return [region];
+  });
+}
+
+export function initialSeniorityDraft(card: IngestV2CardViewModel): IngestV2SeniorityDraft {
+  const levels = seniorityCandidates(card);
+  if (levels.length > 1) return { value: null, edited: false, conflicted: true };
+  return { value: levels[0] ?? null, edited: false, conflicted: false };
+}
+
+/** 国家相同、只有一面给了城市时取非空的城市；国家不同或城市不同记为冲突。 */
+export function initialRegionDraft(card: IngestV2CardViewModel): IngestV2RegionDraft {
+  const regions = regionCandidates(card);
+  const empty = { countryCode: null, city: null, edited: false };
+  if (!regions.length) return { ...empty, conflicted: false };
+  const countries = new Set(regions.map((region) => region.countryCode));
+  const cities = new Set(regions.map((region) => region.city).filter((city) => city !== null));
+  if (countries.size > 1 || cities.size > 1) return { ...empty, conflicted: true };
+  return { countryCode: regions[0]!.countryCode, city: [...cities][0] ?? null, edited: false, conflicted: false };
+}
+
 export function initialCardDraft(card: IngestV2CardViewModel): IngestV2CardDraft {
   const fields = Object.fromEntries(INGEST_V2_FIELDS.map((field) => [field, ""])) as Record<IngestV2Field, string>;
   const fieldSources = Object.fromEntries(INGEST_V2_FIELDS.map((field) => [field, null])) as IngestCardFieldSourcesContract;
@@ -463,6 +524,8 @@ export function initialCardDraft(card: IngestV2CardViewModel): IngestV2CardDraft
   return {
     fields: baseFields,
     industry: initialIndustryDraft(card),
+    seniority: initialSeniorityDraft(card),
+    region: initialRegionDraft(card),
     fieldSources,
     sourceSnapshots,
     conflictedFields,
@@ -543,6 +606,8 @@ export function reconcileCardDraft(
     fields,
     // 用户改过（含清空）的行业原样保留；否则跟随最新识别结果。
     industry: previous.industry?.edited ? previous.industry : base.industry,
+    seniority: previous.seniority?.edited ? previous.seniority : base.seniority,
+    region: previous.region?.edited ? previous.region : base.region,
     fieldSources,
     sourceSnapshots,
     conflictedFields: [...conflictedFields],
@@ -578,6 +643,21 @@ export function setDraftIndustry(
     ...draft,
     industry: { ...sanitizeIndustryPair(selection.primaryIndustryId, selection.secondaryIndustryId), edited: true, conflicted: false },
   };
+}
+
+/** W0045：审阅者改职级（含清空）。不在六档内的值按清空处理。 */
+export function setDraftSeniority(draft: IngestV2CardDraft, value: string | null): IngestV2CardDraft {
+  return { ...draft, seniority: { value: isSeniorityLevelValue(value) ? value : null, edited: true, conflicted: false } };
+}
+
+/**
+ * W0045：审阅者改地区。国家码不合法时整对清空；城市保留输入原文（输入中途不归一，否则打不出空格），
+ * 服务端确认时再按别名表归一。
+ */
+export function setDraftRegion(draft: IngestV2CardDraft, selection: { countryCode: string | null; city: string | null }): IngestV2CardDraft {
+  const country = isValidCountryCode(selection.countryCode) ? selection.countryCode : null;
+  const city = country && selection.city?.trim() ? selection.city.slice(0, REGION_CITY_MAX_LENGTH) : null;
+  return { ...draft, region: { countryCode: country, city, edited: true, conflicted: false } };
 }
 
 export function setManualDraftNotes(
@@ -654,6 +734,10 @@ export function buildConfirmationPayload(
       notes: draft.fields.notes,
       primaryIndustryId: draft.industry?.primaryIndustryId ?? null,
       secondaryIndustryId: draft.industry?.secondaryIndustryId ?? null,
+      // W0045：只传最终值，来源由服务端判定。
+      seniorityLevel: draft.seniority?.value ?? null,
+      regionCountryCode: draft.region?.countryCode ?? null,
+      regionCity: draft.region?.countryCode ? draft.region.city?.trim() || null : null,
       ...(allowDuplicate ? { allowDuplicate: true } : {}),
     },
     blockedReason: null,

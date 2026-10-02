@@ -16,6 +16,8 @@ import {
   setManualDraftNotes,
   setDraftFieldSource,
   setDraftIndustry,
+  setDraftRegion,
+  setDraftSeniority,
   type IngestV2CardViewModel,
 } from "../../app/(app)/app/contacts/ingest-v2/ingest-v2-route-view-model";
 
@@ -344,4 +346,47 @@ test("the reviewer can change or clear the industry and a poll keeps the choice"
   // 未改过的行业跟随最新识别结果（例如重新识别后）。
   const rerun = card([withIndustry(item({ version: 2 }), "media_creative", null)]);
   assert.equal(reconcileCardDraft(draft, rerun).industry.primaryIndustryId, "media_creative");
+});
+
+// W0045：「职级」「地区」两行——初值来自识别结果，正反面冲突不预选，改过的行轮询刷新不覆盖，最终值随确认提交。
+function withEnrichment(entry: IngestItemDTO, seniorityLevel: string | null, regionCountryCode: string | null, regionCity: string | null): IngestItemDTO {
+  return { ...entry, extraction: { ...entry.extraction!, seniorityLevel, regionCountryCode, regionCity } as IngestItemDTO["extraction"], extractionSchemaVersion: 3 };
+}
+
+test("W0045 seniority and region rows start from recognition; disagreeing sides are conflicts, a missing city on one side is not", () => {
+  const front = withEnrichment(item(), "director", "JP", "Tokyo");
+  const back = withEnrichment(item({ id: "item-back", side: "back", seq: 2 }), "vp", "JP", null);
+  const draft = initialCardDraft(card([front, back]));
+  assert.deepEqual(draft.seniority, { value: null, edited: false, conflicted: true });
+  assert.deepEqual(draft.region, { countryCode: "JP", city: "Tokyo", edited: false, conflicted: false });
+  const otherCountry = initialCardDraft(card([front, withEnrichment(back, "director", "CN", "Shanghai")]));
+  assert.deepEqual(otherCountry.seniority, { value: "director", edited: false, conflicted: false });
+  assert.deepEqual(otherCountry.region, { countryCode: null, city: null, edited: false, conflicted: true });
+  const legacy = initialCardDraft(card([item()]));
+  assert.deepEqual([legacy.seniority, legacy.region], [{ value: null, edited: false, conflicted: false }, { countryCode: null, city: null, edited: false, conflicted: false }]);
+  const single = card([front]);
+  const payload = buildConfirmationPayload(single, initialCardDraft(single), "intent:enrichment").payload!;
+  assert.deepEqual([payload.seniorityLevel, payload.regionCountryCode, payload.regionCity], ["director", "JP", "Tokyo"]);
+  assert.equal("enrichment" in payload, false, "the client never sends provenance");
+});
+
+test("W0045 an edited seniority or region survives polling, and clearing is submitted as null", () => {
+  const current = card([withEnrichment(item(), "director", "JP", "Tokyo")]);
+  const edited = setDraftRegion(setDraftSeniority(initialCardDraft(current), "manager"), { countryCode: "JP", city: "New Osaka " });
+  assert.deepEqual(edited.seniority, { value: "manager", edited: true, conflicted: false });
+  assert.equal(edited.region.city, "New Osaka ", "the city keeps typed spaces while editing");
+  const rerun = card([withEnrichment(item({ version: 2 }), "c_level", "SG", "Singapore")]);
+  const polled = reconcileCardDraft(edited, rerun);
+  assert.equal(polled.seniority.value, "manager");
+  assert.deepEqual([polled.region.countryCode, polled.region.city], ["JP", "New Osaka "]);
+  const payload = buildConfirmationPayload(current, edited, "intent:edited").payload!;
+  assert.deepEqual([payload.seniorityLevel, payload.regionCountryCode, payload.regionCity], ["manager", "JP", "New Osaka"]);
+  // 未改过的行跟随最新识别结果。
+  assert.equal(reconcileCardDraft(initialCardDraft(current), rerun).seniority.value, "c_level");
+
+  const cleared = setDraftRegion(setDraftSeniority(edited, null), { countryCode: null, city: "Tokyo" });
+  const clearedPayload = buildConfirmationPayload(current, cleared, "intent:cleared").payload!;
+  assert.deepEqual([clearedPayload.seniorityLevel, clearedPayload.regionCountryCode, clearedPayload.regionCity], [null, null, null]);
+  assert.equal(setDraftSeniority(edited, "boss").seniority.value, null, "an unknown level is never submitted");
+  assert.equal(setDraftRegion(edited, { countryCode: "XX", city: "Tokyo" }).region.countryCode, null);
 });

@@ -13,6 +13,10 @@ export interface OrbitContactView {
   primaryIndustryId?: string;
   secondaryIndustryId?: string;
   secondaryIndustryLabel?: string;
+  /** W0045：职级（六档）、规范地区与补全来源；详情弹窗 hero 区展示与轻量编辑。 */
+  seniorityLevel?: string;
+  region?: { countryCode: string; city: string | null };
+  enrichmentOrigins?: Partial<Record<"industry" | "seniorityLevel" | "region", "ai" | "user" | "card">>;
   initial: string;
   lineId: string;
   location?: string;

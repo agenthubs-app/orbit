@@ -7,6 +7,7 @@ import {
   mergeCardIntoContact,
   type CardContactFields,
 } from "../../features/contacts/business-card-contact-match";
+import type { EnrichedValue } from "../../features/contacts/enrichment/apply-enrichment";
 import type { LiveRecord, LiveRecordWritePrecondition } from "../../shared/storage/live-record-store";
 
 const ACTOR = "actor:me";
@@ -193,4 +194,72 @@ test("merging without a card industry, or with an invalid one, leaves the contac
   const mismatched = await mergeIndustry({}, { primaryIndustryId: "professional_services", secondaryIndustryId: "finance_investment.banking" });
   assert.equal(mismatched.primaryIndustryId, undefined);
   assert.equal(mismatched.secondaryIndustryId, undefined);
+});
+
+// W0045 SC-03：按来源规则合并职级／地区／行业——空栏被补、ai 值被新 ai 替换、user 与存量无来源值不动（四态 × 三字段）。
+const OLD = "2026-09-01T00:00:00.000Z";
+type EnrichmentStateName = "empty" | "ai" | "user" | "legacy";
+const EXISTING_VALUE = {
+  industry: { primaryIndustryId: "technology_internet", secondaryIndustryId: "technology_internet.ai_data" },
+  seniorityLevel: { publicProfile: { bio: "keep", seniorityLevel: "manager" } },
+  region: { region: { countryCode: "JP", city: "Osaka" } },
+} as const;
+const CARD_VALUES: readonly EnrichedValue[] = [
+  { field: "industry" as const, value: { primaryIndustryId: "professional_services" as const, secondaryIndustryId: "professional_services.legal" as const }, origin: "ai" as const, via: "card_ocr" as const },
+  { field: "seniorityLevel" as const, value: "director" as const, origin: "ai" as const, via: "card_ocr" as const },
+  { field: "region" as const, value: { countryCode: "JP", city: "Tokyo" }, origin: "ai" as const, via: "card_ocr" as const },
+];
+
+function existingFor(state: EnrichmentStateName): Record<string, unknown> {
+  if (state === "empty") return {};
+  const values = { ...EXISTING_VALUE.industry, ...EXISTING_VALUE.seniorityLevel, ...EXISTING_VALUE.region };
+  if (state === "legacy") return values;
+  const provenance = { origin: state, updatedAt: OLD, via: state === "ai" ? "card_ocr" : "contact_edit" };
+  return { ...values, enrichment: { version: 1, fields: { industry: provenance, seniorityLevel: provenance, region: provenance } } };
+}
+
+async function mergeEnrichment(existing: Record<string, unknown>, values: readonly EnrichedValue[] = CARD_VALUES) {
+  const store = memoryStore(contactRecord("c1", { displayName: "佐々木 芳邦", ...existing }));
+  await mergeCardIntoContact({
+    actorId: ACTOR,
+    card: CARD,
+    cardNotes: "",
+    contactId: "c1",
+    enrichment: { values },
+    evidenceIds: [],
+    // 旧参数照传：有补全行业项时行业以补全项为准。
+    industry: { primaryIndustryId: "professional_services", secondaryIndustryId: "professional_services.legal" },
+    now: () => new Date(NOW),
+    store,
+    workspaceId: "ws",
+  });
+  return store.current.payload;
+}
+
+for (const state of ["empty", "ai", "user", "legacy"] as const) {
+  test(`W0045 merge into a contact whose industry/seniority/region are ${state}`, async () => {
+    const payload = await mergeEnrichment(existingFor(state));
+    const replaced = state === "empty" || state === "ai";
+    const industry = [payload.primaryIndustryId, payload.secondaryIndustryId];
+    const seniority = (payload.publicProfile as Record<string, unknown> | undefined)?.seniorityLevel;
+    assert.deepEqual(industry, replaced ? ["professional_services", "professional_services.legal"] : ["technology_internet", "technology_internet.ai_data"], "industry");
+    assert.equal(seniority, replaced ? "director" : "manager", "seniority");
+    assert.deepEqual(payload.region, replaced ? { countryCode: "JP", city: "Tokyo" } : { countryCode: "JP", city: "Osaka" }, "region");
+    const fields = (payload.enrichment as { fields: Record<string, { origin: string; updatedAt: string }> } | undefined)?.fields ?? {};
+    for (const field of ["industry", "seniorityLevel", "region"]) {
+      if (replaced) assert.deepEqual(fields[field], { origin: "ai", updatedAt: NOW, via: "card_ocr" }, `${field} provenance`);
+      else if (state === "user") assert.deepEqual(fields[field], { origin: "user", updatedAt: OLD, via: "contact_edit" }, `${field} keeps user provenance`);
+      else assert.equal(fields[field], undefined, `${field}: legacy value stays without provenance`);
+    }
+    if (state !== "empty") assert.equal((payload.publicProfile as Record<string, unknown>).bio, "keep", "other profile fields survive");
+  });
+}
+
+test("W0045 a value the reviewer edited on the card still never overwrites the contact's own value when merging", async () => {
+  const edited = CARD_VALUES.map((entry): EnrichedValue => ({ ...entry, origin: "user", via: "card_review" }));
+  const intoUser = await mergeEnrichment(existingFor("user"), edited);
+  assert.equal((intoUser.publicProfile as Record<string, unknown>).seniorityLevel, "manager");
+  const intoAi = await mergeEnrichment(existingFor("ai"), edited);
+  assert.equal((intoAi.publicProfile as Record<string, unknown>).seniorityLevel, "director");
+  assert.equal((intoAi.enrichment as { fields: Record<string, { origin: string }> }).fields.seniorityLevel!.origin, "user");
 });

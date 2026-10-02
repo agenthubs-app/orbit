@@ -364,3 +364,52 @@ test("confirmed business-card contacts store the reviewed industry and omit an e
   assert.equal("primaryIndustryId" in empty, false);
   assert.equal("secondaryIndustryId" in empty, false);
 });
+
+// W0045 SC-03：新建联系人写 publicProfile.seniorityLevel、region 与 enrichment.fields.*（来源由调用方——服务端——判定）。
+test("W0045 a new business-card contact stores seniority, canonical region and per-field provenance", async () => {
+  const store = createMemoryLiveRecordStore<Record<string, unknown>>();
+  const service = createLiveBusinessCardContactWriteService({
+    now: () => NOW,
+    provider: createStorageBusinessCardContactWriteProvider({ store, workspaceId: WORKSPACE_ID }),
+  });
+  const result = await service.confirmBusinessCardContact({
+    ...INPUT,
+    location: "東京都千代田区丸の内1-1-1",
+    primaryIndustryId: "manufacturing_supply_chain",
+    secondaryIndustryId: "manufacturing_supply_chain.robotics",
+    enrichment: {
+      values: [
+        { field: "industry", value: { primaryIndustryId: "manufacturing_supply_chain", secondaryIndustryId: "manufacturing_supply_chain.robotics" }, origin: "ai", via: "card_ocr" },
+        { field: "seniorityLevel", value: "manager", origin: "user", via: "card_review" },
+        { field: "region", value: { countryCode: "JP", city: "Tokyo" }, origin: "ai", via: "card_ocr" },
+      ],
+    },
+  });
+  assert.ok(result.success);
+  const stored = store
+    .listRecords({ limit: "unbounded", collectionName: "contacts", workspaceId: WORKSPACE_ID })
+    .find((record) => record.recordId === result.data.contactId)!.payload;
+  assert.equal(stored.primaryIndustryId, "manufacturing_supply_chain");
+  assert.equal(stored.secondaryIndustryId, "manufacturing_supply_chain.robotics");
+  assert.deepEqual(stored.publicProfile, { seniorityLevel: "manager" });
+  assert.deepEqual(stored.region, { countryCode: "JP", city: "Tokyo" });
+  assert.equal(stored.location, "東京都千代田区丸の内1-1-1", "the raw location text is kept as-is");
+  assert.deepEqual(stored.enrichment, {
+    version: 1,
+    fields: {
+      industry: { origin: "ai", updatedAt: NOW, via: "card_ocr" },
+      seniorityLevel: { origin: "user", updatedAt: NOW, via: "card_review" },
+      region: { origin: "ai", updatedAt: NOW, via: "card_ocr" },
+    },
+  });
+
+  // v1 路径（不传 enrichment）行为不变：不写职级、地区与来源。
+  const legacy = await service.confirmBusinessCardContact({ ...INPUT, allowDuplicate: true, draftId: "business-card-review:cloud:legacy" });
+  assert.ok(legacy.success);
+  const legacyPayload = store
+    .listRecords({ limit: "unbounded", collectionName: "contacts", workspaceId: WORKSPACE_ID })
+    .find((record) => record.recordId === legacy.data.contactId)!.payload;
+  assert.equal("region" in legacyPayload, false);
+  assert.equal("enrichment" in legacyPayload, false);
+  assert.equal("publicProfile" in legacyPayload, false);
+});

@@ -12,7 +12,8 @@ import {
   type ContactsGraphQueryContext,
 } from "./contact-graph-query";
 import type { LocalRemoteContactGraph } from "./contact-graph-provider";
-import type { ContactDTO } from "../../shared/domain/contracts";
+import type { ContactDTO, ContactRegionDTO } from "../../shared/domain/contracts";
+import type { SeniorityLevel } from "../../shared/domain/source-types";
 import type { IndustryIdCode, SecondaryIndustryIdCode } from "../../shared/contract/industries";
 import type { ContactsListSearchAndFilterService } from "./service";
 
@@ -70,6 +71,22 @@ export interface LiveContactsGraphProvider {
     primaryIndustryId: IndustryIdCode | null,
     secondaryIndustryId?: SecondaryIndustryIdCode | null,
   ) => LiveContactsProviderResult<ContactDTO>;
+  /**
+   * W0045：联系人编辑改行业／职级／地区——同一联系人 payload 的这几项一次条件更新（一次 CAS），
+   * 并把改动字段的来源记为 `user`（via contact_edit）。null = 清空；期间被改过抛 AppError CONFLICT。
+   */
+  updateContactEnrichment?: (
+    contactId: string,
+    actorId: string,
+    update: ContactEnrichmentEdit,
+  ) => LiveContactsProviderResult<ContactDTO>;
+}
+
+export interface ContactEnrichmentEdit {
+  /** 行业整对（已按分类校验）；primaryIndustryId 为 null 表示清空。 */
+  industry?: { primaryIndustryId: IndustryIdCode | null; secondaryIndustryId: SecondaryIndustryIdCode | null };
+  seniorityLevel?: SeniorityLevel | null;
+  region?: ContactRegionDTO | null;
 }
 
 export interface LiveContactsListSearchAndFilterServiceOptions {

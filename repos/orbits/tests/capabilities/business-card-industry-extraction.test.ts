@@ -54,6 +54,10 @@ const OTHER_FIELDS = {
   romanizedFullName: null,
   title: "弁護士",
   website: null,
+  // W0045：提取结构 v3 起多出职级与地区；本文件的模型输出不含它们，清成 null。
+  seniorityLevel: null,
+  regionCountryCode: null,
+  regionCity: null,
 };
 
 // 四种模型输出：合法、分类外、二级不属于一级、缺失。
@@ -118,7 +122,7 @@ test("both providers' prompts carry the industry instruction and the schema requ
   assert.ok(required.includes("primaryIndustryId"));
   assert.ok(required.includes("secondaryIndustryId"));
   assert.deepEqual(BUSINESS_CARD_EXTRACTION_JSON_SCHEMA.properties.primaryIndustryId, { type: ["string", "null"] });
-  assert.equal(INGEST_V2_EXTRACTION_SCHEMA_VERSION, 2);
+  assert.equal(INGEST_V2_EXTRACTION_SCHEMA_VERSION, 3);
 });
 
 test("sanitizeIndustryPair keeps a valid primary when only the secondary is unknown", () => {
