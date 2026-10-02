@@ -3,7 +3,7 @@
  *
  * 只做鉴权 + 配置可用性判定；名片 V2 的批次列表/详情在客户端按需拉取。
  * 加载页面绝不触发 OCR、二维码、参会者导入、通讯录导入、引荐、合并或信号服务。
- * URL：?method=scan（默认）；?job=<batchId> 打开某批次记录。
+ * URL：?method=scan（默认）|csv|contacts|event；?job=<batchId> 打开某名片批次；?import=<批次> 继续核对一批文件导入（W0053）。
  */
 import { redirect } from "next/navigation";
 
@@ -25,7 +25,7 @@ function readParam(value: string | string[] | undefined): string | undefined {
 export default async function AppContactScanPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ method?: string | string[]; job?: string | string[] }>;
+  searchParams?: Promise<{ method?: string | string[]; job?: string | string[]; import?: string | string[] }>;
 } = {}) {
   const session = await auth();
 
@@ -36,6 +36,7 @@ export default async function AppContactScanPage({
   const params = await searchParams;
   const method = readParam(params?.method);
   const jobId = readParam(params?.job);
+  const importId = readParam(params?.import);
   const availability = resolveBusinessCardCaptureAvailability();
 
   return (
@@ -47,6 +48,7 @@ export default async function AppContactScanPage({
         <AccountTopNav active="cards" />
         <NetworkImport
           availability={{ available: availability.available, reason: availability.reason }}
+          importId={importId}
           initialMethod={METHODS.find((m) => m === method) ?? "scan"}
           jobId={jobId}
         />

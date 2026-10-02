@@ -31,6 +31,8 @@ import { createNetworkSnapshotMaintenanceTask } from "../../network-analysis/mai
 import { getConfiguredNetworkAnalysisRuntime } from "../../network-analysis/runtime";
 import { createContactInsightsMaintenanceTask } from "../../contacts/insights/maintenance-task";
 import { getConfiguredContactInsightsRuntime } from "../../contacts/insights/runtime";
+import { createContactImportMaintenanceTask } from "../../contacts/import/maintenance-task";
+import { getConfiguredContactImportMaintenance } from "../../contacts/import/runtime";
 import type { MaintenanceTask } from "./pass";
 
 // The production task list. Each task checks its own configuration and reports
@@ -243,6 +245,10 @@ export function createConfiguredMaintenanceTasks({
     // an idle pass is one partial-index claim statement. Skipped until the table is migrated.
     createContactInsightsMaintenanceTask({
       resolve: () => getConfiguredContactInsightsRuntime(),
+    }),
+    // W0053：导入解析行 7 天清理 + 三层更新重试。
+    createContactImportMaintenanceTask({
+      resolve: () => getConfiguredContactImportMaintenance(),
     }),
     {
       name: "notification_redelivery",

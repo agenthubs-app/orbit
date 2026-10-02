@@ -132,6 +132,8 @@ export async function listActorContactRecords(
     collectionName: "contacts",
     lifecycleState: "active",
     limit: CONTACT_MATCH_READ_LIMIT,
+    // W0053 review P3-3：比对不用 search_text，不读它（每人约省数百字节）。
+    omitSearchText: true,
     payloadFields: MATCH_PAYLOAD_FIELDS,
     userId: actorId,
     workspaceId,
@@ -212,6 +214,8 @@ export async function mergeCardIntoContact(input: {
    * 也只补空／替换 `ai`，见 ApplyEnrichedValuesOptions.mergeIntoExisting）。含行业项时行业以它为准。
    */
   enrichment?: { values: readonly EnrichedValue[] };
+  /** W0053：冲突与新信息写进备注时的段标题（导入写「导入补充」）；默认「名片补充」，名片路径不变。 */
+  supplementLabel?: string;
   now?: () => Date;
 }): Promise<string> {
   const record = await input.store.getRecord({ collectionName: "contacts", recordId: input.contactId, workspaceId: input.workspaceId });
@@ -255,7 +259,7 @@ export async function mergeCardIntoContact(input: {
     });
   const added = [...supplements, ...noteLines.filter((line) => !supplements.includes(line))];
   if (added.length) {
-    const block = `名片补充 · ${now.toISOString().slice(0, 10)}\n${added.join("\n")}`;
+    const block = `${input.supplementLabel?.trim() || "名片补充"} · ${now.toISOString().slice(0, 10)}\n${added.join("\n")}`;
     payload.notes = currentNotes ? `${currentNotes}\n\n${block}` : block;
   }
 
