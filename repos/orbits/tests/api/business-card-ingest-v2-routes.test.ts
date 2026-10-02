@@ -363,7 +363,9 @@ test("v2 confirm creates the contact in the same transaction, exactly once", { s
       });
     }
 
-    const confirm = createIngestV2ConfirmHandler(deps);
+    // W0051：确认写入提交后把这位联系人的洞察标为待更新（只标这一个人；duplicate_review 不标）。
+    const insightMarks: { actorId: string; contactIds: readonly string[] }[] = [];
+    const confirm = createIngestV2ConfirmHandler({ ...deps, markInsightsDirty: async (input) => { insightMarks.push(input); } });
     const confirmResponse = await confirm(
       new Request("http://test/confirm", {
         method: "POST",
@@ -379,6 +381,7 @@ test("v2 confirm creates the contact in the same transaction, exactly once", { s
     const confirmed = await envelope(confirmResponse);
     assert.equal(confirmed.state, "created");
     assert.ok(confirmed.contactId);
+    assert.deepEqual(insightMarks, [{ actorId: "actor:test", contactIds: [confirmed.contactId] }]);
 
     const contactRows = await pool.query(
       `select count(*)::int as n from orbit_records where collection_name = 'contacts'`,
@@ -402,6 +405,7 @@ test("v2 confirm creates the contact in the same transaction, exactly once", { s
     assert.equal(duplicateResponse.status, 200);
     const duplicate = await envelope(duplicateResponse);
     assert.equal(duplicate.state, "duplicate_review");
+    assert.equal(insightMarks.length, 1);
     const afterDuplicate = await pool.query(
       `select count(*)::int as n from orbit_records where collection_name = 'contacts'`,
     );

@@ -14,7 +14,11 @@ export const CARD_SOURCE_GROUPS: Record<NetworkSource, string[]> = {
 export interface ContactCardView {
   id: string; name: string; initial: string; org: string; title: string;
   source: NetworkSource; tier: NetworkTierGroup | null; next: string; href: string;
+  /** W0051：洞察一句（「和你目标的关系」中英各截 60 字）；还没有洞察为 null。 */
+  insight: { zh: string; en: string } | null;
 }
+/** W0051：联系人 id → 洞察一句。 */
+export type ContactCardInsightPreviews = Map<string, { zh: string; en: string }>;
 /** 一页联系人的档位（读模型投影）。 */
 export interface ContactCardTierEntry { contactId: string; tier: "new" | "active" | "core"; dormant: boolean }
 /** 翻页接口带 `tiers=1` 时 data 里附带的本页档位（Web 专用；App 不带这个参数，响应不变）。 */
@@ -33,6 +37,8 @@ export interface ContactCardRouteView {
   counts: Record<NetworkSource | "all", number>;
   query: string;
   source: NetworkSource | "all";
+  /** W0051：关系档位筛选（服务端 SQL）。 */
+  tier: NetworkTierGroup | "all";
   params: string;
 }
 export function contactCardsToView(page: ContactCardPageDTO, params: string, tiers: readonly ContactCardTierEntry[] = []): ContactCardListView {
@@ -49,6 +55,7 @@ export function contactCardsToView(page: ContactCardPageDTO, params: string, tie
       source: (Object.entries(CARD_SOURCE_GROUPS).find(([, codes]) => codes.includes(card.sourceType))?.[0] ?? "other") as NetworkSource,
       tier: tierById.has(card.id) ? (tierById.get(card.id)!.dormant ? "dormant" : tierById.get(card.id)!.tier) : null,
       next: card.nextActionPreview,
+      insight: card.insightPreview ?? null,
       href: `/app/contacts/${encodeURIComponent(card.id)}`,
     })),
     nextPath: page.hasMore && page.nextCursor ? `/api/contacts/page?${next}` : null,

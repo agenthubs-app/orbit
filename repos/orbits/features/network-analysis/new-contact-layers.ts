@@ -7,6 +7,7 @@
  *     `budget: "system"` 只给回填脚本），HTTP 逐次登记子账，批结束由本入口 finish；后台池不够时把剩余 id 并入
  *     `network_analysis_jobs(kind='enrichment')`，次日 00:00 东京继续；随后 `enqueuePlanMatchJob`（0 次 AI）；
  *  ③ AI 叙述：按 `decideSnapshotRefresh` 判定，自动时只 upsert 快照 job（不预留）。
+ * W0051：补全层结束后把这批联系人标为洞察待更新（`markInsightsDirty`，0 次 AI），由 `contact-insights` 维护任务生成。
  * 不调用任何计划写方法。
  */
 import { applyEnrichedValues, enrichedFieldHasValue, type EnrichedValue } from "../contacts/enrichment/apply-enrichment";
@@ -34,6 +35,8 @@ export interface NewContactLayersDeps {
   enqueuePlanMatch(input: { actorId: string; batchId: string; contactIds: readonly string[] }): Promise<{ state: string }>;
   /** 快照第 ③ 层：判定并在需要时排队（不预留）。 */
   refreshSnapshot(actorId: string): Promise<{ decision: string }>;
+  /** W0051：补全层结束后把这批联系人的洞察标为待更新（只写 contact_insights，0 次 AI）；可选。 */
+  markInsightsDirty?(actorId: string, contactIds: readonly string[]): Promise<void>;
   log?: (line: Record<string, unknown>) => void;
 }
 
@@ -161,6 +164,11 @@ export async function runEnrichmentPass(input: RunNewContactLayersInput, deps: N
 export async function runNewContactLayers(input: RunNewContactLayersInput, deps: NewContactLayersDeps): Promise<RunNewContactLayersResult> {
   const enrichment = await runEnrichmentPass(input, deps);
   const ids = [...new Set(input.contactIds.map((id) => id.trim()).filter(Boolean))];
+  // W0051：新联系人（含补全写回）进入洞察的待更新队列；失败只记日志，不影响三层更新。
+  if (ids.length && deps.markInsightsDirty) {
+    await deps.markInsightsDirty(input.actorId, ids).catch((error: unknown) =>
+      (deps.log ?? ((line: Record<string, unknown>) => console.info(JSON.stringify(line))))({ actorId: input.actorId, error: error instanceof Error ? error.name : "unknown", event: "network_layers_insight_mark_failed" }));
+  }
   const planMatch = ids.length ? (await deps.enqueuePlanMatch({ actorId: input.actorId, batchId: input.sourceKey, contactIds: ids })).state : "skipped";
   const snapshot = (await deps.refreshSnapshot(input.actorId)).decision;
   return { ...enrichment, planMatch, snapshot };

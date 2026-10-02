@@ -72,6 +72,11 @@ test("analysis sub-page renders structure and opportunities tabs from real secti
   assert.match(opp, /关系目标：认识供应链负责人/);
   assert.doesNotMatch(opp, /机会总结|覆盖总结|跟进王敏|李雷|刷新机会|去 iOrbit|nw-goal-score/);
   assert.match(opp, /计划暂时读不到/);
+  // W0051：第三个标签「洞察」；结构／机会两个链接与语义照旧。
+  assert.match(struct, /href="\/app\/contacts\/dashboard\?tab=structure"[\s\S]*?href="\/app\/contacts\/dashboard\?tab=opportunities"[\s\S]*?href="\/app\/contacts\/dashboard\?tab=insight"/);
+  const insight = withoutStyles(renderToStaticMarkup(<NetworkAnalysis viewModel={empty} analysis={ready} initialTab="insight" />));
+  assert.match(insight, /洞察暂时读不到/);
+  assert.doesNotMatch(insight, /计划暂时读不到|核心关系占比/);
 });
 
 test("analysis sub-page renders empty states when analysis is pending", () => {

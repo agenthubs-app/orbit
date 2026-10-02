@@ -23,7 +23,7 @@ import { createPlanService } from "../../features/plans/service";
 import { CONTACTS, EVENTS, ME, OTHER } from "../support/plan-bootstrap-fixture";
 import { planInput } from "../support/plan-fixture";
 
-function harness(clock: { now: string }, names?: Record<string, string>, generatorFor?: () => PlanGenerator, afterPlanSaved?: (actorId: string, planId: string) => Promise<void>) {
+function harness(clock: { now: string }, names?: Record<string, string>, generatorFor?: () => PlanGenerator, afterPlanSaved?: (actorId: string, planId: string) => Promise<void>, goalMarks: [string, string][] = []) {
   const repository = createMemoryPlanRepository();
   const goals: string[] = [];
   let tick = 0;
@@ -42,6 +42,7 @@ function harness(clock: { now: string }, names?: Record<string, string>, generat
         return "三个月内拿到 10 家企业客户的试用（3 个月内）";
       },
       isDemo: async () => false,
+      markInsightsGoalDirty: async (actorId, goal) => { goalMarks.push([actorId, goal]); },
       ...(afterPlanSaved ? { afterPlanSaved } : {}),
       resolveActor: async () => (actorId ? { id: actorId } : null),
       serviceForActor: (id) => {
@@ -262,4 +263,16 @@ test("W0050: a re-analysed plan version enqueues its 'plan' match job after the 
   assert.deepEqual(saved, [[ME, created.data.planId]]);
   assert.equal((await reanalyzeFor(ME).POST(post({ basePlanId: created.data.planId, idempotencyKey: "w50-2" }))).status, 409);
   assert.equal(saved.length, 1);
+});
+
+test("W0051（W51-1）：每月重新分析保存成功后统一标一次目标已变的洞察；回放（同一幂等键）不再标", async () => {
+  const clock = { now: "2026-09-28T03:00:00.000Z" };
+  const goalMarks: [string, string][] = [];
+  const { plansFor, reanalyzeFor } = harness(clock, undefined, undefined, undefined, goalMarks);
+  const v1 = await plansFor(ME).createVersion(planInput());
+  const routes = reanalyzeFor(ME);
+  assert.equal((await routes.POST(post({ basePlanId: v1.plan.id, idempotencyKey: "w51-1" }))).status, 201);
+  assert.deepEqual(goalMarks, [[ME, "三个月内拿到 10 家企业客户的试用（3 个月内）"]]);
+  assert.equal((await routes.POST(post({ basePlanId: v1.plan.id, idempotencyKey: "w51-1" }))).status, 200);
+  assert.equal(goalMarks.length, 1);
 });

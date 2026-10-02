@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 
 import { readDemoModeViewForActor } from "../../../(app)/app/_demo/demo-guide-view";
 import { unavailableSnapshotView } from "../../../../features/network-analysis/service";
-import { getConfiguredNetworkAnalysisRuntime, type NetworkAnalysisRuntime } from "../../../../features/network-analysis/runtime";
+import { getConfiguredNetworkAnalysisRuntime, readSnapshotProfile, type NetworkAnalysisRuntime } from "../../../../features/network-analysis/runtime";
+import { markContactInsightsGoalDirty } from "../../../../features/contacts/insights/repository";
 import type { SnapshotLanguage } from "../../../../features/network-analysis/contract";
 import { failure, runtimeBoundaryHeaders, success } from "../../../../shared/api/envelope";
 import { resolveFeatureMode } from "../../../../shared/config/feature-mode";
@@ -28,6 +29,13 @@ export interface NetworkSnapshotRouteDependencies {
   isDemo?: (actor: AuthenticatedApiActor) => Promise<boolean>;
   runtime?: () => NetworkAnalysisRuntime | null;
   after?: (task: () => Promise<void>) => void;
+  /** W0051（W51-1）：手动重新分析成功后把目标哈希不同的洞察统一标待更新（0 次 AI）；失败只记日志。 */
+  markInsightsGoalDirty?: (runtime: NetworkAnalysisRuntime, actorId: string) => Promise<void>;
+}
+
+async function defaultMarkInsightsGoalDirty(runtime: NetworkAnalysisRuntime, actorId: string): Promise<void> {
+  const goal = (await readSnapshotProfile(actorId)).goal;
+  await markContactInsightsGoalDirty(runtime.client, { actorId, goal, workspaceId: runtime.workspaceId });
 }
 
 async function defaultIsDemo(actor: AuthenticatedApiActor): Promise<boolean> {
@@ -118,6 +126,9 @@ export function createNetworkSnapshotRouteHandlers(dependencies: NetworkSnapshot
           case "failed":
             return fail(new AppError("SERVICE_UNAVAILABLE", "The analysis could not be generated. Try again later."), 503, { reason: "SNAPSHOT_GENERATION_FAILED" });
           case "succeeded":
+            await (dependencies.markInsightsGoalDirty ?? defaultMarkInsightsGoalDirty)(runtime, actor.id).catch((error: unknown) => {
+              console.error(JSON.stringify({ actorId: actor.id, error: error instanceof Error ? error.name : "unknown", event: "contact_insight_goal_mark_failed" }));
+            });
             return NextResponse.json(success(await runtime.service.readView(actor.id, language(request))), { headers, status: 200 });
         }
       } catch (error) {

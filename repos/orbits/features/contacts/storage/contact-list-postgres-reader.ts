@@ -104,6 +104,24 @@ function contactCardJsonSql(p: string): string {
     )`;
 }
 
+/** W0051：关系档位筛选可选值（W0047 档位分组，待唤醒优先）。 */
+export const CONTACT_TIER_FILTERS = ["new", "active", "core", "dormant"] as const;
+
+/**
+ * W0051：关系档位筛选（cards／summary 输出的 $17，null = 不筛）。档位读 W0047 读模型
+ * （orbit_records 集合 relationship_strengths，记录 id `relationship-strength:<actor>:<contact record id>`，主键查找）；
+ * 没有缓存行的联系人不属于任何档位。
+ */
+function contactTierFilterSql(c: string): string {
+  return `($17::text[] is null or exists (
+      select 1 from orbit_records strength
+      where strength.workspace_id = $1 and strength.collection_name = 'relationship_strengths'
+        and strength.record_id = 'relationship-strength:' || $4 || ':' || ${c}.record_id
+        and strength.user_id = $4 and strength.lifecycle_state <> 'deleted'
+        and (case when (strength.payload->>'dormant')::boolean then 'dormant' else strength.payload->>'tier' end) = any($17::text[])
+    ))`;
+}
+
 function contactCardErrorSql(p: string): string {
   return `coalesce(${p}.contact_error_code, ${p}.connection_error_code,
       case when length(${p}.record_id) > 512 or length(${p}.contact_id) > 512 or length(${p}.effective_updated_at) > 64 then 'CONTACT_CARD_FIELD_INVALID' end)`;
@@ -139,6 +157,8 @@ function sortTimestampSql(value: string): string {
 // ($4) are read, so an owner-less or foreign source never reaches a device.
 function createContactListSql(useVerifiedSearchCollation: boolean, output: "records" | "cards" | "summary" | "sync" = "records", boundedCandidates = false): string {
   const needsSearchText = output === "records" || output === "sync" || useVerifiedSearchCollation;
+  // W0051：档位筛选只在 cards／summary 输出（$17）；records／sync 输出的参数不变。来源计数随档位筛选（总数 = 各来源之和）。
+  const tierFilter = output === "cards" || output === "summary";
   const searchCollation = useVerifiedSearchCollation
     ? ' collate pg_catalog."und-x-icu"'
     : "";
@@ -781,7 +801,8 @@ with base_contacts as materialized (
     and ($16::boolean or $6::text[] is null or c.source_type = any($6::text[]))
     and ($16::boolean or $7::text[] is null or (c.contact_lifecycle_initialization is distinct from 'pending' and c.status = any($7::text[])))
     and ($16::boolean or cardinality($8::text[]) = 0 or c.tags @> $8::text[])
-    and ($16::boolean or cardinality($9::text[]) = 0 or c.value_types @> $9::text[])
+    and ($16::boolean or cardinality($9::text[]) = 0 or c.value_types @> $9::text[])${tierFilter ? `
+    and ${contactTierFilterSql("c")}` : ""}
 ), page_rows as (
   select
     c.*,
@@ -845,7 +866,8 @@ with base_contacts as materialized (
     on first_occurrence.value = counts.value
 ), facet_sources as (
   select source_type, count(*)::integer as count
-  from contact_dto c
+  from contact_dto c${tierFilter ? `
+  where ${contactTierFilterSql("c")}` : ""}
   group by source_type
 ), facet_value_values as materialized (
   select distinct c.record_id, c.graph_order, value.value
@@ -1190,15 +1212,16 @@ export function createPostgresContactCardReader(input: {
     if (sealedCursor && !cursor) throw new Error("CONTACT_CURSOR_INVALID");
     const sources = selectedValues(query.sourceFilters);
     const statuses = selectedValues(query.statusFilters);
+    const tiers = selectedValues(query.tierFilters);
     const values = [input.workspaceId, CONTACT_COLLECTION, search, actorId, CONNECTION_COLLECTION,
       sources.length ? [...sources] : null, statuses.length ? [...statuses] : null,
       [...selectedValues(query.tagFilters)], [...selectedValues(query.valueFilters)],
       cursor?.prefixRank ?? null, cursor?.occurredAt ?? null, cursor?.updatedAt ?? null, cursor?.recordId ?? null,
-      query.limit, search ? `${search}%` : "%", false];
+      query.limit, search ? `${search}%` : "%", false, tiers.length ? [...tiers] : null];
     // No derived filters: select the authorized contact page before expanding
     // relationships. Applying this shortcut to status/tag/value search would
     // incorrectly filter only a partial candidate set.
-    const head = !summary && !verified && !statuses.length && !selectedValues(query.tagFilters).length && !selectedValues(query.valueFilters).length;
+    const head = !summary && !verified && !statuses.length && !tiers.length && !selectedValues(query.tagFilters).length && !selectedValues(query.valueFilters).length;
     const result = await input.client.query<Record<string, unknown>>(
       head ? CONTACT_CARD_HEAD_SQL : (summary ? CONTACT_SUMMARY_SQL : CONTACT_CARD_SQL)[verified ? 1 : 0]!, values,
     );
@@ -1586,6 +1609,8 @@ function queryScope(
       statusFilters: selectedValues(input.statusFilters),
       tagFilters: selectedValues(input.tagFilters),
       valueFilters: selectedValues(input.valueFilters),
+      // W0051：只有选了档位才进作用域（旧游标的作用域不变）。
+      ...(selectedValues(input.tierFilters).length ? { tierFilters: selectedValues(input.tierFilters) } : {}),
       contextEventId: input.contextEventId?.trim() ?? "",
       sortVersion: "contact-list-keyset-v1",
       ...(matchPath === null ? {} : { matchPath }),
@@ -1863,6 +1888,7 @@ function supportsBoundedContactPage(input: ContactsListSearchFilterInput): boole
     selectedValues(input.sourceFilters).every((value) => CONTACT_SOURCE_FILTERS.some((item) => item === value)) &&
     selectedValues(input.statusFilters).every((value) => CONTACT_STATUS_FILTERS.some((item) => item === value)) &&
     selectedValues(input.valueFilters).every((value) => CONTACT_VALUE_FILTERS.some((item) => item === value)) &&
+    selectedValues(input.tierFilters).every((value) => CONTACT_TIER_FILTERS.some((item) => item === value)) &&
     selectedValues(input.tagFilters).length <= 20 &&
     selectedValues(input.tagFilters).every((value) => Array.from(value).length <= 32);
 }

@@ -24,9 +24,14 @@ type Row = Record<string, unknown>;
 
 const PER_CONTACT = 2;
 
-/** $1 workspace，$2 actor，$3 联系人 id 数组，$4 now（日程只取已发生的）。 */
-export const SNAPSHOT_RECENT_RECORDS_SQL = {
-  memos: `/* network-snapshot:input:recent:memos */
+/**
+ * $1 workspace，$2 actor，$3 联系人 id 数组，$4 now（日程只取已发生的）。
+ * W0051：每人条数与查询标签可配（洞察每人取 5 条，标签 `contact-insights:input:recent`）；快照仍是 2 条、原标签。
+ */
+function recentRecordsSql(perContact: number, label: string) {
+  const PER_CONTACT = perContact;
+  return {
+  memos: `/* ${label}:memos */
     select contact_id, note_id, created_at, occurred_at from (
       select r.payload->>'contactId' as contact_id, n->>'noteId' as note_id, n->>'createdAt' as created_at, n->>'occurredAt' as occurred_at,
         row_number() over (partition by r.payload->>'contactId' order by coalesce(n->>'occurredAt', n->>'createdAt') desc nulls last, n->>'noteId') as rn
@@ -35,7 +40,7 @@ export const SNAPSHOT_RECENT_RECORDS_SQL = {
       where r.workspace_id = $1 and r.collection_name = 'contact_detail_states' and r.user_id = $2 and r.payload->>'actorId' = $2
         and r.lifecycle_state <> 'deleted' and r.payload->>'contactId' = any($3::text[]) and n->>'noteId' like '${MEMO_NOTE_ID_PREFIX}%'
     ) ranked where rn <= ${PER_CONTACT}`,
-  encounters: `/* network-snapshot:input:recent:encounters */
+  encounters: `/* ${label}:encounters */
     select record_id, contact_id, observed_at from (
       select record_id, payload->>'contactId' as contact_id, payload->>'observedAt' as observed_at,
         row_number() over (partition by payload->>'contactId' order by payload->>'observedAt' desc nulls last, record_id) as rn
@@ -43,7 +48,7 @@ export const SNAPSHOT_RECENT_RECORDS_SQL = {
       where workspace_id = $1 and collection_name = 'human_encounters' and user_id = $2 and payload->>'actorId' = $2
         and lifecycle_state <> 'deleted' and payload->>'contactId' = any($3::text[])
     ) ranked where rn <= ${PER_CONTACT}`,
-  notes: `/* network-snapshot:input:recent:notes */
+  notes: `/* ${label}:notes */
     select id, contact_id, created_at from (
       select payload->'note'->>'id' as id, cid as contact_id, payload->'note'->>'createdAt' as created_at,
         row_number() over (partition by cid order by payload->'note'->>'createdAt' desc nulls last, record_id) as rn
@@ -52,14 +57,14 @@ export const SNAPSHOT_RECENT_RECORDS_SQL = {
       where workspace_id = $1 and collection_name = 'notes' and user_id = $2 and lifecycle_state <> 'deleted'
         and payload->'note'->>'ownerUserId' = $2 and payload->'note'->>'accountId' = $2 and cid = any($3::text[])
     ) ranked where rn <= ${PER_CONTACT}`,
-  planLog: `/* network-snapshot:input:recent:plan-log */
+  planLog: `/* ${label}:plan-log */
     select id, event, kind, contact_id, created_at from (
       select id, event, kind, cid as contact_id, created_at,
         row_number() over (partition by cid order by created_at desc, id) as rn
       from plan_log cross join lateral unnest(linked_contact_ids) as cid
       where workspace_id = $1 and actor_id = $2 and cid = any($3::text[])
     ) ranked where rn <= ${PER_CONTACT}`,
-  schedule: `/* network-snapshot:input:recent:schedule */
+  schedule: `/* ${label}:schedule */
     select record_id, kind, starts_at, state, contact_id from (
       select record_id, payload->>'kind' as kind, payload->>'startsAt' as starts_at, payload->>'state' as state, cid as contact_id,
         row_number() over (partition by cid order by payload->>'startsAt' desc, record_id) as rn
@@ -73,7 +78,7 @@ export const SNAPSHOT_RECENT_RECORDS_SQL = {
         and payload->>'startsAt' ~ '^\\d{4}-\\d{2}-\\d{2}T' and (payload->>'startsAt')::timestamptz <= $4::timestamptz
         and cid = any($3::text[])
     ) ranked where rn <= ${PER_CONTACT}`,
-  tasks: `/* network-snapshot:input:recent:tasks */
+  tasks: `/* ${label}:tasks */
     select record_id, contact_id, updated_at from (
       select record_id, payload->>'contactId' as contact_id, payload->>'updatedAt' as updated_at,
         row_number() over (partition by payload->>'contactId' order by payload->>'updatedAt' desc nulls last, record_id) as rn
@@ -81,7 +86,14 @@ export const SNAPSHOT_RECENT_RECORDS_SQL = {
       where workspace_id = $1 and collection_name = 'tasks' and user_id = $2 and lifecycle_state <> 'deleted'
         and payload->>'actorId' = $2 and payload ? 'connectionId' and payload->>'status' = 'completed' and payload->>'contactId' = any($3::text[])
     ) ranked where rn <= ${PER_CONTACT}`,
-} as const;
+  } as const;
+}
+
+export const SNAPSHOT_RECENT_RECORDS_SQL = recentRecordsSql(PER_CONTACT, "network-snapshot:input:recent");
+const RECENT_RECORDS_SQL_BY_SIZE = new Map<number, ReturnType<typeof recentRecordsSql>>([[PER_CONTACT, SNAPSHOT_RECENT_RECORDS_SQL]]);
+/** W0051：洞察输入每人最近 5 条。 */
+export const CONTACT_INSIGHT_RECENT_RECORDS_PER_CONTACT = 5;
+RECENT_RECORDS_SQL_BY_SIZE.set(CONTACT_INSIGHT_RECENT_RECORDS_PER_CONTACT, recentRecordsSql(CONTACT_INSIGHT_RECENT_RECORDS_PER_CONTACT, "contact-insights:input:recent"));
 
 function text(value: unknown): string {
   return typeof value === "string" ? value : value instanceof Date ? value.toISOString() : "";
@@ -97,23 +109,26 @@ function bucket<T>(rows: readonly Row[], map: (row: Row) => T): Map<string, T[]>
   return by;
 }
 
-/** 选中联系人各自最近 ≤2 条非「建立联系」记录（occurredAt 降序）。 */
+/** 选中联系人各自最近 ≤2 条（W0051 洞察：≤5 条）非「建立联系」记录（occurredAt 降序）。 */
 export async function readRecentRecordsForContacts(
   sql: RecentRecordsSqlExecutor,
   workspaceId: string,
-  input: { actorId: string; contacts: readonly { id: string; createdAt: string }[]; now: Date },
+  input: { actorId: string; contacts: readonly { id: string; createdAt: string }[]; now: Date; perContact?: number },
 ): Promise<Map<string, RelationshipTimelineItem[]>> {
+  const perContact = input.perContact ?? PER_CONTACT;
+  const SQL = RECENT_RECORDS_SQL_BY_SIZE.get(perContact);
+  if (!SQL) throw new Error("Unsupported recent-records size.");
   const ids = [...new Set(input.contacts.map((contact) => contact.id))];
   const result = new Map<string, RelationshipTimelineItem[]>();
   if (!ids.length) return result;
   const params = [workspaceId, input.actorId, ids];
   const [memos, encounters, notes, planLog, schedule, tasks] = await Promise.all([
-    sql.query<Row>(SNAPSHOT_RECENT_RECORDS_SQL.memos, params),
-    sql.query<Row>(SNAPSHOT_RECENT_RECORDS_SQL.encounters, params),
-    sql.query<Row>(SNAPSHOT_RECENT_RECORDS_SQL.notes, params),
-    sql.query<Row>(SNAPSHOT_RECENT_RECORDS_SQL.planLog, params),
-    sql.query<Row>(SNAPSHOT_RECENT_RECORDS_SQL.schedule, [...params, input.now.toISOString()]),
-    sql.query<Row>(SNAPSHOT_RECENT_RECORDS_SQL.tasks, params),
+    sql.query<Row>(SQL.memos, params),
+    sql.query<Row>(SQL.encounters, params),
+    sql.query<Row>(SQL.notes, params),
+    sql.query<Row>(SQL.planLog, params),
+    sql.query<Row>(SQL.schedule, [...params, input.now.toISOString()]),
+    sql.query<Row>(SQL.tasks, params),
   ]);
   const memoBy = bucket(memos.rows, (row) => ({ body: "", createdAt: text(row.created_at), noteId: text(row.note_id), occurredAt: text(row.occurred_at) || null }));
   const encounterBy = bucket(encounters.rows, (row): TimelineEncounterRow => ({ contactId: text(row.contact_id), encounterId: text(row.record_id), observedAt: text(row.observed_at) }));
@@ -134,7 +149,7 @@ export async function readRecentRecordsForContacts(
     }, contactId).items
       .filter((item) => item.source !== "capture")
       .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt))
-      .slice(0, PER_CONTACT);
+      .slice(0, perContact);
     result.set(contactId, items);
   }
   return result;

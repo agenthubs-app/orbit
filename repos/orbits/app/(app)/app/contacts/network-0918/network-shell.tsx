@@ -781,4 +781,19 @@ export const NETWORK_STYLES = `
 [data-orbit-real-page="network"] .nw-op-error { font-size: 12px; color: #B3261E; }
 [data-orbit-real-page="network"] .nw-op-pill-off { background: #C9CBEA; color: #FFFFFF; }
 @media (max-width: 600px) { [data-orbit-real-page="network"] .nw-op-cov-n { font-size: 32px; min-width: 72px; } [data-orbit-real-page="network"] .nw-op-need-n { white-space: normal; } [data-orbit-real-page="network"] .btn.nw-report-cta { width: 100%; white-space: normal; } }
+/* ── W0051 每人洞察：详情弹窗「和你目标的关系」与「洞察」标签 ── */
+[data-orbit-real-page="network"] .nw-insight-body { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+[data-orbit-real-page="network"] .nw-insight-rel { margin: 0; font-size: 15px; line-height: 1.6; color: #0E1225; }
+[data-orbit-real-page="network"] .nw-insight-next { margin: 0; font-size: 14px; line-height: 1.6; color: #3B3F7A; }
+[data-orbit-real-page="network"] .nw-insight-evidence { display: flex; flex-wrap: wrap; gap: 8px; }
+[data-orbit-real-page="network"] .nw-insight-evidence .nw-topic { padding: 4px 10px; font-size: 12px; text-decoration: none; }
+[data-orbit-real-page="network"] .nw-insight-evidence .nw-topic:hover { background: #DDDEFA; color: #0E1225; }
+[data-orbit-real-page="network"] .nw-insight-status { margin: 8px 0 0; font-size: 13px; color: #6B6F99; line-height: 1.6; }
+[data-orbit-real-page="network"] .nw-insight-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 12px; font-size: 13px; color: #6B6F99; }
+[data-orbit-real-page="network"] .nw-insight-list { display: flex; flex-direction: column; }
+[data-orbit-real-page="network"] .nw-insight-row { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(0, 2.4fr); gap: 20px; padding: 16px 4px; border-top: 1px solid #EEEFF8; }
+[data-orbit-real-page="network"] .nw-insight-who { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 0; }
+[data-orbit-real-page="network"] .nw-insight-who .nw-row-name { font-weight: 600; color: #0E1225; text-decoration: none; white-space: normal; }
+[data-orbit-real-page="network"] .nw-insight-what { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+@media (max-width: 700px) { [data-orbit-real-page="network"] .nw-insight-row { grid-template-columns: 1fr; gap: 10px; } }
 `;

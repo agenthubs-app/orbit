@@ -61,3 +61,73 @@ test("compact cards are bounded, permission scoped, signed and preserve global c
     await pool.end();
   }
 });
+
+test("W0051 SC-04: tier filter is a server-side SQL filter; total, per-source counts and cursor paging agree under the filter", { skip: !process.env.ORBIT_LIFECYCLE_TEST_DATABASE_URL }, async () => {
+  const schema = `contact_cards_tier_${randomUUID().replaceAll("-", "")}`;
+  const pool = new Pool({ connectionString: process.env.ORBIT_LIFECYCLE_TEST_DATABASE_URL, max: 1, options: `-c search_path=${schema}` });
+  const client: LiveRecordSqlClient = { async query<T>(sql: string, values?: readonly unknown[]) {
+    const result = await pool.query(sql, values ? [...values] : undefined);
+    return { rows: result.rows as T[] };
+  } };
+  try {
+    await pool.query(`create schema ${schema}`);
+    await pool.query(ORBIT_RECORDS_SCHEMA_SQL);
+    const store = createPostgresLiveRecordStore({ client });
+    const timestamp = "2026-09-17T00:00:00.000Z";
+    const common = { workspaceId: "w", userId: "a", sourceType: "manual", sourceId: "s", evidenceIds: ["e"], createdAt: timestamp, updatedAt: timestamp, lifecycleState: "active" as const };
+    const seed = async (id: string, sourceType: string, userId = "a") => store.upsertRecord({ ...common, userId, collectionName: "contacts", recordId: id, payload: {
+      id, displayName: `联系人 ${id}`, organization: "Org", role: "designer", stage: "active",
+      source: { type: sourceType, id: "s" }, evidenceIds: ["e"], createdAt: timestamp, updatedAt: timestamp,
+    } });
+    const strength = (contactId: string, tier: string, dormant: boolean, userId = "a") => store.upsertRecord({ ...common, userId, collectionName: "relationship_strengths",
+      recordId: `relationship-strength:${userId}:${contactId}`, payload: { contactId, tier, dormant, score: 50, signals: [] } });
+    // 35 位核心（25 扫名片 + 10 手动），5 位有往来，3 位待唤醒（档位 core 但 dormant 优先），2 位没有缓存行。
+    for (let n = 0; n < 45; n++) {
+      const id = `c${String(n).padStart(3, "0")}`;
+      await seed(id, n < 25 || (n >= 35 && n < 40) ? "business_card_ocr" : "manual");
+      if (n < 35) await strength(id, "core", false);
+      else if (n < 40) await strength(id, "active", false);
+      else if (n < 43) await strength(id, "core", true);
+    }
+    // 他人的档位行不影响 a 的筛选；他人的联系人不出现。
+    await seed("foreign", "manual", "b");
+    await strength("foreign", "core", false, "b");
+    await strength("c044", "core", false, "b");
+    const reader = createPostgresContactCardReader({ client, workspaceId: "w", cursorSecret: "local-test-secret-".repeat(3) });
+
+    const unfiltered = await reader.summary({}, "a");
+    assert.equal(unfiltered.total, 45);
+
+    const core = await reader.summary({ tierFilters: ["core"] }, "a");
+    assert.equal(core.total, 35);
+    assert.deepEqual(core.sources, { business_card_ocr: 25, manual: 10 });
+    const first = await reader.page({ tierFilters: ["core"] }, "a");
+    assert.equal(first.items.length, 30);
+    assert.equal(first.hasMore, true);
+    const second = await reader.page({ cursor: first.nextCursor, tierFilters: ["core"] }, "a");
+    assert.equal(second.items.length, 5);
+    assert.equal(second.hasMore, false);
+    const ids = [...first.items, ...second.items].map((item) => item.id);
+    assert.equal(new Set(ids).size, 35);
+    assert.ok(ids.every((id) => Number(id.slice(1)) < 35));
+    // 游标绑定档位筛选：换筛选或去掉筛选都拒绝。
+    await assert.rejects(reader.page({ cursor: first.nextCursor }, "a"), /CONTACT_CURSOR_INVALID/);
+    await assert.rejects(reader.page({ cursor: first.nextCursor, tierFilters: ["active"] }, "a"), /CONTACT_CURSOR_INVALID/);
+
+    const dormant = await reader.summary({ tierFilters: ["dormant"] }, "a");
+    assert.equal(dormant.total, 3);
+    assert.deepEqual((await reader.page({ tierFilters: ["dormant"] }, "a")).items.map((item) => item.id).sort(), ["c040", "c041", "c042"]);
+    const scanActive = await reader.summary({ sourceFilters: ["business_card_ocr"], tierFilters: ["active"] }, "a");
+    assert.equal(scanActive.total, 5);
+    assert.deepEqual(scanActive.sources, { business_card_ocr: 5 });
+    // 选多个档位 = 并集；未知档位拒绝。
+    assert.equal((await reader.summary({ tierFilters: ["active", "dormant"] }, "a")).total, 8);
+    await assert.rejects(reader.page({ tierFilters: ["vip"] }, "a"), /CONTACT_PAGE_INPUT_INVALID/);
+    // 没有筛选时游标作用域与改前相同（旧游标仍有效）。
+    const plain = await reader.page({}, "a");
+    assert.equal((await reader.page({ cursor: plain.nextCursor }, "a")).items.length, 15);
+  } finally {
+    await pool.query(`drop schema ${schema} cascade`);
+    await pool.end();
+  }
+});

@@ -11,6 +11,8 @@
  * 30 天变化用刷新强度读模型时拿到的 state 行；概览不读这些。
  * W0050：标签由 URL 驱动（W50-5），结构附加数据只在 `?tab=structure` 读；「机会」标签只在 `?tab=opportunities` 读
  * `loadOpportunitiesTab`（对任何表 0 写入、计划只读、0 次 AI）。示例模式两个标签都 0 次读取。
+ * W0051：第三个标签 `?tab=insight` 只在该标签读 `loadInsightsTab`（只读 contact_insights 一页 30 位，0 次 AI、0 次配额预留）；
+ * 示例模式下同样只显示横条与说明。
  */
 import { redirect } from "next/navigation";
 
@@ -36,9 +38,10 @@ import { buildDemoNetworkAnalysis, buildDemoNetworkViewModel } from "../../_demo
 import { ensureRelationshipStrengthsForPage, readRelationshipTierLookup } from "../../../../../features/relationship-strength/read-model";
 import { loadStructureTabExtras } from "../analysis/structure-tab-loader";
 import { loadOpportunitiesTab } from "../analysis/opportunities-route-service";
+import { loadInsightsTab } from "../analysis/insights-tab";
 
 export default async function AppContactsDashboardPage({ searchParams }: {
-  searchParams?: Promise<{ tab?: string | string[] }>;
+  searchParams?: Promise<{ tab?: string | string[] } & Record<string, string | string[] | undefined>>;
 } = {}) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -61,7 +64,7 @@ export default async function AppContactsDashboardPage({ searchParams }: {
   if (guide) {
     const now = new Date();
     const lang = language === "en" ? "en" : "zh";
-    const overview = params?.tab !== "structure" && params?.tab !== "opportunities";
+    const overview = params?.tab !== "structure" && params?.tab !== "opportunities" && params?.tab !== "insight";
     return (
       <>
         <OrbitReferenceStyles />
@@ -74,25 +77,28 @@ export default async function AppContactsDashboardPage({ searchParams }: {
       </>
     );
   }
-  const tab = params?.tab === "structure" || params?.tab === "opportunities" ? params.tab : "overview";
+  const tab = params?.tab === "structure" || params?.tab === "opportunities" || params?.tab === "insight" ? params.tab : "overview";
   // W0047：先刷新关系强度读模型（来源戳与东京日未变时只读一条语句；失败不影响页面），分析里的档位分布读它。
   // W0050（D46③、review P1）：机会标签对任何表 0 写入——不刷新强度缓存，直接读上次算好的结果（待唤醒、档位分布），
   // 刷新交给概览、结构、管线等其他入口；缓存为空时待唤醒如实显示空态。
   const strengthState = tab === "opportunities" ? null : await ensureRelationshipStrengthsForPage(actor.id, new Date());
   const analysisPromise = loadContactsAnalysis(actor.id, language);
   // W0050（W50-5）：标签由 URL 驱动，服务端只读当前标签的数据——结构附加数据只在 ?tab=structure，机会数据只在 ?tab=opportunities。
-  const [analysis, routeModel, structureExtras, opportunities] = await Promise.all([
+  const goalPromise = analysisPromise.then((value) => (value.state === "ready" && "data" in value.goal ? value.goal.data.text || null : null));
+  const [analysis, routeModel, structureExtras, opportunities, insights] = await Promise.all([
     analysisPromise,
     loadAppContactsRouteViewModel({}, actor.id),
     tab === "structure" ? loadStructureTabExtras({ actorId: actor.id, language, strengthState }) : Promise.resolve(undefined),
     tab === "opportunities"
       ? loadOpportunitiesTab({
         actorId: actor.id,
-        goal: analysisPromise.then((value) => (value.state === "ready" && "data" in value.goal ? value.goal.data.text || null : null)),
+        goal: goalPromise,
         language,
         now: new Date(),
       })
       : Promise.resolve(undefined),
+    // W0051：只读一页洞察（档位实时取 W0047 读模型），0 次 AI。
+    tab === "insight" ? loadInsightsTab({ actorId: actor.id, goal: goalPromise, now: new Date(), search: params ?? {} }) : Promise.resolve(undefined),
   ]);
   const tiers = routeModel.state === "success"
     ? await readRelationshipTierLookup({ actorId: actor.id, contactIds: routeModel.payload.contacts.map((contact) => contact.id) })
@@ -110,7 +116,7 @@ export default async function AppContactsDashboardPage({ searchParams }: {
           <AccountTopNav active="cards" />
           {tab === "overview"
             ? <NetworkOverview viewModel={toViewModel(routeModel.payload)} analysis={analysis} />
-            : <NetworkAnalysis viewModel={toViewModel(routeModel.payload)} analysis={analysis} initialTab={tab === "opportunities" ? "opp" : "struct"} structureExtras={structureExtras} opportunities={opportunities} />}
+            : <NetworkAnalysis viewModel={toViewModel(routeModel.payload)} analysis={analysis} initialTab={tab === "opportunities" ? "opp" : tab === "insight" ? "insight" : "struct"} structureExtras={structureExtras} opportunities={opportunities} insights={insights} />}
         </div>
       ) : (
         <ContactsSubrouteStateBoundary

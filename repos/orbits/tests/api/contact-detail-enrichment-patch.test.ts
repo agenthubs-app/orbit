@@ -43,12 +43,13 @@ function harness(t: { mock: { method: (...args: never[]) => unknown } }, options
   const service = createLiveContactDetailTagStatusService({ provider: createStorageContactGraphProvider({ store: counted, workspaceId: "w" }) });
   const resolution = contactDetailTagStatusServiceFactory.create("mock");
   (t.mock.method as (object: object, name: string, impl: () => unknown) => unknown)(contactDetailTagStatusServiceFactory, "create", () => ({ ...resolution, service }));
-  const patch = (id: string, body: unknown) => createContactDetailPatchHandler(async () => ({ id: "a" }))(
+  const insightMarks: { contactIds: readonly string[]; reasons: readonly string[] }[] = [];
+  const patch = (id: string, body: unknown) => createContactDetailPatchHandler(async () => ({ id: "a" }), { markInsightsDirty: async (input) => { insightMarks.push(input); } })(
     new Request(`https://orbit.test/api/contacts/${id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }),
     { params: Promise.resolve({ id }) },
   );
   const payloadOf = async (id: string) => (await store.getRecord({ workspaceId: "w", collectionName: "contacts", recordId: id }))!.payload as Record<string, unknown>;
-  return { patch, payloadOf, store, writes };
+  return { insightMarks, patch, payloadOf, store, writes };
 }
 
 test("PATCH writes seniority and canonical region and marks both as user edits", async (t) => {
@@ -136,4 +137,12 @@ test("the provider refuses an enrichment edit outside the actor boundary", async
   const store = createMemoryLiveRecordStore(fixtures());
   const provider = createStorageContactGraphProvider({ store, workspaceId: "w" });
   await assert.rejects(Promise.resolve().then(() => provider.updateContactEnrichment!("foreign", "a", { seniorityLevel: "vp" })), /outside the actor boundary/);
+});
+
+test("W0051 SC-01：改行业／职级／地区（补全字段）把这位联系人的洞察标为待更新（reason enrichment）；他人联系人不标", async (t) => {
+  const { insightMarks, patch } = harness(t);
+  assert.equal((await patch("own", { seniorityLevel: "director" })).status, 200);
+  assert.deepEqual(insightMarks.map((mark) => [mark.contactIds, mark.reasons]), [[["own"], ["enrichment"]]]);
+  assert.notEqual((await patch("foreign", { seniorityLevel: "director" })).status, 200);
+  assert.equal(insightMarks.length, 1);
 });

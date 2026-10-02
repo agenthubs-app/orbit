@@ -342,3 +342,10 @@ export type {
   RelationshipTierCounts,
   RelationshipTierGroup
 } from "./relationship-strength";
+export type {
+  ContactInsight,
+  ContactInsightEvidence,
+  ContactInsightEvidenceSource,
+  ContactInsightState,
+  ContactInsightText
+} from "./contact-insight";

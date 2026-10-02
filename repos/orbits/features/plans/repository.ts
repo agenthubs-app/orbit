@@ -20,6 +20,7 @@ import type {
   PlanViewLogEntry,
   NetworkNeedCriteria,
 } from "./contract";
+import { markContactInsightsDirty } from "../contacts/insights/repository";
 
 export interface PlanScope {
   workspaceId: string;
@@ -470,6 +471,9 @@ function postgresReader(client: PlanQueryClient, scope: PlanScope): PlanReader {
   };
 }
 
+/** W0051：会改变联系人洞察输入（计划关联状态）的进展记录事件。 */
+const INSIGHT_LINK_EVENTS: ReadonlySet<string> = new Set(["contact_linked", "contact_established", "contact_unlinked"]);
+
 function postgresTransaction(client: PlanQueryClient, scope: PlanScope): PlanTransaction {
   const ws = scope.workspaceId;
   const actor = scope.actorId;
@@ -567,6 +571,25 @@ function postgresTransaction(client: PlanQueryClient, scope: PlanScope): PlanTra
           entry.createdAt,
         ],
       );
+      // W0051：关联／建立联系／取消关联（含接受匹配候选、@某人）在同一计划事务里把受影响的联系人标为洞察待更新。
+      // 只写 contact_insights（表未迁移时跳过），不调用模型；他人的联系人 id 不会被标（归属在同一语句里校验）。
+      // 用保存点隔离：标记失败只记日志，不让计划写入（用户的关联操作）回滚。
+      if (INSIGHT_LINK_EVENTS.has(entry.event) && entry.linkedContactIds.length) {
+        await client.query("savepoint contact_insights_mark");
+        try {
+          await markContactInsightsDirty(client as never, {
+            actorId: actor,
+            contactIds: entry.linkedContactIds,
+            now: new Date(entry.createdAt),
+            reason: "plan_link",
+            workspaceId: ws,
+          });
+          await client.query("release savepoint contact_insights_mark");
+        } catch (error) {
+          await client.query("rollback to savepoint contact_insights_mark");
+          console.error(JSON.stringify({ actorId: actor, error: error instanceof Error ? error.name : "unknown", event: "contact_insight_mark_failed", reason: "plan_link" }));
+        }
+      }
     },
     async insertCommandReceipt(receipt) {
       await client.query(

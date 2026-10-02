@@ -334,3 +334,13 @@ test("W50-5: the tabs are plain links (?tab=structure / ?tab=opportunities); wit
   assert.match(sections.dormant ?? "", /来源暂时不可用/);
   assert.match(sections.report ?? "", /分析报告暂时读不到/);
 });
+
+test("W0051 R-8: a dormant row whose why came from the insight renders that next step (marked insight); rule rows stay marked rule", () => {
+  const view = buildOpportunitiesTabView({ bookable: [], dormant: [], gapNames: new Map(), goal: null, pending: null, plan: null, report: report() }, { language: "zh", now: NOW });
+  const html = render({ ...view, dormant: [
+    { contactId: "d1", draftAvailable: true, evidence: { href: "/app/contacts/d1", recordId: "memo:1" }, name: "李雷", why: "问问新基金的进展。", whySource: "insight" },
+    { contactId: "d2", draftAvailable: true, evidence: { href: "/app/contacts/d2", recordId: "memo:2" }, name: "韩梅", why: "上次往来：2026年7月1日 备忘；与目标相关：同属金融与投资", whySource: "rule" },
+  ] });
+  assert.match(html, /data-network-dormant-why="insight"[^>]*>问问新基金的进展。/);
+  assert.match(html, /data-network-dormant-why="rule"[^>]*>上次往来：/);
+});

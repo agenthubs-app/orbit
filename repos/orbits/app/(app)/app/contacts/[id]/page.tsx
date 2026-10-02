@@ -46,6 +46,9 @@ import { RELATIONSHIP_TIMELINE_SOURCES } from "../../../../../features/relations
 import { readMemoEventOptions, readRelationshipTimelineForContact } from "../../../../../features/relationship-timeline/reader";
 import { ensureRelationshipStrengthsForPage, readRelationshipStrengths, readRelationshipTierLookup } from "../../../../../features/relationship-strength/read-model";
 import { readConfiguredRelationshipSignalItems } from "../../../../../features/relationship-strength/signal-items";
+import { readContactInsightDetail } from "../../../../../features/contacts/insights/read";
+import { contactInsightView } from "../../../../../features/contacts/insights/view";
+import { NetworkInsightPanel } from "../network-0918/network-insight-panel";
 
 function decodeContactRouteId(id: string): string {
   try {
@@ -207,14 +210,24 @@ export default async function AppContactDetailPage({
   }
   // W0046：「最近互动」聚合时间线与「写 memo」关联活动推荐在服务端读好随详情下发（不另发客户端请求）。
   // W0047：关系强度（档位与依据）同样服务端读好。
-  const [timeline, memoEventOptions, strengths] = await Promise.all([
+  // W0051：「和你目标的关系」按 (actor, contactId) 读一行洞察（只读，0 次模型调用）。
+  const [timeline, memoEventOptions, strengths, insightRead] = await Promise.all([
     readRelationshipTimelineForContact({ actorId: actor.id, contactId, now }).catch(() => ({
       items: [],
       unavailableSources: [...RELATIONSHIP_TIMELINE_SOURCES],
     })),
     readMemoEventOptions({ actorId: actor.id, now }),
     readRelationshipStrengths({ actorId: actor.id, contactIds: [contactId] }).catch(() => new Map()),
+    readContactInsightDetail({ actorId: actor.id, contactId, now }).catch(() => ({ goal: null, goalKnown: false, quotaExhausted: false, row: null })),
   ]);
+  const insight = (
+    <NetworkInsightPanel
+      key={`insight:${contactId}`}
+      view={contactInsightView(insightRead.row, { contactId, goal: insightRead.goal, goalKnown: insightRead.goalKnown, now })}
+      quotaExhausted={insightRead.quotaExhausted}
+      contactHref={`/app/contacts/${encodeURIComponent(contactId)}`}
+    />
+  );
   const relationshipStrength = strengths.get(contactId) ?? null;
   // 依据里不在最近 20 条时间线中的信号：按信号 id 一条语句读回真实条目（review P2-6）。
   const shown = new Set(timeline.items.map((item) => item.id));
@@ -258,13 +271,13 @@ export default async function AppContactDetailPage({
         {cards?.state === "ready" ? <NetworkCards
           key={`${actor.id}:${contactId}`}
           view={cards.view}
-          openDetail={{ contact: detail, closeHref: "/app/contacts", extra }}
+          openDetail={{ contact: detail, closeHref: "/app/contacts", extra, insight }}
         /> : <>
         {cards?.state === "error" && <p role="alert">{cards.message}</p>}
         <NetworkAll
           key={`${actor.id}:${contactId}`}
           viewModel={listVm}
-          openDetail={{ contact: detail, closeHref: "/app/contacts", extra }}
+          openDetail={{ contact: detail, closeHref: "/app/contacts", extra, insight }}
         />
         </>}
       </div>

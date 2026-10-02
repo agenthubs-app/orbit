@@ -22,6 +22,7 @@ import type { PlanMatchCandidateView } from "../../../../../features/plans/match
 import { industryLabel, isIndustryIdCode, secondaryIndustryLabel } from "../../../../../shared/domain/industries";
 import type { OrbitLanguage } from "../../../../../shared/contract/language";
 import type { RelationshipTimelineSource } from "../../../../../shared/contract/relationship-timeline";
+import type { ContactInsightState, ContactInsightText } from "../../../../../shared/contract/contact-insight";
 import { pickCopy, type NetworkCopy } from "./network-copy";
 import { PLAN_HREF } from "./opportunities-report-card";
 import type { EvidencePerson } from "./structure-tab-model";
@@ -81,6 +82,28 @@ export interface DormantRow {
   /** 那条真实记录（关系时间线 id）与联系人详情链接。 */
   evidence: { recordId: string; href: string };
   draftAvailable: boolean;
+  /** W0051（W50-3 后半）：`why` 来自该联系人洞察的下一步（ready 时）；否则为规则拼句。 */
+  whySource?: "insight" | "rule";
+  /** W0051：联系人记录 id（洞察、强度、计划关联同一 id 域；`contactId` 是详情链接用的领域 id）。 */
+  recordId?: string;
+}
+
+/** W0051：待唤醒改读洞察时需要的最小字段（视图状态 + 下一步双语）。 */
+export interface DormantInsight {
+  state: ContactInsightState;
+  nextStep: ContactInsightText | null;
+}
+
+/**
+ * W0051（R-8）：洞察 `ready` 时「为什么现在联系」= 洞察的 `nextStep`（按界面语言）；
+ * `none`／`pending`／`failed`／`no_goal` 保留 W0050 规则拼句。纯函数：只换文字，不改顺序与依据。
+ */
+export function applyDormantInsights(rows: readonly DormantRow[], insights: ReadonlyMap<string, DormantInsight>, language: OrbitLanguage): DormantRow[] {
+  return rows.map((row) => {
+    const insight = insights.get(row.recordId ?? row.contactId);
+    if (insight?.state === "ready" && insight.nextStep) return { ...row, why: pickCopy(insight.nextStep, language), whySource: "insight" };
+    return { ...row, whySource: "rule" };
+  });
 }
 
 export interface OpportunitiesTabView {
@@ -292,6 +315,7 @@ export function dormantRows(input: {
         draftAvailable: true,
         evidence: { href: `/app/contacts/${encodeURIComponent(candidate.linkId)}`, recordId: candidate.lastSignal.recordId },
         name: candidate.name,
+        recordId: candidate.contactId,
         why: dormantWhy({ lastSignal: candidate.lastSignal, relevance }, input.language),
       },
     });

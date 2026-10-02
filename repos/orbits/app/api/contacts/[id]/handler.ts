@@ -19,6 +19,7 @@ import { parseStrictTokyoInstant } from "../../../../shared/compute/tokyo-calend
 import type { MemoExtractionJobInput } from "../../../../features/contacts/memo-extraction/job";
 import { logMemoExtractionFailure, runConfiguredMemoExtraction } from "../../../../features/contacts/memo-extraction/store";
 import { isDemoContactRouteId } from "../../../../shared/domain/guide-demo-contact";
+import { markContactInsightsDirtyBestEffort, type MarkContactInsightsInput } from "../../../../features/contacts/insights/mark";
 import {
   authenticatedApiActorRequiredResponse,
   resolveAuthenticatedApiActor,
@@ -313,9 +314,23 @@ function savedMemoJob(input: ContactDetailUpdateInput, result: ContactDetailTagS
   };
 }
 
+/**
+ * W0051：保存成功后把这位联系人的洞察标为待更新（只写 contact_insights，不调用模型）。memo → reason memo；
+ * 行业／职级／地区（补全字段）→ reason enrichment。其他字段（标签、状态、互动）不影响洞察，不标。
+ */
+function insightDirtyReasons(input: ContactDetailUpdateInput, memoSaved: boolean): MarkContactInsightsInput["reasons"] {
+  const reasons: MarkContactInsightsInput["reasons"][number][] = [];
+  if (memoSaved) reasons.push("memo");
+  if ([input.primaryIndustryId, input.secondaryIndustryId, input.seniorityLevel, input.region].some((value) => value !== undefined)) reasons.push("enrichment");
+  return reasons;
+}
+
 export function createContactDetailPatchHandler(
   resolveActor: ResolveAuthenticatedApiActor = resolveAuthenticatedApiActor,
-  dependencies: { onMemoSaved?: (job: MemoExtractionJobInput) => void } = {},
+  dependencies: {
+    onMemoSaved?: (job: MemoExtractionJobInput) => void;
+    markInsightsDirty?: (input: MarkContactInsightsInput) => Promise<void>;
+  } = {},
 ) {
   return async function PATCH(
     request: Request,
@@ -356,6 +371,14 @@ export function createContactDetailPatchHandler(
     const result = await contactDetailService.updateContactDetail(input);
     const memoJob = savedMemoJob(input, result, actor.id);
     if (memoJob) (dependencies.onMemoSaved ?? scheduleMemoExtractionAfterResponse)(memoJob);
+    const insightReasons = result.success ? insightDirtyReasons(input, memoJob !== null) : [];
+    if (result.success && insightReasons.length) {
+      await (dependencies.markInsightsDirty ?? markContactInsightsDirtyBestEffort)({
+        actorId: actor.id,
+        contactIds: [result.data.contact?.id ?? id],
+        reasons: insightReasons,
+      }).catch(() => undefined);
+    }
 
     return responseForResult(result, mode);
   };

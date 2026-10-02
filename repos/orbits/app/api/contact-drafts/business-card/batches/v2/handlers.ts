@@ -86,6 +86,14 @@ export interface IngestV2HandlerDeps {
   gate?: { run<T>(actorId: string, fn: () => Promise<T>): Promise<T> };
   isOcrProviderConfigured?: () => boolean;
   eventAttribution?: IngestEventAttributionDeps;
+  /** W0051：名片确认写入后把该联系人的洞察标为待更新（只写 contact_insights，不调用模型）。 */
+  markInsightsDirty?: (input: { actorId: string; contactIds: readonly string[] }) => Promise<void>;
+}
+
+/** W0051：提交后尽力而为；失败只记日志，确认结果不受影响。 */
+async function liveMarkCardInsightsDirty(input: { actorId: string; contactIds: readonly string[] }): Promise<void> {
+  const { markContactInsightsDirtyBestEffort } = await import("../../../../../../features/contacts/insights/mark");
+  await markContactInsightsDirtyBestEffort({ ...input, reasons: ["enrichment"] });
 }
 
 export const liveIngestEventAttribution: IngestEventAttributionDeps = {
@@ -903,6 +911,10 @@ function createConfirmLikeHandler(
             });
         }
         const confirmedItem = confirmed.items.find((entry) => entry.id === itemId) ?? confirmed.items[0]!;
+        // W0051：名片补全（行业／职级／地区）随确认写入：提交后标这位联系人的洞察待更新（回放同样幂等）。
+        if (confirmedItem.confirmedContactId) {
+          await (deps.markInsightsDirty ?? liveMarkCardInsightsDirty)({ actorId, contactIds: [confirmedItem.confirmedContactId] }).catch(() => undefined);
+        }
         return NextResponse.json(
           success({
             contactId: confirmedItem.confirmedContactId,
