@@ -42,6 +42,12 @@ export interface LiveFollowupTaskProvider {
 }
 
 export interface LiveFollowupTaskGenerationServiceOptions {
+  /**
+   * 「现在」的唯一来源（W0044）。每次 listTasks／generateTasks 调用只取一次，
+   * 同一请求内所有任务、触发器和 provenance.collectedAt 共用它；默认真实时钟。
+   * 不得再用图里记录的 updatedAt（`graph.generatedAt`）推「现在」。
+   */
+  now?: () => Date;
   provider?: LiveFollowupTaskProvider | null;
 }
 
@@ -90,7 +96,11 @@ function evidenceSummary(
   );
 }
 
-function toTask(task: TaskDTO, graph: LiveFollowupGraph): FollowupTask {
+function toTask(
+  task: TaskDTO,
+  graph: LiveFollowupGraph,
+  now: string,
+): FollowupTask {
   const contactsById = new Map(graph.contacts.map((contact) => [contact.id, contact]));
   const connectionsById = new Map(
     graph.connections.map((connection) => [connection.id, connection]),
@@ -100,7 +110,7 @@ function toTask(task: TaskDTO, graph: LiveFollowupGraph): FollowupTask {
   );
   const contact = followupContactForTask(task, contactsById);
   const connection = followupConnectionForTask(task, connectionsById);
-  const dueInDays = followupDaysUntil(task.dueAt, graph.generatedAt);
+  const dueInDays = followupDaysUntil(task.dueAt, now);
   const source = sourceForTask(task);
 
   return {
@@ -243,16 +253,13 @@ function relationshipSuggestions(
     });
 }
 
-function toTrigger(
-  task: FollowupTask,
-  graph: LiveFollowupGraph,
-): FollowupTaskTrigger {
+function toTrigger(task: FollowupTask, now: string): FollowupTaskTrigger {
   return {
     triggerId: `trigger:live:${task.taskId}`,
     kind: task.triggerKind,
     label: task.triggerKind.replace(/_/g, " "),
     detail: task.rationale,
-    occurredAt: graph.generatedAt,
+    occurredAt: now,
     connectionId: task.connectionId,
     contactName: task.contactName,
     organization: task.organization,
@@ -316,17 +323,20 @@ function provenanceFor(input: {
 
 function payloadFor(input: {
   graph: LiveFollowupGraph;
+  now: string;
   provider: LiveFollowupTaskProvider;
   request: FollowupTaskGenerationListInput | FollowupTaskGenerationGenerateInput;
   sourceLabel: string;
 }): FollowupTaskGenerationPayload {
-  const storedTasks = input.graph.tasks.map((task) => toTask(task, input.graph));
+  const storedTasks = input.graph.tasks.map((task) =>
+    toTask(task, input.graph, input.now),
+  );
   const allTasks = [
     ...storedTasks,
     ...relationshipSuggestions(input.graph, storedTasks),
   ].sort(compareTasks);
   const tasks = filterFollowupTasks(allTasks, input.request);
-  const triggers = tasks.map((task) => toTrigger(task, input.graph));
+  const triggers = tasks.map((task) => toTrigger(task, input.now));
 
   return {
     state: tasks.length > 0 ? "success" : "empty",
@@ -337,7 +347,7 @@ function payloadFor(input: {
         ? `${tasks.length} source-backed followup suggestions were loaded from live relationship data.`
         : "No source-backed followup suggestions matched the live relationship query.",
     provenance: provenanceFor({
-      collectedAt: input.graph.generatedAt,
+      collectedAt: input.now,
       databaseReadExecuted: true,
       provider: input.provider,
       tasks,
@@ -375,11 +385,11 @@ function failure(
   };
 }
 
-function unconfiguredFailure(): FollowupTaskGenerationFailure {
+function unconfiguredFailure(now: string): FollowupTaskGenerationFailure {
   return failure(
     "FOLLOWUP_TASK_GENERATION_LIVE_STORE_UNCONFIGURED",
     provenanceFor({
-      collectedAt: new Date(0).toISOString(),
+      collectedAt: now,
       databaseReadExecuted: false,
       tasks: [],
     }),
@@ -390,12 +400,14 @@ function scenarioResult(
   graph: LiveFollowupGraph,
   provider: LiveFollowupTaskProvider,
   scenario: FollowupTaskGenerationScenario,
+  now: string,
 ): FollowupTaskGenerationResult | null {
   switch (scenario) {
     case "empty":
       return success({
         ...payloadFor({
           graph,
+          now,
           provider,
           request: {},
           sourceLabel: provider.sourceLabel,
@@ -409,6 +421,7 @@ function scenarioResult(
       return success({
         ...payloadFor({
           graph,
+          now,
           provider,
           request: {},
           sourceLabel: provider.sourceLabel,
@@ -422,7 +435,7 @@ function scenarioResult(
       return failure(
         "FOLLOWUP_TASK_GENERATION_MOCK_FAILED",
         provenanceFor({
-          collectedAt: graph.generatedAt,
+          collectedAt: now,
           databaseReadExecuted: true,
           provider,
           tasks: [],
@@ -436,14 +449,15 @@ function scenarioResult(
 
 async function graphOrFailure(
   provider: LiveFollowupTaskProvider | null,
-  actorId?: string | null,
+  actorId: string | null | undefined,
+  now: string,
 ): Promise<FollowupTaskGenerationFailure | LiveFollowupGraph> {
   const normalizedActorId = actorId?.trim();
   if (!normalizedActorId) {
     return failure(
       "FOLLOWUP_TASK_GENERATION_ACTOR_REQUIRED",
       provenanceFor({
-        collectedAt: new Date(0).toISOString(),
+        collectedAt: now,
         databaseReadExecuted: false,
         provider,
         tasks: [],
@@ -452,7 +466,7 @@ async function graphOrFailure(
   }
 
   if (!provider) {
-    return unconfiguredFailure();
+    return unconfiguredFailure(now);
   }
 
   return provider.readFollowupGraph(normalizedActorId);
@@ -465,13 +479,15 @@ function isFailure(
 }
 
 export function createLiveFollowupTaskGenerationService({
+  now: clock = () => new Date(),
   provider = null,
 }: LiveFollowupTaskGenerationServiceOptions = {}): FollowupTaskGenerationService {
   return {
     async generateTasks(
       input: FollowupTaskGenerationGenerateInput = {},
     ): Promise<FollowupTaskGenerationResult> {
-      const graph = await graphOrFailure(provider, input.actorId);
+      const now = clock().toISOString();
+      const graph = await graphOrFailure(provider, input.actorId, now);
 
       if (isFailure(graph)) {
         return graph;
@@ -481,6 +497,7 @@ export function createLiveFollowupTaskGenerationService({
         graph,
         provider as LiveFollowupTaskProvider,
         normalizeFollowupTaskGenerationScenario(input.scenario),
+        now,
       );
 
       if (scenario) {
@@ -490,6 +507,7 @@ export function createLiveFollowupTaskGenerationService({
       return success(
         payloadFor({
           graph,
+          now,
           provider: provider as LiveFollowupTaskProvider,
           request: input,
           sourceLabel: provider?.sourceLabel ?? "Followup live task generation",
@@ -500,7 +518,8 @@ export function createLiveFollowupTaskGenerationService({
     async listTasks(
       input: FollowupTaskGenerationListInput = {},
     ): Promise<FollowupTaskGenerationResult> {
-      const graph = await graphOrFailure(provider, input.actorId);
+      const now = clock().toISOString();
+      const graph = await graphOrFailure(provider, input.actorId, now);
 
       if (isFailure(graph)) {
         return graph;
@@ -510,6 +529,7 @@ export function createLiveFollowupTaskGenerationService({
         graph,
         provider as LiveFollowupTaskProvider,
         normalizeFollowupTaskGenerationScenario(input.scenario),
+        now,
       );
 
       if (scenario) {
@@ -519,6 +539,7 @@ export function createLiveFollowupTaskGenerationService({
       return success(
         payloadFor({
           graph,
+          now,
           provider: provider as LiveFollowupTaskProvider,
           request: input,
           sourceLabel: provider?.sourceLabel ?? "Followup live task list",

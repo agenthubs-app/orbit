@@ -11,6 +11,7 @@ import type {
   FollowupTaskPriority,
   FollowupTaskTriggerKind,
 } from "./contract";
+import { tokyoCalendarDaysUntil } from "../../shared/compute/tokyo-calendar-days";
 
 type FollowupTaskGenerationInput =
   | FollowupTaskGenerationListInput
@@ -117,24 +118,21 @@ export function followupConnectionForTask(
     : null;
 }
 
+// W0044：到期天数 = 截止日与「现在」的东京日历日差，逾期为负（不再夹成 0）。
+// `now` 由调用方注入：live 路径是每次请求取一次的真实时钟，hybrid 夹具路径是夹具时钟；
+// 不得用任何记录的 updatedAt 代替。无 dueAt／时间非法时兜底 7（行为同改前）。
 export function followupDaysUntil(
   dueAt: string | undefined,
-  generatedAt: string,
+  now: string,
 ): number {
   if (!dueAt) {
     return 7;
   }
 
-  const dueTime = new Date(dueAt).getTime();
-  const baseTime = new Date(generatedAt).getTime();
-
-  if (!Number.isFinite(dueTime) || !Number.isFinite(baseTime)) {
-    return 7;
-  }
-
-  return Math.max(0, Math.ceil((dueTime - baseTime) / 86_400_000));
+  return tokyoCalendarDaysUntil(dueAt, now) ?? 7;
 }
 
+// 逾期（负数）仍归 "today"：不新增枚举值，逾期由展示层按 dueInDays < 0 推出（W44-1）。
 export function followupPriorityFor(
   dueInDays: number,
 ): FollowupTaskPriority {
