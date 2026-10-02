@@ -40,6 +40,7 @@ export const SYNC_WRITE_MANIFEST: Readonly<Record<string, SyncWritePolicy>> = {
   "features/notifications/notification-cutover-migration.ts": { policy: "non-sync", statements: 3, collections: "notification collections" },
   "features/notifications/event-contact-request-inbox-migration.ts": { policy: "non-sync", statements: 1, collections: "notifications (archives migrated legacy exchange rows; inbox writes go through the live-record store)" },
   "scripts/backfill-event-display-fields.ts": { policy: "locked", statements: 1, how: "its transaction takes acquireSyncCommitOrderLock first (events, 0117)" },
+  "features/contacts/enrichment/backfill.ts": { policy: "locked", statements: 1, how: "W0045: applyContactEnrichmentBackfillPlan takes acquireSyncCommitOrderLock at the start of its transaction (contacts, 0116); conditional update bound to user_id and updated_at" },
   "scripts/backfill-test-secondary-industries.ts": { policy: "locked", statements: 1, how: "applyTestIndustryBackfillPlan takes acquireSyncCommitOrderLock at the start of its transaction (contacts, 0116)" },
   "scripts/bootstrap-event-organizer-accounts.ts": { policy: "locked", statements: 2, how: "setOwnerIfAbsent (accounts, contacts, profiles — contacts is a sync collection) takes SYNC_COMMIT_ORDER_LOCK_CTE in its statement (0117); insertIfAbsent writes organizer memberships (profiles/accounts)" },
   "scripts/diagnostics/notification-source-read-cost.ts": { policy: "non-sync", statements: 2, collections: "reminderPlans and notification fixtures" },
