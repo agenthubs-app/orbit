@@ -28,6 +28,8 @@ import type {
 import { DEMO_CONTACT_ID_PREFIX, isDemoContactId } from "../../../../shared/domain/guide-demo-contact";
 import type { RelationshipStrength, RelationshipTier } from "../../../../shared/contract/relationship-strength";
 import type { NetworkTierBoardView, NetworkTierGroup } from "../contacts/network-0918/network-model";
+import type { OverviewCockpitParts } from "../contacts/network-0918/network-overview-cockpit-model";
+import type { RelationshipTimelineItem } from "../../../../shared/contract/relationship-timeline";
 
 type Lang = "en" | "zh";
 type Copy = { en: string; zh: string };
@@ -517,6 +519,73 @@ export function buildDemoNetworkAnalysis(real: Date, lang: Lang): ContactsAnalys
       state: "ready",
     },
     summary: "",
+  };
+}
+
+/* ── 概览驾驶舱（W0052） ───────────────────────────────────────────── */
+
+/** 示例联系人来源 → 联系人列表来源分面值（与真实 `facet_sources` 同一口径）。 */
+const DEMO_SOURCE_FACET: Record<OrbitContactSource, string> = {
+  contact: "external_contacts",
+  event: "event_import",
+  exchange: "manual",
+  manual: "manual",
+  qr: "qr_scan",
+  referral: "referral",
+  scan: "business_card_ocr",
+};
+
+/**
+ * W0052：示例期概览的驾驶舱、档位与最近动态（前端数据，0 请求；快照、时间线、计划都不读）。
+ * 没有快照（示例静态快照是 W0054），所以 4 卡只有示例数字、没有句子；档位与动态是双语示例数据，
+ * 人名与 30 位示例联系人一致。交给 `buildNetworkOverviewData` 按真实同一规则组装。
+ */
+export function buildDemoNetworkOverviewParts(real: Date, lang: Lang): OverviewCockpitParts {
+  const ctx = context(real, lang);
+  const idOf = (slug: string) => `${DEMO_CONTACT_ID_PREFIX}${slug}`;
+  const at = (daysAgo: number, time: string) => new Date(`${shiftDay(ctx.today, -daysAgo)}T${time}:00+09:00`).toISOString();
+  const need = (needId: string, title: Copy, have: number, target: number) => ({
+    criteria: null, have, linkedContactIds: [], missing: Math.max(0, target - have), needId, phaseKey: "p1", phaseTitle: say(ctx, c("第 1 阶段", "Phase 1")), target, title: say(ctx, title),
+  });
+  const timeline: RelationshipTimelineItem[] = [
+    { contactId: idOf("suzuki-ken"), id: "capture:demo-suzuki", occurredAt: at(1, "22:14"), occurredAtPrecision: "instant", ref: { recordId: idOf("suzuki-ken"), store: "contacts" }, source: "capture", title: { en: "Added from a business card", zh: "扫描名片，建立联系" } },
+    { contactId: idOf("takahashi-yumi"), id: "capture:demo-takahashi", occurredAt: at(1, "22:13"), occurredAtPrecision: "instant", ref: { recordId: idOf("takahashi-yumi"), store: "contacts" }, source: "capture", title: { en: "Added from a business card", zh: "扫描名片，建立联系" } },
+    { contactId: idOf("wang-yan"), excerpt: say(ctx, c("电话：确认了 IT 部门的系统采购决策人", "Call: found out who in IT decides on systems")), id: "memo:demo-wang", occurredAt: at(1, "17:30"), occurredAtPrecision: "instant", ref: { recordId: idOf("wang-yan"), store: "contact_detail_states" }, source: "memo", title: { en: "Wrote a memo", zh: "写了 memo" } },
+    { contactId: idOf("sato-misaki"), excerpt: say(ctx, c("回邮件：会后要花 30 分钟整理", "Replied: 30 minutes of notes after each meeting")), id: "memo:demo-sato", occurredAt: at(2, "10:20"), occurredAtPrecision: "instant", ref: { recordId: idOf("sato-misaki"), store: "contact_detail_states" }, source: "memo", title: { en: "Wrote a memo", zh: "写了 memo" } },
+    { contactId: idOf("nakamura-megumi"), id: "encounter:demo-nakamura", occurredAt: at(9, "19:00"), occurredAtPrecision: "instant", ref: { recordId: "demo-encounter-nakamura", store: "human_encounters" }, source: "encounter", title: { en: "Met at an event", zh: "在活动上见面" } },
+  ];
+  const column = (group: NetworkTierGroup) => [...SEEDS]
+    .filter((seed) => demoTierGroup(seed.status) === group)
+    .sort((a, b) => a.daysAgo - b.daysAgo)
+    .slice(0, 2)
+    .map((seed) => ({ contactId: idOf(seed.slug), lastSignalAt: at(seed.daysAgo, "12:00") }));
+  const sourceFacets: Record<string, number> = {};
+  for (const seed of SEEDS) sourceFacets[DEMO_SOURCE_FACET[seed.source]] = (sourceFacets[DEMO_SOURCE_FACET[seed.source]] ?? 0) + 1;
+  return {
+    board: { active: column("active"), core: column("core") },
+    names: new Map(SEEDS.map((seed) => [idOf(seed.slug), { contactId: idOf(seed.slug), name: say(ctx, seed.name) }])),
+    pendingMatches: 2,
+    plan: {
+      eventItems: [],
+      goal: "",
+      linkedContactIds: [],
+      needs: [
+        need("demo-need-it", c("中小企业 IT 负责人", "SME IT leads"), 2, 3),
+        need("demo-need-channel", c("渠道代理商", "Channel resellers"), 1, 3),
+        need("demo-need-chamber", c("商会／协会对接人", "Chamber and association contacts"), 0, 2),
+      ],
+      percent: 38,
+      planId: "demo-plan",
+      weekActions: [
+        { id: "demo-action-wang", title: say(ctx, c("14:00 见面，请他引荐 IT 决策人", "Meet at 14:00 and ask for an intro to the IT decision-maker")), weeksOverdue: 0 },
+        { id: "demo-action-sato", title: say(ctx, c("约 20 分钟，聊试用", "Book 20 minutes to talk about a trial")), weeksOverdue: 0 },
+        { id: "demo-action-nakamura", title: say(ctx, c("请她推荐 3 家试点会员企业", "Ask her for 3 pilot member companies")), weeksOverdue: 0 },
+        { id: "demo-action-lin", title: say(ctx, c("问候，问渠道定价", "Check in and ask about channel pricing")), weeksOverdue: 1 },
+      ],
+    },
+    snapshot: { blocks: [], contactCount: 0, freshness: { job: "none", newContactCount: 0, stale: false }, generatedAt: null, state: "none" },
+    sourceFacets,
+    timeline: { items: timeline, unavailable: false },
   };
 }
 

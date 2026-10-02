@@ -293,14 +293,31 @@ export const NETWORK_STYLES = `
 [data-orbit-real-page="network"] .nw-hl-copy { flex: 1; display: flex; flex-direction: column; gap: 2px; }
 [data-orbit-real-page="network"] .nw-hl-stage { padding: 5px 12px; border-radius: 999px; font-size: 12px; }
 [data-orbit-real-page="network"] .nw-recent-card { border: 1px solid #E8E9F6; border-radius: 18px; background: #FFFFFF; padding: 26px; display: flex; flex-direction: column; gap: 14px; }
-[data-orbit-real-page="network"] .nw-recent-thead { display: grid; grid-template-columns: 44px minmax(90px, 1fr) minmax(0, 2fr) minmax(0, 1.2fr) 110px 90px 40px; align-items: center; gap: 16px; padding: 10px 12px; border-radius: 10px; background: #F7F7FD; font-size: 13px; color: #6B6F99; }
-[data-orbit-real-page="network"] .nw-recent-row { display: grid; grid-template-columns: 44px minmax(90px, 1fr) minmax(0, 2fr) minmax(0, 1.2fr) 110px 90px 40px; align-items: center; gap: 16px; padding: 12px; border: 0; border-top: 1px solid #EEEFF8; background: transparent; text-align: left; font-size: 14px; cursor: pointer; }
+[data-orbit-real-page="network"] .nw-recent-thead { display: grid; grid-template-columns: 44px minmax(90px, 1fr) 96px minmax(0, 2.4fr) 120px; align-items: center; gap: 16px; padding: 10px 12px; border-radius: 10px; background: #F7F7FD; font-size: 13px; color: #6B6F99; }
+[data-orbit-real-page="network"] .nw-recent-row { display: grid; grid-template-columns: 44px minmax(90px, 1fr) 96px minmax(0, 2.4fr) 120px; align-items: center; gap: 16px; padding: 12px; border: 0; border-top: 1px solid #EEEFF8; background: transparent; text-align: left; font-size: 14px; cursor: pointer; }
 [data-orbit-real-page="network"] .nw-recent-row:hover { background: #F7F7FD; }
 [data-orbit-real-page="network"] .nw-recent-name { font-size: 15px; white-space: nowrap;
-  /* 该列内容是动态句子而非姓名（analysis.activity.label），超出列宽时省略号截断 */
+  /* W0052：该列是联系人姓名（时间线），超出列宽时省略号截断 */
   min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+/* W0052：姓名链接（<a>）自带字色与 :hover（0918 anchor-colour 门禁）。 */
+[data-orbit-real-page="network"] .nw-recent-link { color: #0E1225; }
+[data-orbit-real-page="network"] .nw-recent-link:hover { color: #4B4FC7; }
+[data-orbit-real-page="network"] .nw-recent-badge { justify-self: start; padding: 3px 10px; border-radius: 999px; background: #ECEEFB; color: #2E3270; font-size: 12px; white-space: nowrap; }
+[data-orbit-real-page="network"] .nw-cockpit-label { font-size: 13px; color: #6B6F99; }
+[data-orbit-real-page="network"] .nw-cockpit-plan-cta { color: #4B4FC7; }
+[data-orbit-real-page="network"] .nw-cockpit-sentence { line-height: 1.6; }
+@media (max-width: 700px) {
+  [data-orbit-real-page="network"] .nw-recent-thead { display: none; }
+  [data-orbit-real-page="network"] .nw-recent-row { grid-template-columns: 40px minmax(0, 1fr) auto; grid-template-areas: "avatar name badge" "avatar summary summary" "avatar when when"; row-gap: 4px; column-gap: 12px; }
+  [data-orbit-real-page="network"] .nw-recent-row > .nw-avatar { grid-area: avatar; align-self: start; }
+  [data-orbit-real-page="network"] .nw-recent-row > .nw-recent-name { grid-area: name; }
+  [data-orbit-real-page="network"] .nw-recent-row > .nw-recent-badge { grid-area: badge; }
+  [data-orbit-real-page="network"] .nw-recent-row > .nw-recent-org { grid-area: summary; white-space: normal; }
+  [data-orbit-real-page="network"] .nw-recent-row > .nw-recent-last { grid-area: when; font-size: 13px; }
+  [data-orbit-real-page="network"] .btn.nw-stage-seg { padding: 12px 6px 12px 14px; white-space: normal; }
+  [data-orbit-real-page="network"] .nw-stage-label { font-size: 10px; line-height: 1.2; text-align: center; }
+}
 [data-orbit-real-page="network"] .nw-recent-org { color: #3B3F7A; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-[data-orbit-real-page="network"] .nw-recent-ind { color: #6B6F99; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 [data-orbit-real-page="network"] .nw-recent-last { color: #6B6F99; white-space: nowrap; }
 /* ── 导入人脉（设计稿 303–392 行）── */
 [data-orbit-real-page="network"] .nw-import { display: flex; flex-direction: column; gap: 20px; animation: orbit-fade .3s ease; }

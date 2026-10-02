@@ -13,6 +13,9 @@
  * `loadOpportunitiesTab`（对任何表 0 写入、计划只读、0 次 AI）。示例模式两个标签都 0 次读取。
  * W0051：第三个标签 `?tab=insight` 只在该标签读 `loadInsightsTab`（只读 contact_insights 一页 30 位，0 次 AI、0 次配额预留）；
  * 示例模式下同样只显示横条与说明。
+ * W0052：概览（无 tab）另外并行读驾驶舱附加数据（`loadOverviewCockpit`：快照只读视图、计划 getCurrent + 纯投影、
+ * 待确认匹配、时间线最近 5 条、档位看板前 2 位、一次姓名读取），「按来源」用名单读取已有的全量分面；概览不再读本页档位表。
+ * 示例模式概览用 `buildDemoNetworkOverviewParts`（0 次读取）。
  */
 import { redirect } from "next/navigation";
 
@@ -34,11 +37,13 @@ import { NetworkOverview } from "../network-0918/network-overview";
 import { NetworkDemoFrame } from "../network-0918/network-demo-frame";
 import { NetworkDemoAnalysisNotice } from "../network-0918/network-shell";
 import { readDemoModeViewForActor } from "../../_demo/demo-guide-view";
-import { buildDemoNetworkAnalysis, buildDemoNetworkViewModel } from "../../_demo/demo-network";
+import { buildDemoNetworkAnalysis, buildDemoNetworkOverviewParts } from "../../_demo/demo-network";
 import { ensureRelationshipStrengthsForPage, readRelationshipTierLookup } from "../../../../../features/relationship-strength/read-model";
 import { loadStructureTabExtras } from "../analysis/structure-tab-loader";
 import { loadOpportunitiesTab } from "../analysis/opportunities-route-service";
 import { loadInsightsTab } from "../analysis/insights-tab";
+import { loadOverviewCockpit } from "../analysis/overview-cockpit-loader";
+import { buildNetworkOverviewData } from "../network-0918/network-overview-cockpit-model";
 
 export default async function AppContactsDashboardPage({ searchParams }: {
   searchParams?: Promise<{ tab?: string | string[] } & Record<string, string | string[] | undefined>>;
@@ -71,7 +76,10 @@ export default async function AppContactsDashboardPage({ searchParams }: {
         <OrbitVisualFreezeRuntime />
         <NetworkDemoFrame guide={guide} route="app-contacts-dashboard-route">
           {overview
-            ? <NetworkOverview viewModel={buildDemoNetworkViewModel(now, lang)} analysis={buildDemoNetworkAnalysis(now, lang)} />
+            ? (() => {
+              const demoAnalysis = buildDemoNetworkAnalysis(now, lang);
+              return <NetworkOverview analysis={demoAnalysis} overview={buildNetworkOverviewData(buildDemoNetworkOverviewParts(now, lang), demoAnalysis)} />;
+            })()
             : <NetworkDemoAnalysisNotice />}
         </NetworkDemoFrame>
       </>
@@ -85,7 +93,7 @@ export default async function AppContactsDashboardPage({ searchParams }: {
   const analysisPromise = loadContactsAnalysis(actor.id, language);
   // W0050（W50-5）：标签由 URL 驱动，服务端只读当前标签的数据——结构附加数据只在 ?tab=structure，机会数据只在 ?tab=opportunities。
   const goalPromise = analysisPromise.then((value) => (value.state === "ready" && "data" in value.goal ? value.goal.data.text || null : null));
-  const [analysis, routeModel, structureExtras, opportunities, insights] = await Promise.all([
+  const [analysis, routeModel, structureExtras, opportunities, insights, cockpit] = await Promise.all([
     analysisPromise,
     loadAppContactsRouteViewModel({}, actor.id),
     tab === "structure" ? loadStructureTabExtras({ actorId: actor.id, language, strengthState }) : Promise.resolve(undefined),
@@ -99,8 +107,11 @@ export default async function AppContactsDashboardPage({ searchParams }: {
       : Promise.resolve(undefined),
     // W0051：只读一页洞察（档位实时取 W0047 读模型），0 次 AI。
     tab === "insight" ? loadInsightsTab({ actorId: actor.id, goal: goalPromise, now: new Date(), search: params ?? {} }) : Promise.resolve(undefined),
+    // W0052：概览驾驶舱附加数据（只读：计划 0 写入、快照不排队、0 次 AI）。
+    tab === "overview" ? loadOverviewCockpit({ actorId: actor.id, language, now: new Date() }) : Promise.resolve(undefined),
   ]);
-  const tiers = routeModel.state === "success"
+  // 本页档位表只给分析标签的名单用；概览的档位与重点联系人来自全量分布与档位看板（W0052）。
+  const tiers = routeModel.state === "success" && tab !== "overview"
     ? await readRelationshipTierLookup({ actorId: actor.id, contactIds: routeModel.payload.contacts.map((contact) => contact.id) })
     : undefined;
   const toViewModel = (payload: Parameters<typeof contactsRouteToOrbitContactsViewModel>[0]) =>
@@ -115,7 +126,13 @@ export default async function AppContactsDashboardPage({ searchParams }: {
         <div data-orbit-real-page="network" data-orbit-route="app-contacts-dashboard-route">
           <AccountTopNav active="cards" />
           {tab === "overview"
-            ? <NetworkOverview viewModel={toViewModel(routeModel.payload)} analysis={analysis} />
+            ? <NetworkOverview
+              analysis={analysis}
+              overview={buildNetworkOverviewData({
+                ...cockpit!,
+                sourceFacets: Object.fromEntries(routeModel.payload.availableFilters.sources.map((option) => [option.value, option.count])),
+              }, analysis)}
+            />
             : <NetworkAnalysis viewModel={toViewModel(routeModel.payload)} analysis={analysis} initialTab={tab === "opportunities" ? "opp" : tab === "insight" ? "insight" : "struct"} structureExtras={structureExtras} opportunities={opportunities} insights={insights} />}
         </div>
       ) : (
