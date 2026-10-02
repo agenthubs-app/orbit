@@ -121,6 +121,9 @@ test("PATCH accepts only client fields: grandfathered, completedAt, identity and
     { currentStep: 2, completedAt: "2026-10-20T00:00:00.000Z" },
     { step1Skipped: false },
     { step1Skipped: "true" },
+    // W0054（W54-1）：新的跳过一律关闭，`step1Skipped: true` 也是 400。
+    { step1Skipped: true },
+    { currentStep: 2, step1Skipped: true },
     { currentStep: 0 },
     { currentStep: 5 },
     { currentStep: 2.5 },
@@ -203,23 +206,47 @@ test("the mock factory keeps one store per process and isolates actors", async (
   resetGuideStateMockStoreForTests();
 });
 
-/* ── W0006：step1Skipped / currentStep ──────────────────────────────── */
+/* ── W0006：currentStep；W0054：跳过关闭 ───────────────────────────── */
 
-test("W0006 PATCH writes step1Skipped and currentStep together and GET reads them back", async () => {
+test("W0054 SC-01: PATCH {step1Skipped: true} is a 400 VALIDATION_ERROR and leaves the record unchanged; currentStep still writes", async () => {
   const { handlersFor, recordsFor } = harness();
-  const response = await handlersFor("actor:alice").PATCH(patch({ currentStep: 2, step1Skipped: true }));
-  assert.equal(response.status, 200);
-  const data = ((await response.json()) as { data: { currentStep: number; step1Skipped: boolean } }).data;
-  assert.equal(data.currentStep, 2);
-  assert.equal(data.step1Skipped, true);
-  const readBack = ((await (await handlersFor("actor:alice").GET()).json()) as {
+  const handlers = handlersFor("actor:alice");
+  assert.equal((await handlers.PATCH(patch({ currentStep: 2 }))).status, 200);
+  const before = await recordsFor("actor:alice");
+  for (const body of [{ step1Skipped: true }, { currentStep: 3, step1Skipped: true }]) {
+    const response = await handlers.PATCH(patch(body));
+    assert.equal(response.status, 400, JSON.stringify(body));
+    const payload = (await response.json()) as { success: boolean; error: { code: string } };
+    assert.equal(payload.error.code, "VALIDATION_ERROR");
+  }
+  assert.deepEqual(await recordsFor("actor:alice"), before);
+  const readBack = ((await (await handlers.GET()).json()) as {
     data: { bannerCollapsed: boolean; completedAt: string | null; currentStep: number; step1Skipped: boolean };
   }).data;
-  assert.equal(readBack.bannerCollapsed, false);
   assert.equal(readBack.completedAt, null);
   assert.equal(readBack.currentStep, 2);
-  assert.equal(readBack.step1Skipped, true);
+  assert.equal(readBack.step1Skipped, false);
   assert.equal((await recordsFor("actor:alice")).length, 1);
+});
+
+test("W0054（W54-1）: a stored legacy step1Skipped = true is still read back by GET (read-only compatibility)", async () => {
+  const { handlersFor, store } = harness();
+  await store.upsertRecord({
+    collectionName: GUIDE_STATE_COLLECTION,
+    createdAt: "2026-10-01T00:00:00.000Z",
+    evidenceIds: [],
+    lifecycleState: "active",
+    payload: { currentStep: 2, grandfathered: false, step1Skipped: true, version: 2 },
+    recordId: "current",
+    sourceId: "guide-state",
+    sourceType: "manual",
+    updatedAt: "2026-10-01T00:00:00.000Z",
+    userId: "actor:legacy-skip",
+    workspaceId: guideStateWorkspaceId(WORKSPACE, "actor:legacy-skip"),
+  });
+  const data = ((await (await handlersFor("actor:legacy-skip").GET()).json()) as { data: { step1Skipped: boolean; currentStep: number } }).data;
+  assert.equal(data.step1Skipped, true);
+  assert.equal(data.currentStep, 2);
 });
 
 test("W0006 SC-04: two independent clients of the same actor see the same currentStep", async () => {
@@ -284,7 +311,7 @@ test("W0035: GET maps a stored currentStep of 4 to null, unfinished or finished"
 
 test("W0006: another actor's currentStep and skip flag are never touched", async () => {
   const { handlersFor, recordsFor } = harness();
-  await handlersFor("actor:alice").PATCH(patch({ currentStep: 3, step1Skipped: true }));
+  await handlersFor("actor:alice").PATCH(patch({ currentStep: 3 }));
   const bob = ((await (await handlersFor("actor:bob").GET()).json()) as {
     data: { currentStep: number | null; step1Skipped: boolean };
   }).data;

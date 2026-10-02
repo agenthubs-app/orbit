@@ -3,7 +3,8 @@
  *
  * - 步骤条（W0035 起只有 3 步）：完成 ✓ / 进行中 / 锁定（完成前一步后解锁）；点锁定的步骤只提示
  *   「先完成第 n 步」不切换、不写记录；切换步骤写 currentStep；
- * - 第 1 步：槽位、「已确认 x / 3」、待确认张数、扫名片入口；「先这样，继续」写 step1Skipped；
+ * - 第 1 步：槽位、「已确认 x / 3」、待确认张数、扫名片与「导入人脉」入口；W0054 起不能跳过（没有
+ *   「先这样，继续」与代价说明）；
  *   接上本机进行中的名片批次（状态机在本页，宿主让位）；
  * - 第 2 步：W0002 编辑器，已有目标自动完成；第 3 步：当前目标、就地修改（草稿，取消不覆盖）、
  *   固定问题与 6 点结构、「开始分析」直接调用计划生成接口（W0008），成功后去对话页看回答卡片；
@@ -324,41 +325,86 @@ test("all 3 steps done: the finish card only offers iOrbit", async (t) => {
 
 /* ── 第 1 步（SC-03） ───────────────────────────────────────────────────── */
 
-test("step 1 shows confirmed x / 3 with named slots, opens the batch uploader, and skipping writes step1Skipped", async (t) => {
+test("W0054 SC-01: step 1 with 2 confirmed contacts has no skip — only scan and import (→ /app/contacts/new), and step 2 stays locked", async (t) => {
   const api = stubBrowser(t);
   const root = await mount(
     props({
       snapshot: {
-        confirmedContacts: 1,
-        contactSamples: [{ displayName: "王砚", organization: "北辰精工", role: "采购部长" }],
+        confirmedContacts: 2,
+        contactSamples: [
+          { displayName: "王砚", organization: "北辰精工", role: "采购部长" },
+          { displayName: "佐藤美咲", organization: null, role: null },
+        ],
       },
     }),
   );
+  assert.equal(view(root), "1");
   const slots = byData(root, "data-slot").map((node) => node.props["data-slot"]);
-  assert.deepEqual(slots, ["confirmed", "empty", "empty"]);
-  assert.match(text(one(root, "data-slot", "confirmed")), /✓ 已确认王砚北辰精工 · 采购部长/);
-  assert.equal(text(one(root, "data-start-card-count")), "已确认 1 / 3");
-  assert.match(text(one(root, "data-start-skip")), /只有 1 位联系人也可以继续，但计划里「现有人脉能帮上什么」会比较单薄。/);
+  assert.deepEqual(slots, ["confirmed", "confirmed", "empty"]);
+  assert.match(text(byData(root, "data-slot", "confirmed")[0]!), /✓ 已确认王砚北辰精工 · 采购部长/);
+  assert.equal(text(one(root, "data-start-card-count")), "已确认 2 / 3");
+  // 没有跳过入口、没有代价说明、没有「先这样，继续」。
+  assert.equal(byData(root, "data-start-skip").length, 0);
+  assert.equal(byData(root, "data-start-skip-button").length, 0);
+  const all = text(root.root);
+  for (const banned of ["先这样", "也可以继续", "会比较单薄", "会是空的", "已先跳过", "你选择了先继续"]) {
+    assert.ok(!all.includes(banned), `should not mention ${banned}`);
+  }
+  // 只有「扫名片」与「导入人脉」两个入口；导入链到 W0053 的导入页（CSV／vCard）。
+  const importLink = one(root, "data-start-import");
+  assert.equal(importLink.type, "a");
+  assert.equal(importLink.props.href, "/app/contacts/new?method=csv");
+  assert.match(String(importLink.props.className), /sg-secondary/, "scan stays primary while recognition is available");
+  assert.equal(text(importLink), "导入人脉");
+  assert.equal(byData(root, "data-start-next").length, 0);
+  assert.deepEqual(stepStatuses(root), ["current", "locked", "locked"]);
 
   assert.equal(byData(root, "data-card-uploader").length, 0);
   await click(one(root, "data-start-scan"));
   assert.equal(byData(root, "data-card-uploader").length, 1, "the shared batch uploader opens in place");
-
-  await click(one(root, "data-start-skip-button"));
-  assert.deepEqual(api.patches, [{ currentStep: 2, step1Skipped: true }], "one request: skip + move on");
-  assert.equal(view(root), "2");
-  assert.deepEqual(stepStatuses(root).slice(0, 2), ["done", "current"]);
-  assert.match(text(one(root, "data-start-step", "1")), /已先跳过/);
+  // 点锁定的第 2 步只提示，不切换、不写记录。
+  await click(one(root, "data-start-step", "2"));
+  assert.equal(view(root), "1");
+  assert.deepEqual(api.patches, []);
   act(() => root.unmount());
 });
 
-test("a failed skip stays on step 1 with an error and does not unlock step 2", async (t) => {
-  stubBrowser(t, { failPatch: true });
-  const root = await mount(props());
-  await click(one(root, "data-start-skip-button"));
-  assert.equal(view(root), "1");
-  assert.deepEqual(stepStatuses(root).slice(0, 2), ["current", "locked"]);
-  assert.ok(text(root.root).includes("没有保存成功，请再试一次。"));
+test("W0054 SC-01（W54-2）: when card recognition is unavailable, import becomes the primary action", async (t) => {
+  stubBrowser(t);
+  const root = await mount(props({ cardScanAvailable: false, snapshot: { confirmedContacts: 0 } }));
+  assert.equal(byData(root, "data-start-scan").length, 0);
+  const importLink = one(root, "data-start-import");
+  assert.match(String(importLink.props.className), /sg-primary/);
+  assert.equal(importLink.props.href, "/app/contacts/new?method=csv");
+  act(() => root.unmount());
+});
+
+test("W0054 SC-01: leaving and coming back with 2 contacts reopens step 1 (a stale recorded step 2 is ignored)", async (t) => {
+  const api = stubBrowser(t);
+  const root = await mount(props({ relationshipGoal: "找渠道", snapshot: { confirmedContacts: 2, currentStep: 2 } }));
+  // 有目标时第 2 步已完成可重开，但记录里的第 2 步不会让第 1 步算完成。
+  assert.equal(stepStatuses(root)[0], "current");
+  assert.match(text(one(root, "data-start-step", "1")), /已确认 2 \/ 3 · 进行中/);
+  assert.deepEqual(api.patches, [], "loading writes nothing");
+  act(() => root.unmount());
+});
+
+test("W54-1: a stored legacy skip still counts step 1 as done and lands on step 2", async (t) => {
+  stubBrowser(t);
+  const root = await mount(props({ snapshot: { confirmedContacts: 1, currentStep: 2, step1Skipped: true } }));
+  assert.equal(view(root), "2");
+  assert.deepEqual(stepStatuses(root).slice(0, 2), ["done", "current"]);
+  assert.match(text(one(root, "data-start-step", "1")), /已确认 1 位/);
+  assert.ok(!text(root.root).includes("已先跳过"));
+  act(() => root.unmount());
+});
+
+test("W0054 SC-02: a user with completedAt opens on the finish card even with only 2 contacts left", async (t) => {
+  const api = stubBrowser(t);
+  const root = await mount(props({ relationshipGoal: "找渠道", snapshot: { completedAt: "2026-10-01T00:00:00.000Z", confirmedContacts: 2, hasActivePlan: true } }));
+  assert.equal(view(root), "finish");
+  assert.equal(byData(root, "data-start-finish").length, 1);
+  assert.deepEqual(api.patches, []);
   act(() => root.unmount());
 });
 
@@ -391,12 +437,8 @@ test("step 1 slots list pending cards from the batch with their count", () => {
         onNext={() => undefined}
         onReset={() => undefined}
         onScan={() => undefined}
-        onSkip={() => undefined}
         samples={[{ displayName: "王砚", organization: null, role: null }]}
         scanOpen={false}
-        skipError=""
-        skipped={false}
-        skipping={false}
       />,
     );
   });
@@ -557,7 +599,7 @@ test("step 3: when a plan already exists the button opens that plan instead of m
 
 /* ── currentStep 写入顺序（SC-04） ─────────────────────────────────────── */
 
-test("every currentStep write goes through one serial queue: 2 → 1 then skip ends at {step1Skipped: true, currentStep: 3}", async (t) => {
+test("every currentStep write goes through one serial queue: 2 → 1 → 3 coalesces to {currentStep: 3}", async (t) => {
   stubBrowser(t);
   // 覆盖 stubBrowser 的 fetch：PATCH 的响应由测试手动放行，而且总是先放行**最后**发出的那个
   // （模拟网络倒序到达）；服务端按放行顺序落库。串行队列下同一时刻只会有一个请求在路上。
@@ -586,25 +628,22 @@ test("every currentStep write goes through one serial queue: 2 → 1 then skip e
     await settle();
   };
 
-  // 有目标：第 2 步已完成可重开；跳过第 1 步后前进到第 3 步。
-  const root = await mount(props({ relationshipGoal: "找渠道" }));
+  // 3 位联系人、有目标：第 1、2 步已完成可重开，第 3 步进行中。
+  const root = await mount(props({ relationshipGoal: "找渠道", snapshot: { confirmedContacts: 3 } }));
   await click(one(root, "data-start-step", "2"));
   await click(one(root, "data-start-step", "1"));
   assert.equal(view(root), "1");
-  await act(async () => {
-    one(root, "data-start-skip-button").props.onClick();
-  });
-  await settle();
+  await click(one(root, "data-start-step", "3"));
   assert.deepEqual(sent, [{ currentStep: 2 }], "later writes wait for the one in flight");
 
   while (pending.length) await releaseLatest();
 
-  assert.deepEqual(sent, [{ currentStep: 2 }, { currentStep: 1 }, { currentStep: 3, step1Skipped: true }]);
+  // 在路上时的中间值（1）被合并掉，只补发最后想要的步骤。
+  assert.deepEqual(sent, [{ currentStep: 2 }, { currentStep: 3 }]);
   assert.equal(maxInFlight, 1);
-  assert.deepEqual(server, { currentStep: 3, step1Skipped: true });
+  assert.deepEqual(server, { currentStep: 3 });
   assert.equal(view(root), "3");
-  // 跳过确认后不会再补发更早的 {currentStep: 1}。
   await settle();
-  assert.equal(sent.length, 3);
+  assert.equal(sent.length, 2);
   act(() => root.unmount());
 });

@@ -2,12 +2,14 @@
  * 引导进度与「是否进入示例」判定（W0004；W0005／W0006／W0014 复用）。
  *
  * 进度从真实数据推导，另加引导记录里的少量标记（规则在 `start-steps.ts`，客户端共用）：
- *   第 1 步 名片：本人已确认联系人 ≥ 3，或引导记录 `step1Skipped`（W0006「先这样，继续」）
+ *   第 1 步 名片：本人已确认联系人 ≥ 3；W0054 起不能再跳过，存量 `step1Skipped = true`（W0006 时点过
+ *     「先这样，继续」）只读兼容、照算完成（W54-1）
  *   第 2 步 目标：profile 的 relationshipGoal 非空
  *   第 3 步 计划：有生效中的计划（`features/plans` 的 `getCurrent()`）
  * （W0006 的「活动」一步已在 W0035 删除，引导只有这 3 步。）
  *
- * 进入示例 = 开关打开（D1）且第 1–3 步未全部完成且不是 D2 老用户。
+ * 进入示例 = 开关打开（D1）且第 1–3 步未全部完成且不是 D2 老用户。W0054（W54-5）：引导记录有
+ * `completedAt` 即永远不在示例（闩锁），首页路径第一次推导出完成时补写它。
  *
  * D2 老用户：账号创建早于 `ORBIT_GUIDE_DEMO_SINCE` 且**首次判定**时已确认联系人 ≥ 3。
  * 读不到账号创建时间（或没配 SINCE）时按「已确认联系人 ≥ 3 即老用户」判定。首次判定的
@@ -66,7 +68,7 @@ export function deriveGuideProgress(input: {
   grandfathered?: boolean;
   hasActivePlan: boolean;
   relationshipGoal: string | null | undefined;
-  /** 第 1 步点过「先这样，继续」（W0006）。 */
+  /** 存量：第 1 步点过「先这样，继续」（W0006）；W0054 起只读兼容（W54-1），不再有新的跳过。 */
   step1Skipped?: boolean;
 }): GuideProgress {
   const confirmedContacts = Math.max(0, Math.floor(input.confirmedContacts));
@@ -251,6 +253,11 @@ export async function readGuideStatusForActor(
   if (state.value.grandfathered === true) {
     return { bannerCollapsed: state.value.bannerCollapsed, grandfathered: true, inDemo: false, progress: null };
   }
+  // W0054（W54-5）：completedAt 是唯一闩锁——引导完成过一次就永远算完成，不再读联系人计数与计划，
+  // 之后删联系人、计划到期、目标清空都不回示例（联系人不足 3 位由人脉分析门槛卡在功能处提示）。
+  if (state.value.completedAt) {
+    return { bannerCollapsed: state.value.bannerCollapsed, grandfathered: false, inDemo: false, progress: null };
+  }
 
   const countContacts = dependencies.countConfirmedContacts ?? configuredConfirmedContactCounter();
   const contacts = await attempt(() => countContacts(actorId));
@@ -281,6 +288,11 @@ export async function readGuideStatusForActor(
     relationshipGoal: input.relationshipGoal,
     step1Skipped: state.value.step1Skipped,
   });
+  if (progress.completed === GUIDE_STEP_ORDER.length) {
+    // 首页路径第一次推导出 3 步完成时补写闩锁（没打开过 /app/start 的人也有 completedAt）。
+    // 写失败不影响本次显示、不抛错，下次再写。
+    await attempt(() => service.markCompleted());
+  }
   return {
     bannerCollapsed: state.value.bannerCollapsed,
     grandfathered: false,

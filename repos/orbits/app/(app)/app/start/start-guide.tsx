@@ -6,7 +6,9 @@
  *   严格顺序，点锁定的步骤只提示「先完成第 n 步」，不切换（W0035 删去原来的「活动」一步）；
  * - 主体只有当前步骤一张卡片；3 步都完成后显示「✓ 3 步都完成了」完成卡片；
  * - 当前停在第几步写进引导记录 `currentStep`（切换步骤、某一步完成后前进时写），刷新或换设备
- *   停在同一步；第 1 步「先这样，继续」写 `step1Skipped`；
+ *   停在同一步；W0054（RN-12）起第 1 步只认 3 位已确认联系人，没有跳过入口，「扫名片」旁常驻
+ *   「导入人脉」（W54-2）；存量 `step1Skipped = true` 只读兼容（W54-1）；有 `completedAt` 的人进页面
+ *   默认显示完成卡片（W54-5）；
  * - 名片批次状态机挂在本页顶层（与 onboarding 在流程内扫名片同一写法），全站 CardBatchHost
  *   在 /app/start 让位，同一批次不会被处理两次。
  */
@@ -20,7 +22,7 @@ import {
   deriveStartGuideFlags,
   firstIncompleteStartStep,
   GUIDE_START_STEPS,
-  resolveRequestedStartView,
+  resolveStartEntryView,
   startStepDone,
   startStepStatus,
   viewAfterStepDone,
@@ -70,15 +72,12 @@ export async function patchGuideState(body: Record<string, unknown>): Promise<bo
 }
 
 /**
- * 引导记录的写入队列：所有带 `currentStep` 的写（点步骤、跳过第 1 步、保存目标后前进、
- * 自动前进）都排进同一条串行队列，同一时刻最多一个请求在路上，服务端按发出的顺序收到。
+ * 引导记录的写入队列：所有 `currentStep` 的写（点步骤、保存目标后前进、自动前进）都排进同一条
+ * 串行队列，同一时刻最多一个请求在路上，服务端按发出的顺序收到。
  *
  * - `write(step)`：记下「想停在哪一步」；轮到它时只在与服务端已确认的值不同时才发，
- *   连点时中间的值会被合并掉，最后一次为准；
- * - `send(body)`：带其他字段的写（跳过第 1 步 `{ step1Skipped, currentStep }`）排在已经在
- *   路上 / 排队的写之后；成功后把「想要的值」也设成它确认的值，排在它前面的旧点击不会在它之后
- *   再被补发。
- * 写失败即停，界面保留本次的选择，下次切换再写。
+ *   连点时中间的值会被合并掉，最后一次为准。
+ * 写失败即停，界面保留本次的选择，下次切换再写。（W0054 删去跳过第 1 步的 `send`。）
  */
 function useGuideStateQueue(initial: GuideStartStep | null) {
   const desiredRef = useRef<GuideStartStep | null>(initial);
@@ -101,16 +100,6 @@ function useGuideStateQueue(initial: GuideStartStep | null) {
     }
 
     return {
-      send(body: { currentStep?: GuideStartStep; step1Skipped?: true }): Promise<boolean> {
-        return enqueue(async () => {
-          const ok = await patchGuideState(body);
-          if (ok && body.currentStep !== undefined) {
-            confirmedRef.current = body.currentStep;
-            desiredRef.current = body.currentStep;
-          }
-          return ok;
-        });
-      },
       write(step: GuideStartStep) {
         desiredRef.current = step;
         if (flushQueuedRef.current) return;
@@ -140,7 +129,6 @@ function stepSubtitle(input: {
   confirmedContacts: number;
   flags: StartGuideFlags;
   goal: string;
-  skipped: boolean;
   step: GuideStartStep;
   t: T;
 }): { lock: boolean; text: string } {
@@ -165,13 +153,7 @@ function stepSubtitle(input: {
     };
   }
   if (step === 1) {
-    return {
-      lock: false,
-      text:
-        confirmedContacts >= 3 || !input.skipped
-          ? t({ en: `${confirmedContacts} confirmed`, zh: `已确认 ${confirmedContacts} 位` })
-          : t({ en: "Skipped for now", zh: "已先跳过" }),
-    };
+    return { lock: false, text: t({ en: `${confirmedContacts} confirmed`, zh: `已确认 ${confirmedContacts} 位` }) };
   }
   if (step === 2) {
     const horizon = parseRelationshipGoal(input.goal).horizon;
@@ -191,10 +173,8 @@ export function StartGuide(props: StartGuideProps) {
   const { snapshot } = props;
 
   // 本页内的即时变化；服务端刷新（router.refresh）后以新的 props 为准。
-  const [localSkipped, setLocalSkipped] = useState(false);
   const [savedGoal, setSavedGoal] = useState<string | null>(null);
   const [savedProfileAt, setSavedProfileAt] = useState<string | null>(null);
-  const skipped = snapshot.step1Skipped || localSkipped;
   const goal = savedGoal ?? props.relationshipGoal;
   const profileUpdatedAt = savedProfileAt ?? props.profileUpdatedAt;
 
@@ -205,13 +185,14 @@ export function StartGuide(props: StartGuideProps) {
         grandfathered: snapshot.grandfathered,
         hasActivePlan: snapshot.hasActivePlan,
         relationshipGoal: goal,
-        step1Skipped: skipped,
+        // W54-1：存量跳过只读兼容。
+        step1Skipped: snapshot.step1Skipped,
       }),
-    [goal, skipped, snapshot.confirmedContacts, snapshot.grandfathered, snapshot.hasActivePlan],
+    [goal, snapshot.confirmedContacts, snapshot.grandfathered, snapshot.hasActivePlan, snapshot.step1Skipped],
   );
 
   const [view, setView] = useState<StartView>(() =>
-    resolveRequestedStartView(flags, snapshot.currentStep, props.requestedStep ?? null),
+    resolveStartEntryView(flags, snapshot.currentStep, props.requestedStep ?? null, snapshot.completedAt),
   );
   const [lockedNote, setLockedNote] = useState("");
   const writer = useGuideStateQueue(snapshot.currentStep);
@@ -262,24 +243,6 @@ export function StartGuide(props: StartGuideProps) {
     if (imported > importedRef.current) router.refresh();
     importedRef.current = imported;
   }, [imported, router]);
-
-  const [skipping, setSkipping] = useState(false);
-  const [skipError, setSkipError] = useState("");
-  const skipContacts = useCallback(async () => {
-    if (skipping) return;
-    setSkipping(true);
-    setSkipError("");
-    const next = viewAfterStepDone({ ...flags, contacts: true });
-    const ok = await writer.send(next === "finish" ? { step1Skipped: true } : { currentStep: next, step1Skipped: true });
-    setSkipping(false);
-    if (!ok) {
-      setSkipError(t({ en: "Couldn't save that. Please try again.", zh: "没有保存成功，请再试一次。" }));
-      return;
-    }
-    setLocalSkipped(true);
-    setLockedNote("");
-    setView(next);
-  }, [flags, skipping, t, writer]);
 
   const onGoalSaved = useCallback(
     (value: string, updatedAt: string | null, options: { advance: boolean }) => {
@@ -341,7 +304,7 @@ export function StartGuide(props: StartGuideProps) {
             <ol aria-label={t({ en: "Guide, 3 steps", zh: "引导 3 步" })} className="sg-steps">
               {GUIDE_START_STEPS.map((step) => {
                 const status = startStepStatus(flags, step);
-                const sub = stepSubtitle({ confirmedContacts: snapshot.confirmedContacts, flags, goal, skipped, step, t });
+                const sub = stepSubtitle({ confirmedContacts: snapshot.confirmedContacts, flags, goal, step, t });
                 return (
                   <li key={step}>
                     <button
@@ -401,12 +364,8 @@ export function StartGuide(props: StartGuideProps) {
                 onNext={() => advance(viewAfterStepDone(flags))}
                 onReset={() => setCardBatchId(null)}
                 onScan={() => setScanOpen(true)}
-                onSkip={() => void skipContacts()}
                 samples={snapshot.contactSamples}
                 scanOpen={scanOpen}
-                skipError={skipError}
-                skipped={skipped}
-                skipping={skipping}
               />
             ) : null}
             {view === 2 ? (

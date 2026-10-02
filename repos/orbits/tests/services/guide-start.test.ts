@@ -1,9 +1,9 @@
 /**
  * W0006 SC-02 / SC-04（服务层）：引导页 /app/start 的步骤规则与服务端读取。
  *
- * - 纯函数：第 1 步（≥3 位 / 跳过 / D2 老用户）、第 2 步（有目标 / 老用户）、第 3 步（有计划）；
+ * - 纯函数：第 1 步（≥3 位 / 存量跳过只读兼容 / D2 老用户）、第 2 步（有目标 / 老用户）、第 3 步（有计划）；
  *   W0035 起只有这 3 步，严格顺序；进页面停在哪一步；
- * - 引导记录：step1Skipped 只能置 true、currentStep 1–3、completedAt 只写一次并清空 currentStep，
+ * - 引导记录：W0054 起 step1Skipped 不再可写（存量只读）、currentStep 1–3、completedAt 只写一次并清空 currentStep，
  *   v1 旧记录按默认值补齐；存量 currentStep = 4（W0035 前写的）读成 null；
  * - 读取器：开关关零读取；新用户 / 老用户 / 跳过；前 3 步完成时写 completedAt；读不到时 unavailable。
  */
@@ -25,11 +25,14 @@ import {
 } from "../../features/guide/progress";
 import {
   canOpenStartStep,
+  contactsStepDone,
+  START_REQUIRED_CONTACTS,
   deriveStartGuideFlags,
   GUIDE_START_STEPS,
   firstIncompleteStartStep,
   parseStartStepParam,
   resolveRequestedStartView,
+  resolveStartEntryView,
   resolveStartView,
   startStepStatus,
   viewAfterStepDone,
@@ -51,11 +54,36 @@ const flagsOf = (overrides: Partial<typeof base>): StartGuideFlags => deriveStar
 
 /* ── 纯函数 ───────────────────────────────────────────────────────────── */
 
-test("step 1 is done by 3 confirmed contacts, by skipping, or for a D2 legacy user", () => {
+test("W0054 SC-01: step 1 is done only by 3 confirmed contacts, a D2 legacy user, or a stored legacy skip (W54-1, read-only)", () => {
+  assert.equal(contactsStepDone({ confirmedContacts: 2 }), false);
+  assert.equal(contactsStepDone({ confirmedContacts: 3 }), true);
+  assert.equal(contactsStepDone({ confirmedContacts: 0, grandfathered: true }), true);
+  assert.equal(START_REQUIRED_CONTACTS, 3);
   assert.equal(flagsOf({ confirmedContacts: 2 }).contacts, false);
   assert.equal(flagsOf({ confirmedContacts: 3 }).contacts, true);
+  // W54-1：存量 step1Skipped = true（W0006 时点过「先这样，继续」）不打回，照算完成。
   assert.equal(flagsOf({ confirmedContacts: 1, step1Skipped: true }).contacts, true);
   assert.equal(flagsOf({ grandfathered: true }).contacts, true);
+});
+
+test("W0054 SC-02: once completedAt is recorded /app/start opens on the finish card even with fewer than 3 contacts", () => {
+  const twoLeft = flagsOf({ confirmedContacts: 2, relationshipGoal: "x", hasActivePlan: false });
+  assert.equal(resolveStartEntryView(twoLeft, null, null, "2026-10-01T00:00:00.000Z"), "finish");
+  assert.equal(resolveStartEntryView(twoLeft, null, parseStartStepParam("4"), "2026-10-01T00:00:00.000Z"), "finish");
+  // 显式 ?step=1（能打开）仍可回看；锁定的请求不越过顺序，回到完成卡片。
+  assert.equal(resolveStartEntryView(twoLeft, null, 1, "2026-10-01T00:00:00.000Z"), 1);
+  assert.equal(resolveStartEntryView(twoLeft, null, 3, "2026-10-01T00:00:00.000Z"), "finish");
+  // 完成后又记录了一个能打开的步骤：照旧打开它。
+  const complete = flagsOf({ confirmedContacts: 3, relationshipGoal: "x", hasActivePlan: true });
+  assert.equal(resolveStartEntryView(complete, 2, null, "2026-10-01T00:00:00.000Z"), 2);
+  // 没有 completedAt：与改前完全一致。
+  for (const flags of [flagsOf({}), twoLeft, complete]) {
+    for (const recorded of [null, 1, 2, 3] as const) {
+      for (const requested of [null, 1, 2, 3] as const) {
+        assert.equal(resolveStartEntryView(flags, recorded, requested, null), resolveRequestedStartView(flags, recorded, requested));
+      }
+    }
+  }
 });
 
 test("W0035: the guide has exactly 3 steps and no events flag", () => {
@@ -204,9 +232,10 @@ test("guide state v2: step1Skipped, currentStep and completedAt; v1 records read
     version: 2,
   });
 
-  const updated = await old.update({ currentStep: 2, step1Skipped: true });
+  // W0054：update 不再写 step1Skipped（类型上也不接受）；传进来也不落库。
+  const updated = await old.update({ currentStep: 2, step1Skipped: true } as never);
   assert.equal(updated.currentStep, 2);
-  assert.equal(updated.step1Skipped, true);
+  assert.equal(updated.step1Skipped, false);
   assert.equal(updated.bannerCollapsed, true, "other fields survive");
   await assert.rejects(() => old.update({ currentStep: 7 as never }), /1–3/);
   await assert.rejects(() => old.update({ currentStep: 4 as never }), /1–3/, "W0035: step 4 is gone");
@@ -398,21 +427,40 @@ test("a D2 legacy user has steps 1–2 done and stops at step 3 (plan still read
   assert.equal(demo?.inDemo, false);
 });
 
-test("the skip flag and recorded step come back from the guide record", async () => {
+/** W0054：存量跳过记录只能由旧代码写入；测试直接写一条 W0006 时代的记录。 */
+async function seedLegacySkip(store: ReturnType<typeof createMemoryLiveRecordStore<GuideStatePayload>>, actorId: string, currentStep: number): Promise<void> {
+  await store.upsertRecord({
+    collectionName: GUIDE_STATE_COLLECTION,
+    createdAt: "2026-10-01T00:00:00.000Z",
+    evidenceIds: [],
+    lifecycleState: "active",
+    payload: { currentStep, grandfathered: false, step1Skipped: true, version: 2 },
+    recordId: "current",
+    sourceId: "guide-state",
+    sourceType: "manual",
+    updatedAt: "2026-10-01T00:00:00.000Z",
+    userId: actorId,
+    workspaceId: guideStateWorkspaceId(WORKSPACE, actorId),
+  });
+}
+
+test("W54-1: a stored legacy skip and recorded step come back from the guide record and stop at step 2", async () => {
   const w = readerWorld();
-  await w.serviceFor("actor:skip").update({ currentStep: 2, step1Skipped: true });
+  await seedLegacySkip(w.store, "actor:skip", 2);
   const result = await w.read("actor:skip", null);
   assert.equal(result.kind, "ready");
   if (result.kind !== "ready") return;
   assert.equal(result.snapshot.step1Skipped, true);
   assert.equal(result.snapshot.currentStep, 2);
+  const flags = deriveStartGuideFlags({ ...result.snapshot, relationshipGoal: null });
+  assert.equal(resolveStartEntryView(flags, result.snapshot.currentStep, null, result.snapshot.completedAt), 2);
 });
 
 test("the first time steps 1–3 are all done, completedAt is written once and the recorded step is cleared", async () => {
   const w = readerWorld();
   w.contacts.set("actor:done", 2);
   w.createdAt.set("actor:done", "2026-11-01T00:00:00Z");
-  await w.serviceFor("actor:done").update({ currentStep: 3, step1Skipped: true });
+  await seedLegacySkip(w.store, "actor:done", 3);
   w.plans.add("actor:done");
   const first = await w.read("actor:done", "找渠道");
   assert.equal(first.kind, "ready");

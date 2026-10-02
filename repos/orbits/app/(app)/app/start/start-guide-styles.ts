@@ -78,7 +78,6 @@ ${S} .sg-slot[data-slot="pending"] i { color: #C4461B; }
 ${S} .sg-slot[data-slot="empty"] { border-style: dashed; border-color: #B9BCEB; background: transparent; justify-content: center; }
 ${S} .sg-count { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 13px; color: #6B6F99; }
 ${S} .sg-count b { color: #0E1225; font-weight: 500; font-variant-numeric: tabular-nums; }
-${S} .sg-skip { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; font-size: 13px; color: #6B6F99; padding-top: 12px; border-top: 1px dashed #DDDEFA; }
 
 /* 第 2 步 */
 ${S} .sg-from-ob { font-size: 13.5px; color: #3B3F7A; background: #F4F5FC; border-radius: 10px; padding: 10px 14px; }
