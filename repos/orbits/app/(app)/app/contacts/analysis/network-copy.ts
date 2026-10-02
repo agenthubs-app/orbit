@@ -157,3 +157,64 @@ export function structureDetailInsight(input: { label: string; count: number; st
     en: `This group has ${input.count} ${input.count === 1 ? "contact" : "contacts"}; most are ${strength.en}.`,
   }, language);
 }
+
+// ---------------------------------------------------------------------------
+// W0052（review P2）：关系时间线条目的摘要模板（概览「最近动态」）
+// ---------------------------------------------------------------------------
+
+/** 计划日志事件（`plan_log.event` 封闭集）→ 双语模板；未知事件走通用句。 */
+const TIMELINE_PLAN_EVENT_COPY: Readonly<Record<string, NetworkCopy>> = {
+  action_deferred: { zh: "计划：行动顺延", en: "Plan: action deferred" },
+  contact_established: { zh: "计划：确认已建立联系", en: "Plan: connection confirmed" },
+  contact_linked: { zh: "计划：关联到计划人脉需求", en: "Plan: linked to a plan need" },
+  contact_unlinked: { zh: "计划：取消关联", en: "Plan: unlinked" },
+  item_status_changed: { zh: "计划：行动状态更新", en: "Plan: action status updated" },
+  note: { zh: "计划：记录", en: "Plan: note" },
+};
+
+const TIMELINE_CAPTURE_COPY: Readonly<Record<string, NetworkCopy>> = {
+  business_card: { zh: "扫描名片，建立联系", en: "Added from a business card" },
+  event_exchange: { zh: "在活动中交换名片", en: "Exchanged cards at an event" },
+  manual: { zh: "手动添加联系人", en: "Added manually" },
+  qr: { zh: "扫码交换，建立联系", en: "Connected by QR code" },
+};
+
+const TIMELINE_SCHEDULE_COPY: Readonly<Record<string, NetworkCopy>> = {
+  event: { zh: "参加了活动", en: "Attended an event" },
+  meeting: { zh: "会面", en: "Meeting" },
+};
+
+const own = <T>(table: Readonly<Record<string, T>>, key: string | undefined): T | undefined =>
+  key !== undefined && Object.prototype.hasOwnProperty.call(table, key) ? table[key] : undefined;
+
+/**
+ * 一条关系时间线条目的摘要（封闭白名单）：按 `source` 显式分支，只用本文件模板 × 结构化字段
+ * （`eventId` 有无、`detail.planEvent／scheduleKind／captureMethod` 封闭集）；用户写的 memo／笔记正文（excerpt）原样照出。
+ * 条目的 `title`（构建器拼好的整句）一律不读——后端句子不进页面。
+ */
+export function timelineSummaryCopy(item: {
+  source: string;
+  excerpt?: string;
+  eventId?: string;
+  detail?: { planEvent?: string; scheduleKind?: string; captureMethod?: string };
+}): NetworkCopy {
+  const userText = item.excerpt?.trim();
+  switch (item.source) {
+    case "memo":
+      return userText ? { zh: userText, en: userText } : { zh: "写了 memo", en: "Wrote a memo" };
+    case "note":
+      return userText ? { zh: userText, en: userText } : { zh: "写了笔记", en: "Wrote a note" };
+    case "encounter":
+      return item.eventId ? { zh: "在活动上见面", en: "Met at an event" } : { zh: "记录了一次见面", en: "Logged a meeting" };
+    case "plan":
+      return own(TIMELINE_PLAN_EVENT_COPY, item.detail?.planEvent) ?? { zh: "计划：更新", en: "Plan: updated" };
+    case "schedule":
+      return own(TIMELINE_SCHEDULE_COPY, item.detail?.scheduleKind) ?? { zh: "日程", en: "Schedule item" };
+    case "followup_done":
+      return { zh: "完成了一次跟进", en: "Completed a follow-up" };
+    case "capture":
+      return own(TIMELINE_CAPTURE_COPY, item.detail?.captureMethod) ?? { zh: "建立联系", en: "Connected" };
+    default:
+      return { zh: "有一条新记录", en: "New record" };
+  }
+}

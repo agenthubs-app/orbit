@@ -14,7 +14,8 @@
  * W0051：第三个标签 `?tab=insight` 只在该标签读 `loadInsightsTab`（只读 contact_insights 一页 30 位，0 次 AI、0 次配额预留）；
  * 示例模式下同样只显示横条与说明。
  * W0052：概览（无 tab）另外并行读驾驶舱附加数据（`loadOverviewCockpit`：快照只读视图、计划 getCurrent + 纯投影、
- * 待确认匹配、时间线最近 5 条、档位看板前 2 位、一次姓名读取），「按来源」用名单读取已有的全量分面；概览不再读本页档位表。
+ * 待确认匹配、时间线最近 5 条、档位看板前 2 位、一次姓名读取），「按来源」用名单读取已有的全量分面；概览不再读本页档位表，
+ * 也不刷新强度缓存（review P1：打开概览对任何表 0 写入，与机会标签同一口径）。
  * 示例模式概览用 `buildDemoNetworkOverviewParts`（0 次读取）。
  */
 import { redirect } from "next/navigation";
@@ -68,7 +69,8 @@ export default async function AppContactsDashboardPage({ searchParams }: {
   ]);
   if (guide) {
     const now = new Date();
-    const lang = language === "en" ? "en" : "zh";
+    // zh 中文，en 与 ja 英文（沿用 t() 的 ja→en 回退；W0052 review P2）。
+    const lang = language === "zh" ? "zh" : "en";
     const overview = params?.tab !== "structure" && params?.tab !== "opportunities" && params?.tab !== "insight";
     return (
       <>
@@ -88,8 +90,9 @@ export default async function AppContactsDashboardPage({ searchParams }: {
   const tab = params?.tab === "structure" || params?.tab === "opportunities" || params?.tab === "insight" ? params.tab : "overview";
   // W0047：先刷新关系强度读模型（来源戳与东京日未变时只读一条语句；失败不影响页面），分析里的档位分布读它。
   // W0050（D46③、review P1）：机会标签对任何表 0 写入——不刷新强度缓存，直接读上次算好的结果（待唤醒、档位分布），
-  // 刷新交给概览、结构、管线等其他入口；缓存为空时待唤醒如实显示空态。
-  const strengthState = tab === "opportunities" ? null : await ensureRelationshipStrengthsForPage(actor.id, new Date());
+  // 刷新交给结构、洞察、管线、名单等其他入口；缓存为空时待唤醒如实显示空态。
+  // W0052（review P1）：概览同样对任何表 0 写入——不刷新强度缓存，只读上次算好的档位（缺的如实标「待统计」）。
+  const strengthState = tab === "opportunities" || tab === "overview" ? null : await ensureRelationshipStrengthsForPage(actor.id, new Date());
   const analysisPromise = loadContactsAnalysis(actor.id, language);
   // W0050（W50-5）：标签由 URL 驱动，服务端只读当前标签的数据——结构附加数据只在 ?tab=structure，机会数据只在 ?tab=opportunities。
   const goalPromise = analysisPromise.then((value) => (value.state === "ready" && "data" in value.goal ? value.goal.data.text || null : null));

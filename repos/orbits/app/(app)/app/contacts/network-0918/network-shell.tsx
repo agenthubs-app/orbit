@@ -306,6 +306,7 @@ export const NETWORK_STYLES = `
 [data-orbit-real-page="network"] .nw-cockpit-label { font-size: 13px; color: #6B6F99; }
 [data-orbit-real-page="network"] .nw-cockpit-plan-cta { color: #4B4FC7; }
 [data-orbit-real-page="network"] .nw-cockpit-sentence { line-height: 1.6; }
+[data-orbit-real-page="network"] .nw-tier-pending { font-size: 13px; color: #8A6420; }
 @media (max-width: 700px) {
   [data-orbit-real-page="network"] .nw-recent-thead { display: none; }
   [data-orbit-real-page="network"] .nw-recent-row { grid-template-columns: 40px minmax(0, 1fr) auto; grid-template-areas: "avatar name badge" "avatar summary summary" "avatar when when"; row-gap: 4px; column-gap: 12px; }

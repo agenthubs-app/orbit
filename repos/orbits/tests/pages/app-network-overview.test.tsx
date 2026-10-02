@@ -11,7 +11,7 @@ import type { OrbitLanguage } from "../../shared/contract/language";
 import type { OrbitContactsViewModel } from "../../app/(app)/app/orbit-contacts-route-view-model";
 import { forbiddenHits, networkDebugPayload, networkEmptyPayload, networkSectionFailurePayload, networkSections, networkUnavailablePayload } from "../fixtures/network-debug-payload";
 import { buildNetworkOverviewData, type OverviewCockpitParts } from "../../app/(app)/app/contacts/network-0918/network-overview-cockpit-model";
-import { ANALYSIS_35, SNAPSHOT_FAILED, SNAPSHOT_NONE, parts } from "../fixtures/network-overview-cockpit";
+import { ANALYSIS_35, SNAPSHOT_FAILED, SNAPSHOT_NONE, analysisWithHealth, parts } from "../fixtures/network-overview-cockpit";
 
 const empty = { connections: [], events: [], intros: [], pipelineStatuses: [] };
 const ready: ContactsAnalysisView = {
@@ -77,7 +77,9 @@ test("SC-W0052-01/02/03 (zh): cards, tier bar, highlights and activity from the 
   assert.equal((activity.match(/class="nw-recent-row"/g) ?? []).length, 5);
   assert.match(activity, /data-timeline-source="memo"[\s\S]*?href="\/app\/contacts\/c1">王敏<\/a>[\s\S]*?nw-recent-badge">memo<[\s\S]*?nw-recent-org">聊了试用，下周再约<[\s\S]*?nw-recent-last">9月30日 18:00</);
   assert.match(activity, /data-timeline-source="encounter"[\s\S]*?nw-recent-badge">见面<[\s\S]*?nw-recent-org">在活动上见面</);
-  assert.match(activity, /data-timeline-source="schedule"[\s\S]*?nw-recent-org">会面：Lunch</);
+  assert.match(activity, /data-timeline-source="schedule"[\s\S]*?nw-recent-org">会面</);
+  // 白名单：夹具里每条后端 title 都是英文调试句，页面 0 命中（review P2）。
+  assert.doesNotMatch(html, /DEBUG|backend title|confirmed by|example\.invalid/);
   assert.ok(activity.indexOf("王敏") < activity.indexOf("佐々木 健") && activity.indexOf("佐々木 健") < activity.indexOf("Lin Zhi"), "newest first");
   // 名单之外的人名也照常显示（姓名不经 localizeOrbitTree）。
   assert.match(activity, /佐々木 健/);
@@ -133,6 +135,16 @@ test("SC-W0052-03: empty timeline → 「还没有互动记录」; timeline fail
   assert.doesNotMatch(sections.tiers ?? "", UNAVAILABLE);
   assert.match(sections.cockpit ?? "", /35 位联系人/);
   assert.match(sections.tiers ?? "", /nw-stage-n">12</);
+});
+
+test("SC-W0052-02 (review P2): an incomplete tier cache shows 「N 人待统计」 under the bar instead of zeros", () => {
+  const partial = analysisWithHealth([{ count: 8, id: "core" }]);
+  const zh = withoutStyles(renderToStaticMarkup(<NetworkOverview analysis={partial} overview={overviewFor(partial)} />));
+  assert.match(networkSections(zh).tiers ?? "", /nw-tier-pending" role="status">27 人待统计（档位统计更新中）</);
+  const en = inLanguage("en", <NetworkOverview analysis={partial} overview={overviewFor(partial)} />);
+  assert.match(en, /27 contacts not yet tiered \(tiers updating\)/);
+  const complete = withoutStyles(renderToStaticMarkup(<NetworkOverview analysis={ANALYSIS_35} overview={overviewFor(ANALYSIS_35)} />));
+  assert.doesNotMatch(complete, /nw-tier-pending/);
 });
 
 test("SC-W0052-04: donut centre is the full count (35), not a 30-row list page; industry/region rows come from the full distribution", () => {

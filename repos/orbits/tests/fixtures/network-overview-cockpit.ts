@@ -67,16 +67,16 @@ export const PLAN: OpportunityPlanView = {
 /** 6 人 9 条时间线（未排序），覆盖全部 7 种来源。 */
 const item = (id: string, source: RelationshipTimelineSource, contactId: string, occurredAt: string, extra: Partial<RelationshipTimelineItem> = {}): RelationshipTimelineItem => ({
   contactId, id, occurredAt, occurredAtPrecision: "instant", ref: { recordId: id, store: "contacts" }, source,
-  title: { en: `EN ${source}`, zh: `中 ${source}` }, ...extra,
+  title: { en: `DEBUG backend title for ${source} confirmed by qa@example.invalid`, zh: `DEBUG backend title for ${source}` }, ...extra,
 });
 export const TIMELINE_9: RelationshipTimelineItem[] = [
-  item("capture:1", "capture", "rec:c6", "2026-09-01T00:00:00.000Z", { title: { en: "Added from a business card", zh: "扫描名片，建立联系" } }),
+  item("capture:1", "capture", "rec:c6", "2026-09-01T00:00:00.000Z", { detail: { captureMethod: "business_card" } }),
   item("memo:1", "memo", "rec:c1", "2026-09-30T09:00:00.000Z", { excerpt: "聊了试用，下周再约" }),
-  item("note:1", "note", "rec:c2", "2026-09-29T09:00:00.000Z", { excerpt: "Notes in English", title: { en: "Note: Kickoff", zh: "笔记：Kickoff" } }),
-  item("encounter:1", "encounter", "rec:c3", "2026-09-28T09:00:00.000Z", { excerpt: "（会场备注）", title: { en: "Met at an event", zh: "在活动上见面" } }),
-  item("plan:1", "plan", "rec:c4", "2026-09-27T09:00:00.000Z", { title: { en: "Plan: connection confirmed", zh: "计划：确认已建立联系" } }),
-  item("schedule:1", "schedule", "rec:c5", "2026-09-26T09:00:00.000Z", { title: { en: "Meeting: Lunch", zh: "会面：Lunch" } }),
-  item("followup_done:1", "followup_done", "rec:c1", "2026-09-25T09:00:00.000Z", { title: { en: "Follow-up done: Send deck", zh: "完成跟进：Send deck" } }),
+  item("note:1", "note", "rec:c2", "2026-09-29T09:00:00.000Z", { excerpt: "Notes in English" }),
+  item("encounter:1", "encounter", "rec:c3", "2026-09-28T09:00:00.000Z", { eventId: "event:1", excerpt: "（会场备注）" }),
+  item("plan:1", "plan", "rec:c4", "2026-09-27T09:00:00.000Z", { detail: { planEvent: "contact_established" } }),
+  item("schedule:1", "schedule", "rec:c5", "2026-09-26T09:00:00.000Z", { detail: { scheduleKind: "meeting" } }),
+  item("followup_done:1", "followup_done", "rec:c1", "2026-09-25T09:00:00.000Z"),
   item("memo:2", "memo", "rec:c2", "2026-09-24T09:00:00.000Z", { excerpt: "旧 memo" }),
   item("capture:2", "capture", "rec:c5", "2026-08-01T00:00:00.000Z"),
 ];
@@ -112,3 +112,10 @@ export function parts(overrides: Partial<OverviewCockpitParts> = {}): OverviewCo
   };
 }
 
+
+/** 35 人夹具，只换档位分布（review P2：缓存为空／只覆盖部分联系人）。 */
+export function analysisWithHealth(health: Array<{ id: "new" | "active" | "core" | "dormant"; count: number }>): ContactsAnalysisView {
+  const base = ANALYSIS_35 as Extract<ContactsAnalysisView, { state: "ready" }>;
+  const data = (base.structure as Extract<typeof base.structure, { data: unknown }>).data;
+  return { ...base, structure: { data: { ...data, health: health.map((row) => ({ ...row, percentage: 0 })) }, state: health.length ? "ready" : "empty" } };
+}

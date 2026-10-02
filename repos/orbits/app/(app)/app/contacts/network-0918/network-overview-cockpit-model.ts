@@ -18,7 +18,7 @@ import type { EvidenceContactName } from "../../../../../features/network-analys
 import type { OpportunityPlanView } from "../../../../../features/plans/coverage";
 import type { RelationshipTimelineItem, RelationshipTimelineSource } from "../../../../../shared/contract/relationship-timeline";
 import type { ContactsAnalysisView } from "../analysis/contacts-analysis-view-model";
-import type { NetworkCopy } from "../analysis/network-copy";
+import { timelineSummaryCopy, type NetworkCopy } from "../analysis/network-copy";
 import { gapNoteFor } from "../analysis/opportunities-view-model";
 import { PLAN_HREF } from "../analysis/opportunities-report-card";
 import { structureSnapshotView } from "../analysis/structure-tab-model";
@@ -107,6 +107,11 @@ export interface NetworkOverviewData {
   /** 全量联系人数（环形图中心、结构卡）；null = 分析读不到。 */
   total: number | null;
   tiers: OverviewTierSegment[];
+  /**
+   * 档位缓存还没覆盖到的人数（全量总数 − 四档之和，> 0 才有值；W0052 review P2）。概览只读档位缓存、不刷新，
+   * 缓存为空或只覆盖部分联系人时，不把没统计到的人算成 0：已知档位照常显示并标明「N 人待统计」，一档都没有时各段显示「—」。
+   */
+  tierPending: number | null;
   /** null = 档位看板读不到（不显示重点联系人区）。 */
   highlights: OverviewHighlight[] | null;
   activity: OverviewActivity;
@@ -162,19 +167,26 @@ export function overviewSourceCounts(facets: Readonly<Record<string, number>>, t
 }
 
 /** 依据、缺口、动态、重点联系人要解析姓名的记录 id（去重；诊断与缺口在前）。 */
+/**
+ * 一次姓名读取要解析的记录 id（去重、有上限；W0052 review P2）。先给一定会显示的最近动态（≤5 人）与重点联系人候选
+ * （≤4 人）预留，再放实际展示的诊断依据与「按计划需求顺序第一条有据的 gap」依据——依据再多也不会挤掉动态的姓名。
+ */
 export function overviewNameIds(input: Pick<OverviewCockpitParts, "snapshot" | "plan" | "timeline" | "board">, limit = 30): string[] {
   const ids = new Set<string>();
+  const add = (id: string | undefined) => { if (id && ids.size < limit) ids.add(id); };
+  for (const item of (input.timeline?.items ?? []).slice(0, OVERVIEW_ACTIVITY_LIMIT)) add(item.contactId);
+  for (const row of [...(input.board?.core ?? []).slice(0, OVERVIEW_HIGHLIGHT_LIMIT), ...(input.board?.active ?? []).slice(0, OVERVIEW_HIGHLIGHT_LIMIT)]) add(row.contactId);
   if (input.snapshot.state === "ready") {
     const diagnosis = input.snapshot.blocks.find((block) => block.kind === "diagnosis");
-    for (const id of diagnosis?.evidence.contactIds ?? []) if (id) ids.add(id);
-    const needIds = new Set((input.plan?.needs ?? []).map((need) => need.needId));
-    for (const block of input.snapshot.blocks) {
-      if (block.kind === "gap" && block.needId && needIds.has(block.needId)) for (const id of block.evidence.contactIds) if (id) ids.add(id);
+    for (const id of diagnosis?.evidence.contactIds ?? []) add(id);
+    for (const need of input.plan?.needs ?? []) {
+      const gap = input.snapshot.blocks.find((block) => block.kind === "gap" && block.needId === need.needId && block.evidence.contactIds.length > 0);
+      if (!gap) continue;
+      for (const id of gap.evidence.contactIds) add(id);
+      break;
     }
   }
-  for (const item of input.timeline?.items ?? []) if (item.contactId) ids.add(item.contactId);
-  for (const row of [...(input.board?.core ?? []), ...(input.board?.active ?? [])].slice(0, OVERVIEW_HIGHLIGHT_LIMIT * 2)) ids.add(row.contactId);
-  return [...ids].slice(0, limit);
+  return [...ids];
 }
 
 // ---------------------------------------------------------------------------
@@ -254,13 +266,14 @@ function meta(parts: OverviewCockpitParts, analysis: ContactsAnalysisView, total
 }
 
 /** 动态摘要：用户写的 memo／笔记原文照出；其余来源用结构化字段的双语模板（时间线构建器给的 title），不渲染后端句子。 */
-export function activitySummary(item: Pick<RelationshipTimelineItem, "source" | "title" | "excerpt">): NetworkCopy {
-  if ((item.source === "memo" || item.source === "note") && item.excerpt?.trim()) return same(item.excerpt.trim());
-  return { en: item.title.en, zh: item.title.zh };
+/** 动态摘要：按来源走 `network-copy.ts` 的封闭模板（`timelineSummaryCopy`），不读条目里拼好的 `title`。 */
+export function activitySummary(item: Pick<RelationshipTimelineItem, "source" | "excerpt" | "eventId" | "detail">): NetworkCopy {
+  return timelineSummaryCopy(item);
 }
 
 function activity(parts: OverviewCockpitParts): OverviewActivity {
-  if (!parts.timeline || (parts.timeline.unavailable && parts.timeline.items.length === 0)) return { state: "unavailable" };
+  // 任一来源读失败（列表不完整）也按失败降级，不把残缺列表当完整结果（W0052 review P2）。
+  if (!parts.timeline || parts.timeline.unavailable) return { state: "unavailable" };
   const rows = [...parts.timeline.items]
     .sort((left, right) => (left.occurredAt === right.occurredAt ? (left.id < right.id ? -1 : 1) : left.occurredAt < right.occurredAt ? 1 : -1))
     .slice(0, OVERVIEW_ACTIVITY_LIMIT)
@@ -301,13 +314,17 @@ export function buildNetworkOverviewData(parts: OverviewCockpitParts, analysis: 
   const total = ready ? analysis.metrics.contacts : null;
   const structure = ready ? analysis.structure : null;
   const health = structure && (structure.state === "ready" || structure.state === "empty") ? structure.data.health : null;
-  const tierCount = (id: NetworkTierGroup) => (health ? health.find((row) => row.id === id)?.count ?? 0 : null);
+  const known = health ? health.reduce((sum, row) => sum + row.count, 0) : 0;
+  // 一档都没统计到（缓存为空）而账号其实有联系人时各段显示「—」，不显示成 0；没有联系人的账号如实是 0。
+  const tierCount = (id: NetworkTierGroup) => (health && (known > 0 || total === 0) ? health.find((row) => row.id === id)?.count ?? 0 : null);
+  const tierPending = total !== null && health && total > known ? total - known : null;
   return {
     activity: activity(parts),
     cards: cards(parts, total, tierCount("dormant")),
     highlights: highlights(parts),
     meta: meta(parts, analysis, total),
     sources: parts.sourceFacets ? overviewSourceCounts(parts.sourceFacets, total) : null,
+    tierPending,
     tiers: NETWORK_TIER_GROUPS.map((id) => ({ count: tierCount(id), href: tierHref(id), id })),
     total,
   };

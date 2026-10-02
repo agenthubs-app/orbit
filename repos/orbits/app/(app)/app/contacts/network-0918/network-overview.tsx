@@ -149,6 +149,12 @@ export function NetworkOverview({ analysis, overview }: { analysis: ContactsAnal
               </a>
             ))}
           </div>
+          {overview.tierPending !== null ? (
+            <div className="nw-tier-pending" role="status">{t({
+              zh: `${overview.tierPending} 人待统计（档位统计更新中）`,
+              en: `${overview.tierPending} ${overview.tierPending === 1 ? "contact" : "contacts"} not yet tiered (tiers updating)`,
+            })}</div>
+          ) : null}
           {highlights === null ? null : highlights.length > 0 ? (
             <div className="nw-hl-grid">
               {highlights.map((p) => (

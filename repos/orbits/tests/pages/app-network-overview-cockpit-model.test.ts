@@ -14,7 +14,7 @@ import {
   overviewNameIds,
   overviewSourceCounts,
 } from "../../app/(app)/app/contacts/network-0918/network-overview-cockpit-model";
-import { ANALYSIS_35, PLAN, SNAPSHOT_FAILED, SNAPSHOT_NONE, SNAPSHOT_READY, TIMELINE_9, parts } from "../fixtures/network-overview-cockpit";
+import { ANALYSIS_35, NAMES, analysisWithHealth, PLAN, SNAPSHOT_FAILED, SNAPSHOT_NONE, SNAPSHOT_READY, TIMELINE_9, parts } from "../fixtures/network-overview-cockpit";
 
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 
@@ -99,6 +99,21 @@ test("SC-W0052-02 main: 35-person fixture (the list returns 30) → tier bar 12/
   assert.deepEqual(buildNetworkOverviewData(parts(), { state: "pending" }).tiers.map((tier) => tier.count), [null, null, null, null]);
 });
 
+test("SC-W0052-02 (review P2): a missing or partial tier cache is not shown as zeros — known tiers plus 「N 人待统计」, dashes when none is known", () => {
+  const withHealth = analysisWithHealth;
+  const empty = buildNetworkOverviewData(parts(), withHealth([]));
+  assert.deepEqual(empty.tiers.map((tier) => tier.count), [null, null, null, null]);
+  assert.equal(empty.tierPending, 35);
+  assert.equal(empty.cards[3]!.n, null, "dormant card shows a dash, not 0");
+  const partial = buildNetworkOverviewData(parts(), withHealth([{ count: 8, id: "core" }, { count: 2, id: "new" }]));
+  assert.deepEqual(partial.tiers.map((tier) => [tier.id, tier.count]), [["new", 2], ["active", 0], ["core", 8], ["dormant", 0]]);
+  assert.equal(partial.tierPending, 25);
+  assert.equal(partial.total, 35, "the centre stays the full count");
+  assert.equal(buildNetworkOverviewData(parts(), ANALYSIS_35).tierPending, null, "complete cache → no note");
+  const none = buildNetworkOverviewData(parts(), { ...analysisWithHealth([]), metrics: { ...(ANALYSIS_35 as Extract<typeof ANALYSIS_35, { state: "ready" }>).metrics, contacts: 0 } } as typeof ANALYSIS_35);
+  assert.deepEqual([none.tiers.map((tier) => tier.count), none.tierPending], [[0, 0, 0, 0], null], "an account with no contacts really has 0 in every tier");
+});
+
 test("SC-W0052-02: highlights = the two core contacts with the latest signal (core first, then active), with their tier", () => {
   const data = buildNetworkOverviewData(parts(), ANALYSIS_35);
   assert.deepEqual(data.highlights?.map((row) => [row.name, row.tier, row.href, row.lastSignalAt]), [
@@ -120,22 +135,30 @@ test("SC-W0052-03 main: 6 people / 9 records → the latest 5 in time order with
     ["note:1", "佐々木 健", "/app/contacts/c2", "note", "Notes in English", "Notes in English"],
     ["encounter:1", "Lin Zhi", "/app/contacts/c3", "encounter", "在活动上见面", "Met at an event"],
     ["plan:1", "陈思", "/app/contacts/c4", "plan", "计划：确认已建立联系", "Plan: connection confirmed"],
-    ["schedule:1", "Kato Ryo", "/app/contacts/c5", "schedule", "会面：Lunch", "Meeting: Lunch"],
+    ["schedule:1", "Kato Ryo", "/app/contacts/c5", "schedule", "会面", "Meeting"],
   ]);
   assert.equal(data.activity.rows[0]!.occurredAt, "2026-09-30T09:00:00.000Z");
 });
 
-test("SC-W0052-03: memo/note text is the user's own words; system sources use the bilingual template, never a backend sentence", () => {
-  assert.deepEqual(activitySummary({ excerpt: "原文", source: "memo", title: { en: "Wrote a memo", zh: "写了 memo" } }), { en: "原文", zh: "原文" });
-  assert.deepEqual(activitySummary({ source: "memo", title: { en: "Wrote a memo", zh: "写了 memo" } }), { en: "Wrote a memo", zh: "写了 memo" });
-  assert.deepEqual(activitySummary({ excerpt: "（会场备注）", source: "capture", title: { en: "Added from a business card", zh: "扫描名片，建立联系" } }), { en: "Added from a business card", zh: "扫描名片，建立联系" });
+test("SC-W0052-03 (review P2): summaries come from the closed template set per source + structured detail; the item title is never rendered", () => {
+  assert.deepEqual(activitySummary({ excerpt: "原文", source: "memo" }), { en: "原文", zh: "原文" });
+  assert.deepEqual(activitySummary({ source: "memo" }), { en: "Wrote a memo", zh: "写了 memo" });
+  assert.deepEqual(activitySummary({ excerpt: "（会场备注）", source: "capture", detail: { captureMethod: "qr" } }), { en: "Connected by QR code", zh: "扫码交换，建立联系" });
+  assert.deepEqual(activitySummary({ source: "encounter" }), { en: "Logged a meeting", zh: "记录了一次见面" });
+  assert.deepEqual(activitySummary({ source: "plan", detail: { planEvent: "something_new" } }), { en: "Plan: updated", zh: "计划：更新" });
+  assert.deepEqual(activitySummary({ source: "schedule", detail: { scheduleKind: "event" } }), { en: "Attended an event", zh: "参加了活动" });
+  assert.deepEqual(activitySummary({ source: "followup_done" }), { en: "Completed a follow-up", zh: "完成了一次跟进" });
+  // 白名单：每条的后端 title 都是英文调试句（夹具），组装结果里 0 命中。
   const data = buildNetworkOverviewData(parts(), ANALYSIS_35);
-  assert.doesNotMatch(JSON.stringify(data), /live relationship database|Live contact source|Live task source/);
+  const json = JSON.stringify(data);
+  assert.doesNotMatch(json, /DEBUG|backend title|confirmed by|example\.invalid/);
+  assert.doesNotMatch(json, /live relationship database|Live contact source|Live task source/);
 });
 
 test("SC-W0052-03: empty timeline → ready with no rows; read failure (or every source down) → unavailable for this block only", () => {
   assert.deepEqual(buildNetworkOverviewData(parts({ timeline: { items: [], unavailable: false } }), ANALYSIS_35).activity, { rows: [], state: "ready" });
-  for (const timeline of [null, { items: [], unavailable: true }]) {
+  // review P2：部分来源失败（还有条目）也按失败降级，不把残缺列表当完整结果。
+  for (const timeline of [null, { items: [], unavailable: true }, { items: TIMELINE_9, unavailable: true }]) {
     const data = buildNetworkOverviewData(parts({ timeline }), ANALYSIS_35);
     assert.deepEqual(data.activity, { state: "unavailable" });
     assert.deepEqual(data.cards.map((card) => card.n), [35, 3, 3, 5], "cockpit unaffected");
@@ -153,10 +176,26 @@ test("SC-W0052-04: donut centre and 「按来源」 are full counts (35), never 
   assert.equal(buildNetworkOverviewData(parts({ sourceFacets: null }), ANALYSIS_35).sources, null);
 });
 
-test("one name read covers diagnosis and gap evidence, timeline people and highlight candidates", () => {
+test("one name read covers timeline people and highlight candidates first, then the shown diagnosis and first valid gap evidence", () => {
   assert.deepEqual(overviewNameIds({ board: parts().board, plan: PLAN, snapshot: SNAPSHOT_READY, timeline: { items: TIMELINE_9.slice(0, 2), unavailable: false } }), [
-    "rec:c1", "rec:c2", "rec:c6", "rec:core-new", "rec:core-old", "rec:active-1",
+    "rec:c6", "rec:c1", "rec:core-new", "rec:core-old", "rec:active-1", "rec:c2",
   ]);
   // 快照没有、计划没有：只解析动态与重点联系人；缺口块对应的需求不在当前计划里不解析。
   assert.deepEqual(overviewNameIds({ board: null, plan: null, snapshot: SNAPSHOT_NONE, timeline: null }), []);
+});
+
+test("review P2: evidence for 40 people cannot crowd out names — all 5 activity rows keep a name link", () => {
+  const many = Array.from({ length: 40 }, (_, index) => `rec:e${index}`);
+  const snapshot = { ...SNAPSHOT_READY, blocks: SNAPSHOT_READY.blocks.map((block) => (block.kind === "diagnosis" || block.kind === "gap" ? { ...block, evidence: { contactIds: many, recordIds: [] } } : block)) };
+  const timeline = { items: TIMELINE_9, unavailable: false };
+  const ids = overviewNameIds({ board: parts().board, plan: PLAN, snapshot, timeline: { items: [...TIMELINE_9].sort((a, b) => (a.occurredAt < b.occurredAt ? 1 : -1)).slice(0, 5), unavailable: false } });
+  assert.equal(ids.length, 30);
+  // 读取器只返回请求的 id：按 ids 过滤 NAMES 与 40 位依据的姓名。
+  const names = new Map([...NAMES, ...many.map((id) => [id, { contactId: id.slice(4), name: id }] as const)].filter(([id]) => ids.includes(id)));
+  const data = buildNetworkOverviewData(parts({ names, snapshot, timeline }), ANALYSIS_35);
+  assert.equal(data.activity.state, "ready");
+  if (data.activity.state !== "ready") return;
+  assert.equal(data.activity.rows.length, 5);
+  assert.ok(data.activity.rows.every((row) => row.name && row.href), JSON.stringify(data.activity.rows));
+  assert.equal(data.highlights?.length, 2);
 });

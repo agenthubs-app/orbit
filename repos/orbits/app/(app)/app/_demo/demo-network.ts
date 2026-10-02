@@ -548,11 +548,11 @@ export function buildDemoNetworkOverviewParts(real: Date, lang: Lang): OverviewC
     criteria: null, have, linkedContactIds: [], missing: Math.max(0, target - have), needId, phaseKey: "p1", phaseTitle: say(ctx, c("第 1 阶段", "Phase 1")), target, title: say(ctx, title),
   });
   const timeline: RelationshipTimelineItem[] = [
-    { contactId: idOf("suzuki-ken"), id: "capture:demo-suzuki", occurredAt: at(1, "22:14"), occurredAtPrecision: "instant", ref: { recordId: idOf("suzuki-ken"), store: "contacts" }, source: "capture", title: { en: "Added from a business card", zh: "扫描名片，建立联系" } },
-    { contactId: idOf("takahashi-yumi"), id: "capture:demo-takahashi", occurredAt: at(1, "22:13"), occurredAtPrecision: "instant", ref: { recordId: idOf("takahashi-yumi"), store: "contacts" }, source: "capture", title: { en: "Added from a business card", zh: "扫描名片，建立联系" } },
+    { contactId: idOf("suzuki-ken"), id: "capture:demo-suzuki", occurredAt: at(1, "22:14"), occurredAtPrecision: "instant", ref: { recordId: idOf("suzuki-ken"), store: "contacts" }, source: "capture", title: { en: "Added from a business card", zh: "扫描名片，建立联系" }, detail: { captureMethod: "business_card" } },
+    { contactId: idOf("takahashi-yumi"), id: "capture:demo-takahashi", occurredAt: at(1, "22:13"), occurredAtPrecision: "instant", ref: { recordId: idOf("takahashi-yumi"), store: "contacts" }, source: "capture", title: { en: "Added from a business card", zh: "扫描名片，建立联系" }, detail: { captureMethod: "business_card" } },
     { contactId: idOf("wang-yan"), excerpt: say(ctx, c("电话：确认了 IT 部门的系统采购决策人", "Call: found out who in IT decides on systems")), id: "memo:demo-wang", occurredAt: at(1, "17:30"), occurredAtPrecision: "instant", ref: { recordId: idOf("wang-yan"), store: "contact_detail_states" }, source: "memo", title: { en: "Wrote a memo", zh: "写了 memo" } },
     { contactId: idOf("sato-misaki"), excerpt: say(ctx, c("回邮件：会后要花 30 分钟整理", "Replied: 30 minutes of notes after each meeting")), id: "memo:demo-sato", occurredAt: at(2, "10:20"), occurredAtPrecision: "instant", ref: { recordId: idOf("sato-misaki"), store: "contact_detail_states" }, source: "memo", title: { en: "Wrote a memo", zh: "写了 memo" } },
-    { contactId: idOf("nakamura-megumi"), id: "encounter:demo-nakamura", occurredAt: at(9, "19:00"), occurredAtPrecision: "instant", ref: { recordId: "demo-encounter-nakamura", store: "human_encounters" }, source: "encounter", title: { en: "Met at an event", zh: "在活动上见面" } },
+    { contactId: idOf("nakamura-megumi"), eventId: "demo-event-chamber-mixer", id: "encounter:demo-nakamura", occurredAt: at(9, "19:00"), occurredAtPrecision: "instant", ref: { recordId: "demo-encounter-nakamura", store: "human_encounters" }, source: "encounter", title: { en: "Met at an event", zh: "在活动上见面" } },
   ];
   const column = (group: NetworkTierGroup) => [...SEEDS]
     .filter((seed) => demoTierGroup(seed.status) === group)

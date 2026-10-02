@@ -38,6 +38,8 @@ interface Scenario {
   /** readGuideStatusForActor 的结果：in-demo / out（已完成或老用户）。 */
   guide?: "in-demo" | "out";
   profileFails?: boolean;
+  /** 界面语言（缺省 zh）。 */
+  language?: "zh" | "en" | "ja";
 }
 
 function named<T extends (props: Record<string, unknown>) => null>(name: string, fn: T): T {
@@ -83,7 +85,7 @@ function loadPage(t: TestContext, name: PageName, scenario: Scenario = {}) {
     [join(root, "auth.ts")]: { auth: stub("auth", { user: { email: "owner@example.test", id: "subject:external", name: "Owner" } }) },
     [join(root, "app/api/_shared/authenticated-actor.ts")]: { resolveAuthenticatedApiActorFromSession: stub("identity", { id: "account:canonical" }) },
     [join(root, "app/(app)/app/orbit-language-server.ts")]: {
-      getOrbitServerLanguage: async () => "zh",
+      getOrbitServerLanguage: async () => scenario.language ?? "zh",
       localizeOrbitTree: (tree: unknown) => tree,
       makeOrbitServerT: () => (copy: { zh: string }) => copy.zh,
     },
@@ -331,6 +333,14 @@ test("demo: the overview renders demo contacts + demo analysis without loadConta
   assert.deepEqual(data.cards.map((card) => card.sentence), [null, null, null, null]);
   assert.deepEqual(data.tiers.map((tier) => [tier.id, tier.count]), [["new", 9], ["active", 13], ["core", 5], ["dormant", 3]]);
   assert.deepEqual(data.activity.rows.map((row) => row.name), ["铃木健", "高桥由美", "王砚", "佐藤美咲", "中村惠"]);
+});
+
+test("demo (ja, review P2): the overview falls back to the English demo data like t() does", async (t) => {
+  const { calls, page } = loadPage(t, "dashboard", { flag: "on", language: "ja" });
+  const tree = await page({ searchParams: Promise.resolve({}) });
+  assert.deepEqual(operations(calls, REAL_READS), []);
+  const data = find(tree, "NetworkOverview")?.overview as { activity: { rows: Array<{ name: string; summary: { en: string } }> } };
+  assert.deepEqual(data.activity.rows.map((row) => row.name), ["Suzuki Ken", "Takahashi Yumi", "Wang Yan", "Sato Misaki", "Nakamura Megumi"]);
 });
 
 test("demo: the analysis sub-tabs show only the banner + notice, no fabricated analysis", async (t) => {

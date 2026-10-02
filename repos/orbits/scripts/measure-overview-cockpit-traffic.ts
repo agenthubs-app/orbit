@@ -6,8 +6,11 @@
  * 待确认 `listPending`、时间线最近 5 条、档位看板每列前 2、一次姓名读取），逐部分分别计量。不调用任何 AI，0 写入。
  *
  * 计量口径与生产 `ORBIT_PG_READ_METRICS` 相同：拦截 `pg.Client.prototype.query`，每条语句返回行的 JSON 字节之和。
- * 参考行（不进总账）：改前概览已有的读取（分析 `loadContactsAnalysis`、名单一页 `loadAppContactsRouteViewModel`、
- * 本页档位表 `readRelationshipTierLookup`——W0052 起概览不再读它，作为节省项单列）。
+ * review P1 起按页面完整装配链计量（概览打开一次 = 分析 `loadContactsAnalysis` + 名单一页 `loadAppContactsRouteViewModel`
+ * + `loadOverviewCockpit`，并行，与页面同一调用；会话与示例判定的读取不变、不计）。
+ * 改前概览另有两项读取，W0052 起不再读，作为节省项单列：本页档位表 `readRelationshipTierLookup`（实测），
+ * 强度缓存新鲜检查 `ensureRelationshipStrengthsForPage`（会写库，脚本不执行；用 W0047 实测的缓存新鲜 542 B／1 条语句，
+ * 需要重算时另省约 9.8 KB）。
  * 「按来源」复用名单读取已有的全量分面 `facet_sources`，不新增语句。
  *
  * 运行：npx tsx scripts/measure-overview-cockpit-traffic.ts [verify-plan]
@@ -116,16 +119,18 @@ async function main() {
   if (nameIds.length > 0) await serial.readContactNames(actorId, nameIds);
   // 2) 整个加载（页面同一入口，并行）
   const total = await measure(() => loadOverviewCockpit({ actorId, language: "zh", now }, deps));
-  // 3) 参考：改前概览已有的读取（不进总账）
-  const before = await measure(async () => {
-    const [analysis, route] = await Promise.all([loadContactsAnalysis(actorId, "zh"), loadAppContactsRouteViewModel({}, actorId)]);
-    return { analysis, route };
+  // 3) 页面完整装配链（分析 + 名单 + 驾驶舱，并行）
+  const page = await measure(async () => {
+    const [analysis, route, cockpit] = await Promise.all([loadContactsAnalysis(actorId, "zh"), loadAppContactsRouteViewModel({}, actorId), loadOverviewCockpit({ actorId, language: "zh", now }, deps)]);
+    return { analysis, route, cockpit };
   });
+  const before = { meter: { bytes: page.meter.bytes - total.meter.bytes, statements: page.meter.statements - total.meter.statements }, value: page.value };
   const route = before.value.route;
   const ids = route.state === "success" ? route.payload.contacts.map((contact) => contact.id) : [];
   const lookup = await measure(() => readRelationshipTierLookup({ actorId, contactIds: ids }));
   const value = total.value;
-  const netNew = total.meter.bytes - lookup.meter.bytes;
+  const ENSURE_FRESH_BYTES = 542;
+  const netNew = total.meter.bytes - lookup.meter.bytes - ENSURE_FRESH_BYTES;
   const monthly = (perDay: number, bytes: number) => mb(bytes * perDay * 1000 * 30);
   console.log(JSON.stringify({
     account: accountName, actorId,
@@ -140,11 +145,13 @@ async function main() {
     },
     parts: Object.fromEntries(Object.entries(parts).map(([key, meter]) => [key, { bytes: meter.bytes, statements: meter.statements, labels: meter.labels }])),
     totalPerOpen: { bytes: total.meter.bytes, statements: total.meter.statements },
-    removedOnOverview: { tierLookup: { bytes: lookup.meter.bytes, statements: lookup.meter.statements } },
+    pageAssemblyPerOpen: { bytes: page.meter.bytes, statements: page.meter.statements, note: "analysis + contacts list page + overview cockpit (parallel, same calls as the page)" },
+    removedOnOverview: { tierLookup: { bytes: lookup.meter.bytes, statements: lookup.meter.statements }, ensureFresh: { bytes: ENSURE_FRESH_BYTES, statements: 1, source: "W0047 REPORT (not executed: it may write)" } },
     netNewPerOpen: netNew,
-    referenceBeforeChange: { bytes: before.meter.bytes, statements: before.meter.statements, note: "analysis + contacts list page (unchanged; not added to the ledger)" },
+    unchangedReads: { bytes: before.meter.bytes, statements: before.meter.statements, note: "analysis + contacts list page (already read before W0052; not added again)" },
     monthlyMb: {
       assumption: "1000 位活跃用户 × 每人每天打开概览 2 次 × 30 天",
+      pageAssembly: monthly(2, page.meter.bytes),
       direct: monthly(2, total.meter.bytes),
       netNew: monthly(2, netNew),
       // W0046 的预估行只登记在 D32 文字里、没有并入三档累计；本实测替换它，并入总账的是 netNew 全额。
