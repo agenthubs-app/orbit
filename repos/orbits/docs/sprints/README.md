@@ -156,7 +156,7 @@
 | [W0058](W0058-card-profile-inference/GOAL.md) | 洞察同一调用顺带推测 TA 能给的／需要的／话题，来源 `card_inference`，memo 与手改优先、不编造（H，付费 AI） | RC-02 | W0057；D58；真实 AI 上限 ≤5 次 HTTP（W58-A 已决定；实际 4 次） | completed（merge `71012e02`） |
 | [W0059](W0059-detail-close-return/GOAL.md) | 详情四种关闭方式统一：有站内来路回原页原位置，直开回所有人脉，`returnTo` 防开放跳转，示例弹窗不导航（L） | RC-03 | W0057（同改 `[id]/page.tsx`，review G-12）；与 W0060 同改弹窗文件，不并行（建议同一 Generator 先后执行）；D53 | completed（merge `2af3fcac`） |
 | [W0060](W0060-contact-detail-redesign/GOAL.md) | 详情改版五块：头卡／为什么是 TA／三栏／最近互动（内联 memo）／折叠概览；修正字段标签，三栏不再用回退值凑（M） | RC-04 | W0057、W0058、W0059；D54～D58 | completed（merge `585bf527`） |
-| [W0061](W0061-contact-value-line/GOAL.md) | 「TA 能帮你」一句话组件在首页今日要事、导入后候选卡、详情首行三处共用，未生成时退化不空白，0 次 AI 调用（M；`IOrbitHome` CRITICAL 则升 H） | RC-05 | W0060（及 W0057）；D61；不与 W0056 并行 | ready |
+| [W0061](W0061-contact-value-line/GOAL.md) | 「TA 能帮你」一句话组件在首页今日要事、导入后候选卡、详情首行三处共用，未生成时退化不空白，0 次 AI 调用（M；`IOrbitHome` CRITICAL 则升 H） | RC-05 | W0060（及 W0057）；D61；不与 W0056 并行 | running（run-01，Planner SHA256 `cd0fa870…`，基线 `ea7321c0`；`IOrbitHome` CRITICAL → 升 H） |
 
 全部 Sprint 都已有 GOAL 与 PLANNER（2026-09-28 编制；大目标 1 与大目标 2 各经 Codex `gpt-5.6-sol` 方案 review 后修订为 revision 2，review 意见与处理见 [REVIEW-2026-09-28.md](REVIEW-2026-09-28.md)；大目标 5 见 [REVIEW-2026-10-03.md](REVIEW-2026-10-03.md)）。`planned` 表示前置 Sprint 尚未 completed；前置完成后改为 `ready`。
 

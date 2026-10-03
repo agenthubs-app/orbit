@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 
 import type { PlanService } from "../../../../../features/plans/contract";
-import type { PlanMatchingService } from "../../../../../features/plans/matching-service";
+import type { PlanMatchCandidatesView, PlanMatchingService } from "../../../../../features/plans/matching-service";
+import { readContactValueInsights } from "../../../../../features/contacts/insights/value-lines";
 import { getConfiguredPlanMatchingRuntime } from "../../../../../features/plans/matching-runtime";
 import { resolvePlanService } from "../../../../../features/plans/service-factory";
 import { PlanServiceError } from "../../../../../features/plans/service";
@@ -19,10 +20,11 @@ import {
  * `/api/agent/plans/candidates/**`：人脉需求匹配（RW-11，Sprint W0010）。身份只在服务端解析，
  * 请求体里的任何 actor 字段都不作为身份来源；所有读写按当前登录者隔离。
  *
- * - `GET  /api/agent/plans/candidates[?batchId=]`  本人待确认的候选（可限定某一批）
+ * - `GET  /api/agent/plans/candidates[?batchId=][&lang=]`  本人待确认的候选（可限定某一批）；W0061 起每个候选
+ *                                                  可选附 `value`（「TA 能帮你」一句话，lang 语言，只读）
  * - `POST /api/agent/plans/candidates`             `{ candidateId, decision: "accept"|"dismiss" }`
  *                                                  或手动关联 `{ action: "link", needItemId, contactId, idempotencyKey? }`
- * - `POST /api/agent/plans/candidates/run`         `{ batchId }`：审阅页在批次确认完成后触发，
+ * - `POST /api/agent/plans/candidates/run`         `{ batchId, language? }`：审阅页在批次确认完成后触发，
  *                                                  按 (actor, batch) 领取并在请求内执行这一批的任务
  * - `POST /api/agent/plans/items/:itemId/interaction`  「约 TA」行动上的「记一次互动」
  * - `POST /api/agent/plans/items/:itemId/draft`        「起草邮件」：点击才生成，返回可编辑草稿，不保存、不发送
@@ -34,6 +36,8 @@ export interface PlanCandidateRouteDependencies {
   /** null = 匹配服务不可用（非 live 模式或数据库未配置）→ 503。 */
   matchingService?: () => PlanMatchingService | null;
   serviceForActor?: (actorId: string) => ServiceResolution<PlanService>;
+  /** W0061：候选附带「TA 能帮你」一句话的只读批量读取（缺省读本人 `contact_insights`，0 次模型调用）。 */
+  readValues?: typeof readContactValueInsights;
 }
 
 const ID_MAX = 200;
@@ -61,10 +65,33 @@ function optionalId(value: unknown, field: string): string | null {
 
 type ItemContext = { params: Promise<{ itemId: string }> };
 
+function valueLanguage(value: unknown): "zh" | "en" {
+  return value === "zh" ? "zh" : "en";
+}
+
 export function createPlanCandidateRouteHandlers(dependencies: PlanCandidateRouteDependencies = {}) {
   const resolveActor = dependencies.resolveActor ?? resolveAuthenticatedApiActor;
   const matchingService = dependencies.matchingService ?? (() => getConfiguredPlanMatchingRuntime()?.service ?? null);
   const serviceForActor = dependencies.serviceForActor ?? ((actorId: string) => resolvePlanService({ actorId }));
+  const readValues = dependencies.readValues ?? readContactValueInsights;
+
+  /**
+   * W0061：给本次返回的候选（≤20 位联系人）批量附上一句话（一次洞察窄读 + 一次依据解析）。
+   * 读失败只是不附，候选列表照常返回。
+   */
+  async function withValues<T extends PlanMatchCandidatesView>(actorId: string, view: T, language: "zh" | "en"): Promise<T> {
+    const contactIds = [...new Set(view.candidates.map((candidate) => candidate.contactId))];
+    if (!contactIds.length) return view;
+    const values = await readValues({ actorId, contactIds, language }).catch(() => null);
+    if (!values?.size) return view;
+    return {
+      ...view,
+      candidates: view.candidates.map((candidate) => {
+        const value = values.get(candidate.contactId);
+        return value ? { ...candidate, value } : candidate;
+      }),
+    };
+  }
 
   async function run(operation: (actorId: string) => Promise<unknown>): Promise<Response> {
     const mode = resolveFeatureMode();
@@ -99,8 +126,9 @@ export function createPlanCandidateRouteHandlers(dependencies: PlanCandidateRout
   return {
     GET: (request: Request) =>
       run(async (actorId) => {
-        const batchId = optionalId(new URL(request.url).searchParams.get("batchId"), "batchId");
-        return requireMatching().listPending({ actorId, batchId });
+        const params = new URL(request.url).searchParams;
+        const batchId = optionalId(params.get("batchId"), "batchId");
+        return withValues(actorId, await requireMatching().listPending({ actorId, batchId }), valueLanguage(params.get("lang") ?? request.headers.get("x-orbit-lang")));
       }),
 
     POST: (request: Request) =>
@@ -130,7 +158,7 @@ export function createPlanCandidateRouteHandlers(dependencies: PlanCandidateRout
         });
         const state = outcome.state;
         return {
-          ...view,
+          ...(await withValues(actorId, view, valueLanguage(body.language))),
           run:
             state === "ran"
               ? { aiState: outcome.outcome.aiState, state, status: outcome.outcome.status }
