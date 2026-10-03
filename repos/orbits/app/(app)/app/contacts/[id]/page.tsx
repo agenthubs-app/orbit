@@ -49,7 +49,7 @@ import { ensureRelationshipStrengthsForPage, readRelationshipStrengths, readRela
 import { readConfiguredRelationshipSignalItems } from "../../../../../features/relationship-strength/signal-items";
 import { readContactInsightDetail } from "../../../../../features/contacts/insights/read";
 import { contactInsightView } from "../../../../../features/contacts/insights/view";
-import { NetworkInsightPanel } from "../network-0918/network-insight-panel";
+import { readContactPlanContext } from "../../../../../features/plans/contact-plan-context";
 import { readAnalysisThreshold } from "../../../../../features/network-analysis/analysis-threshold-reader";
 import { DEFAULT_DETAIL_CLOSE_HREF, sanitizeReturnTo } from "../network-0918/detail-return";
 
@@ -217,10 +217,11 @@ export default async function AppContactDetailPage({
   }
   // W0046：「最近互动」聚合时间线与「写 memo」关联活动推荐在服务端读好随详情下发（不另发客户端请求）。
   // W0047：关系强度（档位与依据）同样服务端读好。
-  // W0051：「和你目标的关系」按 (actor, contactId) 读一行洞察（只读，0 次模型调用）。
+  // W0051：「和你目标的关系」按 (actor, contactId) 读一行洞察（只读，0 次模型调用）；W0060 起显示在「为什么是 TA」。
   // W0057（D60）：详情面板不再受「已确认联系人 ≥3」门槛限制——有目标就渲染（无目标显示设目标引导）。
   // 门槛结果仍只给列表的洞察一句与分析页门槛卡（RN-12，不变）。
-  const [timeline, memoEventOptions, strengths, insightRead] = await Promise.all([
+  // W0060（G-13）：「为什么是 TA」的计划关联——只读当前生效计划（getCurrent），0 次写入、0 次生成器调用；失败按无计划。
+  const [timeline, memoEventOptions, strengths, insightRead, planContext] = await Promise.all([
     readRelationshipTimelineForContact({ actorId: actor.id, contactId, now }).catch(() => ({
       items: [],
       unavailableSources: [...RELATIONSHIP_TIMELINE_SOURCES],
@@ -228,15 +229,14 @@ export default async function AppContactDetailPage({
     readMemoEventOptions({ actorId: actor.id, now }),
     readRelationshipStrengths({ actorId: actor.id, contactIds: [contactId] }).catch(() => new Map()),
     readContactInsightDetail({ actorId: actor.id, contactId, now }).catch(() => ({ goal: null, goalKnown: false, quotaExhausted: false, row: null })),
+    readContactPlanContext({ actorId: actor.id, contactId, now }).catch(() => null),
   ]);
-  const insight = insightRead && (
-    <NetworkInsightPanel
-      key={`insight:${contactId}`}
-      view={contactInsightView(insightRead.row, { contactId, goal: insightRead.goal, goalKnown: insightRead.goalKnown, now })}
-      quotaExhausted={insightRead.quotaExhausted}
-      contactHref={`/app/contacts/${encodeURIComponent(contactId)}`}
-    />
-  );
+  // W0060：洞察改传数据，「为什么是 TA」在弹窗内组合（W0057 状态与轮询不变）。
+  const insight = {
+    goal: insightRead.goal,
+    quotaExhausted: insightRead.quotaExhausted,
+    view: contactInsightView(insightRead.row, { contactId, goal: insightRead.goal, goalKnown: insightRead.goalKnown, now }),
+  };
   const relationshipStrength = strengths.get(contactId) ?? null;
   // 依据里不在最近 20 条时间线中的信号：按信号 id 一条语句读回真实条目（review P2-6）。
   const shown = new Set(timeline.items.map((item) => item.id));
@@ -280,13 +280,13 @@ export default async function AppContactDetailPage({
         {cards?.state === "ready" ? <NetworkCards
           key={`${actor.id}:${contactId}`}
           view={cards.view}
-          openDetail={{ contact: detail, closeHref, extra, insight }}
+          openDetail={{ contact: detail, closeHref, extra, insight, planContext }}
         /> : <>
         {cards?.state === "error" && <p role="alert">{cards.message}</p>}
         <NetworkAll
           key={`${actor.id}:${contactId}`}
           viewModel={listVm}
-          openDetail={{ contact: detail, closeHref, extra, insight }}
+          openDetail={{ contact: detail, closeHref, extra, insight, planContext }}
         />
         </>}
       </div>

@@ -265,6 +265,11 @@ export interface ContactDetailPublicProfile {
    * （如 `card_inference` = 据名片推测、`memo_extraction` = 据 memo 提取）；W0060 据此显示角标。没有来源记录的字段不出现。
    */
   fieldSources?: Partial<Record<"offering" | "seeking" | "topics", EnrichmentVia>>;
+  /**
+   * W0060（W60-1）：这几个字段的值不是联系人资料，而是关系回退值（connection 的 valueTypes／suggestedActions／
+   * sharedTopics）。对外输出不变（其他消费者照旧），联系人详情三栏据此只显示真实值。没有回退时不出现。
+   */
+  fallbackFields?: readonly ("offering" | "seeking" | "topics")[];
 }
 
 // ContactDetail 是详情页完整读取模型。

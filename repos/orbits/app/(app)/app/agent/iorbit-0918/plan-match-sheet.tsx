@@ -407,7 +407,15 @@ interface LinkableNeed {
  * （W0023：计划已到期时只记关联，说明下一份计划再安排）。
  * `guard` 返回 true 表示被示例模式拦下（不发请求）。
  */
-export function PlanNeedLinkPanel({ contactId, guard }: { contactId: string; guard?: () => boolean }) {
+export function PlanNeedLinkPanel({ contactId, guard, onLinked, openLabel, openClassName }: {
+  contactId: string;
+  guard?: () => boolean;
+  /** W0060：关联成功后回调（详情「为什么是 TA」据此刷新出新的需求 chip）。 */
+  onLinked?: () => void;
+  /** W0060：收起态按钮的文案与样式（详情里是虚线「+ 关联到其他需求」）。 */
+  openLabel?: { en: string; zh: string };
+  openClassName?: string;
+}) {
   const { t } = useOrbitLanguage();
   const [state, setState] = useState<"closed" | "loading" | "ready" | "none" | "error" | "linked">("closed");
   const [needs, setNeeds] = useState<LinkableNeed[]>([]);
@@ -444,6 +452,7 @@ export function PlanNeedLinkPanel({ contactId, guard }: { contactId: string; gua
       key.current = null;
       setResult({ action: action?.title ?? null, need: need.title });
       setState("linked");
+      onLinked?.();
     } catch (failure) {
       setError(t({ en: `Couldn't link. (${(failure as Error).message})`, zh: `没能关联。（${(failure as Error).message}）` }));
     } finally {
@@ -456,8 +465,8 @@ export function PlanNeedLinkPanel({ contactId, guard }: { contactId: string; gua
       <style>{PLAN_MATCH_STYLES}</style>
       {state === "closed" ? (
         <div className="pms-acts">
-          <button className="btn pms-act" data-plan-need-link-open onClick={() => void open()} type="button">
-            {t({ en: "Link to a network need in my plan", zh: "关联到计划人脉需求" })}
+          <button className={openClassName ?? "btn pms-act"} data-plan-need-link-open onClick={() => void open()} type="button">
+            {t(openLabel ?? { en: "Link to a network need in my plan", zh: "关联到计划人脉需求" })}
           </button>
         </div>
       ) : state === "loading" ? (

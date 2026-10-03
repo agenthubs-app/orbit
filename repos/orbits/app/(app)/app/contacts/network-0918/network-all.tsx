@@ -9,13 +9,21 @@ import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { DemoTag, useDemoMode } from "../../_demo/demo-mode-core";
 import type { OrbitContactView, OrbitContactsViewModel } from "../../orbit-contacts-route-view-model";
 import { useOrbitLanguage } from "../../orbit-language-context";
-import { NetworkDetailModal, useNetworkDemoDetail } from "./network-detail-modal";
+import { NetworkDetailModal, useNetworkDemoDetail, type NetworkDetailInsight, type NetworkDetailPlanContext } from "./network-detail-modal";
 import { NetworkFollowModal } from "./network-follow-modal";
 import { NETWORK_SOURCES, SOURCE_ICON, SOURCE_LABEL, TIER_CHIP, TIER_LABEL, TIER_STYLE, matchesQuery, sourceCounts, tierFromStrength, toPerson, type NetworkSource, type NetworkTierGroup } from "./network-model";
 import { NetworkAvatar, NetworkChip, NetworkShell } from "./network-shell";
 
 /** 详情弹窗数据只能来自详情路由（contactDetailPageViewModel），不能用列表 VM 的合成值。 */
-export interface NetworkOpenDetail { contact: OrbitContactView; extra?: ReactNode; closeHref: string; /** W0051：「和你目标的关系」面板（服务端读好的洞察）。 */ insight?: ReactNode }
+export interface NetworkOpenDetail {
+  contact: OrbitContactView;
+  extra?: ReactNode;
+  closeHref: string;
+  /** W0060：「为什么是 TA」的洞察数据（服务端读好；W0057 状态与轮询在弹窗内）。 */
+  insight?: NetworkDetailInsight | null;
+  /** W0060：计划关联（已关联需求、本周行动；服务端只读 getCurrent）。 */
+  planContext?: NetworkDetailPlanContext | null;
+}
 
 export function NetworkAll({ viewModel, initialSource = "all", openDetail }: { viewModel: OrbitContactsViewModel; initialSource?: NetworkSource | "all"; openDetail?: NetworkOpenDetail }) {
   const { t } = useOrbitLanguage();
@@ -31,7 +39,7 @@ export function NetworkAll({ viewModel, initialSource = "all", openDetail }: { v
   const modal = openDetail ? (
     follow
       ? <NetworkFollowModal contact={openDetail.contact} onClose={closeFollow} onSaved={reload} />
-      : <NetworkDetailModal contact={openDetail.contact} closeHref={openDetail.closeHref} onFollow={openFollow} extra={openDetail.extra} insight={openDetail.insight} />
+      : <NetworkDetailModal contact={openDetail.contact} closeHref={openDetail.closeHref} onFollow={openFollow} extra={openDetail.extra} insight={openDetail.insight} planContext={openDetail.planContext} />
   ) : demoDetail.modal;
   const people = useMemo(() => viewModel.connections.map(toPerson), [viewModel.connections]);
   // W0055：「关系档位」列读自动推出的档位（W0047），不再显示旧手动阶段。

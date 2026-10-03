@@ -392,6 +392,9 @@ function encounterFor(
         offering: displayTexts(profile.offering, language),
         seeking: displayTexts(profile.seeking, language),
         topics: displayTexts(profile.topics, language),
+        // W0060：三栏只显示真实值、推测条目弱化显示（来源与回退标记原样下发）。
+        ...(profile.fieldSources ? { fieldSources: { ...profile.fieldSources } } : {}),
+        ...(profile.fallbackFields?.length ? { fallbackFields: [...profile.fallbackFields] } : {}),
       },
       reason:
         displayText(

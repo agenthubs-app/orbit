@@ -378,7 +378,17 @@ function publicProfileFor(input: {
     source: input.source,
     evidenceIds: input.evidenceIds,
     ...profileFieldSources(input.contact),
+    ...profileFallbackFields(profile, { offering: relationshipOffering, seeking: suggestedActions, topics: sharedTopics }),
   };
+}
+
+/** W0060：哪些字段用了关系回退值（资料里该字段为空、而回退值非空）。 */
+function profileFallbackFields(
+  profile: ContactDTO["publicProfile"],
+  fallbacks: Record<"offering" | "seeking" | "topics", readonly string[]>,
+): Pick<ContactDetailPublicProfile, "fallbackFields"> {
+  const fields = (["offering", "seeking", "topics"] as const).filter((field) => !profile?.[field]?.length && fallbacks[field].length > 0);
+  return fields.length ? { fallbackFields: fields } : {};
 }
 
 /** W0058：三栏的值来自联系人资料且有来源记录时带上来源 via（回退到关系值的字段不带）。 */
