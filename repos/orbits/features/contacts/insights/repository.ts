@@ -14,7 +14,7 @@ import { createHash } from "node:crypto";
 
 import type { ContactInsightEvidence, ContactInsightText } from "../../../shared/contract/contact-insight";
 import { confirmedContactPredicate } from "../../network-analysis/repository";
-import { profileInferenceIsEmpty, readStoredProfileInference, type StoredProfileInference } from "./profile-inference";
+import { readStoredProfileInference, type StoredProfileInference } from "./profile-inference";
 
 export interface InsightSqlExecutor {
   query<TRow = Record<string, unknown>>(text: string, values?: readonly unknown[]): Promise<{ rows: readonly TRow[] }>;
@@ -528,7 +528,7 @@ export function createPostgresContactInsightRepository(input: { client: InsightS
             workspaceId, actorId, entry.contactId, owner, JSON.stringify(entry.goalRelation), JSON.stringify(entry.nextStep),
             JSON.stringify(entry.evidence), Math.max(0, Math.min(100, Math.round(entry.relevance))), entry.sourceDataVersion, goalHash,
             usage === null ? null : JSON.stringify(usage), model.slice(0, 200), now.toISOString(), claimedAt,
-            inference === null ? null : JSON.stringify(inference), profileInferenceIsEmpty(inference) ? null : "pending",
+            inference === null ? null : JSON.stringify(inference), inference === null ? null : "pending",
           ],
         );
         written.push(...updated.rows.map((row) => String(row.contact_id)));

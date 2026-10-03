@@ -53,6 +53,30 @@ import {
 /** W0058：名片推测写回的条件更新冲突重试次数（重读，不调用模型）。 */
 export const CARD_INFERENCE_WRITE_RETRIES = 2;
 
+/**
+ * W0058（review P2）：`applyContactCardInference` 的 values 是一次推测的完整结果。这次没有推出的栏，
+ * 若当前值仍是旧的 card_inference（没被 memo／用户替换），就清掉值与来源，避免名片资料变化后留着过期推测。
+ */
+function clearStaleCardInference(payload: Record<string, unknown>, values: readonly EnrichedValue[]): AppliedEnrichmentField[] {
+  const enrichment = readStoredEnrichment(payload.enrichment);
+  if (!enrichment) return [];
+  const present = new Set(values.map((entry) => entry.field));
+  const cleared: AppliedEnrichmentField[] = [];
+  const fields = { ...enrichment.fields };
+  const profile = typeof payload.publicProfile === "object" && payload.publicProfile !== null ? { ...(payload.publicProfile as Record<string, unknown>) } : {};
+  for (const field of ["offering", "seeking", "topics"] as const) {
+    if (present.has(field) || fields[field]?.via !== "card_inference") continue;
+    delete fields[field];
+    delete profile[field];
+    cleared.push(field);
+  }
+  if (!cleared.length) return [];
+  payload.publicProfile = profile;
+  if (Object.keys(fields).length) payload.enrichment = { version: 1, fields };
+  else delete payload.enrichment;
+  return cleared;
+}
+
 export const CONTACTS_LIVE_RECORD_COLLECTIONS = {
   connections: "connections",
   contacts: "contacts",
@@ -847,6 +871,7 @@ export function createStorageContactGraphProvider({
       }
       const nextPayload: Record<string, unknown> = { ...contactRecord.payload };
       const written = applyEnrichedValues(nextPayload, allowed, input.at);
+      if (input.via === "card_inference") written.push(...clearStaleCardInference(nextPayload, allowed));
       if (!written.length) return [];
       const updatedAt = new Date(Math.max(Date.now(), Date.parse(contactRecord.updatedAt) + 1)).toISOString();
       nextPayload.updatedAt = updatedAt;

@@ -91,7 +91,7 @@ alter table contact_insights
   {
     // W0058（rev 2 G-3）：同一次洞察调用产出的名片推测与洞察同一条 complete 语句持久化在行上；写回联系人是之后的
     // 独立一步——失败或冲突时保持 pending，由维护任务从存的推测重放写回（0 次模型调用，最多 3 次，之后 skipped）。
-    // 没有可写的推测时 profile_apply_state 为 null。
+    // 没有推测（旧行）时 profile_apply_state 为 null；推测为空也置 pending，写回时清掉过期的 card_inference。
     name: "contact-insights-profile-inference",
     version: 4,
     sql: `

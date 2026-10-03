@@ -24,7 +24,6 @@ import { contactInsightGoalHash, type ClaimedInsightBatch, type ContactInsightCo
 import { contactInsightSourceVersion } from "./source-version";
 import type { EnrichedValue } from "../enrichment/apply-enrichment";
 import {
-  profileInferenceIsEmpty,
   profileInferenceValues,
   profileLanguageForGoal,
   type StoredProfileInference,
@@ -205,7 +204,8 @@ export async function executeInsightGeneration(
     const written = writtenIds.length;
     const writtenSet = new Set(writtenIds);
     for (const result of results) {
-      if (!writtenSet.has(result.contactId) || profileInferenceIsEmpty(result.profileInference)) continue;
+      // 推测为空也要走一遍写回：清掉这位联系人身上过期的 card_inference（review P2）。
+      if (!writtenSet.has(result.contactId) || !result.profileInference) continue;
       await applyStoredProfileInference(deps, { actorId: batch.actorId, contactId: result.contactId, profileInference: result.profileInference! }, now());
     }
     outcome = written > 0 ? "succeeded" : "failed";
@@ -230,7 +230,7 @@ export async function applyStoredProfileInference(
   let fields: readonly string[] = [];
   try {
     const values = profileInferenceValues(input.profileInference);
-    if (values.length) fields = await deps.applyProfileInference({ actorId: input.actorId, at: now.toISOString(), contactId: input.contactId, values });
+    fields = await deps.applyProfileInference({ actorId: input.actorId, at: now.toISOString(), contactId: input.contactId, values });
   } catch (error) {
     outcome = "failed";
     log({

@@ -189,7 +189,11 @@ test("SC-02 write priority on real rows: memo values, user-cleared fields and le
     await seedContact(pool, "contact:cleared", ALICE, { enrichment: { fields: { offering: p("user", "contact_edit") }, version: 1 }, organization: "U", publicProfile: { offering: [] }, role: "Owner" });
     await seedContact(pool, "contact:legacy", ALICE, { organization: "L", publicProfile: { offering: ["老数据"] }, role: "Manager" });
     await seedContact(pool, "contact:old", ALICE, { enrichment: { fields: { offering: p("ai", "card_inference") }, version: 1 }, organization: "O", publicProfile: { offering: ["Old guess"] }, role: "Partner" });
-    const ids = ["contact:memo", "contact:cleared", "contact:legacy", "contact:old"];
+    // review P2：这次没推出的栏，旧的 card_inference 值被清掉（memo 值不动）。
+    await seedContact(pool, "contact:stale", ALICE, {
+      enrichment: { fields: { topics: p("ai", "card_inference") }, version: 1 }, organization: "S", publicProfile: { topics: ["Old topic"] }, role: "Partner",
+    });
+    const ids = ["contact:memo", "contact:cleared", "contact:legacy", "contact:old", "contact:stale"];
     await mark(harness, ALICE, ids);
     await harness.instant(ALICE, ids);
     assert.equal(harness.stub.requests.length, 1);
@@ -202,6 +206,11 @@ test("SC-02 write priority on real rows: memo values, user-cleared fields and le
     const old = await contactPayload(pool, "contact:old");
     assert.deepEqual(old.publicProfile.offering, ["Japan channel building"]);
     assert.deepEqual(old.enrichment.fields.offering.bilingual, { en: ["Japan channel building"], zh: ["日本渠道开拓"] });
+    const stale = await contactPayload(pool, "contact:stale");
+    assert.equal(stale.publicProfile.topics, undefined, "stale inferred topics cleared");
+    assert.equal(stale.enrichment.fields.topics, undefined);
+    assert.equal(stale.enrichment.fields.offering.via, "card_inference");
+    assert.equal((await contactPayload(pool, "contact:memo")).publicProfile.topics, undefined);
     // memo 提取可以替换推测。
     const contacts = createStorageContactGraphProvider({ store: createPostgresLiveRecordStore({ client: harness.client }), workspaceId: WORKSPACE });
     const written = await contacts.applyContactMemoExtraction!("contact:old", ALICE, [{ field: "offering", origin: "ai", value: ["报关代理"], via: "memo_extraction" }], "2026-10-03T04:00:00.000Z");
