@@ -3,7 +3,7 @@ import { DatabaseSync } from "node:sqlite";
 import type { OrbitApiClient } from "../../src/api/client";
 import type { DomainChange, DomainPage, OfflineReadEnvelope } from "../../src/api/contract/universal-read";
 import { createSyncCoordinator, type SyncCoordinatorSession } from "../../src/data/sync/sync-coordinator";
-import type { SyncClient } from "../../src/data/sync/sync-client";
+import { SyncResetRequiredError, type SyncClient } from "../../src/data/sync/sync-client";
 import { createSyncLifecycle } from "../../src/data/sync/sync-lifecycle";
 import { uploadAllOutboxes } from "../../src/data/sync/upload-outboxes";
 
@@ -61,6 +61,8 @@ export function createHost(accounts: readonly string[]) {
     /** How many times each (account, key) actually changed server data; receipt replays do not count. */
     applied: new Map<string, number>(),
     leaseCalls: 0,
+    /** The next page request for these domains answers 409 reset-required (registry upgrade: the kind is copied again). */
+    resetRequired: new Set<string>(),
     /** Every call in arrival order: "lease", "write:<key>", "page:<domain>". */
     calls: [] as string[],
     state,
@@ -127,6 +129,7 @@ export function createHost(accounts: readonly string[]) {
         async getDomainPage(input): Promise<DomainPage> {
           reachable();
           host.calls.push(`page:${input.domainId}`);
+          if (input.cursor && host.resetRequired.delete(input.domainId)) throw new SyncResetRequiredError({ context: { reason: "registry" }, message: "reset required" });
           const value = host.account(account);
           const log = value.logs[input.domainId as DomainId] ?? [];
           const from = input.cursor ? Number(input.cursor.split(":").pop()) : 0;

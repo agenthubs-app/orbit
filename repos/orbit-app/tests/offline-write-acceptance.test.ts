@@ -344,6 +344,20 @@ test("matrix · authorization epoch rotation while writes are pending: the mirro
   assertServerHasAllWrites(w.host);
 });
 
+test("matrix · registry upgrade (a kind is copied again from scratch) while writes are pending: the domains reset, every write lands once, the mirror is whole", async t => {
+  const { w, app, keys } = await pendingInFourKinds(t);
+  w.host.offline = false;
+  for (const domain of ["notes", "tasks", "personal-schedule", "relationship-messages"]) w.host.resetRequired.add(domain);
+  assert.equal((await app.client.sync())?.error, null);
+  for (let round = 0; round < 2 && (await app.client.queue()).length; round += 1) await app.client.sync();
+  assert.deepEqual(await app.client.queue(), []);
+  assertExactlyOnce(w.host, A, keys);
+  assertServerHasAllWrites(w.host);
+  assert.equal(w.host.resetRequired.size, 0, "every domain was reset and copied again");
+  const tasks = await app.client.records("task");
+  assert.ok(tasks.some(record => record.id === "task:a:seed") && tasks.some(record => (record.payload as { title?: string }).title === "Book Osaka hotel"));
+});
+
 test("matrix · a vault older than 30 days is expired at the next start: nothing is restored or uploaded", async t => {
   const { w, app } = await pendingInFourKinds(t);
   app.client.close();
