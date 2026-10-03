@@ -595,10 +595,73 @@ test("an unreadable pending-cleanup marker reports the read stage and a keychain
   assert.ok(!JSON.stringify(f.logs).includes("secret-shaped"));
 });
 
-test("a malformed pending-cleanup marker is reported as such", async t => {
+// A stuck cleanup marker must not lock the user out forever (0137).
+test("a malformed pending-cleanup marker does not lock sign-in: other identities are erased, then the marker is cleared", async t => {
+  const f = await lifecycle(t);
+  assert.equal(await f.coordinator.setScope(otherScope), true);
+  const otherFile = [...f.files.keys()].find(name => name.startsWith("orbit-sync-"))!;
+  f.keys.set("orbit.sync.pending-cleanup", "not-a-digest");
+  const next = await restartedLifecycle(f);
+  assert.equal(await next.setScope(scope), true);
+  assert.equal(f.files.has(otherFile), false, "the other identity's file is erased");
+  assert.equal([...f.keys.keys()].filter(key => key.startsWith("orbit.sync.key.")).length, 1, "only the open identity's key remains");
+  assert.equal(f.keys.has("orbit.sync.pending-cleanup"), false);
+  assert.equal(next.isScopeReadable(scope), true);
+  assert.deepEqual(f.logs.find(entry => entry[0] === "SYNC_CLEANUP_STATE_INVALID"), ["SYNC_CLEANUP_STATE_INVALID", undefined, { stage: "read-pending-cleanup", name: "Error", code: null, message: "SYNC_CLEANUP_STATE_INVALID" }]);
+  assert.ok(!JSON.stringify(f.logs).includes("not-a-digest"));
+});
+
+test("a malformed marker with no other identity on the device is cleared on the next sign-in", async t => {
   const f = await lifecycle(t);
   f.keys.set("orbit.sync.pending-cleanup", "not-a-digest");
-  assert.equal(await f.coordinator.setScope(scope), false);
-  assert.deepEqual(f.logs[0], ["SYNC_CLEANUP_STATE_FAILED", undefined, { stage: "read-pending-cleanup", name: "Error", code: null, message: "SYNC_CLEANUP_STATE_INVALID" }]);
-  assert.ok(!JSON.stringify(f.logs).includes("not-a-digest"));
+  assert.equal(await f.coordinator.setScope(scope), true);
+  assert.equal(f.keys.has("orbit.sync.pending-cleanup"), false);
+});
+
+test("a malformed marker keeps the signing-in identity's own rows and pending writes", async t => {
+  const f = await lifecycle(t);
+  assert.equal(await f.coordinator.setScope(scope), true);
+  await f.coordinator.withDatabase(scope, db => db.execute("CREATE TABLE kept_probe (v TEXT); INSERT INTO kept_probe VALUES ('mine')"));
+  f.keys.set("orbit.sync.pending-cleanup", "not-a-digest");
+  const next = await restartedLifecycle(f);
+  assert.equal(await next.setScope(scope), true);
+  assert.deepEqual((await next.withDatabase(scope, db => db.all<{ v: string }>("SELECT v FROM kept_probe")))?.map(row => row.v), ["mine"]);
+  assert.equal(f.keys.has("orbit.sync.pending-cleanup"), false);
+});
+
+test("a malformed marker stays when the identity scan cannot run, so a later start retries", async t => {
+  const f = await lifecycle(t);
+  f.keys.set("orbit.sync.pending-cleanup", "not-a-digest");
+  f.native.sqlite.listDatabaseNames = async () => { throw Error("secret-shaped-key-and-payload"); };
+  assert.equal(await f.coordinator.setScope(scope), true, "a failed scan is best effort, as for any sign-in");
+  assert.equal(f.keys.get("orbit.sync.pending-cleanup"), "not-a-digest");
+  assert.ok(!JSON.stringify(f.logs).includes("secret-shaped"));
+});
+
+test("an old marker for an identity whose key and file are already gone is finished, not a lock", async t => {
+  const f = await lifecycle(t);
+  f.keys.set("orbit.sync.pending-cleanup", "a".repeat(64));
+  assert.equal(await f.coordinator.setScope(scope), true);
+  assert.equal(f.keys.has("orbit.sync.pending-cleanup"), false);
+});
+
+test("transient native-load and marker-read failures recover on the next attempt", async t => {
+  const f = fixture();
+  t.after(() => { for (const database of f.files.values()) database.close(); });
+  const { createSyncLifecycle } = await import("../src/data/sync/sync-lifecycle");
+  let loads = 0;
+  const coordinator = createSyncLifecycle({
+    platform: "ios",
+    loadNative: async () => { if (loads++ === 0) throw Error("METRO_SERVER_ERROR"); return f.native as any; },
+    report: (...args: unknown[]) => f.logs.push(args),
+  });
+  assert.equal(await coordinator.setScope(scope), false);
+  const read = f.native.secureStore.getItemAsync;
+  let reads = 0;
+  f.native.secureStore.getItemAsync = async (key: string, option: unknown) => {
+    if (key === "orbit.sync.pending-cleanup" && reads++ === 0) throw Error("User interaction is not allowed.");
+    return read(key, option);
+  };
+  assert.equal(await coordinator.setScope(scope), false);
+  assert.equal(await coordinator.setScope(scope), true, "a retry signs in once the device answers");
 });

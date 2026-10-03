@@ -103,6 +103,9 @@ export function createSyncLifecycle(input: {
   let queue: Promise<unknown> = Promise.resolve();
   let legacyRemoved = false;
   let cleanupRecovered = false;
+  // A marker that is not a digest names no key to erase; it is retired by the next
+  // complete erasure of every other identity (0137), instead of blocking sign-in forever.
+  let malformedMarker = false;
   let readyToken = -1;
   // Between suspendScope and the next setScope no read or write reaches the kept database (0130).
   let suspended = false;
@@ -148,9 +151,9 @@ export function createSyncLifecycle(input: {
     let names: readonly string[];
     try {
       names = await native.sqlite.listDatabaseNames();
-    } catch {
+    } catch (error) {
       // Enumeration is best effort; the open identity is still isolated by its own key.
-      input.report("SYNC_IDENTITY_SCAN_FAILED", keep);
+      input.report("SYNC_IDENTITY_SCAN_FAILED", keep, describeSyncFailure("scan-identities", error));
       return true;
     }
     const others = new Set(names.map(name => IDENTITY_DATABASE.exec(name)?.[1]).filter((digest): digest is string => Boolean(digest) && digest !== keep));
@@ -162,6 +165,16 @@ export function createSyncLifecycle(input: {
         return false;
       }
       if (!(await finishPendingCleanup(digest))) return false;
+    }
+    if (malformedMarker) {
+      // Every other identity is gone, so whatever the unreadable marker meant is done.
+      try {
+        await clearPendingSyncCleanup(native);
+        malformedMarker = false;
+      } catch (error) {
+        input.report("SYNC_CLEANUP_STATE_FAILED", keep, describeSyncFailure("clear-pending-cleanup", error));
+        return false;
+      }
     }
     return true;
   }
@@ -205,6 +218,12 @@ export function createSyncLifecycle(input: {
       try {
         pending = await readPendingSyncCleanup(native);
       } catch (error) {
+        if (error instanceof Error && error.message === "SYNC_CLEANUP_STATE_INVALID") {
+          input.report("SYNC_CLEANUP_STATE_INVALID", undefined, describeSyncFailure("read-pending-cleanup", error));
+          malformedMarker = true;
+          cleanupRecovered = true;
+          return true;
+        }
         // An unreadable marker cannot be treated as proof of no pending key.
         input.report("SYNC_CLEANUP_STATE_FAILED", undefined, describeSyncFailure("read-pending-cleanup", error));
         return false;
