@@ -744,7 +744,7 @@ function ScopedRelationshipInboxThreadScreen({ actorId, conversationId, scopeKey
         />
         </View>
       ) : null}
-      {conversationId && state.kind === "empty" ? (
+      {conversationId && state.kind === "empty" && queuedHere.length === 0 ? (
         <EmptyState
           message={locale.t("inbox.emptyMessagesBody")}
           title={locale.t("inbox.emptyMessagesTitle")}

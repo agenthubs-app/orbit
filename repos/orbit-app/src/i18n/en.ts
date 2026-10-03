@@ -1184,7 +1184,7 @@ export const en = {
   "inbox.messagePending": "Waiting to send",
   "inbox.messageUnsent": "Not sent",
   "inbox.copyMessage": "Copy",
-  "inbox.unsentEnded": "{count} messages couldn't be sent: this relationship has ended",
+  "inbox.unsentEnded": "Not sent ({count}): this relationship has ended",
   "inbox.copyContent": "Copy text",
   "inbox.discardUnsent": "Discard",
   "inbox.serverUnavailable": "Server unavailable",
