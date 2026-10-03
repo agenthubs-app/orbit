@@ -185,6 +185,7 @@ test("a task delete conflict requires a second confirmation for the server versi
   assert.equal(resolution.replacement.operation, "delete");
   assert.equal(JSON.parse(resolution.replacement.requestJson).expectedUpdatedAt, "2026-09-07T05:00:00.000Z");
   assert.notEqual(JSON.parse(resolution.replacement.requestJson).idempotencyKey, "delete-original");
+  await page.waitForFunction(() => (window as any).fixture.navigation.includes("/tasks"));
 });
 
 test("a note-backed task returns to its exact source note without writing", async (t) => {

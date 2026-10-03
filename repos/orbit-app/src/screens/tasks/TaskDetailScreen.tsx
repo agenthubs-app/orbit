@@ -413,6 +413,12 @@ export function TaskDetailScreen() {
           createdAt: new Date().toISOString(),
         });
         await session.resolveTaskConflict({ mutationId: taskConflict.mutationId, resolution, replacement });
+        if (taskConflict.operation === "delete") {
+          // Like the online delete: the confirmed delete is queued, so leave the deleted task's page.
+          notifyReminderPlansChanged();
+          router.replace("/tasks" as Href);
+          return;
+        }
       }
       setConfirmConflictDelete(false);
       setMutationError(null);
