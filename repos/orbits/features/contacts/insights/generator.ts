@@ -296,7 +296,16 @@ function mockProfile(contact: InsightInputContact): Record<keyof ProfileInferenc
   return profile;
 }
 
-export function createMockContactInsightGenerator(): ContactInsightGenerator {
+export interface MockContactInsightGeneratorOptions {
+  /**
+   * W0058：mock 是否产出名片推测。默认 true（测试与本机 `next dev`）；部署环境（NODE_ENV=production）的配置工厂传 false——
+   * mock 拼出来的模板文字不能作为推测写进真实联系人资料。
+   */
+  profile?: boolean;
+}
+
+export function createMockContactInsightGenerator(options: MockContactInsightGeneratorOptions = {}): ContactInsightGenerator {
+  const withProfile = options.profile ?? true;
   return {
     billable: false,
     model: "mock-contact-insight-v1",
@@ -310,7 +319,7 @@ export function createMockContactInsightGenerator(): ContactInsightGenerator {
         const who = [contact.role, contact.organization].filter(Boolean).join(" · ");
         const record = contact.records[0];
         return {
-          profile: mockProfile(contact),
+          ...(withProfile ? { profile: mockProfile(contact) } : {}),
           contactId: contact.id,
           evidence: [...(record ? [record.id] : []), ...(link ? [link.needId] : [])],
           goalRelation: title
@@ -365,6 +374,7 @@ export function createDeepseekContactInsightGenerator(options: DeepseekContactIn
 
 /**
  * provider factory：`ORBIT_CONTACT_INSIGHT_GENERATOR=deepseek` 且有 `DEEPSEEK_API_KEY` 时用 DeepSeek，否则 mock（生产默认）。
+ * W0058：`NODE_ENV=production` 下的 mock 不产出名片推测。
  */
 export function createConfiguredContactInsightGenerator(
   env: Record<string, string | undefined> = process.env,
@@ -375,5 +385,6 @@ export function createConfiguredContactInsightGenerator(
     // W0057（G-8）：即时路径传 45 s 上限，后台仍是 60 s。
     if (apiKey) return createDeepseekContactInsightGenerator({ apiKey, model: env.ORBIT_BUSINESS_CARD_OCR_TEXT_MODEL?.trim() || undefined, timeoutMs: options.timeoutMs });
   }
-  return createMockContactInsightGenerator();
+  // W0058：部署环境的 mock 不产出推测（模板文字不写进真实联系人）；本机 dev 与测试照常产出。
+  return createMockContactInsightGenerator({ profile: env.NODE_ENV !== "production" });
 }

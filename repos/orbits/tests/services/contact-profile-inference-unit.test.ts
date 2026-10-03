@@ -11,6 +11,7 @@ import test from "node:test";
 import { applyEnrichedValues, type EnrichedValue } from "../../features/contacts/enrichment/apply-enrichment";
 import {
   buildInsightPromptInput,
+  createConfiguredContactInsightGenerator,
   createDeepseekContactInsightGenerator,
   createMockContactInsightGenerator,
   parseInsightOutput,
@@ -194,6 +195,13 @@ test("SC-03 the mock generator only builds profile items from the contact's own 
     for (const entry of tanaka[field]) assert.ok(["title", "company", "industry"].includes(entry.basis));
   }
   assert.deepEqual(parsed.insights.get("contact:sato")!.profile.seeking, []);
+  // 部署环境（NODE_ENV=production）的 mock 不产出推测：模板文字不写进真实联系人。
+  const deployed = createConfiguredContactInsightGenerator({ NODE_ENV: "production" });
+  assert.equal(deployed.provider, "mock");
+  const quiet = parseInsightOutput((await deployed.generate(INPUT)).content, INPUT);
+  assert.deepEqual(quiet.insights.get("contact:tanaka")!.profile, { offering: [], seeking: [], topics: [] });
+  const local = parseInsightOutput((await createConfiguredContactInsightGenerator({ NODE_ENV: "development" }).generate(INPUT)).content, INPUT);
+  assert.ok(local.insights.get("contact:tanaka")!.profile.offering.length > 0);
 });
 
 test("W58-3 write language follows the goal text; both originals stay aligned; stored inference round-trips", () => {
