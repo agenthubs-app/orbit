@@ -84,6 +84,31 @@ export interface TodayPlanAction {
   weeksOverdue: number;
   phase: TodayPlanPhase | null;
   href: string;
+  /**
+   * W0061（G-17）：恰好指向的那一位联系人——关联联系人只有一人，或没有关联但 `meta.contactId` 是一人；
+   * 关联 0 人（且无 meta）或多人时为 null（不猜，不显示「TA 能帮你」）。
+   */
+  contactId: string | null;
+  /** W0061：退化时「可能对应：计划需求『…』」——`meta.needItemId` 指的需求，否则关联着这位联系人的第一条需求。 */
+  needTitle: string | null;
+}
+
+/** W0061：计划行动恰好指向的一位联系人（见 `TodayPlanAction.contactId`）。 */
+export function todayPlanActionContactId(item: Pick<PlanViewItem, "linkedContactIds" | "meta">): string | null {
+  if (item.linkedContactIds.length === 1) return item.linkedContactIds[0] ?? null;
+  if (item.linkedContactIds.length > 1) return null;
+  const metaContactId = (item.meta as { contactId?: unknown } | null | undefined)?.contactId;
+  return typeof metaContactId === "string" && metaContactId ? metaContactId : null;
+}
+
+function todayPlanNeedTitle(snapshot: PlanViewSnapshot, item: Pick<PlanViewItem, "meta">, contactId: string | null): string | null {
+  if (!contactId) return null;
+  const needs = snapshot.items.filter((entry) => entry.kind === "network_need");
+  const pointed = (item.meta as { needItemId?: unknown } | null | undefined)?.needItemId;
+  const need =
+    (typeof pointed === "string" ? needs.find((entry) => entry.id === pointed) : undefined) ??
+    needs.find((entry) => entry.linkedContactIds.includes(contactId));
+  return need?.title ?? null;
 }
 
 export function selectTodayPlanActions(
@@ -99,14 +124,19 @@ export function selectTodayPlanActions(
     .sort(compareTodayPlanActions)
     .slice(0, slots)
     .filter((entry) => !skipped.has(entry.item.id))
-    .map((entry) => ({
-      detail: entry.item.detail,
-      href: todayPlanActionHref(entry.item),
-      id: entry.item.id,
-      phase: todayPlanPhase(snapshot, entry.item, now),
-      title: entry.item.title,
-      weeksOverdue: entry.weeksOverdue,
-    }));
+    .map((entry) => {
+      const contactId = todayPlanActionContactId(entry.item);
+      return {
+        contactId,
+        detail: entry.item.detail,
+        href: todayPlanActionHref(entry.item),
+        id: entry.item.id,
+        needTitle: todayPlanNeedTitle(snapshot, entry.item, contactId),
+        phase: todayPlanPhase(snapshot, entry.item, now),
+        title: entry.item.title,
+        weeksOverdue: entry.weeksOverdue,
+      };
+    });
 }
 
 export function todaySkipStorageKey(account: string, day: string): string {

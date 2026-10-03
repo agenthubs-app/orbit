@@ -31,6 +31,7 @@ import { IOrbitHome } from "../../app/(app)/app/agent/iorbit-0918/iorbit-home";
 import { PENDING_CARDS_COALESCE_MS } from "../../app/(app)/app/agent/iorbit-0918/use-pending-cards";
 import { createOrbitAgentStarterViewModel } from "../../app/(app)/app/orbit-agent-route-view-model";
 import { OrbitLanguageProvider } from "../../app/(app)/app/orbit-language-context";
+import { VALUE_CONTACT_ID, VALUE_LINE_EXPECTED, valueLineItem } from "../support/value-line-fixture";
 import { setSharedReadAccount } from "../../app/(app)/app/orbit-shared-read";
 import { SessionContext } from "next-auth/react";
 import { readFileSync } from "node:fs";
@@ -446,6 +447,8 @@ interface MountOptions {
   communityPut?: () => Promise<Response> | Response;
   /** W0038：拿到首页的每分钟时钟回调（用来模拟跨东京午夜）。 */
   onInterval?: (handler: () => void) => void;
+  /** W0061：`GET /api/contacts/value-lines` 的 lines（按请求的 ids 与 lang 给；undefined = 接口 404）。 */
+  valueLines?: (ids: string[], lang: string) => unknown[];
 }
 
 async function mountHome(
@@ -570,6 +573,10 @@ async function mountHome(
       if (custom) return custom;
       const found = options.cardBatches.details[batchId];
       return found ? Response.json({ data: found, success: true }) : Response.json({ success: false }, { status: 404 });
+    }
+    if (url.startsWith("/api/contacts/value-lines?") && options.valueLines) {
+      const params = new URL(url, "https://orbit.test").searchParams;
+      return Response.json({ data: { lines: options.valueLines((params.get("ids") ?? "").split(","), params.get("lang") ?? "") }, success: true });
     }
     if (url === "/api/community/membership" && options.communityPut) {
       return options.communityPut();
@@ -1980,9 +1987,11 @@ test("W0010: plan matches become one today item ranked after critical/high signa
   assert.equal(dialog.length, 1);
   assert.equal(mounted.root.root.findAll((node) => node.props?.["data-plan-match-candidate"] !== undefined && node.type === "li").length, 2);
   const sheetText = textOf(dialog[0]!);
-  assert.ok(sheetText.includes("可能对应「能帮你引荐的行业前辈」"));
-  assert.ok(sheetText.includes("同属二级行业：行业协会"));
-  assert.ok(sheetText.includes("按公司与职位：做中小企业 IT 采购"));
+  // W0061：候选卡「对应 {需求}」+ 依据签（规则层「行业规则匹配 · 行业」、AI 层「名片职位」，模型原文在提示里）。
+  assert.ok(sheetText.includes("对应能帮你引荐的行业前辈"));
+  assert.ok(sheetText.includes("依据 · 行业规则匹配 · 行业协会"));
+  assert.ok(sheetText.includes("依据 · 名片职位"));
+  assert.ok(mounted.root.root.findAll((node) => node.props?.title === "做中小企业 IT 采购").length > 0);
 
   // 「是」：关联并在弹层里显示本周的「约 TA」行动卡；今日要事的计数随之减少。
   const yes = mounted.root.root.findAll((node) => node.props?.["data-plan-match-yes"] === true && node.type === "button")[0]!;
@@ -3688,4 +3697,112 @@ test("W0038 SC-01 (live shell): registrations from the live home draw solid dots
   assert.ok(html.includes(`aria-label="${iorbitSelectedDayLabel(year, month, 1, "zh")}，1 项日程"`));
   assert.match(html, /class="ir-day-dot ir-day-dot-a"/);
   assert.match(html, /data-orbit-iorbit-cal-legend/);
+});
+
+
+/* ── W0061：「TA 能帮你」一句话 ─────────────────────────────────────── */
+
+/** 两条拖期行动：a-overdue-2 恰好指向夹具联系人且自带理由；a-overdue-1 只有 meta.contactId、没有理由。 */
+function w61Plan() {
+  const plan = planSnapshotFixture();
+  plan.items = plan.items.map((item) =>
+    item.id === "a-overdue-2"
+      ? { ...item, detail: "「拿到 3 个引荐」还差 2 个", linkedContactIds: [VALUE_CONTACT_ID] }
+      : item.id === "a-overdue-1"
+        ? { ...item, detail: null, meta: { contactId: "c-other" } }
+        : item,
+  );
+  return plan;
+}
+
+function w61Lines(otherState: "ready" | "pending") {
+  return (ids: string[], lang: string) => {
+    const language = lang === "en" ? "en" : "zh";
+    const other =
+      otherState === "ready"
+        ? { contactId: "c-other", evidence: [], name: "伊藤 翔", nextStep: language === "zh" ? "先约一杯咖啡。" : "Start with a coffee.", relation: language === "zh" ? "伊藤在做渠道合作。" : "Ito runs channel partnerships.", state: "ready", subtitle: "Ito KK · 部长" }
+        : { contactId: "c-other", evidence: [], name: "伊藤 翔", nextStep: null, relation: null, state: "pending", subtitle: "Ito KK · 部长" };
+    return [valueLineItem(language), other].filter((line) => ids.includes(line.contactId));
+  };
+}
+
+function valueLineNode(mounted: Mounted, key: string) {
+  return mounted.root.root.findAll((node) => node.props?.["data-orbit-today-value-line"] === key)[0] ?? null;
+}
+
+for (const lang of ["zh", "en"] as const) {
+  test(`SC-W0061-01／03 (${lang}): a plan action pointing at one contact shows 「TA 能帮你」 + evidence (same text as the candidate card and detail) and 为什么现在 from the plan item`, async (t) => {
+    const mounted = await mountHome(
+      t,
+      ({ loadSnapshot }) => (
+        <OrbitLanguageProvider initialLanguage={lang}>
+          {homeElement({ clock: () => PLAN_NOW })({ loadSnapshot })}
+        </OrbitLanguageProvider>
+      ),
+      { plan: w61Plan(), snapshot: EMPTY_SNAPSHOT, valueLines: w61Lines("ready") },
+    );
+    await mounted.settle(6);
+    const requests = mounted.calls.filter((call) => call.url.startsWith("/api/contacts/value-lines"));
+    assert.equal(requests.length, 1, "one batched read");
+    assert.equal(requests[0]!.url, `/api/contacts/value-lines?ids=${VALUE_CONTACT_ID},c-other&lang=${lang}`);
+    const lead = valueLineNode(mounted, "plan:a-overdue-2");
+    assert.ok(lead, "the lead plan action carries the value line");
+    const relation = lead!.find((node) => node.props?.["data-value-line-relation"] !== undefined);
+    assert.equal(textOf(relation as unknown as { children: readonly unknown[] }), VALUE_LINE_EXPECTED[lang].relation);
+    const evidence = lead!.find((node) => node.props?.["data-value-line-evidence"] !== undefined);
+    assert.equal(textOf(evidence as unknown as { children: readonly unknown[] }), VALUE_LINE_EXPECTED[lang].evidence);
+    const whyNow = lead!.find((node) => node.props?.["data-value-line-why-now"] !== undefined);
+    assert.equal(
+      textOf(whyNow as unknown as { children: readonly unknown[] }),
+      lang === "zh" ? "为什么现在：阶段 1 · 摸清需求：「拿到 3 个引荐」还差 2 个" : "Why now: Phase 1 · 摸清需求: 「拿到 3 个引荐」还差 2 个",
+    );
+    // 第二条没有自身理由 → 用 ready 洞察的下一步。
+    const brief = valueLineNode(mounted, "plan:a-overdue-1")!;
+    const briefWhy = brief.find((node) => node.props?.["data-value-line-why-now"] !== undefined);
+    assert.equal(textOf(briefWhy as unknown as { children: readonly unknown[] }), lang === "zh" ? "为什么现在：先约一杯咖啡。" : "Why now: Start with a coffee.");
+    // 一句话替代了原来的理由行（不重复显示）。
+    assert.equal(mounted.root.root.findAll((node) => node.props?.className === "ir-m-why").length, 0);
+  });
+}
+
+test("SC-W0061-02／03: without a plan reason and without a ready insight there is no 为什么现在; the card falls back to company · title + matched need + 生成中", async (t) => {
+  const mounted = await mountHome(t, homeElement({ clock: () => PLAN_NOW }), {
+    plan: w61Plan(),
+    snapshot: EMPTY_SNAPSHOT,
+    valueLines: w61Lines("pending"),
+  });
+  await mounted.settle(6);
+  const brief = valueLineNode(mounted, "plan:a-overdue-1")!;
+  assert.equal(brief.findAll((node) => node.props?.["data-value-line-why-now"] !== undefined).length, 0);
+  const text = textOf(brief as unknown as { children: readonly unknown[] });
+  assert.ok(text.includes("Ito KK · 部长"));
+  assert.ok(text.includes("「TA 能帮你」生成中，通常 1 分钟内出现"));
+  assert.equal(brief.findAll((node) => node.props?.["data-contact-value-line"] === "pending").length, 1);
+});
+
+test("SC-W0061-03: a follow-up item gets 「TA 能帮你」 but never 为什么现在; an unreadable value-lines endpoint leaves items unchanged", async (t) => {
+  const clock = () => new Date("2026-09-28T03:00:00Z");
+  const mounted = await mountHome(t, homeElement({ clock }), {
+    snapshot: SNAPSHOT("2026-09-28"),
+    valueLines: (ids) => (ids.includes("c1") ? [{ ...valueLineItem("zh"), contactId: "c1" }] : []),
+  });
+  await mounted.settle(6);
+  const node = valueLineNode(mounted, "followup:f1");
+  assert.ok(node, "the follow-up carries the value line");
+  assert.equal(node!.findAll((entry) => entry.props?.["data-value-line-why-now"] !== undefined).length, 0);
+  assert.equal(mounted.calls.filter((call) => call.url.startsWith("/api/contacts/value-lines")).length, 1);
+  const broken = await mountHome(t, homeElement({ clock }), { snapshot: SNAPSHOT("2026-09-28") });
+  await broken.settle(6);
+  assert.equal(valueLineNode(broken, "followup:f1"), null);
+  assert.ok(textOf(broken.root.root as unknown as { children: readonly unknown[] }).includes("跟进 Mina Aoki"));
+});
+
+test("SC-W0061-04: the demo home never reads value-lines", async (t) => {
+  const mounted = await mountHome(t, () => <IOrbitShell guide={GUIDE_NEW} home={HOME as never} viewModel={VIEW_MODEL} />, {
+    valueLines: () => {
+      throw new Error("demo must not read value-lines");
+    },
+  });
+  await mounted.settle(6);
+  assert.deepEqual(mounted.calls.filter((call) => call.url.includes("/api/contacts/value-lines")), []);
 });

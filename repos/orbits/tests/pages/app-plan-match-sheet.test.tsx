@@ -127,7 +127,7 @@ test("a fast match result is confirmed right on the review screen", async (t) =>
   assert.equal(byData(mounted.root, "data-plan-match-batch")[0]!.props["data-plan-match-batch"], "ready");
   assert.equal(byData(mounted.root, "data-plan-match-candidate").length, 2);
   const html = text(mounted.root);
-  assert.ok(html.includes("佐藤 健") && html.includes("强匹配") && html.includes("同属二级行业：行业协会"));
+  assert.ok(html.includes("佐藤 健") && html.includes("强匹配") && html.includes("依据 · 行业规则匹配 · 行业协会"));
 });
 
 test("a slow match result falls through after the wait with a pointer to Today and My plan", async (t) => {

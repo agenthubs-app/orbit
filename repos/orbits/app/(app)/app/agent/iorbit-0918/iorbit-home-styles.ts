@@ -63,6 +63,8 @@ ${S} .ir-m-pill { display: inline-flex; padding: 3px 10px; border-radius: 999px;
 ${S} .ir-m-pill-hot { background: #FBEDE6; color: #C4461B; font-weight: 500; }
 ${S} .ir-m-lead-title { margin: 2px 0 0; font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 27px; line-height: 1.3; letter-spacing: -0.02em; text-wrap: balance; }
 ${S} .ir-m-why { margin: 0; max-width: 36em; font-size: 15.5px; line-height: 1.75; color: #3B3F7A; }
+/* W0061：人物事项的「TA 能帮你」一句话（共享组件自带 .cvl 样式，这里只管位置）。 */
+${S} .ir-m-value { display: block; max-width: 40em; margin: 2px 0 4px; }
 ${S} .ir-m-proof { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12.5px; color: #6B6F99; }
 ${S} .ir-m-proof > span { display: inline-flex; align-items: center; gap: 6px; }
 ${S} .ir-m-proof > span::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: #B9BCEB; flex: none; }

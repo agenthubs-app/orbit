@@ -2,8 +2,8 @@
 /**
  * W0060：联系人详情第②块「为什么是 TA」（原 W0051「和你目标的关系」面板收进这里）。
  *
- * 组成（D56）：标题行「为什么是 TA」+ 灰字「对照目标：…」；首行大字「TA 能帮你：{goal_relation}」（W0061 会替换成
- * 共享组件）；「依据」小签；浅底条「对应计划需求」（已关联需求 chip + 「+ 关联到其他需求」，由调用方传入）；
+ * 组成（D56）：标题行「为什么是 TA」+ 灰字「对照目标：…」；首行「TA 能帮你：{goal_relation}」+「依据」小签（W0061：三处共用的
+ * `ContactValueLine`）；浅底条「对应计划需求」（已关联需求 chip + 「+ 关联到其他需求」，由调用方传入）；
  * 分隔线下唯一一条「下一步」（洞察 ready 的 nextStep 优先，否则 contact.nextAction）+「为什么现在」+ 动作按钮。
  * 洞察未就绪时在首行位置显示 W0057 的状态（正在生成／失败自动重试／失败可重新生成／未设目标去设目标），
  * 需求关联与动作按钮照常可用。
@@ -18,8 +18,12 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { ContactInsightView } from "../../../../../features/contacts/insights/view";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { useDemoMode } from "../../_demo/demo-mode-core";
-import { contactNextStep } from "./contact-value";
-import { INSIGHT_EVIDENCE_ICON, INSIGHT_EVIDENCE_LABEL, INSIGHT_STATE_COPY, insightEvidenceHref } from "./network-insight-copy";
+import { insightEvidenceLabels, type InsightEvidenceFacts } from "../../../../../features/contacts/insights/evidence-labels";
+import { contactNextStep, contactValueLine } from "./contact-value";
+import { ContactValueLine } from "./contact-value-line";
+import { INSIGHT_STATE_COPY, insightEvidenceHref } from "./network-insight-copy";
+
+const EMPTY_EVIDENCE_FACTS: InsightEvidenceFacts = { captureIsCard: new Map(), memoDays: new Map(), needTitles: new Map() };
 
 export const INSIGHT_GOAL_HREF = "/app/contacts/dashboard?tab=insight";
 export const INSIGHT_POLL_INTERVAL_MS = 5_000;
@@ -40,6 +44,8 @@ export function NetworkInsightPanel({
   planStrip = null,
   actions = null,
   after = null,
+  evidenceFacts = null,
+  valueFallback = null,
 }: {
   /** null：没有洞察数据（示例、旧调用方）——只渲染需求条、下一步与动作。 */
   view?: ContactInsightView | null;
@@ -55,6 +61,10 @@ export function NetworkInsightPanel({
   actions?: ReactNode;
   /** 动作行下方（「起草邮件」的草稿）。 */
   after?: ReactNode;
+  /** W0061：依据解析的事实（详情已读到的时间线与计划关联，`evidenceFactsFromDetail`）；缺省时依据都解析不到、不显示。 */
+  evidenceFacts?: InsightEvidenceFacts | null;
+  /** W0061：未就绪时一句话的退化事实（姓名、公司 · 职位、已关联需求）；状态尾巴沿用面板的 W0057 状态行。 */
+  valueFallback?: { name: string; subtitle: string | null; needTitle: string | null } | null;
 }) {
   const { t, language } = useOrbitLanguage();
   const demo = useDemoMode();
@@ -129,7 +139,8 @@ export function NetworkInsightPanel({
       setPhase("error");
     }
   }
-  const showText = Boolean(view && view.goalRelation && view.nextStep && view.state !== "no_goal");
+  // W0061（review P2）：有「和目标的关系」就显示一句话（不再要求同时有下一步）。
+  const showText = Boolean(view && view.goalRelation && view.state !== "no_goal");
   const status = !view
     ? null
     : view.state === "no_goal"
@@ -141,6 +152,7 @@ export function NetworkInsightPanel({
           : view.state === "failed"
             ? (view.autoRetry ? INSIGHT_STATE_COPY.retrying : INSIGHT_STATE_COPY.failed)
             : view.state === "none" && !view.goalUpdated ? INSIGHT_STATE_COPY.none : null;
+  const resolvedEvidence = view ? insightEvidenceLabels(view.contactId, view.evidence, evidenceFacts ?? EMPTY_EVIDENCE_FACTS) : [];
   const nextStep = contactNextStep({ insight: view, language, nextAction: fallbackNextStep ? { text: fallbackNextStep } : null });
   const goalText = view?.state === "no_goal" ? "" : (goal ?? "").trim();
   return (
@@ -161,18 +173,19 @@ export function NetworkInsightPanel({
         {goalText ? <span className="nw-why-goal" data-network-why-goal>{t({ en: "Against your goal: ", zh: "对照目标：" })}{goalText}</span> : null}
       </div>
       {showText && view ? (
-        <div className="nw-insight-body">
-          <p className="nw-why-rel"><span className="nw-why-lead">{t({ en: "How they can help: ", zh: "TA 能帮你：" })}</span><span data-insight-goal-relation>{t(view.goalRelation!)}</span></p>
-          {view.evidence.length ? (
-            <div className="nw-insight-evidence" aria-label={t({ en: "Evidence", zh: "依据" })}>
-              <span className="nw-why-ev-l">{t({ en: "Based on", zh: "依据" })}</span>
-              {view.evidence.map((evidence) => (
-                <a key={evidence.id} className="nw-insight-chip" href={insightEvidenceHref(evidence, contactHref)} data-insight-evidence={evidence.source}>
-                  {INSIGHT_EVIDENCE_ICON[evidence.source]} {t(INSIGHT_EVIDENCE_LABEL[evidence.source])}
-                </a>
-              ))}
-            </div>
-          ) : null}
+        <div className="nw-insight-body nw-why-rel" data-insight-goal-relation>
+          {/* W0061：首行换成三处共用的「TA 能帮你」一句话；依据经同一解析器（名片／录入／memo 日期／计划需求）。 */}
+          <ContactValueLine
+            model={contactValueLine({ insight: { evidence: resolvedEvidence.map((entry) => entry.label), nextStep: null, relation: t(view.goalRelation!), state: view.state }, name: "", subtitle: null }, t)}
+            evidenceHref={(_label, index) => (resolvedEvidence[index] ? insightEvidenceHref(resolvedEvidence[index]!.evidence, contactHref) : null)}
+          />
+        </div>
+      ) : view && valueFallback ? (
+        <div className="nw-insight-body nw-why-rel">
+          <ContactValueLine
+            model={contactValueLine({ insight: { state: view.state }, name: valueFallback.name, needTitle: valueFallback.needTitle, subtitle: valueFallback.subtitle }, t)}
+            showTail={false}
+          />
         </div>
       ) : null}
       {status ? <p className="nw-insight-status" data-insight-status>{t(status)}</p> : null}

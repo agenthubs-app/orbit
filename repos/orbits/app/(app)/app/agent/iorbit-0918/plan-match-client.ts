@@ -8,6 +8,7 @@
  * - `POST /api/agent/plans/items/:itemId/interaction`   「约 TA」行动上的「记一次互动」
  * - `POST /api/agent/plans/items/:itemId/draft`         「起草邮件」：点击才请求，返回可编辑草稿（不发送）
  */
+import type { ContactValueInsight } from "../../contacts/network-0918/contact-value";
 import { sharedRead } from "../../orbit-shared-read";
 import { invalidatePlanReads, newPlanIdempotencyKey, PLAN_CANDIDATES_URL, PlanClientError } from "./iorbit-plan-client";
 
@@ -23,6 +24,8 @@ export interface PlanMatchCandidate {
   tier: "rule" | "ai";
   industry: { zh: string; en: string } | null;
   aiReason: string | null;
+  /** W0061（可选）：「TA 能帮你」一句话的洞察部分（服务端按请求语言附上）。 */
+  value?: ContactValueInsight;
 }
 
 export interface PlanMatchList {
@@ -66,17 +69,20 @@ function asList(value: unknown): PlanMatchList {
   return value;
 }
 
+/** W0061：候选附带的一句话按这个请求头的语言给（地址不变，沿用既有共享读取 key）。 */
+export const PLAN_VALUE_LANGUAGE_HEADER = "x-orbit-lang";
+
 /** W0021：同账号并发读取共享一个请求（`sharedRead`）。 */
-export async function fetchPlanMatches(signal?: AbortSignal): Promise<PlanMatchList> {
+export async function fetchPlanMatches(signal?: AbortSignal, language: "zh" | "en" = "zh"): Promise<PlanMatchList> {
   return sharedRead(PLAN_CANDIDATES_URL, async (shared) => {
-    const response = await fetch(PLAN_CANDIDATES_URL, { cache: "no-store", signal: shared });
+    const response = await fetch(PLAN_CANDIDATES_URL, { cache: "no-store", headers: { [PLAN_VALUE_LANGUAGE_HEADER]: language }, signal: shared });
     return asList(await readEnvelope<unknown>(response));
   }, signal);
 }
 
-export async function runPlanMatchForBatch(batchId: string, signal?: AbortSignal): Promise<PlanMatchList> {
+export async function runPlanMatchForBatch(batchId: string, signal?: AbortSignal, language: "zh" | "en" = "zh"): Promise<PlanMatchList> {
   const response = await fetch("/api/agent/plans/candidates/run", {
-    body: JSON.stringify({ batchId }),
+    body: JSON.stringify({ batchId, language }),
     headers: { "content-type": "application/json" },
     method: "POST",
     signal,

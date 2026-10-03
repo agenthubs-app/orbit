@@ -93,6 +93,17 @@ import {
   withServerItem,
 } from "./iorbit-plan-client";
 import { fetchPlanMatches, withoutCandidate, type PlanMatchCandidate, type PlanMatchList } from "./plan-match-client";
+import {
+  contactValueLine,
+  contactValueWhyNow,
+  type ContactValueLineModel,
+  type ContactWhyNowAction,
+} from "../../contacts/network-0918/contact-value";
+import {
+  ContactValueLine,
+  fetchContactValueLines,
+  type ContactValueLineItem,
+} from "../../contacts/network-0918/contact-value-line";
 import { PlanMatchDialog, PlanMatchSheet } from "./plan-match-sheet";
 import { useSharedReadAccount } from "../../orbit-shared-read-account";
 import { usePendingCards } from "./use-pending-cards";
@@ -115,6 +126,8 @@ const TZ = "Asia/Tokyo";
 const SOON_MS = 2 * 60 * 60 * 1000;
 /** 默认露出的要事条数：1 条主稿 + 2 条短讯。 */
 const VISIBLE_ITEMS = 3;
+/** W0061：首页一次批量读取「TA 能帮你」最多带几个联系人 id（只看露出的 3 条事项；PLANNER 硬上限 6）。 */
+const HOME_VALUE_LINE_MAX_IDS = 3;
 
 type Loadable<T> = T | "pending" | "unavailable";
 
@@ -204,6 +217,17 @@ interface TodayItem {
   kind?: "plan" | "nudge";
   /** 计划行动的条目 id。 */
   planItemId?: string;
+  /**
+   * W0061：恰好指向一位联系人的事项（计划行动、跟进）——挂「TA 能帮你」一句话。
+   * `whyAction` 只有计划行动才有（「为什么现在」，G-17）；跟进等事项为 null。
+   */
+  person?: {
+    contactId: string;
+    name: string;
+    subtitle: string | null;
+    needTitle: string | null;
+    whyAction: ContactWhyNowAction | null;
+  };
 }
 
 /** W0036：本机存储读写一律包 try/catch；读不到、写不进都只影响这一页的记忆。 */
@@ -545,11 +569,11 @@ export function IOrbitHome({
     if (typeof window === "undefined" || demoActive || !hasPlan) return;
     const controller = new AbortController();
     // 读不到就当没有：今日要事不因为匹配接口故障而报错。
-    void fetchPlanMatches(controller.signal)
+    void fetchPlanMatches(controller.signal, lang)
       .then((value) => setMatches(value))
       .catch(() => undefined);
     return () => controller.abort();
-  }, [demoActive, hasPlan]);
+  }, [demoActive, hasPlan, lang]);
 
   useEffect(() => {
     if (typeof window === "undefined" || demoActive) return;
@@ -892,6 +916,17 @@ export function IOrbitHome({
           key: `followup:${item.key}`,
           pills: [],
           primary: { href: item.href ?? "/app/contacts", label: t({ en: "Open contact", zh: "打开联系人" }) },
+          ...(item.contactId
+            ? {
+                person: {
+                  contactId: item.contactId,
+                  name: item.contactName,
+                  needTitle: null,
+                  subtitle: item.organization || null,
+                  whyAction: null,
+                },
+              }
+            : {}),
           proof: [[t({ en: "Follow-up", zh: "跟进" }), [item.organization, item.title].filter(Boolean).join(" · ")] as const],
           signalId: null,
           title: t({ en: `Follow up with ${item.contactName}`, zh: `跟进 ${item.contactName}` }),
@@ -929,6 +964,21 @@ export function IOrbitHome({
               : []),
           ],
           planItemId: action.id,
+          ...(action.contactId
+            ? {
+                person: {
+                  contactId: action.contactId,
+                  name: "",
+                  needTitle: action.needTitle,
+                  subtitle: null,
+                  whyAction: {
+                    detail: action.detail,
+                    phaseNo: action.phase?.phaseNo ?? null,
+                    phaseTitle: action.phase?.phaseTitle ?? null,
+                  },
+                },
+              }
+            : {}),
           primary: {
             href: action.href,
             label: action.href.startsWith("/app/contacts/")
@@ -1012,6 +1062,74 @@ export function IOrbitHome({
     todayKey,
     todayRows,
   ]);
+
+  // W0061：今日要事里指向单一联系人的事项——要事就绪后发一次批量只读请求取「TA 能帮你」；
+  // 之后事项变化只补查没取过的 id。示例期 0 次请求（示例没有人物事项）；首页不轮询（下次打开即更新）。
+  const itemsSettledForValues =
+    snapshot !== "pending" && signals !== "pending" && plan !== "pending" && pendingCardsState.status !== "pending";
+  // 只取默认露出的前 3 条事项（≤3 个 id，流量按此计）；展开后的其余事项保持原样。
+  const personIdsKey = useMemo(
+    () =>
+      [...new Set(items.slice(0, VISIBLE_ITEMS).flatMap((item) => (item.person ? [item.person.contactId] : [])))]
+        .slice(0, HOME_VALUE_LINE_MAX_IDS)
+        .join("\n"),
+    [items],
+  );
+  const [valueLines, setValueLines] = useState<{ lang: string; lines: ReadonlyMap<string, ContactValueLineItem> }>({
+    lang,
+    lines: new Map(),
+  });
+  const requestedValueIds = useRef<{ lang: string; ids: Set<string> }>({ ids: new Set(), lang });
+  useEffect(() => {
+    if (typeof window === "undefined" || demoActive || !itemsSettledForValues || !personIdsKey) return;
+    if (requestedValueIds.current.lang !== lang) requestedValueIds.current = { ids: new Set(), lang };
+    const missing = personIdsKey.split("\n").filter((id) => !requestedValueIds.current.ids.has(id));
+    if (!missing.length) return;
+    const requested = requestedValueIds.current;
+    for (const id of missing) requested.ids.add(id);
+    const requestLang = lang;
+    const controller = new AbortController();
+    let settled = false;
+    // review P2：语言切换或卸载时取消在途请求；旧语言的应答不落地；失败或取消的 id 从「已请求」里移除。
+    void fetchContactValueLines(missing, requestLang, controller.signal)
+      .then((lines) => {
+        settled = true;
+        if (controller.signal.aborted || requestedValueIds.current !== requested) return;
+        setValueLines((current) => {
+          const base = current.lang === requestLang ? current.lines : new Map<string, ContactValueLineItem>();
+          const next = new Map(base);
+          for (const line of lines) next.set(line.contactId, line);
+          return { lang: requestLang, lines: next };
+        });
+      })
+      .catch(() => {
+        settled = true;
+        // 读不到：人物事项保持原样显示（不渲染一句话），下次打开再取。
+        for (const id of missing) requested.ids.delete(id);
+      });
+    return () => {
+      if (!settled) {
+        controller.abort();
+        for (const id of missing) requested.ids.delete(id);
+      }
+    };
+  }, [demoActive, itemsSettledForValues, lang, personIdsKey]);
+  const valueModelOf = (item: TodayItem): ContactValueLineModel | null => {
+    const person = item.person;
+    if (!person || valueLines.lang !== lang) return null;
+    const line = valueLines.lines.get(person.contactId);
+    if (!line) return null;
+    return contactValueLine(
+      {
+        insight: line,
+        name: person.name || line.name || "",
+        needTitle: person.needTitle,
+        subtitle: line.subtitle ?? person.subtitle,
+        whyNow: person.whyAction ? contactValueWhyNow(person.whyAction, line, t) : null,
+      },
+      t,
+    );
+  };
 
   const progress = Array.isArray(ledger) ? iorbitLedgerProgress(ledger) : null;
   const focusTasks = Array.isArray(ledger)
@@ -1237,6 +1355,7 @@ export function IOrbitHome({
     pendingCardsState.status === "unavailable";
 
   const lead = items[0] ?? null;
+  const leadValue = lead ? valueModelOf(lead) : null;
   const briefs = items.slice(1, expanded ? items.length : VISIBLE_ITEMS);
   const hiddenCount = Math.max(0, items.length - VISIBLE_ITEMS);
 
@@ -1503,7 +1622,13 @@ export function IOrbitHome({
                   </span>
                 ) : null}
                 <h2 className="ir-m-lead-title">{titleOf(lead)}</h2>
-                {lead.why ? <p className="ir-m-why">{lead.why}</p> : null}
+                {leadValue ? (
+                  <div className="ir-m-value" data-orbit-today-value-line={lead.key}>
+                    <ContactValueLine model={leadValue} />
+                  </div>
+                ) : lead.why ? (
+                  <p className="ir-m-why">{lead.why}</p>
+                ) : null}
                 {proofLine(lead.proof)}
                 <span className="ir-m-acts">
                   {lead.primary ? (
@@ -1549,6 +1674,11 @@ export function IOrbitHome({
                       {titleOf(item)}
                       {demoActive ? <DemoTag /> : null}
                     </strong>
+                    {valueModelOf(item) ? (
+                      <span className="ir-m-value" data-orbit-today-value-line={item.key}>
+                        <ContactValueLine model={valueModelOf(item)!} />
+                      </span>
+                    ) : null}
                     {item.kind && item.pills.length > 0 ? (
                       <span className="ir-m-pills">
                         {item.pills.map((pill) => (
