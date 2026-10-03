@@ -193,3 +193,21 @@
 - **付费 0**：3100 三次启动日志均为 web/worker 四个付费键 empty；Metro `env -i` 四键为空；web 日志里没有任何模型提供方或问题生成记录，AI 路由只有 2 次只读 GET `/api/ai/conversations`。
 - **收尾**：建的 6 行 QA 记录已按精确 ID 删除，`orbit_records` 回到 9333 行（与开工一致；md5 因已有的通知游标、推送设备行被更新而不同）。请求记录无法区分 3100 与用户 3000，未删。Simulator 服务器地址已通过设置页改回 `http://127.0.0.1:3000`（AsyncStorage 已确认），App 已关闭；3100、Metro 8082 已停，只剩用户的 3000（PID 96114）。
 - **SC-0137-05 未完成：磁盘低于停止线。** 准备跑全量时系统盘只剩 4.8GiB（开工 7.4GiB），增长来自主检出 `.git` 打包、微信、CoreSimulator 日志等非本轮文件；按规则停止，未删除任何非本轮文件。本轮新增证据在 ORICO 外置盘（22MB）。orbits typecheck/lint、App typecheck 通过；定向测试全部通过，但两端全量未跑。
+
+## SC-0137-05 收口（Claude，2026-10-03，协调者腾出磁盘后）
+
+- 开工磁盘 18GiB；全程最低 15.6GiB。规则文件 `generator-common.md`（2026-10-03 重建）已读。
+- **合并 chat-agent（`9c2166bd4`）进本分支**，提交 `a3a3f63a1`。两处冲突：
+  - `sync-lifecycle.ts`：0137 的 `malformedMarker` 与 0124 的 `pendingVaultsScanned` 是相邻的两行状态声明，两行都保留。0124 新增的拒绝点 `PENDING_VAULT_WRITE_FAILED`（两处）、`PENDING_VAULT_EXPIRY_CHECK_FAILED`，以及剩下的 `SYNC_CLOSE_FAILED`/`SYNC_FILE_DELETE_FAILED`/`SYNC_OPERATION_FAILED`，都带上 `{stage,name,code,message}`。新测试先 RED 2 条，GREEN 92/92（sync-lifecycle、offline-identity、metro、offline-read-inventory、outbox-uploader）。
+  - `audit-offline-read-surfaces.ts`：键跟随合并后 `AiConversationScreen.tsx` 的实际行号 459（取 chat-agent 一侧）。
+  - **规则冲突，按 0124 处理**：0124 规定设备目录列不出来时拒绝登录（无法确认待同步写入保险箱是否过期）；0137 原测试假设扫描失败可放行。保留 0124 的保证，0137 测试改为：拒绝、坏标记保留，重试后登录并清除标记。
+  - detect-changes 对合并报 critical（29 个流程），这是把 chat-agent 已合并的 50 个提交算进来了，不是本线新增风险。
+- **orbits 全量 profile**：`env -i` + 只设 `ORBIT_EVENT_DATABASE_URL` → 专用库 `orbit_0137_event_main_test`，付费键不存在。
+  - 无数据库 profile 有 36 条失败（事件类测试没有事件库就报错而不是跳过），所以不能作为门槛。
+  - 首轮事件库 profile 是 2 条失败，都是测试对目标库的约定冲突（`ddda0d2ec` 之后的 `8aac0ba05` 修复）：`inbox-meeting-precedence-postgres` 假设目标库已有约谈迁移，改为独立 schema 自建 `orbit_records` 和约谈表；`business-card-batch-schema` 只认 `orbit_0137_event_v2_test`，改为也认另一个 0137 专用事件库，其它库仍拒绝。两个专用库上都 38/38，非专用库仍被拒。
+  - **最终：`8aac0ba05` 上 5369 tests / 4873 pass / 0 fail / 496 skipped**，exit 0，付费拦截 0，`orbits-full-8aac0ba05.log`。之后的提交只改 App 测试。
+  - 两次全量在专用库 public 里留下 3 行夹具记录（测试本身不清理），已按精确键删除，`orbit_records` 回到 0 行；无残留 schema。
+- **App 全量**：首轮 3967 / 1 fail：`personal-schedule-interactions` 的「23:45 跨午夜」用例。单独跑 3 次都失败，是固定失败：新建日程的日历打开当月，用例直接点 2026-09-17，10 月 1 日起就找不到。改为先翻到 2026 年 9 月，断言不变（`0aff8e3b5`），单独 3 次 75/75。**最终 `0aff8e3b5` 上 3967/3967，0 fail，0 skip**，`app-full-0aff8e3b5.log`。
+- **Postgres 定向**（`--test-concurrency=1`，`ORBIT_LIFECYCLE_TEST_DATABASE_URL` 与 `ORBIT_EVENT_DATABASE_URL` 都指向 `orbit_test`）：notification-discovery-bounds/worker、inbox-meeting-precedence、contact-pipeline-page、6 个约谈 PG 文件、event-analytics-read-model、local-stack，21/21，`orbit_test.orbit_records` 前后都是 30 行。business-card 在 `orbit_0137_event_v2_test` 38/38。
+- 静态检查：orbits `typecheck`、`typecheck:app`、`lint` 和 App `typecheck` 都是 0。仓库里没有读取上限棘轮文件，本线没改任何棘轮；orbits 的 ratchet 测试在全量中通过。
+- SC-01 到 SC-05 全部满足，REPORT 内容见本轮最终回复。
