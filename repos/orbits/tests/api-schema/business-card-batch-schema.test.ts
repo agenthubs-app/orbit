@@ -29,7 +29,8 @@ function isApprovedBatchSchemaTestUrl(value: string): boolean {
       && url.port === "5432"
       && url.username === "xzhao"
       && url.password === ""
-      && url.pathname === "/orbit_0137_event_v2_test"
+      // The two dedicated local 0137 event test databases; the test works in its own random schema.
+      && ["/orbit_0137_event_v2_test", "/orbit_0137_event_main_test"].includes(url.pathname)
       && url.search === ""
       && url.hash === "";
   } catch {
@@ -376,7 +377,7 @@ test("unchanged current handlers emit exact wrappers with injected local reposit
       "SELECT current_database() AS db,current_user AS actor,host(inet_server_addr()) AS host,inet_server_port() AS port,(SELECT pg_catalog.pg_get_userbyid(datdba)=current_user FROM pg_catalog.pg_database WHERE datname=current_database()) AS owner",
     );
     assert.deepEqual(identity.rows[0], {
-      db: "orbit_0137_event_v2_test", actor: "xzhao", host: "127.0.0.1", port: 5432, owner: true,
+      db: new URL(databaseUrl ?? "").pathname.slice(1), actor: "xzhao", host: "127.0.0.1", port: 5432, owner: true,
     });
     await admin.query(`create schema ${schemaName}`);
     pool = new Pool({ connectionString: databaseUrl, max: 2, options: `-c search_path=${schemaName}` });
