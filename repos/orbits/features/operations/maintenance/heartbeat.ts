@@ -9,12 +9,38 @@ import type { MaintenancePassResult } from "./pass";
 // resolved against it, so at most one live chain exists per workspace and a
 // dead chain is restarted by the next `ensureMaintenanceHeartbeat` call (the
 // daily cron, a manual internal request, or any queue tick that runs it).
+//
+// W0057 (SC-05): the chain follows new deployments. A self-perpetuating queue
+// message returns to the deployment that sent it, so without a hand-over the
+// chain keeps running old code forever. The row records its owner (deployment
+// id and build timestamp). `ensure` from a process built later than the owner
+// atomically swaps in a new chain id and sends its first tick; the old chain's
+// next tick is then superseded by the existing chain-id check. A tick handled
+// by a build older than the recorded owner also exits as superseded, and an
+// older build never takes the chain back. Without a build timestamp (local
+// runs, old code) behaviour is unchanged. Rolling back to an older build is an
+// operator step: delete the workspace row and the next cron / internal request
+// / queue consumer recreates the chain on the current deployment.
 
 export const MAINTENANCE_HEARTBEAT_TOPIC = "maintenance-heartbeat";
 export const DEFAULT_MAINTENANCE_INTERVAL_SECONDS = 600;
 const MIN_INTERVAL_SECONDS = 60;
 const MAX_INTERVAL_SECONDS = 3_600;
 const SCHEMA_LOCK_KEY = "orbit:maintenance-heartbeat-schema";
+
+/** Who runs this process: Vercel deployment id and the build timestamp baked into the bundle (null locally). */
+export interface MaintenanceDeploymentIdentity {
+  deploymentId: string | null;
+  buildAt: string | null;
+}
+
+const NO_IDENTITY: MaintenanceDeploymentIdentity = { deploymentId: null, buildAt: null };
+
+function buildMillis(value: string | Date | null | undefined): number | null {
+  if (value === null || value === undefined) return null;
+  const parsed = value instanceof Date ? value.getTime() : Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
 
 export interface MaintenanceHeartbeatMessage {
   version: 1;
@@ -51,6 +77,10 @@ create table if not exists orbit_maintenance_heartbeat (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+-- W0057: chain owner. "create table if not exists" never alters an existing
+-- table, so the columns are added separately (idempotent).
+alter table orbit_maintenance_heartbeat add column if not exists owner_deployment_id text;
+alter table orbit_maintenance_heartbeat add column if not exists owner_build_at timestamptz;
 `;
 
 export async function ensureMaintenanceHeartbeatSchema(pool: Pick<Pool, "connect">): Promise<void> {
@@ -72,6 +102,7 @@ type SendHeartbeat = (message: MaintenanceHeartbeatMessage, delaySeconds: number
 
 interface HeartbeatRow {
   chain_id: string;
+  owner_build_at?: Date | string | null;
   seq: string | number;
   dispatched_seq: string | number;
   interval_seconds: number;
@@ -81,7 +112,7 @@ interface HeartbeatRow {
 const asInt = (value: string | number): number => (typeof value === "number" ? value : Number.parseInt(value, 10));
 
 export interface EnsureMaintenanceHeartbeatResult {
-  outcome: "started" | "restarted" | "alive";
+  outcome: "started" | "restarted" | "alive" | "taken_over";
   chainId: string;
 }
 
@@ -92,6 +123,7 @@ export interface EnsureMaintenanceHeartbeatResult {
  */
 export async function ensureMaintenanceHeartbeat({
   pool, workspaceId, send, intervalSeconds = DEFAULT_MAINTENANCE_INTERVAL_SECONDS, now = () => new Date(), id = randomUUID,
+  identity = NO_IDENTITY,
 }: {
   pool: Pick<Pool, "connect">;
   workspaceId: string;
@@ -99,6 +131,7 @@ export async function ensureMaintenanceHeartbeat({
   intervalSeconds?: number;
   now?: () => Date;
   id?: () => string;
+  identity?: MaintenanceDeploymentIdentity;
 }): Promise<EnsureMaintenanceHeartbeatResult> {
   if (!workspaceId.trim()) throw new Error("Invalid maintenance workspace.");
   const client = await pool.connect();
@@ -107,26 +140,31 @@ export async function ensureMaintenanceHeartbeat({
     await client.query("BEGIN");
     const current = now();
     const existing = await client.query<HeartbeatRow>(
-      "SELECT chain_id, seq, dispatched_seq, interval_seconds, next_due_at FROM orbit_maintenance_heartbeat WHERE workspace_id = $1 FOR UPDATE",
+      "SELECT chain_id, seq, dispatched_seq, interval_seconds, next_due_at, owner_build_at FROM orbit_maintenance_heartbeat WHERE workspace_id = $1 FOR UPDATE",
       [workspaceId],
     );
     const row = existing.rows[0];
     const staleAfterMs = 2 * (row?.interval_seconds ?? intervalSeconds) * 1_000;
     const overdue = row ? current.getTime() - new Date(row.next_due_at).getTime() > staleAfterMs : false;
-    if (row && !overdue) {
+    // W0057: a process built later than the chain owner (or than a chain with no owner) takes it over.
+    const mine = buildMillis(identity.buildAt);
+    const owner = buildMillis(row?.owner_build_at);
+    const newerBuild = mine !== null && (owner === null || mine > owner);
+    if (row && !overdue && !newerBuild) {
       await client.query("COMMIT");
       return { outcome: "alive", chainId: row.chain_id };
     }
     const chainId = id();
     await client.query(
-      `INSERT INTO orbit_maintenance_heartbeat (workspace_id, chain_id, seq, dispatched_seq, interval_seconds, next_due_at)
-       VALUES ($1, $2, 0, 0, $3, $4)
+      `INSERT INTO orbit_maintenance_heartbeat (workspace_id, chain_id, seq, dispatched_seq, interval_seconds, next_due_at, owner_deployment_id, owner_build_at)
+       VALUES ($1, $2, 0, 0, $3, $4, $5, $6)
        ON CONFLICT (workspace_id) DO UPDATE SET chain_id = excluded.chain_id, seq = 0, dispatched_seq = 0,
-         interval_seconds = excluded.interval_seconds, next_due_at = excluded.next_due_at, updated_at = now()`,
-      [workspaceId, chainId, intervalSeconds, new Date(current.getTime() + intervalSeconds * 1_000)],
+         interval_seconds = excluded.interval_seconds, next_due_at = excluded.next_due_at,
+         owner_deployment_id = excluded.owner_deployment_id, owner_build_at = excluded.owner_build_at, updated_at = now()`,
+      [workspaceId, chainId, intervalSeconds, new Date(current.getTime() + intervalSeconds * 1_000), identity.deploymentId, mine === null ? null : new Date(mine)],
     );
     await client.query("COMMIT");
-    outcome = { outcome: row ? "restarted" : "started", chainId };
+    outcome = { outcome: !row ? "started" : overdue ? "restarted" : "taken_over", chainId };
   } catch (error) {
     await client.query("ROLLBACK").catch(() => undefined);
     throw error;
@@ -152,6 +190,7 @@ export interface ProcessMaintenanceHeartbeatResult {
  */
 export async function processMaintenanceHeartbeat(message: MaintenanceHeartbeatMessage, {
   pool, workspaceId, runPass, send, intervalSeconds = DEFAULT_MAINTENANCE_INTERVAL_SECONDS, now = () => new Date(),
+  identity = NO_IDENTITY,
 }: {
   pool: Pick<Pool, "connect" | "query">;
   workspaceId: string;
@@ -159,6 +198,7 @@ export async function processMaintenanceHeartbeat(message: MaintenanceHeartbeatM
   send: SendHeartbeat;
   intervalSeconds?: number;
   now?: () => Date;
+  identity?: MaintenanceDeploymentIdentity;
 }): Promise<ProcessMaintenanceHeartbeatResult> {
   const client = await pool.connect();
   let decision: "run" | "resend" | "superseded";
@@ -166,11 +206,13 @@ export async function processMaintenanceHeartbeat(message: MaintenanceHeartbeatM
   try {
     await client.query("BEGIN");
     const existing = await client.query<HeartbeatRow>(
-      "SELECT chain_id, seq, dispatched_seq, interval_seconds, next_due_at FROM orbit_maintenance_heartbeat WHERE workspace_id = $1 FOR UPDATE",
+      "SELECT chain_id, seq, dispatched_seq, interval_seconds, next_due_at, owner_build_at FROM orbit_maintenance_heartbeat WHERE workspace_id = $1 FOR UPDATE",
       [workspaceId],
     );
     const row = existing.rows[0];
-    if (!row || row.chain_id !== message.chainId) {
+    const mine = buildMillis(identity.buildAt);
+    const owner = buildMillis(row?.owner_build_at);
+    if (!row || row.chain_id !== message.chainId || (mine !== null && owner !== null && owner > mine)) {
       decision = "superseded";
     } else if (asInt(row.seq) === message.seq) {
       decision = "run";
@@ -196,9 +238,11 @@ export async function processMaintenanceHeartbeat(message: MaintenanceHeartbeatM
   let pass: MaintenancePassResult | undefined;
   if (decision === "run") {
     pass = await runPass();
+    // W0057: record which deployment ran the pass and which tasks it had, for production checks.
+    const lastResult = { ...pass, deploymentId: identity.deploymentId, buildAt: identity.buildAt, taskNames: pass.tasks.map((task) => task.name) };
     await pool.query(
       "UPDATE orbit_maintenance_heartbeat SET last_result = $2, updated_at = now() WHERE workspace_id = $1 AND chain_id = $3",
-      [workspaceId, JSON.stringify(pass), message.chainId],
+      [workspaceId, JSON.stringify(lastResult), message.chainId],
     ).catch(() => undefined);
   }
   // Throwing here hands the message back to the queue; the retry takes the

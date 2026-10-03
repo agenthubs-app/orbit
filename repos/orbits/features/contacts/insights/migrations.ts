@@ -78,6 +78,16 @@ alter table contact_insights
 update contact_insights set dirty_seq = 1 where dirty_at is not null;
 `,
   },
+  {
+    // W0057（G-6）：本轮待更新的生成失败次数。新一轮待更新（上一轮已结束）与生成成功时清零；失败 +1，
+    // 1／2 次失败保留待更新并排期 5／10 分钟后由心跳维护任务重试，第 3 次失败停下等用户「重新生成」。
+    name: "contact-insights-retry-count",
+    version: 3,
+    sql: `
+alter table contact_insights
+  add column retry_count integer not null default 0 check (retry_count >= 0);
+`,
+  },
 ];
 
 function checksum(sql: string): string {

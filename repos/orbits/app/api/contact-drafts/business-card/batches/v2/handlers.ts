@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 
 import { createConfiguredBusinessCardCloudOcrProvider } from "../../../../../../features/acquisition/business-card-ocr-provider-selection";
 import {
@@ -88,6 +88,21 @@ export interface IngestV2HandlerDeps {
   eventAttribution?: IngestEventAttributionDeps;
   /** W0051：名片确认写入后把该联系人的洞察标为待更新（只写 contact_insights，不调用模型）。 */
   markInsightsDirty?: (input: { actorId: string; contactIds: readonly string[] }) => Promise<void>;
+  /** W0057：在响应之外排任务（缺省 `next/server` 的 `after`）；不可用时抛错 → 只标待更新，交给维护任务。 */
+  scheduleAfter?: (task: () => Promise<void>) => void;
+  /** W0057（D59）：即时生成执行器（在 `scheduleAfter` 里调用，不在请求内等模型）。 */
+  generateInsightsNow?: (input: { actorId: string; contactIds?: readonly string[] }) => Promise<unknown>;
+}
+
+/** W0057：确认／手工录入之后当场生成「为什么是 TA」（在响应之外；`after` 不可用时只标待更新）。 */
+async function liveGenerateInsightsNow(input: { actorId: string; contactIds?: readonly string[] }): Promise<unknown> {
+  const { runConfiguredInstantInsightGeneration } = await import("../../../../../../features/contacts/insights/instant");
+  return runConfiguredInstantInsightGeneration(input);
+}
+
+async function scheduleCardInsights(deps: IngestV2HandlerDeps, input: { actorId: string; contactIds: readonly string[] }): Promise<void> {
+  const { scheduleInstantInsightGeneration } = await import("../../../../../../features/contacts/insights/mark");
+  scheduleInstantInsightGeneration(deps.scheduleAfter ?? ((task) => after(task)), deps.generateInsightsNow ?? liveGenerateInsightsNow, input);
 }
 
 /** W0051：提交后尽力而为；失败只记日志，确认结果不受影响。 */
@@ -912,8 +927,11 @@ function createConfirmLikeHandler(
         }
         const confirmedItem = confirmed.items.find((entry) => entry.id === itemId) ?? confirmed.items[0]!;
         // W0051：名片补全（行业／职级／地区）随确认写入：提交后标这位联系人的洞察待更新（回放同样幂等）。
+        // W0057（D59）：标记后在响应之外当场生成（回放同样踢：定向领取 + 幂等键保证不重复计费）。
         if (confirmedItem.confirmedContactId) {
-          await (deps.markInsightsDirty ?? liveMarkCardInsightsDirty)({ actorId, contactIds: [confirmedItem.confirmedContactId] }).catch(() => undefined);
+          const insightInput = { actorId, contactIds: [confirmedItem.confirmedContactId] };
+          await (deps.markInsightsDirty ?? liveMarkCardInsightsDirty)(insightInput).catch(() => undefined);
+          await scheduleCardInsights(deps, insightInput).catch(() => undefined);
         }
         return NextResponse.json(
           success({

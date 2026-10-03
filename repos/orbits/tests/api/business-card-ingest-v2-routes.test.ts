@@ -14,6 +14,7 @@ import {
   createIngestV2ConfirmHandler,
   createIngestV2DuplicateCandidatesHandler,
   createIngestV2FinalizeHandler,
+  createIngestV2ManualEntryHandler,
   createIngestV2UploadHandler,
   createIngestV2ReplaceHandler,
   type IngestV2Runtime,
@@ -1092,5 +1093,79 @@ test("W0015 contact committed but plan write failed: reconciliation marks the ev
     assert.deepEqual(await task.run(context), { examined: 0, failed: 0, marked: 0 });
     assert.equal(await attendanceLogs(), 1);
     assert.equal(await eventStatus("actor:other"), "recommended", "another actor's plan is untouched");
+  });
+});
+
+test("W0057 SC-01: confirm and manual entry schedule the instant insight generation outside the response; replay schedules again (idempotent); after() unavailable only marks dirty", { skip }, async () => {
+  await withHarness(async ({ deps, runtime }) => {
+    const heic = await readFile(FIXTURE_HEIC);
+    const created = await envelope(await createIngestV2CollectionHandlers(deps).POST(new Request("http://test/api/v2", {
+      method: "POST",
+      body: JSON.stringify({ idempotencyKey: "key-w57", manifest: ["a", "b", "c"].map((card, index) => (
+        { cardId: `card:${card}`, side: "front", fileName: `${card}.heic`, mimeType: "image/heic", rawSize: heic.length, seq: index + 1, clientDigest: sha256(heic) }
+      )) }),
+    })));
+    const batch = created.batch as { id: string };
+    const upload = createIngestV2UploadHandler(deps);
+    for (const item of created.items as Array<{ id: string }>) {
+      assert.equal((await upload(new Request("http://test/upload", { method: "PUT", body: new Uint8Array(heic), headers: { "content-type": "image/heic" } }), params({ id: batch.id, itemId: item.id }))).status, 200);
+    }
+    await createIngestV2FinalizeHandler(deps)(new Request("http://test/finalize", { method: "POST" }), params({ id: batch.id }));
+    const names: Record<string, string> = {};
+    for (const item of await runtime.repository.claimItems({ limit: 3 })) {
+      const name = `W57 ${item.cardId}`;
+      names[item.cardId] = name;
+      await runtime.repository.submitExtraction({ itemId: item.id, leaseToken: item.leaseToken, expectedVersion: item.version, reviewIssues: [], usage: null, extraction: {
+        fullName: name, nativeFullName: null, romanizedFullName: null, organization: "Orbit", departments: [], title: null,
+        emails: [{ label: null, value: `${item.cardId.replace(":", "-")}@example.test` }], contactPoints: [], website: null, addresses: [], certifications: [], detectedLanguages: ["en"],
+      } });
+    }
+    const review = (await runtime.repository.getBatch({ actorId: "actor:test", batchId: batch.id }))!;
+    const bodyFor = (cardId: string) => {
+      const item = review.items.find((entry) => entry.cardId === cardId)!;
+      return { item, body: {
+        confirmationIntentId: `confirm:${cardId}`,
+        expectedCardItems: [{ itemId: item.id, version: item.version, imageDigest: item.imageDigest }],
+        fieldSources: { displayName: item.id, organization: item.id, role: item.id, email: item.id, phone: null },
+        displayName: names[cardId], organization: "Orbit", role: "", email: `${cardId.replace(":", "-")}@example.test`, phone: "", relationshipContext: "", notes: "", allowDuplicate: true,
+      } };
+    };
+    const scheduled: (() => Promise<void>)[] = [];
+    const generated: { actorId: string; contactIds?: readonly string[] }[] = [];
+    const marks: { actorId: string; contactIds: readonly string[] }[] = [];
+    const collecting = {
+      ...deps,
+      generateInsightsNow: async (input: { actorId: string; contactIds?: readonly string[] }) => { generated.push(input); },
+      markInsightsDirty: async (input: { actorId: string; contactIds: readonly string[] }) => { marks.push(input); },
+      scheduleAfter: (task: () => Promise<void>) => { scheduled.push(task); },
+    };
+    const a = bodyFor("card:a");
+    const confirm = createIngestV2ConfirmHandler(collecting);
+    const first = await envelope(await confirm(new Request("http://test/confirm", { method: "POST", body: JSON.stringify(a.body) }), params({ id: batch.id, itemId: a.item.id })));
+    // 请求内不等模型：响应时只排了一个任务，生成器还没被调用。
+    assert.equal(scheduled.length, 1);
+    assert.equal(generated.length, 0);
+    await scheduled[0]!();
+    assert.deepEqual(generated, [{ actorId: "actor:test", contactIds: [first.contactId] }]);
+    // 回放（replayed）：照常标 dirty 与踢（不会重复计费由定向领取 + 幂等键保证，见 contact-insights-instant-postgres）。
+    const replay = await envelope(await confirm(new Request("http://test/confirm", { method: "POST", body: JSON.stringify(a.body) }), params({ id: batch.id, itemId: a.item.id })));
+    assert.equal(replay.replayed, true);
+    assert.equal(scheduled.length, 2);
+    assert.equal(marks.length, 2);
+
+    // after() 不可用（非请求作用域）：只标待更新，请求内 0 次生成。
+    const b = bodyFor("card:b");
+    const noAfter = createIngestV2ConfirmHandler({ ...collecting, scheduleAfter: () => { throw new Error("after() unavailable"); } });
+    const response = await noAfter(new Request("http://test/confirm", { method: "POST", body: JSON.stringify(b.body) }), params({ id: batch.id, itemId: b.item.id }));
+    assert.equal(response.status, 200);
+    assert.equal(marks.length, 3);
+    assert.equal(generated.length, 1);
+
+    // 手工录入（createIngestV2ManualEntryHandler）同样即时触发。
+    const c = bodyFor("card:c");
+    const manual = await envelope(await createIngestV2ManualEntryHandler(collecting)(new Request("http://test/manual", { method: "POST", body: JSON.stringify(c.body) }), params({ id: batch.id, itemId: c.item.id })));
+    assert.equal(scheduled.length, 3);
+    await scheduled[2]!();
+    assert.deepEqual(generated.at(-1), { actorId: "actor:test", contactIds: [manual.contactId] });
   });
 });

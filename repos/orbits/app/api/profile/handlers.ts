@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import {
   failure,
   runtimeBoundaryHeaders,
@@ -49,6 +49,24 @@ async function readProfileUpdateInput(
 
 export interface ProfileRouteDependencies {
   resolveActor?: ResolveAuthenticatedApiActor;
+  /**
+   * W0057（W57-2）：关系目标从空变为非空保存成功后——解封本人 `blocked_no_goal` 洞察行并在响应之外即时生成。
+   * 只在「之前为空、这次非空」时调用；失败只记日志，不影响保存结果。
+   */
+  onRelationshipGoalSet?: (actorId: string) => Promise<void>;
+  /** 测试注入：资料服务（缺省 `createProfileService()`）。 */
+  profileService?: () => ReturnType<typeof createProfileService>;
+}
+
+async function liveOnRelationshipGoalSet(actorId: string): Promise<void> {
+  const mark = await import("../../../features/contacts/insights/mark");
+  const unblocked = await mark.unblockNoGoalContactInsightsBestEffort({ actorId });
+  if (!unblocked.length) return;
+  mark.scheduleInstantInsightGeneration(
+    (task) => after(task),
+    async (input) => (await import("../../../features/contacts/insights/instant")).runConfiguredInstantInsightGeneration(input),
+    { actorId, contactIds: unblocked },
+  );
 }
 
 export function createProfileRouteHandlers(
@@ -91,11 +109,17 @@ export function createProfileRouteHandlers(
       const actor = await resolveActor();
       if (!actor) return authenticatedApiActorRequiredResponse(mode);
 
-      const profileService = createProfileService();
-      const result = await profileService.updateProfile(
-        await readProfileUpdateInput(request),
-        { actorId: actor.id },
-      );
+      const profileService = (dependencies.profileService ?? createProfileService)();
+      const input = await readProfileUpdateInput(request);
+      // W0057（W57-2）：只有提交了非空目标时才多读一次旧目标，判断是否「空 → 非空」。
+      const settingGoal = typeof input.relationshipGoal === "string" && input.relationshipGoal.trim().length > 0;
+      const previousGoal = settingGoal
+        ? await (async () => profileService.getProfile({ actorId: actor.id }))().then(
+            (current) => (current.success === false ? null : current.data.profile?.relationshipGoal ?? ""),
+            () => null,
+          )
+        : null;
+      const result = await profileService.updateProfile(input, { actorId: actor.id });
 
       if (result.success === false) {
         const appError = profileFailureToAppError(result);
@@ -107,6 +131,12 @@ export function createProfileRouteHandlers(
             status: getHttpStatusForAppErrorCode(appError.code),
           },
         );
+      }
+
+      if (settingGoal && previousGoal !== null && !previousGoal.trim()) {
+        await (dependencies.onRelationshipGoalSet ?? liveOnRelationshipGoalSet)(actor.id).catch((error: unknown) => {
+          console.error(JSON.stringify({ error: error instanceof Error ? error.name : "unknown", event: "contact_insight_goal_set_failed" }));
+        });
       }
 
       return NextResponse.json(success(result.data), {

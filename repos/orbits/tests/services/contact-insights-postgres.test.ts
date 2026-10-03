@@ -405,7 +405,7 @@ test("SC-02 no relationship goal: rows become blocked_no_goal with 0 calls and 0
   });
 });
 
-test("SC-02 a run that dies mid-way is not re-called: the expired started rows are marked failed until the next change", databaseTest, async () => {
+test("SC-02 a run that dies mid-way: the expired started rows are marked failed and (W0057 SC-04) enter the same auto-retry schedule", databaseTest, async () => {
   await withDatabase(async (harness) => {
     const { pool, client } = harness;
     await seedContact(pool, "contact:a", "actor:alice");
@@ -420,17 +420,21 @@ test("SC-02 a run that dies mid-way is not re-called: the expired started rows a
     harness.clock.now = new Date(NOW.getTime() + CONTACT_INSIGHT_LEASE_MS + 1000);
     const summary = await runPass(harness) as Record<string, number>;
     assert.equal(summary.interrupted, 1);
-    assert.equal(summary.batches, 0);
+    assert.equal(summary.batches, 0, "the retry waits for its 5-minute slot");
     assert.equal(harness.stub.requests.length, 0);
     const row = await insightRow(pool, "actor:alice", "contact:a");
     assert.equal(row?.status, "failed");
     assert.equal(row?.last_error_code, "INTERRUPTED");
-    assert.equal(row?.dirty_at, null);
-    // 下一次待更新才重新生成。
-    await markContactInsightsDirty(client, { actorId: "actor:alice", contactIds: ["contact:a"], now: harness.clock.now, reason: "memo", workspaceId: WORKSPACE });
+    assert.notEqual(row?.dirty_at, null, "W0057: the row stays dirty for an automatic retry");
+    assert.equal(row?.retry_count, 1);
+    assert.equal(new Date(row!.deferred_until as string).toISOString(), new Date(harness.clock.now.getTime() + 5 * 60_000).toISOString());
+    // 排期到了：心跳维护任务重试，成功后清零。
+    harness.clock.now = new Date(harness.clock.now.getTime() + 5 * 60_000 + 1000);
     await runPass(harness);
     assert.equal(harness.stub.requests.length, 1);
-    assert.equal((await insightRow(pool, "actor:alice", "contact:a"))?.status, "ready");
+    const ready = await insightRow(pool, "actor:alice", "contact:a");
+    assert.equal(ready?.status, "ready");
+    assert.equal(ready?.retry_count, 0);
   });
 });
 

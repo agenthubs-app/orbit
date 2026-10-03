@@ -12,10 +12,16 @@ export const AI_QUOTA_POOLS: readonly AiQuotaPool[] = ["user", "background", "sy
 export const AI_QUOTA_PURPOSES: readonly AiQuotaPurpose[] = ["plan", "plan_refine", "snapshot", "memo_extraction", "insight", "enrichment"];
 export const AI_QUOTA_TRIGGERS: readonly AiQuotaTrigger[] = ["auto", "manual", "plan"];
 
-/** 用户主动池总熔断：每人每东京日 10 次操作（含手动重新分析）。 */
+/** 用户主动池总熔断：每人每东京日 10 次操作（含手动重新分析；W0057 起不含即时洞察生成，见 `isInstantInsightOperation`）。 */
 export const USER_POOL_DAILY_LIMIT = 10;
 /** 手动重新分析（snapshot／manual）：每人每东京日 3 次操作，同时受用户池总熔断约束。 */
 export const MANUAL_REANALYSIS_DAILY_LIMIT = 3;
+/**
+ * W0057（D62，W57-1）：即时洞察生成（名片确认／重新分析后当场生成，`pool: user`、`purpose: insight`、`trigger: auto`）
+ * 自己的日上限：每人每东京日 20 次操作（每次 ≤20 人）。它**不计入** `USER_POOL_DAILY_LIMIT`（对 D45 总熔断的修订）；
+ * 超出时调用方静默退回后台池（只标待更新，由维护任务处理）。
+ */
+export const INSTANT_INSIGHT_DAILY_LIMIT = 20;
 /** 后台自动池：每人每东京日 60 次操作。 */
 export const BACKGROUND_POOL_DAILY_LIMIT = 60;
 /** 每批（洞察、按文字补全）最多 20 人 = 1 次操作。 */
@@ -33,6 +39,11 @@ export const AI_QUOTA_MAX_CALLS: Readonly<Record<AiQuotaPurpose, number>> = {
   plan_refine: 1,
   snapshot: 1,
 };
+
+/** W0057：用户池里的即时洞察生成（独立计数，不占 10 次总熔断）。 */
+export function isInstantInsightOperation(input: { pool: AiQuotaPool; purpose: AiQuotaPurpose; trigger: AiQuotaTrigger }): boolean {
+  return input.pool === "user" && input.purpose === "insight" && input.trigger === "auto";
+}
 
 const TOKYO_OFFSET_MS = 9 * 3_600_000;
 const DAY_MS = 86_400_000;

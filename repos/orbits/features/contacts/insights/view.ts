@@ -4,6 +4,8 @@
  * 状态：当前没有关系目标 → no_goal（W51-6）；没有行 → none；ready／pending（含「明天更新」顺延）／failed。
  * 过期：行被标待更新（dirty）或生成时的目标哈希与当前目标不同（W51-1「目标已更新」角标）。
  * 「重新生成」只在过期或失败时可用（W51-2），正在生成时不可用。
+ * W0057：没有行但有目标 → pending（「正在生成，通常 1 分钟内」，G-7）；failed 且仍在自动重试排期（本轮失败 1／2 次、
+ * 保留待更新）→ `autoRetry`（「生成失败，稍后自动重试」，不显示「重新生成」）；第 3 次失败才显示「重新生成」。
  */
 import {
   type ContactInsightEvidence,
@@ -11,7 +13,7 @@ import {
   type ContactInsightText,
 } from "../../../shared/contract/contact-insight";
 import { CONTACT_INSIGHT_PREVIEW_LIMIT } from "./limits";
-import { contactInsightGoalHash, type ContactInsightRow } from "./repository";
+import { CONTACT_INSIGHT_MAX_FAILURES, contactInsightGoalHash, type ContactInsightRow } from "./repository";
 
 export interface ContactInsightView {
   contactId: string;
@@ -27,12 +29,15 @@ export interface ContactInsightView {
   /** 后台额度用尽、顺延到的时间（「明天更新」）。 */
   deferredUntil: string | null;
   inProgress: boolean;
+  /** W0057：生成失败，已排期自动重试。 */
+  autoRetry: boolean;
   canRegenerate: boolean;
 }
 
 export function contactInsightView(row: ContactInsightRow | null | undefined, input: { contactId: string; goal: string | null; now: Date; goalKnown?: boolean }): ContactInsightView {
   const goal = (input.goal ?? "").trim();
   const base: ContactInsightView = {
+    autoRetry: false,
     canRegenerate: false,
     contactId: input.contactId,
     deferredUntil: null,
@@ -48,7 +53,7 @@ export function contactInsightView(row: ContactInsightRow | null | undefined, in
   };
   if (!row && input.goalKnown === false) return base;
   if (!goal) return { ...base, state: "no_goal" };
-  if (!row) return base;
+  if (!row) return { ...base, state: "pending" };
   const nowMs = input.now.getTime();
   const inProgress = row.aiState === "started" && row.leaseExpiresAt !== null && Date.parse(row.leaseExpiresAt) > nowMs;
   const goalUpdated = row.goalHash !== null && row.goalHash !== contactInsightGoalHash(goal);
@@ -70,8 +75,9 @@ export function contactInsightView(row: ContactInsightRow | null | undefined, in
     return { ...view, canRegenerate: !inProgress, goalUpdated: true, stale: true, state: "none" };
   }
   const state: ContactInsightState = row.status === "ready" ? "ready" : row.status === "failed" ? "failed" : "pending";
-  const canRegenerate = !inProgress && (state === "failed" || (state === "ready" && view.stale));
-  return { ...view, canRegenerate, state };
+  const autoRetry = state === "failed" && !inProgress && row.dirtyAt !== null && (row.retryCount ?? 0) > 0 && (row.retryCount ?? 0) < CONTACT_INSIGHT_MAX_FAILURES;
+  const canRegenerate = !inProgress && !autoRetry && (state === "failed" || (state === "ready" && view.stale));
+  return { ...view, autoRetry, canRegenerate, state };
 }
 
 function clip(value: string, limit: number): string {

@@ -46,6 +46,10 @@ export const INSIGHT_STATE_COPY = {
   noGoal: { en: "Set a relationship goal to generate insights.", zh: "设置关系目标后生成洞察。" },
   none: { en: "No insight yet. It is generated after a memo, an enrichment or a plan link.", zh: "暂无洞察：写 memo、补全资料或在计划里关联 TA 后自动生成。" },
   pending: { en: "Waiting to be generated in the next background run.", zh: "等待生成：下一轮后台任务会生成。" },
+  // W0057：详情面板——名片确认／重新分析后当场生成（≤60 秒）。洞察标签仍用上面的 pending（含后台积压）。
+  generating: { en: "Generating — usually within a minute.", zh: "正在生成，通常 1 分钟内" },
+  retrying: { en: "Generation failed. It will retry automatically shortly.", zh: "生成失败，稍后自动重试" },
+  pollStopped: { en: "Still generating — refresh the page to check again.", zh: "仍在生成，请稍后刷新页面查看。" },
   quotaUsed: { en: "No AI actions left today. Available tomorrow.", zh: "今天次数已用完，明天可用" },
   regenerate: { en: "Regenerate", zh: "重新生成" },
   regenerating: { en: "Generating — refresh in a moment.", zh: "正在生成，稍后刷新查看。" },

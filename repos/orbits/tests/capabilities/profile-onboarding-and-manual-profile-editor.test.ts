@@ -304,3 +304,34 @@ test("profile live handoff covers replacement requirements", () => {
   assert.match(doc, /ORBIT_PROFILE_DATABASE_URL/);
   assert.match(doc, /source and evidence provenance/i);
 });
+
+test("W0057 W57-2: saving a goal for the first time (empty → non-empty) triggers the insight unblock once; changing an existing goal or clearing it does not", async () => {
+  const calls: string[] = [];
+  let stored = "";
+  const base = createMockProfileService();
+  const service = {
+    ...base,
+    getProfile: (input: Parameters<typeof base.getProfile>[0]) => {
+      const result = syncResult(base.getProfile(input));
+      return result.success === false ? result : { ...result, data: { ...result.data, profile: result.data.profile ? { ...result.data.profile, relationshipGoal: stored } : null } };
+    },
+    updateProfile: (input: Parameters<typeof base.updateProfile>[0], options?: Parameters<typeof base.updateProfile>[1]) => {
+      const result = syncResult(base.updateProfile(input, options));
+      if (result.success !== false && typeof input.relationshipGoal === "string") stored = input.relationshipGoal.trim();
+      return result;
+    },
+  } as unknown as ReturnType<typeof createMockProfileService>;
+  const route = createProfileRouteHandlers({
+    onRelationshipGoalSet: async (actorId) => { calls.push(actorId); },
+    profileService: () => service as never,
+    resolveActor: async () => ({ id: "account:w57" }),
+  });
+  const put = (body: unknown) => route.PUT(new Request("https://orbit.local/api/profile", { body: JSON.stringify(body), headers: { "content-type": "application/json" }, method: "PUT" }));
+  assert.equal((await put({ displayName: "Ari Lane" })).status, 200);
+  assert.deepEqual(calls, []);
+  assert.equal((await put({ relationshipGoal: "认识东京制造业伙伴" })).status, 200);
+  assert.deepEqual(calls, ["account:w57"]);
+  assert.equal((await put({ relationshipGoal: "改成新的目标" })).status, 200);
+  assert.equal((await put({ relationshipGoal: "" })).status, 200);
+  assert.deepEqual(calls, ["account:w57"]);
+});

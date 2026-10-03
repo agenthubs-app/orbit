@@ -19,6 +19,8 @@ import type { TransactionalPostgresClient, TransactionalSqlExecutor } from "../.
 import {
   AI_QUOTA_MAX_CALLS,
   BACKGROUND_POOL_DAILY_LIMIT,
+  INSTANT_INSIGHT_DAILY_LIMIT,
+  isInstantInsightOperation,
   MANUAL_REANALYSIS_DAILY_LIMIT,
   nextTokyoMidnight,
   tokyoUsageDay,
@@ -36,8 +38,10 @@ export class AiQuotaCallRejectedError extends Error {
 export interface AiQuotaUsageToday {
   /** 手动重新分析（snapshot／manual）当日已用次数。 */
   manual: number;
-  /** 用户主动池当日已用次数（含手动）。 */
+  /** 用户主动池当日已用次数（含手动；W0057 起不含即时洞察生成）。 */
   user: number;
+  /** W0057：即时洞察生成当日已用次数（用户池里 `insight`／`auto`，独立上限 20）。 */
+  instant: number;
   /** 后台自动池当日已用次数。 */
   background: number;
 }
@@ -73,7 +77,8 @@ function count(value: unknown): number {
 
 const USAGE_SQL = `/* ai-quota:usage-today */
   select
-    count(*) filter (where pool = 'user')::int as user_used,
+    count(*) filter (where pool = 'user' and not (purpose = 'insight' and trigger = 'auto'))::int as user_used,
+    count(*) filter (where pool = 'user' and purpose = 'insight' and trigger = 'auto')::int as instant_used,
     count(*) filter (where pool = 'user' and purpose = 'snapshot' and trigger = 'manual')::int as manual_used,
     count(*) filter (where pool = 'background')::int as background_used
   from ai_usage_ledger
@@ -125,7 +130,10 @@ export function createPostgresAiUsageLedger(input: { client: TransactionalPostgr
       if (request.pool === "background" && count(usage?.background_used) >= BACKGROUND_POOL_DAILY_LIMIT) {
         return { ok: false, reason: "daily_limit", retryOn, limit: "background" };
       }
-      if (request.pool === "user") {
+      if (isInstantInsightOperation(request)) {
+        // W0057（D62）：即时洞察生成只受自己的 20 次上限约束，不占用户池 10 次总熔断。
+        if (count(usage?.instant_used) >= INSTANT_INSIGHT_DAILY_LIMIT) return { ok: false, reason: "daily_limit", retryOn, limit: "instant" };
+      } else if (request.pool === "user") {
         if (request.purpose === "snapshot" && request.trigger === "manual" && count(usage?.manual_used) >= MANUAL_REANALYSIS_DAILY_LIMIT) {
           return { ok: false, reason: "daily_limit", retryOn, limit: "manual" };
         }
@@ -236,9 +244,9 @@ export function createPostgresAiUsageLedger(input: { client: TransactionalPostgr
     async readUsageToday(actorId, now) {
       try {
         const row = (await client.query<Row>(USAGE_SQL, [workspaceId, actorId, tokyoUsageDay(now)])).rows[0];
-        return { background: count(row?.background_used), manual: count(row?.manual_used), user: count(row?.user_used) };
+        return { background: count(row?.background_used), instant: count(row?.instant_used), manual: count(row?.manual_used), user: count(row?.user_used) };
       } catch (error) {
-        if (isUndefinedTable(error)) return { background: 0, manual: 0, user: 0 };
+        if (isUndefinedTable(error)) return { background: 0, instant: 0, manual: 0, user: 0 };
         throw error;
       }
     },

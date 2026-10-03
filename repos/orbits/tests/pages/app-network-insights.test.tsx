@@ -35,7 +35,7 @@ const analysis = {
 
 function row(contactId: string, overrides: Partial<ContactInsightRow> = {}): ContactInsightRow {
   return {
-    aiState: "done", attempts: 1, contactId, deferredUntil: null, dirtyAt: null, dirtyReasons: [],
+    aiState: "done", attempts: 1, retryCount: 0, contactId, deferredUntil: null, dirtyAt: null, dirtyReasons: [],
     evidence: [{ id: "memo:note:live-contact-detail-update:abc", source: "memo" }, { id: "item:need-1", source: "plan_need" }],
     generatedAt: "2026-10-02T00:00:00.000Z", goalHash: contactInsightGoalHash(GOAL),
     goalRelation: { en: "Runs procurement at a SaaS buyer.", zh: "负责一家 SaaS 买方的采购。" }, lastErrorCode: null, leaseExpiresAt: null,

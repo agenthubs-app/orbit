@@ -7,7 +7,8 @@
  *     版本与目标都没变的行 → 只清待更新（0 次调用）；读不到的联系人 → failed；
  *  3. 调用方预留 1 次操作（后台池：一批 ≤20 人 = 1 次；单人重新生成：用户主动池 1 次）；
  *  4. `executeInsightGeneration`：每次 HTTP 前 `beginCall`、后 `endCall`（一条成本子账），解析校验后写回，
- *     由本执行器唯一 `finish`。失败的行标 failed、清待更新，不自动重调。
+ *     由本执行器唯一 `finish`。失败的行标 failed；W0057 起供应商错误、超时、输出无效、缺输出按本轮失败次数自动重试
+ *     （第 1／2 次失败 5／10 分钟后由心跳维护任务重试，第 3 次停下等用户「重新生成」，见 repository.ts）。
  */
 import { createHash } from "node:crypto";
 
@@ -117,8 +118,8 @@ export async function executeInsightGeneration(
   const log = logger(deps);
   const now = () => (deps.now ?? (() => new Date()))();
   const ids = [...prepared.completions.keys()];
-  const failAll = async (code: string) => {
-    await deps.repository.fail({ actorId: batch.actorId, claimedAt: batch.claimedAt, code, contactIds: ids, now: now(), owner: batch.owner });
+  const failAll = async (code: string, retry = true) => {
+    await deps.repository.fail({ actorId: batch.actorId, claimedAt: batch.claimedAt, code, contactIds: ids, now: now(), owner: batch.owner, retry });
   };
   let outcome: "succeeded" | "failed" = "failed";
   let callsResponded = 0;
@@ -129,7 +130,7 @@ export async function executeInsightGeneration(
         callId = (await deps.gate.beginCall(operationId, { model: deps.generator.model, provider: deps.generator.provider })).callId;
       } catch {
         // 操作已结算或超出 max_calls：不发请求。
-        await failAll("OPERATION_NOT_OPEN");
+        await failAll("OPERATION_NOT_OPEN", false);
         return { callsResponded, errorCode: "OPERATION_NOT_OPEN", failed: ids.length, status: "failed", written: 0 };
       }
     }
@@ -176,7 +177,7 @@ export async function executeInsightGeneration(
       usage: { batchSize: ids.length, inputTokens: usage?.inputTokens ?? 0, operationId, outputTokens: usage?.outputTokens ?? 0, provider: deps.generator.provider },
     });
     if (missing.length) {
-      await deps.repository.fail({ actorId: batch.actorId, claimedAt: batch.claimedAt, code: "MISSING_OUTPUT", contactIds: missing, now: now(), owner: batch.owner });
+      await deps.repository.fail({ actorId: batch.actorId, claimedAt: batch.claimedAt, code: "MISSING_OUTPUT", contactIds: missing, now: now(), owner: batch.owner, retry: true });
     }
     if (parsed.dropped.foreignContacts || parsed.dropped.foreignEvidence || parsed.dropped.unsafeText) {
       log({ actorId: batch.actorId, dropped: parsed.dropped, event: "contact_insight_output_dropped" });

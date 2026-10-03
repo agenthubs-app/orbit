@@ -357,6 +357,7 @@ function evidenceFor(seed: DemoContactSeed, copy: InsightCopy): ContactInsightEv
 function demoInsightRow(seed: DemoContactSeed, lang: Lang, generatedAt: string): InsightsTabRow & { daysAgo: number; countryCode: string; primaryIndustryId: string } {
   const copy = insightCopyFor(seed);
   const insight: ContactInsightView = {
+    autoRetry: false,
     canRegenerate: false,
     contactId: seed.id,
     deferredUntil: null,
