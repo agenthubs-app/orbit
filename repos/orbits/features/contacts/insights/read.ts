@@ -37,7 +37,7 @@ export async function readContactInsightNextSteps(actorId: string, contactIds: r
 export interface ContactInsightDetailRead {
   row: ContactInsightRow | null;
   goal: string | null;
-  /** false = 没有洞察行，没读目标（视图按「暂无洞察」显示，不判定未设目标）。 */
+  /** false = 读失败、目标未知（视图按「暂无洞察」显示，不判定未设目标）。W0057 起没有行时也读目标。 */
   goalKnown: boolean;
   /** 用户主动池当日 10 次操作是否已用满（只在可能显示「重新生成」时读）。 */
   quotaExhausted: boolean;
@@ -58,10 +58,9 @@ export async function readContactInsightDetail(
   const readGoal = deps.readGoal ?? (async (actorId: string) => (await import("../../network-analysis/runtime")).readSnapshotProfile(actorId).then((profile) => profile.goal));
   const rows = await (deps.readRows ?? readContactInsightRows)(input.actorId, [input.contactId]).catch(() => new Map<string, ContactInsightRow>());
   const row = rows.get(input.contactId) ?? null;
-  // 没有洞察行时不读资料（详情页每次打开省一次资料读取）：显示「暂无洞察」；未设目标的人在第一次标记后由后台置为 blocked_no_goal，
-  // 之后有行再按当前目标判定「设置关系目标后生成」。
-  if (!row) return { goal: null, quotaExhausted: false, row: null, goalKnown: false };
+  // W0057（G-7）：没有洞察行时也读目标——无目标显示设目标引导，有目标显示「正在生成」（确认后的即时生成还没写行／刚写行）。
   const goal = await readGoal(input.actorId).catch(() => null);
+  if (!row) return { goal, goalKnown: true, quotaExhausted: false, row: null };
   const view = contactInsightView(row, { contactId: input.contactId, goal, now: input.now });
   let quotaExhausted = false;
   if (view.canRegenerate) {
@@ -75,5 +74,20 @@ async function readConfiguredUserPoolUsed(actorId: string, now: Date): Promise<n
   const runtime = createConfiguredTransactionalPostgresRuntime();
   if (!runtime) return 0;
   const { createPostgresAiUsageLedger } = await import("../../ai-quota/ledger");
+  // W0057（D62）：账本的 `user` 已排除即时洞察生成（独立计数），按钮不会被即时生成误置灰。
   return (await createPostgresAiUsageLedger({ client: runtime.client, workspaceId: runtime.workspaceId }).readUsageToday(actorId, now)).user;
+}
+
+/**
+ * W0057（SC-02）：详情面板轮询用的只读状态——本人一行洞察 + 当前目标 + 当日用户池用量（同详情口径）。
+ * 联系人不是本人的已确认联系人 → null（接口 404）。只读，0 次模型调用、0 次预留。
+ */
+export async function readContactInsightStatus(
+  input: { actorId: string; contactId: string; now: Date },
+  deps: Parameters<typeof readContactInsightDetail>[1] & { ownsContact?: (actorId: string, contactId: string) => Promise<boolean> } = {},
+): Promise<ContactInsightDetailRead | null> {
+  const detail = await readContactInsightDetail(input, deps);
+  if (detail.row) return detail;
+  const owns = deps.ownsContact ?? (async (actorId: string, contactId: string) => (await configuredRepository()?.ownsContact(actorId, contactId)) ?? false);
+  return (await owns(input.actorId, input.contactId).catch(() => false)) ? detail : null;
 }

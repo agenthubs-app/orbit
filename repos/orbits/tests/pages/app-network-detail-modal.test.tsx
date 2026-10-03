@@ -189,7 +189,7 @@ import { contactInsightGoalHash, type ContactInsightRow } from "../../features/c
 const INSIGHT_NOW = new Date("2026-10-03T03:00:00.000Z");
 const INSIGHT_GOAL = "认识 SaaS 决策人";
 const readyRow: ContactInsightRow = {
-  aiState: "done", attempts: 1, contactId: "c1", deferredUntil: null, dirtyAt: null, dirtyReasons: [],
+  aiState: "done", attempts: 1, retryCount: 0, contactId: "c1", deferredUntil: null, dirtyAt: null, dirtyReasons: [],
   evidence: [{ id: "memo:note:live-contact-detail-update:abc", source: "memo" }, { id: "item:need-1", source: "plan_need" }],
   generatedAt: "2026-10-02T00:00:00.000Z", goalHash: contactInsightGoalHash(INSIGHT_GOAL),
   goalRelation: { en: "Keiko leads partnerships at an AI vendor.", zh: "惠子负责一家 AI 公司的合作。" }, lastErrorCode: null, leaseExpiresAt: null,
@@ -215,8 +215,9 @@ test("W0051: the goal-relation panel sits between the hero and 关系概览, wit
 });
 
 test("W0051: four states — pending / no goal / failed / none — each with real copy; regenerate only when stale or failed", () => {
+  // W0057（SC-02）：详情面板的 pending =「正在生成，通常 1 分钟内」（名片确认后当场生成）。
   const pending = panelHtml({ ...readyRow, goalRelation: null, nextStep: null, status: "pending" });
-  assert.match(pending, /data-network-insight-panel="pending"[\s\S]*?等待生成：下一轮后台任务会生成。/);
+  assert.match(pending, /data-network-insight-panel="pending"[\s\S]*?正在生成，通常 1 分钟内/);
   assert.doesNotMatch(pending, /data-insight-regenerate/);
   const deferred = panelHtml({ ...readyRow, deferredUntil: "2026-10-03T15:00:00.000Z", goalRelation: null, nextStep: null, status: "pending" });
   assert.match(deferred, /data-insight-deferred="true"[\s\S]*?明天更新/);
@@ -258,4 +259,80 @@ test("W0051 R-11: when today's 10 user-pool actions are used the button is disab
   await act(async () => { await button().props.onClick(); });
   assert.equal(posts.length, 1, "a disabled button never posts again");
   await act(async () => { root!.unmount(); });
+});
+
+/* ── W0057 SC-02：正在生成／失败自动重试／轮询替换 ───────────────────── */
+
+import { INSIGHT_POLL_INTERVAL_MS, INSIGHT_POLL_MAX } from "../../app/(app)/app/contacts/network-0918/network-insight-panel";
+import { OrbitLanguageProvider } from "../../app/(app)/app/orbit-language-context";
+
+test("W0057: detail panel states — 正在生成，通常 1 分钟内 / 正在生成… / 生成失败，稍后自动重试 (no button) / 生成失败 + 重新生成 / no goal → set-goal link; zh and en", () => {
+  const pending = panelHtml(null);
+  assert.match(pending, /data-network-insight-panel="pending"[^>]*data-insight-polling="true"[\s\S]*?正在生成，通常 1 分钟内/);
+  const leased = panelHtml({ ...readyRow, aiState: "started", goalRelation: null, leaseExpiresAt: "2026-10-03T03:04:00.000Z", nextStep: null, status: "pending" });
+  assert.match(leased, /正在生成…/);
+  const retrying = panelHtml({ ...readyRow, dirtyAt: INSIGHT_NOW.toISOString(), goalRelation: null, nextStep: null, retryCount: 1, status: "failed" });
+  assert.match(retrying, /data-insight-auto-retry="true"[\s\S]*?生成失败，稍后自动重试/);
+  assert.doesNotMatch(retrying, /data-insight-regenerate/);
+  const exhausted = panelHtml({ ...readyRow, goalRelation: null, nextStep: null, retryCount: 3, status: "failed" });
+  assert.match(exhausted, /洞察生成失败。[\s\S]*?data-insight-regenerate[^>]*>重新生成/);
+  const noGoal = panelHtml(null, { goal: "" });
+  assert.match(noGoal, /data-network-insight-panel="no_goal"[\s\S]*?href="\/app\/contacts\/dashboard\?tab=insight"[^>]*data-insight-set-goal/);
+  assert.doesNotMatch(noGoal, /data-insight-polling/);
+  const view = contactInsightView({ ...readyRow, dirtyAt: INSIGHT_NOW.toISOString(), goalRelation: null, nextStep: null, retryCount: 2, status: "failed" }, { contactId: "c1", goal: INSIGHT_GOAL, now: INSIGHT_NOW });
+  const en = renderToStaticMarkup(<OrbitLanguageProvider initialLanguage="en"><NetworkInsightPanel view={view} /></OrbitLanguageProvider>);
+  assert.match(en, /Generation failed\. It will retry automatically shortly\./);
+  const enPending = renderToStaticMarkup(<OrbitLanguageProvider initialLanguage="en"><NetworkInsightPanel view={contactInsightView(null, { contactId: "c1", goal: INSIGHT_GOAL, now: INSIGHT_NOW })} /></OrbitLanguageProvider>);
+  assert.match(enPending, /Generating — usually within a minute\./);
+});
+
+async function mountPolling(t: import("node:test").TestContext, respond: (count: number) => Response) {
+  const { act, create } = await import("react-test-renderer");
+  const previousFetch = globalThis.fetch;
+  const gets: string[] = [];
+  globalThis.fetch = (async (url: string, init?: RequestInit) => {
+    gets.push(`${init?.method ?? "GET"} ${url}`);
+    return respond(gets.length);
+  }) as typeof fetch;
+  t.mock.timers.enable({ apis: ["setInterval"] });
+  t.after(() => { globalThis.fetch = previousFetch; t.mock.timers.reset(); });
+  const view = contactInsightView(null, { contactId: "c1", goal: INSIGHT_GOAL, now: INSIGHT_NOW });
+  let root: ReturnType<typeof create> | undefined;
+  await act(async () => { root = create(<NetworkInsightPanel view={view} />); });
+  const tick = async () => {
+    await act(async () => {
+      t.mock.timers.tick(INSIGHT_POLL_INTERVAL_MS);
+      for (let i = 0; i < 5; i += 1) await Promise.resolve();
+    });
+  };
+  return { gets, root: () => root!, tick, act };
+}
+
+const statusResponse = (view: unknown) => new Response(JSON.stringify({ data: { quotaExhausted: false, view }, success: true }), { status: 200 });
+
+test("W0057: while generating the panel polls the read-only status every 5 s and swaps in the ready insight without a page reload, then stops", async (t) => {
+  const pendingView = contactInsightView(null, { contactId: "c1", goal: INSIGHT_GOAL, now: INSIGHT_NOW });
+  const readyView = contactInsightView(readyRow, { contactId: "c1", goal: INSIGHT_GOAL, now: INSIGHT_NOW });
+  const panel = await mountPolling(t, (count) => statusResponse(count < 2 ? pendingView : readyView));
+  assert.equal(panel.gets.length, 0, "no request before the first interval");
+  await panel.tick();
+  assert.deepEqual(panel.gets, ["GET /api/contacts/c1/insight"]);
+  assert.equal(panel.root().root.findAll((node) => node.props?.["data-insight-goal-relation"] !== undefined).length, 0);
+  await panel.tick();
+  assert.equal(panel.gets.length, 2);
+  const relation = panel.root().root.find((node) => node.props?.["data-insight-goal-relation"] !== undefined);
+  assert.equal(relation.children.join(""), "惠子负责一家 AI 公司的合作。");
+  await panel.tick();
+  await panel.tick();
+  assert.equal(panel.gets.length, 2, "polling stops once ready");
+  await panel.act(async () => { panel.root().unmount(); });
+});
+
+test("W0057: polling stops after 24 attempts (2 minutes) and asks to refresh", async (t) => {
+  const pendingView = contactInsightView(null, { contactId: "c1", goal: INSIGHT_GOAL, now: INSIGHT_NOW });
+  const panel = await mountPolling(t, () => statusResponse(pendingView));
+  for (let index = 0; index < INSIGHT_POLL_MAX + 3; index += 1) await panel.tick();
+  assert.equal(panel.gets.length, INSIGHT_POLL_MAX);
+  assert.equal(panel.root().root.findAll((node) => node.props?.["data-insight-poll-stopped"] !== undefined).length, 1);
+  await panel.act(async () => { panel.root().unmount(); });
 });

@@ -9,7 +9,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createPlanReanalyzeRouteHandlers } from "../../app/api/agent/plans/reanalyze/route-handlers";
+import { createPlanReanalyzeRouteHandlers, type PlanReanalyzeRouteDependencies } from "../../app/api/agent/plans/reanalyze/route-handlers";
 import { createPlanRouteHandlers } from "../../app/api/agent/plans/route-handlers";
 import { USER_POOL_DAILY_LIMIT } from "../../features/ai-quota/constants";
 import type { PlanGenerator } from "../../features/plans/generator";
@@ -23,7 +23,7 @@ import { createPlanService } from "../../features/plans/service";
 import { CONTACTS, EVENTS, ME, OTHER } from "../support/plan-bootstrap-fixture";
 import { planInput } from "../support/plan-fixture";
 
-function harness(clock: { now: string }, names?: Record<string, string>, generatorFor?: () => PlanGenerator, afterPlanSaved?: (actorId: string, planId: string) => Promise<void>, goalMarks: [string, string][] = []) {
+function harness(clock: { now: string }, names?: Record<string, string>, generatorFor?: () => PlanGenerator, afterPlanSaved?: (actorId: string, planId: string) => Promise<void>, goalMarks: [string, string][] = [], extra: Partial<PlanReanalyzeRouteDependencies> = {}) {
   const repository = createMemoryPlanRepository();
   const goals: string[] = [];
   let tick = 0;
@@ -45,6 +45,10 @@ function harness(clock: { now: string }, names?: Record<string, string>, generat
       markInsightsGoalDirty: async (actorId, goal) => { goalMarks.push([actorId, goal]); },
       ...(afterPlanSaved ? { afterPlanSaved } : {}),
       resolveActor: async () => (actorId ? { id: actorId } : null),
+      // W0057：测试里没有请求作用域——缺省把即时生成当作「after 不可用」（只标待更新、0 次调用）。
+      scheduleAfter: () => { throw new Error("after() is unavailable outside a request"); },
+      generateInsightsNow: async () => { throw new Error("instant generation must not run in this test"); },
+      ...extra,
       serviceForActor: (id) => {
         const plans = plansFor(id);
         const references = createAllowListPlanReferenceValidator({ actorId: id, allowList: { contactsByActor: "any", eventIds: "any" } });
@@ -265,14 +269,36 @@ test("W0050: a re-analysed plan version enqueues its 'plan' match job after the 
   assert.equal(saved.length, 1);
 });
 
-test("W0051（W51-1）：每月重新分析保存成功后统一标一次目标已变的洞察；回放（同一幂等键）不再标", async () => {
+test("W0051（W51-1）／W0057（D59）：重新分析保存后补行 + 标目标已变的洞察 + 在响应之外即时生成；回放（同一幂等键）同样执行（幂等）", async () => {
   const clock = { now: "2026-09-28T03:00:00.000Z" };
   const goalMarks: [string, string][] = [];
-  const { plansFor, reanalyzeFor } = harness(clock, undefined, undefined, undefined, goalMarks);
+  const scheduled: (() => Promise<void>)[] = [];
+  const generated: { actorId: string; contactIds?: readonly string[] }[] = [];
+  const { plansFor, reanalyzeFor } = harness(clock, undefined, undefined, undefined, goalMarks, {
+    generateInsightsNow: async (input) => { generated.push(input); },
+    scheduleAfter: (task) => { scheduled.push(task); },
+  });
   const v1 = await plansFor(ME).createVersion(planInput());
   const routes = reanalyzeFor(ME);
   assert.equal((await routes.POST(post({ basePlanId: v1.plan.id, idempotencyKey: "w51-1" }))).status, 201);
   assert.deepEqual(goalMarks, [[ME, "三个月内拿到 10 家企业客户的试用（3 个月内）"]]);
+  // 请求内不等模型：生成只被排到响应之外。
+  assert.equal(scheduled.length, 1);
+  assert.equal(generated.length, 0);
+  await scheduled[0]!();
+  assert.deepEqual(generated, [{ actorId: ME }]);
+  // replayed：补行／标记／即时生成照样执行（三步都幂等），补上原请求尽力而为失败的情况。
   assert.equal((await routes.POST(post({ basePlanId: v1.plan.id, idempotencyKey: "w51-1" }))).status, 200);
+  assert.equal(goalMarks.length, 2);
+  assert.equal(scheduled.length, 2);
+});
+
+test("W0057 SC-01：after() 不可用时重新分析只标待更新，请求内 0 次即时生成", async () => {
+  const clock = { now: "2026-09-28T03:00:00.000Z" };
+  const goalMarks: [string, string][] = [];
+  const { plansFor, reanalyzeFor } = harness(clock, undefined, undefined, undefined, goalMarks);
+  const v1 = await plansFor(ME).createVersion(planInput());
+  // 缺省 harness：scheduleAfter 抛错、generateInsightsNow 被调用即抛错——响应仍是 201。
+  assert.equal((await reanalyzeFor(ME).POST(post({ basePlanId: v1.plan.id, idempotencyKey: "w57" }))).status, 201);
   assert.equal(goalMarks.length, 1);
 });

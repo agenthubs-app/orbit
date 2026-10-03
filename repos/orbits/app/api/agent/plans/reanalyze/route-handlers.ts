@@ -67,13 +67,25 @@ export interface PlanReanalyzeRouteDependencies {
   readGoal?: (actorId: string) => Promise<string | null>;
   serviceForActor?: (actorId: string) => ServiceResolution<PlanFollowUpServices>;
   isDemo?: (actor: AuthenticatedApiActor) => Promise<boolean>;
-  /** W0051（W51-1）：每月重新分析保存成功后把目标哈希不同的洞察统一标待更新（0 次 AI）；失败只记日志。 */
+  /**
+   * W0051（W51-1）：每月重新分析保存成功后把目标哈希不同的洞察统一标待更新（0 次 AI）；失败只记日志。
+   * W0057（D59）：同时为已确认但没有洞察行的联系人补 pending 行（分页补完）。replayed 时同样执行（幂等），补上原请求失败的情况。
+   */
   markInsightsGoalDirty?: (actorId: string, goal: string) => Promise<void>;
+  /** W0057：在响应之外排任务（缺省 `after`）；不可用时只标待更新，交给维护任务。 */
+  scheduleAfter?: (task: () => Promise<void>) => void;
+  /** W0057：即时生成执行器（每次最多 5 批 = 100 人，余下交心跳）。 */
+  generateInsightsNow?: (input: { actorId: string; contactIds?: readonly string[] }) => Promise<unknown>;
 }
 
 async function defaultMarkInsightsGoalDirty(actorId: string, goal: string): Promise<void> {
-  const { markContactInsightsGoalDirtyBestEffort } = await import("../../../../../features/contacts/insights/mark");
-  await markContactInsightsGoalDirtyBestEffort({ actorId, goal });
+  const { prepareContactInsightsAfterReanalysisBestEffort } = await import("../../../../../features/contacts/insights/mark");
+  await prepareContactInsightsAfterReanalysisBestEffort({ actorId, goal });
+}
+
+async function defaultGenerateInsightsNow(input: { actorId: string; contactIds?: readonly string[] }): Promise<unknown> {
+  const { runConfiguredInstantInsightGeneration } = await import("../../../../../features/contacts/insights/instant");
+  return runConfiguredInstantInsightGeneration(input);
 }
 
 export interface PlanFollowUpServices {
@@ -204,7 +216,14 @@ export function createPlanReanalyzeRouteHandlers(dependencies: PlanReanalyzeRout
           origin,
         });
         await afterPlanSaved(actorId, result.snapshot.plan.id).catch(() => undefined);
-        if (!result.replayed) await (dependencies.markInsightsGoalDirty ?? defaultMarkInsightsGoalDirty)(actorId, rawGoal).catch(() => undefined);
+        // W0057（D59）：补行 + 目标标记 + 即时生成；replayed 时同样执行（三步都幂等），补上原请求尽力而为失败的情况。
+        await (dependencies.markInsightsGoalDirty ?? defaultMarkInsightsGoalDirty)(actorId, rawGoal).catch(() => undefined);
+        const { scheduleInstantInsightGeneration } = await import("../../../../../features/contacts/insights/mark");
+        scheduleInstantInsightGeneration(
+          dependencies.scheduleAfter ?? ((task) => after(task)),
+          dependencies.generateInsightsNow ?? defaultGenerateInsightsNow,
+          { actorId },
+        );
         return NextResponse.json(
           success({
             planId: result.snapshot.plan.id,

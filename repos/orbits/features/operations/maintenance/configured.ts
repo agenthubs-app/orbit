@@ -10,6 +10,7 @@ import {
   processMaintenanceHeartbeat,
   resolveMaintenanceIntervalSeconds,
   type EnsureMaintenanceHeartbeatResult,
+  type MaintenanceDeploymentIdentity,
   type MaintenanceHeartbeatMessage,
   type ProcessMaintenanceHeartbeatResult,
 } from "./heartbeat";
@@ -43,6 +44,17 @@ export function getConfiguredMaintenanceRuntime(): ConfiguredMaintenanceRuntime 
   return globalCache.__orbitMaintenanceRuntime;
 }
 
+/**
+ * W0057 (SC-05): this process's deployment. `ORBIT_BUILD_AT` is inlined into the
+ * bundle at build time by next.config.js (`env`), so it must be read as the literal
+ * `process.env.ORBIT_BUILD_AT`; it is absent in local node runs (behaviour unchanged).
+ */
+export function currentMaintenanceDeploymentIdentity(): MaintenanceDeploymentIdentity {
+  const buildAt = process.env.ORBIT_BUILD_AT?.trim() || null;
+  const deploymentId = process.env.VERCEL_DEPLOYMENT_ID?.trim() || null;
+  return { buildAt, deploymentId };
+}
+
 export function maintenanceHeartbeatEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
   return env.VERCEL === "1" && env.ORBIT_MAINTENANCE_HEARTBEAT !== "0";
 }
@@ -64,6 +76,7 @@ export async function ensureConfiguredMaintenanceHeartbeat(): Promise<EnsureMain
   return ensureMaintenanceHeartbeat({
     pool: runtime.pool, workspaceId: runtime.workspaceId, send: sendHeartbeat,
     intervalSeconds: resolveMaintenanceIntervalSeconds(),
+    identity: currentMaintenanceDeploymentIdentity(),
   });
 }
 
@@ -96,6 +109,7 @@ export async function processConfiguredMaintenanceHeartbeat(
   return processMaintenanceHeartbeat(message, {
     pool: runtime.pool, workspaceId: runtime.workspaceId, send: sendHeartbeat,
     intervalSeconds: resolveMaintenanceIntervalSeconds(),
+    identity: currentMaintenanceDeploymentIdentity(),
     runPass: () => runConfiguredMaintenancePass(`maintenance-heartbeat:${message.seq}`),
   });
 }

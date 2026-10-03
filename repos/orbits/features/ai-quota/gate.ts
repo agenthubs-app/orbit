@@ -29,8 +29,8 @@ export interface AiQuotaReserveInput {
   takeover?: boolean;
 }
 
-/** 拒绝时是哪一道额度：手动重新分析 3 次、用户池总熔断 10 次、后台池 60 次。 */
-export type AiQuotaLimit = "manual" | "user" | "background";
+/** 拒绝时是哪一道额度：手动重新分析 3 次、用户池总熔断 10 次、后台池 60 次、即时洞察生成 20 次（W0057）。 */
+export type AiQuotaLimit = "manual" | "user" | "background" | "instant";
 
 export type AiQuotaReservation =
   | {

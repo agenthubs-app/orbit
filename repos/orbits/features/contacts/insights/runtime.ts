@@ -47,9 +47,10 @@ export function createContactInsightsRuntime(input: {
   };
 }
 
-export function getConfiguredContactInsightsRuntime(): ContactInsightsRuntime | null {
+export function getConfiguredContactInsightsRuntime(options: { generatorTimeoutMs?: number } = {}): ContactInsightsRuntime | null {
   if (resolveModuleMode() !== "live") return null;
   const runtime = createConfiguredTransactionalPostgresRuntime();
   if (!runtime) return null;
-  return createContactInsightsRuntime({ client: runtime.client, workspaceId: runtime.workspaceId });
+  const generator = options.generatorTimeoutMs ? createConfiguredContactInsightGenerator(process.env, { timeoutMs: options.generatorTimeoutMs }) : undefined;
+  return createContactInsightsRuntime({ client: runtime.client, generator, workspaceId: runtime.workspaceId });
 }

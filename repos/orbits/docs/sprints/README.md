@@ -86,7 +86,7 @@
 
 ## 等待用户决定
 
-- **W57-A**：W0057 是否允许本机用真实 DeepSeek 演练一次即时生成（建议 ≤5 次 HTTP，按子账记次数与 token）。未决定前上限 0。
+- ~~**W57-A**~~ **已决定（2026-10-03，用户在主会话批准，经协调者转达）**：W0057 本机真实 DeepSeek 调用上限从 0 改为 **≤5 次 HTTP**，只用于最后的端到端验证（名片确认 → ≤60 秒出「为什么是 TA」），本机专用测试账号、独立验收 dev server 才打开 `ORBIT_CONTACT_INSIGHT_GENERATOR=deepseek`，每次调用的次数与 token 记入 REPORT；其余测试仍用 mock。D62 配额按推荐保持（即时生成不占 10 次，独立每日 20 次）。
 - **W58-A**：W0058 是否允许本机用真实 DeepSeek 跑一批检查名片推测质量（建议 ≤5 次 HTTP、≤20 人／次）。未决定前上限 0。
 
 ## Sprint 登记表
@@ -152,7 +152,7 @@
 | [W0054](W0054-network-threshold-demo/GOAL.md) | 引导第 1 步满 3 张才完成；完成后不足 3 人的分析卡；示例静态完整快照（H） | RN-12 | W0048b、W0049～W0051、W0053（导入入口须真实可用，R-13） | completed |
 | [W0055](W0055-network-closeout/GOAL.md) | 大目标 4 收口：回填脚本、下线 contact-needs、死代码清理、全量对照与两条路径截图（I） | RN-13 | W0043～W0054（含 W0048a／b） | completed |
 | [W0056](W0056-read-trim-closeout/GOAL.md) | 读取瘦身收尾：首页已报名活动按当月窗口读取（显示不变）、他人坏行不再拖垮建议接口、资料建议图只读本人数据（H） | RV-03、RV-05 | W0055（或协调者届时裁决）；D49；不与大目标 4 并行；开工按届时 HEAD 重定位并重跑 W0041／W0042 并跑测试 | planned |
-| [W0057](W0057-insight-instant-generation/GOAL.md) | 名片确认／重新分析后当场生成「为什么是 TA」（≤60 秒可见、失败自动重试、即时生成不占重新生成 10 次名额）；心跳链跟随新部署；详情去掉 3 人门槛（H） | RC-01 | W0055；D59、D60、D62；真实 AI 上限 0（待 W57-A） | ready |
+| [W0057](W0057-insight-instant-generation/GOAL.md) | 名片确认／重新分析后当场生成「为什么是 TA」（≤60 秒可见、失败自动重试、即时生成不占重新生成 10 次名额）；心跳链跟随新部署；详情去掉 3 人门槛（H） | RC-01 | W0055；D59、D60、D62；真实 AI 上限 ≤5 次 HTTP（W57-A 已决定，只用于本机端到端验证） | ready |
 | [W0058](W0058-card-profile-inference/GOAL.md) | 洞察同一调用顺带推测 TA 能给的／需要的／话题，来源 `card_inference`，memo 与手改优先、不编造（H，付费 AI） | RC-02 | W0057；D58；真实 AI 上限 0（待 W58-A） | planned |
 | [W0059](W0059-detail-close-return/GOAL.md) | 详情四种关闭方式统一：有站内来路回原页原位置，直开回所有人脉，`returnTo` 防开放跳转，示例弹窗不导航（L） | RC-03 | W0057（同改 `[id]/page.tsx`，review G-12）；与 W0060 同改弹窗文件，不并行（建议同一 Generator 先后执行）；D53 | planned |
 | [W0060](W0060-contact-detail-redesign/GOAL.md) | 详情改版五块：头卡／为什么是 TA／三栏／最近互动（内联 memo）／折叠概览；修正字段标签，三栏不再用回退值凑（M） | RC-04 | W0057、W0058、W0059；D54～D58 | planned |

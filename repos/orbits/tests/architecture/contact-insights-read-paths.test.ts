@@ -23,8 +23,11 @@ const READ_PATHS = [
   "app/(app)/app/contacts/[id]/page.tsx",
   "app/(app)/app/contacts/dashboard/page.tsx",
   "app/api/contacts/page/handler.ts",
+  // W0057：详情面板轮询的只读状态接口。
+  "app/api/contacts/[id]/insight/handler.ts",
+  "app/api/contacts/[id]/insight/route.ts",
 ];
-const FORBIDDEN = [/insights\/generator/, /insights\/worker/, /insights\/regenerate/, /insights\/runtime/, /insights\/maintenance-task/, /deepseek/i, /\.reserve\(/, /beginCall\(/];
+const FORBIDDEN = [/insights\/generator/, /insights\/worker/, /insights\/regenerate/, /insights\/runtime/, /insights\/maintenance-task/, /insights\/instant/, /deepseek/i, /\.reserve\(/, /beginCall\(/];
 
 test("read paths never import the insight generator, worker, regeneration or runtime, and never reserve quota", () => {
   for (const path of READ_PATHS) {

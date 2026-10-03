@@ -161,7 +161,7 @@ test("source_data_version (R-10): changes with enrichment, provenance, memos, pl
 });
 
 const ROW: ContactInsightRow = {
-  aiState: "done", attempts: 1, contactId: "c1", deferredUntil: null, dirtyAt: null, dirtyReasons: [], evidence: [],
+  aiState: "done", attempts: 1, retryCount: 0, contactId: "c1", deferredUntil: null, dirtyAt: null, dirtyReasons: [], evidence: [],
   generatedAt: "2026-10-01T00:00:00.000Z", goalHash: contactInsightGoalHash("目标"), goalRelation: { en: "E".repeat(80), zh: "关".repeat(80) },
   lastErrorCode: null, leaseExpiresAt: null, model: "m", nextStep: { en: "n", zh: "n" }, relevance: 50, sourceDataVersion: "v", status: "ready",
 };
@@ -169,7 +169,9 @@ const NOW = new Date("2026-10-03T00:00:00.000Z");
 
 test("view states: no goal / none / ready / stale / goal updated / deferred / failed / in progress; preview clips to 60", () => {
   assert.equal(contactInsightView(ROW, { contactId: "c1", goal: "", now: NOW }).state, "no_goal");
-  assert.equal(contactInsightView(null, { contactId: "c1", goal: "目标", now: NOW }).state, "none");
+  // W0057（G-7）：没有行但有目标 → 正在生成（pending）；没有目标 → 设目标引导。
+  assert.equal(contactInsightView(null, { contactId: "c1", goal: "目标", now: NOW }).state, "pending");
+  assert.equal(contactInsightView(null, { contactId: "c1", goal: "", now: NOW }).state, "no_goal");
   assert.equal(contactInsightView(null, { contactId: "c1", goal: null, goalKnown: false, now: NOW }).state, "none");
   const ready = contactInsightView(ROW, { contactId: "c1", goal: "目标", now: NOW });
   assert.deepEqual([ready.state, ready.stale, ready.canRegenerate], ["ready", false, false]);
@@ -180,7 +182,14 @@ test("view states: no goal / none / ready / stale / goal updated / deferred / fa
   const deferred = contactInsightView({ ...ROW, deferredUntil: "2026-10-03T15:00:00.000Z", status: "pending" }, { contactId: "c1", goal: "目标", now: NOW });
   assert.deepEqual([deferred.state, deferred.deferredUntil], ["pending", "2026-10-03T15:00:00.000Z"]);
   const failed = contactInsightView({ ...ROW, status: "failed" }, { contactId: "c1", goal: "目标", now: NOW });
-  assert.deepEqual([failed.state, failed.canRegenerate], ["failed", true]);
+  assert.deepEqual([failed.state, failed.canRegenerate, failed.autoRetry], ["failed", true, false]);
+  // W0057（SC-04）：本轮第 1／2 次失败、仍待更新 → 自动重试排期中，不显示「重新生成」；第 3 次失败才显示。
+  for (const retryCount of [1, 2]) {
+    const retrying = contactInsightView({ ...ROW, dirtyAt: NOW.toISOString(), retryCount, status: "failed" }, { contactId: "c1", goal: "目标", now: NOW });
+    assert.deepEqual([retrying.state, retrying.autoRetry, retrying.canRegenerate], ["failed", true, false]);
+  }
+  const exhausted = contactInsightView({ ...ROW, retryCount: 3, status: "failed" }, { contactId: "c1", goal: "目标", now: NOW });
+  assert.deepEqual([exhausted.autoRetry, exhausted.canRegenerate], [false, true]);
   const running = contactInsightView({ ...ROW, aiState: "started", leaseExpiresAt: "2026-10-03T00:05:00.000Z", status: "failed" }, { contactId: "c1", goal: "目标", now: NOW });
   assert.deepEqual([running.inProgress, running.canRegenerate], [true, false]);
   const preview = contactInsightPreview(ROW)!;

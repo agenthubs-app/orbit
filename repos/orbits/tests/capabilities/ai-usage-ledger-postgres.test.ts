@@ -134,7 +134,7 @@ test("SC-04 user pool: manual 3/day, then the 10-operation fuse; pools never bor
     await fill(ledger, { count: USER_POOL_DAILY_LIMIT - MANUAL_REANALYSIS_DAILY_LIMIT, pool: "user", prefix: "plan", purpose: "plan", trigger: "plan" });
     const eleventh = await ledger.reserve({ actorId: ALICE, idempotencyKey: "plan:x", now: NOW, pool: "user", purpose: "insight", trigger: "manual" });
     assert.deepEqual(eleventh, { limit: "user", ok: false, reason: "daily_limit", retryOn: nextTokyoMidnight(NOW) });
-    assert.deepEqual(await ledger.readUsageToday(ALICE, NOW), { background: 60, manual: 3, user: 10 });
+    assert.deepEqual(await ledger.readUsageToday(ALICE, NOW), { background: 60, instant: 0, manual: 3, user: 10 });
     // system 池不受任何用户额度约束。
     assert.equal((await ledger.reserve({ actorId: ALICE, idempotencyKey: "sys:more", now: NOW, pool: "system", purpose: "enrichment", trigger: "auto" })).ok, true);
     // 用户池满不影响 Bob，也不影响 Alice 的后台池第二天。

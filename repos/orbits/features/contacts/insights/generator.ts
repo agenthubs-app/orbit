@@ -330,10 +330,14 @@ export function createDeepseekContactInsightGenerator(options: DeepseekContactIn
 /**
  * provider factory：`ORBIT_CONTACT_INSIGHT_GENERATOR=deepseek` 且有 `DEEPSEEK_API_KEY` 时用 DeepSeek，否则 mock（生产默认）。
  */
-export function createConfiguredContactInsightGenerator(env: Record<string, string | undefined> = process.env): ContactInsightGenerator {
+export function createConfiguredContactInsightGenerator(
+  env: Record<string, string | undefined> = process.env,
+  options: { timeoutMs?: number } = {},
+): ContactInsightGenerator {
   if (env.ORBIT_CONTACT_INSIGHT_GENERATOR?.trim() === "deepseek") {
     const apiKey = env.DEEPSEEK_API_KEY?.trim();
-    if (apiKey) return createDeepseekContactInsightGenerator({ apiKey, model: env.ORBIT_BUSINESS_CARD_OCR_TEXT_MODEL?.trim() || undefined });
+    // W0057（G-8）：即时路径传 45 s 上限，后台仍是 60 s。
+    if (apiKey) return createDeepseekContactInsightGenerator({ apiKey, model: env.ORBIT_BUSINESS_CARD_OCR_TEXT_MODEL?.trim() || undefined, timeoutMs: options.timeoutMs });
   }
   return createMockContactInsightGenerator();
 }
