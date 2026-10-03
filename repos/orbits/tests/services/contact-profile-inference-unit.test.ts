@@ -107,6 +107,8 @@ test("SC-03 the request body carries sanitized card notes (no email, phone or UR
   assert.equal(sanitizeCardNotes(`${"备".repeat(250)}`)!.length, 200);
   assert.equal(sanitizeCardNotes(" tanaka@acme.co.jp  03-1234-5678 "), null);
   assert.equal(sanitizeCardNotes("Room 12, 3F"), "Room 12, 3F", "short numbers are kept");
+  assert.equal(sanitizeCardNotes("正面 · orbit-verify-card-1.jpg 部门: 営業部"), "正面 · orbit-verify-card-1.jpg 部门: 営業部", "file names are not URLs");
+  assert.equal(sanitizeCardNotes("see acme.co.jp/about or www.acme.com"), "see or");
   const bodies: Record<string, unknown>[] = [];
   const generator = createDeepseekContactInsightGenerator({
     apiKey: "k",
@@ -144,7 +146,7 @@ test("SC-03 parseInsightOutput keeps grounded profile items and drops boilerplat
             item("日本进口清关", "Japan import clearance"),
             item("仓储", "Warehousing", "department"),
             item("超长的条目超长的条目超长的条目超长的条目超长", "Too long in Chinese", "industry"),
-            item("东南亚航线", "Southeast Asia routes with many many words", "industry"),
+            item("东南亚航线", "Southeast Asia shipping routes, carriers, schedules and many more words", "industry"),
             item("对接 C2 的渠道", "Channel with C2", "company"),
             item("海外渠道开拓", "Overseas channel building", "title"),
             item("海外渠道开拓", "Overseas channel building", "title"),

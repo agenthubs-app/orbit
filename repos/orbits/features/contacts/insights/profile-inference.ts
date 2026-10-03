@@ -2,7 +2,8 @@
  * W0058（D58）：洞察生成同一调用顺带产出的「名片推测」——TA 能给你的（offering）／TA 需要的（seeking）／可以聊的话题（topics）。
  *
  * - 依据只能是名片资料：公司、职位、名片备注（含 OCR 拼进备注的部门）、行业；不依据 memo、时间线或目标文字；
- * - 每条必须带 `basis`，且 basis 指向的输入字段在本次输入里非空；每栏 ≤3 条，每条中文 ≤20 字、英文 ≤40 字符（超长整条丢弃）；
+ * - 每条必须带 `basis`，且 basis 指向的输入字段在本次输入里非空；每栏 ≤3 条，每条中文 ≤20 字、英文 ≤60 字符（超长整条丢弃；
+ *   提示词要求英文 ≤40，服务端放宽到 60——真实调用里英文译文常比中文长 2～3 倍，按 40 卡会把合格的中文条目整条丢掉）；
  * - 拒绝空洞套话（服务端黑名单，归一后整条等于或只由黑名单词组成即拒）、与公司名／职位原文相同的条目、带 id／别名的条目；
  * - 推不出来就是空数组（正确结果）。
  * 写入联系人时值取用户目标文字的语言（含 CJK 即 zh，否则 en），中英原文另存在来源记录 `bilingual`（W58-3）。
@@ -14,7 +15,7 @@ import type { EnrichedValue, ProfileListEnrichmentField } from "../enrichment/ap
 export const PROFILE_INFERENCE_FIELDS: readonly ProfileListEnrichmentField[] = ["offering", "seeking", "topics"];
 export const PROFILE_INFERENCE_BASES = ["title", "company", "card_notes", "industry"] as const;
 export type ProfileInferenceBasis = (typeof PROFILE_INFERENCE_BASES)[number];
-export const PROFILE_INFERENCE_LIMITS = { itemsPerField: 3, zhChars: 20, enChars: 40, cardNotesChars: 200 } as const;
+export const PROFILE_INFERENCE_LIMITS = { itemsPerField: 3, zhChars: 20, enChars: 60, cardNotesChars: 200 } as const;
 
 export interface ProfileInferenceItem {
   text: ContactInsightText;
@@ -46,7 +47,7 @@ export function profileInferenceIsEmpty(value: ProfileInference | null | undefin
 }
 
 const EMAIL = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
-const URL_PATTERN = /\b(?:https?:\/\/|www\.)\S+|\b[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.(?:com|net|org|io|co|jp|cn|ai|dev|app|biz|info|me|tv|us|uk|sg|hk|tw|kr)(?:\.[a-z]{2})?(?:\/\S*)?/gi;
+const URL_PATTERN = /\b(?:https?:\/\/|www\.)\S+|\b[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.(?:com|net|org|io|co|jp|cn|ai|dev|app|biz|info|me|tv|us|uk|sg|hk|tw|kr)(?:\.[a-z]{2})?\b(?:\/\S*)?/gi;
 /** 至少 7 位数字（中间可有空格、横线、点、括号），前面可带 +：电话、传真、手机。 */
 const PHONE = /\+?\d[\d\s().-]{5,}\d/g;
 
