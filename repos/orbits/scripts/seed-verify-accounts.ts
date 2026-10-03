@@ -9,6 +9,7 @@
  *       # 让新用户不经名片识别（付费 AI）也能完成引导第 1 步，接着在浏览器里走第 2、3 步
  *   node --import tsx scripts/seed-verify-accounts.ts --reset verify-network
  *       # W0055：D2 老用户、55 位联系人、30 条 memo、10 条已完成跟进、同场活动与约见（四档都有），回填与人脉页验收用
+ *   node --import tsx scripts/seed-verify-accounts.ts --purge verify-network   # W0055：只删除该账号数据、不重造
  *   node --import tsx scripts/seed-verify-accounts.ts --fingerprint   # 只读：非 verify-* 行的指纹
  *   node --import tsx scripts/seed-verify-accounts.ts --assert-only   # 只做本机库断言（verify-server.sh 用）
  *
@@ -258,12 +259,17 @@ async function fingerprint(sql: Client): Promise<VerifyFingerprint> {
   const verifyRows: VerifyFingerprint["verifyRows"] = {};
   for (const table of await listPublicTables(sql)) {
     // W0055：CSV 导入的逐行表同理（行里只有批次 id，按所属导入批次判定），否则重置 verify-new 时级联删除会被误报。
-    const parentBatch: Record<string, string> = { bc_ingest_items: "bc_ingest_batches", contact_import_rows: "contact_import_batches" };
-    const parent = parentBatch[table];
+    // 账本子账（ai_usage_calls）同理，按所属操作行（ai_usage_ledger）判定。
+    const parentRow: Record<string, { table: string; key: string }> = {
+      ai_usage_calls: { key: "operation_id", table: "ai_usage_ledger" },
+      bc_ingest_items: { key: "batch_id", table: "bc_ingest_batches" },
+      contact_import_rows: { key: "batch_id", table: "contact_import_batches" },
+    };
+    const parent = parentRow[table];
     const marked = parent
       ? `(row_to_json(t)::text ~ $1 or exists (
-           select 1 from ${quoteIdent(parent)} b
-            where b.workspace_id = t.workspace_id and b.id = t.batch_id and row_to_json(b)::text ~ $1))`
+           select 1 from ${quoteIdent(parent.table)} b
+            where b.workspace_id = t.workspace_id and b.id = t.${quoteIdent(parent.key)} and row_to_json(b)::text ~ $1))`
       : "row_to_json(t)::text ~ $1";
     const result = await sql.query<{ rows: string; hash: string | null; verify_rows: string }>(
       `select
@@ -1358,12 +1364,22 @@ type Command =
   | { kind: "fingerprint" }
   | { kind: "summary" }
   | { kind: "seed" }
-  | { kind: "reset"; account: VerifyAccountName; guideStep1?: boolean };
+  | { kind: "reset"; account: VerifyAccountName; guideStep1?: boolean }
+  /** W0055：只删除一个账号的全部数据、不重新造（验收时避免维护任务处理它的积压，例如 verify-network 的 30 条 memo）。 */
+  | { kind: "purge"; account: VerifyAccountName };
 
 function parseCommand(args: readonly string[]): Command {
   if (args.includes("--assert-only")) return { kind: "assert" };
   if (args.includes("--fingerprint")) return { kind: "fingerprint" };
   if (args.includes("--summary")) return { kind: "summary" };
+  const purgeIndex = args.indexOf("--purge");
+  if (purgeIndex >= 0) {
+    const account = args[purgeIndex + 1];
+    if (!VERIFY_ACCOUNT_NAMES.includes(account as VerifyAccountName)) {
+      throw new Error(`--purge 需要账号名：${VERIFY_ACCOUNT_NAMES.join(" / ")}`);
+    }
+    return { account: account as VerifyAccountName, kind: "purge" };
+  }
   const resetIndex = args.indexOf("--reset");
   if (resetIndex >= 0) {
     const account = args[resetIndex + 1];
@@ -1412,13 +1428,13 @@ async function main(): Promise<void> {
       return;
     }
 
-    const names: readonly VerifyAccountName[] = command.kind === "reset" ? [command.account] : VERIFY_ACCOUNT_NAMES;
+    const names: readonly VerifyAccountName[] = command.kind === "reset" || command.kind === "purge" ? [command.account] : VERIFY_ACCOUNT_NAMES;
     const before = await fingerprint(sql);
     await ensureAccount(runtime, ACCOUNTS["verify-host"]);
     const purged: Record<string, Record<string, number>> = {};
     for (const name of names) {
       purged[name] = await purgeAccount(runtime, ACCOUNTS[name]);
-      await seedAccount(runtime, name);
+      if (command.kind !== "purge") await seedAccount(runtime, name);
     }
     if (command.kind === "reset" && command.guideStep1) {
       const spec = ACCOUNTS["verify-new"];
@@ -1434,7 +1450,7 @@ async function main(): Promise<void> {
     console.log(
       JSON.stringify(
         {
-          command: command.kind === "reset" ? `reset ${command.account}` : "seed",
+          command: command.kind === "reset" || command.kind === "purge" ? `${command.kind} ${command.account}` : "seed",
           nonVerifyFingerprint: { after: after.digest, before: before.digest, changedTables: changed, identical: changed.length === 0 },
           purgedRows: purged,
           accounts: summaries,
