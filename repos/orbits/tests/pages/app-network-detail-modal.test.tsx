@@ -183,7 +183,7 @@ const INSIGHT_NOW = new Date("2026-10-03T03:00:00.000Z");
 const INSIGHT_GOAL = "认识 SaaS 决策人";
 const readyRow: ContactInsightRow = {
   aiState: "done", attempts: 1, retryCount: 0, contactId: "c1", deferredUntil: null, dirtyAt: null, dirtyReasons: [],
-  evidence: [{ id: "memo:note:live-contact-detail-update:abc", source: "memo" }, { id: "item:need-1", source: "plan_need" }],
+  evidence: [{ id: "memo:note:live-contact-detail-update:abc", source: "memo" }, { id: "need-1", source: "plan_need" }],
   generatedAt: "2026-10-02T00:00:00.000Z", goalHash: contactInsightGoalHash(INSIGHT_GOAL),
   goalRelation: { en: "Keiko leads partnerships at an AI vendor.", zh: "惠子负责一家 AI 公司的合作。" }, lastErrorCode: null, leaseExpiresAt: null,
   model: "m", nextStep: { en: "Book the product demo.", zh: "约产品演示。" }, relevance: 72, sourceDataVersion: "v", status: "ready",
@@ -198,17 +198,30 @@ function insightOf(row: ContactInsightRow | null, options: { goal?: string | nul
   return { goal, quotaExhausted: options.quotaExhausted ?? false, view: contactInsightView(row, { contactId: "c1", goal, goalKnown: options.goalKnown, now: INSIGHT_NOW }) };
 }
 
-function panelHtml(row: ContactInsightRow | null, options: { goal?: string | null; quotaExhausted?: boolean; goalKnown?: boolean; plan?: NetworkDetailPlanContext | null } = {}) {
-  return renderToStaticMarkup(<NetworkDetailModal contact={contact} closeHref="/app/contacts" onFollow={() => {}} insight={insightOf(row, options)} planContext={options.plan === undefined ? PLAN : options.plan} />);
+/** W0061：详情依据从已读到的时间线解析（memo 的东京日期、capture 的采集方式）。 */
+const contactWithTimeline = {
+  ...(contact as object),
+  timeline: {
+    items: [
+      { contactId: "c1", id: "memo:note:live-contact-detail-update:abc", occurredAt: "2026-09-27T15:00:00.000Z", occurredAtPrecision: "day", ref: { recordId: "contact-detail:u:c1", store: "contact_detail_states", subId: "note:live-contact-detail-update:abc" }, source: "memo", title: { en: "Wrote a memo", zh: "写了 memo" } },
+      { contactId: "c1", detail: { captureMethod: "business_card" }, id: "capture:c1", occurredAt: "2026-09-01T00:00:00.000Z", occurredAtPrecision: "instant", ref: { recordId: "c1", store: "contacts" }, source: "capture", title: { en: "Added from a business card", zh: "扫描名片，建立联系" } },
+    ],
+    unavailableSources: [],
+  },
+} as never;
+
+function panelHtml(row: ContactInsightRow | null, options: { goal?: string | null; quotaExhausted?: boolean; goalKnown?: boolean; plan?: NetworkDetailPlanContext | null; contact?: unknown } = {}) {
+  return renderToStaticMarkup(<NetworkDetailModal contact={(options.contact ?? contact) as never} closeHref="/app/contacts" onFollow={() => {}} insight={insightOf(row, options)} planContext={options.plan === undefined ? PLAN : options.plan} />);
 }
 
 test("SC-W0060-03: a ready insight — goal line, 「TA 能帮你」, evidence, linked need chip with its phase, + 关联到其他需求, next step from the insight, why now from the week action, 约 TA／起草邮件", () => {
-  const html = panelHtml(readyRow);
+  const html = panelHtml(readyRow, { contact: contactWithTimeline });
   const why = html.slice(html.indexOf('data-network-detail-section="why"'), html.indexOf('data-network-detail-section="profile"'));
   assert.match(why, /data-network-insight-panel="ready"/);
   assert.match(why, /为什么是 TA[\s\S]*?data-network-why-goal[^>]*>对照目标：认识 SaaS 决策人/);
-  assert.match(why, /TA 能帮你：<\/span><span data-insight-goal-relation="true">惠子负责一家 AI 公司的合作。/);
-  assert.match(why, /依据[\s\S]*?href="\/app\/contacts\/c1#tl-memo_note_live-contact-detail-update_abc"[\s\S]*?href="\/app\/agent\/plan#plan-need-item%3Aneed-1"/);
+  // W0061：首行是三处共用的 ContactValueLine。
+  assert.match(why, /TA 能帮你：<\/span><span data-value-line-relation="true">惠子负责一家 AI 公司的合作。/);
+  assert.match(why, /依据[\s\S]*?href="\/app\/contacts\/c1#tl-memo_note_live-contact-detail-update_abc"[^>]*>memo 9\/28<[\s\S]*?href="\/app\/agent\/plan#plan-need-need-1"[^>]*>计划需求『认识能引荐目标客户的投资人』</);
   assert.match(why, /对应计划需求[\s\S]*?data-plan-linked-need="need-1">阶段 1 · 认识能引荐目标客户的投资人 ✓/);
   assert.match(why, /data-plan-need-link-open[^>]*>\+ 关联到其他需求</);
   assert.match(why, /data-insight-next-step="true">约产品演示。</);
@@ -481,7 +494,7 @@ test("W0057: while generating the panel polls the read-only status every 5 s and
   assert.equal(panel.root().root.findAll((node) => node.props?.["data-insight-goal-relation"] !== undefined).length, 0);
   await panel.tick();
   assert.equal(panel.gets.length, 2);
-  const relation = panel.root().root.find((node) => node.props?.["data-insight-goal-relation"] !== undefined);
+  const relation = panel.root().root.find((node) => node.props?.["data-value-line-relation"] !== undefined);
   assert.equal(relation.children.join(""), "惠子负责一家 AI 公司的合作。");
   await panel.tick();
   await panel.tick();

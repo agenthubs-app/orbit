@@ -94,6 +94,22 @@ function evidenceList(value: unknown): ContactInsightEvidence[] {
   });
 }
 
+const COMPACT_EVIDENCE_SOURCES: Readonly<Record<string, ContactInsightEvidence["source"]>> = { c: "capture", m: "memo", p: "plan_need" };
+
+const COMPACT_MEMO_PREFIX = "memo:note:live-contact-detail-update:";
+
+/** W0061：`readValueLines` 的紧凑依据（见该语句注释）→ 依据列表。 */
+function compactEvidence(value: unknown, contactId: string): ContactInsightEvidence[] {
+  if (typeof value !== "string" || !value) return [];
+  return value.split("\n").flatMap((line): ContactInsightEvidence[] => {
+    const source = COMPACT_EVIDENCE_SOURCES[line.charAt(0)];
+    const rest = line.slice(1);
+    if (source === "capture") return [{ id: `capture:${contactId}`, source }];
+    if (source === "memo" && rest) return [{ id: rest.startsWith("~") ? `${COMPACT_MEMO_PREFIX}${rest.slice(1)}` : rest, source }];
+    return source && rest ? [{ id: rest, source }] : [];
+  });
+}
+
 export function toContactInsightRow(row: Row): ContactInsightRow {
   return {
     aiState: (row.ai_state as ContactInsightRow["aiState"]) ?? "none",
@@ -322,6 +338,14 @@ export interface PendingProfileApply {
   profileInference: StoredProfileInference;
 }
 
+/** W0061：一句话需要的洞察窄列（单语言）。 */
+export interface ContactInsightValueLineRow {
+  status: ContactInsightRowStatus;
+  relation: string | null;
+  nextStep: string | null;
+  evidence: ContactInsightEvidence[];
+}
+
 export interface ContactInsightRepository {
   /** 只读：本人这些联系人的洞察行（他人的 id 读不到）。 */
   readRows(actorId: string, contactIds: readonly string[]): Promise<Map<string, ContactInsightRow>>;
@@ -329,6 +353,15 @@ export interface ContactInsightRepository {
   readPreviews(actorId: string, contactIds: readonly string[]): Promise<Map<string, ContactInsightText>>;
   /** 只读（待唤醒用，D39 窄读）：状态与下一步。 */
   readNextSteps(actorId: string, contactIds: readonly string[]): Promise<Map<string, { status: ContactInsightRowStatus; nextStep: ContactInsightText | null }>>;
+  /**
+   * W0061 只读（「TA 能帮你」一句话，D39 窄读）：状态、按界面语言取的 `goal_relation`、依据，`withNextStep` 时再带下一步。
+   * 只取一种语言，单人约 0.2 KB；他人的 id 读不到。
+   */
+  readValueLines(
+    actorId: string,
+    contactIds: readonly string[],
+    options: { language: "zh" | "en"; withNextStep: boolean },
+  ): Promise<Map<string, ContactInsightValueLineRow>>;
   /** 进程中途退出（租约过期）的 started 行标 failed（W0057：纳入同一重试排期）。 */
   sweepInterrupted(now: Date): Promise<number>;
   /** 领取一个 actor 的 ≤limit 行待更新（到期、未被领取）：CAS 置 started + 写租约。 */
@@ -466,6 +499,42 @@ export function createPostgresContactInsightRepository(input: { client: InsightS
           [workspaceId, actorId, ids],
         );
         for (const row of rows.rows) result.set(String(row.contact_id), { nextStep: textPair(row.next_step), status: row.status as ContactInsightRowStatus });
+      } catch (error) {
+        if (!isUndefinedTable(error)) throw error;
+      }
+      return result;
+    },
+    async readValueLines(actorId, contactIds, { language, withNextStep }) {
+      const ids = [...new Set(contactIds.filter((id) => typeof id === "string" && id.length > 0 && id.length <= 512))].slice(0, 50);
+      const result = new Map<string, ContactInsightValueLineRow>();
+      if (!actorId.trim() || !ids.length) return result;
+      const lang = language === "en" ? "en" : "zh";
+      try {
+        // D39 窄读：回传请求中的位置序号（不回传联系人 id）；只有 ready 行才带文字与依据；依据只留可解析的三种来源，
+        // 压成按行拼接的紧凑形式：`c`（本人这位联系人的建立记录）、`m~{memo 后缀}`／`m{完整 id}`、`p{计划条目 id}`。
+        const rows = await client.query<Row>(
+          `/* contact-insights:read-value-lines */ select u.ord, i.status,
+             case when i.status = 'ready' then i.goal_relation->>$4 end as relation,
+             ${withNextStep ? "case when i.status = 'ready' then i.next_step->>$4 end" : "null::text"} as next_step,
+             case when i.status = 'ready' then (select string_agg(case e.value->>'source'
+                 when 'capture' then case when e.value->>'id' = 'capture:' || i.contact_id then 'c' end
+                 when 'memo' then 'm' || regexp_replace(e.value->>'id', '^memo:note:live-contact-detail-update:', '~')
+                 else 'p' || (e.value->>'id') end, E'\\n' order by e.ord) from jsonb_array_elements(i.evidence) with ordinality as e(value, ord)
+               where e.value->>'source' in ('capture', 'memo', 'plan_need')) end as evidence
+           from unnest($3::text[]) with ordinality as u(id, ord)
+           join contact_insights i on i.workspace_id = $1 and i.actor_id = $2 and i.contact_id = u.id`,
+          [workspaceId, actorId, ids, lang],
+        );
+        for (const row of rows.rows) {
+          const contactId = ids[Number(row.ord) - 1];
+          if (!contactId) continue;
+          result.set(contactId, {
+            evidence: compactEvidence(row.evidence, contactId),
+            nextStep: typeof row.next_step === "string" && row.next_step.trim() ? row.next_step : null,
+            relation: typeof row.relation === "string" && row.relation.trim() ? row.relation : null,
+            status: row.status as ContactInsightRowStatus,
+          });
+        }
       } catch (error) {
         if (!isUndefinedTable(error)) throw error;
       }

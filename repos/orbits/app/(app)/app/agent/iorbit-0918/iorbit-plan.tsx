@@ -157,11 +157,11 @@ function IOrbitPlanScreen({
   useEffect(() => {
     if (typeof window === "undefined" || !hasPlan || demoActive) return;
     const controller = new AbortController();
-    void fetchPlanMatches(controller.signal)
+    void fetchPlanMatches(controller.signal, language === "zh" ? "zh" : "en")
       .then((value) => setMatches(value))
       .catch(() => undefined);
     return () => controller.abort();
-  }, [demoActive, hasPlan]);
+  }, [demoActive, hasPlan, language]);
   const reloadPlan = () => {
     void fetchCurrentPlan()
       .then((value) => {

@@ -9,6 +9,7 @@
  * 候选列表按新到旧排列；W0015：联系人在与需求关联的活动上认识的候选排在最前。
  */
 import { industryLabel, secondaryIndustryLabel } from "../../shared/domain/industries";
+import type { ContactValueInsight } from "../contacts/insights/value-lines";
 import { PLAN_MATCH_ACTION_SOURCE, type LinkNeedContactResult, type PlanService } from "./contract";
 import { resolvePlanEmailDraftProvider, type PlanEmailDraft, type PlanEmailDraftProvider } from "./email-draft";
 import { eventLinked } from "./matching";
@@ -30,6 +31,11 @@ export interface PlanMatchCandidateView {
   industry: { zh: string; en: string } | null;
   /** AI 层给出的一句话理由（模型原文）；规则层为 null。 */
   aiReason: string | null;
+  /**
+   * W0061（可选）：「TA 能帮你」一句话的洞察部分（单语言），由候选接口在返回前批量只读附上；
+   * 读不到时缺席，不改其余字段语义。
+   */
+  value?: ContactValueInsight;
 }
 
 export interface PlanMatchCandidatesView {

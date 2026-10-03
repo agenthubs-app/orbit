@@ -35,7 +35,7 @@ import type { ContactInsightView } from "../../../../../features/contacts/insigh
 import { ContactEnrichmentInline } from "./contact-enrichment-inline";
 import { DEFAULT_DETAIL_CLOSE_HREF, detailReturnLabel } from "./detail-return";
 import { consumeContactDetailReturn } from "./detail-return-recorder";
-import { contactWhyNow, profileColumn, type ContactWhyNowAction, type ProfileColumnView } from "./contact-value";
+import { contactWhyNow, evidenceFactsFromDetail, profileColumn, type ContactWhyNowAction, type ProfileColumnView } from "./contact-value";
 import { buildMemoPatch, tokyoDayWindow, tokyoToday } from "./network-follow-modal";
 import { NetworkInsightPanel } from "./network-insight-panel";
 import { SOURCE_LABEL, TIER_CHIP, TIER_LABEL, TIER_STYLE, metSummary, sourceOf, tierGroupOf } from "./network-model";
@@ -551,6 +551,8 @@ export function NetworkDetailModal({ contact, closeHref, onFollow: openFollow, e
             contactHref={`/app/contacts/${encodeURIComponent(contact.id)}`}
             fallbackNextStep={next?.text ?? null}
             whyNow={contactWhyNow(planContext?.weekAction, t)}
+            evidenceFacts={evidenceFactsFromDetail(contact.id, contact.timeline?.items, planContext?.linkedNeeds, contact.source === "scan")}
+            valueFallback={{ name: contact.displayName, needTitle: planContext?.linkedNeeds[0]?.title ?? null, subtitle: [contact.company, contact.title].filter(Boolean).join(" · ") || null }}
             planStrip={planStrip}
             actions={whyActions}
             after={draftEmail.draft || draftEmail.state === "error" ? (

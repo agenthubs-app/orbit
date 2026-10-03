@@ -33,6 +33,9 @@ import {
   type PlanMatchList,
 } from "./plan-match-client";
 import { fetchCurrentPlan, newPlanIdempotencyKey } from "./iorbit-plan-client";
+import { contactValueLine, type ContactValueInsight } from "../../contacts/network-0918/contact-value";
+import { ContactValueLine, fetchContactValueLines } from "../../contacts/network-0918/contact-value-line";
+import { useDemoMode } from "../../_demo/demo-mode-core";
 
 /** 审阅页最多等多久（Q29：8 秒）。 */
 export const PLAN_MATCH_WAIT_MS = 8_000;
@@ -85,12 +88,29 @@ export const PLAN_MATCH_STYLES = `
 
 type Translate = (copy: { en: string; zh: string }) => string;
 
-function reasonLine(candidate: PlanMatchCandidate, t: Translate): string | null {
-  if (candidate.tier === "ai") return candidate.aiReason ? t({ en: `By company & title: ${candidate.aiReason}`, zh: `按公司与职位：${candidate.aiReason}` }) : null;
-  if (!candidate.industry) return null;
-  return candidate.strength === "strong"
-    ? t({ en: `Same sub-industry: ${candidate.industry.en}`, zh: `同属二级行业：${candidate.industry.zh}` })
-    : t({ en: `Same industry: ${candidate.industry.en}`, zh: `同属行业：${candidate.industry.zh}` });
+/**
+ * W0061：匹配理由改为依据小签（不丢信息）——AI 层「名片职位」（模型原文放在提示里）、规则层「行业规则匹配 · {行业}」。
+ * 规则层没有行业时只写「行业规则匹配」。
+ */
+export function matchEvidenceChip(candidate: PlanMatchCandidate, t: Translate): { text: string; title: string | null } {
+  if (candidate.tier === "ai") return { text: t({ en: "Card title", zh: "名片职位" }), title: candidate.aiReason };
+  const base = t({ en: "Industry rule", zh: "行业规则匹配" });
+  if (!candidate.industry) return { text: base, title: null };
+  return { text: `${base} · ${t(candidate.industry)}`, title: null };
+}
+
+/** 候选卡退化时的「同属 {行业}」（只有规则层有）。 */
+function candidateIndustry(candidate: PlanMatchCandidate, t: Translate): string | null {
+  return candidate.tier === "rule" && candidate.industry ? t(candidate.industry) : null;
+}
+
+/** 候选卡里还在生成的一句话：每 10 秒重取一次 `value-lines`，最多 3 次（W61-3 有界轮询）。 */
+export const PLAN_MATCH_VALUE_POLL_MS = 10_000;
+export const PLAN_MATCH_VALUE_POLL_MAX = 3;
+
+/** 还在生成，或接口没附上（读失败、超过一次 20 位）——都按「待补查」有界重取。 */
+function valueGenerating(value: ContactValueInsight | undefined): boolean {
+  return !value || value.state === "pending" || value.state === "none";
 }
 
 /** 「约 TA」行动的三个按钮（确认之后、计划页本周行动上共用）。 */
@@ -218,8 +238,39 @@ export function PlanMatchSheet({
   heading?: string;
   onDecided?: (candidateId: string, decision: "accept" | "dismiss", action: PlanMatchAction | null) => void;
 }) {
-  const { t } = useOrbitLanguage();
+  const { language, t } = useOrbitLanguage();
+  const demo = useDemoMode();
   const [rows, setRows] = useState<Record<string, RowState>>({});
+  // W0061：重取到的一句话（按语言 + 联系人）；覆盖候选自带的 `value`。语言切换后旧语言的重取结果不再使用。
+  const valueLang: "zh" | "en" = language === "zh" ? "zh" : "en";
+  const [values, setValues] = useState<Record<string, ContactValueInsight>>({});
+  const valueOf = (candidate: PlanMatchCandidate): ContactValueInsight | undefined => values[`${valueLang}:${candidate.contactId}`] ?? candidate.value;
+  const generatingKey = [...new Set(candidates.filter((candidate) => valueGenerating(valueOf(candidate))).map((candidate) => candidate.contactId))].slice(0, 20).join(",");
+  const polls = useRef(0);
+  useEffect(() => {
+    if (typeof window === "undefined" || demo || !generatingKey || polls.current >= PLAN_MATCH_VALUE_POLL_MAX) return;
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      polls.current += 1;
+      void fetchContactValueLines(generatingKey.split(","), valueLang, controller.signal, { insightOnly: true })
+        .then((lines) => {
+          if (controller.signal.aborted) return;
+          setValues((current) => {
+            const next = { ...current };
+            for (const line of lines) next[`${valueLang}:${line.contactId}`] = { evidence: line.evidence, relation: line.relation, state: line.state };
+            return next;
+          });
+        })
+        .catch(() => {
+          // 读不到：保持退化文本，下一次（若还有次数）再试。
+          if (!controller.signal.aborted) setValues((current) => ({ ...current }));
+        });
+    }, PLAN_MATCH_VALUE_POLL_MS);
+    return () => {
+      controller.abort();
+      window.clearTimeout(timer);
+    };
+  }, [demo, generatingKey, valueLang, values]);
   const row = (id: string): RowState => rows[id] ?? { action: null, busy: false, dismissed: false, error: null, linkedOnly: false };
   const patch = (id: string, next: Partial<RowState>) => setRows((current) => ({ ...current, [id]: { ...row(id), ...current[id], ...next } }));
 
@@ -257,20 +308,29 @@ export function PlanMatchSheet({
         <ul className="pms-list">
           {visible.map((candidate) => {
             const state = row(candidate.id);
-            const why = reasonLine(candidate, t);
+            const chip = matchEvidenceChip(candidate, t);
+            const model = contactValueLine(
+              { industry: candidateIndustry(candidate, t), insight: valueOf(candidate), name: candidate.contactName, subtitle: candidate.contactSubtitle },
+              t,
+            );
             return (
               <li className="pms-row" data-plan-match-candidate={candidate.id} key={candidate.id}>
                 <div className="pms-who">
                   <b>{candidate.contactName}</b>
                   {candidate.contactSubtitle ? <small>{candidate.contactSubtitle}</small> : null}
                 </div>
+                <ContactValueLine model={model} showWho={false} />
                 <div className="pms-need">
-                  <span>{t({ en: `May fit “${candidate.needTitle}”`, zh: `可能对应「${candidate.needTitle}」` })}</span>
+                  <span>{t({ en: "Fits", zh: "对应" })}</span>
+                  <span className="pms-tag" data-plan-match-need>{candidate.needTitle}</span>
                   <span className={candidate.strength === "strong" ? "pms-tag pms-tag-strong" : "pms-tag"}>
                     {candidate.strength === "strong" ? t({ en: "Strong match", zh: "强匹配" }) : t({ en: "Possible", zh: "可能" })}
                   </span>
+                  <span className="pms-why" data-plan-match-evidence={candidate.tier} title={chip.title ?? undefined}>
+                    {t({ en: "Based on · ", zh: "依据 · " })}
+                    {chip.text}
+                  </span>
                 </div>
-                {why ? <p className="pms-why">{why}</p> : null}
                 {state.action ? (
                   <div className="pms-action">
                     <span className="pms-action-title">
@@ -337,10 +397,12 @@ export function BatchPlanMatch({
   waitMs = PLAN_MATCH_WAIT_MS,
 }: {
   batchId: string;
-  run?: (batchId: string, signal: AbortSignal) => Promise<PlanMatchList>;
+  run?: (batchId: string, signal: AbortSignal, language: "zh" | "en") => Promise<PlanMatchList>;
   waitMs?: number;
 }) {
-  const { t } = useOrbitLanguage();
+  const { language, t } = useOrbitLanguage();
+  // W0061：候选附带的一句话按界面语言给；语言切换不重跑匹配（只影响首次请求）。
+  const languageRef = useRef<"zh" | "en">(language === "zh" ? "zh" : "en");
   const [state, setState] = useState<BatchMatchState>("waiting");
   const [list, setList] = useState<PlanMatchList | null>(null);
   useEffect(() => {
@@ -353,7 +415,7 @@ export function BatchPlanMatch({
       setState("late");
       controller.abort();
     }, waitMs);
-    void run(batchId, controller.signal)
+    void run(batchId, controller.signal, languageRef.current)
       .then((value) => {
         if (settled) return;
         settled = true;
