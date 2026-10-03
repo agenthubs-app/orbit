@@ -162,3 +162,18 @@
 - **环境修复**：0124 线已在 chat-agent 修过（`a59c7215b` 的 `metro.config.js` rewriteRequestUrl）。本分支逐字节带入该文件及其测试 `metro-symlink-chunk-rewrite.test.mjs`（5/5），合并不会冲突。重启 Metro（仍是默认 lazy）后四个分块都 200，无 SYNC 告警；账号 A 在 Simulator 上登录成功（`sim-03-login-A.png`）。
 - **防止卡死的产品加固**（`f1a5984e2`）：原先非摘要格式的标记会让每次 `prepare()` 都拒绝，用户永远登不上。现在这种标记在下一次「清除其他所有身份」完成后退役；登录身份自己的库和待同步写入保留；身份扫描失败时标记保留、下次启动再试。另加回归守卫：已清完身份的旧标记、暂时性的原生加载／钥匙串读取失败，重试即恢复。RED `red-sync-cleanup-recovery.log`（5 fail）→ GREEN `green-sync-cleanup-recovery.log`（45/45）。曾尝试把 crypto/secure-store 改为静态导入，但这会让 Node 测试加载 Expo 原生包而失败，已撤回；开发期根因由 Metro 修复覆盖。
 - **付费 0 的启动方式**：`local-stack start --no-paid-ai` 让 web 也清空四个付费密钥（`DEEPSEEK/GEMINI/GOOGLE/OPENAI_API_KEY`），启动时只打印 set/empty（测试 RED→GREEN 5/5）。本轮 3100 用 env 白名单启动，启动日志显示 web 与 worker 四个键均 empty；Metro 8082 用 `env -i` 且四键显式为空（`provider-env-3100.txt`）。worktree 的 orbits/orbit-app 根目录没有 `.env*`。
+
+## 接手（Claude，2026-10-03）：SC-04 Simulator 验收、管线修复、40001 根因、磁盘停止
+
+- **SC-0137-04 完成（iPhone 17 Pro，Debug + 本工作区 Metro 8082，3100 local-stack）**，证据 `run-02/screens/`（png + AX tsv）。Metro 打包 HEAD 记在 `run-02/metro-head.txt`（`baa23277a`）。
+  - 账号 A（qa@orbit.test）：通过 App 自己的界面建了 1 个 QA 待办、1 个个人日程、1 个手动联系人（记录 ID 见 `qa-created-records.txt`），联网逐页打开后停掉 3100、冷启动，13 页断网都有「截至」提示条、没有原始错误码：首页、关系推进看板、联系人列表、关系图、联系人详情、个人待办、待办详情、新建笔记、笔记详情、编辑笔记、新建日程、日程详情、编辑日程。A 没有任何通知，收件箱来源页记为「无可用 QA 记录」。
+  - 账号 B（`ORBIT_XIAOYU_TEST_EMAIL`）：A→B 正常退出、登录（单身份清除无报错）。同样 13 页加收件箱来源（`inbox:3a43dc75…`）断网都能看。B 的 `task_001` 联网时就打不开（不是 B 的），改用列表里的 `task:ed59a6379f3d58d61a1d2a97`。
+  - **SC-03 原生**：B 断网打开 A 的笔记 `note:062554c4…`、A 的联系人，都显示「这项内容还没保存在这台设备上，联网打开一次后断网也能看。」
+  - **SC-02 原生**：联系人详情断网有「截至」条，编辑入口、聊天资格、草拟消息显示「需要联网」，没有 `VALIDATION_ERROR`/`ORBIT_APP_NETWORK_ERROR`。
+  - **SC-01 原生**：B 看板联网与断网都是 待联系 43 / 推进中 19 / 长期维护 15 / 已归档 1；按共用映射对 `connections` 表复算：needs_follow_up 42 + captured 1 = 43，active 17 + reviewing 2 = 19，nurture 15，archived 1，一致。
+  - 未登录 5 页（本设备、当前 HEAD）：退出登录后停 3100，login、signup、forgot-password、reset-password、login-admin 都显示「Needs a connection」。注意：已停在登录页时再停服务器不会出现提示（只在打开页面时探测一次，按 0137 设计）。
+- **Simulator 上发现并修复的缺陷**（`baa23277a`）：原生端镜像可读时，关系推进看板联网也显示「Offline · showing content as of …」和「待处理事项需要联网查看」。现在提示条和该文案只在镜像同步失败或服务器页读取失败时出现；联网时动作区写明「本机只计算关系阶段，已安排的关系待办请在全部待办里查看」。RED `red-pipeline-online-notice.log` → GREEN 74/74，设备复验 `A-on-pipeline2`。
+- **orbits 40001 根因**（`ddda0d2ec`）：`enqueuePage` 在一个 serializable 事务里读最多 52 行 `orbit_records`；本机 `max_pred_locks_per_transaction=64`、`max_pred_locks_per_relation=-2`（即 32），超过后谓词锁升级为整张表的 SIREAD 锁，全量并行时任何别的测试文件（任何 workspace）写这张表都会让它 40001，三次重试也会输光。用另开 workspace 的并发写入复现 5/5 失败（`red-discovery-contention-*.log`）；测试改到独立 schema 后同样负载 5/5 通过（`green-discovery-contention-*.log`），无 schema 残留，重试上限未动。**生产提示**：同一机制在生产共享表上也会让 50 条一页的入队频繁 40001，由协调者决定是否另开项。
+- **付费 0**：3100 三次启动日志均为 web/worker 四个付费键 empty；Metro `env -i` 四键为空；web 日志里没有任何模型提供方或问题生成记录，AI 路由只有 2 次只读 GET `/api/ai/conversations`。
+- **收尾**：建的 6 行 QA 记录已按精确 ID 删除，`orbit_records` 回到 9333 行（与开工一致；md5 因已有的通知游标、推送设备行被更新而不同）。请求记录无法区分 3100 与用户 3000，未删。Simulator 服务器地址已通过设置页改回 `http://127.0.0.1:3000`（AsyncStorage 已确认），App 已关闭；3100、Metro 8082 已停，只剩用户的 3000（PID 96114）。
+- **SC-0137-05 未完成：磁盘低于停止线。** 准备跑全量时系统盘只剩 4.8GiB（开工 7.4GiB），增长来自主检出 `.git` 打包、微信、CoreSimulator 日志等非本轮文件；按规则停止，未删除任何非本轮文件。本轮新增证据在 ORICO 外置盘（22MB）。orbits typecheck/lint、App typecheck 通过；定向测试全部通过，但两端全量未跑。
