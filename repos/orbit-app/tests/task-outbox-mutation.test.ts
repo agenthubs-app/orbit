@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildOfflineTaskMutation, parseOfflineTaskRequest } from "../src/data/sync/task-outbox-mutation";
+import { buildOfflineTaskMutation, isOfflineTaskCategory, parseOfflineTaskRequest } from "../src/data/sync/task-outbox-mutation";
 
 const createdAt = "2026-09-20T00:00:00.000Z";
 const localId = "local:123e4567-e89b-42d3-a456-426614174000";
@@ -16,7 +16,7 @@ test("task outbox freezes a personal create request and validates its receipt ke
   assert.deepEqual(parseOfflineTaskRequest(mutation).mutation.patch, { title: "Renew passport", category: "personal" });
   assert.throws(() => buildOfflineTaskMutation({
     mutationId: "task-create-2", entityId: localId, operation: "create", baseRevision: null,
-    requestBody: { title: "Work task", category: "work", idempotencyKey: "task-create-2" }, createdAt,
+    requestBody: { title: "Follow up", category: "relationship", idempotencyKey: "task-create-2" }, createdAt,
   }));
   assert.throws(() => buildOfflineTaskMutation({
     mutationId: "task-create-3", entityId: localId, operation: "create", baseRevision: null,
@@ -38,4 +38,19 @@ test("task outbox accepts all six task operations and keeps stale-delete version
     requestBody: { action: "update", expectedUpdatedAt: createdAt, idempotencyKey: "task-update-1", patch: { location: null } }, createdAt });
   assert.equal((JSON.parse(update.requestJson!) as Record<string, unknown>).expectedUpdatedAt, createdAt);
   assert.throws(() => parseOfflineTaskRequest({ ...update, requestJson: JSON.stringify({ ...JSON.parse(update.requestJson!), idempotencyKey: "different-receipt" }) }));
+});
+
+test("own personal, work and other tasks are offline-eligible; relationship, meeting and event tasks stay online (D6)", () => {
+  for (const category of ["personal", "work", "other"]) {
+    const mutationId = `task-create-${category}`;
+    const mutation = buildOfflineTaskMutation({ mutationId, entityId: localId, operation: "create", baseRevision: null,
+      requestBody: { title: `${category} task`, category, idempotencyKey: mutationId }, createdAt });
+    assert.equal(parseOfflineTaskRequest(mutation).mutation.patch.category, category);
+    assert.equal(isOfflineTaskCategory(category), true);
+  }
+  for (const category of ["relationship", "meeting", "event", undefined, ""]) {
+    assert.equal(isOfflineTaskCategory(category), false);
+    assert.throws(() => buildOfflineTaskMutation({ mutationId: "task-create-x", entityId: localId, operation: "create", baseRevision: null,
+      requestBody: { title: "Online only", ...(category === undefined ? {} : { category }), idempotencyKey: "task-create-x" }, createdAt }));
+  }
 });

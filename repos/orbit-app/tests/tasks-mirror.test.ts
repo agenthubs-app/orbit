@@ -28,6 +28,21 @@ test("task mirror overlays edits, state transitions, local creates, and delete i
   assert.equal(overlayQueuedTasks([serverTask], [mutation({ operation: "delete", patch: {}, state: "conflict" })], actorId)?.[0]?.title, "Original");
 });
 
+test("task mirror overlays the actor's work and other tasks and keeps a local create's category", () => {
+  for (const category of ["work", "other"] as const) {
+    const result = overlayQueuedTasks([{ ...serverTask, category }], [
+      mutation({ mutationId: "complete", operation: "complete", patch: {} }),
+      mutation({ mutationId: "local-create", id: "local:123e4567-e89b-42d3-a456-426614174000", operation: "create", baseRevision: null,
+        patch: { title: "Offline new", category }, createdAt: "2026-09-20T00:03:00Z" }),
+    ], actorId);
+    assert.equal(result?.find(task => task.id === "task-1")?.status, "completed");
+    assert.equal(result?.find(task => task.id.startsWith("local:"))?.category, category);
+  }
+  for (const category of ["meeting", "event"] as const) {
+    assert.equal(overlayQueuedTasks([{ ...serverTask, category }], [mutation({})], actorId), null);
+  }
+});
+
 test("task mirror refuses another actor, relationship records, and malformed queued rows", () => {
   assert.equal(overlayQueuedTasks([serverTask], [mutation({ actorId: "actor-b" })], actorId), null);
   assert.equal(overlayQueuedTasks([{ ...serverTask, category: "relationship" }], [mutation({})], actorId), null);

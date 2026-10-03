@@ -3,6 +3,15 @@ import type { OfflineTaskMutationInput } from "./sync-coordinator";
 
 const taskOperations = new Set(["create", "update", "complete", "reopen", "cancel", "delete"]);
 
+/**
+ * A personal task for offline writes is the actor's own task in one of the shared offline contract's task categories
+ * (personal / work / other). Relationship follow-ups, meeting and event tasks stay online (design D6).
+ */
+export const OFFLINE_TASK_CATEGORIES = ["personal", "work", "other"] as const;
+export function isOfflineTaskCategory(category: unknown): boolean {
+  return typeof category === "string" && (OFFLINE_TASK_CATEGORIES as readonly string[]).includes(category);
+}
+
 export function buildOfflineTaskMutation(input: {
   mutationId: string;
   entityId: string;
@@ -30,8 +39,8 @@ export function buildOfflineTaskMutation(input: {
     createdAt: input.createdAt,
   });
   if (parsed.kind !== "task" || parsed.operation !== input.operation || parsed.entityId !== input.entityId ||
-      (parsed.operation === "create" && parsed.patch.category !== "personal") ||
-      (parsed.operation === "update" && parsed.patch.category !== undefined && parsed.patch.category !== "personal")) {
+      (parsed.operation === "create" && !isOfflineTaskCategory(parsed.patch.category)) ||
+      (parsed.operation === "update" && parsed.patch.category !== undefined && !isOfflineTaskCategory(parsed.patch.category))) {
     throw new TypeError("task mutation request does not match its queue identity");
   }
   return {
@@ -78,8 +87,8 @@ export function parseOfflineTaskRequest(mutation: OfflineTaskMutationInput) {
   });
   if (parsed.kind !== "task" || parsed.operation !== mutation.operation || parsed.entityId !== mutation.id ||
       JSON.stringify(parsed.patch) !== JSON.stringify(mutation.patch) ||
-      (parsed.operation === "create" && parsed.patch.category !== "personal") ||
-      (parsed.operation === "update" && parsed.patch.category !== undefined && parsed.patch.category !== "personal")) {
+      (parsed.operation === "create" && !isOfflineTaskCategory(parsed.patch.category)) ||
+      (parsed.operation === "update" && parsed.patch.category !== undefined && !isOfflineTaskCategory(parsed.patch.category))) {
     throw new TypeError("task mutation request does not match its queue identity");
   }
   return { requestBody, mutation: parsed };

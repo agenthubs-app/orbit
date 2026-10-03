@@ -19,7 +19,7 @@ import {
 import { findPageCopyDefinition, PAGE_COPY_DEFINITIONS, type PageCopy } from "./page-copies";
 import { isOfflineEligible } from "./mutation-adapters";
 import { parseOfflineNoteRequest } from "./note-outbox-mutation";
-import { parseOfflineTaskRequest } from "./task-outbox-mutation";
+import { isOfflineTaskCategory, parseOfflineTaskRequest } from "./task-outbox-mutation";
 import { kindOfSyncDomain, KNOWN_SYNC_DOMAINS, PARTITIONED_SYNC_DOMAINS, syncDomainOfKind } from "./sync-domains";
 import {
   shouldSynchronize,
@@ -785,7 +785,7 @@ export function createSyncCoordinator(input: {
               if (localCreate?.actorId === bound.actorId) {
                 try {
                   const parsedCreate = parseOfflineTaskRequest({ ...localCreate, kind: "task", operation: "create" });
-                  isPersonalCreate = parsedCreate.mutation.patch.category === "personal";
+                  isPersonalCreate = isOfflineTaskCategory(parsedCreate.mutation.patch.category);
                 } catch { /* Stored queue data is untrusted until its frozen request is revalidated. */ }
               }
               if (!isPersonalCreate) {
@@ -794,7 +794,7 @@ export function createSyncCoordinator(input: {
             } else {
               const record = await repository.getRecord({ workspaceId: bound.workspaceId!, kind: "task", id: mutation.id });
               const task = record?.payload && typeof record.payload === "object" ? record.payload as Record<string, unknown> : null;
-              if (!record || record.deletedAt !== null || record.actorId !== bound.actorId || task?.ownerUserId !== bound.actorId || task.category !== "personal") {
+              if (!record || record.deletedAt !== null || record.actorId !== bound.actorId || task?.ownerUserId !== bound.actorId || !isOfflineTaskCategory(task.category)) {
                 throw new TypeError("offline task mutation requires a mirrored personal task");
               }
             }

@@ -24,7 +24,7 @@ import { parseTaskListSelection, taskListReceiptMatches } from "../../view-model
 import { useTaskListSource } from "./task-list-source";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
-import { buildOfflineTaskMutation } from "../../data/sync/task-outbox-mutation";
+import { buildOfflineTaskMutation, isOfflineTaskCategory } from "../../data/sync/task-outbox-mutation";
 
 type TaskListMode = "open" | "completed";
 
@@ -94,7 +94,7 @@ export function TasksScreen() {
     try {
       const action = item.status === "completed" ? "reopen" : "complete";
       if (source.offline) {
-        if (baseline.category !== "personal") {
+        if (!isOfflineTaskCategory(baseline.category)) {
           setMutationError(locale.t("sync.needsNetwork"));
           return;
         }
@@ -177,11 +177,11 @@ export function TasksScreen() {
               style={styles.row}
             >
               <Pressable
-                accessibilityLabel={locale.t(item.status === "completed" ? "tasks.restoreNamed" : "tasks.completeNamed", { title: item.title }) + (source.offline ? " · " + locale.t(item.category === "personal" ? "tasks.outboxQueued" : "sync.needsNetwork") : "")}
+                accessibilityLabel={locale.t(item.status === "completed" ? "tasks.restoreNamed" : "tasks.completeNamed", { title: item.title }) + (source.offline ? " · " + locale.t(isOfflineTaskCategory(item.category) ? "tasks.outboxQueued" : "sync.needsNetwork") : "")}
                 accessibilityRole="checkbox"
                 aria-checked={item.status === "completed"}
-                accessibilityState={{ checked: item.status === "completed", disabled: updatingId !== null || Boolean(source.offline && item.category !== "personal"), busy: updatingId === item.id }}
-                disabled={updatingId !== null || Boolean(source.offline && item.category !== "personal")}
+                accessibilityState={{ checked: item.status === "completed", disabled: updatingId !== null || Boolean(source.offline && !isOfflineTaskCategory(item.category)), busy: updatingId === item.id }}
+                disabled={updatingId !== null || Boolean(source.offline && !isOfflineTaskCategory(item.category))}
                 onPress={() => void toggleTask(item)}
                 style={styles.checkButton}
               >

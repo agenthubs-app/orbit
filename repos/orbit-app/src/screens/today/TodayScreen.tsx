@@ -30,7 +30,7 @@ import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useTodayTaskPages } from "../../hooks/useTodayTaskPages";
 import { useSyncedCollection } from "../../hooks/useSyncedCollection";
 import { useOfflineTaskOutbox } from "../../data/sync/useOfflineTaskOutbox";
-import { buildOfflineTaskMutation } from "../../data/sync/task-outbox-mutation";
+import { buildOfflineTaskMutation, isOfflineTaskCategory } from "../../data/sync/task-outbox-mutation";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { overlayTodayTaskPageView, todayTaskPageToView, type TodayTaskCardRowView, type TodayTaskPageView } from "../../view-models/today-task-pages";
 
@@ -92,7 +92,7 @@ export function TodayScreen() {
       try {
         await taskOutbox.enqueueOfflineMutation(buildOfflineTaskMutation({
           mutationId, entityId, operation: "create", baseRevision: null,
-          requestBody: { category: "personal", idempotencyKey: mutationId, plannedDate: date, title },
+          requestBody: { category: "other", idempotencyKey: mutationId, plannedDate: date, title },
           createdAt: new Date().toISOString(),
         }));
         setDraft("");
@@ -122,7 +122,7 @@ export function TodayScreen() {
   async function completeTask(taskId: string) {
     if (offline) {
       const task = view?.tasks.find(item => item.id === taskId);
-      if (task?.category !== "personal") return;
+      if (!isOfflineTaskCategory(task?.category)) return;
       setUpdatingId(taskId);
       setMutationError(null);
       const mutationId = mutationKey(`complete:${taskId}`);
@@ -433,10 +433,10 @@ function TaskRow({
   return (
     <View style={[styles.taskRow, !last ? styles.rowBorder : null]}>
       <Pressable
-        accessibilityLabel={locale.t("today.completeNamed", { title: task.titlePreview }) + (offline && (!offlineWritesAllowed || task.category !== "personal") ? " · " + locale.t("sync.needsNetwork") : "")}
+        accessibilityLabel={locale.t("today.completeNamed", { title: task.titlePreview }) + (offline && (!offlineWritesAllowed || !isOfflineTaskCategory(task.category)) ? " · " + locale.t("sync.needsNetwork") : "")}
         accessibilityRole="checkbox"
-        accessibilityState={{ disabled: loading || offline && (!offlineWritesAllowed || task.category !== "personal") }}
-        disabled={loading || offline && (!offlineWritesAllowed || task.category !== "personal")}
+        accessibilityState={{ disabled: loading || offline && (!offlineWritesAllowed || !isOfflineTaskCategory(task.category)) }}
+        disabled={loading || offline && (!offlineWritesAllowed || !isOfflineTaskCategory(task.category))}
         onPress={onComplete}
         style={styles.checkButton}
       >

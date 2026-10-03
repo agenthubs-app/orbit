@@ -1,5 +1,6 @@
 import type { TaskItemContract } from "../api/contract/tasks";
 import type { LocalSyncQueuedMutation } from "../data/sync/local-sync-repository";
+import { isOfflineTaskCategory } from "../data/sync/task-outbox-mutation";
 
 export type TaskMutationState = "queued" | "conflict" | "failed";
 export type MirroredTask = TaskItemContract & { localMutationState?: TaskMutationState };
@@ -19,9 +20,9 @@ export function overlayQueuedTasks(
     if (mutation.operation === "create") {
       if (prior || !mutation.id.startsWith("local:")) return null;
       const patch = mutation.patch as Record<string, unknown>;
-      if (patch.category !== "personal" || typeof patch.title !== "string") return null;
+      if (!isOfflineTaskCategory(patch.category) || typeof patch.title !== "string") return null;
       tasks.set(mutation.id, {
-        id: mutation.id, accountId: actorId, ownerUserId: actorId, title: patch.title, status: "open", category: "personal",
+        id: mutation.id, accountId: actorId, ownerUserId: actorId, title: patch.title, status: "open", category: patch.category as TaskItemContract["category"],
         priority: patch.priority === "high" ? "high" : "normal", source: "manual", createdAt: mutation.createdAt,
         updatedAt: mutation.createdAt, ...(typeof patch.notes === "string" ? { notes: patch.notes } : {}),
         ...(typeof patch.location === "string" ? { location: patch.location } : {}),
@@ -30,7 +31,7 @@ export function overlayQueuedTasks(
       });
       continue;
     }
-    if (!prior || prior.ownerUserId !== actorId || prior.category !== "personal") return null;
+    if (!prior || prior.ownerUserId !== actorId || !isOfflineTaskCategory(prior.category)) return null;
     if (mutation.operation === "delete") {
       if (mutation.state !== "conflict") tasks.delete(mutation.id);
       else tasks.set(mutation.id, { ...prior, localMutationState: "conflict" });

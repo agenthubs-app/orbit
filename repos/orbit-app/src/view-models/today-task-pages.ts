@@ -12,6 +12,7 @@ import type { OrbitLanguage } from "../api/contract/language";
 import type { TaskItemContract } from "../api/contract/tasks";
 import type { LocalSyncQueuedMutation } from "../data/sync/local-sync-repository";
 import { overlayQueuedTasks } from "./tasks-mirror";
+import { isOfflineTaskCategory } from "../data/sync/task-outbox-mutation";
 import { createTranslator, type MessageKey } from "../i18n/messages";
 import { todayToView, type TodayHomeActionView, type HomeQuestion, type TodayHomeSummaryView, type TodayView } from "./today-tasks";
 
@@ -343,7 +344,7 @@ export function overlayTodayTaskSummaryView(
     return [{ ...item, title: task.title, context: [categoryLabel(task.category, language), dueForTask({ plannedDate: task.plannedDate ?? null, dueAt: task.dueAt ?? null }, now, timeZone, language).dueLabel].filter(Boolean).join(" · ") }];
   });
   const existing = new Set(base.items.filter(item => item.kind === "task").map(item => item.id));
-  const localTasks = projected.filter(task => task.id.startsWith("local:") && task.status === "open" && task.category === "personal" && task.plannedDate === date && !existing.has(task.id));
+  const localTasks = projected.filter(task => task.id.startsWith("local:") && task.status === "open" && isOfflineTaskCategory(task.category) && task.plannedDate === date && !existing.has(task.id));
   for (const task of localTasks) items.push({
     context: [categoryLabel(task.category, language), dueForTask({ plannedDate: task.plannedDate ?? null, dueAt: task.dueAt ?? null }, now, timeZone, language).dueLabel].filter(Boolean).join(" · "),
     href: `/tasks/${encodeURIComponent(task.id)}`,
