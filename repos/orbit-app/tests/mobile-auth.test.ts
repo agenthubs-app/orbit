@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   createGoogleOAuthAttempt,
   exchangeGoogleOAuthCode,
+  fetchMobileAccountStatus,
   fetchMobileAuthProviders,
   parseGoogleOAuthBrowserResult,
   parseGoogleOAuthCallback,
@@ -284,4 +285,26 @@ test("session validation can use a browser-managed HttpOnly cookie", async () =>
   });
 
   assert.equal(result.success, true);
+});
+
+test("account status sends the stored cookie and distinguishes unverifiable status from rejection", async () => {
+  const active = await fetchMobileAccountStatus({
+    baseUrl: "https://orbit.example",
+    cookieHeader: session.cookieHeader,
+    fetchImpl: async (input, init) => {
+      assert.equal(String(input), "https://orbit.example/api/account/status");
+      assert.equal(new Headers(init?.headers).get("Cookie"), session.cookieHeader);
+      assert.equal(init?.credentials, "omit");
+      assert.equal(init?.cache, "no-store");
+      return jsonResponse({ status: "active" });
+    }
+  });
+  assert.deepEqual(active, { success: true, data: { status: "active" } });
+  const unavailable = await fetchMobileAccountStatus({
+    baseUrl: "https://orbit.example",
+    cookieHeader: session.cookieHeader,
+    fetchImpl: async () => jsonResponse({ status: "unavailable" }, 503)
+  });
+  assert.equal(unavailable.success, false);
+  if (!unavailable.success) assert.equal(unavailable.error.status, 503);
 });

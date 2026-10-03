@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { type Href, useRouter } from "expo-router";
-import { useState } from "react";
-import { Pressable, RefreshControl, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { useEffect, useState } from "react";
+import { Platform, Pressable, RefreshControl, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
 import { ORBIT_API_ENDPOINTS } from "../../api/endpoints";
@@ -97,6 +97,26 @@ function AccountContent({
   const server = useOrbitApiBaseUrl();
   const locale = useOrbitLocale();
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [debugPendingCount, setDebugPendingCount] = useState<number | null>(null);
+  const [debugPendingIds, setDebugPendingIds] = useState<readonly string[]>([]);
+
+  useEffect(() => {
+    if (!__DEV__ || Platform.OS === "web" || !signedIn) {
+      setDebugPendingCount(null);
+      setDebugPendingIds([]);
+      return;
+    }
+    let active = true;
+    void Promise.all([auth.readPendingWritesOnDevice(), auth.listDebugPendingWriteIds()]).then(([count, ids]) => {
+      if (active) {
+        setDebugPendingCount(count);
+        setDebugPendingIds(ids);
+      }
+    }).catch(() => {
+      if (active) setFeedback("无法读取这台设备上的待同步修改数量。");
+    });
+    return () => { active = false; };
+  }, [auth.listDebugPendingWriteIds, auth.readPendingWritesOnDevice, signedIn]);
 
   async function signOut() {
     setFeedback(null);
@@ -110,6 +130,31 @@ function AccountContent({
     if (auth.actorId) clearProfileEditSession({ actorId: auth.actorId, apiOrigin: server.baseUrl });
 
     onRefresh();
+  }
+
+  async function addDebugPendingWrite() {
+    try {
+      const count = await auth.enqueueDebugPendingWrite();
+      setDebugPendingCount(count);
+      setDebugPendingIds(await auth.listDebugPendingWriteIds());
+      setFeedback(null);
+    } catch {
+      setFeedback("Debug 测试修改未能写入本机队列。");
+    }
+  }
+
+  async function clearDebugPendingWrites() {
+    try {
+      for (const mutationId of debugPendingIds) {
+        const deleted = await auth.deleteDebugPendingWrite(mutationId);
+        if (deleted === null) throw new Error("DEBUG_OUTBOX_SCOPE_CHANGED");
+      }
+      setDebugPendingIds(await auth.listDebugPendingWriteIds());
+      setDebugPendingCount(await auth.readPendingWritesOnDevice());
+      setFeedback(null);
+    } catch {
+      setFeedback("Debug 测试修改未能全部清理，请保留队列并检查设备。");
+    }
   }
 
   return (
@@ -232,6 +277,31 @@ function AccountContent({
             <Text style={styles.signOutText}>{locale.t("account.signOut")}</Text>
           </Pressable>
           <Text style={styles.workspaceDetail}>{locale.t("account.signOutDetail")}</Text>
+        </View>
+      ) : null}
+      {__DEV__ && Platform.OS !== "web" && signedIn ? (
+        <View style={styles.signOutSection}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="加入一条 Debug 待同步修改"
+            onPress={() => { void addDebugPendingWrite(); }}
+            style={({ pressed }) => [styles.signOutButton, pressed ? styles.pressed : null]}
+          >
+            <Text style={styles.signOutText}>
+              加入一条 Debug 待同步修改{debugPendingCount === null ? "" : ` · ${debugPendingCount}`}
+            </Text>
+          </Pressable>
+          <Text style={styles.workspaceDetail}>仅写入 test-offline-write 测试域，不会调用服务器。</Text>
+          {debugPendingIds.length > 0 ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="清理本轮 Debug 测试修改"
+              onPress={() => { void clearDebugPendingWrites(); }}
+              style={({ pressed }) => [styles.accessRow, pressed ? styles.pressed : null]}
+            >
+              <Text style={styles.accessText}>清理本轮 Debug 测试修改 · {debugPendingIds.length}</Text>
+            </Pressable>
+          ) : null}
         </View>
       ) : null}
     </>

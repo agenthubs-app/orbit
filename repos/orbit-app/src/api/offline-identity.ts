@@ -1,7 +1,7 @@
 import type { OrbitLanguagePreferenceContract } from "./contract/account-language-preference";
 import type { KeyValueStorage } from "./auth-session-storage";
 import { normalizeOrbitApiBaseUrl } from "./base-url";
-import type { MobileAuthResult, MobileAuthUser } from "./mobile-auth";
+import type { MobileAccountStatus, MobileAuthResult, MobileAuthUser } from "./mobile-auth";
 
 // Offline cold start (0127, user decision 2026-09-27):
 // - The last identity the server validated online is trusted for at most 30 days.
@@ -35,6 +35,13 @@ export function classifySessionCheck(result: MobileAuthResult<unknown>): Session
 export function classifyAccountCheck(result: { success: boolean; status?: number }): SessionCheck {
   if (result.success) return "valid";
   return result.status === 401 || result.status === 403 ? "rejected" : "unreachable";
+}
+
+export function accountStatusConfirmsRejection(
+  result: MobileAuthResult<{ status: MobileAccountStatus }>,
+): boolean {
+  if (result.success) return result.data.status === "disabled" || result.data.status === "password_changed";
+  return result.error.status === 401;
 }
 
 export function trustedOfflineIdentity(input: {

@@ -13,7 +13,6 @@ const APPROVED_POLICY_MATRIX = [
   ["GET", "/api/notes/:id", "read", "note", "durable_normalized", "online_only", "metadata_only"],
   ["POST", "/api/notes", "create", "note", "durable_normalized", "offline_queue", "metadata_only"],
   ["PATCH", "/api/notes/:id", "update", "note", "durable_normalized", "offline_queue", "metadata_only"],
-  ["DELETE", "/api/notes/:id", "delete", "note", "durable_normalized", "offline_queue", "metadata_only"],
   ["GET", "/api/tasks", "read", "task", "durable_normalized", "online_only", "metadata_only"],
   ["GET", "/api/tasks/:id", "read", "task", "durable_normalized", "online_only", "metadata_only"],
   ["POST", "/api/tasks", "create", "task", "durable_normalized", "offline_queue", "metadata_only"],
@@ -126,6 +125,7 @@ test("read persistence never implies offline mutation permission", () => {
       .readPersistence,
     "online_only_secret",
   );
+  assert.throws(() => registry.resolve("DELETE", "/api/notes/note-1", "delete"), /policy-not-registered/);
 });
 
 test("mutation policy is exact by method, path template and action", () => {

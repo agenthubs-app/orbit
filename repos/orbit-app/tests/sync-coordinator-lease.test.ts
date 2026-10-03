@@ -1,9 +1,12 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import test, { type TestContext } from "node:test";
+import type { SyncRecord } from "../src/api/contract/sync";
 import type { DomainManifest, DomainPage, OfflineReadEnvelope } from "../src/api/contract/universal-read";
 import { initializeLocalSyncDatabase } from "../src/data/sync/local-sync-database";
-import { createSyncCoordinator, type SyncCoordinatorLifecycle } from "../src/data/sync/sync-coordinator";
+import { createOutboxUploader } from "../src/data/sync/outbox-uploader";
+import { buildOfflineNoteMutation } from "../src/data/sync/note-outbox-mutation";
+import { createSyncCoordinator, type OfflineNoteMutationInput, type SyncCoordinatorLifecycle } from "../src/data/sync/sync-coordinator";
 import { SyncResetRequiredError, type SyncClient } from "../src/data/sync/sync-client";
 import { NodeTestDatabase } from "./helpers/node-sync-database";
 import { createLocalSyncRepository } from "../src/data/sync/local-sync-repository";
@@ -91,6 +94,16 @@ async function sync(session: ReturnType<ReturnType<typeof createSyncCoordinator>
   return request.promise;
 }
 
+function queuedNoteMutation(id = "local:123e4567-e89b-42d3-a456-426614174000"): OfflineNoteMutationInput {
+  const mutationId = "123e4567-e89b-42d3-a456-426614174001";
+  const createdAt = new Date(T0).toISOString();
+  const request = { mutationId, kind: "note", entityId: id, operation: "create", baseRevision: null, patch: { title: "Offline", body: "Private" }, createdAt };
+  return {
+    domainId: "notes", mutationId, kind: "note", id, operation: "create", patch: request.patch,
+    requestJson: JSON.stringify(request), baseRevision: null, createdAt, retryCount: 0, nextRetryAt: null, lastErrorCode: null,
+  };
+}
+
 test("lease → bound scopes → domain pages → readable mirror, without the legacy /api/sync page", async (t) => {
   const state: HostState = { epoch: "e1", grantedDomains: ["notes", "tasks", "personal-schedule"], calls: [], now: T0, rows: {
     tasks: [{ id: "t1", revision: "r1", payload: { id: "t1" } }, { id: "t2", revision: "r2", payload: { id: "t2" } }, { id: "t3", revision: "r3", payload: { id: "t3" } }],
@@ -113,6 +126,285 @@ test("lease → bound scopes → domain pages → readable mirror, without the l
   assert.equal((await session.readCollection("note"))?.records.length, 1);
   const stored = await database.get<{ value: string }>("SELECT value FROM sync_meta WHERE key = 'offline_read_lease'");
   assert.ok(stored, "the lease is kept with the mirror");
+  session.deactivate();
+});
+
+test("a confirmed notes sync scope can enqueue only a schema-valid private note mutation", async (t) => {
+  const state: HostState = { epoch: "e1", grantedDomains: ["notes"], calls: [], now: T0, rows: { notes: [] } };
+  const { database, lifecycle } = device(t);
+  await ready(database);
+  const coordinator = createSyncCoordinator({ lifecycle, now: () => state.now, hashPayload });
+  const session = coordinator.openScope({ actorId: A, baseUrl, client: client(state), scopeKey: "notes-product-outbox" });
+  await sync(session, "note");
+  const request = { title: "Offline note", body: "Private body", manualContactIds: [], mentions: [], eventIds: [], idempotencyKey: "123e4567-e89b-42d3-a456-426614174001" };
+  const mutation = buildOfflineNoteMutation({
+    mutationId: request.idempotencyKey, entityId: "local:123e4567-e89b-42d3-a456-426614174000",
+    operation: "create", baseRevision: null, requestBody: request, createdAt: new Date(T0).toISOString(),
+  });
+  await session.enqueueOfflineNoteMutation(mutation);
+  const repository = createLocalSyncRepository({ actorId: A, database });
+  const queued = await repository.listQueuedMutations({ workspaceId: W });
+  assert.equal(queued.length, 1);
+  assert.equal(queued[0]?.domainId, "notes");
+  assert.equal(queued[0]?.requestJson, JSON.stringify(request));
+  const overlay = await session.readOutboxOverlay("note");
+  assert.equal(overlay?.queuedMutations.length, 1);
+  assert.equal(overlay?.queuedMutations[0]?.patch && (overlay.queuedMutations[0].patch as { body?: string }).body, "Private body");
+  await assert.rejects(session.enqueueOfflineNoteMutation({
+    domainId: "notes", mutationId: "delete-denied",
+    kind: "note", id: "canonical-note", operation: "delete", patch: {}, requestJson: "{}",
+    baseRevision: "r1", createdAt: new Date(T0).toISOString(), retryCount: 0, nextRetryAt: null, lastErrorCode: null,
+  }), /note mutation is not eligible/);
+  session.deactivate();
+});
+
+test("a note create with an unknown online outcome stays frozen and later edits depend on it", async (t) => {
+  const state: HostState = { epoch: "e1", grantedDomains: ["notes"], calls: [], now: T0, rows: { notes: [] } };
+  const { database, lifecycle } = device(t);
+  await ready(database);
+  let uploadCalls = 0;
+  const coordinator = createSyncCoordinator({ lifecycle, now: () => state.now, hashPayload, uploadOutbox: async () => { uploadCalls += 1; } });
+  const session = coordinator.openScope({ actorId: A, baseUrl, client: client(state), scopeKey: "uncertain-create-result" });
+  await sync(session, "note");
+  uploadCalls = 0;
+
+  const mutationId = "123e4567-e89b-42d3-a456-426614174011";
+  const localId = "local:123e4567-e89b-42d3-a456-426614174010";
+  const attemptedAt = new Date(T0).toISOString();
+  const createBody = { title: "Before timeout", body: "Frozen request", manualContactIds: [], mentions: [], eventIds: [], idempotencyKey: mutationId };
+  const uncertainCreate = {
+    ...buildOfflineNoteMutation({ mutationId, entityId: localId, operation: "create", baseRevision: null, requestBody: createBody, createdAt: attemptedAt }),
+    requestAttemptedAt: attemptedAt,
+  } as OfflineNoteMutationInput;
+  await session.enqueueOfflineNoteMutation(uncertainCreate);
+  await new Promise<void>(resolve => setImmediate(resolve));
+  assert.equal(uploadCalls, 0, "the screen owns the first request after durably queueing it; do not race the outbox uploader");
+
+  const editedId = "123e4567-e89b-42d3-a456-426614174012";
+  const editBody = { title: "After timeout", body: "Latest local text", manualContactIds: [], mentions: [], eventIds: [], idempotencyKey: editedId };
+  await session.enqueueOfflineNoteMutation(
+    buildOfflineNoteMutation({ mutationId: editedId, entityId: localId, operation: "update", baseRevision: "local-v2", requestBody: editBody, createdAt: new Date(T0 + 1).toISOString() }),
+  );
+
+  const rows = await createLocalSyncRepository({ actorId: A, database }).listQueuedMutations({ workspaceId: W });
+  assert.equal(rows.length, 2, "an attempted create is immutable; later edit is a dependent request");
+  assert.equal(rows[0]?.mutationId, mutationId);
+  assert.equal(rows[0]?.operation, "create");
+  assert.equal(rows[0]?.requestJson, JSON.stringify(createBody));
+  assert.equal(rows[0]?.attemptCount, 1);
+  assert.equal(rows[0]?.firstAttemptAt, attemptedAt);
+  assert.equal(rows[1]?.mutationId, editedId);
+  assert.equal(rows[1]?.operation, "update");
+  assert.equal(rows[1]?.dependsOn, mutationId);
+  assert.equal(rows[1]?.requestJson, JSON.stringify(editBody));
+
+  const retries: { mutationId: string; requestJson: string | null; attemptCount: number }[] = [];
+  const uploadRepository = createLocalSyncRepository({
+    actorId: A,
+    database,
+    baseUrl,
+    registeredDomainIds: ["notes"],
+    activeReadScopes: () => [{ baseUrl, actorId: A, workspaceId: W, domainId: "notes", authorizationEpoch: state.epoch }],
+  });
+  const uploader = createOutboxUploader({
+    repository: uploadRepository,
+    workspaceId: W,
+    confirmOnline: async () => true,
+    uploadOne: async row => {
+      retries.push({ mutationId: row.mutationId, requestJson: row.requestJson, attemptCount: row.attemptCount });
+      return {
+        status: 200,
+        record: {
+          actorId: A, workspaceId: W, kind: "note", id: "note:canonical-create", revision: `server-${row.mutationId}`,
+          updatedAt: new Date(T0).toISOString(), deletedAt: null, payload: { body: "accepted" },
+          syncState: "synced", aiVisibility: "excluded",
+        },
+      };
+    },
+    pull: async () => undefined,
+    now: () => state.now,
+    random: () => 0,
+    sleep: async () => undefined,
+  });
+  const upload = await uploader.run();
+  assert.equal(upload.acknowledged, 2);
+  assert.deepEqual(retries, [
+    { mutationId, requestJson: JSON.stringify(createBody), attemptCount: 2 },
+    { mutationId: editedId, requestJson: JSON.stringify(editBody), attemptCount: 1 },
+  ]);
+  assert.deepEqual(await createLocalSyncRepository({ actorId: A, database }).listQueuedMutations({ workspaceId: W }), []);
+  session.deactivate();
+});
+
+test("note outbox rejects a cached workspace when the accepted lease has no notes grant", async (t) => {
+  const state: HostState = { epoch: "e1", grantedDomains: ["tasks"], calls: [], now: T0, rows: { tasks: [] } };
+  const { database, lifecycle } = device(t);
+  await ready(database);
+  const coordinator = createSyncCoordinator({ lifecycle, now: () => state.now, hashPayload });
+  const session = coordinator.openScope({ actorId: A, baseUrl, client: client(state), scopeKey: "notes-outbox-no-grant" });
+  await sync(session, "task");
+  assert.equal((await session.readCollection("task"))?.workspaceId, W, "other grants can retain the workspace identity");
+  await assert.rejects(session.enqueueOfflineNoteMutation(queuedNoteMutation()), /note mutation is not eligible/);
+  const queued = await createLocalSyncRepository({ actorId: A, database }).listQueuedMutations({ workspaceId: W });
+  assert.equal(queued.length, 0);
+  session.deactivate();
+});
+
+test("note outbox rejects an expired stored lease even when initialize retained its workspace id", async (t) => {
+  const state: HostState = { epoch: "e1", grantedDomains: ["notes"], calls: [], now: T0, rows: { notes: [] } };
+  const { database, lifecycle } = device(t);
+  await ready(database);
+  const first = createSyncCoordinator({ lifecycle, now: () => state.now, hashPayload });
+  const original = first.openScope({ actorId: A, baseUrl, client: client(state), scopeKey: "notes-outbox-valid-first" });
+  await sync(original, "note");
+  original.deactivate();
+
+  state.now += 8 * 86_400_000;
+  const offline: SyncClient = { ...client(state), async getLease() { throw new Error("offline"); }, async getDomainPage() { throw new Error("offline"); } };
+  const second = createSyncCoordinator({ lifecycle, now: () => state.now, hashPayload });
+  const expired = second.openScope({ actorId: A, baseUrl, client: offline, scopeKey: "notes-outbox-expired" });
+  assert.equal((await expired.readCollection("note"))?.workspaceId, W, "initialization retains workspace metadata although the lease no longer binds a read scope");
+  await assert.rejects(expired.enqueueOfflineNoteMutation(queuedNoteMutation("local:123e4567-e89b-42d3-a456-426614174002")), /note mutation is not eligible/);
+  const queued = await createLocalSyncRepository({ actorId: A, database }).listQueuedMutations({ workspaceId: W });
+  assert.equal(queued.length, 0);
+  expired.deactivate();
+});
+
+test("an active notes lease expiring in place cannot admit a queued write", async (t) => {
+  const state: HostState = { epoch: "e1", grantedDomains: ["notes"], calls: [], now: T0, rows: { notes: [] } };
+  const { database, lifecycle } = device(t);
+  await ready(database);
+  const coordinator = createSyncCoordinator({ lifecycle, now: () => state.now, hashPayload });
+  const session = coordinator.openScope({ actorId: A, baseUrl, client: client(state), scopeKey: "notes-outbox-expiry-in-place" });
+  await sync(session, "note");
+  state.now = T0 + 8 * 86_400_000;
+  await assert.rejects(session.enqueueOfflineNoteMutation(queuedNoteMutation()), /note mutation is not eligible/);
+  const queued = await createLocalSyncRepository({ actorId: A, database }).listQueuedMutations({ workspaceId: W });
+  assert.equal(queued.length, 0);
+  session.deactivate();
+});
+
+test("a superseded actor scope cannot enqueue against the replacement session", async (t) => {
+  const state: HostState = { epoch: "e1", grantedDomains: ["notes"], calls: [], now: T0, rows: { notes: [] } };
+  const { database, lifecycle } = device(t);
+  await ready(database);
+  const coordinator = createSyncCoordinator({ lifecycle, now: () => state.now, hashPayload });
+  const first = coordinator.openScope({ actorId: A, baseUrl, client: client(state), scopeKey: "scope-before-switch" });
+  await sync(first, "note");
+  const replacement = coordinator.openScope({ actorId: "actor-b", baseUrl, client: client(state), scopeKey: "scope-after-switch" });
+  await assert.rejects(first.enqueueOfflineNoteMutation(queuedNoteMutation()), /outbox mutation is outside the active actor\/workspace/);
+  const queued = await createLocalSyncRepository({ actorId: A, database }).listQueuedMutations({ workspaceId: W });
+  assert.equal(queued.length, 0);
+  first.deactivate();
+  replacement.deactivate();
+});
+
+test("online sync triggers the outbox after lease confirmation and before pulling", async (t) => {
+  const state: HostState = { epoch: "e1", grantedDomains: ["tasks"], calls: [], now: T0, rows: { tasks: [] } };
+  const { database, lifecycle } = device(t);
+  await ready(database);
+  const order: string[] = [];
+  const coordinator = createSyncCoordinator({
+    lifecycle,
+    now: () => state.now,
+    hashPayload,
+    uploadOutbox: async ({ actorId, baseUrl: uploadBaseUrl, workspaceId }) => {
+      assert.equal(actorId, A);
+      assert.equal(uploadBaseUrl, baseUrl);
+      assert.equal(workspaceId, W);
+      order.push("upload");
+    },
+  });
+  const host = client(state);
+  const session = coordinator.openScope({ actorId: A, baseUrl, client: {
+    ...host,
+    async getLease(input) { order.push("lease"); return host.getLease(input); },
+    async getManifest(input) { order.push("manifest"); return host.getManifest(input); },
+  }, scopeKey: "outbox-trigger" });
+  const result = await sync(session, "task");
+  assert.equal(result?.error, null);
+  assert.deepEqual(order, ["lease", "upload", "manifest"]);
+  session.deactivate();
+});
+
+test("offline identity can refresh its read lease but never uploads the outbox", async (t) => {
+  const state: HostState = { epoch: "e1", grantedDomains: ["tasks"], calls: [], now: T0, rows: { tasks: [] } };
+  const { database, lifecycle } = device(t);
+  await ready(database);
+  let uploads = 0;
+  const coordinator = createSyncCoordinator({
+    lifecycle,
+    now: () => state.now,
+    hashPayload,
+    uploadOutbox: async () => { uploads += 1; },
+  });
+  const session = coordinator.openScope({
+    actorId: A, baseUrl, client: client(state), scopeKey: "offline-identity",
+    offlineMode: true,
+  });
+  const result = await sync(session, "task");
+  assert.equal(result?.error, null, "online reads can still refresh the lease and mirror");
+  assert.equal(uploads, 0, "offline identity must not upload even when reachability returns");
+  session.deactivate();
+});
+
+test("enqueue in the active test scope starts one online upload→pull cycle", async (t) => {
+  const state: HostState = { epoch: "e1", grantedDomains: ["tasks"], calls: [], now: T0, rows: { tasks: [] } };
+  const { database, lifecycle } = device(t);
+  await ready(database);
+  const order: string[] = [];
+  let uploaded!: () => void;
+  let uploadStarted = new Promise<void>(resolve => { uploaded = resolve; });
+  const localRepository = createLocalSyncRepository({ actorId: A, database, testOnlyOutboxDomains: ["test-offline-write"] });
+  const coordinator = createSyncCoordinator({
+    lifecycle,
+    now: () => state.now,
+    hashPayload,
+    testOnlyOutboxDomains: ["test-offline-write"],
+    uploadOutbox: async ({ signal }) => {
+      order.push("upload");
+      const uploader = createOutboxUploader({
+        repository: localRepository,
+        workspaceId: W,
+        confirmOnline: async () => true,
+        uploadOne: async row => {
+          order.push(`send:${row.mutationId}`);
+          const record: SyncRecord = {
+            actorId: A, workspaceId: W, kind: row.kind, id: "canonical-test-record", revision: "server-r1",
+            updatedAt: new Date(T0).toISOString(), deletedAt: null, payload: { title: "test" },
+            syncState: "synced", aiVisibility: "excluded",
+          };
+          return { status: 200, record };
+        },
+        pull: async () => undefined,
+        now: () => state.now,
+      });
+      signal.addEventListener("abort", () => uploader.cancel(), { once: true });
+      const result = await uploader.run();
+      if (result.acknowledged) uploaded();
+    },
+  });
+  const host = client(state);
+  const session = coordinator.openScope({ actorId: A, baseUrl, client: {
+    ...host,
+    async getLease(input) { order.push("lease"); return host.getLease(input); },
+    async getManifest(input) { order.push("manifest"); return host.getManifest(input); },
+  }, scopeKey: "outbox-enqueue-trigger" });
+  assert.equal((await sync(session, "task"))?.error, null);
+  order.length = 0;
+  uploadStarted = new Promise<void>(resolve => { uploaded = resolve; });
+  await session.enqueueTestOutboxMutation({
+    actorId: A, workspaceId: W, domainId: "test-offline-write", mutationId: "enqueue-trigger",
+    kind: "note", id: "local:queued", operation: "create", patch: { title: "test" },
+    requestJson: '{"mutationId":"enqueue-trigger","title":"test"}', baseRevision: null,
+    createdAt: new Date(T0).toISOString(), retryCount: 0, nextRetryAt: null, lastErrorCode: null,
+  });
+  await uploadStarted;
+  await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(order.slice(0, 3), ["lease", "upload", "send:enqueue-trigger"]);
+  assert.deepEqual(await localRepository.listQueuedMutations({ workspaceId: W }), []);
+  assert.equal(await localRepository.resolveAlias({ workspaceId: W, domainId: "test-offline-write", localId: "local:queued", now: new Date(T0 + 1).toISOString() }), "canonical-test-record");
+  assert.equal((await database.get<{ count: number }>("SELECT COUNT(*) AS count FROM sync_records"))?.count, 0);
   session.deactivate();
 });
 

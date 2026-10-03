@@ -20,11 +20,24 @@ const response = (id: string, data: Record<string, unknown>): Response => ({
 
 // Only native/platform boundaries are replaced. The two production lifecycle
 // components and the production payload/permission policies execute unchanged.
-function harness(input: { optedIn?: boolean; signedIn?: boolean; lastResponse?: Response } = {}) {
+function harness(input: { optedIn?: boolean; signedIn?: boolean; lastResponse?: Response; holdOutboxSync?: boolean } = {}) {
   const handlers: any[] = [];
   const listeners = new Set<(value: Response) => void>();
+  const foregroundListeners = new Set<(state: string) => void>();
+  const reachabilityListeners = new Set<(url: string, state: string, previous: string) => void>();
   const navigations: any[] = [];
   const calls: string[] = [];
+  const intervals = new Map<number, { callback: () => void; milliseconds: number }>();
+  let nextIntervalId = 0;
+  let releaseOutboxSync!: () => void;
+  const outboxSync = new Promise<void>((resolve) => { releaseOutboxSync = resolve; });
+  const coordinatorSession = {
+    isCurrent() { return true; },
+    synchronize(_kind: "note", options: { reason: "explicit" }) {
+      calls.push(`outbox-sync:${options.reason}`);
+      return { promise: input.holdOutboxSync ? outboxSync : Promise.resolve() };
+    },
+  };
   const cleanup: Array<() => void> = [];
   const state: any[] = [];
   let cursor = 0;
@@ -84,14 +97,19 @@ function harness(input: { optedIn?: boolean; signedIn?: boolean; lastResponse?: 
       if (id === "./NotificationDeliverySettings") return { NotificationDeliverySettings: () => null };
       if (id === "react") return react;
       if (id === "react/jsx-runtime") return { jsx: (type: unknown, props: unknown) => ({ type, props }), jsxs: (type: unknown, props: unknown) => ({ type, props }) };
-      if (id === "react-native") return { Platform: { OS: "ios" }, AppState: { addEventListener() { return { remove() {} }; } }, StyleSheet: { create: (value: unknown) => value }, Pressable: "Pressable", Text: "Text", View: "View", useColorScheme: () => "light" };
+      if (id === "react-native") return { Platform: { OS: "ios" }, AppState: { currentState: "active", addEventListener(_event: string, listener: (state: string) => void) { foregroundListeners.add(listener); return { remove() { foregroundListeners.delete(listener); } }; } }, StyleSheet: { create: (value: unknown) => value }, Pressable: "Pressable", Text: "Text", View: "View", useColorScheme: () => "light" };
       if (id === "expo-notifications") return notifications;
       if (id === "expo-router") return { router, useRouter: () => router };
       if (id === "expo-constants") return { expoConfig: { extra: { easProjectId: "test-project" } } };
       if (id === "expo-linking") return { addEventListener() { return { remove() {} }; }, async getInitialURL() { return null; } };
       if (id === "@expo/vector-icons") return { Ionicons: "Icon" };
       if (id.endsWith("/AuthSessionProvider")) return { useOrbitAuthSession: () => auth };
-      if (id.endsWith("/ApiBaseUrlProvider")) return { useOrbitApiBaseUrl: () => ({ baseUrl: "http://localhost" }) };
+      if (id.endsWith("/useSyncedCollection")) return { useSyncCoordinatorSession: () => coordinatorSession };
+      if (id.endsWith("/ApiBaseUrlProvider")) return { useOrbitApiBaseUrl: () => ({ baseUrl: "http://localhost", ready: true }) };
+      if (id.endsWith("/server-reachability")) return { serverReachability: {
+        subscribe(listener: (url: string, state: string, previous: string) => void) { reachabilityListeners.add(listener); return () => reachabilityListeners.delete(listener); },
+        watchReconnect: () => () => {},
+      } };
       if (id.endsWith("/useOrbitApiClient")) return { useOrbitApiClient: () => api };
       if (id.endsWith("/api/client")) return { createOrbitApiClient: () => api };
       if (id.endsWith("/notification-model")) return notificationModel;
@@ -121,7 +139,11 @@ function harness(input: { optedIn?: boolean; signedIn?: boolean; lastResponse?: 
       if (id.endsWith("/design/tokens") || id === "./tokens") return load("src/design/tokens.ts");
       return require(id);
     };
-    runInNewContext("(function(require,module,exports){" + code + "\n})", { console })(nativeRequire, module, module.exports);
+    runInNewContext("(function(require,module,exports){" + code + "\n})", {
+      console,
+      setInterval(callback: () => void, milliseconds: number) { const id = ++nextIntervalId; intervals.set(id, { callback, milliseconds }); return id; },
+      clearInterval(id: number) { intervals.delete(id); },
+    })(nativeRequire, module, module.exports);
     modules.set(path, module.exports);
     return module.exports;
   }
@@ -131,6 +153,10 @@ function harness(input: { optedIn?: boolean; signedIn?: boolean; lastResponse?: 
     auth, calls, handlers, listeners, navigations,
     mount() { Coordinator(); Lifecycle(); },
     emit(value: Response) { listeners.forEach(listener => listener(value)); },
+    releaseOutboxSync() { releaseOutboxSync(); },
+    tickIntervals(milliseconds: number) { for (const timer of intervals.values()) if (timer.milliseconds === milliseconds) timer.callback(); },
+    foreground(state: string) { foregroundListeners.forEach(listener => listener(state)); },
+    reconnect() { reachabilityListeners.forEach(listener => listener("http://localhost", "reachable", "unreachable")); },
     close() { cleanup.splice(0).forEach(stop => stop()); },
     settings() { cursor = 0; return load("src/screens/settings/SettingsScreen.tsx").SettingsScreen(); },
   };
@@ -198,10 +224,56 @@ test("notification routing preserves local task links and authenticated opaque d
   app.emit(task);
   app.emit(delivery);
   app.emit(delivery);
+  await settle();
   assert.equal(app.navigations.length, 2);
   assert.equal(app.navigations[0], "/tasks/task%3A1");
   assert.equal(app.navigations[1].pathname, "/inbox");
   assert.equal(app.navigations[1].params.deliveryId, "delivery:1");
+  app.close();
+});
+
+test("durable notification waits for the shared outbox sync before navigation", { timeout: 5000 }, async () => {
+  const app = harness({ holdOutboxSync: true });
+  app.mount();
+  await settle();
+  app.emit(response("push-before-sync", { deliveryId: "delivery:sync-first" }));
+  await settle();
+  assert.ok(app.calls.includes("outbox-sync:explicit"));
+  assert.equal(app.navigations.length, 0, "the notification route must wait for upload→pull completion");
+  app.releaseOutboxSync();
+  await settle();
+  assert.equal(app.navigations.length, 1);
+  assert.equal(app.navigations[0].params.deliveryId, "delivery:sync-first");
+  app.close();
+});
+
+test("foreground outbox sync is scheduled on the 15-second cadence", { timeout: 5000 }, async () => {
+  const app = harness();
+  app.mount();
+  await settle();
+  const before = app.calls.filter(call => call === "outbox-sync:explicit").length;
+  app.tickIntervals(15_000);
+  assert.equal(app.calls.filter(call => call === "outbox-sync:explicit").length, before + 1);
+  app.close();
+});
+
+test("returning to the foreground immediately triggers the outbox sync", { timeout: 5000 }, async () => {
+  const app = harness();
+  app.mount();
+  await settle();
+  const before = app.calls.filter(call => call === "outbox-sync:explicit").length;
+  app.foreground("active");
+  assert.equal(app.calls.filter(call => call === "outbox-sync:explicit").length, before + 1);
+  app.close();
+});
+
+test("server reachability recovery immediately triggers the outbox sync", { timeout: 5000 }, async () => {
+  const app = harness();
+  app.mount();
+  await settle();
+  const before = app.calls.filter(call => call === "outbox-sync:explicit").length;
+  app.reconnect();
+  assert.equal(app.calls.filter(call => call === "outbox-sync:explicit").length, before + 1);
   app.close();
 });
 

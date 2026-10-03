@@ -17,6 +17,8 @@ export interface MobileAuthSession {
   user: MobileAuthUser;
 }
 
+export type MobileAccountStatus = "active" | "disabled" | "password_changed";
+
 export interface MobileAuthFailure {
   error: {
     code: string;
@@ -482,4 +484,41 @@ export async function validateAuthSession({
     success: true,
     data: { expiresAt, user }
   };
+}
+
+/** Independent status probe avoids treating Auth.js's empty session on DB failure as revocation. */
+export async function fetchMobileAccountStatus({
+  baseUrl,
+  cookieHeader,
+  fetchImpl = fetch
+}: {
+  baseUrl: string;
+  cookieHeader: string;
+  fetchImpl?: MobileAuthFetchLike;
+}): Promise<MobileAuthResult<{ status: MobileAccountStatus }>> {
+  let response: Response;
+  const normalizedCookieHeader = cookieHeader.trim();
+  try {
+    response = await fetchImpl(endpoint(baseUrl, ORBIT_API_ENDPOINTS.accountStatus), {
+      cache: "no-store",
+      credentials: normalizedCookieHeader ? "omit" : "include",
+      headers: {
+        Accept: "application/json",
+        ...(normalizedCookieHeader ? { Cookie: normalizedCookieHeader } : {})
+      },
+      method: "GET"
+    });
+  } catch (error) {
+    return networkFailure(error);
+  }
+  const body = await readJson(response);
+  const status = body?.status;
+  if (response.ok && (status === "active" || status === "disabled" || status === "password_changed")) {
+    return { success: true, data: { status } };
+  }
+  return failure(
+    response.status === 503 ? "ORBIT_APP_ACCOUNT_STATUS_UNAVAILABLE" : "ORBIT_APP_ACCOUNT_STATUS_REJECTED",
+    "暂时无法确认账号状态。",
+    response.status
+  );
 }

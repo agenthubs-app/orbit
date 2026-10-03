@@ -3,6 +3,7 @@ import { type Href, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Pressable,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -55,6 +56,10 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
   const [submitting, setSubmitting] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [devicePendingWrites, setDevicePendingWrites] = useState<{
+    baseUrl: string;
+    count: number | null;
+  } | null>(null);
   const auth = useOrbitAuthSession();
   const locale = useOrbitLocale();
   const client = useOrbitApiClient();
@@ -72,6 +77,25 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
     mounted.current = true;
     return () => { mounted.current = false; };
   }, []);
+  useEffect(() => {
+    if (!ready || mode !== "login" || Platform.OS === "web") {
+      setDevicePendingWrites(null);
+      return;
+    }
+
+    let active = true;
+    const requestedBaseUrl = server.baseUrl;
+    setDevicePendingWrites(null);
+    void auth.readPendingWritesOnDevice().then(
+      count => {
+        if (active) setDevicePendingWrites({ baseUrl: requestedBaseUrl, count });
+      },
+      () => {
+        if (active) setDevicePendingWrites({ baseUrl: requestedBaseUrl, count: null });
+      },
+    );
+    return () => { active = false; };
+  }, [auth.readPendingWritesOnDevice, mode, ready, server.baseUrl]);
   const [values, setValues] = useState<Record<AccountAuthFieldView["name"], string>>({
     email: firstParam(params.email),
     password: ""
@@ -261,6 +285,13 @@ export function AccountAuthScreen({ mode }: { mode: AccountAuthMode }) {
             {mode === "login" ? locale.t("auth.loginDescription") : view.description}
           </Text>
         </View>
+        {mode === "login" && Platform.OS !== "web" && devicePendingWrites?.baseUrl === server.baseUrl && devicePendingWrites.count !== 0 ? (
+          <Text accessibilityRole={devicePendingWrites.count === null ? "alert" : "text"} style={styles.description}>
+            {devicePendingWrites.count === null
+              ? "暂时无法确认这台设备是否有待恢复的修改；登录前会再次检查。"
+              : `这台设备有 ${devicePendingWrites.count} 项加密保存的未同步修改，使用原账号及原服务器登录后可恢复。`}
+          </Text>
+        ) : null}
         {view.restrictionMessage ? (
           <View style={styles.form}>
             <Text style={styles.errorText}>{view.restrictionMessage}</Text>

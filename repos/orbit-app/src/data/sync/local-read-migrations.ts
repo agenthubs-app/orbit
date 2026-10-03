@@ -30,7 +30,45 @@ export async function migrateLocalRead(database: LocalSyncDatabase): Promise<voi
         await database.execute("ALTER TABLE sync_cursors ADD COLUMN high_watermark TEXT");
       }
     }
+    let migrateOutbox = false;
+    if (version > 0 && version < LOCAL_SYNC_SCHEMA_VERSION) {
+      const outbox = await database.get<{ name: string }>(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='sync_outbox'",
+      );
+      if (outbox) {
+        // The v4 operation/domain/state constraints require a table rebuild. Drop
+        // the old index before renaming so the new index is created on the new table.
+        await database.execute("DROP INDEX IF EXISTS sync_outbox_ordered");
+        await database.execute("ALTER TABLE sync_outbox RENAME TO migration_outbox_v3");
+        migrateOutbox = true;
+      }
+    }
     for (const statement of LOCAL_SYNC_SCHEMA_STATEMENTS) await database.execute(statement);
+    if (migrateOutbox) {
+      await database.execute(`INSERT INTO sync_outbox (
+        mutation_id, workspace_id, domain_id, kind, record_id, operation, state,
+        request_json, depends_on, patch_json, base_revision, created_at, retry_count,
+        next_retry_at, last_error_code, attempt_count, first_attempt_at, server_snapshot_json
+      ) SELECT
+        mutation_id, workspace_id,
+        CASE kind
+          WHEN 'contact' THEN 'contacts'
+          WHEN 'note' THEN 'notes'
+          WHEN 'task' THEN 'tasks'
+          WHEN 'relationship_followup' THEN 'followups'
+          WHEN 'personal_schedule' THEN 'personal-schedule'
+          WHEN 'inbox_item' THEN 'notifications'
+          ELSE kind
+        END,
+        kind, record_id, operation,
+        CASE WHEN retry_count > 0 THEN 'failed' ELSE 'queued' END,
+        NULL, NULL, patch_json, base_revision, created_at, retry_count,
+        next_retry_at,
+        CASE WHEN retry_count > 0 THEN COALESCE(last_error_code, 'LEGACY_REQUEST_REQUIRES_REVIEW') ELSE last_error_code END,
+        retry_count, NULL, NULL
+      FROM migration_outbox_v3`);
+      await database.execute("DROP TABLE migration_outbox_v3");
+    }
     if (version === 1) {
       await database.execute("DROP TABLE migration_records_v1");
       await database.execute("DROP TABLE migration_cursors_v1");

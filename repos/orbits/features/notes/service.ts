@@ -257,12 +257,6 @@ export function createNoteService(input: { repository: NoteRepository; associati
       const noteId = stableId(createInput.actorId, createInput.idempotencyKey);
       const operationFingerprint = fingerprint({ title, body, manualContactIds, mentions, eventIds });
       return withMutationLock(`${createInput.actorId}\u0000${noteId}`, async () => {
-        const existing = await input.repository.get(createInput.actorId, noteId);
-        if (existing) {
-          const replay = checkReplay(existing, { idempotencyKey: createInput.idempotencyKey, kind: "create", fingerprint: operationFingerprint });
-          if (replay) return replay;
-          throw new NoteServiceError("NOTE_IDEMPOTENCY_CONFLICT", "The idempotency key is already in use");
-        }
         const note: NoteDTO = {
           id: noteId,
           accountId: createInput.actorId,
@@ -277,12 +271,17 @@ export function createNoteService(input: { repository: NoteRepository; associati
           createdAt: createInput.now,
           updatedAt: createInput.now,
         };
-        const saved = await input.repository.save({
+        const payload: NoteRecordPayload = {
           schemaVersion: 2,
           note,
           operations: [receipt({ idempotencyKey: createInput.idempotencyKey, kind: "create", fingerprint: operationFingerprint, resultVersion: 1 })],
-        });
-        return saved.note;
+        };
+        const inserted = await input.repository.saveIfAbsent(payload);
+        if (inserted) return inserted.note;
+        const existing = await input.repository.get(createInput.actorId, noteId);
+        const replay = existing && checkReplay(existing, { idempotencyKey: createInput.idempotencyKey, kind: "create", fingerprint: operationFingerprint });
+        if (replay) return replay;
+        throw new NoteServiceError("NOTE_IDEMPOTENCY_CONFLICT", "The idempotency key is already in use");
       });
     },
     async update(updateInput) {
@@ -321,11 +320,18 @@ export function createNoteService(input: { repository: NoteRepository; associati
           version: stored.note.version + 1,
           updatedAt: updateInput.now,
         };
-        return (await input.repository.save({
+        const saved = await input.repository.saveIfVersion({
           schemaVersion: 2,
           note,
           operations: [...stored.operations, receipt({ idempotencyKey: updateInput.idempotencyKey, kind: "update", fingerprint: operationFingerprint, resultVersion: note.version })],
-        })).note;
+        }, { version: stored.note.version, updatedAt: stored.note.updatedAt });
+        if (!saved) {
+          const current = await input.repository.get(updateInput.actorId, updateInput.noteId);
+          const replay = current && checkReplay(current, { idempotencyKey: updateInput.idempotencyKey, kind: "update", fingerprint: operationFingerprint });
+          if (replay) return replay;
+          throw new NoteServiceError("NOTE_VERSION_CONFLICT", "Note has changed since it was loaded");
+        }
+        return saved.note;
       });
     },
     async unlinkContact(unlinkInput) {
@@ -351,11 +357,18 @@ export function createNoteService(input: { repository: NoteRepository; associati
           version: stored.note.version + 1,
           updatedAt: unlinkInput.now,
         };
-        return (await input.repository.save({
+        const saved = await input.repository.saveIfVersion({
           schemaVersion: 2,
           note,
           operations: [...stored.operations, receipt({ idempotencyKey: unlinkInput.idempotencyKey, kind: "unlink_contact", fingerprint: operationFingerprint, resultVersion: note.version })],
-        })).note;
+        }, { version: stored.note.version, updatedAt: stored.note.updatedAt });
+        if (!saved) {
+          const current = await input.repository.get(unlinkInput.actorId, unlinkInput.noteId);
+          const replay = current && checkReplay(current, { idempotencyKey: unlinkInput.idempotencyKey, kind: "unlink_contact", fingerprint: operationFingerprint });
+          if (replay) return replay;
+          throw new NoteServiceError("NOTE_VERSION_CONFLICT", "Note has changed since it was loaded");
+        }
+        return saved.note;
       });
     },
   };

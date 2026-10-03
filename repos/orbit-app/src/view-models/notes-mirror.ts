@@ -1,4 +1,5 @@
 import type { OrbitLanguage } from "../api/contract/language";
+import type { LocalSyncQueuedMutation } from "../data/sync/local-sync-repository";
 import { notesFromPayload, type NoteView } from "./notes";
 
 /**
@@ -19,6 +20,63 @@ export interface NotesMirrorQuery {
 /** Null when any mirrored note is malformed: the page reports it rather than hiding rows. */
 export function notesFromMirror(records: readonly { payload: unknown }[], actorId: string, language: OrbitLanguage): NoteView[] | null {
   return notesFromPayload({ notes: records.map((record) => record.payload) }, actorId, language);
+}
+
+/** Apply only this actor's queued note create/update rows over the immutable server mirror. */
+export function overlayQueuedNotes(
+  serverNotes: readonly NoteView[],
+  mutations: readonly LocalSyncQueuedMutation[],
+  actorId: string,
+  language: OrbitLanguage,
+): NoteView[] | null {
+  const notes = new Map(serverNotes.map((note) => [note.id, note]));
+  for (const mutation of mutations) {
+    if (mutation.domainId !== "notes" || mutation.kind !== "note") continue;
+    if (mutation.operation !== "create" && mutation.operation !== "update") return null;
+    if (mutation.actorId !== actorId || mutation.requestJson === null || typeof mutation.patch !== "object" || mutation.patch === null || Array.isArray(mutation.patch)) return null;
+    const patch = mutation.patch as Record<string, unknown>;
+    const existing = notes.get(mutation.id);
+    if (mutation.operation === "update" && !existing) continue;
+    if (mutation.operation === "create" && existing) return null;
+    const base = mutation.operation === "create" ? {
+      id: mutation.id,
+      accountId: actorId,
+      ownerUserId: actorId,
+      title: "",
+      body: "",
+      manualContactIds: [],
+      mentions: [],
+      contactIds: [],
+      eventIds: [],
+      version: 0,
+      createdAt: mutation.createdAt,
+      updatedAt: mutation.createdAt,
+    } : existing!;
+    const manualContactIds = Array.isArray(patch.manualContactIds) ? patch.manualContactIds : base.manualContactIds;
+    const mentions = Array.isArray(patch.mentions) ? patch.mentions : base.mentions;
+    const contactIds = [...new Set([
+      ...(manualContactIds as string[]),
+      ...(mentions as { contactId: string }[]).map((mention) => mention.contactId),
+    ])].sort();
+    const projected = notesFromPayload({ notes: [{
+      ...base,
+      ...patch,
+      id: mutation.id,
+      accountId: actorId,
+      ownerUserId: actorId,
+      manualContactIds,
+      mentions,
+      contactIds,
+      version: base.version + 1,
+      updatedAt: mutation.createdAt,
+    }] }, actorId, language);
+    if (!projected) return null;
+    notes.set(mutation.id, {
+      ...projected[0]!,
+      localMutationState: mutation.state === "failed" ? "failed" : mutation.state === "conflict" ? "conflict" : "queued",
+    });
+  }
+  return [...notes.values()];
 }
 
 /**

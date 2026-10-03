@@ -14,7 +14,7 @@ function fixture() {
   const files = new Map<string, DatabaseSync>();
   const logs: unknown[][] = [];
   const options: unknown[] = [];
-  const state = { keyDeleteFails: false, fileDeleteFails: false, corrupt: false, cipher: true, keyWriteFails: false, closeFails: false };
+  const state = { keyDeleteFails: false, fileDeleteFails: false, corrupt: false, cipher: true, keyWriteFails: false, closeFails: false, vaultWriteFails: false };
   const native = {
     crypto: {
       CryptoDigestAlgorithm: { SHA256: "SHA-256" },
@@ -65,7 +65,10 @@ function fixture() {
             return database.prepare(sql).get(...params) ?? null;
           },
           async getAllAsync(sql: string, params: any[] = []) { return database.prepare(sql).all(...params); },
-          async runAsync(sql: string, params: any[] = []) { return database.prepare(sql).run(...params); },
+          async runAsync(sql: string, params: any[] = []) {
+            if (state.vaultWriteFails && sql.includes("INSERT INTO pending_write_vault")) throw Error("injected pending vault failure");
+            return database.prepare(sql).run(...params);
+          },
           async closeAsync() { events.push("close"); if (state.closeFails) throw Error("injected close failure"); },
         };
       },
@@ -132,6 +135,47 @@ test("logout closes the handle and purges all mirror, outbox, cursor, snapshot d
   assert.ok(f.events.indexOf("close") < f.events.indexOf("key-delete"));
   assert.ok(f.events.indexOf("key-delete") < f.events.lastIndexOf(`delete:${name}`));
   assert.equal(await f.coordinator.withDatabase(scope, () => Promise.resolve("private")), null);
+});
+
+test("logout archives only pending writes and a same-account reopen restores them", async t => {
+  const f = await lifecycle(t);
+  await f.coordinator.setScope(scope);
+  await f.coordinator.withDatabase(scope, db => db.run(`INSERT INTO sync_outbox(
+    mutation_id,workspace_id,domain_id,kind,record_id,operation,state,request_json,patch_json,created_at
+  ) VALUES('m-vault','workspace','notes','note','local:note','create','queued','{"mutationId":"m-vault"}','{"title":"draft"}','2026-09-16T00:00:00.000Z')`));
+  await f.coordinator.withDatabase(scope, db => db.run(`INSERT INTO sync_records(
+    workspace_id,domain_id,authorization_epoch,kind,record_id,revision,updated_at,payload_json,sync_state,ai_visibility
+  ) VALUES('workspace','notes','epoch','note','server-only','r1','2026-09-16T00:00:00.000Z','{"title":"mirror"}','synced','available_when_synced')`));
+  assert.deepEqual(await f.coordinator.pendingWriteSummary(scope), { currentAccount: 1, otherAccounts: 0 });
+  assert.equal(await f.coordinator.setScope(null), true);
+  assert.deepEqual(await f.coordinator.pendingWriteSummary(scope), { currentAccount: 1, otherAccounts: 0 });
+  assert.deepEqual(await f.coordinator.pendingWriteSummary({ ...scope, actorId: "other-private-fixture" }), { currentAccount: 0, otherAccounts: 1 });
+  assert.deepEqual(await f.coordinator.pendingWriteSummary(), { currentAccount: 0, otherAccounts: 1 });
+  assert.ok(f.keys.has(`orbit.pending-vault.key.${createHash("sha256").update(JSON.stringify([scope.baseUrl, scope.actorId])).digest("hex")}`));
+  assert.ok([...f.files.keys()].some(name => name.startsWith("orbit-pending-vault-")));
+  assert.equal(await f.coordinator.setScope(scope), true);
+  const rows = await f.coordinator.withDatabase(scope, db => db.all<{ mutation_id: string }>("SELECT mutation_id FROM sync_outbox"));
+  assert.deepEqual(rows?.map(row => row.mutation_id), ["m-vault"]);
+  const mirror = await f.coordinator.withDatabase(scope, db => db.get("SELECT record_id FROM sync_records"));
+  assert.equal(mirror, null, "vault must never contain or restore the server mirror");
+  assert.equal([...f.files.keys()].some(name => name.startsWith("orbit-pending-vault-")), false);
+});
+
+test("vault write failure refuses logout purge and leaves the only queue copy in place", async t => {
+  const f = await lifecycle(t);
+  await f.coordinator.setScope(scope);
+  await f.coordinator.withDatabase(scope, db => db.run(`INSERT INTO sync_outbox(
+    mutation_id,workspace_id,domain_id,kind,record_id,operation,created_at
+  ) VALUES('m-protected','workspace','notes','note','local:note','create','2026-09-16T00:00:00.000Z')`));
+  const identityFile = [...f.files.keys()][0]!;
+  const digest = createHash("sha256").update(JSON.stringify([scope.baseUrl, scope.actorId])).digest("hex");
+  const identityKey = f.keys.get(`orbit.sync.key.${digest}`);
+  f.state.vaultWriteFails = true;
+  assert.equal(await f.coordinator.setScope(null), false);
+  assert.ok(f.files.has(identityFile));
+  assert.equal(f.keys.get(`orbit.sync.key.${digest}`), identityKey);
+  const queued = await f.coordinator.withDatabase(scope, db => db.get<{ mutation_id: string }>("SELECT mutation_id FROM sync_outbox"));
+  assert.equal(queued?.mutation_id, "m-protected");
 });
 
 test("key deletion failure blocks switching even after the old handle was closed", async t => {
@@ -629,12 +673,17 @@ test("a malformed marker keeps the signing-in identity's own rows and pending wr
   assert.equal(f.keys.has("orbit.sync.pending-cleanup"), false);
 });
 
-test("a malformed marker stays when the identity scan cannot run, so a later start retries", async t => {
+test("a malformed marker stays when the device files cannot be listed, and clears once they can", async t => {
   const f = await lifecycle(t);
   f.keys.set("orbit.sync.pending-cleanup", "not-a-digest");
+  const list = f.native.sqlite.listDatabaseNames;
   f.native.sqlite.listDatabaseNames = async () => { throw Error("secret-shaped-key-and-payload"); };
-  assert.equal(await f.coordinator.setScope(scope), true, "a failed scan is best effort, as for any sign-in");
+  // 0124: an unverifiable pending-write vault check refuses sign-in, so nothing is lost.
+  assert.equal(await f.coordinator.setScope(scope), false);
   assert.equal(f.keys.get("orbit.sync.pending-cleanup"), "not-a-digest");
+  f.native.sqlite.listDatabaseNames = list;
+  assert.equal(await f.coordinator.setScope(scope), true, "a retry after the device answers signs in");
+  assert.equal(f.keys.has("orbit.sync.pending-cleanup"), false);
   assert.ok(!JSON.stringify(f.logs).includes("secret-shaped"));
 });
 
@@ -664,4 +713,30 @@ test("transient native-load and marker-read failures recover on the next attempt
   };
   assert.equal(await coordinator.setScope(scope), false);
   assert.equal(await coordinator.setScope(scope), true, "a retry signs in once the device answers");
+});
+
+// Merge of 0124 into 0137: the pending-vault refusals that block cleanup carry the same safe detail.
+test("a pending-vault archive failure that refuses sign-out reports its stage and a redacted cause", async t => {
+  const f = await lifecycle(t);
+  await f.coordinator.setScope(scope);
+  await f.coordinator.withDatabase(scope, db => db.run(`INSERT INTO sync_outbox(
+    mutation_id,workspace_id,domain_id,kind,record_id,operation,created_at
+  ) VALUES('m-detail','workspace','notes','note','local:note','create','2026-09-16T00:00:00.000Z')`));
+  f.state.vaultWriteFails = true;
+  assert.equal(await f.coordinator.setScope(null), false);
+  const entry = f.logs.find(log => log[0] === "PENDING_VAULT_WRITE_FAILED");
+  assert.deepEqual(entry?.[2], { stage: "archive-pending-writes", name: "Error", code: null, message: "[redacted]" });
+});
+
+test("a pending-vault archive failure while erasing another identity reports its stage", async t => {
+  const f = await lifecycle(t);
+  assert.equal(await f.coordinator.setScope(otherScope), true);
+  await f.coordinator.withDatabase(otherScope, db => db.run(`INSERT INTO sync_outbox(
+    mutation_id,workspace_id,domain_id,kind,record_id,operation,created_at
+  ) VALUES('m-other','workspace','notes','note','local:note','create','2026-09-16T00:00:00.000Z')`));
+  f.state.vaultWriteFails = true;
+  const next = await restartedLifecycle(f);
+  assert.equal(await next.setScope(scope), false);
+  const entry = f.logs.find(log => log[0] === "PENDING_VAULT_WRITE_FAILED");
+  assert.equal((entry?.[2] as { stage?: string } | undefined)?.stage, "archive-pending-writes");
 });

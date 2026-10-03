@@ -45,7 +45,7 @@ async function repository(
   };
 }
 
-test("schema v2 creates the sync tables and records encrypted metadata", async (t) => {
+test("schema v4 creates the sync tables and records encrypted metadata", async (t) => {
   const database = new NodeTestDatabase();
   t.after(() => database.close());
 
@@ -57,7 +57,7 @@ test("schema v2 creates the sync tables and records encrypted metadata", async (
   );
   assert.deepEqual(
     tables.map(({ name }) => name),
-    ["sync_cursors", "sync_meta", "sync_outbox", "sync_records"],
+    ["sync_aliases", "sync_cursors", "sync_meta", "sync_outbox", "sync_records"],
   );
   const metadata = await database.all<{ key: string; value: string }>(
     "SELECT key, value FROM sync_meta ORDER BY key",
@@ -66,10 +66,83 @@ test("schema v2 creates the sync tables and records encrypted metadata", async (
     metadata.map(({ key, value }) => ({ key, value })),
     [
       { key: "encryption_state", value: "encrypted" },
-      { key: "migration_checkpoint", value: "3" },
-      { key: "schema_version", value: "3" },
+      { key: "migration_checkpoint", value: "4" },
+      { key: "schema_version", value: "4" },
     ],
   );
+});
+
+test("outbox enqueue notifies its owner after the queued row commits", async (t) => {
+  const database = new NodeTestDatabase();
+  t.after(() => database.close());
+  await initializeLocalSyncDatabase(database);
+  let queuedCountAtNotification = 0;
+  const repo = createLocalSyncRepository({
+    actorId: "actor-a",
+    database,
+    onOutboxQueued: async () => {
+      queuedCountAtNotification = Number((await database.get<{ count: number }>("SELECT COUNT(*) AS count FROM sync_outbox"))?.count ?? 0);
+    },
+  });
+  await repo.enqueueOutboxMutation({
+    actorId: "actor-a", workspaceId: "workspace-a", domainId: "test-offline-write", mutationId: "trigger-me",
+    kind: "note", id: "note-a", operation: "create", patch: { title: "queued" },
+    requestJson: '{"mutationId":"trigger-me","title":"queued"}', baseRevision: null,
+    createdAt: "2026-09-16T00:00:00.000Z", retryCount: 0, nextRetryAt: null, lastErrorCode: null,
+  });
+  assert.equal(queuedCountAtNotification, 1);
+});
+
+test("schema v3 migration preserves queued mutations and adds offline-write lifecycle columns", async (t) => {
+  const database = new NodeTestDatabase();
+  t.after(() => database.close());
+
+  await database.execute(`CREATE TABLE sync_meta (
+    key TEXT PRIMARY KEY NOT NULL,
+    value TEXT NOT NULL
+  )`);
+  await database.run("INSERT INTO sync_meta(key, value) VALUES('schema_version', '3')");
+  await database.execute(`CREATE TABLE sync_outbox (
+    mutation_id TEXT PRIMARY KEY NOT NULL,
+    workspace_id TEXT NOT NULL,
+    kind TEXT NOT NULL CHECK (kind IN (
+      'contact', 'note', 'task', 'relationship_followup', 'personal_schedule', 'inbox_item'
+    )),
+    record_id TEXT NOT NULL,
+    operation TEXT NOT NULL CHECK (operation IN ('create', 'update', 'delete')),
+    patch_json TEXT,
+    base_revision TEXT,
+    created_at TEXT NOT NULL,
+    retry_count INTEGER NOT NULL DEFAULT 0 CHECK (retry_count >= 0),
+    next_retry_at TEXT,
+    last_error_code TEXT
+  )`);
+  await database.run(`INSERT INTO sync_outbox (
+    mutation_id, workspace_id, kind, record_id, operation, patch_json, base_revision, created_at
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, [
+    "mutation-existing", "workspace-a", "note", "note-a", "update", '{"title":"saved"}', "r1", "2026-09-16T00:00:00.000Z",
+  ]);
+
+  await initializeLocalSyncDatabase(database);
+
+  const columns = await database.all<{ name: string }>("PRAGMA table_info(sync_outbox)");
+  assert.deepEqual(
+    ["domain_id", "state", "request_json", "depends_on", "attempt_count", "first_attempt_at", "server_snapshot_json"]
+      .filter((name) => !columns.some((column) => column.name === name)),
+    [],
+  );
+  const migratedRow = await database.get<Record<string, string>>(
+    "SELECT mutation_id, workspace_id, kind, record_id, patch_json, base_revision FROM sync_outbox WHERE mutation_id = ?",
+    ["mutation-existing"],
+  );
+  assert.deepEqual(migratedRow && { ...migratedRow }, {
+    mutation_id: "mutation-existing",
+    workspace_id: "workspace-a",
+    kind: "note",
+    record_id: "note-a",
+    patch_json: '{"title":"saved"}',
+    base_revision: "r1",
+  });
 });
 
 test("opaque nonblank identifiers are accepted and preserved exactly", async (t) => {
@@ -205,16 +278,19 @@ test("record and outbox ordering compares timestamp instants across offsets", as
   await setup.repository.enqueueOutboxMutation({
     ...outboxBase,
     mutationId: "mutation-z",
+    id: "task-z",
     createdAt: "2026-09-16T09:30:00.000+09:00",
   });
   await setup.repository.enqueueOutboxMutation({
     ...outboxBase,
     mutationId: "mutation-later",
+    id: "task-later",
     createdAt: "2026-09-16T01:00:00.000Z",
   });
   await setup.repository.enqueueOutboxMutation({
     ...outboxBase,
     mutationId: "mutation-a",
+    id: "task-a",
     createdAt: "2026-09-16T00:30:00.000Z",
   });
 
@@ -269,11 +345,13 @@ test("record and outbox ordering preserves sub-millisecond precision", async (t)
   await setup.repository.enqueueOutboxMutation({
     ...outboxBase,
     mutationId: "mutation-z-earlier",
+    id: "task-z-earlier",
     createdAt: "2026-09-16T00:00:00.000000000Z",
   });
   await setup.repository.enqueueOutboxMutation({
     ...outboxBase,
     mutationId: "mutation-a-later",
+    id: "task-a-later",
     createdAt: "2026-09-16T09:00:00.000000001+09:00",
   });
 
@@ -667,6 +745,502 @@ test("outbox storage is stable, ordered, and workspace-isolated", async (t) => {
   assert.deepEqual(await setup.repository.listOutboxMutations("workspace-b"), [
     mutations[2],
   ]);
+});
+
+test("an unattempted mutation merges with the later patch while retaining its base revision", async (t) => {
+  const setup = await repository();
+  t.after(() => setup.database.close());
+  const base = {
+    actorId: "actor-a",
+    workspaceId: "workspace-a",
+    kind: "note" as const,
+    id: "note-merge",
+    operation: "update" as const,
+    baseRevision: "revision-original",
+    retryCount: 0,
+    nextRetryAt: null,
+    lastErrorCode: null,
+  };
+
+  await setup.repository.enqueueOutboxMutation({
+    ...base,
+    mutationId: "mutation-original",
+    patch: { title: "before", body: "kept" },
+    createdAt: "2026-09-16T00:01:00.000Z",
+  });
+  await setup.repository.enqueueOutboxMutation({
+    ...base,
+    mutationId: "mutation-later",
+    patch: { title: "after" },
+    baseRevision: "revision-later",
+    createdAt: "2026-09-16T00:02:00.000Z",
+  });
+
+  const rows = await setup.database.all<{
+    mutation_id: string;
+    patch_json: string;
+    base_revision: string;
+    state: string;
+    attempt_count: number;
+  }>(`SELECT mutation_id, patch_json, base_revision, state, attempt_count
+      FROM sync_outbox WHERE workspace_id = ? AND record_id = ?`, ["workspace-a", "note-merge"]);
+  assert.deepEqual(rows.map(({ mutation_id, patch_json, base_revision, state, attempt_count }) => ({
+    mutationId: mutation_id,
+    patch: JSON.parse(patch_json),
+    baseRevision: base_revision,
+    state,
+    attemptCount: attempt_count,
+  })), [{
+    mutationId: "mutation-original",
+    patch: { title: "after", body: "kept" },
+    baseRevision: "revision-original",
+    state: "queued",
+    attemptCount: 0,
+  }]);
+});
+
+test("canceling an unattempted create preserves dependent content as failed", async t => {
+  const setup = await repository();
+  t.after(() => setup.database.close());
+  await setup.repository.enqueueOutboxMutation({
+    actorId: "actor-a", workspaceId: "workspace-a", domainId: "notes", mutationId: "create-parent",
+    kind: "note", id: "local:note-cancelled", operation: "create", patch: { title: "draft" },
+    baseRevision: null, createdAt: "2026-09-16T00:00:00.000Z", retryCount: 0, nextRetryAt: null, lastErrorCode: null,
+  });
+  await setup.repository.enqueueOutboxMutation({
+    actorId: "actor-a", workspaceId: "workspace-a", domainId: "notes", mutationId: "dependent-edit",
+    kind: "note", id: "other-note", operation: "update", patch: { links: ["local:note-cancelled"] },
+    requestJson: '{"links":["local:note-cancelled"]}', dependsOn: "create-parent", baseRevision: "r1",
+    createdAt: "2026-09-16T00:01:00.000Z", retryCount: 0, nextRetryAt: null, lastErrorCode: null,
+  });
+  await setup.repository.enqueueOutboxMutation({
+    actorId: "actor-a", workspaceId: "workspace-a", domainId: "notes", mutationId: "cancel-create",
+    kind: "note", id: "local:note-cancelled", operation: "delete", patch: null, baseRevision: null,
+    createdAt: "2026-09-16T00:02:00.000Z", retryCount: 0, nextRetryAt: null, lastErrorCode: null,
+  });
+  const dependent = await setup.repository.listQueuedMutations({ workspaceId: "workspace-a", domainId: "notes" });
+  assert.equal(dependent.length, 1);
+  assert.equal(dependent[0]?.state, "failed");
+  assert.equal(dependent[0]?.lastErrorCode, "DEPENDENCY_CANCELLED");
+  assert.equal(dependent[0]?.dependsOn, null);
+  assert.deepEqual(dependent[0]?.patch, { links: ["local:note-cancelled"] });
+});
+
+test("merging full unattempted requests keeps the latest body and retargets dependents", async (t) => {
+  const setup = await repository();
+  t.after(() => setup.database.close());
+  const base = {
+    actorId: "actor-a",
+    workspaceId: "workspace-a",
+    domainId: "test-offline-write",
+    kind: "note" as const,
+    operation: "update" as const,
+    baseRevision: "revision-original",
+    retryCount: 0,
+    nextRetryAt: null,
+    lastErrorCode: null,
+  };
+  await setup.repository.enqueueOutboxMutation({
+    ...base,
+    mutationId: "mutation-original",
+    id: "note-request",
+    patch: { title: "before", body: "kept" },
+    requestJson: '{"mutationId":"mutation-original","title":"before","body":"kept"}',
+    createdAt: "2026-09-16T00:01:00.000Z",
+  });
+  await setup.repository.enqueueOutboxMutation({
+    ...base,
+    mutationId: "mutation-dependent",
+    id: "note-dependent",
+    operation: "create",
+    patch: { noteId: "local:request" },
+    requestJson: '{"mutationId":"mutation-dependent","noteId":"local:request"}',
+    dependsOn: "mutation-original",
+    createdAt: "2026-09-16T00:01:30.000Z",
+  });
+  await setup.repository.enqueueOutboxMutation({
+    ...base,
+    mutationId: "mutation-merged",
+    id: "note-request",
+    patch: { title: "after" },
+    requestJson: '{"mutationId":"mutation-merged","title":"after","body":"kept"}',
+    createdAt: "2026-09-16T00:02:00.000Z",
+  });
+
+  const rows = await setup.database.all<{
+    mutation_id: string;
+    request_json: string;
+    base_revision: string;
+    depends_on: string | null;
+  }>(`SELECT mutation_id, request_json, base_revision, depends_on
+      FROM sync_outbox ORDER BY created_at, mutation_id`);
+  assert.deepEqual(rows.map(row => ({ ...row })), [
+    {
+      mutation_id: "mutation-merged",
+      request_json: '{"mutationId":"mutation-merged","title":"after","body":"kept"}',
+      base_revision: "revision-original",
+      depends_on: null,
+    },
+    {
+      mutation_id: "mutation-dependent",
+      request_json: '{"mutationId":"mutation-dependent","noteId":"local:request"}',
+      base_revision: "revision-original",
+      depends_on: "mutation-merged",
+    },
+  ]);
+});
+
+test("an outbox mutation persists the exact request body before its first attempt", async (t) => {
+  const setup = await repository();
+  t.after(() => setup.database.close());
+  await setup.repository.enqueueOutboxMutation({
+    actorId: "actor-a",
+    workspaceId: "workspace-a",
+    domainId: "test-offline-write",
+    mutationId: "mutation-frozen",
+    kind: "note",
+    id: "note-frozen",
+    operation: "create",
+    patch: { title: "frozen" },
+    requestJson: '{"mutationId":"mutation-frozen","title":"frozen"}',
+    baseRevision: null,
+    dependsOn: null,
+    createdAt: "2026-09-16T00:01:00.000Z",
+    retryCount: 0,
+    nextRetryAt: null,
+    lastErrorCode: null,
+  } as LocalSyncOutboxMutation);
+
+  const row = await setup.database.get<{ domain_id: string; request_json: string; depends_on: string | null }>(
+    "SELECT domain_id, request_json, depends_on FROM sync_outbox WHERE mutation_id = ?",
+    ["mutation-frozen"],
+  );
+  assert.deepEqual(row && { ...row }, {
+    domain_id: "test-offline-write",
+    request_json: '{"mutationId":"mutation-frozen","title":"frozen"}',
+    depends_on: null,
+  });
+
+  type BeginAttempt = (input: { mutationId: string; attemptedAt: string }) => Promise<{
+    mutationId: string;
+    requestJson: string;
+    state: string;
+    attemptCount: number;
+    firstAttemptAt: string | null;
+  } | null>;
+  const beginAttempt = (setup.repository as unknown as { beginOutboxMutationAttempt?: BeginAttempt })
+    .beginOutboxMutationAttempt;
+  assert.equal(typeof beginAttempt, "function");
+  const firstAttempt = await beginAttempt!.call(setup.repository, {
+    mutationId: "mutation-frozen",
+    attemptedAt: "2026-09-16T00:02:00.000Z",
+  });
+  assert.equal(await beginAttempt!.call(setup.repository, {
+    mutationId: "mutation-frozen",
+    attemptedAt: "2026-09-16T00:02:01.000Z",
+  }), null, "a sending mutation cannot be claimed twice concurrently");
+  assert.deepEqual(firstAttempt && {
+    mutationId: firstAttempt.mutationId,
+    requestJson: firstAttempt.requestJson,
+    state: firstAttempt.state,
+    attemptCount: firstAttempt.attemptCount,
+    firstAttemptAt: firstAttempt.firstAttemptAt,
+  }, {
+    mutationId: "mutation-frozen",
+    requestJson: '{"mutationId":"mutation-frozen","title":"frozen"}',
+    state: "sending",
+    attemptCount: 1,
+    firstAttemptAt: "2026-09-16T00:02:00.000Z",
+  });
+  await setup.repository.enqueueOutboxMutation({
+    actorId: "actor-a",
+    workspaceId: "workspace-a",
+    domainId: "test-offline-write",
+    mutationId: "mutation-later-edit",
+    kind: "note",
+    id: "note-frozen",
+    operation: "update",
+    patch: { title: "later" },
+    requestJson: '{"mutationId":"mutation-later-edit","title":"later"}',
+    baseRevision: "revision-after-frozen",
+    dependsOn: null,
+    createdAt: "2026-09-16T00:03:00.000Z",
+    retryCount: 0,
+    nextRetryAt: null,
+    lastErrorCode: null,
+  });
+  const frozenRows = await setup.database.all<{ mutation_id: string; request_json: string }>(
+    "SELECT mutation_id, request_json FROM sync_outbox WHERE record_id = ? ORDER BY created_at",
+    ["note-frozen"],
+  );
+  assert.deepEqual(frozenRows.map(row => ({ ...row })), [
+    { mutation_id: "mutation-frozen", request_json: '{"mutationId":"mutation-frozen","title":"frozen"}' },
+    { mutation_id: "mutation-later-edit", request_json: '{"mutationId":"mutation-later-edit","title":"later"}' },
+  ]);
+
+  type MarkFailure = (input: {
+    mutationId: string;
+    state: "queued" | "conflict" | "failed";
+    nextRetryAt: string | null;
+    errorCode: string;
+    serverSnapshot?: unknown;
+  }) => Promise<void>;
+  const markFailure = (setup.repository as unknown as { markOutboxMutationFailure?: MarkFailure })
+    .markOutboxMutationFailure;
+  assert.equal(typeof markFailure, "function");
+  await markFailure!.call(setup.repository, {
+    mutationId: "mutation-frozen",
+    state: "queued",
+    nextRetryAt: "2026-09-16T00:02:02.000Z",
+    errorCode: "NETWORK_ERROR",
+  });
+  const retry = await beginAttempt!.call(setup.repository, {
+    mutationId: "mutation-frozen",
+    attemptedAt: "2026-09-16T00:02:02.000Z",
+  });
+  assert.equal(retry?.requestJson, '{"mutationId":"mutation-frozen","title":"frozen"}');
+  assert.equal(retry?.attemptCount, 2);
+  assert.equal(retry?.firstAttemptAt, "2026-09-16T00:02:00.000Z");
+});
+
+test("resolving a note conflict replaces its frozen row and keeps dependent edits attached", async (t) => {
+  const setup = await repository();
+  t.after(() => setup.database.close());
+  await setup.repository.enqueueOutboxMutation({
+    actorId: "actor-a", workspaceId: "workspace-a", domainId: "notes", mutationId: "conflicted-note-edit",
+    kind: "note", id: "note-a", operation: "update", patch: { title: "local" },
+    requestJson: JSON.stringify({ title: "local", body: "local body", expectedVersion: 2, idempotencyKey: "conflicted-note-edit" }),
+    baseRevision: "mirror-r1", createdAt: "2026-09-16T00:00:00.000Z", retryCount: 0, nextRetryAt: null, lastErrorCode: null,
+  });
+  const beginAttempt = (setup.repository as unknown as { beginOutboxMutationAttempt(input: unknown): Promise<unknown> }).beginOutboxMutationAttempt;
+  await beginAttempt.call(setup.repository, { mutationId: "conflicted-note-edit", attemptedAt: "2026-09-16T00:00:00.500Z" });
+  const markFailure = (setup.repository as unknown as { markOutboxMutationFailure(input: unknown): Promise<void> }).markOutboxMutationFailure;
+  await markFailure.call(setup.repository, { mutationId: "conflicted-note-edit", state: "conflict", nextRetryAt: null, errorCode: "CONFLICT", serverSnapshot: { version: 3 } });
+  await setup.repository.enqueueOutboxMutation({
+    actorId: "actor-a", workspaceId: "workspace-a", domainId: "notes", mutationId: "dependent-note-edit",
+    kind: "note", id: "note-a", operation: "update", patch: { title: "later" }, requestJson: "{}",
+    baseRevision: "mirror-r1", dependsOn: "conflicted-note-edit", createdAt: "2026-09-16T00:00:01.000Z", retryCount: 0, nextRetryAt: null, lastErrorCode: null,
+  });
+  const resolveConflict = (setup.repository as unknown as { resolveNoteConflict(input: unknown): Promise<void> }).resolveNoteConflict;
+  await resolveConflict.call(setup.repository, {
+    workspaceId: "workspace-a", mutationId: "conflicted-note-edit", resolution: "replace",
+    replacement: {
+      actorId: "actor-a", workspaceId: "workspace-a", domainId: "notes", mutationId: "replacement-note-edit",
+      kind: "note", id: "note-a", operation: "update", patch: { title: "local" },
+      requestJson: JSON.stringify({ title: "local", body: "local body", expectedVersion: 3, idempotencyKey: "replacement-note-edit" }),
+      baseRevision: "mirror-r2", createdAt: "2026-09-16T00:00:02.000Z", retryCount: 0, nextRetryAt: null, lastErrorCode: null,
+    },
+  });
+  const rows = await setup.database.all<{ mutation_id: string; state: string; depends_on: string | null; request_json: string }>(
+    "SELECT mutation_id, state, depends_on, request_json FROM sync_outbox WHERE workspace_id = ? ORDER BY mutation_id", ["workspace-a"],
+  );
+  assert.deepEqual(rows.map(row => ({ ...row })), [
+    { mutation_id: "dependent-note-edit", state: "queued", depends_on: "replacement-note-edit", request_json: "{}" },
+    { mutation_id: "replacement-note-edit", state: "queued", depends_on: null, request_json: JSON.stringify({ title: "local", body: "local body", expectedVersion: 3, idempotencyKey: "replacement-note-edit" }) },
+  ]);
+});
+
+test("choosing the server version removes the conflicted row and its dependent edits", async (t) => {
+  const setup = await repository();
+  t.after(() => setup.database.close());
+  await setup.repository.enqueueOutboxMutation({
+    actorId: "actor-a", workspaceId: "workspace-a", domainId: "notes", mutationId: "conflicted-note-edit",
+    kind: "note", id: "note-a", operation: "update", patch: { title: "local" }, requestJson: "{}",
+    baseRevision: "mirror-r1", createdAt: "2026-09-16T00:00:00.000Z", retryCount: 0, nextRetryAt: null, lastErrorCode: null,
+  });
+  const markFailure = (setup.repository as unknown as { markOutboxMutationFailure(input: unknown): Promise<void> }).markOutboxMutationFailure;
+  await markFailure.call(setup.repository, { mutationId: "conflicted-note-edit", state: "conflict", nextRetryAt: null, errorCode: "CONFLICT" });
+  const resolveConflict = (setup.repository as unknown as { resolveNoteConflict(input: unknown): Promise<void> }).resolveNoteConflict;
+  await resolveConflict.call(setup.repository, { workspaceId: "workspace-a", mutationId: "conflicted-note-edit", resolution: "server" });
+  assert.deepEqual(await setup.database.all<{ mutation_id: string }>("SELECT mutation_id FROM sync_outbox WHERE workspace_id = ?", ["workspace-a"]), []);
+});
+
+test("an unattempted note create absorbs later edits into its original POST receipt", async (t) => {
+  const setup = await repository();
+  t.after(() => setup.database.close());
+  await setup.repository.enqueueOutboxMutation({
+    actorId: "actor-a", workspaceId: "workspace-a", domainId: "notes", mutationId: "create-receipt",
+    kind: "note", id: "local:note-1", operation: "create",
+    patch: { title: "First", body: "First body", manualContactIds: [], mentions: [], eventIds: [] },
+    requestJson: JSON.stringify({ title: "First", body: "First body", manualContactIds: [], mentions: [], eventIds: [], idempotencyKey: "create-receipt" }),
+    baseRevision: null, createdAt: "2026-09-16T00:00:00.000Z", retryCount: 0, nextRetryAt: null, lastErrorCode: null,
+  });
+  await setup.repository.enqueueOutboxMutation({
+    actorId: "actor-a", workspaceId: "workspace-a", domainId: "notes", mutationId: "edit-receipt",
+    kind: "note", id: "local:note-1", operation: "update",
+    patch: { title: "Edited", body: "Edited body", manualContactIds: [], mentions: [], eventIds: [] },
+    requestJson: JSON.stringify({ title: "Edited", body: "Edited body", manualContactIds: [], mentions: [], eventIds: [], expectedVersion: 0, idempotencyKey: "edit-receipt" }),
+    baseRevision: null, createdAt: "2026-09-16T00:00:01.000Z", retryCount: 0, nextRetryAt: null, lastErrorCode: null,
+  });
+
+  const rows = await setup.database.all<{ mutation_id: string; operation: string; attempt_count: number; request_json: string }>(
+    "SELECT mutation_id, operation, attempt_count, request_json FROM sync_outbox WHERE record_id = ?",
+    ["local:note-1"],
+  );
+  assert.deepEqual(rows.map(row => ({ ...row })), [{
+    mutation_id: "create-receipt",
+    operation: "create",
+    attempt_count: 0,
+    request_json: JSON.stringify({ title: "Edited", body: "Edited body", manualContactIds: [], mentions: [], eventIds: [], idempotencyKey: "create-receipt" }),
+  }]);
+});
+
+test("repeated unattempted note edits keep the first server version while replacing the local body", async (t) => {
+  const setup = await repository();
+  t.after(() => setup.database.close());
+  const request = (idempotencyKey: string, title: string, body: string, expectedVersion: number) => ({
+    title, body, manualContactIds: [], mentions: [], eventIds: [], expectedVersion, idempotencyKey,
+  });
+  await setup.repository.enqueueOutboxMutation({
+    actorId: "actor-a", workspaceId: "workspace-a", domainId: "notes", mutationId: "note-edit-first",
+    kind: "note", id: "note-a", operation: "update",
+    patch: { title: "First local title", body: "First local body", manualContactIds: [], mentions: [], eventIds: [] },
+    requestJson: JSON.stringify(request("note-edit-first", "First local title", "First local body", 2)),
+    baseRevision: "opaque-original-revision", createdAt: "2026-09-16T00:00:00.000Z", retryCount: 0,
+    nextRetryAt: null, lastErrorCode: null,
+  });
+  await setup.repository.enqueueOutboxMutation({
+    actorId: "actor-a", workspaceId: "workspace-a", domainId: "notes", mutationId: "note-edit-second",
+    kind: "note", id: "note-a", operation: "update",
+    patch: { title: "Final local title", body: "Final local body", manualContactIds: [], mentions: [], eventIds: [] },
+    requestJson: JSON.stringify(request("note-edit-second", "Final local title", "Final local body", 3)),
+    baseRevision: "opaque-overlay-revision", createdAt: "2026-09-16T00:01:00.000Z", retryCount: 0,
+    nextRetryAt: null, lastErrorCode: null,
+  });
+
+  const rows = await setup.database.all<{ mutation_id: string; base_revision: string; request_json: string; attempt_count: number }>(
+    "SELECT mutation_id, base_revision, request_json, attempt_count FROM sync_outbox WHERE workspace_id = ? AND domain_id = ? AND record_id = ?",
+    ["workspace-a", "notes", "note-a"],
+  );
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0]?.base_revision, "opaque-original-revision");
+  assert.equal(rows[0]?.attempt_count, 0);
+  assert.deepEqual(JSON.parse(rows[0]!.request_json), request(rows[0]!.mutation_id, "Final local title", "Final local body", 2));
+});
+
+test("outbox overlay returns server truth and unconfirmed edits separately", async (t) => {
+  const setup = await repository();
+  t.after(() => setup.database.close());
+  await setup.repository.applyPage({
+    workspaceId: "workspace-a",
+    records: [record({ id: "note-overlay", payload: { title: "server" } })],
+    cursor: "cursor-overlay",
+    syncedAt: "2026-09-16T00:00:00.000Z",
+    bootstrapState: "complete",
+  });
+  await setup.repository.putRecord(record({
+    id: "note-noncanonical",
+    revision: "local-pending",
+    payload: { title: "must not enter the server overlay" },
+    syncState: "pending",
+    aiVisibility: "excluded",
+  }));
+  await setup.repository.enqueueOutboxMutation({
+    actorId: "actor-a",
+    workspaceId: "workspace-a",
+    domainId: "notes",
+    mutationId: "mutation-overlay",
+    kind: "note",
+    id: "note-overlay",
+    operation: "update",
+    patch: { title: "local" },
+    requestJson: '{"mutationId":"mutation-overlay","title":"local"}',
+    baseRevision: "revision-1",
+    createdAt: "2026-09-16T00:01:00.000Z",
+    retryCount: 0,
+    nextRetryAt: null,
+    lastErrorCode: null,
+  });
+
+  type ReadOverlay = (query: { workspaceId: string; kind: "note" }) => Promise<{
+    serverRecords: SyncRecord[];
+    queuedMutations: Array<{ mutationId: string; patch: unknown; state: string }>;
+  }>;
+  const readOverlay = (setup.repository as unknown as { readOutboxOverlay?: ReadOverlay })
+    .readOutboxOverlay;
+  assert.equal(typeof readOverlay, "function");
+  const result = await readOverlay!.call(setup.repository, { workspaceId: "workspace-a", kind: "note" });
+  assert.deepEqual(result.serverRecords.map(item => ({ payload: item.payload, syncState: item.syncState })), [
+    { payload: { title: "server" }, syncState: "synced" },
+  ]);
+  assert.deepEqual(result.queuedMutations.map(({ mutationId, patch, state }) => ({ mutationId, patch, state })), [{
+    mutationId: "mutation-overlay",
+    patch: { title: "local" },
+    state: "queued",
+  }]);
+});
+
+test("acknowledgement atomically writes the server row, alias, and dependent references", async (t) => {
+  const setup = await repository();
+  t.after(() => setup.database.close());
+  await setup.repository.enqueueOutboxMutation({
+    actorId: "actor-a", workspaceId: "workspace-a", domainId: "notes",
+    mutationId: "mutation-parent", kind: "note", id: "local:note-1", operation: "create",
+    patch: { title: "offline" }, requestJson: '{"mutationId":"mutation-parent","title":"offline"}',
+    baseRevision: null, createdAt: "2026-09-16T00:01:00.000Z", retryCount: 0,
+    nextRetryAt: null, lastErrorCode: null,
+  });
+  await setup.repository.enqueueOutboxMutation({
+    actorId: "actor-a", workspaceId: "workspace-a", domainId: "notes",
+    mutationId: "mutation-child", kind: "note", id: "note-child", operation: "create",
+    patch: { links: ["local:note-1"], text: "see local:note-1" },
+    requestJson: '{"mutationId":"mutation-child","noteIds":["local:note-1"]}',
+    baseRevision: null, dependsOn: "mutation-parent", createdAt: "2026-09-16T00:02:00.000Z",
+    retryCount: 0, nextRetryAt: null, lastErrorCode: null,
+  });
+
+  type Acknowledge = (input: {
+    mutationId: string;
+    record: SyncRecord;
+    localId?: string;
+    acknowledgedAt: string;
+  }) => Promise<void>;
+  const acknowledge = (setup.repository as unknown as { acknowledgeOutboxMutation?: Acknowledge })
+    .acknowledgeOutboxMutation;
+  assert.equal(typeof acknowledge, "function");
+  await acknowledge!.call(setup.repository, {
+    mutationId: "mutation-parent",
+    localId: "local:note-1",
+    acknowledgedAt: "2026-09-16T00:03:00.000Z",
+    record: record({ id: "note-canonical", revision: "revision-server", payload: { title: "offline" } }),
+  });
+
+  const stored = await setup.repository.getRecord({ workspaceId: "workspace-a", kind: "note", id: "note-canonical" });
+  assert.equal(stored?.syncState, "synced");
+  assert.deepEqual(stored?.payload, { title: "offline" });
+  const aliasResolver = (setup.repository as unknown as { resolveAlias?: (input: {
+    workspaceId: string; domainId: string; localId: string; now: string;
+  }) => Promise<string | null> }).resolveAlias;
+  assert.equal(typeof aliasResolver, "function");
+  assert.equal(await aliasResolver!.call(setup.repository, {
+    workspaceId: "workspace-a", domainId: "notes", localId: "local:note-1", now: "2026-09-16T00:03:01.000Z",
+  }), "note-canonical");
+  const remaining = await setup.repository.listQueuedMutations({ workspaceId: "workspace-a", domainId: "notes" });
+  assert.equal(remaining.length, 1);
+  assert.equal(remaining[0]?.dependsOn, null);
+  assert.deepEqual(remaining[0]?.patch, { links: ["note-canonical"], text: "see local:note-1" });
+  assert.equal(remaining[0]?.requestJson, '{"mutationId":"mutation-child","noteIds":["note-canonical"]}');
+  assert.equal(await aliasResolver!.call(setup.repository, {
+    workspaceId: "workspace-a", domainId: "notes", localId: "local:note-1", now: "2026-10-27T00:03:00.000Z",
+  }), null);
+});
+
+test("acknowledgement rolls back the canonical row and outbox when alias persistence fails", async (t) => {
+  const setup = await repository();
+  t.after(() => setup.database.close());
+  await setup.repository.enqueueOutboxMutation({
+    actorId: "actor-a", workspaceId: "workspace-a", domainId: "notes",
+    mutationId: "mutation-parent", kind: "note", id: "local:note-rollback", operation: "create",
+    patch: { title: "offline" }, requestJson: '{"title":"offline"}', baseRevision: null,
+    createdAt: "2026-09-16T00:01:00.000Z", retryCount: 0, nextRetryAt: null, lastErrorCode: null,
+  });
+  setup.database.failWhenSqlIncludes = "INSERT INTO sync_aliases";
+  await assert.rejects(setup.repository.acknowledgeOutboxMutation({
+    mutationId: "mutation-parent", localId: "local:note-rollback", acknowledgedAt: "2026-09-16T00:03:00.000Z",
+    record: record({ id: "note-canonical-rollback", payload: { title: "offline" } }),
+  }), /injected SQL failure/);
+  assert.equal(await setup.repository.getRecord({ workspaceId: "workspace-a", kind: "note", id: "note-canonical-rollback" }), null);
+  assert.equal((await setup.repository.listQueuedMutations({ workspaceId: "workspace-a", domainId: "notes" })).length, 1);
 });
 
 test("a page stores its server workspace with records and cursor in one transaction", async (t) => {
