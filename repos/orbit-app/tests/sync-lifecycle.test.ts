@@ -450,10 +450,11 @@ test("SecureStore cleanup-marker read failure keeps native scope transitions fai
   assert.deepEqual(f.events, [], "marker-read failure must not open/list/delete the SQLite store or persist key data");
   assert.equal(f.files.size, 0);
   assert.equal(f.keys.size, 0);
+  const readFailure = { stage: "read-pending-cleanup", name: "Error", code: null, message: "[redacted]" };
   assert.deepEqual(f.logs, [
-    ["SYNC_CLEANUP_STATE_FAILED"],
-    ["SYNC_CLEANUP_STATE_FAILED"],
-    ["SYNC_CLEANUP_STATE_FAILED"],
+    ["SYNC_CLEANUP_STATE_FAILED", undefined, readFailure],
+    ["SYNC_CLEANUP_STATE_FAILED", undefined, readFailure],
+    ["SYNC_CLEANUP_STATE_FAILED", undefined, readFailure],
   ]);
   assert.ok(!JSON.stringify(f.logs).includes("secret-shaped"));
 });
