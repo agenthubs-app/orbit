@@ -16,7 +16,7 @@
 - 用户可见的旧行为 → 新行为（Web）：人脉页的分析从调试英文与空壳，变为按目标的结构／机会／洞察三标签、按站内记录自动推出的关系档位（新认识／有往来／核心／待唤醒）、联系人聚合时间线与 memo、计划接 DeepSeek（生产仍为 mock，待开关授权）、CSV／vCard／活动导入。App 端界面不变。
 - Web 页面/服务/HTTP 路径及方法：`/app/contacts`（所有人脉，档位列与洞察一句）、`/app/contacts/dashboard`（概览驾驶舱与 `?tab=structure|opportunities|insight`）、`/app/contacts/pipeline`；接口 `GET /api/network/snapshot`、`POST /api/network/snapshot/recompute`、`GET /api/contacts/page?tiers=1`（Web 专用参数）等。
 - App 页面/消费点：`/api/mobile/contacts-dashboard`（新增可选字段，见下）；`/api/contacts/needs-matches`（`ContactNeedsMatchesScreen`，**原样保留给 App**：Web 已改用计划匹配器 RN-08，网页端 0 使用，由 `repos/orbits/tests/pages/web-contact-needs-retired-gate.test.ts` 锁住；`features/contact-needs` 与路由不删）。
-- Web/App SHA：各 Sprint 合并 SHA —— W0043 `738f13ae`、W0044 `7fd27123`、W0045 `ecf43849`、W0046 `8584caff`、W0047 `9b779e2a`、W0048a `f710ca5a`、W0048b `d6866b0b`（修复合并 `f4007c11`）、W0049 `85e0707b`、W0050 `afc97c35`、W0051 `477b3031`、W0052 `7b416b46`、W0053 `b7e86d99`、W0054 `ccba83f4`、W0055（合并后由协调者补记）。大目标 4 开工基线 `00703fde`。
+- Web/App SHA：各 Sprint 合并 SHA —— W0043 `738f13ae`、W0044 `7fd27123`、W0045 `ecf43849`、W0046 `8584caff`、W0047 `9b779e2a`、W0048a `f710ca5a`、W0048b `d6866b0b`（修复合并 `f4007c11`）、W0049 `85e0707b`、W0050 `afc97c35`、W0051 `477b3031`、W0052 `7b416b46`、W0053 `b7e86d99`、W0054 `ccba83f4`、W0055 分支功能提交 `769b26b7`…`233b26a5`（合并 SHA 由协调者补记）。大目标 4 开工基线 `00703fde`。
 - 同步副本与执行同步的提交（D46①，均为 `npm run sync:contract` 机械复制）：
   - W0044 `be2676f5`／`dfda6f92`：`src/api/contract/followups.ts`（只改注释）、`src/api/compute/tokyo-calendar-days.ts`（新增）
   - W0045 `68c9b55f`：`src/api/contract/business-card-batch.ts`、`src/api/schema/business-card-batch.ts`、`src/api/compute/seniority-group.ts`（新增）
@@ -48,3 +48,4 @@
 ## 更新历史
 
 - 2026-10-03 Web（W0055）：创建。下一责任方 App 线。
+- 2026-10-03 Web（W0055 收口）：真实路径验证通过（DeepSeek 19 次 HTTP，D51 上限 30）；Web 修复「AI 计划生成器开启后，新用户在引导第 3 步被示例模式 403」（`59ef1e47`，不影响 App 接口）。App 侧仍未验证。
