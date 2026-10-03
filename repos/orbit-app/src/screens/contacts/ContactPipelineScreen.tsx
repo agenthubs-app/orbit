@@ -45,6 +45,9 @@ export function ContactPipelineScreen() {
   const projection = contactPipelineLocalProjection(local.rows);
   const localFallback = Platform.OS !== "web" && local.available && local.freshness.readable &&
     (nativeMirror || pipeline.state.kind === "offline" || pipeline.state.kind === "failure");
+  // The device copy is shown whenever the mirror is readable; it is only "offline" when the
+  // last sync failed or the server page could not be read (0137 run-02 Simulator finding).
+  const offline = localFallback && (Boolean(local.freshness.offline) || pipeline.state.kind === "offline" || pipeline.state.kind === "failure");
   const localItems = projection.items[selectedStageId];
   const localPage: ContactPipelinePageContract = {
     asOf: local.freshness.lastSyncedAt ?? "",
@@ -74,7 +77,7 @@ export function ContactPipelineScreen() {
       title="关系进展"
     >
       {pipeline.state.kind === "loading" && !localFallback ? <LoadingState /> : null}
-      {localFallback ? <OfflineNotice lastSyncedAt={local.freshness.lastSyncedAt} /> : null}
+      {offline ? <OfflineNotice lastSyncedAt={local.freshness.lastSyncedAt} /> : null}
       {pipeline.state.kind === "offline" && !localFallback ? <ErrorState message={pipeline.state.error.message} title="服务器连不上" /> : null}
       {pipeline.state.kind === "failure" && !localFallback ? <ErrorState message={pipeline.state.error.message} /> : null}
       {(pipeline.state.kind === "empty" && !localFallback || localFallback && Object.values(projection.counts).every(count => count === 0)) ? <EmptyState message="先添加联系人，再记录关系所处的阶段。" title="暂无关系进展" /> : null}
@@ -86,7 +89,8 @@ export function ContactPipelineScreen() {
           moreError={localFallback ? null : pipeline.moreError}
           hasMore={page.hasMore}
           loadMore={loadMore}
-          offline={localFallback}
+          deviceCopy={localFallback}
+          offline={offline}
           mode={mode}
           onModeChange={setMode}
           onStageChange={selectStage}
@@ -101,6 +105,7 @@ export function ContactPipelineScreen() {
 function PipelineContent({
   actions,
   contacts,
+  deviceCopy,
   hasMore,
   loadingMore,
   loadMore,
@@ -114,6 +119,8 @@ function PipelineContent({
 }: {
   actions: ContactPipelineActionView[];
   contacts: ContactPipelineContactView[];
+  /** Stage grouping comes from the device mirror; scheduled actions are not computed on device. */
+  deviceCopy: boolean;
   hasMore: boolean;
   loadingMore: boolean;
   loadMore: () => void;
@@ -150,6 +157,7 @@ function PipelineContent({
             onContactPress={(contactId) =>
               router.push(`/contacts/${encodeURIComponent(contactId)}` as Href)
             }
+            deviceCopy={deviceCopy}
             offline={offline}
             onViewAll={() => router.push("/tasks?scope=relationship" as Href)}
             tasks={actions}
@@ -200,7 +208,8 @@ function ModeButton({ active, label, onPress }: {
   );
 }
 
-function ActionPanel({ onContactPress, onViewAll, tasks, offline }: {
+function ActionPanel({ deviceCopy, onContactPress, onViewAll, tasks, offline }: {
+  deviceCopy: boolean;
   onContactPress: (contactId: string) => void;
   onViewAll: () => void;
   tasks: ContactPipelineActionView[];
@@ -221,7 +230,9 @@ function ActionPanel({ onContactPress, onViewAll, tasks, offline }: {
         ) : null}
       </View>
 
-      {offline ? <Text style={styles.emptyText}>待处理事项需要联网查看。</Text> : tasks.length === 0 ? (
+      {offline ? <Text style={styles.emptyText}>待处理事项需要联网查看。</Text> : deviceCopy ? (
+        <Text style={styles.emptyText}>本机只计算关系阶段，已安排的关系待办请在全部待办里查看。</Text>
+      ) : tasks.length === 0 ? (
         <Text style={styles.emptyText}>暂时没有已安排日期的关系待办。</Text>
       ) : null}
       {tasks.map((task, index) => (
