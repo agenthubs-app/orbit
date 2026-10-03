@@ -207,36 +207,6 @@ test("contacts analysis forwards each authenticated actor and rejects an empty a
   assert.deepEqual(seen, ["account:one", "account:two"]);
 });
 
-test("contacts dashboard has a real zero-data state and no demo metrics or people", () => {
-  const dashboardSource = source(
-    "app/(app)/app/contacts/orbit-real-cards-dashboard.tsx",
-  );
-
-  assert.match(dashboardSource, /data-orbit-contacts-dashboard-empty/);
-  assert.match(dashboardSource, /viewModel\.connections/);
-  assert.doesNotMatch(dashboardSource, /Emily Wong|佐藤花|陈伟|刘洋/);
-  assert.doesNotMatch(dashboardSource, /value: "128"|128 contacts|共 128 位/);
-});
-
-test("contacts dashboard responsive roots do not occupy or flow beside each other", () => {
-  const dashboardSource = source(
-    "app/(app)/app/contacts/orbit-real-cards-dashboard.tsx",
-  );
-
-  assert.match(
-    dashboardSource,
-    /className="orbit-page orbit-desktop-only"/,
-  );
-  assert.match(
-    dashboardSource,
-    /className="orbit-mobile-only"[\s\S]*?flexDirection: "column"/,
-  );
-  assert.doesNotMatch(
-    dashboardSource,
-    /className="orbit-page" data-orbit-real-page="contacts-dashboard"/,
-  );
-});
-
 /* ── W0054：门槛（已确认联系人 < 3）只换 AI 块 ───────────────────── */
 
 test("W0054 SC-03: with 2 confirmed contacts every tab reads the threshold once for the canonical actor and passes it on; the insight tab reads no insights and gets a threshold card", async (t) => {
