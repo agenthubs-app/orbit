@@ -95,8 +95,16 @@ export const useSyncedCollection = ({ kind }) => ({
   records: (state.records[kind] ?? []).map((payload, index) => ({ id: payload.id ?? payload.eventId ?? payload.conversationId ?? String(index), kind, workspaceId: "workspace:one", revision: "1", updatedAt: "2026-09-28T01:00:00.000Z", deletedAt: null, payload })),
   refresh: async () => { state.syncs++; return null; },
   invalidate: async () => null,
-  currentSession: () => null,
+  currentSession: () => state.taskOutbox ? taskOutboxSession : null,
 });
+// Sprint 0133: an opt-in device outbox session (fixture taskOutbox: true) records offline task enqueues.
+const taskOutboxSession = {
+  async readOutboxOverlay() { return { queuedMutations: state.queuedTasks ?? [] }; },
+  async enqueueOfflineTaskMutation(mutation) {
+    state.enqueued = [...(state.enqueued ?? []), mutation];
+    state.queuedTasks = [...(state.queuedTasks ?? []), { ...mutation, actorId: "account:one", workspaceId: "workspace:one", state: "queued", attemptCount: 0, firstAttemptAt: null, serverSnapshot: null, dependsOn: null }];
+  },
+};
 const session = {
   isCurrent: () => true,
   async readPageCopy(id, variant) { if (state.noMirror) return null; return state.copies[id + "|" + variant] ?? null; },
@@ -151,7 +159,7 @@ export async function startOfflinePageHarness(screens: readonly HarnessScreen[],
         plugin.onResolve({ filter: /^react-native-safe-area-context$|^expo-router$|^expo-router\/react-navigation$|\/(useApiResource|useOrbitApiClient|useHomeDashboardClient|useSyncedCollection|AuthSessionProvider|ApiBaseUrlProvider|native-notifications)$|^@react-native-async-storage\/async-storage$/ }, () => ({ path: "fixture", namespace: "offline-page" }));
         plugin.onResolve({ filter: /^@expo\/vector-icons$|^react-native-svg$|^expo-crypto$|^expo-camera$|^expo-image-picker$|^expo-document-picker$|^expo-localization$|^expo-haptics$|^expo-clipboard$|^expo-linking$/ }, () => ({ path: "icons", namespace: "offline-page" }));
         plugin.onLoad({ filter: /^fixture$/, namespace: "offline-page" }, () => ({ contents: fixture, loader: "jsx", resolveDir: root }));
-        plugin.onLoad({ filter: /^native$/, namespace: "offline-page" }, () => ({ contents: `export * from "react-native-web";`, loader: "js", resolveDir: root }));
+        plugin.onLoad({ filter: /^native$/, namespace: "offline-page" }, () => ({ contents: `import { Platform as WebPlatform } from "react-native-web"; export * from "react-native-web"; const os = window.initialFixture?.platform; export const Platform = os ? { ...WebPlatform, OS: os, select: (options) => options[os] ?? options.native ?? options.default } : WebPlatform;`, loader: "js", resolveDir: root }));
         plugin.onLoad({ filter: /^icons$/, namespace: "offline-page" }, () => ({ contents: STUB, loader: "js" }));
       },
     }],

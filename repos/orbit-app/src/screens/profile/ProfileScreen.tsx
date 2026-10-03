@@ -6,6 +6,7 @@ import { type Href, useRouter } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AppState,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -44,6 +45,7 @@ import {
 import { usePageCopyResource } from "../../hooks/usePageCopyResource";
 import { useLocalContacts } from "../../hooks/useLocalContacts";
 import { useSyncedCollection } from "../../hooks/useSyncedCollection";
+import { useOfflineTaskOutbox } from "../../data/sync/useOfflineTaskOutbox";
 import { mirrorFreshness } from "../../data/sync/mirror-freshness";
 import { localContactCardSummary } from "../../view-models/contacts-local";
 import { localHomeScheduleItems, localHomeTaskPage } from "../../view-models/home-local";
@@ -1364,10 +1366,11 @@ function ProfileStatistics({ scopeKey, isScopeCurrent }: { scopeKey: string; isS
   // shown while the server reads and when it cannot be reached.
   const contacts = useLocalContacts(false);
   const taskMirror = useSyncedCollection<Record<string, unknown>>({ kind: "task" });
+  const taskOutbox = useOfflineTaskOutbox(taskMirror, Platform.OS !== "web");
   const scheduleMirror = useSyncedCollection<Record<string, unknown>>({ kind: "personal_schedule" });
   const eventMirror = useSyncedCollection<Record<string, unknown>>({ kind: "registered_event" });
   const localContacts = contacts.available && contacts.freshness.readable ? localContactCardSummary(contacts.rows, {}, contacts.freshness.lastSyncedAt ?? new Date(0).toISOString()).total : null;
-  const localTasks = mirrorFreshness(taskMirror, true).readable ? localHomeTaskPage(taskMirror.records, auth.actorId ?? "", day, timeZone, new Date(), locale.language)?.total ?? null : null;
+  const localTasks = mirrorFreshness(taskMirror, true).readable ? localHomeTaskPage(taskMirror.records, auth.actorId ?? "", day, timeZone, new Date(), locale.language, taskOutbox.queuedMutations)?.total ?? null : null;
   const localSchedule = mirrorFreshness(scheduleMirror, true).readable && mirrorFreshness(eventMirror, true).readable
     ? profileUpcomingScheduleCount(localHomeScheduleItems({ personal: scheduleMirror.records, events: eventMirror.records, lastAnswer: null })) : null;
   return <View style={[styles.statistics, narrow && styles.statisticsNarrow]}>

@@ -176,7 +176,7 @@ test("offline with the browser mirror: registered events, open tasks and schedul
   const stale = (records: unknown[]) => ({ status: "stale", records, error: "Network request failed", lastSyncedAt: "2026-09-11T04:00:00Z" });
   const page = await open(t, { mirror: "local-mirror", synced: {
     registered_event: stale(mirrorRecords("registered_event", [{ eventId: "event-fri", participantId: "p1", title: "AI 创业者交流", description: null, venue: "渋谷", timeZone: "Asia/Tokyo", startsAt: "2026-09-11T16:00:00+09:00", endsAt: "2026-09-11T17:00:00+09:00", lifecycleState: "published", checkInOpensAt: null, eventStartsAt: null, eventEndsAt: null, profileEditDeadlineAt: null, resultsAvailableAt: null, roundOneStartsAt: null, roundTwoStartsAt: null }])),
-    task: stale(mirrorRecords("task", [{ id: "task-fri", title: "给山田发介绍资料", status: "open", category: "relationship", priority: "normal", plannedDate: "2026-09-11", dueAt: "2026-09-11T09:00:00+09:00", updatedAt: "2026-09-10T00:00:00Z" }, { id: "task-done", title: "已完成的旧事", status: "completed", category: "work", priority: "normal", updatedAt: "2026-09-10T00:00:00Z" }])),
+    task: stale(mirrorRecords("task", [{ id: "task-fri", accountId: "actor", ownerUserId: "actor", title: "给山田发介绍资料", status: "open", category: "relationship", priority: "normal", plannedDate: "2026-09-11", dueAt: "2026-09-11T09:00:00+09:00", updatedAt: "2026-09-10T00:00:00Z" }, { id: "task-done", accountId: "actor", ownerUserId: "actor", title: "已完成的旧事", status: "completed", category: "work", priority: "normal", updatedAt: "2026-09-10T00:00:00Z" }])),
     personal_schedule: stale(mirrorRecords("personal_schedule", [item])),
   } });
   await page.getByText(/无法连接 · 显示截至 .+ 的内容/).waitFor();

@@ -3,6 +3,7 @@ import { createServer, type Server } from "node:http";
 import test from "node:test";
 import { build } from "esbuild";
 import { chromium, type Browser, type Page } from "playwright";
+import { buildOfflineTaskMutation } from "../src/data/sync/task-outbox-mutation";
 
 let browser: Browser;
 let server: Server;
@@ -19,6 +20,7 @@ const subscribe = (listener) => { listeners.add(listener); return () => listener
 const rerender = () => useSyncExternalStore(subscribe, () => revision);
 const state = window.fixture = {
   task: { id: "task:edit", accountId: "test", ownerUserId: "test", title: "Original title", notes: "Original notes", status: "open", category: "work", priority: "normal", source: "ai_confirmed", sourceNoteId: "note:source", sourceNoteVersion: 3, createdAt: "2026-09-07T00:00:00.000Z", updatedAt: "2026-09-07T00:00:00.000Z" },
+  queuedMutations: [], records: [], session: null, conflictResolutions: [],
   requests: [], refreshes: 0, failure: false, hold: false, thrown: false, notifications: 0, navigation: [], permissionCalls: 0, holdPermission: false, permission: "denied", reminders: [],
   update(patch) { state.task = { ...state.task, ...patch }; emit(); },
   switchClient() { client = { ...client }; emit(); }
@@ -56,7 +58,8 @@ let client = {
 export const useOrbitApiClient = () => client;
 export const useOrbitAuthSession = () => ({ ready: true, signedIn: true, accountId: "test", actorId: "test", user: { id: "raw-login-test" }, cookieHeader: "" });
 // Sprint 0131: the screen reads the device mirror / page copies; this harness tests the network path (no mirror).
-export const useSyncedCollection = () => ({ status: "unsynced", error: null, lastSyncedAt: null, workspaceId: null, records: [], refresh: async () => null, invalidate: async () => null, currentSession: () => null });
+export const useSyncedCollection = () => ({ status: "unsynced", error: null, lastSyncedAt: null, workspaceId: null, records: state.records, refresh: async () => null, invalidate: async () => null, currentSession: () => state.session });
+export const useOfflineTaskOutbox = () => { rerender(); return { queuedMutations: state.queuedMutations, queueFailure: null, refreshQueued: async () => {}, enqueueOfflineMutation: async () => {} }; };
 export const useSyncCoordinatorSession = () => null;
 export const useOrbitApiBaseUrl = () => ({ ready: true, baseUrl: "https://orbit.example" });
 export const useSafeAreaInsets = () => ({ top: 0, bottom: 0, left: 0, right: 0 });
@@ -98,7 +101,7 @@ test.before(async () => {
             });`,
           loader: "jsx", resolveDir: process.cwd(),
         }));
-        plugin.onResolve({ filter: /^(expo-router|expo-router\/react-navigation|expo-crypto|@expo\/vector-icons|react-native-safe-area-context)$|\/(useApiResource|useOrbitApiClient|AuthSessionProvider|ApiBaseUrlProvider|native-notifications|AppScreen|ErrorState|LoadingState|useSyncedCollection)$|\/design\/theme$/ }, () => ({ path: "fixture", namespace: "task-test" }));
+        plugin.onResolve({ filter: /^(expo-router|expo-router\/react-navigation|expo-crypto|@expo\/vector-icons|react-native-safe-area-context)$|\/(useApiResource|useOrbitApiClient|AuthSessionProvider|ApiBaseUrlProvider|native-notifications|AppScreen|ErrorState|LoadingState|useSyncedCollection|useOfflineTaskOutbox)$|\/design\/theme$/ }, () => ({ path: "fixture", namespace: "task-test" }));
         plugin.onLoad({ filter: /.*/, namespace: "task-test" }, () => ({ contents: fixture, loader: "jsx", resolveDir: process.cwd() }));
       },
     }],
@@ -129,6 +132,61 @@ async function openScreen(t: { after: (fn: () => Promise<void>) => void }): Prom
   await page.waitForFunction(() => document.querySelector<HTMLTextAreaElement>('[aria-label="待办标题"]')?.value === "Original title");
   return page;
 }
+
+async function seedDeleteConflict(page: Page): Promise<void> {
+  const mutation = buildOfflineTaskMutation({
+    mutationId: "delete-original", entityId: "task:edit", operation: "delete",
+    baseRevision: "tasks:e1:4",
+    requestBody: { expectedUpdatedAt: "2026-09-07T00:00:00.000Z", idempotencyKey: "delete-original" },
+    createdAt: "2026-09-07T00:01:00.000Z",
+  });
+  const serverSnapshot = {
+    id: "task:edit", accountId: "test", ownerUserId: "test", title: "Server version title", notes: "Server version notes",
+    status: "open", category: "personal", priority: "normal", source: "manual", createdAt: "2026-09-07T00:00:00.000Z", updatedAt: "2026-09-07T05:00:00.000Z",
+  };
+  // Seed the durable outbox state produced after an uploader 409; transport and persistence are outside this UI test.
+  await page.evaluate(({ mutation, serverSnapshot }) => {
+    const state = (window as any).fixture;
+    state.session = {
+      async resolveTaskConflict(input: unknown) { state.conflictResolutions.push(input); },
+    };
+    state.records = [{ id: "task:edit", revision: "tasks:e1:5" }];
+    state.queuedMutations = [{ ...mutation, actorId: "test", workspaceId: "workspace:test", state: "conflict", lastErrorCode: "CONFLICT", requestAttemptedAt: "2026-09-07T00:02:00.000Z", serverSnapshot }];
+    state.update({ ...state.task, ...serverSnapshot });
+  }, { mutation, serverSnapshot });
+  await page.getByText("删除前这条待办已有更新。请查看服务器版本后再次确认。", { exact: true }).waitFor();
+}
+
+test("a task delete conflict shows the server version and lets the user keep it", async (t) => {
+  const page = await openScreen(t);
+  await seedDeleteConflict(page);
+  await page.getByText("服务器版本：Server version title", { exact: true }).waitFor();
+  await page.getByRole("button", { name: "使用服务器版本", exact: true }).click();
+  await page.waitForFunction(() => (window as any).fixture.conflictResolutions.length === 1);
+  const resolution = await page.evaluate(() => (window as any).fixture.conflictResolutions[0]);
+  assert.equal(resolution.resolution, "server");
+  assert.equal(resolution.mutationId, "delete-original");
+  assert.equal("replacement" in resolution, false);
+});
+
+test("a task delete conflict requires a second confirmation for the server version", async (t) => {
+  const page = await openScreen(t);
+  await seedDeleteConflict(page);
+  await page.getByText("服务器版本：Server version title", { exact: true }).waitFor();
+  await page.getByRole("button", { name: "保留我的版本", exact: true }).click();
+  assert.equal(await page.evaluate(() => (window as any).fixture.conflictResolutions.length), 0);
+  const confirm = page.getByRole("button", { name: "删除更新后的待办", exact: true });
+  await confirm.waitFor();
+  await confirm.click();
+  await page.waitForFunction(() => (window as any).fixture.conflictResolutions.length === 1);
+  const resolution = await page.evaluate(() => (window as any).fixture.conflictResolutions[0]);
+  assert.equal(resolution.resolution, "replace");
+  assert.equal(resolution.mutationId, "delete-original");
+  assert.equal(resolution.replacement.operation, "delete");
+  assert.equal(JSON.parse(resolution.replacement.requestJson).expectedUpdatedAt, "2026-09-07T05:00:00.000Z");
+  assert.notEqual(JSON.parse(resolution.replacement.requestJson).idempotencyKey, "delete-original");
+  await page.waitForFunction(() => (window as any).fixture.navigation.includes("/tasks"));
+});
 
 test("a note-backed task returns to its exact source note without writing", async (t) => {
   const page = await openScreen(t);

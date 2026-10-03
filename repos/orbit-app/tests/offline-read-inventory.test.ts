@@ -167,10 +167,17 @@ test('the actual native consumers all have explicit versioned policies', async (
     'src/screens/tasks/TaskDetailScreen.tsx DELETE /api/tasks/:id',
     'src/screens/tasks/TaskDetailScreen.tsx POST /api/reminders',
     'src/screens/tasks/TaskDetailScreen.tsx PATCH /api/reminders/:id',
+    'src/data/sync/task-outbox-upload.ts POST /api/tasks',
+    'src/data/sync/task-outbox-upload.ts PATCH /api/tasks/:id',
+    'src/data/sync/task-outbox-upload.ts DELETE /api/tasks/:id',
   ]) assert.ok(actual.has(expected), expected);
   assert.deepEqual(await auditReadSurfaces(root), { unregistered: [], invalid: [] });
   assert.ok(surfaces.some(row => row.readPersistence === 'device_only' && row.mutationPolicy === 'local_only'));
-  assert.ok(surfaces.every(row => row.mutationPolicy !== 'offline_queue'));
+  assert.deepEqual(surfaces.filter(row => row.mutationPolicy === 'offline_queue').map(row => `${row.consumerFile} ${row.method} ${row.endpointTemplate}`).sort(), [
+    'src/data/sync/task-outbox-upload.ts DELETE /api/tasks/:id',
+    'src/data/sync/task-outbox-upload.ts PATCH /api/tasks/:id',
+    'src/data/sync/task-outbox-upload.ts POST /api/tasks',
+  ]);
 });
 
 test('bounded private pages and badge summaries stay network-only until permission invalidation is proven', () => {

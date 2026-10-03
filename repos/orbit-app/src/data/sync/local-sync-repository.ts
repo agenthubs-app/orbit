@@ -815,7 +815,7 @@ export function createLocalSyncRepository(input: {
       }
       await database.transaction(async () => {
         const domainId = mutation.domainId ?? localDomainForKind(mutation.kind);
-        const unattempted = await database.all<{
+        const unattempted = domainId === "tasks" ? [] : await database.all<{
           mutation_id: string;
           operation: LocalSyncOutboxOperation;
           patch_json: string | null;
@@ -1050,6 +1050,54 @@ export function createLocalSyncRepository(input: {
       });
     },
 
+    /** Replace or discard one task conflict without mutating an attempted request. */
+    async resolveTaskConflict(input: {
+      workspaceId: string;
+      mutationId: string;
+      resolution: "server" | "replace";
+      replacement?: LocalSyncOutboxMutation;
+    }): Promise<void> {
+      assertNonEmptyString(input.workspaceId, "workspaceId");
+      assertNonEmptyString(input.mutationId, "mutationId");
+      if (input.resolution === "replace" && !input.replacement) throw new TypeError("replacement task mutation is required");
+      if (input.resolution === "server" && input.replacement) throw new TypeError("server resolution cannot include a replacement");
+      const replacement = input.replacement;
+      const patchJson = replacement ? validateAndSerializeOutboxMutation(replacement, actorId) : null;
+      if (replacement && (replacement.actorId !== actorId || replacement.workspaceId !== input.workspaceId || replacement.domainId !== "tasks" ||
+          replacement.kind !== "task" || !["create", "update", "complete", "reopen", "cancel", "delete"].includes(replacement.operation) ||
+          !replacement.requestJson || replacement.mutationId === input.mutationId || replacement.requestAttemptedAt)) {
+        throw new TypeError("replacement task mutation is invalid");
+      }
+      await database.transaction(async () => {
+        const conflict = await database.get<{ workspace_id: string; domain_id: string; kind: SyncEntityKind; state: string }>(
+          "SELECT workspace_id, domain_id, kind, state FROM sync_outbox WHERE mutation_id = ?", [input.mutationId],
+        );
+        if (!conflict || conflict.workspace_id !== input.workspaceId || conflict.domain_id !== "tasks" || conflict.kind !== "task" || conflict.state !== "conflict") {
+          throw new Error("TASK_CONFLICT_NOT_FOUND");
+        }
+        if (replacement) {
+          await database.run(`INSERT INTO sync_outbox (
+            mutation_id, workspace_id, domain_id, kind, record_id, operation, state,
+            patch_json, request_json, depends_on, base_revision, created_at,
+            retry_count, next_retry_at, last_error_code, attempt_count, first_attempt_at, server_snapshot_json
+          ) VALUES (?, ?, 'tasks', 'task', ?, ?, 'queued', ?, ?, ?, ?, ?, ?, ?, NULL, 0, NULL, NULL)`, [
+            replacement.mutationId, replacement.workspaceId, replacement.id, replacement.operation, patchJson,
+            replacement.requestJson!, replacement.dependsOn ?? null, replacement.baseRevision, replacement.createdAt,
+            replacement.retryCount, replacement.nextRetryAt,
+          ]);
+          await database.run("UPDATE sync_outbox SET depends_on = ? WHERE workspace_id = ? AND domain_id = 'tasks' AND depends_on = ?",
+            [replacement.mutationId, input.workspaceId, input.mutationId]);
+          await database.run("DELETE FROM sync_outbox WHERE mutation_id = ?", [input.mutationId]);
+          return;
+        }
+        await database.run(`WITH RECURSIVE dependent_mutations(mutation_id) AS (
+          SELECT ?
+          UNION
+          SELECT queued.mutation_id FROM sync_outbox AS queued JOIN dependent_mutations AS dependency ON queued.depends_on = dependency.mutation_id
+        ) DELETE FROM sync_outbox WHERE mutation_id IN (SELECT mutation_id FROM dependent_mutations)`, [input.mutationId]);
+      });
+    },
+
     /** Commit a successful upload, its local-id alias, and dependent request rewrites together. */
     async acknowledgeOutboxMutation(input: {
       mutationId: string;
@@ -1088,16 +1136,31 @@ export function createLocalSyncRepository(input: {
               canonical_id = excluded.canonical_id, created_at = excluded.created_at, expires_at = excluded.expires_at`,
           [mutation.workspace_id, mutation.domain_id, localId, serialized.record.id, input.acknowledgedAt, expiresAt]);
         }
-        const dependents = await database.all<{ mutation_id: string; patch_json: string | null; request_json: string | null }>(
-          `SELECT mutation_id, patch_json, request_json FROM sync_outbox
+        const dependents = await database.all<{ mutation_id: string; operation: LocalSyncOutboxOperation; patch_json: string | null; request_json: string | null }>(
+          `SELECT mutation_id, operation, patch_json, request_json FROM sync_outbox
            WHERE workspace_id = ? AND domain_id = ? AND depends_on = ?`,
           [mutation.workspace_id, mutation.domain_id, input.mutationId],
         );
         for (const dependent of dependents) {
           const patchJson = dependent.patch_json === null ? null : JSON.stringify(rewriteExactIdentifier(JSON.parse(dependent.patch_json), localId, serialized.record.id));
-          const requestJson = dependent.request_json === null ? null : JSON.stringify(rewriteExactIdentifier(JSON.parse(dependent.request_json), localId, serialized.record.id));
-          await database.run(`UPDATE sync_outbox SET patch_json = ?, request_json = ?, depends_on = NULL WHERE mutation_id = ?`,
-            [patchJson, requestJson, dependent.mutation_id]);
+          const rewritten = dependent.request_json === null ? null : rewriteExactIdentifier(JSON.parse(dependent.request_json), localId, serialized.record.id);
+          let requestJson = rewritten === null ? null : JSON.stringify(rewritten);
+          const isTaskDomain = mutation.domain_id === "tasks" && mutation.kind === "task" && serialized.record.kind === "task";
+          const taskPayload = serialized.record.payload;
+          const taskUpdatedAt = isTaskDomain && typeof taskPayload === "object" && taskPayload !== null && !Array.isArray(taskPayload) &&
+            typeof (taskPayload as Record<string, unknown>).updatedAt === "string"
+            ? (taskPayload as Record<string, unknown>).updatedAt as string : null;
+          if (isTaskDomain && rewritten !== null && typeof rewritten === "object" && !Array.isArray(rewritten)) {
+            const request = rewritten as Record<string, unknown>;
+            if ((dependent.operation === "update" || dependent.operation === "delete") && taskUpdatedAt) {
+              request.expectedUpdatedAt = taskUpdatedAt;
+            }
+            requestJson = JSON.stringify(request);
+          }
+          await database.run(`UPDATE sync_outbox SET patch_json = ?, request_json = ?, depends_on = NULL,
+            record_id = CASE WHEN ? THEN ? ELSE record_id END,
+            base_revision = CASE WHEN ? THEN ? ELSE base_revision END WHERE mutation_id = ?`,
+          [patchJson, requestJson, isTaskDomain ? 1 : 0, serialized.record.id, isTaskDomain ? 1 : 0, serialized.record.revision, dependent.mutation_id]);
         }
         await database.run("DELETE FROM sync_outbox WHERE mutation_id = ?", [input.mutationId]);
       });

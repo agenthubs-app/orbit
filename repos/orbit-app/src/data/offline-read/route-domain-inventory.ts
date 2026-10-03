@@ -72,6 +72,8 @@ function domainFor(path: string): string {
 
 function surfaceFrom([consumerFile, method, endpointTemplate]: SurfaceKey): ReadSurface {
   const domainId = domainFor(endpointTemplate);
+  const taskOutboxWrite = consumerFile === 'src/data/sync/task-outbox-upload.ts' && domainId === 'tasks'
+    && ['POST', 'PATCH', 'DELETE'].includes(method);
   const providerTodo = endpointTemplate.startsWith('/api/relationship-signals/email-calendar');
   const secret = providerTodo || endpointTemplate === '/api/account/status' || endpointTemplate.startsWith('/api/account/session/')
     || endpointTemplate.startsWith('/api/auth/') || endpointTemplate.startsWith('/api/devices/')
@@ -97,7 +99,7 @@ function surfaceFrom([consumerFile, method, endpointTemplate]: SurfaceKey): Read
     selector: providerTodo ? 'todo:external-provider-oauth' : `${domainId}:${method}:${endpointTemplate}`,
     schemaVersion: 1,
     readPersistence: secret ? 'online_only_secret' : 'durable_normalized',
-    mutationPolicy: 'online_only',
+    mutationPolicy: taskOutboxWrite ? 'offline_queue' : 'online_only',
     binaryPolicy: secret ? 'never_local' : binary ? 'on_demand_encrypted' : 'metadata_only',
   };
 }
@@ -114,6 +116,9 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/data/sync/sync-client.ts","GET","/api/sync/domains/:domainId"],
   ["src/data/sync/note-outbox-upload.ts","POST","/api/notes"],
   ["src/data/sync/note-outbox-upload.ts","PATCH","/api/notes/:id"],
+  ["src/data/sync/task-outbox-upload.ts","POST","/api/tasks"],
+  ["src/data/sync/task-outbox-upload.ts","PATCH","/api/tasks/:id"],
+  ["src/data/sync/task-outbox-upload.ts","DELETE","/api/tasks/:id"],
   ["src/api/browser-auth.ts","GET","/api/auth/csrf"],
   ["src/api/browser-auth.ts","POST","/api/auth/callback/credentials"],
   ["src/api/auth-session.ts","POST","/api/auth/register"],

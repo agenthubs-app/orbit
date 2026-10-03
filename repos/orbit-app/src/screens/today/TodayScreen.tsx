@@ -2,8 +2,10 @@ import { useOrbitTimeZone } from "../../time/OrbitTimeZoneProvider";
 import { Ionicons } from "@expo/vector-icons";
 import { type Href, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
+import * as Crypto from "expo-crypto";
 import {
   Pressable,
+  Platform,
   RefreshControl,
   StyleSheet,
   Text,
@@ -26,8 +28,11 @@ import { createControlStyles } from "../../design/controls";
 import { createThemedStyles } from "../../design/theme";
 import { useOrbitApiClient } from "../../hooks/useOrbitApiClient";
 import { useTodayTaskPages } from "../../hooks/useTodayTaskPages";
+import { useSyncedCollection } from "../../hooks/useSyncedCollection";
+import { useOfflineTaskOutbox } from "../../data/sync/useOfflineTaskOutbox";
+import { buildOfflineTaskMutation, isOfflineTaskCategory } from "../../data/sync/task-outbox-mutation";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
-import { todayTaskPageToView, type TodayTaskCardRowView, type TodayTaskPageView } from "../../view-models/today-task-pages";
+import { overlayTodayTaskPageView, todayTaskPageToView, type TodayTaskCardRowView, type TodayTaskPageView } from "../../view-models/today-task-pages";
 
 function todayDateKey(timeZone: string, now = new Date()): string {
   const parts = new Intl.DateTimeFormat("en-US", {
@@ -41,7 +46,7 @@ function todayDateKey(timeZone: string, now = new Date()): string {
 }
 
 function mutationKey(action: string): string {
-  return `ios:${action}:${Date.now()}`;
+  return `ios:${action}:${Crypto.randomUUID()}`;
 }
 
 export function TodayScreen() {
@@ -57,23 +62,46 @@ export function TodayScreen() {
   }, []);
   const date = todayDateKey(timeZone, clock);
   const todayState = useTodayTaskPages(timeZone, date);
+  const taskMirror = useSyncedCollection<Record<string, unknown>>({ kind: "task" });
+  const taskOutbox = useOfflineTaskOutbox(taskMirror, Platform.OS !== "web");
   const [draft, setDraft] = useState("");
   const [creating, setCreating] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [mutationError, setMutationError] = useState<string | null>(null);
   // Sprint 0131: offline the page is today's device copy (page copy "today-page"); writing needs the network.
   const offline = todayState.copy?.offline === true;
-  const view = todayState.data
+  const baseView = todayState.data
     ? todayTaskPageToView(todayState.data.today, todayState.data.page.actorId, date, clock, timeZone, locale.language,
       todayState.data.page.items, todayState.data.page)
     : null;
+  const view = overlayTodayTaskPageView(baseView,
+    taskMirror.records.flatMap(record => record.deletedAt === null && record.payload && typeof record.payload === "object"
+      ? [record.payload as unknown as import("../../api/contract/tasks").TaskItemContract] : []),
+    taskOutbox.queuedMutations, todayState.data?.page.actorId ?? "", date, clock, timeZone, locale.language);
 
   async function createTask() {
     if (!canSave) { setMutationError(locale.t("today.timezoneUnavailable")); return; }
     const title = draft.trim();
-    if (!title || creating || offline) return;
+    if (!title || creating || offline && Platform.OS === "web") return;
     setCreating(true);
     setMutationError(null);
+    if (offline) {
+      if (Platform.OS === "web") return;
+      const mutationId = mutationKey("create-task");
+      const entityId = `local:${Crypto.randomUUID()}`;
+      try {
+        await taskOutbox.enqueueOfflineMutation(buildOfflineTaskMutation({
+          mutationId, entityId, operation: "create", baseRevision: null,
+          requestBody: { category: "other", idempotencyKey: mutationId, plannedDate: date, title },
+          createdAt: new Date().toISOString(),
+        }));
+        setDraft("");
+      } catch (error) {
+        setMutationError(error instanceof Error ? error.message : locale.t("taskDetail.operationFailed"));
+      }
+      setCreating(false);
+      return;
+    }
     const result = await client.post<unknown>(ORBIT_API_ENDPOINTS.tasks, {
       body: {
         category: "other",
@@ -92,7 +120,24 @@ export function TodayScreen() {
   }
 
   async function completeTask(taskId: string) {
-    if (offline) return;
+    if (offline) {
+      const task = view?.tasks.find(item => item.id === taskId);
+      if (!isOfflineTaskCategory(task?.category)) return;
+      setUpdatingId(taskId);
+      setMutationError(null);
+      const mutationId = mutationKey(`complete:${taskId}`);
+      const record = taskMirror.records.find(item => item.id === taskId);
+      try {
+        await taskOutbox.enqueueOfflineMutation(buildOfflineTaskMutation({
+          mutationId, entityId: taskId, operation: "complete", baseRevision: record?.revision ?? null,
+          requestBody: { action: "complete", idempotencyKey: mutationId }, createdAt: new Date().toISOString(),
+        }));
+      } catch (error) {
+        setMutationError(error instanceof Error ? error.message : locale.t("taskDetail.operationFailed"));
+      }
+      setUpdatingId(null);
+      return;
+    }
     setUpdatingId(taskId);
     setMutationError(null);
     const result = await client.patch<unknown>(taskPath(taskId), {
@@ -158,6 +203,7 @@ export function TodayScreen() {
           onCompleteTask={completeTask}
           onCreateTask={createTask}
           offline={offline}
+          offlineWritesAllowed={Platform.OS !== "web"}
           onLoadMoreTasks={todayState.loadMore}
           onOpenCompleted={() =>
             router.push({ pathname: "/tasks", params: { view: "completed" } })
@@ -180,6 +226,7 @@ function TodayWorkspace({
   creating,
   draft,
   offline,
+  offlineWritesAllowed,
   onAcceptSuggestion,
   onChangeDraft,
   onCompleteTask,
@@ -197,6 +244,7 @@ function TodayWorkspace({
   creating: boolean;
   draft: string;
   offline: boolean;
+  offlineWritesAllowed: boolean;
   onAcceptSuggestion: (id: string) => void;
   onChangeDraft: (value: string) => void;
   onCompleteTask: (id: string) => void;
@@ -222,12 +270,12 @@ function TodayWorkspace({
       <View style={styles.quickAdd}>
         <Ionicons color={colors.text3} name="add-circle-outline" size={21} />
         <TextInput
-          accessibilityLabel={offline ? `${locale.t("today.addTask")} · ${locale.t("sync.needsNetwork")}` : locale.t("today.addTask")}
-          editable={!offline}
+          accessibilityLabel={locale.t("today.addTask")}
+          editable={!offline || offlineWritesAllowed}
           blurOnSubmit={false}
           onChangeText={onChangeDraft}
           onSubmitEditing={onCreateTask}
-          placeholder={offline ? `${locale.t("today.addTask")} · ${locale.t("sync.needsNetwork")}` : locale.t("today.addTask")}
+          placeholder={offline && !offlineWritesAllowed ? `${locale.t("today.addTask")} · ${locale.t("sync.needsNetwork")}` : locale.t("today.addTask")}
           placeholderTextColor={colors.text4}
           returnKeyType="done"
           style={styles.quickAddInput}
@@ -247,6 +295,7 @@ function TodayWorkspace({
               last={index === view.tasks.length - 1}
               loading={updatingId === task.id}
               offline={offline}
+              offlineWritesAllowed={offlineWritesAllowed}
               onComplete={() => onCompleteTask(task.id)}
               onOpen={() => onOpenTask(task.id)}
               task={task}
@@ -366,6 +415,7 @@ function TaskRow({
   last,
   loading,
   offline,
+  offlineWritesAllowed,
   onComplete,
   onOpen,
   task,
@@ -373,6 +423,7 @@ function TaskRow({
   last: boolean;
   loading: boolean;
   offline: boolean;
+  offlineWritesAllowed: boolean;
   onComplete: () => void;
   onOpen: () => void;
   task: TodayTaskCardRowView;
@@ -382,10 +433,10 @@ function TaskRow({
   return (
     <View style={[styles.taskRow, !last ? styles.rowBorder : null]}>
       <Pressable
-        accessibilityLabel={locale.t("today.completeNamed", { title: task.titlePreview }) + (offline ? " · " + locale.t("sync.needsNetwork") : "")}
+        accessibilityLabel={locale.t("today.completeNamed", { title: task.titlePreview }) + (offline && (!offlineWritesAllowed || !isOfflineTaskCategory(task.category)) ? " · " + locale.t("sync.needsNetwork") : "")}
         accessibilityRole="checkbox"
-        accessibilityState={{ disabled: loading || offline }}
-        disabled={loading || offline}
+        accessibilityState={{ disabled: loading || offline && (!offlineWritesAllowed || !isOfflineTaskCategory(task.category)) }}
+        disabled={loading || offline && (!offlineWritesAllowed || !isOfflineTaskCategory(task.category))}
         onPress={onComplete}
         style={styles.checkButton}
       >
@@ -400,6 +451,7 @@ function TaskRow({
       >
         <Text numberOfLines={1} style={styles.rowTitle}>{task.titlePreview}</Text>
         <Text style={styles.rowMeta}>{[task.categoryLabel, task.locationPreview].filter(Boolean).join(" · ")}</Text>
+        {task.localMutationState ? <Text style={styles.rowMutationState}>{locale.t(task.localMutationState === "conflict" ? "tasks.outboxConflict" : task.localMutationState === "failed" ? "tasks.outboxFailed" : "tasks.outboxQueued")}</Text> : null}
       </Pressable>
       {task.dueLabel ? (
         <Text
@@ -443,6 +495,7 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   rowCopy: { flex: 1, gap: 3, minWidth: 0 },
   rowDetail: { ...textStyles.caption, color: colors.text3 },
   rowMeta: { color: colors.text3, fontSize: typography.caption },
+  rowMutationState: { color: colors.text2, fontSize: typography.caption, marginTop: spacing.xs },
   rowTitle: { ...textStyles.listTitle, color: colors.text },
   savingText: { color: colors.text3, fontSize: typography.caption },
   scheduleRow: { alignItems: "center", flexDirection: "row", gap: spacing.md, minHeight: 60, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },

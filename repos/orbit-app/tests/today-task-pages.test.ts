@@ -1,15 +1,19 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { TaskCardContract } from "../src/api/contract/task-page";
+import type { TaskItemContract } from "../src/api/contract/tasks";
 import {
   todaySummaryPath,
   todaySummaryQuestions,
   todaySummaryToHomeView,
+  overlayTodayTaskSummaryView,
   todayTaskNextPagePath,
   todayTaskPagePath,
   todayTaskPageToView,
   todayTaskWindow,
+  overlayTodayTaskPageView,
 } from "../src/view-models/today-task-pages";
+import type { LocalSyncQueuedMutation } from "../src/data/sync/local-sync-repository";
 
 const actorId = "account:one";
 const date = "2026-09-26";
@@ -102,10 +106,39 @@ test("Today accepts a matching actor/date/time-zone/window and projects explicit
     dueLabel: "Today",
     dueTone: "muted",
     priority: "normal",
+    category: "work",
+    plannedDate: date,
+    updatedAt: now.toISOString(),
   });
   assert.equal(result.tasks.length, 20);
   assert.equal(result.schedule.length, 0);
   assert.equal(result.completedCount, 4);
+});
+
+test("Today overlays personal task queue writes while keeping relationship tasks out of the offline draft list", () => {
+  const items = [card("personal:one", { category: "personal" }), card("relationship:one", { category: "relationship" }), ...Array.from({ length: 18 }, (_, index) => card(`task:${index + 3}`))];
+  const payload = todayPayload(page(items));
+  const base = todayTaskPageToView(payload, actorId, date, now, zone, "en");
+  assert.ok(base);
+  const queued = [
+    {
+      actorId, workspaceId: "workspace-a", domainId: "tasks", mutationId: "local-create", kind: "task", id: "local:task-a", operation: "create",
+      state: "queued", patch: { category: "personal", title: "Offline task", plannedDate: date }, requestJson: JSON.stringify({ idempotencyKey: "local-create", category: "personal", title: "Offline task", plannedDate: date }),
+      baseRevision: null, createdAt: "2026-09-26T01:00:00.000Z", retryCount: 0, nextRetryAt: null, lastErrorCode: null, serverSnapshot: null,
+    },
+    {
+      actorId, workspaceId: "workspace-a", domainId: "tasks", mutationId: "complete-personal", kind: "task", id: "personal:one", operation: "complete",
+      state: "queued", patch: {}, requestJson: JSON.stringify({ action: "complete", idempotencyKey: "complete-personal" }),
+      baseRevision: "revision-1", createdAt: "2026-09-26T01:01:00.000Z", retryCount: 0, nextRetryAt: null, lastErrorCode: null, serverSnapshot: null,
+    },
+  ] as LocalSyncQueuedMutation[];
+  const result = overlayTodayTaskPageView(base, [], queued, actorId, date, now, zone, "en");
+  assert.ok(result);
+  assert.equal(result.tasks.find(task => task.id === "personal:one"), undefined);
+  assert.equal(result.tasks.find(task => task.id === "local:task-a")?.category, "personal");
+  assert.equal(result.tasks.find(task => task.id === "relationship:one")?.category, "relationship");
+  assert.equal(result.tasks.length, 20);
+  assert.equal(result.totalTaskCount, 21);
 });
 
 test("Today rejects foreign, stale, malformed, or differently-windowed page data", () => {
@@ -176,6 +209,37 @@ test("AI summary projects task and schedule unions locally and uses full-set que
   assert.deepEqual(todaySummaryQuestions(relationshipOnly, "en").map(question => question.kind), ["preparation", "discovery"]);
   const followup = { ...payload, questionSignals: { urgentTask: false, relationshipTask: true, preparation: false } };
   assert.deepEqual(todaySummaryQuestions(followup, "en").map(question => question.kind), ["followup", "discovery"]);
+});
+
+test("AI home summary reflects queued task completion and creation without replacing its schedule cards", () => {
+  const payload = {
+    taskMode: "summary", date, timeZone: zone, summary: { openTaskCount: 1, suggestionCount: 0 },
+    items: [
+      { kind: "task", task: { id: "personal:one", titlePreview: "Old title", category: "personal", priority: "normal", plannedDate: date, dueAt: null } },
+      { kind: "schedule", schedule: { id: "event:one", titlePreview: "Review", category: "meeting", kind: "event", state: "upcoming", startsAt: "2026-09-26T02:30:00.000Z", locationPreview: "Online" } },
+    ], questionSignals: { urgentTask: false, relationshipTask: false, preparation: false },
+  };
+  const base = todaySummaryToHomeView(payload, date, zone, now, "en");
+  assert.ok(base);
+  const canonical: TaskItemContract[] = [{ id: "personal:one", accountId: actorId, ownerUserId: actorId, title: "Old title", status: "open", category: "personal", priority: "normal", source: "manual", createdAt: now.toISOString(), updatedAt: now.toISOString(), plannedDate: date }];
+  const queued = [
+    { actorId, workspaceId: "workspace-a", domainId: "tasks", mutationId: "complete", kind: "task", id: "personal:one", operation: "complete", state: "queued", patch: {}, requestJson: JSON.stringify({ action: "complete", idempotencyKey: "complete" }), baseRevision: "r1", createdAt: now.toISOString(), retryCount: 0, nextRetryAt: null, lastErrorCode: null, serverSnapshot: null },
+    { actorId, workspaceId: "workspace-a", domainId: "tasks", mutationId: "create", kind: "task", id: "local:new", operation: "create", state: "queued", patch: { category: "personal", title: "New task", plannedDate: date }, requestJson: JSON.stringify({ idempotencyKey: "create", category: "personal", title: "New task", plannedDate: date }), baseRevision: null, createdAt: now.toISOString(), retryCount: 0, nextRetryAt: null, lastErrorCode: null, serverSnapshot: null },
+  ] as LocalSyncQueuedMutation[];
+  const result = overlayTodayTaskSummaryView(base, canonical, queued, actorId, date, now, zone, "en");
+  assert.ok(result);
+  assert.deepEqual(result.items.map(item => item.kind === "task" ? item.title : item.title), ["Review", "New task"]);
+  assert.equal(result.openTaskCount, 1);
+});
+
+test("AI home keeps the server task summary when no matching local queue intent exists", () => {
+  const date = "2026-09-12", now = new Date("2026-09-12T03:00:00.000Z");
+  const base = {
+    items: [{ id: "task:server-only", kind: "task" as const, title: "整理访谈记录", context: "工作", href: "/tasks/task%3Aserver-only", index: 1 }],
+    openTaskCount: 1,
+    suggestionCount: 0,
+  };
+  assert.deepEqual(overlayTodayTaskSummaryView(base, [], [], actorId, date, now, zone), base);
 });
 
 test("AI summary rejects malformed signals, counts, and union members instead of inferring from its top three", () => {

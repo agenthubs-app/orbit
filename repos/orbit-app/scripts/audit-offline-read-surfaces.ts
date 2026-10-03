@@ -32,10 +32,10 @@ const computedPathFamilies: Readonly<Record<string, readonly string[]>> = {
   'src/screens/inbox/RelationshipInboxScreen.tsx:1265': ['/api/relationship-communication/conversations/:id/messages'],
   'src/screens/inbox/RelationshipInboxScreen.tsx:1454': ['/api/chat/relationship-inbox'],
   'src/screens/profile/ProfileMoreScreen.tsx:78': ['/api/profile/extractions/business-card', '/api/profile/extractions/resume'],
-  'src/screens/profile/ProfileScreen.tsx:346': ['/api/profile/extractions/business-card', '/api/profile/extractions/resume'],
-  'src/screens/tasks/TaskDetailScreen.tsx:86': ['/api/tasks/:id'],
-  'src/screens/tasks/TaskDetailScreen.tsx:87': ['/api/tasks/:id/activities'],
-  'src/screens/tasks/TaskDetailScreen.tsx:88': ['/api/reminders'],
+  'src/screens/profile/ProfileScreen.tsx:348': ['/api/profile/extractions/business-card', '/api/profile/extractions/resume'],
+  'src/screens/tasks/TaskDetailScreen.tsx:90': ['/api/tasks/:id'],
+  'src/screens/tasks/TaskDetailScreen.tsx:91': ['/api/tasks/:id/activities'],
+  'src/screens/tasks/TaskDetailScreen.tsx:92': ['/api/reminders'],
 };
 
 // 这些 transport 调用点在运行时从不指向 Orbit API，因而没有可登记的读取面。
