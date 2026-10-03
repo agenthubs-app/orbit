@@ -13,6 +13,8 @@ import { createConfiguredContactInsightGenerator, type ContactInsightGenerator }
 import { createPostgresContactInsightInputSource } from "./input-source";
 import { createPostgresContactInsightRepository, type ContactInsightRepository } from "./repository";
 import type { ContactInsightWorkerDeps } from "./worker";
+import { createStorageContactGraphProvider } from "../storage/contact-live-record-provider";
+import { createPostgresLiveRecordStore } from "../../../shared/storage/postgres-live-record-store";
 
 export interface ContactInsightsRuntime extends ContactInsightWorkerDeps {
   client: TransactionalPostgresClient;
@@ -34,7 +36,10 @@ export function createContactInsightsRuntime(input: {
 }): ContactInsightsRuntime {
   const { client, workspaceId } = input;
   const ledger = createPostgresAiUsageLedger({ client, workspaceId });
+  // W0058：推测写回联系人走联系人 provider 的条件更新（与 memo 提取同一写入规则）。
+  const contacts = createStorageContactGraphProvider({ store: createPostgresLiveRecordStore({ client }), workspaceId });
   return {
+    applyProfileInference: async ({ actorId, contactId, values, at }) => (await contacts.applyContactCardInference?.(contactId, actorId, values, at)) ?? [],
     client,
     gate: ledger,
     generator: input.generator ?? createConfiguredContactInsightGenerator(),

@@ -7,6 +7,7 @@
  * - 最近 ≤5 条关系记录（W0046 RelationshipTimelineItem.id，即依据）：复用快照的窄读取；
  * - 生效计划的人脉需求（标题、行业、联系人关联状态）与待确认候选；
  * - 强度档读 W0047 缓存（只读；只用于相关度与提示词，不进版本指纹，R-10）。
+ * - W0058：名片备注（联系人 `notes`，OCR 的部门也拼在这里）——去掉邮箱／电话／URL、截到 200 字后作为推测依据；
  * 不读邮箱、电话、memo 正文或任何私信。
  */
 import { seniorityGroup } from "../../../shared/compute/seniority-group";
@@ -21,6 +22,7 @@ import type { InsightInputContact, InsightInputNeed } from "./generator";
 import type { InsightSqlExecutor } from "./repository";
 import type { ContactInsightRelevanceInput } from "./relevance";
 import type { ContactInsightVersionInput } from "./source-version";
+import { sanitizeCardNotes } from "./profile-inference";
 
 type Row = Record<string, unknown>;
 
@@ -55,6 +57,7 @@ export const INSIGHT_INPUT_CONTACTS_SQL = `/* contact-insights:input:contacts */
     c.payload->'region'->>'countryCode' as region_country,
     c.payload->'region'->>'city' as region_city,
     c.payload->'enrichment'->'fields' as enrichment_fields,
+    left(c.payload->>'notes', 2000) as card_notes,
     coalesce(c.payload->>'createdAt', c.created_at::text) as created_at
   from orbit_records c
   where ${confirmedContactPredicate("c")} and c.record_id = any($3::text[])
@@ -174,8 +177,10 @@ export function createPostgresContactInsightInputSource(input: { client: Insight
         const linkedNeedIds = new Set(links.map((link) => link.needId));
         const candidates = [...(candidatesBy.get(id) ?? [])].filter((needId) => !linkedNeedIds.has(needId));
         const planLink = links.some((link) => link.state === "established") ? "established" : links.length ? "linked" : null;
+        const cardNotes = sanitizeCardNotes(text(row.card_notes));
         result.set(id, {
           input: {
+            cardNotes,
             dormant: strength?.dormant ?? false,
             id,
             industry: industryOf(primary, secondary),
@@ -196,6 +201,7 @@ export function createPostgresContactInsightInputSource(input: { client: Insight
             tier: (strength?.tier ?? null) as RelationshipTier | null,
           },
           version: {
+            cardNotes,
             displayName: text(row.display_name)!,
             enrichedValues: {
               offering: json(row.offering),

@@ -14,6 +14,7 @@ import { createHash } from "node:crypto";
 
 import type { ContactInsightEvidence, ContactInsightText } from "../../../shared/contract/contact-insight";
 import { confirmedContactPredicate } from "../../network-analysis/repository";
+import { profileInferenceIsEmpty, readStoredProfileInference, type StoredProfileInference } from "./profile-inference";
 
 export interface InsightSqlExecutor {
   query<TRow = Record<string, unknown>>(text: string, values?: readonly unknown[]): Promise<{ rows: readonly TRow[] }>;
@@ -308,6 +309,17 @@ export interface ContactInsightCompletion {
   evidence: ContactInsightEvidence[];
   relevance: number;
   sourceDataVersion: string;
+  /** W0058（G-3）：同一调用产出的名片推测；与洞察同一条语句写进行，之后再写回联系人。 */
+  profileInference?: StoredProfileInference | null;
+}
+
+/** W0058：推测写回联系人失败（冲突等）后由维护任务重放的上限；到上限置 skipped 并记日志。 */
+export const CONTACT_INSIGHT_PROFILE_APPLY_MAX_ATTEMPTS = 3;
+
+export interface PendingProfileApply {
+  actorId: string;
+  contactId: string;
+  profileInference: StoredProfileInference;
 }
 
 export interface ContactInsightRepository {
@@ -330,7 +342,15 @@ export interface ContactInsightRepository {
   ownsContact(actorId: string, contactId: string): Promise<boolean>;
   /** 单人重新生成：CAS 领取这一行的租约；已有执行器在跑返回 null。 */
   claimSingle(input: { actorId: string; contactId: string; owner: string; now: Date; leaseMs: number }): Promise<ContactInsightRow | null>;
-  complete(input: { actorId: string; owner: string; claimedAt: string; goalHash: string; results: readonly ContactInsightCompletion[]; usage: Record<string, unknown> | null; model: string; now: Date }): Promise<number>;
+  /** 返回实际写入（仍持有租约）的联系人 id。 */
+  complete(input: { actorId: string; owner: string; claimedAt: string; goalHash: string; results: readonly ContactInsightCompletion[]; usage: Record<string, unknown> | null; model: string; now: Date }): Promise<string[]>;
+  /** W0058：待写回联系人的推测（`profile_apply_state = pending`、未在生成中），按更新时间取 ≤limit 行。 */
+  listPendingProfileApplies(input: { limit: number }): Promise<PendingProfileApply[]>;
+  /**
+   * W0058：记录一次写回结果。applied → applied；failed → 次数 +1，未到上限保持 pending（下一轮重放），到上限置 skipped。
+   * 只改仍是 pending 的行（期间被新一次生成覆盖的不动）。返回新状态；行已不是 pending 返回 null。
+   */
+  recordProfileApply(input: { actorId: string; contactId: string; outcome: "applied" | "failed"; now: Date }): Promise<"applied" | "pending" | "skipped" | null>;
   /** 数据没变（版本与目标都相同）：清掉待更新，不改文字。 */
   markUnchanged(input: { actorId: string; owner: string; claimedAt: string; contactIds: readonly string[]; now: Date }): Promise<number>;
   /** 生成失败。`retry`（W0057）：按本轮失败次数排期自动重试（见文件头）；否则清待更新、停下。 */
@@ -493,12 +513,14 @@ export function createPostgresContactInsightRepository(input: { client: InsightS
       return result.rows[0] ? toContactInsightRow(result.rows[0]) : null;
     },
     async complete({ actorId, owner, claimedAt, goalHash, results, usage, model, now }) {
-      let written = 0;
+      const written: string[] = [];
       for (const entry of results) {
+        const inference = entry.profileInference ?? null;
         const updated = await client.query<Row>(
           `/* contact-insights:complete */
           update contact_insights set status = 'ready', goal_relation = $5::jsonb, next_step = $6::jsonb, evidence = $7::jsonb,
             relevance = $8, source_data_version = $9, goal_hash = $10, usage = $11::jsonb, model = $12, generated_at = $13::timestamptz,
+            profile_inference = $15::jsonb, profile_apply_state = $16, profile_apply_attempts = 0,
             last_error_code = null, deferred_until = null, retry_count = 0, ${RELEASE}, ${CLEAR_DIRTY}, updated_at = $13::timestamptz
           where workspace_id = $1 and actor_id = $2 and contact_id = $3 and lease_owner = $4 and claimed_at = $14::timestamptz
           returning contact_id`,
@@ -506,11 +528,41 @@ export function createPostgresContactInsightRepository(input: { client: InsightS
             workspaceId, actorId, entry.contactId, owner, JSON.stringify(entry.goalRelation), JSON.stringify(entry.nextStep),
             JSON.stringify(entry.evidence), Math.max(0, Math.min(100, Math.round(entry.relevance))), entry.sourceDataVersion, goalHash,
             usage === null ? null : JSON.stringify(usage), model.slice(0, 200), now.toISOString(), claimedAt,
+            inference === null ? null : JSON.stringify(inference), profileInferenceIsEmpty(inference) ? null : "pending",
           ],
         );
-        written += updated.rows.length;
+        written.push(...updated.rows.map((row) => String(row.contact_id)));
       }
       return written;
+    },
+    async listPendingProfileApplies({ limit }) {
+      const rows = await client.query<Row>(
+        `/* contact-insights:profile-pending */
+        select actor_id, contact_id, profile_inference from contact_insights
+        where workspace_id = $1 and profile_apply_state = 'pending' and ai_state <> 'started'
+        order by updated_at, actor_id, contact_id
+        limit $2`,
+        [workspaceId, Math.max(1, Math.min(200, limit))],
+      );
+      return rows.rows.flatMap((row) => {
+        const profileInference = readStoredProfileInference(row.profile_inference);
+        return profileInference ? [{ actorId: String(row.actor_id), contactId: String(row.contact_id), profileInference }] : [];
+      });
+    },
+    async recordProfileApply({ actorId, contactId, outcome, now }) {
+      const result = await client.query<Row>(
+        `/* contact-insights:profile-apply */
+        update contact_insights set
+          profile_apply_attempts = case when $4::text = 'applied' then profile_apply_attempts else profile_apply_attempts + 1 end,
+          profile_apply_state = case when $4::text = 'applied' then 'applied'
+            when profile_apply_attempts + 1 >= ${CONTACT_INSIGHT_PROFILE_APPLY_MAX_ATTEMPTS} then 'skipped' else 'pending' end,
+          updated_at = $5::timestamptz
+        where workspace_id = $1 and actor_id = $2 and contact_id = $3 and profile_apply_state = 'pending'
+        returning profile_apply_state`,
+        [workspaceId, actorId, contactId, outcome, now.toISOString()],
+      );
+      const state = result.rows[0]?.profile_apply_state;
+      return state === "applied" || state === "pending" || state === "skipped" ? state : null;
     },
     async markUnchanged({ actorId, owner, claimedAt, contactIds, now }) {
       if (!contactIds.length) return 0;

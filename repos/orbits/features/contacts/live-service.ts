@@ -103,6 +103,17 @@ export interface LiveContactsGraphProvider {
     values: readonly EnrichedValue[],
     at: string,
   ) => LiveContactsProviderResult<readonly AppliedEnrichmentField[]>;
+  /**
+   * W0058：洞察同一调用产出的名片推测写回 offering／seeking／topics（来源 ai／card_inference）。
+   * 完整来源判定：用户手改或清空、memo 提取、存量无来源值都不覆盖；只替换空栏或旧的 card_inference。
+   * 条件更新冲突重读最多再试 2 次，仍冲突抛 AppError CONFLICT。
+   */
+  applyContactCardInference?: (
+    contactId: string,
+    actorId: string,
+    values: readonly EnrichedValue[],
+    at: string,
+  ) => LiveContactsProviderResult<readonly AppliedEnrichmentField[]>;
 }
 
 export interface ContactEnrichmentEdit {
