@@ -1656,6 +1656,7 @@ export const ja = {
   "taskDetail.cancelReminder": "キャンセル",
   "taskDetail.changeHistory": "変更履歴",
   "taskDetail.deleteTask": "タスクを削除",
+  "taskDetail.cancelTask": "タスクを取り消す",
   "relationshipTasks.signIn": "IORBITを開くにはログインしてください。",
   "relationshipTasks.selectFirst": "閲覧可能な連絡先または関連タスクを選択してください。",
   "relationshipTasks.confirmNext": "次のアクションを確認",

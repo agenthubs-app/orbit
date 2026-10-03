@@ -366,6 +366,14 @@ export function TaskDetailScreen() {
     });
   }
 
+  async function cancelTask() {
+    await mutate("patch", taskPath(taskId), { action: "cancel" }, () => {
+      notifyReminderPlansChanged();
+      setMoreOpen(false);
+      refresh();
+    });
+  }
+
   async function deleteTask() {
     await mutate("delete", taskPath(taskId), { ...(baseline ? { expectedUpdatedAt: baseline.updatedAt } : {}) }, () => {
       notifyReminderPlansChanged();
@@ -622,6 +630,9 @@ export function TaskDetailScreen() {
                     </View>
                   ))}
 
+                  {detail.status === "open" ? <Pressable accessibilityRole="button" disabled={saving || offline && !isOfflineTaskCategory(detail.category)} onPress={cancelTask} style={styles.sheetRow}>
+                    <Text style={styles.sheetRowAction}>{locale.t("taskDetail.cancelTask")}</Text>
+                  </Pressable> : null}
                   <Pressable accessibilityRole="button" disabled={saving || offline && !isOfflineTaskCategory(detail.category)} onPress={deleteTask} style={styles.deleteButton}>
                     <Ionicons color={colors.rose} name="trash-outline" size={18} />
                     <Text style={styles.deleteText}>{locale.t("taskDetail.deleteTask")}</Text>
@@ -635,7 +646,7 @@ export function TaskDetailScreen() {
     </AppScreen>
     {detail ? <View testID="task-detail-actions" style={[styles.actionDock, { paddingBottom: Math.max(24, insets.bottom) }]}>
       <View style={styles.actionContent}>
-        {detail.status !== "cancelled" ? <Pressable accessibilityRole="button" disabled={saving || offline} onPress={changeStatus} style={({ pressed }) => [styles.completeButton, detail.status === "completed" ? styles.reopenButton : null, pressed ? styles.pressed : null]}>
+        {detail.status !== "cancelled" ? <Pressable accessibilityRole="button" disabled={saving || offline && !isOfflineTaskCategory(detail.category)} onPress={changeStatus} style={({ pressed }) => [styles.completeButton, detail.status === "completed" ? styles.reopenButton : null, pressed ? styles.pressed : null]}>
           <Text style={detail.status === "completed" ? styles.reopenButtonText : styles.completeButtonText}>{locale.t(detail.status === "completed" ? "taskDetail.restore" : "taskDetail.markComplete")}</Text>
         </Pressable> : null}
         <Pressable accessibilityLabel={locale.t("taskDetail.edit")} accessibilityRole="button" disabled={saving || offline && !isOfflineTaskCategory(detail.category)} onPress={() => titleInputRef.current?.focus()} style={({ pressed }) => [styles.editButton, pressed && styles.pressed]}>

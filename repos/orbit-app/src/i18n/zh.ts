@@ -1656,6 +1656,7 @@ export const zh = {
   "taskDetail.cancelReminder": "取消",
   "taskDetail.changeHistory": "变更历史",
   "taskDetail.deleteTask": "删除待办",
+  "taskDetail.cancelTask": "取消待办",
   "relationshipTasks.signIn": "请先登录后再打开 IORBIT。",
   "relationshipTasks.selectFirst": "请先选择可读取的联系人或关联事项。",
   "relationshipTasks.confirmNext": "确认下一步",

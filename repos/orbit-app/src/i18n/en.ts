@@ -1656,6 +1656,7 @@ export const en = {
   "taskDetail.cancelReminder": "Cancel",
   "taskDetail.changeHistory": "Change history",
   "taskDetail.deleteTask": "Delete task",
+  "taskDetail.cancelTask": "Cancel task",
   "relationshipTasks.signIn": "Sign in before opening IORBIT.",
   "relationshipTasks.selectFirst": "Select a readable person or related task first.",
   "relationshipTasks.confirmNext": "Confirm next step",

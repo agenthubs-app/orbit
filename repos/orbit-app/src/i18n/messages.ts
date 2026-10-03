@@ -1717,6 +1717,7 @@ export const messageKeys = [
   "taskDetail.cancelReminder",
   "taskDetail.changeHistory",
   "taskDetail.deleteTask",
+  "taskDetail.cancelTask",
   "relationshipTasks.signIn",
   "relationshipTasks.selectFirst",
   "relationshipTasks.confirmNext",

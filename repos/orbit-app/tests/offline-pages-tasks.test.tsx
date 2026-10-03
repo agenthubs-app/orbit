@@ -102,3 +102,38 @@ test("task detail on the phone: a snapshot-cache answer while the server is unre
   assert.equal(await page.getByLabel("标题", { exact: false }).first().isEditable(), false);
   assert.equal(await page.getByText("缓存里的旧标题").count(), 0, "the lease-bound device copy, not the snapshot");
 });
+
+test("task detail on the phone offline: the actor's own work task completes, cancels and deletes into the device outbox (0133)", async (t) => {
+  const work = task("t7", "整理路演材料", { category: "work" });
+  const open = () => harness.open(t, { screen: "detail", platform: "ios", taskOutbox: true, online: false, syncStatus: "stale", params: { id: "t7" }, records: { task: [work] } });
+  const writes = async (page: Awaited<ReturnType<typeof open>>) => (await requestsOf(page)).filter((entry) => !entry.startsWith("get:") && !entry.startsWith("resource:"));
+  const enqueued = (page: Awaited<ReturnType<typeof open>>) => fixtureValue<Array<{ operation: string; id: string; requestJson: string }>>(page, "enqueued");
+
+  const page = await open();
+  await page.getByText(OFFLINE_BANNER).waitFor();
+  assert.equal(await page.getByLabel("待办标题").isEditable(), true, "own work task is editable offline");
+  const complete = page.getByRole("button", { name: "标记完成", exact: true });
+  assert.equal(await complete.isDisabled(), false, "the dock's complete button works offline for an own task");
+  await complete.dispatchEvent("click");
+  await page.waitForFunction(() => ((window as any).fixture.enqueued ?? []).length === 1);
+  assert.deepEqual((await enqueued(page)).map(({ operation, id }) => ({ operation, id })), [{ operation: "complete", id: "t7" }]);
+
+  const cancelPage = await open();
+  await cancelPage.getByText(OFFLINE_BANNER).waitFor();
+  await cancelPage.getByRole("button", { name: "更多待办操作" }).first().dispatchEvent("click");
+  await cancelPage.getByRole("button", { name: "取消待办", exact: true }).dispatchEvent("click");
+  await cancelPage.waitForFunction(() => ((window as any).fixture.enqueued ?? []).length === 1);
+  const [cancel] = await enqueued(cancelPage);
+  assert.equal(cancel?.operation, "cancel");
+  assert.deepEqual(Object.keys(JSON.parse(cancel!.requestJson)).sort(), ["action", "idempotencyKey"], "status operations carry no version (D5)");
+
+  const deletePage = await open();
+  await deletePage.getByText(OFFLINE_BANNER).waitFor();
+  await deletePage.getByRole("button", { name: "更多待办操作" }).first().dispatchEvent("click");
+  await deletePage.getByRole("button", { name: "删除待办", exact: true }).dispatchEvent("click");
+  await deletePage.waitForFunction(() => ((window as any).fixture.enqueued ?? []).length === 1);
+  const [remove] = await enqueued(deletePage);
+  assert.equal(remove?.operation, "delete");
+  assert.equal(JSON.parse(remove!.requestJson).expectedUpdatedAt, "2026-09-27T00:00:00.000Z", "offline delete carries the mirrored version (D5)");
+  for (const p of [page, cancelPage, deletePage]) assert.deepEqual(await writes(p), [], "nothing is sent while offline");
+});
