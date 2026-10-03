@@ -545,6 +545,10 @@ export const NETWORK_STYLES = `
   padding: 0; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; letter-spacing: 0; line-height: normal; transition: none; font-weight: 400; }
 [data-orbit-real-page="network"] .btn.nw-modal-close:hover { background: #ECEEFB; }
 [data-orbit-real-page="network"] .btn.nw-modal-close:active { transform: none; }
+/* W0059：左上「‹ 返回 {来源}」文字按钮（原型画板①顶栏）。 */
+[data-orbit-real-page="network"] .btn.nw-detail-back { border: 0; background: transparent; color: #4B4FC7; font-size: 14px; font-weight: 600; padding: 6px 10px 6px 4px; border-radius: 10px; min-height: 36px; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; letter-spacing: 0; line-height: normal; transition: none; cursor: pointer; text-decoration: none; }
+[data-orbit-real-page="network"] .btn.nw-detail-back:hover { background: #ECEEFB; }
+[data-orbit-real-page="network"] .btn.nw-detail-back:active { transform: none; }
 [data-orbit-real-page="network"] .nw-detail-hero { display: flex; flex-wrap: wrap; align-items: center; gap: 24px; }
 [data-orbit-real-page="network"] .nw-modal-avatar { width: 112px; height: 112px; border-radius: 50%; background: #DDDEFA; color: #2E3270; display: flex; align-items: center; justify-content: center; font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 44px;
   /* 非设计声明：flex 子项防压缩（设计里 span 不受父级压缩，实际列表长文案会挤压头像） */

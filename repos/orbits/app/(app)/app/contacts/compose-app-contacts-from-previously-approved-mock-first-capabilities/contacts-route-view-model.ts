@@ -253,13 +253,13 @@ function listSummary(payload: ContactsListSearchPayload): string {
   return `${formatCount(payload.contacts.length, "source-backed contact")} are available from manual, external, email, and event evidence.`;
 }
 
-// detail href 兼容旧 demo 联系人的固定路由，其它联系人按 id 映射。
-function contactDetailHref(contact: ContactListItem): string {
+// detail href 兼容旧 demo 联系人的固定路由，其它联系人按 id 映射（W0059：id 做 URL 编码）。
+export function contactDetailHref(contact: ContactListItem): string {
   if (contact.displayName === "Kenji Watanabe") {
     return "/app/contacts/demo-contact-1";
   }
 
-  return `/app/contacts/${contact.id.replace(/^contact:/, "")}`;
+  return `/app/contacts/${encodeURIComponent(contact.id.replace(/^contact:/, ""))}`;
 }
 
 function humanList(items: readonly string[]): string {

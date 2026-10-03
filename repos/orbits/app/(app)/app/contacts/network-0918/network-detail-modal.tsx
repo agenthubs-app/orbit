@@ -1,7 +1,8 @@
 /**
  * 联系人详情弹窗（Network v2 第 708–788 行）。
  * 数据只来自详情路由的 OrbitContactView（真实 notes / editableTags / lastInteraction / publicProfile）。
- * 关闭 = 真实导航到 closeHref；「写 memo」打开「写 memo」弹窗。
+ * W0059：×、底部关闭、Esc、遮罩、左上「‹ 返回 {来源}」都调用同一个 close()——有站内来路后退，
+ * 否则导航到 closeHref；「写 memo」打开「写 memo」弹窗。
  * W0047：手动阶段 UI 下线——「更新状态」按钮与「待设置关系」面板不再渲染（接口与阶段数据保留）；
  * 改为显示自动档位标签（新认识／有往来／核心／待唤醒，只由关系时间线推出）与「依据」面板（信号的日期、来源、时间线标题），
  * 不显示数字分数（W47-6），用户不能手改档位。
@@ -17,7 +18,8 @@
  */
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode, type Ref } from "react";
+import { useCallback, useContext, useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode, type Ref } from "react";
+import { AppRouterContext } from "next/dist/shared/lib/app-router-context.shared-runtime";
 
 import { buildDemoNetworkDetail, demoContactIdFromHref } from "../../_demo/demo-network";
 import { DemoTag, useDemoMode } from "../../_demo/demo-mode-core";
@@ -28,6 +30,8 @@ import { useOrbitLanguage } from "../../orbit-language-context";
 import { useOrbitModalA11y } from "../../orbit-modal-a11y";
 import { PlanNeedLinkPanel } from "../../agent/iorbit-0918/plan-match-sheet";
 import { ContactEnrichmentInline } from "./contact-enrichment-inline";
+import { DEFAULT_DETAIL_CLOSE_HREF, detailReturnLabel } from "./detail-return";
+import { consumeContactDetailReturn } from "./detail-return-recorder";
 import { SOURCE_LABEL, TIER_CHIP, TIER_LABEL, TIER_STYLE, metSummary, sourceOf, tierGroupOf } from "./network-model";
 
 type Translate = (copy: { en: string; zh: string }) => string;
@@ -152,16 +156,33 @@ export function NetworkDetailModal({ contact, closeHref, onFollow: openFollow, e
   // 示例里「写 memo」弹拦截层；真实页面打开「写 memo」弹窗。
   const onFollow = guardWrite ? () => guardWrite(t({ en: "memo", zh: "memo" })) : openFollow;
   const [basisOpen, setBasisOpen] = useState(false);
+  // W0059（D53）：有站内来路（一次性导航意图，挂载时消费）→ 后退回原页，浏览器恢复滚动；
+  // 无来路 → closeHref（页面已校验的 returnTo，或 /app/contacts）。示例弹窗（传了 onClose）只收起、不读来路。
+  // 不用 useRouter()：没有 App Router 的渲染环境（组件测试、SSR 片段）下它会抛错；router.back() 本身就是 history.back()。
+  const router = useContext(AppRouterContext);
+  const [returnFrom, setReturnFrom] = useState<string | null>(null);
+  const returnConsumed = useRef(false);
+  useEffect(() => {
+    if (onClose || returnConsumed.current) return;
+    returnConsumed.current = true;
+    const from = consumeContactDetailReturn();
+    if (from) setReturnFrom(from);
+  }, [onClose]);
   const close = useCallback(() => {
     if (onClose) onClose();
-    else window.location.assign(closeHref);
-  }, [closeHref, onClose]);
-  const onCloseLink = onClose
-    ? (event: MouseEvent<HTMLAnchorElement>) => {
-        event.preventDefault();
-        onClose();
-      }
-    : undefined;
+    else if (returnFrom) {
+      if (router) router.back();
+      else window.history.back();
+    } else window.location.assign(closeHref);
+  }, [closeHref, onClose, returnFrom, router]);
+  // 两个关闭链接保留 href（无 JS、中键／修饰键新标签页仍可用）；普通点击走同一个 close()。
+  const onCloseLink = (event: MouseEvent<HTMLAnchorElement>) => {
+    if (event.button !== undefined && event.button !== 0) return;
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    close();
+  };
+  const backLabel = detailReturnLabel(onClose ? null : returnFrom ?? (closeHref !== DEFAULT_DETAIL_CLOSE_HREF ? closeHref : null));
   const dash = "—";
   const tier = tierGroupOf(contact.relationshipStrength);
   const source = sourceOf(contact);
@@ -230,7 +251,7 @@ export function NetworkDetailModal({ contact, closeHref, onFollow: openFollow, e
     <div className="nw-overlay" onClick={onOverlayClick} data-network-modal="detail">
       <div ref={dialogRef} className="nw-modal nw-modal-detail" role="dialog" aria-modal="true" aria-label={t({ en: "Contact detail", zh: "联系人详情" })}>
         <div className="nw-modal-head">
-          <strong className="nw-modal-title">{t({ en: "Contact detail", zh: "联系人详情" })}</strong>
+          <a className="btn nw-detail-back" href={closeHref} onClick={onCloseLink} data-network-detail-back>‹ {t(backLabel)}</a>
           <a ref={closeRef} className="btn nw-modal-close" href={closeHref} onClick={onCloseLink} aria-label={t({ en: "Close", zh: "关闭" })}>×</a>
         </div>
         <div className="nw-detail-hero">

@@ -3,7 +3,8 @@
  *
  * 从动态路由参数读取 contact id，并通过 route-level capability service
  * 组合详情、证据和关系价值数据；成功时在「所有人脉」列表屏之上渲染
- * Orbit_0918 联系人详情弹窗（NetworkAll openDetail），关闭 = 导航回 /app/contacts。
+ * Orbit_0918 联系人详情弹窗（NetworkAll openDetail）。W0059：关闭有站内来路时后退回原页，
+ * 否则去合法的 `returnTo`（`sanitizeReturnTo`），再否则 /app/contacts。
  *
  * W0005：`demo:` 前缀的 id 是引导期示例联系人，只在本人处于示例里时存在——此时用示例数据渲染
  * 列表与详情（不调用任何真实联系人读取）；开关关闭、不在引导期或 id 不认识时一律 404，
@@ -50,6 +51,7 @@ import { readContactInsightDetail } from "../../../../../features/contacts/insig
 import { contactInsightView } from "../../../../../features/contacts/insights/view";
 import { NetworkInsightPanel } from "../network-0918/network-insight-panel";
 import { readAnalysisThreshold } from "../../../../../features/network-analysis/analysis-threshold-reader";
+import { DEFAULT_DETAIL_CLOSE_HREF, sanitizeReturnTo } from "../network-0918/detail-return";
 
 function decodeContactRouteId(id: string): string {
   try {
@@ -135,6 +137,8 @@ export default async function AppContactDetailPage({
   const appointmentQueryPresent = !memoQueryPresent && query.appointmentId !== undefined;
   const appointmentRequested = appointmentQueryPresent && Boolean(appointmentId && eventId);
   const invalidAppointmentRequest = appointmentQueryPresent && !appointmentRequested;
+  // W0059：无站内来路时关闭去哪——合法的 returnTo（只收 /app/ 相对路径，非自身），否则 /app/contacts。
+  const closeHref = sanitizeReturnTo(query.returnTo, contactId) ?? DEFAULT_DETAIL_CLOSE_HREF;
   const session = await auth();
   if (!session?.user?.id) {
     redirect(
@@ -165,7 +169,7 @@ export default async function AppContactDetailPage({
           <NetworkAll
             key={`${actor.id}:${contactId}`}
             viewModel={buildDemoNetworkViewModel(now, lang)}
-            openDetail={{ contact: demoDetail, closeHref: "/app/contacts" }}
+            openDetail={{ contact: demoDetail, closeHref }}
           />
         </NetworkDemoFrame>
       </>
@@ -276,13 +280,13 @@ export default async function AppContactDetailPage({
         {cards?.state === "ready" ? <NetworkCards
           key={`${actor.id}:${contactId}`}
           view={cards.view}
-          openDetail={{ contact: detail, closeHref: "/app/contacts", extra, insight }}
+          openDetail={{ contact: detail, closeHref, extra, insight }}
         /> : <>
         {cards?.state === "error" && <p role="alert">{cards.message}</p>}
         <NetworkAll
           key={`${actor.id}:${contactId}`}
           viewModel={listVm}
-          openDetail={{ contact: detail, closeHref: "/app/contacts", extra, insight }}
+          openDetail={{ contact: detail, closeHref, extra, insight }}
         />
         </>}
       </div>
