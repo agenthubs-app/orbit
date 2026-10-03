@@ -76,3 +76,43 @@ test("task create, edit, and complete replay in order under one server ID", asyn
   assert.deepEqual(await repository.listRecordsByIds({ workspaceId, kind: "task", ids: [localId] }), []);
   assert.equal(await repository.resolveAlias({ workspaceId, domainId: "tasks", localId, now: new Date(now + 10_000).toISOString() }), formalId);
 });
+
+test("an uploaded task delete is acknowledged whether or not the pull still carries its delete change (0133 Simulator finding)", async t => {
+  for (const pageCarriesDelete of [true, false]) {
+    const actorId = "actor-a", workspaceId = "workspace-a", baseUrl = "https://tasks.example", authorizationEpoch = "tasks-e1";
+    const taskId = "task:server-del", now = Date.parse("2026-09-20T00:00:00.000Z");
+    const directory = mkdtempSync(join(tmpdir(), "orbit-task-delete-"));
+    const database = new NodeTestDatabase(join(directory, "sync.sqlite"));
+    t.after(() => { try { database.close(); } catch {} rmSync(directory, { recursive: true, force: true }); });
+    await initializeLocalSyncDatabase(database);
+    const scope = { baseUrl, actorId, workspaceId, domainId: "tasks", authorizationEpoch };
+    const repository = createLocalSyncRepository({ actorId, database, baseUrl, hashPayload: async serialized => createHash("sha256").update(serialized).digest("hex"), registeredDomainIds: ["tasks"], activeReadScopes: () => [scope] });
+    await repository.setLease({ version: 2, baseUrl, actorId, subject: "fixture", sessionExpiresAt: now + 86400000, offlineReadExpiresAt: now + 86400000,
+      lastVerifiedAt: now, grants: [{ workspaceId, domainId: "tasks", authorizationEpoch }], databaseKeyRef: "fixture" });
+    const updatedAt = new Date(now).toISOString();
+    const serverTask = { id: taskId, accountId: actorId, ownerUserId: actorId, title: "Old errand", category: "other", status: "open", priority: "normal", source: "manual", createdAt: updatedAt, updatedAt };
+    await repository.applyDomainPage(scope, { domainId: "tasks", schemaVersion: 1, registryVersion: 1, authorizationEpoch,
+      changes: [{ id: taskId, revision: "r1", operation: "upsert", payload: serverTask }], nextCursor: "tasks:e1:1", highWatermark: "1", hasMore: false, generation: "g1", serverTime: updatedAt });
+    await repository.enqueueOutboxMutation({ ...buildOfflineTaskMutation({ mutationId: "task-delete", entityId: taskId, operation: "delete", baseRevision: "r1",
+      requestBody: { expectedUpdatedAt: updatedAt, idempotencyKey: "task-delete" }, createdAt: updatedAt }), actorId, workspaceId });
+    const syncClient: SyncClient = {
+      async getLease() { throw new Error("unused"); }, async getManifest() { throw new Error("unused"); }, async getPage() { throw new Error("unused"); },
+      async getDomainPage() {
+        return { domainId: "tasks", schemaVersion: 1, registryVersion: 1, authorizationEpoch,
+          changes: pageCarriesDelete ? [{ id: taskId, revision: "r2", operation: "delete" as const, payload: null }] : [],
+          nextCursor: "tasks:e1:2", highWatermark: "2", hasMore: false, generation: "g1", serverTime: new Date(now + 1000).toISOString() };
+      },
+    };
+    let deletes = 0;
+    const writeClient = {
+      async post() { throw new Error("unused"); }, async patch() { throw new Error("unused"); },
+      async delete() { deletes += 1; return { success: true as const, status: 200, data: { task: serverTask }, meta: {} }; },
+    } as unknown as Pick<OrbitApiClient, "post" | "patch" | "delete">;
+    const uploaded = await createTaskOutboxUploader({ actorId, baseUrl, repository, syncClient, writeClient, workspaceId, now: () => now + 10_000 }).run();
+    assert.equal(uploaded.acknowledged, 1, `pageCarriesDelete=${pageCarriesDelete}`);
+    assert.equal(deletes, 1, "the delete is sent once, not retried");
+    assert.equal((await repository.listQueuedMutations({ workspaceId, domainId: "tasks" })).length, 0);
+    const visible = (await repository.listRecordsByIds({ workspaceId, kind: "task", ids: [taskId] })).filter(record => record.deletedAt === null);
+    assert.deepEqual(visible, [], "the deleted task is not readable on the device");
+  }
+});

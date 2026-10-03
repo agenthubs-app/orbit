@@ -111,16 +111,22 @@ async function readCanonicalTask(
     if (page.authorizationEpoch !== grant.authorizationEpoch) return null;
     await input.repository.applyDomainPage(scope, page);
     const change = page.changes.find(item => item.id === taskId);
-    if (change?.operation === "upsert" && change.payload) {
-      if (deleted || receiptTask && !sameTaskReceipt(change.payload, receiptTask)) return null;
+    if (change?.operation === "upsert" && change.payload && !deleted) {
+      if (receiptTask && !sameTaskReceipt(change.payload, receiptTask)) return null;
       return await input.repository.getRecord({ workspaceId: input.workspaceId, kind: "task", id: taskId });
-    }
-    if (change?.operation === "delete" && deleted) {
-      const tombstone = await input.repository.getRecord({ workspaceId: input.workspaceId, kind: "task", id: taskId });
-      return tombstone?.deletedAt ? tombstone : null;
     }
     if (!page.hasMore) break;
     cursor = page.nextCursor;
+  }
+  if (deleted) {
+    // The 2xx DELETE receipt is authoritative. Applying a delete change hard-removes the synced mirror row, so the
+    // acknowledgement carries an explicit tombstone instead of waiting for a row that no longer exists.
+    const latest = await input.repository.getRecord({ workspaceId: input.workspaceId, kind: "task", id: taskId });
+    if (latest?.deletedAt) return latest;
+    const base = latest ?? prior;
+    const at = new Date(now()).toISOString();
+    return { actorId: input.actorId, workspaceId: input.workspaceId, kind: "task", id: taskId, revision: base?.revision ?? "deleted",
+      updatedAt: at, deletedAt: at, payload: null, syncState: "synced", aiVisibility: base?.aiVisibility ?? "excluded" };
   }
   if (priorMatches) return prior;
   const latest = await input.repository.getRecord({ workspaceId: input.workspaceId, kind: "task", id: taskId });
