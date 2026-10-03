@@ -48,6 +48,12 @@ test("Today online saves its first page; offline it shows that copy with 截至 
   assert.deepEqual((await requestsOf(page)).filter((entry) => !entry.startsWith("get:")), []);
 });
 
+test("Today offline on the phone says personal task changes sync later (0136 Simulator finding: it still said 新建和编辑需要联网)", async (t) => {
+  const page = await harness.open(t, { screen: "today", platform: "ios", taskOutbox: true, online: false, syncStatus: "stale", copies: { "today-page|main": copy(todayPayload) } });
+  await page.getByText(TASKS_OFFLINE_BANNER).waitFor();
+  assert.equal(await page.getByText(OFFLINE_BANNER).count(), 0);
+});
+
 test("Today offline without a copy says it is not on this device (no error block)", async (t) => {
   const page = await harness.open(t, { screen: "today", online: false });
   await page.getByText("这项内容还没保存在这台设备上，联网打开一次后断网也能看。").waitFor();

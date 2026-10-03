@@ -180,7 +180,7 @@ export function TodayScreen() {
       }
       title={locale.t("today.title")}
     >
-      {offline ? <OfflineNotice lastSyncedAt={todayState.copy?.lastSyncedAt ?? null} reason={todayState.copy?.reason ?? null} /> : null}
+      {offline ? <OfflineNotice lastSyncedAt={todayState.copy?.lastSyncedAt ?? null} reason={todayState.copy?.reason ?? null} queues="tasks" /> : null}
       {todayState.state.kind === "loading" ? <LoadingState /> : null}
       {todayState.state.kind === "offline" ? <NeedsNetworkState message={locale.t("sync.notOnDevice")} onRetry={todayState.state.refresh} /> : null}
       {todayState.state.kind === "failure" ? (
