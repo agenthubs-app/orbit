@@ -5,6 +5,7 @@ import { localScheduleEvents } from "../../view-models/event-day-local";
 import { readTaskListItems } from "../../view-models/task-list-scope";
 import { overlayQueuedTasks } from "../../view-models/tasks-mirror";
 import type { LocalSyncQueuedMutation } from "../../data/sync/local-sync-repository";
+import { overlayQueuedScheduleItems } from "../../view-models/personal-schedule-overlay";
 
 /**
  * Sprint 0115 (coordinator item from 0130): the calendar page reads the device
@@ -55,12 +56,12 @@ export function localScheduleTasks(records: readonly SyncRecord[], actorId = "",
   };
 }
 
-export function localScheduleItems(records: readonly SyncRecord[]): { scheduleItems: Record<string, unknown>[] } {
-  return {
-    scheduleItems: records
-      .filter((record) => record.deletedAt === null && record.payload && typeof record.payload === "object")
-      .map((record) => record.payload as Record<string, unknown>),
-  };
+export function localScheduleItems(records: readonly SyncRecord[], actorId = "", queued: readonly LocalSyncQueuedMutation[] = []): { scheduleItems: Record<string, unknown>[] } {
+  const payloads = records
+    .filter((record) => record.deletedAt === null && record.payload && typeof record.payload === "object")
+    .map((record) => record.payload as Record<string, unknown>);
+  // Sprint 0134: personal schedules changed on this device show their queued version, marked.
+  return { scheduleItems: actorId && queued.length ? overlayQueuedScheduleItems(payloads, queued, actorId) : payloads };
 }
 
 function part(state: Synced, ready: boolean, data: (records: readonly SyncRecord[]) => unknown): CalendarPart {
@@ -70,14 +71,14 @@ function part(state: Synced, ready: boolean, data: (records: readonly SyncRecord
   return { kind: "loading", data: null, message: "" };
 }
 
-export function mirrorScheduleCalendar(input: { tasks: Synced; schedule: Synced; events: Synced; ready: boolean; actorId: string; queued?: readonly LocalSyncQueuedMutation[]; refresh(): void }): ScheduleCalendarSource {
+export function mirrorScheduleCalendar(input: { tasks: Synced; schedule: Synced; events: Synced; ready: boolean; actorId: string; queued?: readonly LocalSyncQueuedMutation[]; scheduleQueued?: readonly LocalSyncQueuedMutation[]; refresh(): void }): ScheduleCalendarSource {
   const states = [input.tasks, input.schedule, input.events];
   const freshness = states.map((state) => mirrorFreshness(state, input.ready));
   const offline = freshness.some((entry) => entry.offline);
   const synced = freshness.map((entry) => entry.lastSyncedAt).filter((value): value is string => value !== null).sort();
   return {
     tasks: part(input.tasks, input.ready, records => localScheduleTasks(records, input.actorId, input.queued)),
-    scheduleItems: part(input.schedule, input.ready, localScheduleItems),
+    scheduleItems: part(input.schedule, input.ready, records => localScheduleItems(records, input.actorId, input.scheduleQueued)),
     events: part(input.events, input.ready, localScheduleEvents),
     refreshing: freshness.some((entry) => entry.refreshing),
     // The oldest copy decides what "as of" can honestly say.

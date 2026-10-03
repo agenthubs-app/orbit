@@ -13,9 +13,11 @@ export function isOfflineEligible(
   const privateNoteWrite = kind === "note" && (operation === "create" || operation === "update");
   const personalTaskWrite = kind === "task" &&
     ["create", "update", "complete", "reopen", "cancel", "delete"].includes(operation);
+  // Sprint 0134: non-recurring personal schedules (design D7; the series/occurrence rule is checked against the mirrored item).
+  const personalScheduleWrite = kind === "personal_schedule" && ["create", "update", "delete"].includes(operation);
   // Sprint 0135: a text message into a conversation the device holds and that is active.
   const relationshipMessageSend = kind === "relationship_message" && operation === "send";
-  return (privateNoteWrite || personalTaskWrite || relationshipMessageSend) &&
+  return (privateNoteWrite || personalTaskWrite || personalScheduleWrite || relationshipMessageSend) &&
     facts.actorPrivate && facts.confirmed && facts.connectionActive;
 }
 

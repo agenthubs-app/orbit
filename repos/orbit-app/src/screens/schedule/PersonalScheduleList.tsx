@@ -23,15 +23,18 @@ export function PersonalScheduleList() {
   const refresh = source.refresh;
   useFocusEffect(useCallback(() => { refresh(); }, [refresh]));
   const items = source.items;
+  // Sprint 0134: on the phone a new schedule can be created offline (it queues until the connection is back).
+  const createBlocked = source.offline && !source.outbox;
   return <View style={styles.section}>
-    <View style={styles.heading}><Text accessibilityRole="header" style={styles.title}>{locale.t("schedule.personalTitle")}</Text><Pressable accessibilityRole="button" accessibilityLabel={source.offline ? `${locale.t("schedule.newPersonal")}，${locale.t("sync.needsNetwork")}` : locale.t("schedule.newPersonal")} accessibilityState={{ disabled: source.offline }} disabled={source.offline} onPress={() => router.push("/schedule/personal/new" as Href)} style={styles.button}><Text style={[styles.link, source.offline && styles.disabled]}>{locale.t(source.offline ? "sync.needsNetwork" : "schedule.newPersonal")}</Text></Pressable></View>
+    <View style={styles.heading}><Text accessibilityRole="header" style={styles.title}>{locale.t("schedule.personalTitle")}</Text><Pressable accessibilityRole="button" accessibilityLabel={createBlocked ? `${locale.t("schedule.newPersonal")}，${locale.t("sync.needsNetwork")}` : locale.t("schedule.newPersonal")} accessibilityState={{ disabled: createBlocked }} disabled={createBlocked} onPress={() => router.push("/schedule/personal/new" as Href)} style={styles.button}><Text style={[styles.link, createBlocked && styles.disabled]}>{locale.t(createBlocked ? "sync.needsNetwork" : "schedule.newPersonal")}</Text></Pressable></View>
     {source.offline ? <OfflineNotice lastSyncedAt={source.lastSyncedAt} /> : null}
     {source.loading ? <LoadingState /> : null}
     {source.failed ? <ErrorState title={locale.t("schedule.personalLoadFailure")} message={locale.t("schedule.personalLoadFailureBody")} /> : null}
     <Pressable accessibilityRole="button" onPress={refresh} style={styles.button}><Text style={styles.link}>{locale.t("schedule.refreshPersonal")}</Text></Pressable>
     {items?.length === 0 ? <Text style={styles.detail}>{locale.t("schedule.emptyPersonal")}</Text> : null}
     {items?.map(item => { const parts = localParts(item.startsAt, timeZone); return <Pressable key={item.id} accessibilityRole="button" onPress={() => router.push(`/schedule/personal/${encodeURIComponent(item.id)}` as Href)} style={styles.row}>
-      <Text style={styles.title}>{item.title}</Text><Text style={styles.detail}>{[parts.date + " " + parts.time, item.location, locale.t(item.state === "ended" ? "schedule.stateEnded" : item.state === "ongoing" ? "schedule.stateOngoing" : "schedule.stateScheduled")].filter(Boolean).join(" · ")}</Text>
+      <Text style={styles.title}>{item.title}</Text><Text style={styles.detail}>{[parts.date + " " + parts.time, item.location, locale.t(item.state === "ended" ? "schedule.stateEnded" : item.state === "ongoing" ? "schedule.stateOngoing" : "schedule.stateScheduled"),
+        source.localStates?.[item.id] ? locale.t(source.localStates[item.id] === "conflict" ? "schedule.outboxConflict" : source.localStates[item.id] === "failed" ? "schedule.outboxFailed" : "schedule.outboxQueued") : null].filter(Boolean).join(" · ")}</Text>
     </Pressable>; })}
   </View>;
 }

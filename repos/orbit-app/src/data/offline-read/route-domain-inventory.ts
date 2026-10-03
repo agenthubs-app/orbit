@@ -72,7 +72,8 @@ function domainFor(path: string): string {
 
 function surfaceFrom([consumerFile, method, endpointTemplate]: SurfaceKey): ReadSurface {
   const domainId = domainFor(endpointTemplate);
-  const taskOutboxWrite = consumerFile === 'src/data/sync/task-outbox-upload.ts' && domainId === 'tasks'
+  const taskOutboxWrite = (consumerFile === 'src/data/sync/task-outbox-upload.ts' && domainId === 'tasks'
+    || consumerFile === 'src/data/sync/schedule-outbox-upload.ts' && domainId === 'personal-schedule')
     && ['POST', 'PATCH', 'DELETE'].includes(method);
   // Sprint 0135: the queued relationship message send (message plan M4).
   const messageOutboxWrite = consumerFile === 'src/data/sync/message-outbox-upload.ts' && domainId === 'messages' && method === 'POST';
@@ -121,6 +122,9 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/data/sync/task-outbox-upload.ts","POST","/api/tasks"],
   ["src/data/sync/task-outbox-upload.ts","PATCH","/api/tasks/:id"],
   ["src/data/sync/task-outbox-upload.ts","DELETE","/api/tasks/:id"],
+  ["src/data/sync/schedule-outbox-upload.ts","POST","/api/schedule-items"],
+  ["src/data/sync/schedule-outbox-upload.ts","PATCH","/api/schedule-items/:id"],
+  ["src/data/sync/schedule-outbox-upload.ts","DELETE","/api/schedule-items/:id"],
   ["src/data/sync/message-outbox-upload.ts","POST","/api/relationship-communication/conversations/:id/messages"],
   ["src/api/browser-auth.ts","GET","/api/auth/csrf"],
   ["src/api/browser-auth.ts","POST","/api/auth/callback/credentials"],

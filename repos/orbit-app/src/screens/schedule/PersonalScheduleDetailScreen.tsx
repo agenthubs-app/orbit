@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
-import { Linking, Pressable, RefreshControl, Text, View } from "react-native";
+import { Linking, Platform, Pressable, RefreshControl, Text, View } from "react-native";
+import * as Crypto from "expo-crypto";
+import { buildOfflineScheduleMutation, isOfflineScheduleEditable } from "../../data/sync/schedule-outbox-mutation";
+import { NOTE_DEPENDENCY_FAILED } from "../../data/sync/schedule-outbox-upload";
 import { useLocalSearchParams, useRouter, type Href } from "expo-router";
 import { AppScreen } from "../../components/AppScreen";
 import { LoadingState } from "../../components/LoadingState";
@@ -29,6 +32,30 @@ function Detail({ actorId, id, ready, scopeKey, savedVersion }: { actorId: strin
   const [view, setView] = useState<ReturnType<typeof personalScheduleDetail>>(null); const [error, setError] = useState("");
   const [rules, setRules] = useState<ReturnType<typeof personalScheduleDraft> | null>(null);
   const loading = source.loading;
+  // Sprint 0134: a one-off personal schedule stays editable offline on the phone (its change queues); a series does not.
+  const editBlocked = source.offline && !(Platform.OS !== "web" && !!source.outbox && isOfflineScheduleEditable(source.item, actorId));
+  const conflict = source.conflict ?? null;
+  const snapshot = conflict && typeof conflict.serverSnapshot === "object" && conflict.serverSnapshot !== null && !Array.isArray(conflict.serverSnapshot)
+    ? conflict.serverSnapshot as Record<string, unknown> : null;
+  const [confirmConflictDelete, setConfirmConflictDelete] = useState(false);
+  async function resolveConflict(resolution: "server" | "replace") {
+    if (!conflict || !source.outbox) return;
+    if (resolution === "replace" && conflict.operation === "delete" && !confirmConflictDelete) { setConfirmConflictDelete(true); return; }
+    try {
+      if (resolution === "server") {
+        await source.outbox.resolveConflict({ mutationId: conflict.mutationId, resolution });
+      } else {
+        if (!snapshot || typeof snapshot.updatedAt !== "string" || snapshot.id !== id || !conflict.requestJson) { setError(locale.t("schedule.conflictUnavailable")); return; }
+        const mutationId = `ios:personal:${Crypto.randomUUID()}`;
+        const requestBody = { ...(JSON.parse(conflict.requestJson) as Record<string, unknown>), expectedUpdatedAt: snapshot.updatedAt, idempotencyKey: mutationId };
+        const replacement = buildOfflineScheduleMutation({ mutationId, entityId: id, operation: conflict.operation, baseRevision: source.baseRevision ?? conflict.baseRevision,
+          requestBody, createdAt: new Date().toISOString() });
+        await source.outbox.resolveConflict({ mutationId: conflict.mutationId, resolution, replacement });
+        if (conflict.operation === "delete") { router.replace("/schedule" as Href); return; }
+      }
+      setConfirmConflictDelete(false); setError("");
+    } catch { setError(locale.t("schedule.conflictUnavailable")); }
+  }
   useEffect(() => {
     const item = source.item;
     if (!item) { setView(null); setRules(null); setError(source.errorKey ? locale.t(source.errorKey) : source.errorText); return; }
@@ -36,9 +63,17 @@ function Detail({ actorId, id, ready, scopeKey, savedVersion }: { actorId: strin
     const next = personalScheduleDetail(item, timeZone);
     if (!next) { setView(null); setRules(null); setError(locale.t("schedule.timezoneUnavailable")); } else { setError(""); setView(next); setRules(personalScheduleDraft(item, next.zone)); }
   }, [source.item, source.errorKey, source.errorText, timeZone, locale]);
-  return <AppScreen title={locale.t("personal53.detail")} backLabel={locale.t("schedule.title")} headerActions={view ? <Pressable accessibilityRole="button" accessibilityLabel={source.offline ? `${locale.t("personal53.edit")}，${locale.t("sync.needsNetwork")}` : locale.t("personal53.edit")} accessibilityState={{ disabled: source.offline }} disabled={source.offline} onPress={() => router.push(view.editHref as Href)} style={styles.action}><Text style={[styles.link, source.offline && styles.disabled]}>{locale.t(source.offline ? "sync.needsNetwork" : "personal53.edit")}</Text></Pressable> : null} refreshControl={<RefreshControl refreshing={loading} onRefresh={source.refresh} />}>
+  return <AppScreen title={locale.t("personal53.detail")} backLabel={locale.t("schedule.title")} headerActions={view ? <Pressable accessibilityRole="button" accessibilityLabel={editBlocked ? `${locale.t("personal53.edit")}，${locale.t("sync.needsNetwork")}` : locale.t("personal53.edit")} accessibilityState={{ disabled: editBlocked }} disabled={editBlocked} onPress={() => router.push(view.editHref as Href)} style={styles.action}><Text style={[styles.link, editBlocked && styles.disabled]}>{locale.t(editBlocked ? "sync.needsNetwork" : "personal53.edit")}</Text></Pressable> : null} refreshControl={<RefreshControl refreshing={loading} onRefresh={source.refresh} />}>
     {source.offline ? <OfflineNotice lastSyncedAt={source.lastSyncedAt} /> : null}
     {loading ? <LoadingState /> : null}{error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
+    {source.localMutationState && !conflict ? <Text style={source.localMutationState === "failed" ? styles.error : styles.hint}>{locale.t(source.localMutationState === "failed" ? "schedule.outboxFailed" : "schedule.outboxQueued")}</Text> : null}
+    {source.failure ? <Text accessibilityRole="alert" style={styles.error}>{locale.t(source.failure.lastErrorCode === NOTE_DEPENDENCY_FAILED ? "schedule.noteDependencyFailed" : "schedule.outboxFailedBody")}</Text> : null}
+    {conflict ? <View style={styles.conflict}>
+      <Text style={styles.body}>{locale.t(conflict.operation === "delete" ? "schedule.deleteConflict" : snapshot ? "schedule.scheduleConflict" : "schedule.deletedElsewhere")}</Text>
+      {snapshot && typeof snapshot.title === "string" ? <Text style={styles.hint}>{locale.t("schedule.serverVersionNamed", { title: snapshot.title })}</Text> : null}
+      <Pressable accessibilityRole="button" onPress={() => void resolveConflict("server")} style={styles.secondary}><Text style={styles.body}>{locale.t("schedule.useServerVersion")}</Text></Pressable>
+      {snapshot ? <Pressable accessibilityRole="button" onPress={() => void resolveConflict("replace")} style={styles.secondary}><Text style={conflict.operation === "delete" ? styles.error : styles.body}>{locale.t(conflict.operation === "delete" ? confirmConflictDelete ? "schedule.confirmDeleteConflict" : "schedule.deleteAnyway" : "schedule.keepLocalVersion")}</Text></Pressable> : null}
+    </View> : null}
     {view ? <>{view.updatedAt === savedVersion ? <Text accessibilityLiveRegion="polite" style={styles.hint}>{locale.t("schedule.saved")}</Text> : null}<Text style={styles.hint}>{locale.t("personal53.private")}</Text><Text accessibilityRole="header" style={styles.title}>{view.title}</Text>
       <View style={styles.timeCard}><View><Text style={styles.hint}>{locale.t("schedule.fieldStartTime")}</Text><Text style={styles.time}>{view.allDay ? locale.t("schedule.allDay") : view.startTime}</Text></View><Text style={styles.hint}>→</Text><View><Text style={styles.hint}>{locale.t("schedule.fieldEndTime")}</Text><Text style={styles.time}>{view.allDay ? locale.t("schedule.allDay") : view.endTime ?? "—"}</Text></View></View>
       <Text style={styles.hint}>{[view.date, view.endDate && view.endDate !== view.date ? view.endDate : null, view.durationMinutes !== null ? locale.t("home.durationMinutes", { count: view.durationMinutes }) : locale.t("personal53.noEnd"), view.zone].filter(Boolean).join(" · ")}</Text>
@@ -47,10 +82,11 @@ function Detail({ actorId, id, ready, scopeKey, savedVersion }: { actorId: strin
       {rules ? <PersonalScheduleRules draft={rules} readOnly /> : null}
       <Text style={styles.hint}>{locale.t("personal60.localOnly")}</Text>
       {view.meetingUrl ? <Pressable accessibilityRole="button" accessibilityLabel={locale.t("personal53.join")} onPress={() => { void Linking.openURL(view.meetingUrl!).catch(() => setError(locale.t("schedule.operationFailed"))); }} style={styles.primary}><Text style={styles.primaryText}>{locale.t("personal53.join")}</Text></Pressable> : null}
-      <Pressable accessibilityRole="button" accessibilityLabel={source.offline ? `${locale.t("personal53.reschedule")}，${locale.t("sync.needsNetwork")}` : locale.t("personal53.reschedule")} accessibilityState={{ disabled: source.offline }} disabled={source.offline} onPress={() => router.push(`${view.editHref}?focus=time` as Href)} style={[styles.secondary, source.offline && styles.disabledBox]}><Text style={styles.body}>{locale.t("personal53.reschedule")}</Text></Pressable>
+      <Pressable accessibilityRole="button" accessibilityLabel={editBlocked ? `${locale.t("personal53.reschedule")}，${locale.t("sync.needsNetwork")}` : locale.t("personal53.reschedule")} accessibilityState={{ disabled: editBlocked }} disabled={editBlocked} onPress={() => router.push(`${view.editHref}?focus=time` as Href)} style={[styles.secondary, editBlocked && styles.disabledBox]}><Text style={styles.body}>{locale.t("personal53.reschedule")}</Text></Pressable>
     </> : null}
   </AppScreen>;
 }
 const useStyles = createThemedStyles(colors => ({
   title: { color: colors.text, fontSize: 28, fontWeight: "800" as const, marginBottom: 20 }, time: { color: colors.text, fontSize: 28, fontWeight: "800" as const }, timeCard: { borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 16, marginBottom: 12, flexDirection: "row" as const, justifyContent: "space-between" as const, alignItems: "center" as const }, hint: { color: colors.text3, fontSize: 13, lineHeight: 20, marginBottom: 8 }, row: { minHeight: 48, borderBottomWidth: 1, borderColor: colors.border, justifyContent: "center" as const }, body: { color: colors.text, fontSize: 16 }, action: { minHeight: 44, justifyContent: "center" as const }, link: { color: colors.accent, fontSize: 16 }, disabled: { color: colors.text4 }, disabledBox: { opacity: 0.4 }, error: { color: colors.rose }, primary: { minHeight: 52, justifyContent: "center" as const, alignItems: "center" as const, backgroundColor: colors.text, borderRadius: 12, marginTop: 20 }, primaryText: { color: colors.surface, fontSize: 16, fontWeight: "700" as const }, secondary: { minHeight: 48, borderWidth: 1, borderColor: colors.border, borderRadius: 12, alignItems: "center" as const, justifyContent: "center" as const, marginTop: 12 },
+  conflict: { borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 16, marginBottom: 12, backgroundColor: colors.surface2 },
 }));

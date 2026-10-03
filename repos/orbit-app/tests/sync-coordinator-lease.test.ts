@@ -7,6 +7,7 @@ import { initializeLocalSyncDatabase } from "../src/data/sync/local-sync-databas
 import { createOutboxUploader } from "../src/data/sync/outbox-uploader";
 import { buildOfflineNoteMutation } from "../src/data/sync/note-outbox-mutation";
 import { buildOfflineTaskMutation } from "../src/data/sync/task-outbox-mutation";
+import { buildOfflineScheduleMutation } from "../src/data/sync/schedule-outbox-mutation";
 import { createSyncCoordinator, type OfflineNoteMutationInput, type SyncCoordinatorLifecycle } from "../src/data/sync/sync-coordinator";
 import { SyncResetRequiredError, type SyncClient } from "../src/data/sync/sync-client";
 import { NodeTestDatabase } from "./helpers/node-sync-database";
@@ -89,7 +90,7 @@ function device(t: TestContext, database = new NodeTestDatabase()) {
 
 async function ready(database: NodeTestDatabase) { await initializeLocalSyncDatabase(database); }
 
-async function sync(session: ReturnType<ReturnType<typeof createSyncCoordinator>["openScope"]>, kind: "task" | "note") {
+async function sync(session: ReturnType<ReturnType<typeof createSyncCoordinator>["openScope"]>, kind: "task" | "note" | "personal_schedule") {
   const request = session.synchronize(kind, { reason: "explicit" });
   await request.started;
   return request.promise;
@@ -649,5 +650,58 @@ test("a server registry version change rebuilds each domain once and keeps pendi
   state.calls.length = 0;
   assert.equal((await sync(session, "task"))?.error, null);
   assert.deepEqual(state.calls, ["lease", "manifest"]);
+  session.deactivate();
+});
+
+test("offline schedule writes need the schedule lease, a non-recurring owned item, and a queued create for each linked offline note", async (t) => {
+  const stamp = new Date(T0).toISOString();
+  const item = (id: string, extra: Record<string, unknown> = {}) => ({ id, sourceId: id, accountId: A, ownerUserId: A, kind: "personal", category: "personal", state: "upcoming",
+    title: id, startsAt: "2026-09-20T01:00:00.000Z", createdAt: stamp, updatedAt: stamp, ...extra });
+  const state: HostState = { epoch: "e1", grantedDomains: ["notes", "personal-schedule"], calls: [], now: T0, rows: { notes: [], "personal-schedule": [
+    { id: "personal:one", revision: "r1", payload: item("personal:one") },
+    { id: "personal:series", revision: "r2", payload: item("personal:series", { timeZone: "UTC", recurrence: { frequency: "daily" } }) },
+    { id: "meeting:1", revision: "r3", payload: { ...item("meeting:1"), kind: "meeting", category: "meeting" } },
+  ] } };
+  const { database, lifecycle } = device(t);
+  await ready(database);
+  const coordinator = createSyncCoordinator({ lifecycle, now: () => state.now, hashPayload });
+  const session = coordinator.openScope({ actorId: A, baseUrl, client: client(state), scopeKey: "schedule-outbox" });
+  assert.equal((await sync(session, "personal_schedule"))?.error, null);
+  const key = (n: number) => `123e4567-e89b-42d3-a456-4266141740${String(n).padStart(2, "0")}`;
+  const edit = (id: string, n: number, revision: string) => buildOfflineScheduleMutation({ mutationId: key(n), entityId: id, operation: "update", baseRevision: revision,
+    requestBody: { expectedUpdatedAt: stamp, idempotencyKey: key(n), patch: { title: "moved" } }, createdAt: new Date(T0 + n).toISOString() });
+  await session.enqueueOfflineScheduleMutation(edit("personal:one", 1, "r1"));
+  await assert.rejects(session.enqueueOfflineScheduleMutation(edit("personal:series", 2, "r2")), /non-recurring/u, "a repeating series needs the network");
+  await assert.rejects(session.enqueueOfflineScheduleMutation(edit("meeting:1", 3, "r3")), /non-recurring/u, "a meeting is not a personal schedule");
+  await assert.rejects(session.enqueueOfflineScheduleMutation(edit("personal:missing", 4, "r9")), /non-recurring/u);
+
+  // A link to a note created offline is allowed only while that note's create is queued.
+  const localNote = "local:7f3a0000-0000-4000-8000-000000000001";
+  const localSchedule = "local:b21c0000-0000-4000-8000-000000000002";
+  const linked = buildOfflineScheduleMutation({ mutationId: key(5), entityId: localSchedule, operation: "create", baseRevision: null,
+    requestBody: { title: "Call", startsAt: "2026-09-21T01:00:00.000Z", noteIds: [localNote], idempotencyKey: key(5) }, createdAt: new Date(T0 + 5).toISOString() });
+  await assert.rejects(session.enqueueOfflineScheduleMutation(linked), /unsaved note/u);
+  await session.enqueueOfflineNoteMutation(buildOfflineNoteMutation({ mutationId: key(6), entityId: localNote, operation: "create", baseRevision: null,
+    requestBody: { title: "Agenda", body: "three things", idempotencyKey: key(6) }, createdAt: new Date(T0 + 6).toISOString() }));
+  await session.enqueueOfflineScheduleMutation(linked);
+  // A local schedule edit needs its queued create and is ordered after it.
+  const localEdit = buildOfflineScheduleMutation({ mutationId: key(7), entityId: localSchedule, operation: "update", baseRevision: null,
+    requestBody: { expectedUpdatedAt: stamp, idempotencyKey: key(7), patch: { title: "Call (moved)" } }, createdAt: new Date(T0 + 7).toISOString() });
+  await session.enqueueOfflineScheduleMutation(localEdit);
+  const queued = (await session.readOutboxOverlay("personal_schedule"))!.queuedMutations;
+  assert.deepEqual(queued.map(row => [row.id, row.operation, row.dependsOn]), [
+    ["personal:one", "update", null], [localSchedule, "create", null], [localSchedule, "update", key(5)],
+  ]);
+  await assert.rejects(session.enqueueOfflineScheduleMutation(buildOfflineScheduleMutation({ mutationId: key(8), entityId: "local:c0000000-0000-4000-8000-000000000009", operation: "delete", baseRevision: null,
+    requestBody: { expectedUpdatedAt: stamp, idempotencyKey: key(8) }, createdAt: new Date(T0 + 8).toISOString() })), /queued create/u);
+  // Once a note has its formal id, a new link is stored with that id instead of the temporary one.
+  await database.run("INSERT INTO sync_aliases(workspace_id, domain_id, local_id, canonical_id, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?)",
+    [W, "notes", "local:7f3a0000-0000-4000-8000-00000000000a", "note:formal", stamp, new Date(T0 + 86_400_000).toISOString()]);
+  await session.enqueueOfflineScheduleMutation(buildOfflineScheduleMutation({ mutationId: key(10), entityId: "personal:one", operation: "update", baseRevision: "r1",
+    requestBody: { expectedUpdatedAt: stamp, idempotencyKey: key(10), patch: { noteIds: ["local:7f3a0000-0000-4000-8000-00000000000a"] } }, createdAt: new Date(T0 + 10).toISOString() }));
+  const aliased = (await session.readOutboxOverlay("personal_schedule"))!.queuedMutations.find(row => row.mutationId === key(10))!;
+  assert.deepEqual(JSON.parse(aliased.requestJson!).patch.noteIds, ["note:formal"]);
+  assert.deepEqual((aliased.patch as { noteIds: string[] }).noteIds, ["note:formal"]);
+  assert.equal(aliased.dependsOn, key(1), "a second edit of the same schedule waits for the first");
   session.deactivate();
 });

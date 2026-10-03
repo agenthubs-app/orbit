@@ -439,6 +439,9 @@ function canonicalScheduleTimelineItems(scheduleItems: unknown, timeZone: string
       const id = stringField(item, "id");
       const sourceId = stringField(item, "sourceId");
       const location = stringField(item, "location");
+      // Sprint 0134: a personal schedule changed on this device and not yet confirmed says so.
+      const localState = kind === "personal" ? stringField(item, "localMutationState") : "";
+      const localLabel = localState === "queued" ? t("schedule.outboxQueued") : localState === "conflict" ? t("schedule.outboxConflict") : localState === "failed" ? t("schedule.outboxFailed") : "";
       const labels = kind === "meeting"
         ? { action: t("scheduleVm.viewMeeting"), reason: t("scheduleVm.meetingReason"), subtitle: location || t("scheduleVm.meeting") }
         : kind === "personal"
@@ -468,7 +471,7 @@ function canonicalScheduleTimelineItems(scheduleItems: unknown, timeZone: string
         reason: labels.reason,
         sortAt: startsAt,
         statusLabel: stringField(item, "state") === "ongoing" ? t("todayVm.ongoing") : t("scheduleVm.scheduled"),
-        subtitle: labels.subtitle,
+        subtitle: localLabel ? `${labels.subtitle} · ${localLabel}` : labels.subtitle,
         timeLabel: allDay ? "" : formatted.timeLabel,
         title: stringField(item, "title", t("scheduleVm.schedule")),
       }];

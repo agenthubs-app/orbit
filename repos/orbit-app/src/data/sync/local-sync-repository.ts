@@ -815,8 +815,9 @@ export function createLocalSyncRepository(input: {
       }
       await database.transaction(async () => {
         const domainId = mutation.domainId ?? localDomainForKind(mutation.kind);
+        // Task and personal-schedule writes are never merged (each keeps its own receipt and server version);
         // Sprint 0135: every queued message is its own send; messages are never merged.
-        const unattempted = domainId === "tasks" || domainId === "relationship-messages" ? [] : await database.all<{
+        const unattempted = domainId === "tasks" || domainId === "personal-schedule" || domainId === "relationship-messages" ? [] : await database.all<{
           mutation_id: string;
           operation: LocalSyncOutboxOperation;
           patch_json: string | null;
@@ -1099,6 +1100,55 @@ export function createLocalSyncRepository(input: {
       });
     },
 
+    /** Sprint 0134: replace or discard one personal-schedule conflict without mutating an attempted request. */
+    async resolveScheduleConflict(input: {
+      workspaceId: string;
+      mutationId: string;
+      resolution: "server" | "replace";
+      replacement?: LocalSyncOutboxMutation;
+    }): Promise<void> {
+      assertNonEmptyString(input.workspaceId, "workspaceId");
+      assertNonEmptyString(input.mutationId, "mutationId");
+      if (input.resolution === "replace" && !input.replacement) throw new TypeError("replacement schedule mutation is required");
+      if (input.resolution === "server" && input.replacement) throw new TypeError("server resolution cannot include a replacement");
+      const replacement = input.replacement;
+      const patchJson = replacement ? validateAndSerializeOutboxMutation(replacement, actorId) : null;
+      if (replacement && (replacement.actorId !== actorId || replacement.workspaceId !== input.workspaceId || replacement.domainId !== "personal-schedule" ||
+          replacement.kind !== "personal_schedule" || !["update", "delete"].includes(replacement.operation) ||
+          !replacement.requestJson || replacement.mutationId === input.mutationId || replacement.requestAttemptedAt)) {
+        throw new TypeError("replacement schedule mutation is invalid");
+      }
+      await database.transaction(async () => {
+        const conflict = await database.get<{ workspace_id: string; domain_id: string; kind: SyncEntityKind; state: string; record_id: string }>(
+          "SELECT workspace_id, domain_id, kind, state, record_id FROM sync_outbox WHERE mutation_id = ?", [input.mutationId],
+        );
+        if (!conflict || conflict.workspace_id !== input.workspaceId || conflict.domain_id !== "personal-schedule" || conflict.kind !== "personal_schedule" ||
+            conflict.state !== "conflict" || (replacement && replacement.id !== conflict.record_id)) {
+          throw new Error("SCHEDULE_CONFLICT_NOT_FOUND");
+        }
+        if (replacement) {
+          await database.run(`INSERT INTO sync_outbox (
+            mutation_id, workspace_id, domain_id, kind, record_id, operation, state,
+            patch_json, request_json, depends_on, base_revision, created_at,
+            retry_count, next_retry_at, last_error_code, attempt_count, first_attempt_at, server_snapshot_json
+          ) VALUES (?, ?, 'personal-schedule', 'personal_schedule', ?, ?, 'queued', ?, ?, ?, ?, ?, ?, ?, NULL, 0, NULL, NULL)`, [
+            replacement.mutationId, replacement.workspaceId, replacement.id, replacement.operation, patchJson,
+            replacement.requestJson!, replacement.dependsOn ?? null, replacement.baseRevision, replacement.createdAt,
+            replacement.retryCount, replacement.nextRetryAt,
+          ]);
+          await database.run("UPDATE sync_outbox SET depends_on = ? WHERE workspace_id = ? AND domain_id = 'personal-schedule' AND depends_on = ?",
+            [replacement.mutationId, input.workspaceId, input.mutationId]);
+          await database.run("DELETE FROM sync_outbox WHERE mutation_id = ?", [input.mutationId]);
+          return;
+        }
+        await database.run(`WITH RECURSIVE dependent_mutations(mutation_id) AS (
+          SELECT ?
+          UNION
+          SELECT queued.mutation_id FROM sync_outbox AS queued JOIN dependent_mutations AS dependency ON queued.depends_on = dependency.mutation_id
+        ) DELETE FROM sync_outbox WHERE mutation_id IN (SELECT mutation_id FROM dependent_mutations)`, [input.mutationId]);
+      });
+    },
+
     /** Commit a successful upload, its local-id alias, and dependent request rewrites together. */
     async acknowledgeOutboxMutation(input: {
       mutationId: string;
@@ -1146,7 +1196,9 @@ export function createLocalSyncRepository(input: {
           const patchJson = dependent.patch_json === null ? null : JSON.stringify(rewriteExactIdentifier(JSON.parse(dependent.patch_json), localId, serialized.record.id));
           const rewritten = dependent.request_json === null ? null : rewriteExactIdentifier(JSON.parse(dependent.request_json), localId, serialized.record.id);
           let requestJson = rewritten === null ? null : JSON.stringify(rewritten);
-          const isTaskDomain = mutation.domain_id === "tasks" && mutation.kind === "task" && serialized.record.kind === "task";
+          // Tasks and (sprint 0134) personal schedules: a dependent edit/delete of a just-created row adopts its formal id and server version.
+          const isTaskDomain = (mutation.domain_id === "tasks" && mutation.kind === "task" && serialized.record.kind === "task") ||
+            (mutation.domain_id === "personal-schedule" && mutation.kind === "personal_schedule" && serialized.record.kind === "personal_schedule");
           const taskPayload = serialized.record.payload;
           const taskUpdatedAt = isTaskDomain && typeof taskPayload === "object" && taskPayload !== null && !Array.isArray(taskPayload) &&
             typeof (taskPayload as Record<string, unknown>).updatedAt === "string"
@@ -1162,6 +1214,21 @@ export function createLocalSyncRepository(input: {
             record_id = CASE WHEN ? THEN ? ELSE record_id END,
             base_revision = CASE WHEN ? THEN ? ELSE base_revision END WHERE mutation_id = ?`,
           [patchJson, requestJson, isTaskDomain ? 1 : 0, serialized.record.id, isTaskDomain ? 1 : 0, serialized.record.revision, dependent.mutation_id]);
+        }
+        if (localId !== serialized.record.id) {
+          // Sprint 0134 (design step 4): an unsent write of another kind that links this temporary id (a schedule
+          // linking an offline note) is rewritten to the formal id in the same transaction, before its first attempt.
+          const linked = await database.all<{ mutation_id: string; patch_json: string | null; request_json: string }>(
+            `SELECT mutation_id, patch_json, request_json FROM sync_outbox
+             WHERE workspace_id = ? AND domain_id <> ? AND state = 'queued' AND attempt_count = 0 AND first_attempt_at IS NULL
+               AND request_json IS NOT NULL AND instr(request_json, ?) > 0`,
+            [mutation.workspace_id, mutation.domain_id, JSON.stringify(localId)],
+          );
+          for (const row of linked) {
+            const patchJson = row.patch_json === null ? null : JSON.stringify(rewriteExactIdentifier(JSON.parse(row.patch_json), localId, serialized.record.id));
+            const requestJson = JSON.stringify(rewriteExactIdentifier(JSON.parse(row.request_json), localId, serialized.record.id));
+            await database.run("UPDATE sync_outbox SET patch_json = ?, request_json = ? WHERE mutation_id = ?", [patchJson, requestJson, row.mutation_id]);
+          }
         }
         await database.run("DELETE FROM sync_outbox WHERE mutation_id = ?", [input.mutationId]);
       });

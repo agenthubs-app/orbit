@@ -11,6 +11,9 @@ import { contactDetailToSummary } from "../../view-models/contacts";
 import { noteFromPayload } from "../../view-models/notes";
 import { useOrbitLocale } from "../../i18n/OrbitLocaleContext";
 import { createThemedStyles } from "../../design/theme";
+import { useSyncedCollection } from "../../hooks/useSyncedCollection";
+import type { LocalSyncQueuedMutation } from "../../data/sync/local-sync-repository";
+import { notesFromMirror, overlayQueuedNotes, selectMirrorNotes } from "../../view-models/notes-mirror";
 
 export function PersonalScheduleAssociations({ actorId, scopeKey, noteIds, contactIds, disabled = false, onNotesChange, onContactsChange }: {
   actorId: string; scopeKey: string; noteIds: readonly string[]; contactIds: readonly string[]; disabled?: boolean;
@@ -37,6 +40,12 @@ function AssociationPicker({ actorId, scopeKey, noteIds, kind, disabled = false,
   const drag = useMemo(() => PanResponder.create({ onStartShouldSetPanResponder: () => true, onPanResponderTerminationRequest: () => false, onMoveShouldSetPanResponder: (_event, gesture) => gesture.dy > 8 && Math.abs(gesture.dy) > Math.abs(gesture.dx), onPanResponderRelease: (_event, gesture) => { if (gesture.dy > 60 && Math.abs(gesture.dy) > Math.abs(gesture.dx)) dismiss(); } }), []);
   const pageOperation = useRef<AbortController | null>(null);
   const idsKey = JSON.stringify(noteIds);
+  // Sprint 0134: notes on this device (the mirror plus notes created offline and not yet uploaded) name linked notes
+  // without a request and answer the note search when the server cannot be reached.
+  const deviceNotes = useDeviceNotes(actorId, kind === "note");
+  const deviceNotesRef = useRef(deviceNotes); deviceNotesRef.current = deviceNotes;
+  // Effects key on the notes content, not the array (the mirror hands out a new array on every read).
+  const deviceNotesKey = deviceNotes ? JSON.stringify(deviceNotes.map(note => [note.id, note.title, note.body.slice(0, 40)])) : "";
   // Sprint 0116: a linked contact's name comes from the device copy of the contacts (shows offline, no request per contact).
   const localContacts = useLocalContacts(false);
   const deviceContacts = kind === "contact" && localContacts.available && localContacts.freshness.readable ? localContacts.rows : null;
@@ -46,6 +55,9 @@ function AssociationPicker({ actorId, scopeKey, noteIds, kind, disabled = false,
     if (waitForDevice) return () => operation.abort();
     void Promise.all(noteIds.map(async (id): Promise<{ id: string; title: string | null; imageUrl?: string }> => {
       try {
+        const deviceNote = kind === "note" ? deviceNotesRef.current?.find(note => note.id === id) : undefined;
+        if (deviceNote) return { id, title: deviceNote.title.trim() || deviceNote.body.slice(0, 40) };
+        if (kind === "note" && id.startsWith("local:")) return { id, title: null };
         const deviceDetail = deviceContacts ? localContactDetail(deviceContacts, id) : null;
         const result = deviceDetail ? { success: true as const, data: deviceDetail as unknown } : await client.get<unknown>(kind === "note" ? notePath(id) : contactDetailPath(id), { signal: operation.signal });
         if (!result.success) return { id, title: null };
@@ -68,13 +80,17 @@ function AssociationPicker({ actorId, scopeKey, noteIds, kind, disabled = false,
       setUnavailable(items.filter(item => item.title === null).map(item => item.id));
     });
     return () => operation.abort();
-  }, [client, actorId, idsKey, locale.language, kind, server.baseUrl, deviceContacts, waitForDevice]);
+  }, [client, actorId, idsKey, locale.language, kind, server.baseUrl, deviceContacts, waitForDevice, deviceNotesKey]);
   async function search(word: string, next: string | null, signal: AbortSignal) {
     const params = new URLSearchParams({ q: word, limit: "20", ...(next ? { cursor: next } : {}) });
     const result = kind === "note"
       ? await client.get<unknown>(`/api/schedule-items/association-options/notes?${params}`, { signal })
       : await client.get<unknown>(`/api/schedule-items/association-options/contacts?${params}`, { signal });
-    if (!result.success) throw new Error(locale.t("notes.searchUnavailable"));
+    if (!result.success) {
+      const local = kind === "note" && (result.status === 0 || result.status >= 500) ? deviceNotesRef.current : null;
+      if (local) return { items: selectMirrorNotes(local, { association: "all", q: word }).slice(0, 50).map(note => ({ id: note.id, title: note.title.trim() || note.body.slice(0, 40) })), nextCursor: null, partial: false };
+      throw new Error(locale.t("notes.searchUnavailable"));
+    }
     const decoded = personalScheduleAssociationOptionsPageSchema.safeParse(result.data);
     if (!decoded.success || decoded.data.actorId !== actorId || decoded.data.kind !== kind) throw new Error(locale.t("notes.searchUnavailable"));
     return { items: decoded.data.options, nextCursor: decoded.data.nextCursor ?? null, partial: decoded.data.partial };
@@ -130,5 +146,25 @@ function AssociationPicker({ actorId, scopeKey, noteIds, kind, disabled = false,
       </KeyboardAvoidingView>
     </Modal> : null}
   </View>;
+}
+/** Sprint 0134: the actor's notes on this device, including queued offline creates; null while unavailable. */
+function useDeviceNotes(actorId: string, enabled: boolean) {
+  const locale = useOrbitLocale();
+  const notes = useSyncedCollection<Record<string, unknown>>({ kind: "note" });
+  const [queued, setQueued] = useState<LocalSyncQueuedMutation[]>([]);
+  useEffect(() => {
+    let live = true;
+    const session = enabled ? notes.currentSession?.() : null;
+    // Keep the same array while nothing changed: a mirror refresh must not re-render (or loop) every picker.
+    const keep = (next: LocalSyncQueuedMutation[]) => setQueued(previous => JSON.stringify(previous) === JSON.stringify(next) ? previous : next);
+    if (!session) { keep([]); return () => { live = false; }; }
+    void session.readOutboxOverlay("note").then(overlay => { if (live) keep([...(overlay?.queuedMutations ?? [])]); }).catch(() => { if (live) keep([]); });
+    return () => { live = false; };
+  }, [enabled, notes.currentSession, notes.records, notes.lastSyncedAt]);
+  return useMemo(() => {
+    if (!enabled) return null;
+    const server = notesFromMirror(notes.records, actorId, locale.language);
+    return server ? overlayQueuedNotes(server, queued, actorId, locale.language) : null;
+  }, [enabled, notes.records, queued, actorId, locale.language]);
 }
 const useStyles = createThemedStyles(colors => ({ group: { marginVertical: 4 }, hint: { color: colors.text3, fontSize: 11 }, groupLabel: { color: colors.text, fontSize: 15, fontWeight: "800" as const }, entry: { minHeight: 44, minWidth: 44, justifyContent: "center" as const }, chips: { flexDirection: "row" as const, flexWrap: "wrap" as const, gap: 6 }, chip: { minHeight: 44, maxWidth: "100%" as const, flexDirection: "row" as const, alignItems: "center" as const }, identity: { minHeight: 44, minWidth: 44, flexShrink: 1, justifyContent: "center" as const }, chipVisual: { minHeight: 32, flexDirection: "row" as const, alignItems: "center" as const, gap: 6, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1, borderColor: colors.border, borderRadius: 99, backgroundColor: colors.surface2 }, chipText: { flexShrink: 1, color: colors.text, fontSize: 13, fontWeight: "600" as const }, avatar: { width: 24, height: 24, borderRadius: 12, overflow: "hidden" as const, alignItems: "center" as const, justifyContent: "center" as const, backgroundColor: colors.border }, avatarImage: { width: 24, height: 24 }, avatarText: { color: colors.text, fontSize: 11, fontWeight: "700" as const }, row: { minHeight: 44, flexDirection: "row" as const, alignItems: "center" as const, justifyContent: "space-between" as const }, link: { color: colors.accent, fontSize: 16 }, input: { minHeight: 44, borderWidth: 1, borderColor: colors.border, borderRadius: 8, color: colors.text, paddingHorizontal: 12 }, error: { color: colors.rose, fontSize: 14 }, overlay: { flex: 1, justifyContent: "flex-end" as const }, backdrop: { position: "absolute" as const, top: 0, bottom: 0, left: 0, right: 0, backgroundColor: "rgba(11,18,32,0.35)" }, sheet: { maxHeight: "80%" as const, backgroundColor: colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingHorizontal: 16, paddingBottom: 32 }, handleArea: { height: 24, alignItems: "center" as const, justifyContent: "center" as const }, handle: { width: 36, height: 4, borderRadius: 2, backgroundColor: colors.border }, sheetTitle: { color: colors.text, fontSize: 18, fontWeight: "800" as const }, close: { minHeight: 44, minWidth: 44, alignItems: "center" as const, justifyContent: "center" as const }, list: { minHeight: 120, marginTop: 12 } }));
