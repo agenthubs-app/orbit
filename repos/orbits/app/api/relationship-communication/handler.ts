@@ -190,6 +190,7 @@ export function createConversationMessagesPostHandler(
         conversationId: id,
         qualificationVersion: stringField(body, "qualificationVersion"),
         requestId: request.headers.get("idempotency-key") ?? stringField(body, "requestId"),
+        ...("retireDraftThrough" in body ? { retireDraftThrough: body.retireDraftThrough } : {}),
       }),
     );
     if (response.status !== 200) return response;

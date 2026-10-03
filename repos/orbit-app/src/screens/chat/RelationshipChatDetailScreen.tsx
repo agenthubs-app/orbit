@@ -34,6 +34,9 @@ import { relationshipChatWindowView } from "../../view-models/relationship-chat-
 import { OfflineNotice } from "../../components/OfflineNotice";
 import { useLocalRelationshipThread } from "../../hooks/useLocalRelationshipMessages";
 import { localRelationshipMessagePage } from "../../view-models/relationship-local";
+import { MessagesOfflineNotice, OutboxMessageBubble } from "../../components/RelationshipOutboxViews";
+import { useRelationshipMessageOutbox, type RelationshipMessageOutbox } from "../../hooks/useRelationshipMessageOutbox";
+import { conversationOutboxMessages, type OutboxRelationshipMessage } from "../../view-models/relationship-outbox";
 
 function firstParam(value: string | string[] | undefined): string {
   return Array.isArray(value) ? value[0] ?? "" : value ?? "";
@@ -67,6 +70,9 @@ function ScopedChatDetailScreen({ actorId, conversationId, scopeKey }: {
   // Sprint 0119: the device mirror holds the whole history (native always, the browser while its mirror is
   // active); older pages are read from it too. Sending needs the network.
   const local = useLocalRelationshipThread(conversationId, cursor);
+  // Sprint 0135: offline (or behind queued messages) a message is queued and shown last with 「待发送」.
+  const outbox = useRelationshipMessageOutbox(local);
+  const queuedHere = useMemo(() => conversationOutboxMessages(outbox.messages, conversationId), [outbox.messages, conversationId]);
   const fromDevice = local.available && local.freshness.readable;
   const offline = fromDevice && local.freshness.offline;
   const localPage = useMemo(() => fromDevice
@@ -96,7 +102,7 @@ function ScopedChatDetailScreen({ actorId, conversationId, scopeKey }: {
       refreshControl={<RefreshControl onRefresh={refreshAll} refreshing={state.refreshing} tintColor={colors.accent} />}
       title="对话详情"
     >
-      {offline ? <OfflineNotice lastSyncedAt={local.freshness.lastSyncedAt} /> : null}
+      {offline ? outbox.enabled ? <MessagesOfflineNotice lastSyncedAt={local.freshness.lastSyncedAt} /> : <OfflineNotice lastSyncedAt={local.freshness.lastSyncedAt} /> : null}
       {state.kind === "loading" ? <LoadingState /> : null}
       {state.kind === "offline" ? <ErrorState message={state.error.message} title="服务器连不上" /> : null}
       {state.kind === "failure" ? <ErrorState message={state.error.message} /> : null}
@@ -110,6 +116,8 @@ function ScopedChatDetailScreen({ actorId, conversationId, scopeKey }: {
           page={freshData}
           deliveryNotice={deliveryNotice}
           offline={offline}
+          outbox={fromDevice && outbox.enabled ? outbox : undefined}
+          queued={cursor ? [] : queuedHere}
           onDelivered={() => {
             setDeliveryNotice("消息已送达已验证的 Orbit 账号。");
             refreshAll();
@@ -120,10 +128,13 @@ function ScopedChatDetailScreen({ actorId, conversationId, scopeKey }: {
   );
 }
 
-function ThreadContent({ actorId, page, deliveryNotice, onDelivered, scopeKey, offline = false }: {
+function ThreadContent({ actorId, page, deliveryNotice, onDelivered, scopeKey, offline = false, outbox, queued = [] }: {
   actorId: string;
   page: RelationshipMessagePageDTO | null;
   deliveryNotice: string;
+  /** Sprint 0135: the device queue (native, device mirror readable). */
+  outbox?: RelationshipMessageOutbox | undefined;
+  queued?: readonly OutboxRelationshipMessage[];
   /** Sprint 0119: offline the history shows as of the last sync and sending needs the network. */
   offline?: boolean;
   onDelivered: () => void;
@@ -158,7 +169,34 @@ function ThreadContent({ actorId, page, deliveryNotice, onDelivered, scopeKey, o
     };
   }, []);
 
+  const queueing = Boolean(outbox && (offline || queued.length > 0));
+
+  async function queueMessage() {
+    if (!outbox || !view?.canSend || !mounted.current || request.current) return;
+    const body = draftBody.trim();
+    if (!body) return;
+    const controller = new AbortController();
+    request.current = controller;
+    setPending(true);
+    setFeedback("");
+    try {
+      // This window has no draft: nothing on the server is retired by a queued send.
+      await outbox.enqueue({ conversationId: view.conversationId, body, qualificationVersion: view.qualificationVersion, retireDraftThrough: null });
+      if (!mounted.current) return;
+      attempt.current = null;
+      setDraftBody("");
+    } catch {
+      if (mounted.current) setFeedback("消息没能存进本机队列，输入已保留。");
+    } finally {
+      if (mounted.current && request.current === controller) {
+        request.current = null;
+        setPending(false);
+      }
+    }
+  }
+
   async function sendVerifiedMessage() {
+    if (queueing) { await queueMessage(); return; }
     if (!mounted.current || !active.current || request.current || !view?.canSend || offline) return;
     const normalizedBody = draftBody.trim();
     const currentAttempt = attempt.current?.body === normalizedBody && attempt.current.qualificationVersion === view.qualificationVersion
@@ -231,7 +269,12 @@ function ThreadContent({ actorId, page, deliveryNotice, onDelivered, scopeKey, o
       <DataCard detail={`本页 ${view.messages.length} 条消息`} title="消息记录">
         {view.messages.length ? (
           <View style={styles.messageList}>{view.messages.map((message) => <MessageRow key={message.id} message={message} />)}</View>
-        ) : <EmptyState message="验证完成后可以发送第一条消息。" title="暂无消息" />}
+        ) : queued.length ? null : <EmptyState message="验证完成后可以发送第一条消息。" title="暂无消息" />}
+        {queued.length ? (
+          <View style={styles.messageList}>{queued.map((message) => (
+            <OutboxMessageBubble key={message.mutationId} message={message} senderLabel="我" onRetry={(id) => { void outbox?.retry(id).catch(() => undefined); }} onDiscard={(id) => { void outbox?.discard([id]).catch(() => undefined); }} />
+          ))}</View>
+        ) : null}
       </DataCard>
       <DataCard detail="只有服务端投递回执匹配后才会清空输入" title="发送消息">
         <TextInput
@@ -246,12 +289,12 @@ function ThreadContent({ actorId, page, deliveryNotice, onDelivered, scopeKey, o
         {deliveryNotice || feedback ? <Text style={deliveryNotice ? styles.successText : styles.errorText}>{deliveryNotice || feedback}</Text> : null}
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={offline ? "发送消息 · 需要联网" : undefined}
-          disabled={offline || pending || !view.canSend || !draftBody.trim()}
+          accessibilityLabel={offline && !queueing ? "发送消息 · 需要联网" : undefined}
+          disabled={(offline && !queueing) || pending || !view.canSend || !draftBody.trim()}
           onPress={() => void sendVerifiedMessage()}
-          style={({ pressed }) => [styles.primaryButton, offline || pending || !view.canSend || !draftBody.trim() ? styles.disabled : null, pressed ? styles.pressed : null]}
+          style={({ pressed }) => [styles.primaryButton, (offline && !queueing) || pending || !view.canSend || !draftBody.trim() ? styles.disabled : null, pressed ? styles.pressed : null]}
         >
-          <Text style={styles.primaryButtonText}>{offline ? "发送消息 · 需要联网" : pending ? "发送中" : "发送消息"}</Text>
+          <Text style={styles.primaryButtonText}>{offline && !queueing ? "发送消息 · 需要联网" : pending ? "发送中" : "发送消息"}</Text>
         </Pressable>
       </DataCard>
     </>

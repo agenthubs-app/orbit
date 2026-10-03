@@ -89,6 +89,13 @@ export interface SendRelationshipMessageInput {
   conversationId: string;
   qualificationVersion: string;
   requestId: string;
+  /**
+   * Sprint 0135: a message written offline is uploaded later. The device sends
+   * the server time of the draft it knew when the message was written (null when
+   * it knew none), so the upload does not retire a draft saved after it. Omitted
+   * by online sends: drafts saved at or before the send are retired (0122).
+   */
+  retireDraftThrough?: unknown;
 }
 
 export interface SaveRelationshipReplyDraftInput {
@@ -362,7 +369,7 @@ export function createRelationshipCommunicationService({
   // lost client-side clear cannot restore sent text, and text saved after the
   // send (another device, a retried request) is never erased. A failure here
   // fails the request; retrying with the same request id is idempotent.
-  async function retireReplyDraftSentBy(conversationId: string, sentAt: string): Promise<void> {
+  async function retireReplyDraftSentBy(conversationId: string, through: string, sentAt: string): Promise<void> {
     const recordId = replyDraftRecordId(conversationId, accountId);
     const stored = await store.getRecord({
       workspaceId: scopedWorkspaceId,
@@ -373,7 +380,7 @@ export function createRelationshipCommunicationService({
     const payload = stored?.payload;
     if (!payload || payload.accountId !== accountId || payload.conversationId !== conversationId) return;
     if (typeof payload.body !== "string" || !payload.body || typeof payload.updatedAt !== "string") return;
-    if (Date.parse(payload.updatedAt) > Date.parse(sentAt)) return;
+    if (Date.parse(payload.updatedAt) > Date.parse(through)) return;
     await store.upsertRecord({
       ...record({
         collectionName: RELATIONSHIP_REPLY_DRAFT_COLLECTION,
@@ -638,6 +645,12 @@ export function createRelationshipCommunicationService({
       const body = required(input.body, "Message body", 10_000);
       const requestId = required(input.requestId, "Request id");
       const requestedVersion = required(input.qualificationVersion, "Qualification version");
+      const rawBound = input.retireDraftThrough;
+      if (rawBound !== undefined && rawBound !== null
+        && (typeof rawBound !== "string" || !Number.isFinite(Date.parse(rawBound)))) {
+        throw new Error("Invalid draft retirement time.");
+      }
+      const draftBound = rawBound as string | null | undefined;
       const { message } = await messages.send({
         body,
         conversationId,
@@ -648,7 +661,10 @@ export function createRelationshipCommunicationService({
         senderAccountId: accountId,
         senderDisplayName: displayName,
       });
-      await retireReplyDraftSentBy(conversationId, message.sentAt);
+      if (draftBound !== null) {
+        const through = draftBound === undefined || Date.parse(draftBound) > Date.parse(message.sentAt) ? message.sentAt : draftBound;
+        await retireReplyDraftSentBy(conversationId, through, message.sentAt);
+      }
       return {
         conversationId,
         deliveryState: "delivered",

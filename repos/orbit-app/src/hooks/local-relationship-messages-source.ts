@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Platform } from "react-native";
 
 import type { RelationshipDeviceConversation, RelationshipDeviceMessage } from "../api/compute/relationship-local";
 import { useOrbitAuthSession } from "../api/AuthSessionProvider";
@@ -7,6 +8,7 @@ import { relationshipDeviceConversations, relationshipDeviceMessages, relationsh
 import { relationshipMessageRowId } from "../api/compute/relationship-local";
 import { useMirrorProbe } from "./useMirrorProbe";
 import { useSyncCoordinatorSession, useSyncedCollection } from "./useSyncedCollection";
+import type { SyncCoordinatorSession } from "../data/sync/sync-coordinator";
 
 /**
  * Sprint 0119 (offline 3b = message plan M3): the relationship conversations
@@ -24,6 +26,11 @@ export interface LocalRelationshipConversationsState {
   conversations: readonly RelationshipDeviceConversation[];
   freshness: MirrorFreshness;
   refresh(): Promise<unknown>;
+  /**
+   * Sprint 0135: the sync session that holds the device queue of messages written offline. Native only (the
+   * browser keeps writes online, design D2); absent where offline sending is not open.
+   */
+  outboxSession?: (() => SyncCoordinatorSession | null) | undefined;
 }
 
 export function useLocalRelationshipConversationsSource(available: boolean, probe: boolean): LocalRelationshipConversationsState {
@@ -34,8 +41,9 @@ export function useLocalRelationshipConversationsSource(available: boolean, prob
   useMirrorProbe(refresh, available && probe);
   const freshness = mirrorFreshness(state, available);
   const conversations = useMemo(() => (available && actorId ? relationshipDeviceConversations(state.records, actorId) : []), [available, actorId, state.records]);
-  return useMemo(() => ({ available, conversations, freshness, refresh }),
-    [available, conversations, freshness.readable, freshness.offline, freshness.loading, freshness.failure, freshness.lastSyncedAt, freshness.refreshing, refresh]);
+  const outboxSession = available && Platform.OS !== "web" ? state.currentSession : undefined;
+  return useMemo(() => ({ available, conversations, freshness, refresh, outboxSession }),
+    [available, conversations, freshness.readable, freshness.offline, freshness.loading, freshness.failure, freshness.lastSyncedAt, freshness.refreshing, refresh, outboxSession]);
 }
 
 export interface LocalRelationshipThreadState extends LocalRelationshipConversationsState {
@@ -78,6 +86,6 @@ export function useLocalRelationshipThreadSource(available: boolean, conversatio
     refreshing: list.freshness.refreshing || messageFreshness.refreshing,
     offline: (list.freshness.readable && messageFreshness.readable) && (list.freshness.offline || messageFreshness.offline),
   };
-  return useMemo(() => ({ available, conversations: list.conversations, messages, freshness, refresh }),
-    [available, list.conversations, messages, freshness.readable, freshness.offline, freshness.loading, freshness.failure, freshness.lastSyncedAt, freshness.refreshing, refresh]);
+  return useMemo(() => ({ available, conversations: list.conversations, messages, freshness, refresh, outboxSession: list.outboxSession }),
+    [available, list.conversations, messages, freshness.readable, freshness.offline, freshness.loading, freshness.failure, freshness.lastSyncedAt, freshness.refreshing, refresh, list.outboxSession]);
 }
