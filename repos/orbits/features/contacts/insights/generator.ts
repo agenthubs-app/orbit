@@ -6,6 +6,8 @@
  *   不含邮箱、电话、memo 正文或其他私信；真实 id 全部换成短期别名（联系人 C…、记录 R…、需求 N…），响应回来后反向映射；
  * - 输出按 `json_object` 解析：contactId 不在本组、依据 id 不属于该联系人（不在本次输入里）一律丢弃；文字带 id／别名的整条丢弃；
  * - 相关度不由模型给（见 relevance.ts）。
+ * - W0058：同一调用顺带产出每人的名片推测 `profile`（offering／seeking／topics，每条带 basis），校验见 profile-inference.ts；
+ *   名片备注去掉邮箱／电话／URL、截到 200 字后才进提示词；推测只依据公司／职位／名片备注（含部门）／行业。
  * 生产默认 mock：只有 `ORBIT_CONTACT_INSIGHT_GENERATOR=deepseek` 且有 `DEEPSEEK_API_KEY` 才真实调用。
  */
 import { DEFAULT_BUSINESS_CARD_TEXT_MODEL } from "../../acquisition/deepseek-business-card-ocr-provider";
@@ -18,6 +20,13 @@ import {
 import { CONTACT_INSIGHT_TEXT_LIMIT } from "./limits";
 import type { RelationshipTimelineSource } from "../../../shared/contract/relationship-timeline";
 import { CONTACT_INSIGHT_PROMPT_VERSION } from "./source-version";
+import {
+  emptyProfileInference,
+  parseProfileInference,
+  sanitizeCardNotes,
+  type ProfileInference,
+  type ProfileInferenceItem,
+} from "./profile-inference";
 
 export const CONTACT_INSIGHT_BATCH_LIMIT = 20;
 export const CONTACT_INSIGHT_RECORDS_PER_CONTACT = 5;
@@ -51,6 +60,8 @@ export interface InsightInputContact {
   records: InsightInputRecord[];
   /** 该联系人在计划人脉需求上的关系（含待确认候选）。 */
   needLinks: { needId: string; state: "linked" | "established" | "candidate" }[];
+  /** W0058：名片备注（联系人 notes；OCR 的部门也拼在这里）。进提示词前脱敏、截断。 */
+  cardNotes?: string | null;
 }
 
 export interface InsightGenerationInput {
@@ -94,7 +105,10 @@ export const CONTACT_INSIGHT_SYSTEM_PROMPT = [
   "For every contact return: goalRelation (one sentence on how this person relates to the goal) and nextStep (one concrete action), each in Simplified Chinese \"zh\" and English \"en\" with the same meaning, each at most 100 characters.",
   "evidence: up to 3 aliases copied exactly from this contact's own records (R…) or its linked needs (N…). Never cite another contact's records.",
   "Never put aliases, ids, record references or field names in the text: refer to people by name. Do not write numbers of people, percentages or scores.",
-  'Respond with a single JSON object: {"insights":[{"contactId":"C1","goalRelation":{"zh":"...","en":"..."},"nextStep":{"zh":"...","en":"..."},"evidence":["R1","N1"]}]}.',
+  "Also return profile: what this person can likely offer the user (offering), what they likely need (seeking), and topics worth talking about (topics), inferred ONLY from this contact's company, title, card notes (cardNotes, which may include the department) and industry.",
+  "Never base profile items on the goal, records, needs or other contacts. Every profile item needs basis: one of \"title\", \"company\", \"card_notes\", \"industry\", naming the non-empty input field it comes from.",
+  "At most 3 items per list; each item in \"zh\" (at most 20 characters) and \"en\" (at most 40 characters); be specific, never generic phrases like networking, resources, business opportunities, industry experience or collaboration; never just repeat the company name or title. If nothing specific can be inferred, return empty lists.",
+  'Respond with a single JSON object: {"insights":[{"contactId":"C1","goalRelation":{"zh":"...","en":"..."},"nextStep":{"zh":"...","en":"..."},"evidence":["R1","N1"],"profile":{"offering":[{"text":{"zh":"...","en":"..."},"basis":"title"}],"seeking":[],"topics":[]}}]}.',
 ].join(" ");
 
 function compact<T extends Record<string, unknown>>(value: T): Partial<T> {
@@ -127,6 +141,7 @@ export function buildInsightPromptInput(input: InsightGenerationInput): { payloa
     compact({
       company: contact.organization,
       dormant: contact.dormant,
+      cardNotes: sanitizeCardNotes(contact.cardNotes),
       id: alias("C", contact.id),
       industry: contact.industry,
       name: contact.name,
@@ -171,12 +186,14 @@ export interface ParsedInsight {
   goalRelation: ContactInsightText;
   nextStep: ContactInsightText;
   evidence: ContactInsightEvidence[];
+  /** W0058：校验后的名片推测（推不出时三栏为空）。 */
+  profile: ProfileInference;
 }
 
 export interface InsightParseResult {
   insights: Map<string, ParsedInsight>;
   /** 被丢弃的条目数（日志用，不含内容）。 */
-  dropped: { foreignContacts: number; foreignEvidence: number; unsafeText: number };
+  dropped: { foreignContacts: number; foreignEvidence: number; unsafeText: number; profileItems: number };
 }
 
 function clip(value: string): string {
@@ -211,7 +228,7 @@ export function parseInsightOutput(content: string, input: InsightGenerationInpu
     needIds: new Set(input.needs.map((need) => need.id)),
     recordIds: new Set(input.contacts.flatMap((contact) => contact.records.map((record) => record.id))),
   };
-  const result: InsightParseResult = { dropped: { foreignContacts: 0, foreignEvidence: 0, unsafeText: 0 }, insights: new Map() };
+  const result: InsightParseResult = { dropped: { foreignContacts: 0, foreignEvidence: 0, profileItems: 0, unsafeText: 0 }, insights: new Map() };
   for (const entry of list) {
     if (!entry || typeof entry !== "object") continue;
     const item = entry as Record<string, unknown>;
@@ -238,7 +255,13 @@ export function parseInsightOutput(content: string, input: InsightGenerationInpu
       else if (needs.has(id)) evidence.push({ id, source: "plan_need" });
       else result.dropped.foreignEvidence += 1;
     }
-    result.insights.set(contactId, { contactId, evidence: dedupe(evidence).slice(0, 3), goalRelation, nextStep });
+    const inferred = parseProfileInference(
+      item.profile,
+      { cardNotes: sanitizeCardNotes(contact.cardNotes), industry: contact.industry, organization: contact.organization, role: contact.role },
+      allIds,
+    );
+    result.dropped.profileItems += inferred.dropped;
+    result.insights.set(contactId, { contactId, evidence: dedupe(evidence).slice(0, 3), goalRelation, nextStep, profile: inferred.profile });
   }
   return result;
 }
@@ -261,7 +284,28 @@ const MOCK_SOURCE_LABEL: Readonly<Record<string, { zh: string; en: string }>> = 
   schedule: { en: "meeting", zh: "日程" },
 };
 
-export function createMockContactInsightGenerator(): ContactInsightGenerator {
+/** mock 推测：只由公司／职位／行业拼出，每条带 basis（不编造；过长的会被校验丢弃）。 */
+function mockProfile(contact: InsightInputContact): Record<keyof ProfileInference, ProfileInferenceItem[]> {
+  const profile = emptyProfileInference();
+  if (contact.role) profile.offering.push({ basis: "title", text: { en: `${contact.role} perspective`, zh: `${contact.role}的一线视角` } });
+  if (contact.organization) profile.topics.push({ basis: "company", text: { en: `${contact.organization} roadmap`, zh: `${contact.organization}的业务方向` } });
+  if (contact.industry) profile.topics.push({ basis: "industry", text: { en: `${contact.industry} trends`, zh: `${contact.industry}动态` } });
+  if (contact.organization && contact.role) {
+    profile.seeking.push({ basis: "company", text: { en: `Partners for ${contact.organization}`, zh: `${contact.organization}的合作伙伴` } });
+  }
+  return profile;
+}
+
+export interface MockContactInsightGeneratorOptions {
+  /**
+   * W0058：mock 是否产出名片推测。默认 true（测试与本机 `next dev`）；部署环境（NODE_ENV=production）的配置工厂传 false——
+   * mock 拼出来的模板文字不能作为推测写进真实联系人资料。
+   */
+  profile?: boolean;
+}
+
+export function createMockContactInsightGenerator(options: MockContactInsightGeneratorOptions = {}): ContactInsightGenerator {
+  const withProfile = options.profile ?? true;
   return {
     billable: false,
     model: "mock-contact-insight-v1",
@@ -275,6 +319,7 @@ export function createMockContactInsightGenerator(): ContactInsightGenerator {
         const who = [contact.role, contact.organization].filter(Boolean).join(" · ");
         const record = contact.records[0];
         return {
+          ...(withProfile ? { profile: mockProfile(contact) } : {}),
           contactId: contact.id,
           evidence: [...(record ? [record.id] : []), ...(link ? [link.needId] : [])],
           goalRelation: title
@@ -329,6 +374,7 @@ export function createDeepseekContactInsightGenerator(options: DeepseekContactIn
 
 /**
  * provider factory：`ORBIT_CONTACT_INSIGHT_GENERATOR=deepseek` 且有 `DEEPSEEK_API_KEY` 时用 DeepSeek，否则 mock（生产默认）。
+ * W0058：`NODE_ENV=production` 下的 mock 不产出名片推测。
  */
 export function createConfiguredContactInsightGenerator(
   env: Record<string, string | undefined> = process.env,
@@ -339,5 +385,6 @@ export function createConfiguredContactInsightGenerator(
     // W0057（G-8）：即时路径传 45 s 上限，后台仍是 60 s。
     if (apiKey) return createDeepseekContactInsightGenerator({ apiKey, model: env.ORBIT_BUSINESS_CARD_OCR_TEXT_MODEL?.trim() || undefined, timeoutMs: options.timeoutMs });
   }
-  return createMockContactInsightGenerator();
+  // W0058：部署环境的 mock 不产出推测（模板文字不写进真实联系人）；本机 dev 与测试照常产出。
+  return createMockContactInsightGenerator({ profile: env.NODE_ENV !== "production" });
 }

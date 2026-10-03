@@ -377,7 +377,21 @@ function publicProfileFor(input: {
         : suggestedActions.slice(0, 2),
     source: input.source,
     evidenceIds: input.evidenceIds,
+    ...profileFieldSources(input.contact),
   };
+}
+
+/** W0058：三栏的值来自联系人资料且有来源记录时带上来源 via（回退到关系值的字段不带）。 */
+function profileFieldSources(contact: ContactDTO): Pick<ContactDetailPublicProfile, "fieldSources"> {
+  const fields = contact.enrichment?.fields;
+  const profile = contact.publicProfile;
+  if (!fields || !profile) return {};
+  const sources: NonNullable<ContactDetailPublicProfile["fieldSources"]> = {};
+  for (const field of ["offering", "seeking", "topics"] as const) {
+    const via = fields[field]?.via;
+    if (via && profile[field]?.length) sources[field] = via;
+  }
+  return Object.keys(sources).length ? { fieldSources: sources } : {};
 }
 
 function channelFor(sourceType: ContactDetailSourceType): ContactDetailLastInteractionChannel {

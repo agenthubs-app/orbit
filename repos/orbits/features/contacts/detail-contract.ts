@@ -2,7 +2,7 @@ import type { ApiErrorContext } from "../../shared/api/envelope";
 import { RUNTIME_BOUNDARY_HEADER_VALUES } from "../../shared/api/envelope";
 import type { FeatureMode } from "../../shared/config/feature-mode";
 import type { SeniorityLevel, SourceReferenceDTO, SourceType } from "../../shared/domain/source-types";
-import type { ContactEnrichmentDTO, ContactRegionDTO } from "../../shared/domain/contracts";
+import type { ContactEnrichmentDTO, ContactRegionDTO, EnrichmentVia } from "../../shared/domain/contracts";
 import type { AppErrorCode } from "../../shared/errors/app-error";
 import type { OrbitLanguage } from "../../shared/contract/language";
 import type { IndustryIdCode, SecondaryIndustryIdCode } from "../../shared/contract/industries";
@@ -260,6 +260,11 @@ export interface ContactDetailPublicProfile {
   conversationPrompts: readonly string[];
   source: ContactDetailSourceReference;
   evidenceIds: readonly string[];
+  /**
+   * W0058：offering／seeking／topics 的值确实来自联系人资料（不是关系回退值）时，该字段的来源 via
+   * （如 `card_inference` = 据名片推测、`memo_extraction` = 据 memo 提取）；W0060 据此显示角标。没有来源记录的字段不出现。
+   */
+  fieldSources?: Partial<Record<"offering" | "seeking" | "topics", EnrichmentVia>>;
 }
 
 // ContactDetail 是详情页完整读取模型。

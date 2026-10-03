@@ -12,6 +12,7 @@ import {
   canWriteEnrichedValue,
   readStoredEnrichment,
   withEnrichmentProvenance,
+  type EnrichmentWriter,
 } from "../../../shared/domain/enrichment";
 import { isIndustryIdCode, sanitizeIndustryPair } from "../../../shared/domain/industries";
 import { readStoredRegion } from "../../../shared/domain/regions";
@@ -27,7 +28,20 @@ export type EnrichedValue =
   | { field: "industry"; value: { primaryIndustryId: IndustryIdCode; secondaryIndustryId: SecondaryIndustryIdCode | null }; origin: EnrichmentOrigin; via: EnrichmentVia }
   | { field: "seniorityLevel"; value: SeniorityLevelValue; origin: EnrichmentOrigin; via: EnrichmentVia }
   | { field: "region"; value: ContactRegionDTO; origin: EnrichmentOrigin; via: EnrichmentVia }
-  | { field: ProfileListEnrichmentField; value: readonly string[]; origin: EnrichmentOrigin; via: EnrichmentVia };
+  | {
+      field: ProfileListEnrichmentField;
+      value: readonly string[];
+      origin: EnrichmentOrigin;
+      via: EnrichmentVia;
+      /** W0058：card_inference 的中英原文（与 value 下标一一对应），写进来源记录。 */
+      bilingual?: { zh: readonly string[]; en: readonly string[] };
+    };
+
+/**
+ * W0058（G-10）：memo 提取与名片推测按完整来源判定（user > memo_extraction > card_inference，用户清空的不回填）；
+ * 其余写入方仍只按 origin 判定（旧语义不变）。
+ */
+const FULL_PROVENANCE_VIAS: ReadonlySet<EnrichmentVia> = new Set(["memo_extraction", "card_inference"]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -56,7 +70,7 @@ export function enrichedFieldHasValue(payload: Record<string, unknown>, field: A
 }
 
 /** 这个值能否按来源规则写进 payload（不写入）。 */
-export function canApplyEnrichedValue(payload: Record<string, unknown>, field: AppliedEnrichmentField, origin: EnrichmentOrigin): boolean {
+export function canApplyEnrichedValue(payload: Record<string, unknown>, field: AppliedEnrichmentField, origin: EnrichmentOrigin | EnrichmentWriter): boolean {
   const enrichment = readStoredEnrichment(payload.enrichment);
   return canWriteEnrichedValue(
     { hasValue: enrichedFieldHasValue(payload, field), provenance: enrichment?.fields[field] ?? null },
@@ -102,7 +116,8 @@ export function applyEnrichedValues(
 ): AppliedEnrichmentField[] {
   const written: AppliedEnrichmentField[] = [];
   for (const entry of values) {
-    const gate = options.mergeIntoExisting && entry.origin === "user" ? "ai" : entry.origin;
+    const origin = options.mergeIntoExisting && entry.origin === "user" ? "ai" : entry.origin;
+    const gate: EnrichmentOrigin | EnrichmentWriter = FULL_PROVENANCE_VIAS.has(entry.via) ? { origin, via: entry.via } : origin;
     if (!validValue(entry) || !canApplyEnrichedValue(payload, entry.field, gate)) continue;
     switch (entry.field) {
       case "industry": {
@@ -127,10 +142,12 @@ export function applyEnrichedValues(
         };
         break;
     }
+    const bilingual = "bilingual" in entry && entry.bilingual ? { en: [...entry.bilingual.en], zh: [...entry.bilingual.zh] } : null;
     payload.enrichment = withEnrichmentProvenance(readStoredEnrichment(payload.enrichment), entry.field, {
       origin: entry.origin,
       updatedAt: at,
       via: entry.via,
+      ...(bilingual ? { bilingual } : {}),
     });
     written.push(entry.field);
   }

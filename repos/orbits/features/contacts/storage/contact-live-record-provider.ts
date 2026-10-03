@@ -1,6 +1,6 @@
 import { AppError } from "../../../shared/errors/app-error";
 import { contactRecordOwnedByActor } from "./contact-read-authorization";
-import { applyEnrichedValues, type EnrichedValue } from "../enrichment/apply-enrichment";
+import { applyEnrichedValues, type AppliedEnrichmentField, type EnrichedValue } from "../enrichment/apply-enrichment";
 
 import type {
   ConnectionDTO,
@@ -49,6 +49,33 @@ import {
   type ContactRecordPage,
   type ContactRecordPageReader,
 } from "./contact-list-postgres-reader";
+
+/** W0058：名片推测写回的条件更新冲突重试次数（重读，不调用模型）。 */
+export const CARD_INFERENCE_WRITE_RETRIES = 2;
+
+/**
+ * W0058（review P2）：`applyContactCardInference` 的 values 是一次推测的完整结果。这次没有推出的栏，
+ * 若当前值仍是旧的 card_inference（没被 memo／用户替换），就清掉值与来源，避免名片资料变化后留着过期推测。
+ */
+function clearStaleCardInference(payload: Record<string, unknown>, values: readonly EnrichedValue[]): AppliedEnrichmentField[] {
+  const enrichment = readStoredEnrichment(payload.enrichment);
+  if (!enrichment) return [];
+  const present = new Set(values.map((entry) => entry.field));
+  const cleared: AppliedEnrichmentField[] = [];
+  const fields = { ...enrichment.fields };
+  const profile = typeof payload.publicProfile === "object" && payload.publicProfile !== null ? { ...(payload.publicProfile as Record<string, unknown>) } : {};
+  for (const field of ["offering", "seeking", "topics"] as const) {
+    if (present.has(field) || fields[field]?.via !== "card_inference") continue;
+    delete fields[field];
+    delete profile[field];
+    cleared.push(field);
+  }
+  if (!cleared.length) return [];
+  payload.publicProfile = profile;
+  if (Object.keys(fields).length) payload.enrichment = { version: 1, fields };
+  else delete payload.enrichment;
+  return cleared;
+}
 
 export const CONTACTS_LIVE_RECORD_COLLECTIONS = {
   connections: "connections",
@@ -810,6 +837,57 @@ export function createStorageContactGraphProvider({
   store,
   workspaceId,
 }: StorageContactGraphProviderOptions): LiveContactsGraphProvider {
+  /**
+   * W0046／W0058：AI 写回专长／需求／话题（publicProfile.offering／seeking／topics）。只接受这三个列表字段、
+   * 来源 ai + 指定 via；逐项过 canWriteEnrichedValue（完整来源判定），一次条件更新；没有可写项时不写。
+   * 条件更新冲突：`retries` 次以内重读重算，仍冲突抛 AppError CONFLICT。
+   */
+  async function applyProfileListValues(input: {
+    contactId: string;
+    actorId: string;
+    values: readonly EnrichedValue[];
+    at: string;
+    via: "memo_extraction" | "card_inference";
+    retries: number;
+  }): Promise<AppliedEnrichmentField[]> {
+    const normalizedActorId = input.actorId.trim();
+    const normalizedContactId = input.contactId.trim();
+    if (!normalizedActorId || !normalizedContactId) {
+      throw new Error("Profile write-back requires actor and contact identifiers.");
+    }
+    const allowed = input.values.filter((entry) =>
+      (entry.field === "offering" || entry.field === "seeking" || entry.field === "topics") && entry.origin === "ai" && entry.via === input.via);
+    if (!store.updateRecordIfCurrent) {
+      throw new AppError("SERVICE_UNAVAILABLE", "Contact storage requires conditional update support.");
+    }
+    for (let attempt = 0; ; attempt += 1) {
+      const contactRecord = await store.getRecord({
+        workspaceId,
+        collectionName: CONTACTS_LIVE_RECORD_COLLECTIONS.contacts,
+        recordId: normalizedContactId,
+      });
+      if (!contactRecord || !contactRecordOwnedByActor(contactRecord, normalizedActorId)) {
+        throw new Error("Profile write-back is outside the actor boundary.");
+      }
+      const nextPayload: Record<string, unknown> = { ...contactRecord.payload };
+      const written = applyEnrichedValues(nextPayload, allowed, input.at);
+      if (input.via === "card_inference") written.push(...clearStaleCardInference(nextPayload, allowed));
+      if (!written.length) return [];
+      const updatedAt = new Date(Math.max(Date.now(), Date.parse(contactRecord.updatedAt) + 1)).toISOString();
+      nextPayload.updatedAt = updatedAt;
+      const record = await store.updateRecordIfCurrent({ ...contactRecord, updatedAt, payload: nextPayload }, {
+        userId: contactRecord.userId ?? null,
+        updatedAt: contactRecord.updatedAt,
+      });
+      if (record) return written;
+      if (attempt >= input.retries) {
+        throw new AppError("CONFLICT", input.via === "memo_extraction"
+          ? "Contact changed while applying memo extraction."
+          : "Contact changed while applying card inference.");
+      }
+    }
+  }
+
   return {
     source: source ?? `live-record-store:contacts:${workspaceId}`,
     sourceLabel,
@@ -1081,36 +1159,11 @@ export function createStorageContactGraphProvider({
       return contact;
     },
     async applyContactMemoExtraction(contactId: string, actorId: string, values: readonly EnrichedValue[], at: string) {
-      const normalizedActorId = actorId.trim();
-      const normalizedContactId = contactId.trim();
-      if (!normalizedActorId || !normalizedContactId) {
-        throw new Error("Memo extraction write-back requires actor and contact identifiers.");
-      }
-      const contactRecord = await store.getRecord({
-        workspaceId,
-        collectionName: CONTACTS_LIVE_RECORD_COLLECTIONS.contacts,
-        recordId: normalizedContactId,
-      });
-      if (!contactRecord || !contactRecordOwnedByActor(contactRecord, normalizedActorId)) {
-        throw new Error("Memo extraction write-back is outside the actor boundary.");
-      }
-      // 只接受三个列表字段、来源 ai（memo 提取永远是推断值）。
-      const allowed = values.filter((entry) =>
-        (entry.field === "offering" || entry.field === "seeking" || entry.field === "topics") && entry.origin === "ai" && entry.via === "memo_extraction");
-      const nextPayload: Record<string, unknown> = { ...contactRecord.payload };
-      const written = applyEnrichedValues(nextPayload, allowed, at);
-      if (!written.length) return [];
-      const updatedAt = new Date(Math.max(Date.now(), Date.parse(contactRecord.updatedAt) + 1)).toISOString();
-      nextPayload.updatedAt = updatedAt;
-      if (!store.updateRecordIfCurrent) {
-        throw new AppError("SERVICE_UNAVAILABLE", "Contact storage requires conditional update support.");
-      }
-      const record = await store.updateRecordIfCurrent({ ...contactRecord, updatedAt, payload: nextPayload }, {
-        userId: contactRecord.userId ?? null,
-        updatedAt: contactRecord.updatedAt,
-      });
-      if (!record) throw new AppError("CONFLICT", "Contact changed while applying memo extraction.");
-      return written;
+      return applyProfileListValues({ actorId, at, contactId, retries: 0, values, via: "memo_extraction" });
+    },
+    async applyContactCardInference(contactId: string, actorId: string, values: readonly EnrichedValue[], at: string) {
+      // W0058（G-10）：条件更新冲突后重读、最多再试 2 次（不调用模型）。
+      return applyProfileListValues({ actorId, at, contactId, retries: CARD_INFERENCE_WRITE_RETRIES, values, via: "card_inference" });
     },
   };
 }

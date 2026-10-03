@@ -188,7 +188,9 @@ export type EnrichmentVia =
   | "contact_edit"
   | "legacy_profile"
   | "rule"
-  | "memo_extraction";
+  | "memo_extraction"
+  // W0058（D58）：洞察生成同一调用顺带、只依据名片资料（公司／职位／名片备注／行业）推测的 offering／seeking／topics。
+  | "card_inference";
 
 /** C-4（D44）：补全来源的唯一载体。offering／seeking／topics 由 W0046 memo 提取写入。 */
 export type EnrichmentField = "industry" | "seniorityLevel" | "region" | "offering" | "seeking" | "topics";
@@ -197,6 +199,11 @@ export interface EnrichmentProvenance {
   origin: EnrichmentOrigin;
   updatedAt: IsoDateTimeString;
   via: EnrichmentVia;
+  /**
+   * W0058（W58-3）：列表字段（offering／seeking／topics）由模型同时给出的中英两份原文（下标一一对应）；
+   * 值本身按用户目标文字的语言写入，这里留着以后切换语言用。可选，只有 card_inference 写。
+   */
+  bilingual?: { zh: readonly string[]; en: readonly string[] };
 }
 
 export interface ContactEnrichmentDTO {

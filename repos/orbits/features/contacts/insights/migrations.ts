@@ -88,6 +88,24 @@ alter table contact_insights
   add column retry_count integer not null default 0 check (retry_count >= 0);
 `,
   },
+  {
+    // W0058（rev 2 G-3）：同一次洞察调用产出的名片推测与洞察同一条 complete 语句持久化在行上；写回联系人是之后的
+    // 独立一步——失败或冲突时保持 pending，由维护任务从存的推测重放写回（0 次模型调用，最多 3 次，之后 skipped）。
+    // 没有推测（旧行）时 profile_apply_state 为 null；推测为空也置 pending，写回时清掉过期的 card_inference。
+    name: "contact-insights-profile-inference",
+    version: 4,
+    sql: `
+alter table contact_insights
+  add column profile_inference jsonb check (profile_inference is null or jsonb_typeof(profile_inference) = 'object'),
+  add column profile_apply_state text check (profile_apply_state is null or profile_apply_state in ('pending', 'applied', 'skipped')),
+  add column profile_apply_attempts integer not null default 0 check (profile_apply_attempts >= 0);
+
+-- 维护任务只扫待写回的行。
+create index contact_insights_profile_pending
+  on contact_insights (workspace_id, updated_at)
+  where profile_apply_state = 'pending';
+`,
+  },
 ];
 
 function checksum(sql: string): string {
