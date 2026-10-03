@@ -20,6 +20,8 @@ import { findPageCopyDefinition, PAGE_COPY_DEFINITIONS, type PageCopy } from "./
 import { isOfflineEligible } from "./mutation-adapters";
 import { parseOfflineNoteRequest } from "./note-outbox-mutation";
 import { isOfflineTaskCategory, parseOfflineTaskRequest } from "./task-outbox-mutation";
+import { isOfflineScheduleEditable, localNoteIdsOfSchedule, parseOfflineScheduleRequest } from "./schedule-outbox-mutation";
+import type { PersonalScheduleContract } from "../../api/contract/tasks";
 import { kindOfSyncDomain, KNOWN_SYNC_DOMAINS, PARTITIONED_SYNC_DOMAINS, syncDomainOfKind } from "./sync-domains";
 import {
   shouldSynchronize,
@@ -138,6 +140,8 @@ export interface SyncCoordinatorSession {
   enqueueOfflineNoteMutation(mutation: OfflineNoteMutationInput): Promise<void>;
   /** Sprint 0133: private personal task writes admitted to the native offline outbox. */
   enqueueOfflineTaskMutation(mutation: OfflineTaskMutationInput): Promise<void>;
+  /** Sprint 0134: non-recurring personal schedule writes admitted to the native offline outbox. */
+  enqueueOfflineScheduleMutation(mutation: OfflineScheduleMutationInput): Promise<void>;
   /** Sprint 0132: resolve only a conflict row inside the currently accepted notes lease. */
   resolveNoteConflict?(input: {
     mutationId: string;
@@ -150,12 +154,23 @@ export interface SyncCoordinatorSession {
     resolution: "server" | "replace";
     replacement?: OfflineTaskMutationInput;
   }): Promise<void>;
+  /** Sprint 0134: resolve only a conflict row inside the currently accepted personal-schedule lease. */
+  resolveScheduleConflict?(input: {
+    mutationId: string;
+    resolution: "server" | "replace";
+    replacement?: OfflineScheduleMutationInput;
+  }): Promise<void>;
 }
 
 export type OfflineNoteMutationInput = Omit<LocalSyncOutboxMutation, "actorId" | "workspaceId">;
 export type OfflineTaskMutationInput = Omit<LocalSyncOutboxMutation, "actorId" | "workspaceId" | "kind" | "operation"> & {
   kind: "task";
   operation: "create" | "update" | "complete" | "reopen" | "cancel" | "delete";
+};
+/** Sprint 0134: a non-recurring personal schedule write admitted to the native offline outbox. */
+export type OfflineScheduleMutationInput = Omit<LocalSyncOutboxMutation, "actorId" | "workspaceId" | "kind" | "operation"> & {
+  kind: "personal_schedule";
+  operation: "create" | "update" | "delete";
 };
 
 interface ActiveScope extends SyncScopeInput {
@@ -192,6 +207,13 @@ class LocalMirrorUnavailableError extends Error {
     super("本地同步镜像暂不可用。");
     this.name = "LocalMirrorUnavailableError";
   }
+}
+
+function replaceExactValue(value: unknown, from: string, to: string): unknown {
+  if (value === from) return to;
+  if (Array.isArray(value)) return value.map(item => replaceExactValue(item, from, to));
+  if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, replaceExactValue(item, from, to)]));
+  return value;
 }
 
 export function createSyncCoordinator(input: {
@@ -802,6 +824,89 @@ export function createSyncCoordinator(input: {
           if (prior && !dependsOn) dependsOn = prior.mutationId;
           await repository.enqueueOutboxMutation({ ...mutation, actorId: bound.actorId, workspaceId: bound.workspaceId!, dependsOn }, { notify: !mutation.requestAttemptedAt });
         });
+      },
+      async enqueueOfflineScheduleMutation(mutation: OfflineScheduleMutationInput): Promise<void> {
+        await bound.ready;
+        if (!isCurrent(bound) || bound.workspaceId === null) throw new TypeError("outbox mutation is outside the active actor/workspace");
+        const scheduleScope = readScopeFor(bound, "personal_schedule");
+        const currentLease = bound.lease ? acceptedLease(bound, bound.lease) : null;
+        const hasCurrentGrant = Boolean(scheduleScope && currentLease?.grants.some(grant =>
+          grant.workspaceId === scheduleScope.workspaceId && grant.domainId === scheduleScope.domainId &&
+          grant.authorizationEpoch === scheduleScope.authorizationEpoch));
+        if (!hasCurrentGrant || mutation.domainId !== "personal-schedule" || mutation.kind !== "personal_schedule" || !mutation.requestJson ||
+            mutation.requestAttemptedAt) {
+          throw new TypeError("schedule mutation is not eligible");
+        }
+        let parsed: ReturnType<typeof parseOfflineScheduleRequest>;
+        try { parsed = parseOfflineScheduleRequest(mutation); } catch { throw new TypeError("schedule mutation is not eligible"); }
+        if (!isOfflineEligible("personal_schedule", mutation.operation, { actorPrivate: true, confirmed: true, connectionActive: isCurrent(bound) })) {
+          throw new TypeError("schedule mutation is not eligible");
+        }
+        await withRepository(bound, async repository => {
+          const workspaceId = bound.workspaceId!;
+          const pending = await repository.readOutboxOverlay({ workspaceId, kind: "personal_schedule" });
+          const sameItem = pending.queuedMutations.filter(item => item.id === mutation.id);
+          if (mutation.operation !== "create") {
+            if (mutation.id.startsWith("local:")) {
+              const localCreate = sameItem.find(item => item.operation === "create" && item.state !== "failed");
+              let validCreate = false;
+              if (localCreate) {
+                try { parseOfflineScheduleRequest({ ...localCreate, kind: "personal_schedule", operation: "create" }); validCreate = true; } catch { /* untrusted stored row */ }
+              }
+              if (!validCreate) throw new TypeError("local schedule mutation requires its queued create");
+            } else {
+              const record = await repository.getRecord({ workspaceId, kind: "personal_schedule", id: mutation.id });
+              const item = record?.payload && typeof record.payload === "object" ? record.payload as PersonalScheduleContract : null;
+              if (!record || record.deletedAt !== null || record.actorId !== bound.actorId || !isOfflineScheduleEditable(item, bound.actorId)) {
+                throw new TypeError("offline schedule mutation requires a mirrored non-recurring personal schedule");
+              }
+            }
+          }
+          // Links to notes created offline: an acknowledged note is linked by its formal id; an unacknowledged
+          // one must still be queued, and the schedule uploader waits for it (design step 4).
+          let { requestJson, patch } = { requestJson: mutation.requestJson!, patch: parsed.patch as Record<string, unknown> };
+          const localNotes = localNoteIdsOfSchedule(mutation);
+          if (localNotes.length) {
+            const notes = await repository.readOutboxOverlay({ workspaceId, kind: "note" });
+            for (const localId of localNotes) {
+              const formal = await repository.resolveAlias({ workspaceId, domainId: "notes", localId, now: new Date(now()).toISOString() });
+              if (formal) {
+                requestJson = JSON.stringify(replaceExactValue(JSON.parse(requestJson), localId, formal));
+                patch = replaceExactValue(patch, localId, formal) as Record<string, unknown>;
+                continue;
+              }
+              if (!notes.queuedMutations.some(item => item.id === localId && item.operation === "create" && item.state !== "failed")) {
+                throw new TypeError("schedule links an unsaved note");
+              }
+            }
+          }
+          const prior = sameItem.sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.mutationId.localeCompare(b.mutationId)).at(-1);
+          const dependsOn = mutation.dependsOn ?? prior?.mutationId ?? null;
+          await repository.enqueueOutboxMutation({ ...mutation, requestJson, patch, actorId: bound.actorId, workspaceId, dependsOn });
+        });
+      },
+      async resolveScheduleConflict(input: {
+        mutationId: string;
+        resolution: "server" | "replace";
+        replacement?: OfflineScheduleMutationInput;
+      }): Promise<void> {
+        await bound.ready;
+        const scheduleScope = readScopeFor(bound, "personal_schedule");
+        const currentLease = bound.lease ? acceptedLease(bound, bound.lease) : null;
+        const hasCurrentGrant = Boolean(scheduleScope && currentLease?.grants.some(grant =>
+          grant.workspaceId === scheduleScope.workspaceId && grant.domainId === scheduleScope.domainId &&
+          grant.authorizationEpoch === scheduleScope.authorizationEpoch));
+        if (!isCurrent(bound) || !scheduleScope || !hasCurrentGrant) throw new TypeError("schedule conflict is outside the active lease");
+        if (input.replacement) {
+          try { parseOfflineScheduleRequest(input.replacement); } catch { throw new TypeError("schedule conflict replacement is invalid"); }
+          if (localNoteIdsOfSchedule(input.replacement).length) throw new TypeError("schedule conflict replacement is invalid");
+        }
+        await withRepository(bound, repository => repository.resolveScheduleConflict({
+          workspaceId: scheduleScope.workspaceId,
+          mutationId: input.mutationId,
+          resolution: input.resolution,
+          ...(input.replacement ? { replacement: { ...input.replacement, actorId: bound.actorId, workspaceId: scheduleScope.workspaceId } } : {}),
+        }));
       },
       async resolveNoteConflict(input: {
         mutationId: string;

@@ -13,7 +13,9 @@ export function isOfflineEligible(
   const privateNoteWrite = kind === "note" && (operation === "create" || operation === "update");
   const personalTaskWrite = kind === "task" &&
     ["create", "update", "complete", "reopen", "cancel", "delete"].includes(operation);
-  return (privateNoteWrite || personalTaskWrite) &&
+  // Sprint 0134: non-recurring personal schedules (design D7; the series/occurrence rule is checked against the mirrored item).
+  const personalScheduleWrite = kind === "personal_schedule" && ["create", "update", "delete"].includes(operation);
+  return (privateNoteWrite || personalTaskWrite || personalScheduleWrite) &&
     facts.actorPrivate && facts.confirmed && facts.connectionActive;
 }
 

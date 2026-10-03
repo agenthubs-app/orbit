@@ -10,7 +10,7 @@ const facts = { actorPrivate: true, confirmed: true, connectionActive: true };
 const command = { mutationId: "m1", kind: "note", entityId: "local:123e4567-e89b-42d3-a456-426614174000", operation: "create",
   baseRevision: null, patch: { body: "Hello" }, createdAt: "2026-09-16T00:00:00Z" };
 
-test("only private, confirmed note and personal task mutations are offline eligible", () => {
+test("only private, confirmed note, personal task and personal schedule mutations are offline eligible", () => {
   const productOperations: Record<string, string[]> = {
     note: ["create", "update", "delete"], task: ["create", "update", "complete", "reopen", "cancel", "delete"],
     relationship_followup: ["update", "complete", "reopen", "cancel", "delete"], personal_schedule: ["create", "update", "delete"],
@@ -18,7 +18,8 @@ test("only private, confirmed note and personal task mutations are offline eligi
   for (const [kind, operations] of Object.entries(productOperations)) {
     for (const operation of operations) {
       const expected = (kind === "note" && (operation === "create" || operation === "update")) ||
-        (kind === "task" && ["create", "update", "complete", "reopen", "cancel", "delete"].includes(operation));
+        (kind === "task" && ["create", "update", "complete", "reopen", "cancel", "delete"].includes(operation)) ||
+        kind === "personal_schedule";
       assert.equal(isOfflineEligible(kind, operation, facts), expected, `${kind}.${operation}`);
       assert.equal(isOfflineEligible(kind, operation, { ...facts, actorPrivate: false }), false);
       assert.equal(isOfflineEligible(kind, operation, { ...facts, confirmed: false }), false);

@@ -138,9 +138,20 @@ test("the note, task and personal-schedule services write under the strict trigg
   assert.equal(taskReceiptCount, 6, "each task mutation has one retained receipt");
   assert.equal(updated.task.title, "T updated");
   const schedule = createPersonalScheduleService({ store: h.store, client: h.client, workspaceId: W, now: () => NOW });
-  const item = await schedule.create(A, { title: "S", startsAt: "2026-09-28T01:00:00.000Z", idempotencyKey: "schedule-1" });
-  const moved = await schedule.update(A, item.scheduleItem.id, { expectedUpdatedAt: item.scheduleItem.updatedAt, idempotencyKey: "schedule-2", patch: { title: "S2" } });
-  await schedule.remove(A, item.scheduleItem.id, { expectedUpdatedAt: moved.scheduleItem.updatedAt, idempotencyKey: "schedule-3" });
+  const scheduleCreate = { title: "S", startsAt: "2026-09-28T01:00:00.000Z", idempotencyKey: "schedule-1" };
+  const item = await schedule.create(A, scheduleCreate);
+  const scheduleUpdate = { expectedUpdatedAt: item.scheduleItem.updatedAt, idempotencyKey: "schedule-2", patch: { title: "S2" } };
+  const moved = await schedule.update(A, item.scheduleItem.id, scheduleUpdate);
+  const scheduleDelete = { expectedUpdatedAt: moved.scheduleItem.updatedAt, idempotencyKey: "schedule-3" };
+  const removed = await schedule.remove(A, item.scheduleItem.id, scheduleDelete);
+  // Sprint 0134: offline replays of the three schedule requests return their receipts under the strict trigger and write nothing.
+  const scheduleRevision = await revision(h.pool, "personal_schedule_items", item.scheduleItem.id);
+  assert.deepEqual(await schedule.create(A, scheduleCreate), item);
+  assert.deepEqual(await schedule.update(A, item.scheduleItem.id, scheduleUpdate), moved);
+  assert.deepEqual(await schedule.remove(A, item.scheduleItem.id, scheduleDelete), removed);
+  assert.equal(await revision(h.pool, "personal_schedule_items", item.scheduleItem.id), scheduleRevision, "a replay does not advance the schedule revision");
+  const scheduleReceiptCount = (await h.pool.query("select count(*)::int as n from orbit_records where workspace_id=$1 and collection_name='personal_schedule_mutations' and user_id=$2", [W, A])).rows[0].n;
+  assert.equal(scheduleReceiptCount, 3, "each schedule mutation has one retained receipt");
   const pages = { notes: await pull(h.reader, "notes"), tasks: await pull(h.reader, "tasks"), schedule: await pull(h.reader, "personal-schedule") };
   assert.deepEqual(pages.notes.ids, [created.id]);
   assert.deepEqual(pages.tasks.ids, [task.task.id]);
