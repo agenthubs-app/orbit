@@ -343,7 +343,10 @@ function draftFromRecord(
     !nonEmptyString(payload.displayName) ||
     !nonEmptyString(payload.role) ||
     !nonEmptyString(payload.organization) ||
-    !nonEmptyString(payload.relationshipContext) ||
+    // Sprint 0140: a manual draft without a relationship note stores an empty
+    // context; every other source still has to carry one.
+    !(nonEmptyString(payload.relationshipContext) ||
+      (source.type === "manual" && payload.relationshipContext === "")) ||
     !nonEmptyString(payload.suggestedNextAction) ||
     !(payload.confidence === "high" || payload.confidence === "medium" || payload.confidence === "low") ||
     !nonEmptyString(payload.createdAt) ||

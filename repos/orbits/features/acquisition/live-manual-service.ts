@@ -285,8 +285,9 @@ function manualDraftFromContactDraft(
   draft: ContactAcquisitionDraft,
 ): ManualContactDraft {
   const stored = draft as StoredManualContactDraft;
-  const note =
-    nonEmpty(stored.note) ?? draft.relationshipContext;
+  const storedNote = nonEmpty(stored.note);
+  // Sprint 0140: a name-only draft stores no note; do not substitute other text.
+  const note = storedNote ?? draft.relationshipContext;
   const tags = Array.isArray(stored.tags)
     ? stored.tags.filter((tag): tag is string => typeof tag === "string")
     : [];
@@ -305,7 +306,8 @@ function manualDraftFromContactDraft(
     note,
     tags,
     followUpHint:
-      nonEmpty(stored.followUpHint) ?? draft.suggestedNextAction,
+      nonEmpty(stored.followUpHint) ??
+      (storedNote ? draft.suggestedNextAction : ""),
     relationshipContext: draft.relationshipContext,
     suggestedNextAction: draft.suggestedNextAction,
     duplicateCheck: {
@@ -356,7 +358,10 @@ function contactDraftFromManualInput(input: {
   role: string;
   organization: string;
   idempotencyNote: string;
-  note: string;
+  /** Absent when the user gave no relationship note (Sprint 0140: only the name is required). */
+  note?: string;
+  explicitOrganization: string;
+  explicitRole: string;
   tags: readonly string[];
   followUpHint: string;
 }): StoredManualContactDraft {
@@ -380,15 +385,15 @@ function contactDraftFromManualInput(input: {
     evidenceId,
     source: input.source,
     sourceLabel: input.source.label,
-    excerpt: input.note,
-    capturedFields: [
-      "displayName",
-      "organization",
-      "role",
-      "note",
-      "tags",
-      "followUpHint",
-    ],
+    // Without a note the evidence quotes only the fields the user actually entered.
+    excerpt:
+      input.note ??
+      [input.displayName, input.explicitOrganization, input.explicitRole]
+        .filter(Boolean)
+        .join(" · "),
+    capturedFields: input.note
+      ? ["displayName", "organization", "role", "note", "tags", "followUpHint"]
+      : ["displayName", "organization", "role", "tags", "followUpHint"],
     createdAt: input.generatedAt,
     createdBy: "live-contact-acquisition-draft-service",
   };
@@ -400,10 +405,12 @@ function contactDraftFromManualInput(input: {
     displayName: input.displayName,
     role: input.role,
     organization: input.organization,
-    relationshipContext: `Manual note: ${input.note}`,
+    relationshipContext: input.note ? `Manual note: ${input.note}` : "",
     suggestedNextAction:
       input.followUpHint ||
-      "Review the manual note evidence before confirming this contact candidate.",
+      (input.note
+        ? "Review the manual note evidence before confirming this contact candidate."
+        : "Review the manually entered details before confirming this contact candidate."),
     confidence: "medium",
     createdAt: input.generatedAt,
     confirmation: {
@@ -425,7 +432,7 @@ function contactDraftFromManualInput(input: {
       contactWriteExecuted: false,
       externalNetworkRequested: false,
     },
-    note: input.note,
+    ...(input.note ? { note: input.note } : {}),
     tags: input.tags,
     followUpHint: input.followUpHint,
   };
@@ -757,7 +764,10 @@ export function createLiveManualContactCreationService({
 
       const note = nonEmpty(input.note);
 
-      if (!note) {
+      // Sprint 0140: the approved manual-add design requires only a name. A
+      // draft still needs a name or a note to derive one from; without either
+      // the original refusal (and its code) is kept.
+      if (!note && !nonEmpty(input.displayName)) {
         return failure(
           "MANUAL_CONTACT_NOTE_REQUIRED",
           provenanceFor({
@@ -775,7 +785,9 @@ export function createLiveManualContactCreationService({
       const organization = organizationFrom(input);
       const role = roleFrom(input);
       const source = sourceFor(input.source, displayName);
-      const searchableNote = await searchableNoteFor(note, normalizationService);
+      const searchableNote = note
+        ? await searchableNoteFor(note, normalizationService)
+        : undefined;
       const contactDraft = contactDraftFromManualInput({
         actorId: normalizedActorId,
         generatedAt,
@@ -784,8 +796,10 @@ export function createLiveManualContactCreationService({
         displayName,
         role,
         organization,
-        idempotencyNote: note,
-        note: searchableNote,
+        idempotencyNote: note ?? "",
+        ...(searchableNote ? { note: searchableNote } : {}),
+        explicitOrganization: nonEmpty(input.organization) ?? "",
+        explicitRole: nonEmpty(input.role) ?? "",
         tags: tagsFor(input.tags),
         followUpHint: nonEmpty(input.followUpHint) ?? "",
       });

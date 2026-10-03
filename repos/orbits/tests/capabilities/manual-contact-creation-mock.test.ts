@@ -479,3 +479,11 @@ test("manual contact creation live handoff covers replacement requirements", () 
     /Replacement tests cover create, confirm, validation, empty, and unconfigured live-store paths/,
   );
 });
+
+test("mock manual intake accepts a name with a blank note, like live (Sprint 0140)", async () => {
+  const { createMockManualContactCreationService } = await import("../../features/acquisition/mock-manual-service");
+  const result = createMockManualContactCreationService().createManualContactDraft({ displayName: "S0140 Mock", note: "" });
+  assert.equal(result.success, true);
+  const refused = createMockManualContactCreationService().createManualContactDraft({ note: "" });
+  assert.equal(refused.success, false);
+});
