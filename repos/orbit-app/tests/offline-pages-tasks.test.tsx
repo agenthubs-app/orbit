@@ -137,3 +137,26 @@ test("task detail on the phone offline: the actor's own work task completes, can
   assert.equal(JSON.parse(remove!.requestJson).expectedUpdatedAt, "2026-09-27T00:00:00.000Z", "offline delete carries the mirrored version (D5)");
   for (const p of [page, cancelPage, deletePage]) assert.deepEqual(await writes(p), [], "nothing is sent while offline");
 });
+
+test("task detail offline shows its own queued change while other tasks also have queued changes (0133)", async (t) => {
+  const work = task("t7", "整理路演材料", { category: "work" });
+  const other = task("t8", "另一条待办", { category: "work" });
+  const queuedOther = { domainId: "tasks", mutationId: "m-other", kind: "task", id: "t8", operation: "complete", patch: {}, requestJson: JSON.stringify({ action: "complete", idempotencyKey: "m-other" }),
+    baseRevision: "1", createdAt: "2026-09-28T02:00:00.000Z", retryCount: 0, nextRetryAt: null, lastErrorCode: null, actorId: A, workspaceId: "workspace:one", state: "queued", attemptCount: 0, firstAttemptAt: null, serverSnapshot: null, dependsOn: null };
+  const page = await harness.open(t, { screen: "detail", platform: "ios", taskOutbox: true, online: false, syncStatus: "stale", params: { id: "t7" }, records: { task: [work, other] }, queuedTasks: [queuedOther] });
+  await page.getByText(OFFLINE_BANNER).waitFor();
+  await page.getByRole("button", { name: "标记完成", exact: true }).dispatchEvent("click");
+  await page.waitForFunction(() => ((window as any).fixture.enqueued ?? []).length === 1);
+  await page.getByText("尚未同步", { exact: true }).waitFor();
+  await page.getByRole("button", { name: "恢复待办", exact: true }).waitFor();
+});
+
+test("the task list offline labels only follow-ups as needing the network; an unchanged own task is not called unsynced (0133)", async (t) => {
+  const page = await harness.open(t, { screen: "tasks", platform: "ios", taskOutbox: true, online: false, syncStatus: "stale",
+    records: { task: [task("t7", "整理路演材料", { category: "work" }), task("t9", "回访佐藤")], inbox_notification: [] } });
+  await page.getByText(OFFLINE_BANNER).first().waitFor();
+  const own = page.getByRole("checkbox", { name: "完成：整理路演材料", exact: true });
+  await own.waitFor();
+  assert.equal(await own.isDisabled(), false);
+  assert.equal(await page.getByRole("checkbox", { name: /回访佐藤.*需要联网/ }).isDisabled(), true);
+});

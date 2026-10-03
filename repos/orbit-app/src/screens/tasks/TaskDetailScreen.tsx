@@ -118,7 +118,7 @@ export function TaskDetailScreen() {
     : mirrorRow?.payload as unknown as TaskItemContract | undefined;
   const projectedTasks = overlayQueuedTasks(
     overlayBase ? [overlayBase] : serverDetail ? [{ ...serverDetail, accountId: actorId, ownerUserId: actorId, source: "manual", createdAt: serverDetail.createdAt ?? serverDetail.updatedAt } as unknown as TaskItemContract] : [],
-    taskOutbox.queuedMutations,
+    taskOutbox.queuedMutations.filter(item => item.id === taskId), // the base holds only this task
     actorId,
   );
   const projectedTask = projectedTasks?.find(task => task.id === taskId);

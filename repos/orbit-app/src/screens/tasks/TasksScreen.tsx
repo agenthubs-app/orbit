@@ -177,7 +177,7 @@ export function TasksScreen() {
               style={styles.row}
             >
               <Pressable
-                accessibilityLabel={locale.t(item.status === "completed" ? "tasks.restoreNamed" : "tasks.completeNamed", { title: item.title }) + (source.offline ? " · " + locale.t(isOfflineTaskCategory(item.category) ? "tasks.outboxQueued" : "sync.needsNetwork") : "")}
+                accessibilityLabel={locale.t(item.status === "completed" ? "tasks.restoreNamed" : "tasks.completeNamed", { title: item.title }) + (source.offline && !isOfflineTaskCategory(item.category) ? " · " + locale.t("sync.needsNetwork") : "")}
                 accessibilityRole="checkbox"
                 aria-checked={item.status === "completed"}
                 accessibilityState={{ checked: item.status === "completed", disabled: updatingId !== null || Boolean(source.offline && !isOfflineTaskCategory(item.category)), busy: updatingId === item.id }}
