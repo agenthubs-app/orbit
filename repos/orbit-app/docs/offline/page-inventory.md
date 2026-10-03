@@ -16,9 +16,9 @@
 | └ 由 Sprint 0119 实现 | 4 |
 | └ 由 Sprint 0131 实现 | 15 |
 | └ 由 Sprint 0137 实现 | 1 |
-| 只能在线 | 34 |
+| 只能在线 | 36 |
 | 不读账号数据（布局、跳转、本机设置） | 15 |
-| 合计（路由文件） | 91 |
+| 合计（路由文件） | 93 |
 
 「本机副本」有两种：**同步域**（注册表 v2，服务器按租约增量下发，见 `repos/orbits/features/sync/domain-registry.ts`）和 **页面副本**（0131：服务器实时算出的页面，上次联网读到的那一份，
 按租约的授权纪元保存和清除，见 `src/data/sync/page-copies.ts` 和威胁模型第 2 节「页面副本」）。断网时页面顶部是 0108 的琥珀色提示条「无法连接 · 显示截至 X 的内容」，写入入口标「需要联网」。
@@ -92,10 +92,12 @@
 | `/events/:id/operations/roles` | 活动角色与权限 | 主办方实时运营：主办方权限管理 | /api/events/:id/access/roles | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/events/:id/analytics` | 活动数据分析 | 主办方实时运营：主办方统计，服务器实时聚合 | /api/events/:id/analytics/* | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/events/:id/register` | 报名问卷 | 付费 AI：报名是写入；问卷题目由付费 AI 生成并在服务器缓存 | /api/events/public/:id、/api/events/:id/registration | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
-| `/contacts/new` | 添加联系人（扫名片、手动、导入） | 名片识别（上传图片、OCR）：名片识别要上传图片做 OCR；新建联系人是写入 | /api/contact-drafts* | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
+| `/contacts/new` | 更多添加方式（QR、批量名片、外部导入、引荐、重复检查） | 名片识别（上传图片、OCR）：名片识别要上传图片做 OCR；新建联系人是写入 | /api/contact-drafts* | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/contacts/new/batch/:id` | 名片批量识别（旧） | 名片识别（上传图片、OCR）：批量识别在服务器进行 | /api/contact-drafts/business-card/batches/:id | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/contacts/new/batch2` | 名片批量识别 | 名片识别（上传图片、OCR）：批量识别在服务器进行 | /api/contact-drafts/business-card/batches/v2 | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/contacts/new/batch2/:id` | 名片批量识别结果 | 名片识别（上传图片、OCR）：识别结果和图片在服务器 | /api/contact-drafts/business-card/batches/v2/:id | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
+| `/contacts/new/manual` | 手动添加（姓名先行，核对后保存） | 名片识别（上传图片、OCR）：保存联系人是写入：先建草稿再确认 | /api/contact-drafts/manual、/api/contact-drafts/:id/confirm | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
+| `/contacts/new/scan` | 扫描名片（拍照或选图，核对后保存） | 名片识别（上传图片、OCR）：名片识别要上传图片做 OCR；保存联系人是写入 | /api/contact-drafts/business-card/scan、/api/contacts/business-card/confirm | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/contacts/new/import/:id` | 名片导入进度 | 名片识别（上传图片、OCR）：导入任务在服务器运行 | /api/contact-drafts/business-card/imports/:id | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/contacts/intros` | 引荐 | 需要服务器实时计算：引荐候选由服务器跨账号实时计算 | /api/contacts/intros/summary | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
 | `/contacts/matches` | 人脉需求匹配 | 需要服务器实时计算：需求匹配由服务器按最新资料实时排序（0116 已定为需要联网） | /api/contacts/needs-matches、/api/profile | 显示「需要联网」空状态（不是报错页），联网后点「重试」 |
@@ -171,6 +173,8 @@
 | `app/contacts/new/batch2/[id].tsx` | `/contacts/new/batch2/:id` | online-only |
 | `app/contacts/new/batch2/index.tsx` | `/contacts/new/batch2` | online-only |
 | `app/contacts/new/import/[id].tsx` | `/contacts/new/import/:id` | online-only |
+| `app/contacts/new/manual.tsx` | `/contacts/new/manual` | online-only |
+| `app/contacts/new/scan.tsx` | `/contacts/new/scan` | online-only |
 | `app/contacts/pipeline.tsx` | `/contacts/pipeline` | local-first (0137) |
 | `app/dashboard.tsx` | `/dashboard` | local-first (0117) |
 | `app/events/[id].tsx` | `/events/:id` | local-first (0115) |

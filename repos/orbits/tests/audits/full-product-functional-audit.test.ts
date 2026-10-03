@@ -1388,8 +1388,6 @@ test("generated documents and machine inventory share the same denominators", ()
 // - 修好一条 → 也跑红，提示把它从名单里删掉（只能下降）。
 // 源文件已被删除的键由门禁自行归类（retired source），不进这张名单。
 const KNOWN_UNRESOLVED_LINE_ANCHORED_EVIDENCE_KEYS: ReadonlySet<string> = new Set([
-  "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx:1770",
-  "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx:2094",
   "repos/orbit-app/src/screens/profile/AccountPermissionsScreen.tsx:131",
   "repos/orbit-app/src/screens/profile/AccountPermissionsScreen.tsx:187",
   "repos/orbit-app/src/screens/profile/AccountScreen.tsx:210",

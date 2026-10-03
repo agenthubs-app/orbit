@@ -1573,10 +1573,10 @@ function ContactsListContent({
         <Text accessibilityRole="header" style={styles.mainEmptyTitle}>{locale.t("contacts.emptyTitle")}</Text>
         <Text style={styles.mainEmptyCopy}>{locale.t("contacts.emptyBody")}</Text>
         <View style={styles.mainEmptyActions}>
-          <Pressable accessibilityRole="button" accessibilityLabel={locale.t("contacts.scanCard")} onPress={() => navigate("/contacts/new")} style={styles.mainEmptyScan}>
+          <Pressable accessibilityRole="button" accessibilityLabel={locale.t("contacts.scanCard")} onPress={() => navigate("/contacts/new/scan")} style={styles.mainEmptyScan}>
             <Text style={styles.mainEmptyScanText}>{locale.t("contacts.scanCard")}</Text>
           </Pressable>
-          <Pressable accessibilityRole="button" accessibilityLabel={locale.t("contacts.manualAdd")} onPress={() => navigate("/contacts/new?mode=manual")} style={styles.mainEmptyManual}>
+          <Pressable accessibilityRole="button" accessibilityLabel={locale.t("contacts.manualAdd")} onPress={() => navigate("/contacts/new/manual")} style={styles.mainEmptyManual}>
             <Text style={styles.mainEmptyManualText}>{locale.t("contacts.manualAdd")}</Text>
           </Pressable>
         </View>
@@ -2074,6 +2074,8 @@ function ContactsListScreen({ primary = false, scopeKey, isScopeCurrent }: { pri
         {!contactPages.isFirstPage ? <Pressable accessibilityRole="button" onPress={contactPages.firstPage} style={styles.mainRetry}><Text style={styles.mainLink}>{locale.t("contacts.firstPage")}</Text></Pressable> : null}
         {contactPages.page?.hasMore && !incompatibleDimensions ? <Pressable accessibilityRole="button" onPress={contactPages.nextPage} style={styles.mainRetry}><Text style={styles.mainLink}>{locale.t("contacts.nextPage")}</Text></Pressable> : null}
       </View>
+      {/* Sprint 0140: scan and manual add have their own pages; QR, batch/two-sided cards, imports, intros and duplicate review stay one tap away. */}
+      {primary && hasContactData(state) ? <Pressable accessibilityRole="button" accessibilityHint={locale.t("contactAdd.moreWaysDetail")} onPress={() => navigate("/contacts/new")} style={styles.mainRetry}><Text style={styles.mainLink}>{locale.t("contactAdd.moreWays")}</Text></Pressable> : null}
     </>;
   if (!primary) return <ContactPage backLabel={locale.t("contacts.listBack")} refreshControl={refreshControl} title={locale.t("contacts.listTitle")}>{content}</ContactPage>;
   const directoryEmpty = hasContactData(state) && directoryTotal === 0 && !query.trim() && !hasListFilters;
@@ -2083,13 +2085,13 @@ function ContactsListScreen({ primary = false, scopeKey, isScopeCurrent }: { pri
       {hasContactData(state) ? <Text testID="contacts-main-count" accessibilityLabel={locale.t("contacts.count", { count: directoryTotal })} style={[styles.mainCount, directoryEmpty && styles.mainCountEmpty]}>{directoryTotal}</Text> : null}
     </View>
     {!directoryEmpty ? <View style={styles.mainHeaderActions}>
-      <Pressable accessibilityRole="button" accessibilityLabel={locale.t("contacts.scanCard")} onPress={() => navigate("/contacts/new")} style={styles.mainHeaderButton}>
+      <Pressable accessibilityRole="button" accessibilityLabel={locale.t("contacts.scanCard")} onPress={() => navigate("/contacts/new/scan")} style={styles.mainHeaderButton}>
         <View pointerEvents="none" style={styles.mainScanSurface} />
         <Svg accessible={false} width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={colors.ink} strokeWidth={1.8} strokeLinecap="round">
           <Path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M3 12h18" />
         </Svg>
       </Pressable>
-      <Pressable accessibilityRole="button" accessibilityLabel={locale.t("contacts.manualAdd")} onPress={() => navigate("/contacts/new?mode=manual")} style={styles.mainHeaderButton}>
+      <Pressable accessibilityRole="button" accessibilityLabel={locale.t("contacts.manualAdd")} onPress={() => navigate("/contacts/new/manual")} style={styles.mainHeaderButton}>
         <View pointerEvents="none" style={styles.mainAddSurface} /><Ionicons name="add" size={18} color={colors.onAccent} />
       </Pressable>
     </View> : null}

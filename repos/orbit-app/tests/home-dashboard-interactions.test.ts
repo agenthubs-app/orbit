@@ -253,7 +253,7 @@ test("search, shortcuts, inbox and real record destinations work without implici
   await search.fill(" 林 悦 "); await search.press("Enter"); await settle(p);
   for (const name of ["收件箱", "扫名片", "查看日程", "新建待办", "笔记", "查看待办：发送项目介绍", "查看日程：设计分享会", "查看活动：周末产品交流会"]) await press(p, name);
   assert.deepEqual(await p.evaluate(() => (window as any).fixture.navigation), [
-    "/contacts/list?q=%E6%9E%97%20%E6%82%A6", "/inbox", "/contacts/new", "/schedule", "/today", "/notes",
+    "/contacts/list?q=%E6%9E%97%20%E6%82%A6", "/inbox", "/contacts/new/scan", "/schedule", "/today", "/notes",
     "/tasks/task%3A%2Fone", "/events/event%3A%2Fone", "/events/event%3A%2Fone"
   ]);
   assert.equal(await p.getByRole("button", { name: "联系跟进", exact: true }).count(), 0);
@@ -540,7 +540,7 @@ test("loading sections use the approved schedule markers and task outlines witho
   const shortSummary = (await p.getByTestId("home-summary-loading").boundingBox())!;
   assert.equal(shortSummary.width, 140); assert.equal(shortSummary.height, 12);
   await press(p, "扫名片");
-  assert.deepEqual(await p.evaluate(() => (window as any).fixture.navigation), ["/contacts/new"]);
+  assert.deepEqual(await p.evaluate(() => (window as any).fixture.navigation), ["/contacts/new/scan"]);
 });
 
 for (const change of [{ actor: "two" }, { focused: false }, { appState: "background" }, { mounted: false }]) {

@@ -42,7 +42,7 @@ const homeFont = Platform.select({
   default: "sans-serif",
 });
 const quickActions = [
-  { labelKey: "home.scanCard", href: "/contacts/new", icon: "scan" },
+  { labelKey: "home.scanCard", href: "/contacts/new/scan", icon: "scan" },
   { labelKey: "home.viewSchedule", href: "/schedule", icon: "calendar" },
   { labelKey: "home.newTask", href: "/today", icon: "task" },
   { labelKey: "notes.title", href: "/notes", icon: "notes" },
