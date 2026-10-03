@@ -16,6 +16,7 @@ import { serverReachability } from "../api/server-reachability";
 import { createSyncClient } from "../data/sync/sync-client";
 import { createNoteOutboxUploader } from "../data/sync/note-outbox-upload";
 import { createTaskOutboxUploader } from "../data/sync/task-outbox-upload";
+import { createMessageOutboxUploader } from "../data/sync/message-outbox-upload";
 import {
   createSyncCoordinator,
   type SyncCoordinatorSession,
@@ -35,9 +36,12 @@ const appSyncCoordinator = createSyncCoordinator({
     const uploader = createNoteOutboxUploader({ actorId, baseUrl, workspaceId, repository, syncClient, writeClient });
     const taskUploader = createTaskOutboxUploader({ actorId, baseUrl, workspaceId, repository, syncClient, writeClient });
     signal.addEventListener("abort", () => uploader.cancel(), { once: true });
+    const messageUploader = createMessageOutboxUploader({ actorId, baseUrl, workspaceId, repository, syncClient, writeClient });
     signal.addEventListener("abort", () => taskUploader.cancel(), { once: true });
+    signal.addEventListener("abort", () => messageUploader.cancel(), { once: true });
     await uploader.run();
     await taskUploader.run();
+    await messageUploader.run();
   },
 });
 const authSessionGenerations = new WeakMap<object, number>();

@@ -35,6 +35,8 @@ const APPROVED_POLICY_MATRIX = [
   ["GET", "/api/relationship-communication/conversations/:id/messages", "read", "relationship_message", "durable_normalized", "online_only", "metadata_only"],
   ["GET", "/api/relationship-communication/conversation-summaries", "read", "relationship_conversation", "durable_normalized", "online_only", "metadata_only"],
   ["GET", "/api/relationship-communication/unread-summary", "read", "relationship_conversation", "durable_normalized", "online_only", "metadata_only"],
+  // Sprint 0135: message send is queued offline (message plan M4).
+  ["POST", "/api/relationship-communication/conversations/:id/messages", "send", "relationship_message", "durable_normalized", "offline_queue", "metadata_only"],
   ["GET", "/api/events/public", "read", "public_event", "encrypted_ttl_snapshot", "online_only", "on_demand_encrypted"],
   // Sprint 0115: the registered attendee's event day is read from the device mirror; every write needs the network.
   ["GET", "/api/events/public/:id", "read", "registered_event", "durable_normalized", "online_only", "metadata_only"],

@@ -20,6 +20,7 @@ import { findPageCopyDefinition, PAGE_COPY_DEFINITIONS, type PageCopy } from "./
 import { isOfflineEligible } from "./mutation-adapters";
 import { parseOfflineNoteRequest } from "./note-outbox-mutation";
 import { isOfflineTaskCategory, parseOfflineTaskRequest } from "./task-outbox-mutation";
+import { MESSAGE_OUTBOX_DOMAIN, parseOfflineMessageRequest, type OfflineMessageMutationInput } from "./message-outbox-mutation";
 import { kindOfSyncDomain, KNOWN_SYNC_DOMAINS, PARTITIONED_SYNC_DOMAINS, syncDomainOfKind } from "./sync-domains";
 import {
   shouldSynchronize,
@@ -138,6 +139,12 @@ export interface SyncCoordinatorSession {
   enqueueOfflineNoteMutation(mutation: OfflineNoteMutationInput): Promise<void>;
   /** Sprint 0133: private personal task writes admitted to the native offline outbox. */
   enqueueOfflineTaskMutation(mutation: OfflineTaskMutationInput): Promise<void>;
+  /** Sprint 0135: a text message into a conversation the device holds and that is active. */
+  enqueueOfflineMessageMutation(mutation: OfflineMessageMutationInput): Promise<void>;
+  /** Sprint 0135: put an unsent message back in the queue (same request id, so the server stores it once). */
+  retryOfflineMessage(mutationId: string): Promise<void>;
+  /** Sprint 0135: the user discards unsent messages; returns how many rows were removed. */
+  discardOfflineMessages(mutationIds: readonly string[]): Promise<number>;
   /** Sprint 0132: resolve only a conflict row inside the currently accepted notes lease. */
   resolveNoteConflict?(input: {
     mutationId: string;
@@ -257,6 +264,17 @@ export function createSyncCoordinator(input: {
     if (!parsed.success) return null;
     const state = evaluateOfflineRead(parsed.data, scope.baseUrl, now(), { actorId: scope.actorId, subject: parsed.data.subject });
     return state === "local-read" ? parsed.data : null;
+  }
+
+  /** Sprint 0135: the message domain's scope while the accepted lease grants it (and the active conversations domain). */
+  function messageLeaseScope(scope: ActiveScope): ReadScope | null {
+    if (!isCurrent(scope) || scope.workspaceId === null) return null;
+    const messages = readScopeFor(scope, "relationship_message");
+    const conversations = readScopeFor(scope, "relationship_conversation");
+    const currentLease = scope.lease ? acceptedLease(scope, scope.lease) : null;
+    const granted = (candidate: ReadScope | null) => Boolean(candidate && currentLease?.grants.some(grant =>
+      grant.workspaceId === candidate.workspaceId && grant.domainId === candidate.domainId && grant.authorizationEpoch === candidate.authorizationEpoch));
+    return messages && granted(messages) && granted(conversations) ? messages : null;
   }
 
   async function withRepository<T>(
@@ -802,6 +820,47 @@ export function createSyncCoordinator(input: {
           if (prior && !dependsOn) dependsOn = prior.mutationId;
           await repository.enqueueOutboxMutation({ ...mutation, actorId: bound.actorId, workspaceId: bound.workspaceId!, dependsOn }, { notify: !mutation.requestAttemptedAt });
         });
+      },
+      async enqueueOfflineMessageMutation(mutation: OfflineMessageMutationInput): Promise<void> {
+        await bound.ready;
+        const messageScope = messageLeaseScope(bound);
+        if (!messageScope || mutation.domainId !== MESSAGE_OUTBOX_DOMAIN || mutation.kind !== "relationship_message" || mutation.operation !== "send" ||
+            mutation.baseRevision !== null || mutation.dependsOn || mutation.requestAttemptedAt) {
+          throw new TypeError("message mutation is not eligible");
+        }
+        let parsed: ReturnType<typeof parseOfflineMessageRequest>;
+        try { parsed = parseOfflineMessageRequest(mutation); } catch { throw new TypeError("message mutation is not eligible"); }
+        if (!isOfflineEligible(mutation.kind, mutation.operation, { actorPrivate: true, confirmed: true, connectionActive: isCurrent(bound) }) ||
+            JSON.stringify(mutation.patch) !== JSON.stringify({ body: parsed.request.body })) {
+          throw new TypeError("message mutation is not eligible");
+        }
+        await withRepository(bound, async repository => {
+          const conversation = await repository.getRecord({ workspaceId: messageScope.workspaceId, kind: "relationship_conversation", id: parsed.conversationId });
+          const payload = conversation?.payload as Record<string, unknown> | null | undefined;
+          if (!conversation || conversation.deletedAt !== null || payload?.status !== "active" ||
+              !Array.isArray(payload.participantAccountIds) || !payload.participantAccountIds.includes(bound.actorId)) {
+            throw new TypeError("offline message requires an active conversation on this device");
+          }
+          await repository.enqueueOutboxMutation({ ...mutation, actorId: bound.actorId, workspaceId: messageScope.workspaceId, dependsOn: null });
+        });
+      },
+      async retryOfflineMessage(mutationId: string): Promise<void> {
+        await bound.ready;
+        const messageScope = messageLeaseScope(bound);
+        if (!messageScope) throw new TypeError("message retry is outside the active lease");
+        await withRepository(bound, async repository => {
+          const row = (await repository.listQueuedMutations({ workspaceId: messageScope.workspaceId, domainId: MESSAGE_OUTBOX_DOMAIN }))
+            .find(item => item.mutationId === mutationId);
+          if (!row || (row.state !== "failed" && row.state !== "conflict")) throw new TypeError("only an unsent message can be retried");
+          await repository.markOutboxMutationFailure({ mutationId, state: "queued", nextRetryAt: null, errorCode: "USER_RETRY" });
+        });
+        bound.onOutboxQueued?.();
+      },
+      async discardOfflineMessages(mutationIds: readonly string[]): Promise<number> {
+        await bound.ready;
+        const messageScope = messageLeaseScope(bound);
+        if (!messageScope) throw new TypeError("message discard is outside the active lease");
+        return withRepository(bound, repository => repository.discardOutboxMutations({ workspaceId: messageScope.workspaceId, domainId: MESSAGE_OUTBOX_DOMAIN, mutationIds }));
       },
       async resolveNoteConflict(input: {
         mutationId: string;

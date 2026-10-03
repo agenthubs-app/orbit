@@ -3,6 +3,9 @@ import {NotificationDeliverySettings} from '../settings/NotificationDeliverySett
 import {NotificationInboxList} from './NotificationInboxList';
 import {useNotificationInbox} from './useNotificationInbox';
 import { OfflineNotice } from "../../components/OfflineNotice";
+import { MessagesOfflineNotice, OutboxMessageBubble, UnsentEndedNotice } from "../../components/RelationshipOutboxViews";
+import { useRelationshipMessageOutbox, type RelationshipMessageOutbox } from "../../hooks/useRelationshipMessageOutbox";
+import { conversationOutboxMessages, endedConversationMessages, overlayOutboxOnSummaryPage, type OutboxRelationshipMessage } from "../../view-models/relationship-outbox";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { MessageInboxList } from "./MessageInboxList";
 import { Ionicons } from "@expo/vector-icons";
@@ -348,8 +351,16 @@ function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliv
   const localThreads = useLocalRelationshipConversations();
   const threadsFromDevice = localThreads.available && localThreads.freshness.readable;
   const threadsOffline = threadsFromDevice && localThreads.freshness.offline;
-  const localPage = useMemo(() => threadsFromDevice ? localConversationSummaryPage(localThreads.conversations, actorId, localThreads.freshness.lastSyncedAt ?? new Date(0).toISOString()) : null,
-    [threadsFromDevice, localThreads.conversations, actorId, localThreads.freshness.lastSyncedAt]);
+  // Sprint 0135: messages written offline overlay the list (latest line, order); a queued message whose
+  // conversation left the device is listed once at the top as 「未能发送」.
+  const outbox = useRelationshipMessageOutbox(localThreads);
+  const localConversationIds = useMemo(() => localThreads.conversations.map(row => row.conversationId), [localThreads.conversations]);
+  const endedOutbox = threadsFromDevice && !localThreads.freshness.loading ? endedConversationMessages(outbox.messages, localConversationIds) : [];
+  const localPage = useMemo(() => {
+    if (!threadsFromDevice) return null;
+    const page = localConversationSummaryPage(localThreads.conversations, actorId, localThreads.freshness.lastSyncedAt ?? new Date(0).toISOString());
+    return page ? overlayOutboxOnSummaryPage(page, outbox.messages, actorId) : null;
+  }, [threadsFromDevice, localThreads.conversations, actorId, localThreads.freshness.lastSyncedAt, outbox.messages]);
   const networkState = useInboxResource(
     `/api/relationship-communication/conversation-summaries?limit=20${conversationCursor ? `&cursor=${encodeURIComponent(conversationCursor)}` : ""}`,
     (data) => decodeConversationSummaryPage(data, actorId)?.items.length === 0,
@@ -546,7 +557,8 @@ function ScopedRelationshipInboxScreen({ actorId, scopeKey, seedContactId, deliv
       {!composing && !createdThread ? <InboxSegmentedControl activeSection={activeSection} alertCount={typedInbox.data?.unreadCount ?? 0} messageCount={messagesUnread} onChange={selectSection} /> : null}
       {activeSection === "threads" && conversationCursor && !composing && !createdThread ? <ActionButton icon="arrow-back-outline" label={locale.t("inbox.firstConversationPage")} onPress={() => setConversationCursor(null)} variant="secondary" /> : null}
       {activeSection === "alerts" && typedInbox.offline ? <OfflineNotice lastSyncedAt={typedInbox.lastSyncedAt} /> : null}
-      {activeSection === "threads" && threadsOffline && !composing && !createdThread ? <OfflineNotice lastSyncedAt={localThreads.freshness.lastSyncedAt} /> : null}
+      {activeSection === "threads" && threadsOffline && !composing && !createdThread ? outbox.enabled ? <MessagesOfflineNotice lastSyncedAt={localThreads.freshness.lastSyncedAt} /> : <OfflineNotice lastSyncedAt={localThreads.freshness.lastSyncedAt} /> : null}
+      {activeSection === "threads" && !composing && !createdThread ? <UnsentEndedNotice messages={endedOutbox} onDiscard={ids => { void outbox.discard(ids).catch(() => undefined); }} /> : null}
       {activeSection === "alerts" ? (typedInbox.data ? <NotificationInboxList data={typedInbox.data} filter={typedInbox.filter} onFilter={typedInbox.setFilter} busy={typedInbox.busy} error={typedInbox.error} onRefresh={typedInbox.refresh} onMore={() => void typedInbox.more()} onOpen={id => router.push(`/inbox/notifications/${encodeURIComponent(id)}` as Href)} /> : typedInbox.error ? <View><ErrorState message={typedInbox.error}/><Pressable accessibilityRole="button" onPress={typedInbox.refresh}><Text>{locale.t("common.retry")}</Text></Pressable></View> : <LoadingState />) : retainedContent.current ? (
         <View style={activeSection === "threads" && !contentReady ? { display: "none" } : undefined}>
         <InboxContent
@@ -603,6 +615,9 @@ function ScopedRelationshipInboxThreadScreen({ actorId, conversationId, scopeKey
   const localMessagePage = useMemo(() => localConversation ? localRelationshipMessagePage([localConversation], localThread.messages, actorId, conversationId, { cursor: historyCursor, asOf: localAsOf }) : null,
     [localConversation, localThread.messages, actorId, conversationId, historyCursor, localAsOf]);
   const localGone = fromDevice && !localConversation && !localThread.freshness.refreshing;
+  // Sprint 0135: this conversation's messages written offline go after the server's (latest page only).
+  const outbox = useRelationshipMessageOutbox(localThread);
+  const queuedHere = useMemo(() => conversationOutboxMessages(outbox.messages, conversationId), [outbox.messages, conversationId]);
   const networkSummaryState = useInboxResource(`/api/relationship-communication/conversation-summaries?conversationId=${encodeURIComponent(conversationId)}&limit=1`, () => false,
     clientGet, isCurrent, { isValid: data => {
       const page = decodeConversationSummaryPage(data, actorId);
@@ -699,7 +714,7 @@ function ScopedRelationshipInboxThreadScreen({ actorId, conversationId, scopeKey
       {!conversationId ? (
         <ErrorState message={locale.t("inbox.missingConversation")} title={locale.t("inbox.conversationUnavailable")} />
       ) : null}
-      {offline ? <OfflineNotice lastSyncedAt={localThread.freshness.lastSyncedAt} /> : null}
+      {offline ? outbox.enabled ? <MessagesOfflineNotice lastSyncedAt={localThread.freshness.lastSyncedAt} /> : <OfflineNotice lastSyncedAt={localThread.freshness.lastSyncedAt} /> : null}
       {localGone ? <ErrorState message={locale.t("inbox.conversationGone")} title={locale.t("inbox.conversationUnavailable")} /> : null}
       {conversationId && !localGone && state.kind === "loading" ? <LoadingState /> : null}
       {conversationId && state.kind === "offline" ? (
@@ -724,6 +739,8 @@ function ScopedRelationshipInboxThreadScreen({ actorId, conversationId, scopeKey
           detail={retainedDetail.current}
           delivery={detail && page ? { actorId, qualificationVersion: page.conversation.qualificationVersion } : undefined}
           offline={offline}
+          outbox={detail && fromDevice ? outbox : undefined}
+          queued={historyCursor ? [] : queuedHere}
         />
         </View>
       ) : null}
@@ -1144,6 +1161,8 @@ function ThreadDetail({
   previewOnly = false,
   delivery,
   offline = false,
+  outbox,
+  queued = [],
 }: {
   clientGet: ClientGet;
   clientPost: ClientPost;
@@ -1153,8 +1172,11 @@ function ThreadDetail({
   detail: RelationshipThreadDetailView;
   previewOnly?: boolean;
   delivery?: { actorId: string; qualificationVersion: string } | undefined;
-  /** Sprint 0119: the device copy is shown as of its last sync; sending and saving a draft need the network. */
+  /** Sprint 0119: the device copy is shown as of its last sync; saving a draft needs the network. */
   offline?: boolean;
+  /** Sprint 0135: the device queue; offline (or behind queued messages) a reply is queued instead of sent. */
+  outbox?: RelationshipMessageOutbox | undefined;
+  queued?: readonly OutboxRelationshipMessage[];
 }) {
   const locale = useOrbitLocale();
   const { styles } = useStyles();
@@ -1193,12 +1215,16 @@ function ThreadDetail({
             <Text style={styles.messageBody}>{message.body}</Text>
           </View>
         ))}
+        {queued.map(message => (
+          <OutboxMessageBubble key={message.mutationId} message={message} senderLabel={locale.t("inbox.me")} onRetry={id => { void outbox?.retry(id).catch(() => undefined); }} onDiscard={id => { void outbox?.discard([id]).catch(() => undefined); }} />
+        ))}
       </View>
       {previewOnly ? (
         <Text style={styles.safetyText}>{locale.t("inbox.previewOnly")}</Text>
       ) : (
         <>
-          <ReplyComposer clientGet={clientGet} clientPost={clientPost} clientPut={clientPut} contactId={contactId ?? ""} isCurrent={isCurrent} detail={detail} delivery={delivery} offline={offline} />
+          <ReplyComposer clientGet={clientGet} clientPost={clientPost} clientPut={clientPut} contactId={contactId ?? ""} isCurrent={isCurrent} detail={detail} delivery={delivery} offline={offline}
+            queueReply={delivery && outbox?.enabled && (offline || queued.length > 0) ? outbox : undefined} />
         </>
       )}
     </View>
@@ -1214,6 +1240,7 @@ function ReplyComposer({
   clientPost,
   delivery,
   offline = false,
+  queueReply,
 }: {
   clientGet: ClientGet;
   clientPut?: ClientPut | undefined;
@@ -1223,6 +1250,8 @@ function ReplyComposer({
   clientPost: ClientPost;
   delivery?: { actorId: string; qualificationVersion: string } | undefined;
   offline?: boolean;
+  /** Sprint 0135: set while the reply must go through the device queue (offline, or behind queued messages). */
+  queueReply?: RelationshipMessageOutbox | undefined;
 }) {
   const locale = useOrbitLocale();
   const { colors, styles } = useStyles();
@@ -1246,6 +1275,9 @@ function ReplyComposer({
   currentBody.current = body;
   const attempt = useRef<{ body: string; requestId: string; qualificationVersion: string } | null>(null);
   const sendRequest = useRef<object | null>(null);
+  // Sprint 0135: the server time of the draft this composer knows; an offline send retires only that draft,
+  // never one saved after the message was written.
+  const knownDraftUpdatedAt = useRef<string | null>(null);
   useEffect(() => { sendRequest.current = null; setSending(false); }, [isCurrent]);
   useEffect(() => {
     draftSaveRequest.current = null;
@@ -1254,7 +1286,19 @@ function ReplyComposer({
   }, [isCurrent]);
   useEffect(() => { setRewriteError(null); }, [isCurrent]);
 
+  async function queueOfflineReply() {
+    if (!delivery || !queueReply || !isCurrent() || sendRequest.current || attempt.current || !body.trim()) return;
+    const request = {}; sendRequest.current = request; setSending(true); setSendFailed(false);
+    try {
+      await queueReply.enqueue({ conversationId: detail.conversationId, body: body.trim(), qualificationVersion: delivery.qualificationVersion, retireDraftThrough: knownDraftUpdatedAt.current });
+      if (!isCurrent() || sendRequest.current !== request) return;
+      draftEdited.current = true; setBody(""); setDraftStatus("idle");
+    } catch { if (isCurrent() && sendRequest.current === request) setSendFailed(true); }
+    finally { if (sendRequest.current === request) { sendRequest.current = null; setSending(false); } }
+  }
+
   async function sendReply() {
+    if (queueReply && !attempt.current) { await queueOfflineReply(); return; }
     if (!delivery || offline || !isCurrent() || sendRequest.current || (!body.trim() && !attempt.current)) return;
     const currentAttempt = attempt.current ?? { body: body.trim(), requestId: randomUUID(), qualificationVersion: delivery.qualificationVersion };
     const built = buildRelationshipMessageDeliveryRequest({ ...currentAttempt, conversationId: detail.conversationId });
@@ -1282,6 +1326,7 @@ function ReplyComposer({
     void clientGet(relationshipReplyDraftPath(detail.conversationId)).then(result => {
       if (!current || !isCurrent() || draftEdited.current || !result.success) return;
       const draft = decodeRelationshipReplyDraft(result.data, detail.conversationId);
+      if (draft) knownDraftUpdatedAt.current = draft.updatedAt;
       if (draft?.body) setBody(draft.body);
     }).catch(() => {});
     return () => { current = false; };
@@ -1299,6 +1344,7 @@ function ReplyComposer({
       const result = await clientPut(relationshipReplyDraftPath(detail.conversationId), { body: saving });
       const saved = result.success ? decodeRelationshipReplyDraft(result.data, detail.conversationId) : null;
       outcome = saved && saved.body === saving ? "saved" : "failed";
+      if (saved && outcome === "saved") knownDraftUpdatedAt.current = saved.updatedAt;
     } catch { outcome = "failed"; }
     if (draftSaveRequest.current !== request || !isCurrent()) return;
     draftSaveRequest.current = null;
@@ -1386,9 +1432,9 @@ function ReplyComposer({
           />
         ) : null}
         <ActionButton
-          disabled={(delivery && offline) || sending || (!body.trim() && !attempt.current)}
+          disabled={(delivery && offline && !queueReply) || sending || (!body.trim() && !attempt.current)}
           icon="mail-unread-outline"
-          label={delivery && offline ? `${locale.t("inbox.sendMessage")} · ${locale.t("sync.needsNetwork")}` : locale.t(delivery ? sending ? "inbox.sendingMessage" : sendFailed ? "inbox.retrySend" : "inbox.sendMessage" : "inbox.previewReply")}
+          label={delivery && offline && !queueReply ? `${locale.t("inbox.sendMessage")} · ${locale.t("sync.needsNetwork")}` : locale.t(delivery ? sending ? "inbox.sendingMessage" : sendFailed ? "inbox.retrySend" : "inbox.sendMessage" : "inbox.previewReply")}
           onPress={delivery ? sendReply : () => { draftEdited.current = true; setStaged(body.trim()); }}
         />
       </View>

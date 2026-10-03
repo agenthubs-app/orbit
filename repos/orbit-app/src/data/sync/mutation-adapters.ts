@@ -13,7 +13,9 @@ export function isOfflineEligible(
   const privateNoteWrite = kind === "note" && (operation === "create" || operation === "update");
   const personalTaskWrite = kind === "task" &&
     ["create", "update", "complete", "reopen", "cancel", "delete"].includes(operation);
-  return (privateNoteWrite || personalTaskWrite) &&
+  // Sprint 0135: a text message into a conversation the device holds and that is active.
+  const relationshipMessageSend = kind === "relationship_message" && operation === "send";
+  return (privateNoteWrite || personalTaskWrite || relationshipMessageSend) &&
     facts.actorPrivate && facts.confirmed && facts.connectionActive;
 }
 
