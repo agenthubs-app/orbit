@@ -36,7 +36,7 @@ export function NetworkCards({ view, openDetail }: { view: ContactCardRouteView;
   }
   const modal = openDetail ? follow
     ? <NetworkFollowModal contact={openDetail.contact} onClose={() => setFollow(false)} onSaved={() => window.location.reload()} />
-    : <NetworkDetailModal contact={openDetail.contact} closeHref={openDetail.closeHref} onFollow={() => setFollow(true)} extra={openDetail.extra} insight={openDetail.insight} /> : null;
+    : <NetworkDetailModal contact={openDetail.contact} closeHref={openDetail.closeHref} onFollow={() => setFollow(true)} extra={openDetail.extra} insight={openDetail.insight} planContext={openDetail.planContext} /> : null;
   if (accessRevoked) return <NetworkShell screen="all"><p role="alert">{t({ zh: "访问权限已变化，请重新加载页面。", en: "Access changed. Reload this page." })}</p><a href="/app/contacts">{t({ zh: "重新加载", en: "Reload" })}</a></NetworkShell>;
   return <NetworkShell screen="all" modal={modal}>
     <div className="nw-card">

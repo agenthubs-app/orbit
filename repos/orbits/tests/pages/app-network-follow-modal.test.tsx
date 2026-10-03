@@ -148,7 +148,7 @@ test("「最近互动」渲染聚合时间线：来源标签、日期、节选�
   assert.match(html, /<span class="nw-tl-time">9月1日 10:00<\/span><strong class="nw-tl-kind">建立联系<\/strong>/);
   assert.match(html, /共 25 条 · 显示最近 2 条/);
   assert.doesNotMatch(html, /部分记录暂时读不到|nw-tl-empty/);
-  assert.match(html, /class="btn nw-detail-follow"[^>]*>▤ 写 memo/);
+  assert.match(html, /class="btn nw-detail-follow"[^>]*>✎ 写 memo/);
   assert.doesNotMatch(html, /记录互动/);
 
   const partial = renderToStaticMarkup(<NetworkDetailModal contact={{ ...contact, timeline: { items: [], unavailableSources: ["plan"] } }} closeHref="/app/contacts" onFollow={() => {}} />);
@@ -161,7 +161,7 @@ test("「最近互动」渲染聚合时间线：来源标签、日期、节选�
   assert.match(en, /<span class="nw-tl-time">Sep 20<\/span><strong class="nw-tl-kind">Memo<\/strong>/);
   assert.match(en, /Wrote a memo/);
   assert.match(en, /25 records in total/);
-  assert.match(en, /▤ Write memo/);
+  assert.match(en, /✎ Write memo/);
 });
 
 test("示例详情的时间线是前端静态数据（memo + 建立联系），不含读失败说明", () => {

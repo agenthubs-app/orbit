@@ -269,7 +269,8 @@ test("matched 约 TA actions carry the three buttons on the plan page's this-wee
 
 test("the contact detail links the contact to a need of the actor's plan", async (t) => {
   const posts: unknown[] = [];
-  const mounted = await mount(t, <PlanNeedLinkPanel contactId="contact:sato" />, (call) => {
+  let linked = 0;
+  const mounted = await mount(t, <PlanNeedLinkPanel contactId="contact:sato" onLinked={() => { linked += 1; }} />, (call) => {
     // W0021：关联弹层只要条目，读首页视图（不含进展记录）。
     if (call.url === "/api/agent/plans/current?view=home") return Response.json({ data: planSnapshotFixture(), success: true });
     if (call.url === "/api/agent/plans/candidates" && call.method === "POST") {
@@ -299,6 +300,8 @@ test("the contact detail links the contact to a need of the actor's plan", async
   assert.equal(body.needItemId, "n-target");
   assert.match(body.idempotencyKey, /^plan-link:/);
   assert.ok(text(mounted.root).includes("已关联到「中小企业的 IT 负责人」，本周多了一条「约 佐藤 健」。"));
+  // W0060：关联成功后回调一次（详情据此刷新出新的需求 chip）。
+  assert.equal(linked, 1);
   // W0021 写后失效矩阵：手动关联之后这里不再读任何东西（打开时读一次计划，提交一次 POST）。
   assert.deepEqual(mounted.calls.map((call) => `${call.method} ${call.url}`), [
     "GET /api/agent/plans/current?view=home",

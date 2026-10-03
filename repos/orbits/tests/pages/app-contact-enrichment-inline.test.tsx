@@ -17,15 +17,15 @@ const contact = {
   enrichmentOrigins: { industry: "ai", seniorityLevel: "ai", region: "card" },
 } as never;
 
-test("the hero shows industry, seniority with its group, region and where each value came from", () => {
+test("W0060: the head card shows industry (一级 / 二级), the seniority group and region as chips; the source sits in the hint; empty values invite adding", () => {
   const html = renderToStaticMarkup(<NetworkDetailModal contact={contact} closeHref="/app/contacts" onFollow={() => {}} />);
   assert.match(html, /data-network-detail-enrichment/);
-  assert.match(html, /总监 · 决策层/);
-  assert.match(html, /日本 · 东京/);
-  assert.match(html, /data-enrichment-origin="ai"[^>]*>AI 推断/);
-  assert.match(html, /data-enrichment-origin="card"[^>]*>名片规则/);
+  assert.match(html, /data-enrichment-field="industry"[^>]*data-enrichment-origin="ai"[^>]*title="行业 · [^"]+ · AI 推断"[^>]*>[^<]+ \/ [^<]+</);
+  assert.match(html, /data-enrichment-field="seniorityLevel"[^>]*title="职级 · 总监 · 决策层 · AI 推断"[^>]*>决策层</);
+  assert.match(html, /data-enrichment-field="region"[^>]*data-enrichment-origin="card"[^>]*title="地区 · 日本 · 东京 · 名片规则"[^>]*>日本 · 东京</);
   const empty = renderToStaticMarkup(<ContactEnrichmentInline contact={{ id: "c2" } as never} language="zh" t={zh} />);
-  assert.equal((empty.match(/<strong>—<\/strong>/g) ?? []).length, 3, "missing values render as dashes, never invented");
+  assert.equal((empty.match(/nw-enrich-chip-empty/g) ?? []).length, 3, "missing values are an add-chip, never invented");
+  assert.match(empty, />＋ 行业<[\s\S]*>＋ 职级<[\s\S]*>＋ 地区</);
   assert.doesNotMatch(empty, /data-enrichment-origin/);
 });
 
@@ -42,7 +42,8 @@ test("editing sends only the changed fields to PATCH and shows the server's manu
   let renderer: ReactTestRenderer;
   act(() => { renderer = create(<ContactEnrichmentInline contact={contact} language="zh" t={zh} />); });
   const find = (props: Record<string, unknown>) => renderer!.root.findByProps(props);
-  act(() => find({ "data-enrichment-edit": true }).props.onClick());
+  // W0060：点任一 chip 打开同一个编辑表单。
+  act(() => find({ "data-enrichment-edit": "seniorityLevel" }).props.onClick());
   const select = (label: string) => renderer!.root.findAllByType("select").find(entry => entry.props["aria-label"] === label)!;
   const input = () => renderer!.root.findAllByType("input").find(entry => entry.props["aria-label"] === "城市")!;
   assert.equal(find({ "data-enrichment-save": true }).props.disabled, true, "nothing to save until something changes");
@@ -55,7 +56,7 @@ test("editing sends only the changed fields to PATCH and shows the server's manu
   assert.equal(requests[0]!.url, "/api/contacts/c1");
   assert.deepEqual(requests[0]!.body, { seniorityLevel: "vp", region: { countryCode: "SG", city: "Singapore" } }, "industry was not touched, so it is not sent");
   const html = JSON.stringify(renderer!.toJSON());
-  assert.match(html, /副总裁 · 决策层/);
+  assert.match(html, /"title":"职级 · 副总裁 · 决策层 · 手动"/);
   assert.match(html, /"新加坡"/);
   assert.doesNotMatch(html, /新加坡 · 新加坡/, "a city-state is not repeated");
   assert.equal(renderer!.root.findAll(node => node.props["data-enrichment-origin"] === "user").length, 2);
@@ -66,8 +67,8 @@ test("in demo mode the edit button only triggers the write guard and sends nothi
   const guarded: string[] = [];
   let renderer: ReactTestRenderer;
   act(() => { renderer = create(<ContactEnrichmentInline contact={contact} guardWrite={label => guarded.push(label)} language="zh" t={zh} />); });
-  act(() => renderer!.root.findByProps({ "data-enrichment-edit": true }).props.onClick());
-  assert.deepEqual(guarded, ["联系人资料"]);
+  for (const field of ["industry", "seniorityLevel", "region"]) act(() => renderer!.root.findByProps({ "data-enrichment-edit": field }).props.onClick());
+  assert.deepEqual(guarded, ["联系人资料", "联系人资料", "联系人资料"]);
   assert.equal(renderer!.root.findAllByType("select").length, 0);
   assert.equal(fetchMock.mock.callCount(), 0);
 });

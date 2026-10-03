@@ -69,26 +69,26 @@ test("contact detail labels a business-card contact by source code in zh and en"
   // 账号邮箱与「confirmed by」句绝不能出现在渲染结果里（旧详情 metLabel 守卫的移植）。
   assert.doesNotMatch(zh, /example\.invalid/);
   assert.doesNotMatch(zh, /confirmed by/i);
-  assert.match(zh, /⇢ 来自 名片导入/);
-  assert.match(zh, /来源<\/span><strong class="nw-ov-v">名片导入</);
+  // W0060：来源在头卡 chip 之后（「· 来自 …」）；概览默认收起。
+  assert.match(zh, /data-network-detail-source="true">· 来自 名片导入/);
   assert.match(zh, /林 若曦/);
   assert.match(zh, /星轨科技有限公司 Xingui Technology Co\., Ltd\. · 产品总监 · Director of Product/);
   const en = render(contact, "en");
   assert.doesNotMatch(en, /example\.invalid/);
   assert.doesNotMatch(en, /confirmed by/i);
-  assert.match(en, /⇢ From Business cards/);
-  assert.match(en, /Source<\/span><strong class="nw-ov-v">Business cards</);
+  assert.match(en, /data-network-detail-source="true">· From Business cards/);
   assert.doesNotMatch(en, /名片导入/);
 });
 
 test("contact seeking is labelled as their need, not as the viewer's verified ability", async () => {
   const contact = await legacyBusinessCardContact();
   const zh = render(contact, "zh");
-  assert.match(zh, /对方需求<\/strong><span class="nw-li"><span class="nw-li-dot">•<\/span>创业者/);
+  // W0060（D54）：「TA 需要的（你也许帮得上）」。
+  assert.match(zh, /TA 需要的<span class="nw-dv-col-hint">你也许帮得上<\/span><\/strong><span class="nw-li"><span class="nw-li-dot">•<\/span><span>创业者/);
   assert.match(zh, /项目落地与运营经验/);
   assert.doesNotMatch(zh, /我能为对方提供/);
   const en = render(contact, "en");
-  assert.match(en, /What they need<\/strong><span class="nw-li"><span class="nw-li-dot">•<\/span>创业者/);
-  assert.match(en, /What they offer/);
+  assert.match(en, /What they need<span class="nw-dv-col-hint">you may help<\/span><\/strong><span class="nw-li"><span class="nw-li-dot">•<\/span><span>创业者/);
+  assert.match(en, /What they can offer you/);
   assert.doesNotMatch(en, /You →/);
 });

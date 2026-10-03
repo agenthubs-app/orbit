@@ -81,6 +81,10 @@ export interface OrbitContactPublicProfileView {
   offering: string[];
   seeking: string[];
   topics: string[];
+  /** W0058／W0060：字段来源 via（如 `card_inference` = 据名片推测）；只在值来自联系人资料时出现。 */
+  fieldSources?: Partial<Record<"offering" | "seeking" | "topics", string>>;
+  /** W0060：值是关系回退（不是联系人资料）的字段——详情三栏把它们当空。 */
+  fallbackFields?: readonly ("offering" | "seeking" | "topics")[];
 }
 
 export interface OrbitContactEncounterView {

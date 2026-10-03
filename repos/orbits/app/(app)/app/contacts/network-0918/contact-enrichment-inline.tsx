@@ -2,10 +2,13 @@
 
 /**
  * W0045（W45-2）：联系人详情弹窗 hero 区的行业／职级／地区轻量编辑。
- * 展示当前值与来源（AI 推断／手动）；「编辑」展开三个控件，保存走 PATCH /api/contacts/[id]，
- * 服务端把改动的字段来源记为 `user`，之后补全不再覆盖。对标 HubSpot／Apollo 记录侧栏行内改属性。
+ * 保存走 PATCH /api/contacts/[id]，服务端把改动的字段来源记为 `user`，之后补全不再覆盖。
+ * 对标 HubSpot／Apollo 记录侧栏行内改属性。
+ * W0060：头卡里显示为三个小 chip（行业「一级 / 二级」、职级四档派生名、地区），点任一 chip 打开同一个编辑表单；
+ * 编辑能力、写入接口与来源规则不变。来源（AI 推断／名片规则／手动）放在 chip 的提示里；`trailing` 接在 chip 后面
+ * （头卡的「· 来自 {来源} · {日期}」）。
  */
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { z } from "zod";
 
 import { INDUSTRY_CATALOG, industryLabel, isIndustryIdCode, listSecondaryIndustries, secondaryIndustryLabel, validateIndustrySelection } from "../../../../../shared/domain/industries";
@@ -56,11 +59,12 @@ const ORIGIN_COPY: Record<Origin, { en: string; zh: string }> = {
   user: { en: "Manual", zh: "手动" },
 };
 
-export function ContactEnrichmentInline({ contact, guardWrite, language, t }: {
+export function ContactEnrichmentInline({ contact, guardWrite, language, t, trailing = null }: {
   contact: OrbitContactView;
   guardWrite?: (label: string) => void;
   language: "zh" | "en" | "ja";
   t: Translate;
+  trailing?: ReactNode;
 }) {
   const [saved, setSaved] = useState<EnrichmentValues>(() => valuesOf(contact));
   const [origins, setOrigins] = useState<Partial<Record<Field, Origin>>>(() => ({ ...(contact.enrichmentOrigins ?? {}) }));
@@ -71,12 +75,14 @@ export function ContactEnrichmentInline({ contact, guardWrite, language, t }: {
   const dash = "—";
 
   const industryText = saved.primaryIndustryId && isIndustryIdCode(saved.primaryIndustryId)
-    ? [industryLabel(saved.primaryIndustryId, language), saved.secondaryIndustryId ? secondaryIndustryLabel(saved.secondaryIndustryId as Parameters<typeof secondaryIndustryLabel>[0], language) : null].filter(Boolean).join(" › ")
-    : dash;
-  const seniorityText = isSeniorityLevelValue(saved.seniorityLevel)
+    ? [industryLabel(saved.primaryIndustryId, language), saved.secondaryIndustryId ? secondaryIndustryLabel(saved.secondaryIndustryId as Parameters<typeof secondaryIndustryLabel>[0], language) : null].filter(Boolean).join(" / ")
+    : null;
+  // chip 显示四档派生名（决策层…）；具体职级放在提示里。
+  const seniorityText = isSeniorityLevelValue(saved.seniorityLevel) ? t(SENIORITY_GROUP_LABELS[seniorityGroup(saved.seniorityLevel)]) : null;
+  const seniorityDetail = isSeniorityLevelValue(saved.seniorityLevel)
     ? `${t(SENIORITY_LEVEL_LABELS[saved.seniorityLevel])} · ${t(SENIORITY_GROUP_LABELS[seniorityGroup(saved.seniorityLevel)])}`
-    : dash;
-  const regionText = saved.countryCode ? regionDisplayName({ countryCode: saved.countryCode, city: saved.city }, lang) : dash;
+    : null;
+  const regionText = saved.countryCode ? regionDisplayName({ countryCode: saved.countryCode, city: saved.city }, lang) : null;
 
   const changed = {
     industry: draft.primaryIndustryId !== saved.primaryIndustryId || draft.secondaryIndustryId !== saved.secondaryIndustryId,
@@ -134,9 +140,29 @@ export function ContactEnrichmentInline({ contact, guardWrite, language, t }: {
     }
   }
 
-  const originTag = (field: Field) => {
+  const FIELD_LABEL: Record<Field, { en: string; zh: string }> = {
+    industry: { en: "Industry", zh: "行业" },
+    region: { en: "Region", zh: "地区" },
+    seniorityLevel: { en: "Seniority", zh: "职级" },
+  };
+  const chip = (field: Field, value: string | null, detail: string | null = value) => {
     const origin = origins[field];
-    return origin ? <span className={`nw-enrich-origin nw-enrich-origin-${origin}`} data-enrichment-origin={origin}>{t(ORIGIN_COPY[origin])}</span> : null;
+    const label = t(FIELD_LABEL[field]);
+    const hint = [label, detail ?? dash, origin ? t(ORIGIN_COPY[origin]) : null].filter(Boolean).join(" · ");
+    return (
+      <button
+        type="button"
+        className={`btn nw-enrich-chip${value ? "" : " nw-enrich-chip-empty"}`}
+        data-enrichment-field={field}
+        data-enrichment-edit={field}
+        data-enrichment-origin={origin}
+        title={hint}
+        aria-label={t({ en: `Edit ${label.toLowerCase()}: ${detail ?? "not set"}`, zh: `编辑${label}：${detail ?? "未填写"}` })}
+        onClick={startEdit}
+      >
+        {value ?? `＋ ${label}`}
+      </button>
+    );
   };
   const busy = status === "saving";
   const countries = draft.countryCode && !REGION_COMMON_COUNTRY_CODES.includes(draft.countryCode) ? [draft.countryCode, ...REGION_COMMON_COUNTRY_CODES] : REGION_COMMON_COUNTRY_CODES;
@@ -145,10 +171,10 @@ export function ContactEnrichmentInline({ contact, guardWrite, language, t }: {
     <div className="nw-enrich" data-network-detail-enrichment>
       {!editing ? (
         <div className="nw-enrich-row">
-          <span className="nw-enrich-item" data-enrichment-field="industry"><span className="nw-enrich-l">{t({ en: "Industry", zh: "行业" })}</span><strong>{industryText}</strong>{originTag("industry")}</span>
-          <span className="nw-enrich-item" data-enrichment-field="seniorityLevel"><span className="nw-enrich-l">{t({ en: "Seniority", zh: "职级" })}</span><strong>{seniorityText}</strong>{originTag("seniorityLevel")}</span>
-          <span className="nw-enrich-item" data-enrichment-field="region"><span className="nw-enrich-l">{t({ en: "Region", zh: "地区" })}</span><strong>{regionText}</strong>{originTag("region")}</span>
-          <button type="button" className="btn nw-enrich-edit" data-enrichment-edit onClick={startEdit}>{t({ en: "Edit", zh: "编辑" })}</button>
+          {chip("industry", industryText)}
+          {chip("seniorityLevel", seniorityText, seniorityDetail)}
+          {chip("region", regionText)}
+          {trailing}
           {status === "saved" ? <span role="status" className="nw-enrich-status">{t({ en: "Saved", zh: "已保存" })}</span> : null}
         </div>
       ) : (

@@ -522,3 +522,57 @@ test("SC-W0059-03: the in-page demo detail — ×, bottom close, ‹ 返回 and 
   assert.deepEqual(mounted.assigned, []);
   assert.deepEqual(mounted.fetches, []);
 });
+
+test("SC-W0060-05: in the demo detail every write — quick memo, a profile chip, linking a need — and 约 TA／起草邮件 are intercepted: 0 requests, no navigation", async (t) => {
+  const mounted = await mount(t, inDemo(<><NetworkAll viewModel={VM} /><DemoInterceptLayer /></>));
+  const open = async () => {
+    await act(async () => {
+      anchor(mounted.root, "btn nw-row", "/app/contacts/demo%3Awang-yan").props.onClick(clickEvent());
+    });
+    assert.ok(detailOpen(mounted.root));
+  };
+  const dismiss = async () => {
+    assert.ok(has(mounted.root, "data-orbit-guide-demo-intercept"), "intercept shown");
+    await act(async () => button(mounted.root, "btn ir-demo-dismiss").props.onClick());
+  };
+  const host = (attribute: string) => mounted.root.root.findAll((node) => typeof node.type === "string" && node.props?.[attribute] !== undefined)[0]!;
+  await open();
+  // 快速 memo：输入后保存。
+  const input = mounted.root.root.find((node) => node.type === "input" && node.props.className === "nw-qm-input");
+  await act(async () => input.props.onChange({ target: { value: "示例里写一句" } }));
+  await act(async () => mounted.root.root.find((node) => node.type === "form").props.onSubmit({ preventDefault() {} }));
+  await dismiss();
+  // 行业 chip。
+  await act(async () => host("data-enrichment-edit").props.onClick());
+  await dismiss();
+  assert.equal(mounted.root.root.findAll((node) => node.type === "select").length, 0, "the edit form never opens");
+  // 关联需求。
+  await act(async () => host("data-plan-need-link-open").props.onClick());
+  await dismiss();
+  // 约 TA（头卡与②两处同一个处理）。
+  const schedule = mounted.root.root.findAll((node) => node.type === "a" && node.props["data-network-detail-schedule"] !== undefined);
+  assert.equal(schedule.length, 2);
+  for (const link of schedule) {
+    const event = clickEvent();
+    await act(async () => link.props.onClick(event));
+    assert.equal(event.defaultPrevented, true, "约 TA does not navigate in the demo");
+    await dismiss();
+  }
+  // 起草邮件。
+  await act(async () => host("data-network-detail-draft").props.onClick());
+  await dismiss();
+  assert.ok(detailOpen(mounted.root));
+  assert.deepEqual(mounted.fetches, []);
+  assert.deepEqual(mounted.assigned, []);
+});
+
+test("SC-W0060-05: the demo detail has no empty shells — ③ only when a column has demo values, ② only with a next step", () => {
+  const rich = buildDemoNetworkDetail("demo:wang-yan", NOW, "zh")!;
+  const html = renderToStaticMarkup(inDemo(<NetworkAll viewModel={VM} openDetail={{ closeHref: "/app/contacts", contact: rich }} />));
+  assert.match(html, /data-network-detail-section="why"/);
+  assert.match(html, /data-network-detail-section="profile"/);
+  const bare = { ...rich, encounters: [], nextAction: null };
+  const bareHtml = renderToStaticMarkup(inDemo(<NetworkAll viewModel={VM} openDetail={{ closeHref: "/app/contacts", contact: bare }} />));
+  assert.doesNotMatch(bareHtml, /data-network-detail-section="why"|data-network-detail-section="profile"/);
+  assert.match(bareHtml, /data-network-detail-section="head"[\s\S]*data-network-detail-section="recent"[\s\S]*data-network-detail-section="overview"/);
+});

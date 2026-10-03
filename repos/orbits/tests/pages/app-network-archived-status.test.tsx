@@ -104,7 +104,8 @@ test("detail never displays the retired manual stage for an archived contact", a
   }));
   // W0047：详情不再显示手动阶段；没有强度缓存时档位显示「暂未评估」，不编造。
   assert.doesNotMatch(html, /class="nw-detail-stage"/);
-  assert.match(html, /关系档位<\/span><strong class="nw-ov-v">暂未评估</);
+  // W0060：概览默认收起（展开后的「暂未评估」见 app-network-detail-modal 折叠用例）。
+  assert.match(html, /class="btn nw-dv-fold-btn" aria-expanded="false"/);
   assert.doesNotMatch(html, /nw-ov-v">正在推进<|nw-ov-v">已归档</);
   assert.doesNotMatch(html, /已合作|已建立合作/);
 });
