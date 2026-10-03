@@ -3,6 +3,7 @@
 // background workers that turn event actions into contacts and notifications.
 //
 //   node scripts/local-stack.mjs start [--build]   # or: npm run local:stack -- start [--build]
+//   node scripts/local-stack.mjs start --port 3300  # a second, parallel stack (state is per checkout)
 //   node scripts/local-stack.mjs status
 //   node scripts/local-stack.mjs stop
 //
@@ -37,15 +38,29 @@ export function describeProviderKeys(env) {
   return PAID_PROVIDER_KEYS.map((key) => `${key}=${env[key] ? "set" : "empty"}`).join(" ");
 }
 
+/** `--port N` / `--port=N` (default 3100): another worktree's stack can run beside this one. Never 3000. */
+export function parsePort(flags) {
+  const index = flags.findIndex((flag) => flag === "--port" || flag.startsWith("--port="));
+  if (index < 0) return STACK_PORT;
+  const raw = flags[index].startsWith("--port=") ? flags[index].slice("--port=".length) : flags[index + 1];
+  const port = Number(raw);
+  if (!/^\d+$/.test(raw ?? "") || !Number.isInteger(port) || port < 1024 || port > 65535) throw new Error("--port needs a number between 1024 and 65535.");
+  if (FORBIDDEN_PORTS.has(port)) throw new Error("The local stack never uses port 3000.");
+  return port;
+}
+
 /** Services started, in order. `marker` must appear in the process command line before stop signals it. */
-export const SERVICES = [
-  { name: "web-3100", role: "server", marker: "next", args: ["node_modules/.bin/next", "start", "-p", String(STACK_PORT), "-H", "127.0.0.1"] },
+export function servicesFor(port) {
+  return [
+  { name: `web-${port}`, role: "server", marker: "next", args: ["node_modules/.bin/next", "start", "-p", String(port), "-H", "127.0.0.1"] },
   // Event operations: card exchange / contact requests → contacts + in-app notifications,
   // appointment projection and the human-encounter projector (all in one worker).
   { name: "event-operations-worker", role: "worker", marker: "run-event-operations-worker", args: ["node_modules/.bin/tsx", "scripts/run-event-operations-worker.ts"] },
   // Notification delivery passes (push is unconfigured locally, so nothing leaves the machine).
   { name: "notification-delivery-worker", role: "worker", marker: "run-notification-delivery-worker", args: ["node_modules/.bin/tsx", "scripts/run-notification-delivery-worker.ts"] },
-];
+  ];
+}
+export const SERVICES = servicesFor(STACK_PORT);
 
 export function isLocalDatabaseUrl(value) {
   if (typeof value !== "string" || !value.trim()) return false;
@@ -76,7 +91,7 @@ export function readEnvFiles(root = ROOT) {
  * Child environments. Throws before anything starts if the database is not local.
  * @param {Record<string, string | undefined>} processEnv
  * @param {Record<string, string | undefined>} files
- * @param {{ noPaidAi?: boolean }} [options] noPaidAi also blanks the web server's provider keys (QA runs).
+ * @param {{ noPaidAi?: boolean, port?: number }} [options] noPaidAi also blanks the web server's provider keys (QA runs).
  * @returns {{ server: Record<string, string | undefined>, worker: Record<string, string | undefined> }}
  */
 export function buildStackEnv(processEnv = process.env, files = readEnvFiles(), options = {}) {
@@ -88,7 +103,7 @@ export function buildStackEnv(processEnv = process.env, files = readEnvFiles(), 
   /** @type {Record<string, string>} */
   const pinned = { ORBIT_DATABASE_TARGET: "local" };
   for (const key of DATABASE_URL_KEYS) pinned[key] = localUrl;
-  const server = { ...processEnv, ...pinned, PORT: String(STACK_PORT) };
+  const server = { ...processEnv, ...pinned, PORT: String(options.port ?? STACK_PORT) };
   const worker = { ...processEnv, ...pinned };
   for (const key of WORKER_BLANKED_KEYS) worker[key] = "";
   if (options.noPaidAi) for (const key of PAID_PROVIDER_KEYS) server[key] = "";
@@ -168,18 +183,19 @@ async function stop({ quiet = false } = {}) {
     }
   }
   fs.rmSync(PID_FILE, { force: true });
-  if (await portInUse(STACK_PORT)) console.log(`local-stack: warning — port ${STACK_PORT} is still in use by another process.`);
+  const port = state.port ?? STACK_PORT;
+  if (await portInUse(port)) console.log(`local-stack: warning — port ${port} is still in use by another process.`);
   console.log("local-stack: stopped.");
 }
 
-async function start({ build, noPaidAi }) {
-  if (FORBIDDEN_PORTS.has(STACK_PORT)) throw new Error("The local stack never uses port 3000.");
+async function start({ build, noPaidAi, port = STACK_PORT }) {
+  if (FORBIDDEN_PORTS.has(port)) throw new Error("The local stack never uses port 3000.");
   const existing = readPids();
   if (existing?.services?.some((service) => alive(service.pid) && commandOf(service.pid).includes(service.marker))) {
     throw new Error("local-stack is already running; run `node scripts/local-stack.mjs stop` first.");
   }
-  if (await portInUse(STACK_PORT)) throw new Error(`Port ${STACK_PORT} is already in use; not starting.`);
-  const env = buildStackEnv(process.env, readEnvFiles(), { noPaidAi });
+  if (await portInUse(port)) throw new Error(`Port ${port} is already in use; not starting.`);
+  const env = buildStackEnv(process.env, readEnvFiles(), { noPaidAi, port });
   console.log(`local-stack: provider keys — web: ${describeProviderKeys(env.server)}; workers: ${describeProviderKeys(env.worker)}`);
   fs.mkdirSync(path.join(STATE_DIR, "logs"), { recursive: true });
 
@@ -192,9 +208,9 @@ async function start({ build, noPaidAi }) {
   }
 
   const started = [];
-  const record = () => fs.writeFileSync(PID_FILE, JSON.stringify({ startedAt: new Date().toISOString(), port: STACK_PORT, services: started }, null, 2));
+  const record = () => fs.writeFileSync(PID_FILE, JSON.stringify({ startedAt: new Date().toISOString(), port, services: started }, null, 2));
   try {
-    for (const service of SERVICES) {
+    for (const service of servicesFor(port)) {
       const logPath = path.join(STATE_DIR, "logs", `${service.name}.log`);
       const log = fs.openSync(logPath, "a");
       const child = spawn(service.args[0], service.args.slice(1), {
@@ -207,8 +223,8 @@ async function start({ build, noPaidAi }) {
       console.log(`local-stack: started ${service.name} pid ${child.pid} → ${path.relative(ROOT, logPath)}`);
     }
     await waitFor(async () => {
-      try { return (await fetch(`http://127.0.0.1:${STACK_PORT}/api/health`)).ok; } catch { return false; }
-    }, 90_000, `http://127.0.0.1:${STACK_PORT}/api/health`);
+      try { return (await fetch(`http://127.0.0.1:${port}/api/health`)).ok; } catch { return false; }
+    }, 90_000, `http://127.0.0.1:${port}/api/health`);
     const eventLog = path.join(STATE_DIR, "logs", "event-operations-worker.log");
     await waitFor(() => fs.readFileSync(eventLog, "utf8").includes("event_operations_worker_started"), 90_000, "the event-operations worker");
     await wait(3_000);
@@ -219,7 +235,7 @@ async function start({ build, noPaidAi }) {
     await stop({ quiet: true });
     throw error;
   }
-  console.log(`local-stack: ready. Web http://127.0.0.1:${STACK_PORT} (ORBIT_DATABASE_TARGET=local); workers running. Stop with: node scripts/local-stack.mjs stop`);
+  console.log(`local-stack: ready. Web http://127.0.0.1:${port} (ORBIT_DATABASE_TARGET=local); workers running. Stop with: node scripts/local-stack.mjs stop`);
 }
 
 async function status() {
@@ -233,16 +249,17 @@ async function status() {
     console.log(`${service.name.padEnd(30)} pid ${String(service.pid).padEnd(7)} ${running ? "running" : "stopped"}  ${service.log}`);
   }
   let healthy = false;
-  try { healthy = (await fetch(`http://127.0.0.1:${STACK_PORT}/api/health`)).ok; } catch { healthy = false; }
-  console.log(`health http://127.0.0.1:${STACK_PORT}/api/health: ${healthy ? "ok" : "unreachable"}`);
+  const port = state.port ?? STACK_PORT;
+  try { healthy = (await fetch(`http://127.0.0.1:${port}/api/health`)).ok; } catch { healthy = false; }
+  console.log(`health http://127.0.0.1:${port}/api/health: ${healthy ? "ok" : "unreachable"}`);
 }
 
 async function main(argv) {
   const [command, ...flags] = argv;
-  if (command === "start") return start({ build: flags.includes("--build"), noPaidAi: flags.includes("--no-paid-ai") });
+  if (command === "start") return start({ build: flags.includes("--build"), noPaidAi: flags.includes("--no-paid-ai"), port: parsePort(flags) });
   if (command === "stop") return stop();
   if (command === "status") return status();
-  console.log("usage: node scripts/local-stack.mjs start [--build] [--no-paid-ai] | status | stop");
+  console.log("usage: node scripts/local-stack.mjs start [--build] [--no-paid-ai] [--port N] | status | stop");
   process.exitCode = command ? 1 : 0;
 }
 

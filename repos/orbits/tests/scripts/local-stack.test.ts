@@ -58,3 +58,16 @@ test("--no-paid-ai blanks every paid provider key for the web server too, and re
   assert.ok(!module.describeProviderKeys(shell).includes("sk-shell"), "values are never printed");
   assert.equal(module.describeProviderKeys(shell), "DEEPSEEK_API_KEY=set GEMINI_API_KEY=set GOOGLE_API_KEY=set OPENAI_API_KEY=set");
 });
+
+test("--port runs a second isolated stack on another port; 3000 is refused and 3100 stays the default (0134)", async () => {
+  const module = await import("../../scripts/local-stack.mjs");
+  assert.equal(module.parsePort([]), 3100);
+  assert.equal(module.parsePort(["--build", "--port", "3300", "--no-paid-ai"]), 3300);
+  assert.equal(module.parsePort(["--port=3301"]), 3301);
+  for (const bad of [["--port", "3000"], ["--port", "abc"], ["--port"], ["--port", "80"], ["--port", "70000"]]) assert.throws(() => module.parsePort(bad), /port/u, bad.join(" "));
+  const services = module.servicesFor(3300);
+  assert.ok(services[0].args.join(" ").includes("start -p 3300"));
+  assert.equal(services[0].name, "web-3300");
+  assert.equal(buildStackEnv({}, { ORBIT_LOCAL_DATABASE_URL: local }, { port: 3300 }).server.PORT, "3300");
+  assert.equal(buildStackEnv({}, { ORBIT_LOCAL_DATABASE_URL: local }).server.PORT, "3100");
+});
