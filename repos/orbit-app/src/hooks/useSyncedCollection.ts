@@ -14,10 +14,7 @@ import { useOrbitApiBaseUrl } from "../api/ApiBaseUrlProvider";
 import { ORBIT_API_ENDPOINTS } from "../api/endpoints";
 import { serverReachability } from "../api/server-reachability";
 import { createSyncClient } from "../data/sync/sync-client";
-import { createNoteOutboxUploader } from "../data/sync/note-outbox-upload";
-import { createTaskOutboxUploader } from "../data/sync/task-outbox-upload";
-import { createScheduleOutboxUploader } from "../data/sync/schedule-outbox-upload";
-import { createMessageOutboxUploader } from "../data/sync/message-outbox-upload";
+import { uploadAllOutboxes } from "../data/sync/upload-outboxes";
 import {
   createSyncCoordinator,
   type SyncCoordinatorSession,
@@ -32,22 +29,8 @@ const appSyncCoordinator = createSyncCoordinator({
   lifecycle: syncLifecycle,
   hashPayload: (serialized) => Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, serialized),
   onManifestUnavailable: (error) => console.warn("SYNC_MANIFEST_UNAVAILABLE", error instanceof Error ? error.message : ""),
-  uploadOutbox: async ({ actorId, baseUrl, workspaceId, signal, repository, syncClient, writeClient }) => {
-    if (Platform.OS === "web" || !writeClient) return;
-    const uploader = createNoteOutboxUploader({ actorId, baseUrl, workspaceId, repository, syncClient, writeClient });
-    const taskUploader = createTaskOutboxUploader({ actorId, baseUrl, workspaceId, repository, syncClient, writeClient });
-    signal.addEventListener("abort", () => uploader.cancel(), { once: true });
-    // Sprint 0134: schedules upload after notes, so a link to an offline note already has its formal id.
-    const scheduleUploader = createScheduleOutboxUploader({ actorId, baseUrl, workspaceId, repository, syncClient, writeClient });
-    const messageUploader = createMessageOutboxUploader({ actorId, baseUrl, workspaceId, repository, syncClient, writeClient });
-    signal.addEventListener("abort", () => taskUploader.cancel(), { once: true });
-    signal.addEventListener("abort", () => scheduleUploader.cancel(), { once: true });
-    signal.addEventListener("abort", () => messageUploader.cancel(), { once: true });
-    await uploader.run();
-    await taskUploader.run();
-    await scheduleUploader.run();
-    await messageUploader.run();
-  },
+  // Sprint 0136: the composed upload step (notes → tasks → schedules → messages) lives in one module.
+  uploadOutbox: (scope) => Platform.OS === "web" ? Promise.resolve() : uploadAllOutboxes(scope),
 });
 const authSessionGenerations = new WeakMap<object, number>();
 let nextAuthSessionGeneration = 0;
@@ -232,6 +215,21 @@ export function useSyncedCollection<TPayload = unknown>(input: {
       setSnapshot(mirror);
       void startSync("mount");
     });
+    // Sprint 0136: a sync started elsewhere (the 15-second outbox poll, another screen) and
+    // each upload acknowledgement reach this screen at once: an ACK re-reads this kind's rows
+    // (the 未同步 marks go with them); a completed sync replaces the snapshot as if this
+    // screen had asked for it, so an offline banner clears without a manual refresh.
+    const unsubscribeChanges = session.subscribe?.((change) => {
+      if (!active || !mounted.current || viewGeneration.current !== effectGeneration || !session.isCurrent()) return;
+      if (change.type === "outbox" && change.kind !== null && change.kind !== input.kind) return;
+      const read = change.type === "synced" && session.readSyncedSnapshot
+        ? session.readSyncedSnapshot<TPayload>(input.kind, { records: withRecords })
+        : session.readCollection<TPayload>(input.kind, { records: withRecords });
+      void read.then((next) => {
+        if (!next || !active || !mounted.current || viewGeneration.current !== effectGeneration || !session.isCurrent()) return;
+        setSnapshot((current) => change.type === "synced" ? next : { ...current, records: next.records });
+      }, () => undefined);
+    });
     // Sprint 0131: the moment the server answers again after being unreachable, sync
     // (a lease, the conditional manifest and any moved domain) instead of waiting for
     // the next poll. While it stays unreachable a cheap health probe watches for it.
@@ -254,6 +252,7 @@ export function useSyncedCollection<TPayload = unknown>(input: {
       }
       if (sessionRef.current === session) sessionRef.current = null;
       session.deactivate();
+      unsubscribeChanges?.();
       unsubscribeAppState();
       unsubscribeReachability();
       stopReconnectWatch();
