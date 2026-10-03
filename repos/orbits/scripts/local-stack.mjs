@@ -29,7 +29,13 @@ export const STACK_PORT = 3100;
 const FORBIDDEN_PORTS = new Set([3000]);
 const LOCAL_HOSTS = new Set(["127.0.0.1", "localhost", "::1", "[::1]"]);
 const DATABASE_URL_KEYS = ["ORBIT_LOCAL_DATABASE_URL", "ORBIT_EVENT_DATABASE_URL", "ORBIT_LIVE_DATABASE_URL", "ORBIT_DATABASE_URL"];
-const WORKER_BLANKED_KEYS = ["DEEPSEEK_API_KEY", "GEMINI_API_KEY", "OPENAI_API_KEY", "GOOGLE_API_KEY", "ORBIT_EXPO_PUSH_ENDPOINT", "ORBIT_EXPO_PUSH_ACCESS_TOKEN", "ORBIT_EXPO_PUSH_RECEIPT_ENDPOINT"];
+export const PAID_PROVIDER_KEYS = ["DEEPSEEK_API_KEY", "GEMINI_API_KEY", "GOOGLE_API_KEY", "OPENAI_API_KEY"];
+const WORKER_BLANKED_KEYS = [...PAID_PROVIDER_KEYS, "ORBIT_EXPO_PUSH_ENDPOINT", "ORBIT_EXPO_PUSH_ACCESS_TOKEN", "ORBIT_EXPO_PUSH_RECEIPT_ENDPOINT"];
+
+/** "NAME=set|empty" for each paid provider key; never the value. */
+export function describeProviderKeys(env) {
+  return PAID_PROVIDER_KEYS.map((key) => `${key}=${env[key] ? "set" : "empty"}`).join(" ");
+}
 
 /** Services started, in order. `marker` must appear in the process command line before stop signals it. */
 export const SERVICES = [
@@ -70,9 +76,10 @@ export function readEnvFiles(root = ROOT) {
  * Child environments. Throws before anything starts if the database is not local.
  * @param {Record<string, string | undefined>} processEnv
  * @param {Record<string, string | undefined>} files
+ * @param {{ noPaidAi?: boolean }} [options] noPaidAi also blanks the web server's provider keys (QA runs).
  * @returns {{ server: Record<string, string | undefined>, worker: Record<string, string | undefined> }}
  */
-export function buildStackEnv(processEnv = process.env, files = readEnvFiles()) {
+export function buildStackEnv(processEnv = process.env, files = readEnvFiles(), options = {}) {
   const localUrl = processEnv.ORBIT_LOCAL_DATABASE_URL?.trim() || files.ORBIT_LOCAL_DATABASE_URL?.trim() || "";
   if (!isLocalDatabaseUrl(localUrl)) {
     throw new Error("ORBIT_LOCAL_DATABASE_URL must point at a Postgres on this machine (127.0.0.1, localhost, ::1 or a Unix socket); refusing to start.");
@@ -84,6 +91,7 @@ export function buildStackEnv(processEnv = process.env, files = readEnvFiles()) 
   const server = { ...processEnv, ...pinned, PORT: String(STACK_PORT) };
   const worker = { ...processEnv, ...pinned };
   for (const key of WORKER_BLANKED_KEYS) worker[key] = "";
+  if (options.noPaidAi) for (const key of PAID_PROVIDER_KEYS) server[key] = "";
   for (const env of [server, worker]) {
     for (const key of DATABASE_URL_KEYS) {
       if (!isLocalDatabaseUrl(env[key])) throw new Error(`${key} is not local; refusing to start.`);
@@ -164,14 +172,15 @@ async function stop({ quiet = false } = {}) {
   console.log("local-stack: stopped.");
 }
 
-async function start({ build }) {
+async function start({ build, noPaidAi }) {
   if (FORBIDDEN_PORTS.has(STACK_PORT)) throw new Error("The local stack never uses port 3000.");
   const existing = readPids();
   if (existing?.services?.some((service) => alive(service.pid) && commandOf(service.pid).includes(service.marker))) {
     throw new Error("local-stack is already running; run `node scripts/local-stack.mjs stop` first.");
   }
   if (await portInUse(STACK_PORT)) throw new Error(`Port ${STACK_PORT} is already in use; not starting.`);
-  const env = buildStackEnv();
+  const env = buildStackEnv(process.env, readEnvFiles(), { noPaidAi });
+  console.log(`local-stack: provider keys — web: ${describeProviderKeys(env.server)}; workers: ${describeProviderKeys(env.worker)}`);
   fs.mkdirSync(path.join(STATE_DIR, "logs"), { recursive: true });
 
   if (build) {
@@ -230,10 +239,10 @@ async function status() {
 
 async function main(argv) {
   const [command, ...flags] = argv;
-  if (command === "start") return start({ build: flags.includes("--build") });
+  if (command === "start") return start({ build: flags.includes("--build"), noPaidAi: flags.includes("--no-paid-ai") });
   if (command === "stop") return stop();
   if (command === "status") return status();
-  console.log("usage: node scripts/local-stack.mjs start [--build] | status | stop");
+  console.log("usage: node scripts/local-stack.mjs start [--build] [--no-paid-ai] | status | stop");
   process.exitCode = command ? 1 : 0;
 }
 

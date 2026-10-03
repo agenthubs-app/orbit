@@ -18,9 +18,38 @@ import type {
 const WORKSPACE_ID = "workspace:egress-bounds";
 const ACTOR_ID = "account:egress-owner";
 const NOW = "2026-09-17T00:00:00.000Z";
-const LOCAL_DATABASE_URL = "postgresql://li@localhost:5432/orbit_lifecycle_r1_20260917";
+const APPROVED_EGRESS_TEST_DATABASE_URL = "postgresql://xzhao@localhost:5432/orbit_0137_lifecycle_egress_test";
 const TEST_DATABASE_URL = process.env.ORBIT_LIFECYCLE_TEST_DATABASE_URL ?? "";
-const integrationEnabled = TEST_DATABASE_URL === LOCAL_DATABASE_URL;
+const integrationEnabled = TEST_DATABASE_URL.length > 0;
+
+function isApprovedEgressTestDatabaseUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === "postgresql:"
+      && url.hostname === "localhost"
+      && url.port === "5432"
+      && url.username === "xzhao"
+      && url.password === ""
+      && url.pathname === "/orbit_0137_lifecycle_egress_test"
+      && url.search === ""
+      && url.hash === "";
+  } catch {
+    return false;
+  }
+}
+
+test("the isolated Sprint 0137 egress profile enables its real-Postgres case", () => {
+  assert.equal(isApprovedEgressTestDatabaseUrl(APPROVED_EGRESS_TEST_DATABASE_URL), true);
+  assert.equal(integrationEnabled, TEST_DATABASE_URL.length > 0);
+  for (const value of [
+    "postgresql://li@localhost:5432/orbit_lifecycle_r1_20260917",
+    "postgresql://xzhao@localhost:5432/orbit_cutover_test_20260917",
+    "postgresql://xzhao@localhost:5432/orbit_0137_lifecycle_egress_test?sslmode=require",
+    "postgresql://xzhao:secret@localhost:5432/orbit_0137_lifecycle_egress_test",
+    "postgresql://xzhao@localhost:5433/orbit_0137_lifecycle_egress_test",
+    "postgresql://xzhao@remote.invalid:5432/orbit_0137_lifecycle_egress_test",
+  ]) assert.equal(isApprovedEgressTestDatabaseUrl(value), false, value.replace(/\/\/[^@/]+@/u, "//[redacted]@"));
+});
 
 interface SqlCall {
   text: string;
@@ -633,16 +662,24 @@ test(
   "local PG projection reports lower returned bytes without truncating rows",
   { skip: integrationEnabled ? false : "set ORBIT_LIFECYCLE_TEST_DATABASE_URL to the approved local URL" },
   async () => {
-    assert.equal(TEST_DATABASE_URL, LOCAL_DATABASE_URL);
+    assert.ok(isApprovedEgressTestDatabaseUrl(TEST_DATABASE_URL), "Only the dedicated local lifecycle egress test database is allowed");
     const databaseUrl = new URL(TEST_DATABASE_URL);
     assert.equal(databaseUrl.hostname, "localhost");
-    assert.equal(databaseUrl.pathname, "/orbit_lifecycle_r1_20260917");
+    assert.equal(databaseUrl.pathname, "/orbit_0137_lifecycle_egress_test");
 
     const schema = `orbit_egress_${randomUUID().replaceAll("-", "").slice(0, 20)}`;
     const admin = new Pool({ connectionString: TEST_DATABASE_URL, max: 1 });
     let scoped: Pool | null = null;
 
     try {
+      const identity = await admin.query(
+        "SELECT current_database() AS db,current_user AS actor,host(inet_server_addr()) AS host,inet_server_port() AS port,(SELECT pg_catalog.pg_get_userbyid(datdba)=current_user FROM pg_catalog.pg_database WHERE datname=current_database()) AS owner",
+      );
+      assert.equal(identity.rows[0]?.db, "orbit_0137_lifecycle_egress_test");
+      assert.equal(identity.rows[0]?.actor, "xzhao");
+      assert.ok(["127.0.0.1", "::1"].includes(identity.rows[0]?.host));
+      assert.equal(identity.rows[0]?.port, 5432);
+      assert.equal(identity.rows[0]?.owner, true);
       await admin.query(`create schema ${schema}`);
       scoped = new Pool({
         connectionString: TEST_DATABASE_URL,

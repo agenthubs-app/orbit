@@ -200,6 +200,11 @@ test("new confirmed 23:45 start defaults to thirty minutes across midnight", asy
   const p = await open(t, { taskId: "", now: "2026-09-17T00:00:00.000Z" });
   await fill(p, "日程标题", "Picker midnight");
   await press(p, "调整日期和时间");
+  // A new schedule's calendar opens on the device's current month; step to September 2026 so
+  // the test does not depend on the day it runs (it broke when the clock reached October).
+  const today = new Date();
+  const monthsAfterTarget = (today.getFullYear() - 2026) * 12 + today.getMonth() - 8;
+  for (let n = 0; n < Math.abs(monthsAfterTarget); n++) await press(p, monthsAfterTarget > 0 ? "上个月" : "下个月");
   await p.getByRole("button", { name: "2026-09-17", exact: true }).click();
   await p.getByRole("dialog").getByRole("button", { name: "完成", exact: true }).click(); await settle(p);
   await press(p, "开始时间");

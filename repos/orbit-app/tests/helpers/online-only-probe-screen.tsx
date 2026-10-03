@@ -1,5 +1,5 @@
-import { useEffect } from "react";
-import { Pressable, Text } from "react-native";
+import { useEffect, useState } from "react";
+import { Pressable, Text, TextInput } from "react-native";
 import { withOnlineOnlyRoute } from "../../src/components/OnlineOnlyBoundary";
 import { useOrbitApiClient } from "../../src/hooks/useOrbitApiClient";
 
@@ -11,3 +11,11 @@ function OnlineOnlyProbeScreen() {
 }
 
 export const OnlineOnlyProbeRoute = withOnlineOnlyRoute(OnlineOnlyProbeScreen);
+
+function OnlineOnlyNoReadScreen() {
+  const [draft, setDraft] = useState("");
+  return <><Text>no-read page content</Text><TextInput accessibilityLabel="Draft" value={draft} onChangeText={setDraft} /></>;
+}
+
+export const OnlineOnlyNoReadDefaultRoute = withOnlineOnlyRoute(OnlineOnlyNoReadScreen);
+export const OnlineOnlyNoReadProbeRoute = withOnlineOnlyRoute(OnlineOnlyNoReadScreen, { probeOnOpen: true });

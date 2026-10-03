@@ -27,11 +27,12 @@ const reachabilityPath = resolve(root, "src/api/server-reachability.ts");
 
 const fixture = `
 import React from "react";
-import { View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { serverReachability } from ${JSON.stringify(reachabilityPath)};
 export const state = window.fixture = { requests: [], navigation: [], syncs: 0, saves: [], online: true, syncStatus: "fresh", records: {}, copies: {}, responses: {}, params: {}, ...window.initialFixture };
 const base = "http://fixture";
 if (state.startUnreachable) serverReachability.markUnreachable(base);
+if (state.startReachable) serverReachability.markReachable(base);
 export const useLocalSearchParams = () => window.fixture.params ?? {};
 export const useGlobalSearchParams = () => window.fixture.params ?? {};
 export const usePathname = () => window.fixture.pathname ?? "/";
@@ -60,7 +61,12 @@ function answer(method, path) {
 }
 const client = {
   baseUrl: base,
-  async get(path) { return answer("get", path); },
+  async get(path) {
+    if (path === "/api/health" && state.healthDelayMs) await new Promise(resolve => setTimeout(resolve, state.healthDelayMs));
+    const result = answer("get", path);
+    if (path === "/api/health") state.healthResolved = true;
+    return result;
+  },
   async post(path) { return answer("post", path); },
   async patch(path) { return answer("patch", path); },
   async put(path) { return answer("put", path); },
@@ -100,11 +106,19 @@ const session = {
 export const useSyncCoordinatorSession = () => { const [value, setValue] = React.useState(null); React.useEffect(() => { setValue(session); }, []); return value; };
 const authSession = { ready: true, signedIn: true, accountId: "account:one", actorId: "account:one", cookieHeader: "", user: { id: "account:one", name: "QA One", email: "qa1@example.test" }, notificationSessionRevision: 0 };
 export const useOrbitAuthSession = () => authSession;
-export const useOrbitApiBaseUrl = () => ({ baseUrl: base, ready: true });
+export const useOrbitApiBaseUrl = () => ({ baseUrl: base, ready: state.apiBaseReady ?? true });
 const memory = new Map();
 export default { getItem: async key => memory.get(key) ?? null, setItem: async (key, value) => { memory.set(key, value); }, removeItem: async key => { memory.delete(key); } };
-export const SafeAreaView = ({ children, edges, ...props }) => <View {...props}>{children}</View>;
-export const useSafeAreaInsets = () => ({ top: 0, bottom: 0, left: 0, right: 0 });
+export const SafeAreaView = ({ children, edges, style, ...props }) => {
+  const includesTop = Array.isArray(edges)
+    ? edges.includes("top")
+    : edges !== null && typeof edges === "object" && Reflect.get(edges, "top") !== undefined && Reflect.get(edges, "top") !== "off";
+  const inset = includesTop ? window.initialFixture?.safeAreaTop ?? 0 : 0;
+  const flattened = inset ? StyleSheet.flatten(style) ?? {} : null;
+  const adjusted = flattened ? { ...flattened, paddingTop: (flattened.paddingTop ?? 0) + inset } : style;
+  return <View {...props} style={adjusted}>{children}</View>;
+};
+export const useSafeAreaInsets = () => ({ top: window.initialFixture?.safeAreaTop ?? 0, bottom: 0, left: 0, right: 0 });
 export const SafeAreaProvider = ({ children }) => children;
 `;
 

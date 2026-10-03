@@ -11,6 +11,7 @@ import { createPostgresLiveRecordStore } from "../../shared/storage/postgres-liv
 import { ORBIT_RECORDS_SCHEMA_SQL } from "../../shared/storage/migrations";
 import { STRICT_SYNC_REVISION_SQL, testRawWrite } from "../support/sync-revision-fixture";
 import { createTransactionalPostgresClient, type TransactionalPostgresClient } from "../../shared/storage/transactional-postgres";
+import { cleanupTestSchema } from "../support/cleanup-test-schema";
 import type { RelationshipInitializationChoice, RelationshipInitializationInput } from "../../shared/contract/relationship-lifecycle";
 
 const databaseUrl = process.env.ORBIT_LIFECYCLE_TEST_DATABASE_URL;
@@ -56,7 +57,13 @@ async function fixture(run: (f: { client: TransactionalPostgresClient; service: 
     };
     const records = async () => (await client.query("select collection_name,record_id,user_id,payload from orbit_records order by collection_name,record_id")).rows;
     await run({ client, service, input, records });
-  } finally { await client.close(); try { await admin.query(`drop schema if exists ${schema} cascade`); } finally { await admin.end(); } }
+  } finally {
+    await cleanupTestSchema({
+      closeClient: () => client.close(),
+      dropSchema: () => admin.query(`drop schema if exists ${schema} cascade`),
+      closeAdmin: () => admin.end(),
+    });
+  }
 }
 
 for (const choice of [{ stage: "active", activeGoal: "本人明确的合作目标" }, { stage: "needs_follow_up", nextTask: task }, { stage: "nurture", nextTask: task }, { stage: "archived" }] as RelationshipInitializationChoice[]) {
