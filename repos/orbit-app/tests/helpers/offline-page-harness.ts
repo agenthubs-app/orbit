@@ -89,17 +89,40 @@ export const useApiResource = (path, isEmpty, options) => {
   }, [path, tick, options?.enabled]);
   return { ...result, refreshing: false, refresh() { setTick((value) => value + 1); } };
 };
+// Like the real hook, the same mirror rows keep the same array between renders (sprint 0134: editors key effects on it).
+const recordCache = new Map();
+const mirrorRecords = (kind) => {
+  const source = state.records[kind] ?? [];
+  const cached = recordCache.get(kind);
+  if (cached && cached.source === source) return cached.records;
+  const records = source.map((payload, index) => ({ id: payload.id ?? payload.eventId ?? payload.conversationId ?? String(index), kind, workspaceId: "workspace:one", revision: "1", updatedAt: "2026-09-28T01:00:00.000Z", deletedAt: null, payload }));
+  recordCache.set(kind, { source, records });
+  return records;
+};
 export const useSyncedCollection = ({ kind }) => ({
   status: state.syncStatus, error: state.syncStatus === "stale" ? "Network request failed" : null,
   lastSyncedAt: "2026-09-28T01:30:00.000Z", workspaceId: "workspace:one",
-  records: (state.records[kind] ?? []).map((payload, index) => ({ id: payload.id ?? payload.eventId ?? payload.conversationId ?? String(index), kind, workspaceId: "workspace:one", revision: "1", updatedAt: "2026-09-28T01:00:00.000Z", deletedAt: null, payload })),
-  refresh: async () => { state.syncs++; return null; },
-  invalidate: async () => null,
-  currentSession: () => state.taskOutbox ? taskOutboxSession : null,
+  records: mirrorRecords(kind),
+  refresh: refreshMirror,
+  invalidate: invalidateMirror,
+  currentSession,
 });
+async function refreshMirror() { state.syncs++; return null; }
+async function invalidateMirror() { return null; }
+function currentSession() { return state.taskOutbox || state.scheduleOutbox ? taskOutboxSession : null; }
 // Sprint 0133: an opt-in device outbox session (fixture taskOutbox: true) records offline task enqueues.
+// Sprint 0134: scheduleOutbox: true adds schedule enqueues and conflict resolution; queued rows are read per kind.
+const queuedRow = (mutation) => ({ ...mutation, actorId: "account:one", workspaceId: "workspace:one", state: "queued", attemptCount: 0, firstAttemptAt: null, serverSnapshot: null, dependsOn: null });
 const taskOutboxSession = {
-  async readOutboxOverlay() { return { queuedMutations: state.queuedTasks ?? [] }; },
+  async readOutboxOverlay(kind) { return { queuedMutations: kind === "personal_schedule" ? state.queuedSchedules ?? [] : kind === "note" ? state.queuedNotes ?? [] : state.queuedTasks ?? [] }; },
+  async enqueueOfflineScheduleMutation(mutation) {
+    state.enqueuedSchedules = [...(state.enqueuedSchedules ?? []), mutation];
+    state.queuedSchedules = [...(state.queuedSchedules ?? []), queuedRow(mutation)];
+  },
+  async resolveScheduleConflict(input) {
+    state.resolvedSchedules = [...(state.resolvedSchedules ?? []), input];
+    state.queuedSchedules = (state.queuedSchedules ?? []).filter((row) => row.mutationId !== input.mutationId).concat(input.replacement ? [queuedRow(input.replacement)] : []);
+  },
   async enqueueOfflineTaskMutation(mutation) {
     state.enqueued = [...(state.enqueued ?? []), mutation];
     state.queuedTasks = [...(state.queuedTasks ?? []), { ...mutation, actorId: "account:one", workspaceId: "workspace:one", state: "queued", attemptCount: 0, firstAttemptAt: null, serverSnapshot: null, dependsOn: null }];

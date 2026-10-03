@@ -72,7 +72,8 @@ function domainFor(path: string): string {
 
 function surfaceFrom([consumerFile, method, endpointTemplate]: SurfaceKey): ReadSurface {
   const domainId = domainFor(endpointTemplate);
-  const taskOutboxWrite = consumerFile === 'src/data/sync/task-outbox-upload.ts' && domainId === 'tasks'
+  const taskOutboxWrite = (consumerFile === 'src/data/sync/task-outbox-upload.ts' && domainId === 'tasks'
+    || consumerFile === 'src/data/sync/schedule-outbox-upload.ts' && domainId === 'personal-schedule')
     && ['POST', 'PATCH', 'DELETE'].includes(method);
   const providerTodo = endpointTemplate.startsWith('/api/relationship-signals/email-calendar');
   const secret = providerTodo || endpointTemplate === '/api/account/status' || endpointTemplate.startsWith('/api/account/session/')
@@ -119,6 +120,9 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/data/sync/task-outbox-upload.ts","POST","/api/tasks"],
   ["src/data/sync/task-outbox-upload.ts","PATCH","/api/tasks/:id"],
   ["src/data/sync/task-outbox-upload.ts","DELETE","/api/tasks/:id"],
+  ["src/data/sync/schedule-outbox-upload.ts","POST","/api/schedule-items"],
+  ["src/data/sync/schedule-outbox-upload.ts","PATCH","/api/schedule-items/:id"],
+  ["src/data/sync/schedule-outbox-upload.ts","DELETE","/api/schedule-items/:id"],
   ["src/api/browser-auth.ts","GET","/api/auth/csrf"],
   ["src/api/browser-auth.ts","POST","/api/auth/callback/credentials"],
   ["src/api/auth-session.ts","POST","/api/auth/register"],

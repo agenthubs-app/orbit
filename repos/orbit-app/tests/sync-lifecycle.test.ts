@@ -6,6 +6,8 @@ import config from "../app.config";
 import { readSnapshot, writeSnapshot, clearSnapshots } from "../src/data/snapshot-store";
 import { syncLifecycle } from "../src/data/sync/sync-lifecycle";
 import { buildOfflineTaskMutation } from "../src/data/sync/task-outbox-mutation";
+import { buildOfflineNoteMutation } from "../src/data/sync/note-outbox-mutation";
+import { buildOfflineScheduleMutation } from "../src/data/sync/schedule-outbox-mutation";
 import { createSyncCoordinator } from "../src/data/sync/sync-coordinator";
 
 const scope = { baseUrl: "https://first.example", actorId: "account-private-fixture" };
@@ -328,6 +330,53 @@ test("vault write failure refuses logout purge and leaves the only queue copy in
   assert.equal(f.keys.get(`orbit.sync.key.${digest}`), identityKey);
   const queued = await f.coordinator.withDatabase(scope, db => db.get<{ mutation_id: string }>("SELECT mutation_id FROM sync_outbox"));
   assert.equal(queued?.mutation_id, "m-protected");
+});
+
+test("logout archives a queued offline schedule linked to an offline note, and a same-account reopen restores both (0134)", async t => {
+  const f = await lifecycle(t);
+  const now = Date.parse("2026-10-03T00:00:00.000Z");
+  const workspaceId = "workspace-schedule-vault";
+  const domains = ["notes", "personal-schedule"];
+  const localNote = "local:7f3a0000-0000-4000-8000-000000000001";
+  const localSchedule = "local:b21c0000-0000-4000-8000-000000000002";
+  const coordinator = createSyncCoordinator({ lifecycle: f.coordinator, now: () => now, hashPayload: async value => createHash("sha256").update(value).digest("hex") });
+  const session = coordinator.openScope({
+    actorId: scope.actorId, baseUrl: scope.baseUrl, scopeKey: "schedule-vault-restore",
+    client: {
+      async getLease() {
+        return { version: 2, baseUrl: scope.baseUrl, actorId: scope.actorId, subject: "synthetic-schedule-vault-user", sessionExpiresAt: now + 30 * 86_400_000,
+          offlineReadExpiresAt: now + 7 * 86_400_000, lastVerifiedAt: now, grants: domains.map(domainId => ({ workspaceId, domainId, authorizationEpoch: `${domainId}-e1` })), databaseKeyRef: "synthetic-schedule-vault-key" };
+      },
+      async getManifest() {
+        return { registryVersion: 1, domains: domains.map(domainId => ({ domainId, schemaVersion: 1, workspaceId, authorizationEpoch: `${domainId}-e1`, generation: `${domainId}-g`, watermark: "0", history: "complete" as const, membershipCursor: null })) };
+      },
+      async getDomainPage(input) {
+        return { domainId: input.domainId, schemaVersion: 1, registryVersion: 1, authorizationEpoch: `${input.domainId}-e1`, changes: [], nextCursor: `${input.domainId}:0`,
+          highWatermark: "0", hasMore: false, generation: `${input.domainId}-g`, serverTime: new Date(now).toISOString() };
+      },
+      async getPage() { throw new Error("legacy sync endpoint must not be used"); },
+    },
+  });
+  const request = session.synchronize("personal_schedule", { reason: "explicit" });
+  assert.equal(await request.started, true);
+  assert.equal((await request.promise)?.error, null);
+  await session.enqueueOfflineNoteMutation(buildOfflineNoteMutation({ mutationId: "note-m1", entityId: localNote, operation: "create", baseRevision: null,
+    requestBody: { title: "三件事", body: "报价、介绍、年底再约", idempotencyKey: "note-m1" }, createdAt: new Date(now).toISOString() }));
+  const scheduleBody = { title: "和陈总复盘", startsAt: "2026-10-05T01:00:00.000Z", noteIds: [localNote], idempotencyKey: "schedule-m1" };
+  await session.enqueueOfflineScheduleMutation(buildOfflineScheduleMutation({ mutationId: "schedule-m1", entityId: localSchedule, operation: "create", baseRevision: null,
+    requestBody: scheduleBody, createdAt: new Date(now + 1).toISOString() }));
+
+  session.deactivate();
+  await new Promise<void>(resolve => setImmediate(resolve));
+  assert.equal(await f.coordinator.setScope(null), true);
+  assert.deepEqual(await f.coordinator.pendingWriteSummary(scope), { currentAccount: 2, otherAccounts: 0 }, "the logout path keeps both pending writes");
+  assert.equal(await f.coordinator.setScope(scope), true);
+  const restored = await f.coordinator.withDatabase(scope, db => db.all<{ mutation_id: string; domain_id: string; record_id: string; state: string; request_json: string }>(
+    "SELECT mutation_id, domain_id, record_id, state, request_json FROM sync_outbox ORDER BY created_at"));
+  assert.deepEqual((restored ?? []).map(row => ({ ...row })), [
+    { mutation_id: "note-m1", domain_id: "notes", record_id: localNote, state: "queued", request_json: JSON.stringify({ title: "三件事", body: "报价、介绍、年底再约", idempotencyKey: "note-m1" }) },
+    { mutation_id: "schedule-m1", domain_id: "personal-schedule", record_id: localSchedule, state: "queued", request_json: JSON.stringify(scheduleBody) },
+  ]);
 });
 
 test("vault write failure keeps a serialized personal-task edit before logout purge", async t => {

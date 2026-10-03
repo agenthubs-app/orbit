@@ -1,6 +1,6 @@
 import type { OrbitApiClient } from "../../api/client";
 import type { SyncRecord } from "../../api/contract/sync";
-import { personalSchedulePath } from "../../api/personal-schedule";
+import { ORBIT_API_ENDPOINTS } from "../../api/endpoints";
 import { offlineReadEnvelopeSchema } from "../../api/schema/universal-read";
 import { localNoteIdsOfSchedule, parseOfflineScheduleRequest, SCHEDULE_DOMAIN } from "./schedule-outbox-mutation";
 import type { OfflineScheduleMutationInput } from "./sync-coordinator";
@@ -81,11 +81,12 @@ export function createScheduleOutboxUploader(input: {
         else if (mutation.operation !== "create") return { status: 0 };
       }
       const options = { body: requestBody, headers: SCHEDULE_HEADERS, signal };
+      // Literal routes keep the offline-policy audit exact: POST the collection, PATCH/DELETE one item.
       const response = mutation.operation === "create"
-        ? await input.writeClient.post<unknown>(personalSchedulePath(), options)
+        ? await input.writeClient.post<unknown>(ORBIT_API_ENDPOINTS.scheduleItems, options)
         : mutation.operation === "delete"
-          ? await input.writeClient.delete<unknown>(personalSchedulePath(targetId), options)
-          : await input.writeClient.patch<unknown>(personalSchedulePath(targetId), options);
+          ? await input.writeClient.delete<unknown>(`/api/schedule-items/${encodeURIComponent(targetId)}`, options)
+          : await input.writeClient.patch<unknown>(`/api/schedule-items/${encodeURIComponent(targetId)}`, options);
       if (response.status >= 200 && response.status < 300) {
         const item = canonicalScheduleItem(response.success ? response.data : null);
         if (!item || (mutation.operation !== "create" && item.id !== targetId)) return { status: 0 };
