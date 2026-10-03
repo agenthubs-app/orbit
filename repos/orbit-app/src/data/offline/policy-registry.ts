@@ -14,6 +14,16 @@ export class OfflineDataPolicyRegistry {
   }
 
   resolve(method: string, pathname: string, action: string): OfflinePolicy {
-    return this.registry.resolve(method, pathname, action);
+    const policy = this.registry.resolve(method, pathname, action);
+    if (relationshipFollowupActions.has(action)) return { ...policy, mutationPolicy: "online_only" };
+    return policy;
   }
 }
+
+const relationshipFollowupActions = new Set([
+  "relationship_followup.update",
+  "relationship_followup.complete",
+  "relationship_followup.reopen",
+  "relationship_followup.cancel",
+  "relationship_followup.delete",
+]);

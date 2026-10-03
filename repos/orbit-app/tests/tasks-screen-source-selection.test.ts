@@ -21,13 +21,13 @@ test("native source is the lease-fed mirror; web source is mirror-first with the
   const shared = read("src/screens/tasks/task-list-source-mirror.ts");
   assert.match(native, /useSyncedCollection<.*>\(\{ kind: "task" \}\)/);
   assert.doesNotMatch(native, /useApiResource|tasksPath/);
-  assert.match(native, /mirrorTaskListSource\(state, input\)/, "native maps the mirror through the shared source");
+  assert.match(native, /mirrorTaskListSource\(state, input, outbox\)/, "native maps the mirror and task overlay through the shared source");
   assert.match(web, /useWebMirrorStatus\(\)/);
   assert.match(web, /useSyncedCollection<.*>\(\{ kind: "task" \}\)/);
   assert.match(web, /enabled: input\.ready && !mirrorActive/, "the network read is inert while the mirror is the source or identity is not ready");
   assert.match(web, /\/api\/tasks\/page\?/);
   assert.doesNotMatch(web, /tasksPath\(\)/, "online fallback is bounded, not the old full list");
-  assert.match(web, /if \(mirrorActive\) return mirrorTaskListSource\(synced, input\)/);
+  assert.match(web, /if \(mirrorActive\) return mirrorTaskListSource\(synced, input, outbox\)/);
   assert.ok(web.indexOf("useWebMirrorStatus()") < web.indexOf("useSyncedCollection<") && web.indexOf("useSyncedCollection<") < web.indexOf("useApiResource<unknown>"), "hooks run unconditionally, in a fixed order");
   assert.match(shared, /syncLabelKey: `sync\.\$\{/, "the mirror source carries the App's sync labels on both platforms");
   for (const source of [native, web]) assert.match(source, /export function useTaskListSource\(input: TaskListSourceInput\): TaskListSource/);

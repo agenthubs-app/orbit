@@ -1,12 +1,16 @@
 import type { TaskItemContract } from "../../api/contract/tasks";
 import { useSyncedCollection } from "../../hooks/useSyncedCollection";
+import { Platform } from "react-native";
+import { useOfflineTaskOutbox } from "../../data/sync/useOfflineTaskOutbox";
+import type { LocalSyncQueuedMutation } from "../../data/sync/local-sync-repository";
+import type { OfflineTaskMutationInput } from "../../data/sync/sync-coordinator";
 import type { MessageKey } from "../../i18n/messages";
 import { mirrorTaskListSource } from "./task-list-source-mirror";
 import type { TaskListSelection } from "../../view-models/task-list-scope";
 
 // A list entry is deliberately not a complete task/detail record. Network
 // cards do not contain notes, history, creation metadata or ownership claims.
-export type TaskListEntry = Pick<TaskItemContract, "id" | "title" | "status" | "category" | "priority" | "updatedAt" | "completedAt" | "plannedDate" | "dueAt" | "location" | "relatedContactId" | "notes">;
+export type TaskListEntry = Pick<TaskItemContract, "id" | "title" | "status" | "category" | "priority" | "updatedAt" | "completedAt" | "plannedDate" | "dueAt" | "location" | "relatedContactId" | "notes"> & { localMutationState?: "queued" | "conflict" | "failed"; baseRevision: string | null };
 
 /**
  * Native task list source: the local mirror fed by the lease → domain-page
@@ -38,6 +42,9 @@ export interface TaskListSource {
    * unconfirmed legacy suggestions); undefined when the source is the mirror.
    */
   tasksPayload: unknown | undefined;
+  queuedMutations: readonly LocalSyncQueuedMutation[];
+  queueFailure: string | null;
+  enqueueOfflineMutation(mutation: OfflineTaskMutationInput): Promise<void>;
   refresh(): void;
   /** After a mutation receipt: does the authoritative source now agree with the intended status? */
   confirmMutation(taskId: string, action: "complete" | "reopen"): Promise<boolean>;
@@ -45,5 +52,6 @@ export interface TaskListSource {
 
 export function useTaskListSource(input: TaskListSourceInput): TaskListSource {
   const state = useSyncedCollection<Record<string, unknown>>({ kind: "task" });
-  return mirrorTaskListSource(state, input);
+  const outbox = useOfflineTaskOutbox(state, Platform.OS !== "web");
+  return mirrorTaskListSource(state, input, outbox);
 }

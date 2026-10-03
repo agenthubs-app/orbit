@@ -24,6 +24,7 @@ import { parseTaskListSelection, taskListReceiptMatches } from "../../view-model
 import { useTaskListSource } from "./task-list-source";
 import { useOrbitAuthSession } from "../../api/AuthSessionProvider";
 import { useOrbitApiBaseUrl } from "../../api/ApiBaseUrlProvider";
+import { buildOfflineTaskMutation, isOfflineTaskCategory } from "../../data/sync/task-outbox-mutation";
 
 type TaskListMode = "open" | "completed";
 
@@ -86,13 +87,30 @@ export function TasksScreen() {
 
   async function toggleTask(item: TaskListRowView) {
     const baseline = canonical?.find(task => task.id === item.id);
-    if (source.offline) return;
     if (!ready || !baseline || !scope.active || currentScope.current !== scope || scope.busy) return;
     scope.busy = true;
     setUpdatingId(item.id);
     setMutationError(null);
     try {
       const action = item.status === "completed" ? "reopen" : "complete";
+      if (source.offline) {
+        if (!isOfflineTaskCategory(baseline.category)) {
+          setMutationError(locale.t("sync.needsNetwork"));
+          return;
+        }
+        const idempotencyKey = Crypto.randomUUID();
+        const createdAt = new Date().toISOString();
+        await source.enqueueOfflineMutation(buildOfflineTaskMutation({
+          mutationId: idempotencyKey,
+          entityId: baseline.id,
+          operation: action,
+          baseRevision: baseline.baseRevision,
+          requestBody: { action, idempotencyKey },
+          createdAt,
+        }));
+        setPosition({ scope: pageScope, cursor: null });
+        return;
+      }
       const intent = JSON.stringify([item.id, action, baseline.updatedAt]);
       const key = scope.keys.get(intent) ?? mutationKey(`${action}:${item.id}`);
       scope.keys.set(intent, key);
@@ -159,11 +177,11 @@ export function TasksScreen() {
               style={styles.row}
             >
               <Pressable
-                accessibilityLabel={locale.t(item.status === "completed" ? "tasks.restoreNamed" : "tasks.completeNamed", { title: item.title }) + (source.offline ? " · " + locale.t("sync.needsNetwork") : "")}
+                accessibilityLabel={locale.t(item.status === "completed" ? "tasks.restoreNamed" : "tasks.completeNamed", { title: item.title }) + (source.offline && !isOfflineTaskCategory(item.category) ? " · " + locale.t("sync.needsNetwork") : "")}
                 accessibilityRole="checkbox"
                 aria-checked={item.status === "completed"}
-                accessibilityState={{ checked: item.status === "completed", disabled: updatingId !== null || source.offline !== null, busy: updatingId === item.id }}
-                disabled={updatingId !== null || source.offline !== null}
+                accessibilityState={{ checked: item.status === "completed", disabled: updatingId !== null || Boolean(source.offline && !isOfflineTaskCategory(item.category)), busy: updatingId === item.id }}
+                disabled={updatingId !== null || Boolean(source.offline && !isOfflineTaskCategory(item.category))}
                 onPress={() => void toggleTask(item)}
                 style={styles.checkButton}
               >
@@ -185,6 +203,7 @@ export function TasksScreen() {
                 <Text style={styles.rowDetail}>
                   {[item.categoryLabel, item.dateLabel, item.location].filter(Boolean).join(" · ")}
                 </Text>
+                {item.localMutationState ? <Text style={styles.rowDetail}>{locale.t(item.localMutationState === "conflict" ? "tasks.outboxConflict" : item.localMutationState === "failed" ? "tasks.outboxFailed" : "tasks.outboxQueued")}</Text> : null}
               </Pressable>
               <Ionicons color={colors.text4} name="chevron-forward" size={17} />
             </View>
