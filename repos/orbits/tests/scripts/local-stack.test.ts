@@ -44,3 +44,17 @@ test("the stack uses port 3100 only and never mentions 3000", () => {
   assert.equal(commands.some((command: string) => /\b3000\b/.test(command)), false);
   assert.deepEqual(SERVICES.map((service: { name: string }) => service.name), ["web-3100", "event-operations-worker", "notification-delivery-worker"]);
 });
+
+test("--no-paid-ai blanks every paid provider key for the web server too, and reports names only", async () => {
+  const module = await import("../../scripts/local-stack.mjs");
+  const shell = { PATH: "/usr/bin", DEEPSEEK_API_KEY: "sk-shell", GEMINI_API_KEY: "g-shell", OPENAI_API_KEY: "o-shell", GOOGLE_API_KEY: "go-shell" };
+  const env = buildStackEnv(shell, { ORBIT_LOCAL_DATABASE_URL: local }, { noPaidAi: true });
+  for (const child of [env.server, env.worker]) {
+    for (const key of module.PAID_PROVIDER_KEYS) assert.equal(child[key], "", key);
+  }
+  assert.deepEqual([...module.PAID_PROVIDER_KEYS].sort(), ["DEEPSEEK_API_KEY", "GEMINI_API_KEY", "GOOGLE_API_KEY", "OPENAI_API_KEY"]);
+  const report = module.describeProviderKeys(env.server);
+  assert.equal(report, "DEEPSEEK_API_KEY=empty GEMINI_API_KEY=empty GOOGLE_API_KEY=empty OPENAI_API_KEY=empty");
+  assert.ok(!module.describeProviderKeys(shell).includes("sk-shell"), "values are never printed");
+  assert.equal(module.describeProviderKeys(shell), "DEEPSEEK_API_KEY=set GEMINI_API_KEY=set GOOGLE_API_KEY=set OPENAI_API_KEY=set");
+});

@@ -84,3 +84,41 @@ test("relationship overview falls back to the account mirror with an as-of notic
     localContactsOverride = null;
   }
 });
+
+// Found on the Simulator (0137 run-02): with a readable device mirror the native page showed
+// "Offline · showing content as of …" and "待处理事项需要联网查看" while the server was reachable.
+function withNativeMirror(freshness: Record<string, unknown>, run: (html: string) => void) {
+  const platformDescriptor = Object.getOwnPropertyDescriptor(Platform, "OS");
+  Object.defineProperty(Platform, "OS", { configurable: true, value: "ios" });
+  // The native page does not request the server page while the mirror is readable.
+  pipelineStateOverride = { kind: "loading", refresh() {}, refreshing: false };
+  localContactsOverride = {
+    available: true,
+    rows: [{ id: "contact:device", card: { id: "contact:device", displayName: "Device Ada", organization: "Orbit", role: "Partner", sourceType: "manual", status: "active", pendingInitialization: false, nextActionPreview: "", updatedAt: "2026-09-26T00:00:00.000Z" }, tags: [], search: { text: "", occurredAt: "2026-09-26T00:00:00.000Z", updatedAt: "2026-09-26T00:00:00.000Z", error: null }, detail: null }],
+    freshness: { readable: true, lastSyncedAt: "2026-09-26T00:00:00.000Z", ...freshness },
+    refresh() {},
+  };
+  try {
+    run(renderToHtml(<ContactPipelineScreen />));
+  } finally {
+    if (platformDescriptor) Object.defineProperty(Platform, "OS", platformDescriptor);
+    pipelineStateOverride = null;
+    localContactsOverride = null;
+  }
+}
+
+test("online with a readable device mirror shows stage counts without any offline notice", () => {
+  withNativeMirror({ offline: false }, html => {
+    assert.match(html, /推进中，1 人/u);
+    assert.doesNotMatch(html, /截至|需要联网/u);
+    assert.match(html, /本机只计算关系阶段/u);
+  });
+});
+
+test("a failed sync with a readable device mirror shows the as-of notice and needs-network actions", () => {
+  withNativeMirror({ offline: true }, html => {
+    assert.match(html, /截至/u);
+    assert.match(html, /推进中，1 人/u);
+    assert.match(html, /待处理事项需要联网查看/u);
+  });
+});
