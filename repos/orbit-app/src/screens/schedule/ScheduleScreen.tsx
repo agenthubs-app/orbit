@@ -161,7 +161,7 @@ export function ScheduleScreen() {
       headerActions={<Pressable accessibilityRole="button" accessibilityLabel={locale.t("schedule.newPersonal")} onPress={() => router.push("/schedule/personal/new" as Href)} style={{ minWidth: 44, minHeight: 44, alignItems: "center", justifyContent: "center" }}><Ionicons name="add" size={26} color={colors.accent} /></Pressable>}
     >
       {loading ? <LoadingState /> : null}
-      {source.offline ? <OfflineNotice lastSyncedAt={source.offline.lastSyncedAt} /> : null}
+      {source.offline ? <OfflineNotice lastSyncedAt={source.offline.lastSyncedAt} queues="schedule" /> : null}
       {tasksPart.kind === "offline" ? (
         <ErrorState message={tasksPart.message} title={locale.t("schedule.tasksOffline")} />
       ) : null}

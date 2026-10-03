@@ -223,7 +223,10 @@ export function overlayTodayTaskPageView(
   }
   const projected = overlayQueuedTasks([...merged.values()], queued, actorId);
   if (!projected) return base;
-  const rows = projected.filter(task => task.status === "open" && (baseIds.has(task.id) || task.id.startsWith("local:") && task.plannedDate === date))
+  // Sprint 0136: a task changed on this phone joins today's list when it now falls in today's window,
+  // e.g. a server task completed earlier and reopened offline (it was not in the page copy).
+  const rows = projected.filter(task => task.status === "open" && (baseIds.has(task.id) || task.id.startsWith("local:") && task.plannedDate === date ||
+    Boolean(task.localMutationState) && inTodayWindow(task, date, timeZone)))
     .map(task => todayTaskCardRow({
       id: task.id, titlePreview: task.title, locationPreview: task.location ?? null, status: task.status,
       category: task.category, priority: task.priority, plannedDate: task.plannedDate ?? null, dueAt: task.dueAt ?? null,
@@ -231,8 +234,8 @@ export function overlayTodayTaskPageView(
     } as TaskCardContract, now, timeZone, language, task.localMutationState));
   const originalIds = new Set(base.tasks.map(task => task.id));
   const removedExisting = base.tasks.filter(task => !rows.some(row => row.id === task.id)).length;
-  const addedLocal = rows.filter(row => row.id.startsWith("local:") && !originalIds.has(row.id)).length;
-  const totalTaskCount = Math.max(0, base.totalTaskCount - removedExisting + addedLocal);
+  const added = rows.filter(row => !originalIds.has(row.id)).length;
+  const totalTaskCount = Math.max(0, base.totalTaskCount - removedExisting + added);
   return {
     ...base,
     tasks: rows,
@@ -316,6 +319,40 @@ export function todaySummaryToHomeView(
       : scheduleSummaryAction(item.schedule, timeZone, language, index + 1)),
     openTaskCount: parsed.data.summary.openTaskCount,
     suggestionCount: parsed.data.summary.suggestionCount,
+  };
+}
+
+/** Sprint 0136: the server's Today window — planned on or before today, or due before today ends. */
+function inTodayWindow(task: Pick<TaskItemContract, "plannedDate" | "dueAt">, date: string, timeZone: string): boolean {
+  let window: { plannedThrough: string; dueBefore: string };
+  try { window = todayTaskWindow(date, timeZone); } catch { return false; }
+  return Boolean((task.plannedDate && task.plannedDate <= window.plannedThrough) || (task.dueAt && Date.parse(task.dueAt) < Date.parse(window.dueBefore)));
+}
+
+/**
+ * Sprint 0136: the AI-home Today block when neither the server nor today's page copy can
+ * answer (offline before any copy of today was kept): the device task mirror with this
+ * phone's queued changes, in the server's Today window. Schedule and suggestions stay
+ * server-owned, so they are absent rather than guessed.
+ */
+export function deviceTodayTaskSummaryView(
+  canonical: readonly TaskItemContract[],
+  queued: readonly LocalSyncQueuedMutation[],
+  actorId: string,
+  date: string,
+  now = new Date(),
+  timeZone = "Asia/Tokyo",
+  language: OrbitLanguage = "zh",
+): TodaySummaryHomeView | null {
+  const projected = overlayQueuedTasks(canonical.filter(task => task.ownerUserId === actorId), queued, actorId);
+  if (!projected) return null;
+  const today = projected.filter(task => task.status === "open" && inTodayWindow(task, date, timeZone))
+    .sort((a, b) => (a.dueAt ?? a.plannedDate ?? "9999").localeCompare(b.dueAt ?? b.plannedDate ?? "9999") || b.updatedAt.localeCompare(a.updatedAt) || a.id.localeCompare(b.id));
+  return {
+    items: today.slice(0, 3).map((task, index) => taskSummaryAction({ id: task.id, titlePreview: task.title, category: task.category, priority: task.priority,
+      plannedDate: task.plannedDate ?? null, dueAt: task.dueAt ?? null } as TodayTaskActionSummaryContract, now, timeZone, language, index + 1)),
+    openTaskCount: today.length,
+    suggestionCount: 0,
   };
 }
 

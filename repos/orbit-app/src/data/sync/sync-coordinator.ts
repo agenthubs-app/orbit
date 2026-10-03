@@ -122,6 +122,14 @@ export interface SyncCoordinatorSession {
     kind: SyncChangeKind,
     options?: SyncOptions & { records?: boolean },
   ): SyncRequest<TPayload>;
+  /**
+   * Sprint 0136: hear what changed on the device for this scope, whoever started the sync:
+   * "outbox" after each queued write is acknowledged or ends in conflict/failure (kind null:
+   * any kind), "synced" after a sync that reached the server completes without error.
+   */
+  subscribe?(listener: (change: SyncScopeChange) => void): () => void;
+  /** Sprint 0136: the device snapshot of a kind as a completed sync reports it (no network). */
+  readSyncedSnapshot?<TPayload = unknown>(kind: SyncChangeKind, options?: { records?: boolean }): Promise<SyncedCollectionSnapshot<TPayload> | null>;
   /** Sprint 0118: the device opened an AI session (its messages sync from now on); null without a mirror. */
   openAiSession(sessionId: string): Promise<{ opened: string[]; evicted: string[]; added: boolean } | null>;
   readAiSessionCards(sessionId: string): Promise<unknown | null>;
@@ -147,6 +155,14 @@ export interface SyncCoordinatorSession {
   enqueueOfflineMessageMutation(mutation: OfflineMessageMutationInput): Promise<void>;
   /** Sprint 0135: put an unsent message back in the queue (same request id, so the server stores it once). */
   retryOfflineMessage(mutationId: string): Promise<void>;
+  /**
+   * Sprint 0136 (design step 7, 「未能保存 · 重试 / 放弃」): a note, personal task or
+   * personal schedule write the server refused goes back into the queue, with the
+   * writes that failed only because they waited on it. Same frozen request and key.
+   */
+  retryOfflineWrite?(kind: OfflineWriteKind, mutationId: string): Promise<void>;
+  /** Sprint 0136: the user gives up a refused write; the queued writes that depend on it go with it. Returns the rows removed. */
+  discardOfflineWrite?(kind: OfflineWriteKind, mutationId: string): Promise<number>;
   /** Sprint 0135: the user discards unsent messages; returns how many rows were removed. */
   discardOfflineMessages(mutationIds: readonly string[]): Promise<number>;
   /** Sprint 0132: resolve only a conflict row inside the currently accepted notes lease. */
@@ -168,6 +184,12 @@ export interface SyncCoordinatorSession {
     replacement?: OfflineScheduleMutationInput;
   }): Promise<void>;
 }
+
+/** Sprint 0136: the kinds whose refused writes the user can retry or discard from their pages. */
+export type OfflineWriteKind = "note" | "task" | "personal_schedule";
+const OFFLINE_WRITE_DOMAINS: Record<OfflineWriteKind, string> = { note: "notes", task: "tasks", personal_schedule: "personal-schedule" };
+
+export type SyncScopeChange = { type: "outbox"; kind: SyncChangeKind | null } | { type: "synced" };
 
 export type OfflineNoteMutationInput = Omit<LocalSyncOutboxMutation, "actorId" | "workspaceId">;
 export type OfflineTaskMutationInput = Omit<LocalSyncOutboxMutation, "actorId" | "workspaceId" | "kind" | "operation"> & {
@@ -192,6 +214,7 @@ interface ActiveScope extends SyncScopeInput {
   teardownVersion: number;
   workspaceId: string | null;
   onOutboxQueued?: () => void;
+  listeners: Set<(change: SyncScopeChange) => void>;
 }
 
 interface SyncFlight {
@@ -201,6 +224,8 @@ interface SyncFlight {
   reason: SyncRefreshReason;
   resolveStarted(started: boolean): void;
   started: Promise<boolean>;
+  /** Sprint 0136: the run passed the freshness gate and talked to the server. */
+  ran?: boolean;
   stopAfterCurrent: boolean;
   subscribers: number;
 }
@@ -223,21 +248,24 @@ function replaceExactValue(value: unknown, from: string, to: string): unknown {
   return value;
 }
 
+/** What one upload step receives: the accepted scope, its abort signal, and the device queue/mirror. */
+export interface OutboxUploadScope {
+  actorId: string;
+  baseUrl: string;
+  workspaceId: string;
+  signal: AbortSignal;
+  repository: ReturnType<typeof createLocalSyncRepository>;
+  syncClient: SyncClient;
+  writeClient?: Pick<OrbitApiClient, "post" | "patch" | "delete">;
+}
+
 export function createSyncCoordinator(input: {
   lifecycle: SyncCoordinatorLifecycle;
   now?: () => number;
   /** SHA-256 hex of a serialized payload; required by the v2 mirror for every applied record. */
   hashPayload?: (serialized: string) => Promise<string>;
   /** Runs queued writes only after a valid online lease and before mirrored server rows are pulled. */
-  uploadOutbox?: (scope: {
-    actorId: string;
-    baseUrl: string;
-    workspaceId: string;
-    signal: AbortSignal;
-    repository: ReturnType<typeof createLocalSyncRepository>;
-    syncClient: SyncClient;
-    writeClient?: Pick<OrbitApiClient, "post" | "patch" | "delete">;
-  }) => Promise<void>;
+  uploadOutbox?: (scope: OutboxUploadScope) => Promise<void>;
   /** Explicit queue namespaces used only by test fixtures; not registered in the app coordinator. */
   testOnlyOutboxDomains?: readonly string[];
   /** A manifest failure is not a sync failure: every domain is pulled as before, and this hears why. */
@@ -444,6 +472,41 @@ export function createSyncCoordinator(input: {
     };
   }
 
+  function emitChange(scope: ActiveScope, change: SyncScopeChange): void {
+    if (!isCurrent(scope)) return;
+    for (const listener of [...scope.listeners]) {
+      try { listener(change); } catch { /* a screen must not break the sync */ }
+    }
+  }
+
+  /**
+   * Sprint 0136: the repository an upload step sees. Every method call runs as one
+   * operation of the device lifecycle (one at a time, against this scope only); an
+   * acknowledgement or a terminal failure is announced to the screens at once.
+   */
+  function serializedRepository(scope: ActiveScope): ReturnType<typeof createLocalSyncRepository> {
+    return new Proxy({} as ReturnType<typeof createLocalSyncRepository>, {
+      get(_target, property) {
+        if (typeof property !== "string" || property === "then") return undefined;
+        return async (...args: unknown[]) => {
+          const result = await withRepository(scope, async repository => {
+            const method = (repository as unknown as Record<string, unknown>)[property];
+            if (typeof method !== "function") throw new TypeError(`repository has no method ${property}`);
+            return (method as (...values: unknown[]) => Promise<unknown>).apply(repository, args);
+          });
+          if (property === "acknowledgeOutboxMutation") {
+            const record = (args[0] as { record?: { kind?: SyncChangeKind } } | undefined)?.record;
+            emitChange(scope, { type: "outbox", kind: record?.kind ?? null });
+          } else if (property === "markOutboxMutationFailure") {
+            const state = (args[0] as { state?: string } | undefined)?.state;
+            if (state === "conflict" || state === "failed") emitChange(scope, { type: "outbox", kind: null });
+          }
+          return result;
+        };
+      },
+    });
+  }
+
   /**
    * Lease first, then every granted domain: retire other epochs (rotation) or
    * every epoch (revocation), then walk the domain's pages under its bound scope.
@@ -474,6 +537,7 @@ export function createSyncCoordinator(input: {
       if (flight.abandoned) return null;
       if (flight.stopAfterCurrent) return { error: null };
 
+      flight.ran = true;
       flight.resolveStarted(true);
       const controller = new AbortController();
       scope.abortController = controller;
@@ -513,15 +577,19 @@ export function createSyncCoordinator(input: {
         }
 
         if (input.uploadOutbox && !scope.offlineMode && !controller.signal.aborted) {
-          await withRepository(scope, repository => input.uploadOutbox!({
+          // Sprint 0136: the upload no longer holds the device database for the whole round.
+          // Each repository call is its own serialized step, so parallel uploads cannot open
+          // nested transactions on the one connection (which ended a round after its first ACK),
+          // and screens read the mirror between acknowledgements instead of waiting for the round.
+          await input.uploadOutbox({
             actorId: scope.actorId,
             baseUrl: scope.baseUrl,
             workspaceId,
             signal: controller.signal,
-            repository,
+            repository: serializedRepository(scope),
             syncClient: scope.client,
             ...(scope.writeClient ? { writeClient: scope.writeClient } : {}),
-          }));
+          });
           if (!isCurrent(scope) || flight.abandoned) return null;
         }
 
@@ -638,6 +706,7 @@ export function createSyncCoordinator(input: {
         superseded: false,
         teardownVersion: 0,
         workspaceId: null,
+        listeners: new Set(),
       } satisfies ActiveScope;
       next.ready = initializeScope(next);
       active = next;
@@ -961,6 +1030,57 @@ export function createSyncCoordinator(input: {
         });
         bound.onOutboxQueued?.();
       },
+      async retryOfflineWrite(kind: OfflineWriteKind, mutationId: string): Promise<void> {
+        await bound.ready;
+        const readScope = readScopeFor(bound, kind);
+        if (!isCurrent(bound) || !readScope || !OFFLINE_WRITE_DOMAINS[kind]) throw new TypeError("retry is outside the active lease");
+        // A storage error inside the operation reads as "mirror unavailable"; a refusal is returned, then thrown here.
+        const retried = await withRepository(bound, async repository => {
+          const rows = await repository.listQueuedMutations({ workspaceId: readScope.workspaceId });
+          const row = rows.find(item => item.mutationId === mutationId && item.domainId === OFFLINE_WRITE_DOMAINS[kind]);
+          if (!row || row.state !== "failed") return false;
+          // The row itself, then writes that failed only because they waited on it: its depends_on chain,
+          // and (0134) a schedule that links the note this row creates.
+          const retry = new Set([row.mutationId]);
+          for (let grown = true; grown;) {
+            grown = false;
+            for (const item of rows) {
+              if (retry.has(item.mutationId) || item.state !== "failed") continue;
+              const waitedOnRetried = Boolean(item.dependsOn && retry.has(item.dependsOn) && item.lastErrorCode === "DEPENDENCY_FAILED");
+              const linksRetriedNote = row.operation === "create" && row.domainId === "notes" && item.lastErrorCode === "NOTE_DEPENDENCY_FAILED" &&
+                Boolean(item.requestJson?.includes(JSON.stringify(row.id)));
+              if (waitedOnRetried || linksRetriedNote) { retry.add(item.mutationId); grown = true; }
+            }
+          }
+          for (const id of retry) await repository.markOutboxMutationFailure({ mutationId: id, state: "queued", nextRetryAt: null, errorCode: "USER_RETRY" });
+          return true;
+        });
+        if (!retried) throw new TypeError("only a refused write can be retried");
+        emitChange(bound, { type: "outbox", kind: null });
+        bound.onOutboxQueued?.();
+      },
+      async discardOfflineWrite(kind: OfflineWriteKind, mutationId: string): Promise<number> {
+        await bound.ready;
+        const readScope = readScopeFor(bound, kind);
+        if (!isCurrent(bound) || !readScope || !OFFLINE_WRITE_DOMAINS[kind]) throw new TypeError("discard is outside the active lease");
+        const removed = await withRepository(bound, async repository => {
+          const domainId = OFFLINE_WRITE_DOMAINS[kind];
+          const rows = await repository.listQueuedMutations({ workspaceId: readScope.workspaceId, domainId });
+          const row = rows.find(item => item.mutationId === mutationId);
+          if (!row || row.state !== "failed") return null;
+          const discard = new Set([row.mutationId]);
+          for (let grown = true; grown;) {
+            grown = false;
+            for (const item of rows) {
+              if (!discard.has(item.mutationId) && item.dependsOn && discard.has(item.dependsOn)) { discard.add(item.mutationId); grown = true; }
+            }
+          }
+          return repository.discardOutboxMutations({ workspaceId: readScope.workspaceId, domainId, mutationIds: [...discard] });
+        });
+        if (removed === null) throw new TypeError("only a refused write can be discarded");
+        emitChange(bound, { type: "outbox", kind });
+        return removed;
+      },
       async discardOfflineMessages(mutationIds: readonly string[]): Promise<number> {
         await bound.ready;
         const messageScope = messageLeaseScope(bound);
@@ -1018,6 +1138,13 @@ export function createSyncCoordinator(input: {
         }));
         if (input.resolution === "replace") bound.onOutboxQueued?.();
       },
+      readSyncedSnapshot<TPayload = unknown>(kind: SyncChangeKind, options: { records?: boolean } = {}) {
+        return finalSnapshot<TPayload>(bound, kind, { error: null }, options.records ?? true);
+      },
+      subscribe(listener: (change: SyncScopeChange) => void): () => void {
+        bound.listeners.add(listener);
+        return () => { bound.listeners.delete(listener); };
+      },
       synchronize<TPayload = unknown>(
         kind: SyncChangeKind,
         options: SyncOptions & { records?: boolean } = {},
@@ -1044,7 +1171,10 @@ export function createSyncCoordinator(input: {
           };
           nextFlight.promise = Promise.resolve().then(() =>
             runSync(bound, nextFlight),
-          );
+          ).then((result) => {
+            if (result && result.error === null && nextFlight.ran) emitChange(bound, { type: "synced" });
+            return result;
+          });
           bound.flight = nextFlight;
           void nextFlight.promise.finally(() => {
             if (bound.flight === nextFlight) bound.flight = null;

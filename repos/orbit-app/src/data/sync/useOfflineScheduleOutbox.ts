@@ -12,6 +12,9 @@ export interface ScheduleOutbox {
   enqueue(mutation: OfflineScheduleMutationInput): Promise<void>;
   resolveConflict(input: { mutationId: string; resolution: "server" | "replace"; replacement?: OfflineScheduleMutationInput }): Promise<void>;
   refresh(): Promise<void>;
+  /** Sprint 0136: put a refused write back in the queue / give it up (「未能保存 · 重试 / 放弃」). */
+  retry(mutationId: string): Promise<void>;
+  discard(mutationId: string): Promise<void>;
 }
 
 export function useOfflineScheduleOutbox(state: SyncedSchedule, enabled = true): ScheduleOutbox | null {
@@ -43,6 +46,18 @@ export function useOfflineScheduleOutbox(state: SyncedSchedule, enabled = true):
     await session.resolveScheduleConflict(input);
     await refresh();
   }, [enabled, refresh, state.currentSession]);
-  return useMemo(() => enabled ? { queuedMutations, queueFailure, enqueue, resolveConflict, refresh } : null,
-    [enabled, queuedMutations, queueFailure, enqueue, resolveConflict, refresh]);
+  const retry = useCallback(async (mutationId: string) => {
+    const session = state.currentSession();
+    if (!session?.retryOfflineWrite || !enabled) throw new Error("本机日程同步范围尚未就绪。");
+    await session.retryOfflineWrite("personal_schedule", mutationId);
+    await refresh();
+  }, [enabled, refresh, state.currentSession]);
+  const discard = useCallback(async (mutationId: string) => {
+    const session = state.currentSession();
+    if (!session?.discardOfflineWrite || !enabled) throw new Error("本机日程同步范围尚未就绪。");
+    await session.discardOfflineWrite("personal_schedule", mutationId);
+    await refresh();
+  }, [enabled, refresh, state.currentSession]);
+  return useMemo(() => enabled ? { queuedMutations, queueFailure, enqueue, resolveConflict, refresh, retry, discard } : null,
+    [enabled, queuedMutations, queueFailure, enqueue, resolveConflict, refresh, retry, discard]);
 }

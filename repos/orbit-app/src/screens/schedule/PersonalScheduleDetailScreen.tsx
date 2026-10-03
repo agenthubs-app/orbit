@@ -56,6 +56,19 @@ function Detail({ actorId, id, ready, scopeKey, savedVersion }: { actorId: strin
       setConfirmConflictDelete(false); setError("");
     } catch { setError(locale.t("schedule.conflictUnavailable")); }
   }
+  // Sprint 0136: 「未能保存 · 重试 / 放弃」. Discarding a schedule that only exists on this phone leaves its page.
+  async function settleFailure(action: "retry" | "discard") {
+    const failure = source.failure;
+    if (!failure || !source.outbox) return;
+    try {
+      if (action === "retry") await source.outbox.retry(failure.mutationId);
+      else {
+        await source.outbox.discard(failure.mutationId);
+        if (failure.operation === "create") { router.replace("/schedule" as Href); return; }
+      }
+      setError("");
+    } catch { setError(locale.t("schedule.conflictUnavailable")); }
+  }
   useEffect(() => {
     const item = source.item;
     if (!item) { setView(null); setRules(null); setError(source.errorKey ? locale.t(source.errorKey) : source.errorText); return; }
@@ -64,10 +77,14 @@ function Detail({ actorId, id, ready, scopeKey, savedVersion }: { actorId: strin
     if (!next) { setView(null); setRules(null); setError(locale.t("schedule.timezoneUnavailable")); } else { setError(""); setView(next); setRules(personalScheduleDraft(item, next.zone)); }
   }, [source.item, source.errorKey, source.errorText, timeZone, locale]);
   return <AppScreen title={locale.t("personal53.detail")} backLabel={locale.t("schedule.title")} headerActions={view ? <Pressable accessibilityRole="button" accessibilityLabel={editBlocked ? `${locale.t("personal53.edit")}，${locale.t("sync.needsNetwork")}` : locale.t("personal53.edit")} accessibilityState={{ disabled: editBlocked }} disabled={editBlocked} onPress={() => router.push(view.editHref as Href)} style={styles.action}><Text style={[styles.link, editBlocked && styles.disabled]}>{locale.t(editBlocked ? "sync.needsNetwork" : "personal53.edit")}</Text></Pressable> : null} refreshControl={<RefreshControl refreshing={loading} onRefresh={source.refresh} />}>
-    {source.offline ? <OfflineNotice lastSyncedAt={source.lastSyncedAt} /> : null}
+    {source.offline ? <OfflineNotice lastSyncedAt={source.lastSyncedAt} queues="schedule" /> : null}
     {loading ? <LoadingState /> : null}{error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
     {source.localMutationState && !conflict ? <Text style={source.localMutationState === "failed" ? styles.error : styles.hint}>{locale.t(source.localMutationState === "failed" ? "schedule.outboxFailed" : "schedule.outboxQueued")}</Text> : null}
     {source.failure ? <Text accessibilityRole="alert" style={styles.error}>{locale.t(source.failure.lastErrorCode === NOTE_DEPENDENCY_FAILED ? "schedule.noteDependencyFailed" : "schedule.outboxFailedBody")}</Text> : null}
+    {source.failure && source.outbox && !conflict ? <View>
+      <Pressable accessibilityRole="button" accessibilityLabel={locale.t("sync.retryChangeNamed", { title: source.item?.title ?? "" })} onPress={() => void settleFailure("retry")} style={styles.secondary}><Text style={styles.body}>{locale.t("common.retry")}</Text></Pressable>
+      <Pressable accessibilityRole="button" accessibilityLabel={locale.t("sync.discardChangeNamed", { title: source.item?.title ?? "" })} onPress={() => void settleFailure("discard")} style={styles.secondary}><Text style={styles.body}>{locale.t("sync.discardChange")}</Text></Pressable>
+    </View> : null}
     {conflict ? <View style={styles.conflict}>
       <Text style={styles.body}>{locale.t(conflict.operation === "delete" ? "schedule.deleteConflict" : snapshot ? "schedule.scheduleConflict" : "schedule.deletedElsewhere")}</Text>
       {snapshot && typeof snapshot.title === "string" ? <Text style={styles.hint}>{locale.t("schedule.serverVersionNamed", { title: snapshot.title })}</Text> : null}

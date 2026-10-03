@@ -8,6 +8,7 @@ import { useOrbitApiBaseUrl } from "../api/ApiBaseUrlProvider";
 import { serverReachability } from "../api/server-reachability";
 import { useOrbitApiClient } from "../hooks/useOrbitApiClient";
 import { useSyncCoordinatorSession } from "../hooks/useSyncedCollection";
+import { startOutboxUploadTriggers, syncThenNavigate } from "../data/sync/outbox-upload-triggers";
 import {
   createNotificationResponseGuard,
   notificationHrefFromDeepLink,
@@ -47,13 +48,7 @@ function openNotification(
   const notificationId = response.notification.request.identifier;
   if (!responseGuard.shouldHandle(notificationId, response.actionIdentifier)) return;
   if (!session) return;
-  void session.synchronize("note", { reason: "explicit" }).promise.then(() => {
-    if (deliveryId) {
-      router.push({ pathname: "/inbox", params: { deliveryId } } as Href);
-    } else if (href) {
-      router.push(href as Href);
-    }
-  }, () => {
+  void syncThenNavigate(session, () => {
     if (deliveryId) router.push({ pathname: "/inbox", params: { deliveryId } } as Href);
     else if (href) router.push(href as Href);
   });
@@ -71,17 +66,8 @@ export function OrbitNotificationsCoordinator() {
 
   useEffect(() => {
     if (!ready || !signedIn || !baseUrlReady || !syncSession || Platform.OS === "web") return;
-    syncOutbox();
-    const periodic = setInterval(() => {
-      if (AppState.currentState === "active") syncOutbox();
-    }, 15_000);
-    const unsubscribeReachability = serverReachability.subscribe((url, state, previous) => {
-      if (state === "reachable" && previous === "unreachable" && url === baseUrl.trim().replace(/\/+$/u, "")) syncOutbox();
-    });
-    return () => {
-      clearInterval(periodic);
-      unsubscribeReachability();
-    };
+    // Sprint 0136: cold start, foreground, network restored and the 15-second poll in one place.
+    return startOutboxUploadTriggers({ syncOutbox, appState: AppState, reachability: serverReachability, baseUrl });
   }, [baseUrl, baseUrlReady, client, ready, signedIn, syncOutbox, syncSession]);
 
   const synchronize = useCallback(async (generation: number) => {
@@ -120,10 +106,7 @@ export function OrbitNotificationsCoordinator() {
     void synchronize(generation);
     const unsubscribe = onReminderPlansChanged(() => void synchronize(generation));
     const appStateSubscription = AppState.addEventListener("change", (state) => {
-      if (state === "active") {
-        void synchronize(generation);
-        syncOutbox();
-      }
+      if (state === "active") void synchronize(generation);
     });
     return () => {
       unsubscribe();
@@ -132,7 +115,7 @@ export function OrbitNotificationsCoordinator() {
         console.warn("Orbit 未能清除旧账号的本地提醒");
       });
     };
-  }, [notificationSessionRevision, ready, signedIn, syncOutbox, synchronize]);
+  }, [notificationSessionRevision, ready, signedIn, synchronize]);
 
   return null;
 }

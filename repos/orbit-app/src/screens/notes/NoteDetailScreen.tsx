@@ -66,6 +66,19 @@ export function NoteDetailScreen({ actorId, noteId, scopeKey }: { actorId: strin
   const eventsState = useApiResource<unknown>(ORBIT_API_ENDPOINTS.events, () => false, { scopeKey });
   const note = source.note;
   const conflictMutation = source.conflictMutation;
+  const failedMutation = source.failedMutation ?? null;
+  // Sprint 0136: 「未能保存 · 重试 / 放弃」. Discarding a note that only exists on this phone leaves its page.
+  async function settleFailed(action: "retry" | "discard") {
+    if (!failedMutation) return;
+    setConflictBusy(true); setConflictError("");
+    try {
+      if (action === "retry") await source.retryFailed?.(failedMutation.mutationId);
+      else {
+        await source.discardFailed?.(failedMutation.mutationId);
+        if (failedMutation.operation === "create") router.replace("/notes" as Href);
+      }
+    } catch { setConflictError(locale.t("notes.conflictResolutionFailed")); } finally { setConflictBusy(false); }
+  }
   const conflictServerNote = conflictMutation?.serverSnapshot
     ? noteFromPayload({ note: conflictMutation.serverSnapshot }, actorId, conflictMutation.id, locale.language)
     : null;
@@ -124,6 +137,11 @@ export function NoteDetailScreen({ actorId, noteId, scopeKey }: { actorId: strin
         <Text style={styles.date}>{new Date(note.updatedAt).toLocaleString(dateLocale, { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })} · v{note.version}</Text>
       {note.localMutationState ? <Text accessibilityLiveRegion="polite" style={styles.mutationStatus}>{locale.t(`notes.outbox${note.localMutationState === "queued" ? "Queued" : note.localMutationState === "conflict" ? "Conflict" : "Failed"}` as "notes.outboxQueued" | "notes.outboxConflict" | "notes.outboxFailed")}</Text> : null}
       </View>
+      {failedMutation && source.retryFailed ? <View style={styles.conflictActions}>
+        <Pressable accessibilityRole="button" accessibilityLabel={locale.t("sync.retryChangeNamed", { title: note.title })} disabled={conflictBusy} onPress={() => { void settleFailed("retry"); }} style={styles.conflictSecondary}><Text style={styles.conflictSecondaryText}>{locale.t("common.retry")}</Text></Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel={locale.t("sync.discardChangeNamed", { title: note.title })} disabled={conflictBusy} onPress={() => { void settleFailed("discard"); }} style={styles.conflictSecondary}><Text style={styles.conflictSecondaryText}>{locale.t("sync.discardChange")}</Text></Pressable>
+        {conflictError && !conflictMutation ? <Text accessibilityRole="alert" style={styles.conflictError}>{conflictError}</Text> : null}
+      </View> : null}
       {conflictMutation && conflictServerNote ? <View accessibilityRole="summary" style={styles.conflictPanel}>
         <Text style={styles.conflictTitle}>{locale.t("notes.conflictTitle")}</Text>
         <Text style={styles.conflictLabel}>{locale.t("notes.conflictLocalLabel")}</Text>

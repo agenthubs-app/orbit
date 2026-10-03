@@ -60,7 +60,7 @@ import {
   type OrbitAiHomeChatWindow
 } from "../../view-models/conversations";
 import type { TodayHomeActionView } from "../../view-models/today-tasks";
-import { overlayTodayTaskSummaryView, todaySummaryPath, todaySummaryQuestions, todaySummaryToHomeView } from "../../view-models/today-task-pages";
+import { deviceTodayTaskSummaryView, overlayTodayTaskSummaryView, todaySummaryPath, todaySummaryQuestions, todaySummaryToHomeView } from "../../view-models/today-task-pages";
 import type { TaskItemContract } from "../../api/contract/tasks";
 import { OrbitNextActions } from "./OrbitNextActions";
 import { homeQuestionSnapshot, type HomeQuestionSnapshot } from "../../view-models/home-question-snapshot";
@@ -454,7 +454,13 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
     taskMirror.records.flatMap(record => record.deletedAt === null && record.payload && typeof record.payload === "object"
       ? [record.payload as unknown as TaskItemContract] : []),
     taskOutbox.queuedMutations, auth.actorId ?? "", todayDate, todayNow, "Asia/Tokyo", locale.language);
-  const todaySummaryView = todaySummary ?? { items: [], openTaskCount: 0, suggestionCount: 0 };
+  // Sprint 0136: offline with no copy of today's summary, count from the device task mirror instead of showing 0.
+  const todayUnreachable = todayState.kind === "offline" || todayState.kind === "failure";
+  const deviceTodaySummary = !todaySummary && todayUnreachable && Platform.OS !== "web" && taskMirror.status !== "unsynced"
+    ? deviceTodayTaskSummaryView(taskMirror.records.flatMap(record => record.deletedAt === null && record.payload && typeof record.payload === "object"
+      ? [record.payload as unknown as TaskItemContract] : []), taskOutbox.queuedMutations, auth.actorId ?? "", todayDate, todayNow, "Asia/Tokyo", locale.language)
+    : null;
+  const todaySummaryView = todaySummary ?? deviceTodaySummary ?? { items: [], openTaskCount: 0, suggestionCount: 0 };
   const summaryQuestions = todayPayload ? todaySummaryQuestions(todayPayload, locale.language) : null;
   const [questionSnapshot, setQuestionSnapshot] = useState<HomeQuestionSnapshot | null>(null);
   const nextQuestionSnapshot = homeQuestionSnapshot(questionSnapshot, {

@@ -404,7 +404,9 @@ test("failed logout preserves auth and restores the canonical push registry and 
       && app.calls.filter((call) => call.startsWith("POST-start:")).length >= postsBeforeForeground + 1,
     "failed logout left the retained account's notification sessions stopped");
     assert.equal(app.tokenListeners.size, 1);
-    assert.equal(app.foregroundListeners.size, 2);
+    // Sprint 0136: the outbox upload entry points listen for the foreground on their own (outbox-upload-triggers),
+    // next to the reminder sync and the push lifecycle: three listeners, each registered once.
+    assert.equal(app.foregroundListeners.size, 3);
   } finally { app.close(); }
 });
 

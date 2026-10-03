@@ -91,8 +91,10 @@ export const useApiResource = (path, isEmpty, options) => {
 };
 // Like the real hook, the same mirror rows keep the same array between renders (sprint 0134: editors key effects on it).
 const recordCache = new Map();
+// A kind the fixture does not seed reads one stable empty array (the real hook keeps its snapshot between renders).
+const NO_RECORDS = [];
 const mirrorRecords = (kind) => {
-  const source = state.records[kind] ?? [];
+  const source = state.records[kind] ?? NO_RECORDS;
   const cached = recordCache.get(kind);
   if (cached && cached.source === source) return cached.records;
   const records = source.map((payload, index) => ({ id: payload.id ?? payload.eventId ?? payload.conversationId ?? String(index), kind, workspaceId: "workspace:one", revision: "1", updatedAt: "2026-09-28T01:00:00.000Z", deletedAt: null, payload }));
@@ -122,6 +124,16 @@ const taskOutboxSession = {
   async resolveScheduleConflict(input) {
     state.resolvedSchedules = [...(state.resolvedSchedules ?? []), input];
     state.queuedSchedules = (state.queuedSchedules ?? []).filter((row) => row.mutationId !== input.mutationId).concat(input.replacement ? [queuedRow(input.replacement)] : []);
+  },
+  // Sprint 0136: 「未能保存 · 重试 / 放弃」.
+  async retryOfflineWrite(kind, mutationId) {
+    state.settledWrites = [...(state.settledWrites ?? []), ["retry", kind, mutationId]];
+    state.queuedSchedules = (state.queuedSchedules ?? []).map((row) => row.mutationId === mutationId ? { ...row, state: "queued", lastErrorCode: "USER_RETRY" } : row);
+  },
+  async discardOfflineWrite(kind, mutationId) {
+    state.settledWrites = [...(state.settledWrites ?? []), ["discard", kind, mutationId]];
+    state.queuedSchedules = (state.queuedSchedules ?? []).filter((row) => row.mutationId !== mutationId);
+    return 1;
   },
   async enqueueOfflineTaskMutation(mutation) {
     state.enqueued = [...(state.enqueued ?? []), mutation];
@@ -217,3 +229,6 @@ export const fixtureValue = <T>(page: Page, key: string) => page.evaluate((name)
 export const requestsOf = (page: Page) => fixtureValue<string[]>(page, "requests");
 export const OFFLINE_BANNER = /^无法连接 · 显示截至 .+ 的内容；新建和编辑需要联网$/;
 export const UNAVAILABLE_BANNER = /^服务暂时不可用 · 显示截至 .+ 的内容；新建和编辑需要联网$/;
+/** Sprint 0136: on the phone, a page whose own writes queue says so instead of 「新建和编辑需要联网」. */
+export const TASKS_OFFLINE_BANNER = /^无法连接 · 显示截至 .+ 的内容；个人待办的修改会在联网后同步，跟进、会面和活动待办需要联网$/;
+export const SCHEDULE_OFFLINE_BANNER = /^无法连接 · 显示截至 .+ 的日程；个人日程的修改会在联网后同步，重复日程和约见需要联网$/;

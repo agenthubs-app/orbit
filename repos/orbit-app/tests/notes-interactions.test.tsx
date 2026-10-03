@@ -156,7 +156,7 @@ test.before(async () => {
         plugin.onResolve({ filter: /^@expo\/vector-icons$/ }, () => ({ path: "icons", namespace: "notes-test" }));
         plugin.onLoad({ filter: /^fixture$/, namespace: "notes-test" }, () => ({ contents: fixture, loader: "jsx", resolveDir: process.cwd() }));
         plugin.onLoad({ filter: /^react-native$/, namespace: "notes-test" }, () => ({ contents: `export * from "react-native-web"; export const Platform = { get OS() { return new URLSearchParams(location.search).has("native") ? "ios" : "web"; } };`, loader: "js", resolveDir: process.cwd() }));
-        plugin.onLoad({ filter: /^notes-source$/, namespace: "notes-test" }, () => ({ contents: `export const useNotesWriteStatus = () => ({ offline: window.fixture.offline, lastSyncedAt: "2026-09-15T00:00:00.000Z", syncLabelKey: null, queuedCount: 0, async enqueueOfflineMutation(mutation) { const s = window.fixture; s.queueStarted = true; if (s.holdQueue) await new Promise(resolve => { s.releaseQueue = resolve; }); s.queued.push(mutation); }, async confirmSaved() { return true; } }); export const useNotesListSource = () => ({ notes: [window.fixture.note], total: 1, hasMore: false, loadingMore: false, pageError: "", loadMore() {}, loading: false, failure: null, invalid: false, refreshing: false, refresh() {}, offline: window.fixture.offline, lastSyncedAt: "2026-09-15T00:00:00.000Z", syncLabelKey: null }); export const useNoteDetailSource = () => ({ note: window.fixture.note, conflictMutation: window.fixture.conflictMutation, baseRevision: "mirror-revision-two", loading: false, failure: null, missing: !window.fixture.note, refreshing: false, offline: window.fixture.offline, lastSyncedAt: "2026-09-15T00:00:00.000Z", syncLabelKey: null, refresh() {}, async confirmSaved() { return true; }, async resolveConflict(input) { window.fixture.resolutions.push(input); } });`, loader: "js" }));
+        plugin.onLoad({ filter: /^notes-source$/, namespace: "notes-test" }, () => ({ contents: `export const useNotesWriteStatus = () => ({ offline: window.fixture.offline, lastSyncedAt: "2026-09-15T00:00:00.000Z", syncLabelKey: null, queuedCount: 0, async enqueueOfflineMutation(mutation) { const s = window.fixture; s.queueStarted = true; if (s.holdQueue) await new Promise(resolve => { s.releaseQueue = resolve; }); s.queued.push(mutation); }, async confirmSaved() { return true; } }); export const useNotesListSource = () => ({ notes: [window.fixture.note], total: 1, hasMore: false, loadingMore: false, pageError: "", loadMore() {}, loading: false, failure: null, invalid: false, refreshing: false, refresh() {}, offline: window.fixture.offline, lastSyncedAt: "2026-09-15T00:00:00.000Z", syncLabelKey: null }); export const useNoteDetailSource = () => ({ note: window.fixture.note, conflictMutation: window.fixture.conflictMutation, failedMutation: window.fixture.failedMutation ?? null, async retryFailed(id) { window.fixture.settled = [...(window.fixture.settled ?? []), ["retry", id]]; }, async discardFailed(id) { window.fixture.settled = [...(window.fixture.settled ?? []), ["discard", id]]; }, baseRevision: "mirror-revision-two", loading: false, failure: null, missing: !window.fixture.note, refreshing: false, offline: window.fixture.offline, lastSyncedAt: "2026-09-15T00:00:00.000Z", syncLabelKey: null, refresh() {}, async confirmSaved() { return true; }, async resolveConflict(input) { window.fixture.resolutions.push(input); } });`, loader: "js" }));
         plugin.onLoad({ filter: /^icons$/, namespace: "notes-test" }, () => ({ contents: 'export const Ionicons=()=>null;', loader: "js" }));
       },
     }],
@@ -299,6 +299,24 @@ test("conflicted notes show both versions and offer keep, use-server, and save-a
       assert.equal(resolution.replacement, undefined);
     }
   }
+});
+
+test("a refused note write shows 未能保存 with 重试 and 放弃; discarding a note that exists only on this phone returns to the list (0136)", async (t) => {
+  const value = await page(t, "detail");
+  await value.evaluate(() => {
+    const state = (window as any).fixture;
+    const local = { ...state.note, id: "local:00000000-0000-4000-8000-000000000001", localMutationState: "failed" };
+    state.update({ note: local, failedMutation: { actorId: "account:one", workspaceId: "workspace-notes", domainId: "notes", mutationId: "mutation:refused", kind: "note", id: local.id,
+      operation: "create", patch: { body: local.body }, requestJson: JSON.stringify({ title: local.title, body: local.body, idempotencyKey: "mutation:refused" }), baseRevision: null, dependsOn: null,
+      createdAt: local.updatedAt, retryCount: 1, nextRetryAt: null, lastErrorCode: "INVALID_REQUEST", state: "failed", attemptCount: 1, firstAttemptAt: local.updatedAt, serverSnapshot: null } });
+  });
+  await value.getByText("未能保存", { exact: true }).waitFor();
+  await value.getByRole("button", { name: /^重试保存：/u }).click();
+  await value.waitForFunction(() => ((window as any).fixture.settled ?? []).length === 1);
+  await value.getByRole("button", { name: /^放弃这次修改：/u }).click();
+  await value.waitForFunction(() => ((window as any).fixture.settled ?? []).length === 2);
+  assert.deepEqual(await value.evaluate(() => (window as any).fixture.settled), [["retry", "mutation:refused"], ["discard", "mutation:refused"]]);
+  await value.waitForFunction(() => JSON.stringify((window as any).fixture.navigation ?? []).includes("/notes"));
 });
 
 test("opening a resolved local note replaces the stale local route with its canonical server id", async (t) => {

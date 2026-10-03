@@ -188,6 +188,38 @@ test("a task delete conflict requires a second confirmation for the server versi
   await page.waitForFunction(() => (window as any).fixture.navigation.includes("/tasks"));
 });
 
+async function seedRefusedEdit(page: Page): Promise<void> {
+  const mutation = buildOfflineTaskMutation({
+    mutationId: "refused-edit", entityId: "task:edit", operation: "update", baseRevision: "tasks:e1:4",
+    requestBody: { action: "update", expectedUpdatedAt: "2026-09-07T00:00:00.000Z", idempotencyKey: "refused-edit", patch: { title: "Phone title" } },
+    createdAt: "2026-09-07T00:01:00.000Z",
+  });
+  await page.evaluate(({ mutation }) => {
+    const state = (window as any).fixture;
+    state.settled = [];
+    state.session = {
+      async retryOfflineWrite(kind: string, mutationId: string) { state.settled.push(["retry", kind, mutationId]); },
+      async discardOfflineWrite(kind: string, mutationId: string) { state.settled.push(["discard", kind, mutationId]); return 1; },
+    };
+    state.records = [{ id: "task:edit", revision: "tasks:e1:4" }];
+    state.queuedMutations = [{ ...mutation, actorId: "test", workspaceId: "workspace:test", state: "failed", lastErrorCode: "INVALID_REQUEST", serverSnapshot: null }];
+    state.update({ ...state.task, category: "personal" });
+  }, { mutation });
+  await page.getByText("未能保存", { exact: true }).waitFor();
+}
+
+test("a refused task edit shows 未能保存 with 重试 and 放弃 (design step 7); each acts on that queued write only", async (t) => {
+  const page = await openScreen(t);
+  await seedRefusedEdit(page);
+  await page.getByRole("button", { name: /^重试保存：/u }).click();
+  await page.waitForFunction(() => (window as any).fixture.settled.length === 1);
+  await page.getByRole("button", { name: /^放弃这次修改：/u }).click();
+  await page.waitForFunction(() => (window as any).fixture.settled.length === 2);
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.settled), [["retry", "task", "refused-edit"], ["discard", "task", "refused-edit"]]);
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation), [], "discarding an edit of a server task stays on the task");
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), [], "no direct network write");
+});
+
 test("a note-backed task returns to its exact source note without writing", async (t) => {
   const page = await openScreen(t);
   await page.getByRole("button", { name: "查看来源笔记", exact: true }).click();

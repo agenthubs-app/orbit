@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { Page } from "playwright";
-import { fixtureValue, requestsOf, startOfflinePageHarness } from "./helpers/offline-page-harness";
+import { SCHEDULE_OFFLINE_BANNER, fixtureValue, requestsOf, startOfflinePageHarness } from "./helpers/offline-page-harness";
 
 // Sprint 0134: on the phone, non-recurring personal schedules are created, edited
 // and deleted offline into the device outbox; repeating series stay online-only;
@@ -129,6 +129,17 @@ test("a schedule created offline shows 未同步 on its detail page; a failed li
     queuedSchedules: [{ ...create, state: "failed", lastErrorCode: "NOTE_DEPENDENCY_FAILED" }] });
   await failed.getByText("未能保存", { exact: true }).waitFor();
   await failed.getByText("关联的笔记没有保存成功，这条日程也未能保存。内容已保留在本机。").waitFor();
+  // Sprint 0136: the phone's banner says personal schedule changes sync later; 重试 / 放弃 act on the refused write.
+  await failed.getByText(SCHEDULE_OFFLINE_BANNER).waitFor();
+  await failed.getByRole("button", { name: "重试保存：和陈总复盘", exact: true }).click();
+  await failed.waitForFunction(() => ((window as any).fixture.settledWrites ?? []).length === 1);
+  const discarding = await harness.open(t, { ...offline, screen: "detail", params: { id: localId }, records: { personal_schedule: [], note: [] },
+    queuedSchedules: [{ ...create, state: "failed", lastErrorCode: "INVALID_REQUEST" }] });
+  await discarding.getByRole("button", { name: "放弃这次修改：和陈总复盘", exact: true }).click();
+  await discarding.waitForFunction(() => ((window as any).fixture.navigation ?? []).includes("replace:/schedule"));
+  assert.deepEqual(await fixtureValue(failed, "settledWrites"), [["retry", "personal_schedule", "s-create"]]);
+  assert.deepEqual(await fixtureValue(discarding, "settledWrites"), [["discard", "personal_schedule", "s-create"]]);
+  assert.deepEqual(await writes(discarding), [], "retry and discard never write to the network themselves");
 });
 
 test("a conflicting edit keeps both versions; keeping mine re-sends against the server version", async t => {

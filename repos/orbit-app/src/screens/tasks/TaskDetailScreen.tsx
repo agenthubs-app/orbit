@@ -110,6 +110,7 @@ export function TaskDetailScreen() {
   const isLocalQueuedTask = taskOutbox.queuedMutations.some(item => item.id === taskId && item.operation === "create");
   const offline = mirrorDetail !== null && (serverDetail === null || reach === "unreachable") || isLocalQueuedTask;
   const taskConflict = taskOutbox.queuedMutations.find(item => item.id === taskId && item.kind === "task" && item.state === "conflict");
+  const taskFailure = taskOutbox.queuedMutations.filter(item => item.id === taskId && item.kind === "task" && item.state === "failed").at(-1);
   const conflictSnapshot = typeof taskConflict?.serverSnapshot === "object" && taskConflict.serverSnapshot !== null && !Array.isArray(taskConflict.serverSnapshot)
     ? taskConflict.serverSnapshot as Record<string, unknown> : null;
   const conflictServerDetail = conflictSnapshot ? ownedTaskDetailToView({ task: conflictSnapshot }, actorId, locale.language) : null;
@@ -429,6 +430,24 @@ export function TaskDetailScreen() {
     }
   }
 
+  // Sprint 0136: 「未能保存 · 重试 / 放弃」 (design step 7). Discarding a task that only exists on this phone leaves its page.
+  async function settleTaskFailure(action: "retry" | "discard") {
+    if (!taskFailure) return;
+    const session = taskMirror.currentSession();
+    if (!session?.retryOfflineWrite || !session.discardOfflineWrite) { setMutationError(locale.t("taskDetail.conflictUnavailable")); return; }
+    try {
+      if (action === "retry") await session.retryOfflineWrite("task", taskFailure.mutationId);
+      else {
+        await session.discardOfflineWrite("task", taskFailure.mutationId);
+        if (taskFailure.operation === "create") { router.replace("/tasks" as Href); return; }
+      }
+      setMutationError(null);
+      await taskOutbox.refreshQueued();
+    } catch {
+      setMutationError(locale.t("taskDetail.conflictUnavailable"));
+    }
+  }
+
   async function addReminder(fireAt: string) {
     if (!canSave) { setReminderMessage(locale.t("taskDetail.reminderTimezoneUnavailable")); return; }
     if (!detail) return;
@@ -475,8 +494,12 @@ export function TaskDetailScreen() {
       title={locale.t("taskDetail.title")}
     >
       {detailState.kind === "loading" ? <LoadingState /> : null}
-      {offline ? <OfflineNotice lastSyncedAt={taskMirror.lastSyncedAt} reason={reach === "unreachable" || detailState.kind === "offline" ? "unreachable" : "unavailable"} /> : null}
+      {offline ? <OfflineNotice lastSyncedAt={taskMirror.lastSyncedAt} reason={reach === "unreachable" || detailState.kind === "offline" ? "unreachable" : "unavailable"} queues="tasks" /> : null}
       {detail?.localMutationState && !taskConflict ? <Text style={styles.localMutationLabel}>{locale.t(detail.localMutationState === "conflict" ? "tasks.outboxConflict" : detail.localMutationState === "failed" ? "tasks.outboxFailed" : "tasks.outboxQueued")}</Text> : null}
+      {taskFailure && !taskConflict ? <View style={styles.conflictActions}>
+        <Pressable accessibilityRole="button" accessibilityLabel={locale.t("sync.retryChangeNamed", { title: detail?.title ?? "" })} onPress={() => void settleTaskFailure("retry")} style={styles.conflictAction}><Text style={styles.conflictActionText}>{locale.t("common.retry")}</Text></Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel={locale.t("sync.discardChangeNamed", { title: detail?.title ?? "" })} onPress={() => void settleTaskFailure("discard")} style={styles.conflictAction}><Text style={styles.conflictActionText}>{locale.t("sync.discardChange")}</Text></Pressable>
+      </View> : null}
       {taskConflict ? <View style={styles.conflictPanel}>
         <Text style={styles.conflictText}>{locale.t(taskConflict.operation === "delete" ? "taskDetail.deleteConflict" : "taskDetail.taskConflict")}</Text>
         {conflictServerDetail ? <Text style={styles.conflictServerText}>{locale.t("taskDetail.serverVersionNamed", { title: conflictServerDetail.title })}</Text> : null}

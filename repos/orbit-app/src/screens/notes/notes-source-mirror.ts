@@ -66,6 +66,10 @@ export interface NoteDetailSource extends NotesMirrorStatus {
   /** After a write receipt: pull the change and confirm the mirror holds at least this version. */
   confirmSaved(noteId: string, version: number): Promise<boolean>;
   resolveConflict(input: { mutationId: string; resolution: "server" | "replace"; replacement?: OfflineNoteMutationInput }): Promise<void>;
+  /** Sprint 0136: the latest write of this note the server refused (「未能保存」), with 重试 / 放弃. Absent in the browser. */
+  failedMutation?: LocalSyncQueuedMutation | null;
+  retryFailed?(mutationId: string): Promise<void>;
+  discardFailed?(mutationId: string): Promise<void>;
 }
 
 export interface NotesWriteStatus extends NotesMirrorStatus {
@@ -162,9 +166,23 @@ export function useMirrorNoteDetail(input: { actorId: string; noteId: string; sc
   const note = mirrorNote(notes, resolvedNoteId);
   const conflictMutation = queuedMutations.find(mutation => mutation.kind === "note" && mutation.id === resolvedNoteId && mutation.state === "conflict") ?? null;
   const baseRevision = state.records.find(record => record.id === resolvedNoteId)?.revision ?? null;
+  const failedMutation = queuedMutations.filter(mutation => mutation.kind === "note" && mutation.id === resolvedNoteId && mutation.state === "failed").at(-1) ?? null;
   return {
     note,
     conflictMutation,
+    failedMutation,
+    async retryFailed(mutationId) {
+      const session = state.currentSession();
+      if (!session?.retryOfflineWrite) throw new Error("本机重试暂不可用。");
+      await session.retryOfflineWrite("note", mutationId);
+      await refreshQueued();
+    },
+    async discardFailed(mutationId) {
+      const session = state.currentSession();
+      if (!session?.discardOfflineWrite) throw new Error("本机放弃操作暂不可用。");
+      await session.discardOfflineWrite("note", mutationId);
+      await refreshQueued();
+    },
     baseRevision,
     loading: freshness.loading,
     failure: freshness.failure ?? queueFailure ?? aliasFailure ?? (freshness.readable && notes === null ? locale.t("notes.invalidPayload") : null),
