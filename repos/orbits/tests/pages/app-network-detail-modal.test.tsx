@@ -336,3 +336,163 @@ test("W0057: polling stops after 24 attempts (2 minutes) and asks to refresh", a
   assert.equal(panel.root().root.findAll((node) => node.props?.["data-insight-poll-stopped"] !== undefined).length, 1);
   await panel.act(async () => { panel.root().unmount(); });
 });
+
+/* ── W0059 SC-W0059-01／02／03：四种关闭方式 + 「‹ 返回 {来源}」统一走 close() ─────────────── */
+
+import { AppRouterContext, type AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
+import { DETAIL_RETURN_STORAGE_KEY } from "../../app/(app)/app/contacts/network-0918/detail-return";
+import type { TestContext } from "node:test";
+
+type CloseWay = "×" | "bottom" | "Escape" | "overlay" | "back";
+
+interface CloseHarness {
+  assigned: string[];
+  backs: { router: number; history: number };
+  storage: Map<string, string>;
+  root: import("react-test-renderer").ReactTestRenderer;
+  keydown: (key: string, target?: object) => void;
+  close: (way: CloseWay, event?: Partial<{ button: number; metaKey: boolean }>) => Promise<{ defaultPrevented: boolean }>;
+  backLabel: () => string;
+}
+
+async function mountClose(
+  t: TestContext,
+  options: { intent?: object | null; path?: string; closeHref?: string; withRouter?: boolean; storageThrows?: boolean; language?: "zh" | "en"; navigationType?: string },
+): Promise<CloseHarness> {
+  const { act, create } = await import("react-test-renderer");
+  const { OrbitLanguageProvider } = await import("../../app/(app)/app/orbit-language-context");
+  const path = options.path ?? "/app/contacts/c1";
+  const assigned: string[] = [];
+  const backs = { router: 0, history: 0 };
+  const storage = new Map<string, string>();
+  if (options.intent) storage.set(DETAIL_RETURN_STORAGE_KEY, JSON.stringify(options.intent));
+  const sessionStorage = options.storageThrows
+    ? { getItem() { throw new Error("SecurityError"); }, setItem() { throw new Error("x"); }, removeItem() { throw new Error("x"); } }
+    : { getItem: (k: string) => storage.get(k) ?? null, setItem: (k: string, v: string) => void storage.set(k, v), removeItem: (k: string) => void storage.delete(k) };
+  const windowListeners = new Map<string, Set<(event: unknown) => void>>();
+  const previousWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+  const previousDocument = Object.getOwnPropertyDescriptor(globalThis, "document");
+  Object.defineProperty(globalThis, "window", {
+    configurable: true,
+    value: {
+      addEventListener(type: string, listener: (event: unknown) => void) {
+        if (!windowListeners.has(type)) windowListeners.set(type, new Set());
+        windowListeners.get(type)!.add(listener);
+      },
+      removeEventListener(type: string, listener: (event: unknown) => void) { windowListeners.get(type)?.delete(listener); },
+      history: { back: () => { backs.history += 1; } },
+      location: { assign: (href: string) => assigned.push(href), origin: "https://orbit.example", pathname: path.split("?")[0], search: path.includes("?") ? `?${path.split("?")[1]}` : "" },
+      sessionStorage,
+    },
+  });
+  Object.defineProperty(globalThis, "document", { configurable: true, value: { activeElement: null, addEventListener() {}, removeEventListener() {}, documentElement: { lang: "zh" } } });
+  if (options.navigationType) {
+    t.mock.method(performance, "getEntriesByType", () => [{ name: `https://orbit.example${path}`, type: options.navigationType }]);
+  }
+  const router = { back: () => { backs.router += 1; }, forward() {}, prefetch() {}, push() {}, refresh() {}, replace() {} } as unknown as AppRouterInstance;
+  const modal = <NetworkDetailModal contact={contact} closeHref={options.closeHref ?? "/app/contacts"} onFollow={() => {}} />;
+  const tree = <OrbitLanguageProvider initialLanguage={options.language ?? "zh"}>{options.withRouter === false ? modal : <AppRouterContext.Provider value={router}>{modal}</AppRouterContext.Provider>}</OrbitLanguageProvider>;
+  let root: import("react-test-renderer").ReactTestRenderer | undefined;
+  await act(async () => { root = create(tree); });
+  t.after(() => {
+    act(() => root?.unmount());
+    if (previousWindow) Object.defineProperty(globalThis, "window", previousWindow); else delete (globalThis as { window?: unknown }).window;
+    if (previousDocument) Object.defineProperty(globalThis, "document", previousDocument); else delete (globalThis as { document?: unknown }).document;
+  });
+  const mounted = root!;
+  const keydown = (key: string, target: object = { tagName: "BODY", isContentEditable: false }) => {
+    for (const listener of [...(windowListeners.get("keydown") ?? [])]) listener({ key, target });
+  };
+  const findAnchor = (className: string) => mounted.root.find((node) => node.type === "a" && node.props.className === className);
+  const close = async (way: CloseWay, extra: Partial<{ button: number; metaKey: boolean }> = {}) => {
+    const event = { altKey: false, button: 0, ctrlKey: false, defaultPrevented: false, metaKey: false, shiftKey: false, preventDefault() { event.defaultPrevented = true; }, ...extra } as { defaultPrevented: boolean; target?: unknown; currentTarget?: unknown; preventDefault: () => void };
+    await act(async () => {
+      if (way === "×") findAnchor("btn nw-modal-close").props.onClick(event);
+      else if (way === "bottom") findAnchor("btn nw-detail-close").props.onClick(event);
+      else if (way === "back") findAnchor("btn nw-detail-back").props.onClick(event);
+      else if (way === "Escape") keydown("Escape");
+      else {
+        const overlay = mounted.root.find((node) => node.props?.["data-network-modal"] === "detail");
+        const self = {};
+        overlay.props.onClick({ ...event, target: self, currentTarget: self });
+      }
+    });
+    return event;
+  };
+  const backLabel = () => {
+    const node = findAnchor("btn nw-detail-back");
+    return (node.children as unknown[]).map((c) => (typeof c === "string" ? c : "")).join("");
+  };
+  return { assigned, backs, storage, root: mounted, keydown, close, backLabel };
+}
+
+const WAYS: CloseWay[] = ["×", "bottom", "Escape", "overlay", "back"];
+const freshIntent = (from: string, to = "/app/contacts/c1") => ({ from, to, at: Date.now() - 500, nonce: "n" });
+
+test("SC-W0059-01: with an in-app source, ×／底部关闭／Esc／遮罩／返回 each call router.back() once and never location.assign", async (t) => {
+  for (const way of WAYS) {
+    await t.test(way, async (st) => {
+      const h = await mountClose(st, { intent: freshIntent("/app/agent/plan") });
+      assert.equal(h.storage.has(DETAIL_RETURN_STORAGE_KEY), false, "intent consumed on mount");
+      assert.equal(h.backLabel(), "‹ 返回我的计划");
+      const event = await h.close(way);
+      assert.deepEqual(h.backs, { router: 1, history: 0 });
+      assert.deepEqual(h.assigned, []);
+      if (way !== "Escape" && way !== "overlay") assert.equal(event.defaultPrevented, true, "link click handled in-page");
+    });
+  }
+});
+
+test("SC-W0059-01: labels follow the source (zh/en); without an App Router the same close falls back to history.back()", async (t) => {
+  await t.test("iOrbit", async (st) => {
+    const iorbit = await mountClose(st, { intent: freshIntent("/app/agent") });
+    assert.equal(iorbit.backLabel(), "‹ 返回 iOrbit");
+  });
+  await t.test("en", async (st) => {
+    const en = await mountClose(st, { intent: freshIntent("/app/contacts/dashboard"), language: "en" });
+    assert.equal(en.backLabel(), "‹ Back to Network analysis");
+  });
+  await t.test("no App Router", async (st) => {
+    const bare = await mountClose(st, { intent: freshIntent("/app/events/e1"), withRouter: false });
+    assert.equal(bare.backLabel(), "‹ 返回活动");
+    await bare.close("×");
+    assert.deepEqual(bare.backs, { router: 0, history: 1 });
+    assert.deepEqual(bare.assigned, []);
+  });
+});
+
+test("SC-W0059-02: no usable source → every way goes to /app/contacts (or the validated returnTo) and shows 返回人脉", async (t) => {
+  const scenarios: { name: string; options: Parameters<typeof mountClose>[1]; href: string; label: string }[] = [
+    { name: "direct open / new tab", options: {}, href: "/app/contacts", label: "‹ 返回人脉" },
+    { name: "intent expired", options: { intent: { from: "/app/agent", to: "/app/contacts/c1", at: Date.now() - 31_000, nonce: "n" } }, href: "/app/contacts", label: "‹ 返回人脉" },
+    { name: "intent for another contact", options: { intent: freshIntent("/app/agent", "/app/contacts/c2") }, href: "/app/contacts", label: "‹ 返回人脉" },
+    { name: "refresh of this detail", options: { intent: freshIntent("/app/agent"), navigationType: "reload" }, href: "/app/contacts", label: "‹ 返回人脉" },
+    { name: "sessionStorage throws", options: { storageThrows: true }, href: "/app/contacts", label: "‹ 返回人脉" },
+    { name: "valid returnTo from the page", options: { closeHref: "/app/agent/plan" }, href: "/app/agent/plan", label: "‹ 返回我的计划" },
+  ];
+  for (const scenario of scenarios) {
+    for (const way of WAYS) {
+      await t.test(`${scenario.name} · ${way}`, async (st) => {
+        const h = await mountClose(st, scenario.options);
+        assert.equal(h.backLabel(), scenario.label);
+        await h.close(way);
+        assert.deepEqual(h.assigned, [scenario.href]);
+        assert.deepEqual(h.backs, { router: 0, history: 0 });
+      });
+    }
+  }
+});
+
+test("SC-W0059-03: Esc inside an input／textarea／contentEditable does not close; modifier or middle clicks keep the link's native behaviour", async (t) => {
+  const h = await mountClose(t, { intent: freshIntent("/app/contacts") });
+  h.keydown("Escape", { tagName: "INPUT", isContentEditable: false });
+  h.keydown("Escape", { tagName: "TEXTAREA", isContentEditable: false });
+  h.keydown("Escape", { tagName: "DIV", isContentEditable: true });
+  assert.deepEqual(h.backs, { router: 0, history: 0 });
+  const meta = await h.close("×", { metaKey: true });
+  const middle = await h.close("bottom", { button: 1 });
+  assert.equal(meta.defaultPrevented, false);
+  assert.equal(middle.defaultPrevented, false);
+  assert.deepEqual(h.backs, { router: 0, history: 0 });
+  assert.deepEqual(h.assigned, []);
+});

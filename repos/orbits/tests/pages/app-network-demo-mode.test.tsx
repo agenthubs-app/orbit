@@ -492,3 +492,33 @@ test("the in-page demo detail closes on Escape and hands focus back to the link 
   assert.deepEqual(mounted.fetches, []);
   assert.deepEqual(mounted.assigned, []);
 });
+
+test("SC-W0059-03: the in-page demo detail — ×, bottom close, ‹ 返回 and the overlay only fold it; no back, no navigation, the return recorder is never read", async (t) => {
+  const mounted = await mount(t, inDemo(<><NetworkAll viewModel={VM} /><DemoInterceptLayer /></>));
+  const reads: string[] = [];
+  let backs = 0;
+  Object.assign(globalThis.window as object, {
+    history: { back: () => { backs += 1; } },
+    sessionStorage: { getItem: (key: string) => (reads.push(key), JSON.stringify({ from: "/app/agent", to: "/app/contacts", at: Date.now(), nonce: "n" })), removeItem() {}, setItem() {} },
+  });
+  for (const way of ["btn nw-modal-close", "btn nw-detail-close", "btn nw-detail-back", "overlay"] as const) {
+    await act(async () => {
+      anchor(mounted.root, "btn nw-row", "/app/contacts/demo%3Awang-yan").props.onClick(clickEvent());
+    });
+    assert.ok(detailOpen(mounted.root), way);
+    await act(async () => {
+      if (way === "overlay") {
+        const overlay = mounted.root.root.find((node) => node.props?.["data-network-modal"] === "detail");
+        const self = {};
+        overlay.props.onClick({ currentTarget: self, target: self });
+      } else {
+        anchor(mounted.root, way, "/app/contacts").props.onClick(clickEvent());
+      }
+    });
+    assert.equal(detailOpen(mounted.root), false, way);
+  }
+  assert.deepEqual(reads, []);
+  assert.equal(backs, 0);
+  assert.deepEqual(mounted.assigned, []);
+  assert.deepEqual(mounted.fetches, []);
+});

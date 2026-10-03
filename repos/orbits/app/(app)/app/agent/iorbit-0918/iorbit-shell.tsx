@@ -79,6 +79,7 @@ import { planCardViewFromSnapshot, type IOrbitPlanCardView } from "./iorbit-plan
 import { IORBIT_STYLES } from "./iorbit-styles";
 import { useAgentChat } from "./use-agent-chat";
 import { useAgentHistory } from "./use-agent-history";
+import { noteContactNavigation } from "../../contacts/network-0918/detail-return-recorder";
 
 export interface IOrbitShellProps {
   /**
@@ -540,7 +541,10 @@ function IOrbitLiveShell({
               guideEnabled={guideEnabled}
               home={home}
               navigate={(href) => {
-                if (typeof window !== "undefined") window.location.href = href;
+                if (typeof window === "undefined") return;
+                // W0059：去联系人详情前记下来路（不是联系人详情的 href 什么都不写）。
+                noteContactNavigation(href);
+                window.location.href = href;
               }}
               onAsk={(query) => {
                 setView("chat");

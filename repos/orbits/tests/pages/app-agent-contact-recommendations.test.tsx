@@ -115,7 +115,8 @@ test("/app/agent maps contact artifacts into reason, confidence, evidence, and d
   assert.match(modelSource, /opener: item\.body/);
   assert.match(modelSource, /reason: item\.reason/);
   assert.match(agentSource, /function AgentPeopleRow/);
-  assert.match(agentSource, /navigate\(`\/app\/contacts\/\$\{connection\.id\}`\)/);
+  // W0059：详情链接对 id 做 URL 编码，跳转前记下来路（openContact = noteContactNavigation + navigate）。
+  assert.match(agentSource, /openContact\(`\/app\/contacts\/\$\{encodeURIComponent\(connection\.id\)\}`\)/);
   assert.match(agentSource, /requestMessageDraft/);
   assert.match(agentSource, /data-agent-inline-draft-error-code/);
   assert.match(agentSource, /data-agent-inline-draft/);
