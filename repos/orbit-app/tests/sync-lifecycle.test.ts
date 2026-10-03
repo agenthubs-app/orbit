@@ -558,3 +558,47 @@ test("the native loader lists the SQLite directory's file names, and nothing whe
   assert.deepEqual(seen, ["/db"]);
   assert.deepEqual(await listSyncDatabaseNames({ defaultDatabaseDirectory: "/db" }, Absent), []);
 });
+
+// Sprint 0137: SYNC_CLEANUP_STATE_FAILED blocked a Simulator login with no cause recorded.
+// Every refusal now carries which step failed plus a secret-free error description.
+test("a native-module load failure reports its stage, error name and code, never the raw message", async t => {
+  const f = fixture();
+  t.after(() => { for (const database of f.files.values()) database.close(); });
+  const { createSyncLifecycle } = await import("../src/data/sync/sync-lifecycle");
+  const failure = Object.assign(new TypeError("secret-shaped-key-and-payload"), { code: "ERR_MODULE_NOT_FOUND" });
+  const coordinator = createSyncLifecycle({ platform: "ios", loadNative: async () => { throw failure; }, report: (...args: unknown[]) => f.logs.push(args) });
+  assert.equal(await coordinator.setScope(scope), false);
+  assert.deepEqual(f.logs, [["SYNC_CLEANUP_STATE_FAILED", undefined, { stage: "load-native", name: "TypeError", code: "ERR_MODULE_NOT_FOUND", message: "[redacted]" }]]);
+});
+
+test("a missing native module keeps the module name, which identifies an outdated binary", async t => {
+  const f = fixture();
+  t.after(() => { for (const database of f.files.values()) database.close(); });
+  const { createSyncLifecycle } = await import("../src/data/sync/sync-lifecycle");
+  const coordinator = createSyncLifecycle({
+    platform: "ios",
+    loadNative: async () => { throw new Error("Cannot find native module 'ExpoSecureStore'"); },
+    report: (...args: unknown[]) => f.logs.push(args),
+  });
+  assert.equal(await coordinator.setScope(scope), false);
+  assert.deepEqual(f.logs[0]?.[2], { stage: "load-native", name: "Error", code: null, message: "Cannot find native module 'ExpoSecureStore'" });
+});
+
+test("an unreadable pending-cleanup marker reports the read stage and a keychain status without the key name", async t => {
+  const f = await lifecycle(t);
+  f.native.secureStore.getItemAsync = async (key: string) => {
+    if (key === "orbit.sync.pending-cleanup") throw Object.assign(new Error("Calling the 'getValueWithKeyAsync' function has failed\n→ Caused by: orbit.sync.pending-cleanup secret-shaped"), { code: "ERR_KEY_CHAIN" });
+    return f.keys.get(key) ?? null;
+  };
+  assert.equal(await f.coordinator.setScope(scope), false);
+  assert.deepEqual(f.logs, [["SYNC_CLEANUP_STATE_FAILED", undefined, { stage: "read-pending-cleanup", name: "Error", code: "ERR_KEY_CHAIN", message: "[redacted]" }]]);
+  assert.ok(!JSON.stringify(f.logs).includes("secret-shaped"));
+});
+
+test("a malformed pending-cleanup marker is reported as such", async t => {
+  const f = await lifecycle(t);
+  f.keys.set("orbit.sync.pending-cleanup", "not-a-digest");
+  assert.equal(await f.coordinator.setScope(scope), false);
+  assert.deepEqual(f.logs[0], ["SYNC_CLEANUP_STATE_FAILED", undefined, { stage: "read-pending-cleanup", name: "Error", code: null, message: "SYNC_CLEANUP_STATE_INVALID" }]);
+  assert.ok(!JSON.stringify(f.logs).includes("not-a-digest"));
+});

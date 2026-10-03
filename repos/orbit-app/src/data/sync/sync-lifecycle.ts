@@ -21,6 +21,34 @@ interface NativeSyncDependencies extends SyncKeyDependencies {
 
 const IDENTITY_DATABASE = /^orbit-sync-([a-f0-9]{64})\.db$/u;
 
+/** Why a storage step refused, without key names, digests or payloads (sprint 0137). */
+export interface SyncFailureDetail {
+  stage: string;
+  name: string;
+  code: string | null;
+  message: string;
+}
+
+// Messages that are fixed strings from this module, expo-modules-core or expo-secure-store's
+// KeyChainException and can never contain a key name, digest or stored value.
+const SAFE_MESSAGES = [
+  /^SYNC_[A-Z_]+$/u,
+  /^Cannot find native module '[A-Za-z0-9_]+'$/u,
+  /^The method or property [A-Za-z0-9_.]+ is not available on [a-z]+/u,
+  /^(Invalid key|I\/O error\.|User interaction is not allowed\.|Unknown Keychain Error\.|Unable to decode the provided data\.|No keychain is available\. You may need to restart your computer\.|One or more parameters passed to a function where not valid\.|Bad parameter or invalid state for operation\.|A required entitlement isn't present\.)$/u,
+];
+
+export function describeSyncFailure(stage: string, error: unknown): SyncFailureDetail {
+  const record = typeof error === "object" && error !== null ? error as { name?: unknown; code?: unknown; message?: unknown } : {};
+  const name = typeof record.name === "string" && /^[A-Za-z0-9_]{1,64}$/u.test(record.name) ? record.name : typeof error;
+  const code = typeof record.code === "string" && /^[A-Za-z0-9_:.-]{1,64}$/u.test(record.code) ? record.code : null;
+  const raw = typeof record.message === "string" ? record.message : "";
+  // Expo wraps native failures as "Calling the '…' function has failed\n→ Caused by: <reason>".
+  const reason = raw.split(/Caused by: /u).pop()?.trim() ?? "";
+  const message = [raw, reason].find(candidate => SAFE_MESSAGES.some(pattern => pattern.test(candidate))) ?? "[redacted]";
+  return { stage, name, code, message };
+}
+
 type NativeDatabase = Awaited<ReturnType<NativeSyncDependencies["sqlite"]["openDatabaseAsync"]>>;
 interface OpenScope {
   scope: SyncSessionScope;
@@ -67,7 +95,7 @@ function adaptDatabase(handle: NativeDatabase): LocalSyncDatabase {
 export function createSyncLifecycle(input: {
   platform: string;
   loadNative: () => Promise<NativeSyncDependencies>;
-  report: (code: string, scopeHash?: string) => void;
+  report: (code: string, scopeHash?: string, detail?: SyncFailureDetail) => void;
 }) {
   let native: NativeSyncDependencies | null = null;
   let current: OpenScope | null = null;
@@ -89,8 +117,8 @@ export function createSyncLifecycle(input: {
     if (!native) return false;
     try {
       await deleteSyncDatabaseKey(digest, native);
-    } catch {
-      input.report("SYNC_KEY_DELETE_FAILED", digest);
+    } catch (error) {
+      input.report("SYNC_KEY_DELETE_FAILED", digest, describeSyncFailure("delete-key", error));
       return false;
     }
     try {
@@ -100,8 +128,8 @@ export function createSyncLifecycle(input: {
     }
     try {
       await clearPendingSyncCleanup(native);
-    } catch {
-      input.report("SYNC_CLEANUP_STATE_FAILED", digest);
+    } catch (error) {
+      input.report("SYNC_CLEANUP_STATE_FAILED", digest, describeSyncFailure("clear-pending-cleanup", error));
       return false;
     }
     return true;
@@ -129,8 +157,8 @@ export function createSyncLifecycle(input: {
     for (const digest of others) {
       try {
         await persistPendingSyncCleanup(digest, native);
-      } catch {
-        input.report("SYNC_CLEANUP_STATE_FAILED", digest);
+      } catch (error) {
+        input.report("SYNC_CLEANUP_STATE_FAILED", digest, describeSyncFailure("persist-pending-cleanup", error));
         return false;
       }
       if (!(await finishPendingCleanup(digest))) return false;
@@ -146,8 +174,8 @@ export function createSyncLifecycle(input: {
       // Persist intent before closing/deleting: a restarted process must finish
       // crypto erasure before it can accept any other identity.
       await persistPendingSyncCleanup(current.digest, native);
-    } catch {
-      input.report("SYNC_CLEANUP_STATE_FAILED", current.digest);
+    } catch (error) {
+      input.report("SYNC_CLEANUP_STATE_FAILED", current.digest, describeSyncFailure("persist-pending-cleanup", error));
       return false;
     }
     if (current.handle) {
@@ -168,20 +196,21 @@ export function createSyncLifecycle(input: {
   async function prepare(): Promise<boolean> {
     try {
       native ??= await input.loadNative();
-    } catch {
-      input.report("SYNC_CLEANUP_STATE_FAILED");
+    } catch (error) {
+      input.report("SYNC_CLEANUP_STATE_FAILED", undefined, describeSyncFailure("load-native", error));
       return false;
     }
     if (!cleanupRecovered) {
+      let pending: string | null;
       try {
-        const pending = await readPendingSyncCleanup(native);
-        if (pending && !(await finishPendingCleanup(pending))) return false;
-        cleanupRecovered = true;
-      } catch {
+        pending = await readPendingSyncCleanup(native);
+      } catch (error) {
         // An unreadable marker cannot be treated as proof of no pending key.
-        input.report("SYNC_CLEANUP_STATE_FAILED");
+        input.report("SYNC_CLEANUP_STATE_FAILED", undefined, describeSyncFailure("read-pending-cleanup", error));
         return false;
       }
+      if (pending && !(await finishPendingCleanup(pending))) return false;
+      cleanupRecovered = true;
     }
     return true;
   }
@@ -254,8 +283,8 @@ export function createSyncLifecycle(input: {
           current.database = database;
           readyToken = requestToken;
           return true;
-        } catch {
-          input.report("SYNC_INIT_FAILED", current?.digest);
+        } catch (error) {
+          input.report("SYNC_INIT_FAILED", current?.digest, describeSyncFailure("open-scope", error));
           // Failure is not logout. Retain key and old schema/drafts/outbox for
           // recovery instead of converting a rolled-back migration into erasure.
           if (current) {
@@ -332,5 +361,5 @@ export const syncLifecycle = createSyncLifecycle({
       return { crypto, secureStore, sqlite: { openDatabaseAsync: unavailable, deleteDatabaseAsync: unavailable } };
     }
   },
-  report: (code, scopeHash) => console.warn(code, scopeHash?.slice(0, 16) ?? "unavailable"),
+  report: (code, scopeHash, detail) => console.warn(code, scopeHash?.slice(0, 16) ?? "unavailable", detail ? JSON.stringify(detail) : ""),
 });
