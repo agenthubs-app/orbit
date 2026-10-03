@@ -51,34 +51,15 @@ test("contacts pipeline exposes only source-backed read behavior", () => {
   assert.doesNotMatch(pipelineSource, />[^<]*\+25%|"[^"]*\+25%"/);
 });
 
-test("contacts sidebars expose one import hub entry without a duplicate scan-card destination", () => {
-  const sharedSidebarSource = source(
-    "app/(app)/app/contacts/orbit-crm-sidebar.tsx",
-  );
+// W0055：旧 CRM 侧栏（orbit-crm-sidebar.tsx）已无页面引用并删除，只断言现行网络页壳。
+test("contacts shell exposes one import hub entry without a duplicate scan-card destination", () => {
   const shellSource = source(
     "app/(app)/app/contacts/network-0918/network-shell.tsx",
   );
 
-  assert.match(sharedSidebarSource, /Import hub/);
-  assert.doesNotMatch(sharedSidebarSource, /Scan card/);
   // one nav entry (导入人脉) + one primary CTA, both to the import hub; no scan-card destination
   assert.equal((shellSource.match(/href: "\/app\/contacts\/new"/g) ?? []).length, 1);
   assert.equal((shellSource.match(/href="\/app\/contacts\/new"/g) ?? []).length, 1);
   assert.doesNotMatch(shellSource, /Scan card/);
 });
 
-test("contacts shared interactions do not fabricate actions or email delivery", () => {
-  const interactionSource = source(
-    "app/(app)/app/contacts/orbit-cards-interactions.tsx",
-  );
-
-  assert.match(interactionSource, /\.nc-basis\.is-open/);
-  assert.doesNotMatch(
-    interactionSource,
-    /Email sent \(demo\)|邮件已发送|Done:|已执行：|Draft rewritten by AI|AI 重写|data-sheet="email"|nc-send|nc-rewrite/,
-  );
-  assert.doesNotMatch(
-    interactionSource,
-    /target\.closest<HTMLElement>\("\\.btn, button"\)|href"\) === "#"/,
-  );
-});

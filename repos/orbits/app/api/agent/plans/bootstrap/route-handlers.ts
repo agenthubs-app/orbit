@@ -67,8 +67,17 @@ export interface PlanBootstrapRouteDependencies {
   isDemo?: (actor: AuthenticatedApiActor) => Promise<boolean>;
 }
 
+/**
+ * W0055：新用户在引导第 3 步「让 iOrbit 做你的第一份计划」时本来就处在示例模式（引导要等计划生成后才完成），
+ * 原判定「示例模式一律 403」让 AI 生成器下的新用户永远做不出第一份计划。只有引导前两步（名片、目标）都完成、
+ * 下一步正是「计划」时放行；其余示例模式照旧 403、不预留、不调用生成器。
+ */
+export function planBootstrapBlockedByDemo(view: { nextStep: string | null } | null): boolean {
+  return view !== null && view.nextStep !== "plan";
+}
+
 async function defaultIsDemo(actor: AuthenticatedApiActor): Promise<boolean> {
-  return (await readDemoModeViewForActor({ actorId: actor.id, userId: actor.userId ?? null })) !== null;
+  return planBootstrapBlockedByDemo(await readDemoModeViewForActor({ actorId: actor.id, userId: actor.userId ?? null }));
 }
 
 const KEY_PATTERN = /^[A-Za-z0-9:_-]{1,100}$/;

@@ -7,6 +7,9 @@
  *   node --import tsx scripts/seed-verify-accounts.ts --reset verify-new --guide-step1
  *       # W0036：重置 verify-new 后再给它 GUIDE_REQUIRED_CONTACTS 位已确认联系人（同一套联系人夹具与写入），
  *       # 让新用户不经名片识别（付费 AI）也能完成引导第 1 步，接着在浏览器里走第 2、3 步
+ *   node --import tsx scripts/seed-verify-accounts.ts --reset verify-network
+ *       # W0055：D2 老用户、55 位联系人、30 条 memo、10 条已完成跟进、同场活动与约见（四档都有），回填与人脉页验收用
+ *   node --import tsx scripts/seed-verify-accounts.ts --purge verify-network   # W0055：只删除该账号数据、不重造
  *   node --import tsx scripts/seed-verify-accounts.ts --fingerprint   # 只读：非 verify-* 行的指纹
  *   node --import tsx scripts/seed-verify-accounts.ts --assert-only   # 只做本机库断言（verify-server.sh 用）
  *
@@ -45,7 +48,9 @@ import {
   createPgLiveRecordSqlClient,
   createPostgresLiveRecordStore,
 } from "../shared/storage/postgres-live-record-store";
+import { canonicalScheduleItemSchema } from "../features/personal-schedule/authority-contract";
 import { loadLocalEnv } from "./load-local-env";
+import { buildVerifyNetworkFixtures } from "./lib/verify-network-fixtures";
 import {
   assertVerifyDatabaseTarget,
   VERIFY_EXPECTED_DATABASE_NAME,
@@ -60,6 +65,8 @@ export const VERIFY_ACCOUNT_NAMES = [
   "verify-plan",
   "verify-expired",
   "verify-event",
+  // W0055（W55-3）：D2 老用户、55 位联系人、30 条 memo、10 条已完成跟进、同场活动与日程约见，四档都有。
+  "verify-network",
 ] as const;
 export type VerifyAccountName = (typeof VERIFY_ACCOUNT_NAMES)[number];
 type AnyAccountName = VerifyAccountName | "verify-host";
@@ -167,6 +174,19 @@ const ACCOUNTS: Readonly<Record<AnyAccountName, AccountSpec>> = {
     relationshipGoal: "三个月内在活动上认识 3 位金融科技方向的合作伙伴，推进一个联合方案。",
     secondaryIndustryId: "finance_investment.fintech",
   },
+  "verify-network": {
+    actorId: "user_verify_network",
+    birthDate: "1987-06-18",
+    // 早于 ORBIT_GUIDE_DEMO_SINCE（2026-09-01）→ D2 老用户。联系人不走通用夹具，见 seedNetworkAccount。
+    contactFixtureIndexes: [],
+    createdAt: "2026-04-15T01:00:00.000Z",
+    displayName: "验收·老用户人脉",
+    email: "verify-network@orbit.test",
+    eventIds: [],
+    primaryIndustryId: "technology_internet",
+    relationshipGoal: "两个季度内为企业 AI 质检产品拿下 3 家制造业试点客户，并认识 2 位关注企业软件的早期投资人。",
+    secondaryIndustryId: "technology_internet.enterprise_software",
+  },
 };
 
 /** 所有 verify-* 行的标记（用于「非 verify-* 行」指纹）。 */
@@ -238,12 +258,19 @@ async function fingerprint(sql: Client): Promise<VerifyFingerprint> {
   const tables: VerifyFingerprint["tables"] = {};
   const verifyRows: VerifyFingerprint["verifyRows"] = {};
   for (const table of await listPublicTables(sql)) {
-    const marked =
-      table === "bc_ingest_items"
-        ? `(row_to_json(t)::text ~ $1 or exists (
-             select 1 from bc_ingest_batches b
-              where b.workspace_id = t.workspace_id and b.id = t.batch_id and row_to_json(b)::text ~ $1))`
-        : "row_to_json(t)::text ~ $1";
+    // W0055：CSV 导入的逐行表同理（行里只有批次 id，按所属导入批次判定），否则重置 verify-new 时级联删除会被误报。
+    // 账本子账（ai_usage_calls）同理，按所属操作行（ai_usage_ledger）判定。
+    const parentRow: Record<string, { table: string; key: string }> = {
+      ai_usage_calls: { key: "operation_id", table: "ai_usage_ledger" },
+      bc_ingest_items: { key: "batch_id", table: "bc_ingest_batches" },
+      contact_import_rows: { key: "batch_id", table: "contact_import_batches" },
+    };
+    const parent = parentRow[table];
+    const marked = parent
+      ? `(row_to_json(t)::text ~ $1 or exists (
+           select 1 from ${quoteIdent(parent.table)} b
+            where b.workspace_id = t.workspace_id and b.id = t.${quoteIdent(parent.key)} and row_to_json(b)::text ~ $1))`
+      : "row_to_json(t)::text ~ $1";
     const result = await sql.query<{ rows: string; hash: string | null; verify_rows: string }>(
       `select
          count(*) filter (where not marked)::text as rows,
@@ -961,6 +988,222 @@ async function seedCardBatch(runtime: Runtime, spec: AccountSpec): Promise<void>
   }
 }
 
+/* ── verify-network：55 位联系人、memo、已完成跟进、同场活动与约见（W0055／W55-3） ── */
+
+async function seedNetworkAccount(runtime: Runtime, spec: AccountSpec): Promise<void> {
+  const { store, workspaceId } = runtime;
+  const actorId = spec.actorId;
+  const fixtures = buildVerifyNetworkFixtures(actorId, runtime.now);
+  const seededAt = runtime.now.toISOString();
+  for (const { contact, connection, evidence, person } of fixtures.contacts) {
+    const base = {
+      lifecycleState: "active" as const,
+      provider: "orbit-verify-seed",
+      sourceId: contact.source.id,
+      sourceLabel: contact.source.label,
+      sourceType: contact.source.type,
+      userId: actorId,
+      workspaceId,
+    };
+    await store.upsertRecord({
+      ...base,
+      collectionName: "evidence",
+      createdAt: evidence.occurredAt,
+      evidenceIds: [evidence.id],
+      occurredAt: evidence.occurredAt,
+      payload: evidence as unknown as Record<string, unknown>,
+      recordId: evidence.id,
+      searchText: `${person.name} ${evidence.summary}`,
+      sourceId: evidence.sourceId,
+      sourceType: evidence.sourceType,
+      updatedAt: evidence.occurredAt,
+    });
+    await store.upsertRecord({
+      ...base,
+      collectionName: "contacts",
+      createdAt: contact.createdAt,
+      evidenceIds: [...contact.evidenceIds],
+      occurredAt: contact.createdAt,
+      payload: { ...(contact as unknown as Record<string, unknown>), accountId: actorId },
+      providerRecordId: contact.id,
+      recordId: contact.id,
+      searchText: [person.name, person.organization, person.role, person.industryText].join(" "),
+      targetId: contact.id,
+      targetType: "contact",
+      updatedAt: contact.updatedAt,
+    });
+    await store.upsertRecord({
+      ...base,
+      collectionName: "connections",
+      createdAt: connection.createdAt,
+      evidenceIds: [...connection.evidenceIds],
+      occurredAt: connection.createdAt,
+      payload: connection as unknown as Record<string, unknown>,
+      providerRecordId: connection.id,
+      recordId: connection.id,
+      searchText: `${person.name} ${connection.summary}`,
+      targetId: connection.id,
+      targetType: "connection",
+      updatedAt: connection.updatedAt,
+    });
+  }
+
+  // memo：写进 contact_detail_states.notes（与「写 memo」同一存储与 noteId 前缀）；直接写记录，不经详情服务，避免触发 memo 提取。
+  const memosByContact = new Map<string, typeof fixtures.memos>();
+  for (const memo of fixtures.memos) memosByContact.set(memo.contactId, [...(memosByContact.get(memo.contactId) ?? []), memo]);
+  for (const [contactId, memos] of memosByContact) {
+    const updatedAt = memos.map((memo) => memo.createdAt).sort().at(-1)!;
+    const notes = memos.map((memo) => ({ authorLabel: spec.displayName, body: memo.body, createdAt: memo.createdAt, kind: "memo", noteId: memo.noteId, occurredAt: memo.occurredAt, privacy: "private" }));
+    await store.upsertRecord({
+      collectionName: "contact_detail_states",
+      createdAt: updatedAt,
+      deletedAt: null,
+      evidenceIds: [],
+      lifecycleState: "active",
+      occurredAt: updatedAt,
+      payload: { actorId, contactId, notes, status: "active", tags: [], updatedAt },
+      provider: "orbit-verify-seed",
+      providerRecordId: contactId,
+      recordId: `contact-detail:${encodeURIComponent(actorId)}:${encodeURIComponent(contactId)}`,
+      searchText: ["active", ...notes.map((note) => note.body)].join(" "),
+      sourceId: `contact-detail:${contactId}`,
+      sourceLabel: "验收种子 memo",
+      sourceType: "manual",
+      targetId: contactId,
+      targetType: "contact",
+      updatedAt,
+      userId: actorId,
+      workspaceId,
+    });
+  }
+
+  // 已完成跟进（tasks：带 connectionId、status completed，时间线「完成跟进」来源）。
+  for (const followup of fixtures.followups) {
+    const createdAt = new Date(Date.parse(followup.completedAt) - 2 * DAY_MS).toISOString();
+    const evidenceId = fixtures.contacts.find((entry) => entry.contact.id === followup.contactId)!.evidence.id;
+    await store.upsertRecord({
+      collectionName: "tasks",
+      createdAt,
+      evidenceIds: [evidenceId],
+      lifecycleState: "active",
+      occurredAt: followup.completedAt,
+      payload: {
+        actorId,
+        completedAt: followup.completedAt,
+        connectionId: followup.connectionId,
+        contactId: followup.contactId,
+        createdAt,
+        evidenceIds: [evidenceId],
+        id: followup.id,
+        source: { id: `orbit-verify-seed:${followup.id}`, label: "验收种子跟进", type: "manual" },
+        status: "completed",
+        title: followup.title,
+        updatedAt: followup.completedAt,
+      },
+      provider: "orbit-verify-seed",
+      providerRecordId: followup.id,
+      recordId: followup.id,
+      searchText: followup.title,
+      sourceId: `orbit-verify-seed:${followup.id}`,
+      sourceLabel: "验收种子跟进",
+      sourceType: "manual",
+      targetId: followup.contactId,
+      targetType: "contact",
+      updatedAt: followup.completedAt,
+      userId: actorId,
+      workspaceId,
+    });
+  }
+
+  // 同场活动与约见（personal_schedule_items，canonical 日程形状）。
+  for (const item of fixtures.schedule) {
+    const payload = {
+      accountId: actorId,
+      category: item.kind,
+      contactIds: item.contactIds,
+      createdAt: seededAt,
+      endsAt: item.endsAt,
+      evidenceIds: [],
+      id: item.id,
+      kind: item.kind,
+      location: item.location,
+      ownerUserId: actorId,
+      sourceId: `orbit-verify-seed:${item.id}`,
+      startsAt: item.startsAt,
+      state: Date.parse(item.endsAt) <= runtime.now.getTime() ? "ended" : "upcoming",
+      timeZone: "Asia/Tokyo",
+      title: item.title,
+      updatedAt: seededAt,
+      ...(item.eventId ? { eventId: item.eventId } : {}),
+      ...(item.meetingId ? { meetingId: item.meetingId } : {}),
+    };
+    canonicalScheduleItemSchema.parse(payload);
+    await store.upsertRecord({
+      collectionName: "personal_schedule_items",
+      createdAt: seededAt,
+      evidenceIds: [],
+      lifecycleState: "active",
+      occurredAt: item.startsAt,
+      payload,
+      provider: "orbit-verify-seed",
+      providerRecordId: item.id,
+      recordId: item.id,
+      searchText: item.title,
+      sourceId: payload.sourceId,
+      sourceLabel: "验收种子日程",
+      sourceType: "manual",
+      updatedAt: seededAt,
+      userId: actorId,
+      workspaceId,
+    });
+  }
+
+  // 计划：一季度计划处在第 3 周，两条与目标对应的人脉需求，各关联 1 位已认识的人（覆盖度「已有 a／还缺 b」）。
+  const service = planServiceFor(actorId);
+  const snapshot = await service.createVersion({
+    basePlanId: null,
+    goalSnapshot: spec.relationshipGoal ?? "",
+    horizon: "quarter",
+    items: [
+      { kind: "action", phaseKey: "p1", suggestedWeek: 1, title: "整理制造业联系人，挑出 5 家可能试点的工厂" },
+      { kind: "action", phaseKey: "p1", suggestedWeek: 3, title: "准备一页质检试点方案和两周验证计划" },
+      {
+        criteria: {
+          description: "有产线质检痛点、能拍板小范围试点的制造业负责人",
+          primaryIndustryId: "manufacturing_supply_chain",
+          secondaryIndustryId: "manufacturing_supply_chain.industrial_equipment",
+          titleKeywords: ["部長", "工場長", "代表"],
+        },
+        kind: "network_need",
+        phaseKey: "p1",
+        title: "找到 3 家愿意试点的制造业客户",
+      },
+      {
+        criteria: {
+          description: "关注企业软件与工业 AI 的早期投资人",
+          primaryIndustryId: "finance_investment",
+          secondaryIndustryId: "finance_investment.venture_capital",
+          titleKeywords: ["投资", "Partner", "合伙人"],
+        },
+        kind: "network_need",
+        phaseKey: "p2",
+        title: "认识 2 位关注企业软件的早期投资人",
+      },
+      { kind: "info", phaseKey: "p1", title: "目标工厂明年的设备与 IT 预算周期" },
+    ],
+    phases: [
+      { endWeek: 4, granularity: "week", key: "p1", startWeek: 1, title: "盘点：从已有人脉里找试点线索" },
+      { endWeek: 9, granularity: "week", key: "p2", startWeek: 5, title: "推进：试点洽谈与投资人沟通" },
+      { endWeek: 13, granularity: "week", key: "p3", startWeek: 10, title: "收口：签下试点、整理融资材料" },
+    ],
+    startsOn: tokyoDateOffset(runtime.now, -15),
+  });
+  const pilot = fixtures.contacts[0]!;
+  const investor = fixtures.contacts[2]!;
+  await service.linkNeedContact({ contactId: pilot.contact.id, contactName: pilot.person.name, needItemId: itemId(snapshot, "找到 3 家愿意试点的制造业客户") });
+  await service.linkNeedContact({ contactId: investor.contact.id, contactName: investor.person.name, needItemId: itemId(snapshot, "认识 2 位关注企业软件的早期投资人") });
+}
+
 /* ── 场景 ───────────────────────────────────────────────────────────── */
 
 async function seedAccount(runtime: Runtime, name: VerifyAccountName): Promise<void> {
@@ -1033,6 +1276,9 @@ async function seedAccount(runtime: Runtime, name: VerifyAccountName): Promise<v
       await seedCardBatch(runtime, spec);
       return;
     }
+    case "verify-network":
+      await seedNetworkAccount(runtime, spec);
+      return;
   }
 }
 
@@ -1118,12 +1364,22 @@ type Command =
   | { kind: "fingerprint" }
   | { kind: "summary" }
   | { kind: "seed" }
-  | { kind: "reset"; account: VerifyAccountName; guideStep1?: boolean };
+  | { kind: "reset"; account: VerifyAccountName; guideStep1?: boolean }
+  /** W0055：只删除一个账号的全部数据、不重新造（验收时避免维护任务处理它的积压，例如 verify-network 的 30 条 memo）。 */
+  | { kind: "purge"; account: VerifyAccountName };
 
 function parseCommand(args: readonly string[]): Command {
   if (args.includes("--assert-only")) return { kind: "assert" };
   if (args.includes("--fingerprint")) return { kind: "fingerprint" };
   if (args.includes("--summary")) return { kind: "summary" };
+  const purgeIndex = args.indexOf("--purge");
+  if (purgeIndex >= 0) {
+    const account = args[purgeIndex + 1];
+    if (!VERIFY_ACCOUNT_NAMES.includes(account as VerifyAccountName)) {
+      throw new Error(`--purge 需要账号名：${VERIFY_ACCOUNT_NAMES.join(" / ")}`);
+    }
+    return { account: account as VerifyAccountName, kind: "purge" };
+  }
   const resetIndex = args.indexOf("--reset");
   if (resetIndex >= 0) {
     const account = args[resetIndex + 1];
@@ -1172,13 +1428,13 @@ async function main(): Promise<void> {
       return;
     }
 
-    const names: readonly VerifyAccountName[] = command.kind === "reset" ? [command.account] : VERIFY_ACCOUNT_NAMES;
+    const names: readonly VerifyAccountName[] = command.kind === "reset" || command.kind === "purge" ? [command.account] : VERIFY_ACCOUNT_NAMES;
     const before = await fingerprint(sql);
     await ensureAccount(runtime, ACCOUNTS["verify-host"]);
     const purged: Record<string, Record<string, number>> = {};
     for (const name of names) {
       purged[name] = await purgeAccount(runtime, ACCOUNTS[name]);
-      await seedAccount(runtime, name);
+      if (command.kind !== "purge") await seedAccount(runtime, name);
     }
     if (command.kind === "reset" && command.guideStep1) {
       const spec = ACCOUNTS["verify-new"];
@@ -1194,7 +1450,7 @@ async function main(): Promise<void> {
     console.log(
       JSON.stringify(
         {
-          command: command.kind === "reset" ? `reset ${command.account}` : "seed",
+          command: command.kind === "reset" || command.kind === "purge" ? `${command.kind} ${command.account}` : "seed",
           nonVerifyFingerprint: { after: after.digest, before: before.digest, changedTables: changed, identical: changed.length === 0 },
           purgedRows: purged,
           accounts: summaries,

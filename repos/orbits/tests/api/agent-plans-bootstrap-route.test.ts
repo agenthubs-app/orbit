@@ -233,3 +233,13 @@ test("W0050: after a plan version is saved (and on replay) the route enqueues th
   assert.equal(failing.plans().length, 1);
   assert.equal(plans().length, 1);
 });
+
+// W0055：引导第 3 步（名片、目标已完成，下一步是计划）不算「示例模式拦截」；其余示例模式照旧拦。
+test("W0055: the guide's plan step may generate the first plan; other demo states stay blocked", async () => {
+  const { planBootstrapBlockedByDemo } = await import("../../app/api/agent/plans/bootstrap/route-handlers");
+  assert.equal(planBootstrapBlockedByDemo(null), false);
+  assert.equal(planBootstrapBlockedByDemo({ nextStep: "plan" }), false);
+  assert.equal(planBootstrapBlockedByDemo({ nextStep: "contacts" }), true);
+  assert.equal(planBootstrapBlockedByDemo({ nextStep: "goal" }), true);
+  assert.equal(planBootstrapBlockedByDemo({ nextStep: null }), true);
+});

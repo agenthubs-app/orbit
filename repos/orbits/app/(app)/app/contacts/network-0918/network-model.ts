@@ -9,30 +9,7 @@ import type { OrbitContactStrength, OrbitContactView } from "../../orbit-contact
 export type NetworkStage = "explore" | "keep" | "advance" | "archived";
 export const NETWORK_STAGES = ["explore", "keep", "advance", "archived"] as const satisfies readonly NetworkStage[];
 
-export const STAGE_LABEL: Record<NetworkStage, { zh: string; en: string }> = {
-  explore: { zh: "待了解", en: "Explore" },
-  keep: { zh: "保持联系", en: "Keep in touch" },
-  advance: { zh: "正在推进", en: "Advancing" },
-  // 设计稿写「已建立合作」；真实状态只有 archived，文案按真实语义。
-  archived: { zh: "已归档", en: "Archived" },
-};
-
-// 设计 stageMeta：[bg, accent, icon, desc]
-export const STAGE_STYLE: Record<NetworkStage, { bg: string; fg: string; icon: string; desc: { zh: string; en: string } }> = {
-  explore: { bg: "#F0F1F8", fg: "#6B6F99", icon: "◌", desc: { zh: "初步建立联系，进一步了解对方", en: "Just connected, getting to know them" } },
-  keep: { bg: "#ECEEFB", fg: "#4B4FC7", icon: "▦", desc: { zh: "已建立联系，定期保持互动", en: "Connected, staying in touch" } },
-  advance: { bg: "#E4E5FA", fg: "#2E3270", icon: "➶", desc: { zh: "有明确的合作机会，正在推进中", en: "A concrete opportunity is moving" } },
-  archived: { bg: "#E6F1EC", fg: "#2F6B4F", icon: "◈", desc: { zh: "暂时搁置，需要时再唤醒", en: "Set aside for now" } },
-};
-
-// 设计 stageStyle（列表 chip）：[bg, fg]
-export const STAGE_CHIP: Record<NetworkStage, { bg: string; fg: string }> = {
-  explore: { bg: "#F0F1F8", fg: "#3B3F7A" },
-  keep: { bg: "#ECEEFB", fg: "#2E3270" },
-  advance: { bg: "#DDDEFA", fg: "#2E3270" },
-  archived: { bg: "#E6F1EC", fg: "#2F6B4F" },
-};
-
+// W0055：旧手动阶段的文案与配色（STAGE_LABEL／STAGE_STYLE／STAGE_CHIP）已删除——页面只显示自动推出的关系档位（W0047）。
 // relationshipStatus 优先于 pipelineStatus：两者矛盾时以 relationshipStatus 为准（更新更频繁、更贴近真实关系状态）。
 export function stageOf(contact: Pick<OrbitContactView, "pipelineStatus" | "relationshipStatus">): NetworkStage {
   if (contact.pipelineStatus === "pending_initialization") return "explore";
@@ -98,6 +75,17 @@ export function strengthFromTier(entry: Pick<RelationshipStrength, "tier" | "dor
   if (!entry) return "unscored";
   if (entry.dormant) return "dormant";
   return entry.tier === "core" ? "strong" : entry.tier === "active" ? "medium" : "weak";
+}
+
+/** W0055：`strengthFromTier` 的反向映射（所有人脉列表「关系档位」列用）；unscored → null（显示「未评估」）。 */
+export function tierFromStrength(strength: OrbitContactStrength | undefined): NetworkTierGroup | null {
+  switch (strength) {
+    case "strong": return "core";
+    case "medium": return "active";
+    case "weak": return "new";
+    case "dormant": return "dormant";
+    default: return null;
+  }
 }
 
 export type NetworkSource = "event" | "referral" | "contact" | "scan" | "other";

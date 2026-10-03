@@ -20,13 +20,13 @@ import { assertVerifyDatabaseTarget } from "./lib/verify-database-target";
 
 export const VERIFY_SESSION_COOKIE_NAME = "authjs.session-token";
 const SESSION_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
-const ACCOUNT_NAME = /^verify-(new|legacy|plan|expired|event)$/u;
+const ACCOUNT_NAME = /^verify-(new|legacy|plan|expired|event|network)$/u;
 
 async function main(): Promise<void> {
   loadLocalEnv();
   const [account, ...flags] = process.argv.slice(2);
   if (!account || !ACCOUNT_NAME.test(account)) {
-    throw new Error("用法：verify-session-cookie.ts <verify-new|verify-legacy|verify-plan|verify-expired|verify-event> [--header]");
+    throw new Error("用法：verify-session-cookie.ts <verify-new|verify-legacy|verify-plan|verify-expired|verify-event|verify-network> [--header]");
   }
   const secret = process.env.AUTH_SECRET?.trim();
   if (!secret) throw new Error("没有 AUTH_SECRET（.env.local）。");

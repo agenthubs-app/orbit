@@ -11,7 +11,7 @@ import type { OrbitContactView, OrbitContactsViewModel } from "../../orbit-conta
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { NetworkDetailModal, useNetworkDemoDetail } from "./network-detail-modal";
 import { NetworkFollowModal } from "./network-follow-modal";
-import { NETWORK_SOURCES, SOURCE_ICON, SOURCE_LABEL, STAGE_CHIP, STAGE_LABEL, matchesQuery, sourceCounts, toPerson, type NetworkSource } from "./network-model";
+import { NETWORK_SOURCES, SOURCE_ICON, SOURCE_LABEL, TIER_CHIP, TIER_LABEL, TIER_STYLE, matchesQuery, sourceCounts, tierFromStrength, toPerson, type NetworkSource, type NetworkTierGroup } from "./network-model";
 import { NetworkAvatar, NetworkChip, NetworkShell } from "./network-shell";
 
 /** 详情弹窗数据只能来自详情路由（contactDetailPageViewModel），不能用列表 VM 的合成值。 */
@@ -34,9 +34,10 @@ export function NetworkAll({ viewModel, initialSource = "all", openDetail }: { v
       : <NetworkDetailModal contact={openDetail.contact} closeHref={openDetail.closeHref} onFollow={openFollow} extra={openDetail.extra} insight={openDetail.insight} />
   ) : demoDetail.modal;
   const people = useMemo(() => viewModel.connections.map(toPerson), [viewModel.connections]);
+  // W0055：「关系档位」列读自动推出的档位（W0047），不再显示旧手动阶段。
+  const tiers = useMemo(() => new Map<string, NetworkTierGroup | null>(viewModel.connections.map((contact) => [contact.id, tierFromStrength(contact.strength)])), [viewModel.connections]);
   const counts = useMemo(() => sourceCounts(people), [people]);
   const filtered = people.filter((p) => matchesQuery(p, query) && (source === "all" || p.source === source));
-  const sourceFilterLabel = source === "all" ? t({ en: "All sources", zh: "全部来源" }) : t(SOURCE_LABEL[source]);
 
   return (
     <NetworkShell screen="all" modal={modal}>
@@ -45,12 +46,9 @@ export function NetworkAll({ viewModel, initialSource = "all", openDetail }: { v
           <h2 className="nw-h2">{t({ en: "All contacts", zh: "所有人脉" })}</h2>
           <span className="nw-card-hint">{t({ en: `${people.length} contacts — manage all of your relationships.`, zh: `共 ${people.length} 位联系人，管理你所有的人脉资源。` })}</span>
         </div>
+        {/* W0055：只留能改变列表的筛选（搜索框 + 下面的来源卡片）；原来四个只显示文字、点不动的筛选框已删除。 */}
         <div className="nw-filters">
           <input className="nw-search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t({ en: "Search name, company, title or keyword…", zh: "搜索姓名、公司、职位或关键词…" })} />
-          <label className="nw-filter-label">{t({ en: "Source", zh: "来源" })}<span className="nw-filter-box">{sourceFilterLabel} <span className="nw-filter-caret">⌄</span></span></label>
-          <label className="nw-filter-label">{t({ en: "Status", zh: "关系状态" })}<span className="nw-filter-box">{t({ en: "All statuses", zh: "全部状态" })} <span className="nw-filter-caret">⌄</span></span></label>
-          <label className="nw-filter-label">{t({ en: "Industry", zh: "行业" })}<span className="nw-filter-box">{t({ en: "All industries", zh: "全部行业" })} <span className="nw-filter-caret">⌄</span></span></label>
-          <label className="nw-filter-label">{t({ en: "Sort", zh: "排序" })}<span className="nw-filter-box">{t({ en: "Recent activity", zh: "最近互动" })} <span className="nw-filter-caret">⌄</span></span></label>
         </div>
         <div className="nw-source-grid">
           {NETWORK_SOURCES.map((key) => {
@@ -65,7 +63,7 @@ export function NetworkAll({ viewModel, initialSource = "all", openDetail }: { v
         </div>
         <div className="nw-table">
           <div className="nw-thead">
-            <span className="nw-check"></span><span></span><span>{t({ en: "Name", zh: "姓名" })}</span><span>{t({ en: "Company & title", zh: "公司与职位" })}</span><span>{t({ en: "Source", zh: "来源" })}</span><span>{t({ en: "Status", zh: "关系状态" })}</span><span>{t({ en: "Last contact", zh: "最近互动" })}</span><span>{t({ en: "Next step / notes", zh: "下一步 / 备注" })}</span><span></span>
+            <span className="nw-check"></span><span></span><span>{t({ en: "Name", zh: "姓名" })}</span><span>{t({ en: "Company & title", zh: "公司与职位" })}</span><span>{t({ en: "Source", zh: "来源" })}</span><span>{t({ en: "Tier", zh: "关系档位" })}</span><span>{t({ en: "Last contact", zh: "最近互动" })}</span><span>{t({ en: "Next step / notes", zh: "下一步 / 备注" })}</span><span></span>
           </div>
           {filtered.map((p) => (
             <a key={p.id} className="btn nw-row" href={p.href} onClick={(event) => demoDetail.openFromHref(event, p.href)}>
@@ -74,7 +72,12 @@ export function NetworkAll({ viewModel, initialSource = "all", openDetail }: { v
               <strong className="nw-row-name">{p.name}{demo ? <DemoTag /> : null}</strong>
               <span className="nw-row-org"><span className="nw-row-org-1">{p.org}</span><span className="nw-row-org-2">{p.title}</span></span>
               <span><NetworkChip bg="#ECEEFB" fg="#2E3270">{t(SOURCE_LABEL[p.source])}</NetworkChip></span>
-              <span><NetworkChip bg={STAGE_CHIP[p.stage].bg} fg={STAGE_CHIP[p.stage].fg}>{p.pendingInit ? t({ en: "Status not set", zh: "待设置关系" }) : t(STAGE_LABEL[p.stage])}</NetworkChip></span>
+              {(() => {
+                const tier = tiers.get(p.id) ?? null;
+                return <span data-network-tier={tier ?? "unscored"}>{tier
+                  ? <NetworkChip bg={TIER_CHIP[tier].bg} fg={TIER_CHIP[tier].fg}><span className="nw-tier-dot" aria-hidden="true" style={{ background: TIER_STYLE[tier].fg }}></span>{t(TIER_LABEL[tier])}</NetworkChip>
+                  : <NetworkChip bg="#F7F7FD" fg="#6B6F99">{t({ zh: "未评估", en: "Not scored" })}</NetworkChip>}</span>;
+              })()}
               <span className="nw-row-last">{p.last}</span>
               <span className="nw-row-next">{p.next}</span>
               <span className="nw-row-arrow">›</span>
