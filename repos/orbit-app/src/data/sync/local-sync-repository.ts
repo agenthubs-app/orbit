@@ -815,8 +815,9 @@ export function createLocalSyncRepository(input: {
       }
       await database.transaction(async () => {
         const domainId = mutation.domainId ?? localDomainForKind(mutation.kind);
-        // Task and personal-schedule writes are never merged (each keeps its own receipt and server version).
-        const unattempted = domainId === "tasks" || domainId === "personal-schedule" ? [] : await database.all<{
+        // Task and personal-schedule writes are never merged (each keeps its own receipt and server version);
+        // Sprint 0135: every queued message is its own send; messages are never merged.
+        const unattempted = domainId === "tasks" || domainId === "personal-schedule" || domainId === "relationship-messages" ? [] : await database.all<{
           mutation_id: string;
           operation: LocalSyncOutboxOperation;
           patch_json: string | null;
@@ -1337,6 +1338,17 @@ export function createLocalSyncRepository(input: {
           ),
         };
       });
+    },
+
+    /** Sprint 0135: the user discards unsent rows of one domain; a row being sent is never removed. */
+    async discardOutboxMutations(query: { workspaceId: string; domainId: string; mutationIds: readonly string[] }): Promise<number> {
+      assertNonEmptyString(query.workspaceId, "workspaceId");
+      assertNonEmptyString(query.domainId, "domainId");
+      if (query.mutationIds.length === 0) return 0;
+      for (const id of query.mutationIds) assertNonEmptyString(id, "mutationId");
+      const removed = await database.run(`DELETE FROM sync_outbox WHERE workspace_id = ? AND domain_id = ? AND state <> 'sending'
+        AND mutation_id IN (${query.mutationIds.map(() => "?").join(", ")})`, [query.workspaceId, query.domainId, ...query.mutationIds]);
+      return removed.changes;
     },
 
     async countOutboxMutationsByDomain(workspaceId: string): Promise<Record<string, number>> {

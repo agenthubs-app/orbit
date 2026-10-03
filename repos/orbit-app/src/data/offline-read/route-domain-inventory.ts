@@ -75,6 +75,8 @@ function surfaceFrom([consumerFile, method, endpointTemplate]: SurfaceKey): Read
   const taskOutboxWrite = (consumerFile === 'src/data/sync/task-outbox-upload.ts' && domainId === 'tasks'
     || consumerFile === 'src/data/sync/schedule-outbox-upload.ts' && domainId === 'personal-schedule')
     && ['POST', 'PATCH', 'DELETE'].includes(method);
+  // Sprint 0135: the queued relationship message send (message plan M4).
+  const messageOutboxWrite = consumerFile === 'src/data/sync/message-outbox-upload.ts' && domainId === 'messages' && method === 'POST';
   const providerTodo = endpointTemplate.startsWith('/api/relationship-signals/email-calendar');
   const secret = providerTodo || endpointTemplate === '/api/account/status' || endpointTemplate.startsWith('/api/account/session/')
     || endpointTemplate.startsWith('/api/auth/') || endpointTemplate.startsWith('/api/devices/')
@@ -100,7 +102,7 @@ function surfaceFrom([consumerFile, method, endpointTemplate]: SurfaceKey): Read
     selector: providerTodo ? 'todo:external-provider-oauth' : `${domainId}:${method}:${endpointTemplate}`,
     schemaVersion: 1,
     readPersistence: secret ? 'online_only_secret' : 'durable_normalized',
-    mutationPolicy: taskOutboxWrite ? 'offline_queue' : 'online_only',
+    mutationPolicy: taskOutboxWrite || messageOutboxWrite ? 'offline_queue' : 'online_only',
     binaryPolicy: secret ? 'never_local' : binary ? 'on_demand_encrypted' : 'metadata_only',
   };
 }
@@ -123,6 +125,7 @@ const surfaceKeys: readonly SurfaceKey[] = [
   ["src/data/sync/schedule-outbox-upload.ts","POST","/api/schedule-items"],
   ["src/data/sync/schedule-outbox-upload.ts","PATCH","/api/schedule-items/:id"],
   ["src/data/sync/schedule-outbox-upload.ts","DELETE","/api/schedule-items/:id"],
+  ["src/data/sync/message-outbox-upload.ts","POST","/api/relationship-communication/conversations/:id/messages"],
   ["src/api/browser-auth.ts","GET","/api/auth/csrf"],
   ["src/api/browser-auth.ts","POST","/api/auth/callback/credentials"],
   ["src/api/auth-session.ts","POST","/api/auth/register"],

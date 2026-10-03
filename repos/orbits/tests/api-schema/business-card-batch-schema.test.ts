@@ -29,8 +29,8 @@ function isApprovedBatchSchemaTestUrl(value: string): boolean {
       && url.port === "5432"
       && url.username === "xzhao"
       && url.password === ""
-      // The dedicated local event test databases (0137 ×2, 0133); the test works in its own random schema.
-      && ["/orbit_0137_event_v2_test", "/orbit_0137_event_main_test", "/orbit_0133_event_test"].includes(url.pathname)
+      // The dedicated local event test databases (0137 ×2, 0133, 0135); the test works in its own random schema.
+      && ["/orbit_0137_event_v2_test", "/orbit_0137_event_main_test", "/orbit_0133_event_test", "/orbit_0135_test"].includes(url.pathname)
       && url.search === ""
       && url.hash === "";
   } catch {

@@ -2,10 +2,10 @@
 // Local regression stack (Sprint 0127): the port-3100 production server plus the
 // background workers that turn event actions into contacts and notifications.
 //
-//   node scripts/local-stack.mjs start [--build]   # or: npm run local:stack -- start [--build]
-//   node scripts/local-stack.mjs start --port 3300  # a second, parallel stack (state is per checkout)
-//   node scripts/local-stack.mjs status
-//   node scripts/local-stack.mjs stop
+//   node scripts/local-stack.mjs start [--build] [--no-paid-ai] [--port 3200]   # or: npm run local:stack -- start [--build]
+//   node scripts/local-stack.mjs status [--port 3200]
+//   node scripts/local-stack.mjs stop [--port 3200]
+// --port (Sprint 0135) lets two worktrees run their own stacks side by side; the default stays 3100.
 //
 // Guarantees:
 // - Every process gets ORBIT_DATABASE_TARGET=local and all database URLs pinned to
@@ -38,13 +38,13 @@ export function describeProviderKeys(env) {
   return PAID_PROVIDER_KEYS.map((key) => `${key}=${env[key] ? "set" : "empty"}`).join(" ");
 }
 
-/** `--port N` / `--port=N` (default 3100): another worktree's stack can run beside this one. Never 3000. */
-export function parsePort(flags) {
+/** `--port <n>` / `--port=<n>` among the flags; 3100 without one. Port 3000 and anything outside 1024–65535 are refused. */
+export function parseStackPort(flags) {
   const index = flags.findIndex((flag) => flag === "--port" || flag.startsWith("--port="));
   if (index < 0) return STACK_PORT;
-  const raw = flags[index].startsWith("--port=") ? flags[index].slice("--port=".length) : flags[index + 1];
+  const raw = flags[index] === "--port" ? flags[index + 1] : flags[index].slice("--port=".length);
   const port = Number(raw);
-  if (!/^\d+$/.test(raw ?? "") || !Number.isInteger(port) || port < 1024 || port > 65535) throw new Error("--port needs a number between 1024 and 65535.");
+  if (!raw || !Number.isInteger(port) || port < 1024 || port > 65535) throw new Error(`Invalid --port value: ${raw ?? "(missing)"}.`);
   if (FORBIDDEN_PORTS.has(port)) throw new Error("The local stack never uses port 3000.");
   return port;
 }
@@ -60,6 +60,7 @@ export function servicesFor(port) {
   { name: "notification-delivery-worker", role: "worker", marker: "run-notification-delivery-worker", args: ["node_modules/.bin/tsx", "scripts/run-notification-delivery-worker.ts"] },
   ];
 }
+
 export const SERVICES = servicesFor(STACK_PORT);
 
 export function isLocalDatabaseUrl(value) {
@@ -91,7 +92,7 @@ export function readEnvFiles(root = ROOT) {
  * Child environments. Throws before anything starts if the database is not local.
  * @param {Record<string, string | undefined>} processEnv
  * @param {Record<string, string | undefined>} files
- * @param {{ noPaidAi?: boolean, port?: number }} [options] noPaidAi also blanks the web server's provider keys (QA runs).
+ * @param {{ noPaidAi?: boolean, port?: number }} [options] noPaidAi also blanks the web server's provider keys (QA runs); port is the web server's port (default 3100).
  * @returns {{ server: Record<string, string | undefined>, worker: Record<string, string | undefined> }}
  */
 export function buildStackEnv(processEnv = process.env, files = readEnvFiles(), options = {}) {
@@ -156,7 +157,7 @@ async function waitFor(check, timeoutMs, label) {
   throw new Error(`Timed out waiting for ${label}.`);
 }
 
-async function stop({ quiet = false } = {}) {
+async function stop({ quiet = false, port = STACK_PORT } = {}) {
   const state = readPids();
   if (!state?.services?.length) {
     if (!quiet) console.log("local-stack: nothing recorded as running.");
@@ -183,7 +184,6 @@ async function stop({ quiet = false } = {}) {
     }
   }
   fs.rmSync(PID_FILE, { force: true });
-  const port = state.port ?? STACK_PORT;
   if (await portInUse(port)) console.log(`local-stack: warning — port ${port} is still in use by another process.`);
   console.log("local-stack: stopped.");
 }
@@ -232,13 +232,13 @@ async function start({ build, noPaidAi, port = STACK_PORT }) {
     if (dead.length) throw new Error(`Exited early: ${dead.map((service) => `${service.name} (see ${service.log})`).join(", ")}`);
   } catch (error) {
     console.error(`local-stack: start failed — ${error instanceof Error ? error.message : error}. Stopping what was started.`);
-    await stop({ quiet: true });
+    await stop({ quiet: true, port });
     throw error;
   }
-  console.log(`local-stack: ready. Web http://127.0.0.1:${port} (ORBIT_DATABASE_TARGET=local); workers running. Stop with: node scripts/local-stack.mjs stop`);
+  console.log(`local-stack: ready. Web http://127.0.0.1:${port} (ORBIT_DATABASE_TARGET=local); workers running. Stop with: node scripts/local-stack.mjs stop${port === STACK_PORT ? "" : ` --port ${port}`}`);
 }
 
-async function status() {
+async function status({ port = STACK_PORT } = {}) {
   const state = readPids();
   if (!state?.services?.length) {
     console.log("local-stack: not running.");
@@ -249,17 +249,17 @@ async function status() {
     console.log(`${service.name.padEnd(30)} pid ${String(service.pid).padEnd(7)} ${running ? "running" : "stopped"}  ${service.log}`);
   }
   let healthy = false;
-  const port = state.port ?? STACK_PORT;
   try { healthy = (await fetch(`http://127.0.0.1:${port}/api/health`)).ok; } catch { healthy = false; }
   console.log(`health http://127.0.0.1:${port}/api/health: ${healthy ? "ok" : "unreachable"}`);
 }
 
 async function main(argv) {
   const [command, ...flags] = argv;
-  if (command === "start") return start({ build: flags.includes("--build"), noPaidAi: flags.includes("--no-paid-ai"), port: parsePort(flags) });
-  if (command === "stop") return stop();
-  if (command === "status") return status();
-  console.log("usage: node scripts/local-stack.mjs start [--build] [--no-paid-ai] [--port N] | status | stop");
+  const port = parseStackPort(flags);
+  if (command === "start") return start({ build: flags.includes("--build"), noPaidAi: flags.includes("--no-paid-ai"), port });
+  if (command === "stop") return stop({ port });
+  if (command === "status") return status({ port });
+  console.log("usage: node scripts/local-stack.mjs start [--build] [--no-paid-ai] [--port 3200] | status [--port N] | stop [--port N]");
   process.exitCode = command ? 1 : 0;
 }
 
