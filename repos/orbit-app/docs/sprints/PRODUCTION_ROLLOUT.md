@@ -44,6 +44,7 @@
 | 0133 待办断网写 | 无迁移；部署 orbits（删除接口多接受可选字段 `expectedUpdatedAt`），再发布 App | 旧 App 不受影响 |
 | 0135 消息断网发送 | 无迁移；① 先部署 orbits（消息发送多接受可选字段 `retireDraftThrough`）；② 冒烟：同一 requestId 发两次返回同一条，撤销后用原 requestId 重放返回原消息，用新 requestId 返回 409；③ 发布 App | 回滚：重新部署旧代码；手机上已排队的消息会等到能上传时再发 |
 | 0139 通知入队整表锁 | 无数据库步骤，部署即可；观察 discovery worker 日志不再出现 40001 | — |
+| 0140 添加联系人入口 | 无迁移；① 部署 orbits（手动添加的关系备注改为可选，带备注的请求行为不变）；② **发布新原生包**（新增 `expo-image-manipulator`，需 pod install 后重新构建）；③ 实体 iPhone 补验：大图拍摄、正反面回读、OCR 复核 | 旧服务端上，App 只填姓名时会提示补写备注（兜底）。已知问题：没填公司时联系人公司写成「Unknown organization」（原有默认值） |
 
 ## 后续 Sprint 预告（合并后在上表补充具体命令）
 
