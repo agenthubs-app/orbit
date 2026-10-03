@@ -74,6 +74,7 @@ import {
   type TaskInteractionView
 } from "../../view-models/conversations";
 import { noteSourceFromParams } from "../../view-models/note-suggestions";
+import { pendingWriteItems, usePendingWriteCounts } from "../../hooks/usePendingWriteCounts";
 
 function firstParam(value: string | string[] | undefined): string {
   if (Array.isArray(value)) {
@@ -179,10 +180,12 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
   const locale = useOrbitLocale();
   const auth = useOrbitAuthSession();
   const noteWriteStatus = useNotesWriteStatus(auth.actorId ?? "");
+  // Sprint 0136: every kind still on the device (notes, tasks, schedule, unsent messages), by kind, counts only.
+  const pendingCounts = usePendingWriteCounts(Boolean(auth.signedIn && auth.actorId));
   const pendingNoteChanges = auth.signedIn && auth.actorId && !noteWriteStatus.offline
     && (noteWriteStatus.syncLabelKey === null || noteWriteStatus.syncLabelKey === "sync.fresh")
-    ? noteWriteStatus.queuedCount
-    : 0;
+    ? pendingWriteItems(pendingCounts, locale.t)
+    : "";
   const { colors, styles } = useStyles();
   const insets = useSafeAreaInsets();
   const viewport = useMobileViewport();
@@ -726,7 +729,7 @@ export function AiConversationScreen({ scopeKey, isScopeCurrent = () => true, cl
           saving={saving}
           writingBlocked={!!pendingSave || saving || taskInteractionBusy || conversationOffline}
           sendLabelSuffix={conversationOffline ? locale.t("sync.needsNetwork") : undefined}
-          pendingNoteChanges={conversationOffline ? 0 : pendingNoteChanges}
+          pendingNoteChanges={conversationOffline ? "" : pendingNoteChanges}
           retrySendLabel={locale.t(failedRequest?.reliable && ["OUTCOME_UNKNOWN", "pending", "outcome_unknown"].includes(sendCode ?? "") ? "aiConversation.checkResult" : "aiConversation.regenerate")}
           onRetrySend={() => { if (failedRequest) void recoverRequest(failedRequest); }}
           onEditQuestion={() => { if (failedRequest && owns()) { changeDraft(failedRequest.message); setSendError(null); setSendCode(null); } }}
@@ -811,7 +814,8 @@ function ConversationThread({
   writingBlocked: boolean;
   /** Sprint 0118: "needs a connection" while the conversation shows its offline device copy. */
   sendLabelSuffix?: string | undefined;
-  pendingNoteChanges: number;
+  /** Sprint 0136: the pending items phrase (empty when nothing waits). */
+  pendingNoteChanges: string;
   onRetrySend: () => void;
   retrySendLabel: string;
   onEditQuestion: () => void;
@@ -1046,7 +1050,7 @@ function ConversationThread({
       {saveNotice ? <Text accessibilityLiveRegion="polite" style={[styles.errorText, { marginHorizontal: layout.pageInset }]}>{saveNotice}</Text> : null}
       <View testID="conversation-composer" style={styles.composerPanel}>
         {sendLabelSuffix ? <Text style={styles.threadNextAction}>{`${locale.t("aiConversation.sendMessage")} · ${sendLabelSuffix}`}</Text> : null}
-        {pendingNoteChanges > 0 ? <Text style={styles.pendingNoteChanges}>{locale.t("aiConversation.pendingNoteChanges", { count: pendingNoteChanges })}</Text> : null}
+        {pendingNoteChanges ? <Text style={styles.pendingNoteChanges}>{locale.t("aiConversation.pendingChanges", { items: pendingNoteChanges })}</Text> : null}
         {selectedReferences.length > 0 ? <View style={styles.referenceRow}>{selectedReferences.map(reference => (
           <ContactReferenceChip key={`${reference.type}:${reference.id}`} id={reference.id} knownName={referenceNames[reference.id]} scopeKey={scopeKey}
             onRemove={() => onRemoveReference(reference)} style={styles.referenceChip} textStyle={styles.referenceChipText} />

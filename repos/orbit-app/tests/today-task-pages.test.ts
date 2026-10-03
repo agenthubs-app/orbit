@@ -257,3 +257,31 @@ test("AI summary rejects malformed signals, counts, and union members instead of
   assert.equal(todaySummaryToHomeView({ ...payload, items: [{ kind: "task", task: { id: "x" } }] }, date, zone, now, "en"), null);
   assert.deepEqual(todaySummaryQuestions({ ...payload, questionSignals: { urgentTask: false, relationshipTask: true, preparation: false } }, "en").map(question => question.kind), ["followup", "discovery"]);
 });
+
+test("Today offline shows a server task this phone reopened (it was completed, so not in today's copy), and counts it (0133 finding)", async () => {
+  const base = todayTaskPageToView(todayPayload(page([card("task:kept")])), actorId, date, now, zone, "en");
+  assert.ok(base);
+  const reopenedServerTask: TaskItemContract = { id: "task:reopened", accountId: actorId, ownerUserId: actorId, title: "Call the bank", status: "completed", category: "personal", priority: "normal", source: "manual", createdAt: now.toISOString(), updatedAt: now.toISOString(), plannedDate: date };
+  const otherDay: TaskItemContract = { ...reopenedServerTask, id: "task:next-week", title: "Next week", plannedDate: "2026-10-03" };
+  const reopen = (id: string) => ({ actorId, workspaceId: "workspace-a", domainId: "tasks", mutationId: `reopen-${id}`, kind: "task", id, operation: "reopen", state: "queued", patch: {},
+    requestJson: JSON.stringify({ action: "reopen", idempotencyKey: `reopen-${id}` }), baseRevision: "r1", createdAt: now.toISOString(), retryCount: 0, nextRetryAt: null, lastErrorCode: null, serverSnapshot: null });
+  const result = overlayTodayTaskPageView(base, [reopenedServerTask, otherDay], [reopen("task:reopened"), reopen("task:next-week")] as LocalSyncQueuedMutation[], actorId, date, now, zone, "en");
+  assert.ok(result);
+  assert.deepEqual(result.tasks.map(task => task.id).sort(), ["task:kept", "task:reopened"], "a reopened task outside today's window stays off the Today list");
+  assert.equal(result.tasks.find(task => task.id === "task:reopened")?.localMutationState, "queued");
+  assert.equal(result.totalTaskCount, base.totalTaskCount + 1);
+});
+
+test("AI home Today block offline without a copy counts today's open tasks from the device mirror and this phone's queue instead of 0", async () => {
+  const { deviceTodayTaskSummaryView } = await import("../src/view-models/today-task-pages");
+  const task = (id: string, overrides: Partial<TaskItemContract> = {}): TaskItemContract => ({ id, accountId: actorId, ownerUserId: actorId, title: id, status: "open", category: "personal", priority: "normal", source: "manual", createdAt: now.toISOString(), updatedAt: now.toISOString(), plannedDate: date, ...overrides });
+  const canonical = [task("today:a"), (({ plannedDate: _planned, ...rest }) => rest)(task("today:b", { dueAt: "2026-09-26T05:00:00.000Z" })) as TaskItemContract, task("later", { plannedDate: "2026-10-01" }), task("done", { status: "completed" }), task("someone-else", { ownerUserId: "account:other" })];
+  const queued = [{ actorId, workspaceId: "workspace-a", domainId: "tasks", mutationId: "c1", kind: "task", id: "local:new", operation: "create", state: "queued", patch: { category: "personal", title: "New", plannedDate: date },
+    requestJson: JSON.stringify({ idempotencyKey: "c1", category: "personal", title: "New", plannedDate: date }), baseRevision: null, createdAt: now.toISOString(), retryCount: 0, nextRetryAt: null, lastErrorCode: null, serverSnapshot: null }] as LocalSyncQueuedMutation[];
+  const view = deviceTodayTaskSummaryView(canonical, queued, actorId, date, now, zone, "en");
+  assert.ok(view);
+  assert.equal(view.openTaskCount, 3, "two mirrored tasks in today's window plus the offline-created one");
+  assert.equal(view.items.length, 3);
+  assert.equal(view.suggestionCount, 0);
+  assert.ok(view.items.every(item => item.kind === "task"));
+});

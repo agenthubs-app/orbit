@@ -167,6 +167,37 @@ test("matrix · server rejection: a refused note create keeps its content and fa
   assertExactlyOnce(w.host, A, keys.filter(key => key !== "w-note-create" && key !== "w-schedule-create"));
   assert.equal([...w.host.account(A).notes.values()].some(note => note.title === "Three things"), false);
   assert.equal(w.host.snapshot(B), w.bBefore);
+
+  // 「重试」 on the note: it goes back with the schedule that waited on it; same keys, applied once each.
+  w.host.rejectKeys.delete("w-note-create");
+  await app.client.session.retryOfflineWrite!("note", "w-note-create");
+  assert.deepEqual((await app.client.queue()).map(row => [row.mutationId, row.state]).sort(), [["w-note-create", "queued"], ["w-schedule-create", "queued"]]);
+  assert.equal((await app.client.sync())?.error, null);
+  assert.deepEqual(await app.client.queue(), []);
+  assertExactlyOnce(w.host, A, keys);
+  assertServerHasAllWrites(w.host);
+});
+
+test("「放弃」 removes a refused write and the edits queued on top of it; nothing reaches the server; a write that is not refused cannot be discarded this way", async t => {
+  const w = world(t);
+  const app = await onlineApp(w);
+  assert.equal((await app.client.sync())?.error, null);
+  w.host.offline = true;
+  const s = app.client.session;
+  const localTask = uuid(5);
+  await s.enqueueOfflineTaskMutation(buildOfflineTaskMutation({ mutationId: "d-create", entityId: localTask, operation: "create", baseRevision: null,
+    requestBody: { title: "x", category: "personal", idempotencyKey: "d-create" }, createdAt: at(1) }));
+  await s.enqueueOfflineTaskMutation(buildOfflineTaskMutation({ mutationId: "d-complete", entityId: localTask, operation: "complete", baseRevision: null,
+    requestBody: { action: "complete", idempotencyKey: "d-complete" }, createdAt: at(2) }));
+  await assert.rejects(s.discardOfflineWrite!("task", "d-create"), /only a refused write/u);
+  w.host.offline = false;
+  w.host.rejectKeys.set("d-create", 400);
+  assert.equal((await app.client.sync())?.error, null);
+  assert.deepEqual((await app.client.queue()).map(row => [row.mutationId, row.state, row.errorCode]), [["d-create", "failed", "INVALID_REQUEST"], ["d-complete", "failed", "DEPENDENCY_FAILED"]]);
+  assert.equal(await s.discardOfflineWrite!("task", "d-create"), 2);
+  assert.deepEqual(await app.client.queue(), []);
+  assert.equal((await app.client.sync())?.error, null);
+  assert.equal(w.host.applied.size, 0);
 });
 
 test("matrix · 5xx and timeouts are retried inside the round; nothing is dropped or doubled", async t => {

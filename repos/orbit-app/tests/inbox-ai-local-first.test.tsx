@@ -59,7 +59,10 @@ const session = { isCurrent: () => true,
   async openAiSession(id) { state.opened.push(id); return { opened: [id], evicted: [], added: false }; },
   async readAiSessionCards(id) { return state.cards ?? null; },
   async saveAiSessionCards(id, cards) { state.savedCards.push(id); },
-  async readOutboxOverlay(domainId) { return { queuedMutations: domainId === "note" ? Array.from({ length: state.pendingNoteChanges }, (_, index) => ({ mutationId: "note-mutation:" + index, requestJson: JSON.stringify({ body: state.privateNoteBody ?? "private fixture note" }) })) : [] }; },
+  async readOutboxOverlay(domainId) {
+    const counts = { note: state.pendingNoteChanges, task: state.pendingTasks ?? 0, personal_schedule: state.pendingSchedule ?? 0, relationship_message: state.pendingMessages ?? 0 };
+    return { queuedMutations: Array.from({ length: counts[domainId] ?? 0 }, (_, index) => ({ mutationId: domainId + "-mutation:" + index, requestJson: JSON.stringify({ body: state.privateNoteBody ?? "private fixture note" }) })) };
+  },
 };
 // Stable per kind, like the real hook (its refresh and currentSession are memoized).
 const refreshers = {};
@@ -235,6 +238,15 @@ test("AI conversation online: pending note changes show only a count; offline an
   const empty = await open(t, { screen: "conversation", params: { id: "s1", source: "session" }, pendingNoteChanges: 0 });
   await empty.getByText("服务器上的最新回答").waitFor();
   assert.equal(await empty.getByText(/还没同步/).count(), 0);
+});
+
+test("AI conversation online: the pending line counts every kind still on the phone, by kind, including unsent messages (0136)", async (t) => {
+  const page = await open(t, { screen: "conversation", params: { id: "s1", source: "session" }, pendingNoteChanges: 2, pendingTasks: 1, pendingSchedule: 3, pendingMessages: 2 });
+  await page.getByText("服务器上的最新回答").waitFor();
+  await page.getByText("有 2 项笔记修改、1 项待办修改、3 项日程修改、2 条待发送消息还没同步，AI 暂时看不到", { exact: true }).waitFor();
+  const messagesOnly = await open(t, { screen: "conversation", params: { id: "s1", source: "session" }, pendingNoteChanges: 0, pendingMessages: 1 });
+  await messagesOnly.getByText("服务器上的最新回答").waitFor();
+  await messagesOnly.getByText("有 1 条待发送消息还没同步，AI 暂时看不到", { exact: true }).waitFor();
 });
 
 test("AI conversation online: the server page replaces the device copy and its cards are kept for offline", async (t) => {

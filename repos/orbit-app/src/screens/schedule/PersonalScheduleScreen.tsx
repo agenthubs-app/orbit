@@ -134,7 +134,7 @@ function PersonalScheduleEditor({ id, actorId, ready, scopeKey, focusTime }: { i
   const exit = () => { if (router.canGoBack()) router.back(); else router.replace((id ? `/schedule/personal/${encodeURIComponent(id)}` : "/schedule") as Href); };
   const cancel = () => { if (saving) return; if (clean) exit(); else setConfirmExit(true); };
   return <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "height" : undefined} style={styles.screen}><AppScreen onBack={cancel} backLabel={locale.t("personal53.cancel")} backAccessibilityLabel={locale.t("personal53.cancel")} title={locale.t(id ? "schedule.personalTitle" : "schedule.newPersonalTitle")} headerActions={<Pressable accessibilityRole="button" accessibilityLabel={locale.t("personal53.save")} disabled={saving || stale || confirmExit || writeBlocked} onPress={() => void save()} style={styles.secondary}><Text style={styles.headerSave}>{locale.t("personal53.save")}</Text></Pressable>} refreshControl={<RefreshControl refreshing={loading} onRefresh={source.refresh} />}>
-    {writeStatus.offline ? <OfflineNotice lastSyncedAt={writeStatus.lastSyncedAt} /> : null}
+    {writeStatus.offline ? <OfflineNotice lastSyncedAt={writeStatus.lastSyncedAt} queues="schedule" /> : null}
     {repeatBlocked ? <Text accessibilityRole="alert" style={styles.hint}>{locale.t("schedule.repeatNeedsNetwork")}</Text> : null}
     {loading && !baseline ? <LoadingState /> : null}
     {editZone !== timeZone ? <Text accessibilityRole="alert" style={styles.hint}>{locale.t("schedule.draftZone", { timeZone: editZone })}</Text> : null}

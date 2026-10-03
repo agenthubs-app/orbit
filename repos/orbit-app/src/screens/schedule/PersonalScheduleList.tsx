@@ -27,7 +27,7 @@ export function PersonalScheduleList() {
   const createBlocked = source.offline && !source.outbox;
   return <View style={styles.section}>
     <View style={styles.heading}><Text accessibilityRole="header" style={styles.title}>{locale.t("schedule.personalTitle")}</Text><Pressable accessibilityRole="button" accessibilityLabel={createBlocked ? `${locale.t("schedule.newPersonal")}，${locale.t("sync.needsNetwork")}` : locale.t("schedule.newPersonal")} accessibilityState={{ disabled: createBlocked }} disabled={createBlocked} onPress={() => router.push("/schedule/personal/new" as Href)} style={styles.button}><Text style={[styles.link, createBlocked && styles.disabled]}>{locale.t(createBlocked ? "sync.needsNetwork" : "schedule.newPersonal")}</Text></Pressable></View>
-    {source.offline ? <OfflineNotice lastSyncedAt={source.lastSyncedAt} /> : null}
+    {source.offline ? <OfflineNotice lastSyncedAt={source.lastSyncedAt} queues="schedule" /> : null}
     {source.loading ? <LoadingState /> : null}
     {source.failed ? <ErrorState title={locale.t("schedule.personalLoadFailure")} message={locale.t("schedule.personalLoadFailureBody")} /> : null}
     <Pressable accessibilityRole="button" onPress={refresh} style={styles.button}><Text style={styles.link}>{locale.t("schedule.refreshPersonal")}</Text></Pressable>

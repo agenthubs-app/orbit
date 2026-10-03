@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { OFFLINE_BANNER, fixtureValue, requestsOf, startOfflinePageHarness } from "./helpers/offline-page-harness";
+import { OFFLINE_BANNER, TASKS_OFFLINE_BANNER, fixtureValue, requestsOf, startOfflinePageHarness } from "./helpers/offline-page-harness";
 
 // Sprint 0131: Today, the task list with its relationship follow-ups and
 // suggestions, the task detail and a relationship's next step read the device
@@ -110,7 +110,7 @@ test("task detail on the phone offline: the actor's own work task completes, can
   const enqueued = (page: Awaited<ReturnType<typeof open>>) => fixtureValue<Array<{ operation: string; id: string; requestJson: string }>>(page, "enqueued");
 
   const page = await open();
-  await page.getByText(OFFLINE_BANNER).waitFor();
+  await page.getByText(TASKS_OFFLINE_BANNER).waitFor();
   assert.equal(await page.getByLabel("待办标题").isEditable(), true, "own work task is editable offline");
   const complete = page.getByRole("button", { name: "标记完成", exact: true });
   assert.equal(await complete.isDisabled(), false, "the dock's complete button works offline for an own task");
@@ -119,7 +119,7 @@ test("task detail on the phone offline: the actor's own work task completes, can
   assert.deepEqual((await enqueued(page)).map(({ operation, id }) => ({ operation, id })), [{ operation: "complete", id: "t7" }]);
 
   const cancelPage = await open();
-  await cancelPage.getByText(OFFLINE_BANNER).waitFor();
+  await cancelPage.getByText(TASKS_OFFLINE_BANNER).waitFor();
   await cancelPage.getByRole("button", { name: "更多待办操作" }).first().dispatchEvent("click");
   await cancelPage.getByRole("button", { name: "取消待办", exact: true }).dispatchEvent("click");
   await cancelPage.waitForFunction(() => ((window as any).fixture.enqueued ?? []).length === 1);
@@ -128,7 +128,7 @@ test("task detail on the phone offline: the actor's own work task completes, can
   assert.deepEqual(Object.keys(JSON.parse(cancel!.requestJson)).sort(), ["action", "idempotencyKey"], "status operations carry no version (D5)");
 
   const deletePage = await open();
-  await deletePage.getByText(OFFLINE_BANNER).waitFor();
+  await deletePage.getByText(TASKS_OFFLINE_BANNER).waitFor();
   await deletePage.getByRole("button", { name: "更多待办操作" }).first().dispatchEvent("click");
   await deletePage.getByRole("button", { name: "删除待办", exact: true }).dispatchEvent("click");
   await deletePage.waitForFunction(() => ((window as any).fixture.enqueued ?? []).length === 1);
@@ -144,7 +144,7 @@ test("task detail offline shows its own queued change while other tasks also hav
   const queuedOther = { domainId: "tasks", mutationId: "m-other", kind: "task", id: "t8", operation: "complete", patch: {}, requestJson: JSON.stringify({ action: "complete", idempotencyKey: "m-other" }),
     baseRevision: "1", createdAt: "2026-09-28T02:00:00.000Z", retryCount: 0, nextRetryAt: null, lastErrorCode: null, actorId: A, workspaceId: "workspace:one", state: "queued", attemptCount: 0, firstAttemptAt: null, serverSnapshot: null, dependsOn: null };
   const page = await harness.open(t, { screen: "detail", platform: "ios", taskOutbox: true, online: false, syncStatus: "stale", params: { id: "t7" }, records: { task: [work, other] }, queuedTasks: [queuedOther] });
-  await page.getByText(OFFLINE_BANNER).waitFor();
+  await page.getByText(TASKS_OFFLINE_BANNER).waitFor();
   await page.getByRole("button", { name: "标记完成", exact: true }).dispatchEvent("click");
   await page.waitForFunction(() => ((window as any).fixture.enqueued ?? []).length === 1);
   await page.getByText("尚未同步", { exact: true }).waitFor();
@@ -154,7 +154,7 @@ test("task detail offline shows its own queued change while other tasks also hav
 test("the task list offline labels only follow-ups as needing the network; an unchanged own task is not called unsynced (0133)", async (t) => {
   const page = await harness.open(t, { screen: "tasks", platform: "ios", taskOutbox: true, online: false, syncStatus: "stale",
     records: { task: [task("t7", "整理路演材料", { category: "work" }), task("t9", "回访佐藤")], inbox_notification: [] } });
-  await page.getByText(OFFLINE_BANNER).first().waitFor();
+  await page.getByText(TASKS_OFFLINE_BANNER).first().waitFor();
   const own = page.getByRole("checkbox", { name: "完成：整理路演材料", exact: true });
   await own.waitFor();
   assert.equal(await own.isDisabled(), false);

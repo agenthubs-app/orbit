@@ -155,6 +155,14 @@ export interface SyncCoordinatorSession {
   enqueueOfflineMessageMutation(mutation: OfflineMessageMutationInput): Promise<void>;
   /** Sprint 0135: put an unsent message back in the queue (same request id, so the server stores it once). */
   retryOfflineMessage(mutationId: string): Promise<void>;
+  /**
+   * Sprint 0136 (design step 7, 「未能保存 · 重试 / 放弃」): a note, personal task or
+   * personal schedule write the server refused goes back into the queue, with the
+   * writes that failed only because they waited on it. Same frozen request and key.
+   */
+  retryOfflineWrite?(kind: OfflineWriteKind, mutationId: string): Promise<void>;
+  /** Sprint 0136: the user gives up a refused write; the queued writes that depend on it go with it. Returns the rows removed. */
+  discardOfflineWrite?(kind: OfflineWriteKind, mutationId: string): Promise<number>;
   /** Sprint 0135: the user discards unsent messages; returns how many rows were removed. */
   discardOfflineMessages(mutationIds: readonly string[]): Promise<number>;
   /** Sprint 0132: resolve only a conflict row inside the currently accepted notes lease. */
@@ -176,6 +184,10 @@ export interface SyncCoordinatorSession {
     replacement?: OfflineScheduleMutationInput;
   }): Promise<void>;
 }
+
+/** Sprint 0136: the kinds whose refused writes the user can retry or discard from their pages. */
+export type OfflineWriteKind = "note" | "task" | "personal_schedule";
+const OFFLINE_WRITE_DOMAINS: Record<OfflineWriteKind, string> = { note: "notes", task: "tasks", personal_schedule: "personal-schedule" };
 
 export type SyncScopeChange = { type: "outbox"; kind: SyncChangeKind | null } | { type: "synced" };
 
@@ -1017,6 +1029,57 @@ export function createSyncCoordinator(input: {
           await repository.markOutboxMutationFailure({ mutationId, state: "queued", nextRetryAt: null, errorCode: "USER_RETRY" });
         });
         bound.onOutboxQueued?.();
+      },
+      async retryOfflineWrite(kind: OfflineWriteKind, mutationId: string): Promise<void> {
+        await bound.ready;
+        const readScope = readScopeFor(bound, kind);
+        if (!isCurrent(bound) || !readScope || !OFFLINE_WRITE_DOMAINS[kind]) throw new TypeError("retry is outside the active lease");
+        // A storage error inside the operation reads as "mirror unavailable"; a refusal is returned, then thrown here.
+        const retried = await withRepository(bound, async repository => {
+          const rows = await repository.listQueuedMutations({ workspaceId: readScope.workspaceId });
+          const row = rows.find(item => item.mutationId === mutationId && item.domainId === OFFLINE_WRITE_DOMAINS[kind]);
+          if (!row || row.state !== "failed") return false;
+          // The row itself, then writes that failed only because they waited on it: its depends_on chain,
+          // and (0134) a schedule that links the note this row creates.
+          const retry = new Set([row.mutationId]);
+          for (let grown = true; grown;) {
+            grown = false;
+            for (const item of rows) {
+              if (retry.has(item.mutationId) || item.state !== "failed") continue;
+              const waitedOnRetried = Boolean(item.dependsOn && retry.has(item.dependsOn) && item.lastErrorCode === "DEPENDENCY_FAILED");
+              const linksRetriedNote = row.operation === "create" && row.domainId === "notes" && item.lastErrorCode === "NOTE_DEPENDENCY_FAILED" &&
+                Boolean(item.requestJson?.includes(JSON.stringify(row.id)));
+              if (waitedOnRetried || linksRetriedNote) { retry.add(item.mutationId); grown = true; }
+            }
+          }
+          for (const id of retry) await repository.markOutboxMutationFailure({ mutationId: id, state: "queued", nextRetryAt: null, errorCode: "USER_RETRY" });
+          return true;
+        });
+        if (!retried) throw new TypeError("only a refused write can be retried");
+        emitChange(bound, { type: "outbox", kind: null });
+        bound.onOutboxQueued?.();
+      },
+      async discardOfflineWrite(kind: OfflineWriteKind, mutationId: string): Promise<number> {
+        await bound.ready;
+        const readScope = readScopeFor(bound, kind);
+        if (!isCurrent(bound) || !readScope || !OFFLINE_WRITE_DOMAINS[kind]) throw new TypeError("discard is outside the active lease");
+        const removed = await withRepository(bound, async repository => {
+          const domainId = OFFLINE_WRITE_DOMAINS[kind];
+          const rows = await repository.listQueuedMutations({ workspaceId: readScope.workspaceId, domainId });
+          const row = rows.find(item => item.mutationId === mutationId);
+          if (!row || row.state !== "failed") return null;
+          const discard = new Set([row.mutationId]);
+          for (let grown = true; grown;) {
+            grown = false;
+            for (const item of rows) {
+              if (!discard.has(item.mutationId) && item.dependsOn && discard.has(item.dependsOn)) { discard.add(item.mutationId); grown = true; }
+            }
+          }
+          return repository.discardOutboxMutations({ workspaceId: readScope.workspaceId, domainId, mutationIds: [...discard] });
+        });
+        if (removed === null) throw new TypeError("only a refused write can be discarded");
+        emitChange(bound, { type: "outbox", kind });
+        return removed;
       },
       async discardOfflineMessages(mutationIds: readonly string[]): Promise<number> {
         await bound.ready;
