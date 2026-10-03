@@ -86,7 +86,8 @@ test("web batch preparation reads a picker File through its blob URL and still r
     assert.match(observed.prepared.clientDigest, /^sha256:[0-9a-f]{64}$/u);
     assert.equal(Buffer.from(observed.reread).toString("base64"), PNG_BASE64);
     assert.equal(observed.remoteCode, "INVALID_URI");
-    assert.equal(observed.oversizedCode, "FILE_TOO_LARGE");
+    // Sprint 0140: oversized input is compressed first; unreadable bytes fail compression without being read into JS.
+    assert.equal(observed.oversizedCode, "COMPRESSION_FAILED");
     assert.equal(observed.oversizedReads, 0);
   } finally {
     await browser.close();

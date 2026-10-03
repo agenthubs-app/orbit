@@ -864,7 +864,7 @@ export function AiScreen({ scopeKey, isScopeCurrent = () => true }: { scopeKey?:
         onClose={() => setComposerMenuOpen(false)}
         onNewChat={startNewChat}
         onOpenDrawer={() => { setComposerMenuOpen(false); setDrawerOpen(true); }}
-        onScanCard={() => openCapability("/contacts/new" as Href)}
+        onScanCard={() => openCapability("/contacts/new/scan" as Href)}
         visible={composerMenuOpen}
       />
     </SafeAreaView>

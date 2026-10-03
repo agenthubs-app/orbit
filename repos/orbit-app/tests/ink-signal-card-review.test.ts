@@ -53,7 +53,7 @@ const client = {
     if (s.holdWrite) await new Promise(resolve => s.releaseWrite = resolve);
     if (s.writeFailure) return { success: false, status: 503, error: { code: "UNAVAILABLE", message: "暂时无法保存，请重试。" } };
     if (path.endsWith("/confirm") && s.screen !== "single") return { success: true, status: 200, data: { state: "duplicate_review", duplicateContactId: "duplicate:1" } };
-    if (path === "/api/contacts/business-card/confirm") return { success: true, status: 200, data: { state: "created", contact: { id: "contact:1", displayName: options.body.displayName } } };
+    if (path === "/api/contacts/business-card/confirm") return { success: true, status: 200, data: { state: "created", contactId: "contact:1", duplicateContactId: null, contactWriteExecuted: true, evidenceIds: [], confirmedAt: stamp } };
     return { success: true, status: 200, data: { draft: draft(), capture: { imageDigest: "sha256:" + "a".repeat(64) }, ocr: { reviewIssues: issues() } } };
   },
   async patch(path, options) { s.requests.push({ method: "PATCH", path, body: options.body }); return s.writeFailure ? { success: false, status: 503, error: { code: "UNAVAILABLE", message: "暂时无法保存，请重试。" } } : { success: true, status: 200, data: { reviewDraft: { ...draft(), ...options.body.reviewedFields } } }; }
@@ -75,17 +75,24 @@ export const useCameraPermissions = () => [{ granted: true }, async () => ({ gra
 export const CameraView = () => null;
 export const UIImagePickerPreferredAssetRepresentationMode = { Current: "current" };
 export const requestMediaLibraryPermissionsAsync = async () => ({ granted: !s.denied });
-export const requestCameraPermissionsAsync = requestMediaLibraryPermissionsAsync;
-export const launchImageLibraryAsync = async () => ({ canceled: Boolean(s.cancelPick), assets: [{ uri: "data:image/png;base64," + png + (s.pickVersion ? "#" + s.pickVersion : ""), base64: s.unreadableImage ? null : png, mimeType: "image/png", fileName: "名片.png", fileSize: 68 }] });
+export const requestCameraPermissionsAsync = async () => { (s.nativeCalls ??= []).push("camera-permission"); return { granted: !s.denied }; };
+// Sprint 0140: the scan page reads the picked browser File through its blob URL, like phoneweb.
+export const launchImageLibraryAsync = async () => {
+  (s.nativeCalls ??= []).push("picker");
+  if (s.cancelPick) return { canceled: true, assets: [] };
+  const bytes = s.unreadableImage ? new TextEncoder().encode("not an image") : Uint8Array.from(atob(png), c => c.charCodeAt(0));
+  const file = new globalThis.File([bytes], "名片.png", { type: "image/png" });
+  return { canceled: false, assets: [{ uri: URL.createObjectURL(file), file, mimeType: "image/png", fileName: "名片.png", fileSize: file.size }] };
+};
 export const launchCameraAsync = launchImageLibraryAsync;
 export const File = class {};
 export const CryptoDigestAlgorithm = { SHA256: "SHA-256" };
-export const digest = () => { throw Error("unexpected hashing"); };
+export const digest = () => { if (s.screen !== "single") throw Error("unexpected hashing"); return new Uint8Array(32).fill(7).buffer; };
 export const randomUUID = () => "key-1";
 `;
 
 test.before(async () => {
-  const result = await build({ stdin: { contents: `import React from "react"; import { createRoot } from "react-dom/client"; import { useFixture } from "fixture"; import { BusinessCardBatchScreen } from "./src/screens/contacts/BusinessCardBatchScreen"; import { BusinessCardIngestScreen } from "./src/screens/contacts/BusinessCardIngestScreen"; import { ContactAcquisitionScreen } from "./src/screens/contacts/ContactAcquisitionScreen"; function App() { const s = useFixture(); return s.screen === "single" ? <ContactAcquisitionScreen /> : s.screen === "legacy" ? <BusinessCardBatchScreen /> : <BusinessCardIngestScreen />; } createRoot(document.getElementById("root")).render(<App />);`, loader: "tsx", resolveDir: process.cwd() }, bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"], define: { "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" }, plugins: [{ name: "ink-card-boundaries", setup(plugin) {
+  const result = await build({ stdin: { contents: `import React from "react"; import { createRoot } from "react-dom/client"; import { useFixture } from "fixture"; import { BusinessCardBatchScreen } from "./src/screens/contacts/BusinessCardBatchScreen"; import { BusinessCardIngestScreen } from "./src/screens/contacts/BusinessCardIngestScreen"; import { BusinessCardScanScreen } from "./src/screens/contacts/BusinessCardScanScreen"; function App() { const s = useFixture(); return s.screen === "single" ? <BusinessCardScanScreen /> : s.screen === "legacy" ? <BusinessCardBatchScreen /> : <BusinessCardIngestScreen />; } createRoot(document.getElementById("root")).render(<App />);`, loader: "tsx", resolveDir: process.cwd() }, bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"], define: { "process.env.NODE_ENV": '"test"', "process.env": "{}", __DEV__: "false" }, plugins: [{ name: "ink-card-boundaries", setup(plugin) {
     plugin.onResolve({ filter: /^react-native$/ }, () => ({ path: "native", namespace: "ink-card" }));
     plugin.onResolve({ filter: /^(fixture|expo-router|expo-camera|expo-image-picker|expo-file-system|expo-crypto|@expo\/vector-icons|react-native-safe-area-context)$|\/(ApiBaseUrlProvider|AuthSessionProvider|OrbitLocaleContext|useApiResource|useOrbitApiClient)$/ }, () => ({ path: "fixture", namespace: "ink-card" }));
     plugin.onLoad({ filter: /.*/, namespace: "ink-card" }, args => ({ contents: args.path === "native" ? `
@@ -110,8 +117,8 @@ async function open(t: { after(fn: () => Promise<void>): void }, patch: Record<s
   await page.evaluate(patch => { (window as any).initialFixture = patch; }, patch);
   await page.addScriptTag({ content: script }); await page.getByRole("heading").first().waitFor(); await page.evaluate(() => document.fonts.ready);
   if (patch.screen === "single") {
-    await page.getByRole("button", { name: "选图片", exact: true }).click();
-    if (!patch.denied && !patch.cancelPick) { await page.getByRole("button", { name: "生成待确认候选", exact: true }).click(); await page.getByRole("button", { name: "写入联系人", exact: true }).waitFor(); }
+    await page.getByRole("button", { name: patch.camera ? "拍一张名片" : "从相册选择", exact: true }).click();
+    if (!patch.denied && !patch.cancelPick && !patch.unreadableImage) await page.getByRole("button", { name: "保存到人脉", exact: true }).waitFor();
   } else if (!patch.loading && !patch.readFailure && !["completed", "cancelled"].includes(String(patch.batchStatus))) {
     await page.getByText(/核对电话|电话可能有误/).first().waitFor();
   }
@@ -121,113 +128,95 @@ async function shot(page: Page, name: string) { if (process.env.APP_STYLE_SCREEN
 async function writes(page: Page) { return page.evaluate(() => (window as any).fixture.requests.filter((r: any) => r.method !== "GET")); }
 async function top(page: Page) { await page.evaluate(() => document.querySelectorAll("div").forEach(el => { if (el.scrollHeight > el.clientHeight && /auto|scroll/.test(getComputedStyle(el).overflowY)) el.scrollTop = 0; })); }
 
-test("single scan presents its own image and labelled open review before other acquisition work", async t => {
+// Sprint 0140: the single-card flow is its own page (「扫描名片」 → 「核对名片信息」).
+test("single scan presents its own image and labelled open review, and recognition alone writes nothing", async t => {
   const page = await open(t, { screen: "single" }); await top(page);
-  await page.getByRole("heading", { name: "名片导入", exact: true }).waitFor();
-  await page.getByRole("heading", { name: "识别结果", exact: true }).waitFor();
+  await page.getByRole("heading", { name: "核对名片信息", exact: true }).waitFor();
   const name = page.getByLabel("姓名", { exact: true });
   assert.equal(await name.inputValue(), "许妍");
-  assert.equal(await name.evaluate(el => getComputedStyle(el).borderTopWidth), "0px");
-  const image = page.locator('[role="img"][aria-label="待复核的名片图片"]'); await image.waitFor();
-  assert.equal((await image.locator("..").boundingBox())!.height, 104);
+  const image = page.locator('[role="img"][aria-label="名片照片"]'); await image.waitFor();
+  assert.equal(await image.evaluate(el => getComputedStyle(el.firstElementChild!).backgroundSize), "contain");
   assert.ok((await image.boundingBox())!.y < (await name.boundingBox())!.y);
-  assert.ok((await name.boundingBox())!.y < (await page.getByRole("button", { name: "生成待确认候选", exact: true }).boundingBox())!.y);
-  const primary = page.getByRole("button", { name: "写入联系人", exact: true });
-  assert.equal(await primary.isDisabled(), true); assert.ok((await primary.boundingBox())!.height >= 50);
-  assert.equal(await page.getByText(/4 \/ 5|字段确认|星野工作室/).count(), 0);
-  assert.equal((await writes(page)).length, 1, "recognition alone never writes a contact");
+  const primary = page.getByRole("button", { name: "保存到人脉", exact: true });
+  assert.ok((await primary.boundingBox())!.height >= 50);
+  assert.equal(await primary.evaluate(el => getComputedStyle(el).backgroundColor), "rgb(11, 18, 32)");
+  assert.equal(await page.getByText(/生成待确认候选|写入联系人|候选/u).count(), 0, "no internal candidate wording on the review");
+  const requests = await writes(page);
+  assert.equal(requests.length, 1, "recognition alone never writes a contact");
+  assert.equal(requests[0].path, "/api/contact-drafts/business-card/scan");
+  assert.equal(requests[0].body.imageSizeBytes, 68);
+  assert.equal(requests[0].body.mimeType, "image/png");
+  assert.equal(requests[0].body.imageBase64, "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aX1sAAAAASUVORK5CYII=");
   await shot(page, "single-normal");
 });
 
-test("single open fields retain risk consent, failed-save drafts and exact reviewed contact payload", async t => {
+test("single review requires risk consent, keeps edits after a failed save and sends the exact reviewed payload once", async t => {
   const page = await open(t, { screen: "single" });
-  const risk = page.getByRole("checkbox", { name: "电话可能有误，请对照名片核对。", exact: true });
-  const finalReview = page.getByRole("checkbox", { name: "我已核对所有字段，并决定将其收录进人脉。", exact: true });
-  const write = page.getByRole("button", { name: "写入联系人", exact: true });
-  await risk.click(); await finalReview.click(); assert.equal(await write.isEnabled(), true);
+  const save = page.getByRole("button", { name: "保存到人脉", exact: true });
+  await save.click();
+  await page.getByRole("alert").filter({ hasText: "请先勾选上面需要确认的地方。" }).waitFor();
+  assert.equal((await writes(page)).length, 1, "an unconfirmed risk blocks the write");
+  await page.getByRole("checkbox", { name: "电话可能有误，请对照名片核对。", exact: true }).click();
   await page.getByLabel("邮箱", { exact: true }).fill("correct@example.invalid");
-  assert.equal(await write.isDisabled(), true); assert.equal(await finalReview.isChecked(), false);
   await page.evaluate(() => { (window as any).fixture.writeFailure = true; });
-  await page.getByRole("button", { name: "保存复核字段", exact: true }).click();
-  await page.getByText("暂时无法保存，请重试。", { exact: true }).waitFor();
-  const feedback = page.getByRole("alert").filter({ hasText: "暂时无法保存，请重试。" });
-  await feedback.waitFor();
-  assert.ok((await feedback.boundingBox())!.y < (await page.getByRole("button", { name: "生成待确认候选", exact: true }).boundingBox())!.y, "review failures stay with the review instead of moving below the capture form");
+  await save.click();
+  await page.getByRole("alert").filter({ hasText: "暂时没能保存，联系人没有创建。请重试。" }).waitFor();
   assert.equal(await page.getByLabel("邮箱", { exact: true }).inputValue(), "correct@example.invalid");
   await shot(page, "single-save-failure");
-  await page.evaluate(() => { (window as any).fixture.writeFailure = false; });
-  await finalReview.click(); await write.click();
-  await page.getByText("联系人已收录", { exact: true }).waitFor();
-  const requests = await writes(page), written = requests.at(-1);
-  assert.equal(written.path, "/api/contacts/business-card/confirm");
+  await page.evaluate(() => { (window as any).fixture.writeFailure = false; (window as any).fixture.holdWrite = true; });
+  await save.click(); await page.getByRole("button", { name: "正在保存…", exact: true }).click({ force: true });
+  await page.evaluate(() => (window as any).fixture.releaseWrite());
+  await page.getByRole("heading", { name: "已保存到人脉", exact: true }).waitFor();
+  const confirms = (await writes(page)).filter((request: any) => request.path === "/api/contacts/business-card/confirm");
+  assert.equal(confirms.length, 2, "one failed attempt and one save; the double tap did not send a third");
+  const written = confirms.at(-1);
   assert.equal(written.body.confirmed, true); assert.equal(written.body.displayName, "许妍"); assert.equal(written.body.email, "correct@example.invalid");
+  await page.getByRole("button", { name: "打开联系人", exact: true }).click();
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.navigation.at(-1)), { pathname: "/contacts/[id]", params: { id: "contact:1" } });
 });
 
-test("single-card acquisition chrome follows language without rewriting the recognized candidate", async t => {
+test("single-card scan chrome follows language without rewriting the recognized values", async t => {
   const page = await open(t, { screen: "single" });
   await page.evaluate(() => (window as any).fixture.update({ language: "ja" }));
-  await page.getByRole("heading", { name: "名刺インポート", exact: true }).first().waitFor();
-  assert.equal(await page.getByRole("button", { name: "確認候補を生成", exact: true }).count(), 1);
+  await page.getByRole("heading", { name: "名刺の内容を確認", exact: true }).first().waitFor();
+  assert.equal(await page.getByRole("button", { name: "つながりに保存", exact: true }).count(), 1);
   assert.equal(await page.getByLabel("氏名", { exact: true }).inputValue(), "许妍");
-
   await page.evaluate(() => (window as any).fixture.update({ language: "en" }));
-  await page.getByRole("heading", { name: "Business card import", exact: true }).first().waitFor();
-  assert.equal(await page.getByRole("button", { name: "Generate review candidate", exact: true }).count(), 1);
+  await page.getByRole("heading", { name: "Check card details", exact: true }).first().waitFor();
+  assert.equal(await page.getByRole("button", { name: "Save to network", exact: true }).count(), 1);
   assert.equal(await page.getByLabel("Name", { exact: true }).inputValue(), "许妍");
+  await page.getByRole("button", { name: "Retake or choose again", exact: true }).click();
+  for (const text of ["Scan a card", "Choose how to add it", "Take a photo of a card", "Choose from photos"]) await page.getByText(text, { exact: true }).first().waitFor();
   assert.equal((await writes(page)).filter((request: any) => request.path === "/api/contacts/business-card/confirm").length, 0);
 });
 
-test("single review image belongs to the submitted scan and stale image failures cannot hide a rescan", async t => {
+for (const failure of ["permission", "read", "submit"]) test(`a second card ${failure} failure is reported on the choice page and writes no contact`, async t => {
   const page = await open(t, { screen: "single" });
-  const image = page.locator('[role="img"][aria-label="待复核的名片图片"]');
-  const original = await image.locator("img").getAttribute("src");
-  await page.evaluate(() => { const s = (window as any).fixture; s.pickVersion = "second"; s.oldImageError = s.imageErrors["待复核的名片图片"]; });
-  await page.getByRole("button", { name: "选图片", exact: true }).click();
-  assert.equal(await image.locator("img").getAttribute("src"), original, "picking a new image does not relabel the preceding OCR result");
-  await page.evaluate(() => (window as any).fixture.oldImageError());
-  await page.getByText("名片图片无法显示，请重新选择图片。", { exact: true }).waitFor();
-  assert.equal(await page.getByText("名片图片无法显示，请重新选择图片。", { exact: true }).getAttribute("aria-live"), "polite");
-  assert.equal(await image.count(), 0); await top(page); await shot(page, "single-image-unavailable");
-  await page.getByRole("button", { name: "生成待确认候选", exact: true }).click();
-  await image.waitFor(); assert.equal(await image.locator("img").getAttribute("src"), original + "#second");
-  await page.evaluate(() => (window as any).fixture.oldImageError());
-  assert.equal(await image.count(), 1);
-  assert.equal(await page.getByRole("button", { name: "写入联系人", exact: true }).isDisabled(), true);
-});
-
-for (const failure of ["permission", "read", "submit"]) test(`second card ${failure} failure stays with source controls, not the preceding review`, async t => {
-  const page = await open(t, { screen: "single" });
-  const image = page.locator('[role="img"][aria-label="待复核的名片图片"]');
-  const original = await image.locator("img").getAttribute("src");
+  await page.getByRole("button", { name: "重新拍摄或选择", exact: true }).click();
   await page.evaluate(failure => {
     const s = (window as any).fixture;
-    s.pickVersion = "second"; s.denied = failure === "permission";
-    s.unreadableImage = failure === "read"; s.writeFailure = failure === "submit";
+    s.denied = failure === "permission"; s.unreadableImage = failure === "read"; s.writeFailure = failure === "submit";
   }, failure);
-  const picker = page.getByRole("button", { name: "选图片", exact: true });
-  const submit = page.getByRole("button", { name: "生成待确认候选", exact: true });
-  await picker.click();
-  if (failure === "submit") await submit.click();
-  const feedback = page.getByRole("alert"); await feedback.waitFor();
-  assert.equal(await feedback.count(), 1);
-  assert.ok((await feedback.boundingBox())!.y > (await picker.boundingBox())!.y, "new source failure must not be attached to the preceding review");
-  assert.ok((await feedback.boundingBox())!.y < (await submit.boundingBox())!.y);
-  assert.equal(await image.locator("img").getAttribute("src"), original);
-  assert.equal(await page.getByLabel("姓名", { exact: true }).inputValue(), "许妍");
+  await page.getByRole("button", { name: failure === "permission" ? "拍一张名片" : "从相册选择", exact: true }).click();
+  const message = failure === "permission" ? "没有相机权限，拍不了名片。可以在系统设置里允许，或从相册选择。" : failure === "read" ? "这张图片读取不了。请重拍或换一张。" : "名片暂时识别不了，没有保存任何内容。请重试或换一张。";
+  await page.getByRole("alert").filter({ hasText: message }).waitFor();
+  assert.equal(await page.getByRole("button", { name: "拍一张名片", exact: true }).isEnabled(), true);
+  assert.equal(await page.getByRole("button", { name: "保存到人脉", exact: true }).count(), 0);
+  const scans = (await writes(page)).filter((r: any) => r.path === "/api/contact-drafts/business-card/scan").length;
+  assert.equal(scans, failure === "submit" ? 2 : 1, "an unreadable or denied photo is never sent");
   assert.equal((await writes(page)).filter((r: any) => r.path === "/api/contacts/business-card/confirm").length, 0);
-  await feedback.scrollIntoViewIfNeeded(); await shot(page, "single-second-" + failure + "-failure");
+  await shot(page, "single-second-" + failure + "-failure");
 });
 
-test("single capture keeps the whole chosen image visible and permission/cancellation never submits", async t => {
-  const page = await open(t, { screen: "single" });
-  const chosen = page.locator('[aria-label="已选择的名片图片"]');
-  assert.equal(await chosen.evaluate(el => getComputedStyle(el.firstElementChild!).backgroundSize), "contain");
-  for (const patch of [{ denied: true }, { cancelPick: true }]) {
+test("denied camera or a cancelled picker never submits and asks for the camera only on that choice", async t => {
+  for (const patch of [{ denied: true, camera: true }, { cancelPick: true }, { cancelPick: true, camera: true }]) {
     const pending = await open(t, { screen: "single", ...patch });
-    if (patch.denied) await pending.getByRole("alert").filter({ hasText: "需要允许访问照片，才能选择名片图片。" }).waitFor();
+    if (patch.denied) await pending.getByRole("alert").filter({ hasText: "没有相机权限，拍不了名片。可以在系统设置里允许，或从相册选择。" }).waitFor();
+    else await pending.waitForFunction(() => (window as any).fixture.nativeCalls?.includes("picker"));
     assert.deepEqual(await writes(pending), []);
-    assert.equal(await pending.getByRole("button", { name: "写入联系人", exact: true }).count(), 0);
-    assert.equal(await pending.getByLabel("已选择的名片图片").count(), 0);
+    assert.deepEqual(await pending.evaluate(() => (window as any).fixture.nativeCalls), patch.denied ? ["camera-permission"] : patch.camera ? ["camera-permission", "picker"] : ["picker"]);
+    assert.equal(await pending.getByRole("button", { name: "保存到人脉", exact: true }).count(), 0);
+    assert.equal(await pending.getByText("选择一种方式", { exact: true }).count(), 1);
   }
 });
 
@@ -243,19 +232,19 @@ for (const screen of ["legacy", "ingest"]) for (const state of ["loading", "forb
   assert.deepEqual(await writes(page), []); await shot(page, screen + "-" + state);
 });
 
-for (const variant of [{ name: "narrow-large", width: 320, fontScale: 1.6 }, { name: "narrow-double", width: 320, fontScale: 2 }, { name: "wide-dark", width: 820, fontScale: 1, dark: true }]) test(`single review and remaining acquisition controls are reachable at ${variant.name}`, async t => {
+for (const variant of [{ name: "narrow-large", width: 320, fontScale: 1.6 }, { name: "narrow-double", width: 320, fontScale: 2 }, { name: "wide-dark", width: 820, fontScale: 1, dark: true }]) test(`single review and scan choices stay reachable without clipping at ${variant.name}`, async t => {
   const page = await open(t, { ...variant, screen: "single", long: true }); await top(page);
   await shot(page, "single-" + variant.name + "-top");
-  const overflow = await page.locator('[dir="auto"]').evaluateAll(elements => elements.filter(el => { const box = el.getBoundingClientRect(); return box.width && (box.x < -0.5 || box.right > innerWidth + 0.5 || !el.matches("input,textarea") && el.scrollWidth > el.clientWidth + 1); }).map(el => el.textContent));
-  assert.deepEqual(overflow, []);
-  if (variant.fontScale > 1.3) await page.waitForFunction(() => { const el = document.querySelector('[aria-label="公司"]'); return el?.tagName === "TEXTAREA" && el.scrollHeight <= el.clientHeight + 1 && el.scrollWidth <= el.clientWidth + 1; });
-  await page.getByLabel("电话", { exact: true }).scrollIntoViewIfNeeded(); await shot(page, "single-" + variant.name + "-fields");
-  await page.getByRole("button", { name: "写入联系人", exact: true }).scrollIntoViewIfNeeded(); await shot(page, "single-" + variant.name + "-review-actions");
-  for (const control of await page.getByRole("button").or(page.getByRole("checkbox")).or(page.getByRole("tab")).all()) { await control.scrollIntoViewIfNeeded(); const box = await control.boundingBox(); assert.ok(box && box.height >= 44 && box.x >= 0 && box.x + box.width <= variant.width && box.y >= 0 && box.y + box.height <= 845, await control.textContent() ?? "unnamed control"); }
-  await shot(page, "single-" + variant.name + "-bottom");
-  await page.getByRole("tab", { name: "手动", exact: true }).click();
-  await page.getByRole("heading", { name: "添加人脉", exact: true }).waitFor();
-  await page.getByPlaceholder("例如：王小雨", { exact: true }).waitFor();
+  const overflow = () => page.locator('[dir="auto"]').evaluateAll(elements => elements.filter(el => { const box = el.getBoundingClientRect(); return box.width && (box.x < -0.5 || box.right > innerWidth + 0.5 || !el.matches("input,textarea") && el.scrollWidth > el.clientWidth + 1); }).map(el => el.textContent));
+  assert.deepEqual(await overflow(), []);
+  const reachable = async () => { for (const control of await page.getByRole("button").or(page.getByRole("checkbox")).all()) { await control.scrollIntoViewIfNeeded(); const box = await control.boundingBox(); assert.ok(box && box.height >= 44 && box.x >= 0 && box.x + box.width <= variant.width && box.y >= 0 && box.y + box.height <= 845, await control.textContent() ?? "unnamed control"); } };
+  await reachable();
+  await page.getByRole("button", { name: "保存到人脉", exact: true }).scrollIntoViewIfNeeded(); await shot(page, "single-" + variant.name + "-review-actions");
+  await page.getByRole("button", { name: "重新拍摄或选择", exact: true }).click();
+  await page.getByRole("button", { name: "拍一张名片", exact: true }).waitFor();
+  assert.deepEqual(await overflow(), []);
+  await reachable();
+  await shot(page, "single-" + variant.name + "-choose");
 });
 
 for (const screen of ["legacy", "ingest"]) test(`${screen} review puts the actual image and open fields before batch management`, async t => {

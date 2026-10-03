@@ -19,8 +19,9 @@ const contactAcquisitionSource = readFileSync(
 // The old literal-height source assertion rejected shared tokens and minHeight.
 
 test("contact acquisition controls keep the 44 point touch baseline", () => {
+  // Sprint 0140: the source tabs became full-width entry rows (64 pt).
+  assert.match(contactAcquisitionSource, /entryRow: \{[^}]*minHeight: 64/u);
   for (const styleName of [
-    "modeButton",
     "primaryButton",
     "secondaryButton",
     "scannerCloseButton"

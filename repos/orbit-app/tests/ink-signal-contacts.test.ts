@@ -178,7 +178,7 @@ test("main contact controls preserve scan, manual, analysis, progress and librar
   }
   await press(p, "搜索选项");
   await press(p, "关系进展"); await press(p, "联系人库");
-  assert.deepEqual(await p.evaluate(() => (window as any).fixture.navigation), ["/contacts/new", "/contacts/new?mode=manual", "/contacts/dashboard", "/contacts/pipeline", "/contacts/list"]);
+  assert.deepEqual(await p.evaluate(() => (window as any).fixture.navigation), ["/contacts/new/scan", "/contacts/new/manual", "/contacts/dashboard", "/contacts/pipeline", "/contacts/list"]);
   await p.getByRole("button", { name: /林悦.*打开联系人详情/ }).click();
   assert.deepEqual(await p.evaluate(() => (window as any).fixture.navigation.at(-1)), { params: { id: "contact:/0" }, pathname: "/contacts/[id]" });
   assert.deepEqual(await writes(p), []);
@@ -294,7 +294,7 @@ test("real empty contacts use the two working source actions, not a fabricated d
   assert.equal(await p.getByTestId("contacts-main-count").innerText(), "0");
   assert.equal(await p.getByText("还没有人脉", { exact: true }).count(), 1);
   await press(p, "扫名片"); await press(p, "手动添加");
-  assert.deepEqual(await p.evaluate(() => (window as any).fixture.navigation), ["/contacts/new", "/contacts/new?mode=manual"]);
+  assert.deepEqual(await p.evaluate(() => (window as any).fixture.navigation), ["/contacts/new/scan", "/contacts/new/manual"]);
   assert.deepEqual(await writes(p), []);
   if (process.env.APP_STYLE_SCREENSHOTS) await p.screenshot({ path: "/tmp/orbit-ink-signal-contacts-empty-390-" + (process.env.CONTACTS_QA_PASS ?? "current") + ".png" });
 });
@@ -318,11 +318,15 @@ test("main route stops private reads while unfocused or signed out", async t => 
   }
 });
 
+// Sprint 0140: /contacts/new is the 「更多添加方式」 hub. Scan and manual add are
+// separate pages; an old ?mode=manual link is forwarded to the manual page.
 for (const mode of [undefined, "manual", "qr", "invalid"]) {
-  test("acquisition navigation selects only an existing mode " + String(mode), async t => {
+  test("acquisition hub keeps every source and forwards only manual links " + String(mode), async t => {
     const p = await open(t, { acquisition: true, params: mode ? { mode } : {} });
-    const name = mode === "manual" ? "手动" : mode === "qr" ? "QR" : "名片";
-    assert.equal(await p.getByRole("tab", { name, exact: true }).getAttribute("aria-selected"), "true");
+    for (const name of ["扫描名片", "手动添加", "批量导入名片"]) assert.equal(await p.getByRole("button", { name, exact: true }).count(), 1, name);
+    assert.equal(await p.getByRole("button", { name: "扫 QR", exact: true }).count(), 1);
+    assert.equal(await p.getByRole("tab").count(), 0);
+    assert.deepEqual(await p.evaluate(() => (window as any).fixture.navigation), mode === "manual" ? ["/contacts/new/manual"] : []);
     assert.deepEqual(await p.evaluate(() => (window as any).fixture.nativeCalls), []);
     assert.deepEqual(await writes(p), []);
   });

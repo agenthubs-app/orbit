@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import test from "node:test";
 import {
   prepareBatchImage, prepareBatchImages, readPreparedBatchImage, loadSelectedBatchImage,
-  type BatchImageNative, type PreparedBatchImage
+  type BatchImageCompressor, type BatchImageNative, type PreparedBatchImage
 } from "../src/api/batch-images";
 import { createOrbitApiClient } from "../src/api/client";
 import { ingestManifestEntrySchema } from "../src/api/schema/business-card-batch";
@@ -24,6 +24,9 @@ function native(bytes = JPEG): BatchImageNative {
     sha256: async (value) => Uint8Array.from(createHash("sha256").update(value).digest()).buffer
   };
 }
+// Sprint 0140: an oversized image is now compressed on the device first; these
+// legacy cases pin the failure path when that compression cannot run.
+const failingCompressor: BatchImageCompressor = { open: async () => { throw new Error("no codec"); } };
 function errorCode(code: string) {
   return (error: unknown) => {
     assert.equal((error as { code: string }).code, code);
@@ -50,10 +53,10 @@ test("rejects empty, oversized, unsupported and ambiguous images", async () => {
   ambiguous.set(new TextEncoder().encode("ftypheic"), 4);
   for (const [bytes, code] of [
     [new Uint8Array(), "EMPTY_FILE"],
-    [new Uint8Array(10485761), "FILE_TOO_LARGE"],
+    [new Uint8Array(10485761), "COMPRESSION_FAILED"],
     [new TextEncoder().encode("not an image"), "UNSUPPORTED_IMAGE"],
     [ambiguous, "UNSUPPORTED_IMAGE"]
-  ] as const) await assert.rejects(prepareBatchImage(input, { native: native(bytes) }), errorCode(code));
+  ] as const) await assert.rejects(prepareBatchImage(input, { native: native(bytes), compressor: failingCompressor }), errorCode(code));
 });
 
 test("prepared digest satisfies the synced manifest schema and the exact digest-checked bytes are uploaded", async () => {
@@ -72,7 +75,7 @@ test("prepared digest satisfies the synced manifest schema and the exact digest-
   assert.equal(digest(bytes), manifest.clientDigest);
 });
 
-test("allows exactly 10 MiB, rejects oversized metadata before reading and rechecks actual size", async () => {
+test("allows exactly 10 MiB, never reads an oversized original and rechecks actual size", async () => {
   const boundary = new Uint8Array(10485760);
   boundary.set(JPEG);
   const prepared = await prepareBatchImage(input, { native: native(boundary) });
@@ -81,7 +84,7 @@ test("allows exactly 10 MiB, rejects oversized metadata before reading and reche
   let reads = 0;
   const fake = native();
   fake.openFile = async () => ({ exists: true, size: 10485761, bytes: async () => { reads++; return JPEG; } });
-  await assert.rejects(prepareBatchImage(input, { native: fake }), errorCode("FILE_TOO_LARGE"));
+  await assert.rejects(prepareBatchImage(input, { native: fake, compressor: failingCompressor }), errorCode("COMPRESSION_FAILED"));
   assert.equal(reads, 0);
   fake.openFile = async () => ({ exists: true, size: 10, bytes: async () => new Uint8Array(10485761) });
   await assert.rejects(prepareBatchImage(input, { native: fake }), errorCode("FILE_TOO_LARGE"));
@@ -92,8 +95,8 @@ test("allows exactly 10 MiB, rejects oversized metadata before reading and reche
     return { exists: true, size: JPEG.length, bytes: async () => JPEG };
   };
   await assert.rejects(
-    prepareBatchImage({ ...input, fileSize: 10485761 }, { native: metadataNative }),
-    errorCode("FILE_TOO_LARGE")
+    prepareBatchImage({ ...input, fileSize: 10485761 }, { native: metadataNative, compressor: failingCompressor }),
+    errorCode("COMPRESSION_FAILED")
   );
   assert.equal(metadataReads, 0);
 });

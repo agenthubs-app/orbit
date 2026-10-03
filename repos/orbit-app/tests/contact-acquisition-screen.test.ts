@@ -37,15 +37,16 @@ const screenSource = readFileSync(
   "utf8"
 );
 
-test("contact acquisition opens on business card capture", () => {
-  // Actual default, manual, QR and invalid-parameter initial states are rendered
-  // by ink-signal-contacts.test.ts; this assertion only retains native wiring.
-  assert.match(
-    screenSource,
-    /const modes:[\s\S]*mode: "businessCard"[\s\S]*mode: "qr"[\s\S]*mode: "manual"/u
-  );
-  assert.match(screenSource, /launchCameraAsync/u);
-  assert.match(screenSource, /launchImageLibraryAsync/u);
+test("card capture lives on its own scan page; the hub links to it and to manual add", () => {
+  // Sprint 0140: rendered hub/scan/manual behaviour is covered by
+  // ink-signal-contacts.test.ts and contact-add-pages.test.ts; this assertion
+  // only retains the native picker wiring, which cannot be rendered here.
+  const scanSource = readFileSync(join(repoRoot, "src", "screens", "contacts", "BusinessCardScanScreen.tsx"), "utf8");
+  assert.match(scanSource, /requestCameraPermissionsAsync\(\)[\s\S]*launchCameraAsync/u);
+  assert.match(scanSource, /launchImageLibraryAsync/u);
+  assert.doesNotMatch(screenSource, /launchCameraAsync|launchImageLibraryAsync/u);
+  assert.match(screenSource, /"\/contacts\/new\/scan"/u);
+  assert.match(screenSource, /"\/contacts\/new\/manual"/u);
 });
 
 test("contact acquisition can scan QR codes with the native camera", () => {
@@ -69,18 +70,9 @@ test("QR camera permission waits are visible and invalidated by source changes",
     screenSource,
     /requestId !== qrPermissionRequestIdRef\.current/u
   );
-  assert.match(screenSource, /onPress=\{\(\) => selectMode\(item\.mode\)\}/u);
-  assert.match(
-    screenSource,
-    /function selectMode[\s\S]*closeQrScanner\(\)[\s\S]*setMode\(nextMode\)/u
-  );
 });
 
 test("source selectors expose their visual selection to assistive technology", () => {
-  assert.match(
-    screenSource,
-    /accessibilityRole="tablist"[\s\S]*accessibilityRole="tab"[\s\S]*accessibilityState=\{\{ selected \}\}[\s\S]*aria-selected=\{selected\}/u
-  );
   assert.match(
     screenSource,
     /function SourceChip[\s\S]*accessibilityRole="radio"[\s\S]*accessibilityState=\{\{ checked: active \}\}[\s\S]*aria-checked=\{active\}/u

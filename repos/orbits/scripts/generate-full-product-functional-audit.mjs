@@ -1168,7 +1168,7 @@ const LIVE_MOBILE_CONTACT_ACQUISITION_INTERACTION_EVIDENCE = new Map([
     },
   ],
   [
-    "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx:1770",
+    "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx:1659",
     {
       actualResult:
         "Confirming the selected external result updated that exact central draft to confirmed and synchronized the result card with the persisted terminal state.",
@@ -1181,7 +1181,7 @@ const LIVE_MOBILE_CONTACT_ACQUISITION_INTERACTION_EVIDENCE = new Map([
     },
   ],
   [
-    "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx:2094",
+    "repos/orbit-app/src/screens/contacts/ContactAcquisitionScreen.tsx:1987",
     {
       actualResult:
         "Confirming the remaining draft from the cold-start central queue updated the same Postgres row and survived a subsequent queue readback as confirmed.",

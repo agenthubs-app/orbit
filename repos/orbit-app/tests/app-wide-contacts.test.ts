@@ -63,6 +63,7 @@ export const CameraView = ({ children, style }) => <View style={style} testID="c
 export const useCameraPermissions = () => { rerender(); return [{ granted: state.cameraGranted }, async () => { state.nativeCalls.push("qr-permission"); return { granted: state.cameraGranted }; }]; };
 export const requestCameraPermissionsAsync = async () => { state.nativeCalls.push("camera-permission"); return { granted: state.cameraGranted }; };
 export const requestMediaLibraryPermissionsAsync = async () => { state.nativeCalls.push("photo-permission"); return { granted: state.photoGranted }; };
+export const UIImagePickerPreferredAssetRepresentationMode = { Current: "current" };
 export const launchCameraAsync = async () => { state.nativeCalls.push("camera-launch"); return { canceled: true }; };
 export const launchImageLibraryAsync = async () => { state.nativeCalls.push("photo-launch"); return { canceled: true }; };
 `;
@@ -72,12 +73,14 @@ test.before(async () => {
     stdin: { contents: `import React from "react"; import { createRoot } from "react-dom/client";
 import { ContactsScreen } from "./src/screens/contacts/ContactsScreen";
 import { ContactAcquisitionScreen } from "./src/screens/contacts/ContactAcquisitionScreen";
+import { BusinessCardScanScreen } from "./src/screens/contacts/BusinessCardScanScreen";
+import { ManualContactAddScreen } from "./src/screens/contacts/ManualContactAddScreen";
 import { ContactsDashboardScreen } from "./src/screens/contacts/ContactsDashboardScreen";
 import { ContactPipelineScreen } from "./src/screens/contacts/ContactPipelineScreen";
 import { ContactStructureDetailScreen } from "./src/screens/contacts/ContactStructureDetailScreen";
 import { ContactIntrosScreen } from "./src/screens/contacts/ContactIntrosScreen";
 import { DashboardScreen } from "./src/screens/dashboard/DashboardScreen";
-const screens = { overview: ContactsScreen, acquisition: ContactAcquisitionScreen, analysis: ContactsDashboardScreen, pipeline: ContactPipelineScreen, structure: ContactStructureDetailScreen, intros: ContactIntrosScreen, dashboard: DashboardScreen };
+const screens = { overview: ContactsScreen, acquisition: ContactAcquisitionScreen, scan: BusinessCardScanScreen, manual: ManualContactAddScreen, analysis: ContactsDashboardScreen, pipeline: ContactPipelineScreen, structure: ContactStructureDetailScreen, intros: ContactIntrosScreen, dashboard: DashboardScreen };
 const Screen = screens[new URLSearchParams(location.search).get("screen") || "overview"];
 createRoot(document.getElementById("root")).render(<Screen />);`, resolveDir: process.cwd(), loader: "tsx" },
     bundle: true, write: false, format: "iife", jsx: "automatic", resolveExtensions: [".web.tsx", ".web.ts", ".web.js", ".tsx", ".ts", ".jsx", ".js", ".json"],
@@ -148,21 +151,16 @@ for (const scheme of ["light", "dark"] as const) {
     if (process.env.APP_STYLE_SCREENSHOTS) await page.screenshot({ path: `/tmp/orbit-app-wide-contacts-overview-${scheme}.png`, fullPage: true });
   });
 
-  test(`${scheme}: acquisition has a 50pt primary action, an open image group, and safe source switching`, async t => {
+  test(`${scheme}: the add-people hub keeps scan, manual, batch, QR and referral sources reachable`, async t => {
     const page = await openScreen(t, "acquisition", scheme);
     await touchFits(page.getByRole("button", { name: "生成待确认候选", exact: true }), 50);
-    const imageGroup = page.getByText("拍名片或选图片", { exact: true }).locator("..").locator("..");
-    assert.equal(await imageGroup.evaluate(el => getComputedStyle(el).backgroundColor), "rgba(0, 0, 0, 0)", "image preview should not be wrapped in another card");
     if (process.env.APP_STYLE_SCREENSHOTS) await page.screenshot({ path: `/tmp/orbit-app-wide-contacts-acquisition-${scheme}.png`, fullPage: true });
-    for (const label of ["拍名片", "选图片"]) {
-      const action = page.getByRole("button", { name: label, exact: true });
-      await touchFits(action); await action.click();
+    for (const [label, href] of [["扫描名片", "/contacts/new/scan"], ["手动添加", "/contacts/new/manual"], ["批量导入名片", "/contacts/new/batch2"]] as const) {
+      const entry = page.getByRole("button", { name: label, exact: true });
+      await touchFits(entry, 64); await entry.click();
+      assert.equal(await page.evaluate(() => (window as any).fixture.navigation.at(-1)), href);
     }
-    await page.getByRole("tab", { name: "手动", exact: true }).click();
-    assert.equal(await page.getByRole("tab", { name: "手动", exact: true }).getAttribute("aria-selected"), "true");
-    for (const placeholder of ["例如：王小雨", "例如：Orbit", "例如：市场负责人", "在哪里认识、对方想找什么、你能提供什么。", "例如：下周约 30 分钟交流", "AI, 东京, 制造业"]) await touchFits(page.getByPlaceholder(placeholder));
-    await page.getByPlaceholder("例如：王小雨").fill("林悦");
-    await page.getByRole("tab", { name: "QR", exact: true }).click();
+    for (const name of ["名片", "手动"]) assert.equal(await page.getByRole("tab", { name, exact: true }).count(), 0, "scan and manual are pages, not tabs");
     await page.getByRole("button", { name: "扫 QR", exact: true }).click();
     await page.getByTestId("camera-preview").waitFor();
     await page.getByRole("button", { name: "关闭扫描", exact: true }).click();
@@ -170,6 +168,36 @@ for (const scheme of ["light", "dark"] as const) {
     const referral = page.getByRole("radio", { name: /创始人引荐/ });
     await touchFits(referral); await referral.click();
     assert.equal(await referral.getAttribute("aria-checked"), "true");
+    assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);
+  });
+
+  test(`${scheme}: scan offers exactly two equal monochrome choices and asks for nothing until one is chosen`, async t => {
+    const page = await openScreen(t, "scan", scheme);
+    await page.getByRole("button", { name: "拍一张名片", exact: true }).waitFor();
+    if (process.env.APP_STYLE_SCREENSHOTS) await page.screenshot({ path: `/tmp/orbit-0140-scan-${scheme}.png`, fullPage: true });
+    for (const text of ["扫描名片", "选择一种方式", "用相机拍手上的名片", "选择已经拍好的照片", "核对信息后，再保存到人脉。"]) assert.equal(await page.getByText(text, { exact: true }).count(), 1, text);
+    const rows = [page.getByRole("button", { name: "拍一张名片", exact: true }), page.getByRole("button", { name: "从相册选择", exact: true })];
+    const [camera, library] = await Promise.all(rows.map(row => row.boundingBox()));
+    assert.ok(camera && library && Math.abs(camera.height - library.height) < 1 && Math.abs(camera.width - library.width) < 1, "both choices are the same size");
+    for (const row of rows) await touchFits(row, 64);
+    assert.equal(await page.getByRole("button").filter({ hasText: /QR|导入|引荐|批量|手动/u }).count(), 0, "no other import methods on the scan page");
+    const titleColor = await page.getByText("拍一张名片", { exact: true }).evaluate(el => getComputedStyle(el).color);
+    assert.equal(titleColor, scheme === "dark" ? "rgb(240, 240, 236)" : "rgb(11, 18, 32)", "row titles use ink, not the blue accent");
+    assert.deepEqual(await page.evaluate(() => (window as any).fixture.nativeCalls), [], "no permission is requested on open");
+    assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);
+  });
+
+  test(`${scheme}: manual add shows name, company and title first and folds relationship details`, async t => {
+    const page = await openScreen(t, "manual", scheme);
+    await page.getByRole("textbox", { name: "姓名", exact: true }).waitFor();
+    if (process.env.APP_STYLE_SCREENSHOTS) await page.screenshot({ path: `/tmp/orbit-0140-manual-${scheme}.png`, fullPage: true });
+    for (const name of ["姓名", "公司", "职位"]) await touchFits(page.getByRole("textbox", { name, exact: true }));
+    for (const name of ["关系备注", "下一步", "标签"]) assert.equal(await page.getByRole("textbox", { name, exact: true }).count(), 0, name + " starts folded");
+    const disclosure = page.getByRole("button", { name: "补充关系信息", exact: true });
+    await touchFits(disclosure, 64);
+    assert.equal(await disclosure.getAttribute("aria-expanded"), "false");
+    await touchFits(page.getByRole("button", { name: "下一步：核对信息", exact: true }), 50);
+    assert.equal(await page.getByText("核对后再保存到人脉", { exact: true }).count(), 1);
     assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);
   });
 }
@@ -292,11 +320,15 @@ test("structure detail renders real success content and opens its contact at 320
 });
 
 test("contact navigation and acquisition controls grow with doubled text without clipping", async t => {
-  for (const screen of ["overview", "acquisition"]) {
+  for (const screen of ["overview", "acquisition", "scan", "manual"]) {
     const page = await openScreen(t, screen, "dark");
     const actions = screen === "overview"
       ? [page.getByRole("button", { name: /联系人库/ }), page.getByRole("button", { name: /添加人脉/ })]
-      : [page.getByRole("tab", { name: "名片", exact: true }), page.getByRole("button", { name: "生成待确认候选", exact: true }), page.getByRole("button", { name: "拍名片", exact: true })];
+      : screen === "acquisition"
+        ? [page.getByRole("button", { name: "扫描名片", exact: true }), page.getByRole("button", { name: "生成待确认候选", exact: true }), page.getByRole("button", { name: "批量导入名片", exact: true })]
+        : screen === "scan"
+          ? [page.getByRole("button", { name: "拍一张名片", exact: true }), page.getByRole("button", { name: "从相册选择", exact: true })]
+          : [page.getByRole("button", { name: "补充关系信息", exact: true }), page.getByRole("button", { name: "下一步：核对信息", exact: true })];
     await actions[0]!.waitFor();
     // Browser inflation measures reflow; actual native Dynamic Type is checked separately.
     await page.evaluate(() => document.querySelectorAll("[dir='auto'],input,textarea").forEach(node => {
@@ -385,37 +417,31 @@ test("dashboard retains its real actions and request boundaries", async t => {
   assert.equal((await dashboard.evaluate(() => (window as any).fixture.requests)).length, 1);
 });
 
-test("denied camera and photo access show feedback and allow safe acquisition recovery without writes", async t => {
-  const page = await openScreen(t, "acquisition");
-  await page.evaluate(() => (window as any).fixture.update({ cameraGranted: false, photoGranted: false }));
-  for (const [name, message] of [["拍名片", "需要允许使用相机，才能拍摄名片。"], ["选图片", "需要允许访问照片，才能选择名片图片。"]] as const) {
-    const action = page.getByRole("button", { name, exact: true });
-    await action.click();
-    await page.getByText(message, { exact: true }).waitFor();
-    assert.equal(await action.isEnabled(), true, "denial must release the pending state for retry");
-  }
-  await page.getByRole("tab", { name: "QR", exact: true }).click();
-  const scan = page.getByRole("button", { name: "扫 QR", exact: true });
-  await scan.click();
-  await page.getByText("需要允许使用相机，才能扫描 QR。", { exact: true }).waitFor();
-  assert.equal(await scan.isEnabled(), true);
-  assert.equal(await page.getByTestId("camera-preview").count(), 0);
-  assert.deepEqual(await page.evaluate(() => (window as any).fixture.nativeCalls), ["camera-permission", "photo-permission", "qr-permission"]);
-  await page.getByRole("tab", { name: "手动", exact: true }).click();
-  await page.getByPlaceholder("例如：王小雨").fill("林悦");
-  await page.getByRole("tab", { name: "名片", exact: true }).click();
+test("denied camera access shows feedback, keeps the album choice, and recovers without writes", async t => {
+  // Sprint 0140: the scan page asks for the camera only after 「拍一张名片」;
+  // choosing a photo uses the system picker without a library prompt.
+  const page = await openScreen(t, "scan");
+  await page.evaluate(() => (window as any).fixture.update({ cameraGranted: false }));
+  const camera = page.getByRole("button", { name: "拍一张名片", exact: true });
+  await camera.click();
+  await page.getByText("没有相机权限，拍不了名片。可以在系统设置里允许，或从相册选择。", { exact: true }).waitFor();
+  assert.equal(await camera.isEnabled(), true, "denial must release the pending state for retry");
+  const library = page.getByRole("button", { name: "从相册选择", exact: true });
+  await library.click();
+  assert.equal(await library.isEnabled(), true);
   // Controlled permission recovery only; no native system permission is changed.
-  await page.evaluate(() => (window as any).fixture.update({ cameraGranted: true, photoGranted: true }));
-  for (const name of ["拍名片", "选图片"]) {
-    const action = page.getByRole("button", { name, exact: true });
-    await action.click(); assert.equal(await action.isEnabled(), true);
-  }
-  await page.getByRole("tab", { name: "QR", exact: true }).click();
-  await scan.click(); await page.getByTestId("camera-preview").waitFor();
-  await page.getByRole("button", { name: "关闭扫描", exact: true }).click();
-  assert.equal(await page.getByTestId("camera-preview").count(), 0);
-  await page.getByRole("tab", { name: "手动", exact: true }).click();
-  assert.equal(await page.getByPlaceholder("例如：王小雨").inputValue(), "林悦");
-  assert.deepEqual(await page.evaluate(() => (window as any).fixture.nativeCalls), ["camera-permission", "photo-permission", "qr-permission", "camera-permission", "camera-launch", "photo-permission", "photo-launch"]);
+  await page.evaluate(() => (window as any).fixture.update({ cameraGranted: true }));
+  await camera.click();
+  await page.waitForFunction(() => (window as any).fixture.nativeCalls.length === 4);
+  assert.deepEqual(await page.evaluate(() => (window as any).fixture.nativeCalls), ["camera-permission", "photo-launch", "camera-permission", "camera-launch"]);
+  assert.equal(await page.getByText("选择一种方式", { exact: true }).count(), 1, "cancelling stays on the choice page");
+  const hub = await openScreen(t, "acquisition");
+  await hub.evaluate(() => (window as any).fixture.update({ cameraGranted: false }));
+  const scan = hub.getByRole("button", { name: "扫 QR", exact: true });
+  await scan.click();
+  await hub.getByText("需要允许使用相机，才能扫描 QR。", { exact: true }).waitFor();
+  assert.equal(await scan.isEnabled(), true);
+  assert.equal(await hub.getByTestId("camera-preview").count(), 0);
   assert.deepEqual(await page.evaluate(() => (window as any).fixture.requests), []);
+  assert.deepEqual(await hub.evaluate(() => (window as any).fixture.requests), []);
 });

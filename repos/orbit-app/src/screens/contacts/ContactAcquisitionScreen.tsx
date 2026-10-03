@@ -4,8 +4,7 @@ import {
   useCameraPermissions,
   type BarcodeScanningResult
 } from "expo-camera";
-import * as ImagePicker from "expo-image-picker";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { type Href, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
   Image,
@@ -90,16 +89,6 @@ const emptyForm: ContactAcquisitionFormState = {
   tagsText: ""
 };
 
-const modes: Array<{
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  mode: ContactAcquisitionMode;
-}> = [
-  { icon: "card-outline", label: "名片", mode: "businessCard" },
-  { icon: "qr-code-outline", label: "QR", mode: "qr" },
-  { icon: "create-outline", label: "手动", mode: "manual" }
-];
-
 const referralSourceOptions: Array<{
   countLabel: string;
   id: ContactReferralSourceKind;
@@ -152,10 +141,14 @@ export function ContactAcquisitionScreen() {
   const eventId = firstParam(eventIdParam);
   const client = useOrbitApiClient();
   const [form, setForm] = useState<ContactAcquisitionFormState>(emptyForm);
-  const [mode, setMode] = useState<ContactAcquisitionMode>(() => {
-    const requested = firstParam(modeParam);
-    return requested === "manual" || requested === "qr" ? requested : "businessCard";
-  });
+  // Sprint 0140: card scanning and manual add have their own pages; this
+  // 「更多添加方式」 hub keeps QR, batch/two-sided cards, imports, intros, the
+  // draft queue and duplicate review. Old ?mode=manual links go to the new page.
+  const mode: ContactAcquisitionMode = "qr";
+  const requestedManual = firstParam(modeParam) === "manual";
+  useEffect(() => {
+    if (requestedManual) router.replace("/contacts/new/manual" as Href);
+  }, [requestedManual, router]);
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [result, setResult] = useState<ContactAcquisitionSummary | null>(null);
   const [resultImage, setResultImage] = useState<{ draftId: string; uri: string } | null>(null);
@@ -182,7 +175,6 @@ export function ContactAcquisitionScreen() {
   const [importingEventDrafts, setImportingEventDrafts] = useState(false);
   const [mergeApplyResult, setMergeApplyResult] =
     useState<ContactMergeApplyView | null>(null);
-  const [pickingImage, setPickingImage] = useState(false);
   const [qrCameraOpen, setQrCameraOpen] = useState(false);
   const [qrPermissionPending, setQrPermissionPending] = useState(false);
   const qrPermissionRequestIdRef = useRef(0);
@@ -306,11 +298,6 @@ export function ContactAcquisitionScreen() {
     setQrScannerReady(true);
   }
 
-  function selectMode(nextMode: ContactAcquisitionMode) {
-    closeQrScanner();
-    setMode(nextMode);
-  }
-
   function handleQrBarcodeScanned(result: BarcodeScanningResult) {
     if (!qrScannerReady) {
       return;
@@ -324,7 +311,6 @@ export function ContactAcquisitionScreen() {
 
     setQrScannerReady(false);
     updateField("qrText", qrText);
-    setMode("qr");
     setQrCameraOpen(false);
   }
 
@@ -445,7 +431,7 @@ export function ContactAcquisitionScreen() {
         const summary = acquisitionResultToSummary(response.data);
         setReviewError(null);
         setResult(summary);
-        setResultImage(mode === "businessCard" && form.imageUri ? { draftId: summary.draftId, uri: form.imageUri } : null);
+        setResultImage(null);
         setReviewFields(summary.reviewFields?.length ? contactDraftReviewFormFromSummary(summary) : null);
         setAcknowledgedIssueCodes([]);
         setAllFieldsReviewed(false);
@@ -767,89 +753,6 @@ export function ContactAcquisitionScreen() {
     }
   }
 
-  async function pickBusinessCardImage() {
-    setPickingImage(true);
-    setError(null);
-
-    try {
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-      if (!permission.granted) {
-        setError("需要允许访问照片，才能选择名片图片。");
-        return;
-      }
-
-      const pickerResult = await ImagePicker.launchImageLibraryAsync({
-        allowsEditing: false,
-        base64: true,
-        mediaTypes: ["images"],
-        quality: 0.86
-      });
-
-      if (pickerResult.canceled) {
-        return;
-      }
-
-      applyPickedBusinessCardAsset(pickerResult.assets[0]);
-    } catch (pickError) {
-      setError(
-        pickError instanceof Error ? pickError.message : "名片图片暂时选择不了。"
-      );
-    } finally {
-      setPickingImage(false);
-    }
-  }
-
-  async function captureBusinessCardImage() {
-    setPickingImage(true);
-    setError(null);
-
-    try {
-      const permission = await ImagePicker.requestCameraPermissionsAsync();
-
-      if (!permission.granted) {
-        setError("需要允许使用相机，才能拍摄名片。");
-        return;
-      }
-
-      const cameraResult = await ImagePicker.launchCameraAsync({
-        allowsEditing: false,
-        base64: true,
-        quality: 0.86
-      });
-
-      if (cameraResult.canceled) {
-        return;
-      }
-
-      applyPickedBusinessCardAsset(cameraResult.assets[0]);
-    } catch (captureError) {
-      setError(
-        captureError instanceof Error ? captureError.message : "名片暂时拍不了。"
-      );
-    } finally {
-      setPickingImage(false);
-    }
-  }
-
-  function applyPickedBusinessCardAsset(
-    asset: ImagePicker.ImagePickerAsset | undefined
-  ) {
-    if (!asset?.base64) {
-      setError("这张图片暂时读取不了，请换一张更清晰的名片。");
-      return;
-    }
-
-    setForm((current) => ({
-      ...current,
-      imageBase64: asset.base64 ?? "",
-      imageMimeType: asset.mimeType ?? "image/jpeg",
-      imageName: asset.fileName || current.imageName || "business-card.jpg",
-      imageSizeBytes: asset.fileSize ?? null,
-      imageUri: asset.uri
-    }));
-  }
-
   const resultCard = result ? (
     <AcquisitionResultCard
       acknowledgedIssueCodes={acknowledgedIssueCodes}
@@ -877,7 +780,6 @@ export function ContactAcquisitionScreen() {
 
   return (
     <AppScreen
-      {...(mode === "businessCard" ? {} : { eyebrow: "来源采集" })}
       refreshControl={
         <RefreshControl
           onRefresh={refreshReviewSurfaces}
@@ -889,78 +791,38 @@ export function ContactAcquisitionScreen() {
           tintColor={colors.accent}
         />
       }
-      title={mode === "businessCard" ? locale.t("businessCard.importTitle") : "添加人脉"}
+      title={locale.t("contactAdd.moreWays")}
     >
-      {mode === "businessCard" ? resultCard : null}
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="批量导入名片"
-        onPress={() => router.push("/contacts/new/batch2")}
-        style={styles.modeButton}
-      >
-        <Ionicons color={colors.accent} name="images-outline" size={18} />
-        <Text style={styles.modeButtonText}>批量导入名片</Text>
-      </Pressable>
-      <DataCard detail="确认前不会写入联系人" title="选择来源">
-        <View accessibilityRole="tablist" style={styles.modeRow}>
-          {modes.map((item) => {
-            const selected = item.mode === mode;
-
-            return (
-              <Pressable
-                accessibilityRole="tab"
-                accessibilityState={{ selected }}
-                aria-selected={selected}
-                key={item.mode}
-                onPress={() => selectMode(item.mode)}
-                style={({ pressed }) => [
-                  styles.modeButton,
-                  selected ? styles.modeButtonActive : null,
-                  pressed ? styles.pressed : null
-                ]}
-              >
-                <Ionicons
-                  color={selected ? colors.onAccent : colors.accent}
-                  name={item.icon}
-                  size={18}
-                />
-                <Text
-                  style={[
-                    styles.modeButtonText,
-                    selected ? styles.modeButtonTextActive : null
-                  ]}
-                >
-                  {item.label}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-      </DataCard>
+      <View style={styles.entryList}>
+        <EntryRow
+          detail={locale.t("contactAdd.scanCardDetail")}
+          icon="camera-outline"
+          onPress={() => router.push("/contacts/new/scan" as Href)}
+          title={locale.t("contactAdd.scanTitle")}
+        />
+        <EntryRow
+          detail={locale.t("contactAdd.manualDetail")}
+          icon="create-outline"
+          onPress={() => router.push("/contacts/new/manual" as Href)}
+          title={locale.t("contactAdd.manualTitle")}
+        />
+        <EntryRow
+          detail={locale.t("contactAdd.batchCardsDetail")}
+          icon="images-outline"
+          onPress={() => router.push("/contacts/new/batch2")}
+          title={locale.t("contactAdd.batchCards")}
+        />
+      </View>
       <DataCard detail={formDetail(mode)} title={formTitle(mode)}>
-        {mode === "manual" ? (
-          <ManualFields form={form} updateField={updateField} />
-        ) : null}
-        {mode === "qr" ? (
-          <QrFields
-            form={form}
-            onCloseScanner={closeQrScanner}
-            onOpenScanner={openQrScanner}
-            onQrBarcodeScanned={handleQrBarcodeScanned}
-            qrCameraOpen={qrCameraOpen}
-            qrPermissionPending={qrPermissionPending}
-            updateField={updateField}
-          />
-        ) : null}
-        {mode === "businessCard" ? (
-          <BusinessCardFields
-            form={form}
-            onCaptureImage={captureBusinessCardImage}
-            onPickImage={pickBusinessCardImage}
-            pickingImage={pickingImage}
-            updateField={updateField}
-          />
-        ) : null}
+        <QrFields
+          form={form}
+          onCloseScanner={closeQrScanner}
+          onOpenScanner={openQrScanner}
+          onQrBarcodeScanned={handleQrBarcodeScanned}
+          qrCameraOpen={qrCameraOpen}
+          qrPermissionPending={qrPermissionPending}
+          updateField={updateField}
+        />
         {error ? <Text accessibilityRole="alert" style={styles.errorText}>{error}</Text> : null}
         <Pressable
           accessibilityRole="button"
@@ -1020,7 +882,7 @@ export function ContactAcquisitionScreen() {
       {recommendedConfirmResult ? (
         <RecommendedContactConfirmCard view={recommendedConfirmResult} />
       ) : null}
-      {mode !== "businessCard" ? resultCard : null}
+      {resultCard}
       {mergeReview ? (
         <ContactMergeReviewCard
           applyingSuggestionId={applyingMergeSuggestionId}
@@ -1056,78 +918,12 @@ export function ContactAcquisitionScreen() {
   );
 }
 
-function formTitle(mode: ContactAcquisitionMode): string {
-  if (mode === "qr") {
-    return "粘贴 QR 内容";
-  }
-
-  if (mode === "businessCard") {
-    return "识别名片";
-  }
-
-  return "手动记录关系";
+function formTitle(_mode: ContactAcquisitionMode): string {
+  return "粘贴 QR 内容";
 }
 
-function formDetail(mode: ContactAcquisitionMode): string {
-  if (mode === "qr") {
-    return "仅支持 orbit-qr: 文本；当前不校验签名，确认前请核对字段";
-  }
-
-  if (mode === "businessCard") {
-    return "拍照或上传图片，识别后逐项核对";
-  }
-
-  return "适合刚聊完的人";
-}
-
-function ManualFields({
-  form,
-  updateField
-}: {
-  form: ContactAcquisitionFormState;
-  updateField: (field: keyof ContactAcquisitionFormState, value: string) => void;
-}) {
-  return (
-    <>
-      <Input
-        label="姓名"
-        onChangeText={(value) => updateField("displayName", value)}
-        placeholder="例如：王小雨"
-        value={form.displayName}
-      />
-      <Input
-        label="公司"
-        onChangeText={(value) => updateField("organization", value)}
-        placeholder="例如：Orbit"
-        value={form.organization}
-      />
-      <Input
-        label="职位"
-        onChangeText={(value) => updateField("role", value)}
-        placeholder="例如：市场负责人"
-        value={form.role}
-      />
-      <Input
-        label="关系备注"
-        multiline
-        onChangeText={(value) => updateField("note", value)}
-        placeholder="在哪里认识、对方想找什么、你能提供什么。"
-        value={form.note}
-      />
-      <Input
-        label="下一步"
-        onChangeText={(value) => updateField("followUpHint", value)}
-        placeholder="例如：下周约 30 分钟交流"
-        value={form.followUpHint}
-      />
-      <Input
-        label="标签"
-        onChangeText={(value) => updateField("tagsText", value)}
-        placeholder="AI, 东京, 制造业"
-        value={form.tagsText}
-      />
-    </>
-  );
+function formDetail(_mode: ContactAcquisitionMode): string {
+  return "仅支持 orbit-qr: 文本；当前不校验签名，确认前请核对字段";
 }
 
 function QrFields({
@@ -1217,100 +1013,34 @@ function QrFields({
   );
 }
 
-function BusinessCardFields({
-  form,
-  onCaptureImage,
-  onPickImage,
-  pickingImage,
-  updateField
+function EntryRow({
+  detail,
+  icon,
+  onPress,
+  title
 }: {
-  form: ContactAcquisitionFormState;
-  onCaptureImage: () => void;
-  onPickImage: () => void;
-  pickingImage: boolean;
-  updateField: (field: keyof ContactAcquisitionFormState, value: string) => void;
+  detail: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  onPress: () => void;
+  title: string;
 }) {
   const { colors, styles } = useStyles();
   return (
-    <>
-      <View style={styles.cardImagePanel}>
-        {form.imageUri ? (
-          <Image
-            accessibilityLabel="已选择的名片图片"
-            resizeMode="contain"
-            source={{ uri: form.imageUri }}
-            style={styles.cardImagePreview}
-          />
-        ) : (
-          <View style={styles.cardImagePlaceholder}>
-            <Ionicons color={colors.accent} name="scan-outline" size={28} />
-            <Text style={styles.placeholderText}>拍名片或选图片</Text>
-          </View>
-        )}
-        <View style={styles.cardImageActions}>
-          <Pressable
-            accessibilityRole="button"
-            disabled={pickingImage}
-            onPress={onCaptureImage}
-            style={({ pressed }) => [
-              styles.secondaryButton,
-              pickingImage ? styles.disabled : null,
-              pressed ? styles.pressed : null
-            ]}
-          >
-            <Ionicons color={colors.accent} name="camera-outline" size={18} />
-            <Text style={styles.secondaryButtonText}>
-              {pickingImage ? "处理中" : "拍名片"}
-            </Text>
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            disabled={pickingImage}
-            onPress={onPickImage}
-            style={({ pressed }) => [
-              styles.secondaryButton,
-              pickingImage ? styles.disabled : null,
-              pressed ? styles.pressed : null
-            ]}
-          >
-            <Ionicons color={colors.accent} name="image-outline" size={18} />
-            <Text style={styles.secondaryButtonText}>
-              {pickingImage ? "处理中" : "选图片"}
-            </Text>
-          </Pressable>
-        </View>
-        {form.imageName ? (
-          <Text numberOfLines={1} style={styles.imageMetaText}>
-            {[form.imageName, sizeLabel(form.imageSizeBytes)]
-              .filter(Boolean)
-              .join(" · ")}
-          </Text>
-        ) : null}
+    <Pressable
+      accessibilityHint={detail}
+      accessibilityLabel={title}
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [styles.entryRow, pressed ? styles.pressed : null]}
+    >
+      <Ionicons color={colors.ink} name={icon} size={24} />
+      <View style={styles.entryText}>
+        <Text style={styles.entryTitle}>{title}</Text>
+        <Text style={styles.entryDetail}>{detail}</Text>
       </View>
-      <Text style={styles.helperText}>
-        图片会先生成待确认候选；你确认前不会写入联系人。
-      </Text>
-      <Text style={styles.helperText}>只有文字信息时，请使用手动录入。</Text>
-      <Input
-        label="备注名"
-        onChangeText={(value) => updateField("imageName", value)}
-        placeholder="例如：关西交流会名片"
-        value={form.imageName}
-      />
-    </>
+      <Ionicons color={colors.text3} name="chevron-forward" size={18} />
+    </Pressable>
   );
-}
-
-function sizeLabel(value: number | null | undefined): string {
-  if (!value || value <= 0) {
-    return "";
-  }
-
-  if (value >= 1024 * 1024) {
-    return `${(value / (1024 * 1024)).toFixed(1)} MB`;
-  }
-
-  return `${Math.ceil(value / 1024)} KB`;
 }
 
 function Input({
@@ -2405,29 +2135,14 @@ function ContactMergeApplyResultCard({
 }
 
 const useStyles = createThemedStyles((colors) => StyleSheet.create({
+  entryList: { borderTopColor: colors.hairline, borderTopWidth: StyleSheet.hairlineWidth },
+  entryRow: { alignItems: "center", borderBottomColor: colors.hairline, borderBottomWidth: StyleSheet.hairlineWidth, flexDirection: "row", gap: spacing.md, minHeight: 64, paddingVertical: spacing.md },
+  entryText: { flex: 1, gap: spacing.xxs },
+  entryTitle: { color: colors.ink, fontSize: 16, fontWeight: "700" },
+  entryDetail: { color: colors.text3, fontSize: 13 },
   bodyText: {
     ...textStyles.body,
     color: colors.text
-  },
-  cardImageActions: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm
-  },
-  cardImagePanel: { gap: spacing.md },
-  cardImagePlaceholder: {
-    alignItems: "center",
-    aspectRatio: 1.58,
-    backgroundColor: colors.surface2,
-    borderRadius: radius.card,
-    gap: spacing.sm,
-    justifyContent: "center"
-  },
-  cardImagePreview: {
-    aspectRatio: 1.58,
-    backgroundColor: colors.surface3,
-    borderRadius: radius.control,
-    width: "100%"
   },
   confirmedText: {
     ...textStyles.caption,
@@ -2531,38 +2246,12 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
     ...textStyles.caption,
     color: colors.text3
   },
-  imageMetaText: {
-    ...textStyles.caption,
-    color: colors.text3,
-    fontWeight: "600"
-  },
   input: { ...createControlStyles(colors).input },
   inputGroup: { gap: spacing.xs },
   inputLabel: {
     ...textStyles.small,
     color: colors.text2,
     fontWeight: "600"
-  },
-  modeButton: {
-    ...createControlStyles(colors).chip,
-    flex: 1,
-    minWidth: 0,
-    flexDirection: "row",
-    gap: spacing.xs,
-    paddingHorizontal: spacing.sm
-  },
-  modeButtonActive: {
-    backgroundColor: colors.accent,
-    borderColor: colors.accent
-  },
-  modeButtonText: {
-    ...createControlStyles(colors).chipText,
-    color: colors.accent
-  },
-  modeButtonTextActive: { color: colors.onAccent },
-  modeRow: {
-    flexDirection: "row",
-    gap: spacing.sm
   },
   mergeFieldStack: { gap: spacing.xs },
   mergeReviewBadge: {
@@ -2595,11 +2284,6 @@ const useStyles = createThemedStyles((colors) => StyleSheet.create({
   mergeReviewTitle: {
     ...textStyles.listTitle,
     color: colors.ink
-  },
-  placeholderText: {
-    ...textStyles.small,
-    color: colors.text2,
-    fontWeight: "600"
   },
   pressed: {
     opacity: 0.82,

@@ -21,13 +21,17 @@ const usedComputedPathKeys = new Set<string>();
 const computedPathFamilies: Readonly<Record<string, readonly string[]>> = {
   'src/screens/ai/AiConversationScreen.tsx:462': ['/api/ai/conversations', '/api/ai/conversations/:id'],
   'src/screens/chat/RelationshipChatDetailScreen.tsx:216': ['/api/relationship-communication/conversations/:id/messages'],
-  'src/screens/contacts/ContactAcquisitionScreen.tsx:401': ['/api/contact-drafts/:id'],
-  'src/screens/contacts/ContactAcquisitionScreen.tsx:440': ['/api/contact-drafts/manual', '/api/contact-drafts/qr/scan', '/api/contact-drafts/business-card/scan'],
-  'src/screens/contacts/ContactAcquisitionScreen.tsx:542': ['/api/contacts/business-card/confirm'],
-  'src/screens/contacts/ContactAcquisitionScreen.tsx:590': ['/api/contact-drafts/merge-suggestions/:id/apply'],
-  'src/screens/contacts/ContactAcquisitionScreen.tsx:623': ['/api/contact-drafts/external/import'],
-  'src/screens/contacts/ContactAcquisitionScreen.tsx:692': ['/api/contact-drafts/referral'],
-  'src/screens/contacts/ContactAcquisitionScreen.tsx:725': ['/api/contact-drafts/recommended/:id/confirm'],
+  'src/screens/contacts/BusinessCardScanScreen.tsx:117': ['/api/contact-drafts/business-card/scan'],
+  'src/screens/contacts/BusinessCardScanScreen.tsx:154': ['/api/contacts/business-card/confirm'],
+  // Sprint 0140: the hub's source form is QR only; card scan and manual add moved to their own pages.
+  'src/screens/contacts/ContactAcquisitionScreen.tsx:387': ['/api/contact-drafts/:id'],
+  'src/screens/contacts/ContactAcquisitionScreen.tsx:426': ['/api/contact-drafts/qr/scan'],
+  'src/screens/contacts/ContactAcquisitionScreen.tsx:528': ['/api/contacts/business-card/confirm'],
+  'src/screens/contacts/ContactAcquisitionScreen.tsx:576': ['/api/contact-drafts/merge-suggestions/:id/apply'],
+  'src/screens/contacts/ContactAcquisitionScreen.tsx:609': ['/api/contact-drafts/external/import'],
+  'src/screens/contacts/ContactAcquisitionScreen.tsx:678': ['/api/contact-drafts/referral'],
+  'src/screens/contacts/ContactAcquisitionScreen.tsx:711': ['/api/contact-drafts/recommended/:id/confirm'],
+  'src/screens/contacts/ManualContactAddScreen.tsx:80': ['/api/contact-drafts/manual'],
   'src/screens/contacts/ContactIntrosScreen.tsx:146': ['/api/relationship-communication/invitations'],
   'src/screens/inbox/RelationshipInboxScreen.tsx:1309': ['/api/relationship-communication/conversations/:id/messages'],
   'src/screens/inbox/RelationshipInboxScreen.tsx:1500': ['/api/chat/relationship-inbox'],
@@ -46,6 +50,8 @@ const nonApiTransportSinks: Readonly<Record<string, string>> = {
   // fetch(blob:...) 读取浏览器本地 object URL，取用户刚选中的图片字节；
   // 调用前由 isSupportedBatchImageSource() 限定 blob: 前缀，不出网、不含账号数据。
   'src/api/batch-image-source.web.ts:34': 'browser blob: object URL, never a network request',
+  // Sprint 0140: the browser compressor decodes the same picked blob: URL when no File object is attached.
+  'src/api/batch-image-compressor.web.ts:9': 'browser blob: object URL, never a network request',
 };
 
 export async function extractReadCalls(root: string): Promise<{ calls: Call[]; invalid: string[] }> {
