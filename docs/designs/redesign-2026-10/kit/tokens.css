@@ -1,0 +1,115 @@
+/* Orbit Redesign 2026-10 — design tokens (light + dark)
+   仅为 HTML 原型使用；不接入产品代码。 */
+@import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;800;900&display=swap");
+
+:root, [data-theme="light"] {
+  color-scheme: light;
+  /* 底色与雾 */
+  --bg: #F7F5F7;
+  --fog-a: rgba(206, 192, 236, .38);   /* 薰衣草 */
+  --fog-b: rgba(240, 205, 218, .34);   /* 烟粉 */
+  --fog-c: rgba(214, 228, 246, .28);   /* 冷雾 */
+
+  /* 面 */
+  --surface: #FFFFFF;
+  --surface-2: #F2EFF3;      /* 卡内浅色块 */
+  --surface-3: #EAE6EC;      /* 轨道/分隔 */
+  --line: rgba(40, 30, 50, .06);
+  --glass: rgba(255, 255, 255, .62);
+  --glass-line: rgba(255, 255, 255, .7);
+
+  /* 文本 */
+  --ink: #1E1A24;
+  --ink-2: #5E5866;
+  --ink-3: #9C95A4;
+  --ink-4: #C4BEC9;
+
+  /* 主色：灰紫 / 豆沙玫瑰（数据可视化单色系） */
+  --plum-900: #4F4466;
+  --plum-700: #6E628A;
+  --plum-500: #8E82A9;
+  --plum-300: #BDB3D2;
+  --plum-100: #E9E4F2;
+  --rose-700: #9C6C79;
+  --rose-500: #B98995;
+  --rose-300: #DDBFC6;
+  --rose-100: #F5E8EB;
+  --accent: var(--plum-700);
+  --accent-soft: var(--plum-100);
+  --on-accent: #FFFFFF;
+
+  /* 马卡龙（只占小面积） */
+  --mac-pink: #F8E4EA;
+  --mac-apricot: #F7ECDD;
+  --mac-blue: #E2ECF8;
+  --mac-teal: #DCF0EA;
+  --mac-lav: #ECE6F7;
+  --mac-pink-ink: #A55F72;
+  --mac-apricot-ink: #9A6B33;
+  --mac-blue-ink: #4C6D96;
+  --mac-teal-ink: #3D7D6A;
+  --mac-lav-ink: #6E5C9A;
+
+  /* 状态 */
+  --coral: #E58A76;
+  --coral-soft: #FBE7E1;
+  --ok: #5E9E86;
+
+  /* 形状与节奏 */
+  --r-xl: 24px;
+  --r-lg: 20px;
+  --r-md: 14px;
+  --r-sm: 10px;
+  --gap: 14px;
+  --shadow-float: 0 10px 30px -12px rgba(60, 40, 90, .22);
+  --ease: cubic-bezier(.2, .8, .2, 1);
+
+  --font: -apple-system, "SF Pro Display", "SF Pro Text", "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
+  --font-num: "SF Pro Rounded", -apple-system, "SF Pro Display", "Noto Sans JP", sans-serif;
+}
+
+:root[data-theme="dark"], [data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #19181C;
+  --fog-a: rgba(120, 100, 170, .16);
+  --fog-b: rgba(160, 100, 125, .12);
+  --fog-c: rgba(90, 120, 170, .10);
+  --surface: #242328;
+  --surface-2: #2E2D33;
+  --surface-3: #393840;
+  --line: rgba(255, 255, 255, .06);
+  --glass: rgba(44, 42, 50, .62);
+  --glass-line: rgba(255, 255, 255, .08);
+  --ink: #F3F0F6;
+  --ink-2: #BDB6C4;
+  --ink-3: #85808C;
+  --ink-4: #5A5660;
+  --plum-900: #E7E0F3;
+  --plum-700: #CFC4E6;
+  --plum-500: #A79BC4;
+  --plum-300: #6F6589;
+  --plum-100: #35303F;
+  --rose-700: #EBC4CD;
+  --rose-500: #D4A3AF;
+  --rose-300: #7E5B64;
+  --rose-100: #3A2F33;
+  --accent: #CFC4E6;
+  --accent-soft: #35303F;
+  --on-accent: #1E1A24;
+  --mac-pink: #3B2D33;
+  --mac-apricot: #3A3229;
+  --mac-blue: #2B3340;
+  --mac-teal: #28372F;
+  --mac-lav: #332D40;
+  --mac-pink-ink: #EBB3C2;
+  --mac-apricot-ink: #E6C595;
+  --mac-blue-ink: #A9C4E6;
+  --mac-teal-ink: #9FD3BF;
+  --mac-lav-ink: #C9BBEB;
+  --coral: #F29C88;
+  --coral-soft: #42302C;
+  --ok: #8CC7AF;
+  --shadow-float: 0 12px 30px -10px rgba(0, 0, 0, .6);
+}
+
+[data-theme] { color: var(--ink); }

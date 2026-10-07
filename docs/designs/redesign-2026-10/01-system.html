@@ -1,0 +1,655 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Orbit 设计系统</title>
+<link rel="stylesheet" href="kit/tokens.css">
+<link rel="stylesheet" href="kit/ui.css">
+<script src="kit/kit.js"></script>
+<style>
+  .doc { max-width: 1320px; min-width: 1320px; margin: 0 auto; }
+  .sw { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+  .sw > div { background: var(--surface); border-radius: 18px; padding: 10px; }
+  .sw i { display: block; height: 60px; border-radius: 12px; margin-bottom: 8px; }
+  .sw b { font-size: 12px; display: block; } .sw code { font-size: 10.5px; color: var(--ink-3); }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .three { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+  .type > div { display: flex; align-items: baseline; gap: 18px; padding: 10px 0; border-top: 1px solid var(--line); }
+  .type code { width: 160px; font-size: 11px; color: var(--ink-3); flex: none; }
+  .icons { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 10px; }
+  .icons > div { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 10.5px; color: var(--ink-3); }
+  table.m { width: 100%; border-collapse: collapse; font-size: 12.5px; background: var(--surface); border-radius: 20px; overflow: hidden; }
+  table.m th, table.m td { text-align: left; padding: 10px 14px; border-top: 1px solid var(--line); }
+  table.m th { background: var(--surface-2); font-size: 11px; color: var(--ink-3); border: 0; }
+  .demo-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+
+  /* ================= 第二部分：跨页组件规范（从 b1–b6 提炼；2026-10-07 起统一类已收进 kit/ui.css 末尾，本页只留文档展示用样式） ================= */
+  .part-head { margin-top: 64px; padding-top: 26px; border-top: 1.5px dashed var(--surface-3); }
+  .part-head h2 { font-size: 23px; font-weight: 800; }
+  .part-head p { font-size: 13px; color: var(--ink-2); margin-top: 6px; max-width: 980px; line-height: 1.7; }
+  .toc { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+  .toc a { padding: 6px 12px; border-radius: 999px; background: var(--surface); font-size: 12px; font-weight: 700; color: var(--ink-2); }
+  .toc a:hover { background: var(--accent-soft); color: var(--ink); }
+  .comp { display: grid; grid-template-columns: minmax(0, 1fr) 420px; gap: 18px; align-items: start; }
+  .comp.wide { grid-template-columns: minmax(0, 1fr); }
+  .comp + .comp { margin-top: 18px; }
+  .doccard { background: var(--surface); border-radius: 20px; padding: 16px 18px; font-size: 12.5px; color: var(--ink-2); line-height: 1.65; }
+  .doccard h5 { font-size: 11.5px; color: var(--ink-3); font-weight: 800; margin: 14px 0 6px; letter-spacing: .04em; }
+  .doccard h5:first-child { margin-top: 0; }
+  .doccard p { color: var(--ink); }
+  .rules { display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 7px 12px; }
+  .rules dt { font-weight: 800; color: var(--ink); font-size: 12px; }
+  .rules dd { min-width: 0; }
+  .rules code, .doccard code, table.m code { font-size: 11px; background: var(--surface-2); padding: 0 5px; border-radius: 5px; color: var(--ink-2); }
+  .src { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 5px; align-items: center; font-size: 11px; color: var(--ink-3); font-weight: 700; }
+  .src span { background: var(--surface-2); padding: 2px 8px; border-radius: 8px; color: var(--ink-2); font-weight: 600; }
+  .duo { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; min-width: 0; }
+  .duo.stack { grid-template-columns: minmax(0, 1fr); }
+  .stage { position: relative; border-radius: 22px; padding: 34px 18px 18px; min-width: 0; overflow: hidden; color: var(--ink);
+    background: radial-gradient(420px 260px at 0% 0%, var(--fog-a), transparent 70%), radial-gradient(420px 260px at 100% 0%, var(--fog-b), transparent 70%), var(--bg);
+    box-shadow: 0 0 0 1px var(--line); }
+  .stage-t { position: absolute; left: 16px; top: 11px; font-size: 10.5px; font-weight: 800; color: var(--ink-3); letter-spacing: .08em; }
+  .srow { display: flex; gap: 18px; flex-wrap: wrap; align-items: flex-start; }
+  .cell { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+  .cap { font-size: 11px; color: var(--ink-3); font-weight: 800; }
+  .mini { position: relative; flex: none; }
+  .mini > div { transform-origin: 0 0; }
+  table.m.spec td { vertical-align: top; line-height: 1.6; }
+  table.m.spec td:first-child { white-space: nowrap; }
+  .ds .ell { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+
+  /* --- Toast --- */
+
+  /* --- 确认框 --- */
+  .ds .focus { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--plum-500); }
+  .ds .asheet { width: 360px; background: var(--surface); border-radius: 34px; padding: 10px 18px 22px; box-shadow: var(--shadow-float); }
+  .ds .grab { width: 38px; height: 5px; border-radius: 3px; background: var(--surface-3); margin: 0 auto 14px; }
+  .ds .scrimbox { position: relative; border-radius: 22px; overflow: hidden; display: grid; place-items: center; padding: 26px 18px; background: var(--scrim); }
+  .ds .scrimbox.wsc { background: var(--scrim-web); }
+  /* 文档展示用：把 kit 的绝对定位弹层放回文档流（只在本页） */
+  .ds .dialog.static, .ds .wmodal.static { position: relative; left: auto; top: auto; transform: none; animation: none; }
+  .ds .scrimbox.bottom { place-items: end center; padding-bottom: 8px; }
+
+  /* --- 弹层容器 --- */
+  .ds .frame { position: relative; border-radius: 22px; overflow: hidden; background: var(--bg); box-shadow: 0 0 0 1px var(--line); flex: none; }
+  .ds .frame .ghostui { position: absolute; inset: 0; padding: 14px; display: grid; gap: 8px; align-content: start; }
+  .ds .frame .ghostui i { display: block; height: 34px; border-radius: 12px; background: var(--surface); }
+  .ds .frame .sheet { left: 6px; right: 6px; bottom: 6px; border-radius: 30px; padding: 8px 14px 16px; }
+  .ds .frame .drawer { position: absolute; top: 10px; right: 10px; bottom: 10px; width: 42%; border-radius: 20px; background: var(--bg); padding: 14px; box-shadow: var(--shadow-float); display: flex; flex-direction: column; gap: 8px; }
+  .ds .pop { background: var(--surface); border-radius: 22px; box-shadow: var(--shadow-float); border: 1px solid var(--line); padding: 16px; }
+
+  /* --- AI 确认卡三态 --- */
+  .ds .lnk { font-size: 12.5px; font-weight: 700; color: var(--plum-700); display: inline-flex; align-items: center; gap: 2px; }
+  .ds .yn { display: flex; gap: 8px; }
+  .ds .yn button { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--surface-2); color: var(--ink-2); }
+  .ds .yn button.on { background: var(--plum-700); color: var(--on-accent); }
+  .ds .chip.sugg { background: transparent; border: 1.5px dashed var(--plum-300); color: var(--ink-2); padding-right: 4px; }
+  .ds .chip.sugg .k { width: 18px; height: 18px; border-radius: 50%; display: inline-grid; place-items: center; background: var(--surface-2); font-size: 10px; }
+
+  /* --- 依据 --- */
+
+  /* --- 权限 --- */
+  .ds .perm-art { width: 132px; height: 132px; border-radius: 40px; display: grid; place-items: center; font-size: 60px; margin: 30px auto 22px; position: relative; }
+  .ds .perm-li { display: flex; gap: 12px; align-items: flex-start; padding: 12px 0; font-size: 13.5px; line-height: 1.55; }
+  .ds .perm-li + .perm-li { border-top: 1px solid var(--line); }
+  .ds .h1 { font-size: 24px; font-weight: 900; line-height: 1.35; text-align: center; }
+  .ds .phone .foot { position: absolute; left: 0; right: 0; bottom: 0; z-index: 30; padding: 22px 18px 30px; background: linear-gradient(to bottom, transparent, var(--bg) 28%); display: grid; gap: 8px; }
+
+  /* --- 加载 --- */
+  .ds .spin { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--surface-3); border-top-color: var(--plum-700); animation: dsSpin .9s linear infinite; display: inline-block; flex: none; }
+  .ds .btn .spin { border-color: color-mix(in srgb, currentColor 25%, transparent); border-top-color: currentColor; }
+  @keyframes dsSpin { to { transform: rotate(360deg); } }
+  .ds .pchk { display: flex; align-items: center; gap: 10px; padding: 8px 0; font-size: 13px; }
+  .ds .pchk .bx { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; flex: none; background: var(--surface-2); color: var(--ink-4); }
+  .ds .pchk .bx svg.i { width: 13px; height: 13px; stroke-width: 2.4; }
+  .ds .pchk.d .bx { background: var(--ok); color: var(--surface); }
+  .ds .pchk.d { color: var(--ink-2); } .ds .pchk.n { font-weight: 800; } .ds .pchk.w { color: var(--ink-4); }
+  .ds .pchk .cnt2 { margin-left: auto; font-family: var(--font-num); font-size: 11.5px; color: var(--ink-3); font-weight: 700; }
+  .ds .orb { width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; font-size: 28px; background: radial-gradient(circle at 35% 30%, var(--surface), var(--mac-lav) 70%); animation: dsOrb 2.4s var(--ease) infinite; flex: none; }
+  @keyframes dsOrb { 50% { box-shadow: 0 0 0 12px color-mix(in srgb, var(--plum-300) 22%, transparent); } }
+  .ds .thinking { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-3); }
+  .ds .thinking i { width: 6px; height: 6px; border-radius: 50%; background: var(--plum-500); animation: dsBlink 1.2s infinite; }
+  .ds .thinking i:nth-child(2) { animation-delay: .2s; } .ds .thinking i:nth-child(3) { animation-delay: .4s; }
+  @keyframes dsBlink { 50% { opacity: .25; } }
+  .ds .stopb { width: 34px; height: 34px; border-radius: 50%; background: var(--ink); color: var(--bg); display: grid; place-items: center; flex: none; }
+  .ds .stopb i { width: 11px; height: 11px; border-radius: 3px; background: currentColor; display: block; }
+
+  /* --- 离线 / 错误 / 降级 --- */
+  .ds .offline { display: flex; align-items: center; gap: 8px; padding: 9px 10px 9px 14px; border-radius: 16px; background: var(--mac-apricot); color: var(--mac-apricot-ink); font-size: 12px; font-weight: 700; }
+  .ds .offline.back { background: var(--mac-teal); color: var(--mac-teal-ink); }
+  .ds .offline .pend { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 999px; background: var(--surface); color: var(--mac-apricot-ink); font-size: 11px; font-family: var(--font-num); flex: none; }
+  .ds .syncing { display: inline-flex; align-items: center; gap: 3px; font-size: 10.5px; color: var(--mac-apricot-ink); font-weight: 700; white-space: nowrap; }
+  .ds .degrade { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 18px; background: var(--surface-2); font-size: 12px; color: var(--ink-2); }
+  .ds .err-card { text-align: center; padding: 24px 20px; }
+  .ds .err-ic { width: 54px; height: 54px; border-radius: 18px; background: var(--coral-soft); color: var(--coral); display: grid; place-items: center; margin: 0 auto 12px; }
+  .ds .input.err { box-shadow: inset 0 0 0 1.5px var(--coral); color: var(--ink); background: var(--surface); }
+  .ds .fmsg { margin-top: 6px; padding: 9px 12px; border-radius: 12px; background: var(--coral-soft); font-size: 12px; color: var(--ink); line-height: 1.55; }
+  .ds .fmsg b { color: var(--coral); }
+
+  /* --- 示例模式 --- */
+  .ds .samplebar { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 16px; background: var(--mac-apricot); color: var(--mac-apricot-ink); font-size: 11.5px; font-weight: 700; }
+  .ds .samplebar .btn { background: var(--surface); color: var(--ink); }
+  .ds .samplebar .x { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; flex: none; }
+  .ds .spill { display: inline-flex; align-items: center; gap: 5px; padding: 6px 11px 6px 9px; border-radius: 999px; background: var(--mac-apricot); color: var(--mac-apricot-ink); font-size: 11.5px; font-weight: 800; box-shadow: var(--shadow-float); }
+
+  /* --- 付费 --- */
+  .ds .qchip { font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; background: var(--surface-2); color: var(--ink-2); white-space: nowrap; display: inline-flex; align-items: center; gap: 5px; }
+  .ds .qchip i { width: 6px; height: 6px; border-radius: 50%; background: var(--plum-500); }
+  .ds .qchip.out i { background: var(--coral); }
+  .ds .qdots { display: flex; gap: 5px; }
+  .ds .qdots i { width: 26px; height: 8px; border-radius: 4px; background: var(--plum-500); }
+  .ds .qdots i.u { background: var(--surface-3); }
+  .ds .cmp { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .ds .cmp th { font-size: 12px; font-weight: 800; padding: 8px 6px 10px; text-align: center; }
+  .ds .cmp th:first-child { text-align: left; }
+  .ds .cmp td { padding: 9px 6px; border-top: 1px solid var(--line); text-align: center; color: var(--ink-2); }
+  .ds .cmp td:first-child { text-align: left; color: var(--ink); font-weight: 600; }
+  .ds .cmp .col-on { background: color-mix(in srgb, var(--accent-soft) 55%, transparent); color: var(--ink); font-weight: 700; }
+
+  /* --- 推送 --- */
+  .ds .lockbg { position: relative; border-radius: 26px; padding: 18px 12px 14px; color: var(--plum-900); overflow: hidden;
+    background: radial-gradient(260px 220px at 85% 10%, var(--rose-300), transparent 70%), radial-gradient(280px 260px at 5% 95%, var(--plum-300), transparent 70%), linear-gradient(170deg, var(--plum-100), var(--rose-100) 55%, var(--plum-300)); }
+  .ds .lockbg .clk { text-align: center; font-family: var(--font-num); font-size: 46px; font-weight: 800; line-height: 1; letter-spacing: -.02em; margin-bottom: 14px; }
+  .ds .appic { width: 34px; height: 34px; border-radius: 9px; background: var(--ink); color: var(--bg); display: grid; place-items: center; font-weight: 900; font-size: 15px; flex: none; }
+  .ds .pmenu { margin-top: 8px; margin-left: auto; width: 240px; background: var(--glass); backdrop-filter: blur(22px); -webkit-backdrop-filter: blur(22px); border: 1px solid var(--glass-line); border-radius: 18px; overflow: hidden; color: var(--ink); }
+  .ds .pmenu div { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; font-size: 12.5px; font-weight: 600; }
+  .ds .pmenu div + div { border-top: 1px solid var(--line); }
+  .ds .deep { display: flex; gap: 8px; align-items: center; padding: 9px 12px; border-radius: 14px; background: var(--accent-soft); font-size: 12px; font-weight: 700; margin-bottom: 12px; }
+  .ds .hl { box-shadow: 0 0 0 2px var(--plum-500), 0 0 0 9px color-mix(in srgb, var(--plum-500) 16%, transparent); animation: dsHl 2.4s var(--ease) infinite; }
+  @keyframes dsHl { 50% { box-shadow: 0 0 0 2px var(--plum-500), 0 0 0 16px color-mix(in srgb, var(--plum-500) 4%, transparent); } }
+
+  /* --- 键盘 --- */
+  .ds .tipw { position: relative; display: inline-flex; max-width: 100%; }
+  .ds .tip-b { position: absolute; left: 0; bottom: calc(100% + 8px); z-index: 6; width: max-content; max-width: 280px; padding: 7px 10px; border-radius: 11px; background: var(--ink); color: var(--bg); font-size: 11.5px; font-weight: 600; line-height: 1.5; white-space: normal; display: flex; gap: 6px; align-items: center; }
+  .ds .tip-b::after { content: ""; position: absolute; left: 18px; top: 100%; border: 6px solid transparent; border-top-color: var(--ink); }
+
+  /* --- 长文案 --- */
+  .ds .clamp1 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .ds .clamp2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .ds .jp { word-break: auto-phrase; line-break: strict; }
+  .ds .okng { font-size: 10.5px; font-weight: 800; padding: 2px 8px; border-radius: 999px; }
+  .ds .okng.ok { background: var(--mac-teal); color: var(--mac-teal-ink); } .ds .okng.bad { background: var(--coral-soft); color: var(--coral); }
+
+  /* --- 不一致清单 --- */
+  table.m.inc td:nth-child(1) { font-weight: 800; color: var(--ink-3); font-family: var(--font-num); width: 34px; }
+  table.m.inc td:nth-child(2) { font-weight: 700; white-space: nowrap; }
+  table.m.inc td { vertical-align: top; line-height: 1.6; }
+  .lv { font-size: 10.5px; font-weight: 800; padding: 1px 7px; border-radius: 999px; white-space: nowrap; }
+  .stt { display: inline-block; font-size: 10.5px; font-weight: 800; padding: 1px 7px; border-radius: 999px; background: var(--mac-teal); color: var(--mac-teal-ink); white-space: nowrap; margin-bottom: 3px; }
+  .stt.part { background: var(--mac-apricot); color: var(--mac-apricot-ink); }
+  table.m.inc td:nth-child(6) { min-width: 330px; }
+  .lv.h { background: var(--coral-soft); color: var(--coral); } .lv.m { background: var(--mac-apricot); color: var(--mac-apricot-ink); } .lv.l { background: var(--surface-2); color: var(--ink-3); }
+</style>
+</head>
+<body>
+<div class="doc">
+  <div class="doc-head"><div><div class="doc-kicker">Orbit Redesign · 2026-10</div><h1>设计系统</h1><p>原则：明亮柔和像精致记账 App；可爱克制（emoji 只在分类图标出现，按钮一律线性图标）；层次靠浅色块而不是阴影与描边；关键数字大而粗。Token 文件：<code>kit/tokens.css</code>。</p></div>
+    <div class="doc-tools"><div class="seg" data-ctl="theme"><button data-v="light">ライト</button><button data-v="dark">ダーク</button></div></div></div>
+  <nav class="doc-nav" id="docnav"></nav>
+  <div id="out"></div>
+</div>
+<script>
+const sw = (list) => `<div class="sw">${list.map(([n, v, d]) => `<div><i style="background:var(${v})"></i><b>${n}</b><code>${v}${d ? ' · ' + d : ''}</code></div>`).join('')}</div>`;
+const sec = (t, s) => `<div class="section-title"><h2>${t}</h2><span>${s || ''}</span></div>`;
+let h = '';
+h += sec('颜色 · 底与面', '切换右上可看深色值');
+h += sw([['底', '--bg', '#F7F5F7'], ['卡片', '--surface'], ['卡内色块', '--surface-2'], ['轨道', '--surface-3'], ['正文', '--ink'], ['次级', '--ink-2'], ['标签', '--ink-3'], ['雾·薰衣草', '--fog-a'], ['雾·烟粉', '--fog-b']]);
+h += sec('颜色 · 数据单色系', '环形图与进度条只用这两组深浅；不引入第三色相');
+h += sw([['灰紫 900', '--plum-900'], ['灰紫 700', '--plum-700', '主强调'], ['灰紫 500', '--plum-500'], ['灰紫 300', '--plum-300'], ['灰紫 100', '--plum-100'], ['豆沙 700', '--rose-700'], ['豆沙 500', '--rose-500', '目标/进度'], ['豆沙 300', '--rose-300'], ['珊瑚', '--coral', '超标/警告']]);
+h += sec('颜色 · 马卡龙（类型区分，只占小面积）', '用于 emoji 图标底、chip、迷你卡；不用作整张卡底');
+h += `<div class="demo-row">${[['pink', '💼', '投资・金融 / 要フォロー'], ['apricot', '📇', '名刺・取込 / 注意'], ['blue', '🏭', '製造業 / 関係構築'], ['teal', '🤝', '協業 / 完了'], ['lav', '✨', 'iOrbit / 推進中']].map(([c, e, t]) => `<div class="card row" style="gap:10px;padding:12px 14px"><span class="emo ${c}">${e}</span><div><span class="chip ${c}">${c}</span><div class="lbl" style="margin-top:4px">${t}</div></div></div>`).join('')}</div>`;
+h += sec('字体与层级', 'SF Pro / Noto Sans JP；数字用 SF Pro Rounded + tabular-nums');
+h += `<div class="card type">
+  <div><code>Big Number 38–46 / 800</code><span class="big">286<small>人</small></span></div>
+  <div><code>Title 20–26 / 800</code><span style="font-size:22px;font-weight:800">3ステップで、あなた専用の人脈プランへ</span></div>
+  <div><code>Card title 14.5 / 800</code><span style="font-size:14.5px;font-weight:800">あなたの判断待ち</span></div>
+  <div><code>Body 13–14 / 500–700</code><span style="font-size:14px">高橋さんへ昨日の面談のお礼を。</span></div>
+  <div><code>Label 11.5 / 500 ink-3</code><span class="lbl">今月つながった人</span></div></div>`;
+h += sec('组件');
+h += `<div class="three">
+  <div class="card"><div class="lbl" style="margin-bottom:10px">按钮（点击态 scale .96）</div><div class="demo-row"><button class="btn primary">主要</button><button class="btn accent">强调</button><button class="btn">次要</button><button class="btn ghost">文字</button><button class="btn primary press">按下</button></div>
+    <div class="lbl" style="margin:14px 0 10px">圆形图标钮（浅底 + 线性图标）</div><div class="demo-row"><button class="rbtn soft">${ic('search')}</button><button class="rbtn soft">${ic('sparkle')}</button><button class="rbtn soft">${ic('bell')}<span class="dot"></span></button><button class="rbtn soft press">${ic('sliders')}</button><button class="lbtn">${ic('mail', 'sm')}</button></div></div>
+  <div class="card"><div class="lbl">细进度条 + 圆形小滑块</div>${bar(72)}${bar(46, 'rose')}${bar(25, 'warn')}<div class="lbl" style="margin-top:14px">环形（单色深浅；分段间留 3px 缝）</div>
+    <div class="row" style="gap:14px;margin-top:8px">${ring(80, 9, [{ v: 46, c: 'var(--rose-500)', max: 100 }], '<b class="score" style="font-weight:800">46%</b>')}${ring(80, 9, [{ v: 172, c: 'var(--plum-300)' }, { v: 64, c: 'var(--plum-500)' }, { v: 31, c: 'var(--plum-700)' }, { v: 19, c: 'var(--rose-500)' }])}${ring(80, 9, [{ v: 112, c: 'var(--coral)', max: 100 }], '<b style="color:var(--coral)">112%</b>')}</div></div>
+  <div class="card"><div class="lbl" style="margin-bottom:10px">卡片层级</div><div class="card flat" style="padding:14px"><b>浅色块卡（卡内二级）</b><div class="lbl">--surface-2，无描边无阴影</div></div>
+    <div class="mac lav" style="margin-top:10px"><b style="font-size:13px">马卡龙迷你块</b><div class="lbl">只承载一句提示</div></div>
+    <div class="ghost-row" style="margin-top:10px"><i></i>虚线幽灵行 = 空状态预告</div></div>
+</div>`;
+h += sec('图标', '功能 = 线性 1.7px 描边，放圆形浅底；分类 = emoji 风 3D 小图标，放马卡龙圆角方块');
+h += `<div class="card"><div class="icons">${['home', 'users', 'calendar', 'target', 'sparkle', 'plus', 'search', 'sliders', 'bell', 'scan', 'nfc', 'link', 'image', 'mic', 'pen', 'mail', 'phone', 'check', 'clock', 'pin', 'settings', 'inbox', 'chart', 'send', 'share', 'brief', 'refresh', 'layers'].map(n => `<div><span class="lbtn">${ic(n, 'sm')}</span>${n}</div>`).join('')}</div>
+  <div class="demo-row" style="margin-top:16px">${[['pink', '💰'], ['blue', '🤝'], ['teal', '🧑‍💼'], ['apricot', '🔗'], ['lav', '✨'], ['pink', '📇'], ['blue', '🏭'], ['teal', '🎤'], ['apricot', '🥂'], ['lav', '🗺️']].map(([c, e]) => `<span class="emo ${c}">${e}</span>`).join('')}</div></div>`;
+h += sec('交互与动效', '统一缓动 cubic-bezier(.2,.8,.2,1)；尊重 prefers-reduced-motion（实现时关闭位移，仅保留淡入）');
+h += `<table class="m"><thead><tr><th>交互</th><th>表现</th><th>时长</th><th>用在</th></tr></thead><tbody>
+  ${[['点击态', '按钮 scale .96 + brightness .96；圆钮 scale .9 + 浅紫底；FAB scale .94', '150ms', '所有可点元素'],
+    ['展开', 'grid-template-rows 0fr→1fr，箭头旋转 180°', '350ms', '进捗ログ、依据「?」、详情折叠区'],
+    ['卡片横滑', 'scroll-snap 横向轮播；指示点当前项从 6px 拉长到 18px', '300ms', '评估过的活动、参加予定'],
+    ['行左滑', '露出 明日 / 完了（App）；Web 改为悬停出现快捷钮', '300ms', '判断待ち、要フォロー'],
+    ['数字变化', '从旧值 count-up 到新值，ease-out cubic；环形同步描边', '1100–1200ms', '首屏 KPI、评分、目标达成度'],
+    ['进入', '卡片自下 10px 淡入，同屏依次延迟 40ms', '600ms', '首屏'],
+    ['加载', '分步清单 + 骨架闪光，不用转圈', '循环 1.6s', '活动评估、名片识别、计划生成'],
+    ['弹层', '底部弹层上滑 + 背景暗化 28%；Web 抽屉右侧滑入 600px', '320ms', '＋追加、联系人详情'],
+    ['主题切换', '换 token 后重放环与数字动画', '—', '深色模式']].map(r => `<tr>${r.map((c, k) => `<td ${k === 0 ? 'style="font-weight:700;white-space:nowrap"' : ''}>${c}</td>`).join('')}</tr>`).join('')}</tbody></table>
+  <div class="two" style="margin-top:18px">
+    <div class="card acc"><div class="row between" data-acc style="cursor:pointer"><b>点我试「展开」</b><span class="chev">${ic('down', 'sm')}</span></div><div class="acc-b"><div><div class="sub" style="padding-top:10px">根拠：名刺（9/18 Japan Startup Night）· 面談メモ 2件 · 公開ポートフォリオ</div></div></div></div>
+    <div class="swipe"><div class="acts"><button class="a1">${ic('clock', 'sm')}明日</button><button class="a2">${ic('check', 'sm')}完了</button></div><div class="face" style="padding:14px 16px"><b>拖我向左滑</b><div class="lbl">山本 彩さんに資料を再送 · 期限超過</div></div></div>
+  </div>`;
+/* =====================================================================
+   第二部分：跨页组件规范（2026-10-07 从 b1–b6 画稿提炼）
+   类名 = 建议统一后的名字（将来收进 kit/ui.css）；本页样式全部 scoped 在 .ds 下
+   ===================================================================== */
+const XP = {
+  undo: '<path d="M9 14 4.5 9.5 9 5"/><path d="M4.5 9.5H14a5.5 5.5 0 0 1 0 11h-3"/>',
+  alert: '<path d="M10.3 4.6 2.9 17.5A2 2 0 0 0 4.6 20.5h14.8a2 2 0 0 0 1.7-3L13.7 4.6a2 2 0 0 0-3.4 0Z"/><path d="M12 9.5v4.5"/><circle cx="12" cy="17" r=".8" fill="currentColor"/>',
+  wifioff: '<path d="m3.5 3.5 17 17M8.8 16.2a4.6 4.6 0 0 1 6.4 0M5.2 12.6a9.6 9.6 0 0 1 3.6-2.2M18.8 12.6a9.6 9.6 0 0 0-2.8-1.9M2 8.9a14.5 14.5 0 0 1 4.3-2.7M22 8.9A14.5 14.5 0 0 0 10.6 5"/><circle cx="12" cy="19.6" r=".9" fill="currentColor"/>',
+  trash: '<path d="M4.5 7h15M9.5 7V5.2c0-.9.7-1.7 1.6-1.7h1.8c.9 0 1.6.8 1.6 1.7V7M6.5 7l.8 11.8a2 2 0 0 0 2 1.7h5.4a2 2 0 0 0 2-1.7L17.5 7"/>',
+  copy: '<rect x="8.5" y="8.5" width="11.5" height="11.5" rx="3"/><path d="M15.5 8.5V6.5a2.5 2.5 0 0 0-2.5-2.5H6.5A2.5 2.5 0 0 0 4 6.5V13a2.5 2.5 0 0 0 2.5 2.5h2"/>',
+};
+const ix = (n, cls = '') => XP[n] ? `<svg class="i ${cls}" viewBox="0 0 24 24" aria-hidden="true">${XP[n]}</svg>` : ic(n, cls);
+const sec2 = (id, t, s) => `<div class="section-title" id="${id}"><h2>${t}</h2><span>${s || ''}</span></div>`;
+const duo = (inner, stack = false) => `<div class="duo ${stack ? 'stack' : ''}">${['light', 'dark'].map(t => `<div class="stage" data-theme="${t}"><span class="stage-t">${t === 'light' ? 'LIGHT · ライト' : 'DARK · ダーク'}</span>${typeof inner === 'function' ? inner(t) : inner}</div>`).join('')}</div>`;
+const docc = (o) => `<div class="doccard">${o.use ? `<h5>用途</h5><p>${o.use}</p>` : ''}${o.rules ? `<h5>规则</h5><dl class="rules">${o.rules.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>` : ''}${o.src ? `<div class="src">出处${o.src.map(s => `<span>${s}</span>`).join('')}</div>` : ''}</div>`;
+const comp = (demo, d, wide = false) => `<div class="comp ${wide ? 'wide' : ''}"><div style="min-width:0">${demo}</div>${d ? docc(d) : ''}</div>`;
+const cell = (cap, html, w) => `<div class="cell" ${w ? `style="width:${w}px"` : ''}><div class="cap">${cap}</div>${html}</div>`;
+const mini = (html, s, w = 390, hh = 844) => `<div class="mini" style="width:${w * s}px;height:${hh * s}px"><div style="transform:scale(${s});width:${w}px">${html}</div></div>`;
+const spec = (head, rows, cls = '') => `<table class="m spec ${cls}"><thead><tr>${head.map(x => `<th>${x}</th>`).join('')}</tr></thead><tbody>${rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+const kbd = (k) => `<span class="kbd">${k}</span>`;
+
+/* ---- 示例内容（虚构） ---- */
+const ROWS = [['山', 'c4', '山本 彩さんに資料を再送', '東都キャピタル · 24日間 未連絡', '<span class="chip coral">期限超過</span>'],
+  ['鈴', 'c3', '鈴木さんと PoC 日程を確定', '候補 3枠を提案済み', '<span class="chip apricot">今日</span>'],
+  ['加', 'c5', '加藤さんの紹介先 3社を確認', 'アクシス商事 · 営業部長', '<span class="chip">今週</span>']];
+const rowsHTML = (rs = ROWS, tag = '') => `<div class="list">${rs.map(([a, c, t, d, ch]) => `<div class="li"><div class="av ${c}">${a}</div><div class="meta"><b>${t}${tag}</b><span>${d}</span></div>${ch || ''}</div>`).join('')}</div>`;
+const backB = `<button class="rbtn">${ic('left')}</button>`, moreB = `<button class="rbtn">${ic('more')}</button>`;
+const appHome = () => topbar('10月', '7日（水）', `<button class="avatar-btn">佐</button>`, `<button class="rbtn">${ic('sparkle')}</button>`) +
+  `<div class="card"><div class="lbl">人脈</div><div class="big">286<small>人</small></div><span class="delta">+24 今月</span></div>
+   <div class="card"><div class="card-h"><h3>あなたの判断待ち</h3><span class="more">すべて${ic('right', 'sm')}</span></div>${rowsHTML()}</div>`;
+const appDetail = () => topbar('タスク', '期限超過 · 6日', backB, moreB) +
+  `<div class="card"><div class="row" style="gap:10px"><div class="av c4">山</div><div style="flex:1;min-width:0"><b style="display:block">山本 彩さんに資料を再送</b><div class="lbl">東都キャピタル · シニアアソシエイト</div></div></div>
+   <div class="sub" style="margin-top:12px;line-height:1.7">ユニットエコノミクスの資料（v3）を再送し、来週の IC 前に電話で補足する。</div></div>
+   <div class="card flat"><div class="lbl">期限</div><b>10月1日（木）</b></div>`;
+const webMini = (overlay, theme = '') => webFrame({ nav: 0, theme,
+  head: mainhead('10月7日（水）', '今日やること 4件', `<button class="rbtn">${ic('search')}</button>`, `<button class="btn accent">${ic('plus', 'sm')}追加</button>`),
+  body: `<div class="wgrid"><div class="card span7"><div class="card-h"><h3>あなたの判断待ち</h3></div>${rowsHTML()}</div><div class="card span5"><div class="lbl">人脈</div><div class="big">286<small>人</small></div><span class="delta">+24 今月</span></div>
+    <div class="card span12"><div class="card-h"><h3>今日の予定</h3></div><div class="lbl">19:00 CFO Night Tokyo vol.18 · 渋谷ストリーム</div></div></div>`,
+  rail: `<h4><span class="emo sm lav">✨</span>次の一手</h4><div class="card" style="padding:14px"><b style="font-size:13px">高橋さんへお礼メール</b><div class="lbl">昨日の面談 · 下書きあり</div></div>`,
+  pins: overlay });
+
+/* ---- Toast ---- */
+const toast = (msg, o = {}) => `<div class="toast ${o.cls || ''}" ${o.style ? `style="${o.style}"` : ''}><span class="tk">${o.icon ? ix(o.icon) : ic('check')}</span><span class="tmsg">${msg}${o.sub ? `<small>${o.sub}</small>` : ''}</span>${o.act === false ? '' : `<button class="undo">${o.act || ix('undo', 'sm') + '元に戻す'}</button>`}${o.bar === false ? '' : '<i class="tbar"></i>'}</div>`;
+
+let P = `<div class="part-head"><div class="doc-kicker">Part 2 · 跨页组件（2026-10-07 从 b1–b6 提炼）</div><h2>组件规范 · 第二部分</h2>
+  <p>以下组件在 6 批画稿里各自长出，现在定为统一规范：每个组件给 <b>可视示例</b>（同一组件并排渲染 ライト / ダーク，右上切换主题可再看整页）、<b>用途</b>、<b>规则</b>（尺寸 / 位置 / 时长 / 何时用何时不用）与 <b>出处</b>（批次 · 画板）。各批之间做法不一的地方，统一做法写在规则里。<b>2026-10-07 已按本规范改完 app / web / b1–b6 / b8 画稿</b>：统一类收进 <code>kit/ui.css</code> 末尾（每个组件规则的「kit 类」一行），页面里的私有副本已删除；逐条处理结果见文末「不一致清单」。b7 另行处理。</p>
+  <div class="toc">${[['c-toast', 'Toast'], ['c-confirm', '确认框'], ['c-layer', '弹层 / 抽屉 / 弹出层'], ['c-ai', 'AI 确认卡三态'], ['c-why', '依据「?」'], ['c-perm', '权限说明'], ['c-load', '加载'], ['c-err', '离线 / 错误 / 降级'], ['c-sample', '示例模式'], ['c-chip', '状态 chip 语义'], ['c-pay', '付费'], ['c-push', '通知 / 推送'], ['c-kbd', '键盘提示'], ['c-text', '长文案截断'], ['c-ctl', '开关与选择'], ['c-rule', '已定口径'], ['c-inc', '不一致清单']].map(([id, t]) => `<a href="#${id}">${t}</a>`).join('')}</div></div>`;
+
+/* ① Toast */
+P += sec2('c-toast', '① Toast（轻提示 + 撤销）', '统一取 b3 规格：墨色胶囊 · 5 秒倒计时细线 · 「元に戻す」· 出错不自动消失');
+P += comp(duo(`<div style="display:grid;gap:10px">
+    ${toast('完了にしました')}
+    ${toast('明日に移動しました', { icon: 'clock', sub: '10月8日（木）朝 8:00 に通知' })}
+    ${toast('タスクに追加しました', { cls: 'info', icon: 'plus', act: '開く' })}
+    ${toast('保存できませんでした', { cls: 'err', icon: 'alert', act: ic('refresh', 'sm') + '再試行', bar: false })}
+    ${toast('オフラインで保存しました', { cls: 'info', icon: 'wifioff', sub: '接続後に同期します', act: false, bar: false })}</div>`), {
+  use: '用户自己触发、且<b>可撤销或无需决定</b>的结果反馈：完了、明日へ移動、記録、追加、交換成功。',
+  rules: [['kit 类', '<code>.toast</code> + <code>.tk</code> / <code>.tmsg</code>(<code>small</code>) / <code>.undo</code> / <code>.tbar</code>；修饰 <code>.err</code> <code>.info</code>；撤销条 <code>.toast.keep</code>（无倒计时线、不自动消失、写明期限）'], ['外观', '墨色胶囊（<code>--ink</code> 底 / <code>--bg</code> 字），左侧 26px 状态圆：成功 <code>--ok</code>、错误 <code>--coral</code>、信息 = 半透明；主句 ≤ 16 字，可加 11px 副行（对象名/时间，单行省略）'],
+    ['动作', '右侧最多 1 个胶囊钮：撤销一律「元に戻す」（带 undo 图标），或跳转「開く」。不放两个按钮'],
+    ['出错', '珊瑚图标 +「再試行」，<b>不自动消失、无倒计时线</b>，直到用户点击或问题解决'],
+    ['离线', '离线图标 +「接続後に同期します」，不给撤销（动作仍在队列中）'],
+    ['不用于', '需要用户做决定的事（→ 确认框）；长说明（→ 横条/卡片）；AI 写入的结果（→ 确认卡原位变成功卡，不再另弹 Toast）']],
+  src: ['b3 · 2 · 完了 + ひとこと記録 → Toast（规格卡）', 'b3 · 8 · システム状態 オフライン', 'b4 · A1 進捗を記録', 'b2 · ⑥ 会場モード ⑩ 交換成功', 'b6 · マッチング ② 公開'] });
+P += comp(`<div class="srow">
+    ${cell('App · 有标签栏：标签栏上方 12px（bottom 100）', mini(phone({ body: appHome(), tab: 0, overlay: toast('完了にしました', { cls: 'pos', sub: '山本 彩さんに資料を再送' }) }), .5))}
+    ${cell('App · 无标签栏（二级页）：贴底 40px · 深色', mini(phone({ body: appDetail(), tab: -1, theme: 'dark', overlay: toast('明日に移動しました', { cls: 'pos notab', icon: 'clock', sub: '10月8日（木）朝 8:00 に通知' }) }), .5))}
+    ${cell('Web · 右下 24px，宽 420，最多堆叠 3 条', mini(webMini(`<div class="toast-stack">${toast('タスクに追加しました', { cls: 'info', icon: 'plus', act: '開く' })}${toast('完了にしました', { sub: 'ひとことを山本 彩さんのやりとりに記録' })}</div>`), .36, 1440, 960))}
+  </div>`, {
+  rules: [['位置类', 'App：<code>.toast.pos</code>（bottom 100）/ <code>.toast.pos.notab</code>（bottom 40）；Web：外包 <code>.toast-stack</code>（右下 24 · 宽 420）'], ['App 位置', '左右 16px；有标签栏时在其上方 12px（bottom 100），无标签栏页 bottom 40；底部有草稿操作区/会场横条时贴其上方 12px。<b>不放顶部</b>（顶部留给系统通知与离线横条）'],
+    ['Web 位置', '右下角 24px，宽 420；最多堆叠 3 条，新的在最下，超出时最旧的先消失'],
+    ['时长', '5 秒；底部 2px 倒计时细线 scaleX 1→0（linear）；Web 鼠标悬停暂停计时'],
+    ['动效', '自下 16px + 缩放 .97 淡入 450ms；退出淡出 200ms；reduced-motion 下只淡入'],
+    ['队列', 'App 一次 1 条，新的顶替旧的（旧条的撤销随之失效）'],
+    ['键盘', 'Web：⌘Z = 「元に戻す」（只作用于最近一条）']] }, true);
+
+/* ② 确认框 */
+const alertApp = `<div class="dialog static"><div class="dic">${ix('trash', 'lg')}</div><b class="dt">このタスクを削除しますか？</b>
+  <div class="dd">「山本 彩さんに資料を再送」を削除します。<br>元になったメモとやりとりは残ります。</div>
+  <div class="dacts"><button class="btn focus">キャンセル</button><button class="btn danger">削除する</button></div></div>`;
+const actSheet = `<div class="asheet actsheet"><div class="grab"></div><div class="row" style="gap:12px;align-items:flex-start"><span class="emo lav">🥂</span><div style="flex:1;min-width:0"><b style="font-size:15px;line-height:1.4;display:block">CFO Night Tokyo の参加を取り消しますか？</b><div class="lbl">10月7日（水）19:00 · 渋谷ストリーム</div></div></div>
+  <div style="margin:12px 0 14px"><div class="eff">${ic('bell', 'sm')}主催者に取り消しが通知されます</div><div class="eff">${ic('ticket', 'sm')}参加費 ¥5,000 の返金は主催者の規定によります</div><div class="eff">${ic('users', 'sm')}会いたい人リスト（6名）と準備メモは残ります</div></div>
+  <button class="btn danger block">参加を取り消す</button><button class="btn block focus">参加を続ける</button></div>`;
+const modalWeb = `<div class="wmodal static"><div class="row" style="gap:14px;align-items:flex-start"><div class="dic">${ix('trash', 'lg')}</div><div style="min-width:0"><b style="font-size:17px">このタスクを削除しますか？</b>
+  <div class="sub" style="margin-top:6px;line-height:1.65">「山本 彩さんに資料を再送」を削除します。元に戻せません。元になったメモとやりとりは残ります。</div></div></div>
+  <div class="macts"><span class="lbl hint">${kbd('Esc')} キャンセル</span><button class="btn focus">キャンセル</button><button class="btn danger">削除する</button></div></div>`;
+P += sec2('c-confirm', '② 确认框（居中确认 vs 底部动作表）', '破坏性按钮实心珊瑚；破坏性操作默认焦点在「キャンセル」');
+P += comp(duo(`<div class="srow" style="gap:12px">
+    ${cell('App 居中确认 · 宽 296（单一不可逆动作）', `<div class="scrimbox" style="width:322px;min-height:390px">${alertApp}</div>`)}
+    ${cell('App 底部动作表（需列出多条后果）', `<div class="scrimbox bottom" style="width:380px;min-height:390px">${actSheet}</div>`)}
+    ${cell('Web 居中模态 · 宽 420', `<div class="scrimbox wsc" style="width:446px;min-height:390px">${modalWeb}</div>`)}</div>`, true), {
+  rules: [['kit 类', 'App 居中 <code>.dialog</code>（<code>.dic</code> 图标块 · <code>.dt</code> 标题 · <code>.dd</code> 正文 · <code>.dacts</code> 两列）；动作表 <code>.sheet.actsheet</code>（<code>.eff</code> 后果行）；Web <code>.wmodal</code>（<code>.w480</code> / <code>.w560</code> / <code>.top</code> / <code>.macts</code> + <code>.hint</code>）；破坏按钮 <code>.btn.danger</code> / 入口 <code>.btn.danger-ghost</code> / 菜单项 <code>.btn.danger-soft</code>；遮罩 token <code>--scrim</code>（App）/ <code>--scrim-web</code>（Web）'], ['选型', '一个不可逆动作、后果一两句说得清 → <b>App 居中确认框</b>；需要列出多条后果（通知主办方 / 退款 / 保留什么）或有第 3 个选项 → <b>App 底部动作表</b>；Web 一律居中模态（确认 420 / 带说明 480–560）'],
+    ['结构', '48px 图标块（破坏性 = <code>--coral-soft</code> 底 + 珊瑚线性图标；一般 = 马卡龙 emoji 方块）→ 标题用问句「〜しますか？」→ 正文写后果 + <b>什么会保留</b>（「メモとやりとりは残ります」）；可恢复写恢复路径（「30日間は『最近削除した項目』から復元できます」），不可恢复写「元に戻せません」'],
+    ['破坏按钮', '实心珊瑚 <code>--coral</code> + <code>--on-accent</code> 字，文案用具体动词「削除する / 取り消す」，不用「OK / はい」。页面里的入口按钮用珊瑚色文字的 ghost 按钮；浅珊瑚底只用于菜单项'],
+    ['按钮顺序', 'App 居中：左「キャンセル」右破坏（iOS alert）；动作表：破坏在上、「〜を続ける」在下（iOS action sheet）；Web：右对齐 [キャンセル][主动作]，左侧可放快捷键提示'],
+    ['默认焦点', '破坏性 → 「キャンセル」（Esc = キャンセル，⏎ 不触发删除）；非破坏性确认（公開する、作り直す）→ 主按钮'],
+    ['出现', '遮罩 28%（App）/ 22%（Web）/ 深色 55% 黑，不加模糊 + 缩放 .96→1 淡入 300ms；破坏性确认不因点遮罩关闭'], ['补充（10-07）', '非破坏性的两选项提示框（示例写操作拦截）文案放不下两列时用 <code>.dacts.stack</code> 竖排、主按钮在上；Web 表单型大模态（内含卡片，860 / 1000 等）用 <code>.wmodal.form</code> 底色 <code>--bg</code> 保留卡片层次，确认 / 说明类一律 <code>--surface</code>'],
+    ['不用于', '可撤销的动作（完了、明日へ、アーカイブ）：直接执行 + Toast「元に戻す」，不弹确认（对标 Gmail 撤销发送前的「元に戻す」模式）']],
+  src: ['b3 · 4 タスク詳細 · 削除の確認 / Web 削除の確認', 'b3 · 8 確認：参加の取り消し', 'b4 · A6 プランを作り直しますか？', 'b6 · マッチング ② 公開する → 確認', 'b5 · E2 連絡先の削除（不一致）', 'b1 · A4 写操作拦截'] }, true);
+
+/* ③ 弹层 */
+const frame = (w, hh, inner) => `<div class="frame" style="width:${w}px;height:${hh}px"><div class="ghostui">${'<i></i>'.repeat(8)}</div>${inner}</div>`;
+const fsheet = `<div class="scrim"></div><div class="sheet"><div class="grab"></div><div class="row between" style="margin-bottom:10px"><b style="font-size:15px">絞り込み</b><button class="btn sm ghost">クリア</button></div>
+  ${[['時期', ['今週', '今月*', '来月']], ['場所', ['オンライン', '東京*', '大阪']], ['テーマ', ['資金調達*', 'SaaS*', '製造業DX']]].map(([g, os]) => `<div style="margin-top:10px"><div class="lbl" style="font-weight:700;margin-bottom:6px">${g}</div><div class="chips">${os.map(o => `<span class="fopt ${o.endsWith('*') ? 'on' : ''}">${o.replace('*', '')}</span>`).join('')}</div></div>`).join('')}
+  <div class="row between" style="margin-top:12px;font-size:12.5px;font-weight:700">プランに合うものを優先<span class="tgl on"></span></div>
+  <button class="btn primary block" style="height:44px;margin-top:12px">28件を表示</button></div>`;
+const psheet = `<div class="scrim"></div><div class="sheet"><div class="grab"></div><div class="row" style="gap:10px"><div class="av lg c1">清</div><div style="flex:1;min-width:0"><b style="font-size:16px;display:block">清水 玲奈</b><div class="lbl ell">Sorae Capital · プリンシパル · C-2</div></div><button class="lbtn">${ic('x', 'sm')}</button></div>
+  <div class="card flat" style="margin-top:12px;padding:12px"><b style="font-size:12.5px">名刺交換の申請が届いています</b><div class="row" style="gap:6px;margin-top:8px"><button class="btn primary sm" style="flex:1">承認して交換</button><button class="btn sm" style="flex:1">無視</button></div></div>
+  <div class="input" style="margin-top:10px">一言メモ：例）11月にオフィス訪問</div>
+  <button class="btn block" style="margin-top:10px;height:42px">${ic('calendar', 'sm')}面談を提案する${ic('right', 'sm')}</button></div>`;
+const popover = `<div style="position:relative;width:340px"><button class="btn" style="background:var(--accent-soft)">${ic('filter', 'sm')}テーマ · 2</button>
+  <div class="pop" style="margin-top:8px"><div class="row between"><b>テーマ</b><button class="btn sm ghost">クリア</button></div>
+  <div class="chips" style="margin-top:10px;gap:7px">${['資金調達*', 'SaaS*', '製造業DX', '採用', '経営管理', 'IPO 準備'].map(o => `<span class="fopt ${o.endsWith('*') ? 'on' : ''}">${o.replace('*', '')}</span>`).join('')}</div>
+  <div class="row" style="margin-top:14px;gap:8px"><span class="lbl">${kbd('Esc')} で閉じる</span><button class="btn primary sm" style="margin-left:auto">12件を表示</button></div></div></div>`;
+const drawerFrame = `<div class="frame" style="width:640px;height:330px"><div class="ghostui" style="grid-template-columns:repeat(3,1fr)">${'<i></i>'.repeat(15)}</div><div class="overlay"></div>
+  <div class="drawer"><div class="row between"><button class="lbtn">${ic('x', 'sm')}</button><div class="row" style="gap:6px"><button class="lbtn">${ic('out', 'sm')}</button><button class="lbtn">${ic('pen', 'sm')}</button></div></div>
+  <div class="row" style="gap:10px"><div class="av c2">高</div><div style="min-width:0"><b style="font-size:14px">高橋 美咲</b><div class="lbl ell">青葉ベンチャーズ · パートナー</div></div></div>
+  <div class="chips"><span class="chip lav">推進中</span><span class="chip pink">投資・金融</span></div>
+  <div class="card" style="padding:10px 12px;border-radius:16px"><div class="lbl">次の一手</div><b style="font-size:12.5px">面談のお礼メールを下書き</b></div>
+  <div class="card" style="padding:10px 12px;border-radius:16px"><div class="lbl">最近のやりとり</div><b style="font-size:12.5px">10/6 面談 · DD 資料リスト受領</b></div></div></div>`;
+P += sec2('c-layer', '③ 底部弹层 · Web 抽屉 · 弹出层', '同一组内容：App = 底部弹层，Web = 弹出层（选项）或右侧抽屉（详情）；Web 不照搬手机弹层');
+P += comp(duo(`<div class="srow" style="gap:14px">
+    ${cell('App 底部弹层 · 絞り込み', frame(290, 470, fsheet))}
+    ${cell('App 底部弹层 · 参加者シート（层内推入）', frame(290, 470, psheet))}
+    ${cell('Web 弹出层 · 锚定在触发钮下方', popover)}
+    ${cell('Web 右侧抽屉 · 連絡先（示意比例）', drawerFrame)}</div>`, true), {
+  rules: [['kit 类', '<code>.fopt</code>（多选）/ <code>.cat</code>（单选页签）/ <code>.drawer</code> / <code>.overlay</code>；底部弹层沿用 kit <code>.sheet</code> + <code>.sheet-scrim</code>'], ['筛选 chip', '<b>多选</b> = 灰紫描边 + 浅紫底 + ✓（<code>.fopt.on</code>）；<b>单选分类页签</b>（受信箱分类、人脈 seg 横滑）= 墨色实心。重置文案统一「クリア」'],
+    ['计数主钮', '底部主按钮实时显示命中数「28件を表示 / 38人を表示」，数字 count-up；0 件时置灰并给「条件をゆるめる」建议'],
+    ['层内推入', '弹层内进入下一层（参加者 → 面談を提案）时内容左推，左上出现「←」；不叠第二个弹层'],
+    ['关闭', 'App：下拉抓手 / 点遮罩 / 完了；Web：Esc / 点外部；Web 抽屉关闭后列表回到原滚动位置并保留选中行'],
+    ['弹层里不放', '破坏性确认（→ 确认框）；长表单超过一屏时 Web 改抽屉、App 改全屏二级页']],
+  src: ['b2 · ② 探す · 絞り込み / Web 探す テーマ弹出层', 'b2 · ⑥ ⑧ 参加者シート ⑨ 面談を提案', 'b5 · E5 絞り込み App/Web', 'b5 · E2 連絡先の編集（抽屉）', 'b6 · 人脈 + 連絡先抽屉 / 共同運営者 / 1024 抽屉', 'b3 · Web ① 下書き（右側ドロワー）', 'b4 · B2 会話の履歴'] }, true);
+P += spec(['容器', '端', '尺寸与位置', '出现 / 关闭', '用于'], [
+  ['底部弹层 <code>.sheet</code>', 'App', '左右底 8px、圆角 34、顶部抓手 38×5；高度随内容，超过屏高 80% 时固定上沿（top 96–150）内部滚动', '上滑 320ms + 遮罩 28%；下拉 / 点遮罩 / 完了', '筛选、参加者、面談提案、一言记录、配额确认、邀请'],
+  ['动作表', 'App', '同底部弹层；按钮全宽 46px 竖排', '同上（破坏性不因点遮罩关闭）', '多后果的破坏性确认'],
+  ['居中提示框 <code>.alert</code>', 'App', '宽 296、垂直居中、圆角 28', '缩放 .96→1 + 淡入 300ms', '单一确认、示例写操作拦截'],
+  ['全高抽屉', 'App', '左侧 318px，覆盖状态栏区域（口径：全高）', '左滑入 320ms', 'iOrbit 会话历史'],
+  ['右侧抽屉 <code>.drawer</code>', 'Web', 'top/right/bottom 14、宽 600（1024 宽时 380）、圆角 28、底色 <code>--bg</code>', '右滑入 320ms + 遮罩 22%；Esc / 点遮罩', '联系人详情与编辑、草稿编辑、共同运营者'],
+  ['弹出层 <code>.pop</code>', 'Web', '触发钮下方 8px、宽 340–440、圆角 22、<code>--shadow-float</code> + 1px 线', '淡入 150ms、无遮罩；点外部 / Esc；触发钮保持选中底色', '筛选、@ 候补、完了后一言、日期选择'],
+  ['居中模态 <code>.modal</code>', 'Web', '确认 420 / 说明 480–560 / ⌘K 680（距顶 96）/ 两列表单 860；底色 <code>--surface</code>', '遮罩 22% + 缩放淡入；Esc', '确认、配额用尽、⌘K、邀请、跟进完成'],
+  ['上下文菜单', '两端', '宽 200、圆角 18；破坏项珊瑚字、放最后并用分隔线隔开', '长按（App）/ 右键·「⋯」（Web）', '会话历史、表格行']]);
+
+/* ④ AI 确认卡三态 */
+const cConfirm = `<div class="confirm-card"><div class="row" style="gap:8px"><span class="emo sm lav">📝</span><b style="font-size:13px">プランに追加しますか？</b></div><div class="sub" style="margin:6px 0 10px">「小林さんに CVC 担当者の紹介を依頼」を今週のタスクに</div><div class="row" style="gap:8px"><button class="btn sm primary tap-demo">追加する</button><button class="btn sm">やめる</button></div></div>`;
+const cOk = `<div class="ok-card"><div class="row" style="gap:10px"><span class="okmark">${ic('check')}</span><b style="font-size:13px;flex:1">追加しました</b><button class="btn sm ghost">元に戻す</button></div><div class="sub" style="margin:6px 0 0 34px">「小林さんに CVC 担当者の紹介を依頼」· 今週のタスク</div><div style="margin:8px 0 0 34px"><a class="lnk">プランで見る${ic('right', 'sm')}</a></div></div>`;
+const cNg = `<div class="ng-card"><div class="row" style="gap:10px;align-items:flex-start"><span class="ngmark">${ix('alert')}</span><div style="flex:1;min-width:0"><b style="font-size:13px">カレンダーに追加できませんでした</b><div class="lbl">Google カレンダーとの連携が切れています（10/5 から）</div></div></div><div class="sub" style="margin:8px 0 0">何も書き込まれていません。再接続してから、もう一度お試しください。</div><div class="row" style="gap:6px;margin-top:10px"><button class="btn sm primary">再接続</button><button class="btn sm" style="background:var(--surface)">もう一度</button><button class="btn sm ghost">あとで</button></div></div>`;
+const cMatch = `<div class="card" style="padding:14px"><div class="row" style="gap:10px"><div class="av c3">伊</div><div style="flex:1;min-width:0"><b style="font-size:13px">伊藤 直子</b><div class="lbl ell">ハルモニア · CFO</div></div><div class="yn"><button class="on">${ic('check', 'sm')}</button><button>${ic('x', 'sm')}</button></div></div>
+  <div class="lbl" style="margin:12px 0 6px">AI の提案（✓ で追加）</div><div class="chips"><span class="chip sugg">資金調達 <span class="k">✓</span></span><span class="chip sugg">SaaS <span class="k">✓</span></span><span class="chip lav">経営管理</span></div></div>`;
+P += sec2('c-ai', '④ AI 写入：虚线确认卡 → 成功卡 → 失败卡', 'AI 的写入动作（加任务、写日程、关联计划）永远先确认；执行结果在同一位置原地变化');
+P += comp(duo(`<div class="srow" style="gap:12px">${cell('① 确认（虚线）', cConfirm, 280)}${cell('② 成功（原位变实线）', cOk, 280)}${cell('③ 失败', cNg, 300)}${cell('匹配 ✓/✕ · AI 建议 chip', cMatch, 280)}</div>`, true), {
+  rules: [['kit 类', '<code>.confirm-card</code>（行内 <code>.in-row</code>，圆角 14）/ <code>.ok-card</code> + <code>.okmark</code> / <code>.ng-card</code> + <code>.ngmark</code>；功能图标补充 <code>.lic.i-alert</code> 等（CSS mask，见文末说明）'], ['确认卡', '1.5px 虚线 <code>--plum-300</code>、透明底、圆角 20（嵌在列表行内时 14）；标题用问句「〜に追加しますか？」，一行写清<b>写入什么 + 写到哪里</b>；按钮「追加する」（primary sm）+「やめる」；不显示置信度条、不加彩色描边'],
+    ['成功卡', '点「追加する」后<b>同一位置</b>变实线卡：薄荷 45% 描边 + 绿色勾 +「追加しました」+「元に戻す」+ 跳转链接（「プランで見る →」，到达后高亮该项）；不再另弹 Toast'],
+    ['失败卡', '<code>--coral-soft</code> 底；第一句说<b>什么没做成</b>，第二行原因，并明确「何も書き込まれていません」；主按钮是修复动作（再接続），其次「もう一度」「あとで」。图标用线性 alert，不用 ⚠️ emoji'],
+    ['多条', 'Web 右栏「この会話で行ったこと」汇总本会话所有写入，可逐条「元に戻す」'],
+    ['匹配/建议', 'AI 推荐的匹配用 ✓/✕ 圆钮由用户决定（✓ 后卡片灰紫内描边，✕ 后淡化 45%）；AI 建议的标签用虚线 chip，点 ✓ 才变实色 chip'],
+    ['日历口径', '只写用户逐次确认的 Orbit 予定（含仮押さえ），不改动其他予定']],
+  src: ['b4 · B4 実行後のフィードバック ①②③ / Web', 'b4 · A3 変更案 ✓/✕', 'b3 · Web タスク 右栏确认卡', 'b2 · ⑦ 会後のふりかえり（虚线动作 chip）', 'b1 · B7 匹配确认', 'b5 · C マイページ（建议 chip）'] }, true);
+
+/* ⑤ why */
+const whyCard = (open) => `<div class="card" data-why-box style="padding:16px"><div class="row" style="gap:8px"><span class="emo sm apricot">🎯</span><b style="font-size:13px">今回のねらい</b><span class="why" style="margin-left:auto">?</span></div>
+  <div style="font-size:14px;font-weight:700;margin-top:8px;line-height:1.55">紹介できると言ってくれた投資家 2名について、正式にお願いする。</div>
+  <div class="why-body" ${open ? '' : 'hidden'}>根拠：10/2 渡辺さんのメール「紹介できる投資家が2名いる」· プラン「VC パートナー 8 / 12」に直結</div></div>`;
+const whyInline = `<div data-why-box style="margin-top:12px"><div class="row" style="gap:6px"><span class="chip lav ell" style="flex:1;max-width:none">🎯 シリーズA・B2B SaaS に注力。今年 5社に出資</span><span class="why">?</span></div><div class="why-body" hidden>申込内容「探している投資先：B2B SaaS · シリーズA」とあなたの「会いたい人：VC」が一致。</div></div>`;
+P += sec2('c-why', '⑤ 依据「?」展开', '处处有据但默认收起；示例可直接点「?」试');
+P += comp(duo(`${whyCard(false)}<div style="margin-top:10px">${whyCard(true)}</div>${whyInline}`), {
+  use: 'AI 给出的<b>结论、推荐、评分、阶段建议</b>旁边一律带依据入口；纯事实数据（日期、人数、已发生的记录）不加。',
+  rules: [['kit 类', '<code>.why</code>（kit 原有）+ <code>.why-body</code>（已收进 kit）'], ['入口', '18px 圆钮「?」（<code>.why</code>，<code>--surface-2</code> 底），放在结论所在行的最右（<code>margin-left:auto</code>），或紧跟单行结论文本之后'],
+    ['展开体', '<code>.why-body</code>：上 10、内边距 10/12、圆角 14、12px <code>--ink-2</code>、行高 1.65；所在卡是浅色块（flat / 马卡龙）时底色改 <code>--surface</code>'],
+    ['写法', '「根拠：」开头，列出<b>具体来源</b>（名刺 9/18 · メール 10/2 · プラン第 6 週 · 申込内容），用「·」分隔；来源可点跳转；不写「AI が判断しました」这类空话'],
+    ['默认', '全部收起；例外：用户已选中的候选卡默认展开（b4 A5 次の目標）'],
+    ['动效', 'grid-rows 0fr→1fr 350ms；同屏多个「?」互不联动'],
+    ['相关', '值是推测的用杏色「推定」chip 标在值旁，不放进 why；评估结果补过的字段明示「あなたが補った項目」']],
+  src: ['b3 · 5 フォロー完了 今回のねらい', 'b2 · ⑧ 参加者シート', 'b2 · ① ④ 補完後の判定', 'b4 · A3 / A5', 'b5 · B ③\' 着地：面談準備'] });
+
+/* ⑥ 权限 */
+const foot = (x) => `<div class="foot">${x}</div>`;
+const perm = (kind) => {
+  const xb = `<button class="rbtn">${ic('x')}</button>`;
+  if (kind === 'camera') return topbar('', '', xb) + `<div class="perm-art mac lav">📷</div><div class="h1">名刺の撮影に<br>カメラを使います</div><div class="sub" style="text-align:center;margin-top:8px">このあと iPhone の確認が表示されます。</div>
+    <div class="card" style="margin-top:22px;padding:6px 16px">${[['check', '撮影した画像は、名刺の読み取りにだけ使います'], ['image', '写真ライブラリには保存しません（設定で変更できます）'], ['settings', 'いつでも iPhone の設定からオフにできます']].map(([i, t]) => `<div class="perm-li"><span class="lbtn" style="width:30px;height:30px">${ic(i, 'sm')}</span><span>${t}</span></div>`).join('')}</div>` +
+    foot(`<button class="btn primary block" style="height:50px">カメラを許可する</button><button class="btn ghost block">今はしない（写真から選ぶ）</button>`);
+  if (kind === 'denied') return topbar('', '', xb) + `<div class="perm-art" style="background:var(--coral-soft)">📷</div><div class="h1">カメラへのアクセスが<br>オフになっています</div><div class="sub" style="text-align:center;margin-top:8px">名刺を撮影するには、設定でオンにしてください。</div>
+    <div style="margin-top:22px">${[['設定を開く', '下のボタンから直接開けます'], ['「Orbit」をタップ', ''], ['「カメラ」をオンにする', '']].map(([t, d], k) => `<div class="step ${k === 0 ? 'now' : ''}"><span class="n">${k + 1}</span><div style="flex:1"><b style="font-size:13.5px">${t}</b>${d ? `<div class="lbl">${d}</div>` : ''}</div>${k === 2 ? '<span class="tgl demo"></span>' : ''}</div>`).join('')}</div>` +
+    foot(`<button class="btn primary block" style="height:50px">${ic('settings', 'sm')}設定を開く</button><button class="btn ghost block">写真から選ぶ</button>`);
+  return topbar('', '', xb) + `<div class="perm-art mac apricot">🔔</div><div class="h1">大事なときだけ、<br>お知らせします</div><div class="sub" style="text-align:center;margin-top:8px">1日3件まで · 22:00〜7:30 は送りません（設定で変更できます）</div>
+    <div class="card" style="margin-top:20px;padding:6px 16px">${[['📇', 'lav', '名刺の読み取りが終わったとき'], ['⏰', 'pink', 'フォローの期限が近いとき'], ['🎟️', 'teal', '参加予定イベントの前日']].map(([e, c, t]) => `<div class="perm-li" style="align-items:center"><span class="emo sm ${c}">${e}</span><span style="flex:1">${t}</span><span class="tgl on"></span></div>`).join('')}</div>` +
+    foot(`<button class="btn primary block" style="height:50px">通知を許可する</button><button class="btn ghost block">あとで</button>`);
+};
+P += sec2('c-perm', '⑥ 权限说明模板（先解释再请求 + 被拒引导）', '相机 / 通知 / 通讯录 / 日历共用同一模板：只换图示、标题与三条说明');
+P += comp(`<div class="srow" style="gap:14px">${cell('① 说明（相机）', mini(phone({ body: perm('camera'), tab: -1 }), .5))}${cell('② 被拒后 · 深色', mini(phone({ body: perm('denied'), tab: -1, theme: 'dark' }), .5))}${cell('③ 通知（可预先关掉某类）', mini(phone({ body: perm('notify'), tab: -1 }), .5))}</div>`, {
+  rules: [['时机', '用户<b>第一次触发相关功能</b>时才出现（点「名刺を撮る」才问相机），不在启动或引导第 1 步集中索要'],
+    ['结构', '132px 马卡龙图示（emoji 分类图）→ 标题一句话说用途 → 副标题说明下一步会出现系统确认 / 频率承诺 → 卡内三条承诺（用于什么 · 不做什么 · 如何关闭）→ 底部主按钮「〜を許可する」+ ghost 退路'],
+    ['退路', '「今はしない」必须给替代路径（写真から選ぶ / 手入力），不阻断流程；被拒后不再自动弹系统框'],
+    ['被拒引导', '图示换 <code>--coral-soft</code> 底；三步 step（设定を開く → Orbit → オンにする，第 3 步开关循环演示）；主按钮直达系统设置；回到 App 时自动检测并继续'],
+    ['通知特例', '列出会收到的具体类别并允许预先关掉；副标题写频控承诺「1日3件まで · 22:00〜7:30 は送りません」'],
+    ['日历/邮件', '说明里写明读写范围：「予定の作成は、あなたが確認したときだけ」「Orbit からは送信しません」']],
+  src: ['b1 · B1 ① 相机说明 / ② 被拒后 / 通用模板', 'b5 · D 設定 › 連携 / 通知 / iOrbit が使う情報'] });
+
+/* ⑦ 加载 */
+const skel = `<div class="card" style="padding:14px 16px"><div class="shimmer" style="height:11px;width:40%"></div><div class="shimmer" style="height:30px;width:52%;margin-top:10px"></div>
+  ${[78, 64, 70].map(w => `<div class="row" style="margin-top:14px"><div class="shimmer" style="width:38px;height:38px;border-radius:50%"></div><div style="flex:1"><div class="shimmer" style="height:11px;width:${w}%"></div><div class="shimmer" style="height:9px;width:${w - 22}%;margin-top:7px"></div></div></div>`).join('')}</div>`;
+const steps = `<div class="card" style="padding:16px"><div class="row" style="gap:12px"><div class="orb">✨</div><div><b style="font-size:14px">プランを作成しています</b><div class="lbl">閉じても大丈夫です · 完了したら通知します</div></div></div>
+  <div style="margin-top:10px">${[['d', 'あなたの目標を整理'], ['d', '名刺 12枚から関係を読み取る'], ['n', '会うべき人を選ぶ', '12人中 3人'], ['w', 'イベント候補を探す'], ['w', '週ごとのタスクに分ける']].map(([s, t, c]) => `<div class="pchk ${s}"><span class="bx">${s === 'd' ? ic('check') : s === 'n' ? '<span class="spin"></span>' : ''}</span>${t}${c ? `<span class="cnt2">${c}</span>` : ''}</div>`).join('')}</div>
+  <button class="btn block" style="margin-top:8px">閉じて待つ</button></div>`;
+const stream = `<div style="display:grid;gap:10px"><div class="bubble me">来週の大阪で会える CVC の人は？</div><div class="bubble ai" style="max-width:100%">候補は 3名です。いちばん近いのは小林さん（伊藤忠テクノロジーベンチャーズ）で、<span class="thinking" style="display:inline-flex"><i></i><i></i><i></i></span></div>
+  <div class="row" style="gap:8px"><div class="input" style="flex:1;background:var(--surface)">生成中…</div><button class="stopb"><i></i></button></div>
+  <div class="row" style="gap:8px"><button class="btn primary sm"><span class="spin"></span>公開しています…</button><button class="btn sm" style="opacity:.5">キャンセル</button></div></div>`;
+P += sec2('c-load', '⑦ 加载：骨架屏 · 分步清单（AI 生成类）', '不用全屏转圈；转圈只出现在「当前步骤」或按钮内');
+P += comp(duo(`<div class="srow" style="gap:14px">${cell('骨架屏（结构与真实页一一对应）', skel, 280)}${cell('分步清单 · AI 生成（计划/评估/名片识别）', steps, 320)}${cell('流式回答 + 停止 · 按钮内 loading', stream, 300)}</div>`, true), {
+  rules: [['骨架屏', '用于<b>读取已有数据</b>（列表、详情首屏）：标题栏与导航立即可用，只有数据区是骨架；骨架形状与真实布局一一对应，行宽递减避免「条纹墙」；闪光 1.6s 循环；数据到达后整块淡入替换'],
+    ['超时', '超过 8 秒在骨架上方出现「読み込みに時間がかかっています · 再試行」；失败 → ⑧ 错误重试卡'],
+    ['分步清单', '用于 <b>AI 生成 / 批量处理</b>（预计 &gt; 3 秒）：3–7 个阶段，已完成 = 绿勾、当前 = 14px 转圈 + 计数（12人中 3人）、未开始 = 灰；左侧呼吸光球代替转圈；下方「做好一块显示一块」的骨架预览'],
+    ['可离开', '生成类必须可关闭（「閉じて待つ」/ 左上 ↓ 收起为进度胶囊），完成后推送（App）/ 浏览器通知（Web）+ 首页卡片状态变化'],
+    ['流式', 'iOrbit 回答逐字出现 + 三点思考指示；输入框右侧变「停止」墨色圆钮；停止后保留已生成部分'],
+    ['按钮 loading', '提交类按钮内转圈 + 进行时文案（「公開しています…」），同组其他按钮置灰；不再出现全屏遮罩']],
+  src: ['b1 · A5 计划生成中', 'b1 · B4 批量识别进度', 'b1 · B8 首屏加载骨架', 'b2 · 評価 判定中', 'b4 · B5 生成中と根拠', 'b6 · マッチング ② 公開（按钮 loading）'] }, true);
+
+/* ⑧ 离线 / 错误 / 降级 */
+const offlineDemo = `<div class="offline">${ix('wifioff', 'sm')}<span>オフライン · 変更は接続後に同期されます</span><span class="pend">${ic('clock', 'sm')}待機中 2</span></div>
+  <div class="card" style="padding:12px 14px;margin-top:8px"><div class="row" style="gap:10px"><div class="av sm c4">山</div><div style="flex:1;min-width:0"><b class="ell" style="display:block;font-size:13px">山本 彩さんに資料を再送</b><div class="lbl">完了にしました</div></div><span class="syncing">${ic('clock', 'sm')}同期待ち</span></div></div>
+  <div class="offline back" style="margin-top:8px">${ic('check', 'sm')}<span>同期しました</span><span class="lbl" style="margin-left:auto;color:inherit;opacity:.7">2秒で閉じます</span></div>`;
+const errDemo = `<div class="card err-card"><div class="err-ic">${ix('alert', 'lg')}</div><b style="font-size:15px">タスクを読み込めませんでした</b><div class="sub" style="margin:6px 0 14px;line-height:1.6">通信状況を確認して、もう一度お試しください。<br>入力中の内容は失われていません。</div>
+  <div class="row" style="gap:8px;justify-content:center"><button class="btn primary sm">${ic('refresh', 'sm')}再試行</button><button class="btn ghost sm">端末に保存済みを見る</button></div></div>`;
+const degDemo = `<div class="degrade">${ix('alert', 'sm')}<div style="flex:1"><b style="color:var(--ink)">iOrbit が一時的に使えません</b><div style="margin-top:2px">提案と下書きの作成は止まっています。タスク・予定・メモは通常どおり使えます。</div><button class="btn sm" style="margin-top:8px;background:var(--surface)">${ic('refresh', 'sm')}再試行</button></div></div>
+  <div class="degrade" style="margin-top:8px">${ix('alert', 'sm')}<div style="flex:1"><b style="color:var(--ink)">テンプレートで下書きを始めています</b><div style="margin-top:2px">語調の切り替えと書き直しは、復旧後に使えます。</div></div></div>`;
+const fieldErr = `<div class="lbl" style="font-weight:700;margin-bottom:6px">イベントの URL</div><div class="input err">https://peatix.com/event/48213…</div>
+  <div class="fmsg"><b>ログインが必要なページです。</b>本文を貼り付けるか、スクリーンショットから読み取れます。</div>`;
+P += sec2('c-err', '⑧ 离线横条 · 错误重试卡 · AI 不可用降级', '错误不是死路：每种都给可继续的路；层级越小越原位');
+P += comp(duo(`<div class="srow" style="gap:14px">${cell('离线横条 → 同步恢复', offlineDemo, 300)}${cell('区块错误：重试卡替代该区块', errDemo, 290)}${cell('AI 不可用：降级说明', degDemo, 290)}${cell('字段错误：原位展开', `<div class="card" style="padding:14px">${fieldErr}</div>`, 270)}</div>`, true), {
+  rules: [['分层', '字段级 → 输入框下方原位（珊瑚描边 + 浅珊瑚说明）；区块级 → 重试卡替代该区块（其余照常）；全局网络 → 顶部离线横条；AI 不可用 → 降级卡。<b>都不用 alert 弹窗</b>'],
+    ['离线横条', '杏色，放在页面标题下第一行；右侧「待機中 N」计数；离线时完成/编辑照常可用，行尾标「同期待ち」；恢复后变薄荷「同期しました」2 秒后收起'],
+    ['重试卡', '54px 珊瑚浅底图标块 + 标题「〜を読み込めませんでした」+ 原因与安心句（「入力中の内容は失われていません」）+ 主「再試行」（点后按钮内转圈）；Web 附错误码与「状況を確認」；有本地缓存时给只读兜底'],
+    ['AI 降级', '<code>--surface-2</code> 底灰卡（不是珊瑚：不是用户的错）；写清<b>哪些停了、哪些照常</b>；草稿退回模板，语气/重写置灰，コピー 与「メールアプリで開く」照常；恢复后自动刷新'],
+    ['文案', '一句说什么失败 + 一句原因 + 下一步；不用「エラーが発生しました」笼统句']],
+  src: ['b3 · 8 システム状態（エラー / オフライン / AI 利用不可）', 'b3 · Web エラー + AI 利用不可', 'b2 · ① 評価の異常態（URL / 非活动页 / 海报模糊）', 'b1 · B4 识别失败行「再識別」'] }, true);
+
+/* ⑨ 示例模式 */
+const ST = '<span class="sample-tag">サンプル</span>';
+const sampleApp = `<div class="samplebar"><span style="font-size:16px">🧪</span><span style="flex:1;line-height:1.45">サンプルを表示中 · 数字や人物は架空です</span><button class="btn sm">続ける 3/5</button><button class="x">${ic('x', 'sm')}</button></div>
+  <div class="card" style="padding:6px 14px;margin-top:8px">${rowsHTML(ROWS.slice(0, 2).map(r => [r[0], r[1], r[2].replace(/さん.*/, ''), r[3], '']), ST)}</div>`;
+const interceptA = `<div class="dialog static" style="width:280px"><div class="dic emo">🧪</div><b class="dt">これはサンプルです</b><div class="dd">サンプルの人には下書きを作成できません。ガイドを続けて、あなたの名刺を取り込みますか？</div>
+  <div class="dacts stack"><button class="btn primary block">ガイドを続ける（4 / 5）</button><button class="btn ghost block">サンプルを見続ける</button></div></div>`;
+const sampleWeb = `<div class="samplebar" style="font-size:12.5px;padding:10px 12px 10px 16px"><span style="font-size:18px">🧪</span><div style="flex:1"><b>サンプルデータを表示中</b> <span style="font-weight:500">— 数字や人物はすべて架空です。ガイドを終えると、あなたのデータに切り替わります。</span></div><button class="btn sm">ガイドを続ける · 4 / 5</button><button class="x">${ic('x', 'sm')}</button></div>
+  <div class="row" style="gap:10px;margin-top:12px"><span class="spill">🧪 サンプル ${ic('down', 'sm')}</span><span class="lbl">← 收起后的药丸（App 顶部中央 / Web 标题左侧）</span></div>
+  <div class="card faded" style="margin-top:12px;padding:14px"><div class="row" style="gap:10px"><span class="emo sm lav">📝</span><b style="font-size:13px">月次の見直し ${ST}</b></div><div class="lbl" style="margin-top:4px">記録が 5件たまると、ここに見直しが届きます</div></div>
+  <div class="ghost-row" style="margin-top:8px"><i></i>ここに会った人が並びます</div>`;
+P += sec2('c-sample', '⑨ 示例模式：サンプル角标 · 横条与药丸 · 写操作拦截', '示例数据只在前端，绝不写库');
+P += comp(duo(`<div class="srow" style="gap:14px">${cell('App 横条 + 角标', sampleApp, 300)}${cell('写操作拦截（居中提示框）', interceptA, 280)}${cell('Web 横条 · 药丸 · 空状态淡化示例', sampleWeb, 560)}</div>`, true), {
+  rules: [['kit 类', '<code>.sample-tag</code> / <code>.faded</code>（已收进 kit，页面不再各写一份）'], ['角标', '<code>.sample-tag</code>：9.5px / 800、杏色、圆角 6、左间距 4、不换行；跟在<b>每个</b>示例人名、数字卡标题、计划名之后'],
+    ['横条', '引导未完成时全站置顶：App 在标题下、Web 横跨主区 12 列；文案明示「数字や人物はすべて架空」+「続ける N/5」回到引导当前步；× 收起为药丸（App 顶部中央浮动 top 56 / Web 标题左侧），状态记到下次启动'],
+    ['拦截', '点任何写操作（下書き / 保存 / タスク追加 / ✓）→ 居中提示框，<b>操作不执行</b>；主「ガイドを続ける（N / 5）」，次「サンプルを見続ける」'],
+    ['空状态', '空状态里的预告示例用 <code>.faded</code>（不透明度 .5 + 饱和度 .7 + 不可点）+ 角标，配虚线幽灵行；只预告「之后能看到什么」，不冒充真实数据'],
+    ['禁止', '示例数据参与统计、出现在搜索结果、被 AI 引用为依据']],
+  src: ['b1 · A4 示例预览模式（App / Web）', '各批 empty 态（淡化サンプル + 幽灵行）'] }, true);
+
+/* ⑩ 状态 chip */
+const CH = (c, t) => `<span class="chip ${c}">${t}</span>`;
+P += sec2('c-chip', '⑩ 状态 chip 语义表', '颜色 = 语义，不按页面喜好选；同一词在任何页面同色');
+P += comp(duo(`<div style="display:grid;gap:10px">${[['coral', ['期限超過', '失敗', '上限に達しました', '未配置 3名', '早割 今日まで']], ['apricot', ['今日', '今夜', 'あと2日', 'キャンセル待ち', '推定', '下書き', '同期待ち']], ['lav', ['審査中', '確認待ち 3', '承認待ち', '推進中', '変更案 4件']], ['teal', ['参加確定', '完了', '確認済み', '公開済み', 'おすすめ']], ['blue', ['開催前', '参加予定', '関係構築']], ['pink', ['要フォロー', '投資・金融']], ['', ['今週', '10/9（金）', '見送り推奨', '今回は見送り', '無視']]].map(([c, ws]) => `<div class="chips">${ws.map(w => CH(c, w)).join('')}</div>`).join('')}</div>`), {
+  rules: [['一卡一珊瑚', '一张卡最多 1 个珊瑚 chip；珊瑚是「需要你处理」，滥用就失去警示力'],
+    ['不靠颜色', 'chip 必须有文字，颜色只是加强；色弱用户靠文字也能读懂'],
+    ['长度', '状态 chip ≤ 8 字；计数数字用 <code>--font-num</code>；超长按 ⑭ 规则（最大 160px + 全文气泡）'],
+    ['不是按钮', '状态 chip 不可点；可点的筛选用 ③ 的 <code>.fopt</code>，AI 建议用 ④ 的虚线 chip'],
+    ['分类色', '马卡龙同时承担「分类」（业界、关系阶段）：粉 = 投資・金融 / 要フォロー，所以粉色<b>不再用于</b>否定结论']],
+  src: ['app / web 首页', 'b2 · ④ 参加登録 → 審査（状态卡）', 'b3 · 3 タスク一覧', 'b1 · B4 批量识别', 'b6 · 参加者 / マッチング'] });
+P += spec(['颜色', '语义', '标准用词（示例）', '不要用于'], [
+  [CH('coral', '珊瑚'), '已经出问题、需要你处理：逾期、失败、达上限、遗漏；<b>截止当天且错过有金钱损失</b>', '期限超過 · 失敗 · 上限に達しました · 未配置 3名 · 早割 今日まで', '普通的「今日 / 今夜」日程；同卡第二个警示'],
+  [CH('apricot', '杏'), '时间临近、排队中、不确定（AI 推测）、未完成的草稿', '今日 · 今夜 · あと2日 · キャンセル待ち · 推定 · 下書き · 同期待ち（サンプル角标同色）', '完成态、正向结论'],
+  [CH('lav', '薰衣草'), '处理中 / 等待确认（不论等你还是等主办方）、AI 产出待看', '審査中 · 確認待ち · 承認待ち · 推進中 · 変更案 4件', '负面状态'],
+  [CH('teal', '薄荷'), '已确定、已完成、正向结论', '参加確定 · 完了 · 確認済み · 公開済み · おすすめ', '—'],
+  [CH('blue', '蓝'), '已安排、信息性', '開催前 · 参加予定 · 関係構築（阶段）', '—'],
+  [CH('pink', '粉'), '只作分类 / 关系阶段', '要フォロー · 投資・金融', '否定结论（見送り）'],
+  [CH('', '灰（默认）'), '中性事实；<b>礼貌的否定结论</b>（日语语境不宜用警示色表示「不推荐」）', '今週 · 10/9（金）· 3件 · 見送り推奨 · 今回は見送り · 無視', '—']]);
+
+/* ⑪ 付费 */
+const quota = (n) => `<span class="qchip ${n ? '' : 'out'}"><i></i>${n ? `今月あと ${n} 回` : '今月の上限に達しました'}</span>`;
+const qd = (left) => `<div class="qdots">${[0, 1, 2].map(i => `<i class="${i < 3 - left ? 'u' : ''}"></i>`).join('')}</div>`;
+const payQ = `<div class="card" style="padding:14px"><div class="row between"><b style="font-size:13px">今月の再分析</b>${quota(2)}</div><div style="margin-top:10px">${qd(2)}</div><div class="lbl" style="margin-top:8px">毎月1日に 3回へ戻ります · 1日の自動見直しは回数に含みません</div>
+  <button class="btn primary block" style="margin-top:12px">${ic('refresh', 'sm')}再分析する（1回使います）</button></div>
+  <div class="row" style="margin-top:10px;gap:8px">${quota(0)}<span class="lbl">← 用尽（标题栏常驻）</span></div>`;
+const payOut = `<div class="card" style="padding:16px"><div class="row" style="gap:10px"><span class="emo apricot">⏳</span><div><b style="font-size:15px">今月の再分析は使い切りました</b><div class="lbl">3 / 3 回 · 11月1日に戻ります（あと 25日）</div></div></div>
+  <div style="margin:12px 0 4px">${qd(0)}</div>
+  <div class="card flat" style="padding:12px;margin-top:10px;font-size:12.5px;color:var(--ink-2);line-height:1.7">進捗の記録・タスクの更新・iOrbit への質問は、これまでどおり使えます。11月1日には自動の見直しも届きます。</div>
+  <button class="btn primary block" style="margin-top:12px">わかりました</button><button class="btn ghost block" style="margin-top:4px">ご利用プランを見る</button></div>`;
+const payCmp = `<div class="card" style="padding:14px"><table class="cmp"><thead><tr><th></th><th>フリー</th><th class="col-on" style="border-radius:12px 12px 0 0">Pro</th></tr></thead><tbody>
+  ${[['名刺の登録', '無制限', '無制限'], ['同時に追う目標', '2つ', '10'], ['プランの再分析', '月3回', '月30回'], ['iOrbit への質問', '月50回', '月1,000回'], ['下書きの作成', '○', '○']].map(([a, b, c]) => `<tr><td>${a}</td><td>${b}</td><td class="col-on">${c}</td></tr>`).join('')}</tbody></table>
+  <div class="row between" style="margin-top:12px"><div><div class="lbl">Pro</div><div class="mid">¥1,480<small style="font-size:12px;color:var(--ink-3);font-weight:700"> / 月（税込）</small></div><div class="lbl">年払い ¥14,800</div></div></div>
+  <button class="btn primary block" style="margin-top:12px">Pro に変更</button><div class="lbl" style="text-align:center;margin-top:6px">いつでも解約でき、フリーに戻してもデータは残ります</div></div>`;
+P += sec2('c-pay', '⑪ 付费相关：配额 chip · 用尽卡 · 套餐对比表', '克制、不推销：先告诉用户还能做什么，再给入口');
+P += comp(duo(`<div class="srow" style="gap:14px">${cell('配额 chip + 3 格配额条 + 消耗确认', payQ, 300)}${cell('用尽卡（App 弹层 / Web 模态内容）', payOut, 320)}${cell('套餐对比表', payCmp, 320)}</div>`, true), {
+  rules: [['配额 chip', '<code>.qchip</code>：<code>--surface-2</code> 底 + 6px 圆点（剩余 = 灰紫、用尽 = 珊瑚）；文案「今月あと N 回」/「今月の上限に達しました」；Web 常驻标题栏右侧，App 放在相关页标题下'],
+    ['配额条', '格数 = 月上限（≤ 5 用格，&gt; 5 用 <code>bar()</code> 细进度条）；已用 = 灰、剩余 = 紫；下方写重置日与「自動見直しは回数に含みません」'],
+    ['消耗确认', '会消耗次数的按钮文案直说「再分析する（1回使います）」，并列出本次会用到的数据（处处有据）'],
+    ['用尽', '先说明<b>哪些照常可用</b>，再给入口：主按钮「わかりました」，付费只做 ghost 次要入口「ご利用プランを見る」'],
+    ['对比表', 'フリー / Pro 两列，Pro 列浅紫 55% 底；<b>不用「おすすめ」「人気 No.1」徽章</b>；价格 ¥1,480 / 月（税込）、年払い ¥14,800；决济渠道、随时解约、回フリー数据保留写在按钮正下方'],
+    ['用量条', '本月用量用细进度条，达上限的条用 <code>bar(…, \'warn\')</code> 珊瑚色']],
+  src: ['b4 · A4 ① 再分析の確認 ② 使い切った状態 ③ ご利用プラン', 'b4 · Web 使い切り（モーダル）/ Web ご利用プラン', 'index · 待确认项决定「付费档位与 AI 次数」'] }, true);
+
+/* ⑫ 推送 */
+const pn = (t, b, time, extra = '') => `<div class="pn"><div class="row" style="gap:10px;align-items:flex-start"><span class="appic">O</span><div style="flex:1;min-width:0"><div class="row between"><b style="font-size:12.5px">Orbit</b><span class="lbl">${time}</span></div><b style="display:block;font-size:13px;margin-top:1px">${t}</b><div style="font-size:12px;line-height:1.5;margin-top:1px;color:var(--ink-2)">${b}</div>${extra}</div></div></div>`;
+const PN1 = ['あと30分：高橋 美咲さんと面談', '10:00 オンライン。前回は DD の資料リストを受領。話すこと3点を用意しました。'];
+const PN2 = ['早割は今日 23:59 まで · Japan SaaS Summit', '明日から ¥22,000（+¥7,000）。参加予定に入っていますが、まだ申し込んでいません。'];
+const lockDemo = `<div class="lockbg" style="width:330px"><div class="clk">9:41</div>${pn(...PN1, '11分前')}${pn(...PN2, '1時間前')}</div>`;
+const longDemo = `<div class="lockbg" style="width:330px">${pn(...PN1, '11分前', `<div class="chips" style="margin-top:8px"><span class="chip lav">話すこと 3点</span><span class="chip">前回：10/6 面談</span></div>`)}
+  <div class="pmenu"><div>面談の準備を開く ${ic('right', 'sm')}</div><div>1時間後に再通知 ${ic('clock', 'sm')}</div><div>受信箱で既読にする ${ic('check', 'sm')}</div><div style="color:var(--ink-3)">この種類の通知を減らす ${ic('sliders', 'sm')}</div></div></div>`;
+const landDemo = `<div style="width:320px"><div class="deep">${ic('bell', 'sm')}通知から開きました<span class="lbl" style="margin-left:auto">8:30 の通知</span></div>
+  <div class="card hl" style="padding:16px"><div class="row between"><span class="chip">10/28（水）</span><span class="chip coral">早割 今日まで</span></div><b style="display:block;font-size:15.5px;margin-top:10px">Japan SaaS Summit 2026</b><div class="lbl">東京ミッドタウン · 参加予定</div>
+  <div class="grid2" style="margin-top:10px;gap:8px"><div class="card flat" style="padding:10px"><span class="lbl">今日まで</span><b class="mid" style="display:block;font-size:18px">¥15,000</b></div><div class="card flat" style="padding:10px"><span class="lbl">明日から</span><b class="mid" style="display:block;font-size:18px;color:var(--ink-3)">¥22,000</b></div></div>
+  <button class="btn primary block" style="margin-top:12px">${ic('out', 'sm')}申込ページを開く</button></div></div>`;
+P += sec2('c-push', '⑫ 通知 / 推送：锁屏推送卡 · 长按菜单 · 深链落地高亮环', '只推「错过有真实代价」的事');
+P += comp(duo(`<div class="srow" style="gap:14px">${cell('锁屏推送卡', lockDemo)}${cell('长按展开', longDemo)}${cell('深链落地：来源条 + 高亮环', landDemo)}</div>`, true), {
+  rules: [['推什么', '只推错过有真实代价的：面談 30 分前、早割/申込截止当天、批量识别/计划生成完成；人脈的更新默认只进受信箱；履歴永远不推'],
+    ['频控', '默认 1 日 3 件上限，超出只进受信箱；静かな時間帯 22:00–7:30；面談 30 分前可设为例外（口径已定）'],
+    ['推送卡', '玻璃底（<code>--glass</code> + blur 22）圆角 22；标题带相对时间或截止（「あと30分」「今日 23:59 まで」），正文给上下文 + 已准备好什么（「話すこと3点を用意しました」）；不写「送信しました」类代发表述'],
+    ['长按', '4 项固定：打开目标 / 1時間後に再通知 / 受信箱で既読にする / この種類の通知を減らす（直达通知设置对应开关）'],
+    ['落地', '直接进入目标屏并滚动到目标卡；目标卡外圈 2px 灰紫 + 9px 光晕，<b>脉冲 3 次（2.4s/次）后静止</b>（本页演示为循环）；顶部「通知から開きました」来源条 3 秒后淡出'],
+    ['外部动作', '申込/付款在外部网站由用户完成，按钮用「〜を開く」+ 外链图标；Orbit 不代为报名'],
+    ['Web', '用浏览器通知；首页不加铃铛，需要动作的通知进「判断待ち」（口径：受信箱入口）']],
+  src: ['b5 · B ① ロック画面 ② 長押し ③ 着地：早割 ③\' 面談準備 · 通知設定', 'b6 · C NFC ③ 相手側の通知', 'b1 · B1 通知权限', 'index · 推送频控 / 受信箱来源与入口'] }, true);
+
+/* ⑬ 键盘 */
+const cmdk = `<div class="pop" style="width:420px;padding:10px"><div class="row" style="gap:10px;padding:6px 8px 10px;border-bottom:1px solid var(--line)">${ic('search')}<b style="font-size:15px;flex:1">高橋</b>${kbd('Esc')}</div>
+  ${[['c2', '高', '高橋 美咲', '青葉ベンチャーズ · パートナー', 1], ['c3', '高', '高田 隼人', 'ミライ製作所 · 経営企画', 0]].map(([c, a, n, d, s]) => `<div class="row" style="gap:10px;padding:8px;border-radius:14px;${s ? 'background:var(--surface-2)' : ''}"><div class="av sm ${c}">${a}</div><div style="flex:1;min-width:0"><b style="font-size:13px;display:block">${n}</b><span class="lbl">${d}</span></div>${s ? kbd('↵') : ''}</div>`).join('')}
+  <div class="keys" style="padding:10px 8px 2px;border-top:1px solid var(--line);margin-top:6px"><span>${kbd('↑')}${kbd('↓')}移動</span><span>${kbd('↵')}開く</span><span>${kbd('Tab')}種類を切替</span><span style="margin-left:auto">${kbd('⌘')}${kbd('↵')}iOrbit に聞く</span></div></div>`;
+const kbdMisc = `<div style="display:grid;gap:12px;width:360px"><div class="card" style="padding:12px 14px;display:flex;gap:8px;align-items:center;font-size:13px;color:var(--ink-3)">${ic('sparkle', 'sm')}iOrbit に聞く…<span style="margin-left:auto">${kbd('⌘')}${kbd('K')}</span></div>
+  <div class="card flat keys" style="padding:12px 14px"><span>${kbd('←')}${kbd('→')}前後</span><span>${kbd('↵')}確定して次へ</span><span>${kbd('E')}編集</span><span>${kbd('S')}スキップ</span></div>
+  <div style="padding-top:40px"><span class="tipw"><button class="btn sm">${ix('undo', 'sm')}元に戻す</button><span class="tip-b">元に戻す <span class="kbd on-dark">⌘</span><span class="kbd on-dark">Z</span></span></span></div></div>`;
+P += sec2('c-kbd', '⑬ 键盘快捷键提示（仅 Web）', '一种 kbd 样式；键名统一；kbd 里只放键');
+P += comp(duo(`<div class="srow" style="gap:16px">${cell('⌘K 面板底部提示行', cmdk)}${cell('输入框尾部 · 复核页提示行 · 按钮 tooltip', kbdMisc)}</div>`, true), {
+  rules: [['kit 类', '<code>.kbd</code> / <code>.keys</code>；深色按钮或 tooltip 里用 <code>.kbd.on-dark</code>'], ['样式', '<code>.kbd</code>：平面、<code>--surface-2</code> 底（在浅色块上改 <code>--surface</code>）、11px / 700、<code>--font-num</code>、高 20、最小宽 20、圆角 6；不做立体键帽阴影'],
+    ['键名', '修饰键用符号 ⌘ ⇧ ⌥；回车 ↵；方向 ↑ ↓ ← →；功能键首字母大写英文 Esc · Tab；字母键大写 K / E / S；组合键拆成多个 kbd（⌘ K），不写「⌘+K」'],
+    ['位置', '弹层底部一行（左对齐操作，右侧放次要）；输入框尾部；按钮悬停 tooltip（「元に戻す ⌘Z」）；确认框左下「Esc キャンセル」'],
+    ['范围', '只在 Web 显示；App 不显示任何快捷键提示；kbd 内只放键，说明文字在外（不写「⌘K でどこからでも」进 kbd）']],
+  src: ['b5 · E4 ⌘K', 'b4 · B1 / B3 Web @ 候補', 'b1 · B5 名片确认（Web）', 'b3 · Web ② Toast（⌘Z）/ Web フォロー完了（⌘↵）', 'b2 · Web 探す（Esc で閉じる）'] }, true);
+P += spec(['快捷键', '动作', '出处'], [[`${kbd('⌘')}${kbd('K')}`, '全局搜索 / 问 iOrbit（任何页面）', 'b4 B1 · b5 E4'], [kbd('Esc'), '关闭弹层、抽屉、弹出层；确认框中 = キャンセル', 'b2 · b3'], [`${kbd('⌘')}${kbd('Z')}`, '撤销最近一条 Toast 的动作', 'b3 Web ②'], [`${kbd('⌘')}${kbd('↵')}`, '提交并关闭（完了 + 一言、フォロー完了）；⌘K 中 = 把输入交给 iOrbit', 'b3 · b5'], [`${kbd('↑')}${kbd('↓')} ${kbd('↵')} ${kbd('Tab')}`, '列表选择 / 打开 / 切换类别（⌘K、@ 候补）', 'b4 B3 · b5 E4'], [`${kbd('←')}${kbd('→')} ${kbd('E')} ${kbd('S')}`, '名片复核：前后 / 编辑 / 跳过；↵ 确定并下一张', 'b1 B5']]);
+
+/* ⑭ 长文案 */
+const LCO = '株式会社ノースブリッジ・インダストリアル・ソリューションズ', LROLE = '執行役員 兼 グローバル事業開発本部 本部長';
+const LEV = '第12回 日本製造業デジタルトランスフォーメーション推進フォーラム 2026 秋季大会';
+const textDemo = `<div class="srow" style="gap:14px">
+  ${cell('列表行：姓名不截断，会社·役職 1 行末尾省略', `<div class="card" style="padding:6px 14px;width:330px"><div class="list"><div class="li"><div class="av c3">北</div><div class="meta"><b>北村 恭介</b><span>${LCO} · ${LROLE}</span></div><span class="chip blue">関係構築</span></div></div></div>`)}
+  ${cell('卡片标题：2 行 + 文节换行', `<div class="card" style="padding:14px;width:280px"><b class="clamp2 jp" style="font-size:14.5px;line-height:1.45">${LEV}</b><div class="lbl clamp1" style="margin-top:4px">10月28日（水）10:00 · パシフィコ横浜 ノース G301–G304</div></div>`)}
+  ${cell('chip：最大 160px + 全文气泡', `<div style="padding-top:46px;width:300px"><span class="tipw"><span class="chip lav" style="max-width:160px">${LROLE}</span><span class="tip-b">${LROLE}</span></span></div>`)}
+  </div>`;
+P += sec2('c-text', '⑭ 日语长文案截断', '引用 b6「E · 日语长文案与截断」；简表');
+P += comp(duo(textDemo, true), null, true);
+P += spec(['元素', '最大', '全文看哪里', '备注'], [['姓名', '不截断', '—', '表格姓名列 nowrap'], ['会社（行内）', '1 行', 'tooltip / 详情', '与役職合并一行，「·」分隔'], ['会社（表格）', '2 行', 'tooltip', '<code>word-break: auto-phrase</code>'], ['役職', '1 行', 'tooltip', ''], ['活动名（卡片）', '2 行', '详情页', '按文节换行，避免「フォーラ / ム」'], ['chip', '160px', 'tooltip（Web 悬停）/ 长按（App）', ''], ['数字・日付', '不截断', '—', '空间不足时先压缩标签'], ['通用', '省略号永远在末尾', '—', '法人格「株式会社」不缩写为（株）；大字号（AX3）下三格小卡改纵向列表，标签栏只留图标']]);
+P += `<div class="src" style="margin-top:10px">出处<span>b6 · E 长文案规范</span><span>b6 · App ホーム · 大きな文字（AX3）</span></div>`;
+
+/* ⑮ 开关与选择 */
+P += sec2('c-ctl', '⑮ 开关与选择控件', '各批共 6 种开关写法，统一为下列一套');
+P += comp(duo(`<div style="display:grid;gap:14px">
+  <div class="row" style="gap:14px"><span class="tgl"></span><span class="tgl on"></span><span class="lbl">开关 44×26 · 开 = <code>--plum-700</code></span></div>
+  <div class="row" style="gap:14px"><span class="ckr"></span><span class="ckr on">${ic('check')}</span><span class="lbl">任务完成：圆形 22 · <code>--plum-500</code></span></div>
+  <div class="row" style="gap:14px"><span class="cbx"></span><span class="cbx on">${ic('check')}</span><span class="lbl">多选（表格/批量）：方形 20 圆角 7</span></div>
+  <div class="row" style="gap:14px"><span class="rad"></span><span class="rad on"></span><span class="lbl">单选：圆 18 + 内点</span></div>
+  <div class="row" style="gap:6px;flex-wrap:wrap"><span class="fopt on">東京</span><span class="fopt">大阪</span><span class="cat on">すべて</span><span class="cat">通知</span><span class="lbl">多选 chip / 单选页签</span></div></div>`), {
+  rules: [['kit 类', '<code>.tgl</code>（<code>.on</code> / <code>.demo</code>）· <code>.ckr</code> · <code>.cbx</code> · <code>.rad</code> · 清单行 <code>.chk</code>（完成勾同 <code>.ckr</code> 圆形）'], ['开关', '统一 44×26，开 = <code>--plum-700</code>（深色下自动变浅紫）；<b>绿色 <code>--ok</code> 只表示「完成」</b>，不作开关色'],
+    ['完成 vs 多选', '「做完了」的勾 = 圆形（与 iOS リマインダー 一致）；批量选择 = 方形'],
+    ['选中卡', '单选卡片（目标、套餐、合并字段）= 2px <code>--plum-500</code> 描边 + 浅紫底，不加阴影']],
+  src: ['b1 .sw / .ck / .mopt', 'b2 .sw / .fopt', 'b3 .tgl / .ck / .opt', 'b4 .tgl / .radio', 'b5 .tg / .fc', 'b6 .tg / .cbx / .rad'] });
+
+/* ⑯ 已定口径 */
+P += sec2('c-rule', '⑯ 已定口径摘要（与组件有关）', '摘自 index.html「待确认项决定（2026-10-07 定稿）」+ 草稿边界标准写法');
+P += spec(['事项', '口径', '落到哪个组件'], [
+  ['推送频控', '默认 1 日 3 件上限，超出只进受信箱；静かな時間帯 22:00–7:30；面談 30 分前可设例外；用户可在通知设置调整', '⑫ 推送 · ⑥ 通知权限副标题'],
+  ['邮件 / 消息', '永远止于草稿；Orbit 内没有任何「送信」按钮', '草稿操作区（见下表）'],
+  ['「面談を提案」', '不算代发：Orbit 内的结构化请求（3–5 个候选时段），用户点「提案する」发出，不附自由文本', '③ 底部弹层（层内推入）；按钮下注「メッセージは添えません · あとから取り消せます」'],
+  ['主办方提醒', '允许以 Orbit 名义发定型系统通知（非 AI 撰写），发出前有确认画面', '② Web 居中模态（非破坏，默认焦点在主按钮）'],
+  ['日历写入', '只写用户逐次确认的 Orbit 予定（含仮押さえ），不改动其他予定', '④ AI 确认卡'],
+  ['受信箱入口', '不做站内私信；需要动作的通知进「判断待ち」；首页不加铃铛', '⑫ 推送落地'],
+  ['付费', 'Free / Pro ¥1,480/月（年 ¥14,800）；Free 再分析月 3 回、目标 2 个；1 日自动见直し不计次；用尽主按钮「わかりました」；不放「おすすめ」徽章', '⑪ 付费'],
+  ['「送りましたか？」', 'App 回到前台、Web 标签页重获焦点时出现；24 小时未答自动收起', '轻询问卡（b3 · 1 / Web ②）'],
+  ['NFC 交换', '碰一下 + 推送告知 + 可撤销（24 小时内）；iPhone 之间用 QR 兜底', '撤销条（Toast 变体：无倒计时线，写明期限）'],
+  ['主办数字', 'マッチング再生成每场 3 次；邀请链接 7 天；承認制待审 24 小时未处理自动消失', '⑪ 配额 chip 同款 · ⑩ 承認待ち（薰衣草）'],
+  ['App 历史抽屉', '全高覆盖（含状态栏区域）', '③ 容器表'],
+  ['外观预览色', '「言語と外観」里的明/暗/自动预览块允许写死颜色（以及小组件壁纸）', 'Token 规则的唯一例外']]);
+P += spec(['位置', '标准写法', '状态（2026-10-07）'], [
+  ['草稿操作区底部（按钮下一行，常驻）', `${ic('mail', 'sm')} 送信はしません · 送信はあなたが行います`, '已统一：app 改为「下書きを作成」+ 下一行常驻说明；b2 / b3 Web / b5 / b6 / b8 / web 同步'],
+  ['草稿按钮', '生成：「下書きを作成」· 已有：「下書きを開く」· 其余只有「コピー」「メールアプリで開く」', '已统一：生成类「下書きを作成」（需写对象时「お礼の下書きを作成」「依頼文の下書きを作成」）、已有「下書きを開く」、b5「メールアプリで開く」'],
+  ['引导 / 说明 / 落地页', 'メール・メッセージは下書きまで。送信はあなたが行います。', '已统一：b1 / b5 / b8 说明句改为标准句；b1 落地页标题「下書きまで。送信はあなたが行います」'],
+  ['设置 › 連携 / 权限说明', 'Orbit からは送信しません', '已统一：b5 连携 / Gmail 连携说明改为「Orbit からは送信しません」'],
+  ['禁止', 'Orbit 内出现「送信」「送る」按钮；「送信しました」类 Toast / 推送', '—']]);
+
+/* ⑰ 不一致清单 */
+const LV = { h: '<span class="lv h">高</span>', m: '<span class="lv m">中</span>', l: '<span class="lv l">低</span>' };
+P += sec2('c-inc', '⑰ 不一致清单', '「高」= 用户可见且语义冲突；2026-10-07 已逐条改进画稿，最后一列为处理结果（b7 另行处理）');
+P += spec(['#', '组件', '现状（位置）', '建议统一做法', '级别', '处理结果'], [
+  ['1', 'Toast 位置与形态', 'b3：App 底部（标签栏上方 bottom 100）胶囊 + 5 秒倒计时线；Web 右下 420。b4：App bottom 104、圆角 18、下划线文字按钮；Web <b>底部居中</b> 440。b2 ⑩ 交換成功：App <b>顶部</b> top 56 下滑、4 秒、撤销 10 秒。b6 マッチング公開：「取り消し」5 秒（仅说明）', '全部按 ① 规格：App 底部、Web 右下 24px；5 秒 + 倒计时线；胶囊按钮。b2 会场模式底部有横条时贴其上方 12px', LV.h, '<span class="stt">已统一（2026-10-07）</span><br>kit <code>.toast</code> 系列 + <code>.pos</code> / <code>.pos.notab</code> / <code>.toast-stack</code>。b3 删私有副本改用 kit；b4 App 改胶囊 + 倒计时线（标签栏上方），Web 改右下 <code>.toast-stack</code>；b2 ⑩ 交換成功改为底部（会场横条上方 12px）、5 秒、「元に戻す」；b6 マッチング公開说明改为右下 Toast「元に戻す」5 秒'],
+  ['2', '撤销文案', 'Toast 撤销：b3/b4「元に戻す」；b2 Toast、b6 NFC「取り消す / 取り消し」', 'Toast 撤销一律「元に戻す」；「取り消す」只用于撤回已对外生效的动作（参加取消、NFC 交换撤回、公开撤回）', LV.m, '<span class="stt part">已统一 · 有保留（2026-10-07）</span><br>所有 Toast 撤销 =「元に戻す」（b2 ⑩、b4 ③/Web ②、b6 公開）。<b>保留</b>「取り消す」只在已对外生效的撤回：b6 NFC 撤销条与取り消し確認、b3 参加の取り消し、b5 招待リンク——这是本条规则自身的例外，不算不一致'],
+  ['3', '破坏性按钮', 'b3 <code>.btn.danger</code> = 实心珊瑚；b5 E2 同名类 = 浅珊瑚底 + 珊瑚字（同名不同样）', '确认框内最终按钮实心珊瑚；浅珊瑚只用于入口与菜单项，另起类名', LV.h, '<span class="stt">已统一（2026-10-07）</span><br>kit <code>.btn.danger</code>（实心）/ <code>.danger-ghost</code>（入口）/ <code>.danger-soft</code>（菜单项）。b5 E2 删除确认改实心；b5 编辑页「この連絡先を削除」、Web「削除」、b3 タスク / 予定の削除入口改 <code>.danger-ghost</code>；b4 会話削除（内联珊瑚）与 b6 NFC 取り消し（浅珊瑚）改 <code>.btn.danger</code>'],
+  ['4', 'App 确认框布局', 'b3：居中 296、线性图标块、两钮横排。b5 E2：<code>top:290px</code> 固定上沿、🗑️ emoji 当功能图标、按钮竖排（删除在上）。b4 A6、b1 A4：<code>left/right:34px</code> 随屏宽、按钮竖排（b4 为三钮：作り直す / 目標だけ保存 / キャンセル）', '两个选项 → 居中 296 横排（キャンセル左）；≥ 3 个选项 → 底部动作表；功能图标用线性图标（emoji 只作分类）', LV.h, '<span class="stt">已统一（2026-10-07）</span><br>kit <code>.dialog</code>。b3 タスク削除、b5 E2 連絡先削除（去掉 top:290、🗑️ → 线性 trash、横排キャンセル在左）、b4 会話削除改用；b4 A6「作り直しますか」三选项改底部动作表 <code>.sheet.actsheet</code>；b1 A4 写操作拦截改 <code>.dialog</code>，两选项但文案过长 → <code>.dacts.stack</code> 竖排（已补进 ② 规则）'],
+  ['5', 'Web 模态', 'b3 删除模态：按钮居中、底色 <code>--bg</code>；b6 公開确认：按钮右对齐、底色 <code>--surface</code>；b5 ⌘K/招待：<code>--bg</code>，且用 <code>margin-left:-298px</code> 手算居中', '底色 <code>--surface</code>；按钮右对齐；用 transform 居中', LV.m, '<span class="stt part">已统一 · 有保留（2026-10-07）</span><br>kit <code>.wmodal</code>（--surface、transform 居中、<code>.macts</code> 右对齐 + 左下 Esc）。b3 删除模态、b4 全部 <code>.wdlg</code>、b6 公開确认、b1 认证模态改用；b5 ⌘K / 招待改 <code>.wmodal.top</code>，去掉 margin-left 手算。<b>保留</b>：表单型大模态（b3 フォロー完了 / 日程提案 / 予定編集、b5 招待）内含卡片，用 <code>.wmodal.form</code> 底色 --bg 保层次（规则已补）'],
+  ['6', '遮罩浓度', 'kit .28；b1 自定义 <code>--scrim</code> .34 + 3px 模糊；b3 .24；b4 .26；b5/b6 .22', 'App 弹层 28%、Web 抽屉/模态 22%，均不加模糊；深色 55% 黑。收进 token <code>--scrim</code>', LV.l, '<span class="stt part">已统一 · 有保留（2026-10-07）</span><br>kit token <code>--scrim</code>（App 28%）/ <code>--scrim-web</code>（Web 22%）/ 深色 55% 黑；<code>.sheet-scrim</code> <code>.scrim</code> <code>.overlay</code> 都取 token。删除 b1 .34 + 模糊、b3 .24、b4 .26 / .12、b8 .14 私有值。<b>保留</b>：b5 锁屏长按通知的系统级模糊（iOS 自身行为），颜色已改用 token'],
+  ['7', 'AI 确认卡', '类名 b2 <code>.confirm</code> / b3 <code>.confirm-card</code> / b4 <code>.card.dashed</code> / b5 <code>.confirm</code>（圆角 14）、<code>.draft</code>；b4 失败卡用 ⚠️ emoji', '统一 <code>.confirm-card</code> / <code>.ok-card</code> / <code>.ng-card</code>；失败图标改线性 alert', LV.l, '<span class="stt part">已统一 · 有保留（2026-10-07）</span><br>kit <code>.confirm-card</code>（行内 <code>.in-row</code>）/ <code>.ok-card</code> / <code>.ng-card</code> / <code>.okmark</code> / <code>.ngmark</code>。b2 <code>.confirm</code>、b4 <code>.card.dashed</code>、b5 <code>.confirm</code> 改名；b4 失败卡 ⚠️ → <code>.ngmark</code> + 线性 alert。<b>保留</b> b5 <code>.draft</code>：它是 AI 生成的回复草稿容器（编辑 / コピー / メールアプリで開く），不是写入确认'],
+  ['8', '筛选 chip 选中态', 'b2 <code>.fopt.on</code>、b1 <code>.tog.on</code> = 灰紫描边 + 浅紫底；b5 E5 <code>.fc.on</code> = 墨色实心', '多选筛选按 b2；墨色实心只给单选分类页签', LV.m, '<span class="stt">已统一（2026-10-07）</span><br>kit <code>.fopt</code>（多选）/ <code>.cat</code>（单选页签）。b5 E5 絞り込み App / Web 改 <code>.fopt</code>（灰紫描边 + ✓），b5 业界大类与 ⌘K 范围改 <code>.cat</code>；b2 私有 <code>.fopt</code> 删除'],
+  ['9', '筛选重置文案', 'b2「クリア」；b5「リセット」', '「クリア」', LV.l, '<span class="stt">已统一（2026-10-07）</span><br>b5 E5 App / Web「リセット」→「クリア」'],
+  ['10', '开关', 'b1 <code>.sw</code> 开 = 绿 <code>--ok</code>；b2 <code>.sw</code> 42×26 开 = plum-500；b3 <code>.tgl</code> 46×28 开 = accent；b4 <code>.tgl</code> / b5 <code>.tg</code> 开 = plum-700；b6 <code>.tg</code> 开 = plum-500', '44×26、开 = <code>--plum-700</code>；绿只表示完成（见 ⑮）', LV.m, '<span class="stt">已统一（2026-10-07）</span><br>kit <code>.tgl</code>（44×26、开 = plum-700、<code>.demo</code> 演示）。b1 <code>.sw</code>（绿）、b2 <code>.sw</code>、b3 <code>.tgl</code>（46×28）、b4 <code>.tgl</code>（带 i）、b5 <code>.tg</code>、b6 <code>.tg</code> 全部改为 <code>.tgl</code>'],
+  ['11', '勾选控件', '方形：b1 <code>.ck</code> 圆角 6、b2/b4/b6 <code>.chk .box</code> 圆角 8、b6 <code>.cbx</code> 圆角 7；圆形：b3 <code>.ck</code>（同名 <code>.ck</code> 在 b1 是方形）', '任务完成 = 圆形 <code>.ckr</code>；批量多选 = 方形 <code>.cbx</code> 圆角 7', LV.l, '<span class="stt">已统一（2026-10-07）</span><br>kit <code>.ckr</code> / <code>.cbx</code> / <code>.rad</code> / <code>.chk</code>。b3 圆形 <code>.ck</code> → <code>.ckr</code>；b1 方形 <code>.ck</code> → <code>.ckl</code> 标签 + <code>.cbx</code>；app / web / b2 / b4 / b6 / b8 的 <code>.chk .box</code>（任务清单完成勾）收进 kit 并改圆形。b5 <code>.pick .ck</code>（与 b7 同款圆形）不再与他处同名异形'],
+  ['12', '状态 chip 颜色', '「今日」app/b3 灰，而「あと2日」杏（紧迫度倒挂）；「今夜」app/web 珊瑚；「見送り推奨 / 今回は見送り」b2 粉（与「要フォロー」「投資・金融」分类撞色）；「承認待ち」b6 杏 vs「確認待ち」「審査中」薰衣草', '按 ⑩ 语义表：今日 / 今夜 / あと N 日 = 杏；逾期 / 失败 / 上限 = 珊瑚；見送り = 灰；承認待ち = 薰衣草', LV.h, '<span class="stt">已统一（2026-10-07）</span><br>今日 / 今夜 / あと N日 = 杏（app / web / b3 / b6 / b8；b3 期限 chip 按文案取色）；見送り推奨 / 今回は見送り = 灰（app / web / b2 / b8 用页内 <code>vchip()</code> 覆盖 data.js 的 pink，b2 状态卡同改）；b6 承認待ち、b4 確認待ち = 薰衣草；b6 公開确认「未配置」= 珊瑚'],
+  ['13', '键盘提示', 'b1 <code>.kbd</code> 立体键帽；b4 10.5px 平面；b5 11px 平面；键名「Enter」（b1）vs「↵」（b4/b5），「esc」小写（b5）vs「Esc」（b2/b3）；b4 把「⌘K でどこからでも」整句放进 kbd', '按 ⑬：平面 11px；↵ / Esc / Tab；kbd 只放键', LV.l, '<span class="stt">已统一（2026-10-07）</span><br>kit <code>.kbd</code> / <code>.keys</code> / <code>.kbd.on-dark</code>。b1 立体键帽删除、Enter → ↵；b5 esc / tab → Esc / Tab，↑↓ / ⌘↵ / ⌘K 拆成多个 kbd；b4「⌘K でどこからでも」移出 kbd；b2 / b3 / b8 纯文本 Esc / ⌘K / ⏎ 改为 kbd'],
+  ['14', '草稿边界文案', '见 ⑯ 第二表：5 种按钮说法、4 种说明句；b5「メールで開く」vs 他处「メールアプリで開く」', '按 ⑯ 标准写法', LV.m, '<span class="stt">已统一（2026-10-07）</span><br>按 ⑯：生成「下書きを作成」、已有「下書きを開く」、b5「メールアプリで開く」；草稿操作区按钮下一行常驻「送信はしません · 送信はあなたが行います」（app / web / b2 / b3 Web / b5 / b6 / b8）；说明 / 落地页用「メール・メッセージは下書きまで。送信はあなたが行います。」；设置 / 连携用「Orbit からは送信しません」'],
+  ['15', '示例角标 / 淡化', '<code>.sample-tag</code> 每页各写一份，b6 为 10px 且无左间距；<code>.faded</code> 不透明度 .5（b1/b4/b6）vs .55（b2/b3/b5）', '收进 kit：9.5px + 左间距 4；<code>.faded</code> 统一 .5', LV.l, '<span class="stt">已统一（2026-10-07）</span><br>kit <code>.sample-tag</code>（9.5px + 左 4）/ <code>.faded</code>（.5），9 个画稿文件删除私有副本'],
+  ['16', '依据展开体', '<code>.why-body</code> 每页重复定义，行高 1.6 / 1.65 / 未设（b4）', '收进 kit，行高 1.65；浅色块内改 <code>--surface</code> 底', LV.l, '<span class="stt">已统一（2026-10-07）</span><br>kit <code>.why-body</code>（行高 1.65，浅色块内 --surface），9 个画稿文件删除私有副本'],
+  ['17', '推送卡', 'b5 <code>.pn</code> 用 token（<code>--glass</code>）；b6 NFC ③ 相手側の通知 <code>.notif</code> 写死 rgba 底色与字色', '统一 <code>.pn</code>；写死颜色只留给小组件壁纸与外观预览', LV.l, '<span class="stt">已统一（2026-10-07）</span><br>kit <code>.pn</code>；b6 NFC ③ 改为 <code>.pn.notif</code>（页内只留定位），长按菜单 <code>.nacts</code> 改 token；b5 私有 <code>.pn</code> 删除。小组件壁纸 / 主屏仍写死颜色（已定例外）'],
+  ['18', '撤销条（NFC）', 'b6 NFC 撤销用常驻底部条「24時間以内なら取り消せます」，外形同 Toast 但不消失、圆角 22', '定义为 Toast 的「撤销条」变体：无倒计时线、文案写明期限、可手动关闭', LV.l, '<span class="stt">已统一（2026-10-07）</span><br>kit <code>.toast.keep</code>；b6 NFC ② 撤销条改为 <code>.toast.keep.info.pos.notab</code>：无倒计时线、写明期限「10/8 19:42 まで」、下滑收起，↩︎ 字符改线性 undo 图标'],
+  ['19', '各页私有重复类', '<code>.composer</code>、<code>.prompt</code>、<code>.assist-in</code>、<code>.stages</code>、<code>.chk</code>、<code>.drawer</code>、<code>.overlay</code> 在 2–4 个文件里各复制一份', '下一轮收进 kit/ui.css，页面只保留真正私有的样式', LV.l, '<span class="stt">已统一（2026-10-07）</span><br><code>.composer</code> <code>.prompt</code> <code>.assist-in</code> <code>.stages</code> <code>.chk</code> <code>.drawer</code> <code>.overlay</code> 收进 kit；页面只留真正私有的覆盖（b3 抽屉 flex 列、b8 prompt 不换行、b5 ⌘K 内边距）']], 'inc');
+P += `<div class="src" style="margin-top:10px;line-height:1.7">说明<span>kit 只在 ui.css 末尾追加，原有规则未改</span><span>ic() 没有的功能图标（alert / trash / undo / wifioff / copy）用 <code>.lic.i-*</code>（CSS mask，跟随 currentColor），代替 ⚠️ 🗑️ ↩︎</span></div>`;
+P += `<div class="src" style="margin-top:6px">b7 已于 2026-10-07 按本表统一</div>`;
+
+h += `<div class="ds">${P}</div>`;
+document.getElementById('out').innerHTML = h;
+docNav('01-system'); orbitChrome();
+</script>
+<script>
+/* ===== 全局一致性审计（2026-10-07）：由审计脚本生成的结果章节，追加在页尾 ===== */
+document.getElementById('out').insertAdjacentHTML('beforeend', "<div class=\"section-title\" id=\"audit-1007\"><h2>全局一致性审计（2026-10-07）</h2><span>脚本抽取（jsdom）：每个画板的屏幕身份（App 顶栏标题 / Web mainhead + 左栏选中项）、端、顶栏左右圆钮（图标名）、主要按钮、页签、标签栏选中项、＋追加；按身份跨文件对照。基准 = app.html / web.html；基准缺的功能已补回基准</span></div>\n<div class=\"ds\">\n<h3 style=\"margin:6px 0 10px\">① 屏幕 × 文件 按钮对照（修复后）</h3>\n<p class=\"lbl\" style=\"margin-bottom:10px;line-height:1.7\">每行 = 一种顶栏/页签签名；页签中的计数已去掉（数据差异）。「说明」非「基准」的行是允许的状态差异（空状态 / 弹层内控件 / 1024 断点）。文件列 = 出现次数。</p>\n<table class=\"m spec\"><thead><tr><th>屏幕</th><th>顶栏左</th><th>顶栏右</th><th>页签</th><th>标签栏 / ＋追加</th><th>出现在</th><th>说明</th></tr></thead><tbody><tr><td><b>App · ホーム</b></td><td>头像</td><td>✨</td><td>—</td><td>标签 ホーム · ＋追加</td><td><span class=\"lbl\">app×4 b3×7 b6×1 b9×1</span></td><td><span class=\"lbl\">基准</span></td></tr><tr><td></td><td>头像</td><td>✨</td><td>—</td><td>标签 ホーム</td><td><span class=\"lbl\">app×1 b3×1 b7×1</span></td><td><span class=\"lbl\">底部弹层 / 对话框打开时隐藏「＋ 追加」（与 app ＋追加 画板同规则）</span></td></tr><tr><td><b>App · 人脈</b></td><td>🔍</td><td>絞り込み</td><td>—</td><td>标签 人脈 · ＋追加</td><td><span class=\"lbl\">app×4 b1×2</span></td><td><span class=\"lbl\">基准</span></td></tr><tr><td></td><td>🔍</td><td>絞り込み</td><td>—</td><td>标签 人脈</td><td><span class=\"lbl\">b1×1 b5×1 b9×1</span></td><td><span class=\"lbl\">底部弹层 / 对话框打开时隐藏「＋ 追加」（与 app ＋追加 画板同规则）</span></td></tr><tr><td><b>App · イベント</b></td><td>🔍</td><td>📅</td><td>評価 | 参加予定 | 探す</td><td>标签 イベント · ＋追加</td><td><span class=\"lbl\">app×3 b2×3</span></td><td><span class=\"lbl\">基准</span></td></tr><tr><td></td><td>🔍</td><td>📅</td><td>評価 | 参加予定 | 探す</td><td>标签 イベント</td><td><span class=\"lbl\">b2×1 b5×1</span></td><td><span class=\"lbl\">底部弹层 / 对话框打开时隐藏「＋ 追加」（与 app ＋追加 画板同规则）</span></td></tr><tr><td><b>App · プラン</b></td><td>头像</td><td>✨</td><td>—</td><td>标签 プラン · ＋追加</td><td><span class=\"lbl\">app×4 b4×3</span></td><td><span class=\"lbl\">基准</span></td></tr><tr><td></td><td>头像</td><td>✨</td><td>—</td><td>标签 プラン</td><td><span class=\"lbl\">b4×6</span></td><td><span class=\"lbl\">底部弹层 / 对话框打开时隐藏「＋ 追加」（与 app ＋追加 画板同规则）</span></td></tr><tr><td><b>App · iOrbit</b></td><td>🕘</td><td>✕</td><td>—</td><td>无标签栏</td><td><span class=\"lbl\">app×1 b4×16</span></td><td><span class=\"lbl\">基准</span></td></tr><tr><td><b>App · イベント評価（结果）</b></td><td>‹</td><td>共有</td><td>—</td><td>无标签栏</td><td><span class=\"lbl\">app×2 b2×1</span></td><td><span class=\"lbl\">基准</span></td></tr><tr><td><b>App · 手入力</b></td><td>✕</td><td>保存</td><td>—</td><td>无标签栏</td><td><span class=\"lbl\">b7×4 b9×2</span></td><td><span class=\"lbl\">基准</span></td></tr><tr><td><b>App · マイページ</b></td><td>‹</td><td>⚙</td><td>—</td><td>无标签栏</td><td><span class=\"lbl\">b5×4</span></td><td><span class=\"lbl\">基准</span></td></tr><tr><td></td><td>‹</td><td>⚙</td><td>時間 | 日 | 日</td><td>无标签栏</td><td><span class=\"lbl\">b5×1</span></td><td><span class=\"lbl\">弹层 / 抽屉内部的控件，页面本身按钮一致</span></td></tr><tr><td><b>App · 受信箱</b></td><td>‹</td><td>⚙</td><td>メッセージ | 通知</td><td>无标签栏</td><td><span class=\"lbl\">b5×5</span></td><td><span class=\"lbl\">基准</span></td></tr><tr><td><b>App · 人脈分析</b></td><td>‹</td><td>絞り込み</td><td>—</td><td>无标签栏</td><td><span class=\"lbl\">b5×1</span></td><td><span class=\"lbl\">空状态：隐藏依赖数据的按钮/页签（两端同样处理）</span></td></tr><tr><td></td><td>‹</td><td>絞り込み</td><td>構造 | 機会 | インサイト</td><td>无标签栏</td><td><span class=\"lbl\">b5×5</span></td><td><span class=\"lbl\">基准</span></td></tr><tr><td><b>App · タスク一覧</b></td><td>‹</td><td>＋</td><td>すべて | つながり | 個人</td><td>无标签栏</td><td><span class=\"lbl\">b3×6</span></td><td><span class=\"lbl\">基准</span></td></tr><tr><td><b>390 · ホーム / 人脈 / イベント / プラン（手机浏览器）</b></td><td>—</td><td>✨ + 受信箱 + 头像</td><td>—</td><td>标签 ホーム · ＋追加</td><td><span class=\"lbl\">b6×1</span></td><td><span class=\"lbl\">基准</span></td></tr><tr><td></td><td>—</td><td>✨ + 受信箱 + 头像</td><td>—</td><td>标签 人脈 · ＋追加</td><td><span class=\"lbl\">b6×1</span></td><td><span class=\"lbl\">基准</span></td></tr><tr><td></td><td>—</td><td>✨ + 受信箱 + 头像</td><td>評価 | 参加予定 | 探す</td><td>标签 イベント · ＋追加</td><td><span class=\"lbl\">b8×3</span></td><td><span class=\"lbl\">基准</span></td></tr><tr><td></td><td>—</td><td>✨ + 受信箱 + 头像</td><td>—</td><td>标签 プラン · ＋追加</td><td><span class=\"lbl\">b8×2</span></td><td><span class=\"lbl\">基准</span></td></tr><tr><td><b>Web · ホーム</b></td><td>🔍</td><td>🔔 + ＋ 追加</td><td>—</td><td>—</td><td><span class=\"lbl\">web×4 b1×2 b3×4</span></td><td><span class=\"lbl\">基准</span></td></tr><tr><td></td><td>🔍</td><td>🔔 + ＋ 追加</td><td>丁寧 | 標準 | カジュアル</td><td>—</td><td><span class=\"lbl\">b3×1</span></td><td><span class=\"lbl\">弹层 / 抽屉内部的控件，页面本身按钮一致</span></td></tr><tr><td></td><td>🔍</td><td>🔔 + ＋ 追加</td><td>分 | 分 | 分</td><td>—</td><td><span class=\"lbl\">b3×1</span></td><td><span class=\"lbl\">弹层 / 抽屉内部的控件，页面本身按钮一致</span></td></tr><tr><td></td><td>🔍</td><td>🔔 + ✨ 次の一手 3 + ＋ 追加</td><td>—</td><td>—</td><td><span class=\"lbl\">b6×2</span></td><td><span class=\"lbl\">1024：右栏收成「次の一手」按钮（⑧ 断点规范）</span></td></tr><tr><td><b>Web · 人脈</b></td><td>🔍</td><td>＋ 人脈を追加</td><td>—</td><td>—</td><td><span class=\"lbl\">web×4 b1×2 b4×1 b5×5 b6×1 b7×3 b9×2</span></td><td><span class=\"lbl\">基准</span></td></tr><tr><td></td><td>🔍</td><td>＋ 人脈を追加</td><td>知り合い | 関係構築 | 推進中 | 協業中</td><td>—</td><td><span class=\"lbl\">b5×1</span></td><td><span class=\"lbl\">弹层 / 抽屉内部的控件，页面本身按钮一致</span></td></tr><tr><td></td><td>🔍</td><td>✨ 次の一手 3 + ＋ 人脈を追加</td><td>—</td><td>—</td><td><span class=\"lbl\">b6×1 b8×1</span></td><td><span class=\"lbl\">1024：右栏收成「次の一手」按钮（⑧ 断点规范）</span></td></tr><tr><td><b>Web · イベント</b></td><td>🔍</td><td>seg [評価|参加予定|探す]</td><td>評価 | 参加予定 | 探す</td><td>—</td><td><span class=\"lbl\">web×4 b2×4</span></td><td><span class=\"lbl\">基准</span></td></tr><tr><td></td><td>🔍</td><td>seg [評価|参加予定 3|探す]</td><td>評価 | 参加予定 | 探す</td><td>—</td><td><span class=\"lbl\">b8×2</span></td><td><span class=\"lbl\">基准</span></td></tr><tr><td><b>Web · プラン</b></td><td>—</td><td>—</td><td>—</td><td>—</td><td><span class=\"lbl\">web×1</span></td><td><span class=\"lbl\">空状态：隐藏依赖数据的按钮/页签（两端同样处理）</span></td></tr><tr><td></td><td>▾ 💰 シリーズA 資金調達</td><td>↻ 方案を見直す + ⚑ 目標を達成した</td><td>—</td><td>—</td><td><span class=\"lbl\">web×2 b4×3 b6×1</span></td><td><span class=\"lbl\">基准</span></td></tr><tr><td></td><td>▾ 💰 シリーズA 資金調達</td><td>✨ 次の一手 3 + ↻ 方案を見直す + ⚑ 目標を達成した</td><td>—</td><td>—</td><td><span class=\"lbl\">b8×2</span></td><td><span class=\"lbl\">1024：右栏收成「次の一手」按钮（⑧ 断点规范）</span></td></tr><tr><td><b>Web · iOrbit</b></td><td>🕘</td><td>＋ 新しい会話</td><td>—</td><td>—</td><td><span class=\"lbl\">web×1 b4×8 b6×1 b8×2</span></td><td><span class=\"lbl\">基准</span></td></tr><tr><td></td><td>🕘</td><td>＋ 新しい会話</td><td>すべて | 人 | イベント</td><td>—</td><td><span class=\"lbl\">b4×1</span></td><td><span class=\"lbl\">弹层 / 抽屉内部的控件，页面本身按钮一致</span></td></tr><tr><td><b>Web · 主催 · 単一イベント運営</b></td><td>‹</td><td>共同運営者 共同運営者</td><td>概要 | マッチング | 参加者 | 受付 | 申込設定 | レポート</td><td>—</td><td><span class=\"lbl\">web×1 b6×11</span></td><td><span class=\"lbl\">基准</span></td></tr><tr><td></td><td>‹</td><td>共同運営者 共同運営者 + seg [全体|自分の視点]</td><td>全体 | 自分の視点</td><td>—</td><td><span class=\"lbl\">b6×4</span></td><td><span class=\"lbl\">レポート 页专有的视角切换（页面内容差异）</span></td></tr><tr><td><b>Web · 受信箱</b></td><td>seg [メッセージ|通知]</td><td>⚙</td><td>メッセージ | 通知</td><td>—</td><td><span class=\"lbl\">b5×1</span></td><td><span class=\"lbl\">空状态：隐藏依赖数据的按钮/页签（两端同样处理）</span></td></tr><tr><td></td><td>seg [メッセージ 1|通知 2]</td><td>✓ すべて既読 + ⚙</td><td>メッセージ | 通知</td><td>—</td><td><span class=\"lbl\">b5×1</span></td><td><span class=\"lbl\">基准</span></td></tr><tr><td></td><td>seg [メッセージ 3|通知 5]</td><td>✓ すべて既読 + ⚙</td><td>メッセージ | 通知</td><td>—</td><td><span class=\"lbl\">b5×3</span></td><td><span class=\"lbl\">基准</span></td></tr><tr><td><b>Web · 人脈分析</b></td><td>‹</td><td>—</td><td>—</td><td>—</td><td><span class=\"lbl\">b5×1</span></td><td><span class=\"lbl\">空状态：隐藏依赖数据的按钮/页签（两端同样处理）</span></td></tr><tr><td></td><td>‹</td><td>seg [構造|機会|インサイト]</td><td>構造 | 機会 | インサイト</td><td>—</td><td><span class=\"lbl\">b5×3</span></td><td><span class=\"lbl\">基准</span></td></tr></tbody></table>\n<h3 style=\"margin:22px 0 10px\">② 入口可达性（子页面 → 上一级入口 → 所在画板）</h3>\n<p class=\"lbl\" style=\"margin-bottom:10px;line-height:1.7\">脚本逐条检查：上一级画板里存在可点的入口元素（文本或顶栏图标），且该画板标注写了「→ 去哪」。44 / 44 通过。所有二级页均有返回（App 顶栏左 ‹ / ✕ / ▾，iOrbit 右上 ✕；Web 左上 ‹ 或页内「閉じて待つ」「終了」）；例外：⑦ 退会申請済み 页按设计只给「削除を取り消す / ログアウト」。</p>\n<table class=\"m spec\"><thead><tr><th>子页面</th><th>画在</th><th>入口</th><th>上一级画板</th><th>✓</th></tr></thead><tbody><tr><td>マイページ</td><td><span class=\"lbl\">b5 C</span></td><td>顶栏左 头像</td><td><span class=\"lbl\">app · ホーム（大量数据）</span></td><td>✓</td></tr><tr><td>iOrbit 対話</td><td><span class=\"lbl\">app / b4 B1</span></td><td>顶栏右 ✨</td><td><span class=\"lbl\">app · ホーム（大量数据）</span></td><td>✓</td></tr><tr><td>カレンダー</td><td><span class=\"lbl\">b3 7</span></td><td>今週「カレンダー ›」</td><td><span class=\"lbl\">app · ホーム（大量数据）</span></td><td>✓</td></tr><tr><td>タスク一覧</td><td><span class=\"lbl\">b3 3</span></td><td>判断待ち「すべて (4)」</td><td><span class=\"lbl\">app · ホーム（大量数据）</span></td><td>✓</td></tr><tr><td>連絡先詳細</td><td><span class=\"lbl\">app 详情</span></td><td>轨道迷你卡「詳細」</td><td><span class=\"lbl\">app · ホーム（大量数据）</span></td><td>✓</td></tr><tr><td>＋ 追加 面板</td><td><span class=\"lbl\">app</span></td><td>右下 ＋ 追加</td><td><span class=\"lbl\">app · ホーム（新用户空状态）</span></td><td>✓</td></tr><tr><td>面談の詳細</td><td><span class=\"lbl\">b7 F</span></td><td>今週时间线的面談</td><td><span class=\"lbl\">app · ホーム（大量数据）</span></td><td>✓</td></tr><tr><td>人脈分析</td><td><span class=\"lbl\">b5 E1</span></td><td>浓度卡「人脈分析 ›」</td><td><span class=\"lbl\">app · 人脈（少量数据）</span></td><td>✓</td></tr><tr><td>検索</td><td><span class=\"lbl\">b5 E4</span></td><td>顶栏左 🔍</td><td><span class=\"lbl\">app · 人脈（大量数据）</span></td><td>✓</td></tr><tr><td>絞り込み</td><td><span class=\"lbl\">b5 E5</span></td><td>顶栏右 絞り込み</td><td><span class=\"lbl\">app · 人脈（大量数据）</span></td><td>✓</td></tr><tr><td>探す</td><td><span class=\"lbl\">b2 ②</span></td><td>页签「探す」</td><td><span class=\"lbl\">app · イベント（新用户空状态）</span></td><td>✓</td></tr><tr><td>会う準備</td><td><span class=\"lbl\">b2 ⑤</span></td><td>参加予定卡「会う準備をする」</td><td><span class=\"lbl\">app · イベント（大量数据）</span></td><td>✓</td></tr><tr><td>イベント詳細</td><td><span class=\"lbl\">b2 ③</span></td><td>评估列表行</td><td><span class=\"lbl\">app · イベント（大量数据）</span></td><td>✓</td></tr><tr><td>方案を見直す</td><td><span class=\"lbl\">b4 A3</span></td><td>底部「方案を見直す」</td><td><span class=\"lbl\">app · プラン（大量数据）</span></td><td>✓</td></tr><tr><td>目標を達成</td><td><span class=\"lbl\">b4 A5</span></td><td>底部「目標を達成した」</td><td><span class=\"lbl\">app · プラン（大量数据）</span></td><td>✓</td></tr><tr><td>人物タイプ詳細</td><td><span class=\"lbl\">b4 A2</span></td><td>「話すべき人」行</td><td><span class=\"lbl\">app · プラン（大量数据）</span></td><td>✓</td></tr><tr><td>目標の切替</td><td><span class=\"lbl\">b4 A6</span></td><td>标题下目标名 ▾</td><td><span class=\"lbl\">app · プラン（少量数据）</span></td><td>✓</td></tr><tr><td>会話の履歴</td><td><span class=\"lbl\">b4 B2</span></td><td>顶栏左 🕘</td><td><span class=\"lbl\">app · iOrbit 対話</span></td><td>✓</td></tr><tr><td>受信箱</td><td><span class=\"lbl\">b5 A</span></td><td>マイページ「受信箱」行</td><td><span class=\"lbl\">b5-me-inbox · マイページ · 完成度 100%（大量数据）</span></td><td>✓</td></tr><tr><td>招待コード</td><td><span class=\"lbl\">b5 E6 / b9 A5</span></td><td>マイページ「招待コード」行</td><td><span class=\"lbl\">b5-me-inbox · マイページ · 完成度 100%（大量数据）</span></td><td>✓</td></tr><tr><td>運営センター（App）</td><td><span class=\"lbl\">b6 A App</span></td><td>マイページ「主催したイベント」行</td><td><span class=\"lbl\">b5-me-inbox · マイページ · 完成度 100%（大量数据）</span></td><td>✓</td></tr><tr><td>設定</td><td><span class=\"lbl\">b5 D</span></td><td>顶栏右 ⚙</td><td><span class=\"lbl\">b5-me-inbox · マイページ · 完成度 100%（大量数据）</span></td><td>✓</td></tr><tr><td>公開プロフィール</td><td><span class=\"lbl\">b5 C</span></td><td>「公開プロフィールのプレビュー」</td><td><span class=\"lbl\">b5-me-inbox · マイページ · 完成度 100%（大量数据）</span></td><td>✓</td></tr><tr><td>ご利用プラン</td><td><span class=\"lbl\">b7 B / b4 A4</span></td><td>設定「ご利用プラン」行</td><td><span class=\"lbl\">b5-me-inbox · 設定（大量数据）</span></td><td>✓</td></tr><tr><td>データの書き出し</td><td><span class=\"lbl\">b7 D</span></td><td>設定「データの書き出し」行</td><td><span class=\"lbl\">b5-me-inbox · 設定（大量数据）</span></td><td>✓</td></tr><tr><td>ヘルプ</td><td><span class=\"lbl\">b7 H</span></td><td>設定「ヘルプ」行</td><td><span class=\"lbl\">b5-me-inbox · 設定（大量数据）</span></td><td>✓</td></tr><tr><td>アカウント</td><td><span class=\"lbl\">b7 C</span></td><td>設定 顶部本人行</td><td><span class=\"lbl\">b5-me-inbox · 設定（大量数据）</span></td><td>✓</td></tr><tr><td>名刺交換の設定</td><td><span class=\"lbl\">b6 C ⑤</span></td><td>設定「名刺交換（NFC）」行</td><td><span class=\"lbl\">b5-me-inbox · 設定（大量数据）</span></td><td>✓</td></tr><tr><td>退会</td><td><span class=\"lbl\">b7 C</span></td><td>アカウント「退会する」</td><td><span class=\"lbl\">b7-account-misc · ① 設定 › アカウント</span></td><td>✓</td></tr><tr><td>お問い合わせ / フィードバック</td><td><span class=\"lbl\">b7 H</span></td><td>ヘルプ 底部两行</td><td><span class=\"lbl\">b7-account-misc · ヘルプセンター</span></td><td>✓</td></tr><tr><td>更新の提案</td><td><span class=\"lbl\">b7 G</span></td><td>受信箱「更新」类通知</td><td><span class=\"lbl\">b5-me-inbox · 受信箱 · 通知（大量数据）</span></td><td>✓</td></tr><tr><td>NFC 名刺を交換</td><td><span class=\"lbl\">b6 C</span></td><td>＋追加「NFC 交換」</td><td><span class=\"lbl\">app · ＋ 追加（统一面板）</span></td><td>✓</td></tr><tr><td>LinkedIn から取り込む / 連絡先 / 手入力 / 招待コード</td><td><span class=\"lbl\">b9 A2–A5</span></td><td>＋追加 5 门</td><td><span class=\"lbl\">app · ＋ 追加（统一面板）</span></td><td>✓</td></tr><tr><td>チェックイン → 会場モード</td><td><span class=\"lbl\">b2 ⑥</span></td><td>会う準備「チェックイン」</td><td><span class=\"lbl\">b2-events-flow · 会う準備</span></td><td>✓</td></tr><tr><td>今日のふりかえり</td><td><span class=\"lbl\">b2 ⑦</span></td><td>会場モード 结束 → ふりかえり</td><td><span class=\"lbl\">b2-events-flow · ② 現場ホーム</span></td><td>✓</td></tr><tr><td>主催者の公開ページ</td><td><span class=\"lbl\">b7 E</span></td><td>イベント詳細「主催」页签 → 主催者名</td><td><span class=\"lbl\">b2-events-flow · イベント詳細 · 参加者 多（大量数据）</span></td><td>✓</td></tr><tr><td>ご利用プラン / 書き出し / ヘルプ（Web）</td><td><span class=\"lbl\">b7 B / D / H Web</span></td><td>設定 左侧二级菜单</td><td><span class=\"lbl\">b5-me-inbox · マイページ · Web（新用户空状态）</span></td><td>✓</td></tr><tr><td>人脈分析（Web）</td><td><span class=\"lbl\">b5 E1 Web</span></td><td>つながり卡「人脈分析 ›」</td><td><span class=\"lbl\">web · 人脈（少量数据）</span></td><td>✓</td></tr><tr><td>タスク一覧（Web）</td><td><span class=\"lbl\">b3 3 Web</span></td><td>判断待ち「すべて (4)」</td><td><span class=\"lbl\">web · ホーム（大量数据）</span></td><td>✓</td></tr><tr><td>カレンダー（Web）</td><td><span class=\"lbl\">b3 7 Web</span></td><td>今週「カレンダー ›」</td><td><span class=\"lbl\">web · ホーム（大量数据）</span></td><td>✓</td></tr><tr><td>受信箱 通知（Web）</td><td><span class=\"lbl\">b5 A Web</span></td><td>顶栏 🔔</td><td><span class=\"lbl\">web · ホーム（大量数据）</span></td><td>✓</td></tr><tr><td>目標の切替（Web）</td><td><span class=\"lbl\">b4 A6 Web</span></td><td>标题栏左 目标下拉</td><td><span class=\"lbl\">web · プラン（少量数据）</span></td><td>✓</td></tr><tr><td>共同運営者（Web）</td><td><span class=\"lbl\">b6 A</span></td><td>右上「共同運営者」</td><td><span class=\"lbl\">web · 主催 · 運営</span></td><td>✓</td></tr><tr><td>会話の履歴（Web）</td><td><span class=\"lbl\">b4 B2 Web</span></td><td>顶栏左 🕘</td><td><span class=\"lbl\">web · iOrbit 対話</span></td><td>✓</td></tr></tbody></table>\n<h3 style=\"margin:22px 0 10px\">③ 修了什么（按严重度）</h3>\n<table class=\"m spec\"><thead><tr><th>级</th><th>问题</th><th>发现</th><th>处理</th></tr></thead><tbody><tr><td>高</td><td>首页 / 人脈 / プラン 旧模块残留</td><td>b6 D 1024/390 首页・人脈、E AX3 大字号首页、F 深色人脈/プラン；b1 示例首页・示例人脈・落地页圆环；b3 ホーム（今日の予定 卡）；b7 付款失败背景（今月つながった人 + 今日の予定）；b9 A7（今月つながった人）；b4/b5/b7/b8 的 Web 人脈背景（段階列 / 要フォロー seg）；b6 小组件预览（今月つながった人 24）；b2 会後「プラン進捗 46% → 52%」</td><td>全部改为与 app/web 同源的 HV3 共享块（軌道ビュー・今週ストリップ・今日の一手 堆叠・プラン スコア・判断待ち；人脈 濃さ三点 + 出どころ chip）；1024 轨道缩小、390 = App 正文；AX3 重排；b2 改为 スコア 46 → 56</td></tr><tr><td>高</td><td>App イベント 页签缺失</td><td>app.html イベント 无页签，Web / ⑧ 390 / ② 探す 有「評価 | 参加予定 | 探す」</td><td>app.html 补页签（基准缺 → 补回基准）；② 探す 顶栏 📅/🔔 → 🔍/📅；⑤ 推送落地改为 イベント 标签页「参加予定」（标签栏 + 页签一致）</td></tr><tr><td>高</td><td>App iOrbit 顶栏两套</td><td>app：✕ / 🕘；④：🕘 / ✎（无关闭）</td><td>统一 左 🕘 履歴（左侧抽屉，顶部「新しい会話」）/ 右 ✕ 关闭；app.html 与 ④ 全部 16 处同步</td></tr><tr><td>高</td><td>人脈 顶栏按钮不一致</td><td>b1 App 人脈 用 头像/✨；Web 人脈 在 b1/b5/b6/b7/b8 用「名刺スキャン」「取り込み」「連絡先を追加」</td><td>统一 App 🔍 / 絞り込み、Web 🔍 / 「人脈を追加」（5 门弹窗）</td></tr><tr><td>中</td><td>プラン 目标切换三种画法</td><td>app 无入口；④ App 把标题换成目标名；④ Web 用 seg；⑧ 1024 用下拉</td><td>App 标题保持「プラン」，目标名放副标题带 ▾；Web 统一为标题栏左侧目标下拉（web.html / ④ / ⑧ / ⑥）；⑧ 1024/390 补「目標を達成した」</td></tr><tr><td>中</td><td>主催 运营台顶栏</td><td>web.html 把六页签塞在 mainhead 右侧；⑥ 为 共同運営者 + 标题下页签</td><td>web.html 改为 ⑥ 同构</td></tr><tr><td>中</td><td>同一屏两个名字</td><td>⑦「新しい連絡先」vs ⑨「手入力」；⑤「Orbit に招待」（相手の承認後）vs ⑨「招待コード」（互加）；③ タスク詳細 与一览同名「タスク」；② 参加者侧「受付」与 ⑥ 主办侧「受付」</td><td>统一为 手入力（右上 保存）/ 招待コード（互加口径）；详情改名「タスクの詳細」；参加者侧改称「チェックイン」</td></tr><tr><td>中</td><td>根级页面弹层时丢失标签栏</td><td>④ 作り直し / 目標を編集 弹层、⑦ 付款失败 画在无标签栏的首页上</td><td>补回对应标签栏（弹层打开时只隐藏 ＋追加）</td></tr><tr><td>低</td><td>Web ホーム 副标题</td><td>③ Web ホーム 用 10月7日（水）</td><td>统一为 10月1日–10月31日（web.html）</td></tr><tr><td>低</td><td>判断待ち「すべて」</td><td>③ 写「すべて」、显示 3–4 条</td><td>默认 2 条 +「すべて (N)」（Web 3 条）</td></tr><tr><td>低</td><td>データの書き出し ② 左上 ✕</td><td>同一流程 ① ③ 为 ‹</td><td>统一 ‹（准备在后台继续）</td></tr><tr><td>低</td><td>基准自身布局</td><td>web.html 人脈 情報の濃さ 三格数字与下一格图标重叠</td><td>改为两行（图标+标签 / 数字）</td></tr></tbody></table>\n<div class=\"src\" style=\"margin-top:10px;line-height:1.7\">实现<span>b 文件里的首页・人脈・プラン 缩略/背景 不再手抄：由审计脚本从 app.html / web.html 原样复制生成「HV3 共享块」（IIFE，只暴露 HV3），样式追加在 kit/ui.css 末尾（AU-HV3 段，.orb / .dn / 来源 chip 已收窄作用域）。改基准后需重新生成该块</span><span>验证：全部文件 &lt;script&gt; vm 语法通过；jsdom pin = notes、无 template[data-pin] 残留；headless Chrome 无画框横向溢出、无卡片溢出</span></div>\n</div>");
+</script>
+</body>
+</html>

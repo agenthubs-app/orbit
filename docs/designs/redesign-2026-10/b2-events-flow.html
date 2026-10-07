@@ -1,0 +1,842 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>② 活動閉環</title>
+<link rel="stylesheet" href="kit/tokens.css">
+<link rel="stylesheet" href="kit/ui.css">
+<script src="kit/kit.js"></script>
+<script src="kit/data.js"></script>
+<style>
+  .doc { min-width: 1520px; }
+  .web .main { position: relative; }
+  .score { font-family: var(--font-num); font-weight: 800; }
+  .ell { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .chip svg.i { width: 12px; height: 12px; }
+  .seg.full { display: flex; } .seg.full button { flex: 1; }
+  .ev-card { width: 248px; border-radius: 22px; background: var(--surface); padding: 16px; }
+  .evc { background: var(--surface); border-radius: 22px; padding: 18px; transition: transform .2s var(--ease), box-shadow .2s; cursor: pointer; position: relative; }
+  .evc:hover { transform: translateY(-3px); box-shadow: var(--shadow-float); }
+  .evc.sel { box-shadow: 0 0 0 2px var(--plum-500); }
+  .crit { display: grid; grid-template-columns: 78px 1fr 44px; gap: 10px; align-items: center; font-size: 12px; }
+  .crit + .crit { margin-top: 7px; } .crit .bar { margin: 0; }
+  .drop { border: 1.6px dashed var(--plum-300); border-radius: 18px; padding: 16px; display: flex; align-items: center; justify-content: center; gap: 10px; color: var(--ink-2); font-size: 12.5px; background: color-mix(in srgb, var(--accent-soft) 55%, transparent); }
+  .datebox { width: 44px; flex: none; text-align: center; border-radius: 13px; background: var(--surface-2); padding: 5px 0; line-height: 1.1; }
+  .datebox b { display: block; font-family: var(--font-num); font-size: 17px; font-weight: 800; }
+  .datebox small { font-size: 10px; color: var(--ink-3); font-weight: 700; }
+  .opt-row { display: flex; gap: 10px; align-items: center; width: 100%; padding: 11px 12px; border-radius: 16px; background: var(--surface-2); margin-top: 8px; font-size: 12px; color: var(--ink-3); transition: transform .15s var(--ease); }
+  .opt-row:active { transform: scale(.98); }
+  .opt-row b { color: var(--ink); font-size: 13px; display: block; }
+  .frow { display: grid; grid-template-columns: 52px 8px 1fr auto; gap: 8px; align-items: center; padding: 9px 0; font-size: 13px; }
+  .frow + .frow { border-top: 1px solid var(--line); }
+  .frow b { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cf { width: 7px; height: 7px; border-radius: 50%; display: block; }
+  .cf.ok { background: var(--ok); } .cf.guess { background: var(--mac-apricot-ink); } .cf.ng { background: var(--coral); }
+  .input.fill { color: var(--ink); }
+  .input.err { box-shadow: inset 0 0 0 1.5px var(--coral); }
+  .poster { border-radius: 16px; background: linear-gradient(135deg, var(--mac-blue), var(--mac-lav)); display: grid; place-items: center; overflow: hidden; position: relative; }
+  .poster .pz { filter: blur(1.4px); transform: rotate(-3deg); background: var(--surface); border-radius: 8px; padding: 12px 16px; width: 62%; }
+  .poster .pz small { font-size: 8px; color: var(--ink-3); letter-spacing: .1em; }
+  .poster .pz b { display: block; font-size: 15px; line-height: 1.2; margin: 4px 0 8px; }
+  .poster .pz i { display: block; height: 5px; border-radius: 3px; background: var(--surface-3); margin-top: 4px; }
+  .poster .tagb { position: absolute; left: 10px; top: 10px; }
+  .badge { position: absolute; top: -2px; right: -2px; min-width: 17px; height: 17px; border-radius: 9px; background: var(--ink); color: var(--bg); font-size: 10px; font-weight: 800; display: grid; place-items: center; padding: 0 4px; }
+  .opt { padding: 8px 13px; border-radius: 999px; background: var(--surface-2); font-size: 12.5px; font-weight: 700; color: var(--ink-2); border: 1.5px solid transparent; transition: background .2s, border-color .2s; white-space: nowrap; }
+  .opt.on { border-color: var(--plum-500); background: var(--accent-soft); color: var(--ink); }
+  .opt { background: var(--surface); }
+  .fgrp + .fgrp { margin-top: 14px; }
+  .fgrp > .lbl { display: block; margin-bottom: 7px; font-weight: 700; }
+  mark { background: var(--mac-lav); color: inherit; border-radius: 4px; padding: 0 2px; }
+  .utabs { display: flex; gap: 20px; border-bottom: 1px solid var(--line); margin: 14px 0 12px; }
+  .utabs button { padding: 9px 0; font-weight: 700; color: var(--ink-3); font-size: 13px; position: relative; white-space: nowrap; }
+  .utabs button.on { color: var(--ink); }
+  .utabs button.on::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 2.5px; border-radius: 2px; background: var(--ink); }
+  .utabs small { font-family: var(--font-num); color: var(--ink-3); margin-left: 3px; }
+  .cover { height: 96px; background: linear-gradient(135deg, var(--mac-lav), var(--mac-pink) 70%, var(--mac-apricot)); position: relative; display: flex; align-items: flex-end; padding: 0 16px 12px; }
+  .facts { display: grid; gap: 6px; margin-top: 10px; font-size: 12.5px; color: var(--ink-2); }
+  .facts > div { display: flex; align-items: center; gap: 8px; }
+  .facts svg.i { width: 16px; height: 16px; color: var(--ink-3); }
+  .scorebar { position: sticky; top: 0; z-index: 6; background: var(--surface); border-radius: 20px; padding: 10px 14px; margin-top: 14px; }
+  .scorebar .row1 { display: flex; align-items: center; gap: 12px; }
+  .ctabar { position: absolute; left: 12px; right: 12px; bottom: 26px; z-index: 30; border-radius: 28px; background: var(--glass); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid var(--glass-line); padding: 8px; display: flex; gap: 8px; align-items: center; box-shadow: var(--shadow-float); }
+  .chatcol { display: grid; gap: 10px; }
+  .opts-wrap { display: flex; flex-wrap: wrap; gap: 7px; }
+  .stgrid { display: grid; grid-template-columns: repeat(4, 300px); gap: 16px; }
+  .stc { border-radius: 24px; background: var(--surface); padding: 18px; display: flex; flex-direction: column; gap: 10px; }
+  .stc .push { margin-top: auto; }
+  .steps4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+  .steps4 > div { padding-top: 8px; border-top: 4px solid var(--surface-3); font-size: 11px; color: var(--ink-3); font-weight: 600; }
+  .steps4 > div.d { border-color: var(--plum-500); color: var(--ink-2); }
+  .steps4 > div.n { border-color: var(--plum-700); color: var(--ink); font-weight: 800; }
+  .popcheck { width: 76px; height: 76px; border-radius: 50%; background: var(--mac-teal); color: var(--mac-teal-ink); display: grid; place-items: center; margin: 0 auto; animation: popIn .7s var(--ease) both; }
+  .popcheck svg.i { width: 38px; height: 38px; stroke-width: 2.2; }
+  @keyframes popIn { 0% { transform: scale(.4); opacity: 0; } 70% { transform: scale(1.08); } 100% { transform: scale(1); opacity: 1; } }
+  .warnbar { display: flex; gap: 10px; align-items: center; padding: 11px 14px; border-radius: 16px; background: var(--coral-soft); color: var(--ink); font-size: 12.5px; margin-top: 14px; }
+  .warnbar b { color: var(--coral); }
+  .quote { border-radius: 14px; background: var(--surface-2); padding: 10px 12px; font-size: 12.5px; line-height: 1.6; position: relative; }
+  .acc-h { display: flex; align-items: center; gap: 10px; padding: 10px 0; cursor: pointer; }
+  .acc + .acc { border-top: 1px solid var(--line); }
+  .acc-in { padding: 0 0 12px 48px; display: grid; gap: 8px; }
+  .kv { display: grid; grid-template-columns: 58px 1fr; gap: 8px; font-size: 12.5px; }
+  .kv > span:first-child { color: var(--ink-3); font-size: 11.5px; padding-top: 1px; }
+  .livebar { right: 16px !important; grid-template-columns: repeat(5, 1fr) !important; }
+  .livedot { display: inline-flex; align-items: center; gap: 4px; color: var(--coral); font-weight: 800; }
+  .livedot::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--coral); animation: blink 1.6s infinite; }
+  @keyframes blink { 50% { opacity: .3; } }
+  .rdots { display: flex; gap: 6px; }
+  .rdots > div { flex: 1; border-radius: 12px; padding: 7px 4px; text-align: center; background: var(--surface-2); font-size: 10.5px; color: var(--ink-3); font-weight: 700; }
+  .rdots > div b { display: block; font-family: var(--font-num); font-size: 14px; color: var(--ink-2); }
+  .rdots > div.d { opacity: .7; } .rdots > div.n { background: var(--ink); color: var(--bg); } .rdots > div.n b { color: var(--bg); }
+  .ice { display: flex; gap: 10px; align-items: flex-start; padding: 10px 0; font-size: 13px; line-height: 1.55; }
+  .ice + .ice { border-top: 1px solid var(--line); }
+  .pcard { width: 300px; border-radius: 24px; background: var(--surface); padding: 18px; display: flex; flex-direction: column; gap: 10px; }
+  .slots { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .slot { border-radius: 14px; background: var(--surface-2); padding: 9px 11px; font-size: 12px; border: 1.5px solid transparent; cursor: pointer; }
+  .slot b { display: block; font-family: var(--font-num); font-size: 13.5px; }
+  .slot.on { border-color: var(--plum-500); background: var(--accent-soft); }
+  .tline { display: grid; grid-template-columns: 46px 14px 1fr; gap: 8px; align-items: start; }
+  .tline time { font-family: var(--font-num); font-weight: 800; font-size: 12.5px; padding-top: 1px; }
+  .tline .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--surface-3); margin-top: 4px; position: relative; }
+  .tline .dot::after { content: ""; position: absolute; left: 4px; top: 12px; width: 2px; height: 46px; background: var(--surface-3); }
+  .tline:last-child .dot::after { display: none; }
+  .tline.d .dot { background: var(--plum-300); } .tline.n .dot { background: var(--coral); box-shadow: 0 0 0 4px var(--coral-soft); }
+  .tline + .tline { margin-top: 14px; }
+  .tline b { font-size: 13px; display: block; } .tline .lbl { display: block; }
+  .tline.d b { color: var(--ink-3); }
+  .nx { padding: 12px 0; }
+  .nx + .nx { border-top: 1px solid var(--line); }
+  .nx-acts { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 0 40px; }
+  .act { display: inline-flex; align-items: center; gap: 4px; padding: 5px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 700; border: 1.5px dashed var(--plum-300); color: var(--ink-3); cursor: pointer; white-space: nowrap; }
+  .act.on { border-style: solid; border-color: transparent; background: var(--accent-soft); color: var(--ink); }
+  .act.on::before { content: "✓"; color: var(--plum-700); font-weight: 900; }
+  .yn { width: 30px; height: 30px; border-radius: 50%; background: var(--surface-2); display: grid; place-items: center; font-size: 13px; font-weight: 800; color: var(--ink-3); }
+  .yn.on { background: var(--ink); color: var(--bg); }
+  .nx.off { opacity: .45; }
+  .bar2 { height: 8px; border-radius: 6px; background: var(--surface-3); position: relative; margin: 12px 0 8px; overflow: hidden; }
+  .bar2 i { position: absolute; top: 0; bottom: 0; border-radius: 6px; }
+  .bar2 .base { left: 0; background: var(--plum-500); }
+  .bar2 .add { width: 0; background: var(--rose-500); transition: width 1.2s var(--ease) .35s; }
+  .sumi + .sumi { border-top: 1px solid var(--line); }
+  .sumi { padding: 10px 0; }
+  .hero-row { display: flex; align-items: flex-end; justify-content: space-between; }
+  .mini3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 14px; }
+  .mini3 > div { background: var(--surface-2); border-radius: 14px; padding: 10px 11px; }
+  .mini3 b { font-family: var(--font-num); font-size: 19px; font-weight: 800; display: block; line-height: 1.2; }
+  .popover { position: absolute; z-index: 25; background: var(--surface); border-radius: 22px; box-shadow: var(--shadow-float); padding: 18px; width: 400px; border: 1px solid var(--line); }
+  .wfilter { display: inline-flex; align-items: center; gap: 6px; height: 40px; padding: 0 14px; border-radius: 999px; background: var(--surface); font-size: 12.5px; font-weight: 700; color: var(--ink-2); white-space: nowrap; }
+  .wfilter.on { background: var(--accent-soft); color: var(--ink); }
+  .wfilter svg.i { width: 14px; height: 14px; }
+  .table .hov-acts { display: flex; gap: 6px; opacity: 0; transition: opacity .2s; justify-content: flex-end; }
+  .table tr:hover .hov-acts, .hov-acts.show { opacity: 1 !important; }
+  .ghost-row.tall { height: 58px; }
+  .mapcard svg text { font-family: var(--font); }
+  .pgrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .pmini { background: var(--surface-2); border-radius: 18px; padding: 12px; display: flex; gap: 10px; align-items: center; min-width: 0; }
+  .pmini .meta { min-width: 0; } .pmini b { display: block; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .pmini span { display: block; font-size: 11.5px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .strip-note { font-size: 12px; color: var(--ink-2); max-width: 1250px; line-height: 1.7; }
+</style>
+</head>
+<body>
+<div class="doc">
+  <div class="doc-head">
+    <div>
+      <div class="doc-kicker">Orbit Redesign · 2026-10 · 批 2 · iPhone 390×844 + Desktop 1440</div>
+      <h1>② 活動閉環：評価 → 登録 → 準備 → 会場 → 会後</h1>
+      <p>一场活动（CFO Night Tokyo vol.18，10/7 渋谷）贯穿全流程：评估异常态 → 探す → 活动详情（评估分常驻）→ AI 访谈式报名 + 录取状态 → 会う準備 → 会場モード（签到/桌次/推荐/参会者/分组/关系图/议程 + 参会者弹层）→ 会後回看（批量确认次の一手 + 回写计划进度）。所有人物/公司/活动为虚构数据。</p>
+    </div>
+    <div class="doc-tools">
+      <div class="seg" data-ctl="theme"><button data-v="light">ライト</button><button data-v="dark">ダーク</button></div>
+      <div class="seg" data-ctl="pins"><button data-v="on" class="on">标注 ON</button><button data-v="off">OFF</button></div>
+    </div>
+  </div>
+  <nav class="doc-nav" id="docnav"></nav>
+  <div id="out"></div>
+</div>
+
+<script>
+/* 状态 chip 语义（01-system ⑩）：見送り = 灰，不用分类粉 */
+const vchip = e => /見送り/.test(e.v) ? '' : e.vc;
+const C = D.contacts, E = D.events, G = D.goals;
+const EV = { n: 'CFO Night Tokyo vol.18', host: 'CFO Night 実行委員会', d: '10月7日（水）19:00–21:30', place: '渋谷ストリーム 4F ホール', fee: '¥5,000', score: 74, emo: '🥂' };
+/* 参加者（虚構） */
+const P = [
+  { n: '清水 玲奈', i: '清', c: 'c1', co: 'Sorae Capital', role: 'プリンシパル', why: 'シリーズA・B2B SaaS に注力。今年 5社に出資', tb: 'C-2', st: 'recv' },
+  { n: '森 拓也', i: '森', c: 'c3', co: 'ブルーム証券', role: '投資銀行部 VP', why: 'IPO 準備企業の資本政策を担当', tb: 'B-4', st: 'done' },
+  { n: '井上 早紀', i: '井', c: 'c4', co: 'ノードワークス', role: 'CFO', why: '昨年シリーズAを 4億円で調達。投資家交渉の経験', tb: 'B-4', st: 'done' },
+  { n: '木村 大和', i: '木', c: 'c2', co: '東邦銀行', role: 'スタートアップ支援部', why: 'ベンチャーデットの窓口。調達の選択肢が増える', tb: 'D-1', st: 'sent' },
+  { n: '林 美穂', i: '林', c: 'c3', co: 'クオリス', role: '経営企画部長', why: 'CVC 立ち上げを準備中。SaaS 領域を探索', tb: 'D-1', st: '' },
+  { n: '松本 亮', i: '松', c: 'c5', co: 'ミライ会計事務所', role: '公認会計士', why: 'スタートアップの監査 30社。監査法人選びに詳しい', tb: 'A-1', st: '' },
+];
+const REC = [
+  { n: 'Japan SaaS Summit 2026 秋', md: [10, 16], d: '10/16（金）', place: '東京国際フォーラム', score: 82, why: 'VC パートナー 3名が登壇', emo: '🎤', vc: 'teal', v: '参加をおすすめ', fee: '¥15,000' },
+  { n: 'スタートアップ×CVC ミートアップ #7', md: [10, 27], d: '10/27（火）19:00', place: '大手町', score: 77, why: 'CVC 担当者 20名が参加予定', emo: '🤝', vc: 'lav', v: '参加をおすすめ', fee: '¥3,000' },
+  { n: 'シリーズA 実務勉強会', md: [11, 12], d: '11/12（木）', place: 'オンライン', score: 71, why: '伊藤さん（ハルモニア CFO）が登壇', emo: '📚', vc: 'blue', v: '参加をおすすめ', fee: '無料' },
+];
+const MORE = [
+  { n: '製造業DXカンファレンス 大阪', md: [10, 23], place: 'グランフロント大阪', score: 68, fee: '無料', v: '条件付き', vc: 'apricot' },
+  { n: 'FinTech Forum Tokyo', md: [11, 5], place: '虎ノ門ヒルズ', score: 58, fee: '¥8,000', v: '条件付き', vc: 'apricot' },
+  { n: '丸の内スタートアップ朝会 #42', md: [10, 21], place: '丸の内', score: 41, fee: '¥1,000', v: '見送り推奨', vc: 'pink' },
+];
+const sc = s => s > 70 ? 'var(--plum-700)' : s > 50 ? 'var(--plum-500)' : 'var(--rose-500)';
+const mring = (s, size = 44, st = 5, fs = 12) => ring(size, st, [{ v: s, c: sc(s), max: 100 }], `<span class="score" style="font-size:${fs}px">${s}</span>`);
+const back = `<button class="rbtn">${ic('left')}</button>`, close = `<button class="rbtn">${ic('x')}</button>`, shareB = `<button class="rbtn">${ic('share')}</button>`;
+const sample = `<span class="sample-tag">サンプル</span>`;
+const datebox = ([m, d]) => `<div class="datebox"><b>${d}</b><small>${m}月</small></div>`;
+const avsOf = (list, n = 4, cls = 'sm') => `<div class="avs">${list.slice(0, n).map(c => `<div class="av ${cls} ${c.c}">${c.i}</div>`).join('')}</div>`;
+const crit = (rows) => rows.map(([l, v, cl, t]) => `<div class="crit"><span class="muted">${l}</span>${bar(v, cl || '')}<b class="score" style="text-align:right">${t || v}</b></div>`).join('');
+const segTop = (k, cls = 'full') => `<div class="seg ${cls}">${['評価', '参加予定', '探す'].map((t, i) => `<button class="${i === k ? 'on' : ''}">${t}</button>`).join('')}</div>`;
+
+/* ============================================================
+   ① 評価の異常態
+   ============================================================ */
+function errUrl() {
+  return topbar('イベント評価', '読み取れませんでした', close) + `
+  <div class="card rise"><div class="lbl">貼り付けたURL</div>
+    <div class="input fill err" style="margin-top:6px">${ic('link', 'sm')}<span class="ell">https://members.cfo-night.jp/events/18</span></div>
+    <div class="row" style="margin-top:10px;gap:6px;flex-wrap:wrap"><span class="chip coral p-errchip">ログインが必要なページ</span><span class="lbl">会員限定のため本文を取得できません</span></div></div>
+  <div class="card"><div class="row" style="gap:10px;align-items:flex-start"><span class="emo apricot">🔒</span><div><b style="font-size:14.5px">別の方法で続けられます</b><div class="lbl" style="margin-top:2px">Orbit があなたの代わりにログインすることはありません</div></div></div>
+    <div class="p-opts">${[['📋', 'pink', 'ページの本文を貼り付ける', 'ログイン後に全文コピー → ここに貼るだけ'], ['🖼️', 'blue', 'スクリーンショットを選ぶ', '告知画面を撮って読み取ります'], ['✍️', 'teal', '日時・場所・参加費だけ入力', '3項目で簡易判定（精度は下がります）']].map(([e, c, t, d]) => `<button class="opt-row"><span class="emo sm ${c}">${e}</span><div style="flex:1;text-align:left;min-width:0"><b>${t}</b>${d}</div>${ic('right', 'sm')}</button>`).join('')}</div></div>
+  <button class="btn ghost block">${ic('refresh', 'sm')}別のURLを試す</button>`;
+}
+function errNotEvent() {
+  return topbar('イベント評価', 'イベントページではないようです', close) + `
+  <div class="card rise"><div class="lbl">貼り付けたURL</div>
+    <div class="input fill" style="margin-top:6px">${ic('link', 'sm')}<span class="ell">https://note.example/cfo-yamada/n/series-a</span></div>
+    <div class="row" style="margin-top:10px;gap:6px"><span class="chip apricot">記事ページ</span><span class="lbl">日時・申込方法が見つかりません</span></div></div>
+  <div class="card"><div class="card-h"><h3><span class="emo sm lav">🔎</span>ページ内のイベント</h3><span class="lbl">2件</span></div>
+    <div class="list p-found">${[[[10, 7], 'CFO Night Tokyo vol.18', '渋谷 · 19:00 · 記事末尾のリンク'], [[11, 12], 'シリーズA 実務勉強会', 'オンライン · 本文中で紹介']].map(([md, t, p]) => `<div class="li">${datebox(md)}<div class="meta"><b>${t}</b><span>${p}</span></div><button class="btn sm">評価</button></div>`).join('')}</div></div>
+  <div class="card flat"><div class="row"><span class="emo sm teal">✍️</span><div style="flex:1"><b style="font-size:13px">どれでもない場合</b><div class="lbl">名称・日時・場所を入力して判定</div></div><button class="btn sm p-manual">手入力</button></div></div>`;
+}
+const poster = (h = 150, big = false) => `<div class="poster" style="height:${h}px"><span class="chip coral tagb">ブレを検出</span><div class="pz" ${big ? 'style="width:56%;padding:20px 24px"' : ''}><small>NAGOYA · 2026</small><b ${big ? 'style="font-size:24px"' : ''}>製造業DX<br>ナイトセミナー</b><i></i><i style="width:60%"></i><i style="width:80%"></i></div></div>`;
+const frow = (k, v, st, cls = '') => `<div class="frow ${cls}"><span class="lbl">${k}</span><i class="cf ${st}"></i><b class="${st === 'ng' ? 'muted' : ''}">${v}</b>${st === 'ng' ? '<span class="chip coral">読み取れず</span>' : st === 'guess' ? '<span class="chip apricot">推測</span>' : ''}</div>`;
+const posterFields = () => frow('名称', '製造業DX ナイトセミナー 名古屋', 'ok') + frow('主催', '中部ものづくりDX協議会', 'ok') + frow('日時', '—', 'ng', 'p-ng') + frow('場所', '名古屋駅周辺？', 'guess') + frow('参加費', '—', 'ng');
+function errPoster() {
+  return topbar('イベント評価', 'ポスターの一部だけ読み取れました', back) + `
+  <div class="card rise" style="padding:10px">${poster(130)}</div>
+  <div class="card" style="padding:6px 16px">${posterFields()}</div>
+  <div class="card p-fill" style="background:linear-gradient(150deg,var(--mac-lav),var(--surface) 60%)">
+    <div class="row between"><b style="font-size:14.5px">判定に必要な3項目</b><span class="chip lav">1 / 3</span></div>
+    <div class="lbl" style="margin:2px 0 12px">わかる範囲で大丈夫。「不明」のままでも判定できます</div>
+    <div class="lbl">日時</div><div class="input fill" style="margin-top:4px;background:var(--surface)">${ic('calendar', 'sm')}10月29日（木）18:30</div>
+    <div class="lbl" style="margin-top:10px">場所</div><div class="input" style="margin-top:4px;background:var(--surface)">${ic('pin', 'sm')}会場名・エリア</div>
+    <div class="chips" style="margin-top:6px"><span class="chip apricot">「名古屋駅周辺」を使う</span><span class="chip">オンライン</span></div>
+    <div class="lbl" style="margin-top:10px">参加費</div><div class="seg full" style="margin-top:4px;background:var(--surface)"><button>無料</button><button>有料</button><button class="on">不明</button></div>
+  </div>
+  <button class="btn primary block p-judge" style="height:46px;margin-top:14px">この内容で判定する</button>
+  <div class="lbl" style="text-align:center;margin-top:8px">入力した内容はこの判定にだけ使われます</div>`;
+}
+function rejudge() {
+  return topbar('イベント評価', 'ポスター + 手入力で判定', back, shareB) + `
+  <div class="card rise" style="text-align:center;padding:20px 18px">
+    <span class="chip lav">${ic('image', 'sm')} ポスター画像</span>
+    <div style="font-size:16px;font-weight:800;margin:10px 0 2px">製造業DX ナイトセミナー 名古屋</div><div class="lbl">10月29日（木）18:30 · 名古屋駅周辺 · 参加費 不明</div>
+    <div style="margin:16px auto 6px;width:130px">${ring(130, 12, [{ v: 63, c: 'var(--plum-500)', max: 100 }], `<div class="big" style="font-size:40px">${num(63)}</div><div class="lbl">/ 100</div>`)}</div>
+    <span class="chip apricot" style="font-size:12.5px;padding:5px 12px">条件付きでおすすめ</span></div>
+  <div class="card p-supplied" data-why-box><div class="row" style="gap:8px"><span class="emo sm apricot">✍️</span><div style="flex:1"><b style="font-size:13px">あなたが補った項目 2つ</b><div class="lbl">日時 · 場所（推測を採用）· 参加費は不明のまま</div></div><span class="why p-why">?</span></div>
+    <div class="why-body" hidden>参加費が不明のため「時間対効果」は幅で表示（55〜70）。主催者の公式ページが見つかれば自動で更新し、通知します。</div></div>
+  <div class="card"><div class="card-h"><h3>判定の内訳</h3></div>${crit([['目標との一致', 72], ['会える人', 66], ['時間対効果', 62, 'rose', '55–70']])}</div>
+  <div class="grid2" style="margin-top:14px"><button class="btn">見送る</button><button class="btn primary">詳細を見る</button></div>`;
+}
+/* Web */
+const evalSeg = (k) => segTop(k, '');
+function wErrUrl() {
+  return mainhead('イベント', 'URL・ポスターから行く価値を判定', `<button class="rbtn">${ic('search')}</button>`, evalSeg(0)) + `<div class="wgrid">
+    <div class="card span12"><div class="row" style="gap:12px;margin-bottom:14px"><span class="emo lav">🔍</span><div><b style="font-size:16px">このイベント、行く価値ある？</b><div class="lbl">URL を貼るか、ポスター画像をドロップ</div></div></div>
+      <div class="row" style="gap:10px"><div class="input fill err" style="flex:1;height:48px">${ic('link', 'sm')}https://members.cfo-night.jp/events/18</div><button class="btn primary" style="height:48px">${ic('refresh', 'sm')}もう一度</button></div>
+      <div class="row p-werr" style="margin-top:12px;gap:10px;padding:12px 14px;border-radius:16px;background:var(--coral-soft)"><span style="font-size:18px">🔒</span><div style="flex:1"><b style="font-size:13px">ログインが必要なページのため、読み取れませんでした</b><div class="lbl">Orbit があなたの代わりにログインすることはありません。下のどれかで続けてください。</div></div></div>
+      <div class="grid3 p-wopts" style="margin-top:14px">${[['📋', 'pink', 'ページ本文を貼り付け', 'ログイン後に全文コピーして貼るだけ。いちばん正確です', '貼り付ける'], ['🖼️', 'blue', 'スクリーンショット', '告知画面の画像をドロップ。複数枚まとめて OK', '画像を選ぶ'], ['✍️', 'teal', '3項目だけ入力', '日時・場所・参加費で簡易判定（精度は下がります）', '入力する']].map(([e, c, t, d, b]) => `<div class="card flat" style="padding:16px;display:flex;flex-direction:column;gap:8px"><span class="emo ${c}">${e}</span><b>${t}</b><div class="lbl">${d}</div><button class="btn sm" style="align-self:flex-start;margin-top:auto">${b}</button></div>`).join('')}</div></div>
+    <div class="card span12"><div class="card-h"><h3>最近の評価</h3><span class="more">すべて ${ic('right', 'sm')}</span></div>
+      <table class="table"><thead><tr><th>イベント</th><th>日時</th><th>入力</th><th>スコア</th><th>判定</th></tr></thead><tbody>
+      ${[[E[0], 'URL'], [E[2], 'ポスター'], [E[3], 'URL']].map(([e, t]) => `<tr><td><b>${e.n}</b></td><td class="muted">${e.d}</td><td><span class="chip">${t}</span></td><td>${mring(e.score, 34, 4, 11)}</td><td><span class="chip ${vchip(e)}">${e.v}</span></td></tr>`).join('')}</tbody></table></div></div>`;
+}
+const wTipsRail = () => `<h4><span class="emo sm lav">✨</span>読み取りのコツ</h4>
+  <div class="card" style="padding:16px"><div style="display:grid;gap:10px;font-size:12.5px">${[['✅', '公開の申込ページ（Peatix・connpass など）は URL だけで判定できます'], ['🔒', '会員ページ・社内ポータルは本文の貼り付けが確実です'], ['🖼️', 'ポスターは正面から、文字が読める距離で']].map(([e, t]) => `<div class="row" style="gap:8px;align-items:flex-start"><span>${e}</span><span class="sub">${t}</span></div>`).join('')}</div></div>
+  <div class="lbl">こんなことも聞けます</div>${['このイベントの主催者は信頼できる？', '同じ週の他のイベントと比べて'].map(p => `<div class="prompt">${p}</div>`).join('')}
+  <div style="flex:1"></div><div class="assist-in">${ic('sparkle', 'sm')}iOrbit に聞く…<span style="margin-left:auto">⌘K</span></div>`;
+function wErrPoster() {
+  return mainhead('イベント評価', 'ポスターの一部だけ読み取れました', `<button class="rbtn">${ic('left')}</button>`, '') + `<div class="wgrid">
+    <div class="card span5" style="padding:14px">${poster(420, true)}<div class="lbl" style="margin-top:10px;text-align:center">IMG_2481.HEIC · 文字のブレを検出</div></div>
+    <div class="card span7"><div class="card-h"><h3>読み取った内容</h3><span class="lbl">緑＝読み取り済み · 橙＝推測 · 赤＝読み取れず</span></div>${posterFields()}
+      <div class="card flat p-wfill" style="margin-top:14px;padding:16px"><div class="row between"><b>判定に必要な3項目</b><span class="chip lav">1 / 3</span></div>
+        <div class="grid3" style="margin-top:12px"><div><div class="lbl">日時</div><div class="input fill" style="background:var(--surface);margin-top:4px">${ic('calendar', 'sm')}10/29（木）18:30</div></div>
+          <div><div class="lbl">場所</div><div class="input" style="background:var(--surface);margin-top:4px">${ic('pin', 'sm')}会場名・エリア</div><div class="chips" style="margin-top:6px"><span class="chip apricot">名古屋駅周辺を使う</span></div></div>
+          <div><div class="lbl">参加費</div><div class="seg full" style="margin-top:4px;background:var(--surface)"><button>無料</button><button>有料</button><button class="on">不明</button></div></div></div></div>
+      <div class="row push" style="margin-top:16px;gap:10px"><span class="lbl">入力した内容はこの判定にだけ使われます</span><button class="btn" style="margin-left:auto">別の画像</button><button class="btn primary">この内容で判定する</button></div></div></div>`;
+}
+const wPreviewRail = () => `<h4>${ic('sparkle', 'sm')}判定プレビュー</h4>
+  <div class="card p-wprev" style="text-align:center;padding:20px"><div style="width:120px;margin:0 auto">${ring(120, 11, [{ v: 33, c: 'var(--plum-300)', max: 100 }], '<div class="mid muted">—</div><div class="lbl">あと 2項目</div>')}</div>
+    <div class="sub" style="margin-top:10px">日時と場所が入ると「時間対効果」を計算できます</div></div>
+  <div class="card" style="padding:16px">${crit([['目標との一致', 72], ['会える人', 66]])}<div class="crit"><span class="muted">時間対効果</span><div class="shimmer" style="height:6px"></div><b class="score muted" style="text-align:right">—</b></div></div>
+  <div class="mac apricot" style="font-size:12px"><span class="lic sm i-alert" style="vertical-align:-3px;margin-right:3px"></span>参加費が不明のままだと、スコアは幅で表示します</div>`;
+
+/* ============================================================
+   ② 探す
+   ============================================================ */
+const searchRow = (n = 2) => `<div class="row" style="gap:8px;margin-top:12px"><div class="search" style="flex:1">${ic('search', 'sm')}イベント名・主催・キーワード</div><button class="rbtn p-filter">${ic('sliders')}${n ? `<span class="badge">${n}</span>` : ''}</button></div>`;
+const recCard = (e, w = 260) => `<div class="ev-card" style="width:${w}px"><div class="row between"><span class="emo ${e.vc}">${e.emo}</span>${mring(e.score, 46, 5, 13)}</div>
+  <b style="display:block;margin-top:12px;font-size:14px;line-height:1.35">${e.n}</b><div class="lbl" style="margin-top:3px">${e.d} · ${e.place}</div>
+  <div data-why-box style="margin-top:10px"><div class="row" style="gap:6px"><span class="chip lav ell" style="flex:1;max-width:none">🎯 ${e.why}</span><span class="why">?</span></div><div class="why-body" hidden>プラン「シリーズA 資金調達」で今月会うべき「VC パートナー」「CFO 経験者」と重なるため。根拠：公式の登壇者リスト。</div></div>
+  <div class="row" style="gap:6px"><span class="chip">${e.fee}</span><button class="btn sm" style="margin-left:auto">詳細</button></div></div>`;
+const commCard = () => `<div class="card p-comm" style="padding:14px 16px;margin-top:14px"><div class="card-h" style="margin-bottom:4px"><h3>📌 あなたのコミュニティ</h3><span class="more">2件</span></div>
+  <div class="list">${[[[10, 21], '丸の内イノベーションラボ 定例会 #43', '小林さん主宰 · 丸の内', 'lav', 'メンバー限定'], [[11, 4], 'CFO Night Tokyo vol.19', '渋谷 · 前回参加', 'teal', '先行申込']].map(([md, t, d, c, ch]) => `<div class="li">${datebox(md)}<div class="meta"><b>${t}</b><span>${d}</span></div><span class="chip ${c}">${ch}</span></div>`).join('')}</div></div>`;
+const allRow = (e) => `<div class="li">${datebox(e.md)}<div class="meta"><b>${e.n}</b><span>${e.place} · ${e.fee}</span></div>${mring(e.score, 36, 4, 11)}</div>`;
+function discover(s) {
+  const head = topbar('イベント', s === 'empty' ? 'あなた向けのイベントを探す' : s === 'few' ? '条件に合うイベント 3件' : '今月 28件 · プランに効く 6件', `<button class="rbtn">${ic('search')}</button>`, `<button class="rbtn">${ic('calendar')}</button>`) + segTop(2); /* 审计：顶栏与 app.html イベント 一致（🔍 / 📅），不另设 🔔 */
+  if (s === 'empty') return head + searchRow(0) + `
+    <div class="guide rise p-guide" style="margin-top:14px"><div class="lbl">まだプランがありません</div>
+      <div style="font-size:19px;font-weight:800;line-height:1.4;margin:4px 0">目標を決めると、<br>会うべき人が来るイベントが上に並びます</div>
+      <div class="sub" style="margin-bottom:14px">今は「人気順」で表示しています。約1分で設定できます。</div>
+      <button class="btn primary block tap-demo" style="height:46px">${ic('target', 'sm')}目標を設定する</button></div>
+    <div class="grid3" style="margin-top:14px">${[['🔗', 'blue', 'URLで評価'], ['🎟️', 'teal', '招待コード'], ['👥', 'pink', 'コミュニティ']].map(([e, c, t]) => `<button class="card" style="margin:0;padding:14px 6px;display:flex;flex-direction:column;align-items:center;gap:7px;font-size:11.5px;font-weight:700"><span class="emo ${c}">${e}</span>${t}</button>`).join('')}</div>
+    <div class="card" style="margin-top:14px"><div class="card-h"><h3>プランができると ${sample}</h3></div>
+      <div class="faded">${recCard(REC[0], 300).replace('class="ev-card"', 'class="ev-card" style="padding:0;width:auto"')}</div>
+      <div class="ghost-row" style="margin-top:12px"><i></i>あなたのコミュニティの先行案内</div><div class="ghost-row"><i></i>知り合いが参加するイベント</div></div>`;
+  if (s === 'few') return head + searchRow(3) + `
+    <div class="chips" style="margin:10px 0 0"><span class="chip lav">今週 ✕</span><span class="chip lav">東京 ✕</span><span class="chip lav">製造業DX ✕</span></div>
+    <div class="card" style="margin-top:14px;padding:6px 16px"><div class="list">${[{ ...REC[1], n: '製造業 × SaaS ナイト', md: [10, 9], place: '日本橋', fee: '¥2,000', score: 64 }, { n: 'スマートファクトリー EXPO 内覧', md: [10, 8], place: '有明', fee: '無料', score: 55 }, { n: 'IoT 実装もくもく会', md: [10, 10], place: '五反田', fee: '¥500', score: 38 }].map(allRow).join('')}</div></div>
+    <div class="card flat p-widen"><div class="row" style="gap:8px"><span class="emo sm apricot">💡</span><b style="font-size:13px">条件を広げると、もっと見つかります</b></div>
+      <div style="display:grid;gap:8px;margin-top:10px">${[['期間を「今月」に', '+9件'], ['場所に「大阪」を追加', '+2件'], ['テーマに「資金調達」を追加', '+6件']].map(([t, n]) => `<button class="row between" style="padding:10px 12px;border-radius:14px;background:var(--surface);font-size:12.5px;font-weight:700">${t}<span class="chip teal">${n}</span></button>`).join('')}</div></div>
+    <div class="mac lav" style="margin-top:14px;font-size:12px">👥 コミュニティに参加すると、メンバー限定のイベントがここに先に届きます</div>`;
+  return head + searchRow(2) + `
+    <div class="chips" style="margin:10px 0 0"><span class="chip lav">今月 ✕</span><span class="chip lav">東京 ✕</span><span class="chip">テーマ ${ic('down', 'sm')}</span><span class="chip">参加費 ${ic('down', 'sm')}</span></div>
+    ${commCard()}
+    <div style="margin-top:18px"><div class="card-h"><h3>プランに効くイベント</h3><span class="more">6件</span></div>
+      <div class="carousel p-rec">${REC.map(e => recCard(e)).join('')}</div><div class="dots"><i class="on"></i><i></i><i></i></div></div>
+    <div class="card" style="margin-top:16px;padding:8px 16px"><div class="card-h" style="margin:8px 0 0"><h3>すべて</h3><span class="more">日付順 ${ic('down', 'sm')}</span></div>
+      <div class="list">${[...REC, ...MORE].sort((a, b) => a.md[0] * 40 + a.md[1] - b.md[0] * 40 - b.md[1]).slice(0, 6).map(allRow).join('')}</div></div>`;
+}
+const filterSheet = `<div class="sheet-scrim"></div><div class="sheet p-fsheet"><div class="grab"></div><div class="row between" style="margin-bottom:12px"><b style="font-size:16px">絞り込み</b><button class="btn sm ghost">クリア</button></div>
+  ${[['時期', ['今週', '今月*', '来月', '📅 日付を指定']], ['場所', ['オンライン', '東京*', '大阪', '名古屋', '📍 現在地から5km']], ['テーマ', ['資金調達*', 'SaaS*', '製造業DX', '採用', '経営管理']], ['形式', ['登壇あり', '交流会*', '少人数（〜30名）']]].map(([g, os]) => `<div class="fgrp"><span class="lbl">${g}</span><div class="chips">${os.map(o => `<button class="fopt ${o.endsWith('*') ? 'on' : ''}">${o.replace('*', '')}</button>`).join('')}</div></div>`).join('')}
+  <div class="row between" style="margin-top:14px;font-size:13px;font-weight:700">無料のみ<span class="tgl"></span></div>
+  <div class="row between" style="margin-top:10px;font-size:13px;font-weight:700">プランに合うものを優先<span class="tgl on"></span></div>
+  <button class="btn primary block p-fshow" style="height:48px;margin-top:16px">28件を表示</button></div>`;
+function searchState() {
+  const mk = t => t.replace('CFO', '<mark>CFO</mark>');
+  return `<div class="row" style="gap:8px;padding:6px 0 12px"><div class="search p-q" style="flex:1;color:var(--ink);box-shadow:0 0 0 2px var(--plum-300)">${ic('search', 'sm')}CFO<span style="width:1.5px;height:18px;background:var(--plum-700);animation:blink 1s infinite"></span><span style="margin-left:auto">${ic('x', 'sm')}</span></div><button class="btn ghost sm">キャンセル</button></div>
+    <div class="card" style="padding:8px 16px"><div class="card-h" style="margin:8px 0 0"><h3>イベント</h3><span class="more">4件</span></div>
+      <div class="list">${[[[10, 7], 'CFO Night Tokyo vol.18', '渋谷 · 参加確定', 74], [[11, 4], 'CFO Night Tokyo vol.19', '渋谷 · 先行申込', 76], [[10, 28], 'スタートアップ CFO 交流会', '新宿 · ¥3,000', 69], [[11, 18], '若手 CFO 勉強会', 'オンライン · 無料', 52]].map(([md, t, d, s]) => `<div class="li">${datebox(md)}<div class="meta"><b>${mk(t)}</b><span>${d}</span></div>${mring(s, 34, 4, 11)}</div>`).join('')}</div></div>
+    <div class="card" style="padding:8px 16px"><div class="card-h" style="margin:8px 0 0"><h3>主催・コミュニティ</h3></div>
+      <div class="list"><div class="li"><span class="emo sm lav">🥂</span><div class="meta"><b>${mk('CFO Night 実行委員会')}</b><span>開催 18回 · あなたはフォロー中</span></div><span class="chip teal">フォロー中</span></div></div></div>
+    <div class="card p-qpeople" style="padding:8px 16px"><div class="card-h" style="margin:8px 0 0"><h3>あなたの人脈から</h3></div>
+      <div class="list"><div class="li"><div class="av c4">伊</div><div class="meta"><b>伊藤 直子 · ハルモニア ${mk('CFO')}</b><span>登壇予定のイベント 2件</span></div>${ic('right', 'sm')}</div></div></div>
+    <div class="lbl" style="margin:14px 0 6px">最近の検索</div><div class="chips"><span class="chip">${ic('clock', 'sm')}VC 交流会</span><span class="chip">${ic('clock', 'sm')}製造業 名古屋</span></div>
+    <div class="card flat" style="margin-top:14px"><div class="row"><span class="emo sm blue">🔗</span><div style="flex:1"><b style="font-size:13px">見つからないときは</b><div class="lbl">告知ページの URL を貼って評価できます</div></div><button class="btn sm">貼り付け</button></div></div>`;
+}
+/* Web 探す */
+const wEvc = (e, k) => `<div class="evc span4 ${k === 0 ? 'sel' : ''}"><div class="row between"><span class="emo ${e.vc}">${e.emo}</span>${mring(e.score, 54, 6, 14)}</div><b style="display:block;margin-top:12px">${e.n}</b><div class="lbl">${e.d} · ${e.place} · ${e.fee}</div>
+  <div data-why-box style="margin-top:10px"><div class="row" style="gap:6px"><span class="chip lav ell" style="flex:1;max-width:none">🎯 ${e.why}</span><span class="why">?</span></div><div class="why-body" hidden>プラン「シリーズA 資金調達」で会うべき人と重なるため。根拠：公式の登壇者リスト · 過去回の参加者構成。</div></div>
+  <div class="row push" style="margin-top:12px;gap:6px"><span class="chip ${vchip(e)}">${e.v}</span><button class="btn sm" style="margin-left:auto">詳細</button></div></div>`;
+const wFilters = (n) => `<div class="span12 row" style="gap:10px"><div class="search" style="flex:1">${ic('search', 'sm')}イベント名・主催・キーワード<span style="margin-left:auto" class="lbl">⌘K</span></div>
+  <button class="wfilter ${n ? 'on' : ''}">${ic('calendar')}時期：今月 ${ic('down')}</button><button class="wfilter ${n ? 'on' : ''}">${ic('pin')}場所：東京 ${ic('down')}</button><button class="wfilter p-wtheme ${n > 2 ? 'on' : ''}">${ic('layers')}テーマ${n > 2 ? '：2' : ''} ${ic('down')}</button><button class="wfilter">${ic('sliders')}並び：おすすめ順</button></div>`;
+const wPopover = `<div class="popover p-wpop" style="top:136px;right:200px"><div class="row between"><b>テーマ</b><button class="btn sm ghost">クリア</button></div>
+  <div class="chips" style="margin-top:12px;gap:8px">${['資金調達*', 'SaaS*', '製造業DX', '採用', '経営管理', 'ネットワーキング', 'IPO 準備', '海外展開'].map(o => `<button class="fopt ${o.endsWith('*') ? 'on' : ''}">${o.replace('*', '')}</button>`).join('')}</div>
+  <div class="row between" style="margin-top:14px;font-size:12.5px;font-weight:700">プランに合うものを優先<span class="tgl on"></span></div>
+  <div class="row" style="margin-top:14px;gap:8px"><span class="lbl"><span class="kbd">Esc</span> で閉じる</span><button class="btn primary sm" style="margin-left:auto">12件を表示</button></div></div>`;
+function wDiscover(s) {
+  const head = mainhead('イベント', s === 'many' ? '今月 28件 · プランに効く 6件' : s === 'few' ? '条件に合う 3件' : 'あなた向けのイベントを探す', `<button class="rbtn">${ic('search')}</button>`, evalSeg(2)); /* 审计：左上与 web.html イベント 一致（🔍） */
+  if (s === 'empty') return head + `<div class="wgrid">${wFilters(0)}
+    <div class="card span12 guide p-wguide" style="padding:28px"><div class="row" style="gap:24px;align-items:center"><div style="flex:1"><div class="lbl">まだプランがありません</div><div style="font-size:22px;font-weight:800;margin:4px 0">目標を決めると、会うべき人が来るイベントが上に並びます</div><div class="sub">今は「人気順」で表示しています。設定は約1分です。</div></div><button class="btn primary" style="height:48px">${ic('target', 'sm')}目標を設定する</button></div>
+      <div class="grid3" style="margin-top:18px">${[['🔗', 'URL で評価', '気になる告知ページを判定'], ['🎟️', '招待コード', '主催者からのコードで参加登録'], ['👥', 'コミュニティに参加', '限定イベントの先行案内']].map(([e, t, d]) => `<div class="mac apricot row" style="gap:10px"><span style="font-size:22px">${e}</span><div><b style="font-size:13px">${t}</b><div class="lbl">${d}</div></div></div>`).join('')}</div></div>
+    <div class="span12 card-h" style="margin:8px 0 -6px"><h3>プランができると ${sample}</h3></div>
+    ${REC.map((e, k) => `<div class="span4 faded" style="display:flex">${wEvc(e, 1).replace('evc span4', 'evc').replace('class="evc', 'style="flex:1" class="evc')}</div>`).join('')}</div>`;
+  if (s === 'few') return head + `<div class="wgrid">${wFilters(3)}
+    <div class="span12 chips"><span class="chip lav">今週 ✕</span><span class="chip lav">東京 ✕</span><span class="chip lav">製造業DX ✕</span></div>
+    ${[{ ...REC[1], n: '製造業 × SaaS ナイト', d: '10/9（金）19:00', place: '日本橋', fee: '¥2,000', score: 64, v: '条件付き', vc: 'apricot', why: '製造業の DX 責任者 15名' }, { ...REC[2], n: 'スマートファクトリー EXPO 内覧', d: '10/8（木）', place: '有明', score: 55, v: '条件付き', vc: 'apricot', why: '出展 40社 · 決裁者は少なめ', emo: '🏭' }, { ...REC[0], n: 'IoT 実装もくもく会', d: '10/10（土）', place: '五反田', score: 38, fee: '¥500', v: '見送り推奨', vc: 'pink', why: 'エンジニア中心 · 決裁者なし', emo: '🛠️' }].map(wEvc).join('')}
+    <div class="card span12 flat p-wwiden"><div class="row" style="gap:12px"><span class="emo apricot">💡</span><div style="flex:1"><b>条件を広げると、もっと見つかります</b><div class="lbl">ワンクリックで条件を変更します</div></div>${[['期間を「今月」に', '+9'], ['「大阪」を追加', '+2'], ['「資金調達」を追加', '+6']].map(([t, n]) => `<button class="btn sm">${t}<span class="chip teal">${n}件</span></button>`).join('')}</div></div></div>`;
+  return head + `<div class="wgrid">${wFilters(3)}
+    <div class="card span12 p-wcomm" style="padding:16px 20px"><div class="card-h" style="margin-bottom:8px"><h3>📌 あなたのコミュニティ</h3><span class="lbl">メンバー限定・先行申込はここに先に届きます</span></div>
+      <div class="grid2">${[[[10, 21], '丸の内イノベーションラボ 定例会 #43', '小林さん主宰 · 丸の内', 'lav', 'メンバー限定'], [[11, 4], 'CFO Night Tokyo vol.19', '渋谷 · 前回参加', 'teal', '先行申込']].map(([md, t, d, c, ch]) => `<div class="row" style="gap:12px;background:var(--surface-2);border-radius:16px;padding:10px 12px">${datebox(md).replace('datebox"', 'datebox" style="background:var(--surface)"')}<div style="flex:1;min-width:0"><b class="ell" style="display:block">${t}</b><div class="lbl">${d}</div></div><span class="chip ${c}">${ch}</span></div>`).join('')}</div></div>
+    <div class="span12 card-h" style="margin:8px 0 -6px"><h3>プランに効くイベント</h3><span class="more">6件 ${ic('right', 'sm')}</span></div>
+    ${REC.map(wEvc).join('')}
+    <div class="card span12"><div class="card-h"><h3>すべて · 28件</h3><span class="more">日付順 ${ic('down', 'sm')}</span></div>
+      <table class="table"><thead><tr><th>日付</th><th>イベント</th><th>場所</th><th>参加費</th><th>スコア</th><th>判定</th><th></th></tr></thead><tbody>
+      ${[...REC, ...MORE].map((e, k) => `<tr><td class="score">${e.md[0]}/${e.md[1]}</td><td><b>${e.n}</b></td><td class="muted">${e.place}</td><td>${e.fee}</td><td>${mring(e.score, 32, 4, 10.5)}</td><td><span class="chip ${vchip(e)}">${e.v}</span></td><td><div class="hov-acts ${k === 1 ? 'show p-whov' : ''}"><button class="lbtn">${ic('star', 'sm')}</button><button class="lbtn">${ic('out', 'sm')}</button></div></td></tr>`).join('')}</tbody></table></div></div>`;
+}
+const wQuickRail = (e = REC[0]) => `<h4>${ic('sparkle', 'sm')}選択中のイベント</h4>
+  <div class="card" style="text-align:center;padding:18px"><b style="display:block;font-size:15px">${e.n}</b><div class="lbl">${e.d} · ${e.fee}</div>
+    <div style="width:120px;margin:14px auto 8px">${ring(120, 11, [{ v: e.score, c: sc(e.score), max: 100 }], `<div class="big" style="font-size:34px">${num(e.score)}</div><div class="lbl">/ 100</div>`)}</div><span class="chip ${vchip(e)}" style="font-size:12px;padding:5px 12px">${e.v}</span></div>
+  <div class="card" style="padding:16px"><div class="lbl">会えそうな人</div>${[['💼', 'lav', 'VC パートナー 3名（登壇）'], ['🏭', 'blue', '製造業 DX 責任者（展示 12社）'], ['👋', 'teal', '高橋さん・加藤さんも参加予定']].map(([em, c, t]) => `<div class="row" style="gap:8px;margin-top:8px;font-size:12.5px"><span class="emo sm ${c}">${em}</span>${t}</div>`).join('')}</div>
+  <div class="grid2"><button class="btn">${ic('star', 'sm')}保存</button><button class="btn primary">詳細を見る</button></div>`;
+const wIntroRail = () => `<h4><span class="emo sm lav">✨</span>iOrbit</h4>
+  <div class="card" style="padding:16px"><b style="font-size:14px">イベント選びを手伝います</b><div class="sub" style="margin-top:6px;line-height:1.7">目標が決まると「誰に会えるか」でイベントを並べ替えます。気になる告知があれば URL を貼ってください。</div></div>
+  <div class="lbl">こんなことを聞けます</div>${['今月、VC に会えるイベントは？', '平日夜だけで探して'].map(p => `<div class="prompt">${p}</div>`).join('')}
+  <div style="flex:1"></div><div class="assist-in">${ic('sparkle', 'sm')}iOrbit に聞く…<span style="margin-left:auto">⌘K</span></div>`;
+
+/* ============================================================
+   ③ 活動詳細
+   ============================================================ */
+const scoreBar = (s) => `<div class="scorebar p-score" data-why-box><div class="row1">${mring(74, 50, 6, 15)}<div style="flex:1;min-width:0"><div class="row" style="gap:6px"><span class="chip teal">参加をおすすめ</span><span class="why">?</span></div><div class="lbl ell" style="margin-top:3px">目標 80 · 会える人 ${s === 'empty' ? '—' : s === 'few' ? 70 : 78} · 時間対効果 66</div></div>${ic('right', 'sm')}</div>
+  <div class="why-body" hidden>${s === 'empty' ? '参加者が未公開のため「会える人」は登壇者のみで算出。公開されたら再計算して通知します。' : '根拠：プラン「シリーズA 資金調達」· 登壇者 3名 · 参加者のうちプランに合う人 ' + (s === 'few' ? 3 : 18) + '名 · 平日夜 2.5時間 · ¥5,000'}</div></div>`;
+const evHero = (s) => `<div class="card rise" style="padding:0;overflow:hidden"><div class="cover"><span class="emo" style="background:var(--surface);font-size:24px">🥂</span><span class="chip" style="position:absolute;right:12px;top:12px;background:var(--surface)">${s === 'empty' ? '申込受付中 · 残り 150枠' : s === 'few' ? '申込受付中 · 残り 138枠' : '締切間近 · 残り 22枠'}</span></div>
+  <div style="padding:14px 16px 16px"><div class="lbl">${EV.host}</div><b style="font-size:19px;display:block;line-height:1.35;margin-top:2px">${EV.n}</b>
+  <div class="facts">${[['calendar', '10/7（水）19:00–21:30'], ['pin', '渋谷ストリーム 4F ホール'], ['ticket', '¥5,000 · 定員 150名 · 審査あり']].map(([i, t]) => `<div>${ic(i)}${t}</div>`).join('')}</div></div></div>`;
+const meetRows = (s) => s === 'empty'
+  ? `<div class="list">${[['🎤', 'lav', '伊藤 直子（キーノート）', 'ハルモニア CFO · あなたのつながり'], ['🏦', 'blue', '森 拓也（パネル）', 'ブルーム証券 · IPO 準備の資本政策']].map(([e, c, t, d]) => `<div class="li"><span class="emo sm ${c}">${e}</span><div class="meta"><b>${t}</b><span>${d}</span></div></div>`).join('')}</div>
+     <div class="ghost-row" style="margin-top:6px"><i></i>参加者が公開されると、会うべき人がここに並びます</div><div class="ghost-row"><i></i>知り合いの参加状況</div>
+     <button class="btn sm p-notify" style="margin-top:12px">${ic('bell', 'sm')}公開されたら知らせる</button>`
+  : `<div class="list">${P.slice(0, s === 'few' ? 3 : 4).map(p => `<div class="li"><div class="av ${p.c}">${p.i}</div><div class="meta"><b>${p.n} · ${p.co}</b><span>${p.why}</span></div></div>`).join('')}</div>`;
+function detail(s) {
+  const n = { empty: 0, few: 12, many: 128 }[s];
+  const tabs = (k) => `<div class="utabs p-tabs">${['紹介', 'アジェンダ', '主催', `参加者<small>${n}</small>`].map((t, i) => `<button class="${i === k ? 'on' : ''}">${t}</button>`).join('')}</div>`;
+  const top = topbar('', '', back, shareB) + evHero(s) + scoreBar(s);
+  if (s === 'many') return top + tabs(3) + `
+    <div class="seg full"><button class="on">プランに合う 18</button><button>知り合い 3</button><button>全員 128</button></div>
+    <div class="card" style="margin-top:12px;padding:6px 16px"><div class="list p-plist">${P.map((p, k) => `<div class="li"><div class="av ${p.c}">${p.i}</div><div class="meta"><b>${p.n}</b><span>${p.co} · ${p.role}</span><span style="color:var(--ink-2)">${p.why}</span></div>${k < 2 ? '<span class="chip lav">会いたい</span>' : ''}</div>`).join('')}</div></div>
+    <div class="card flat"><div class="row" style="gap:10px">${avsOf([C[0], C[2], C[6]], 3)}<div style="flex:1"><b style="font-size:13px">知り合い 3名も参加</b><div class="lbl">高橋さん · 伊藤さん（登壇）· 加藤さん</div></div></div></div>`;
+  return top + tabs(0) + `
+    <div class="card"><div class="sub" style="line-height:1.75">上場を目指すスタートアップの CFO・経営陣と、投資家・金融機関が本音で話す夜。キーノートのあと、テーブルトークを 3ラウンド。席は申込内容をもとに主催者が決めます。</div></div>
+    <div class="card p-meet"><div class="card-h"><h3>会えそうな人</h3><span class="lbl">${s === 'empty' ? '登壇者から推定' : '参加者 12名から'}</span></div>${meetRows(s)}</div>
+    ${s === 'few' ? `<div class="card flat"><div class="row" style="gap:10px">${avsOf([C[2]], 1)}<div style="flex:1"><b style="font-size:13px">伊藤さんがキーノートに登壇</b><div class="lbl">9/24 にメールでやりとり</div></div></div></div>` : ''}`;
+}
+const ctaBar = `<div class="ctabar p-cta"><button class="lbtn" style="width:46px;height:46px;background:var(--surface)">${ic('star')}</button><button class="btn primary" style="flex:1;height:46px">参加登録 · AI が5問だけ質問</button></div>`;
+/* Web 詳細 */
+function wDetail(s) {
+  const n = { empty: 0, few: 12, many: 128 }[s];
+  const parts = s === 'empty'
+    ? `<div class="ghost-row tall"><i></i>参加者はまだ公開されていません。公開されると、あなたのプランに合う順に並びます</div><div class="ghost-row tall"><i></i>知り合いの参加状況</div><button class="btn sm" style="margin-top:12px">${ic('bell', 'sm')}公開されたら知らせる</button>`
+    : `<div class="pgrid">${(s === 'few' ? P.slice(0, 4) : [...P, { ...C[0], why: '' }, { ...C[6], why: '' }]).map(p => `<div class="pmini"><div class="av ${p.c}">${p.i}</div><div class="meta"><b>${p.n}</b><span>${p.co}</span></div></div>`).join('')}</div>${s === 'many' ? '<button class="btn sm" style="margin-top:12px">128名をすべて見る</button>' : ''}`;
+  return mainhead(EV.n, EV.host, `<button class="rbtn">${ic('left')}</button>`, `<button class="rbtn">${ic('share')}</button><button class="btn accent">参加登録</button>`) + `<div class="wgrid">
+    <div class="card span8" style="padding:0;overflow:hidden"><div class="cover" style="height:110px"><span class="emo" style="background:var(--surface);font-size:24px">🥂</span></div>
+      <div style="padding:18px 20px"><div class="grid3" style="grid-template-columns:repeat(4,1fr)">${[['日時', '10/7（水）19:00–21:30'], ['場所', '渋谷ストリーム 4F'], ['参加費', '¥5,000'], ['定員', s === 'many' ? '150名 · 残り 22' : '150名 · 審査あり']].map(([k, v]) => `<div><div class="lbl">${k}</div><b style="font-size:13.5px">${v}</b></div>`).join('')}</div>
+      <div class="utabs p-wtabs" style="margin-bottom:0">${['紹介', 'アジェンダ', '主催', `参加者<small>${n}</small>`].map((t, i) => `<button class="${i === 0 ? 'on' : ''}">${t}</button>`).join('')}</div>
+      <div class="sub" style="line-height:1.8;margin-top:12px">上場を目指すスタートアップの CFO・経営陣と、投資家・金融機関が本音で話す夜。キーノートのあと、テーブルトークを 3ラウンド。席は申込内容をもとに主催者が決めます。</div></div></div>
+    <div class="card span4 p-wscore" data-why-box style="text-align:center"><div class="lbl">あなたにとっての評価</div><div style="width:120px;margin:12px auto 8px">${ring(120, 11, [{ v: 74, c: 'var(--plum-700)', max: 100 }], `<div class="big" style="font-size:36px">${num(74)}</div><div class="lbl">/ 100</div>`)}</div>
+      <div class="row" style="justify-content:center;gap:6px"><span class="chip teal" style="font-size:12px;padding:5px 12px">参加をおすすめ</span><span class="why">?</span></div>
+      <div class="why-body" hidden style="text-align:left">${s === 'empty' ? '参加者が未公開のため「会える人」は登壇者のみで算出しています。' : '根拠：プラン「シリーズA 資金調達」· 登壇者 3名 · プランに合う参加者 ' + (s === 'few' ? 3 : 18) + '名'}</div>
+      <div style="margin-top:14px;text-align:left">${crit([['目標との一致', 80], ['会える人', s === 'empty' ? 40 : s === 'few' ? 70 : 78, '', s === 'empty' ? '—' : ''], ['時間対効果', 66, 'rose']])}</div></div>
+    <div class="card span7"><div class="card-h"><h3>アジェンダ</h3></div>${AG.slice(0, 5).map(([t, ti, d]) => `<div class="tline"><time>${t}</time><span class="dot"></span><div><b>${ti}</b><span class="lbl">${d}</span></div></div>`).join('')}</div>
+    <div class="card span5"><div class="card-h"><h3>主催</h3></div><div class="row" style="gap:12px"><span class="emo lav">🥂</span><div><b>${EV.host}</b><div class="lbl">2023年から毎月開催 · 累計 18回</div></div></div>
+      <div class="mini3"><div><span class="lbl">平均参加</span><b>${num(112)}</b></div><div><span class="lbl">CFO 比率</span><b>${num(41)}<small style="font-size:11px">%</small></b></div><div><span class="lbl">あなた</span><b>${num(2)}<small style="font-size:11px">回</small></b></div></div></div>
+    <div class="card span12 p-wparts"><div class="card-h"><h3>参加者 · ${n}名</h3><span class="lbl">${s === 'empty' ? '申込者の公開は 9/25 から' : 'プロフィールを公開している人のみ表示'}</span></div>${parts}</div></div>`;
+}
+const wDetailRail = (s) => `<h4>${ic('sparkle', 'sm')}会えそうな人</h4>
+  <div class="card" style="padding:14px 16px"><div class="list">${(s === 'empty' ? [{ n: '伊藤 直子', i: '伊', c: 'c4', co: 'キーノート', why: 'ハルモニア CFO · あなたのつながり' }, { n: '森 拓也', i: '森', c: 'c3', co: 'パネル', why: 'IPO 準備の資本政策' }] : P.slice(0, s === 'few' ? 3 : 5)).map(p => `<div class="li"><div class="av sm ${p.c}">${p.i}</div><div class="meta"><b style="font-size:13px">${p.n}</b><span>${p.why}</span></div></div>`).join('')}</div>
+    ${s === 'empty' ? '<div class="ghost-row"><i></i>参加者の公開待ち</div>' : ''}</div>
+  ${s === 'many' ? `<div class="card flat" style="padding:14px"><div class="row" style="gap:10px">${avsOf([C[0], C[2], C[6]], 3)}<span class="sub">知り合い 3名も参加</span></div></div>` : ''}
+  <div style="flex:1"></div>
+  <div class="card p-wcta" style="padding:16px"><b>参加登録</b><div class="lbl" style="margin:4px 0 12px">AI が5問だけ質問します（約3分）。会社・役職はプロフィールから入力済み</div><button class="btn primary block" style="height:46px">参加登録をはじめる</button></div>`;
+
+/* ============================================================
+   ④ 参加登録（AI 面談式）
+   ============================================================ */
+const AG = [['19:00', '受付・開場', 'ウェルカムドリンク'], ['19:15', 'オープニング', '主催挨拶'], ['19:30', 'キーノート', '「シリーズA前後の資本政策」伊藤 直子'], ['20:00', 'テーブルトーク R1', 'テーマ別 6名卓'], ['20:10', 'テーブルトーク R2', '席替えあり'], ['20:40', 'テーブルトーク R3', '席替えあり'], ['21:10', 'フリー交流', ''], ['21:30', '終了', '']];
+const OPTS = ['VC・CVC*', '上場企業の CFO*', '監査法人・会計士', '金融機関（デット）', '同じステージの起業家', '＋ その他'];
+const optChips = (cls = '') => `<div class="opts-wrap ${cls}">${OPTS.map(o => `<button class="opt ${o.endsWith('*') ? 'on' : ''}">${o.replace('*', '')}</button>`).join('')}</div>`;
+const qaBubbles = () => `<div class="bubble ai">今回の参加目的にいちばん近いものは？</div>
+  <div class="bubble me">資金調達の相談相手を見つけたい</div>
+  <div class="bubble ai">当日話したいテーマを選んでください（2つまで）</div>
+  <div class="bubble me">シリーズAの資本政策 · CFO 採用</div>
+  <div class="bubble ai"><b>どんな方に会いたいですか？</b><div class="lbl" style="margin-top:3px">席決めとおすすめにだけ使います（複数可）</div></div>`;
+function regInterview() {
+  return topbar('参加登録', EV.n, close) + `
+  <div class="p-prog"><div class="row between"><span class="lbl"><b style="color:var(--ink)">質問 3</b> / 5</span><span class="lbl">残り 約1分</span></div>${bar(60)}</div>
+  <div class="mac teal p-prefill" style="font-size:12px;margin:14px 0">✓ 会社・役職・業界はプロフィールから入力済み。聞くのは 5問だけです</div>
+  <div class="chatcol">${qaBubbles()}${optChips('p-opts')}</div>`;
+}
+const regComposer = `<div class="composer"><span class="in">自由に答える・補足する</span><button class="lbtn">${ic('mic', 'sm')}</button><button class="btn sm primary">次へ（2つ選択）</button></div>`;
+const coverList = [['会社・役職', 1], ['参加目的', 1], ['話したいテーマ', 1], ['会いたい人', 1], ['提供できること', 0]];
+function regPersona() {
+  return topbar('参加用プロフィール', '回答から AI が下書きしました', back) + `
+  <div class="card rise p-cover"><div class="row" style="gap:16px">${ring(96, 9, [{ v: 86, c: 'var(--plum-700)', max: 100 }], `<div class="score" style="font-size:22px">${num(86)}<small style="font-size:11px">%</small></div><div class="lbl" style="font-size:9.5px">カバー率</div>`)}
+    <div style="flex:1;display:grid;gap:5px">${coverList.map(([t, ok]) => `<div class="row" style="gap:6px;font-size:12.5px"><span style="color:${ok ? 'var(--ok)' : 'var(--coral)'};font-weight:800;width:12px">${ok ? '✓' : '△'}</span><span class="${ok ? '' : 'muted'}" style="flex:1">${t}</span>${ok ? '' : '<button class="btn sm" style="height:24px;padding:0 9px;font-size:11px">追加</button>'}</div>`).join('')}</div></div>
+    <div class="lbl" style="margin-top:10px">「提供できること」を足すと、相手からも声をかけられやすくなります</div></div>
+  <div class="card"><div class="card-h"><h3>話題</h3><span class="more">編集</span></div><div class="chips"><span class="chip lav">シリーズAの資本政策</span><span class="chip lav">CFO 採用</span><span class="chip lav">SaaS の KPI 開示</span><span class="chip">＋ 追加</span></div></div>
+  <div class="card p-intro" data-why-box><div class="card-h"><h3>自己紹介 <span class="lbl" style="font-weight:500">参加者に表示</span></h3><div class="row" style="gap:6px"><span class="why">?</span><button class="lbtn">${ic('pen', 'sm')}</button></div></div>
+    <div style="font-size:13.5px;line-height:1.75">製造業向け IoT SaaS「ミナトリンク」の代表です。来春のシリーズAに向けて、資本政策と CFO 採用について、経験のある方のお話を伺いたいです。工場 DX の現場事情ならお話しできます。</div>
+    <div class="why-body" hidden>回答（目的・テーマ・会いたい人）とプロフィール（ミナトリンク 代表取締役CEO）から作成。売上などの数値は入れていません。</div></div>
+  <div class="card flat p-scope"><div class="lbl" style="margin-bottom:8px">公開範囲</div>
+    <div class="row" style="gap:8px;font-size:12.5px"><span class="chip teal">参加者全員</span><span class="sub">名前 · 会社 · 自己紹介 · 話題</span></div>
+    <div class="row" style="gap:8px;font-size:12.5px;margin-top:6px"><span class="chip">主催者のみ</span><span class="sub">参加目的 · 会いたい人</span></div></div>
+  <button class="btn primary block" style="height:48px;margin-top:14px">この内容で申し込む</button><div class="lbl" style="text-align:center;margin-top:8px">申込後も 10/6 まで編集できます</div>`;
+}
+function regDone() {
+  return topbar('申込完了', '', close) + `
+  <div class="card rise" style="text-align:center;padding:26px 18px"><div class="popcheck p-check">${ic('check')}</div><div style="font-size:18px;font-weight:800;margin-top:14px">申込を受け付けました</div><div class="lbl">${EV.n} · 9月20日 14:32</div></div>
+  <div class="card p-status"><div class="row between"><b style="font-size:14.5px">いまの状況</b><span class="chip lav">⏳ 審査中</span></div>
+    <div class="steps4" style="margin-top:12px"><div class="d">申込<br>9/20</div><div class="n">審査<br>〜10/3</div><div>結果通知</div><div>当日<br>10/7</div></div>
+    <div class="sub" style="margin-top:12px">主催者が申込内容を確認しています。結果はアプリの通知とメールで届きます。</div></div>
+  <div class="card confirm-card p-confirm"><div class="row" style="gap:8px"><span class="emo sm lav">📅</span><b style="font-size:13px">カレンダーに仮で入れますか？</b></div>
+    <div class="sub" style="margin:6px 0 10px">10/7（水）19:00–21:30「仮：CFO Night」· 結果が出たら自動で更新</div><div class="row" style="gap:8px"><button class="btn sm primary">追加する</button><button class="btn sm">不要</button></div></div>
+  <button class="btn ghost block">プロフィールを編集</button>`;
+}
+const STS = [
+  ['審査中', 'lav', '⏳', '主催者が確認しています', '結果は 10/3（土）までに届きます。プロフィールは引き続き編集できます。', '<button class="btn sm">プロフィールを編集</button>', 1],
+  ['キャンセル待ち', 'apricot', '🕒', '現在 3番目です', '空きが出ると自動で繰り上がり、通知します。前回は開催 2日前までに 8名が繰り上がりました。', `<div>${bar(70, 'thin')}<div class="lbl">繰り上がりの見込み 高め</div></div><button class="btn sm ghost" style="align-self:flex-start">待つのをやめる</button>`, 0],
+  ['参加確定', 'teal', '✅', '当日お会いしましょう', '受付 QR は当日、この画面とホームに表示されます。前日に「会う準備」をお届けします。', '<div class="row" style="gap:6px"><button class="btn sm primary">会う準備</button><button class="btn sm">カレンダーに追加</button></div>', 3],
+  ['今回は見送り', '', '🙏', '今回はご縁がありませんでした', '定員を大きく超える申込がありました。顔ぶれの近いイベントを 2件見つけています。', '<button class="btn sm">似たイベントを見る</button>', -1],
+];
+const statusStrip = () => `<div class="stgrid">${STS.map(([t, c, e, h, d, act, step]) => `<div class="stc"><div class="row between"><span class="emo ${c}" ${c ? '' : 'style="background:var(--surface-2)"'}>${e}</span><span class="chip ${c}">${t}</span></div><b style="font-size:15px">${h}</b><div class="sub" style="line-height:1.65">${d}</div>
+  <div class="steps4">${['申込', '審査', '結果', '当日'].map((x, k) => `<div class="${step < 0 ? (k < 2 ? 'd' : '') : k < step ? 'd' : k === step ? 'n' : ''}">${x}</div>`).join('')}</div><div class="push" style="display:grid;gap:8px">${act}</div></div>`).join('')}</div>`;
+/* Web 登録 */
+function wReg() {
+  return mainhead('参加登録', EV.n, `<button class="rbtn">${ic('x')}</button>`, `<span class="lbl">質問 3 / 5 · 残り約1分</span>`) + `<div class="wgrid">
+    <div class="card span7 p-wchat" style="background:var(--surface-2)"><div style="margin-bottom:14px">${bar(60)}</div><div class="chatcol">${qaBubbles()}${optChips()}</div>
+      <div class="row push" style="gap:8px;margin-top:18px"><div class="input" style="flex:1;background:var(--surface)">自由に答える・補足する</div><button class="lbtn" style="width:44px;height:44px;background:var(--surface)">${ic('mic', 'sm')}</button><button class="btn primary" style="height:44px">次へ</button></div></div>
+    <div class="card span5 p-wpersona"><div class="card-h"><h3>参加用プロフィール</h3><span class="chip lav">回答に合わせて更新中</span></div>
+      <div class="row" style="gap:16px">${ring(92, 9, [{ v: 72, c: 'var(--plum-700)', max: 100 }], `<div class="score" style="font-size:21px">${num(72)}<small style="font-size:11px">%</small></div><div class="lbl" style="font-size:9.5px">カバー率</div>`)}<div style="flex:1;display:grid;gap:5px">${coverList.map(([t, ok], k) => `<div class="row" style="gap:6px;font-size:12.5px"><span style="color:${k < 3 ? 'var(--ok)' : 'var(--ink-4)'};font-weight:800;width:12px">${k < 3 ? '✓' : '○'}</span><span class="${k < 3 ? '' : 'muted'}">${t}</span></div>`).join('')}</div></div>
+      <div class="lbl" style="margin-top:16px">話題</div><div class="chips" style="margin-top:6px"><span class="chip lav">シリーズAの資本政策</span><span class="chip lav">CFO 採用</span></div>
+      <div class="lbl" style="margin-top:16px">自己紹介（下書き）</div><div class="shimmer" style="height:12px;margin-top:8px"></div><div class="shimmer" style="height:12px;margin-top:8px;width:85%"></div><div class="shimmer" style="height:12px;margin-top:8px;width:60%"></div>
+      <div class="lbl push" style="margin-top:16px">申込前に全項目を確認・編集できます</div></div></div>`;
+}
+const wRegRail = () => `<h4>${ic('calendar', 'sm')}申込先</h4>
+  <div class="card" style="padding:16px"><div class="row" style="gap:12px">${mring(74, 48, 5, 14)}<div><b style="font-size:13.5px">${EV.n}</b><div class="lbl">10/7（水）19:00 · 渋谷</div></div></div></div>
+  <div class="card p-wflow" style="padding:16px"><div class="lbl" style="margin-bottom:10px">このあとの流れ</div>${[['申込', '質問に答えてプロフィールを確認', 'n'], ['審査', '主催者が確認（〜10/3）', ''], ['結果通知', '通知とメールで届きます', ''], ['当日', '受付 QR · 会場モード', '']].map(([t, d, c], k) => `<div class="tline ${c}"><time>${k + 1}</time><span class="dot"></span><div><b>${t}</b><span class="lbl">${d}</span></div></div>`).join('')}</div>
+  <div class="mac lav" style="font-size:12px">✓ 会社 · 役職 · 業界 · 所在地はプロフィールから入力済み</div>`;
+
+/* ============================================================
+   ⑤ 会う準備
+   ============================================================ */
+const miniMap = (w, h) => `<svg width="${w}" height="${h}" viewBox="0 0 120 90" style="display:block;border-radius:14px"><rect width="120" height="90" rx="14" style="fill:var(--surface-2)"/><path d="M0 58 L120 38 M30 0 L48 90 M82 0 L96 90" style="stroke:var(--surface-3);stroke-width:7;fill:none"/><path d="M0 76 Q60 70 120 18" style="stroke:var(--mac-blue-ink);stroke-width:2.5;fill:none;opacity:.5"/><circle cx="66" cy="44" r="12" style="fill:var(--plum-100)"/><circle cx="66" cy="44" r="5" style="fill:var(--plum-700)"/><text x="10" y="84" style="font-size:8px;fill:var(--ink-3)">渋谷駅 C2</text></svg>`;
+const MEET = [
+  [P[0], '会ったことなし', 'lav', 'シリーズA・B2B SaaS に注力。今年 5社に出資', '「Sorae さんの SaaS 投資の記事を拝見しました。製造業向けはどう見ていますか？」', 'なし · 高橋さんと同じ VC 勉強会'],
+  [P[2], '会ったことなし', 'lav', '昨年シリーズAを 4億円で調達した CFO', '「調達のとき、最初に固めた資本政策のポイントは何でしたか？」', 'なし · 同じテーブル B-4（R2）'],
+  [C[2], '協業中', 'teal', 'キーノート登壇。資本政策の相談相手', '「キーノートのあと、5分だけ相談させてください」', '今日 打ち合わせ · 9/24 メール'],
+  [P[3], '会ったことなし', 'lav', 'ベンチャーデットの窓口', '「エクイティと併用する場合のタイミングを伺えますか」', 'なし'],
+];
+function prep() {
+  return topbar('会う準備', '今夜 19:00 · CFO Night', back, `<button class="rbtn">${ic('scan')}</button>`) + `
+  <div class="card rise p-when"><div class="row" style="gap:14px;align-items:stretch"><div style="flex:1"><div class="lbl">開始まで</div><div class="big">3:12<small>時間</small></div><div class="lbl" style="margin-top:6px">渋谷ストリーム 4F ホール<br>渋谷駅 C2 出口から徒歩2分</div></div>${miniMap(128, 96)}</div>
+    <div class="row" style="gap:8px;margin-top:12px"><button class="btn sm" style="flex:1">${ic('pin', 'sm')}地図アプリで開く</button><button class="btn sm p-checkin" style="flex:1">${ic('ticket', 'sm')}チェックイン</button></div></div>
+  <div class="warnbar p-cards"><span style="font-size:18px">📇</span><div style="flex:1">名刺の残りは <b>8枚</b>。会いたい人 4名 + 予備で <b>15枚</b> がおすすめです</div></div>
+  <div class="card" style="margin-top:14px"><div class="card-h"><h3>会いたい人 · 4名</h3><span class="lbl">会いやすい順</span></div>
+    ${MEET.map(([p, rel, c, why, op, hist], k) => `<div class="acc ${k === 0 ? 'open p-acc' : ''}"><div class="acc-h" data-acc><div class="av ${p.c}">${p.i}</div><div style="flex:1;min-width:0"><b style="font-size:13.5px;display:block">${p.n}</b><span class="lbl ell" style="display:block">${p.co} · ${p.role}</span></div><span class="chip ${c}">${rel}</span>${ic('down', 'sm chev')}</div>
+      <div class="acc-b"><div><div class="acc-in"><div class="kv"><span>なぜ</span><span>${why}</span></div><div class="kv"><span>話しかけ方</span><div class="quote">${op}</div></div><div class="kv"><span>これまで</span><span>${hist}</span></div><button class="btn sm" style="justify-self:start">${ic('pen', 'sm')}コピー</button></div></div></div></div>`).join('')}</div>
+  <div class="card p-check2"><div class="card-h"><h3>準備リスト</h3><span class="lbl">2 / 5</span></div>
+    ${[['名刺を 15枚', '今の残り 8枚', 0], ['30秒の自己紹介', 'AI 下書きを確認済み', 1], ['事業計画書 v3 の共有リンク', 'その場で渡せるように', 1], ['受付 QR を確認', '当日ホームにも表示', 0], ['帰りの時間を決める', '21:30 終了 · 翌朝フォロー', 0]].map(([t, d, ok]) => `<div class="chk ${ok ? 'done' : ''}"><span class="box">${ok ? ic('check', 'sm') : ''}</span><div><b>${t}</b><span>${d}</span></div></div>`).join('')}</div>
+  <div class="card confirm-card p-follow"><div class="row" style="gap:8px"><span class="emo sm lav">🗓️</span><b style="font-size:13px">明日のフォロー時間を予定に入れますか？</b></div>
+    <div class="sub" style="margin:6px 0 10px">10/8（木）9:30–10:00「CFO Night のお礼とフォロー」</div><div class="row" style="gap:8px"><button class="btn sm primary">追加する</button><button class="btn sm">やめる</button></div></div>`;
+}
+function wPrep() {
+  return mainhead('会う準備', '今夜 19:00 · ' + EV.n, `<button class="rbtn">${ic('left')}</button>`, `<button class="btn">${ic('ticket', 'sm')}チェックイン</button>`) + `<div class="wgrid">
+    <div class="card span4 p-wwhen"><div class="lbl">開始まで</div><div class="big">3:12<small>時間</small></div><div class="sub" style="margin-top:8px">10/7（水）19:00–21:30<br>渋谷ストリーム 4F ホール</div></div>
+    <div class="card span4" style="padding:14px">${miniMap(370, 140).replace('width="370"', 'width="100%"')}<button class="btn sm" style="margin-top:10px">${ic('pin', 'sm')}地図アプリで開く</button></div>
+    <div class="card span4 p-wcards"><div class="row" style="gap:14px">${ring(84, 8, [{ v: 8, c: 'var(--coral)', max: 15 }], '<div class="score" style="font-size:20px">8</div><div class="lbl" style="font-size:9.5px">/ 15枚</div>')}<div><b>名刺が少なめです</b><div class="lbl">会いたい人 4名 + 予備で 15枚がおすすめ</div></div></div></div>
+    <div class="card span8 p-wmeet"><div class="card-h"><h3>会いたい人 · 4名</h3><span class="lbl">会いやすい順 · 行をクリックで詳細</span></div>
+      <table class="table"><thead><tr><th>人</th><th>なぜ</th><th>話しかけ方</th><th>これまで</th></tr></thead><tbody>
+      ${MEET.map(([p, rel, c, why, op, hist]) => `<tr><td><div class="row" style="gap:8px"><div class="av sm ${p.c}">${p.i}</div><div><b style="font-size:13px">${p.n}</b><div class="lbl">${p.co}</div></div></div></td><td style="font-size:12.5px">${why}</td><td><div class="quote" style="font-size:12px">${op}</div></td><td><span class="chip ${c}">${rel}</span><div class="lbl" style="margin-top:4px">${hist}</div></td></tr>`).join('')}</tbody></table></div>
+    <div class="card span4"><div class="card-h"><h3>準備リスト</h3><span class="lbl">2 / 5</span></div>
+      ${[['名刺を 15枚', '今の残り 8枚', 0], ['30秒の自己紹介', 'AI 下書きを確認済み', 1], ['事業計画書 v3 の共有リンク', '', 1], ['受付 QR を確認', '', 0], ['帰りの時間を決める', '', 0]].map(([t, d, ok]) => `<div class="chk ${ok ? 'done' : ''}"><span class="box">${ok ? ic('check', 'sm') : ''}</span><div><b>${t}</b>${d ? `<span>${d}</span>` : ''}</div></div>`).join('')}
+      <div class="card confirm-card p-wfollow push" style="padding:14px;margin-top:12px"><b style="font-size:12.5px">🗓️ 明日 9:30 にフォロー時間を入れますか？</b><div class="row" style="gap:8px;margin-top:10px"><button class="btn sm primary">追加する</button><button class="btn sm">やめる</button></div></div></div></div>`;
+}
+const wPrepRail = () => `<h4>${ic('clock', 'sm')}当日の流れ</h4>
+  <div class="card" style="padding:16px">${AG.slice(0, 6).map(([t, ti, d]) => `<div class="tline"><time>${t}</time><span class="dot"></span><div><b>${ti}</b><span class="lbl">${d}</span></div></div>`).join('')}</div>
+  <div class="mac lav" style="font-size:12px">💡 席は R2 で B-4（井上さん・森さんと同席）。キーノート後に伊藤さんへ声をかけるのがおすすめです</div>`;
+
+/* ============================================================
+   ⑥ 会場モード
+   ============================================================ */
+const liveHead = (t = 'CFO Night Tokyo', r = `<button class="rbtn">${ic('scan')}</button>`) => topbar(t, '<span class="livedot">LIVE</span> 20:22 · ラウンド 2 / 3', `<button class="rbtn">${ic('x')}</button>`, r);
+const liveBar = (k) => `<nav class="tabbar livebar">${[['home', '現場'], ['star', 'おすすめ'], ['users', '参加者'], ['grid', 'グループ'], ['clock', '予定']].map(([i, l], j) => `<button class="${j === k ? 'on' : ''}">${ic(i)}${l}</button>`).join('')}</nav>`;
+function qr(px) {
+  let s = 11; const rnd = () => (s = (s * 9301 + 49297) % 233280) / 233280; const n = 25; let r = '';
+  const inF = (x, y) => (x < 8 && y < 8) || (x > n - 9 && y < 8) || (x < 8 && y > n - 9);
+  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) if (!inF(x, y) && rnd() > .52) r += `<rect x="${x}" y="${y}" width="1" height="1"/>`;
+  const f = (x, y) => `<rect x="${x}" y="${y}" width="7" height="7" rx="1.2"/><rect x="${x + 1}" y="${y + 1}" width="5" height="5" rx=".8" style="fill:var(--surface)"/><rect x="${x + 2}" y="${y + 2}" width="3" height="3" rx=".5"/>`;
+  return `<svg width="${px}" height="${px}" viewBox="-1 -1 27 27" shape-rendering="crispEdges" style="fill:var(--ink);display:block;margin:0 auto">${r}${f(0, 0)}${f(n - 7, 0)}${f(0, n - 7)}</svg>`;
+}
+function checkin() {
+  return topbar('チェックイン', EV.n, close) + ` /* 审计：参加者侧改称 チェックイン，与主办侧「受付」（⑥ A App）区分屏幕身份 */<div class="seg full p-cseg" style="margin-bottom:14px"><button class="on">QR で受付</button><button>名前で受付</button></div>
+  <div class="card rise p-qr" style="text-align:center;padding:24px 18px"><div style="padding:14px;border-radius:20px;background:var(--surface);display:inline-block;box-shadow:0 0 0 1px var(--line)">${qr(196)}</div>
+    <b style="display:block;font-size:15px;margin-top:14px">受付でこの画面を見せてください</b><div class="lbl">画面を明るくしました · 受付番号 A-042</div></div>
+  <div class="card flat"><div class="row" style="gap:10px"><span class="emo sm apricot">🙋</span><div style="flex:1"><b style="font-size:13px">QR が読めないときは</b><div class="lbl">「佐藤 健一」と名前をお伝えください</div></div></div></div>
+  <div class="card p-after"><div class="lbl" style="margin-bottom:10px">受付が済むと、会場モードに切り替わります</div>
+    <div class="grid3">${[['🪑', 'lav', '席とラウンド'], ['✨', 'pink', 'おすすめの人'], ['📇', 'teal', '名刺交換']].map(([e, c, t]) => `<div style="text-align:center;font-size:11.5px;font-weight:700"><span class="emo ${c}" style="margin:0 auto 6px">${e}</span>${t}</div>`).join('')}</div></div>`;
+}
+function liveHome() {
+  return liveHead() + `
+  <div class="card rise p-now"><div class="row between"><span class="lbl">いま</span><span class="chip">残り 18分</span></div><b style="font-size:16px;display:block;margin-top:4px">テーブルトーク ラウンド 2</b><div class="lbl">20:10–20:40 · テーマ「シリーズAの資本政策」</div>${bar(40, 'thin')}</div>
+  <div class="card" data-why-box style="background:linear-gradient(150deg,var(--mac-lav),var(--surface) 65%)">
+    <div class="row between"><div><div class="lbl">あなたの席</div><div class="big p-seat" style="font-size:46px">B-4</div></div>
+      <div style="width:170px"><div class="rdots p-rounds"><div class="d"><b>A-2</b>R1</div><div class="n"><b>B-4</b>R2</div><div><b>D-1</b>R3</div></div></div></div>
+    <div class="row" style="gap:6px;margin-top:10px"><span class="sub" style="flex:1">なぜこの席？ 同席の 2名があなたの話題と重なります</span><span class="why p-why2">?</span></div>
+    <div class="why-body" hidden>井上さん（ノードワークス CFO）は昨年シリーズAで 4億円を調達。森さん（ブルーム証券）は資本政策の担当。どちらも申込時の「会いたい人：上場企業の CFO・金融」に一致。</div>
+    <div class="row" style="gap:10px;margin-top:12px">${avsOf([P[2], P[1], { c: 'c5', i: '岡' }, { c: 'c2', i: '西' }], 4)}<span class="lbl">井上さん · 森さん ほか2名</span></div></div>
+  <div class="card p-ice"><div class="card-h"><h3>話のきっかけ</h3><button class="lbtn">${ic('refresh', 'sm')}</button></div>
+    ${['監査法人はいつ、どう選びましたか？', '最初の CFO 採用、正社員と業務委託どちらでした？', '製造業向け SaaS の KPI、投資家に何を見られました？'].map(t => `<div class="ice"><span>💬</span><span>「${t}」</span></div>`).join('')}</div>
+  <div class="grid2" style="margin-top:14px"><div class="card" style="margin:0"><div class="lbl">交換</div><div class="mid">${num(3)}<small class="lbl"> 人</small></div></div><div class="card" style="margin:0"><div class="lbl">会いたい人</div><div class="mid">${num(2)}<small class="lbl"> / 4</small></div></div></div>
+  <div class="card flat"><div class="row" style="gap:10px"><span class="emo sm teal">➡️</span><div style="flex:1"><b style="font-size:13px">20:40 ラウンド 3 → テーブル D-1</b><div class="lbl">木村さん（東邦銀行）· 林さん（クオリス）</div></div></div></div>
+  <div class="card flat p-endrow"><div class="row" style="gap:10px"><span class="emo sm lav">📝</span><div style="flex:1"><b style="font-size:13px">21:30 終了後に「今日のふりかえり」</b><div class="lbl">左上 ✕ で会場モードを終えると開きます</div></div><span class="muted">${ic('right', 'sm')}</span></div></div>`;
+}
+const pcard = (p, k) => `<div class="pcard"><div class="row" style="gap:12px"><div class="av lg ${p.c}">${p.i}</div><div style="min-width:0"><b style="font-size:16px;display:block">${p.n}</b><div class="lbl ell">${p.co} · ${p.role}</div></div></div>
+  <div class="row" style="gap:6px"><span class="chip lav">${ic('pin', 'sm')}テーブル ${p.tb}</span>${k === 0 ? '<span class="chip teal">R3 で近くの卓</span>' : ''}</div>
+  <div data-why-box><div class="row" style="gap:6px;align-items:flex-start"><span class="sub" style="flex:1;line-height:1.6">${p.why}</span><span class="why">?</span></div><div class="why-body" hidden>あなたの申込「会いたい人：VC・CVC」と、相手の申込「探している投資先：B2B SaaS」が一致。</div></div>
+  <div class="row" style="gap:8px;margin-top:auto"><button class="btn primary sm" style="flex:1">交換を申請</button><button class="lbtn" title="おすすめから外す">${ic('x', 'sm')}</button></div></div>`;
+function liveRecs() {
+  return liveHead() + `<div class="card-h"><h3>あなたへのおすすめ</h3><span class="lbl">6名 · 申込内容から</span></div>
+  <div class="carousel p-pc">${[P[0], P[3], P[4]].map(pcard).join('')}</div><div class="dots"><i class="on"></i><i></i><i></i></div>
+  <div class="card" style="margin-top:16px;padding:8px 16px"><div class="card-h" style="margin:8px 0 0"><h3>次に話すと良い順</h3></div>
+    <div class="list p-order">${[P[0], P[3], P[4], P[5]].map((p, k) => `<div class="li"><span class="score" style="width:18px;color:var(--ink-3)">${k + 1}</span><div class="av sm ${p.c}">${p.i}</div><div class="meta"><b>${p.n}</b><span>${p.co} · テーブル ${p.tb}</span></div>${k === 0 ? '<span class="chip lav">申請が届いています</span>' : ''}</div>`).join('')}</div></div>`;
+}
+const stChip = { done: '<span class="chip teal">交換済み</span>', recv: '<span class="chip lav">申請が届いています</span>', sent: '<span class="chip">申請中</span>', '': '' };
+function liveList() {
+  return liveHead() + `<div class="seg full" style="margin-bottom:10px"><button class="on">一覧</button><button>関係マップ</button></div>
+  <div class="search p-lsearch">${ic('search', 'sm')}名前・会社・テーマ</div>
+  <div class="chips" style="margin:10px 0 12px"><span class="chip lav">すべて 128</span><span class="chip">会いたい 4</span><span class="chip">交換済み 3</span><span class="chip">申請 2</span></div>
+  <div class="card" style="padding:6px 16px"><div class="list p-llist">${[...P, { ...C[0], st: '' }, { ...C[6], st: '' }].map(p => `<div class="li"><div class="av ${p.c}">${p.i}</div><div class="meta"><b>${p.n}</b><span>${p.co} · ${p.role}</span></div>${stChip[p.st || '']}</div>`).join('')}</div></div>`;
+}
+function liveGroups() {
+  return liveHead() + `<div class="card rise p-mygrp" style="background:linear-gradient(150deg,var(--mac-lav),var(--surface) 65%)"><div class="row between"><span class="lbl">ラウンド 2 · あなたのテーブル</span><span class="chip lav">6名</span></div>
+    <div class="big" style="font-size:34px;margin-top:4px">B-4</div><div class="sub">テーマ「シリーズAの資本政策」</div>
+    <div class="list" style="margin-top:8px">${[[{ c: 'c1', i: '佐' }, '佐藤 健一（あなた）', 'ミナトリンク · CEO'], [P[2], '井上 早紀', 'ノードワークス · CFO'], [P[1], '森 拓也', 'ブルーム証券 · VP'], [{ c: 'c5', i: '岡' }, '岡田 悠', 'テクノハブ · CEO'], [{ c: 'c2', i: '西' }, '西村 葵', 'リベルタ · 経営企画']].map(([p, n, d]) => `<div class="li"><div class="av sm ${p.c}">${p.i}</div><div class="meta"><b style="font-size:13px">${n}</b><span>${d}</span></div></div>`).join('')}</div></div>
+  <div class="card p-grps"><div class="card-h"><h3>ほかのテーブル</h3><span class="lbl">ラウンド 2</span></div>
+    ${[['A', 'IPO 準備の実務', 6, 'apricot'], ['C', 'SaaS の KPI 開示', 6, 'blue'], ['D', 'CFO 採用と組織', 5, 'teal'], ['E', 'デットファイナンス', 6, 'pink']].map(([t, th, n, c]) => `<div class="row" style="gap:10px;padding:9px 0;border-top:1px solid var(--line)"><span class="emo sm ${c}" style="font-weight:800;font-size:13px">${t}</span><div style="flex:1"><b style="font-size:13px">${th}</b><div class="lbl">${n}名</div></div>${avsOf(P.slice(3), 3)}</div>`).join('')}</div>
+  <div class="lbl" style="text-align:center">席とテーマは主催者が決めています</div>`;
+}
+function relMap(w = 354, h = 340) {
+  const N = { me: ['あなた', 177, 170], 清: ['清水', 78, 82], 森: ['森', 276, 78], 井: ['井上', 292, 196], 伊: ['伊藤', 180, 46], 木: ['木村', 66, 236], 林: ['林', 168, 296], 松: ['松本', 290, 296], 高: ['高橋', 44, 150] };
+  const T = { 清: 'want', 森: 'done', 井: 'done', 伊: 'known', 木: 'want', 林: 'none', 松: 'none', 高: 'known' };
+  const st = { done: 'stroke:var(--plum-700);stroke-width:2.2', known: 'stroke:var(--plum-500);stroke-width:1.5', want: 'stroke:var(--plum-300);stroke-width:1.6;stroke-dasharray:4 4', none: 'stroke:var(--surface-3);stroke-width:1.2' };
+  const fill = { done: 'fill:var(--plum-700)', known: 'fill:var(--plum-300)', want: 'fill:var(--plum-100);stroke:var(--plum-500);stroke-width:1.5;stroke-dasharray:3 3', none: 'fill:var(--surface-3)' };
+  const tc = { done: 'var(--on-accent)', known: 'var(--plum-900)', want: 'var(--ink)', none: 'var(--ink-3)' };
+  let e = ['森', '井'].map(k => `<line x1="${N[k][1]}" y1="${N[k][2]}" x2="${N.井[1]}" y2="${N.井[2]}" style="stroke:var(--surface-3);stroke-width:1.2"/>`).join('') + `<line x1="${N.伊[1]}" y1="${N.伊[2]}" x2="${N.井[1]}" y2="${N.井[2]}" style="stroke:var(--surface-3);stroke-width:1.2"/><line x1="${N.高[1]}" y1="${N.高[2]}" x2="${N.清[1]}" y2="${N.清[2]}" style="stroke:var(--plum-300);stroke-width:1.2"/>`;
+  e += Object.keys(T).map(k => `<line x1="177" y1="170" x2="${N[k][1]}" y2="${N[k][2]}" style="${st[T[k]]}"/>`).join('');
+  const nodes = Object.keys(T).map(k => `<g><circle cx="${N[k][1]}" cy="${N[k][2]}" r="${T[k] === 'none' ? 15 : 19}" style="${fill[T[k]]}"/><text x="${N[k][1]}" y="${N[k][2]}" text-anchor="middle" dominant-baseline="central" style="font-size:11px;font-weight:800;fill:${tc[T[k]]}">${k}</text><text x="${N[k][1]}" y="${N[k][2] + 31}" text-anchor="middle" style="font-size:10px;fill:var(--ink-3)">${N[k][0]}</text></g>`).join('');
+  return `<svg width="${w}" height="${h}" viewBox="0 0 354 340" style="display:block">${e}${nodes}<circle cx="177" cy="170" r="27" style="fill:var(--ink)"/><text x="177" y="170" text-anchor="middle" dominant-baseline="central" style="font-size:12px;font-weight:800;fill:var(--bg)">あなた</text></svg>`;
+}
+const mapLegend = `<div class="row" style="gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--ink-2)">${[['var(--plum-700)', '', '交換済み'], ['var(--plum-500)', '', '以前から'], ['var(--plum-300)', '4 4', '会いたい'], ['var(--surface-3)', '', 'その他']].map(([c, d, t]) => `<span class="row" style="gap:5px"><svg width="22" height="6"><line x1="0" y1="3" x2="22" y2="3" style="stroke:${c};stroke-width:2.2;${d ? 'stroke-dasharray:' + d : ''}"/></svg>${t}</span>`).join('')}</div>`;
+function liveMap() {
+  return liveHead() + `<div class="seg full" style="margin-bottom:12px"><button>一覧</button><button class="on">関係マップ</button></div>
+  <div class="card rise mapcard p-map" style="padding:10px 8px">${relMap(338, 325)}</div>
+  <div class="card p-legend" style="padding:14px 16px">${mapLegend}<div class="lbl" style="margin-top:8px">点をタップで詳細 · ピンチで拡大 · 表示は会場内の参加者のみ</div></div>
+  <div class="card flat"><div class="row" style="gap:10px"><span class="emo sm lav">🔗</span><div style="flex:1"><b style="font-size:13px">清水さんは高橋さんとつながっています</b><div class="lbl">共通の知り合い経由で話しかけやすい相手です</div></div></div></div>`;
+}
+function liveAgenda() {
+  return liveHead() + `<div class="card rise p-agenda">${AG.map(([t, ti, d], k) => `<div class="tline ${k < 4 ? 'd' : k === 4 ? 'n' : ''}"><time>${t}</time><span class="dot"></span><div><b>${ti}${k === 4 ? ' <span class="chip coral">いま</span>' : ''}</b><span class="lbl">${d}${k === 4 ? ' · テーブル B-4' : k === 5 ? ' · テーブル D-1' : ''}</span></div></div>`).join('')}</div>
+  <div class="card p-focus" data-why-box style="background:linear-gradient(150deg,var(--mac-pink),var(--surface) 65%)"><div class="row" style="gap:8px"><span class="emo sm pink">⭐</span><b style="font-size:13px;flex:1">21:10 フリー交流で伊藤さんに声をかける</b><span class="why">?</span></div>
+    <div class="why-body" hidden>伊藤さんはキーノート登壇者で、あなたの「協業中」のつながり。フリー交流の前半は登壇者の周りが空きやすい傾向です。</div></div>`;
+}
+const personSheet = `<div class="sheet-scrim"></div><div class="sheet p-psheet"><div class="grab"></div>
+  <div class="row" style="gap:12px"><div class="av lg c1">清</div><div style="flex:1;min-width:0"><b style="font-size:17px;display:block">清水 玲奈</b><div class="lbl">Sorae Capital · プリンシパル · テーブル C-2</div></div><button class="lbtn">${ic('x', 'sm')}</button></div>
+  <div class="card flat p-req" style="margin-top:14px;padding:14px"><div class="row" style="gap:8px"><span class="emo sm lav">📇</span><b style="font-size:13px;flex:1">名刺交換の申請が届いています</b><span class="lbl">2分前</span></div>
+    <div class="row" style="gap:8px;margin-top:10px"><button class="btn primary sm" style="flex:1">承認して交換</button><button class="btn sm" style="flex:1">無視</button></div><div class="lbl" style="margin-top:6px">無視しても相手には通知されません</div></div>
+  <div data-why-box style="margin-top:12px"><div class="row" style="gap:6px"><span class="chip lav ell" style="flex:1;max-width:none">🎯 シリーズA・B2B SaaS に注力。今年 5社に出資</span><span class="why">?</span></div><div class="why-body" hidden>申込内容「探している投資先：B2B SaaS · シリーズA」とあなたの「会いたい人：VC」が一致。高橋さんと共通の知り合い。</div></div>
+  <div class="lbl" style="margin:14px 0 6px">メモを残す（自分だけ）</div>
+  <div class="row p-memo" style="gap:8px"><div class="input" style="flex:1">一言メモ：例）11月にオフィス訪問</div><button class="lbtn" style="width:44px;height:44px;background:var(--accent-soft);color:var(--ink)">${ic('mic', 'sm')}</button></div>
+  <div class="lbl" style="margin-top:6px">音声はあなたの声だけを短く記録し、文字にします（会場の録音はしません）</div>
+  <button class="btn block p-meetbtn" style="margin-top:14px;height:44px">${ic('calendar', 'sm')}面談を提案する</button></div>`;
+const meetSheet = `<div class="sheet-scrim"></div><div class="sheet p-msheet"><div class="grab"></div>
+  <div class="row" style="gap:10px"><button class="lbtn">${ic('left', 'sm')}</button><div style="flex:1"><b style="font-size:16px">清水さんに面談を提案</b><div class="lbl">あなたのカレンダーの空きから候補を選びました</div></div></div>
+  <div class="seg full" style="margin:14px 0 12px"><button class="on">オンライン 30分</button><button>対面 60分</button></div>
+  <div class="slots p-slots">${[['10/9（金）', '10:00–10:30', 1], ['10/12（月）', '15:00–15:30', 1], ['10/13（火）', '9:30–10:00', 1], ['10/14（水）', '17:00–17:30', 0], ['10/15（木）', '11:00–11:30', 0]].map(([d, t, on]) => `<div class="slot ${on ? 'on' : ''}"><span class="lbl">${d}</span><b>${t}</b></div>`).join('')}<div class="slot" style="display:grid;place-items:center;color:var(--ink-3);font-weight:700">＋ 別の日時</div></div>
+  <div class="lbl" style="margin-top:12px">3件選択中 · 相手が 1つ選ぶと確定し、双方のカレンダーに入ります</div>
+  <button class="btn primary block" style="margin-top:14px;height:48px">この3枠で提案する</button><div class="lbl" style="text-align:center;margin-top:6px">メッセージは添えません · あとから取り消せます</div></div>`;
+const toast = `<div class="toast pos p-toast"><span class="tk">${ic('check')}</span><span class="tmsg">清水 玲奈さんと交換しました<small>人脈に追加 · 会いたい人 3 / 4</small></span><button class="undo"><span class="lic sm i-undo"></span>元に戻す</button><i class="tbar"></i></div>`;
+/* Web 会場 */
+function wLive() {
+  return mainhead(EV.n, '<span class="livedot">LIVE</span> 20:22 · ラウンド 2 / 3', `<button class="btn sm">${ic('x', 'sm')}終了</button>`, `<button class="rbtn">${ic('scan')}</button>`) + `<div class="wgrid">
+    <div class="span12"><div class="seg">${['現場', 'おすすめ', '参加者', 'グループ', 'マップ', 'アジェンダ'].map((t, i) => `<button class="${i === 0 ? 'on' : ''}">${t}</button>`).join('')}</div></div>
+    <div class="card span4 p-wseat" data-why-box style="background:linear-gradient(150deg,var(--mac-lav),var(--surface) 65%)"><div class="lbl">あなたの席 · R2</div><div class="big" style="font-size:52px">B-4</div>
+      <div class="rdots" style="margin-top:10px"><div class="d"><b>A-2</b>R1</div><div class="n"><b>B-4</b>R2</div><div><b>D-1</b>R3</div></div>
+      <div class="row" style="gap:6px;margin-top:12px"><span class="sub" style="flex:1">なぜこの席？ 井上さん・森さんと話題が重なります</span><span class="why">?</span></div><div class="why-body" hidden>申込時の「会いたい人：上場企業の CFO・金融」に一致する 2名が同席。</div></div>
+    <div class="card span4"><div class="row between"><span class="lbl">いま</span><span class="chip">残り 18分</span></div><b style="font-size:16px;margin-top:4px">テーブルトーク R2</b><div class="lbl">テーマ「シリーズAの資本政策」</div>${bar(40, 'thin')}
+      <div class="mini3"><div><span class="lbl">交換</span><b>${num(3)}</b></div><div><span class="lbl">会いたい人</span><b>${num(2)}<small class="lbl">/4</small></b></div><div><span class="lbl">申請</span><b>${num(1)}</b></div></div></div>
+    <div class="card span4"><div class="card-h"><h3>話のきっかけ</h3><button class="lbtn">${ic('refresh', 'sm')}</button></div>${['監査法人はいつ、どう選びましたか？', '最初の CFO 採用、正社員と業務委託どちらでした？'].map(t => `<div class="ice"><span>💬</span><span>「${t}」</span></div>`).join('')}</div>
+    <div class="span12 card-h" style="margin:8px 0 -6px"><h3>あなたへのおすすめ</h3><span class="lbl">クリックで右に詳細</span></div>
+    ${[P[0], P[3], P[4]].map((p, k) => `<div class="evc span4 ${k === 0 ? 'sel p-wpsel' : ''}" style="display:flex;flex-direction:column;gap:10px"><div class="row" style="gap:12px"><div class="av ${p.c}" style="width:46px;height:46px">${p.i}</div><div style="min-width:0"><b>${p.n}</b><div class="lbl ell">${p.co} · ${p.role}</div></div>${stChip[p.st]}</div><div class="sub">${p.why}</div><div class="row push" style="gap:6px"><span class="chip lav">${ic('pin', 'sm')}テーブル ${p.tb}</span><button class="btn sm primary" style="margin-left:auto">交換を申請</button></div></div>`).join('')}
+    <div class="card span7 mapcard p-wmap"><div class="card-h"><h3>関係マップ</h3>${mapLegend}</div><div style="display:grid;place-items:center">${relMap(460, 440)}</div></div>
+    <div class="card span5"><div class="card-h"><h3>アジェンダ</h3></div>${AG.map(([t, ti, d], k) => `<div class="tline ${k < 4 ? 'd' : k === 4 ? 'n' : ''}"><time>${t}</time><span class="dot"></span><div><b>${ti}</b><span class="lbl">${d}</span></div></div>`).join('')}</div></div>`;
+}
+const wPersonRail = () => `<h4>${ic('user', 'sm')}参加者の詳細</h4>
+  <div class="row" style="gap:12px"><div class="av lg c1">清</div><div><b style="font-size:16px">清水 玲奈</b><div class="lbl">Sorae Capital · プリンシパル · C-2</div></div></div>
+  <div class="card p-wreq" style="padding:14px"><div class="row" style="gap:8px"><span class="emo sm lav">📇</span><b style="font-size:13px;flex:1">名刺交換の申請が届いています</b></div><div class="row" style="gap:8px;margin-top:10px"><button class="btn primary sm" style="flex:1">承認して交換</button><button class="btn sm" style="flex:1">無視</button></div></div>
+  <div class="card" data-why-box style="padding:14px"><div class="row" style="gap:6px"><b style="font-size:13px;flex:1">あなたとの接点</b><span class="why">?</span></div><div class="sub" style="margin-top:6px">シリーズA・B2B SaaS に注力。高橋さんと共通の知り合い</div><div class="why-body" hidden>申込内容「探している投資先：B2B SaaS」とあなたの「会いたい人：VC」が一致。</div></div>
+  <div class="card p-wmemo" style="padding:14px"><div class="lbl" style="margin-bottom:6px">メモ（自分だけ）</div><div class="row" style="gap:8px"><div class="input" style="flex:1">一言メモ</div><button class="lbtn">${ic('mic', 'sm')}</button></div></div>
+  <div class="card p-wslots" style="padding:14px"><div class="lbl" style="margin-bottom:8px">面談を提案 · 空きから候補</div><div class="slots">${[['10/9（金）', '10:00', 1], ['10/12（月）', '15:00', 1], ['10/13（火）', '9:30', 1], ['10/14（水）', '17:00', 0]].map(([d, t, on]) => `<div class="slot ${on ? 'on' : ''}"><span class="lbl">${d}</span><b>${t}</b></div>`).join('')}</div><button class="btn block sm" style="margin-top:10px">3枠で提案する</button><div class="lbl" style="margin-top:6px">相手が選ぶと確定 · メッセージは添えません</div></div>`;
+
+/* ============================================================
+   ⑦ 会後
+   ============================================================ */
+const progCard = (from, to, why) => `<div class="card p-prog2" data-why-box><div class="row between" style="align-items:flex-start"><div><div class="lbl">プラン スコア · シリーズA 資金調達</div>
+  <div class="row" style="gap:8px;align-items:center;margin-top:4px"><span class="mid muted" style="text-decoration:line-through;font-size:17px">${from}</span><span class="muted">${ic('right', 'sm')}</span><span class="big" style="font-size:36px"><span class="cntfrom" data-from="${from}" data-to="${to}">${from}</span></span></div></div><span class="delta">+${to - from}</span></div>
+  <div class="bar2"><i class="base" style="width:${from}%"></i><i class="add" style="left:${from}%" data-w="${to - from}"></i></div>
+  <div class="row between"><span class="lbl">「次の一手」を確定すると反映されます</span><span class="why">?</span></div>
+  <div class="why-body" hidden>${why}</div></div>`;
+const NX = [
+  [P[0], '10/9（金）', 'VC パートナー', 1], [P[2], '10/12（月）', 'CFO 経験者', 1], [P[1], '10/14（水）', '金融機関', 0],
+  [P[3], '10/13（火）', 'デットの相談先', 1], [C[2], '10/8（木）', '—', 1], [P[5], '10/20（火）', '監査法人', 0],
+];
+const nxRow = ([p, d, plan, link], k) => `<div class="nx ${k === 5 ? 'off' : ''}"><div class="row" style="gap:10px"><div class="av sm ${p.c}">${p.i}</div><div style="flex:1;min-width:0"><b style="font-size:13.5px">${p.n}</b><div class="lbl ell">${p.co}</div></div><button class="yn ${k === 5 ? '' : 'on'}">✓</button><button class="yn ${k === 5 ? 'on' : ''}">✕</button></div>
+  <div class="nx-acts"><span class="act on">✉️ お礼の下書き</span><span class="act on">📅 フォロー ${d}</span>${plan === '—' ? '' : `<span class="act ${link ? 'on' : ''}">🎯 ${plan}</span>`}</div></div>`;
+const batchCard = (n) => `<div class="card confirm-card p-batch"><div class="card-h"><h3>次の一手 · ${n}名分</h3><span class="lbl">AI の提案 · 確認して確定</span></div>
+  ${NX.slice(0, n).map(nxRow).join('')}
+  <div class="row" style="gap:8px;margin-top:12px"><button class="btn primary" style="flex:1">${n > 2 ? n - 1 : n}名分を確定する</button><button class="btn ghost">あとで</button></div>
+  <div class="lbl" style="text-align:center;margin-top:8px">${ic('mail', 'sm')} 送信はしません · 送信はあなたが行います</div></div>`;
+const SUM = [
+  ['💼', 'lav', 'VC との接点が 3名増えました', '清水さん（Sorae）は B2B SaaS に注力。11月にオフィス訪問の約束', '交換記録 21:04 · あなたのメモ「11月にオフィスへ」'],
+  ['📊', 'teal', '資本政策の具体的な助言をもらえました', '井上さん：優先株の条件は 2社以上で比較を', 'あなたの音声メモ 20:31（文字起こし）'],
+  ['🕳️', 'pink', '会いたい人のうち 2名には会えませんでした', '林さん · 松本さん。vol.19 か、高橋さん経由の紹介が近道', '会いたい人リスト 4名中 交換 2名 · 共通の知り合い'],
+];
+const sumCard = (k) => `<div class="card p-sum"><div class="card-h"><h3>✨ 今日のまとめ</h3><span class="lbl">AI 下書き · 編集できます</span></div>${SUM.slice(0, k).map(([e, c, t, d, w]) => `<div class="sumi" data-why-box><div class="row" style="gap:10px;align-items:flex-start"><span class="emo sm ${c}">${e}</span><div style="flex:1"><b style="font-size:13px">${t}</b><div class="lbl">${d}</div></div><span class="why">?</span></div><div class="why-body" hidden>根拠：${w}</div></div>`).join('')}</div>`;
+function post(s) {
+  const head = topbar('今日のふりかえり', EV.n + ' · 10/7', back, shareB);
+  if (s === 'empty') return head + `
+    <div class="guide rise p-pguide"><div class="lbl">交換の記録がありません</div><div style="font-size:19px;font-weight:800;line-height:1.4;margin:4px 0">会った人を思い出して、<br>次の一手につなげましょう</div>
+      <div class="sub" style="margin-bottom:14px">紙の名刺で交換した人も、参加者一覧から選べます</div>
+      <button class="btn primary block tap-demo" style="height:46px">${ic('users', 'sm')}参加者一覧から選ぶ</button></div>
+    <div class="grid2" style="margin-top:14px">${[['📇', 'apricot', '名刺をスキャン', 'もらった名刺をまとめて'], ['🎙️', 'teal', '音声でメモ', '話した内容を一言で']].map(([e, c, t, d]) => `<button class="card" style="margin:0;text-align:left;display:flex;flex-direction:column;gap:8px"><span class="emo ${c}">${e}</span><b style="font-size:13px">${t}</b><span class="lbl">${d}</span></button>`).join('')}</div>
+    <div class="card" style="margin-top:14px"><div class="card-h"><h3>記録するとこう見えます ${sample}</h3></div>
+      <div class="faded"><div class="lbl">今日会った人</div><div class="big">9<small>人</small></div>
+      <div class="ghost-row" style="margin-top:12px"><i></i>清水さんへのお礼の下書き</div><div class="ghost-row"><i></i>プラン スコア 46 → 56</div></div></div>`;
+  const many = s === 'many', n = many ? 9 : 2;
+  return head + `
+    <div class="card rise"><div class="hero-row"><div><div class="lbl">今日会った人</div><div class="big p-bign" style="font-size:52px">${num(n)}<small>人</small></div></div>${avsOf(many ? [P[0], P[1], P[2], P[3], C[2]] : [P[1], P[2]], 5)}</div>
+      <div class="mini3"><div><span class="lbl">交換</span><b>${num(many ? 9 : 2)}</b></div><div><span class="lbl">会いたい人</span><b>${num(many ? 3 : 1)}<small class="lbl">/4</small></b></div><div><span class="lbl">面談の約束</span><b>${num(many ? 2 : 0)}</b></div></div></div>
+    ${sumCard(many ? 3 : 1)}${batchCard(many ? 6 : 2)}
+    ${progCard(46, many ? 56 : 49, many ? 'VC パートナー 1人（+10 · 3 / 3人で達成）。同じ人は同じタイプで 1回だけ計上。確定した「次の一手」だけを反映します。' : '調達経験のある起業家 1人（+3）。')}`;
+}
+/* Web 会後 */
+function wPost(s) {
+  const head = mainhead('今日のふりかえり', EV.n + ' · 10/7（水）', `<button class="rbtn">${ic('left')}</button>`, `<button class="rbtn">${ic('share')}</button>`);
+  if (s === 'empty') return head + `<div class="wgrid">
+    <div class="card span12 guide p-wpguide" style="padding:28px"><div class="row" style="gap:24px"><div style="flex:1"><div class="lbl">交換の記録がありません</div><div style="font-size:22px;font-weight:800;margin:4px 0">会った人を思い出して、次の一手につなげましょう</div><div class="sub">紙の名刺で交換した人も、参加者一覧から選べます</div></div><button class="btn primary" style="height:48px">${ic('users', 'sm')}参加者一覧から選ぶ</button></div>
+      <div class="grid3" style="margin-top:18px">${[['📇', 'もらった名刺をスキャン', 'スマホで撮影 → ここに反映'], ['🗂️', '名刺画像をまとめてドロップ', '最大 100枚'], ['🎙️', '音声メモから', '話した内容を一言で']].map(([e, t, d]) => `<div class="mac apricot row" style="gap:10px"><span style="font-size:22px">${e}</span><div><b style="font-size:13px">${t}</b><div class="lbl">${d}</div></div></div>`).join('')}</div></div>
+    <div class="card span12"><div class="card-h"><h3>記録するとこう見えます ${sample}</h3></div><div class="faded"><div class="ghost-row tall"><i></i>清水 玲奈 · お礼の下書き · フォロー 10/9 · プランに紐づけ</div><div class="ghost-row tall"><i></i>プラン スコア 46 → 56</div></div></div></div>`;
+  const many = s === 'many', n = many ? 9 : 2;
+  return head + `<div class="wgrid">
+    <div class="card span3 p-wbign"><div class="lbl">今日会った人</div><div class="big" style="font-size:60px">${num(n)}<small>人</small></div><div class="mini3" style="grid-template-columns:1fr 1fr"><div><span class="lbl">会いたい人</span><b>${num(many ? 3 : 1)}<small class="lbl">/4</small></b></div><div><span class="lbl">面談</span><b>${num(many ? 2 : 0)}</b></div></div></div>
+    <div class="span5" style="display:flex">${sumCard(many ? 3 : 1).replace('class="card p-sum"', 'class="card p-sum" style="flex:1;margin:0"')}</div>
+    <div class="span4" style="display:flex">${progCard(46, many ? 56 : 49, 'VC パートナー 1人（+10 · 3 / 3人で達成）。同じ人は同じタイプで 1回だけ計上').replace('class="card p-prog2"', 'class="card p-prog2" style="flex:1;margin:0"')}</div>
+    <div class="card span12 confirm p-wbatch"><div class="card-h"><h3>次の一手 · ${many ? 6 : 2}名分</h3><span class="lbl">AI の提案。✓ の行だけ確定します</span></div>
+      <table class="table"><thead><tr><th>人</th><th>お礼の下書き</th><th>フォロー日</th><th>プランに紐づけ</th><th style="text-align:right">確定</th></tr></thead><tbody>
+      ${NX.slice(0, many ? 6 : 2).map(([p, d, plan, link], k) => `<tr class="${k === 5 ? 'nx off' : ''}" ${k === 0 ? 'style="background:var(--surface-2)"' : ''}><td><div class="row" style="gap:8px"><div class="av sm ${p.c}">${p.i}</div><div><b style="font-size:13px">${p.n}</b><div class="lbl">${p.co}</div></div></div></td><td><span class="act on">下書きを作成</span></td><td><span class="act on">${d}</span></td><td>${plan === '—' ? '<span class="lbl">—</span>' : `<span class="act ${link ? 'on' : ''}">${plan}</span>`}</td><td><div class="row" style="gap:6px;justify-content:flex-end"><button class="yn ${k === 5 ? '' : 'on'}">✓</button><button class="yn ${k === 5 ? 'on' : ''}">✕</button></div></td></tr>`).join('')}</tbody></table>
+      <div class="row" style="gap:10px;margin-top:14px"><span class="lbl">${ic('mail', 'sm')} 送信はしません · 送信はあなたが行います</span><button class="btn ghost" style="margin-left:auto">あとで</button><button class="btn primary">${many ? 5 : 2}名分を確定する</button></div></div></div>`;
+}
+const wDraftRail = () => `<h4>${ic('mail', 'sm')}お礼の下書き · 清水さん</h4>
+  <div class="card p-wdraft" style="padding:16px"><div class="lbl">件名</div><b style="font-size:13px">昨夜の CFO Night のお礼（ミナトリンク 佐藤）</b>
+    <div class="sub" style="margin-top:10px;line-height:1.8">清水様<br><br>昨夜は CFO Night でお話しいただき、ありがとうございました。製造業向け SaaS への見方を伺えたことが大変参考になりました。<br>11月のオフィス訪問の件、候補日を改めてお送りいたします。<br><br>佐藤 健一</div></div>
+  <div style="display:grid;gap:8px"><button class="btn primary">${ic('pen', 'sm')}下書きを作成</button><div class="grid2"><button class="btn">コピー</button><button class="btn">${ic('out', 'sm')}メールアプリで開く</button></div></div>
+  <div class="lbl" style="text-align:center">${ic('mail', 'sm')} 送信はしません · 送信はあなたが行います</div>`;
+
+/* ============================================================
+   出力
+   ============================================================ */
+const TAGS = { empty: '新用户空状态', few: '少量数据', many: '大量数据' };
+const notesHTML = (notes, wide) => notes && notes.length ? `<ul class="note-list" ${wide ? 'style="max-width:1440px;grid-template-columns:repeat(3,1fr);display:grid"' : ''}>${notes.map((n, k) => `<li><b>${k + 1}</b><span>${n}</span></li>`).join('')}</ul>` : '';
+const boards = (items) => `<div class="boards">${items.map(([label, tag, html, notes]) => `<div class="board"><div class="board-label">${label}${tag ? `<span class="tag ${tag}">${TAGS[tag] || tag}</span>` : ''}</div>${html}${notesHTML(notes)}</div>`).join('')}</div>`;
+const wb = (label, tag, html, notes) => `<div class="board" style="margin-bottom:34px"><div class="board-label">${label}${tag ? `<span class="tag ${tag}">${TAGS[tag] || tag}</span>` : ''}</div>${html}${notesHTML(notes, true)}</div>`;
+const sec = (t, s) => `<div class="section-title"><h2>${t}</h2><span>${s}</span></div>`;
+
+let h = '';
+/* ① */
+h += sec('① 評価の異常態', '读不到 / 不是活动页 / 海报模糊 → 补「日時・場所・参加費」再判定。错误不是死路：每种都给 2–3 条可继续的路');
+h += boards([
+  ['① ログインが必要 (URL)', '错误态', phone({ body: errUrl(), tab: -1, pins: pin(1, '.p-errchip') + pin(2, '.p-opts') }), ['原因用珊瑚 chip 一句话说清；URL 输入框描珊瑚边，不弹 alert', '三条替代路径：贴本文 → 回到「判定中」；截图 → 走海报识别；只填 3 项 → 跳到 ③ 补全表单']],
+  ['② イベントページではない', '错误态', phone({ body: errNotEvent(), tab: -1, pins: pin(1, '.p-found') + pin(2, '.p-manual') }), ['在页面里找到的活动链接列成行，点「評価」直接以该链接重新判定（进入判定中骨架屏）', '都不是 → 「手入力」跳到 ③ 的补全表单（无海报版）']],
+  ['③ ポスター不鮮明 → 3項目を補う', '信息不足', phone({ body: errPoster(), tab: -1, pins: pin(1, '.p-ng') + pin(2, '.p-fill') + pin(3, '.p-judge') }), ['克制的行式复核：字段·置信圆点·值·推测/读取失败 chip（对齐名片复核的写法）', '只问判定必需的 3 项；推测值以 chip 一键采用；参加費允许「不明」', '点「判定する」→ ④ 结果；按钮在 2/3 项填好前也可点（缺项以区间计算）']],
+  ['④ 補完後の判定', '', phone({ body: rejudge(), tab: -1, pins: pin(1, '.p-supplied') + pin(2, '.p-why') }), ['结果页明示「你补了哪些项」，避免用户误以为全是 AI 读到的', '「?」展开：参加费不明 → 时间对效果以区间 55–70 表示，找到官方页后自动更新并推送']],
+]);
+h += wb('Web ① URL 読み取り失敗', '错误态', webFrame({ nav: 3, head: '', body: wErrUrl(), rail: wTipsRail(), pins: pin(1, '.p-werr') + pin(2, '.p-wopts') }), ['错误在输入框正下方原位展开（珊瑚浅底），不跳页、不弹窗', '三张替代卡横排；「画像を選ぶ」支持把截图直接拖进页面']);
+h += wb('Web ② ポスター補完', '信息不足', webFrame({ nav: 3, head: '', body: wErrPoster(), rail: wPreviewRail(), pins: pin(1, '.p-wfill') + pin(2, '.p-wprev') }), ['左图右表：海报大图对照识别结果，补全 3 项横排在同一卡内', '右栏「判定プレビュー」随输入实时变化：环形从浅紫骨架逐步填满，填完即出分']);
+
+/* ② */
+h += sec('② 探す（イベントを見つける）', 'イベント 页顶部 [評価 | 参加予定 | 探す]；推荐基于计划，社群活动置顶，筛选 = App 底部弹层 / Web 弹出层');
+h += boards([
+  ['探す', 'empty', phone({ body: discover('empty'), tab: 2, pins: pin(1, '.p-guide') }), ['无计划时只给一个主动作「目標を設定する」；其余入口退到 3 个马卡龙小卡；下方淡化サンプル + 幽灵行预告']],
+  ['探す', 'few', phone({ body: discover('few'), tab: 2, pins: pin(1, '.p-widen') }), ['结果少时给「放宽条件」一键建议，每条带可增加的件数（对标 Airbnb / 食べログ 的 0 件放宽提示）']],
+  ['探す', 'many', phone({ body: discover('many'), tab: 2, pins: pin(1, '.p-filter') + pin(2, '.p-comm') + pin(3, '.p-rec') }), ['筛选钮带已选数量角标；点 → 底部弹层（见右）', '社群活动置顶：会员限定/先行申込的 chip 用马卡龙小面积', '「プランに効く」横滑卡：理由一句 + 「?」展开依据；分数环单色系']],
+  ['探す · 絞り込み', '弹层', phone({ body: discover('many'), tab: 2, fab: false, overlay: filterSheet, pins: pin(1, '.p-fsheet') + pin(2, '.p-fshow') }), ['底部弹层从下滑入 + 背景暗化；chip 多选，选中=灰紫描边', '主按钮实时显示命中件数（28件），点 → 关闭弹层并刷新列表']],
+  ['探す · 検索', '输入中', phone({ body: searchState(), tab: -1, pins: pin(1, '.p-q') + pin(2, '.p-qpeople') }), ['搜索按 イベント / 主催 / 人脈 分组，命中词高亮', '人脈里的命中 → 「この人が登壇するイベント」，点进入联系人详情的活动 tab']],
+]);
+h += wb('Web 探す', 'empty', webFrame({ nav: 3, head: '', body: wDiscover('empty'), rail: wIntroRail(), pins: pin(1, '.p-wguide') }), ['横幅引导卡：主动作在右；3 个马卡龙次要入口；下方 3 张淡化サンプル卡']);
+h += wb('Web 探す', 'few', webFrame({ nav: 3, head: '', body: wDiscover('few'), rail: wQuickRail({ ...REC[1], n: '製造業 × SaaS ナイト', d: '10/9（金）19:00', score: 64, v: '条件付き', vc: 'apricot' }), pins: pin(1, '.p-wwiden') }), ['放宽条件做成一行按钮组，点击即改筛选并刷新（不清空其他条件）']);
+h += wb('Web 探す · テーマ弹出层', 'many', webFrame({ nav: 3, head: '', body: wDiscover('many') + wPopover, rail: wQuickRail(), pins: pin(1, '.p-wtheme') + pin(2, '.p-wpop') + pin(3, '.p-wcomm') + pin(4, '.p-whov') }), ['筛选按钮已选时变浅紫底；点击在按钮下方弹出层（Esc / 点外部关闭）', '弹出层与 App 底部弹层同一组选项；底部按钮显示命中件数', '社群活动置顶为两栏横条', '表格行悬停出现「保存 / 新窗口打开」；点行 → 右栏切换为该活动的快速评估']);
+
+/* ③ */
+h += sec('③ イベント詳細', '评估结果与详情合并为一页；评估分常驻顶部（滚动吸顶）；介绍 / 议程 / 主办 / 参会者 tab；底部固定「参加登録」');
+h += boards([
+  ['イベント詳細 · 参加者 0', 'empty', phone({ body: detail('empty'), tab: -1, overlay: ctaBar, pins: pin(1, '.p-score') + pin(2, '.p-notify') }), ['参加者未公开时「会える人」显示「—」，「?」说明只按登壇者算', '会えそうな人 只列登壇者 + 幽灵行；「公開されたら知らせる」订阅后分数重算并推送']],
+  ['イベント詳細 · 参加者 少', 'few', phone({ body: detail('few'), tab: -1, overlay: ctaBar, pins: pin(1, '.p-tabs') + pin(2, '.p-meet') + pin(3, '.p-cta') }), ['下划线 tab：紹介 / アジェンダ / 主催 / 参加者(数)，切换不跳页', '会えそうな人 = 参会者 × 你的计划；每行第二行是「为什么」', '底部玻璃 CTA 固定；点「参加登録」→ ④ AI 访谈']],
+  ['イベント詳細 · 参加者 多', 'many', phone({ body: detail('many'), tab: -1, overlay: ctaBar, pins: pin(3, '.p-tabs button', 2) + pin(1, '.p-score') + pin(2, '.p-plist') }), ['评估条吸顶：滚到参加者列表时仍可见分数和判定，点击展开内訳', '参加者 tab 默认「プランに合う 18」，可切到 知り合い / 全員；点行 → 参会者弹层（同⑥）', '「主催」页签 → 主催者名・开催实绩；点主催者名 → 主催者の公開ページ（⑦ E，可フォロー）']],
+]);
+h += wb('Web イベント詳細', 'empty', webFrame({ nav: 3, head: '', body: wDetail('empty'), rail: wDetailRail('empty'), pins: pin(1, '.p-wparts') }), ['参加者区块为幽灵行 + 订阅按钮；评估卡「会える人」显示 —']);
+h += wb('Web イベント詳細', 'few', webFrame({ nav: 3, head: '', body: wDetail('few'), rail: wDetailRail('few'), pins: pin(1, '.p-wscore') + pin(2, '.p-wcta') }), ['右上评估卡：分数 count-up + 内訳细条；「?」展开依据', '右栏底部固定报名卡；顶部「参加登録」按钮与之等价']);
+h += wb('Web イベント詳細', 'many', webFrame({ nav: 3, head: '', body: wDetail('many'), rail: wDetailRail('many'), pins: pin(1, '.p-wtabs') + pin(2, '.p-wparts') }), ['Web 上紹介与议程、主办同屏铺开，tab 仅作锚点跳转', '参加者用 4 列小卡网格，点卡 → 右侧抽屉（同人脈详情抽屉）']);
+
+/* ④ */
+h += sec('④ 参加登録（AI 面談式）→ 審査', '逐题问答 + 选项 chip + 进度；能从资料推出的不问；生成活动用人设（カバー率 / 話題 / 自己紹介）→ 申込 → 录取状态 4 种');
+h += boards([
+  ['① 質問に答える', '', phone({ body: regInterview(), tab: -1, overlay: regComposer, pins: pin(1, '.p-prog') + pin(2, '.p-prefill') + pin(3, '.p-opts') }), ['顶部「質問 3 / 5」+ 细进度条，回答后进度条滑动前进', '已知信息不再问：会社·役职从资料带入（对标 LinkedIn Easy Apply）', 'chip 多选，选中灰紫描边；也可在底部输入框自由回答或语音；「次へ」→ 下一题，第 5 题后 → ②']],
+  ['② 参加用プロフィール', '', phone({ body: regPersona(), tab: -1, pins: pin(1, '.p-cover') + pin(2, '.p-intro') + pin(3, '.p-scope') }), ['情報カバー率环 count-up；缺项「追加」→ 回到对应一题', '自己紹介为 AI 草稿，铅笔可改；「?」看依据（不含数字）', '公开范围分两层写清；「申し込む」→ ③']],
+  ['③ 申込完了 · 審査中', '', phone({ body: regDone(), tab: -1, pins: pin(1, '.p-check') + pin(2, '.p-status') + pin(3, '.p-confirm') }), ['对勾弹入动效（0.7s 回弹）', '4 段状态条：申込 → 審査 → 結果 → 当日，当前段加深', '写日历是 AI 写入动作 → 虚线确认卡，点「追加する」才写入']],
+]);
+h += `<div class="board" style="margin-top:8px"><div class="board-label">录取状态 4 种（状态卡组件，出现在 ③ 与活动详情顶部）</div>${statusStrip()}<p class="strip-note">審査中=灰紫；キャンセル待ち=杏色 + 排位 + 递补可能性细条；参加確定=薄荷 + 下一步「会う準備」；今回は見送り=灰（礼貌的否定结论：不用珊瑚，因为不是错误；也不用分类粉）+ 推荐相似活动。状态变化时推送通知，并同步更新日历里的「仮」日程（用户在③确认过才会有）。</p></div>`;
+h += wb('Web 参加登録', '', webFrame({ nav: 3, head: '', body: wReg(), rail: wRegRail(), pins: pin(1, '.p-wchat') + pin(2, '.p-wpersona') + pin(3, '.p-wflow') }), ['左：问答流（与 App 同一组题），回车 = 次へ', '右：人设实时预览，每答一题カバー率环增长、話題 chip 落入，自己紹介骨架闪光直到生成', '右栏：流程 4 步 + 自动带入项说明']);
+
+/* ⑤ */
+h += sec('⑤ 会う準備（前日・当日）', '会いたい人（为什么 / 开场白 / 已有关系）+ 准备清单 + 名片余量 + 地图与开始时间');
+h += boards([
+  ['会う準備', '', phone({ body: prep(), tab: -1, pins: pin(6, '.p-checkin') + pin(1, '.p-when') + pin(2, '.p-cards') + pin(3, '.p-acc') + pin(4, '.p-check2') + pin(5, '.p-follow') }), ['开始倒计时 + 迷你地图；「地図アプリで開く」调起系统地图（真实导航）', '名片余量不足用珊瑚浅底提醒（量化：现有 8 / 建议 15）', '会いたい人 手风琴：点行展开 なぜ / 話しかけ方 / これまで，开场白可复制', '清单点击打勾（划线变灰）', '翌朝跟进时段 = 虚线确认卡，点「追加する」才写入日历', '「チェックイン」→ ⑥ ① チェックイン（受付 QR / 名前）→ 完了后 App 切到会場モード（⑥ ② 現場ホーム）']],
+]);
+h += wb('Web 会う準備', '', webFrame({ nav: 3, head: '', body: wPrep(), rail: wPrepRail(), pins: pin(1, '.p-wcards') + pin(2, '.p-wmeet') + pin(3, '.p-wfollow') }), ['名片余量用珊瑚色环（8/15）', '会いたい人 用表格四列平铺，方便会前在电脑上一次看完', '确认卡放在清单卡底部']);
+
+/* ⑥ */
+h += sec('⑥ 会場モード（当日）', '签到后整个 App 切到会场模式：底部 5 项 现場 / おすすめ / 参加者 / グループ / 予定；参加者内可切「関係マップ」；右上 ✕ 退出');
+h += boards([
+  ['① 受付', '', phone({ body: checkin(), tab: -1, pins: pin(1, '.p-cseg') + pin(2, '.p-qr') + pin(3, '.p-after') }), ['QR / 名前で受付 两种方式 seg 切换', '进入页面自动调高屏幕亮度；受付番号兜底', '主办扫码成功 → 推送「受付完了」并自动切到 ② 现场首页']],
+  ['② 現場ホーム', '', phone({ body: liveHome(), tab: -1, overlay: liveBar(0), pins: pin(6, '.p-endrow') + pin(1, '.p-now') + pin(2, '.p-seat') + pin(3, '.p-rounds') + pin(4, '.p-why2') + pin(5, '.p-ice') }), ['当前环节 + 剩余时间细条（每分钟刷新）', '桌号是最大的字：一眼找到座位', '三轮座位条：已过/当前（反色）/下一轮', '「?」展开为什么坐这里（双方申请内容匹配）', '破冰话题 3 条，↻ 换一组', '左上 ✕「会場モードを終える」或活动结束推送 → ⑦ 今日のふりかえり（会後）']],
+  ['③ おすすめ', '', phone({ body: liveRecs(), tab: -1, overlay: liveBar(1), pins: pin(1, '.p-pc') + pin(2, '.p-order') }), ['人物卡横滑（scroll-snap）；「交換を申請」→ 对方收到申请；✕ = 从推荐中移除', '「次に話すと良い順」点行 → 参会者弹层（⑧）']],
+  ['④ 参加者一覧', '', phone({ body: liveList(), tab: -1, overlay: liveBar(2), pins: pin(1, '.p-lsearch') + pin(2, '.p-llist') }), ['搜索名字/公司/主题；chip 快速筛 会いたい / 交換済み / 申請', '状态 chip：交換済み 薄荷 / 申請が届いています 浅紫 / 申請中 灰；点行 → ⑧']],
+  ['⑤ グループ', '', phone({ body: liveGroups(), tab: -1, overlay: liveBar(3), pins: pin(1, '.p-mygrp') + pin(2, '.p-grps') }), ['本轮我的桌：成员 + 主题（不做群聊）', '其他桌按主题列出，点 → 该桌成员列表']],
+  ['⑥ 関係マップ', '', phone({ body: liveMap(), tab: -1, overlay: liveBar(2), pins: pin(1, '.p-map') + pin(2, '.p-legend') }), ['单色系点线图：你在中心；实线深紫=已交换，浅紫=旧识，虚线=想见，灰=其他', '点节点 → ⑧ 弹层；双指缩放；只显示已签到的参会者']],
+  ['⑦ アジェンダ', '', phone({ body: liveAgenda(), tab: -1, overlay: liveBar(4), pins: pin(1, '.p-agenda') + pin(2, '.p-focus') }), ['时间轴：已过变淡，当前珊瑚点 +「いま」，每轮注明你的桌号', '「注目」卡给出一个最值得做的动作 + 依据']],
+  ['⑧ 参加者シート', '弹层', phone({ body: liveList(), tab: -1, overlay: personSheet, pins: pin(1, '.p-req') + pin(2, '.p-memo') + pin(3, '.p-meetbtn') }), ['收到交换申请：承認して交換 / 無視（无视不通知对方）；承认 → ⑩ 轻提示', '一句话或语音 memo（只录自己的短语音，转文字；不做全场录音）', '「面談を提案」→ ⑨，弹层内推入下一层']],
+  ['⑨ 面談を提案', '弹层', phone({ body: liveList(), tab: -1, overlay: meetSheet, pins: pin(1, '.p-slots') }), ['从你日历空闲中给 5 个候选，默认选 3 个；对方选 1 个即双方确定（对标 Calendly / TimeRex）；不附带消息']],
+  ['⑩ 交換成功', '轻提示', phone({ body: liveHome(), tab: -1, overlay: liveBar(0) + toast, pins: pin(1, '.p-toast') }), ['标准 Toast（01-system ①）：会场横条上方 12px 自下滑入，5 秒倒计时线；「元に戻す」5 秒内撤销。NFC 碰一下交换另用 24 小时「取り消す」撤销条（见 b6 NFC ②），并推送告知对方']],
+]);
+h += wb('Web 会場モード', '', webFrame({ nav: 3, head: '', body: wLive(), rail: wPersonRail(), pins: pin(1, '.p-wseat') + pin(2, '.p-wpsel') + pin(3, '.p-wreq') + pin(4, '.p-wslots') + pin(5, '.p-wmap') }), ['Web 版供会场外的同事/助理或平板查看：一屏汇总 桌号·当前环节·破冰', '点推荐卡 → 卡片描边选中，右栏显示参会者详情（主从，不弹窗）', '右栏：交換申請の 承認 / 無視', '面談を提案 候选时段 chip 多选', '关系图与 App 同一套单色系图例']);
+
+/* ⑦ */
+h += sec('⑦ 会後のふりかえり', '今日会った人 N（大数字）→ AI 总结（带依据）→ 次の一手 批量确认（✓/✕）→ 回写プラン スコア 46 → 56（计划 v2 口径：满点 100 · 不封顶）');
+h += boards([
+  ['会後', 'empty', phone({ body: post('empty'), tab: -1, pins: pin(1, '.p-pguide') }), ['没有交换记录时：主动作「从参会者一览选」+ 扫名片/语音两个马卡龙入口 + 淡化サンプル']],
+  ['会後', 'few', phone({ body: post('few'), tab: -1, pins: pin(1, '.p-sum') + pin(2, '.p-prog2') }), ['总结只有 1 条时不硬凑；「?」展开依据（交换记录/你的 memo）', '人数少时只 +3（起業家 1人），同样给出依据']],
+  ['会後', 'many', phone({ body: post('many'), tab: -1, pins: pin(1, '.p-bign') + pin(2, '.p-batch') + pin(3, '.p-prog2') }), ['今日会った人 大数字 count-up', '批量确认卡（虚线）：每人 3 个动作 chip（お礼の下書き / フォロー日 / プランに紐づけ）可单独点掉；行尾 ✓/✕ 整行取舍；确定后才写入，邮件只到草稿', '确认后スコア条：46 底色上长出豆沙玫瑰段，数字 46→56 滚动，+10 标签（VC パートナー 达到目标人数）；「?」看加分来源']],
+]);
+h += wb('Web 会後', 'empty', webFrame({ nav: 3, head: '', body: wPost('empty'), rail: wIntroRail(), pins: pin(1, '.p-wpguide') }), ['引导卡 + 3 个导入入口；Web 支持名片图片批量拖入']);
+h += wb('Web 会後', 'few', webFrame({ nav: 3, head: '', body: wPost('few'), rail: wDraftRail() }));
+h += wb('Web 会後', 'many', webFrame({ nav: 3, head: '', body: wPost('many'), rail: wDraftRail(), pins: pin(1, '.p-wbign') + pin(2, '.p-wbatch') + pin(3, '.p-wdraft') }), ['三卡并排：人数 / 总结 / 进度回写（数字动效同 App）', '次の一手 表格化：一行一人，动作单元格可点掉；✕ 行变淡；底部一次确定', '右栏为选中行的お礼草稿：只给 下書きを作成 / コピー / メールアプリで開く，并写明不代发']);
+
+/* ダーク */
+h += sec('ダークモード', '活动详情 / 会場ホーム / 参加者シート / 会後 —— 深炭灰底，卡片高一级，警告保持柔和珊瑚');
+h += boards([
+  ['イベント詳細', 'many', phone({ body: detail('many'), tab: -1, overlay: ctaBar, theme: 'dark' })],
+  ['会場ホーム', '', phone({ body: liveHome(), tab: -1, overlay: liveBar(0), theme: 'dark' })],
+  ['参加者シート', '弹层', phone({ body: liveList(), tab: -1, overlay: personSheet, theme: 'dark' })],
+  ['会後', 'many', phone({ body: post('many'), tab: -1, theme: 'dark' })],
+]);
+h += wb('Web イベント詳細', 'many', webFrame({ nav: 3, head: '', body: wDetail('many'), rail: wDetailRail('many'), theme: 'dark' }));
+h += wb('Web 会後', 'many', webFrame({ nav: 3, head: '', body: wPost('many'), rail: wDraftRail(), theme: 'dark' }));
+
+document.getElementById('out').innerHTML = h;
+
+/* 私有交互：选项 chip / 开关 / ✓✕ / 动作 chip / tab / 清单 / 时段 / 面板卡选择 */
+document.addEventListener('click', e => {
+  const t = e.target.closest('.opt, .fopt, .sw, .act, .slot, .chk');
+  if (t) { t.classList.toggle(t.classList.contains('chk') ? 'done' : 'on'); if (t.classList.contains('chk')) t.querySelector('.box').innerHTML = t.classList.contains('done') ? ic('check', 'sm') : ''; }
+  const yn = e.target.closest('.yn');
+  if (yn) { const row = yn.closest('.nx, tr'); const btns = yn.parentElement.querySelectorAll('.yn'); btns.forEach(b => b.classList.toggle('on', b === yn)); if (row) row.classList.toggle('off', yn.textContent.trim() === '✕'); }
+  const tb = e.target.closest('.utabs button');
+  if (tb) tb.parentElement.querySelectorAll('button').forEach(b => b.classList.toggle('on', b === tb));
+  const c = e.target.closest('.evc');
+  if (c) { const g = c.parentElement; g.querySelectorAll('.evc').forEach(x => x.classList.toggle('sel', x === c)); }
+});
+/* スコア回写动画：46 → 56 */
+function progAnim(root = document) {
+  root.querySelectorAll('.bar2 .add').forEach(b => { b.style.width = '0'; });
+  root.querySelectorAll('.cntfrom').forEach(el => { el.textContent = el.dataset.from; });
+  setTimeout(() => {
+    root.querySelectorAll('.bar2 .add').forEach(b => { b.style.width = b.dataset.w + '%'; });
+    root.querySelectorAll('.cntfrom').forEach(el => {
+      const a = +el.dataset.from, z = +el.dataset.to, t0 = performance.now(), d = 1200;
+      const step = t => { const p = Math.min(1, (t - t0) / d), k = 1 - Math.pow(1 - p, 3); el.textContent = Math.round(a + (z - a) * k); if (p < 1) requestAnimationFrame(step); };
+      requestAnimationFrame(step);
+    });
+  }, 450);
+}
+window.addEventListener('load', () => progAnim());
+document.querySelectorAll('[data-ctl="theme"] button').forEach(b => b.addEventListener('click', () => progAnim()));
+docNav('b2-events-flow'); orbitChrome();
+</script>
+</body>
+</html>

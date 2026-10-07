@@ -1,0 +1,603 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Orbit Web 新UI</title>
+<link rel="stylesheet" href="kit/tokens.css">
+<link rel="stylesheet" href="kit/ui.css">
+<script src="kit/kit.js"></script>
+<script src="kit/data.js"></script>
+<style>
+  .doc { min-width: 1520px; }
+  .zoomer { transform-origin: top left; }
+  .kpi .lbl { white-space: nowrap; }
+  .kpi b { font-family: var(--font-num); font-size: 24px; font-weight: 800; display: block; line-height: 1.15; }
+  .tl { display: grid; grid-template-columns: 50px 1fr; gap: 12px; align-items: start; }
+  .tl + .tl { margin-top: 10px; }
+  .tl time { font-family: var(--font-num); font-weight: 800; font-size: 13px; padding-top: 10px; }
+  .tl .blk { border-radius: 16px; padding: 10px 14px; }
+  .evc { background: var(--surface); border-radius: 22px; padding: 18px; transition: transform .2s var(--ease), box-shadow .2s; cursor: pointer; position: relative; }
+  .evc:hover { transform: translateY(-3px); box-shadow: var(--shadow-float); }
+  .evc.sel { box-shadow: 0 0 0 2px var(--plum-500); }
+  .score { font-family: var(--font-num); font-weight: 800; }
+  .hov-acts { display: flex; gap: 6px; opacity: 0; transition: opacity .2s; }
+  .table tr:hover .hov-acts, .hov-acts.show { opacity: 1; }
+  .drop { border: 1.6px dashed var(--plum-300); border-radius: 18px; padding: 18px; display: flex; align-items: center; justify-content: center; gap: 10px; color: var(--ink-2); font-size: 13px; background: color-mix(in srgb, var(--accent-soft) 55%, transparent); }
+  .crit { display: grid; grid-template-columns: 84px 1fr 30px; gap: 10px; align-items: center; font-size: 12.5px; }
+  .crit + .crit { margin-top: 8px; } .crit .bar { margin: 0; }
+  .sugg { background: var(--surface); border-radius: 18px; padding: 14px; transition: transform .15s var(--ease); cursor: pointer; }
+  .sugg:hover { transform: translateX(-2px); }
+  .sugg + .sugg { margin-top: 0; }
+  .ghost-tr td { color: var(--ink-4); }
+  .ghost-tr i { display: inline-block; height: 10px; border-radius: 5px; background: var(--surface-2); }
+  .bars { display: flex; align-items: flex-end; gap: 6px; height: 110px; }
+  .bars i { flex: 1; border-radius: 8px 8px 4px 4px; background: var(--plum-300); }
+  .bars i.hi { background: var(--plum-700); }
+  .goaltiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .goaltiles button { background: var(--surface-2); border-radius: 20px; padding: 16px; text-align: left; display: flex; flex-direction: column; gap: 8px; font-weight: 700; font-size: 13.5px; border: 2px solid transparent; }
+  .goaltiles button.on { border-color: var(--plum-500); background: var(--surface); }
+  .goaltiles small { font-size: 11.5px; color: var(--ink-3); font-weight: 500; }
+  /* V2KIT-CSS-BEGIN */
+  /* ===== プラン v2 口径（2026-10-07）：视觉与数字与 b9-import-plan-v2.html 一致；类名加 v2 前缀避免与本页私有类冲突 ===== */
+  .v2bar { display: flex; gap: 3px; height: 14px; position: relative; margin-top: 18px; }
+  .v2bar.thin { height: 8px; gap: 2px; margin-top: 12px; }
+  .v2bar .sg { position: relative; border-radius: 5px; background: var(--surface-3); overflow: hidden; min-width: 6px; }
+  .v2bar.thin .sg { border-radius: 3px; min-width: 3px; }
+  .v2bar .sg > b { position: absolute; left: 0; top: 0; bottom: 0; background: var(--plum-700); animation: v2grow 1.2s var(--ease) both; }
+  .v2bar .sg.sk, .v2sw.hatch, .v2mb.sk { background: repeating-linear-gradient(135deg, var(--plum-300) 0 2px, var(--plum-100) 2px 6px); }
+  .v2bar .sg.bonus { background: var(--rose-500); }
+  .v2bar .m100 { position: absolute; top: -5px; bottom: -5px; width: 2px; margin-left: -1px; background: var(--ink-2); border-radius: 1px; z-index: 2; }
+  .v2bar .m100 em { position: absolute; top: -16px; left: 50%; transform: translateX(-50%); font-style: normal; font-size: 9.5px; font-weight: 800; color: var(--ink-2); font-family: var(--font-num); white-space: nowrap; }
+  .v2slbl { display: flex; gap: 3px; margin-top: 6px; }
+  .v2slbl span { font-size: 10px; color: var(--ink-3); font-weight: 700; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 6px; }
+  @keyframes v2grow { from { width: 0; } }
+  .v2lg { display: flex; flex-wrap: wrap; gap: 6px 12px; margin-top: 12px; font-size: 11px; color: var(--ink-2); font-weight: 600; }
+  .v2lg span { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+  .v2sw { width: 14px; height: 9px; border-radius: 3px; background: var(--surface-3); display: inline-block; flex: none; }
+  .v2sw.solid { background: var(--plum-700); } .v2sw.bonus { background: var(--rose-500); }
+  /* 人物类型行 */
+  .v2prow { display: flex; align-items: center; gap: 10px; padding: 10px 0; }
+  .v2prow + .v2prow { border-top: 1px solid var(--line); }
+  .v2prow .pm { flex: 1; min-width: 0; }
+  .v2prow .pm b { display: block; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .v2prow .pm .chips { margin-top: 4px; flex-wrap: nowrap; overflow: hidden; }
+  .v2prow .pe { width: 76px; flex: none; text-align: right; }
+  .v2pp { font-family: var(--font-num); font-weight: 800; font-size: 15px; white-space: nowrap; }
+  .v2pp small { font-size: 11px; color: var(--ink-3); font-weight: 700; }
+  .v2mb { height: 5px; border-radius: 3px; background: var(--surface-3); margin-top: 4px; overflow: hidden; position: relative; display: flex; }
+  .v2mb > b { height: 100%; background: var(--plum-700); animation: v2grow 1.2s var(--ease) both; }
+  .v2mb > b.bo { background: var(--rose-500); }
+  /* Step 竖排 + 人物类型卡 */
+  .v2step { position: relative; padding-left: 40px; }
+  .v2step + .v2step { margin-top: 16px; }
+  .v2step::before { content: ""; position: absolute; left: 13px; top: 32px; bottom: -16px; width: 2px; background: var(--surface-3); border-radius: 1px; }
+  .v2step:last-child::before { display: none; }
+  .v2step .sn { position: absolute; left: 0; top: 0; width: 28px; height: 28px; border-radius: 50%; background: var(--ink); color: var(--bg); display: grid; place-items: center; font-weight: 800; font-size: 12.5px; font-family: var(--font-num); }
+  .v2step .st { font-size: 14.5px; font-weight: 800; line-height: 1.4; padding-top: 4px; display: flex; gap: 8px; align-items: flex-start; }
+  .v2step .st > span:first-child { flex: 1; }
+  .v2pcard { background: var(--surface); border-radius: 18px; padding: 12px 14px; margin-top: 8px; }
+  .card .v2pcard { background: var(--surface-2); } .card .v2pcard .pts > div { background: var(--surface); }
+  .v2pcard .row b { font-size: 13.5px; }
+  .v2pcard .pts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 10px; }
+  .v2pcard .pts > div { background: var(--surface-2); border-radius: 12px; padding: 6px 8px; }
+  .v2pcard .pts b { font-family: var(--font-num); font-size: 16px; font-weight: 800; display: block; line-height: 1.2; }
+  .v2snum { width: 28px; height: 28px; border-radius: 50%; background: var(--ink); color: var(--bg); display: grid; place-items: center; font-weight: 800; font-size: 12.5px; font-family: var(--font-num); flex: none; }
+  .v2ell { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* 首页：人脉首卡 */
+  .v2avs { display: flex; align-items: center; }
+  .v2avs .av { border: 2px solid var(--surface); margin-left: -8px; } .v2avs .av:first-child { margin-left: 0; }
+  .v2avs .more { margin-left: 6px; font-family: var(--font-num); font-weight: 800; font-size: 12px; color: var(--ink-2); background: var(--surface-2); border-radius: 999px; padding: 3px 8px; white-space: nowrap; }
+  .v2split { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+  .v2split > div { background: var(--surface-2); border-radius: 14px; padding: 9px 11px; min-width: 0; }
+  .v2split b { font-family: var(--font-num); font-size: 19px; font-weight: 800; display: block; line-height: 1.2; }
+  .v2split .bar { margin: 6px 0 0; }
+  .v2spark { display: block; overflow: visible; }
+  .v2spark .ln { fill: none; stroke: var(--plum-700); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .v2spark .ar { fill: var(--plum-100); opacity: .8; stroke: none; }
+  .v2spark .pt { fill: var(--plum-700); }
+  .v2go { display: flex; align-items: center; gap: 4px; margin-top: 12px; font-size: 12px; font-weight: 700; color: var(--ink-2); }
+  .v2chance { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 999px; background: var(--mac-lav); color: var(--mac-lav-ink); font-size: 11.5px; font-weight: 800; white-space: nowrap; }
+  .v2today { display: flex; align-items: center; gap: 10px; margin-top: 12px; padding: 10px 12px; border-radius: 16px; background: var(--surface-2); }
+  .v2today .meta { flex: 1; min-width: 0; }
+  .v2today .meta b { display: block; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .v2today .meta span { display: block; font-size: 11.5px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .v2plus { font-family: var(--font-num); font-weight: 900; font-size: 15px; color: var(--plum-700); white-space: nowrap; flex: none; }
+  /* V2KIT-CSS-END */
+  /* HOME-V3-CSS-BEGIN */
+  /* ===== 首页 v3「軌道ビュー」（2026-10-07）：同心轨道 + 头像点 + 光晕 + 旋转；本文件私有（app.html / web.html 各一份） ===== */
+  .orb { position: relative; overflow: hidden; flex: none; margin: 0 auto; }
+  .orb-svg { position: absolute; left: 0; top: 0; }
+  .orb-svg circle { fill: none; stroke-width: 1; }
+  .orb-ring { position: absolute; border-radius: 50%; animation: orbSpin var(--dur) linear infinite; animation-direction: var(--dir); }
+  .od-pos { position: absolute; width: 0; height: 0; }
+  .orb .od { position: absolute; width: var(--od); height: var(--od); left: calc(var(--od) / -2); top: calc(var(--od) / -2); font-size: calc(var(--od) * .46); font-weight: 800; box-shadow: 0 0 0 2px var(--surface); z-index: 1;
+    animation: orbSpin var(--dur) linear infinite; animation-direction: var(--cdir); }
+  .orb .od.goal::after { content: ""; position: absolute; right: -3px; top: -3px; width: 7px; height: 7px; border-radius: 50%; background: var(--rose-500); box-shadow: 0 0 0 1.5px var(--surface); }
+  .od-glow { position: absolute; width: calc(var(--od) + 10px); height: calc(var(--od) + 10px); left: calc(var(--od) / -2 - 5px); top: calc(var(--od) / -2 - 5px); border-radius: 50%;
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--mac-lav-ink) 30%, transparent), 0 0 12px 4px color-mix(in srgb, var(--mac-lav-ink) 42%, transparent);
+    animation: orbBreath 3.4s ease-in-out infinite; }
+  .od-pos:nth-child(2n) .od-glow { animation-delay: -1.7s; }
+  .orb-me { position: absolute; border-radius: 50%; background: var(--ink); color: var(--bg); display: grid; place-items: center; font-weight: 800; z-index: 2; animation: orbMe 3.2s var(--ease) infinite; }
+  .orb-me.idle { animation: none; background: var(--surface-2); color: var(--ink-2); box-shadow: 0 0 0 1.5px var(--plum-300); }
+  .od-ph { position: absolute; border-radius: 50%; border: 1.5px dashed var(--plum-500); color: var(--plum-700); display: grid; place-items: center; font-size: 13px; font-weight: 800; animation: orbPh 2.4s ease-in-out infinite; }
+  .orb-n { position: absolute; transform: translate(-50%, -50%); z-index: 3; display: inline-flex; align-items: center; gap: 4px; padding: 1px 7px 1px 5px; border-radius: 999px; background: var(--surface); box-shadow: 0 0 0 1px var(--line); font-size: 9.5px; font-weight: 700; color: var(--ink-3); white-space: nowrap; }
+  .orb-n i { width: 6px; height: 6px; border-radius: 50%; }
+  .orb-n b { font-family: var(--font-num); font-weight: 800; color: var(--ink-2); }
+  .orb-hd { position: absolute; left: 0; top: 0; z-index: 4; padding: 0 22px 18px 0; background: radial-gradient(farthest-side at 0 0, var(--surface) 70%, transparent); }
+  .orb-hd .big { font-size: 34px; }
+  .orb-hd .delta { display: inline-block; margin-top: 4px; }
+  .orb-lg { position: absolute; right: 0; bottom: 0; z-index: 4; display: grid; gap: 3px; justify-items: end; padding: 14px 0 0 20px; font-size: 10.5px; font-weight: 600; color: var(--ink-2); background: radial-gradient(farthest-side at 100% 100%, var(--surface) 72%, transparent); }
+  .orb-lg span { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+  .orb-lg b { font-family: var(--font-num); font-weight: 800; color: var(--ink); }
+  .lg-goal { width: 7px; height: 7px; border-radius: 50%; background: var(--rose-500); }
+  .lg-new { width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid var(--surface-3); box-shadow: 0 0 6px 2px color-mix(in srgb, var(--mac-lav-ink) 40%, transparent); }
+  .orb-sel { position: absolute; width: 0; height: 0; z-index: 5; }
+  .orb-sel .av { position: absolute; width: 28px; height: 28px; left: -14px; top: -14px; font-size: 12px; box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--plum-700); }
+  .orb-sel .av::after { content: ""; position: absolute; right: -3px; top: -3px; width: 8px; height: 8px; border-radius: 50%; background: var(--rose-500); box-shadow: 0 0 0 1.5px var(--surface); }
+  .orb-pop { position: absolute; z-index: 6; background: var(--surface); border-radius: 16px; padding: 10px 12px 10px; box-shadow: var(--shadow-float), 0 0 0 1px var(--line); animation: orbPop .5s var(--ease) both; }
+  .orb-pop::after { content: ""; position: absolute; bottom: -5px; left: var(--tx); width: 10px; height: 10px; margin-left: -5px; background: var(--surface); transform: rotate(45deg); border-radius: 2px; box-shadow: 1px 1px 0 0 var(--line); }
+  .orb-pop .pn { display: flex; align-items: center; gap: 6px; }
+  .orb-pop .pn b { font-size: 13px; white-space: nowrap; }
+  .orb-pop .pw { font-size: 11.5px; font-weight: 700; color: var(--ink); line-height: 1.45; margin-top: 4px; }
+  .orb-pop .btn.sm { height: 26px; padding: 0 10px; font-size: 11px; }
+  .orb-st { display: grid; gap: 6px; margin-top: 14px; font-size: 11.5px; }
+  .orb-st > div { display: flex; align-items: center; gap: 7px; }
+  .orb-st i { width: 14px; height: 2px; border-radius: 1px; }
+  .orb-st span { color: var(--ink-2); font-weight: 600; }
+  .orb-st b { margin-left: auto; font-family: var(--font-num); font-weight: 800; }
+  [data-theme="dark"] .orb-pop, [data-theme="dark"] .orb-pop::after { background: var(--surface-3); }
+  @keyframes orbSpin { to { transform: rotate(360deg); } }
+  @keyframes orbBreath { 0%, 100% { opacity: .4; transform: scale(.86); } 50% { opacity: 1; transform: scale(1.1); } }
+  @keyframes orbPh { 0%, 100% { opacity: .45; transform: scale(.9); } 50% { opacity: 1; transform: scale(1.08); } }
+  @keyframes orbPop { from { opacity: 0; transform: translateY(6px) scale(.94); } }
+  @keyframes orbMe { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--plum-500) 45%, transparent); } 70%, 100% { box-shadow: 0 0 0 14px color-mix(in srgb, var(--plum-500) 0%, transparent); } }
+  /* 今週ストリップ */
+  .wk7 { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .wd { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 7px 0 8px; border-radius: 999px; transition: background .2s var(--ease); }
+  .wd small { font-size: 10px; font-weight: 700; color: var(--ink-3); }
+  .wd b { font-family: var(--font-num); font-size: 15px; font-weight: 800; line-height: 1.1; }
+  .wd .dts { display: flex; gap: 2px; height: 5px; }
+  .wd .dts i { width: 5px; height: 5px; border-radius: 50%; }
+  .dts i.lav { background: var(--mac-lav-ink); } .dts i.blue { background: var(--mac-blue-ink); } .dts i.apricot { background: var(--mac-apricot-ink); } .dts i.teal { background: var(--mac-teal-ink); } .dts i.pink { background: var(--mac-pink-ink); }
+  .wd.past { opacity: .45; }
+  .wd.on { background: var(--ink); color: var(--bg); } .wd.on small { color: inherit; opacity: .7; } .wd.on .dts i { box-shadow: 0 0 0 1.5px var(--ink); }
+  .wk-open { margin-top: 10px; background: var(--surface-2); border-radius: 18px; padding: 12px; position: relative; animation: wkOpen .45s var(--ease) both; }
+  .wk-open::before { content: ""; position: absolute; top: -5px; left: var(--nx); width: 12px; height: 12px; margin-left: -6px; background: var(--surface-2); transform: rotate(45deg); border-radius: 2px; }
+  .wk-open .tl .blk { background-clip: padding-box; }
+  @keyframes wkOpen { from { opacity: 0; transform: translateY(-4px); } }
+  /* 今日の一手：卡片堆叠 */
+  .nstack { position: relative; padding-bottom: 14px; margin-top: var(--gap); }
+  .nstack + .card, .nstack + div { margin-top: 6px; }
+  .nst-back { position: absolute; left: 0; right: 0; top: 0; bottom: 14px; border-radius: var(--r-xl); background: var(--surface); }
+  .nst-back.b1 { transform: translateY(7px) scale(.95); opacity: .75; }
+  .nst-back.b2 { transform: translateY(14px) scale(.9); opacity: .45; }
+  .nst-front { position: relative; z-index: 2; background: linear-gradient(135deg, var(--mac-lav), var(--surface) 70%); animation: nstNudge 3.6s var(--ease) 1.6s 1; }
+  .nst-face { display: none; } .nst-face.on { display: block; }
+  .nst-n { font-family: var(--font-num); font-weight: 800; font-size: 12px; color: var(--ink-3); }
+  .nst-next { width: 28px; height: 28px; background: var(--surface); }
+  @keyframes nstNudge { 18% { transform: translateX(-26px) rotate(-2.5deg); } 42%, 100% { transform: none; } }
+  /* 人脈：信息浓度三点 / 来源 / 5 门（与 ⑨ b9 同款） */
+  .chip svg.i { width: 12px; height: 12px; }
+  .dn { display: inline-flex; gap: 3px; align-items: center; flex: none; }
+  .dn i { width: 7px; height: 7px; border-radius: 50%; background: var(--surface-3); }
+  .dn.d1 i:nth-child(1), .dn.d2 i:nth-child(-n+2), .dn.d3 i { background: var(--plum-700); }
+  .rend { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; flex: none; }
+  .stack3 { display: flex; height: 12px; border-radius: 6px; overflow: hidden; gap: 2px; margin-top: 10px; }
+  .stack3 > i { display: block; height: 100%; }
+  .door { display: flex; gap: 12px; align-items: center; padding: 12px; border-radius: 18px; background: var(--surface-2); }
+  .door + .door { margin-top: 8px; }
+  .door .dm { flex: 1; min-width: 0; }
+  .door b { font-size: 14px; display: block; }
+  .door .gets { font-size: 11.5px; color: var(--ink-2); line-height: 1.5; margin-top: 1px; }
+  .doors2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+  .doors2 .door, .wmodal .door { flex-direction: column; align-items: flex-start; gap: 8px; margin: 0; }
+  .doors2 .door .row, .wmodal .door .row { width: 100%; }
+  .addgrid.g5 { grid-template-columns: repeat(5, 1fr); gap: 6px; }
+  .addgrid.g5 button { padding: 10px 2px 9px; gap: 5px; font-size: 10.5px; line-height: 1.25; text-align: center; border-radius: 16px; }
+  @media (prefers-reduced-motion: reduce) {
+    .orb-ring, .orb .od, .od-glow, .od-ph, .orb-me, .orb-pop, .nst-front, .wk-open { animation: none !important; }
+  }
+  .wgrid > .nstack { margin-top: 0; display: flex; flex-direction: column; } .wgrid > .nstack > .nst-front { flex: 1; }
+  /* HOME-V3-CSS-END */
+</style>
+</head>
+<body>
+<div class="doc">
+  <div class="doc-head">
+    <div>
+      <div class="doc-kicker">Orbit Redesign · 2026-10 · Desktop 1440</div>
+      <h1>Web 新 UI</h1>
+      <p>左侧 84px 窄边栏替代顶栏导航；主区 12 列卡片网格（2–3 列成组）；右侧 360px 常驻栏放 iOrbit 助手 /「次の一手」，在活动页变成评估详情（主从布局）。悬停：卡片上浮 3px、表格行出现快捷操作；点击评估卡切换右栏。</p>
+    </div>
+    <div class="doc-tools">
+      <div class="seg" data-ctl="theme"><button data-v="light">ライト</button><button data-v="dark">ダーク</button></div>
+      <div class="seg" data-ctl="pins"><button data-v="on" class="on">标注 ON</button><button data-v="off">OFF</button></div>
+    </div>
+  </div>
+  <nav class="doc-nav" id="docnav"></nav>
+  <div id="out"></div>
+</div>
+<script>
+/* V2KIT-JS-BEGIN */
+/* ===== プラン v2 口径（2026-10-07）：数据与计分与 b9-import-plan-v2.html 相同（满点 100 · 不封顶 · 跳过=满额斜纹 · 超目标半分）===== */
+const V2 = (() => {
+  const PER = {
+    cfo: { n: 'CFO 経験者', s: 'CFO', emo: '📊', c: 'teal', w: 10, tgt: 1, unit: 10, step: 1, cand: 1 },
+    ent: { n: '調達経験のある起業家', s: '起業家', emo: '🚀', c: 'apricot', w: 15, tgt: 5, unit: 3, step: 2, cand: 2 },
+    ang: { n: 'エンジェル投資家', s: 'エンジェル', emo: '🪽', c: 'pink', w: 10, tgt: 2, unit: 5, step: 2, cand: 1 },
+    vc: { n: 'VC パートナー', s: 'VC', emo: '💼', c: 'lav', w: 30, tgt: 3, unit: 10, step: 3, cand: 4 },
+    cvc: { n: 'CVC 担当者', s: 'CVC', emo: '🏢', c: 'blue', w: 15, tgt: 3, unit: 5, step: 3, cand: 0 },
+    law: { n: '弁護士（投資契約）', s: '弁護士', emo: '⚖️', c: 'teal', w: 10, tgt: 1, unit: 10, step: 4, cand: 1 },
+    ev: { n: 'イベント', s: 'イベント', emo: '🎟️', c: 'apricot', w: 10, tgt: 2, unit: 5, step: 0, cand: 3, ev: true },
+  };
+  const ORDER = ['cfo', 'ent', 'ang', 'vc', 'cvc', 'law', 'ev'];
+  const ST = {
+    s0: { cfo: 0, ent: 0, ang: 0, vc: 0, cvc: 0, law: 0, ev: 0 },
+    s46: { cfo: 0, ent: 2, ang: 0, vc: 2, cvc: 0, law: 'skip', ev: 2 },
+  };
+  const STEPS = [
+    [1, 'ピッチと事業計画を固める', '投資家に会う前に、数字と物語の穴を潰しておくと、1回の面談で進む距離が伸びます。', ['cfo'], '同規模のシリーズA 事例 · あなたの目標「3億円」から逆算'],
+    [2, '調達経験のある先輩・エンジェルに相談', '最近同じ規模を調達した人から、VC の選び方・相場観・紹介ルートを得られます。', ['ent', 'ang'], '紹介経由の面談は進みやすい傾向（一般的な調達の進め方）'],
+    [3, 'VC と接点を持つ', 'リード候補を 3 社以上、並行で。事業会社の CVC は条件の選択肢を増やします。', ['vc', 'cvc'], 'シリーズA の典型的な投資家構成 · あなたの業種（製造業向け SaaS）'],
+    [4, 'DD・条件交渉', '投資契約・種類株式の条件は後から変えにくいので、署名前に専門家の目を入れます。', ['law'], '投資契約で論点になりやすい条項（優先清算・希薄化防止）'],
+    [5, 'クロージング', '新しく会う人はいません。Step 3・4 の相手と着地させます。', [], ''],
+  ];
+  const pts = (k, n) => { const p = PER[k]; if (n === 'skip') return { base: p.w, bonus: 0, skip: true, n: 0 }; return { base: Math.min(n, p.tgt) * p.unit, bonus: Math.max(0, n - p.tgt) * p.unit / 2, skip: false, n }; };
+  const total = s => ORDER.reduce((a, k) => { const r = pts(k, ST[s][k]); return a + r.base + r.bonus; }, 0);
+  const bonusOf = s => ORDER.reduce((a, k) => a + pts(k, ST[s][k]).bonus, 0);
+  const skipOf = s => ORDER.reduce((a, k) => { const r = pts(k, ST[s][k]); return a + (r.skip ? r.base : 0); }, 0);
+  const talkOf = s => total(s) - bonusOf(s) - skipOf(s);
+  const fmt = v => Number.isInteger(v) ? v : v.toFixed(1);
+  /* 分数构成条：实色 = 话出来的分 · 斜纹 = 习熟跳过 · 豆沙 = 超目标后的半分；o.thin 细条（首页/小组件），o.labels 类型名 */
+  const sbar = (s, o = {}) => {
+    const bon = bonusOf(s), scale = Math.max(100, 100 + bon);
+    const segs = ORDER.map(k => { const p = PER[k], r = pts(k, ST[s][k]); return `<div class="sg ${r.skip ? 'sk' : ''}" style="flex:${p.w}">${r.skip ? '' : `<b style="width:${r.base / p.w * 100}%"></b>`}</div>`; }).join('') + (bon ? `<div class="sg bonus" style="flex:${bon}"></div>` : '');
+    const mark = bon ? `<span class="m100" style="left:${100 / scale * 100}%"><em>満点 100</em></span>` : '';
+    const lbls = o.labels ? `<div class="v2slbl">${ORDER.map(k => `<span style="flex:${PER[k].w}">${PER[k].s}</span>`).join('')}${bon ? `<span style="flex:${bon};color:var(--rose-700)">+${fmt(bon)}</span>` : ''}</div>` : '';
+    return `<div class="v2bar ${o.thin ? 'thin' : ''} ${o.cls || ''}" ${o.style ? `style="${o.style}"` : ''}>${segs}${mark}</div>${lbls}`;
+  };
+  const legend = (full = true, cls = '') => `<div class="v2lg ${cls}"><span><i class="v2sw solid"></i>話して得た点</span><span><i class="v2sw hatch"></i>習熟済み（スキップ）</span>${full ? '<span><i class="v2sw bonus"></i>目標超えの加点（半分）</span>' : ''}<span><i class="v2sw"></i>まだの点</span></div>`;
+  const mbar = (k, s) => { const p = PER[k], r = pts(k, ST[s][k]); if (r.skip) return '<div class="v2mb sk"></div>'; const tot = p.w + r.bonus; return `<div class="v2mb"><b style="width:${r.base / tot * 100}%"></b>${r.bonus ? `<b class="bo" style="width:${r.bonus / tot * 100}%;margin-left:2px"></b>` : ''}</div>`; };
+  const pchips = (k, s) => {
+    const p = PER[k], r = pts(k, ST[s][k]), u = p.ev ? '回' : '人';
+    if (r.skip) return '<span class="chip">習熟済み · スキップ</span>';
+    const a = [`<span class="chip ${r.n >= p.tgt ? 'teal' : ''}">${r.n} / ${p.tgt}${u}${r.n >= p.tgt ? ' 達成' : ''}</span>`];
+    if (r.n < p.tgt) a.push(p.cand ? `<span class="chip lav">${p.ev ? `おすすめ ${p.cand}件` : `候補 ${p.cand}人`}</span>` : '<span class="chip">人脈にいません</span>');
+    return a.join('');
+  };
+  const prow = (k, s, cls = '') => { const p = PER[k], r = pts(k, ST[s][k]); return `<div class="v2prow ${cls}"><span class="emo sm ${p.c}">${p.emo}</span><div class="pm"><b>${p.n}</b><div class="chips">${pchips(k, s)}</div></div><div class="pe"><div class="v2pp">${fmt(r.base + r.bonus)}<small> / ${p.w}</small></div>${mbar(k, s)}</div></div>`; };
+  const stepBlock = (st, s, o = {}) => { const [n, t, why, ks, w] = st;
+    return `<div class="v2step ${o.cls || ''}"><span class="sn">${n}</span><div data-why-box><div class="st"><span>${t}</span>${w ? '<span class="why">?</span>' : ''}</div>${o.short ? '' : `<div class="lbl" style="line-height:1.6;margin-top:3px">${why}</div>`}${w ? `<div class="why-body" hidden>根拠：${w}</div>` : ''}</div>
+      ${ks.length ? ks.map(k => { const p = PER[k], r = pts(k, ST[s][k]); return `<div class="v2pcard ${o.pk === k ? o.pkc : ''}"><div class="row" style="gap:10px"><span class="emo sm ${p.c}">${p.emo}</span><b style="flex:1;min-width:0" class="v2ell">${p.n}</b>${r.skip ? '<span class="chip">習熟済み</span>' : p.cand ? `<span class="chip lav">人脈に ${p.cand}人</span>` : '<span class="chip">人脈にいません</span>'}</div>
+        <div class="pts"><div><span class="lbl">配点</span><b>${p.w}</b></div><div><span class="lbl">獲得</span><b>${fmt(r.base + r.bonus)}</b></div><div><span class="lbl">目標</span><b>${p.tgt}<small style="font-size:11px;color:var(--ink-3)">人</small></b></div></div></div>`; }).join('') : '<div class="ghost-row" style="margin-top:8px">新しく会う人はいません</div>'}</div>`; };
+  const evBlock = (s, cls = '') => { const r = pts('ev', ST[s].ev); return `<div class="card ${cls}" style="background:linear-gradient(135deg,var(--mac-apricot),var(--surface) 70%)"><div class="row" style="gap:10px"><span class="emo sm apricot">🎟️</span><div style="flex:1;min-width:0"><b style="font-size:13.5px">イベント</b><div class="lbl">おすすめに参加 1回 +5 · 2回まで満額、以降は半分</div></div><div class="v2pp">${fmt(r.base + r.bonus)}<small> / 10</small></div></div></div>`; };
+  /* 今日のチャンス（首页第二卡 / 计划页 / 小组件共用文案） */
+  const TODAY = {
+    s0: { plus: 10, t: 'CFO 経験者と話す', d: '伊藤 直子さん（ハルモニア CFO）に、事業計画の壁打ちを提案', tag: 'CFO 経験者 · Step 1', btn: '面談を提案', why: '根拠：伊藤さんは名刺で「CFO」· 面談メモ 2件（関係が近い）· CFO 経験者は 1人で満額 10点' },
+    s46: { plus: 10, t: 'VC パートナーと話す', d: '今夜の CFO Night Tokyo に VC パートナーが 2人来ます', tag: 'VC パートナー · 2 / 3人', btn: '会う準備をする', why: '根拠：CFO Night Tokyo vol.18 の参加者タグ「VC」2名 · VC パートナーは 2 / 3人で未達（1人 10点）' },
+  };
+  /* 首页：头像排 + 每周新增折线（灰紫单色） */
+  const avs = (list, more, size = 'sm') => `<div class="v2avs">${list.map(c => `<div class="av ${size} ${c.c}">${c.i}</div>`).join('')}${more ? `<span class="more">+${more}</span>` : ''}</div>`;
+  const spark = (vals, w = 112, h = 40) => {
+    const mx = Math.max(...vals, 1), st = w / (vals.length - 1);
+    const P = vals.map((v, i) => [+(i * st).toFixed(1), +(h - 3 - (v / mx) * (h - 8)).toFixed(1)]);
+    const d = P.map((p, i) => `${i ? 'L' : 'M'}${p[0]} ${p[1]}`).join(' ');
+    const L = P[P.length - 1];
+    return `<svg class="v2spark" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><path class="ar" d="${d} L${w} ${h} L0 ${h} Z"/><path class="ln" d="${d}"/><circle class="pt" cx="${L[0]}" cy="${L[1]}" r="3.2"/></svg>`;
+  };
+  return { PER, ORDER, ST, STEPS, pts, total, bonusOf, skipOf, talkOf, fmt, sbar, legend, mbar, pchips, prow, stepBlock, evBlock, TODAY, avs, spark };
+})();
+/* V2KIT-JS-END */
+/* HOME-V3-JS-BEGIN */
+/* ===== 首页 v3「軌道ビュー」（2026-10-07）：本文件私有 helper（app.html / web.html 各一份，内容相同） ===== */
+/* 轨道由内到外 = 関係段階；总数口径 286 = 19 + 31 + 64 + 172（与人脈页段階一致） */
+const ORB_R = [
+  { n: '協業中', c: 'var(--rose-500)', tot: 19, few: 1, dash: '' },
+  { n: '推進中', c: 'var(--plum-700)', tot: 31, few: 1, dash: '' },
+  { n: '関係構築', c: 'var(--plum-500)', tot: 64, few: 2, dash: '4 4' },
+  { n: '知り合い', c: 'var(--plum-300)', tot: 172, few: 1, dash: '2 5' },
+];
+const ORB_FR = [.36, .57, .79, 1];                                   // 轨道半径比例
+const ORB_SPD = [[64, 'normal'], [76, 'reverse'], [84, 'normal'], [90, 'reverse']];   // 秒/圈 · 方向交替
+/* 人：[字, 头像色, 轨道, 初始角度(deg, 0=3点钟方向顺时针), flags]  g = 今月新しい（光晕） r = 目標に関係（豆沙小圆点） */
+const ORB_MANY = [
+  ['伊', 'c4', 0, 20, 'r'], ['加', 'c3', 0, 110, ''], ['井', 'c5', 0, 200, 'g'], ['原', 'c1', 0, 290, 'r'],
+  ['渡', 'c5', 1, 30, 'g'], ['山', 'c4', 1, 95, ''], ['藤', 'c2', 1, 160, 'r'], ['今', 'c1', 1, 215, 'g'], ['川', 'c3', 1, 250, ''],
+  ['鈴', 'c3', 2, 0, 'g'], ['中', 'c1', 2, 52, 'r'], ['小', 'c2', 2, 104, ''], ['野', 'c4', 2, 150, 'g'], ['田', 'c5', 2, 200, ''], ['木', 'c3', 2, 255, 'r'], ['松', 'c2', 2, 312, 'g'],
+  ['森', 'c1', 3, 20, 'g'], ['青', 'c5', 3, 70, ''], ['岡', 'c2', 3, 120, ''], ['前', 'c3', 3, 165, 'g'], ['石', 'c5', 3, 250, ''], ['大', 'c4', 3, 295, 'r'], ['堀', 'c1', 3, 340, ''],
+];
+const ORB_FEW = [['伊', 'c4', 0, 200, 'r'], ['高', 'c2', 1, 320, 'r'], ['鈴', 'c3', 2, 20, 'g'], ['大', 'c4', 2, 160, 'g'], ['石', 'c5', 3, 250, 'g']];
+const ORB_SEL = { t: '高', c: 'c2', ring: 1, a: -35 };               // many：已弹出迷你卡的人（高橋 美咲）
+/* orbitView({W,H,cx,cy,R,od,s,pop,hd,lg,me,pw})：W×H 舞台 · 圆心 · 最外轨半径 R · 头像点直径 od · 状态 s · pop=迷你卡 · hd/lg=左上/右下叠层 HTML */
+function orbitView(o) {
+  const { W, H, cx, cy, R, od = 20, s, pop = false, hd = '', lg = '', me = 46, pw = 170 } = o;
+  const empty = s === 'empty', many = s === 'many';
+  const rr = ORB_FR.map(f => +((R - od / 2 - 4) * f).toFixed(1));
+  const rad = a => a * Math.PI / 180;
+  const svg = `<svg class="orb-svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" aria-hidden="true">${rr.map((r, k) => `<circle cx="${cx}" cy="${cy}" r="${r}" style="stroke:${empty ? 'var(--ink-4)' : ORB_R[k].c}" ${empty ? 'stroke-dasharray="3 5"' : ORB_R[k].dash ? `stroke-dasharray="${ORB_R[k].dash}"` : ''}/>`).join('')}</svg>`;
+  const ppl = empty ? [] : many ? ORB_MANY : ORB_FEW;
+  const rings = rr.map((r, k) => {
+    const [dur, dir] = ORB_SPD[k];
+    const dots = ppl.filter(p => p[2] === k).map(([t, c, , a, f], i) => `<span class="od-pos" style="left:${(r + r * Math.cos(rad(a))).toFixed(1)}px;top:${(r + r * Math.sin(rad(a))).toFixed(1)}px">${f.includes('g') ? '<i class="od-glow"></i>' : ''}<span class="av ${c} od ${f.includes('r') ? 'goal' : ''}">${t}</span></span>`).join('');
+    return dots ? `<div class="orb-ring" style="left:${cx - r}px;top:${cy - r}px;width:${2 * r}px;height:${2 * r}px;--dur:${dur}s;--dir:${dir};--cdir:${dir === 'normal' ? 'reverse' : 'normal'}">${dots}</div>` : '';
+  }).join('');
+  const ph = empty ? [[3, 215], [3, 335], [2, 95]].map(([k, a], i) => { const x = cx + rr[k] * Math.cos(rad(a)), y = cy + rr[k] * Math.sin(rad(a)); return `<span class="od-ph" style="left:${(x - od / 2 - 2).toFixed(1)}px;top:${(y - od / 2 - 2).toFixed(1)}px;width:${od + 4}px;height:${od + 4}px;animation-delay:${i * .7}s">＋</span>`; }).join('') : '';
+  const pills = many ? rr.map((r, k) => { const shown = ORB_MANY.filter(p => p[2] === k).length + (ORB_SEL.ring === k ? 1 : 0); return `<span class="orb-n" style="left:${cx}px;top:${cy + r}px"><i style="background:${ORB_R[k].c}"></i>${ORB_R[k].n} <b>+${ORB_R[k].tot - shown}</b></span>`; }).join('') : '';
+  let sel = '';
+  if (pop && many) {
+    const r = rr[ORB_SEL.ring], x = cx + r * Math.cos(rad(ORB_SEL.a)), y = cy + r * Math.sin(rad(ORB_SEL.a)), left = W - pw;
+    sel = `<span class="orb-sel" style="left:${x.toFixed(1)}px;top:${y.toFixed(1)}px"><span class="av ${ORB_SEL.c}">${ORB_SEL.t}</span></span>
+      <div class="orb-pop" style="left:${left}px;bottom:${(H - y + 16).toFixed(1)}px;width:${pw}px;--tx:${(x - left).toFixed(1)}px"><div class="pn"><b>高橋 美咲</b><span class="chip lav" style="padding:1px 7px;font-size:10px">推進中</span></div><div class="lbl" style="font-size:10.5px">青葉ベンチャーズ · パートナー</div>
+        <div class="pw">🎯 シリーズA のリード投資家候補</div><div class="row between" style="margin-top:6px"><span class="lbl" style="font-size:10.5px">2日前に面談</span><button class="btn sm">詳細${ic('right', 'sm')}</button></div></div>`;
+  }
+  const meEl = `<span class="orb-me ${empty ? 'idle' : ''}" style="left:${cx - me / 2}px;top:${cy - me / 2}px;width:${me}px;height:${me}px;font-size:${me * .36}px">${D.me.short}</span>`;
+  return `<div class="orb" style="width:${W}px;height:${H}px;--od:${od}px">${svg}${rings}${ph}${pills}${meEl}${sel}${hd ? `<div class="orb-hd">${hd}</div>` : ''}${lg ? `<div class="orb-lg">${lg}</div>` : ''}</div>`;
+}
+const orbLegend = many => `<span><i class="lg-goal"></i>目標に関係 <b>${many ? 9 : 2}</b></span><span><i class="lg-new"></i>今月の新しい人 <b>${many ? 24 : 3}</b></span>`;
+
+/* 今週ストリップ：[曜日, 日, 予定の色点, 過去?, 今日?]（10/7 水 = 今日） */
+const WEEK = many => [['月', 5, many ? ['blue'] : [], 1], ['火', 6, many ? ['apricot', 'lav'] : [], 1], ['水', 7, many ? ['blue', 'apricot', 'lav'] : ['lav'], 0, 1], ['木', 8, many ? ['teal'] : []], ['金', 9, many ? ['lav', 'pink'] : ['apricot']], ['土', 10, []], ['日', 11, []]];
+const TODAY_TL = many => many ? [['10:00', 'blue', '伊藤 直子さんとオンライン面談', '資本政策の壁打ち · 45分'], ['14:30', 'apricot', '北辰製作所 訪問', '鈴木 大輔さん · 品川'], ['19:00', 'lav', 'CFO Night Tokyo vol.18', '会いたい人 6名 · 渋谷ストリーム']] : [['19:00', 'lav', 'CFO Night Tokyo vol.18', '会いたい人 2名 · 渋谷ストリーム']];
+const wk7 = many => `<div class="wk7">${WEEK(many).map(([d, n, dots, past, on]) => `<button class="wd ${on ? 'on' : ''} ${past ? 'past' : ''}"><small>${d}</small><b>${n}</b><span class="dts">${dots.map(c => `<i class="${c}"></i>`).join('')}</span></button>`).join('')}</div>`;
+
+/* 今日の一手：堆叠卡（全部止于草稿） */
+const NEXT = {
+  many: [
+    ['💌', 'pink', '高橋さんへ昨日の面談のお礼を', '事業計画書 v3 の送付もあわせて。下書きは作成済みです。', '根拠：10/6 面談メモ「v3 を送る」· お礼メールは未送信'],
+    ['🙋', 'teal', '渡辺さんに投資家の紹介を依頼', '紹介をお願いできる VC パートナーが 2名見つかりました。', '根拠：渡辺さん（Nexa Robotics）は同時期にシリーズA を調達 · 共通の投資家 2社'],
+    ['🤝', 'apricot', '加藤さんに紹介先 3社のお礼を', '中部の製造業 3社をご紹介いただいた件。', '根拠：10/2 のメモ「3社紹介」· お礼の記録なし'],
+  ],
+  few: [
+    ['📇', 'apricot', '鈴木さんに名刺交換のお礼を', 'PoC の話を進めるきっかけになります。', '根拠：10/6 名刺交換（北辰製作所 · DX推進室 室長）· まだ連絡していません'],
+    ['📊', 'teal', '伊藤さんに事業計画の壁打ちを相談', 'CFO 経験者と話すと、プラン スコア +10。', '根拠：伊藤さんは名刺で「CFO」· プランの Step 1'],
+  ],
+};
+const nface = ([e, c, t, d, w], k, n) => `<div class="nst-face ${k === 0 ? 'on' : ''}" data-why-box><div class="row" style="gap:8px;margin-bottom:8px"><span class="emo sm ${c}">${e}</span><b style="font-size:13px">今日の一手</b><span class="nst-n" style="margin-left:auto">${k + 1} / ${n}</span><button class="lbtn nst-next" aria-label="次へ">${ic('right', 'sm')}</button></div>
+  <div style="font-size:15px;font-weight:700;line-height:1.5">${t}</div><div class="lbl" style="margin-top:3px;line-height:1.6">${d}</div>
+  <div class="row" style="margin-top:12px;gap:8px"><button class="btn sm primary">${ic('mail', 'sm')}下書きを開く</button><button class="btn sm">あとで</button><span class="why" style="margin-left:auto">?</span></div>
+  <div class="why-body" hidden>${w}</div><div class="lbl" style="margin-top:8px">下書きまで · 送信はあなたが行います</div></div>`;
+const nstack = (many, cls = '') => { const L = NEXT[many ? 'many' : 'few']; return `<div class="nstack ${cls}">${L.length > 2 ? '<div class="nst-back b2"></div>' : ''}<div class="nst-back b1"></div><div class="card nst-front">${L.map((x, k) => nface(x, k, L.length)).join('')}</div></div>`; };
+/* 次へ：点 › 或左右滑 → 下一张（循环） */
+document.addEventListener('click', e => { const b = e.target.closest('.nst-next'); if (!b) return; const fs = [...b.closest('.nst-front').querySelectorAll('.nst-face')], i = fs.findIndex(f => f.classList.contains('on')); fs.forEach((f, k) => f.classList.toggle('on', k === (i + 1) % fs.length)); });
+
+/* 人脈（⑨ A6 同款）：信息浓度三点 + 来源 chip */
+const dn = (d, cls = '') => `<span class="dn d${d} ${cls}" title="情報の濃さ"><i></i><i></i><i></i></span>`;
+const SRC = { meishi: ['scan', '名刺', ''], li: ['link', 'LinkedIn', ''], tel: ['phone', '連絡先', ''], hand: ['pen', '手入力', ''], self: ['check', '本人入力', 'teal'] };
+const src = k => `<span class="chip ${SRC[k][2]}">${ic(SRC[k][0])}${SRC[k][1]}</span>`;
+const NP = [
+  { n: '高橋 美咲', i: '高', c: 'c2', co: '青葉ベンチャーズ', role: 'パートナー', d: 3, s: 'meishi', rel: 'VC パートナー · 話した', last: '2日前' },
+  { n: '松井 遥', i: '松', c: 'c4', co: '株式会社ソラノテ', role: '取締役COO', d: 3, s: 'self', rel: '起業家（候補）', last: '今日' },
+  { n: '伊藤 直子', i: '伊', c: 'c4', co: '株式会社ハルモニア', role: 'CFO', d: 3, s: 'meishi', rel: 'CFO 経験者', last: '今日' },
+  { n: '鈴木 大輔', i: '鈴', c: 'c3', co: '北辰製作所', role: 'DX推進室 室長', d: 2, s: 'meishi', rel: '', last: '昨日' },
+  { n: '森 恭平', i: '森', c: 'c1', co: '東雲キャピタル', role: 'プリンシパル', d: 1, s: 'li', rel: 'VC（候補）', last: '2024年3月につながる' },
+  { n: '青木 里奈', i: '青', c: 'c5', co: 'Kanade AI', role: 'CTO', d: 1, s: 'li', rel: '', last: '2023年11月につながる' },
+  { n: '岡田 紗希', i: '岡', c: 'c2', co: 'Sakura Growth Partners', role: 'ヴァイスプレジデント', d: 1, s: 'li', rel: '', last: '2025年6月につながる' },
+  { n: '前田 隼人', i: '前', c: 'c3', co: '', role: '', d: 1, s: 'tel', rel: '', last: '電話番号のみ' },
+  { n: '石川 陽介', i: '石', c: 'c5', co: '石川デザイン事務所', role: '代表', d: 1, s: 'hand', rel: '', last: '10/3 登録' },
+  { n: '大野 真司', i: '大', c: 'c4', co: '大野商店', role: '店主', d: 2, s: 'meishi', rel: '', last: '10/5 名刺交換' },
+];
+/* 口径：286 = 身元だけ 74 + 名刺レベル 171 + 関係まで 41；出どころ 名刺 212 · 連絡先 41 · LinkedIn 22 · 手入力 8 · 本人入力 3；few 5 = 伊藤・高橋・鈴木・大野・石川 */
+const NET_MANY = [NP[0], NP[2], NP[1], NP[4], NP[3], NP[7], NP[5], NP[6], NP[8]];
+const NET_FEW = [NP[2], NP[0], NP[3], NP[9], NP[8]];
+const DOORS = [
+  ['meishi', '📇', 'apricot', '名刺スキャン', '会社・役職・連絡先 ＋ いつ・どこで会ったか', 2, '1枚 / まとめて最大100枚'],
+  ['invite', '🤝', 'pink', '招待コード', '相手が自分で入力。いちばん詳しく、更新も届きます', 3, 'リンク・QR'],
+  ['hand', '✍️', 'lav', '手入力', '氏名だけで登録可。署名を貼り付けると自動で分けます', 1, ''],
+  ['tel', '📱', 'blue', '連絡先から', '氏名と電話番号が中心。人数は多いが情報は少なめ', 1, 'iPhone · Google'],
+  ['li', '🔗', 'teal', 'LinkedIn', '会社・役職・つながった日。メールはほぼ含まれません', 1, 'CSV 書き出し'],
+];
+const doorTile = ([k, e, c, t, g, d]) => `<div class="door k-door-${k}"><div class="row between"><span class="emo ${c}">${e}</span>${dn(d)}</div><div><b>${t}</b><div class="gets">${g}</div></div></div>`;
+const doorRow = ([k, e, c, t, g, d, sub]) => `<div class="door k-door-${k}"><span class="emo ${c}">${e}</span><div class="dm"><b>${t}${sub ? `<span class="lbl" style="font-weight:600;margin-left:6px">${sub}</span>` : ''}</b><div class="gets">${g}</div></div>${dn(d)}</div>`;
+const densLegend = (cls = '') => `<div class="row ${cls}" style="gap:10px;font-size:11px;color:var(--ink-3);justify-content:center">${dn(1)}身元だけ ${dn(2)}名刺レベル ${dn(3)}関係まで</div>`;
+/* HOME-V3-JS-END */
+/* 状态 chip 语义（01-system ⑩）：見送り = 灰，不用分类粉 */
+const vchip = e => /見送り/.test(e.v) ? '' : e.vc;
+const C = D.contacts, E = D.events, G = D.goals;
+const searchBtn = `<button class="rbtn">${ic('search')}</button>`;
+const headR = `<button class="rbtn">${ic('bell')}<span class="dot"></span></button><button class="btn accent k-wadd" style="height:40px">${ic('plus', 'sm')}追加</button>`;
+
+/* ---- 右栏：iOrbit 助手 ---- */
+function assistRail(s, ctx = 'ホーム') {
+  if (s === 'empty') return `<h4><span class="emo sm lav">✨</span>iOrbit</h4>
+    <div class="card" style="padding:16px"><b style="font-size:14px">はじめまして。</b><div class="sub" style="margin-top:6px;line-height:1.7">あなたの人脈・イベント・予定を覚えて、次にやることを提案する秘書です。まずは名刺を3枚追加すると、具体的な提案ができます。</div></div>
+    <div class="lbl">こんなことを聞けます</div>
+    <div style="display:grid;gap:8px">${['資金調達に向けて、誰に会うべき？', 'このイベント、行く価値ある？', '名刺の束をまとめて登録したい'].map(p => `<div class="prompt">${p}</div>`).join('')}</div>
+    <div style="flex:1"></div><div class="assist-in">${ic('sparkle', 'sm')}iOrbit に聞く…<span style="margin-left:auto">⌘K</span></div>`;
+  const many = s === 'many';
+  return `<h4><span class="emo sm lav">✨</span>次の一手 <span class="lbl" style="margin-left:auto;font-weight:500">${ctx}から</span></h4>
+    ${(many ? [['💌', 'pink', '高橋さんへお礼メール', '昨日の面談 · 下書き済み', '下書きを開く'], ['🙋', 'teal', '渡辺さんに投資家紹介を依頼', '紹介可能 2名', '依頼文を作る'], ['🥂', 'lav', '今夜の CFO Night の準備', '会いたい人 6名', '準備リスト']] : [['📊', 'teal', '伊藤さんに資本政策を相談', 'ハルモニア CFO', '依頼文を作る'], ['📇', 'apricot', 'あと名刺 5枚で人脈分析', '3 / 8 枚', 'スキャン']]).map(([e, c, t, d, a]) => `<div class="sugg"><div class="row" style="gap:10px"><span class="emo sm ${c}">${e}</span><div style="flex:1"><b style="font-size:13px">${t}</b><div class="lbl">${d}</div></div></div><div class="row" style="margin-top:10px;gap:6px"><button class="btn sm primary">${a}</button><button class="btn sm ghost">あとで</button></div></div>`).join('')}
+    <div class="lbl" style="margin-top:6px">最近の会話</div>
+    ${(many ? ['CVC担当者に会う方法', 'ピッチ資料の市場規模'] : ['最初のプランについて']).map(t => `<div class="row" style="font-size:12.5px;gap:8px;color:var(--ink-2)">${ic('clock', 'sm')}${t}</div>`).join('')}
+    <div style="flex:1"></div><div class="assist-in">${ic('sparkle', 'sm')}iOrbit に聞く…<span style="margin-left:auto">⌘K</span></div>`;
+}
+
+/* ---- ホーム v3「軌道ビュー」：首行 轨道 span7 + プラン スコア span5 · 今週 span12 · 今日の一手（堆叠）span5 + 判断待ち span7 · 評価済みイベント ---- */
+const wOrbCard = s => { const many = s === 'many';
+  return `<div class="card span7 rise k-worb">${orbitView({ W: 494, H: 410, cx: 300, cy: 205, R: 190, od: 22, s, pop: many, me: 52, pw: 180,
+    hd: `<div class="lbl">人脈</div><div class="big" style="font-size:44px">${num(many ? 286 : 5)}<small>人</small></div><span class="delta">${many ? '+24' : '+3'} 今月</span>
+      <div class="orb-st">${ORB_R.map(r => `<div><i style="background:${r.c}"></i><span>${r.n}</span><b>${many ? r.tot : r.few}</b></div>`).join('')}</div>`,
+    lg: orbLegend(many) }).replace('class="orb-hd"', 'class="orb-hd" style="width:118px;background:none;padding:0"').replace('class="orb-lg"', 'class="orb-lg" style="left:0;right:auto;justify-items:start;padding:0;background:none"')}</div>`; };
+const wScoreCard = s => { const many = s === 'many', S = many ? 's46' : 's0', T = V2.TODAY[S];
+  return `<div class="card span5 k-wscore" data-why-box><div class="row between"><div class="row" style="gap:8px;min-width:0"><span class="emo sm pink">💰</span><div style="min-width:0"><div class="lbl">プラン スコア</div><b style="font-size:12.5px">${G.main.t}</b></div></div><span class="v2chance">今日 +${T.plus} のチャンス</span></div>
+      <div class="row" style="gap:12px;align-items:baseline;margin-top:10px"><div class="big" style="font-size:56px">${num(V2.total(S))}</div><span class="lbl">${many ? `話して ${V2.talkOf(S)} · スキップ ${V2.skipOf(S)}` : '最初の一歩'}<br>満点 100 · 上限なし</span></div>
+      ${V2.sbar(S, { labels: true })}${V2.legend(false)}
+      <div style="flex:1;min-height:12px"></div><div class="v2today"><span class="emo sm ${many ? 'lav' : 'teal'}">${many ? '💼' : '📊'}</span><div class="meta"><b>${T.t}</b><span>${T.d}</span></div><span class="v2plus">+${T.plus}</span><span class="why">?</span></div>
+      <div class="why-body" hidden>${T.why}</div>
+      <div class="lbl" style="margin-top:12px">最近の加点</div>${many ? [['VC パートナー', '+10', '高橋 美咲さん · 10/6'], ['イベント', '+5', 'SaaS Summit · 10/3'], ['起業家', '+3', '渡辺 翔さん · 9/29']].map(([a, b, c]) => `<div class="row between" style="font-size:12px;padding:6px 0;border-top:1px solid var(--line)"><span><b>${a}</b> <span class="lbl">${c}</span></span><b style="font-family:var(--font-num);color:var(--plum-700)">${b}</b></div>`).join('') : '<div class="ghost-row" style="margin-top:6px">まだありません · 話すと加点されます</div>'}
+      <div class="v2go">プランを開く${ic('right', 'sm')}</div></div>`; };
+const wWeekCard = many => `<div class="card span12 k-wweek"><div class="card-h"><h3>今週 <span class="lbl" style="font-weight:600">10月5日–11日</span></h3><span class="more">カレンダー${ic('right', 'sm')}</span></div>
+    <div class="wk7" style="gap:10px">${WEEK(many).map(([d, n, dots, past, on]) => `<button class="wd ${on ? 'on' : ''} ${past ? 'past' : ''}" style="border-radius:18px;flex-direction:row;justify-content:center;gap:8px;padding:10px 0"><small>${d}</small><b>${n}</b><span class="dts">${dots.map(c => `<i class="${c}"></i>`).join('')}</span></button>`).join('')}</div>
+    <div class="wk-open" style="--nx:${2.5 / 7 * 100}%;display:grid;grid-template-columns:repeat(3,1fr);gap:10px">${TODAY_TL(many).map(([t, c, n, d]) => `<div class="mac ${c}" style="border-radius:16px;padding:10px 14px"><b style="font-family:var(--font-num);font-size:13px">${t}</b><b style="display:block;font-size:13px;margin-top:2px">${n}</b><div class="lbl">${d}</div></div>`).join('')}${many ? '' : '<div class="ghost-row" style="grid-column:span 2;margin:0">カレンダーを連携すると、面談も並びます</div>'}</div></div>`;
+const wPendCard = many => `<div class="card span7 k-wpend"><div class="card-h"><h3>あなたの判断待ち <span class="chip coral">${many ? 4 : 1}</span></h3>${many ? `<span class="more">すべて (4)${ic('right', 'sm')}</span>` : ''}</div>
+      <table class="table"><tbody>${(many ? [['山', 'c4', '山本 彩さんに資料を再送', '東都キャピタル · 24日間 未連絡', '期限超過', 'coral'], ['鈴', 'c3', '鈴木さんと PoC 日程を確定', '候補 3枠を提案済み', '今日', 'apricot']] : [['石', 'c5', '石川 陽介さんとは、どこで？', '手入力 · ひとつ選ぶだけ', '1問', 'lav']]).map(([a, c, t, d, due, dc], k) => `<tr><td style="width:44px"><div class="av sm ${c}">${a}</div></td><td><b>${t}</b><div class="lbl">${d}</div></td><td style="text-align:right"><div class="row" style="justify-content:flex-end;gap:8px"><div class="hov-acts ${k === 0 && many ? 'show' : ''}"><button class="btn sm">${ic('clock', 'sm')}明日</button><button class="btn sm primary">${ic('check', 'sm')}完了</button></div><span class="chip ${dc}">${due}</span></div></td></tr>`).join('')}</tbody></table></div>`;
+function home(s) {
+  const head = mainhead(D.today.month, D.today.range, searchBtn, headR);
+  if (s === 'empty') return head + `<div class="wgrid">
+    <div class="card span7 rise k-worb0"><div class="lbl">ようこそ、佐藤さん</div><div style="font-size:24px;font-weight:800;margin-top:4px">あなたの軌道をつくりましょう</div>
+      ${orbitView({ W: 494, H: 300, cx: 247, cy: 150, R: 146, od: 22, s: 'empty', me: 50 })}
+      <div class="sub" style="text-align:center;font-weight:700;color:var(--ink)">名刺を3枚追加すると、軌道が動き出します</div>
+      <div class="row" style="justify-content:center;margin-top:14px;gap:10px"><button class="btn primary" style="height:46px">${ic('scan', 'sm')}名刺をスキャン</button><span class="lbl">画像のドロップでも追加できます</span></div></div>
+    <div class="card span5 k-wsteps0"><div class="card-h"><h3>はじめの 3ステップ</h3><span class="lbl">約5分 · 途中から再開できます</span></div>
+      ${[['1', '名刺を3枚追加', '軌道に最初の 3人が乗ります', 'now', '0/3'], ['2', '目標を1つ決める', '資金調達・新規開拓・採用 など', ''], ['3', '最初のプランを受け取る', 'ステップごとに、誰と話すとよいか', '']].map(([n, t, d, st, c]) => `<div class="step ${st}"><span class="n">${n}</span><div style="flex:1"><b style="font-size:13.5px">${t}</b><div class="lbl">${d}</div></div>${c ? `<span class="chip lav">${c}</span>` : ''}</div>`).join('')}
+      <div style="flex:1"></div><div class="mac lav" style="font-size:12px;margin-top:14px">名刺はスキャンしたその日から、会った場所と日付つきで軌道に並びます。</div></div>
+    ${[['🤝', 'pink', '招待コードで追加', '相手が自分で入力 · いちばん詳しい'], ['🔗', 'blue', 'イベントを評価', 'URL・ポスターで判定'], ['🎯', 'apricot', '目標を設定', '話すべき人のタイプがわかる']].map(([e, c, t, d]) => `<div class="card span4 row" style="gap:12px;padding:16px;flex-direction:row;align-items:center"><span class="emo ${c}">${e}</span><div><b style="font-size:14px">${t}</b><div class="lbl">${d}</div></div><span style="margin-left:auto" class="muted">${ic('right', 'sm')}</span></div>`).join('')}
+    <div class="card span12"><div class="card-h"><h3>完成するとこう見えます <span class="sample-tag">サンプル</span></h3></div>
+      <div class="faded">${wk7(true)}<div class="grid2" style="margin-top:12px"><div class="ghost-row" style="margin:0">今日の一手 · 高橋さんへお礼の下書き</div><div class="ghost-row" style="margin:0">プラン スコア 46 · 今日 +10 のチャンス</div></div></div></div></div>`;
+  const many = s === 'many';
+  return head + `<div class="wgrid">${wOrbCard(s)}${wScoreCard(s)}${wWeekCard(many)}${nstack(many, 'span5 k-wstack')}${wPendCard(many)}
+    <div class="span12"><div class="card-h"><h3>評価済みのイベント</h3><span class="more">イベントへ${ic('right', 'sm')}</span></div>
+      <div class="wgrid">${(many ? E : E.slice(0, 1)).map(e => `<div class="evc span3"><div class="row between"><span class="emo ${e.vc}">${e.emo}</span>${ring(48, 5, [{ v: e.score, c: e.score > 70 ? 'var(--plum-700)' : e.score > 50 ? 'var(--plum-500)' : 'var(--rose-500)', max: 100 }], `<span class="score" style="font-size:13px">${e.score}</span>`)}</div><b style="display:block;margin-top:12px">${e.n}</b><div class="lbl">${e.d} · ${e.place}</div><div class="row" style="margin-top:10px;gap:6px"><span class="chip ${vchip(e)}">${e.v}</span><span class="chip">会いたい人 ${e.meet}名</span></div></div>`).join('')}</div></div></div>`;
+}
+
+/* ---- 人脈（⑨ A6 Web 同款；口径 286 / few 5 / empty；opts.sel = 抽屉打开时选中的行） ---- */
+const wNetHead = sub => mainhead('人脈', sub, `<button class="rbtn">${ic('search')}</button>`, `<button class="btn accent k-waddbtn">${ic('plus', 'sm')}人脈を追加</button>`);
+const wrow = (p, sel) => `<tr ${sel ? 'style="background:var(--surface-2)"' : ''}><td><div class="row"><div class="av sm ${p.c}">${p.i}</div><b>${p.n}</b></div></td><td>${p.co ? `<span class="sub">${p.co}</span><div class="lbl">${p.role}</div>` : '<span class="lbl">未登録</span>'}</td><td>${dn(p.d)}</td><td>${src(p.s)}</td><td>${p.rel ? `🎯 ${p.rel}` : '<span class="lbl">—</span>'}</td><td class="muted" style="font-size:12px">${p.last}</td></tr>`;
+function network(s, opts = {}) {
+  if (s === 'empty') return wNetHead('まだ登録がありません') + `<div class="wgrid">
+    <div class="card span12 guide k-wnetguide" style="padding:28px"><div class="row" style="gap:24px;align-items:center"><div style="font-size:60px">🪐</div><div style="flex:1"><div style="font-size:24px;font-weight:800">最初のつながりを追加</div><div class="sub" style="margin-top:4px">どの方法で入れても、最後は同じ「まとめて確認」で例外だけを見ます。たくさん入れても、情報の濃さで見分けられます。</div></div><button class="btn primary" style="height:46px">${ic('plus', 'sm')}人脈を追加</button></div></div>
+    ${DOORS.slice(1).map(([k, e, c, t, g, d]) => `<div class="card span3 ${k === 'invite' ? 'k-wdoor' : ''}"><div class="row between"><span class="emo ${c}">${e}</span>${dn(d)}</div><b style="margin-top:10px;display:block">${t}</b><div class="lbl" style="line-height:1.6">${g}</div></div>`).join('')}
+    <div class="card span12"><div class="card-h"><h3>登録するとこう並びます <span class="sample-tag">サンプル</span></h3></div><table class="table faded"><thead><tr><th>名前</th><th>会社・役職</th><th>濃さ</th><th>出どころ</th><th>目標との関係</th><th>最終接点</th></tr></thead><tbody>${wrow(NP[0])}${wrow(NP[4])}${[1, 2].map(() => `<tr class="ghost-tr"><td><i style="width:90px"></i></td><td><i style="width:150px"></i></td><td><i style="width:30px"></i></td><td><i style="width:60px"></i></td><td><i style="width:120px"></i></td><td><i style="width:50px"></i></td></tr>`).join('')}</tbody></table></div></div>`;
+  const many = s === 'many', L = many ? NET_MANY : NET_FEW;
+  return wNetHead(many ? '286人 · 今月 +24' : '5人 · 今月 +3') + `<div class="wgrid">
+    <div class="card span4 rise"><div class="row between"><span class="lbl">つながり</span><span class="more k-wanal">人脈分析${ic('right', 'sm')}</span></div><div class="big" style="font-size:46px">${num(many ? 286 : 5)}<small>人</small></div><div class="lbl">目標に関係する人 <b style="color:var(--ink)">${many ? 9 : 2}</b> · 今月 +${many ? 24 : 3}</div></div>
+    <div class="card span5 k-wdens" data-why-box><div class="card-h"><h3>情報の濃さ</h3><span class="why">?</span></div><div class="why-body" hidden style="margin:0 0 8px">●○○ 氏名・会社などの身元だけ / ●●○ 名刺レベル（連絡先と、いつ・どこで会ったか）/ ●●● 関係まで（あなたの目標との関係・やりとり）。本人入力は最初から ●●●。</div>
+      <div class="stack3">${many ? '<i style="flex:74;background:var(--plum-300)"></i><i style="flex:171;background:var(--plum-500)"></i><i style="flex:41;background:var(--plum-700)"></i>' : '<i style="flex:1;background:var(--plum-300)"></i><i style="flex:2;background:var(--plum-500)"></i><i style="flex:2;background:var(--plum-700)"></i>'}</div>
+      <div class="grid3" style="margin-top:12px;font-size:12px">${[[1, '身元だけ', many ? 74 : 1], [2, '名刺レベル', many ? 171 : 2], [3, '関係まで', many ? 41 : 2]].map(([d, l, v]) => `<div style="min-width:0"><div class="row" style="gap:6px">${dn(d)}<span class="muted" style="white-space:nowrap">${l}</span></div><b style="font-family:var(--font-num);font-size:16px;display:block;margin-top:2px">${v}</b></div>`).join('')}</div></div>
+    <div class="card span3"><div class="lbl">出どころ</div><div style="margin-top:6px;display:grid;gap:5px;font-size:12px">${(many ? [['meishi', 212], ['tel', 41], ['li', 22], ['hand', 8], ['self', 3]] : [['meishi', 4], ['hand', 1]]).map(([k, v]) => `<div class="row between">${src(k)}<b style="font-family:var(--font-num)">${v}</b></div>`).join('')}</div></div>
+    <div class="card span12"><div class="row between" style="margin-bottom:12px"><div class="row k-wcats" style="gap:6px"><span class="cat on">すべて <small>${many ? 286 : 5}</small></span><span class="cat">情報が少ない人 <small>${many ? 74 : 1}</small></span><span class="cat">目標に関係 <small>${many ? 9 : 2}</small></span><span class="cat">要フォロー <small>${many ? 12 : 0}</small></span></div><div class="row" style="gap:8px"><div class="input" style="width:240px;height:38px">${ic('search', 'sm')}名前・会社・「投資家」</div><button class="lbtn">${ic('sliders', 'sm')}</button></div></div>
+      <table class="table k-wtable"><thead><tr><th>名前</th><th>会社・役職</th><th>濃さ</th><th>出どころ</th><th>目標との関係</th><th>最終接点</th></tr></thead><tbody>${L.map((p, k) => wrow(p, opts.sel === k)).join('')}</tbody></table>
+      ${many ? `<div class="row" style="justify-content:center;margin-top:12px"><button class="btn sm">さらに表示（${286 - L.length}人）</button></div>` : ''}</div></div>`;
+}
+const netRail = s => s === 'empty' ? `<h4><span class="emo sm pink">🤝</span>いちばん早い方法</h4><div class="card" style="padding:16px"><b style="font-size:13.5px">招待コードを 3人に送る</b><div class="lbl" style="margin-top:4px;line-height:1.6">相手が自分で入力するので、最初から ●●● で入ります。</div><button class="btn sm primary" style="margin-top:10px">コードを作る</button></div>` :
+  `<h4><span class="emo sm lav">💬</span>今日の 1問</h4><div class="card k-wask" style="padding:16px"><div class="row" style="gap:10px"><div class="av sm ${s === 'many' ? 'c1' : 'c5'}">${s === 'many' ? '森' : '石'}</div><div style="flex:1;min-width:0"><b style="font-size:13px">${s === 'many' ? '森 恭平' : '石川 陽介'}さんとは、どこで？</b><div class="lbl">${s === 'many' ? '東雲キャピタル · LinkedIn' : '石川デザイン事務所 · 手入力'}</div></div>${dn(1)}</div><div class="row" style="gap:6px;margin-top:10px;flex-wrap:wrap"><span class="fopt">前職の同僚</span><span class="fopt">Japan Startup Night</span><span class="fopt">紹介</span><span class="fopt">覚えていない</span></div></div>
+  <h4>${ic('sparkle', 'sm')}次の一手</h4><div class="card" style="padding:16px"><b style="font-size:13px">${s === 'many' ? 'VC パートナーの候補が人脈に 4人います' : '高橋さん・伊藤さんがプランの候補です'}</b><div class="lbl" style="margin-top:4px">プランで確認できます</div><button class="btn sm" style="margin-top:10px">プランで見る</button></div>`;
+const contactDrawer = () => { const c = C[0]; return `<div class="overlay"></div><div class="drawer">
+  <div class="row between"><button class="rbtn">${ic('x')}</button><div class="row" style="gap:8px"><button class="rbtn">${ic('out')}</button><button class="rbtn">${ic('more')}</button></div></div>
+  <div class="row" style="gap:16px;margin-top:14px"><div class="av lg ${c.c}">${c.i}</div><div><div style="font-size:22px;font-weight:800">${c.n}</div><div class="sub">${c.co} · ${c.role}</div><div class="chips" style="margin-top:6px"><span class="chip ${c.st}">${c.stage}</span><span class="chip">投資・金融</span><span class="chip">東京</span></div></div></div>
+  <div class="card" data-why-box style="margin-top:16px;background:linear-gradient(140deg,var(--mac-pink),var(--surface) 65%)"><div class="row" style="gap:8px"><span class="emo sm pink">🎯</span><b>なぜ高橋さんか</b><span class="why" style="margin-left:auto">?</span></div><div style="font-size:15px;font-weight:700;margin-top:8px;line-height:1.6">シリーズAのリード投資家候補。SaaS領域に年8社出資しており、あなたの調達規模と合います。</div><div class="why-body">根拠：名刺（9/18 Japan Startup Night）· 面談メモ 2件 · 公開ポートフォリオ</div>
+    <div class="row" style="margin-top:12px;gap:8px"><button class="btn primary">${ic('mail', 'sm')}お礼の下書きを作成</button><button class="btn">${ic('calendar', 'sm')}日程を提案</button><span class="lbl" style="margin-left:auto">${ic('mail', 'sm').replace('class="i sm"', 'class="i sm" style="width:13px;height:13px;vertical-align:-2px"')} 送信はしません · 送信はあなたが行います</span></div></div>
+  <div class="grid2" style="margin-top:14px"><div class="card"><div class="lbl">力になれること</div><b style="display:block;margin-top:6px">VC の紹介 · 資本政策の助言</b></div><div class="card"><div class="lbl">求めていること</div><b style="display:block;margin-top:6px">製造業 SaaS の案件</b></div></div>
+  <div class="card" style="margin-top:14px"><div class="card-h"><h3>やりとり</h3><span class="more">メモを追加</span></div>${[['10/6', '2回目の面談', 'DDの資料リストを受領。11月に IC 予定'], ['9/24', 'メール', '事業計画書v2を送付'], ['9/18', 'Japan Startup Night', '名刺交換・5分立ち話']].map(([d, t, m]) => `<div class="tl"><time style="font-size:12px;padding-top:2px">${d}</time><div><b style="font-size:13px">${t}</b><div class="lbl">${m}</div></div></div>`).join('')}</div></div>`; };
+
+/* ---- イベント ---- */
+function evalRail(e) {
+  return `<h4>${ic('sparkle', 'sm')}評価の詳細</h4>
+    <div class="card" style="text-align:center;padding:18px"><span class="chip lav">${ic('link', 'sm')} saas-summit.jp/2026</span><b style="display:block;font-size:15px;margin-top:10px">${e.n}</b><div class="lbl">${e.d} · ${e.fee}</div>
+      <div style="width:130px;margin:14px auto 8px">${ring(130, 12, [{ v: e.score, c: 'var(--plum-700)', max: 100 }], `<div class="big" style="font-size:38px">${num(e.score)}</div><div class="lbl">/ 100</div>`)}</div><span class="chip ${vchip(e)}" style="font-size:12px;padding:5px 12px">${e.v}</span></div>
+    <div class="card" style="padding:16px">${[['目標との一致', 88, ''], ['会える人', 76, ''], ['時間対効果', 64, 'rose']].map(([l, v, cl]) => `<div class="crit"><span class="muted">${l}</span>${bar(v, cl)}<b class="score" style="text-align:right">${v}</b></div>`).join('')}</div>
+    <div class="card" style="padding:16px"><div class="lbl">会えそうな人</div>${[['💼', 'lav', 'VC パートナー 3名（登壇）'], ['🏭', 'blue', '製造業 DX 責任者（展示12社）'], ['👋', 'teal', '高橋さん・加藤さんも参加予定']].map(([e, c, t]) => `<div class="row" style="gap:8px;margin-top:8px;font-size:12.5px"><span class="emo sm ${c}">${e}</span>${t}</div>`).join('')}</div>
+    <div class="mac apricot" style="font-size:12px"><span class="lic sm i-alert" style="vertical-align:-3px;margin-right:3px"></span>参加費 ¥15,000 · 午後は採用向けセッション中心</div>
+    <div class="grid2"><button class="btn">見送る</button><button class="btn primary">参加予定に追加</button></div>`;
+}
+function events(s) {
+  const head = mainhead('イベント', s === 'many' ? '10月 · 参加予定 3件 · 評価済み 4件' : s === 'few' ? '10月 · 参加予定 1件' : '行く価値があるかを AI が判定', searchBtn, `<div class="seg"><button class="on">評価</button><button>参加予定</button><button>探す</button></div>`);
+  const evaluator = (big) => `<div class="card ${big ? 'span12 guide' : 'span8'}" ${big ? 'style="padding:28px"' : ''}><div class="row" style="gap:12px;margin-bottom:14px"><span class="emo lav">🔍</span><div><b style="font-size:${big ? 22 : 16}px">このイベント、行く価値ある？</b><div class="lbl">URL を貼るか、ポスター画像をドロップ。あなたの目標と人脈で判定します</div></div></div>
+    <div class="row" style="gap:10px"><div class="input" style="flex:1;height:48px;background:var(--surface-2)">${ic('link', 'sm')}https://</div><button class="btn primary" style="height:48px">判定する</button></div>
+    <div class="drop" style="margin-top:10px">${ic('image', 'sm')}ポスター・チラシの画像をドロップ</div>
+    ${big ? `<div class="grid3" style="margin-top:18px">${[['🎯', '目標との一致', 'シリーズA調達に効くか'], ['🤝', '会える人', 'プランが求める人が来るか'], ['⏱️', '時間対効果', '移動・参加費・平日夜の負担']].map(([e, t, d]) => `<div class="mac apricot row" style="gap:10px"><span style="font-size:22px">${e}</span><div><b style="font-size:13px">${t}</b><div class="lbl">${d}</div></div></div>`).join('')}</div>` : ''}</div>`;
+  if (s === 'empty') return head + `<div class="wgrid">${evaluator(true)}<div class="card span6"><div class="card-h"><h3>判定の例 <span class="sample-tag">サンプル</span></h3></div><div class="faded row" style="gap:16px">${ring(90, 9, [{ v: 82, c: 'var(--plum-700)', max: 100 }], '<b class="score" style="font-size:22px">82</b>')}<div><b>Japan SaaS Summit 2026 秋</b><div class="lbl">参加をおすすめ · VC 3名が登壇</div></div></div></div>
+    <div class="card span6 flat row" style="gap:12px"><span class="emo teal">🎟️</span><div style="flex:1"><b>招待コードをお持ちですか？</b><div class="lbl">主催者からのコードで参加登録できます</div></div><button class="btn">入力する</button></div></div>`;
+  const many = s === 'many', list = many ? E : E.slice(0, 2);
+  return head + `<div class="wgrid">${evaluator(false)}
+    <div class="card span4" style="background:linear-gradient(160deg,var(--mac-lav),var(--surface) 65%)"><div class="row between"><span class="lbl">次の参加予定</span><span class="chip apricot">今夜</span></div><b style="display:block;font-size:17px;margin-top:8px">${E[1].n}</b><div class="lbl">${E[1].d} · ${E[1].place}</div><div class="row" style="margin-top:14px"><div class="avs">${C.slice(0, 4).map(c => `<div class="av sm ${c.c}">${c.i}</div>`).join('')}</div><span class="lbl">会いたい人 ${E[1].meet}名</span></div><button class="btn sm primary" style="margin-top:12px">会う準備をする</button></div>
+    <div class="span12 card-h" style="margin:8px 0 -6px"><h3>評価したイベント</h3><span class="more">スコア順 ${ic('down', 'sm')}</span></div>
+    ${list.map((e, k) => `<div class="evc span3 ${k === 0 ? 'sel' : ''}"><div class="row between"><span class="emo ${e.vc}">${e.emo}</span>${ring(54, 6, [{ v: e.score, c: e.score > 70 ? 'var(--plum-700)' : e.score > 50 ? 'var(--plum-500)' : 'var(--rose-500)', max: 100 }], `<span class="score" style="font-size:14px">${e.score}</span>`)}</div><b style="display:block;margin-top:12px">${e.n}</b><div class="lbl">${e.d} · ${e.place} · ${e.fee}</div><div class="row" style="margin-top:10px;gap:6px"><span class="chip ${vchip(e)}">${e.v}</span><span class="chip">会いたい人 ${e.meet}名</span></div></div>`).join('')}</div>`;
+}
+
+/* ---- プラン（⑨ B2 Web 同款；many = 首页同口径 s46 · few = 刚生成 s0） ---- */
+function plan(s) {
+  const head = mainhead('プラン', s === 'empty' ? '目標を決めると、話すべき人が見えます' : 'シリーズA 資金調達（3億円）', s === 'empty' ? '' : `<button class="btn k-wgoal">💰 シリーズA 資金調達 ${ic('down', 'sm')}</button>`, s === 'empty' ? '' : `<button class="btn k-wrevise">${ic('refresh', 'sm')}方案を見直す</button><button class="btn">${ic('flag', 'sm')}目標を達成した</button>`);
+  if (s === 'empty') return head + `<div class="wgrid">
+    <div class="card span7 guide k-wpempty" style="padding:26px"><div style="font-size:22px;font-weight:800">何を達成したいですか？</div><div class="sub" style="margin:4px 0 16px">目標から、ステップごとに「誰と話すとよいか」を分析します。期限ごとの予定表は作りません。</div>
+      <div class="input" style="background:var(--surface-2);height:50px">${ic('pen', 'sm')}例：シリーズA で 3億円を調達</div>
+      <div class="row" style="gap:6px;margin-top:12px"><span class="fopt">💰 資金調達</span><span class="fopt">🤝 新規顧客開拓</span><span class="fopt">🧑‍💼 採用</span><span class="fopt">🔗 事業提携</span></div>
+      <button class="btn primary push" style="margin-top:18px;height:46px">${ic('sparkle', 'sm')}分析する</button></div>
+    <div class="card span5"><div class="card-h"><h3>スコアのしくみ</h3></div>${[['🗣️', 'lav', '話した人で加点', '面談の記録か「オフラインで話した」の自己申告'], ['🎯', 'pink', 'タイプごとに目標人数', '超えた分は半分ずつ、上限なしで加算'], ['🧠', 'teal', '詳しい分野はスキップ', '満点として斜線で表示。いつでも取り消せます']].map(([e, c, t, d]) => `<div class="row" style="gap:12px;padding:10px 0"><span class="emo sm ${c}">${e}</span><div><b style="font-size:13px">${t}</b><div class="lbl">${d}</div></div></div>`).join('')}</div>
+    <div class="card span12 k-wpsample"><div class="card-h"><h3>プランはこう見えます <span class="sample-tag">サンプル</span></h3></div><div class="faded"><div class="row" style="gap:20px"><div class="big">46</div><div style="flex:1">${V2.sbar('s46', { labels: true })}</div></div></div></div></div>`;
+  const few = s === 'few', S = few ? 's0' : 's46', T = V2.TODAY[S];
+  return head + `<div class="wgrid">
+    <div class="card span12 rise k-whero"><div class="row" style="gap:28px;align-items:flex-end"><div style="flex:none"><div class="lbl">スコア</div><div class="big" style="font-size:64px">${num(V2.total(S))}</div><div class="lbl">満点 100 · 上限なし</div></div>
+      <div style="flex:1;min-width:0;padding-bottom:6px">${V2.sbar(S, { labels: true })}${V2.legend(false)}</div>
+      ${few ? '' : `<div style="flex:none;text-align:right;padding-bottom:6px"><span class="chip lav">あと ${100 - V2.total(S)} で満点</span><div class="lbl" style="margin-top:6px">話して ${V2.talkOf(S)} · スキップ ${V2.skipOf(S)}</div></div>`}</div></div>
+    <div class="card span8"><div class="card-h"><h3>ステップと話すべき人</h3><span class="lbl">順番は目安</span></div>
+      <table class="table k-wptable"><thead><tr><th>ステップ</th><th>タイプ</th><th>状況</th><th style="text-align:right">点 / 配点</th></tr></thead><tbody>
+      ${V2.STEPS.filter(st => st[3].length).flatMap(st => st[3].map((k, i) => { const p = V2.PER[k], r = V2.pts(k, V2.ST[S][k]); return `<tr><td>${i === 0 ? `<b>${st[0]}</b> <span class="sub">${st[1]}</span>` : ''}</td><td><div class="row"><span class="emo sm ${p.c}">${p.emo}</span><b style="white-space:nowrap">${p.n}</b></div></td><td><div class="row" style="gap:6px">${V2.pchips(k, S)}</div></td><td style="text-align:right;width:120px"><span class="v2pp">${V2.fmt(r.base + r.bonus)}<small> / ${p.w}</small></span>${V2.mbar(k, S)}</td></tr>`; })).join('')}
+      <tr><td><span class="sub">—</span></td><td><div class="row"><span class="emo sm apricot">🎟️</span><b>イベント</b></div></td><td><div class="row" style="gap:6px">${V2.pchips('ev', S)}</div></td><td style="text-align:right"><span class="v2pp">${V2.fmt(V2.pts('ev', V2.ST[S].ev).base + V2.pts('ev', V2.ST[S].ev).bonus)}<small> / 10</small></span>${V2.mbar('ev', S)}</td></tr></tbody></table></div>
+    <div class="card span4 k-wtoday" data-why-box style="background:linear-gradient(135deg,var(--mac-lav),var(--surface) 70%)"><div class="row" style="gap:8px"><span class="emo sm lav">✨</span><b style="font-size:13px">今日 +${T.plus} のチャンス</b><span class="why" style="margin-left:auto">?</span></div>
+      <div style="font-size:15px;font-weight:700;line-height:1.6;margin-top:8px">${few ? '伊藤 直子さん（ハルモニア CFO）に、事業計画の壁打ちを提案してみましょう。' : '今夜の CFO Night Tokyo に VC パートナーが 2人来ます。1人と話せば +10。'}</div>
+      <div class="why-body" hidden>${T.why}</div><button class="btn primary push" style="margin-top:14px">${T.btn}</button>
+      <div class="lbl" style="margin-top:12px">最近の加点</div>${few ? '<div class="ghost-row" style="margin-top:6px">まだありません</div>' : [['VC パートナー', '+10', '高橋 美咲さん · 10/6'], ['イベント', '+5', 'SaaS Summit · 10/3'], ['起業家', '+3', '渡辺 翔さん · 9/29'], ['弁護士', 'スキップ', '習熟済み · 9/20']].map(([a, b, c]) => `<div class="row between" style="font-size:12px;padding:6px 0;border-top:1px solid var(--line)"><span><b>${a}</b> <span class="lbl">${c}</span></span><b style="font-family:var(--font-num);color:var(--plum-700)">${b}</b></div>`).join('')}</div></div>`;
+}
+const planRail = s => `<h4>${ic('sparkle', 'sm')}iOrbit</h4><div class="assist-in">${ic('sparkle', 'sm')}このプランについて質問</div>
+  <h4>次の一手</h4><div class="card" style="padding:16px"><b style="font-size:13px">${s === 'many' ? 'CVC 担当者は人脈にいません。製造業DXカンファレンス 大阪に約 9人来ます' : 'VC パートナーの候補が人脈に 4人います'}</b><button class="btn sm" style="margin-top:10px">${s === 'many' ? 'イベントを見る' : '候補を見る'}</button></div>
+  <div class="card flat" style="padding:14px;font-size:12px;color:var(--ink-2);line-height:1.65">Orbit は目標の達成を保証しません。このタイプの目標が一般にどう進むかと、各ステップで話すとよい人を示します。</div>`;
+/* ---- iOrbit 対話 ---- */
+function chatPage() {
+  return mainhead('iOrbit', '人脈・イベント・予定を知っている秘書', `<button class="rbtn">${ic('clock')}</button>`, `<button class="btn">${ic('plus', 'sm')}新しい会話</button>`) + `<div style="max-width:760px;margin:0 auto;display:grid;gap:12px">
+    <div class="bubble me">CVC の担当者に会うには、どうすればいい？</div>
+    <div class="bubble ai">今のつながりに CVC 担当者はいません（プランの目標は 3人）。近道は2つあります。</div>
+    <div class="grid2"><div class="card"><div class="lbl">紹介を頼める人</div><div class="row" style="gap:10px;margin-top:8px"><div class="av ${C[5].c}">${C[5].i}</div><div style="flex:1"><b>${C[5].n}</b><div class="lbl">${C[5].co} · 大企業の新規事業担当 300名</div></div></div><button class="btn sm" style="margin-top:12px">${ic('mail', 'sm')}依頼文を下書き</button></div>
+      <div class="card"><div class="lbl">行くと会えるイベント</div><div class="row" style="gap:10px;margin-top:8px">${ring(48, 5, [{ v: 68, c: 'var(--plum-500)', max: 100 }], '<span class="score" style="font-size:12px">68</span>')}<div><b>製造業DXカンファレンス 大阪</b><div class="lbl">CVC 3名が参加予定 · 10/23</div></div></div><button class="btn sm" style="margin-top:12px">${ic('calendar', 'sm')}予定を押さえる</button></div></div>
+    <div class="card" style="border:1.5px dashed var(--plum-300);background:transparent"><div class="row" style="gap:10px"><span class="emo sm lav">📝</span><div style="flex:1"><b>プランに追加しますか？</b><div class="lbl">「小林さんに CVC 担当者の紹介を依頼」を「CVC 担当者」のやることに</div></div><button class="btn sm">やめる</button><button class="btn sm primary">追加する</button></div></div>
+    <div class="chips"><span class="prompt">依頼文を作って</span><span class="prompt">大阪の日程を押さえて</span><span class="prompt">他に CVC に近い人は？</span></div>
+    <div class="assist-in" style="margin-top:20px;height:56px;box-shadow:var(--shadow-float)">${ic('plus', 'sm')}質問・依頼を入力　@で人やイベントを指定<button class="lbtn" style="margin-left:auto;background:var(--ink);color:var(--bg)">${ic('send', 'sm')}</button></div></div>`;
+}
+const chatRail = `<h4>${ic('layers', 'sm')}参照しているもの</h4>
+  <div class="card" style="padding:14px"><div class="lbl">プラン</div><b style="font-size:13px">シリーズA 資金調達 · スコア 46</b>${V2.sbar('s46', { thin: true })}</div>
+  <div class="card" style="padding:14px"><div class="lbl">人脈 3名</div><div class="avs" style="margin-top:8px">${[C[5], C[0], C[2]].map(c => `<div class="av sm ${c.c}">${c.i}</div>`).join('')}</div></div>
+  <div class="card" style="padding:14px"><div class="lbl">イベント 1件</div><b style="font-size:13px">製造業DXカンファレンス 大阪</b></div>
+  <div class="mac lav" style="font-size:12px">メール・メッセージは下書きまで。送信はあなたが行います。</div>`;
+
+/* ---- 主催（運営台） ---- */
+function hostPage() {
+  return mainhead('CFO Night Tokyo vol.18', '主催 · 本日 19:00 · 渋谷ストリーム', `<button class="rbtn">${ic('left')}</button>`, `<div class="avs">${[C[2], C[5], C[4]].map(c => `<div class="av sm ${c.c}">${c.i}</div>`).join('')}</div><button class="btn">${ic('users', 'sm')}共同運営者</button>`) + `<div class="seg k-htabs" style="display:inline-flex;margin:-6px 0 18px"><button class="on">概要</button><button>マッチング</button><button>参加者 12</button><button>受付</button><button>申込設定</button><button>レポート</button></div><div class="wgrid">
+    ${[['申込', 128, '定員 150', 'lav'], ['マッチ可能', 112, 'プロフィール完了', 'blue'], ['受付済み', 0, '19:00 開場', 'teal'], ['推薦の生成', 96, '%', 'apricot']].map(([l, v, d, c]) => `<div class="card span3"><span class="chip ${c}">${l}</span><div class="big" style="margin-top:10px">${num(v)}${d === '%' ? '<small>%</small>' : ''}</div><div class="lbl">${d === '%' ? '1人あたり 5名を推薦' : d}</div></div>`).join('')}
+    <div class="card span8"><div class="card-h"><h3>申込の推移</h3><span class="lbl">直近14日</span></div><div class="bars">${[4, 6, 5, 9, 7, 12, 8, 6, 10, 14, 9, 11, 16, 11].map((h, k) => `<i class="${k === 12 ? 'hi' : ''}" style="height:${h * 6}px"></i>`).join('')}</div></div>
+    <div class="card span4"><div class="card-h"><h3>運営の進捗</h3></div>${[['申込受付', 1], ['マッチング生成', 1], ['グループ確認', 1], ['結果を公開', 0], ['当日受付', 0]].map(([t, d], k) => `<div class="chk ${d ? 'done' : ''}"><span class="box">${d ? ic('check', 'sm') : ''}</span><div style="flex:1"><b>${t}</b></div>${k === 3 ? '<button class="btn sm primary">公開する</button>' : ''}</div>`).join('')}</div>
+    <div class="card span12 flat row" style="gap:12px"><span class="emo apricot" style="color:var(--mac-apricot-ink)"><span class="lic i-alert"></span></span><div style="flex:1"><b>プロフィール未完了 16名</b><div class="lbl">マッチング精度が下がります。Orbit から定型のお知らせを通知できます（通知前に確認画面）</div></div><button class="btn">一覧を見る</button></div></div>`;
+}
+
+/* ---- 出力 ---- */
+const sec = (t, s) => `<div class="section-title"><h2>${t}</h2><span>${s}</span></div>`;
+const tags = { empty: '新用户空状态', few: '少量数据', many: '大量数据' };
+const board = (label, tag, html, notes) => `<div class="board" style="margin-bottom:34px"><div class="board-label">${label}${tag ? `<span class="tag ${tag}">${tags[tag] || tag}</span>` : ''}</div>${html}${notes ? `<ul class="note-list" style="max-width:1440px;grid-template-columns:repeat(3,1fr);display:grid">${notes.map((n, k) => `<li><b>${k + 1}</b><span>${n}</span></li>`).join('')}</ul>` : ''}</div>`;
+let h = '';
+h += sec('ホーム', '首页 v3「軌道ビュー」：首行 轨道（span7，直径约 360）+ プラン スコア（span5）；今週ストリップ 替代「今日の予定」；今日の一手 堆叠卡 + 判断待ち；右栏 = 次の一手');
+h += board('ホーム', 'empty', webFrame({ nav: 0, head: '', body: home('empty'), rail: assistRail('empty'), pins: pin(1, '.k-worb0 .orb') + pin(2, '.k-worb0 .btn.primary') + pin(3, '.k-wsteps0 .step.now') + pin(4, '.rail .prompt') }), ['空轨道：中心「你」+ 3 个虚线占位点依次脉动；轨道灰色虚线、不旋转；「名刺を3枚追加すると、軌道が動き出します」', '唯一主按钮「名刺をスキャン」；Web 也可直接把名刺图片拖进这张卡（拖入时卡片描边高亮）', '右侧 3 步引导（硬顺序），当前步高亮；下排三张次要入口：招待コード / イベント評価 / 目標を設定', '右栏在空状态是 iOrbit 自我介绍 + 可点的示例提问，⌘K 全局唤起']);
+h += board('ホーム', 'few', webFrame({ nav: 0, head: '', body: home('few'), rail: assistRail('few'), pins: pin(1, '.k-worb .orb-st') + pin(2, '.k-wscore .ghost-row') + pin(3, '.k-wweek .wk-open') }), ['轨道稀疏：5 个点，左栏段階计数 1 / 1 / 2 / 1，人少时不显示「+N」；本月新认识的 3 人带光晕', '刚生成计划 0 分：「最近の加点」为空时显示幽灵行，不留白', '今週只有今天 1 件；未连日历时幽灵行提示连携']);
+h += board('ホーム', 'many', webFrame({ nav: 0, head: '', body: home('many'), rail: assistRail('many'), pins: pin(10, '.mainhead .rbtn .dot') + pin(1, '.k-worb .orb-svg') + pin(2, '.k-worb .orb-pop') + pin(3, '.k-worb .orb-hd .big') + pin(4, '.k-wscore .v2bar') + pin(5, '.k-wweek .wd.on') + pin(6, '.k-wstack .nst-front') + pin(7, '.hov-acts.show') + pin(8, '.k-wadd') + pin(9, '.evc') }), [
+  '轨道：4 条同心轨道 = 関係段階（協業中 豆沙 / 推進中 深紫 / 関係構築 中紫虚线 / 知り合い 浅紫点线）；约 24 个代表点 + 底部「+N」（合计 286）；缓慢旋转 64–90 秒/圈、方向交替，头像反向自转保持正立；新认识的人薰衣草光晕呼吸 3.4s；prefers-reduced-motion 时静止',
+  '悬停一个人 → 该点放大并显示姓名 tooltip；点击 → 停在原位并浮出迷你卡（姓名・会社・为什么重要 +「詳細」→ 右侧抽屉，与人脈页同一抽屉）；Esc / 点空白收起。画稿为静态演示',
+  '左栏「人脈 286人」count-up + 「+24 今月」+ 段階计数（19 / 31 / 64 / 172）；点任一段階 → 人脈 按该段階筛选；左下图例 ●目標に関係 9 ／ ◌今月の新しい人 24',
+  'プラン スコア 46：带类型名的分数构成条（实色 = 话出来的分 / 斜纹 = 习熟跳过 / 超额豆沙，与 ⑨ 同口径）+ 今日 +10 のチャンス + 最近の加点；点卡 → プラン',
+  '今週ストリップ：7 天等宽，今天墨色；点某天 → 下方时间线切到那天（0.45s 淡入，小三角跟随），今天默认展开',
+  '今日の一手 = 堆叠卡（后露 2 张卡边），点 › 或横向拖动切换，「1 / 3」；按钮「下書きを開く」「あとで」，送信はあなたが行います',
+  '判断待ち 只显示 2 条 +「すべて (4)」；行悬停才出现「明日 / 完了」（首行演示常显）',
+  '右上「追加」→ 与 App「＋ 追加」同一面板，Web 为居中弹窗 680：上半「人脈を追加」5 门（名刺・招待コード 大卡在上，手入力・連絡先・LinkedIn 三块在下，各带浓度点，⑨ A0 Web 弹窗同款），下半「その他」（イベント評価・音声メモ・タスク・NFC交換・iOrbit に頼む）；Esc 关闭。人脈页「人脈を追加」打开同一弹窗',
+  '评估卡悬停上浮 3px + 浮影', '🔔 → 受信箱「通知」页签（⑤ A）；今週「カレンダー ›」→ カレンダー（③ 7）；判断待ち「すべて (4)」→ タスク一覧（③ 3）；左栏头像 → 設定 › プロフィール（⑤ C）']);
+h += sec('人脈', '⑨ A6 人脈一覧 Web：浓度卡 + 出どころ + 表格新增「濃さ」「出どころ」两列 + 分类页签「情報が少ない人」；口径 286 人（few 5 / empty）；详情仍为右侧抽屉');
+h += board('人脈', 'empty', webFrame({ nav: 2, head: '', body: network('empty'), rail: netRail('empty'), pins: pin(1, '.k-wnetguide') + pin(2, '.k-wdoor') }), ['一个主动作「人脈を追加」打开 5 门弹窗（与首页「追加」同一弹窗）', '下排四张卡 = 其余四个门的直达入口，各带浓度预告']);
+h += board('人脈', 'few', webFrame({ nav: 2, head: '', body: network('few'), rail: netRail('few'), pins: pin(3, '.k-wanal') + pin(1, '.k-wdens') + pin(2, '.k-wtable') }), ['浓度卡：三段构成条 + 三格计数（1 / 2 / 2）', '表格新增「濃さ」「出どころ」两列；「目標との関係」列放计划里的类型（候補为 AI 推测）', '「人脈分析 ›」→ 人脈分析（⑤ E1 Web；10 人以下为锁定态）']);
+h += board('人脈', 'many', webFrame({ nav: 2, head: '', body: network('many'), rail: netRail('many'), pins: pin(4, '.k-wanal') + pin(1, '.k-wcats') + pin(2, '.k-wask') + pin(3, '.k-wtable tr', 4) }), ['「情報が少ない人 74」页签；点后表格只剩 ●○○ 并在右栏批量补全', '右栏「今日の 1問」与 App 首页判断待ち 同一题，任一端答了另一端消失', 'LinkedIn 导入的人显示「2024年3月につながる」代替最终接点；排序 = 目标相关 > 最近接点', '「人脈分析 ›」→ 人脈分析（⑤ E1：構造 / 機会 / インサイト）；搜索框 ⌘K → 命令面板（⑤ E4）；筛选钮 → 弹出层（⑤ E5）']);
+h += board('連絡先詳細（抽屉）', '', webFrame({ nav: 2, head: '', body: network('many', { sel: 0 }), rail: netRail('many'), pins: pin(1, '.drawer') + pin(2, '.drawer [data-why-box]') }).replace('</section>', '</section>' + contactDrawer()), ['从右侧滑入 600px 抽屉，关闭回到原列表位置（W0056 决定）；首页轨道迷你卡的「詳細」也打开这个抽屉', '「なぜ高橋さんか」默认展开依据；主按钮只到草稿']);
+h += sec('イベント', '新增：URL / 海报评估（两端现状都没有）；右栏 = 选中评估的详情（主从布局）');
+h += board('イベント', 'empty', webFrame({ nav: 3, head: '', body: events('empty'), rail: assistRail('empty') }));
+h += board('イベント', 'few', webFrame({ nav: 3, head: '', body: events('few'), rail: evalRail(E[0]) }));
+h += board('イベント', 'many', webFrame({ nav: 3, head: '', body: events('many'), rail: evalRail(E[0]), pins: pin(1, '.evc.sel') + pin(2, '.rail .ring') }), ['点评估卡 → 卡片紫色描边选中，右栏切换详情（不跳页）', '分数从 0 滚到目标值；内訳细条带圆点滑块']);
+h += sec('プラン', '⑨ B2 プラン主页 Web：スコア（满点 100 · 不封顶）+ 带类型名的分数构成条 + Step × 人物类型表 + 今日 +10；many 与首页同口径 46');
+h += board('プラン', 'empty', webFrame({ nav: 4, head: '', body: plan('empty'), rail: assistRail('empty'), pins: pin(1, '.k-wpempty') + pin(2, '.k-wpsample .v2bar') }), ['目标输入 + 类型 chip + 主按钮「分析する」（→ ⑨ B1）；右卡解释计分三规则', '淡化「サンプル」：スコア + 带类型名的分数构成条，绝不写库']);
+h += board('プラン', 'few', webFrame({ nav: 4, head: '', body: plan('few'), rail: planRail('few'), pins: pin(4, '.k-wgoal') + pin(1, '.k-whero') + pin(2, '.k-wptable') + pin(3, '.k-wtoday') }), ['刚生成 0 分：构成条下方带类型缩写标签，宽度 = 配点', '步骤 × 类型表：状况 chip（n / 目標人数、候補人数、人脈にいません）+ 点 / 配点 + 迷你条', '今天能加分的一件事（伊藤 = CFO 経験者）+ 最近加点（few 为空幽灵行）；「面談を提案」只生成站内请求，送信はあなたが行います', '标题栏左侧目标下拉（与 App 标题下「▾」同一功能，④ A6）：切换 / 目標を追加 / 編集']);
+h += board('プラン', 'many', webFrame({ nav: 4, head: '', body: plan('many'), rail: planRail('many'), pins: pin(5, '.k-wgoal') + pin(1, '.k-whero .v2bar') + pin(2, '.k-wptable tr', 6) + pin(3, '.k-wtoday') + pin(4, '.k-wrevise') }), ['スコア 46 count-up（与首页同口径）；构成条按类型配分分段，实色 = 话出来的分；超过 100 时出现「満点 100」刻度与豆沙上乗せ段（见 ⑨ B2 many 128）', '弁護士 = 斜纹满分「習熟済み · スキップ」，与聊出来的分一眼区分，可撤回', '今日 +10 的机会 + 「最近の加点」流水（跳过单独记一行）', '「方案を見直す」按需重做（Free 月 3 回）→ ⑨ B5；旧的周次 / 月次见直し 已取消', '目标下拉 → 切换 / 目標を追加 / 編集（④ A6）；表格任一类型行 → 人物タイプ詳細（④ A2 Web）']);
+h += sec('iOrbit · 主催', '对话全屏 + 右栏显示 AI 正在引用的上下文；主办方运营台收进左栏「主催」');
+h += board('iOrbit 対話', '', webFrame({ pins: pin(2, '.mainhead .rbtn') + pin(1, '.card[style*=dashed]'), nav: 1, head: '', body: chatPage(), rail: chatRail }), ['写入类动作是虚线确认卡；右栏让用户看见 AI 用了哪些数据', '左上 🕘 → 会話の履歴（左侧面板，④ B2）；右上「新しい会話」']);
+h += board('主催 · 運営', '', webFrame({ pins: pin(1, '.k-htabs') + pin(2, '.mainhead .btn'), nav: 'host', head: '', body: hostPage() }), ['运营台六页签（概要/マッチング/参加者/受付/申込設定/レポート）放在标题下方，与 ⑥ 主办运营台同构', '右上 共同運営者 头像 + 按钮 → 共同運営者抽屉（⑥ A）；左上 ‹ → 運営センター']);
+h += sec('ダークモード', '');
+h += board('ホーム', 'many', webFrame({ nav: 0, head: '', body: home('many'), rail: assistRail('many'), theme: 'dark' }));
+h += board('イベント', 'many', webFrame({ nav: 3, head: '', body: events('many'), rail: evalRail(E[0]), theme: 'dark' }));
+document.getElementById('out').innerHTML = h;
+document.addEventListener('click', e => { const c = e.target.closest('.evc'); if (!c) return; const w = c.closest('.web'); w.querySelectorAll('.evc').forEach(x => x.classList.toggle('sel', x === c)); const i = [...w.querySelectorAll('.evc')].indexOf(c); const r = w.querySelector('.rail'); if (r && r.querySelector('.crit')) { r.innerHTML = evalRail(E[i] || E[0]); orbitAnimate(r); } });
+docNav('web'); orbitChrome();
+</script>
+</body>
+</html>

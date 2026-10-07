@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Orbit 缺口分析</title>
+<link rel="stylesheet" href="kit/tokens.css">
+<link rel="stylesheet" href="kit/ui.css">
+<script src="kit/kit.js"></script>
+<style>
+  .doc { max-width: 1400px; min-width: 1400px; margin: 0 auto; }
+  .stat { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; }
+  .flow { background: var(--surface); border-radius: 22px; padding: 18px 20px; }
+  .flow + .flow { margin-top: 14px; }
+  .flow-h { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .flow-h b { font-size: 15px; }
+  .chain { display: flex; flex-wrap: wrap; gap: 6px 0; align-items: center; }
+  .st { display: inline-flex; align-items: center; gap: 6px; padding: 7px 11px; border-radius: 12px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+  .st.ok { background: var(--mac-teal); color: var(--mac-teal-ink); }
+  .st.part { background: var(--mac-apricot); color: var(--mac-apricot-ink); }
+  .st.no { background: var(--surface-2); color: var(--ink-2); border: 1.5px dashed var(--coral); }
+  .st small { font-weight: 600; opacity: .75; font-size: 10.5px; }
+  .arr { color: var(--ink-4); padding: 0 6px; font-size: 13px; }
+  .legend { display: flex; gap: 10px; align-items: center; font-size: 12px; color: var(--ink-2); }
+  table.g { width: 100%; border-collapse: separate; border-spacing: 0; background: var(--surface); border-radius: 22px; overflow: hidden; font-size: 12.5px; }
+  table.g th { text-align: left; font-size: 11px; color: var(--ink-3); font-weight: 700; padding: 11px 14px; background: var(--surface-2); }
+  table.g td { padding: 10px 14px; border-top: 1px solid var(--line); vertical-align: top; }
+  table.g tr.dom td { background: color-mix(in srgb, var(--accent-soft) 60%, transparent); font-weight: 800; font-size: 13px; }
+  .p { display: inline-grid; place-items: center; min-width: 30px; height: 20px; border-radius: 6px; font-size: 10.5px; font-weight: 800; }
+  .p0 { background: var(--coral-soft); color: var(--coral); } .p1 { background: var(--mac-apricot); color: var(--mac-apricot-ink); } .p2 { background: var(--surface-2); color: var(--ink-3); }
+  .pf { display: inline-flex; gap: 3px; }
+  .pf i { font-style: normal; font-size: 10px; font-weight: 800; padding: 1px 5px; border-radius: 5px; }
+  .pf .y { background: var(--mac-teal); color: var(--mac-teal-ink); } .pf .n { background: var(--coral-soft); color: var(--coral); } .pf .h { background: var(--mac-apricot); color: var(--mac-apricot-ink); }
+  .batches { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .batches .card { display: flex; flex-direction: column; gap: 6px; }
+  .batches ul { padding-left: 16px; font-size: 12.5px; color: var(--ink-2); display: grid; gap: 3px; }
+</style>
+</head>
+<body>
+<div class="doc">
+  <div class="doc-head"><div><div class="doc-kicker">Orbit Redesign · 2026-10 · Step 2</div><h1>还没做的 UI 与流转</h1>
+    <p>对照「现状图谱」里两端全部能力，和已画的 App 22 屏 / Web 17 屏逐项比对。上半部分按<b>端到端流转</b>看每一步画了没有；下半部分按<b>页面</b>列清单并排优先级。P0 = 核心闭环断在这里；P1 = 高频二级页；P2 = 低频或设置类。</p></div>
+    <div class="doc-tools"><div class="seg" data-ctl="theme"><button data-v="light">ライト</button><button data-v="dark">ダーク</button></div></div></div>
+  <nav class="doc-nav" id="docnav"></nav>
+  <div class="card" style="margin-bottom:16px;background:linear-gradient(135deg,var(--mac-teal),var(--surface) 70%)"><div class="row" style="gap:12px"><span class="emo teal">✅</span><div style="flex:1"><b style="font-size:15px">2026-10-07 全部补齐（①–⑨），缺口已清零</b><div class="sub">下面保留「补画前」的缺口记录作为对照；每条流转右侧的链接指向补在哪一批。补画共 340 个画板（①55 ②50 ③54 ④60 ⑤72 ⑥49）。</div><div class="sub" style="margin-top:6px;color:var(--ink)"><b>2026-10-07 起计划为 v2</b>：计划 v2 已并入 ① / ④ / App / Web，⑨ 只保留导入新增页。</div></div></div></div>
+  <div class="card" style="margin-bottom:16px"><b>最终状态（2026-10-07）</b>
+    <ul style="padding-left:18px;margin-top:8px;font-size:12.5px;color:var(--ink-2);display:grid;gap:4px">
+      <li>补画：①–⑥ 六批；⑦ 账号与补遗（订阅/解约/退会/导出/主办公开页/面谈详情/资料建议/兜底页/灵动岛/NFC 网页互换）；⑧ Web 自适应；⑨ 人脉导入 v2。</li>
+      <li>计划 v2（人脉方案 + 100 分制积分，不排期）已并入 App / Web / ① / ④，旧时间线画板已删除；⑨ 只保留导入新增页。</li>
+      <li>首页 v3「軌道ビュー」：App / Web / 小组件 / ⑥ 自适应与大字号 / 各批首页背景全部同源。</li>
+      <li>组件不一致 19 条已统一（见 <a href="01-system.html" style="text-decoration:underline">设计系统</a> 不一致清单）；全局一致性审计：同屏按钮/页签一致，44 条子页面入口全部可达、二级页均有返回（见设计系统末节）。</li>
+      <li>下方「补画前」表格保留为历史对照。</li>
+    </ul></div>
+  <div class="stat" id="stat"></div>
+
+  <div class="section-title"><h2>一、端到端流转</h2><span class="legend"><span class="st ok">已画</span><span class="st part">只画了一端 / 一部分</span><span class="st no">未画</span></span></div>
+  <div id="flows"></div>
+
+  <div class="section-title"><h2>二、跨页面的系统状态</h2><span>每页都会遇到，但目前一张都没画</span></div>
+  <div id="sys" class="grid3"></div>
+
+  <div class="section-title"><h2>三、逐页清单</h2><span>端：<span class="pf"><i class="y">A✓</i><i class="h">A½</i><i class="n">A✗</i></span> App　<span class="pf"><i class="y">W✓</i><i class="n">W✗</i></span> Web</span></div>
+  <table class="g"><thead><tr><th style="width:56px">优先</th><th style="width:250px">页面 / 状态</th><th style="width:90px">端</th><th>要画什么</th><th style="width:220px">对应现状</th></tr></thead><tbody id="rows"></tbody></table>
+
+  <div class="section-title"><h2>四、建议分批</h2><span>按「流转先通、再补二级页、最后设置」的顺序；每批都含明暗与三种数据状态</span></div>
+  <div class="batches" id="batches"></div>
+</div>
+<script>
+const S = (t, s, sub = '') => `<span class="st ${s}">${t}${sub ? ` <small>${sub}</small>` : ''}</span>`;
+const FLOWS = [
+  ['🚀', '新用户冷启动', 'P0', [['落地页', 'no'], ['注册 / 登录', 'no', '4 态'], ['资料 onboarding', 'no', '5 步'], ['ホーム 引导卡', 'ok'], ['拍名片（相机）', 'no'], ['名片确认', 'part', '仅 App'], ['设定目标', 'ok'], ['计划生成中', 'no'], ['第一份计划', 'ok'], ['示例预览横条', 'no']]],
+  ['📇', '名片 → 人脉 → 计划匹配', 'P0', [['＋追加', 'ok', '仅 App'], ['相机 / 多张上传', 'no'], ['批量识别进度', 'no', '最多 100 张'], ['逐张确认', 'part', '仅 App 单张'], ['重复合并', 'no'], ['批次完成 + AI 补全', 'no'], ['计划匹配确认', 'part', '仅 Web 卡片'], ['联系人详情', 'ok']]],
+  ['🎟️', '活动：评估 → 报名 → 现场 → 会后', 'P0', [['评估输入', 'ok'], ['判定中', 'part', '仅 App'], ['评估结果', 'ok'], ['读取失败 / 非活动页', 'no'], ['活动详情', 'no'], ['报名（AI 访谈）', 'no'], ['录取状态', 'no'], ['会う準備', 'no'], ['会場モード', 'no', '签到/桌次/推荐/交换'], ['会后回看 + 跟进', 'no'], ['计划进度回写', 'no']]],
+  ['✉️', '今日の一手 → 草稿 → 完成', 'P0', [['今日の一手', 'ok'], ['邮件草稿编辑', 'no'], ['复制 / 打开邮件 App', 'no'], ['标记完成 + 记一笔', 'no'], ['Toast + 撤销', 'no']]],
+  ['🔁', '跟进与日程', 'P1', [['判断待ち（左滑）', 'ok'], ['任务全部列表', 'no'], ['任务详情', 'no'], ['跟进完成 + 下一步', 'no'], ['约时间（3–5 候选）', 'no'], ['日历 日/月', 'no'], ['个人日程编辑', 'no']]],
+  ['🗺️', '计划长期使用', 'P1', [['目标设定', 'ok'], ['计划页', 'ok'], ['记录进展（@人/活动）', 'no'], ['阶段详情', 'no'], ['每月重新分析 / 配额', 'no'], ['阶段完成 → 下一计划', 'no'], ['修改目标', 'no']]],
+  ['✨', 'iOrbit 对话', 'P1', [['入口（圆钮 / 右栏）', 'ok'], ['空对话起始屏', 'no'], ['回答 + 确认卡', 'ok'], ['执行后结果反馈', 'no'], ['历史抽屉', 'no'], ['@ 提及选择器', 'no'], ['语音输入中', 'no']]],
+  ['🎤', '主办方运营', 'P2', [['运营中心列表', 'no'], ['概要', 'part', '仅 Web'], ['匹配与分组', 'no'], ['参会者审核', 'no'], ['签到 kiosk', 'no'], ['报名表编辑 + 发布', 'no'], ['数据报告', 'no'], ['协作者抽屉', 'no']]],
+];
+const FB = {"新用户冷启动": "b1-onboarding-cards", "名片 → 人脉 → 计划匹配": "b1-onboarding-cards", "活动：评估 → 报名 → 现场 → 会后": "b2-events-flow", "今日の一手 → 草稿 → 完成": "b3-daily-actions", "跟进与日程": "b3-daily-actions", "计划长期使用": "b4-plan-iorbit", "iOrbit 对话": "b4-plan-iorbit", "主办方运营": "b6-host-polish"};
+document.getElementById('flows').innerHTML = FLOWS.map(([e, t, p, steps]) => {
+  const ok = steps.filter(s => s[1] === 'ok').length;
+  return `<div class="flow"><div class="flow-h"><span class="emo sm lav">${e}</span><b>${t}</b><span class="p ${p.toLowerCase()}">${p}</span><span class="lbl" style="margin-left:auto">补画前 ${ok} / ${steps.length} 步</span><a class="btn sm" href="${FB[t]}.html">已补 → ${FB[t].slice(0,2)}</a><div style="width:120px">${bar(ok / steps.length * 100, ok / steps.length < .4 ? 'warn' : '')}</div></div>
+    <div class="chain">${steps.map(([n, s, sub], k) => (k ? '<span class="arr">→</span>' : '') + S(n, s, sub)).join('')}</div></div>`;
+}).join('');
+
+const SYS = [
+  ['⏳', '加载与骨架', '每个关键页的首屏骨架；AI 生成类（评估/计划/洞察）用分步清单，目前只有评估画了'],
+  ['⚠️', '错误与离线', '网络断开横条、加载失败重试、AI 不可用降级、App 离线写入排队（现状已有离线写）'],
+  ['✅', '反馈与撤销', 'Toast（完了・あとで・追加）带撤销；破坏性操作确认框（删除联系人/取消报名/发布结果）'],
+  ['🔐', '系统权限', '相机、通讯录、日历、通知的「先解释再请求」页，以及被拒后的引导'],
+  ['🔔', '推送与深链落地', '「错过有真实代价」才推送：样式、频控设置、点开后落到哪一屏并高亮'],
+  ['💳', 'AI 配额 / 付费', '重新生成次数、每日配额用尽、付费档位说明（执行闭环收费）——现在一屏都没有'],
+  ['🧪', '示例预览模式', '引导未完成时全站示例数据：顶部「示例预览」横条→收起成药丸、写操作拦截弹窗'],
+  ['🔎', '全局搜索 / ⌘K', '搜人、搜活动、搜对话；无结果状态；最近搜索；App 的「深度关系搜索」'],
+  ['🎛️', '筛选面板', '人脉（段階/业界/地区/来源）、活动（时间/地点/主题）的底部弹层与 Web 弹出层'],
+  ['🌐', '语言与文字', '日/中/英切换；日语长文案（敬语、长公司名）下的截断规则；动态字号'],
+  ['📐', 'Web 响应式', '1024 平板宽与手机浏览器宽：左栏折叠、右栏变抽屉；目前只画了 1440'],
+  ['🌙', '深色补齐', 'Web 只画了 2 张深色；人脈/プラン/iOrbit/主催/抽屉的深色未画'],
+];
+document.getElementById('sys').innerHTML = SYS.map(([e, t, d]) => `<div class="card" style="margin:0"><div class="row" style="gap:10px"><span class="emo sm apricot">${e}</span><b>${t}</b></div><div class="sub" style="margin-top:8px">${d}</div></div>`).join('');
+
+const A = { y: '<i class="y">A✓</i>', h: '<i class="h">A½</i>', n: '<i class="n">A✗</i>', '-': '' }, W = { y: '<i class="y">W✓</i>', n: '<i class="n">W✗</i>', '-': '' };
+const R = [
+  ['账号与引导'],
+  ['P0', '落地页', '-', 'n', '日语营销页；两端品牌一致；CTA 到注册', 'OrbitLanding0918'],
+  ['P0', '登录 / 注册 / 忘记 / 重置', 'n', 'n', '4 态弹窗 + Google；错误态；链接过期态', '/account/*'],
+  ['P0', '资料 onboarding 5 步', 'n', 'n', '基本资料（扫自己名片自动填）→ 目标 → 能给/需要 → AI 自我介绍 → 导入', '/profile/onboarding'],
+  ['P0', '示例预览横条与拦截弹窗', 'n', 'n', '见「系统状态」', '/app/start 示例模式'],
+  ['名片与人脉'],
+  ['P0', '名片相机取景', 'n', '-', '取景框、自动裁切、连拍计数、正反面切换', '/contacts/new'],
+  ['P0', '批量上传与识别进度', 'n', 'n', '拖入/选图、逐张进度、失败重识别、取消批次', '/contacts/new/batch2'],
+  ['P0', '名片确认（Web）', 'h', 'n', 'Web 版行式复核；App 已画单张', 'card-batch host'],
+  ['P0', '重复合并', 'n', 'n', '左右对照、逐字段选取、合并/新建/跳过', '导入去重'],
+  ['P0', '批次完成 + 匹配确认', 'n', 'n', '「新增 12 人，其中 3 人可能满足计划需求」→ ✓/✕', 'W0058/W0061'],
+  ['P1', 'CSV / vCard 映射', '-', 'n', '列对应、预览、导入记录', 'import?method=csv'],
+  ['P1', '人脉分析二级页', 'n', 'n', '结构 / 机会 / 洞察三页签 + 维度下钻名单', '/contacts/dashboard?tab='],
+  ['P1', '联系人编辑', 'n', 'n', '字段编辑、行业/职级选择、删除', '详情 edit panel'],
+  ['P1', '记 memo / 语音 memo', 'n', 'n', '快速记一句（AI 整理）、语音录入中、整理结果确认', '/notes, Quick memo'],
+  ['P1', '搜索结果 / 无结果', 'n', 'n', '「投資家」类语义搜索结果；空结果给建议', '深度关系搜索'],
+  ['P2', '引荐 / 邀请', 'n', 'n', '生成邀请链接、接受邀请页', '/contacts/intros, /invitations'],
+  ['P2', 'NFC 交换', 'n', '-', '碰一下 → 互换 → 推送告知 → 可撤销（模型 A）', '规划中'],
+  ['活动'],
+  ['P0', '评估失败 / 非活动页 / 信息不足', 'n', 'n', '读不到页面、海报模糊、缺日期地点时让用户补', '新'],
+  ['P0', '活动详情', 'n', 'n', '介绍/议程/主办/参会者；评估分数常驻；与评估结果合并为一页', '/events/[id]'],
+  ['P0', '报名（AI 访谈）+ 录取状态', 'n', 'n', '问题逐步、活动人设生成、审核中/候补/确定/未录取', '/events/[id]/register'],
+  ['P0', '会う準備', 'n', 'n', '要见的人 + 破冰话术 + 准备清单', 'event detail readiness'],
+  ['P0', '会場モード', 'n', 'n', '签到、桌次与轮次、推荐、全部参会者、分组、图谱、议程；参会者弹层（交换/约谈/memo）', '/events/[id]/live'],
+  ['P0', '会后回看 + 跟进', 'n', 'n', '见到的人、生成总结、批量写跟进、回写计划', 'recap view'],
+  ['P1', '探す（发现活动）', 'n', 'n', '推荐、筛选、搜索、社群活动置顶', '/app/events discover'],
+  ['P2', '主办方公开页 / 邀请码', 'n', 'n', '', '/o/[slug], /register/[code]'],
+  ['每日行动'],
+  ['P0', '邮件草稿编辑器', 'n', 'n', '收件人/主题/正文、语气切换、重写、复制 / 在邮件 App 打开（不代发）', '跟进草稿卡'],
+  ['P1', '任务全部列表 + 详情', 'n', 'n', '逾期/今天/之后/未定；详情含提醒、关联人与活动、历史', '/tasks, /tasks/[id]'],
+  ['P1', '跟进完成 + 下一步', 'n', 'n', '完成这次 → 选下一步（继续/推进/定期维护/归档）+ 时间', '/tasks/relationship/[id]'],
+  ['P1', '约时间（3–5 候选）', 'n', 'n', '候选时段、线上/线下、发送前确认', 'schedule modal'],
+  ['P1', 'カレンダー 日/月 + 日程编辑', 'n', 'n', '马卡龙分类色块、重复规则、冲突提示', '/schedule, /tasks/personal'],
+  ['プラン · iOrbit'],
+  ['P1', '计划生成中', 'n', 'n', '两阶段生成的分步进度', 'plan_bootstrap'],
+  ['P1', '记录进展（@）', 'n', 'n', '一句话 + @人/活动 → 写入日志', 'IOrbitPlan'],
+  ['P1', '阶段详情 / 重新分析 / 下一计划', 'n', 'n', '含每月 1 次与配额提示', 'IOrbitPlan'],
+  ['P1', 'iOrbit 空对话 + 历史', 'n', 'n', '起始提问、历史抽屉（置顶/重命名/删除）', '/ai, /app/agent'],
+  ['P2', '@ 选择器 / 语音输入中', 'n', 'n', '', '/ai/[id]'],
+  ['マイ · 受信箱 · 主催'],
+  ['P1', '受信箱（消息 / 通知）', 'n', 'n', '分类、已读、加任务、草稿暂存', '/inbox, 顶栏抽屉'],
+  ['P1', 'マイページ', 'n', 'n', '名片头卡、完整度环、能给/需要、公开预览', '/profile'],
+  ['P2', '设置 / 连携 / 通知 / 语言 / 账号 / 权限', 'n', 'n', '分组列表；Gmail/Calendar/Contacts 连接卡', '/settings, connect'],
+  ['P2', '主办：运营中心 + 6 页签 + 协作者', 'n', 'n', 'Web 只画了概要；App 入口在マイ', '/events/center, operations/*'],
+  ['P2', '小组件配置', 'n', '-', '长按编辑：选目标/选显示内容', '新'],
+];
+document.getElementById('rows').innerHTML = R.map(r => r.length === 1 ? `<tr class="dom"><td colspan="5">${r[0]}</td></tr>` :
+  `<tr><td><span class="p ${r[0].toLowerCase()}">${r[0]}</span></td><td><b>${r[1]}</b></td><td><span class="pf">${A[r[2]]}${W[r[3]]}</span></td><td class="sub">${r[4]}</td><td class="lbl">${r[5]}</td></tr>`).join('');
+
+const items = R.filter(r => r.length > 1);
+const cnt = p => items.filter(r => r[0] === p).length;
+const steps = FLOWS.flatMap(f => f[3]), stepsOk = steps.filter(s => s[1] === 'ok').length;
+document.getElementById('stat').innerHTML = [
+  ['已画屏幕', '22 + 17', 'App 22 屏 · Web 17 屏', ''],
+  ['流转步骤已画', `${stepsOk} / ${steps.length}`, '8 条端到端流转', 'var(--coral)'],
+  ['P0 缺口', cnt('P0'), '核心闭环断点', 'var(--coral)'],
+  ['P1 缺口', cnt('P1'), '高频二级页', ''],
+  ['P2 + 系统状态', `${cnt('P2')} + ${SYS.length}`, '低频页 / 跨页状态', ''],
+].map(([l, v, d, c]) => `<div class="card" style="margin:0"><div class="lbl">${l}</div><div class="big" style="font-size:30px;${c ? 'color:' + c : ''}">${v}</div><div class="lbl">${d}</div></div>`).join('');
+
+document.getElementById('batches').innerHTML = [
+  ['批 1 · 冷启动 + 名片', 'P0', ['登录/注册 4 态、onboarding 5 步', '示例预览横条 + 拦截', '相机取景、批量进度、Web 名片确认', '重复合并、批次完成 + 匹配确认', '系统：加载骨架、权限请求']],
+  ['批 2 · 活动闭环', 'P0', ['评估失败/信息不足', '活动详情（含评估分）', '报名 AI 访谈 + 录取状态', '会う準備、会場モード + 参会者弹层', '会后回看 + 跟进 + 回写计划']],
+  ['批 3 · 每日行动', 'P0/P1', ['邮件草稿编辑器（止于草稿）', '任务列表/详情、跟进完成 + 下一步', '约时间、カレンダー 日/月', '系统：Toast 撤销、确认框、错误离线']],
+  ['批 4 · 计划与 iOrbit', 'P1', ['计划生成中、记录进展、阶段/重新分析', 'iOrbit 空对话、历史、@ 选择、语音', '系统：AI 配额 / 付费']],
+  ['批 5 · マイ与受信箱', 'P1/P2', ['受信箱、マイページ、设置/连携/通知', '人脉分析二级页、联系人编辑、memo', '系统：全局搜索、筛选面板、推送深链']],
+  ['批 6 · 主办与收尾', 'P2', ['主办运营 6 页签 + 协作者', '小组件配置、NFC', 'Web 响应式（1024/手机）', '深色补齐、日语长文案截断']],
+].map(([t, p, list]) => `<div class="card"><div class="row between"><b>${t}</b><span class="p ${p.startsWith('P0') ? 'p0' : p.startsWith('P1') ? 'p1' : 'p2'}" style="padding:0 6px">${p}</span></div><ul>${list.map(x => `<li>${x}</li>`).join('')}</ul></div>`).join('');
+docNav('02-gaps'); orbitChrome();
+</script>
+</body>
+</html>

@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Orbit 现状图谱</title>
+<link rel="stylesheet" href="kit/tokens.css">
+<link rel="stylesheet" href="kit/ui.css">
+<script src="kit/kit.js"></script>
+<style>
+  .doc { max-width: 1480px; min-width: 1480px; margin: 0 auto; }
+  .ia { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; }
+  .ia .col { background: var(--surface); border-radius: 22px; padding: 16px; }
+  .ia .col h3 { font-size: 15px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+  .ia .col .sub { margin: 2px 0 10px; font-size: 11.5px; }
+  .src { display: flex; gap: 6px; align-items: baseline; font-size: 12px; padding: 5px 0; border-top: 1px solid var(--line); }
+  .src code { font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: var(--ink-2); }
+  .pf { font-size: 9.5px; font-weight: 800; padding: 1px 5px; border-radius: 5px; flex: none; }
+  .pf.w { background: var(--mac-blue); color: var(--mac-blue-ink); } .pf.a { background: var(--mac-teal); color: var(--mac-teal-ink); }
+  .pf.n { background: var(--coral-soft); color: var(--coral); }
+  .cross { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 14px; }
+  .cross > div { background: var(--surface-2); border-radius: 18px; padding: 14px; font-size: 12px; }
+  .cross b { font-size: 13px; display: block; margin-bottom: 4px; }
+  table.inv { width: 100%; border-collapse: separate; border-spacing: 0; background: var(--surface); border-radius: 22px; overflow: hidden; font-size: 12.5px; }
+  table.inv th { text-align: left; font-size: 11px; color: var(--ink-3); font-weight: 700; padding: 12px 14px; background: var(--surface-2); position: sticky; top: 0; }
+  table.inv td { padding: 10px 14px; border-top: 1px solid var(--line); vertical-align: top; }
+  table.inv td:first-child { white-space: nowrap; }
+  table.inv code { font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: var(--ink-2); display: block; }
+  table.inv tr.dom td { background: color-mix(in srgb, var(--accent-soft) 60%, transparent); font-weight: 800; font-size: 13px; }
+  .to { font-weight: 700; }
+  .stat { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; margin-bottom: 8px; }
+  .gap { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+</style>
+</head>
+<body>
+<div class="doc">
+  <div class="doc-head"><div><div class="doc-kicker">Orbit Redesign · 2026-10 · Step 0</div><h1>现状 UI 图谱 → 新位置</h1>
+    <p>来源：<code>repos/orbits/app/(app)/app/**</code>（Web，*-0918 新屏）与 <code>repos/orbit-app/app/**</code>（Expo App）逐路由盘点，2026-10-07。admin / dev 不在范围。下面先给新的信息架构，再逐页列出「现在在哪 → 以后放哪、用什么样式」。</p></div>
+    <div class="doc-tools"><div class="seg" data-ctl="theme"><button data-v="light">ライト</button><button data-v="dark">ダーク</button></div></div></div>
+  <nav class="doc-nav" id="docnav"></nav>
+
+  <div class="stat">
+    <div class="card"><div class="lbl">Web 用户侧路由</div><div class="big">38</div><div class="lbl">顶栏 3 项：iOrbit / 活动 / 人脉</div></div>
+    <div class="card"><div class="lbl">App 屏幕</div><div class="big">~70</div><div class="lbl">底栏 5 项：ホーム/つながり/IORBIT/イベント/マイページ</div></div>
+    <div class="card"><div class="lbl">两端导航不一致</div><div class="big" style="color:var(--coral)">5</div><div class="lbl">首页定义、AI 位置、计划入口、我的、收件箱</div></div>
+    <div class="card"><div class="lbl">两端都缺的能力</div><div class="big" style="color:var(--coral)">2</div><div class="lbl">活动评估（URL/海报）、小组件</div></div>
+    <div class="card"><div class="lbl">语言问题</div><div class="big" style="color:var(--coral)">ja ≈ 0</div><div class="lbl">Web 导航无日语回退英文；App 多屏中文硬编码</div></div>
+  </div>
+
+  <div class="section-title"><h2>新信息架构（两端同一套）</h2><span>App = 4 个底部标签 + ＋追加；Web = 左窄栏 6 项 + 右侧常驻栏</span></div>
+  <div class="ia" id="ia"></div>
+  <div class="cross">
+    <div><b>＋ 追加（App 右下 / Web 顶部按钮）</b>名刺スキャン · まとめて取込 · イベント評価 · 音声メモ · タスク · NFC 交換（準備中）· iOrbit に頼む</div>
+    <div><b>iOrbit（App 每页右上圆钮 / Web 左栏 + 右栏 + ⌘K）</b>原 App 中央 IORBIT 键与 Web 全局提问气泡合并为一个入口；对话里的写入动作一律确认卡</div>
+    <div><b>マイ（App 左上头像 / Web 左栏底部头像）</b>个人资料 · 名片 · iOrbit 设置 · 连接（Gmail/Calendar）· 通知 · 语言 · 账号</div>
+    <div><b>主催（Web 左栏 / App マイ 内）</b>活动运营中心与六页签运营台；参与者侧不再出现在主导航</div>
+  </div>
+
+  <div class="section-title"><h2>两端缺口与冲突</h2><span>新设计里需要做决定的地方</span></div>
+  <div class="gap">
+    <div class="card"><span class="chip coral">新增</span><b style="display:block;margin:8px 0 4px">活动评估（URL / 海报）</b><div class="sub">产品背景里的核心能力，但两端都没有页面。新设计把它放在「イベント」页顶部，结果页给 0–100 分 + 三项内訳 + 会えそうな人 + 注意点；Web 用主从布局。需要新的 AI 调用（付费，待授权）。</div></div>
+    <div class="card"><span class="chip coral">新增</span><b style="display:block;margin:8px 0 4px">App 的「プラン」页</b><div class="sub">Web 有 /app/agent/plan，App 只在 onboarding/profile/跟进页零散出现目标。新设计把プラン升为一级标签，两端同构。</div></div>
+    <div class="card"><span class="chip apricot">调整</span><b style="display:block;margin:8px 0 4px">首页 = ホーム，不再是 AI 对话</b><div class="sub">Web 的 /app/home 现跳 /app/agent；App 的 /home 是日程。统一为「今日看板」：数字 + 今日の一手 + 判断待ち + 予定 + 评估过的活动；AI 退到圆钮/右栏。</div></div>
+    <div class="card"><span class="chip apricot">调整</span><b style="display:block;margin:8px 0 4px">人脉四页签合一</b><div class="sub">概览/管线/全部/导入 → 一屏：总量环 + 业界 + 缺口三卡在上，表格在下；导入进 ＋追加；分析做成「分析」二级页（未达 10 人显示解锁进度）。</div></div>
+    <div class="card"><span class="chip apricot">调整</span><b style="display:block;margin:8px 0 4px">收件箱 / 通知</b><div class="sub">App 是独立 /inbox，Web 是顶栏抽屉。新设计：需要动作的通知进「あなたの判断待ち」；消息与历史通知收进 Web 左栏「受信箱」/ App マイ 内。</div></div>
+    <div class="card"><span class="chip">保留</span><b style="display:block;margin:8px 0 4px">不做的</b><div class="sub">即时聊天（邮件式、止于草稿）、全场录音、代发邮件。App 的 /chat 1 对 1 聊天保留现状，不进主导航。</div></div>
+  </div>
+
+  <div class="section-title"><h2>逐页对照</h2><span><span class="pf w">W</span> Web　<span class="pf a">A</span> App　<span class="pf n">新</span> 两端都没有</span></div>
+  <table class="inv"><thead><tr><th style="width:230px">现状页面</th><th style="width:44px">端</th><th>现状主要功能</th><th style="width:200px">新位置</th><th style="width:280px">新样式</th><th style="width:150px">画在哪</th></tr></thead><tbody id="rows"></tbody></table>
+</div>
+<script>
+const IA = [
+  ['home', 'ホーム', '今天做什么', [['/app/agent（首页部分）', 'w'], ['/home', 'a'], ['/today', 'a'], ['/app/tasks · /tasks', 'wa'], ['/schedule · /tasks/personal', 'wa'], ['/agent/actions', 'wa'], ['/inbox 通知（需动作的）', 'wa']]],
+  ['sparkle', 'iOrbit', 'AI 秘书（Web 一级 / App 圆钮）', [['/app/agent 对话 + 历史', 'w'], ['/ai · /ai/[id]', 'a'], ['/app/agent/strategy', 'w'], ['全局提问气泡', 'w'], ['/notes（memo）', 'a']]],
+  ['users', '人脈', '我认识谁、谁重要', [['/app/contacts（全部）', 'wa'], ['/contacts/dashboard · 分析', 'wa'], ['/contacts/pipeline', 'wa'], ['/contacts/new 导入/批量', 'wa'], ['/contacts/[id] 详情', 'wa'], ['/contacts/matches · intros', 'a']]],
+  ['calendar', 'イベント', '值不值得去、去了见谁', [['活动评估 URL/海报', 'n'], ['/app/events 发现/我的', 'wa'], ['/events/[id] 详情+回看', 'wa'], ['/events/[id]/register', 'wa'], ['/events/[id]/live 现场', 'wa'], ['/home/events', 'wa']]],
+  ['target', 'プラン', '目标 → 每周行动', [['/app/agent/plan', 'w'], ['/app/start 引导', 'w'], ['目标（onboarding/settings）', 'wa'], ['/tasks/relationship/[id]', 'wa'], ['计划匹配确认', 'w']]],
+];
+const pf = s => [...s].map(x => `<span class="pf ${x}">${{ w: 'W', a: 'A', n: '新' }[x]}</span>`).join('');
+document.getElementById('ia').innerHTML = IA.map(([i, t, s, items]) => `<div class="col"><h3><span class="lbtn" style="width:30px;height:30px">${ic(i, 'sm')}</span>${t}</h3><div class="sub">${s}</div>${items.map(([n, p]) => `<div class="src">${pf(p)}<code>${n}</code></div>`).join('')}</div>`).join('');
+
+const R = [
+  ['ホーム / 今日'],
+  ['/app/agent（Today home）', 'w', '今日日程(周/月)、需要你决定、本周计划卡、人脉需求与计划匹配、推荐活动、最近对话、社群卡', 'ホーム', '数字主卡 + 今日の一手 + 判断待ち(左滑) + 予定时间线 + 评估活动轮播'],
+  ['/home', 'a', 'Logo、联系人搜索、收件箱、周条、快捷操作 5 个、日程、任务、推荐活动', 'ホーム', '同上；快捷操作移入 ＋追加；周条改为顶部居中「10月 / 10月7日」'],
+  ['/today', 'a', '今日任务、Orbit 建议任务、日历段', 'ホーム › 判断待ち / 予定', '并入，不再独立'],
+  ['/app/tasks · /tasks', 'wa', '任务列表 开放/完成、分组 逾期/今天/之后、Orbit 建议、关系跟进段', 'ホーム › 判断待ち › すべて', '二级列表页；行左滑 明日/完了'],
+  ['/app/tasks/[id] · /tasks/[id]', 'wa', '任务详情、提醒、关联人/活动、历史、AI 草稿', '判断待ち 详情（App 底部弹层 / Web 右栏）', '弹层卡片'],
+  ['/schedule · /tasks/personal', 'wa', '日/月历、个人日程增删改、重复规则、会议详情', 'ホーム › 予定 › カレンダー', '二级页；色块用马卡龙分类'],
+  ['/app/agent/actions · /agent', 'wa', '建议行动台账：今天做/需决定/可稍后/已延后，执行状态', 'ホーム › 判断待ち', '统一为判断待ち卡，状态用 chip'],
+  ['/inbox · 顶栏收件箱', 'wa', '消息/通知两页签、分类筛选、标记已读、加任务', 'Web 左栏「受信箱」/ App マイ › 受信箱；需动作的→判断待ち', '列表 + 右侧详情'],
+  ['iOrbit'],
+  ['/app/agent 对话 + 历史抽屉', 'w', '消息流、富卡片(跟进草稿/人选/活动)、上下文侧栏、历史 置顶/重命名/删除', 'Web 左栏 iOrbit', '居中 760px 对话 + 右栏「参照しているもの」+ 虚线确认卡'],
+  ['/ai · /ai/[id]', 'a', '提示屏、能力行、＋菜单、侧抽屉、历史面板、@提及、草稿卡确认', 'App 每页右上 ✨ 圆钮 → 全屏', '同 Web；底部毛玻璃输入条 + 麦克风'],
+  ['/app/agent/strategy', 'w', '先联系谁/还缺谁/相关活动/准备什么', 'iOrbit 回答内卡片', '人选卡 + 活动卡 + 确认卡'],
+  ['全局提问气泡', 'w', '建议提问、是否带当前页上下文', 'Web 右栏底部输入 + ⌘K', '常驻输入框'],
+  ['/notes · /notes/[id]', 'a', 'memo 搜索/分组/编辑/@提及', '人脈 › 詳細 › やりとり；＋追加 › 音声メモ', 'memo 内联在时间线'],
+  ['人脈'],
+  ['/app/contacts · /contacts', 'wa', '搜索、阶层/来源筛选、分页表格 / 卡片列表', '人脈', 'Web 表格(悬停快捷钮) / App 卡片行；第三行价值一句话'],
+  ['/contacts/dashboard (+structure/opportunities/insight)', 'wa', '分布(行业/地区/来源)、健康度、缺口、机会、洞察', '人脈 上方三卡 + 「分析」二级页', '单色环形 + 细条 + 烟粉缺口提示'],
+  ['/contacts/pipeline', 'wa', '按阶段的管线、最后接触、下一步、记跟进', '人脈 › 段階筛选（すべて/要フォロー/推進中）', '分段控件，不再看板'],
+  ['/contacts/[id]', 'wa', '阶层与理由、联系方式、能给/需要、话题、计划需求、互动、memo/起草邮件/约时间', 'Web 右侧 600px 抽屉 / App 全屏', '名片头卡 → 「なぜこの人か」→ 唯一主按钮(草稿) → 能给/需要 → やりとり'],
+  ['/contacts/new（扫描/CSV/vCard/活动）', 'wa', '导入方式、字段映射、去重合并、导入记录', '＋追加 › 名刺スキャン / まとめて取込', '名片确认用行式复核（字段·置信点·值）'],
+  ['/contacts/new/batch2 · /[id]', 'wa', '批量 100 张、正反面、识别、复核、跳过', '＋追加 › まとめて取込', '进度卡 + 逐张复核'],
+  ['/contacts/matches · /intros', 'a', '按需求打分的人选、介绍邀请链接', 'プラン › 必要な人脈 › 候補', '确认 ✓/✕ 小卡'],
+  ['/invitations/[token]', 'wa', '接受关系邀请', '独立页（不在导航）', '居中卡片'],
+  ['イベント'],
+  ['（无）活动评估 URL/海报', 'n', '—', 'イベント 顶部评估器 + 结果页', '0–100 分环 + 三项内訳 + 会えそうな人 + 注意点'],
+  ['/app/events · /events', 'wa', '发现/我的/主办、搜索、状态筛选、为你推荐、社群卡', 'イベント（評価/参加予定/探す 三段）', '参加予定横滑卡 + 评估卡网格'],
+  ['/events/[id]', 'wa', '介绍/议程/主办/参会者、报名、活动目标、准备清单、要见的人、回看', 'イベント › 詳細', '同样卡片体系；回看为结束态'],
+  ['/events/[id]/register', 'wa', 'AI 访谈式报名、活动人设、录取状态', 'イベント › 詳細 › 参加登録', '分步弹层'],
+  ['/events/[id]/live', 'wa', '现场主页/推荐/全部/分组/图谱/议程、签到、桌次、交换、约谈、memo', 'イベント › 今夜の卡 › 会場モード', '保留六页签；视觉换新'],
+  ['/app/o/[slug] · /register/[code]', 'wa', '主办方公开页、邀请码报名', '独立页', '—'],
+  ['プラン'],
+  ['/app/agent/plan', 'w', '目标分析、阶段、本周待办、人脉需求与人选、活动、要见的人、进度日志、重新分析/重新生成', 'プラン（一级）', '大环 + 4 阶段条 + 本周清单 + 必要な人脈 进度条 + 确认候选 + 折叠日志'],
+  ['/app/start', 'w', '3 步引导：名片≥3 / 目标 / 生成计划', 'ホーム 空状态引导卡', '3 步卡，当前步高亮'],
+  ['目标（onboarding / settings / profile）', 'wa', '目标 1–3 个、时间范围、一句话', 'プラン 空状态', 'emoji 目标类型卡 + 一句话 + 期间分段'],
+  ['/tasks/relationship/[id]', 'wa', '关系目标、完成跟进、下一步、归档', 'プラン/人脈 › 跟进弹层', '弹层'],
+  ['マイ・設定・主催・認証'],
+  ['/app/profile · /profile', 'wa', '完整度、基本资料、商务人设、公开预览、名片', 'マイ', '名片头卡 + 完整度环'],
+  ['/app/settings · /settings', 'wa', 'iOrbit 使用的信息、语言、推送、发现、退出', 'マイ › 設定', '分组列表'],
+  ['/app/profile?view=connect', 'w', 'Gmail / Calendar / Contacts 连接', 'マイ › 連携', '马卡龙图标列表'],
+  ['/profile/onboarding', 'wa', '资料/目标/能给需要/AI 自我介绍/批量导入', '注册后流程（不变）+ ホーム 引导', '全屏分步'],
+  ['/app/events/center + operations/*', 'wa', '运营中心、概览/匹配/参会者/签到/报名设置/报告、协作者', 'Web 左栏「主催」/ App マイ › 主催', 'KPI 卡 + 柱状趋势 + 运营进度清单'],
+  ['/account/*（4 态）', 'wa', '登录/注册/忘记/重置', '不变（落地页弹窗）', '视觉换新'],
+];
+const WHERE = {"/app/agent（Today home）": "app web", "/home": "app", "/today": "app b3-daily-actions", "/app/tasks · /tasks": "b3-daily-actions", "/app/tasks/[id] · /tasks/[id]": "b3-daily-actions", "/schedule · /tasks/personal": "b3-daily-actions b7-account-misc", "/app/agent/actions · /agent": "app web b3-daily-actions", "/inbox · 顶栏收件箱": "b5-me-inbox", "/app/agent 对话 + 历史抽屉": "web b4-plan-iorbit b8-responsive", "/ai · /ai/[id]": "app b4-plan-iorbit", "/app/agent/strategy": "app web", "全局提问气泡": "web b4-plan-iorbit", "/notes · /notes/[id]": "b5-me-inbox", "/app/contacts · /contacts": "app web b6-host-polish", "/contacts/dashboard (+structure/opportunities/insight)": "b5-me-inbox", "/contacts/pipeline": "app web", "/contacts/[id]": "app web b5-me-inbox b8-responsive", "/contacts/new（扫描/CSV/vCard/活动）": "b1-onboarding-cards b7-account-misc", "/contacts/new/batch2 · /[id]": "b1-onboarding-cards", "/contacts/matches · /intros": "b1-onboarding-cards b5-me-inbox", "/invitations/[token]": "b5-me-inbox", "（无）活动评估 URL/海报": "app web b2-events-flow", "/app/events · /events": "app web b2-events-flow b8-responsive", "/events/[id]": "b2-events-flow", "/events/[id]/register": "b2-events-flow", "/events/[id]/live": "b2-events-flow", "/app/o/[slug] · /register/[code]": "b7-account-misc b2-events-flow", "/app/agent/plan": "app web b4-plan-iorbit b8-responsive", "/app/start": "app web b1-onboarding-cards", "目标（onboarding / settings / profile）": "app web b1-onboarding-cards b4-plan-iorbit", "/tasks/relationship/[id]": "b3-daily-actions", "/app/profile · /profile": "b5-me-inbox b7-account-misc", "/app/settings · /settings": "b5-me-inbox b7-account-misc", "/app/profile?view=connect": "b5-me-inbox", "/profile/onboarding": "b1-onboarding-cards", "/app/events/center + operations/*": "web b6-host-polish", "/account/*（4 态）": "b1-onboarding-cards b7-account-misc"};
+const WL = {"app": "App", "web": "Web", "b1-onboarding-cards": "①", "b2-events-flow": "②", "b3-daily-actions": "③", "b4-plan-iorbit": "④", "b5-me-inbox": "⑤", "b6-host-polish": "⑥", "b7-account-misc": "⑦", "b8-responsive": "⑧"};
+document.getElementById('rows').innerHTML = R.map(r => r.length === 1 ? `<tr class="dom"><td colspan="6">${r[0]}</td></tr>` :
+  `<tr><td><code>${r[0]}</code></td><td>${pf(r[1])}</td><td class="sub">${r[2]}</td><td class="to">${r[3]}</td><td class="sub">${r[4]}</td><td>${(WHERE[r[0]]||'').split(' ').filter(Boolean).map(f=>`<a class="chip lav" href="${f}.html" style="margin:0 4px 4px 0">${WL[f]}</a>`).join('')}</td></tr>`).join('');
+docNav('00-inventory'); orbitChrome();
+</script>
+</body>
+</html>
