@@ -104,7 +104,7 @@
 
   // 文档页导航（所有页面共用）
   const PAGES = [['index', '← 总览'], ['00-inventory', '现状图谱'], ['01-system', '设计系统'], ['app', 'App'], ['web', 'Web'], ['widgets', '小组件'], ['02-gaps', '缺口分析'],
-    ['b1-onboarding-cards', '①新用户+名片'], ['b2-events-flow', '②活动闭环'], ['b3-daily-actions', '③每日行动'], ['b4-plan-iorbit', '④计划+iOrbit'], ['b5-me-inbox', '⑤我的+收件箱'], ['b6-host-polish', '⑥主办+收尾'], ['b7-account-misc', '⑦账号+补遗'], ['b8-responsive', '⑧Web 自适应'], ['b9-import-plan-v2', '⑨导入 v2']];
+    ['b1-onboarding-cards', '①新用户+名片'], ['b2-events-flow', '②活动闭环'], ['b3-daily-actions', '③每日行动'], ['b4-plan-iorbit', '④计划+iOrbit'], ['b5-me-inbox', '⑤我的+收件箱'], ['b6-host-polish', '⑥主办+收尾'], ['b7-account-misc', '⑦账号+补遗'], ['b8-responsive', '⑧Web 自适应'], ['b9-import-plan-v2', '⑨导入 v2'], ['b10-plan-example', '⑩计划具体化（示例）']];
   window.docNav = (active) => { const n = document.getElementById('docnav'); if (n) n.innerHTML = PAGES.map(([f, l]) => `<a class="${f === active ? 'on' : ''}" href="${f}.html">${l}</a>`).join(''); };
 
   // ---- 运行时：动画、交互 ----
