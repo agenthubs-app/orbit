@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>⑩ プランの具体化（例：Orbit の収益化）</title>
+<title>⑩ プランの具体化 v2.2（例：Orbit をブランドとして事業化）</title>
 <link rel="stylesheet" href="kit/tokens.css">
 <link rel="stylesheet" href="kit/ui.css">
 <script src="kit/kit.js"></script>
@@ -204,15 +204,187 @@
   .vtab td.new b { color: var(--plum-700); }
   .wtab td { vertical-align: top; }
   .wtab .why-body { margin-top: 6px; }
+
+  /* ===================== v2.2 追加 ===================== */
+  .chat { grid-template-columns: minmax(0, 1fr); }
+  .chat.tall { padding-bottom: 190px; }
+  .fm { display: flex; gap: 4px; margin: 2px 0 2px; }
+  .fm span { flex: 1; min-width: 0; text-align: center; font-size: 10px; font-weight: 800; color: var(--ink-4); padding-top: 7px; position: relative; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .fm span::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 4px; border-radius: 2px; background: var(--surface-3); }
+  .fm span.done { color: var(--ink-3); } .fm span.done::before { background: var(--plum-300); }
+  .fm span.on { color: var(--ink); } .fm span.on::before { background: var(--plum-700); }
+  /* 背景確認 */
+  .bgi { padding: 10px 0; }
+  .bgi + .bgi { border-top: 1px solid var(--line); }
+  .bgh { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+  .bgh .lbl { font-weight: 800; color: var(--ink-2); flex: 1; min-width: 0; }
+  .bgh .lbtn { width: 28px; height: 28px; }
+  .bgh .lbtn svg.i { width: 14px; height: 14px; }
+  .bgv { font-size: 14px; font-weight: 800; line-height: 1.5; }
+  .seg.full { display: flex; } .seg.full button { flex: 1; }
+  .mem { display: flex; gap: 10px; align-items: flex-start; padding: 9px 0; }
+  .mem + .mem { border-top: 1px solid var(--line); }
+  .mem .mm { flex: 1; min-width: 0; }
+  .mem .mm b { font-size: 13px; }
+  .mem .chips { margin-top: 5px; gap: 4px; }
+  .gapc { display: inline-flex; align-items: center; gap: 3px; padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; border: 1.5px dashed var(--rose-300); color: var(--rose-700); background: transparent; white-space: nowrap; }
+  .gapbox { margin-top: 10px; padding: 10px 12px; border-radius: 14px; background: var(--surface-2); }
+  .card.flat .gapbox { background: var(--surface); }
+  .gapbox .chips { margin-top: 6px; gap: 5px; }
+  .stair { display: grid; gap: 6px; margin-top: 4px; }
+  .str { display: flex; gap: 10px; align-items: center; padding: 9px 10px; border-radius: 14px; background: var(--surface-2); border: 1.5px solid transparent; }
+  .str .lv { width: 24px; height: 24px; border-radius: 8px; background: var(--surface); display: grid; place-items: center; font-family: var(--font-num); font-weight: 900; font-size: 12px; color: var(--ink-2); flex: none; }
+  .str .stx { flex: 1; min-width: 0; font-size: 12.5px; font-weight: 700; line-height: 1.45; }
+  .str .stx small { display: block; font-size: 10.5px; color: var(--ink-3); font-weight: 700; margin-top: 1px; }
+  .str.on { border-color: var(--plum-500); background: var(--accent-soft); }
+  .str.on .lv { background: var(--plum-700); color: var(--on-accent); }
+  .str .ckr { width: 20px; height: 20px; }
+  .str .tg { flex: none; }
+  .str:nth-child(1) { margin-right: 0; } .str:nth-child(2) { margin-right: 10px; } .str:nth-child(3) { margin-right: 20px; } .str:nth-child(4) { margin-right: 30px; }
+  .aisay { display: flex; gap: 8px; align-items: flex-start; margin-top: 10px; font-size: 12px; line-height: 1.6; color: var(--ink-2); }
+  .aisay .emo { flex: none; }
+  .aisay .why { margin-top: 1px; }
+  /* わかったこと（Web rail） */
+  .known { display: grid; gap: 2px; }
+  .known > div { display: grid; grid-template-columns: 74px 1fr; gap: 8px; padding: 7px 0; font-size: 12px; line-height: 1.5; }
+  .known > div + div { border-top: 1px solid var(--line); }
+  .known .lbl { padding-top: 1px; }
+  .known b.nw2 { background: var(--mac-lav); border-radius: 6px; padding: 0 4px; }
+  .known .pending { color: var(--ink-4); }
+  /* 5問 */
+  .wq5 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px 18px; margin-top: 12px; }
+  .wq5 .qb { padding: 0; border: 0; min-width: 0; }
+  .wq5 .qb + .qb { border-top: 0; }
+  /* 確定した前提 */
+  .prem { display: grid; grid-template-columns: 84px 1fr auto; gap: 8px; padding: 8px 0; font-size: 12.5px; line-height: 1.55; align-items: start; }
+  .prem + .prem { border-top: 1px solid var(--line); }
+  .prem .src { font-size: 10px; font-weight: 800; color: var(--ink-3); background: var(--surface-2); border-radius: 6px; padding: 1px 6px; white-space: nowrap; }
+  .card.flat .prem .src { background: var(--surface); }
+  .premc { display: flex; gap: 6px; flex-wrap: wrap; }
+  /* AI 修正バー */
+  .revbar { position: absolute; left: 12px; right: 12px; bottom: 92px; z-index: 30; background: var(--surface); border-radius: 20px; padding: 10px 12px; display: flex; gap: 12px; align-items: center; box-shadow: var(--shadow-float); }
+  .revbar .rvn { flex: none; text-align: center; padding: 4px 10px; border-radius: 14px; background: var(--accent-soft); }
+  .revbar .rvn small { display: block; font-size: 9.5px; font-weight: 800; color: var(--plum-700); }
+  .revbar .rvn b { font-size: 12px; white-space: nowrap; }
+  .revbar .rvn em { font-style: normal; font-family: var(--font-num); font-size: 22px; font-weight: 900; }
+  .revbar .rvt { flex: 1; min-width: 0; font-size: 11.5px; font-weight: 700; line-height: 1.5; color: var(--ink); }
+  .revbar .rvt .ex { display: block; font-weight: 600; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+  .revbar.zero .rvn { background: var(--surface-2); }
+  .revbar.zero .rvn small { color: var(--ink-3); }
+  .revbar.stat { position: static; box-shadow: none; border: 1px solid var(--line); }
+  .revbig { display: flex; align-items: baseline; gap: 6px; }
+  .revbig em { font-style: normal; font-family: var(--font-num); font-size: 44px; font-weight: 900; line-height: 1; }
+  .dots3 { display: flex; gap: 5px; margin-top: 8px; }
+  .dots3 i { flex: 1; height: 6px; border-radius: 3px; background: var(--plum-700); }
+  .dots3 i.used { background: var(--surface-3); }
+  /* 初版カード */
+  .fsec { margin-top: 12px; }
+  .fsec > .lbl { display: block; font-weight: 800; margin-bottom: 4px; }
+  .trow { display: flex; gap: 8px; align-items: center; padding: 7px 0; font-size: 12.5px; }
+  .trow + .trow { border-top: 1px solid var(--line); }
+  .trow .tm { flex: 1; min-width: 0; }
+  .trow .tm b { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12.5px; }
+  .trow .tm .lbl { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .trow .pt { font-family: var(--font-num); font-weight: 800; font-size: 15px; flex: none; white-space: nowrap; }
+  .trow .pt small { font-size: 10.5px; color: var(--ink-3); }
+  .acc-h { display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 10px 12px; border-radius: 14px; background: var(--surface-2); }
+  .acc-h b { flex: 1; min-width: 0; font-size: 12.5px; }
+  .acc-h .chev { color: var(--ink-3); display: grid; }
+  .acc-b .libl { padding: 4px 2px 0; }
+  .lib { display: flex; gap: 10px; align-items: flex-start; padding: 9px 0; font-size: 12px; line-height: 1.55; }
+  .lib + .lib { border-top: 1px solid var(--line); }
+  .lib .ln { width: 20px; height: 20px; border-radius: 50%; background: var(--accent-soft); color: var(--plum-700); display: grid; place-items: center; font-weight: 900; font-size: 10.5px; flex: none; font-family: var(--font-num); margin-top: 1px; }
+  .lib .lm { flex: 1; min-width: 0; }
+  .lib .lm b { display: block; font-size: 12.5px; }
+  .lib .meta3 { display: flex; flex-wrap: nowrap; gap: 4px; margin-top: 5px; min-width: 0; }
+  .lib .meta3 span:last-child { flex: 0 1 auto; min-width: 0; }
+  .lib .meta3 span:not(:last-child) { flex: none; }
+  .lib .meta3 span { font-size: 10px; font-weight: 700; color: var(--ink-3); background: var(--surface-2); border-radius: 6px; padding: 1px 6px; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+  .card.flat .lib .meta3 span, .acc-b .lib .meta3 span { background: var(--surface-2); }
+  .fact { display: flex; gap: 8px; align-items: center; margin-top: 10px; font-size: 11px; color: var(--ink-3); line-height: 1.5; }
+  /* 手動編集 */
+  .erow { display: flex; gap: 8px; align-items: center; padding: 8px 10px; border-radius: 16px; background: var(--surface-2); }
+  .erow + .erow { margin-top: 6px; }
+  .grip { width: 12px; height: 18px; flex: none; background-image: radial-gradient(circle, var(--ink-4) 1.3px, transparent 1.6px); background-size: 6px 6px; cursor: grab; }
+  .erow .v2snum { width: 22px; height: 22px; font-size: 11px; flex: none; }
+  .erow .em { flex: 1; min-width: 0; }
+  .erow .em b { display: block; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .erow .em .lbl { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .erow .em .ein { display: flex; align-items: center; height: 30px; border-radius: 10px; background: var(--surface); border: 1.5px solid var(--plum-500); padding: 0 8px; font-size: 13px; font-weight: 700; min-width: 0; }
+  .erow .em .ein span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .erow .del { width: 26px; height: 26px; border-radius: 50%; background: var(--surface); display: grid; place-items: center; color: var(--ink-3); flex: none; }
+  .erow .del svg.i { width: 13px; height: 13px; }
+  .erow.lift { background: var(--surface); box-shadow: var(--shadow-float); transform: rotate(-1.2deg) scale(1.02); position: relative; z-index: 2; }
+  .erow.lift .v2snum { background: var(--plum-700); color: var(--on-accent); }
+  .erow .mv { font-size: 10px; font-weight: 800; color: var(--plum-700); white-space: nowrap; }
+  .ewrow { display: grid; grid-template-columns: 28px 1fr auto; gap: 6px 10px; align-items: center; padding: 10px; border-radius: 16px; background: var(--surface-2); }
+  .ewrow + .ewrow { margin-top: 6px; }
+  .ewrow .em { min-width: 0; }
+  .ewrow .em b { display: block; font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ewrow .ctl { grid-column: 2 / 4; display: flex; align-items: center; gap: 8px; }
+  .ewrow.foc { background: var(--accent-soft); }
+  .stp { display: inline-flex; align-items: center; gap: 2px; background: var(--surface); border-radius: 999px; padding: 2px; flex: none; }
+  .stp i { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-weight: 800; color: var(--ink-2); font-size: 13px; }
+  .stp b { min-width: 30px; text-align: center; font-family: var(--font-num); font-size: 13px; }
+  .stp b small { font-size: 10px; color: var(--ink-3); font-family: var(--font); }
+  .stp.chg b { color: var(--plum-700); }
+  .ptin { width: 50px; height: 28px; border-radius: 9px; background: var(--surface); display: grid; place-items: center; font-family: var(--font-num); font-weight: 900; font-size: 14px; border: 1.5px solid transparent; flex: none; }
+  .ptin.on { border-color: var(--plum-500); }
+  .ba { font-size: 11px; color: var(--ink-3); font-weight: 700; white-space: nowrap; font-family: var(--font-num); }
+  .ba s { color: var(--ink-4); }
+  .ba b { color: var(--ink); }
+  .ba.up b { color: var(--plum-700); } .ba.dn b { color: var(--rose-700); }
+  .sum100 { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 16px; background: var(--surface); }
+  .sum100 .big2 { font-family: var(--font-num); font-weight: 900; font-size: 22px; }
+  .sum100 .big2 small { font-size: 12px; color: var(--ink-3); }
+  .sumbar { flex: 1; display: flex; gap: 2px; height: 8px; }
+  .sumbar i { border-radius: 3px; background: var(--plum-500); }
+  .sumbar i.e { background: var(--plum-700); }
+  .sumbar i.ev { background: var(--plum-300); }
+  .lock { display: flex; gap: 8px; align-items: flex-start; padding: 10px 12px; border-radius: 14px; background: var(--surface-2); font-size: 11.5px; line-height: 1.55; color: var(--ink-2); }
+  .lock svg.i { width: 15px; height: 15px; flex: none; margin-top: 1px; color: var(--plum-700); }
+  .card.flat .lock { background: var(--surface); }
+  .etab { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .etab th { text-align: left; font-size: 11px; color: var(--ink-3); font-weight: 700; padding: 0 8px 8px; white-space: nowrap; }
+  .etab td { padding: 9px 8px; border-top: 1px solid var(--line); vertical-align: middle; }
+  .etab tr.foc td { background: var(--accent-soft); }
+  .etab tr.foc td:first-child { border-radius: 12px 0 0 12px; } .etab tr.foc td:last-child { border-radius: 0 12px 12px 0; }
+  .etab td .tnm { display: block; font-size: 11.5px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; }
+  .chgl { display: grid; gap: 6px; }
+  .chgl > div { display: flex; gap: 8px; align-items: flex-start; font-size: 12px; line-height: 1.5; padding: 8px 10px; border-radius: 12px; background: var(--surface); }
+  .chgl .chgtag { grid-row: auto; flex: none; }
+  /* 規範板 v2.2 */
+  .layer { display: grid; gap: 8px; margin-top: 12px; }
+  .layer > div { display: grid; grid-template-columns: 130px 1fr; gap: 12px; padding: 12px 14px; border-radius: 16px; background: var(--surface-2); font-size: 12.5px; line-height: 1.6; color: var(--ink-2); }
+  .layer > div > b { color: var(--ink); font-size: 13px; }
+  .layer > div > b small { display: block; font-size: 10.5px; color: var(--ink-3); font-weight: 700; }
+  .layer > div.hl { background: var(--accent-soft); }
+  .tplg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 12px; }
+  .tplg > div { background: var(--surface-2); border-radius: 16px; padding: 12px 14px; min-width: 0; }
+  .tplg > div.pickt { background: var(--accent-soft); }
+  .tplg b.bt { font-size: 13px; display: block; margin-bottom: 6px; }
+  .tplg .sl { display: flex; gap: 8px; font-size: 12px; line-height: 1.55; padding: 3px 0; color: var(--ink-2); }
+  .tplg .sl span { flex: 1; min-width: 0; }
+  .tplg .sl b { font-family: var(--font-num); color: var(--ink); flex: none; }
+  .bank6 { grid-template-columns: repeat(3, 1fr); }
+  .vflow { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; }
+  .vflow span { font-size: 12px; font-weight: 700; padding: 5px 10px; border-radius: 10px; background: var(--surface-2); white-space: nowrap; }
+  .vflow span.nw { background: var(--mac-lav); color: var(--ink); }
+  .vflow i { color: var(--ink-4); font-style: normal; font-size: 12px; }
+  .flowstrip { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; max-width: 1440px; margin: 0 0 8px; }
+  .flowstrip > div { background: var(--surface); border-radius: 18px; padding: 12px 14px; min-width: 0; }
+  .flowstrip b { display: block; font-size: 13px; margin-top: 2px; }
+  .flowstrip span.lbl { display: block; line-height: 1.5; margin-top: 2px; }
+  .flowstrip .no { font-family: var(--font-num); font-weight: 900; color: var(--plum-700); font-size: 12px; }
 </style>
 </head>
 <body>
 <div class="doc">
   <div class="doc-head">
     <div>
-      <div class="doc-kicker">Orbit Redesign · 2026-10 · プラン v2.1「具体化」試案 · App 390 + Web 1440</div>
-      <h1>⑩ プランの具体化（例：Orbit の収益化）</h1>
-      <p>这是对现有计划 v2（满分 100 不封顶 · Step + 人物类型 + 活动单独一块 · 同人同类型一次 · 超额半分 · 斜纹跳过）的「具体化」尝试，计分口径不变、视觉同构、信息更深。用真实目标演示：用户 = 佐藤 健一，目标「Orbit を世に出して、収益化する」；Orbit 只是例子，机制是通用的。四处变化：① 计划在 <b>iOrbit 对话</b>里生成：设目标 → agent 从<b>题库</b>选 3 问一次问完 → AI 先给判断（見立て・結論・依据）→ 用户最多修正 3 轮 →「この内容で確定」；② Step 写「完了の目安」；③ 人物类型从「职称」改为「角色 × 情境」一句话，配点按目标模板默认、AI 只小幅调整并说明理由；④ 活动分数改为<b>固定 5 项基准</b>（AI 只填事实不打分，目标不同只影响第一项）。粉色编号为交互标注。</p>
+      <div class="doc-kicker">Orbit Redesign · 2026-10 · プラン v2.2「背景から具体化」 · App 390 + Web 1440</div>
+      <h1>⑩ プランの具体化 v2.2（例：Orbit をブランドとして事業化）</h1>
+      <p><b>计划 v2.2 的通用流程</b>（全部在 iOrbit 对话中，App / Web 同构）：<b>① 背景確認</b>（わたし＝登录资料预填 · やりたいこと · 一人かチームか · チームのできること＋AI 标出的空白 · 目的の階段 4 级）→ <b>② ≤5 問</b>（从 6 类题库按背景缺口挑，可一次全答）→「確定した前提」→ <b>③ AI 初版</b>（高度プロンプト＋后台维护的「業界の現状」资料库，只能引用库内资料，可展开看引用了哪几条）→ <b>④ AI 修正 ≤3 回</b> → <b>⑤ 手動編集 1 回</b>（新画面，总分自动保持 100，编辑后 AI 不再自动改写）→ <b>⑥ 推荐人与活动</b>。本页用用户的真实例子演示：佐藤 健一（AI エンジニア · Orbit 共同創業者，和同为 AI 工程师的高木 悠两人用 vibe coding 做出 Orbit）写下「Orbit を落地して黒字化したい」，经目的の階段确认后，真实目的是「Orbit をブランドとして確立し、事業にする」。计分口径不变（满分 100 · 上限なし · 同人同类型一次 · 超额半分 · 无成果加分）。<br><b>v2.1 遗留的 6 个待确认项已按推荐定稿</b>：题库 6 类（採用・事業提携分开，新增キャリア）· AI「不改」也扣一次修正 · 人物类型短名取模板固定名 · 默认配点模板与 ±5 / 最多 2 处 · 活动分随该类型见得越多而递减 · Step 完成由用户确认。粉色编号为交互标注。</p>
     </div>
     <div class="doc-tools">
       <div class="seg" data-ctl="theme"><button data-v="light">ライト</button><button data-v="dark">ダーク</button></div>
@@ -224,48 +396,71 @@
 </div>
 
 <script>
-/* ===================== 数据：v2.1 口径（满点 100 · 人物类型 6 + イベント · 同人同类型一次 · 超额半分 · 不封顶） ===================== */
+/* ===================== 数据：v2.2（满点 100 · 同人同类型一次 · 超额半分 · 不封顶 · 无成果加分） ===================== */
 const C = D.contacts, ME = D.me;
-const GOAL = 'Orbit を世に出して、収益化する';
+const WATA = C.find(c => c.n === '渡辺 翔'), ITO = C.find(c => c.n === '伊藤 直子');
+const GOAL = 'Orbit を落地して黒字化したい';
+const PNAME = 'Orbit をブランドとして事業化';
+const PURPOSE = 'Orbit をブランドとして確立し、事業にする';
+/* w0/t0 = AI 初版（テンプレート「上市・収益化」から 2件調整）· w/tgt = 手動編集後（最終）· s = テンプレートの固定短名 */
 const T = {
-  A: { n: '月1回以上・50〜200名規模の交流会を主催するコミュニティ運営者', s: '主催者', emo: '🎪', c: 'lav', w: 25, tgt: 5, st: [1, 2], cand: 3, ev: 2, route: 1 },
-  B: { n: '大企業で社外交流イベントを年10回以上企画する新規事業・オープンイノベーション担当', s: '新規事業', emo: '🏢', c: 'blue', w: 15, tgt: 3, st: [2], cand: 0, ev: 2, route: 1 },
-  C: { n: 'Eight・Sansan など名刺／CRM SaaS で法人営業か PdM をしていた人', s: 'CRM 経験', emo: '📇', c: 'teal', w: 15, tgt: 2, st: [1, 4], cand: 0, ev: 3, route: 2 },
-  D: { n: 'コワーキング・イベント会場・チケットサービスのアライアンス担当', s: '会場提携', emo: '🏛️', c: 'apricot', w: 10, tgt: 2, st: [3], cand: 2, ev: 1, route: 1 },
-  E: { n: '個人向けサブスクの価格設計と無料→有料転換を担当したグロース責任者', s: 'グロース', emo: '📈', c: 'pink', w: 10, tgt: 2, st: [4], cand: 1, ev: 2, route: 1 },
-  F: { n: '年30回以上交流会に参加するヘビー参加者（士業・法人営業・起業家）', s: 'ヘビー参加', emo: '🙋', c: 'blue', w: 10, tgt: 5, st: [1, 4], cand: 4, ev: 3, route: 0 },
-  EV: { n: '主催者が集まる場へ行く', s: 'イベント', emo: '🎟️', c: 'apricot', w: 15, tgt: 3, st: [1, 2, 3], ev: 3, isEv: true },
+  A: { n: '月1回以上・50〜200名規模の交流会を主催するコミュニティ運営者', s: '交流会の主催者', slot: '最初に払う人', emo: '🎪', c: 'lav', w0: 25, t0: 5, w: 20, tgt: 5, st: [1, 2, 4], st0: [1, 2, 5], cand: 2, ev: 2, route: 1 },
+  B: { n: '0→1 で SaaS や D2C のブランドを立ち上げたブランド・PR 責任者', s: 'ブランドづくりの経験者', slot: 'ブランド・PR', emo: '🎨', c: 'pink', w0: 20, t0: 2, w: 20, tgt: 2, st: [1, 3, 4], st0: [1, 3, 5], cand: 0, ev: 3, route: 1 },
+  C: { n: 'Eight・Sansan など名刺／CRM SaaS で法人営業か PdM をしていた人', s: '名刺 SaaS の経験者', slot: '先行プロダクト経験', emo: '📇', c: 'teal', w0: 15, t0: 2, w: 15, tgt: 2, st: [2, 5], st0: [2, 4], cand: 0, ev: 2, route: 2 },
+  D: { n: 'エンジニア出身で、自分で事業を立ち上げた創業者', s: 'エンジニア出身の起業家', slot: '同じ道を通った創業者', emo: '🛠️', c: 'apricot', w0: 15, t0: 3, w: 15, tgt: 2, st: [2, 3], st0: [2, 3], cand: 1, ev: 1, route: 1 },
+  E: { n: '業務 SaaS の UX を改善してきたプロダクトデザイナー', s: 'プロダクトデザイナー', slot: '足りない専門', emo: '🖌️', c: 'blue', w0: 10, t0: 2, w: 15, tgt: 2, st: [3], st0: [3], cand: 0, ev: 2, route: 1 },
+  EV: { n: '主催者とつくり手が集まる場へ行く', s: 'イベント', slot: 'イベント', emo: '🎟️', c: '', w0: 15, t0: 3, w: 15, tgt: 3, st: [1, 4], st0: [1, 5], ev: 3, isEv: true },
 };
-const ORD = ['A', 'B', 'C', 'D', 'E', 'F', 'EV'];
-const ST = { s0: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0, EV: 0 }, s38: { A: 3, B: 0, C: 0, D: 1, E: 0, F: 4, EV: 2 } };
-const unit = k => T[k].w / T[k].tgt;
-const fmt = v => Number.isInteger(v) ? v : v.toFixed(1);
-const got = (k, s) => Math.min(ST[s][k], T[k].tgt) * unit(k);
+const ORD = ['A', 'B', 'C', 'D', 'E', 'EV'];
+const ST = { s0: { A: 0, B: 0, C: 0, D: 0, E: 0, EV: 0 }, s38: { A: 2, B: 1, C: 0, D: 2, E: 0, EV: 1 } };
+const unit = k => Math.floor(T[k].w / T[k].tgt); /* 1人あたり（整数）· 端数は最後の1人で調整 */
+const lastU = k => T[k].w - unit(k) * (T[k].tgt - 1);
+const uLbl = k => unit(k) === lastU(k) ? `${unit(k)}点` : `${unit(k)}点（最後の1人 ${lastU(k)}点）`;
+const half = k => Math.floor(unit(k) / 2);
+const fmt = v => Number.isInteger(v) ? v : (Math.round(v * 10) / 10).toFixed(1).replace(/\.0$/, '');
+const got = (k, s) => ST[s][k] >= T[k].tgt ? T[k].w : ST[s][k] * unit(k);
 const total = s => ORD.reduce((a, k) => a + got(k, s), 0);
-/* 最终版 Step（已反映对话中的修正 1・2） */
+/* Step：[番号, タイトル, 完了の目安, タイプ, なぜ, 根拠] — 最終（修正 1・2 + 手動編集を反映） */
 const STEPS = [
-  [1, '誰が払うかを確かめる', '「3回目から有料でもよい」と言う主催者が 3人', ['A', 'C', 'F', 'EV'], '値付けの前に、お金を出す人が本当に困っているかを、話して確かめます。', '一般的な B2B2C の立ち上げ（先に払い手の課題を検証）· あなたの前提「有料 0」· 修正 1「2回無料から」'],
-  [2, '最初のパイロット（3回目から有料）', '無料 2回のあと、1社が 3回目から有料に合意（NFC 名札キット＋マッチング＋事後レポート）', ['A', 'B', 'EV'], '小さくても「お金をもらった実績」が、次の主催者への一番の説得材料になります。', '有料 0 → 1 では「試用 → 有料」の段階設計が一般的 · 主催者 11名が人脈にいる'],
-  [3, '獲得チャネルをつくる', '紹介・提携で、毎月 2件以上の主催者リードが来る経路が 1つ', ['D', 'EV'], '主催者を 1人ずつ口説くのは続きません。会場やチケットの側から紹介が来る形をつくります。', 'イベント SaaS の一般的な獲得経路（会場・チケット提携）'],
-  [4, '参加者を Pro に転換する', 'Pro ¥1,480 と ¥980 の 2案で、パイロット参加者の転換率の仮説が立つ', ['C', 'E', 'F'], '参加者が「自分でも使いたい」と思う瞬間と、払ってもよい金額を確かめます。', '名刺管理は無料の選択肢が強い（Eight）· 修正 2「¥980 も試したい」'],
-  [5, '伸ばすための資金と仲間', '資金調達か採用の判断材料が揃う', [], '任意。Step 2〜4 の数字が出てから考えます。', ''],
+  [1, '誰のための何かを言い切る', '「イベント後を変える AI」の一言で、主催者 5人中 3人が「欲しい」と言う', ['A', 'B', 'EV'], 'ブランドは一言から。主催者に言ってみて、反応で磨きます。', '前提 Q3「イベントの後を変える AI」· 業界の現状 ②（イベント後のフォローは誰も担っていない）'],
+  [2, '最初の有料顧客', '無料 1回のあと、主催者 1社と有料パイロットに合意', ['A', 'C', 'D'], '「お金をもらった実績」が、ブランドの最初の証拠になります。', '前提 Q1「有料 0」· 修正 1「最初の 1回は無料で」'],
+  [3, 'デザインとブランドの仲間を見つける', 'デザインかブランドで、継続的な協力者が 1人決まる', ['B', 'D', 'E'], 'チームの空白を、外注ではなく仲間で埋めます。営業は当面 2人で。', '背景確認の空白（デザイン・ブランド）· 前提 Q4 · 修正 1 · 手動編集で名前を変更'],
+  [4, 'ブランドとして広げる', '主催者の事例 3件と、発信の型ができる', ['A', 'B', 'EV'], '最初の主催者の事例を、次の主催者に見せる材料にします。', '修正 2「事例は 3件」· 手動編集で 5番目から 4番目へ'],
+  [5, '収益の形を確かめる', '参加者 → Pro 転換の仮説（価格・無料枠）が立つ', ['C'], '個人 Pro は参加者からの 2本目。価格は相場の範囲で 2案を比べます。', '業界の現状 ④（個人 SaaS の課金相場 月 ¥500〜¥1,500）'],
 ];
-const STAT = { 1: ['2 / 3人', 'lav'], 2: ['無料 1回目', 'lav'], 3: ['0 / 1経路', ''], 4: ['まだ', ''] };
-/* 人物类型 A の候補（小林 誠 = D.contacts；中島 玲・村上 早苗 = 本页新增虚构人物） */
+/* AI 初版の Step */
+const STEPS0 = [
+  [1, '誰のための何かを言い切る', '「イベント後を変える AI」の一言で、主催者 5人中 3人が「欲しい」と言う', ['A', 'B', 'EV']],
+  [2, '最初の有料顧客', '主催者 1社と有料パイロットに合意', ['A', 'C', 'D']],
+  [3, '足りない力を仲間にする', 'デザイン・ブランド・営業のどれか 1つで、継続的な協力者が決まる', ['B', 'D', 'E']],
+  [4, '収益の形を確かめる', '参加者 → Pro 転換の仮説（価格・無料枠）が立つ', ['C']],
+  [5, 'ブランドとして広げる', '主催者の事例 2件と、発信の型ができる', ['A', 'B', 'EV']],
+];
+/* 修正 2回後（＝手動編集の出発点） */
+const STEPS2 = STEPS0.map(s => s.slice());
+STEPS2[1][2] = STEPS[1][2]; STEPS2[2][2] = STEPS[2][2]; STEPS2[4][2] = STEPS[3][2];
+const STAT = { 1: ['2 / 3人', 'lav'], 2: ['無料 1回目', 'lav'], 3: ['確認待ち', 'apricot'], 4: ['事例 0 / 3', ''], 5: ['まだ', ''] };
+/* 業界の現状ライブラリ（後台で管理 · 版・更新日・出典つき · AI は引用のみ） */
+const LIB = [
+  ['L-012', '名刺・人脈管理', 'Eight は個人無料、Sansan は法人中心。個人向けの有料名刺管理は伸びにくい', 'v3', '2026-09', '各社の公開資料・料金ページ'],
+  ['L-031', '交流会・イベント運営', 'Peatix・connpass 型が中心。イベント後のフォローは、主催者も参加者も担っていない', 'v2', '2026-08', 'Orbit 編集部の主催者ヒアリング 24名'],
+  ['L-047', 'AI エージェント', '個人向け AI アシスタントへの抵抗が下がり、「下書きまで任せる」使い方が増えている', 'v5', '2026-09', '公的調査・業界レポートの要約'],
+  ['L-058', '個人 SaaS の課金相場', '個人向けサブスクは月 ¥500〜¥1,500 が中心。無料枠つきが多い', 'v2', '2026-07', '主要アプリの公開価格 32件'],
+];
+/* 人物タイプ A の候補（小林 誠 = D.contacts；中島 玲 = 本页虚构） */
 const AC = [
-  { n: '小林 誠', i: '小', c: 'c2', co: '丸の内イノベーションラボ', role: '主宰', sc: 92, on: 1, orbit: 0, w: '大企業の新規事業担当 300名のコミュニティを毎月運営。A と B の両方に効く', op: '久しぶりの近況報告＋相談', last: '最終接点 1か月前', why: '名刺「主宰」· Peatix の主催履歴 月1回（直近 12回）· 参加者の所属に大企業の新規事業部門が多い · 面談メモ 1件（8/28）' },
-  { n: '中島 玲', i: '中', c: 'c4', co: '東京コミュニティマネージャー会', role: '理事', sc: 81, on: 1, orbit: 1, w: '主催者どうしのつながりが強く、紹介ルートにもなる', op: '9/18 の名刺交換のお礼＋主催者の悩みを聞く', last: '9/18 Japan Startup Night で名刺交換', why: '名刺「理事」· 同会の会員に主催者 40名以上（公開情報）· イベントで「主催」タグ' },
-  { n: '村上 早苗', i: '村', c: 'c5', co: '士業ネットワーク「サムライ朝会」', role: '事務局', sc: 68, on: 0, orbit: 0, w: '月2回・60名規模。参加者に士業が多く、F とも重なる', op: '朝会のあと、参加者同士のフォローをどうしているか聞く', last: '最終接点 3か月前', why: '名刺「事務局」· connpass の主催履歴 月2回 · 参加者タグ「士業」が約 6割' },
+  { n: '小林 誠', i: '小', c: 'c2', co: '丸の内イノベーションラボ', role: '主宰', sc: 92, on: 1, orbit: 0, w: '大企業の新規事業担当 300名のコミュニティを毎月運営。「会のあと」の困りごとを一番よく知っている', op: '久しぶりの近況報告＋「会のあと」の相談', last: '最終接点 1か月前', why: '名刺「主宰」· Peatix の主催履歴 月1回（直近 12回）· 面談メモ 1件（8/28）· 共通の参加イベント 3回' },
+  { n: '中島 玲', i: '中', c: 'c4', co: '東京コミュニティマネージャー会', role: '理事', sc: 81, on: 1, orbit: 1, w: '主催者どうしのつながりが強く、事例を広げるときの紹介ルートにもなる', op: '9/18 の名刺交換のお礼＋主催者の悩みを聞く', last: '9/18 Japan Startup Night で名刺交換', why: '名刺「理事」· 同会の会員に主催者 40名以上（公開情報）· イベントで「主催」タグ' },
 ];
 /* 活动 5 项（固定基准）：会える人の適合 45 / 推定の確度 15 / 時間とコスト 20 / 既存のつながり 10 / 交流の形式 10 */
 const E5 = ['会える人の適合', '推定の確度', '時間とコスト', '既存のつながり', '交流の形式'];
 const E5M = [45, 15, 20, 10, 10];
-const CEV = [
-  ['SaaS Product Night Tokyo #31', '10月22日（木）· 渋谷', 84, 'CRM 経験 約6名', '参加予定者の tag「PdM」「SaaS」約 40名、うち名刺／CRM 経験 6名', '¥3,000', [38, 12, 16, 8, 10], ['C CRM 経験 約6名（残り 2人）· F ヘビー参加 約5名 · E グロース 約1名', '申込者タグ公開 · 40名分（3日前更新）', '¥3,000 · 渋谷まで 25分 · 平日 19:00（あなたの設定内）', '渡辺 翔さん ほか 2名が参加予定', '交流タイム 60分 · 名札あり · マッチングなし']],
-  ['Japan SaaS Summit 2026 秋', '10月16日（金）· 東京国際フォーラム', 76, '元 CRM 責任者が登壇', '登壇に元 CRM 事業責任者 1名 · 展示に営業 DX 企業 12社', '¥15,000', [34, 10, 12, 10, 10], ['C 登壇 1名 + 展示ブースの営業 · D 会場系 2社', '登壇者・出展社は公開、参加者は未公開', '¥15,000 · 有楽町 20分 · 平日終日', '伊藤 直子さん ほか 3名が参加予定', '展示ブース · 名刺交換コーナーあり']],
-  ['BtoB マーケ交流会 vol.12', '11月5日（木）· オンライン', 58, 'CRM 経験 約2名', '参加費は安いが、CRM 経験者は少なめ', '¥1,000', [18, 11, 19, 2, 8], ['C CRM 経験 約2名 · E 約1名', '申込者タグ公開 · 25名分', '¥1,000 · 移動なし · 平日 20:00', '知人の参加なし（つながりの 2次まで 1名）', 'ブレイクアウト交流あり · 名刺はオンライン交換']],
+const BEV = [
+  ['ブランドづくり勉強会 Tokyo #14', '10月23日（金）· 表参道', 82, 'B タイプ 約8名', '申込者タグ「ブランド」「PR」約 45名中 8名 · デザイナー 6名', '¥2,000', [36, 12, 17, 7, 10], ['B ブランド・PR 責任者 約8名（残り 2人）· E デザイナー 約6名（残り 1人）', '申込者タグ公開 · 45名分（2日前更新）', '¥2,000 · 表参道まで 30分 · 平日 19:00（あなたの設定内）', '中島 玲さんが参加予定', '交流タイム 45分 · 名札あり · マッチングなし']],
+  ['スタートアップ PR Meetup vol.9', '10月30日（金）· 渋谷', 74, 'B タイプ 約5名', '登壇に元 D2C ブランドの PR 責任者 · 参加者に広報担当が多い', '¥3,000', [30, 11, 16, 7, 10], ['B 約5名（登壇 1名を含む）· D 創業者 約3名', '申込者タグ公開 · 30名分', '¥3,000 · 渋谷まで 25分 · 平日 19:30', '伊藤 直子さんが参加予定', '交流タイム 60分 · 名札あり']],
+  ['D2C ブランド Summit 2026', '11月12日（木）· 有明', 61, 'B タイプ 約6名', '展示中心 · ブランド責任者の登壇 4名', '¥12,000', [28, 10, 9, 6, 8], ['B 約6名（登壇 4名 + 展示）· E 約2名', '登壇者は公開、参加者は未公開', '¥12,000 · 有明まで 50分 · 平日終日（あなたの設定 ¥5,000 を超える）', '知人の参加なし（つながりの 2次まで 2名）', '展示ブース · 名刺交換コーナーあり']],
 ];
-const EVS = [['コミュニティマネージャー・ミートアップ Tokyo', '10月29日（木）', 88, 'A タイプ 約25名'], ['丸の内スタートアップ朝会 #42', '10月21日（水）', 66, 'A タイプ 約4名']];
+const EVS = [['ブランドづくり勉強会 Tokyo #14', '10月23日（金）', 82, 'B タイプ 約8名'], ['コミュニティマネージャー・ミートアップ Tokyo', '10月29日（木）', 79, 'A タイプ 約25名']];
 
 /* ===================== 共通パーツ ===================== */
 const backBtn = `<button class="rbtn">${ic('left')}</button>`;
@@ -279,11 +474,9 @@ const SCRC = '<i class="scrollto" data-off="8"></i>';
 const mailI = ic('mail', 'sm').replace('class="i sm"', 'class="i sm" style="width:13px;height:13px;vertical-align:-2px"');
 const draftNote = `<div class="lbl center" style="margin-top:2px">${mailI} 送信はしません · 送信はあなたが行います</div>`;
 const gsw = t => `<span class="gsw k-gsw">${t}${ic('down', 'sm')}</span>`;
-const tchip = (k, cls = '') => k === 'EV' ? `<span class="chip apricot ${cls}">🎟️ イベント</span>` : `<span class="chip ${T[k].c} ${cls}">${T[k].emo} ${k} ${T[k].s}</span>`;
+const tchip = (k, cls = '') => k === 'EV' ? `<span class="chip ${cls}">🎟️ イベント</span>` : `<span class="chip ${T[k].c} ${cls}">${T[k].emo} ${k} ${T[k].s}</span>`;
 const ring2 = (sc, size = 44, st = 5) => ring(size, st, [{ v: sc, c: sc >= 70 ? 'var(--plum-700)' : sc >= 50 ? 'var(--plum-500)' : 'var(--rose-500)', max: 100 }], `<span style="font-family:var(--font-num);font-weight:800;font-size:${size > 60 ? 22 : 12}px">${sc}</span>`);
 const ev5 = (vals, facts, o = {}) => `<div class="e5 ${o.cls || ''}">${vals.map((v, k) => `<div class="e5r ${o.hi === k ? 'hi' : ''} ${o.dim && k > 0 ? 'dim' : ''}"><span class="e5l">${E5[k]}</span><div class="e5b"><i style="width:${v / E5M[k] * 100}%"></i></div><b>${v}<small> / ${E5M[k]}</small></b>${facts ? `<div class="e5f">${facts[k]}</div>` : ''}</div>`).join('')}</div>`;
-
-/* 分数构成条（ui.css .v2bar 同款：实色 = 話して得た点 / 灰 = まだ） */
 const sbar = (s, o = {}) => {
   const segs = ORD.map(k => `<div class="sg" style="flex:${T[k].w}"><b style="width:${got(k, s) / T[k].w * 100}%"></b></div>`).join('');
   const lbls = o.labels ? `<div class="v2slbl">${ORD.map(k => `<span style="flex:${T[k].w}">${k === 'EV' ? 'イベント' : k + ' ' + T[k].s}</span>`).join('')}</div>` : '';
@@ -291,329 +484,444 @@ const sbar = (s, o = {}) => {
 };
 const legend = (cls = '') => `<div class="v2lg ${cls}"><span><i class="v2sw solid"></i>話して得た点</span><span><i class="v2sw hatch"></i>習熟済み（スキップ）</span><span><i class="v2sw"></i>まだの点</span></div>`;
 const mbar = (k, s) => `<div class="v2mb"><b style="width:${got(k, s) / T[k].w * 100}%"></b></div>`;
-
-/* 人物类型卡：「役割×状況」一文 + 3 つのミニ情報 */
 const tcard = (k, s, o = {}) => {
   const p = T[k], n = ST[s][k];
   const m3 = p.isEv
-    ? `<div><b>${p.ev}<small>件</small></b><span>おすすめ</span></div><div><b>25<small>名</small></b><span>A タイプが来る会</span></div><div><b>1<small>回</small></b><span>+5点</span></div>`
+    ? `<div><b>${p.ev}<small>件</small></b><span>おすすめ</span></div><div><b>8<small>名</small></b><span>B タイプが来る会</span></div><div><b>${unit(k)}</b><span>1回の点</span></div>`
     : `<div class="${p.cand ? '' : 'z'}"><b>${p.cand}<small>人</small></b><span>${p.cand ? '人脈の候補' : '人脈にいない'}</span></div><div><b>${p.ev}</b><span>会える活動</span></div><div class="${p.route ? '' : 'z'}"><b>${p.route}</b><span>紹介ルート</span></div>`;
-  return `<div class="tcard ${o.cls || ''}"><div class="row" style="gap:10px;align-items:flex-start"><span class="emo sm ${p.c}">${p.emo}</span><div style="flex:1;min-width:0"><div class="tk">${p.isEv ? 'イベント' : 'タイプ ' + k} · Step ${p.st.join('・')}</div><b class="tname">${p.n}</b></div><div class="v2pp">${fmt(got(k, s))}<small> / ${p.w}</small></div></div>
+  return `<div class="tcard ${o.cls || ''}"><div class="row" style="gap:10px;align-items:flex-start"><span class="emo sm ${p.c || 'apricot'}">${p.emo}</span><div style="flex:1;min-width:0"><div class="tk">${p.isEv ? 'イベント' : 'タイプ ' + k + ' · ' + p.s} · Step ${p.st.join('・')}</div><b class="tname">${p.n}</b></div><div class="v2pp">${fmt(got(k, s))}<small> / ${p.w}</small></div></div>
     <div class="m3">${m3}</div>
-    <div class="tfoot"><span class="lbl">${n} / ${p.tgt}${p.isEv ? '回' : '人'} · 1${p.isEv ? '回' : '人'} ${fmt(unit(k))}点</span>${mbar(k, s)}</div></div>`;
+    <div class="tfoot"><span class="lbl">${n} / ${p.tgt}${p.isEv ? '回' : '人'} · 1${p.isEv ? '回' : '人'} ${uLbl(k)}</span>${mbar(k, s)}</div></div>`;
 };
-const TPLNOTE = '配点は「上市・収益化」テンプレートから · 2件を調整';
-const TPLWHY = '根拠：テンプレートの既定（主催者 25 / 予算を持つ人 15 / 先行プロダクト経験 15 / 販路・提携 15 / 価格・転換 10 / ヘビーユーザー 5 / イベント 15）から、販路・提携 15→10（Step 3 は Step 2 のあと。今は経路 1つで十分）、ヘビー参加 5→10（β 48名の多くが交流会経由で、参加者の声が Pro 転換の仮説に直結）。1タイプ ±5 まで · 合計 100 固定';
-/* Step（v2step 同款）+ 完了の目安 + 紐づく人物类型 chip */
+const TPLNOTE = '「上市・収益化」テンプレート → AI 調整 2件 → 手動編集';
+const TPLWHY = '根拠：テンプレートの既定（最初に払う人 25 / ブランド・PR 15 / 先行プロダクト経験 15 / 同じ道を通った創業者 15 / 足りない専門 10 / ヘビーユーザー 5 / イベント 15）から、AI が 2件調整：ブランド・PR 15→20（チームにブランドの力がなく、目的が「ブランドとして確立」）、ヘビーユーザー 5→0（β 48名の声は Step 5 で直接集められる）。その後あなたが手動編集で E プロダクトデザイナー 10→15・D の目標人数 3→2 に変更。差分の 5点は配点がいちばん高い A から引いた（25→20 · 合計 100）。';
 const stepBlock = (st, s, o = {}) => {
   const [n, t, goal, ks, why, w] = st, many = s === 's38', S = STAT[n];
-  return `<div class="v2step ${o.cls || ''}"><span class="sn" ${n === 5 ? 'style="background:var(--surface-3);color:var(--ink-2)"' : ''}>${n}</span><div data-why-box><div class="st"><span>${t}${n === 5 ? '<span class="lbl" style="font-weight:600;margin-left:6px">任意</span>' : ''}</span>${w ? '<span class="why">?</span>' : ''}</div>${o.short ? '' : `<div class="lbl" style="line-height:1.6;margin-top:3px">${why}</div>`}${w ? `<div class="why-body" hidden>根拠：${w}</div>` : ''}</div>
+  return `<div class="v2step ${o.cls || ''}"><span class="sn">${n}</span><div data-why-box><div class="st"><span>${t}</span>${w ? '<span class="why">?</span>' : ''}</div>${o.short ? '' : `<div class="lbl" style="line-height:1.6;margin-top:3px">${why}</div>`}${w ? `<div class="why-body" hidden>根拠：${w}</div>` : ''}</div>
     <div class="mey ${o.mcls || ''}">${ic('flag', 'sm')}<div class="mt"><small>完了の目安</small>${goal}</div>${many && S ? `<span class="chip ${S[1]}">${S[0]}</span>` : ''}</div>
-    ${ks.length ? `<div class="chips">${ks.map(k => tchip(k)).join('')}</div>` : '<div class="ghost-row" style="margin-top:8px;height:38px">新しく会う人は、必要になったら「方案を見直す」で追加</div>'}</div>`;
+    ${many && n === 3 ? `<div class="confirm-card in-row k-stepok" style="padding:10px 12px"><div style="font-size:12px;line-height:1.55">森田 葵さん（ブランド・PR）と、継続の協力は決まりましたか？</div><div class="row" style="gap:6px;margin-top:8px"><span class="lbl" style="flex:1">完了はあなたが決めます</span><button class="btn sm ghost">まだ</button><button class="btn sm primary">完了にする</button></div></div>` : ''}
+    <div class="chips">${ks.map(k => tchip(k)).join('')}</div></div>`;
 };
-const todayCard = (many, cls = '') => `<div class="card ${cls}" data-why-box style="background:linear-gradient(135deg,var(--mac-lav),var(--surface) 70%)"><div class="row" style="gap:8px;margin-bottom:6px"><span class="emo sm lav">✨</span><b style="font-size:13px">今日 +5 のチャンス</b><span class="why" style="margin-left:auto">?</span></div>
-  <div style="font-size:14px;font-weight:700;line-height:1.6">${many ? '10/29 のコミュニティマネージャー・ミートアップ Tokyo に、A タイプが約 25名来ます。参加でイベント +5。' : '小林 誠さん（丸の内イノベーションラボ 主宰）に「近況報告＋相談」を。話せたら +5。'}</div>
-  <div class="row" style="gap:8px;margin-top:12px"><button class="btn sm primary">${many ? 'イベントを見る' : '面談を提案'}</button><span class="chip" style="margin-left:auto">${many ? 'イベント · 2 / 3回' : 'A 主催者 · Step 1'}</span></div>
-  <div class="why-body" hidden>${many ? '根拠：イベントスコア 88（会える人の適合 41 / 45 · A タイプ約 25名、残り 2人）· イベント枠は 2 / 3回で未達（1回 5点）' : '根拠：小林さんは推薦度 92（名刺「主宰」· 月1回の主催履歴）· 最終接点 1か月前 · A は 1人 5点'}</div></div>`;
-const diagMini = (cls = '') => `<div class="card ${cls}" data-why-box><div class="row" style="gap:8px"><span class="emo sm teal">🧭</span><b style="font-size:13px;flex:1">確定した判断</b><span class="why">?</span></div>
-  <div style="font-size:13.5px;font-weight:700;line-height:1.6;margin-top:8px">主催者に払ってもらい、参加者に体験してもらう（B2B2C）。1本目は主催者向けパイロット（2回無料 → 3回目から有料）。</div>
-  <div class="why-body" hidden>根拠：前提 3問（有料 0・払い手は未定・主催者 11名）· Peatix・connpass 型の立ち上げパターン · 修正 3回（10/8 確定）</div>
-  <div class="v2go">iOrbit の会話を見る${ic('right', 'sm')}</div></div>`;
-
-/* ===================== 1 · iOrbit 対話でプランを作る ===================== */
-const MITATE = '人脈 SaaS の収益化は「<b>誰が最初に払うか</b>」で道が分かれます。個人向け名刺管理は Eight が無料で強く、個人課金だけで立ち上げるのは難しい。一方、イベント主催者は「参加者の満足」と「スポンサーへの成果報告」に困っています。<b>主催者に払ってもらい、参加者に体験してもらう（B2B2C）</b>ほうが、最初の売上と利用者を同時に作りやすい形です。';
-const KETSU0 = '最初の 1本目は「主催者向け有料パイロット」。個人 Pro は、参加者から転換させる 2本目。';
-const WHYS = [['🧪', 'あなたの前提', '有料 0 · 払い手は「両方・未定」→ まず払い手を 1つに絞る段階'], ['🎪', 'あなたの人脈', '主催者・運営者 11名（小林 誠さん ほか）→ 主催者側から始めると最初の 5人に届く'], ['📚', '一般的なパターン', 'Peatix・connpass 型：主催者が使う道具として入り、参加者に広がる B2B2C']];
-const flowDia = (cls = '', paid = '（1本目）') => `<div class="flow ${cls}"><div class="pay"><span class="e">🎪</span><b>主催者</b><span class="lbl">お金を払う<br>${paid}</span></div><div class="ar">${ic('right')}</div><div><span class="e">🙋</span><b>参加者</b><span class="lbl">無料で体験<br>マッチング</span></div><div class="ar">${ic('right')}</div><div><span class="e">⭐</span><b>Pro</b><span class="lbl">個人課金<br>（2本目）</span></div></div>`;
-const HINT_EX = '例：「β 48名のうち 30名は交流会で知り合った人。主催者への営業は重いので、最初の 2回は無料で入れたい。」';
-const leftChip = (n, cls = '') => `<span class="chip ${n ? 'lav' : ''} ${cls}">修正あと ${n} 回</span>`;
-const chatTop = () => topbar('iOrbit', 'プランを作る · Orbit の収益化', `<button class="rbtn">${ic('clock')}</button>`, xBtn);
 const me = (t, cls = '') => `<div class="bubble me ${cls}">${t}</div>`;
 const ai = (t, cls = '') => `<div class="bubble ai ${cls}">${t}</div>`;
-const composerApp = (n, o = {}) => (o.hint === false ? '' : `<div class="chint k-hint"><b>${ic('pen', 'sm')}現状と考えを、できるだけ一度にまとめて書いてください${leftChip(n)}</b><span class="ex">${HINT_EX}</span></div>`) +
-  `<div class="composer ${o.off ? 'off' : ''}"><button class="lbtn">${ic('plus', 'sm')}</button><span class="in">${o.ph || '修正したいことを入力'}</span><button class="lbtn">${ic('mic', 'sm')}</button><button class="lbtn" style="background:var(--ink);color:var(--bg)">${ic('send', 'sm')}</button></div>`;
-const QS = [
-  ['R1', '現在地', '今どこにいますか？', [['アイデア', 0], ['開発中', 0], ['完成・β 運用中', 1], ['有料あり', 0]], 'β ユーザー 48名 · 有料 0'],
-  ['R2', '払い手', '誰からお金をもらう想定ですか？', [['個人（Pro）', 0], ['イベント主催者', 0], ['両方', 1], ['未定', 1]], '主催者が払うなら、参加者は無料にしたい'],
-];
-const qBlock = (q, k) => `<div class="qb ${k === 1 ? 'k-q2' : ''}"><div class="row" style="gap:8px"><span class="qno">${k + 1}</span><b style="flex:1;font-size:13.5px">${q[2]}</b><span class="qid">${q[0]} ${q[1]}</span></div>
-  <div class="row" style="gap:6px;flex-wrap:wrap;margin-top:8px">${q[3].map(([t, on]) => `<span class="fopt ${on ? 'on' : ''}">${t}</span>`).join('')}</div><div class="qin">${ic('pen', 'sm')}<span>${q[4]}</span></div></div>`;
-const q3Block = `<div class="qb k-q3"><div class="row" style="gap:8px"><span class="qno">3</span><b style="flex:1;font-size:13.5px">あなたの人脈の強みは？</b><span class="qid">R3 人脈</span></div><div class="lbl" style="margin-top:4px">人脈 286名から要約しました · 合っていれば ✓ のまま</div>
-  ${[['🎪', 'lav', 'イベント主催・運営者', 11, 1], ['💻', 'teal', 'SaaS 関係者', 41, 1], ['💼', 'pink', '投資家', 9, 1], ['🏛️', 'apricot', '会場・コワーキング', 2, 0]].map(([e, c, t, n, on], k) => `<div class="sumrow ${k === 3 ? 'k-q3off' : ''}"><span class="emo sm ${c}">${e}</span><div class="smm"><b>${t}</b></div><span class="n">${n}<small>名</small></span><span class="ckr ${on ? 'on' : ''}">${ic('check')}</span></div>`).join('')}</div>`;
-const qCard = (wide) => `<div class="card k-qcard" data-why-box style="padding:14px 16px"><div class="row" style="gap:8px"><b style="font-size:14px;flex:1">足りない 3つだけ、確認させてください</b><span class="why k-qwhy">?</span></div>
-  <div class="why-body" hidden>選んだ理由：目標の種類「上市・収益化」の題庫 8問のうち、目標文・プロフィール・人脈からわからず、プランの分かれ道を一番変える 3問です（R1 現在地 · R2 払い手 · R3 人脈）。価格（R4）は Step 4 で確かめるので今は聞きません。</div>
-  ${wide ? `<div class="wq3" style="margin-top:12px">${QS.map(qBlock).join('')}${q3Block}</div>` : QS.map(qBlock).join('') + q3Block}
-  <button class="btn primary ${wide ? '' : 'block'} k-qsend" style="margin-top:12px">まとめて回答する</button><div class="lbl ${wide ? '' : 'center'}" style="margin-top:6px">わからない質問は空欄のままで大丈夫です · 推測で進め、依拠に「推測」と書きます</div></div>`;
-const judgeCard = (o = {}) => `<div class="card ${o.cls || ''}" data-why-box style="padding:14px 16px"><div class="row" style="gap:8px"><span class="emo sm teal">🧭</span><div style="flex:1;min-width:0"><div class="lbl">Orbit の判断</div><b style="font-size:14.5px">この問題は、ふつうこう解く</b></div><span class="why k-jwhy">?</span></div>
-  <div class="jsec k-mitate"><span class="lbl">見立て</span>${o.clamp ? `<span class="clamp4">${MITATE}</span><span class="v2go" style="margin-top:2px">全文を読む${ic('down', 'sm')}</span>` : MITATE}</div>
-  <div class="jsec ketsu k-ketsu"><span class="lbl">進め方の結論</span><b>${KETSU0}</b>${flowDia('k-flow')}</div>
-  <div class="why-body" ${o.whyOpen ? '' : 'hidden'}>${WHYS.map(([e, t, d]) => `<div style="padding:3px 0"><b style="color:var(--ink)">${e} ${t}</b><br>${d}</div>`).join('')}</div>
-  <div class="lbl" style="margin-top:10px">このあとのプラン：5ステップ · 人物タイプ 6 ＋ イベント · 満点 100</div>
-  ${o.act === false ? '' : `<div class="row" style="gap:8px;margin-top:12px">${leftChip(3, 'k-left')}<button class="btn sm primary k-kakutei" style="margin-left:auto">この内容で確定</button></div>`}</div>`;
-const DIFF = {
-  1: [['進め方の結論', '最初の 1本目は「主催者向け有料パイロット」', '1本目は「主催者向けパイロット：2回無料 → 3回目から有料」'], ['Step 1 の目安', '「有料でも使いたい」と言う主催者が 3人', '「3回目から有料でもよい」と言う主催者が 3人'], ['Step 2 の目安', '1社と有料パイロットに合意', '無料 2回のあと、1社が 3回目から有料に合意']],
-  2: [['Step 4 の目安', 'Pro 転換率の仮説（価格・無料枠）', 'Pro ¥1,480 と ¥980 の 2案で、転換率の仮説が立つ']],
-};
-const UPD_SAY = { 1: '主催者に売るのは賛成です。ただ、いきなり有料は難しいので、最初の 2回は無料で入れて、3回目から有料にしたい。β 48名のうち 30名は交流会で知り合った人なので、参加者の声はすぐ集められます。', 2: 'Pro の価格は ¥1,480 だけでなく ¥980 も試したいです。', 3: 'Step 5 の資金調達は、ここに入れなくていいかも。' };
-const updCard = (r, o = {}) => `<div class="card ${o.cls || ''}" data-why-box style="padding:14px 16px"><div class="row" style="gap:8px"><span class="emo sm teal">🧭</span><div style="flex:1;min-width:0"><div class="lbl">修正 ${r} / 3 を反映</div><b style="font-size:14.5px">${DIFF[r] ? '判断を更新しました' : '今回は変更しません'}</b></div><span class="why">?</span></div>
-  ${DIFF[r] ? `<div class="k-diff" style="margin-top:6px">${DIFF[r].map(([l, a, b]) => `<div class="dl"><span class="chgtag">変更</span><span class="lbl">${l}</span><s>${a}</s><span class="nw">${b}</span></div>`).join('')}</div>
-  <div class="same-line k-same">変わらない点：B2B2C の方向 · 人物タイプ 6 と配点 · 個人 Pro は 2本目</div>`
-  : `<div class="same-line" style="margin-top:10px">Step 5 は「任意」のままにします。資金調達は別の目標「シリーズA 資金調達」で追っているので、ここで人を足すことはありません。</div>`}
-  <div class="why-body" hidden>${r === 1 ? '根拠：あなたの修正（2回無料から）· 有料 0 → 1 では「試用 → 有料」の段階設計が一般的 · β 30名が交流会経由（参加者の声を集めやすい）' : r === 2 ? '根拠：あなたの修正（¥980 も試す）· 個人サブスクの価格検証は 2案の比較が一般的' : '根拠：目標「シリーズA 資金調達」が進行中（スコア 46）'}</div>
-  ${o.act === false ? '' : `<div class="row" style="gap:8px;margin-top:12px">${leftChip(3 - r, 'k-left')}<button class="btn sm primary k-kakutei" style="margin-left:auto">この内容で確定</button></div>`}</div>`;
-const ANS = '① 完成・β 運用中（β 48名・有料 0）② 両方／未定 — 主催者が払うなら参加者は無料に ③ 主催者 11 · SaaS 41 · 投資家 9（会場は外す）';
-const planPreview = (cls = '') => `<div class="card ${cls}" style="padding:14px 16px"><div class="row between"><b style="font-size:14px">Orbit の収益化</b><span class="lbl">スコア 0 · 満点 100</span></div>
-  <div style="margin-top:6px">${STEPS.map(([n, t, g]) => `<div class="pst"><span class="v2snum">${n}</span><div style="flex:1;min-width:0"><b>${t}</b><span class="lbl">目安：${g}</span></div></div>`).join('')}</div>
-  <div class="chips" style="margin-top:8px">${ORD.map(k => tchip(k)).join('')}</div></div>`;
-function chatApp(stage) {
-  let b = chatTop() + `<div class="chat">`;
-  b += me(`目標：${GOAL}`) + ai('具体的にするために、いちばん足りない 3つだけ聞かせてください。まとめて答えられます。');
-  if (stage === 'q') return b + SCRC + qCard() + `</div>`;
-  b += (stage === 'j' ? SCRC : '') + me(ANS, 'k-ans') + (stage === 'j' ? '' : ai('前提から、ふつうはこう解きます。')) + judgeCard({ cls: 'k-judge', act: stage === 'j', clamp: stage === 'j' });
-  if (stage === 'j') return b + `</div>`;
-  b += (stage === 'r1' ? SCRC : '') + me(UPD_SAY[1], 'k-say1') + updCard(1, { cls: 'k-upd1', act: stage === 'r1' });
-  if (stage === 'r1') return b + `</div>`;
-  b += me(UPD_SAY[2]) + updCard(2, { act: false }) + (stage === 'r3' ? SCRC : '') + me(UPD_SAY[3], 'k-say3') + updCard(3, { cls: 'k-upd3', act: false });
-  if (stage === 'r3') return b + `<div class="card flat k-end" style="padding:14px 16px"><div class="row" style="gap:8px"><b style="font-size:13.5px;flex:1">修正は 3回まで使いました</b>${leftChip(0)}</div><div class="lbl" style="margin-top:4px;line-height:1.6">ここからは確定するか、下書きを自分で編集できます。確定後も「方案を見直す」で変更案を作れます。</div>
-    <div class="hist k-hist" style="margin-top:10px"><span class="chip">1：2回無料から</span><span class="chip">2：¥980 案</span><span class="chip">3：変更なし</span></div>
-    <div class="grid2" style="margin-top:12px"><button class="btn k-self">${ic('edit', 'sm')}自分で編集</button><button class="btn primary k-kakutei">この内容で確定</button></div></div></div>`;
-  return b + SCRC + me('この内容で確定') + `<div class="ok-card k-okplan"><div class="row" style="gap:10px"><span class="okmark">${ic('check')}</span><b style="font-size:13px;flex:1">プランを作りました</b><button class="btn sm ghost">元に戻す</button></div><div class="sub" style="margin:6px 0 0 34px">5ステップ · 人物タイプ 6 ＋ イベント · 配点は「上市・収益化」テンプレートから 2件調整</div></div>` +
-    planPreview('k-pprev') + `<button class="btn primary block xl k-openplan">プランを開く</button></div>`;
-}
+const FM = ['背景', '質問', '初版', 'AI 修正', '手動編集'];
+const fmBar = (a, cls = '') => `<div class="fm ${cls}">${FM.map((t, k) => `<span class="${k < a ? 'done' : k === a ? 'on' : ''}">${t}</span>`).join('')}</div>`;
+const chatTop = (sub = 'プランを作る') => topbar('iOrbit', sub, `<button class="rbtn">${ic('clock')}</button>`, xBtn);
+const flowDia = (cls = '') => `<div class="flow ${cls}"><div class="pay"><span class="e">🎪</span><b>主催者</b><span class="lbl">お金を払う<br>（1本目）</span></div><div class="ar">${ic('right')}</div><div><span class="e">🙋</span><b>参加者</b><span class="lbl">無料で体験<br>事後フォロー</span></div><div class="ar">${ic('right')}</div><div><span class="e">⭐</span><b>Pro</b><span class="lbl">個人課金<br>（2本目）</span></div></div>`;
+const HINT_EX = '例：「営業は当面 2人でやる。仲間はデザインを優先。主催者には最初の 1回は無料で試してほしい。」';
+const revBar = (n, cls = '') => `<div class="revbar ${n ? '' : 'zero'} ${cls}"><div class="rvn k-rvn"><small>AI 修正</small><b>あと <em>${n}</em> 回</b></div><div class="rvt">${n ? '現状と考えを、できるだけ一度にまとめて書いてください' : '修正は使い切りました。手動で編集するか、この内容で確定します'}<span class="ex">${n ? HINT_EX : '変更がなかった回も 1回と数えます'}</span></div></div>`;
+const composer = (ph = '修正したいことを入力', off = false) => `<div class="composer ${off ? 'off' : ''}"><button class="lbtn">${ic('plus', 'sm')}</button><span class="in">${ph}</span><button class="lbtn">${ic('mic', 'sm')}</button><button class="lbtn" style="background:var(--ink);color:var(--bg)">${ic('send', 'sm')}</button></div>`;
+const leftChip = (n, cls = '') => `<span class="chip ${n ? 'lav' : ''} ${cls}">AI 修正 あと ${n} 回</span>`;
+
+/* ===================== ① 目標入力 ===================== */
 function goalApp() {
   return topbar('プラン', '目標を決めると、話すべき人が見えます', meBtn, iorbitBtn) + `
-    <div class="guide rise k-gin"><div style="font-size:19px;font-weight:800">何を達成したいですか？</div><div class="sub" style="margin:4px 0 12px">ひとことで大丈夫です。iOrbit が 3つだけ確認して、具体的にします。</div>
+    <div class="guide rise k-gin"><div style="font-size:19px;font-weight:800">何を達成したいですか？</div><div class="sub" style="margin:4px 0 12px">うまく言葉にならなくても大丈夫。iOrbit が、あなたとチームのことを確認しながら具体的にします。</div>
       <div class="fld focus" style="margin-top:0"><div class="in"><span>${GOAL}</span><i class="caret"></i></div></div>
-      <div class="row k-gkind" style="gap:6px;margin-top:10px;flex-wrap:wrap"><span class="fopt on">🚀 上市・収益化</span><span class="fopt">💰 資金調達</span><span class="fopt">🤝 新規開拓</span><span class="fopt">🧑‍💼 採用</span><span class="fopt">🔗 事業提携</span></div>
-      <button class="btn primary block xl k-gnext" style="margin-top:14px">${ic('sparkle', 'sm')}iOrbit と具体化する</button><div class="lbl center" style="margin-top:6px">質問 3つ → 判断 → 修正は 3回まで · 初回は回数に含みません</div></div>
+      <div class="row k-gkind" style="gap:6px;margin-top:10px;flex-wrap:wrap"><span class="fopt on">🚀 上市・収益化</span><span class="fopt">💰 資金調達</span><span class="fopt">🤝 新規開拓</span><span class="fopt">🧑‍💼 採用</span><span class="fopt">🔗 事業提携</span><span class="fopt">🧭 キャリア</span></div>
+      <button class="btn primary block xl k-gnext" style="margin-top:14px">${ic('sparkle', 'sm')}iOrbit と具体化する</button>
+      <div class="lbl center k-gsteps" style="margin-top:8px;line-height:1.6">背景の確認 → 質問 5つまで → AI の初版<br>→ AI 修正 3回まで → 手動編集 1回</div></div>
     <div class="card k-gsample" style="margin-top:14px"><div class="card-h"><h3>人物タイプは、こう具体的になります <span class="sample-tag">サンプル</span></h3></div>
       <div class="faded">${tcard('A', 's0')}</div>
       <div class="lbl" style="margin-top:8px;line-height:1.6">肩書きではなく「どんな役割で、どんな状況にいる人か」で示します。</div></div>`;
 }
-const wChatHead = () => mainhead('iOrbit', 'プランを作る · Orbit の収益化', `<button class="rbtn">${ic('clock')}</button>`, `<button class="btn">${ic('plus', 'sm')}新しい会話</button>`);
-function chatWeb(stage) {
-  let b = wChatHead() + `<div class="wchat">` + me(`目標：${GOAL}`) + ai('具体的にするために、いちばん足りない 3つだけ聞かせてください。まとめて答えられます。');
-  if (stage === 'q') return b + qCard(true) + `<div class="assist-in" style="height:52px">${ic('plus', 'sm')}まとめて書いても OK です<button class="lbtn" style="margin-left:auto;background:var(--ink);color:var(--bg)">${ic('send', 'sm')}</button></div></div>`;
-  if (stage === 'r1') return b + me(ANS) + judgeCard({ act: false }) + SCR + me(UPD_SAY[1]) + updCard(1, { cls: 'k-wupd1' }) +
-    `<div class="chint k-whint"><b>${ic('pen', 'sm')}現状と考えを、できるだけ一度にまとめて書いてください${leftChip(2)}</b><span class="ex">${HINT_EX}</span></div><div class="assist-in" style="height:52px">${ic('plus', 'sm')}修正したいことを入力<button class="lbtn" style="margin-left:auto;background:var(--ink);color:var(--bg)">${ic('send', 'sm')}</button></div></div>`;
-  return b + me(ANS) + judgeCard({ act: false }) + `<div class="hist" style="justify-content:flex-end"><span class="chip">修正 1：2回無料から</span><span class="chip">修正 2：¥980 案</span><span class="chip">修正 3：変更なし</span></div>` + SCR + me('この内容で確定') +
-    `<div class="ok-card k-wokplan"><div class="row" style="gap:10px"><span class="okmark">${ic('check')}</span><b style="font-size:13px;flex:1">プランを作りました · 右の下書きがそのままプランになります</b><button class="btn sm ghost">元に戻す</button></div></div><button class="btn primary k-wopen" style="justify-self:start">プランを開く${ic('right', 'sm')}</button></div>`;
+
+/* ===================== ② 背景確認 ===================== */
+const MEMS = [
+  { n: '佐藤 健一', i: '佐', c: 'c1', r: 'あなた · 共同創業者', sk: ['AI・LLM', 'バックエンド', 'バイブコーディング'] },
+  { n: '高木 悠', i: '高', c: 'c3', r: 'パートナー · 共同創業者', sk: ['AI エンジニア', 'モデル評価', 'インフラ'] },
+];
+const GAPS = ['デザイン', 'ブランド', '営業', 'マーケ', '価格設計'];
+const STAIR = [[4, '人脈 AI の分野で、代表的なブランドになる', '大きめ', ''], [3, PURPOSE, 'いちばん近い？', 'lav'], [2, 'Orbit を利益が出る事業にする', '最初に書いた目標', 'blue'], [1, 'β 版を有料にする', '小さめ', '']];
+const bgBasic = (cls = '') => `<div class="card ${cls}" style="padding:6px 16px">
+  <div class="bgi k-bgme"><div class="bgh"><span class="lbl">わたし</span><span class="chip">プロフィールから</span><button class="lbtn">${ic('pen', 'sm')}</button></div><div class="row" style="gap:10px"><div class="av sm c1">佐</div><div style="min-width:0"><b style="font-size:14px">佐藤 健一</b><div class="lbl">AI エンジニア · Orbit 共同創業者</div></div></div></div>
+  <div class="bgi k-bgwant"><div class="bgh"><span class="lbl">やりたいこと</span><span class="chip lav">目標文から</span><button class="lbtn">${ic('pen', 'sm')}</button></div><div class="bgv">Orbit を世に出す</div></div>
+  <div class="bgi k-bgteam1"><div class="bgh"><span class="lbl">一人か、チームか</span></div><div class="seg full"><button>一人</button><button class="on">チーム（2名）</button></div></div></div>`;
+const bgTeam = (cls = '') => `<div class="card ${cls}" data-why-box style="padding:12px 16px"><div class="card-h" style="margin:2px 0 2px"><h3>チームの顔ぶれと、できること</h3><span class="why k-gapwhy">?</span></div>
+  ${MEMS.map((m, k) => `<div class="mem ${k === 1 ? 'k-mem2' : ''}"><div class="av sm ${m.c}">${m.i}</div><div class="mm"><b>${m.n}</b> <span class="lbl">${m.r}</span><div class="chips">${m.sk.map(s => `<span class="chip">${s}</span>`).join('')}<span class="chip" style="background:transparent;border:1.5px dashed var(--surface-3)">＋</span></div></div></div>`).join('')}
+  <div class="ghost-row k-addmem" style="height:40px;margin-top:4px">${ic('plus', 'sm')}メンバーを追加（業務委託・アドバイザーも）</div>
+  <div class="gapbox k-gaps"><div class="row" style="gap:6px"><span style="font-size:12px;font-weight:800;flex:1">この目的に必要で、チームにまだない力</span><span class="lbl">AI が検出</span></div><div class="chips">${GAPS.map(g => `<span class="gapc">${g}</span>`).join('')}</div></div>
+  <div class="why-body" hidden>根拠：目標タイプ「上市・収益化」の必要能力リスト（プロダクト · デザイン · ブランド · 営業 · マーケ · 価格設計 · 資金）と、2人のできることの差。違っていれば chip を外せます。</div></div>`;
+const bgStair = (cls = '') => `<div class="card ${cls}" data-why-box style="padding:12px 16px"><div class="card-h" style="margin:2px 0 2px"><h3>最終的な目的は、どれがいちばん近い？</h3><span class="why k-stwhy">?</span></div><div class="lbl" style="margin-bottom:8px">上ほど大きい目的です。小さすぎ・大きすぎと感じたら 1段ずらしてください</div>
+  <div class="stair k-stair">${STAIR.map(([lv, t, tg, c]) => `<div class="str ${lv === 3 ? 'on k-st3' : ''} ${lv === 2 ? 'k-st2' : ''}"><span class="lv">${lv}</span><div class="stx">${t}${lv === 4 ? '<small>大きめ · 10年単位</small>' : lv === 1 ? '<small>小さめ · 数か月</small>' : `<span class="chip ${c} tg" style="display:flex;width:fit-content;margin-top:5px">${tg}</span>`}</div><span class="ckr ${lv === 3 ? 'on' : ''}">${ic('check')}</span></div>`).join('')}</div>
+  <div class="aisay k-staisay"><span class="emo sm teal">🧭</span><span style="flex:1">最初の目標は「2」でしたが、チームの状況と話しぶりから「3」に近いかもしれません。</span></div>
+  <div class="why-body" hidden>根拠：目標文の「落地」= まず世に出したい · やりたいこと「Orbit を世に出す」· 2人で続ける前提（短期の黒字だけなら「2」）· 空白に「ブランド」がある。階段は最初の文を 2段目に置き、下に 1段・上に 2段を出します。</div></div>`;
+function bgApp(part) {
+  const head = chatTop('プランを作る · 背景の確認');
+  const intro = me(`目標：${GOAL}`, 'k-goalmsg') + ai('はじめに、あなたとチームのことを確認させてください。プロフィールと目標から下書きしました。違うところだけ直してください。');
+  const ft = foot(`<button class="btn primary block xl k-bgnext">この背景で質問へ（5問まで）</button>`);
+  if (part === 2) return { body: head + `<div class="chat">${fmBar(0)}${intro}${bgBasic()}${bgTeam('k-team')}<i class="scrollto" data-off="200"></i>${bgStair('k-stairc')}</div>`, overlay: ft };
+  return { body: head + `<div class="chat">${fmBar(0, 'k-fm')}${intro}${bgBasic('k-bg1')}${bgTeam()}</div>`, overlay: ft };
 }
-const draftRail = stage => {
-  if (stage === 'q') return `<h4>${ic('layers', 'sm')}プランの下書き</h4><div class="card" style="padding:16px"><div class="lbl">3問に答えると、判断と下書きがここに出ます</div>${[1, 2, 3, 4].map(() => `<div class="row" style="gap:10px;padding:9px 0"><i class="shimmer" style="width:22px;height:22px;border-radius:50%;flex:none"></i><i class="shimmer sk" style="height:10px;flex:1;display:block"></i></div>`).join('')}</div>
-    <h4>使うデータ</h4><div class="chips"><span class="chip">目標文</span><span class="chip">プロフィール</span><span class="chip">人脈 286名</span><span class="chip">面談メモ 38件</span></div>
-    <div class="card flat" style="padding:14px;font-size:12px;color:var(--ink-2);line-height:1.65">質問は目標の種類ごとの題庫から選びます。似た目標には、似た質問をします。</div>`;
-  const r1 = stage === 'r1';
-  return `<h4>${ic('layers', 'sm')}プランの下書き</h4><div class="card k-wdraft" style="padding:14px 16px"><div class="row between"><b style="font-size:13.5px">Orbit の収益化</b>${r1 ? leftChip(2) : '<span class="chip teal">確定済み</span>'}</div>
-    ${STEPS.map(([n, t, g], i) => { const nw = r1 && (n === 1 || n === 2); const gg = r1 && n === 4 ? 'Pro 転換率の仮説（価格・無料枠）' : g; return `<div class="pst"><span class="v2snum">${n}</span><div style="flex:1;min-width:0"><b>${t}</b><span class="lbl">目安：${nw ? `<span class="nw">${gg}</span>` : gg}</span></div></div>`; }).join('')}
-    <div class="lbl" style="margin-top:8px">人物タイプ 6 ＋ イベント · ${TPLNOTE}</div></div>
-    ${r1 ? `<button class="btn primary block">この内容で確定</button><div class="lbl center">薄紫の背景 = 今回の修正で変わったところ</div>` : `<button class="btn primary block">プランを開く</button>`}`;
+const wTop = (sub) => mainhead('iOrbit', sub, `<button class="rbtn">${ic('clock')}</button>`, `<button class="btn">${ic('plus', 'sm')}新しい会話</button>`);
+function bgWeb() {
+  return wTop('プランを作る · 背景の確認') + `<div class="wchat" style="max-width:none">${fmBar(0)}${me(`目標：${GOAL}`)}${ai('はじめに、あなたとチームのことを確認させてください。プロフィールと目標から下書きしました。違うところだけ直してください。')}
+    <div class="grid2" style="gap:14px;align-items:stretch"><div style="display:grid;gap:14px;align-content:start">${bgBasic('k-wbg1')}${bgTeam('k-wteam')}</div><div style="display:grid">${bgStair('k-wstair')}</div></div>
+    <div class="row" style="gap:10px;justify-content:flex-end"><span class="lbl">直したところは右の「わかったこと」に反映されます</span><button class="btn primary k-wbgnext">この背景で質問へ（5問まで）${ic('right', 'sm')}</button></div></div>`;
+}
+const knownRail = (stage) => {
+  const rows = [['わたし', 'AI エンジニア · Orbit 共同創業者'], ['やりたいこと', 'Orbit を世に出す'], ['体制', 'チーム 2名（佐藤・高木）'], ['空白', 'デザイン · ブランド · 営業 · マーケ · 価格設計'], ['目的', `<b class="nw2">${PURPOSE}</b>`]];
+  const q = stage === 'q' ? [['現在地', 'β 48名 · 有料 0'], ['払い手', 'イベント主催者'], ['一言', 'イベントの後を変える AI'], ['足りない力', 'デザインは仲間に'], ['時間', '週 10〜20時間 · 並行']] : [];
+  return `<h4>${ic('layers', 'sm')}わかったこと</h4><div class="card k-known" style="padding:8px 16px"><div class="known">${rows.map(([a, b]) => `<div><span class="lbl">${a}</span><span>${b}</span></div>`).join('')}${stage === 'q' ? q.map(([a, b]) => `<div><span class="lbl">${a}</span><span><b class="nw2">${b}</b></span></div>`).join('') : `<div><span class="lbl">前提</span><span class="pending">質問のあとに、ここへまとまります</span></div>`}</div></div>
+    <h4>このあと</h4><div class="card flat" style="padding:12px 14px"><div class="known">${[['② 質問', '5つまで · まとめて回答'], ['③ 初版', '方案 + 業界の現状'], ['④ AI 修正', '3回まで'], ['⑤ 手動編集', '1回 · 合計 100 を保つ']].map(([a, b]) => `<div><span class="lbl">${a}</span><span>${b}</span></div>`).join('')}</div></div>`;
 };
 
-/* ===================== 3 · プラン概要 ===================== */
+/* ===================== ③ 5問 → 確定した前提 ===================== */
+const QS = [
+  ['R1', '現在地', 'いま、どこにいますか？', [['アイデア', 0], ['開発中', 0], ['完成・β 運用中', 1], ['有料あり', 0]], 'β 48名 · 有料 0 · NPS は未計測'],
+  ['R2', '払い手', '最初にお金を払ってほしいのは誰ですか？', [['個人（Pro）', 0], ['イベント主催者', 1], ['両方', 0], ['まだ決めていない', 0]], '主催者が払い、参加者は無料で使える形がいい'],
+  ['R3', 'ブランドの一言', 'Orbit を、どんな存在として覚えてもらいたいですか？', [['名刺の次の当たり前', 0], ['イベントの後を変える AI', 1], ['人脈を育てる AI 秘書', 0], ['まだない', 0]], ''],
+  ['R7', '足りない力', '足りない力を、どう埋めたいですか？', [['仲間に入れる', 1], ['外部に頼む', 0], ['自分で学ぶ', 1]], 'デザインは仲間に入れたい · 営業とマーケは未定'],
+  ['R6', '使える時間', '1週間に使える時間は？', [['並行 · 10時間未満', 0], ['並行 · 10〜20時間', 1], ['フルタイム', 0]], '2人とも平日夜と週末'],
+];
+const qBlock = (q, k) => `<div class="qb ${k === 2 ? 'k-q3' : ''}"><div class="row" style="gap:8px"><span class="qno">${k + 1}</span><b style="flex:1;font-size:13.5px;line-height:1.45">${q[2]}</b><span class="qid">${q[0]} ${q[1]}</span></div>
+  <div class="row" style="gap:6px;flex-wrap:wrap;margin-top:8px">${q[3].map(([t, on]) => `<span class="fopt ${on ? 'on' : ''}">${t}</span>`).join('')}</div><div class="qin ${q[4] ? '' : 'ph'}">${ic('pen', 'sm')}<span>${q[4] || '自由に書く（任意）'}</span></div></div>`;
+const qCard = (wide, cls = '') => `<div class="card k-qcard ${cls}" data-why-box style="padding:14px 16px"><div class="row" style="gap:8px"><b style="font-size:14px;flex:1">あと 5つだけ、確認させてください</b><span class="chip">題庫「上市・収益化」</span><span class="why k-qwhy">?</span></div>
+  <div class="why-body" hidden>選んだ理由：題庫 8問のうち、背景・プロフィール・人脈からわからず、プランの分かれ道を一番変える 5問です。価格（R4）は Step で確かめ、競合（R5）は業界の現状で補えるので今は聞きません。</div>
+  ${wide ? `<div class="wq5">${QS.map(qBlock).join('')}<div style="display:flex;flex-direction:column;justify-content:flex-end;gap:6px"><button class="btn primary k-qsend">まとめて回答する</button><div class="lbl">わからない質問は空欄で大丈夫です · 推測で進め、依拠に「推測」と書きます</div></div></div>` : QS.map(qBlock).join('') + `<button class="btn primary block k-qsend" style="margin-top:12px">まとめて回答する（5問）</button><div class="lbl center" style="margin-top:6px">空欄は推測で進め、依拠に「推測」と書きます</div>`}</div>`;
+const PREM = [['目的', PURPOSE, '背景'], ['チーム', '2名 · AI エンジニア × 2（空白：デザイン・ブランド・営業・マーケ・価格設計）', '背景'], ['現在地', 'β 48名 · 有料 0 · NPS 未計測', 'Q1'], ['払い手', 'イベント主催者（参加者は無料）', 'Q2'], ['一言', 'イベントの後を変える AI', 'Q3'], ['足りない力', 'デザインは仲間に · 営業とマーケは未定', 'Q4'], ['時間', '2人とも本業と並行 · 週 10〜20時間', 'Q5']];
+const premCard = (o = {}) => `<div class="card ${o.cls || ''}" style="padding:12px 16px"><div class="row" style="gap:8px;margin:2px 0 4px"><span class="emo sm teal">📌</span><b style="font-size:14px;flex:1">確定した前提</b>${o.mini ? '' : '<span class="lbl">行をタップで直せます</span>'}</div>
+  ${o.mini ? `<div class="premc" style="margin-top:6px">${PREM.slice(0, 6).map(([a, b]) => `<span class="chip" style="max-width:100%">${a}：${b.split('（')[0].split(' · ')[0]}</span>`).join('')}<span class="v2go" style="margin:0">すべて見る${ic('down', 'sm')}</span></div>`
+    : PREM.map(([a, b, s], k) => `<div class="prem ${k === 4 ? 'k-prem5' : ''}"><span class="lbl">${a}</span><span>${b}</span><span class="src">${s}</span></div>`).join('')}
+  ${o.act ? `<button class="btn primary block k-premgo" style="margin-top:10px">${ic('sparkle', 'sm')}この前提で初版をつくる</button><div class="lbl center" style="margin-top:6px">初版は回数に含みません · この後 AI 修正 3回 + 手動編集 1回</div>` : ''}</div>`;
+const ANS = '① β 運用中（48名 · 有料 0）② 主催者 ③ イベントの後を変える AI ④ デザインは仲間に ⑤ 並行 · 週 10〜20時間';
+function qApp(stage) {
+  const head = chatTop('プランを作る · 質問');
+  const pre = me(`目標：${GOAL}`) + `<div class="ok-card" style="padding:10px 14px"><div class="row" style="gap:8px"><span class="okmark">${ic('check')}</span><b style="font-size:12.5px;flex:1">背景を確認しました</b><span class="lbl">目的：3段目</span></div></div>`;
+  if (stage === 'q') return { body: head + `<div class="chat">${fmBar(1)}${pre}${ai('背景の空白から、プランを分ける 5つだけ聞かせてください。まとめて答えられます。')}${SCRC}${qCard(false)}</div>`, overlay: composer('まとめて書いても OK です') };
+  return { body: head + `<div class="chat">${fmBar(1)}${pre}${me(ANS, 'k-ans')}${SCRC}${ai('ありがとうございます。前提をまとめました。違うところがあれば、ここで直してください。')}${premCard({ cls: 'k-prem', act: true })}</div>`, overlay: composer('前提について補足する') };
+}
+function qWeb() {
+  return wTop('プランを作る · 質問') + `<div class="wchat" style="max-width:none">${fmBar(1)}${me(`目標：${GOAL}`)}<div class="ok-card" style="padding:10px 14px"><div class="row" style="gap:8px"><span class="okmark">${ic('check')}</span><b style="font-size:12.5px;flex:1">背景を確認しました · 目的：${PURPOSE}</b><button class="btn sm ghost">背景を見る</button></div></div>
+    ${ai('背景の空白から、プランを分ける 5つだけ聞かせてください。まとめて答えられます。')}${qCard(true, 'k-wq')}</div>`;
+}
+
+/* ===================== ④ AI 初版 ===================== */
+const MITATE = '<b>技術とつくる力は十分</b>です。足りないのは「誰のための何か」という<b>一言</b>と、それを届ける<b>販路</b>、そして<b>デザイン・ブランドの力</b>。人脈管理は個人向けだと Eight が無料で強く ①、機能で勝負すると埋もれます。一方、イベントの「後」は主催者も参加者も手が回っていない ②。ここを「イベントの後を変える AI」として主催者に選んでもらえば、売上とブランドを同時につくれます。';
+const KETSU = '「イベント後を変える AI」として主催者経由で広め、ブランドを先に立てる。個人 Pro は参加者からの 2本目。';
+const libList = (cls = '') => `<div class="libl ${cls}">${LIB.map(([id, t, d, v, dt, src], k) => `<div class="lib"><span class="ln">${k + 1}</span><div class="lm"><b>${t}</b>${d}<div class="meta3"><span>${id}</span><span>${v} · ${dt}</span><span>出典：${src}</span></div></div></div>`).join('')}<div class="fact">${ic('book', 'sm')}AI は Orbit が管理するこのライブラリの資料だけを引用します</div></div>`;
+const libAcc = (open, cls = '') => `<div class="acc ${open ? 'open' : ''} ${cls}" style="margin-top:12px"><div class="acc-h" data-acc>${ic('book', 'sm')}<b>この案で参考にした業界の現状</b><span class="chip">${LIB.length}件</span><span class="chev">${ic('down', 'sm')}</span></div><div class="acc-b"><div>${libList()}</div></div></div>`;
+const stepsMini = (steps, o = {}) => steps.map(([n, t, g, ks]) => { const hl = o.hl && o.hl.includes(n); return `<div class="pst"><span class="v2snum">${n}</span><div style="flex:1;min-width:0"><b>${t}</b><span class="lbl">目安：${hl ? `<span class="nw">${g}</span>` : g}</span>${o.chips ? `<div class="chips" style="margin-top:4px;gap:4px">${ks.map(k => `<span class="chip">${k === 'EV' ? '🎟️' : T[k].emo + ' ' + k}</span>`).join('')}</div>` : ''}</div></div>`; }).join('');
+const typesMini = (o = {}) => ORD.map(k => `<div class="trow"><span class="emo sm ${T[k].c || 'apricot'}">${T[k].emo}</span><div class="tm"><b>${k === 'EV' ? 'イベント' : k + ' ' + T[k].s}</b><span class="lbl">${k === 'EV' ? T[k].n : T[k].n}</span></div><span class="pt">${T[k].w0}<small> 点 · ${T[k].t0}${k === 'EV' ? '回' : '人'}</small></span></div>`).join('');
+const firstCard = (o = {}) => `<div class="card ${o.cls || ''}" data-why-box style="padding:14px 16px"><div class="row" style="gap:8px"><span class="emo sm teal">🧭</span><div style="flex:1;min-width:0"><div class="lbl">AI の初版 · 方案</div><b style="font-size:14.5px">${PNAME}</b></div><span class="why k-fwhy">?</span></div>
+  <div class="jsec k-mitate"><span class="lbl">見立て</span>${o.clamp ? `<span class="clamp4">${MITATE}</span><span class="v2go" style="margin-top:2px">全文を読む${ic('down', 'sm')}</span>` : MITATE}</div>
+  <div class="why-body" hidden>根拠：確定した前提 7件（目的 3段目 · 空白 5つ · 払い手 = 主催者 ほか）· 業界の現状 ①②③④（下の折りたたみ）· 目標タイプ「上市・収益化」の高度プロンプト v4</div>
+  <div class="jsec ketsu k-ketsu"><span class="lbl">進め方の結論</span><b>${KETSU}</b>${flowDia()}</div>
+  ${o.top ? '' : `${o.anchor === 'steps' ? '<i class="scrollto" data-off="64"></i>' : ''}<div class="fsec k-fsteps"><span class="lbl">ステップ · 完了の目安</span>${stepsMini(STEPS0, { chips: true })}</div>
+  <div class="fsec k-ftypes" data-why-box><div class="row" style="gap:6px"><span class="lbl" style="flex:1;font-weight:800">話すべき人のタイプ · 配点</span><span class="why">?</span></div><div class="why-body" hidden>${TPLWHY.split('その後')[0]}</div>${typesMini()}</div>
+  ${o.anchor === 'lib' ? '<i class="scrollto" data-off="6"></i>' : ''}${libAcc(o.libOpen, 'k-lib')}`}
+  ${o.act === false ? '' : `<div class="row" style="gap:8px;margin-top:12px">${leftChip(3, 'k-left')}<span class="lbl" style="margin-left:auto">初版は回数に含みません</span></div><div class="grid2" style="margin-top:8px"><button class="btn sm k-manual">${ic('edit', 'sm')}手動で編集</button><button class="btn sm primary k-kakutei">この内容で確定</button></div>`}</div>`;
+function firstApp(part) {
+  const head = chatTop('プランを作る · 初版');
+  const pre = me(ANS) + premCard({ mini: true, cls: 'k-premmini' });
+  if (part === 2 || part === 3) return { body: head + `<div class="chat tall">${fmBar(2)}${pre}${firstCard({ cls: 'k-first', libOpen: part === 3, anchor: part === 2 ? 'steps' : 'lib' })}</div>`, overlay: revBar(3) + composer() };
+  return { body: head + `<div class="chat tall">${fmBar(2)}${SCRC}${pre}${ai('前提と、業界の現状をもとに初版をつくりました。')}${firstCard({ cls: 'k-first', clamp: false, top: true })}</div>`, overlay: revBar(3, 'k-revbar') + composer() };
+}
+const firstWebCard = () => `<div class="card k-wfirst" data-why-box style="padding:18px 20px"><div class="row" style="gap:10px"><span class="emo sm teal">🧭</span><div style="flex:1;min-width:0"><div class="lbl">AI の初版 · 方案</div><b style="font-size:16px">${PNAME}</b></div><span class="why">?</span></div>
+  <div class="why-body" hidden>根拠：確定した前提 7件 · 業界の現状 ①②③④ · 目標タイプ「上市・収益化」の高度プロンプト v4</div>
+  <div class="grid2" style="gap:18px;margin-top:6px;align-items:start"><div><div class="jsec"><span class="lbl">見立て</span>${MITATE}</div><div class="jsec ketsu"><span class="lbl">進め方の結論</span><b>${KETSU}</b>${flowDia()}</div>${libAcc(true, 'k-wlib')}</div>
+  <div><div class="fsec" style="margin-top:10px"><span class="lbl">ステップ · 完了の目安</span>${stepsMini(STEPS0, { chips: true })}</div><div class="fsec k-wtypes0"><span class="lbl">話すべき人のタイプ · 配点（テンプレートから 2件調整）</span>${typesMini()}</div></div></div></div>`;
+function firstWeb() {
+  return wTop('プランを作る · 初版') + `<div class="wchat" style="max-width:none">${fmBar(2)}${me(ANS)}${premCard({ mini: true })}${ai('前提と、業界の現状をもとに初版をつくりました。')}${firstWebCard()}</div>`;
+}
+const reviseRail = (n, o = {}) => `<h4>${ic('refresh', 'sm')}AI 修正</h4><div class="card k-wrev" style="padding:16px"><div class="revbig"><span class="lbl">あと</span><em>${n}</em><span class="lbl">回 / 3回</span></div><div class="dots3">${[0, 1, 2].map(k => `<i class="${k >= n ? 'used' : ''}"></i>`).join('')}</div>
+    <div style="font-size:12.5px;font-weight:700;margin-top:12px;line-height:1.55">現状と考えを、できるだけ一度にまとめて書いてください</div><div class="lbl" style="margin-top:4px;line-height:1.6">${HINT_EX}</div>
+    <div class="assist-in" style="margin-top:10px;background:var(--surface-2)">${ic('pen', 'sm')}修正したいことを入力<button class="lbtn" style="margin-left:auto;background:var(--ink);color:var(--bg)">${ic('send', 'sm')}</button></div></div>
+  ${o.draft || ''}
+  <div class="grid2"><button class="btn k-wmanual">${ic('edit', 'sm')}手動で編集</button><button class="btn primary">この内容で確定</button></div>
+  <div class="card flat" style="padding:14px;font-size:12px;color:var(--ink-2);line-height:1.65">変更がなかった回も 1回と数えます。使い切ったあとは、手動で編集するか確定します。</div>`;
+
+/* ===================== ⑤ AI 修正 ===================== */
+const DIFF = {
+  1: [['Step 2 の目安', '主催者 1社と有料パイロットに合意', STEPS[1][2]], ['Step 3 の目安', 'デザイン・ブランド・営業のどれか 1つで、継続的な協力者が決まる', STEPS[2][2]]],
+  2: [['Step 5 の目安', '主催者の事例 2件と、発信の型ができる', '主催者の事例 3件と、発信の型ができる']],
+};
+const UPD_SAY = { 1: '主催者向けで賛成です。営業は当面 2人でやるので、仲間はデザインとブランドを優先したい。あと、主催者には最初の 1回は無料で試してもらいたいです。', 2: '事例は 2件じゃなく 3件ほしい。次の主催者に見せる材料にしたいので。', 3: 'やっぱり資金調達も Step に入れたほうがいいですか？' };
+const updCard = (r, o = {}) => `<div class="card ${o.cls || ''}" data-why-box style="padding:14px 16px"><div class="row" style="gap:8px"><span class="emo sm teal">🧭</span><div style="flex:1;min-width:0"><div class="lbl">AI 修正 ${r} / 3 を反映</div><b style="font-size:14.5px">${DIFF[r] ? '方案を更新しました' : '今回は変更しません'}</b></div><span class="why">?</span></div>
+  ${DIFF[r] ? `<div class="k-diff" style="margin-top:6px">${DIFF[r].map(([l, a, b]) => `<div class="dl"><span class="chgtag">変更</span><span class="lbl">${l}</span><s>${a}</s><span class="nw">${b}</span></div>`).join('')}</div>
+  <div class="same-line k-same">変わらない点：見立てと結論 · 人物タイプ 6 と配点 · 個人 Pro は 2本目</div>`
+  : `<div class="same-line k-nochg" style="margin-top:10px">資金調達は Step に入れません。前提が「2人とも本業と並行」で、Step 2 の数字が出るまでは調達の判断材料がないためです。必要になったら、別の目標「資金調達」として作れます。</div>`}
+  <div class="why-body" hidden>${r === 1 ? '根拠：あなたの修正（営業は 2人で · デザインとブランドを優先 · 1回無料）· 有料 0 → 1 では「試用 → 有料」の段階設計が一般的（業界の現状 ②）' : r === 2 ? '根拠：あなたの修正（事例 3件）' : '根拠：前提 Q5「並行 · 週 10〜20時間」· 目標タイプ「上市・収益化」の高度プロンプト：数字が出る前の調達は Step に入れない'}</div>
+  ${o.act === false ? '' : `<div class="row" style="gap:8px;margin-top:12px">${leftChip(3 - r, 'k-left')}</div><div class="grid2" style="margin-top:8px"><button class="btn sm">${ic('edit', 'sm')}手動で編集</button><button class="btn sm primary">この内容で確定</button></div>`}</div>`;
+function revApp(stage) {
+  const head = chatTop('プランを作る · AI 修正');
+  let b = `<div class="chat tall">${fmBar(3)}${firstCard({ top: true, clamp: true, act: false })}`;
+  if (stage === 'r1') return { body: head + b + SCRC + me(UPD_SAY[1], 'k-say1') + updCard(1, { cls: 'k-upd1' }) + `</div>`, overlay: revBar(2) + composer() };
+  b += me(UPD_SAY[1]) + updCard(1, { act: false }) + me(UPD_SAY[2]) + updCard(2, { act: false }) + SCRC + me(UPD_SAY[3], 'k-say3') + updCard(3, { cls: 'k-upd3', act: false });
+  return { body: head + b + `<div class="card flat k-end" style="padding:14px 16px"><div class="row" style="gap:8px"><b style="font-size:13.5px;flex:1">AI 修正は 3回とも使いました</b>${leftChip(0)}</div><div class="lbl" style="margin-top:4px;line-height:1.6">ここからは、手動で 1回だけ編集するか、この内容で確定します。確定後も「方案を見直す」で変更案を作れます。</div>
+    <div class="hist k-hist" style="margin-top:10px"><span class="chip">1：営業は 2人で · 1回無料</span><span class="chip">2：事例 3件</span><span class="chip">3：変更なし</span></div>
+    <div class="grid2" style="margin-top:12px"><button class="btn k-self">${ic('edit', 'sm')}手動で編集</button><button class="btn primary k-kakutei">この内容で確定</button></div></div></div>`, overlay: revBar(0, 'k-rev0') + composer('AI 修正は使い切りました', true) };
+}
+function revWeb() {
+  return wTop('プランを作る · AI 修正') + `<div class="wchat" style="max-width:none">${fmBar(3)}${firstWebCard().replace('k-wfirst', '').replace(/k-wlib|k-wtypes0/g, '')}${SCR}${me(UPD_SAY[1])}${updCard(1, { cls: 'k-wupd1', act: false })}</div>`;
+}
+const draftMini = () => `<h4>${ic('layers', 'sm')}方案の下書き</h4><div class="card k-wdraft" style="padding:14px 16px"><div class="row between"><b style="font-size:13.5px">${PNAME}</b>${leftChip(2)}</div>${stepsMini(STEPS0.map((s, i) => i === 1 || i === 2 ? [s[0], s[1], STEPS2[i][2], s[3]] : s), { hl: [2, 3] })}<div class="lbl" style="margin-top:8px">薄紫 = 今回の修正で変わったところ</div></div>`;
+
+/* ===================== ⑥ 手動編集 ===================== */
+const ba = (a, b, cls = '') => a === b ? `<span class="ba">${b}</span>` : `<span class="ba ${b > a ? 'up' : 'dn'} ${cls}"><s>${a}</s> → <b>${b}</b></span>`;
+const sumBar = () => `<div class="sumbar">${ORD.map(k => `<i class="${k === 'E' ? 'e' : k === 'EV' ? 'ev' : ''}" style="flex:${T[k].w}"></i>`).join('')}</div>`;
+const editTop = () => topbar('プランを手動で編集', '1回だけ · 保存すると確定', `<button class="rbtn">${ic('x')}</button>`, `<button class="btn sm ghost">元に戻す</button>`);
+const lockNote = (cls = '') => `<div class="lock ${cls}">${ic('pen', 'sm')}<span>保存したあとは、AI がこのプランを自動で書き換えることはありません。見直したいときは、プラン画面の「方案を見直す」から変更案を作り、1件ずつ ✓ / ✕ で決めます。</span></div>`;
+const EORD = [0, 1, 2, 4, 3]; /* 編集中の並び：Step 5 を 4番目へドラッグ中 */
+const eStepRow = (i, pos, o = {}) => {
+  const s = STEPS2[i], rename = i === 2, lift = i === 4;
+  return `<div class="erow ${lift ? 'lift k-lift' : ''} ${rename ? 'k-rename' : ''}"><span class="grip"></span><span class="v2snum">${pos + 1}</span><div class="em">${rename ? `<div class="ein"><span>デザインとブランドの仲間を見つける</span><i class="caret"></i></div><span class="lbl" style="margin-top:3px">元：${s[1]}</span>` : `<b>${s[1]}</b><span class="lbl">目安：${s[2]}</span>`}</div>${lift ? '<span class="mv">5 → 4</span>' : ''}<span class="del">${ic('x', 'sm')}</span></div>`;
+};
+const eTypeRow = (k, o = {}) => {
+  const p = T[k], foc = k === 'E';
+  return `<div class="ewrow ${foc ? 'foc k-efoc' : ''} ${k === 'D' ? 'k-ed' : ''} ${k === 'A' ? 'k-ea' : ''}"><span class="emo sm ${p.c || 'apricot'}">${p.emo}</span><div class="em"><b>${k === 'EV' ? 'イベント' : k + ' ' + p.s}</b></div><span class="del" style="width:26px;height:26px;border-radius:50%;background:var(--surface);display:grid;place-items:center;color:var(--ink-3)">${ic('x', 'sm')}</span>
+    <div class="ctl"><span class="lbl">${p.isEv ? '回数' : '人数'}</span><span class="stp ${p.t0 !== p.tgt ? 'chg' : ''}"><i>−</i><b>${p.tgt}</b><i>＋</i></span><span style="flex:1"></span><span class="lbl">配点</span><span class="ptin ${foc ? 'on' : ''}">${p.w}</span>${ba(p.w0, p.w)}</div></div>`;
+};
+function editApp(part) {
+  const ft = foot(`<div class="row" style="gap:10px;align-items:center"><div style="flex:1;min-width:0"><b style="font-size:13px">合計 100 / 100</b><div class="lbl">変更 4件 · 手動編集は 1回だけ</div></div><button class="btn primary k-start" style="height:46px">このプランで始める</button></div>`);
+  if (part === 2) return { body: editTop() + fmBar(4) + `<div class="card" style="margin-top:10px;padding:12px 16px"><div class="card-h" style="margin:2px 0 6px"><h3>ステップ</h3><span class="lbl">5件</span></div>${EORD.map((i, pos) => eStepRow(i, pos)).join('')}</div>${SCR}
+    <div class="card k-etypes" style="padding:12px 16px"><div class="card-h" style="margin:2px 0 6px"><h3>人物タイプと配点</h3><span class="lbl">5点刻み · 合計 100 を保ちます</span></div>
+      <div class="sum100 k-sum" style="background:var(--surface-2);margin-bottom:8px"><span class="big2">100<small> / 100</small></span>${sumBar()}</div>
+      <div class="same-line k-prop" style="margin:0 0 8px">E を 10 → 15（+5）→ 配点がいちばん高い A から −5（25 → 20）。配点は 5点刻み</div>
+      ${ORD.map(k => eTypeRow(k)).join('')}
+      <div class="ghost-row" style="margin-top:8px;height:40px">${ic('plus', 'sm')}タイプを追加（テンプレートの枠から選ぶ）</div></div>${lockNote('k-lock')}`, overlay: ft };
+  if (part === 3) return { body: editTop() + fmBar(4) + `<div class="card k-etypes" style="margin-top:10px;padding:12px 16px"><div class="card-h" style="margin:2px 0 6px"><h3>人物タイプと配点</h3></div>${ORD.map(k => eTypeRow(k)).join('')}</div>`, overlay: ft + delSheet };
+  return { body: editTop() + fmBar(4, 'k-efm') + `<div class="card flat k-eintro" style="margin-top:10px;padding:12px 14px;font-size:12.5px;line-height:1.6">AI 修正 3回のあとの方案です。名前・順番・目安・人数・配点を直せます。</div>
+    <div class="card k-esteps" style="padding:12px 16px"><div class="card-h" style="margin:2px 0 6px"><h3>ステップ</h3><span class="lbl">長押しで並べ替え</span></div>${EORD.map((i, pos) => eStepRow(i, pos)).join('')}
+      <div class="ghost-row k-eadd" style="margin-top:8px;height:40px">${ic('plus', 'sm')}Step を追加</div></div>
+    <div class="card" style="padding:12px 16px"><div class="card-h" style="margin:2px 0 6px"><h3>人物タイプと配点</h3><span class="lbl">合計 100</span></div>${ORD.slice(0, 2).map(k => eTypeRow(k)).join('')}</div>`, overlay: ft };
+}
+const DEL = { A: 25, B: 25, D: 20, E: 15, EV: 15 }; /* C の 15点 = 5点 × 3：A → B → D（配点の高い順 · 同点はテンプレート順） */
+const delSheet = `<div class="sheet-scrim"></div><div class="sheet k-delsheet"><div class="grab"></div>
+  <div class="row" style="gap:10px"><span class="emo sm teal">📇</span><div style="flex:1;min-width:0"><b style="font-size:16px">タイプ C を外しますか？</b><div class="lbl">名刺 SaaS の経験者 · 配点 15</div></div></div>
+  <div class="lbl" style="margin:12px 0 6px">15点を 5点ずつ、配点の高いタイプから順に配り直します</div>
+  <div class="card flat k-delprev" style="padding:6px 14px">${['A', 'B', 'D', 'E', 'EV'].map(k => `<div class="trow"><span class="emo sm ${T[k].c || 'apricot'}">${T[k].emo}</span><div class="tm"><b>${k === 'EV' ? 'イベント' : k + ' ' + T[k].s}</b></div>${ba(T[k].w, DEL[k])}</div>`).join('')}<div class="trow"><div class="tm"><b>合計</b></div><span class="ba"><b>100</b></span></div></div>
+  <div class="lbl" style="margin-top:10px;line-height:1.6">C の候補・会える活動・紹介ルートの表示も消えます。Step 2・5 の chip からも外れます。</div>
+  <div class="grid2" style="margin-top:12px"><button class="btn">キャンセル</button><button class="btn primary k-delgo" style="background:var(--rose-700)">外す</button></div></div>`;
+function editWeb() {
+  return mainhead('プランを手動で編集', `${PNAME} · 1回だけ · 保存すると確定`, `<button class="rbtn">${ic('x')}</button>`, `<button class="btn ghost">AI の方案に戻す</button>`) + `<div class="wgrid">
+    <div class="card span5 k-westeps"><div class="card-h"><h3>ステップ</h3><span class="lbl">ドラッグで並べ替え · 名前と目安はクリックで編集</span></div>${EORD.map((i, pos) => eStepRow(i, pos)).join('')}<div class="ghost-row" style="margin-top:8px;height:40px">${ic('plus', 'sm')}Step を追加</div><div class="push" style="padding-top:14px">${lockNote()}</div></div>
+    <div class="card span7 k-wetypes"><div class="card-h"><h3>人物タイプと配点</h3><span class="lbl">5点刻み · 1つ変えると配点の高いタイプから 5点ずつ調整 · 合計 100</span></div>
+      <table class="etab"><thead><tr><th>タイプ</th><th>目標</th><th>配点</th><th>AI の方案 → 今</th><th></th></tr></thead><tbody>${ORD.map(k => { const p = T[k]; return `<tr class="${k === 'E' ? 'foc' : ''}"><td style="max-width:320px"><div class="row" style="gap:8px"><span class="emo sm ${p.c || 'apricot'}">${p.emo}</span><div style="min-width:0"><b>${k === 'EV' ? 'イベント' : k + ' ' + p.s}</b><span class="tnm">${p.n}</span></div></div></td><td><span class="stp ${p.t0 !== p.tgt ? 'chg' : ''}" style="background:var(--surface-2)"><i>−</i><b>${p.tgt}<small>${p.isEv ? '回' : '人'}</small></b><i>＋</i></span></td><td><span class="ptin ${k === 'E' ? 'on' : ''}" style="background:var(--surface-2)">${p.w}</span></td><td>${ba(p.w0, p.w)}${p.t0 !== p.tgt ? `<div class="ba dn" style="margin-top:2px"><s>${p.t0}人</s> → <b>${p.tgt}人</b></div>` : ''}</td><td><span class="lbtn" style="width:28px;height:28px">${ic('x', 'sm')}</span></td></tr>`; }).join('')}
+      <tr><td><b>合計</b></td><td></td><td><b style="font-family:var(--font-num);font-size:15px">100</b></td><td class="lbl">E +5 → いちばん高い A から −5</td><td></td></tr></tbody></table>
+      <div class="push sum100" style="margin-top:14px;background:var(--surface-2)"><span class="big2">100<small> / 100</small></span>${sumBar()}<span class="lbl">濃い = 変更したタイプ</span></div></div></div>`;
+}
+const editRail = `<h4>${ic('edit', 'sm')}変更点</h4><div class="chgl k-wchg">${[['名前', 'Step 3「足りない力を仲間にする」→「デザインとブランドの仲間を見つける」'], ['順番', '「ブランドとして広げる」を 5 → 4番目'], ['配点', 'E プロダクトデザイナー 10 → 15（A 25 → 20 で合計 100）'], ['人数', 'D エンジニア出身の起業家 3人 → 2人（7点 + 最後の1人 8点）']].map(([a, b]) => `<div><span class="chgtag">${a}</span><span>${b}</span></div>`).join('')}</div>
+  <div class="card" style="padding:16px"><div class="row between"><b style="font-size:13.5px">合計</b><span class="big2" style="font-family:var(--font-num);font-weight:900;font-size:22px">100</span></div><div class="lbl" style="margin-top:4px">手動編集は 1回だけ。保存するとプランが始まります</div>
+    <button class="btn primary block k-wstart" style="margin-top:12px">このプランで始める</button></div>
+  <div class="card flat" style="padding:14px;font-size:12px;color:var(--ink-2);line-height:1.65">保存後、AI はこのプランを自動で書き換えません。見直しは「方案を見直す」から、変更案を 1件ずつ ✓ / ✕ で決めます。</div>`;
+
+/* ===================== ⑦ プラン概要 ===================== */
+const todayCard = (many, cls = '') => `<div class="card ${cls}" data-why-box style="background:linear-gradient(135deg,var(--mac-lav),var(--surface) 70%)"><div class="row" style="gap:8px;margin-bottom:6px"><span class="emo sm lav">✨</span><b style="font-size:13px">今日のチャンス</b><span class="why" style="margin-left:auto">?</span></div>
+  <div style="font-size:14px;font-weight:700;line-height:1.6">${many ? '10/23 のブランドづくり勉強会 Tokyo #14 に、B タイプが約 8名来ます。参加でイベント +5、話せたら B +10。' : '小林 誠さん（丸の内イノベーションラボ 主宰）に「近況報告＋会のあとの相談」を。話せたら A +4。'}</div>
+  <div class="row" style="gap:8px;margin-top:12px"><button class="btn sm primary">${many ? 'イベントを見る' : '面談を提案'}</button><span class="chip" style="margin-left:auto">${many ? 'イベント · 1 / 3回' : 'A 交流会の主催者 · Step 1'}</span></div>
+  <div class="why-body" hidden>${many ? '根拠：イベントスコア 82（会える人の適合 36 / 45 · B タイプ約 8名、残り 1人）· イベント枠は 1 / 3回' : '根拠：小林さんは推薦度 92（名刺「主宰」· 月1回の主催履歴）· 最終接点 1か月前 · A は 1人 4点'}</div></div>`;
+const diagMini = (cls = '') => `<div class="card ${cls}" data-why-box><div class="row" style="gap:8px"><span class="emo sm teal">🧭</span><b style="font-size:13px;flex:1">確定した方案</b><span class="chip">手動編集済み</span><span class="why">?</span></div>
+  <div style="font-size:13.5px;font-weight:700;line-height:1.6;margin-top:8px">${KETSU}</div>
+  <div class="why-body" hidden>根拠：確定した前提 7件 · 業界の現状 4件（L-012 · L-031 · L-047 · L-058）· AI 修正 3回 · 手動編集 1回（10/8）</div>
+  <div class="v2go">iOrbit の会話を見る${ic('right', 'sm')}</div></div>`;
 function planApp(s, scrolled) {
-  const many = s === 'many', S = many ? 's38' : 's0';
-  return topbar('プラン', gsw('Orbit の収益化'), meBtn, iorbitBtn) + `
-    <div class="card rise k-hero"><div class="row between" style="align-items:flex-start"><div><div class="lbl">スコア</div><div class="big" style="font-size:52px">${num(total(S))}</div><div class="lbl">満点 100 · 上限なし</div></div>
-      ${many ? `<div style="text-align:right"><span class="chip lav">あと ${100 - total(S)} で満点</span><div class="lbl" style="margin-top:6px">話して ${total(S)} · スキップ 0</div></div>` : '<span class="chip lav">今日つくったプラン</span>'}</div>
+  const many = s === 'many', S = many ? 's38' : 's0', tt = total(S);
+  return topbar('プラン', gsw(PNAME), meBtn, iorbitBtn) + `
+    <div class="card rise k-hero"><div class="row between" style="align-items:flex-start"><div><div class="lbl">スコア</div><div class="big" style="font-size:52px">${num(tt)}</div><div class="lbl">満点 100 · 上限なし</div></div>
+      ${many ? `<div style="text-align:right"><span class="chip lav">あと ${Math.round(100 - tt)} で満点</span><div class="lbl" style="margin-top:6px">話して ${Math.round(tt)} · スキップ 0</div></div>` : '<span class="chip lav">今日つくったプラン</span>'}</div>
       ${sbar(S, { cls: 'k-sbar' })}${legend('k-legend')}</div>
     ${diagMini('k-diag')}
     ${todayCard(many, 'k-today')}
-    <div class="card k-steps"><div class="card-h"><h3>ステップ</h3><span class="lbl">順番は目安 · 期限なし</span></div>${STEPS.map((st, i) => stepBlock(st, S, { short: true, cls: i === 0 ? 'k-step1' : '', mcls: i === 0 ? 'k-mey1' : '' })).join('')}</div>
-    ${scrolled ? SCR : ''}<div class="card k-types" data-why-box><div class="card-h" style="margin-bottom:4px"><h3>話すべき人のタイプ</h3><span class="why k-tplwhy">?</span></div><div class="lbl" style="margin-bottom:10px">役割 × 状況 · ${TPLNOTE}</div><div class="why-body" hidden style="margin:0 0 10px">${TPLWHY}</div>${ORD.map(k => tcard(k, S, { cls: 'k-tc' + k })).join('')}</div>
+    ${scrolled === 'steps' ? '<i class="scrollto" data-off="-90"></i>' : ''}<div class="card k-steps"><div class="card-h"><h3>ステップ</h3><span class="lbl">順番は目安 · 期限なし</span></div>${STEPS.map((st, i) => stepBlock(st, S, { short: true, cls: i === 0 ? 'k-step1' : '', mcls: i === 0 ? 'k-mey1' : '' })).join('')}</div>
+    ${scrolled === true ? SCR : ''}<div class="card k-types" data-why-box><div class="card-h" style="margin-bottom:4px"><h3>話すべき人のタイプ</h3><span class="why k-tplwhy">?</span></div><div class="lbl" style="margin-bottom:10px">役割 × 状況 · ${TPLNOTE}</div><div class="why-body" hidden style="margin:0 0 10px">${TPLWHY}</div>${ORD.map(k => tcard(k, S, { cls: 'k-tc' + k })).join('')}</div>
     <div class="grid2" style="margin-top:14px"><button class="btn k-revise">${ic('refresh', 'sm')}方案を見直す</button><button class="btn">${ic('flag', 'sm')}目標を達成した</button></div>`;
 }
 function planWeb(s) {
-  const many = s === 'many', S = many ? 's38' : 's0';
-  return mainhead('プラン', GOAL, `<button class="btn k-wgsw">🚀 Orbit の収益化 ${ic('down', 'sm')}</button>`, `<button class="btn">${ic('refresh', 'sm')}方案を見直す</button><button class="btn">${ic('flag', 'sm')}目標を達成した</button>`) + `<div class="wgrid">
-    <div class="card span12 rise k-whero"><div class="row" style="gap:28px;align-items:flex-end"><div style="flex:none"><div class="lbl">スコア</div><div class="big" style="font-size:64px">${num(total(S))}</div><div class="lbl">満点 100 · 上限なし</div></div>
+  const many = s === 'many', S = many ? 's38' : 's0', tt = total(S);
+  return mainhead('プラン', PURPOSE, `<button class="btn k-wgsw">🚀 ${PNAME} ${ic('down', 'sm')}</button>`, `<button class="btn">${ic('refresh', 'sm')}方案を見直す</button><button class="btn">${ic('flag', 'sm')}目標を達成した</button>`) + `<div class="wgrid">
+    <div class="card span12 rise k-whero"><div class="row" style="gap:28px;align-items:flex-end"><div style="flex:none"><div class="lbl">スコア</div><div class="big" style="font-size:64px">${num(tt)}</div><div class="lbl">満点 100 · 上限なし</div></div>
       <div style="flex:1;min-width:0;padding-bottom:4px">${sbar(S, { labels: true, cls: 'k-wsbar' })}${legend()}</div>
-      <div style="flex:none;text-align:right;padding-bottom:6px;width:190px">${many ? `<span class="chip lav">あと ${100 - total(S)} で満点</span><div class="lbl" style="margin-top:6px">話して ${total(S)} · スキップ 0</div>` : '<span class="chip lav">今日つくったプラン</span><div class="lbl" style="margin-top:6px">話した人のタイプで加点</div>'}</div></div></div>
+      <div style="flex:none;text-align:right;padding-bottom:6px;width:190px">${many ? `<span class="chip lav">あと ${Math.round(100 - tt)} で満点</span><div class="lbl" style="margin-top:6px">話して ${Math.round(tt)} · スキップ 0</div>` : '<span class="chip lav">今日つくったプラン</span><div class="lbl" style="margin-top:6px">話した人のタイプで加点</div>'}</div></div></div>
     <div class="card span4 k-wsteps"><div class="card-h"><h3>ステップ</h3><span class="lbl">順番は目安</span></div>${STEPS.map((st, i) => stepBlock(st, S, { short: true, mcls: i === 0 ? 'k-wmey1' : '' })).join('')}</div>
     <div class="card span8 k-wtypes" data-why-box><div class="card-h" style="margin-bottom:4px"><h3>話すべき人のタイプ</h3><div class="row" style="gap:8px"><span class="lbl">${TPLNOTE}</span><span class="why k-wtplwhy">?</span></div></div><div class="why-body" hidden style="margin:0 0 10px">${TPLWHY}</div><div class="lbl" style="margin-bottom:10px">役割 × 状況 · 点はタイプごと · 同じ人は同じタイプで 1回</div>
-      <div class="tgrid">${ORD.map(k => tcard(k, S, { cls: 'k-wtc' + k })).join('')}<div class="tcard" style="justify-content:center;background:transparent;border:1.5px dashed var(--surface-3)"><b style="font-size:13px">タイプを足す・外す</b><div class="lbl" style="margin-top:2px;line-height:1.6">「方案を見直す」で変更案を作り、1件ずつ ✓ / ✕ で決めます</div></div></div></div></div>`;
+      <div class="tgrid">${ORD.map(k => tcard(k, S, { cls: 'k-wtc' + k })).join('')}</div></div></div>`;
 }
 const planRail = s => `<h4>${ic('sparkle', 'sm')}iOrbit</h4><div class="assist-in">${ic('sparkle', 'sm')}このプランについて質問</div>
   <h4>次の一手</h4>${todayCard(s === 'many', 'k-wtoday')}
   ${diagMini('k-wdiag')}
   <div class="card flat" style="padding:14px;font-size:12px;color:var(--ink-2);line-height:1.65">Orbit は目標の達成を保証しません。この種の目標が一般にどう進むかと、各ステップで話すとよい人を示します。</div>`;
 
-/* ===================== 4 · 人物タイプ A（人脈にいる） ===================== */
-const AWHY = '最初にお金を払う可能性が一番高い人です。参加者の満足とスポンサーへの報告に困っていて、1人つながると参加者 50〜200人に Orbit を体験してもらえます。';
-const AQ = ['交流会のあと、参加者同士のフォローは誰がどうしていますか？', 'スポンサーや会場に、イベントの成果をどう報告していますか？', '参加費の何％なら、マッチングと事後レポートにお金を出せますか？'];
+/* ===================== ⑧ 人物タイプ詳細 ===================== */
 const ASIG = [['役職', ['主宰', '代表', '事務局長', 'コミュニティマネージャー']], ['会社名', ['〇〇会', '〇〇ラボ', '〇〇コミュニティ']], ['履歴', ['connpass / Peatix の主催履歴']], ['イベント', ['「主催」タグ']]];
-const JUDGE = [['3問のうち 2つ以上を聞けた面談メモがある', '+5'], ['5人目を超えた分は半分ずつ、上限なし', '+2.5'], ['名前なしの自己申告は、目標の 5人まで', '+5']];
-const aHero = () => `<div class="card rise k-ahero"><div class="row" style="gap:12px;align-items:flex-start"><span class="emo lav">🎪</span><div style="flex:1;min-width:0"><div class="tk">タイプ A · Step 1・2 · 配点 25</div><b class="tname lg">${T.A.n}</b></div></div>
-  <div class="row" style="gap:10px;margin-top:12px;align-items:baseline"><span class="mid">0</span><span class="lbl">/ 25点 · 0 / 5人 · 1人 5点</span><span class="chip lav" style="margin-left:auto">人脈に 3人</span></div>${mbar('A', 's0')}
-  <div class="m3"><div><b>3<small>人</small></b><span>人脈の候補</span></div><div><b>2</b><span>会える活動</span></div><div><b>1</b><span>紹介ルート</span></div></div></div>`;
-const aWhy = (cls = '') => `<div class="card ${cls}" data-why-box style="padding:14px 16px"><div class="row" style="gap:8px"><b style="font-size:13.5px;flex:1">なぜこの人か</b><span class="why">?</span></div><div style="font-size:12.5px;line-height:1.7;margin-top:6px;color:var(--ink-2)">${AWHY}</div><div class="why-body" hidden>根拠：確定した判断（主催者向けパイロット）· 主催者は「参加者満足」「スポンサー報告」の 2つに予算を持つ傾向 · テンプレート「最初に払う人」枠（配点 25）</div></div>`;
-const aQ = (cls = '') => `<div class="card ${cls}" style="padding:12px 16px"><div class="row between" style="margin:2px 0 2px"><b style="font-size:13.5px">聞くこと</b><button class="btn sm ghost" style="height:28px"><span class="lic i-copy sm"></span>コピー</button></div>${AQ.map((q, k) => `<div class="qn"><span class="n">${k + 1}</span><span>${q}</span></div>`).join('')}</div>`;
-const aJudge = (cls = '') => `<div class="card ${cls}" style="padding:14px 16px"><b style="font-size:13.5px">話せたの判定</b><div class="lbl" style="margin:2px 0 10px">面談メモ（または自己申告）から判定 · 同じ人は同じタイプで 1回だけ</div>${JUDGE.map(([t, p], k) => `<div class="rule ${k === 0 ? 'k-arule' : ''}">${ic(k === 0 ? 'check' : k === 1 ? 'plus' : 'user', 'sm')}<span>${t}</span><b class="pt">${p}</b></div>`).join('')}</div>`;
-const aSig = (cls = '') => `<div class="card ${cls}" style="padding:12px 16px"><b style="font-size:13.5px">見分け方</b><div class="lbl" style="margin:2px 0 4px">名刺・LinkedIn・イベントのタグで、この信号がある人</div>${ASIG.map(([k, v]) => `<div class="sig"><span class="lbl">${k}</span><div class="chips">${v.map(x => `<span class="chip">${x}</span>`).join('')}</div></div>`).join('')}</div>`;
+const DSIG = [['経歴', ['エンジニア', '研究職', '→ 創業']], ['役職', ['代表取締役', 'CEO', '元 CTO']], ['会社', ['設立 3〜10年', 'シリーズA 前後']], ['イベント', ['「登壇」', '「創業者」タグ']]];
+const TD = {
+  A: { why: '最初にお金を払う可能性が一番高い人です。「会のあと」のフォローとスポンサーへの報告に困っていて、1人つながると参加者 50〜200人に Orbit を体験してもらえます。ブランドの最初の事例にもなります。', whyb: '根拠：確定した方案（主催者経由で広める）· 業界の現状 ②（イベント後のフォローは誰も担っていない）· テンプレート枠「最初に払う人」',
+    q: ['交流会のあと、参加者同士のフォローは誰がどうしていますか？', 'スポンサーや会場に、イベントの成果をどう報告していますか？', '「イベントの後を変える AI」と聞いて、何を期待しますか？'], sig: ASIG },
+  D: { why: 'あなたと同じ「作れるが、売れない」壁を先に越えた人です。技術者のチームが、どこで営業・デザインの力を足したかを聞くのが、Step 2・3 への一番の近道です。', whyb: '根拠：背景確認（AI エンジニア 2人 · 空白にデザイン・営業）· テンプレート枠「同じ道を通った創業者」',
+    q: ['作れる状態から、最初の顧客にお金を払ってもらうまでに、何を変えましたか？', '営業やデザインの仲間を、どの段階で、どうやって見つけましたか？', '振り返って、ブランドづくりで最初にやっておけばよかったことは？'], sig: DSIG },
+};
+const judgeRules = k => [['3問のうち 2つ以上を聞けた面談メモがある', '+' + unit(k) + (unit(k) !== lastU(k) ? `（最後の1人 +${lastU(k)}）` : '')], [`${T[k].tgt}人目を超えた分は半分ずつ（切り捨て）、上限なし`, '+' + half(k)], [`名前なしの自己申告は、目標の ${T[k].tgt}人まで`, '+' + unit(k)]];
+const tHero = (k, chip, cls = '') => { const p = T[k]; return `<div class="card rise ${cls}"><div class="row" style="gap:12px;align-items:flex-start"><span class="emo ${p.c}">${p.emo}</span><div style="flex:1;min-width:0"><div class="tk">タイプ ${k} · Step ${p.st.join('・')} · 配点 ${p.w}</div><b class="tname lg">${p.n}</b></div></div>
+  <div class="row" style="gap:10px;margin-top:12px;align-items:baseline"><span class="mid">0</span><span class="lbl">/ ${p.w}点 · 0 / ${p.tgt}人 · 1人 ${uLbl(k)}</span><span class="chip ${p.cand ? 'lav' : ''}" style="margin-left:auto">${chip}</span></div>${mbar(k, 's0')}
+  <div class="m3"><div class="${p.cand ? '' : 'z'}"><b>${p.cand}<small>人</small></b><span>${p.cand ? '人脈の候補' : '人脈にいない'}</span></div><div><b>${p.ev}</b><span>会える活動</span></div><div><b>${p.route}</b><span>紹介ルート</span></div></div></div>`; };
+const tWhy = (k, cls = '') => `<div class="card ${cls}" data-why-box style="padding:14px 16px"><div class="row" style="gap:8px"><b style="font-size:13.5px;flex:1">なぜこの人か</b><span class="why">?</span></div><div style="font-size:12.5px;line-height:1.7;margin-top:6px;color:var(--ink-2)">${TD[k].why}</div><div class="why-body" hidden>${TD[k].whyb}</div></div>`;
+const tQ = (k, cls = '') => `<div class="card ${cls}" style="padding:12px 16px"><div class="row between" style="margin:2px 0 2px"><b style="font-size:13.5px">聞くこと</b><button class="btn sm ghost" style="height:28px"><span class="lic i-copy sm"></span>コピー</button></div>${TD[k].q.map((q, i) => `<div class="qn"><span class="n">${i + 1}</span><span>${q}</span></div>`).join('')}</div>`;
+const tJudge = (k, cls = '') => `<div class="card ${cls}" style="padding:14px 16px"><b style="font-size:13.5px">話せたの判定</b><div class="lbl" style="margin:2px 0 10px">面談メモ（または自己申告）から判定 · 同じ人は同じタイプで 1回だけ</div>${judgeRules(k).map(([t, p], i) => `<div class="rule ${i === 0 ? 'k-rule0' : ''}">${ic(i === 0 ? 'check' : i === 1 ? 'plus' : 'user', 'sm')}<span>${t}</span><b class="pt">${p}</b></div>`).join('')}</div>`;
+const tSig = (k, cls = '') => `<div class="card ${cls}" style="padding:12px 16px"><b style="font-size:13.5px">見分け方</b><div class="lbl" style="margin:2px 0 4px">名刺・LinkedIn・イベントのタグで、この信号がある人</div>${TD[k].sig.map(([a, v]) => `<div class="sig"><span class="lbl">${a}</span><div class="chips">${v.map(x => `<span class="chip">${x}</span>`).join('')}</div></div>`).join('')}</div>`;
 const candRow = (p, k) => `<div data-why-box class="k-cand${k}"><div class="cand"><span class="cbx ${p.on ? 'on' : ''}">${ic('check')}</span><div class="av sm ${p.c}">${p.i}</div><div class="meta"><b>${p.n}${p.orbit ? ' <span class="chip teal" style="vertical-align:1px">Orbit</span>' : ''}</b><div class="sub2">${p.co} · ${p.role}</div></div><div class="rec"><b>${p.sc}</b><span>推薦度</span></div><span class="why">?</span></div>
   <div class="cdet"><div>${p.w}</div><div class="op">💬<span>切り出し方：<b>「${p.op}」</b><span class="lbl"> · ${p.last}</span></span></div></div><div class="why-body" hidden style="margin:0 0 10px 64px">根拠：${p.why}</div></div>`;
-const aRoute = (cls = '') => `<div class="card ${cls}" style="padding:14px 16px"><b style="font-size:13.5px">紹介ルート</b><div class="lbl" style="margin:2px 0 10px">共通の参加イベントから推定</div>
-  <div class="route"><div class="av sm c2">小</div><span class="arr">${ic('right', 'sm')}</span><div class="ghavs"><span class="ghav">?</span><span class="ghav">?</span><span class="ghav">?</span><span class="ghav">4</span></div><div class="rm"><b>小林さん経由で主催者 4名</b><br>共催者 2名 · 登壇経験のある主催者 2名</div></div>
+const routeCard = (from, to, d, cls = '') => `<div class="card ${cls}" style="padding:14px 16px"><b style="font-size:13.5px">紹介ルート</b><div class="lbl" style="margin:2px 0 10px">共通の参加イベント・つながりから推定</div>
+  <div class="route"><div class="av sm ${from.c}">${from.i}</div><span class="arr">${ic('right', 'sm')}</span><div class="ghavs"><span class="ghav">?</span><span class="ghav">?</span><span class="ghav">${to}</span></div><div class="rm"><b>${from.n.split(' ')[0]}さん経由で ${to}名</b><br>${d}</div></div>
   <button class="btn sm block" style="margin-top:10px">${ic('mail', 'sm')}紹介の依頼文を下書き</button></div>`;
 const aFoot = foot(`<div class="row" style="gap:8px"><span class="lbl" style="flex:1"><b style="color:var(--ink)">2人</b>を選択中</span><button class="btn">すでに話した</button><button class="btn primary k-apropose">面談を提案</button></div>`);
 function typeAApp(part) {
-  const head = topbar('交流会の主催者', 'タイプ A · Step 1・2', backBtn, moreBtn);
-  const ft = '';
-  if (part === 'mid') return `<div class="stk">${head}</div>` + aHero() + aWhy() + aQ() + SCR + aJudge('k-ajudge') + aSig('k-asig') + ft;
-  if (part === 2) return `<div class="stk">${head}</div>` + aHero() + aWhy() + aQ() + aJudge() + aSig() + '<i class="scrollto" data-off="-85"></i>' +
-    `<div class="card k-acands" style="padding:10px 16px 6px"><div class="card-h" style="margin:4px 0 0"><h3>あなたの人脈の候補</h3><span class="lbl">推薦度順 · 3人</span></div>${AC.map((p, k) => candRow(p, k)).join('')}</div>` + aRoute('k-aroute') + ft;
-  return head + aHero() + aWhy('k-awhy') + aQ('k-aq') + aJudge() + aSig() + ft;
+  const head = topbar(T.A.s, 'タイプ A · Step 1・2・4', backBtn, moreBtn);
+  if (part === 2) return `<div class="stk">${head}</div>` + tHero('A', '人脈に 2人') + tWhy('A') + tQ('A') + tJudge('A') + tSig('A') + '<i class="scrollto" data-off="-85"></i>' +
+    `<div class="card k-acands" style="padding:10px 16px 6px"><div class="card-h" style="margin:4px 0 0"><h3>あなたの人脈の候補</h3><span class="lbl">推薦度順 · 2人</span></div>${AC.map((p, k) => candRow(p, k)).join('')}</div>` + routeCard(AC[0], 4, '共催者 2名 · 登壇経験のある主催者 2名', 'k-aroute');
+  return head + tHero('A', '人脈に 2人', 'k-ahero') + tWhy('A', 'k-awhy') + tQ('A', 'k-aq') + tJudge('A', 'k-ajudge') + tSig('A');
 }
-const DRAFT_K = '小林さん、ご無沙汰しております。丸の内イノベーションラボの毎月の会、いつも拝見しています。実は交流会の「その後」を支えるサービスを作っていて、会のあとのフォローや成果報告をどうされているか、30分ほど伺えないでしょうか。';
-const proposeSheet = `<div class="sheet-scrim"></div><div class="sheet k-psheet" style="top:96px;overflow:auto"><div class="grab"></div>
-  <div class="row between"><b style="font-size:16px">2人に面談を提案</b><button class="lbtn">${ic('x', 'sm')}</button></div>
-  <div class="card flat k-pnon" style="padding:12px 14px;margin-top:12px"><div class="row" style="gap:10px"><div class="av sm c2">小</div><div style="flex:1;min-width:0"><b style="font-size:13px">小林 誠</b><div class="lbl">Orbit 未利用 · 最終接点 1か月前</div></div></div>
-    <div class="draftbox" style="margin-top:10px"><span class="subj">件名：ご無沙汰しています（ミナトリンク 佐藤）</span>${DRAFT_K}</div>
-    <div class="row" style="gap:8px;margin-top:10px"><button class="btn sm"><span class="lic i-copy sm"></span>コピー</button><button class="btn sm">${ic('mail', 'sm')}メールアプリで開く</button><button class="btn sm ghost" style="margin-left:auto">${ic('edit', 'sm')}直す</button></div></div>
-  <div class="card flat k-porb" style="padding:12px 14px;margin-top:10px"><div class="row" style="gap:10px"><div class="av sm c4">中</div><div style="flex:1;min-width:0"><b style="font-size:13px">中島 玲</b><div class="lbl">Orbit 利用中 · 日時の候補を送れます</div></div><span class="chip teal">Orbit</span></div>
-    <div class="grid3 k-slots" style="margin-top:10px;gap:6px">${[['10/14（水）', '10:00'], ['10/15（木）', '16:00'], ['10/16（金）', '9:30']].map(([d, t]) => `<div class="slot on">${d}<small>${t} · 30分</small></div>`).join('')}</div>
-    <div class="lbl" style="margin-top:8px">カレンダーの空きから 3枠 · メッセージは添えません · あとから取り消せます</div>
-    <button class="btn primary block k-pgo" style="margin-top:10px">中島さんに提案する</button></div>
-  <div style="margin-top:10px" class="k-pnote">${draftNote}</div></div>`;
 function typeAWeb() {
-  return mainhead('交流会の主催者', 'タイプ A · Step 1・2 · 配点 25', backBtn, `<button class="btn ghost">この分野はもう詳しい</button><button class="btn">${ic('plus', 'sm')}オフラインで話した</button>`) + `<div class="wgrid">
+  return mainhead(T.A.s, `タイプ A · Step 1・2・4 · 配点 ${T.A.w}`, backBtn, `<button class="btn ghost">この分野はもう詳しい</button><button class="btn">${ic('plus', 'sm')}オフラインで話した</button>`) + `<div class="wgrid">
     <div class="card span12 k-wahero"><div class="row" style="gap:16px;align-items:center"><span class="emo lav">🎪</span><div style="flex:1;min-width:0"><div class="tk">タイプ A · 役割 × 状況</div><b class="tname" style="font-size:19px">${T.A.n}</b></div>
-      <div class="m3 on2" style="width:330px;margin:0;flex:none"><div><b>3<small>人</small></b><span>人脈の候補</span></div><div><b>2</b><span>会える活動</span></div><div><b>1</b><span>紹介ルート</span></div></div>
-      <div style="width:170px;flex:none"><div class="row" style="gap:6px;align-items:baseline"><span class="mid">0</span><span class="lbl">/ 25点 · 0 / 5人</span></div>${mbar('A', 's0')}</div></div></div>
-    <div class="card span5 k-waabout" data-why-box><div class="row" style="gap:8px"><b style="font-size:14px;flex:1">なぜこの人か</b><span class="why">?</span></div><div style="font-size:13px;line-height:1.7;margin-top:4px;color:var(--ink-2)">${AWHY}</div><div class="why-body" hidden>根拠：確定した判断（主催者向けパイロット）· 主催者は「参加者満足」「スポンサー報告」に予算を持つ傾向</div>
-      <div class="row between" style="margin-top:14px"><b style="font-size:14px">聞くこと</b><button class="btn sm ghost"><span class="lic i-copy sm"></span>コピー</button></div>${AQ.map((q, k) => `<div class="qn"><span class="n">${k + 1}</span><span>${q}</span></div>`).join('')}
-      <b style="font-size:14px;display:block;margin:12px 0 8px">話せたの判定</b><div class="k-wajudge">${JUDGE.map(([t, p], k) => `<div class="rule">${ic(k === 0 ? 'check' : k === 1 ? 'plus' : 'user', 'sm')}<span>${t}</span><b class="pt">${p}</b></div>`).join('')}</div>
+      <div class="m3 on2" style="width:330px;margin:0;flex:none"><div><b>2<small>人</small></b><span>人脈の候補</span></div><div><b>2</b><span>会える活動</span></div><div><b>1</b><span>紹介ルート</span></div></div>
+      <div style="width:170px;flex:none"><div class="row" style="gap:6px;align-items:baseline"><span class="mid">0</span><span class="lbl">/ ${T.A.w}点 · 0 / 5人</span></div>${mbar('A', 's0')}</div></div></div>
+    <div class="card span5 k-waabout" data-why-box><div class="row" style="gap:8px"><b style="font-size:14px;flex:1">なぜこの人か</b><span class="why">?</span></div><div style="font-size:13px;line-height:1.7;margin-top:4px;color:var(--ink-2)">${TD.A.why}</div><div class="why-body" hidden>${TD.A.whyb}</div>
+      <div class="row between" style="margin-top:14px"><b style="font-size:14px">聞くこと</b><button class="btn sm ghost"><span class="lic i-copy sm"></span>コピー</button></div>${TD.A.q.map((q, k) => `<div class="qn"><span class="n">${k + 1}</span><span>${q}</span></div>`).join('')}
+      <b style="font-size:14px;display:block;margin:12px 0 8px">話せたの判定</b><div class="k-wajudge">${judgeRules('A').map(([t, p], k) => `<div class="rule">${ic(k === 0 ? 'check' : k === 1 ? 'plus' : 'user', 'sm')}<span>${t}</span><b class="pt">${p}</b></div>`).join('')}</div>
       <b style="font-size:14px;display:block;margin:12px 0 2px">見分け方</b>${ASIG.map(([k, v]) => `<div class="sig"><span class="lbl">${k}</span><div class="chips">${v.map(x => `<span class="chip">${x}</span>`).join('')}</div></div>`).join('')}</div>
-    <div class="card span7 k-wacands"><div class="card-h"><h3>あなたの人脈の候補 · 推薦度順</h3><div class="row" style="gap:8px"><span class="lbl"><b style="color:var(--ink)">2人</b>を選択中</span><button class="btn sm">すでに話した</button><button class="btn sm primary k-wapropose">面談を提案</button></div></div>
+    <div class="card span7 k-wacands"><div class="card-h"><h3>あなたの人脈の候補 · 推薦度順</h3><div class="row" style="gap:8px"><span class="lbl"><b style="color:var(--ink)">2人</b>を選択中</span><button class="btn sm">すでに話した</button><button class="btn sm primary">面談を提案</button></div></div>
       <table class="table wtab"><thead><tr><th></th><th>推薦度</th><th>名前</th><th>理由 · 切り出し方</th></tr></thead><tbody>${AC.map((p, k) => `<tr ${p.on ? 'style="background:var(--surface-2)"' : ''}><td><span class="cbx ${p.on ? 'on' : ''}">${ic('check')}</span></td><td><b style="font-family:var(--font-num);font-size:18px">${p.sc}</b></td><td style="width:200px"><div class="row"><div class="av sm ${p.c}">${p.i}</div><div style="min-width:0"><b>${p.n}</b>${p.orbit ? ' <span class="chip teal">Orbit</span>' : ''}<div class="lbl">${p.co} · ${p.role}</div></div></div></td><td data-why-box style="font-size:12.5px;line-height:1.6"><div class="row" style="gap:6px;align-items:flex-start"><span style="flex:1">${p.w}</span><span class="why ${k === 0 ? 'k-wawhy' : ''}">?</span></div><div style="margin-top:4px">💬 <b>「${p.op}」</b> <span class="lbl">· ${p.last}</span></div><div class="why-body" ${k === 0 ? '' : 'hidden'}>根拠：${p.why}</div></td></tr>`).join('')}</tbody></table>
       <div class="route push k-waroute" style="margin-top:14px"><div class="av sm c2">小</div><span class="arr">${ic('right', 'sm')}</span><div class="ghavs"><span class="ghav">?</span><span class="ghav">?</span><span class="ghav">?</span><span class="ghav">4</span></div><div class="rm"><b>紹介ルート：小林さん経由で主催者 4名</b><br>共通の参加イベントから推定 · 共催者 2名 · 登壇経験のある主催者 2名</div><button class="btn sm">${ic('mail', 'sm')}依頼文を下書き</button></div></div></div>`;
 }
 const typeRail = (k) => `<h4>${ic('sparkle', 'sm')}iOrbit</h4><div class="assist-in">${ic('sparkle', 'sm')}このタイプについて質問</div>
-  <div class="chips"><span class="prompt">${k === 'A' ? '小林さんへの切り出し方を直して' : 'Sansan 出身の人を探すには？'}</span><span class="prompt">${k === 'A' ? 'ほかに主催者はいる？' : '開口一番をもう1案'}</span></div>
-  <h4>このタイプに会えるイベント</h4>${(k === 'A' ? EVS : CEV.slice(0, 2).map(e => [e[0], e[1], e[2], e[3]])).map(([n, d, sc, m]) => `<div class="card row" style="gap:10px;padding:12px 14px">${ring2(sc, 40, 4)}<div style="flex:1;min-width:0"><b style="font-size:12.5px;display:block" class="ell">${n}</b><div class="lbl ell">${d} · ${m}</div></div></div>`).join('')}
+  <div class="chips"><span class="prompt">${k === 'A' ? '小林さんへの切り出し方を直して' : 'ブランド責任者に会うには？'}</span><span class="prompt">${k === 'A' ? 'ほかに主催者はいる？' : '開口一番をもう1案'}</span></div>
+  <h4>このタイプに会えるイベント</h4>${(k === 'A' ? [['コミュニティマネージャー・ミートアップ Tokyo', '10月29日（木）', 79, 'A タイプ 約25名'], ['丸の内スタートアップ朝会 #42', '10月21日（水）', 66, 'A タイプ 約4名']] : BEV.slice(0, 2).map(e => [e[0], e[1], e[2], e[3]])).map(([n, d, sc, m]) => `<div class="card row" style="gap:10px;padding:12px 14px">${ring2(sc, 40, 4)}<div style="flex:1;min-width:0"><b style="font-size:12.5px;display:block" class="ell">${n}</b><div class="lbl ell">${d} · ${m}</div></div></div>`).join('')}
   <div class="card flat" style="padding:14px;font-size:12px;color:var(--ink-2);line-height:1.65">メール・メッセージは下書きまで。送信はあなたが行います。</div>`;
-const wAProposeDrawer = `<div class="overlay"></div><div class="drawer k-wpdrawer" style="width:520px"><div class="row between"><b style="font-size:18px">2人に面談を提案</b><button class="rbtn">${ic('x')}</button></div>
-  <div class="card" style="margin-top:14px"><div class="row" style="gap:10px"><div class="av sm c2">小</div><div style="flex:1"><b>小林 誠</b><div class="lbl">Orbit 未利用 · 丸の内イノベーションラボ 主宰</div></div><span class="chip">下書き</span></div>
-    <div class="draftbox" style="margin-top:12px"><span class="subj">件名：ご無沙汰しています（ミナトリンク 佐藤）</span>${DRAFT_K}</div>
-    <div class="row" style="gap:8px;margin-top:12px"><button class="btn primary"><span class="lic i-copy sm"></span>コピー</button><button class="btn">${ic('mail', 'sm')}メールアプリで開く</button><button class="btn ghost">${ic('edit', 'sm')}直す</button></div>
-    <div class="lbl" style="margin-top:8px">${mailI} 送信はしません · 送信はあなたが行います</div></div>
-  <div class="card" style="margin-top:14px"><div class="row" style="gap:10px"><div class="av sm c4">中</div><div style="flex:1"><b>中島 玲</b><div class="lbl">Orbit 利用中 · 日時の候補を送れます</div></div><span class="chip teal">Orbit</span></div>
-    <div class="grid3" style="margin-top:12px;gap:6px">${[['10/14（水）', '10:00'], ['10/15（木）', '16:00'], ['10/16（金）', '9:30']].map(([d, t]) => `<div class="slot on">${d}<small>${t} · 30分</small></div>`).join('')}</div>
-    <div class="lbl" style="margin-top:8px">メッセージは添えません · あとから取り消せます</div><button class="btn primary" style="margin-top:12px">中島さんに提案する</button></div></div>`;
-
-/* ===================== 5 · 人物タイプ C（人脈にいない） ===================== */
-const CPER = [['年代・経歴', '30〜40代。名刺管理・CRM SaaS で法人営業マネージャーか PdM を 3年以上'], ['いまの立場', 'スタートアップの事業責任者や、独立コンサルが多い'], ['関心ごと', '法人導入の稟議の壁 · 無料ユーザーの課金転換 · 解約理由']];
-const COPEN = '名刺管理で、法人が最後にお金を出す決め手は何でしたか？';
-const cHero = () => `<div class="card rise k-chero"><div class="row" style="gap:12px;align-items:flex-start"><span class="emo teal">📇</span><div style="flex:1;min-width:0"><div class="tk">タイプ C · Step 1・4 · 配点 15</div><b class="tname lg">${T.C.n}</b></div></div>
-  <div class="row" style="gap:10px;margin-top:12px;align-items:baseline"><span class="mid">0</span><span class="lbl">/ 15点 · 0 / 2人 · 1人 7.5点</span><span class="chip" style="margin-left:auto">人脈にまだいません</span></div>${mbar('C', 's0')}
-  <div class="m3"><div class="z"><b>0<small>人</small></b><span>人脈にいない</span></div><div><b>3</b><span>会える活動</span></div><div><b>2</b><span>紹介ルート</span></div></div></div>`;
-const cPersona = (cls = '') => `<div class="card ${cls}" data-why-box style="padding:8px 16px"><div class="card-h" style="margin:8px 0 2px"><h3>人物像</h3><span class="why">?</span></div><div class="why-body" hidden style="margin:0 0 8px">根拠：名刺管理・CRM SaaS 各社の公開職歴（LinkedIn）の傾向 · あなたの Step 4「Pro 転換」との関係</div>${CPER.map(([k, v]) => `<div class="kv"><span class="lbl">${k}</span><span>${v}</span></div>`).join('')}</div>`;
-const cOpen = (cls = '') => `<div class="card ${cls}" style="padding:14px 16px"><div class="row between"><b style="font-size:13.5px">開口一番</b><button class="btn sm ghost" style="height:28px"><span class="lic i-copy sm"></span>コピー</button></div><div class="quote" style="margin-top:8px">「${COPEN}」</div><div class="lbl" style="margin-top:8px">判定：法人導入の決め手 · 課金転換 · 解約理由のうち 2つを聞けたら +7.5</div></div>`;
-const cEvents = (cls = '', open = false) => `<div class="card ${cls}" style="padding:10px 16px 6px"><div class="card-h" style="margin:4px 0 2px"><h3>会える活動</h3><span class="lbl">固定の基準で採点</span></div>
-  ${CEV.map(([n, d, sc, m, det, f, v5, f5], k) => `<div class="evw"><div class="evr ${k === 0 ? 'k-cev1' : ''}">${ring2(sc)}<div class="meta"><b>${n}</b><div class="lbl ell">${d} · ${f}</div><div class="row" style="gap:6px;margin-top:4px"><span class="chip teal ${k === 0 ? 'k-cevcnt' : ''}">${m}</span><span class="evtg ${k === 0 ? 'k-cevtg' : ''}" style="margin-left:auto">内訳${ic(open && k === 0 ? 'down' : 'right', 'sm')}</span></div></div></div>${open && k === 0 ? `<div class="evx k-cev5">${ev5(v5, f5)}</div>` : ''}</div>`).join('')}
-  <div class="lbl" style="padding:8px 0">参加するとイベント枠にも +5</div></div>`;
-const cRoute = (cls = '') => `<div class="card ${cls}" style="padding:14px 16px"><b style="font-size:13.5px">紹介ルート</b><div class="lbl" style="margin:2px 0 10px">SaaS 関係者 41名のうち、Sansan 出身者とつながっている人</div>
-  ${[[C[2], '元同僚に Sansan の法人営業出身者（LinkedIn の共通つながり 3名）'], [C[3], '採用面談で Sansan 出身の PdM と接点（面談メモ 9/2）']].map(([p, d], k) => `<div class="route ${k === 0 ? 'k-croute1' : ''}"><div class="av sm ${p.c}">${p.i}</div><div class="rm"><b>${p.n}</b> <span class="lbl">${p.co}</span><br>${d}</div><button class="btn sm ${k === 0 ? 'k-cdraft' : ''}">依頼文</button></div>`).join('')}</div>`;
-function typeCApp(part) {
-  const head = topbar('CRM 経験者', 'タイプ C · Step 1・4', backBtn, moreBtn);
-  if (part === 3) return `<div class="stk">${head}</div>` + cHero() + cPersona() + cOpen() + cEvents() + SCR + cRoute('k-croute') + `<button class="btn ghost block k-cskip" style="margin-top:6px">この分野はもう詳しい</button>`;
-  if (part === 2) return `<div class="stk">${head}</div>` + cHero() + cPersona() + cOpen() + SCR + cEvents('k-cevs', true) + cRoute('k-croute') + `<button class="btn ghost block k-cskip" style="margin-top:6px">この分野はもう詳しい</button>`;
-  return head + `<div class="card flat k-cnone" style="padding:12px 16px"><div class="row" style="gap:10px"><span class="emo sm teal">🔭</span><div style="flex:1"><b style="font-size:13.5px">人脈にまだいません</b><div class="lbl">どんな人か · 何から話すか · どこで会えるかをまとめました</div></div></div></div>` + cHero() + cPersona('k-cpersona') + cOpen('k-copen') + cEvents();
+/* D（人脈にいる：渡辺 翔） */
+const DCAND = { n: '渡辺 翔', i: WATA ? WATA.i : '渡', c: WATA ? WATA.c : 'c5', co: 'Nexa Robotics', role: '代表取締役', sc: 84, on: 1, orbit: 0, w: '制御エンジニア 8年から起業。最初の 2年「作れるが売れない」を経験し、営業とデザインの仲間を入れて越えた。あなたと同時期にシリーズAを調達', op: '「技術者が最初の顧客を取るまで」を 30分だけ聞かせてほしい', last: '最終接点 1週間前', why: '名刺「代表取締役」· LinkedIn 経歴「制御エンジニア 8年 → 創業」· 同時期にシリーズA（公開情報）· 面談メモ 1件（9/24）' };
+const dFoot = foot(`<div class="row" style="gap:8px"><span class="lbl" style="flex:1"><b style="color:var(--ink)">1人</b>を選択中</span><button class="btn">すでに話した</button><button class="btn primary k-dpropose">面談を提案</button></div>`);
+function typeDApp(part) {
+  const head = topbar(T.D.s, 'タイプ D · Step 2・3', backBtn, moreBtn);
+  if (part === 2) return `<div class="stk">${head}</div>` + tHero('D', '人脈に 1人') + tWhy('D') + tQ('D') + '<i class="scrollto" data-off="4"></i>' + tJudge('D', 'k-djudge') + tSig('D', 'k-dsig') +
+    `<div class="card k-dcands" style="padding:10px 16px 6px"><div class="card-h" style="margin:4px 0 0"><h3>あなたの人脈の候補</h3><span class="lbl">1人</span></div>${candRow(DCAND, 0)}</div>` + routeCard(DCAND, 3, '同じ投資家の支援先にいる、技術出身の創業者', 'k-droute');
+  return head + tHero('D', '人脈に 1人', 'k-dhero') + `<div class="card k-dcand" style="padding:10px 16px 6px"><div class="card-h" style="margin:4px 0 0"><h3>人脈の候補</h3><span class="chip apricot">同じ壁を越えた人</span></div>${candRow(DCAND, 0)}</div>` + tWhy('D', 'k-dwhy') + tQ('D', 'k-dq');
 }
-const C_DRAFT = '伊藤さん、いつもありがとうございます。ミナトリンクの佐藤です。いま交流会向けのサービスを有料化する準備をしていて、名刺管理や CRM の SaaS で法人営業か PdM をされていた方に、30分ほどお話を伺いたいと考えています。伊藤さんのつながりで Sansan ご出身の方がいらっしゃれば、ご紹介いただけないでしょうか。ご負担のない範囲で構いません。';
-const cDraftSheet = `<div class="sheet-scrim"></div><div class="sheet k-csheet"><div class="grab"></div>
-  <div class="row between"><div><b style="font-size:16px">紹介の依頼文</b><div class="lbl">タイプ C · 伊藤 直子さん経由</div></div><button class="lbtn">${ic('x', 'sm')}</button></div>
-  <div class="row" style="gap:10px;margin-top:12px"><div class="av sm ${C[2].c}">${C[2].i}</div><div style="flex:1;min-width:0"><b style="font-size:13px">宛先：伊藤 直子</b><div class="lbl">株式会社ハルモニア · naoko.ito@harmonia.example</div></div></div>
-  <div class="draftbox k-cdbox" style="margin-top:12px"><span class="subj">件名：ご紹介のお願い（名刺管理・CRM のご経験がある方）</span>${C_DRAFT}</div>
+/* B（人脈にいない） */
+const BPER = [['年代・経歴', '30〜40代。SaaS か D2C で、ブランド・PR の立ち上げ（0→1）を責任者として経験'], ['いまの立場', '事業会社のブランド責任者、または独立した PR・ブランドのコンサル'], ['関心ごと', '一言（タグライン）の決め方 · 最初の事例の見せ方 · 小さな予算での発信']];
+const BOPEN = '立ち上げのとき、最初の一言はどうやって決めましたか？';
+const bHero = (cls = '') => tHero('B', '人脈にまだいません', cls);
+const bPersona = (cls = '') => `<div class="card ${cls}" data-why-box style="padding:8px 16px"><div class="card-h" style="margin:8px 0 2px"><h3>人物像</h3><span class="why">?</span></div><div class="why-body" hidden style="margin:0 0 8px">根拠：テンプレート枠「ブランド・PR」の人物像 · 背景確認の空白「ブランド」· Step 1・4 との関係</div>${BPER.map(([k, v]) => `<div class="kv"><span class="lbl">${k}</span><span>${v}</span></div>`).join('')}</div>`;
+const bOpen = (cls = '') => `<div class="card ${cls}" style="padding:14px 16px"><div class="row between"><b style="font-size:13.5px">開口一番</b><button class="btn sm ghost" style="height:28px"><span class="lic i-copy sm"></span>コピー</button></div><div class="quote" style="margin-top:8px">「${BOPEN}」</div><div class="lbl" style="margin-top:8px">判定：一言の決め方 · 事例の見せ方 · 発信の型のうち 2つを聞けたら +${unit('B')}</div></div>`;
+const bEvents = (cls = '', open = false) => `<div class="card ${cls}" style="padding:10px 16px 6px"><div class="card-h" style="margin:4px 0 2px"><h3>会える活動</h3><span class="lbl">固定の基準で採点</span></div>
+  ${BEV.map(([n, d, sc, m, det, f, v5, f5], k) => `<div class="evw"><div class="evr ${k === 0 ? 'k-bev1' : ''}">${ring2(sc)}<div class="meta"><b>${n}</b><div class="lbl ell">${d} · ${f}</div><div class="row" style="gap:6px;margin-top:4px"><span class="chip pink">${m}</span><span class="evtg ${k === 0 ? 'k-bevtg' : ''}" style="margin-left:auto">内訳${ic(open && k === 0 ? 'down' : 'right', 'sm')}</span></div></div></div>${open && k === 0 ? `<div class="evx k-bev5">${ev5(v5, f5)}</div>` : ''}</div>`).join('')}
+  <div class="lbl" style="padding:8px 0">参加するとイベント枠にも +${unit('EV')}</div></div>`;
+const bRoute = (cls = '') => `<div class="card ${cls}" style="padding:14px 16px"><b style="font-size:13.5px">紹介ルート</b><div class="lbl" style="margin:2px 0 10px">ブランド・PR の経験者とつながっている人</div>
+  <div class="route k-broute1"><div class="av sm ${ITO.c}">${ITO.i}</div><div class="rm"><b>${ITO.n}</b> <span class="lbl">${ITO.co}</span><br>取引先の D2C ブランドで PR 責任者と面識（面談メモ 9/12）</div><button class="btn sm k-bdraft">依頼文</button></div></div>`;
+function typeBApp(part) {
+  const head = topbar(T.B.s, 'タイプ B · Step 1・3・4', backBtn, moreBtn);
+  if (part === 2) return `<div class="stk">${head}</div>` + bHero() + bPersona() + bOpen() + SCR + bEvents('k-bevs', true) + bRoute('k-broute') + `<button class="btn ghost block k-bskip" style="margin-top:6px">この分野はもう詳しい</button>`;
+  return head + `<div class="card flat k-bnone" style="padding:12px 16px"><div class="row" style="gap:10px"><span class="emo sm pink">🔭</span><div style="flex:1"><b style="font-size:13.5px">人脈にまだいません</b><div class="lbl">どんな人か · 何から話すか · どこで会えるかをまとめました</div></div></div></div>` + bHero('k-bhero') + bPersona('k-bpersona') + bOpen('k-bopen') + bEvents();
+}
+const B_DRAFT = '伊藤さん、いつもありがとうございます。ミナトリンクの佐藤です。いま Orbit を「イベントの後を変える AI」としてブランドにしようとしていて、SaaS や D2C でブランドの立ち上げをされた方に、30分ほどお話を伺いたいと考えています。以前お話に出た D2C ブランドの PR 責任者の方を、ご紹介いただけないでしょうか。ご負担のない範囲で構いません。';
+const bDraftSheet = `<div class="sheet-scrim"></div><div class="sheet k-bsheet"><div class="grab"></div>
+  <div class="row between"><div><b style="font-size:16px">紹介の依頼文</b><div class="lbl">タイプ B · ${ITO.n}さん経由</div></div><button class="lbtn">${ic('x', 'sm')}</button></div>
+  <div class="row" style="gap:10px;margin-top:12px"><div class="av sm ${ITO.c}">${ITO.i}</div><div style="flex:1;min-width:0"><b style="font-size:13px">宛先：${ITO.n}</b><div class="lbl">${ITO.co} · naoko.ito@harmonia.example</div></div></div>
+  <div class="draftbox k-bdbox" style="margin-top:12px"><span class="subj">件名：ご紹介のお願い（ブランド立ち上げのご経験がある方）</span>${B_DRAFT}</div>
   <div class="chips" style="margin-top:10px"><span class="chip">丁寧に</span><span class="chip">短く</span><span class="chip">転送用の一文を足す</span></div>
-  <div class="grid2" style="margin-top:12px"><button class="btn"><span class="lic i-copy sm"></span>コピー</button><button class="btn primary k-cmail">${ic('mail', 'sm')}メールアプリで開く</button></div>
+  <div class="grid2" style="margin-top:12px"><button class="btn"><span class="lic i-copy sm"></span>コピー</button><button class="btn primary k-bmail">${ic('mail', 'sm')}メールアプリで開く</button></div>
   <div style="margin-top:8px">${draftNote}</div></div>`;
-function typeCWeb() {
-  return mainhead('CRM 経験者', 'タイプ C · Step 1・4 · 配点 15 · 人脈にまだいません', backBtn, `<button class="btn ghost">この分野はもう詳しい</button><button class="btn">${ic('plus', 'sm')}オフラインで話した</button>`) + `<div class="wgrid">
-    <div class="card span12 k-wchero"><div class="row" style="gap:16px;align-items:center"><span class="emo teal">📇</span><div style="flex:1;min-width:0"><div class="tk">タイプ C · 役割 × 状況</div><b class="tname" style="font-size:19px">${T.C.n}</b></div>
-      <div class="m3 on2" style="width:330px;margin:0;flex:none"><div class="z"><b>0<small>人</small></b><span>人脈にいない</span></div><div><b>3</b><span>会える活動</span></div><div><b>2</b><span>紹介ルート</span></div></div>
-      <div style="width:170px;flex:none"><div class="row" style="gap:6px;align-items:baseline"><span class="mid">0</span><span class="lbl">/ 15点 · 0 / 2人</span></div>${mbar('C', 's0')}</div></div></div>
-    <div class="card span5 k-wcper" data-why-box><div class="card-h" style="margin-bottom:2px"><h3>人物像</h3><span class="why">?</span></div><div class="why-body" hidden style="margin:0 0 8px">根拠：名刺管理・CRM SaaS 各社の公開職歴の傾向 · Step 4「Pro 転換」との関係</div>${CPER.map(([k, v]) => `<div class="kv"><span class="lbl">${k}</span><span>${v}</span></div>`).join('')}
-      <div class="row between" style="margin-top:14px"><b style="font-size:14px">開口一番</b><button class="btn sm ghost"><span class="lic i-copy sm"></span>コピー</button></div><div class="quote k-wcopen" style="margin-top:8px">「${COPEN}」</div>
-      <div class="push" style="margin-top:16px"><b style="font-size:14px">紹介ルート</b><div class="lbl" style="margin:2px 0 8px">SaaS 関係者 41名のうち、Sansan 出身者とつながっている人</div>${[[C[2], '元同僚に Sansan の法人営業出身者'], [C[3], 'Sansan 出身の PdM と接点（9/2）']].map(([p, d]) => `<div class="route"><div class="av sm ${p.c}">${p.i}</div><div class="rm"><b>${p.n}</b><br>${d}</div><button class="btn sm">${ic('mail', 'sm')}依頼文の下書き</button></div>`).join('')}</div></div>
-    <div class="card span7 k-wcevs"><div class="card-h"><h3>会える活動</h3><span class="lbl">固定の 5項目で採点 · AI は事実だけを埋めます</span></div>
-      <table class="table"><thead><tr><th>スコア</th><th>イベント</th><th>このタイプ（推定）</th><th>参加費</th></tr></thead><tbody>${CEV.map(([n, d, sc, m, det, f, v5, f5], k) => `<tr ${k === 0 ? 'style="background:var(--surface-2)"' : ''}><td>${ring2(sc, 42)}</td><td><b>${n}</b><div class="lbl">${d}</div></td><td style="font-size:12.5px;line-height:1.55"><span class="chip teal">${m}</span><div class="lbl" style="margin-top:4px">${det}</div></td><td class="muted">${f}</td></tr>${k === 0 ? `<tr class="k-wcev5"><td></td><td colspan="3" style="border-top:0;padding-top:0">${ev5(v5, f5)}</td></tr>` : ''}`).join('')}</tbody></table></div></div>`;
+function typeBWeb() {
+  return mainhead(T.B.s, `タイプ B · Step 1・3・4 · 配点 ${T.B.w} · 人脈にまだいません`, backBtn, `<button class="btn ghost">この分野はもう詳しい</button><button class="btn">${ic('plus', 'sm')}オフラインで話した</button>`) + `<div class="wgrid">
+    <div class="card span12 k-wbhero"><div class="row" style="gap:16px;align-items:center"><span class="emo pink">🎨</span><div style="flex:1;min-width:0"><div class="tk">タイプ B · 役割 × 状況</div><b class="tname" style="font-size:19px">${T.B.n}</b></div>
+      <div class="m3 on2" style="width:330px;margin:0;flex:none"><div class="z"><b>0<small>人</small></b><span>人脈にいない</span></div><div><b>3</b><span>会える活動</span></div><div><b>1</b><span>紹介ルート</span></div></div>
+      <div style="width:170px;flex:none"><div class="row" style="gap:6px;align-items:baseline"><span class="mid">0</span><span class="lbl">/ ${T.B.w}点 · 0 / 2人</span></div>${mbar('B', 's0')}</div></div></div>
+    <div class="card span5 k-wbper" data-why-box><div class="card-h" style="margin-bottom:2px"><h3>人物像</h3><span class="why">?</span></div><div class="why-body" hidden style="margin:0 0 8px">根拠：テンプレート枠「ブランド・PR」の人物像 · 背景確認の空白「ブランド」</div>${BPER.map(([k, v]) => `<div class="kv"><span class="lbl">${k}</span><span>${v}</span></div>`).join('')}
+      <div class="row between" style="margin-top:14px"><b style="font-size:14px">開口一番</b><button class="btn sm ghost"><span class="lic i-copy sm"></span>コピー</button></div><div class="quote k-wbopen" style="margin-top:8px">「${BOPEN}」</div>
+      <div class="push" style="margin-top:16px"><b style="font-size:14px">紹介ルート</b><div class="lbl" style="margin:2px 0 8px">ブランド・PR の経験者とつながっている人</div><div class="route"><div class="av sm ${ITO.c}">${ITO.i}</div><div class="rm"><b>${ITO.n}</b><br>取引先の D2C ブランドで PR 責任者と面識</div><button class="btn sm">${ic('mail', 'sm')}依頼文の下書き</button></div></div></div>
+    <div class="card span7 k-wbevs"><div class="card-h"><h3>会える活動</h3><span class="lbl">固定の 5項目で採点 · AI は事実だけを埋めます</span></div>
+      <table class="table"><thead><tr><th>スコア</th><th>イベント</th><th>このタイプ（推定）</th><th>参加費</th></tr></thead><tbody>${BEV.map(([n, d, sc, m, det, f, v5, f5], k) => `<tr ${k === 0 ? 'style="background:var(--surface-2)"' : ''}><td>${ring2(sc, 42)}</td><td><b>${n}</b><div class="lbl">${d}</div></td><td style="font-size:12.5px;line-height:1.55"><span class="chip pink">${m}</span><div class="lbl" style="margin-top:4px">${det}</div></td><td class="muted">${f}</td></tr>${k === 0 ? `<tr class="k-wbev5"><td></td><td colspan="3" style="border-top:0;padding-top:0">${ev5(v5, f5)}</td></tr>` : ''}`).join('')}</tbody></table></div></div>`;
 }
 
-/* ===================== 6 · イベントスコア（固定基準） / CFO Night ===================== */
-const CFO = { n: 'CFO Night Tokyo vol.18', d: '今夜 19:00 · 渋谷ストリーム · ¥5,000' };
-const CF5 = ['申込者タグ公開 · 52名分', '¥5,000 · 渋谷まで 25分 · 今夜 19:00', '伊藤 直子さんが参加予定', '交流タイムあり · マッチングなし'];
-const AX = {
-  fund: { sc: 74, v: ['参加をおすすめ', 'teal'], v5: [36, 12, 14, 6, 6], f0: 'CFO 経験者 約6名（残り 1人）· VC パートナー 約2名（残り 1人）', alt: '収益化では 41' },
-  rev: { sc: 41, v: ['見送り推奨', 'pink'], v5: [3, 12, 14, 6, 6], f0: 'A 主催者 約1名（残り 5人）· ほかのタイプ 0名', alt: '資金調達では 74' },
-};
-function cfoApp(g) {
-  const A = AX[g], fund = g === 'fund';
-  return topbar('イベント詳細', CFO.n, backBtn, moreBtn) + `
-    <div class="card row k-cfohead" style="gap:12px;padding:14px 16px"><span class="emo apricot">🥂</span><div style="flex:1;min-width:0"><b style="font-size:14px">${CFO.n}</b><div class="lbl">${CFO.d}</div></div></div>
-    <div class="seg k-cfoseg" style="display:flex;margin-top:12px"><button class="${fund ? 'on' : ''}" style="flex:1">💰 資金調達</button><button class="${fund ? '' : 'on'}" style="flex:1">🚀 Orbit の収益化</button></div>
-    <div class="card k-cfoscore" style="margin-top:12px"><div class="row" style="gap:16px">${ring2(A.sc, 92, 9)}<div style="flex:1"><div class="lbl">「${fund ? '資金調達' : 'Orbit の収益化'}」で見ると</div><span class="chip ${A.v[1]}" style="margin-top:6px">${A.v[0]}</span><div class="lbl" style="margin-top:8px">同じイベント · ${A.alt}</div></div></div>
-      <div class="lbl" style="margin:14px 0 6px">スコアの内訳（固定の基準 · AI は事実だけを埋める）</div>${ev5(A.v5, [A.f0, ...CF5], { hi: 0, cls: 'k-cfo5' })}</div>
-    ${fund ? '' : `<div class="card k-cfoalt" style="background:linear-gradient(135deg,var(--mac-lav),var(--surface) 70%);padding:14px 16px"><div class="lbl">収益化なら、代わりに</div><div class="row" style="gap:10px;margin-top:8px">${ring2(88, 44, 5)}<div style="flex:1;min-width:0"><b style="font-size:13px;display:block" class="ell">コミュニティマネージャー・ミートアップ Tokyo</b><div class="lbl">10/29 · A タイプ 約25名</div></div>${ic('right', 'sm')}</div></div>`}`;
+/* ===================== ⑨ 规范板（非画框） ===================== */
+const BGI = [['わたし', 'ログイン資料（氏名 · 職種 · 会社 · 役割）', '予填 · 鉛筆で直す'], ['やりたいこと', '目標文から抽出（対象 + 動詞）', '直す'], ['一人か、チームか', 'プロフィール · 招待済みメンバー', '切り替え'], ['チームのできること', 'メンバーごとのスキル（プロフィール · LinkedIn）+ AI が空白を検出', 'メンバー・スキルを追加 / 空白 chip を外す'], ['最終的な目的', '目的の階段 4段', '1つ選ぶ（必須）']];
+function specBg() {
+  return `<div class="spec">
+  <div class="card s5"><h3>背景確認の項目（5項目 · 固定）</h3><div class="lbl">毎回同じ 5項目を同じ順で出す。AI は下書きするだけで、決めるのはユーザー</div>
+    <table class="stab"><thead><tr><th>項目</th><th>出どころ</th><th>ユーザーの操作</th></tr></thead><tbody>${BGI.map(([a, b, c]) => `<tr><td><b>${a}</b></td><td>${b}</td><td class="lbl">${c}</td></tr>`).join('')}</tbody></table></div>
+  <div class="card s4"><h3>目的の階段のルール</h3><div class="rules">${['最初に書いた文を 2段目に置く', '下に 1段：もっと小さく具体的（数か月で届く）', '上に 2段：「やりたいこと」と「チーム」から推定した 1段 + その先の 1段', 'AI は「いちばん近い？」を 1つだけ提案し、理由は「?」に置く（強制しない）', '選んだ段が「目的」になり、題庫の選び方と配点テンプレートの調整に使われる', '1段ずらすと問いが変わる（例：4段目なら資金調達の問いが入る）'].map((r, k) => `<div><b>${k + 1}</b><span>${r}</span></div>`).join('')}</div></div>
+  <div class="card s3"><h3>空白の検出</h3><div class="lbl" style="line-height:1.6">目標タイプの必要能力リスト × チームのできること = 空白</div>
+    <div class="gapbox" style="margin-top:12px"><div style="font-size:12px;font-weight:800">上市・収益化の必要能力</div><div class="chips"><span class="chip">プロダクト ✓</span>${GAPS.map(g => `<span class="gapc">${g}</span>`).join('')}<span class="chip">資金（任意）</span></div></div>
+    <div class="lbl" style="margin-top:10px;line-height:1.6">空白は破線の豆沙 chip。① 題庫の選び方（空白に関わる問いを優先）② 配点テンプレートの調整理由 ③「足りない専門」枠の具体化 に使う</div></div></div>`;
 }
-function cfoWeb() {
-  return mainhead(CFO.n, CFO.d, backBtn, `<button class="btn">${ic('plus', 'sm')}参加予定に追加</button>`) + `<div class="wgrid">
-    <div class="card span12 k-wcfo"><div class="card-h"><h3>目標ごとのスコア</h3><span class="lbl">5項目のうち、目標で変わるのは「会える人の適合」だけ</span></div>
-      <div class="grid2" style="gap:16px">${['fund', 'rev'].map(g => { const A = AX[g]; return `<div class="card flat ${g === 'rev' ? 'k-wcforev' : ''}" style="padding:18px"><div class="row" style="gap:16px">${ring2(A.sc, 92, 9)}<div style="flex:1"><b style="font-size:15px">${g === 'fund' ? '💰 シリーズA 資金調達' : '🚀 Orbit の収益化'}</b><div style="margin-top:6px"><span class="chip ${A.v[1]}">${A.v[0]}</span></div></div></div>
-        <div style="margin-top:14px">${ev5(A.v5, [A.f0, ...CF5], { hi: 0, dim: g === 'rev' })}</div></div>`; }).join('')}</div></div>
-    <div class="card span12 k-wcfowhy"><div class="card-h"><h3>なぜ 74 と 41 に分かれるのか</h3></div>
-      <div class="grid2"><div class="row" style="gap:12px;align-items:flex-start"><span class="emo sm lav">👥</span><div><b style="font-size:13.5px">会える人の適合 36 → 3</b><div class="lbl" style="line-height:1.6;margin-top:2px">参加者タグは CFO・経理・VC が中心。資金調達のタイプ（CFO 経験者・VC）には多く会えるが、収益化のタイプ A–F に当たるのは主催者 約1名だけ</div></div></div>
-      <div class="row" style="gap:12px;align-items:flex-start"><span class="emo sm teal">🟰</span><div><b style="font-size:13.5px">ほかの 4項目は 38 で同じ</b><div class="lbl" style="line-height:1.6;margin-top:2px">推定の確度 12 · 時間とコスト 14 · 既存のつながり 6 · 交流の形式 6 は、イベントとあなたの事実で決まり、目標では変わりません</div></div></div></div></div></div>`;
-}
-const cfoRail = `<h4>次の一手</h4><div class="card" style="padding:16px"><div class="lbl">収益化なら、代わりに</div><div class="row" style="gap:10px;margin-top:8px">${ring2(88, 44, 5)}<div style="flex:1;min-width:0"><b style="font-size:13px;display:block">コミュニティマネージャー・ミートアップ Tokyo</b><div class="lbl">10/29 · A タイプ 約25名</div></div></div><button class="btn sm" style="margin-top:10px">イベントを見る</button></div>
-  <div class="card flat" style="padding:14px;font-size:12px;color:var(--ink-2);line-height:1.65">目標を 2つ追っているときは、イベント一覧のスコアは「いま選んでいる目標」で表示します。</div>`;
-
-/* ===================== 规范板（非画框） ===================== */
-const BANK = [
-  ['🚀 上市・収益化', [['R1', '現在地（段階・ユーザー数・売上）'], ['R2', '払い手（誰からお金をもらうか）'], ['R3', '人脈の強み（AI 要約 → 確認）'], ['R4', '価格の仮説'], ['R5', '競合・代わりの手段'], ['R6', '使える時間と体制'], ['R7', 'すでに試したこと'], ['R8', '資金の余裕（何か月）']]],
-  ['💰 資金調達', [['F1', 'ラウンドと金額'], ['F2', '直近の数字（ARR・成長率）'], ['F3', '既存株主・リード候補'], ['F4', '調達の経験'], ['F5', '人脈の強み（AI 要約 → 確認）'], ['F6', '使い道と締切'], ['F7', '事業会社（CVC）を入れたいか']]],
-  ['🤝 新規顧客開拓', [['S1', '売るもの・単価'], ['S2', '狙う業界・規模'], ['S3', '今の商談数'], ['S4', '決裁者に届いたことがあるか'], ['S5', '人脈の強み（AI 要約 → 確認）'], ['S6', '既存顧客からの紹介余地']]],
-  ['🧑‍💼 採用 / 🔗 事業提携', [['H1', '職種と人数'], ['H2', '条件（年収・働き方）'], ['H3', 'これまでの採用経路'], ['H4', '人脈の強み（AI 要約 → 確認）'], ['P1', '提携で得たいもの'], ['P2', '相手の業種・規模'], ['P3', '自社が出せるもの'], ['P4', '決裁の流れ']]],
+const BANK6 = [
+  ['🚀 上市・収益化', 'R', ['現在地（段階・ユーザー数・売上）', '払い手（誰からお金をもらうか）', '覚えてもらいたい一言（ブランド）', '価格の仮説', '競合・代わりの手段', '使える時間（本業と並行か）', '足りない力の埋め方', 'すでに試したこと']],
+  ['💰 資金調達', 'F', ['ラウンドと金額', '直近の数字（ARR・成長率）', '既存株主・リード候補', '調達の経験', '使い道と締切', '事業会社（CVC）を入れたいか', '使える時間']],
+  ['🤝 新規顧客開拓', 'S', ['売るもの・単価', '狙う業界・規模', '今の商談数', '決裁者に届いたことがあるか', '既存顧客からの紹介余地', '営業の体制']],
+  ['🧑‍💼 採用', 'H', ['職種と人数', '条件（年収・働き方）', 'これまでの採用経路', '魅力として言えること', '採用の締切', '面接の体制']],
+  ['🔗 事業提携', 'P', ['提携で得たいもの', '相手の業種・規模', '自社が出せるもの', '決裁の流れ', 'これまでの接点', '契約形態の希望']],
+  ['🧭 キャリア', 'K', ['いまの仕事と年数', '目指す職・業界', '時期の目安', '強みとして言えること', '譲れない条件', '社外の活動']],
 ];
-const PICK = [['R1', '現在地', 'プロフィールに「β」とあるが数字が不明', '高（Step 1 の中身が変わる）', 1], ['R2', '払い手', '目標文からは不明', '高（B2C / B2B2C で道が分かれる）', 1], ['R3', '人脈の強み', '人脈 286名から要約できる → 確認だけ', '高（候補が出るタイプが決まる）', 1], ['R4', '価格の仮説', '不明', '中（Step 4 で検証するので後回し）', 0], ['R5', '競合・代わり', '一般情報で補える', '中', 0], ['R6', '時間と体制', 'プロフィール「代表 1名 + 開発 2名」', '低', 0], ['R7', '試したこと', '面談メモ 38件から推定', '低', 0], ['R8', '資金の余裕', '別の目標「シリーズA」で追跡中', '低', 0]];
-const TPL = [['最初に払う人（買い手の現場責任者）', 25, 25, 'A 交流会の主催者', ''], ['買い手側で予算を持つ人', 15, 15, 'B 大企業の新規事業担当', ''], ['同じ市場の先行プロダクト経験者', 15, 15, 'C 名刺／CRM SaaS 経験者', ''], ['販路・提携先', 15, 10, 'D 会場・チケットの提携担当', 'Step 3 は Step 2 のあと。今は経路 1つで十分'], ['価格・転換の経験者', 10, 10, 'E サブスクのグロース責任者', ''], ['ヘビーユーザー候補', 5, 10, 'F 交流会のヘビー参加者', 'β 48名の多くが交流会経由。参加者の声が Pro 転換の仮説に直結'], ['イベント', 15, 15, 'イベント（主催者が集まる場）', '']];
-const ESTD = [['① 会える人の適合', 45, '参加者タグから、プランの各人物タイプが何人来るかを推定し、「残り目標人数」と「配点」で重み付け', '申込者タグ · 過去回の参加者 · 登壇者', '✓ 唯一変わる'], ['② 推定の確度', 15, '参加者情報の量と新しさ（申込者タグ公開 > 過去回のみ > 主催者の説明だけ）', '主催ページ · 申込数 · 更新日', '—'], ['③ 時間とコスト', 20, '参加費 · 移動時間 · 時間帯を、あなたの設定（平日夜可 · 移動 60分以内 · ¥5,000 まで）と照合', 'イベント情報 · あなたの設定', '—'], ['④ 既存のつながり', 10, '人脈の中で参加予定の人（紹介を頼める · 同行できる）', 'Orbit の参加予定 · カレンダー', '—'], ['⑤ 交流の形式', 10, '交流タイム · マッチング · 名札の有無（講演だけの会は低い）', 'タイムテーブル · 主催者の説明', '—']];
+const PICK = [['R1', '現在地', 'プロフィールに「β」とあるが数字が不明', '高（Step 2 の中身が変わる）', 1], ['R2', '払い手', '目標文からは不明', '高（B2C / B2B2C で道が分かれる）', 1], ['R3', 'ブランドの一言', '目的が「ブランドとして確立」· 空白「ブランド」', '高（Step 1 そのもの）', 1], ['R4', '価格の仮説', '不明', '中（Step 5 で確かめるので後回し）', 0], ['R5', '競合・代わり', '業界の現状 ①（L-012）で補える', '中', 0], ['R6', '使える時間', 'チーム 2名 · 本業の有無が不明', '高（Step の重さが変わる）', 1], ['R7', '足りない力', '空白 5つ · 埋め方が不明', '高（Step 3 と配点が変わる）', 1], ['R8', '試したこと', '面談メモ 38件から推定', '低', 0]];
 function specBank() {
   return `<div class="spec">
-  <div class="card s12"><h3>題庫（目標の種類ごと · 6–8問）</h3><div class="lbl">AI は題庫の外の質問をつくりません。足りないことは各問の自由入力で補います。似た目標（例：「β から有料にしたい」「自社 SaaS を収益化」）は同じ種類 → 同じ題庫 → 似た 3問になります。</div>
-    <div class="bank">${BANK.map(([t, qs]) => `<div><b class="bt">${t}</b><ol>${qs.map(([id, q]) => `<li><span>${id}</span>${q}</li>`).join('')}</ol></div>`).join('')}</div></div>
-  <div class="card s7"><h3>選題：今回「上市・収益化」で 3問を選んだ理由</h3><div class="lbl">「まだわからない」×「プランの分かれ道を変える」が大きい順に 3つ。紫 = 今回選んだ問い</div>
-    <table class="stab"><thead><tr><th>ID</th><th>項目</th><th>今わかっていること</th><th>分かれ道への影響</th></tr></thead><tbody>${PICK.map(([id, t, k, i, p]) => `<tr class="${p ? 'pick' : ''}"><td class="num">${id}</td><td><b>${t}</b></td><td>${k}</td><td>${i}</td></tr>`).join('')}</tbody></table></div>
-  <div class="card s5"><h3>選題ルール</h3><div class="rules">${['目標文 · プロフィール · 人脈 · 面談メモからわかる項目は聞かない（わかった内容は判断の依拠に書く）', '残りを「不確かさ × 分かれ道への影響」で並べ、上位 3問だけを一度に聞く（ばらばらに聞かない）', '人脈で答えられる問い（R3 / F5 / S5 / H4）は AI が要約し、ユーザーは ✓ / ✕ で確認だけ', '同じ種類・同じ状況なら、同じ問いを同じ順で出す（再現性）', '答えなかった問いは推測で進め、判断の「?」に「推測」と明記', '判断のあと、修正は 3回まで（1回ごとに「まとめて書く」よう促す）。使い切ったら「確定」か「自分で編集」'].map((r, k) => `<div><b>${k + 1}</b><span>${r}</span></div>`).join('')}</div></div>
-  <div class="card s12"><h3>人物タイプの配点テンプレート（上市・収益化）</h3><div class="lbl">目標の種類ごとに、既定の人物タイプ枠と配点がある。AI は枠を「役割 × 状況」に具体化し、配点は小さく調整するだけ（1タイプ ±5 まで · 調整は 2件まで · 合計 100 固定 · 理由はプラン画面の「?」で必ず表示）</div>
-    <table class="stab"><thead><tr><th>テンプレートの枠</th><th>既定</th><th>今回</th><th>このプランでの具体化</th><th>調整の理由</th></tr></thead><tbody>${TPL.map(([t, a, b, c, r]) => `<tr><td><b>${t}</b></td><td class="num">${a}</td><td class="num ${b > a ? 'chg-up' : b < a ? 'chg-dn' : ''}">${b}${b !== a ? ` (${b > a ? '+' : ''}${b - a})` : ''}</td><td>${c}</td><td class="lbl">${r || '—'}</td></tr>`).join('')}<tr><td><b>合計</b></td><td class="num">100</td><td class="num">100</td><td></td><td></td></tr></tbody></table></div></div>`;
+  <div class="card s12"><h3>題庫（目標の種類 6類 · 各 6–8問）</h3><div class="lbl">AI は題庫の外の質問をつくりません。足りないことは各問の自由入力で補います。似た目標（「β から有料にしたい」「自社 SaaS を収益化」）は同じ種類 → 同じ題庫 → 似た問いになります。採用と事業提携は別の題庫に分け、キャリアを追加。</div>
+    <div class="bank bank6">${BANK6.map(([t, p, qs]) => `<div><b class="bt">${t}</b><ol>${qs.map((q, k) => `<li><span>${p}${k + 1}</span>${q}</li>`).join('')}</ol></div>`).join('')}</div></div>
+  <div class="card s7"><h3>選び方：今回「上市・収益化」で 5問を選んだ理由</h3><div class="lbl">「背景でもまだわからない」×「プランの分かれ道を変える」が大きい順に最大 5つ。紫 = 今回選んだ問い</div>
+    <table class="stab"><thead><tr><th>ID</th><th>項目</th><th>背景でわかっていること</th><th>分かれ道への影響</th></tr></thead><tbody>${PICK.map(([id, t, k, i, p]) => `<tr class="${p ? 'pick' : ''}"><td class="num">${id}</td><td><b>${t}</b></td><td>${k}</td><td>${i}</td></tr>`).join('')}</tbody></table></div>
+  <div class="card s5"><h3>選び方のルール（≤5問）</h3><div class="rules">${['背景確認 · プロフィール · 人脈 · 面談メモでわかる項目は聞かない（わかった内容は依拠に書く）', '背景の空白に関わる問いを優先する', '「不確かさ × 分かれ道への影響」で並べ、上位 5問まで（足りていれば 3問でもよい）', '同じ種類 · 同じ背景なら、同じ問いを同じ順で出す（再現性）', '一度にまとめて聞く。空欄は推測で進め、依拠に「推測」と書く', '回答は「確定した前提」にまとめ、行ごとに直せる。前提を直すと初版はつくり直し（回数に含まない）'].map((r, k) => `<div><b>${k + 1}</b><span>${r}</span></div>`).join('')}</div></div></div>`;
 }
+const LAYERS = [['システム方針', '全目標共通 · v4', 'この種の目標の一般的な進め方を先に示す · 達成を保証しない · 主張には依拠を残す · メール・メッセージは下書きまで'], ['目標タイプ別テンプレート', '6類 · 各 v2〜v4', 'Step の型 · 人物タイプ枠と既定の配点 · 完了の目安の書き方（数えられる状態で）· 固定短名の辞書'], ['業界の現状ライブラリ', 'Orbit が後台で編集', 'エントリごとに ID · 版 · 更新日 · 出典 · 対象の業界と目標タイプ。AI はここからだけ引用し、方案に引用 ID を保存'], ['ユーザー前提', 'この会話', '背景確認 5項目 · ≤5問の回答（確定した前提）· AI 修正の履歴 · 手動編集']];
+function specPrompt() {
+  return `<div class="spec">
+  <div class="card s7"><h3>高度プロンプトと業界の現状ライブラリの構造</h3><div class="lbl">上から順に重ねて AI に渡す。ユーザーに見えるのは「業界の現状」の引用（折りたたみ）と、各結論の「?」</div>
+    <div class="layer">${LAYERS.map(([a, b, c], k) => `<div class="${k === 2 ? 'hl' : ''}"><b>${k + 1} · ${a}<small>${b}</small></b><span>${c}</span></div>`).join('')}</div></div>
+  <div class="card s5"><h3>運用ルール</h3><div class="rules">${['ライブラリにない主張は「一般論」と明記し、数字は出さない', '更新日が 12か月を超えたエントリは引用しない', 'ライブラリの版が上がっても、既存プランは自動で書き換えない（プランに「新しい版があります」と出し、見直すかはユーザーが決める）', '方案ごとに引用したエントリを保存し、折りたたみで全部見られる', 'ライブラリの追加・改訂は Orbit 編集部のみ（ユーザーや AI は書き込めない）'].map((r, k) => `<div><b>${k + 1}</b><span>${r}</span></div>`).join('')}</div></div>
+  <div class="card s12"><h3>本例で引用したエントリ</h3><table class="stab"><thead><tr><th>ID</th><th>分野</th><th>内容（要約）</th><th>版 · 更新日</th><th>出典</th><th>使った箇所</th></tr></thead><tbody>${LIB.map(([id, t, d, v, dt, src], k) => `<tr><td class="num">${id}</td><td><b>${t}</b></td><td>${d}</td><td class="num">${v} · ${dt}</td><td class="lbl">${src}</td><td class="lbl">${['見立て', '見立て · Step 1', '結論（AI を名乗る）', 'Step 5'][k]}</td></tr>`).join('')}</tbody></table></div></div>`;
+}
+const TPL6 = [
+  ['🚀 上市・収益化', [['最初に払う人', 25], ['ブランド・PR', 15], ['先行プロダクト経験', 15], ['同じ道を通った創業者', 15], ['足りない専門', 10], ['ヘビーユーザー', 5], ['イベント', 15]], 1],
+  ['💰 資金調達', [['リード投資家候補', 25], ['調達経験のある創業者', 20], ['CFO・財務', 15], ['紹介者（士業・VC 周辺）', 15], ['事業会社（CVC）', 10], ['イベント', 15]]],
+  ['🤝 新規顧客開拓', [['決裁者', 30], ['現場責任者', 20], ['紹介者・代理店', 15], ['同業の先輩営業', 10], ['業界団体', 10], ['イベント', 15]]],
+  ['🧑‍💼 採用', [['候補者本人', 30], ['候補者を紹介できる人', 20], ['同職種の先輩', 15], ['採用担当の経験者', 10], ['コミュニティ運営者', 10], ['イベント', 15]]],
+  ['🔗 事業提携', [['提携先の事業責任者', 30], ['提携先の現場', 15], ['提携の経験者', 15], ['紹介者', 15], ['法務・知財', 10], ['イベント', 15]]],
+  ['🧭 キャリア', [['目指す職の現役', 30], ['転身した先輩', 20], ['採用する側', 15], ['メンター', 10], ['同じ志向の仲間', 10], ['イベント', 15]]],
+];
+const TPLX = [['最初に払う人', 25, 25, 20, 'A 交流会の主催者', '手動 −5：E を +5 したので、配点がいちばん高い枠から 5点引いた'], ['ブランド・PR', 15, 20, 20, 'B ブランドづくりの経験者', 'AI +5：チームにブランドの力がなく、目的が「ブランドとして確立」'], ['先行プロダクト経験', 15, 15, 15, 'C 名刺 SaaS の経験者', ''], ['同じ道を通った創業者', 15, 15, 15, 'D エンジニア出身の起業家', '手動：目標人数 3 → 2（7点 + 最後の1人 8点）'], ['足りない専門', 10, 10, 15, 'E プロダクトデザイナー', '空白から「デザイン」を選んで具体化 · 手動 +5'], ['ヘビーユーザー', 5, 0, 0, '—（外した）', 'AI −5：β 48名の声は Step 5 で直接集められる'], ['イベント', 15, 15, 15, 'イベント', '']];
+function specTpl() {
+  const cell = (a, b) => `<td class="num ${b > a ? 'chg-up' : b < a ? 'chg-dn' : ''}">${b}${b !== a ? ` (${b > a ? '+' : ''}${b - a})` : ''}</td>`;
+  return `<div class="spec">
+  <div class="card s12"><h3>人物タイプ配点テンプレート（6類 · 各合計 100）</h3><div class="lbl">目標の種類ごとに既定の枠と配点。AI は枠を「役割 × 状況」に具体化し、配点は 1枠 ±5 まで · 最多 2処 · 合計 100 固定で調整（理由は「?」で必ず表示）。短名 = テンプレートの枠 × 業界の固定短名辞書（例：「最初に払う人」× イベント業界 =「交流会の主催者」）から取り、AI は短名をつくらない。配点は 5点刻み。手動編集で 1つ変えると、差分を 5点ずつ配点の高いタイプから順に（同点はテンプレートの順）引く／足して合計 100 を保つ。1人あたりの点は整数（配点 ÷ 人数の切り捨て）で、端数は最後の1人で調整する（人数 × 単価の合計 = 配点）</div>
+    <div class="tplg">${TPL6.map(([t, sl, pk]) => `<div class="${pk ? 'pickt' : ''}"><b class="bt">${t}</b>${sl.map(([a, b]) => `<div class="sl"><span>${a}</span><b>${b}</b></div>`).join('')}</div>`).join('')}</div></div>
+  <div class="card s12"><h3>本例の調整（上市・収益化）</h3><div class="lbl">v2.1 の「個人サブスクのグロース責任者」は、空白の優先度が高い「デザイン」に「足りない専門」枠を譲り、価格の検証は C と Step 5 に寄せた。「ヘビー参加者」はヘビーユーザー枠ごと 0 に</div>
+    <table class="stab"><thead><tr><th>テンプレートの枠</th><th>既定</th><th>AI 初版</th><th>手動編集後</th><th>このプランでの具体化（固定短名）</th><th>理由</th></tr></thead><tbody>${TPLX.map(([t, a, b, c, d, r]) => `<tr><td><b>${t}</b></td><td class="num">${a}</td>${cell(a, b)}${cell(b, c)}<td>${d}</td><td class="lbl">${r || '—'}</td></tr>`).join('')}<tr><td><b>合計</b></td><td class="num">100</td><td class="num">100</td><td class="num">100</td><td></td><td></td></tr></tbody></table></div></div>`;
+}
+const ESTD = [['① 会える人の適合', 45, '参加者タグから、プランの各人物タイプが何人来るかを推定し、「残り目標人数」と「配点」で重み付け', '申込者タグ · 過去回の参加者 · 登壇者', '✓ 唯一変わる'], ['② 推定の確度', 15, '参加者情報の量と新しさ（申込者タグ公開 > 過去回のみ > 主催者の説明だけ）', '主催ページ · 申込数 · 更新日', '—'], ['③ 時間とコスト', 20, '参加費 · 移動時間 · 時間帯を、あなたの設定（平日夜可 · 移動 60分以内 · ¥5,000 まで）と照合', 'イベント情報 · あなたの設定', '—'], ['④ 既存のつながり', 10, '人脈の中で参加予定の人（紹介を頼める · 同行できる）', 'Orbit の参加予定 · カレンダー', '—'], ['⑤ 交流の形式', 10, '交流タイム · マッチング · 名札の有無（講演だけの会は低い）', 'タイムテーブル · 主催者の説明', '—']];
 function specEvent() {
   return `<div class="spec">
-  <div class="card s8"><h3>イベントスコアの基準（満点 100 · 後台固定）</h3><div class="lbl">AI は人数 · 金額 · 時間 · 有無といった「事実」だけを埋め、点数は固定の式で計算します。同じ事実なら、誰がいつ見ても同じ点。</div>
+  <div class="card s8"><h3>イベントスコアの基準（満点 100 · 後台固定 · v2.1 から変更なし）</h3><div class="lbl">AI は人数 · 金額 · 時間 · 有無といった「事実」だけを埋め、点数は固定の式で計算します。同じ事実なら、誰がいつ見ても同じ点。</div>
     <table class="stab"><thead><tr><th>項目</th><th>配点</th><th>何を見るか</th><th>事実の出どころ</th><th>目標で変わる</th></tr></thead><tbody>${ESTD.map(([t, p, w, s, g], k) => `<tr class="${k === 0 ? 'pick' : ''}"><td><b>${t}</b></td><td class="num">${p}</td><td>${w}</td><td class="lbl">${s}</td><td>${g}</td></tr>`).join('')}</tbody></table></div>
-  <div class="card s4"><h3>運用ルール</h3><div class="rules">${['事実が取れない項目は「推定の確度」で下げ、推定値には「推定」と表示', '目標を変えても変わるのは ① だけ（② – ⑤ はイベントとあなたの事実）', '① は「残り目標人数」を使うので、会えたタイプが増えるほど同じ会でも点が下がる', '70 以上 = 参加をおすすめ · 50–69 = 条件付き · 50 未満 = 見送り推奨', 'カードを開くと 5項目の内訳と、各項目の事実（依拠）が見える'].map((r, k) => `<div><b>${k + 1}</b><span>${r}</span></div>`).join('')}</div></div>
-  <div class="card s6"><div class="lbl" style="margin-bottom:6px">例：SaaS Product Night Tokyo #31（収益化 · 84）</div>${ev5(CEV[0][6], CEV[0][7])}</div>
-  <div class="card s6"><div class="lbl" style="margin-bottom:6px">例：CFO Night Tokyo vol.18（収益化 · 41 / 資金調達なら ① が 36 で 74）</div>${ev5(AX.rev.v5, [AX.rev.f0, ...CF5], { hi: 0 })}</div></div>`;
+  <div class="card s4"><h3>運用ルール</h3><div class="rules">${['事実が取れない項目は「推定の確度」で下げ、推定値には「推定」と表示', '目標を変えても変わるのは ① だけ（② – ⑤ はイベントとあなたの事実）', '① は「残り目標人数」を使うので、そのタイプに会えるほど同じ会でも点が下がる（例：B に 1人会ったあと、勉強会 #14 は 82 → 76）', '70 以上 = 参加をおすすめ · 50–69 = 条件付き · 50 未満 = 見送り推奨', 'カードを開くと 5項目の内訳と、各項目の事実（依拠）が見える'].map((r, k) => `<div><b>${k + 1}</b><span>${r}</span></div>`).join('')}</div></div>
+  <div class="card s6"><div class="lbl" style="margin-bottom:6px">例：${BEV[0][0]}（このプラン · ${BEV[0][2]}）</div>${ev5(BEV[0][6], BEV[0][7], { hi: 0 })}</div>
+  <div class="card s6"><div class="lbl" style="margin-bottom:6px">例：${BEV[2][0]}（このプラン · ${BEV[2][2]} · ③ が設定の上限を超える）</div>${ev5(BEV[2][6], BEV[2][7], { hi: 0 })}</div></div>`;
 }
 
-/* ===================== 7 · 現行 v2 vs v2.1 ===================== */
-const oldCard = `<div class="v2pcard" style="background:var(--surface-2)"><div class="row" style="gap:10px"><span class="emo sm teal">📊</span><b style="flex:1;min-width:0" class="v2ell">CFO 経験者</b><span class="chip lav">人脈に 1人</span></div><div class="pts"><div style="background:var(--surface)"><span class="lbl">配点</span><b>10</b></div><div style="background:var(--surface)"><span class="lbl">獲得</span><b>0</b></div><div style="background:var(--surface)"><span class="lbl">目標</span><b>1<small style="font-size:11px;color:var(--ink-3)">人</small></b></div></div></div>
-  <div class="v2prow" style="margin-top:10px"><span class="emo sm teal">📊</span><div class="pm"><b>CFO 経験者</b><div class="chips"><span class="chip">0 / 1人</span><span class="chip lav">候補 1人</span></div></div><div class="pe"><div class="v2pp">0<small> / 10</small></div><div class="v2mb"><b style="width:0"></b></div></div></div>`;
+/* ===================== ⑩ v2.1 → v2.2 ===================== */
 const VSROWS = [
-  ['人物タイプの名前', '職称：「CFO 経験者」「VC パートナー」', '<b>役割 × 状況の一文</b>：「月1回以上・50〜200名規模の交流会を主催するコミュニティ運営者」'],
-  ['生成の流れ', '目標 + 背景（任意）→ 診断中 → プラン案', '<b>iOrbit の対話</b>：題庫から 3問 → AI の判断 → 修正 3回まで →「この内容で確定」'],
-  ['プランの根っこ', 'この種の目標の一般的な進め方（Step の「?」で依拠）', '<b>判断カード</b>：見立て + 進め方の結論 + 依拠（前提 · 人脈 · 一般パターン）。修正ごとに差分を表示'],
-  ['Step', 'タイトル + なぜ', '+ <b>完了の目安</b>（数えられる状態で書く）+ 紐づく人物タイプ chip'],
-  ['配点', 'AI がタイプごとに決める', '<b>目標の種類ごとのテンプレート</b>が既定。AI は ±5・2件まで調整し、理由を表示'],
-  ['カードの情報', '配点 / 獲得 / 目標人数 · 「人脈に n人」', '配点 + <b>候補 n人 / 会える活動 n / 紹介ルート n</b>（いないタイプも次の一手が見える）'],
-  ['詳細：話すこと', 'なぜ話す / 何を話す（話題）', '<b>なぜこの人か</b>（目標との関係）+ <b>聞くこと 3問</b>（そのまま使える質問文）'],
-  ['詳細：判定', '30分以上の面談 / イベントで事業の話', '<b>3問中 2問を聞けた面談メモ</b>（+5）。超過は半分 · 名前なし申告は目標人数まで（既定どおり）'],
-  ['詳細：候補', '推薦順 + 理由 + 濃さ', '<b>推薦度（数値）+ 理由 + 切り出し方 + 最終接点</b>、「?」で依拠'],
-  ['いない場合', '人物画像 + 活動（推定人数）+ 紹介できる人', '+ <b>開口一番</b>、活動ごとに 5項目の内訳、<b>紹介ルートの依頼文下書き</b>'],
-  ['イベントのスコア', 'AI が総合判断（目標と無関係に 1つ）', '<b>固定 5項目</b>（適合 45 / 確度 15 / 時間とコスト 20 / つながり 10 / 形式 10）。目標で変わるのは適合だけ'],
-  ['計分の口径', '満点 100 · 上限なし · 同人同タイプ 1回 · 超過は半分 · スキップ = 斜線', '<b>そのまま</b>（変更なし）'],
+  ['入口', '目標 + 題庫から 3問', '<b>背景確認</b>（5項目 · チームの空白 · 目的の階段）→ 題庫から <b>≤5問</b>'],
+  ['目的', '書いた目標をそのまま使う', '<b>目的の階段</b>で 1段上げられる（本例：利益が出る事業 → ブランドとして確立し、事業にする）'],
+  ['題庫', '5類（採用 / 提携は同じ）', '<b>6類</b>（採用と事業提携を分け、キャリアを追加）· 背景の空白に関わる問いを優先'],
+  ['前提', '回答 = 1件のメッセージ', '<b>「確定した前提」カード</b>（行ごとに出どころ Q1… / 背景、タップで直せる）'],
+  ['AI の材料', '前提 + 一般的なパターン', '<b>高度プロンプト + 業界の現状ライブラリ</b>（版 · 日付 · 出典、ライブラリ内だけ引用、折りたたみで全部見える）'],
+  ['AI の最初の出力', '判断（見立て · 結論）→ 確定後に方案', '<b>初版の時点で方案ごと</b>（見立て · 結論 · Step · 人物タイプ · 業界の現状）'],
+  ['修正', '修正 3回（変更なしの扱いは未定）', '<b>AI 修正 3回</b>（変更なしも 1回）+ <b>手動編集 1回</b>'],
+  ['自分で直す', '「自分で編集」= 下書きの逐項編集（画面なし）', '<b>手動編集の新画面</b>：Step 改名 · 並べ替え · 増減 / 人数と配点（5点刻み · 高い配点から調整 · 合計 100）/ タイプ削除。保存後は AI が自動で書き換えない'],
+  ['配点', 'テンプレート既定 · AI ±5 · 2件', 'そのまま + <b>6類すべてに既定表</b> · 短名は固定短名辞書から'],
+  ['人物タイプ（本例）', '主催者 / 新規事業 / CRM / 会場提携 / グロース / ヘビー参加', '主催者 / <b>ブランドづくり</b> / 名刺 SaaS / <b>エンジニア出身の起業家</b> / <b>プロダクトデザイナー</b>'],
+  ['Step 完了', '目安に届いたら自動で緑', '<b>ユーザーが確認</b>して完了（確認カード）'],
+  ['イベントスコア', '固定 5項目', '<b>変更なし</b>（① は残り目標人数で重み付け = 進むほど同じ会の点が下がる、を明記）'],
+  ['成果ボーナス', 'なし', 'なし（変更なし）'],
+  ['計分の口径', '満点 100 · 上限なし · 同人同タイプ 1回 · 超過は半分 · スキップ = 斜線', '<b>そのまま</b>'],
 ];
+function vsBoard() {
+  return `<div class="vs"><div class="card"><h3><span class="chip">v2.1</span>目標から 3問</h3><div class="lbl" style="margin-bottom:6px">書いた目標を正しいものとして、足りない情報だけを聞く</div>
+    <div class="vflow"><span>目標</span><i>→</i><span>3問</span><i>→</i><span>AI の判断</span><i>→</i><span>修正 3回</span><i>→</i><span>確定 → 方案</span></div>
+    <div class="lbl" style="margin-top:14px;line-height:1.7">課題：ユーザーは本当の目的をうまく言えないことが多い（本例：「黒字化」と書いたが、本当は「ブランドにしたい」）。チームに何が足りないかも聞かないため、人物タイプが目的からずれる。</div></div>
+  <div class="card"><h3><span class="chip lav">v2.2</span>背景から具体化</h3><div class="lbl" style="margin-bottom:6px">先に「誰が · 何のために · 何が足りないか」を確認してから聞く</div>
+    <div class="vflow"><span class="nw">背景確認</span><i>→</i><span class="nw">≤5問</span><i>→</i><span class="nw">確定した前提</span><i>→</i><span class="nw">初版（業界の現状）</span><i>→</i><span>AI 修正 3回</span><i>→</i><span class="nw">手動編集 1回</span><i>→</i><span>推薦</span></div>
+    <div class="lbl" style="margin-top:14px;line-height:1.7">効果：目的の階段で「3」を選んだことで、ブランド · デザインのタイプ（B · E）と「エンジニア出身の起業家」（D）が入り、v2.1 の会場提携 · グロース · ヘビー参加が外れた。</div></div></div>
+  <table class="vtab"><thead><tr><th style="width:150px">項目</th><th>v2.1</th><th>v2.2</th></tr></thead><tbody>${VSROWS.map(([a, b, c]) => `<tr><td>${a}</td><td class="old">${b}</td><td class="new">${c}</td></tr>`).join('')}</tbody></table>`;
+}
 
 /* ===================== 出力 ===================== */
 const tags = { empty: '新用户空状态', few: '少量数据', many: '大量数据' };
@@ -627,202 +935,257 @@ const WB = (label, tag, o, notes) => {
   if (o.ov) s = s.replace(/<\/div>\s*$/, o.ov + '</div>');
   return `<div class="board" style="margin-bottom:34px"><div class="board-label">${label}${tag ? `<span class="tag ${tag}">${tags[tag] || tag}</span>` : ''}</div>${s}${a ? `<ul class="note-list" style="max-width:1440px;grid-template-columns:repeat(3,1fr);display:grid">${a.notes.map((n, k) => `<li><b>${k + 1}</b><span>${n}</span></li>`).join('')}</ul>` : ''}</div>`;
 };
+const FS = [['①', '目標入力', '一言でよい · 目標タイプ chip'], ['②', '背景確認', 'わたし · やりたいこと · 体制 · チームの空白 · 目的の階段'], ['③', '≤5問 → 前提', '題庫 6類から選ぶ · 一度に回答 · 確定した前提'], ['④', 'AI 初版', '見立て · 結論 · Step · 人物タイプ · 業界の現状'], ['⑤', 'AI 修正 ≤3 → 手動編集 1', '差分表示 · 合計 100 を保つ · 以後 AI は自動で書き換えない'], ['⑥', '推薦', 'プラン概要 · 人物タイプ詳細 · 会える活動']];
 
-let h = '';
+let h = `<div class="flowstrip">${FS.map(([n, t, d]) => `<div><span class="no">${n}</span><b>${t}</b><span class="lbl">${d}</span></div>`).join('')}</div>`;
 /* ---- 1 ---- */
-h += sec('1 · iOrbit の対話でプランを作る', '设目标 → agent 一次问 3 问（题库选题）→ AI 先给判断（見立て・結論・依据）→ 用户最多修正 3 轮（每轮提示「まとめて書く」）→「この内容で確定」→ 最终方案。App 全屏对话 / Web iOrbit 主区 + 右栏下书き');
+h += sec('1 · 目標入力 → 背景確認', '① 用户写「Orbit を落地して黒字化したい」→ ② iOrbit 先把背景摆出来：わたし（登录资料预填）/ やりたいこと / 一人かチームか / チームのできること + AI 标出的空白 / 目的の階段（4 级，选中 3）。App 拆 2 屏，Web 一屏 + 右栏「わかったこと」实时摘要');
+const bg1 = bgApp(1), bg2 = bgApp(2);
 h += boards([
   AP('① 目標を入力（プラン空状態）', 'empty', { body: goalApp(), tab: 3 }, [
-    ['.k-gin .fld', 0, '一句话目标，不问期限与金额；输入框获得焦点（灰紫描边 + 光标）'],
-    ['.k-gkind', 0, '目标类型单选 chip = 选哪本题库与人物类型模板；默认按文字推测「上市・収益化」，可改'],
+    ['.k-gin .fld', 0, '一句话目标，原样保留用户的说法（「落地」这种不准确的词也不纠正，交给 ② 的目的の階段来对齐）'],
+    ['.k-gkind', 0, '目标类型 chip = 选哪本题库与配点模板（6 类，新增キャリア）；默认按文字推测「上市・収益化」，可改'],
     ['.k-gnext', 0, '「iOrbit と具体化する」→ ② 全屏 iOrbit 对话（从下推入），目标作为第一条消息带入'],
+    ['.k-gsteps', 0, '按钮下预告全流程与次数上限（背景 → 5 问 → 初版 → AI 修正 3 → 手动编辑 1），用户知道要花多久'],
     ['.k-gsample', 0, '淡化「サンプル」人物类型卡：预告「役割×状況」一文 + 三格迷你信息，绝不写库'],
   ]),
-  AP('② 3 問（まとめて回答）', '', { body: chatApp('q'), overlay: composerApp(3, { hint: false, ph: 'まとめて書いても OK です' }) }, [
-    ['.k-qwhy', 0, '「?」展开选题理由：从「上市・収益化」题库 8 问里，选「还不知道 × 最影响分岔」的 3 问（规则见规范板）'],
-    ['.k-q2 .qid', 0, '每题右上标题库编号（R2 払い手），同类目标问同样的题'],
-    ['.k-q2', 0, '选项 = 多选 chip（「両方」+「未定」可同选 = 两边都想、先后未定）+ 每题一行自由入力'],
-    ['.k-q3off', 0, '③ 人脉强项由 AI 从 286 人要约，用户只 ✓/✕；人数太少的类别默认不勾'],
-    ['.k-qsend', 0, '「まとめて回答する」一次提交三问；空着的题按推测处理，并在依据里写「推測」→ ③'],
+  AP('② 背景確認（1/2 · わたし・やりたいこと・体制）', '', { body: bg1.body, overlay: bg1.overlay }, [
+    ['.k-fm', 0, '对话顶部 5 段进度（背景 / 質問 / 初版 / AI 修正 / 手動編集），当前段深紫'],
+    ['.k-bgme', 0, '「わたし」来自登录资料（chip「プロフィールから」），佐藤＝AI エンジニア · Orbit 共同創業者；铅笔 → 就地编辑'],
+    ['.k-bgwant', 0, '「やりたいこと」由 AI 从目标文抽出（落地 → 世に出す），可改'],
+    ['.k-bgteam1 .seg', 0, '一人 / チーム 分段；选チーム后下方展开团队卡（本屏下半）'],
+    ['.k-mem2', 0, '团队卡：每人一行 + 能力 chip（虚线「＋」可加）；高木 悠 = 同为 AI エンジニア 的伙伴'],
+    ['.k-bgnext', 0, '底部固定栏「この背景で質問へ（5問まで）」常驻；滚动内容有 130px 留白，不遮挡'],
   ]),
-  AP('③ AI の判断', '', { body: chatApp('j'), overlay: composerApp(3) }, [
-    ['.k-ans', 0, '三问回答被压成一条用户消息（可点开改）；見立て长文默认显示 4 行 +「全文を読む」'],
-    ['.k-jwhy', 0, '判断卡：見立て + 進め方の結論（浅紫块 + B2B2C 三格图）；「?」展开依据（前提 / 人脈 / 一般パターン，Web 同款）'],
-    ['.k-left', 0, '「修正あと 3 回」常驻在判断卡与输入框提示上，用户知道修正有上限'],
-    ['.k-kakutei', 0, '「この内容で確定」→ ⑥ 最终方案；不同意就在下方输入框修正'],
-    ['.k-hint', 0, '输入框上方提示：「現状と考えを、できるだけ一度にまとめて書いてください」+ 写法示例（灰字），鼓励一轮说完'],
-  ]),
-  AP('④ 修正 1 回後（更新された判断）', '', { body: chatApp('r1'), overlay: composerApp(2) }, [
-    ['.k-say1', 0, '用户第 1 轮修正：现状 + 想法一次写完（2 回无料、β 30 名来自交流会）'],
-    ['.k-diff', 0, '更新卡只列差分：每条「変更」小签 + 旧文删除线 + 新文浅紫底（结论、Step 1/2 的目安）'],
-    ['.k-same', 0, '「変わらない点」一行，避免用户以为全部重算'],
-    ['.k-left', 0, '剩余次数变「修正あと 2 回」；确定按钮始终在最新一张卡上'],
-  ]),
-  AP('⑤ 修正を使い切った', '', { body: chatApp('r3'), overlay: composerApp(0, { hint: false, off: true, ph: '修正は使い切りました' }) }, [
-    ['.k-upd3', 0, '第 3 轮也计次数，即使 AI 判断「今回は変更しません」（并说明理由）'],
-    ['.k-hist', 0, '三轮修正的历史 chip，点 chip 跳回对应消息'],
-    ['.k-self', 0, '用完后只剩两条路：「自分で編集」（打开下书き逐项编辑）/「この内容で確定」；输入框变灰不可输入'],
-  ]),
-  AP('⑥ 確定 → 最終方案', '', { body: chatApp('done'), overlay: composerApp(0, { hint: false, ph: 'このプランについて質問' }) }, [
-    ['.k-okplan', 0, '确定 = 用户的确认动作 → 实线成功卡「プランを作りました」+「元に戻す」；写明配点来自模板、调整了 2 件'],
-    ['.k-pprev', 0, '方案预览：5 Step（已反映修正 1・2 的目安）+ 人物类型 chip'],
-    ['.k-openplan', 0, '「プランを開く」→ ⑦ プラン概要（スコア 0）'],
+  AP('② 背景確認（2/2 · チームの空白・目的の階段）', '', { body: bg2.body, overlay: bg2.overlay }, [
+    ['.k-gaps', 0, 'AI 标出的空白：デザイン · ブランド · 営業 · マーケ · 価格設計（豆沙虚线 chip = 「还没有」，不是错误色）；点 chip 可移除；团队卡「?」展开检测依据（必要能力清单 × 两人的能力）'],
+    ['.k-stair .str', 0, '目的の階段：上大下小 4 级、逐级缩进成阶梯；4 级「大きめ · 10年単位」/ 1 级「小さめ · 数か月」'],
+    ['.k-st2', 0, '2 级标「最初に書いた目標」，让用户看见自己原话在哪一级'],
+    ['.k-st3', 0, '3 级标「いちばん近い？」并已选中（深紫编号 + 浅紫底）；用户点任一级即改选，单选'],
+    ['.k-staisay', 0, 'AI 一句话说明为什么建议 3 级；「?」展开依据（目标文「落地」/ やりたいこと / 两人长期做 / 空白里有ブランド）'],
+    ['.k-addmem', 0, '虚线幽灵行「メンバーを追加」：业务委托・顾问也算，加了人空白会重算'],
   ]),
 ]);
-h += WB('3 問 · Web（iOrbit 主区）', '', { nav: 1, body: chatWeb('q'), rail: draftRail('q') }, [
-  ['.k-qcard', 0, 'Web 三问并排三列，一次答完；题库编号与「?」选题理由同 App'],
-  ['.k-qsend', 0, '「まとめて回答する」→ 判断出现在对话里，同时右栏生成下书き'],
-  ['.rail .card', 0, '右栏「プランの下書き」：答题前为骨架，说明「题目来自题库，相似目标问相似问题」'],
-]);
-h += WB('修正 1 回後 · Web', '', { nav: 1, body: chatWeb('r1'), rail: draftRail('r1') }, [
-  ['.k-wupd1', 0, '更新卡同 App：差分 + 变わらない点 + 修正あと 2 回 + 確定'],
-  ['.k-whint', 0, '输入框上方常驻写法提示与示例，剩余次数 chip 同步'],
-  ['.k-wdraft', 0, '右栏下书き实时更新，本轮改到的目安用浅紫底标出；底部「この内容で確定」'],
-]);
-h += WB('確定後 · Web', '', { nav: 1, body: chatWeb('done'), rail: draftRail('done') }, [
-  ['.k-wokplan', 0, '成功卡 + 元に戻す；右栏下书き变「確定済み」，就是プラン本身'],
-  ['.k-wopen', 0, '「プランを開く」→ プラン概要（Web）'],
+h += WB('② 背景確認 · Web（一屏 + 右栏「わかったこと」）', '', { nav: 1, body: bgWeb(), rail: knownRail('bg') }, [
+  ['.k-wbg1', 0, '左列：わたし / やりたいこと / 体制 + 团队卡（与 App 同组件）'],
+  ['.k-wstair', 0, '右列：目的の階段 4 级（上大下小，缩进成阶梯），选中 3 级'],
+  ['.k-known', 0, '右栏「わかったこと」实时摘要：用户每改一项这里同步，目的一行用浅紫底标出「刚确认」'],
+  ['.k-wbgnext', 0, '「この背景で質問へ」→ ③ 5 問（同一对话内往下追加）'],
 ]);
 
-/* ---- 2 spec ---- */
-h += sec('2 · 规范板：题库与选题规则 · 人物类型配点模板', '非画框。3 问不是 AI 随意编：按目标类型的标准题库（6–8 题）选「最缺的 3 题」；人物类型与配点按目标模板默认，AI 只具体化名称并小幅调整');
-h += specBank();
+/* ---- 2 ---- */
+h += sec('2 · ≤5 問 → 確定した前提', '按背景缺口从题库「上市・収益化」挑 5 问（R1 現在地 · R2 払い手 · R3 ブランドの一言 · R7 足りない力 · R6 使える時間），每题标题库编号，可一次全答；回答后生成「確定した前提」摘要卡（每行标出处，可点改）');
+const q1 = qApp('q'), q2 = qApp('prem');
+h += boards([
+  AP('③ 5 問（まとめて回答）', '', { body: q1.body, overlay: q1.overlay }, [
+    ['.k-qwhy', 0, '「?」展开选题理由：题库 8 问里选「背景也不知道 × 最影响分岔」的 5 问；R4 价格放到 Step 里验证、R5 竞品由业界现状补'],
+    ['.k-q3 .qid', 0, '每题右上标题库编号（R3 ブランドの一言），同类目标同背景 → 同样的问题、同样的顺序'],
+    ['.k-q3', 0, '选项 chip（单选题选一个；R7 可多选）+ 每题一行自由入力（灰字 = 可留空）'],
+    ['.composer', 0, '卡底「まとめて回答する（5問）」一次提交（滚到卡底）；也可以直接在输入框用文字一次答完；空着的题按推测处理并在依据里写「推測」'],
+  ]),
+  AP('③ 確定した前提', '', { body: q2.body, overlay: q2.overlay }, [
+    ['.k-prem .src', 0, '每行右侧小签标出处（背景 / Q1–Q5）；上方 5 问回答已压成一条用户消息'],
+    ['.k-prem', 0, '「確定した前提」卡：7 行（目的 / チーム 来自背景，现在地… 来自 Q1–Q5），右侧小签标出处'],
+    ['.k-prem5', 0, '点任一行 → 就地编辑（下拉同原题选项 + 自由入力）；改前提会让初版重做，但不计 AI 修正次数'],
+    ['.k-premgo', 0, '「この前提で初版をつくる」→ ④ AI 初版；下方写明「初版は回数に含みません」'],
+  ]),
+]);
+h += WB('③ 5 問 · Web', '', { nav: 1, body: qWeb(), rail: knownRail('q') }, [
+  ['.k-wq', 0, 'Web 5 问三列网格一次答完，最后一格放「まとめて回答する」与推测说明'],
+  ['.k-known', 0, '右栏「わかったこと」随作答实时追加前提（浅紫 = 本轮新增），提交后整理成「確定した前提」卡'],
+]);
 
 /* ---- 3 ---- */
-h += sec('3 · プラン概要', '视觉与 v2 同构（大分数 + 构成条 + Step 竖排）；新增：Step 的「完了の目安」与人物类型 chip、人物类型卡「役割×状況」一文 + 三格迷你信息、配点模板说明。计分口径不变（无成果ボーナス）');
+h += sec('3 · AI 初版（高度プロンプト + 業界の現状）', '初版就是完整方案：見立て + 進め方の結論 + Step 5 + 人物类型（配点来自模板，AI 调整 2 处）+ 折叠区「この案で参考にした業界の現状」4 条（ID · 版 · 日付 · 出典）。「AI 修正 あと 3 回」固定在输入框上方');
+const f1 = firstApp(1), f2 = firstApp(2), f3 = firstApp(3);
 h += boards([
-  AP('⑦ プラン概要（上）', 'few', { body: planApp('few'), tab: 3 }, [
-    ['.k-hero .big', 0, 'スコア 0 起步（count-up），「満点 100 · 上限なし」常驻；构成条按 6 类型 + イベント 的配点分段'],
-    ['.k-diag', 0, '「確定した判断」摘要卡，「?」展开依据（前提 3 问 + 修正 3 回）；「iOrbit の会話を見る」→ 回到那段对话'],
-    ['.k-today', 0, '今日 +5 のチャンス：从人脉挑最容易加分的一件事（小林さん · 推薦度 92），「面談を提案」→ ⑨ 弹层'],
-    ['.k-mey1', 0, '每个 Step 的「完了の目安」写成可数的状态（「主催者が 3人」），已反映对话中的修正'],
-    ['.k-step1 .chips', 0, 'Step 下的人物类型 chip（タイプ字母 + 短名），点 chip → 该类型详情（⑧ / ⑪）'],
+  AP('④ AI 初版（見立て・結論）', '', { body: f1.body, overlay: f1.overlay }, [
+    ['.k-premmini', 0, '前提卡收成一行 chip 摘要，「すべて見る」展开'],
+    ['.k-fwhy', 0, '「?」展开初版依据：确定的前提 7 件 + 引用的业界现状 + 「上市・収益化」高度提示词 v4（版本可见）'],
+    ['.k-mitate', 0, '見立て：技术强 · 缺一句话 / 销路 / 设计品牌；文中 ① ② 对应下方业界现状条目编号'],
+    ['.k-ketsu', 0, '進め方の結論（浅紫块）+ 主催者 → 参加者 → Pro 三格图'],
+    ['.k-rvn', 0, '显眼的「AI 修正 あと 3 回」：固定在输入框上方，大号数字；旁边提示「一度にまとめて書く」+ 写法示例'],
   ]),
-  AP('⑦ プラン概要（人物タイプ · スクロール後）', 'few', { body: planApp('few', true), tab: 3 }, [
-    ['.k-tplwhy', 0, '标题下一行「配点は『上市・収益化』テンプレートから · 2件を調整」，「?」展开调整理由（D −5、F +5）'],
-    ['.k-tcA .tname', 0, '名称 = 「役割 × 状況」的一句话（不截断），上方小字「タイプ A · Step 1・2」'],
-    ['.k-tcA .m3', 0, '三格迷你信息：人脈の候補 n 人 / 会える活動 n / 紹介ルート n；人脉里没有时第一格变灰「人脈にいない」'],
-    ['.k-tcC', 0, '点卡 → 人物类型详情：有候补 → ⑧（A 型），没有 → ⑪（C 型）'],
+  AP('④ AI 初版（Step・人物タイプ · スクロール後）', '', { body: f2.body, overlay: f2.overlay }, [
+    ['.k-fsteps', 0, 'Step 5 个：每步「目安」+ 对应人物类型字母 chip（不排期）'],
+    ['.k-ftypes', 0, '人物类型 6 行（固定短名 + 役割×状況一文 + 配点 · 人数）；「?」展开模板调整理由（ブランド +5 / ヘビーユーザー −5）'],
   ]),
-  AP('⑦ プラン概要（進行中 38）', 'many', { body: planApp('many'), tab: 3 }, [
-    ['.k-hero .big', 0, 'スコア 38 = A 3 人 15 + D 1 人 5 + F 4 人 8 + イベント 2 回 10；右侧「あと 62 で満点」'],
-    ['.k-sbar', 0, '构成条各段按话出来的分从左生长 1.2s；与 v2 同口径（超额半分 / 斜纹跳过照旧）'],
-    ['.k-mey1 .chip', 0, 'Step 的目安显示进度（2 / 3人）；达到后 Step 编号变绿勾，由用户确认'],
-    ['.k-gsw', 0, '标题下目标名「▾」→ 目标切替（资金调达 / 收益化 两个目标并行，Free 上限 2 个）'],
+  AP('④ AI 初版（業界の現状を開いた状態）', '', { body: f3.body, overlay: f3.overlay }, [
+    ['.k-lib .acc-h', 0, '折叠区「この案で参考にした業界の現状 4件」默认收起，点开（本图为展开态，0.35s 下滑）'],
+    ['.k-lib .lib', 0, '每条：分野 + 要点 + ID / 版·日付 / 出典 小签；底部写明 AI 只引用 Orbit 管理的这本资料库'],
+    ['.k-manual', 0, '卡底：剩余次数 chip +「初版は回数に含みません」/「手動で編集」→ ⑥ /「この内容で確定」→ ⑦'],
   ]),
 ]);
-h += WB('プラン概要 · Web', 'few', { nav: 4, body: planWeb('few'), rail: planRail('few') }, [
-  ['.k-whero', 0, '顶部横向：大分数 + 带类型名的构成条（A 主催者 … イベント）+ 图例'],
-  ['.k-wmey1', 0, 'Step 列（4 列宽）：每步 完了の目安 + 人物类型 chip；顺序是目安、不排期'],
-  ['.k-wtplwhy', 0, '人物类型 2 列网格（8 列宽）；标题右侧写配点来源模板，「?」展开调整理由'],
-  ['.k-wtypes .tcard:last-child', 0, '虚线占位卡：增删类型走「方案を見直す」变更案（逐条 ✓/✕，④ A3 同款）'],
-  ['.k-wdiag', 0, '右栏：次の一手 + 確定した判断（「?」展开依据）+ 不保证达成的说明'],
-]);
-h += WB('プラン概要 · Web（進行中 38）', 'many', { nav: 4, body: planWeb('many'), rail: planRail('many') }, [
-  ['.k-wsbar', 0, '构成条：A 15/25、D 5/10、F 8/10、イベント 10/15 的实色从左生长'],
-  ['.k-wtoday', 0, '次の一手：88 分的ミートアップ（A 约 25 名），「?」依据引用 5 项基准中的「会える人の適合」'],
+h += WB('④ AI 初版 · Web', '', { nav: 1, body: firstWeb(), rail: reviseRail(3) }, [
+  ['.k-wlib', 0, '方案卡左半：見立て + 結論 + 业界现状（Web 默认展开，宽屏放得下）'],
+  ['.k-wtypes0', 0, '右半：Step 与人物类型配点'],
+  ['.k-wrev', 0, '右栏「AI 修正 あと 3 回」：大数字 + 3 段进度 + 写法提示 + 输入框'],
+  ['.k-wmanual', 0, '右栏底部「手動で編集」/「この内容で確定」，与 App 同语义'],
 ]);
 
 /* ---- 4 ---- */
-h += sec('4 · 人物タイプ A 詳細（人脈にいる）', '交流会の主催者：なぜ / 聞くこと 3 問 / 話せたの判定 / 見分け方 / 候補 3 人（推薦度・理由・切り出し方・依据）/ 紹介ルート；多选「面談を提案」= Orbit 用户发结构化请求、非用户只生成草稿');
+h += sec('4 · AI 修正（最多 3 回）', '每轮只列差分（旧文删除线 + 新文浅紫）+「変わらない点」；剩余次数实时减少；第 3 轮 AI 判断不改也扣一次（已定稿）；用完后只剩「手動で編集」「この内容で確定」');
+const r1 = revApp('r1'), r3 = revApp('r3');
 h += boards([
-  AP('⑧ タイプ A（上）', 'few', { body: typeAApp(1), overlay: aFoot }, [
-    ['.k-ahero .tname', 0, '头卡：完整的「役割×状況」一句话 + 0 / 25 点 · 0 / 5 人 + 三格迷你信息；标题栏只放短名「交流会の主催者」'],
-    ['.k-awhy', 0, 'なぜこの人か：与目标的关系一段话，「?」展开依据（确定的判断 + 模板「最初に払う人」枠）'],
-    ['.k-aq', 0, '聞くこと 3 问：可直接用的问题文，「コピー」；面谈记录模板会预填这 3 问'],
+  AP('⑤ AI 修正 1 回後（差分）', '', { body: r1.body, overlay: r1.overlay }, [
+    ['.k-say1', 0, '用户第 1 轮修正：现状 + 想法一次写完（营业两人做 · 伙伴优先设计和品牌 · 主催者先免费 1 次）'],
+    ['.k-diff', 0, '更新卡只列差分：「変更」小签 + 旧文删除线 + 新文浅紫底（Step 2、Step 3 的目安）'],
+    ['.k-same', 0, '「変わらない点」一行，避免用户以为全部重算'],
+    ['.k-rvn', 0, '修正栏数字 3 → 2（数字 count-down 动效），提示与示例保持'],
   ]),
-  AP('⑧ タイプ A（判定・見分け方 · スクロール後）', 'few', { body: typeAApp('mid'), overlay: aFoot }, [
-    ['.k-arule', 0, '話せたの判定：3 问中 2 问以上 = +5；下两行是既定口径（超额半分 +2.5、无名字自报只算到目标人数）'],
-    ['.k-asig', 0, '見分け方：役職 / 会社名 / 主催履历 / 活动 tag 四类信号，用灰 chip（不是语义色）'],
-  ]),
-  AP('⑧ タイプ A（候補 · スクロール後）', 'few', { body: typeAApp(2), overlay: aFoot }, [
-    ['.k-cand0 .rec', 0, '推薦度用数字（92 / 81 / 68）按降序排列，不画置信度条（去 AI 感）'],
-    ['.k-cand0 .cdet', 0, '每人两行：理由 + 「切り出し方」（附最终接点）'],
-    ['.k-cand0 .why', 0, '「?」展开推荐依据（名刺役職 · Peatix 主催履历 · 面谈记录）'],
-    ['.k-cand1 .cbx', 0, '方形多选；中島 玲 是 Orbit 用户（薄荷 chip），提案时可发结构化请求'],
-    ['.k-aroute', 0, '紹介ルート：小林さん → 主催者 4 名（虚线头像 = 不在你人脉里，按共同参加的活动推测）；依頼文 = 草稿'],
-    ['.k-apropose', 0, '底部固定栏「2人を選択中 · すでに話した · 面談を提案」→ ⑨'],
-  ]),
-  AP('⑨ 面談を提案（2人）', '', { body: typeAApp(2), overlay: aFoot + proposeSheet }, [
-    ['.k-pnon .draftbox', 0, 'Orbit 未利用（小林）：只生成依頼文草稿（按切り出し方写），按钮只有 コピー / メールアプリで開く / 直す'],
-    ['.k-slots', 0, 'Orbit 利用中（中島）：结构化请求，3 个日历空闲时段，不附自由文本（定稿口径，对标 Calendly / TimeRex）'],
-    ['.k-pgo', 0, '用户点「中島さんに提案する」才发出，可撤回'],
-    ['.k-pnote', 0, '底部常驻「送信はしません · 送信はあなたが行います」'],
+  AP('⑤ AI 修正を使い切った', '', { body: r3.body, overlay: r3.overlay }, [
+    ['.k-nochg', 0, '第 3 轮 AI 判断「今回は変更しません」并说明理由——不改也计一次（定稿）'],
+    ['.k-hist', 0, '三轮修正的历史 chip，点 chip 跳回对应消息'],
+    ['.k-self', 0, '用完后只剩两条路：「手動で編集」→ ⑥（1 回）/「この内容で確定」→ ⑦'],
+    ['.k-rev0', 0, '修正栏变灰「あと 0 回」+「変更がなかった回も 1回と数えます」；输入框禁用'],
   ]),
 ]);
-h += WB('タイプ A 詳細 · Web', 'few', { nav: 4, body: typeAWeb(), rail: typeRail('A') }, [
-  ['.k-wahero', 0, '横向头卡：一句话名称 + 三格迷你信息 + 分数进度，一行读完'],
-  ['.k-wajudge', 0, '左 5 列：なぜ / 聞くこと / 判定（既定口径）/ 見分け方'],
-  ['.k-wawhy', 0, '右 7 列候补表：推薦度 · 名前 · 理由+切り出し方；第 1 行依据展开示意'],
-  ['.k-waroute', 0, '紹介ルート贴在表格下方（push 到底，与左卡等高）'],
-  ['.k-wapropose', 0, '「面談を提案」→ 右侧抽屉（下图）'],
-]);
-h += WB('面談を提案 · Web 抽屉', '', { nav: 4, body: typeAWeb(), rail: typeRail('A'), ov: wAProposeDrawer }, [
-  ['.k-wpdrawer', 0, '抽屉 520：小林 = 草稿（コピー / メールアプリで開く / 直す，写明不代发）；中島 = 3 个候选时段的结构化请求'],
+h += WB('⑤ AI 修正 1 回後 · Web', '', { nav: 1, body: revWeb(), rail: reviseRail(2, { draft: draftMini() }) }, [
+  ['.k-wupd1', 0, '对话里的更新卡：差分 + 変わらない点'],
+  ['.k-wdraft', 0, '右栏「方案の下書き」同步更新，本轮改到的目安用浅紫底标出'],
+  ['.k-wrev', 0, '剩余次数 2 / 3（进度条第 3 段变灰）'],
 ]);
 
 /* ---- 5 ---- */
-h += sec('5 · 人物タイプ C 詳細（人脈にいない）', 'CRM 経験者：人物像 / 開口一番 / 会える活動 3（分数 + 推定人数，展开 5 项分解）/ 紹介ルート（伊藤・渡辺 经由，依頼文 = 草稿）');
+h += sec('5 · 手動編集（1 回 · 新画面）', 'Step 改名 / 拖动排序 / 增删；人物类型的目标人数与配点（配点 5 点刻み，改一项后从配点最高的类型按 5 点扣/加、总分保持 100、显示调整前后；每人分值为整数，端数由最后 1 人调整）；可删除人物类型；底部「このプランで始める」。保存后 AI 不再自动改写，只能用户主动「方案を見直す」');
+const e1 = editApp(1), e2 = editApp(2), e3 = editApp(3);
 h += boards([
-  AP('⑪ タイプ C（上）', '', { body: typeCApp(1) }, [
-    ['.k-cnone', 0, '顶部浅灰条直说「人脈にまだいません」，并告诉用户这页给了什么'],
-    ['.k-cpersona', 0, '人物像：年代・経歴 / いまの立場 / 関心ごと 三行，「?」展开依据'],
-    ['.k-copen', 0, '開口一番：一句可直接说的问题（灰紫竖线引用样式）+ コピー；下方写明这类人的「話せた」判定'],
+  AP('⑥ 手動編集（ステップ）', '', { body: e1.body, overlay: e1.overlay }, [
+    ['.k-efm', 0, '进度条走到「手動編集」；顶栏副标题「1回だけ · 保存すると確定」，右上「元に戻す」恢复到 AI 方案'],
+    ['.k-rename .ein', 0, '点 Step 名称 → 就地输入框（深紫描边 + 光标），下方灰字保留「元：…」'],
+    ['.k-lift', 0, '长按左侧点阵手柄拖动排序：本图把「ブランドとして広げる」从 5 拖到 4（卡片抬起 + 阴影，右侧「5 → 4」）'],
+    ['.k-esteps .del', 0, '每行 × 删除 Step（删后 Step 下的人物类型 chip 保留在其他 Step）'],
+    ['.k-eadd', 0, '虚线「Step を追加」：新 Step 只有名称和目安，人物类型可从已有类型里挑'],
+    ['.k-start', 0, '底部固定栏：合計 100 / 100 · 変更 4件 +「このプランで始める」→ ⑦'],
   ]),
-  AP('⑪ タイプ C（会える活動 · 内訳を開いた状態）', '', { body: typeCApp(2) }, [
-    ['.k-cev1 .ring', 0, '活动按固定基准的分数排序（84 / 76 / 58），分数环 ≥70 深紫 / 50–70 中紫 / <50 豆沙'],
-    ['.k-cevtg', 0, '「内訳 ›」点开 → 原地展开 5 项分解（本图第 1 个为展开态，0.35s 下滑）'],
-    ['.k-cev5', 0, '5 项：適合 38/45 · 確度 12/15 · 時間とコスト 16/20 · つながり 8/10 · 形式 10/10；每项下一行是 AI 填的事实（依据）'],
+  AP('⑥ 手動編集（人物タイプと配点 · スクロール後）', '', { body: e2.body, overlay: e2.overlay }, [
+    ['.k-sum', 0, '合计条：始终 100 / 100；条按各类型配点分段，正在改的类型深色；配点输入只接受 5 的倍数'],
+    ['.k-efoc .ptin', 0, '把 E プロダクトデザイナー 的配点 10 → 15（输入框获焦，浅紫底行）'],
+    ['.k-ea .ba', 0, '差分 5 点从配点最高的 A 扣：「25 → 20」（删除线旧值 + 新值，0.3s 数字滚动）；其余类型不变'],
+    ['.k-ed .stp', 0, '目标人数步进器：D 3 → 2（数字变深紫）；1 人分 = 配点 ÷ 人数取整（15 ÷ 2 = 7，最后 1 人 8），人数 × 单价之和恰好 = 配点'],
+    ['.k-prop', 0, '一行说明本次怎么调的：配点 5 点刻み，差分从配点最高的类型扣（同分按模板顺序）'],
+    ['.k-start', 0, '「このプランで始める」= 保存并确定；之后 AI 不再自动改写，要改走「方案を見直す」→ 变更案逐条 ✓/✕（页底有同样说明）'],
   ]),
-  AP('⑪ タイプ C（紹介ルート · スクロール後）', '', { body: typeCApp(3) }, [
-    ['.k-croute1', 0, '紹介ルート：SaaS 关系者 41 名中与 Sansan 出身者有连接的 2 人，写明怎么知道的'],
-    ['.k-cdraft', 0, '「依頼文」→ ⑫ 依頼文草稿弹层'],
-    ['.k-cskip', 0, '最底部 ghost「この分野はもう詳しい」→ 跳过（记满分斜纹，可撤回，④ A2 ③ 同款）'],
-  ]),
-  AP('⑫ 紹介の依頼文（下書き）', '', { body: typeCApp(3), overlay: cDraftSheet }, [
-    ['.k-cdbox', 0, '依頼文草稿：说明目的、要找的人、30 分钟、「ご負担のない範囲で」；下方语气 chip 可一键改写'],
-    ['.k-cmail', 0, '只给「コピー」「メールアプリで開く」，绝无「送信」；底部常驻「送信はしません · 送信はあなたが行います」'],
+  AP('⑥ 手動編集（タイプを外す · 確認）', '', { body: e3.body, overlay: e3.overlay }, [
+    ['.k-delprev', 0, '点类型行 × → 底部弹层：C 的 15 点按 5 点 × 3 从配点高的类型依次加（A 20→25、B 20→25、D 15→20），逐行显示前→后，合计仍 100'],
+    ['.k-delgo', 0, '「外す」是破坏性操作（豆沙深色），旁边「キャンセル」；外掉后候补/活动/介绍路线一并隐藏，可在「方案を見直す」恢复。本例选择キャンセル'],
   ]),
 ]);
-h += WB('タイプ C 詳細 · Web', '', { nav: 4, body: typeCWeb(), rail: typeRail('C') }, [
-  ['.k-wcopen', 0, '左 5 列：人物像 + 開口一番（引用样式）+ 紹介ルート（每人一个「依頼文の下書き」）'],
-  ['.k-wcev5', 0, '右 7 列活动表：选中行（第 1 行）下方展开 5 项分解与事实'],
+h += WB('⑥ 手動編集 · Web', '', { nav: 4, body: editWeb(), rail: editRail }, [
+  ['.k-westeps', 0, '左 5 列：Step 列表（拖动排序 · 点击改名 · × 删除 · 追加）+ 保存后不再自动改写的说明'],
+  ['.k-wetypes .etab', 0, '右 7 列配点表：人数步进器 / 配点输入 / 「AI の方案 → 今」前后对比；E 行为正在编辑'],
+  ['.k-wchg', 0, '右栏「変更点」4 条（名称 · 顺序 · 配点 · 人数），每条可点回到对应行'],
+  ['.k-wstart', 0, '「このプランで始める」→ プラン概要；手动编辑只有这 1 次'],
 ]);
 
 /* ---- 6 ---- */
-h += sec('6 · イベントスコアの基準（规范板）+ 同じイベント・違う目標', '固定 5 项：会える人の適合 45 / 推定の確度 15 / 時間とコスト 20 / 既存のつながり 10 / 交流の形式 10。AI 只填事实不打分；目标不同只影响第一项（CFO Night：資金調達 74 / 収益化 41，差全在「適合」36 → 3）');
-h += specEvent();
-h += `<div style="height:28px"></div>` + boards([
-  AP('イベント詳細 · 目標＝資金調達', '', { body: cfoApp('fund') }, [
-    ['.k-cfoseg', 0, '分段按钮切换「用哪个目标看」（只在追踪 2 个目标时出现），默认 = 当前プラン的目标'],
-    ['.k-cfo5 .e5r', 0, '5 项分解，第一项浅紫底并在事实行前标「目標で変わる項目」：CFO 经验者约 6 名、VC 约 2 名 → 適合 36 / 45'],
+h += sec('6 · 定稿后的プラン概要', '视觉与 v2.1 同构（大分数 + 构成条 + Step 竖排 + 人物类型卡）。内容 = 修正 1・2 + 手動編集后的方案；Step 完成由用户确认（虚线确认卡）');
+h += boards([
+  AP('⑦ プラン概要（上）', 'few', { body: planApp('few'), tab: 3 }, [
+    ['.k-hero .big', 0, 'スコア 0 起步（count-up），构成条按 6 段（5 类型 + イベント）配点分段'],
+    ['.k-diag', 0, '「確定した方案」卡 + 「手動編集済み」chip；「?」展开依据（前提 · 业界现状 4 件 · 修正 3 回 · 手动编辑 1 回）'],
+    ['.k-today', 0, '今日のチャンス：小林さん（推薦度 92），A 1 人 4 点（配点 20 ÷ 5 人）'],
+    ['.k-mey1', 0, '每个 Step 的「完了の目安」写成可数的状态，已反映修正与手动编辑（Step 3 改名、Step 4/5 互换）；目安下方是人物类型 chip（字母 + 固定短名），点 chip → ⑧ 该类型详情'],
   ]),
-  AP('イベント詳細 · 目標＝収益化', '', { body: cfoApp('rev') }, [
-    ['.k-cfoscore .ring', 0, '切换后分数环从 74 回落到 41（环与数字动画 1.1s），chip 变「見送り推奨」（豆沙）'],
-    ['.k-cfo5 .e5r', 0, '只有第一项变（36 → 3：收益化的 A–F 类型只来约 1 名）；其余 4 项 12 / 14 / 6 / 6 不变'],
-    ['.k-cfoalt', 0, '低分时给替代：这个目标下更合适的活动（ミートアップ 88）→ 活动详情'],
+  AP('⑦ プラン概要（人物タイプ · スクロール後）', 'few', { body: planApp('few', true), tab: 3 }, [
+    ['.k-tplwhy', 0, '配点来源一行：模板 → AI 调整 2 件 → 手动编辑；「?」展开全部理由'],
+    ['.k-tcA .tname', 0, '名称 = 「役割 × 状況」一句话（不截断），上方小字「タイプ A · 交流会の主催者 · Step 1・2・4」'],
+    ['.k-tcB .m3', 0, '三格迷你信息：人脉里没有时第一格变灰「人脈にいない」，但会える活動 / 紹介ルート 仍给出下一步'],
+    ['.k-tcA .tfoot', 0, '点卡 → 详情：有候补（A、D）→ 候补列表；没有（B、C、E）→ 人物像 + 活动 + 介绍路线'],
+  ]),
+  AP('⑦ プラン概要（進行中 38）', 'many', { body: planApp('many'), tab: 3 }, [
+    ['.k-hero .big', 0, 'スコア 38 = A 2 人 8 + B 1 人 10 + D 2 人 15（7 + 最后 1 人 8，已达目标）+ イベント 1 回 5；全部整数'],
+    ['.k-sbar', 0, '构成条各段按得分从左生长 1.2s；口径不变（超额半分 / 斜纹跳过）'],
+    ['.k-today', 0, '今日のチャンス换成活动：B 类型约 8 名来的勉強会（参加 +5 · 话到 B +10）'],
+  ]),
+  AP('⑦ プラン概要（進行中 38 · ステップ）', 'many', { body: planApp('many', 'steps'), tab: 3 }, [
+    ['.k-mey1 .chip', 0, 'Step 目安显示进度（2 / 3人）；进度 chip 与目安同一行'],
+    ['.k-stepok', 0, 'Step 3 目安可能已达成 → 虚线确认卡「森田さん（ブランド・PR）と継続の協力は決まりましたか？」；只有用户点「完了にする」才算完成（定稿），点「まだ」卡片收起'],
   ]),
 ]);
-h += WB('イベント詳細 · Web（目標ごとのスコア）', '', { nav: 3, body: cfoWeb(), rail: cfoRail }, [
-  ['.k-wcfo', 0, '两个目标并排，各自 5 项分解；第一项高亮，收益化一侧其余 4 项淡显，强调「只有这一项不同」'],
-  ['.k-wcfowhy', 0, '「なぜ 74 と 41 に分かれるのか」：適合 36 → 3 / 其余 4 项合计 38 相同'],
+h += WB('⑦ プラン概要 · Web', 'few', { nav: 4, body: planWeb('few'), rail: planRail('few') }, [
+  ['.k-whero', 0, '顶部横向：大分数 + 带类型短名的构成条 + 图例'],
+  ['.k-wmey1', 0, 'Step 列（4 列宽）：每步完了の目安 + 人物类型 chip；顺序是目安、不排期'],
+  ['.k-wtplwhy', 0, '人物类型 2 列网格（8 列宽，3 行等高）；标题右侧写配点来源，「?」展开理由'],
+  ['.k-wdiag', 0, '右栏：今日のチャンス + 確定した方案（手動編集済み）+ 不保证达成的说明'],
+]);
+h += WB('⑦ プラン概要 · Web（進行中 38）', 'many', { nav: 4, body: planWeb('many'), rail: planRail('many') }, [
+  ['.k-wsbar', 0, '构成条：A 8/20、B 10/20、D 15/15（满）、イベント 5/15 的实色从左生长；左列 Step 3 下方有完成确认卡（同 App）'],
+  ['.k-wtoday', 0, '次の一手：82 分的ブランドづくり勉強会（B 约 8 名），「?」依据引用 5 项基准中的「会える人の適合」'],
 ]);
 
 /* ---- 7 ---- */
-h += sec('7 · 現行 v2 vs 具体化 v2.1', '非画框：左旧人物类型卡（职称）· 右新卡（役割×状況）；下表逐项列出差分。计分口径不变');
-h += `<div class="vs"><div class="card"><h3><span class="chip">現行 v2</span>職称で書く</h3><div class="lbl" style="margin-bottom:14px">「誰と話すか」は肩書きだけ。どこにいるか・何を聞くかは詳細を開くまでわからない</div>${oldCard}
-    <div class="lbl" style="margin-top:14px;line-height:1.7">課題：「CFO 経験者」は人によって思い浮かべる像が違い、名刺の肩書きと一致しないことが多い。人脈にいない時に次の一手が見えない。</div></div>
-  <div class="card"><h3><span class="chip lav">具体化 v2.1</span>役割 × 状況で書く</h3><div class="lbl" style="margin-bottom:14px">カードだけで「どんな人 · 人脈に何人 · どこで会える · 誰経由で届く」がわかる</div>${tcard('A', 's0')}<div style="margin-top:8px">${tcard('C', 's0')}</div></div></div>
-  <table class="vtab"><thead><tr><th style="width:150px">項目</th><th>現行 v2</th><th>具体化 v2.1</th></tr></thead><tbody>${VSROWS.map(([a, b, c]) => `<tr><td>${a}</td><td class="old">${b}</td><td class="new">${c}</td></tr>`).join('')}</tbody></table>`;
+h += sec('7 · 人物タイプ詳細（A 人脈にいる · D 人脈にいる · B 人脈にいない）', '字段同 v2.1：なぜ / 聞くこと 3 問 / 話せたの判定 / 見分け方 / 候補（推薦度 · 理由 · 切り出し方 · 依据）/ 紹介ルート / 会える活動（5 项分解）；所有信件 = 草稿');
+h += boards([
+  AP('⑧ タイプ A 交流会の主催者（上）', 'few', { body: typeAApp(1) }, [
+    ['.k-ahero .tname', 0, '头卡：完整的「役割×状況」一句话 + 0 / 20 点 · 0 / 5 人 · 1 人 4 点 + 三格迷你信息；标题栏用固定短名'],
+    ['.k-awhy', 0, 'なぜこの人か：与「品牌化」目的的关系（第一个付费者 + 品牌的第一个案例），「?」展开依据'],
+    ['.k-aq', 0, '聞くこと 3 问：第 3 问直接验证 Step 1 的一句话「イベントの後を変える AI」；「コピー」'],
+    ['.k-ajudge .k-rule0', 0, '話せたの判定：3 问中 2 问以上 = +4；超额半分 +2；无名字自报只算到 5 人（既定口径）'],
+  ]),
+  AP('⑧ タイプ A（候補・紹介ルート · スクロール後）', 'few', { body: typeAApp(2), overlay: aFoot }, [
+    ['.k-cand0 .rec', 0, '候补 2 人：小林 誠 92 / 中島 玲 81，推薦度用数字降序，不画置信度条'],
+    ['.k-cand0 .why', 0, '「?」展开推荐依据（名刺役職 · Peatix 主催履历 · 面谈记录 · 共同活动）'],
+    ['.k-cand1 .cbx', 0, '方形多选；中島 玲是 Orbit 用户（薄荷 chip），提案时可发结构化请求（3 个时段，不附自由文本）'],
+    ['.k-aroute', 0, '紹介ルート：小林さん → 主催者 4 名（虚线头像 = 不在你人脉里）；依頼文 = 草稿'],
+    ['.k-apropose', 0, '底部固定栏「2人を選択中 · すでに話した · 面談を提案」；未用 Orbit 的人只生成草稿（送信はあなたが行います）'],
+  ]),
+  AP('⑧ タイプ D エンジニア出身の起業家', 'few', { body: typeDApp(1), overlay: dFoot }, [
+    ['.k-dhero .tname', 0, 'D：「エンジニア出身で、自分で事業を立ち上げた創业者」· 配点 15 · 目標 2 人（手动编辑后 1 人 7 点，最后 1 人 8 点）'],
+    ['.k-dcand .chip', 0, '候补卡标题旁 chip「同じ壁を越えた人」= 推荐理由的一句话版'],
+    ['.k-cand0 .cdet', 0, '渡辺 翔（Nexa Robotics 代表 · 制御エンジニア出身 · 同時期に調達）推薦度 84：理由 + 切り出し方'],
+    ['.k-dwhy', 0, 'なぜこの人か：你和他同样「作れるが、売れない」，他先越过了这堵墙'],
+    ['.k-dq', 0, '聞くこと 3 问：最初的付费客户 / 何时怎样找到营业与设计伙伴 / 品牌最早该做什么'],
+  ]),
+  AP('⑧ タイプ D（判定・見分け方・紹介ルート · スクロール後）', 'few', { body: typeDApp(2), overlay: dFoot }, [
+    ['.k-djudge .k-rule0', 0, '判定 +7、最后 1 人 +8（15 ÷ 2 的端数由最后 1 人补齐）；超额半分 +3（切り捨て）'],
+    ['.k-dsig', 0, '見分け方：経歴「エンジニア · 研究職 → 創業」/ 役職 / 会社（設立 3〜10 年）/ 活动 tag'],
+    ['.k-droute', 0, '紹介ルート：渡辺さん → 同一投资人支援的技术出身创业者 3 名；依頼文 = 草稿'],
+  ]),
+  AP('⑧ タイプ B ブランドづくりの経験者（人脈にいない）', '', { body: typeBApp(1) }, [
+    ['.k-bnone', 0, '顶部浅灰条直说「人脈にまだいません」，并告诉用户这页给了什么'],
+    ['.k-bhero', 0, '头卡：0→1 做过 SaaS / D2C 品牌的品牌・PR 负责人 · 配点 20（模板 15 + AI 调整 +5）· 1 人 10 点'],
+    ['.k-bpersona', 0, '人物像：年代・経歴 / いまの立場 / 関心ごと，「?」展开依据（模板枠 + 背景空白「ブランド」）'],
+    ['.k-bopen', 0, '開口一番：「最初の一言はどうやって決めましたか？」+ コピー；下方写明「話せた」判定 +10'],
+  ]),
+  AP('⑧ タイプ B（会える活動 · 内訳を開いた状態）', '', { body: typeBApp(2) }, [
+    ['.k-bev1 .ring', 0, '活动按固定基准分数排序（82 / 74 / 61），环 ≥70 深紫 / 50–69 中紫 / <50 豆沙'],
+    ['.k-bevtg', 0, '「内訳 ›」点开 → 原地展开 5 项分解（本图第 1 个为展开态）'],
+    ['.k-bev5', 0, '5 项：適合 36/45 · 確度 12/15 · 時間とコスト 17/20 · つながり 7/10 · 形式 10/10；每项下一行是 AI 填的事实'],
+  ]),
+  AP('⑧ タイプ B · 紹介の依頼文（下書き）', '', { body: typeBApp(2), overlay: bDraftSheet }, [
+    ['.k-bsheet .av', 0, '从页底「紹介ルート」伊藤 直子さん（取引先の D2C ブランドの PR 責任者と面識）的「依頼文」打开；页底还有「この分野はもう詳しい」= 跳过（斜纹满分，可撤回）'],
+    ['.k-bdbox', 0, '依頼文草稿：目的（品牌化）、要找的人、30 分钟、「ご負担のない範囲で」；语气 chip 一键改写'],
+    ['.k-bmail', 0, '只给「コピー」「メールアプリで開く」，绝无「送信」；底部常驻「送信はしません · 送信はあなたが行います」'],
+  ]),
+]);
+h += WB('⑧ タイプ A 詳細 · Web', 'few', { nav: 4, body: typeAWeb(), rail: typeRail('A') }, [
+  ['.k-wahero', 0, '横向头卡：一句话名称 + 三格迷你信息 + 分数进度'],
+  ['.k-wajudge', 0, '左 5 列：なぜ / 聞くこと / 判定（+4 · 既定口径）/ 見分け方'],
+  ['.k-wawhy', 0, '右 7 列候补表：推薦度 · 名前 · 理由+切り出し方；第 1 行依据展开示意'],
+  ['.k-waroute', 0, '紹介ルート贴在表格下方（push 到底，与左卡等高）'],
+]);
+h += WB('⑧ タイプ B 詳細 · Web', '', { nav: 4, body: typeBWeb(), rail: typeRail('B') }, [
+  ['.k-wbopen', 0, '左 5 列：人物像 + 開口一番 + 紹介ルート（依頼文 = 草稿）'],
+  ['.k-wbev5', 0, '右 7 列活动表：选中行下方展开 5 项分解与事实（固定基准，AI 只填事实）'],
+]);
+
+/* ---- 8 spec ---- */
+h += sec('8 · 规范板（非画框）', '背景確認の項目と目的の階段 · 題庫 6 類と選び方（≤5 問）· 高度プロンプトと業界の現状ライブラリ · 人物タイプ配点テンプレート 6 類（本例の調整理由）· イベントスコアの基準（45/15/20/10/10，不变）');
+h += specBg() + '<div style="height:18px"></div>' + specBank() + '<div style="height:18px"></div>' + specPrompt() + '<div style="height:18px"></div>' + specTpl() + '<div style="height:18px"></div>' + specEvent();
+
+/* ---- 9 vs ---- */
+h += sec('9 · v2.1 → v2.2 の違い', '非画框：左右流程对照 + 逐项差分表。计分口径与活动评分标准不变');
+h += vsBoard();
 
 /* ---- dark ---- */
-h += sec('ダークモード', 'プラン概要 many · タイプ A 詳細 · タイプ C 詳細（App）· プラン概要（Web）');
+h += sec('ダークモード', '背景確認（App）· AI 初版（App）· 手動編集（App）· プラン概要 many（Web）');
 h += boards([
-  ['プラン概要', 'many', phone({ body: planApp('many'), tab: 3, theme: 'dark' })],
-  ['タイプ A 詳細', 'few', phone({ body: typeAApp(1), tab: -1, theme: 'dark', overlay: aFoot })],
-  ['タイプ C 詳細', '', phone({ body: typeCApp(2), tab: -1, theme: 'dark' })],
+  ['② 背景確認（2/2）', '', phone({ body: bg2.body, tab: -1, theme: 'dark', overlay: bg2.overlay })],
+  ['④ AI 初版', '', phone({ body: f3.body, tab: -1, theme: 'dark', overlay: f3.overlay })],
+  ['⑥ 手動編集（配点）', '', phone({ body: e2.body, tab: -1, theme: 'dark', overlay: e2.overlay })],
 ]);
-h += WB('プラン概要 · Web', 'many', { nav: 4, body: planWeb('many'), rail: planRail('many'), theme: 'dark' });
+h += WB('⑦ プラン概要 · Web（進行中 38）', 'many', { nav: 4, body: planWeb('many'), rail: planRail('many'), theme: 'dark' });
 
 document.getElementById('out').innerHTML = h;
 /* 带锚点的画板：把滚动容器滚到锚点（在放针之前；针按内容坐标定位） */
