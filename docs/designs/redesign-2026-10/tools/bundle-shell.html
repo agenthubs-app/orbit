@@ -1,0 +1,81 @@
+<meta charset="utf-8">
+<title>Orbit Redesign 2026-10</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;800&display=swap">
+<style>
+  /* 布局：顶部一条页面切换栏（分组：总览 / 基础 / 补画 ①–⑩），下方整块是当前页面的 iframe */
+  :root {
+    --bg: #F7F5F7; --surface: #FFFFFF; --ink: #2A2230; --ink-2: #5E5466; --ink-3: #8C8294;
+    --line: #ECE7EE; --accent: #6E4A7E; --accent-soft: #EFE6F3; --on-accent: #FFFFFF;
+    --font: "SF Pro Text", "Noto Sans JP", system-ui, -apple-system, "Hiragino Sans", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+    --bg: #17141A; --surface: #221E26; --ink: #F1ECF4; --ink-2: #C3BAC9; --ink-3: #8F8597;
+    --line: #2F2A34; --accent: #C9A6DA; --accent-soft: #352B3C; --on-accent: #1B1620; color-scheme: dark } }
+  :root[data-theme="dark"] {
+    --bg: #17141A; --surface: #221E26; --ink: #F1ECF4; --ink-2: #C3BAC9; --ink-3: #8F8597;
+    --line: #2F2A34; --accent: #C9A6DA; --accent-soft: #352B3C; --on-accent: #1B1620; color-scheme: dark }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font); display: flex; flex-direction: column; }
+  .bar { flex: none; display: flex; align-items: center; gap: 14px; padding: 10px 16px; background: var(--surface); border-bottom: 1px solid var(--line); min-width: 0; }
+  .brand { flex: none; display: flex; flex-direction: column; line-height: 1.25; }
+  .brand b { font-size: 14px; font-weight: 800; letter-spacing: .01em; }
+  .brand small { font-size: 11px; color: var(--ink-3); }
+  .tabs { flex: 1; min-width: 0; display: flex; gap: 4px; overflow-x: auto; scrollbar-width: thin; padding-bottom: 2px; }
+  .grp { flex: none; display: flex; gap: 4px; align-items: center; }
+  .grp + .grp { padding-left: 8px; margin-left: 4px; border-left: 1px solid var(--line); }
+  .grp > span { font-size: 10.5px; font-weight: 700; color: var(--ink-3); letter-spacing: .06em; margin-right: 2px; white-space: nowrap; }
+  .tabs button { flex: none; border: 0; background: transparent; color: var(--ink-2); font: 600 12.5px/1 var(--font); padding: 8px 11px; border-radius: 999px; cursor: pointer; white-space: nowrap; }
+  .tabs button:hover { background: var(--accent-soft); color: var(--ink); }
+  .tabs button.on { background: var(--accent); color: var(--on-accent); }
+  .tabs button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  main { flex: 1; min-height: 0; position: relative; }
+  iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: var(--bg); }
+  .loading { position: absolute; inset: 0; display: grid; place-items: center; color: var(--ink-3); font-size: 13px; }
+  @media (max-width: 640px) { .bar { flex-direction: column; align-items: stretch; gap: 8px; } }
+</style>
+
+<div class="bar">
+  <div class="brand"><b>Orbit Redesign 2026-10</b><small>App 390 · Web 1440 原型 · 粉色编号为交互标注</small></div>
+  <nav class="tabs" id="tabs" aria-label="页面"></nav>
+</div>
+<main><div class="loading" id="loading">载入中…</div><iframe id="view" title="原型页面"></iframe></main>
+
+<script>
+const PAGES = /*PAGES*/[];
+const KIT = /*KIT*/{};
+const DATA = /*DATA*/{};
+const GROUPS = [['总览', ['index', '00-inventory', '01-system', '02-gaps']], ['基础', ['app', 'web', 'widgets']], ['补画', PAGES.map(p => p[0]).filter(f => /^b\d/.test(f))]];
+const label = Object.fromEntries(PAGES.map(([f, l]) => [f, l.replace('← ', '')]));
+const tabs = document.getElementById('tabs'), view = document.getElementById('view');
+tabs.innerHTML = GROUPS.map(([g, fs]) => `<div class="grp"><span>${g}</span>${fs.map(f => `<button data-f="${f}">${label[f]}</button>`).join('')}</div>`).join('');
+const theme = () => { const t = document.documentElement.dataset.theme; return t || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'); };
+const tag = { 'tokens.css': c => `<style>${c}</style>`, 'ui.css': c => `<style>${c}</style>`, 'kit.js': c => `<script>${c}<\/script>`, 'data.js': c => `<script>${c}<\/script>` };
+function build(f) {
+  let h = DATA[f].replace(/<!--K:([\w.]+)-->/g, (_, k) => tag[k](KIT[k]));
+  return h.replace(/<html([^>]*)>/, (m, a) => `<html${a} data-theme="${theme()}">`);
+}
+let cur = '';
+function go(f, push = true) {
+  if (!DATA[f]) f = 'index';
+  if (f === cur) return;
+  cur = f;
+  tabs.querySelectorAll('button').forEach(b => { const on = b.dataset.f === f; b.classList.toggle('on', on); if (on) b.scrollIntoView({ block: 'nearest', inline: 'nearest' }); });
+  document.title = 'Orbit Redesign 2026-10 · ' + label[f];
+  view.srcdoc = build(f);
+  if (push) { try { history.replaceState(null, '', '#' + f); } catch (e) {} }
+}
+view.addEventListener('load', () => {
+  document.getElementById('loading').hidden = true;
+  let d; try { d = view.contentDocument; } catch (e) { return; }
+  if (!d) return;
+  d.addEventListener('click', e => {
+    const a = e.target.closest && e.target.closest('a[href]'); if (!a) return;
+    const m = a.getAttribute('href').match(/^([\w-]+)\.html(#[\w.~-]*)?$/);
+    if (!m) return;
+    e.preventDefault(); go(m[1]);
+  }, true);
+});
+tabs.addEventListener('click', e => { const b = e.target.closest('button[data-f]'); if (b) go(b.dataset.f); });
+window.addEventListener('hashchange', () => go(location.hash.slice(1), false));
+go(location.hash.slice(1) || 'index', false);
+</script>
