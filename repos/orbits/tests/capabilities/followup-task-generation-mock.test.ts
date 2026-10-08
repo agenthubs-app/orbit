@@ -290,32 +290,17 @@ test("mock followup task generation service is deterministic and never calls liv
   }
 });
 
-test("followup task API routes return stable envelopes with empty and failure paths", async () => {
-  const tasksHandler = await importProjectModule<{
-    createTasksGetHandler: (
-      resolveActor: () => Promise<{ id: string }>,
-    ) => (request: Request) => Promise<Response>;
-  }>("app/api/tasks/handler.ts");
+// W0055（W0044 交接）：跟进版 GET `app/api/tasks/handler.ts` 从未挂到路由（`/api/tasks` 接的是 canonical tasks），已删除；
+// 这里只保留仍在用的生成接口。
+test("followup task generation API returns a stable envelope", async () => {
   const generateHandler = await importProjectModule<{
     createTasksGeneratePostHandler: (
       resolveActor: () => Promise<{ id: string }>,
     ) => (request: Request) => Promise<Response>;
   }>("app/api/tasks/generate/handler.ts");
-  const GET = tasksHandler.createTasksGetHandler(async () => ({
-    id: "actor:tasks-api-test",
-  }));
   const POST = generateHandler.createTasksGeneratePostHandler(async () => ({
     id: "actor:tasks-api-test",
   }));
-  const fixtures = await importProjectModule<{
-    mockEmptyFollowupTaskGenerationFixture: unknown;
-  }>("features/followups/fixtures.ts");
-
-  const tasksResponse = await GET(
-    new Request("https://orbit.local/api/tasks", {
-      method: "GET",
-    }),
-  );
   const generateResponse = await POST(
     new Request("https://orbit.local/api/tasks/generate", {
       body: JSON.stringify({
@@ -324,39 +309,8 @@ test("followup task API routes return stable envelopes with empty and failure pa
       method: "POST",
     }),
   );
-  const emptyResponse = await GET(
-    new Request("https://orbit.local/api/tasks?scenario=empty", {
-      method: "GET",
-    }),
-  );
-  const failureResponse = await GET(
-    new Request("https://orbit.local/api/tasks?scenario=failure", {
-      method: "GET",
-    }),
-  );
-
-  assert.equal(tasksResponse.status, 200);
-  assert.equal(tasksResponse.headers.get("cache-control"), "no-store");
-  assert.equal(tasksResponse.headers.get("x-orbit-feature-mode"), "mock");
   assert.equal(generateResponse.status, 200);
   assert.equal(generateResponse.headers.get("cache-control"), "no-store");
-
-  const tasksEnvelope = (await tasksResponse.json()) as {
-    success: true;
-    data: {
-      state: string;
-      tasks: ReadonlyArray<{
-        taskId: string;
-        triggerKind: string;
-        aiProviderRequested: false;
-        backgroundSchedulerRequested: false;
-      }>;
-      provenance: {
-        aiProviderRequested: false;
-        liveDatabaseWriteExecuted: false;
-      };
-    };
-  };
   const generateEnvelope = (await generateResponse.json()) as {
     success: true;
     data: {
@@ -364,87 +318,38 @@ test("followup task API routes return stable envelopes with empty and failure pa
       tasks: ReadonlyArray<{ triggerKind: string }>;
     };
   };
-
-  assert.equal(tasksEnvelope.success, true);
-  assert.equal(tasksEnvelope.data.state, "success");
-  assert.equal(tasksEnvelope.data.tasks.length, 4);
-  assert.equal(tasksEnvelope.data.tasks[0].triggerKind, "new_connection");
-  assert.equal(tasksEnvelope.data.tasks[0].aiProviderRequested, false);
-  assert.equal(
-    tasksEnvelope.data.tasks[0].backgroundSchedulerRequested,
-    false,
-  );
-  assert.equal(tasksEnvelope.data.provenance.aiProviderRequested, false);
-  assert.equal(tasksEnvelope.data.provenance.liveDatabaseWriteExecuted, false);
   assert.equal(generateEnvelope.success, true);
   assert.equal(generateEnvelope.data.state, "success");
   assert.deepEqual(
     generateEnvelope.data.tasks.map((task) => task.triggerKind),
     ["new_connection", "event_encounter"],
   );
-  assert.equal(emptyResponse.status, 200);
-  assert.deepEqual(await emptyResponse.json(), {
-    success: true,
-    data: fixtures.mockEmptyFollowupTaskGenerationFixture,
-  });
-  assert.equal(failureResponse.status, 503);
-  assert.deepEqual(await failureResponse.json(), {
-    success: false,
-    error: {
-      code: "SERVICE_UNAVAILABLE",
-      message:
-        "The mock followup task generation boundary is pinned to a controlled failure scenario.",
-      context: {
-        boundary: "developer-admin",
-        followupTaskGenerationErrorCode:
-          "FOLLOWUP_TASK_GENERATION_MOCK_FAILED",
-        mode: "mock",
-        privacy: "no-relationship-data",
-        provenance:
-          "Mock followup task generation failure came from deterministic fixture rules.",
-        service: "followup-task-generation-mock",
-      },
-    },
-  });
 });
 
-test("followup task API handlers reject unauthenticated reads and generation", async () => {
-  const tasksHandler = await importProjectModule<{
-    createTasksGetHandler: (
-      resolveActor: () => Promise<null>,
-    ) => (request: Request) => Promise<Response>;
-  }>("app/api/tasks/handler.ts");
+test("followup task generation API rejects unauthenticated generation", async () => {
   const generateHandler = await importProjectModule<{
     createTasksGeneratePostHandler: (
       resolveActor: () => Promise<null>,
     ) => (request: Request) => Promise<Response>;
   }>("app/api/tasks/generate/handler.ts");
 
-  const responses = await Promise.all([
-    tasksHandler.createTasksGetHandler(async () => null)(
-      new Request("https://orbit.local/api/tasks"),
-    ),
-    generateHandler.createTasksGeneratePostHandler(async () => null)(
-      new Request("https://orbit.local/api/tasks/generate", {
-        body: "{}",
-        method: "POST",
-      }),
-    ),
-  ]);
-
-  for (const response of responses) {
-    assert.equal(response.status, 401);
-    const envelope = (await response.json()) as {
-      error?: { code?: string; context?: { privacy?: string } };
-      success: boolean;
-    };
-    assert.equal(envelope.success, false);
-    assert.equal(envelope.error?.code, "UNAUTHORIZED");
-    assert.equal(
-      envelope.error?.context?.privacy,
-      "authenticated-actor-required",
-    );
-  }
+  const response = await generateHandler.createTasksGeneratePostHandler(async () => null)(
+    new Request("https://orbit.local/api/tasks/generate", {
+      body: "{}",
+      method: "POST",
+    }),
+  );
+  assert.equal(response.status, 401);
+  const envelope = (await response.json()) as {
+    error?: { code?: string; context?: { privacy?: string } };
+    success: boolean;
+  };
+  assert.equal(envelope.success, false);
+  assert.equal(envelope.error?.code, "UNAUTHORIZED");
+  assert.equal(
+    envelope.error?.context?.privacy,
+    "authenticated-actor-required",
+  );
 });
 
 test("followup task generation dev probe manifest exercises declared API paths", async () => {
@@ -456,19 +361,11 @@ test("followup task generation dev probe manifest exercises declared API paths",
       expectedStatus: number;
     }>;
   }>("features/followups/followup-task-generation-mock/debug-view.tsx");
-  const tasksHandler = await importProjectModule<{
-    createTasksGetHandler: (
-      resolveActor: () => Promise<{ id: string }>,
-    ) => (request: Request) => Promise<Response>;
-  }>("app/api/tasks/handler.ts");
   const generateHandler = await importProjectModule<{
     createTasksGeneratePostHandler: (
       resolveActor: () => Promise<{ id: string }>,
     ) => (request: Request) => Promise<Response>;
   }>("app/api/tasks/generate/handler.ts");
-  const GET = tasksHandler.createTasksGetHandler(async () => ({
-    id: "actor:tasks-probe-test",
-  }));
   const POST = generateHandler.createTasksGeneratePostHandler(async () => ({
     id: "actor:tasks-probe-test",
   }));
@@ -488,15 +385,10 @@ test("followup task generation dev probe manifest exercises declared API paths",
     ],
   );
 
-  for (const probe of debugView.FOLLOWUP_TASK_GENERATION_API_PROBES) {
+  // 只运行仍挂在路由上的 POST 探针（GET 探针指向已删除的死入口，W0055）。
+  for (const probe of debugView.FOLLOWUP_TASK_GENERATION_API_PROBES.filter((entry) => entry.method === "POST")) {
     const response =
-      probe.method === "GET"
-        ? await GET(
-            new Request(`https://orbit.local${probe.path}`, {
-              method: probe.method,
-            }),
-          )
-        : await POST(
+      await POST(
             new Request(`https://orbit.local${probe.path}`, {
               body: JSON.stringify({ triggerKinds: ["new_connection"] }),
               method: probe.method,

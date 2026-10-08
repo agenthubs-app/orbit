@@ -27,6 +27,10 @@ export interface LiveFollowupGraph {
   connections: readonly ConnectionDTO[];
   contacts: readonly ContactDTO[];
   evidence: readonly RelationshipEvidenceDTO[];
+  /**
+   * 本人相关记录里最新的 updatedAt，只表示数据新鲜度，**不是「现在」**。
+   * 到期天数、provenance.collectedAt 一律用服务注入的请求时刻（W0044）。
+   */
   generatedAt: string;
   tasks: readonly TaskDTO[];
 }

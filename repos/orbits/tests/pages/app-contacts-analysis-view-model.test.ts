@@ -4,6 +4,7 @@ import test from "node:test";
 import { createConfiguredMobileContactsDashboardService } from "../../features/mobile/contacts-dashboard-service";
 import { contactsAnalysisToView } from "../../app/(app)/app/contacts/analysis/contacts-analysis-view-model";
 import { loadContactsAnalysis } from "../../app/(app)/app/contacts/analysis/contacts-analysis-route-service";
+import { networkDebugPayload, networkEmptyPayload, networkPendingPayload, networkUnavailablePayload } from "../fixtures/network-debug-payload";
 
 async function payload() {
   const result = await createConfiguredMobileContactsDashboardService("mock").getDashboard({ actorId: "analysis-test" });
@@ -108,7 +109,7 @@ test("four dimensions preserve server proportions, missing buckets and encoded d
   assert.equal(view.structure.data.dimensions.relationship[0].count, 5);
 });
 
-test("opportunity evidence and steps survive mapping and actions stay on internal routes", async () => {
+test("opportunity actions keep only user data and internal routes; backend sentences stay out", async () => {
   const data = await payload();
   assert.ok(data.opportunities);
   data.opportunities.highPriorityOpportunities = [{
@@ -117,18 +118,21 @@ test("opportunity evidence and steps survive mapping and actions stay on interna
   }];
   const view = contactsAnalysisToView(data, "zh");
   if (view.state !== "ready" || view.opportunities.state !== "ready") throw new Error("Missing opportunities");
-  assert.deepEqual(view.opportunities.data.actions[0].evidence, ["同意继续交流"]);
-  assert.deepEqual(view.opportunities.data.actions[0].steps, ["确认时间", "发送资料"]);
-  assert.equal(view.opportunities.data.actions[0].primary.href, "/app/contacts/contact%3Aone%2Ftwo");
-  assert.equal(view.opportunities.data.actions[0].secondary?.href, "/app/contacts/pipeline");
+  const action = view.opportunities.data.actions[0];
+  assert.equal(action.title, "再联系");
+  assert.equal(action.judgment, "");
+  assert.equal(action.dueLabel, "");
+  assert.equal("evidence" in action, false);
+  assert.equal("steps" in action, false);
+  assert.deepEqual(action.primary, { label: "查看联系人", href: "/app/contacts/contact%3Aone%2Ftwo" });
+  assert.deepEqual(action.secondary, { label: "查看关系管线", href: "/app/contacts/pipeline" });
 });
 
-test("legacy opportunity payloads keep readable source evidence and an explicit contact action", async () => {
+test("legacy opportunity payloads get an explicit bilingual contact action", async () => {
   const data = await payload();
-  const view = contactsAnalysisToView(data, "zh");
+  const view = contactsAnalysisToView(data, "en");
   if (view.state !== "ready" || view.opportunities.state !== "ready") throw new Error("Missing opportunities");
-  assert.deepEqual(view.opportunities.data.actions[0].evidence, ["Climate dinner attendee roster", "Maya pilot expansion thread"]);
-  assert.equal(view.opportunities.data.actions[0].primary.label, "查看联系人");
+  assert.equal(view.opportunities.data.actions[0].primary.label, "View contact");
   assert.equal(view.opportunities.data.actions[0].primary.href, "/app/contacts/contact%3Amaya-chen");
 });
 
@@ -154,4 +158,124 @@ test("route propagates the authenticated actor and surfaces failures", async () 
   assert.deepEqual(calls, ["actor:one"]);
   assert.deepEqual(await loadContactsAnalysis("actor:one", "zh", { getDashboard: async () => { throw new Error("storage unavailable"); } }), { state: "error" });
   assert.deepEqual(await loadContactsAnalysis("actor:one", "zh", { getDashboard: async () => ({ success: false, error: { code: "MOBILE_CONTACTS_DASHBOARD_REQUIRED_SECTION_FAILED", section: "aggregate" } }) }), { state: "error" });
+});
+
+// ---- W0043：白名单（后端句子字段不进视图）、空态与失败分开、双语模板 ----
+
+const BACKEND_SENTENCES = (data: ReturnType<typeof networkDebugPayload>) => [
+  data.aggregate.summary, data.aggregate.nextAction,
+  ...data.aggregate.recentActivity.filter((item) => item.type !== "followup_due").flatMap((item) => [item.label, item.sourceLabel]),
+  ...data.aggregate.recentActivity.map((item) => item.sourceLabel),
+  data.distributions!.summary, data.gaps!.summary, data.opportunities!.summary,
+  ...data.gaps!.gaps.flatMap((gap) => [gap.label, gap.recommendedAction]),
+  ...data.opportunities!.highPriorityOpportunities.flatMap((item) => [item.reason, item.suggestedAction, item.dueLabel, item.actionBrief?.judgment ?? "", ...(item.actionBrief?.steps ?? []), ...(item.actionBrief?.evidence ?? [])]),
+  ...data.opportunities!.dormantHighValueContacts.flatMap((item) => [item.reason, item.suggestedAction, item.lastTouchpointLabel]),
+].filter((sentence) => sentence.trim());
+
+for (const language of ["zh", "en"] as const) {
+  test(`SC-W0043-02 (${language}): no backend sentence field reaches the view; sentences without real content are empty strings`, () => {
+    const data = networkDebugPayload();
+    const view = contactsAnalysisToView(data, language);
+    if (view.state !== "ready" || view.structure.state !== "ready" || view.coverage.state !== "ready" || view.opportunities.state !== "ready") throw new Error("Missing sections");
+    assert.equal(view.summary, "");
+    assert.equal(view.structure.data.summary, "");
+    assert.equal(view.coverage.data.summary, "");
+    assert.equal(view.opportunities.data.summary, "");
+    const serialized = JSON.stringify(view);
+    for (const sentence of BACKEND_SENTENCES(data)) assert.equal(serialized.includes(sentence), false, `view carries backend sentence: ${sentence}`);
+    assert.equal(serialized.includes("173"), false);
+    for (const action of view.opportunities.data.actions) {
+      const source = data.opportunities!.highPriorityOpportunities.find((item) => item.opportunityId === action.id)!;
+      assert.notEqual(action.judgment, source.reason || "\u0000");
+      assert.notEqual(action.judgment, source.actionBrief?.judgment ?? "\u0000");
+      assert.equal(action.judgment, "");
+    }
+    assert.deepEqual(view.opportunities.data.dormant.map((item) => ({ name: item.name, organization: item.organization, reason: item.reason })), [{ name: "周杰", organization: "北辰资本", reason: "" }]);
+  });
+}
+
+test("SC-W0043-03: due labels, bucket names and activity follow the bilingual closed sets", () => {
+  const data = networkDebugPayload();
+  const zh = contactsAnalysisToView(data, "zh");
+  const en = contactsAnalysisToView(data, "en");
+  if (zh.state !== "ready" || en.state !== "ready" || zh.opportunities.state !== "ready" || en.opportunities.state !== "ready" || zh.structure.state !== "ready" || en.structure.state !== "ready") throw new Error("Missing sections");
+  assert.deepEqual(zh.opportunities.data.actions.map((a) => a.dueLabel), ["今天到期或已逾期", "明天到期", "5 天后到期", "未设截止", ""]);
+  assert.deepEqual(en.opportunities.data.actions.map((a) => a.dueLabel), ["Today or overdue", "Tomorrow", "In 5 days", "No deadline", ""]);
+  assert.deepEqual(en.opportunities.data.actions.map((a) => a.title), ["给王敏发提案资料", "约李雷喝咖啡", "跟赵敏确认展会", "问钱多报价", "回复孙立"]);
+  assert.deepEqual(en.structure.data.dimensions.industry.map((b) => b.label), ["Manufacturing & Supply Chain", "Unclassified"]);
+  assert.deepEqual(en.structure.data.dimensions.location.map((b) => b.label), ["Tokyo", "深圳南山", "Location missing"]);
+  assert.deepEqual(en.structure.data.dimensions.role.map((b) => b.label), ["Decision makers", "Business development", "Professional advisors", "Operations & specialists", "Role missing"]);
+  assert.deepEqual(en.structure.data.dimensions.relationship.map((b) => b.label), ["Strong ties", "Keep in touch", "To reconnect"]);
+  assert.deepEqual(zh.structure.data.dimensions.role.map((b) => b.label), ["经营决策者", "业务拓展", "专业顾问", "运营与专业角色", "角色待完善"]);
+  assert.deepEqual(en.activity.map((a) => ({ label: a.label, source: a.source, contactId: a.contactId })), [
+    { label: "New contact", source: "Contact", contactId: "contact:wang-min" },
+    { label: "New contact", source: "Contact", contactId: "contact:not-in-list" },
+    { label: "给王敏发提案资料", source: "Follow-up", contactId: undefined },
+  ]);
+  assert.deepEqual(zh.activity.map((a) => [a.label, a.source]), [["新增联系人", "联系人"], ["新增联系人", "联系人"], ["给王敏发提案资料", "跟进"]]);
+});
+
+test("SC-W0043-01: empty sections stay empty (with data), failed sections are unavailable, pending aggregate is pending", () => {
+  const empty = contactsAnalysisToView(networkEmptyPayload(), "zh");
+  if (empty.state !== "ready") throw new Error("Empty payload must still be ready");
+  assert.equal(empty.structure.state, "empty");
+  assert.equal(empty.coverage.state, "empty");
+  assert.equal(empty.opportunities.state, "empty");
+  assert.equal(empty.goal.state, "empty");
+  if (empty.goal.state === "empty") assert.equal(empty.goal.data.text, "");
+  const failed = contactsAnalysisToView(networkUnavailablePayload(), "zh");
+  if (failed.state !== "ready") throw new Error("Unavailable payload must still be ready");
+  assert.deepEqual([failed.structure, failed.coverage, failed.opportunities, failed.goal], [{ state: "unavailable" }, { state: "unavailable" }, { state: "unavailable" }, { state: "unavailable" }]);
+  assert.deepEqual(contactsAnalysisToView(networkPendingPayload(), "zh"), { state: "pending" });
+  assert.deepEqual(contactsAnalysisToView({ schemaVersion: 1 }, "en"), { state: "error" });
+});
+
+test("W0047 SC-04: Web relationship health reads relationshipTierDistribution, never the App's strength distribution", () => {
+  const view = contactsAnalysisToView(networkDebugPayload(), "zh");
+  if (view.state !== "ready" || view.structure.state !== "ready") throw new Error("Missing structure");
+  assert.deepEqual(view.structure.data.health, [
+    { id: "new", count: 6, percentage: 67 },
+    { id: "active", count: 2, percentage: 22 },
+    { id: "dormant", count: 1, percentage: 11 },
+  ]);
+  // 旧响应（没有新增字段）：健康分布为空，不退回 relationshipStrengthDistribution。
+  const legacy = networkDebugPayload() as { distributions: Record<string, unknown> };
+  delete legacy.distributions.relationshipTierDistribution;
+  const legacyView = contactsAnalysisToView(legacy, "zh");
+  if (legacyView.state !== "ready" || legacyView.structure.state !== "ready") throw new Error("Missing structure");
+  assert.deepEqual(legacyView.structure.data.health, []);
+});
+
+test("W0049: structure view maps seniority, region, tier and industry secondary children; a response without the new keys still parses (empty lists)", async () => {
+  const data = await payload();
+  const distributions = data.distributions!;
+  const base = distributions.structureDistributions.industry[0]!;
+  distributions.structureDistributions = {
+    ...distributions.structureDistributions,
+    industry: [{ ...base, bucketId: "technology_internet", primaryIndustryId: "technology_internet", secondary: [
+      { bucketId: "technology_internet.ai_data", secondaryIndustryId: "technology_internet.ai_data", contactCount: 2, percentage: 67, missingData: false },
+      { bucketId: "technology_internet.unspecified", contactCount: 1, percentage: 33, missingData: true },
+    ] }],
+    seniority: [{ bucketId: "seniority_decision", label: "决策层", contactCount: 3, percentage: 100, evidenceIds: [], missingData: false }],
+    region: [{ bucketId: "region_JP_Tokyo", label: "JP · Tokyo", contactCount: 3, percentage: 100, evidenceIds: [], missingData: false }],
+  };
+  distributions.relationshipTierDistribution = [{ tier: "dormant", relationshipCount: 3, percentage: 100, contactIds: ["c1"] }];
+  const en = contactsAnalysisToView(data, "en");
+  assert.equal(en.state, "ready");
+  if (en.state !== "ready" || en.structure.state !== "ready") throw new Error("structure");
+  const dims = en.structure.data.dimensions;
+  assert.deepEqual(dims.industry[0]!.children!.map((child) => [child.label, child.href]), [
+    ["Artificial Intelligence & Data", "/app/contacts/analysis/industry_secondary/technology_internet.ai_data"],
+    ["Unspecified", "/app/contacts/analysis/industry_secondary/technology_internet.unspecified"],
+  ]);
+  assert.deepEqual(dims.seniority!.map((bucket) => [bucket.label, bucket.href]), [["Decision makers", "/app/contacts/analysis/seniority/seniority_decision"]]);
+  assert.deepEqual(dims.region!.map((bucket) => [bucket.label, bucket.href]), [["Japan · Tokyo", "/app/contacts/analysis/region/region_JP_Tokyo"]]);
+  assert.deepEqual(dims.tier!.map((bucket) => [bucket.label, bucket.count, bucket.href]), [["To re-engage", 3, "/app/contacts/analysis/tier/dormant"]]);
+  // 旧响应（没有新键）：照常解析，新维度为空。
+  const old = await payload();
+  delete (old.distributions!.structureDistributions as { seniority?: unknown }).seniority;
+  delete (old.distributions!.structureDistributions as { region?: unknown }).region;
+  const zh = contactsAnalysisToView(old, "zh");
+  if (zh.state !== "ready" || zh.structure.state !== "ready") throw new Error("structure");
+  assert.deepEqual([zh.structure.data.dimensions.seniority, zh.structure.data.dimensions.region], [[], []]);
 });

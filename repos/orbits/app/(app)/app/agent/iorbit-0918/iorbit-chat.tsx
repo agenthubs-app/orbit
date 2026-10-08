@@ -20,6 +20,9 @@
  * 用户行与助手行的复制按钮、`useAgentTaskSuggestions` 的身份补丁（在 `use-agent-chat` 里）、
  * `AgentWelcome` 空态。
  *
+ * W0008：助手回合带 `planCard` 时渲染计划回答卡片（`iorbit-plan-card.tsx`），
+ * 用户回合的 `supplement` 在气泡里另起一行。
+ *
  * 设计有、但没有来源的两处按「不得出现 mock」处理：助手时间戳（`AgentMessage` 无时间
  * 字段）省略；♡ / ⌄ 反应省略（`tests/pages/app-agent-feedback-controls.test.ts:38`
  * 明令对话里不得出现 `AgentOutcomeFeedback`，「审阅修订」24）。
@@ -41,6 +44,7 @@ import {
   ThinkingIndicator,
 } from "./iorbit-rich-components";
 import { agentSuggestLabel, iorbitSelectedDayLabel, type AgentMessage } from "./iorbit-model";
+import { IOrbitPlanCard } from "./iorbit-plan-card";
 import type { AgentEarlierMessages } from "./use-agent-chat";
 
 // 首屏不加载 markdown 渲染器（门禁：tests/performance/orbit-agent-markdown-split.test.ts）。
@@ -249,8 +253,21 @@ export function IOrbitChat({
             message.role === "user" ? (
               <div className="ir-user-row" data-orbit-iorbit-message key={message.id ?? `user-${index}`}>
                 <AgentMessageCopyButton text={message.text} />
-                <span className="ir-user-bubble">{message.text}</span>
+                <span className="ir-user-bubble">
+                  {message.text}
+                  {message.supplement ? (
+                    <small>{`${t({ en: "Also: ", zh: "补充：" })}${message.supplement}`}</small>
+                  ) : null}
+                </span>
                 <span className="ir-user-avatar">{userInitial}</span>
+              </div>
+            ) : message.planCard ? (
+              // W0008：第一份计划的回答卡片（结论在前）。不套灰色气泡，没有复制 / 重试。
+              <div className="ir-a-row ir-pc-row" data-orbit-plan-turn key={`plan-${message.planCard.view.planId}`}>
+                <span className="ir-a-avatar">✦</span>
+                <span className="ir-a-col">
+                  <IOrbitPlanCard reveal={message.planCard.reveal} view={message.planCard.view} />
+                </span>
               </div>
             ) : (
               <div className="ir-a-row" data-orbit-iorbit-message key={message.id ?? `assistant-${index}`}>

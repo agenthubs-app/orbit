@@ -7,8 +7,12 @@ import type {
 } from "../../shared/domain/contracts";
 import {
   isConnectionStage,
+  isSeniorityLevel,
   type SourceType,
 } from "../../shared/domain/source-types";
+import { normalizeRegion } from "../../shared/domain/regions";
+import { AppError } from "../../shared/errors/app-error";
+import { parseStrictTokyoInstant, tokyoCalendarDaysUntil } from "../../shared/compute/tokyo-calendar-days";
 import type { OrbitLanguage } from "../../shared/contract/language";
 import type { IndustrySelectionContract } from "../../shared/contract/industries";
 import {
@@ -45,6 +49,7 @@ import {
   type ContactDetailUpdateInput,
 } from "./detail-contract";
 import type {
+  ContactEnrichmentEdit,
   LiveContactDetailState,
   LiveContactsGraphProvider,
 } from "./live-service";
@@ -372,7 +377,31 @@ function publicProfileFor(input: {
         : suggestedActions.slice(0, 2),
     source: input.source,
     evidenceIds: input.evidenceIds,
+    ...profileFieldSources(input.contact),
+    ...profileFallbackFields(profile, { offering: relationshipOffering, seeking: suggestedActions, topics: sharedTopics }),
   };
+}
+
+/** W0060：哪些字段用了关系回退值（资料里该字段为空、而回退值非空）。 */
+function profileFallbackFields(
+  profile: ContactDTO["publicProfile"],
+  fallbacks: Record<"offering" | "seeking" | "topics", readonly string[]>,
+): Pick<ContactDetailPublicProfile, "fallbackFields"> {
+  const fields = (["offering", "seeking", "topics"] as const).filter((field) => !profile?.[field]?.length && fallbacks[field].length > 0);
+  return fields.length ? { fallbackFields: fields } : {};
+}
+
+/** W0058：三栏的值来自联系人资料且有来源记录时带上来源 via（回退到关系值的字段不带）。 */
+function profileFieldSources(contact: ContactDTO): Pick<ContactDetailPublicProfile, "fieldSources"> {
+  const fields = contact.enrichment?.fields;
+  const profile = contact.publicProfile;
+  if (!fields || !profile) return {};
+  const sources: NonNullable<ContactDetailPublicProfile["fieldSources"]> = {};
+  for (const field of ["offering", "seeking", "topics"] as const) {
+    const via = fields[field]?.via;
+    if (via && profile[field]?.length) sources[field] = via;
+  }
+  return Object.keys(sources).length ? { fieldSources: sources } : {};
 }
 
 function channelFor(sourceType: ContactDetailSourceType): ContactDetailLastInteractionChannel {
@@ -563,7 +592,10 @@ function detailFor(input: {
     relationshipContext,
     source,
   });
-  const persistedNotes = (input.persistedState?.notes ?? []).map((note) => {
+  const persistedNotes = (input.persistedState?.notes ?? []).map((stored) => {
+    // W0046：memo 的 occurredAt／eventId／kind 只在存储与时间线里用；详情 payload（App 同步）的 notes 字段保持不变。
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { occurredAt: _occurredAt, eventId: _eventId, kind: _kind, ...note } = stored;
     const manual = note.noteId.startsWith("note:live-contact-detail-update:") && note.privacy !== "relationship_shared";
     return {
       ...note,
@@ -603,6 +635,9 @@ function detailFor(input: {
     primaryIndustryLabel: input.contact.primaryIndustryId
       ? industryLabel(input.contact.primaryIndustryId, input.language)
       : undefined,
+    ...(input.contact.publicProfile?.seniorityLevel ? { seniorityLevel: input.contact.publicProfile.seniorityLevel } : {}),
+    ...(input.contact.region ? { region: { ...input.contact.region } } : {}),
+    ...(input.contact.enrichment ? { enrichment: { version: 1 as const, fields: { ...input.contact.enrichment.fields } } } : {}),
     primaryEmail:
       input.contact.primaryEmail ?? input.contact.handles?.email ?? "",
     primaryPhone:
@@ -610,6 +645,7 @@ function detailFor(input: {
     wechatId: input.contact.handles?.wechatId ?? "",
     lineId: input.contact.handles?.lineId ?? "",
     website: input.contact.handles?.website ?? "",
+    ...(input.contact.notes?.trim() ? { cardNotes: input.contact.notes.trim() } : {}),
     relationshipContext,
     publicProfile: publicProfileFor({
       contact: input.contact,
@@ -869,9 +905,55 @@ function normalizeNoteInput(
     return null;
   }
 
+  const memo = memoFieldsFor(note);
   return {
     body,
     authorLabel: note.authorLabel?.trim() || "Orbit operator",
+    ...(memo ?? {}),
+  };
+}
+
+const MEMO_DAY = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * W0046：「写 memo」的附加字段。kind = "memo" 且日期是合法东京日期时才生效（handler 已拒绝非法形状）；
+ * 其余写法（App 的 `{ note: "文本" }`／`{ body, authorLabel }`）返回 null，行为与改前一致。
+ */
+function memoFieldsFor(note: ContactDetailNoteInput): { kind: "memo"; occurredAt: string; eventId?: string } | null {
+  if (note.kind !== "memo") return null;
+  const day = note.occurredAt?.trim() ?? "";
+  if (!MEMO_DAY.test(day) || parseStrictTokyoInstant(day) === null) return null;
+  const eventId = note.eventId?.trim();
+  return { kind: "memo", occurredAt: day, ...(eventId ? { eventId } : {}) };
+}
+
+/** memo 选的东京日期 → 该日东京 00:00 的 UTC ISO。 */
+function memoDayStartIso(day: string): string {
+  return new Date(parseStrictTokyoInstant(day) as number).toISOString();
+}
+
+/**
+ * W0046：memo 推进「上次互动」——只有 memo 日期（东京日）≥ 现有 lastInteraction 的东京日才推进，
+ * 补记旧事不覆盖更新的互动。当天的 memo 用写入时刻；同一天但现有时刻更晚时保留现有时刻。
+ */
+function memoLastInteraction(input: {
+  current: ContactDetailLastInteractionMetadata;
+  explicit?: ContactDetailLastInteractionInput | null;
+  memo: { occurredAt: string; body: string };
+  now: string;
+}): ContactDetailLastInteractionInput | null {
+  const currentAt = input.current.occurredAt;
+  const days = tokyoCalendarDaysUntil(input.memo.occurredAt, currentAt);
+  if (days !== null && days < 0) return null;
+  const today = tokyoCalendarDaysUntil(input.memo.occurredAt, input.now) === 0;
+  const candidate = today ? input.now : memoDayStartIso(input.memo.occurredAt);
+  const currentTime = parseStrictTokyoInstant(currentAt);
+  const occurredAt = days === 0 && currentTime !== null && currentTime > (parseStrictTokyoInstant(candidate) ?? 0) ? currentAt : candidate;
+  const firstLine = input.memo.body.split(/\r?\n/).map((line) => line.trim()).find(Boolean) ?? input.memo.body.trim();
+  return {
+    channel: input.explicit?.channel ?? "manual_note",
+    occurredAt,
+    summary: input.explicit?.summary?.trim() || Array.from(firstLine).slice(0, 120).join(""),
   };
 }
 
@@ -894,6 +976,8 @@ function buildNote(input: {
         input.contact.id,
         noteInput.authorLabel || "Orbit operator",
         noteInput.body,
+        // W0046：memo 的日期参与身份——同正文不同日是两条；旧写法哈希不变（App 重试仍幂等）。
+        ...(noteInput.kind === "memo" && noteInput.occurredAt ? [`memo@${noteInput.occurredAt}`] : []),
       ].join("\u0000"),
     )
     .digest("hex")
@@ -901,6 +985,7 @@ function buildNote(input: {
 
   const id = `note:live-contact-detail-update:${noteId}`;
   const existing = input.contact.notes.find((note) => note.noteId === id || (
+    noteInput.kind !== "memo" &&
     note.noteId.startsWith("note:live-contact-detail-update:") &&
     note.privacy === "private" &&
     note.body.trim() === noteInput.body &&
@@ -958,6 +1043,8 @@ function previewUpdatePayload(input: {
   base: ContactDetailTagStatusPayload;
   collectedAt: string;
   update: ContactDetailUpdateInput;
+  /** W0046：冲突重试时，「上次互动」单调取大（不让本次的旧日期覆盖并发写入的更新互动）。 */
+  keepNewerLastInteraction?: boolean;
 }): ContactDetailTagStatusPayload {
   const contact = input.base.contact;
 
@@ -981,10 +1068,18 @@ function previewUpdatePayload(input: {
         note,
       ]
     : contact.notes;
-  const lastInteraction = buildLastInteraction(
+  const noteInput = normalizeNoteInput(input.update.note);
+  const lastInteractionInput = noteInput?.kind === "memo" && noteInput.occurredAt
+    ? memoLastInteraction({ current: contact.lastInteraction, explicit: input.update.lastInteraction, memo: { occurredAt: noteInput.occurredAt, body: noteInput.body }, now: input.collectedAt })
+    : input.update.lastInteraction;
+  const builtLastInteraction = buildLastInteraction(
     contact,
-    input.update.lastInteraction,
+    lastInteractionInput,
   );
+  const lastInteraction = input.keepNewerLastInteraction &&
+    (parseStrictTokyoInstant(contact.lastInteraction.occurredAt) ?? 0) > (parseStrictTokyoInstant(builtLastInteraction.occurredAt) ?? 0)
+    ? clonePayload(contact.lastInteraction)
+    : builtLastInteraction;
   const updatedContact: ContactDetail = {
     ...contact,
     primaryIndustryId:
@@ -1028,12 +1123,28 @@ function persistedStateFor(input: {
   actorId: string;
   collectedAt: string;
   contact: ContactDetail;
+  /** W0046：本次写入的 memo（noteId + 附加字段）。 */
+  memo?: { noteId: string; occurredAt: string; eventId?: string } | null;
   persistedState: LiveContactDetailState | null;
   statusRequested: boolean;
 }): LiveContactDetailState {
   const storedNoteIds = new Set(
     input.persistedState?.notes.map((note) => note.noteId),
   );
+  // 详情 payload 的 notes 不带 memo 字段，这里按 noteId 从存储行（或本次写入）补回，任何 PATCH 都不丢。
+  const memoFields = new Map<string, { occurredAt?: string; eventId?: string; kind?: "memo" }>();
+  for (const note of input.persistedState?.notes ?? []) {
+    if (note.occurredAt || note.eventId || note.kind) {
+      memoFields.set(note.noteId, {
+        ...(note.occurredAt ? { occurredAt: note.occurredAt } : {}),
+        ...(note.eventId ? { eventId: note.eventId } : {}),
+        ...(note.kind ? { kind: note.kind } : {}),
+      });
+    }
+  }
+  if (input.memo && !memoFields.has(input.memo.noteId)) {
+    memoFields.set(input.memo.noteId, { occurredAt: input.memo.occurredAt, ...(input.memo.eventId ? { eventId: input.memo.eventId } : {}), kind: "memo" });
+  }
   return {
     actorId: input.actorId,
     contactId: input.contact.id,
@@ -1052,6 +1163,7 @@ function persistedStateFor(input: {
         createdAt: note.createdAt,
         privacy: note.privacy,
         sourceLabel: note.sourceLabel,
+        ...(memoFields.get(note.noteId) ?? {}),
       })),
     lastInteraction: {
       channel: input.contact.lastInteraction.channel,
@@ -1105,6 +1217,29 @@ function persistedUpdatePayload(input: {
     updateSummary: `Saved ${contact.displayName} with ${contact.status}, ${contact.tags.length} tags and ${contact.notes.length} notes.`,
   };
 }
+
+/** W0045：PATCH 里的职级／地区 → provider 编辑输入；都没传返回 null，不合法返回 "invalid"。 */
+function contactEnrichmentEditFor(input: ContactDetailUpdateInput): ContactEnrichmentEdit | null | "invalid" {
+  const edit: ContactEnrichmentEdit = {};
+  if (input.seniorityLevel !== undefined) {
+    const level = input.seniorityLevel;
+    if (level === null) edit.seniorityLevel = null;
+    else if (isSeniorityLevel(level)) edit.seniorityLevel = level;
+    else return "invalid";
+  }
+  if (input.region !== undefined) {
+    if (input.region === null) edit.region = null;
+    else {
+      const region = normalizeRegion(input.region.countryCode, input.region.city ?? null);
+      if (!region) return "invalid";
+      edit.region = region;
+    }
+  }
+  return Object.keys(edit).length ? edit : null;
+}
+
+/** W0046：详情状态条件写入的最大尝试次数（首次 + 2 次冲突重试）。 */
+export const CONTACT_DETAIL_STATE_WRITE_ATTEMPTS = 3;
 
 export function createLiveContactDetailTagStatusService({
   now = () => new Date().toISOString(),
@@ -1256,6 +1391,12 @@ export function createLiveContactDetailTagStatusService({
         });
       }
 
+      // W0045：职级只收六档、地区国家码须是合法 ISO 码（城市可空）；null 表示清空。
+      const enrichmentEdit = contactEnrichmentEditFor(input);
+      if (enrichmentEdit === "invalid") {
+        return failure("CONTACT_DETAIL_ENRICHMENT_NOT_SUPPORTED", { collectedAt, provider });
+      }
+
       const { connection, result: loaded, persistedState } = await loadPayload({
         actorId: input.actorId,
         contactId: input.contactId,
@@ -1291,9 +1432,20 @@ export function createLiveContactDetailTagStatusService({
         return failure("CONTACT_DETAIL_INDUSTRY_NOT_SUPPORTED", { collectedAt, provider });
       }
 
+      // W0045 review P1：同一联系人 payload 的行业／职级／地区合并为一次条件更新（一次 CAS），
+      // 不会出现「行业已保存、职级冲突」的部分落库。
+      const payloadEdit: ContactEnrichmentEdit = {
+        ...(enrichmentEdit ?? {}),
+        ...(writesPrimaryIndustry
+          ? { industry: { primaryIndustryId: selection.primaryIndustryId ?? null, secondaryIndustryId: selection.primaryIndustryId ? selection.secondaryIndustryId ?? null : null } }
+          : {}),
+      };
+      const writesPayload = Object.keys(payloadEdit).length > 0;
+      // 只改行业、provider 又没有合并写入方法时（旧 provider），沿用 updateContactPrimaryIndustry。
+      const legacyIndustryOnly = writesPrimaryIndustry && enrichmentEdit === null && !provider?.updateContactEnrichment;
       if (
         (writesDetailState && !provider?.upsertContactDetailState) ||
-        (writesPrimaryIndustry && !provider?.updateContactPrimaryIndustry)
+        (writesPayload && !provider?.updateContactEnrichment && !(legacyIndustryOnly && provider?.updateContactPrimaryIndustry))
       ) {
         return failure("CONTACT_DETAIL_LIVE_STORE_WRITE_FAILED", {
           collectedAt,
@@ -1322,31 +1474,79 @@ export function createLiveContactDetailTagStatusService({
         });
       }
       try {
-        if (writesPrimaryIndustry) {
+        if (legacyIndustryOnly) {
           await provider.updateContactPrimaryIndustry?.(
             input.contactId.trim(),
             actorId,
             selection.primaryIndustryId ?? null,
             selection.secondaryIndustryId ?? null,
           );
+        } else if (writesPayload) {
+          await provider.updateContactEnrichment?.(input.contactId.trim(), actorId, payloadEdit);
         }
-        if (writesDetailState) {
-          await provider.upsertContactDetailState?.(
-            persistedStateFor({
-              actorId,
-              collectedAt,
-              contact: preview.contact,
-              persistedState,
-              statusRequested: input.status !== undefined,
-            }),
-          );
+      } catch (error) {
+        if (error instanceof AppError && error.code === "CONFLICT") {
+          return failure("CONTACT_DETAIL_CONFLICT", { collectedAt, databaseReadExecuted: true, provider });
         }
-      } catch {
         return failure("CONTACT_DETAIL_LIVE_STORE_WRITE_FAILED", {
           collectedAt,
           databaseReadExecuted: true,
           provider,
         });
+      }
+
+      // 详情状态（标签／状态／备注／最近互动）在另一条记录（contact_detail_states），与上面的 payload 更新不在同一事务：
+      // payload 先提交，详情状态写失败时 payload 已保存（W0045 前即如此，REPORT 已登记）。
+      // W0046：以读到的版本为前提条件写入；冲突时重读，按本次窄 delta（备注追加去重、标签增删、上次互动单调取大）
+      // 重新合并后重试，至多 3 次，仍冲突返回 409。
+      let savedNoteId: string | undefined;
+      if (writesDetailState) {
+        let base = loaded.data;
+        let state = persistedState;
+        let attemptPreview = preview;
+        for (let attempt = 0; ; attempt += 1) {
+          if (attempt > 0) {
+            attemptPreview = previewUpdatePayload({ actorId, base, collectedAt, update: input, keepNewerLastInteraction: true });
+            if (!attemptPreview.contact) {
+              return failure("CONTACT_DETAIL_NOT_FOUND", { collectedAt, databaseReadExecuted: true, provider });
+            }
+          }
+          const noteInput = normalizeNoteInput(input.note);
+          const note = noteInput ? buildNote({ actorId, contact: base.contact ?? attemptPreview.contact!, note: input.note, now: collectedAt }) : null;
+          const memoWrite = note && noteInput?.kind === "memo" && noteInput.occurredAt
+            ? { noteId: note.noteId, occurredAt: noteInput.occurredAt, ...(noteInput.eventId ? { eventId: noteInput.eventId } : {}) }
+            : null;
+          try {
+            await provider.upsertContactDetailState?.(
+              persistedStateFor({
+                actorId,
+                collectedAt,
+                contact: attemptPreview.contact!,
+                memo: memoWrite,
+                persistedState: state,
+                statusRequested: input.status !== undefined,
+              }),
+              state ? { updatedAt: state.updatedAt } : null,
+            );
+            savedNoteId = note?.noteId;
+            break;
+          } catch (error) {
+            const conflict = error instanceof AppError && error.code === "CONFLICT";
+            if (conflict && attempt < CONTACT_DETAIL_STATE_WRITE_ATTEMPTS - 1) {
+              const reread = await loadPayload({ actorId, contactId: input.contactId, collectedAt, language: input.language });
+              if (!reread.result.success) return reread.result;
+              base = reread.result.data;
+              state = reread.persistedState;
+              continue;
+            }
+            if (conflict) return failure("CONTACT_DETAIL_CONFLICT", { collectedAt, databaseReadExecuted: true, provider });
+            return failure("CONTACT_DETAIL_LIVE_STORE_WRITE_FAILED", {
+              collectedAt,
+              databaseReadExecuted: true,
+              provider,
+            });
+          }
+        }
       }
 
       const { result: reloaded } = await loadPayload({
@@ -1359,12 +1559,13 @@ export function createLiveContactDetailTagStatusService({
 
       return {
         success: true,
-        data: clonePayload(
-          persistedUpdatePayload({
+        data: clonePayload({
+          ...persistedUpdatePayload({
             payload: reloaded.data,
             update: input,
           }),
-        ),
+          ...(savedNoteId ? { savedNoteId } : {}),
+        }),
       };
     },
 

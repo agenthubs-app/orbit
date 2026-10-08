@@ -143,3 +143,30 @@ test("mobile contacts dashboard schema rejects an analysis report whose stale fl
 
   assert.equal(result.success, false);
 });
+
+test("W0047: the schema parses responses with and without the optional relationshipTierDistribution", () => {
+  const legacy = validPayload();
+  const legacyParsed = mobileContactsDashboardPayloadSchema.safeParse(legacy);
+  assert.equal(legacyParsed.success, true);
+  if (legacyParsed.success) assert.equal((legacyParsed.data.distributions as Record<string, unknown>).relationshipTierDistribution, undefined);
+
+  const withTiers = validPayload();
+  (withTiers.distributions as Record<string, unknown>).relationshipTierDistribution = [
+    { tier: "new", relationshipCount: 3, percentage: 60, contactIds: ["c1", "c2", "c3"] },
+    { tier: "dormant", relationshipCount: 2, percentage: 40, contactIds: ["c4", "c5"] },
+  ];
+  const parsed = mobileContactsDashboardPayloadSchema.safeParse(withTiers);
+  assert.equal(parsed.success, true);
+  if (parsed.success) {
+    assert.deepEqual(
+      (parsed.data.distributions?.relationshipTierDistribution ?? []).map((bucket) => bucket.tier),
+      ["new", "dormant"],
+    );
+  }
+
+  const malformed = validPayload();
+  (malformed.distributions as Record<string, unknown>).relationshipTierDistribution = [
+    { tier: "strong", relationshipCount: 1, percentage: 100, contactIds: [] },
+  ];
+  assert.equal(mobileContactsDashboardPayloadSchema.safeParse(malformed).success, false);
+});

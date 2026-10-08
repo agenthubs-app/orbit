@@ -214,53 +214,47 @@ test("runtime composes the live profile, canonical public catalogue, and one acc
   ]);
 });
 
-test("runtime returns needs_goal without reading public events when the live profile has no goal", async (t) => {
+test("W0036 runtime: no goal is still needs_goal, but the catalogue and memberships are read once for the recent-events fallback", async (t) => {
   const { calls, runtime } = loadRuntime(t, { goal: "" });
 
-  assert.deepEqual(
-    await runtime.recommend({ accountId: ACCOUNT_ID }),
-    { state: "needs_goal", items: [] },
-  );
-  assert.equal(calls.catalogue.length, 0);
-  assert.equal(calls.operations, 0);
+  const result = await runtime.recommend({ accountId: ACCOUNT_ID });
+  assert.equal(result.state, "needs_goal");
+  assert.deepEqual(result.items, []);
+  assert.deepEqual(result.upcoming.map((item) => item.eventId), ["event:runtime"]);
+  assert.deepEqual(calls.catalogue, [NOW]);
+  assert.equal(calls.operations, 1);
+  assert.equal(calls.membership.length, 1);
 });
 
 test("runtime fails closed for missing account, profile failure, or profile factory failure", async (t) => {
   const noAccount = loadRuntime(t);
   assert.deepEqual(
     await noAccount.runtime.recommend({ accountId: null }),
-    { state: "unavailable", items: [] },
+    { state: "unavailable", items: [], upcoming: [] },
   );
   assert.equal(noAccount.calls.profile.length, 0);
 
-  const profileFailure = loadRuntime(t, { profileFailure: true });
-  assert.deepEqual(
-    await profileFailure.runtime.recommend({ accountId: ACCOUNT_ID }),
-    { state: "unavailable", items: [] },
-  );
-  assert.equal(profileFailure.calls.catalogue.length, 0);
-
-  const profileThrow = loadRuntime(t, {
-    profileError: new Error("profile read failed"),
-  });
-  assert.deepEqual(
-    await profileThrow.runtime.recommend({ accountId: ACCOUNT_ID }),
-    { state: "unavailable", items: [] },
-  );
-  assert.equal(profileThrow.calls.catalogue.length, 0);
-
-  const factoryFailure = loadRuntime(t, { factoryError: new Error("live mode unavailable") });
-  assert.deepEqual(
-    await factoryFailure.runtime.recommend({ accountId: ACCOUNT_ID }),
-    { state: "unavailable", items: [] },
-  );
+  // W0036：读目标失败仍是 unavailable、不出目标匹配；目录与报名照读一次，近期活动兜底。
+  for (const [label, options] of [
+    ["profile failure", { profileFailure: true }],
+    ["profile throw", { profileError: new Error("profile read failed") }],
+    ["profile factory failure", { factoryError: new Error("live mode unavailable") }],
+  ] as const) {
+    const loaded = loadRuntime(t, options);
+    const result = await loaded.runtime.recommend({ accountId: ACCOUNT_ID });
+    assert.equal(result.state, "unavailable", label);
+    assert.deepEqual(result.items, [], label);
+    assert.deepEqual(result.upcoming.map((item) => item.eventId), ["event:runtime"], label);
+    assert.equal(loaded.calls.catalogue.length, 1, label);
+    assert.equal(loaded.calls.membership.length, 1, label);
+  }
 });
 
 test("runtime fails closed when the canonical catalogue or operations repository is unavailable", async (t) => {
   const catalogueMissing = loadRuntime(t, { catalogueNull: true });
   assert.deepEqual(
     await catalogueMissing.runtime.recommend({ accountId: ACCOUNT_ID }),
-    { state: "unavailable", items: [] },
+    { state: "unavailable", items: [], upcoming: [] },
   );
 
   const catalogueFailure = loadRuntime(t, {
@@ -268,13 +262,13 @@ test("runtime fails closed when the canonical catalogue or operations repository
   });
   assert.deepEqual(
     await catalogueFailure.runtime.recommend({ accountId: ACCOUNT_ID }),
-    { state: "unavailable", items: [] },
+    { state: "unavailable", items: [], upcoming: [] },
   );
 
   const operationsMissing = loadRuntime(t, { operationsNull: true });
   assert.deepEqual(
     await operationsMissing.runtime.recommend({ accountId: ACCOUNT_ID }),
-    { state: "unavailable", items: [] },
+    { state: "unavailable", items: [], upcoming: [] },
   );
 
   const membershipFailure = loadRuntime(t, {
@@ -282,6 +276,6 @@ test("runtime fails closed when the canonical catalogue or operations repository
   });
   assert.deepEqual(
     await membershipFailure.runtime.recommend({ accountId: ACCOUNT_ID }),
-    { state: "unavailable", items: [] },
+    { state: "unavailable", items: [], upcoming: [] },
   );
 });

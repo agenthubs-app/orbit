@@ -1,3 +1,6 @@
+import type { RelationshipStrength } from "../../../shared/contract/relationship-strength";
+import type { RelationshipTimelineItem, RelationshipTimelineResult } from "../../../shared/contract/relationship-timeline";
+
 // pending_initialization is display-only, not a canonical lifecycle stage.
 export type OrbitContactPipelineStatus = "to_contact" | "in_progress" | "partnered" | "archived" | "pending_initialization";
 export type OrbitIntroStatus = "draft" | "sent";
@@ -13,9 +16,15 @@ export interface OrbitContactView {
   primaryIndustryId?: string;
   secondaryIndustryId?: string;
   secondaryIndustryLabel?: string;
+  /** W0045：职级（六档）、规范地区与补全来源；详情弹窗 hero 区展示与轻量编辑。 */
+  seniorityLevel?: string;
+  region?: { countryCode: string; city: string | null };
+  enrichmentOrigins?: Partial<Record<"industry" | "seniorityLevel" | "region", "ai" | "user" | "card">>;
   initial: string;
   lineId: string;
   location?: string;
+  /** 名片备注：确认名片时聚合的其他信息与合并补充，只读展示。 */
+  cardNotes?: string;
   lastEventId: string;
   met: string;
   note: string;
@@ -38,6 +47,14 @@ export interface OrbitContactView {
   lastInteraction: string;
   editableInteraction?: { channel: string; occurredAt: string; summary: string };
   dormant: boolean;
+  /** W0046：详情弹窗「最近互动」的聚合时间线（详情页服务端读好随详情下发；示例为前端静态数据）。 */
+  timeline?: RelationshipTimelineResult;
+  /** W0046：「写 memo」的关联活动推荐来源——近期已报名活动日程（服务端读取，读失败为空）。 */
+  memoEventOptions?: readonly { eventId: string; title: string; startsAt: string }[];
+  /** W0047：关系强度（读模型缓存，详情页服务端读好；null = 还没有算出）。示例为前端静态数据。 */
+  relationshipStrength?: RelationshipStrength | null;
+  /** W0047：依据里不在最近 20 条时间线中的信号对应的时间线条目（按信号 id 读回，至多 12 条）。 */
+  relationshipSignalItems?: readonly RelationshipTimelineItem[];
 }
 
 export type OrbitContactStrength =
@@ -64,6 +81,10 @@ export interface OrbitContactPublicProfileView {
   offering: string[];
   seeking: string[];
   topics: string[];
+  /** W0058／W0060：字段来源 via（如 `card_inference` = 据名片推测）；只在值来自联系人资料时出现。 */
+  fieldSources?: Partial<Record<"offering" | "seeking" | "topics", string>>;
+  /** W0060：值是关系回退（不是联系人资料）的字段——详情三栏把它们当空。 */
+  fallbackFields?: readonly ("offering" | "seeking" | "topics")[];
 }
 
 export interface OrbitContactEncounterView {

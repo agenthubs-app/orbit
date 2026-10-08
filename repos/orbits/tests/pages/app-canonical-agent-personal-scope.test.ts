@@ -70,7 +70,8 @@ for (const route of ["agent", "tasks/personal", "home/events"] as const) {
       assert.equal(calls.find(call => call.operation === "home")?.input[1].id, "account:canonical");
       assert.equal(calls.find(call => call.operation === "home")?.input[1].rawSubject, "subject:external");
       assert.equal(calls.find(call => call.operation === "events")?.input[0].actorId, "account:canonical");
-      assert.equal(calls.find(call => call.operation === "registrations")?.input[0].userId, "subject:external");
+      // W0018：报名按账号 id 读，与报名接口写入口径一致。
+      assert.equal(calls.find(call => call.operation === "registrations")?.input[0].userId, "account:canonical");
     } else if (route === "home/events") {
       assert.equal(calls.find(call => call.operation === "home")?.input[1].id, "account:canonical");
       assert.equal(calls.find(call => call.operation === "home")?.input[1].rawSubject, "subject:external");

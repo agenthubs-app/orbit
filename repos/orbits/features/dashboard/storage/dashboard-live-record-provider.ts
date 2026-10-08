@@ -137,6 +137,9 @@ export const DASHBOARD_GRAPH_PROJECTION_SQL = `case collection_name
         'primaryPhone', payload -> 'primaryPhone',
         'profileSnippet', payload -> 'profileSnippet',
         'primaryIndustryId', payload -> 'primaryIndustryId',
+        'secondaryIndustryId', payload -> 'secondaryIndustryId',
+        'seniorityLevel', payload -> 'publicProfile' -> 'seniorityLevel',
+        'region', payload -> 'region',
         'customTags', payload -> 'customTags',
         'stage', payload -> 'stage',
         'source', payload -> 'source',
@@ -387,6 +390,8 @@ export function createStorageDashboardAggregateProvider({
       readModelReader.readAggregateForAccount(accountId, input),
     readNetworkDistributionReadModelForAccount: (accountId) =>
       readModelReader.readDistributionForAccount(accountId),
+    readRelationshipTiersForAccount: (accountId) =>
+      readModelReader.readRelationshipTiersForAccount(accountId),
     readDashboardGraphVersionForAccount: readGraphVersion,
     readDashboardAnalysisSnapshotForAccount: readAnalysisSnapshot,
   };

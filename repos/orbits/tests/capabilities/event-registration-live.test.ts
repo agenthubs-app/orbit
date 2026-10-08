@@ -323,6 +323,15 @@ test("registration replay ignores JSON object key order", async () => {
           ? [jsonbOrderedRegistration]
           : [];
       },
+      async listRegistrationStatusesForUser() {
+        throw new Error("not used by registration writes");
+      },
+      async getRegistrationStatus() {
+        throw new Error("not used by registration writes");
+      },
+      async listRegistrationRosterEntries() {
+        throw new Error("not used by registration writes");
+      },
       async saveRegistration(registration) {
         saves += 1;
         return registration;

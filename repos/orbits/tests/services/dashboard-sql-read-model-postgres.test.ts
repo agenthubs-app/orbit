@@ -126,7 +126,25 @@ function event(id: string, fields: Record<string, unknown> = {}, options: Parame
   }, options);
 }
 
-function fixtureRecords(): Row[] {
+/**
+ * W0049：结构标签新维度的细粒度字段（职级六档与空白／未知值、规范地区含非法国家码与带空格／竖线的城市、
+ * 二级行业含合法、跨一级不匹配与空白值）。默认并入夹具，所以主对照用例同时覆盖新维度的 SQL＝图路径。
+ */
+const W0049_STRUCTURE_FIELDS: Record<string, Record<string, unknown>> = {
+  c01: { publicProfile: { seniorityLevel: "c_level" }, region: { countryCode: "JP", city: "Tokyo" }, secondaryIndustryId: "technology_internet.enterprise_software" },
+  c02: { publicProfile: { seniorityLevel: "manager" }, region: { countryCode: "JP", city: "Tokyo" } },
+  c03: { publicProfile: { seniorityLevel: "   " }, region: { countryCode: "jp", city: "Tokyo" } },
+  c04: { publicProfile: { seniorityLevel: "founder" }, region: { countryCode: "JP", city: "Osaka" }, secondaryIndustryId: "food_hospitality.restaurants" },
+  c05: { publicProfile: { seniorityLevel: "astronaut" }, region: { countryCode: "SG", city: null } },
+  c06: { publicProfile: { seniorityLevel: "vp" }, region: { countryCode: "FR", city: "Paris" }, secondaryIndustryId: "technology_internet.ai_data" },
+  c07: { publicProfile: { seniorityLevel: "individual_contributor" }, region: { countryCode: "US", city: "New York|NY" } },
+  c08: { publicProfile: { seniorityLevel: "director" }, region: { countryCode: "JP", city: "  " }, secondaryIndustryId: "  " },
+  c09: { publicProfile: "not an object", region: ["JP", "Tokyo"] },
+  c10: { publicProfile: { seniorityLevel: "individual_contributor" }, region: { countryCode: "US", city: "New York" }, secondaryIndustryId: "retail_consumer.unknown_child" },
+};
+
+function fixtureRecords(options: { structure?: boolean } = {}): Row[] {
+  const structure = options.structure ?? true;
   return [
     // Contacts: more than five per list, aliases, empty/whitespace values,
     // invalid industries, investor keywords, and both source-type mappings.
@@ -201,6 +219,8 @@ function fixtureRecords(): Row[] {
     contact("c-unowned", { stage: "nurture" }, { userId: null }),
   ].map((row) => row.collectionName === "contacts" && row.userId === OTHER
     ? { ...row, recordId: "c01-other" }
+    : row).map((row) => structure && row.collectionName === "contacts" && row.userId === OWNER && W0049_STRUCTURE_FIELDS[row.recordId]
+    ? { ...row, payload: { ...row.payload, ...W0049_STRUCTURE_FIELDS[row.recordId] } }
     : row);
 }
 
@@ -457,6 +477,169 @@ test("contacts analysis reads referenced contacts by id and role counts equal th
       new Map((result.data.contacts as { roleCounts?: { role: string; count: number }[] }).roleCounts?.map((entry) => [entry.role, entry.count])),
       new Map((await dashboardProvider.readContactRoleCountsForAccount!(OWNER)).map((entry) => [entry.role, entry.count])),
     );
+  } finally {
+    await client.close();
+    try { await admin.query(`drop schema if exists ${schema} cascade`); } finally { await admin.end(); }
+  }
+});
+
+// W0047 SC-03：新增的 relationshipTierDistribution 在 SQL 读模型路径与图路径对同一夹具输出相同（含 dormant），
+// 四组人数之和 = 有缓存行的（有效）联系人数；缓存行不影响既有 relationshipStrengthDistribution。
+function tierRow(actorId: string, contactId: string, tier: "new" | "active" | "core", dormant: boolean): Row {
+  return record("relationship_strengths", `relationship-strength:${actorId}:${contactId}`, {
+    contactId, tier, dormant, score: 0, peakScore: 0, lastSignalAt: null, signals: [], computedAt: "2026-09-20T00:00:00.000Z", rulesVersion: "rs-2026-10-v1",
+  }, { userId: actorId });
+}
+
+test("W0047: relationshipTierDistribution is equal on the SQL read model and the graph path; the old strength distribution ignores the cache", {
+  skip: databaseUrl ? false : "Explicit isolated PostgreSQL URL required",
+  timeout: 120_000,
+}, async () => {
+  assert.ok(databaseUrl);
+  assert.ok(["localhost", "127.0.0.1"].includes(new URL(databaseUrl).hostname), "Local equivalence test only");
+  const schema = `w47_tiers_${randomUUID().replaceAll("-", "")}`;
+  const admin = new Pool({ connectionString: databaseUrl, max: 1 });
+  const pool = new Pool({ connectionString: databaseUrl, max: 2, options: `-c search_path=${schema} -c statement_timeout=20000` });
+  const client = createTransactionalPostgresClient({ connectionString: databaseUrl, pool });
+  try {
+    await admin.query(`create schema ${schema}`);
+    await client.query(ORBIT_RECORDS_SCHEMA_SQL);
+    const store = createPostgresLiveRecordStore({ client });
+    for (const row of fixtureRecords()) await store.upsertRecord(row);
+    const fixedNow = () => "2026-09-27T00:00:00.000Z";
+    const sqlProvider = createStorageDashboardAggregateProvider({ store, workspaceId: WORKSPACE, sqlClient: client, source: "test:d1", sourceLabel: "D1 storage" });
+    const graphProvider: LiveDashboardAggregateProvider = {
+      ...oracleProvider(sqlProvider),
+      readRelationshipTiersForAccount: (accountId) => sqlProvider.readRelationshipTiersForAccount!(accountId),
+    };
+    const distributions = async (provider: LiveDashboardAggregateProvider, actorId: string) => {
+      const result = await createLiveNetworkDistributionAnalyticsService({ now: fixedNow, provider: networkDistributionProviderForAccount(provider, actorId) }).getDistributions();
+      assert.ok(result.success);
+      return result.data;
+    };
+    const before = new Map<string, unknown>();
+    for (const actorId of ACTORS) before.set(actorId, (await distributions(sqlProvider, actorId)).relationshipStrengthDistribution);
+    for (const actorId of ACTORS) assert.deepEqual((await distributions(sqlProvider, actorId)).relationshipTierDistribution, [], `empty cache ${actorId}`);
+
+    // 缓存行：c01（有重复记录）core、c02 active、c05 dormant、c04/c06/c08 new、c10 core+dormant；
+    // 无效／已删除／他人／不存在的联系人行不计；OTHER 自己的 c01 active。
+    for (const row of [
+      tierRow(OWNER, "c01", "core", false), tierRow(OWNER, "c02", "active", false), tierRow(OWNER, "c05", "active", true),
+      tierRow(OWNER, "c04", "new", false), tierRow(OWNER, "c06", "new", false), tierRow(OWNER, "c08", "new", false),
+      tierRow(OWNER, "c09", "new", false), tierRow(OWNER, "c12", "new", false), tierRow(OWNER, "c13", "new", false),
+      tierRow(OWNER, "c10", "core", true),
+      tierRow(OWNER, "c-deleted", "core", false), tierRow(OWNER, "c-invalid-stage", "core", false), tierRow(OWNER, "contact:missing", "core", false),
+      tierRow(OTHER, "c01", "active", false),
+    ]) await store.upsertRecord(row);
+
+    for (const actorId of ACTORS) {
+      const sql = await distributions(sqlProvider, actorId);
+      const graph = await distributions(graphProvider, actorId);
+      assert.deepEqual(sql.relationshipTierDistribution, graph.relationshipTierDistribution, `tiers ${actorId}`);
+      assert.deepEqual(sql.relationshipStrengthDistribution, before.get(actorId), `old strength distribution unchanged ${actorId}`);
+      assert.deepEqual(graph.relationshipStrengthDistribution, before.get(actorId), `graph old strength distribution unchanged ${actorId}`);
+    }
+    const owner = await distributions(sqlProvider, OWNER);
+    assert.deepEqual(owner.relationshipTierDistribution!.map((bucket) => [bucket.tier, bucket.relationshipCount]), [["new", 6], ["active", 1], ["core", 1], ["dormant", 2]]);
+    assert.equal(owner.relationshipTierDistribution!.reduce((sum, bucket) => sum + bucket.relationshipCount, 0), 10);
+    assert.deepEqual(owner.relationshipTierDistribution!.find((bucket) => bucket.tier === "new")!.contactIds.length, DASHBOARD_SHORT_LIST_LIMIT);
+    const other = await distributions(sqlProvider, OTHER);
+    assert.deepEqual(other.relationshipTierDistribution, [{ tier: "active", relationshipCount: 1, percentage: 100, contactIds: ["c01"] }]);
+  } finally {
+    await client.close();
+    try { await admin.query(`drop schema if exists ${schema} cascade`); } finally { await admin.end(); }
+  }
+});
+
+test("W0049: new structure dimensions (seniority, region, industry secondary) are equal on the SQL read model and the graph path, and old keys are unchanged by the new fields", {
+  skip: databaseUrl ? false : "Explicit isolated PostgreSQL URL required",
+  timeout: 120_000,
+}, async () => {
+  assert.ok(databaseUrl);
+  assert.ok(["localhost", "127.0.0.1"].includes(new URL(databaseUrl).hostname), "Local equivalence test only");
+  const schema = `w49_structure_${randomUUID().replaceAll("-", "")}`;
+  const PLAIN = "workspace:w49-plain";
+  const admin = new Pool({ connectionString: databaseUrl, max: 1 });
+  const pool = new Pool({ connectionString: databaseUrl, max: 2, options: `-c search_path=${schema} -c statement_timeout=20000` });
+  const client = createTransactionalPostgresClient({ connectionString: databaseUrl, pool });
+  try {
+    await admin.query(`create schema ${schema}`);
+    await client.query(ORBIT_RECORDS_SCHEMA_SQL);
+    const store = createPostgresLiveRecordStore({ client });
+    for (const row of fixtureRecords()) await store.upsertRecord(row);
+    for (const row of fixtureRecords({ structure: false })) await store.upsertRecord({ ...row, workspaceId: PLAIN });
+    const fixedNow = () => "2026-09-27T00:00:00.000Z";
+    const providers = (workspaceId: string) => {
+      const sql = createStorageDashboardAggregateProvider({ store, workspaceId, sqlClient: client, source: "test:d1", sourceLabel: "D1 storage" });
+      return { sql, graph: oracleProvider(sql) };
+    };
+    const distributions = async (provider: LiveDashboardAggregateProvider, actorId: string) => {
+      const result = await createLiveNetworkDistributionAnalyticsService({ now: fixedNow, provider: networkDistributionProviderForAccount(provider, actorId) }).getDistributions();
+      assert.ok(result.success);
+      return result.data;
+    };
+    const enriched = providers(WORKSPACE);
+    const plain = providers(PLAIN);
+    const oldKeys = (data: Awaited<ReturnType<typeof distributions>>) => ({
+      industryDistribution: data.industryDistribution,
+      valueTypeDistribution: data.valueTypeDistribution,
+      relationshipStrengthDistribution: data.relationshipStrengthDistribution,
+      structure: Object.fromEntries((["industry", "location", "role", "relationship"] as const).map((dimension) => [
+        dimension,
+        data.structureDistributions[dimension].map(({ secondary: _secondary, ...bucket }) => bucket),
+      ])),
+    });
+    for (const actorId of ACTORS) {
+      const sql = await distributions(enriched.sql, actorId);
+      const graph = await distributions(enriched.graph, actorId);
+      assert.deepEqual(sql.structureDistributions, graph.structureDistributions, `structure ${actorId}`);
+      assert.deepEqual(oldKeys(sql), oldKeys(await distributions(plain.sql, actorId)), `old keys unchanged by the new fields ${actorId}`);
+      assert.deepEqual(oldKeys(graph), oldKeys(await distributions(plain.graph, actorId)), `graph old keys unchanged ${actorId}`);
+      const total = sql.state === "success" ? (await createLiveDashboardAggregateService({ provider: enriched.sql }).getDashboardAggregate({ actorId })) : null;
+      for (const dimension of ["seniority", "region"] as const) {
+        const buckets = sql.structureDistributions[dimension] ?? [];
+        assert.ok(buckets.every((bucket) => bucket.evidenceIds.length === 0), `${dimension} carries no evidence`);
+        if (total?.success) assert.equal(buckets.reduce((sum, bucket) => sum + bucket.contactCount, 0), total.data.relationshipAssetTotals.contacts, `${dimension} sums to all contacts ${actorId}`);
+      }
+    }
+    const owner = await distributions(enriched.sql, OWNER);
+    const pairs = (dimension: "seniority" | "region") => (owner.structureDistributions[dimension] ?? []).map((bucket) => [bucket.bucketId, bucket.contactCount, bucket.missingData]);
+    // 17 位：c01 c_level、c01-dup 无、c04 founder、c06 vp、c08 director → 决策层 4；c02 manager；c07 c10 执行层；其余其他。
+    assert.deepEqual(pairs("seniority"), [["seniority_decision", 4, false], ["seniority_manager", 1, false], ["seniority_staff", 2, false], ["seniority_other", 10, true]]);
+    assert.deepEqual(owner.structureDistributions.seniority!.map((bucket) => bucket.label), ["决策层", "管理层", "执行层", "其他"]);
+    // 地区：非法国家码（小写 jp、数组）与无 region 的 9 位进「地区待完善」；同数按显示名排序；城市进 id 前 URI 编码。
+    assert.deepEqual(pairs("region"), [
+      ["region_unknown", 9, true],
+      ["region_JP_Tokyo", 2, false],
+      ["region_FR_Paris", 1, false],
+      ["region_JP", 1, false],
+      ["region_JP_Osaka", 1, false],
+      ["region_SG", 1, false],
+      ["region_US_New%20York", 1, false],
+      ["region_US_New%20York%7CNY", 1, false],
+    ]);
+    const tech = owner.structureDistributions.industry.find((bucket) => bucket.bucketId === "technology_internet")!;
+    // 科技 3 人：c01 企业软件、c06 AI 与数据、c04 二级挂在别的一级（不匹配）→ 未细分。
+    assert.deepEqual(tech.secondary, [
+      { bucketId: "technology_internet.enterprise_software", secondaryIndustryId: "technology_internet.enterprise_software", contactCount: 1, percentage: 34, missingData: false },
+      { bucketId: "technology_internet.ai_data", secondaryIndustryId: "technology_internet.ai_data", contactCount: 1, percentage: 33, missingData: false },
+      { bucketId: "technology_internet.unspecified", contactCount: 1, percentage: 33, missingData: true },
+    ]);
+    const retail = owner.structureDistributions.industry.find((bucket) => bucket.bucketId === "retail_consumer")!;
+    assert.deepEqual(retail.secondary, [{ bucketId: "retail_consumer.unspecified", contactCount: 3, percentage: 100, missingData: true }]);
+    assert.equal(owner.structureDistributions.industry.find((bucket) => bucket.bucketId === "unclassified")!.secondary, undefined);
+
+    // 名单下钻：每个新维度任取一个分组，名单人数 = 图上人数（SQL 读模型给的分布）。
+    const detail = createLiveNetworkDistributionAnalyticsService({ now: fixedNow, provider: networkDistributionProviderForAccount(enriched.sql, OWNER) });
+    for (const [dimension, bucketId, expected] of [
+      ["seniority", "seniority_decision", 4], ["region", "region_US_New%20York%7CNY", 1], ["region", "region_JP_Tokyo", 2],
+      ["industry_secondary", "technology_internet.unspecified", 1], ["industry_secondary", "retail_consumer.unspecified", 3],
+    ] as const) {
+      const result = await detail.getStructureDetail({ dimension, bucketId });
+      assert.ok(result.success, `${dimension}/${bucketId}`);
+      assert.equal(result.data.contacts.length, expected, `${dimension}/${bucketId}`);
+      assert.equal(result.data.bucket.contactCount, expected);
+    }
   } finally {
     await client.close();
     try { await admin.query(`drop schema if exists ${schema} cascade`); } finally { await admin.end(); }

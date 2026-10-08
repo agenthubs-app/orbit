@@ -1,90 +1,90 @@
 /**
- * 记录跟进弹窗（Network v2 第 789–856 行，含 toast 852–856）。
- * 保存 = PATCH /api/contacts/<id>（与 contact-notes-editor / contact-tag-editor / contact-interaction-editor 同一接口与 fetch 模式）。
- * 「同步到 AI 分析」无接口：渲染为 aria-disabled 说明，不做假开关。
- * 阶段箭头只展示当前阶段（非交互）：阶段由关系生命周期任务推进，见 buildFollowPatch 注释。
+ * 「写 memo」弹窗（W0046，RN-04；沿用 Network v2 记录跟进弹窗 789–856 行的外框与 toast）。
+ *
+ * 只写 `contact_detail_states.notes`：保存 = PATCH /api/contacts/<id>，body 为
+ * `{ note: { body, authorLabel, occurredAt, eventId?, kind: "memo" } }`（服务端按 memo 日期决定是否推进「上次互动」）。
+ * 字段：文字（必填）、日期（默认东京今天）、可选关联活动（所选日期的已报名活动推荐，数据由详情页服务端随详情下发，
+ * 读失败只隐藏推荐；弹窗本身除保存外不发请求）。
+ * 删去：需求／提供／下一步、阶段箭头、标签区、「同步到 AI 分析」摆设。
+ * W0005 示例模式（`useDemoMode()` 非空）：「保存」改走 `guardWrite`，不发请求。
  */
 "use client";
 
 import { useEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
 
+import { useDemoMode } from "../../_demo/demo-mode-core";
 import type { OrbitContactView } from "../../orbit-contacts-route-view-model";
 import { useOrbitLanguage } from "../../orbit-language-context";
-import { NETWORK_STAGES, STAGE_LABEL, stageClip, stageOf } from "./network-model";
 
-/**
- * 不发 status：详情服务对已有生命周期的关系拒绝任何 status 写入
- * （features/contacts/live-detail-service.ts CONTACT_DETAIL_CANONICAL_STATUS_LIFECYCLE_ONLY），
- * 阶段只能通过 /api/connections/<id>/lifecycle 的跟进任务推进。
- */
-/**
- * occurredAt 为完整 ISO 时间戳（与 contact-interaction-editor.tsx:51 一致）：
- * 未选日期 → 现在；选了日期 → 该本地日期 + 当前本地时刻（同一天多次记录保持先后顺序）。
- */
-export function followOccurredAt(date: string, now: Date = new Date()): string {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
-  if (!m) return now.toISOString();
-  const local = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), now.getHours(), now.getMinutes(), now.getSeconds(), now.getMilliseconds());
-  return Number.isNaN(local.getTime()) ? now.toISOString() : local.toISOString();
+const TOKYO_OFFSET_MS = 9 * 60 * 60 * 1000;
+const DAY_MS = 86_400_000;
+
+/** 东京当天 `YYYY-MM-DD`（与时间线、跟进到期同一口径；不依赖浏览器时区）。 */
+export function tokyoToday(now: Date = new Date()): string {
+  return new Date(now.getTime() + TOKYO_OFFSET_MS).toISOString().slice(0, 10);
 }
 
-export interface FollowPatchLabels { summary: string; need: string; offer: string; next: string }
+/** 东京日期 → 该日 [00:00, 次日 00:00) 的 UTC ISO 窗口；非法日期返回 null。 */
+export function tokyoDayWindow(day: string): { from: string; to: string } | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(day);
+  if (!m) return null;
+  const start = Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])) - TOKYO_OFFSET_MS;
+  if (!Number.isFinite(start) || new Date(start + TOKYO_OFFSET_MS).toISOString().slice(0, 10) !== day) return null;
+  return { from: new Date(start).toISOString(), to: new Date(start + DAY_MS).toISOString() };
+}
 
-export const FOLLOW_PATCH_LABELS: { zh: FollowPatchLabels; en: FollowPatchLabels } = {
-  zh: { summary: "总结", need: "对方需求", offer: "我能提供", next: "下一步" },
-  en: { summary: "Summary", need: "Their needs", offer: "I can offer", next: "Next step" },
-};
+export interface MemoPatch {
+  note: { body: string; authorLabel: "我"; occurredAt: string; eventId?: string; kind: "memo" };
+}
 
-/**
- * 备注正文前缀跟随 UI 语言（labels 由调用方用 t() 组装）；日期只进 lastInteraction.occurredAt，不写进下一步行。
- * 提醒日期已移除（台账偏差：设计稿 821 行的「提醒日期」无提醒接口，不做假字段）。
- */
-export function buildFollowPatch(input: { summary: string; need: string; offer: string; next: string; date: string; tags: string[]; existingTags: string[] }, labels: FollowPatchLabels = FOLLOW_PATCH_LABELS.zh, now: Date = new Date()): {
-  note: { body: string; authorLabel: "我" };
-  addTags?: string[];
-  removeTags?: string[];
-  lastInteraction: { channel: "manual_note"; occurredAt: string; summary: string };
-} {
-  const sep = labels === FOLLOW_PATCH_LABELS.zh ? "：" : ": ";
-  const lines = [`${labels.summary}${sep}${input.summary.trim()}`];
-  if (input.need.trim()) lines.push(`${labels.need}${sep}${input.need.trim()}`);
-  if (input.offer.trim()) lines.push(`${labels.offer}${sep}${input.offer.trim()}`);
-  if (input.next.trim()) lines.push(`${labels.next}${sep}${input.next.trim()}`);
-  const addTags = input.tags.filter((tag) => !input.existingTags.includes(tag));
-  const removeTags = input.existingTags.filter((tag) => !input.tags.includes(tag));
+/** memo 请求体：只有 note，不带 status／标签／lastInteraction（「上次互动」由服务端按日期规则推进）。 */
+export function buildMemoPatch(input: { body: string; date: string; eventId?: string | null }): MemoPatch {
+  const eventId = input.eventId?.trim();
   return {
-    note: { body: lines.join("\n"), authorLabel: "我" as const },
-    ...(addTags.length ? { addTags } : {}),
-    ...(removeTags.length ? { removeTags } : {}),
-    lastInteraction: { channel: "manual_note" as const, occurredAt: followOccurredAt(input.date, now), summary: input.summary.trim() },
+    note: {
+      body: input.body.trim(),
+      authorLabel: "我",
+      occurredAt: input.date,
+      ...(eventId ? { eventId } : {}),
+      kind: "memo",
+    },
   };
 }
 
-function today(): string {
-  const d = new Date();
-  const p = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+export interface MemoEventSuggestion { eventId: string; title: string }
+
+/**
+ * 当天已报名活动推荐：详情页服务端读好的近期活动日程（`contact.memoEventOptions`）里，开始时间落在
+ * 所选东京日期的项；同一活动只列一次，至多 6 个。
+ */
+export function memoEventSuggestions(options: OrbitContactView["memoEventOptions"], day: string): MemoEventSuggestion[] {
+  const dayWindow = tokyoDayWindow(day);
+  if (!dayWindow || !options?.length) return [];
+  const from = Date.parse(dayWindow.from);
+  const to = Date.parse(dayWindow.to);
+  const seen = new Set<string>();
+  const out: MemoEventSuggestion[] = [];
+  for (const item of options) {
+    const at = Date.parse(item.startsAt);
+    if (!(at >= from && at < to) || !item.eventId || !item.title.trim() || seen.has(item.eventId)) continue;
+    seen.add(item.eventId);
+    out.push({ eventId: item.eventId, title: item.title.trim() });
+  }
+  return out.slice(0, 6);
 }
 
 export function NetworkFollowModal({ contact, onClose, onSaved }: { contact: OrbitContactView; onClose: () => void; onSaved: () => void }) {
   const { t } = useOrbitLanguage();
-  const existingTags = contact.editableTags?.map((tag) => tag.value) ?? [];
-  const labelByValue = new Map((contact.editableTags ?? []).map((tag) => [tag.value, tag.label] as const));
-  const knownLabels = new Set((contact.editableTags ?? []).map((tag) => tag.label));
-  const [summary, setSummary] = useState("");
-  const [need, setNeed] = useState("");
-  const [offer, setOffer] = useState("");
-  const [next, setNext] = useState("");
-  const [date, setDate] = useState(today);
-  const stage = stageOf(contact);
-  const [tags, setTags] = useState<string[]>(existingTags);
-  const [tagInput, setTagInput] = useState("");
+  const demo = useDemoMode();
+  const [body, setBody] = useState("");
+  const [date, setDate] = useState(() => tokyoToday());
+  const [eventId, setEventId] = useState<string | null>(null);
   const [status, setStatus] = useState<"idle" | "saving" | "error" | "saved">("idle");
   const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const org = contact.company.trim();
   const title = contact.title.trim();
   const orgTitle = [org, title].filter(Boolean).join(" · ");
-  const canSave = summary.trim().length > 0 && status !== "saving" && status !== "saved";
+  const canSave = body.trim().length > 0 && Boolean(tokyoDayWindow(date)) && status !== "saving" && status !== "saved";
 
   useEffect(() => () => { if (savedTimer.current) clearTimeout(savedTimer.current); }, []);
   useEffect(() => {
@@ -95,34 +95,25 @@ export function NetworkFollowModal({ contact, onClose, onSaved }: { contact: Orb
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose, status]);
 
+  // 当天已报名活动推荐来自详情页服务端读取（示例与读失败时为空，只隐藏推荐，不影响保存）。
+  const suggestions = memoEventSuggestions(contact.memoEventOptions, date);
+  useEffect(() => { setEventId(null); }, [date]);
+
   const onOverlayClick = (event: MouseEvent<HTMLDivElement>) => {
     if (event.target === event.currentTarget && status !== "saving" && status !== "saved") onClose();
   };
 
-  const onTagKey = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key !== "Enter") return;
-    event.preventDefault();
-    const value = tagInput.trim();
-    if (!value) return;
-    // 去重同时看 value 与 label：输入已有标签的显示名不再追加一个同名新标签
-    const existingByLabel = (contact.editableTags ?? []).find((tag) => tag.label === value)?.value;
-    const canonical = existingByLabel ?? value;
-    if (!tags.includes(canonical) && !(knownLabels.has(value) && tags.some((tag) => labelByValue.get(tag) === value))) setTags([...tags, canonical]);
-    setTagInput("");
-  };
-
   async function save() {
     if (!canSave) return;
+    if (demo) {
+      demo.guardWrite(t({ en: "memo", zh: "memo" }));
+      return;
+    }
     setStatus("saving");
     try {
       const response = await fetch(`/api/contacts/${encodeURIComponent(contact.id)}`, {
         method: "PATCH", credentials: "same-origin", cache: "no-store", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(buildFollowPatch({ summary, need, offer, next, date, tags, existingTags }, {
-          summary: t({ zh: FOLLOW_PATCH_LABELS.zh.summary, en: FOLLOW_PATCH_LABELS.en.summary }),
-          need: t({ zh: FOLLOW_PATCH_LABELS.zh.need, en: FOLLOW_PATCH_LABELS.en.need }),
-          offer: t({ zh: FOLLOW_PATCH_LABELS.zh.offer, en: FOLLOW_PATCH_LABELS.en.offer }),
-          next: t({ zh: FOLLOW_PATCH_LABELS.zh.next, en: FOLLOW_PATCH_LABELS.en.next }),
-        })),
+        body: JSON.stringify(buildMemoPatch({ body, date, eventId })),
       });
       if (!response.ok) { setStatus("error"); return; }
       setStatus("saved");
@@ -134,11 +125,11 @@ export function NetworkFollowModal({ contact, onClose, onSaved }: { contact: Orb
 
   return (
     <div className="nw-overlay nw-overlay-follow" onClick={onOverlayClick} data-network-modal="follow">
-      <div className="nw-modal nw-modal-follow" role="dialog" aria-modal="true" aria-label={t({ en: "Log a follow-up", zh: "记录跟进" })}>
+      <div className="nw-modal nw-modal-follow" role="dialog" aria-modal="true" aria-label={t({ en: "Write a memo", zh: "写 memo" })}>
         <div className="nw-fu-head">
           <div className="nw-fu-head-copy">
-            <strong className="nw-fu-title">{t({ en: "Log a follow-up", zh: "记录跟进" })}</strong>
-            <span className="nw-fu-sub">{t({ en: "Record this conversation to keep the relationship moving.", zh: "记录本次与联系人的沟通情况，持续维护关系。" })}</span>
+            <strong className="nw-fu-title">{t({ en: "Write a memo", zh: "写 memo" })}</strong>
+            <span className="nw-fu-sub">{t({ en: "Note what happened with this contact, in your own words.", zh: "用自己的话记下和这位联系人之间发生的事。" })}</span>
           </div>
           <button type="button" className="btn nw-modal-close" onClick={onClose} aria-label={t({ en: "Close", zh: "关闭" })}>×</button>
         </div>
@@ -147,56 +138,36 @@ export function NetworkFollowModal({ contact, onClose, onSaved }: { contact: Orb
           <span className="nw-fu-card-copy">
             <strong className="nw-fu-card-name">{contact.displayName}</strong>
             <span className="nw-fu-card-org">{orgTitle}</span>
-            <span className="nw-fu-card-tags">{(contact.editableTags ?? []).map((tag) => <span key={tag.value} className="nw-fu-card-tag">{tag.label}</span>)}</span>
           </span>
           <button type="button" className="btn nw-fu-detail-link" onClick={onClose}>{t({ en: "View detail →", zh: "查看详情 →" })}</button>
         </div>
         <div className="nw-fu-form">
-          <label className="nw-fu-label" htmlFor="nw-fu-summary">{t({ en: "Summary", zh: "本次沟通摘要" })} <span className="nw-fu-req">*</span></label>
-          <textarea id="nw-fu-summary" className="nw-fu-textarea" rows={3} autoFocus value={summary} onChange={(e) => { setSummary(e.target.value); if (status === "error") setStatus("idle"); }} placeholder={t({ en: "Briefly record what was discussed, their feedback and key points…", zh: "请简要记录本次沟通的主要内容、对方反馈及重点信息…" })} />
-          <label className="nw-fu-label" htmlFor="nw-fu-need">{t({ en: "Their current needs", zh: "对方当前需求" })}</label>
-          <textarea id="nw-fu-need" className="nw-fu-textarea" rows={2} value={need} onChange={(e) => setNeed(e.target.value)} placeholder={t({ en: "Their business needs, pain points or focus…", zh: "记录对方目前的业务需求、痛点或关注重点…" })} />
-          <label className="nw-fu-label" htmlFor="nw-fu-offer">{t({ en: "What I can offer", zh: "我可提供的帮助" })}</label>
-          <textarea id="nw-fu-offer" className="nw-fu-textarea" rows={2} value={offer} onChange={(e) => setOffer(e.target.value)} placeholder={t({ en: "Resources, proposals or support we can provide…", zh: "记录我方可以提供的资源、方案或下一步支持…" })} />
-          <label className="nw-fu-label" htmlFor="nw-fu-next">{t({ en: "Next action", zh: "下一步动作" })}</label>
-          <input id="nw-fu-next" className="nw-fu-input" value={next} onChange={(e) => setNext(e.target.value)} placeholder={t({ en: "e.g. send a proposal, schedule a demo, make an intro…", zh: "例如：发送方案、安排产品演示、引荐相关同事等…" })} />
+          <label className="nw-fu-label" htmlFor="nw-fu-memo">{t({ en: "Memo", zh: "memo" })} <span className="nw-fu-req">*</span></label>
+          <textarea id="nw-fu-memo" className="nw-fu-textarea" rows={5} autoFocus value={body} onChange={(e) => { setBody(e.target.value); if (status === "error") setStatus("idle"); }} placeholder={t({ en: "What did you talk about? What do they need, what can you offer?", zh: "聊了什么？对方需要什么、你能提供什么？" })} />
+          <label className="nw-fu-label" htmlFor="nw-fu-date">{t({ en: "Date", zh: "日期" })} <span className="nw-fu-req">*</span></label>
+          <input id="nw-fu-date" className="nw-fu-input" type="date" value={date} max={tokyoToday()} onChange={(e) => setDate(e.target.value)} />
         </div>
-        {/* 设计 820–821 两列：「提醒日期」无提醒接口已移除（台账偏差），保留两列网格、第二列留空。 */}
-        <div className="nw-fu-dates">
-          <label className="nw-fu-date-label">{t({ en: "Date", zh: "更新时间" })} <span className="nw-fu-req">*</span><input className="nw-fu-input" type="date" value={date} onChange={(e) => setDate(e.target.value)} /></label>
-        </div>
-        <div className="nw-fu-block">
-          <span className="nw-fu-block-t">{t({ en: "Update stage", zh: "更新关系阶段" })} <span className="nw-fu-req">*</span></span>
-          {/* 只读：四段箭头按设计渲染、当前阶段高亮，但不是按钮（阶段由生命周期任务推进，VM 没有 connection id 可链接到 /app/tasks/relationship/<id>）。 */}
-          <div className="nw-fu-stages" role="group" aria-label={t({ en: "Current stage", zh: "当前关系阶段" })}>
-            {NETWORK_STAGES.map((key, i) => (
-              <span key={key} className={`nw-fu-stage${stage === key ? " nw-fu-stage-on" : ""}`} aria-disabled="true" aria-current={stage === key ? "true" : undefined} style={{ clipPath: stageClip(i as 0 | 1 | 2 | 3) }}>{t(STAGE_LABEL[key])}</span>
-            ))}
+        {suggestions.length ? (
+          <div className="nw-fu-block" data-memo-event-suggestions>
+            <span className="nw-fu-block-t">{t({ en: "Related event (optional)", zh: "关联活动（可选）" })}</span>
+            <div className="nw-fu-events" role="group" aria-label={t({ en: "Events that day", zh: "当天的活动" })}>
+              {suggestions.map((item) => (
+                <button key={item.eventId} type="button" className={`btn nw-fu-event${eventId === item.eventId ? " nw-fu-event-on" : ""}`} aria-pressed={eventId === item.eventId} onClick={() => setEventId(eventId === item.eventId ? null : item.eventId)}>{item.title}</button>
+              ))}
+            </div>
           </div>
-          <span className="nw-fu-hint">{t({ en: "Stages advance through relationship lifecycle tasks.", zh: "阶段由关系生命周期任务推进" })}</span>
-        </div>
-        <div className="nw-fu-block">
-          <span className="nw-fu-block-t">{t({ en: "Tags", zh: "标签" })}</span>
-          <div className="nw-fu-tagbox">
-            {tags.map((tag) => (
-              <span key={tag} className="nw-fu-tag">{labelByValue.get(tag) ?? tag}<button type="button" className="btn nw-fu-tag-x" aria-label={t({ en: `Remove ${tag}`, zh: `移除 ${tag}` })} onClick={() => setTags(tags.filter((x) => x !== tag))}>×</button></span>
-            ))}
-            <input className="nw-fu-tag-input" value={tagInput} onChange={(e) => setTagInput(e.target.value)} onKeyDown={onTagKey} placeholder={t({ en: "Type a tag and press Enter", zh: "输入标签，按回车添加" })} />
-          </div>
-        </div>
+        ) : null}
+        <span className="nw-fu-hint" data-memo-privacy-hint>{t({ en: "Memos are used to build your network analysis. Only you can see them.", zh: "memo 会用于为你生成人脉分析，仅你可见" })}</span>
         {status === "error" ? <p role="alert" className="nw-fu-error">{t({ en: "Saving failed. Please try again.", zh: "保存失败，请重试。" })}</p> : null}
         <div className="nw-fu-foot">
-          <span className="nw-fu-sync" aria-disabled="true">
-            <span className="nw-fu-sync-mark">✓</span>
-            <span className="nw-fu-sync-copy"><span className="nw-fu-sync-t">{t({ en: "Synced to AI analysis", zh: "同步到 AI 分析" })}</span><span className="nw-fu-sync-d">{t({ en: "The next analysis run will read this follow-up.", zh: "分析会在下次生成时读取本次跟进" })}</span></span>
-          </span>
+          <span />
           <div className="nw-fu-foot-actions">
             <button type="button" className="btn nw-fu-cancel" onClick={onClose} disabled={status === "saving" || status === "saved"}>{t({ en: "Cancel", zh: "取消" })}</button>
-            <button type="button" className="btn nw-fu-save" disabled={!canSave} onClick={save}>{status === "saving" ? t({ en: "Saving…", zh: "保存中…" }) : t({ en: "Save", zh: "保存记录" })}</button>
+            <button type="button" className="btn nw-fu-save" disabled={!canSave} onClick={save}>{status === "saving" ? t({ en: "Saving…", zh: "保存中…" }) : t({ en: "Save memo", zh: "保存 memo" })}</button>
           </div>
         </div>
       </div>
-      {status === "saved" ? <div className="nw-toast" role="status">✓ {t({ en: "Follow-up saved", zh: "已保存跟进记录" })}</div> : null}
+      {status === "saved" ? <div className="nw-toast" role="status">✓ {t({ en: "Memo saved", zh: "已保存 memo" })}</div> : null}
     </div>
   );
 }

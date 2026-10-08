@@ -12,7 +12,27 @@ import { redispatchPendingAgentActions } from "../../agent/runtime/dispatch-scan
 import { dispatchPasswordResetMail } from "../../auth/password-reset-dispatch";
 import { NotificationDeliveryUnconfigured, runNotificationDeliveryPass } from "../../notifications/delivery-pass";
 import { createConfiguredCanonicalReminderMaintenanceTask } from "../../notifications/configured-canonical-reminder-maintenance";
+import { createPlanEventAttendanceMaintenanceTask, PLAN_EVENT_ATTENDANCE_TASK } from "../../plans/event-attendance-reconcile";
+import { createPlanMatchMaintenanceTask } from "../../plans/match-maintenance-task";
+import { AI_PLAN_GENERATOR_ID, createPlanPhaseMaintenanceTask, PLAN_PHASE_TASK } from "../../plans/phase-refinement";
+import { createConfiguredAiPhaseRefiner } from "../../plans/ai-generator";
+import { createPlanEventRegistrationMaintenanceTask, PLAN_EVENT_REGISTRATION_TASK } from "../../plans/event-registration-reconcile";
+import { createPlanDailyRunGate } from "../../plans/maintenance-daily-gate";
+import { readRuntimeRegistrationsForPlanActor } from "../../plans/event-attribution-runtime";
+import { planTokyoDate } from "../../plans/week";
+import { resolvePlanService } from "../../plans/service-factory";
+import { getConfiguredPlanMatchingRuntime } from "../../plans/matching-runtime";
 import { createReadCostMaintenanceTask } from "../read-cost/maintenance-task";
+import { createConfiguredMemoExtractionProvider } from "../../contacts/memo-extraction/provider";
+import { listMemoExtractionRescanCandidates } from "../../contacts/memo-extraction/rescan";
+import { runConfiguredMemoExtraction } from "../../contacts/memo-extraction/store";
+import { createNewContactLayersDeps } from "../../network-analysis/layers-runtime";
+import { createNetworkSnapshotMaintenanceTask } from "../../network-analysis/maintenance-task";
+import { getConfiguredNetworkAnalysisRuntime } from "../../network-analysis/runtime";
+import { createContactInsightsMaintenanceTask } from "../../contacts/insights/maintenance-task";
+import { getConfiguredContactInsightsRuntime } from "../../contacts/insights/runtime";
+import { createContactImportMaintenanceTask } from "../../contacts/import/maintenance-task";
+import { getConfiguredContactImportMaintenance } from "../../contacts/import/runtime";
 import type { MaintenanceTask } from "./pass";
 
 // The production task list. Each task checks its own configuration and reports
@@ -25,6 +45,12 @@ export function createConfiguredMaintenanceTasks({
   workerId = "maintenance",
 }: { env?: NodeJS.ProcessEnv; workerId?: string } = {}): MaintenanceTask[] {
   const queueAvailable = env.VERCEL === "1";
+  // W0017：3 个计划日任务共用一个把关（每个东京自然日最多真正执行一次，一轮 pass 只读一次当日状态）。
+  const planDailyGate = createPlanDailyRunGate({
+    resolveStore: () => getConfiguredPlanMatchingRuntime()?.dailyRuns ?? null,
+    taskNames: [PLAN_EVENT_ATTENDANCE_TASK, PLAN_PHASE_TASK, PLAN_EVENT_REGISTRATION_TASK],
+    tokyoDate: planTokyoDate,
+  });
   return [
     createConfiguredCanonicalReminderMaintenanceTask({ env, workerId }),
     {
@@ -116,6 +142,114 @@ export function createConfiguredMaintenanceTasks({
         return { deleted: await ingest.store.reapUnattachedWrites() };
       },
     },
+    // W0010: runs network-need match jobs whose review page was closed (or whose
+    // single-card day has ended). Bounded per pass; each job bills at most one AI call.
+    // W0017: stays on every pass (the retry must not wait a day); an idle pass is one
+    // indexed due-claim statement that returns no rows.
+    createPlanMatchMaintenanceTask({
+      resolveWorker: () => getConfiguredPlanMatchingRuntime()?.worker ?? null,
+    }),
+    // W0015: marks the plan's event attended for contacts confirmed as met at it when the
+    // inline best-effort plan write after the contact commit failed. Idempotent, bounded.
+    // W0017: at most one real run per Tokyo day (continued batches the same day when capped).
+    createPlanEventAttendanceMaintenanceTask({
+      gate: planDailyGate,
+      resolve: () => {
+        const runtime = getConfiguredPlanMatchingRuntime();
+        if (!runtime) return null;
+        return {
+          planServiceFor: (actorId) => {
+            const resolution = resolvePlanService({ actorId, mode: "live" });
+            if (resolution.success === false) throw new Error(resolution.error.message);
+            return resolution.service;
+          },
+          repository: runtime.repository,
+        };
+      },
+    }),
+    // W0012: writes the "entered a new phase" progress entry (and, for a one-year plan,
+    // the week-level actions of the new quarter) for plans nobody opened this week.
+    // W0048b: also refines the skeleton phases of AI plans one phase ahead (background pool).
+    // Idempotent per plan + phase, bounded per batch; W0017: one real run per Tokyo day.
+    createPlanPhaseMaintenanceTask({
+      gate: planDailyGate,
+      resolve: () => {
+        const runtime = getConfiguredPlanMatchingRuntime();
+        if (!runtime) return null;
+        const planServiceFor = (actorId: string) => {
+          const resolution = resolvePlanService({ actorId, mode: "live" });
+          if (resolution.success === false) throw new Error(resolution.error.message);
+          return resolution.service;
+        };
+        // W0048b（D46②）：ORBIT_PLAN_GENERATOR=ai 时补细 AI 计划的骨架阶段（事务外调用、每阶段 1 次后台池操作）。
+        const refineActor = createConfiguredAiPhaseRefiner(planServiceFor, env);
+        const listRefinement = runtime.repository.listActorsNeedingPhaseRefinement?.bind(runtime.repository);
+        return {
+          listActorsEnteringPhase: (input) => runtime.repository.listActorsEnteringPhase(input),
+          planServiceFor,
+          ...(refineActor && listRefinement
+            ? {
+                refinement: {
+                  listActorsNeedingRefinement: (input: { limit: number; today: string; afterActorId?: string | null }) =>
+                    listRefinement({ ...input, aiGeneratorId: AI_PLAN_GENERATOR_ID }),
+                  refineActor,
+                },
+              }
+            : {}),
+        };
+      },
+      tokyoDate: planTokyoDate,
+    }),
+    // W0012: replays the registration state onto plan event items when the inline best-effort
+    // sync after a registration / cancellation failed. Idempotent, version-guarded, ≤50 per batch;
+    // W0017: one ordered sweep per Tokyo day, continued across passes until it reaches the end.
+    createPlanEventRegistrationMaintenanceTask({
+      gate: planDailyGate,
+      resolve: () => {
+        const runtime = getConfiguredPlanMatchingRuntime();
+        if (!runtime) return null;
+        return {
+          listActiveEventItems: (input) => runtime.repository.listActiveEventItems(input),
+          planServiceFor: (actorId) => {
+            const resolution = resolvePlanService({ actorId, mode: "live" });
+            if (resolution.success === false) throw new Error(resolution.error.message);
+            return resolution.service;
+          },
+          readRegistrations: readRuntimeRegistrationsForPlanActor,
+        };
+      },
+    }),
+    // W0048a: network-analysis snapshot jobs (auto recompute claimed by a leased worker that reserves
+    // one background-pool operation), deferred enrichment batches, and the bounded memo-extraction
+    // rescan opened by the AI usage ledger. Each pass handles at most 10 jobs and 10 memos; an idle
+    // pass is one indexed due-claim statement. Skipped until the tables are migrated.
+    createNetworkSnapshotMaintenanceTask({
+      resolve: () => {
+        const runtime = getConfiguredNetworkAnalysisRuntime();
+        const records = createConfiguredPostgresLiveRecordStore();
+        if (!runtime || !records) return null;
+        const memoProvider = createConfiguredMemoExtractionProvider();
+        return {
+          layers: createNewContactLayersDeps({ runtime, store: records.store }),
+          listMemoCandidates: memoProvider
+            ? (now) => listMemoExtractionRescanCandidates(runtime.client, { now, workspaceId: runtime.workspaceId })
+            : undefined,
+          runMemoExtraction: memoProvider ? (job) => runConfiguredMemoExtraction(job, { provider: memoProvider }) : undefined,
+          runtime,
+        };
+      },
+    }),
+    // W0051: per-contact insights. Claims dirty rows per actor (≤20 contacts per batch), reserves one
+    // background-pool operation per batch, defers the whole batch to the next Tokyo day when the pool is
+    // used up, and marks interrupted (lease-expired) rows failed instead of re-calling. ≤10 batches per pass;
+    // an idle pass is one partial-index claim statement. Skipped until the table is migrated.
+    createContactInsightsMaintenanceTask({
+      resolve: () => getConfiguredContactInsightsRuntime(),
+    }),
+    // W0053：导入解析行 7 天清理 + 三层更新重试。
+    createContactImportMaintenanceTask({
+      resolve: () => getConfiguredContactImportMaintenance(),
+    }),
     {
       name: "notification_redelivery",
       async run({ deadline }) {

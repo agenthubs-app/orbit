@@ -1,3 +1,6 @@
+import type { IndustryIdCode, SecondaryIndustryIdCode } from "./industries";
+import type { SeniorityLevelCode } from "./profile";
+
 export type BusinessCardContactPointType =
   | "phone" | "mobile" | "fax" | "wechat" | "line" | "whatsapp" | "website" | "other";
 
@@ -23,6 +26,16 @@ export interface BusinessCardStructuredExtractionContract {
   addresses: readonly BusinessCardLabeledValueContract[];
   certifications: readonly string[];
   detectedLanguages: readonly string[];
+  /** AI 按受控分类判断的一级行业（提取结构 v2 起）；判断不出、分类外或旧数据为 null/缺省。 */
+  primaryIndustryId?: IndustryIdCode | null;
+  /** 二级行业，必须属于 primaryIndustryId；规则同上。 */
+  secondaryIndustryId?: SecondaryIndustryIdCode | null;
+  /** W0045（提取结构 v3 起）：AI 按职位推断的职级（六档）；不合法或旧数据为 null/缺省。 */
+  seniorityLevel?: SeniorityLevelCode | null;
+  /** W0045：规范地区的 ISO 3166-1 两位国家码（大写）；不合法时与城市一起为 null。 */
+  regionCountryCode?: string | null;
+  /** W0045：规范英文城市名（如 "Tokyo"）；没有国家码时为 null。 */
+  regionCity?: string | null;
 }
 
 export type BusinessCardReviewIssueCode =
@@ -104,6 +117,8 @@ export interface BusinessCardBatchReviewInputContract {
   role: string;
   email: string;
   phone: string;
+  /** 名片地址 → 联系人 location。可选：旧客户端不传时按空处理。 */
+  address?: string;
   relationshipContext: string;
   notes: string;
   allowDuplicate?: boolean;
@@ -225,14 +240,41 @@ export interface IngestCardFieldSourcesContract {
   role: string | null;
   email: string | null;
   phone: string | null;
+  address?: string | null;
+}
+
+/** 复核页「可能是同一个联系人」：已有联系人的结构化字段 + 命中理由。 */
+export interface IngestContactCandidateContract {
+  contactId: string;
+  displayName: string;
+  organization: string;
+  role: string;
+  email: string;
+  phone: string;
+  address: string;
+  matchedOn: readonly ("email" | "phone" | "name_organization")[];
+  /** 名片六个字段与该联系人逐一相同：直接并入，不再询问。 */
+  identical: boolean;
 }
 
 export interface IngestCardConfirmationInputContract extends BusinessCardBatchReviewInputContract {
+  /** 用户选了「已有联系人，合并」：并入这个联系人，不新建。 */
+  mergeIntoContactId?: string;
   confirmationIntentId: string;
   expectedCardItems: readonly IngestCardConfirmationItemContract[];
   fieldSources: IngestCardFieldSourcesContract;
+  /** 审阅页「行业」一行的最终值；旧客户端不传时不写行业。 */
+  primaryIndustryId?: IndustryIdCode | null;
+  secondaryIndustryId?: SecondaryIndustryIdCode | null;
+  /**
+   * W0045：审阅页「职级」「地区」两行的最终值；旧客户端不传时不写。
+   * 来源（ai／user）由服务端比较提交值与该卡识别结果判定，客户端不传来源。
+   */
+  seniorityLevel?: SeniorityLevelCode | null;
+  regionCountryCode?: string | null;
+  regionCity?: string | null;
 }
 
 export type IngestConfirmationResponseContract =
-  | { state: "created"; contactId: string; item: IngestItemContract; items: readonly IngestItemContract[]; replayed: boolean }
-  | { state: "duplicate_review"; duplicateContactId: string };
+  | { state: "created"; contactId: string; item: IngestItemContract; items: readonly IngestItemContract[]; replayed: boolean; merged?: boolean }
+  | { state: "duplicate_review"; duplicateContactId: string; candidate?: IngestContactCandidateContract | null };

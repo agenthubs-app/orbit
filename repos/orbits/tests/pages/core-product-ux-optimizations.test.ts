@@ -93,17 +93,6 @@ test("both recommendation and follow-up queue cards generate an editable draft i
 // 空态文案，该样例块因此在任务 2 就已经不在售；本任务只是删掉最后一份源码。
 // **这是一条能力损失**，已记进 6a 报告的关注点，留给任务 7 决定是否按设计补回。
 
-test("secondary contact views are grouped behind one reversible disclosure", () => {
-  const sidebar = source("app/(app)/app/contacts/orbit-crm-sidebar.tsx");
-
-  assert.match(sidebar, /item\.key === "list"/);
-  assert.match(sidebar, /item\.key === "pipeline"/);
-  assert.match(sidebar, /const currentActive = active === "graph" \? "dashboard" : active/);
-  assert.match(sidebar, /item\.key === currentActive/);
-  assert.match(sidebar, /更多分析与记录/);
-  assert.match(sidebar, /setExpanded\(\(value\) => !value\)/);
-});
-
 // iOrbit 任务 6a：原来这里有两条 Today 用例（"Today limits and groups decisions while
 // keeping overflow traceable" / "Today only accepts actor-authorized records as schedule
 // truth"），断的是 `/app/today` 路由的 view model 与页面。该路由已随路由归并删除

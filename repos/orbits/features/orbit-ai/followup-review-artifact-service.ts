@@ -157,19 +157,10 @@ function absoluteDueLabel(dueAt: string, locale: ArtifactLocale): string {
   return locale === "zh" ? `${day}（${weekday}）` : `${day} (${weekday})`;
 }
 
-// dueInDays 在 live-service 的 daysUntil 里被 Math.max(0, …) 夹住，所以一条早已过期
-// 的任务会以 0 天传进来，显示成「今天」——而它自己的 dueAt 明明写着上个月。这里不
-// 改动领域层的 dueInDays（它还驱动 priority 排序），只在展示层用 dueAt 和同一个参照
-// 时间比一次：确实已经过去的，就说逾期，不说今天。
-function overdueDaysFor(dueAt: string, reference: string): number {
-  const due = new Date(dueAt).getTime();
-  const base = new Date(reference).getTime();
-
-  if (!Number.isFinite(due) || !Number.isFinite(base)) {
-    return 0;
-  }
-
-  return Math.max(0, Math.floor((base - due) / 86_400_000));
+// W0044：领域层的 dueInDays 已按请求时刻的东京日历日计算，逾期为负，展示层不再
+// 自己拿参照时间重算。逾期天数 = −dueInDays；没有 dueAt 的派生建议恒为正桶值，不会逾期。
+function overdueDaysOf(task: FollowupTask): number {
+  return task.dueInDays < 0 ? -task.dueInDays : 0;
 }
 
 function dueLabelFor(
@@ -370,13 +361,13 @@ function displayActionFor(task: FollowupTask, locale: ArtifactLocale): string {
   });
 }
 
-function itemFor(task: FollowupTask, locale: ArtifactLocale, reference: string) {
+function itemFor(task: FollowupTask, locale: ArtifactLocale) {
   const title = displayTitleFor(task, locale);
   const action = displayActionFor(task, locale);
-  const overdue = task.dueAt ? overdueDaysFor(task.dueAt, reference) : 0;
-  // priority 同样是从被夹住的 dueInDays 推出来的，逾期任务会带着「今天」这个标记，
-  // 和下面「已逾期 N 天」的到期行直接打架。优先级和到期共用同一个判断，逾期时两边
-  // 都说逾期——展示层再由前缀判等收掉重复的那一个。
+  const overdue = overdueDaysOf(task);
+  // 逾期任务的 priority 仍是 "today"（不新增枚举，W44-1），直接显示会和「已逾期 N 天」
+  // 的到期行打架。优先级和到期共用同一个判断，逾期时两边都说逾期——展示层再由前缀
+  // 判等收掉重复的那一个。
   const priorityLabel =
     overdue > 0
       ? localize(locale, { en: "Overdue", zh: "已逾期" })
@@ -467,7 +458,7 @@ function generatedViewFor(
           en: `Source: ${data.sourceLabel}`,
           zh: `来源：${data.sourceLabel}`,
         }),
-        items: data.tasks.map((task) => itemFor(task, locale, data.generatedAt)),
+        items: data.tasks.map((task) => itemFor(task, locale)),
         title: localize(locale, {
           en: "Suggested follow-ups",
           zh: "建议跟进",

@@ -17,6 +17,7 @@ import {
   IngestConflictError,
   isRetryableIngestError,
   type IngestBatchDTO,
+  type IngestBatchCardStates,
   type IngestBatchSummary,
   type IngestCardConfirmationItem,
   type IngestCardFieldSources,
@@ -25,6 +26,9 @@ import {
   type IngestItemErrorStage,
   type IngestManifestEntry,
 } from "./contract";
+import { sanitizeIndustryPair } from "../../../shared/domain/industries";
+import { sanitizeCardEnrichment } from "../business-card-enrichment-prompt";
+import { enqueuePlanMatchJob } from "../../plans/matching-repository";
 
 // 设计方案：docs/superpowers/plans/2026-08-31-business-card-batch-ingest-v2.md (v2.4)
 //
@@ -60,6 +64,11 @@ export interface BusinessCardIngestRepository {
     actorId: string;
     batchId: string;
   }): Promise<IngestBatchSummary | null>;
+  /** W0021：批次状态 + 每个条目的分组／状态列（见 `IngestBatchCardStates`）；他人的批次为 null。 */
+  getBatchCardStates(input: {
+    actorId: string;
+    batchId: string;
+  }): Promise<IngestBatchCardStates | null>;
   listBatches(input: { actorId: string }): Promise<IngestBatchDTO[]>;
   markItemUploaded(input: {
     actorId: string;
@@ -143,6 +152,8 @@ export interface BusinessCardIngestRepository {
     actorId: string;
     batchId: string;
   }): Promise<IngestBatchDTO>;
+  /** 只读查询用的连接（复核页查「可能是同一个联系人」）。不开事务、不加锁。 */
+  withReadClient?<T>(fn: (client: IngestQueryClient) => Promise<T>): Promise<T>;
   sweepDueBatches(): Promise<{ expiredBatchIds: string[] }>;
   reapExhaustedLeases(): Promise<{ reapedItemIds: string[] }>;
   listPendingNotifications(input: { limit: number }): Promise<
@@ -213,6 +224,18 @@ function mapBatch(row: Record<string, unknown>): IngestBatchDTO {
   };
 }
 
+// 提取结构 v1 没有行业键、v1／v2 没有职级与地区键：读出时统一补成 null（并按分类／ISO 再校验一次），
+// 旧批次照常打开与确认。
+function storedExtraction(value: unknown): BusinessCardStructuredExtraction | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const extraction = value as BusinessCardStructuredExtraction;
+  return {
+    ...extraction,
+    ...sanitizeIndustryPair(extraction.primaryIndustryId, extraction.secondaryIndustryId),
+    ...sanitizeCardEnrichment(extraction.seniorityLevel, extraction.regionCountryCode, extraction.regionCity),
+  };
+}
+
 function mapItem(row: Record<string, unknown>): IngestItemDTO {
   return {
     id: String(row.id),
@@ -229,7 +252,7 @@ function mapItem(row: Record<string, unknown>): IngestItemDTO {
     imageDigest: (row.image_digest as string | null) ?? null,
     derivativeObjectKey: (row.derivative_object_key as string | null) ?? null,
     derivativeSize: row.derivative_size === null ? null : Number(row.derivative_size),
-    extraction: (row.extraction as BusinessCardStructuredExtraction | null) ?? null,
+    extraction: storedExtraction(row.extraction),
     extractionSchemaVersion:
       row.extraction_schema_version === null
         ? null
@@ -409,6 +432,24 @@ export function createBusinessCardIngestRepository(options: {
          where workspace_id = $1 and id = $2`,
         [workspaceId, batchId],
       );
+      // W0010：同一事务写人脉需求匹配任务（outbox）。批次行已持锁、completed 只会转入一次；
+      // 任务表另有 (actor, batch) 唯一约束兜底重放。一张名片的批次按东京自然日聚合。
+      const confirmed = await client.query(
+        `select coalesce(array_agg(distinct confirmed_contact_id)
+                  filter (where confirmed_contact_id is not null), '{}') as contact_ids,
+                count(distinct card_id) as cards
+         from bc_ingest_items
+         where workspace_id = $1 and batch_id = $2`,
+        [workspaceId, batchId],
+      );
+      const summary = confirmed.rows[0] ?? { contact_ids: [], cards: 0 };
+      await enqueuePlanMatchJob(client, {
+        actorId: String(batchRow.actor_id),
+        batchId,
+        contactIds: Array.isArray(summary.contact_ids) ? (summary.contact_ids as string[]) : [],
+        singleCard: Number(summary.cards) === 1,
+        workspaceId,
+      });
       return;
     }
     if (status === "processing" && active === 0) {
@@ -639,6 +680,43 @@ export function createBusinessCardIngestRepository(options: {
           [workspaceId, batchId],
         );
         return { batch: mapBatch(batchRow), items: itemsResult.rows.map(mapItem) };
+      });
+    },
+
+    async getBatchCardStates({ actorId, batchId }) {
+      return withClient(async (client) => {
+        const batchResult = await client.query(
+          `select id, status, created_at from bc_ingest_batches
+           where workspace_id = $1 and id = $2 and actor_id = $3`,
+          [workspaceId, batchId, actorId],
+        );
+        const batchRow = batchResult.rows[0];
+        if (!batchRow) {
+          return null;
+        }
+        const itemsResult = await client.query(
+          `select id, card_id, card_side, seq, status, confirmed_contact_id, card_identity_explicit, created_at
+           from bc_ingest_items
+           where workspace_id = $1 and batch_id = $2 order by seq`,
+          [workspaceId, batchId],
+        );
+        return {
+          batch: {
+            createdAt: toIso(batchRow.created_at),
+            id: String(batchRow.id),
+            status: batchRow.status as IngestBatchDTO["status"],
+          },
+          items: itemsResult.rows.map((row) => ({
+            cardId: String(row.card_id),
+            cardIdentityExplicit: row.card_identity_explicit === true,
+            confirmedContactId: (row.confirmed_contact_id as string | null) ?? null,
+            createdAt: toIso(row.created_at),
+            id: String(row.id),
+            seq: Number(row.seq),
+            side: row.card_side as IngestItemDTO["side"],
+            status: row.status as IngestItemDTO["status"],
+          })),
+        };
       });
     },
 
@@ -1290,6 +1368,10 @@ export function createBusinessCardIngestRepository(options: {
       });
       if (!result) throw new IngestConflictError("BATCH_GONE", "batch expired");
       return result;
+    },
+
+    withReadClient(fn) {
+      return withClient(fn);
     },
 
     async cancelBatch({ actorId, batchId }) {

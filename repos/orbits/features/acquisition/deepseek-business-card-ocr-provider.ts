@@ -8,6 +8,8 @@ import {
   BusinessCardCloudOcrProviderError,
   parseBusinessCardStructuredExtraction,
 } from "./business-card-ocr-validation";
+import { businessCardEnrichmentInstruction } from "./business-card-enrichment-prompt";
+import { businessCardIndustryInstruction } from "./business-card-industry-prompt";
 
 const DEEPSEEK_CHAT_COMPLETIONS_ENDPOINT =
   "https://api.deepseek.com/chat/completions";
@@ -34,12 +36,14 @@ export const BUSINESS_CARD_TRANSCRIPTION_PROMPT = [
 export function businessCardStructuringPrompt(): string {
   return [
     "You convert a raw business-card transcription into structured JSON.",
-    "Use only text present in the transcription. Never infer or invent missing values.",
+    "Use only text present in the transcription. Never infer or invent missing values, except the industry, seniority, and region fields described below.",
     "Keep native-script and romanized names separate when both are transcribed.",
     "Keep printed office labels on phones, faxes, emails, and addresses.",
     "Classify messenger handles as contactPoints with type wechat, line, or whatsapp; use type website for printed URLs, and type other for any remaining printed contact method so nothing is dropped.",
     "If the transcription contains multiple business cards, structure only the single card with the most complete details, and never merge values from different cards.",
     "Return null or an empty array for absent fields; never fabricate a value the transcription does not contain.",
+    businessCardIndustryInstruction(),
+    businessCardEnrichmentInstruction(),
     "Respond with a single JSON object matching this JSON schema exactly:",
     JSON.stringify(BUSINESS_CARD_EXTRACTION_JSON_SCHEMA),
   ].join(" ");

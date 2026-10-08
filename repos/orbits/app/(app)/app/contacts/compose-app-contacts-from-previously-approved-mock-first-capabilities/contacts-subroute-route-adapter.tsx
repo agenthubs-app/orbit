@@ -1,3 +1,4 @@
+import { strengthFromTier, type NetworkTierLookup } from "../network-0918/network-model";
 import { StateView } from "../../../../../shared/ui/state-view";
 import { hasPendingInitialization } from "../contact-relationship-initialization-view-model";
 import { industryLabel, isIndustryIdCode } from "../../../../../shared/domain/industries";
@@ -71,20 +72,6 @@ function sourceKindForContact(
   return "exchange";
 }
 
-function strengthForContact(
-  contact: AppContactListItemViewModel,
-): OrbitContactStrength {
-  const highValue = contact.relationshipValueLabels.some((label) =>
-    /commercial|strategic|invest/i.test(label),
-  );
-
-  if (highValue) {
-    return "strong";
-  }
-
-  return contact.needsAttention ? "weak" : "medium";
-}
-
 function nextActionForContact(
   contact: AppContactListItemViewModel,
 ): OrbitContactView["nextAction"] {
@@ -102,6 +89,7 @@ function nextActionForContact(
 function contactToOrbitView(
   contact: AppContactListItemViewModel,
   index: number,
+  tiers?: NetworkTierLookup,
 ): OrbitContactView {
   const eventId = eventIdForSource(contact.sourceLabel);
   const industry = isIndustryIdCode(contact.primaryIndustryId)
@@ -172,23 +160,28 @@ function contactToOrbitView(
     stage: hasPendingInitialization(contact) ? "待设置关系" : contact.statusLabel,
     title: contact.role,
     wechat: "",
-    strength: strengthForContact(contact),
+    strength: strengthFromTier(tiers?.get(contact.id)),
+    dormant: tiers?.get(contact.id)?.dormant === true,
     valueTags: Array.from(contact.relationshipValueLabels).slice(0, 3),
     nextAction: hasPendingInitialization(contact) ? null : nextActionForContact(contact),
     lastInteraction: "",
-    dormant: false,
   };
 }
 
+/**
+ * W0047（W47-4）：`tiers` = 这些联系人的档位（relationship_strengths 读模型投影，加载器读好传入）；
+ * 强弱点只读它（core→strong、active→medium、new→weak、dormant→dormant，无行→unscored）。
+ */
 export function contactsRouteToOrbitContactsViewModel(
   payload: AppContactsPayloadViewModel,
+  tiers?: NetworkTierLookup,
 ): OrbitContactsViewModel {
   const sourceLabels = Array.from(
     new Set(payload.contacts.map((contact) => contact.sourceLabel)),
   );
 
   return {
-    connections: payload.contacts.map(contactToOrbitView),
+    connections: payload.contacts.map((contact, index) => contactToOrbitView(contact, index, tiers)),
     events: sourceLabels.map((sourceLabel) => ({
       id: eventIdForSource(sourceLabel),
       name: sourceLabel,

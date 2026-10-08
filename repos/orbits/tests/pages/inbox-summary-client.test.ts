@@ -26,7 +26,7 @@ test("Web badge uses only the selected narrow source, never falls back on failur
   } finally { globalThis.fetch = previous; }
 });
 
-test("desktop and mobile Web triggers merge concurrent reads and retain both identity checks", async () => {
+test("desktop and mobile Web triggers merge concurrent reads and share one identity confirmation per cycle", async () => {
   const previous = globalThis.fetch;
   const calls: string[] = [];
   try {
@@ -37,6 +37,7 @@ test("desktop and mobile Web triggers merge concurrent reads and retain both ide
         : { actorId: "a", messagesUnread: 2, notificationMode: "legacy", notificationRead: "ready", notificationsUnread: 4, asOf: "2026-09-25T00:00:00Z" } });
     }) as typeof fetch;
     assert.deepEqual(await Promise.all([readInboxUnreadCounts("zh", "a"), readInboxUnreadCounts("zh", "a")]), [{ threads: 2, alerts: 4 }, { threads: 2, alerts: 4 }]);
-    assert.deepEqual(calls, ["/api/account/me", "/api/inbox/summary", "/api/account/me"]);
+    // W0031: the confirmation after the summary reuses the one before it (same poll cycle).
+    assert.deepEqual(calls, ["/api/account/me", "/api/inbox/summary"]);
   } finally { globalThis.fetch = previous; }
 });

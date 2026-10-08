@@ -30,14 +30,11 @@ import {
   scanOwnBusinessCard,
   type ProfileFields,
 } from "./onboarding-client";
-import { CardBatchReminders, OnboardingCardImport, useOnboardingCardBatch } from "./onboarding-card-import";
+import { CardBatchImport, CardBatchReminders } from "../../contacts/card-batch-0918/card-batch-ui";
+import { useCardBatch } from "../../contacts/card-batch-0918/use-card-batch";
 import {
   bioCounter,
-  FOCUS_LIMIT,
-  GOAL_GROUPS,
-  GOAL_LIMIT,
   HEADLINE_LIMIT,
-  HORIZONS,
   INTRO_REGENERATE_LIMIT,
   OFFER_LIMIT,
   OFFER_OPTIONS,
@@ -59,6 +56,8 @@ import {
   type OnboardingStep,
   type OnboardingView,
 } from "./onboarding-model";
+import { GoalEditor, GoalReminder } from "../goal-editor/goal-editor";
+import { horizonOption, type GoalHorizon } from "../goal-editor/goal-editor-model";
 import { OnboardingHomePreview, OnboardingNetworkPreview, type PreviewProgress } from "./onboarding-previews";
 import { ONBOARDING_STYLES } from "./onboarding-styles";
 
@@ -135,9 +134,8 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
   const [expectedUpdatedAt, setExpectedUpdatedAt] = useState<string | null>(null);
   const [complete, setComplete] = useState(false);
   const [basic, setBasic] = useState<BasicDraft>(EMPTY_BASIC);
-  const [goals, setGoals] = useState<string[]>([]);
-  const [focus, setFocus] = useState("");
-  const [horizon, setHorizon] = useState("");
+  const [goalText, setGoalText] = useState("");
+  const [horizon, setHorizon] = useState<GoalHorizon | "">("");
   const [savedGoal, setSavedGoal] = useState("");
   const [offer, setOffer] = useState<string[]>([]);
   const [seek, setSeek] = useState<string[]>([]);
@@ -150,7 +148,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
   const [introRegenerations, setIntroRegenerations] = useState(0);
   const [cardBatchId, setCardBatchId] = useState<string | null>(null);
   // 名片批次在页面顶层维护：离开第 5 步时上传/识别/自动导入照常进行，完成后在任意视图提醒。
-  const cardBatch = useOnboardingCardBatch(cardBatchId, t);
+  const cardBatch = useCardBatch(cardBatchId, t);
   const importedCount = cardBatch.autoCount + cardBatch.userCount;
   // 「我在寻找」✦ 建议由 AI 按已保存的目标与资料挑选；forGoal 记录它对应哪一版目标，目标变了才重新请求。
   const [seekSuggest, setSeekSuggest] = useState<{ forGoal: string; labels: string[]; status: "idle" | "loading" | "ready" | "error" }>({ forGoal: "", labels: [], status: "idle" });
@@ -165,7 +163,8 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
   const isStep = stepIndex >= 0;
   const name = basic.name.trim();
   const initial = name ? Array.from(name)[0]!.toUpperCase() : t({ zh: "你", en: "Y" });
-  const effectiveHorizon = horizon || t(HORIZONS[1]!);
+  // 未选期限时默认 3 个月内（与旧版默认「本季度」同档）。
+  const effectiveHorizon: GoalHorizon = horizon || "quarter";
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
@@ -178,7 +177,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
     if (toastTimer.current) clearTimeout(toastTimer.current);
   }, []);
 
-  // 读取已保存资料 + 本地草稿（目标 chip / 时间范围 / 当前步骤）。
+  // 读取已保存资料 + 本地草稿（目标正文 / 期限 / 当前步骤）。
   useEffect(() => {
     let active = true;
     void (async () => {
@@ -198,17 +197,16 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
         setSavedIntro(Boolean(profile?.bio?.trim() || profile?.headline?.trim()));
         const draft = readOnboardingDraft(actorKey);
         if (draft) {
-          setGoals(draft.goals);
-          setFocus(draft.focus);
+          setGoalText(draft.goalText);
           setHorizon(draft.horizon);
           setIntroRegenerations(draft.introRegenerations);
           setCardBatchId(draft.cardBatchId);
           setView(draft.view);
-        } else if (profile?.relationshipGoal?.trim()) {
-          // 本地草稿没了（换设备/清缓存）：从已保存的目标文本还原 chip 与那一句话。
+        }
+        if (!draft?.goalText.trim() && profile?.relationshipGoal?.trim()) {
+          // 本地草稿没了或没有目标（换设备/清缓存）：从已保存的目标文本还原正文与期限（旧格式的方向前缀并入正文）。
           const restored = parseRelationshipGoal(profile.relationshipGoal);
-          setGoals([...restored.goals]);
-          setFocus(restored.focus);
+          setGoalText(restored.text);
           setHorizon(restored.horizon);
         }
         setLoaded(true);
@@ -226,8 +224,8 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
 
   useEffect(() => {
     if (!loaded) return;
-    writeOnboardingDraft(actorKey, { cardBatchId, focus, goals, horizon, introRegenerations, view });
-  }, [actorKey, cardBatchId, focus, goals, horizon, introRegenerations, loaded, view]);
+    writeOnboardingDraft(actorKey, { cardBatchId, goalText, horizon, introRegenerations, view });
+  }, [actorKey, cardBatchId, goalText, horizon, introRegenerations, loaded, view]);
 
   function flash(text: string) {
     if (toastTimer.current) clearTimeout(toastTimer.current);
@@ -308,8 +306,8 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
       return;
     }
     if (view === "goals") {
-      if (!goals.length) return;
-      const relationshipGoal = composeRelationshipGoal({ focus, goals, horizon: effectiveHorizon }, lang);
+      if (!goalText.trim()) return;
+      const relationshipGoal = composeRelationshipGoal({ horizon: effectiveHorizon, text: goalText }, lang);
       const ok = await save({ relationshipGoal });
       if (ok) {
         setSavedGoal(relationshipGoal);
@@ -397,8 +395,8 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
   // ── 渲染 ──
   const previewProps = {
     complete,
-    firstGoal: goals[0] ?? "",
-    focus,
+    firstGoal: goalText.trim(),
+    focus: goalText.trim(),
     initial,
     name,
     onEnter: () => leaveTo(next),
@@ -409,7 +407,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
 
   const nextDisabled = saving || !loaded
     || (view === "profile" && !profileValid)
-    || (view === "goals" && goals.length === 0)
+    || (view === "goals" && !goalText.trim())
     || (view === "intro" && (!introValid || introStatus === "generating"));
 
   const nextLabel = saving ? t({ zh: "保存中…", en: "Saving…" }) : t({ zh: "继续", en: "Continue" });
@@ -479,13 +477,11 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
                 ) : null}
                 {view === "goals" ? (
                   <GoalsStep
-                    focus={focus}
-                    goals={goals}
                     horizon={effectiveHorizon}
-                    setFocus={setFocus}
-                    setGoals={setGoals}
+                    setGoalText={setGoalText}
                     setHorizon={setHorizon}
                     t={t}
+                    text={goalText}
                   />
                 ) : null}
                 {view === "persona" ? (
@@ -508,7 +504,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
                 {view === "import" ? (
                   <div className="ob-stack" data-screen-label="06 带入人脉">
                     <StepHead title={t({ zh: "带入你已有的人脉", en: "Bring in the people you already know" })} sub={t({ zh: "不带入也完全可以——Orbit 会通过活动帮你从零建立。拍下手边的名片，iOrbit 就能开始判断谁值得现在联系。", en: "Totally optional — Orbit helps you build from zero through events. Snap the cards you have and iOrbit can start judging who's worth contacting now." })} />
-                    <OnboardingCardImport
+                    <CardBatchImport
                       available={cardScanAvailable}
                       batch={cardBatch}
                       onBatchStarted={setCardBatchId}
@@ -527,7 +523,9 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
                     {view === "import" ? (
                       <span className="ob-finish">
                         {cardBatchId && (!cardBatch.reviewing || cardBatch.pending.length > 0) ? (
-                          <span className="ob-finish-note">{t({ zh: "没确认完的名片会留在「人脉 → 导入人脉」里", en: "Unfinished cards stay under Network → Import" })}</span>
+                          <span className="ob-finish-note">{cardBatch.reviewing
+                            ? t({ zh: "没确认完的名片会留在「人脉 → 导入人脉」里", en: "Unfinished cards stay under Network → Import" })
+                            : t({ zh: "可以先完成设置，上传和解析会在后台继续，完成后提醒你", en: "Go ahead — upload and reading continue in the background; we'll let you know" })}</span>
                         ) : null}
                         <button className="btn ob-btn-dark" onClick={finish} type="button">
                           {importedCount > 0 ? t({ zh: "完成设置，进入 Orbit", en: "Finish and enter Orbit" }) : cardBatchId ? t({ zh: "先完成设置", en: "Finish setup for now" }) : t({ zh: "暂时跳过，完成设置", en: "Skip for now and finish" })}
@@ -542,8 +540,7 @@ export function OnboardingFlow({ actorKey, cardScanAvailable, next, todayIso }: 
 
               {view === "import" ? null : <UnderstandingAside
                 basic={basic}
-                focus={focus}
-                goals={goals}
+                goalText={goalText}
                 headline={headline}
                 horizon={effectiveHorizon}
                 initial={initial}
@@ -801,95 +798,20 @@ function ChipGroup({
 }
 
 function GoalsStep({
-  focus, goals, horizon, setFocus, setGoals, setHorizon, t,
+  horizon, setGoalText, setHorizon, t, text,
 }: {
-  focus: string;
-  goals: string[];
-  horizon: string;
-  setFocus: (value: string) => void;
-  setGoals: (update: (current: string[]) => string[]) => void;
-  setHorizon: (value: string) => void;
+  horizon: GoalHorizon;
+  setGoalText: (value: string) => void;
+  setHorizon: (value: GoalHorizon) => void;
   t: T;
+  text: string;
 }) {
-  const full = goals.length >= GOAL_LIMIT;
-  const known = new Set(GOAL_GROUPS.flatMap(group => group.options.flatMap(option => [option.zh, option.en])));
-  const customGoals = goals.filter(goal => !known.has(goal));
-  const [custom, setCustom] = useState("");
-  function add() {
-    setGoals(current => addCustomValue(current, custom, GOAL_LIMIT));
-    setCustom("");
-  }
+  // D7：去掉 16 个方向 chip，与资料页「我的目标」用同一个编辑器（示例句填入 + 期限卡片）。
   return (
     <div className="ob-stack" data-screen-label="03 目标">
       <StepHead title={t({ zh: "你最近想推进什么？", en: "What do you want to move forward?" })} sub={t({ zh: "没有联系人时，目标就是 iOrbit 最重要的线索——它决定推荐哪些活动、哪些人。", en: "With no contacts yet, your goal is iOrbit's most important lead — it decides which events and people to recommend." })} />
-      <div className="ob-group">
-        <span className="ob-label">{t({ zh: "选择 1–3 个方向", en: "Pick 1–3 directions" })}<span className="ob-label-note">{goals.length}/{GOAL_LIMIT}</span></span>
-        {GOAL_GROUPS.map(group => (
-          <div className="ob-group ob-group-tight" key={group.title.zh}>
-            <span className="ob-group-title">{t(group.title)}</span>
-            <div className="ob-chips">
-              {group.options.map(option => {
-                const selected = goals.find(goal => optionMatches(option, goal));
-                return (
-                  <button
-                    aria-pressed={Boolean(selected)}
-                    className={`btn ob-chip${selected ? " ob-chip-on" : ""}`}
-                    disabled={!selected && full}
-                    key={option.zh}
-                    onClick={() => setGoals(current => (selected ? current.filter(goal => goal !== selected) : toggleValue(current, t(option), GOAL_LIMIT)))}
-                    type="button"
-                  >
-                    {t(option)}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        ))}
-        <div className="ob-chips">
-          {customGoals.map(goal => (
-            <button aria-pressed className="btn ob-chip ob-chip-on" key={goal} onClick={() => setGoals(current => current.filter(item => item !== goal))} type="button">{goal} <span aria-hidden>×</span></button>
-          ))}
-          <span className="ob-chip-add">
-            <input
-              aria-label={t({ zh: "其他目标", en: "Another goal" })}
-              disabled={full}
-              maxLength={24}
-              onChange={event => setCustom(event.target.value)}
-              onKeyDown={event => {
-                if (event.key === "Enter" && !event.nativeEvent.isComposing) {
-                  event.preventDefault();
-                  add();
-                }
-              }}
-              placeholder={t({ zh: "其他目标", en: "Another goal" })}
-              value={custom}
-            />
-            <button className="btn ob-chip-add-btn" disabled={full || !custom.trim()} onClick={add} type="button">{t({ zh: "添加", en: "Add" })}</button>
-          </span>
-        </div>
-      </div>
-      <label className="ob-field">
-        <span className="ob-field-label">{t({ zh: "用一句话说说具体的事（可选）", en: "Describe it in one sentence (optional)" })}</span>
-        <textarea
-          className="ob-input"
-          maxLength={FOCUS_LIMIT}
-          onChange={event => setFocus(event.target.value)}
-          placeholder={t({ zh: "例如：把我们的 AI 会议纪要产品推到日本市场，先找到 5 家愿意试用的企业。", en: "e.g. Bring our AI meeting-notes product to Japan and find 5 companies willing to pilot it." })}
-          rows={3}
-          value={focus}
-        />
-        <span className="ob-count">{Array.from(focus).length}/{FOCUS_LIMIT}</span>
-      </label>
-      <div className="ob-group">
-        <span className="ob-label">{t({ zh: "时间范围", en: "Time frame" })}</span>
-        <div className="ob-seg" role="radiogroup" aria-label={t({ zh: "时间范围", en: "Time frame" })}>
-          {HORIZONS.map(option => {
-            const on = optionMatches(option, horizon);
-            return <button aria-checked={on} className={`btn ob-seg-btn${on ? " ob-seg-on" : ""}`} key={option.zh} onClick={() => setHorizon(t(option))} role="radio" type="button">{t(option)}</button>;
-          })}
-        </div>
-      </div>
+      <GoalReminder />
+      <GoalEditor horizon={horizon} onHorizonChange={setHorizon} onTextChange={setGoalText} text={text} />
     </div>
   );
 }
@@ -1023,14 +945,13 @@ function IntroStep({
 }
 
 function UnderstandingAside({
-  addedCount, basic, focus, goals, headline, horizon, initial, language, offer, savedGoal, seek, t, view,
+  addedCount, basic, goalText, headline, horizon, initial, language, offer, savedGoal, seek, t, view,
 }: {
   addedCount: number;
   basic: BasicDraft;
-  focus: string;
-  goals: string[];
+  goalText: string;
   headline: string;
-  horizon: string;
+  horizon: GoalHorizon;
   initial: string;
   language: "zh" | "en" | "ja";
   offer: string[];
@@ -1045,6 +966,7 @@ function UnderstandingAside({
     : basic.primaryIndustryId ? industryLabel(basic.primaryIndustryId, language) : "";
   const line = [basic.title.trim(), basic.company.trim(), industry].filter(Boolean);
   const separator = t({ zh: "、", en: ", " });
+  const goal = goalText.trim();
   return (
     <aside className="ob-aside" aria-label={t({ zh: "iOrbit 对你的理解", en: "How iOrbit sees you" })}>
       <span className="ob-aside-title">
@@ -1061,12 +983,10 @@ function UnderstandingAside({
       </span>
       <span className="ob-aside-sec">
         <span className="ob-aside-label">{t({ zh: "当前目标", en: "Current goal" })}</span>
-        {goals.length ? (
-          <span className="ob-mini-chips">{goals.map(goal => <span className="ob-mini-chip" key={goal}>{goal}</span>)}</span>
-        ) : savedGoal.trim()
-          ? <span className="ob-aside-val">{savedGoal.trim()}</span>
-          : <span className="ob-aside-val ob-aside-empty">{t({ zh: "待填写", en: "Not set" })}</span>}
-        {focus.trim() ? <span className="ob-aside-val ob-aside-focus">“{focus.trim()}” · {horizon}</span> : null}
+        {goal ? <span className="ob-aside-val ob-aside-focus">“{goal}” · {t(horizonOption(horizon).label)}</span>
+          : savedGoal.trim()
+            ? <span className="ob-aside-val">{savedGoal.trim()}</span>
+            : <span className="ob-aside-val ob-aside-empty">{t({ zh: "待填写", en: "Not set" })}</span>}
       </span>
       <span className="ob-aside-two">
         <span className="ob-aside-sec"><span className="ob-aside-label">{t({ zh: "能提供", en: "Offers" })}</span><span className={`ob-aside-val${offer.length ? "" : " ob-aside-empty"}`}>{offer.length ? offer.join(separator) : t({ zh: "待填写", en: "Not set" })}</span></span>
@@ -1076,10 +996,10 @@ function UnderstandingAside({
         <span className="ob-aside-label">{t({ zh: "人脉", en: "Network" })}</span>
         <span className="ob-aside-headline">{addedCount ? t({ zh: `已带入 ${addedCount} 位`, en: `${addedCount} added` }) : view === "import" ? t({ zh: "可通过扫描名片带入", en: "Bring in by scanning cards" }) : t({ zh: "尚未带入", en: "Not imported yet" })}</span>
       </span>
-      {goals.length ? (
+      {goal ? (
         <span className="ob-tip ob-tip-sm">
           <span className="ob-spark" aria-hidden>✦</span>
-          <span>{t({ zh: `iOrbit 会优先为你留意与「${goals[0]}」相关的活动和人。`, en: `iOrbit will prioritise events and people related to “${goals[0]}”.` })}</span>
+          <span>{t({ zh: `iOrbit 会优先为你留意与「${goal}」相关的活动和人。`, en: `iOrbit will prioritise events and people related to “${goal}”.` })}</span>
         </span>
       ) : null}
     </aside>

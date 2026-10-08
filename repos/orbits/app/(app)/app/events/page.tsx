@@ -1,4 +1,6 @@
 import { auth } from "../../../../auth";
+import { readCommunityJoinedForActor } from "../../../../features/community/service-factory";
+import { resolveAuthenticatedApiActorFromSession } from "../../../api/_shared/authenticated-actor";
 import { createConfiguredCanonicalPublicEventCatalogue } from "../../../../features/events/core/public-catalogue-runtime";
 import {
   readRuntimeEventRegistrationStates,
@@ -69,9 +71,19 @@ export default async function AppEventsPage({
     await canonicalCatalogue.read(),
   );
   const eventIds = catalogue.events.map((event) => event.id);
+  // 账号只解析一次，且在目录读取成功之后：报名读取与社群卡片（W0003）共用这个 actor。
+  // 报名接口按 actor.id 写入（W0018），所以本人报名也按 actor.id 读；解析不到账号时
+  // 不读本人报名（不回退到会话 id），页面按未报名、未加入渲染。
+  const communityActor = session?.user?.id
+    ? await resolveAuthenticatedApiActorFromSession({
+        email: session.user.email,
+        name: session.user.name,
+        userId: session.user.id,
+      })
+    : null;
   const registrationStates = await readRuntimeEventRegistrationStates({
     eventIds,
-    userId: session?.user?.id,
+    userId: communityActor?.id ?? null,
   });
   const presentedCatalogue = applyOrbitEventPresentation(catalogue, language);
   const events = presentedCatalogue.events.map((event) =>
@@ -94,6 +106,10 @@ export default async function AppEventsPage({
   );
 
   const authenticated = Boolean(session?.user?.id);
+  // 社群卡片（W0003）：本人加入状态在服务端读，首帧即正确；未登录不读。
+  const communityJoined = await readCommunityJoinedForActor({
+    actorId: communityActor?.id,
+  });
 
   return (
     <>
@@ -104,6 +120,10 @@ export default async function AppEventsPage({
       <div data-orbit-real-page="events-0918" data-orbit-route="app-events-public-catalogue">
         {authenticated ? <AccountTopNav active="events" /> : <PublicTopNav active="events" />}
         <EventsList
+          community={{
+            joined: communityJoined,
+            signedIn: Boolean(communityActor),
+          }}
           initialScope={
             resolvedSearchParams.scope === "registered" ||
             resolvedSearchParams.scope === "upcoming" ||

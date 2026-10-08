@@ -15,6 +15,9 @@ import {
   setManualDraftField,
   setManualDraftNotes,
   setDraftFieldSource,
+  setDraftIndustry,
+  setDraftRegion,
+  setDraftSeniority,
   type IngestV2CardViewModel,
 } from "../../app/(app)/app/contacts/ingest-v2/ingest-v2-route-view-model";
 
@@ -192,6 +195,27 @@ test("confirmation payload freezes both sides, source IDs and intent without fab
   assert.equal(missingResult.blockedReason, "missing_image_digest");
 });
 
+test("the first printed address fills the address field, leaves notes, and reaches the payload", () => {
+  const extraction = {
+    ...EMPTY_EXTRACTION,
+    addresses: [
+      { label: "office", value: "〒171-0002 Minami-ikebukuro 2-23-4 Toshima-City Tokyo Japan" },
+      { label: "工場", value: "埼玉県テスト市5-6-7" },
+    ],
+    fullName: "富沢 弘治",
+    nativeFullName: "富沢 弘治",
+  };
+  const current = card([item({ extraction })]);
+  const draft = initialCardDraft(current);
+  assert.equal(draft.fields.address, "〒171-0002 Minami-ikebukuro 2-23-4 Toshima-City Tokyo Japan");
+  assert.equal(draft.fieldSources.address, "item-front");
+  assert.ok(!draft.fields.notes.includes("Minami-ikebukuro"), "the chosen address is not duplicated into notes");
+  assert.ok(draft.fields.notes.includes("埼玉県テスト市5-6-7"), "other printed addresses stay in notes");
+  const result = buildConfirmationPayload(current, draft, "intent:address");
+  assert.equal(result.payload?.address, draft.fields.address);
+  assert.equal(result.payload?.fieldSources.address, "item-front");
+});
+
 test("manual entry may submit a failed side, but normal confirm waits for both extracted", () => {
   const failed = card([
     item(),
@@ -264,4 +288,105 @@ test("completion counts are card-level for two-sided cards", () => {
     item({ id: "item-skipped", cardId: "card-2", seq: 3, status: "skipped" }),
   ];
   assert.deepEqual(completionCountsForItems(values), { confirmed: 1, skipped: 1 });
+});
+
+// W0013：审阅页「行业」一行。
+function withIndustry(base: IngestItemDTO, primaryIndustryId: string | null, secondaryIndustryId: string | null): IngestItemDTO {
+  return {
+    ...base,
+    extraction: { ...base.extraction!, primaryIndustryId, secondaryIndustryId } as IngestItemDTO["extraction"],
+    extractionSchemaVersion: 2,
+  };
+}
+
+test("the industry row starts from the recognized pair and reaches the confirmation payload; two different sides are a conflict", () => {
+  const front = withIndustry(item(), "technology_internet", "technology_internet.ai_data");
+  const back = withIndustry(item({ id: "item-back", side: "back", seq: 2, extraction: { ...EMPTY_EXTRACTION, fullName: "秋 太郎", organization: "Orbit" } }), "finance_investment", "finance_investment.fintech");
+  const conflicted = initialCardDraft(card([front, back]));
+  assert.deepEqual(conflicted.industry, { primaryIndustryId: null, secondaryIndustryId: null, edited: false, conflicted: true });
+
+  const backOnly = card([withIndustry(item(), null, null), back]);
+  assert.deepEqual(initialCardDraft(backOnly).industry, { primaryIndustryId: "finance_investment", secondaryIndustryId: "finance_investment.fintech", edited: false, conflicted: false });
+
+  const sameWithOneSecondary = card([withIndustry(item(), "technology_internet", null), withIndustry(back, "technology_internet", "technology_internet.ai_data")]);
+  assert.equal(initialCardDraft(sameWithOneSecondary).industry.secondaryIndustryId, "technology_internet.ai_data");
+  assert.equal(initialCardDraft(sameWithOneSecondary).industry.conflicted, false);
+
+  const single = card([front]);
+  const payload = buildConfirmationPayload(single, initialCardDraft(single), "intent:industry").payload!;
+  assert.equal(payload.primaryIndustryId, "technology_internet");
+  assert.equal(payload.secondaryIndustryId, "technology_internet.ai_data");
+});
+
+test("a v1 extraction without industry keys opens with an empty industry row and still confirms", () => {
+  const legacy = card([item()]);
+  const draft = initialCardDraft(legacy);
+  assert.deepEqual(draft.industry, { primaryIndustryId: null, secondaryIndustryId: null, edited: false, conflicted: false });
+  const prepared = buildConfirmationPayload(legacy, draft, "intent:legacy");
+  assert.equal(prepared.blockedReason, null);
+  assert.equal(prepared.payload?.primaryIndustryId, null);
+  assert.equal(prepared.payload?.secondaryIndustryId, null);
+});
+
+test("the reviewer can change or clear the industry and a poll keeps the choice", () => {
+  const current = card([withIndustry(item(), "technology_internet", "technology_internet.ai_data")]);
+  const draft = initialCardDraft(current);
+  const changed = setDraftIndustry(draft, { primaryIndustryId: "professional_services", secondaryIndustryId: "professional_services.legal" });
+  assert.deepEqual(changed.industry, { primaryIndustryId: "professional_services", secondaryIndustryId: "professional_services.legal", edited: true, conflicted: false });
+  assert.equal(reconcileCardDraft(changed, current).industry.primaryIndustryId, "professional_services");
+  assert.equal(buildConfirmationPayload(current, changed, "intent:changed").payload?.secondaryIndustryId, "professional_services.legal");
+
+  const cleared = setDraftIndustry(changed, { primaryIndustryId: null, secondaryIndustryId: null });
+  assert.deepEqual(reconcileCardDraft(cleared, current).industry, { primaryIndustryId: null, secondaryIndustryId: null, edited: true, conflicted: false });
+  assert.equal(buildConfirmationPayload(current, cleared, "intent:cleared").payload?.primaryIndustryId, null);
+
+  const mismatched = setDraftIndustry(draft, { primaryIndustryId: "professional_services", secondaryIndustryId: "finance_investment.banking" });
+  assert.equal(mismatched.industry.primaryIndustryId, null, "a mismatched pair is never submitted");
+
+  // 未改过的行业跟随最新识别结果（例如重新识别后）。
+  const rerun = card([withIndustry(item({ version: 2 }), "media_creative", null)]);
+  assert.equal(reconcileCardDraft(draft, rerun).industry.primaryIndustryId, "media_creative");
+});
+
+// W0045：「职级」「地区」两行——初值来自识别结果，正反面冲突不预选，改过的行轮询刷新不覆盖，最终值随确认提交。
+function withEnrichment(entry: IngestItemDTO, seniorityLevel: string | null, regionCountryCode: string | null, regionCity: string | null): IngestItemDTO {
+  return { ...entry, extraction: { ...entry.extraction!, seniorityLevel, regionCountryCode, regionCity } as IngestItemDTO["extraction"], extractionSchemaVersion: 3 };
+}
+
+test("W0045 seniority and region rows start from recognition; disagreeing sides are conflicts, a missing city on one side is not", () => {
+  const front = withEnrichment(item(), "director", "JP", "Tokyo");
+  const back = withEnrichment(item({ id: "item-back", side: "back", seq: 2 }), "vp", "JP", null);
+  const draft = initialCardDraft(card([front, back]));
+  assert.deepEqual(draft.seniority, { value: null, edited: false, conflicted: true });
+  assert.deepEqual(draft.region, { countryCode: "JP", city: "Tokyo", edited: false, conflicted: false });
+  const otherCountry = initialCardDraft(card([front, withEnrichment(back, "director", "CN", "Shanghai")]));
+  assert.deepEqual(otherCountry.seniority, { value: "director", edited: false, conflicted: false });
+  assert.deepEqual(otherCountry.region, { countryCode: null, city: null, edited: false, conflicted: true });
+  const legacy = initialCardDraft(card([item()]));
+  assert.deepEqual([legacy.seniority, legacy.region], [{ value: null, edited: false, conflicted: false }, { countryCode: null, city: null, edited: false, conflicted: false }]);
+  const single = card([front]);
+  const payload = buildConfirmationPayload(single, initialCardDraft(single), "intent:enrichment").payload!;
+  assert.deepEqual([payload.seniorityLevel, payload.regionCountryCode, payload.regionCity], ["director", "JP", "Tokyo"]);
+  assert.equal("enrichment" in payload, false, "the client never sends provenance");
+});
+
+test("W0045 an edited seniority or region survives polling, and clearing is submitted as null", () => {
+  const current = card([withEnrichment(item(), "director", "JP", "Tokyo")]);
+  const edited = setDraftRegion(setDraftSeniority(initialCardDraft(current), "manager"), { countryCode: "JP", city: "New Osaka " });
+  assert.deepEqual(edited.seniority, { value: "manager", edited: true, conflicted: false });
+  assert.equal(edited.region.city, "New Osaka ", "the city keeps typed spaces while editing");
+  const rerun = card([withEnrichment(item({ version: 2 }), "c_level", "SG", "Singapore")]);
+  const polled = reconcileCardDraft(edited, rerun);
+  assert.equal(polled.seniority.value, "manager");
+  assert.deepEqual([polled.region.countryCode, polled.region.city], ["JP", "New Osaka "]);
+  const payload = buildConfirmationPayload(current, edited, "intent:edited").payload!;
+  assert.deepEqual([payload.seniorityLevel, payload.regionCountryCode, payload.regionCity], ["manager", "JP", "New Osaka"]);
+  // 未改过的行跟随最新识别结果。
+  assert.equal(reconcileCardDraft(initialCardDraft(current), rerun).seniority.value, "c_level");
+
+  const cleared = setDraftRegion(setDraftSeniority(edited, null), { countryCode: null, city: "Tokyo" });
+  const clearedPayload = buildConfirmationPayload(current, cleared, "intent:cleared").payload!;
+  assert.deepEqual([clearedPayload.seniorityLevel, clearedPayload.regionCountryCode, clearedPayload.regionCity], [null, null, null]);
+  assert.equal(setDraftSeniority(edited, "boss").seniority.value, null, "an unknown level is never submitted");
+  assert.equal(setDraftRegion(edited, { countryCode: "XX", city: "Tokyo" }).region.countryCode, null);
 });

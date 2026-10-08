@@ -13,6 +13,26 @@ test("production maintenance includes exactly one canonical reminder task withou
   });
 });
 
+test("W0010: production maintenance registers exactly one bounded plan-match task", () => {
+  const tasks = createConfiguredMaintenanceTasks({ env: { NODE_ENV: "test" }, workerId: "wiring-test" });
+  assert.equal(tasks.filter((task) => task.name === "plan-match").length, 1);
+});
+
+test("W0015: production maintenance registers exactly one plan-event-attendance reconcile task", () => {
+  const tasks = createConfiguredMaintenanceTasks({ env: { NODE_ENV: "test" }, workerId: "wiring-test" });
+  assert.equal(tasks.filter((task) => task.name === "plan-event-attendance").length, 1);
+});
+
+test("W0012: production maintenance registers exactly one bounded plan-phase task", () => {
+  const tasks = createConfiguredMaintenanceTasks({ env: { NODE_ENV: "test" }, workerId: "wiring-test" });
+  assert.equal(tasks.filter((task) => task.name === "plan-phase").length, 1);
+});
+
+test("W0012: production maintenance registers exactly one plan-event-registration reconcile task", () => {
+  const tasks = createConfiguredMaintenanceTasks({ env: { NODE_ENV: "test" }, workerId: "wiring-test" });
+  assert.equal(tasks.filter((task) => task.name === "plan-event-registration").length, 1);
+});
+
 test("production maintenance runs the read-cost rollup task once, inside the existing daily pass", async () => {
   const tasks = createConfiguredMaintenanceTasks({ env: { NODE_ENV: "test" }, workerId: "wiring-test" });
   const readCost = tasks.filter((task) => task.name === "read_cost_rollup");

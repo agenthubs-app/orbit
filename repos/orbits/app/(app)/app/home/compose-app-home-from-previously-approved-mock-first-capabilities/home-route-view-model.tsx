@@ -4,6 +4,7 @@ import {
 } from "../../../../../features/events/core/public-catalogue";
 import type { PublishedCanonicalEvent } from "../../../../../features/events/core/contract";
 import { readConfiguredCanonicalParticipantEventJourneys } from "../../../../../features/events/canonical-participant-event-journeys";
+import { createHomeContactsSummaryService } from "../../../../../features/contacts/home-contacts-summary";
 import type { AppContactsRouteViewModel } from "../../contacts/compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-route-view-model";
 import { loadAppContactsRouteViewModel } from "../../contacts/compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-route-view-model";
 import type { AppEventsRouteViewModel } from "../../events/compose-app-events-from-previously-approved-mock-first-capabilities/events-route-view-model";
@@ -61,10 +62,19 @@ export type AppHomeRouteViewModel =
       routeState: AppHomeRouteStateViewModel;
     };
 
+/**
+ * W0041: Home only shows two contact numbers, so it reads them through the
+ * contacts summary service instead of composing the contacts page model. The
+ * failure keeps the page model's route evidence (`[code, first evidence]`).
+ */
+type HomeContactsState =
+  | { state: "success"; inProgress: number; knownPeople: number }
+  | { state: "failure"; evidenceIds: readonly string[] };
+
 type ChildRouteModel =
-  | AppContactsRouteViewModel
   | AppEventsRouteViewModel
-  | AppProfileRouteViewModel;
+  | AppProfileRouteViewModel
+  | HomeContactsState;
 
 function inProgressCount(contacts: AppContactsRouteViewModel): number {
   if (contacts.state !== "success") {
@@ -74,6 +84,45 @@ function inProgressCount(contacts: AppContactsRouteViewModel): number {
   return contacts.payload.contacts.filter(
     (contact) => !/archived/i.test(contact.statusLabel),
   ).length;
+}
+
+const CONTACTS_LIST_SEARCH_PARAM_KEYS = ["query", "source", "status", "tag", "value"] as const;
+
+/** Home callers pass no search params; a contacts filter keeps the page model path as before. */
+function hasContactsListSearchParams(searchParams?: AppHomeSearchParams): boolean {
+  return CONTACTS_LIST_SEARCH_PARAM_KEYS.some((key) => searchParams?.[key] !== undefined);
+}
+
+async function loadHomeContacts(
+  searchParams: AppHomeSearchParams | undefined,
+  actorId: string | null | undefined,
+): Promise<HomeContactsState> {
+  if (hasContactsListSearchParams(searchParams)) {
+    const model = await loadAppContactsRouteViewModel(searchParams, actorId);
+    return model.state === "success"
+      ? {
+          state: "success",
+          inProgress: inProgressCount(model),
+          knownPeople: model.payload.ledger.knownPeople,
+        }
+      : { state: "failure", evidenceIds: evidenceFromContacts(model) };
+  }
+
+  const summary = await createHomeContactsSummaryService().readSummary(actorId);
+  if (summary.success === false) {
+    return {
+      state: "failure",
+      evidenceIds: [
+        summary.error.code,
+        summary.error.evidenceIds[0] ?? "evidence:unavailable",
+      ],
+    };
+  }
+  return {
+    state: "success",
+    inProgress: summary.inProgress,
+    knownPeople: summary.knownPeople,
+  };
 }
 
 function canonicalEventToLandingEvent(
@@ -119,7 +168,7 @@ export function mergeHomeEventJourneys(
 }
 
 function homeViewModel(input: {
-  contacts: Extract<AppContactsRouteViewModel, { state: "success" }>;
+  contacts: Extract<HomeContactsState, { state: "success" }>;
   events: AppEventsRouteViewModel;
   participantEvents: readonly PublishedCanonicalEvent[];
   profile: Extract<AppProfileRouteViewModel, { state: "success" }>;
@@ -156,8 +205,8 @@ function homeViewModel(input: {
     events,
     stats: {
       events: events.length,
-      inProgress: inProgressCount(input.contacts),
-      people: input.contacts.payload.ledger.knownPeople,
+      inProgress: input.contacts.inProgress,
+      people: input.contacts.knownPeople,
     },
   };
 }
@@ -203,7 +252,7 @@ function childRouteState(input: {
     input.source === "events"
       ? evidenceFromEvents(input.model as Exclude<AppEventsRouteViewModel, { state: "success" }>)
       : input.source === "contacts"
-        ? evidenceFromContacts(input.model as Exclude<AppContactsRouteViewModel, { state: "success" }>)
+        ? (input.model as Extract<HomeContactsState, { state: "failure" }>).evidenceIds
         : evidenceFromProfile(input.model as Exclude<AppProfileRouteViewModel, { state: "success" }>);
 
   return {
@@ -230,7 +279,7 @@ function childRouteState(input: {
 }
 
 function firstRouteState(input: {
-  contacts: AppContactsRouteViewModel;
+  contacts: HomeContactsState;
   events: AppEventsRouteViewModel;
   profile: AppProfileRouteViewModel;
 }): AppHomeRouteStateViewModel | null {
@@ -255,8 +304,12 @@ export async function loadAppHomeRouteViewModel(
     : Promise.resolve([] as readonly PublishedCanonicalEvent[]);
   const [events, contacts, profile, participantEvents] = await Promise.all([
     loadAppEventsRouteViewModel(actor?.id),
-    loadAppContactsRouteViewModel(searchParams, actor?.id),
-    loadAppProfileRouteViewModel(actor),
+    // W0041: two numbers, one counting statement (no contacts page model).
+    loadHomeContacts(searchParams, actor?.id),
+    // W0040: Home only reads the account fields; skip the profile update
+    // suggestions (a whole-workspace signal graph read) without changing how
+    // profile service resolution or profile load failures surface.
+    loadAppProfileRouteViewModel(actor, { suggestions: "skip" }),
     participantEventsPromise,
   ]);
   const routeState = firstRouteState({ contacts, events, profile });

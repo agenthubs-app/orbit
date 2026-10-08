@@ -113,18 +113,22 @@ test("persona renders the three multi-select groups with badges above the add bo
   // badge 在添加框上方
   const offerCard = html.slice(html.indexOf('aria-label="我能提供"'), html.indexOf('aria-label="我在寻找"'));
   assert.ok(offerCard.indexOf("pc-tag-remove") < offerCard.indexOf("pc-input-wrap"), "badges render above the add box");
-  // 我的目标：手动输入框承载 intro，无 chip、无移除按钮
+  // 我的目标：共享目标编辑器（与 onboarding 同一个），intro 承载「正文（期限）」，无 chip、无移除按钮
   const goalCard = html.slice(html.indexOf("我的目标"), html.indexOf('aria-label="我能提供"'));
-  assert.match(goalCard, /<input aria-label="我的目标"[^>]*value="拓展日本市场"/);
-  assert.match(goalCard, /placeholder="写下你的目标，或点击下方示例快速填入"/);
-  // 输入框下方三枚示例 badge
-  assert.ok(goalCard.indexOf("pc-input-wrap") < goalCard.indexOf("pc-options"), "goal examples render below the input");
-  for (const example of ["三个月内认识 3 位日本市场的渠道伙伴", "年内在东京开出第一家线下门店", "从 0 到 1 打造自有品牌"]) {
-    assert.match(goalCard, new RegExp(`class="btn pc-option"[^>]*>＋ ${example}</button>`), example);
+  assert.match(goalCard, /请认真写。iOrbit 会用 AI 根据这句话分析你的人脉、拆出步骤、推荐要认识的人。/);
+  assert.ok(goalCard.indexOf("ge-reminder") < goalCard.indexOf("ge-input"), "reminder sits above the editor");
+  assert.match(goalCard, /<textarea aria-label="你的目标"[^>]*placeholder="写下你的目标，或点击下方示例快速填入"[^>]*>拓展日本市场<\/textarea>/);
+  // 输入框下方 10 条示例 badge，再下面三张期限卡
+  assert.ok(goalCard.indexOf("ge-input") < goalCard.indexOf("ge-examples"), "goal examples render below the input");
+  assert.equal((goalCard.match(/class="btn ge-example"/g) ?? []).length, 10);
+  for (const example of ["三个月内拿到 10 家企业客户的试用", "三个月内认识 3 位日本市场的渠道伙伴", "年内在东京开出第一家线下门店", "从 0 到 1 打造自有品牌"]) {
+    assert.match(goalCard, new RegExp(`class="btn ge-example"[^>]*>＋ ${example}</button>`), example);
   }
-  assert.doesNotMatch(goalCard, /pc-tag/);
-  // 目标 + 三组添加框
-  assert.equal((html.match(/<input /g) ?? []).length, 4);
+  assert.ok(goalCard.indexOf("ge-examples") < goalCard.indexOf("ge-horizons"), "horizon cards below the examples");
+  assert.doesNotMatch(goalCard, /pc-tag|pc-option/);
+  // 目标文本框 + 三组添加框
+  assert.equal((html.match(/<textarea /g) ?? []).length, 1);
+  assert.equal((html.match(/<input /g) ?? []).length, 3);
   // 设计 groupMeta 的 hint / placeholder
   assert.match(html, /你可以为他人提供什么帮助或资源？（可选择多个）/);
   assert.match(html, /placeholder="添加我能提供的内容，例如：投资机会"/);
@@ -146,35 +150,47 @@ test("preset options sit below the add box and hide once selected (in either lan
 
 test("empty goal shows an empty input and empty groups show no badges", () => {
   const html = renderToStaticMarkup(<ProfilePersona session={session()} />);
-  assert.match(html, /<input aria-label="我的目标"[^>]*value=""/);
+  assert.match(html, /<textarea aria-label="你的目标"[^>]*><\/textarea>/);
+  assert.equal((html.match(/class="btn ge-horizon"/g) ?? []).length, 3);
+  assert.doesNotMatch(html, /ge-horizon" [^>]*aria-pressed="true"|aria-pressed="true" class="btn ge-horizon"/);
   assert.doesNotMatch(html, /pc-tag-remove/);
   assert.doesNotMatch(html, /class="pc-tags"/);
 });
 
-test("typing a goal calls update(\"intro\")", async () => {
+test("typing a goal writes 正文（期限） back to intro; trailing spaces survive while typing", async () => {
   const calls: [string, unknown][] = [];
   let root!: ReactTestRenderer;
   await act(async () => {
-    root = create(<ProfilePersona session={session(FULL, { update: ((field: string, value: unknown) => { calls.push([field, value]); }) as ProfileEditorSession["update"] })} />);
+    root = create(<ProfilePersona session={session({ ...FULL, intro: "拓展日本市场（本季度）" }, { update: ((field: string, value: unknown) => { calls.push([field, value]); }) as ProfileEditorSession["update"] })} />);
   });
-  const input = group(root, "我的目标").findAllByType("input")[0];
-  assert.equal(input.props.maxLength, 100);
-  await act(async () => { input.props.onChange({ target: { value: "认识出海渠道伙伴" } }); });
-  assert.deepEqual(calls, [["intro", "认识出海渠道伙伴"]]);
+  const input = () => group(root, "我的目标").findAllByType("textarea")[0];
+  // 旧期限「本季度」读回为「3 个月内」卡片，正文不带期限
+  assert.equal(input().props.value, "拓展日本市场");
+  assert.equal(input().props.maxLength, 100);
+  const pressedHorizons = () => group(root, "我的目标").findAll((n) => n.type === "button" && n.props.className === "btn ge-horizon" && n.props["aria-pressed"] === true).map((n) => n.props["aria-label"]);
+  assert.deepEqual(pressedHorizons(), ["3 个月内"]);
+  await act(async () => { input().props.onChange({ target: { value: "认识出海渠道伙伴 " } }); });
+  assert.equal(input().props.value, "认识出海渠道伙伴 ");
+  await act(async () => { group(root, "我的目标").findAll((n) => n.props["aria-label"] === "一年内")[0].props.onClick(); });
+  assert.deepEqual(pressedHorizons(), ["一年内"]);
+  assert.deepEqual(calls, [["intro", "认识出海渠道伙伴（3 个月内）"], ["intro", "认识出海渠道伙伴（一年内）"]]);
   act(() => root.unmount());
 });
 
-test("clicking a goal example fills the goal input via update(\"intro\") and marks it pressed", async () => {
+test("clicking a goal example fills the goal input via update(\"intro\"), selects its horizon and marks it pressed", async () => {
   const calls: [string, unknown][] = [];
   let root!: ReactTestRenderer;
   await act(async () => {
-    root = create(<ProfilePersona session={session({ intro: "年内在东京开出第一家线下门店" }, { update: ((field: string, value: unknown) => { calls.push([field, value]); }) as ProfileEditorSession["update"] })} />);
+    root = create(<ProfilePersona session={session({ intro: "年内在东京开出第一家线下门店（一年内）" }, { update: ((field: string, value: unknown) => { calls.push([field, value]); }) as ProfileEditorSession["update"] })} />, {
+      createNodeMock: () => ({ focus() {}, setSelectionRange() {}, value: "" }),
+    });
   });
-  const examples = group(root, "我的目标示例").findAllByType("button");
-  assert.equal(examples.length, 3);
-  assert.deepEqual(examples.map((b) => b.props["aria-pressed"]), [false, true, false]);
-  await act(async () => { examples[2].props.onClick(); });
-  assert.deepEqual(calls, [["intro", "从 0 到 1 打造自有品牌"]]);
+  const examples = () => group(root, "目标示例").findAllByType("button");
+  assert.equal(examples().length, 10);
+  assert.deepEqual(examples().map((b) => b.props["aria-pressed"]).map((on, index) => (on ? index : -1)).filter((index) => index >= 0), [5]);
+  await act(async () => { examples()[3].props.onClick(); });
+  assert.deepEqual(calls.at(-1), ["intro", "三个月内找到一位技术合伙人（3 个月内）"]);
+  assert.deepEqual(examples().map((b) => b.props["aria-pressed"]).map((on, index) => (on ? index : -1)).filter((index) => index >= 0), [3]);
   act(() => root.unmount());
 });
 
@@ -299,8 +315,11 @@ test("preview card shows the real name, title · company, bio and the four group
 
 test("persona inputs, options and remove buttons are disabled while the editor is disabled", () => {
   const html = renderToStaticMarkup(<ProfilePersona session={session(FULL, { editorDisabled: true })} />);
-  assert.equal((html.match(/<input [^>]*disabled=""/g) ?? []).length, 4);
+  assert.equal((html.match(/<input [^>]*disabled=""/g) ?? []).length, 3);
+  assert.match(html, /<textarea [^>]*disabled=""/);
   assert.match(html, /class="btn pc-option" disabled=""/);
+  assert.match(html, /class="btn ge-example" disabled=""/);
+  assert.match(html, /class="btn ge-horizon" disabled=""/);
   assert.match(html, /class="btn pc-tag-remove" disabled=""/);
 });
 
@@ -444,4 +463,64 @@ test("ProfileScreens persona: cancel discards the draft by navigating to /app/pr
   assert.deepEqual(replaced, [], "no in-place view flip");
   assert.equal(root.root.findAllByProps({ "data-profile-view": "profile" }).length, 0, "overview is never rendered from the dirty session");
   assert.equal(root.root.findAll((n) => typeof n.props.children === "string" && n.props.children.includes("最新资料已加载")).length, 0, "no reload notice");
+});
+
+test("SC-W0002-04 profile: a goal changed through the editor saves as 正文（期限） and reads back after a reload", async (t) => {
+  installWindow(t);
+  const puts: Record<string, unknown>[] = [];
+  let latest = payload({ relationshipGoal: "拓展日本市场（本季度）" });
+  const previousFetch = globalThis.fetch;
+  globalThis.fetch = (async (_input, init) => {
+    if (init?.method === "PUT") {
+      const body = JSON.parse(String(init.body)) as Record<string, unknown>;
+      puts.push(body);
+      latest = payload({
+        offering: body.offering as string[],
+        relationshipGoal: body.relationshipGoal as string,
+        seeking: body.seeking as string[],
+        topics: body.topics as string[],
+        updatedAt: "2026-09-28T00:00:01.000Z",
+      });
+      return Response.json({ success: true, data: { ...latest, mutationId: body.mutationId } });
+    }
+    return Response.json({ success: true, data: latest });
+  }) as typeof fetch;
+  t.after(() => { globalThis.fetch = previousFetch; });
+
+  const goalText = (root: ReactTestRenderer) => group(root, "我的目标").findAllByType("textarea")[0].props.value;
+  const goalHorizon = (root: ReactTestRenderer) => group(root, "我的目标")
+    .findAll((n) => n.type === "button" && n.props.className === "btn ge-horizon" && n.props["aria-pressed"] === true)
+    .map((n) => n.props["aria-label"]);
+
+  let first!: ReactTestRenderer;
+  await act(async () => {
+    first = create(<ProfileScreens view="persona" viewModel={viewModel()} />);
+    await settle();
+  });
+  // 旧期限读回
+  assert.equal(goalText(first), "拓展日本市场");
+  assert.deepEqual(goalHorizon(first), ["3 个月内"]);
+  const example = group(first, "目标示例").findAllByType("button").find((b) => b.children.join("") === "＋ 年内在东京开出第一家线下门店");
+  assert.ok(example);
+  await act(async () => { example.props.onClick(); });
+  assert.deepEqual(goalHorizon(first), ["一年内"]);
+  const save = first.root.findAllByType("button").find((b) => b.children.includes("保存修改"));
+  assert.ok(save);
+  await act(async () => {
+    save.props.onClick();
+    await settle();
+  });
+  assert.equal(puts.length, 1);
+  assert.equal(puts[0].relationshipGoal, "年内在东京开出第一家线下门店（一年内）");
+  act(() => first.unmount());
+
+  // 刷新：新挂载，编辑器从 GET 返回的已保存资料读回
+  let second!: ReactTestRenderer;
+  await act(async () => {
+    second = create(<ProfileScreens view="persona" viewModel={viewModel()} />);
+    await settle();
+  });
+  assert.equal(goalText(second), "年内在东京开出第一家线下门店");
+  assert.deepEqual(goalHorizon(second), ["一年内"]);
+  act(() => second.unmount());
 });

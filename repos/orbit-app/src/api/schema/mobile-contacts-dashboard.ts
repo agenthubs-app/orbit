@@ -154,6 +154,17 @@ const dashboardOpportunitiesSchema = z
   })
   .passthrough();
 
+// W0049：行业一级分组下的二级子分组（可选；旧响应没有它也照常解析）。
+const structureSecondaryBucketSchema = z
+  .object({
+    bucketId: nonEmptyString,
+    secondaryIndustryId: nonEmptyString.optional(),
+    contactCount: finiteNumber.nonnegative(),
+    percentage,
+    missingData: z.boolean(),
+  })
+  .passthrough();
+
 const structureBucketSchema = z
   .object({
     bucketId: nonEmptyString,
@@ -163,6 +174,7 @@ const structureBucketSchema = z
     evidenceIds: stringList,
     missingData: z.boolean(),
     primaryIndustryId: z.enum(INDUSTRY_IDS).optional(),
+    secondary: z.array(structureSecondaryBucketSchema).optional(),
   })
   .passthrough();
 
@@ -208,11 +220,27 @@ const dashboardDistributionsSchema = z
         })
         .passthrough(),
     ),
+    // W0047（R-1）：新增可选的档位分布（只由关系时间线推出）；旧响应没有它也照常解析。
+    relationshipTierDistribution: z
+      .array(
+        z
+          .object({
+            tier: z.enum(["new", "active", "core", "dormant"]),
+            relationshipCount: finiteNumber.nonnegative(),
+            percentage,
+            contactIds: stringList,
+          })
+          .passthrough(),
+      )
+      .optional(),
     structureDistributions: z.object({
       industry: z.array(structureBucketSchema),
       location: z.array(structureBucketSchema),
       role: z.array(structureBucketSchema),
       relationship: z.array(structureBucketSchema),
+      // W0049：新增两个可选维度（职级四组、规范地区）；这里不声明的话 Web 的 safeParse 会把它们静默剥掉。
+      seniority: z.array(structureBucketSchema).optional(),
+      region: z.array(structureBucketSchema).optional(),
     }),
     summary: z.string(),
     nextAction: z.string(),

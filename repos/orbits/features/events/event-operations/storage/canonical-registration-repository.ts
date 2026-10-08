@@ -4,8 +4,16 @@ import { createHash } from "node:crypto";
 import type {
   EventParticipantProfile,
   EventRegistration,
+  EventRegistrationRosterFields,
+  EventRegistrationStatusRecord,
   RegisterForEventInput,
 } from "../../registration/contract";
+import {
+  rosterEntryFromRow,
+  rosterEntryLeafColumnsSql,
+  rosterEntryShapeSql,
+  type RosterEntryRow,
+} from "../../registration/roster-entry";
 import {
   answersFromProfileResponses,
   type EventProfileResponseSnapshot,
@@ -23,6 +31,7 @@ import type {
   CanonicalRegistrationMigrationOptions,
   EventOperationsRepository,
 } from "../repository";
+import { jsDateSafeTimestampSql } from "../../../../shared/storage/postgres-js-date-sql";
 import { appendCanonicalMembershipVersion } from "./canonical-membership-writer";
 import type {
   EventOperationsPostgresRuntime,
@@ -34,7 +43,11 @@ type CanonicalRegistrationMethods = Pick<
   | "activateCanonicalRegistrations"
   | "cancelCanonicalRegistration"
   | "getCanonicalRegistration"
+  | "getCanonicalRegistrationStatus"
   | "listCanonicalRegistrations"
+  | "listCanonicalRegistrationStatusesForUser"
+  | "listPublishedCanonicalRegistrationStatusesForUser"
+  | "listCanonicalRosterEntries"
   | "listCanonicalRegistrationsForUser"
   | "registerCanonicalParticipant"
   | "seedCanonicalRegistration"
@@ -346,6 +359,84 @@ function registrationFromRow(row: SqlRow): EventRegistration {
   };
 }
 
+const REGISTRATION_FROM = `
+    from event_ops_membership_heads membership_head
+    join event_ops_membership_versions membership_version
+      on membership_version.workspace_id = membership_head.workspace_id
+      and membership_version.event_id = membership_head.event_id
+      and membership_version.actor_id = membership_head.actor_id
+      and membership_version.membership_version = membership_head.membership_version
+    join event_ops_profile_versions profile_version
+      on profile_version.workspace_id = membership_head.workspace_id
+      and profile_version.event_id = membership_head.event_id
+      and profile_version.participant_id = membership_head.participant_id
+      and profile_version.profile_version = membership_head.profile_version
+  `;
+
+// `registrationFromRow` throws for any of these; the status read keeps the
+// same joins and computes the same verdict in SQL (W28-4 A), so a row the
+// full read cannot parse still rejects the lightweight read.
+//   * profile_payload must be an object holding a `registrationProfile` key
+//     (`clone(undefined)` throws; a null or non-object value does not);
+//   * text columns are non-empty;
+//   * timestamps parse to a valid JS Date (see `jsDateSafeTimestampSql`);
+//   * status is rsvped or cancelled (also a CHECK constraint).
+const jsTimestamp = jsDateSafeTimestampSql;
+const REGISTRATION_ROW_VALID = `coalesce(
+      jsonb_typeof(profile_version.profile_payload) = 'object'
+      and profile_version.profile_payload ? 'registrationProfile'
+      and membership_head.event_id <> ''
+      and membership_head.actor_id <> ''
+      and membership_head.participant_id <> ''
+      and membership_version.source_registration_id <> ''
+      and ${jsTimestamp("membership_version.registered_at")}
+      and ${jsTimestamp("membership_head.updated_at")}
+      and (membership_version.cancelled_at is null or ${jsTimestamp("membership_version.cancelled_at")})
+      and (membership_version.reactivated_at is null or ${jsTimestamp("membership_version.reactivated_at")})
+      and membership_head.status in ('rsvped', 'cancelled'),
+      false
+    )`;
+
+function registrationStatusSelect(): string {
+  return `
+    select
+      membership_head.event_id,
+      membership_head.status,
+      ${REGISTRATION_ROW_VALID} as valid
+    ${REGISTRATION_FROM}
+  `;
+}
+
+function registrationStatusFromRow(row: SqlRow): EventRegistrationStatusRecord {
+  if (row.valid !== true) {
+    throw new Error("Canonical event registration row is invalid.");
+  }
+  return {
+    eventId: text(row.event_id, "event_id"),
+    status: text(row.status, "status"),
+  };
+}
+
+// Whole-event roster projection (W0029): the same joins, filter and order as
+// the full inventory read, one row per registration. `k` is 'invalid' where
+// `registrationFromRow` would throw (any row, cancelled included), so the
+// projection rejects exactly where the full read does; otherwise it is the
+// rsvped row's profile shape. Leaves stay jsonb (see roster-entry.ts).
+function registrationRosterSelect(fields: EventRegistrationRosterFields): string {
+  const profile = "(profile_version.profile_payload -> 'registrationProfile')";
+  const rsvped = "membership_head.status = 'rsvped'";
+  return `
+    select
+      membership_head.status as s,
+      case when not ${REGISTRATION_ROW_VALID} then 'invalid'
+        else ${rosterEntryShapeSql(profile, rsvped)} end as k,
+      ${rosterEntryLeafColumnsSql(profile, rsvped, fields)}
+    ${REGISTRATION_FROM}
+    where membership_head.workspace_id = $1
+      and membership_head.event_id = $2
+    order by membership_head.participant_id`;
+}
+
 function registrationSelect(): string {
   return `
     select
@@ -362,17 +453,7 @@ function registrationSelect(): string {
       membership_version.late_registration,
       membership_version.source_registration_id,
       profile_version.profile_payload
-    from event_ops_membership_heads membership_head
-    join event_ops_membership_versions membership_version
-      on membership_version.workspace_id = membership_head.workspace_id
-      and membership_version.event_id = membership_head.event_id
-      and membership_version.actor_id = membership_head.actor_id
-      and membership_version.membership_version = membership_head.membership_version
-    join event_ops_profile_versions profile_version
-      on profile_version.workspace_id = membership_head.workspace_id
-      and profile_version.event_id = membership_head.event_id
-      and profile_version.participant_id = membership_head.participant_id
-      and profile_version.profile_version = membership_head.profile_version
+    ${REGISTRATION_FROM}
   `;
 }
 
@@ -951,12 +1032,37 @@ export function createPostgresCanonicalRegistrationMethods({
       return getRegistrationWith(client, workspaceId, eventId, userId);
     },
 
+    async getCanonicalRegistrationStatus(eventId, userId) {
+      const result = await client.query<SqlRow>(
+        `${registrationStatusSelect()}
+         where membership_head.workspace_id = $1
+           and membership_head.event_id = $2
+           and membership_head.actor_id = $3`,
+        [workspaceId, eventId, userId],
+      );
+      return result.rows[0] ? registrationStatusFromRow(result.rows[0]) : null;
+    },
+
     async listCanonicalRegistrations(eventId) {
       return listCanonicalRegistrationsWithExecutor({
         eventId,
         executor: client,
         workspaceId,
       });
+    },
+
+    async listCanonicalRosterEntries(eventId, fields) {
+      // Not gated, like the full read it replaces.
+      const result = await client.query<SqlRow>(registrationRosterSelect(fields), [
+        workspaceId,
+        eventId,
+      ]);
+      if (result.rows.some((row) => row.k === "invalid")) {
+        throw new Error("Canonical event registration rows contain invalid data.");
+      }
+      return result.rows.map((row) =>
+        rosterEntryFromRow(row as unknown as RosterEntryRow, fields),
+      );
     },
 
     async listCanonicalRegistrationsForUser(userId, eventIds) {
@@ -970,6 +1076,37 @@ export function createPostgresCanonicalRegistrationMethods({
         [workspaceId, userId, [...new Set(eventIds)]],
       );
       return result.rows.map(registrationFromRow);
+    },
+
+    async listCanonicalRegistrationStatusesForUser(userId, eventIds) {
+      if (eventIds.length === 0) return [];
+      const result = await client.query<SqlRow>(
+        `${registrationStatusSelect()}
+         where membership_head.workspace_id = $1
+           and membership_head.actor_id = $2
+           and membership_head.event_id = any($3::text[])
+         order by membership_head.event_id`,
+        [workspaceId, userId, [...new Set(eventIds)]],
+      );
+      return result.rows.map(registrationStatusFromRow);
+    },
+
+    async listPublishedCanonicalRegistrationStatusesForUser(userId) {
+      // W0041: published events are joined here (same test as the catalogue's
+      // lifecycle_state_v2 = 'published'); every joined row keeps the W28-4 A
+      // validity verdict, so a damaged cancelled row still rejects.
+      const result = await client.query<SqlRow>(
+        `${registrationStatusSelect()}
+         join event_ops_events published_event
+           on published_event.workspace_id = membership_head.workspace_id
+           and published_event.event_id = membership_head.event_id
+           and published_event.lifecycle_state_v2 = 'published'
+         where membership_head.workspace_id = $1
+           and membership_head.actor_id = $2
+         order by membership_head.event_id`,
+        [workspaceId, userId],
+      );
+      return result.rows.map(registrationStatusFromRow);
     },
 
     async registerCanonicalParticipant({

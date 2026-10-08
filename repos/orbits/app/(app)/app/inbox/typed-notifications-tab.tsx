@@ -3,7 +3,7 @@ import {notificationWebSourceHref} from './notification-source-view-model';
 import {useEffect,useRef,useState} from 'react';
 import {useOrbitLanguage} from '../orbit-language-context';
 import {formatOrbitDateTime} from '../orbit-datetime';
-import {communicationRequest,readContactMessageActor} from './inbox-request';
+import {communicationRequest,invalidateInboxActorConfirmation,readContactMessageActor,readContactMessageActorForWrite} from './inbox-request';
 import {notificationInboxView,notificationDetailView,type NotificationRow,type NotificationCategory,type NotificationList} from './notification-inbox-view-model';
 
 const categories={all:{zh:'全部',en:'All',ja:'すべて'},reminder:{zh:'提醒',en:'Reminders',ja:'リマインダー'},suggestion:{zh:'建议',en:'Suggestions',ja:'提案'},update:{zh:'动态',en:'Updates',ja:'更新'},history:{zh:'历史记录',en:'History',ja:'履歴'}};
@@ -24,10 +24,14 @@ export function TypedNotificationsTab({actorId,onIdentityChanged}:{actorId:strin
  const detailId=useRef<string|null>(null);detailId.current=detail?.id??null;
  async function request(path:string,options:RequestInit={},controller=scope.current){
   if(!controller||controller.signal.aborted)throw new Error();
-  if(await readContactMessageActor(controller.signal)!==actorId){changed.current();throw new Error();}
-  const result=await communicationRequest(path,{...options,signal:controller.signal});
+  // Reads share the per-cycle identity confirmation; writes pass the fresh pre-write barrier (W0031).
+  const write=!!options.method&&options.method.toUpperCase()!=='GET';
+  if(await (write?readContactMessageActorForWrite:readContactMessageActor)(controller.signal)!==actorId){invalidateInboxActorConfirmation();changed.current();throw new Error();}
+  let result:unknown;
+  try{result=await communicationRequest(path,{...options,signal:controller.signal});}
+  catch(error){if(!controller.signal.aborted)invalidateInboxActorConfirmation();throw error;}
   if(controller.signal.aborted)throw new Error();
-  if(await readContactMessageActor(controller.signal)!==actorId){changed.current();throw new Error();}
+  if(await readContactMessageActor(controller.signal)!==actorId){invalidateInboxActorConfirmation();changed.current();throw new Error();}
   return result;
  }
  useEffect(()=>{
@@ -36,7 +40,7 @@ export function TypedNotificationsTab({actorId,onIdentityChanged}:{actorId:strin
     const next=notificationInboxView(await request('/api/inbox/notifications?'+query,{},controller),actorId);
     const selected=detailId.current?notificationDetailView(await request('/api/inbox/notifications/'+encodeURIComponent(detailId.current)+'?language='+language,{},controller),actorId,detailId.current):null;
     if(!controller.signal.aborted){setData(next);if(selected)setDetail(selected);setError('');}
-  }catch{if(!controller.signal.aborted){setData(null);setDetail(null);setError(t({zh:'通知读取失败，请重试。',en:'Could not load notifications. Retry.',ja:'通知を読み込めません。再試行してください。'}));}}finally{loading=false;}}
+  }catch{if(!controller.signal.aborted){invalidateInboxActorConfirmation();setData(null);setDetail(null);setError(t({zh:'通知读取失败，请重试。',en:'Could not load notifications. Retry.',ja:'通知を読み込めません。再試行してください。'}));}}finally{loading=false;}}
   void refresh();const timer=setInterval(()=>void refresh(),15000);document.addEventListener('visibilitychange',refresh);return()=>{controller.abort();clearInterval(timer);document.removeEventListener('visibilitychange',refresh);};
  },[actorId,query,attempt]);
  async function open(id:string){try{const next=notificationDetailView(await request('/api/inbox/notifications/'+encodeURIComponent(id)+'?language='+language),actorId,id);if(!scope.current?.signal.aborted)setDetail(next);}catch{setError(t({zh:'来源已不可用，请刷新。',en:'Source unavailable. Refresh.',ja:'参照元を利用できません。更新してください。'}));}}

@@ -395,6 +395,90 @@ test("review flags a phone number the verification pass read differently by digi
   );
 });
 
+// 实测名片（富沢 弘治 / OMIKOSHI OMATSURI PARTY）：一个地址、Tel/Fax/mobile 三个号码、
+// 汉字名配罗马字、复核读数漏掉了传真。此前三条规则全部误报，整张卡被拦下人工确认。
+test("a single-office card with Tel/Fax/mobile, a romaji reading and a skipped fax raises no issues", () => {
+  const issues = reviewIssuesForBusinessCard(
+    extraction({
+      addresses: [{ label: "office", value: "〒171-0002 Minami-ikebukuro 2-23-4 Toshima-City Tokyo Japan" }],
+      contactPoints: [
+        { label: "Tel", type: "phone", value: "03 (3971) 5345" },
+        { label: "Fax", type: "fax", value: "03 (3989) 9746" },
+        { label: "mobile phone", type: "mobile", value: "090 (3084) 8463" },
+      ],
+      emails: [{ label: null, value: "iamtomy@aioros.ocn.jp" }],
+      fullName: null,
+      nativeFullName: "富沢 弘治",
+      organization: "OMIKOSHI OMATSURI PARTY",
+      romanizedFullName: "Tomizawa Hiroharu",
+    }),
+    {
+      verification: {
+        emails: ["iamtomy@aioros.ocn.jp"],
+        organizations: ["OMIKOSHI OMATSURI PARTY"],
+        phones: ["03 (3971) 5345", "090 (3084) 8463"],
+      },
+    },
+  );
+
+  assert.deepEqual(issues.map((issue) => issue.code), []);
+});
+
+test("channel labels are not offices; distinct addresses or place labels still are", () => {
+  const codes = (overrides: Partial<BusinessCardStructuredExtraction>) =>
+    reviewIssuesForBusinessCard(extraction(overrides)).map((issue) => issue.code);
+
+  assert.deepEqual(codes({
+    addresses: [{ label: "《office》", value: "東京都テスト区1-2-3" }],
+    contactPoints: [
+      { label: "TEL", type: "phone", value: "03-0000-1111" },
+      { label: "携帯電話", type: "mobile", value: "090-0000-2222" },
+      { label: "F", type: "fax", value: "03-0000-3333" },
+    ],
+  }), []);
+  assert.deepEqual(codes({
+    addresses: [{ label: null, value: "東京都テスト区1-2-3" }, { label: null, value: "大阪府サンプル市4-5-6" }],
+  }), ["MULTIPLE_OFFICES"]);
+  assert.deepEqual(codes({
+    contactPoints: [
+      { label: "Tokyo Office", type: "phone", value: "03-0000-1111" },
+      { label: "Osaka Office", type: "phone", value: "06-0000-2222" },
+    ],
+  }), ["MULTIPLE_OFFICES"]);
+});
+
+test("a native name with a plausible romaji or pinyin reading is not a name conflict", () => {
+  for (const [nativeFullName, romanizedFullName] of [
+    ["服部 翔太", "Hattori Shouta"],
+    ["王舒雅", "Wang Shuya"],
+    ["佐藤 健一", "SATO Kenichi"],
+  ] as const) {
+    assert.deepEqual(
+      reviewIssuesForBusinessCard(extraction({ fullName: null, nativeFullName, romanizedFullName })).map((issue) => issue.code),
+      [],
+      romanizedFullName,
+    );
+  }
+  assert.deepEqual(
+    reviewIssuesForBusinessCard(extraction({ nativeFullName: "Jon Smith", romanizedFullName: "John Smith" })).map((issue) => issue.code),
+    ["NATIVE_ROMANIZED_NAME_CONFLICT"],
+  );
+});
+
+test("a fax the verification pass skipped is not flagged, but a fax read one digit off is", () => {
+  const faxIssues = (phones: string[]) =>
+    reviewIssuesForBusinessCard(
+      extraction({ contactPoints: [
+        { label: null, type: "phone", value: "03-3971-5345" },
+        { label: null, type: "fax", value: "03-3989-9746" },
+      ] }),
+      { verification: { emails: [], organizations: [], phones } },
+    ).map((issue) => issue.code);
+
+  assert.deepEqual(faxIssues(["03-3971-5345"]), []);
+  assert.deepEqual(faxIssues(["03-3971-5345", "03-3989-9748"]), ["VERIFICATION_MISMATCH"]);
+});
+
 test("messenger contact points survive normalization and skip phone validation", () => {
   const normalized = normalizeBusinessCardExtraction(
     extraction({

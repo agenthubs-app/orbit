@@ -27,7 +27,7 @@
     "contacts.dashboard": {
       "queries": 13,
       "rows": 456,
-      "bytes": 357627
+      "bytes": 357820
     },
     "events.list": {
       "queries": 1,
@@ -130,6 +130,40 @@
         "to": 9525
       },
       "why": "New chain (GET /api/ai/runs/[id]). The pre-0103 getRun listed the actor subspace whole (steps, actions, outbox, receipts; 164 rows with 20 legacy plain runs, growing with history) and filtered by run id in memory; it now reads the run by record id and its rows by envelope target (orbit_records_target_idx), plus the turn request record by run id. From-numbers measured on the same seed against the pre-0103 provider."
+    },
+    {
+      "sprint": "W0047",
+      "chain": "contacts.dashboard",
+      "queries": {
+        "from": 13,
+        "to": 13
+      },
+      "rows": {
+        "from": 456,
+        "to": 456
+      },
+      "bytes": {
+        "from": 357627,
+        "to": 357651
+      },
+      "why": "The distribution read-model statement returns one new column, relationship_tiers (W0047 relationshipTierDistribution: tier groups of the actor's relationship_strengths cache rows joined by record id). The seeded chain has no cache rows, so the column is an empty JSON array (+24 bytes); with rows it is at most four groups with five contact ids each. No new statement and no new rows. Equality with the graph path: tests/services/dashboard-sql-read-model-postgres.test.ts (W0047 case)."
+    },
+    {
+      "sprint": "W0049",
+      "chain": "contacts.dashboard",
+      "queries": {
+        "from": 13,
+        "to": 13
+      },
+      "rows": {
+        "from": 456,
+        "to": 456
+      },
+      "bytes": {
+        "from": 357651,
+        "to": 357820
+      },
+      "why": "The distribution read-model statement's structure_groups gains W0049's new dimensions (seniority from publicProfile.seniorityLevel, region from region.countryCode/city, industry_secondary = primary|secondary); their groups carry no evidence (excluded from dimension_evidence). On the seeded chain this adds +169 bytes inside the same row; no new statement and no new rows. Equality with the graph path: tests/services/dashboard-sql-read-model-postgres.test.ts (W0049 case)."
     }
   ]
 }

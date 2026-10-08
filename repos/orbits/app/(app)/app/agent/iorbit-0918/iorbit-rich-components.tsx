@@ -27,6 +27,7 @@ import { eventCoverPhoto } from "../../orbit-event-cover-photo";
 import { EventCover } from "../../events/orbit-event-cover";
 import { useOrbitLanguage } from "../../orbit-language-context";
 import { useOrbitModalA11y } from "../../orbit-modal-a11y";
+import { noteContactNavigation } from "../../contacts/network-0918/detail-return-recorder";
 import { Avatar, Icon, gradientFromString } from "../../orbit-reference-primitives";
 import { ORBIT_Z } from "../../orbit-z";
 import {
@@ -407,6 +408,11 @@ function AgentInlineDraftResult({
 // 既是设计规范（primary-action），也让「为什么这条排第一」在视觉上可读。
 function AgentPeopleRow({ item, language, navigate, rank, t }: { item: OrbitAgentPeopleResultView; language: "en" | "zh"; navigate: (href: string) => void; rank: number; t: Translate }) {
   const connection = item.connection;
+  // W0059：去详情前记下来路，详情关闭时后退回这里。
+  const openContact = (href: string) => {
+    noteContactNavigation(href);
+    navigate(href);
+  };
   const draft = useAgentInlineDraft({
     contactId: connection.id,
     language,
@@ -426,7 +432,7 @@ function AgentPeopleRow({ item, language, navigate, rank, t }: { item: OrbitAgen
         <span>{[connection.title, connection.company].filter(Boolean).join(" · ")}</span>
       </span>
       <span className="p-acts">
-        <button className="btn btn-ghost btn-sm" onClick={() => navigate(`/app/contacts/${connection.id}`)} type="button">
+        <button className="btn btn-ghost btn-sm" onClick={() => openContact(`/app/contacts/${encodeURIComponent(connection.id)}`)} type="button">
           {t({ en: "View", zh: "查看" })}
         </button>
         {(() => {
@@ -496,6 +502,11 @@ function AgentTodoRow({ group, language, navigate, rank, t }: { group: AgentTodo
   const promised = group.items.filter((item) => !isTodoLead(item));
   const leads = group.items.filter(isTodoLead);
   const [open, setOpen] = useState(false);
+  // W0059：去详情前记下来路，详情关闭时后退回这里。
+  const openContact = (href: string) => {
+    noteContactNavigation(href);
+    navigate(href);
+  };
   // 默认勾选 = 按钮会写的事：有承诺勾承诺；只有线索时勾线索（否则按钮没有意义）。
   // 这个默认值因人而异，所以不写死在任何标签文案里——勾选框自己陈述。
   const [selected, setSelected] = useState<ReadonlySet<string>>(
@@ -520,7 +531,7 @@ function AgentTodoRow({ group, language, navigate, rank, t }: { group: AgentTodo
 
   const viewContact = () => {
     if (group.contactId) {
-      navigate(`/app/contacts/${group.contactId}`);
+      openContact(`/app/contacts/${encodeURIComponent(group.contactId)}`);
       return;
     }
     navigate(`/app/contacts?query=${encodeURIComponent(group.contactName)}`);

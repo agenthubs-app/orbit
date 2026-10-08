@@ -1,0 +1,8 @@
+Notes:
+"Fictional export notice: some connections hide their email address, so that column can be empty. This paragraph is sample text for tests."
+
+First Name,Last Name,URL,Email Address,Company,Position,Connected On
+Avery,Lin,https://www.linkedin.com/in/avery-lin-example,avery.lin@example.com,Northwind Labs,Head of Partnerships,05 Jan 2024
+葵,佐藤,https://www.linkedin.com/in/aoi-sato-example,,"Sakura Systems, Inc.",プロダクトマネージャー,12 Mar 2023
+Jordan,Reyes,https://www.linkedin.com/in/jordan-reyes-example,,Contoso Trading,"VP, Sales ""APAC""",01 Aug 2022
+,,https://www.linkedin.com/in/unknown-example,,,,02 Feb 2021

@@ -5,9 +5,13 @@ import type {
 } from "./dashboard-graph";
 import {
   INDUSTRY_CATALOG,
+  SECONDARY_INDUSTRY_CATALOG,
   industryLabel,
   isIndustryIdCode,
+  sanitizeIndustryPair,
+  secondaryIndustryLabel,
 } from "../domain/industries";
+import { seniorityGroup, type SeniorityGroup } from "./seniority-group";
 import { DASHBOARD_SHORT_LIST_LIMIT } from "./dashboard-contract";
 import {
   NETWORK_DISTRIBUTION_ANALYTICS_ERROR_DEFINITIONS,
@@ -27,13 +31,18 @@ import {
   type NetworkGapSeverity,
   type NetworkRelationshipStrength,
   type NetworkRelationshipValueType,
+  type NetworkStructureDetailDimensionId,
   type NetworkStructureDetailInput,
   type NetworkStructureDetailPayload,
   type NetworkStructureDetailResult,
   type NetworkStructureDimensionId,
   type NetworkStructureDistributionBucket,
   type NetworkStructureDistributions,
+  type NetworkStructureExtraDimensionId,
+  type NetworkStructureSecondaryBucket,
   type RelationshipStrengthDistributionBucket,
+  type RelationshipTierAssignment,
+  type RelationshipTierDistributionBucket,
   type ValueTypeDistributionBucket,
 } from "./dashboard-distribution-contract";
 import { compareText, lowerText } from "./compute-text";
@@ -59,9 +68,25 @@ export interface LiveNetworkDistributionAnalyticsProvider {
    * no graph version is available (the service then reads the graph).
    */
   readNetworkGapCore?: () => Promise<NetworkGapCore | null>;
+  /**
+   * W0047: each contact's tier from the relationship_strengths read model (graph
+   * path only; the SQL read model carries `relationshipTiers`). Absent → the
+   * tier distribution is empty. Never feeds relationshipStrengthDistribution.
+   */
+  readRelationshipTiers?: () =>
+    | readonly RelationshipTierAssignment[]
+    | Promise<readonly RelationshipTierAssignment[]>;
 }
 
-export type NetworkStructureDimensionKey = "industry" | "location" | "role" | "relationship";
+/** W0049：SQL 读模型的分组维度（`industry_secondary` 的 key = `<一级 id>|<二级原值或空串>`）。 */
+export type NetworkStructureDimensionKey =
+  | "industry"
+  | "location"
+  | "role"
+  | "relationship"
+  | "seniority"
+  | "region"
+  | "industry_secondary";
 
 /**
  * Grouped rows behind /api/dashboard/distributions. Positions are the graph
@@ -94,6 +119,8 @@ export interface NetworkDistributionReadModel {
     evidenceIds: readonly string[];
   }[];
   strengths: readonly { strength: string; count: number; evidenceIds: readonly string[] }[];
+  /** W0047: tier groups (new/active/core/dormant) of contacts that have a relationship_strengths row; contactIds in graph order. */
+  relationshipTiers?: readonly { tier: string; count: number; contactIds: readonly string[] }[];
   provenanceEvidenceIds: readonly string[];
 }
 
@@ -292,12 +319,93 @@ function topOrganizations(contacts: readonly ContactDTO[]): readonly string[] {
     .map(([organization]) => organization);
 }
 
-const structureDimensions: readonly NetworkStructureDimensionId[] = [
+const legacyStructureDimensions: readonly NetworkStructureDimensionId[] = [
   "industry",
   "location",
   "role",
   "relationship",
 ];
+
+/** W0049：分布里输出的维度（旧四个 + 新增两个）；新维度只加不改，旧键语义不变。 */
+type StructureDimension = NetworkStructureDimensionId | NetworkStructureExtraDimensionId;
+const structureDimensions: readonly StructureDimension[] = [
+  ...legacyStructureDimensions,
+  "seniority",
+  "region",
+];
+
+/** W0049：名单下钻接受的维度（分布六维 + 行业二级 + 关系强度档）。 */
+const structureDetailDimensions: readonly NetworkStructureDetailDimensionId[] = [
+  ...structureDimensions,
+  "industry_secondary",
+  "tier",
+];
+
+/** 只有旧四维的分组带 evidenceIds（新维度为空数组，省读取）。 */
+function dimensionCarriesEvidence(dimension: StructureDimension): boolean {
+  return (legacyStructureDimensions as readonly string[]).includes(dimension);
+}
+
+const seniorityOrder: readonly SeniorityGroup[] = ["decision", "manager", "staff", "other"];
+const seniorityLabels: Record<SeniorityGroup, string> = {
+  decision: "决策层",
+  manager: "管理层",
+  staff: "执行层",
+  other: "其他",
+};
+
+/** W0049：职级六档 → 四组（复用 W0045 的 seniorityGroup，不另写映射）；「其他」即缺数据。 */
+function seniorityDescriptor(level: string | null | undefined): { id: string; label: string; missing: boolean } {
+  const group = seniorityGroup(level);
+  return { id: `seniority_${group}`, label: seniorityLabels[group], missing: group === "other" };
+}
+
+/** W0049：规范地区按「国家 + 城市」分组；城市进 bucketId 前做 URI 编码。 */
+function regionDescriptor(region: { countryCode: string; city: string | null } | null | undefined): { id: string; label: string; missing: boolean } {
+  if (!region) return { id: "region_unknown", label: "地区待完善", missing: true };
+  return region.city
+    ? { id: `region_${region.countryCode}_${encodeURIComponent(region.city)}`, label: `${region.countryCode} · ${region.city}`, missing: false }
+    : { id: `region_${region.countryCode}`, label: region.countryCode, missing: false };
+}
+
+/** SQL 读模型的地区 key（`<CC>|<city 或空串>`）→ 规范地区。 */
+function regionFromKey(key: string | null): { countryCode: string; city: string | null } | null {
+  if (!key || key.length < 3 || key[2] !== "|") return null;
+  return { countryCode: key.slice(0, 2), city: key.slice(3) || null };
+}
+
+const secondaryOrder = new Map<string, number>(SECONDARY_INDUSTRY_CATALOG.map((item, index) => [item.id, index]));
+
+/** W0049：一级行业下的二级分组 id：合法二级 → 二级 id；否则「<一级>.unspecified」（未细分）。 */
+function secondaryBucketIdFor(primaryId: string, secondary: string | null | undefined): string {
+  const pair = sanitizeIndustryPair(primaryId, secondary ?? null);
+  return pair.secondaryIndustryId ?? `${primaryId}.unspecified`;
+}
+
+function secondaryBuckets(counts: ReadonlyMap<string, number>): readonly NetworkStructureSecondaryBucket[] {
+  const entries = [...counts.entries()].sort(([leftId, left], [rightId, right]) =>
+    right - left ||
+    (secondaryOrder.get(leftId) ?? Number.MAX_SAFE_INTEGER) - (secondaryOrder.get(rightId) ?? Number.MAX_SAFE_INTEGER) ||
+    compareText(leftId, rightId),
+  );
+  const percentages = allocatedPercentages(entries.map(([, count]) => count));
+  return entries.map(([bucketId, contactCount], index) => {
+    const known = secondaryOrder.has(bucketId);
+    return {
+      bucketId,
+      ...(known ? { secondaryIndustryId: bucketId as NetworkStructureSecondaryBucket["secondaryIndustryId"] } : {}),
+      contactCount,
+      percentage: percentages[index] ?? 0,
+      missingData: !known,
+    };
+  });
+}
+
+function secondaryLabel(bucketId: string): string {
+  return secondaryOrder.has(bucketId)
+    ? secondaryIndustryLabel(bucketId as NonNullable<NetworkStructureSecondaryBucket["secondaryIndustryId"]>, "zh")
+    : "未细分";
+}
 
 const relationshipLabels: Record<NetworkRelationshipStrength, string> = {
   strong: "强关系",
@@ -360,7 +468,7 @@ function connectionByContactId(graph: LiveDashboardGraph): ReadonlyMap<string, C
 }
 
 function structureDescriptor(
-  dimension: NetworkStructureDimensionId,
+  dimension: StructureDimension,
   contact: ContactDTO,
   connections: ReadonlyMap<string, ConnectionDTO>,
 ): { id: string; label: string; missing: boolean } {
@@ -375,6 +483,8 @@ function structureDescriptor(
   }
   if (dimension === "location") return normalizedLocation(contact.location);
   if (dimension === "role") return normalizedRole(contact.role);
+  if (dimension === "seniority") return seniorityDescriptor(contact.seniorityLevel);
+  if (dimension === "region") return regionDescriptor(contact.region);
   const connection = connections.get(contact.id);
   const strength = connection ? strengthFor(connection) : "weak";
   return { id: strength, label: relationshipLabels[strength], missing: !connection };
@@ -382,7 +492,7 @@ function structureDescriptor(
 
 function structureDistribution(
   graph: LiveDashboardGraph,
-  dimension: NetworkStructureDimensionId,
+  dimension: StructureDimension,
 ): readonly NetworkStructureDistributionBucket[] {
   const connections = connectionByContactId(graph);
   const groups = new Map<
@@ -409,6 +519,9 @@ function structureDistribution(
   } else if (dimension === "relationship") {
     const order = new Map(["strong", "warm", "weak"].map((id, index) => [id, index]));
     entries.sort(([left], [right]) => (order.get(left) ?? 9) - (order.get(right) ?? 9));
+  } else if (dimension === "seniority") {
+    const order = new Map(seniorityOrder.map((group, index) => [`seniority_${group}`, index]));
+    entries.sort(([left], [right]) => (order.get(left) ?? 9) - (order.get(right) ?? 9));
   } else {
     entries.sort(([, left], [, right]) =>
       right.contacts.length - left.contacts.length || compareText(left.label, right.label),
@@ -420,12 +533,23 @@ function structureDistribution(
     label: group.label,
     contactCount: group.contacts.length,
     percentage: percentages[index] ?? 0,
-    evidenceIds: uniqueStrings(group.contacts.flatMap((contact) => contact.evidenceIds)),
+    evidenceIds: dimensionCarriesEvidence(dimension)
+      ? uniqueStrings(group.contacts.flatMap((contact) => contact.evidenceIds))
+      : [],
     missingData: group.missing,
     ...(dimension === "industry" && bucketId !== "unclassified"
-      ? { primaryIndustryId: bucketId as NetworkStructureDistributionBucket["primaryIndustryId"] }
+      ? {
+          primaryIndustryId: bucketId as NetworkStructureDistributionBucket["primaryIndustryId"],
+          secondary: secondaryBuckets(countBy(group.contacts.map((contact) => secondaryBucketIdFor(bucketId, contact.secondaryIndustryId)))),
+        }
       : {}),
   }));
+}
+
+function countBy(ids: readonly string[]): ReadonlyMap<string, number> {
+  const counts = new Map<string, number>();
+  for (const id of ids) counts.set(id, (counts.get(id) ?? 0) + 1);
+  return counts;
 }
 
 function structureDistributions(graph: LiveDashboardGraph): NetworkStructureDistributions {
@@ -456,7 +580,7 @@ function industryDistribution(
 
 function contactsForStructureBucket(
   graph: LiveDashboardGraph,
-  dimension: NetworkStructureDimensionId,
+  dimension: StructureDimension,
   bucketId: string,
 ): readonly ContactDTO[] {
   const connections = connectionByContactId(graph);
@@ -626,6 +750,71 @@ function strengthDistribution(
     .filter((bucket) => bucket.relationshipCount > 0);
 }
 
+const orderedTierGroups: readonly RelationshipTierDistributionBucket["tier"][] = [
+  "new",
+  "active",
+  "core",
+  "dormant",
+];
+
+/**
+ * W0047: tier groups over the graph's contacts that have a tier row (dormant
+ * first: a dormant contact counts only in "dormant"). Percentages are of the
+ * contacts that have a row; contacts without one count in no group.
+ */
+function tierDistributionFromGraph(
+  graph: LiveDashboardGraph,
+  assignments: readonly RelationshipTierAssignment[],
+): readonly RelationshipTierDistributionBucket[] {
+  const byContact = new Map(assignments.map((assignment) => [assignment.contactId, assignment]));
+  const groups = new Map<RelationshipTierDistributionBucket["tier"], string[]>();
+  const seen = new Set<string>();
+  let total = 0;
+  for (const contact of graph.contacts) {
+    const assignment = byContact.get(contact.id);
+    if (!assignment || seen.has(contact.id)) continue;
+    seen.add(contact.id);
+    const group = assignment.dormant ? "dormant" : assignment.tier;
+    if (!orderedTierGroups.includes(group)) continue;
+    const members = groups.get(group) ?? [];
+    members.push(contact.id);
+    groups.set(group, members);
+    total += 1;
+  }
+  return orderedTierGroups
+    .map((tier) => {
+      const members = groups.get(tier) ?? [];
+      return {
+        tier,
+        relationshipCount: members.length,
+        percentage: percentage(members.length, total),
+        contactIds: members.slice(0, DASHBOARD_SHORT_LIST_LIMIT),
+      };
+    })
+    .filter((bucket) => bucket.relationshipCount > 0);
+}
+
+function tierDistributionFromReadModel(
+  model: NetworkDistributionReadModel,
+): readonly RelationshipTierDistributionBucket[] {
+  const rows = model.relationshipTiers ?? [];
+  const total = rows
+    .filter((row) => orderedTierGroups.includes(row.tier as RelationshipTierDistributionBucket["tier"]))
+    .reduce((sum, row) => sum + row.count, 0);
+  return orderedTierGroups
+    .map((tier) => {
+      const row = rows.find((item) => item.tier === tier);
+      const relationshipCount = row?.count ?? 0;
+      return {
+        tier,
+        relationshipCount,
+        percentage: percentage(relationshipCount, total),
+        contactIds: (row?.contactIds ?? []).slice(0, DASHBOARD_SHORT_LIST_LIMIT),
+      };
+    })
+    .filter((bucket) => bucket.relationshipCount > 0);
+}
+
 function evidenceIdsFor(graph: LiveDashboardGraph): readonly string[] {
   const ids = uniqueStrings([
     ...graph.contacts.flatMap((contact) => contact.evidenceIds),
@@ -638,6 +827,7 @@ function evidenceIdsFor(graph: LiveDashboardGraph): readonly string[] {
 function distributionPayload(
   graph: LiveDashboardGraph,
   provider: LiveNetworkDistributionAnalyticsProvider,
+  tiers: readonly RelationshipTierAssignment[] = [],
 ): NetworkDistributionAnalyticsPayload {
   return {
     state: graph.contacts.length > 0 ? "success" : "empty",
@@ -645,6 +835,7 @@ function distributionPayload(
     structureDistributions: structureDistributions(graph),
     valueTypeDistribution: valueTypeDistribution(graph),
     relationshipStrengthDistribution: strengthDistribution(graph),
+    relationshipTierDistribution: tierDistributionFromGraph(graph, tiers),
     summary:
       "Live network distribution analytics grouped source-backed contacts and relationships from shared live storage.",
     provenance: provenance({
@@ -678,6 +869,14 @@ function projectDistributionShortLists(
     ) as unknown as NetworkStructureDistributions,
     valueTypeDistribution: payload.valueTypeDistribution.map(shortEvidence),
     relationshipStrengthDistribution: payload.relationshipStrengthDistribution.map(shortEvidence),
+    ...(payload.relationshipTierDistribution
+      ? {
+          relationshipTierDistribution: payload.relationshipTierDistribution.map((bucket) => ({
+            ...bucket,
+            contactIds: bucket.contactIds.slice(0, DASHBOARD_SHORT_LIST_LIMIT),
+          })),
+        }
+      : {}),
     provenance: shortEvidence(payload.provenance),
   };
 }
@@ -685,7 +884,7 @@ function projectDistributionShortLists(
 type StructureReadGroup = NetworkDistributionReadModel["structureGroups"][number];
 
 function readModelDescriptor(
-  dimension: NetworkStructureDimensionId,
+  dimension: StructureDimension,
   group: StructureReadGroup,
 ): { id: string; label: string; missing: boolean } {
   if (dimension === "industry") {
@@ -695,6 +894,8 @@ function readModelDescriptor(
   }
   if (dimension === "location") return normalizedLocation(group.key ?? undefined);
   if (dimension === "role") return normalizedRole(group.key ?? undefined);
+  if (dimension === "seniority") return seniorityDescriptor(group.key);
+  if (dimension === "region") return regionDescriptor(regionFromKey(group.key));
   const strength = (group.key ?? "weak") as NetworkRelationshipStrength;
   return { id: strength, label: relationshipLabels[strength], missing: group.firstMissing };
 }
@@ -709,7 +910,7 @@ function comparePositions(left: readonly number[], right: readonly number[]): nu
 
 function structureDistributionFromReadModel(
   model: NetworkDistributionReadModel,
-  dimension: NetworkStructureDimensionId,
+  dimension: StructureDimension,
 ): readonly (NetworkStructureDistributionBucket & { rawKeys: readonly (string | null)[] })[] {
   const groups = new Map<string, {
     label: string;
@@ -751,6 +952,9 @@ function structureDistributionFromReadModel(
   } else if (dimension === "relationship") {
     const order = new Map(["strong", "warm", "weak"].map((id, index) => [id, index]));
     entries.sort(([left], [right]) => (order.get(left) ?? 9) - (order.get(right) ?? 9));
+  } else if (dimension === "seniority") {
+    const order = new Map(seniorityOrder.map((group, index) => [`seniority_${group}`, index]));
+    entries.sort(([left], [right]) => (order.get(left) ?? 9) - (order.get(right) ?? 9));
   } else {
     entries.sort(([, left], [, right]) =>
       right.count - left.count || compareText(left.label, right.label),
@@ -770,10 +974,25 @@ function structureDistributionFromReadModel(
     ),
     missingData: group.missing,
     ...(dimension === "industry" && bucketId !== "unclassified"
-      ? { primaryIndustryId: bucketId as NetworkStructureDistributionBucket["primaryIndustryId"] }
+      ? {
+          primaryIndustryId: bucketId as NetworkStructureDistributionBucket["primaryIndustryId"],
+          secondary: secondaryBuckets(secondaryCountsFromReadModel(model, bucketId)),
+        }
       : {}),
     rawKeys: group.rawKeys,
   }));
+}
+
+/** W0049：读模型 `industry_secondary` 分组（key `<一级>|<二级原值>`）→ 该一级下的二级人数。 */
+function secondaryCountsFromReadModel(model: NetworkDistributionReadModel, primaryId: string): ReadonlyMap<string, number> {
+  const counts = new Map<string, number>();
+  const prefix = `${primaryId}|`;
+  for (const group of model.structureGroups) {
+    if (group.dimension !== "industry_secondary" || !group.key?.startsWith(prefix)) continue;
+    const bucketId = secondaryBucketIdFor(primaryId, group.key.slice(prefix.length) || null);
+    counts.set(bucketId, (counts.get(bucketId) ?? 0) + group.count);
+  }
+  return counts;
 }
 
 function distributionPayloadFromReadModel(
@@ -785,7 +1004,7 @@ function distributionPayloadFromReadModel(
       dimension,
       structureDistributionFromReadModel(model, dimension),
     ]),
-  ) as Record<NetworkStructureDimensionId, ReturnType<typeof structureDistributionFromReadModel>>;
+  ) as Record<StructureDimension, ReturnType<typeof structureDistributionFromReadModel>>;
   const industryDistribution = structures.industry.map((group) => {
     const inBucket = (key: string | null) => group.rawKeys.includes(key);
     return {
@@ -867,6 +1086,7 @@ function distributionPayloadFromReadModel(
     ) as unknown as NetworkStructureDistributions,
     valueTypeDistribution,
     relationshipStrengthDistribution,
+    relationshipTierDistribution: tierDistributionFromReadModel(model),
     summary:
       "Live network distribution analytics grouped source-backed contacts and relationships from shared live storage.",
     provenance: provenance({
@@ -899,9 +1119,12 @@ function emptyDistributionPayload(input: {
       location: [],
       role: [],
       relationship: [],
+      seniority: [],
+      region: [],
     },
     valueTypeDistribution: [],
     relationshipStrengthDistribution: [],
+    relationshipTierDistribution: [],
     summary: input.summary,
     provenance: provenance({
       collectedAt: input.now,
@@ -1115,18 +1338,94 @@ function structureDetailSuccess(
   return { success: true, data: clonePayload(data) };
 }
 
+const tierLabels: Record<RelationshipTierDistributionBucket["tier"], string> = {
+  new: "新认识",
+  active: "有往来",
+  core: "核心",
+  dormant: "待唤醒",
+};
+
+/**
+ * W0049：下钻的分组与成员。分布六维沿用 structureDistribution；行业二级按一级分组再按二级归组
+ * （百分比分母 = 所在一级人数）；关系强度档与 tierDistributionFromGraph 同源（待唤醒优先、只计有缓存行的人）。
+ */
+function detailBuckets(
+  graph: LiveDashboardGraph,
+  dimension: NetworkStructureDetailDimensionId,
+  tiers: readonly RelationshipTierAssignment[],
+): {
+  buckets: readonly NetworkStructureDistributionBucket[];
+  members: (bucketId: string) => readonly ContactDTO[];
+  /** 百分比的分母（名单页显示「n / 分母」）：二级 = 所在一级人数，档位 = 有缓存行的人数，其余 = 全部联系人。 */
+  totalFor: (bucket: NetworkStructureDistributionBucket) => number;
+} {
+  if (dimension === "industry_secondary") {
+    const members = new Map<string, ContactDTO[]>();
+    for (const contact of graph.contacts) {
+      if (!contact.primaryIndustryId) continue;
+      const bucketId = secondaryBucketIdFor(contact.primaryIndustryId, contact.secondaryIndustryId);
+      members.set(bucketId, [...(members.get(bucketId) ?? []), contact]);
+    }
+    const buckets = structureDistribution(graph, "industry").flatMap((primary) =>
+      (primary.secondary ?? []).map((child) => ({
+        bucketId: child.bucketId,
+        label: secondaryLabel(child.bucketId),
+        contactCount: child.contactCount,
+        percentage: child.percentage,
+        evidenceIds: [],
+        missingData: child.missingData,
+        ...(primary.primaryIndustryId ? { primaryIndustryId: primary.primaryIndustryId } : {}),
+      })),
+    );
+    const primaryCount = new Map(structureDistribution(graph, "industry").map((primary) => [primary.bucketId, primary.contactCount]));
+    return {
+      buckets,
+      members: (bucketId) => members.get(bucketId) ?? [],
+      totalFor: (bucket) => primaryCount.get(bucket.primaryIndustryId ?? "") ?? graph.contacts.length,
+    };
+  }
+  if (dimension === "tier") {
+    const byContact = new Map(tiers.map((assignment) => [assignment.contactId, assignment]));
+    const members = new Map<string, ContactDTO[]>();
+    const seen = new Set<string>();
+    for (const contact of graph.contacts) {
+      const assignment = byContact.get(contact.id);
+      if (!assignment || seen.has(contact.id)) continue;
+      seen.add(contact.id);
+      const group = assignment.dormant ? "dormant" : assignment.tier;
+      members.set(group, [...(members.get(group) ?? []), contact]);
+    }
+    const buckets = tierDistributionFromGraph(graph, tiers).map((bucket) => ({
+      bucketId: bucket.tier,
+      label: tierLabels[bucket.tier],
+      contactCount: bucket.relationshipCount,
+      percentage: bucket.percentage,
+      evidenceIds: [],
+      missingData: false,
+    }));
+    return { buckets, members: (bucketId) => members.get(bucketId) ?? [], totalFor: () => seen.size };
+  }
+  return {
+    buckets: structureDistribution(graph, dimension),
+    members: (bucketId) => contactsForStructureBucket(graph, dimension, bucketId),
+    totalFor: () => graph.contacts.length,
+  };
+}
+
 function structureDetailPayload(
   graph: LiveDashboardGraph,
   provider: LiveNetworkDistributionAnalyticsProvider,
-  input: NetworkStructureDetailInput & { dimension: NetworkStructureDimensionId },
+  input: NetworkStructureDetailInput & { dimension: NetworkStructureDetailDimensionId },
+  tiers: readonly RelationshipTierAssignment[] = [],
 ): NetworkStructureDetailPayload | null {
-  const buckets = structureDistribution(graph, input.dimension);
+  const resolved = detailBuckets(graph, input.dimension, tiers);
+  const buckets = resolved.buckets;
   // Sprint 0131: a non-ASCII location id carries percent escapes, and a route parameter can reach here
   // decoded one or two times; match each real id in those forms rather than decoding the input blindly.
   const bucket = buckets.find((item) => item.bucketId === input.bucketId)
     ?? buckets.find((item) => decodedForms(item.bucketId).includes(input.bucketId));
   if (!bucket) return null;
-  const contacts = contactsForStructureBucket(graph, input.dimension, bucket.bucketId);
+  const contacts = resolved.members(bucket.bucketId);
   const connections = connectionByContactId(graph);
   const strengths: readonly NetworkRelationshipStrength[] = ["strong", "warm", "weak"];
   const qualityCounts = strengths.map(
@@ -1156,7 +1455,7 @@ function structureDetailPayload(
     state: contacts.length ? "success" : "empty",
     dimension: input.dimension,
     bucket,
-    totalContactCount: graph.contacts.length,
+    totalContactCount: resolved.totalFor(bucket),
     relationshipQuality: strengths.map((id, index) => ({
       id,
       label: relationshipLabels[id],
@@ -1256,6 +1555,7 @@ export function createLiveNetworkDistributionAnalyticsService({
                   distributionPayload(
                     await provider.readNetworkDistributionGraph(),
                     provider,
+                    (await provider.readRelationshipTiers?.()) ?? [],
                   ),
                 ),
           );
@@ -1323,7 +1623,7 @@ export function createLiveNetworkDistributionAnalyticsService({
           provider,
         });
       }
-      if (!structureDimensions.includes(input.dimension as NetworkStructureDimensionId)) {
+      if (!structureDetailDimensions.includes(input.dimension as NetworkStructureDetailDimensionId)) {
         return failure("NETWORK_STRUCTURE_BUCKET_NOT_FOUND", {
           now: capturedNow,
           provider,
@@ -1336,10 +1636,11 @@ export function createLiveNetworkDistributionAnalyticsService({
         });
       }
       const graph = await provider.readNetworkDistributionGraph();
+      const tiers = input.dimension === "tier" ? (await provider.readRelationshipTiers?.()) ?? [] : [];
       const payload = structureDetailPayload(graph, provider, {
         ...input,
-        dimension: input.dimension as NetworkStructureDimensionId,
-      });
+        dimension: input.dimension as NetworkStructureDetailDimensionId,
+      }, tiers);
       return payload
         ? structureDetailSuccess(payload)
         : failure("NETWORK_STRUCTURE_BUCKET_NOT_FOUND", {

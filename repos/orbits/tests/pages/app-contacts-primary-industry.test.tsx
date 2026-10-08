@@ -12,7 +12,6 @@ import { contactsRouteToOrbitContactsViewModel as subrouteView } from "../../app
 import { loadAppContactDetailRoute } from "../../app/(app)/app/contacts/compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-route-service";
 import { contactDetailRouteToOrbitContactsViewModel } from "../../app/(app)/app/contacts/compose-app-contacts-demo-contact-1-from-previously-approved-mock-first-capabili/contact-detail-view-model-adapter";
 import { applyOrbitContactsPresentation } from "../../app/(app)/app/orbit-contacts-presentation";
-import { OrbitRealCardsDashboard } from "../../app/(app)/app/contacts/orbit-real-cards-dashboard";
 import { toPerson } from "../../app/(app)/app/contacts/network-0918/network-model";
 
 async function contactsRoute(t: TestContext) {
@@ -79,14 +78,6 @@ test("industry identity localizes consistently without changing location or cust
   }
 });
 
-test("dashboard industry distribution shows unclassified instead of cities or tags", async (t) => {
-  const route = await contactsRoute(t);
-  const html = renderToStaticMarkup(createElement(OrbitRealCardsDashboard, { viewModel: listView(route) }));
-  assert.match(html, /科技与互联网/);
-  assert.match(html, /未分类/);
-  assert.doesNotMatch(html, />Osaka<|>custom-tag<|>Relationship</);
-});
-
 test("separating industry from location keeps the city as region, never as industry, in the network model", async (t) => {
   const route = await contactsRoute(t);
   const model = listView(route);
@@ -96,21 +87,6 @@ test("separating industry from location keeps the city as region, never as indus
   const localized = applyOrbitContactsPresentation(model, "zh").connections.map(toPerson);
   assert.deepEqual(localized.map((p) => p.region).sort(), ["大阪", "大阪"]);
   assert.deepEqual(localized.map((p) => [p.id, p.industry]).sort(), [["classified", "科技与互联网"], ["unclassified", ""]]);
-});
-
-test("industry metric excludes contacts whose industry is unclassified", async (t) => {
-  const route = await contactsRoute(t);
-  const html = renderToStaticMarkup(createElement(OrbitRealCardsDashboard, { viewModel: listView(route) }));
-  assert.equal(html.match(/行业数<\/div><strong[^>]*>(\d+)<\/strong>/)?.[1], "1");
-});
-
-test("industry metric is not capped by the six visible distribution rows", async (t) => {
-  const route = await contactsRoute(t);
-  const model = listView(route);
-  const labels = ["餐饮与食品", "科技与互联网", "金融与投资", "专业服务", "制造与供应链", "零售与消费", "贸易与物流"];
-  model.connections = labels.map((industry, index) => ({ ...model.connections[0], id: `industry:${index}`, primaryIndustryId: undefined, encounters: [], industry }));
-  const html = renderToStaticMarkup(createElement(OrbitRealCardsDashboard, { viewModel: model }));
-  assert.equal(html.match(/行业数<\/div><strong[^>]*>(\d+)<\/strong>/)?.[1], "7");
 });
 
 test("localization preserves legacy encounter copy when there is no canonical industry", async (t) => {

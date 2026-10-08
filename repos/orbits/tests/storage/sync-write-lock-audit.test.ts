@@ -15,6 +15,7 @@ export const SYNC_WRITE_MANIFEST: Readonly<Record<string, SyncWritePolicy>> = {
   "features/connections/lifecycle/postgres-repository.ts": { policy: "locked", statements: 5, how: "acquireSyncCommitOrderLock before the first write of every command (connections, evidence and tasks are sync collections)" },
   "features/connections/lifecycle/initialization.ts": { policy: "locked", statements: 2, how: "acquireSyncCommitOrderLock before the first write when a task is created" },
   "features/connections/lifecycle/migration-repository.ts": { policy: "locked", statements: 2, how: "acquireSyncCommitOrderLock when an owner repair touches a sync collection" },
+  "features/relationship-strength/read-model.ts": { policy: "non-sync", statements: 2, collections: "relationship_strengths and relationship_strength_state (W0047 rebuildable cache, never synced)" },
   "features/sync/migrations.ts": { policy: "locked", statements: 1, how: "one-shot backfill joins sync_write_lock" },
   "features/sync/sync-revision-migration.ts": { policy: "locked", statements: 1, how: "each backfill batch joins sync_write_lock" },
   "features/sync/owner-backfill.ts": { policy: "locked", statements: 3, how: "0114 owner backfill: acquireSyncCommitOrderLock at the start of its one transaction; it refuses to write a sync collection" },
@@ -40,11 +41,13 @@ export const SYNC_WRITE_MANIFEST: Readonly<Record<string, SyncWritePolicy>> = {
   "features/notifications/notification-cutover-migration.ts": { policy: "non-sync", statements: 3, collections: "notification collections" },
   "features/notifications/event-contact-request-inbox-migration.ts": { policy: "non-sync", statements: 1, collections: "notifications (archives migrated legacy exchange rows; inbox writes go through the live-record store)" },
   "scripts/backfill-event-display-fields.ts": { policy: "locked", statements: 1, how: "its transaction takes acquireSyncCommitOrderLock first (events, 0117)" },
+  "features/contacts/enrichment/backfill.ts": { policy: "locked", statements: 1, how: "W0045: applyContactEnrichmentBackfillPlan takes acquireSyncCommitOrderLock at the start of its transaction (contacts, 0116); conditional update bound to user_id and updated_at" },
   "scripts/backfill-test-secondary-industries.ts": { policy: "locked", statements: 1, how: "applyTestIndustryBackfillPlan takes acquireSyncCommitOrderLock at the start of its transaction (contacts, 0116)" },
   "scripts/bootstrap-event-organizer-accounts.ts": { policy: "locked", statements: 2, how: "setOwnerIfAbsent (accounts, contacts, profiles — contacts is a sync collection) takes SYNC_COMMIT_ORDER_LOCK_CTE in its statement (0117); insertIfAbsent writes organizer memberships (profiles/accounts)" },
   "scripts/diagnostics/notification-source-read-cost.ts": { policy: "non-sync", statements: 2, collections: "reminderPlans and notification fixtures" },
   "scripts/diagnostics/schedule-exception-window-cost.ts": { policy: "non-sync", statements: 1, collections: "personal_schedule_occurrence_exceptions (the series rows go through the store)" },
   "scripts/quarantine-legacy-notifications.ts": { policy: "non-sync", statements: 1, collections: "notifications" },
+  "scripts/measure-plan-read-traffic.ts": { policy: "locked", statements: 2, how: "W0017/W0021 traffic measurement in a temporary schema: lockedWrite takes acquireSyncCommitOrderLock in the same transaction (contacts)" },
   "scripts/seed-demo-workspace.ts": { policy: "locked", statements: 2, how: "the demo event owner reset (events, 0117) runs in a transaction that takes acquireSyncCommitOrderLock first; the other statement updates event_organizer_owner_migrations" },
   "features/sync/owner-guard.ts": { policy: "non-sync", statements: 1, collections: "accounts (ROTATE_AUTHORIZATION_EPOCH_SQL moves a previous owner's account updated_at)" },
 };
@@ -64,6 +67,9 @@ export const EVENT_TABLE_WRITE_MANIFEST: Readonly<Record<string, MessageTableWri
   "features/events/event-operations/storage/postgres-repository.ts": { statements: 3, how: "saveConfiguration and publishGenerationAtomically take the lock first" },
   "features/events/registration/phoneweb-registration-window-repair.ts": { statements: 3, how: "withRepairTransaction takes the lock before its row and table locks" },
   "features/events/registration/profile-contract-repair/apply-repository.ts": { statements: 1, how: "applyTransaction takes the lock first" },
+  "scripts/measure-plan-read-traffic.ts": { statements: 3, how: "lockedWrite takes the lock first in each write transaction (temporary schema)" },
+  "scripts/measure-home-event-pool-traffic.ts": { statements: 1, how: "W0036: lockedWrite takes the lock first in each write transaction (temporary schema)" },
+  "scripts/seed-verify-accounts.ts": { statements: 1, how: "the verify event seed transaction takes the lock first" },
   "scripts/demo-canonical-memberships.ts": { statements: 1, how: "the demo transaction takes the lock first" },
 };
 

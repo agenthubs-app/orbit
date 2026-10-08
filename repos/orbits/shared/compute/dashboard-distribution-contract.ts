@@ -1,5 +1,6 @@
 import type { SourceReferenceContract as SourceReferenceDTO } from "../contract/source";
-import type { IndustryIdCode } from "../contract/industries";
+import type { IndustryIdCode, SecondaryIndustryIdCode } from "../contract/industries";
+import type { RelationshipTier, RelationshipTierGroup } from "../contract/relationship-strength";
 import type { DashboardAppErrorCode } from "./dashboard-contract";
 
 // Sprint 0117 (dashboard D3): moved from features/dashboard/distribution-contract.ts into the shared directory
@@ -159,11 +160,32 @@ export interface RelationshipStrengthDistributionBucket {
   evidenceIds: readonly string[];
 }
 
+/**
+ * W0047（R-1）：按 relationship_strengths 缓存（只由关系时间线推出）分组的档位分布。dormant 单独成组且优先；
+ * 四组人数之和 = 有缓存行的联系人数（缺行的联系人不计入任何档）。`contactIds` 是图顺序的短名单
+ * （DASHBOARD_SHORT_LIST_LIMIT 条）。与既有 relationshipStrengthDistribution 相互独立。
+ */
+export interface RelationshipTierDistributionBucket {
+  tier: RelationshipTierGroup;
+  relationshipCount: number;
+  percentage: number;
+  contactIds: readonly string[];
+}
+
+/** 一位联系人的档位（读模型行的投影），图路径的输入。 */
+export interface RelationshipTierAssignment {
+  contactId: string;
+  tier: RelationshipTier;
+  dormant: boolean;
+}
+
 export interface NetworkDistributionAnalyticsPayload {
   state: NetworkDistributionAnalyticsState;
   industryDistribution: readonly IndustryDistributionBucket[];
   valueTypeDistribution: readonly ValueTypeDistributionBucket[];
   relationshipStrengthDistribution: readonly RelationshipStrengthDistributionBucket[];
+  /** W0047：新增可选字段；缓存为空时为空数组（旧客户端忽略）。 */
+  relationshipTierDistribution?: readonly RelationshipTierDistributionBucket[];
   structureDistributions: NetworkStructureDistributions;
   summary: string;
   provenance: NetworkDistributionAnalyticsProvenance;
@@ -176,6 +198,36 @@ export type NetworkStructureDimensionId =
   | "role"
   | "relationship";
 
+/**
+ * W0049：结构标签新增的两个维度（只加不改；旧四个键语义不变，App 仍在用）。
+ * - `seniority`：联系人 `publicProfile.seniorityLevel` 六档经 `seniorityGroup()` 派生的四组
+ *   （bucketId `seniority_decision|manager|staff|other`）；
+ * - `region`：规范地区 `region { countryCode, city }`（bucketId `region_<CC>` 或
+ *   `region_<CC>_<encodeURIComponent(city)>`，无地区为 `region_unknown`）。
+ * 新维度的分组不带 evidenceIds（空数组），只给结构标签计数与下钻。
+ */
+export type NetworkStructureExtraDimensionId = "seniority" | "region";
+
+/**
+ * W0049：名单下钻可用的全部维度：分布里的六个维度，加行业二级（`industry_secondary`，bucketId 为
+ * 二级行业 id 或 `<一级 id>.unspecified`）与关系强度档（`tier`，bucketId 为 new/active/core/dormant，
+ * 与 relationshipTierDistribution 同源）。
+ */
+export type NetworkStructureDetailDimensionId =
+  | NetworkStructureDimensionId
+  | NetworkStructureExtraDimensionId
+  | "industry_secondary"
+  | "tier";
+
+/** W0049：行业一级分组下的二级子分组（百分比分母 = 所在一级分组人数；无二级值归「未细分」）。 */
+export interface NetworkStructureSecondaryBucket {
+  bucketId: string;
+  secondaryIndustryId?: SecondaryIndustryIdCode | undefined;
+  contactCount: number;
+  percentage: number;
+  missingData: boolean;
+}
+
 export interface NetworkStructureDistributionBucket {
   bucketId: string;
   label: string;
@@ -184,6 +236,8 @@ export interface NetworkStructureDistributionBucket {
   evidenceIds: readonly string[];
   missingData: boolean;
   primaryIndustryId?: IndustryIdCode | undefined;
+  /** W0049：只出现在 `industry` 维度已分类的分组上。 */
+  secondary?: readonly NetworkStructureSecondaryBucket[] | undefined;
 }
 
 export type NetworkStructureDistributions = Readonly<
@@ -191,12 +245,12 @@ export type NetworkStructureDistributions = Readonly<
     NetworkStructureDimensionId,
     readonly NetworkStructureDistributionBucket[]
   >
->;
+> & Readonly<Partial<Record<NetworkStructureExtraDimensionId, readonly NetworkStructureDistributionBucket[]>>>;
 
 export interface NetworkStructureDetailInput
   extends NetworkDistributionAnalyticsInput {
   bucketId: string;
-  dimension: NetworkStructureDimensionId | string;
+  dimension: NetworkStructureDetailDimensionId | string;
 }
 
 export interface NetworkStructureDetailContact {
@@ -211,7 +265,7 @@ export interface NetworkStructureDetailContact {
 
 export interface NetworkStructureDetailPayload {
   state: "success" | "empty";
-  dimension: NetworkStructureDimensionId;
+  dimension: NetworkStructureDetailDimensionId;
   bucket: NetworkStructureDistributionBucket;
   totalContactCount: number;
   relationshipQuality: readonly {

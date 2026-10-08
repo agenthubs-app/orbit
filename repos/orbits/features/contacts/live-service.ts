@@ -12,9 +12,11 @@ import {
   type ContactsGraphQueryContext,
 } from "./contact-graph-query";
 import type { LocalRemoteContactGraph } from "./contact-graph-provider";
-import type { ContactDTO } from "../../shared/domain/contracts";
+import type { ContactDTO, ContactRegionDTO } from "../../shared/domain/contracts";
+import type { SeniorityLevel } from "../../shared/domain/source-types";
 import type { IndustryIdCode, SecondaryIndustryIdCode } from "../../shared/contract/industries";
 import type { ContactsListSearchAndFilterService } from "./service";
+import type { AppliedEnrichmentField, EnrichedValue } from "./enrichment/apply-enrichment";
 
 type LiveContactsProviderResult<TResult> = TResult | Promise<TResult>;
 
@@ -25,6 +27,12 @@ export interface LiveContactDetailStoredNote {
   noteId: string;
   privacy?: "private" | "relationship_shared";
   sourceLabel?: string;
+  /** W0046 memo：用户选的东京日期 `YYYY-MM-DD`；时间线按它排序（day 精度）。 */
+  occurredAt?: string;
+  /** W0046 memo：关联活动 id。 */
+  eventId?: string;
+  /** W0046：`"memo"` = 「写 memo」写入。 */
+  kind?: "memo";
 }
 
 export interface LiveContactDetailStoredInteraction {
@@ -61,8 +69,13 @@ export interface LiveContactsGraphProvider {
     contactId: string,
     actorId: string,
   ) => LiveContactsProviderResult<LiveContactDetailState | null>;
+  /**
+   * W0046：`expected` 为乐观锁前提——undefined = 无条件写（旧调用方）；null = 行必须不存在；
+   * `{ updatedAt }` = 存储里的 state.updatedAt 必须仍等于它。前提不成立抛 AppError CONFLICT。
+   */
   upsertContactDetailState?: (
     state: LiveContactDetailState,
+    expected?: { updatedAt: string } | null,
   ) => LiveContactsProviderResult<LiveContactDetailState>;
   updateContactPrimaryIndustry?: (
     contactId: string,
@@ -70,6 +83,44 @@ export interface LiveContactsGraphProvider {
     primaryIndustryId: IndustryIdCode | null,
     secondaryIndustryId?: SecondaryIndustryIdCode | null,
   ) => LiveContactsProviderResult<ContactDTO>;
+  /**
+   * W0045：联系人编辑改行业／职级／地区——同一联系人 payload 的这几项一次条件更新（一次 CAS），
+   * 并把改动字段的来源记为 `user`（via contact_edit）。null = 清空；期间被改过抛 AppError CONFLICT。
+   */
+  updateContactEnrichment?: (
+    contactId: string,
+    actorId: string,
+    update: ContactEnrichmentEdit,
+  ) => LiveContactsProviderResult<ContactDTO>;
+  /**
+   * W0046：memo 提取结果写回专长／需求／话题（publicProfile.offering／seeking／topics）。
+   * 逐项过 canWriteEnrichedValue（只补空或替换 ai 值，user／card／存量无来源值不覆盖），来源记 ai／memo_extraction；
+   * 一次条件更新，没有可写项时不写；返回实际写入的字段。期间被改过抛 AppError CONFLICT。
+   */
+  applyContactMemoExtraction?: (
+    contactId: string,
+    actorId: string,
+    values: readonly EnrichedValue[],
+    at: string,
+  ) => LiveContactsProviderResult<readonly AppliedEnrichmentField[]>;
+  /**
+   * W0058：洞察同一调用产出的名片推测写回 offering／seeking／topics（来源 ai／card_inference）。
+   * 完整来源判定：用户手改或清空、memo 提取、存量无来源值都不覆盖；只替换空栏或旧的 card_inference。
+   * 条件更新冲突重读最多再试 2 次，仍冲突抛 AppError CONFLICT。
+   */
+  applyContactCardInference?: (
+    contactId: string,
+    actorId: string,
+    values: readonly EnrichedValue[],
+    at: string,
+  ) => LiveContactsProviderResult<readonly AppliedEnrichmentField[]>;
+}
+
+export interface ContactEnrichmentEdit {
+  /** 行业整对（已按分类校验）；primaryIndustryId 为 null 表示清空。 */
+  industry?: { primaryIndustryId: IndustryIdCode | null; secondaryIndustryId: SecondaryIndustryIdCode | null };
+  seniorityLevel?: SeniorityLevel | null;
+  region?: ContactRegionDTO | null;
 }
 
 export interface LiveContactsListSearchAndFilterServiceOptions {

@@ -3,6 +3,26 @@
  *
  * 只连接 live-capable contacts route model + contacts analysis 和 Network v2 概览屏 / 分析子页；
  * `?tab=structure|opportunities` 进分析子页（既有 query 语义保留），否则为概览。
+ *
+ * W0005 示例模式：本人在引导期示例里时概览用示例人物的数据渲染，分析子页只显示横条与说明；
+ * 两者都不调用 `loadContactsAnalysis`／`loadAppContactsRouteViewModel`。
+ *
+ * W0049：「结构」标签另外并行读附加数据（快照诊断与洞察、计划需求高亮、依据姓名），
+ * 30 天变化用刷新强度读模型时拿到的 state 行；概览不读这些。
+ * W0050：标签由 URL 驱动（W50-5），结构附加数据只在 `?tab=structure` 读；「机会」标签只在 `?tab=opportunities` 读
+ * `loadOpportunitiesTab`（对任何表 0 写入、计划只读、0 次 AI）。示例模式两个标签都 0 次读取。
+ * W0051：第三个标签 `?tab=insight` 只在该标签读 `loadInsightsTab`（只读 contact_insights 一页 30 位，0 次 AI、0 次配额预留）；
+ * 示例模式下同样只显示横条与说明。
+ * W0052：概览（无 tab）另外并行读驾驶舱附加数据（`loadOverviewCockpit`：快照只读视图、计划 getCurrent + 纯投影、
+ * 待确认匹配、时间线最近 5 条、档位看板前 2 位、一次姓名读取），「按来源」用名单读取已有的全量分面；概览不再读本页档位表，
+ * 也不刷新强度缓存（review P1：打开概览对任何表 0 写入，与机会标签同一口径）。
+ * 示例模式概览用 `buildDemoNetworkOverviewParts`（0 次读取）。
+ * W0054（RN-12）：
+ * - 示例模式三个标签都渲染前端静态的完整示例快照（`demo-network-analysis.ts`：结构四维与诊断、机会覆盖度与补法、
+ *   30 位示例联系人每人一条洞察），概览驾驶舱也换成示例快照的句子；服务端 0 次真实读取、0 次 AI，客户端 0 请求；
+ * - 真实数据：先读一次门槛（与引导第 1 步同一计数语句），已确认联系人 < 3 时只把 AI 块换成门槛卡——结构不读快照、
+ *   机会不读快照与待唤醒洞察、洞察标签不读洞察、概览不读快照（统计图、档位人数、覆盖度数字照常）；
+ *   门槛读数与分析／名单读取并行，失败按「未知」照旧渲染。
  */
 import { redirect } from "next/navigation";
 
@@ -21,9 +41,27 @@ import {
 import { loadAppContactsRouteViewModel } from "../compose-app-contacts-from-previously-approved-mock-first-capabilities/contacts-route-view-model";
 import { NetworkAnalysis } from "../network-0918/network-analysis";
 import { NetworkOverview } from "../network-0918/network-overview";
+import { NetworkDemoFrame } from "../network-0918/network-demo-frame";
+import { readDemoModeViewForActor } from "../../_demo/demo-guide-view";
+import { buildDemoNetworkAnalysis, buildDemoNetworkOverviewParts, buildDemoNetworkViewModel } from "../../_demo/demo-network";
+import {
+  buildDemoAnalysisForTabs,
+  buildDemoInsightsView,
+  buildDemoNetworkSnapshotView,
+  buildDemoOpportunitiesView,
+  buildDemoStructureExtras,
+} from "../../_demo/demo-network-analysis";
+import { readAnalysisThreshold } from "../../../../../features/network-analysis/analysis-threshold-reader";
+import { analysisGate } from "../../../../../features/network-analysis/analysis-threshold";
+import { ensureRelationshipStrengthsForPage, readRelationshipTierLookup } from "../../../../../features/relationship-strength/read-model";
+import { loadStructureTabExtras } from "../analysis/structure-tab-loader";
+import { loadOpportunitiesTab } from "../analysis/opportunities-route-service";
+import { loadInsightsTab } from "../analysis/insights-tab";
+import { loadOverviewCockpit } from "../analysis/overview-cockpit-loader";
+import { buildNetworkOverviewData } from "../network-0918/network-overview-cockpit-model";
 
 export default async function AppContactsDashboardPage({ searchParams }: {
-  searchParams?: Promise<{ tab?: string | string[] }>;
+  searchParams?: Promise<{ tab?: string | string[] } & Record<string, string | string[] | undefined>>;
 } = {}) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -38,17 +76,82 @@ export default async function AppContactsDashboardPage({ searchParams }: {
     throw new Error("Authenticated Orbit account membership is unavailable.");
   }
 
+  const guide = await readDemoModeViewForActor({ actorId: actor.id, userId: session.user.id });
   const [language, params] = await Promise.all([
     getOrbitServerLanguage(),
     searchParams,
   ]);
-  const [analysis, routeModel] = await Promise.all([
-    loadContactsAnalysis(actor.id, language),
+  if (guide) {
+    const now = new Date();
+    // zh 中文，en 与 ja 英文（沿用 t() 的 ja→en 回退；W0052 review P2）。
+    const lang = language === "zh" ? "zh" : "en";
+    const demoTab = params?.tab === "structure" || params?.tab === "opportunities" || params?.tab === "insight" ? params.tab : null;
+    let body;
+    if (!demoTab) {
+      const demoAnalysis = buildDemoNetworkAnalysis(now, lang);
+      // W0054：驾驶舱句子来自示例静态快照（诊断、缺口补法、本周计划句），依据是示例联系人。
+      const parts = { ...buildDemoNetworkOverviewParts(now, lang), snapshot: buildDemoNetworkSnapshotView(now, lang) };
+      body = <NetworkOverview analysis={demoAnalysis} overview={buildNetworkOverviewData(parts, demoAnalysis)} />;
+    } else {
+      body = (
+        <NetworkAnalysis
+          viewModel={buildDemoNetworkViewModel(now, lang)}
+          analysis={buildDemoAnalysisForTabs(now, lang)}
+          initialTab={demoTab === "opportunities" ? "opp" : demoTab === "insight" ? "insight" : "struct"}
+          structureExtras={demoTab === "structure" ? buildDemoStructureExtras(now, lang) : undefined}
+          opportunities={demoTab === "opportunities" ? buildDemoOpportunitiesView(now, lang) : undefined}
+          insights={demoTab === "insight" ? buildDemoInsightsView(now, lang, params ?? {}) : undefined}
+        />
+      );
+    }
+    return (
+      <>
+        <OrbitReferenceStyles />
+        <OrbitVisualFreezeRuntime />
+        <NetworkDemoFrame guide={guide} route="app-contacts-dashboard-route">
+          {body}
+        </NetworkDemoFrame>
+      </>
+    );
+  }
+  const tab = params?.tab === "structure" || params?.tab === "opportunities" || params?.tab === "insight" ? params.tab : "overview";
+  // W0054：门槛读数（一条计数语句）与分析／名单读取并行；依赖它的 AI 块读取排在它之后（未达时不读）。
+  const thresholdPromise = readAnalysisThreshold(actor.id);
+  // W0047：先刷新关系强度读模型（来源戳与东京日未变时只读一条语句；失败不影响页面），分析里的档位分布读它。
+  // W0050（D46③、review P1）：机会标签对任何表 0 写入——不刷新强度缓存，直接读上次算好的结果（待唤醒、档位分布），
+  // 刷新交给结构、洞察、管线、名单等其他入口；缓存为空时待唤醒如实显示空态。
+  // W0052（review P1）：概览同样对任何表 0 写入——不刷新强度缓存，只读上次算好的档位（缺的如实标「待统计」）。
+  const strengthState = tab === "opportunities" || tab === "overview" ? null : await ensureRelationshipStrengthsForPage(actor.id, new Date());
+  const analysisPromise = loadContactsAnalysis(actor.id, language);
+  // W0050（W50-5）：标签由 URL 驱动，服务端只读当前标签的数据——结构附加数据只在 ?tab=structure，机会数据只在 ?tab=opportunities。
+  const goalPromise = analysisPromise.then((value) => (value.state === "ready" && "data" in value.goal ? value.goal.data.text || null : null));
+  const [analysis, routeModel, structureExtras, opportunities, insights, cockpit] = await Promise.all([
+    analysisPromise,
     loadAppContactsRouteViewModel({}, actor.id),
+    tab === "structure" ? thresholdPromise.then((threshold) => loadStructureTabExtras({ actorId: actor.id, language, strengthState, threshold })) : Promise.resolve(undefined),
+    tab === "opportunities"
+      ? thresholdPromise.then((threshold) => loadOpportunitiesTab({
+        actorId: actor.id,
+        goal: goalPromise,
+        language,
+        now: new Date(),
+        threshold,
+      }))
+      : Promise.resolve(undefined),
+    // W0051：只读一页洞察（档位实时取 W0047 读模型），0 次 AI。W0054：门槛未达时不读（整块换成门槛卡）。
+    tab === "insight"
+      ? thresholdPromise.then((threshold) => (threshold && !threshold.met ? undefined : loadInsightsTab({ actorId: actor.id, goal: goalPromise, now: new Date(), search: params ?? {} })))
+      : Promise.resolve(undefined),
+    // W0052：概览驾驶舱附加数据（只读：计划 0 写入、快照不排队、0 次 AI）。
+    tab === "overview" ? thresholdPromise.then((threshold) => loadOverviewCockpit({ actorId: actor.id, language, now: new Date(), threshold })) : Promise.resolve(undefined),
   ]);
-  const tab = params?.tab === "structure" || params?.tab === "opportunities" ? params.tab : "overview";
+  const insightGate = tab === "insight" ? analysisGate(await thresholdPromise) : null;
+  // 本页档位表只给分析标签的名单用；概览的档位与重点联系人来自全量分布与档位看板（W0052）。
+  const tiers = routeModel.state === "success" && tab !== "overview"
+    ? await readRelationshipTierLookup({ actorId: actor.id, contactIds: routeModel.payload.contacts.map((contact) => contact.id) })
+    : undefined;
   const toViewModel = (payload: Parameters<typeof contactsRouteToOrbitContactsViewModel>[0]) =>
-    localizeOrbitTree(applyOrbitContactsPresentation(contactsRouteToOrbitContactsViewModel(payload), language), language);
+    localizeOrbitTree(applyOrbitContactsPresentation(contactsRouteToOrbitContactsViewModel(payload, tiers), language), language);
 
   return (
     <>
@@ -59,8 +162,14 @@ export default async function AppContactsDashboardPage({ searchParams }: {
         <div data-orbit-real-page="network" data-orbit-route="app-contacts-dashboard-route">
           <AccountTopNav active="cards" />
           {tab === "overview"
-            ? <NetworkOverview viewModel={toViewModel(routeModel.payload)} analysis={analysis} />
-            : <NetworkAnalysis viewModel={toViewModel(routeModel.payload)} analysis={analysis} initialTab={tab === "opportunities" ? "opp" : "struct"} />}
+            ? <NetworkOverview
+              analysis={analysis}
+              overview={buildNetworkOverviewData({
+                ...cockpit!,
+                sourceFacets: Object.fromEntries(routeModel.payload.availableFilters.sources.map((option) => [option.value, option.count])),
+              }, analysis)}
+            />
+            : <NetworkAnalysis viewModel={toViewModel(routeModel.payload)} analysis={analysis} initialTab={tab === "opportunities" ? "opp" : tab === "insight" ? "insight" : "struct"} structureExtras={structureExtras} opportunities={opportunities} insights={insights} insightGate={insightGate} />}
         </div>
       ) : (
         <ContactsSubrouteStateBoundary

@@ -113,6 +113,8 @@ export interface ContactsListSearchFilterInput {
   statusFilters?: readonly (ContactStatusFilter | string)[] | null;
   tagFilters?: readonly (ContactTagFilter | string)[] | null;
   valueFilters?: readonly (ContactValueFilter | string)[] | null;
+  /** W0051：关系档位筛选（new／active／core／dormant）；只有有界卡片页与汇总支持。 */
+  tierFilters?: readonly string[] | null;
   cursor?: string | null;
   limit?: number | null;
   contextEventId?: string | null;

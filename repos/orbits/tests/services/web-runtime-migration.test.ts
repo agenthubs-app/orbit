@@ -30,12 +30,12 @@ test("the web runtime migration CLI initializes an empty database and preserves 
     assert.equal(result.status, 0, result.stderr);
     assert.match(result.stdout, /Web runtime schemas migrated; no demo data seeded/);
   };
-  const ledgers = ["event_ops_schema_migrations", "event_ops_experience_schema_migrations", "event_analytics_schema_migrations", "appointment_schema_migrations", "bc_ingest_schema_migrations"];
+  const ledgers = ["event_ops_schema_migrations", "event_ops_experience_schema_migrations", "event_analytics_schema_migrations", "appointment_schema_migrations", "bc_ingest_schema_migrations", "plans_schema_migrations", "plan_matching_schema_migrations", "network_analysis_schema_migrations", "contact_insights_schema_migrations", "contact_import_schema_migrations"];
   try {
     await admin.query(`create schema ${schema}`);
     migrate();
     const tables = (await pool.query<{ tablename: string }>("select tablename from pg_tables where schemaname=$1", [schema])).rows.map((row) => row.tablename);
-    for (const table of ["orbit_records", "event_ops_events", "event_ops_experience_versions", "event_ops_registration_question_cache", "event_analytics_roi_snapshots", "appointment_outbox", "bc_ingest_batches", ...ledgers]) {
+    for (const table of ["orbit_records", "event_ops_events", "event_ops_experience_versions", "event_ops_registration_question_cache", "event_analytics_roi_snapshots", "appointment_outbox", "bc_ingest_batches", "plans", "plan_items", "plan_log", "plan_commands", "plan_match_jobs", "plan_match_candidates", "ai_usage_ledger", "ai_usage_calls", "network_analysis_snapshots", "network_analysis_jobs", "contact_insights", "contact_import_batches", "contact_import_rows", "contact_import_followups", ...ledgers]) {
       assert.ok(tables.includes(table), `missing runtime table ${table}`);
     }
     for (const table of tables.filter((name) => !ledgers.includes(name))) {

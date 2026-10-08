@@ -3,8 +3,12 @@ import {
   type CancelEventRegistrationInput,
   type EventParticipantProfileAnswers,
   type EventRegistration,
+  type EventRegistrationRosterEntry,
+  type EventRegistrationRosterFields,
+  type EventRegistrationStatusRecord,
   type RegisterForEventInput,
 } from "./contract";
+import { rosterEntryFromRegistration } from "./roster-entry";
 
 export interface EventRegistrationProvider {
   getRegistration: (
@@ -14,10 +18,31 @@ export interface EventRegistrationProvider {
   listRegistrations: (
     eventId: string,
   ) => Promise<readonly EventRegistration[]>;
+  /**
+   * Same records, order and failure semantics as `listRegistrations`, trimmed
+   * to what the roster or the anonymous preview reads (W0029).
+   */
+  listRegistrationRosterEntries: (
+    eventId: string,
+    fields: EventRegistrationRosterFields,
+  ) => Promise<readonly EventRegistrationRosterEntry[]>;
   listRegistrationsForUser: (
     userId: string,
     eventIds: readonly string[],
   ) => Promise<readonly EventRegistration[]>;
+  /**
+   * Same records, order and failure semantics as `listRegistrationsForUser`,
+   * but only the event id and stored status (W0028).
+   */
+  listRegistrationStatusesForUser: (
+    userId: string,
+    eventIds: readonly string[],
+  ) => Promise<readonly EventRegistrationStatusRecord[]>;
+  /** Same record and failure semantics as `getRegistration`, status only (W0028). */
+  getRegistrationStatus: (
+    eventId: string,
+    userId: string,
+  ) => Promise<EventRegistrationStatusRecord | null>;
   saveRegistration: (
     registration: EventRegistration,
   ) => Promise<EventRegistration>;
@@ -38,6 +63,16 @@ export interface EventRegistrationService {
 
 function clone<TValue>(value: TValue): TValue {
   return JSON.parse(JSON.stringify(value)) as TValue;
+}
+
+export function eventRegistrationStatusRecord(
+  registration: Pick<EventRegistration, "eventId" | "status">,
+): EventRegistrationStatusRecord {
+  const status: unknown = registration.status;
+  return {
+    eventId: registration.eventId,
+    status: typeof status === "string" ? status : null,
+  };
 }
 
 export function eventRegistrationId(eventId: string, userId: string): string {
@@ -94,7 +129,7 @@ export function createMemoryEventRegistrationProvider(
     ]),
   );
 
-  return {
+  const provider: EventRegistrationProvider = {
     async getRegistration(eventId, userId) {
       const registration = registrations.get(
         eventRegistrationId(eventId, userId),
@@ -107,6 +142,11 @@ export function createMemoryEventRegistrationProvider(
         .filter((registration) => registration.eventId === eventId)
         .map(clone);
     },
+    async listRegistrationRosterEntries(eventId, fields) {
+      return (await provider.listRegistrations(eventId)).map((registration) =>
+        rosterEntryFromRegistration(registration, fields),
+      );
+    },
     async listRegistrationsForUser(userId, eventIds) {
       const selectedEventIds = new Set(eventIds);
       return [...registrations.values()]
@@ -116,6 +156,15 @@ export function createMemoryEventRegistrationProvider(
             selectedEventIds.has(registration.eventId),
         )
         .map(clone);
+    },
+    async listRegistrationStatusesForUser(userId, eventIds) {
+      return (await provider.listRegistrationsForUser(userId, eventIds)).map(
+        eventRegistrationStatusRecord,
+      );
+    },
+    async getRegistrationStatus(eventId, userId) {
+      const registration = await provider.getRegistration(eventId, userId);
+      return registration ? eventRegistrationStatusRecord(registration) : null;
     },
     async saveRegistration(registration) {
       const next = clone(registration);
@@ -128,6 +177,8 @@ export function createMemoryEventRegistrationProvider(
       return clone(next);
     },
   };
+
+  return provider;
 }
 
 export function createEventRegistrationService(input: {

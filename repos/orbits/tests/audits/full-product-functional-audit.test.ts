@@ -574,8 +574,6 @@ const SCANNER_CROSS_COMPONENT =
 export const KNOWN_MISSING_STATIC_BEHAVIOR: ReadonlyMap<string, string> = new Map<string, string>([
   ['repos/orbit-app/src/screens/contacts/ContactDetailScreen.tsx#{locale.t("sync.needsNetwork")}', "intentional disabled control: device-copy contact detail is read-only offline; the explicit disabled/accessibilityState prevents writes"],
   ["repos/orbits/app/(app)/app/account/auth-0918/auth-form.tsx#{label}", `${SCANNER_CROSS_COMPONENT} (type=submit button rendered inside the parent's <form onSubmit>)`],
-  ['repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-home.tsx#t({ en: "Previous month", zh: "上个月" })', "product finding: inert aria-disabled month navigation, no cross-month data source (design deviation noted in source); recovery: wire month paging or render it as a non-button"],
-  ['repos/orbits/app/(app)/app/agent/iorbit-0918/iorbit-home.tsx#t({ en: "Next month", zh: "下个月" })', "product finding: same as Previous month"],
   ...["{t(item.cta)}", "填好画像后匹配 / Match after setup", "扫描名片 / Scan business cards", "报名 / Register", "看看可能值得认识的人 → / See people worth meeting →", "继续设置 → / Continue setup →"]
     .map((name) => [`repos/orbits/app/(app)/app/profile/onboarding-0918/onboarding-previews.tsx#${name}`, `${SCANNER_CROSS_COMPONENT} (click delegated to PreviewFrame onClick via data-ob-goto)`] as const),
 ]);
@@ -1392,7 +1390,6 @@ const KNOWN_UNRESOLVED_LINE_ANCHORED_EVIDENCE_KEYS: ReadonlySet<string> = new Se
   "repos/orbit-app/src/screens/profile/AccountPermissionsScreen.tsx:187",
   "repos/orbit-app/src/screens/profile/AccountScreen.tsx:210",
   "repos/orbit-app/src/screens/profile/ProfileScreen.tsx:240",
-  "repos/orbits/app/(app)/app/contacts/business-card-capture-workspace.tsx:386",
   "repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx:1280",
   "repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx:1292",
   "repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx:706",
@@ -1405,9 +1402,6 @@ const KNOWN_UNRESOLVED_LINE_ANCHORED_EVIDENCE_KEYS: ReadonlySet<string> = new Se
   "repos/orbits/app/(app)/app/events/[id]/register/event-registration-workspace.tsx:973",
   "web:/app/agent|repos/orbits/app/(app)/app/orbit-public-shell.tsx:127",
   "web:/app/chat|repos/orbits/shared/ui/state-view.tsx:249",
-  "web:/app/contacts/all-actions|repos/orbits/app/(app)/app/contacts/orbit-crm-sidebar.tsx:68",
-  "web:/app/contacts/dashboard|repos/orbits/app/(app)/app/contacts/orbit-real-cards-dashboard.tsx:285",
-  "web:/app/contacts/graph|repos/orbits/app/(app)/app/contacts/orbit-crm-sidebar.tsx:68",
   "web:/app/events/[id]|repos/orbits/app/(app)/app/events/[id]/orbit-event-matchmaking.tsx:193",
   "web:/app/events/[id]|repos/orbits/app/(app)/app/events/[id]/orbit-post-event-followup-capture.tsx:469",
   "web:/app/o/[slug]|repos/orbits/app/(app)/app/o/orbit-real-organizer-public.tsx:50",

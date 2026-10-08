@@ -1,7 +1,8 @@
 import type { ApiErrorContext } from "../../shared/api/envelope";
 import { RUNTIME_BOUNDARY_HEADER_VALUES } from "../../shared/api/envelope";
 import type { FeatureMode } from "../../shared/config/feature-mode";
-import type { SourceReferenceDTO, SourceType } from "../../shared/domain/source-types";
+import type { SeniorityLevel, SourceReferenceDTO, SourceType } from "../../shared/domain/source-types";
+import type { ContactEnrichmentDTO, ContactRegionDTO, EnrichmentVia } from "../../shared/domain/contracts";
 import type { AppErrorCode } from "../../shared/errors/app-error";
 import type { OrbitLanguage } from "../../shared/contract/language";
 import type { IndustryIdCode, SecondaryIndustryIdCode } from "../../shared/contract/industries";
@@ -43,6 +44,8 @@ export const CONTACT_DETAIL_TAG_STATUS_ERROR_CODES = [
   "CONTACT_DETAIL_INVALID_PATCH_BODY",
   "CONTACT_DETAIL_TAG_NOT_SUPPORTED",
   "CONTACT_DETAIL_INDUSTRY_NOT_SUPPORTED",
+  "CONTACT_DETAIL_ENRICHMENT_NOT_SUPPORTED",
+  "CONTACT_DETAIL_CONFLICT",
   "CONTACT_DETAIL_STATUS_NOT_SUPPORTED",
   "CONTACT_DETAIL_CANONICAL_STATUS_LIFECYCLE_ONLY",
   "CONTACT_DETAIL_AMBIGUOUS_CONNECTION",
@@ -105,6 +108,18 @@ export const CONTACT_DETAIL_TAG_STATUS_ERROR_DEFINITIONS = {
     appCode: "VALIDATION_ERROR",
     message: "That contact industry is not part of the fixed industry catalog.",
     recovery: "Choose a supported primary industry or clear the field.",
+  },
+  CONTACT_DETAIL_ENRICHMENT_NOT_SUPPORTED: {
+    code: "CONTACT_DETAIL_ENRICHMENT_NOT_SUPPORTED",
+    appCode: "VALIDATION_ERROR",
+    message: "That seniority level or region is not supported.",
+    recovery: "Choose one of the six seniority levels and an ISO country code, or clear the field.",
+  },
+  CONTACT_DETAIL_CONFLICT: {
+    code: "CONTACT_DETAIL_CONFLICT",
+    appCode: "CONFLICT",
+    message: "The contact changed while saving; nothing was saved.",
+    recovery: "Refresh the contact and apply the edit again.",
   },
   CONTACT_DETAIL_STATUS_NOT_SUPPORTED: {
     code: "CONTACT_DETAIL_STATUS_NOT_SUPPORTED",
@@ -245,6 +260,16 @@ export interface ContactDetailPublicProfile {
   conversationPrompts: readonly string[];
   source: ContactDetailSourceReference;
   evidenceIds: readonly string[];
+  /**
+   * W0058：offering／seeking／topics 的值确实来自联系人资料（不是关系回退值）时，该字段的来源 via
+   * （如 `card_inference` = 据名片推测、`memo_extraction` = 据 memo 提取）；W0060 据此显示角标。没有来源记录的字段不出现。
+   */
+  fieldSources?: Partial<Record<"offering" | "seeking" | "topics", EnrichmentVia>>;
+  /**
+   * W0060（W60-1）：这几个字段的值不是联系人资料，而是关系回退值（connection 的 valueTypes／suggestedActions／
+   * sharedTopics）。对外输出不变（其他消费者照旧），联系人详情三栏据此只显示真实值。没有回退时不出现。
+   */
+  fallbackFields?: readonly ("offering" | "seeking" | "topics")[];
 }
 
 // ContactDetail 是详情页完整读取模型。
@@ -263,11 +288,19 @@ export interface ContactDetail {
   primaryIndustryLabel?: string;
   secondaryIndustryId?: SecondaryIndustryIdCode;
   secondaryIndustryLabel?: string;
+  /** W0045：职级（唯一存储 publicProfile.seniorityLevel）；缺省 = 未填。 */
+  seniorityLevel?: SeniorityLevel;
+  /** W0045：规范地区；原始 location 另在上面。 */
+  region?: ContactRegionDTO;
+  /** W0045：补全值来源（行业／职级／地区…）；展示「AI 推断／手动」用。 */
+  enrichment?: ContactEnrichmentDTO;
   primaryEmail?: string;
   primaryPhone?: string;
   wechatId?: string;
   lineId?: string;
   website?: string;
+  /** 名片上没进固定字段的信息（传真、微信、罗马字姓名、其他地址…）以及合并时的「名片补充」。 */
+  cardNotes?: string;
   relationshipContext: string;
   publicProfile: ContactDetailPublicProfile;
   source: ContactDetailSourceReference;
@@ -325,6 +358,8 @@ export interface ContactDetailTagStatusPayload {
   provenance: ContactDetailTagStatusProvenance;
   nextAction: string;
   updateSummary?: string;
+  /** W0046：本次 PATCH 写入（或去重命中）的备注 noteId；没有写备注时不出现。 */
+  savedNoteId?: string;
 }
 
 export interface ContactDetailLookupInput {
@@ -337,6 +372,12 @@ export interface ContactDetailLookupInput {
 export interface ContactDetailNoteInput {
   body: string;
   authorLabel?: string | null;
+  /** W0046 memo：用户选的东京日期 `YYYY-MM-DD`（仅 kind = "memo" 时有效）。 */
+  occurredAt?: string | null;
+  /** W0046 memo：可选的关联活动 id。 */
+  eventId?: string | null;
+  /** W0046：`"memo"` = 「写 memo」弹窗写入；不传 = 旧写法（App 与旧编辑器）。 */
+  kind?: "memo" | null;
 }
 
 export interface ContactDetailLastInteractionInput {
@@ -350,6 +391,10 @@ export interface ContactDetailLastInteractionInput {
 export interface ContactDetailUpdateInput extends ContactDetailLookupInput {
   primaryIndustryId?: IndustryIdCode | string | null;
   secondaryIndustryId?: SecondaryIndustryIdCode | string | null;
+  /** W0045：职级（六档之一）或 null 清空；写入后来源记 `user`。 */
+  seniorityLevel?: SeniorityLevel | string | null;
+  /** W0045：规范地区（国家码必填、城市可空）或 null 清空；写入后来源记 `user`。 */
+  region?: { countryCode: string; city?: string | null } | null;
   tags?: readonly (ContactDetailTagOption | string)[] | null;
   addTags?: readonly (ContactDetailTagOption | string)[] | null;
   removeTags?: readonly (ContactDetailTagOption | string)[] | null;

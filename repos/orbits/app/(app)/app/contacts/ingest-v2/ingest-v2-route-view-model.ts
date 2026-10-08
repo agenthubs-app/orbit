@@ -12,6 +12,10 @@ import type {
   IngestManifestEntry,
 } from "../../../../../features/acquisition/business-card-ingest-v2/contract";
 import { aggregateBusinessCardNotes } from "../../../../../features/acquisition/business-card-notes-aggregation";
+import type { IndustryIdCode, SecondaryIndustryIdCode } from "../../../../../shared/contract/industries";
+import { sanitizeIndustryPair } from "../../../../../shared/domain/industries";
+import { REGION_CITY_MAX_LENGTH, isValidCountryCode, normalizeRegion } from "../../../../../shared/domain/regions";
+import { isSeniorityLevelValue, type SeniorityLevelValue } from "../../../../../shared/domain/seniority";
 
 export const INGEST_V2_FIELDS = [
   "displayName",
@@ -19,6 +23,7 @@ export const INGEST_V2_FIELDS = [
   "role",
   "email",
   "phone",
+  "address",
 ] as const;
 
 export type IngestV2Field = (typeof INGEST_V2_FIELDS)[number];
@@ -29,6 +34,7 @@ export interface IngestV2FixedFields {
   role: string;
   email: string;
   phone: string;
+  address: string;
   relationshipContext: string;
   notes: string;
 }
@@ -52,11 +58,19 @@ export interface FrozenManifestSubmission {
   manifest: readonly IngestManifestEntry[];
 }
 
-export interface IngestV2CardViewModel {
+/**
+ * 按名片分组所需的最少字段。W0021：今日要事只读 `?view=cards` 的精简条目（没有识别结果与 imageDigest），
+ * 用同一个分组函数数待确认；精简条目的 `hasMissingImageDigest` 恒为 false（数待确认用不到它）。
+ */
+export type IngestCardGroupingItem = Pick<IngestItemDTO, "id" | "cardId" | "seq" | "side" | "status" | "confirmedContactId" | "cardIdentityExplicit"> & {
+  imageDigest?: string | null;
+};
+
+export interface IngestV2CardViewModel<TItem extends IngestCardGroupingItem = IngestItemDTO> {
   cardId: string;
-  front: IngestItemDTO | null;
-  back: IngestItemDTO | null;
-  items: readonly IngestItemDTO[];
+  front: TItem | null;
+  back: TItem | null;
+  items: readonly TItem[];
   isLegacySingleSide: boolean;
   isTwoSided: boolean;
   allConfirmed: boolean;
@@ -83,8 +97,39 @@ export interface IngestV2SourceSnapshot {
   imageDigest: string | null;
 }
 
+/** 审阅页「行业」一行（一级 › 二级）。初值来自识别结果，用户可改或清空。 */
+export interface IngestV2IndustryDraft {
+  primaryIndustryId: IndustryIdCode | null;
+  secondaryIndustryId: SecondaryIndustryIdCode | null;
+  /** 用户动过这一行：轮询刷新不再用识别结果覆盖。 */
+  edited: boolean;
+  /**
+   * 正反面给出了不同的有效行业（一级不同，或一级相同但二级都非空且不同）：不预选任何一边，
+   * 标「请核对」并挡住自动导入 / 自动并入，直到用户选定或清空。
+   */
+  conflicted: boolean;
+}
+
+/** W0045：审阅页「职级」一行（六档）。规则同行业：初值来自识别结果，正反面不同时不预选、标「请核对」。 */
+export interface IngestV2SeniorityDraft {
+  value: SeniorityLevelValue | null;
+  edited: boolean;
+  conflicted: boolean;
+}
+
+/** W0045：审阅页「地区」一行（国家码 + 规范城市名）。规则同行业。 */
+export interface IngestV2RegionDraft {
+  countryCode: string | null;
+  city: string | null;
+  edited: boolean;
+  conflicted: boolean;
+}
+
 export interface IngestV2CardDraft {
   fields: IngestV2FixedFields;
+  industry: IngestV2IndustryDraft;
+  seniority: IngestV2SeniorityDraft;
+  region: IngestV2RegionDraft;
   fieldSources: IngestCardFieldSourcesContract;
   sourceSnapshots: Record<IngestV2Field, IngestV2SourceSnapshot | null>;
   conflictedFields: readonly IngestV2Field[];
@@ -157,6 +202,7 @@ function itemFieldValue(item: IngestItemDTO, field: IngestV2Field): string {
     case "role": return trimmed(extraction.title);
     case "email": return trimmed(extraction.emails[0]?.value);
     case "phone": return preferredPhone(extraction);
+    case "address": return trimmed(extraction.addresses[0]?.value);
   }
 }
 
@@ -265,8 +311,8 @@ export function freezeManifestSubmission(
   return Object.freeze({ idempotencyKey, manifest: Object.freeze(manifest) });
 }
 
-export function groupIngestItemsByCardId(items: readonly IngestItemDTO[]): IngestV2CardViewModel[] {
-  const groups = new Map<string, IngestItemDTO[]>();
+export function groupIngestItemsByCardId<TItem extends IngestCardGroupingItem = IngestItemDTO>(items: readonly TItem[]): IngestV2CardViewModel<TItem>[] {
+  const groups = new Map<string, TItem[]>();
   for (const item of items) groups.set(item.cardId, [...(groups.get(item.cardId) ?? []), item]);
 
   return [...groups.entries()]
@@ -300,7 +346,7 @@ export function groupIngestItemsByCardId(items: readonly IngestItemDTO[]): Inges
         hasMissingImageDigest: cardItems.some((item) => item.imageDigest === null),
         invalidStructure,
         reviewable: !invalidStructure && cardItems.length > 0 && cardItems.every((item) => item.status === "extracted" || item.status === "terminal_failed"),
-      } satisfies IngestV2CardViewModel;
+      } satisfies IngestV2CardViewModel<TItem>;
     })
     .sort((a, b) => (a.items[0]?.seq ?? 0) - (b.items[0]?.seq ?? 0));
 }
@@ -345,11 +391,16 @@ function sourceMatches(snapshot: IngestV2SourceSnapshot, item: IngestItemDTO): b
   return snapshot.itemId === item.id && snapshot.version === item.version && snapshot.imageDigest === item.imageDigest;
 }
 
-function notesForCard(card: IngestV2CardViewModel, fields: Pick<IngestV2FixedFields, "email" | "phone">): string {
+function notesForCard(card: IngestV2CardViewModel, fields: Pick<IngestV2FixedFields, "email" | "phone" | "address">): string {
+  const chosenAddress = fields.address.trim();
   return card.items
     .flatMap((item) => {
       if (!item.extraction) return [];
-      const notes = aggregateBusinessCardNotes(item.extraction, {
+      // 已进「地址」固定字段的那条不再重复写进备注；其余地址（多个办公地点）照旧保留。
+      const extraction = chosenAddress
+        ? { ...item.extraction, addresses: item.extraction.addresses.filter((address) => address.value.trim() !== chosenAddress) }
+        : item.extraction;
+      const notes = aggregateBusinessCardNotes(extraction, {
         email: fields.email || null,
         phone: fields.phone || null,
       });
@@ -358,11 +409,85 @@ function notesForCard(card: IngestV2CardViewModel, fields: Pick<IngestV2FixedFie
     .join("\n\n");
 }
 
-function notesSourceFingerprint(card: IngestV2CardViewModel, fields: Pick<IngestV2FixedFields, "email" | "phone">): string {
+function notesSourceFingerprint(card: IngestV2CardViewModel, fields: Pick<IngestV2FixedFields, "email" | "phone" | "address">): string {
   return JSON.stringify({
     sources: card.items.map((item) => ({ id: item.id, version: item.version, imageDigest: item.imageDigest })),
     notes: notesForCard(card, fields),
   });
+}
+
+/**
+ * 各面识别出的有效行业合并成一个初值：只有一面给出、或两面一致时直接采用；一级相同而只有一面给了二级时
+ * 取非空的二级；两面给出不同的一级、或同一一级下不同的二级时记为冲突，不替用户选。旧 v1 数据没有行业时为空。
+ */
+/** 各面识别出的有效行业（按正反面顺序、去重），供冲突时让用户挑选。 */
+export function industryCandidates(card: IngestV2CardViewModel): { primaryIndustryId: IndustryIdCode; secondaryIndustryId: SecondaryIndustryIdCode | null }[] {
+  const ordered = [...card.items].sort((a, b) => (a.side === b.side ? a.seq - b.seq : a.side === "front" ? -1 : 1));
+  const seen = new Set<string>();
+  return ordered.flatMap((item) => {
+    const pair = sanitizeIndustryPair(item.extraction?.primaryIndustryId, item.extraction?.secondaryIndustryId);
+    const key = `${pair.primaryIndustryId}|${pair.secondaryIndustryId}`;
+    if (pair.primaryIndustryId === null || seen.has(key)) return [];
+    seen.add(key);
+    return [{ primaryIndustryId: pair.primaryIndustryId, secondaryIndustryId: pair.secondaryIndustryId }];
+  });
+}
+
+export function initialIndustryDraft(card: IngestV2CardViewModel): IngestV2IndustryDraft {
+  const pairs = industryCandidates(card);
+  const empty = { primaryIndustryId: null, secondaryIndustryId: null, edited: false };
+  if (!pairs.length) return { ...empty, conflicted: false };
+  const primaries = new Set(pairs.map((pair) => pair.primaryIndustryId));
+  const secondaries = new Set(pairs.map((pair) => pair.secondaryIndustryId).filter((id) => id !== null));
+  if (primaries.size > 1 || secondaries.size > 1) return { ...empty, conflicted: true };
+  return {
+    primaryIndustryId: pairs[0]!.primaryIndustryId,
+    secondaryIndustryId: [...secondaries][0] ?? null,
+    edited: false,
+    conflicted: false,
+  };
+}
+
+function orderedSides(card: IngestV2CardViewModel): IngestV2CardViewModel["items"] {
+  return [...card.items].sort((a, b) => (a.side === b.side ? a.seq - b.seq : a.side === "front" ? -1 : 1));
+}
+
+/** W0045：各面识别出的有效职级（按正反面顺序、去重）。 */
+export function seniorityCandidates(card: IngestV2CardViewModel): SeniorityLevelValue[] {
+  return [...new Set(orderedSides(card).flatMap((item) => {
+    const level = item.extraction?.seniorityLevel;
+    return isSeniorityLevelValue(level) ? [level] : [];
+  }))];
+}
+
+/** W0045：各面识别出的有效地区（按正反面顺序、去重；国家码不合法的整对丢弃）。 */
+export function regionCandidates(card: IngestV2CardViewModel): { countryCode: string; city: string | null }[] {
+  const seen = new Set<string>();
+  return orderedSides(card).flatMap((item) => {
+    const region = normalizeRegion(item.extraction?.regionCountryCode, item.extraction?.regionCity ?? null);
+    if (!region) return [];
+    const key = `${region.countryCode}|${region.city ?? ""}`;
+    if (seen.has(key)) return [];
+    seen.add(key);
+    return [region];
+  });
+}
+
+export function initialSeniorityDraft(card: IngestV2CardViewModel): IngestV2SeniorityDraft {
+  const levels = seniorityCandidates(card);
+  if (levels.length > 1) return { value: null, edited: false, conflicted: true };
+  return { value: levels[0] ?? null, edited: false, conflicted: false };
+}
+
+/** 国家相同、只有一面给了城市时取非空的城市；国家不同或城市不同记为冲突。 */
+export function initialRegionDraft(card: IngestV2CardViewModel): IngestV2RegionDraft {
+  const regions = regionCandidates(card);
+  const empty = { countryCode: null, city: null, edited: false };
+  if (!regions.length) return { ...empty, conflicted: false };
+  const countries = new Set(regions.map((region) => region.countryCode));
+  const cities = new Set(regions.map((region) => region.city).filter((city) => city !== null));
+  if (countries.size > 1 || cities.size > 1) return { ...empty, conflicted: true };
+  return { countryCode: regions[0]!.countryCode, city: [...cities][0] ?? null, edited: false, conflicted: false };
 }
 
 export function initialCardDraft(card: IngestV2CardViewModel): IngestV2CardDraft {
@@ -398,6 +523,9 @@ export function initialCardDraft(card: IngestV2CardViewModel): IngestV2CardDraft
   baseFields.notes = notesForCard(card, baseFields);
   return {
     fields: baseFields,
+    industry: initialIndustryDraft(card),
+    seniority: initialSeniorityDraft(card),
+    region: initialRegionDraft(card),
     fieldSources,
     sourceSnapshots,
     conflictedFields,
@@ -476,6 +604,10 @@ export function reconcileCardDraft(
 
   return {
     fields,
+    // 用户改过（含清空）的行业原样保留；否则跟随最新识别结果。
+    industry: previous.industry?.edited ? previous.industry : base.industry,
+    seniority: previous.seniority?.edited ? previous.seniority : base.seniority,
+    region: previous.region?.edited ? previous.region : base.region,
     fieldSources,
     sourceSnapshots,
     conflictedFields: [...conflictedFields],
@@ -500,6 +632,32 @@ export function setManualDraftField(
     conflictedFields: draft.conflictedFields.filter((entry) => entry !== field),
     staleFields: draft.staleFields.filter((entry) => entry !== field),
   };
+}
+
+/** 审阅者改行业：按分类校验（二级不属于一级时整对清空，与识别结果同一规则）。 */
+export function setDraftIndustry(
+  draft: IngestV2CardDraft,
+  selection: { primaryIndustryId: string | null; secondaryIndustryId: string | null },
+): IngestV2CardDraft {
+  return {
+    ...draft,
+    industry: { ...sanitizeIndustryPair(selection.primaryIndustryId, selection.secondaryIndustryId), edited: true, conflicted: false },
+  };
+}
+
+/** W0045：审阅者改职级（含清空）。不在六档内的值按清空处理。 */
+export function setDraftSeniority(draft: IngestV2CardDraft, value: string | null): IngestV2CardDraft {
+  return { ...draft, seniority: { value: isSeniorityLevelValue(value) ? value : null, edited: true, conflicted: false } };
+}
+
+/**
+ * W0045：审阅者改地区。国家码不合法时整对清空；城市保留输入原文（输入中途不归一，否则打不出空格），
+ * 服务端确认时再按别名表归一。
+ */
+export function setDraftRegion(draft: IngestV2CardDraft, selection: { countryCode: string | null; city: string | null }): IngestV2CardDraft {
+  const country = isValidCountryCode(selection.countryCode) ? selection.countryCode : null;
+  const city = country && selection.city?.trim() ? selection.city.slice(0, REGION_CITY_MAX_LENGTH) : null;
+  return { ...draft, region: { countryCode: country, city, edited: true, conflicted: false } };
 }
 
 export function setManualDraftNotes(
@@ -571,8 +729,15 @@ export function buildConfirmationPayload(
       role: draft.fields.role,
       email: draft.fields.email,
       phone: draft.fields.phone,
+      address: draft.fields.address,
       relationshipContext: draft.fields.relationshipContext,
       notes: draft.fields.notes,
+      primaryIndustryId: draft.industry?.primaryIndustryId ?? null,
+      secondaryIndustryId: draft.industry?.secondaryIndustryId ?? null,
+      // W0045：只传最终值，来源由服务端判定。
+      seniorityLevel: draft.seniority?.value ?? null,
+      regionCountryCode: draft.region?.countryCode ?? null,
+      regionCity: draft.region?.countryCode ? draft.region.city?.trim() || null : null,
       ...(allowDuplicate ? { allowDuplicate: true } : {}),
     },
     blockedReason: null,

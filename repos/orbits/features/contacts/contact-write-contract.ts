@@ -6,7 +6,9 @@ import type {
   ContactDTO,
   RelationshipEvidenceDTO,
 } from "../../shared/domain/contracts";
+import type { IndustryIdCode, SecondaryIndustryIdCode } from "../../shared/contract/industries";
 import { AppError, type AppErrorCode } from "../../shared/errors/app-error";
+import type { EnrichedValue } from "./enrichment/apply-enrichment";
 
 export const BUSINESS_CARD_CONTACT_WRITE_ERROR_CODES = [
   "BUSINESS_CARD_CONTACT_ACTOR_REQUIRED",
@@ -29,9 +31,21 @@ export interface ConfirmBusinessCardContactInput {
   email: string;
   evidenceIds: readonly string[];
   imageDigest: string;
+  /** 名片地址，写入联系人 location。 */
+  location?: string;
   notes?: string;
   organization: string;
   phone: string;
+  /** 审阅页确认的行业（名片识别时 AI 给出、用户可改）；缺省或 null 时不写。 */
+  primaryIndustryId?: IndustryIdCode | null;
+  secondaryIndustryId?: SecondaryIndustryIdCode | null;
+  /** W0015：服务端核实过的「在该活动认识」；缺省或 null 时不写。 */
+  metEvent?: { eventId: string; title: string } | null;
+  /**
+   * W0045：服务端判定过来源的补全值（行业／职级／地区），按 canWriteEnrichedValue 写入并记
+   * `enrichment.fields.*`。缺省时行为不变（v1 路径不传）。含行业项时以它为准、不再按上面两个行业字段写。
+   */
+  enrichment?: { values: readonly EnrichedValue[] };
   relationshipContext: string;
   role: string;
 }

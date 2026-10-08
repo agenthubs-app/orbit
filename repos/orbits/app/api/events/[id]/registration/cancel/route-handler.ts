@@ -56,6 +56,13 @@ export function createEventRegistrationCancelRouteHandler(input: {
   registrationService?: EventRegistrationService;
   resolveAdmissionControl?: ResolveEventAdmissionRegistrationControl;
   resolveActor: () => Promise<{ id: string } | null>;
+  /** W0012：取消成功后把本人计划里的这场活动退回「推荐」（已报名 → 推荐，一条幂等进展记录）。尽力而为。 */
+  syncPlanRegistration?: (input: {
+    actorId: string;
+    eventId: string;
+    registered: boolean;
+    registrationVersion: string;
+  }) => Promise<void>;
 }) {
   const registrationService =
     input.registrationService ?? eventRegistrationRuntimeService;
@@ -149,6 +156,19 @@ export function createEventRegistrationCancelRouteHandler(input: {
           status: 404,
         },
       );
+    }
+
+    if (input.syncPlanRegistration && registration.status === "cancelled") {
+      try {
+        await input.syncPlanRegistration({
+          actorId: actor.id,
+          eventId: registration.eventId,
+          registered: false,
+          registrationVersion: registration.updatedAt,
+        });
+      } catch (error) {
+        console.warn("[event-registration] plan sync failed", error instanceof Error ? error.message : error);
+      }
     }
 
     return NextResponse.json(success({

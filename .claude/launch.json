@@ -14,6 +14,14 @@
       "autoPort": true
     },
     {
+      "name": "orbits-verify",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "repos/orbits/scripts/verify-server.sh"
+      ],
+      "port": 3001
+    },
+    {
       "name": "designs",
       "runtimeExecutable": "python3",
       "runtimeArgs": [

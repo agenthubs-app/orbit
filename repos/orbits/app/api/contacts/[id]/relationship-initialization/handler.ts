@@ -4,6 +4,7 @@ import { createConfiguredTransactionalPostgresRuntime } from "../../../../../sha
 import { relationshipInitializationSchema } from "../../../../../shared/api-schema/relationship-initialization";
 import { success } from "../../../../../shared/api/envelope";
 import { AppError } from "../../../../../shared/errors/app-error";
+import { isDemoContactRouteId } from "../../../../../shared/domain/guide-demo-contact";
 import { resolveAuthenticatedApiActor, type ResolveAuthenticatedApiActor } from "../../../_shared/authenticated-actor";
 import { lifecycleErrorResponse } from "../../../connections/[id]/lifecycle/handler";
 
@@ -14,6 +15,8 @@ export function createRelationshipInitializationHandlers(dependencies: { resolve
     if (!actor) throw new AppError("UNAUTHORIZED", "Sign in to access this resource.");
     const { id } = await context.params;
     if (!id.trim() || id.trim() !== id || id.length > 256 || id.includes("\0")) throw new AppError("VALIDATION_ERROR", "Invalid contact identifier.");
+    // 引导期示例联系人（`demo:`，W0005）不对应存储记录：在建 runtime／service、读 body 之前拒绝。
+    if (isDemoContactRouteId(id)) throw new AppError("NOT_FOUND", "Demo contacts are examples and cannot be changed.");
     const runtime = dependencies.service ? null : createConfiguredTransactionalPostgresRuntime();
     const service = dependencies.service ?? (runtime ? createRelationshipInitializationService(runtime) : null);
     if (!service) throw new AppError("SERVICE_UNAVAILABLE", "Relationship storage is not configured.");

@@ -21,6 +21,9 @@ import { join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
+import { IORBIT_STYLES } from "../../app/(app)/app/agent/iorbit-0918/iorbit-styles";
+import { COMMUNITY_CARD_STYLES } from "../../app/(app)/app/events/events-0918/community-card";
+
 const projectRoot = join(fileURLToPath(import.meta.url), "../../..");
 
 interface Domain {
@@ -36,6 +39,13 @@ interface Domain {
   stylesExport: string;
   /** 作用域属性值，用来确认基线 a / a:hover 规则确实存在。 */
   scope: string;
+  /**
+   * 样式表由多段拼成时（iOrbit：`IORBIT_STYLES` = 0918 皮肤 + 2026-09-28 首页改版的
+   * `IORBIT_HOME_STYLES`），源码切片只能看到第一段，改用运行时的完整字符串。
+   */
+  runtimeCss?: string;
+  /** 与主样式表同作用域、由组件自己注入的附加样式（如 W0003 社群卡片）。 */
+  extraCss?: string[];
 }
 
 const DOMAINS: Domain[] = [
@@ -62,6 +72,7 @@ const DOMAINS: Domain[] = [
     stylesFile: "app/(app)/app/events/events-0918/events-shell.tsx",
     stylesExport: "EVENTS_STYLES",
     scope: "events-0918",
+    extraCss: [COMMUNITY_CARD_STYLES],
   },
   {
     name: "ops",
@@ -86,11 +97,15 @@ const DOMAINS: Domain[] = [
     stylesFile: "app/(app)/app/agent/iorbit-0918/iorbit-styles.ts",
     stylesExport: "IORBIT_STYLES",
     scope: "iorbit-0918",
+    runtimeCss: IORBIT_STYLES,
   },
 ];
 
 /** 把 `export const X = \`…\`;` 的模板字面量切出来，再抹掉注释并拍平成一行。 */
 function readScopedCss(domain: Domain): string {
+  if (domain.runtimeCss !== undefined) {
+    return domain.runtimeCss.replace(/\/\*[\s\S]*?\*\//g, "").split("\n").join(" ");
+  }
   const source = readFileSync(join(projectRoot, domain.stylesFile), "utf8");
   const opener = `export const ${domain.stylesExport} = \``;
   const start = source.indexOf(opener);
@@ -98,7 +113,11 @@ function readScopedCss(domain: Domain): string {
   const body = source.slice(start + opener.length);
   const end = body.indexOf("\n`;");
   assert.ok(end >= 0, `${domain.stylesFile} 的 ${domain.stylesExport} 模板字面量没有闭合`);
-  return body.slice(0, end).replace(/\/\*[\s\S]*?\*\//g, "").split("\n").join(" ");
+  return [body.slice(0, end), ...(domain.extraCss ?? [])]
+    .join("\n")
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .split("\n")
+    .join(" ");
 }
 
 /** 收集整个域目录里落在 `<a>` 上的本域前缀类。 */
@@ -240,14 +259,17 @@ test("every *-0918 <a> keeps its own colour against the scope's a:hover", () => 
     }
   }
 
-  // 扫描面自检：六域加起来的链接数量不该悄悄塌掉，且这条门禁最初为之存在的
-  // plan「本周重点」行（任务 5 修订轮 1 的 linkify）必须仍在扫描面里。
+  // 扫描面自检：六域加起来的链接数量不该悄悄塌掉，且计划页里落成 <a> 的行必须仍在扫描面里。
+  // 这条门禁最初为 plan「本周重点」行（任务 5 修订轮 1 的 linkify）而设；W0009 把 plan 屏
+  // 重写为「我的计划」，那一行没有了，改盯新页上同样被 linkify 的行：人脉需求里的联系人、计划里的活动。
   assert.ok(scanned >= 60, `expected the six domains' anchors, found ${scanned}`);
   const iorbit = DOMAINS.find((domain) => domain.name === "iorbit")!;
-  assert.ok(
-    collectAnchors(iorbit).some((anchor) => anchor.classes.includes("ir-task-row")),
-    "the plan row is the class this gate exists for",
-  );
+  for (const planRow of ["ir-p-person", "ir-p-ev-t"]) {
+    assert.ok(
+      collectAnchors(iorbit).some((anchor) => anchor.classes.includes(planRow)),
+      `the plan page's linked row .${planRow} must stay in this gate's scan`,
+    );
+  }
   assert.deepEqual(
     uncovered,
     [],

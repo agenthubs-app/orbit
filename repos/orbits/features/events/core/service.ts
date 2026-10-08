@@ -108,6 +108,14 @@ export interface EventCoreService {
   ): Promise<PublishedCanonicalEvent | null>;
   listEvents(now?: Date): Promise<readonly CanonicalEvent[]>;
   listPublishedEvents(now?: Date): Promise<readonly PublishedCanonicalEvent[]>;
+  /**
+   * W0041: `listPublishedEvents` limited to the given event ids (same filter,
+   * mapping, failures and order). Present only when the repository can read by id.
+   */
+  listPublishedEventsByIds?(
+    eventIds: readonly string[],
+    now?: Date,
+  ): Promise<readonly PublishedCanonicalEvent[]>;
 }
 
 export function createEventCoreService(
@@ -136,5 +144,19 @@ export function createEventCoreService(
         .filter((event) => event.lifecycleState === "published")
         .map((event) => publishedEvent(event, now));
     },
+    ...(repository.listEventsByIds
+      ? {
+          async listPublishedEventsByIds(
+            eventIds: readonly string[],
+            now = new Date(),
+          ) {
+            const records = await repository.listEventsByIds!(eventIds);
+            return records
+              .map((record) => eventWithPhase(record, now))
+              .filter((event) => event.lifecycleState === "published")
+              .map((event) => publishedEvent(event, now));
+          },
+        }
+      : {}),
   };
 }

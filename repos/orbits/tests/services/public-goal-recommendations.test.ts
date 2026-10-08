@@ -189,10 +189,13 @@ test("strict recommendations do not treat missing relationship goals as matches"
 
   const result = await service.recommend({ accountId: ACCOUNT_ID });
 
-  assert.deepEqual(result, { state: "needs_goal", items: [] });
+  // W0036：没设目标仍是 needs_goal、不出目标匹配；但多读一次目录与报名，给活动池兜底「近期活动」。
+  assert.equal(result.state, "needs_goal");
+  assert.deepEqual(result.items, []);
+  assert.deepEqual(result.upcoming.map((item) => item.eventId), ["event:match"]);
   assert.deepEqual(calls.goal, [ACCOUNT_ID]);
-  assert.equal(calls.catalogue.length, 0);
-  assert.equal(calls.memberships.length, 0);
+  assert.equal(calls.catalogue.length, 1);
+  assert.equal(calls.memberships.length, 1);
 });
 
 test("the lexical helper preserves word boundaries for Latin tokens", () => {
@@ -297,7 +300,9 @@ test("no matching title or description returns a distinct no_match state", async
 
   const result = await service.recommend({ accountId: ACCOUNT_ID });
 
-  assert.deepEqual(result, { state: "no_match", items: [] });
+  assert.equal(result.state, "no_match");
+  assert.deepEqual(result.items, []);
+  assert.deepEqual(result.upcoming.map((item) => item.eventId), ["event:no-match"]);
   assert.equal(calls.memberships.length, 1);
 });
 
@@ -307,10 +312,10 @@ test("stopword-only goals return no_match without inventing a default target", a
     readCatalogue: snapshot([event({ id: "event:stopwords" })]),
   });
 
-  assert.deepEqual(
-    await service.recommend({ accountId: ACCOUNT_ID }),
-    { state: "no_match", items: [] },
-  );
+  const result = await service.recommend({ accountId: ACCOUNT_ID });
+  assert.equal(result.state, "no_match");
+  assert.deepEqual(result.items, []);
+  assert.deepEqual(result.upcoming.map((item) => item.eventId), ["event:stopwords"]);
 });
 
 test("past, exact-now, and cancelled events are excluded before matching", async () => {
@@ -476,7 +481,7 @@ test("deduplicates an identical canonical record but rejects conflicting duplica
   });
   assert.deepEqual(
     await conflicting.service.recommend({ accountId: ACCOUNT_ID }),
-    { state: "unavailable", items: [] },
+    { state: "unavailable", items: [], upcoming: [] },
   );
 
   const first = event({ id: "event:code-a" });
@@ -488,7 +493,7 @@ test("deduplicates an identical canonical record but rejects conflicting duplica
   });
   assert.deepEqual(
     await duplicateCode.service.recommend({ accountId: ACCOUNT_ID }),
-    { state: "unavailable", items: [] },
+    { state: "unavailable", items: [], upcoming: [] },
   );
 });
 
@@ -558,7 +563,7 @@ test("missing or invalid public candidate metadata fails closed", async () => {
   for (const [label, readCatalogue] of cases) {
     const { service } = serviceFor({ readCatalogue });
     const result = await service.recommend({ accountId: ACCOUNT_ID });
-    assert.deepEqual(result, { state: "unavailable", items: [] }, label);
+    assert.deepEqual(result, { state: "unavailable", items: [], upcoming: [] }, label);
   }
 });
 
@@ -580,7 +585,7 @@ test("membership results are one canonical actor-scoped batch and invalid rows f
       readCatalogue: snapshot([candidate]),
     });
     const result = await service.recommend({ accountId: ACCOUNT_ID });
-    assert.deepEqual(result, { state: "unavailable", items: [] }, label);
+    assert.deepEqual(result, { state: "unavailable", items: [], upcoming: [] }, label);
     assert.equal(calls.memberships.length, 1, label);
     assert.equal(calls.memberships[0]?.accountId, ACCOUNT_ID, label);
     assert.deepEqual(calls.memberships[0]?.eventIds, [candidate.id], label);
@@ -591,26 +596,27 @@ test("account absence and provider failures return unavailable without partial r
   const noAccount = serviceFor();
   assert.deepEqual(
     await noAccount.service.recommend({ accountId: null }),
-    { state: "unavailable", items: [] },
+    { state: "unavailable", items: [], upcoming: [] },
   );
   assert.deepEqual(noAccount.calls, { catalogue: [], goal: [], memberships: [] });
 
+  // W0036：读目标失败仍是 unavailable、不出目标匹配；目录与报名照读，近期活动兜底。
   const goalFailure = serviceFor({ readGoalError: new Error("profile unavailable") });
-  assert.deepEqual(
-    await goalFailure.service.recommend({ accountId: ACCOUNT_ID }),
-    { state: "unavailable", items: [] },
-  );
+  const goalFailureResult = await goalFailure.service.recommend({ accountId: ACCOUNT_ID });
+  assert.equal(goalFailureResult.state, "unavailable");
+  assert.deepEqual(goalFailureResult.items, []);
+  assert.deepEqual(goalFailureResult.upcoming.map((item) => item.eventId), ["event:match"]);
 
   const catalogueFailure = serviceFor({ readCatalogueError: new Error("catalogue unavailable") });
   assert.deepEqual(
     await catalogueFailure.service.recommend({ accountId: ACCOUNT_ID }),
-    { state: "unavailable", items: [] },
+    { state: "unavailable", items: [], upcoming: [] },
   );
 
   const membershipFailure = serviceFor({ membershipsError: new Error("membership unavailable") });
   assert.deepEqual(
     await membershipFailure.service.recommend({ accountId: ACCOUNT_ID }),
-    { state: "unavailable", items: [] },
+    { state: "unavailable", items: [], upcoming: [] },
   );
 });
 
@@ -625,4 +631,98 @@ test("a single now snapshot is passed to the public catalogue", async () => {
 
   assert.equal(calls.catalogue.length, 1);
   assert.equal(calls.catalogue[0], fixedNow);
+});
+
+/* ── W0036 SC-04：`upcoming`（全部可报名候选，不截断）与语句计数 ─────────────── */
+
+/** 13 场可报名 + 已开始 / 已取消 / 本人主办 / 已报名各一场；按开始时间倒着放，验证升序。 */
+function bigCatalogue() {
+  const bookable = Array.from({ length: 13 }, (_, index) => {
+    const day = String(index + 1).padStart(2, "0");
+    return event({
+      description: index === 12 ? "AI founders night." : "A general meetup.",
+      endsAt: `2026-10-${day}T12:00:00.000Z`,
+      id: `event:bookable-${day}`,
+      startsAt: `2026-10-${day}T10:00:00.000Z`,
+      title: index === 12 ? "AI Founders Night" : `Meetup ${day}`,
+    });
+  }).reverse();
+  const started = event({ endsAt: "2026-09-16T12:00:00.000Z", id: "event:started", startsAt: "2026-09-16T10:00:00.000Z" });
+  const cancelled = event({ id: "event:cancelled", status: "cancelled" });
+  const own = event({ id: "event:own" });
+  const registered = event({ id: "event:registered" });
+  const records = [...bookable, started, cancelled, own, registered];
+  return {
+    catalogue: snapshot(records, {
+      organizerIds: Object.fromEntries(records.map((record) => [record.id, record.id === own.id ? ACCOUNT_ID : "account:organizer"])),
+    }),
+    expected: Array.from({ length: 13 }, (_, index) => `event:bookable-${String(index + 1).padStart(2, "0")}`),
+    memberships: [membership(registered.id, "rsvped"), membership("event:bookable-05", "cancelled")],
+  };
+}
+
+test("W0036 success returns every bookable candidate in upcoming (≥13, ascending, nothing truncated) with unchanged reads", async () => {
+  const { catalogue, expected, memberships } = bigCatalogue();
+  const { calls, service } = serviceFor({ memberships, readCatalogue: catalogue });
+
+  const result = await service.recommend({ accountId: ACCOUNT_ID });
+
+  assert.equal(result.state, "success");
+  assert.deepEqual(result.items.map((item) => item.eventId), ["event:bookable-13"]);
+  assert.deepEqual(result.upcoming.map((item) => item.eventId), expected);
+  assert.deepEqual(result.upcoming[0], {
+    endsAt: "2026-10-01T12:00:00.000Z",
+    eventId: "event:bookable-01",
+    publicCode: "public-event:bookable-01",
+    startsAt: "2026-10-01T10:00:00.000Z",
+    title: "Meetup 01",
+    venue: "Orbit Room",
+  });
+  // 语句数与改前相同：目标 1、目录 1、报名 1。
+  assert.deepEqual([calls.goal.length, calls.catalogue.length, calls.memberships.length], [1, 1, 1]);
+});
+
+test("W0036 no_match after scoring still carries upcoming; reads unchanged", async () => {
+  const { catalogue, expected, memberships } = bigCatalogue();
+  const { calls, service } = serviceFor({ goal: "quantum agriculture", memberships, readCatalogue: catalogue });
+  const result = await service.recommend({ accountId: ACCOUNT_ID });
+  assert.equal(result.state, "no_match");
+  assert.deepEqual(result.items, []);
+  assert.deepEqual(result.upcoming.map((item) => item.eventId), expected);
+  assert.deepEqual([calls.goal.length, calls.catalogue.length, calls.memberships.length], [1, 1, 1]);
+});
+
+test("W0036 needs_goal (null or blank) and an unreadable / invalid goal each add exactly one catalogue and one membership read", async () => {
+  const { catalogue, expected, memberships } = bigCatalogue();
+  for (const [label, options, state] of [
+    ["null goal", { goal: null }, "needs_goal"],
+    ["blank goal", { goal: "   " }, "needs_goal"],
+    ["goal read failure", { readGoalError: new Error("profile down") }, "unavailable"],
+    ["goal of the wrong type", { goal: 42 }, "unavailable"],
+  ] as const) {
+    const { calls, service } = serviceFor({ ...options, memberships, readCatalogue: catalogue });
+    const result = await service.recommend({ accountId: ACCOUNT_ID });
+    assert.equal(result.state, state, label);
+    assert.deepEqual(result.items, [], label);
+    assert.deepEqual(result.upcoming.map((item) => item.eventId), expected, label);
+    assert.deepEqual([calls.goal.length, calls.catalogue.length, calls.memberships.length], [1, 1, 1], label);
+  }
+});
+
+test("W0036 a failed catalogue or membership read leaves upcoming empty and never throws", async () => {
+  for (const [label, options, state] of [
+    ["needs_goal + catalogue down", { goal: null, readCatalogueError: new Error("down") }, "needs_goal"],
+    ["needs_goal + memberships down", { goal: null, membershipsError: new Error("down") }, "needs_goal"],
+    ["goal failure + catalogue down", { readCatalogueError: new Error("down"), readGoalError: new Error("down") }, "unavailable"],
+    ["goal + catalogue down", { readCatalogueError: new Error("down") }, "unavailable"],
+  ] as const) {
+    const { service } = serviceFor(options);
+    assert.deepEqual(await service.recommend({ accountId: ACCOUNT_ID }), { items: [], state, upcoming: [] }, label);
+  }
+});
+
+test("W0036 an empty catalogue: no_match with an empty upcoming and no membership read", async () => {
+  const { calls, service } = serviceFor({ readCatalogue: snapshot([]) });
+  assert.deepEqual(await service.recommend({ accountId: ACCOUNT_ID }), { items: [], state: "no_match", upcoming: [] });
+  assert.equal(calls.memberships.length, 0);
 });

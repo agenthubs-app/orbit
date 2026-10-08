@@ -272,6 +272,16 @@ export function createEventRegistrationRouteHandlers(input: {
   resolveAdmissionControl?: ResolveEventAdmissionRegistrationControl;
   resolveAdmissionState?: ResolveEventAdmissionRegistrationState;
   resolveActor: () => Promise<RegistrationActor | null>;
+  /**
+   * W0012：报名成功后同步本人计划里的这场活动（推荐 → 已报名，并写一条幂等进展记录）。
+   * 尽力而为：报名是主数据，这一步失败只记日志，不改变报名响应。
+   */
+  syncPlanRegistration?: (input: {
+    actorId: string;
+    eventId: string;
+    registered: boolean;
+    registrationVersion: string;
+  }) => Promise<void>;
 }) {
   const registrationService =
     input.registrationService ?? eventRegistrationRuntimeService;
@@ -590,6 +600,19 @@ export function createEventRegistrationRouteHandlers(input: {
         return errorResponse(error, error.code === "CONFLICT" ? 409 : 422);
       }
       throw error;
+    }
+
+    if (input.syncPlanRegistration && registration.status === "rsvped") {
+      try {
+        await input.syncPlanRegistration({
+          actorId: actor.id,
+          eventId: registration.eventId,
+          registered: true,
+          registrationVersion: registration.updatedAt,
+        });
+      } catch (error) {
+        console.warn("[event-registration] plan sync failed", error instanceof Error ? error.message : error);
+      }
     }
 
     return NextResponse.json(success({

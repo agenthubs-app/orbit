@@ -8,8 +8,11 @@
  *   3. 作用域形态：新增的 `.btn.ir-week-head` 整段中和基类 + `:active{transform:none}`，
  *      四屏的 `<button>` 全部带 `btn ir-*`（`IORBIT_STYLES` 的整体作用域由
  *      `app-agent-iorbit-home.test.tsx` 统一守着，那条用例覆盖本任务新增的规则）
- *   4. 行为：4 周手风琴开合、「✦ 让 iOrbit 优化计划 →」把提示词带进 `?q=`、
- *      `?view=contacts` 切屏、每行 CTA 按真实 operationType 变化
+ *   4. 行为：`?view=contacts` 切屏、每行 CTA 按真实 operationType 变化
+ *
+ * W0009：plan 屏整体重写为「我的计划」（读当前生效计划），原来的 4 周手风琴 / 优化计划 CTA /
+ * 跟进 + 账本行的用例改为「我的计划」的报头、本周打勾（乐观更新与回滚）、阶段折叠、进展记录用例；
+ * 策略屏新增「有计划时推荐理由对应计划阶段」（RW-07）。
  */
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
@@ -20,11 +23,12 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { act, create, type ReactTestRenderer } from "react-test-renderer";
 
 import { IOrbitActions } from "../../app/(app)/app/agent/iorbit-0918/iorbit-actions";
-import {
-  IOrbitPlan,
-  IORBIT_PLAN_OPTIMIZE_PROMPT,
-} from "../../app/(app)/app/agent/iorbit-0918/iorbit-plan";
+import { IOrbitPlan } from "../../app/(app)/app/agent/iorbit-0918/iorbit-plan";
+import { buildPlanWeekSummary, planEventReasons } from "../../app/(app)/app/agent/plan/plan-route-view-model";
+import { toPlanView, toPlanViewItem, toPlanViewLogEntry } from "../../features/plans/repository";
+import { PLAN_NOW, planSnapshotFixture } from "../support/plan-snapshot-fixture";
 import { IOrbitStrategy } from "../../app/(app)/app/agent/iorbit-0918/iorbit-strategy";
+import { OrbitLanguageProvider } from "../../app/(app)/app/orbit-language-context";
 import { IORBIT_STYLES } from "../../app/(app)/app/agent/iorbit-0918/iorbit-styles";
 import {
   iorbitPlanWeeks,
@@ -238,7 +242,7 @@ function actionsMarkup(viewModel = ACTIONS_VM): string {
 test("every iOrbit sibling screen renders inside the shared double page scope", () => {
   for (const html of [
     actionsMarkup(),
-    renderToStaticMarkup(<IOrbitPlan now={new Date(2026, 8, 23)} />),
+    renderToStaticMarkup(<IOrbitPlan guideEnabled initialSnapshot={planSnapshotFixture()} now={PLAN_NOW} />),
     renderToStaticMarkup(<IOrbitStrategy />),
     renderToStaticMarkup(<IOrbitStrategy view="contacts" />),
   ]) {
@@ -307,34 +311,102 @@ test("actions rows carry a per-row CTA driven by the real operation type", () =>
   assert.ok(html.includes("data-orbit-agent-action-entry=\"e-decide\""));
 });
 
-test("the plan screen ships every design block from lines 429–501", () => {
-  const html = renderToStaticMarkup(<IOrbitPlan now={new Date(2026, 8, 23)} />);
+function myPlanMarkup(): string {
+  return renderToStaticMarkup(<IOrbitPlan guideEnabled initialSnapshot={planSnapshotFixture()} now={PLAN_NOW} />);
+}
 
-  for (const copy of [
-    "执行计划",
-    "← 返回概览",
-    "把目标拆成清晰的行动节奏，帮助你逐步推进。",
-    "本周重点",
-    "完成度",
-    "4 周推进节奏",
-    "第 1 周",
-    "9/21 – 9/27",
-    "本周目标",
-    "关键联系人",
-    "关键活动 / 产出",
-    "✦ 需要时可以继续交给 iOrbit 优化计划",
-    "✦ 让 iOrbit 优化计划 →",
-    "计划概览",
-    "当前完成度",
-    "本周日程",
-    "回到日历 →",
-  ]) {
-    assert.ok(html.includes(copy), `design copy missing from plan: ${copy}`);
+test("my plan: masthead with the goal verbatim, meta line, collapsed analysis and the week ruler", () => {
+  const html = bodyOf(myPlanMarkup());
+
+  assert.ok(html.includes("iOrbit</a> / 我的计划"));
+  assert.match(html, /data-orbit-plan-goal="true"[^>]*>三个月内找到 5 家日本中小企业试用我们的产品</);
+  assert.ok(html.includes("计划 v1 · 9/14 生成 · 先从东京开始"));
+  // 目标分析默认折叠：只有开关，没有内容块。
+  assert.match(html, /aria-expanded="false"[^>]*data-orbit-plan-analysis-toggle="true"[^>]*>目标分析 ▾</);
+  assert.doesNotMatch(html, /data-orbit-plan-analysis="true"/);
+  // W0012：重新分析是真按钮；没有服务端额度（未传 tracking）时不可点，也不编造「剩 1 次」。
+  assert.match(html, /<button class="btn ir-p-link" data-orbit-plan-reanalyse="true" disabled=""[^>]*>重新分析<\/button>/);
+  // 刻度：12 个周格、前两周已过、第 3 周是本周；阶段区间按起始周与跨度排。
+  assert.equal(html.match(/data-orbit-plan-week="\d+"/g)?.length, 12);
+  assert.equal(html.match(/class="ir-p-past"/g)?.length, 2);
+  assert.match(html, /class="ir-p-now" data-orbit-plan-week="3"><span>本周<\/span>/);
+  assert.match(html, /class="ir-p-cur" style="grid-column:1 \/ span 3" title="1 · 摸清需求"/);
+  assert.ok(html.includes('style="grid-column:4 / span 5"'));
+  assert.match(html, /data-orbit-plan-week-text="true">第 3 周 \/ 共 12 周</);
+  assert.ok(html.includes("9/14 开始") && html.includes("12/6 结束"));
+  // 旧屏的占位整块拿掉。
+  for (const gone of ["4 周推进节奏", "随 W4 策略能力上线", "执行计划", "让 iOrbit 优化计划"]) {
+    assert.ok(!html.includes(gone), `old plan placeholder leaked back: ${gone}`);
   }
-  // 496：回到日历 → home。
-  assert.match(html, /class="ir-aside-btn" href="\/app\/agent"/);
-  // 无来源的四周内容沿用「等 W4」（「审阅修订」20）。
-  assert.ok(html.includes("随 W4 策略能力上线"));
+});
+
+test("my plan: this week lists due actions with overdue pills, phases collapse except the current one", () => {
+  const html = bodyOf(myPlanMarkup());
+
+  assert.ok(html.includes("本周 · 第 3 周"));
+  assert.ok(html.includes("9/28 – 10/4"));
+  const actions = [...html.matchAll(/data-orbit-plan-action="([^"]+)"/g)].map((match) => match[1]);
+  // 已完成的（包括本周刚完成的）不在本周列表里。
+  assert.deepEqual(actions, ["a-this-week", "a-overdue-1", "a-overdue-2"]);
+  assert.match(html, /data-orbit-plan-overdue="1">已延后 1 周</);
+  assert.match(html, /data-orbit-plan-overdue="2">已延后 2 周</);
+  assert.doesNotMatch(html, /data-orbit-plan-action="a-done-this-week"/);
+  assert.equal(html.match(/role="checkbox"/g)?.length, 3);
+
+  // 阶段：三段，只有当前（第 1 段）展开。
+  assert.equal(html.match(/data-orbit-plan-phase="/g)?.length, 3);
+  assert.ok(html.includes("当前：第 1 阶段"));
+  assert.match(html, /aria-controls="ir-p-phase-p1" aria-expanded="true"/);
+  assert.match(html, /aria-controls="ir-p-phase-p2" aria-expanded="false"/);
+  assert.ok(html.includes("第 1–3 周 · 2 / 5 行动"));
+  // 当前阶段的内容：信息与答案、活动、自我介绍、跟进方式。
+  assert.ok(html.includes("✓ 大多手写，会后 30 分钟整理"));
+  assert.ok(html.includes("还没有答案"));
+  assert.ok(html.includes("我正在推进一件事：三个月内找到 5 家试用客户。"));
+  assert.ok(html.includes("当天：发一句感谢"));
+});
+
+test("my plan: network needs with counts and people newest first, plan events, and the progress log", () => {
+  const html = bodyOf(myPlanMarkup());
+
+  assert.ok(html.includes("人脉需求"));
+  assert.ok(html.includes("人员按添加时间倒序"));
+  assert.match(html, /<b>1<\/b> 已建立联系/);
+  assert.match(html, /<b>2<\/b> 已关联/);
+  const people = [...html.matchAll(/data-orbit-plan-person="([^"]+)"/g)].map((match) => match[1]);
+  assert.deepEqual(people, ["contact:c2", "contact:c1"]);
+  assert.ok(html.includes("高木一郎"));
+  assert.ok(html.includes("还没有关联的人"));
+  // 「待确认 N」角标在 W0010 之前不出现。
+  assert.doesNotMatch(html, /待确认/);
+
+  assert.ok(html.includes("计划里的活动"));
+  assert.match(html, /href="\/app\/events\/event%3Afounders-night"[^>]*>东京创业者交流之夜</);
+  assert.ok(html.includes("已报名 · 对应「能帮你引荐的行业前辈」"));
+  assert.ok(html.includes("推荐 · 对应「中小企业的 IT 负责人」"));
+
+  assert.ok(html.includes("进展记录"));
+  assert.match(html, /data-orbit-plan-log-form="true"/);
+  const log = [...html.matchAll(/data-orbit-plan-log-entry="([^"]+)"/g)].map((match) => match[1]);
+  assert.deepEqual(log, ["log-manual", "log-done", "log-created"]);
+  assert.ok(html.includes("今天和老客户通了电话<small>手动</small>"));
+  assert.ok(html.includes("完成「把 30 秒自我介绍发给 3 位老朋友」"));
+});
+
+test("my plan: no plan links to guide step 3 (or back to iOrbit when the guide is off); a read failure says so", () => {
+  const withGuide = renderToStaticMarkup(<IOrbitPlan guideEnabled initialSnapshot={null} now={PLAN_NOW} />);
+  assert.match(withGuide, /data-orbit-plan-empty="true"/);
+  assert.ok(withGuide.includes("还没有计划"));
+  assert.match(withGuide, /class="ir-p-empty-link" href="\/app\/start">去第 3 步生成计划 →</);
+
+  const noGuide = renderToStaticMarkup(<IOrbitPlan guideEnabled={false} initialSnapshot={null} now={PLAN_NOW} />);
+  assert.match(noGuide, /class="ir-p-empty-link" href="\/app\/agent">回到 iOrbit →</);
+  assert.doesNotMatch(noGuide, /\/app\/start/);
+
+  const failed = renderToStaticMarkup(<IOrbitPlan guideEnabled initialSnapshot="unavailable" now={PLAN_NOW} />);
+  assert.match(failed, /data-orbit-plan-unavailable="true"/);
+  assert.ok(failed.includes("计划暂时读不到"));
+  assert.doesNotMatch(failed, /data-orbit-plan-goal/);
 });
 
 test("the strategy screen keeps its own compact list, next events and this-week block", () => {
@@ -403,7 +475,7 @@ function bodyOf(html: string): string {
 test("none of the four screens renders the design's mock names or numbers", () => {
   for (const [label, markup] of [
     ["actions", actionsMarkup()],
-    ["plan", renderToStaticMarkup(<IOrbitPlan now={new Date(2026, 8, 23)} />)],
+    ["plan", renderToStaticMarkup(<IOrbitPlan guideEnabled initialSnapshot={planSnapshotFixture()} now={PLAN_NOW} />)],
     ["strategy", renderToStaticMarkup(<IOrbitStrategy />)],
     ["contacts", renderToStaticMarkup(<IOrbitStrategy view="contacts" />)],
   ] as const) {
@@ -442,7 +514,7 @@ test("the actions screen shows empty and failure states without inventing conten
 test("every <button> on the four screens is a .btn, and every authored one is btn ir-*", () => {
   for (const html of [
     actionsMarkup(),
-    renderToStaticMarkup(<IOrbitPlan now={new Date(2026, 8, 23)} />),
+    renderToStaticMarkup(<IOrbitPlan guideEnabled initialSnapshot={planSnapshotFixture()} now={PLAN_NOW} />),
     renderToStaticMarkup(<IOrbitStrategy />),
     renderToStaticMarkup(<IOrbitStrategy view="contacts" />),
   ]) {
@@ -614,37 +686,6 @@ test("the actions rows keep the status label and the evidence chips the old scre
   assert.equal(html.match(/data-orbit-agent-action-evidence/g)?.length, 5);
 });
 
-// 修订轮 1（Important 4）：plan 的每行落点（followup 的 operationHref / 账本 ?entry=）
-// 与本周日程每行的落点都不得丢。
-test("the plan rows keep the per-row navigation the old screen had", async (t) => {
-  const mounted = await mount(
-    t,
-    <IOrbitPlan loadSnapshot={async () => SNAPSHOT} now={new Date(2026, 8, 23)} />,
-  );
-  await mounted.settle();
-
-  const taskRows = mounted.root.root.findAll(
-    (node) => node.props?.className === "ir-task-row",
-  );
-  assert.ok(taskRows.length > 0);
-  assert.equal(taskRows[0]!.type, "a");
-  assert.equal(taskRows[0]!.props.href, "/app/contacts/c-1");
-
-  const scheduleLines = mounted.root.root.findAll(
-    (node) => node.props?.className === "ir-aside-line",
-  );
-  assert.ok(scheduleLines.length > 0);
-  assert.equal(scheduleLines[0]!.type, "a");
-  assert.equal(scheduleLines[0]!.props.href, "/app/schedule");
-
-  // 审计吃的标记（旧屏有，第一版丢了）。
-  assert.ok(
-    mounted.root.root.findAll(
-      (node) => node.props?.["data-orbit-agent-plan-overview"] !== undefined,
-    ).length > 0,
-  );
-});
-
 // 修订轮 1（Minor）：「等 W4」的说明只有一份，来自 view model。
 test("the contact-card rows use the neutral waiting sentence, not a section's subject", async (t) => {
   const { buildAgentStrategyViewModel } = await import(
@@ -701,7 +742,7 @@ interface Mounted {
   settle: (rounds?: number) => Promise<void>;
 }
 
-async function mount(t: TestContext, element: React.ReactElement): Promise<Mounted> {
+async function mount(t: TestContext, element: React.ReactElement, fetchImpl?: typeof fetch): Promise<Mounted> {
   const previousWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
   const previousFetch = Object.getOwnPropertyDescriptor(globalThis, "fetch");
   Object.defineProperty(globalThis, "window", {
@@ -718,11 +759,13 @@ async function mount(t: TestContext, element: React.ReactElement): Promise<Mount
   });
   Object.defineProperty(globalThis, "fetch", {
     configurable: true,
-    value: async () =>
-      ({
-        json: async () => ({ data: { entries: [] }, success: true }),
-        ok: true,
-      }) as never,
+    value:
+      fetchImpl ??
+      (async () =>
+        ({
+          json: async () => ({ data: { entries: [] }, success: true }),
+          ok: true,
+        }) as never),
     writable: true,
   });
   let root!: ReactTestRenderer;
@@ -746,81 +789,6 @@ async function mount(t: TestContext, element: React.ReactElement): Promise<Mount
   });
   return { root, settle };
 }
-
-function weekHead(root: ReactTestRenderer, no: number) {
-  return root.root.findAll(
-    (node) => node.type === "button" && node.props?.["data-orbit-iorbit-plan-week"] === no,
-  )[0]!;
-}
-
-test("the four-week accordion opens and closes, and only one week is open at a time", async (t) => {
-  const mounted = await mount(
-    t,
-    <IOrbitPlan
-      loadSnapshot={async () => SNAPSHOT}
-      now={new Date(2026, 8, 23)}
-    />,
-  );
-
-  // 设计 459：第一周默认展开。
-  assert.equal(weekHead(mounted.root, 1).props["aria-expanded"], true);
-  assert.equal(weekHead(mounted.root, 2).props["aria-expanded"], false);
-  assert.equal(
-    mounted.root.root.findAll((node) => node.props?.className === "ir-week-body").length,
-    1,
-  );
-
-  await act(async () => {
-    weekHead(mounted.root, 3).props.onClick();
-  });
-  assert.equal(weekHead(mounted.root, 1).props["aria-expanded"], false);
-  assert.equal(weekHead(mounted.root, 3).props["aria-expanded"], true);
-  assert.equal(
-    mounted.root.root.findAll((node) => node.props?.className === "ir-week-body").length,
-    1,
-  );
-
-  // 再点一次同一周 → 全部折叠。
-  await act(async () => {
-    weekHead(mounted.root, 3).props.onClick();
-  });
-  assert.equal(
-    mounted.root.root.findAll((node) => node.props?.className === "ir-week-body").length,
-    0,
-  );
-});
-
-test("the plan CTA hands a prompt to the chat screen's ask, not a bare route", () => {
-  const html = renderToStaticMarkup(<IOrbitPlan now={new Date(2026, 8, 23)} />);
-  const href = html.match(
-    /data-orbit-iorbit-plan-optimize="[^"]*" href="([^"]+)"/,
-  )?.[1];
-
-  assert.ok(href, "the optimize CTA must carry an href");
-  assert.ok(href!.startsWith("/app/agent?q="));
-  assert.equal(
-    decodeURIComponent(href!.slice("/app/agent?q=".length)),
-    IORBIT_PLAN_OPTIMIZE_PROMPT.zh,
-  );
-});
-
-test("plan and strategy reach ready only once every source has answered", async (t) => {
-  const pending = renderToStaticMarkup(<IOrbitPlan now={new Date(2026, 8, 23)} />);
-  assert.match(pending, /data-orbit-iorbit-ready="false"/);
-
-  const mounted = await mount(
-    t,
-    <IOrbitPlan loadSnapshot={async () => SNAPSHOT} now={new Date(2026, 8, 23)} />,
-  );
-  await mounted.settle();
-  assert.equal(
-    mounted.root.root.findAll(
-      (node) => node.props?.["data-orbit-iorbit-ready"] === "true",
-    ).length,
-    1,
-    "plan must flip the readiness flag once snapshot and ledger have both answered",
-  );
-});
 
 test("the strategy screen renders real follow-ups and real recommended events", async (t) => {
   const mounted = await mount(t, <IOrbitStrategy loadSnapshot={async () => SNAPSHOT} />);
@@ -861,4 +829,894 @@ test("the contacts cards show the real why-now and keep the unsourced rows on th
     decodeURIComponent(String(prepare.props.href)),
     "/app/agent?q=帮我准备联系QA 测试联系人的内容",
   );
+});
+
+/* ── W0003 SC-04：推荐理由只写真实匹配词 ───────────────────────────────── */
+
+function strategyWithTokens(matchedTokens: readonly string[]) {
+  const snapshot = SNAPSHOT as unknown as {
+    recommendations: { items: Array<Record<string, unknown>>; state: string };
+  };
+  return {
+    ...snapshot,
+    recommendations: {
+      ...snapshot.recommendations,
+      items: snapshot.recommendations.items.map((item) => ({ ...item, matchedTokens })),
+    },
+  } as never;
+}
+
+function matchReasons(root: ReactTestRenderer) {
+  return root.root.findAll(
+    (node) => typeof node.type === "string" && node.props?.["data-orbit-iorbit-match-reason"] !== undefined,
+  );
+}
+
+test("the recommendation reason is only the matched goal words", async (t) => {
+  const mounted = await mount(
+    t,
+    <IOrbitStrategy loadSnapshot={async () => strategyWithTokens(["开拓新市场", "日本"])} />,
+  );
+  await mounted.settle();
+
+  const reasons = matchReasons(mounted.root);
+  assert.equal(reasons.length, 1);
+  assert.equal(reasons[0]!.children.join(""), "匹配你的目标：『开拓新市场』『日本』");
+  // 活动行里不再有单独的灰色词块。
+  for (const row of mounted.root.root.findAll((node) => node.props?.className === "ir-event-row")) {
+    assert.equal(row.findAll((node) => node.props?.className === "ir-pill-grey").length, 0);
+  }
+});
+
+test("no matched words means no reason line at all", async (t) => {
+  const mounted = await mount(t, <IOrbitStrategy loadSnapshot={async () => strategyWithTokens([])} />);
+  await mounted.settle();
+
+  assert.ok(JSON.stringify(mounted.root.toJSON()).includes("QA 冒烟活动"), "the event itself still renders");
+  assert.equal(matchReasons(mounted.root).length, 0);
+  assert.doesNotMatch(JSON.stringify(mounted.root.toJSON()), /匹配你的目标/);
+});
+
+test("the event-recommendation areas make no unsupported attendee or effect claims", async (t) => {
+  const FORBIDDEN = /潜在联系人|决策层|更高效地结识|更快接触|potential contacts?|decision[- ]makers?|fastest way to meet|people you are missing/i;
+  const eventSections = (html: string) =>
+    [...html.matchAll(/<section[^>]*data-orbit-agent-strategy-section="(?:next-events|related-events)"[\s\S]*?<\/section>/g)]
+      .map((match) => match[0])
+      .join("\n");
+
+  // SSR：两种语言 × 两屏的区块标题与说明（静态文案）。
+  for (const language of ["zh", "en"] as const) {
+    for (const view of ["strategy", "contacts"] as const) {
+      const area = eventSections(
+        renderToStaticMarkup(
+          <OrbitLanguageProvider initialLanguage={language}>
+            <IOrbitStrategy view={view} />
+          </OrbitLanguageProvider>,
+        ),
+      );
+      assert.ok(area.length > 0, `${language}/${view}: event area must render`);
+      assert.doesNotMatch(area, FORBIDDEN, `${language}/${view}`);
+    }
+  }
+
+  // 挂载后带真实推荐行：理由行同样不带效果承诺。
+  for (const view of ["strategy", "contacts"] as const) {
+    await t.test(`mounted ${view}`, async (sub) => {
+    const mounted = await mount(
+      sub,
+      <IOrbitStrategy loadSnapshot={async () => strategyWithTokens(["日本"])} view={view} />,
+    );
+    await mounted.settle();
+    const sections = mounted.root.root.findAll(
+      (node) =>
+        node.type === "section" &&
+        ["next-events", "related-events"].includes(node.props?.["data-orbit-agent-strategy-section"]),
+    );
+    assert.ok(sections.length > 0);
+    for (const section of sections) {
+      const flat = (node: unknown): string =>
+        typeof node === "string" ? node : (node as { children: unknown[] }).children.map(flat).join("");
+      const text = flat(section);
+      assert.match(text, /匹配你的目标/);
+      assert.doesNotMatch(text, FORBIDDEN, view);
+    }
+    });
+  }
+});
+
+/* ── W0009：「我的计划」的交互 ─────────────────────────────────────────── */
+
+interface PlanCall {
+  body: unknown;
+  method: string;
+  url: string;
+}
+
+/** 在 `mount` 之后替换 fetch：记录请求，按 `respond` 应答（`mount` 的 t.after 会还原）。 */
+function routePlanFetch(respond: (call: PlanCall) => Promise<Response> | Response): PlanCall[] {
+  const calls: PlanCall[] = [];
+  (globalThis as { fetch: unknown }).fetch = async (input: unknown, init?: RequestInit) => {
+    const call = {
+      body: init?.body ? JSON.parse(String(init.body)) : undefined,
+      method: (init?.method ?? "GET").toUpperCase(),
+      url: String(input),
+    };
+    calls.push(call);
+    return respond(call);
+  };
+  return calls;
+}
+
+function planNode(root: ReactTestRenderer, attribute: string, value: string) {
+  return root.root.findAll((node) => typeof node.type === "string" && node.props?.[attribute] === value)[0]!;
+}
+
+function actionBox(root: ReactTestRenderer, itemId: string) {
+  return planNode(root, "data-orbit-plan-action", itemId).findAll(
+    (node) => node.type === "button" && node.props.role === "checkbox",
+  )[0]!;
+}
+
+function flatText(node: unknown): string {
+  if (typeof node === "string") return node;
+  if (!node || typeof node !== "object") return "";
+  return ((node as { children?: unknown[] }).children ?? []).map(flatText).join("");
+}
+
+function mountMyPlan(t: TestContext) {
+  return mount(t, <IOrbitPlan guideEnabled initialSnapshot={planSnapshotFixture()} now={PLAN_NOW} />);
+}
+
+test("my plan: ticking an action is optimistic, PATCHes W0007 and prepends the server's log entry", async (t) => {
+  const mounted = await mountMyPlan(t);
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const calls = routePlanFetch(async (call) => {
+    await gate;
+    const item = { ...planSnapshotFixture().items[0]!, completedAt: "2026-09-28T03:00:00.000Z", status: "done" };
+    return Response.json({
+      data: {
+        item,
+        log: {
+          ...planSnapshotFixture().log[1]!,
+          createdAt: "2026-09-28T03:00:00.000Z",
+          id: "log-server",
+          itemId: "a-this-week",
+        },
+        replayed: false,
+      },
+      success: true,
+    }, { status: call.method === "PATCH" ? 200 : 404 });
+  });
+
+  await act(async () => {
+    actionBox(mounted.root, "a-this-week").props.onClick();
+  });
+  // 乐观：请求还没回来，勾已经打上、按钮暂时禁用。
+  assert.equal(actionBox(mounted.root, "a-this-week").props["aria-checked"], true);
+  assert.equal(actionBox(mounted.root, "a-this-week").props.disabled, true);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0]!.method, "PATCH");
+  assert.equal(calls[0]!.url, "/api/agent/plans/items/a-this-week");
+  const body = calls[0]!.body as { change: unknown; idempotencyKey: unknown };
+  assert.deepEqual(body.change, { op: "set_status", status: "done" });
+  assert.equal(typeof body.idempotencyKey, "string");
+
+  await act(async () => {
+    release();
+  });
+  await mounted.settle();
+  assert.equal(actionBox(mounted.root, "a-this-week").props["aria-checked"], true);
+  assert.equal(actionBox(mounted.root, "a-this-week").props.disabled, false);
+  // 服务端在同一事务里写的 auto 记录出现在进展记录最前。
+  const log = mounted.root.root.findAll(
+    (node) => typeof node.type === "string" && node.props?.["data-orbit-plan-log-entry"] !== undefined,
+  );
+  assert.equal(log[0]!.props["data-orbit-plan-log-entry"], "log-server");
+  assert.equal(flatText(log[0]!).includes("完成「约一位老客户聊 20 分钟」"), true);
+  // 阶段计数跟着变。
+  assert.ok(flatText(mounted.root.toJSON()).includes("3 / 5 行动"));
+});
+
+test("my plan: a failed tick rolls that action back and says so", async (t) => {
+  const mounted = await mountMyPlan(t);
+  routePlanFetch(() =>
+    Response.json(
+      { error: { code: "CONFLICT", message: "状态已经变了" }, success: false },
+      { status: 409 },
+    ),
+  );
+
+  await act(async () => {
+    actionBox(mounted.root, "a-this-week").props.onClick();
+  });
+  await mounted.settle();
+  // 打勾失败 → 回到未勾（这一行仍在本周列表里）。
+  assert.equal(actionBox(mounted.root, "a-this-week").props["aria-checked"], false);
+  const alerts = mounted.root.root.findAll((node) => node.props?.role === "alert");
+  assert.equal(alerts.length, 1);
+  assert.ok(flatText(alerts[0]!).includes("没能保存，已恢复原状"));
+  assert.ok(flatText(alerts[0]!).includes("状态已经变了"));
+});
+
+test("my plan: a manual progress note is POSTed and lands at the top of the log", async (t) => {
+  const mounted = await mountMyPlan(t);
+  const calls = routePlanFetch((call) =>
+    Response.json(
+      {
+        data: {
+          entry: { ...planSnapshotFixture().log[0]!, body: call.body && (call.body as { body: string }).body, id: "log-new" },
+          replayed: false,
+        },
+        success: true,
+      },
+      { status: 201 },
+    ),
+  );
+
+  const input = mounted.root.root.findAll((node) => node.type === "input" && node.props.id === "ir-p-log-input")[0]!;
+  await act(async () => {
+    input.props.onChange({ target: { value: "  约好了下周二通电话  " } });
+  });
+  const form = mounted.root.root.findAll((node) => node.type === "form")[0]!;
+  let prevented = false;
+  await act(async () => {
+    form.props.onSubmit({ preventDefault: () => (prevented = true) });
+  });
+  await mounted.settle();
+
+  assert.ok(prevented);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0]!.method, "POST");
+  assert.equal(calls[0]!.url, "/api/agent/plans/log");
+  assert.equal((calls[0]!.body as { body: string }).body, "约好了下周二通电话");
+  assert.equal(typeof (calls[0]!.body as { idempotencyKey: unknown }).idempotencyKey, "string");
+  const first = mounted.root.root.findAll(
+    (node) => typeof node.type === "string" && node.props?.["data-orbit-plan-log-entry"] !== undefined,
+  )[0]!;
+  assert.equal(first.props["data-orbit-plan-log-entry"], "log-new");
+  assert.ok(flatText(first).includes("约好了下周二通电话"));
+  // 输入框清空。
+  assert.equal(
+    mounted.root.root.findAll((node) => node.type === "input" && node.props.id === "ir-p-log-input")[0]!.props.value,
+    "",
+  );
+});
+
+test("my plan: the analysis and phase toggles open and close in place", async (t) => {
+  const mounted = await mountMyPlan(t);
+  const analysisToggle = mounted.root.root.findAll(
+    (node) => node.type === "button" && node.props?.["data-orbit-plan-analysis-toggle"] !== undefined,
+  )[0]!;
+  await act(async () => {
+    analysisToggle.props.onClick();
+  });
+  const analysis = mounted.root.root.findAll((node) => node.props?.["data-orbit-plan-analysis"] !== undefined);
+  assert.equal(analysis.length, 1);
+  assert.ok(flatText(analysis[0]!).includes("最大的风险："));
+
+  const phaseHead = (key: string) =>
+    mounted.root.root.findAll((node) => node.type === "button" && node.props?.["aria-controls"] === `ir-p-phase-${key}`)[0]!;
+  await act(async () => {
+    phaseHead("p2").props.onClick();
+  });
+  assert.equal(phaseHead("p2").props["aria-expanded"], true);
+  assert.equal(phaseHead("p1").props["aria-expanded"], true);
+  await act(async () => {
+    phaseHead("p1").props.onClick();
+  });
+  assert.equal(phaseHead("p1").props["aria-expanded"], false);
+});
+
+test("the plan page is ready on first paint: its snapshot is read on the server", () => {
+  assert.match(myPlanMarkup(), /data-orbit-iorbit-ready="true"/);
+});
+
+/* ── W0009 SC-05（RW-07）：有计划时推荐理由对应计划阶段 ───────────────────── */
+
+test("with a plan, a recommended event linked to a plan phase reads 「对应你计划第 n 阶段：认识 ___」", async (t) => {
+  const snapshot = planSnapshotFixture();
+  snapshot.items = snapshot.items.map((item) => (item.id === "e-p1" ? { ...item, linkedEventId: "ev-1" } : item));
+  const mounted = await mount(
+    t,
+    <IOrbitStrategy
+      loadSnapshot={async () => strategyWithTokens(["开拓新市场"])}
+      planReasons={planEventReasons(snapshot)}
+    />,
+  );
+  await mounted.settle();
+
+  const reasons = matchReasons(mounted.root);
+  assert.equal(reasons.length, 1);
+  assert.equal(reasons[0]!.props["data-orbit-iorbit-match-reason"], "plan");
+  assert.equal(reasons[0]!.children.join(""), "对应你计划第 1 阶段：认识 能帮你引荐的行业前辈");
+  assert.doesNotMatch(JSON.stringify(mounted.root.toJSON()), /匹配你的目标/);
+});
+
+test("with a plan that does not contain the event, the matched-words reason stays", async (t) => {
+  const mounted = await mount(
+    t,
+    <IOrbitStrategy
+      loadSnapshot={async () => strategyWithTokens(["日本"])}
+      planReasons={planEventReasons(planSnapshotFixture())}
+    />,
+  );
+  await mounted.settle();
+  const reasons = matchReasons(mounted.root);
+  assert.equal(reasons.length, 1);
+  assert.equal(reasons[0]!.children.join(""), "匹配你的目标：『日本』");
+});
+
+test("my plan: retrying a note after a lost response reuses the idempotency key → exactly one entry", async (t) => {
+  const mounted = await mountMyPlan(t);
+  // 服务端按幂等键存：第一次写入成功但响应在网络上丢了；重试同一个键回放第一次的结果。
+  const stored = new Map<string, Record<string, unknown>>();
+  let lose = true;
+  const calls = routePlanFetch((call) => {
+    const { body, idempotencyKey } = call.body as { body: string; idempotencyKey: string };
+    if (!stored.has(idempotencyKey)) {
+      stored.set(idempotencyKey, { ...planSnapshotFixture().log[0]!, body, id: `log-${stored.size + 1}`, idempotencyKey });
+    }
+    if (lose) {
+      lose = false;
+      throw new TypeError("Failed to fetch");
+    }
+    return Response.json({ data: { entry: stored.get(idempotencyKey), replayed: true }, success: true }, { status: 201 });
+  });
+
+  const input = () => mounted.root.root.findAll((node) => node.type === "input" && node.props.id === "ir-p-log-input")[0]!;
+  const submit = async () => {
+    const form = mounted.root.root.findAll((node) => node.type === "form")[0]!;
+    await act(async () => {
+      form.props.onSubmit({ preventDefault: () => undefined });
+    });
+    await mounted.settle();
+  };
+  await act(async () => {
+    input().props.onChange({ target: { value: "拿到了第一家的试用意向" } });
+  });
+  await submit();
+  // 第一次：客户端看到网络错误，文字保留，提示失败。
+  assert.equal(input().props.value, "拿到了第一家的试用意向");
+  assert.ok(mounted.root.root.findAll((node) => node.props?.role === "alert").length > 0);
+  await submit();
+
+  assert.equal(calls.length, 2);
+  const [first, second] = calls.map((call) => (call.body as { idempotencyKey: string }).idempotencyKey);
+  assert.ok(first);
+  assert.equal(second, first, "the retry must reuse the same idempotency key");
+  assert.equal(stored.size, 1, "the server holds exactly one entry");
+  const entries = mounted.root.root.findAll(
+    (node) => typeof node.type === "string" && node.props?.["data-orbit-plan-log-entry"] === "log-1",
+  );
+  assert.equal(entries.length, 1);
+  assert.equal(input().props.value, "");
+
+  // 成功之后再记一条：换新键。
+  await act(async () => {
+    input().props.onChange({ target: { value: "又约到一位" } });
+  });
+  await submit();
+  assert.notEqual((calls[2]!.body as { idempotencyKey: string }).idempotencyKey, first);
+});
+
+test("my plan: editing the note text after a failure starts a new submission key", async (t) => {
+  const mounted = await mountMyPlan(t);
+  const calls = routePlanFetch(() => {
+    throw new TypeError("Failed to fetch");
+  });
+  const input = () => mounted.root.root.findAll((node) => node.type === "input" && node.props.id === "ir-p-log-input")[0]!;
+  const submit = async () => {
+    await act(async () => {
+      mounted.root.root.findAll((node) => node.type === "form")[0]!.props.onSubmit({ preventDefault: () => undefined });
+    });
+    await mounted.settle();
+  };
+  await act(async () => {
+    input().props.onChange({ target: { value: "第一版" } });
+  });
+  await submit();
+  await act(async () => {
+    input().props.onChange({ target: { value: "第二版" } });
+  });
+  await submit();
+  const keys = calls.map((call) => (call.body as { idempotencyKey: string }).idempotencyKey);
+  assert.equal(keys.length, 2);
+  assert.notEqual(keys[0], keys[1]);
+});
+
+test("the plan checkboxes keep a 44×44 hit area and draw the 15px box with a pseudo-element", () => {
+  const flat = IORBIT_STYLES.replace(/\/\*[\s\S]*?\*\//g, "").split("\n").join(" ");
+  for (const name of ["ir-p-box", "ir-m-plan-box"]) {
+    const base = [...flat.matchAll(/([^{}]+)\{([^}]*)\}/g)].find(
+      (rule) =>
+        rule[1]!.split(",").some((selector) => new RegExp(`\\.btn\\.${name}$`).test(selector.trim())) &&
+        /width:\s*44px/.test(rule[2]!),
+    );
+    assert.ok(base, `.btn.${name} must declare a 44px hit area`);
+    assert.match(base![2]!, /height:\s*44px/);
+    assert.match(base![2]!, /min-width:\s*44px/);
+    assert.match(base![2]!, /min-height:\s*44px/);
+    assert.match(base![2]!, /background:\s*transparent/);
+    // 可见的方框在 ::before 上，15px。
+    assert.match(flat, new RegExp(`\\.btn\\.${name}::before[^{]*\\{[^}]*width: 15px; height: 15px;`));
+  }
+});
+
+/* ── W0014：「我的计划」的示例模式 ─────────────────────────────────────── */
+
+const PLAN_GUIDE = {
+  bannerCollapsed: false,
+  completed: 1,
+  confirmedContacts: 3,
+  nextStep: "goal" as const,
+  steps: { contacts: true, goal: false, plan: false },
+};
+
+test("W0014 my plan (demo): the persona's plan with banner, demo tags, this week, phases, needs and log", () => {
+  // 即使误传了真实快照，示例期间也只渲染示例人物的计划。
+  const html = renderToStaticMarkup(
+    <IOrbitPlan guide={PLAN_GUIDE} guideEnabled initialSnapshot={planSnapshotFixture()} />,
+  );
+  const body = bodyOf(html);
+  assert.match(body, /data-orbit-guide-demo-banner/);
+  assert.ok(body.includes("完成引导后，这里会是你自己的计划。"));
+  assert.match(body, /data-orbit-guide-demo="on"/);
+  assert.match(body, /data-orbit-plan-goal="true"[^>]*>本季度找到 5 家日本中小企业试用我们的 AI 会议纪要，先从东京开始。<span class="ir-demo-tag"/);
+  assert.ok(!body.includes("三个月内找到 5 家日本中小企业试用我们的产品"), "no real snapshot content");
+  // 周进度：示例计划 8 天前生成，今天是第 2 周。
+  assert.ok(body.includes("第 2 周 / 共 12 周"));
+  // 本周：逾期 1 周的一条 + 本周的 4 条。
+  const thisWeek = body.split("data-orbit-plan-this-week")[1]!.split("ir-p-label")[0]!;
+  for (const copy of ["请中村惠推荐 3 家试点会员企业", "和王砚见面，请他介绍 IT 部门的铃木", "约佐藤美咲聊 20 分钟试用", "发 1 分钟演示视频"]) {
+    assert.ok(thisWeek.includes(copy), `this week: ${copy}`);
+  }
+  assert.match(thisWeek, /data-orbit-plan-overdue="1"/);
+  assert.ok(!thisWeek.includes("整理 3 家目标企业的 IT 痛点"), "done actions are not in this week");
+  // 阶段：三段，当前是第 1 段。
+  assert.equal((body.match(/data-orbit-plan-phase="p\d"/g) ?? []).length, 3);
+  assert.match(body, /class="ir-p-phase ir-p-phase-cur" data-orbit-plan-phase="p1"/);
+  // 人脉需求：名字来自示例人脉（demo: id），每个人名旁有「示例」角标。
+  for (const name of ["佐藤美咲", "铃木健", "中村惠", "山田太郎", "林志远"]) {
+    assert.ok(body.includes(`<b>${name}<span class="ir-demo-tag"`), `demo person with tag: ${name}`);
+  }
+  assert.match(body, /href="\/app\/contacts\/demo%3Asato-misaki"/);
+  // 进展记录。
+  assert.ok(body.includes("和王砚通了电话：IT 部门的铃木才是系统采购的决策人"));
+  assert.ok(body.includes("与 佐藤美咲 建立联系（「中小企业 IT 负责人」）"));
+  assert.ok(body.includes("生成计划 v1"));
+});
+
+test("W0014 my plan (demo) is localised with the interface language", () => {
+  const html = renderToStaticMarkup(
+    <OrbitLanguageProvider initialLanguage="en">
+      <IOrbitPlan guide={PLAN_GUIDE} guideEnabled initialSnapshot={null} />
+    </OrbitLanguageProvider>,
+  );
+  assert.ok(html.includes("Get 5 Japanese SMEs trialling our AI meeting notes this quarter, starting in Tokyo."));
+  assert.ok(html.includes("Week 2 of 12"));
+  assert.ok(html.includes("Sato Misaki"));
+});
+
+test("W0014 my plan: without a guide the screen is unchanged (no banner, tag or persona)", () => {
+  const withNull = renderToStaticMarkup(<IOrbitPlan guide={null} guideEnabled initialSnapshot={planSnapshotFixture()} now={PLAN_NOW} />);
+  assert.equal(withNull, myPlanMarkup());
+  for (const leak of ["data-orbit-guide-demo", "ir-demo-", "王砚", "示例预览"]) {
+    assert.ok(!bodyOf(withNull).includes(leak), `demo content leaked: ${leak}`);
+  }
+});
+
+test("W0014 my plan (demo): no plan / ledger requests on mount; ticking and noting open the guard instead", async (t) => {
+  const calls: string[] = [];
+  // 拦截层用弹窗无障碍 hook（读 document）；与首页测试同一最小桩。
+  const previousDocument = Object.getOwnPropertyDescriptor(globalThis, "document");
+  Object.defineProperty(globalThis, "document", {
+    configurable: true,
+    value: { activeElement: null, addEventListener() {}, documentElement: { lang: "zh" }, removeEventListener() {} },
+  });
+  t.after(() => {
+    if (previousDocument) Object.defineProperty(globalThis, "document", previousDocument);
+    else Reflect.deleteProperty(globalThis, "document");
+  });
+  const mounted = await mount(
+    t,
+    <IOrbitPlan guide={PLAN_GUIDE} guideEnabled initialSnapshot={null} />,
+    (async (input: unknown) => {
+      calls.push(String(input));
+      return Response.json({ success: false }, { status: 404 });
+    }) as typeof fetch,
+  );
+  await mounted.settle();
+  const guard = () => mounted.root.root.findAll((node) => node.props?.["data-orbit-guide-demo-intercept"] !== undefined)[0] ?? null;
+  const dismiss = async () => {
+    await act(async () => {
+      guard()!
+        .findAll((node) => node.type === "button" && node.props?.["data-orbit-guide-demo-dismiss"] === true)[0]!
+        .props.onClick();
+    });
+    assert.equal(guard(), null);
+  };
+
+  // 打勾：弹拦截层，勾不变。
+  await act(async () => {
+    actionBox(mounted.root, "demo-plan-a-wang").props.onClick();
+  });
+  assert.ok(guard(), "ticking opens the demo guard");
+  assert.ok(flatText(guard()!).includes("你自己的计划"));
+  assert.equal(actionBox(mounted.root, "demo-plan-a-wang").props["aria-checked"], false);
+  await dismiss();
+
+  // 记下进展：弹拦截层，不写入。
+  const input = mounted.root.root.findAll((node) => node.type === "input" && node.props.id === "ir-p-log-input")[0]!;
+  await act(async () => {
+    input.props.onChange({ target: { value: "约好了下周二通电话" } });
+  });
+  let prevented = false;
+  await act(async () => {
+    mounted.root.root.findAll((node) => node.type === "form")[0]!.props.onSubmit({ preventDefault: () => (prevented = true) });
+  });
+  assert.ok(prevented);
+  assert.ok(guard(), "saving a note opens the demo guard");
+  assert.ok(flatText(guard()!).includes("你自己的进展记录"));
+  await dismiss();
+
+  await mounted.settle();
+  for (const endpoint of ["/api/agent/plans", "/api/agent/ledger", "/api/ai/conversations"]) {
+    assert.deepEqual(calls.filter((url) => url.startsWith(endpoint)), [], `demo plan must not call ${endpoint}`);
+  }
+  // 剩下的只有全站顶栏自己的账号读取（共用外壳，与 W0004 的口径相同）。
+  assert.deepEqual(calls.filter((url) => url !== "/api/account/me"), []);
+});
+
+/* ── W0012：重新分析提示、到期回顾、@ 提及 ─────────────────────────────── */
+
+function mountTrackedPlan(
+  t: TestContext,
+  tracking: { currentGoal: string | null; quotaRemaining: number | null; aiProvider?: boolean; periodContacts?: null | { total: number; byEvent: Array<{ eventId: string; title: string | null; count: number }> } },
+  now: Date = PLAN_NOW,
+) {
+  return mount(
+    t,
+    <IOrbitPlan
+      guideEnabled
+      initialSnapshot={planSnapshotFixture()}
+      now={now}
+      tracking={{ periodContacts: null, ...tracking }}
+    />,
+  );
+}
+
+function byAttr(root: ReactTestRenderer, attribute: string) {
+  return root.root.findAll((node) => typeof node.type === "string" && node.props?.[attribute] !== undefined);
+}
+
+test("W0012 my plan: the header shows this month's remaining re-analyses and disables at 0", async (t) => {
+  const one = await mountTrackedPlan(t, { currentGoal: null, quotaRemaining: 1 });
+  const button = byAttr(one.root, "data-orbit-plan-reanalyse")[0]!;
+  assert.equal(flatText(button), "重新分析 · 本月剩 1 次");
+  assert.equal(button.props.disabled, false);
+  // 在计划上：没有触发，不出提示条。
+  assert.equal(byAttr(one.root, "data-orbit-plan-reanalysis-prompt").length, 0);
+  assert.equal(byAttr(one.root, "data-orbit-plan-review").length, 0);
+});
+
+test("W0012 my plan: with this month's re-analysis used the header button is disabled", async (t) => {
+  const none = await mountTrackedPlan(t, { currentGoal: null, quotaRemaining: 0 });
+  const used = byAttr(none.root, "data-orbit-plan-reanalyse")[0]!;
+  assert.equal(flatText(used), "重新分析 · 本月剩 0 次");
+  assert.equal(used.props.disabled, true);
+});
+
+test("W0012 my plan: a changed goal prompts (only prompts) and re-analysis POSTs once, then reloads", async (t) => {
+  const mounted = await mountTrackedPlan(t, { currentGoal: "一年内找到 3 家代理商", quotaRemaining: 1 });
+  const prompt = byAttr(mounted.root, "data-orbit-plan-reanalysis-prompt")[0]!;
+  assert.ok(flatText(prompt).includes("要不要重新分析？"));
+  assert.deepEqual(byAttr(mounted.root, "data-orbit-plan-trigger").map((node) => node.props["data-orbit-plan-trigger"]), ["goal_changed"]);
+
+  const calls = routePlanFetch((call) => {
+    if (call.url === "/api/agent/plans/reanalyze") {
+      return Response.json(
+        { data: { planId: "plan:v2", quota: { limit: 1, month: "2026-09", remaining: 0, used: 1 }, replayed: false, version: 2 }, success: true },
+        { status: 201 },
+      );
+    }
+    if (call.url === "/api/agent/plans/current") {
+      return Response.json({ data: { ...planSnapshotFixture(), plan: { ...planSnapshotFixture().plan, id: "plan:v2", version: 2 } }, success: true });
+    }
+    return Response.json({ success: false }, { status: 404 });
+  });
+  // 提示本身不发请求（不自动重做）。
+  assert.equal(calls.length, 0);
+  await act(async () => {
+    byAttr(mounted.root, "data-orbit-plan-reanalyse-confirm")[0]!.props.onClick();
+  });
+  await mounted.settle();
+  const posts = calls.filter((call) => call.url === "/api/agent/plans/reanalyze");
+  assert.equal(posts.length, 1);
+  const body = posts[0]!.body as { basePlanId: string; origin: string; idempotencyKey: string; locale: string };
+  assert.equal(body.basePlanId, "plan:w0009");
+  assert.equal(body.origin, "reanalysis");
+  assert.equal(typeof body.idempotencyKey, "string");
+  // W0021：重新分析之后只重读计划一次（计划页带进展记录的完整视图）。
+  assert.equal(calls.filter((call) => call.url === "/api/agent/plans/current").length, 1);
+  assert.ok(flatText(mounted.root.toJSON()).includes("计划 v2"));
+  assert.equal(flatText(byAttr(mounted.root, "data-orbit-plan-reanalyse")[0]!), "重新分析 · 本月剩 0 次");
+  assert.equal(byAttr(mounted.root, "data-orbit-plan-reanalysis-prompt").length, 0);
+});
+
+test("W0012 my plan: 先不用 hides the prompt", async (t) => {
+  const dismissed = await mountTrackedPlan(t, { currentGoal: "一年内找到 3 家代理商", quotaRemaining: 1 });
+  await act(async () => {
+    byAttr(dismissed.root, "data-orbit-plan-reanalyse-dismiss")[0]!.props.onClick();
+  });
+  assert.equal(byAttr(dismissed.root, "data-orbit-plan-reanalysis-prompt").length, 0);
+});
+
+test("W0012 my plan: a quota conflict keeps the plan and says so", async (t) => {
+  const mounted = await mountTrackedPlan(t, { currentGoal: "一年内找到 3 家代理商", quotaRemaining: 1 });
+  routePlanFetch(() =>
+    Response.json({ error: { code: "CONFLICT", context: { reason: "REANALYSIS_QUOTA_EXHAUSTED" }, message: "本月已用完" }, success: false }, { status: 409 }),
+  );
+  await act(async () => {
+    byAttr(mounted.root, "data-orbit-plan-reanalyse-confirm")[0]!.props.onClick();
+  });
+  await mounted.settle();
+  const alert = byAttr(mounted.root, "data-orbit-plan-followup-error")[0]!;
+  assert.ok(flatText(alert).includes("原计划没有变化"));
+  assert.ok(flatText(mounted.root.toJSON()).includes("计划 v1"));
+});
+
+test("W0012 my plan: an ended plan shows the review first, then a free next plan", async (t) => {
+  // 12 周从 9/14 起，12/6 结束；12/10 已到期。
+  const mounted = await mountTrackedPlan(
+    t,
+    {
+      currentGoal: null,
+      periodContacts: { byEvent: [{ count: 2, eventId: "event:founders-night", title: null }], total: 6 },
+      quotaRemaining: 0,
+    },
+    new Date("2026-12-10T03:00:00.000Z"),
+  );
+  const review = byAttr(mounted.root, "data-orbit-plan-review")[0]!;
+  const text = flatText(review);
+  assert.ok(text.includes("计划到期回顾"));
+  assert.ok(text.includes("完成了 2 / 6 件行动"));
+  assert.ok(text.includes("新认识 6 位，其中 1 位已建立联系"));
+  assert.ok(text.includes("在这些活动认识：「东京创业者交流之夜」2 位"));
+  assert.ok(text.includes("不占本月的重新分析次数"));
+  // 到期后不再提示「要不要重新分析」，报头的重新分析也不可点（走下一份）。
+  assert.equal(byAttr(mounted.root, "data-orbit-plan-reanalysis-prompt").length, 0);
+  assert.equal(byAttr(mounted.root, "data-orbit-plan-reanalyse")[0]!.props.disabled, true);
+
+  const calls = routePlanFetch((call) =>
+    call.url === "/api/agent/plans/reanalyze"
+      ? Response.json({ data: { planId: "plan:next", quota: { limit: 1, month: "2026-12", remaining: 0, used: 1 }, replayed: false, version: 2 }, success: true }, { status: 201 })
+      : Response.json({ data: planSnapshotFixture(), success: true }),
+  );
+  const next = byAttr(mounted.root, "data-orbit-plan-next")[0]!;
+  assert.equal(next.props.disabled, false);
+  await act(async () => {
+    next.props.onClick();
+  });
+  await mounted.settle();
+  const post = calls.find((call) => call.url === "/api/agent/plans/reanalyze")!;
+  assert.equal((post.body as { origin: string }).origin, "next_plan");
+});
+
+test("W0012 my plan: a note @-mentions a contact and an event as structured fields and reloads the plan", async (t) => {
+  const mounted = await mountTrackedPlan(t, { currentGoal: null, quotaRemaining: 1 });
+  const calls = routePlanFetch((call) =>
+    call.url === "/api/agent/plans/log"
+      ? Response.json(
+          {
+            data: {
+              entry: {
+                ...planSnapshotFixture().log[0]!,
+                body: "在交流之夜和高木聊了",
+                id: "log-mention",
+                linkedContactIds: ["contact:c2"],
+                linkedEventId: "event:founders-night",
+              },
+              replayed: false,
+            },
+            success: true,
+          },
+          { status: 201 },
+        )
+      : Response.json({ data: planSnapshotFixture(), success: true }),
+  );
+  // 默认收起，只有「@ 提及」按钮。
+  assert.equal(byAttr(mounted.root, "data-orbit-plan-mention").length, 0);
+  await act(async () => {
+    byAttr(mounted.root, "data-orbit-plan-mention-toggle")[0]!.props.onClick();
+  });
+  const options = byAttr(mounted.root, "data-orbit-plan-mention").map((node) => [node.props["data-orbit-plan-mention-kind"], flatText(node)]);
+  // 名字已知的联系人（生成快照里的高木一郎）+ 计划里的两场活动。
+  assert.deepEqual(options, [
+    ["contact", "@高木一郎"],
+    ["event", "@中小企业 DX 推进研讨会"],
+    ["event", "@东京创业者交流之夜"],
+  ]);
+  const pick = (id: string) => byAttr(mounted.root, "data-orbit-plan-mention").find((node) => node.props["data-orbit-plan-mention"] === id)!;
+  await act(async () => {
+    pick("contact:c2").props.onClick();
+    pick("event:dx-seminar").props.onClick();
+  });
+  await act(async () => {
+    pick("event:founders-night").props.onClick(); // 一条记录最多一个活动：换成这一场
+  });
+  assert.equal(pick("contact:c2").props["aria-pressed"], true);
+  assert.equal(pick("event:founders-night").props["aria-pressed"], true);
+  assert.equal(pick("event:dx-seminar").props["aria-pressed"], false);
+
+  const input = mounted.root.root.findAll((node) => node.type === "input" && node.props.id === "ir-p-log-input")[0]!;
+  await act(async () => {
+    input.props.onChange({ target: { value: "在交流之夜和高木聊了" } });
+  });
+  await act(async () => {
+    mounted.root.root.findAll((node) => node.type === "form")[0]!.props.onSubmit({ preventDefault: () => undefined });
+  });
+  await mounted.settle();
+  const post = calls.find((call) => call.url === "/api/agent/plans/log")!;
+  assert.deepEqual(post.body, {
+    body: "在交流之夜和高木聊了",
+    idempotencyKey: (post.body as { idempotencyKey: string }).idempotencyKey,
+    linkedContactIds: ["contact:c2"],
+    linkedEventId: "event:founders-night",
+  });
+  // @ 了人：服务端已把 TA 标为已建立联系，重新读计划。
+  assert.ok(calls.some((call) => call.url === "/api/agent/plans/current"));
+});
+
+test("W0012 my plan: manual log lines show their structured mentions", () => {
+  const snapshot = planSnapshotFixture();
+  snapshot.log[0] = { ...snapshot.log[0]!, linkedContactIds: ["contact:c2"], linkedEventId: "event:founders-night" };
+  const html = renderToStaticMarkup(<IOrbitPlan guideEnabled initialSnapshot={snapshot} now={PLAN_NOW} />);
+  assert.match(html, /data-orbit-plan-log-mentions="true">@高木一郎 @东京创业者交流之夜</);
+});
+
+/* ── W0021 SC-W0021-03：计划页冷启动与写后的请求次数 ──────────────────── */
+
+test("W0021 my plan: the first frame comes from SSR — the client reads no plan and the candidates once; a tick re-reads nothing", async (t) => {
+  const calls: PlanCall[] = [];
+  const recording = (async (input: unknown, init?: RequestInit) => {
+    calls.push({ body: undefined, method: (init?.method ?? "GET").toUpperCase(), url: String(input) });
+    if (String(input) === "/api/agent/plans/candidates") {
+      return Response.json({ data: { candidates: [], contactCount: 0, pendingByNeed: {} }, success: true });
+    }
+    return Response.json({ success: false }, { status: 404 });
+  }) as typeof fetch;
+  const mounted = await mount(t, <IOrbitPlan guideEnabled initialSnapshot={planSnapshotFixture()} now={PLAN_NOW} />, recording);
+  await mounted.settle();
+  assert.equal(calls.filter((call) => call.url.startsWith("/api/agent/plans/current")).length, 0);
+  assert.equal(calls.filter((call) => call.url === "/api/agent/plans/candidates" && call.method === "GET").length, 1);
+
+  const after = routePlanFetch(() => {
+    const item = { ...planSnapshotFixture().items[0]!, completedAt: "2026-09-28T03:00:00.000Z", status: "done" };
+    return Response.json({ data: { item, log: null, replayed: false }, success: true });
+  });
+  await act(async () => {
+    actionBox(mounted.root, "a-this-week").props.onClick();
+  });
+  await mounted.settle();
+  assert.deepEqual(after.map((call) => `${call.method} ${call.url}`), ["PATCH /api/agent/plans/items/a-this-week"]);
+});
+
+/* ── W0021 SC-W0021-05：投影快照渲染出的页面与完整快照一致 ─────────────── */
+
+test("W0021: the projected plan snapshot renders the same plan page, week summary and event reasons as the full one", () => {
+  const full = planSnapshotFixture();
+  const projected = {
+    items: full.items.map(toPlanViewItem),
+    log: full.log.map(toPlanViewLogEntry),
+    plan: toPlanView(full.plan),
+  };
+  const render = (snapshot: typeof projected) =>
+    renderToStaticMarkup(
+      <OrbitLanguageProvider initialLanguage="zh">
+        <IOrbitPlan guideEnabled initialSnapshot={snapshot} now={PLAN_NOW} />
+      </OrbitLanguageProvider>,
+    );
+  assert.equal(render(projected), render(full));
+  // 首页的「本周推进」不读进展记录：没有 log 的首页视图给出同样的本周推进。
+  for (const lang of ["zh", "en"] as const) {
+    assert.deepEqual(buildPlanWeekSummary({ ...projected, log: [] }, PLAN_NOW, lang, []), buildPlanWeekSummary(full, PLAN_NOW, lang, []));
+  }
+  assert.deepEqual(planEventReasons({ ...projected, log: [] }), planEventReasons(full));
+});
+
+/* ── W0048b：老模板计划「AI 重新生成」与 AI 计划的骨架阶段 ─────────────────────── */
+
+test("W0048b my plan: a template plan with the AI provider shows the regenerate hint; without it nothing is shown", async (t) => {
+  const off = await mountTrackedPlan(t, { currentGoal: null, quotaRemaining: 1 });
+  assert.equal(byAttr(off.root, "data-orbit-plan-ai-regenerate").length, 0);
+  const on = await mountTrackedPlan(t, { aiProvider: true, currentGoal: null, quotaRemaining: 1 });
+  const row = byAttr(on.root, "data-orbit-plan-ai-regenerate")[0]!;
+  assert.equal(row.props["data-orbit-plan-ai-regenerate"], "ready");
+  assert.ok(flatText(row).includes("这份计划由模板生成，可用 AI 重新生成（不占本月重新分析次数）"));
+  assert.equal(flatText(byAttr(on.root, "data-orbit-plan-ai-regenerate-button")[0]!), "AI 重新生成");
+});
+
+test("W0048b my plan: AI regenerate POSTs ai_regenerate once, then shows the new version", async (t) => {
+  const mounted = await mountTrackedPlan(t, { aiProvider: true, currentGoal: null, quotaRemaining: 1 });
+  const aiPlan = planSnapshotFixture();
+  const calls = routePlanFetch((call) => {
+    if (call.url === "/api/agent/plans/reanalyze") {
+      return Response.json(
+        { data: { planId: "plan:v2", quota: { limit: 1, month: "2026-09", remaining: 1, used: 0 }, replayed: false, version: 2 }, success: true },
+        { status: 201 },
+      );
+    }
+    if (call.url === "/api/agent/plans/current") {
+      return Response.json({
+        data: { ...aiPlan, plan: { ...aiPlan.plan, analysis: { ...aiPlan.plan.analysis, generator: "deepseek-plan-v1", origin: "ai_regenerate" }, id: "plan:v2", version: 2 } },
+        success: true,
+      });
+    }
+    return Response.json({ success: false }, { status: 404 });
+  });
+  await act(async () => {
+    byAttr(mounted.root, "data-orbit-plan-ai-regenerate-button")[0]!.props.onClick();
+  });
+  await mounted.settle();
+  const posts = calls.filter((call) => call.url === "/api/agent/plans/reanalyze");
+  assert.equal(posts.length, 1);
+  assert.equal((posts[0]!.body as { origin: string }).origin, "ai_regenerate");
+  assert.match((posts[0]!.body as { idempotencyKey: string }).idempotencyKey, /^plan-ai-regenerate:/);
+  const row = byAttr(mounted.root, "data-orbit-plan-ai-regenerate")[0]!;
+  assert.equal(row.props["data-orbit-plan-ai-regenerate"], "done");
+  assert.ok(flatText(row).includes("已用 AI 重新生成，现在是 v2"));
+  // 重新分析额度没有变。
+  assert.equal(flatText(byAttr(mounted.root, "data-orbit-plan-reanalyse")[0]!), "重新分析 · 本月剩 1 次");
+});
+
+test("W0048b my plan: the user pool used up (429 USER_DAILY_LIMIT) greys out the buttons with 今天次数已用完，明天可用", async (t) => {
+  const mounted = await mountTrackedPlan(t, { aiProvider: true, currentGoal: null, quotaRemaining: 1 });
+  routePlanFetch(() =>
+    Response.json(
+      { error: { code: "CONFLICT", context: { reason: "USER_DAILY_LIMIT", retryOn: "2026-09-28T15:00:00.000Z" }, message: "limit" }, success: false },
+      { status: 429 },
+    ),
+  );
+  await act(async () => {
+    byAttr(mounted.root, "data-orbit-plan-ai-regenerate-button")[0]!.props.onClick();
+  });
+  await mounted.settle();
+  const button = byAttr(mounted.root, "data-orbit-plan-ai-regenerate-button")[0]!;
+  assert.equal(button.props.disabled, true);
+  assert.equal(flatText(button), "今天次数已用完，明天可用");
+  assert.ok(flatText(byAttr(mounted.root, "data-orbit-plan-followup-error")[0]!).includes("今天次数已用完，明天可用"));
+  assert.equal(byAttr(mounted.root, "data-orbit-plan-reanalyse")[0]!.props.disabled, true);
+});
+
+test("W0048b my plan: an AI plan's skeleton phase shows its summary; once started and not yet refined it says 明天更新", async (t) => {
+  const base = planSnapshotFixture();
+  const analysis = base.plan.analysis as { phases: Array<{ key: string; detailed: boolean }> };
+  const aiSnapshot = {
+    ...base,
+    items: base.items.filter((item) => item.phaseKey !== "p3"),
+    plan: {
+      ...base.plan,
+      analysis: { ...base.plan.analysis, generator: "deepseek-plan-v1", phases: analysis.phases.map((phase) => (phase.key === "p3" ? { ...phase, detailed: false } : phase)) },
+      phases: base.plan.phases.map((phase) => (phase.key === "p3" ? { ...phase, summary: "把聊过的人推进到试用。" } : phase)),
+    },
+  };
+  const early = await mount(t, <IOrbitPlan guideEnabled initialSnapshot={aiSnapshot} now={PLAN_NOW} />);
+  const upcoming = byAttr(early.root, "data-orbit-plan-phase-refinement");
+  assert.deepEqual(upcoming.map((node) => node.props["data-orbit-plan-phase-refinement"]), []);
+  // 阶段卡默认只展开当前段；展开第 3 段看到骨架提示。
+  const p3 = early.root.root.findAll((node) => node.props?.["data-orbit-plan-phase"] === "p3")[0]!;
+  await act(async () => {
+    p3.findAll((node) => node.type === "button")[0]!.props.onClick();
+  });
+  const note = byAttr(early.root, "data-orbit-plan-phase-refinement")[0]!;
+  assert.equal(note.props["data-orbit-plan-phase-refinement"], "upcoming");
+  assert.ok(flatText(p3).includes("把聊过的人推进到试用。"));
+
+  const late = await mount(t, <IOrbitPlan guideEnabled initialSnapshot={aiSnapshot} now={new Date("2026-11-10T03:00:00.000Z")} />);
+  const pending = byAttr(late.root, "data-orbit-plan-phase-refinement")[0]!;
+  assert.equal(pending.props["data-orbit-plan-phase-refinement"], "pending");
+  assert.ok(flatText(pending).includes("明天更新"));
 });

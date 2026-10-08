@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { contactInsightPreviewSchema } from "./contact-insight";
 
 const count = z.number().int().nonnegative().safe();
 export const contactCardSchema = z.object({
@@ -12,6 +13,8 @@ export const contactCardSchema = z.object({
   nextActionPreview: z.string().max(640).refine(value => Array.from(value).length <= 320),
   valueTypes: z.array(z.enum(["strategic_fit", "commercial_opportunity", "knowledge_exchange", "referral_path", "community_context"])).max(5).default([]),
   updatedAt: z.string().datetime({ offset: true }),
+  /** W0051：Web 列表的洞察一句（可选，App 与同步不带）。 */
+  insightPreview: contactInsightPreviewSchema.optional(),
 });
 export const contactCardPageSchema = z.object({
   items: z.array(contactCardSchema).max(50),

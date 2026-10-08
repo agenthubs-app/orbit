@@ -13,6 +13,8 @@ import { cookies, headers } from "next/headers";
 import { SessionProvider } from "next-auth/react";
 
 import { auth } from "../../../auth";
+import { CardBatchHost } from "./contacts/card-batch-0918/card-batch-host";
+import { ContactDetailReturnRecorder } from "./contacts/network-0918/detail-return-recorder";
 import { OrbitAskProvider } from "./orbit-global-ask/orbit-ask-context";
 import { OrbitGlobalAsk } from "./orbit-global-ask/orbit-global-ask";
 import { OrbitLanguageProvider } from "./orbit-language-context";
@@ -41,6 +43,10 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         <OrbitAskProvider>
           {children}
           <OrbitGlobalAsk />
+          {/* 全站名片解析提醒：上传/识别在后台继续，完成后在任意页面弹出（新用户引导.dc.html 621–650）。 */}
+          <CardBatchHost />
+          {/* W0059：记下站内去联系人详情的一次性导航意图，详情关闭时据此后退回原页。 */}
+          <ContactDetailReturnRecorder />
         </OrbitAskProvider>
       </OrbitLanguageProvider>
     </SessionProvider>

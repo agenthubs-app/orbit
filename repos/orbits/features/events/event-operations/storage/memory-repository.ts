@@ -14,9 +14,11 @@ import {
   type EventOperationsPublishedResult,
 } from "../contract";
 import type { EventRegistration } from "../../registration/contract";
+import { rosterEntryFromRegistration } from "../../registration/roster-entry";
 import {
   createEventRegistrationService,
   createMemoryEventRegistrationProvider,
+  eventRegistrationStatusRecord,
 } from "../../registration/service";
 import { EventRegistrationWindowError } from "../../registration/deadline-gated-service";
 import { eventOperationsParticipantFromRegistration } from "../participant";
@@ -953,6 +955,11 @@ export function createMemoryEventOperationsRepository(
       return canonicalRegistrationService.get({ eventId, userId });
     },
 
+    async getCanonicalRegistrationStatus(eventId, userId) {
+      const registration = await canonicalRegistrationService.get({ eventId, userId });
+      return registration ? eventRegistrationStatusRecord(registration) : null;
+    },
+
     async getConfiguration(eventId) {
       const value = configurations.get(eventId);
       return value ? clone(value) : null;
@@ -1125,8 +1132,21 @@ export function createMemoryEventOperationsRepository(
       return canonicalRegistrationService.list({ eventId });
     },
 
+    async listCanonicalRosterEntries(eventId, fields) {
+      return (await canonicalRegistrationService.list({ eventId })).map(
+        (registration) => rosterEntryFromRegistration(registration, fields),
+      );
+    },
+
     listCanonicalRegistrationsForUser(userId, eventIds) {
       return canonicalRegistrationProvider.listRegistrationsForUser(
+        userId,
+        eventIds,
+      );
+    },
+
+    listCanonicalRegistrationStatusesForUser(userId, eventIds) {
+      return canonicalRegistrationProvider.listRegistrationStatusesForUser(
         userId,
         eventIds,
       );

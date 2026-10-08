@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
 
 import type { ContactDTO } from "../../shared/domain/contracts";
+import { sanitizeIndustryPair } from "../../shared/domain/industries";
+import { applyEnrichedValues } from "./enrichment/apply-enrichment";
 import {
   BUSINESS_CARD_CONTACT_WRITE_ERROR_DEFINITIONS,
   type BusinessCardContactWriteErrorCode,
@@ -122,18 +124,30 @@ function contactFor(input: {
   const role = nonEmpty(input.request.role);
   const email = nonEmpty(input.request.email);
   const phone = nonEmpty(input.request.phone);
+  const location = nonEmpty(input.request.location ?? "");
   const profileSnippet = nonEmpty(input.request.relationshipContext);
   const notes = nonEmpty(input.request.notes ?? "");
+  const enrichedValues = input.request.enrichment?.values ?? [];
+  // W0045：补全值里有行业时由 applyEnrichedValues 写入（连同来源），这里不重复写。
+  const industry = enrichedValues.some((entry) => entry.field === "industry")
+    ? { primaryIndustryId: null, secondaryIndustryId: null }
+    : sanitizeIndustryPair(input.request.primaryIndustryId, input.request.secondaryIndustryId);
+  const metEventId = nonEmpty(input.request.metEvent?.eventId ?? "");
+  const metEventTitle = nonEmpty(input.request.metEvent?.title ?? "");
 
-  return {
+  const contact: ContactDTO = {
     id: input.contactId,
     displayName: input.request.displayName.trim(),
     ...(organization ? { organization } : {}),
     ...(role ? { role } : {}),
+    ...(location ? { location } : {}),
     ...(email ? { primaryEmail: email } : {}),
     ...(phone ? { primaryPhone: phone } : {}),
     ...(profileSnippet ? { profileSnippet } : {}),
     ...(notes ? { notes } : {}),
+    ...(industry.primaryIndustryId ? { primaryIndustryId: industry.primaryIndustryId } : {}),
+    ...(industry.secondaryIndustryId ? { secondaryIndustryId: industry.secondaryIndustryId } : {}),
+    ...(metEventId ? { metEventId, ...(metEventTitle ? { metEventTitle } : {}) } : {}),
     stage: "captured",
     // 来源描述的是「这个联系人是怎么进来的」，不是「谁点的确认」。此前这里写的是
     // `Business card confirmed by ${actorLabel}`，而 V2 handler 传的 actorLabel 就是
@@ -148,6 +162,11 @@ function contactFor(input: {
     createdAt: input.confirmedAt,
     updatedAt: input.confirmedAt,
   };
+  if (!enrichedValues.length) return contact;
+  // 新建联系人各栏都是空的：合法的补全值全部写入，来源随值记录。
+  const payload = contact as unknown as Record<string, unknown>;
+  applyEnrichedValues(payload, enrichedValues, input.confirmedAt);
+  return payload as unknown as ContactDTO;
 }
 
 export function createLiveBusinessCardContactWriteService({

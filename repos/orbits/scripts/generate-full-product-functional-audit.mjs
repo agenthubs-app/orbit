@@ -3021,7 +3021,7 @@ const LIVE_WEB_ADDITIONAL_INTERACTION_EVIDENCE = new Map([
   // 下面每一条 actualResult 都是那一轮**实测**到的结果，不是预期。
   ...[
     [
-      "app/agent/iorbit-0918/iorbit-home.tsx:1083",
+      "app/agent/iorbit-0918/iorbit-home.tsx:2095",
       "Activating ◷ 历史记录 on the overview mounted the history drawer (0 → 1 [data-orbit-agent-history-drawer] node), rendered five real conversation rows under the 历史记录 heading, and moved keyboard focus inside the drawer. No conversation request was issued: the list was already resident from the page load.",
     ],
     [
@@ -3236,7 +3236,7 @@ const VERIFIED_AUDIT_CASES = [
   {
     id: "web-agent-history-drawer-controls-2026-09-24",
     target:
-      "/app/agent history drawer (app/(app)/app/agent/iorbit-0918/iorbit-history-drawer.tsx) plus the overview entry point iorbit-home.tsx:1083, driven end to end in a real Chromium session against the Next dev server on :3100 over the Postgres verification database",
+      "/app/agent history drawer (app/(app)/app/agent/iorbit-0918/iorbit-history-drawer.tsx) plus the overview entry point iorbit-home.tsx:2095, driven end to end in a real Chromium session against the Next dev server on :3100 over the Postgres verification database",
     testData:
       "qa@orbit.test signed in through the real login form at 1240×900; verification database orbit_newui_events_20260922, workspace:orbit-small-staging-20260917; three throwaway conversations seeded through POST /api/ai/conversations/sessions; the pixel-baseline conversation iorbit-visual-chat-0918 deliberately left untouched",
     expected:

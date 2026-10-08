@@ -110,6 +110,12 @@ export function networkDistributionProviderForAccount(
             provider.readNetworkDistributionReadModelForAccount!(normalizedAccountId),
         }
       : {}),
+    ...(provider.readRelationshipTiersForAccount
+      ? {
+          readRelationshipTiers: () =>
+            provider.readRelationshipTiersForAccount!(normalizedAccountId),
+        }
+      : {}),
     ...(provider.readDashboardAnalysisSnapshotForAccount
       ? {
           readNetworkGapCore: async () =>

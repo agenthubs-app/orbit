@@ -392,6 +392,9 @@ function encounterFor(
         offering: displayTexts(profile.offering, language),
         seeking: displayTexts(profile.seeking, language),
         topics: displayTexts(profile.topics, language),
+        // W0060：三栏只显示真实值、推测条目弱化显示（来源与回退标记原样下发）。
+        ...(profile.fieldSources ? { fieldSources: { ...profile.fieldSources } } : {}),
+        ...(profile.fallbackFields?.length ? { fallbackFields: [...profile.fallbackFields] } : {}),
       },
       reason:
         displayText(
@@ -435,12 +438,19 @@ export function contactDetailRouteToOrbitContactsViewModel(
     primaryIndustryId: model.contact.primaryIndustryId,
     secondaryIndustryId: model.contact.secondaryIndustryId,
     secondaryIndustryLabel: model.contact.secondaryIndustryId ? secondaryIndustryLabel(model.contact.secondaryIndustryId, language) : undefined,
+    ...(model.contact.seniorityLevel ? { seniorityLevel: model.contact.seniorityLevel } : {}),
+    ...(model.contact.region ? { region: { countryCode: model.contact.region.countryCode, city: model.contact.region.city } } : {}),
+    ...(model.contact.enrichment
+      ? { enrichmentOrigins: Object.fromEntries((["industry", "seniorityLevel", "region"] as const)
+          .flatMap((field) => model.contact.enrichment?.fields[field] ? [[field, model.contact.enrichment.fields[field]!.origin]] : [])) }
+      : {}),
     initial:
       model.contact.displayName.trim().slice(0, 1).toUpperCase() ||
       model.contact.id.slice(0, 1).toUpperCase(),
     lastEventId: eventId,
     lineId: model.contact.lineId ?? "",
     location: displayText(model.contact.location, language),
+    ...(model.contact.cardNotes ? { cardNotes: model.contact.cardNotes } : {}),
     met: displayText(model.contact.source.label, language),
     note:
       displayText(

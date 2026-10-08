@@ -721,3 +721,101 @@ test("mock artifact task validates input and keeps live providers unused", async
 
   assertNoLiveProviderCalls("features/orbit-ai/mock-artifact-task-service.ts");
 });
+
+// W0044 SC-03：逾期由领域 dueInDays < 0 推出，展示层不再拿 provenance 时刻自算。
+// collectedAt 故意早于截止日：改前的展示层缓解会据此算出「未逾期」并显示「今天」。
+test("follow-up review artifact says overdue from the domain dueInDays, never today", async () => {
+  type ArtifactItem = {
+    body?: string;
+    confidenceLabel?: string;
+    metadata: readonly { label: string; value: string }[];
+    title: string;
+  };
+  const serviceModule = await importProjectModule<{
+    createOrbitAgentFollowupReviewArtifactService: (input: {
+      actorId?: string | null;
+      followupService: unknown;
+    }) => {
+      createArtifactTask: (input: {
+        kind: string;
+        locale?: string;
+        query: string;
+      }) => Promise<{
+        success: boolean;
+        data?: {
+          result: {
+            generatedView: {
+              sections: readonly { items: readonly ArtifactItem[] }[];
+            } | null;
+          };
+        };
+      }>;
+    };
+  }>("features/orbit-ai/followup-review-artifact-service.ts");
+
+  const task = (overrides: Record<string, unknown>) => ({
+    audit: { sourceLabel: "Followup Postgres live storage" },
+    connectionId: "connection_clock",
+    contactName: "佐藤 健一",
+    evidenceIds: ["evidence:clock"],
+    organization: "North Star Foods",
+    priority: "today",
+    rationale: "Promised a follow-up.",
+    recommendedAction: "Send the deck.",
+    source: { label: "Followup Postgres live storage" },
+    triggerKind: "promised_action",
+    ...overrides,
+  });
+  const service = serviceModule.createOrbitAgentFollowupReviewArtifactService({
+    actorId: "user:clock",
+    followupService: {
+      async listTasks() {
+        return {
+          success: true,
+          data: {
+            provenance: {
+              collectedAt: "2026-06-30T00:00:00.000Z",
+              evidenceIds: ["evidence:clock"],
+              liveDatabaseReadExecuted: true,
+              source: "postgres-live-record-store:followups:workspace:orbit-dev",
+              sourceLabel: "Followup Postgres live storage",
+            },
+            state: "success",
+            summary: "3 followup tasks",
+            tasks: [
+              task({ taskId: "overdue", title: "Overdue deck", dueAt: "2026-07-29T01:00:00.000Z", dueInDays: -27 }),
+              task({ taskId: "today", title: "Today deck", dueAt: "2026-08-25T11:00:00.000Z", dueInDays: 0 }),
+              task({ taskId: "derived", title: "Derived check-in", dueInDays: 3, priority: "this_week" }),
+            ],
+          },
+        };
+      },
+      generateTasks() {
+        throw new Error("not used");
+      },
+    },
+  });
+
+  const itemsFor = async (locale: string) => {
+    const result = await service.createArtifactTask({ kind: "followup_queue", locale, query: "跟进" });
+    assert.equal(result.success, true);
+    const items = result.data?.result.generatedView?.sections[0]?.items ?? [];
+    const meta = (item: ArtifactItem | undefined, index: number) => item?.metadata[index]?.value ?? "";
+    return items.map((item) => ({ chip: item.confidenceLabel, due: meta(item, 1), priority: meta(item, 2), title: item.title }));
+  };
+
+  const [overdue, today, derived] = await itemsFor("zh");
+  assert.match(overdue?.due ?? "", /^已逾期 27 天 · 7月29日（周.）$/u);
+  assert.equal(overdue?.priority, "已逾期");
+  assert.equal(overdue?.chip, "已逾期");
+  assert.doesNotMatch(`${overdue?.due} ${overdue?.priority}`, /今天/u);
+  assert.match(today?.due ?? "", /^今天 · 8月25日（周.）$/u);
+  assert.equal(today?.priority, "今天");
+  assert.equal(derived?.due, "3 天后");
+
+  const [overdueEn, todayEn] = await itemsFor("en");
+  assert.match(overdueEn?.due ?? "", /^Overdue by 27 day\(s\) · Jul 29 \(\w+\)$/u);
+  assert.equal(overdueEn?.priority, "Overdue");
+  assert.doesNotMatch(`${overdueEn?.due} ${overdueEn?.priority}`, /Today/u);
+  assert.match(todayEn?.due ?? "", /^Today · Aug 25 \(\w+\)$/u);
+});

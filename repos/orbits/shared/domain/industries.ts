@@ -156,6 +156,22 @@ export function validateIndustrySelection(selection: {
 }
 
 
+/**
+ * Coerces an untrusted pair (model output, stored JSON) into a valid selection.
+ * An unknown primary, a missing primary, or a secondary under another parent
+ * clears both; an unknown secondary under a valid primary keeps the primary.
+ */
+export function sanitizeIndustryPair(primary: unknown, secondary: unknown): {
+  primaryIndustryId: IndustryIdCode | null;
+  secondaryIndustryId: SecondaryIndustryIdCode | null;
+} {
+  if (!isIndustryIdCode(primary)) return { primaryIndustryId: null, secondaryIndustryId: null };
+  const entry = typeof secondary === "string" ? secondaryIndustryById.get(secondary) : undefined;
+  if (!entry) return { primaryIndustryId: primary, secondaryIndustryId: null };
+  if (entry.parentId !== primary) return { primaryIndustryId: null, secondaryIndustryId: null };
+  return { primaryIndustryId: primary, secondaryIndustryId: entry.id };
+}
+
 // Sparse updates preserve the selection; changing only the parent clears its child.
 // Validate the returned pair before persisting: explicit mismatches remain visible.
 export function mergeIndustrySelection(

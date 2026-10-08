@@ -1,5 +1,6 @@
 import { AppError } from "../../../shared/errors/app-error";
 import { contactRecordOwnedByActor } from "./contact-read-authorization";
+import { applyEnrichedValues, type AppliedEnrichmentField, type EnrichedValue } from "../enrichment/apply-enrichment";
 
 import type {
   ConnectionDTO,
@@ -8,12 +9,15 @@ import type {
 } from "../../../shared/domain/contracts";
 import type { IndustryIdCode, SecondaryIndustryIdCode } from "../../../shared/contract/industries";
 import { isIndustryIdCode, mergeIndustrySelection, validateIndustrySelection } from "../../../shared/domain/industries";
+import { readStoredEnrichment, withEnrichmentProvenance } from "../../../shared/domain/enrichment";
+import { normalizeRegion, readStoredRegion } from "../../../shared/domain/regions";
 import {
   isNetworkCategory,
   isConnectionStage,
   isRelationshipStage,
   isRelationshipTrustLevel,
   isRelationshipValueType,
+  isSeniorityLevel,
   isSourceType,
 } from "../../../shared/domain/source-types";
 import {
@@ -34,6 +38,7 @@ import type {
   LiveContactDetailStoredInteraction,
   LiveContactDetailStoredNote,
   LiveContactsGraphProvider,
+  ContactEnrichmentEdit,
 } from "../live-service";
 import type { LocalRemoteContactGraph } from "../contact-graph-provider";
 import type { ContactsFacetCounts } from "../contact-graph-query";
@@ -44,6 +49,33 @@ import {
   type ContactRecordPage,
   type ContactRecordPageReader,
 } from "./contact-list-postgres-reader";
+
+/** W0058：名片推测写回的条件更新冲突重试次数（重读，不调用模型）。 */
+export const CARD_INFERENCE_WRITE_RETRIES = 2;
+
+/**
+ * W0058（review P2）：`applyContactCardInference` 的 values 是一次推测的完整结果。这次没有推出的栏，
+ * 若当前值仍是旧的 card_inference（没被 memo／用户替换），就清掉值与来源，避免名片资料变化后留着过期推测。
+ */
+function clearStaleCardInference(payload: Record<string, unknown>, values: readonly EnrichedValue[]): AppliedEnrichmentField[] {
+  const enrichment = readStoredEnrichment(payload.enrichment);
+  if (!enrichment) return [];
+  const present = new Set(values.map((entry) => entry.field));
+  const cleared: AppliedEnrichmentField[] = [];
+  const fields = { ...enrichment.fields };
+  const profile = typeof payload.publicProfile === "object" && payload.publicProfile !== null ? { ...(payload.publicProfile as Record<string, unknown>) } : {};
+  for (const field of ["offering", "seeking", "topics"] as const) {
+    if (present.has(field) || fields[field]?.via !== "card_inference") continue;
+    delete fields[field];
+    delete profile[field];
+    cleared.push(field);
+  }
+  if (!cleared.length) return [];
+  payload.publicProfile = profile;
+  if (Object.keys(fields).length) payload.enrichment = { version: 1, fields };
+  else delete payload.enrichment;
+  return cleared;
+}
 
 export const CONTACTS_LIVE_RECORD_COLLECTIONS = {
   connections: "connections",
@@ -138,6 +170,10 @@ function storedNote(value: unknown): LiveContactDetailStoredNote | null {
         ? value.privacy
         : undefined,
     sourceLabel: optionalString(value.sourceLabel),
+    // W0046 memo 字段：原样保留，下一次任何 PATCH／encounters 投影都不丢。
+    ...(typeof value.occurredAt === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value.occurredAt) ? { occurredAt: value.occurredAt } : {}),
+    ...(nonEmptyString(value.eventId) ? { eventId: value.eventId } : {}),
+    ...(value.kind === "memo" ? { kind: "memo" as const } : {}),
   };
 }
 
@@ -267,6 +303,10 @@ function contactFromRecord(
             payload.publicProfile.selfIntroduction,
           ),
           industry: optionalString(payload.publicProfile.industry),
+          // W0045：职级唯一存储；白名单映射，漏了详情就读不到。
+          seniorityLevel: isSeniorityLevel(payload.publicProfile.seniorityLevel)
+            ? payload.publicProfile.seniorityLevel
+            : undefined,
           offering: stringArray(payload.publicProfile.offering),
           seeking: stringArray(payload.publicProfile.seeking),
           topics: stringArray(payload.publicProfile.topics),
@@ -284,6 +324,8 @@ function contactFromRecord(
     secondaryIndustryId: typeof payload.secondaryIndustryId === "string" && validateIndustrySelection(payload).valid
       ? payload.secondaryIndustryId as SecondaryIndustryIdCode
       : undefined,
+    region: readStoredRegion(payload.region) ?? undefined,
+    enrichment: readStoredEnrichment(payload.enrichment) ?? undefined,
     nextAction: isRecord(payload.nextAction) && nonEmptyString(payload.nextAction.text)
       ? {
           text: payload.nextAction.text,
@@ -795,6 +837,57 @@ export function createStorageContactGraphProvider({
   store,
   workspaceId,
 }: StorageContactGraphProviderOptions): LiveContactsGraphProvider {
+  /**
+   * W0046／W0058：AI 写回专长／需求／话题（publicProfile.offering／seeking／topics）。只接受这三个列表字段、
+   * 来源 ai + 指定 via；逐项过 canWriteEnrichedValue（完整来源判定），一次条件更新；没有可写项时不写。
+   * 条件更新冲突：`retries` 次以内重读重算，仍冲突抛 AppError CONFLICT。
+   */
+  async function applyProfileListValues(input: {
+    contactId: string;
+    actorId: string;
+    values: readonly EnrichedValue[];
+    at: string;
+    via: "memo_extraction" | "card_inference";
+    retries: number;
+  }): Promise<AppliedEnrichmentField[]> {
+    const normalizedActorId = input.actorId.trim();
+    const normalizedContactId = input.contactId.trim();
+    if (!normalizedActorId || !normalizedContactId) {
+      throw new Error("Profile write-back requires actor and contact identifiers.");
+    }
+    const allowed = input.values.filter((entry) =>
+      (entry.field === "offering" || entry.field === "seeking" || entry.field === "topics") && entry.origin === "ai" && entry.via === input.via);
+    if (!store.updateRecordIfCurrent) {
+      throw new AppError("SERVICE_UNAVAILABLE", "Contact storage requires conditional update support.");
+    }
+    for (let attempt = 0; ; attempt += 1) {
+      const contactRecord = await store.getRecord({
+        workspaceId,
+        collectionName: CONTACTS_LIVE_RECORD_COLLECTIONS.contacts,
+        recordId: normalizedContactId,
+      });
+      if (!contactRecord || !contactRecordOwnedByActor(contactRecord, normalizedActorId)) {
+        throw new Error("Profile write-back is outside the actor boundary.");
+      }
+      const nextPayload: Record<string, unknown> = { ...contactRecord.payload };
+      const written = applyEnrichedValues(nextPayload, allowed, input.at);
+      if (input.via === "card_inference") written.push(...clearStaleCardInference(nextPayload, allowed));
+      if (!written.length) return [];
+      const updatedAt = new Date(Math.max(Date.now(), Date.parse(contactRecord.updatedAt) + 1)).toISOString();
+      nextPayload.updatedAt = updatedAt;
+      const record = await store.updateRecordIfCurrent({ ...contactRecord, updatedAt, payload: nextPayload }, {
+        userId: contactRecord.userId ?? null,
+        updatedAt: contactRecord.updatedAt,
+      });
+      if (record) return written;
+      if (attempt >= input.retries) {
+        throw new AppError("CONFLICT", input.via === "memo_extraction"
+          ? "Contact changed while applying memo extraction."
+          : "Contact changed while applying card inference.");
+      }
+    }
+  }
+
   return {
     source: source ?? `live-record-store:contacts:${workspaceId}`,
     sourceLabel,
@@ -846,7 +939,7 @@ export function createStorageContactGraphProvider({
         normalizedContactId,
       );
     },
-    async upsertContactDetailState(state: LiveContactDetailState) {
+    async upsertContactDetailState(state: LiveContactDetailState, expected?: { updatedAt: string } | null) {
       const actorId = state.actorId.trim();
       const contactId = state.contactId.trim();
       if (!actorId || !contactId) {
@@ -861,7 +954,19 @@ export function createStorageContactGraphProvider({
         recordId,
         includeDeleted: true,
       });
-      const record = await store.upsertRecord({
+      const existingActive = existing && existing.lifecycleState !== "deleted" ? existing : null;
+      // W0046：乐观锁——调用方读到的版本必须仍是当前版本，否则 CONFLICT（由详情服务重读合并后重试）。
+      if (expected !== undefined) {
+        const current = contactDetailStateFromRecord(existingActive, actorId, contactId);
+        if (expected === null ? current !== null : current?.updatedAt !== expected.updatedAt) {
+          throw new AppError("CONFLICT", "Contact detail state changed. Re-read and merge.");
+        }
+      }
+      // 版本时间严格递增（CAS 前提，也让并发写入有先后）。
+      const updatedAt = existing
+        ? new Date(Math.max(Date.parse(state.updatedAt), Date.parse(existing.updatedAt) + 1)).toISOString()
+        : state.updatedAt;
+      const nextRecord = {
         workspaceId,
         collectionName: CONTACTS_LIVE_RECORD_COLLECTIONS.detailStates,
         recordId,
@@ -874,11 +979,11 @@ export function createStorageContactGraphProvider({
         evidenceIds: [],
         targetType: "contact",
         targetId: contactId,
-        occurredAt: state.updatedAt,
-        createdAt: existing?.createdAt ?? state.updatedAt,
-        updatedAt: state.updatedAt,
+        occurredAt: updatedAt,
+        createdAt: existing?.createdAt ?? updatedAt,
+        updatedAt,
         deletedAt: null,
-        lifecycleState: "active",
+        lifecycleState: "active" as const,
         searchText: [
           state.status,
           ...state.tags,
@@ -894,9 +999,19 @@ export function createStorageContactGraphProvider({
           lastInteraction: state.lastInteraction
             ? { ...state.lastInteraction }
             : undefined,
-          updatedAt: state.updatedAt,
+          updatedAt,
         },
-      });
+      };
+      let record;
+      if (expected !== undefined && existingActive && store.updateRecordIfCurrent) {
+        record = await store.updateRecordIfCurrent(nextRecord, { userId: existingActive.userId ?? null, updatedAt: existingActive.updatedAt });
+        if (!record) throw new AppError("CONFLICT", "Contact detail state changed. Re-read and merge.");
+      } else if (expected === null && !existing && store.insertRecordIfAbsent) {
+        record = await store.insertRecordIfAbsent(nextRecord);
+        if (!record) throw new AppError("CONFLICT", "Contact detail state changed. Re-read and merge.");
+      } else {
+        record = await store.upsertRecord(nextRecord);
+      }
       const persisted = contactDetailStateFromRecord(record, actorId, contactId);
       if (!persisted) {
         throw new Error("Persisted contact detail state failed validation.");
@@ -945,6 +1060,12 @@ export function createStorageContactGraphProvider({
       }
       const updatedAt = new Date(Math.max(Date.now(), Date.parse(contactRecord.updatedAt) + 1)).toISOString();
       nextPayload.updatedAt = updatedAt;
+      // W0045：联系人编辑里改（含清空）行业 = 用户值，补全不再覆盖。
+      nextPayload.enrichment = withEnrichmentProvenance(readStoredEnrichment(nextPayload.enrichment), "industry", {
+        origin: "user",
+        updatedAt,
+        via: "contact_edit",
+      });
       const nextRecord = {
         ...contactRecord,
         updatedAt,
@@ -967,6 +1088,82 @@ export function createStorageContactGraphProvider({
       }
 
       return contact;
+    },
+    async updateContactEnrichment(contactId: string, actorId: string, update: ContactEnrichmentEdit) {
+      const normalizedActorId = actorId.trim();
+      const normalizedContactId = contactId.trim();
+      if (!normalizedActorId || !normalizedContactId) {
+        throw new Error("Contact enrichment update requires actor and contact identifiers.");
+      }
+      const contactRecord = await store.getRecord({
+        workspaceId,
+        collectionName: CONTACTS_LIVE_RECORD_COLLECTIONS.contacts,
+        recordId: normalizedContactId,
+      });
+      if (!contactRecord || !contactRecordOwnedByActor(contactRecord, normalizedActorId)) {
+        throw new Error("Contact enrichment update is outside the actor boundary.");
+      }
+      const seniorityLevel = update.seniorityLevel;
+      if (seniorityLevel !== undefined && seniorityLevel !== null && !isSeniorityLevel(seniorityLevel)) {
+        throw new Error("Contact seniority level is invalid.");
+      }
+      const region = update.region === undefined || update.region === null
+        ? update.region
+        : normalizeRegion(update.region.countryCode, update.region.city ?? null);
+      if (region === null && update.region !== null && update.region !== undefined) {
+        throw new Error("Contact region is invalid.");
+      }
+      if (update.industry && !validateIndustrySelection(update.industry).valid) {
+        throw new Error("Contact industry selection is invalid.");
+      }
+      const nextPayload: Record<string, unknown> = { ...contactRecord.payload };
+      const updatedAt = new Date(Math.max(Date.now(), Date.parse(contactRecord.updatedAt) + 1)).toISOString();
+      let enrichment = readStoredEnrichment(nextPayload.enrichment);
+      const provenance = { origin: "user" as const, updatedAt, via: "contact_edit" as const };
+      let searchText = contactRecord.searchText;
+      if (update.industry) {
+        if (update.industry.primaryIndustryId) nextPayload.primaryIndustryId = update.industry.primaryIndustryId;
+        else delete nextPayload.primaryIndustryId;
+        if (update.industry.primaryIndustryId && update.industry.secondaryIndustryId) nextPayload.secondaryIndustryId = update.industry.secondaryIndustryId;
+        else delete nextPayload.secondaryIndustryId;
+        enrichment = withEnrichmentProvenance(enrichment, "industry", provenance);
+        // 与 updateContactPrimaryIndustry 同口径：行业 id 追加进 searchText。
+        searchText = [contactRecord.searchText, update.industry.primaryIndustryId ?? ""].filter(Boolean).join(" ");
+      }
+      if (seniorityLevel !== undefined) {
+        const profile = isRecord(nextPayload.publicProfile) ? { ...nextPayload.publicProfile } : {};
+        if (seniorityLevel) profile.seniorityLevel = seniorityLevel;
+        else delete profile.seniorityLevel;
+        nextPayload.publicProfile = profile;
+        enrichment = withEnrichmentProvenance(enrichment, "seniorityLevel", provenance);
+      }
+      if (region !== undefined) {
+        if (region) nextPayload.region = region;
+        else delete nextPayload.region;
+        enrichment = withEnrichmentProvenance(enrichment, "region", provenance);
+      }
+      if (enrichment) nextPayload.enrichment = enrichment;
+      nextPayload.updatedAt = updatedAt;
+      if (!store.updateRecordIfCurrent) {
+        throw new AppError("SERVICE_UNAVAILABLE", "Contact storage requires conditional update support.");
+      }
+      const record = await store.updateRecordIfCurrent({ ...contactRecord, updatedAt, searchText, payload: nextPayload }, {
+        userId: contactRecord.userId ?? null,
+        updatedAt: contactRecord.updatedAt,
+      });
+      if (!record) throw new AppError("CONFLICT", "Contact changed. Refresh and retry your edit.");
+      const contact = contactFromRecord(record);
+      if (!contact) {
+        throw new Error("Persisted contact enrichment failed validation.");
+      }
+      return contact;
+    },
+    async applyContactMemoExtraction(contactId: string, actorId: string, values: readonly EnrichedValue[], at: string) {
+      return applyProfileListValues({ actorId, at, contactId, retries: 0, values, via: "memo_extraction" });
+    },
+    async applyContactCardInference(contactId: string, actorId: string, values: readonly EnrichedValue[], at: string) {
+      // W0058（G-10）：条件更新冲突后重读、最多再试 2 次（不调用模型）。
+      return applyProfileListValues({ actorId, at, contactId, retries: CARD_INFERENCE_WRITE_RETRIES, values, via: "card_inference" });
     },
   };
 }

@@ -155,12 +155,60 @@ export interface ContactDTO {
   networkCategory?: NetworkCategory;
   primaryIndustryId?: IndustryIdCode;
   secondaryIndustryId?: SecondaryIndustryIdCode;
+  /** W0015：在哪场已报名的活动上认识（名片审阅时确认）。与 OCR 来源 `source` 无关，互不覆盖。 */
+  metEventId?: OrbitId;
+  metEventTitle?: string;
+  /** W0045：规范地区（ISO 国家码 + 规范英文城市名）；原始 `location` 文字保留不改。 */
+  region?: ContactRegionDTO;
+  /** W0045：补全值的来源（值本身在各自字段：行业、`publicProfile.seniorityLevel`、`region`…）。 */
+  enrichment?: ContactEnrichmentDTO;
   customTags?: readonly string[];
   nextAction?: NextActionDTO;
   source: SourceReferenceDTO;
   evidenceIds: EvidenceIdList;
   createdAt: IsoDateTimeString;
   updatedAt: IsoDateTimeString;
+}
+
+// W0045 定稿的补全存储（W0046～W0055 只消费，改名须追加记录）。全部在联系人 payload 里，不新增表。
+export interface ContactRegionDTO {
+  /** ISO 3166-1 alpha-2，大写；由 shared/domain/regions.ts 的 normalizeRegion 校验。 */
+  countryCode: string;
+  /** 规范英文城市名（如 "Tokyo"），按 shared/domain/regions.ts 别名表归一；不认识时保留给出的英文名（≤64 字）。 */
+  city: string | null;
+}
+
+/** `ai` = 模型推断；`card` = 不经模型、按确定规则从原文或已有资料得出；`user` = 用户改过或填写。 */
+export type EnrichmentOrigin = "ai" | "user" | "card";
+
+export type EnrichmentVia =
+  | "card_ocr"
+  | "card_review"
+  | "text_enrichment"
+  | "contact_edit"
+  | "legacy_profile"
+  | "rule"
+  | "memo_extraction"
+  // W0058（D58）：洞察生成同一调用顺带、只依据名片资料（公司／职位／名片备注／行业）推测的 offering／seeking／topics。
+  | "card_inference";
+
+/** C-4（D44）：补全来源的唯一载体。offering／seeking／topics 由 W0046 memo 提取写入。 */
+export type EnrichmentField = "industry" | "seniorityLevel" | "region" | "offering" | "seeking" | "topics";
+
+export interface EnrichmentProvenance {
+  origin: EnrichmentOrigin;
+  updatedAt: IsoDateTimeString;
+  via: EnrichmentVia;
+  /**
+   * W0058（W58-3）：列表字段（offering／seeking／topics）由模型同时给出的中英两份原文（下标一一对应）；
+   * 值本身按用户目标文字的语言写入，这里留着以后切换语言用。可选，只有 card_inference 写。
+   */
+  bilingual?: { zh: readonly string[]; en: readonly string[] };
+}
+
+export interface ContactEnrichmentDTO {
+  version: 1;
+  fields: Partial<Record<EnrichmentField, EnrichmentProvenance>>;
 }
 
 export interface ConnectionDTO {

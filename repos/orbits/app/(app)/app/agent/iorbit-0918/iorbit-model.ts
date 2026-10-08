@@ -20,12 +20,19 @@ import type {
 } from "../../orbit-agent-route-view-model";
 import { gradientFromString } from "../../orbit-reference-primitives";
 import { parseAgentTaskInteraction, type AgentTaskInteractionView } from "../agent-task-interaction-view-model";
+import type { IOrbitPlanCardMessage } from "./iorbit-plan-card-model";
 
 type AgentPanel = Pick<OrbitAgentScenarioView, "items" | "kind" | "panelTitle">;
 type AgentReliableRequest = ReliableAiSendInputContract;
 
 type AgentMessage =
-  | { id?: string; role: "user"; text: string }
+  | {
+      id?: string;
+      role: "user";
+      /** W0008：固定问题的「补充一句」，在气泡里另起一行显示（仅前端）。 */
+      supplement?: string;
+      text: string;
+    }
   | {
       actionIds?: readonly string[];
       evidenceRefs?: readonly AgentEvidenceRef[];
@@ -34,6 +41,11 @@ type AgentMessage =
       id?: string;
       note?: string;
       panelTitle: string;
+      /**
+       * W0008：第一份计划的回答卡片（仅前端类型，不进 `shared/contract/ai-sessions`）。
+       * 这类回合由壳从已保存的计划拼出，不进对话历史、不发给对话接口。
+       */
+      planCard?: IOrbitPlanCardMessage;
       retryRequest?: string;
       reliableRequest?: AgentReliableRequest;
       role: "assistant";
@@ -1289,6 +1301,114 @@ function iorbitSelectedDayLabel(
   return `${month}月${day}日（${weekday}）`;
 }
 
+/* ══ W0038（RH-04 右栏）：月历两色圆点与「下一场活动」的纯派生 ══════════════
+   推荐活动只在这里与日程并列计数，**不进** 首页的 `scheduleRows`：今日要事的
+   「2 小时内开始」、导语和「N 个日程」都只看日程（约谈、个人日程、已报名活动）。 */
+
+/** 月历一天的标记数：实心点（日程与已报名）与空心圈（推荐活动）。 */
+interface IOrbitCalendarMark {
+  schedule: number;
+  recommended: number;
+}
+
+/** 当月最多画几场推荐活动（RH-04）。 */
+const IORBIT_CALENDAR_RECOMMENDED_LIMIT = 5;
+
+/**
+ * 当月要画空心圈的推荐活动：按**池的顺序**（计划 → 目标 → 近期）取东京日期落在
+ * `monthPrefix`（`YYYY-MM`）里的前 `limit` 场；不是按日期取最早的几场。
+ */
+function iorbitMonthRecommendations<T extends { startsAt: string }>(
+  pool: readonly T[],
+  monthPrefix: string,
+  limit: number = IORBIT_CALENDAR_RECOMMENDED_LIMIT,
+): readonly { dayKey: string; item: T }[] {
+  const out: { dayKey: string; item: T }[] = [];
+  for (const item of pool) {
+    if (out.length >= limit) break;
+    const startMs = Date.parse(item.startsAt);
+    if (!Number.isFinite(startMs)) continue;
+    const dayKey = iorbitDayKey(new Date(startMs));
+    if (dayKey.startsWith(`${monthPrefix}-`)) out.push({ dayKey, item });
+  }
+  return out;
+}
+
+/** 当月每一天（日号）的标记数；没有标记的日子不在 Map 里。 */
+function iorbitCalendarMarks(
+  scheduleRows: readonly { dayKey: string }[],
+  pool: readonly { startsAt: string }[],
+  monthPrefix: string,
+  limit: number = IORBIT_CALENDAR_RECOMMENDED_LIMIT,
+): Map<number, IOrbitCalendarMark> {
+  const marks = new Map<number, IOrbitCalendarMark>();
+  const bump = (dayKey: string, field: keyof IOrbitCalendarMark) => {
+    const day = Number(dayKey.slice(8, 10));
+    const mark = marks.get(day) ?? { recommended: 0, schedule: 0 };
+    mark[field] += 1;
+    marks.set(day, mark);
+  };
+  for (const row of scheduleRows) {
+    if (row.dayKey.startsWith(`${monthPrefix}-`)) bump(row.dayKey, "schedule");
+  }
+  for (const entry of iorbitMonthRecommendations(pool, monthPrefix, limit)) bump(entry.dayKey, "recommended");
+  return marks;
+}
+
+/**
+ * 日期按钮的 `aria-label`：`10月3日（周六），2 项日程，1 场推荐活动`；计数为 0 的项省略。
+ * 圆点本身是 `aria-hidden` 的装饰，数量只在这里读出。
+ */
+function iorbitCalendarDayLabel(
+  year: number,
+  month: number,
+  day: number,
+  mark: IOrbitCalendarMark | undefined,
+  language: "en" | "zh",
+): string {
+  const parts = [iorbitSelectedDayLabel(year, month, day, language)];
+  if (mark && mark.schedule > 0) {
+    parts.push(language === "zh" ? `${mark.schedule} 项日程` : `${mark.schedule} scheduled`);
+  }
+  if (mark && mark.recommended > 0) {
+    parts.push(
+      language === "zh"
+        ? `${mark.recommended} 场推荐活动`
+        : `${mark.recommended} recommended event${mark.recommended === 1 ? "" : "s"}`,
+    );
+  }
+  return parts.join(language === "zh" ? "，" : ", ");
+}
+
+type IOrbitNextEvent<R, P> = { kind: "registered"; event: R } | { kind: "recommended"; item: P };
+
+/**
+ * W38-3「下一场活动」：已报名里最早一场未开始的；没有就取活动池里 `startsAt` 最早的一场
+ * （池按计划、目标、近期排序，第一场不一定最早）。`pool` 为 `null` 表示池未就绪，只看已报名。
+ */
+function iorbitNextEvent<R extends { startsAt: string }, P extends { startsAt: string }>(
+  registered: readonly R[],
+  pool: readonly P[] | null,
+  nowMs: number,
+): IOrbitNextEvent<R, P> | null {
+  const earliest = <T extends { startsAt: string }>(items: readonly T[]): T | null => {
+    let best: T | null = null;
+    let bestMs = Number.POSITIVE_INFINITY;
+    for (const item of items) {
+      const startMs = Date.parse(item.startsAt);
+      if (Number.isFinite(startMs) && startMs > nowMs && startMs < bestMs) {
+        best = item;
+        bestMs = startMs;
+      }
+    }
+    return best;
+  };
+  const event = earliest(registered);
+  if (event) return { event, kind: "registered" };
+  const item = pool ? earliest(pool) : null;
+  return item ? { item, kind: "recommended" } : null;
+}
+
 /** 设计 237–251 的「上次对话 · 2 天前」，真实会话时间派生。 */
 function iorbitRelativeDayLabel(
   iso: string,
@@ -1448,14 +1568,18 @@ function iorbitStrategyView(
   return first === "contacts" ? "contacts" : "strategy";
 }
 
-export type { IOrbitStrategyView };
+export type { IOrbitCalendarMark, IOrbitNextEvent, IOrbitStrategyView };
 
 export {
   iorbitCalendarCells,
+  iorbitCalendarDayLabel,
+  iorbitCalendarMarks,
   iorbitDayKey,
   iorbitEventChipDate,
   iorbitHistoryDateLabel,
   iorbitLedgerProgress,
+  iorbitMonthRecommendations,
+  iorbitNextEvent,
   iorbitPlanWeeks,
   iorbitRegisteredEvents,
   iorbitRelativeDayLabel,

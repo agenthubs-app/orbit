@@ -2,6 +2,10 @@
  * 联系人列表页 route adapter。
  *
  * route 只负责挂载样式/runtime，并把 live-capable route payload 转成真实联系人 UI。
+ *
+ * W0005 示例模式：开关打开且本人在引导期示例里时（`readDemoModeViewForActor`），直接用示例人物的
+ * 30 位联系人渲染「所有人脉」，不调用 `loadContactCardRoute`／`loadAppContactsRouteViewModel`；
+ * 开关关闭时那次判定不做任何读取，下面的真实路径与改动前一致。
  */
 import { getOrbitServerLanguage, localizeOrbitTree } from "../orbit-language-server";
 import { redirect } from "next/navigation";
@@ -21,6 +25,11 @@ import { AccountTopNav } from "../orbit-account-shell";
 import { NetworkAll } from "./network-0918/network-all";
 import { NetworkCards } from "./network-0918/network-cards";
 import { loadContactCardRoute } from "./contact-card-route-service";
+import { readDemoModeViewForActor } from "../_demo/demo-guide-view";
+import { buildDemoNetworkViewModel } from "../_demo/demo-network";
+import { ensureRelationshipStrengthsForPage, readRelationshipTierLookup } from "../../../../features/relationship-strength/read-model";
+import { NetworkDemoFrame } from "./network-0918/network-demo-frame";
+import { NETWORK_SOURCES, type NetworkSource } from "./network-0918/network-model";
 
 type ContactsRouteState =
   | AppContactsRouteStateViewModel
@@ -78,6 +87,21 @@ export default async function AppContactsPage({
   }
 
   const params = await searchParams;
+  const guide = await readDemoModeViewForActor({ actorId: actor.id, userId: session.user.id });
+  if (guide) {
+    const language = await getOrbitServerLanguage();
+    // 示例里来源筛选在前端做；`?sourceGroup=` 只决定首帧选中的来源格子。
+    const sourceGroup = typeof params?.sourceGroup === "string" ? params.sourceGroup : "all";
+    const initialSource = (NETWORK_SOURCES as readonly string[]).includes(sourceGroup) ? sourceGroup as NetworkSource | "all" : "all";
+    return <>
+      <OrbitReferenceStyles /><OrbitVisualFreezeRuntime />
+      <NetworkDemoFrame guide={guide} route="app-contacts-route">
+        <NetworkAll viewModel={buildDemoNetworkViewModel(new Date(), language === "en" ? "en" : "zh")} initialSource={initialSource} />
+      </NetworkDemoFrame>
+    </>;
+  }
+  // W0047：所有人脉列表的服务端加载先刷新关系强度读模型（来源戳与东京日未变时只读一条语句；失败不影响页面）。
+  await ensureRelationshipStrengthsForPage(actor.id, new Date());
   const cards = await loadContactCardRoute(params ?? {}, actor);
   if (cards) return <>
     <OrbitReferenceStyles /><OrbitVisualFreezeRuntime />
@@ -93,6 +117,9 @@ export default async function AppContactsPage({
   );
   const language =
     routeModel.state === "success" ? await getOrbitServerLanguage() : null;
+  const tiers = routeModel.state === "success"
+    ? await readRelationshipTierLookup({ actorId: actor.id, contactIds: routeModel.payload.contacts.map((contact) => contact.id) })
+    : undefined;
 
   return (
     <>
@@ -105,7 +132,7 @@ export default async function AppContactsPage({
           <NetworkAll
             viewModel={localizeOrbitTree(
               applyOrbitContactsPresentation(
-                contactsRouteToOrbitContactsViewModel(routeModel),
+                contactsRouteToOrbitContactsViewModel(routeModel, tiers),
                 language ?? "zh",
               ),
               language ?? "zh",

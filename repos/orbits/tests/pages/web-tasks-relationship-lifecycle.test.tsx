@@ -287,6 +287,10 @@ test("contact detail currently exposes follow-up logging, not completion or next
     assert.doesNotMatch(source, /Complete follow-up|Confirm next step|选择下一步/iu);
   }
   const detail = readFileSync(new URL("../../app/(app)/app/contacts/network-0918/network-detail-modal.tsx", import.meta.url), "utf8");
-  assert.match(detail, /记录互动/);
-  assert.match(detail, /下一步建议/);
+  assert.match(detail, /写 memo/);
+  // W0060（D56）：独立「下一步建议」面板去掉，「为什么是 TA」里只显示一条只读的「下一步」。
+  assert.doesNotMatch(detail, /下一步建议/);
+  const why = readFileSync(new URL("../../app/(app)/app/contacts/network-0918/network-insight-panel.tsx", import.meta.url), "utf8");
+  assert.match(why, /zh: "下一步"/);
+  assert.doesNotMatch(why, /Complete follow-up|Confirm next step|选择下一步/iu);
 });

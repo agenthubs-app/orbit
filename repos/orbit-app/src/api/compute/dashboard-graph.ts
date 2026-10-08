@@ -37,12 +37,23 @@ export interface DashboardGraphContact {
   primaryPhone?: string | undefined;
   profileSnippet?: string | undefined;
   primaryIndustryId?: IndustryIdCode | undefined;
+  /** W0049：二级行业原值（未校验；分布按 sanitizeIndustryPair 归到所属一级）。 */
+  secondaryIndustryId?: string | undefined;
+  /** W0049：`publicProfile.seniorityLevel` 原值（投影里平铺为 `seniorityLevel`）。 */
+  seniorityLevel?: string | undefined;
+  /** W0049：规范地区（W0045 `region`）；countryCode 为两位大写字母才保留。 */
+  region?: DashboardGraphContactRegion | undefined;
   customTags?: readonly string[] | undefined;
   stage: RelationshipStage;
   source: SourceReferenceContract;
   evidenceIds: EvidenceIdList;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface DashboardGraphContactRegion {
+  countryCode: string;
+  city: string | null;
 }
 
 export interface DashboardGraphConnection {
@@ -165,6 +176,34 @@ function sourceReference(value: unknown): SourceReferenceContract | null {
   } as SourceReferenceContract;
 }
 
+function plainObject(value: unknown): Record<string, unknown> | null {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+/**
+ * W0049：结构标签三个细粒度字段。投影（DASHBOARD_GRAPH_PROJECTION_SQL）把
+ * `publicProfile.seniorityLevel` 平铺为 `seniorityLevel`；完整 payload 仍按原路径读。
+ * 没有值时不写键（旧图的对象形状不变）。
+ */
+function structureFields(
+  payload: Record<string, unknown>,
+): Pick<DashboardGraphContact, "secondaryIndustryId" | "seniorityLevel" | "region"> {
+  const secondaryIndustryId = optionalString(payload.secondaryIndustryId);
+  const seniorityLevel = optionalString(payload.seniorityLevel)
+    ?? optionalString(plainObject(payload.publicProfile)?.seniorityLevel);
+  const region = plainObject(payload.region);
+  const countryCode = region?.countryCode;
+  return {
+    ...(secondaryIndustryId ? { secondaryIndustryId } : {}),
+    ...(seniorityLevel ? { seniorityLevel } : {}),
+    ...(typeof countryCode === "string" && /^[A-Z]{2}$/.test(countryCode)
+      ? { region: { countryCode, city: optionalString(region?.city) ?? null } }
+      : {}),
+  };
+}
+
 function contactFromRecord(record: DashboardGraphRecord): DashboardGraphContact | null {
   const payload = record.payload;
   const source = sourceReference(payload.source);
@@ -195,6 +234,7 @@ function contactFromRecord(record: DashboardGraphRecord): DashboardGraphContact 
     primaryIndustryId: isIndustryIdCode(payload.primaryIndustryId)
       ? payload.primaryIndustryId
       : undefined,
+    ...structureFields(payload),
     customTags: stringArray(payload.customTags),
     stage: payload.stage,
     source,

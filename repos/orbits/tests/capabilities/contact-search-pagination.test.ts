@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import assert from "node:assert/strict";
 import test from "node:test";
@@ -10,7 +11,8 @@ import {
   createStorageContactGraphProvider,
 } from "../../features/contacts/storage/contact-live-record-provider";
 import { createPostgresContactScopeRecordReader } from "../../features/contacts/storage/contact-scope-postgres-reader";
-import { APPROVED_CONTACT_SEARCH_RUNTIME } from "../../features/contacts/storage/contact-list-postgres-reader";
+import { VERIFIED_CONTACT_SEARCH_RUNTIMES } from "../../features/contacts/storage/contact-list-postgres-reader";
+import { currentNodeSortRuntime, nodeSortRuntimeMatches } from "../../shared/storage/sort-runtime";
 import type { ContactListItem } from "../../features/contacts/contract";
 import { defaultMockFixtures } from "../../shared/mock/fixtures";
 import { ORBIT_RECORDS_SCHEMA_SQL } from "../../shared/storage/migrations";
@@ -1668,7 +1670,7 @@ test("ambiguous contacts use one error scope and one fallback status projection"
     assert.equal(fallbackStatusCount("needs_follow_up"), fastStatusCount("needs_follow_up"));
     assert.equal(fallbackStatusCount("nurture"), fastStatusCount("nurture"));
 
-    for (const [engine, engineService] of [["fast", service], ["fallback", fallbackService]] as const) {
+    for (const [engine, engineService, engineCursor] of [["fast", service, fast.data.nextCursor], ["fallback", fallbackService, fallback.data.nextCursor]] as const) {
       const nurture = await engineService.searchContacts({
         actorId: ambiguityActor,
         query: "common",
@@ -1689,17 +1691,23 @@ test("ambiguous contacts use one error scope and one fallback status projection"
         `${engine}: the selected ambiguous contact must fail after structured filtering`,
       );
 
+      assert.ok(engineCursor, `${engine}: first page issues its own cursor`);
       await assert.rejects(
         async () => engineService.searchContacts({
           actorId: ambiguityActor,
           query: "common",
           limit: 1,
-          cursor: fast.data.nextCursor,
+          cursor: engineCursor,
         }),
         /CONTACT_DETAIL_AMBIGUOUS_CONNECTION/,
         `${engine}: ambiguity must fail when the corrupted contact is on the returned page`,
       );
     }
+    // SC-W0034-03: a cursor never continues on the other matcher path.
+    await assert.rejects(
+      async () => fallbackService.searchContacts({ actorId: ambiguityActor, query: "common", limit: 1, cursor: fast.data.nextCursor }),
+      /CONTACT_CURSOR_INVALID/,
+    );
   });
 });
 
@@ -1882,47 +1890,52 @@ test("unknown Unicode fallback pages use JS prefix rank with storage tuple bound
       workspaceId,
     });
 
+    // SC-W0034-03: each path pages with its own prefix rank + storage tuple
+    // boundary; a cursor never crosses to the other path.
+    const walkPath = async (
+      service: typeof fastService,
+      query: string,
+      expectedIds: readonly string[],
+      path: string,
+    ): Promise<readonly string[]> => {
+      const input = { actorId: actorOne, query, limit: 1 } as const;
+      const cursors: string[] = [];
+      const ids: string[] = [];
+      let cursor: string | undefined;
+      for (let pageNumber = 0; pageNumber < 5; pageNumber += 1) {
+        const page = await service.searchContacts({ ...input, ...(cursor ? { cursor } : {}) });
+        assert.equal(page.success, true, `${query}: ${path} page ${pageNumber + 1}`);
+        if (!page.success) return cursors;
+        assert.equal(page.data.total, expectedIds.length, `${query}: ${path} total`);
+        ids.push(...page.data.contacts.map((contact) => contact.id));
+        cursor = page.data.nextCursor;
+        if (!cursor) break;
+        cursors.push(cursor);
+      }
+      assert.deepEqual(ids, [...expectedIds], `${query}: ${path} must combine the JS-equivalent prefix rank and storage tuple boundary`);
+      assert.equal(cursor, undefined, `${query}: ${path} final page terminates`);
+      return cursors;
+    };
     const verifySwitch = async (
       query: string,
       expectedIds: readonly string[],
     ): Promise<void> => {
-      const input = { actorId: actorOne, query, limit: 1 } as const;
-      const fastFirst = await fastService.searchContacts(input);
-      assert.equal(fastFirst.success, true, `${query}: fast first page`);
-      if (!fastFirst.success) return;
-      assert.deepEqual(
-        fastFirst.data.contacts.map((contact) => contact.id),
-        [expectedIds[0]],
-        `${query}: fast first page must use the JS-equivalent prefix rank`,
-      );
-      assert.equal(fastFirst.data.total, expectedIds.length, `${query}: total`);
-      assert.ok(fastFirst.data.nextCursor, `${query}: fast first cursor`);
-
-      const fallbackSecond = await fallbackService.searchContacts({
-        ...input,
-        cursor: fastFirst.data.nextCursor,
-      });
-      assert.equal(fallbackSecond.success, true, `${query}: fallback second page`);
-      if (!fallbackSecond.success) return;
-      assert.deepEqual(
-        fallbackSecond.data.contacts.map((contact) => contact.id),
-        [expectedIds[1]],
-        `${query}: fallback must combine JS prefix rank and storage tuple boundary`,
-      );
-      assert.ok(fallbackSecond.data.nextCursor, `${query}: fallback second cursor`);
-
-      const fastThird = await fastService.searchContacts({
-        ...input,
-        cursor: fallbackSecond.data.nextCursor,
-      });
-      assert.equal(fastThird.success, true, `${query}: fast third page`);
-      if (!fastThird.success) return;
-      assert.deepEqual(
-        fastThird.data.contacts.map((contact) => contact.id),
-        [expectedIds[2]],
-        `${query}: fast must accept the fallback cursor without a duplicate`,
-      );
-      assert.equal(fastThird.data.nextCursor, undefined, `${query}: final page terminates`);
+      const fastCursors = await walkPath(fastService, query, expectedIds, "fast");
+      const fallbackCursors = await walkPath(fallbackService, query, expectedIds, "fallback");
+      assert.equal(fastCursors.length, 2);
+      assert.equal(fallbackCursors.length, 2);
+      for (const cursor of fastCursors) {
+        await assert.rejects(
+          async () => fallbackService.searchContacts({ actorId: actorOne, query, limit: 1, cursor }),
+          /CONTACT_CURSOR_INVALID/, `${query}: PG→JS cursor`,
+        );
+      }
+      for (const cursor of fallbackCursors) {
+        await assert.rejects(
+          async () => fastService.searchContacts({ actorId: actorOne, query, limit: 1, cursor }),
+          /CONTACT_CURSOR_INVALID/, `${query}: JS→PG cursor`,
+        );
+      }
     };
 
     await verifySwitch("i\u0307", [
@@ -1937,8 +1950,8 @@ test("unknown Unicode fallback pages use JS prefix rank with storage tuple bound
     ]);
     assert.equal(
       fastQueryCount,
-      4,
-      "both Unicode cases must actually traverse fast SQL on first and third pages",
+      6,
+      "both Unicode cases traverse fast SQL on all three fast pages; rejected cursors never reach SQL",
     );
   });
 });
@@ -2012,15 +2025,15 @@ test("empty bounded query uses the uncollated SQL path without probing", async (
   assert.equal(projectionQueryCount, 1);
 });
 
-// The fast ICU path is only attempted when Node case mapping uses the approved
-// Unicode version, which a stubbed SQL client cannot fake (0123, relaxed in 0126).
-const approvedNodeSortRuntime =
-  process.versions.unicode === APPROVED_CONTACT_SEARCH_RUNTIME.unicode;
+// The fast ICU path is only attempted when the Node side belongs to a verified
+// (Node, PG) pair (W0034 table), which a stubbed SQL client cannot fake (0123/0126).
+const approvedNodeSortRuntime = VERIFIED_CONTACT_SEARCH_RUNTIMES.some((entry) =>
+  nodeSortRuntimeMatches(entry.node, currentNodeSortRuntime()));
 
 test("known ICU SQL incompatibility falls back once while other SQL errors propagate", {
   skip: approvedNodeSortRuntime
     ? false
-    : `fast ICU path requires Unicode ${APPROVED_CONTACT_SEARCH_RUNTIME.unicode} case mapping, running Node ${process.versions.node} (Unicode ${process.versions.unicode}); recovery: run this file under a Node with the approved Unicode version`,
+    : `fast ICU path requires a Node side in VERIFIED_CONTACT_SEARCH_RUNTIMES, running Node ${process.versions.node} (ICU ${process.versions.icu}, Unicode ${process.versions.unicode}); recovery: run this file under a verified Node runtime`,
 }, async () => {
   let probeCount = 0;
   let fastQueryCount = 0;
@@ -2141,7 +2154,7 @@ test("concurrent non-empty queries share the runtime probe promise", async () =>
   assert.equal(projectionQueryCount, 2);
 });
 
-test("fast and fallback pages share storage-order cursors for case and Unicode ties", {
+test("fast and fallback pages walk storage order on their own cursors and reject each other (SC-W0034-03)", {
   skip: lifecycleDatabaseSkip,
   timeout: 30_000,
 }, async () => {
@@ -2207,65 +2220,43 @@ test("fast and fallback pages share storage-order cursors for case and Unicode t
     });
     const input = { actorId: actorOne, query: "tie", limit: 1 } as const;
 
-    const fastFirst = await fastService.searchContacts(input);
-    assert.equal(fastFirst.success, true);
-    if (!fastFirst.success) return;
-    assert.deepEqual(fastFirst.data.contacts.map((contact) => contact.id), [
-      tieContactOrder[0],
-    ], "fast first page follows the independent storage order");
-    assert.equal(fastFirst.data.total, 3);
-    assert.ok(fastFirst.data.nextCursor);
-
-    const fallbackAfterFast = await fallbackService.searchContacts({
-      ...input,
-      cursor: fastFirst.data.nextCursor,
-    });
-    assert.equal(fallbackAfterFast.success, true);
-    if (!fallbackAfterFast.success) return;
-    assert.deepEqual(fallbackAfterFast.data.contacts.map((contact) => contact.id), [
-      tieContactOrder[1],
-    ], "fallback second page follows the independent storage order");
-    assert.equal(fallbackAfterFast.data.total, 3);
-
-    const fallbackFirst = await fallbackService.searchContacts(input);
-    assert.equal(fallbackFirst.success, true);
-    if (!fallbackFirst.success) return;
-    assert.deepEqual(fallbackFirst.data.contacts.map((contact) => contact.id), [
-      tieContactOrder[0],
-    ], "fallback first page follows the independent storage order");
-    assert.ok(fallbackFirst.data.nextCursor);
-
-    const fastAfterFallback = await fastService.searchContacts({
-      ...input,
-      cursor: fallbackFirst.data.nextCursor,
-    });
-    assert.equal(fastAfterFallback.success, true);
-    if (!fastAfterFallback.success) return;
-    assert.deepEqual(fastAfterFallback.data.contacts.map((contact) => contact.id), [
-      tieContactOrder[1],
-    ], "fast second page follows the independent storage order");
-
-    const ids = [
-      fastFirst.data.contacts[0]?.id,
-      fallbackAfterFast.data.contacts[0]?.id,
-    ];
-    let cursor = fallbackAfterFast.data.nextCursor;
-    for (let pageNumber = 0; pageNumber < 5 && cursor; pageNumber += 1) {
-      const page = await fallbackService.searchContacts({ ...input, cursor });
-      assert.equal(page.success, true);
-      if (!page.success) return;
-      ids.push(...page.data.contacts.map((contact) => contact.id));
-      cursor = page.data.nextCursor;
+    // SC-W0034-03: each matcher path walks the independent storage order on its own cursors…
+    for (const [engine, engineService] of [["fast", fastService], ["fallback", fallbackService]] as const) {
+      const ids: (string | undefined)[] = [];
+      let total: number | undefined;
+      let cursor: string | undefined;
+      for (let pageNumber = 0; pageNumber < 6; pageNumber += 1) {
+        const page = await engineService.searchContacts({ ...input, ...(cursor ? { cursor } : {}) });
+        assert.equal(page.success, true, engine);
+        if (!page.success) return;
+        ids.push(...page.data.contacts.map((contact) => contact.id));
+        total = page.data.total;
+        cursor = page.data.nextCursor;
+        if (!cursor) break;
+      }
+      assert.equal(cursor, undefined, `${engine}: three tie rows must terminate the keyset cursor: ${JSON.stringify(ids)}`);
+      assert.deepEqual(ids, [...tieContactOrder], `${engine}: full walk follows the independent storage order`);
+      assert.equal(new Set(ids).size, ids.length);
+      assert.equal(total, 3);
     }
-    assert.equal(
-      cursor,
-      undefined,
-      `three tie rows must terminate the keyset cursor: ${JSON.stringify(ids)}`,
+
+    // …and never continues on the other path's cursor (explicit invalidation, not a silent restart).
+    const fastFirst = await fastService.searchContacts(input);
+    const fallbackFirst = await fallbackService.searchContacts(input);
+    assert.equal(fastFirst.success && fallbackFirst.success, true);
+    if (!fastFirst.success || !fallbackFirst.success) return;
+    assert.ok(fastFirst.data.nextCursor && fallbackFirst.data.nextCursor);
+    assert.notEqual(fastFirst.data.nextCursor, fallbackFirst.data.nextCursor, "cursor scope carries the matcher path");
+    await assert.rejects(
+      async () => fallbackService.searchContacts({ ...input, cursor: fastFirst.data.nextCursor }),
+      /CONTACT_CURSOR_INVALID/,
+      "PG→JS: a fast cursor is rejected on the fallback path",
     );
-    assert.deepEqual(ids, [
-      ...tieContactOrder,
-    ], "full walk follows the independent storage order");
-    assert.equal(new Set(ids).size, ids.length);
+    await assert.rejects(
+      async () => fastService.searchContacts({ ...input, cursor: fallbackFirst.data.nextCursor }),
+      /CONTACT_CURSOR_INVALID/,
+      "JS→PG: a fallback cursor is rejected on the fast path",
+    );
   });
 });
 
@@ -2596,11 +2587,17 @@ test("bounded fast and fallback pages defer a later canonical error to that page
         error instanceof Error &&
         error.message === "CONTACT_DETAIL_AMBIGUOUS_CONNECTION",
     );
+    assert.ok(fallbackFirst.data.nextCursor);
     await assert.rejects(
-      async () => fallbackService.searchContacts({ ...input, cursor: fastFirst.data.nextCursor }),
+      async () => fallbackService.searchContacts({ ...input, cursor: fallbackFirst.data.nextCursor }),
       (error: unknown) =>
         error instanceof Error &&
         error.message === "CONTACT_DETAIL_AMBIGUOUS_CONNECTION",
+    );
+    // SC-W0034-03: the fast cursor is not a fallback cursor.
+    await assert.rejects(
+      async () => fallbackService.searchContacts({ ...input, cursor: fastFirst.data.nextCursor }),
+      /CONTACT_CURSOR_INVALID/,
     );
     await assert.rejects(
       async () => fastService.listContacts({ actorId: actorThree, query: "lifecycle" }),
@@ -3438,4 +3435,169 @@ test("the live service trusts a bounded database page without filtering it a sec
   assert.deepEqual(result.data.contacts.map((item) => item.id), [contact.id]);
   assert.equal(result.data.total, 66);
   assert.equal(result.data.nextCursor, "database-page-2");
+});
+
+interface UnicodeLowerProbeRow {
+  cp: string;
+  char: string;
+  js: string;
+  query: string;
+  pg: Record<string, string>;
+  expected: Record<string, { pgPathMatches: boolean; jsPathMatches: boolean }>;
+}
+interface UnicodeProbeFixture {
+  pgRuntimes: Record<string, unknown>;
+  lower: { fields: readonly string[]; pageSizes: readonly number[]; rows: readonly UnicodeLowerProbeRow[] };
+}
+const unicodeProbeFixture = JSON.parse(readFileSync(new URL("../fixtures/sort-runtime-unicode-probe.json", import.meta.url), "utf8")) as UnicodeProbeFixture;
+
+async function seedLowerProbeRow(
+  store: ReturnType<typeof createPostgresLiveRecordStore>,
+  workspaceId: string,
+  row: UnicodeLowerProbeRow,
+  rowIndex: number,
+  fields: readonly string[],
+): Promise<{ actorId: string; fieldContactIds: Record<string, string>; anchorIds: readonly string[] }> {
+  const hex = row.cp.slice(2);
+  const actorId = `actor:probe:${hex}`;
+  const source = { type: "manual", id: `source:probe:${hex}`, label: "Unicode lower probe" } satisfies ContactFixtureSource;
+  const neutral = { displayName: "Probe contact", role: "Probe role", organization: "Probe org", location: "Probe location",
+    profileSnippet: "Probe profile", relationshipSummary: "Probe relationship", evidenceSummary: "Probe evidence", customTag: "probe-tag" };
+  const people: { key: string; values: typeof neutral }[] = [
+    ...fields.map((field) => ({ key: field, values: { ...neutral, [field]: `${neutral[field as keyof typeof neutral]} ${row.char} x` } })),
+    { key: "anchor0", values: { ...neutral, displayName: `${row.query} anchor` } },
+    { key: "anchor1", values: { ...neutral, organization: `Org ${row.query}` } },
+    { key: "anchor2", values: { ...neutral, customTag: `tag-${row.query}` } },
+  ];
+  const ids: Record<string, string> = {};
+  for (const [personIndex, person] of people.entries()) {
+    const key = `${hex}:${person.key}`;
+    const contactId = `contact:probe:${key}`;
+    const evidenceId = `evidence:probe:${key}`;
+    const timestamp = new Date(Date.UTC(2026, 8, 18) + (rowIndex * 20 + personIndex) * 1000).toISOString();
+    ids[person.key] = contactId;
+    await store.upsertRecord(contactFixtureContact({
+      workspaceId, recordId: `storage:probe:${key}`, userId: actorId, id: contactId,
+      displayName: person.values.displayName, role: person.values.role, organization: person.values.organization,
+      location: person.values.location, profileSnippet: person.values.profileSnippet, source, evidenceId, timestamp,
+      searchText: "legacy-only-search-text",
+    }));
+    await store.upsertRecord(contactFixtureConnection({
+      workspaceId, recordId: `connection:probe:${key}`, userId: actorId, id: `connection:probe:${key}`, accountId: actorId,
+      contactId, source, evidenceId, timestamp, summary: person.values.relationshipSummary, valueTypes: [],
+    }));
+    await store.upsertRecord(contactFixtureEvidence({
+      workspaceId, id: evidenceId, recordId: `evidence-row:probe:${key}`, contactId, source, timestamp, summary: person.values.evidenceSummary,
+    }));
+    await store.upsertRecord(contactFixtureDetailState({
+      workspaceId, recordId: `detail:probe:${key}`, userId: actorId, contactId, tags: [person.values.customTag], timestamp,
+    }));
+  }
+  const { anchor0, anchor1, anchor2, ...fieldContactIds } = ids;
+  return { actorId, fieldContactIds, anchorIds: [anchor0!, anchor1!, anchor2!] };
+}
+
+test("SC-W0034-03 lower() matrix: each matcher path returns its expected set per character x field x page size; switching paths mid-sequence is rejected both ways", {
+  skip: lifecycleDatabaseSkip,
+  timeout: 1_800_000,
+}, async () => {
+  await withContactPostgresFixture(async ({ client, store, workspaceId }) => {
+    const collversion = (await client.query<{ actual: string }>(
+      `select pg_catalog.pg_collation_actual_version(c.oid) as actual from pg_catalog.pg_collation c where c.oid = 'pg_catalog."und-x-icu"'::pg_catalog.regcollation`,
+    )).rows[0]?.actual;
+    assert.ok(collversion && unicodeProbeFixture.pgRuntimes[collversion], `probe matrix has no reviewed expectations for und-x-icu ${collversion}`);
+    const { fields, pageSizes, rows } = unicodeProbeFixture.lower;
+    assert.ok(rows.length > 0 && fields.length === 8 && pageSizes.join() === "1,2");
+
+    // Controllable runtime: in JS mode the probe and the fast-query fingerprint report an unapproved tuple.
+    let jsMode = false;
+    let now = 0;
+    const switching: LiveRecordSqlClient = {
+      async query<TRow>(text: string, values?: readonly unknown[]) {
+        if (jsMode && text.includes("as matcher_policy_version")) return { rows: [{ server_version_num: "0" }] as TRow[] };
+        const result = await client.query<TRow>(text, values);
+        if (jsMode && text.includes('collate pg_catalog."und-x-icu"')) {
+          return { rows: result.rows.map((row) => ({ ...(row as object), runtime_fingerprint: { server_version_num: "0" } })) as TRow[] };
+        }
+        return result;
+      },
+    };
+    const service = createLiveContactsListSearchAndFilterService({
+      provider: createStorageContactGraphProvider({
+        contactRecordPageReader: createPostgresContactRecordPageReader({ client: switching, workspaceId, now: () => now }),
+        contactScopeRecordReader: createPostgresContactScopeRecordReader({ client: switching, workspaceId }),
+        source: contactFixtureSource, sourceLabel: contactFixtureSourceLabel, store, workspaceId,
+      }),
+    });
+    const usePgPath = () => { jsMode = false; now += 30_000; };
+    const useJsPath = () => { jsMode = true; };
+    const walk = async (actorId: string, query: string, limit: number, label: string) => {
+      const ids: string[] = [];
+      let cursor: string | undefined;
+      for (let pageNumber = 0; pageNumber < 20; pageNumber += 1) {
+        const page = await service.searchContacts({ actorId, query, limit, ...(cursor ? { cursor } : {}) });
+        assert.equal(page.success, true, label);
+        if (!page.success) throw new Error(label);
+        assert.ok(page.data.contacts.length <= limit, label);
+        ids.push(...page.data.contacts.map((contact) => contact.id));
+        cursor = page.data.nextCursor;
+        if (!cursor) {
+          assert.equal(page.data.total, ids.length, `${label}: summary total equals the page union`);
+          return ids;
+        }
+      }
+      throw new Error(`${label}: walk did not terminate`);
+    };
+    const firstCursor = async (actorId: string, query: string, limit: number, label: string) => {
+      const page = await service.searchContacts({ actorId, query, limit });
+      assert.equal(page.success, true, label);
+      if (!page.success || !page.data.nextCursor) throw new Error(`${label}: expected a second page`);
+      return page.data.nextCursor;
+    };
+
+    let assertedCells = 0;
+    for (const [rowIndex, row] of rows.entries()) {
+      const expectation = row.expected[collversion];
+      assert.ok(expectation, `${row.cp}: expectation for ${collversion}`);
+      const seeded = await seedLowerProbeRow(store, workspaceId, row, rowIndex, fields);
+      const expectedFor = (matches: boolean) => new Set([...seeded.anchorIds, ...(matches ? Object.values(seeded.fieldContactIds) : [])]);
+      const expectedPg = expectedFor(expectation.pgPathMatches);
+      const expectedJs = expectedFor(expectation.jsPathMatches);
+      for (const limit of pageSizes) {
+        const label = `${row.cp} limit ${limit}`;
+        const check = (ids: string[], expected: Set<string>, path: string) => {
+          assert.equal(new Set(ids).size, ids.length, `${label} ${path}: no duplicates`);
+          assert.deepEqual(new Set(ids), expected, `${label} ${path}: result set equals the matrix expectation`);
+          for (const field of fields) {
+            const inResult = ids.includes(seeded.fieldContactIds[field]!);
+            assert.equal(inResult, path === "pg" ? expectation.pgPathMatches : expectation.jsPathMatches, `${label} ${path} ${field}`);
+            assertedCells += 1;
+          }
+        };
+        // PG path, full walk.
+        usePgPath();
+        check(await walk(seeded.actorId, row.query, limit, `${label} pg`), expectedPg, "pg");
+        // PG→JS: a PG cursor is rejected when the next request resolves to JS (fingerprint mismatch, then probe backoff).
+        const pgCursor = await firstCursor(seeded.actorId, row.query, limit, `${label} pg first`);
+        useJsPath();
+        for (const attempt of ["fingerprint mismatch", "probe backoff"]) {
+          await assert.rejects(
+            async () => service.searchContacts({ actorId: seeded.actorId, query: row.query, limit, cursor: pgCursor }),
+            /CONTACT_CURSOR_INVALID/, `${label} PG→JS (${attempt})`,
+          );
+        }
+        // Restart on the JS path: complete, no duplicates, expected set.
+        check(await walk(seeded.actorId, row.query, limit, `${label} js`), expectedJs, "js");
+        // JS→PG: a JS cursor is rejected once the probe recovers.
+        const jsCursor = await firstCursor(seeded.actorId, row.query, limit, `${label} js first`);
+        usePgPath();
+        await assert.rejects(
+          async () => service.searchContacts({ actorId: seeded.actorId, query: row.query, limit, cursor: jsCursor }),
+          /CONTACT_CURSOR_INVALID/, `${label} JS→PG`,
+        );
+        check(await walk(seeded.actorId, row.query, limit, `${label} pg restart`), expectedPg, "pg");
+      }
+    }
+    assert.equal(assertedCells, rows.length * fields.length * pageSizes.length * 3);
+  });
 });

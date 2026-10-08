@@ -13,7 +13,11 @@ export const INGEST_V2_OCR_DEADLINE_MS = 240_000;
 export const INGEST_V2_MAX_ATTEMPTS = 3;
 export const INGEST_V2_COLLECTING_TTL_HOURS = 24;
 export const INGEST_V2_REVIEW_TTL_DAYS = 7;
-export const INGEST_V2_EXTRACTION_SCHEMA_VERSION = 1;
+// v2（W0013）：extraction 增加 primaryIndustryId / secondaryIndustryId。v1 行缺这两个键，
+// 读取时由 repository 映射为 null，旧批次照常打开与确认。
+// v3（W0045）：再增加 seniorityLevel / regionCountryCode / regionCity（同一次文本整理顺带推断）；
+// v1／v2 行缺这三个键，读取时同样映射为 null。
+export const INGEST_V2_EXTRACTION_SCHEMA_VERSION = 3;
 export const INGEST_V2_DERIVATIVE_TARGET_EDGE_PX = 2048;
 export const INGEST_V2_DERIVATIVE_HARD_MAX_BYTES = 2 * 1024 * 1024;
 
@@ -165,6 +169,27 @@ export interface IngestBatchSummary {
     confirmed: number;
     skipped: number;
   };
+}
+
+/**
+ * W0021 `?view=cards`：只含按名片分组、数待确认数、判定活动归属所需的列（不含识别结果、图片键、
+ * 用量等大字段）。今日要事的待确认数与活动归属候选都只读它；审阅页仍读完整详情。
+ */
+export interface IngestBatchCardState {
+  id: string;
+  cardId: string;
+  side: IngestItemDTO["side"];
+  seq: number;
+  status: IngestItemDTO["status"];
+  confirmedContactId: string | null;
+  cardIdentityExplicit: boolean;
+  /** 扫描上传时间（活动归属按它判定）。 */
+  createdAt: string;
+}
+
+export interface IngestBatchCardStates {
+  batch: Pick<IngestBatchDTO, "id" | "status" | "createdAt">;
+  items: IngestBatchCardState[];
 }
 
 export class IngestConflictError extends Error {

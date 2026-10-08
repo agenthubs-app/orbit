@@ -23,6 +23,8 @@ import {
 } from "../../app/(app)/app/agent/iorbit-0918/iorbit-shell";
 import type { AgentMessage } from "../../app/(app)/app/agent/iorbit-0918/iorbit-model";
 import { createOrbitAgentStarterViewModel } from "../../app/(app)/app/orbit-agent-route-view-model";
+import { planCardViewFromSnapshot } from "../../app/(app)/app/agent/iorbit-0918/iorbit-plan-card-model";
+import { savedBootstrapPlan } from "../support/plan-bootstrap-fixture";
 
 const VIEW_MODEL = createOrbitAgentStarterViewModel();
 
@@ -182,6 +184,7 @@ interface Mounted {
   emit: (type: string) => void;
   location: { search: string };
   pushedUrls: string[];
+  replacedUrls: string[];
   root: ReactTestRenderer;
   sessionValues: Map<string, string>;
   settle: (rounds?: number) => Promise<void>;
@@ -200,6 +203,7 @@ async function mount(
   const previousWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
   const previousDocument = Object.getOwnPropertyDescriptor(globalThis, "document");
   const pushedUrls: string[] = [];
+  const replacedUrls: string[] = [];
   const calls: Array<{ body: unknown; method: string; url: string }> = [];
   const location = {
     href: `https://orbit.test/app/agent${options.search ?? ""}`,
@@ -231,7 +235,9 @@ async function mount(
         pushState(_state: unknown, _title: string, url: string) {
           pushedUrls.push(url);
         },
-        replaceState() {},
+        replaceState(_state: unknown, _title: string, url: string) {
+          replacedUrls.push(url);
+        },
       },
       localStorage: {
         getItem: () => null,
@@ -333,7 +339,7 @@ async function mount(
     for (const handler of listeners.get(type) ?? []) handler({ type });
   };
 
-  return { calls, emit, location, pushedUrls, root: root!, sessionValues, settle };
+  return { calls, emit, location, pushedUrls, replacedUrls, root: root!, sessionValues, settle };
 }
 
 const shell = (props: { initialDeepLink?: boolean } = {}) => (
@@ -803,4 +809,37 @@ test("?session= restores the conversation through the shell without asking again
     0,
     "restoring must not re-ask",
   );
+});
+
+test("W0008 ?plan=: the saved plan opens in the chat, the reveal flag leaves the address, and follow-ups ask only the new question", async (t) => {
+  const view = planCardViewFromSnapshot(await savedBootstrapPlan())!;
+  const mounted = await mount(
+    t,
+    <IOrbitShell home={HOME as never} initialDeepLink initialPlanCard={view} initialPlanReveal viewModel={VIEW_MODEL} />,
+    { search: `?plan=${encodeURIComponent(view.planId)}&reveal=1` },
+  );
+  assert.equal(byClass(mounted, "ir-chat").length, 1);
+  assert.equal(mounted.root.root.findAll((node) => node.props?.["data-orbit-plan-card"] !== undefined && typeof node.type === "string").length, 1);
+  assert.deepEqual(mounted.replacedUrls, [`/app/agent?plan=${encodeURIComponent(view.planId)}`], "refreshing now shows the finished card");
+  assert.equal(
+    mounted.calls.filter((call) => call.method === "POST" && call.url.startsWith("/api/ai/conversations")).length,
+    0,
+    "opening a plan never talks to the conversations API",
+  );
+
+  const input = byClass(mounted, "ir-composer-input")[0]!;
+  await act(async () => {
+    input.props.onChange({ target: { value: "第一周先做什么？" } });
+  });
+  await act(async () => {
+    byClass(mounted, "ir-composer")[0]!.props.onSubmit({ preventDefault() {} });
+  });
+  await mounted.settle(10);
+  const sent = mounted.calls.filter((call) => call.method === "POST" && call.url === "/api/ai/conversations");
+  assert.equal(sent.length, 1);
+  const body = sent[0]!.body as { message: string };
+  assert.equal(body.message, "第一周先做什么？");
+  assert.ok(!JSON.stringify(sent[0]!.body).includes("data-orbit-plan-card"));
+  const rendered = JSON.stringify(mounted.root.toJSON());
+  assert.ok(rendered.indexOf("根据我的目标和人脉信息") < rendered.indexOf("第一周先做什么？"), "the plan stays at the top of the thread");
 });

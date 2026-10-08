@@ -1,19 +1,35 @@
 import { relationshipConversationSummaryPageSchema, relationshipMessagePageSchema } from "../../../../shared/api-schema/relationship-pages";
+import { confirmInboxActor, invalidateInboxActorConfirmation } from "./inbox-request";
 
 export class BoundedMessageReadError extends Error {
   constructor(readonly status: number) { super("Conversation page unavailable"); }
 }
 async function communicationFetch(path: string, options: RequestInit = {}): Promise<any> {
   const response = await fetch(path, { ...options, cache: "no-store", credentials: "same-origin", headers: { "content-type": "application/json", ...options.headers } });
-  if (!response.ok) throw new BoundedMessageReadError(response.status);
+  if (!response.ok) {
+    if (response.status === 401 || response.status === 403) invalidateInboxActorConfirmation();
+    throw new BoundedMessageReadError(response.status);
+  }
   const envelope = await response.json();
   if (envelope.success !== true) throw new BoundedMessageReadError(503);
   return envelope.data;
 }
-async function readContactMessageActor(signal: AbortSignal): Promise<string> {
-  const value = await communicationFetch("/api/account/me", { signal });
-  if (typeof value?.account?.id !== "string" || !value.account.id.trim()) throw new BoundedMessageReadError(403);
-  return value.account.id;
+// Same errors as the former private `/api/account/me` read; the request itself is the shared
+// inbox confirmation (reads reuse one per poll cycle, writes pass the fresh barrier).
+async function readContactMessageActor(signal: AbortSignal, write = false): Promise<string> {
+  const outcome = await confirmInboxActor(signal, { write });
+  if ("actor" in outcome) return outcome.actor;
+  const { failure } = outcome;
+  if (!failure.ok) throw new BoundedMessageReadError(failure.status);
+  if (failure.parseError !== undefined) throw failure.parseError;
+  if (failure.envelope?.success !== true) throw new BoundedMessageReadError(503);
+  throw new BoundedMessageReadError(403);
+}
+async function expectActor(actorId: string, signal: AbortSignal, write = false): Promise<void> {
+  if (await readContactMessageActor(signal, write) !== actorId) {
+    invalidateInboxActorConfirmation();
+    throw new BoundedMessageReadError(403);
+  }
 }
 export interface MessageCardView { id: string; name: string; preview: string; unread: number; updatedAt: string }
 export interface MessageCardPageView { items: MessageCardView[]; nextCursor: string | null }
@@ -23,10 +39,13 @@ export interface MessageWindowView {
 }
 async function read(path: string, actorId: string, signal: AbortSignal) {
   const response = await fetch(path, { signal, cache: "no-store", credentials: "same-origin" });
-  if (!response.ok) throw new BoundedMessageReadError(response.status);
+  if (!response.ok) {
+    if (response.status === 401 || response.status === 403) invalidateInboxActorConfirmation();
+    throw new BoundedMessageReadError(response.status);
+  }
   const envelope = await response.json();
-  if (!envelope.success || envelope.data?.actorId !== actorId) throw new BoundedMessageReadError(403);
-  if (await readContactMessageActor(signal) !== actorId) throw new BoundedMessageReadError(403);
+  if (!envelope.success || envelope.data?.actorId !== actorId) { invalidateInboxActorConfirmation(); throw new BoundedMessageReadError(403); }
+  await expectActor(actorId, signal);
   if (signal.aborted) throw new DOMException("Cancelled", "AbortError");
   return envelope.data;
 }
@@ -50,14 +69,17 @@ export async function readMessageWindow(actorId: string, conversationId: string,
     nextCursor: page.nextCursor ?? null, messages: page.items.map(item => ({ id: item.messageId, authorId: item.senderAccountId, author: item.senderDisplayName, body: item.body, at: item.sentAt })) };
 }
 export async function confirmMessageWindowRead(actorId: string, conversationId: string, messageId: string, signal: AbortSignal) {
-  if (await readContactMessageActor(signal) !== actorId) throw new BoundedMessageReadError(403);
+  await expectActor(actorId, signal, true);
   const value = await communicationFetch(`/api/relationship-communication/conversations/${encodeURIComponent(conversationId)}/read`, {
     signal, method: "POST", body: JSON.stringify({ lastReadMessageId: messageId }),
   }) as { conversationId?: unknown; lastReadMessageId?: unknown; readAt?: unknown };
   if (value.conversationId !== conversationId || value.lastReadMessageId !== messageId || typeof value.readAt !== "string" || !Number.isFinite(Date.parse(value.readAt))) throw Error("Read receipt invalid");
+  // The receipt does not name its actor: confirm afterwards (fresh, the barrier cleared the reuse)
+  // that the session did not switch while it was being written.
+  await expectActor(actorId, signal);
 }
 export async function sendWindowMessage(actorId: string, request: { conversationId: string; body: string; id: string; version: string }, signal: AbortSignal) {
-  if (await readContactMessageActor(signal) !== actorId) throw new BoundedMessageReadError(403);
+  await expectActor(actorId, signal, true);
   const value = await communicationFetch(`/api/relationship-communication/conversations/${encodeURIComponent(request.conversationId)}/messages`, {
     signal, method: "POST", body: JSON.stringify({ body: request.body, requestId: request.id, qualificationVersion: request.version }),
   }) as { conversationId?: unknown; deliveryState?: unknown; message?: { body?: unknown; senderAccountId?: unknown } };
@@ -72,11 +94,12 @@ function replyDraftFrom(value: unknown, conversationId: string): { body: string;
   return { body: draft.body, updatedAt: draft.updatedAt as string | null };
 }
 export async function readReplyDraft(actorId: string, conversationId: string, signal: AbortSignal) {
-  if (await readContactMessageActor(signal) !== actorId) throw new BoundedMessageReadError(403);
+  await expectActor(actorId, signal);
   return replyDraftFrom(await communicationFetch(`/api/relationship-communication/conversations/${encodeURIComponent(conversationId)}/draft`, { signal }), conversationId);
 }
 export async function saveReplyDraft(actorId: string, conversationId: string, body: string, signal: AbortSignal) {
-  if (await readContactMessageActor(signal) !== actorId) throw new BoundedMessageReadError(403);
+  // W0031: a write never reuses an earlier (or in-flight) confirmation; it goes through the write barrier.
+  await expectActor(actorId, signal, true);
   const saved = replyDraftFrom(await communicationFetch(`/api/relationship-communication/conversations/${encodeURIComponent(conversationId)}/draft`, {
     signal, method: "PUT", body: JSON.stringify({ body }),
   }), conversationId);

@@ -37,7 +37,8 @@ export function readContactCardQuery(params: URLSearchParams): ContactsListSearc
   const list = (key: string) => params.getAll(key).flatMap(v => v.split(",")).map(v => v.trim()).filter(Boolean);
   return { query: params.get("query"), cursor: params.get("cursor"),
     limit: params.has("limit") ? Number(params.get("limit")) : 30,
-    sourceFilters: list("source"), statusFilters: list("status"), tagFilters: list("tag"), valueFilters: list("value") };
+    sourceFilters: list("source"), statusFilters: list("status"), tagFilters: list("tag"), valueFilters: list("value"),
+    ...(list("tier").length ? { tierFilters: list("tier") } : {}) };
 }
 
 export function contactCardReadError(error: unknown): AppError {

@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 
 import { createConfiguredBusinessCardCloudOcrProvider } from "../../../../../../features/acquisition/business-card-ocr-provider-selection";
 import {
@@ -16,6 +16,7 @@ import {
   type IngestManifestEntry,
 } from "../../../../../../features/acquisition/business-card-ingest-v2/contract";
 import type { IngestDerivativeStore } from "../../../../../../features/acquisition/business-card-ingest-v2/derivative-store";
+import { reviewedEnrichmentValues } from "../../../../../../features/acquisition/business-card-ingest-v2/review-enrichment";
 import {
   IngestImageInvalidError,
   isIngestUploadMimeType,
@@ -25,6 +26,14 @@ import type {
   BusinessCardIngestRepository,
   IngestQueryClient,
 } from "../../../../../../features/acquisition/business-card-ingest-v2/repository";
+import {
+  ContactMergeRejected,
+  findContactCandidate,
+  listActorContactRecords,
+  mergeCardIntoContact,
+  type CardContactFields,
+  type ContactCandidate,
+} from "../../../../../../features/contacts/business-card-contact-match";
 import { createLiveBusinessCardContactWriteService } from "../../../../../../features/contacts/live-contact-write-service";
 import { createStorageBusinessCardContactWriteProvider } from "../../../../../../features/contacts/storage/contact-write-live-record-provider";
 import { createPostgresLiveRecordStore } from "../../../../../../shared/storage/postgres-live-record-store";
@@ -43,6 +52,11 @@ import {
   getHttpStatusForAppErrorCode,
 } from "../../../../../../shared/errors/app-error";
 import {
+  attributionCardsFromItems,
+  resolveEventAttribution,
+  type EventAttributionSource,
+} from "../../../../../../features/plans/event-attribution";
+import {
   authenticatedApiActorRequiredResponse,
   resolveAuthenticatedApiActor,
   type ResolveAuthenticatedApiActor,
@@ -57,12 +71,56 @@ export interface IngestV2Runtime {
   ready: Promise<void>;
 }
 
+/**
+ * W0015 活动归属：确认时服务端按名片扫描时间重算本人的候选活动（`source`），核实后把计划里的
+ * 这场活动标为已参加（`markAttended`）。缺省用 live 实现（按需加载，不在模块加载时连库）。
+ */
+export interface IngestEventAttributionDeps {
+  source: () => Promise<EventAttributionSource | null>;
+  markAttended: (input: { actorId: string; eventId: string }) => Promise<void>;
+}
+
 export interface IngestV2HandlerDeps {
   resolveActor?: ResolveAuthenticatedApiActor;
   runtime?: IngestV2Runtime | null;
   gate?: { run<T>(actorId: string, fn: () => Promise<T>): Promise<T> };
   isOcrProviderConfigured?: () => boolean;
+  eventAttribution?: IngestEventAttributionDeps;
+  /** W0051：名片确认写入后把该联系人的洞察标为待更新（只写 contact_insights，不调用模型）。 */
+  markInsightsDirty?: (input: { actorId: string; contactIds: readonly string[] }) => Promise<void>;
+  /** W0057：在响应之外排任务（缺省 `next/server` 的 `after`）；不可用时抛错 → 只标待更新，交给维护任务。 */
+  scheduleAfter?: (task: () => Promise<void>) => void;
+  /** W0057（D59）：即时生成执行器（在 `scheduleAfter` 里调用，不在请求内等模型）。 */
+  generateInsightsNow?: (input: { actorId: string; contactIds?: readonly string[] }) => Promise<unknown>;
 }
+
+/** W0057：确认／手工录入之后当场生成「为什么是 TA」（在响应之外；`after` 不可用时只标待更新）。 */
+async function liveGenerateInsightsNow(input: { actorId: string; contactIds?: readonly string[] }): Promise<unknown> {
+  const { runConfiguredInstantInsightGeneration } = await import("../../../../../../features/contacts/insights/instant");
+  return runConfiguredInstantInsightGeneration(input);
+}
+
+async function scheduleCardInsights(deps: IngestV2HandlerDeps, input: { actorId: string; contactIds: readonly string[] }): Promise<void> {
+  const { scheduleInstantInsightGeneration } = await import("../../../../../../features/contacts/insights/mark");
+  scheduleInstantInsightGeneration(deps.scheduleAfter ?? ((task) => after(task)), deps.generateInsightsNow ?? liveGenerateInsightsNow, input);
+}
+
+/** W0051：提交后尽力而为；失败只记日志，确认结果不受影响。 */
+async function liveMarkCardInsightsDirty(input: { actorId: string; contactIds: readonly string[] }): Promise<void> {
+  const { markContactInsightsDirtyBestEffort } = await import("../../../../../../features/contacts/insights/mark");
+  await markContactInsightsDirtyBestEffort({ ...input, reasons: ["enrichment"] });
+}
+
+export const liveIngestEventAttribution: IngestEventAttributionDeps = {
+  async markAttended(input) {
+    const runtime = await import("../../../../../../features/plans/event-attribution-runtime");
+    await runtime.markPlanEventAttendedForActor(input);
+  },
+  async source() {
+    const runtime = await import("../../../../../../features/plans/event-attribution-runtime");
+    return runtime.createConfiguredEventAttributionSource();
+  },
+};
 
 function currentMode(): FeatureMode {
   return resolveFeatureMode(
@@ -345,6 +403,16 @@ export function createIngestV2BatchDetailHandler(deps: IngestV2HandlerDeps = {})
           headers: runtimeBoundaryHeaders(mode),
         });
       }
+      // W0021：今日要事数待确认只要分组与状态列（`IngestBatchCardStates`），不读识别结果等大字段。
+      if (view === "cards") {
+        const states = await runtime.repository.getBatchCardStates({ actorId, batchId: id });
+        if (!states) {
+          return jsonError(new AppError("NOT_FOUND", `batch ${id} was not found`), mode);
+        }
+        return NextResponse.json(success(states), {
+          headers: runtimeBoundaryHeaders(mode),
+        });
+      }
       const detail = await runtime.repository.getBatch({ actorId, batchId: id });
       if (!detail) {
         return jsonError(new AppError("NOT_FOUND", `batch ${id} was not found`), mode);
@@ -354,6 +422,32 @@ export function createIngestV2BatchDetailHandler(deps: IngestV2HandlerDeps = {})
       });
     });
   };
+}
+
+/**
+ * 最后一张照片传完即在服务端开始识别：用户上传后离开页面（新用户引导「先完成设置」、关掉标签页）
+ * 也不会卡在「待开始识别」。finalizeBatch 自带批次锁与幂等分支，并发/重复调用安全；
+ * 任何失败都不影响本次上传的响应（客户端或下一张上传会再试）。
+ */
+async function finalizeWhenAllUploaded(
+  deps: IngestV2HandlerDeps,
+  runtime: Parameters<Parameters<typeof withAuthedRuntime>[1]>[0]["runtime"],
+  actorId: string,
+  batchId: string,
+): Promise<void> {
+  try {
+    // 与手动 finalize 同一道预检：没有 OCR provider 时批次保持 collecting。
+    const configured = deps.isOcrProviderConfigured?.() ?? createConfiguredBusinessCardCloudOcrProvider() !== null;
+    if (!configured) return;
+    const detail = await runtime.repository.getBatch({ actorId, batchId });
+    if (!detail || detail.batch.status !== "collecting") return;
+    const awaiting = detail.items.some((item) => item.status === "awaiting_upload");
+    const uploaded = detail.items.some((item) => item.status === "uploaded");
+    if (awaiting || !uploaded) return;
+    await runtime.repository.finalizeBatch({ actorId, batchId });
+  } catch {
+    // 并发 finalize / 批次已变更：交给后续上传或客户端重试。
+  }
 }
 
 export function createIngestV2UploadHandler(deps: IngestV2HandlerDeps = {}) {
@@ -376,7 +470,8 @@ export function createIngestV2UploadHandler(deps: IngestV2HandlerDeps = {}) {
       if (!item) {
         return jsonError(new AppError("NOT_FOUND", `item ${itemId} was not found`), mode);
       }
-      if (item.status === "uploaded" && item.imageDigest === digest) {
+      // 同字节重传幂等：包括最后一张传完后批次已自动开始识别（item 已进入 queued/processing/…）。
+      if (item.status !== "awaiting_upload" && item.status !== "excluded" && item.imageDigest === digest) {
         return NextResponse.json(success({ item, alreadyUploaded: true }), {
           headers: runtimeBoundaryHeaders(mode),
         });
@@ -404,6 +499,7 @@ export function createIngestV2UploadHandler(deps: IngestV2HandlerDeps = {}) {
         if (result.alreadyUploaded) {
           await runtime.store.delete(stored.objectKey).catch(() => undefined);
         }
+        await finalizeWhenAllUploaded(deps, runtime, actorId, id);
         return NextResponse.json(
           success({ item: result.item, alreadyUploaded: result.alreadyUploaded }),
           { headers: runtimeBoundaryHeaders(mode) },
@@ -523,7 +619,10 @@ export function createIngestV2CancelHandler(deps: IngestV2HandlerDeps = {}) {
 // ---- 复核动作（方案 §五）----------------------------------------------------
 
 class DuplicateReviewSignal extends Error {
-  constructor(public readonly duplicateContactId: string) {
+  constructor(
+    public readonly duplicateContactId: string,
+    public readonly candidate: ContactCandidate | null = null,
+  ) {
     super("duplicate review required");
   }
 }
@@ -547,18 +646,45 @@ function confirmationFingerprint(body: {
   role: string;
   email: string;
   phone: string;
+  address?: string;
+  mergeIntoContactId?: string;
   relationshipContext: string;
   notes: string;
   allowDuplicate?: boolean;
+  primaryIndustryId?: string | null;
+  secondaryIndustryId?: string | null;
+  seniorityLevel?: string | null;
+  regionCountryCode?: string | null;
+  regionCity?: string | null;
+  metEventId?: string | null;
 }): string {
+  // 地址、合并目标、行业、来源活动（W0015）、职级与地区（W0045）是后加的字段：
+  // 为空时不进规范化对象，旧确认的指纹保持不变、可安全重放。
+  const address = body.address?.trim() ? { address: body.address } : {};
+  const merge = body.mergeIntoContactId ? { mergeIntoContactId: body.mergeIntoContactId } : {};
+  const metEvent = body.metEventId ? { metEventId: body.metEventId } : {};
+  const industry = {
+    ...(body.primaryIndustryId ? { primaryIndustryId: body.primaryIndustryId } : {}),
+    ...(body.secondaryIndustryId ? { secondaryIndustryId: body.secondaryIndustryId } : {}),
+  };
+  const enrichment = {
+    ...(body.seniorityLevel ? { seniorityLevel: body.seniorityLevel } : {}),
+    ...(body.regionCountryCode ? { regionCountryCode: body.regionCountryCode } : {}),
+    ...(body.regionCity ? { regionCity: body.regionCity } : {}),
+  };
   const canonical = {
+    ...address,
     allowDuplicate: body.allowDuplicate === true,
     confirmationIntentId: body.confirmationIntentId,
     displayName: body.displayName,
     email: body.email,
     expectedCardItems: [...body.expectedCardItems].sort((a, b) => a.itemId.localeCompare(b.itemId)),
     fieldSources: Object.fromEntries(Object.entries(body.fieldSources).sort(([a], [b]) => a.localeCompare(b))),
+    ...industry,
+    ...merge,
+    ...metEvent,
     notes: body.notes,
+    ...enrichment,
     organization: body.organization,
     phone: body.phone,
     relationshipContext: body.relationshipContext,
@@ -567,9 +693,8 @@ function confirmationFingerprint(body: {
   return createHash("sha256").update(JSON.stringify(canonical)).digest("hex");
 }
 
-/** 把确认事务的 client 包装成 record store，让联系人写入与 item 转换同事务。 */
-function buildTxContactService(client: IngestQueryClient, workspaceId: string) {
-  const txStore = createPostgresLiveRecordStore({
+function recordStoreFor(client: IngestQueryClient) {
+  return createPostgresLiveRecordStore<Record<string, unknown>>({
     client: {
       async query(text: string, values?: readonly unknown[]) {
         const result = await client.query(text, values);
@@ -577,6 +702,11 @@ function buildTxContactService(client: IngestQueryClient, workspaceId: string) {
       },
     },
   });
+}
+
+/** 把确认事务的 client 包装成 record store，让联系人写入与 item 转换同事务。 */
+function buildTxContactService(client: IngestQueryClient, workspaceId: string) {
+  const txStore = recordStoreFor(client);
   const provider = createStorageBusinessCardContactWriteProvider({
     store: txStore,
     workspaceId,
@@ -667,6 +797,34 @@ function createConfirmLikeHandler(
       if (!confirmation.success) {
         return jsonError(new AppError("VALIDATION_ERROR", "Card confirmation intent, source versions, or field provenance is invalid."), mode);
       }
+      // W0015：「在该活动认识」。客户端只提交活动 id；服务端按这张名片的扫描时间（条目 createdAt）
+      // 重算本人的候选，不一致就拒绝且不写库。字段不进共享 schema（Web 独有，App 契约不变）。
+      const rawMetEventId = body.metEventId;
+      if (rawMetEventId !== undefined && rawMetEventId !== null && (typeof rawMetEventId !== "string" || !rawMetEventId.trim() || rawMetEventId.length > 200)) {
+        return jsonError(new AppError("VALIDATION_ERROR", "metEventId must be a non-empty string."), mode);
+      }
+      let metEvent: { eventId: string; title: string } | null = null;
+      if (typeof rawMetEventId === "string") {
+        const attribution = deps.eventAttribution ?? liveIngestEventAttribution;
+        const source = await attribution.source();
+        const resolved = source
+          ? await resolveEventAttribution(source, { cards: attributionCardsFromItems(cardItems), userId: actorId })
+          : null;
+        const event = resolved?.byCard[item.cardId] === rawMetEventId.trim()
+          ? resolved.events.find((entry) => entry.eventId === rawMetEventId.trim()) ?? null
+          : null;
+        if (!event) {
+          return jsonError(new AppError("CONFLICT", "EVENT_ATTRIBUTION_REJECTED: this card was not scanned during that registered event."), mode);
+        }
+        metEvent = { eventId: event.eventId, title: event.title };
+      }
+      // W0045：行业／职级／地区的来源由服务端比较提交值与该卡识别结果判定；客户端不传来源（schema 已剥掉多余键）。
+      const reviewed = reviewedEnrichmentValues(confirmation.data, cardItems.map((entry) => entry.extraction));
+      if (!reviewed.ok) {
+        return jsonError(new AppError("VALIDATION_ERROR", "Card confirmation seniority or region is invalid."), mode);
+      }
+      const enrichment = { values: reviewed.values };
+      let merged = false;
       try {
         const confirmed = await runtime.repository.confirmCard({
           actorId,
@@ -674,12 +832,54 @@ function createConfirmLikeHandler(
           itemId,
           allowFrom,
           confirmationIntentId: confirmation.data.confirmationIntentId,
-          confirmationFingerprint: confirmationFingerprint(confirmation.data),
+          confirmationFingerprint: confirmationFingerprint({ ...confirmation.data, metEventId: metEvent?.eventId ?? null }),
           expectedItems: confirmation.data.expectedCardItems,
           fieldSources: confirmation.data.fieldSources,
           async createContact(client) {
+            const evidenceIds = cardItems.map((entry) => `evidence:business-card-batch:${entry.id}:${entry.side}`);
+            const card: CardContactFields = {
+              address: confirmation.data.address ?? "",
+              displayName: confirmation.data.displayName,
+              email: confirmation.data.email,
+              organization: confirmation.data.organization,
+              phone: confirmation.data.phone,
+              role: confirmation.data.role,
+            };
+            const industry = {
+              primaryIndustryId: confirmation.data.primaryIndustryId ?? null,
+              secondaryIndustryId: confirmation.data.secondaryIndustryId ?? null,
+            };
+            const store = recordStoreFor(client);
+            const mergeInto = async (contactId: string) => {
+              merged = true;
+              return mergeCardIntoContact({
+                actorId,
+                card,
+                cardNotes: confirmation.data.notes,
+                contactId,
+                enrichment,
+                evidenceIds,
+                industry,
+                metEvent,
+                store,
+                workspaceId: runtime.workspaceId,
+              });
+            };
+            // 用户选了「已有联系人，合并」。
+            if (confirmation.data.mergeIntoContactId) return mergeInto(confirmation.data.mergeIntoContactId);
+            if (confirmation.data.allowDuplicate !== true) {
+              const candidate = findContactCandidate(
+                await listActorContactRecords(store, runtime.workspaceId, actorId),
+                actorId,
+                card,
+              );
+              // 所有字段都与已有联系人一致：就是这个人，直接并入，不新建也不再询问。
+              if (candidate?.identical) return mergeInto(candidate.contactId);
+              if (candidate) throw new DuplicateReviewSignal(candidate.contactId, candidate);
+            }
             const contacts = buildTxContactService(client, runtime.workspaceId);
             const result = await contacts.confirmBusinessCardContact({
+              ...(confirmation.data.address?.trim() ? { location: confirmation.data.address } : {}),
               actorId,
               actorLabel: actorId,
               allowDuplicate: confirmation.data.allowDuplicate === true,
@@ -687,11 +887,14 @@ function createConfirmLikeHandler(
               displayName: confirmation.data.displayName,
               draftId: `business-card-batch:${id}:${item.cardId}`,
               email: confirmation.data.email,
-              evidenceIds: cardItems.map((entry) => `evidence:business-card-batch:${entry.id}:${entry.side}`),
+              evidenceIds,
               imageDigest: createHash("sha256").update(cardItems.map((entry) => entry.imageDigest ?? entry.id).join("\n")).digest("hex"),
               notes: confirmation.data.notes,
               organization: confirmation.data.organization,
               phone: confirmation.data.phone,
+              ...industry,
+              enrichment,
+              metEvent,
               relationshipContext: confirmation.data.relationshipContext,
               role: confirmation.data.role,
             });
@@ -713,12 +916,30 @@ function createConfirmLikeHandler(
             );
           }
         }
+        if (metEvent) {
+          // 联系人已随确认提交（主数据）；计划写入另走计划库的事务，幂等（已参加是终态）。这里只是尽力而为：
+          // 失败或计划服务未配置时，`plan-event-attendance` 维护任务按联系人上的 metEventId 对账补上。
+          await (deps.eventAttribution ?? liveIngestEventAttribution)
+            .markAttended({ actorId, eventId: metEvent.eventId })
+            .catch((error: unknown) => {
+              console.warn("[ingest-v2] event attribution plan update failed", error instanceof Error ? error.message : error);
+            });
+        }
         const confirmedItem = confirmed.items.find((entry) => entry.id === itemId) ?? confirmed.items[0]!;
+        // W0051：名片补全（行业／职级／地区）随确认写入：提交后标这位联系人的洞察待更新（回放同样幂等）。
+        // W0057（D59）：标记后在响应之外当场生成（回放同样踢：定向领取 + 幂等键保证不重复计费）。
+        if (confirmedItem.confirmedContactId) {
+          const insightInput = { actorId, contactIds: [confirmedItem.confirmedContactId] };
+          await (deps.markInsightsDirty ?? liveMarkCardInsightsDirty)(insightInput).catch(() => undefined);
+          await scheduleCardInsights(deps, insightInput).catch(() => undefined);
+        }
         return NextResponse.json(
           success({
             contactId: confirmedItem.confirmedContactId,
             item: confirmedItem,
             items: confirmed.items,
+            merged,
+            metEventId: metEvent?.eventId ?? null,
             replayed: confirmed.replayed,
             state: "created",
           }),
@@ -728,6 +949,7 @@ function createConfirmLikeHandler(
         if (error instanceof DuplicateReviewSignal) {
           return NextResponse.json(
             success({
+              candidate: error.candidate,
               duplicateContactId: error.duplicateContactId,
               state: "duplicate_review",
             }),
@@ -736,6 +958,9 @@ function createConfirmLikeHandler(
         }
         if (error instanceof ContactWriteRejected) {
           return jsonError(new AppError("VALIDATION_ERROR", error.message), mode);
+        }
+        if (error instanceof ContactMergeRejected) {
+          return jsonError(new AppError("CONFLICT", error.message), mode);
         }
         throw error;
       }
@@ -805,6 +1030,55 @@ export function createIngestV2ImageHandler(deps: IngestV2HandlerDeps = {}) {
           ...Object.fromEntries(new Headers(runtimeBoundaryHeaders(mode)).entries()),
         },
       });
+    });
+  };
+}
+
+// ---- 复核页：查「可能是同一个联系人」-----------------------------------------
+
+function cardFieldsFrom(value: unknown): CardContactFields | null {
+  if (!isRecord(value)) return null;
+  return {
+    address: textField(value.address),
+    displayName: textField(value.displayName),
+    email: textField(value.email),
+    organization: textField(value.organization),
+    phone: textField(value.phone),
+    role: textField(value.role),
+  };
+}
+
+/**
+ * POST { cards: [{ cardId, fields }] } → { matches: { [cardId]: candidate | null } }。
+ * 字段取复核页当前草稿（用户可能改过），只在本人名下的联系人里找；只读，不改任何数据。
+ */
+export function createIngestV2DuplicateCandidatesHandler(deps: IngestV2HandlerDeps = {}) {
+  return async function POST(
+    request: Request,
+    context: { params: Promise<{ id: string }> },
+  ): Promise<Response> {
+    return withAuthedRuntime(deps, async ({ actorId, runtime, mode }) => {
+      const { id } = await context.params;
+      const detail = await runtime.repository.getBatch({ actorId, batchId: id });
+      if (!detail) return jsonError(new AppError("NOT_FOUND", `batch ${id} was not found`), mode);
+      const parsed: unknown = await request.json().catch(() => null);
+      const cards = isRecord(parsed) && Array.isArray(parsed.cards) ? parsed.cards : null;
+      if (!cards || cards.length > INGEST_V2_MAX_ITEMS) {
+        return jsonError(new AppError("VALIDATION_ERROR", "cards must be an array of at most one batch."), mode);
+      }
+      const requests = cards.flatMap((entry) => {
+        const fields = isRecord(entry) ? cardFieldsFrom(entry.fields) : null;
+        const cardId = isRecord(entry) ? textField(entry.cardId) : "";
+        return fields && cardId ? [{ cardId, fields }] : [];
+      });
+      const matches: Record<string, ContactCandidate | null> = {};
+      if (requests.length && runtime.repository.withReadClient) {
+        const records = await runtime.repository.withReadClient((client) =>
+          listActorContactRecords(recordStoreFor(client), runtime.workspaceId, actorId),
+        );
+        for (const { cardId, fields } of requests) matches[cardId] = findContactCandidate(records, actorId, fields);
+      }
+      return NextResponse.json(success({ matches }), { headers: runtimeBoundaryHeaders(mode) });
     });
   };
 }

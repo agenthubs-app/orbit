@@ -69,6 +69,18 @@ test("前缀匹配只在路径边界处生效", () => {
   assert.equal(allowsOrbitAsk("/app/events/event_01/operations/check-in"), false);
 });
 
+test("W0006：引导页 /app/start 本身不挂提问入口，只排除这一条路径", () => {
+  assert.equal(allowsOrbitAsk("/app/start"), false);
+  assert.equal(allowsOrbitAsk("/app/start/"), false);
+  assert.equal(allowsOrbitAsk("/app/start?lang=en"), false);
+  // 精确路径：前缀相同的其他路由照常挂。
+  assert.equal(allowsOrbitAsk("/app/startup"), true);
+  assert.equal(allowsOrbitAsk("/app/start/other"), true);
+  for (const path of ["/app/agent/strategy", "/app/contacts", "/app/events", "/app/profile"]) {
+    assert.equal(allowsOrbitAsk(path), true, path);
+  }
+});
+
 test("页面上下文标签按路由推导，且跟随语言", () => {
   assert.equal(orbitAskPageContext("/app/events/event_01", "zh"), "这场活动");
   assert.equal(orbitAskPageContext("/app/events/event_01", "en"), "this event");

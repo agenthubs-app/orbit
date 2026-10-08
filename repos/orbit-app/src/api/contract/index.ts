@@ -325,3 +325,27 @@ export type { ContactLabelsContract } from "./contact-labels";
 export type { TaskSuggestionCardContract, TaskSuggestionPageContract } from "./task-suggestion-page";
 export type { NoteTaskCardContract, NoteTaskPageContract } from "./note-task-page";
 export type { ContactSyncPayload, ContactSyncSearch, LocalContactDirectoryQuery } from "./contact-local-directory";
+export type {
+  ContactMemoNoteInputContract,
+  MemoEventType,
+  RelationshipTimelineCaptureMethod,
+  RelationshipTimelineItem,
+  RelationshipTimelineRefStore,
+  RelationshipTimelineResult,
+  RelationshipTimelineSource
+} from "./relationship-timeline";
+export type {
+  RelationshipStrength,
+  RelationshipStrengthSignal,
+  RelationshipStrengthState,
+  RelationshipTier,
+  RelationshipTierCounts,
+  RelationshipTierGroup
+} from "./relationship-strength";
+export type {
+  ContactInsight,
+  ContactInsightEvidence,
+  ContactInsightEvidenceSource,
+  ContactInsightState,
+  ContactInsightText
+} from "./contact-insight";

@@ -1,11 +1,16 @@
 /**
  * Network v2（Orbit_0918）人脉域壳：页头 + 四页签 + 全部 nw-* 样式。
  * JSX 逐元素来自 docs/designs/Orbit_0918/Network v2.dc.html 第 44–65 行。
+ *
+ * W0005 示例模式：服务端判定本人在引导期示例里时，页面用 `NetworkDemoFrame`（network-demo-frame.tsx）
+ * 包住人脉屏，挂上 `DemoModeProvider`、导航药丸与拦截层；壳在页头上方渲染「示例预览」横条。
+ * 没有 Provider 时（开关关、不在引导期、导入页、分组下钻页）`DemoBanner` 不渲染，一切照旧。
  */
 "use client";
 
 import type { ReactNode } from "react";
 
+import { DemoBanner } from "../../_demo/demo-mode-core";
 import { useOrbitLanguage } from "../../orbit-language-context";
 
 export type NetworkScreen = "overview" | "pipeline" | "all" | "import" | "analysis";
@@ -31,6 +36,7 @@ export function NetworkShell({ screen, children, modal }: { screen: NetworkScree
   return (
     <main data-orbit-real-page="network" data-network-screen={screen} className="nw-main">
       <style>{NETWORK_STYLES}</style>
+      <DemoBanner message={NETWORK_DEMO_MESSAGE} />
       {isMain ? (
         <>
           <div className="nw-head">
@@ -59,6 +65,11 @@ export function NetworkShell({ screen, children, modal }: { screen: NetworkScree
     </main>
   );
 }
+
+const NETWORK_DEMO_MESSAGE = {
+  en: "Once you finish the guide, this becomes your own network.",
+  zh: "完成引导后，这里换成你自己的人脉。",
+};
 
 // 每条规则 = 设计稿一个 style="" 原样搬入；顺序与值不得改动。
 export const NETWORK_STYLES = `
@@ -167,9 +178,7 @@ export const NETWORK_STYLES = `
 [data-orbit-real-page="network"] .nw-suggest-tag { padding: 4px 10px; border-radius: 999px; font-size: 12px; white-space: nowrap; }
 [data-orbit-real-page="network"] .nw-suggest-arrow { color: #9FA3C4; }
 [data-orbit-real-page="network"] .nw-pipe-filters { display: flex; flex-wrap: wrap; gap: 12px; padding: 14px; border: 1px solid #E8E9F6; border-radius: 16px; background: #FFFFFF; }
-[data-orbit-real-page="network"] .nw-pipe-filter { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border: 1px solid #E8E9F6; border-radius: 10px; font-size: 14px; color: #3B3F7A; }
-[data-orbit-real-page="network"] .nw-pipe-filter-v { font-weight: 500; color: #0E1225; }
-[data-orbit-real-page="network"] .nw-pipe-filter-caret { font-size: 11px; }
+[data-orbit-real-page="network"] .nw-pipe-note { display: flex; align-items: center; padding: 10px 4px; font-size: 13px; color: #6B6F99; }
 [data-orbit-real-page="network"] .nw-pipe-search { flex: 1; min-width: 220px; padding: 10px 16px; border: 1px solid #E8E9F6; border-radius: 10px; background: #F7F7FD; font-size: 14px; outline: none; }
 [data-orbit-real-page="network"] .nw-pipe-search:focus { border-color: #4B4FC7; background: #FFFFFF; }
 [data-orbit-real-page="network"] .nw-kanban { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)); gap: 16px; align-items: start; }
@@ -203,6 +212,8 @@ export const NETWORK_STYLES = `
 [data-orbit-real-page="network"] .btn.nw-kanban-more:active { transform: none; }
 [data-orbit-real-page="network"] .nw-kanban-foot { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #6B6F99; padding-top: 8px; border-top: 1px solid #EEEFF8; }
 [data-orbit-real-page="network"] .nw-kanban-v { color: #3B3F7A; }
+[data-orbit-real-page="network"] .nw-tier-dot { display: inline-block; width: 7px; height: 7px; margin-right: 6px; border-radius: 50%; vertical-align: middle; }
+[data-orbit-real-page="network"] .nw-kanban-more-note { padding: 2px 4px; font-size: 12px; color: #6B6F99; }
 [data-orbit-real-page="network"] .nw-kanban-next { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* ── 概览（设计稿 66–171 行）── */
 [data-orbit-real-page="network"] .nw-dist-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
@@ -263,14 +274,32 @@ export const NETWORK_STYLES = `
 [data-orbit-real-page="network"] .nw-hl-copy { flex: 1; display: flex; flex-direction: column; gap: 2px; }
 [data-orbit-real-page="network"] .nw-hl-stage { padding: 5px 12px; border-radius: 999px; font-size: 12px; }
 [data-orbit-real-page="network"] .nw-recent-card { border: 1px solid #E8E9F6; border-radius: 18px; background: #FFFFFF; padding: 26px; display: flex; flex-direction: column; gap: 14px; }
-[data-orbit-real-page="network"] .nw-recent-thead { display: grid; grid-template-columns: 44px minmax(90px, 1fr) minmax(0, 2fr) minmax(0, 1.2fr) 110px 90px 40px; align-items: center; gap: 16px; padding: 10px 12px; border-radius: 10px; background: #F7F7FD; font-size: 13px; color: #6B6F99; }
-[data-orbit-real-page="network"] .nw-recent-row { display: grid; grid-template-columns: 44px minmax(90px, 1fr) minmax(0, 2fr) minmax(0, 1.2fr) 110px 90px 40px; align-items: center; gap: 16px; padding: 12px; border: 0; border-top: 1px solid #EEEFF8; background: transparent; text-align: left; font-size: 14px; cursor: pointer; }
+[data-orbit-real-page="network"] .nw-recent-thead { display: grid; grid-template-columns: 44px minmax(90px, 1fr) 96px minmax(0, 2.4fr) 120px; align-items: center; gap: 16px; padding: 10px 12px; border-radius: 10px; background: #F7F7FD; font-size: 13px; color: #6B6F99; }
+[data-orbit-real-page="network"] .nw-recent-row { display: grid; grid-template-columns: 44px minmax(90px, 1fr) 96px minmax(0, 2.4fr) 120px; align-items: center; gap: 16px; padding: 12px; border: 0; border-top: 1px solid #EEEFF8; background: transparent; text-align: left; font-size: 14px; cursor: pointer; }
 [data-orbit-real-page="network"] .nw-recent-row:hover { background: #F7F7FD; }
 [data-orbit-real-page="network"] .nw-recent-name { font-size: 15px; white-space: nowrap;
-  /* 该列内容是动态句子而非姓名（analysis.activity.label），超出列宽时省略号截断 */
+  /* W0052：该列是联系人姓名（时间线），超出列宽时省略号截断 */
   min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+/* W0052：姓名链接（<a>）自带字色与 :hover（0918 anchor-colour 门禁）。 */
+[data-orbit-real-page="network"] .nw-recent-link { color: #0E1225; }
+[data-orbit-real-page="network"] .nw-recent-link:hover { color: #4B4FC7; }
+[data-orbit-real-page="network"] .nw-recent-badge { justify-self: start; padding: 3px 10px; border-radius: 999px; background: #ECEEFB; color: #2E3270; font-size: 12px; white-space: nowrap; }
+[data-orbit-real-page="network"] .nw-cockpit-label { font-size: 13px; color: #6B6F99; }
+[data-orbit-real-page="network"] .nw-cockpit-plan-cta { color: #4B4FC7; }
+[data-orbit-real-page="network"] .nw-cockpit-sentence { line-height: 1.6; }
+[data-orbit-real-page="network"] .nw-tier-pending { font-size: 13px; color: #8A6420; }
+@media (max-width: 700px) {
+  [data-orbit-real-page="network"] .nw-recent-thead { display: none; }
+  [data-orbit-real-page="network"] .nw-recent-row { grid-template-columns: 40px minmax(0, 1fr) auto; grid-template-areas: "avatar name badge" "avatar summary summary" "avatar when when"; row-gap: 4px; column-gap: 12px; }
+  [data-orbit-real-page="network"] .nw-recent-row > .nw-avatar { grid-area: avatar; align-self: start; }
+  [data-orbit-real-page="network"] .nw-recent-row > .nw-recent-name { grid-area: name; }
+  [data-orbit-real-page="network"] .nw-recent-row > .nw-recent-badge { grid-area: badge; }
+  [data-orbit-real-page="network"] .nw-recent-row > .nw-recent-org { grid-area: summary; white-space: normal; }
+  [data-orbit-real-page="network"] .nw-recent-row > .nw-recent-last { grid-area: when; font-size: 13px; }
+  [data-orbit-real-page="network"] .btn.nw-stage-seg { padding: 12px 6px 12px 14px; white-space: normal; }
+  [data-orbit-real-page="network"] .nw-stage-label { font-size: 10px; line-height: 1.2; text-align: center; }
+}
 [data-orbit-real-page="network"] .nw-recent-org { color: #3B3F7A; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-[data-orbit-real-page="network"] .nw-recent-ind { color: #6B6F99; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 [data-orbit-real-page="network"] .nw-recent-last { color: #6B6F99; white-space: nowrap; }
 /* ── 导入人脉（设计稿 303–392 行）── */
 [data-orbit-real-page="network"] .nw-import { display: flex; flex-direction: column; gap: 20px; animation: orbit-fade .3s ease; }
@@ -295,12 +324,15 @@ export const NETWORK_STYLES = `
 [data-orbit-real-page="network"] .nw-import-method-hint { font-size: 12px; color: #9FA3C4; }
 [data-orbit-real-page="network"] .nw-import-panel { border: 1px solid #E8E9F6; border-radius: 18px; background: #FFFFFF; padding: 26px; display: flex; flex-direction: column; gap: 16px; }
 [data-orbit-real-page="network"] .nw-import-panel-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-[data-orbit-real-page="network"] .nw-import-panel-link { font-size: 14px; color: #4B4FC7; text-decoration: underline; white-space: nowrap; }
+/* 「10 名片确认」子页（Network v2 398–404 行）：全宽，顶部「← 导入人脉」 */
+[data-orbit-real-page="network"] .nw-import-job { display: flex; flex-direction: column; gap: 22px; }
+[data-orbit-real-page="network"] .btn.nw-import-back { align-self: flex-start; display: flex; align-items: center; gap: 8px; height: auto; padding: 7px 14px; border: 1px solid #DDDEFA; border-radius: 999px; background: #FFFFFF; color: #3B3F7A; font-size: 13px; font-weight: 400; letter-spacing: 0; line-height: normal; transition: none; }
+[data-orbit-real-page="network"] .btn.nw-import-back:hover { background: #ECEEFB; color: #3B3F7A; }
+[data-orbit-real-page="network"] .btn.nw-import-back:active { transform: none; }
 /* 跨域 <a> 字色门禁（tests/ui/orbit-0918-anchor-colour.test.ts）：这一行落成 <a>，
    作用域基线 a:hover { color:#0E1225 } 的特指度高于单类规则，会在 hover 时把设计的
    #4B4FC7 换掉。设计稿这条链接没有 style-hover，所以这里只是把基线中和回原色，
    不是新增一个悬停态。同文件 .nw-link / .btn.nw-textlink 已是同一写法。 */
-[data-orbit-real-page="network"] .nw-import-panel-link:hover { color: #4B4FC7; }
 [data-orbit-real-page="network"] .nw-import-box { border: 1px solid #E8E9F6; border-radius: 18px; background: #FFFFFF; padding: 26px; display: flex; flex-direction: column; gap: 14px; }
 [data-orbit-real-page="network"] .nw-import-note { display: flex; gap: 12px; padding: 14px; border: 1px solid #E8E9F6; border-radius: 12px; }
 [data-orbit-real-page="network"] .nw-import-note-icon { width: 36px; height: 36px; border-radius: 10px; background: #ECEEFB; color: #4B4FC7; display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
@@ -402,6 +434,40 @@ export const NETWORK_STYLES = `
 [data-orbit-real-page="network"] .nw-an-hero-copy-opp { display: flex; gap: 14px; align-items: flex-start; min-width: 0; flex: 1; }
 [data-orbit-real-page="network"] .nw-an-hero-star-28 { color: #4B4FC7; font-size: 28px; line-height: 1; }
 [data-orbit-real-page="network"] .nw-an-hero-p { margin: 0; font-size: 14px; line-height: 1.7; color: #6B6F99; max-width: 640px; }
+/* W0049 结构标签：分组选择、二级 Top5、计划相关标记、依据展开、洞察列表、30 天变化 */
+[data-orbit-real-page="network"] .btn.nw-dim-btn { background: #FFFFFF; color: #3B3F7A; border-color: #E8E9F6; }
+[data-orbit-real-page="network"] .btn.nw-dim-btn.nw-dim-btn-on { background: #0E1225; color: #FFFFFF; border-color: #0E1225; }
+[data-orbit-real-page="network"] .btn.nw-dim-row-btn { width: 100%; padding: 6px 8px; margin: -6px -8px; border: 0; border-radius: 10px; background: transparent; color: inherit; cursor: pointer; text-align: left;
+  height: auto; justify-content: flex-start; letter-spacing: 0; line-height: normal; transition: background .2s; }
+[data-orbit-real-page="network"] .btn.nw-dim-row-btn:hover, [data-orbit-real-page="network"] .btn.nw-dim-row-btn.nw-dim-row-on { background: #F3F4FC; }
+[data-orbit-real-page="network"] .btn.nw-dim-row-btn:active { transform: none; }
+[data-orbit-real-page="network"] .nw-dim-legend-row { justify-content: space-between; }
+[data-orbit-real-page="network"] .nw-dim-legend-row > .btn.nw-dim-row-btn { width: auto; flex: 1; margin: -6px 0 -6px -8px; display: flex; align-items: center; gap: 12px; }
+[data-orbit-real-page="network"] .nw-dim-row-main { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
+[data-orbit-real-page="network"] .nw-dim-row-link { flex-shrink: 0; font-size: 12px; color: #4B4FC7; text-decoration: none; white-space: nowrap; }
+[data-orbit-real-page="network"] .nw-dim-row-link:hover { color: #2E3270; text-decoration: underline; }
+[data-orbit-real-page="network"] .nw-plan-mark { margin-left: 6px; color: #B07A1E; font-size: 12px; }
+[data-orbit-real-page="network"] .nw-plan-legend { font-size: 12px; color: #6B6F99; }
+[data-orbit-real-page="network"] .nw-sub-top { display: flex; flex-direction: column; gap: 6px; padding: 12px; border-radius: 12px; background: #F7F7FD; }
+[data-orbit-real-page="network"] .nw-sub-top-t { font-size: 13px; color: #2E3270; }
+[data-orbit-real-page="network"] .nw-sub-top-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; font-size: 13px; color: #0E1225; text-decoration: none; }
+[data-orbit-real-page="network"] .nw-sub-top-row:hover { color: #4B4FC7; }
+[data-orbit-real-page="network"] .nw-an-hero-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+[data-orbit-real-page="network"] .nw-evidence { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+[data-orbit-real-page="network"] .btn.nw-evidence-btn { padding: 4px 10px; border: 1px solid #DDDEFA; border-radius: 999px; background: #FFFFFF; color: #4B4FC7; font-size: 12px; cursor: pointer;
+  height: auto; display: inline-block; letter-spacing: 0; line-height: normal; transition: none; }
+[data-orbit-real-page="network"] .btn.nw-evidence-btn:active { transform: none; }
+[data-orbit-real-page="network"] .nw-evidence-list { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+[data-orbit-real-page="network"] .nw-evidence-link { padding: 3px 10px; border-radius: 999px; background: #ECEEFB; color: #2E3270; font-size: 12px; text-decoration: none; }
+[data-orbit-real-page="network"] .nw-evidence-link:hover { background: #DDDEFA; color: #0E1225; }
+[data-orbit-real-page="network"] .nw-insight-list { display: flex; flex-direction: column; gap: 14px; }
+[data-orbit-real-page="network"] .nw-insight-item { display: flex; gap: 14px; align-items: flex-start; padding: 16px; border: 1px solid #E8E9F6; border-radius: 14px; }
+[data-orbit-real-page="network"] .nw-health-item { color: #0E1225; }
+[data-orbit-real-page="network"] a.nw-health-item { text-decoration: none; }
+[data-orbit-real-page="network"] .nw-health-item:hover { border-color: #B9BCEB; color: #0E1225; }
+@media (max-width: 600px) { [data-orbit-real-page="network"] .nw-dims { grid-template-columns: repeat(2, minmax(0, 1fr)); } [data-orbit-real-page="network"] .btn.nw-dim-btn { white-space: normal; } [data-orbit-real-page="network"] .nw-dim-donut { width: 180px; height: 180px; } [data-orbit-real-page="network"] .nw-dim-donut-inner { width: 112px; height: 112px; }
+  [data-orbit-real-page="network"] .nw-an-hero .nw-h2-26 { font-size: 20px; line-height: 1.4; } [data-orbit-real-page="network"] .nw-an-hero { padding: 20px; }
+  [data-orbit-real-page="network"] .nw-top-thead, [data-orbit-real-page="network"] .nw-top-row { grid-template-columns: 28px minmax(0, 1fr) 44px 44px; gap: 8px; padding-left: 8px; padding-right: 8px; } }
 [data-orbit-real-page="network"] .nw-hero-chips { display: flex; flex-direction: column; gap: 10px; align-items: flex-end; }
 [data-orbit-real-page="network"] .nw-hero-chip { padding: 8px 14px; border-radius: 999px; background: #FFFFFF; border: 1px solid #E8E9F6; font-size: 13px; color: #3B3F7A; }
 [data-orbit-real-page="network"] .nw-opp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); gap: 20px; align-items: start; }
@@ -479,6 +545,10 @@ export const NETWORK_STYLES = `
   padding: 0; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; letter-spacing: 0; line-height: normal; transition: none; font-weight: 400; }
 [data-orbit-real-page="network"] .btn.nw-modal-close:hover { background: #ECEEFB; }
 [data-orbit-real-page="network"] .btn.nw-modal-close:active { transform: none; }
+/* W0059：左上「‹ 返回 {来源}」文字按钮（原型画板①顶栏）。 */
+[data-orbit-real-page="network"] .btn.nw-detail-back { border: 0; background: transparent; color: #4B4FC7; font-size: 14px; font-weight: 600; padding: 6px 10px 6px 4px; border-radius: 10px; min-height: 36px; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; letter-spacing: 0; line-height: normal; transition: none; cursor: pointer; text-decoration: none; }
+[data-orbit-real-page="network"] .btn.nw-detail-back:hover { background: #ECEEFB; }
+[data-orbit-real-page="network"] .btn.nw-detail-back:active { transform: none; }
 [data-orbit-real-page="network"] .nw-detail-hero { display: flex; flex-wrap: wrap; align-items: center; gap: 24px; }
 [data-orbit-real-page="network"] .nw-modal-avatar { width: 112px; height: 112px; border-radius: 50%; background: #DDDEFA; color: #2E3270; display: flex; align-items: center; justify-content: center; font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 44px;
   /* 非设计声明：flex 子项防压缩（设计里 span 不受父级压缩，实际列表长文案会挤压头像） */
@@ -487,7 +557,33 @@ export const NETWORK_STYLES = `
 [data-orbit-real-page="network"] .nw-detail-name { margin: 0; font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 30px; letter-spacing: -0.02em; }
 [data-orbit-real-page="network"] .nw-detail-org { font-size: 17px; color: #3B3F7A; }
 [data-orbit-real-page="network"] .nw-detail-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 18px; font-size: 14px; color: #3B3F7A; }
+[data-orbit-real-page="network"] .nw-enrich { margin-top: 12px; }
+[data-orbit-real-page="network"] .nw-enrich-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; font-size: 13px; color: #3B3F7A; }
+[data-orbit-real-page="network"] .nw-enrich-item { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+[data-orbit-real-page="network"] .nw-enrich-item strong { font-weight: 600; color: #1F2357; overflow-wrap: anywhere; }
+[data-orbit-real-page="network"] .nw-enrich-l { color: #8A8DB8; font-size: 12px; }
+[data-orbit-real-page="network"] .nw-enrich-origin { padding: 1px 6px; border-radius: 999px; font-size: 11px; background: #EEF0FF; color: #4B4FC7; white-space: nowrap; }
+[data-orbit-real-page="network"] .nw-enrich-origin-user { background: #F1F2F6; color: #5B5E7A; }
+[data-orbit-real-page="network"] .nw-enrich-origin-card { background: #EAF6EF; color: #2F7A4F; }
+[data-orbit-real-page="network"] .nw-enrich-edit { padding: 4px 12px; font-size: 12px; }
+[data-orbit-real-page="network"] .nw-enrich-status { font-size: 12px; color: #2F7A4F; }
+[data-orbit-real-page="network"] .nw-enrich-form { display: grid; gap: 10px; padding: 12px; border: 1px solid #E8E9F6; border-radius: 12px; background: #FAFAFF; }
+[data-orbit-real-page="network"] .nw-enrich-field { display: grid; gap: 4px; }
+[data-orbit-real-page="network"] .nw-enrich-pair { display: flex; flex-wrap: wrap; gap: 8px; }
+[data-orbit-real-page="network"] .nw-enrich-form select, [data-orbit-real-page="network"] .nw-enrich-form input { flex: 1 1 140px; min-width: 0; min-height: 36px; padding: 6px 8px; border: 1px solid #DDDEFA; border-radius: 8px; background: #FFFFFF; color: #1F2357; font-size: 13px; }
+[data-orbit-real-page="network"] .nw-enrich-error { margin: 0; font-size: 12px; color: #B42318; }
+[data-orbit-real-page="network"] .nw-enrich-actions { display: flex; justify-content: flex-end; gap: 8px; }
 [data-orbit-real-page="network"] .nw-detail-stage { padding: 5px 12px; border-radius: 999px; font-size: 12px; }
+[data-orbit-real-page="network"] .btn.nw-basis-toggle { padding: 4px 10px; border: 1px solid #DDDEFA; border-radius: 999px; background: #FFFFFF; color: #3B3F7A; font-size: 12px; cursor: pointer;
+  /* 覆盖 .btn 基类（orbit-reference-styles.tsx:594–611）非设计声明 */
+  height: auto; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; letter-spacing: 0; line-height: normal; transition: none; font-weight: 400; }
+[data-orbit-real-page="network"] .btn.nw-basis-toggle:hover { background: #ECEEFB; color: #2E3270; }
+[data-orbit-real-page="network"] .btn.nw-basis-toggle:active { transform: none; }
+[data-orbit-real-page="network"] .nw-basis { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; padding: 12px 14px; border: 1px solid #E8E9F6; border-radius: 12px; background: #FAFAFF; font-size: 13px; }
+[data-orbit-real-page="network"] .nw-basis-head { color: #6B6F99; font-size: 12px; }
+[data-orbit-real-page="network"] .nw-basis-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+[data-orbit-real-page="network"] .nw-basis-title { flex: 1 1 160px; min-width: 0; color: #0E1225; overflow-wrap: anywhere; }
+[data-orbit-real-page="network"] .nw-basis-foot { color: #8A6420; font-size: 12px; }
 [data-orbit-real-page="network"] .nw-panel { border: 1px solid #E8E9F6; border-radius: 16px; padding: 22px; display: flex; flex-direction: column; }
 [data-orbit-real-page="network"] .nw-panel-16 { gap: 16px; }
 [data-orbit-real-page="network"] .nw-panel-14 { gap: 14px; }
@@ -501,6 +597,7 @@ export const NETWORK_STYLES = `
 [data-orbit-real-page="network"] .nw-ov-copy { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 [data-orbit-real-page="network"] .nw-ov-l { font-size: 12px; color: #6B6F99; }
 [data-orbit-real-page="network"] .nw-ov-v { font-size: 15px; }
+[data-orbit-real-page="network"] .nw-card-notes { margin: 10px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; line-height: 1.7; color: #3A3E66; }
 [data-orbit-real-page="network"] .nw-ov-d { font-size: 12px; color: #6B6F99; line-height: 1.5; }
 [data-orbit-real-page="network"] .nw-detail-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 20px; }
 [data-orbit-real-page="network"] .nw-detail-col { display: flex; flex-direction: column; gap: 20px; }
@@ -514,6 +611,9 @@ export const NETWORK_STYLES = `
 [data-orbit-real-page="network"] .nw-tl-meta { display: flex; gap: 12px; font-size: 14px; }
 [data-orbit-real-page="network"] .nw-tl-time { color: #6B6F99; }
 [data-orbit-real-page="network"] .nw-tl-kind { font-weight: 500; }
+[data-orbit-real-page="network"] .nw-tl-title { font-size: 14px; color: #0E1225; line-height: 1.5; }
+[data-orbit-real-page="network"] .nw-tl-partial { font-size: 12px; color: #8A5A00; background: #FFF6E5; border-radius: 8px; padding: 6px 10px; margin-bottom: 12px; }
+[data-orbit-real-page="network"] .nw-tl-more { font-size: 12px; color: #6B6F99; }
 [data-orbit-real-page="network"] .nw-tl-text { font-size: 13px; color: #6B6F99; line-height: 1.6;
   /* 非设计声明：跟进备注按行拼接（总结/需求/下一步），保留换行 */
   white-space: pre-wrap; }
@@ -531,11 +631,11 @@ export const NETWORK_STYLES = `
   /* 覆盖 .btn 基类（orbit-reference-styles.tsx:594–611）非设计声明 */
   height: auto; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; text-align: center; letter-spacing: 0; line-height: normal; transition: none; font-weight: 400; }
 [data-orbit-real-page="network"] .btn.nw-detail-close:active { transform: none; }
-[data-orbit-real-page="network"] .btn.nw-detail-follow, [data-orbit-real-page="network"] .btn.nw-detail-status { padding: 13px 22px; border: 1px solid #DDDEFA; border-radius: 10px; background: #FFFFFF; color: #0E1225; font-size: 14px; cursor: pointer;
+[data-orbit-real-page="network"] .btn.nw-detail-follow { padding: 13px 22px; border: 1px solid #DDDEFA; border-radius: 10px; background: #FFFFFF; color: #0E1225; font-size: 14px; cursor: pointer;
   /* 覆盖 .btn 基类（orbit-reference-styles.tsx:594–611）非设计声明 */
   height: auto; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; text-align: center; letter-spacing: 0; line-height: normal; transition: none; font-weight: 400; }
-[data-orbit-real-page="network"] .btn.nw-detail-follow:hover, [data-orbit-real-page="network"] .btn.nw-detail-status:hover { background: #ECEEFB; }
-[data-orbit-real-page="network"] .btn.nw-detail-follow:active, [data-orbit-real-page="network"] .btn.nw-detail-status:active { transform: none; }
+[data-orbit-real-page="network"] .btn.nw-detail-follow:hover { background: #ECEEFB; }
+[data-orbit-real-page="network"] .btn.nw-detail-follow:active { transform: none; }
 [data-orbit-real-page="network"] .nw-fu-head { display: flex; align-items: flex-start; justify-content: space-between; }
 [data-orbit-real-page="network"] .nw-fu-head-copy { display: flex; flex-direction: column; gap: 6px; }
 [data-orbit-real-page="network"] .nw-fu-title { font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 26px; letter-spacing: -0.02em; }
@@ -572,6 +672,12 @@ export const NETWORK_STYLES = `
   display: inline-flex; align-items: center; justify-content: center; white-space: nowrap; text-align: center; line-height: normal; cursor: default; }
 [data-orbit-real-page="network"] .nw-fu-stage-on { background: #2E3270; color: #FFFFFF; font-weight: 500; }
 [data-orbit-real-page="network"] .nw-fu-hint { font-size: 12px; color: #6B6F99; }
+[data-orbit-real-page="network"] .nw-fu-events { display: flex; flex-wrap: wrap; gap: 8px; }
+[data-orbit-real-page="network"] .btn.nw-fu-event { padding: 6px 12px; border: 1px solid #DDDEFA; border-radius: 999px; background: #FFFFFF; color: #3B3F7A; font-size: 13px; cursor: pointer; }
+[data-orbit-real-page="network"] .btn.nw-fu-event:hover { background: #ECEEFB; }
+[data-orbit-real-page="network"] .btn.nw-fu-event:active { transform: none; }
+[data-orbit-real-page="network"] .btn.nw-fu-event.nw-fu-event-on, [data-orbit-real-page="network"] .btn.nw-fu-event.nw-fu-event-on:hover { background: #2E3270; border-color: #2E3270; color: #FFFFFF; }
+@media (max-width: 600px) { [data-orbit-real-page="network"] .nw-fu-form { grid-template-columns: 1fr; gap: 8px; } [data-orbit-real-page="network"] .nw-fu-label { padding-top: 4px; } }
 [data-orbit-real-page="network"] .nw-fu-tagbox { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid #DDDEFA; border-radius: 10px; }
 [data-orbit-real-page="network"] .nw-fu-tag { display: flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 8px; background: #ECEEFB; color: #2E3270; font-size: 13px; }
 [data-orbit-real-page="network"] .btn.nw-fu-tag-x { border: 0; background: transparent; color: #6B6F99; cursor: pointer; padding: 0; font-size: 13px;
@@ -610,4 +716,186 @@ export const NETWORK_STYLES = `
 [data-orbit-real-page="network"] .analysis-muted{color:var(--text-3);font-size:13px;line-height:1.7}
 [data-orbit-real-page="network"] .analysis-notice{padding:14px 18px;border:1px solid #E8E9F6;border-radius:12px;margin:14px 0;background:#F7F7FD}
 @media(max-width:900px){[data-orbit-real-page="network"] .analysis-grid{grid-template-columns:1fr}[data-orbit-real-page="network"] .analysis-card{padding:18px}}
+/* ── W0005 示例模式：横条、导航药丸、「示例」角标、拦截层（与 iOrbit 首页 W0004 的 ir-demo-* 同值，作用域换成人脉页） ── */
+[data-orbit-real-page="network"] .btn.ir-demo-collapse, [data-orbit-real-page="network"] .btn.ir-demo-pill, [data-orbit-real-page="network"] .btn.ir-demo-dismiss { height: auto; display: inline-flex; align-items: center; justify-content: center; gap: 0; white-space: nowrap; letter-spacing: 0; line-height: normal; transition: none; font-weight: 400; cursor: pointer; }
+[data-orbit-real-page="network"] .btn.ir-demo-collapse:active, [data-orbit-real-page="network"] .btn.ir-demo-pill:active, [data-orbit-real-page="network"] .btn.ir-demo-dismiss:active { transform: none; }
+[data-orbit-real-page="network"] .ir-demo-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding: 14px 18px; border-radius: 14px; background: #2E3270; color: #FFFFFF; }
+[data-orbit-real-page="network"] .ir-demo-tagline { font-size: 11.5px; font-weight: 700; letter-spacing: 0.12em; padding: 3px 8px; border-radius: 6px; background: rgba(255,255,255,0.14); }
+[data-orbit-real-page="network"] .ir-demo-msg { margin: 0; flex: 1; min-width: 220px; font-size: 14.5px; line-height: 1.6; }
+[data-orbit-real-page="network"] .ir-demo-msg small { display: block; opacity: 0.72; font-size: 12.5px; }
+[data-orbit-real-page="network"] .ir-demo-prog { display: inline-flex; align-items: center; gap: 4px; }
+[data-orbit-real-page="network"] .ir-demo-pip { width: 18px; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.22); }
+[data-orbit-real-page="network"] .ir-demo-pip-on { background: #FFFFFF; }
+[data-orbit-real-page="network"] a.ir-demo-cta, [data-orbit-real-page="network"] a.ir-demo-cta:hover { display: inline-flex; align-items: center; padding: 9px 16px; border: 1px solid #FFFFFF; border-radius: 10px; background: #FFFFFF; color: #2E3270; font-size: 14px; font-weight: 500; white-space: nowrap; text-decoration: none; }
+[data-orbit-real-page="network"] .btn.ir-demo-collapse { padding: 4px; border: 0; border-radius: 0; background: transparent; color: rgba(255,255,255,0.7); font-size: 13px; }
+[data-orbit-real-page="network"] .btn.ir-demo-collapse:hover { color: #FFFFFF; }
+[data-orbit-real-page="network"] .btn.ir-demo-pill { padding: 6px 11px; border: 0; border-radius: 999px; background: #2E3270; color: #FFFFFF; font-size: 12px; font-weight: 500; }
+[data-orbit-real-page="network"] .btn.ir-demo-pill:hover { background: #4B4FC7; }
+[data-orbit-real-page="network"] .ir-demo-tag { display: inline-block; margin-left: 6px; padding: 3px 4px; border: 1px dashed #B9BCEB; border-radius: 4px; color: #6B6F99; font-family: "Noto Sans SC", "PingFang SC", sans-serif; font-size: 10.5px; font-weight: 500; line-height: 1; letter-spacing: 0.04em; vertical-align: 3px; white-space: nowrap; }
+[data-orbit-real-page="network"] .ir-demo-scrim { position: fixed; inset: 0; display: flex; align-items: flex-start; justify-content: center; padding: 90px 16px 16px; background: rgba(14,18,37,0.32); }
+[data-orbit-real-page="network"] .ir-demo-sheet { display: flex; flex-direction: column; gap: 16px; width: 100%; max-width: 420px; padding: 24px 24px 20px; border-radius: 18px; background: #FFFFFF; box-shadow: 0 24px 60px rgba(14,18,37,0.22); outline: none; }
+[data-orbit-real-page="network"] .ir-demo-sheet h3 { margin: 0; font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 21px; line-height: 1.35; color: #0E1225; }
+[data-orbit-real-page="network"] .ir-demo-sheet p { margin: 0; font-size: 13.5px; line-height: 1.6; color: #6B6F99; }
+[data-orbit-real-page="network"] .ir-demo-sheet-acts { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px 16px; }
+[data-orbit-real-page="network"] .btn.ir-demo-dismiss { padding: 0; border: 0; border-radius: 0; background: transparent; color: #6B6F99; font-size: 14px; }
+[data-orbit-real-page="network"] .btn.ir-demo-dismiss:hover { color: #2E3270; }
+[data-orbit-real-page="network"] a.ir-demo-cta.ir-demo-cta-primary, [data-orbit-real-page="network"] a.ir-demo-cta.ir-demo-cta-primary:hover { border-color: #4B4FC7; background: #4B4FC7; color: #FFFFFF; }
+@media (max-width: 900px) { [data-orbit-real-page="network"] .ir-demo-msg { min-width: 0; flex-basis: 100%; } [data-orbit-real-page="network"] .ir-demo-scrim { padding-top: 40px; } }
+/* ── W0050「机会」标签（network-opportunities.tsx）── */
+[data-orbit-real-page="network"] .btn.nw-atab.nw-tab-on:hover { color: #0E1225; }
+[data-orbit-real-page="network"] .btn.nw-atab.nw-tab-off:hover { color: #3B3F7A; }
+[data-orbit-real-page="network"] .nw-op-goal { margin: 0; font-size: 13px; color: #3B3F7A; line-height: 1.6; }
+[data-orbit-real-page="network"] .nw-op-noplan { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 16px; border: 1px dashed #DDDEFA; border-radius: 12px; background: #F7F7FD; }
+[data-orbit-real-page="network"] .nw-op-cta { padding: 10px 18px; border-radius: 12px; background: #0E1225; color: #FFFFFF; font-size: 14px; font-weight: 500; text-decoration: none; white-space: nowrap; }
+[data-orbit-real-page="network"] .nw-op-cta:hover { background: #2E3270; color: #FFFFFF; }
+[data-orbit-real-page="network"] .nw-op-cov { display: flex; flex-direction: column; gap: 16px; }
+[data-orbit-real-page="network"] .nw-op-cov-total { display: flex; align-items: center; gap: 16px; }
+[data-orbit-real-page="network"] .nw-op-cov-n { font-family: 'Noto Serif SC', serif; font-size: 40px; font-weight: 900; letter-spacing: -0.02em; color: #0E1225; min-width: 96px; }
+[data-orbit-real-page="network"] .nw-op-bar { flex: 1; height: 10px; border-radius: 999px; background: #ECEEFB; overflow: hidden; }
+[data-orbit-real-page="network"] .nw-op-bar-fill { display: block; height: 100%; border-radius: 999px; background: #4B4FC7; }
+[data-orbit-real-page="network"] .nw-op-needs, [data-orbit-real-page="network"] .nw-op-gaps, [data-orbit-real-page="network"] .nw-op-dormants, [data-orbit-real-page="network"] .nw-op-events { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+[data-orbit-real-page="network"] .nw-op-need { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; padding: 12px 14px; border: 1px solid #E8E9F6; border-radius: 12px; }
+[data-orbit-real-page="network"] .nw-op-need-copy { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+[data-orbit-real-page="network"] .nw-op-need-n { font-size: 13px; color: #3B3F7A; white-space: nowrap; }
+[data-orbit-real-page="network"] .nw-op-missing { color: #8A6420; }
+[data-orbit-real-page="network"] .nw-op-done { color: #2F6B4F; }
+[data-orbit-real-page="network"] .nw-op-gap { display: flex; flex-direction: column; gap: 10px; padding: 16px; border: 1px solid #E8E9F6; border-radius: 14px; }
+[data-orbit-real-page="network"] .nw-op-gap-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+[data-orbit-real-page="network"] .nw-op-gap-note { margin: 0; font-size: 13px; color: #3B3F7A; line-height: 1.6; }
+[data-orbit-real-page="network"] .btn.nw-op-pending { padding: 6px 12px; border: 1px solid #B9BCEB; border-radius: 999px; background: #ECEEFB; color: #2E3270; font-size: 12px; font-weight: 500; cursor: pointer; height: auto; line-height: normal; letter-spacing: 0; transition: none; }
+[data-orbit-real-page="network"] .btn.nw-op-pending:hover { background: #DDDEFA; color: #0E1225; }
+[data-orbit-real-page="network"] .btn.nw-op-pending:active { transform: none; }
+[data-orbit-real-page="network"] .nw-op-event { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 10px; background: #F7F7FD; color: #0E1225; text-decoration: none; }
+[data-orbit-real-page="network"] .nw-op-event:hover { background: #ECEEFB; color: #0E1225; }
+[data-orbit-real-page="network"] .nw-op-event-t { font-size: 14px; font-weight: 500; }
+[data-orbit-real-page="network"] .nw-op-dormant { display: flex; gap: 12px; padding: 16px; border: 1px solid #E8E9F6; border-radius: 14px; }
+[data-orbit-real-page="network"] .nw-op-name { font-size: 15px; font-weight: 600; color: #0E1225; text-decoration: none; }
+[data-orbit-real-page="network"] .nw-op-name:hover { color: #4B4FC7; }
+[data-orbit-real-page="network"] .nw-op-evidence { font-size: 12px; color: #4B4FC7; text-decoration: none; white-space: nowrap; }
+[data-orbit-real-page="network"] .nw-op-evidence:hover { color: #2E3270; }
+[data-orbit-real-page="network"] .nw-op-title { flex-wrap: wrap; row-gap: 4px; }
+[data-orbit-real-page="network"] .nw-op-title .nw-h2 { white-space: nowrap; }
+[data-orbit-real-page="network"] .nw-op-dormant-copy { flex: 1; align-items: flex-start; }
+[data-orbit-real-page="network"] .nw-op-dormant-copy .nw-act-row { align-self: stretch; }
+[data-orbit-real-page="network"] .nw-op-draft { align-self: stretch; display: flex; flex-direction: column; gap: 8px; }
+[data-orbit-real-page="network"] .nw-op-draft-subject, [data-orbit-real-page="network"] .nw-op-draft-body { width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid #DDDEFA; border-radius: 10px; font: inherit; font-size: 13px; color: #0E1225; background: #FFFFFF; }
+[data-orbit-real-page="network"] .nw-op-draft-body { resize: vertical; line-height: 1.6; }
+[data-orbit-real-page="network"] .nw-op-draft-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+[data-orbit-real-page="network"] .nw-op-error { font-size: 12px; color: #B3261E; }
+[data-orbit-real-page="network"] .nw-op-pill-off { background: #C9CBEA; color: #FFFFFF; }
+@media (max-width: 600px) { [data-orbit-real-page="network"] .nw-op-cov-n { font-size: 32px; min-width: 72px; } [data-orbit-real-page="network"] .nw-op-need-n { white-space: normal; } [data-orbit-real-page="network"] .btn.nw-report-cta { width: 100%; white-space: normal; } }
+/* ── W0051 每人洞察：详情弹窗「和你目标的关系」与「洞察」标签 ── */
+[data-orbit-real-page="network"] .nw-insight-body { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+[data-orbit-real-page="network"] .nw-insight-rel { margin: 0; font-size: 15px; line-height: 1.6; color: #0E1225; }
+[data-orbit-real-page="network"] .nw-insight-next { margin: 0; font-size: 14px; line-height: 1.6; color: #3B3F7A; }
+[data-orbit-real-page="network"] .nw-insight-evidence { display: flex; flex-wrap: wrap; gap: 8px; }
+[data-orbit-real-page="network"] .nw-insight-chip { padding: 4px 10px; border-radius: 999px; background: #ECEEFB; color: #2E3270; font-size: 12px; text-decoration: none; }
+[data-orbit-real-page="network"] .nw-insight-chip:hover { background: #DDDEFA; color: #0E1225; }
+[data-orbit-real-page="network"] .nw-insight-status { margin: 8px 0 0; font-size: 13px; color: #6B6F99; line-height: 1.6; }
+[data-orbit-real-page="network"] .nw-insight-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 12px; font-size: 13px; color: #6B6F99; }
+[data-orbit-real-page="network"] .nw-insight-list { display: flex; flex-direction: column; }
+[data-orbit-real-page="network"] .nw-insight-row { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(0, 2.4fr); gap: 20px; padding: 16px 4px; border-top: 1px solid #EEEFF8; }
+[data-orbit-real-page="network"] .nw-insight-who { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 0; }
+[data-orbit-real-page="network"] .nw-insight-name { font-size: 15px; font-weight: 600; color: #0E1225; text-decoration: none; }
+[data-orbit-real-page="network"] .nw-insight-name:hover { color: #4B4FC7; }
+[data-orbit-real-page="network"] .nw-insight-what { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+@media (max-width: 700px) { [data-orbit-real-page="network"] .nw-insight-row { grid-template-columns: 1fr; gap: 10px; } }
+/* ── W0054 人脉分析门槛卡／正在更新（每页一张，替换 AI 块） ── */
+[data-orbit-real-page="network"] .nw-gate { display: flex; gap: 16px; align-items: flex-start; border: 1px dashed #C9CBEA; border-radius: 18px; background: #F7F7FD; padding: 22px 26px; }
+[data-orbit-real-page="network"] .nw-gate-icon { flex: none; width: 36px; height: 36px; border-radius: 10px; background: #ECEEFB; color: #4B4FC7; display: inline-flex; align-items: center; justify-content: center; font-size: 16px; }
+[data-orbit-real-page="network"] .nw-gate-copy { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+[data-orbit-real-page="network"] .nw-gate-t { margin: 0; font-family: 'Noto Serif SC', serif; font-weight: 900; font-size: 19px; letter-spacing: -0.01em; color: #0E1225; }
+[data-orbit-real-page="network"] .nw-gate-d { margin: 0; font-size: 14px; line-height: 1.6; color: #6B6F99; }
+[data-orbit-real-page="network"] .nw-gate-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin-top: 4px; }
+[data-orbit-real-page="network"] .nw-gate-acts .btn.nw-btn-primary { padding: 10px 18px; font-size: 14px; }
+@media (max-width: 600px) { [data-orbit-real-page="network"] .nw-gate { padding: 18px; gap: 12px; } [data-orbit-real-page="network"] .nw-gate-t { font-size: 17px; } }
+/* W0060 联系人详情改版（原型画板①）：头卡／为什么是 TA／三栏／最近互动（快速 memo）／折叠概览。 */
+[data-orbit-real-page="network"] .nw-modal-detail { max-width: 920px; gap: 16px; }
+[data-orbit-real-page="network"] .nw-sr { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; padding: 0; }
+[data-orbit-real-page="network"] .nw-dv-head { gap: 16px; padding: 22px 24px; }
+[data-orbit-real-page="network"] .nw-dv-head-main { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 16px; }
+[data-orbit-real-page="network"] .nw-dv-avatar { width: 56px; height: 56px; border-radius: 16px; background: #DDDEFA; color: #2E3270; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 700; flex-shrink: 0; }
+[data-orbit-real-page="network"] .nw-dv-id { flex: 1; min-width: 220px; display: flex; flex-direction: column; gap: 6px; }
+[data-orbit-real-page="network"] .nw-dv-name-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+[data-orbit-real-page="network"] .nw-dv-name-row .nw-detail-name { font-family: inherit; font-size: 22px; font-weight: 700; letter-spacing: 0; }
+[data-orbit-real-page="network"] .nw-dv-id .nw-detail-org { font-size: 14px; color: #0E1225; }
+[data-orbit-real-page="network"] .nw-dv-id .nw-enrich { margin-top: 2px; }
+[data-orbit-real-page="network"] .nw-dv-id .nw-enrich-row { gap: 6px; }
+[data-orbit-real-page="network"] .btn.nw-enrich-chip { height: auto; min-height: 28px; padding: 3px 10px; border: 0; border-radius: 999px; background: #ECEEFB; color: #2E3270; font-size: 12px; font-weight: 500; gap: 4px; transition: none; }
+[data-orbit-real-page="network"] .btn.nw-enrich-chip:hover { background: #DDDEFA; }
+[data-orbit-real-page="network"] .btn.nw-enrich-chip:active { transform: none; }
+[data-orbit-real-page="network"] .btn.nw-enrich-chip-empty { background: #FFFFFF; border: 1px dashed #B9BCEB; color: #4B4FC7; }
+[data-orbit-real-page="network"] .nw-dv-src { font-size: 12px; color: #6B6F99; }
+[data-orbit-real-page="network"] .nw-dv-head-acts { display: flex; flex-wrap: wrap; gap: 8px; flex-shrink: 0; }
+[data-orbit-real-page="network"] .nw-dv-head-acts .btn.nw-detail-follow { height: 36px; padding: 0 14px; font-size: 13px; font-weight: 500; gap: 6px; }
+[data-orbit-real-page="network"] .btn.nw-dv-primary, [data-orbit-real-page="network"] .btn.nw-dv-ghost { height: 36px; padding: 0 14px; border-radius: 10px; font-size: 13px; font-weight: 500; transition: none; }
+[data-orbit-real-page="network"] .btn.nw-dv-primary { background: #4B4FC7; border: 1px solid #4B4FC7; color: #FFFFFF; }
+[data-orbit-real-page="network"] .btn.nw-dv-primary:hover { background: #3D41B0; }
+[data-orbit-real-page="network"] .btn.nw-dv-primary:disabled { background: #B9BCEB; border-color: #B9BCEB; cursor: not-allowed; }
+[data-orbit-real-page="network"] .btn.nw-dv-ghost { background: #FFFFFF; border: 1px solid #DDDEFA; color: #2E3270; }
+[data-orbit-real-page="network"] .btn.nw-dv-ghost:hover { background: #ECEEFB; }
+[data-orbit-real-page="network"] .btn.nw-dv-primary:active, [data-orbit-real-page="network"] .btn.nw-dv-ghost:active { transform: none; }
+[data-orbit-real-page="network"] .nw-dv-channels { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; border-top: 1px solid #EEEFF8; padding-top: 14px; }
+[data-orbit-real-page="network"] .btn.nw-dv-channel { height: auto; min-height: 32px; padding: 6px 10px; border: 1px solid #E8E9F6; border-radius: 8px; background: #F7F7FD; color: #0E1225; font-size: 13px; font-weight: 400; gap: 6px; transition: none; max-width: 100%; white-space: normal; overflow-wrap: anywhere; text-align: left; }
+[data-orbit-real-page="network"] .btn.nw-dv-channel:hover { background: #ECEEFB; }
+[data-orbit-real-page="network"] .btn.nw-dv-channel:active { transform: none; }
+[data-orbit-real-page="network"] .nw-dv-channel-i, [data-orbit-real-page="network"] .nw-dv-channel-l { color: #6B6F99; font-size: 12px; }
+[data-orbit-real-page="network"] .nw-dv-channels-hint { font-size: 12px; color: #6B6F99; }
+[data-orbit-real-page="network"] .nw-dv-copied { font-size: 12px; color: #24613A; }
+[data-orbit-real-page="network"] .nw-why { gap: 14px; padding: 18px 20px; border-color: #B9BCEB; background: #FFFFFF; }
+[data-orbit-real-page="network"] .nw-why-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; }
+[data-orbit-real-page="network"] .nw-why-t { font-size: 15px; font-weight: 700; color: #0E1225; }
+[data-orbit-real-page="network"] .nw-why-goal { margin-left: auto; font-size: 12px; color: #6B6F99; }
+[data-orbit-real-page="network"] .nw-why .nw-insight-body { margin-top: 0; }
+[data-orbit-real-page="network"] .nw-why-rel { margin: 0; font-size: 16px; line-height: 1.6; font-weight: 500; color: #0E1225; }
+[data-orbit-real-page="network"] .nw-why-lead { color: #4B4FC7; }
+[data-orbit-real-page="network"] .nw-why .nw-insight-evidence { align-items: center; gap: 6px; }
+[data-orbit-real-page="network"] .nw-why-ev-l { font-size: 12px; color: #6B6F99; }
+[data-orbit-real-page="network"] .nw-why .nw-insight-status { margin: 0; }
+[data-orbit-real-page="network"] .nw-why .nw-insight-actions { margin-top: 0; }
+[data-orbit-real-page="network"] .nw-why-needs { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; background: #F7F7FD; border-radius: 10px; padding: 10px 12px; }
+[data-orbit-real-page="network"] .nw-why-needs-l { font-size: 12px; color: #6B6F99; }
+[data-orbit-real-page="network"] .nw-why-need { background: #ECEEFB; color: #2E3270; white-space: normal; }
+[data-orbit-real-page="network"] .nw-why-needs .pms { flex: 1 1 auto; gap: 8px; }
+[data-orbit-real-page="network"] .nw-why-needs .pms[data-plan-need-link="closed"] { flex: 0 1 auto; }
+[data-orbit-real-page="network"] .btn.nw-why-link-more { height: auto; min-height: 28px; padding: 3px 10px; border: 1px dashed #B9BCEB; border-radius: 999px; background: #FFFFFF; color: #4B4FC7; font-size: 12px; font-weight: 500; transition: none; }
+[data-orbit-real-page="network"] .btn.nw-why-link-more:hover { background: #ECEEFB; }
+[data-orbit-real-page="network"] .btn.nw-why-link-more:active { transform: none; }
+[data-orbit-real-page="network"] .nw-why-next { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; border-top: 1px solid #EEEFF8; padding-top: 12px; }
+[data-orbit-real-page="network"] .nw-why-next-copy { flex: 1 1 260px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+[data-orbit-real-page="network"] .nw-why-next-l, [data-orbit-real-page="network"] .nw-why-now { font-size: 12px; color: #6B6F99; line-height: 1.5; }
+[data-orbit-real-page="network"] .nw-why-next-t { font-size: 14px; font-weight: 500; color: #0E1225; line-height: 1.5; }
+[data-orbit-real-page="network"] .nw-why-acts { display: flex; flex-wrap: wrap; gap: 8px; }
+[data-orbit-real-page="network"] .nw-dv-cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+[data-orbit-real-page="network"] .nw-dv-col { gap: 10px; padding: 18px 20px; border-radius: 14px; }
+[data-orbit-real-page="network"] .nw-dv-col-t { font-size: 14px; font-weight: 600; color: #0E1225; display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; }
+[data-orbit-real-page="network"] .nw-dv-col-hint { font-size: 12px; font-weight: 400; color: #6B6F99; }
+[data-orbit-real-page="network"] .nw-dv-col-empty { font-size: 13px; color: #9FA3C4; line-height: 1.6; }
+[data-orbit-real-page="network"] .nw-dv-col .nw-li { font-size: 13px; color: #0E1225; }
+[data-orbit-real-page="network"] .nw-dv-col .nw-li-guess { color: #6B6F99; }
+[data-orbit-real-page="network"] .nw-guess { margin-left: 6px; padding: 1px 6px; border-radius: 6px; background: #F7F7FD; color: #6B6F99; border: 1px dashed #B9BCEB; font-size: 11px; white-space: nowrap; }
+[data-orbit-real-page="network"] .nw-dv-col .nw-topic { padding: 3px 9px; font-size: 12px; }
+[data-orbit-real-page="network"] .nw-dv-col .nw-topic-guess { background: #F7F7FD; color: #6B6F99; border: 1px dashed #B9BCEB; }
+[data-orbit-real-page="network"] [data-network-detail-section="recent"] { gap: 12px; padding: 18px 20px; border-radius: 14px; }
+[data-orbit-real-page="network"] [data-network-detail-section="recent"] .nw-panel-t { font-family: inherit; font-size: 14px; font-weight: 600; }
+[data-orbit-real-page="network"] .nw-qm { display: flex; flex-direction: column; gap: 6px; }
+[data-orbit-real-page="network"] .nw-qm-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+[data-orbit-real-page="network"] .nw-qm-input { flex: 1 1 240px; min-width: 0; height: 38px; box-sizing: border-box; border: 1px solid #DDDEFA; border-radius: 10px; padding: 0 12px; font: inherit; font-size: 13px; color: #0E1225; background: #FAFAFF; }
+[data-orbit-real-page="network"] .nw-qm-date { height: 32px; box-sizing: border-box; border: 0; border-radius: 999px; padding: 0 10px; background: #ECEEFB; color: #2E3270; font: inherit; font-size: 12px; }
+[data-orbit-real-page="network"] .nw-qm-hint { font-size: 12px; color: #6B6F99; }
+[data-orbit-real-page="network"] .nw-qm-error { font-size: 12px; color: #B42318; }
+[data-orbit-real-page="network"] .nw-dv-fold { padding: 0; gap: 0; }
+[data-orbit-real-page="network"] .btn.nw-dv-fold-btn { height: auto; width: 100%; justify-content: space-between; padding: 16px 20px; border: 0; border-radius: 16px; background: transparent; color: #0E1225; font-size: 14px; font-weight: 600; transition: none; }
+[data-orbit-real-page="network"] .btn.nw-dv-fold-btn:hover { background: #F7F7FD; }
+[data-orbit-real-page="network"] .btn.nw-dv-fold-btn:active { transform: none; }
+[data-orbit-real-page="network"] .nw-dv-fold-s { font-size: 12px; font-weight: 400; color: #6B6F99; }
+[data-orbit-real-page="network"] .nw-dv-fold-body { display: flex; flex-direction: column; gap: 16px; padding: 0 20px 18px; }
+[data-orbit-real-page="network"] .nw-dv-notes .nw-card-notes { margin-top: 4px; }
+@media (max-width: 700px) {
+  [data-orbit-real-page="network"] .nw-modal-detail { padding: 20px 16px; }
+  [data-orbit-real-page="network"] .nw-dv-head { padding: 18px 16px; }
+  [data-orbit-real-page="network"] .nw-dv-head-acts { width: 100%; }
+  [data-orbit-real-page="network"] .nw-dv-cols { grid-template-columns: 1fr; }
+  [data-orbit-real-page="network"] .nw-why-goal { margin-left: 0; flex-basis: 100%; }
+}
 `;
