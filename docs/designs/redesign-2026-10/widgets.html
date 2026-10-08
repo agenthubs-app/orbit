@@ -46,11 +46,14 @@
   [data-theme="dark"] .lw > div { background: rgba(40,36,48,.45); }
   .notif { position: absolute; left: 12px; right: 12px; bottom: 120px; border-radius: 22px; padding: 12px 14px; background: rgba(255,255,255,.55); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); display: flex; gap: 10px; font-size: 12.5px; }
   [data-theme="dark"] .notif { background: rgba(40,36,48,.55); }
-  /* HOME-V3-CSS-BEGIN：小组件轨道口径（静态，iOS 小组件不做持续动画） */
-  .wob { display: block; overflow: visible; }
-  .wob circle.rg { fill: none; stroke-width: 1; }
-  .wob text { font-family: var(--font); font-weight: 800; text-anchor: middle; dominant-baseline: central; }
-  /* HOME-V3-CSS-END */
+  /* NAV-V3：小组件与新首页组件同一口径（今日やること · 人脈 · 秘書から · プラン スコア），不再画轨道 */
+  .wck { width: 15px; height: 15px; border-radius: 50%; border: 1.5px solid currentColor; opacity: .45; flex: none; }
+  .wppl { display: flex; gap: 6px; margin-top: 10px; }
+  .wppl > div { flex: 1; min-width: 0; text-align: center; font-size: 10.5px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .wppl .av { margin: 0 auto 3px; width: 30px; height: 30px; font-size: 12px; }
+  .wsec { display: flex; gap: 9px; align-items: flex-start; font-size: 12px; line-height: 1.45; }
+  .wsec + .wsec { margin-top: 9px; padding-top: 9px; border-top: 1px solid rgba(120,100,150,.16); }
+  .wsec small { display: block; font-size: 10.5px; opacity: .65; }
   /* V2KIT-CSS-BEGIN */
   /* ===== プラン v2 口径（2026-10-07）：视觉与数字与 b9-import-plan-v2.html 一致；类名加 v2 前缀避免与本页私有类冲突 ===== */
   .v2bar { display: flex; gap: 3px; height: 14px; position: relative; margin-top: 18px; }
@@ -122,7 +125,7 @@
 <body>
 <div class="doc" style="min-width:1300px">
   <div class="doc-head"><div><div class="doc-kicker">Orbit Redesign · 2026-10 · iOS WidgetKit</div><h1>毛玻璃桌面小组件</h1>
-    <p>小 / 中 / 大三种尺寸 + 锁屏两种。底层模糊壁纸、半透明白（深色为半透明炭灰）+ 1px 亮边；数字仍是「大而粗」，进度条与环沿用灰紫/豆沙玫瑰；プラン 按计划 v2 显示スコア（不封顶）与分数构成条（⑨ 同口径）。点击整块深链进对应页（今日の一手 → ホーム，予定 → カレンダー，プラン → プラン）。现状两端都没有小组件，属新增。</p></div>
+    <p>小 / 中 / 大三种尺寸 + 锁屏两种。底层模糊壁纸、半透明白（深色为半透明炭灰）+ 1px 亮边；数字仍是「大而粗」，进度条与环沿用灰紫/豆沙玫瑰；NAV-V3（2026-10-08）：与新首页组件同一口径（今日やること · 人脈 · 秘書から · プラン スコア），不再用「軌道」；プラン 按计划 v2 显示スコア（不封顶）与分数构成条（⑨ 同口径）。点击整块深链进对应页（今日やること → Task › To-do，人脈 → 人脈，秘書から → 受信箱「秘書」，プラン → Task › プラン）。现状两端都没有小组件，属新增。</p></div>
     <div class="doc-tools"><div class="seg" data-ctl="theme"><button data-v="light">ライト</button><button data-v="dark">ダーク</button></div></div></div>
   <nav class="doc-nav" id="docnav"></nav>
   <div id="out" class="boards"></div>
@@ -199,23 +202,13 @@ const V2 = (() => {
 })();
 /* V2KIT-JS-END */
 const C = D.contacts;
-/* 迷你轨道（静态 SVG）：中心你 + 代表点；颜色口径同首页 v3（協業中 豆沙 / 推進中 深紫 / 関係構築 中紫 / 知り合い 浅紫） */
-const WRING = ['var(--rose-500)', 'var(--plum-700)', 'var(--plum-500)', 'var(--plum-300)'];
-const WAV = { c1: ['var(--mac-lav)', 'var(--mac-lav-ink)'], c2: ['var(--mac-pink)', 'var(--mac-pink-ink)'], c3: ['var(--mac-blue)', 'var(--mac-blue-ink)'], c4: ['var(--mac-teal)', 'var(--mac-teal-ink)'], c5: ['var(--mac-apricot)', 'var(--mac-apricot-ink)'] };
-const orbitMini = (cx, cy, R, dots, o = {}) => { const rr = [.36, .57, .79, 1].map(f => R * f), d = o.d || 7;
-  return `<svg class="wob ${o.cls || ''}" width="${o.w}" height="${o.h}" viewBox="0 0 ${o.w} ${o.h}">${rr.map((r, k) => `<circle class="rg" cx="${cx}" cy="${cy}" r="${r}" style="stroke:${WRING[k]};opacity:.75" ${k > 1 ? `stroke-dasharray="${k === 2 ? '3 3' : '2 4'}"` : ''}/>`).join('')}
-    ${dots.map(([t, c, k, a, f]) => { const x = cx + rr[k] * Math.cos(a * Math.PI / 180), y = cy + rr[k] * Math.sin(a * Math.PI / 180); return `${f.includes('g') ? `<circle cx="${x}" cy="${y}" r="${d + 4}" style="fill:var(--mac-lav-ink);opacity:.28"/>` : ''}<circle cx="${x}" cy="${y}" r="${d}" style="fill:${WAV[c][0]};stroke:rgba(255,255,255,.8);stroke-width:1.2"/><text x="${x}" y="${y + .5}" style="fill:${WAV[c][1]};font-size:${d * 1.05}px">${t}</text>${f.includes('r') ? `<circle cx="${x + d * .75}" cy="${y - d * .75}" r="2.4" style="fill:var(--rose-500)"/>` : ''}`; }).join('')}
-    ${o.me ? `<circle cx="${cx}" cy="${cy}" r="${o.me}" style="fill:var(--ink)"/><text x="${cx}" y="${cy + .5}" style="fill:var(--bg);font-size:${o.me * .8}px">${D.me.short}</text>` : ''}</svg>`; };
-const WDOTS8 = [['伊', 'c4', 0, 200, 'r'], ['高', 'c2', 1, 320, 'r'], ['渡', 'c5', 1, 110, 'g'], ['鈴', 'c3', 2, 20, 'g'], ['中', 'c1', 2, 160, 'r'], ['森', 'c1', 3, 250, 'g'], ['大', 'c4', 3, 55, ''], ['松', 'c2', 3, 345, 'g']];
-const wNext = `<div class="w s k-wnext"><div class="row between"><span class="lb">今日の一手</span><span class="lb">1 / 3</span></div><div style="font-size:14px;font-weight:800;line-height:1.45;margin-top:10px">高橋さんへ<br>面談のお礼を</div><div class="wrow" style="margin-top:12px"><div class="av sm ${C[0].c}" style="width:26px;height:26px;font-size:10px">${C[0].i}</div><span style="opacity:.7">下書き済み</span></div></div>`;
-const wNum = `<div class="w s k-wnum"><div style="position:absolute;right:-30px;bottom:-30px">${orbitMini(170, 170, 104, [['伊', 'c4', 0, 225, 'r'], ['高', 'c2', 1, 205, 'r'], ['渡', 'c5', 1, 250, 'g'], ['鈴', 'c3', 2, 232, 'g'], ['森', 'c1', 3, 262, 'g']], { w: 200, h: 200, me: 15, d: 6.5 })}</div>
-  <span class="lb">人脈</span><div class="n" style="font-size:42px;line-height:1.1;margin-top:4px;position:relative">${num(286)}</div><span class="delta" style="background:rgba(94,158,134,.18);position:relative">+24 今月</span></div>`;
-const wMed = `<div class="w m k-wmed"><div style="display:grid;grid-template-columns:140px 1fr;gap:14px;align-items:center;height:100%">
-  <div style="margin:-4px 0 0 -4px">${orbitMini(70, 70, 64, WDOTS8, { w: 140, h: 140, me: 12, d: 7.5, cls: 'k-wmorb' })}</div>
-  <div style="min-width:0"><span class="lb">人脈 · 10月7日（水）</span><div class="n" style="font-size:26px;line-height:1.15;margin-top:2px">286人 <span style="font-size:15px;opacity:.6">· +24</span></div>
-    <div style="font-size:10.5px;opacity:.7;margin-top:2px;display:flex;gap:8px"><span><i style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--rose-500);margin-right:3px"></i>目標に関係 9</span><span>◌ 今月 24</span></div>
-    <div class="wrow" style="margin-top:10px"><b class="n" style="width:38px">19:00</b><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">CFO Night Tokyo</span></div>
-    <div class="wrow" style="margin-top:5px"><b class="n" style="width:38px;color:var(--coral)">4</b><span style="opacity:.75">判断待ち</span></div></div></div></div>`;
+/* NAV-V3：小组件内容 = 首页组件的缩小版（同数据口径）；不再画轨道 */
+const wNext = `<div class="w s k-wnext"><div class="row between"><span class="lb">今日やること</span><span class="lb">5件</span></div>
+  ${[['高橋さんへ面談のお礼', ''], ['山本さんに資料を再送', 'var(--coral)'], ['10:00 伊藤さんと面談', '']].map(([t, c], k) => `<div class="wrow" style="margin-top:${k ? 7 : 12}px"><span class="wck" ${c ? `style="color:${c};opacity:.9"` : ''}></span><span style="font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t}</span></div>`).join('')}</div>`;
+const wNum = `<div class="w s k-wnum"><span class="lb">人脈</span><div class="row" style="gap:6px;align-items:baseline;margin-top:2px"><div class="n" style="font-size:38px;line-height:1.1">${num(286)}</div><span class="delta" style="background:rgba(94,158,134,.18)">+24</span></div>
+  <div class="wppl k-wppl">${[C[0], C[2], C[1]].map(c => `<div><div class="av sm ${c.c}">${c.i}</div>${c.n.split(' ')[0]}</div>`).join('')}</div></div>`;
+const wMed = `<div class="w m k-wmed"><div class="row between"><span class="lb">秘書から · 10月7日（水）</span><span class="lb">3件</span></div>
+  <div style="margin-top:10px">${[['📨', '高橋さんから返信：「DD 資料は 10/20 までに」', 'メール要約 · あなただけに表示'], ['⏰', 'SaaS Summit の早割は明後日まで', '参加予定 · まだ申し込んでいません']].map(([e, t, d]) => `<div class="wsec"><span style="font-size:15px">${e}</span><div style="min-width:0;flex:1"><b style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t}</b><small>${d}</small></div></div>`).join('')}</div></div>`;
 const wLarge = `<div class="w l k-wlarge"><div class="row between"><span class="lb">プラン スコア · シリーズA 資金調達</span><span>💰</span></div>
   <div class="row" style="gap:10px;align-items:baseline;margin-top:6px"><div class="n" style="font-size:54px;line-height:1">${num(46)}</div><div style="font-size:11.5px;opacity:.65;line-height:1.5">話して 36 · スキップ 10<br>満点 100 · 上限なし</div></div>
   ${V2.sbar('s46', { thin: true, cls: 'k-wsbar' })}${V2.legend(false).replace('class="v2lg ', 'class="v2lg k-wlg ')}
@@ -238,8 +231,8 @@ const lockScreen = (theme) => `<div class="phone" ${theme ? `data-theme="${theme
 const withPins = (h, pins) => { const i = h.lastIndexOf('<div class="home-ind"></div></div>'); return i < 0 ? h : h.slice(0, i) + pins + h.slice(i); };
 const b = (l, h, notes, pins = '') => `<div class="board"><div class="board-label">${l}</div>${pins ? withPins(h, pins) : h}${notes ? `<ul class="note-list">${notes.map((n, k) => `<li><b>${k + 1}</b><span>${n}</span></li>`).join('')}</ul>` : ''}</div>`;
 document.getElementById('out').innerHTML =
-  b('ホーム画面 · 小 ×2 + 中', homeScreen(), ['小：今日の一手（与首页堆叠卡同一序列，右上「1 / 3」；点 → 草稿，送信はあなたが行います）', '小：轨道口径「人脈 286 · +24 今月」，右下露出 1/4 迷你轨道（同首页 4 色轨道 + 光晕 = 今月新しい人 + 豆沙点 = 目標に関係）；点 → App 首页轨道', '中：左侧迷你轨道（中心你 + 8 个代表点）+「286人 · +24」+ 图例 + 下一件予定 / 判断待ち 数；小组件静态绘制（iOS 小组件不做持续旋转），点 → 首页'], pin(1, '.k-wnext') + pin(2, '.k-wnum') + pin(3, '.k-wmorb')) +
-  b('ホーム画面 · 大', homeScreen2(), ['「プラン スコア 46」大数字（不封顶，可 >100）+ 细分数构成条：实色 = 话出来的分 / 斜纹 = 习熟跳过，与 ⑨ 同口径', '今日 +10 のチャンス：VC と話す；点 → プラン的今日の机会', '下一步该聊的人物类型 3 行（点 / 配点）；取代旧「第 6 週 / 24 週」周清单'], pin(1, '.k-wsbar') + pin(2, '.k-wtoday') + pin(3, '.k-wlarge .wrow')) +
+  b('ホーム画面 · 小 ×2 + 中', homeScreen(), ['小：今日やること（与首页组件同一序列：今日の一手 · 判断待ち · 予定，共 5 件显示前 3）；点 → Task › To-do', '小：人脈 286 · +24 + 最近の人 3（小尺寸只显示头像与姓；中尺寸以上加公司，与首页组件一致，不显示行业・职位）；点人 → 連絡先詳細，点空白 → 人脈', '中：秘書から（メール要約只给本人看、申込の期限）；点 → 受信箱「秘書」；与首页组件同源，推送仍遵守 1日 3件、22:00–7:30 静音'], pin(1, '.k-wnext') + pin(2, '.k-wppl') + pin(3, '.k-wmed .wsec')) +
+  b('ホーム画面 · 大', homeScreen2(), ['「プラン スコア 46」大数字（不封顶，可 >100）+ 细分数构成条：实色 = 话出来的分 / 斜纹 = 习熟跳过，与 ⑨ 同口径', '今日 +10 のチャンス：VC と話す；点 → Task › プラン 的今日の机会', '下一步该聊的人物类型 3 行（点 / 配点）；取代旧「第 6 週 / 24 週」周清单'], pin(1, '.k-wsbar') + pin(2, '.k-wtoday') + pin(3, '.k-wlarge .wrow')) +
   b('ロック画面', lockScreen(), ['圆形：プラン スコア「46」。圆环按 46 / 100 绘制；分数不封顶，超过 100 时圆环画满、数字继续累加（如 128）', '矩形：下一场活动。通知只在「错过有真实代价」时推送'], pin(1, '.k-lockring') + pin(2, '.lw > div', 1)) +
   b('ダーク · 小+中', homeScreen('dark')) + b('ダーク · 大', homeScreen2('dark')) + b('ダーク · ロック', lockScreen('dark'));
 docNav('widgets'); orbitChrome();

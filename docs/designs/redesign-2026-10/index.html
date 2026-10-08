@@ -20,20 +20,26 @@
   table.dect { width: 100%; border-collapse: separate; border-spacing: 0; background: var(--surface); border-radius: 20px; overflow: hidden; font-size: 12.5px; }
   table.dect th { text-align: left; font-size: 11px; color: var(--ink-3); padding: 11px 14px; background: var(--surface-2); }
   table.dect td { padding: 10px 14px; border-top: 1px solid var(--line); vertical-align: top; color: var(--ink-2); }
+  table.dect tr.sup td { opacity: .6; }
+  table.dect tr.sup td:nth-child(2) { text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--ink-3) 60%, transparent); }
+  table.dect tr.nv3 td:first-child { box-shadow: inset 3px 0 0 var(--plum-500); }
+  .supchip { display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 999px; font-size: 10.5px; font-weight: 800; background: var(--coral-soft); color: var(--coral); text-decoration: none; }
+  .newchip { display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 999px; font-size: 10.5px; font-weight: 800; background: var(--mac-lav); color: var(--mac-lav-ink); }
+  ol.dec li.sup { opacity: .6; }
 </style>
 </head>
 <body>
 <div class="doc">
-  <div class="doc-head"><div><div class="doc-kicker">Orbit Redesign · 2026-10-07 · HTML 原型（不改产品代码）</div><h1>Orbit 新 UI 总览</h1>
+  <div class="doc-head"><div><div class="doc-kicker">Orbit Redesign · 2026-10-07 → NAV-V3 2026-10-09 · HTML 原型（不改产品代码）</div><h1>Orbit 新 UI 总览</h1>
     <p>面向日本商务人士（30–50 岁）的 AI 人脉管理。两端统一视觉：近白暖灰底 + 薰衣草/烟粉雾、大圆角无阴影卡片、马卡龙小面积分类色、灰紫/豆沙单色数据可视化、大而粗的关键数字。界面语言日语，标注为中文。</p></div>
     <div class="doc-tools"><div class="seg" data-ctl="theme"><button data-v="light">ライト</button><button data-v="dark">ダーク</button></div></div></div>
   <nav class="doc-nav" id="docnav"></nav>
   <div class="tiles">
     <a href="00-inventory.html"><span class="emo apricot">🗺️</span><b>0 · 现状 UI 图谱</b><span class="sub">Web 38 路由 + App ~70 屏逐页盘点 → 新位置与新样式；两端缺口与冲突</span></a>
     <a href="01-system.html"><span class="emo lav">🎨</span><b>1 · 设计系统</b><span class="sub">Token（明/暗）、字体层级、组件、图标、交互与动效规范（可试点展开/左滑）</span></a>
-    <a href="app.html"><span class="emo pink">📱</span><b>2 · App（390×844）</b><span class="sub">ホーム/人脈/イベント/プラン × 3 种数据状态 + 详情、活动评估、iOrbit、＋追加、名片确认 + 深色</span></a>
-    <a href="web.html"><span class="emo blue">🖥️</span><b>3 · Web（1440）</b><span class="sub">左窄栏 + 12 列网格 + 右侧「次の一手」；四页 × 3 状态 + 抽屉详情、iOrbit、主催运营台 + 深色</span></a>
-    <a href="widgets.html"><span class="emo teal">🪟</span><b>4 · 毛玻璃小组件</b><span class="sub">小/中/大 + 锁屏，明暗两套壁纸</span></a>
+    <a href="app.html"><span class="emo pink">📱</span><b>2 · App（390×844）</b><span class="sub">NAV-V3 底栏 ホーム/人脈/iOrbit/イベント/Task × 3 种数据状态；首页组件容器 + 编辑、人脈「＋」、iOrbit 全屏、Task 4 段（含プラン）+ 深色</span></a>
+    <a href="web.html"><span class="emo blue">🖥️</span><b>3 · Web（1440）</b><span class="sub">左栏 ホーム/人脈/iOrbit/イベント/Task/受信箱 + 12 列网格 + 右侧「次の一手」；组件网格 + 编辑、Task 页签、iOrbit 全屏 + 左侧历史 + 深色</span></a>
+    <a href="widgets.html"><span class="emo teal">🪟</span><b>4 · 毛玻璃小组件</b><span class="sub">小/中/大 + 锁屏，明暗两套壁纸；内容与首页组件同口径（今日やること · 人脈 · 秘書から · プラン スコア）</span></a>
     <a href="02-gaps.html"><span class="emo pink">🧩</span><b>5 · 还没做的 UI 与流转</b><span class="sub">8 条端到端流转逐步核对、12 类系统状态、逐页清单（P0/P1/P2）与 6 批建议</span></a>
     <a href="b1-onboarding-cards.html"><span class="emo apricot">📇</span><b>① 新用户 + 名片</b><span class="sub">落地页、登录注册 4 态、onboarding 5 步、示例模式、相机/批量识别、重复合并、匹配确认</span></a>
     <a href="b2-events-flow.html"><span class="emo blue">🎟️</span><b>② 活动闭环</b><span class="sub">评估异常、探す、活动详情、AI 访谈报名与录取、会う準備、会場モード、会後回看</span></a>
@@ -45,20 +51,21 @@
     <a href="b8-responsive.html"><span class="emo blue">📐</span><b>⑧ Web 自适应</b><span class="sub">活动、计划、iOrbit、联系人详情在 1024 与手机浏览器宽度下的版本</span></a>
     <a href="b9-import-plan-v2.html"><span class="emo pink">🧭</span><b>⑨ 人脉导入 v2（新增页）</b><span class="sub">名刺衔接、通讯录、LinkedIn、手动粘贴、邀请码双向互加、まとめて確認、あとで補完。计划 v2 与人脉列表已并入 ① / ④ / App / Web</span></a>
     <a href="b10-plan-example.html"><span class="emo lav">🔭</span><b>⑩ 计划具体化（示例：Orbit 收益化）</b><span class="sub">人物类型从「职称」改为「角色×情境」，带聞くこと / 判定 / 见分方法 / 人脉候补 / 会える活動 / 紹介ルート；前提確認 3 问 + 诊断</span></a>
+    <a href="b11-nav-v3.html"><span class="emo teal">🧭</span><b>⑪ 导航改版 NAV-V3</b><span class="sub">会议方案 2026-10-08 + 用户定稿与 IA 对照；加人三种主方式的指导（名刺 / 招待コード / 手入力 · 空/成功/异常）、首页编辑模式、🔔→受信箱「秘書」、AI 秘書与推送、Task 交互、iOrbit 进出与会話リスト</span></a>
   </div>
   <div class="section-title"><h2>这一版做出的结构决定</h2><span>按成熟产品惯例自定，可推翻</span></div>
   <ol class="dec">
-    <li><b>两端同一套 IA：ホーム / 人脈 / イベント / プラン</b>（Web 另有 iOrbit、受信箱）。对标 Money Forward ME / Eight：底栏只放「看」的地方，「做」的动作集中到 ＋追加。</li>
-    <li><b>首页是今日看板，不是 AI 对话。</b>AI 变成每页右上 ✨ 圆钮（App）与右侧常驻栏 + ⌘K（Web）。原 App 中央 IORBIT 键取消，避免和「＋追加」两个悬浮主键打架。</li>
+    <li class="sup"><b>两端同一套 IA：ホーム / 人脈 / イベント / プラン</b>（Web 另有 iOrbit、受信箱）。对标 Money Forward ME / Eight：底栏只放「看」的地方，「做」的动作集中到 ＋追加。<span class="supchip">已取代 → ⑪ NAV-V3：底栏 ホーム / 人脈 / iOrbit / イベント / Task，取消 ＋追加</span></li>
+    <li class="sup"><b>首页是今日看板，不是 AI 对话。</b>AI 变成每页右上 ✨ 圆钮（App）与右侧常驻栏 + ⌘K（Web）。原 App 中央 IORBIT 键取消，避免和「＋追加」两个悬浮主键打架。<span class="supchip">已取代 → ⑪：首页 = 组件容器；iOrbit 回到底栏中央、全屏；✨ 圆钮取消</span></li>
     <li><b>活动评估放在「イベント」页顶部</b>，结果页 0–100 分 + 三项内訳（目标一致 / 会える人 / 时间对效果）+ 注意点；Web 用主从布局，点卡片右栏切换。</li>
-    <li><b>プラン 升为一级</b>：App 补齐独立页；匹配候选永远要用户 ✓/✕ 确认。</li>
+    <li class="sup"><b>プラン 升为一级</b>：App 补齐独立页；匹配候选永远要用户 ✓/✕ 确认。<span class="supchip">已取代 → ⑪：プラン = Task 第 3 段（✓/✕ 确认规则不变）</span></li>
     <li><b>人脉四页签合一屏</b>：总量环 + 业界 + 缺口三卡在上、列表在下；详情 Web 用右侧抽屉（关闭回原位置）。</li>
     <li><b>沿用既有硬约束</b>：邮件/消息止于草稿（按钮文案明示「送信はしません」）、处处有据但默认收起（「?」展开）、示例数据带「サンプル」角标绝不写库、不做即时聊天。</li>
     <li><b>空状态</b>：每页只给一个主动作 + 马卡龙次要入口 + 虚线幽灵行/淡化示例预告「之后能看到什么」；未达阈值（如人脉分析 &lt;10 人）显示解锁进度而非空图。</li>
   </ol>
-  <div class="section-title"><h2>待确认项决定（2026-10-07 定稿）</h2><span>按成熟产品惯例定，已同步改画稿文案</span></div>
+  <div class="section-title"><h2>待确认项决定（2026-10-07 定稿 · 2026-10-09 追加 NAV-V3）</h2><span>按成熟产品惯例定，已同步改画稿文案；紫色左边线 = NAV-V3 新增，淡色删除线 = 已取代</span></div>
   <table class="dect"><thead><tr><th style="width:150px">事项</th><th>决定</th><th style="width:260px">对标</th></tr></thead><tbody>
-<tr><td><b>付费档位与 AI 次数</b></td><td>Free / Pro ¥1,480/月（税込，年払い ¥14,800）。Free：手动再分析月 3 回、同时追踪目标 2 个；每月 1 日自动生成的见直し不计次数；用尽时主按钮是「わかりました」，付费只做次要入口</td><td class="lbl">个人订阅价格带对标 Eight プレミアム / Money Forward ME，不放「おすすめ」徽章</td></tr><tr><td><b>推送频控</b></td><td>默认 1 日 3 件上限，超出只进受信箱；静かな時間帯 22:00–7:30；面談 30 分前可设例外；用户可在通知设置调整（b1 文案已改为一致）</td><td class="lbl">iOS 定时推送摘要</td></tr><tr><td><b>「面談を提案」</b></td><td>不算代发：是 Orbit 内的结构化请求（3–5 个候选时段），由用户点「提案する」发出，不附自由文本消息</td><td class="lbl">Calendly / TimeRex</td></tr><tr><td><b>主办方提醒</b></td><td>允许：以 Orbit 名义发送的定型系统通知（非 AI 撰写、非用户个人邮件），通知前有确认画面。「止于草稿」只约束用户以个人名义对外发的邮件/消息（web/b6 文案已改）</td><td class="lbl">Peatix / connpass「主催者からのお知らせ」</td></tr><tr><td><b>日历写入口径</b></td><td>读取 + 确认后写入：只写用户逐次确认的 Orbit 予定（含仮押さえ），不改动其他予定（b3/b5 文案已统一）</td><td class="lbl">Google 授权范围说明 + 日程调整工具的写入确认</td></tr><tr><td><b>受信箱来源与入口</b></td><td>Gmail 中与已登记联系人的线程 + 主办方通知 + Orbit 通知；不做站内私信；App 入口为マイ › 受信箱 + 推送，需要动作的通知进「判断待ち」，首页不加铃铛</td><td class="lbl">与「不做即时聊天」一致</td></tr><tr><td><b>NFC 交换</b></td><td>保持 NFC-first（规格 §9.2）：载体是活动 NFC 名札与个人 Orbit 名刺卡，手机读卡即可；不做手机碰手机；QR 只在页底小字兜底、不宣传；被碰方无需装 App，经网页完成互换（⑦ 已补）</td><td class="lbl">iOS 不向第三方开放手机间 NFC；NTAG 贴纸级成本</td></tr><tr><td><b>主办数字</b></td><td>マッチング再生成每场 3 次；邀请链接 7 天有效；承認制待审 24 小时未处理自动消失</td><td class="lbl">Peatix / Google Drive 分享链接</td></tr><tr><td><b>Web 会場モード</b></td><td>保留，定位为同行者/平板的查看+轻操作；主场景是 App</td><td class="lbl">—</td></tr><tr><td><b>App 历史抽屉</b></td><td>全高覆盖（含状态栏区域）</td><td class="lbl">ChatGPT / Claude App</td></tr><tr><td><b>タスク筛选</b></td><td>维持 すべて / つながり / 個人 三项；活动类任务按是否关联人归类</td><td class="lbl">iOS リマインダー的轻分类</td></tr><tr><td><b>「送りましたか？」</b></td><td>App 回到前台、Web 标签页重获焦点时出现；24 小时未答自动收起</td><td class="lbl">Superhuman / Spark</td></tr><tr><td><b>落地页文案</b></td><td>采用「登録は1分 · クレジットカード不要」（Free 档存在）</td><td class="lbl">—</td></tr><tr><td><b>外观预览色</b></td><td>「言語と外観」里的明/暗/自动预览块允许写死颜色（预览必须固定外观）</td><td class="lbl">iOS 设置的外观预览</td></tr><tr><td><b>评估结果页 vs 活动详情</b></td><td>「イベント評価結果」= 对任意 URL/海报的判定页（活动可能不在 Orbit 里），带「参加予定に追加」；活动在 Orbit 内时，判定以吸顶评估条并入「イベント詳細」，评估结果页只给跳详情的链接</td><td class="lbl">食べログ口コミ页 vs 店铺详情</td></tr>
+<tr><td><b>付费档位与 AI 次数</b></td><td>Free / Pro ¥1,480/月（税込，年払い ¥14,800）。Free：手动再分析月 3 回、同时追踪目标 2 个；每月 1 日自动生成的见直し不计次数；用尽时主按钮是「わかりました」，付费只做次要入口</td><td class="lbl">个人订阅价格带对标 Eight プレミアム / Money Forward ME，不放「おすすめ」徽章</td></tr><tr><td><b>推送频控</b></td><td>默认 1 日 3 件上限，超出只进受信箱；静かな時間帯 22:00–7:30；面談 30 分前可设例外；用户可在通知设置调整（b1 文案已改为一致）</td><td class="lbl">iOS 定时推送摘要</td></tr><tr><td><b>「面談を提案」</b></td><td>不算代发：是 Orbit 内的结构化请求（3–5 个候选时段），由用户点「提案する」发出，不附自由文本消息</td><td class="lbl">Calendly / TimeRex</td></tr><tr><td><b>主办方提醒</b></td><td>允许：以 Orbit 名义发送的定型系统通知（非 AI 撰写、非用户个人邮件），通知前有确认画面。「止于草稿」只约束用户以个人名义对外发的邮件/消息（web/b6 文案已改）</td><td class="lbl">Peatix / connpass「主催者からのお知らせ」</td></tr><tr><td><b>日历写入口径</b></td><td>读取 + 确认后写入：只写用户逐次确认的 Orbit 予定（含仮押さえ），不改动其他予定（b3/b5 文案已统一）</td><td class="lbl">Google 授权范围说明 + 日程调整工具的写入确认</td></tr><tr class="sup"><td><b>受信箱来源与入口</b><span class="supchip">已取代</span></td><td>Gmail 中与已登记联系人的线程 + 主办方通知 + Orbit 通知；不做站内私信；App 入口为マイ › 受信箱 + 推送，需要动作的通知进「判断待ち」，首页不加铃铛</td><td class="lbl">→ NAV-V3：入口改为ホーム右上 🔔（来源口径不变）</td></tr><tr><td><b>NFC 交换</b></td><td>保持 NFC-first（规格 §9.2）：载体是活动 NFC 名札与个人 Orbit 名刺卡，手机读卡即可；不做手机碰手机；QR 只在页底小字兜底、不宣传；被碰方无需装 App，经网页完成互换（⑦ 已补）</td><td class="lbl">iOS 不向第三方开放手机间 NFC；NTAG 贴纸级成本</td></tr><tr><td><b>主办数字</b></td><td>マッチング再生成每场 3 次；邀请链接 7 天有效；承認制待审 24 小时未处理自动消失</td><td class="lbl">Peatix / Google Drive 分享链接</td></tr><tr><td><b>Web 会場モード</b></td><td>保留，定位为同行者/平板的查看+轻操作；主场景是 App</td><td class="lbl">—</td></tr><tr><td><b>App 历史抽屉</b></td><td>全高覆盖（含状态栏区域）；NAV-V3：由 iOrbit 左上 ≡ <b>点击</b>打开（左边缘右滑改为退出 iOrbit）</td><td class="lbl">ChatGPT / Claude App</td></tr><tr><td><b>タスク筛选</b></td><td>维持 すべて / つながり / 個人 三项；活动类任务按是否关联人归类</td><td class="lbl">iOS リマインダー的轻分类</td></tr><tr><td><b>「送りましたか？」</b></td><td>App 回到前台、Web 标签页重获焦点时出现；24 小时未答自动收起</td><td class="lbl">Superhuman / Spark</td></tr><tr><td><b>落地页文案</b></td><td>采用「登録は1分 · クレジットカード不要」（Free 档存在）</td><td class="lbl">—</td></tr><tr><td><b>外观预览色</b></td><td>「言語と外観」里的明/暗/自动预览块允许写死颜色（预览必须固定外观）</td><td class="lbl">iOS 设置的外观预览</td></tr><tr><td><b>评估结果页 vs 活动详情</b></td><td>「イベント評価結果」= 对任意 URL/海报的判定页（活动可能不在 Orbit 里），带「参加予定に追加」；活动在 Orbit 内时，判定以吸顶评估条并入「イベント詳細」，评估结果页只给跳详情的链接</td><td class="lbl">食べログ口コミ页 vs 店铺详情</td></tr>
   <tr><td><b>联系人抽屉宽度</b></td><td>1440 为 600px，1024 为 520px，390 为全屏页（⑧ 断点规范）</td><td class="lbl">Linear / Gmail 预览面板</td></tr>
   <tr><td><b>付款失败宽限期</b></td><td>App 内购 16 天（跟随 Apple Billing Grace Period），Web 7 天内自动重试；只用横条提示不弹窗</td><td class="lbl">Apple / Stripe 默认</td></tr>
   <tr><td><b>解约与退会</b></td><td>解约不做挽留暗模式、数据全部保留、超出 Free 的目标「一時停止」；退会 30 日冷静期可撤回、需再认证；App 内购不随退会停止，单独提示去 App Store</td><td class="lbl">Spotify / Notion / LINE / Apple</td></tr>
@@ -69,7 +76,7 @@
   <tr><td><b>人脉导入（v2）</b></td><td>一个入口 5 个门（名刺 / 手入力 / 連絡先 / LinkedIn CSV / 招待コード），统一「取り込む → まとめて確認 → あとで補完」；<b>全部直接进人脉</b>，每人带信息浓度三点 + 来源 chip，筛选「情報が少ない人」；每天最多一题轻问补全</td><td class="lbl">用户决定（2026-10-07）</td></tr>
   <tr><td><b>招待コード互加</b></td><td>用户自己发分享码/链接/二维码（不代发）；好友注册并填资料、选择共享项目后，<b>双向自动加入人脉</b>，卡片标「本人入力」满档且随对方更新同步；双方推送告知，任一方可移除</td><td class="lbl">用户决定（2026-10-07）</td></tr>
   <tr><td><b>计划 v2（取代周/月时间线）</b></td><td>目标 → 一般解决步骤 → 每步要聊的人物类型；满分 100 按人物类型<b>和活动（单独一块）</b>分配；同一人同一类型只算一次，面谈记录或自报线下聊过都算，超过目标人数按半分叠加；不手动「目標を達成」就不封顶持续累加；跳过方向直接记满分但用斜纹区分、可撤回；没有这类人时给人物画像 + 按参会者 tag 推荐活动（带分数）</td><td class="lbl">用户决定（2026-10-07）</td></tr>
-  <tr><td><b>主页首位</b></td><td>保留人脉数为首但做丰富：新认识的人头像排 + 目标相关/其他拆分 + 每周折线；计划「スコア」退到第二卡</td><td class="lbl">用户决定（2026-10-07）</td></tr>
+  <tr class="sup"><td><b>主页首位</b><span class="supchip">已取代</span></td><td>保留人脉数为首但做丰富：新认识的人头像排 + 目标相关/其他拆分 + 每周折线；计划「スコア」退到第二卡</td><td class="lbl">→ NAV-V3：首页 = 可自定义组件容器，默认组件见下</td></tr>
   <tr><td><b>自报「线下聊过」不填名字</b></td><td>可计分，但只算到该人物类型的目标人数为止，不享受超额半分叠加；填了名字则按常规计分（同人同类型一次）——堵住刷分漏洞</td><td class="lbl">Duolingo / Strava 的手动记录不计入加成</td></tr>
   <tr><td><b>人脉数示例口径</b></td><td>首页与人脈页统一 286 人；⑨ 里的 412 人是「LinkedIn 导入后」的场景数据</td><td class="lbl">—</td></tr>
   <tr><td><b>名片批量与统一确认</b></td><td>走过 ① 逐张复核的名片，进入「まとめて確認」时只剩例外（重复/低置信），不重复确认</td><td class="lbl">—</td></tr>
@@ -82,6 +89,19 @@
   <tr><td><b>计划 v2.1 待确认 6 项</b></td><td>题库拆为 6 类（招聘/业务合作分开）；AI「不改」也扣一次；人物类型短名取模板固定名；配分模板默认值与 ±5/最多 2 处；活动分随该类人见得越多而递减；Step 完成由用户确认</td><td class="lbl">按推荐（2026-10-08）</td></tr>
   <tr><td><b>人物类型短名与配分刻度</b></td><td>短名＝模板位置 × 行业的固定字典（AI 不自起名）；配分 5 分一档，手动编辑时从配分最高的类型按 5 分增减，总分保持 100；每人分值显示整数，余数由最后 1 人补齐；超额后的半分向下取整</td><td class="lbl">分摊账单式取整（2026-10-08）</td></tr>
   <tr><td><b>Web 接受邀请页</b></td><td>与手机浏览器同一张响应式页面，不单独画 1440 版</td><td class="lbl">—</td></tr>
+  <tr class="nv3"><td><b>App 底部导航</b><span class="newchip">NAV-V3</span></td><td>ホーム / 人脈 / iOrbit / イベント / Task（icon home / users / sparkle / calendar / task）；取消全局浮动「＋追加」</td><td class="lbl">用户定稿（2026-10-08）</td></tr>
+  <tr class="nv3"><td><b>プラン 的位置</b><span class="newchip">NAV-V3</span></td><td>不占主导航：Task 顶部分段 カレンダー / To-do / プラン / メモ（可左右滑）；首页「プラン スコア」组件点进 = Task › プラン；人物タイプ詳細・見直し・手動編集・生成流程从这里进入，← 返回 Task › プラン</td><td class="lbl">用户定稿（2026-10-08）</td></tr>
+  <tr class="nv3"><td><b>iOrbit 全屏</b><span class="newchip">NAV-V3</span></td><td>底栏 iOrbit → 全屏对话、不显示底栏；左上（点击）会話リスト（搜索 · 置顶 · 删除）；右上 ✕ 或左边缘右滑 = 回进入前的页面（滚动 / 筛选保持）；初始 = 新对话起始屏；各页右上 ✨ 圆钮取消；Web = 全屏 + 左侧历史 ≡ 开合、无右栏</td><td class="lbl">用户定稿（2026-10-08）</td></tr>
+  <tr class="nv3"><td><b>首页 = 组件容器</b><span class="newchip">NAV-V3</span></td><td>只放核心摘要，去掉軌道ビュー与过多高亮；右上 🔔（红点）+ 編集；「長押しで組み替え」提示条；默认 今日やること · プラン スコア · 人脈（只显示 头像 / 姓名 / 公司）· 次のイベント · 秘書から；组件库另有 判断待ち · 今週 · イベント推薦 · メモ</td><td class="lbl">用户定稿（2026-10-08）</td></tr>
+  <tr class="nv3"><td><b>首页编辑细节</b><span class="newchip">NAV-V3</span></td><td>长按 0.4 秒或点「編集」进入；拖动排序；「−」直接移除 + 撤销 Toast（组件不是数据，不弹确认）；组件库分 すべて / 今日 / 人脈 / イベント / プラン / 秘書；尺寸只有 小（1 格）/ 中（横 2 格），Web 小 4 列 / 中 8 列，不做大尺寸</td><td class="lbl">按 iOS 主屏编辑惯例（⑪ B）</td></tr>
+  <tr class="nv3"><td><b>人脈「＋」加人</b><span class="newchip">NAV-V3</span></td><td>右上「＋」sheet 主推 名刺をスキャン / 招待コード / 手入力，次级 その他 連絡先・LinkedIn CSV；三种主方式各有 第一次指导 / 成功 / 异常；管道同 ⑨（全部直接进人脈 · 来源 chip · 浓度三点 · まとめて確認只处理例外）</td><td class="lbl">用户定稿（2026-10-08）</td></tr>
+  <tr class="nv3"><td><b>招待コード 有效期与次数</b><span class="newchip">NAV-V3</span></td><td>有效期 7 天、每码最多 10 人；可随时「無効にする」，过期后一键再发行；对方已在 Orbit = 只「つながる」不新建账号，已有名刺卡则合并为本人入力</td><td class="lbl">与主办邀请链接 7 天一致；人数上限对标 LINE / Slack 邀请链接（⑪ A2）</td></tr>
+  <tr class="nv3"><td><b>名刺 第一次指导</b><span class="newchip">NAV-V3</span></td><td>前 3 次进入相机前给 1 屏（拍法 4 条 · 一次最多 100 张 · 拍后流程 · 隐私），可「次回から表示しない」；相机实时提示同一时间只显示 1 条（反射 / 近づけて / 暗い / ぶれ）</td><td class="lbl">⑪ A1</td></tr>
+  <tr class="nv3"><td><b>Task</b><span class="newchip">NAV-V3</span></td><td>To-do 吸收 判断待ち / 今日の一手 / フォロー；完成 = 打勾 + 撤销 Toast；延期 = 今日の夜 / 明日 / 今週末 / 来週 / 日付；メモ = 面談の記録 / 自由メモ / 音声，可 @人 / @イベント（面談の記録用于计划判定）</td><td class="lbl">用户定稿（2026-10-08）+ ⑪ E</td></tr>
+  <tr class="nv3"><td><b>AI 秘書</b><span class="newchip">NAV-V3</span></td><td>主动服务三种：邮件摘要（登记联系人的 Gmail 线程，只给用户本人看，不代发）· 活动到期提醒（报名截止 / 会前准备，只针对参加予定・評価済み）· 基于画像的活动推荐（带理由，可「興味なし」反馈）；呈现 = 首页「秘書から」+ 受信箱「秘書」分类 + 推送</td><td class="lbl">用户定稿（2026-10-08）</td></tr>
+  <tr class="nv3"><td><b>受信箱入口（新）</b><span class="newchip">NAV-V3</span></td><td>App = ホーム右上 🔔（红点不显示数字）；マイページ「受信箱」行保留为次入口；Web = 左栏「受信箱」；新增「秘書」分类</td><td class="lbl">取代上方「受信箱来源与入口」的入口部分</td></tr>
+  <tr class="nv3"><td><b>推送（秘書）</b><span class="newchip">NAV-V3</span></td><td>沿用 1 日 3 件（全 App 合计）与 22:00–7:30 静音；静音时段的内容 7:50 合并为 1 通；活动前 30 分钟为预约型提醒，计入当天 3 件</td><td class="lbl">沿用既定频控</td></tr>
+  <tr class="nv3"><td><b>Web 左栏</b><span class="newchip">NAV-V3</span></td><td>ホーム / 人脈 / iOrbit / イベント / Task / 受信箱（底部 主催 / 設定 不变）；右侧「次の一手」栏保留；Task 用页签（← → 键切换）</td><td class="lbl">用户定稿（2026-10-08）</td></tr>
   </tbody></table>
 </div>
 <script>docNav('index'); orbitChrome();</script>

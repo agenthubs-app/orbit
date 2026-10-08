@@ -496,7 +496,11 @@ const backBtn = `<button class="rbtn">${ic('left')}</button>`;
 const xBtn = `<button class="rbtn">${ic('x')}</button>`;
 const moreBtn = `<button class="rbtn">${ic('more')}</button>`;
 const meBtn = `<button class="avatar-btn">${ME.short}</button>`;
-const iorbitBtn = `<button class="rbtn">${ic('sparkle')}</button>`;
+/* NAV-V3：プラン = Task 第 3 段（カレンダー / To-do / プラン / メモ）；顶栏同 app.html / web.html 的 Task */
+const TSEG = ['カレンダー', 'To-do', 'プラン', 'メモ'];
+const tsegH = (k, cls = 'k-tseg') => `<div class="tseg ${cls}">${TSEG.map((t, i) => `<button class="${i === k ? 'on' : ''}">${t}</button>`).join('')}</div>`;
+const taskHead = (k, sub = D.today.date) => topbar('Task', sub, `<button class="rbtn">${ic('search')}</button>`, `<button class="rbtn">${ic('plus')}</button>`) + tsegH(k) + `<div class="tswipe">${TSEG.map((t, i) => `<i class="${i === k ? 'on' : ''}"></i>`).join('')}</div>`;
+const wTaskHead = k => mainhead('Task', D.today.range, tsegH(k, 'k-wtseg'), `<button class="btn accent">${ic('plus', 'sm')}${['予定', 'To-do', '目標', 'メモ'][k]}を追加</button>`);
 const foot = h => `<div class="foot">${h}</div>`;
 const SCR = '<i class="scrollto"></i>';
 const SCRC = '<i class="scrollto" data-off="8"></i>';
@@ -535,7 +539,7 @@ const me = (t, cls = '') => `<div class="bubble me ${cls}">${t}</div>`;
 const ai = (t, cls = '') => `<div class="bubble ai ${cls}">${t}</div>`;
 const FM = ['背景', '質問', '初版', 'AI 修正', '手動編集'];
 const fmBar = (a, cls = '') => `<div class="fm ${cls}">${FM.map((t, k) => `<span class="${k < a ? 'done' : k === a ? 'on' : ''}">${t}</span>`).join('')}</div>`;
-const chatTop = (sub = 'プランを作る') => topbar('iOrbit', sub, `<button class="rbtn">${ic('clock')}</button>`, xBtn);
+const chatTop = (sub = 'プランを作る') => topbar('iOrbit', sub, `<button class="rbtn">${ic('menu')}</button>`, xBtn);
 const flowDia = (cls = '') => `<div class="flow ${cls}"><div class="pay"><span class="e">🎪</span><b>主催者</b><span class="lbl">お金を払う<br>（1本目）</span></div><div class="ar">${ic('right')}</div><div><span class="e">🙋</span><b>参加者</b><span class="lbl">無料で体験<br>事後フォロー</span></div><div class="ar">${ic('right')}</div><div><span class="e">⭐</span><b>Pro</b><span class="lbl">個人課金<br>（2本目）</span></div></div>`;
 const HINT_EX = '例：「営業は当面 2人でやる。仲間はデザインを優先。主催者には最初の 1回は無料で試してほしい。」';
 const revBar = (n, cls = '') => `<div class="revbar ${n ? '' : 'zero'} ${cls}"><div class="rvn k-rvn"><small>AI 修正</small><b>あと <em>${n}</em> 回</b></div><div class="rvt">${n ? '現状と考えを、できるだけ一度にまとめて書いてください' : '修正は使い切りました。手動で編集するか、この内容で確定します'}<span class="ex">${n ? HINT_EX : '変更がなかった回も 1回と数えます'}</span></div></div>`;
@@ -544,7 +548,7 @@ const leftChip = (n, cls = '') => `<span class="chip ${n ? 'lav' : ''} ${cls}">A
 
 /* ===================== ① 目標入力 ===================== */
 function goalApp() {
-  return topbar('プラン', '目標を決めると、話すべき人が見えます', meBtn, iorbitBtn) + `
+  return taskHead(2, '目標を決めると、話すべき人が見えます') + `
     <div class="guide rise k-gin"><div style="font-size:19px;font-weight:800">何を達成したいですか？</div><div class="sub" style="margin:4px 0 12px">うまく言葉にならなくても大丈夫。iOrbit が、あなたとチームのことを確認しながら具体的にします。</div>
       <div class="fld focus" style="margin-top:0"><div class="in"><span>${GOAL}</span><i class="caret"></i></div></div>
       <div class="row k-gkind" style="gap:6px;margin-top:10px;flex-wrap:wrap"><span class="fopt on">🚀 上市・収益化</span><span class="fopt">💰 資金調達</span><span class="fopt">🤝 新規開拓</span><span class="fopt">🧑‍💼 採用</span><span class="fopt">🔗 事業提携</span><span class="fopt">🧭 キャリア</span></div>
@@ -615,7 +619,7 @@ const addSheetWrite = `<div class="sheet-scrim"></div><div class="sheet k-addshe
   <div class="lbl" style="margin:12px 2px 6px;font-weight:800;color:var(--ink-2)">できること（必要な力から選ぶ）</div>${capPick(['マーケ'], 'k-wcap')}
   <div class="row k-wsave" style="gap:10px;margin-top:14px;align-items:center"><span class="tgl"></span><span style="font-size:12.5px;flex:1">人脈にも登録する<span class="lbl" style="display:block">オフならこのプランの中だけ</span></span></div>
   <button class="btn primary block xl" style="margin-top:12px">追加する</button></div>`;
-const wTop = (sub) => mainhead('iOrbit', sub, `<button class="rbtn">${ic('clock')}</button>`, `<button class="btn">${ic('plus', 'sm')}新しい会話</button>`);
+const wTop = (sub) => mainhead('iOrbit', sub, `<button class="rbtn">${ic('menu')}</button>`, `<button class="btn">${ic('plus', 'sm')}新しい会話</button>`);
 const capTable = (cls = '') => `<table class="captab ${cls}"><thead><tr><th>必要な力 <span class="lbl">8 · 固定</span></th>${MEMS.map(m => `<th><div class="row" style="gap:6px;white-space:nowrap"><span class="av xs ${m.c}">${m.i}</span>${m.n.split(' ')[0]}</div><span class="chip ${m.sc}" style="font-size:10px;margin-top:3px">${m.src}</span></th>`).join('')}<th><span class="btn sm ghost" style="white-space:nowrap">${ic('plus', 'sm')}追加</span></th><th></th></tr></thead><tbody>${CAPS.map(([c, v]) => { const gap = !v.some(Boolean); return `<tr class="${gap ? 'gap' : ''}"><td><b>${c}</b></td>${v.map((on, j) => `<td><span class="ckr ${on ? 'on' : ''}">${ic('check')}</span></td>`).join('')}<td></td><td>${gap ? '<span class="gapc">空き</span>' : `<span class="lbl">${v.filter(Boolean).length}人</span>`}</td></tr>`; }).join('')}</tbody></table>`;
 function bgWeb() {
   return wTop('プランを作る · 背景の確認') + `<div class="wchat" style="max-width:none">${fmBar(0)}${bgIntro()}
@@ -788,7 +792,7 @@ const diagMini = (cls = '', o = {}) => `<div class="card ${cls}" data-why-box><d
   <div class="v2go">iOrbit の会話を見る${ic('right', 'sm')}</div></div>`;
 function planApp(s, scrolled) {
   const many = s === 'many', S = many ? 's38' : 's0', tt = total(S);
-  return topbar('プラン', gsw(PNAME), meBtn, iorbitBtn) + `
+  return taskHead(2) + `<div class="row between" style="margin:0 2px 10px"><b style="font-size:13.5px">${gsw('🚀 ' + PNAME)}</b><span class="lbl">目標 1 / 1</span></div>
     <div class="card rise k-hero"><div class="row between" style="align-items:flex-start"><div><div class="lbl">スコア</div><div class="big" style="font-size:52px">${num(tt)}</div><div class="lbl">満点 100 · 上限なし</div></div>
       ${many ? `<div style="text-align:right"><span class="chip lav">あと ${Math.round(100 - tt)} で満点</span><div class="lbl" style="margin-top:6px">話して ${Math.round(tt)} · スキップ 0</div></div>` : '<span class="chip lav">今日つくったプラン</span>'}</div>
       ${sbar(S, { cls: 'k-sbar' })}${legend('k-legend')}</div>
@@ -800,7 +804,7 @@ function planApp(s, scrolled) {
 }
 function planWeb(s) {
   const many = s === 'many', S = many ? 's38' : 's0', tt = total(S);
-  return mainhead('プラン', '', `<button class="btn k-wgsw">🚀 ${PNAME} ${ic('down', 'sm')}</button>`, `<div class="row k-wacts" style="gap:8px">${acts({ pre: 'w' })}</div>`) + `<div class="wgrid">
+  return wTaskHead(2) + `<div class="row between" style="margin:-6px 0 18px;gap:12px"><button class="btn k-wgsw">🚀 ${PNAME} ${ic('down', 'sm')}</button><div class="row k-wacts" style="gap:8px">${acts({ pre: 'w' })}</div></div><div class="wgrid">
     <div class="card span12 rise k-whero"><div class="row" style="gap:28px;align-items:flex-end"><div style="flex:none"><div class="lbl">スコア</div><div class="big" style="font-size:64px">${num(tt)}</div><div class="lbl">満点 100 · 上限なし</div></div>
       <div style="flex:1;min-width:0;padding-bottom:4px">${sbar(S, { labels: true, cls: 'k-wsbar' })}${legend()}</div>
       <div style="flex:none;text-align:right;padding-bottom:6px;width:190px">${many ? `<span class="chip lav">あと ${Math.round(100 - tt)} で満点</span><div class="lbl" style="margin-top:6px">話して ${Math.round(tt)} · スキップ 0</div>` : '<span class="chip lav">今日つくったプラン</span><div class="lbl" style="margin-top:6px">話した人のタイプで加点</div>'}</div></div></div>
@@ -1016,7 +1020,7 @@ h += sec('1 · 目標入力 → 背景確認', '① 用户写「Orbit を落地�
 const bg0 = bgApp(0), bg1 = bgApp(1), bg2 = bgApp(2), bg3 = bgApp(3);
 const bgA = bgApp(2), bgB = bgApp(2);
 h += boards([
-  AP('① 目標を入力（プラン空状態）', 'empty', { body: goalApp(), tab: 3 }, [
+  AP('① 目標を入力（プラン空状態）', 'empty', { body: goalApp(), tab: 4 }, [
     ['.k-gin .fld', 0, '一句话目标，原样保留用户的说法（「落地」这种不准确的词也不纠正，交给 ② 的目的の階段来对齐）'],
     ['.k-gkind', 0, '目标类型 chip = 选哪本题库、哪张「必要な力」清单与配点模板（6 类）；默认按文字推测「上市・収益化」，可改'],
     ['.k-gnext', 0, '「iOrbit と具体化する」→ ② 全屏 iOrbit 对话（从下推入），目标作为第一条消息带入'],
@@ -1068,7 +1072,7 @@ h += boards([
     ['.k-bgq', 0, '三块都确认后才出现「この背景で質問へ（5問まで）」→ 这时才调下一次 AI（挑 ≤5 问）'],
   ]),
 ]);
-h += WB('② 背景確認 · Web（3ブロック一屏 + 右栏「わかったこと」）', '', { nav: 1, body: bgWeb(), rail: knownRail('bg') }, [
+h += WB('② 背景確認 · Web（3ブロック一屏 + 右栏「わかったこと」）', '', { nav: 2, body: bgWeb(), rail: knownRail('bg') }, [
   ['.k-wsec1', 0, '「わたし」已确认，折成一行摘要 + ✎'],
   ['.k-wcap', 0, 'Web 的团队输入是一张表：行 = 必要能力（固定 8 项），列 = 成员（来源 chip：プロフィール / 人脈から / 手入力），勾选即录入'],
   ['.k-wcap th:nth-child(4)', 0, '「＋追加」加一列：弹窗同 App 两页签（人脈から選ぶ / 自分で書く）'],
@@ -1094,7 +1098,7 @@ h += boards([
     ['.k-premgo', 0, '「この前提で初版をつくる」→ ④ AI 初版；下方写明「初版は回数に含みません」'],
   ]),
 ]);
-h += WB('③ 5 問 · Web', '', { nav: 1, body: qWeb(), rail: knownRail('q') }, [
+h += WB('③ 5 問 · Web', '', { nav: 2, body: qWeb(), rail: knownRail('q') }, [
   ['.k-wq', 0, 'Web 5 问三列网格一次答完，最后一格放「まとめて回答する」与推测说明'],
   ['.k-known', 0, '右栏「わかったこと」随作答实时追加前提（浅紫 = 本轮新增），提交后整理成「確定した前提」卡'],
 ]);
@@ -1120,7 +1124,7 @@ h += boards([
     ['.k-manual', 0, '卡底：剩余次数 chip +「初版は回数に含みません」/「手動で編集」→ ⑥ /「この内容で確定」→ ⑦'],
   ]),
 ]);
-h += WB('④ AI 初版 · Web', '', { nav: 1, body: firstWeb(), rail: reviseRail(3) }, [
+h += WB('④ AI 初版 · Web', '', { nav: 2, body: firstWeb(), rail: reviseRail(3) }, [
   ['.k-wlib', 0, '方案卡左半：見立て + 結論 + 业界现状（Web 默认展开，宽屏放得下）'],
   ['.k-wtypes0', 0, '右半：Step 与人物类型配点'],
   ['.k-wrev', 0, '右栏「AI 修正 あと 3 回」：大数字 + 3 段进度 + 写法提示 + 输入框'],
@@ -1144,7 +1148,7 @@ h += boards([
     ['.k-rev0', 0, '修正栏变灰「あと 0 回」+「変更がなかった回も 1回と数えます」；输入框禁用'],
   ]),
 ]);
-h += WB('⑤ AI 修正 1 回後 · Web', '', { nav: 1, body: revWeb(), rail: reviseRail(2, { draft: draftMini() }) }, [
+h += WB('⑤ AI 修正 1 回後 · Web', '', { nav: 2, body: revWeb(), rail: reviseRail(2, { draft: draftMini() }) }, [
   ['.k-wupd1', 0, '对话里的更新卡：差分 + 変わらない点'],
   ['.k-wdraft', 0, '右栏「方案の下書き」同步更新，本轮改到的目安用浅紫底标出'],
   ['.k-wrev', 0, '剩余次数 2 / 3（进度条第 3 段变灰）'],
@@ -1185,25 +1189,25 @@ h += WB('⑥ 手動編集 · Web', '', { nav: 4, body: editWeb(), rail: editRail
 /* ---- 6 ---- */
 h += sec('6 · 定稿后的プラン概要', '视觉与 v2.1 同构（大分数 + 构成条 + Step 竖排 + 人物类型卡）。内容 = 修正 1・2 + 手動編集后的方案；Step 完成由用户确认（虚线确认卡）');
 h += boards([
-  AP('⑦ プラン概要（上）', 'few', { body: planApp('few'), tab: 3 }, [
+  AP('⑦ プラン概要（上）', 'few', { body: planApp('few'), tab: 4 }, [
     ['.k-hero .big', 0, 'スコア 0 起步（count-up），构成条按 6 段（5 类型 + イベント）配点分段'],
     ['.k-diag', 0, '「確定した方案」卡 + 「手動編集済み」chip；「?」展开依据（前提 · 业界现状 4 件 · 修正 3 回 · 手动编辑 1 回）'],
     ['.k-diag .k-prem', 0, '统一按钮组（与 App / Web プラン概要同一组）：前提を見る →「確定した前提」卡 / 方案を見直す（AI · 月 3 回，不改也扣 1 次）/ 手動で編集（每次見直し后 1 回）/ 目標を達成した → 确认框'],
     ['.k-today', 0, '今日のチャンス：小林さん（推薦度 92），A 1 人 4 点（配点 20 ÷ 5 人）'],
     ['.k-mey1', 0, '每个 Step 的「完了の目安」写成可数的状态，已反映修正与手动编辑（Step 3 改名、Step 4/5 互换）；目安下方是人物类型 chip（字母 + 固定短名），点 chip → ⑧ 该类型详情'],
   ]),
-  AP('⑦ プラン概要（人物タイプ · スクロール後）', 'few', { body: planApp('few', true), tab: 3 }, [
+  AP('⑦ プラン概要（人物タイプ · スクロール後）', 'few', { body: planApp('few', true), tab: 4 }, [
     ['.k-tplwhy', 0, '配点来源一行：模板 → AI 调整 2 件 → 手动编辑；「?」展开全部理由'],
     ['.k-tcA .tname', 0, '名称 = 「役割 × 状況」一句话（不截断），上方小字「タイプ A · 交流会の主催者 · Step 1・2・4」'],
     ['.k-tcB .m3', 0, '三格迷你信息：人脉里没有时第一格变灰「人脈にいない」，但会える活動 / 紹介ルート 仍给出下一步'],
     ['.k-tcA .tfoot', 0, '点卡 → 详情：有候补（A、D）→ 候补列表；没有（B、C、E）→ 人物像 + 活动 + 介绍路线'],
   ]),
-  AP('⑦ プラン概要（進行中 38）', 'many', { body: planApp('many'), tab: 3 }, [
+  AP('⑦ プラン概要（進行中 38）', 'many', { body: planApp('many'), tab: 4 }, [
     ['.k-hero .big', 0, 'スコア 38 = A 2 人 8 + B 1 人 10 + D 2 人 15（7 + 最后 1 人 8，已达目标）+ イベント 1 回 5；全部整数'],
     ['.k-sbar', 0, '构成条各段按得分从左生长 1.2s；口径不变（超额半分 / 斜纹跳过）'],
     ['.k-today', 0, '今日のチャンス换成活动：B 类型约 8 名来的勉強会（参加 +5 · 话到 B +10）'],
   ]),
-  AP('⑦ プラン概要（進行中 38 · ステップ）', 'many', { body: planApp('many', 'steps'), tab: 3 }, [
+  AP('⑦ プラン概要（進行中 38 · ステップ）', 'many', { body: planApp('many', 'steps'), tab: 4 }, [
     ['.k-mey1 .chip', 0, 'Step 目安显示进度（2 / 3人）；进度 chip 与目安同一行'],
     ['.k-stepok', 0, 'Step 3 目安可能已达成 → 虚线确认卡「森田さん（ブランド・PR）と継続の協力は決まりましたか？」；只有用户点「完了にする」才算完成（定稿），点「まだ」卡片收起'],
   ]),

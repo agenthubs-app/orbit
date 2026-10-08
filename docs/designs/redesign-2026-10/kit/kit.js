@@ -42,6 +42,10 @@
     user: '<circle cx="12" cy="8" r="4"/><path d="M4.5 20.5c.8-4 3.8-6 7.5-6s6.7 2 7.5 6"/>',
     book: '<path d="M5 4.5h10a3 3 0 0 1 3 3v12H8a3 3 0 0 1-3-3Z"/><path d="M5 16.5a3 3 0 0 1 3-3h10"/>',
     edit: '<path d="M4 20h16"/><path d="M6 16v-3l9-9 3 3-9 9Z"/>',
+    task: '<rect x="4" y="4" width="16" height="16" rx="4.5"/><path d="m8.4 12.3 2.5 2.5 4.8-5"/>',
+    list: '<path d="M9 6.5h11M9 12h11M9 17.5h11"/><circle cx="4.8" cy="6.5" r="1.1" fill="currentColor"/><circle cx="4.8" cy="12" r="1.1" fill="currentColor"/><circle cx="4.8" cy="17.5" r="1.1" fill="currentColor"/>',
+    note: '<path d="M6 3.5h8.5L19 8v11a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 5 19V5a1.5 1.5 0 0 1 1-1.5Z"/><path d="M14 3.5V8h5M8.5 12.5h7M8.5 16h5"/>',
+    menu: '<path d="M4 7h16M4 12h11M4 17h16"/>',
     star: '<path d="m12 4 2.4 5 5.4.7-4 3.7 1 5.4-4.8-2.6-4.8 2.6 1-5.4-4-3.7 5.4-.7Z"/>',
   };
   window.ic = (n, cls = '') => `<svg class="i ${cls}" viewBox="0 0 24 24" aria-hidden="true">${P[n] || ''}</svg>`;
@@ -86,15 +90,18 @@
   window.addEventListener('resize', repin);
 
   const statusBar = (t = '9:41') => `<div class="status"><span>${t}</span><span class="island"></span><span class="sys"><svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect x="0" y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" y="0" width="3" height="11" rx="1"/></svg><svg width="16" height="11" viewBox="0 0 16 11" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M1 3.8a10 10 0 0 1 14 0M3.4 6.3a6.5 6.5 0 0 1 9.2 0"/><circle cx="8" cy="9" r="1" fill="currentColor"/></svg><span class="bat"></span></span></div>`;
-  const TABS = [['home', 'ホーム'], ['users', '人脈'], ['calendar', 'イベント'], ['target', 'プラン']];
-  window.phone = ({ body, tab = 0, fab = true, overlay = '', pins = '', theme = '' }) =>
+  /* NAV-V3（2026-10-08）：底部 5 项 ホーム / 人脈 / iOrbit / イベント / Task；取消全局浮动「＋追加」FAB（fab 参数保留，默认 false）。
+     iOrbit 画面本身全屏不显示底栏（tab:-1）；tab:2 只在需要演示「底栏 iOrbit 项」时使用 */
+  const TABS = [['home', 'ホーム'], ['users', '人脈'], ['sparkle', 'iOrbit'], ['calendar', 'イベント'], ['task', 'Task']];
+  window.phone = ({ body, tab = 0, fab = false, overlay = '', pins = '', theme = '' }) =>
     `<div class="phone" ${theme ? `data-theme="${theme}"` : ''}>${statusBar()}<div class="scroll">${body}</div>
      ${tab >= 0 ? `<nav class="tabbar">${TABS.map(([i, l], k) => `<button class="${k === tab ? 'on' : ''}">${ic(i)}${l}</button>`).join('')}</nav>` : ''}
      ${fab && tab >= 0 ? `<button class="fab">${ic('plus')}追加</button>` : ''}
      ${overlay}${pins}<div class="home-ind"></div></div>`;
   window.topbar = (title, sub, l = '', r = '') => `<div class="topbar">${l || '<span></span>'}<div class="t"><b>${title}</b>${sub ? `<small>${sub}</small>` : ''}</div>${r || '<span></span>'}</div>`;
 
-  const SIDE = [['home', 'ホーム'], ['sparkle', 'iOrbit'], ['users', '人脈'], ['calendar', 'イベント'], ['target', 'プラン'], ['inbox', '受信箱']];
+  /* NAV-V3：Web 左栏 ホーム / 人脈 / iOrbit / イベント / Task / 受信箱（+ 底部 主催 / 設定） */
+  const SIDE = [['home', 'ホーム'], ['users', '人脈'], ['sparkle', 'iOrbit'], ['calendar', 'イベント'], ['task', 'Task'], ['inbox', '受信箱']];
   window.webFrame = ({ nav = 0, head, body, rail = '', pins = '', theme = '' }) =>
     `<div class="web ${rail ? '' : 'no-rail'}" ${theme ? `data-theme="${theme}"` : ''}>
       <aside class="side"><div class="logo">O</div>${SIDE.map(([i, l], k) => `<a class="${k === nav ? 'on' : ''}">${ic(i)}${l}</a>`).join('')}
@@ -104,7 +111,7 @@
 
   // 文档页导航（所有页面共用）
   const PAGES = [['index', '← 总览'], ['00-inventory', '现状图谱'], ['01-system', '设计系统'], ['app', 'App'], ['web', 'Web'], ['widgets', '小组件'], ['02-gaps', '缺口分析'],
-    ['b1-onboarding-cards', '①新用户+名片'], ['b2-events-flow', '②活动闭环'], ['b3-daily-actions', '③每日行动'], ['b4-plan-iorbit', '④计划+iOrbit'], ['b5-me-inbox', '⑤我的+收件箱'], ['b6-host-polish', '⑥主办+收尾'], ['b7-account-misc', '⑦账号+补遗'], ['b8-responsive', '⑧Web 自适应'], ['b9-import-plan-v2', '⑨导入 v2'], ['b10-plan-example', '⑩计划具体化（示例）']];
+    ['b1-onboarding-cards', '①新用户+名片'], ['b2-events-flow', '②活动闭环'], ['b3-daily-actions', '③每日行动'], ['b4-plan-iorbit', '④计划+iOrbit'], ['b5-me-inbox', '⑤我的+收件箱'], ['b6-host-polish', '⑥主办+收尾'], ['b7-account-misc', '⑦账号+补遗'], ['b8-responsive', '⑧Web 自适应'], ['b9-import-plan-v2', '⑨导入 v2'], ['b10-plan-example', '⑩计划具体化（示例）'], ['b11-nav-v3', '⑪导航改版']];
   window.docNav = (active) => { const n = document.getElementById('docnav'); if (n) n.innerHTML = PAGES.map(([f, l]) => `<a class="${f === active ? 'on' : ''}" href="${f}.html">${l}</a>`).join(''); };
 
   // ---- 运行时：动画、交互 ----

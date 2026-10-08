@@ -732,10 +732,10 @@ h += wb('Web ② ポスター補完', '信息不足', webFrame({ nav: 3, head: '
 /* ② */
 h += sec('② 探す（イベントを見つける）', 'イベント 页顶部 [評価 | 参加予定 | 探す]；推荐基于计划，社群活动置顶，筛选 = App 底部弹层 / Web 弹出层');
 h += boards([
-  ['探す', 'empty', phone({ body: discover('empty'), tab: 2, pins: pin(1, '.p-guide') }), ['无计划时只给一个主动作「目標を設定する」；其余入口退到 3 个马卡龙小卡；下方淡化サンプル + 幽灵行预告']],
-  ['探す', 'few', phone({ body: discover('few'), tab: 2, pins: pin(1, '.p-widen') }), ['结果少时给「放宽条件」一键建议，每条带可增加的件数（对标 Airbnb / 食べログ 的 0 件放宽提示）']],
-  ['探す', 'many', phone({ body: discover('many'), tab: 2, pins: pin(1, '.p-filter') + pin(2, '.p-comm') + pin(3, '.p-rec') }), ['筛选钮带已选数量角标；点 → 底部弹层（见右）', '社群活动置顶：会员限定/先行申込的 chip 用马卡龙小面积', '「プランに効く」横滑卡：理由一句 + 「?」展开依据；分数环单色系']],
-  ['探す · 絞り込み', '弹层', phone({ body: discover('many'), tab: 2, fab: false, overlay: filterSheet, pins: pin(1, '.p-fsheet') + pin(2, '.p-fshow') }), ['底部弹层从下滑入 + 背景暗化；chip 多选，选中=灰紫描边', '主按钮实时显示命中件数（28件），点 → 关闭弹层并刷新列表']],
+  ['探す', 'empty', phone({ body: discover('empty'), tab: 3, pins: pin(1, '.p-guide') }), ['无计划时只给一个主动作「目標を設定する」；其余入口退到 3 个马卡龙小卡；下方淡化サンプル + 幽灵行预告']],
+  ['探す', 'few', phone({ body: discover('few'), tab: 3, pins: pin(1, '.p-widen') }), ['结果少时给「放宽条件」一键建议，每条带可增加的件数（对标 Airbnb / 食べログ 的 0 件放宽提示）']],
+  ['探す', 'many', phone({ body: discover('many'), tab: 3, pins: pin(1, '.p-filter') + pin(2, '.p-comm') + pin(3, '.p-rec') }), ['筛选钮带已选数量角标；点 → 底部弹层（见右）', '社群活动置顶：会员限定/先行申込的 chip 用马卡龙小面积', '「プランに効く」横滑卡：理由一句 + 「?」展开依据；分数环单色系']],
+  ['探す · 絞り込み', '弹层', phone({ body: discover('many'), tab: 3, overlay: filterSheet, pins: pin(1, '.p-fsheet') + pin(2, '.p-fshow') }), ['底部弹层从下滑入 + 背景暗化；chip 多选，选中=灰紫描边', '主按钮实时显示命中件数（28件），点 → 关闭弹层并刷新列表']],
   ['探す · 検索', '输入中', phone({ body: searchState(), tab: -1, pins: pin(1, '.p-q') + pin(2, '.p-qpeople') }), ['搜索按 イベント / 主催 / 人脈 分组，命中词高亮', '人脈里的命中 → 「この人が登壇するイベント」，点进入联系人详情的活动 tab']],
 ]);
 h += wb('Web 探す', 'empty', webFrame({ nav: 3, head: '', body: wDiscover('empty'), rail: wIntroRail(), pins: pin(1, '.p-wguide') }), ['横幅引导卡：主动作在右；3 个马卡龙次要入口；下方 3 张淡化サンプル卡']);

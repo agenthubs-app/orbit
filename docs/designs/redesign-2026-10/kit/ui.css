@@ -95,10 +95,10 @@ body.no-pins .pin { display: none; }
 
 /* 浮动胶囊导航 */
 .tabbar {
-  position: absolute; left: 16px; right: 88px; bottom: 26px; height: 62px; z-index: 35;
+  position: absolute; left: 14px; right: 14px; bottom: 26px; height: 62px; z-index: 35; /* NAV-V3：5 项、无 FAB，占满宽 */
   border-radius: 999px; background: var(--glass); backdrop-filter: blur(22px) saturate(1.6); -webkit-backdrop-filter: blur(22px) saturate(1.6);
   border: 1px solid var(--glass-line); box-shadow: var(--shadow-float);
-  display: grid; grid-template-columns: repeat(4, 1fr); padding: 6px; gap: 2px;
+  display: grid; grid-template-columns: repeat(5, 1fr); padding: 6px; gap: 2px;
 }
 .tabbar button { border-radius: 999px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 10px; font-weight: 700; color: var(--ink-3); transition: background .25s var(--ease), color .25s; }
 .tabbar button svg.i { width: 21px; height: 21px; }
@@ -456,9 +456,9 @@ body:not(.no-pins) .pinned { outline: 1.5px dashed color-mix(in srgb, var(--rose
 .li .meta .sample-tag, .li .meta .chip, .li .meta .why { display: inline-flex; width: auto; }
 .li .meta .sample-tag { font-size: 9.5px; color: var(--mac-apricot-ink); margin-top: 0; }
 
-/* ===== AU-HV3（2026-10-07 全局一致性审计）：プラン v2 构成条 + 首页 v3「軌道ビュー」+ 人脈 濃さ/出どころ 的共享样式 =====
+/* ===== AU-HV3（2026-10-07 全局一致性审计）：プラン v2 构成条 + 今週 / 今日の一手 + 人脈 濃さ/出どころ 的共享样式（NAV-V3 后轨道样式已删） =====
    与 app.html / web.html 私有 <style> 中 V2KIT / HOME-V3 两段同源；供 b1–b9 画首页・人脈・プラン 缩略/背景时复用（配合各文件内 HV3 共享脚本块）。
-   与其他页面同名类冲突处已收窄：.orb 只匹配轨道舞台（带 --od），.dn 只匹配浓度三点（d1–d3），来源 chip 图标只作用于 .chip.src。 */
+   与其他页面同名类冲突处已收窄：.dn 只匹配浓度三点（d1–d3），来源 chip 图标只作用于 .chip.src。 */
   
   /* ===== プラン v2 口径（2026-10-07）：视觉与数字与 b9-import-plan-v2.html 一致；类名加 v2 前缀避免与本页私有类冲突 ===== */
   .v2bar { display: flex; gap: 3px; height: 14px; position: relative; margin-top: 18px; }
@@ -526,53 +526,7 @@ body:not(.no-pins) .pinned { outline: 1.5px dashed color-mix(in srgb, var(--rose
   .v2plus { font-family: var(--font-num); font-weight: 900; font-size: 15px; color: var(--plum-700); white-space: nowrap; flex: none; }
   
   
-  /* ===== 首页 v3「軌道ビュー」（2026-10-07）：同心轨道 + 头像点 + 光晕 + 旋转；本文件私有（app.html / web.html 各一份） ===== */
-  .orb[style*="--od"] { position: relative; overflow: hidden; flex: none; margin: 0 auto; }
-  .orb-svg { position: absolute; left: 0; top: 0; }
-  .orb-svg circle { fill: none; stroke-width: 1; }
-  .orb-ring { position: absolute; border-radius: 50%; animation: orbSpin var(--dur) linear infinite; animation-direction: var(--dir); }
-  .od-pos { position: absolute; width: 0; height: 0; }
-  .orb .od { position: absolute; width: var(--od); height: var(--od); left: calc(var(--od) / -2); top: calc(var(--od) / -2); font-size: calc(var(--od) * .46); font-weight: 800; box-shadow: 0 0 0 2px var(--surface); z-index: 1;
-    animation: orbSpin var(--dur) linear infinite; animation-direction: var(--cdir); }
-  .orb .od.goal::after { content: ""; position: absolute; right: -3px; top: -3px; width: 7px; height: 7px; border-radius: 50%; background: var(--rose-500); box-shadow: 0 0 0 1.5px var(--surface); }
-  .od-glow { position: absolute; width: calc(var(--od) + 10px); height: calc(var(--od) + 10px); left: calc(var(--od) / -2 - 5px); top: calc(var(--od) / -2 - 5px); border-radius: 50%;
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--mac-lav-ink) 30%, transparent), 0 0 12px 4px color-mix(in srgb, var(--mac-lav-ink) 42%, transparent);
-    animation: orbBreath 3.4s ease-in-out infinite; }
-  .od-pos:nth-child(2n) .od-glow { animation-delay: -1.7s; }
-  .orb-me { position: absolute; border-radius: 50%; background: var(--ink); color: var(--bg); display: grid; place-items: center; font-weight: 800; z-index: 2; animation: orbMe 3.2s var(--ease) infinite; }
-  .orb-me.idle { animation: none; background: var(--surface-2); color: var(--ink-2); box-shadow: 0 0 0 1.5px var(--plum-300); }
-  .od-ph { position: absolute; border-radius: 50%; border: 1.5px dashed var(--plum-500); color: var(--plum-700); display: grid; place-items: center; font-size: 13px; font-weight: 800; animation: orbPh 2.4s ease-in-out infinite; }
-  .orb-n { position: absolute; transform: translate(-50%, -50%); z-index: 3; display: inline-flex; align-items: center; gap: 4px; padding: 1px 7px 1px 5px; border-radius: 999px; background: var(--surface); box-shadow: 0 0 0 1px var(--line); font-size: 9.5px; font-weight: 700; color: var(--ink-3); white-space: nowrap; }
-  .orb-n i { width: 6px; height: 6px; border-radius: 50%; }
-  .orb-n b { font-family: var(--font-num); font-weight: 800; color: var(--ink-2); }
-  .orb-hd { position: absolute; left: 0; top: 0; z-index: 4; padding: 0 22px 18px 0; background: radial-gradient(farthest-side at 0 0, var(--surface) 70%, transparent); }
-  .orb-hd .big { font-size: 34px; }
-  .orb-hd .delta { display: inline-block; margin-top: 4px; }
-  .orb-lg { position: absolute; right: 0; bottom: 0; z-index: 4; display: grid; gap: 3px; justify-items: end; padding: 14px 0 0 20px; font-size: 10.5px; font-weight: 600; color: var(--ink-2); background: radial-gradient(farthest-side at 100% 100%, var(--surface) 72%, transparent); }
-  .orb-lg span { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
-  .orb-lg b { font-family: var(--font-num); font-weight: 800; color: var(--ink); }
-  .lg-goal { width: 7px; height: 7px; border-radius: 50%; background: var(--rose-500); }
-  .lg-new { width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid var(--surface-3); box-shadow: 0 0 6px 2px color-mix(in srgb, var(--mac-lav-ink) 40%, transparent); }
-  .orb-sel { position: absolute; width: 0; height: 0; z-index: 5; }
-  .orb-sel .av { position: absolute; width: 28px; height: 28px; left: -14px; top: -14px; font-size: 12px; box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--plum-700); }
-  .orb-sel .av::after { content: ""; position: absolute; right: -3px; top: -3px; width: 8px; height: 8px; border-radius: 50%; background: var(--rose-500); box-shadow: 0 0 0 1.5px var(--surface); }
-  .orb-pop { position: absolute; z-index: 6; background: var(--surface); border-radius: 16px; padding: 10px 12px 10px; box-shadow: var(--shadow-float), 0 0 0 1px var(--line); animation: orbPop .5s var(--ease) both; }
-  .orb-pop::after { content: ""; position: absolute; bottom: -5px; left: var(--tx); width: 10px; height: 10px; margin-left: -5px; background: var(--surface); transform: rotate(45deg); border-radius: 2px; box-shadow: 1px 1px 0 0 var(--line); }
-  .orb-pop .pn { display: flex; align-items: center; gap: 6px; }
-  .orb-pop .pn b { font-size: 13px; white-space: nowrap; }
-  .orb-pop .pw { font-size: 11.5px; font-weight: 700; color: var(--ink); line-height: 1.45; margin-top: 4px; }
-  .orb-pop .btn.sm { height: 26px; padding: 0 10px; font-size: 11px; }
-  .orb-st { display: grid; gap: 6px; margin-top: 14px; font-size: 11.5px; }
-  .orb-st > div { display: flex; align-items: center; gap: 7px; }
-  .orb-st i { width: 14px; height: 2px; border-radius: 1px; }
-  .orb-st span { color: var(--ink-2); font-weight: 600; }
-  .orb-st b { margin-left: auto; font-family: var(--font-num); font-weight: 800; }
-  [data-theme="dark"] .orb-pop, [data-theme="dark"] .orb-pop::after { background: var(--surface-3); }
-  @keyframes orbSpin { to { transform: rotate(360deg); } }
-  @keyframes orbBreath { 0%, 100% { opacity: .4; transform: scale(.86); } 50% { opacity: 1; transform: scale(1.1); } }
-  @keyframes orbPh { 0%, 100% { opacity: .45; transform: scale(.9); } 50% { opacity: 1; transform: scale(1.08); } }
-  @keyframes orbPop { from { opacity: 0; transform: translateY(6px) scale(.94); } }
-  @keyframes orbMe { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--plum-500) 45%, transparent); } 70%, 100% { box-shadow: 0 0 0 14px color-mix(in srgb, var(--plum-500) 0%, transparent); } }
+  /* NAV-V3（2026-10-08）：首页「軌道ビュー」样式（.orb[--od] / .orb-* / .od-* / orbSpin 等）已删除——全仓已无引用 */
   /* 今週ストリップ */
   .wk7 { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
   .wd { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 7px 0 8px; border-radius: 999px; transition: background .2s var(--ease); }
@@ -617,7 +571,7 @@ body:not(.no-pins) .pinned { outline: 1.5px dashed color-mix(in srgb, var(--rose
   .addgrid.g5 { grid-template-columns: repeat(5, 1fr); gap: 6px; }
   .addgrid.g5 button { padding: 10px 2px 9px; gap: 5px; font-size: 10.5px; line-height: 1.25; text-align: center; border-radius: 16px; }
   @media (prefers-reduced-motion: reduce) {
-    .orb-ring, .orb .od, .od-glow, .od-ph, .orb-me, .orb-pop, .nst-front, .wk-open { animation: none !important; }
+    .nst-front, .wk-open { animation: none !important; }
   }
   .wgrid > .nstack { margin-top: 0; display: flex; flex-direction: column; } .wgrid > .nstack > .nst-front { flex: 1; }
   
@@ -698,3 +652,151 @@ body:not(.no-pins) .pinned { outline: 1.5px dashed color-mix(in srgb, var(--rose
 .phone .v22foot { position: absolute; left: 0; right: 0; bottom: 0; z-index: 30; padding: 22px 18px 30px; background: linear-gradient(to bottom, transparent, var(--bg) 26%); }
 .v22evg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0 20px; }
 .v22evg .v22ev + .v22ev { border-top: 0; }
+
+/* ===== NAV-V3（2026-10-08 导航改版）：ホーム组件容器 / Task 分段 / iOrbit 全屏 / 人脈「＋」加人 sheet —— app / web / widgets 与 b 文件 HV3 共用 ===== */
+/* App 首页顶栏：头像 → マイ · 日期 · 🔔（红点）· 編集 */
+.hhead { display: flex; align-items: center; gap: 10px; padding: 6px 0 12px; }
+.hhead .t { flex: 1; min-width: 0; }
+.hhead .t b { display: block; font-size: 17px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hhead .t small { display: block; font-size: 11.5px; color: var(--ink-3); font-weight: 500; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hhead.stk { position: sticky; top: 0; z-index: 20; margin: 0 -18px; padding-left: 18px; padding-right: 18px; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+.hhead .hedit { height: 36px; padding: 0 13px; border-radius: 999px; background: var(--surface); font-size: 12.5px; font-weight: 800; color: var(--ink-2); flex: none; }
+.hhead .hedit.done { background: var(--ink); color: var(--bg); }
+/* 「長押しで組み替え」提示条 */
+.hhint { display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 12px; border-radius: 14px; background: color-mix(in srgb, var(--surface) 60%, transparent); border: 1px dashed var(--plum-300); font-size: 11.5px; font-weight: 600; color: var(--ink-2); }
+.hhint > span { flex: 1; min-width: 0; }
+.hhint .lbtn { width: 24px; height: 24px; flex: none; }
+.hhint svg.i { width: 15px; height: 15px; flex: none; color: var(--plum-500); }
+/* 组件网格：2 列，小 = 1 格、中 = 2 格；同行等高 */
+.hw-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: stretch; margin-top: 12px; }
+.hw { background: var(--surface); border-radius: 22px; padding: 14px; min-width: 0; display: flex; flex-direction: column; position: relative; }
+.hw.m { grid-column: span 2; }
+.hw > .push { margin-top: auto; }
+.hw-h { display: flex; align-items: center; gap: 7px; margin-bottom: 8px; min-width: 0; }
+.hw-h .lbl { font-weight: 800; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hw-h .go { margin-left: auto; color: var(--ink-4); display: grid; place-items: center; flex: none; }
+.hw-h .go svg.i { width: 15px; height: 15px; }
+.hw-h .chip { flex: none; }
+.hw .big { font-size: 34px; }
+.hw-sub { font-size: 11.5px; color: var(--ink-3); font-weight: 600; line-height: 1.5; }
+.hw-row { display: flex; align-items: center; gap: 9px; padding: 7px 0; min-width: 0; }
+.hw-row + .hw-row { border-top: 1px solid var(--line); }
+.hw-row .hmt { flex: 1; min-width: 0; }
+.hw-row .hmt b { display: block; font-size: 12.5px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hw-row .hmt span { display: block; font-weight: 500; font-size: 11px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hw-row time { font-family: var(--font-num); font-size: 11.5px; font-weight: 800; color: var(--ink-2); width: 38px; flex: none; }
+.hw-row .ck { width: 18px; height: 18px; border-radius: 50%; border: 1.6px solid var(--ink-4); flex: none; }
+.hw-row .chip { flex: none; }
+.hw-ppl { display: flex; gap: 8px; margin-top: 10px; }
+.hw-ppl > div { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; }
+.hw-ppl b { font-size: 11.5px; font-weight: 700; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hw-ppl span { font-size: 10px; color: var(--ink-3); max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hw-sec { display: flex; gap: 10px; align-items: flex-start; padding: 9px 0; }
+.hw-sec + .hw-sec { border-top: 1px solid var(--line); }
+.hw-sec .hmt { flex: 1; min-width: 0; font-size: 12.5px; line-height: 1.5; }
+.hw-sec .hmt b { font-weight: 800; }
+.hw-sec .hmt small { display: block; font-size: 11px; color: var(--ink-3); margin-top: 1px; }
+.hw-sec .k { font-size: 10px; font-weight: 800; color: var(--ink-3); white-space: nowrap; flex: none; padding-top: 2px; }
+.hw-foot { display: flex; align-items: center; gap: 4px; margin-top: 8px; font-size: 11.5px; font-weight: 700; color: var(--ink-3); }
+.hw-foot svg.i { width: 14px; height: 14px; }
+.hw-empty { font-size: 12px; color: var(--ink-3); line-height: 1.6; }
+/* 编辑模式：组件抖动 + 左上「−」+ 末尾「ウィジェットを追加」 */
+.hw.edit { animation: hwJig .28s ease-in-out infinite alternate; }
+.hw.edit:nth-child(2n) { animation-delay: -.14s; animation-direction: alternate-reverse; }
+.hw .minus { position: absolute; left: -6px; top: -6px; width: 22px; height: 22px; border-radius: 50%; background: var(--ink-3); color: var(--surface); display: grid; place-items: center; font-weight: 900; font-size: 15px; line-height: 1; z-index: 2; box-shadow: 0 0 0 2px var(--bg); }
+.hw-add { grid-column: span 2; border: 1.6px dashed var(--plum-300); border-radius: 22px; padding: 14px; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px; font-weight: 800; color: var(--plum-700); }
+.web .hw.edit { animation: none; outline: 1.5px dashed var(--plum-300); outline-offset: 3px; cursor: grab; }
+@keyframes hwJig { from { transform: rotate(-.7deg); } to { transform: rotate(.7deg); } }
+@media (prefers-reduced-motion: reduce) { .hw.edit { animation: none; } }
+/* 组件库 sheet */
+.wlib { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.wlib-t { background: var(--surface-2); border-radius: 16px; padding: 11px 12px; display: flex; flex-direction: column; gap: 4px; min-width: 0; position: relative; }
+.wlib-t b { font-size: 12.5px; }
+.wlib-t span { font-size: 10.5px; color: var(--ink-3); line-height: 1.45; padding-right: 24px; }
+.wlib-t .sz { position: absolute; right: 10px; top: 10px; font-size: 9.5px; font-weight: 800; color: var(--ink-3); }
+.wlib-t.added { opacity: .5; }
+.wlib-t .plus { position: absolute; right: 8px; bottom: 8px; width: 22px; height: 22px; border-radius: 50%; background: var(--ink); color: var(--bg); display: grid; place-items: center; }
+.wlib-t .plus svg.i { width: 13px; height: 13px; }
+/* Task：顶部分段（カレンダー / To-do / プラン / メモ，可左右滑动） */
+.tseg { display: grid; grid-template-columns: repeat(4, 1fr); padding: 3px; border-radius: 999px; background: var(--surface-2); gap: 2px; }
+.tseg button { padding: 7px 0; border-radius: 999px; font-size: 12.5px; font-weight: 700; color: var(--ink-2); white-space: nowrap; }
+.tseg button.on { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+.tswipe { display: flex; justify-content: center; gap: 5px; margin: 8px 0 12px; }
+.tswipe i { width: 5px; height: 5px; border-radius: 3px; background: var(--surface-3); }
+.tswipe i.on { width: 16px; background: var(--ink-3); }
+.web .tseg { display: inline-grid; width: auto; grid-template-columns: repeat(4, auto); }
+.web .tseg button { padding: 7px 18px; }
+.td-h { display: flex; align-items: center; gap: 8px; margin: 16px 2px 8px; font-size: 13px; font-weight: 800; }
+.td-h .lbl { font-weight: 600; }
+.td-h .more { margin-left: auto; font-size: 11.5px; color: var(--ink-3); font-weight: 700; display: inline-flex; align-items: center; }
+.td-ck { width: 20px; height: 20px; border-radius: 50%; border: 1.6px solid var(--ink-4); flex: none; display: grid; place-items: center; }
+.td-ck.on { background: var(--ink-3); border-color: var(--ink-3); color: var(--surface); }
+.td-ck.on svg.i { width: 12px; height: 12px; }
+.cal-tl { position: relative; }
+.cal-hr { display: grid; grid-template-columns: 40px 1fr; gap: 8px; min-height: 30px; border-top: 1px solid var(--line); }
+.cal-hr time { font-family: var(--font-num); font-size: 11px; font-weight: 700; color: var(--ink-3); padding-top: 4px; }
+.cal-hr .ev { border-radius: 14px; padding: 8px 11px; margin: 4px 0; font-size: 12.5px; min-width: 0; }
+.cal-hr .ev b { display: block; font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cal-hr .ev span { font-size: 11px; opacity: .8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+.cal-now { position: absolute; left: 44px; right: 0; height: 2px; background: var(--coral); border-radius: 1px; z-index: 2; }
+.cal-now::before { content: ""; position: absolute; left: -4px; top: -3px; width: 8px; height: 8px; border-radius: 50%; background: var(--coral); }
+.memo { background: var(--surface); border-radius: 20px; padding: 13px 14px; }
+.memo + .memo { margin-top: 10px; }
+.memo .mh { display: flex; align-items: center; gap: 8px; }
+.memo .mh b { font-size: 13.5px; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.memo .mh time { font-size: 11px; color: var(--ink-3); font-weight: 700; flex: none; }
+.memo p { margin: 6px 0 0; font-size: 12px; line-height: 1.6; color: var(--ink-2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.at { display: inline-flex; align-items: center; gap: 3px; padding: 1px 8px 1px 3px; border-radius: 999px; background: var(--mac-lav); color: var(--mac-lav-ink); font-size: 11px; font-weight: 800; white-space: nowrap; }
+.at .av { width: 16px; height: 16px; font-size: 8.5px; }
+.at.ev { background: var(--mac-apricot); color: var(--mac-apricot-ink); padding-left: 8px; }
+.web .memo + .memo { margin-top: 0; }
+/* iOrbit 全屏（App）：左上 聊天列表 · 右上 ✕；左边缘右滑退出 */
+.io-head { display: flex; align-items: center; gap: 10px; padding: 6px 0 10px; }
+.io-head .t { flex: 1; text-align: center; font-size: 15px; font-weight: 800; }
+.io-hello { padding: 70px 4px 0; }
+.io-hello .orbm { width: 46px; height: 46px; border-radius: 16px; background: var(--ink); color: var(--bg); display: grid; place-items: center; font-weight: 900; font-size: 19px; }
+.io-hello h2 { font-size: 24px; font-weight: 800; line-height: 1.35; margin: 16px 0 6px; }
+.io-sugg { display: grid; gap: 8px; margin-top: 22px; }
+.io-sugg .prompt { display: flex; align-items: center; gap: 8px; background: var(--surface); padding: 12px 14px; font-size: 13px; }
+.io-sugg .prompt .emo { flex: none; }
+.edge-hint { position: absolute; left: 0; top: 630px; z-index: 33; width: 6px; height: 110px; border-radius: 0 6px 6px 0; background: color-mix(in srgb, var(--plum-500) 45%, transparent); }
+.edge-hint span { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); padding: 4px 10px; border-radius: 999px; background: var(--surface); box-shadow: var(--shadow-float); font-size: 10.5px; font-weight: 800; color: var(--plum-700); white-space: nowrap; }
+.io-drawer { position: absolute; left: 0; top: 0; bottom: 0; width: 318px; z-index: 52; background: var(--surface); border-radius: 0 30px 30px 0; padding: 58px 16px 24px; display: flex; flex-direction: column; gap: 10px; box-shadow: var(--shadow-float); }
+.io-drawer .hi { display: flex; align-items: center; gap: 10px; padding: 10px 10px; border-radius: 14px; font-size: 13px; font-weight: 600; min-width: 0; }
+.io-drawer .hi.on { background: var(--surface-2); font-weight: 800; }
+.io-drawer .hi span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.io-drawer .hi small { font-size: 10.5px; color: var(--ink-3); flex: none; }
+.io-drawer .grp { font-size: 11px; font-weight: 800; color: var(--ink-3); margin: 6px 4px 0; }
+/* Web iOrbit：历史面板（左侧可开合）+ 对话 */
+.wio { display: grid; grid-template-columns: 0 1fr; gap: 0; height: 100%; min-height: 820px; }
+.wio.open { grid-template-columns: 260px 1fr; gap: 24px; }
+.wio .whist { overflow: hidden; display: flex; flex-direction: column; gap: 6px; border-right: 1px solid var(--line); padding-right: 16px; min-width: 0; }
+.wio:not(.open) .whist { visibility: hidden; padding: 0; border: 0; }
+.wio .whist .hi { display: flex; align-items: center; gap: 8px; padding: 9px 10px; border-radius: 12px; font-size: 13px; font-weight: 600; color: var(--ink-2); min-width: 0; }
+.wio .whist .hi span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wio .whist .hi.on { background: var(--surface); color: var(--ink); font-weight: 800; }
+.wio .whist .grp { font-size: 11px; font-weight: 800; color: var(--ink-3); margin: 8px 4px 2px; }
+.wio .wchat { min-width: 0; display: flex; flex-direction: column; }
+/* 人脈「＋」加人 sheet：主推 3 种 + その他 */
+.addp { display: flex; align-items: center; gap: 12px; padding: 13px 14px; border-radius: 18px; background: var(--surface-2); }
+.addp + .addp { margin-top: 8px; }
+.addp .hmt { flex: 1; min-width: 0; }
+.addp .hmt b { display: block; font-size: 14.5px; }
+.addp .hmt span { display: block; font-size: 11.5px; color: var(--ink-2); line-height: 1.5; margin-top: 1px; }
+.addp .go { color: var(--ink-4); flex: none; }
+.addp.main { background: linear-gradient(135deg, var(--mac-apricot), var(--surface-2) 75%); }
+.addo { display: flex; gap: 8px; }
+.addo > div { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); font-size: 12.5px; font-weight: 700; }
+.addo > div small { display: block; font-size: 10px; color: var(--ink-3); font-weight: 600; }
+/* Web Task · カレンダー 週表示 */
+.wkg { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
+.wkc { min-width: 0; display: flex; flex-direction: column; gap: 6px; min-height: 300px; padding: 8px 6px; border-radius: 16px; background: var(--surface-2); }
+.wkc.on { box-shadow: inset 0 0 0 2px var(--ink); }
+.wkc.past { opacity: .55; }
+.wkd { display: flex; align-items: baseline; gap: 6px; padding: 2px 4px 4px; }
+.wkd small { font-size: 11px; font-weight: 700; color: var(--ink-3); }
+.wkd b { font-family: var(--font-num); font-size: 17px; font-weight: 800; }
+.wke { border-radius: 12px; padding: 7px 8px; font-size: 11px; min-width: 0; }
+.wke b { display: block; font-family: var(--font-num); font-size: 11px; }
+.wke span { display: block; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* ===== NAV-V3 END ===== */
